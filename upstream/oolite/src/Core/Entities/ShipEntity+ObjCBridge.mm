@@ -47,6 +47,31 @@ MA 02110-1301, USA.
 #include <cmath>
 
 
+namespace {
+
+/*	The C++ part of an Objective-C ship (ShipEntity, StationEntity, DockEntity, PlayerEntity, ...):
+	the root's adapter over cxx::ShipEntity, plus the members cxx::ShipEntity added that the
+	Objective-C subclasses override, which message the Objective-C object (ADR-0056 amendments
+	oo-vl43 item 1 and oo-mvzmb). Each slice that makes such a member virtual adds its line
+	(docs/phases/3-slices/ShipEntity.md); the facade's forwarder calls cxx::ShipEntity's own
+	member, which is what [super ...] (or not overriding) reached.
+*/
+class ObjCShipEntity final : public oo::ObjCEntity<cxx::ShipEntity>
+{
+public:
+	explicit ObjCShipEntity(::Entity *objcOwner) : oo::ObjCEntity<cxx::ShipEntity>(objcOwner) {}
+
+	// Slice 3 (bead oo-mvzmb).
+	bool setUpShipFromDictionary(const oo::PList &shipDict) override	{ return [(::ShipEntity *)_objcOwner setUpShipFromDictionary:shipDict]; }
+	bool setUpSubEntities() override	{ return [(::ShipEntity *)_objcOwner setUpSubEntities]; }
+
+	// Slice 5 (bead oo-ddnn8).
+	GLfloat doesHitLine(HPVector v0, HPVector v1, ::ShipEntity **hitEntity) override	{ return [(::ShipEntity *)_objcOwner doesHitLine:v0 :v1 :hitEntity]; }
+};
+
+}	// namespace
+
+
 @interface ShipEntity (OOObjCBridgePrivate)
 
 - (id) initShipPart;
@@ -108,7 +133,7 @@ MA 02110-1301, USA.
 {
 	// -init sent again to an initialised ship keeps its C++ part (the root's -initWithCxxEntity:).
 	if (_cxxEntity != nullptr)  return [self initWithCxxEntity:_cxxEntity.get()];
-	return [self initWithCxxEntity:oo::makeRef<oo::ObjCEntity<cxx::ShipEntity>>(self).get()];
+	return [self initWithCxxEntity:oo::makeRef<ObjCShipEntity>(self).get()];
 }
 
 
@@ -206,5 +231,128 @@ DESTROY(_cxxShip->laser_color);
 @implementation ShipEntity (SubEntityRelationship)
 
 - (BOOL) isShipWithSubEntityShip:(Entity *)other	{ return oo::ToCxx(self)->isShipWithSubEntityShip(other); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice2)
+
+- (BOOL) cxx_setUpFromDictionary:(const oo::PList &)inShipDict	{ return _cxxShip->setUpFromDictionary(inShipDict); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice3)
+
+- (BOOL) setUpShipFromDictionary:(const oo::PList &)shipDict	{ return _cxxShip->cxx::ShipEntity::setUpShipFromDictionary(shipDict); }
+- (void) setSubIdx:(NSUInteger)value	{ _cxxShip->setSubIdx(value); }
+- (NSUInteger) subIdx	{ return _cxxShip->subIdx(); }
+- (NSUInteger) maxShipSubEntities	{ return _cxxShip->maxShipSubEntities(); }
+- (std::optional<std::string>) cxx_serializeShipSubEntities	{ return _cxxShip->serializeShipSubEntities(); }
+- (void) cxx_deserializeShipSubEntitiesFrom:(const std::string &)string	{ _cxxShip->deserializeShipSubEntitiesFrom(string); }
+- (BOOL) setUpSubEntities	{ return _cxxShip->cxx::ShipEntity::setUpSubEntities(); }
+- (GLfloat) frustumRadius	{ return _cxxShip->cxx::ShipEntity::frustumRadius(); }
+- (BOOL) setUpOneSubentity:(const oo::PList &)subentDict	{ return _cxxShip->setUpOneSubentity(subentDict); }
+- (BOOL) setUpOneFlasher:(const oo::PList &)subentDict	{ return _cxxShip->setUpOneFlasher(subentDict); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice4)
+
+- (BOOL) cxx_setUpOneStandardSubentity:(const oo::PList &)subentDict asTurret:(BOOL)asTurret	{ return _cxxShip->setUpOneStandardSubentity(subentDict, asTurret); }
+- (BOOL) isTemplateCargoPod	{ return _cxxShip->isTemplateCargoPod(); }
+- (void) setUpCargoType:(const std::string &)cargoString	{ _cxxShip->setUpCargoType(cargoString); }
+- (void) removeScript	{ _cxxShip->removeScript(); }
+- (void) clearSubEntities	{ _cxxShip->clearSubEntities(); }
+- (Quaternion) subEntityRotationalVelocity	{ return _cxxShip->subEntityRotationalVelocity(); }
+- (void) setSubEntityRotationalVelocity:(Quaternion)rv	{ _cxxShip->setSubEntityRotationalVelocity(rv); }
+- (std::optional<std::string>) cxx_shortDescriptionComponents	{ return _cxxShip->shortDescriptionComponents(); }
+- (GLfloat) sunGlareFilter	{ return _cxxShip->getSunGlareFilter(); }
+- (void) setSunGlareFilter:(GLfloat)newValue	{ _cxxShip->setSunGlareFilter(newValue); }
+- (GLfloat) accuracy	{ return _cxxShip->getAccuracy(); }
+- (void) setAccuracy:(GLfloat)new_accuracy	{ _cxxShip->setAccuracy(new_accuracy); }
+- (OOMesh *) mesh	{ return _cxxShip->mesh(); }
+- (void) setMesh:(OOMesh *)mesh	{ _cxxShip->setMesh(mesh); }
+- (BoundingBox) totalBoundingBox	{ return _cxxShip->getTotalBoundingBox(); }
+- (Vector) forwardVector	{ return _cxxShip->forwardVector(); }
+- (Vector) upVector	{ return _cxxShip->upVector(); }
+- (Vector) rightVector	{ return _cxxShip->rightVector(); }
+- (BOOL) scriptedMisjump	{ return _cxxShip->scriptedMisjump(); }
+- (void) setScriptedMisjump:(BOOL)newValue	{ _cxxShip->setScriptedMisjump(newValue); }
+- (GLfloat) scriptedMisjumpRange	{ return _cxxShip->scriptedMisjumpRange(); }
+- (void) setScriptedMisjumpRange:(GLfloat)newValue	{ _cxxShip->setScriptedMisjumpRange(newValue); }
+- (std::vector<oo::ObjCRef<Entity *>>) subEntities	{ return _cxxShip->getSubEntities(); }
+- (NSUInteger) subEntityCount	{ return _cxxShip->subEntityCount(); }
+- (BOOL) hasSubEntity:(Entity<OOSubEntity> *)sub	{ return _cxxShip->hasSubEntity(sub); }
+- (std::vector<oo::ObjCRef<Entity *>>) subEntityEnumerator	{ return _cxxShip->subEntityEnumerator(); }
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_shipSubEntities	{ return _cxxShip->shipSubEntities(); }
+- (std::vector<oo::ObjCRef<OOFlasherEntity *>>) flasherEnumerator	{ return _cxxShip->flasherEnumerator(); }
+- (std::vector<oo::ObjCRef<OOExhaustPlumeEntity *>>) cxx_exhausts	{ return _cxxShip->exhausts(); }
+- (ShipEntity *) subEntityTakingDamage	{ return _cxxShip->subEntityTakingDamage(); }
+- (void) setSubEntityTakingDamage:(ShipEntity *)sub	{ _cxxShip->setSubEntityTakingDamage(sub); }
+- (OOScript *) shipScript	{ return _cxxShip->shipScript(); }
+- (OOScript *) shipAIScript	{ return _cxxShip->shipAIScript(); }
+- (OOTimeAbsolute) shipAIScriptWakeTime	{ return _cxxShip->shipAIScriptWakeTime(); }
+- (void) setAIScriptWakeTime:(OOTimeAbsolute)t	{ _cxxShip->setAIScriptWakeTime(t); }
+- (std::optional<std::string>) cxx_descriptionComponents	{ return _cxxShip->cxx::ShipEntity::descriptionComponents(); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice5)
+
+- (BoundingBox) findBoundingBoxRelativeToPosition:(HPVector)opv InVectors:(Vector)_i :(Vector)_j :(Vector)_k	{ return _cxxShip->findBoundingBoxRelativeToPosition(opv, _i, _j, _k); }
+- (Octree *) octree	{ return _cxxShip->getOctree(); }
+- (float) volume	{ return _cxxShip->volume(); }
+- (GLfloat) doesHitLine:(HPVector)v0 :(HPVector)v1	{ return _cxxShip->doesHitLine(v0, v1); }
+- (GLfloat) doesHitLine:(HPVector)v0 :(HPVector)v1 :(ShipEntity **)hitEntity	{ return _cxxShip->cxx::ShipEntity::doesHitLine(v0, v1, hitEntity); }
+- (GLfloat) doesHitLine:(HPVector)v0 :(HPVector)v1 withPosition:(HPVector)o andIJK:(Vector)i :(Vector)j :(Vector)k	{ return _cxxShip->doesHitLine(v0, v1, o, i, j, k); }
+- (void) wasAddedToUniverse	{ _cxxShip->cxx::ShipEntity::wasAddedToUniverse(); }
+- (void) wasRemovedFromUniverse	{ _cxxShip->cxx::ShipEntity::wasRemovedFromUniverse(); }
+- (HPVector) absoluteTractorPosition	{ return _cxxShip->absoluteTractorPosition(); }
+- (std::optional<std::string>) beaconCode	{ return _cxxShip->beaconCode(); }
+- (void) setBeaconCode:(const std::optional<std::string> &)bcode	{ _cxxShip->setBeaconCode(bcode); }
+- (std::optional<std::string>) beaconLabel	{ return _cxxShip->beaconLabel(); }
+- (void) setBeaconLabel:(const std::optional<std::string> &)blabel	{ _cxxShip->setBeaconLabel(blabel); }
+- (BOOL) isVisible	{ return _cxxShip->cxx::ShipEntity::isVisible(); }
+- (BOOL) isBeacon	{ return _cxxShip->isBeacon(); }
+- (id <OOHUDBeaconIcon>) beaconDrawable	{ return _cxxShip->beaconDrawable(); }
+- (Entity <OOBeaconEntity> *) prevBeacon	{ return (Entity <OOBeaconEntity> *)_cxxShip->prevBeacon(); }
+- (Entity <OOBeaconEntity> *) nextBeacon	{ return (Entity <OOBeaconEntity> *)_cxxShip->nextBeacon(); }
+- (void) setPrevBeacon:(Entity <OOBeaconEntity> *)beaconShip	{ _cxxShip->setPrevBeacon(beaconShip); }
+- (void) setNextBeacon:(Entity <OOBeaconEntity> *)beaconShip	{ _cxxShip->setNextBeacon(beaconShip); }
+- (void) setIsBoulder:(BOOL)flag	{ _cxxShip->setIsBoulder(flag); }
+- (BOOL) isBoulder	{ return _cxxShip->isBoulder(); }
+- (BOOL) isMinable	{ return _cxxShip->isMinable(); }
+- (BOOL) countsAsKill	{ return _cxxShip->countsAsKill(); }
+- (void) setUpEscorts	{ _cxxShip->setUpEscorts(); }
+- (void) setUpMixedEscorts	{ _cxxShip->setUpMixedEscorts(); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice6)
+
+- (void) setUpOneEscort:(ShipEntity *)escorter inGroup:(OOShipGroup *)escortGroup withRole:(const std::string &)escortRole atPosition:(HPVector)ex_pos andCount:(uint8_t)currentEscortCount	{ _cxxShip->setUpOneEscort(escorter, escortGroup, escortRole, ex_pos, currentEscortCount); }
+- (std::optional<std::string>) cxx_shipDataKey	{ return _cxxShip->shipDataKey(); }
+- (std::optional<std::string>) cxx_shipDataKeyAutoRole	{ return _cxxShip->shipDataKeyAutoRole(); }
+- (void) cxx_setShipDataKey:(const std::optional<std::string> &)key	{ _cxxShip->setShipDataKey(key); }
+- (oo::PList) cxx_shipInfoDictionary	{ return _cxxShip->shipInfoDictionary(); }
+- (std::vector<Vector>) cxx_weaponOffsetsFrom:(const oo::PList &)dict withKey:(const std::string &)key inMode:(const std::string &)mode	{ return _cxxShip->weaponOffsetsFrom(dict, key, mode); }
+- (std::vector<Vector>) cxx_aftWeaponOffset	{ return _cxxShip->getAftWeaponOffset(); }
+- (std::vector<Vector>) cxx_forwardWeaponOffset	{ return _cxxShip->getForwardWeaponOffset(); }
+- (std::vector<Vector>) cxx_portWeaponOffset	{ return _cxxShip->getPortWeaponOffset(); }
+- (std::vector<Vector>) cxx_starboardWeaponOffset	{ return _cxxShip->getStarboardWeaponOffset(); }
+- (BOOL) isFrangible	{ return _cxxShip->getIsFrangible(); }
+- (BOOL) suppressFlightNotifications	{ return _cxxShip->suppressFlightNotifications(); }
+- (OOScanClass) scanClass	{ return _cxxShip->cxx::ShipEntity::getScanClass(); }
+- (BOOL) canCollide	{ return _cxxShip->cxx::ShipEntity::canCollide(); }
+- (BOOL) checkCloseCollisionWith:(Entity *)other	{ return _cxxShip->cxx::ShipEntity::checkCloseCollisionWith(oo::ToCxx(other)); }
+- (BoundingBox) findSubentityBoundingBox	{ return _cxxShip->findSubentityBoundingBox(); }
+- (Triangle) absoluteIJKForSubentity	{ return _cxxShip->absoluteIJKForSubentity(); }
+- (void) addSubentityToCollisionRadius:(Entity<OOSubEntity> *)subent	{ _cxxShip->addSubentityToCollisionRadius(subent); }
+- (ShipEntity *) launchPodWithCrew:(const std::vector<oo::ObjCRef<OOCharacter *>> &)podCrew	{ return _cxxShip->launchPodWithCrew(podCrew); }
+- (BOOL) validForAddToUniverse	{ return _cxxShip->cxx::ShipEntity::validForAddToUniverse(); }
 
 @end

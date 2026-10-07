@@ -221,6 +221,109 @@ public:
 	// this ship agrees.
 	bool isShipWithSubEntityShip(::Entity *other);
 
+	// Slice 2: set-up from the ship dictionary (cxx_setUpFromDictionary:).
+	bool setUpFromDictionary(const oo::PList &inShipDict);
+
+	// Slice 3: setUpShipFromDictionary:, subentity serialisation and set-up.
+	virtual bool setUpShipFromDictionary(const oo::PList &shipDict);
+	void setSubIdx(NSUInteger value);
+	NSUInteger subIdx();
+	NSUInteger maxShipSubEntities();
+	std::optional<std::string> serializeShipSubEntities();
+	void deserializeShipSubEntitiesFrom(const std::string &string);
+	virtual bool setUpSubEntities();
+	GLfloat frustumRadius() override;
+	bool setUpOneSubentity(const oo::PList &subentDict);
+	bool setUpOneFlasher(const oo::PList &subentDict);
+
+	// Slice 4: standard subentities and cargo pods; descriptions, mesh, vectors, misjump, subentity lists, AI scripts.
+	bool setUpOneStandardSubentity(const oo::PList &subentDict, bool asTurret);
+	bool isTemplateCargoPod();
+	void setUpCargoType(const std::string &cargoString);
+	void removeScript();
+	void clearSubEntities();
+	Quaternion subEntityRotationalVelocity();
+	void setSubEntityRotationalVelocity(Quaternion rv);
+	std::optional<std::string> shortDescriptionComponents();
+	GLfloat getSunGlareFilter();
+	void setSunGlareFilter(GLfloat newValue);
+	GLfloat getAccuracy();
+	void setAccuracy(GLfloat new_accuracy);
+	::OOMesh *mesh();
+	void setMesh(::OOMesh *mesh);
+	BoundingBox getTotalBoundingBox();
+	Vector forwardVector();
+	Vector upVector();
+	Vector rightVector();
+	bool scriptedMisjump();
+	void setScriptedMisjump(bool newValue);
+	GLfloat scriptedMisjumpRange();
+	void setScriptedMisjumpRange(GLfloat newValue);
+	std::vector<oo::ObjCRef<::Entity *>> getSubEntities();
+	NSUInteger subEntityCount();
+	bool hasSubEntity(::Entity *sub);
+	std::vector<oo::ObjCRef<::Entity *>> subEntityEnumerator();
+	std::vector<oo::ObjCRef<::ShipEntity *>> shipSubEntities();
+	std::vector<oo::ObjCRef<::OOFlasherEntity *>> flasherEnumerator();
+	std::vector<oo::ObjCRef<::OOExhaustPlumeEntity *>> exhausts();
+	::ShipEntity *subEntityTakingDamage();
+	void setSubEntityTakingDamage(::ShipEntity *sub);
+	::OOScript *shipScript();
+	::OOScript *shipAIScript();
+	OOTimeAbsolute shipAIScriptWakeTime();
+	void setAIScriptWakeTime(OOTimeAbsolute t);
+	std::optional<std::string> descriptionComponents() const override;
+
+	// Slice 5: bounding boxes, octree hit tests, universe add / remove, beacons, boulders, escort set-up.
+	BoundingBox findBoundingBoxRelativeToPosition(HPVector opv, Vector _i, Vector _j, Vector _k);
+	::Octree *getOctree();
+	float volume();
+	GLfloat doesHitLine(HPVector v0, HPVector v1);
+	virtual GLfloat doesHitLine(HPVector v0, HPVector v1, ::ShipEntity **hitEntity);
+	GLfloat doesHitLine(HPVector v0, HPVector v1, HPVector o, Vector i, Vector j, Vector k);
+	void wasAddedToUniverse() override;
+	void wasRemovedFromUniverse() override;
+	HPVector absoluteTractorPosition();
+	std::optional<std::string> beaconCode();
+	void setBeaconCode(const std::optional<std::string> &bcode);
+	std::optional<std::string> beaconLabel();
+	void setBeaconLabel(const std::optional<std::string> &blabel);
+	bool isVisible() override;
+	bool isBeacon();
+	id <OOHUDBeaconIcon> beaconDrawable();
+	::Entity *prevBeacon();
+	::Entity *nextBeacon();
+	void setPrevBeacon(::Entity *beaconShip);
+	void setNextBeacon(::Entity *beaconShip);
+	void setIsBoulder(bool flag);
+	bool isBoulder();
+	bool isMinable();
+	bool countsAsKill();
+	void setUpEscorts();
+	void setUpMixedEscorts();
+
+	// Slice 6: escort creation, ship data key, weapon offsets, octree collision checks, subentity geometry, escape-pod launch.
+	void setUpOneEscort(::ShipEntity *escorter, ::OOShipGroup *escortGroup, const std::string &escortRole, HPVector ex_pos, uint8_t currentEscortCount);
+	std::optional<std::string> shipDataKey();
+	std::optional<std::string> shipDataKeyAutoRole();
+	void setShipDataKey(const std::optional<std::string> &key);
+	oo::PList shipInfoDictionary();
+	std::vector<Vector> weaponOffsetsFrom(const oo::PList &dict, const std::string &key, const std::string &mode);
+	std::vector<Vector> getAftWeaponOffset();
+	std::vector<Vector> getForwardWeaponOffset();
+	std::vector<Vector> getPortWeaponOffset();
+	std::vector<Vector> getStarboardWeaponOffset();
+	bool getIsFrangible();
+	bool suppressFlightNotifications();
+	OOScanClass getScanClass() override;
+	bool canCollide() override;
+	bool checkCloseCollisionWith(cxx::Entity *other) override;
+	BoundingBox findSubentityBoundingBox();
+	Triangle absoluteIJKForSubentity();
+	void addSubentityToCollisionRadius(::Entity *subent);
+	::ShipEntity *launchPodWithCrew(const std::vector<oo::ObjCRef<::OOCharacter *>> &podCrew);
+	bool validForAddToUniverse() override;
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired

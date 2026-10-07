@@ -381,2009 +381,8 @@ void ShipEntity::initWithKey(const std::string &key)
 
 @implementation ShipEntity
 
-- (BOOL) cxx_setUpFromDictionary:(const oo::PList &) inShipDict
-{
-	OOJS_PROFILE_ENTER
-
-	// Settings shared by players & NPCs.
-	//
-	// In order for default values to work and float values to not be junk,
-	// replace nil with empty dictionary. -- Ahruman 2008-04-28
-	_cxxShip->shipinfoDictionary = inShipDict;
-	if (_cxxShip->shipinfoDictionary.isNull())  _cxxShip->shipinfoDictionary = oo::PList(oo::PList::Dict{});
-	const oo::PList &shipDict = _cxxShip->shipinfoDictionary;	// Ensure no mutation.
-
-	// set these flags explicitly.
-	_cxxShip->haveExecutedSpawnAction = NO;
-	_cxxShip->haveStartedJSAI = NO;
-	_cxxShip->scripted_misjump		= NO;
-	_cxxShip->_scriptedMisjumpRange		= 0.5;
-	_cxxShip->being_fined = NO;
-	_cxxShip->isNearPlanetSurface = NO;
-	_cxxShip->suppressAegisMessages = NO;
-	_cxxShip->isMissile = NO;
-	_cxxShip->suppressExplosion = NO;
-	_cxxShip->_lightsActive = YES;
-	
-
-	// set things from dictionary from here out - default values might require adjustment -- Kaks 20091130
-	_cxxShip->_scaleFactor = shipDict.get<float>("model_scale_factor", 1.0f);
-
-
-	float defaultSpeed = _cxxEntity->isStation ? 0.0f : 160.0f;
-	_cxxShip->maxFlightSpeed = shipDict.get<float>("max_flight_speed", defaultSpeed);
-	_cxxShip->max_flight_roll = shipDict.get<float>("max_flight_roll", 2.0f);
-	_cxxShip->max_flight_pitch = shipDict.get<float>("max_flight_pitch", 1.0f);
-	_cxxShip->max_flight_yaw = shipDict.get<float>("max_flight_yaw", _cxxShip->max_flight_pitch);	// Note by default yaw == pitch
-	_cxxShip->cruiseSpeed = _cxxShip->maxFlightSpeed*0.8f;
-	
-	_cxxShip->max_thrust = shipDict.get<float>("thrust", 15.0f);
-	_cxxShip->thrust = _cxxShip->max_thrust;
-
-	_cxxShip->afterburner_rate = shipDict.get<float>("injector_burn_rate", AFTERBURNER_BURNRATE);
-	_cxxShip->afterburner_speed_factor = shipDict.get<float>("injector_speed_factor", 7.0f);
-	if (_cxxShip->afterburner_speed_factor < 1.0)
-	{
-		OO_LOG("ship.setup.injectorSpeed", "injector_speed_factor cannot be lower than 1.0 for {}", oo::DescriptionOf(self));
-		_cxxShip->afterburner_speed_factor = 1.0;
-	}
-#if OO_VARIABLE_TORUS_SPEED
-	else if (_cxxShip->afterburner_speed_factor > MIN_HYPERSPEED_FACTOR)
-	{
-		OO_LOG("ship.setup.injectorSpeed", "injector_speed_factor cannot be higher than minimum torus speed factor ({:f}) for {}.", MIN_HYPERSPEED_FACTOR, oo::DescriptionOf(self));
-		_cxxShip->afterburner_speed_factor = MIN_HYPERSPEED_FACTOR;
-	}
-#else
-	else if (_cxxShip->afterburner_speed_factor > HYPERSPEED_FACTOR)
-	{
-		OO_LOG("ship.setup.injectorSpeed", "injector_speed_factor cannot be higher than torus speed factor ({:f}) for {}.", HYPERSPEED_FACTOR, oo::DescriptionOf(self));
-		_cxxShip->afterburner_speed_factor = HYPERSPEED_FACTOR;
-	}
-#endif
-
-	_cxxEntity->maxEnergy = shipDict.get<float>("max_energy", 200.0f);
-	_cxxShip->energy_recharge_rate = shipDict.get<float>("energy_recharge_rate", 1.0f);
-	
-	_cxxShip->_showDamage = shipDict.get<bool>("show_damage", (_cxxShip->energy_recharge_rate > 0));
-	// Each new ship should start in seemingly good operating condition, unless specifically told not to - this does not affect the ship's energy levels
-	[self setThrowSparks:shipDict.get<bool>("throw_sparks", NO)];
-	
-	_cxxShip->weapon_facings = shipDict.get<int>("weapon_facings", VALID_WEAPON_FACINGS) & VALID_WEAPON_FACINGS;
-	if (_cxxShip->weapon_facings & WEAPON_FACING_FORWARD)
-		_cxxShip->forward_weapon_type = cxx_OOWeaponTypeFromString(shipDict.get<std::string>("forward_weapon_type", "EQ_WEAPON_NONE"));
-	if (_cxxShip->weapon_facings & WEAPON_FACING_AFT)
-		_cxxShip->aft_weapon_type = cxx_OOWeaponTypeFromString(shipDict.get<std::string>("aft_weapon_type", "EQ_WEAPON_NONE"));
-	if (_cxxShip->weapon_facings & WEAPON_FACING_PORT)
-		_cxxShip->port_weapon_type = cxx_OOWeaponTypeFromString(shipDict.get<std::string>("port_weapon_type", "EQ_WEAPON_NONE"));
-	if (_cxxShip->weapon_facings & WEAPON_FACING_STARBOARD)
-		_cxxShip->starboard_weapon_type = cxx_OOWeaponTypeFromString(shipDict.get<std::string>("starboard_weapon_type", "EQ_WEAPON_NONE"));
-
-	_cxxShip->cloaking_device_active = NO;
-	_cxxShip->military_jammer_active = NO;
-	_cxxShip->cloakPassive = shipDict.get<bool>("cloak_passive", YES); // Nikos - switched passive cloak default to YES 20120523
-	_cxxShip->cloakAutomatic = shipDict.get<bool>("cloak_automatic", YES);
-
-	_cxxShip->missiles = shipDict.get<int>("missiles", 0);
-	/* TODO: The following initializes the missile list to be blank, which prevents a crash caused by hasOneEquipmentItem trying to access a missile list
-	         previously initialized but then released.  See issue #204.  We need to investigate further the cause of the missile list being released.
- 			- kanthoney 10/03/2017
-		Update 20170818: The issue seems to have been resolved properly using the fix below and the problem was apparently an access of the
-		missile_list array elements before their initialization and while we were checking whether equipment can be added or not. There is
-		probably not much more that can be done here, unless someone would like to have a go at refactoring the entire ship initialization
-		code. In any case, the crash is no more and the applied solution is both simple and logical - Nikos
-	*/
-	unsigned i;
-	for (i = 0; i < _cxxShip->missiles; i++)
-	{
-		_cxxShip->missile_list[i] = nil;
-	}
-	_cxxShip->max_missiles = shipDict.get<int>("max_missiles", _cxxShip->missiles);
-	if (_cxxShip->max_missiles > SHIPENTITY_MAX_MISSILES) _cxxShip->max_missiles = SHIPENTITY_MAX_MISSILES;
-	if (_cxxShip->missiles > _cxxShip->max_missiles) _cxxShip->missiles = _cxxShip->max_missiles;
-	_cxxShip->missile_load_time = fmax(0.0, shipDict.get<double>("missile_load_time", 0.0)); // no negative load times
-	_cxxShip->missile_launch_time = [UNIVERSE getTime] + _cxxShip->missile_load_time;
-	
-	// upgrades:
-	_cxxShip->equipment_weight = 0; 
-	if (FuzzyBooleanForKey(shipDict, "has_ecm"))  [self addEquipmentItem:"EQ_ECM" inContext:"npc"];
-	if (FuzzyBooleanForKey(shipDict, "has_scoop"))  [self addEquipmentItem:"EQ_FUEL_SCOOPS" inContext:"npc"];
-	if (FuzzyBooleanForKey(shipDict, "has_escape_pod"))  [self addEquipmentItem:"EQ_ESCAPE_POD" inContext:"npc"];
-	if (FuzzyBooleanForKey(shipDict, "has_cloaking_device"))  [self addEquipmentItem:"EQ_CLOAKING_DEVICE" inContext:"npc"];
-	if (shipDict.get<float>("has_energy_bomb") > 0)
-	{
-		/*	NOTE: has_energy_bomb actually refers to QC mines.
-			
-			max_missiles for NPCs is a newish addition, and ships have
-			traditionally not needed to reserve a slot for a Q-mine added this
-			way. If has_energy_bomb is possible, and max_missiles is not
-			explicit, we add an extra missile slot to compensate.
-			-- Ahruman 2011-03-25
-		*/
-		if (FuzzyBooleanForKey(shipDict, "has_energy_bomb"))
-		{
-			if (_cxxShip->max_missiles == _cxxShip->missiles && _cxxShip->max_missiles < SHIPENTITY_MAX_MISSILES && shipDict.find("max_missiles") == nullptr)
-			{
-				_cxxShip->max_missiles++;
-			}
-			[self addEquipmentItem:"EQ_QC_MINE" inContext:"npc"];
-		}
-	}
-
-	if (FuzzyBooleanForKey(shipDict, "has_fuel_injection"))  [self addEquipmentItem:"EQ_FUEL_INJECTION" inContext:"npc"];
-
-#if USEMASC
-	if (FuzzyBooleanForKey(shipDict, "has_military_jammer"))  [self addEquipmentItem:"EQ_MILITARY_JAMMER" inContext:"npc"];
-	if (FuzzyBooleanForKey(shipDict, "has_military_scanner_filter"))  [self addEquipmentItem:"EQ_MILITARY_SCANNER_FILTER" inContext:"npc"];
-#endif
-	
-	
-	// can it be 'mined' for alloys?
-	_cxxShip->canFragment = (unsigned char)FuzzyBooleanForKey(shipDict, "fragment_chance", 0.9);
-	_cxxShip->isWreckage = NO;
-
-	// can subentities be destroyed separately?
-	_cxxShip->isFrangible = shipDict.get<bool>("frangible", YES);
-	
-	_cxxShip->max_cargo = shipDict.get<unsigned int>("max_cargo");
-	_cxxShip->extra_cargo = shipDict.get<unsigned int>("extra_cargo", 15);
-	
-	_cxxShip->hyperspaceMotorSpinTime = shipDict.get<float>("hyperspace_motor_spin_time", DEFAULT_HYPERSPACE_SPIN_TIME);
-	if(!shipDict.get<bool>("hyperspace_motor", YES)) _cxxShip->hyperspaceMotorSpinTime = -1;
-	
-	_cxxShip->name = shipDict.get<std::string>("name", "?");
-
-	_cxxShip->shipUniqueName = shipDict.get<std::string>("ship_name", "");
-
-	_cxxShip->shipClassName = shipDict.get<std::string>("ship_class_name", *_cxxShip->name);
-
-	_cxxShip->displayName = StringForKey(shipDict, "display_name");
-
-	// Load the model (must be before subentities)
-	const std::optional<std::string> modelName = StringForKey(shipDict, "model");
-	if (modelName.has_value())
-	{
-		OOMesh *mesh = nil;
-
-		mesh = [OOMesh meshWithName:*modelName
-						   cacheKey:oo::str::format("%s-%.3f", _cxxShip->_shipKey.value_or("(null)").c_str(), _cxxShip->_scaleFactor)	// %@ printed nil as (null)
-				 materialDictionary:DictionaryForKey(shipDict, "materials")
-				  shadersDictionary:DictionaryForKey(shipDict, "shaders")
-							 smooth:shipDict.get<bool>("smooth", false)
-					   shaderMacros:OODefaultShipShaderMacros()
-					   shaderBindingTarget:self
-						scaleFactor:_cxxShip->_scaleFactor
-					 cacheWriteable:YES];
-
-		if (mesh == nil)  return NO;
-		[self setMesh:mesh];
-	}
-	
-	float density = shipDict.get<float>("density", 1.0f);
-	if (_cxxShip->octree)  _cxxEntity->mass = (GLfloat)(density * 20.0f * [_cxxShip->octree volume]);
-	
-	DESTROY(_cxxShip->default_laser_color);
-	_cxxShip->default_laser_color = [[OOColor cxx_brightColorWithDescription:ValueForKey(shipDict, "laser_color")] retain];
-	
-	if (_cxxShip->default_laser_color == nil) 
-	{
-		[self setLaserColor:[OOColor redColor]];
-	}
-	else
-	{
-		[self setLaserColor:_cxxShip->default_laser_color];
-	}
-	// exhaust emissive color
-	OORGBAComponents defaultExhaustEmissiveColorComponents; // pale blue is exhaust default color
-	defaultExhaustEmissiveColorComponents.r = 0.7f;
-	defaultExhaustEmissiveColorComponents.g = 0.9f;
-	defaultExhaustEmissiveColorComponents.b = 1.0f;
-	defaultExhaustEmissiveColorComponents.a = 0.9f;
-	OOColor *color = [OOColor cxx_brightColorWithDescription:ValueForKey(shipDict, "exhaust_emissive_color")];
-	if (color == nil)  color = [OOColor colorWithRGBAComponents:defaultExhaustEmissiveColorComponents];
-	[self setExhaustEmissiveColor:color];
-	
-	[self clearSubEntities];
-	[self setUpSubEntities];
-
-// correctly initialise weaponRange, etc. (must be after subentity setup)
-	if (isWeaponNone(_cxxShip->forward_weapon_type))
-	{
-		OOWeaponType 			weapon_type = nil;
-		BOOL hasTurrets = NO;
-		for (const auto &sub : [self cxx_shipSubEntities])
-		{
-			if (!isWeaponNone(weapon_type))  break;
-			ShipEntity *se = sub.get();
-			weapon_type = se->_cxxShip->forward_weapon_type;
-			if (se->_cxxShip->behaviour == BEHAVIOUR_TRACK_AS_TURRET)
-			{
-				hasTurrets = YES;
-			}
-		}
-		if (isWeaponNone(weapon_type) && hasTurrets)
-		{ /* safety for ships only equipped with turrets
-		     note: this was hard-coded to 10000.0, although turrets have a notably 
-		     shorter range. We are using a multiplier of 1.667 in order to not change
-		     something that already works, but probably it would be best to use
-		     TURRET_SHOT_RANGE * COMBAT_WEAPON_RANGE_FACTOR here
-		  */
-			_cxxShip->weaponRange = TURRET_SHOT_RANGE * 1.667;
-		}
-		else
-		{
-			[self setWeaponDataFromType:weapon_type];
-		}
-	}
-	else
-	{
-		[self setWeaponDataFromType:_cxxShip->forward_weapon_type];
-	}
-	
-	// rotating subentities
-	_cxxShip->subentityRotationalVelocity = kIdentityQuaternion;
-	if (shipDict.find("rotational_velocity") != nullptr)
-	{
-		_cxxShip->subentityRotationalVelocity = QuaternionForKey(shipDict, "rotational_velocity");
-	}
-
-	// set weapon offsets
-	const oo::PList &weaponMounts = shipDict;
-	const std::string weaponMountMode = weaponMounts.get<std::string>("weapon_mount_mode", "single");
-	_cxxShip->_multiplyWeapons = weaponMountMode == "multiply";
-	_cxxShip->forwardWeaponOffset = [self cxx_weaponOffsetsFrom:weaponMounts withKey:"weapon_position_forward" inMode:weaponMountMode];
-	_cxxShip->aftWeaponOffset = [self cxx_weaponOffsetsFrom:weaponMounts withKey:"weapon_position_aft" inMode:weaponMountMode];
-	_cxxShip->portWeaponOffset = [self cxx_weaponOffsetsFrom:weaponMounts withKey:"weapon_position_port" inMode:weaponMountMode];
-	_cxxShip->starboardWeaponOffset = [self cxx_weaponOffsetsFrom:weaponMounts withKey:"weapon_position_starboard" inMode:weaponMountMode];
-
-	
-	_cxxShip->tractor_position = vector_multiply_scalar(VectorFromPList(shipDict.find("scoop_position")),_cxxShip->_scaleFactor);
-	
-
-	
-	// sun glare filter - default is high filter, both for HDR and SDR
-	[self setSunGlareFilter:shipDict.get<float>("sun_glare_filter", 0.97f)];
-	
-	// Get scriptInfo dictionary, containing arbitrary stuff scripts might be interested in.
-	_cxxShip->scriptInfo = DictionaryForKey(shipDict, "script_info");	// null when absent
-
-	const oo::PList *explosion = ArrayForKey(shipDict, "explosion_type");
-	_cxxShip->explosionType = explosion != nullptr ? *explosion : oo::PList();	// null when absent
-
-	_cxxShip->isDemoShip = NO;
-	
-	return YES;
-	
-	OOJS_PROFILE_EXIT
-}
-
-
-
-- (BOOL) setUpShipFromDictionary:(const oo::PList &) shipDict
-{
-	OOJS_PROFILE_ENTER
-
-	if (![self cxx_setUpFromDictionary:shipDict]) return NO;
-
-	// NPC-only settings.
-	//
-	_cxxEntity->orientation = kIdentityQuaternion;
-	_cxxEntity->rotMatrix	= kIdentityMatrix;
-	_cxxShip->v_forward	= kBasisZVector;
-	_cxxShip->v_up		= kBasisYVector;
-	_cxxShip->v_right		= kBasisXVector;
-	_cxxShip->reference	= _cxxShip->v_forward;  // reference vector for (* turrets *)
-	
-	_cxxEntity->isShip = YES;
-
-	// scan class settings. 'scanClass' is in common usage, but we could also have a more standard 'scan_class' key with higher precedence. Kaks 20090810 
-	// let's see if scan_class is set... 
-	_cxxEntity->scanClass = cxx_OOScanClassFromString(shipDict.get<std::string>("scan_class", "CLASS_NOT_SET"));
-	
-	// if not, try 'scanClass'. NOTE: non-standard capitalization is documented and entrenched.
-	if (_cxxEntity->scanClass == CLASS_NOT_SET)
-	{
-		_cxxEntity->scanClass = cxx_OOScanClassFromString(shipDict.get<std::string>("scanClass", "CLASS_NOT_SET"));
-	}
-
-	_cxxShip->scan_description = StringForKey(shipDict, "scan_description");
-
-	// FIXME: give NPCs shields instead.
-	
-	if (FuzzyBooleanForKey(shipDict, "has_shield_booster"))  [self addEquipmentItem:"EQ_SHIELD_BOOSTER" inContext:"npc"];
-	if (FuzzyBooleanForKey(shipDict, "has_shield_enhancer"))  [self addEquipmentItem:"EQ_SHIELD_ENHANCER" inContext:"npc"];
-	
-	// Start with full energy banks.
-	_cxxEntity->energy = _cxxEntity->maxEnergy;
-	_cxxShip->weapon_temp				= 0.0f;
-	_cxxShip->forward_weapon_temp		= 0.0f;
-	_cxxShip->aft_weapon_temp			= 0.0f;
-	_cxxShip->port_weapon_temp		= 0.0f;
-	_cxxShip->starboard_weapon_temp	= 0.0f;
-	
-	// setWeaponDataFromType inside setUpFromDictionary should set weapon_damage from the front laser.
-	// no weapon_damage? It's a missile: set weapon_damage from shipdata!
-	if (_cxxShip->weapon_damage == 0.0) 
-	{
-		_cxxShip->weapon_damage_override = _cxxShip->weapon_damage = shipDict.get<float>("weapon_energy", 0); // any damage value for missiles/bombs
-	}
-	else
-	{
-		_cxxShip->weapon_damage_override = 0;
-	}
-
-	_cxxShip->scannerRange = shipDict.get<float>("scanner_range", (float)SCANNER_MAX_RANGE);
-	
-	_cxxShip->fuel = shipDict.get<unsigned short>("fuel");	// Does it make sense that this defaults to 0? Should it not be 70? -- Ahruman
-	
-	_cxxShip->fuel_accumulator = 1.0;
-	
-	[self setBounty:shipDict.get<unsigned int>("bounty", 0) withReason:kOOLegalStatusReasonSetup];
-	
-	[_cxxShip->shipAI autorelease];
-	_cxxShip->shipAI = [[AI alloc] init];
-	[_cxxShip->shipAI setOwner:self];
-	[self setAITo:shipDict.get<std::string>("ai_type", "nullAI.plist")];
-	
-	_cxxShip->likely_cargo = shipDict.get<unsigned int>("likely_cargo");
-	_cxxShip->noRocks = (unsigned char)FuzzyBooleanForKey(shipDict, "no_boulders");
-	
-	_cxxShip->commodity_amount = 0;
-	_cxxShip->commodity_type = std::nullopt;
-	std::optional<std::string> cargoString = StringForKey(shipDict, "cargo_carried");
-	if (cargoString.has_value())
-	{
-		if (*cargoString == "SCARCE_GOODS")
-		{
-			_cxxShip->cargo_flag = CARGO_FLAG_FULL_SCARCE;
-		}
-		else if (*cargoString == "PLENTIFUL_GOODS")
-		{
-			_cxxShip->cargo_flag = CARGO_FLAG_FULL_PLENTIFUL;
-		}
-		else
-		{
-			_cxxShip->cargo_flag = CARGO_FLAG_FULL_UNIFORM;
-
-			std::optional<std::string>	c_commodity;
-			int				c_amount = 1;
-			oo::str::Scanner	scanner(*cargoString);
-			if (scanner.scanInt(&c_amount))
-			{
-				scanner.scanCharactersFromSetNoSkip(oo::str::CharacterSet::whitespace());	// skip whitespace
-				c_commodity = scanner.remainder();
-				if ([[UNIVERSE commodities] cxx_goodDefined:c_commodity.value_or("")])
-				{
-					[self cxx_setCommodityForPod:c_commodity andAmount:c_amount];
-				}
-				else
-				{
-					c_commodity = [[UNIVERSE commodities] cxx_goodNamed:c_commodity.value_or("")];
-					if ([[UNIVERSE commodities] cxx_goodDefined:c_commodity.value_or("")])
-					{
-						[self cxx_setCommodityForPod:c_commodity andAmount:c_amount];
-					}
-				}
-			}
-			else
-			{
-				c_amount = 1;
-				c_commodity = StringForKey(shipDict, "cargo_carried");
-				if ([[UNIVERSE commodities] cxx_goodDefined:c_commodity.value_or("")])
-				{
-					[self cxx_setCommodityForPod:c_commodity andAmount:c_amount];
-				}
-				else
-				{
-					c_commodity = [[UNIVERSE commodities] cxx_goodNamed:c_commodity.value_or("")];
-					if ([[UNIVERSE commodities] cxx_goodDefined:c_commodity.value_or("")])
-					{
-						[self cxx_setCommodityForPod:c_commodity andAmount:c_amount];
-					}
-				}
-			}
-		}
-	}
-
-	cargoString = StringForKey(shipDict, "cargo_type");
-	if (cargoString.has_value())
-	{
-		_cxxShip->cargo.clear();
-
-		[self setUpCargoType:*cargoString];
-	}
-	else if (_cxxEntity->scanClass != CLASS_CARGO)
-	{
-		_cxxShip->cargo.clear();
-		// if not CLASS_CARGO, and no cargo type set, default to CARGO_NOT_CARGO
-		_cxxShip->cargo_type = CARGO_NOT_CARGO;
-	}
-	
-	_cxxShip->hasScoopMessage = shipDict.get<bool>("has_scoop_message", YES);
-
-	
-	[_cxxShip->roleSet release];
-	_cxxShip->roleSet = [[[OORoleSet roleSetWithString:shipDict.get<std::string>("roles")] roleSetWithRemovedRole:"player"] retain];
-	_cxxShip->primaryRole.reset();
-
-	[self setOwner:self];
-	[self setHulk:shipDict.get<bool>("is_hulk")];
-	
-	// these are the colors used for the "lollipop" of the ship. Any of the two (or both, for flash effect) can be defined. nil means use default from shipData.
-	[self setScannerDisplayColor1:nil];
-	[self setScannerDisplayColor2:nil];
-	// and the same for the "hostile" colours
-	[self setScannerDisplayColorHostile1:nil];
-	[self setScannerDisplayColorHostile2:nil];
-
-
-	// Populate the missiles here. Must come after scanClass.
-	_cxxShip->_missileRole = StringForKey(shipDict, "missile_role");
-	unsigned	i, j;
-	for (i = 0, j = 0; i < _cxxShip->missiles; i++)
-	{
-		_cxxShip->missile_list[i] = [self selectMissile];
-		// could loop forever (if missile_role is badly defined, selectMissile might return nil in some cases) . Try 3 times, and if no luck, skip
-		if (_cxxShip->missile_list[i] == nil && j < 3)
-		{
-			j++;
-			i--;
-		}
-		else
-		{
-			j = 0;
-			if (_cxxShip->missile_list[i] == nil)
-			{
-				_cxxShip->missiles--;
-			}
-		}
-	}
-
-	// accuracy. Must come after scanClass, because we are using scanClass to determine if this is a missile.
-
-// missiles: range 0 to +10
-// ships: range -5 to +10, but randomly only -5 <= accuracy < +5
-// enables "better" AIs at +5 and above
-// police and military always have positive accuracy
-
-	_cxxShip->accuracy = shipDict.get<float>("accuracy", -100.0f);	// Out-of-range default
-	if (_cxxShip->accuracy < -5.0f || _cxxShip->accuracy > 10.0f)
-	{
-		_cxxShip->accuracy = (randf() * 10.0)-5.0;
-
-		if (_cxxShip->accuracy < 0.0f && (_cxxEntity->scanClass == CLASS_MILITARY || _cxxEntity->scanClass == CLASS_POLICE))
-		{ // police and military pilots have a better average skill. 
-			_cxxShip->accuracy = -_cxxShip->accuracy;
-		}
-	}
-	if (_cxxEntity->scanClass == CLASS_MISSILE)
-	{ // missile accuracy range is 0 to 10
-		_cxxShip->accuracy = OOClamp_0_max_f(_cxxShip->accuracy, 10.0f);
-	}
-	[self setAccuracy:_cxxShip->accuracy]; // set derived variables
-	_cxxShip->_missed_shots = 0;
-
-	//  escorts
-	_cxxShip->_maxEscortCount = MIN(shipDict.get<unsigned char>("escorts", 0), (uint8_t)MAX_ESCORTS);
-	_cxxShip->_pendingEscortCount = _cxxShip->_maxEscortCount;
-	if (_cxxShip->_pendingEscortCount == 0 && ArrayForKey(shipDict, "escort_roles") != nullptr)
-	{
-		// mostly ignored by setUpMixedEscorts, but needs to be high
-		// enough that it doesn't end up at zero (e.g. by governmental
-		// reductions in [Universe addShipAt]
-		_cxxShip->_pendingEscortCount = MAX_ESCORTS;
-	}
-
-	
-	// beacons
-	[self setBeaconCode:StringForKey(shipDict, "beacon")];
-	std::optional<std::string> label = StringForKey(shipDict, "beacon_label");
-	if (!label.has_value())  label = StringForKey(shipDict, "beacon");	// the fallback
-	[self setBeaconLabel:label];
-
-	
-	// contact tracking entities
-	[self setTrackCloseContacts:shipDict.get<bool>("track_contacts", NO)];
-	
-	// ship skin insulation factor (1.0 is normal)
-	[self setHeatInsulation:shipDict.get<float>("heat_insulation", [self hasHeatShield] ? 2.0 : 1.0)];
-	
-	// unpiloted (like missiles asteroids etc.)
-	_cxxShip->_explicitlyUnpiloted = (unsigned char)FuzzyBooleanForKey(shipDict, "unpiloted");
-	if (_cxxShip->_explicitlyUnpiloted)
-	{
-		[self cxx_setCrew:std::nullopt];
-	}
-	else 
-	{
-		// crew and passengers
-		// the one entry of UNIVERSE's characters (a nil key found nothing)
-		const std::optional<std::string> pilotKey = StringForKey(shipDict, "pilot");
-		oo::PList cdict;
-		if (pilotKey.has_value())
-		{
-			const oo::PList characters = [UNIVERSE cxx_characters];
-			if (const oo::PList *entry = characters.find(*pilotKey))  cdict = *entry;
-		}
-		if (!cdict.isNull())
-		{
-			OOCharacter	*pilot = [OOCharacter characterWithDictionary:cdict];
-			[self cxx_setCrew:std::vector<oo::ObjCRef<OOCharacter *>>{ oo::ObjCRef<OOCharacter *>(pilot) }];
-		}
-	}
-	
-	[self cxx_setShipScript:StringForKey(shipDict, "script")];
-
-	_cxxShip->home_system = [UNIVERSE currentSystemID];
-	_cxxShip->destination_system = [UNIVERSE currentSystemID];
-
-	_cxxShip->reactionTime = shipDict.get<float>("reaction_time", COMBAT_AI_STANDARD_REACTION_TIME);
-	
-	return YES;
-	
-	OOJS_PROFILE_EXIT
-}
-
-
-- (void) setSubIdx:(NSUInteger)value
-{
-	_cxxShip->_subIdx = value;
-}
-
-
-- (NSUInteger) subIdx
-{
-	return _cxxShip->_subIdx;
-}
-
-
-- (NSUInteger) maxShipSubEntities
-{
-	return _cxxShip->_maxShipSubIdx;
-}
-
-
-- (std::optional<std::string>) cxx_serializeShipSubEntities
-{	
-	std::string			result;
-	NSUInteger			diff, i = 0;
-	
-	for (const auto &sub : [self cxx_shipSubEntities])
-	{
-		ShipEntity *se = sub.get();
-		diff = [se subIdx] - i;
-		i += diff + 1;
-		result += RepeatString("0", diff);
-		result += "1";
-	}
-	// add trailing zeroes
-	result += RepeatString("0", [self maxShipSubEntities] - i);
-	return result;
-}
-
-
-- (void) cxx_deserializeShipSubEntitiesFrom:(const std::string &)string
-{
-	const std::vector<oo::ObjCRef<ShipEntity *>> subEnts = [self cxx_shipSubEntities];
-	const std::u16string	units = oo::utf8ToUtf16(string);	// indexed in UTF-16 units, as -substringWithRange: was
-	NSInteger			i,idx, start = (NSInteger)subEnts.size() - 1;
-	NSInteger			strMaxIdx = (NSInteger)units.size() - 1;
-		
-	ShipEntity			*se = nil;
-	
-	for (i = start; i >= 0; i--)
-	{
-		se = subEnts[(std::size_t)i].get();
-		idx = [se subIdx]; // should be identical to i, but better safe than sorry...
-		if (idx <= strMaxIdx && units[(std::size_t)idx] == u'0')
-		{
-			[se setSuppressExplosion:NO];
-			[se setEnergy:1];
-			[se takeEnergyDamage:500000000.0 from:nil becauseOf:nil weaponIdentifier:std::string()];
-		}
-	}
-}
-
-
-- (BOOL) setUpSubEntities
-{
-	OOJS_PROFILE_ENTER
-	
-	unsigned int	i;
-	const oo::PList	shipDict = [self cxx_shipInfoDictionary];
-	const oo::PList	*plumes = ArrayForKey(shipDict, "exhaust");
-
-	_cxxShip->_profileRadius = _cxxEntity->collision_radius;
-	_cxxShip->_maxShipSubIdx = 0;
-
-	for (i = 0; plumes != nullptr && i < plumes->count(); i++)
-	{
-		// at<std::string>: a string, or a number's text, else "" (no tokens), as the string reader gave.
-		const std::vector<std::string> definition = oo::str::tokens(plumes->at<std::string>(i));
-		OOExhaustPlumeEntity *exhaust = [OOExhaustPlumeEntity exhaustForShip:self withDefinition:definition andScale:_cxxShip->_scaleFactor];
-		[self addSubEntity:exhaust];
-	}
-
-	const oo::PList	*subs = ArrayForKey(shipDict, "subentities");
-
-	_cxxShip->totalBoundingBox = _cxxEntity->boundingBox;
-
-	for (i = 0; subs != nullptr && i < subs->count(); i++)
-	{
-		const oo::PList *subentDict = subs->at(i);
-		[self setUpOneSubentity:(subentDict != nullptr && subentDict->isDict()) ? *subentDict : oo::PList()];
-	}
-	
-	_cxxEntity->no_draw_distance = _cxxShip->_profileRadius * _cxxShip->_profileRadius * NO_DRAW_DISTANCE_FACTOR * NO_DRAW_DISTANCE_FACTOR * 2.0;
-	
-	return YES;
-	
-	OOJS_PROFILE_EXIT
-}
-
-
-- (GLfloat) frustumRadius
-{
-	OOScalar exhaust_length = 0;
-	for (const auto &exhaust : [self cxx_exhausts])
-	{
-		OOExhaustPlumeEntity *exEnt = exhaust.get();
-		if ([exEnt findCollisionRadius] > exhaust_length)
-		{
-			exhaust_length = [exEnt findCollisionRadius];
-		}
-	}
-	return _cxxShip->_profileRadius + exhaust_length;
-}
-
-
-- (BOOL) setUpOneSubentity:(const oo::PList &) subentDict
-{
-	OOJS_PROFILE_ENTER
-
-	const std::optional<std::string> type = StringForKey(subentDict, "type");
-	if (type == "flasher")
-	{
-		return [self setUpOneFlasher:subentDict];
-	}
-	else
-	{
-		return [self cxx_setUpOneStandardSubentity:subentDict asTurret:type == "ball_turret"];
-	}
-
-	OOJS_PROFILE_EXIT
-}
-
-
-- (BOOL) setUpOneFlasher:(const oo::PList &) subentDict
-{
-	OOFlasherEntity *flasher = [OOFlasherEntity flasherWithDictionary:subentDict];
-	[flasher setPosition:HPvector_multiply_scalar(HPVectorForKey(subentDict, "position"),_cxxShip->_scaleFactor)];
-	[flasher rescaleBy:_cxxShip->_scaleFactor];
-	[self addSubEntity:flasher];
-	return YES;
-}
-
-
-- (BOOL) cxx_setUpOneStandardSubentity:(const oo::PList &)subentDict asTurret:(BOOL)asTurret
-{
-	ShipEntity			*subentity = nil;
-	HPVector				subPosition;
-	Quaternion			subOrientation;
-
-	const std::optional<std::string> subentKey = StringForKey(subentDict, "subentity_key");
-	if (!subentKey.has_value()) {
-		OO_LOG("setup.ship.badEntry.subentities", "Failed to set up entity - no subentKey in {}", oo::DescriptionOf(subentDict));
-		return NO;
-	}
-
-	if (!asTurret && [self isStation] && subentDict.get<bool>("is_dock"))
-	{
-		subentity = [UNIVERSE cxx_newDockWithName:*subentKey andScaleFactor:_cxxShip->_scaleFactor];
-	}
-	else
-	{
-		subentity = [UNIVERSE cxx_newSubentityWithName:*subentKey andScaleFactor:_cxxShip->_scaleFactor];
-	}
-	if (subentity == nil) {
-		OO_LOG("setup.ship.badEntry.subentities", "Failed to set up entity {}", *subentKey);
-		return NO;
-	}
-
-	subPosition = HPvector_multiply_scalar(HPVectorForKey(subentDict, "position"),_cxxShip->_scaleFactor);
-	subOrientation = QuaternionForKey(subentDict, "orientation");
-	
-	[subentity setPosition:subPosition];
-	[subentity setOrientation:subOrientation];
-	[subentity setReference:vector_forward_from_quaternion(subOrientation)];
-	// subentities inherit parent personality
-	[subentity setEntityPersonalityInt:[self entityPersonalityInt]];
-
-	if (asTurret)
-	{
-		[subentity setBehaviour:BEHAVIOUR_TRACK_AS_TURRET];
-		[subentity setWeaponRechargeRate:subentDict.get<float>("fire_rate", TURRET_SHOT_FREQUENCY)];
-		[subentity setWeaponEnergy:subentDict.get<float>("weapon_energy", TURRET_TYPICAL_ENERGY)];
-		[subentity setWeaponRange:subentDict.get<float>("weapon_range", TURRET_SHOT_RANGE)];
-		[subentity setStatus: STATUS_ACTIVE];
-	}
-	else
-	{
-		[subentity setStatus:STATUS_INACTIVE];
-	}
-	
-	const oo::PList *scriptInfoOverride = subentDict.find("script_info");
-	[subentity overrideScriptInfo:(scriptInfoOverride != nullptr && scriptInfoOverride->isDict()) ? *scriptInfoOverride : oo::PList()];
-	
-	[self addSubEntity:subentity];
-	[subentity setSubIdx:_cxxShip->_maxShipSubIdx];
-	_cxxShip->_maxShipSubIdx++;
-	
-	// update subentities
-	BoundingBox sebb = [subentity findSubentityBoundingBox];
-	bounding_box_add_vector(&_cxxShip->totalBoundingBox, sebb.max);
-	bounding_box_add_vector(&_cxxShip->totalBoundingBox, sebb.min);
-
-	if (!asTurret && [self isStation] && subentDict.get<bool>("is_dock"))
-	{
-		BOOL allow_docking = subentDict.get<bool>("allow_docking", true);
-		BOOL ddc = subentDict.get<bool>("disallowed_docking_collides", false);
-		BOOL allow_launching = subentDict.get<bool>("allow_launching", true);
-		// do not include this key in OOShipRegistry; should never be set by shipdata
-		BOOL virtual_dock = subentDict.get<bool>("_is_virtual_dock", false);
-		if (virtual_dock)
-		{
-			[(DockEntity *)subentity setVirtual];
-		}
-		
-		[(DockEntity *)subentity setDimensionsAndCorridor:allow_docking:ddc:allow_launching];
-		[subentity cxx_setDisplayName:subentDict.get<std::string>("dock_label", "the docking bay")];
-	}
-
-	[subentity release];
-	
-	return YES;
-}
-
-
-- (BOOL) isTemplateCargoPod
-{
-	return [self cxx_primaryRole] == "oolite-template-cargopod";
-}
-
-
-- (void) setUpCargoType:(const std::string &) cargoString
-{
-	_cxxShip->cargo_type = cxx_StringToCargoType(cargoString);
-	
-	switch (_cxxShip->cargo_type)
-	{
-		case CARGO_SLAVES:
-			_cxxShip->commodity_amount = 1;
-			_cxxShip->commodity_type = "slaves";
-			_cxxShip->cargo_type = CARGO_RANDOM; // not realy random, but it tells that cargo is selected.
-			break;
-			
-		case CARGO_ALLOY:
-			_cxxShip->commodity_amount = 1;
-			_cxxShip->commodity_type = "alloys";
-			_cxxShip->cargo_type = CARGO_RANDOM;
-			break;
-			
-		case CARGO_MINERALS:
-			_cxxShip->commodity_amount = 1;
-			_cxxShip->commodity_type = "minerals";
-			_cxxShip->cargo_type = CARGO_RANDOM;
-			break;
-			
-		case CARGO_THARGOID:
-			_cxxShip->commodity_amount = 1;
-			_cxxShip->commodity_type = "alien_items";
-			_cxxShip->cargo_type = CARGO_RANDOM;
-			break;
-			
-		case CARGO_SCRIPTED_ITEM:
-			_cxxShip->commodity_amount = 1; // value > 0 is needed to be recognised as cargo by scripts;
-			_cxxShip->commodity_type = std::nullopt; // will be defined elsewhere when needed.
-			break;
-			
-		case CARGO_RANDOM:
-			// Could already be set by the cargo_carried key. If not, ensure at least one.
-			if (_cxxShip->commodity_amount == 0) _cxxShip->commodity_amount = 1;
-			break;
-
-		default:
-			break;
-	}
-}
-
-
-- (void) removeScript
-{
-	[_cxxShip->script autorelease];
-	_cxxShip->script = nil;
-}
-
-
-- (void) clearSubEntities
-{
-	// Ensure backlinks are broken (last to first, as -makeObjectsPerformSelector:withObject: went)
-	for (auto sub = _cxxShip->subEntities.rbegin(); sub != _cxxShip->subEntities.rend(); ++sub)  [sub->get() setOwner:nil];
-	_cxxShip->subEntities.clear();
-	
-	// reset size & mass!
-	_cxxEntity->collision_radius = [self findCollisionRadius];
-	_cxxShip->_profileRadius = _cxxEntity->collision_radius;
-	float density = _cxxShip->shipinfoDictionary.get<float>("density", 1.0f);
-	if (_cxxShip->octree)  _cxxEntity->mass = (GLfloat)(density * 20.0f * [_cxxShip->octree volume]);
-}
-
-
-- (Quaternion) subEntityRotationalVelocity
-{
-	return _cxxShip->subentityRotationalVelocity;
-}
-
-
-- (void) setSubEntityRotationalVelocity:(Quaternion)rv
-{
-	_cxxShip->subentityRotationalVelocity = rv;
-}
-
-
-- (std::optional<std::string>) cxx_descriptionComponents
-{
-	if (![self isSubEntity])
-	{
-		return oo::str::format("\"%s\" %s", [self cxx_name].value_or("(null)").c_str(), [super cxx_descriptionComponents].value_or("(null)").c_str());
-	}
-	else
-	{
-		// ID, scanClass and status are of no interest for subentities.
-		const char *subtype = nullptr;
-		if ([self behaviour] == BEHAVIOUR_TRACK_AS_TURRET)  subtype = "(turret)";
-		else  subtype = "(subentity)";
-
-		return oo::str::format("\"%s\" position: %s %s", [self cxx_name].value_or("(null)").c_str(), cxx_HPVectorDescription([self position]).c_str(), subtype);
-	}
-}
-
-
-- (std::optional<std::string>) cxx_shortDescriptionComponents
-{
-	return oo::str::format("\"%s\"", [self cxx_name].value_or("(null)").c_str());
-}
-
-
-- (GLfloat) sunGlareFilter
-{
-	return _cxxShip->sunGlareFilter;
-}
-
-
-- (void) setSunGlareFilter:(GLfloat)newValue
-{
-	_cxxShip->sunGlareFilter = OOClamp_0_1_f(newValue);
-}
-
-
-- (GLfloat) accuracy
-{
-	return _cxxShip->accuracy;
-}
-
-
-- (void) setAccuracy:(GLfloat) new_accuracy
-{
-	if (new_accuracy < 0.0f && _cxxEntity->scanClass == CLASS_MISSILE)
-	{
-		new_accuracy = 0.0;
-	}
-	else if (new_accuracy < -5.0f)
-	{
-		new_accuracy = -5.0;
-	}
-	else if (new_accuracy > 10.0f)
-	{
-		new_accuracy = 10.0;
-	}
-	_cxxShip->accuracy = new_accuracy;
-	_cxxShip->pitch_tolerance = 0.01 * (85.0f + _cxxShip->accuracy);
-// especially against small targets, less good pilots will waste some shots
-	_cxxShip->aim_tolerance = 240.0 - (18.0f * _cxxShip->accuracy);
-
-	if (_cxxShip->accuracy >= COMBAT_AI_ISNT_AWFUL && _cxxShip->missile_load_time < 0.1)
-	{
-		_cxxShip->missile_load_time = 2.0; // smart enough not to waste all missiles on 1 ECM!
-	}
-}
-
-- (OOMesh *)mesh
-{
-	return (OOMesh *)[self drawable];
-}
-
-
-- (void)setMesh:(OOMesh *)mesh
-{
-	if (mesh != [self mesh])
-	{
-		[self setDrawable:mesh];
-		[_cxxShip->octree autorelease];
-		_cxxShip->octree = [[mesh octree] retain];
-	}
-}
-
-
-- (BoundingBox) totalBoundingBox
-{
-	return _cxxShip->totalBoundingBox;
-}
-
-
-- (Vector) forwardVector
-{
-	return _cxxShip->v_forward;
-}
-
-
-- (Vector) upVector
-{
-	return _cxxShip->v_up;
-}
-
-
-- (Vector) rightVector
-{
-	return _cxxShip->v_right;
-}
-
-
-- (BOOL) scriptedMisjump
-{
-	return _cxxShip->scripted_misjump;
-}
-
-
-- (void) setScriptedMisjump:(BOOL)newValue
-{
-	_cxxShip->scripted_misjump = !!newValue;
-}
-
-
-- (GLfloat) scriptedMisjumpRange
-{
-	return _cxxShip->_scriptedMisjumpRange;
-}
-
-
-- (void) setScriptedMisjumpRange:(GLfloat)newValue
-{
-	_cxxShip->_scriptedMisjumpRange = newValue;
-}
-
-
-- (std::vector<oo::ObjCRef<Entity *>>) subEntities
-{
-	return _cxxShip->subEntities;
-}
-
-
-- (NSUInteger) subEntityCount
-{
-	return _cxxShip->subEntities.size();
-}
-
-
-- (BOOL) hasSubEntity:(Entity<OOSubEntity> *)sub
-{
-	// Identity: a subentity's -isEqual: is NSObject's.
-	return std::find(_cxxShip->subEntities.begin(), _cxxShip->subEntities.end(), sub) != _cxxShip->subEntities.end();
-}
-
-
-- (std::vector<oo::ObjCRef<Entity *>>) subEntityEnumerator
-{
-	return _cxxShip->subEntities;
-}
-
-
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_shipSubEntities
-{
-	std::vector<oo::ObjCRef<ShipEntity *>> result;
-	for (const auto &sub : _cxxShip->subEntities)
-	{
-		if ([sub.get() isShip])  result.emplace_back((ShipEntity *)sub.get());
-	}
-	return result;
-}
-
-
-- (std::vector<oo::ObjCRef<OOFlasherEntity *>>) flasherEnumerator
-{
-	std::vector<oo::ObjCRef<OOFlasherEntity *>> flashers;
-	for (const auto &sub : _cxxShip->subEntities)
-	{
-		if ([sub.get() isFlasher])  flashers.emplace_back((OOFlasherEntity *)sub.get());
-	}
-	return flashers;
-}
-
-
-- (std::vector<oo::ObjCRef<OOExhaustPlumeEntity *>>) cxx_exhausts
-{
-	std::vector<oo::ObjCRef<OOExhaustPlumeEntity *>> result;
-	for (const auto &sub : _cxxShip->subEntities)
-	{
-		if ([sub.get() isExhaust])  result.emplace_back((OOExhaustPlumeEntity *)sub.get());
-	}
-	return result;
-}
-
-
-- (ShipEntity *) subEntityTakingDamage
-{
-	ShipEntity *result = [_cxxShip->_subEntityTakingDamage weakRefUnderlyingObject];
-	
-#ifndef NDEBUG
-	// Sanity check - there have been problems here, see fireLaserShotInDirection:
-	// -parentEntity will take care of reporting insanity.
-	if ([result parentEntity] != self)  result = nil;
-#endif
-	
-	// Clear the weakref if the subentity is dead.
-	if (result == nil)  [self setSubEntityTakingDamage:nil];
-	
-	return result;
-}
-
-
-- (void) setSubEntityTakingDamage:(ShipEntity *)sub
-{
-#ifndef NDEBUG
-	// Sanity checks: sub must be a ship subentity of self, or nil.
-	if (sub != nil)
-	{
-		if (![self hasSubEntity:sub])
-		{
-			OO_LOG("ship.subentity.sanityCheck.failed.details", "Attempt to set subentity taking damage of {} to {}, which is not a subentity.", oo::ShortDescriptionOf(self), oo::DescriptionOf(sub));
-			sub = nil;
-		}
-		else if (![sub isShip])
-		{
-			OO_LOG("ship.subentity.sanityCheck.failed", "Attempt to set subentity taking damage of {} to {}, which is not a ship.", oo::ShortDescriptionOf(self), oo::DescriptionOf(sub));
-			sub = nil;
-		}
-	}
-#endif
-	
-	[_cxxShip->_subEntityTakingDamage release];
-	_cxxShip->_subEntityTakingDamage = [sub weakRetain];
-}
-
-
-- (OOScript *)shipScript
-{
-	return _cxxShip->script;
-}
-
-
-- (OOScript *)shipAIScript
-{
-	return _cxxShip->aiScript;
-}
-
-
-- (OOTimeAbsolute) shipAIScriptWakeTime
-{
-	return _cxxShip->aiScriptWakeTime;
-}
-
-
-- (void) setAIScriptWakeTime:(OOTimeAbsolute) t
-{
-	_cxxShip->aiScriptWakeTime = t;
-}
-
-
-- (BoundingBox)findBoundingBoxRelativeToPosition:(HPVector)opv InVectors:(Vector) _i :(Vector) _j :(Vector) _k
-{
-	// HPVect: check that this conversion doesn't lose needed precision
-	return [[self mesh] findBoundingBoxRelativeToPosition:HPVectorToVector(opv)
-													basis:_i :_j :_k
-										 selfPosition:HPVectorToVector(_cxxEntity->position)
-												selfBasis:_cxxShip->v_right :_cxxShip->v_up :_cxxShip->v_forward];
-}
-
-
-- (Octree *) octree
-{
-	return _cxxShip->octree;
-}
-
-
-- (float) volume
-{
-	return [_cxxShip->octree volume];
-}
-
-
-- (GLfloat) doesHitLine:(HPVector)v0 :(HPVector)v1
-{
-	Vector u0 = HPVectorToVector(HPvector_between(_cxxEntity->position, v0));	// relative to origin of model / octree
-	Vector u1 = HPVectorToVector(HPvector_between(_cxxEntity->position, v1));
-	Vector w0 = make_vector(dot_product(u0, _cxxShip->v_right), dot_product(u0, _cxxShip->v_up), dot_product(u0, _cxxShip->v_forward));	// in ijk vectors
-	Vector w1 = make_vector(dot_product(u1, _cxxShip->v_right), dot_product(u1, _cxxShip->v_up), dot_product(u1, _cxxShip->v_forward));
-	return [_cxxShip->octree isHitByLine:w0 :w1];
-}
-
-
-- (GLfloat) doesHitLine:(HPVector)v0 :(HPVector)v1 :(ShipEntity **)hitEntity
-{
-	if (hitEntity)
-		hitEntity[0] = (ShipEntity*)nil;
-	Vector u0 = HPVectorToVector(HPvector_between(_cxxEntity->position, v0));	// relative to origin of model / octree
-	Vector u1 = HPVectorToVector(HPvector_between(_cxxEntity->position, v1));
-	Vector w0 = make_vector(dot_product(u0, _cxxShip->v_right), dot_product(u0, _cxxShip->v_up), dot_product(u0, _cxxShip->v_forward));	// in ijk vectors
-	Vector w1 = make_vector(dot_product(u1, _cxxShip->v_right), dot_product(u1, _cxxShip->v_up), dot_product(u1, _cxxShip->v_forward));
-	GLfloat hit_distance = [_cxxShip->octree isHitByLine:w0 :w1];
-	if (hit_distance)
-	{
-		if (hitEntity)
-			hitEntity[0] = self;
-	}
-	
-	for (const auto &sub : [self cxx_shipSubEntities])
-	{
-		ShipEntity *se = sub.get();
-		HPVector p0 = [se absolutePositionForSubentity];
-		Triangle ijk = [se absoluteIJKForSubentity];
-		u0 = HPVectorToVector(HPvector_between(p0, v0));
-		u1 = HPVectorToVector(HPvector_between(p0, v1));
-		w0 = resolveVectorInIJK(u0, ijk);
-		w1 = resolveVectorInIJK(u1, ijk);
-		
-		GLfloat hitSub = [se->_cxxShip->octree isHitByLine:w0 :w1];
-		if (hitSub && (hit_distance == 0 || hit_distance > hitSub))
-		{	
-			hit_distance = hitSub;
-			if (hitEntity)
-			{
-				*hitEntity = se;
-			}
-		}
-	}
-	
-	return hit_distance;
-}
-
-
-- (GLfloat)doesHitLine:(HPVector)v0 :(HPVector)v1 withPosition:(HPVector)o andIJK:(Vector)i :(Vector)j :(Vector)k
-{
-	Vector u0 = HPVectorToVector(HPvector_between(o, v0));	// relative to origin of model / octree
-	Vector u1 = HPVectorToVector(HPvector_between(o, v1));
-	Vector w0 = make_vector(dot_product(u0, i), dot_product(u0, j), dot_product(u0, k));	// in ijk vectors
-	Vector w1 = make_vector(dot_product(u1, j), dot_product(u1, j), dot_product(u1, k));
-	return [_cxxShip->octree isHitByLine:w0 :w1];
-}
-
-
-- (void) wasAddedToUniverse
-{
-	[super wasAddedToUniverse];
-	
-	// if we have a universal id then we can proceed to set up any
-	// stuff that happens when we get added to the UNIVERSE
-	if (_cxxEntity->universalID != NO_TARGET)
-	{
-		// set up escorts
-		if (([self status] == STATUS_IN_FLIGHT || [self status] == STATUS_LAUNCHING) && _cxxShip->_pendingEscortCount != 0)	// just popped into existence
-		{
-			[self setUpEscorts];
-		}
-		else
-		{
-			/*	Earlier there was a silly log message here because I thought
-				this would never happen, but wasn't entirely sure. Turns out
-				it did!
-				-- Ahruman 2009-09-13
-			*/
-			_cxxShip->_pendingEscortCount = 0;
-		}
-	}
-
-	//	Tell subentities, too (last to first, as -makeObjectsPerformSelector: went)
-	const std::vector<oo::ObjCRef<Entity *>> subs = _cxxShip->subEntities;
-	for (auto sub = subs.rbegin(); sub != subs.rend(); ++sub)  [sub->get() wasAddedToUniverse];
-	
-	[self resetExhaustPlumes];
-}
-
-
-- (void)wasRemovedFromUniverse
-{
-	// last to first, as -makeObjectsPerformSelector: went
-	const std::vector<oo::ObjCRef<Entity *>> subs = _cxxShip->subEntities;
-	for (auto sub = subs.rbegin(); sub != subs.rend(); ++sub)  [sub->get() wasRemovedFromUniverse];
-}
-
-
-- (HPVector)absoluteTractorPosition
-{
-	return HPvector_add(_cxxEntity->position, vectorToHPVector(quaternion_rotate_vector([self normalOrientation], _cxxShip->tractor_position)));
-}
-
-
-- (std::optional<std::string>) beaconCode
-{
-	return _cxxShip->_beaconCode;
-}
-
-
-// bcode: optional string; empty is treated as none. The Foundation version compared the new string with the
-// old by pointer, so any new string (every string this class hands out is new) replaced it.
-- (void) setBeaconCode:(const std::optional<std::string> &)bcode
-{
-	std::optional<std::string> code = bcode;
-	if (code.has_value() && code->empty())  code.reset();
-
-	if (code.has_value() || _cxxShip->_beaconCode.has_value())
-	{
-		_cxxShip->_beaconCode = code;
-
-		DESTROY(_cxxShip->_beaconDrawable);
-	}
-	// if not blanking code and label is currently blank, default label to code
-	if (code.has_value() && (!_cxxShip->_beaconLabel.has_value() || _cxxShip->_beaconLabel->empty()))
-	{
-		[self setBeaconLabel:code];
-	}
-
-}
-
-
-- (std::optional<std::string>) beaconLabel
-{
-	return _cxxShip->_beaconLabel;
-}
-
-
-- (void) setBeaconLabel:(const std::optional<std::string> &)blabel
-{
-	std::optional<std::string> label = blabel;
-	if (label.has_value() && label->empty())  label.reset();
-
-	if (label.has_value() || _cxxShip->_beaconLabel.has_value())
-	{
-		_cxxShip->_beaconLabel = label.has_value() ? cxx_OOExpand(*label) : std::nullopt;
-	}
-}
-
-
-- (BOOL) isVisible
-{
-	return _cxxEntity->cam_zero_distance <= _cxxEntity->no_draw_distance;
-}
-
-
-- (BOOL) isBeacon
-{
-	return [self beaconCode].has_value();
-}
-
-
-- (id <OOHUDBeaconIcon>) beaconDrawable
-{
-	if (_cxxShip->_beaconDrawable == nil)
-	{
-		const std::u16string	beaconCode = oo::utf8ToUtf16(_cxxShip->_beaconCode.value_or(std::string()));
-		NSUInteger	length = beaconCode.size();	// -length: UTF-16 units
-
-		if (length > 1)
-		{
-			const oo::PList *iconEntry = [UNIVERSE cxx_descriptions]->find(*_cxxShip->_beaconCode);
-			const oo::PList iconData = (iconEntry != nullptr) ? *iconEntry : oo::PList();
-			if (iconData.isArray())  _cxxShip->_beaconDrawable = [[OOPolygonSprite alloc] initWithDataArray:iconData outlineWidth:0.5 name:*_cxxShip->_beaconCode];
-		}
-
-		if (_cxxShip->_beaconDrawable == nil)
-		{
-			if (length > 0)  _cxxShip->_beaconDrawable = [[OOHUDBeaconCodeIcon alloc] initWithText:oo::utf16ToUtf8(beaconCode.substr(0, 1))];	// -substringToIndex:1
-			else  _cxxShip->_beaconDrawable = [[OOHUDBeaconCodeIcon alloc] initWithText:std::string()];
-		}
-}
-	
-	return _cxxShip->_beaconDrawable;
-}
-
-
-- (Entity <OOBeaconEntity> *) prevBeacon
-{
-	return [_cxxShip->_prevBeacon weakRefUnderlyingObject];
-}
-
-
-- (Entity <OOBeaconEntity> *) nextBeacon
-{
-	return [_cxxShip->_nextBeacon weakRefUnderlyingObject];
-}
-
-
-- (void) setPrevBeacon:(Entity <OOBeaconEntity> *)beaconShip
-{
-	if (beaconShip != [self prevBeacon])
-	{
-		[_cxxShip->_prevBeacon release];
-		_cxxShip->_prevBeacon = [beaconShip weakRetain];
-	}
-}
-
-
-- (void) setNextBeacon:(Entity <OOBeaconEntity> *)beaconShip
-{
-	if (beaconShip != [self nextBeacon])
-	{
-		[_cxxShip->_nextBeacon release];
-		_cxxShip->_nextBeacon = [beaconShip weakRetain];
-	}
-}
-
 
 static constexpr std::string_view kBoulderRole = "boulder";
-
-- (void) setIsBoulder:(BOOL)flag
-{
-	if (flag)  [self addRole:std::string(kBoulderRole)];
-	else  [self cxx_removeRole:std::string(kBoulderRole)];
-}
-
-
-- (BOOL) isBoulder
-{
-	return [_cxxShip->roleSet hasRole:std::string(kBoulderRole)];
-}
-
-
-- (BOOL) isMinable
-{
-	if ([self hasRole:"asteroid"] || [self isBoulder])
-	{
-		if (!_cxxShip->noRocks)
-		{
-			return YES;
-		}
-	}
-	return NO;
-}
-
-
-- (BOOL) countsAsKill
-{
-	return _cxxShip->shipinfoDictionary.get<bool>("counts_as_kill", true);
-}
-
-
-- (void) setUpEscorts
-{
-	// Ensure that we do not try to create escorts if we are an escort ship ourselves.
-	// This could lead to circular reference memory overflows (e.g. "boa-mk2" trying to create 4 "boa-mk2"
-	// escorts or the case of two ships specifying eachother as escorts) - Nikos 20090510
-	if ([self isEscort])
-	{
-		OO_LOG_WARN("ship.setUp.escortShipCircularReference", 
-				"Ship {} requested escorts, when it is an escort ship itself. Avoiding possible circular reference overflow by ignoring escort setup.", oo::DescriptionOf(self));
-		return;
-	}
-
-	const oo::PList		&info = _cxxShip->shipinfoDictionary;
-	if (info.find("escort_roles") != nullptr)
-	{
-		[self setUpMixedEscorts];
-		return;
-	}
-
-	std::string						defaultRole = "escort";
-	std::string						escortRole;
-	std::optional<std::string>		escortShipKey;
-	
-	if (_cxxShip->_pendingEscortCount == 0)  return;
-	
-	if (_cxxShip->_maxEscortCount < _cxxShip->_pendingEscortCount)
-	{
-		if ([self cxx_hasPrimaryRole:"police"] || [self cxx_hasPrimaryRole:"hunter"])
-		{
-			_cxxShip->_maxEscortCount = MAX_ESCORTS; // police and hunters get up to MAX_ESCORTS, overriding the 'escorts' key.
-			[self updateEscortFormation];
-		}
-		else
-		{
-			_cxxShip->_pendingEscortCount = _cxxShip->_maxEscortCount;	// other ships can only get what's defined inside their 'escorts' key.
-		}
-	}
-	
-	if ([self isPolice])  defaultRole = "wingman";
-
-	const std::optional<std::string> escortRoleSetting = StringForKey(info, "escort_role");
-	escortRole = escortRoleSetting.has_value() ? *escortRoleSetting : info.get<std::string>("escort-role", defaultRole);
-	if (escortRole != defaultRole)
-	{
-		if (![[UNIVERSE cxx_newShipWithRole:escortRole] autorelease])
-		{
-			escortRole = defaultRole;
-		}
-	}
-
-	escortShipKey = StringForKey(info, "escort_ship");
-	if (!escortShipKey.has_value())
-		escortShipKey = StringForKey(info, "escort-ship");
-
-	if (escortShipKey.has_value())
-	{
-		if (![[UNIVERSE cxx_newShipWithName:*escortShipKey] autorelease])
-		{
-			escortShipKey = std::nullopt;
-		}
-		else
-		{
-			escortRole = oo::str::format("[%s]", escortShipKey->c_str());
-		}
-	}
-
-	OOShipGroup *escortGroup = [self escortGroup];
-	if ([self group] == nil)
-	{
-		[self setGroup:escortGroup]; // should probably become a copy of the escortGroup post NMSR.
-	}
-	[escortGroup setLeader:self];
-	
-	[self refreshEscortPositions];
-	
-	uint8_t currentEscortCount = [escortGroup count] - 1;	// always at least 0.
-	
-	while (_cxxShip->_pendingEscortCount > 0 && ([self isThargoid] || currentEscortCount < _cxxShip->_maxEscortCount))
-	{
-		 // The following line adds escort 1 in position 1, etc... up to MAX_ESCORTS.
-		HPVector ex_pos = [self coordinatesForEscortPosition:currentEscortCount];
-		
-		ShipEntity *escorter = nil;
-		
-		escorter = [UNIVERSE cxx_newShipWithRole:escortRole];	// retained
-
-		if (escorter == nil)  break;
-		[self setUpOneEscort:escorter inGroup:escortGroup withRole:escortRole atPosition:ex_pos andCount:currentEscortCount];
-
-		[escorter release];
-
-		_cxxShip->_pendingEscortCount--;
-		currentEscortCount = [escortGroup count] - 1;
-	}
-	// done assigning escorts
-	_cxxShip->_pendingEscortCount = 0;
-}
-
-
-- (void) setUpMixedEscorts
-{
-	const oo::PList &info = _cxxShip->shipinfoDictionary;
-	const oo::PList *escortRoles = ArrayForKey(info, "escort_roles");
-	if (escortRoles == nullptr)
-	{
-		OO_LOG_WARN("eship.setUp.escortShipRoles",
-				  "Ship {} has bad escort_roles definition.", oo::DescriptionOf(self));
-		return;
-	}
-	OOGovernmentID		government;
-
-	const oo::PList systeminfo = [UNIVERSE cxx_currentSystemData];
- 	government = systeminfo.get<unsigned char>(std::string(KEY_GOVERNMENT));
-
-	OOShipGroup *escortGroup = [self escortGroup];
-	if ([self group] == nil)
-	{
-		[self setGroup:escortGroup]; // should probably become a copy of the escortGroup post NMSR.
-	}
-	[escortGroup setLeader:self];
-	_cxxShip->_maxEscortCount = MAX_ESCORTS;
-	[self refreshEscortPositions];
-	
-	uint8_t currentEscortCount = [escortGroup count] - 1;	// always at least 0
-	
-	_cxxShip->_maxEscortCount = 0;
-	int8_t i = 0;
-	for (const oo::PList &escortDefinition : *escortRoles->getIf<oo::PList::Array>())
-	{
-		if (currentEscortCount >= MAX_ESCORTS)
-		{
-			break;
-		}
-		// int rather than uint because, at least for min, there is a
-		// use to giving a negative value
-		int8_t min = escortDefinition.get<int>("min", 0);
-		int8_t max = escortDefinition.get<int>("max", 2);
-		const std::string escortRole = escortDefinition.get<std::string>("role", "escort");
-		int8_t desired = max;
-		if (min < desired)
-		{
-			for (i = min ; i < max ; i++)
-			{
-				if (Ranrot()%11 < government+2)
-				{
-					desired--;
-				}
-			}
-		}
-		for (i = 0; i < desired; i++)
-		{
-			if (currentEscortCount >= MAX_ESCORTS)
-			{
-				break;
-			}
-			if (!escortRole.empty())
-			{
-				HPVector ex_pos = [self coordinatesForEscortPosition:currentEscortCount];
-				ShipEntity *escorter = [UNIVERSE cxx_newShipWithRole:escortRole];	// retained
-				if (escorter == nil)
-				{
-					break;
-				}
-				[self setUpOneEscort:escorter inGroup:escortGroup withRole:escortRole atPosition:ex_pos andCount:currentEscortCount];
-				[escorter release];
-			}
-			currentEscortCount++;
-			_cxxShip->_maxEscortCount++;
-		}
-	}
-	// done assigning escorts
-	_cxxShip->_pendingEscortCount = 0;
-}
-
-
-- (void) setUpOneEscort:(ShipEntity *)escorter inGroup:(OOShipGroup *)escortGroup withRole:(const std::string &)escortRole atPosition:(HPVector)ex_pos andCount:(uint8_t)currentEscortCount
-{
-	std::string		autoAI;
-	std::string		pilotRole;
-	AI				*escortAI = nil;
-	std::string		defaultRole = "escort";
-
-	if ([self isPolice])
-	{
-		defaultRole = "wingman";
-		pilotRole = "police"; // police are always insured.
-	}
-	else
-	{
-		pilotRole = _cxxShip->bounty ? "pirate" : "hunter"; // hunters have insurancies, pirates not.
-	}
-	
-	double dd = escorter->_cxxEntity->collision_radius;
-		
-	if (EXPECT(currentEscortCount < (uint8_t)MAX_ESCORTS))
-	{
-		// spread them around a little randomly
-		ex_pos.x += dd * 6.0 * (randf() - 0.5);
-		ex_pos.y += dd * 6.0 * (randf() - 0.5);
-		ex_pos.z += dd * 6.0 * (randf() - 0.5);
-	}
-	else
-	{
-		// Thargoid armada(!) Add more distance between the 'escorts'.
-		ex_pos.x += dd * 12.0 * (randf() - 0.5);
-		ex_pos.y += dd * 12.0 * (randf() - 0.5);
-		ex_pos.z += dd * 12.0 * (randf() - 0.5);
-	}
-		
-	[escorter setPosition:ex_pos];	// minimise lollipop flash
-		
-	if (![escorter cxx_crew].has_value())
-	{
-		[escorter cxx_setSingleCrewWithRole:pilotRole];
-	}
-
-	[escorter setPrimaryRole:defaultRole];	//for mothership
-	// in case this hasn't yet been set, make sure escorts get a real scan class
-	// shouldn't happen very often, but is possible
-	if (_cxxEntity->scanClass == CLASS_NOT_SET)
-	{
-		_cxxEntity->scanClass = CLASS_NEUTRAL;
-	}
-	[escorter setScanClass:_cxxEntity->scanClass];		// you are the same as I
-		
-	if ([self bounty] == 0)  [escorter setBounty:0 withReason:kOOLegalStatusReasonSetup];	// Avoid dirty escorts for clean mothers
-		
-	// find the right autoAI.
-	const oo::PList autoAIMap = [ResourceManager cxx_dictionaryFromFilesNamed:"autoAImap.plist" inFolder:"Config" andMerge:YES];
-	const std::optional<std::string> mappedAI = StringForKey(autoAIMap, defaultRole);
-	if (mappedAI.has_value())  autoAI = *mappedAI;
-	else // no 'wingman' defined in autoAImap?
-	{
-		autoAI = autoAIMap.get<std::string>("escort", "nullAI.plist");
-	}
-
-	escortAI = [escorter getAI];
-
-	// Let the populator decide which AI to use, unless we have a working alternative AI & we specify auto_ai = NO !
-	// (Both callers always passed a role, so the old nil test of escortRole was always true.)
-	if ( FuzzyBooleanForKey([escorter cxx_shipInfoDictionary], "auto_ai", YES)
-		 || ([escortAI cxx_name].value_or(std::string()) == "nullAI.plist" && autoAI != "nullAI.plist") )
-	{
-		[escorter switchAITo:autoAI];
-	}
-
-	[escorter setGroup:escortGroup];
-	[escorter setOwner:self];	// mark self as group leader
-
-	
-	if ([self status] == STATUS_DOCKED)
-	{
-		[[self owner] addShipToLaunchQueue:escorter withPriority:NO];
-	}
-	else
-	{
-		[UNIVERSE addEntity:escorter]; 	// STATUS_IN_FLIGHT, AI state GLOBAL
-		[escortAI cxx_setState:"FLYING_ESCORT"];	// Begin escort flight. (If the AI doesn't define FLYING_ESCORT, this has no effect.)
-		[escorter doScriptEvent:OOJSID("spawnedAsEscort") withArgument:self];
-	}
-	
-	if([escorter heatInsulation] < [self heatInsulation]) [escorter setHeatInsulation:[self heatInsulation]]; // give escorts same protection as mother.
-	if(([escorter maxFlightSpeed] < _cxxShip->cruiseSpeed) && ([escorter maxFlightSpeed] > _cxxShip->cruiseSpeed * 0.3)) 
-		_cxxShip->cruiseSpeed = [escorter maxFlightSpeed] * 0.99;  // adapt patrolSpeed to the slowest escort but ignore the very slow ones.
-		
-		
-	if (_cxxShip->bounty)
-	{
-		int extra = 1 | (ranrot_rand() & 15);
-		// if mothership is offender, make sure escorter is too.
-		[escorter markAsOffender:extra withReason:kOOLegalStatusReasonSetup];
-	}
-	else
-	{
-		// otherwise force the escort to be clean
-		[escorter setBounty:0 withReason:kOOLegalStatusReasonSetup];
-	}
-	
-}
-
-- (std::optional<std::string>) cxx_shipDataKey
-{
-	return _cxxShip->_shipKey;
-}
-
-
-- (std::optional<std::string>) cxx_shipDataKeyAutoRole
-{
-	return oo::str::format("[%s]", [self cxx_shipDataKey].value_or("(null)").c_str());	// %@ printed nil as (null)
-}
-
-
-- (void) cxx_setShipDataKey:(const std::optional<std::string> &)key
-{
-	_cxxShip->_shipKey = key;
-}
-
-
-- (oo::PList) cxx_shipInfoDictionary
-{
-	return _cxxShip->shipinfoDictionary;
-}
-
-
-- (std::vector<Vector>) cxx_weaponOffsetsFrom:(const oo::PList &)dict withKey:(const std::string &)key inMode:(const std::string &)mode
-{
-	Vector offset;
-	if (mode == "single")
-	{
-		offset = vector_multiply_scalar(VectorFromPList(dict.find(key)),_cxxShip->_scaleFactor);
-		return { offset };
-	}
-	else
-	{
-		const oo::PList *offsets = ArrayForKey(dict, key);
-		if (offsets == nullptr) {
-			offset = kZeroVector;
-			return { offset };
-		}
-		std::vector<Vector> output;
-		output.reserve(offsets->count());
-		NSUInteger i;
-		for (i=0;i<offsets->count();i++) {
-			offset = vector_multiply_scalar(VectorFromPList(offsets->at(i)),_cxxShip->_scaleFactor);
-			output.push_back(offset);
-		}
-		return output;
-	}
-}
-
-
-- (std::vector<Vector>) cxx_aftWeaponOffset
-{
-	return _cxxShip->aftWeaponOffset;
-}
-
-
-- (std::vector<Vector>) cxx_forwardWeaponOffset
-{
-	return _cxxShip->forwardWeaponOffset;
-}
-
-
-- (std::vector<Vector>) cxx_portWeaponOffset
-{
-	return _cxxShip->portWeaponOffset;
-}
-
-
-- (std::vector<Vector>) cxx_starboardWeaponOffset
-{
-	return _cxxShip->starboardWeaponOffset;
-}
-
-
-- (BOOL)isFrangible
-{
-	return _cxxShip->isFrangible;
-}
-
-
-- (BOOL) suppressFlightNotifications
-{
-	return _cxxShip->suppressAegisMessages;
-}
-
-
-- (OOScanClass) scanClass
-{
-	if (_cxxShip->cloaking_device_active)  return CLASS_NO_DRAW;
-	return _cxxEntity->scanClass;
-}
-
-//////////////////////////////////////////////
-
-- (BOOL) canCollide
-{
-	int status = [self status];
-	if (status == STATUS_COCKPIT_DISPLAY || status == STATUS_DEAD || status == STATUS_BEING_SCOOPED)
-	{	
-		return NO;
-	}
-
-	if (_cxxShip->isWreckage)
-	{
-		// wreckage won't collide
-		return NO;
-	}
-	
-	if (_cxxShip->isMissile && [self shotTime] < 0.25) // not yet fused
-	{
-		return NO;
-	}
-	
-	return YES;
-}
-
-ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
-{
-	// octree check
-	Octree		*prime_octree = prime->_cxxShip->octree;
-	Octree		*other_octree = other->_cxxShip->octree;
-	
-	HPVector		prime_position = [prime absolutePositionForSubentity];
-	Triangle	prime_ijk = [prime absoluteIJKForSubentity];
-	HPVector		other_position = [other absolutePositionForSubentity];
-	Triangle	other_ijk = [other absoluteIJKForSubentity];
-
-	Vector		relative_position_of_other = resolveVectorInIJK(HPVectorToVector(HPvector_between(prime_position, other_position)), prime_ijk);
-	Triangle	relative_ijk_of_other;
-	relative_ijk_of_other.v[0] = resolveVectorInIJK(other_ijk.v[0], prime_ijk);
-	relative_ijk_of_other.v[1] = resolveVectorInIJK(other_ijk.v[1], prime_ijk);
-	relative_ijk_of_other.v[2] = resolveVectorInIJK(other_ijk.v[2], prime_ijk);
-	
-	// check hull octree against other hull octree
-	if ([prime_octree isHitByOctree:other_octree
-						 withOrigin:relative_position_of_other
-							 andIJK:relative_ijk_of_other])
-	{
-		return other;
-	}
-	
-	// check prime subentities against the other's hull
-	const std::vector<oo::ObjCRef<Entity *>> &prime_subs = prime->_cxxShip->subEntities;
-	if (!prime_subs.empty())
-	{
-		NSUInteger i, n_subs = prime_subs.size();
-		for (i = 0; i < n_subs; i++)
-		{
-			Entity* se = prime_subs[i].get();
-			if ([se isShip] && [se canCollide] && doOctreesCollide((ShipEntity*)se, other))
-				return other;
-		}
-	}
-
-	// check prime hull against the other's subentities
-	const std::vector<oo::ObjCRef<Entity *>> &other_subs = other->_cxxShip->subEntities;
-	if (!other_subs.empty())
-	{
-		NSUInteger i, n_subs = other_subs.size();
-		for (i = 0; i < n_subs; i++)
-		{
-			Entity* se = other_subs[i].get();
-			if ([se isShip] && [se canCollide] && doOctreesCollide(prime, (ShipEntity*)se))
-				return (ShipEntity*)se;
-		}
-	}
-	
-	// check prime subenties against the other's subentities
-	if ((!prime_subs.empty())&&(!other_subs.empty()))
-	{
-		NSUInteger i, n_osubs = other_subs.size();
-		for (i = 0; i < n_osubs; i++)
-		{
-			Entity* oe = other_subs[i].get();
-			if ([oe isShip] && [oe canCollide])
-			{
-				NSUInteger j, n_psubs = prime_subs.size();
-				for (j = 0; j <  n_psubs; j++)
-				{
-					Entity* pe = prime_subs[j].get();
-					if ([pe isShip] && [pe canCollide] && doOctreesCollide((ShipEntity*)pe, (ShipEntity*)oe))
-						return (ShipEntity*)oe;
-				}
-			}
-		}
-	}
-
-	// fall through => no collision
-	return nil;
-}
-
-
-- (BOOL) checkCloseCollisionWith:(Entity *)other
-{
-	if (other == nil)  return NO;
-	if (std::find_if(_cxxEntity->collidingEntities.begin(), _cxxEntity->collidingEntities.end(), [other](const oo::ObjCRef<Entity *> &e) { return e.get() == other; }) != _cxxEntity->collidingEntities.end())  return NO;	// we know about this already! (-containsObject:, identity for entities)
-	
-	ShipEntity *otherShip = nil;
-	if ([other isShip])  otherShip = (ShipEntity *)other;
-	
-	if ([self canScoop:otherShip])  return YES;	// quick test - could this improve scooping for small ships? I think so!
-	
-	if (otherShip != nil && _cxxShip->trackCloseContacts)
-	{
-		// in update we check if close contacts have gone out of touch range (origin within our collision_radius)
-		// here we check if something has come within that range
-		HPVector			otherPos = [otherShip position];
-		OOUniversalID	otherID = [otherShip universalID];
-		const std::string	other_key = oo::str::format("%d", otherID);
-
-		if (!_cxxShip->closeContactsInfo.contains(other_key) &&
-			HPdistance2(_cxxEntity->position, otherPos) < _cxxEntity->collision_radius * _cxxEntity->collision_radius)
-		{
-			// calculate position with respect to our own position and orientation
-			Vector	dpos = HPVectorToVector(HPvector_between(_cxxEntity->position, otherPos));
-			Vector  rpos = make_vector(dot_product(dpos, _cxxShip->v_right), dot_product(dpos, _cxxShip->v_up), dot_product(dpos, _cxxShip->v_forward));
-			_cxxShip->closeContactsInfo[other_key] = oo::str::format("%f %f %f", rpos.x, rpos.y, rpos.z);
-			
-			// send AI a message about the touch
-			OOWeakReference	*temp = _cxxShip->_primaryTarget;
-			_cxxShip->_primaryTarget = [otherShip weakRetain];
-			[self cxx_doScriptEvent:OOJSID("shipCloseContact") withArgument:otherShip andReactToAIMessage:"CLOSE CONTACT"];
-			_cxxShip->_primaryTarget = temp;
-		}
-	}
-	
-	/* This does not appear to save a significant amount of time in
-	 * most situations. No significant change in frame rate with a
-	 * 350-segment planetary ring at 1400 collision candidates, even
-	 * on old hardware. There are perhaps situations in which it could
-	 * be a significant optimisation, but those are likely to also be
-	 * the situations where the effect of adding hundreds of extra
-	 * false-positive collisions leaves the player returning to a
-	 * mess... So, commented out: CIM 21 Jan 2014
-	if (zero_distance > CLOSE_COLLISION_CHECK_MAX_RANGE2)	// don't work too hard on entities that are far from the player
-	return YES; 
-	*/
-	
-	if (otherShip != nil)
-	{
-		// check hull octree versus other hull octree
-		_cxxEntity->collider = doOctreesCollide(self, otherShip);
-		return (_cxxEntity->collider != nil);
-	}
-	
-	// default at this stage is to say YES they've collided!
-	_cxxEntity->collider = other;
-	return YES;
-}
-
-
-- (BoundingBox)findSubentityBoundingBox
-{
-	return [[self mesh] findSubentityBoundingBoxWithPosition:HPVectorToVector(_cxxEntity->position) rotMatrix:_cxxEntity->rotMatrix];
-}
-
-
-- (Triangle) absoluteIJKForSubentity
-{
-	Triangle	result = {{ kBasisXVector, kBasisYVector, kBasisZVector }};
-	Entity		*last = nil;
-	Entity		*father = self;
-	OOMatrix	r_mat;
-	
-	while ((father)&&(father != last) && (father != (Entity *)NO_TARGET))
-	{
-		r_mat = [father drawRotationMatrix];
-		result.v[0] = OOVectorMultiplyMatrix(result.v[0], r_mat);
-		result.v[1] = OOVectorMultiplyMatrix(result.v[1], r_mat);
-		result.v[2] = OOVectorMultiplyMatrix(result.v[2], r_mat);
-		
-		last = father;
-		if (![last isSubEntity]) break;
-		father = [father owner];
-	}
-	return result;
-}
-
-
-- (void) addSubentityToCollisionRadius:(Entity<OOSubEntity> *)subent
-{
-	if (!subent)  return;
-	
-	double distance = HPmagnitude([subent position]) + [subent findCollisionRadius];
-	if ([subent isKindOfClass:[ShipEntity class]])	// Solid subentity
-	{
-		if (distance > _cxxEntity->collision_radius)
-		{
-			_cxxEntity->collision_radius = distance;
-		}
-		
-		_cxxEntity->mass += [subent mass];
-	}
-	if (distance > _cxxShip->_profileRadius)
-	{
-		_cxxShip->_profileRadius = distance;
-	}
-}
-
-
-- (ShipEntity *) launchPodWithCrew:(const std::vector<oo::ObjCRef<OOCharacter *>> &)podCrew
-{
-	ShipEntity *pod = nil;
-
-	const oo::PList &info = _cxxShip->shipinfoDictionary;
-	pod = [UNIVERSE cxx_newShipWithRole:StringForKey(info, "escape_pod_role").value_or("")];	// or nil
-	if (!pod)
-	{
-		//	_role not defined? it might have _model defined;
-		pod = [UNIVERSE cxx_newShipWithRole:info.get<std::string>("escape_pod_model", "escape-capsule")];
-		if (!pod)
-		{
-			pod = [UNIVERSE cxx_newShipWithRole:"escape-capsule"];
-			OO_LOG("shipEntity.noEscapePod", "Ship {} has no correct escape_pod_role defined. Now using default capsule.", oo::DescriptionOf(self));
-		}
-	}
-	
-	if (pod)
-	{
-		[pod setOwner:self];
-		[pod setTemperature:[self randomEjectaTemperatureWithMaxFactor:0.9]];
-		[pod cxx_setCommodity:"slaves" andAmount:1];
-		[pod cxx_setCrew:podCrew];
-		[pod switchAITo:"oolite-shuttleAI.js"];
-		[self dumpItem:pod];	// CLASS_CARGO, STATUS_IN_FLIGHT, AI state GLOBAL
-		[pod release]; //release
-	}
-	
-	return pod;
-}
-
-
-- (BOOL) validForAddToUniverse
-{
-	if (_cxxShip->shipinfoDictionary.isNull())
-	{
-		OO_LOG("shipEntity.notDict", "Ship {} was not set up from dictionary.", oo::DescriptionOf(self));
-		return NO;
-	}
-	return [super validForAddToUniverse];
-}
 
 
 - (void) update:(OOTimeDelta)delta_t
@@ -4234,7 +2233,6 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	[self applySticks:delta_t];
 
 	
-	
 }
 
 
@@ -4906,7 +2904,6 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	_cxxShip->frustration = 0.0;	// behaviour changed, so reset frustration
 
 	
-	
 }
 
 
@@ -5033,7 +3030,6 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	}
 	
 	
-
 	if (_cxxShip->weapon_temp > COMBAT_AI_WEAPON_TEMP_USABLE)
 	{
 		_cxxShip->behaviour = BEHAVIOUR_ATTACK_TARGET;
@@ -5339,7 +3335,6 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	[self fireMainWeapon:range];
 	
 	
-
 	if (_cxxShip->weapon_temp > COMBAT_AI_WEAPON_TEMP_USABLE)
 	{
 		_cxxShip->behaviour = BEHAVIOUR_ATTACK_TARGET;
@@ -5524,7 +3519,6 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	[self fireMainWeapon:range];
 	
 	
-
 	if (_cxxShip->weapon_temp > COMBAT_AI_WEAPON_TEMP_USABLE && _cxxShip->accuracy >= COMBAT_AI_ISNT_AWFUL && _cxxShip->aim_tolerance * range < COMBAT_AI_CONFIDENCE_FACTOR)
 	{
 		// don't do this if the target is fleeing and the front laser is
@@ -5780,7 +3774,6 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	_cxxShip->frustration = 0.0;
 
 	
-	
 }
 
 
@@ -6014,7 +4007,6 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		}
 
 
-	
 		if (distance < last_distance)	// improvement
 		{
 			_cxxShip->frustration -= 0.25 * delta_t;
@@ -6085,7 +4077,6 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		_cxxShip->desired_speed = _cxxShip->maxFlightSpeed * (0.5 * dq + 0.5);
 	}
 
-	
 	
 }
 
@@ -6229,7 +4220,6 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	}
 	
 
-	
 	GLfloat temp = _cxxShip->desired_speed;
 	_cxxShip->desired_speed *= v0 * v0;
 	
@@ -8069,7 +6059,6 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 }
 
 
-
 - (void) setStateMachine:(const std::string &)smName	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
 {
 	[self setAITo:smName];
@@ -8370,7 +6359,6 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 }
 
 
-
 - (OOCreditsQuantity) bounty
 {
 	if ([self isSubEntity]) 
@@ -8460,7 +6448,6 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	OOAssert(result < UINT32_MAX, "Cargo quantity out of bounds.");
 	return (OOCargoQuantity)result;
 }
-
 
 
 - (OOCargoType) cargoType
@@ -8571,7 +6558,6 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 
 	return YES;
 }
-
 
 
 - (BOOL) showScoopMessage
@@ -10898,7 +8884,6 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 }
 
 
-
 - (double) missileTrackPrimaryTarget:(double) delta_t
 {
 	Vector  relPos;
@@ -11224,7 +9209,6 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	}
 	return [_cxxShip->_collisionExceptions containsObject:ship];
 }
-
 
 
 - (NSUInteger) defenseTargetCount
@@ -14937,6 +12921,2102 @@ bool ShipEntity::isShipWithSubEntityShip(::Entity *other)
 	
 	return YES;
 }
+
+}	// namespace cxx
+
+
+// Slice 2 of docs/phases/3-slices/ShipEntity.md (bead oo-cvbe3): set-up from the ship dictionary
+// (cxx_setUpFromDictionary:). The facade forwards each selector (ShipEntity+ObjCBridge.mm); sends
+// to self stay sends, so an Objective-C subclass's override still runs (ADR-0056 amendment
+// oo-mvzmb).
+namespace cxx {
+
+bool ShipEntity::setUpFromDictionary(const oo::PList &inShipDict)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	OOJS_PROFILE_ENTER
+
+	// Settings shared by players & NPCs.
+	//
+	// In order for default values to work and float values to not be junk,
+	// replace nil with empty dictionary. -- Ahruman 2008-04-28
+	shipinfoDictionary = inShipDict;
+	if (shipinfoDictionary.isNull())  shipinfoDictionary = oo::PList(oo::PList::Dict{});
+	const oo::PList &shipDict = shipinfoDictionary;	// Ensure no mutation.
+
+	// set these flags explicitly.
+	haveExecutedSpawnAction = NO;
+	haveStartedJSAI = NO;
+	scripted_misjump		= NO;
+	_scriptedMisjumpRange		= 0.5;
+	being_fined = NO;
+	isNearPlanetSurface = NO;
+	suppressAegisMessages = NO;
+	isMissile = NO;
+	suppressExplosion = NO;
+	_lightsActive = YES;
+	
+
+	// set things from dictionary from here out - default values might require adjustment -- Kaks 20091130
+	_scaleFactor = shipDict.get<float>("model_scale_factor", 1.0f);
+
+
+	float defaultSpeed = isStation ? 0.0f : 160.0f;
+	maxFlightSpeed = shipDict.get<float>("max_flight_speed", defaultSpeed);
+	max_flight_roll = shipDict.get<float>("max_flight_roll", 2.0f);
+	max_flight_pitch = shipDict.get<float>("max_flight_pitch", 1.0f);
+	max_flight_yaw = shipDict.get<float>("max_flight_yaw", max_flight_pitch);	// Note by default yaw == pitch
+	cruiseSpeed = maxFlightSpeed*0.8f;
+	
+	max_thrust = shipDict.get<float>("thrust", 15.0f);
+	thrust = max_thrust;
+
+	afterburner_rate = shipDict.get<float>("injector_burn_rate", AFTERBURNER_BURNRATE);
+	afterburner_speed_factor = shipDict.get<float>("injector_speed_factor", 7.0f);
+	if (afterburner_speed_factor < 1.0)
+	{
+		OO_LOG("ship.setup.injectorSpeed", "injector_speed_factor cannot be lower than 1.0 for {}", oo::DescriptionOf(self));
+		afterburner_speed_factor = 1.0;
+	}
+#if OO_VARIABLE_TORUS_SPEED
+	else if (afterburner_speed_factor > MIN_HYPERSPEED_FACTOR)
+	{
+		OO_LOG("ship.setup.injectorSpeed", "injector_speed_factor cannot be higher than minimum torus speed factor ({:f}) for {}.", MIN_HYPERSPEED_FACTOR, oo::DescriptionOf(self));
+		afterburner_speed_factor = MIN_HYPERSPEED_FACTOR;
+	}
+#else
+	else if (afterburner_speed_factor > HYPERSPEED_FACTOR)
+	{
+		OO_LOG("ship.setup.injectorSpeed", "injector_speed_factor cannot be higher than torus speed factor ({:f}) for {}.", HYPERSPEED_FACTOR, oo::DescriptionOf(self));
+		afterburner_speed_factor = HYPERSPEED_FACTOR;
+	}
+#endif
+
+	maxEnergy = shipDict.get<float>("max_energy", 200.0f);
+	energy_recharge_rate = shipDict.get<float>("energy_recharge_rate", 1.0f);
+	
+	_showDamage = shipDict.get<bool>("show_damage", (energy_recharge_rate > 0));
+	// Each new ship should start in seemingly good operating condition, unless specifically told not to - this does not affect the ship's energy levels
+	[self setThrowSparks:shipDict.get<bool>("throw_sparks", NO)];
+	
+	weapon_facings = shipDict.get<int>("weapon_facings", VALID_WEAPON_FACINGS) & VALID_WEAPON_FACINGS;
+	if (weapon_facings & WEAPON_FACING_FORWARD)
+		forward_weapon_type = cxx_OOWeaponTypeFromString(shipDict.get<std::string>("forward_weapon_type", "EQ_WEAPON_NONE"));
+	if (weapon_facings & WEAPON_FACING_AFT)
+		aft_weapon_type = cxx_OOWeaponTypeFromString(shipDict.get<std::string>("aft_weapon_type", "EQ_WEAPON_NONE"));
+	if (weapon_facings & WEAPON_FACING_PORT)
+		port_weapon_type = cxx_OOWeaponTypeFromString(shipDict.get<std::string>("port_weapon_type", "EQ_WEAPON_NONE"));
+	if (weapon_facings & WEAPON_FACING_STARBOARD)
+		starboard_weapon_type = cxx_OOWeaponTypeFromString(shipDict.get<std::string>("starboard_weapon_type", "EQ_WEAPON_NONE"));
+
+	cloaking_device_active = NO;
+	military_jammer_active = NO;
+	cloakPassive = shipDict.get<bool>("cloak_passive", YES); // Nikos - switched passive cloak default to YES 20120523
+	cloakAutomatic = shipDict.get<bool>("cloak_automatic", YES);
+
+	missiles = shipDict.get<int>("missiles", 0);
+	/* TODO: The following initializes the missile list to be blank, which prevents a crash caused by hasOneEquipmentItem trying to access a missile list
+	         previously initialized but then released.  See issue #204.  We need to investigate further the cause of the missile list being released.
+ 			- kanthoney 10/03/2017
+		Update 20170818: The issue seems to have been resolved properly using the fix below and the problem was apparently an access of the
+		missile_list array elements before their initialization and while we were checking whether equipment can be added or not. There is
+		probably not much more that can be done here, unless someone would like to have a go at refactoring the entire ship initialization
+		code. In any case, the crash is no more and the applied solution is both simple and logical - Nikos
+	*/
+	unsigned i;
+	for (i = 0; i < missiles; i++)
+	{
+		missile_list[i] = nil;
+	}
+	max_missiles = shipDict.get<int>("max_missiles", missiles);
+	if (max_missiles > SHIPENTITY_MAX_MISSILES) max_missiles = SHIPENTITY_MAX_MISSILES;
+	if (missiles > max_missiles) missiles = max_missiles;
+	missile_load_time = fmax(0.0, shipDict.get<double>("missile_load_time", 0.0)); // no negative load times
+	missile_launch_time = [UNIVERSE getTime] + missile_load_time;
+	
+	// upgrades:
+	equipment_weight = 0; 
+	if (FuzzyBooleanForKey(shipDict, "has_ecm"))  [self addEquipmentItem:"EQ_ECM" inContext:"npc"];
+	if (FuzzyBooleanForKey(shipDict, "has_scoop"))  [self addEquipmentItem:"EQ_FUEL_SCOOPS" inContext:"npc"];
+	if (FuzzyBooleanForKey(shipDict, "has_escape_pod"))  [self addEquipmentItem:"EQ_ESCAPE_POD" inContext:"npc"];
+	if (FuzzyBooleanForKey(shipDict, "has_cloaking_device"))  [self addEquipmentItem:"EQ_CLOAKING_DEVICE" inContext:"npc"];
+	if (shipDict.get<float>("has_energy_bomb") > 0)
+	{
+		/*	NOTE: has_energy_bomb actually refers to QC mines.
+			
+			max_missiles for NPCs is a newish addition, and ships have
+			traditionally not needed to reserve a slot for a Q-mine added this
+			way. If has_energy_bomb is possible, and max_missiles is not
+			explicit, we add an extra missile slot to compensate.
+			-- Ahruman 2011-03-25
+		*/
+		if (FuzzyBooleanForKey(shipDict, "has_energy_bomb"))
+		{
+			if (max_missiles == missiles && max_missiles < SHIPENTITY_MAX_MISSILES && shipDict.find("max_missiles") == nullptr)
+			{
+				max_missiles++;
+			}
+			[self addEquipmentItem:"EQ_QC_MINE" inContext:"npc"];
+		}
+	}
+
+	if (FuzzyBooleanForKey(shipDict, "has_fuel_injection"))  [self addEquipmentItem:"EQ_FUEL_INJECTION" inContext:"npc"];
+
+#if USEMASC
+	if (FuzzyBooleanForKey(shipDict, "has_military_jammer"))  [self addEquipmentItem:"EQ_MILITARY_JAMMER" inContext:"npc"];
+	if (FuzzyBooleanForKey(shipDict, "has_military_scanner_filter"))  [self addEquipmentItem:"EQ_MILITARY_SCANNER_FILTER" inContext:"npc"];
+#endif
+	
+	
+	// can it be 'mined' for alloys?
+	canFragment = (unsigned char)FuzzyBooleanForKey(shipDict, "fragment_chance", 0.9);
+	isWreckage = NO;
+
+	// can subentities be destroyed separately?
+	isFrangible = shipDict.get<bool>("frangible", YES);
+	
+	max_cargo = shipDict.get<unsigned int>("max_cargo");
+	extra_cargo = shipDict.get<unsigned int>("extra_cargo", 15);
+	
+	hyperspaceMotorSpinTime = shipDict.get<float>("hyperspace_motor_spin_time", DEFAULT_HYPERSPACE_SPIN_TIME);
+	if(!shipDict.get<bool>("hyperspace_motor", YES)) hyperspaceMotorSpinTime = -1;
+	
+	name = shipDict.get<std::string>("name", "?");
+
+	shipUniqueName = shipDict.get<std::string>("ship_name", "");
+
+	shipClassName = shipDict.get<std::string>("ship_class_name", *name);
+
+	displayName = StringForKey(shipDict, "display_name");
+
+	// Load the model (must be before subentities)
+	const std::optional<std::string> modelName = StringForKey(shipDict, "model");
+	if (modelName.has_value())
+	{
+		::OOMesh *mesh = nil;
+
+		mesh = [::OOMesh meshWithName:*modelName
+						   cacheKey:oo::str::format("%s-%.3f", _shipKey.value_or("(null)").c_str(), _scaleFactor)	// %@ printed nil as (null)
+				 materialDictionary:DictionaryForKey(shipDict, "materials")
+				  shadersDictionary:DictionaryForKey(shipDict, "shaders")
+							 smooth:shipDict.get<bool>("smooth", false)
+					   shaderMacros:OODefaultShipShaderMacros()
+					   shaderBindingTarget:self
+						scaleFactor:_scaleFactor
+					 cacheWriteable:YES];
+
+		if (mesh == nil)  return NO;
+		[self setMesh:mesh];
+	}
+	
+	float density = shipDict.get<float>("density", 1.0f);
+	if (octree)  mass = (GLfloat)(density * 20.0f * [octree volume]);
+	
+	DESTROY(default_laser_color);
+	default_laser_color = [[::OOColor cxx_brightColorWithDescription:ValueForKey(shipDict, "laser_color")] retain];
+	
+	if (default_laser_color == nil) 
+	{
+		[self setLaserColor:[::OOColor redColor]];
+	}
+	else
+	{
+		[self setLaserColor:default_laser_color];
+	}
+	// exhaust emissive color
+	OORGBAComponents defaultExhaustEmissiveColorComponents; // pale blue is exhaust default color
+	defaultExhaustEmissiveColorComponents.r = 0.7f;
+	defaultExhaustEmissiveColorComponents.g = 0.9f;
+	defaultExhaustEmissiveColorComponents.b = 1.0f;
+	defaultExhaustEmissiveColorComponents.a = 0.9f;
+	::OOColor *color = [::OOColor cxx_brightColorWithDescription:ValueForKey(shipDict, "exhaust_emissive_color")];
+	if (color == nil)  color = [::OOColor colorWithRGBAComponents:defaultExhaustEmissiveColorComponents];
+	[self setExhaustEmissiveColor:color];
+	
+	[self clearSubEntities];
+	[self setUpSubEntities];
+
+// correctly initialise weaponRange, etc. (must be after subentity setup)
+	if (isWeaponNone(forward_weapon_type))
+	{
+		OOWeaponType 			weapon_type = nil;
+		BOOL hasTurrets = NO;
+		for (const auto &sub : [self cxx_shipSubEntities])
+		{
+			if (!isWeaponNone(weapon_type))  break;
+			::ShipEntity *se = sub.get();
+			weapon_type = se->_cxxShip->forward_weapon_type;
+			if (se->_cxxShip->behaviour == BEHAVIOUR_TRACK_AS_TURRET)
+			{
+				hasTurrets = YES;
+			}
+		}
+		if (isWeaponNone(weapon_type) && hasTurrets)
+		{ /* safety for ships only equipped with turrets
+		     note: this was hard-coded to 10000.0, although turrets have a notably 
+		     shorter range. We are using a multiplier of 1.667 in order to not change
+		     something that already works, but probably it would be best to use
+		     TURRET_SHOT_RANGE * COMBAT_WEAPON_RANGE_FACTOR here
+		  */
+			weaponRange = TURRET_SHOT_RANGE * 1.667;
+		}
+		else
+		{
+			[self setWeaponDataFromType:weapon_type];
+		}
+	}
+	else
+	{
+		[self setWeaponDataFromType:forward_weapon_type];
+	}
+	
+	// rotating subentities
+	subentityRotationalVelocity = kIdentityQuaternion;
+	if (shipDict.find("rotational_velocity") != nullptr)
+	{
+		subentityRotationalVelocity = QuaternionForKey(shipDict, "rotational_velocity");
+	}
+
+	// set weapon offsets
+	const oo::PList &weaponMounts = shipDict;
+	const std::string weaponMountMode = weaponMounts.get<std::string>("weapon_mount_mode", "single");
+	_multiplyWeapons = weaponMountMode == "multiply";
+	forwardWeaponOffset = [self cxx_weaponOffsetsFrom:weaponMounts withKey:"weapon_position_forward" inMode:weaponMountMode];
+	aftWeaponOffset = [self cxx_weaponOffsetsFrom:weaponMounts withKey:"weapon_position_aft" inMode:weaponMountMode];
+	portWeaponOffset = [self cxx_weaponOffsetsFrom:weaponMounts withKey:"weapon_position_port" inMode:weaponMountMode];
+	starboardWeaponOffset = [self cxx_weaponOffsetsFrom:weaponMounts withKey:"weapon_position_starboard" inMode:weaponMountMode];
+
+	
+	tractor_position = vector_multiply_scalar(VectorFromPList(shipDict.find("scoop_position")),_scaleFactor);
+	
+
+	// sun glare filter - default is high filter, both for HDR and SDR
+	[self setSunGlareFilter:shipDict.get<float>("sun_glare_filter", 0.97f)];
+	
+	// Get scriptInfo dictionary, containing arbitrary stuff scripts might be interested in.
+	scriptInfo = DictionaryForKey(shipDict, "script_info");	// null when absent
+
+	const oo::PList *explosion = ArrayForKey(shipDict, "explosion_type");
+	explosionType = explosion != nullptr ? *explosion : oo::PList();	// null when absent
+
+	isDemoShip = NO;
+	
+	return YES;
+	
+	OOJS_PROFILE_EXIT
+}
+
+
+}	// namespace cxx
+
+
+// Slice 3 of docs/phases/3-slices/ShipEntity.md (bead oo-mvzmb): setUpShipFromDictionary:,
+// subentity serialisation and set-up. The facade forwards each selector (ShipEntity+ObjCBridge.mm);
+// sends to self stay sends, so an Objective-C subclass's override still runs (ADR-0056 amendment
+// oo-mvzmb).
+namespace cxx {
+
+bool ShipEntity::setUpShipFromDictionary(const oo::PList &shipDict)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	OOJS_PROFILE_ENTER
+
+	if (![self cxx_setUpFromDictionary:shipDict]) return NO;
+
+	// NPC-only settings.
+	//
+	orientation = kIdentityQuaternion;
+	rotMatrix	= kIdentityMatrix;
+	v_forward	= kBasisZVector;
+	v_up		= kBasisYVector;
+	v_right		= kBasisXVector;
+	reference	= v_forward;  // reference vector for (* turrets *)
+	
+	isShip = YES;
+
+	// scan class settings. 'scanClass' is in common usage, but we could also have a more standard 'scan_class' key with higher precedence. Kaks 20090810 
+	// let's see if scan_class is set... 
+	scanClass = cxx_OOScanClassFromString(shipDict.get<std::string>("scan_class", "CLASS_NOT_SET"));
+	
+	// if not, try 'scanClass'. NOTE: non-standard capitalization is documented and entrenched.
+	if (scanClass == CLASS_NOT_SET)
+	{
+		scanClass = cxx_OOScanClassFromString(shipDict.get<std::string>("scanClass", "CLASS_NOT_SET"));
+	}
+
+	scan_description = StringForKey(shipDict, "scan_description");
+
+	// FIXME: give NPCs shields instead.
+	
+	if (FuzzyBooleanForKey(shipDict, "has_shield_booster"))  [self addEquipmentItem:"EQ_SHIELD_BOOSTER" inContext:"npc"];
+	if (FuzzyBooleanForKey(shipDict, "has_shield_enhancer"))  [self addEquipmentItem:"EQ_SHIELD_ENHANCER" inContext:"npc"];
+	
+	// Start with full energy banks.
+	energy = maxEnergy;
+	weapon_temp				= 0.0f;
+	forward_weapon_temp		= 0.0f;
+	aft_weapon_temp			= 0.0f;
+	port_weapon_temp		= 0.0f;
+	starboard_weapon_temp	= 0.0f;
+	
+	// setWeaponDataFromType inside setUpFromDictionary should set weapon_damage from the front laser.
+	// no weapon_damage? It's a missile: set weapon_damage from shipdata!
+	if (weapon_damage == 0.0) 
+	{
+		weapon_damage_override = weapon_damage = shipDict.get<float>("weapon_energy", 0); // any damage value for missiles/bombs
+	}
+	else
+	{
+		weapon_damage_override = 0;
+	}
+
+	scannerRange = shipDict.get<float>("scanner_range", (float)SCANNER_MAX_RANGE);
+	
+	fuel = shipDict.get<unsigned short>("fuel");	// Does it make sense that this defaults to 0? Should it not be 70? -- Ahruman
+	
+	fuel_accumulator = 1.0;
+	
+	[self setBounty:shipDict.get<unsigned int>("bounty", 0) withReason:kOOLegalStatusReasonSetup];
+	
+	[shipAI autorelease];
+	shipAI = [[::AI alloc] init];
+	[shipAI setOwner:self];
+	[self setAITo:shipDict.get<std::string>("ai_type", "nullAI.plist")];
+	
+	likely_cargo = shipDict.get<unsigned int>("likely_cargo");
+	noRocks = (unsigned char)FuzzyBooleanForKey(shipDict, "no_boulders");
+	
+	commodity_amount = 0;
+	commodity_type = std::nullopt;
+	std::optional<std::string> cargoString = StringForKey(shipDict, "cargo_carried");
+	if (cargoString.has_value())
+	{
+		if (*cargoString == "SCARCE_GOODS")
+		{
+			cargo_flag = CARGO_FLAG_FULL_SCARCE;
+		}
+		else if (*cargoString == "PLENTIFUL_GOODS")
+		{
+			cargo_flag = CARGO_FLAG_FULL_PLENTIFUL;
+		}
+		else
+		{
+			cargo_flag = CARGO_FLAG_FULL_UNIFORM;
+
+			std::optional<std::string>	c_commodity;
+			int				c_amount = 1;
+			oo::str::Scanner	scanner(*cargoString);
+			if (scanner.scanInt(&c_amount))
+			{
+				scanner.scanCharactersFromSetNoSkip(oo::str::CharacterSet::whitespace());	// skip whitespace
+				c_commodity = scanner.remainder();
+				if ([[UNIVERSE commodities] cxx_goodDefined:c_commodity.value_or("")])
+				{
+					[self cxx_setCommodityForPod:c_commodity andAmount:c_amount];
+				}
+				else
+				{
+					c_commodity = [[UNIVERSE commodities] cxx_goodNamed:c_commodity.value_or("")];
+					if ([[UNIVERSE commodities] cxx_goodDefined:c_commodity.value_or("")])
+					{
+						[self cxx_setCommodityForPod:c_commodity andAmount:c_amount];
+					}
+				}
+			}
+			else
+			{
+				c_amount = 1;
+				c_commodity = StringForKey(shipDict, "cargo_carried");
+				if ([[UNIVERSE commodities] cxx_goodDefined:c_commodity.value_or("")])
+				{
+					[self cxx_setCommodityForPod:c_commodity andAmount:c_amount];
+				}
+				else
+				{
+					c_commodity = [[UNIVERSE commodities] cxx_goodNamed:c_commodity.value_or("")];
+					if ([[UNIVERSE commodities] cxx_goodDefined:c_commodity.value_or("")])
+					{
+						[self cxx_setCommodityForPod:c_commodity andAmount:c_amount];
+					}
+				}
+			}
+		}
+	}
+
+	cargoString = StringForKey(shipDict, "cargo_type");
+	if (cargoString.has_value())
+	{
+		cargo.clear();
+
+		[self setUpCargoType:*cargoString];
+	}
+	else if (scanClass != CLASS_CARGO)
+	{
+		cargo.clear();
+		// if not CLASS_CARGO, and no cargo type set, default to CARGO_NOT_CARGO
+		cargo_type = CARGO_NOT_CARGO;
+	}
+	
+	hasScoopMessage = shipDict.get<bool>("has_scoop_message", YES);
+
+	
+	[roleSet release];
+	roleSet = [[[::OORoleSet roleSetWithString:shipDict.get<std::string>("roles")] roleSetWithRemovedRole:"player"] retain];
+	primaryRole.reset();
+
+	[self setOwner:self];
+	[self setHulk:shipDict.get<bool>("is_hulk")];
+	
+	// these are the colors used for the "lollipop" of the ship. Any of the two (or both, for flash effect) can be defined. nil means use default from shipData.
+	[self setScannerDisplayColor1:nil];
+	[self setScannerDisplayColor2:nil];
+	// and the same for the "hostile" colours
+	[self setScannerDisplayColorHostile1:nil];
+	[self setScannerDisplayColorHostile2:nil];
+
+
+	// Populate the missiles here. Must come after scanClass.
+	_missileRole = StringForKey(shipDict, "missile_role");
+	unsigned	i, j;
+	for (i = 0, j = 0; i < missiles; i++)
+	{
+		missile_list[i] = [self selectMissile];
+		// could loop forever (if missile_role is badly defined, selectMissile might return nil in some cases) . Try 3 times, and if no luck, skip
+		if (missile_list[i] == nil && j < 3)
+		{
+			j++;
+			i--;
+		}
+		else
+		{
+			j = 0;
+			if (missile_list[i] == nil)
+			{
+				missiles--;
+			}
+		}
+	}
+
+	// accuracy. Must come after scanClass, because we are using scanClass to determine if this is a missile.
+
+// missiles: range 0 to +10
+// ships: range -5 to +10, but randomly only -5 <= accuracy < +5
+// enables "better" AIs at +5 and above
+// police and military always have positive accuracy
+
+	accuracy = shipDict.get<float>("accuracy", -100.0f);	// Out-of-range default
+	if (accuracy < -5.0f || accuracy > 10.0f)
+	{
+		accuracy = (randf() * 10.0)-5.0;
+
+		if (accuracy < 0.0f && (scanClass == CLASS_MILITARY || scanClass == CLASS_POLICE))
+		{ // police and military pilots have a better average skill. 
+			accuracy = -accuracy;
+		}
+	}
+	if (scanClass == CLASS_MISSILE)
+	{ // missile accuracy range is 0 to 10
+		accuracy = OOClamp_0_max_f(accuracy, 10.0f);
+	}
+	[self setAccuracy:accuracy]; // set derived variables
+	_missed_shots = 0;
+
+	//  escorts
+	_maxEscortCount = MIN(shipDict.get<unsigned char>("escorts", 0), (uint8_t)MAX_ESCORTS);
+	_pendingEscortCount = _maxEscortCount;
+	if (_pendingEscortCount == 0 && ArrayForKey(shipDict, "escort_roles") != nullptr)
+	{
+		// mostly ignored by setUpMixedEscorts, but needs to be high
+		// enough that it doesn't end up at zero (e.g. by governmental
+		// reductions in [Universe addShipAt]
+		_pendingEscortCount = MAX_ESCORTS;
+	}
+
+	
+	// beacons
+	[self setBeaconCode:StringForKey(shipDict, "beacon")];
+	std::optional<std::string> label = StringForKey(shipDict, "beacon_label");
+	if (!label.has_value())  label = StringForKey(shipDict, "beacon");	// the fallback
+	[self setBeaconLabel:label];
+
+	
+	// contact tracking entities
+	[self setTrackCloseContacts:shipDict.get<bool>("track_contacts", NO)];
+	
+	// ship skin insulation factor (1.0 is normal)
+	[self setHeatInsulation:shipDict.get<float>("heat_insulation", [self hasHeatShield] ? 2.0 : 1.0)];
+	
+	// unpiloted (like missiles asteroids etc.)
+	_explicitlyUnpiloted = (unsigned char)FuzzyBooleanForKey(shipDict, "unpiloted");
+	if (_explicitlyUnpiloted)
+	{
+		[self cxx_setCrew:std::nullopt];
+	}
+	else 
+	{
+		// crew and passengers
+		// the one entry of UNIVERSE's characters (a nil key found nothing)
+		const std::optional<std::string> pilotKey = StringForKey(shipDict, "pilot");
+		oo::PList cdict;
+		if (pilotKey.has_value())
+		{
+			const oo::PList characters = [UNIVERSE cxx_characters];
+			if (const oo::PList *entry = characters.find(*pilotKey))  cdict = *entry;
+		}
+		if (!cdict.isNull())
+		{
+			::OOCharacter	*pilot = [::OOCharacter characterWithDictionary:cdict];
+			[self cxx_setCrew:std::vector<oo::ObjCRef<::OOCharacter *>>{ oo::ObjCRef<::OOCharacter *>(pilot) }];
+		}
+	}
+	
+	[self cxx_setShipScript:StringForKey(shipDict, "script")];
+
+	home_system = [UNIVERSE currentSystemID];
+	destination_system = [UNIVERSE currentSystemID];
+
+	reactionTime = shipDict.get<float>("reaction_time", COMBAT_AI_STANDARD_REACTION_TIME);
+	
+	return YES;
+	
+	OOJS_PROFILE_EXIT
+}
+
+
+void ShipEntity::setSubIdx(NSUInteger value)
+{
+	_subIdx = value;
+}
+
+
+NSUInteger ShipEntity::subIdx()
+{
+	return _subIdx;
+}
+
+
+NSUInteger ShipEntity::maxShipSubEntities()
+{
+	return _maxShipSubIdx;
+}
+
+
+std::optional<std::string> ShipEntity::serializeShipSubEntities()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	std::string			result;
+	NSUInteger			diff, i = 0;
+	
+	for (const auto &sub : [self cxx_shipSubEntities])
+	{
+		::ShipEntity *se = sub.get();
+		diff = [se subIdx] - i;
+		i += diff + 1;
+		result += RepeatString("0", diff);
+		result += "1";
+	}
+	// add trailing zeroes
+	result += RepeatString("0", [self maxShipSubEntities] - i);
+	return result;
+}
+
+
+void ShipEntity::deserializeShipSubEntitiesFrom(const std::string &string)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	const std::vector<oo::ObjCRef<::ShipEntity *>> subEnts = [self cxx_shipSubEntities];
+	const std::u16string	units = oo::utf8ToUtf16(string);	// indexed in UTF-16 units, as -substringWithRange: was
+	NSInteger			i,idx, start = (NSInteger)subEnts.size() - 1;
+	NSInteger			strMaxIdx = (NSInteger)units.size() - 1;
+		
+	::ShipEntity			*se = nil;
+	
+	for (i = start; i >= 0; i--)
+	{
+		se = subEnts[(std::size_t)i].get();
+		idx = [se subIdx]; // should be identical to i, but better safe than sorry...
+		if (idx <= strMaxIdx && units[(std::size_t)idx] == u'0')
+		{
+			[se setSuppressExplosion:NO];
+			[se setEnergy:1];
+			[se takeEnergyDamage:500000000.0 from:nil becauseOf:nil weaponIdentifier:std::string()];
+		}
+	}
+}
+
+
+bool ShipEntity::setUpSubEntities()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	OOJS_PROFILE_ENTER
+	
+	unsigned int	i;
+	const oo::PList	shipDict = [self cxx_shipInfoDictionary];
+	const oo::PList	*plumes = ArrayForKey(shipDict, "exhaust");
+
+	_profileRadius = collision_radius;
+	_maxShipSubIdx = 0;
+
+	for (i = 0; plumes != nullptr && i < plumes->count(); i++)
+	{
+		// at<std::string>: a string, or a number's text, else "" (no tokens), as the string reader gave.
+		const std::vector<std::string> definition = oo::str::tokens(plumes->at<std::string>(i));
+		::OOExhaustPlumeEntity *exhaust = [::OOExhaustPlumeEntity exhaustForShip:self withDefinition:definition andScale:_scaleFactor];
+		[self addSubEntity:exhaust];
+	}
+
+	const oo::PList	*subs = ArrayForKey(shipDict, "subentities");
+
+	totalBoundingBox = boundingBox;
+
+	for (i = 0; subs != nullptr && i < subs->count(); i++)
+	{
+		const oo::PList *subentDict = subs->at(i);
+		[self setUpOneSubentity:(subentDict != nullptr && subentDict->isDict()) ? *subentDict : oo::PList()];
+	}
+	
+	no_draw_distance = _profileRadius * _profileRadius * NO_DRAW_DISTANCE_FACTOR * NO_DRAW_DISTANCE_FACTOR * 2.0;
+	
+	return YES;
+	
+	OOJS_PROFILE_EXIT
+}
+
+
+GLfloat ShipEntity::frustumRadius()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	OOScalar exhaust_length = 0;
+	for (const auto &exhaust : [self cxx_exhausts])
+	{
+		::OOExhaustPlumeEntity *exEnt = exhaust.get();
+		if ([exEnt findCollisionRadius] > exhaust_length)
+		{
+			exhaust_length = [exEnt findCollisionRadius];
+		}
+	}
+	return _profileRadius + exhaust_length;
+}
+
+
+bool ShipEntity::setUpOneSubentity(const oo::PList &subentDict)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	OOJS_PROFILE_ENTER
+
+	const std::optional<std::string> type = StringForKey(subentDict, "type");
+	if (type == "flasher")
+	{
+		return [self setUpOneFlasher:subentDict];
+	}
+	else
+	{
+		return [self cxx_setUpOneStandardSubentity:subentDict asTurret:type == "ball_turret"];
+	}
+
+	OOJS_PROFILE_EXIT
+}
+
+
+bool ShipEntity::setUpOneFlasher(const oo::PList &subentDict)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::OOFlasherEntity *flasher = [::OOFlasherEntity flasherWithDictionary:subentDict];
+	[flasher setPosition:HPvector_multiply_scalar(HPVectorForKey(subentDict, "position"),_scaleFactor)];
+	[flasher rescaleBy:_scaleFactor];
+	[self addSubEntity:flasher];
+	return YES;
+}
+
+
+}	// namespace cxx
+
+
+// Slice 4 of docs/phases/3-slices/ShipEntity.md (bead oo-ln2m1): standard subentities and cargo
+// pods; descriptions, mesh, vectors, misjump, subentity lists, AI scripts. The facade forwards each
+// selector (ShipEntity+ObjCBridge.mm); sends to self stay sends, so an Objective-C subclass's
+// override still runs (ADR-0056 amendment oo-mvzmb).
+namespace cxx {
+
+bool ShipEntity::setUpOneStandardSubentity(const oo::PList &subentDict, bool asTurret)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::ShipEntity			*subentity = nil;
+	HPVector				subPosition;
+	Quaternion			subOrientation;
+
+	const std::optional<std::string> subentKey = StringForKey(subentDict, "subentity_key");
+	if (!subentKey.has_value()) {
+		OO_LOG("setup.ship.badEntry.subentities", "Failed to set up entity - no subentKey in {}", oo::DescriptionOf(subentDict));
+		return NO;
+	}
+
+	if (!asTurret && [self isStation] && subentDict.get<bool>("is_dock"))
+	{
+		subentity = [UNIVERSE cxx_newDockWithName:*subentKey andScaleFactor:_scaleFactor];
+	}
+	else
+	{
+		subentity = [UNIVERSE cxx_newSubentityWithName:*subentKey andScaleFactor:_scaleFactor];
+	}
+	if (subentity == nil) {
+		OO_LOG("setup.ship.badEntry.subentities", "Failed to set up entity {}", *subentKey);
+		return NO;
+	}
+
+	subPosition = HPvector_multiply_scalar(HPVectorForKey(subentDict, "position"),_scaleFactor);
+	subOrientation = QuaternionForKey(subentDict, "orientation");
+	
+	[subentity setPosition:subPosition];
+	[subentity setOrientation:subOrientation];
+	[subentity setReference:vector_forward_from_quaternion(subOrientation)];
+	// subentities inherit parent personality
+	[subentity setEntityPersonalityInt:[self entityPersonalityInt]];
+
+	if (asTurret)
+	{
+		[subentity setBehaviour:BEHAVIOUR_TRACK_AS_TURRET];
+		[subentity setWeaponRechargeRate:subentDict.get<float>("fire_rate", TURRET_SHOT_FREQUENCY)];
+		[subentity setWeaponEnergy:subentDict.get<float>("weapon_energy", TURRET_TYPICAL_ENERGY)];
+		[subentity setWeaponRange:subentDict.get<float>("weapon_range", TURRET_SHOT_RANGE)];
+		[subentity setStatus: STATUS_ACTIVE];
+	}
+	else
+	{
+		[subentity setStatus:STATUS_INACTIVE];
+	}
+	
+	const oo::PList *scriptInfoOverride = subentDict.find("script_info");
+	[subentity overrideScriptInfo:(scriptInfoOverride != nullptr && scriptInfoOverride->isDict()) ? *scriptInfoOverride : oo::PList()];
+	
+	[self addSubEntity:subentity];
+	[subentity setSubIdx:_maxShipSubIdx];
+	_maxShipSubIdx++;
+	
+	// update subentities
+	BoundingBox sebb = [subentity findSubentityBoundingBox];
+	bounding_box_add_vector(&totalBoundingBox, sebb.max);
+	bounding_box_add_vector(&totalBoundingBox, sebb.min);
+
+	if (!asTurret && [self isStation] && subentDict.get<bool>("is_dock"))
+	{
+		BOOL allow_docking = subentDict.get<bool>("allow_docking", true);
+		BOOL ddc = subentDict.get<bool>("disallowed_docking_collides", false);
+		BOOL allow_launching = subentDict.get<bool>("allow_launching", true);
+		// do not include this key in OOShipRegistry; should never be set by shipdata
+		BOOL virtual_dock = subentDict.get<bool>("_is_virtual_dock", false);
+		if (virtual_dock)
+		{
+			[(DockEntity *)subentity setVirtual];
+		}
+		
+		[(DockEntity *)subentity setDimensionsAndCorridor:allow_docking:ddc:allow_launching];
+		[subentity cxx_setDisplayName:subentDict.get<std::string>("dock_label", "the docking bay")];
+	}
+
+	[subentity release];
+	
+	return YES;
+}
+
+
+bool ShipEntity::isTemplateCargoPod()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self cxx_primaryRole] == "oolite-template-cargopod";
+}
+
+
+void ShipEntity::setUpCargoType(const std::string &cargoString)
+{
+	cargo_type = cxx_StringToCargoType(cargoString);
+	
+	switch (cargo_type)
+	{
+		case CARGO_SLAVES:
+			commodity_amount = 1;
+			commodity_type = "slaves";
+			cargo_type = CARGO_RANDOM; // not realy random, but it tells that cargo is selected.
+			break;
+			
+		case CARGO_ALLOY:
+			commodity_amount = 1;
+			commodity_type = "alloys";
+			cargo_type = CARGO_RANDOM;
+			break;
+			
+		case CARGO_MINERALS:
+			commodity_amount = 1;
+			commodity_type = "minerals";
+			cargo_type = CARGO_RANDOM;
+			break;
+			
+		case CARGO_THARGOID:
+			commodity_amount = 1;
+			commodity_type = "alien_items";
+			cargo_type = CARGO_RANDOM;
+			break;
+			
+		case CARGO_SCRIPTED_ITEM:
+			commodity_amount = 1; // value > 0 is needed to be recognised as cargo by scripts;
+			commodity_type = std::nullopt; // will be defined elsewhere when needed.
+			break;
+			
+		case CARGO_RANDOM:
+			// Could already be set by the cargo_carried key. If not, ensure at least one.
+			if (commodity_amount == 0) commodity_amount = 1;
+			break;
+
+		default:
+			break;
+	}
+}
+
+
+void ShipEntity::removeScript()
+{
+	[script autorelease];
+	script = nil;
+}
+
+
+void ShipEntity::clearSubEntities()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// Ensure backlinks are broken (last to first, as -makeObjectsPerformSelector:withObject: went)
+	for (auto sub = subEntities.rbegin(); sub != subEntities.rend(); ++sub)  [sub->get() setOwner:nil];
+	subEntities.clear();
+	
+	// reset size & mass!
+	collision_radius = [self findCollisionRadius];
+	_profileRadius = collision_radius;
+	float density = shipinfoDictionary.get<float>("density", 1.0f);
+	if (octree)  mass = (GLfloat)(density * 20.0f * [octree volume]);
+}
+
+
+Quaternion ShipEntity::subEntityRotationalVelocity()
+{
+	return subentityRotationalVelocity;
+}
+
+
+void ShipEntity::setSubEntityRotationalVelocity(Quaternion rv)
+{
+	subentityRotationalVelocity = rv;
+}
+
+
+std::optional<std::string> ShipEntity::shortDescriptionComponents()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return oo::str::format("\"%s\"", [self cxx_name].value_or("(null)").c_str());
+}
+
+
+GLfloat ShipEntity::getSunGlareFilter()
+{
+	return sunGlareFilter;
+}
+
+
+void ShipEntity::setSunGlareFilter(GLfloat newValue)
+{
+	sunGlareFilter = OOClamp_0_1_f(newValue);
+}
+
+
+GLfloat ShipEntity::getAccuracy()
+{
+	return accuracy;
+}
+
+
+void ShipEntity::setAccuracy(GLfloat new_accuracy)
+{
+	if (new_accuracy < 0.0f && scanClass == CLASS_MISSILE)
+	{
+		new_accuracy = 0.0;
+	}
+	else if (new_accuracy < -5.0f)
+	{
+		new_accuracy = -5.0;
+	}
+	else if (new_accuracy > 10.0f)
+	{
+		new_accuracy = 10.0;
+	}
+	accuracy = new_accuracy;
+	pitch_tolerance = 0.01 * (85.0f + accuracy);
+// especially against small targets, less good pilots will waste some shots
+	aim_tolerance = 240.0 - (18.0f * accuracy);
+
+	if (accuracy >= COMBAT_AI_ISNT_AWFUL && missile_load_time < 0.1)
+	{
+		missile_load_time = 2.0; // smart enough not to waste all missiles on 1 ECM!
+	}
+}
+
+
+::OOMesh *ShipEntity::mesh()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return (::OOMesh *)[self drawable];
+}
+
+
+void ShipEntity::setMesh(::OOMesh *mesh)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (mesh != [self mesh])
+	{
+		[self setDrawable:mesh];
+		[octree autorelease];
+		octree = [[mesh octree] retain];
+	}
+}
+
+
+BoundingBox ShipEntity::getTotalBoundingBox()
+{
+	return totalBoundingBox;
+}
+
+
+Vector ShipEntity::forwardVector()
+{
+	return v_forward;
+}
+
+
+Vector ShipEntity::upVector()
+{
+	return v_up;
+}
+
+
+Vector ShipEntity::rightVector()
+{
+	return v_right;
+}
+
+
+bool ShipEntity::scriptedMisjump()
+{
+	return scripted_misjump;
+}
+
+
+void ShipEntity::setScriptedMisjump(bool newValue)
+{
+	scripted_misjump = !!newValue;
+}
+
+
+GLfloat ShipEntity::scriptedMisjumpRange()
+{
+	return _scriptedMisjumpRange;
+}
+
+
+void ShipEntity::setScriptedMisjumpRange(GLfloat newValue)
+{
+	_scriptedMisjumpRange = newValue;
+}
+
+
+std::vector<oo::ObjCRef<::Entity *>> ShipEntity::getSubEntities()
+{
+	return subEntities;
+}
+
+
+NSUInteger ShipEntity::subEntityCount()
+{
+	return subEntities.size();
+}
+
+
+bool ShipEntity::hasSubEntity(::Entity *sub)
+{
+	// Identity: a subentity's -isEqual: is NSObject's.
+	return std::find(subEntities.begin(), subEntities.end(), sub) != subEntities.end();
+}
+
+
+std::vector<oo::ObjCRef<::Entity *>> ShipEntity::subEntityEnumerator()
+{
+	return subEntities;
+}
+
+
+std::vector<oo::ObjCRef<::ShipEntity *>> ShipEntity::shipSubEntities()
+{
+	std::vector<oo::ObjCRef<::ShipEntity *>> result;
+	for (const auto &sub : subEntities)
+	{
+		if ([sub.get() isShip])  result.emplace_back((::ShipEntity *)sub.get());
+	}
+	return result;
+}
+
+
+std::vector<oo::ObjCRef<::OOFlasherEntity *>> ShipEntity::flasherEnumerator()
+{
+	std::vector<oo::ObjCRef<::OOFlasherEntity *>> flashers;
+	for (const auto &sub : subEntities)
+	{
+		if ([sub.get() isFlasher])  flashers.emplace_back((::OOFlasherEntity *)sub.get());
+	}
+	return flashers;
+}
+
+
+std::vector<oo::ObjCRef<::OOExhaustPlumeEntity *>> ShipEntity::exhausts()
+{
+	std::vector<oo::ObjCRef<::OOExhaustPlumeEntity *>> result;
+	for (const auto &sub : subEntities)
+	{
+		if ([sub.get() isExhaust])  result.emplace_back((::OOExhaustPlumeEntity *)sub.get());
+	}
+	return result;
+}
+
+
+::ShipEntity *ShipEntity::subEntityTakingDamage()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::ShipEntity *result = [_subEntityTakingDamage weakRefUnderlyingObject];
+	
+#ifndef NDEBUG
+	// Sanity check - there have been problems here, see fireLaserShotInDirection:
+	// -parentEntity will take care of reporting insanity.
+	if ([result parentEntity] != self)  result = nil;
+#endif
+	
+	// Clear the weakref if the subentity is dead.
+	if (result == nil)  [self setSubEntityTakingDamage:nil];
+	
+	return result;
+}
+
+
+void ShipEntity::setSubEntityTakingDamage(::ShipEntity *sub)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+#ifndef NDEBUG
+	// Sanity checks: sub must be a ship subentity of self, or nil.
+	if (sub != nil)
+	{
+		if (![self hasSubEntity:sub])
+		{
+			OO_LOG("ship.subentity.sanityCheck.failed.details", "Attempt to set subentity taking damage of {} to {}, which is not a subentity.", oo::ShortDescriptionOf(self), oo::DescriptionOf(sub));
+			sub = nil;
+		}
+		else if (![sub isShip])
+		{
+			OO_LOG("ship.subentity.sanityCheck.failed", "Attempt to set subentity taking damage of {} to {}, which is not a ship.", oo::ShortDescriptionOf(self), oo::DescriptionOf(sub));
+			sub = nil;
+		}
+	}
+#endif
+	
+	[_subEntityTakingDamage release];
+	_subEntityTakingDamage = [sub weakRetain];
+}
+
+
+::OOScript *ShipEntity::shipScript()
+{
+	return script;
+}
+
+
+::OOScript *ShipEntity::shipAIScript()
+{
+	return aiScript;
+}
+
+
+OOTimeAbsolute ShipEntity::shipAIScriptWakeTime()
+{
+	return aiScriptWakeTime;
+}
+
+
+void ShipEntity::setAIScriptWakeTime(OOTimeAbsolute t)
+{
+	aiScriptWakeTime = t;
+}
+
+
+std::optional<std::string> ShipEntity::descriptionComponents() const
+{
+	::ShipEntity *self = oo::ToObjC(const_cast<ShipEntity *>(this));
+	if (![self isSubEntity])
+	{
+		// [super cxx_descriptionComponents]: the entity's own components.
+		return oo::str::format("\"%s\" %s", [self cxx_name].value_or("(null)").c_str(), OOEntityWithDrawable::descriptionComponents().value_or("(null)").c_str());
+	}
+	else
+	{
+		// ID, scanClass and status are of no interest for subentities.
+		const char *subtype = nullptr;
+		if ([self behaviour] == BEHAVIOUR_TRACK_AS_TURRET)  subtype = "(turret)";
+		else  subtype = "(subentity)";
+
+		return oo::str::format("\"%s\" position: %s %s", [self cxx_name].value_or("(null)").c_str(), cxx_HPVectorDescription([self position]).c_str(), subtype);
+	}
+}
+
+
+}	// namespace cxx
+
+
+// Slice 5 of docs/phases/3-slices/ShipEntity.md (bead oo-ddnn8): bounding boxes, octree hit tests,
+// universe add / remove, beacons, boulders, escort set-up. The facade forwards each selector
+// (ShipEntity+ObjCBridge.mm); sends to self stay sends, so an Objective-C subclass's override still
+// runs (ADR-0056 amendment oo-mvzmb).
+namespace cxx {
+
+BoundingBox ShipEntity::findBoundingBoxRelativeToPosition(HPVector opv, Vector _i, Vector _j, Vector _k)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// HPVect: check that this conversion doesn't lose needed precision
+	return [[self mesh] findBoundingBoxRelativeToPosition:HPVectorToVector(opv)
+													basis:_i :_j :_k
+										 selfPosition:HPVectorToVector(position)
+												selfBasis:v_right :v_up :v_forward];
+}
+
+
+::Octree *ShipEntity::getOctree()
+{
+	return octree;
+}
+
+
+float ShipEntity::volume()
+{
+	return [octree volume];
+}
+
+
+GLfloat ShipEntity::doesHitLine(HPVector v0, HPVector v1)
+{
+	Vector u0 = HPVectorToVector(HPvector_between(position, v0));	// relative to origin of model / octree
+	Vector u1 = HPVectorToVector(HPvector_between(position, v1));
+	Vector w0 = make_vector(dot_product(u0, v_right), dot_product(u0, v_up), dot_product(u0, v_forward));	// in ijk vectors
+	Vector w1 = make_vector(dot_product(u1, v_right), dot_product(u1, v_up), dot_product(u1, v_forward));
+	return [octree isHitByLine:w0 :w1];
+}
+
+
+GLfloat ShipEntity::doesHitLine(HPVector v0, HPVector v1, ::ShipEntity **hitEntity)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (hitEntity)
+		hitEntity[0] = (::ShipEntity*)nil;
+	Vector u0 = HPVectorToVector(HPvector_between(position, v0));	// relative to origin of model / octree
+	Vector u1 = HPVectorToVector(HPvector_between(position, v1));
+	Vector w0 = make_vector(dot_product(u0, v_right), dot_product(u0, v_up), dot_product(u0, v_forward));	// in ijk vectors
+	Vector w1 = make_vector(dot_product(u1, v_right), dot_product(u1, v_up), dot_product(u1, v_forward));
+	GLfloat hit_distance = [octree isHitByLine:w0 :w1];
+	if (hit_distance)
+	{
+		if (hitEntity)
+			hitEntity[0] = self;
+	}
+	
+	for (const auto &sub : [self cxx_shipSubEntities])
+	{
+		::ShipEntity *se = sub.get();
+		HPVector p0 = [se absolutePositionForSubentity];
+		Triangle ijk = [se absoluteIJKForSubentity];
+		u0 = HPVectorToVector(HPvector_between(p0, v0));
+		u1 = HPVectorToVector(HPvector_between(p0, v1));
+		w0 = resolveVectorInIJK(u0, ijk);
+		w1 = resolveVectorInIJK(u1, ijk);
+		
+		GLfloat hitSub = [se->_cxxShip->octree isHitByLine:w0 :w1];
+		if (hitSub && (hit_distance == 0 || hit_distance > hitSub))
+		{	
+			hit_distance = hitSub;
+			if (hitEntity)
+			{
+				*hitEntity = se;
+			}
+		}
+	}
+	
+	return hit_distance;
+}
+
+
+GLfloat ShipEntity::doesHitLine(HPVector v0, HPVector v1, HPVector o, Vector i, Vector j, Vector k)
+{
+	Vector u0 = HPVectorToVector(HPvector_between(o, v0));	// relative to origin of model / octree
+	Vector u1 = HPVectorToVector(HPvector_between(o, v1));
+	Vector w0 = make_vector(dot_product(u0, i), dot_product(u0, j), dot_product(u0, k));	// in ijk vectors
+	Vector w1 = make_vector(dot_product(u1, j), dot_product(u1, j), dot_product(u1, k));
+	return [octree isHitByLine:w0 :w1];
+}
+
+
+void ShipEntity::wasAddedToUniverse()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	OOEntityWithDrawable::wasAddedToUniverse();	// [super wasAddedToUniverse]
+	
+	// if we have a universal id then we can proceed to set up any
+	// stuff that happens when we get added to the UNIVERSE
+	if (universalID != NO_TARGET)
+	{
+		// set up escorts
+		if (([self status] == STATUS_IN_FLIGHT || [self status] == STATUS_LAUNCHING) && _pendingEscortCount != 0)	// just popped into existence
+		{
+			[self setUpEscorts];
+		}
+		else
+		{
+			/*	Earlier there was a silly log message here because I thought
+				this would never happen, but wasn't entirely sure. Turns out
+				it did!
+				-- Ahruman 2009-09-13
+			*/
+			_pendingEscortCount = 0;
+		}
+	}
+
+	//	Tell subentities, too (last to first, as -makeObjectsPerformSelector: went)
+	const std::vector<oo::ObjCRef<::Entity *>> subs = subEntities;
+	for (auto sub = subs.rbegin(); sub != subs.rend(); ++sub)  [sub->get() wasAddedToUniverse];
+	
+	[self resetExhaustPlumes];
+}
+
+
+void ShipEntity::wasRemovedFromUniverse()
+{
+	// last to first, as -makeObjectsPerformSelector: went
+	const std::vector<oo::ObjCRef<::Entity *>> subs = subEntities;
+	for (auto sub = subs.rbegin(); sub != subs.rend(); ++sub)  [sub->get() wasRemovedFromUniverse];
+}
+
+
+HPVector ShipEntity::absoluteTractorPosition()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return HPvector_add(position, vectorToHPVector(quaternion_rotate_vector([self normalOrientation], tractor_position)));
+}
+
+
+std::optional<std::string> ShipEntity::beaconCode()
+{
+	return _beaconCode;
+}
+
+
+// bcode: optional string; empty is treated as none. The Foundation version compared the new string with the
+// old by pointer, so any new string (every string this class hands out is new) replaced it.
+void ShipEntity::setBeaconCode(const std::optional<std::string> &bcode)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	std::optional<std::string> code = bcode;
+	if (code.has_value() && code->empty())  code.reset();
+
+	if (code.has_value() || _beaconCode.has_value())
+	{
+		_beaconCode = code;
+
+		DESTROY(_beaconDrawable);
+	}
+	// if not blanking code and label is currently blank, default label to code
+	if (code.has_value() && (!_beaconLabel.has_value() || _beaconLabel->empty()))
+	{
+		[self setBeaconLabel:code];
+	}
+
+}
+
+
+std::optional<std::string> ShipEntity::beaconLabel()
+{
+	return _beaconLabel;
+}
+
+
+void ShipEntity::setBeaconLabel(const std::optional<std::string> &blabel)
+{
+	std::optional<std::string> label = blabel;
+	if (label.has_value() && label->empty())  label.reset();
+
+	if (label.has_value() || _beaconLabel.has_value())
+	{
+		_beaconLabel = label.has_value() ? cxx_OOExpand(*label) : std::nullopt;
+	}
+}
+
+
+bool ShipEntity::isVisible()
+{
+	return cam_zero_distance <= no_draw_distance;
+}
+
+
+bool ShipEntity::isBeacon()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self beaconCode].has_value();
+}
+
+
+id <OOHUDBeaconIcon> ShipEntity::beaconDrawable()
+{
+	if (_beaconDrawable == nil)
+	{
+		const std::u16string	beaconCode = oo::utf8ToUtf16(_beaconCode.value_or(std::string()));
+		NSUInteger	length = beaconCode.size();	// -length: UTF-16 units
+
+		if (length > 1)
+		{
+			const oo::PList *iconEntry = [UNIVERSE cxx_descriptions]->find(*_beaconCode);
+			const oo::PList iconData = (iconEntry != nullptr) ? *iconEntry : oo::PList();
+			if (iconData.isArray())  _beaconDrawable = [[::OOPolygonSprite alloc] initWithDataArray:iconData outlineWidth:0.5 name:*_beaconCode];
+		}
+
+		if (_beaconDrawable == nil)
+		{
+			if (length > 0)  _beaconDrawable = [[::OOHUDBeaconCodeIcon alloc] initWithText:oo::utf16ToUtf8(beaconCode.substr(0, 1))];	// -substringToIndex:1
+			else  _beaconDrawable = [[::OOHUDBeaconCodeIcon alloc] initWithText:std::string()];
+		}
+}
+	
+	return _beaconDrawable;
+}
+
+
+::Entity *ShipEntity::prevBeacon()
+{
+	return [_prevBeacon weakRefUnderlyingObject];
+}
+
+
+::Entity *ShipEntity::nextBeacon()
+{
+	return [_nextBeacon weakRefUnderlyingObject];
+}
+
+
+void ShipEntity::setPrevBeacon(::Entity *beaconShip)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (beaconShip != [self prevBeacon])
+	{
+		[_prevBeacon release];
+		_prevBeacon = [beaconShip weakRetain];
+	}
+}
+
+
+void ShipEntity::setNextBeacon(::Entity *beaconShip)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (beaconShip != [self nextBeacon])
+	{
+		[_nextBeacon release];
+		_nextBeacon = [beaconShip weakRetain];
+	}
+}
+
+
+void ShipEntity::setIsBoulder(bool flag)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (flag)  [self addRole:std::string(kBoulderRole)];
+	else  [self cxx_removeRole:std::string(kBoulderRole)];
+}
+
+
+bool ShipEntity::isBoulder()
+{
+	return [roleSet hasRole:std::string(kBoulderRole)];
+}
+
+
+bool ShipEntity::isMinable()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if ([self hasRole:"asteroid"] || [self isBoulder])
+	{
+		if (!noRocks)
+		{
+			return YES;
+		}
+	}
+	return NO;
+}
+
+
+bool ShipEntity::countsAsKill()
+{
+	return shipinfoDictionary.get<bool>("counts_as_kill", true);
+}
+
+
+void ShipEntity::setUpEscorts()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// Ensure that we do not try to create escorts if we are an escort ship ourselves.
+	// This could lead to circular reference memory overflows (e.g. "boa-mk2" trying to create 4 "boa-mk2"
+	// escorts or the case of two ships specifying eachother as escorts) - Nikos 20090510
+	if ([self isEscort])
+	{
+		OO_LOG_WARN("ship.setUp.escortShipCircularReference", 
+				"Ship {} requested escorts, when it is an escort ship itself. Avoiding possible circular reference overflow by ignoring escort setup.", oo::DescriptionOf(self));
+		return;
+	}
+
+	const oo::PList		&info = shipinfoDictionary;
+	if (info.find("escort_roles") != nullptr)
+	{
+		[self setUpMixedEscorts];
+		return;
+	}
+
+	std::string						defaultRole = "escort";
+	std::string						escortRole;
+	std::optional<std::string>		escortShipKey;
+	
+	if (_pendingEscortCount == 0)  return;
+	
+	if (_maxEscortCount < _pendingEscortCount)
+	{
+		if ([self cxx_hasPrimaryRole:"police"] || [self cxx_hasPrimaryRole:"hunter"])
+		{
+			_maxEscortCount = MAX_ESCORTS; // police and hunters get up to MAX_ESCORTS, overriding the 'escorts' key.
+			[self updateEscortFormation];
+		}
+		else
+		{
+			_pendingEscortCount = _maxEscortCount;	// other ships can only get what's defined inside their 'escorts' key.
+		}
+	}
+	
+	if ([self isPolice])  defaultRole = "wingman";
+
+	const std::optional<std::string> escortRoleSetting = StringForKey(info, "escort_role");
+	escortRole = escortRoleSetting.has_value() ? *escortRoleSetting : info.get<std::string>("escort-role", defaultRole);
+	if (escortRole != defaultRole)
+	{
+		if (![[UNIVERSE cxx_newShipWithRole:escortRole] autorelease])
+		{
+			escortRole = defaultRole;
+		}
+	}
+
+	escortShipKey = StringForKey(info, "escort_ship");
+	if (!escortShipKey.has_value())
+		escortShipKey = StringForKey(info, "escort-ship");
+
+	if (escortShipKey.has_value())
+	{
+		if (![[UNIVERSE cxx_newShipWithName:*escortShipKey] autorelease])
+		{
+			escortShipKey = std::nullopt;
+		}
+		else
+		{
+			escortRole = oo::str::format("[%s]", escortShipKey->c_str());
+		}
+	}
+
+	::OOShipGroup *escortGroup = [self escortGroup];
+	if ([self group] == nil)
+	{
+		[self setGroup:escortGroup]; // should probably become a copy of the escortGroup post NMSR.
+	}
+	[escortGroup setLeader:self];
+	
+	[self refreshEscortPositions];
+	
+	uint8_t currentEscortCount = [escortGroup count] - 1;	// always at least 0.
+	
+	while (_pendingEscortCount > 0 && ([self isThargoid] || currentEscortCount < _maxEscortCount))
+	{
+		 // The following line adds escort 1 in position 1, etc... up to MAX_ESCORTS.
+		HPVector ex_pos = [self coordinatesForEscortPosition:currentEscortCount];
+		
+		::ShipEntity *escorter = nil;
+		
+		escorter = [UNIVERSE cxx_newShipWithRole:escortRole];	// retained
+
+		if (escorter == nil)  break;
+		[self setUpOneEscort:escorter inGroup:escortGroup withRole:escortRole atPosition:ex_pos andCount:currentEscortCount];
+
+		[escorter release];
+
+		_pendingEscortCount--;
+		currentEscortCount = [escortGroup count] - 1;
+	}
+	// done assigning escorts
+	_pendingEscortCount = 0;
+}
+
+
+void ShipEntity::setUpMixedEscorts()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	const oo::PList &info = shipinfoDictionary;
+	const oo::PList *escortRoles = ArrayForKey(info, "escort_roles");
+	if (escortRoles == nullptr)
+	{
+		OO_LOG_WARN("eship.setUp.escortShipRoles",
+				  "Ship {} has bad escort_roles definition.", oo::DescriptionOf(self));
+		return;
+	}
+	OOGovernmentID		government;
+
+	const oo::PList systeminfo = [UNIVERSE cxx_currentSystemData];
+ 	government = systeminfo.get<unsigned char>(std::string(KEY_GOVERNMENT));
+
+	::OOShipGroup *escortGroup = [self escortGroup];
+	if ([self group] == nil)
+	{
+		[self setGroup:escortGroup]; // should probably become a copy of the escortGroup post NMSR.
+	}
+	[escortGroup setLeader:self];
+	_maxEscortCount = MAX_ESCORTS;
+	[self refreshEscortPositions];
+	
+	uint8_t currentEscortCount = [escortGroup count] - 1;	// always at least 0
+	
+	_maxEscortCount = 0;
+	int8_t i = 0;
+	for (const oo::PList &escortDefinition : *escortRoles->getIf<oo::PList::Array>())
+	{
+		if (currentEscortCount >= MAX_ESCORTS)
+		{
+			break;
+		}
+		// int rather than uint because, at least for min, there is a
+		// use to giving a negative value
+		int8_t min = escortDefinition.get<int>("min", 0);
+		int8_t max = escortDefinition.get<int>("max", 2);
+		const std::string escortRole = escortDefinition.get<std::string>("role", "escort");
+		int8_t desired = max;
+		if (min < desired)
+		{
+			for (i = min ; i < max ; i++)
+			{
+				if (Ranrot()%11 < government+2)
+				{
+					desired--;
+				}
+			}
+		}
+		for (i = 0; i < desired; i++)
+		{
+			if (currentEscortCount >= MAX_ESCORTS)
+			{
+				break;
+			}
+			if (!escortRole.empty())
+			{
+				HPVector ex_pos = [self coordinatesForEscortPosition:currentEscortCount];
+				::ShipEntity *escorter = [UNIVERSE cxx_newShipWithRole:escortRole];	// retained
+				if (escorter == nil)
+				{
+					break;
+				}
+				[self setUpOneEscort:escorter inGroup:escortGroup withRole:escortRole atPosition:ex_pos andCount:currentEscortCount];
+				[escorter release];
+			}
+			currentEscortCount++;
+			_maxEscortCount++;
+		}
+	}
+	// done assigning escorts
+	_pendingEscortCount = 0;
+}
+
+
+}	// namespace cxx
+
+
+// Slice 6 of docs/phases/3-slices/ShipEntity.md (bead oo-5z5wd): escort creation, ship data key,
+// weapon offsets, octree collision checks, subentity geometry, escape-pod launch. The facade
+// forwards each selector (ShipEntity+ObjCBridge.mm); sends to self stay sends, so an Objective-C
+// subclass's override still runs (ADR-0056 amendment oo-mvzmb).
+/*	Slice 6 (bead oo-5z5wd): the octree collision check, without messages: the ships' C++ parts
+	answer their positions, frames and -canCollide (a virtual member, so PlayerEntity's override
+	still runs), and the octrees' C++ objects test the hit.
+*/
+::ShipEntity *doOctreesCollide(::ShipEntity *prime, ::ShipEntity *other)
+{
+	// octree check
+	::Octree		*prime_octree = prime->_cxxShip->octree;
+	::Octree		*other_octree = other->_cxxShip->octree;
+	
+	HPVector		prime_position = oo::ToCxx(prime)->absolutePositionForSubentity();
+	Triangle	prime_ijk = oo::ToCxx(prime)->absoluteIJKForSubentity();
+	HPVector		other_position = oo::ToCxx(other)->absolutePositionForSubentity();
+	Triangle	other_ijk = oo::ToCxx(other)->absoluteIJKForSubentity();
+
+	Vector		relative_position_of_other = resolveVectorInIJK(HPVectorToVector(HPvector_between(prime_position, other_position)), prime_ijk);
+	Triangle	relative_ijk_of_other;
+	relative_ijk_of_other.v[0] = resolveVectorInIJK(other_ijk.v[0], prime_ijk);
+	relative_ijk_of_other.v[1] = resolveVectorInIJK(other_ijk.v[1], prime_ijk);
+	relative_ijk_of_other.v[2] = resolveVectorInIJK(other_ijk.v[2], prime_ijk);
+	
+	// check hull octree against other hull octree
+	// [nil isHitByOctree:...] answered NO.
+	if (prime_octree != nil && oo::ToCxx(prime_octree)->isHitByOctree(oo::ToCxx(other_octree),
+						 relative_position_of_other,
+							 relative_ijk_of_other))
+	{
+		return other;
+	}
+	
+	// check prime subentities against the other's hull
+	const std::vector<oo::ObjCRef<::Entity *>> &prime_subs = prime->_cxxShip->subEntities;
+	if (!prime_subs.empty())
+	{
+		NSUInteger i, n_subs = prime_subs.size();
+		for (i = 0; i < n_subs; i++)
+		{
+			::Entity* se = prime_subs[i].get();
+			if (oo::ToCxx(se)->getIsShip() && oo::ToCxx(se)->canCollide() && doOctreesCollide((::ShipEntity*)se, other))
+				return other;
+		}
+	}
+
+	// check prime hull against the other's subentities
+	const std::vector<oo::ObjCRef<::Entity *>> &other_subs = other->_cxxShip->subEntities;
+	if (!other_subs.empty())
+	{
+		NSUInteger i, n_subs = other_subs.size();
+		for (i = 0; i < n_subs; i++)
+		{
+			::Entity* se = other_subs[i].get();
+			if (oo::ToCxx(se)->getIsShip() && oo::ToCxx(se)->canCollide() && doOctreesCollide(prime, (::ShipEntity*)se))
+				return (::ShipEntity*)se;
+		}
+	}
+	
+	// check prime subenties against the other's subentities
+	if ((!prime_subs.empty())&&(!other_subs.empty()))
+	{
+		NSUInteger i, n_osubs = other_subs.size();
+		for (i = 0; i < n_osubs; i++)
+		{
+			::Entity* oe = other_subs[i].get();
+			if (oo::ToCxx(oe)->getIsShip() && oo::ToCxx(oe)->canCollide())
+			{
+				NSUInteger j, n_psubs = prime_subs.size();
+				for (j = 0; j <  n_psubs; j++)
+				{
+					::Entity* pe = prime_subs[j].get();
+					if (oo::ToCxx(pe)->getIsShip() && oo::ToCxx(pe)->canCollide() && doOctreesCollide((::ShipEntity*)pe, (::ShipEntity*)oe))
+						return (::ShipEntity*)oe;
+				}
+			}
+		}
+	}
+
+	// fall through => no collision
+	return nil;
+}
+
+
+namespace cxx {
+
+void ShipEntity::setUpOneEscort(::ShipEntity *escorter, ::OOShipGroup *escortGroup, const std::string &/*escortRole*/, HPVector ex_pos, uint8_t currentEscortCount)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	std::string		autoAI;
+	std::string		pilotRole;
+	::AI				*escortAI = nil;
+	std::string		defaultRole = "escort";
+
+	if ([self isPolice])
+	{
+		defaultRole = "wingman";
+		pilotRole = "police"; // police are always insured.
+	}
+	else
+	{
+		pilotRole = bounty ? "pirate" : "hunter"; // hunters have insurancies, pirates not.
+	}
+	
+	double dd = escorter->_cxxEntity->collision_radius;
+		
+	if (EXPECT(currentEscortCount < (uint8_t)MAX_ESCORTS))
+	{
+		// spread them around a little randomly
+		ex_pos.x += dd * 6.0 * (randf() - 0.5);
+		ex_pos.y += dd * 6.0 * (randf() - 0.5);
+		ex_pos.z += dd * 6.0 * (randf() - 0.5);
+	}
+	else
+	{
+		// Thargoid armada(!) Add more distance between the 'escorts'.
+		ex_pos.x += dd * 12.0 * (randf() - 0.5);
+		ex_pos.y += dd * 12.0 * (randf() - 0.5);
+		ex_pos.z += dd * 12.0 * (randf() - 0.5);
+	}
+		
+	[escorter setPosition:ex_pos];	// minimise lollipop flash
+		
+	if (![escorter cxx_crew].has_value())
+	{
+		[escorter cxx_setSingleCrewWithRole:pilotRole];
+	}
+
+	[escorter setPrimaryRole:defaultRole];	//for mothership
+	// in case this hasn't yet been set, make sure escorts get a real scan class
+	// shouldn't happen very often, but is possible
+	if (scanClass == CLASS_NOT_SET)
+	{
+		scanClass = CLASS_NEUTRAL;
+	}
+	[escorter setScanClass:scanClass];		// you are the same as I
+		
+	if ([self bounty] == 0)  [escorter setBounty:0 withReason:kOOLegalStatusReasonSetup];	// Avoid dirty escorts for clean mothers
+		
+	// find the right autoAI.
+	const oo::PList autoAIMap = [::ResourceManager cxx_dictionaryFromFilesNamed:"autoAImap.plist" inFolder:"Config" andMerge:YES];
+	const std::optional<std::string> mappedAI = StringForKey(autoAIMap, defaultRole);
+	if (mappedAI.has_value())  autoAI = *mappedAI;
+	else // no 'wingman' defined in autoAImap?
+	{
+		autoAI = autoAIMap.get<std::string>("escort", "nullAI.plist");
+	}
+
+	escortAI = [escorter getAI];
+
+	// Let the populator decide which AI to use, unless we have a working alternative AI & we specify auto_ai = NO !
+	// (Both callers always passed a role, so the old nil test of escortRole was always true.)
+	if ( FuzzyBooleanForKey([escorter cxx_shipInfoDictionary], "auto_ai", YES)
+		 || ([escortAI cxx_name].value_or(std::string()) == "nullAI.plist" && autoAI != "nullAI.plist") )
+	{
+		[escorter switchAITo:autoAI];
+	}
+
+	[escorter setGroup:escortGroup];
+	[escorter setOwner:self];	// mark self as group leader
+
+	
+	if ([self status] == STATUS_DOCKED)
+	{
+		[[self owner] addShipToLaunchQueue:escorter withPriority:NO];
+	}
+	else
+	{
+		[UNIVERSE addEntity:escorter]; 	// STATUS_IN_FLIGHT, AI state GLOBAL
+		[escortAI cxx_setState:"FLYING_ESCORT"];	// Begin escort flight. (If the AI doesn't define FLYING_ESCORT, this has no effect.)
+		[escorter doScriptEvent:OOJSID("spawnedAsEscort") withArgument:self];
+	}
+	
+	if([escorter heatInsulation] < [self heatInsulation]) [escorter setHeatInsulation:[self heatInsulation]]; // give escorts same protection as mother.
+	if(([escorter maxFlightSpeed] < cruiseSpeed) && ([escorter maxFlightSpeed] > cruiseSpeed * 0.3)) 
+		cruiseSpeed = [escorter maxFlightSpeed] * 0.99;  // adapt patrolSpeed to the slowest escort but ignore the very slow ones.
+		
+		
+	if (bounty)
+	{
+		int extra = 1 | (ranrot_rand() & 15);
+		// if mothership is offender, make sure escorter is too.
+		[escorter markAsOffender:extra withReason:kOOLegalStatusReasonSetup];
+	}
+	else
+	{
+		// otherwise force the escort to be clean
+		[escorter setBounty:0 withReason:kOOLegalStatusReasonSetup];
+	}
+	
+}
+
+
+std::optional<std::string> ShipEntity::shipDataKey()
+{
+	return _shipKey;
+}
+
+
+std::optional<std::string> ShipEntity::shipDataKeyAutoRole()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return oo::str::format("[%s]", [self cxx_shipDataKey].value_or("(null)").c_str());	// %@ printed nil as (null)
+}
+
+
+void ShipEntity::setShipDataKey(const std::optional<std::string> &key)
+{
+	_shipKey = key;
+}
+
+
+oo::PList ShipEntity::shipInfoDictionary()
+{
+	return shipinfoDictionary;
+}
+
+
+std::vector<Vector> ShipEntity::weaponOffsetsFrom(const oo::PList &dict, const std::string &key, const std::string &mode)
+{
+	Vector offset;
+	if (mode == "single")
+	{
+		offset = vector_multiply_scalar(VectorFromPList(dict.find(key)),_scaleFactor);
+		return { offset };
+	}
+	else
+	{
+		const oo::PList *offsets = ArrayForKey(dict, key);
+		if (offsets == nullptr) {
+			offset = kZeroVector;
+			return { offset };
+		}
+		std::vector<Vector> output;
+		output.reserve(offsets->count());
+		NSUInteger i;
+		for (i=0;i<offsets->count();i++) {
+			offset = vector_multiply_scalar(VectorFromPList(offsets->at(i)),_scaleFactor);
+			output.push_back(offset);
+		}
+		return output;
+	}
+}
+
+
+std::vector<Vector> ShipEntity::getAftWeaponOffset()
+{
+	return aftWeaponOffset;
+}
+
+
+std::vector<Vector> ShipEntity::getForwardWeaponOffset()
+{
+	return forwardWeaponOffset;
+}
+
+
+std::vector<Vector> ShipEntity::getPortWeaponOffset()
+{
+	return portWeaponOffset;
+}
+
+
+std::vector<Vector> ShipEntity::getStarboardWeaponOffset()
+{
+	return starboardWeaponOffset;
+}
+
+
+bool ShipEntity::getIsFrangible()
+{
+	return isFrangible;
+}
+
+
+bool ShipEntity::suppressFlightNotifications()
+{
+	return suppressAegisMessages;
+}
+
+
+OOScanClass ShipEntity::getScanClass()
+{
+	if (cloaking_device_active)  return CLASS_NO_DRAW;
+	return scanClass;
+}
+
+
+//////////////////////////////////////////////
+
+bool ShipEntity::canCollide()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	int status = [self status];
+	if (status == STATUS_COCKPIT_DISPLAY || status == STATUS_DEAD || status == STATUS_BEING_SCOOPED)
+	{	
+		return NO;
+	}
+
+	if (isWreckage)
+	{
+		// wreckage won't collide
+		return NO;
+	}
+	
+	if (isMissile && [self shotTime] < 0.25) // not yet fused
+	{
+		return NO;
+	}
+	
+	return YES;
+}
+
+
+BoundingBox ShipEntity::findSubentityBoundingBox()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [[self mesh] findSubentityBoundingBoxWithPosition:HPVectorToVector(position) rotMatrix:rotMatrix];
+}
+
+
+Triangle ShipEntity::absoluteIJKForSubentity()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	Triangle	result = {{ kBasisXVector, kBasisYVector, kBasisZVector }};
+	::Entity		*last = nil;
+	::Entity		*father = self;
+	OOMatrix	r_mat;
+	
+	// NO_TARGET is 0, so the old `father != (Entity *)NO_TARGET` test only repeated the null check.
+	while ((father)&&(father != last))
+	{
+		r_mat = [father drawRotationMatrix];
+		result.v[0] = OOVectorMultiplyMatrix(result.v[0], r_mat);
+		result.v[1] = OOVectorMultiplyMatrix(result.v[1], r_mat);
+		result.v[2] = OOVectorMultiplyMatrix(result.v[2], r_mat);
+		
+		last = father;
+		if (![last isSubEntity]) break;
+		father = [father owner];
+	}
+	return result;
+}
+
+
+void ShipEntity::addSubentityToCollisionRadius(::Entity *subent)
+{
+	if (!subent)  return;
+	
+	double distance = HPmagnitude([subent position]) + [subent findCollisionRadius];
+	if ([subent isKindOfClass:[::ShipEntity class]])	// Solid subentity
+	{
+		if (distance > collision_radius)
+		{
+			collision_radius = distance;
+		}
+		
+		mass += [subent mass];
+	}
+	if (distance > _profileRadius)
+	{
+		_profileRadius = distance;
+	}
+}
+
+
+::ShipEntity *ShipEntity::launchPodWithCrew(const std::vector<oo::ObjCRef<::OOCharacter *>> &podCrew)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::ShipEntity *pod = nil;
+
+	const oo::PList &info = shipinfoDictionary;
+	pod = [UNIVERSE cxx_newShipWithRole:StringForKey(info, "escape_pod_role").value_or("")];	// or nil
+	if (!pod)
+	{
+		//	_role not defined? it might have _model defined;
+		pod = [UNIVERSE cxx_newShipWithRole:info.get<std::string>("escape_pod_model", "escape-capsule")];
+		if (!pod)
+		{
+			pod = [UNIVERSE cxx_newShipWithRole:"escape-capsule"];
+			OO_LOG("shipEntity.noEscapePod", "Ship {} has no correct escape_pod_role defined. Now using default capsule.", oo::DescriptionOf(self));
+		}
+	}
+	
+	if (pod)
+	{
+		[pod setOwner:self];
+		[pod setTemperature:[self randomEjectaTemperatureWithMaxFactor:0.9]];
+		[pod cxx_setCommodity:"slaves" andAmount:1];
+		[pod cxx_setCrew:podCrew];
+		[pod switchAITo:"oolite-shuttleAI.js"];
+		[self dumpItem:pod];	// CLASS_CARGO, STATUS_IN_FLIGHT, AI state GLOBAL
+		[pod release]; //release
+	}
+	
+	return pod;
+}
+
+
+bool ShipEntity::validForAddToUniverse()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (shipinfoDictionary.isNull())
+	{
+		OO_LOG("shipEntity.notDict", "Ship {} was not set up from dictionary.", oo::DescriptionOf(self));
+		return NO;
+	}
+	return OOEntityWithDrawable::validForAddToUniverse();	// [super validForAddToUniverse]
+}
+
+
+bool ShipEntity::checkCloseCollisionWith(cxx::Entity *otherPart)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::Entity *other = oo::ToObjC(otherPart);
+
+	if (other == nil)  return NO;
+	if (std::find_if(collidingEntities.begin(), collidingEntities.end(), [other](const oo::ObjCRef<::Entity *> &e) { return e.get() == other; }) != collidingEntities.end())  return NO;	// we know about this already! (-containsObject:, identity for entities)
+	
+	::ShipEntity *otherShip = nil;
+	if ([other isShip])  otherShip = (::ShipEntity *)other;
+	
+	if ([self canScoop:otherShip])  return YES;	// quick test - could this improve scooping for small ships? I think so!
+	
+	if (otherShip != nil && trackCloseContacts)
+	{
+		// in update we check if close contacts have gone out of touch range (origin within our collision_radius)
+		// here we check if something has come within that range
+		HPVector			otherPos = [otherShip position];
+		OOUniversalID	otherID = [otherShip universalID];
+		const std::string	other_key = oo::str::format("%d", otherID);
+
+		if (!closeContactsInfo.contains(other_key) &&
+			HPdistance2(position, otherPos) < collision_radius * collision_radius)
+		{
+			// calculate position with respect to our own position and orientation
+			Vector	dpos = HPVectorToVector(HPvector_between(position, otherPos));
+			Vector  rpos = make_vector(dot_product(dpos, v_right), dot_product(dpos, v_up), dot_product(dpos, v_forward));
+			closeContactsInfo[other_key] = oo::str::format("%f %f %f", rpos.x, rpos.y, rpos.z);
+			
+			// send AI a message about the touch
+			::OOWeakReference	*temp = _primaryTarget;
+			_primaryTarget = [otherShip weakRetain];
+			[self cxx_doScriptEvent:OOJSID("shipCloseContact") withArgument:otherShip andReactToAIMessage:"CLOSE CONTACT"];
+			_primaryTarget = temp;
+		}
+	}
+	
+	/* This does not appear to save a significant amount of time in
+	 * most situations. No significant change in frame rate with a
+	 * 350-segment planetary ring at 1400 collision candidates, even
+	 * on old hardware. There are perhaps situations in which it could
+	 * be a significant optimisation, but those are likely to also be
+	 * the situations where the effect of adding hundreds of extra
+	 * false-positive collisions leaves the player returning to a
+	 * mess... So, commented out: CIM 21 Jan 2014
+	if (zero_distance > CLOSE_COLLISION_CHECK_MAX_RANGE2)	// don't work too hard on entities that are far from the player
+	return YES; 
+	*/
+	
+	if (otherShip != nil)
+	{
+		// check hull octree versus other hull octree
+		collider = doOctreesCollide(self, otherShip);
+		return (collider != nil);
+	}
+	
+	// default at this stage is to say YES they've collided!
+	collider = other;
+	return YES;
+}
+
 
 }	// namespace cxx
 

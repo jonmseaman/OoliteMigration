@@ -11,7 +11,7 @@ it beside -init and -dealloc. Its methods keep their Objective-C bodies until th
 to cxx::ShipEntity and leaves a forwarder here. It has one ivar, _cxxShip: the root's _cxxEntity,
 typed, borrowed (the root owns the part), set by the initialiser; unconverted code reads the ship's
 members through it by their old names (_cxxShip->fuel, ship->_cxxShip->fuel). Its initialisers make
-an Objective-C ship's adapter over cxx::ShipEntity (oo::ObjCEntity<cxx::ShipEntity>), so
+an Objective-C ship's adapter over cxx::ShipEntity (ObjCShipEntity in the .mm), so
 StationEntity, DockEntity, PlayerEntity and ProxyPlayerEntity reach the ship's members through it.
 Imported as the last line of ShipEntity.h; do not import it directly. Never add to this file.
 Deleted by its deletion bead once every slice, the categories and the subclasses are C++.
@@ -40,7 +40,7 @@ MA 02110-1301, USA.
 #define SHIPENTITY_OBJCBRIDGE_H
 
 
-@interface ShipEntity: OOEntityWithDrawable <OOSubEntity, OOBeaconEntity>
+@interface ShipEntity: OOEntityWithDrawable <OOSubEntity>	// and <OOBeaconEntity>, by the category ShipEntity (OOBeaconEntity)
 {
 @public
 	cxx::ShipEntity		*_cxxShip;		// _cxxEntity, typed; borrowed, set by the initialiser
@@ -53,97 +53,39 @@ MA 02110-1301, USA.
 - (BOOL) hasAutoAI;
 - (BOOL) hasNewAI;
 - (void) cxx_setShipScript:(const std::optional<std::string> &)script_name;
-- (void) removeScript;
-- (OOScript *) shipScript;
-- (OOScript *) shipAIScript;
-- (OOTimeAbsolute) shipAIScriptWakeTime;
-- (void) setAIScriptWakeTime:(OOTimeAbsolute) t;
 - (double) frustration;
 - (void) setLaunchDelay:(double)delay;
 
 - (void) interpretAIMessage:(const std::string &)message;	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
 
-- (GLfloat)accuracy;
-- (void)setAccuracy:(GLfloat) new_accuracy;
 
-- (OOMesh *)mesh;
-- (void)setMesh:(OOMesh *)mesh;
 
-- (BoundingBox) totalBoundingBox;
 
-- (Vector) forwardVector;
-- (Vector) upVector;
-- (Vector) rightVector;
 
-- (std::vector<oo::ObjCRef<Entity *>>)subEntities;	// a snapshot; empty when there are none
-- (NSUInteger) subEntityCount;
-- (BOOL) hasSubEntity:(Entity<OOSubEntity> *)sub;
 
-- (std::vector<oo::ObjCRef<Entity *>>)subEntityEnumerator;	// snapshot, same as -subEntities
-- (std::vector<oo::ObjCRef<OOFlasherEntity *>>)flasherEnumerator;	// flasher subentities, a snapshot
 // The ship / exhaust subentities, a snapshot in subentity order (empty for a nil receiver).
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_shipSubEntities;
-- (std::vector<oo::ObjCRef<OOExhaustPlumeEntity *>>) cxx_exhausts;
 
-- (ShipEntity *) subEntityTakingDamage;
-- (void) setSubEntityTakingDamage:(ShipEntity *)sub;
 
-- (void) clearSubEntities;	// Releases and clears subentity array, after making sure subentities don't think ship is owner.
 
-- (Quaternion) subEntityRotationalVelocity;
-- (void) setSubEntityRotationalVelocity:(Quaternion)rv;
 
 // subentities management
-- (std::optional<std::string>) cxx_serializeShipSubEntities;
-- (void) cxx_deserializeShipSubEntitiesFrom:(const std::string &)string;
-- (NSUInteger) maxShipSubEntities;
-- (void) setSubIdx:(NSUInteger)value;
-- (NSUInteger) subIdx;
 
-- (Octree *) octree;
-- (float) volume;
 
 // octree collision hunting
-- (GLfloat)doesHitLine:(HPVector)v0 :(HPVector)v1;
-- (GLfloat)doesHitLine:(HPVector)v0 :(HPVector)v1 :(ShipEntity**)hitEntity;
-- (GLfloat)doesHitLine:(HPVector)v0 :(HPVector)v1 withPosition:(HPVector)o andIJK:(Vector)i :(Vector)j :(Vector)k;	// for subentities
 
-- (BoundingBox) findBoundingBoxRelativeToPosition:(HPVector)opv InVectors:(Vector)i :(Vector)j :(Vector)k;
 
-- (HPVector)absoluteTractorPosition;
 
 // beacons // definitions now in <OOBeaconEntity> protocol
 
-- (void) setIsBoulder:(BOOL)flag;
-- (BOOL) isBoulder;
-- (BOOL) isMinable;
 
-- (BOOL) countsAsKill;
 
-- (void) setUpEscorts;
 - (void) updateEscortFormation;
 
-- (BOOL) cxx_setUpFromDictionary:(const oo::PList &) shipDict;
-- (BOOL)setUpShipFromDictionary:(const oo::PList &) shipDict;	// flipped with its family (bead oo-3rb.282)
-- (BOOL)setUpSubEntities;
-- (BOOL) cxx_setUpOneStandardSubentity:(const oo::PList &) subentDict asTurret:(BOOL)asTurret;
-- (GLfloat)frustumRadius;
 
-- (std::optional<std::string>) cxx_shipDataKey;
-- (std::optional<std::string>) cxx_shipDataKeyAutoRole;	// "[key]"
-- (void) cxx_setShipDataKey:(const std::optional<std::string> &)key;
 
-- (oo::PList) cxx_shipInfoDictionary;
 
-- (std::vector<Vector>) cxx_weaponOffsetsFrom:(const oo::PList &)dict withKey:(const std::string &)key inMode:(const std::string &)mode;
-- (std::vector<Vector>) cxx_aftWeaponOffset;
-- (std::vector<Vector>) cxx_forwardWeaponOffset;
-- (std::vector<Vector>) cxx_portWeaponOffset;
-- (std::vector<Vector>) cxx_starboardWeaponOffset;
 - (BOOL) hasAutoWeapons;
 
-- (BOOL) isFrangible;
-- (BOOL) suppressFlightNotifications;
 
 - (void) respondToAttackFrom:(Entity *)from becauseOf:(Entity *)other;
 
@@ -453,8 +395,6 @@ MA 02110-1301, USA.
 
 - (int) legalStatus;
 
-- (BOOL) isTemplateCargoPod;
-- (void) setUpCargoType:(const std::string &)cargoString;
 - (void) cxx_setCommodity:(const std::string &)co_type andAmount:(OOCargoQuantity)co_amount;
 - (void) cxx_setCommodityForPod:(const std::optional<std::string> &)co_type andAmount:(OOCargoQuantity)co_amount;	// nullopt empties the pod, as nil did
 - (std::optional<std::string>) cxx_commodityType;
@@ -547,9 +487,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 
 - (void) collectBountyFor:(ShipEntity *)other;
 
-- (BoundingBox) findSubentityBoundingBox;
 
-- (Triangle) absoluteIJKForSubentity;
 
 - (GLfloat)weaponRecoveryTime;
 - (GLfloat)laserHeatLevel;
@@ -746,8 +684,6 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 - (void) broadcastHitByLaserFrom:(ShipEntity*) aggressor_ship;
 
 // Sun glare filter - 0 for no filter, 1 for full filter
-- (GLfloat) sunGlareFilter;
-- (void) setSunGlareFilter:(GLfloat)newValue;
 
 // Unpiloted ships cannot broadcast messages, unless the unpilotedOverride is set to YES.
 - (void) cxx_sendExpandedMessage:(const std::string &) message_text toShip:(ShipEntity*) other_ship;
@@ -788,10 +724,6 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 - (oo::PList) scriptInfo;	// flipped with its family (bead oo-3rb.284): empty dict when there is none
 - (void) overrideScriptInfo:(const oo::PList &)override;	// Add items from override (a dictionary, or null for none) to scriptInfo, replacing in case of duplicates. Used for subentities.
 
-- (BOOL) scriptedMisjump;
-- (void) setScriptedMisjump:(BOOL)newValue;
-- (GLfloat) scriptedMisjumpRange;
-- (void) setScriptedMisjumpRange:(GLfloat)newValue;
 
 
 - (Entity *)entityForShaderProperties;
@@ -864,6 +796,152 @@ unsigned argc = sizeof argv / sizeof *argv; \
 @interface ShipEntity (OOObjCBridge)
 
 - (id)cxx_initWithKey:(const std::string &)key definition:(const oo::PList &)dict OO_RETURNS_RETAINED;
+
+@end
+
+
+// Slice 2 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice2)
+
+- (BOOL) cxx_setUpFromDictionary:(const oo::PList &) shipDict;
+
+@end
+
+
+// Slice 3 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice3)
+
+- (BOOL)setUpShipFromDictionary:(const oo::PList &) shipDict;	// flipped with its family (bead oo-3rb.282)
+- (void) setSubIdx:(NSUInteger)value;
+- (NSUInteger) subIdx;
+- (NSUInteger) maxShipSubEntities;
+- (std::optional<std::string>) cxx_serializeShipSubEntities;
+- (void) cxx_deserializeShipSubEntitiesFrom:(const std::string &)string;
+- (BOOL)setUpSubEntities;
+- (GLfloat)frustumRadius;
+- (BOOL) setUpOneSubentity:(const oo::PList &)subentDict;
+- (BOOL) setUpOneFlasher:(const oo::PList &)subentDict;
+
+@end
+
+
+// Slice 4 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice4)
+
+- (BOOL) cxx_setUpOneStandardSubentity:(const oo::PList &) subentDict asTurret:(BOOL)asTurret;
+- (BOOL) isTemplateCargoPod;
+- (void) setUpCargoType:(const std::string &)cargoString;
+- (void) removeScript;
+- (void) clearSubEntities;	// Releases and clears subentity array, after making sure subentities don't think ship is owner.
+- (Quaternion) subEntityRotationalVelocity;
+- (void) setSubEntityRotationalVelocity:(Quaternion)rv;
+- (std::optional<std::string>) cxx_shortDescriptionComponents;
+- (GLfloat) sunGlareFilter;
+- (void) setSunGlareFilter:(GLfloat)newValue;
+- (GLfloat)accuracy;
+- (void)setAccuracy:(GLfloat) new_accuracy;
+- (OOMesh *)mesh;
+- (void)setMesh:(OOMesh *)mesh;
+- (BoundingBox) totalBoundingBox;
+- (Vector) forwardVector;
+- (Vector) upVector;
+- (Vector) rightVector;
+- (BOOL) scriptedMisjump;
+- (void) setScriptedMisjump:(BOOL)newValue;
+- (GLfloat) scriptedMisjumpRange;
+- (void) setScriptedMisjumpRange:(GLfloat)newValue;
+- (std::vector<oo::ObjCRef<Entity *>>)subEntities;	// a snapshot; empty when there are none
+- (NSUInteger) subEntityCount;
+- (BOOL) hasSubEntity:(Entity<OOSubEntity> *)sub;
+- (std::vector<oo::ObjCRef<Entity *>>)subEntityEnumerator;	// snapshot, same as -subEntities
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_shipSubEntities;
+- (std::vector<oo::ObjCRef<OOFlasherEntity *>>)flasherEnumerator;	// flasher subentities, a snapshot
+- (std::vector<oo::ObjCRef<OOExhaustPlumeEntity *>>) cxx_exhausts;
+- (ShipEntity *) subEntityTakingDamage;
+- (void) setSubEntityTakingDamage:(ShipEntity *)sub;
+- (OOScript *) shipScript;
+- (OOScript *) shipAIScript;
+- (OOTimeAbsolute) shipAIScriptWakeTime;
+- (void) setAIScriptWakeTime:(OOTimeAbsolute) t;
+
+@end
+
+
+/*	The ship adopts <OOBeaconEntity> here and not in its interface (slice 5, bead oo-ddnn8): the
+	protocol's methods are forwarders in the slices' categories, and a category that implements a
+	method of a protocol the class itself adopts is warned about as one the class will implement
+	(-Wobjc-protocol-method-implementation). Adopted by a category with no @implementation, the
+	ship conforms as before and the protocol's other methods stay in ShipEntity.mm.
+*/
+@interface ShipEntity (OOBeaconEntity) <OOBeaconEntity>
+@end
+
+
+// Slice 5 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice5)
+
+- (BoundingBox) findBoundingBoxRelativeToPosition:(HPVector)opv InVectors:(Vector)i :(Vector)j :(Vector)k;
+- (Octree *) octree;
+- (float) volume;
+- (GLfloat)doesHitLine:(HPVector)v0 :(HPVector)v1;
+- (GLfloat)doesHitLine:(HPVector)v0 :(HPVector)v1 :(ShipEntity**)hitEntity;
+- (GLfloat)doesHitLine:(HPVector)v0 :(HPVector)v1 withPosition:(HPVector)o andIJK:(Vector)i :(Vector)j :(Vector)k;	// for subentities
+- (void) wasAddedToUniverse;
+- (void) wasRemovedFromUniverse;
+- (HPVector)absoluteTractorPosition;
+- (std::optional<std::string>) beaconCode;
+- (void) setBeaconCode:(const std::optional<std::string> &)bcode;
+- (std::optional<std::string>) beaconLabel;
+- (void) setBeaconLabel:(const std::optional<std::string> &)blabel;
+- (BOOL) isVisible;
+- (BOOL) isBeacon;
+- (id <OOHUDBeaconIcon>) beaconDrawable;
+- (Entity <OOBeaconEntity> *) prevBeacon;
+- (Entity <OOBeaconEntity> *) nextBeacon;
+- (void) setPrevBeacon:(Entity <OOBeaconEntity> *)beaconShip;
+- (void) setNextBeacon:(Entity <OOBeaconEntity> *)beaconShip;
+- (void) setIsBoulder:(BOOL)flag;
+- (BOOL) isBoulder;
+- (BOOL) isMinable;
+- (BOOL) countsAsKill;
+- (void) setUpEscorts;
+- (void) setUpMixedEscorts;
+
+@end
+
+
+// Slice 6 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice6)
+
+- (void) setUpOneEscort:(ShipEntity *)escorter inGroup:(OOShipGroup *)escortGroup withRole:(const std::string &)escortRole atPosition:(HPVector)ex_pos andCount:(uint8_t)currentEscortCount;
+- (std::optional<std::string>) cxx_shipDataKey;
+- (std::optional<std::string>) cxx_shipDataKeyAutoRole;	// "[key]"
+- (void) cxx_setShipDataKey:(const std::optional<std::string> &)key;
+- (oo::PList) cxx_shipInfoDictionary;
+- (std::vector<Vector>) cxx_weaponOffsetsFrom:(const oo::PList &)dict withKey:(const std::string &)key inMode:(const std::string &)mode;
+- (std::vector<Vector>) cxx_aftWeaponOffset;
+- (std::vector<Vector>) cxx_forwardWeaponOffset;
+- (std::vector<Vector>) cxx_portWeaponOffset;
+- (std::vector<Vector>) cxx_starboardWeaponOffset;
+- (BOOL) isFrangible;
+- (BOOL) suppressFlightNotifications;
+- (OOScanClass) scanClass;
+- (BOOL) canCollide;
+- (BoundingBox) findSubentityBoundingBox;
+- (Triangle) absoluteIJKForSubentity;
+- (void) addSubentityToCollisionRadius:(Entity<OOSubEntity> *)subent;
+- (ShipEntity *) launchPodWithCrew:(const std::vector<oo::ObjCRef<OOCharacter *>> &)podCrew;
+- (BOOL) validForAddToUniverse;
 
 @end
 
