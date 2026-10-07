@@ -76,36 +76,36 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 }	// namespace
 
 
-@interface ShipEntity (LoadRestoreInternal)
+/*	The category ShipEntity (LoadRestore), bead oo-kw44: members of cxx::ShipEntity (ADR-0056
+	amendments oo-o89 item 4 and oo-42dr), forwarded by the category of the same name in
+	ShipEntity+ObjCBridge.mm; +shipRestoredFromDictionary:useFallback:context: is a static member,
+	and the private category LoadRestoreInternal's -simplifyShipdata:andGetDeletes: a member with
+	no forwarder (only the members call it). Sends to self stay sends to the facade.
+*/
+namespace cxx {
 
-// deletes: the keys to delete, empty where the Foundation version gave nil.
-- (void) simplifyShipdata:(oo::PList::Dict &)data andGetDeletes:(std::vector<std::string> *)deletes;
 
-@end
-
-
-@implementation ShipEntity (LoadRestore)
-
-- (oo::PList) savedShipDictionaryWithContext:(OOShipSaveContext *)context
+oo::PList ShipEntity::savedShipDictionaryWithContext(OOShipSaveContext *context)
 {
+	::ShipEntity *self = oo::ToObjC(this);
 	oo::PList::Dict result;
 	OOShipSaveContext localContext;
 	if (context == nullptr)  context = &localContext;
 
-	result[KEY_SHIP_KEY] = _cxxShip->_shipKey.value_or(std::string());	// nil as "", as oo::StdString gave
+	result[KEY_SHIP_KEY] = _shipKey.value_or(std::string());	// nil as "", as oo::StdString gave
 
-	oo::PList::Dict updatedShipInfo = DictFrom(_cxxShip->shipinfoDictionary);
+	oo::PList::Dict updatedShipInfo = DictFrom(shipinfoDictionary);
 
 	// A role set without a role string (nil before, which -setObject:forKey: refused) adds no key.
 	if (const std::optional<std::string> roleString = [[self roleSet] roleString])  updatedShipInfo[KEY_ROLES] = *roleString;
-	updatedShipInfo[KEY_FUEL] = oo::PList::unsignedInteger(_cxxShip->fuel);
-	updatedShipInfo[KEY_BOUNTY] = oo::PList::unsignedInteger(_cxxShip->bounty);
-	updatedShipInfo[KEY_FORWARD_WEAPON] = cxx_OOStringFromWeaponType(_cxxShip->forward_weapon_type).value_or("");
-	updatedShipInfo[KEY_AFT_WEAPON] = cxx_OOStringFromWeaponType(_cxxShip->aft_weapon_type).value_or("");
-	updatedShipInfo[KEY_SCAN_CLASS] = cxx_OOStringFromScanClass(_cxxEntity->scanClass);
+	updatedShipInfo[KEY_FUEL] = oo::PList::unsignedInteger(fuel);
+	updatedShipInfo[KEY_BOUNTY] = oo::PList::unsignedInteger(bounty);
+	updatedShipInfo[KEY_FORWARD_WEAPON] = cxx_OOStringFromWeaponType(forward_weapon_type).value_or("");
+	updatedShipInfo[KEY_AFT_WEAPON] = cxx_OOStringFromWeaponType(aft_weapon_type).value_or("");
+	updatedShipInfo[KEY_SCAN_CLASS] = cxx_OOStringFromScanClass(scanClass);
 
 	std::vector<std::string> deletes;
-	[self simplifyShipdata:updatedShipInfo andGetDeletes:&deletes];
+	simplifyShipdata(updatedShipInfo, &deletes);
 
 	result[KEY_SHIPDATA_OVERRIDES] = oo::PList(std::move(updatedShipInfo));
 	if (!deletes.empty())  result[KEY_SHIPDATA_DELETES] = ArrayFromStrings(deletes);
@@ -120,7 +120,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	}
 
 	// -oo_setFloat:forKey: stored a double.
-	if (_cxxEntity->energy != _cxxEntity->maxEnergy)  result[KEY_ENERGY_LEVEL] = oo::PList(static_cast<double>(_cxxEntity->energy / _cxxEntity->maxEnergy));
+	if (energy != maxEnergy)  result[KEY_ENERGY_LEVEL] = oo::PList(static_cast<double>(energy / maxEnergy));
 
 	result[KEY_PRIMARY_ROLE] = [self cxx_primaryRole].value_or("");
 
@@ -129,40 +129,40 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	if (equipment.size() != 0)  result[KEY_EQUIPMENT] = ArrayFromStrings(equipment);
 
 	// Add missiles.
-	if (_cxxShip->missiles > 0)
+	if (missiles > 0)
 	{
 		std::vector<std::string> missileArray;
 		unsigned i;
-		for (i = 0; i < _cxxShip->missiles; i++)
+		for (i = 0; i < missiles; i++)
 		{
-			const std::optional<std::string> missileType = [_cxxShip->missile_list[i] cxx_identifier];
+			const std::optional<std::string> missileType = [missile_list[i] cxx_identifier];
 			if (missileType.has_value())  missileArray.push_back(*missileType);
 		}
 		result[KEY_MISSILES] = ArrayFromStrings(missileArray);
 	}
 
 	// Add groups.
-	if (_cxxShip->_group != nil)
+	if (_group != nil)
 	{
-		result[KEY_GROUP_ID] = oo::PList::unsignedInteger(GroupIDForGroup(_cxxShip->_group, *context));
-		if ([_cxxShip->_group leader] == self)  result[KEY_IS_GROUP_LEADER] = oo::PList(static_cast<bool>(YES));
-		const std::optional<std::string> groupName = [_cxxShip->_group cxx_name];
+		result[KEY_GROUP_ID] = oo::PList::unsignedInteger(GroupIDForGroup(_group, *context));
+		if ([_group leader] == self)  result[KEY_IS_GROUP_LEADER] = oo::PList(static_cast<bool>(YES));
+		const std::optional<std::string> groupName = [_group cxx_name];
 		if (groupName.has_value())
 		{
 			result[KEY_GROUP_NAME] = *groupName;
 		}
 	}
-	if (_cxxShip->_escortGroup != nil)
+	if (_escortGroup != nil)
 	{
-		result[KEY_ESCORT_GROUP_ID] = oo::PList::unsignedInteger(GroupIDForGroup(_cxxShip->_escortGroup, *context));
+		result[KEY_ESCORT_GROUP_ID] = oo::PList::unsignedInteger(GroupIDForGroup(_escortGroup, *context));
 	}
 	/*	Eric:
 		The escortGroup property is removed from the lead ship, on entering witchspace.
 		But it is needed in the save file to correctly restore an escorted group.
 	*/
-	else if (_cxxShip->_group != nil && [_cxxShip->_group leader] == self)
+	else if (_group != nil && [_group leader] == self)
 	{
-		result[KEY_ESCORT_GROUP_ID] = oo::PList::unsignedInteger(GroupIDForGroup(_cxxShip->_group, *context));
+		result[KEY_ESCORT_GROUP_ID] = oo::PList::unsignedInteger(GroupIDForGroup(_group, *context));
 	}
 
 	// FIXME: AI.
@@ -183,18 +183,16 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 }
 
 
-+ (id) shipRestoredFromDictionary:(const oo::PList &)dict
-					  useFallback:(BOOL)fallback
-						  context:(OOShipSaveContext *)context
+::ShipEntity *ShipEntity::shipRestoredFromDictionary(const oo::PList &dict, bool fallback, OOShipSaveContext *context)
 {
 	if (dict.isNull())  return nil;
 	OOShipSaveContext localContext;
 	if (context == nullptr)  context = &localContext;
 
-	ShipEntity *ship = nil;
+	::ShipEntity *ship = nil;
 
 	const std::string shipKey = dict.get<std::string>(KEY_SHIP_KEY);	// "" finds no ship, as nil did
-	const oo::PList shipData = [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:shipKey];
+	const oo::PList shipData = [[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:shipKey];
 
 	if (shipData)
 	{
@@ -266,7 +264,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	NSUInteger groupID = dict.get<NSInteger>(KEY_GROUP_ID, NSNotFound);
 	if (groupID != NSNotFound)
 	{
-		OOShipGroup *group = GroupForGroupID(groupID, *context);
+		::OOShipGroup *group = GroupForGroupID(groupID, *context);
 		[ship setGroup:group];	// Handles adding to group
 		if (dict.get<bool>(KEY_IS_GROUP_LEADER))  [group setLeader:ship];
 		const std::optional<std::string> groupName = OptionalStringForKey(dict, KEY_GROUP_NAME);
@@ -280,7 +278,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	groupID = dict.get<NSInteger>(KEY_ESCORT_GROUP_ID, NSNotFound);
 	if (groupID != NSNotFound)
 	{
-		OOShipGroup *group = GroupForGroupID(groupID, *context);
+		::OOShipGroup *group = GroupForGroupID(groupID, *context);
 		[group setLeader:ship];
 		[group cxx_setName:std::string("escort group")];
 		[ship setEscortGroup:group];
@@ -290,13 +288,14 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 }
 
 
-- (void) simplifyShipdata:(oo::PList::Dict &)data andGetDeletes:(std::vector<std::string> *)deletes
+void ShipEntity::simplifyShipdata(oo::PList::Dict &data, std::vector<std::string> *deletes)
 {
-	OOParameterAssert(deletes != NULL);
+	::ShipEntity *self = oo::ToObjC(this);
+	OOCParameterAssert(deletes != NULL);
 	deletes->clear();
 
 	// Get original ship data.
-	oo::PList::Dict referenceData = DictFrom([[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:[self cxx_shipDataKey].value_or(std::string())]);
+	oo::PList::Dict referenceData = DictFrom([[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:[self cxx_shipDataKey].value_or(std::string())]);
 
 	// Discard stuff that we handle separately.
 	StripIgnoredKeys(referenceData);
@@ -326,7 +325,8 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 */
 }
 
-@end
+}	// namespace cxx
+
 
 
 namespace {

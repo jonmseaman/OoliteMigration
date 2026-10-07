@@ -196,6 +196,9 @@ typedef enum
 #include "OOEntityEnums.h"
 
 
+struct OOShipSaveContext;	// ShipEntityLoadRestore.h
+
+
 namespace cxx {
 
 /*	The ship's state, and the members its slices have moved (docs/phases/3-slices/ShipEntity.md).
@@ -930,6 +933,12 @@ public:
 	::ShipEntity *ejectShipOfType(const std::optional<std::string> &shipKey);	// Note: ship type, not role.
 	::ShipEntity *ejectShipOfRole(const std::optional<std::string> &role);
 	std::vector<oo::ObjCRef<::ShipEntity *>> spawnShipsWithRole(const std::string &role, NSUInteger count);
+
+	// Category LoadRestore (ShipEntityLoadRestore.mm, bead oo-kw44): saving and restoring individual
+	// non-player ships. The context (nullptr for none) synchronises the groups of ships saved together.
+	oo::PList savedShipDictionaryWithContext(OOShipSaveContext *context);
+	static ::ShipEntity *shipRestoredFromDictionary(const oo::PList &dictionary, bool fallback, OOShipSaveContext *context);	// autoreleased; nil if it can't
+	void simplifyShipdata(oo::PList::Dict &data, std::vector<std::string> *deletes);	// the file's private category LoadRestoreInternal
 
 	// @public in Objective-C
 	// derived variables
