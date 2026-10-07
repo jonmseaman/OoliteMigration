@@ -28,6 +28,8 @@ MA 02110-1301, USA.
 #if OOMATHS_OPENGL_INTEGRATION
 #include "OOOpenGLExtensionPointers.h"	// glUniformMatrix3fvARB, Windows' extension pointer (bead oo-9ht.120)
 #include "OOOpenGLCheck.h"	// OOGL() (bead oo-9ht.163)
+#include "OOOpenGLOnly.h"	// GL_FALSE
+#include <SDL3/SDL_opengl.h>	// GL_FALSE
 #endif
 
 const OOMatrix	kIdentityMatrix = 
