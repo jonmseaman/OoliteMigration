@@ -302,9 +302,41 @@ From Phase 0. Every story's acceptance includes `tools/tier-a.sh <file>`; the wr
   `tools/gen-stories.py` files no story for it. A pre-split gathers a class's whole Mac-only
   methods into one fenced category at the end of the *same* file (a new file would read as new
   deny-list hits: the guardrails' file-split limitation).
+- 2026-10-05 — `ShipEntity` pre-split (bead oo-9ht.140, plan `3-slices/ShipEntity.md`): 34 slices
+  of `ShipEntity.mm`, slice 1 the frontier class shell (`cxx::ShipEntity`, the façade, the adapter
+  and the compiler-guided `_cxxShip->` rewrite of the unconverted code), slices 2-34 fleet stories in
+  file order. Slice plans gain `header-decls: per-slice`: a slice is charged the header less every
+  method declaration, plus its own units' declarations, because `ShipEntity.h` (1,334 lines) charged
+  whole leaves no slice under the budget. oo-k8a is now the umbrella over the slices, the
+  `ShipEntityAI` slices, oo-42dr and oo-kw44; the subclasses wait on the slices they override.
+- 2026-10-05 — `PlayerEntity` and `Universe` pre-splits (beads oo-9ht.154 and oo-9ht.155, plans
+  `3-slices/PlayerEntity.md`, 28 slices, and `3-slices/Universe.md`, 26 slices), each slice 1 a
+  frontier class shell (`_cxxPlayer->` / `_cxxUniverse->` rewrite), the rest fleet stories in file
+  order. Slice plans gain `header-names: by-use`: a slice is charged the header's other declarations
+  (ivars, macros, enums, constants, inline functions) only where its units name them, because
+  `PlayerEntity.h`'s 451-line ivar block and ~340 lines of GUI constants left a 613-line method no
+  slice under the budget. oo-a70 and oo-pas are the umbrellas; the player's slices wait on the
+  `ShipEntity` slices they override, its category slices on its slice 1, and the façade-deletion
+  beads on the slices that name the façade.
+- 2026-10-06 — `PlayerEntityControls` pre-split (bead oo-9ht.157, plan `3-slices/PlayerEntityControls.md`):
+  7 category slices of the `PlayerEntity (Controls)` category, each after PlayerEntity slice 1 and the
+  player and ship slices whose methods it sends to `self`. Slice plans gain `one-unit-slices: frontier`:
+  a slice of one method may own more than the 800-line budget (it still reads under 1,500) and is a
+  frontier story, because no plan can cut one method (`pollFlightControls:`, 903 lines;
+  `pollGuiArrowKeyControls:`, 1,105). oo-e1d is the umbrella over the slices.
 - 2026-10-01 — The rest of the Audio module (beads oo-y0gz, oo-2wpb, oo-03g7, oo-nwbw, oo-5vp8,
   oo-6g4z, oo-zoj3, oo-d2y9, oo-lfkq; ADR-0056 amendment oo-y0gz): each class is `cxx::X` behind
   `X+ObjCBridge.h/.mm`; converted code keeps its sends to the module's other classes as `::X`
   (their tests stub them), the concrete sounds and the music have façades of their own under the
   root's, and the channel tells its delegate of itself from the façade's `-dealloc`. Tests:
   `tests/unit/core/test_<Class>.mm`, on the game's own `.ogg` resources. No caller changed.
+- 2026-10-06 — `NSObjectOOExtensions` (bead oo-eoi6) has nothing to convert in Phase 3: it is a
+  debug-only category on the root `OOObject` (`+oo_instanceSize`, `-oo_objectSize`), Objective-C
+  runtime reflection, and every remaining sender messages a façade or an `id` for its instance size
+  (`Entity+ObjCBridge.mm`, `OODebugMonitor.mm`, `OODrawable::totalSize`, `OOWeakReference`). It goes
+  with the façades and the runtime in Phase 4 (bead oo-6e1.1), where each sender takes the C++
+  object's own size.
+- 2026-10-06 — `HeadUpDisplay` fully converted (umbrella bead oo-xjm): all six slices of
+  `3-slices/HeadUpDisplay.md` landed (oo-engam, oo-8fiz9, oo-8j1y2, oo-2p1ug, oo-kdrc6, oo-0tx6c) and
+  each reports `--slice-done`; the frame-hash proof is the goldens, run nightly from the slices'
+  `tests/nightly/checks.txt` lines.
