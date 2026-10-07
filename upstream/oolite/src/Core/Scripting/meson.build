@@ -21,7 +21,6 @@ oolite_sources += files(
     'OOJSFont.cpp',
     'OOJSFrameCallbacks.mm',
     'OOJSFunction.mm',
-    'OOJSFunction+ObjCBridge.mm',
     'OOJSGlobal.mm',
     'OOJSGuiScreenKeyDefinition.mm',
     'OOJSGuiScreenKeyDefinition+ObjCBridge.mm',
