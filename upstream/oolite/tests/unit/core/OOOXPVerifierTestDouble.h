@@ -57,6 +57,10 @@ struct OOOXPVerifierTestAccess
 };
 
 
+/*	The verifier's members that the stages call, defined here because OOOXPVerifier.mm is not
+	linked. Each body is the one the double's Objective-C method had (the ivars it read are the
+	class's own members now); nothing else of the class is defined, so nothing else may be called.
+*/
 void cxx::OOOXPVerifier::registerStage(::OOOXPVerifierStage *stage)
 {
 	_stagesByName[*stage->name()] = oo::Ref<::OOOXPVerifierStage>(stage);
