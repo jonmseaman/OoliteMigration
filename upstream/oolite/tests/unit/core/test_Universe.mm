@@ -658,7 +658,7 @@ void LinkLists(Universe *u, std::initializer_list<Entity *> list)
 	Entity *previous = nil;
 	for (Entity *e : list)
 	{
-		cxx::Entity *part = e->_cxxEntity;
+		cxx::Entity *part = e->_cxxEntity.get();
 		part->x_previous = part->y_previous = part->z_previous = previous;
 		part->x_next = part->y_next = part->z_next = nil;
 		if (previous != nil)  previous->_cxxEntity->x_next = previous->_cxxEntity->y_next = previous->_cxxEntity->z_next = e;
