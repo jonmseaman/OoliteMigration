@@ -344,6 +344,10 @@ public:
 
 	OOSystemID targetNextFoundSystem(int direction);
 
+	// Public for the facade's slice-3 forwarder, which test_GuiDisplayGen pins (bead oo-iro0g);
+	// private again with the facade's deletion.
+	void drawSystemMarkers(const oo::PList &markers, GLfloat x, GLfloat y, GLfloat z, GLfloat alpha, GLfloat scale);
+
 
 private:
 	NSSize					size_in_pixels = {};
@@ -400,7 +404,6 @@ private:
 	void drawGLDisplay(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha);
 	void drawCrossHairsWithSize(GLfloat size, GLfloat x, GLfloat y, GLfloat z);
 	void drawStarChart(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha, bool compact);
-	void drawSystemMarkers(const oo::PList &markers, GLfloat x, GLfloat y, GLfloat z, GLfloat alpha, GLfloat scale);
 	void drawSystemMarker(const oo::PList &marker, GLfloat x, GLfloat y, GLfloat z, GLfloat alpha, GLfloat scale);
 	void drawAdvancedNavArrayAtX(float x, float y, float z, float alpha, const oo::PList &routeInfo, OORouteType optimizeBy, OOScalar zoom);
 };
