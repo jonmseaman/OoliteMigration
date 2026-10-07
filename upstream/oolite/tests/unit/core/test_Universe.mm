@@ -969,4 +969,89 @@ OO_TEST(slice24Voices)
 #endif
 
 
+// Slice 25 (bead oo-wmc72): reinitialising and the demo, the initial universe, random positions,
+// removing entities, preloading sounds, wormhole population, graph dumps. Written against the
+// Objective-C API and run on the unconverted class first; the selectors only the private category
+// declared are declared here, as test_Entity's (TestPrivate). Reinitialising and the initial
+// universe need the whole game (the goldens).
+@interface Universe (Slice25TestPrivate)
+- (BOOL) doRemoveEntity:(Entity *)entity;
+- (float) randomDistanceWithinScanner;
+- (Vector) randomPlaceWithinScannerFrom:(Vector)pos alongRoute:(Vector)route withOffset:(double)offset;
+- (HPVector) fractionalPositionFrom:(HPVector)point0 to:(HPVector)point1 withFraction:(double)routeFraction;
+- (void) populateSpaceFromActiveWormholes;
+- (std::optional<std::string>) chooseStringForKey:(const std::string &)key inDictionary:(const oo::PList &)dictionary;
+@end
+
+
+OO_TEST(slice25RandomPositions)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+		const double half = SCANNER_MAX_RANGE / 2;
+		for (int i = 0; i < 20; i++)
+		{
+			float d = [u randomDistanceWithinScanner];
+			OO_CHECK(d >= -half && d < half);
+
+			Vector v = [u randomPlaceWithinScannerFrom:make_vector(10, 20, 30) alongRoute:make_vector(1, 0, 0) withOffset:100];
+			OO_CHECK(v.x >= 110 - half && v.x < 110 + half && v.y >= 20 - half && v.y < 20 + half && v.z >= 30 - half && v.z < 30 + half);
+
+			HPVector h = [u fractionalPositionFrom:make_HPvector(0, 0, 0) to:make_HPvector(1000, 0, 0) withFraction:0.5];
+			OO_CHECK(h.x >= 500 - SCANNER_MAX_RANGE && h.x <= 500 + SCANNER_MAX_RANGE && fabs(h.y) <= SCANNER_MAX_RANGE && fabs(h.z) <= SCANNER_MAX_RANGE);
+		}
+	}
+}
+
+
+OO_TEST(slice25ChooseStringAndWormholes)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+		const oo::PList dict(oo::PList::Dict{
+			{ "one", oo::PList("only") },
+			{ "some", oo::PList(oo::PList::Array{ oo::PList("a"), oo::PList("b") }) },
+			{ "none", oo::PList(oo::PList::Array{}) },
+			{ "number", oo::PList(3.0) },
+		});
+		OO_CHECK([u chooseStringForKey:"one" inDictionary:dict] == "only");
+		std::optional<std::string> some = [u chooseStringForKey:"some" inDictionary:dict];
+		OO_CHECK(some == "a" || some == "b");
+		OO_CHECK(![u chooseStringForKey:"none" inDictionary:dict].has_value());
+		OO_CHECK(![u chooseStringForKey:"number" inDictionary:dict].has_value());
+		OO_CHECK(![u chooseStringForKey:"missing" inDictionary:dict].has_value());
+
+		[u populateSpaceFromActiveWormholes];	// none: nothing to do
+		OO_CHECK(u->_cxxUniverse->activeWormholes.empty());
+	}
+}
+
+
+OO_TEST(slice25DoRemoveEntity)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+		Entity *a = MakeEntity(make_HPvector(0, 0, 0), 1);
+		Entity *b = MakeEntity(make_HPvector(5, 0, 0), 1);
+		SetSortedEntities(u, { a, b });
+		a->_cxxEntity->zero_index = 0;
+		b->_cxxEntity->zero_index = 1;
+		u->_cxxUniverse->entities.emplace_back(a);
+		u->_cxxUniverse->entities.emplace_back(b);
+
+		OO_CHECK([u doRemoveEntity:a]);
+		OO_CHECK(u->_cxxUniverse->n_entities == 1 && SortedEntity(u, 0) == b && SortedEntity(u, 1) == nil);
+		OO_CHECK(b->_cxxEntity->zero_index == 0 && a->_cxxEntity->zero_index == -1);
+		OO_CHECK(u->_cxxUniverse->entities.size() == 1 && u->_cxxUniverse->entities[0].get() == b);
+		OO_CHECK(![u doRemoveEntity:a]);	// gone already: not in the definitive list
+
+		u->_cxxUniverse->n_entities = 0;
+		u->_cxxUniverse->entities.clear();
+	}
+}
+
+
 OO_TEST_MAIN()
