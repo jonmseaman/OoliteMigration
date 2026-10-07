@@ -91,8 +91,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 
 @interface DockEntity (OOPrivate)
 
-- (void) clearIdLocks:(ShipEntity *)ship;
-- (void) clearAllIdLocks;
+- (void) abortAllLaunches;
 - (void) autoDockShipsInQueue:(std::map<unsigned short, std::vector<oo::PList>> &)queue;
 - (void) addShipToShipsOnApproach:(ShipEntity *)ship;
 - (void) pullInShipIfPermitted:(ShipEntity *)ship;
@@ -106,7 +105,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 {
 	// Remove dead entities.
 	// Enumerate over a snapshot of the keys because we mutate the map.
-	for (unsigned short idObj : ShipIDsIn(shipsOnApproach))
+	for (unsigned short idObj : ShipIDsIn(_cxxDock->shipsOnApproach))
 	{
 		ShipEntity *ship = [UNIVERSE entityForUniversalID:idObj];
 		/* Remove ships from the approach queue if they are dead, or
@@ -114,7 +113,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 		 */
 		if (ship == nil || HPmagnitude2(HPvector_subtract([ship position],[self absolutePositionForSubentity])) > SCANNER_MAX_RANGE2)
 		{
-			shipsOnApproach.erase(idObj);
+			_cxxDock->shipsOnApproach.erase(idObj);
 			if (ship != nil) {
 				// notify ship if it's alive
 				[ship sendAIMessage:"DOCKING_ABORTED"];
@@ -123,15 +122,15 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 		}
 	}
 	
-	if (shipsOnApproach.empty())
+	if (_cxxDock->shipsOnApproach.empty())
 	{
-		if (last_launch_time < [UNIVERSE getTime])
+		if (_cxxDock->last_launch_time < [UNIVERSE getTime])
 		{
-			last_launch_time = [UNIVERSE getTime];
+			_cxxDock->last_launch_time = [UNIVERSE getTime];
 		}
 	}
 	
-	return shipsOnApproach.size();
+	return _cxxDock->shipsOnApproach.size();
 }
 
 
@@ -139,9 +138,9 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 {
 	double		playerExtraTime = 0;
 	
-	no_docking_while_launching = YES;
+	_cxxDock->no_docking_while_launching = YES;
 	
-	for (unsigned short idObj : ShipIDsIn(shipsOnApproach))
+	for (unsigned short idObj : ShipIDsIn(_cxxDock->shipsOnApproach))
 	{
 		ShipEntity *ship = [UNIVERSE entityForUniversalID:idObj];
 		if ([ship isShip])
@@ -150,7 +149,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 			[ship doScriptEvent:OOJSID("stationWithdrewDockingClearance")];
 		}
 	}
-	shipsOnApproach.clear();
+	_cxxDock->shipsOnApproach.clear();
 	
 	PlayerEntity *player = PLAYER;
 	StationEntity *station = (StationEntity*)[self parentEntity];
@@ -178,14 +177,14 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	// mark docking queue flight pattern as clear
 	[self clearAllIdLocks];
 
-	last_launch_time = [UNIVERSE getTime] + playerExtraTime;
+	_cxxDock->last_launch_time = [UNIVERSE getTime] + playerExtraTime;
 }
 
 
 - (void) abortAllLaunches
 {
-	no_docking_while_launching = NO;
-	launchQueue.clear();
+	_cxxDock->no_docking_while_launching = NO;
+	_cxxDock->launchQueue.clear();
 }
 
 
@@ -206,70 +205,20 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 
 - (void) autoDockShipsOnApproach
 {
-	[self autoDockShipsInQueue:shipsOnApproach];
-}
-
-
-- (BOOL) allowsDocking
-{
-	return allow_docking;
-}
-
-
-- (void) setAllowsDocking:(BOOL)allowed
-{
-	if (!allowed && allow_docking) 
-	{
-		[self abortAllDockings];
-	}
-	allow_docking = allowed;
-}
-
-
-- (BOOL) disallowedDockingCollides
-{
-	return disallowed_docking_collides;
-}
-
-
-- (BOOL) allowsLaunching
-{
-	return allow_launching;
-}
-
-
-- (void) setAllowsLaunching:(BOOL)allowed
-{
-	if (!allowed && allow_launching) 
-	{
-		[self abortAllLaunches];
-	}
-	allow_launching = allowed;
-}
-
-
-- (void) setDisallowedDockingCollides:(BOOL)ddc
-{
-	disallowed_docking_collides = ddc;
-}
-
-
-- (void) setVirtual
-{
-	virtual_dock = YES;
+	[self autoDockShipsInQueue:_cxxDock->shipsOnApproach];
 }
 
 
 - (std::optional<std::string>) canAcceptShipForDocking:(ShipEntity *) ship
 {
 	// First test permanent rejection reasons
-	if (!allow_docking)
+	if (!_cxxDock->allow_docking)
 	{
 		return "DOCK_CLOSED"; // could be temp or perm reject
 	}
 	BoundingBox bb = [ship totalBoundingBox];
-	if ((port_dimensions.x < (bb.max.x - bb.min.x) || port_dimensions.y < (bb.max.y - bb.min.y)) && 
-		(port_dimensions.y < (bb.max.x - bb.min.x) || port_dimensions.x < (bb.max.y - bb.min.y)))
+	if ((_cxxDock->port_dimensions.x < (bb.max.x - bb.min.x) || _cxxDock->port_dimensions.y < (bb.max.y - bb.min.y)) && 
+		(_cxxDock->port_dimensions.y < (bb.max.x - bb.min.x) || _cxxDock->port_dimensions.x < (bb.max.y - bb.min.y)))
 	{
 		return "TOO_BIG_TO_DOCK";
 	}
@@ -291,32 +240,17 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	}
 
 	// Second test temporary rejection reasons
-	if (no_docking_while_launching)
+	if (_cxxDock->no_docking_while_launching)
 	{
 		return "TRY_AGAIN_LATER";
 	}
 	// if there are pending launches, temporarily don't accept docking requests
-	if (allow_launching && !launchQueue.empty())
+	if (_cxxDock->allow_launching && !_cxxDock->launchQueue.empty())
 	{
 		return "TRY_AGAIN_LATER";
 	}
 	
 	return "DOCKING_POSSIBLE";
-}
-
-
-- (BOOL) isOffCentre
-{
-	if (fabs(_cxxEntity->position.x) + fabs(_cxxEntity->position.y) > 5.0)
-	{
-		return YES;
-	}
-	Vector dir = vector_forward_from_quaternion(_cxxEntity->orientation);
-	if (fabs(dir.x) + fabs(dir.y) > 0.1)
-	{
-		return YES;
-	}
-	return NO;
 }
 
 
@@ -337,7 +271,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	
 	// check if this is a new ship on approach
 	//
-	if (!shipsOnApproach.contains(shipID))
+	if (!_cxxDock->shipsOnApproach.contains(shipID))
 	{
 		HPVector	delta = HPvector_subtract([ship position], [self absolutePositionForSubentity]);
 		float	ship_distance = HPmagnitude(delta);
@@ -368,11 +302,11 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 		}
 	}
 	
-	if (!shipsOnApproach.contains(shipID))
+	if (!_cxxDock->shipsOnApproach.contains(shipID))
 	{
 		// some error has occurred - log it, and send the try-again message
 		oo::PList::Dict queue;
-		for (const auto &[queuedID, queuedStack] : shipsOnApproach)  queue[oo::str::format("%u", (unsigned)queuedID)] = oo::PList(oo::PList::Array(queuedStack));
+		for (const auto &[queuedID, queuedStack] : _cxxDock->shipsOnApproach)  queue[oo::str::format("%u", (unsigned)queuedID)] = oo::PList(oo::PList::Array(queuedStack));
 		OO_LOG_ERR("station.issueDockingInstructions.failed", "couldn't addShipToShipsOnApproach:{} in {}, retrying later -- shipsOnApproach:\n{}", oo::DescriptionOf(ship), oo::DescriptionOf(self), DescriptionForLog(oo::PList(std::move(queue))));
 		
 		return DockingInstructions(station, [ship position], 200, 100, "TRY_AGAIN_LATER", NO, -1);
@@ -381,7 +315,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 
 	//	shipsOnApproach now has an entry for the ship.
 	//
-	std::vector<oo::PList> &coordinatesStack = shipsOnApproach[shipID];
+	std::vector<oo::PList> &coordinatesStack = _cxxDock->shipsOnApproach[shipID];
 
 	if (coordinatesStack.empty())
 	{
@@ -447,9 +381,9 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	coords.y += rel_coords.x * vi.y + rel_coords.y * vj.y + rel_coords.z * vk.y;
 	coords.z += rel_coords.x * vi.z + rel_coords.y * vj.z + rel_coords.z * vk.z;
 	
-	if([id_lock[docking_stage] weakRefUnderlyingObject] == nil &&
-	   [id_lock[docking_stage + 1] weakRefUnderlyingObject] == nil &&
-	   [id_lock[docking_stage + 2] weakRefUnderlyingObject] == nil)	// check three stages ahead
+	if([_cxxDock->id_lock[docking_stage] weakRefUnderlyingObject] == nil &&
+	   [_cxxDock->id_lock[docking_stage + 1] weakRefUnderlyingObject] == nil &&
+	   [_cxxDock->id_lock[docking_stage + 2] weakRefUnderlyingObject] == nil)	// check three stages ahead
 	{
 		// approach is clear - move to next position
 		//
@@ -459,13 +393,13 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 				
 		if (docking_stage > 1)	// don't claim first docking stage
 		{
-			[id_lock[docking_stage] release];
-			id_lock[docking_stage] = [ship weakRetain];	// otherwise - claim this docking stage
+			[_cxxDock->id_lock[docking_stage] release];
+			_cxxDock->id_lock[docking_stage] = [ship weakRetain];	// otherwise - claim this docking stage
 		}
 		
 		//remove the previous stage from the stack
-		auto stack = shipsOnApproach.find(shipID);
-		if (stack != shipsOnApproach.end() && !stack->second.empty())  stack->second.erase(stack->second.begin());
+		auto stack = _cxxDock->shipsOnApproach.find(shipID);
+		if (stack != _cxxDock->shipsOnApproach.end() && !stack->second.empty())  stack->second.erase(stack->second.begin());
 		
 		return DockingInstructions(station, coords, speedAdvised, rangeAdvised, "APPROACH_COORDINATES", match_rotation, docking_stage);
 	}
@@ -479,8 +413,8 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 		// COMM-CHATTER
 		[UNIVERSE clearPreviousMessage];
 		[self cxx_sendExpandedMessage: "[station-hold-position]" toShip: ship];
-		auto stack = shipsOnApproach.find(shipID);
-		if (stack != shipsOnApproach.end() && stack->second.size() > 1)
+		auto stack = _cxxDock->shipsOnApproach.find(shipID);
+		if (stack != _cxxDock->shipsOnApproach.end() && stack->second.size() > 1)
 		{
 			if (oo::PList::Dict *held = stack->second[1].getIf<oo::PList::Dict>())  (*held)["hold_message_given"] = oo::PList("YES");
 		}
@@ -540,7 +474,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	//
 	std::vector<oo::PList> coordinatesStack;
 	coordinatesStack.reserve(MAX_DOCKING_STAGES);
-	float port_depth = port_dimensions.z;	// 250m deep standard port.
+	float port_depth = _cxxDock->port_dimensions.z;	// 250m deep standard port.
 	
 	int i;
 	for (i = corridor_count - 1; i >= 0; i--)
@@ -581,7 +515,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 		}
 		
 		// add the lenght inside the station to the corridor, except for the final position, inside the dock.
-		if (corridor_distance[i] > 0)  corridor_length += port_corridor;
+		if (corridor_distance[i] > 0)  corridor_length += _cxxDock->port_corridor;
 		
 		// -oo_setInteger: stored a signed integer, -oo_setFloat: a double
 		nextCoords["docking_stage"]	= oo::PList::signedInteger(corridor_count - i);
@@ -611,7 +545,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 		coordinatesStack.push_back(oo::PList(std::move(nextCoords)));
 	}
 	
-	shipsOnApproach[shipID] = std::move(coordinatesStack);
+	_cxxDock->shipsOnApproach[shipID] = std::move(coordinatesStack);
 	
 	
 	// COMM-CHATTER
@@ -632,7 +566,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	[self abortDockingForShip:ship];
 	
 	// avoid clashes with outgoing ships
-	last_launch_time = [UNIVERSE getTime];
+	_cxxDock->last_launch_time = [UNIVERSE getTime];
 
 }
 
@@ -641,7 +575,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	OOUniversalID	ship_id = [ship universalID];
 	const unsigned short	shipID = (unsigned short)ship_id;	// +numberWithUnsignedShort:
 	
-	shipsOnApproach.erase(shipID);
+	_cxxDock->shipsOnApproach.erase(shipID);
 	
 	if ([ship isPlayer])
 	{
@@ -669,21 +603,6 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 }
 
 
-- (Vector) portUpVectorForShipsBoundingBox:(BoundingBox)bb
-{
-	BOOL twist = ((port_dimensions.x < port_dimensions.y) ^ (bb.max.x - bb.min.x < bb.max.y - bb.min.y));
-
-	if (!twist)
-	{
-		return vector_up_from_quaternion(quaternion_multiply(_cxxEntity->orientation, [[self parentEntity] orientation]));
-	}
-	else
-	{
-		return vector_right_from_quaternion(quaternion_multiply(_cxxEntity->orientation, [[self parentEntity] orientation]));
-	}
-}
-
-
 - (BOOL) shipIsInDockingQueue:(ShipEntity *)ship
 {
 	if (![ship isShip])  return NO;
@@ -692,7 +611,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	OOUniversalID	ship_id = [ship universalID];
 	const unsigned short	shipID = (unsigned short)ship_id;	// +numberWithUnsignedShort:
 	
-	if (shipsOnApproach.contains(shipID))
+	if (_cxxDock->shipsOnApproach.contains(shipID))
 	{
 		return YES;
 	}
@@ -705,24 +624,12 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 }
 
 
-- (NSUInteger) countOfShipsInDockingQueue
-{
-	return shipsOnApproach.size();
-}
-
-
-- (NSUInteger) countOfShipsInLaunchQueue
-{
-	return launchQueue.size();
-}
-
-
 - (BOOL) shipIsInDockingCorridor:(ShipEntity *)ship
 {
 	if (![ship isShip])  return NO;
 	if ([ship isPlayer] && [ship status] == STATUS_DEAD)  return NO;
 
-	BOOL allow_docking_thisship = allow_docking || !disallowed_docking_collides;
+	BOOL allow_docking_thisship = _cxxDock->allow_docking || !_cxxDock->disallowed_docking_collides;
 	// ships can physically dock here, and this routine is mainly for
 	// collision detection, but will never be directed here by traffic
 	// control, if allow_docking is false but d_d_c is also false
@@ -744,9 +651,9 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	BoundingBox arbb = [ship findBoundingBoxRelativeToPosition: port_pos InVectors: vi : vj : vk];
 	
 	// port dimensions..
-	GLfloat ww = port_dimensions.x;
-	GLfloat hh = port_dimensions.y;
-	GLfloat dd = port_dimensions.z;
+	GLfloat ww = _cxxDock->port_dimensions.x;
+	GLfloat hh = _cxxDock->port_dimensions.y;
+	GLfloat dd = _cxxDock->port_dimensions.z;
 
 	BOOL rotatedPort = (ww >= hh) ? NO : YES;
 	BOOL rotatedShip = ((shipbb.max.x - shipbb.min.x) >= (shipbb.max.y - shipbb.min.y)) ? NO : YES;
@@ -903,7 +810,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 {
 	// allow_docking: docking permitted and expected
 	// disallowed_docking_collides: unauthorised docking does not result in explosion
-	if (allow_docking || !disallowed_docking_collides)
+	if (_cxxDock->allow_docking || !_cxxDock->disallowed_docking_collides)
 	{
 		[ship enterDock:(StationEntity*)[self parentEntity]];
 	}
@@ -919,11 +826,11 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	[ship setStatus:STATUS_DOCKED];
 	if (priority)
 	{
-		launchQueue.insert(launchQueue.begin(), oo::ObjCRef<ShipEntity *>(ship));
+		_cxxDock->launchQueue.insert(_cxxDock->launchQueue.begin(), oo::ObjCRef<ShipEntity *>(ship));
 	}
 	else
 	{
-		launchQueue.push_back(oo::ObjCRef<ShipEntity *>(ship));
+		_cxxDock->launchQueue.push_back(oo::ObjCRef<ShipEntity *>(ship));
 	}
 }
 
@@ -947,7 +854,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	Vector launchVector = vector_forward_from_quaternion(q1);
 	
 	// launch orientation
-	if ((port_dimensions.x < port_dimensions.y) ^ (bb.max.x - bb.min.x < bb.max.y - bb.min.y))
+	if ((_cxxDock->port_dimensions.x < _cxxDock->port_dimensions.y) ^ (bb.max.x - bb.min.x < bb.max.y - bb.min.y))
 	{
 		quaternion_rotate_about_axis(&q1, launchVector, M_PI*0.5);  // to account for the slot being at 90 degrees to vertical
 	}
@@ -955,7 +862,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	// launch position
 	[ship setPosition:launchPos];
 	if([ship pendingEscortCount] > 0) [ship setPendingEscortCount:0]; // Make sure no extra escorts are added after launch. (e.g. for miners etc.)
-	if ([ship hasEscorts]) no_docking_while_launching = YES;
+	if ([ship hasEscorts]) _cxxDock->no_docking_while_launching = YES;
 	// launch speed
 	launchVel = vector_add(launchVel, vector_multiply_scalar(launchVector, launchSpeed));
 	launchSpeed = magnitude(launchVel);
@@ -968,10 +875,10 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	[UNIVERSE addEntity:ship];
 	[ship setStatus: STATUS_LAUNCHING];
 	[ship setDesiredSpeed:launchSpeed]; // must be set after initialising the AI to correct any speed set by AI
-	last_launch_time = [UNIVERSE getTime];
-	double delay = (port_corridor + 2 * port_dimensions.z)/launchSpeed; // pause until 2 portlengths outside of the station.
+	_cxxDock->last_launch_time = [UNIVERSE getTime];
+	double delay = (_cxxDock->port_corridor + 2 * _cxxDock->port_dimensions.z)/launchSpeed; // pause until 2 portlengths outside of the station.
 	[ship setLaunchDelay:delay];
-	[[ship getAI] setNextThinkTime:last_launch_time + delay]; // pause while launching
+	[[ship getAI] setNextThinkTime:_cxxDock->last_launch_time + delay]; // pause while launching
 	
 	[ship resetExhaustPlumes];	// resets stuff for tracking/exhausts
 	
@@ -983,7 +890,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 - (NSUInteger) countOfShipsInLaunchQueueWithPrimaryRole:(const std::string &)role
 {
 	NSUInteger count = 0;
-	for (const oo::ObjCRef<ShipEntity *> &ship : launchQueue)
+	for (const oo::ObjCRef<ShipEntity *> &ship : _cxxDock->launchQueue)
 	{
 		if ([ship.get() cxx_hasPrimaryRole:role])  count++;
 	}
@@ -996,8 +903,8 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	if (![ship isShip])  return NO;
 	
 	BoundingBox bb = [ship totalBoundingBox];
-	if ((port_dimensions.x < (bb.max.x - bb.min.x) || port_dimensions.y < (bb.max.y - bb.min.y)) && 
-		(port_dimensions.y < (bb.max.x - bb.min.x) || port_dimensions.x < (bb.max.y - bb.min.y)) && ![ship isPlayer])
+	if ((_cxxDock->port_dimensions.x < (bb.max.x - bb.min.x) || _cxxDock->port_dimensions.y < (bb.max.y - bb.min.y)) && 
+		(_cxxDock->port_dimensions.y < (bb.max.x - bb.min.x) || _cxxDock->port_dimensions.x < (bb.max.y - bb.min.y)) && ![ship isPlayer])
 	{
 		return NO;
 	}
@@ -1021,18 +928,11 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 }	
 
 
-- (void) clear
-{
-	launchQueue.clear();
-	shipsOnApproach.clear();
-}
-
-
 - (BOOL) dockingCorridorIsEmpty
 {
 	double unitime = [UNIVERSE getTime];
 	
-	if (unitime < last_launch_time + STATION_DELAY_BETWEEN_LAUNCHES)
+	if (unitime < _cxxDock->last_launch_time + STATION_DELAY_BETWEEN_LAUNCHES)
 	{
 		// leave sufficient pause between launches
 		return NO;
@@ -1088,7 +988,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 				if (vdp > 0.86)
 				{
 					isEmpty = NO;
-					last_launch_time = unitime - STATION_DELAY_BETWEEN_LAUNCHES + STATION_LAUNCH_RETRY_INTERVAL;
+					_cxxDock->last_launch_time = unitime - STATION_DELAY_BETWEEN_LAUNCHES + STATION_LAUNCH_RETRY_INTERVAL;
 				}
 			}
 		}
@@ -1175,31 +1075,140 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 
 }
 
+@end
 
-- (void)setDimensionsAndCorridor:(BOOL)docking :(BOOL)ddc :(BOOL)launching
+
+// Slice 1 of docs/phases/3-slices/DockEntity.md (bead oo-ao2d): class shell, flags, geometry and
+// lifecycle. The facade forwards each selector (DockEntity (OOSlice1), DockEntity+ObjCBridge.mm);
+// its initialiser and -dealloc are the facade's.
+
+namespace cxx {
+
+bool DockEntity::allowsDocking()
 {
-	StationEntity *station = (StationEntity*)[self parentEntity];
+	return allow_docking;
+}
+
+
+void DockEntity::setAllowsDocking(bool allowed)
+{
+	::DockEntity *self = oo::ToObjC(this);
+	if (!allowed && allow_docking) 
+	{
+		[self abortAllDockings];
+	}
+	allow_docking = allowed;
+}
+
+
+bool DockEntity::disallowedDockingCollides()
+{
+	return disallowed_docking_collides;
+}
+
+
+bool DockEntity::allowsLaunching()
+{
+	return allow_launching;
+}
+
+
+void DockEntity::setAllowsLaunching(bool allowed)
+{
+	::DockEntity *self = oo::ToObjC(this);
+	if (!allowed && allow_launching) 
+	{
+		[self abortAllLaunches];
+	}
+	allow_launching = allowed;
+}
+
+
+void DockEntity::setDisallowedDockingCollides(bool ddc)
+{
+	disallowed_docking_collides = ddc;
+}
+
+
+void DockEntity::setVirtual()
+{
+	virtual_dock = YES;
+}
+
+
+bool DockEntity::isOffCentre()
+{
+	if (fabs(position.x) + fabs(position.y) > 5.0)
+	{
+		return YES;
+	}
+	Vector dir = vector_forward_from_quaternion(orientation);
+	if (fabs(dir.x) + fabs(dir.y) > 0.1)
+	{
+		return YES;
+	}
+	return NO;
+}
+
+
+Vector DockEntity::portUpVectorForShipsBoundingBox(BoundingBox bb)
+{
+	BOOL twist = ((port_dimensions.x < port_dimensions.y) ^ (bb.max.x - bb.min.x < bb.max.y - bb.min.y));
+
+	if (!twist)
+	{
+		return vector_up_from_quaternion(quaternion_multiply(orientation, [parentEntity() orientation]));
+	}
+	else
+	{
+		return vector_right_from_quaternion(quaternion_multiply(orientation, [parentEntity() orientation]));
+	}
+}
+
+
+NSUInteger DockEntity::countOfShipsInDockingQueue()
+{
+	return shipsOnApproach.size();
+}
+
+
+NSUInteger DockEntity::countOfShipsInLaunchQueue()
+{
+	return launchQueue.size();
+}
+
+
+void DockEntity::clear()
+{
+	launchQueue.clear();
+	shipsOnApproach.clear();
+}
+
+
+void DockEntity::setDimensionsAndCorridor(bool docking, bool ddc, bool launching)
+{
+	::StationEntity *station = (::StationEntity*)parentEntity();
 	if (virtual_dock)
 	{
 		port_dimensions = [station virtualPortDimensions];
 	}
 	else
 	{
-		BoundingBox bb = [self boundingBox];
+		BoundingBox bb = getBoundingBox();
 		port_dimensions = make_vector(bb.max.x - bb.min.x, bb.max.y - bb.min.y, bb.max.z - bb.min.z);
 	}
 
-	HPVector vk = HPvector_forward_from_quaternion(_cxxEntity->orientation);
+	HPVector vk = HPvector_forward_from_quaternion(orientation);
 	
 	BoundingBox stbb = [station boundingBox];
-	HPVector start = _cxxEntity->position;
+	HPVector start = position;
 	while ((start.x > stbb.min.x)&&(start.x < stbb.max.x) &&
 		   (start.y > stbb.min.y)&&(start.y < stbb.max.y) &&
 		   (start.z > stbb.min.z)&&(start.z < stbb.max.z) )
 	{
 		start = HPvector_add(start, HPvector_multiply_scalar(vk, port_dimensions.z));
 	}
-	port_corridor = start.z - _cxxEntity->position.z;
+	port_corridor = start.z - position.z;
 	
 	allow_docking = docking;
 	disallowed_docking_collides = ddc;
@@ -1210,40 +1219,13 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 
 //////////////////////////////////////////////// from superclass
 
-- (BOOL) isDock
+bool DockEntity::isDock()
 {
 	return YES;
 }
 
 
-- (id)cxx_initWithKey:(const std::string &)key definition:(const oo::PList &)dict
-{
-	OOJS_PROFILE_ENTER
-	
-	self = [super cxx_initWithKey:key definition:dict];
-	if (self != nil)
-	{
-		allow_docking = YES;
-		disallowed_docking_collides = NO;
-		allow_launching = YES;
-		virtual_dock = NO;
-	}
-	
-	return self;
-	
-	OOJS_PROFILE_EXIT
-}
-
-
-- (void) dealloc
-{
-	[self clearIdLocks:nil];
-	
-	[super dealloc];
-}
-
-
-- (void) clearIdLocks:(ShipEntity *)ship
+void DockEntity::clearIdLocks(::ShipEntity *ship)
 {
 	int i;
 	for (i = 1; i < MAX_DOCKING_STAGES; i++)
@@ -1256,7 +1238,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 }
 
 
-- (void) clearAllIdLocks
+void DockEntity::clearAllIdLocks()
 {
 	int i;
 	for (i = 1; i < MAX_DOCKING_STAGES; i++)
@@ -1266,14 +1248,14 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 }
 
 
-- (BOOL) setUpShipFromDictionary:(const oo::PList &) dict
+bool DockEntity::setUpShipFromDictionary(const oo::PList &dict)
 {
 	OOJS_PROFILE_ENTER
 	
-	_cxxEntity->isShip = YES;
-	_cxxEntity->isStation = NO;
+	isShip = YES;
+	isStation = NO;
 	
-	if (![super setUpShipFromDictionary:dict])  return NO;
+	if (!ShipEntity::setUpShipFromDictionary(dict))  return NO;
 	
 	return YES;
 	
@@ -1281,13 +1263,14 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 }
 
 
-- (void) update:(OOTimeDelta) delta_t
+void DockEntity::update(OOTimeDelta delta_t)
 {
-	[super update:delta_t];
+	::DockEntity *self = oo::ToObjC(this);
+	ShipEntity::update(delta_t);	// [super update:delta_t]
 	
 	if ((!launchQueue.empty())&&(shipsOnApproach.empty())&&[self dockingCorridorIsEmpty])
 	{
-		const oo::ObjCRef<ShipEntity *> se = launchQueue.front();
+		const oo::ObjCRef<::ShipEntity *> se = launchQueue.front();
 		// check to make sure ship has not been destroyed in queue by script
 		if ([se.get() status] == STATUS_DOCKED)
 		{
@@ -1304,34 +1287,34 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 
 
 // avoid possibility of shooting the virtual dock damaging the station
-- (void) noteTakingDamage:(double)amount from:(Entity *)entity type:(OOShipDamageType)type
+void DockEntity::noteTakingDamage(double amount, ::Entity *entity, OOShipDamageType type)
 {
 	if (virtual_dock) // can't be damaged
 	{
 		return;
 	}
-	[super noteTakingDamage:amount from:entity type:type];
+	ShipEntity::noteTakingDamage(amount, entity, type);
 }
 
 
-- (void) takeEnergyDamage:(double)amount from:(Entity *)ent becauseOf:(Entity *)other weaponIdentifier:(const std::string &)weaponIdentifier
+void DockEntity::takeEnergyDamage(double amount, cxx::Entity *ent, cxx::Entity *other, const std::string &weaponIdentifier)
 {
 	if (virtual_dock) // can't be damaged
 	{
 		return;
 	}
-	[super takeEnergyDamage:amount from:ent becauseOf:other weaponIdentifier:weaponIdentifier];
+	ShipEntity::takeEnergyDamage(amount, ent, other, weaponIdentifier);
 }
 
 
 // virtual docks are invisible
-- (void) drawImmediate:(bool)immediate translucent:(bool)translucent
+void DockEntity::drawImmediate(bool immediate, bool translucent)
 {
 	if (virtual_dock) // not drawn
 	{
 		return;
 	}
-	[super drawImmediate:immediate translucent:translucent];
+	ShipEntity::drawImmediate(immediate, translucent);
 }
 
-@end
+}	// namespace cxx
