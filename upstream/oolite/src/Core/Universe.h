@@ -221,6 +221,32 @@ public:
 	// -dealloc's body: the facade sends it before it releases this part and sends [super dealloc].
 	void dealloc();
 
+	// Slice 2: post-processing FX and colour-blind modes, the target framebuffer, start-up flags, add-ons, the entity list.
+	bool bloom();
+	void setBloom(bool newBloom);
+	int currentPostFX();
+	void setCurrentPostFX(int newCurrentPostFX);
+	void terminatePostFX(int postFX);
+	int nextColorblindMode(int index);
+	int prevColorblindMode(int index);
+	int colorblindMode();
+	void initTargetFramebufferWithViewSize(NSSize viewSize);
+	void deleteOpenGLObjects();
+	void resizeTargetFramebufferWithViewSize(NSSize viewSize);
+	void drawTargetTextureIntoDefaultFramebuffer();
+	NSUInteger sessionID();
+	bool doingStartUp();
+	bool getDoProcedurallyTexturedPlanets();
+	void setDoProcedurallyTexturedPlanets(bool value);
+	std::optional<std::string> getUseAddOns();
+	bool setUseAddOns(const std::string &newUse, bool saveGame);
+	bool setUseAddOns(const std::string &newUse, bool saveGame, bool force);
+	NSUInteger entityCount();
+#ifndef NDEBUG
+	void debugDumpEntities();
+	std::vector<oo::ObjCRef<::Entity *>> entityList();
+#endif
+
 	Universe(const Universe &) = delete;
 	Universe &operator=(const Universe &) = delete;
 
