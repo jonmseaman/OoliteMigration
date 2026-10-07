@@ -625,6 +625,7 @@ OO_TEST(slice17UpdateOff)
 	@autoreleasepool
 	{
 		Universe *u = NewUniverse();
+		SetUpTestPlayer();	// a player that is not dead: no dead player's update
 		u->_cxxUniverse->no_update = YES;
 		u->_cxxUniverse->universal_time = 5.0;
 		u->_cxxUniverse->time_delta = 0.5;
