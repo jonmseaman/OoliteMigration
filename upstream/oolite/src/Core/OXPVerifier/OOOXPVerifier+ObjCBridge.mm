@@ -85,7 +85,7 @@ cxx::OOOXPVerifier *oo::ToCxx(OOOXPVerifier *verifier)
 - (void)registerStage:(OOOXPVerifierStage *)stage					{ _cxxVerifier->registerStage(stage); }
 - (std::optional<std::string>)cxx_oxpPath							{ return _cxxVerifier->oxpPath(); }
 - (std::optional<std::string>)cxx_oxpDisplayName					{ return _cxxVerifier->oxpDisplayName(); }
-- (id)cxx_stageWithName:(const std::string &)name					{ return _cxxVerifier->stageWithName(name); }
+- (OOOXPVerifierStage *)cxx_stageWithName:(const std::string &)name	{ return _cxxVerifier->stageWithName(name); }
 - (oo::PList)configurationValueForKey:(const std::string &)key		{ return _cxxVerifier->configurationValueForKey(key); }
 - (oo::PList)cxx_configurationArrayForKey:(const std::string &)key	{ return _cxxVerifier->configurationArrayForKey(key); }
 - (oo::PList)cxx_configurationDictionaryForKey:(const std::string &)key	{ return _cxxVerifier->configurationDictionaryForKey(key); }
