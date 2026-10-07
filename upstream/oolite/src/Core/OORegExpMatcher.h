@@ -42,8 +42,8 @@ SOFTWARE.
 #include "oofnd/Ref.hpp"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/StdLib.hpp"
+#import "OOJSFunction.h"
 @class OOJSValue;
-class OOJSFunction;
 
 
 enum
