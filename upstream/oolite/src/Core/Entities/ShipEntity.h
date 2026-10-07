@@ -832,6 +832,19 @@ public:
 	void scoopUp(::ShipEntity *other);
 	void scoopUpProcess(::ShipEntity *other, bool procEvents, bool procMessages);
 
+	// Slice 31: cascades, energy / scrape / heat damage, abandoning ship, docks, wormholes, witchspace.
+	bool cascadeIfAppropriateWithDamageAmount(double amount, ::Entity *owner);
+	void takeEnergyDamage(double amount, cxx::Entity *ent, cxx::Entity *other, const std::string &weaponIdentifier) override;
+	bool abandonShip();
+	virtual void takeScrapeDamage(double amount, ::Entity *ent);
+	virtual void takeHeatDamage(double amount);
+	virtual void enterDock(::StationEntity *station);
+	virtual void leaveDock(::StationEntity *station);
+	virtual void enterWormhole(::WormholeEntity *w_hole);
+	void enterWormhole(::WormholeEntity *w_hole, bool replacing);
+	virtual void enterWitchspace();
+	virtual void leaveWitchspace();
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired

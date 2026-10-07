@@ -157,6 +157,15 @@ public:
 	void adjustVelocity(Vector xVel) override	{ [(::ShipEntity *)_objcOwner adjustVelocity:xVel]; }
 	bool canScoop(::ShipEntity *other) override	{ return [(::ShipEntity *)_objcOwner canScoop:other]; }
 	void suppressTargetLost() override	{ [(::ShipEntity *)_objcOwner suppressTargetLost]; }
+
+	// Slice 31 (bead oo-gx86h).
+	void takeScrapeDamage(double amount, ::Entity *ent) override	{ [(::ShipEntity *)_objcOwner takeScrapeDamage:amount from:ent]; }
+	void takeHeatDamage(double amount) override	{ [(::ShipEntity *)_objcOwner takeHeatDamage:amount]; }
+	void enterDock(::StationEntity *station) override	{ [(::ShipEntity *)_objcOwner enterDock:station]; }
+	void leaveDock(::StationEntity *station) override	{ [(::ShipEntity *)_objcOwner leaveDock:station]; }
+	void enterWormhole(::WormholeEntity *w_hole) override	{ [(::ShipEntity *)_objcOwner enterWormhole:w_hole]; }
+	void enterWitchspace() override	{ [(::ShipEntity *)_objcOwner enterWitchspace]; }
+	void leaveWitchspace() override	{ [(::ShipEntity *)_objcOwner leaveWitchspace]; }
 };
 
 }	// namespace
@@ -1052,5 +1061,22 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 - (void) suppressTargetLost	{ _cxxShip->cxx::ShipEntity::suppressTargetLost(); }
 - (void) scoopUp:(ShipEntity *)other	{ _cxxShip->scoopUp(other); }
 - (void) scoopUpProcess:(ShipEntity *)other processEvents:(BOOL)procEvents processMessages:(BOOL)procMessages	{ _cxxShip->scoopUpProcess(other, procEvents, procMessages); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice31)
+
+- (BOOL) cascadeIfAppropriateWithDamageAmount:(double)amount cascadeOwner:(Entity *)owner	{ return _cxxShip->cascadeIfAppropriateWithDamageAmount(amount, owner); }
+- (void) takeEnergyDamage:(double)amount from:(Entity *)ent becauseOf:(Entity *)other weaponIdentifier:(const std::string &)weaponIdentifier	{ _cxxShip->cxx::ShipEntity::takeEnergyDamage(amount, oo::ToCxx(ent), oo::ToCxx(other), weaponIdentifier); }
+- (BOOL) abandonShip	{ return _cxxShip->abandonShip(); }
+- (void) takeScrapeDamage:(double)amount from:(Entity *)ent	{ _cxxShip->cxx::ShipEntity::takeScrapeDamage(amount, ent); }
+- (void) takeHeatDamage:(double)amount	{ _cxxShip->cxx::ShipEntity::takeHeatDamage(amount); }
+- (void) enterDock:(StationEntity *)station	{ _cxxShip->cxx::ShipEntity::enterDock(station); }
+- (void) leaveDock:(StationEntity *)station	{ _cxxShip->cxx::ShipEntity::leaveDock(station); }
+- (void) enterWormhole:(WormholeEntity *)w_hole	{ _cxxShip->cxx::ShipEntity::enterWormhole(w_hole); }
+- (void) enterWormhole:(WormholeEntity *)w_hole replacing:(BOOL)replacing	{ _cxxShip->enterWormhole(w_hole, replacing); }
+- (void) enterWitchspace	{ _cxxShip->cxx::ShipEntity::enterWitchspace(); }
+- (void) leaveWitchspace	{ _cxxShip->cxx::ShipEntity::leaveWitchspace(); }
 
 @end
