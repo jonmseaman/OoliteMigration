@@ -953,9 +953,10 @@ OO_TEST(slice24DetailAndLogs)
 		[u setAutoMessageLogBg:NO];
 		OO_CHECK(![u permanentCommLog] && ![u permanentMessageLog] && ![u autoMessageLogBg]);
 
-		// With no player, there is nothing to block.
+		// Blocking remembers the player as stale.
+		SetUpTestPlayer();
 		[u setBlockJSPlayerShipProps:YES];
-		OO_CHECK(![u blockJSPlayerShipProps]);
+		OO_CHECK([u blockJSPlayerShipProps]);
 		[u setBlockJSPlayerShipProps:NO];
 		OO_CHECK(![u blockJSPlayerShipProps]);
 
