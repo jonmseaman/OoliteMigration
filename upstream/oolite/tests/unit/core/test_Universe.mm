@@ -19,6 +19,7 @@
 */
 
 #import "Universe.h"
+#include "oofnd/objc/OOException.h"	// slice 24: -handleOoliteException:
 
 #include "oo_test.hpp"
 
@@ -952,7 +953,10 @@ OO_TEST(slice24Voices)
 	@autoreleasepool
 	{
 		Universe *u = NewUniverse();
-		espeak_VOICE v0 = { "zero", NULL, NULL, 0 }, v1 = { "one", NULL, NULL, 0 }, v2 = { "two", NULL, NULL, 0 };
+		espeak_VOICE v0 = {}, v1 = {}, v2 = {};
+		v0.name = "zero";
+		v1.name = "one";
+		v2.name = "two";
 		const espeak_VOICE *voices[] = { &v0, &v1, &v2, NULL };
 		u->_cxxUniverse->espeak_voices = voices;
 		u->_cxxUniverse->espeak_voice_count = 3;
