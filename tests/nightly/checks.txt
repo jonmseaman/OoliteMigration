@@ -323,6 +323,8 @@
 [oo-9z7x] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOMesh test_OODrawable && bash tools/tier-c.sh --only goldens
 # GameController slice 1 (oo-zkpmt): the class shell, its facade, and the full-screen category on the shell state.
 [oo-zkpmt] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_GameController && bash tools/tier-c.sh --only goldens
+# GameController slice 2 (oo-hn0fw): the frame loop as members; the deferred calls through the bridge perform.
+[oo-hn0fw] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_GameController && bash tools/tier-c.sh --only goldens
 [oo-9ht.4] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOOXPVerifierStage test_OOOXPVerifier test_OOFileScannerVerifierStage test_OOAIStateMachineVerifierStage test_OOCheckJSSyntaxVerifierStage test_OOCheckPListSyntaxVerifierStage test_OOCheckDemoShipsPListVerifierStage test_OOCheckRequiresPListVerifierStage test_OOCheckEquipmentPListVerifierStage test_OOTextureVerifierStage test_OOCheckShipDataPListVerifierStage test_OOModelVerifierStage && bash tools/tier-c.sh --only goldens
 [oo-9ht.119] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOPListSchemaVerifier test_OOCheckShipDataPListVerifierStage && bash tools/tier-c.sh --only goldens
 [oo-9ht.54] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOCheckShipDataPListVerifierStage test_OOPListSchemaVerifier && bash tools/tier-c.sh --only goldens

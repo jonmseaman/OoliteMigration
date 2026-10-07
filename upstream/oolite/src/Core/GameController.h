@@ -106,6 +106,24 @@ public:
 	bool suppressClangStuff();
 #endif
 
+	// The frame loop (bead oo-hn0fw, slice 2).
+#if !OOLITE_MAC_OS_X
+	void performGameTick(id sender);
+#endif
+	void startAnimationTimer();
+	void stopAnimationTimer();
+
+	/*	Fire whatever is due now, the game tick first, then one deferred call:
+		what the run loop's -limitDateForMode: did for the game while its tick and
+		deferred calls were run-loop timers. For code that must let the game tick
+		while it blocks the frame loop (the OXZ download callback). See proposed
+		ADR-0033 and ADR-0040.
+	*/
+	void fireDueTimers();
+
+	// Internal: -applicationDidFinishLaunching (slice 3, still Objective-C) runs it.
+	void runFrameLoop();
+
 	// Internal: the state, which slices 2 and 3 and the FullScreen category (still Objective-C on
 	// the façade) read and write through _cxxController; it becomes private as they convert.
 #if OOLITE_MAC_OS_X
@@ -157,6 +175,11 @@ public:
 	bool					stayInFullScreenMode = {};
 	bool					_finishedLaunching = {};
 #endif
+
+private:
+	void doPerformGameTick();
+	void performGameTickIfDue();
+	void fireDueDeadlines();
 };
 
 }	// namespace cxx

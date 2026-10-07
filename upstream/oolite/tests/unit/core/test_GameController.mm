@@ -29,6 +29,7 @@
 #import "OOFullScreenController.h"
 
 #include "oofnd/Defaults.hpp"
+#include "oofnd/objc/OOException.h"
 #include "oofnd/FileSystem.hpp"
 #include "oo_test.hpp"
 
@@ -37,6 +38,8 @@
 #include <process.h>
 #include <string>
 #include <vector>
+#include <chrono>
+#include <thread>
 
 
 // main.mm defines the debug flags, and the test has its own main.
@@ -91,6 +94,25 @@ extern PlayerEntity *gOOPlayer;
 - (oo::PList) currentScreenMode					{ return _currentMode; }
 - (NSSize) currentScreenSize					{ return NSMakeSize(0, 0); }
 - (BOOL) inFullScreenMode						{ return _inFullScreen; }
+
+@end
+
+
+// A deferred call's target: records the arguments it is sent, and raises on request.
+@interface TestTarget: OOObject
+{
+@public
+	std::vector<std::string>	_calls;
+}
+- (void) record:(id)argument;
+- (void) raise:(id)argument;
+@end
+
+
+@implementation TestTarget
+
+- (void) record:(id)argument	{ _calls.push_back(argument != nil ? "arg" : "nil"); }
+- (void) raise:(id)argument		{ _calls.push_back("raise"); OORaiseException(OOGenericException, "%s", "deferred call failure"); }
 
 @end
 
@@ -347,6 +369,55 @@ OO_TEST(playerFilePaths)
 		OO_CHECK(oo::Defaults::standard().stringForKey("save-directory") == std::optional<std::string>("C:/games/saves"));
 		[controller cxx_setPlayerFileDirectory:std::nullopt];
 		OO_CHECK(!oo::Defaults::standard().stringForKey("save-directory").has_value());
+	}
+}
+
+
+// Slice 2 (bead oo-hn0fw): the deferred calls fire from -fireDueTimers, one per pass, in order;
+// target and argument are kept until then; an OOException from the call is swallowed and the
+// target stays retained (as the Foundation performer leaked it). The game tick's timer is never
+// started here (it would tick the whole game).
+OO_TEST(deferredCalls)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		GameController *controller = [GameController sharedController];
+		TestTarget *target = [[TestTarget alloc] init];
+		OOObject *argument = [[OOObject alloc] init];
+
+		OOScheduleDeferredCall(target, @selector(record:), argument, 0.0);
+		OOScheduleDeferredCall(target, @selector(record:), nil, -1.0);
+		OO_CHECK([target retainCount] == 3);
+		OO_CHECK([argument retainCount] == 2);
+		OO_CHECK(target->_calls.empty());
+
+		// Not due until 0.0001 s have passed.
+		std::this_thread::sleep_for(std::chrono::milliseconds(5));
+		[controller fireDueTimers];
+		OO_CHECK(target->_calls == std::vector<std::string>({ "arg" }));
+		OO_CHECK([argument retainCount] == 1);
+		OO_CHECK([target retainCount] == 2);
+		[controller fireDueTimers];
+		OO_CHECK(target->_calls == std::vector<std::string>({ "arg", "nil" }));
+		OO_CHECK([target retainCount] == 1);
+		[controller fireDueTimers];	// nothing left
+		OO_CHECK(target->_calls.size() == 2);
+
+		// A call not yet due stays.
+		OOScheduleDeferredCall(target, @selector(record:), nil, 60.0);
+		[controller fireDueTimers];
+		OO_CHECK(target->_calls.size() == 2);
+
+		// An OOException from the call is swallowed; the target is not released.
+		OOScheduleDeferredCall(target, @selector(raise:), nil, 0.0);
+		std::this_thread::sleep_for(std::chrono::milliseconds(5));
+		[controller fireDueTimers];
+		OO_CHECK(target->_calls.size() == 3 && target->_calls.back() == "raise");
+		OO_CHECK([target retainCount] == 3);	// the leaked +1 and the pending 60 s call's
+
+		[controller stopAnimationTimer];
+		[argument release];
 	}
 }
 

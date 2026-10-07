@@ -77,9 +77,138 @@ static cxx::GameController *sSharedController = nullptr;
 
 - (void)cxx_reportUnhandledStartupExceptionName:(const std::string &)name reason:(const std::optional<std::string> &)reason;	// reason nullopt: none (was nil)
 
+// Only the fenced Mac -performGameTick: still sends it; cxx::GameController::doPerformGameTick() since bead oo-hn0fw.
 - (void)doPerformGameTick;
 
+
 @end
+
+
+/*	The frame loop (ADR-0029 Decision 5; proposed ADR-0033).
+	
+	The game tick was a repeating Foundation timer on the main run loop, which
+	-applicationDidFinishLaunching: then ran for ever. It is now a deadline on
+	std::chrono::steady_clock, created and advanced exactly as GNUstep created
+	and advanced that timer's fire date (measured, see the ADR):
+	
+	* start: first deadline = now + interval (an interval <= 0 is 0.0001 s);
+	* fire when now >= deadline; before the tick runs, the next deadline is
+	  deadline + interval, plus as many further intervals as needed to pass the
+	  time sampled just before the tick (a late tick skips, it never bursts);
+	* stop/start inside a tick (the save/load critical section) replaces the
+	  deadline, as a new timer did.
+	
+	Each pass of the loop fires what is due (the tick first, then the log
+	flush, then up to two deferred calls), then runs the run loop once, up to
+	the next deadline, for what still lives on it (OXZ downloads) until its own
+	bead takes it off; while the debug console's socket is open, the wait is on
+	that socket instead (bead oo-3rb.14).
+*/
+namespace {
+// Held as steady_clock tick counts, as OOLogOutputHandler's flush deadline is: a static
+// time_point or duration has a constructor that may throw (bugprone-throwing-static-initialization).
+using TickClock = std::chrono::steady_clock;
+bool				sGameTickScheduled = false;
+TickClock::rep		sNextGameTick = 0;		// ticks since the clock's epoch
+TickClock::rep		sGameTickInterval = 0;	// ticks
+
+TickClock::time_point NextGameTick()
+{
+	return TickClock::time_point(TickClock::duration(sNextGameTick));
+}
+}
+
+
+/*	Deferred calls (bead oo-3rb.57, proposed ADR-0040): Foundation's timed
+	performers, which were one-shot timers on the main run loop. Measured
+	against gnustep-base 1.31: a performer's fire date is now + delay (a delay
+	<= 0 is 0.0001 s, the timer clamp); each run-loop pass fires the first due
+	timer in the order the timers were added, twice (-runMode:beforeDate: asks
+	-limitDateForMode:'s timer step once itself and once more before it waits),
+	so due performers fire in scheduling order whatever their fire dates, at
+	most two per pass; one scheduled while firing goes to the back. The
+	performer retained target and argument and released them after the call;
+	an exception from the call was logged by NSTimer and swallowed, and the
+	performer was then never released (it leaked its target and argument).
+	Anything else thrown propagated.
+*/
+namespace {
+
+struct OODeferredCall
+{
+	std::chrono::steady_clock::time_point	deadline;
+	id										target;
+	SEL										selector;
+	id										argument;
+};
+
+std::vector<OODeferredCall>					sDeferredCalls;	// in scheduling order
+
+}
+
+
+void OOScheduleDeferredCall(id target, SEL selector, id argument, NSTimeInterval delay)
+{
+	if (!oo::thread::isMainThread())  return;
+	
+	if (delay <= 0.0)  delay = 0.0001;	// as the Foundation timer did
+	OODeferredCall call =
+	{
+		std::chrono::steady_clock::now() + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(delay)),
+		objc_retain(target),
+		selector,
+		objc_retain(argument)
+	};
+	sDeferredCalls.push_back(call);
+}
+
+
+namespace {
+
+// One step of the run loop's timer firing: the first due call in scheduling order.
+void FireOneDueDeferredCall(void)
+{
+	const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+	for (std::vector<OODeferredCall>::iterator it = sDeferredCalls.begin(); it != sDeferredCalls.end(); ++it)
+	{
+		if (it->deadline <= now)
+		{
+			OODeferredCall call = *it;
+			sDeferredCalls.erase(it);
+			
+			// The perform and its handler, in the bridge (ADR-0056 amendment oo-9ht.139 item 3).
+			const char *exceptionName = NULL, *exceptionReason = NULL;
+			if (!GameControllerPerformSelectorWithObject(call.target, call.selector, call.argument, &exceptionName, &exceptionReason))
+			{
+				// The game's own exceptions (ADR-0037): the same line, name and reason bridged.
+				OO_LOG("unclassified", "*** NSTimer ignoring exception '{}' (reason '{}') raised during posting of timer with target {} and selector 'fire'", exceptionName, exceptionReason, oo::str::pointerDescription(call.target));
+				return;	// target and argument stay retained, as the performer leaked them
+			}
+			
+			objc_release(call.target);
+			objc_release(call.argument);
+			return;
+		}
+	}
+}
+
+
+// The earliest pending deferred call, if any: part of the run loop's wait limit.
+bool NextDeferredCallDeadline(std::chrono::steady_clock::time_point *outDeadline)
+{
+	bool found = false;
+	for (const OODeferredCall &call : sDeferredCalls)
+	{
+		if (!found || call.deadline < *outDeadline)
+		{
+			*outDeadline = call.deadline;
+			found = true;
+		}
+	}
+	return found;
+}
+
+}
 
 
 namespace cxx {
@@ -273,6 +402,182 @@ bool GameController::suppressClangStuff()
 }
 #endif
 
+#if !OOLITE_MAC_OS_X	// the Mac -performGameTick: is in GameController (MacOSX) at the end of the file
+
+void GameController::performGameTick(id /*sender*/)
+{
+	void *pool = objc_autoreleasePoolPush();
+	
+	[_gameView pollControls];
+	doPerformGameTick();
+	
+	objc_autoreleasePoolPop(pool);
+}
+
+#endif
+
+
+void GameController::doPerformGameTick()
+{
+	@try
+	{
+		if (gameIsPaused)
+			delta_t = 0.0;  // no movement!
+		else
+		{
+			delta_t = oo::date::monotonicSeconds() - last_timeInterval;
+			last_timeInterval += delta_t;
+			if (delta_t > MINIMUM_GAME_TICK)
+				delta_t = MINIMUM_GAME_TICK;		// peg the maximum pause (at 0.5->1.0 seconds) to protect against when the machine sleeps	
+		}
+		
+		[UNIVERSE update:delta_t];
+		if (EXPECT_NOT([PLAYER status] == STATUS_RESTART_GAME))
+		{
+			[UNIVERSE reinitAndShowDemo:YES];
+		}
+		[::OOSound update];
+		if (!gameIsPaused)
+		{
+			OOJSFrameCallbacksInvoke(delta_t);
+		}
+	}
+	@catch (id exception) 
+	{
+		if ([exception isKindOfClass:[OOException class]])
+		{
+			// -callStackSymbols is Foundation's; an OOException does not answer it (sending it raised
+			// out of this handler), so name the exception instead (proposed ADR-0037).
+			OOException *ooException = (OOException *)exception;
+			OO_LOG("exception.backtrace","{} : {}",[ooException name],[ooException reason]);
+		}
+		else
+		{
+			OO_LOG("exception.backtrace","{}",oo::DescriptionOf(exception));	// no Foundation exception has -callStackSymbols any more (oo-qps.17)
+		}
+	}
+	
+	@try
+	{
+		[_gameView updateScreen];
+	}
+	@catch (id exception) {}
+}
+
+
+void GameController::startAnimationTimer()
+{
+	if (!sGameTickScheduled)
+	{   
+		NSTimeInterval ti = _animationTimerInterval; // default one two-hundredth of a second (should be a fair bit faster than expected frame rate ~60Hz to avoid problems with phase differences)
+		if (ti <= 0.0)  ti = 0.0001;	// as the Foundation timer did
+		
+		sGameTickInterval = std::chrono::duration_cast<TickClock::duration>(std::chrono::duration<double>(ti)).count();
+		sNextGameTick = TickClock::now().time_since_epoch().count() + sGameTickInterval;
+		sGameTickScheduled = true;
+	}
+}
+
+
+void GameController::stopAnimationTimer()
+{
+	sGameTickScheduled = false;
+}
+
+
+void GameController::performGameTickIfDue()
+{
+	if (!sGameTickScheduled)  return;
+	
+	const TickClock::rep now = TickClock::now().time_since_epoch().count();
+	if (now < sNextGameTick)  return;
+	
+	TickClock::rep next = sNextGameTick + sGameTickInterval;
+	while (next <= now)  next += sGameTickInterval;
+	sNextGameTick = next;
+	
+	performGameTick(oo::ToObjC(this));
+}
+
+
+void GameController::fireDueDeadlines()
+{
+	performGameTickIfDue();
+	OOLogOutputHandlerFlushIfDue();
+}
+
+
+void GameController::fireDueTimers()
+{
+	fireDueDeadlines();
+	FireOneDueDeferredCall();
+}
+
+
+void GameController::runFrameLoop()
+{
+	for (;;)
+	{
+		void *pool = objc_autoreleasePoolPush();	// was an autorelease-pool block
+		{
+			fireDueDeadlines();
+			FireOneDueDeferredCall();
+			FireOneDueDeferredCall();
+			
+			// Wait for input until the tick or the next deferred call, whichever is first.
+			std::chrono::steady_clock::time_point wake;
+			bool haveWake = NextDeferredCallDeadline(&wake);
+			if (sGameTickScheduled && (!haveWake || NextGameTick() < wake))
+			{
+				wake = NextGameTick();
+				haveWake = true;
+			}
+			// The OXZ download's callbacks, which the run loop delivered (proposed ADR-0044).
+			cxx::OOOXZManager::sharedManager()->processDownloadEvents();
+			
+#ifndef NDEBUG
+			if (OODebugTCPConsoleIsWaitingForInput())
+			{
+				/*	The debug console's socket is no longer on the run loop (bead oo-3rb.14,
+					proposed ADR-0041): wait on the socket as the run loop waited on the
+					console's streams, handling what arrives before the next deadline.
+				*/
+				double timeout = -1.0;
+				if (haveWake)
+				{
+					timeout = std::chrono::duration<double>(wake - std::chrono::steady_clock::now()).count();
+					if (timeout < 0.0)  timeout = 0.0;
+				}
+				OODebugTCPConsoleServiceInput(timeout);
+			}
+			else
+#endif
+			{
+				/*	Nothing else to wait on now that the run-loop pump is gone (bead oo-3rb.58,
+					ADR-0033): wait until the next deadline, whole milliseconds rounded up as the
+					run loop's wait was (not std::this_thread: on this toolchain it sleeps in
+					15.6 ms steps whatever the timer resolution, measured). With no deadline at
+					all the pass ends at once, as the run loop returned at once with nothing to
+					wait on.
+				*/
+				if (haveWake)
+				{
+					const double remaining = std::chrono::duration<double>(wake - std::chrono::steady_clock::now()).count();
+					if (remaining > 0.0)
+					{
+#if OOLITE_WINDOWS
+						Sleep((DWORD)ceil(remaining * 1000.0));
+#else
+						std::this_thread::sleep_for(std::chrono::milliseconds((long long)ceil(remaining * 1000.0)));
+#endif
+					}
+				}
+			}
+		}
+		objc_autoreleasePoolPop(pool);
+	}
+}
+
 }	// namespace cxx
 
 
@@ -385,311 +690,6 @@ bool GameController::suppressClangStuff()
 #else
 	[_cxxController->_gameView updateScreen];
 #endif
-}
-
-
-#if !OOLITE_MAC_OS_X	// the Mac -performGameTick: is in GameController (MacOSX) at the end of the file
-
-- (void) performGameTick:(id)sender
-{
-	void *pool = objc_autoreleasePoolPush();
-	
-	[_cxxController->_gameView pollControls];
-	[self doPerformGameTick];
-	
-	objc_autoreleasePoolPop(pool);
-}
-
-#endif
-
-
-- (void) doPerformGameTick
-{
-	@try
-	{
-		if (_cxxController->gameIsPaused)
-			_cxxController->delta_t = 0.0;  // no movement!
-		else
-		{
-			_cxxController->delta_t = oo::date::monotonicSeconds() - _cxxController->last_timeInterval;
-			_cxxController->last_timeInterval += _cxxController->delta_t;
-			if (_cxxController->delta_t > MINIMUM_GAME_TICK)
-				_cxxController->delta_t = MINIMUM_GAME_TICK;		// peg the maximum pause (at 0.5->1.0 seconds) to protect against when the machine sleeps	
-		}
-		
-		[UNIVERSE update:_cxxController->delta_t];
-		if (EXPECT_NOT([PLAYER status] == STATUS_RESTART_GAME))
-		{
-			[UNIVERSE reinitAndShowDemo:YES];
-		}
-		[OOSound update];
-		if (!_cxxController->gameIsPaused)
-		{
-			OOJSFrameCallbacksInvoke(_cxxController->delta_t);
-		}
-	}
-	@catch (id exception) 
-	{
-		if ([exception isKindOfClass:[OOException class]])
-		{
-			// -callStackSymbols is Foundation's; an OOException does not answer it (sending it raised
-			// out of this handler), so name the exception instead (proposed ADR-0037).
-			OOException *ooException = (OOException *)exception;
-			OO_LOG("exception.backtrace","{} : {}",[ooException name],[ooException reason]);
-		}
-		else
-		{
-			OO_LOG("exception.backtrace","{}",oo::DescriptionOf(exception));	// no Foundation exception has -callStackSymbols any more (oo-qps.17)
-		}
-	}
-	
-	@try
-	{
-		[_cxxController->_gameView updateScreen];
-	}
-	@catch (id exception) {}
-}
-
-
-/*	The frame loop (ADR-0029 Decision 5; proposed ADR-0033).
-	
-	The game tick was a repeating Foundation timer on the main run loop, which
-	-applicationDidFinishLaunching: then ran for ever. It is now a deadline on
-	std::chrono::steady_clock, created and advanced exactly as GNUstep created
-	and advanced that timer's fire date (measured, see the ADR):
-	
-	* start: first deadline = now + interval (an interval <= 0 is 0.0001 s);
-	* fire when now >= deadline; before the tick runs, the next deadline is
-	  deadline + interval, plus as many further intervals as needed to pass the
-	  time sampled just before the tick (a late tick skips, it never bursts);
-	* stop/start inside a tick (the save/load critical section) replaces the
-	  deadline, as a new timer did.
-	
-	Each pass of the loop fires what is due (the tick first, then the log
-	flush, then up to two deferred calls), then runs the run loop once, up to
-	the next deadline, for what still lives on it (OXZ downloads) until its own
-	bead takes it off; while the debug console's socket is open, the wait is on
-	that socket instead (bead oo-3rb.14).
-*/
-namespace {
-// Held as steady_clock tick counts, as OOLogOutputHandler's flush deadline is: a static
-// time_point or duration has a constructor that may throw (bugprone-throwing-static-initialization).
-using TickClock = std::chrono::steady_clock;
-bool				sGameTickScheduled = false;
-TickClock::rep		sNextGameTick = 0;		// ticks since the clock's epoch
-TickClock::rep		sGameTickInterval = 0;	// ticks
-
-TickClock::time_point NextGameTick()
-{
-	return TickClock::time_point(TickClock::duration(sNextGameTick));
-}
-}
-
-
-/*	Deferred calls (bead oo-3rb.57, proposed ADR-0040): Foundation's timed
-	performers, which were one-shot timers on the main run loop. Measured
-	against gnustep-base 1.31: a performer's fire date is now + delay (a delay
-	<= 0 is 0.0001 s, the timer clamp); each run-loop pass fires the first due
-	timer in the order the timers were added, twice (-runMode:beforeDate: asks
-	-limitDateForMode:'s timer step once itself and once more before it waits),
-	so due performers fire in scheduling order whatever their fire dates, at
-	most two per pass; one scheduled while firing goes to the back. The
-	performer retained target and argument and released them after the call;
-	an exception from the call was logged by NSTimer and swallowed, and the
-	performer was then never released (it leaked its target and argument).
-	Anything else thrown propagated.
-*/
-namespace {
-
-struct OODeferredCall
-{
-	std::chrono::steady_clock::time_point	deadline;
-	id										target;
-	SEL										selector;
-	id										argument;
-};
-
-std::vector<OODeferredCall>					sDeferredCalls;	// in scheduling order
-
-}
-
-
-void OOScheduleDeferredCall(id target, SEL selector, id argument, NSTimeInterval delay)
-{
-	if (!oo::thread::isMainThread())  return;
-	
-	if (delay <= 0.0)  delay = 0.0001;	// as the Foundation timer did
-	OODeferredCall call =
-	{
-		std::chrono::steady_clock::now() + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(delay)),
-		[target retain],
-		selector,
-		[argument retain]
-	};
-	sDeferredCalls.push_back(call);
-}
-
-
-namespace {
-
-// One step of the run loop's timer firing: the first due call in scheduling order.
-void FireOneDueDeferredCall(void)
-{
-	const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
-	for (std::vector<OODeferredCall>::iterator it = sDeferredCalls.begin(); it != sDeferredCalls.end(); ++it)
-	{
-		if (it->deadline <= now)
-		{
-			OODeferredCall call = *it;
-			sDeferredCalls.erase(it);
-			
-			@try
-			{
-				[call.target performSelector:call.selector withObject:call.argument];
-			}
-			@catch (OOException *exception)
-			{
-				// The game's own exceptions (ADR-0037): the same line, name and reason bridged.
-				OO_LOG("unclassified", "*** NSTimer ignoring exception '{}' (reason '{}') raised during posting of timer with target {} and selector 'fire'", [exception name], [exception reason], oo::str::pointerDescription(call.target));
-				return;	// target and argument stay retained, as the performer leaked them
-			}
-			
-			[call.target release];
-			[call.argument release];
-			return;
-		}
-	}
-}
-
-
-// The earliest pending deferred call, if any: part of the run loop's wait limit.
-bool NextDeferredCallDeadline(std::chrono::steady_clock::time_point *outDeadline)
-{
-	bool found = false;
-	for (const OODeferredCall &call : sDeferredCalls)
-	{
-		if (!found || call.deadline < *outDeadline)
-		{
-			*outDeadline = call.deadline;
-			found = true;
-		}
-	}
-	return found;
-}
-
-}
-
-
-- (void) startAnimationTimer
-{
-	if (!sGameTickScheduled)
-	{   
-		NSTimeInterval ti = _cxxController->_animationTimerInterval; // default one two-hundredth of a second (should be a fair bit faster than expected frame rate ~60Hz to avoid problems with phase differences)
-		if (ti <= 0.0)  ti = 0.0001;	// as the Foundation timer did
-		
-		sGameTickInterval = std::chrono::duration_cast<TickClock::duration>(std::chrono::duration<double>(ti)).count();
-		sNextGameTick = TickClock::now().time_since_epoch().count() + sGameTickInterval;
-		sGameTickScheduled = true;
-	}
-}
-
-
-- (void) stopAnimationTimer
-{
-	sGameTickScheduled = false;
-}
-
-
-- (void) performGameTickIfDue
-{
-	if (!sGameTickScheduled)  return;
-	
-	const TickClock::rep now = TickClock::now().time_since_epoch().count();
-	if (now < sNextGameTick)  return;
-	
-	TickClock::rep next = sNextGameTick + sGameTickInterval;
-	while (next <= now)  next += sGameTickInterval;
-	sNextGameTick = next;
-	
-	[self performGameTick:self];
-}
-
-
-- (void) fireDueDeadlines
-{
-	[self performGameTickIfDue];
-	OOLogOutputHandlerFlushIfDue();
-}
-
-
-- (void) fireDueTimers
-{
-	[self fireDueDeadlines];
-	FireOneDueDeferredCall();
-}
-
-
-- (void) runFrameLoop
-{
-	for (;;)
-	{
-		@autoreleasepool
-		{
-			[self fireDueDeadlines];
-			FireOneDueDeferredCall();
-			FireOneDueDeferredCall();
-			
-			// Wait for input until the tick or the next deferred call, whichever is first.
-			std::chrono::steady_clock::time_point wake;
-			bool haveWake = NextDeferredCallDeadline(&wake);
-			if (sGameTickScheduled && (!haveWake || NextGameTick() < wake))
-			{
-				wake = NextGameTick();
-				haveWake = true;
-			}
-			// The OXZ download's callbacks, which the run loop delivered (proposed ADR-0044).
-			[[OOOXZManager sharedManager] processDownloadEvents];
-			
-#ifndef NDEBUG
-			if (OODebugTCPConsoleIsWaitingForInput())
-			{
-				/*	The debug console's socket is no longer on the run loop (bead oo-3rb.14,
-					proposed ADR-0041): wait on the socket as the run loop waited on the
-					console's streams, handling what arrives before the next deadline.
-				*/
-				double timeout = -1.0;
-				if (haveWake)
-				{
-					timeout = std::chrono::duration<double>(wake - std::chrono::steady_clock::now()).count();
-					if (timeout < 0.0)  timeout = 0.0;
-				}
-				OODebugTCPConsoleServiceInput(timeout);
-			}
-			else
-#endif
-			{
-				/*	Nothing else to wait on now that the run-loop pump is gone (bead oo-3rb.58,
-					ADR-0033): wait until the next deadline, whole milliseconds rounded up as the
-					run loop's wait was (not std::this_thread: on this toolchain it sleeps in
-					15.6 ms steps whatever the timer resolution, measured). With no deadline at
-					all the pass ends at once, as the run loop returned at once with nothing to
-					wait on.
-				*/
-				if (haveWake)
-				{
-					const double remaining = std::chrono::duration<double>(wake - std::chrono::steady_clock::now()).count();
-					if (remaining > 0.0)
-					{
-#if OOLITE_WINDOWS
-						Sleep((DWORD)ceil(remaining * 1000.0));
-#else
-						std::this_thread::sleep_for(std::chrono::milliseconds((long long)ceil(remaining * 1000.0)));
-#endif
-					}
-				}
-			}
-		}
-	}
 }
 
 

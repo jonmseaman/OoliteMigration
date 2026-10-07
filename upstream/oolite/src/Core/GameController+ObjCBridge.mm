@@ -29,6 +29,7 @@ MA 02110-1301, USA.
 #import "GameController.h"
 
 #include "oofnd/objc/OOObjCPeer.h"
+#include "oofnd/objc/OOException.h"
 
 
 namespace {
@@ -131,4 +132,34 @@ cxx::GameController *oo::ToCxx(GameController *controller)
 - (MyOpenGLView *) gameView													{ return _cxxController->gameView(); }
 - (void) setGameView:(MyOpenGLView *)view									{ _cxxController->setGameView(view); }
 
+#if !OOLITE_MAC_OS_X	// the Mac -performGameTick: is in GameController (MacOSX), in GameController.mm
+- (void) performGameTick:(id)sender											{ _cxxController->performGameTick(sender); }
+#endif
+- (void) startAnimationTimer												{ _cxxController->startAnimationTimer(); }
+- (void) stopAnimationTimer													{ _cxxController->stopAnimationTimer(); }
+- (void) fireDueTimers														{ _cxxController->fireDueTimers(); }
+
 @end
+
+
+@implementation GameController (OOPrivateForwarded)
+
+- (void) runFrameLoop														{ _cxxController->runFrameLoop(); }
+
+@end
+
+
+bool GameControllerPerformSelectorWithObject(id target, SEL selector, id argument, const char **outName, const char **outReason)
+{
+	@try
+	{
+		[target performSelector:selector withObject:argument];
+	}
+	@catch (OOException *exception)
+	{
+		*outName = [exception name];
+		*outReason = [exception reason];
+		return false;
+	}
+	return true;
+}
