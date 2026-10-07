@@ -248,8 +248,6 @@ MA 02110-1301, USA.
 
 - (void) preloadSounds;
 
-- (oo::PList) cxx_shipsForSaleForSystem:(OOSystemID) s withTL:(OOTechLevelID) specialTL atTime:(OOTimeAbsolute) current_time;	// an array of offer dictionaries, by name and price
-
 /* Calculate base cost, before depreciation */
 - (OOCreditsQuantity) cxx_tradeInValueForCommanderDictionary:(const oo::PList &) cmdr_dict;
 
@@ -555,6 +553,15 @@ MA 02110-1301, USA.
 - (Random_Seed) marketSeed;
 - (void) cxx_loadStationMarkets:(const oo::PList &)marketData;	// null: nothing to load
 - (oo::PList) cxx_getStationMarkets;	// [{market, position}, ...] as saved in the savegame
+
+@end
+
+
+// Slice 22 of docs/phases/3-slices/Universe.md (bead oo-05ow5): members of cxx::Universe, forwarded by
+// the category of the same name in Universe+ObjCBridge.mm (amendment oo-mvzmb item 1).
+@interface Universe (OOSlice22)
+
+- (oo::PList) cxx_shipsForSaleForSystem:(OOSystemID) s withTL:(OOTechLevelID) specialTL atTime:(OOTimeAbsolute) current_time;	// an array of offer dictionaries, by name and price
 
 @end
 

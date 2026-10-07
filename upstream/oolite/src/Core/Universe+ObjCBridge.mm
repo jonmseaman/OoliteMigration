@@ -230,3 +230,10 @@ extern Universe *gSharedUniverse;
 - (oo::PList) cxx_getStationMarkets	{ return _cxxUniverse->getStationMarkets(); }
 
 @end
+
+
+@implementation Universe (OOSlice22)
+
+- (oo::PList) cxx_shipsForSaleForSystem:(OOSystemID)s withTL:(OOTechLevelID)specialTL atTime:(OOTimeAbsolute)current_time	{ return _cxxUniverse->shipsForSaleForSystem(s, specialTL, current_time); }
+
+@end
