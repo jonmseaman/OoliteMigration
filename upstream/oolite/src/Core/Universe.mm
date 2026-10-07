@@ -11318,7 +11318,7 @@ void Universe::quitGame()
 }
 
 
-void Universe::carryPlayerOn(::StationEntity *carrier, ::WormholeEntity *wormhole)
+void Universe::carryPlayerOn(::StationEntity * /*carrier*/, ::WormholeEntity *wormhole)
 {
 	::Universe *self = oo::ToObjC(this);
 		::PlayerEntity	*player = PLAYER;
