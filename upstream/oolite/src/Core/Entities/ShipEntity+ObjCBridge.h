@@ -202,49 +202,19 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
  -----------------------------------------*/
 
 
-- (Entity *)thankedShip;
-- (Entity *)rememberedShip;
-- (void) setThankedShip:(Entity *) targetEntity;
-- (void) setRememberedShip:(Entity *) targetEntity;
-- (void) setTargetStation:(Entity *) targetEntity;
-- (BOOL) isValidTarget:(Entity *) target;
-- (void) addTarget:(Entity *) targetEntity;
-- (void) removeTarget:(Entity *) targetEntity;
-- (BOOL) canStillTrackPrimaryTarget;
-- (id) primaryTarget;
-- (id) primaryTargetWithoutValidityCheck;
-- (StationEntity *) targetStation;
 
-- (BOOL) isFriendlyTo:(ShipEntity *)otherShip;
 
-- (ShipEntity *) shipHitByLaser;
 
-- (void) noteLostTarget;
-- (void) noteLostTargetAndGoIdle;
-- (void) noteTargetDestroyed:(ShipEntity *)target;
 
-- (OOBehaviour) behaviour;
-- (void) setBehaviour:(OOBehaviour) cond;
 
-- (void) trackOntoTarget:(double) delta_t withDForward: (GLfloat) dp;
 
-- (double) ballTrackLeadingTarget:(double) delta_t atTarget:(Entity *)target;
 
 - (GLfloat) rollToMatchUp:(Vector) up_vec rotating:(GLfloat) match_roll;
 
 - (GLfloat) rangeToDestination;
 - (double) trackDestination:(double) delta_t :(BOOL) retreat;
 
-- (void) setCoordinate:(HPVector)coord;
-- (HPVector) coordinates;
-- (HPVector) destination;
-- (HPVector) distance_six: (GLfloat) dist;
-- (HPVector) distance_twelve: (GLfloat) dist withOffset:(GLfloat)offset;
 
-- (void) setEvasiveJink:(GLfloat) z;
-- (void) evasiveAction:(double) delta_t;
-- (double) trackPrimaryTarget:(double) delta_t :(BOOL) retreat;
-- (double) trackSideTarget:(double) delta_t :(BOOL) leftside;
 - (double) missileTrackPrimaryTarget:(double) delta_t;
 
 //return 0.0 if there is no primary target
@@ -1128,6 +1098,55 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (void) setPrimaryAggressor:(Entity *) targetEntity;
 - (Entity *)lastEscortTarget;
 - (void) setLastEscortTarget:(Entity *) targetEntity;
+
+@end
+
+
+// Slice 24 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice24)
+
+- (Entity *)thankedShip;
+- (void) setThankedShip:(Entity *) targetEntity;
+- (Entity *)rememberedShip;
+- (void) setRememberedShip:(Entity *) targetEntity;
+- (StationEntity *) targetStation;
+- (void) setTargetStation:(Entity *) targetEntity;
+- (BOOL) isValidTarget:(Entity *) target;
+- (void) addTarget:(Entity *) targetEntity;
+- (void) removeTarget:(Entity *) targetEntity;
+- (BOOL) canStillTrackPrimaryTarget;
+- (id) primaryTarget;
+- (id) primaryTargetWithoutValidityCheck;
+- (BOOL) isFriendlyTo:(ShipEntity *)otherShip;
+- (ShipEntity *) shipHitByLaser;
+- (void) setShipHitByLaser:(ShipEntity *)ship;
+- (void) noteLostTarget;
+- (void) noteLostTargetAndGoIdle;
+- (void) noteTargetDestroyed:(ShipEntity *)target;
+- (OOBehaviour) behaviour;
+- (void) setBehaviour:(OOBehaviour) cond;
+- (HPVector) destination;
+- (HPVector) coordinates;
+- (void) setCoordinate:(HPVector)coord;
+- (HPVector) distance_six: (GLfloat) dist;
+- (HPVector) distance_twelve: (GLfloat) dist withOffset:(GLfloat)offset;
+- (void) trackOntoTarget:(double) delta_t withDForward: (GLfloat) dp;
+- (double) ballTrackLeadingTarget:(double) delta_t atTarget:(Entity *)target;
+
+@end
+
+
+// Slice 25 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice25)
+
+- (void) setEvasiveJink:(GLfloat) z;
+- (void) evasiveAction:(double) delta_t;
+- (double) trackPrimaryTarget:(double) delta_t :(BOOL) retreat;
+- (double) trackSideTarget:(double) delta_t :(BOOL) leftside;
 
 @end
 

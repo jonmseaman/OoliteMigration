@@ -4332,3 +4332,66 @@ façade's deletion bead (oo-9ht.144) removes them with the forwarders.
    façade's forwarder converts (`oo::ToCxx(who)`), as slice 6's `-checkCloseCollisionWith:` does.
 4. **The tests** set a ship's target through the helper `SetPrimaryTarget()`, not `-addTarget:`,
    which tells the ship's scripts (the unit tests' ships have no JavaScript object).
+
+## Amendment (bead oo-zd80m): ShipEntity slices 24-34, a block converted beside the others
+
+- Date: 2026-10-06. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Plan:
+  `docs/phases/3-slices/ShipEntity.md` slices 24-34 (beads oo-zd80m, oo-k6wuw, oo-v92af, oo-pnfyp,
+  oo-40ocf, oo-g900k, oo-ogoct, oo-gx86h, oo-5e0ny, oo-tz2ra, oo-nkyn3). Exemplar:
+  `src/Core/Entities/ShipEntity.h/.mm`, `ShipEntity+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_ShipEntity.mm`. Follows amendment oo-60fwo (the class shell) and the
+  conventions of amendment oo-mvzmb (slices 2-12), which this block repeats in short so that it
+  stands whichever block lands first.
+
+**Context.** Three workers convert slices of `ShipEntity.mm` at once (2-12, 13-23, 24-34), each
+block stacked on `main` and on nothing of the others'. The later slices move the ship's target
+memory, tracking, weapons, missiles, collisions, damage, docking, comms and script events; the
+Objective-C subclasses (`PlayerEntity`, `StationEntity`, `DockEntity`, `ProxyPlayerEntity`)
+override a good part of them.
+
+**Decision (recommended defaults).**
+
+1. **As amendment oo-mvzmb items 1-5 and 7:** a slice's members are a `namespace cxx` block of
+   their own after the `@implementation`, under a comment naming the slice and its bead, declared
+   in a block of `cxx::ShipEntity` under the same comment; the façade forwards each selector from
+   a category `ShipEntity (OOSliceN)` in `ShipEntity+ObjCBridge.mm`, and the selector's declaration
+   moves to that category's `@interface` in the bridge header (one the class did not declare is
+   declared there). Sends to `self` in a moved body stay sends (`::ShipEntity *self =
+   oo::ToObjC(this)`), so a subclass's override still runs and a selector of a slice not yet
+   landed still answers. Each slice adds its `OO_TEST(sliceN...)` cases to `test_ShipEntity.mm`,
+   written against the façade and run on the unconverted class first.
+2. **A member an Objective-C subclass overrides is `virtual` and gets a line in the ship's adapter
+   `ObjCShipEntity`** (private to `ShipEntity+ObjCBridge.mm`, derived from
+   `oo::ObjCEntity<cxx::ShipEntity>`, made by `-initShipPart`), which messages the Objective-C
+   object; its forwarder calls `cxx::ShipEntity`'s own member (`_cxxShip->cxx::ShipEntity::m()`),
+   which is what `[super ...]` reached. A member that overrides a virtual member of `cxx::Entity`
+   (`throwSparks()`, `getVelocity()`, `takeEnergyDamage()`, `dumpSelfState()`,
+   `descriptionForObjDump()`) is `override`; the root's template already has its line. The block
+   that lands first adds the adapter class; a merge with another block keeps one class and every
+   block's lines, each under its slice's comment.
+3. **Every Objective-C class named in a member is written `::X`**, whether or not a `cxx::X`
+   exists yet (`::StationEntity *`, `[::OOColor ...]`): classes are converting under the block,
+   and a bare name that a later `cxx::X` captures breaks the build on a merge (p3-resume note of
+   2026-10-06 03:00). Protocol qualifiers drop after `::X` (oo-mvzmb item 5).
+4. **A member whose selector names a data member is `getX`** (`-behaviour` is `getBehaviour()`,
+   `-coordinates` `getCoordinates()`, `-isDemoShip` `getIsDemoShip()`), as slice 11's `getThrust()`;
+   `-velocity` is `getVelocity()`, the root's virtual.
+5. **The forwarder keeps the Objective-C signature**; a result the member answers as a plainer
+   type (`::Entity *` for `Entity<OOSubEntity> *`) is cast back in the forwarder.
+
+6. **A unit inside a preprocessor condition keeps it** around its member, declaration and
+   forwarder (`#if OO_SALVAGE_SUPPORT` for the salvage methods, `#ifndef NDEBUG` for
+   `dumpSelfState()` and `descriptionForObjDump()`, as `cxx::Entity` declares them).
+7. **A `[super x]` that still reaches the root after a slice makes `x` a `cxx::ShipEntity`
+   override** is pointed at the root's member by name in the unconverted method
+   (`_cxxShip->cxx::OOEntityWithDrawable::getVelocity()` in `-update:`, slice 30): the root's
+   `-velocity` answers `superGetVelocity()`, which is now the ship's.
+8. **A C function the plan assigns to a slice loses its messages without a new interface**
+   (`--slice-done` counts any Objective-C syntax in it): `AuthorityPredicate()` (slice 33) gets
+   the two answers it messaged for in its parameter, read once by its only caller;
+   the shader and weapon-range helpers (slice 34) call `cxx::ResourceManager`,
+   `cxx::OOEquipmentType` and the entity's C++ part, and ask the runtime for the binding target's
+   class (`-isPlayerLikeShip` is YES for exactly `PlayerEntity` and `ProxyPlayerEntity`).
+
+**Consequences.** One adapter class for the ship whichever block lands first; the façade's
+deletion bead removes the categories, the forwarders and the adapter's lines.

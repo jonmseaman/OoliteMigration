@@ -713,6 +713,41 @@ public:
 	::Entity *lastEscortTarget();
 	void setLastEscortTarget(::Entity *targetEntity);
 
+	// Slice 24: target memory and validity, behaviour and destination accessors, distances, leading the target.
+	::Entity *thankedShip();
+	void setThankedShip(::Entity *targetEntity);
+	::Entity *rememberedShip();
+	void setRememberedShip(::Entity *targetEntity);
+	::StationEntity *targetStation();
+	void setTargetStation(::Entity *targetEntity);
+	virtual bool isValidTarget(::Entity *target);
+	virtual void addTarget(::Entity *targetEntity);
+	void removeTarget(::Entity *targetEntity);
+	bool canStillTrackPrimaryTarget();
+	id primaryTarget();
+	id primaryTargetWithoutValidityCheck();
+	bool isFriendlyTo(::ShipEntity *otherShip);
+	::ShipEntity *shipHitByLaser();
+	void setShipHitByLaser(::ShipEntity *ship);
+	void noteLostTarget();
+	void noteLostTargetAndGoIdle();
+	void noteTargetDestroyed(::ShipEntity *target);
+	OOBehaviour getBehaviour();
+	void setBehaviour(OOBehaviour cond);
+	HPVector destination();
+	HPVector getCoordinates();
+	void setCoordinate(HPVector coord);
+	HPVector distance_six(GLfloat dist);
+	HPVector distance_twelve(GLfloat dist, GLfloat offset);
+	void trackOntoTarget(double delta_t, GLfloat dp);
+	double ballTrackLeadingTarget(double delta_t, ::Entity *target);
+
+	// Slice 25: evasive jink, primary and side target tracking.
+	void setEvasiveJink(GLfloat z);
+	void evasiveAction(double delta_t);
+	double trackPrimaryTarget(double delta_t, bool retreat);
+	double trackSideTarget(double delta_t, bool leftside);
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired

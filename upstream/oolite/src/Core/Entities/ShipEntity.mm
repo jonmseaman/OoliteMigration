@@ -516,860 +516,6 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 }
 
 
-- (Entity *) thankedShip
-{
-	Entity *result = [_cxxShip->_thankedShip weakRefUnderlyingObject];
-	if (result == nil || ![self isValidTarget:result])
-	{
-		DESTROY(_cxxShip->_thankedShip);
-		return nil;
-	}
-	return result;
-}
-
-
-- (void) setThankedShip:(Entity *) targetEntity
-{
-	[_cxxShip->_thankedShip release];
-	_cxxShip->_thankedShip = [targetEntity weakRetain];
-}
-
-
-- (Entity *) rememberedShip
-{
-	Entity *result = [_cxxShip->_rememberedShip weakRefUnderlyingObject];
-	if (result == nil || ![self isValidTarget:result])
-	{
-		DESTROY(_cxxShip->_rememberedShip);
-		return nil;
-	}
-	return result;
-}
-
-
-- (void) setRememberedShip:(Entity *) targetEntity
-{
-	[_cxxShip->_rememberedShip release];
-	_cxxShip->_rememberedShip = [targetEntity weakRetain];
-}
-
-
-- (StationEntity *) targetStation
-{
-	StationEntity *result = [_cxxShip->_targetStation weakRefUnderlyingObject];
-	if (result == nil || ![self isValidTarget:result])
-	{
-		DESTROY(_cxxShip->_targetStation);
-		return nil;
-	}
-	return result;
-}
-
-
-- (void) setTargetStation:(Entity *) targetEntity
-{
-	[_cxxShip->_targetStation release];
-	_cxxShip->_targetStation = [targetEntity weakRetain];
-}
-
-/* Now we use weakrefs rather than universal ID this function checks
- * for targets which may have a valid reference but are not currently
- * targetable. */
-- (BOOL) isValidTarget:(Entity *)target
-{
-	if (target == nil) 
-	{
-		return NO;
-	}
-	if ([target isShip])
-	{
-		OOEntityStatus tstatus = [target status];
-		if (tstatus == STATUS_ENTERING_WITCHSPACE || tstatus == STATUS_IN_HOLD || tstatus == STATUS_DOCKED || tstatus == STATUS_DEAD)
-        // 2013-01-13, Eric: added STATUS_DEAD because I keep seeing ships locked on dead ships in attack mode.
-		{
-			return NO;
-		}
-		return YES;
-	}
-	if ([target isWormhole] && [target scanClass] != CLASS_NO_DRAW)
-	{
-		return YES;
-	}
-	return NO;
-}
-
-
-- (void) addTarget:(Entity *) targetEntity
-{
-	if (targetEntity == self)  return;
-	if (targetEntity != nil) 
-	{
-		DESTROY(_cxxShip->_primaryTarget);
-		_cxxShip->_primaryTarget = [targetEntity weakRetain];
-		[self startTrackingCurve];
-	}
-	
-	for (const auto &sub : [self cxx_shipSubEntities])  [sub.get() addTarget:targetEntity];
-	if (![self isSubEntity])  [self doScriptEvent:OOJSID("shipTargetAcquired") withArgument:targetEntity];
-}
-
-
-- (void) removeTarget:(Entity *) targetEntity
-{
-	if(targetEntity != nil) [self noteLostTarget];
-	else DESTROY(_cxxShip->_primaryTarget);
-	// targetEntity == nil is currently only true for mounted player missiles. 
-	// we don't want to send lostTarget messages while the missile is mounted.
-	
-	for (const auto &sub : [self cxx_shipSubEntities])  [sub.get() removeTarget:targetEntity];
-}
-
-
-/* Checks if the primary target is still trackable.
- * 
- * 1.80 behaviour: still exists, is in scanner range, is not cloaked
- *
- * 1.81 (planned) behaviour:
- * - track cloaked ships once primary targeted (but no missiles, and can't keep as a mere defense target, and probably some other penalties)
- * - track ships at 120% scanner range *if* they are also primary aggressor
- *
- * But first, just switch over to this method on 1.80 behaviour and check
- * that things still work.
- */
-- (BOOL) canStillTrackPrimaryTarget
-{
-	Entity *target = (Entity *)[self primaryTargetWithoutValidityCheck];
-	if (target == nil)
-	{
-		return NO;
-	}
-	if (![self isValidTarget:target])
-	{
-		return NO;
-	}
-	double range2 = HPmagnitude2(HPvector_subtract([target position], _cxxEntity->position));
-	if (range2 > _cxxShip->scannerRange * _cxxShip->scannerRange * 1.5625) 
-	{
-		// 1.5625 = 1.25*1.25
-		return NO;
-	}
-	// 1.81: can retain cloaked ships as a *primary* target now
-/*	if ([target isShip] && [(ShipEntity*)target isCloaked])
-	{
-		return NO;
-		} */
-	return YES;
-}
-
-
-- (id) primaryTarget
-{
-	id result = [_cxxShip->_primaryTarget weakRefUnderlyingObject];
-	if ((result == nil && _cxxShip->_primaryTarget != nil)
-			|| ![self isValidTarget:result])
-	{
-		DESTROY(_cxxShip->_primaryTarget);
-		return nil;
-	}
-	else if (EXPECT_NOT(result == self))
-	{
-		/*	Added in response to a crash report showing recursion in
-			[PlayerEntity hasHostileTarget].
-			-- Ahruman 2009-12-17
-		*/
-		DESTROY(_cxxShip->_primaryTarget);
-	}
-	return result;
-}
-
-
-// used when we need to check the target - perhaps for a potential
-// noteTargetLost - without invalidating the target first
-- (id) primaryTargetWithoutValidityCheck
-{
-	id result = [_cxxShip->_primaryTarget weakRefUnderlyingObject];
-	if (EXPECT_NOT(result == self))
-	{
-		// just in case
-		DESTROY(_cxxShip->_primaryTarget);
-		return nil;
-	}
-	return result;
-}
-
-
-- (BOOL) isFriendlyTo:(ShipEntity *)otherShip
-{
-	BOOL isFriendly = NO;
-	OOShipGroup	*myGroup = [self group];
-	OOShipGroup	*otherGroup = [otherShip group];
-	
-	if ((otherShip == self) ||
-		([self isPolice] && [otherShip isPolice]) ||
-		([self isThargoid] && [otherShip isThargoid]) ||
-		(myGroup != nil && otherGroup != nil && (myGroup == otherGroup || [otherGroup leader] == self)) ||
-		([self scanClass] == CLASS_MILITARY && [otherShip scanClass] == CLASS_MILITARY))
-	{
-		isFriendly = YES;
-	}
-	
-	return isFriendly;
-}
-
-
-- (ShipEntity *) shipHitByLaser
-{
-	return [_cxxShip->_shipHitByLaser weakRefUnderlyingObject];
-}
-
-
-- (void) setShipHitByLaser:(ShipEntity *)ship
-{
-	if (ship != [self shipHitByLaser])
-	{
-		[_cxxShip->_shipHitByLaser release];
-		_cxxShip->_shipHitByLaser = [ship weakRetain];
-	}
-}
-
-
-- (void) noteLostTarget
-{
-	id target = nil;
-	if ([self primaryTarget] != nil)
-	{
-		ShipEntity* ship = [self primaryTarget];
-		if ([self isDefenseTarget:ship]) 
-		{
-			[self removeDefenseTarget:ship];
-		}
-		// for compatibility with 1.76 behaviour of this function, only pass
-		// the target as a function parameter if the target is still a potential
-		// valid target (e.g. not scooped, docked, hyperspaced, etc.)
-		target = (ship && ship->_cxxEntity->isShip && [self isValidTarget:ship]) ? (id)ship : nil;
-		if ([self primaryAggressor] == ship) 
-		{
-			DESTROY(_cxxShip->_primaryAggressor);
-		}
-		DESTROY(_cxxShip->_primaryTarget);
-	}
-	// always do target lost
-	[self doScriptEvent:OOJSID("shipTargetLost") withArgument:target];
-	if (target == nil) [_cxxShip->shipAI message:"TARGET_LOST"];	// stale target? no major urgency.
-	else [_cxxShip->shipAI cxx_reactToMessage:"TARGET_LOST" context:"flight updates"];	// execute immediately otherwise.
-}
-
-
-- (void) noteLostTargetAndGoIdle
-{
-	_cxxShip->behaviour = BEHAVIOUR_IDLE;
-	_cxxShip->frustration = 0.0;
-	[self noteLostTarget];
-}
-
-- (void) noteTargetDestroyed:(ShipEntity *)target
-{
-	[self collectBountyFor:(ShipEntity *)target];
-	if ([self primaryTarget] == target)
-	{
-		[self removeTarget:target];
-		[self doScriptEvent:OOJSID("shipTargetDestroyed") withArgument:target];
-		[_cxxShip->shipAI message:"TARGET_DESTROYED"];
-	}
-	if ([self isDefenseTarget:target]) 
-	{
-		[self removeDefenseTarget:target];
-		[_cxxShip->shipAI message:"DEFENSE_TARGET_DESTROYED"];
-		[self doScriptEvent:OOJSID("defenseTargetDestroyed") withArgument:target];
-	}
-}
-
-
-- (OOBehaviour) behaviour
-{
-	return _cxxShip->behaviour;
-}
-
-
-- (void) setBehaviour:(OOBehaviour) cond
-{
-	if (cond != _cxxShip->behaviour)
-	{
-		_cxxShip->frustration = 0.0;	// change is a GOOD thing
-		_cxxShip->behaviour = cond;
-	}
-}
-
-
-- (HPVector) destination
-{
-	return _cxxShip->_destination;
-}
-
-- (HPVector) coordinates
-{
-	return _cxxShip->coordinates;
-}
-
-- (void) setCoordinate:(HPVector) coord // The name "setCoordinates" is already used by AI scripting.
-{
-	_cxxShip->coordinates = coord;
-}
-
-- (HPVector) distance_six: (GLfloat) dist
-{
-	HPVector six = _cxxEntity->position;
-	six.x -= dist * _cxxShip->v_forward.x;	six.y -= dist * _cxxShip->v_forward.y;	six.z -= dist * _cxxShip->v_forward.z;
-	return six;
-}
-
-
-- (HPVector) distance_twelve: (GLfloat) dist withOffset:(GLfloat)offset
-{
-	HPVector twelve = _cxxEntity->position;
-	twelve.x += dist * _cxxShip->v_up.x;	twelve.y += dist * _cxxShip->v_up.y;	twelve.z += dist * _cxxShip->v_up.z;
-	twelve.x += offset * _cxxShip->v_right.x;	twelve.y += offset * _cxxShip->v_right.y;	twelve.z += offset * _cxxShip->v_right.z;
-	return twelve;
-}
-
-
-- (void) trackOntoTarget:(double) delta_t withDForward: (GLfloat) dp
-{
-	Vector vector_to_target;
-	Quaternion q_minarc;
-	//
-	Entity* target = [self primaryTarget];
-	//
-	if (!target)
-		return;
-
-	vector_to_target = [self vectorTo:target];
-	//
-	GLfloat range2 =		magnitude2(vector_to_target);
-	GLfloat	targetRadius =	0.75 * target->_cxxEntity->collision_radius;
-	GLfloat	max_cos =		sqrt(1 - targetRadius*targetRadius/range2);
-	
-	if (dp > max_cos)
-		return;	// ON TARGET!
-	
-	if (vector_to_target.x||vector_to_target.y||vector_to_target.z)
-		vector_to_target = vector_normal(vector_to_target);
-	else
-		vector_to_target.z = 1.0;
-	
-	q_minarc = quaternion_rotation_between(_cxxShip->v_forward, vector_to_target);
-	
-	_cxxEntity->orientation = quaternion_multiply(q_minarc, _cxxEntity->orientation);
-	[self orientationChanged];
-	
-	_cxxShip->flightRoll = 0.0;
-	_cxxShip->flightPitch = 0.0;
-	_cxxShip->flightYaw = 0.0;
-	_cxxShip->stick_roll = 0.0;
-	_cxxShip->stick_pitch = 0.0;
-	_cxxShip->stick_yaw = 0.0;
-}
-
-
-- (double) ballTrackLeadingTarget:(double) delta_t atTarget:(Entity *)target
-{
-	if (!target)
-	{
-		return -2.0; // no target
-	}
-
-	Vector		vector_to_target;
-	Vector		axis_to_track_by;
-	Vector		my_aim = vector_forward_from_quaternion(_cxxEntity->orientation);
-	Vector		my_ref = _cxxShip->reference;
-	double		aim_cos, ref_cos;
-	Vector		leading = [target velocity];
-
-	// need to get vector to target in terms of this entities coordinate system
-	HPVector my_position = [self absolutePositionForSubentity];
-	vector_to_target = HPVectorToVector(HPvector_subtract([target position], my_position));
-	// this is in absolute coordinates, so now rotate it
-
-	Entity		*last = nil;
-	Entity		*father = [self parentEntity];
-
-	Quaternion  q = kIdentityQuaternion;
-	while ((father)&&(father != last) && (father != (Entity *)NO_TARGET))
-	{
-		/* Fix orientation */
-		Quaternion fo = [father normalOrientation];
-		fo.w = -fo.w;
-		/* The below code works for player turrets where the
-		 * orientation is different, but not for NPC turrets. Taking
-		 * the normal orientation with -w works: there is probably a
-		 * neater way which someone who understands quaternions can
-		 * find, but this works well enough for 1.82 - CIM */
-		q = quaternion_multiply(q,quaternion_conjugate(fo));
-		last = father;
-		if (![last isSubEntity]) break;
-		father = [father owner];
-	}
-	q = quaternion_conjugate(q);
-	// q now contains the rotation to the turret's reference system
-
-	vector_to_target = quaternion_rotate_vector(q,vector_to_target);
-
-	leading = quaternion_rotate_vector(q,leading);
-	// rotate the vector to target and its velocity
-	
-	if (magnitude(vector_to_target) > _cxxShip->weaponRange * 1.01)
-	{
-		return -2.0; // out of range
-	}
-
-	float lead = magnitude(vector_to_target) / TURRET_SHOT_SPEED;
-		
-	vector_to_target = vector_add(vector_to_target, vector_multiply_scalar(leading, lead));
-	vector_to_target = vector_normal_or_fallback(vector_to_target, kBasisZVector);
-		
-	// do the tracking!
-	aim_cos = dot_product(vector_to_target, my_aim);
-	ref_cos = dot_product(vector_to_target, my_ref);
-
-	
-	if (ref_cos > TURRET_MINIMUM_COS)  // target is forward of self
-	{
-		axis_to_track_by = cross_product(vector_to_target, my_aim);
-	}
-	else
-	{
-		return -2.0; // target is out of fire arc
-	}
-	
-	quaternion_rotate_about_axis(&_cxxEntity->orientation, axis_to_track_by, _cxxShip->thrust * delta_t);
-	[self orientationChanged];
-	
-	[self setStatus:STATUS_ACTIVE];
-	
-	return aim_cos;
-}
-
-
-- (void) setEvasiveJink:(GLfloat) z
-{
-	if (_cxxShip->accuracy < COMBAT_AI_ISNT_AWFUL)
-	{
-		_cxxShip->jink = kZeroVector;
-	}
-	else 
-	{
-		_cxxShip->jink.x = (ranrot_rand() % 256) - 128.0;
-		_cxxShip->jink.y = (ranrot_rand() % 256) - 128.0;
-		_cxxShip->jink.z = z;
-		
-		// make sure we don't accidentally have near-zero jink
-		if (_cxxShip->jink.x < 0.0) 
-		{
-			_cxxShip->jink.x -= 128.0;
-		}
-		else
-		{
-			_cxxShip->jink.x += 128.0;
-		}
-		if (_cxxShip->jink.y < 0) 
-		{
-			_cxxShip->jink.y -= 128.0;
-		}
-		else
-		{
-			_cxxShip->jink.y += 128.0;
-		}
-	}
-}
-
-
-- (void) evasiveAction:(double) delta_t
-{
-	_cxxShip->stick_roll = _cxxShip->flightRoll;	//desired roll and pitch
-	_cxxShip->stick_pitch = _cxxShip->flightPitch;
-
-	ShipEntity* target = [self primaryTarget];
-	if (!target)   // leave now!
-	{
-		[self noteLostTargetAndGoIdle];	// NOTE: was AI message: rather than reactToMessage:
-		return;
-	}
-
-	double agreement = dot_product(_cxxShip->v_right,target->_cxxShip->v_right);
-	if (agreement > -0.3 && agreement < 0.3)
-	{
-		_cxxShip->stick_roll = 0.0;
-	}
-	else
-	{
-		if (_cxxShip->stick_roll >= 0.0) {
-			_cxxShip->stick_roll = _cxxShip->max_flight_roll;
-		} else {
-			_cxxShip->stick_roll = -_cxxShip->max_flight_roll;
-		}
-	}
-	if (_cxxShip->stick_pitch >= 0.0) {
-		_cxxShip->stick_pitch = _cxxShip->max_flight_pitch;
-	} else {
-		_cxxShip->stick_pitch = -_cxxShip->max_flight_pitch;
-	}
-	
-  [self applySticks:delta_t];
-}
-
-
-- (double) trackPrimaryTarget:(double) delta_t :(BOOL) retreat
-{
-	Entity*	target = [self primaryTarget];
-
-	if (!target)   // leave now!
-	{
-		[self noteLostTargetAndGoIdle];	// NOTE: was AI message: rather than reactToMessage:
-		return 0.0;
-	}
-
-	if (![self canStillTrackPrimaryTarget])
-	{
-		[self noteLostTargetAndGoIdle];	// NOTE: was AI message: rather than reactToMessage:
-		return 0.0;
-	}
-
-	/* 1.81 change: do the above check first: if a missile can't be
-	 * fired outside scanner range it should self-destruct if the
-	 * target gets far enough away (it's going to miss anyway) -
-	 * CIM */
-	if (_cxxEntity->scanClass == CLASS_MISSILE)
-		return [self missileTrackPrimaryTarget: delta_t];
-
-	GLfloat  d_forward, d_up, d_right;
-	
-	Vector  relPos = HPVectorToVector(HPvector_subtract([self calculateTargetPosition], _cxxEntity->position));
-	
-	double	range2 = HPmagnitude2(HPvector_subtract([target position], _cxxEntity->position));
-
-	//jink if retreating
-	if (retreat) // calculate jink position when flying away from target.
-	{
-		Vector vx, vy, vz;
-		if (target->_cxxEntity->isShip)
-		{
-			ShipEntity* targetShip = (ShipEntity*)target;
-			vx = targetShip->_cxxShip->v_right;
-			vy = targetShip->_cxxShip->v_up;
-			vz = targetShip->_cxxShip->v_forward;
-		}
-		else
-		{
-			Quaternion q = target->_cxxEntity->orientation;
-			vx = vector_right_from_quaternion(q);
-			vy = vector_up_from_quaternion(q);
-			vz = vector_forward_from_quaternion(q);
-		}
-		
-		BOOL avoidCollision = NO;
-		if (range2 < _cxxEntity->collision_radius * target->_cxxEntity->collision_radius * 100.0) // Check direction within 10 * collision radius.
-		{
-			Vector targetDirection = kBasisZVector;
-			if (!vector_equal(relPos, kZeroVector))  targetDirection = vector_normal(relPos);
-			avoidCollision  =  (dot_product(targetDirection, _cxxShip->v_forward) > -0.1); // is flying toward target or only slightly outward.
-		}
-		
-		GLfloat dist_adjust_factor = 1.0;
-		if (_cxxShip->accuracy >= COMBAT_AI_FLEES_BETTER)
-		{
-			double	range = magnitude(relPos);
-			if (range > 2000.0)
-			{
-				dist_adjust_factor = range / 2000.0;
-				if (_cxxShip->accuracy >= COMBAT_AI_FLEES_BETTER_2)
-				{
-					dist_adjust_factor *= 3;
-				}
-			}
-			if (_cxxShip->jink.x == 0.0 && _cxxShip->behaviour != BEHAVIOUR_RUNNING_DEFENSE)
-			{ // test for zero jink and correct
-				[self setEvasiveJink:400.0];
-			}
-		}
-
-		if (!avoidCollision)  // it is safe to jink
-		{
-			relPos.x += (_cxxShip->jink.x * vx.x + _cxxShip->jink.y * vy.x + _cxxShip->jink.z * vz.x) * dist_adjust_factor;
-			relPos.y += (_cxxShip->jink.x * vx.y + _cxxShip->jink.y * vy.y + _cxxShip->jink.z * vz.y) * dist_adjust_factor;
-			relPos.z += (_cxxShip->jink.x * vx.z + _cxxShip->jink.y * vy.z + _cxxShip->jink.z * vz.z);
-		}
-
-	}
-
-	if (!vector_equal(relPos, kZeroVector))  relPos = vector_normal(relPos);
-	else  relPos.z = 1.0;
-
-	double	max_cos = [self currentAimTolerance];
-
-	_cxxShip->stick_roll = 0.0;	//desired roll and pitch
-	_cxxShip->stick_pitch = 0.0;
-
-	double reverse = (retreat)? -1.0: 1.0;
-
-	double min_d = 0.004; // ~= 40m at 10km
-	int max_factor = 8;
-	double r_max_factor = 0.125;
-	if (!retreat)
-	{	
-		if (_cxxShip->accuracy >= COMBAT_AI_TRACKS_CLOSER)
-		{ 
-			// much greater precision in combat
-			if (_cxxShip->max_flight_pitch > 1.0)
-			{
-				max_factor = floor(_cxxShip->max_flight_pitch/0.125);
-				r_max_factor = 1.0/max_factor;
-			}
-			min_d = 0.0004; // 10 times more precision ~= 4m at 10km
-			max_factor *= 3;
-			r_max_factor /= 3.0;
-		}
-		else if (_cxxShip->accuracy >= COMBAT_AI_ISNT_AWFUL)
-		{
-			// slowly improve precision to target, but only if missing
-			min_d -= 0.0001 * [self missedShots];
-			if (min_d < 0.001)
-			{
-				min_d = 0.001;
-				max_factor *= 2;
-				r_max_factor /= 2.0;
-			}
-		}
-	}
-
-	d_right		=   dot_product(relPos, _cxxShip->v_right);
-	d_up		=   dot_product(relPos, _cxxShip->v_up);
-	d_forward   =   dot_product(relPos, _cxxShip->v_forward);	// == cos of angle between v_forward and vector to target
-
-	if (d_forward * reverse > max_cos)	// on_target!
-	{
-		return d_forward;
-	}
-
-	// begin rule-of-thumb manoeuvres
-	_cxxShip->stick_pitch = 0.0;
-	_cxxShip->stick_roll = 0.0;
-
-
-	if ((reverse * d_forward < -0.5) && !_cxxShip->pitching_over) // we're going the wrong way!
-		_cxxShip->pitching_over = YES;
-
-	if (_cxxShip->pitching_over)
-	{
-		if (reverse * d_up > 0) // pitch up
-			_cxxShip->stick_pitch = -_cxxShip->max_flight_pitch;
-		else
-			_cxxShip->stick_pitch = _cxxShip->max_flight_pitch;
-		_cxxShip->pitching_over = (reverse * d_forward < 0.707);
-	}
-
-	// check if we are flying toward the destination..
-	if ((d_forward < max_cos)||(retreat))	// not on course so we must adjust controls..
-	{
-		if (d_forward < -max_cos)  // hack to avoid just flying away from the destination
-		{
-			d_up = min_d * 2.0;
-		}
-
-		if (d_up > min_d)
-		{
-			int factor = sqrt(fabs(d_right) / fabs(min_d));
-			if (factor > max_factor)
-				factor = max_factor;
-			if (d_right > min_d)
-				_cxxShip->stick_roll = - _cxxShip->max_flight_roll * r_max_factor * factor; // note#
-			if (d_right < -min_d)
-				_cxxShip->stick_roll = + _cxxShip->max_flight_roll * r_max_factor * factor; // note#
-		}
-		if (d_up < -min_d)
-		{
-			int factor = sqrt(fabs(d_right) / fabs(min_d));
-			if (factor > max_factor)
-				factor = max_factor;
-			if (d_right > min_d)
-				_cxxShip->stick_roll = + _cxxShip->max_flight_roll * r_max_factor * factor; // note#
-			if (d_right < -min_d)
-				_cxxShip->stick_roll = - _cxxShip->max_flight_roll * r_max_factor * factor; // note#
-		}
-
-		if (_cxxShip->stick_roll == 0.0)
-		{
-			int factor = sqrt(fabs(d_up) / fabs(min_d));
-			if (factor > max_factor)
-				factor = max_factor;
-			if (d_up > min_d)
-				_cxxShip->stick_pitch = - _cxxShip->max_flight_pitch * reverse * r_max_factor * factor;
-			if (d_up < -min_d)
-				_cxxShip->stick_pitch = + _cxxShip->max_flight_pitch * reverse * r_max_factor * factor;
-		}
-
-		if (_cxxShip->accuracy >= COMBAT_AI_ISNT_AWFUL)
-		{
-			// don't overshoot target (helps accuracy at low frame rates)
-			if (fabs(d_right) < fabs(_cxxShip->stick_roll) * delta_t) 
-			{
-				_cxxShip->stick_roll = fabs(d_right) / delta_t * (_cxxShip->stick_roll<0 ? -1 : 1);
-			}
-			if (fabs(d_up) < fabs(_cxxShip->stick_pitch) * delta_t) 
-			{
-				_cxxShip->stick_pitch = fabs(d_up) / delta_t * (_cxxShip->stick_pitch<0 ? -0.9 : 0.9);
-			}
-		}
-
-	}
-	/*	#  note
-		Eric 9-9-2010: Removed the "reverse" variable from the stick_roll calculation. This was mathematical wrong and
-		made the ship roll in the wrong direction, preventing the ship to fly away in a straight line from the target.
-		This means all the places were a jink was set, this jink never worked correctly. The main reason a ship still
-		managed to turn at close range was probably by the fail-safe mechanisme with the "pitching_over" variable.
-		The jink was programmed to do nothing within 500 meters of the ship and just fly away in direct line from the target
-		in that range. Because of the bug the ships always rolled to the wrong side needed to fly away in direct line
-		resulting in making it a difficult target.
-		After fixing the bug, the ship realy flew away in direct line during the first 500 meters, making it a easy target
-		for the player. All jink settings are retested and changed to give a turning behaviour that felt like the old
-		situation, but now more deliberately set.
-	 */
-
-	// end rule-of-thumb manoeuvres
-	_cxxShip->stick_yaw = 0.0;
-	
-	[self applySticks:delta_t];
-
-	if (retreat)
-		d_forward *= d_forward;	// make positive AND decrease granularity
-
-	if (d_forward < 0.0)
-		return 0.0;
-
-	if ((!_cxxShip->flightRoll)&&(!_cxxShip->flightPitch))	// no correction
-		return 1.0;
-
-	return d_forward;
-}
-
-
-- (double) trackSideTarget:(double) delta_t :(BOOL) leftside
-{
-	Entity*	target = [self primaryTarget];
-
-	if (!target)   // leave now!
-	{
-		[self noteLostTargetAndGoIdle];	// NOTE: was AI message: rather than reactToMessage:
-		return 0.0;
-	}
-
-	if (![self canStillTrackPrimaryTarget])
-	{
-		[self noteLostTargetAndGoIdle];	// NOTE: was AI message: rather than reactToMessage:
-		return 0.0;
-	}
-
-
-	if (_cxxEntity->scanClass == CLASS_MISSILE) // never?
-		return [self missileTrackPrimaryTarget: delta_t];
-
-	GLfloat  d_forward, d_up, d_right;
-	
-	Vector  relPos = HPVectorToVector(HPvector_subtract([self calculateTargetPosition], _cxxEntity->position));
-
-
-	if (!vector_equal(relPos, kZeroVector))  relPos = vector_normal(relPos);
-	else  relPos.z = 1.0;
-
-// worse shots with side lasers than fore/aft, in general
-
-	double	max_cos = [self currentAimTolerance];
-
-	_cxxShip->stick_roll = 0.0;	//desired roll and pitch
-	_cxxShip->stick_pitch = 0.0;
-	_cxxShip->stick_yaw = 0.0;
-
-	double reverse = (leftside)? -1.0: 1.0;
-
-	double min_d = 0.004;
-	if (_cxxShip->accuracy >= COMBAT_AI_TRACKS_CLOSER) 
-	{
-		min_d = 0.002;
-	}
-	int max_factor = 8;
-	double r_max_factor = 0.125;
-
-	d_right		=   dot_product(relPos, _cxxShip->v_right);
-	d_up		=   dot_product(relPos, _cxxShip->v_up);
-	d_forward   =   dot_product(relPos, _cxxShip->v_forward);	// == cos of angle between v_forward and vector to target
-
-	if (d_right * reverse > max_cos)	// on_target!
-	{
-		return d_right * reverse;
-	}
-
-	// begin rule-of-thumb manoeuvres
-	_cxxShip->stick_pitch = 0.0;
-	_cxxShip->stick_roll = 0.0;
-	_cxxShip->stick_yaw = 0.0;
-
-	// check if we are flying toward the destination..
-	if ((d_right * reverse < max_cos))	// not on course so we must adjust controls..
-	{
-		if (d_right < -max_cos)  // hack to avoid just pointing away from the destination
-		{
-			d_forward = min_d * 2.0;
-		}
-
-		if (d_forward > min_d)
-		{
-			int factor = sqrt(fabs(d_up) / fabs(min_d));
-			if (factor > max_factor)
-				factor = max_factor;
-			if (d_up > min_d)
-				_cxxShip->stick_pitch = + _cxxShip->max_flight_pitch * r_max_factor * factor; // note#
-			if (d_up < -min_d)
-				_cxxShip->stick_pitch = - _cxxShip->max_flight_pitch * r_max_factor * factor; // note#
-		}
-		if (d_forward < -min_d)
-		{
-			int factor = sqrt(fabs(d_up) / fabs(min_d));
-			if (factor > max_factor)
-				factor = max_factor;
-			if (d_up > min_d)
-				_cxxShip->stick_pitch = + _cxxShip->max_flight_pitch * r_max_factor * factor; // note#
-			if (d_up < -min_d)
-				_cxxShip->stick_pitch = - _cxxShip->max_flight_pitch * r_max_factor * factor; // note#
-		}
-
-		if (fabs(_cxxShip->stick_pitch) == 0.0 || fabs(d_forward) > 0.5)
-		{
-			_cxxShip->stick_pitch = 0.0;
-			int factor = sqrt(fabs(d_forward) / fabs(min_d));
-			if (factor > max_factor)
-				factor = max_factor;
-			if (d_forward > min_d)
-				_cxxShip->stick_yaw = - _cxxShip->max_flight_yaw * reverse * r_max_factor * factor;
-			if (d_forward < -min_d)
-			{
-				if (factor < max_factor/2.0) // compensate for forward thrust
-					factor *= 2.0;
-				_cxxShip->stick_yaw = + _cxxShip->max_flight_yaw * reverse * r_max_factor * factor;
-			}
-		}
-	}
-
-
-	// end rule-of-thumb manoeuvres
-
-	[self applySticks:delta_t];
-
-	if ((!_cxxShip->flightPitch)&&(!_cxxShip->flightYaw))	// no correction
-		return 1.0;
-
-	return d_right * reverse;
-}
-
-
 - (double) missileTrackPrimaryTarget:(double) delta_t
 {
 	Vector  relPos;
@@ -15424,6 +14570,902 @@ void ShipEntity::setLastEscortTarget(::Entity *targetEntity)
 
 
 }	// namespace cxx
+
+
+// Slice 24 of docs/phases/3-slices/ShipEntity.md (bead oo-zd80m): target memory and validity,
+// behaviour and destination accessors, distances, leading the target. The facade forwards each
+// selector (ShipEntity+ObjCBridge.mm); sends to self stay sends, so an Objective-C subclass's
+// override still runs (ADR-0056 amendment oo-mvzmb).
+namespace cxx {
+
+::Entity *ShipEntity::thankedShip()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::Entity *result = [_thankedShip weakRefUnderlyingObject];
+	if (result == nil || ![self isValidTarget:result])
+	{
+		DESTROY(_thankedShip);
+		return nil;
+	}
+	return result;
+}
+
+
+void ShipEntity::setThankedShip(::Entity *targetEntity)
+{
+	[_thankedShip release];
+	_thankedShip = [targetEntity weakRetain];
+}
+
+
+::Entity *ShipEntity::rememberedShip()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::Entity *result = [_rememberedShip weakRefUnderlyingObject];
+	if (result == nil || ![self isValidTarget:result])
+	{
+		DESTROY(_rememberedShip);
+		return nil;
+	}
+	return result;
+}
+
+
+void ShipEntity::setRememberedShip(::Entity *targetEntity)
+{
+	[_rememberedShip release];
+	_rememberedShip = [targetEntity weakRetain];
+}
+
+
+::StationEntity *ShipEntity::targetStation()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::StationEntity *result = [_targetStation weakRefUnderlyingObject];
+	if (result == nil || ![self isValidTarget:result])
+	{
+		DESTROY(_targetStation);
+		return nil;
+	}
+	return result;
+}
+
+
+void ShipEntity::setTargetStation(::Entity *targetEntity)
+{
+	[_targetStation release];
+	_targetStation = [targetEntity weakRetain];
+}
+
+
+/* Now we use weakrefs rather than universal ID this function checks
+ * for targets which may have a valid reference but are not currently
+ * targetable. */
+bool ShipEntity::isValidTarget(::Entity *target)
+{
+	if (target == nil) 
+	{
+		return NO;
+	}
+	if ([target isShip])
+	{
+		OOEntityStatus tstatus = [target status];
+		if (tstatus == STATUS_ENTERING_WITCHSPACE || tstatus == STATUS_IN_HOLD || tstatus == STATUS_DOCKED || tstatus == STATUS_DEAD)
+        // 2013-01-13, Eric: added STATUS_DEAD because I keep seeing ships locked on dead ships in attack mode.
+		{
+			return NO;
+		}
+		return YES;
+	}
+	if ([target isWormhole] && [target scanClass] != CLASS_NO_DRAW)
+	{
+		return YES;
+	}
+	return NO;
+}
+
+
+void ShipEntity::addTarget(::Entity *targetEntity)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (targetEntity == self)  return;
+	if (targetEntity != nil) 
+	{
+		DESTROY(_primaryTarget);
+		_primaryTarget = [targetEntity weakRetain];
+		[self startTrackingCurve];
+	}
+	
+	for (const auto &sub : [self cxx_shipSubEntities])  [sub.get() addTarget:targetEntity];
+	if (![self isSubEntity])  [self doScriptEvent:OOJSID("shipTargetAcquired") withArgument:targetEntity];
+}
+
+
+void ShipEntity::removeTarget(::Entity *targetEntity)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if(targetEntity != nil) [self noteLostTarget];
+	else DESTROY(_primaryTarget);
+	// targetEntity == nil is currently only true for mounted player missiles. 
+	// we don't want to send lostTarget messages while the missile is mounted.
+	
+	for (const auto &sub : [self cxx_shipSubEntities])  [sub.get() removeTarget:targetEntity];
+}
+
+
+/* Checks if the primary target is still trackable.
+ * 
+ * 1.80 behaviour: still exists, is in scanner range, is not cloaked
+ *
+ * 1.81 (planned) behaviour:
+ * - track cloaked ships once primary targeted (but no missiles, and can't keep as a mere defense target, and probably some other penalties)
+ * - track ships at 120% scanner range *if* they are also primary aggressor
+ *
+ * But first, just switch over to this method on 1.80 behaviour and check
+ * that things still work.
+ */
+bool ShipEntity::canStillTrackPrimaryTarget()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::Entity *target = (::Entity *)[self primaryTargetWithoutValidityCheck];
+	if (target == nil)
+	{
+		return NO;
+	}
+	if (![self isValidTarget:target])
+	{
+		return NO;
+	}
+	double range2 = HPmagnitude2(HPvector_subtract([target position], position));
+	if (range2 > scannerRange * scannerRange * 1.5625) 
+	{
+		// 1.5625 = 1.25*1.25
+		return NO;
+	}
+	// 1.81: can retain cloaked ships as a *primary* target now
+/*	if ([target isShip] && [(ShipEntity*)target isCloaked])
+	{
+		return NO;
+		} */
+	return YES;
+}
+
+
+id ShipEntity::primaryTarget()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	id result = [_primaryTarget weakRefUnderlyingObject];
+	if ((result == nil && _primaryTarget != nil)
+			|| ![self isValidTarget:result])
+	{
+		DESTROY(_primaryTarget);
+		return nil;
+	}
+	else if (EXPECT_NOT(result == self))
+	{
+		/*	Added in response to a crash report showing recursion in
+			[PlayerEntity hasHostileTarget].
+			-- Ahruman 2009-12-17
+		*/
+		DESTROY(_primaryTarget);
+	}
+	return result;
+}
+
+
+// used when we need to check the target - perhaps for a potential
+// noteTargetLost - without invalidating the target first
+id ShipEntity::primaryTargetWithoutValidityCheck()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	id result = [_primaryTarget weakRefUnderlyingObject];
+	if (EXPECT_NOT(result == self))
+	{
+		// just in case
+		DESTROY(_primaryTarget);
+		return nil;
+	}
+	return result;
+}
+
+
+bool ShipEntity::isFriendlyTo(::ShipEntity *otherShip)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	BOOL isFriendly = NO;
+	::OOShipGroup	*myGroup = [self group];
+	::OOShipGroup	*otherGroup = [otherShip group];
+	
+	if ((otherShip == self) ||
+		([self isPolice] && [otherShip isPolice]) ||
+		([self isThargoid] && [otherShip isThargoid]) ||
+		(myGroup != nil && otherGroup != nil && (myGroup == otherGroup || [otherGroup leader] == self)) ||
+		([self scanClass] == CLASS_MILITARY && [otherShip scanClass] == CLASS_MILITARY))
+	{
+		isFriendly = YES;
+	}
+	
+	return isFriendly;
+}
+
+
+::ShipEntity *ShipEntity::shipHitByLaser()
+{
+	return [_shipHitByLaser weakRefUnderlyingObject];
+}
+
+
+void ShipEntity::setShipHitByLaser(::ShipEntity *ship)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (ship != [self shipHitByLaser])
+	{
+		[_shipHitByLaser release];
+		_shipHitByLaser = [ship weakRetain];
+	}
+}
+
+
+void ShipEntity::noteLostTarget()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	id target = nil;
+	if ([self primaryTarget] != nil)
+	{
+		::ShipEntity* ship = [self primaryTarget];
+		if ([self isDefenseTarget:ship]) 
+		{
+			[self removeDefenseTarget:ship];
+		}
+		// for compatibility with 1.76 behaviour of this function, only pass
+		// the target as a function parameter if the target is still a potential
+		// valid target (e.g. not scooped, docked, hyperspaced, etc.)
+		target = (ship && ship->_cxxEntity->isShip && [self isValidTarget:ship]) ? (id)ship : nil;
+		if ([self primaryAggressor] == ship) 
+		{
+			DESTROY(_primaryAggressor);
+		}
+		DESTROY(_primaryTarget);
+	}
+	// always do target lost
+	[self doScriptEvent:OOJSID("shipTargetLost") withArgument:target];
+	if (target == nil) [shipAI message:"TARGET_LOST"];	// stale target? no major urgency.
+	else [shipAI cxx_reactToMessage:"TARGET_LOST" context:"flight updates"];	// execute immediately otherwise.
+}
+
+
+void ShipEntity::noteLostTargetAndGoIdle()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	behaviour = BEHAVIOUR_IDLE;
+	frustration = 0.0;
+	[self noteLostTarget];
+}
+
+
+void ShipEntity::noteTargetDestroyed(::ShipEntity *target)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self collectBountyFor:(::ShipEntity *)target];
+	if ([self primaryTarget] == target)
+	{
+		[self removeTarget:target];
+		[self doScriptEvent:OOJSID("shipTargetDestroyed") withArgument:target];
+		[shipAI message:"TARGET_DESTROYED"];
+	}
+	if ([self isDefenseTarget:target]) 
+	{
+		[self removeDefenseTarget:target];
+		[shipAI message:"DEFENSE_TARGET_DESTROYED"];
+		[self doScriptEvent:OOJSID("defenseTargetDestroyed") withArgument:target];
+	}
+}
+
+
+OOBehaviour ShipEntity::getBehaviour()
+{
+	return behaviour;
+}
+
+
+void ShipEntity::setBehaviour(OOBehaviour cond)
+{
+	if (cond != behaviour)
+	{
+		frustration = 0.0;	// change is a GOOD thing
+		behaviour = cond;
+	}
+}
+
+
+HPVector ShipEntity::destination()
+{
+	return _destination;
+}
+
+
+HPVector ShipEntity::getCoordinates()
+{
+	return coordinates;
+}
+
+
+void ShipEntity::setCoordinate(HPVector coord)
+{
+	coordinates = coord;
+}
+
+
+HPVector ShipEntity::distance_six(GLfloat dist)
+{
+	HPVector six = position;
+	six.x -= dist * v_forward.x;	six.y -= dist * v_forward.y;	six.z -= dist * v_forward.z;
+	return six;
+}
+
+
+HPVector ShipEntity::distance_twelve(GLfloat dist, GLfloat offset)
+{
+	HPVector twelve = position;
+	twelve.x += dist * v_up.x;	twelve.y += dist * v_up.y;	twelve.z += dist * v_up.z;
+	twelve.x += offset * v_right.x;	twelve.y += offset * v_right.y;	twelve.z += offset * v_right.z;
+	return twelve;
+}
+
+
+void ShipEntity::trackOntoTarget(double /* delta_t */, GLfloat dp)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	Vector vector_to_target;
+	Quaternion q_minarc;
+	//
+	::Entity* target = [self primaryTarget];
+	//
+	if (!target)
+		return;
+
+	vector_to_target = [self vectorTo:target];
+	//
+	GLfloat range2 =		magnitude2(vector_to_target);
+	GLfloat	targetRadius =	0.75 * target->_cxxEntity->collision_radius;
+	GLfloat	max_cos =		sqrt(1 - targetRadius*targetRadius/range2);
+	
+	if (dp > max_cos)
+		return;	// ON TARGET!
+	
+	if (vector_to_target.x||vector_to_target.y||vector_to_target.z)
+		vector_to_target = vector_normal(vector_to_target);
+	else
+		vector_to_target.z = 1.0;
+	
+	q_minarc = quaternion_rotation_between(v_forward, vector_to_target);
+	
+	orientation = quaternion_multiply(q_minarc, orientation);
+	[self orientationChanged];
+	
+	flightRoll = 0.0;
+	flightPitch = 0.0;
+	flightYaw = 0.0;
+	stick_roll = 0.0;
+	stick_pitch = 0.0;
+	stick_yaw = 0.0;
+}
+
+
+double ShipEntity::ballTrackLeadingTarget(double delta_t, ::Entity *target)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (!target)
+	{
+		return -2.0; // no target
+	}
+
+	Vector		vector_to_target;
+	Vector		axis_to_track_by;
+	Vector		my_aim = vector_forward_from_quaternion(orientation);
+	Vector		my_ref = reference;
+	double		aim_cos, ref_cos;
+	Vector		leading = [target velocity];
+
+	// need to get vector to target in terms of this entities coordinate system
+	HPVector my_position = [self absolutePositionForSubentity];
+	vector_to_target = HPVectorToVector(HPvector_subtract([target position], my_position));
+	// this is in absolute coordinates, so now rotate it
+
+	::Entity		*last = nil;
+	::Entity		*father = [self parentEntity];
+
+	Quaternion  q = kIdentityQuaternion;
+	while ((father)&&(father != last) && (father != nil))	// (Entity *)NO_TARGET
+	{
+		/* Fix orientation */
+		Quaternion fo = [father normalOrientation];
+		fo.w = -fo.w;
+		/* The below code works for player turrets where the
+		 * orientation is different, but not for NPC turrets. Taking
+		 * the normal orientation with -w works: there is probably a
+		 * neater way which someone who understands quaternions can
+		 * find, but this works well enough for 1.82 - CIM */
+		q = quaternion_multiply(q,quaternion_conjugate(fo));
+		last = father;
+		if (![last isSubEntity]) break;
+		father = [father owner];
+	}
+	q = quaternion_conjugate(q);
+	// q now contains the rotation to the turret's reference system
+
+	vector_to_target = quaternion_rotate_vector(q,vector_to_target);
+
+	leading = quaternion_rotate_vector(q,leading);
+	// rotate the vector to target and its velocity
+	
+	if (magnitude(vector_to_target) > weaponRange * 1.01)
+	{
+		return -2.0; // out of range
+	}
+
+	float lead = magnitude(vector_to_target) / TURRET_SHOT_SPEED;
+		
+	vector_to_target = vector_add(vector_to_target, vector_multiply_scalar(leading, lead));
+	vector_to_target = vector_normal_or_fallback(vector_to_target, kBasisZVector);
+		
+	// do the tracking!
+	aim_cos = dot_product(vector_to_target, my_aim);
+	ref_cos = dot_product(vector_to_target, my_ref);
+
+	
+	if (ref_cos > TURRET_MINIMUM_COS)  // target is forward of self
+	{
+		axis_to_track_by = cross_product(vector_to_target, my_aim);
+	}
+	else
+	{
+		return -2.0; // target is out of fire arc
+	}
+	
+	quaternion_rotate_about_axis(&orientation, axis_to_track_by, thrust * delta_t);
+	[self orientationChanged];
+	
+	[self setStatus:STATUS_ACTIVE];
+	
+	return aim_cos;
+}
+
+
+}	// namespace cxx
+
+
+// Slice 25 of docs/phases/3-slices/ShipEntity.md (bead oo-k6wuw): evasive jink, primary and side
+// target tracking. The facade forwards each selector (ShipEntity+ObjCBridge.mm); sends to self stay
+// sends, so an Objective-C subclass's override still runs (ADR-0056 amendment oo-mvzmb).
+namespace cxx {
+
+void ShipEntity::setEvasiveJink(GLfloat z)
+{
+	if (accuracy < COMBAT_AI_ISNT_AWFUL)
+	{
+		jink = kZeroVector;
+	}
+	else 
+	{
+		jink.x = (ranrot_rand() % 256) - 128.0;
+		jink.y = (ranrot_rand() % 256) - 128.0;
+		jink.z = z;
+		
+		// make sure we don't accidentally have near-zero jink
+		if (jink.x < 0.0) 
+		{
+			jink.x -= 128.0;
+		}
+		else
+		{
+			jink.x += 128.0;
+		}
+		if (jink.y < 0) 
+		{
+			jink.y -= 128.0;
+		}
+		else
+		{
+			jink.y += 128.0;
+		}
+	}
+}
+
+
+void ShipEntity::evasiveAction(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	stick_roll = flightRoll;	//desired roll and pitch
+	stick_pitch = flightPitch;
+
+	::ShipEntity* target = [self primaryTarget];
+	if (!target)   // leave now!
+	{
+		[self noteLostTargetAndGoIdle];	// NOTE: was AI message: rather than reactToMessage:
+		return;
+	}
+
+	double agreement = dot_product(v_right,target->_cxxShip->v_right);
+	if (agreement > -0.3 && agreement < 0.3)
+	{
+		stick_roll = 0.0;
+	}
+	else
+	{
+		if (stick_roll >= 0.0) {
+			stick_roll = max_flight_roll;
+		} else {
+			stick_roll = -max_flight_roll;
+		}
+	}
+	if (stick_pitch >= 0.0) {
+		stick_pitch = max_flight_pitch;
+	} else {
+		stick_pitch = -max_flight_pitch;
+	}
+	
+  [self applySticks:delta_t];
+}
+
+
+double ShipEntity::trackPrimaryTarget(double delta_t, bool retreat)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::Entity*	target = [self primaryTarget];
+
+	if (!target)   // leave now!
+	{
+		[self noteLostTargetAndGoIdle];	// NOTE: was AI message: rather than reactToMessage:
+		return 0.0;
+	}
+
+	if (![self canStillTrackPrimaryTarget])
+	{
+		[self noteLostTargetAndGoIdle];	// NOTE: was AI message: rather than reactToMessage:
+		return 0.0;
+	}
+
+	/* 1.81 change: do the above check first: if a missile can't be
+	 * fired outside scanner range it should self-destruct if the
+	 * target gets far enough away (it's going to miss anyway) -
+	 * CIM */
+	if (scanClass == CLASS_MISSILE)
+		return [self missileTrackPrimaryTarget: delta_t];
+
+	GLfloat  d_forward, d_up, d_right;
+	
+	Vector  relPos = HPVectorToVector(HPvector_subtract([self calculateTargetPosition], position));
+	
+	double	range2 = HPmagnitude2(HPvector_subtract([target position], position));
+
+	//jink if retreating
+	if (retreat) // calculate jink position when flying away from target.
+	{
+		Vector vx, vy, vz;
+		if (target->_cxxEntity->isShip)
+		{
+			::ShipEntity* targetShip = (::ShipEntity*)target;
+			vx = targetShip->_cxxShip->v_right;
+			vy = targetShip->_cxxShip->v_up;
+			vz = targetShip->_cxxShip->v_forward;
+		}
+		else
+		{
+			Quaternion q = target->_cxxEntity->orientation;
+			vx = vector_right_from_quaternion(q);
+			vy = vector_up_from_quaternion(q);
+			vz = vector_forward_from_quaternion(q);
+		}
+		
+		BOOL avoidCollision = NO;
+		if (range2 < collision_radius * target->_cxxEntity->collision_radius * 100.0) // Check direction within 10 * collision radius.
+		{
+			Vector targetDirection = kBasisZVector;
+			if (!vector_equal(relPos, kZeroVector))  targetDirection = vector_normal(relPos);
+			avoidCollision  =  (dot_product(targetDirection, v_forward) > -0.1); // is flying toward target or only slightly outward.
+		}
+		
+		GLfloat dist_adjust_factor = 1.0;
+		if (accuracy >= COMBAT_AI_FLEES_BETTER)
+		{
+			double	range = magnitude(relPos);
+			if (range > 2000.0)
+			{
+				dist_adjust_factor = range / 2000.0;
+				if (accuracy >= COMBAT_AI_FLEES_BETTER_2)
+				{
+					dist_adjust_factor *= 3;
+				}
+			}
+			if (jink.x == 0.0 && behaviour != BEHAVIOUR_RUNNING_DEFENSE)
+			{ // test for zero jink and correct
+				[self setEvasiveJink:400.0];
+			}
+		}
+
+		if (!avoidCollision)  // it is safe to jink
+		{
+			relPos.x += (jink.x * vx.x + jink.y * vy.x + jink.z * vz.x) * dist_adjust_factor;
+			relPos.y += (jink.x * vx.y + jink.y * vy.y + jink.z * vz.y) * dist_adjust_factor;
+			relPos.z += (jink.x * vx.z + jink.y * vy.z + jink.z * vz.z);
+		}
+
+	}
+
+	if (!vector_equal(relPos, kZeroVector))  relPos = vector_normal(relPos);
+	else  relPos.z = 1.0;
+
+	double	max_cos = [self currentAimTolerance];
+
+	stick_roll = 0.0;	//desired roll and pitch
+	stick_pitch = 0.0;
+
+	double reverse = (retreat)? -1.0: 1.0;
+
+	double min_d = 0.004; // ~= 40m at 10km
+	int max_factor = 8;
+	double r_max_factor = 0.125;
+	if (!retreat)
+	{	
+		if (accuracy >= COMBAT_AI_TRACKS_CLOSER)
+		{ 
+			// much greater precision in combat
+			if (max_flight_pitch > 1.0)
+			{
+				max_factor = floor(max_flight_pitch/0.125);
+				r_max_factor = 1.0/max_factor;
+			}
+			min_d = 0.0004; // 10 times more precision ~= 4m at 10km
+			max_factor *= 3;
+			r_max_factor /= 3.0;
+		}
+		else if (accuracy >= COMBAT_AI_ISNT_AWFUL)
+		{
+			// slowly improve precision to target, but only if missing
+			min_d -= 0.0001 * [self missedShots];
+			if (min_d < 0.001)
+			{
+				min_d = 0.001;
+				max_factor *= 2;
+				r_max_factor /= 2.0;
+			}
+		}
+	}
+
+	d_right		=   dot_product(relPos, v_right);
+	d_up		=   dot_product(relPos, v_up);
+	d_forward   =   dot_product(relPos, v_forward);	// == cos of angle between v_forward and vector to target
+
+	if (d_forward * reverse > max_cos)	// on_target!
+	{
+		return d_forward;
+	}
+
+	// begin rule-of-thumb manoeuvres
+	stick_pitch = 0.0;
+	stick_roll = 0.0;
+
+
+	if ((reverse * d_forward < -0.5) && !pitching_over) // we're going the wrong way!
+		pitching_over = YES;
+
+	if (pitching_over)
+	{
+		if (reverse * d_up > 0) // pitch up
+			stick_pitch = -max_flight_pitch;
+		else
+			stick_pitch = max_flight_pitch;
+		pitching_over = (reverse * d_forward < 0.707);
+	}
+
+	// check if we are flying toward the destination..
+	if ((d_forward < max_cos)||(retreat))	// not on course so we must adjust controls..
+	{
+		if (d_forward < -max_cos)  // hack to avoid just flying away from the destination
+		{
+			d_up = min_d * 2.0;
+		}
+
+		if (d_up > min_d)
+		{
+			int factor = sqrt(fabs(d_right) / fabs(min_d));
+			if (factor > max_factor)
+				factor = max_factor;
+			if (d_right > min_d)
+				stick_roll = - max_flight_roll * r_max_factor * factor; // note#
+			if (d_right < -min_d)
+				stick_roll = + max_flight_roll * r_max_factor * factor; // note#
+		}
+		if (d_up < -min_d)
+		{
+			int factor = sqrt(fabs(d_right) / fabs(min_d));
+			if (factor > max_factor)
+				factor = max_factor;
+			if (d_right > min_d)
+				stick_roll = + max_flight_roll * r_max_factor * factor; // note#
+			if (d_right < -min_d)
+				stick_roll = - max_flight_roll * r_max_factor * factor; // note#
+		}
+
+		if (stick_roll == 0.0)
+		{
+			int factor = sqrt(fabs(d_up) / fabs(min_d));
+			if (factor > max_factor)
+				factor = max_factor;
+			if (d_up > min_d)
+				stick_pitch = - max_flight_pitch * reverse * r_max_factor * factor;
+			if (d_up < -min_d)
+				stick_pitch = + max_flight_pitch * reverse * r_max_factor * factor;
+		}
+
+		if (accuracy >= COMBAT_AI_ISNT_AWFUL)
+		{
+			// don't overshoot target (helps accuracy at low frame rates)
+			if (fabs(d_right) < fabs(stick_roll) * delta_t) 
+			{
+				stick_roll = fabs(d_right) / delta_t * (stick_roll<0 ? -1 : 1);
+			}
+			if (fabs(d_up) < fabs(stick_pitch) * delta_t) 
+			{
+				stick_pitch = fabs(d_up) / delta_t * (stick_pitch<0 ? -0.9 : 0.9);
+			}
+		}
+
+	}
+	/*	#  note
+		Eric 9-9-2010: Removed the "reverse" variable from the stick_roll calculation. This was mathematical wrong and
+		made the ship roll in the wrong direction, preventing the ship to fly away in a straight line from the target.
+		This means all the places were a jink was set, this jink never worked correctly. The main reason a ship still
+		managed to turn at close range was probably by the fail-safe mechanisme with the "pitching_over" variable.
+		The jink was programmed to do nothing within 500 meters of the ship and just fly away in direct line from the target
+		in that range. Because of the bug the ships always rolled to the wrong side needed to fly away in direct line
+		resulting in making it a difficult target.
+		After fixing the bug, the ship realy flew away in direct line during the first 500 meters, making it a easy target
+		for the player. All jink settings are retested and changed to give a turning behaviour that felt like the old
+		situation, but now more deliberately set.
+	 */
+
+	// end rule-of-thumb manoeuvres
+	stick_yaw = 0.0;
+	
+	[self applySticks:delta_t];
+
+	if (retreat)
+		d_forward *= d_forward;	// make positive AND decrease granularity
+
+	if (d_forward < 0.0)
+		return 0.0;
+
+	if ((!flightRoll)&&(!flightPitch))	// no correction
+		return 1.0;
+
+	return d_forward;
+}
+
+
+double ShipEntity::trackSideTarget(double delta_t, bool leftside)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::Entity*	target = [self primaryTarget];
+
+	if (!target)   // leave now!
+	{
+		[self noteLostTargetAndGoIdle];	// NOTE: was AI message: rather than reactToMessage:
+		return 0.0;
+	}
+
+	if (![self canStillTrackPrimaryTarget])
+	{
+		[self noteLostTargetAndGoIdle];	// NOTE: was AI message: rather than reactToMessage:
+		return 0.0;
+	}
+
+
+	if (scanClass == CLASS_MISSILE) // never?
+		return [self missileTrackPrimaryTarget: delta_t];
+
+	GLfloat  d_forward, d_up, d_right;
+	
+	Vector  relPos = HPVectorToVector(HPvector_subtract([self calculateTargetPosition], position));
+
+
+	if (!vector_equal(relPos, kZeroVector))  relPos = vector_normal(relPos);
+	else  relPos.z = 1.0;
+
+// worse shots with side lasers than fore/aft, in general
+
+	double	max_cos = [self currentAimTolerance];
+
+	stick_roll = 0.0;	//desired roll and pitch
+	stick_pitch = 0.0;
+	stick_yaw = 0.0;
+
+	double reverse = (leftside)? -1.0: 1.0;
+
+	double min_d = 0.004;
+	if (accuracy >= COMBAT_AI_TRACKS_CLOSER) 
+	{
+		min_d = 0.002;
+	}
+	int max_factor = 8;
+	double r_max_factor = 0.125;
+
+	d_right		=   dot_product(relPos, v_right);
+	d_up		=   dot_product(relPos, v_up);
+	d_forward   =   dot_product(relPos, v_forward);	// == cos of angle between v_forward and vector to target
+
+	if (d_right * reverse > max_cos)	// on_target!
+	{
+		return d_right * reverse;
+	}
+
+	// begin rule-of-thumb manoeuvres
+	stick_pitch = 0.0;
+	stick_roll = 0.0;
+	stick_yaw = 0.0;
+
+	// check if we are flying toward the destination..
+	if ((d_right * reverse < max_cos))	// not on course so we must adjust controls..
+	{
+		if (d_right < -max_cos)  // hack to avoid just pointing away from the destination
+		{
+			d_forward = min_d * 2.0;
+		}
+
+		if (d_forward > min_d)
+		{
+			int factor = sqrt(fabs(d_up) / fabs(min_d));
+			if (factor > max_factor)
+				factor = max_factor;
+			if (d_up > min_d)
+				stick_pitch = + max_flight_pitch * r_max_factor * factor; // note#
+			if (d_up < -min_d)
+				stick_pitch = - max_flight_pitch * r_max_factor * factor; // note#
+		}
+		if (d_forward < -min_d)
+		{
+			int factor = sqrt(fabs(d_up) / fabs(min_d));
+			if (factor > max_factor)
+				factor = max_factor;
+			if (d_up > min_d)
+				stick_pitch = + max_flight_pitch * r_max_factor * factor; // note#
+			if (d_up < -min_d)
+				stick_pitch = - max_flight_pitch * r_max_factor * factor; // note#
+		}
+
+		if (fabs(stick_pitch) == 0.0 || fabs(d_forward) > 0.5)
+		{
+			stick_pitch = 0.0;
+			int factor = sqrt(fabs(d_forward) / fabs(min_d));
+			if (factor > max_factor)
+				factor = max_factor;
+			if (d_forward > min_d)
+				stick_yaw = - max_flight_yaw * reverse * r_max_factor * factor;
+			if (d_forward < -min_d)
+			{
+				if (factor < max_factor/2.0) // compensate for forward thrust
+					factor *= 2.0;
+				stick_yaw = + max_flight_yaw * reverse * r_max_factor * factor;
+			}
+		}
+	}
+
+
+	// end rule-of-thumb manoeuvres
+
+	[self applySticks:delta_t];
+
+	if ((!flightPitch)&&(!flightYaw))	// no correction
+		return 1.0;
+
+	return d_right * reverse;
+}
+
+
+}	// namespace cxx
+
+
 
 
 

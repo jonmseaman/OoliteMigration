@@ -133,6 +133,10 @@ public:
 	GLfloat laserHeatLevelPort() override	{ return [(::ShipEntity *)_objcOwner laserHeatLevelPort]; }
 	GLfloat laserHeatLevelStarboard() override	{ return [(::ShipEntity *)_objcOwner laserHeatLevelStarboard]; }
 	void setFoundTarget(::Entity *targetEntity) override	{ [(::ShipEntity *)_objcOwner setFoundTarget:targetEntity]; }
+
+	// Slice 24 (bead oo-zd80m).
+	bool isValidTarget(::Entity *target) override	{ return [(::ShipEntity *)_objcOwner isValidTarget:target]; }
+	void addTarget(::Entity *targetEntity) override	{ [(::ShipEntity *)_objcOwner addTarget:targetEntity]; }
 };
 
 }	// namespace
@@ -881,5 +885,48 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 - (void) setPrimaryAggressor:(Entity *)targetEntity	{ _cxxShip->setPrimaryAggressor(targetEntity); }
 - (Entity *) lastEscortTarget	{ return _cxxShip->lastEscortTarget(); }
 - (void) setLastEscortTarget:(Entity *)targetEntity	{ _cxxShip->setLastEscortTarget(targetEntity); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice24)
+
+- (Entity *) thankedShip	{ return _cxxShip->thankedShip(); }
+- (void) setThankedShip:(Entity *)targetEntity	{ _cxxShip->setThankedShip(targetEntity); }
+- (Entity *) rememberedShip	{ return _cxxShip->rememberedShip(); }
+- (void) setRememberedShip:(Entity *)targetEntity	{ _cxxShip->setRememberedShip(targetEntity); }
+- (StationEntity *) targetStation	{ return _cxxShip->targetStation(); }
+- (void) setTargetStation:(Entity *)targetEntity	{ _cxxShip->setTargetStation(targetEntity); }
+- (BOOL) isValidTarget:(Entity *)target	{ return _cxxShip->cxx::ShipEntity::isValidTarget(target); }
+- (void) addTarget:(Entity *)targetEntity	{ _cxxShip->cxx::ShipEntity::addTarget(targetEntity); }
+- (void) removeTarget:(Entity *)targetEntity	{ _cxxShip->removeTarget(targetEntity); }
+- (BOOL) canStillTrackPrimaryTarget	{ return _cxxShip->canStillTrackPrimaryTarget(); }
+- (id) primaryTarget	{ return _cxxShip->primaryTarget(); }
+- (id) primaryTargetWithoutValidityCheck	{ return _cxxShip->primaryTargetWithoutValidityCheck(); }
+- (BOOL) isFriendlyTo:(ShipEntity *)otherShip	{ return _cxxShip->isFriendlyTo(otherShip); }
+- (ShipEntity *) shipHitByLaser	{ return _cxxShip->shipHitByLaser(); }
+- (void) setShipHitByLaser:(ShipEntity *)ship	{ _cxxShip->setShipHitByLaser(ship); }
+- (void) noteLostTarget	{ _cxxShip->noteLostTarget(); }
+- (void) noteLostTargetAndGoIdle	{ _cxxShip->noteLostTargetAndGoIdle(); }
+- (void) noteTargetDestroyed:(ShipEntity *)target	{ _cxxShip->noteTargetDestroyed(target); }
+- (OOBehaviour) behaviour	{ return _cxxShip->getBehaviour(); }
+- (void) setBehaviour:(OOBehaviour)cond	{ _cxxShip->setBehaviour(cond); }
+- (HPVector) destination	{ return _cxxShip->destination(); }
+- (HPVector) coordinates	{ return _cxxShip->getCoordinates(); }
+- (void) setCoordinate:(HPVector)coord	{ _cxxShip->setCoordinate(coord); }
+- (HPVector) distance_six:(GLfloat)dist	{ return _cxxShip->distance_six(dist); }
+- (HPVector) distance_twelve:(GLfloat)dist withOffset:(GLfloat)offset	{ return _cxxShip->distance_twelve(dist, offset); }
+- (void) trackOntoTarget:(double)delta_t withDForward:(GLfloat)dp	{ _cxxShip->trackOntoTarget(delta_t, dp); }
+- (double) ballTrackLeadingTarget:(double)delta_t atTarget:(Entity *)target	{ return _cxxShip->ballTrackLeadingTarget(delta_t, target); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice25)
+
+- (void) setEvasiveJink:(GLfloat)z	{ _cxxShip->setEvasiveJink(z); }
+- (void) evasiveAction:(double)delta_t	{ _cxxShip->evasiveAction(delta_t); }
+- (double) trackPrimaryTarget:(double)delta_t :(BOOL)retreat	{ return _cxxShip->trackPrimaryTarget(delta_t, retreat); }
+- (double) trackSideTarget:(double)delta_t :(BOOL)leftside	{ return _cxxShip->trackSideTarget(delta_t, leftside); }
 
 @end
