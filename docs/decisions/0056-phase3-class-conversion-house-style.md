@@ -4513,3 +4513,47 @@ unchanged and reach the members through the façade until their own conversion.
 
 **Consequences.** `ShipEntityAI.h` keeps only its imports for the files that import it; the
 ship's façade deletion bead (oo-9ht.144) removes the forwarding categories with the others.
+
+## Amendment (bead oo-7jhs5): Universe slices 14-26, the universe's methods moved slice by slice
+
+- Date: 2026-10-07. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Plan:
+  `docs/phases/3-slices/Universe.md` slices 14-26 (beads oo-7jhs5, oo-dg9d1, oo-focfo, oo-gr7a2,
+  oo-tail0, oo-z3u03, oo-lftoq, oo-enek8, oo-05ow5, oo-ni1hw, oo-jxitg, oo-wmc72, oo-32kcu),
+  stacked on `main`. Exemplar: `src/Core/Universe.h/.mm`, `Universe+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_Universe.mm`. Follows amendment oo-riqmz (the class shell) and the
+  conventions of amendments oo-mvzmb and oo-zd80m (ShipEntity's later slices), repeated here in
+  short so that they stand whichever block of Universe slices lands first.
+
+**Decision (recommended defaults).**
+
+1. **As amendment oo-mvzmb item 1:** a slice's members are a `namespace cxx` block of their own at
+   the end of `Universe.mm`, under a comment naming the slice and its bead, declared in a block at
+   the end of `cxx::Universe` under the same comment; `_cxxUniverse->` is deleted from the moved
+   bodies. The facade forwards each selector from a category `Universe (OOSliceN)` in
+   `Universe+ObjCBridge.mm`, and the selector's declaration moves, comment and all, from the
+   primary `@interface` (or the private category in `Universe.mm`) to that category's `@interface`
+   in the bridge header; a selector nothing declared is declared there. `Universe` has no
+   subclasses, so no member is virtual and no adapter is needed.
+2. **Sends to `self` stay sends** (`::Universe *self = oo::ToObjC(this);` first in the member), so
+   a selector of a slice not yet landed still answers; every Objective-C or converted class named
+   in a member is written `::X` (amendment oo-zd80m item 3).
+3. **Names:** a member is its selector's first keyword without `cxx_`, overloaded where selectors
+   share it (`addMessage()`, `countShipsWithRole()`); a getter whose selector names a data member
+   is `getX()` (`getViewDirection()`, `getTimeAccelerationFactor()`, `getECMVisualFXEnabled()`,
+   amendment oo-zd80m item 4). `BOOL` parameters and results are `bool`; `id` results stay `id`.
+4. **A unit inside a preprocessor condition keeps it** (the two arms of the time-acceleration
+   accessors, amendment oo-zd80m item 6); a parameter one arm never reads is named in a comment
+   (amendment oo-xmajv item 1).
+5. **A C function the plan assigns to a slice loses its Objective-C without a new interface**:
+   `AutoreleaseAll()` (slice 17) hands each element to the pool with the runtime's
+   `objc_autorelease()`, which is what `-autorelease` did for these classes (none overrides it).
+6. **The file's private holder class `OOUniverseDelayedMessage`** is forward-declared in
+   `Universe.h` (`@class`) for the member and the category declaration of `-addDelayedMessage:`
+   (slice 16).
+7. **Tests:** each slice adds `OO_TEST(sliceN...)` cases to `test_Universe.mm` under a comment
+   naming the slice and bead, written against the facade and run on the unconverted class first;
+   the entities they need sit in the universe's lists by hand (`SetSortedEntities()`,
+   `LinkLists()`), set-up lines through `_cxxUniverse` as amendment oo-riqmz item 5's.
+
+**Consequences.** One category per slice on the facade; the facade's deletion bead (oo-ql9rn)
+removes the categories and forwarders with the rest.
