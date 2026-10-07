@@ -499,8 +499,9 @@ OO_TEST(slice15TimeAndCollisions)
 
 // Slice 16 (bead oo-focfo): the view direction, custom sounds, screen
 // backgrounds, messages. Written against the Objective-C API and run on the unconverted class
-// first. A headless universe has no GUIs and no player, so the messages are seen in the members
-// that remember them (the current message and its repeat times).
+// first. A headless universe has no GUIs and no player (the messages that reach the player's
+// script events are left to the goldens), so the messages are seen in the members that remember
+// them (the current message and its repeat times).
 namespace {
 
 std::optional<std::string> CurrentMessage(Universe *u)	{ return u->_cxxUniverse->currentMessage; }
@@ -524,20 +525,17 @@ OO_TEST(slice16Messages)
 		OO_CHECK(MessageRepeatTime(u) == 16.0);
 		[u cxx_displayMessage:std::string("b") forCount:3];
 		OO_CHECK(CurrentMessage(u) == "b" && MessageRepeatTime(u) == 18.0);
+		u->_cxxUniverse->universal_time = 20.0;
+		[u cxx_displayMessage:std::string("b") forCount:3];	// the same, once the repeat time has passed
+		OO_CHECK(CurrentMessage(u) == "b" && MessageRepeatTime(u) == 26.0);
 
 		// A countdown message waits for its own repeat time, whatever the message.
 		[u cxx_displayCountdownMessage:std::string("c") forCount:5];
-		OO_CHECK(CurrentMessage(u) == "c" && CountdownRepeatTime(u) == 17.0);
+		OO_CHECK(CurrentMessage(u) == "c" && CountdownRepeatTime(u) == 25.0);
 		[u cxx_displayCountdownMessage:std::string("d") forCount:5];
-		OO_CHECK(CurrentMessage(u) == "c" && CountdownRepeatTime(u) == 17.0);
-
-		[u cxx_addMessage:std::string("e") forCount:3];
-		OO_CHECK(CurrentMessage(u) == "e" && MessageRepeatTime(u) == 18.0);
-		u->_cxxUniverse->universal_time = 13.0;
-		[u cxx_addMessage:std::string("e") forCount:3];	// the same, too soon
-		OO_CHECK(MessageRepeatTime(u) == 18.0);
-		[u cxx_addMessage:std::string("e") forCount:3 forceDisplay:YES];
-		OO_CHECK(MessageRepeatTime(u) == 19.0);
+		OO_CHECK(CurrentMessage(u) == "c" && CountdownRepeatTime(u) == 25.0);
+		[u cxx_displayCountdownMessage:std::string("c") forCount:5];	// the same message: nothing
+		OO_CHECK(CountdownRepeatTime(u) == 25.0);
 
 		[u clearPreviousMessage];
 		OO_CHECK(!CurrentMessage(u).has_value());
@@ -550,18 +548,12 @@ OO_TEST(slice16ViewDirection)
 	@autoreleasepool
 	{
 		Universe *u = NewUniverse();
-		u->_cxxUniverse->_descriptions = oo::PList(oo::PList::Dict{ { "aft-view-string", oo::PList("Aft View") } });
 
+		// The view it already has, with no GUI shown: nothing changes and nothing is said. (A
+		// change speaks through the player's script events, which need the whole game.)
+		u->_cxxUniverse->viewDirection = VIEW_AFT;
 		[u setViewDirection:VIEW_AFT];
-		OO_CHECK([u viewDirection] == VIEW_AFT && CurrentMessage(u) == "Aft View");
-		[u clearPreviousMessage];
-		[u setViewDirection:VIEW_AFT];	// no change: no message
-		OO_CHECK(!CurrentMessage(u).has_value());
-
-		// A view with no description says its key.
-		[u setViewDirection:VIEW_PORT];
-		OO_CHECK([u viewDirection] == VIEW_PORT && CurrentMessage(u) == "port-view-string");
-		OO_CHECK(![u displayGUI]);
+		OO_CHECK([u viewDirection] == VIEW_AFT && !CurrentMessage(u).has_value() && ![u displayGUI]);
 	}
 }
 
