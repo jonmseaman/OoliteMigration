@@ -50,6 +50,10 @@ trap 'rm -rf "$WORK"' EXIT
 
 cp "$TEST_DIR"/*.h "$TEST_DIR/test_string_expander.mm" "$WORK/"
 cp "$EXPANDER" "$WORK/OOStringExpander.mm"
+# The expander's sends to Universe, PlayerEntity and ResourceManager sit behind one function each in
+# its bridge (bead oo-6060, ADR-0056 amendment oo-9ht.139 item 3): compiled here against the same stubs.
+BRIDGE="$SRC/Core/OOStringExpander+ObjCBridge.mm"
+cp "$SRC/Core/OOStringExpander+ObjCBridge.h" "$BRIDGE" "$WORK/"
 
 inc=()
 for d in "$SRC" "$SRC/Core" "$SRC/Core/Debug" "$SRC/Core/Entities" "$SRC/Core/Materials" "$SRC/Core/MiniZip" "$SRC/Core/OXPVerifier" "$SRC/Core/Scripting" "$SRC/Core/Tables" "$SRC/SDL"; do
@@ -69,6 +73,7 @@ w="$(native "$WORK")"
 harness=(-include "$w/OOHarnessFoundation.h")
 clang++ "${flags[@]}" "${harness[@]}" "${inc[@]}" -c "$w/OOStringExpander.mm" -o "$w/expander.o" || die "OOStringExpander.mm does not compile against the stubs"
 clang++ "${flags[@]}" "${harness[@]}" "${inc[@]}" -c "$w/test_string_expander.mm" -o "$w/test.o" || die "the test does not compile"
+clang++ "${flags[@]}" "${harness[@]}" "${inc[@]}" -c "$w/OOStringExpander+ObjCBridge.mm" -o "$w/expander-bridge.o" || die "OOStringExpander+ObjCBridge.mm does not compile against the stubs"
 # The expander calls legacy queries and special keys by name (OOCallByName, ADR-0055 item 5) and raises
 # OOException, so those (with OODescription, for oo::DescriptionOf; and ICU, as oofnd's
 # meson dependency, for oo::str's normalisation) and the oofnd Objective-C runtime they stand on are compiled in (build plumbing,
@@ -87,7 +92,7 @@ for f in "$SRC"/oofnd/objc/*.mm; do
 done
 clang -O2 "-I$(native "$SRC/Core")" -c "$(native "$SRC/Core/legacy_random.c")" -o "$w/legacy_random.o"
 read -r -a libs <<< "$(gnustep-config --base-libs) $(pkg-config --libs icu-i18n)"
-clang++ -fuse-ld=lld -o "$w/test_string_expander.exe" "$w/expander.o" "${support[@]}" "$w/test.o" "$w/legacy_random.o" "${libs[@]}" \
+clang++ -fuse-ld=lld -o "$w/test_string_expander.exe" "$w/expander.o" "$w/expander-bridge.o" "${support[@]}" "$w/test.o" "$w/legacy_random.o" "${libs[@]}" \
   || die "link failed"
 
 config="$(native "$OOLITE/Resources/Config")"

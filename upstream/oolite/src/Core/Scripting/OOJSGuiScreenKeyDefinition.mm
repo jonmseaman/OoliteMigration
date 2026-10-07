@@ -71,7 +71,7 @@ OOJSGuiScreenKeyDefinition::OOJSGuiScreenKeyDefinition() {
 	_owningScript = oo::adoptObjC(static_cast<::OOJSScript *>([[::OOJSScript currentlyRunningScript] weakRetain]));
 
 	oo::NotificationCenter::defaultCenter().addObserver(this, kOOJavaScriptEngineWillResetNotificationName,
-														[OOJavaScriptEngine sharedEngine],
+														[::OOJavaScriptEngine sharedEngine],
 														[this](const oo::Notification &) { deleteJSPointers(); });
 }
 
@@ -87,7 +87,7 @@ void OOJSGuiScreenKeyDefinition::deleteJSPointers()
 	OOJSRelinquishContext(context);
 
 	oo::NotificationCenter::defaultCenter().removeObserver(this, kOOJavaScriptEngineWillResetNotificationName,
-															[OOJavaScriptEngine sharedEngine]);
+															[::OOJavaScriptEngine sharedEngine]);
 
 }
 
@@ -156,7 +156,7 @@ void OOJSGuiScreenKeyDefinition::setCallbackThis(ooscript::Object callbackThis)
 
 void OOJSGuiScreenKeyDefinition::runCallback(const std::string &key)
 {
-	OOJavaScriptEngine *engine = [OOJavaScriptEngine sharedEngine];
+	::OOJavaScriptEngine *engine = [::OOJavaScriptEngine sharedEngine];
 	ooscript::Context context = OOJSAcquireContext();		
 	ooscript::Value					rval = ooscript::undefinedValue();
 
