@@ -344,3 +344,7 @@ From Phase 0. Every story's acceptance includes `tools/tier-a.sh <file>`; the wr
   class shell and entity side) and slice 2 (oo-xkf6c, the scripted surface) of
   `3-slices/OOVisualEffectEntity.md` landed; `OOVisualEffectEntity.h/.mm` have no Objective-C, and the
   callers reach `cxx::OOVisualEffectEntity` through its façade until oo-9ht.165 deletes it.
+- 2026-10-07 — ShipEntity fully converted (oo-k8a): all 34 slices of `3-slices/ShipEntity.md` and
+  the four of `3-slices/ShipEntityAI.md` report `--slice-done`; the last `@implementation ShipEntity`
+  left `ShipEntity.mm` (its body was only file-scope statics and plain-C helpers, kept verbatim as
+  file-scope C++) and the façade's empty primary `@implementation` is now in `ShipEntity+ObjCBridge.mm`.

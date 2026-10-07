@@ -48,7 +48,6 @@ MA 02110-1301, USA.
 
 // ship brains
 
-- (void) interpretAIMessage:(const std::string &)message;	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
 
 
 
@@ -71,7 +70,6 @@ MA 02110-1301, USA.
 
 
 
-- (void) updateEscortFormation;
 
 
 
@@ -120,24 +118,10 @@ MA 02110-1301, USA.
 
 
 
-- (OOAlertCondition) alertCondition; // quick calc for shaders
-- (OOAlertCondition) realAlertCondition; // full calculation for scripting
 
 // defense target handling
-- (NSUInteger) defenseTargetCount;
-- (std::vector<oo::ObjCRef<ShipEntity *>>) allDefenseTargets;	// the live ones (zeroed references skipped)
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_defenseTargets;	// a snapshot in the weak set's order, up to the first zeroed reference
-- (void) validateDefenseTargets;
-- (BOOL) addDefenseTarget:(Entity *)target;
-- (BOOL) isDefenseTarget:(Entity *)target;
-- (void) removeDefenseTarget:(Entity *)target;
-- (void) removeAllDefenseTargets;
 
 // collision exceptions
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_collisionExceptions;
-- (void) addCollisionException:(ShipEntity *)ship;
-- (void) removeCollisionException:(ShipEntity *)ship;
-- (BOOL) collisionExceptedFor:(ShipEntity *)ship;
 
 
 
@@ -171,8 +155,6 @@ MA 02110-1301, USA.
 
 
 
-- (Vector) thrustVector;
-- (void) setTotalVelocity:(Vector)vel;	// Set velocity to vel - thrustVector, effectively setting the instanteneous velocity to vel.
 
 
 
@@ -184,38 +166,15 @@ MA 02110-1301, USA.
 // Dispatch shipTakingDamage() event.
 // Dispatch shipDied() and possibly shipKilledOther() events. This is only for use by getDestroyedBy:damageType:, but needs to be visible to PlayerEntity's version.
 
-- (void) getDestroyedBy:(Entity *)whom damageType:(OOShipDamageType)type;
-- (void) becomeExplosion;
-- (void) becomeLargeExplosion:(double) factor;
-- (void) becomeEnergyBlast;
-- (void) broadcastEnergyBlastImminent;
-- (void) setIsWreckage:(BOOL)isw;
-- (BOOL) showDamage;
 
-- (Vector) positionOffsetForAlignment:(const std::string &) align;
 Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q, const std::string &align);
 
-- (void) collectBountyFor:(ShipEntity *)other;
 
 
 
-- (GLfloat)weaponRecoveryTime;
-- (GLfloat)laserHeatLevel;
-- (GLfloat)laserHeatLevelAft;
-- (GLfloat)laserHeatLevelForward;
-- (GLfloat)laserHeatLevelPort;
-- (GLfloat)laserHeatLevelStarboard;
-- (GLfloat)hullHeatLevel;
-- (GLfloat)entityPersonality;
-- (GLint)entityPersonalityInt;
-- (void) setEntityPersonalityInt:(uint16_t)value;
 
-- (void)setSuppressExplosion:(BOOL)suppress;
 
-- (void) resetExhaustPlumes;
 
-- (void) removeExhaust:(OOExhaustPlumeEntity *)exhaust;
-- (void) removeFlasher:(OOFlasherEntity *)flasher;
 
 
 /*-----------------------------------------
@@ -224,235 +183,77 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
  
  -----------------------------------------*/
 
-- (void) checkScanner;
-- (void) checkScannerIgnoringUnpowered;
-- (ShipEntity**) scannedShips;
-- (int) numberOfScannedShips;
 
-- (Entity *)foundTarget;
-- (Entity *)primaryAggressor;
-- (Entity *)lastEscortTarget;
-- (Entity *)thankedShip;
-- (Entity *)rememberedShip;
-- (void) setFoundTarget:(Entity *) targetEntity;
-- (void) setPrimaryAggressor:(Entity *) targetEntity;
-- (void) setLastEscortTarget:(Entity *) targetEntity;
-- (void) setThankedShip:(Entity *) targetEntity;
-- (void) setRememberedShip:(Entity *) targetEntity;
-- (void) setTargetStation:(Entity *) targetEntity;
-- (BOOL) isValidTarget:(Entity *) target;
-- (void) addTarget:(Entity *) targetEntity;
-- (void) removeTarget:(Entity *) targetEntity;
-- (BOOL) canStillTrackPrimaryTarget;
-- (id) primaryTarget;
-- (id) primaryTargetWithoutValidityCheck;
-- (StationEntity *) targetStation;
 
-- (BOOL) isFriendlyTo:(ShipEntity *)otherShip;
 
-- (ShipEntity *) shipHitByLaser;
 
-- (void) noteLostTarget;
-- (void) noteLostTargetAndGoIdle;
-- (void) noteTargetDestroyed:(ShipEntity *)target;
 
-- (OOBehaviour) behaviour;
-- (void) setBehaviour:(OOBehaviour) cond;
 
-- (void) trackOntoTarget:(double) delta_t withDForward: (GLfloat) dp;
 
-- (double) ballTrackLeadingTarget:(double) delta_t atTarget:(Entity *)target;
 
-- (GLfloat) rollToMatchUp:(Vector) up_vec rotating:(GLfloat) match_roll;
 
-- (GLfloat) rangeToDestination;
-- (double) trackDestination:(double) delta_t :(BOOL) retreat;
 
-- (void) setCoordinate:(HPVector)coord;
-- (HPVector) coordinates;
-- (HPVector) destination;
-- (HPVector) distance_six: (GLfloat) dist;
-- (HPVector) distance_twelve: (GLfloat) dist withOffset:(GLfloat)offset;
 
-- (void) setEvasiveJink:(GLfloat) z;
-- (void) evasiveAction:(double) delta_t;
-- (double) trackPrimaryTarget:(double) delta_t :(BOOL) retreat;
-- (double) trackSideTarget:(double) delta_t :(BOOL) leftside;
-- (double) missileTrackPrimaryTarget:(double) delta_t;
 
 //return 0.0 if there is no primary target
-- (double) rangeToPrimaryTarget;
-- (double) approachAspectToPrimaryTarget;
-- (double) rangeToSecondaryTarget:(Entity *)target;
-- (BOOL) hasProximityAlertIgnoringTarget:(BOOL)ignore_target;
-- (GLfloat) currentAimTolerance;
 /* This method returns a value between 0.0f and 1.0f, depending on how directly our view point
    faces the sun and is used for generating the "staring at the sun" glare effect. 0.0f means that
    we are not facing the sun, 1.0f means that we are looking directly at it. The cosine of the 
    threshold angle between view point and sun, below which we consider the ship as looking
    at the sun, is passed as parameter to the method.
 */
-- (GLfloat) lookingAtSunWithThresholdAngleCos:(GLfloat) thresholdAngleCos;
 
-- (BOOL) onTarget:(OOWeaponFacing)direction withWeapon:(OOWeaponType)weapon;
 
-- (OOTimeDelta) shotTime;
-- (void) resetShotTime;
 
-- (BOOL) fireMainWeapon:(double)range;
-- (BOOL) fireAftWeapon:(double)range;
-- (BOOL) firePortWeapon:(double)range;
-- (BOOL) fireStarboardWeapon:(double)range;
-- (BOOL) fireTurretCannon:(double)range;
-- (void) setLaserColor:(OOColor *)color;
-- (void) setExhaustEmissiveColor:(OOColor *)color;
-- (OOColor *)laserColor;
-- (OOColor *)exhaustEmissiveColor;
-- (BOOL) fireSubentityLaserShot:(double)range;
-- (BOOL) fireDirectLaserShot:(double)range;
-- (BOOL) fireDirectLaserDefensiveShot;
-- (BOOL) fireDirectLaserShotAt:(Entity *)my_target;
-- (std::vector<Vector>) cxx_laserPortOffset:(OOWeaponFacing)direction;
-- (BOOL) cxx_fireLaserShotInDirection:(OOWeaponFacing)direction weaponIdentifier:(const std::string &)weaponIdentifier;
-- (void) adjustMissedShots:(int)delta;
-- (int) missedShots;
-- (void) considerFiringMissile:(double)delta_t;
-- (Vector) missileLaunchPosition;
-- (ShipEntity *) fireMissile;
-- (ShipEntity *) cxx_fireMissileWithIdentifier:(const std::optional<std::string> &) identifier andTarget:(Entity *) target;	// nullopt: a random missile from the list
-- (BOOL) isMissileFlagSet;
-- (void) setIsMissileFlag:(BOOL)newValue;
-- (OOTimeDelta) missileLoadTime;
-- (void) setMissileLoadTime:(OOTimeDelta)newMissileLoadTime;
-- (void) noticeECM;
-- (BOOL) fireECM;
-- (BOOL) cascadeIfAppropriateWithDamageAmount:(double)amount cascadeOwner:(Entity *)owner;
-- (BOOL) activateCloakingDevice;
-- (void) deactivateCloakingDevice;
-- (BOOL) launchCascadeMine;
-- (ShipEntity *) launchEscapeCapsule;
-- (void) dumpCargo;	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
-- (ShipEntity *) cxx_dumpCargoItem:(const std::optional<std::string> &)preferred;	// nullopt: the first pod
-- (OOCargoType) dumpItem: (ShipEntity*) jetto;
 
-- (void) manageCollisions;
-- (BOOL) collideWithShip:(ShipEntity *)other;
-- (void) adjustVelocity:(Vector) xVel;
-- (void) addImpactMoment:(Vector) moment fraction:(GLfloat) howmuch;
-- (BOOL) canScoop:(ShipEntity *)other;
-- (void) getTractoredBy:(ShipEntity *)other;
-- (void) scoopIn:(ShipEntity *)other;
-- (void) scoopUp:(ShipEntity *)other;
-- (void) scoopUpProcess:(ShipEntity *)other processEvents:(BOOL) proc_events processMessages:(BOOL) proc_messages;
 
-- (BOOL) abandonShip;
 
-- (void) takeScrapeDamage:(double) amount from:(Entity *) ent;
-- (void) takeHeatDamage:(double) amount;
 
-- (void) enterDock:(StationEntity *)station;
-- (void) leaveDock:(StationEntity *)station;
 
-- (void) enterWormhole:(WormholeEntity *) w_hole;
-- (void) enterWormhole:(WormholeEntity *) w_hole replacing:(BOOL)replacing;
-- (void) enterWitchspace;
-- (void) leaveWitchspace;
-- (BOOL) witchspaceLeavingEffects;
 
 /* 
  Mark this ship as an offender, this is different to setBounty as some ships such as police 
  are not markable.  The final bounty may not be equal to existing bounty plus offence_value.
  */
-- (void) markAsOffender:(int)offence_value;
-- (void) markAsOffender:(int)offence_value withReason:(OOLegalStatusReason)reason;
 
-- (void) switchLightsOn;
-- (void) switchLightsOff;
-- (BOOL) lightsActive;
 
-- (void) setDestination:(HPVector) dest;
-- (void) setEscortDestination:(HPVector) dest;
 
-- (BOOL) canAcceptEscort:(ShipEntity *)potentialEscort;
-- (BOOL) acceptAsEscort:(ShipEntity *) other_ship;
-- (void) deployEscorts;
-- (void) dockEscorts;
 
-- (void) setTargetToNearestFriendlyStation;
-- (void) setTargetToNearestStation;
-- (void) setTargetToSystemStation;
 
-- (void) landOnPlanet:(OOPlanetEntity *)planet;
 
-- (void) abortDocking;
-- (oo::PList) cxx_dockingInstructions;	// null: none
 
-- (void) broadcastThargoidDestroyed;
 
-- (void) broadcastHitByLaserFrom:(ShipEntity*) aggressor_ship;
 
 // Sun glare filter - 0 for no filter, 1 for full filter
 
 // Unpiloted ships cannot broadcast messages, unless the unpilotedOverride is set to YES.
-- (void) cxx_sendExpandedMessage:(const std::string &) message_text toShip:(ShipEntity*) other_ship;
-- (void) cxx_sendMessage:(const std::string &) message_text toShip:(ShipEntity*) other_ship withUnpilotedOverride:(BOOL)unpilotedOverride;
-- (void) broadcastAIMessage:(const std::string &) ai_message;
-- (void) broadcastMessage:(const std::string &) message_text withUnpilotedOverride:(BOOL) unpilotedOverride;
-- (void) setCommsMessageColor;
-- (void) receiveCommsMessage:(const std::string &) message_text from:(ShipEntity *) other;	// flipped with its family (bead oo-3rb.259)
-- (void) cxx_commsMessage:(const std::string &)valueString withUnpilotedOverride:(BOOL)unpilotedOverride;
 
-- (BOOL) markedForFines;
-- (BOOL) markForFines;
 
-- (BOOL) isMining;
 
-- (void) spawn:(const std::string &)roles_number;	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
 
-- (int) checkShipsInVicinityForWitchJumpExit;
 
-- (BOOL) trackCloseContacts;
-- (void) setTrackCloseContacts:(BOOL) value;
 
 /*
  * Changes a ship to a hulk, for example when the pilot ejects.
  * Aso unsets hulkiness for example when a new pilot gets in.
  */
-#if OO_SALVAGE_SUPPORT
-- (void) claimAsSalvage;
-- (void) sendCoordinatesToPilot;
-- (void) pilotArrived;
-#endif
 
 
 
-- (OOJSScript *) script;
-- (oo::PList) scriptInfo;	// flipped with its family (bead oo-3rb.284): empty dict when there is none
-- (void) overrideScriptInfo:(const oo::PList &)override;	// Add items from override (a dictionary, or null for none) to scriptInfo, replacing in case of duplicates. Used for subentities.
 
 
 
-- (Entity *)entityForShaderProperties;
 
 // Demo ship
-- (void) setDemoShip: (OOScalar) demoRate;
-- (BOOL) isDemoShip;
-- (void) setDemoStartTime: (OOTimeAbsolute) time;
 
 /*	*** Script events.
 	For NPC ships, these call doEvent: on the ship script.
 	For the player, they do that and also call doWorldScriptEvent:.
 */
-- (void) doScriptEvent:(ooscript::PropertyId)message;
-- (void) doScriptEvent:(ooscript::PropertyId)message withArgument:(id)argument;
-- (void) doScriptEvent:(ooscript::PropertyId)message withArgument:(id)argument1 andArgument:(id)argument2;
 /*	Plist data as event arguments (ADR-0055 item 4): each converted by OOJSValueFromPList, so a
 	string, number or collection gives the JS value the boxed Foundation object gave, and an entity
 	is passed as oo::PListObject(entity). The id forms above stay for OOObject arguments.
 */
-- (void) cxx_doScriptEvent:(ooscript::PropertyId)message withPListArguments:(const std::vector<oo::PList> &)arguments;
-- (void) doScriptEvent:(ooscript::PropertyId)message withArguments:(ooscript::Value *)argv count:(unsigned)argc;
-- (void) doScriptEvent:(ooscript::PropertyId)message inContext:(ooscript::Context)context withArguments:(ooscript::Value *)argv count:(unsigned)argc;
 
 /*	Convenience to send an event with raw JS values, for example:
 	ShipScriptEventNoCx(ship, "doSomething", ooscript::int32Value(42));
@@ -469,10 +270,6 @@ unsigned argc = sizeof argv / sizeof *argv; \
 [ship doScriptEvent:OOJSID(event) withArguments:argv count:argc]; \
 } while (0)
 
-- (void) cxx_reactToAIMessage:(const std::string &)message context:(const std::optional<std::string> &)debugContext;	// Immediate message
-- (void) sendAIMessage:(const std::string &)message;		// Queued message.
-- (void) cxx_doScriptEvent:(ooscript::PropertyId)scriptEvent andReactToAIMessage:(const std::string &)aiMessage;
-- (void) cxx_doScriptEvent:(ooscript::PropertyId)scriptEvent withArgument:(id)argument andReactToAIMessage:(const std::string &)aiMessage;
 
 @end
 
@@ -1103,6 +900,667 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (void) setHulk:(BOOL) isNowHulk;
 - (void) noteTakingDamage:(double)amount from:(Entity *)entity type:(OOShipDamageType)type;
 - (void) noteKilledBy:(Entity *)whom damageType:(OOShipDamageType)type;
+
+@end
+
+
+// Slice 22 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice22)
+
+- (void) getDestroyedBy:(Entity *)whom damageType:(OOShipDamageType)type;
+- (void) rescaleBy:(GLfloat)factor;
+- (void) rescaleBy:(GLfloat)factor writeToCache:(BOOL)writeToCache;
+- (void) releaseCargoPodsDebris;
+- (void) setIsWreckage:(BOOL)isw;
+- (BOOL) showDamage;
+- (void) becomeExplosion;
+- (void) becomeEnergyBlast;
+- (void) broadcastEnergyBlastImminent;
+- (void) removeExhaust:(OOExhaustPlumeEntity *)exhaust;
+
+@end
+
+
+// Slice 23 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice23)
+
+- (void) removeFlasher:(OOFlasherEntity *)flasher;
+- (void) subEntityDied:(ShipEntity *)sub;
+- (void) subEntityReallyDied:(ShipEntity *)sub;
+- (Vector) positionOffsetForAlignment:(const std::string &) align;
+- (void) becomeLargeExplosion:(double) factor;
+- (void) collectBountyFor:(ShipEntity *)other;
+- (OOComparisonResult) compareBeaconCodeWith:(Entity<OOBeaconEntity> *)other;
+- (GLfloat)weaponRecoveryTime;
+- (GLfloat)laserHeatLevel;
+- (GLfloat)laserHeatLevelAft;
+- (GLfloat)laserHeatLevelForward;
+- (GLfloat)laserHeatLevelPort;
+- (GLfloat)laserHeatLevelStarboard;
+- (GLfloat)hullHeatLevel;
+- (GLfloat)entityPersonality;
+- (GLint)entityPersonalityInt;
+- (uint32_t) randomSeedForShaders;
+- (void) setEntityPersonalityInt:(uint16_t)value;
+- (void)setSuppressExplosion:(BOOL)suppress;
+- (void) resetExhaustPlumes;
+- (void) checkScanner;
+- (void) checkScannerIgnoringUnpowered;
+- (ShipEntity**) scannedShips;
+- (int) numberOfScannedShips;
+- (Entity *)foundTarget;
+- (void) setFoundTarget:(Entity *) targetEntity;
+- (Entity *)primaryAggressor;
+- (void) setPrimaryAggressor:(Entity *) targetEntity;
+- (Entity *)lastEscortTarget;
+- (void) setLastEscortTarget:(Entity *) targetEntity;
+
+@end
+
+
+// Slice 24 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice24)
+
+- (Entity *)thankedShip;
+- (void) setThankedShip:(Entity *) targetEntity;
+- (Entity *)rememberedShip;
+- (void) setRememberedShip:(Entity *) targetEntity;
+- (StationEntity *) targetStation;
+- (void) setTargetStation:(Entity *) targetEntity;
+- (BOOL) isValidTarget:(Entity *) target;
+- (void) addTarget:(Entity *) targetEntity;
+- (void) removeTarget:(Entity *) targetEntity;
+- (BOOL) canStillTrackPrimaryTarget;
+- (id) primaryTarget;
+- (id) primaryTargetWithoutValidityCheck;
+- (BOOL) isFriendlyTo:(ShipEntity *)otherShip;
+- (ShipEntity *) shipHitByLaser;
+- (void) setShipHitByLaser:(ShipEntity *)ship;
+- (void) noteLostTarget;
+- (void) noteLostTargetAndGoIdle;
+- (void) noteTargetDestroyed:(ShipEntity *)target;
+- (OOBehaviour) behaviour;
+- (void) setBehaviour:(OOBehaviour) cond;
+- (HPVector) destination;
+- (HPVector) coordinates;
+- (void) setCoordinate:(HPVector)coord;
+- (HPVector) distance_six: (GLfloat) dist;
+- (HPVector) distance_twelve: (GLfloat) dist withOffset:(GLfloat)offset;
+- (void) trackOntoTarget:(double) delta_t withDForward: (GLfloat) dp;
+- (double) ballTrackLeadingTarget:(double) delta_t atTarget:(Entity *)target;
+
+@end
+
+
+// Slice 25 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice25)
+
+- (void) setEvasiveJink:(GLfloat) z;
+- (void) evasiveAction:(double) delta_t;
+- (double) trackPrimaryTarget:(double) delta_t :(BOOL) retreat;
+- (double) trackSideTarget:(double) delta_t :(BOOL) leftside;
+
+@end
+
+
+// Slice 26 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice26)
+
+- (double) missileTrackPrimaryTarget:(double) delta_t;
+- (double) trackDestination:(double) delta_t :(BOOL) retreat;
+- (GLfloat) rollToMatchUp:(Vector) up_vec rotating:(GLfloat) match_roll;
+- (GLfloat) rangeToDestination;
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_collisionExceptions;
+- (void) addCollisionException:(ShipEntity *)ship;
+- (void) removeCollisionException:(ShipEntity *)ship;
+- (BOOL) collisionExceptedFor:(ShipEntity *)ship;
+- (NSUInteger) defenseTargetCount;
+- (std::vector<oo::ObjCRef<ShipEntity *>>) allDefenseTargets;	// the live ones (zeroed references skipped)
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_defenseTargets;	// a snapshot in the weak set's order, up to the first zeroed reference
+- (BOOL) addDefenseTarget:(Entity *)target;
+- (void) validateDefenseTargets;
+- (BOOL) isDefenseTarget:(Entity *)target;
+- (void) removeAllDefenseTargets;
+- (void) removeDefenseTarget:(Entity *)target;
+- (double) rangeToPrimaryTarget;
+- (double) rangeToSecondaryTarget:(Entity *)target;
+- (double) approachAspectToPrimaryTarget;
+- (BOOL) hasProximityAlertIgnoringTarget:(BOOL)ignore_target;
+
+@end
+
+
+// Slice 27 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice27)
+
+- (GLfloat) currentAimTolerance;
+- (GLfloat) lookingAtSunWithThresholdAngleCos:(GLfloat) thresholdAngleCos;
+- (BOOL) onTarget:(OOWeaponFacing)direction withWeapon:(OOWeaponType)weapon;
+- (BOOL) fireWeapon:(OOWeaponType)weapon_type direction:(OOWeaponFacing)direction range:(double)range;
+- (BOOL) fireMainWeapon:(double)range;
+- (BOOL) fireAftWeapon:(double)range;
+- (BOOL) firePortWeapon:(double)range;
+- (BOOL) fireStarboardWeapon:(double)range;
+- (OOTimeDelta) shotTime;
+- (void) resetShotTime;
+- (BOOL) fireTurretCannon:(double)range;
+- (void) setLaserColor:(OOColor *)color;
+- (void) setExhaustEmissiveColor:(OOColor *)color;
+- (OOColor *)laserColor;
+- (OOColor *)exhaustEmissiveColor;
+
+@end
+
+
+// Slice 28 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice28)
+
+- (BOOL) fireSubentityLaserShot:(double)range;
+- (BOOL) fireDirectLaserShot:(double)range;
+- (BOOL) fireDirectLaserDefensiveShot;
+- (BOOL) fireDirectLaserShotAt:(Entity *)my_target;
+- (std::vector<Vector>) cxx_laserPortOffset:(OOWeaponFacing)direction;
+- (BOOL) cxx_fireLaserShotInDirection:(OOWeaponFacing)direction weaponIdentifier:(const std::string &)weaponIdentifier;
+- (void) adjustMissedShots:(int)delta;
+- (int) missedShots;
+- (void) throwSparks;
+- (void) considerFiringMissile:(double)delta_t;
+- (Vector) missileLaunchPosition;
+- (ShipEntity *) fireMissile;
+
+@end
+
+
+// Slice 29 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice29)
+
+- (ShipEntity *) cxx_fireMissileWithIdentifier:(const std::optional<std::string> &) identifier andTarget:(Entity *) target;	// nullopt: a random missile from the list
+- (BOOL) isMissileFlagSet;
+- (void) setIsMissileFlag:(BOOL)newValue;
+- (OOTimeDelta) missileLoadTime;
+- (void) setMissileLoadTime:(OOTimeDelta)newMissileLoadTime;
+- (void) noticeECM;
+- (BOOL) fireECM;
+- (BOOL) activateCloakingDevice;
+- (void) deactivateCloakingDevice;
+- (BOOL) launchCascadeMine;
+- (ShipEntity *) launchEscapeCapsule;
+- (void) dumpCargo;	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
+- (ShipEntity *) cxx_dumpCargoItem:(const std::optional<std::string> &)preferred;	// nullopt: the first pod
+- (OOCargoType) dumpItem: (ShipEntity*) jetto;
+
+@end
+
+
+// Slice 30 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice30)
+
+- (void) manageCollisions;
+- (BOOL) collideWithShip:(ShipEntity *)other;
+- (Vector) thrustVector;
+- (Vector) velocity;
+- (void) setTotalVelocity:(Vector)vel;	// Set velocity to vel - thrustVector, effectively setting the instanteneous velocity to vel.
+- (void) adjustVelocity:(Vector) xVel;
+- (void) addImpactMoment:(Vector) moment fraction:(GLfloat) howmuch;
+- (BOOL) canScoop:(ShipEntity *)other;
+- (void) getTractoredBy:(ShipEntity *)other;
+- (void) scoopIn:(ShipEntity *)other;
+- (void) suppressTargetLost;
+- (void) scoopUp:(ShipEntity *)other;
+- (void) scoopUpProcess:(ShipEntity *)other processEvents:(BOOL) proc_events processMessages:(BOOL) proc_messages;
+
+@end
+
+
+// Slice 31 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice31)
+
+- (BOOL) cascadeIfAppropriateWithDamageAmount:(double)amount cascadeOwner:(Entity *)owner;
+- (void) takeEnergyDamage:(double)amount from:(Entity *)ent becauseOf:(Entity *)other weaponIdentifier:(const std::string &)weaponIdentifier;
+- (BOOL) abandonShip;
+- (void) takeScrapeDamage:(double) amount from:(Entity *) ent;
+- (void) takeHeatDamage:(double) amount;
+- (void) enterDock:(StationEntity *)station;
+- (void) leaveDock:(StationEntity *)station;
+- (void) enterWormhole:(WormholeEntity *) w_hole;
+- (void) enterWormhole:(WormholeEntity *) w_hole replacing:(BOOL)replacing;
+- (void) enterWitchspace;
+- (void) leaveWitchspace;
+
+@end
+
+
+// Slice 32 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice32)
+
+- (BOOL) witchspaceLeavingEffects;
+- (void) markAsOffender:(int)offence_value;
+- (void) markAsOffender:(int)offence_value withReason:(OOLegalStatusReason)reason;
+- (void) switchLightsOn;
+- (void) switchLightsOff;
+- (BOOL) lightsActive;
+- (void) setDestination:(HPVector) dest;
+- (void) setEscortDestination:(HPVector) dest;
+- (BOOL) canAcceptEscort:(ShipEntity *)potentialEscort;
+- (BOOL) acceptAsEscort:(ShipEntity *) other_ship;
+- (void) updateEscortFormation;
+- (void) refreshEscortPositions;
+- (HPVector) coordinatesForEscortPosition:(unsigned)idx;
+- (void) deployEscorts;
+- (void) dockEscorts;
+- (void) setTargetToNearestStationIncludingHostiles:(BOOL)includeHostiles;
+- (void) setTargetToNearestFriendlyStation;
+- (void) setTargetToNearestStation;
+- (void) setTargetToSystemStation;
+
+@end
+
+
+// Slice 33 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice33)
+
+- (void) landOnPlanet:(OOPlanetEntity *)planet;
+- (void) abortDocking;
+- (oo::PList) cxx_dockingInstructions;	// null: none
+- (void) broadcastThargoidDestroyed;
+- (void) broadcastHitByLaserFrom:(ShipEntity*) aggressor_ship;
+- (void) cxx_sendMessage:(const std::string &) message_text toShip:(ShipEntity*) other_ship withUnpilotedOverride:(BOOL)unpilotedOverride;
+- (void) cxx_sendExpandedMessage:(const std::string &) message_text toShip:(ShipEntity*) other_ship;
+- (void) broadcastAIMessage:(const std::string &) ai_message;
+- (void) broadcastMessage:(const std::string &) message_text withUnpilotedOverride:(BOOL) unpilotedOverride;
+- (void) setCommsMessageColor;
+- (void) receiveCommsMessage:(const std::string &) message_text from:(ShipEntity *) other;	// flipped with its family (bead oo-3rb.259)
+- (void) cxx_commsMessage:(const std::string &)valueString withUnpilotedOverride:(BOOL)unpilotedOverride;
+- (BOOL) markedForFines;
+- (BOOL) markForFines;
+- (BOOL) isMining;
+- (void) interpretAIMessage:(const std::string &)message;	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
+- (BoundingBox) findBoundingBoxRelativeTo:(Entity *)other InVectors:(Vector)_i :(Vector)_j :(Vector)_k;
+- (void) spawn:(const std::string &)roles_number;	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
+- (int) checkShipsInVicinityForWitchJumpExit;
+- (BOOL) trackCloseContacts;
+- (void) setTrackCloseContacts:(BOOL) value;
+#if OO_SALVAGE_SUPPORT
+- (void) claimAsSalvage;
+- (void) sendCoordinatesToPilot;
+#endif
+
+@end
+
+
+// Slice 34 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice34)
+
+#if OO_SALVAGE_SUPPORT
+- (void) pilotArrived;
+#endif
+#ifndef NDEBUG
+- (void) dumpSelfState;
+#endif
+- (OOJSScript *) script;
+- (oo::PList) scriptInfo;	// flipped with its family (bead oo-3rb.284): empty dict when there is none
+- (void) overrideScriptInfo:(const oo::PList &)override;	// Add items from override (a dictionary, or null for none) to scriptInfo, replacing in case of duplicates. Used for subentities.
+- (Entity *)entityForShaderProperties;
+- (void) setDemoShip: (OOScalar) demoRate;
+- (BOOL) isDemoShip;
+- (void) setDemoStartTime: (OOTimeAbsolute) time;
+- (OOTimeAbsolute) getDemoStartTime;
+- (void) doScriptEvent:(ooscript::PropertyId)message;
+- (void) doScriptEvent:(ooscript::PropertyId)message withArgument:(id)argument;
+- (void) doScriptEvent:(ooscript::PropertyId)message withArgument:(id)argument1 andArgument:(id)argument2;
+- (void) cxx_doScriptEvent:(ooscript::PropertyId)message withPListArguments:(const std::vector<oo::PList> &)arguments;
+- (void) doScriptEvent:(ooscript::PropertyId)message withArguments:(ooscript::Value *)argv count:(unsigned)argc;
+- (void) doScriptEvent:(ooscript::PropertyId)message inContext:(ooscript::Context)context withArguments:(ooscript::Value *)argv count:(unsigned)argc;
+- (void) cxx_reactToAIMessage:(const std::string &)message context:(const std::optional<std::string> &)debugContext;	// Immediate message
+- (void) sendAIMessage:(const std::string &)message;		// Queued message.
+- (void) cxx_doScriptEvent:(ooscript::PropertyId)scriptEvent andReactToAIMessage:(const std::string &)aiMessage;
+- (void) cxx_doScriptEvent:(ooscript::PropertyId)scriptEvent withArgument:(id)argument andReactToAIMessage:(const std::string &)aiMessage;
+- (OOAlertCondition) alertCondition; // quick calc for shaders
+- (OOAlertCondition) realAlertCondition; // full calculation for scripting
+- (void) doNothing;
+#ifndef NDEBUG
+- (std::optional<std::string>) descriptionForObjDump;
+#endif
+
+@end
+
+
+// The category ShipEntity (ScriptMethods) of ShipEntityScriptMethods.mm (bead oo-42dr): members of
+// cxx::ShipEntity defined in that file (ADR-0056 amendments oo-o89 item 4 and oo-9fwb), forwarded
+// by the category of the same name in ShipEntity+ObjCBridge.mm for the Objective-C callers that
+// remain (OOJSShip, the legacy script engine).
+@interface ShipEntity (ScriptMethods)
+
+// Foundation sweep (proposed ADR-0043, bead oo-tm7d): std::nullopt ejects nothing, as nil did.
+- (ShipEntity *) ejectShipOfType:(const std::optional<std::string> &)shipKey;	// Note: ship type, not role.
+- (ShipEntity *) ejectShipOfRole:(const std::optional<std::string> &)role;
+
+- (std::vector<oo::ObjCRef<ShipEntity *>>) spawnShipsWithRole:(const std::string &)role count:(NSUInteger)count;
+
+@end
+
+
+// The category ShipEntity (LoadRestore) of ShipEntityLoadRestore.mm (bead oo-kw44): members of
+// cxx::ShipEntity defined in that file (ADR-0056 amendment oo-42dr), forwarded by the category of
+// the same name in ShipEntity+ObjCBridge.mm for the callers that still message the facade
+// (cxx::WormholeEntity).
+@interface ShipEntity (LoadRestore)
+
+/*	Produces a property list representation of a specific ship. Intended for
+	use with wormholes, but should probably generalize quite well.
+	
+	The optional "context" (nullptr for none) is used to synchronise certain
+	state when saving multiple ships - currently, groups. It is not a property
+	list and does not need to be saved alongside the ships.
+*/
+- (oo::PList) savedShipDictionaryWithContext:(OOShipSaveContext *)context;
+
+/*	Restore a ship from a property list representation generated with
+	-savedShipDictionary. If the ship can't be restored and fallback is YES,
+	an attempt will be made to generate a new ship with the same primary role.
+*/
++ (id) shipRestoredFromDictionary:(const oo::PList &)dictionary useFallback:(BOOL)fallback context:(OOShipSaveContext *)context;
+
+@end
+
+
+// The category ShipEntity (AI) of ShipEntityAI.mm, slice 1 of docs/phases/3-slices/ShipEntityAI.md
+// (bead oo-iebuz): members of cxx::ShipEntity defined in that file (ADR-0056 amendment oo-42dr),
+// forwarded by the category of the same name in ShipEntity+ObjCBridge.mm.
+@interface ShipEntity (AI)
+
+//	AI methods also used in other code.
+
+- (void) setAITo:(const std::string &)aiString;	// called by name (ADR-0055 item 5)
+- (void) setAIScript:(const std::string &)aiString;
+- (void) switchAITo:(const std::string &)aiString;	// called by name (ADR-0055 item 5)
+
+- (void) scanForHostiles;
+- (BOOL) performHyperSpaceToSpecificSystem:(OOSystemID)systemID;
+- (void) scanForNearestIncomingMissile;
+
+- (void) enterTargetWormhole;
+- (void) enterPlayerWormhole;
+
+- (void) wormholeEscorts;
+- (void) wormholeEntireGroup;
+
+- (BOOL) suggestEscortTo:(ShipEntity *)mother;
+
+- (void) groupAttackTarget;
+
+- (void) performAttack;
+- (void) performCollect;
+- (void) performEscort;
+- (void) performFaceDestination;
+- (void) performFlee;
+- (void) performFlyToRangeFromDestination;
+- (void) performHold;
+- (void) performIdle;
+- (void) performIntercept;
+- (void) performLandOnPlanet;
+- (void) performMining;
+- (void) performScriptedAI;
+- (void) performScriptedAttackAI;
+- (void) performStop;
+- (void) performTumble;
+
+- (void) broadcastDistressMessage;
+- (void) broadcastDistressMessageWithDumping:(BOOL)dumpCargo;
+
+- (void) requestDockingCoordinates;
+- (void) recallDockingInstructions;
+
+
+- (void) performBuoyTumble;
+
+@end
+
+
+// The category ShipEntity (OOAIPrivate) of ShipEntityAI.mm, slice 1 of docs/phases/3-slices/ShipEntityAI.md
+// (bead oo-iebuz): members of cxx::ShipEntity defined in that file (ADR-0056 amendment oo-42dr),
+// forwarded by the category of the same name in ShipEntity+ObjCBridge.mm.
+@interface ShipEntity (OOAIPrivate)
+
+- (void) checkFoundTarget;
+
+- (BOOL)performHyperSpaceExitReplace:(BOOL)replace;
+- (BOOL)performHyperSpaceExitReplace:(BOOL)replace toSystem:(OOSystemID)systemID;
+
+- (void)scanForNearestShipWithPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter;
+- (void)scanForNearestShipWithNegatedPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter;
+
+- (void) acceptDistressMessageFrom:(ShipEntity *)other;
+
+@end
+
+
+// Slice 2 of docs/phases/3-slices/ShipEntityAI.md (bead oo-xurzn): methods of the category
+// ShipEntity (PureAI) of ShipEntityAI.mm that are members of cxx::ShipEntity, forwarded by the category
+// of the same name in ShipEntity+ObjCBridge.mm.
+@interface ShipEntity (OOAISlice2)
+
+- (void) setStateTo:(const std::string &)state;	// called by name (ADR-0055 item 5)
+- (void) pauseAI:(const std::string &)intervalString;	// called by name (ADR-0055 item 5)
+- (void) randomPauseAI:(const std::string &)intervalString;	// called by name (ADR-0055 item 5)
+- (void) dropMessages:(const std::string &)messageString;	// called by name (ADR-0055 item 5)
+- (void) debugDumpPendingMessages;
+- (void) setDestinationToCurrentLocation;
+- (void) setDestinationToJinkPosition;
+- (void) setDesiredRangeTo:(const std::string &)rangeString;	// called by name (ADR-0055 item 5)
+- (void) setDesiredRangeForWaypoint;
+- (void) setSpeedTo:(const std::string &)speedString;	// called by name (ADR-0055 item 5)
+- (void) setSpeedFactorTo:(const std::string &)speedString;	// called by name (ADR-0055 item 5)
+- (void) setSpeedToCruiseSpeed;
+- (void) setThrustFactorTo:(const std::string &)thrustFactorString;	// called by name (ADR-0055 item 5)
+- (void) setTargetToPrimaryAggressor;
+- (void) addPrimaryAggressorAsDefenseTarget;
+- (void) scanForNearestMerchantman;
+- (void) scanForRandomMerchantman;
+- (void) scanForLoot;
+- (void) scanForRandomLoot;
+- (void) setTargetToFoundTarget;
+- (void) addFoundTargetAsDefenseTarget;
+- (void) checkForFullHold;
+- (void) getWitchspaceEntryCoordinates;
+- (void) setDestinationFromCoordinates;
+- (void) setCoordinatesFromPosition;
+- (void) fightOrFleeMissile;
+- (void) setCourseToPlanet;
+- (void) setTakeOffFromPlanet;
+- (void) landOnPlanet;
+- (void) checkTargetLegalStatus;
+- (void) checkOwnLegalStatus;
+- (void) exitAIWithMessage:(const std::string &)message;	// called by name (ADR-0055 item 5)
+- (void) setDestinationToTarget;
+- (void) setDestinationWithinTarget;
+- (void) checkCourseToDestination;
+
+@end
+
+
+// Slice 3 of docs/phases/3-slices/ShipEntityAI.md (bead oo-wc9o3): methods of the category
+// ShipEntity (PureAI) of ShipEntityAI.mm that are members of cxx::ShipEntity, forwarded by the category
+// of the same name in ShipEntity+ObjCBridge.mm.
+@interface ShipEntity (OOAISlice3)
+
+- (void) checkAegis;
+- (void) checkEnergy;
+- (void) checkHeatInsulation;
+- (void) findNewDefenseTarget;
+- (void) scanForOffenders;
+- (void) setCourseToWitchpoint;
+- (void) setDestinationToWitchpoint;
+- (void) setDestinationToStationBeacon;
+- (void) performHyperSpaceExit;
+- (void) performHyperSpaceExitWithoutReplacing;
+- (void) disengageAutopilot;
+- (void) wormholeGroup;
+- (void) commsMessage:(const std::string &)valueString;	// called by name (ADR-0055 item 5)
+- (void) commsMessageByUnpiloted:(const std::string &)valueString;	// called by name (ADR-0055 item 5)
+- (void) ejectCargo;
+- (void) scanForThargoid;
+- (void) scanForNonThargoid;
+- (void) thargonCheckMother;
+- (void) becomeUncontrolledThargon;
+- (void) checkDistanceTravelled;
+- (void) fightOrFleeHostiles;
+- (void) suggestEscort;
+- (void) escortCheckMother;
+- (void) checkGroupOddsVersusTarget;
+- (void) scanForFormationLeader;
+- (void) messageMother:(const std::string &)msgString;	// called by name (ADR-0055 item 5)
+- (void) messageSelf:(const std::string &)msgString;
+- (void) setPlanetPatrolCoordinates;
+- (void) setSunSkimStartCoordinates;
+- (void) setSunSkimEndCoordinates;
+- (void) setSunSkimExitCoordinates;
+- (void) patrolReportIn;
+- (void) checkForMotherStation;
+- (void) sendTargetCommsMessage:(const std::string &)message;	// called by name (ADR-0055 item 5)
+- (void) markTargetForFines;
+- (void) markTargetForOffence:(const std::string &)valueString;	// called by name (ADR-0055 item 5)
+- (void) storeTarget;
+
+@end
+
+
+// The category ShipEntity (PureAI) of ShipEntityAI.mm, slice 4 of docs/phases/3-slices/ShipEntityAI.md
+// (bead oo-lqyhf): members of cxx::ShipEntity defined in that file (ADR-0056 amendment oo-42dr),
+// forwarded by the category of the same name in ShipEntity+ObjCBridge.mm.
+@interface ShipEntity (PureAI)
+
+// Methods used only by AI.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+- (void) recallStoredTarget;
+
+- (void) scanForRocks;
+
+- (void) setDestinationToDockingAbort;
+
+- (void) requestNewTarget;
+
+- (void) rollD:(const std::string &)die_number;	// called by name (ADR-0055 item 5)
+
+- (void) scanForNearestShipWithPrimaryRole:(const std::string &)scanRole;	// called by name (ADR-0055 item 5)
+- (void) scanForNearestShipHavingRole:(const std::string &)scanRole;	// called by name (ADR-0055 item 5)
+- (void) scanForNearestShipWithAnyPrimaryRole:(const std::string &)scanRoles;	// called by name (ADR-0055 item 5)
+- (void) scanForNearestShipHavingAnyRole:(const std::string &)scanRoles;	// called by name (ADR-0055 item 5)
+- (void) scanForNearestShipWithScanClass:(const std::string &)scanScanClass;	// called by name (ADR-0055 item 5)
+
+- (void) scanForNearestShipWithoutPrimaryRole:(const std::string &)scanRole;	// called by name (ADR-0055 item 5)
+- (void) scanForNearestShipNotHavingRole:(const std::string &)scanRole;	// called by name (ADR-0055 item 5)
+- (void) scanForNearestShipWithoutAnyPrimaryRole:(const std::string &)scanRoles;	// called by name (ADR-0055 item 5)
+- (void) scanForNearestShipNotHavingAnyRole:(const std::string &)scanRoles;	// called by name (ADR-0055 item 5)
+- (void) scanForNearestShipWithoutScanClass:(const std::string &)scanScanClass;	// called by name (ADR-0055 item 5)
+
+- (void) setCoordinates:(const std::string &)system_x_y_z;	// called by name (ADR-0055 item 5)
+
+- (void) checkForNormalSpace;
+
+- (void) setTargetToRandomStation;
+- (void) setTargetToLastStation;
+
+- (void) addFuel:(const std::string &)fuel_number;	// called by name (ADR-0055 item 5)
+
+- (void) scriptActionOnTarget:(const std::string &)action;	// called by name (ADR-0055 item 5)
+
+- (void) sendScriptMessage:(const std::string &)message;	// called by name (ADR-0055 item 5)
+
+- (void) ai_throwSparks;
+
+- (void) explodeSelf;
+
+- (void) ai_debugMessage:(const std::string &)message;	// called by name (ADR-0055 item 5)
+
+// racing code.
+- (void) targetFirstBeaconWithCode:(const std::string &)code;	// called by name (ADR-0055 item 5)
+- (void) targetNextBeaconWithCode:(const std::string &)code;	// called by name (ADR-0055 item 5)
+- (void) setRacepointsFromTarget;
+- (void) performFlyRacepoints;
+
+// defense targets 
+
+- (void) scanForNearestShipMatchingPredicate:(const std::string &)predicateExpression;
+- (void) safeScriptActionOnTarget:(const std::string &)action;
 
 @end
 
