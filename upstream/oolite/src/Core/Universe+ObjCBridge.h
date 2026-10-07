@@ -241,26 +241,6 @@ MA 02110-1301, USA.
 - (void) removeAllEntitiesExceptPlayer;
 - (void) removeDemoShips;
 
-- (void) setViewDirection:(OOViewID)vd;
-- (void) enterGUIViewModeWithMouseInteraction:(BOOL)mouseInteraction;	// Use instead of setViewDirection:VIEW_GUI_DISPLAY
-
-- (std::optional<std::string>) soundNameForCustomSoundKey:(const std::string &)key;	// nullopt: no sound
-- (oo::PList) cxx_screenTextureDescriptorForKey:(const std::string &)key;	// null: none
-- (void) cxx_setScreenTextureDescriptorForKey:(const std::string &) key descriptor:(const oo::PList &)desc;	// a null descriptor removes
-
-// Message texts: nullopt where a nil text was passed (nothing is printed; it still counts as the message shown).
-- (void) clearPreviousMessage;
-- (void) setMessageGuiBackgroundColor:(OOColor *) some_color;
-- (void) cxx_displayMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count;
-- (void) cxx_displayCountdownMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count;
-- (void) cxx_addDelayedMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count afterDelay:(OOTimeDelta) delay;
-- (void) cxx_addMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count;
-- (void) cxx_addMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count forceDisplay:(BOOL) forceDisplay;
-- (void) cxx_addCommsMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count;
-- (void) cxx_addCommsMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count andShowComms:(BOOL)showComms logOnly:(BOOL)logOnly;
-- (void) showCommsLog:(OOTimeDelta) how_long;
-- (void) showGUIMessage:(const std::optional<std::string> &)text withScroll:(BOOL)scroll andColor:(OOColor *)selectedColor overDuration:(OOTimeDelta)how_long;
-
 - (void) update:(OOTimeDelta)delta_t;
 
 // Time Acelleration Factor. In deployment builds, this is always 1.0 and -setTimeAccelerationFactor: does nothing.
@@ -522,6 +502,34 @@ MA 02110-1301, USA.
 - (std::string) collisionDescription;	// flipped with its family (bead oo-3rb.277)
 - (void) dumpCollisions;
 - (OOViewID) viewDirection;
+
+@end
+
+
+// Slice 16 of docs/phases/3-slices/Universe.md (bead oo-focfo): members of cxx::Universe, forwarded by
+// the category of the same name in Universe+ObjCBridge.mm (amendment oo-mvzmb item 1).
+@interface Universe (OOSlice16)
+
+- (void) setViewDirection:(OOViewID)vd;
+- (void) enterGUIViewModeWithMouseInteraction:(BOOL)mouseInteraction;	// Use instead of setViewDirection:VIEW_GUI_DISPLAY
+- (std::optional<std::string>) soundNameForCustomSoundKey:(const std::string &)key;	// nullopt: no sound
+- (oo::PList) cxx_screenTextureDescriptorForKey:(const std::string &)key;	// null: none
+- (void) cxx_setScreenTextureDescriptorForKey:(const std::string &) key descriptor:(const oo::PList &)desc;	// a null descriptor removes
+// Message texts: nullopt where a nil text was passed (nothing is printed; it still counts as the message shown).
+- (void) clearPreviousMessage;
+- (void) setMessageGuiBackgroundColor:(OOColor *) some_color;
+- (void) cxx_displayMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count;
+- (void) cxx_displayCountdownMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count;
+- (void) cxx_addDelayedMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count afterDelay:(OOTimeDelta) delay;
+- (void) addDelayedMessage:(OOUniverseDelayedMessage *)holder;	// the deferred call of -cxx_addDelayedMessage:forCount:afterDelay:
+- (void) cxx_addMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count;
+- (void) speakWithSubstitutions:(const std::optional<std::string> &)text;
+- (void) cxx_addMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count forceDisplay:(BOOL) forceDisplay;
+- (void) cxx_addCommsMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count;
+- (void) cxx_addCommsMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count andShowComms:(BOOL)showComms logOnly:(BOOL)logOnly;
+- (void) showCommsLog:(OOTimeDelta) how_long;
+- (void) showGUIMessage:(const std::optional<std::string> &)text withScroll:(BOOL)scroll andColor:(OOColor *)selectedColor overDuration:(OOTimeDelta)how_long;
+- (void) repopulateSystem;
 
 @end
 

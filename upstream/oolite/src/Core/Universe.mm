@@ -220,8 +220,6 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range);
 
 @interface Universe (OOPrivate)
 
-- (void) addDelayedMessage:(OOUniverseDelayedMessage *)holder;	// the deferred call of -cxx_addDelayedMessage:forCount:afterDelay:
-
 - (void) initTargetFramebufferWithViewSize:(NSSize)viewSize;
 - (void) deleteOpenGLObjects;
 - (void) resizeTargetFramebufferWithViewSize:(NSSize)viewSize;
@@ -6050,93 +6048,6 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 }
 
 
-- (void) setViewDirection:(OOViewID) vd
-{
-	std::optional<std::string>	ms;
-	BOOL			guiSelected = NO;
-	
-	if ((_cxxUniverse->viewDirection == vd) && (vd != VIEW_CUSTOM) && (!_cxxUniverse->displayGUI))
-		return;
-	
-	switch (vd)
-	{
-		case VIEW_FORWARD:
-			ms = cxx_OOLookUpDescriptionPRIV("forward-view-string");
-			break;
-			
-		case VIEW_AFT:
-			ms = cxx_OOLookUpDescriptionPRIV("aft-view-string");
-			break;
-			
-		case VIEW_PORT:
-			ms = cxx_OOLookUpDescriptionPRIV("port-view-string");
-			break;
-			
-		case VIEW_STARBOARD:
-			ms = cxx_OOLookUpDescriptionPRIV("starboard-view-string");
-			break;
-			
-		case VIEW_CUSTOM:
-			ms = [PLAYER cxx_customViewDescription];
-			break;
-			
-		case VIEW_GUI_DISPLAY:
-			[self setDisplayText:YES];
-			[self setMainLightPosition:(Vector){ DEMO_LIGHT_POSITION }];
-			guiSelected = YES;
-			break;
-			
-		default:
-			guiSelected = YES;
-			break;
-	}
-	
-	if (guiSelected)
-	{
-		[[self gameController] setMouseInteractionModeForUIWithMouseInteraction:NO];
-	}
-	else
-	{
-		_cxxUniverse->displayGUI = NO;   // switch off any text displays
-		[[self gameController] setMouseInteractionModeForFlight];
-	}
-	
-	if (_cxxUniverse->viewDirection != vd || _cxxUniverse->viewDirection == VIEW_CUSTOM)
-	{
-		#if (ALLOW_CUSTOM_VIEWS_WHILE_PAUSED)
-		BOOL gamePaused = [[self gameController] isGamePaused];
-		#else
-		BOOL gamePaused = NO;
-		#endif
-		// view notifications for when the player switches to/from gui!
-		//if (EXPECT(viewDirection == VIEW_GUI_DISPLAY || vd == VIEW_GUI_DISPLAY )) [PLAYER noteViewDidChangeFrom:viewDirection toView:vd];
-		_cxxUniverse->viewDirection = vd;
-		if (ms.has_value() && !gamePaused)
-		{
-			[self cxx_addMessage:ms forCount:3];
-		}
-		else if (gamePaused)
-		{
-			[_cxxUniverse->message_gui clear];
-		}
-	}
-}
-
-
-- (void) enterGUIViewModeWithMouseInteraction:(BOOL)mouseInteraction
-{
-	OOViewID vd = _cxxUniverse->viewDirection;
-	[self setViewDirection:VIEW_GUI_DISPLAY];
-	if (_cxxUniverse->viewDirection != vd) {
-		PlayerEntity	*player = PLAYER;
-		ooscript::Context context = OOJSAcquireContext();
-		ShipScriptEvent(context, player, "viewDirectionChanged", OOJSValueFromViewID(context, _cxxUniverse->viewDirection), OOJSValueFromViewID(context, vd));
-		OOJSRelinquishContext(context);
-	}
-	[[self gameController] setMouseInteractionModeForUIWithMouseInteraction:mouseInteraction];
-}
-
-
 namespace {
 
 std::optional<std::string> OptionalStringAt(const oo::PList &array, std::size_t index);	// defined with the configuration readers below
@@ -6151,322 +6062,6 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 }
 
 }	// namespace
-
-
-// Resolved names are cached by key; a nil key (an array entry that is neither a string nor a
-// number) is cached as "", as the cache took a nil key.
-- (std::optional<std::string>) soundNameForCustomSoundKey:(const std::string &)soundKey
-{
-	std::optional<std::string>	key = soundKey;
-	std::optional<std::string>	result;
-	std::set<std::string>		seen;
-	const oo::PList				*object = _cxxUniverse->customSounds.find(*key);
-
-	if (object != nullptr && object->isArray() && object->count() > 0)
-	{
-		key = OptionalStringAt(*object, Ranrot() % object->count());
-	}
-	else
-	{
-		object = nullptr;
-	}
-
-	// the cache holds the resolved names as strings (set below)
-	const oo::PList cachedName = [[OOCacheManager sharedCache] cxx_pListForKey:key.value_or(std::string()) inCache:"resolved custom sounds"];
-	if (const std::string *name = cachedName.getIf<std::string>())  result = *name;
-	if (!result.has_value())
-	{
-		// Resolve sound, allowing indirection within customsounds.plist
-		result = key;
-		if (object == nullptr || (result.has_value() && oo::str::hasPrefix(*result, "[") && oo::str::hasSuffix(*result, "]")))
-		{
-			for (;;)
-			{
-				seen.insert(*result);
-				object = _cxxUniverse->customSounds.find(*result);
-				if (object != nullptr && object->isArray() && object->count() > 0)
-				{
-					result = OptionalStringAt(*object, Ranrot() % object->count());
-					if (key.has_value() && oo::str::hasPrefix(*key, "[") && oo::str::hasSuffix(*key, "]")) key=result;
-				}
-				else
-				{
-					if (object != nullptr && object->isString())
-						result = *object->getIf<std::string>();
-					else
-						result = std::nullopt;
-				}
-				if (!result.has_value() || !oo::str::hasPrefix(*result, "[") || !oo::str::hasSuffix(*result, "]"))  break;
-				if (seen.contains(*result))
-				{
-					OO_LOG_ERR("sound.customSounds.recursion", "recursion in customsounds.plist for '{}' (at '{}'), no sound will be played.", key.value_or("(null)"), *result);
-					result = std::nullopt;
-					break;
-				}
-			}
-		}
-
-		if (!result.has_value())  result = std::string("__oolite-no-sound");
-		[[OOCacheManager sharedCache] cxx_setPList:oo::PList(*result) forKey:key.value_or(std::string()) inCache:"resolved custom sounds"];
-	}
-
-	if (*result == "__oolite-no-sound")
-	{
-		OO_LOG("sound.customSounds", "Could not resolve sound name in customsounds.plist for '{}', no sound will be played.", key.value_or("(null)"));
-		result = std::nullopt;
-	}
-	return result;
-}
-
-
-- (oo::PList) cxx_screenTextureDescriptorForKey:(const std::string &)key
-{
-	const oo::PList *entry = _cxxUniverse->screenBackgrounds.find(key);
-	oo::PList value = (entry != nullptr) ? *entry : oo::PList();
-	while (value.isArray())
-	{
-		const oo::PList *chosen = value.at(Ranrot() % value.count());
-		oo::PList next = (chosen != nullptr) ? *chosen : oo::PList();
-		value = std::move(next);
-	}
-
-	if (value.isString())  value = oo::PList(oo::PList::Dict{ { "name", value } });
-	else if (!value.isDict())  value = oo::PList();
-
-	// Start loading the texture, and return nil if it doesn't exist.
-	if (![[self gui] cxx_preloadGUITexture:value])  value = oo::PList();
-
-	return value;
-}
-
-
-// Unloaded backgrounds (null) stay unloaded, as messaging nil changed nothing.
-- (void) cxx_setScreenTextureDescriptorForKey:(const std::string &)key descriptor:(const oo::PList &)desc
-{
-	oo::PList::Dict *backgrounds = _cxxUniverse->screenBackgrounds.getIf<oo::PList::Dict>();
-	if (backgrounds == nullptr)  return;
-	if (desc.isNull())
-	{
-		backgrounds->erase(key);
-	}
-	else
-	{
-		(*backgrounds)[key] = desc;
-	}
-}
-
-
-- (void) clearPreviousMessage
-{
-	_cxxUniverse->currentMessage.reset();
-}
-
-
-- (void) setMessageGuiBackgroundColor:(OOColor *)some_color
-{
-	[_cxxUniverse->message_gui setBackgroundColor:some_color];
-}
-
-
-- (void) cxx_displayMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta)count
-{
-	if (!SameMessage(_cxxUniverse->currentMessage, text) || _cxxUniverse->universal_time >= _cxxUniverse->messageRepeatTime)
-	{
-		_cxxUniverse->currentMessage = text;
-		_cxxUniverse->messageRepeatTime=_cxxUniverse->universal_time + 6.0;
-		[self showGUIMessage:text withScroll:YES andColor:[_cxxUniverse->message_gui textColor] overDuration:count];
-	}
-}
-
-
-- (void) cxx_displayCountdownMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta)count
-{
-	if (!SameMessage(_cxxUniverse->currentMessage, text) && _cxxUniverse->universal_time >= _cxxUniverse->countdown_messageRepeatTime)
-	{
-		_cxxUniverse->currentMessage = text;
-		_cxxUniverse->countdown_messageRepeatTime=_cxxUniverse->universal_time + count;
-		[self showGUIMessage:text withScroll:NO andColor:[_cxxUniverse->message_gui textColor] overDuration:count];
-	}
-}
-
-
-// The deferred call's argument carries the dictionary -addDelayedMessage: reads (a missing text
-// leaves the message out: the delayed call then shows nothing; setting a nil text raised).
-- (void) cxx_addDelayedMessage:(const std::optional<std::string> &)text forCount:(OOTimeDelta)count afterDelay:(double)delay
-{
-	oo::PList::Dict msgDict;
-	if (text.has_value())  msgDict["message"] = oo::PList(*text);
-	msgDict["duration"] = oo::PList(count);
-	OOUniverseDelayedMessage *holder = [[OOUniverseDelayedMessage alloc] init];
-	holder->message = oo::PList(std::move(msgDict));
-	OOScheduleDeferredCall(self, @selector(addDelayedMessage:), holder, delay);
-	[holder release];
-}
-
-
-- (void) addDelayedMessage:(OOUniverseDelayedMessage *)holder	// the deferred call above
-{
-	std::optional<std::string>	msg;
-	OOTimeDelta		msg_duration;
-	const oo::PList	message = (holder != nil) ? holder->message : oo::PList();
-
-	msg = OptionalStringIn(message, "message");
-	if (!msg.has_value())  return;
-	msg_duration = message.get<oo::NonNegative<double>>("duration", 3.0);
-
-	[self cxx_addMessage:msg forCount:msg_duration];
-}
-
-
-- (void) cxx_addMessage:(const std::optional<std::string> &)text forCount:(OOTimeDelta)count
-{
-	[self cxx_addMessage:text forCount:count forceDisplay:NO];
-}
-
-
-- (void) speakWithSubstitutions:(const std::optional<std::string> &)text
-{
-#if OOLITE_SPEECH_SYNTH
-	//speech synthesis
-
-	PlayerEntity* player = PLAYER;
-	if ([player isSpeechOn] > OOSPEECHSETTINGS_OFF)
-	{
-		std::optional<std::string>	systemSaid;
-		std::optional<std::string>	h_systemSaid;
-
-		const std::optional<std::string>	systemName = [self cxx_getSystemName:_cxxUniverse->systemID];
-
-		systemSaid = systemName;
-
-		const std::optional<std::string>	h_systemName = [self cxx_getSystemName:[player targetSystemID]];
-		h_systemSaid = h_systemName;
-
-		std::optional<std::string>	spokenText = text;
-		if (!_cxxUniverse->speechArray.isNull())
-		{
-			const oo::PList::Array *pairs = _cxxUniverse->speechArray.getIf<oo::PList::Array>();
-			if (pairs != nullptr)  for (const oo::PList &thePair : *pairs)
-			{
-				const std::optional<std::string> original_phrase = OptionalStringAt(thePair, 0);
-
-				NSUInteger replacementIndex;
-#if OOLITE_MAC_OS_X
-				replacementIndex = 1;
-#elif OOLITE_ESPEAK
-				replacementIndex = thePair.count() > 2 ? 2 : 1;
-#endif
-
-				const std::optional<std::string> replacement_phrase = OptionalStringAt(thePair, replacementIndex);
-				// An empty or missing phrase replaced nothing (a missing replacement or a nil text stayed nil).
-				if (replacement_phrase != "_" && spokenText.has_value() && original_phrase.has_value() && !original_phrase->empty() && replacement_phrase.has_value())
-				{
-					spokenText = oo::str::replaceOccurrences(*spokenText, *original_phrase, *replacement_phrase);
-				}
-			}
-			if (spokenText.has_value() && systemName.has_value() && !systemName->empty())  spokenText = oo::str::replaceOccurrences(*spokenText, *systemName, systemSaid.value_or(std::string()));
-			if (spokenText.has_value() && h_systemName.has_value() && !h_systemName->empty())  spokenText = oo::str::replaceOccurrences(*spokenText, *h_systemName, h_systemSaid.value_or(std::string()));
-		}
-		[self stopSpeaking];
-		if (spokenText.has_value())  [self cxx_startSpeakingString:*spokenText];	// a nil text said nothing
-	}
-#endif	// OOLITE_SPEECH_SYNTH
-}
-
-
-- (void) cxx_addMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count forceDisplay:(BOOL) forceDisplay
-{
-	if (!SameMessage(_cxxUniverse->currentMessage, text) || forceDisplay || _cxxUniverse->universal_time >= _cxxUniverse->messageRepeatTime)
-	{
-		if ([PLAYER isSpeechOn] == OOSPEECHSETTINGS_ALL)
-		{
-			[self speakWithSubstitutions:text];
-		}
-
-		[self showGUIMessage:text withScroll:YES andColor:[_cxxUniverse->message_gui textColor] overDuration:count];
-
-		[PLAYER cxx_doScriptEvent:OOJSID("consoleMessageReceived") withPListArguments:{ StringOrNull(text) }];
-
-		_cxxUniverse->currentMessage = text;
-		_cxxUniverse->messageRepeatTime=_cxxUniverse->universal_time + 6.0;
-	}
-}
-
-
-- (void) cxx_addCommsMessage:(const std::optional<std::string> &)text forCount:(OOTimeDelta)count
-{
-	[self cxx_addCommsMessage:text forCount:count andShowComms:_cxxUniverse->_autoCommLog logOnly:NO];
-}
-
-
-- (void) cxx_addCommsMessage:(const std::optional<std::string> &)text forCount:(OOTimeDelta)count andShowComms:(BOOL)showComms logOnly:(BOOL)logOnly
-{
-	if ([PLAYER showDemoShips]) return;
-
-	const std::optional<std::string> expandedMessage = text.has_value() ? cxx_OOExpand(*text) : std::nullopt;
-
-	if (!SameMessage(_cxxUniverse->currentMessage, expandedMessage) || _cxxUniverse->universal_time >= _cxxUniverse->messageRepeatTime)
-	{
-		PlayerEntity* player = PLAYER;
-
-		if (!logOnly)
-		{
-			if ([player isSpeechOn] >= OOSPEECHSETTINGS_COMMS)
-			{
-				// EMMSTRAN: should say "Incoming message from ..." when prefixed with sender name.
-				const std::string format = ExpandKey("speech-synthesis-incoming-message-@");
-				[self speakWithSubstitutions:oo::str::formatRuntime(format, { expandedMessage.has_value() ? oo::str::FormatArg(*expandedMessage) : oo::str::FormatArg::null() })];
-			}
-
-			[self showGUIMessage:expandedMessage withScroll:YES andColor:[_cxxUniverse->message_gui textCommsColor] overDuration:count];
-
-			_cxxUniverse->currentMessage = expandedMessage;
-			_cxxUniverse->messageRepeatTime=_cxxUniverse->universal_time + 6.0;
-		}
-
-		// the printed lines go to the player's comm log
-		std::vector<std::string> printedLines;
-		[_cxxUniverse->comm_log_gui cxx_printLongText:expandedMessage align:GUI_ALIGN_LEFT color:nil fadeTime:0.0 key:std::nullopt addToArray:&printedLines];
-		std::vector<std::string> *commLog = [player cxx_commLog];
-		if (commLog != nullptr)  commLog->insert(commLog->end(), printedLines.begin(), printedLines.end());
-
-		if (showComms)  [self showCommsLog:6.0];
-	}
-}
-
-
-- (void) showCommsLog:(OOTimeDelta)how_long
-{
-	[_cxxUniverse->comm_log_gui setAlpha:1.0];
-	if (![self permanentCommLog]) [_cxxUniverse->comm_log_gui fadeOutFromTime:[self getTime] overDuration:how_long];
-}
-
-
-- (void) showGUIMessage:(const std::optional<std::string> &)text withScroll:(BOOL)scroll andColor:(OOColor *)selectedColor overDuration:(OOTimeDelta)how_long
-{
-	if (scroll)
-	{
-		[_cxxUniverse->message_gui cxx_printLongText:text align:GUI_ALIGN_CENTER color:selectedColor fadeTime:how_long key:std::nullopt addToArray:nullptr];
-	}
-	else
-	{
-		[_cxxUniverse->message_gui cxx_printLineNoScroll:text align:GUI_ALIGN_CENTER color:selectedColor fadeTime:how_long key:std::nullopt addToArray:nullptr];
-	}
-	[_cxxUniverse->message_gui setAlpha:1.0f];
-}
-
-
-- (void) repopulateSystem
-{
-	if (EXPECT_NOT([PLAYER status] == STATUS_START_GAME))
-	{
-		return; // no need to be adding ships as this is not a "real" game
-	}
-	ooscript::Context context = OOJSAcquireContext();
-	[PLAYER doWorldScriptEvent:(_cxxUniverse->system_repopulator.has_value() ? cxx_OOJSIDFromString(*_cxxUniverse->system_repopulator) : ooscript::voidId()) inContext:context withArguments:NULL count:0 timeLimit:kOOJSLongTimeLimit];
-	OOJSRelinquishContext(context);
-	_cxxUniverse->next_repopulation = SYSTEM_REPOPULATION_INTERVAL;
-}
 
 
 - (void) update:(OOTimeDelta)inDeltaT
@@ -11797,6 +11392,442 @@ void Universe::dumpCollisions()
 OOViewID Universe::getViewDirection()
 {
 	return viewDirection;
+}
+
+}	// namespace cxx
+
+
+// Slice 16 of docs/phases/3-slices/Universe.md (bead oo-focfo): setting the view direction, GUI view mode, custom sounds, screen textures, messages and comms, delayed messages, repopulating. The facade forwards
+// each selector (Universe+ObjCBridge.mm); sends to self stay sends (ADR-0056 amendments oo-riqmz,
+// oo-mvzmb).
+namespace cxx {
+
+void Universe::setViewDirection(OOViewID vd)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	std::optional<std::string>	ms;
+	BOOL			guiSelected = NO;
+	
+	if ((viewDirection == vd) && (vd != VIEW_CUSTOM) && (!displayGUI))
+		return;
+	
+	switch (vd)
+	{
+		case VIEW_FORWARD:
+			ms = cxx_OOLookUpDescriptionPRIV("forward-view-string");
+			break;
+			
+		case VIEW_AFT:
+			ms = cxx_OOLookUpDescriptionPRIV("aft-view-string");
+			break;
+			
+		case VIEW_PORT:
+			ms = cxx_OOLookUpDescriptionPRIV("port-view-string");
+			break;
+			
+		case VIEW_STARBOARD:
+			ms = cxx_OOLookUpDescriptionPRIV("starboard-view-string");
+			break;
+			
+		case VIEW_CUSTOM:
+			ms = [PLAYER cxx_customViewDescription];
+			break;
+			
+		case VIEW_GUI_DISPLAY:
+			[self setDisplayText:YES];
+			[self setMainLightPosition:(Vector){ DEMO_LIGHT_POSITION }];
+			guiSelected = YES;
+			break;
+			
+		default:
+			guiSelected = YES;
+			break;
+	}
+	
+	if (guiSelected)
+	{
+		[[self gameController] setMouseInteractionModeForUIWithMouseInteraction:NO];
+	}
+	else
+	{
+		displayGUI = NO;   // switch off any text displays
+		[[self gameController] setMouseInteractionModeForFlight];
+	}
+	
+	if (viewDirection != vd || viewDirection == VIEW_CUSTOM)
+	{
+		#if (ALLOW_CUSTOM_VIEWS_WHILE_PAUSED)
+		BOOL gamePaused = [[self gameController] isGamePaused];
+		#else
+		BOOL gamePaused = NO;
+		#endif
+		// view notifications for when the player switches to/from gui!
+		//if (EXPECT(viewDirection == VIEW_GUI_DISPLAY || vd == VIEW_GUI_DISPLAY )) [PLAYER noteViewDidChangeFrom:viewDirection toView:vd];
+		viewDirection = vd;
+		if (ms.has_value() && !gamePaused)
+		{
+			[self cxx_addMessage:ms forCount:3];
+		}
+		else if (gamePaused)
+		{
+			[message_gui clear];
+		}
+	}
+}
+
+
+void Universe::enterGUIViewModeWithMouseInteraction(bool mouseInteraction)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	OOViewID vd = viewDirection;
+	[self setViewDirection:VIEW_GUI_DISPLAY];
+	if (viewDirection != vd) {
+		::PlayerEntity	*player = PLAYER;
+		ooscript::Context context = OOJSAcquireContext();
+		ShipScriptEvent(context, player, "viewDirectionChanged", OOJSValueFromViewID(context, viewDirection), OOJSValueFromViewID(context, vd));
+		OOJSRelinquishContext(context);
+	}
+	[[self gameController] setMouseInteractionModeForUIWithMouseInteraction:mouseInteraction];
+}
+
+
+// Resolved names are cached by key; a nil key (an array entry that is neither a string nor a
+// number) is cached as "", as the cache took a nil key.
+std::optional<std::string> Universe::soundNameForCustomSoundKey(const std::string &soundKey)
+{
+	std::optional<std::string>	key = soundKey;
+	std::optional<std::string>	result;
+	std::set<std::string>		seen;
+	const oo::PList				*object = customSounds.find(*key);
+
+	if (object != nullptr && object->isArray() && object->count() > 0)
+	{
+		key = OptionalStringAt(*object, Ranrot() % object->count());
+	}
+	else
+	{
+		object = nullptr;
+	}
+
+	// the cache holds the resolved names as strings (set below)
+	const oo::PList cachedName = [[::OOCacheManager sharedCache] cxx_pListForKey:key.value_or(std::string()) inCache:"resolved custom sounds"];
+	if (const std::string *name = cachedName.getIf<std::string>())  result = *name;
+	if (!result.has_value())
+	{
+		// Resolve sound, allowing indirection within customsounds.plist
+		result = key;
+		if (object == nullptr || (result.has_value() && oo::str::hasPrefix(*result, "[") && oo::str::hasSuffix(*result, "]")))
+		{
+			for (;;)
+			{
+				seen.insert(*result);
+				object = customSounds.find(*result);
+				if (object != nullptr && object->isArray() && object->count() > 0)
+				{
+					result = OptionalStringAt(*object, Ranrot() % object->count());
+					if (key.has_value() && oo::str::hasPrefix(*key, "[") && oo::str::hasSuffix(*key, "]")) key=result;
+				}
+				else
+				{
+					if (object != nullptr && object->isString())
+						result = *object->getIf<std::string>();
+					else
+						result = std::nullopt;
+				}
+				if (!result.has_value() || !oo::str::hasPrefix(*result, "[") || !oo::str::hasSuffix(*result, "]"))  break;
+				if (seen.contains(*result))
+				{
+					OO_LOG_ERR("sound.customSounds.recursion", "recursion in customsounds.plist for '{}' (at '{}'), no sound will be played.", key.value_or("(null)"), *result);
+					result = std::nullopt;
+					break;
+				}
+			}
+		}
+
+		if (!result.has_value())  result = std::string("__oolite-no-sound");
+		[[::OOCacheManager sharedCache] cxx_setPList:oo::PList(*result) forKey:key.value_or(std::string()) inCache:"resolved custom sounds"];
+	}
+
+	if (*result == "__oolite-no-sound")
+	{
+		OO_LOG("sound.customSounds", "Could not resolve sound name in customsounds.plist for '{}', no sound will be played.", key.value_or("(null)"));
+		result = std::nullopt;
+	}
+	return result;
+}
+
+
+oo::PList Universe::screenTextureDescriptorForKey(const std::string &key)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	const oo::PList *entry = screenBackgrounds.find(key);
+	oo::PList value = (entry != nullptr) ? *entry : oo::PList();
+	while (value.isArray())
+	{
+		const oo::PList *chosen = value.at(Ranrot() % value.count());
+		oo::PList next = (chosen != nullptr) ? *chosen : oo::PList();
+		value = std::move(next);
+	}
+
+	if (value.isString())  value = oo::PList(oo::PList::Dict{ { "name", value } });
+	else if (!value.isDict())  value = oo::PList();
+
+	// Start loading the texture, and return nil if it doesn't exist.
+	if (![[self gui] cxx_preloadGUITexture:value])  value = oo::PList();
+
+	return value;
+}
+
+
+// Unloaded backgrounds (null) stay unloaded, as messaging nil changed nothing.
+void Universe::setScreenTextureDescriptorForKey(const std::string &key, const oo::PList &desc)
+{
+	oo::PList::Dict *backgrounds = screenBackgrounds.getIf<oo::PList::Dict>();
+	if (backgrounds == nullptr)  return;
+	if (desc.isNull())
+	{
+		backgrounds->erase(key);
+	}
+	else
+	{
+		(*backgrounds)[key] = desc;
+	}
+}
+
+
+void Universe::clearPreviousMessage()
+{
+	currentMessage.reset();
+}
+
+
+void Universe::setMessageGuiBackgroundColor(::OOColor *some_color)
+{
+	[message_gui setBackgroundColor:some_color];
+}
+
+
+void Universe::displayMessage(const std::optional<std::string> &text, OOTimeDelta count)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	if (!SameMessage(currentMessage, text) || universal_time >= messageRepeatTime)
+	{
+		currentMessage = text;
+		messageRepeatTime=universal_time + 6.0;
+		[self showGUIMessage:text withScroll:YES andColor:[message_gui textColor] overDuration:count];
+	}
+}
+
+
+void Universe::displayCountdownMessage(const std::optional<std::string> &text, OOTimeDelta count)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	if (!SameMessage(currentMessage, text) && universal_time >= countdown_messageRepeatTime)
+	{
+		currentMessage = text;
+		countdown_messageRepeatTime=universal_time + count;
+		[self showGUIMessage:text withScroll:NO andColor:[message_gui textColor] overDuration:count];
+	}
+}
+
+
+// The deferred call's argument carries the dictionary -addDelayedMessage: reads (a missing text
+// leaves the message out: the delayed call then shows nothing; setting a nil text raised).
+void Universe::addDelayedMessage(const std::optional<std::string> &text, OOTimeDelta count, double delay)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	oo::PList::Dict msgDict;
+	if (text.has_value())  msgDict["message"] = oo::PList(*text);
+	msgDict["duration"] = oo::PList(count);
+	::OOUniverseDelayedMessage *holder = [[::OOUniverseDelayedMessage alloc] init];
+	holder->message = oo::PList(std::move(msgDict));
+	OOScheduleDeferredCall(self, @selector(addDelayedMessage:), holder, delay);
+	[holder release];
+}
+
+
+void Universe::addDelayedMessage(::OOUniverseDelayedMessage *holder)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	std::optional<std::string>	msg;
+	OOTimeDelta		msg_duration;
+	const oo::PList	message = (holder != nil) ? holder->message : oo::PList();
+
+	msg = OptionalStringIn(message, "message");
+	if (!msg.has_value())  return;
+	msg_duration = message.get<oo::NonNegative<double>>("duration", 3.0);
+
+	[self cxx_addMessage:msg forCount:msg_duration];
+}
+
+
+void Universe::addMessage(const std::optional<std::string> &text, OOTimeDelta count)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	[self cxx_addMessage:text forCount:count forceDisplay:NO];
+}
+
+
+void Universe::speakWithSubstitutions(const std::optional<std::string> &text)
+{
+	::Universe *self = oo::ToObjC(this);
+
+#if OOLITE_SPEECH_SYNTH
+	//speech synthesis
+
+	::PlayerEntity* player = PLAYER;
+	if ([player isSpeechOn] > OOSPEECHSETTINGS_OFF)
+	{
+		std::optional<std::string>	systemSaid;
+		std::optional<std::string>	h_systemSaid;
+
+		const std::optional<std::string>	systemName = [self cxx_getSystemName:systemID];
+
+		systemSaid = systemName;
+
+		const std::optional<std::string>	h_systemName = [self cxx_getSystemName:[player targetSystemID]];
+		h_systemSaid = h_systemName;
+
+		std::optional<std::string>	spokenText = text;
+		if (!speechArray.isNull())
+		{
+			const oo::PList::Array *pairs = speechArray.getIf<oo::PList::Array>();
+			if (pairs != nullptr)  for (const oo::PList &thePair : *pairs)
+			{
+				const std::optional<std::string> original_phrase = OptionalStringAt(thePair, 0);
+
+				NSUInteger replacementIndex;
+#if OOLITE_MAC_OS_X
+				replacementIndex = 1;
+#elif OOLITE_ESPEAK
+				replacementIndex = thePair.count() > 2 ? 2 : 1;
+#endif
+
+				const std::optional<std::string> replacement_phrase = OptionalStringAt(thePair, replacementIndex);
+				// An empty or missing phrase replaced nothing (a missing replacement or a nil text stayed nil).
+				if (replacement_phrase != "_" && spokenText.has_value() && original_phrase.has_value() && !original_phrase->empty() && replacement_phrase.has_value())
+				{
+					spokenText = oo::str::replaceOccurrences(*spokenText, *original_phrase, *replacement_phrase);
+				}
+			}
+			if (spokenText.has_value() && systemName.has_value() && !systemName->empty())  spokenText = oo::str::replaceOccurrences(*spokenText, *systemName, systemSaid.value_or(std::string()));
+			if (spokenText.has_value() && h_systemName.has_value() && !h_systemName->empty())  spokenText = oo::str::replaceOccurrences(*spokenText, *h_systemName, h_systemSaid.value_or(std::string()));
+		}
+		[self stopSpeaking];
+		if (spokenText.has_value())  [self cxx_startSpeakingString:*spokenText];	// a nil text said nothing
+	}
+#endif	// OOLITE_SPEECH_SYNTH
+}
+
+
+void Universe::addMessage(const std::optional<std::string> &text, OOTimeDelta count, bool forceDisplay)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	if (!SameMessage(currentMessage, text) || forceDisplay || universal_time >= messageRepeatTime)
+	{
+		if ([PLAYER isSpeechOn] == OOSPEECHSETTINGS_ALL)
+		{
+			[self speakWithSubstitutions:text];
+		}
+
+		[self showGUIMessage:text withScroll:YES andColor:[message_gui textColor] overDuration:count];
+
+		[PLAYER cxx_doScriptEvent:OOJSID("consoleMessageReceived") withPListArguments:{ StringOrNull(text) }];
+
+		currentMessage = text;
+		messageRepeatTime=universal_time + 6.0;
+	}
+}
+
+
+void Universe::addCommsMessage(const std::optional<std::string> &text, OOTimeDelta count)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	[self cxx_addCommsMessage:text forCount:count andShowComms:_autoCommLog logOnly:NO];
+}
+
+
+void Universe::addCommsMessage(const std::optional<std::string> &text, OOTimeDelta count, bool showComms, bool logOnly)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	if ([PLAYER showDemoShips]) return;
+
+	const std::optional<std::string> expandedMessage = text.has_value() ? cxx_OOExpand(*text) : std::nullopt;
+
+	if (!SameMessage(currentMessage, expandedMessage) || universal_time >= messageRepeatTime)
+	{
+		::PlayerEntity* player = PLAYER;
+
+		if (!logOnly)
+		{
+			if ([player isSpeechOn] >= OOSPEECHSETTINGS_COMMS)
+			{
+				// EMMSTRAN: should say "Incoming message from ..." when prefixed with sender name.
+				const std::string format = ExpandKey("speech-synthesis-incoming-message-@");
+				[self speakWithSubstitutions:oo::str::formatRuntime(format, { expandedMessage.has_value() ? oo::str::FormatArg(*expandedMessage) : oo::str::FormatArg::null() })];
+			}
+
+			[self showGUIMessage:expandedMessage withScroll:YES andColor:[message_gui textCommsColor] overDuration:count];
+
+			currentMessage = expandedMessage;
+			messageRepeatTime=universal_time + 6.0;
+		}
+
+		// the printed lines go to the player's comm log
+		std::vector<std::string> printedLines;
+		[comm_log_gui cxx_printLongText:expandedMessage align:GUI_ALIGN_LEFT color:nil fadeTime:0.0 key:std::nullopt addToArray:&printedLines];
+		std::vector<std::string> *commLog = [player cxx_commLog];
+		if (commLog != nullptr)  commLog->insert(commLog->end(), printedLines.begin(), printedLines.end());
+
+		if (showComms)  [self showCommsLog:6.0];
+	}
+}
+
+
+void Universe::showCommsLog(OOTimeDelta how_long)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	[comm_log_gui setAlpha:1.0];
+	if (![self permanentCommLog]) [comm_log_gui fadeOutFromTime:[self getTime] overDuration:how_long];
+}
+
+
+void Universe::showGUIMessage(const std::optional<std::string> &text, bool scroll, ::OOColor *selectedColor, OOTimeDelta how_long)
+{
+	if (scroll)
+	{
+		[message_gui cxx_printLongText:text align:GUI_ALIGN_CENTER color:selectedColor fadeTime:how_long key:std::nullopt addToArray:nullptr];
+	}
+	else
+	{
+		[message_gui cxx_printLineNoScroll:text align:GUI_ALIGN_CENTER color:selectedColor fadeTime:how_long key:std::nullopt addToArray:nullptr];
+	}
+	[message_gui setAlpha:1.0f];
+}
+
+
+void Universe::repopulateSystem()
+{
+	if (EXPECT_NOT([PLAYER status] == STATUS_START_GAME))
+	{
+		return; // no need to be adding ships as this is not a "real" game
+	}
+	ooscript::Context context = OOJSAcquireContext();
+	[PLAYER doWorldScriptEvent:(system_repopulator.has_value() ? cxx_OOJSIDFromString(*system_repopulator) : ooscript::voidId()) inContext:context withArguments:NULL count:0 timeLimit:kOOJSLongTimeLimit];
+	OOJSRelinquishContext(context);
+	next_repopulation = SYSTEM_REPOPULATION_INTERVAL;
 }
 
 }	// namespace cxx
