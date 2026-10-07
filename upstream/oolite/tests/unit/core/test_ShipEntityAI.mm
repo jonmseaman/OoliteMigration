@@ -365,4 +365,30 @@ OO_TEST(slice1StationStubs)
 }
 
 
+// From C++ (after the conversion): the members, and the station's override of the virtual one.
+OO_TEST(slice1MembersFromCxx)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestAIShip *ship = MakeShip("member");
+		cxx::ShipEntity *part = ship->_cxxShip;
+		part->performStop();
+		OO_CHECK(Behaviour(ship) == BEHAVIOUR_STOP_STILL);
+		OO_CHECK(part->launchPolice().isNull() && !part->launchPatrol());
+
+		TestAIShip *caller = MakeShip("caller");
+		TestAIShip *attacker = MakeShip("attacker");
+		SetPrimaryTarget(caller, attacker);
+		part->acceptDistressMessageFrom(caller);
+		OO_CHECK([ship foundTarget] == attacker);
+
+		TestAIStation *station = [[[TestAIStation alloc] cxx_initWithKey:"station" definition:oo::PList(oo::PList::Dict{ { "unpiloted", oo::PList(true) } })] autorelease];
+		cxx::ShipEntity *stationAsShip = station->_cxxShip;
+		stationAsShip->acceptDistressMessageFrom(caller);		// the station's: not the main station, so nothing
+		OO_CHECK([station foundTarget] == nil);
+	}
+}
+
+
 OO_TEST_MAIN()

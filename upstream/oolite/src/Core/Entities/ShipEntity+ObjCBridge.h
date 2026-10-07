@@ -1290,6 +1290,77 @@ unsigned argc = sizeof argv / sizeof *argv; \
 @end
 
 
+// The category ShipEntity (AI) of ShipEntityAI.mm, slice 1 of docs/phases/3-slices/ShipEntityAI.md
+// (bead oo-iebuz): members of cxx::ShipEntity defined in that file (ADR-0056 amendment oo-42dr),
+// forwarded by the category of the same name in ShipEntity+ObjCBridge.mm.
+@interface ShipEntity (AI)
+
+//	AI methods also used in other code.
+
+- (void) setAITo:(const std::string &)aiString;	// called by name (ADR-0055 item 5)
+- (void) setAIScript:(const std::string &)aiString;
+- (void) switchAITo:(const std::string &)aiString;	// called by name (ADR-0055 item 5)
+
+- (void) scanForHostiles;
+- (BOOL) performHyperSpaceToSpecificSystem:(OOSystemID)systemID;
+- (void) scanForNearestIncomingMissile;
+
+- (void) enterTargetWormhole;
+- (void) enterPlayerWormhole;
+
+- (void) wormholeEscorts;
+- (void) wormholeEntireGroup;
+
+- (BOOL) suggestEscortTo:(ShipEntity *)mother;
+
+- (void) groupAttackTarget;
+
+- (void) performAttack;
+- (void) performCollect;
+- (void) performEscort;
+- (void) performFaceDestination;
+- (void) performFlee;
+- (void) performFlyToRangeFromDestination;
+- (void) performHold;
+- (void) performIdle;
+- (void) performIntercept;
+- (void) performLandOnPlanet;
+- (void) performMining;
+- (void) performScriptedAI;
+- (void) performScriptedAttackAI;
+- (void) performStop;
+- (void) performTumble;
+
+- (void) broadcastDistressMessage;
+- (void) broadcastDistressMessageWithDumping:(BOOL)dumpCargo;
+
+- (void) requestDockingCoordinates;
+- (void) recallDockingInstructions;
+
+
+- (void) performBuoyTumble;
+
+@end
+
+
+// The category ShipEntity (OOAIPrivate) of ShipEntityAI.mm, slice 1 of docs/phases/3-slices/ShipEntityAI.md
+// (bead oo-iebuz): members of cxx::ShipEntity defined in that file (ADR-0056 amendment oo-42dr),
+// forwarded by the category of the same name in ShipEntity+ObjCBridge.mm.
+@interface ShipEntity (OOAIPrivate)
+
+- (void) checkFoundTarget;
+
+- (BOOL)performHyperSpaceExitReplace:(BOOL)replace;
+- (BOOL)performHyperSpaceExitReplace:(BOOL)replace toSystem:(OOSystemID)systemID;
+
+- (void)scanForNearestShipWithPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter;
+- (void)scanForNearestShipWithNegatedPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter;
+
+- (void) acceptDistressMessageFrom:(ShipEntity *)other;
+
+@end
+
+
 // The sends of ShipEntity.mm's C functions to classes they reach as Objective-C objects (amendment
 // oo-9ht.139 item 3); deleted with this header.
 double ShipEntityStellarBodyRadius(Entity<OOStellarBody> *stellar);	// [stellar radius]

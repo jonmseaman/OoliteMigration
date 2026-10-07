@@ -155,3 +155,11 @@ MA 02110-1301, USA.
 - (void) dumpSelfState	{ _cxxStation->cxx::StationEntity::dumpSelfState(); }
 
 @end
+
+
+// ShipEntityAI.mm slice 1 (bead oo-iebuz): the category StationEntity (OOAIPrivate).
+@implementation StationEntity (OOAIPrivate)
+
+- (void) acceptDistressMessageFrom:(ShipEntity *)other	{ _cxxStation->cxx::StationEntity::acceptDistressMessageFrom(other); }
+
+@end
