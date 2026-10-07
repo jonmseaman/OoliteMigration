@@ -585,4 +585,22 @@ OO_TEST(slice2MessagesOnly)
 }
 
 
+// From C++ (after the conversion): the members.
+OO_TEST(slice2MembersFromCxx)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestAIShip *ship = MakeShip("member2");
+		cxx::ShipEntity *part = ship->_cxxShip;
+		part->setSpeedTo("7");
+		OO_CHECK(DesiredSpeed(ship) == 7.0f);
+		SetPosition2(ship, make_HPvector(4, 5, 6));
+		part->setCoordinatesFromPosition();
+		part->setDestinationFromCoordinates();
+		OO_CHECK(HPdistance2(Destination(ship), make_HPvector(4, 5, 6)) == 0);
+	}
+}
+
+
 OO_TEST_MAIN()

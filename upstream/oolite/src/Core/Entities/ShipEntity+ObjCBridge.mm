@@ -1137,3 +1137,45 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 - (void) abortAllDockings	{ _cxxShip->abortAllDockings(); }
 
 @end
+
+
+// ShipEntityAI.mm slice 2 (bead oo-xurzn): the category ShipEntity (PureAI).
+@implementation ShipEntity (OOAISlice2)
+
+- (void) setStateTo:(const std::string &)state	{ _cxxShip->setStateTo(state); }
+- (void) pauseAI:(const std::string &)intervalString	{ _cxxShip->pauseAI(intervalString); }
+- (void) randomPauseAI:(const std::string &)intervalString	{ _cxxShip->randomPauseAI(intervalString); }
+- (void) dropMessages:(const std::string &)messageString	{ _cxxShip->dropMessages(messageString); }
+- (void) debugDumpPendingMessages	{ _cxxShip->debugDumpPendingMessages(); }
+- (void) setDestinationToCurrentLocation	{ _cxxShip->setDestinationToCurrentLocation(); }
+- (void) setDestinationToJinkPosition	{ _cxxShip->setDestinationToJinkPosition(); }
+- (void) setDesiredRangeTo:(const std::string &)rangeString	{ _cxxShip->setDesiredRangeTo(rangeString); }
+- (void) setDesiredRangeForWaypoint	{ _cxxShip->setDesiredRangeForWaypoint(); }
+- (void) setSpeedTo:(const std::string &)speedString	{ _cxxShip->setSpeedTo(speedString); }
+- (void) setSpeedFactorTo:(const std::string &)speedString	{ _cxxShip->setSpeedFactorTo(speedString); }
+- (void) setSpeedToCruiseSpeed	{ _cxxShip->setSpeedToCruiseSpeed(); }
+- (void) setThrustFactorTo:(const std::string &)thrustFactorString	{ _cxxShip->setThrustFactorTo(thrustFactorString); }
+- (void) setTargetToPrimaryAggressor	{ _cxxShip->setTargetToPrimaryAggressor(); }
+- (void) addPrimaryAggressorAsDefenseTarget	{ _cxxShip->addPrimaryAggressorAsDefenseTarget(); }
+- (void) scanForNearestMerchantman	{ _cxxShip->scanForNearestMerchantman(); }
+- (void) scanForRandomMerchantman	{ _cxxShip->scanForRandomMerchantman(); }
+- (void) scanForLoot	{ _cxxShip->scanForLoot(); }
+- (void) scanForRandomLoot	{ _cxxShip->scanForRandomLoot(); }
+- (void) setTargetToFoundTarget	{ _cxxShip->setTargetToFoundTarget(); }
+- (void) addFoundTargetAsDefenseTarget	{ _cxxShip->addFoundTargetAsDefenseTarget(); }
+- (void) checkForFullHold	{ _cxxShip->checkForFullHold(); }
+- (void) getWitchspaceEntryCoordinates	{ _cxxShip->getWitchspaceEntryCoordinates(); }
+- (void) setDestinationFromCoordinates	{ _cxxShip->setDestinationFromCoordinates(); }
+- (void) setCoordinatesFromPosition	{ _cxxShip->setCoordinatesFromPosition(); }
+- (void) fightOrFleeMissile	{ _cxxShip->fightOrFleeMissile(); }
+- (void) setCourseToPlanet	{ _cxxShip->setCourseToPlanet(); }
+- (void) setTakeOffFromPlanet	{ _cxxShip->setTakeOffFromPlanet(); }
+- (void) landOnPlanet	{ _cxxShip->landOnPlanet(); }
+- (void) checkTargetLegalStatus	{ _cxxShip->checkTargetLegalStatus(); }
+- (void) checkOwnLegalStatus	{ _cxxShip->checkOwnLegalStatus(); }
+- (void) exitAIWithMessage:(const std::string &)message	{ _cxxShip->exitAIWithMessage(message); }
+- (void) setDestinationToTarget	{ _cxxShip->setDestinationToTarget(); }
+- (void) setDestinationWithinTarget	{ _cxxShip->setDestinationWithinTarget(); }
+- (void) checkCourseToDestination	{ _cxxShip->checkCourseToDestination(); }
+
+@end

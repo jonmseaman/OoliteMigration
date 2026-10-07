@@ -1361,6 +1361,50 @@ unsigned argc = sizeof argv / sizeof *argv; \
 @end
 
 
+// Slice 2 of docs/phases/3-slices/ShipEntityAI.md (bead oo-xurzn): methods of the category
+// ShipEntity (PureAI) of ShipEntityAI.mm that are members of cxx::ShipEntity, forwarded by the category
+// of the same name in ShipEntity+ObjCBridge.mm.
+@interface ShipEntity (OOAISlice2)
+
+- (void) setStateTo:(const std::string &)state;	// called by name (ADR-0055 item 5)
+- (void) pauseAI:(const std::string &)intervalString;	// called by name (ADR-0055 item 5)
+- (void) randomPauseAI:(const std::string &)intervalString;	// called by name (ADR-0055 item 5)
+- (void) dropMessages:(const std::string &)messageString;	// called by name (ADR-0055 item 5)
+- (void) debugDumpPendingMessages;
+- (void) setDestinationToCurrentLocation;
+- (void) setDestinationToJinkPosition;
+- (void) setDesiredRangeTo:(const std::string &)rangeString;	// called by name (ADR-0055 item 5)
+- (void) setDesiredRangeForWaypoint;
+- (void) setSpeedTo:(const std::string &)speedString;	// called by name (ADR-0055 item 5)
+- (void) setSpeedFactorTo:(const std::string &)speedString;	// called by name (ADR-0055 item 5)
+- (void) setSpeedToCruiseSpeed;
+- (void) setThrustFactorTo:(const std::string &)thrustFactorString;	// called by name (ADR-0055 item 5)
+- (void) setTargetToPrimaryAggressor;
+- (void) addPrimaryAggressorAsDefenseTarget;
+- (void) scanForNearestMerchantman;
+- (void) scanForRandomMerchantman;
+- (void) scanForLoot;
+- (void) scanForRandomLoot;
+- (void) setTargetToFoundTarget;
+- (void) addFoundTargetAsDefenseTarget;
+- (void) checkForFullHold;
+- (void) getWitchspaceEntryCoordinates;
+- (void) setDestinationFromCoordinates;
+- (void) setCoordinatesFromPosition;
+- (void) fightOrFleeMissile;
+- (void) setCourseToPlanet;
+- (void) setTakeOffFromPlanet;
+- (void) landOnPlanet;
+- (void) checkTargetLegalStatus;
+- (void) checkOwnLegalStatus;
+- (void) exitAIWithMessage:(const std::string &)message;	// called by name (ADR-0055 item 5)
+- (void) setDestinationToTarget;
+- (void) setDestinationWithinTarget;
+- (void) checkCourseToDestination;
+
+@end
+
+
 // The sends of ShipEntity.mm's C functions to classes they reach as Objective-C objects (amendment
 // oo-9ht.139 item 3); deleted with this header.
 double ShipEntityStellarBodyRadius(Entity<OOStellarBody> *stellar);	// [stellar radius]
