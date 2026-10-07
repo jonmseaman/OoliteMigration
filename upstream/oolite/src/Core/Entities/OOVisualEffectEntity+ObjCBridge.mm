@@ -76,7 +76,7 @@ MA 02110-1301, USA.
 - (BOOL) hasSubEntity:(Entity<OOSubEntity> *)sub							{ return oo::ToCxx(self)->hasSubEntity(sub); }
 - (std::vector<oo::ObjCRef<Entity *>>)subEntityEnumerator					{ return oo::ToCxx(self)->subEntityEnumerator(); }
 - (std::vector<oo::ObjCRef<OOVisualEffectEntity *>>)effectSubEntityEnumerator	{ return oo::ToCxx(self)->effectSubEntityEnumerator(); }
-- (std::vector<oo::ObjCRef<OOFlasherEntity *>>)flasherEnumerator			{ return oo::ToCxx(self)->flasherEnumerator(); }
+- (std::vector<oo::ObjCRef<Entity *>>)flasherEnumerator			{ return oo::ToCxx(self)->flasherEnumerator(); }
 - (void) orientationChanged													{ oo::ToCxx(self)->orientationChanged(); }
 - (Vector) forwardVector													{ return oo::ToCxx(self)->forwardVector(); }
 - (Vector) rightVector														{ return oo::ToCxx(self)->rightVector(); }
