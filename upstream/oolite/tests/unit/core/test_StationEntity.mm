@@ -218,16 +218,19 @@ OO_TEST(setUpDefaults)
 }
 
 
-// A station whose virtual dock cannot be made is not set up.
-OO_TEST(initFailsWithoutADock)
+// A virtual dock that cannot be made: -setUpSubEntities answers NO, which ShipEntity's set-up
+// ignores, so the station is still made.
+OO_TEST(virtualDockThatFails)
 {
 	@autoreleasepool
 	{
 		SetUp();
 		sFailVirtualDock = true;
-		TestStation *station = [[TestStation alloc] cxx_initWithKey:"dockless" definition:Definition()];
-		OO_CHECK(station == nil);
-		OO_CHECK(sVirtualDocks == 1);
+		TestStation *station = MakeStation("dockless");
+		OO_CHECK(station != nil && sVirtualDocks == 1);
+		OO_CHECK(![station setUpSubEntities] && sVirtualDocks == 2);
+		sFailVirtualDock = false;
+		OO_CHECK([station setUpSubEntities] && sVirtualDocks == 3);
 	}
 }
 
