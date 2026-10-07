@@ -34,13 +34,15 @@ MA 02110-1301, USA.
 
 @implementation Entity (OOJavaScriptExtensions)
 
-- (BOOL) isVisibleToScripts													{ return EntityJSIsVisibleToScripts(); }
-- (std::optional<std::string>) cxx_oo_jsClassName							{ return EntityJSClassName(); }
+// The class questions go to the C++ part, whose defaults are these bodies and which a C++ subclass
+// without a façade of its own overrides (ADR-0056 amendment oo-9ht.107).
+- (BOOL) isVisibleToScripts													{ return _cxxEntity->isVisibleToScripts(); }
+- (std::optional<std::string>) cxx_oo_jsClassName							{ return _cxxEntity->jsClassName(); }
 - (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context			{ return EntityJSValueInContext(self, context); }
 
 - (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype
 {
-	EntityJSGetJSClass(outClass, outPrototype);
+	_cxxEntity->getJSClass(outClass, outPrototype);
 }
 
 - (void) deleteJSSelf														{ EntityJSDeleteJSSelf(self); }
