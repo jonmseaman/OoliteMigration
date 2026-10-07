@@ -834,6 +834,22 @@ OO_TEST(reset)
 }
 
 
+// Bead oo-9ht.173: a rooted value left autoreleased in the thread's own pool (no @autoreleasepool
+// here, as the game's exit(0) leaves the frame's pools open) is freed when libobjc drains that pool
+// at thread detach, after the C++ static destructors; its root removal and observer removal must
+// still find the engine's registries and the notification center. The check is the process
+// exiting 0 (tools/nightly line [oo-9ht.173] repeats it).
+OO_TEST(aValueLeftInTheThreadPoolAtExit)
+{
+	SetUp();
+	ooscript::Context context = OOJSAcquireContext();
+	ooscript::Value object = Eval(context, "({ leftAtExit: true })");
+	OOJSValue *holder = [OOJSValue valueWithJSValue:object inContext:context];
+	OO_CHECK(holder != nil && [holder oo_jsValueInContext:context] == object);
+	OOJSRelinquishContext(context);
+}
+
+
 OO_TEST(cleanUp)
 {
 	oo::log::logger().setSink(nullptr);
