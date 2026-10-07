@@ -25,6 +25,7 @@
 #import "OODescription.h"
 #import "Universe.h"
 #import "OOColor.h"
+#import "OORoleSet.h"
 
 #include "oo_test.hpp"
 
@@ -105,6 +106,9 @@ void SetFrustration(ShipEntity *s, GLfloat value)	{ s->_cxxShip->frustration = v
 void SetPlanetForLanding(ShipEntity *s, OOUniversalID uid)	{ s->_cxxShip->planetForLanding = uid; }
 void SetPreviousCondition(ShipEntity *s, const oo::PList &condition)	{ s->_cxxShip->previousCondition = condition; }
 unsigned NextNavpoint(ShipEntity *s)	{ return s->_cxxShip->next_navpoint_index; }
+GLfloat WeaponDamage(ShipEntity *s)	{ return s->_cxxShip->weapon_damage; }
+OOAegisStatus AegisStatus(ShipEntity *s)	{ return s->_cxxShip->aegis_status; }
+void SetAegisStatus(ShipEntity *s, OOAegisStatus status)	{ s->_cxxShip->aegis_status = status; }
 
 void SetPrimaryTarget(ShipEntity *s, Entity *target)
 {
@@ -1625,6 +1629,109 @@ OO_TEST(names)
 		OO_CHECK([ship cxx_scanDescriptionForScripting] == std::nullopt);
 		[ship cxx_setScanDescription:std::string("Trader")];
 		OO_CHECK([ship cxx_scanDescription] == std::optional<std::string>("Trader") && [ship cxx_scanDescriptionForScripting] == std::optional<std::string>("Trader"));
+	}
+}
+
+
+// Slice 18: roles. A ship has its primary role, its data key's automatic role and the roles of its
+// role set; adding is a no-op for a role it has.
+OO_TEST(roles)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("cobra3-trader");
+		[ship setPrimaryRole:"trader"];
+		OO_CHECK([ship cxx_primaryRole] == std::optional<std::string>("trader") && [ship cxx_hasPrimaryRole:"trader"]);
+		OO_CHECK([ship hasRole:"trader"] && [ship hasRole:"[cobra3-trader]"] && ![ship hasRole:"pirate"]);
+		[ship addRole:"pirate"];
+		OO_CHECK([ship hasRole:"pirate"]);
+		[ship cxx_addRole:"hunter" withProbability:0.5f];
+		OO_CHECK([ship hasRole:"hunter"]);
+		OORoleSet *roles = [ship roleSet];
+		OO_CHECK([roles hasRole:"pirate"] && [roles hasRole:"hunter"] && [roles hasRole:"trader"] && [roles hasRole:"[cobra3-trader]"]);
+		[ship cxx_removeRole:"pirate"];
+		OO_CHECK(![ship hasRole:"pirate"] && [ship hasRole:"hunter"]);
+
+		// The weapons are known by their primary role.
+		[ship setPrimaryRole:"EQ_HARDENED_MISSILE"];
+		OO_CHECK([ship isMissile] && ![ship isMine] && [ship isWeapon]);
+		[ship setPrimaryRole:"missile"];
+		OO_CHECK([ship isMissile]);
+		[ship setPrimaryRole:"EQ_QC_MINE"];
+		OO_CHECK(![ship isMissile] && [ship isMine] && [ship isWeapon]);
+	}
+}
+
+
+// Slice 18: the ship-type predicates that do not ask the universe, and hostility.
+OO_TEST(typesAndHostility)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("viper");
+		[ship setScanClass:CLASS_POLICE];
+		OO_CHECK([ship isPolice] && ![ship isThargoid]);
+		[ship setScanClass:CLASS_THARGOID];
+		OO_CHECK(![ship isPolice] && [ship isThargoid]);
+		OO_CHECK(![ship isUnpiloted] && ![ship isExplicitlyUnpiloted]);
+		[ship setScanClass:CLASS_CARGO];
+		OO_CHECK([ship isUnpiloted]);
+		[ship setScanClass:CLASS_NEUTRAL];
+		[ship setBehaviour:BEHAVIOUR_TRACK_AS_TURRET];
+		OO_CHECK([ship isTurret]);
+
+		// Hostile: a ship target and an attacking behaviour (or one it will resume after an alert).
+		[ship setBehaviour:BEHAVIOUR_ATTACK_TARGET];
+		OO_CHECK(![ship hasHostileTarget]);		// no target
+		TestShip *target = TargetAt(ship, 1000);
+		OO_CHECK([ship hasHostileTarget] && [ship isHostileTo:target] && ![ship isHostileTo:ship]);
+		[ship setBehaviour:BEHAVIOUR_FLY_TO_DESTINATION];
+		OO_CHECK(![ship hasHostileTarget]);
+		[ship setBehaviour:BEHAVIOUR_AVOID_COLLISION];
+		SetPreviousCondition(ship, oo::PList(oo::PList::Dict{ { "behaviour", oo::PList((double)BEHAVIOUR_ATTACK_SNIPER) } }));
+		OO_CHECK([ship hasHostileTarget]);
+		[ship setBehaviour:BEHAVIOUR_IDLE];
+		[ship setPrimaryRole:"missile"];
+		OO_CHECK([ship hasHostileTarget]);		// a missile's target always is
+
+		// Without a jammer, a ship is identified by its display name.
+		[ship cxx_setDisplayName:std::string("Viper")];
+		OO_CHECK([ship identFromShip:target] == std::optional<std::string>("Viper"));
+	}
+}
+
+
+// Slice 18: the weapon and scanner values, and leaving the aegis.
+OO_TEST(weaponAndScannerValues)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("gunship");
+		[ship setWeaponRange:5000];
+		OO_CHECK([ship weaponRange] == 5000);
+		[ship setEnergyRechargeRate:2.5f];
+		OO_CHECK([ship energyRechargeRate] == 2.5f);
+		[ship setWeaponRechargeRate:0.5f];
+		OO_CHECK([ship weaponRechargeRate] == 0.5f);
+		[ship setWeaponEnergy:12];
+		OO_CHECK(WeaponDamage(ship) == 12);
+		[ship setWeaponDataFromType:nil];		// no weapon: nothing
+		OO_CHECK([ship weaponRange] == 0 && [ship weaponRechargeRate] == 0 && WeaponDamage(ship) == 0);
+		OO_CHECK([ship currentWeaponFacing] == WEAPON_FACING_FORWARD);
+		[ship setScannerRange:30000];
+		OO_CHECK([ship scannerRange] == 30000);
+		[ship setReference:make_vector(1, 2, 3)];
+		OO_CHECK(vector_equal([ship reference], make_vector(1, 2, 3)));
+		OO_CHECK(![ship reportAIMessages]);
+		[ship setReportAIMessages:YES];
+		OO_CHECK([ship reportAIMessages]);
+
+		SetAegisStatus(ship, AEGIS_IN_DOCKING_RANGE);
+		[ship transitionToAegisNone];
+		OO_CHECK(AegisStatus(ship) == AEGIS_NONE);
 	}
 }
 

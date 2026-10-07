@@ -520,6 +520,51 @@ public:
 	void setDisplayName(const std::optional<std::string> &inName);
 	void setScanDescription(const std::optional<std::string> &inName);
 
+	// Slice 18: roles, ship-type predicates, hostility, weapon data, scanner range, aegis transition, nearest planet.
+	std::optional<std::string> identFromShip(::ShipEntity *otherShip);
+	bool hasRole(const std::string &role);
+	::OORoleSet *getRoleSet();
+	void addRole(const std::string &role);
+	void addRole(const std::string &role, float probability);
+	void removeRole(const std::string &role);
+	std::optional<std::string> getPrimaryRole();
+	void setPrimaryRole(const std::string &role);
+	bool hasPrimaryRole(const std::string &role);
+	bool isPolice();
+	bool isThargoid();
+	bool isTrader();
+	bool isPirate();
+	bool getIsMissile();
+	bool isMine();
+	bool isWeapon();
+	bool isEscort();
+	bool isShuttle();
+	bool isTurret();
+	bool isPirateVictim();
+	bool isExplicitlyUnpiloted();
+	virtual bool isUnpiloted();	// StationEntity overrides
+	virtual bool hasHostileTarget();	// PlayerEntity and StationEntity override
+	bool isHostileTo(::Entity *entity);
+	GLfloat getWeaponRange();
+	void setWeaponRange(GLfloat value);
+	void setWeaponDataFromType(OOWeaponType weapon_type);
+	float energyRechargeRate();
+	void setEnergyRechargeRate(GLfloat newValue);
+	float weaponRechargeRate();
+	void setWeaponRechargeRate(float value);
+	void setWeaponEnergy(float value);
+	OOWeaponFacing getCurrentWeaponFacing();
+	GLfloat getScannerRange();
+	void setScannerRange(GLfloat value);
+	Vector getReference();
+	void setReference(Vector v);
+	bool getReportAIMessages();
+	void setReportAIMessages(bool yn);
+	void transitionToAegisNone();
+	::OOPlanetEntity *findNearestPlanet();
+	::Entity *findNearestStellarBody();	// an Entity<OOStellarBody> (amendment oo-mvzmb item 5)
+	::OOPlanetEntity *findNearestPlanetExcludingMoons();
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired
