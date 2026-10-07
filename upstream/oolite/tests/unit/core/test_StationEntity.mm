@@ -552,4 +552,95 @@ OO_TEST(slice2MembersFromCxx)
 }
 
 
+// --- Slice 3: docking clearance, damage, allegiance and alert level (bead oo-hjzwk) ---------------
+// Written against the Objective-C API and run on the unconverted slice first.
+
+namespace {
+
+double LastPatrolReport3(StationEntity *s)			{ return s->_cxxStation->last_patrol_report_time; }
+void SetLastPatrolReport3(StationEntity *s, double t)	{ s->_cxxStation->last_patrol_report_time = t; }
+void SetEnergy3(Entity *e, GLfloat energy)			{ e->_cxxEntity->energy = energy; e->_cxxEntity->maxEnergy = 1000; }
+GLfloat Energy3(Entity *e)							{ return e->_cxxEntity->energy; }
+void SetPrimaryTarget3(ShipEntity *s, Entity *target)
+{
+	[s->_cxxShip->_primaryTarget release];
+	s->_cxxShip->_primaryTarget = [target weakRetain];
+}
+
+}	// namespace
+
+
+OO_TEST(slice3AllegianceAndAlertLevel)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestStation *station = MakeStation("alert");
+		[station cxx_setAllegiance:std::string("hunter")];
+		OO_CHECK([station cxx_allegiance] == std::optional<std::string>("hunter"));
+		[station cxx_setAllegiance:std::nullopt];
+		OO_CHECK(![station cxx_allegiance].has_value());
+
+		OO_CHECK([station alertLevel] == STATION_ALERT_LEVEL_GREEN);
+		[station setAlertLevel:STATION_ALERT_LEVEL_RED signallingScript:NO];
+		OO_CHECK([station alertLevel] == STATION_ALERT_LEVEL_RED);
+		[station setAlertLevel:(OOStationAlertLevel)99 signallingScript:NO];		// clamped
+		OO_CHECK([station alertLevel] == STATION_ALERT_LEVEL_RED);
+		[station setAlertLevel:(OOStationAlertLevel)0 signallingScript:NO];
+		OO_CHECK([station alertLevel] == STATION_ALERT_LEVEL_GREEN);
+		[station increaseAlertLevel];
+		OO_CHECK([station alertLevel] == STATION_ALERT_LEVEL_YELLOW);
+		[station increaseAlertLevel];
+		[station increaseAlertLevel];
+		OO_CHECK([station alertLevel] == STATION_ALERT_LEVEL_RED);
+		[station decreaseAlertLevel];
+		OO_CHECK([station alertLevel] == STATION_ALERT_LEVEL_YELLOW);
+
+		// A target at yellow or red alert is a hostile one; none, or green, is not.
+		OO_CHECK(![station hasHostileTarget]);
+		TestVisitor *intruder = MakeVisitor("intruder");
+		SetPrimaryTarget3(station, intruder);
+		OO_CHECK([station hasHostileTarget]);
+		[station setAlertLevel:STATION_ALERT_LEVEL_GREEN signallingScript:NO];
+		OO_CHECK(![station hasHostileTarget]);
+	}
+}
+
+
+OO_TEST(slice3DamageAndMovement)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestStation *station = MakeStation("target");
+		TestVisitor *friendly = MakeVisitor("defender");
+		[friendly setGroup:[station group]];
+
+		// Friendly fire is ignored.
+		SetEnergy3(station, 500);
+		[station takeEnergyDamage:100 from:friendly becauseOf:friendly weaponIdentifier:""];
+		OO_CHECK(Energy3(station) == 500);
+
+		// A station that is not the main one is moved like a ship.
+		[station setVelocity:kZeroVector];
+		[station adjustVelocity:make_vector(1, 0, 0)];
+		OO_CHECK(vector_equal([station velocity], make_vector(1, 0, 0)));
+	}
+}
+
+
+OO_TEST(slice3PatrolsAndQueues)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestStation *station = MakeStation("base");
+		SetLastPatrolReport3(station, -1000);
+		[station acceptPatrolReportFrom:nil];
+		OO_CHECK(LastPatrolReport3(station) == [UNIVERSE getTime]);
+		OO_CHECK([station currentlyInDockingQueues] == 0 && [station currentlyInLaunchingQueues] == 0);
+	}
+}
+
+
 OO_TEST_MAIN()
