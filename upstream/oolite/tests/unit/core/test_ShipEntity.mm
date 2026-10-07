@@ -117,6 +117,10 @@ GLfloat ScaleFactor(ShipEntity *s)	{ return s->_cxxShip->_scaleFactor; }
 void SetMass(Entity *e, GLfloat value)	{ e->_cxxEntity->mass = value; }
 bool IsWreckage(ShipEntity *s)	{ return s->_cxxShip->isWreckage; }
 void SetShowDamage(ShipEntity *s, bool value)	{ s->_cxxShip->_showDamage = value; }
+void SetWeaponTemps(ShipEntity *s, GLfloat temp, GLfloat aft)	{ s->_cxxShip->weapon_temp = temp; s->_cxxShip->aft_weapon_temp = aft; }
+bool SuppressesExplosion(ShipEntity *s)	{ return s->_cxxShip->suppressExplosion; }
+void SetBoundingBox(Entity *e, BoundingBox box)	{ e->_cxxEntity->boundingBox = box; }
+void SetShotTime(ShipEntity *s, OOTimeDelta value)	{ s->_cxxShip->shot_time = value; }
 double NextAegisCheck(ShipEntity *s)	{ return s->_cxxShip->_nextAegisCheck; }
 double LaunchTime(ShipEntity *s)	{ return s->_cxxShip->launch_time; }
 double LaunchDelay(ShipEntity *s)	{ return s->_cxxShip->launch_delay; }
@@ -2024,6 +2028,52 @@ OO_TEST(rescaleWreckageAndDebris)
 		OO_CHECK([ship cxx_cargoCount] == 0);
 		[ship releaseCargoPodsDebris];
 		OO_CHECK([ship cxx_cargoCount] == 0);
+	}
+}
+
+
+// Slice 23: the heat levels, clamped to 0 ... 1; the weapon's recovery; the personality, its shader
+// seed and its range; the explosion flag; the scanner; the alignment offsets in the bounding box;
+// and beacon codes compared without case.
+OO_TEST(heatPersonalityAlignmentAndBeacons)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("warm");
+		SetWeaponTemps(ship, NPC_MAX_WEAPON_TEMP / 2, NPC_MAX_WEAPON_TEMP * 2);
+		OO_CHECK([ship laserHeatLevel] == 0.5f && [ship laserHeatLevelAft] == 1.0f);
+		[ship setTemperature:SHIP_MAX_CABIN_TEMP / 4];
+		OO_CHECK([ship hullHeatLevel] == 0.25f);
+		[ship setWeaponRechargeRate:2];
+		OO_CHECK([ship weaponRecoveryTime] == 0.0f);	// the shot time starts at INITIAL_SHOT_TIME: long recovered
+		SetShotTime(ship, 0.5);
+		OO_CHECK([ship weaponRecoveryTime] == 0.75f);
+
+		[ship setEntityPersonalityInt:100];
+		OO_CHECK([ship entityPersonalityInt] == 100 && [ship randomSeedForShaders] == 100u * 0x00010001u);
+		OO_CHECK([ship entityPersonality] == 100 / (float)ENTITY_PERSONALITY_MAX);
+		[ship setEntityPersonalityInt:ENTITY_PERSONALITY_MAX + 1];	// out of range: ignored
+		OO_CHECK([ship entityPersonalityInt] == 100);
+
+		OO_CHECK(!SuppressesExplosion(ship));
+		[ship setSuppressExplosion:YES];
+		OO_CHECK(SuppressesExplosion(ship));
+
+		OO_CHECK([ship numberOfScannedShips] == 0);
+		[ship setFoundTarget:nil];
+		OO_CHECK([ship foundTarget] == nil && [ship primaryAggressor] == nil && [ship lastEscortTarget] == nil);
+
+		SetBoundingBox(ship, BoundingBox{ { -1, -2, -3 }, { 3, 4, 5 } });
+		Vector offset = [ship positionOffsetForAlignment:"MmC"];
+		OO_CHECK(offset.x == 3 && offset.y == -2 && offset.z == 1);
+		offset = [ship positionOffsetForAlignment:"c"];		// the others are padded with '-': zero
+		OO_CHECK(offset.x == 1 && offset.y == 0 && offset.z == 0);
+
+		TestShip *other = FlyingShip("beacon");
+		[ship setBeaconCode:std::string("alpha")];
+		[other setBeaconCode:std::string("BETA")];
+		OO_CHECK([ship compareBeaconCodeWith:other] == OOOrderedAscending && [other compareBeaconCodeWith:ship] == OOOrderedDescending);
 	}
 }
 

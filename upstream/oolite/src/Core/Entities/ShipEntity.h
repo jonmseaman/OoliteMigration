@@ -681,6 +681,38 @@ public:
 	void broadcastEnergyBlastImminent();
 	void removeExhaust(::OOExhaustPlumeEntity *exhaust);
 
+	// Slice 23: subentity death, alignment offsets, large explosion, laser heat, personality, scanner, remembered ships.
+	void removeFlasher(::OOFlasherEntity *flasher);
+	void subEntityDied(::ShipEntity *sub);
+	void subEntityReallyDied(::ShipEntity *sub) override;
+	Vector positionOffsetForAlignment(const std::string &align);
+	virtual void becomeLargeExplosion(double factor);
+	virtual void collectBountyFor(::ShipEntity *other);
+	OOComparisonResult compareBeaconCodeWith(::Entity *other);	// an Entity<OOBeaconEntity> (amendment oo-mvzmb item 5)
+	GLfloat weaponRecoveryTime();
+	virtual GLfloat laserHeatLevel();
+	virtual GLfloat laserHeatLevelAft();
+	virtual GLfloat laserHeatLevelForward();
+	virtual GLfloat laserHeatLevelPort();
+	virtual GLfloat laserHeatLevelStarboard();
+	GLfloat hullHeatLevel();
+	GLfloat entityPersonality();
+	GLint entityPersonalityInt();
+	uint32_t randomSeedForShaders();
+	void setEntityPersonalityInt(uint16_t value);
+	void setSuppressExplosion(bool suppress);
+	void resetExhaustPlumes();
+	void checkScanner();
+	void checkScannerIgnoringUnpowered();
+	::ShipEntity * *scannedShips();
+	int numberOfScannedShips();
+	::Entity *foundTarget();
+	virtual void setFoundTarget(::Entity *targetEntity);
+	::Entity *primaryAggressor();
+	void setPrimaryAggressor(::Entity *targetEntity);
+	::Entity *lastEscortTarget();
+	void setLastEscortTarget(::Entity *targetEntity);
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired
