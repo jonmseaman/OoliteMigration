@@ -9726,9 +9726,8 @@ void Universe::addMessage(const std::optional<std::string> &text, OOTimeDelta co
 
 void Universe::speakWithSubstitutions(const std::optional<std::string> &text)
 {
-	::Universe *self = oo::ToObjC(this);
-
 #if OOLITE_SPEECH_SYNTH
+	::Universe *self = oo::ToObjC(this);
 	//speech synthesis
 
 	::PlayerEntity* player = PLAYER;
