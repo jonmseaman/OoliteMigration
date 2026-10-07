@@ -8,6 +8,7 @@ oolite_sources += files(
     'CollisionRegion+ObjCBridge.mm',
     'GameController.mm',
     'GuiDisplayGen.mm',
+    'GuiDisplayGen+ObjCBridge.mm',
     'HeadUpDisplay.mm',
     'HeadUpDisplay+ObjCBridge.mm',
     'NSObjectOOExtensions.mm',
