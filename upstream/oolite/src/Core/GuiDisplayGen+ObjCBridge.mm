@@ -28,6 +28,7 @@ MA 02110-1301, USA.
 
 #import "GuiDisplayGen.h"
 #import "OOColor.h"
+#import "Universe.h"
 
 #include "oofnd/objc/OOObjCPeer.h"
 
@@ -433,4 +434,196 @@ cxx::GuiDisplayGen *oo::ToCxx(GuiDisplayGen *gui)
 	return _cxxGui->rowAtVirtualJoystickPosition(vjpos);
 }
 
+- (std::optional<std::string>) cxx_reflowTextForMFD:(const std::optional<std::string> &)input
+{
+	return _cxxGui->reflowTextForMFD(input);
+}
+
+
+- (OOGUIRow) cxx_addLongText:(const std::optional<std::string> &)str
+			   startingAtRow:(OOGUIRow)row
+					   align:(OOGUIAlignment)alignment
+{
+	return _cxxGui->addLongText(str, row, alignment);
+}
+
+
+- (void) cxx_printLongText:(const std::optional<std::string> &)str
+					 align:(OOGUIAlignment)alignment
+					 color:(OOColor *)text_color
+				  fadeTime:(float)text_fade
+					   key:(const std::optional<std::string> &)text_key
+				addToArray:(std::vector<std::string> *)text_array
+{
+	_cxxGui->printLongText(str, alignment, text_color, text_fade, text_key, text_array);
+}
+
+
+- (void) cxx_printLineNoScroll:(const std::optional<std::string> &)str
+						 align:(OOGUIAlignment)alignment
+						 color:(OOColor *)text_color
+					  fadeTime:(float)text_fade
+						   key:(const std::optional<std::string> &)text_key
+					addToArray:(std::vector<std::string> *)text_array
+{
+	_cxxGui->printLineNoScroll(str, alignment, text_color, text_fade, text_key, text_array);
+}
+
+
+- (void) cxx_setArray:(const std::vector<std::string> &)arr forRow:(OOGUIRow)row
+{
+	_cxxGui->setArray(arr, row);
+}
+
+
+- (void) cxx_insertItemsFromArray:(const oo::PList &)items
+						 withKeys:(const oo::PList &)item_keys
+						  intoRow:(OOGUIRow)row
+							color:(OOColor *)text_color
+{
+	_cxxGui->insertItemsFromArray(items, item_keys, row, text_color);
+}
+
+
+- (void) scrollUp:(int) how_much
+{
+	_cxxGui->scrollUp(how_much);
+}
+
+
+- (void) setBackgroundTextureSpecial:(OOGUIBackgroundSpecial)spec withBackground:(BOOL)withBackground
+{
+	_cxxGui->setBackgroundTextureSpecial(spec, withBackground);
+}
+
+
+- (BOOL) cxx_setBackgroundTextureDescriptor:(const oo::PList &)descriptor
+{
+	return _cxxGui->setBackgroundTextureDescriptor(descriptor);
+}
+
+
+- (BOOL) cxx_setForegroundTextureDescriptor:(const oo::PList &)descriptor
+{
+	return _cxxGui->setForegroundTextureDescriptor(descriptor);
+}
+
+
+- (BOOL) cxx_setBackgroundTextureKey:(const std::optional<std::string> &)key
+{
+	return _cxxGui->setBackgroundTextureKey(key);
+}
+
+
+- (BOOL) cxx_setForegroundTextureKey:(const std::optional<std::string> &)key
+{
+	return _cxxGui->setForegroundTextureKey(key);
+}
+
+
+- (BOOL) cxx_preloadGUITexture:(const oo::PList &)descriptor
+{
+	return _cxxGui->preloadGUITexture(descriptor);
+}
+
+
+- (oo::PList) cxx_textureDescriptorFromJSValue:(ooscript::Value)value inContext:(ooscript::Context)context callerDescription:(const std::optional<std::string> &)callerDescription
+{
+	return _cxxGui->textureDescriptorFromJSValue(value, context, callerDescription);
+}
+
+
+- (void) clearBackground
+{
+	_cxxGui->clearBackground();
+}
+
+
+- (void) leaveLastLine
+{
+	_cxxGui->leaveLastLine();
+}
+
+
+- (oo::PList) cxx_getLastLines
+{
+	return _cxxGui->getLastLines();
+}
+
+
+- (void) setStatusPage:(NSInteger) pageNum
+{
+	_cxxGui->setStatusPage(pageNum);
+}
+
+
+- (NSUInteger) statusPage
+{
+	return _cxxGui->getStatusPage();
+}
+
+
+- (void) cxx_drawEquipmentList:(const oo::PList &)eqptList z:(GLfloat)z
+{
+	_cxxGui->drawEquipmentList(eqptList, z);
+}
+
+
+- (int) drawGUI:(GLfloat) alpha drawCursor:(BOOL) drawCursor
+{
+	return _cxxGui->drawGUI(alpha, drawCursor);
+}
+
+
+- (void) drawGUIBackground
+{
+	_cxxGui->drawGUIBackground();
+}
+
+
+- (void) refreshStarChart
+{
+	_cxxGui->refreshStarChart();
+}
+
+
+- (void) setStarChartTitle
+{
+	_cxxGui->setStarChartTitle();
+}
+
+
+- (OOSystemID) targetNextFoundSystem:(int)direction
+{
+	return _cxxGui->targetNextFoundSystem(direction);
+}
+
 @end
+
+
+@implementation GuiDisplayGen (OOGuiDisplayGenInternalForwarded)
+
+- (void) drawCrossHairsWithSize:(GLfloat) size x:(GLfloat)x y:(GLfloat)y z:(GLfloat)z
+{
+	_cxxGui->drawCrossHairsWithSize(size, x, y, z);
+}
+
+
+- (void) drawSystemMarkers:(const oo::PList &)marker atX:(GLfloat)x andY:(GLfloat)y andZ:(GLfloat)z withAlpha:(GLfloat)alpha andScale:(GLfloat)scale
+{
+	_cxxGui->drawSystemMarkers(marker, x, y, z, alpha, scale);
+}
+
+
+- (void) drawAdvancedNavArrayAtX:(float)x y:(float)y z:(float)z alpha:(float)alpha usingRoute:(const oo::PList &) route optimizedBy:(OORouteType) optimizeBy zoom: (OOScalar) zoom
+{
+	_cxxGui->drawAdvancedNavArrayAtX(x, y, z, alpha, route, optimizeBy, zoom);
+}
+
+@end
+
+
+bool GuiDisplayGenUniverseUseShaders()
+{
+	return [UNIVERSE useShaders];
+}
