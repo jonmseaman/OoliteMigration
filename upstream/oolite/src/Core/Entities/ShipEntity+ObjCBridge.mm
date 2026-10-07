@@ -1179,3 +1179,47 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 - (void) checkCourseToDestination	{ _cxxShip->checkCourseToDestination(); }
 
 @end
+
+
+// ShipEntityAI.mm slice 3 (bead oo-wc9o3): the category ShipEntity (PureAI).
+@implementation ShipEntity (OOAISlice3)
+
+- (void) checkAegis	{ _cxxShip->checkAegis(); }
+- (void) checkEnergy	{ _cxxShip->checkEnergy(); }
+- (void) checkHeatInsulation	{ _cxxShip->checkHeatInsulation(); }
+- (void) findNewDefenseTarget	{ _cxxShip->findNewDefenseTarget(); }
+- (void) scanForOffenders	{ _cxxShip->scanForOffenders(); }
+- (void) setCourseToWitchpoint	{ _cxxShip->setCourseToWitchpoint(); }
+- (void) setDestinationToWitchpoint	{ _cxxShip->setDestinationToWitchpoint(); }
+- (void) setDestinationToStationBeacon	{ _cxxShip->setDestinationToStationBeacon(); }
+- (void) performHyperSpaceExit	{ _cxxShip->performHyperSpaceExit(); }
+- (void) performHyperSpaceExitWithoutReplacing	{ _cxxShip->performHyperSpaceExitWithoutReplacing(); }
+- (void) disengageAutopilot	{ _cxxShip->cxx::ShipEntity::disengageAutopilot(); }
+- (void) wormholeGroup	{ _cxxShip->wormholeGroup(); }
+- (void) commsMessage:(const std::string &)valueString	{ _cxxShip->cxx::ShipEntity::commsMessage(valueString); }
+- (void) commsMessageByUnpiloted:(const std::string &)valueString	{ _cxxShip->cxx::ShipEntity::commsMessageByUnpiloted(valueString); }
+- (void) ejectCargo	{ _cxxShip->ejectCargo(); }
+- (void) scanForThargoid	{ _cxxShip->scanForThargoid(); }
+- (void) scanForNonThargoid	{ _cxxShip->scanForNonThargoid(); }
+- (void) thargonCheckMother	{ _cxxShip->thargonCheckMother(); }
+- (void) becomeUncontrolledThargon	{ _cxxShip->becomeUncontrolledThargon(); }
+- (void) checkDistanceTravelled	{ _cxxShip->checkDistanceTravelled(); }
+- (void) fightOrFleeHostiles	{ _cxxShip->fightOrFleeHostiles(); }
+- (void) suggestEscort	{ _cxxShip->suggestEscort(); }
+- (void) escortCheckMother	{ _cxxShip->escortCheckMother(); }
+- (void) checkGroupOddsVersusTarget	{ _cxxShip->checkGroupOddsVersusTarget(); }
+- (void) scanForFormationLeader	{ _cxxShip->scanForFormationLeader(); }
+- (void) messageMother:(const std::string &)msgString	{ _cxxShip->messageMother(msgString); }
+- (void) messageSelf:(const std::string &)msgString	{ _cxxShip->messageSelf(msgString); }
+- (void) setPlanetPatrolCoordinates	{ _cxxShip->setPlanetPatrolCoordinates(); }
+- (void) setSunSkimStartCoordinates	{ _cxxShip->setSunSkimStartCoordinates(); }
+- (void) setSunSkimEndCoordinates	{ _cxxShip->setSunSkimEndCoordinates(); }
+- (void) setSunSkimExitCoordinates	{ _cxxShip->setSunSkimExitCoordinates(); }
+- (void) patrolReportIn	{ _cxxShip->patrolReportIn(); }
+- (void) checkForMotherStation	{ _cxxShip->checkForMotherStation(); }
+- (void) sendTargetCommsMessage:(const std::string &)message	{ _cxxShip->sendTargetCommsMessage(message); }
+- (void) markTargetForFines	{ _cxxShip->markTargetForFines(); }
+- (void) markTargetForOffence:(const std::string &)valueString	{ _cxxShip->markTargetForOffence(valueString); }
+- (void) storeTarget	{ _cxxShip->storeTarget(); }
+
+@end

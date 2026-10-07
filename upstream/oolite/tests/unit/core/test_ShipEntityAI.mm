@@ -604,4 +604,198 @@ OO_TEST(slice2MembersFromCxx)
 }
 
 
+// --- Slice 3: PureAI part 2: checks, comms, Thargoids, escorts, patrols, target marking (bead
+// oo-wc9o3) ------------------------------------------------------------------------------------
+
+@interface ShipEntity (TestPureAI2)
+- (void) checkAegis;
+- (void) checkEnergy;
+- (void) checkHeatInsulation;
+- (void) findNewDefenseTarget;
+- (void) setDestinationToStationBeacon;
+- (void) performHyperSpaceExit;
+- (void) performHyperSpaceExitWithoutReplacing;
+- (void) disengageAutopilot;
+- (void) wormholeGroup;
+- (void) ejectCargo;
+- (void) scanForThargoid;
+- (void) scanForNonThargoid;
+- (void) thargonCheckMother;
+- (void) checkDistanceTravelled;
+- (void) fightOrFleeHostiles;
+- (void) suggestEscort;
+- (void) escortCheckMother;
+- (void) checkGroupOddsVersusTarget;
+- (void) scanForFormationLeader;
+- (void) messageMother:(const std::string &)msgString;
+- (void) messageSelf:(const std::string &)msgString;
+- (void) setPlanetPatrolCoordinates;
+- (void) setSunSkimStartCoordinates;
+- (void) setSunSkimEndCoordinates;
+- (void) setSunSkimExitCoordinates;
+- (void) patrolReportIn;
+- (void) checkForMotherStation;
+- (void) sendTargetCommsMessage:(const std::string &)message;
+- (void) markTargetForFines;
+- (void) markTargetForOffence:(const std::string &)valueString;
+- (void) storeTarget;
+@end
+
+
+namespace {
+
+OOAegisStatus AegisStatus3(ShipEntity *s)			{ return s->_cxxShip->aegis_status; }
+void SetAegisStatus3(ShipEntity *s, int status)	{ s->_cxxShip->aegis_status = (OOAegisStatus)status; }
+void SetEnergy3(Entity *e, GLfloat energy, GLfloat maxEnergy)	{ e->_cxxEntity->energy = energy; e->_cxxEntity->maxEnergy = maxEnergy; }
+HPVector Coordinates3(ShipEntity *s)				{ return s->_cxxShip->coordinates; }
+void SetCoordinates3(ShipEntity *s, HPVector c)	{ s->_cxxShip->coordinates = c; }
+void SetDestination3(ShipEntity *s, HPVector d)	{ s->_cxxShip->_destination = d; }
+
+}	// namespace
+
+
+OO_TEST(slice3ChecksAndScans)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestAIShip *ship = MakeShip("checker");
+		TestAIShip *other = MakeShip("other");
+		SetScannerRange(ship, 25000);
+
+		// An aegis status out of range is an internal error, and is reset.
+		SetAegisStatus3(ship, 99);
+		[ship checkAegis];
+		OO_CHECK(AegisStatus3(ship) == AEGIS_NONE);
+		[ship checkAegis];
+		OO_CHECK(AegisStatus3(ship) == AEGIS_NONE);
+
+		SetEnergy3(ship, 50, 100);
+		[ship checkEnergy];
+		[ship checkHeatInsulation];
+		[ship checkDistanceTravelled];
+		[ship checkGroupOddsVersusTarget];
+		[ship checkForMotherStation];
+		[ship disengageAutopilot];		// logged: only for the player
+		[ship messageSelf:"HELLO"];
+		[ship messageMother:"HELLO"];	// no mother
+
+		[ship findNewDefenseTarget];		// nobody on the scanner
+		OO_CHECK(![ship isDefenseTarget:other]);
+
+		[ship setFoundTarget:other];
+		[ship scanForThargoid];
+		OO_CHECK([ship foundTarget] == nil);
+		[ship setFoundTarget:other];
+		[ship scanForNonThargoid];
+		OO_CHECK([ship foundTarget] == nil);
+		[ship setFoundTarget:other];
+		[ship scanForFormationLeader];
+		OO_CHECK([ship foundTarget] == nil);
+		[ship setFoundTarget:other];
+		[ship thargonCheckMother];		// no mother and none to be found
+		OO_CHECK([ship foundTarget] == nil && [ship owner] != other);
+	}
+}
+
+
+OO_TEST(slice3NothingToActOn)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestAIShip *ship = MakeShip("idle");
+		TestAIShip *other = MakeShip("other");
+
+		// No station, no sun: destinations and coordinates stay.
+		SetDestination3(ship, make_HPvector(1, 2, 3));
+		SetCoordinates3(ship, make_HPvector(4, 5, 6));
+		[ship setDestinationToStationBeacon];
+		[ship setPlanetPatrolCoordinates];
+		[ship setSunSkimStartCoordinates];
+		[ship setSunSkimEndCoordinates];
+		[ship setSunSkimExitCoordinates];
+		[ship patrolReportIn];
+		OO_CHECK(HPdistance2(Destination(ship), make_HPvector(1, 2, 3)) == 0 && HPdistance2(Coordinates3(ship), make_HPvector(4, 5, 6)) == 0);
+
+		// Already entering witchspace: no jump.
+		[ship setStatus:STATUS_ENTERING_WITCHSPACE];
+		[ship performHyperSpaceExit];
+		[ship performHyperSpaceExitWithoutReplacing];
+		OO_CHECK([ship status] == STATUS_ENTERING_WITCHSPACE);
+		[ship setStatus:STATUS_IN_FLIGHT];
+
+		// No escort to suggest to, no mother to check: the ship is its own owner.
+		[ship suggestEscort];
+		OO_CHECK([ship owner] == ship);
+		[ship setOwner:nil];
+		[ship escortCheckMother];
+		OO_CHECK([ship owner] == ship);
+
+		// A target that is not a wormhole: nobody goes.
+		SetPrimaryTarget(ship, other);
+		[ship wormholeGroup];
+		OO_CHECK([ship primaryTarget] == other);
+
+		// Not police: no offence marked.
+		[ship markTargetForOffence:"16"];
+		OO_CHECK([other bounty] == 0);
+
+		// No cargo bay: nothing to eject.
+		[ship ejectCargo];
+		OO_CHECK([ship cargoQuantityOnBoard] == 0);
+	}
+}
+
+
+OO_TEST(slice3TargetsAndFighting)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestAIShip *ship = MakeShip("fighter");
+		TestAIShip *other = MakeShip("other");
+
+		// The target is remembered, and forgotten when there is none.
+		SetPrimaryTarget(ship, other);
+		[ship storeTarget];
+		OO_CHECK([ship rememberedShip] == other);
+		SetPrimaryTarget(ship, nil);
+		[ship storeTarget];
+		OO_CHECK([ship rememberedShip] == nil);
+
+		// A lost target: comms and fines go nowhere.
+		[ship sendTargetCommsMessage:"[hello]"];
+		[ship markTargetForFines];
+		OO_CHECK([ship primaryTarget] == nil);
+
+		// Full energy, no escorts, no missiles: fight the found target.
+		SetEnergy3(ship, 100, 100);
+		[ship setFoundTarget:other];
+		[ship fightOrFleeHostiles];
+		OO_CHECK([ship primaryAggressor] == other && [ship isDefenseTarget:other]);
+	}
+}
+
+
+// From C++ (after the conversion): the members.
+OO_TEST(slice3MembersFromCxx)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestAIShip *ship = MakeShip("member3");
+		TestAIShip *other = MakeShip("other");
+		cxx::ShipEntity *part = ship->_cxxShip;
+		SetPrimaryTarget(ship, other);
+		part->storeTarget();
+		OO_CHECK([ship rememberedShip] == other);
+		SetAegisStatus3(ship, 42);
+		part->checkAegis();
+		OO_CHECK(AegisStatus3(ship) == AEGIS_NONE);
+		part->disengageAutopilot();		// virtual: the ship's, which logs
+	}
+}
+
+
 OO_TEST_MAIN()
