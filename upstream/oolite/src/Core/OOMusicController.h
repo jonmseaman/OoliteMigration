@@ -42,7 +42,7 @@ MA 02110-1301, USA.
 #include "oofnd/Ref.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 
-@class OOMusic;
+#import "OOALMusic.h"
 
 
 #define OOLITE_ITUNES_SUPPORT OOLITE_MAC_OS_X
@@ -108,9 +108,7 @@ private:
 
 	OOMusicMode				_mode = {};
 	std::optional<std::string>	_missionMusic;
-	// The music is an Objective-C object, which the resource manager makes and this test stubs
-	// (amendment oo-rmd7 item 3); retained, as before.
-	oo::ObjCRef<::OOMusic *>	_current;
+	oo::Ref<OOMusic>		_current;
 	uint8_t					_special = {};
 };
 
