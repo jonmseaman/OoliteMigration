@@ -243,10 +243,6 @@ MA 02110-1301, USA.
 
 ///////////////////////////////////////
 
-/**
- * Finds systems within range.  If range is greater than 7.0LY then only look within 7.0LY.
- */
-
 - (void) preloadSounds;
 
 - (Random_Seed) marketSeed;
@@ -533,6 +529,9 @@ MA 02110-1301, USA.
 // the category of the same name in Universe+ObjCBridge.mm (amendment oo-mvzmb item 1).
 @interface Universe (OOSlice20)
 
+/**
+ * Finds systems within range.  If range is greater than 7.0LY then only look within 7.0LY.
+ */
 - (oo::PList) cxx_nearbyDestinationsWithinRange:(double) range;	// an array of {distance, sysID, nova}
 - (OOSystemID) findNeighbouringSystemToCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) gal;
 - (OOSystemID) findConnectedSystemAtCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) gal;
