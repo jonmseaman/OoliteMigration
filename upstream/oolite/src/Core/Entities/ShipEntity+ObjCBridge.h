@@ -118,8 +118,6 @@ MA 02110-1301, USA.
 
 
 
-- (OOAlertCondition) alertCondition; // quick calc for shaders
-- (OOAlertCondition) realAlertCondition; // full calculation for scripting
 
 // defense target handling
 
@@ -239,39 +237,23 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
  * Changes a ship to a hulk, for example when the pilot ejects.
  * Aso unsets hulkiness for example when a new pilot gets in.
  */
-#if OO_SALVAGE_SUPPORT
-- (void) pilotArrived;
-#endif
 
 
 
-- (OOJSScript *) script;
-- (oo::PList) scriptInfo;	// flipped with its family (bead oo-3rb.284): empty dict when there is none
-- (void) overrideScriptInfo:(const oo::PList &)override;	// Add items from override (a dictionary, or null for none) to scriptInfo, replacing in case of duplicates. Used for subentities.
 
 
 
-- (Entity *)entityForShaderProperties;
 
 // Demo ship
-- (void) setDemoShip: (OOScalar) demoRate;
-- (BOOL) isDemoShip;
-- (void) setDemoStartTime: (OOTimeAbsolute) time;
 
 /*	*** Script events.
 	For NPC ships, these call doEvent: on the ship script.
 	For the player, they do that and also call doWorldScriptEvent:.
 */
-- (void) doScriptEvent:(ooscript::PropertyId)message;
-- (void) doScriptEvent:(ooscript::PropertyId)message withArgument:(id)argument;
-- (void) doScriptEvent:(ooscript::PropertyId)message withArgument:(id)argument1 andArgument:(id)argument2;
 /*	Plist data as event arguments (ADR-0055 item 4): each converted by OOJSValueFromPList, so a
 	string, number or collection gives the JS value the boxed Foundation object gave, and an entity
 	is passed as oo::PListObject(entity). The id forms above stay for OOObject arguments.
 */
-- (void) cxx_doScriptEvent:(ooscript::PropertyId)message withPListArguments:(const std::vector<oo::PList> &)arguments;
-- (void) doScriptEvent:(ooscript::PropertyId)message withArguments:(ooscript::Value *)argv count:(unsigned)argc;
-- (void) doScriptEvent:(ooscript::PropertyId)message inContext:(ooscript::Context)context withArguments:(ooscript::Value *)argv count:(unsigned)argc;
 
 /*	Convenience to send an event with raw JS values, for example:
 	ShipScriptEventNoCx(ship, "doSomething", ooscript::int32Value(42));
@@ -288,10 +270,6 @@ unsigned argc = sizeof argv / sizeof *argv; \
 [ship doScriptEvent:OOJSID(event) withArguments:argv count:argc]; \
 } while (0)
 
-- (void) cxx_reactToAIMessage:(const std::string &)message context:(const std::optional<std::string> &)debugContext;	// Immediate message
-- (void) sendAIMessage:(const std::string &)message;		// Queued message.
-- (void) cxx_doScriptEvent:(ooscript::PropertyId)scriptEvent andReactToAIMessage:(const std::string &)aiMessage;
-- (void) cxx_doScriptEvent:(ooscript::PropertyId)scriptEvent withArgument:(id)argument andReactToAIMessage:(const std::string &)aiMessage;
 
 @end
 
@@ -1229,6 +1207,45 @@ unsigned argc = sizeof argv / sizeof *argv; \
 #if OO_SALVAGE_SUPPORT
 - (void) claimAsSalvage;
 - (void) sendCoordinatesToPilot;
+#endif
+
+@end
+
+
+// Slice 34 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice34)
+
+#if OO_SALVAGE_SUPPORT
+- (void) pilotArrived;
+#endif
+#ifndef NDEBUG
+- (void) dumpSelfState;
+#endif
+- (OOJSScript *) script;
+- (oo::PList) scriptInfo;	// flipped with its family (bead oo-3rb.284): empty dict when there is none
+- (void) overrideScriptInfo:(const oo::PList &)override;	// Add items from override (a dictionary, or null for none) to scriptInfo, replacing in case of duplicates. Used for subentities.
+- (Entity *)entityForShaderProperties;
+- (void) setDemoShip: (OOScalar) demoRate;
+- (BOOL) isDemoShip;
+- (void) setDemoStartTime: (OOTimeAbsolute) time;
+- (OOTimeAbsolute) getDemoStartTime;
+- (void) doScriptEvent:(ooscript::PropertyId)message;
+- (void) doScriptEvent:(ooscript::PropertyId)message withArgument:(id)argument;
+- (void) doScriptEvent:(ooscript::PropertyId)message withArgument:(id)argument1 andArgument:(id)argument2;
+- (void) cxx_doScriptEvent:(ooscript::PropertyId)message withPListArguments:(const std::vector<oo::PList> &)arguments;
+- (void) doScriptEvent:(ooscript::PropertyId)message withArguments:(ooscript::Value *)argv count:(unsigned)argc;
+- (void) doScriptEvent:(ooscript::PropertyId)message inContext:(ooscript::Context)context withArguments:(ooscript::Value *)argv count:(unsigned)argc;
+- (void) cxx_reactToAIMessage:(const std::string &)message context:(const std::optional<std::string> &)debugContext;	// Immediate message
+- (void) sendAIMessage:(const std::string &)message;		// Queued message.
+- (void) cxx_doScriptEvent:(ooscript::PropertyId)scriptEvent andReactToAIMessage:(const std::string &)aiMessage;
+- (void) cxx_doScriptEvent:(ooscript::PropertyId)scriptEvent withArgument:(id)argument andReactToAIMessage:(const std::string &)aiMessage;
+- (OOAlertCondition) alertCondition; // quick calc for shaders
+- (OOAlertCondition) realAlertCondition; // full calculation for scripting
+- (void) doNothing;
+#ifndef NDEBUG
+- (std::optional<std::string>) descriptionForObjDump;
 #endif
 
 @end

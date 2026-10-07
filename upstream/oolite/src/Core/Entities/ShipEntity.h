@@ -893,6 +893,38 @@ public:
 	void sendCoordinatesToPilot();
 #endif
 
+	// Slice 34: salvage pilot, debug dump, script info, demo ship, script events and AI reactions, alert condition, shader helpers.
+#if OO_SALVAGE_SUPPORT
+	void pilotArrived();
+#endif
+#ifndef NDEBUG
+	void dumpSelfState() override;
+#endif
+	::OOJSScript *getScript();
+	oo::PList getScriptInfo();
+	void overrideScriptInfo(const oo::PList &override);
+	::Entity *entityForShaderProperties();
+	void setDemoShip(OOScalar rate);
+	bool getIsDemoShip();
+	void setDemoStartTime(OOTimeAbsolute time);
+	OOTimeAbsolute getDemoStartTime();
+	void doScriptEvent(ooscript::PropertyId message);
+	void doScriptEvent(ooscript::PropertyId message, id argument);
+	void doScriptEvent(ooscript::PropertyId message, id argument1, id argument2);
+	void doScriptEvent(ooscript::PropertyId message, const std::vector<oo::PList> &arguments);
+	void doScriptEvent(ooscript::PropertyId message, ooscript::Value *argv, unsigned argc);
+	virtual void doScriptEvent(ooscript::PropertyId message, ooscript::Context context, ooscript::Value *argv, unsigned argc);
+	void reactToAIMessage(const std::string &message, const std::optional<std::string> &debugContext);
+	void sendAIMessage(const std::string &message);
+	void doScriptEvent(ooscript::PropertyId scriptEvent, const std::string &aiMessage);
+	void doScriptEvent(ooscript::PropertyId scriptEvent, id argument, const std::string &aiMessage);
+	virtual OOAlertCondition alertCondition();
+	virtual OOAlertCondition realAlertCondition();
+	void doNothing();
+#ifndef NDEBUG
+	std::optional<std::string> descriptionForObjDump() override;
+#endif
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired

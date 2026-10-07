@@ -175,6 +175,11 @@ public:
 	void receiveCommsMessage(const std::string &message_text, ::ShipEntity *other) override	{ [(::ShipEntity *)_objcOwner receiveCommsMessage:message_text from:other]; }
 	bool isMining() override	{ return [(::ShipEntity *)_objcOwner isMining]; }
 	void interpretAIMessage(const std::string &ms) override	{ [(::ShipEntity *)_objcOwner interpretAIMessage:ms]; }
+
+	// Slice 34 (bead oo-nkyn3).
+	void doScriptEvent(ooscript::PropertyId message, ooscript::Context context, ooscript::Value *argv, unsigned argc) override	{ [(::ShipEntity *)_objcOwner doScriptEvent:message inContext:context withArguments:argv count:argc]; }
+	OOAlertCondition alertCondition() override	{ return [(::ShipEntity *)_objcOwner alertCondition]; }
+	OOAlertCondition realAlertCondition() override	{ return [(::ShipEntity *)_objcOwner realAlertCondition]; }
 };
 
 }	// namespace
@@ -1142,6 +1147,42 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 #if OO_SALVAGE_SUPPORT
 - (void) claimAsSalvage	{ _cxxShip->claimAsSalvage(); }
 - (void) sendCoordinatesToPilot	{ _cxxShip->sendCoordinatesToPilot(); }
+#endif
+
+@end
+
+
+@implementation ShipEntity (OOSlice34)
+
+#if OO_SALVAGE_SUPPORT
+- (void) pilotArrived	{ _cxxShip->pilotArrived(); }
+#endif
+#ifndef NDEBUG
+- (void) dumpSelfState	{ _cxxShip->cxx::ShipEntity::dumpSelfState(); }
+#endif
+- (OOJSScript *) script	{ return _cxxShip->getScript(); }
+- (oo::PList) scriptInfo	{ return _cxxShip->getScriptInfo(); }
+- (void) overrideScriptInfo:(const oo::PList &)override	{ _cxxShip->overrideScriptInfo(override); }
+- (Entity *) entityForShaderProperties	{ return _cxxShip->entityForShaderProperties(); }
+- (void) setDemoShip:(OOScalar)rate	{ _cxxShip->setDemoShip(rate); }
+- (BOOL) isDemoShip	{ return _cxxShip->getIsDemoShip(); }
+- (void) setDemoStartTime:(OOTimeAbsolute)time	{ _cxxShip->setDemoStartTime(time); }
+- (OOTimeAbsolute) getDemoStartTime	{ return _cxxShip->getDemoStartTime(); }
+- (void) doScriptEvent:(ooscript::PropertyId)message	{ _cxxShip->doScriptEvent(message); }
+- (void) doScriptEvent:(ooscript::PropertyId)message withArgument:(id)argument	{ _cxxShip->doScriptEvent(message, argument); }
+- (void) doScriptEvent:(ooscript::PropertyId)message withArgument:(id)argument1 andArgument:(id)argument2	{ _cxxShip->doScriptEvent(message, argument1, argument2); }
+- (void) cxx_doScriptEvent:(ooscript::PropertyId)message withPListArguments:(const std::vector<oo::PList> &)arguments	{ _cxxShip->doScriptEvent(message, arguments); }
+- (void) doScriptEvent:(ooscript::PropertyId)message withArguments:(ooscript::Value *)argv count:(unsigned)argc	{ _cxxShip->doScriptEvent(message, argv, argc); }
+- (void) doScriptEvent:(ooscript::PropertyId)message inContext:(ooscript::Context)context withArguments:(ooscript::Value *)argv count:(unsigned)argc	{ _cxxShip->cxx::ShipEntity::doScriptEvent(message, context, argv, argc); }
+- (void) cxx_reactToAIMessage:(const std::string &)message context:(const std::optional<std::string> &)debugContext	{ _cxxShip->reactToAIMessage(message, debugContext); }
+- (void) sendAIMessage:(const std::string &)message	{ _cxxShip->sendAIMessage(message); }
+- (void) cxx_doScriptEvent:(ooscript::PropertyId)scriptEvent andReactToAIMessage:(const std::string &)aiMessage	{ _cxxShip->doScriptEvent(scriptEvent, aiMessage); }
+- (void) cxx_doScriptEvent:(ooscript::PropertyId)scriptEvent withArgument:(id)argument andReactToAIMessage:(const std::string &)aiMessage	{ _cxxShip->doScriptEvent(scriptEvent, argument, aiMessage); }
+- (OOAlertCondition) alertCondition	{ return _cxxShip->cxx::ShipEntity::alertCondition(); }
+- (OOAlertCondition) realAlertCondition	{ return _cxxShip->cxx::ShipEntity::realAlertCondition(); }
+- (void) doNothing	{ _cxxShip->doNothing(); }
+#ifndef NDEBUG
+- (std::optional<std::string>) descriptionForObjDump	{ return _cxxShip->cxx::ShipEntity::descriptionForObjDump(); }
 #endif
 
 @end
