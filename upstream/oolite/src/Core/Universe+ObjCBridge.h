@@ -73,8 +73,6 @@ MA 02110-1301, USA.
 - (BOOL) cxx_setUseAddOns:(const std::string &)newUse fromSaveGame: (BOOL)saveGame;
 - (BOOL) cxx_setUseAddOns:(const std::string &) newUse fromSaveGame:(BOOL) saveGame forceReinit:(BOOL)force;
 
-- (BOOL) reinitAndShowDemo:(BOOL)showDemo;
-
 - (BOOL) doingStartUp;	// True during initial game startup (not reset).
 
 - (NSUInteger) entityCount;
@@ -239,8 +237,6 @@ MA 02110-1301, USA.
 - (void) removeDemoShips;
 
 ///////////////////////////////////////
-
-- (void) preloadSounds;
 
 ///////////////////////////////////////
 
@@ -562,6 +558,27 @@ MA 02110-1301, USA.
 - (void) setUpSettings;
 - (void) setUpCargoPods;
 - (void) verifyEntitySessionIDs;
+
+@end
+
+
+// Slice 25 of docs/phases/3-slices/Universe.md (bead oo-wmc72): members of cxx::Universe, forwarded by
+// the category of the same name in Universe+ObjCBridge.mm (amendment oo-mvzmb item 1).
+@interface Universe (OOSlice25)
+
+- (BOOL) reinitAndShowDemo:(BOOL)showDemo;
+- (void) setUpInitialUniverse;
+- (float) randomDistanceWithinScanner;
+- (Vector) randomPlaceWithinScannerFrom:(Vector)pos alongRoute:(Vector)route withOffset:(double)offset;
+- (HPVector) fractionalPositionFrom:(HPVector)point0 to:(HPVector)point1 withFraction:(double)routeFraction;
+- (BOOL) doRemoveEntity:(Entity *)entity;
+- (void) preloadSounds;
+- (void) populateSpaceFromActiveWormholes;
+- (std::optional<std::string>) chooseStringForKey:(const std::string &)key inDictionary:(const oo::PList &)dictionary;
+#if OO_LOCALIZATION_TOOLS && DEBUG_GRAPHVIZ
+- (void) dumpDebugGraphViz;
+- (void) dumpSystemDescriptionGraphViz;
+#endif
 
 @end
 
