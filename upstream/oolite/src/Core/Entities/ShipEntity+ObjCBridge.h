@@ -202,29 +202,15 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 
 
 //return 0.0 if there is no primary target
-- (GLfloat) currentAimTolerance;
 /* This method returns a value between 0.0f and 1.0f, depending on how directly our view point
    faces the sun and is used for generating the "staring at the sun" glare effect. 0.0f means that
    we are not facing the sun, 1.0f means that we are looking directly at it. The cosine of the 
    threshold angle between view point and sun, below which we consider the ship as looking
    at the sun, is passed as parameter to the method.
 */
-- (GLfloat) lookingAtSunWithThresholdAngleCos:(GLfloat) thresholdAngleCos;
 
-- (BOOL) onTarget:(OOWeaponFacing)direction withWeapon:(OOWeaponType)weapon;
 
-- (OOTimeDelta) shotTime;
-- (void) resetShotTime;
 
-- (BOOL) fireMainWeapon:(double)range;
-- (BOOL) fireAftWeapon:(double)range;
-- (BOOL) firePortWeapon:(double)range;
-- (BOOL) fireStarboardWeapon:(double)range;
-- (BOOL) fireTurretCannon:(double)range;
-- (void) setLaserColor:(OOColor *)color;
-- (void) setExhaustEmissiveColor:(OOColor *)color;
-- (OOColor *)laserColor;
-- (OOColor *)exhaustEmissiveColor;
 - (BOOL) fireSubentityLaserShot:(double)range;
 - (BOOL) fireDirectLaserShot:(double)range;
 - (BOOL) fireDirectLaserDefensiveShot;
@@ -1156,6 +1142,30 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (double) rangeToSecondaryTarget:(Entity *)target;
 - (double) approachAspectToPrimaryTarget;
 - (BOOL) hasProximityAlertIgnoringTarget:(BOOL)ignore_target;
+
+@end
+
+
+// Slice 27 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice27)
+
+- (GLfloat) currentAimTolerance;
+- (GLfloat) lookingAtSunWithThresholdAngleCos:(GLfloat) thresholdAngleCos;
+- (BOOL) onTarget:(OOWeaponFacing)direction withWeapon:(OOWeaponType)weapon;
+- (BOOL) fireWeapon:(OOWeaponType)weapon_type direction:(OOWeaponFacing)direction range:(double)range;
+- (BOOL) fireMainWeapon:(double)range;
+- (BOOL) fireAftWeapon:(double)range;
+- (BOOL) firePortWeapon:(double)range;
+- (BOOL) fireStarboardWeapon:(double)range;
+- (OOTimeDelta) shotTime;
+- (void) resetShotTime;
+- (BOOL) fireTurretCannon:(double)range;
+- (void) setLaserColor:(OOColor *)color;
+- (void) setExhaustEmissiveColor:(OOColor *)color;
+- (OOColor *)laserColor;
+- (OOColor *)exhaustEmissiveColor;
 
 @end
 

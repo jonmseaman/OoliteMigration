@@ -137,6 +137,9 @@ public:
 	// Slice 24 (bead oo-zd80m).
 	bool isValidTarget(::Entity *target) override	{ return [(::ShipEntity *)_objcOwner isValidTarget:target]; }
 	void addTarget(::Entity *targetEntity) override	{ [(::ShipEntity *)_objcOwner addTarget:targetEntity]; }
+
+	// Slice 27 (bead oo-pnfyp).
+	GLfloat lookingAtSunWithThresholdAngleCos(GLfloat thresholdAngleCos) override	{ return [(::ShipEntity *)_objcOwner lookingAtSunWithThresholdAngleCos:thresholdAngleCos]; }
 };
 
 }	// namespace
@@ -954,5 +957,26 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 - (double) rangeToSecondaryTarget:(Entity *)target	{ return _cxxShip->rangeToSecondaryTarget(target); }
 - (double) approachAspectToPrimaryTarget	{ return _cxxShip->approachAspectToPrimaryTarget(); }
 - (BOOL) hasProximityAlertIgnoringTarget:(BOOL)ignore_target	{ return _cxxShip->hasProximityAlertIgnoringTarget(ignore_target); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice27)
+
+- (GLfloat) currentAimTolerance	{ return _cxxShip->currentAimTolerance(); }
+- (GLfloat) lookingAtSunWithThresholdAngleCos:(GLfloat)thresholdAngleCos	{ return _cxxShip->cxx::ShipEntity::lookingAtSunWithThresholdAngleCos(thresholdAngleCos); }
+- (BOOL) onTarget:(OOWeaponFacing)direction withWeapon:(OOWeaponType)weapon_type	{ return _cxxShip->onTarget(direction, weapon_type); }
+- (BOOL) fireWeapon:(OOWeaponType)weapon_type direction:(OOWeaponFacing)direction range:(double)range	{ return _cxxShip->fireWeapon(weapon_type, direction, range); }
+- (BOOL) fireMainWeapon:(double)range	{ return _cxxShip->fireMainWeapon(range); }
+- (BOOL) fireAftWeapon:(double)range	{ return _cxxShip->fireAftWeapon(range); }
+- (BOOL) firePortWeapon:(double)range	{ return _cxxShip->firePortWeapon(range); }
+- (BOOL) fireStarboardWeapon:(double)range	{ return _cxxShip->fireStarboardWeapon(range); }
+- (OOTimeDelta) shotTime	{ return _cxxShip->shotTime(); }
+- (void) resetShotTime	{ _cxxShip->resetShotTime(); }
+- (BOOL) fireTurretCannon:(double)range	{ return _cxxShip->fireTurretCannon(range); }
+- (void) setLaserColor:(OOColor *)color	{ _cxxShip->setLaserColor(color); }
+- (void) setExhaustEmissiveColor:(OOColor *)color	{ _cxxShip->setExhaustEmissiveColor(color); }
+- (OOColor *) laserColor	{ return _cxxShip->laserColor(); }
+- (OOColor *) exhaustEmissiveColor	{ return _cxxShip->exhaustEmissiveColor(); }
 
 @end
