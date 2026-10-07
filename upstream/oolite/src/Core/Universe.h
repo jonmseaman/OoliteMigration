@@ -446,6 +446,17 @@ public:
 	int					_currentPostFX = 0;
 	int					_colorblindMode = 0;
 
+	// Slice 3: pause and quit, carrying the player on, set-up from station / witchspace / misjump, witchspace and planet set-up.
+	void pauseGame();
+	void quitGame();
+	void carryPlayerOn(::StationEntity *carrier, ::WormholeEntity *wormhole);
+	void setUpUniverseFromStation();
+	void setUpUniverseFromWitchspace();
+	void setUpUniverseFromMisjump();
+	void setUpWitchspace();
+	void setUpWitchspaceBetweenSystem(OOSystemID s1, OOSystemID s2);
+	::OOPlanetEntity *setUpPlanet();
+
 	// Slice 14: making demo ships, safe vectors, hazards on route, wreckage, laser hits.
 	::ShipEntity *makeDemoShipWithRole(const std::string &role, bool spinning);
 	bool isVectorClearFromEntity(::Entity *e1, double dist, HPVector p2);

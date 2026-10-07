@@ -103,6 +103,21 @@ extern Universe *gSharedUniverse;
 @end
 
 
+@implementation Universe (OOSlice3)
+
+- (void) pauseGame	{ _cxxUniverse->pauseGame(); }
+- (void) quitGame	{ _cxxUniverse->quitGame(); }
+- (void) carryPlayerOn:(StationEntity*)carrier inWormhole:(WormholeEntity*)wormhole	{ _cxxUniverse->carryPlayerOn(carrier, wormhole); }
+- (void) setUpUniverseFromStation	{ _cxxUniverse->setUpUniverseFromStation(); }
+- (void) setUpUniverseFromWitchspace	{ _cxxUniverse->setUpUniverseFromWitchspace(); }
+- (void) setUpUniverseFromMisjump	{ _cxxUniverse->setUpUniverseFromMisjump(); }
+- (void) setUpWitchspace	{ _cxxUniverse->setUpWitchspace(); }
+- (void) setUpWitchspaceBetweenSystem:(OOSystemID)s1 andSystem:(OOSystemID)s2	{ _cxxUniverse->setUpWitchspaceBetweenSystem(s1, s2); }
+- (OOPlanetEntity *) setUpPlanet	{ return _cxxUniverse->setUpPlanet(); }
+
+@end
+
+
 @implementation Universe (OOSlice14)
 
 - (ShipEntity *) cxx_makeDemoShipWithRole:(const std::string &)role spinning:(BOOL)spinning	{ return _cxxUniverse->makeDemoShipWithRole(role, spinning); }
