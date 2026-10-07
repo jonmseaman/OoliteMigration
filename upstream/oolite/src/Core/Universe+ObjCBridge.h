@@ -255,10 +255,6 @@ MA 02110-1301, USA.
 - (int) framesDoneThisUpdate;
 - (void) resetFramesDoneThisUpdate;
 
-- (void) loadConditionScripts;
-- (void) addConditionScripts:(const std::vector<std::string> &)scripts;
-- (OOJSScript *) cxx_getConditionScript:(const std::string &)scriptname;
-
 @end
 
 
@@ -579,6 +575,26 @@ MA 02110-1301, USA.
 - (void) dumpDebugGraphViz;
 - (void) dumpSystemDescriptionGraphViz;
 #endif
+
+@end
+
+
+// Slice 26 of docs/phases/3-slices/Universe.md (bead oo-32kcu): members of cxx::Universe, forwarded by
+// the category of the same name in Universe+ObjCBridge.mm (amendment oo-mvzmb item 1).
+@interface Universe (OOSlice26)
+
+#if OO_LOCALIZATION_TOOLS
+- (void) addNumericRefsInString:(const std::string &)string toGraphViz:(std::string &)graphViz fromNode:(const std::string &)fromNode nodeCount:(NSUInteger)nodeCount;
+/**
+ * \ingroup cli
+ * Scans the command line for --complie-sysdesc, --export-sysdec, --xml and --penstep arguments.
+ */
+- (void) runLocalizationTools;
+#endif
+- (void) prunePreloadingPlanetMaterials;
+- (void) loadConditionScripts;
+- (void) addConditionScripts:(const std::vector<std::string> &)scripts;
+- (OOJSScript *) cxx_getConditionScript:(const std::string &)scriptname;
 
 @end
 
