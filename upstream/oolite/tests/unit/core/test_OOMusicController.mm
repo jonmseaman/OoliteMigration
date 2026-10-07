@@ -45,6 +45,16 @@ struct MusicState
 static std::map<const cxx::OOMusic *, MusicState> gMusics;
 
 
+// The sound root, which the music derives from: a stand-in, as OOALSound.mm would bring the sound
+// system into the link (bead oo-ra76k).
+cxx::OOSound::OOSound() = default;
+std::optional<std::string> cxx::OOSound::name()  { return std::nullopt; }
+ALuint cxx::OOSound::soundBuffer()  { return 0; }
+bool cxx::OOSound::soundIncomplete()  { return false; }
+void cxx::OOSound::rewind() {}
+std::optional<std::string> cxx::OOSound::descriptionComponents() const  { return std::nullopt; }
+
+
 // The music: this file's C++ stand-in for cxx::OOMusic (OOALMusic.mm is not linked; bead oo-ra76k),
 // answering what the Objective-C stand-in answered.
 oo::Ref<cxx::OOMusic> cxx::OOMusic::initWithContentsOfFile(const std::optional<std::string> &inPath)
