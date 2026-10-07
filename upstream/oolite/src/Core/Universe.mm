@@ -1112,9 +1112,21 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 			rfactor = SCANNER_MAX_RANGE;
 		if (rfactor < 1000)
 			rfactor = 1000;
-		pos.x += rfactor*(randf() - randf());
-		pos.y += rfactor*(randf() - randf());
-		pos.z += rfactor*(randf() - randf());
+		{
+			const float first = randf();
+			const float second = randf();
+			pos.x += rfactor*(first - second);
+		}
+		{
+			const float first = randf();
+			const float second = randf();
+			pos.y += rfactor*(first - second);
+		}
+		{
+			const float first = randf();
+			const float second = randf();
+			pos.z += rfactor*(first - second);
+		}
 	}
 	else
 	{
@@ -1550,7 +1562,7 @@ std::string DemoClassAt(const oo::PList &demoShips, NSUInteger index)
 std::optional<std::string> LibrarySetting(const oo::PList &settings, std::string_view key, const char *fallback)
 {
 	if (settings.isNull())  return std::nullopt;
-	const std::optional<std::string> value = OptionalStringIn(settings, key);
+	std::optional<std::string> value = OptionalStringIn(settings, key);
 	if (value.has_value() || fallback == nullptr)  return value;
 	return std::string(fallback);
 }
