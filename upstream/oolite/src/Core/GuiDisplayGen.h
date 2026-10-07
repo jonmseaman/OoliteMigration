@@ -337,10 +337,22 @@ public:
 	NSUInteger getStatusPage();
 	void drawEquipmentList(const oo::PList &eqptList, GLfloat z);
 
-	/*	Internal: the GUI's state. The methods of slices 3 and 4 of docs/phases/3-slices/GuiDisplayGen.md
-		(drawing, the star chart), still an Objective-C category of the facade in GuiDisplayGen.mm,
-		read and write it through oo::ToCxx(self) (ADR-0056 amendment oo-3bgz); it becomes private
-		when those slices convert.
+	int drawGUI(GLfloat alpha, bool drawCursor);
+	void drawGUIBackground();
+	void refreshStarChart();
+	void setStarChartTitle();
+
+	OOSystemID targetNextFoundSystem(int direction);
+
+	// Internal: the star chart (slice 4, still Objective-C on the facade) draws with these.
+	void drawCrossHairsWithSize(GLfloat size, GLfloat x, GLfloat y, GLfloat z);
+	void drawSystemMarkers(const oo::PList &markers, GLfloat x, GLfloat y, GLfloat z, GLfloat alpha, GLfloat scale);
+	void drawAdvancedNavArrayAtX(float x, float y, float z, float alpha, const oo::PList &routeInfo, OORouteType optimizeBy, OOScalar zoom);
+
+	/*	Internal: the GUI's state. The method of slice 4 of docs/phases/3-slices/GuiDisplayGen.md
+		(the star chart), still an Objective-C category of the facade in GuiDisplayGen.mm, reads and
+		writes it through oo::ToCxx(self) (ADR-0056 amendment oo-3bgz); it becomes private when that
+		slice converts.
 	*/
 	NSSize					size_in_pixels = {};
 	unsigned				n_columns = {};
@@ -391,6 +403,10 @@ public:
 	GLfloat					fade_sign = {};			//	-1.0 to 1.0
 	NSUInteger				statusPage = {}; 		// status  screen: paging equipped items
 	OOSystemID				foundSystem = {};
+
+private:
+	void drawGLDisplay(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha);
+	void drawSystemMarker(const oo::PList &marker, GLfloat x, GLfloat y, GLfloat z, GLfloat alpha, GLfloat scale);
 };
 
 }	// namespace cxx

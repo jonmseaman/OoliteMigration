@@ -178,16 +178,14 @@ oo::Ref<cxx::OOTextureSprite> NewTextureSpriteWithDescriptor(const oo::PList &de
 }	// namespace
 
 
+static BOOL _refreshStarChart = NO;	// set by refreshStarChart(), read by slice 4's star chart
+
+
 @interface GuiDisplayGen (Internal)
 
-- (void) drawGLDisplay:(GLfloat)x :(GLfloat)y :(GLfloat)z :(GLfloat) alpha;
 
-- (void) drawCrossHairsWithSize:(GLfloat) size x:(GLfloat)x y:(GLfloat)y z:(GLfloat)z;
 - (void) drawStarChart:(GLfloat)x :(GLfloat)y :(GLfloat)z :(GLfloat) alpha :(BOOL) compact;
-- (void) drawSystemMarkers:(const oo::PList &)marker atX:(GLfloat)x andY:(GLfloat)y andZ:(GLfloat)z withAlpha:(GLfloat)alpha andScale:(GLfloat)scale;
-- (void) drawSystemMarker:(const oo::PList &)marker atX:(GLfloat)x andY:(GLfloat)y andZ:(GLfloat)z withAlpha:(GLfloat)alpha andScale:(GLfloat)scale;
 
-- (void) drawAdvancedNavArrayAtX:(float)x y:(float)y z:(float)z alpha:(float)alpha usingRoute:(const oo::PList &) route optimizedBy:(OORouteType) optimizeBy zoom: (OOScalar) zoom;
 
 @end
 
@@ -1204,7 +1202,7 @@ void cxx::GuiDisplayGen::setBackgroundTextureSpecial(OOGUIBackgroundSpecial spec
 		}
 	}
 	backgroundSpecial = spec;
-	[oo::ToObjC(this) refreshStarChart];	// slice 3's, on the facade (amendment oo-3bgz item 2)
+	refreshStarChart();
 }
 
 
@@ -1449,86 +1447,78 @@ void cxx::GuiDisplayGen::drawEquipmentList(const oo::PList &eqptList, GLfloat z)
 }
 
 
-// Slices 3 and 4 of docs/phases/3-slices/GuiDisplayGen.md, still Objective-C: a category of the
-// facade, reading and writing the C++ GUI's state through oo::ToCxx(self) (ADR-0056 amendment
-// oo-3bgz). Each slice's bead moves its methods into cxx::GuiDisplayGen above.
-@implementation GuiDisplayGen (OOGuiDisplayGenUnconverted)
-
-static BOOL _refreshStarChart = NO;
-
-
-- (void) drawGUIBackground
+void cxx::GuiDisplayGen::drawGUIBackground()
 {
-	GLfloat x = oo::ToCxx(self)->drawPosition.x;
-	GLfloat y = oo::ToCxx(self)->drawPosition.y;
+	GLfloat x = drawPosition.x;
+	GLfloat y = drawPosition.y;
 	GLfloat z = [[UNIVERSE gameView] display_z];
 
-	if (oo::ToCxx(self)->backgroundSprite.get()!=nullptr)
+	if (backgroundSprite.get()!=nullptr)
 	{
-		oo::ToCxx(self)->backgroundSprite->blitBackgroundCentredToX(x, y, z, 1.0f);
+		backgroundSprite->blitBackgroundCentredToX(x, y, z, 1.0f);
 	}
 	
 }
 
 
-- (void) refreshStarChart
+void cxx::GuiDisplayGen::refreshStarChart()
 {
 	_refreshStarChart = YES;
 }
 
 
-- (int) drawGUI:(GLfloat) alpha drawCursor:(BOOL) drawCursor
+int cxx::GuiDisplayGen::drawGUI(GLfloat alpha, bool drawCursor)
 {
-	GLfloat x = oo::ToCxx(self)->drawPosition.x;
-	GLfloat y = oo::ToCxx(self)->drawPosition.y;
+	GLfloat x = drawPosition.x;
+	GLfloat y = drawPosition.y;
 	GLfloat z = [[UNIVERSE gameView] display_z];
 	
 	if (alpha > 0.05f)
 	{
 		PlayerEntity* player = PLAYER;
 		
-		[self drawGLDisplay:x - 0.5f * oo::ToCxx(self)->size_in_pixels.width :y - 0.5f * oo::ToCxx(self)->size_in_pixels.height :z :alpha];
+		drawGLDisplay(x - 0.5f * size_in_pixels.width, y - 0.5f * size_in_pixels.height, z, alpha);
 		
-		if (self == [UNIVERSE gui])
+		if (oo::ToObjC(this) == [UNIVERSE gui])
 		{
 			if ([player guiScreen] == GUI_SCREEN_SHORT_RANGE_CHART || [player guiScreen] == GUI_SCREEN_LONG_RANGE_CHART || 
-				oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_SHORT ||
-				oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_SHORT_ANA_QUICKEST ||
-				oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_SHORT_ANA_SHORTEST ||
-				oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_CUSTOM ||
-				oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_CUSTOM_ANA_QUICKEST ||
-				oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_CUSTOM_ANA_SHORTEST)
+				backgroundSpecial == GUI_BACKGROUND_SPECIAL_SHORT ||
+				backgroundSpecial == GUI_BACKGROUND_SPECIAL_SHORT_ANA_QUICKEST ||
+				backgroundSpecial == GUI_BACKGROUND_SPECIAL_SHORT_ANA_SHORTEST ||
+				backgroundSpecial == GUI_BACKGROUND_SPECIAL_CUSTOM ||
+				backgroundSpecial == GUI_BACKGROUND_SPECIAL_CUSTOM_ANA_QUICKEST ||
+				backgroundSpecial == GUI_BACKGROUND_SPECIAL_CUSTOM_ANA_SHORTEST)
 			{
-				[self drawStarChart:x - 0.5f * oo::ToCxx(self)->size_in_pixels.width :y - 0.5f * oo::ToCxx(self)->size_in_pixels.height :z :alpha :NO];
+				[oo::ToObjC(this) drawStarChart:x - 0.5f * size_in_pixels.width :y - 0.5f * size_in_pixels.height :z :alpha :NO];
 			}
-			if (oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG || 
-					oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG_ANA_QUICKEST ||
-					oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG_ANA_SHORTEST)
+			if (backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG || 
+					backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG_ANA_QUICKEST ||
+					backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG_ANA_SHORTEST)
 			{
-				[self drawStarChart:x - 0.5f * oo::ToCxx(self)->size_in_pixels.width :y - 0.5f * oo::ToCxx(self)->size_in_pixels.height :z :alpha :YES];
+				[oo::ToObjC(this) drawStarChart:x - 0.5f * size_in_pixels.width :y - 0.5f * size_in_pixels.height :z :alpha :YES];
 			}
 			if ([player guiScreen] == GUI_SCREEN_STATUS)
 			{
-				[self cxx_drawEquipmentList:oo::PList([player cxx_equipmentList]) z:z];
+				drawEquipmentList(oo::PList([player cxx_equipmentList]), z);
 			}
 			if ([player guiScreen] == GUI_SCREEN_STICKPROFILE)
 			{
-				[player stickProfileGraphAxisProfile: alpha screenAt: make_vector(x,y,z) screenSize: oo::ToCxx(self)->size_in_pixels];
+				[player stickProfileGraphAxisProfile: alpha screenAt: make_vector(x,y,z) screenSize: size_in_pixels];
 			}
 		}
 		
-		if (oo::ToCxx(self)->fade_sign)
+		if (fade_sign)
 		{
-			oo::ToCxx(self)->fade_alpha += (float)(oo::ToCxx(self)->fade_sign * [UNIVERSE getTimeDelta]);
-			if (oo::ToCxx(self)->fade_alpha < 0.05f)	// done fading out
+			fade_alpha += (float)(fade_sign * [UNIVERSE getTimeDelta]);
+			if (fade_alpha < 0.05f)	// done fading out
 			{
-				oo::ToCxx(self)->fade_alpha = 0.0f;
-				oo::ToCxx(self)->fade_sign = 0.0f;
+				fade_alpha = 0.0f;
+				fade_sign = 0.0f;
 			}
-			if (oo::ToCxx(self)->fade_alpha >= oo::ToCxx(self)->max_alpha)	// done fading in
+			if (fade_alpha >= max_alpha)	// done fading in
 			{
-				oo::ToCxx(self)->fade_alpha = oo::ToCxx(self)->max_alpha;
-				oo::ToCxx(self)->fade_sign = 0.0f;
+				fade_alpha = max_alpha;
+				fade_sign = 0.0f;
 			}
 		}
 	}
@@ -1538,14 +1528,14 @@ static BOOL _refreshStarChart = NO;
 	if (drawCursor)
 	{
 		NSPoint vjpos = [[UNIVERSE gameView] virtualJoystickPosition];
-		double cursor_x = oo::ToCxx(self)->size_in_pixels.width * vjpos.x;
-		if (cursor_x < -oo::ToCxx(self)->size_in_pixels.width * 0.5)  cursor_x = -oo::ToCxx(self)->size_in_pixels.width * 0.5f;
-		if (cursor_x > oo::ToCxx(self)->size_in_pixels.width * 0.5)   cursor_x = oo::ToCxx(self)->size_in_pixels.width * 0.5f;
-		double cursor_y = -oo::ToCxx(self)->size_in_pixels.height * vjpos.y;
-		if (cursor_y < -oo::ToCxx(self)->size_in_pixels.height * 0.5)  cursor_y = -oo::ToCxx(self)->size_in_pixels.height * 0.5f;
-		if (cursor_y > oo::ToCxx(self)->size_in_pixels.height * 0.5)   cursor_y = oo::ToCxx(self)->size_in_pixels.height * 0.5f;
+		double cursor_x = size_in_pixels.width * vjpos.x;
+		if (cursor_x < -size_in_pixels.width * 0.5)  cursor_x = -size_in_pixels.width * 0.5f;
+		if (cursor_x > size_in_pixels.width * 0.5)   cursor_x = size_in_pixels.width * 0.5f;
+		double cursor_y = -size_in_pixels.height * vjpos.y;
+		if (cursor_y < -size_in_pixels.height * 0.5)  cursor_y = -size_in_pixels.height * 0.5f;
+		if (cursor_y > size_in_pixels.height * 0.5)   cursor_y = size_in_pixels.height * 0.5f;
 
-		cursor_row = [self rowAtVirtualJoystickPosition:vjpos];
+		cursor_row = rowAtVirtualJoystickPosition(vjpos);
 
 		GLfloat h1 = 3.0f;
 		GLfloat h3 = 9.0f;
@@ -1554,7 +1544,7 @@ static BOOL _refreshStarChart = NO;
 		
 		cursor_x += x;
 		cursor_y += y;
-		[[UNIVERSE gameView] setVirtualJoystick:cursor_x/oo::ToCxx(self)->size_in_pixels.width :-cursor_y/oo::ToCxx(self)->size_in_pixels.height];
+		[[UNIVERSE gameView] setVirtualJoystick:cursor_x/size_in_pixels.width :-cursor_y/size_in_pixels.height];
 
 		OOGLBEGIN(GL_LINES);
 			glVertex3f((float)cursor_x - h1, (float)cursor_y, z);	glVertex3f((float)cursor_x - h3, (float)cursor_y, z);
@@ -1570,37 +1560,37 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (void) drawGLDisplay:(GLfloat)x :(GLfloat)y :(GLfloat)z :(GLfloat) alpha
+void cxx::GuiDisplayGen::drawGLDisplay(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha)
 {
 	NSSize		strsize;
 	unsigned	i;
 	OOTimeDelta	delta_t = [UNIVERSE getTimeDelta];
-	NSSize		characterSize = oo::ToCxx(self)->pixel_text_size;
-	NSSize		titleCharacterSize = oo::ToCxx(self)->pixel_title_size;
-	float		backgroundAlpha = self == [UNIVERSE messageGUI] && ![UNIVERSE permanentMessageLog] ? 0.0f : alpha;
-	std::vector<float>	row_alpha(oo::ToCxx(self)->n_rows);
+	NSSize		characterSize = pixel_text_size;
+	NSSize		titleCharacterSize = pixel_title_size;
+	float		backgroundAlpha = oo::ToObjC(this) == [UNIVERSE messageGUI] && ![UNIVERSE permanentMessageLog] ? 0.0f : alpha;
+	std::vector<float>	row_alpha(n_rows);
 	
 	// calculate fade out time and alpha for each row. Do it before
 	// applying a potential background because we need the maximum alpha
 	// of all rows to be the alpha applied to the background color
-	for (i = 0; i < oo::ToCxx(self)->n_rows; i++)
+	for (i = 0; i < n_rows; i++)
 	{
 		row_alpha[i] = alpha;
 		
 		if(![UNIVERSE autoMessageLogBg] && [PLAYER guiScreen] == GUI_SCREEN_MAIN)  backgroundAlpha = alpha;
 		
-		if (oo::ToCxx(self)->rowFadeTime[i] > 0.0f && ![UNIVERSE permanentMessageLog])
+		if (rowFadeTime[i] > 0.0f && ![UNIVERSE permanentMessageLog])
 		{
-			oo::ToCxx(self)->rowFadeTime[i] -= (float)delta_t;
-			if (oo::ToCxx(self)->rowFadeTime[i] <= 0.0f)
+			rowFadeTime[i] -= (float)delta_t;
+			if (rowFadeTime[i] <= 0.0f)
 			{
-				oo::ToCxx(self)->rowText[i] = oo::PList("");
-				oo::ToCxx(self)->rowFadeTime[i] = 0.0f;
+				rowText[i] = oo::PList("");
+				rowFadeTime[i] = 0.0f;
 				continue;
 			}
-			if ((oo::ToCxx(self)->rowFadeTime[i] > 0.0f)&&(oo::ToCxx(self)->rowFadeTime[i] < 1.0))
+			if ((rowFadeTime[i] > 0.0f)&&(rowFadeTime[i] < 1.0))
 			{
-				row_alpha[i] *= oo::ToCxx(self)->rowFadeTime[i];
+				row_alpha[i] *= rowFadeTime[i];
 				if (backgroundAlpha < row_alpha[i])  backgroundAlpha = row_alpha[i];
 			}
 			else
@@ -1613,109 +1603,109 @@ static BOOL _refreshStarChart = NO;
 	// do backdrop
 	// don't draw it if docked, unless message_gui is permanent
 	// don't draw it on the intro screens
-	if (oo::ToCxx(self)->backgroundColor.get())
+	if (backgroundColor.get())
 	{
 		int playerStatus = [PLAYER status];
 		if (playerStatus != STATUS_START_GAME && playerStatus != STATUS_DEAD)
 		{
-			OOGL(glColor4f([oo::ToCxx(self)->backgroundColor.get() redComponent], [oo::ToCxx(self)->backgroundColor.get() greenComponent], [oo::ToCxx(self)->backgroundColor.get() blueComponent], backgroundAlpha * [oo::ToCxx(self)->backgroundColor.get() alphaComponent]));
+			OOGL(glColor4f([backgroundColor.get() redComponent], [backgroundColor.get() greenComponent], [backgroundColor.get() blueComponent], backgroundAlpha * [backgroundColor.get() alphaComponent]));
 			OOGLBEGIN(GL_QUADS);
 				glVertex3f(x + 0.0f,					y + 0.0f,					z);
-				glVertex3f(x + oo::ToCxx(self)->size_in_pixels.width,	y + 0.0f,					z);
-				glVertex3f(x + oo::ToCxx(self)->size_in_pixels.width,	y + oo::ToCxx(self)->size_in_pixels.height,	z);
-				glVertex3f(x + 0.0f,					y + oo::ToCxx(self)->size_in_pixels.height,	z);
+				glVertex3f(x + size_in_pixels.width,	y + 0.0f,					z);
+				glVertex3f(x + size_in_pixels.width,	y + size_in_pixels.height,	z);
+				glVertex3f(x + 0.0f,					y + size_in_pixels.height,	z);
 			OOGLEND();
 		}
 	}
 	
 	// show the 'foreground', aka overlay!
 	
-	if (oo::ToCxx(self)->foregroundSprite.get() != nullptr)
+	if (foregroundSprite.get() != nullptr)
 	{
-		oo::ToCxx(self)->foregroundSprite->blitCentredToX(x + 0.5f * oo::ToCxx(self)->size_in_pixels.width, y + 0.5f * oo::ToCxx(self)->size_in_pixels.height, z, alpha);
+		foregroundSprite->blitCentredToX(x + 0.5f * size_in_pixels.width, y + 0.5f * size_in_pixels.height, z, alpha);
 	}
 	
-	if (!RowInRange(oo::ToCxx(self)->selectedRow, oo::ToCxx(self)->selectableRange))
-		oo::ToCxx(self)->selectedRow = -1;   // out of Range;
+	if (!RowInRange(selectedRow, selectableRange))
+		selectedRow = -1;   // out of Range;
 	
 	////
 	// drawing operations here
 	
-	if (oo::ToCxx(self)->title.has_value())
+	if (title.has_value())
 	{
 		//
 		// draw the title
 		//
-		strsize = cxx_OORectFromString(*oo::ToCxx(self)->title, 0.0f, 0.0f, titleCharacterSize).size;
-		[self cxx_setGLColorFromSetting:cxx_kGuiScreenTitleColor defaultValue:[OOColor redColor] alpha:alpha];
+		strsize = cxx_OORectFromString(*title, 0.0f, 0.0f, titleCharacterSize).size;
+		setGLColorFromSetting(cxx_kGuiScreenTitleColor, [::OOColor redColor], alpha);
 
-		cxx_OODrawString(*oo::ToCxx(self)->title, x + oo::ToCxx(self)->pixel_row_center - strsize.width/2.0, y + oo::ToCxx(self)->size_in_pixels.height - oo::ToCxx(self)->pixel_title_size.height, z, titleCharacterSize);
+		cxx_OODrawString(*title, x + pixel_row_center - strsize.width/2.0, y + size_in_pixels.height - pixel_title_size.height, z, titleCharacterSize);
 		
 		// draw a horizontal divider
 		//
-		[self cxx_setGLColorFromSetting:cxx_kGuiScreenDividerColor defaultValue:[OOColor colorWithWhite:0.75 alpha:1.0] alpha:alpha];
+		setGLColorFromSetting(cxx_kGuiScreenDividerColor, [::OOColor colorWithWhite:0.75 alpha:1.0], alpha);
 
 		OOGLBEGIN(GL_QUADS);
-			glVertex3f(x + 0,					y + oo::ToCxx(self)->size_in_pixels.height - oo::ToCxx(self)->pixel_title_size.height + 4,	z);
-			glVertex3f(x + oo::ToCxx(self)->size_in_pixels.width,	y + oo::ToCxx(self)->size_in_pixels.height - oo::ToCxx(self)->pixel_title_size.height + 4,	z);
-			glVertex3f(x + oo::ToCxx(self)->size_in_pixels.width,	y + oo::ToCxx(self)->size_in_pixels.height - oo::ToCxx(self)->pixel_title_size.height + 2,		z);
-			glVertex3f(x + 0,					y + oo::ToCxx(self)->size_in_pixels.height - oo::ToCxx(self)->pixel_title_size.height + 2,		z);
+			glVertex3f(x + 0,					y + size_in_pixels.height - pixel_title_size.height + 4,	z);
+			glVertex3f(x + size_in_pixels.width,	y + size_in_pixels.height - pixel_title_size.height + 4,	z);
+			glVertex3f(x + size_in_pixels.width,	y + size_in_pixels.height - pixel_title_size.height + 2,		z);
+			glVertex3f(x + 0,					y + size_in_pixels.height - pixel_title_size.height + 2,		z);
 		OOGLEND();
 	}
 	
 	// draw each row of text
 	//
 	OOStartDrawingStrings();
-	for (i = 0; i < oo::ToCxx(self)->n_rows; i++)
+	for (i = 0; i < n_rows; i++)
 	{
-		OOColor* row_color = oo::ToCxx(self)->rowColor[i].get();
+		::OOColor* row_color = rowColor[i].get();
 		glColor4f([row_color redComponent], [row_color greenComponent], [row_color blueComponent], row_alpha[i]);
 		
-		if (const std::string *rowString = oo::ToCxx(self)->rowText[i].getIf<std::string>())
+		if (const std::string *rowString = rowText[i].getIf<std::string>())
 		{
 			const std::string &text = *rowString;
 			if (!text.empty())
 			{
 				strsize = cxx_OORectFromString(text, 0.0f, 0.0f, characterSize).size;
-				switch (oo::ToCxx(self)->rowAlignment[i])
+				switch (rowAlignment[i])
 				{
 					case GUI_ALIGN_LEFT :
-						oo::ToCxx(self)->rowPosition[i].x = 0.0f;
+						rowPosition[i].x = 0.0f;
 						break;
 					case GUI_ALIGN_RIGHT :
-						oo::ToCxx(self)->rowPosition[i].x = oo::ToCxx(self)->size_in_pixels.width - strsize.width;
+						rowPosition[i].x = size_in_pixels.width - strsize.width;
 						break;
 					case GUI_ALIGN_CENTER :
-						oo::ToCxx(self)->rowPosition[i].x = (oo::ToCxx(self)->size_in_pixels.width - strsize.width)/2.0f;
+						rowPosition[i].x = (size_in_pixels.width - strsize.width)/2.0f;
 						break;
 				}
-				if (i == (unsigned)oo::ToCxx(self)->selectedRow)
+				if (i == (unsigned)selectedRow)
 				{
-					NSRect		block = cxx_OORectFromString(text, x + oo::ToCxx(self)->rowPosition[i].x + 2, y + oo::ToCxx(self)->rowPosition[i].y + 2, characterSize);
+					NSRect		block = cxx_OORectFromString(text, x + rowPosition[i].x + 2, y + rowPosition[i].y + 2, characterSize);
 					OOStopDrawingStrings();
-					[self cxx_setGLColorFromSetting:cxx_kGuiSelectedRowBackgroundColor defaultValue:[OOColor redColor] alpha:alpha];
+					setGLColorFromSetting(cxx_kGuiSelectedRowBackgroundColor, [::OOColor redColor], alpha);
 					OOGLBEGIN(GL_QUADS);
 						glVertex3f(block.origin.x,						block.origin.y,						z);
 						glVertex3f(block.origin.x + block.size.width,	block.origin.y,						z);
 						glVertex3f(block.origin.x + block.size.width,	block.origin.y + block.size.height,	z);
 						glVertex3f(block.origin.x,						block.origin.y + block.size.height,	z);
 					OOGLEND();
-					[self cxx_setGLColorFromSetting:cxx_kGuiSelectedRowColor defaultValue:[OOColor blackColor] alpha:alpha];
+					setGLColorFromSetting(cxx_kGuiSelectedRowColor, [::OOColor blackColor], alpha);
 					OOStartDrawingStrings();
 				}
-				cxx_OODrawStringQuadsAligned(text, x + oo::ToCxx(self)->rowPosition[i].x, y + oo::ToCxx(self)->rowPosition[i].y, z, characterSize, NO);
+				cxx_OODrawStringQuadsAligned(text, x + rowPosition[i].x, y + rowPosition[i].y, z, characterSize, NO);
 
 				// draw cursor at end of current Row
 				//
-				if ((oo::ToCxx(self)->showTextCursor)&&(i == (unsigned)oo::ToCxx(self)->currentRow))
+				if ((showTextCursor)&&(i == (unsigned)currentRow))
 				{
 					NSRect	tr = cxx_OORectFromString(text, 0.0f, 0.0f, characterSize);
-					NSPoint cu = NSMakePoint(x + oo::ToCxx(self)->rowPosition[i].x + tr.size.width + 0.2f * characterSize.width, y + oo::ToCxx(self)->rowPosition[i].y);
+					NSPoint cu = NSMakePoint(x + rowPosition[i].x + tr.size.width + 0.2f * characterSize.width, y + rowPosition[i].y);
 					tr.origin = cu;
 					tr.size.width = 0.5f * characterSize.width;
 					GLfloat g_alpha = 0.5f * (1.0f + (float)sin(6 * [UNIVERSE getTime]));
 					OOStopDrawingStrings();
-					[self cxx_setGLColorFromSetting:cxx_kGuiTextInputCursorColor defaultValue:[OOColor redColor] alpha:row_alpha[i]*g_alpha];
+					setGLColorFromSetting(cxx_kGuiTextInputCursorColor, [::OOColor redColor], row_alpha[i]*g_alpha);
 					OOGLBEGIN(GL_QUADS);
 						glVertex3f(tr.origin.x,					tr.origin.y,					z);
 						glVertex3f(tr.origin.x + tr.size.width,	tr.origin.y,					z);
@@ -1726,10 +1716,10 @@ static BOOL _refreshStarChart = NO;
 				}
 			}
 		}
-		if (oo::ToCxx(self)->rowText[i].isArray())
+		if (rowText[i].isArray())
 		{
-			const oo::PList	&array = oo::ToCxx(self)->rowText[i];
-			NSUInteger	j, max_columns = MIN(array.count(), oo::ToCxx(self)->n_columns);
+			const oo::PList	&array = rowText[i];
+			NSUInteger	j, max_columns = MIN(array.count(), n_columns);
 			BOOL		isLeftAligned;
 
 			for (j = 0; j < max_columns; j++)
@@ -1737,8 +1727,8 @@ static BOOL _refreshStarChart = NO;
 				const std::string text = array.at<std::string>(j);	// -oo_stringAtIndex: ("" for none)
 				if (text.size() != 0)
 				{
-					isLeftAligned = oo::ToCxx(self)->tabStops[j] >= 0;
-					oo::ToCxx(self)->rowPosition[i].x = llabs(oo::ToCxx(self)->tabStops[j]);
+					isLeftAligned = tabStops[j] >= 0;
+					rowPosition[i].x = llabs(tabStops[j]);
 
 					// we don't want to highlight leading space(s) or narrow spaces (\037s)
 					std::string	hilitedText = TrimmedForHighlight(text);
@@ -1763,35 +1753,35 @@ static BOOL _refreshStarChart = NO;
 						
 						if (txtRange.location == 0) // bingo!
 						{
-							oo::ToCxx(self)->rowPosition[i].x += OORectFromString(@"0", 0, 0, characterSize).size.width - OORectFromString(qtyNone, 0, 0, characterSize).size.width;
+							rowPosition[i].x += OORectFromString(@"0", 0, 0, characterSize).size.width - OORectFromString(qtyNone, 0, 0, characterSize).size.width;
 							} */
 					}
 					
 					// baseline text rect, needed for correct highlight positioning.
-					NSRect		block = cxx_OORectFromString(text, x + oo::ToCxx(self)->rowPosition[i].x + 2, y + oo::ToCxx(self)->rowPosition[i].y + 2, characterSize);
+					NSRect		block = cxx_OORectFromString(text, x + rowPosition[i].x + 2, y + rowPosition[i].y + 2, characterSize);
 
 					if(!isLeftAligned)
 					{
-						oo::ToCxx(self)->rowPosition[i].x -= block.size.width + 3;
+						rowPosition[i].x -= block.size.width + 3;
 					}
-					block = cxx_OORectFromString(hilitedText, x + oo::ToCxx(self)->rowPosition[i].x + 1 + leadingSpaces, y + oo::ToCxx(self)->rowPosition[i].y + 2, characterSize);
+					block = cxx_OORectFromString(hilitedText, x + rowPosition[i].x + 1 + leadingSpaces, y + rowPosition[i].y + 2, characterSize);
 					block.size.width += 3;
 						
 					
-					if (i == (unsigned)oo::ToCxx(self)->selectedRow)
+					if (i == (unsigned)selectedRow)
 					{
 						OOStopDrawingStrings();
-						[self cxx_setGLColorFromSetting:cxx_kGuiSelectedRowBackgroundColor defaultValue:[OOColor redColor] alpha:alpha];
+						setGLColorFromSetting(cxx_kGuiSelectedRowBackgroundColor, [::OOColor redColor], alpha);
 						OOGLBEGIN(GL_QUADS);
 							glVertex3f(block.origin.x,						block.origin.y,						z);
 							glVertex3f(block.origin.x + block.size.width,	block.origin.y,						z);
 							glVertex3f(block.origin.x + block.size.width,	block.origin.y + block.size.height,	z);
 							glVertex3f(block.origin.x,						block.origin.y + block.size.height,	z);
 						OOGLEND();
-						[self cxx_setGLColorFromSetting:cxx_kGuiSelectedRowColor defaultValue:[OOColor blackColor] alpha:alpha];
+						setGLColorFromSetting(cxx_kGuiSelectedRowColor, [::OOColor blackColor], alpha);
 						OOStartDrawingStrings();
 					}
-					cxx_OODrawStringQuadsAligned(text, x + oo::ToCxx(self)->rowPosition[i].x, y + oo::ToCxx(self)->rowPosition[i].y, z, characterSize,NO);
+					cxx_OODrawStringQuadsAligned(text, x + rowPosition[i].x, y + rowPosition[i].y, z, characterSize,NO);
 				}
 			}
 		}
@@ -1801,7 +1791,7 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (void) drawCrossHairsWithSize:(GLfloat) size x:(GLfloat)x y:(GLfloat)y z:(GLfloat)z
+void cxx::GuiDisplayGen::drawCrossHairsWithSize(GLfloat size, GLfloat x, GLfloat y, GLfloat z)
 {
 	OOGLBEGIN(GL_QUADS);
 		glVertex3f(x - 1,	y - size,	z);
@@ -1816,7 +1806,7 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (void) setStarChartTitle
+void cxx::GuiDisplayGen::setStarChartTitle()
 {
 	PlayerEntity *player = PLAYER;
 	OOGalaxyID galaxy_number = [player galaxyNumber];
@@ -1828,18 +1818,340 @@ static BOOL _refreshStarChart = NO;
 		const std::string gal_key = oo::str::format("long-range-chart-title-%d", galaxy_number);
 		if (![UNIVERSE cxx_descriptionForKey:gal_key])
 		{
-			[self cxx_setTitle:oo::str::formatRuntime(OO_DESC("long-range-chart-title-d"), { galaxy_number + 1 })];
+			setTitle(oo::str::formatRuntime(OO_DESC("long-range-chart-title-d"), { galaxy_number + 1 }));
 		}
 		else
 		{
-			[self cxx_setTitle:[UNIVERSE cxx_descriptionForKey:gal_key]];
+			setTitle([UNIVERSE cxx_descriptionForKey:gal_key]);
 		}
 	}
 	else
 	{
-		[self cxx_setTitle:[UNIVERSE cxx_descriptionForKey:location_key]];
+		setTitle([UNIVERSE cxx_descriptionForKey:location_key]);
 	}
 }
+
+
+void cxx::GuiDisplayGen::drawSystemMarkers(const oo::PList &markers, GLfloat x, GLfloat y, GLfloat z, GLfloat alpha, GLfloat scale)
+{
+	const oo::PList::Array *markerList = markers.getIf<oo::PList::Array>();
+	if (markerList == nullptr)  return;
+	for (const oo::PList &marker : *markerList)
+	{
+		drawSystemMarker(marker, x, y, z, alpha, scale);
+	}
+}
+
+
+void cxx::GuiDisplayGen::drawSystemMarker(const oo::PList &marker, GLfloat x, GLfloat y, GLfloat z, GLfloat alpha, GLfloat scale)
+{
+	const std::string colorDesc = marker.get<std::string>("markerColor", "redColor");
+	OORGBAComponents color = [[::OOColor cxx_colorWithDescription:oo::PList(colorDesc)] rgbaComponents];
+	
+	OOGL(glColor4f(color.r, color.g, color.b, alpha));	// red
+	GLfloat mark_size = marker.get<float>("markerScale", 1.0);
+	if (mark_size > 2.0)
+	{
+		mark_size = 2.0;
+	}
+	else if (mark_size < 0.5)
+	{
+		mark_size = 0.5;
+	}
+	mark_size *= scale;
+
+	const std::string shape = marker.get<std::string>("markerShape", "MARKER_X");
+
+	OOGLBEGIN(GL_LINES);
+	if (shape == "MARKER_X")
+	{
+		glVertex3f(x - mark_size,	y - mark_size,	z);
+		glVertex3f(x + mark_size,	y + mark_size,	z);
+		glVertex3f(x - mark_size,	y + mark_size,	z);
+		glVertex3f(x + mark_size,	y - mark_size,	z);
+	}
+	else if (shape == "MARKER_PLUS")
+	{
+		mark_size *= 1.4; // match volumes
+		glVertex3f(x,	y - mark_size,	z);
+		glVertex3f(x,	y + mark_size,	z);
+		glVertex3f(x - mark_size,	y,	z);
+		glVertex3f(x + mark_size,	y,	z);
+	}
+	else if (shape == "MARKER_SQUARE")
+	{
+		glVertex3f(x - mark_size,	y - mark_size,	z);
+		glVertex3f(x - mark_size,	y + mark_size,	z);
+		glVertex3f(x - mark_size,	y + mark_size,	z);
+		glVertex3f(x + mark_size,	y + mark_size,	z);
+		glVertex3f(x + mark_size,	y + mark_size,	z);
+		glVertex3f(x + mark_size,	y - mark_size,	z);
+		glVertex3f(x + mark_size,	y - mark_size,	z);
+		glVertex3f(x - mark_size,	y - mark_size,	z);
+	}
+	else if (shape == "MARKER_DIAMOND")
+	{
+		mark_size *= 1.4; // match volumes
+		glVertex3f(x,	y - mark_size,	z);
+		glVertex3f(x - mark_size,	y,	z);
+		glVertex3f(x - mark_size,	y,	z);
+		glVertex3f(x,	y + mark_size,	z);
+		glVertex3f(x,	y + mark_size,	z);
+		glVertex3f(x + mark_size,	y,	z);
+		glVertex3f(x + mark_size,	y,	z);
+		glVertex3f(x,	y - mark_size,	z);
+	}
+	OOGLEND();
+}
+
+
+OOSystemID cxx::GuiDisplayGen::targetNextFoundSystem(int direction) // +1 , 0 , -1
+{
+	OOSystemID sys = [PLAYER targetSystemID];
+	if ([PLAYER guiScreen] != GUI_SCREEN_SHORT_RANGE_CHART && [PLAYER guiScreen] != GUI_SCREEN_LONG_RANGE_CHART) return sys;
+	
+	BOOL		*systemsFound = [UNIVERSE systemsFound];
+	unsigned 	i, first = 0, last = 0, count = 0;
+	int 		systemIndex = foundSystem + direction;
+	
+	if (direction == 0) systemIndex = 0;
+	
+	for (i = 0; i <= kOOMaximumSystemID; i++)
+	{
+		if (systemsFound[i])
+		{
+			if (count == 0)
+			{
+				first = last = i;
+			}
+			else
+			{
+				last = i;
+			}
+			if (systemIndex == (int)count) 
+			{
+				sys = i;
+			}
+			count++;
+		}
+	}
+	
+	if (count == 0) return sys; // empty systemFound list.
+	
+	// loop back if needed.
+	if (systemIndex < 0)
+	{
+		systemIndex = count - 1;
+		sys = last;
+	}
+	if (systemIndex >= (int)count)
+	{
+		systemIndex = 0;
+		sys = first;
+	}
+	
+	foundSystem = systemIndex;
+	return sys;
+}
+
+
+// Advanced Navigation Array -- galactic chart route mapping - contributed by Nikos Barkas (another_commander).
+void cxx::GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, float alpha, const oo::PList &routeInfo, OORouteType optimizeBy, OOScalar zoom)
+{
+	GLfloat lr,lg,lb,la,lr2,lg2,lb2,la2;
+	double			hscale = size_in_pixels.width / (CHART_WIDTH_AT_MAX_ZOOM*zoom);
+	double			vscale = -1.0 * size_in_pixels.height / (2*CHART_HEIGHT_AT_MAX_ZOOM*zoom);
+	NSPoint			star = NSZeroPoint, 
+		star2 = NSZeroPoint, 
+		starabs = NSZeroPoint, 
+		star2abs = NSZeroPoint;
+	OOSystemDescriptionManager *systemManager = [UNIVERSE systemManager];
+	OOGalaxyID		g = [PLAYER galaxyNumber];
+	OOSystemID planetNumber = [PLAYER systemID];
+
+	::OOColor *defaultConnectionColor = colorFromSetting(cxx_kGuiChartConnectionColor, [::OOColor colorWithWhite:0.25 alpha:1.0]);
+	::OOColor *currentJumpColorStart = colorFromSetting(cxx_kGuiChartCurrentJumpStartColor, [::OOColor colorWithWhite:0.25 alpha:0.0]);
+	::OOColor *currentJumpColorEnd = colorFromSetting(cxx_kGuiChartCurrentJumpEndColor, [::OOColor colorWithWhite:0.25 alpha:0.0]);
+
+	::OOColor *thisConnectionColor = nil;
+	::OOColor *thatConnectionColor = nil;
+	
+	float jumpRange = MAX_JUMP_RANGE * ((optimizeBy == OPTIMIZED_BY_NONE) ? [PLAYER dialFuel] : 1.0);
+
+	NSInteger concealment[256];
+	for (NSUInteger i=0;i<256;i++) {
+		concealment[i] = [systemManager cxx_getPropertiesForSystem:i inGalaxy:g].get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
+	}
+
+	
+	OOGLBEGIN(GL_LINES);
+	for (OOSystemID i = 0; i < 256; i++)
+	{
+
+		if (concealment[i] >= OO_SYSTEMCONCEALMENT_NOTHING) {
+			// system is not known
+			continue;
+		}
+		
+		/* Concealment */
+		if (optimizeBy == OPTIMIZED_BY_NONE && i != planetNumber)
+		{
+			continue;
+		}
+
+		starabs = [systemManager getCoordinatesForSystem:i inGalaxy:g];
+
+		star.x = (float)(starabs.x * hscale);
+		star.y = (float)(starabs.y * vscale);
+
+		// if in non-route mode, we're always starting from i, so need
+		// to do <i here too.
+		OOSystemID loopstart = (optimizeBy == OPTIMIZED_BY_NONE) ? 0 : (i+1);
+
+		for (OOSystemID j = loopstart; j < 256; j++)
+		{
+			if (i == j)
+			{
+				continue; // for OPTIMIZED_BY_NONE case
+			}
+
+			if (concealment[j] >= OO_SYSTEMCONCEALMENT_NOTHING) {
+				// system is not known
+				continue;
+			}
+			
+			star2abs = [systemManager getCoordinatesForSystem:j inGalaxy:g];
+			double d = distanceBetweenPlanetPositions(starabs.x, starabs.y, star2abs.x, star2abs.y);
+		
+			if (d <= jumpRange)	// another_commander - Default to 7.0 LY.
+			{
+				star2.x = (float)(star2abs.x * hscale);
+				star2.y = (float)(star2abs.y * vscale);
+				if (optimizeBy == OPTIMIZED_BY_NONE)
+				{
+					[currentJumpColorStart getRed:&lr green:&lg blue:&lb alpha:&la];
+					[currentJumpColorEnd getRed:&lr2 green:&lg2 blue:&lb2 alpha:&la2];
+					OOGL(glColor4f(lr, lg, lb, la*alpha));
+					glVertex3f(x+star.x, y+star.y, z);
+
+					float frac = (d/jumpRange);
+					OOGL(glColor4f(
+							 OOLerp(lr,lr2,frac),
+							 OOLerp(lg,lg2,frac),
+							 OOLerp(lb,lb2,frac),
+							 OOLerp(la,la2,frac)
+							 ));
+					glVertex3f(x+star2.x, y+star2.y, z);
+
+				}
+				else
+				{
+					thisConnectionColor = [::OOColor cxx_colorWithDescription:[systemManager cxx_getProperty:"link_color" forSystemKey:oo::str::format("interstellar: %d %ld %ld", g, (long)i, (long)j)]];
+				
+					if (thisConnectionColor == nil)
+					{
+						thisConnectionColor = defaultConnectionColor;
+					}
+					[thisConnectionColor getRed:&lr green:&lg blue:&lb alpha:&la];
+					OOGL(glColor4f(lr, lg, lb, la*alpha));
+
+					glVertex3f(x+star.x, y+star.y, z);
+
+					// and the other colour for the other end
+					thatConnectionColor = [::OOColor cxx_colorWithDescription:[systemManager cxx_getProperty:"link_color" forSystemKey:oo::str::format("interstellar: %d %ld %ld", g, (long)j, (long)i)]];
+				
+					if (thatConnectionColor == nil)
+					{
+						thatConnectionColor = thisConnectionColor;
+					}
+					[thatConnectionColor getRed:&lr green:&lg blue:&lb alpha:&la];
+					OOGL(glColor4f(lr, lg, lb, la*alpha));
+
+					glVertex3f(x+star2.x, y+star2.y, z);
+				}
+			}
+		}
+	}
+	OOGLEND();
+	
+	if (optimizeBy == OPTIMIZED_BY_NONE)
+	{
+		return;
+	}
+
+	if (!routeInfo.isNull())
+	{
+		// "route" as -oo_arrayForKey: read it (its count: 0 when it is not an array), and as
+		// -objectForKey: gave it to the index reads (null reads as 0, as messaging nil did).
+		const oo::PList *routeArray = routeInfo.get<oo::PList::Array>("route");
+		const oo::PList route = (routeInfo.find("route") != nullptr) ? *routeInfo.find("route") : oo::PList();
+		NSUInteger i, route_hops = ((routeArray != nullptr) ? routeArray->count() : 0) - 1;
+		
+		if (optimizeBy == OPTIMIZED_BY_JUMPS)
+		{
+			// route optimised by distance
+			setGLColorFromSetting(cxx_kGuiChartRouteShortColor, [::OOColor yellowColor], alpha);
+		}
+		else
+		{
+			// route optimised by time
+			setGLColorFromSetting(cxx_kGuiChartRouteQuickColor, [::OOColor cyanColor], alpha);
+		}
+		OOSystemID loc;
+		for (i = 0; i < route_hops; i++)
+		{
+			loc = route.at<int>(i);
+			starabs = [systemManager getCoordinatesForSystem:loc inGalaxy:g];
+			star2abs = [systemManager getCoordinatesForSystem:route.at<int>(i+1) inGalaxy:g];
+
+			star.x = (float)(starabs.x * hscale);
+			star.y = (float)(starabs.y * vscale);
+			
+			star2.x = (float)(star2abs.x * hscale);
+			star2.y = (float)(star2abs.y * vscale);
+
+			
+			OOGLBEGIN(GL_LINES);
+				glVertex3f(x+star.x, y+star.y, z);
+				glVertex3f(x+star2.x, y+star2.y, z);
+			OOGLEND();
+			
+			// Label the route, if not already labelled
+			if (zoom > CHART_ZOOM_SHOW_LABELS && concealment[loc] < OO_SYSTEMCONCEALMENT_NONAME)
+			{
+				cxx_OODrawString([UNIVERSE cxx_systemNameIndex:loc].value_or(""), x + star.x + 2.0, y + star.y, z, NSMakeSize(8,8));
+			}
+		}
+		// Label the destination, which was not included in the above loop.
+		if (zoom > CHART_ZOOM_SHOW_LABELS)
+		{
+			loc = route.at<int>(i);
+			if(concealment[loc] < OO_SYSTEMCONCEALMENT_NONAME)
+			{
+				cxx_OODrawString([UNIVERSE cxx_systemNameIndex:loc].value_or(""), x + star2.x + 2.0, y + star2.y, z, NSMakeSize(10,10));
+			}
+		}
+	}
+}
+
+
+// Slice 4 of docs/phases/3-slices/GuiDisplayGen.md, still Objective-C: a category of the
+// facade, reading and writing the C++ GUI's state through oo::ToCxx(self) (ADR-0056 amendment
+// oo-3bgz). Each slice's bead moves its methods into cxx::GuiDisplayGen above.
+@implementation GuiDisplayGen (OOGuiDisplayGenUnconverted)
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 - (void) drawStarChart:(GLfloat)x :(GLfloat)y :(GLfloat)z :(GLfloat) alpha :(BOOL)compact
@@ -2441,306 +2753,11 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (void) drawSystemMarkers:(const oo::PList &)markers atX:(GLfloat)x andY:(GLfloat)y andZ:(GLfloat)z withAlpha:(GLfloat)alpha andScale:(GLfloat)scale
-{
-	const oo::PList::Array *markerList = markers.getIf<oo::PList::Array>();
-	if (markerList == nullptr)  return;
-	for (const oo::PList &marker : *markerList)
-	{
-		[self drawSystemMarker:marker atX:x andY:y andZ:z withAlpha:alpha andScale:scale];
-	}
-}
 
 
-- (void) drawSystemMarker:(const oo::PList &)marker atX:(GLfloat)x andY:(GLfloat)y andZ:(GLfloat)z withAlpha:(GLfloat)alpha andScale:(GLfloat)scale
-{
-	const std::string colorDesc = marker.get<std::string>("markerColor", "redColor");
-	OORGBAComponents color = [[OOColor cxx_colorWithDescription:oo::PList(colorDesc)] rgbaComponents];
-	
-	OOGL(glColor4f(color.r, color.g, color.b, alpha));	// red
-	GLfloat mark_size = marker.get<float>("markerScale", 1.0);
-	if (mark_size > 2.0)
-	{
-		mark_size = 2.0;
-	}
-	else if (mark_size < 0.5)
-	{
-		mark_size = 0.5;
-	}
-	mark_size *= scale;
-
-	const std::string shape = marker.get<std::string>("markerShape", "MARKER_X");
-
-	OOGLBEGIN(GL_LINES);
-	if (shape == "MARKER_X")
-	{
-		glVertex3f(x - mark_size,	y - mark_size,	z);
-		glVertex3f(x + mark_size,	y + mark_size,	z);
-		glVertex3f(x - mark_size,	y + mark_size,	z);
-		glVertex3f(x + mark_size,	y - mark_size,	z);
-	}
-	else if (shape == "MARKER_PLUS")
-	{
-		mark_size *= 1.4; // match volumes
-		glVertex3f(x,	y - mark_size,	z);
-		glVertex3f(x,	y + mark_size,	z);
-		glVertex3f(x - mark_size,	y,	z);
-		glVertex3f(x + mark_size,	y,	z);
-	}
-	else if (shape == "MARKER_SQUARE")
-	{
-		glVertex3f(x - mark_size,	y - mark_size,	z);
-		glVertex3f(x - mark_size,	y + mark_size,	z);
-		glVertex3f(x - mark_size,	y + mark_size,	z);
-		glVertex3f(x + mark_size,	y + mark_size,	z);
-		glVertex3f(x + mark_size,	y + mark_size,	z);
-		glVertex3f(x + mark_size,	y - mark_size,	z);
-		glVertex3f(x + mark_size,	y - mark_size,	z);
-		glVertex3f(x - mark_size,	y - mark_size,	z);
-	}
-	else if (shape == "MARKER_DIAMOND")
-	{
-		mark_size *= 1.4; // match volumes
-		glVertex3f(x,	y - mark_size,	z);
-		glVertex3f(x - mark_size,	y,	z);
-		glVertex3f(x - mark_size,	y,	z);
-		glVertex3f(x,	y + mark_size,	z);
-		glVertex3f(x,	y + mark_size,	z);
-		glVertex3f(x + mark_size,	y,	z);
-		glVertex3f(x + mark_size,	y,	z);
-		glVertex3f(x,	y - mark_size,	z);
-	}
-	OOGLEND();
-}
 
 
-- (OOSystemID) targetNextFoundSystem:(int)direction // +1 , 0 , -1
-{
-	OOSystemID sys = [PLAYER targetSystemID];
-	if ([PLAYER guiScreen] != GUI_SCREEN_SHORT_RANGE_CHART && [PLAYER guiScreen] != GUI_SCREEN_LONG_RANGE_CHART) return sys;
-	
-	BOOL		*systemsFound = [UNIVERSE systemsFound];
-	unsigned 	i, first = 0, last = 0, count = 0;
-	int 		systemIndex = oo::ToCxx(self)->foundSystem + direction;
-	
-	if (direction == 0) systemIndex = 0;
-	
-	for (i = 0; i <= kOOMaximumSystemID; i++)
-	{
-		if (systemsFound[i])
-		{
-			if (count == 0)
-			{
-				first = last = i;
-			}
-			else
-			{
-				last = i;
-			}
-			if (systemIndex == (int)count) 
-			{
-				sys = i;
-			}
-			count++;
-		}
-	}
-	
-	if (count == 0) return sys; // empty systemFound list.
-	
-	// loop back if needed.
-	if (systemIndex < 0)
-	{
-		systemIndex = count - 1;
-		sys = last;
-	}
-	if (systemIndex >= (int)count)
-	{
-		systemIndex = 0;
-		sys = first;
-	}
-	
-	oo::ToCxx(self)->foundSystem = systemIndex;
-	return sys;
-}
 
 
-// Advanced Navigation Array -- galactic chart route mapping - contributed by Nikos Barkas (another_commander).
-- (void) drawAdvancedNavArrayAtX:(float)x y:(float)y z:(float)z alpha:(float)alpha usingRoute:(const oo::PList &) routeInfo optimizedBy:(OORouteType) optimizeBy zoom: (OOScalar) zoom
-{
-	GLfloat lr,lg,lb,la,lr2,lg2,lb2,la2;
-	double			hscale = oo::ToCxx(self)->size_in_pixels.width / (CHART_WIDTH_AT_MAX_ZOOM*zoom);
-	double			vscale = -1.0 * oo::ToCxx(self)->size_in_pixels.height / (2*CHART_HEIGHT_AT_MAX_ZOOM*zoom);
-	NSPoint			star = NSZeroPoint, 
-		star2 = NSZeroPoint, 
-		starabs = NSZeroPoint, 
-		star2abs = NSZeroPoint;
-	OOSystemDescriptionManager *systemManager = [UNIVERSE systemManager];
-	OOGalaxyID		g = [PLAYER galaxyNumber];
-	OOSystemID planetNumber = [PLAYER systemID];
-
-	OOColor *defaultConnectionColor = [self cxx_colorFromSetting:cxx_kGuiChartConnectionColor defaultValue:[OOColor colorWithWhite:0.25 alpha:1.0]];
-	OOColor *currentJumpColorStart = [self cxx_colorFromSetting:cxx_kGuiChartCurrentJumpStartColor defaultValue:[OOColor colorWithWhite:0.25 alpha:0.0]];
-	OOColor *currentJumpColorEnd = [self cxx_colorFromSetting:cxx_kGuiChartCurrentJumpEndColor defaultValue:[OOColor colorWithWhite:0.25 alpha:0.0]];
-
-	OOColor *thisConnectionColor = nil;
-	OOColor *thatConnectionColor = nil;
-	
-	float jumpRange = MAX_JUMP_RANGE * ((optimizeBy == OPTIMIZED_BY_NONE) ? [PLAYER dialFuel] : 1.0);
-
-	NSInteger concealment[256];
-	for (NSUInteger i=0;i<256;i++) {
-		concealment[i] = [systemManager cxx_getPropertiesForSystem:i inGalaxy:g].get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
-	}
-
-	
-	OOGLBEGIN(GL_LINES);
-	for (OOSystemID i = 0; i < 256; i++)
-	{
-
-		if (concealment[i] >= OO_SYSTEMCONCEALMENT_NOTHING) {
-			// system is not known
-			continue;
-		}
-		
-		/* Concealment */
-		if (optimizeBy == OPTIMIZED_BY_NONE && i != planetNumber)
-		{
-			continue;
-		}
-
-		starabs = [systemManager getCoordinatesForSystem:i inGalaxy:g];
-
-		star.x = (float)(starabs.x * hscale);
-		star.y = (float)(starabs.y * vscale);
-
-		// if in non-route mode, we're always starting from i, so need
-		// to do <i here too.
-		OOSystemID loopstart = (optimizeBy == OPTIMIZED_BY_NONE) ? 0 : (i+1);
-
-		for (OOSystemID j = loopstart; j < 256; j++)
-		{
-			if (i == j)
-			{
-				continue; // for OPTIMIZED_BY_NONE case
-			}
-
-			if (concealment[j] >= OO_SYSTEMCONCEALMENT_NOTHING) {
-				// system is not known
-				continue;
-			}
-			
-			star2abs = [systemManager getCoordinatesForSystem:j inGalaxy:g];
-			double d = distanceBetweenPlanetPositions(starabs.x, starabs.y, star2abs.x, star2abs.y);
-		
-			if (d <= jumpRange)	// another_commander - Default to 7.0 LY.
-			{
-				star2.x = (float)(star2abs.x * hscale);
-				star2.y = (float)(star2abs.y * vscale);
-				if (optimizeBy == OPTIMIZED_BY_NONE)
-				{
-					[currentJumpColorStart getRed:&lr green:&lg blue:&lb alpha:&la];
-					[currentJumpColorEnd getRed:&lr2 green:&lg2 blue:&lb2 alpha:&la2];
-					OOGL(glColor4f(lr, lg, lb, la*alpha));
-					glVertex3f(x+star.x, y+star.y, z);
-
-					float frac = (d/jumpRange);
-					OOGL(glColor4f(
-							 OOLerp(lr,lr2,frac),
-							 OOLerp(lg,lg2,frac),
-							 OOLerp(lb,lb2,frac),
-							 OOLerp(la,la2,frac)
-							 ));
-					glVertex3f(x+star2.x, y+star2.y, z);
-
-				}
-				else
-				{
-					thisConnectionColor = [OOColor cxx_colorWithDescription:[systemManager cxx_getProperty:"link_color" forSystemKey:oo::str::format("interstellar: %d %ld %ld", g, (long)i, (long)j)]];
-				
-					if (thisConnectionColor == nil)
-					{
-						thisConnectionColor = defaultConnectionColor;
-					}
-					[thisConnectionColor getRed:&lr green:&lg blue:&lb alpha:&la];
-					OOGL(glColor4f(lr, lg, lb, la*alpha));
-
-					glVertex3f(x+star.x, y+star.y, z);
-
-					// and the other colour for the other end
-					thatConnectionColor = [OOColor cxx_colorWithDescription:[systemManager cxx_getProperty:"link_color" forSystemKey:oo::str::format("interstellar: %d %ld %ld", g, (long)j, (long)i)]];
-				
-					if (thatConnectionColor == nil)
-					{
-						thatConnectionColor = thisConnectionColor;
-					}
-					[thatConnectionColor getRed:&lr green:&lg blue:&lb alpha:&la];
-					OOGL(glColor4f(lr, lg, lb, la*alpha));
-
-					glVertex3f(x+star2.x, y+star2.y, z);
-				}
-			}
-		}
-	}
-	OOGLEND();
-	
-	if (optimizeBy == OPTIMIZED_BY_NONE)
-	{
-		return;
-	}
-
-	if (!routeInfo.isNull())
-	{
-		// "route" as -oo_arrayForKey: read it (its count: 0 when it is not an array), and as
-		// -objectForKey: gave it to the index reads (null reads as 0, as messaging nil did).
-		const oo::PList *routeArray = routeInfo.get<oo::PList::Array>("route");
-		const oo::PList route = (routeInfo.find("route") != nullptr) ? *routeInfo.find("route") : oo::PList();
-		NSUInteger i, route_hops = ((routeArray != nullptr) ? routeArray->count() : 0) - 1;
-		
-		if (optimizeBy == OPTIMIZED_BY_JUMPS)
-		{
-			// route optimised by distance
-			[self cxx_setGLColorFromSetting:cxx_kGuiChartRouteShortColor defaultValue:[OOColor yellowColor] alpha:alpha];
-		}
-		else
-		{
-			// route optimised by time
-			[self cxx_setGLColorFromSetting:cxx_kGuiChartRouteQuickColor defaultValue:[OOColor cyanColor] alpha:alpha];
-		}
-		OOSystemID loc;
-		for (i = 0; i < route_hops; i++)
-		{
-			loc = route.at<int>(i);
-			starabs = [systemManager getCoordinatesForSystem:loc inGalaxy:g];
-			star2abs = [systemManager getCoordinatesForSystem:route.at<int>(i+1) inGalaxy:g];
-
-			star.x = (float)(starabs.x * hscale);
-			star.y = (float)(starabs.y * vscale);
-			
-			star2.x = (float)(star2abs.x * hscale);
-			star2.y = (float)(star2abs.y * vscale);
-
-			
-			OOGLBEGIN(GL_LINES);
-				glVertex3f(x+star.x, y+star.y, z);
-				glVertex3f(x+star2.x, y+star2.y, z);
-			OOGLEND();
-			
-			// Label the route, if not already labelled
-			if (zoom > CHART_ZOOM_SHOW_LABELS && concealment[loc] < OO_SYSTEMCONCEALMENT_NONAME)
-			{
-				cxx_OODrawString([UNIVERSE cxx_systemNameIndex:loc].value_or(""), x + star.x + 2.0, y + star.y, z, NSMakeSize(8,8));
-			}
-		}
-		// Label the destination, which was not included in the above loop.
-		if (zoom > CHART_ZOOM_SHOW_LABELS)
-		{
-			loc = route.at<int>(i);
-			if(concealment[loc] < OO_SYSTEMCONCEALMENT_NONAME)
-			{
-				cxx_OODrawString([UNIVERSE cxx_systemNameIndex:loc].value_or(""), x + star2.x + 2.0, y + star2.y, z, NSMakeSize(10,10));
-			}
-		}
-	}
-}
 
 @end

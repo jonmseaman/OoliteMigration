@@ -220,20 +220,31 @@ MA 02110-1301, USA.
 - (NSUInteger) statusPage;
 - (void) cxx_drawEquipmentList:(const oo::PList &)eqptList z:(GLfloat)z;
 
-@end
-
-
-// Slices 3 and 4 of docs/phases/3-slices/GuiDisplayGen.md: still Objective-C, implemented by this
-// category in GuiDisplayGen.mm on the facade. Each slice's bead moves its methods to the C++ class
-// and their forwarders to GuiDisplayGen+ObjCBridge.mm.
-@interface GuiDisplayGen (OOGuiDisplayGenUnconverted)
-
 - (int) drawGUI:(GLfloat) alpha drawCursor:(BOOL) drawCursor;
 - (void) drawGUIBackground;
 - (void) refreshStarChart;
 - (void) setStarChartTitle;
 
 - (OOSystemID) targetNextFoundSystem:(int)direction;
+
+@end
+
+
+// The private drawing methods that slice 4's star chart, still Objective-C, sends to the facade
+// (ADR-0056 amendment oo-bwjb item 2). Deleted with slice 4's conversion.
+@interface GuiDisplayGen (OOGuiDisplayGenInternalForwarded)
+
+- (void) drawCrossHairsWithSize:(GLfloat) size x:(GLfloat)x y:(GLfloat)y z:(GLfloat)z;
+- (void) drawSystemMarkers:(const oo::PList &)marker atX:(GLfloat)x andY:(GLfloat)y andZ:(GLfloat)z withAlpha:(GLfloat)alpha andScale:(GLfloat)scale;
+- (void) drawAdvancedNavArrayAtX:(float)x y:(float)y z:(float)z alpha:(float)alpha usingRoute:(const oo::PList &) route optimizedBy:(OORouteType) optimizeBy zoom: (OOScalar) zoom;
+
+@end
+
+
+// Slice 4 of docs/phases/3-slices/GuiDisplayGen.md: still Objective-C, implemented by this
+// category in GuiDisplayGen.mm on the facade. Each slice's bead moves its methods to the C++ class
+// and their forwarders to GuiDisplayGen+ObjCBridge.mm.
+@interface GuiDisplayGen (OOGuiDisplayGenUnconverted)
 
 @end
 
