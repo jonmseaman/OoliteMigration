@@ -19,6 +19,7 @@ core_tests = {
     'test_OOJavaScriptEngine': ['*'],
     'test_OOJSSystem': ['*'],
     'test_OOJSPlayerShip': ['*'],
+    'test_OOJSShip': ['*'],
     'test_OOCache': ['Core/OOCache.mm', 'Core/OODescription.mm'],
     'test_OOCacheManager': ['Core/OOCacheManager.mm', 'Core/OOCacheManager+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OOEncodingConverter': ['Core/OOEncodingConverter.mm', 'Core/OOCache.mm', 'Core/OODescription.mm'],
