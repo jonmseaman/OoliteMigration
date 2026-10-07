@@ -6314,423 +6314,6 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 }	// namespace
 
 
-- (oo::PList) cxx_shipsForSaleForSystem:(OOSystemID)s withTL:(OOTechLevelID)specialTL atTime:(OOTimeAbsolute)current_time
-{
-	RANROTSeed saved_seed = RANROTGetFullSeed();
-	Random_Seed ship_seed = [self marketSeed];
-
-	std::map<std::string, oo::PList>	resultDictionary;	// by ship ID
-
-	float					tech_price_boost = (ship_seed.a + ship_seed.b) / 256.0;
-	unsigned				i;
-	PlayerEntity			*player = PLAYER;
-	OOShipRegistry			*registry = [OOShipRegistry sharedRegistry];
-	RANROTSeed				personalitySeed = RanrotSeedFromRandomSeed(ship_seed);
-
-	for (i = 0; i < 256; i++)
-	{
-		long long reference_time = 0x1000000 * floor(current_time / 0x1000000);
-
-		long long c_time = ship_seed.a * 0x10000 + ship_seed.b * 0x100 + ship_seed.c;
-		double ship_sold_time = reference_time + c_time;
-
-		if (ship_sold_time < 0)
-			ship_sold_time += 0x1000000;	// wraparound
-
-		double days_until_sale = (ship_sold_time - current_time) / 86400.0;
-
-		std::vector<std::string>	keysForShips = [registry cxx_playerShipKeys];
-		unsigned		si;
-		for (si = 0; si < keysForShips.size(); si++)
-		{
-			//eliminate any ships that fail a 'conditions test'
-			const std::string	key = keysForShips[si];
-			const oo::PList		dict = [registry cxx_shipyardInfoForKey:key];
-			const oo::PList		*conditions = dict.get<oo::PList::Array>("conditions");
-
-			if (![player cxx_scriptTestConditions:(conditions != nullptr) ? *conditions : oo::PList()])
-			{
-				RemoveKeyAt(keysForShips, si--);
-			}
-			std::optional<std::string> condition_script = OptionalStringIn(dict, "condition_script");
-			if (condition_script.has_value())
-			{
-				OOJSScript *condScript = [self cxx_getConditionScript:*condition_script];
-				if (condScript != nil) // should always be non-nil, but just in case
-				{
-					ooscript::Context context = OOJSAcquireContext();
-					BOOL OK;
-					bool allow_purchase;
-					ooscript::Value result;
-					ooscript::Value args[] = { OOJSValueFromPList(context, oo::PList(key)) };
-
-					OK = [condScript callMethod:OOJSID("allowOfferShip")
-												inContext:context
-										withArguments:args count:sizeof args / sizeof *args
-													 result:&result];
-
-					if (OK) OK = ooscript::valueToBoolean(context, result, &allow_purchase);
-
-					OOJSRelinquishContext(context);
-
-					if (OK && !allow_purchase)
-					{
-						/* if the script exists, the function exists, the function
-						 * returns a bool, and that bool is false, block
-						 * purchase. Otherwise allow it as default */
-						RemoveKeyAt(keysForShips, si--);
-					}
-				}
-			}
-
-		}
-
-		const oo::PList	systemInfo = [self cxx_generateSystemData:s];
-		OOTechLevelID	techlevel;
-		if (specialTL != NSNotFound)
-		{
-			//if we are passed a tech level use that
-			techlevel = specialTL;
-		}
-		else
-		{
-			//otherwise use default for system
-			techlevel = systemInfo.get<unsigned int>(std::string(KEY_TECHLEVEL));
-		}
-		unsigned		ship_index = (ship_seed.d * 0x100 + ship_seed.e) % keysForShips.size();
-		const std::string	ship_key = keysForShips[ship_index];
-		const oo::PList	ship_info = [registry cxx_shipyardInfoForKey:ship_key];
-		OOTechLevelID	ship_techlevel = ship_info.get<int>(std::string(KEY_TECHLEVEL));
-
-		double chance = 1.0 - pow(1.0 - ship_info.get<double>(std::string(KEY_CHANCE)), MAX((OOTechLevelID)1, techlevel - ship_techlevel));
-
-		// seed random number generator
-		int superRand1 = ship_seed.a * 0x10000 + ship_seed.c * 0x100 + ship_seed.e;
-		uint32_t superRand2 = ship_seed.b * 0x10000 + ship_seed.d * 0x100 + ship_seed.f;
-		ranrot_srand(superRand2);
-
-		const oo::PList shipBaseDict = [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:ship_key];
-
-		if ((days_until_sale > 0.0) && (days_until_sale < 30.0) && (ship_techlevel <= techlevel) && (randf() < chance) && !shipBaseDict.isNull())
-		{
-			oo::PList shipDict = shipBaseDict;
-			std::string shortShipDescription;
-			std::optional<std::string> shipName = OptionalStringIn(shipDict, "display_name");
-			if (!shipName.has_value())  shipName = OptionalStringIn(shipDict, std::string(KEY_NAME));
-			OOCreditsQuantity price = ship_info.get<unsigned int>(std::string(KEY_PRICE));
-			OOCreditsQuantity base_price = price;
-			const oo::PList *standardEquipment = ship_info.get<oo::PList::Dict>(std::string(KEY_STANDARD_EQUIPMENT));
-			const oo::PList *standardExtras = (standardEquipment != nullptr) ? standardEquipment->get<oo::PList::Array>(std::string(KEY_EQUIPMENT_EXTRAS)) : nullptr;
-			oo::PList::Array extras = (standardExtras != nullptr) ? *standardExtras->getIf<oo::PList::Array>() : oo::PList::Array();
-			std::optional<std::string> fwdWeaponString = (standardEquipment != nullptr) ? OptionalStringIn(*standardEquipment, std::string(KEY_EQUIPMENT_FORWARD_WEAPON)) : std::nullopt;
-			std::optional<std::string> aftWeaponString = (standardEquipment != nullptr) ? OptionalStringIn(*standardEquipment, std::string(KEY_EQUIPMENT_AFT_WEAPON)) : std::nullopt;
-
-			const oo::PList *optionalEquipment = ship_info.get<oo::PList::Array>(std::string(KEY_OPTIONAL_EQUIPMENT));
-			std::vector<std::optional<std::string>> options;
-			if (optionalEquipment != nullptr)
-			{
-				for (std::size_t k = 0; k < optionalEquipment->count(); k++)  options.push_back(OptionalStringAt(*optionalEquipment, k));
-			}
-			OOCargoQuantity maxCargo = shipDict.get<unsigned int>("max_cargo");
-
-			// more info for potential purchasers - how to reveal this I'm not yet sure...
-			//std::optional<std::string> brochure_desc = [self brochureDescriptionWithDictionary:shipDict standardEquipment:extras optionalEquipment:options];
-			//OO_LOG("shipyard.brochure", "{} Brochure description : \"{}\"", oo::DescriptionOf([ship name]), brochure_desc);
-
-			shortShipDescription += TextOrNull(shipName) + ":";
-
-			OOWeaponFacingSet availableFacings = ship_info.get<unsigned int>(std::string(KEY_WEAPON_FACINGS), VALID_WEAPON_FACINGS) & VALID_WEAPON_FACINGS;
-
-			OOWeaponType fwdWeapon = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(fwdWeaponString.value_or(""));
-			OOWeaponType aftWeapon = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(aftWeaponString.value_or(""));
-			//port and starboard weapons are not modified in the shipyard
-			// apply fwd and aft weapons to the ship
-			if (fwdWeapon && fwdWeaponString) SetInDict(shipDict, std::string(KEY_EQUIPMENT_FORWARD_WEAPON), *fwdWeaponString);
-			if (aftWeapon && aftWeaponString) SetInDict(shipDict, std::string(KEY_EQUIPMENT_AFT_WEAPON), *aftWeaponString);
-
-			int passengerBerthCount = 0;
-			BOOL customised = NO;
-			BOOL weaponCustomized = NO;
-
-			std::optional<std::string> fwdWeaponDesc;
-
-			std::string shortExtrasKey = "shipyard-first-extra";
-
-			// for testing condition scripts
-			ShipEntity *testship = [[ProxyPlayerEntity alloc] cxx_initWithKey:ship_key definition:shipDict];
-			// customise the ship (if chance = 1, then ship will get all possible add ons)
-			while ((randf() < chance) && (options.size()))
-			{
-				chance *= chance;	//decrease the chance of a further customisation (unless it is 1, which might be a bug)
-				int				optionIndex = Ranrot() % options.size();
-				const std::optional<std::string>	equipmentKey = options[optionIndex];
-				OOEquipmentType	*item = equipmentKey.has_value() ? [OOEquipmentType cxx_equipmentTypeWithIdentifier:*equipmentKey] : nil;
-
-				if (item != nil)
-				{
-					OOTechLevelID		eqTechLevel = [item techLevel];
-					OOCreditsQuantity	eqPrice = [item price] / 10;	// all amounts are x/10 due to being represented in tenths of credits.
-					std::optional<std::string>	eqShortDesc = [item cxx_name];
-
-					if ([item techLevel] > techlevel)
-					{
-						// Cap maximum tech level.
-						eqTechLevel = MIN(eqTechLevel, 15U);
-
-						// Higher tech items are rarer!
-						if (randf() * (eqTechLevel - techlevel) < 1.0)
-						{
-							// All included equip has a 10% discount.
-							eqPrice *= (tech_price_boost + eqTechLevel - techlevel) * 90 / 100;
-						}
-						else
-							break;	// Bar this upgrade.
-					}
-
-					if ([item cxx_incompatibleEquipment].has_value())
-					{
-						BOOL						incompatible = NO;
-						const std::vector<std::string>	incompatibleKeys = *[item cxx_incompatibleEquipment];
-
-						for (const std::string &key : incompatibleKeys)
-						{
-							if (ContainsKey(extras, key))
-							{
-								RemoveOption(options, equipmentKey);
-								incompatible = YES;
-								break;
-							}
-						}
-						if (incompatible) break;
-
-						// make sure the incompatible equipment is not choosen later on.
-						for (const std::string &key : incompatibleKeys)
-						{
-							RemoveOption(options, key);
-						}
-					}
-
-					/* Check condition scripts */
-					std::optional<std::string> condition_script = [item cxx_conditionScript];
-					if (condition_script.has_value())
-					{
-						OOJSScript *condScript = [self cxx_getConditionScript:*condition_script];
-						if (condScript != nil) // should always be non-nil, but just in case
-						{
-							ooscript::Context JScontext = OOJSAcquireContext();
-							BOOL OK;
-							bool allow_addition;
-							ooscript::Value result;
-							ooscript::Value args[] = { OOJSValueFromPList(JScontext, oo::PList(*equipmentKey)) , OOJSValueFromNativeObject(JScontext, testship) , OOJSValueFromPList(JScontext, oo::PList("newShip"))};
-
-							OK = [condScript callMethod:OOJSID("allowAwardEquipment")
-																inContext:JScontext
-														withArguments:args count:sizeof args / sizeof *args
-																	 result:&result];
-
-							if (OK) OK = ooscript::valueToBoolean(JScontext, result, &allow_addition);
-
-							OOJSRelinquishContext(JScontext);
-
-							if (OK && !allow_addition)
-							{
-								/* if the script exists, the function exists, the function
-								 * returns a bool, and that bool is false, block
-								 * addition. Otherwise allow it as default */
-								break;
-							}
-						}
-					}
-
-
-					if ([item cxx_requiresEquipment].has_value())
-					{
-						BOOL						missing = NO;
-
-						for (const std::string &key : [item cxx_requiresEquipment].value_or(std::vector<std::string>()))
-						{
-							if (!ContainsKey(extras, key))
-							{
-								missing = YES;
-							}
-						}
-						if (missing) break;
-					}
-
-					if ([item cxx_requiresAnyEquipment].has_value())
-					{
-						BOOL						missing = YES;
-
-						for (const std::string &key : [item cxx_requiresAnyEquipment].value_or(std::vector<std::string>()))
-						{
-							if (ContainsKey(extras, key))
-							{
-								missing = NO;
-							}
-						}
-						if (missing) break;
-					}
-
-					// Special case, NEU has to be compatible with EEU inside equipment.plist
-					// but we can only have either one or the other on board.
-					if (*equipmentKey == "EQ_NAVAL_ENERGY_UNIT")
-					{
-						if (ContainsKey(extras, "EQ_ENERGY_UNIT"))
-						{
-							RemoveOption(options, equipmentKey);
-							break;
-						}
-					}
-
-					if (oo::str::hasPrefix(*equipmentKey, "EQ_WEAPON"))
-					{
-						OOWeaponType new_weapon = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(*equipmentKey);
-						//fit best weapon forward
-						if (availableFacings & WEAPON_FACING_FORWARD && [new_weapon weaponThreatAssessment] > [fwdWeapon weaponThreatAssessment])
-						{
-							//again remember to divide price by 10 to get credits from tenths of credit
-							price -= (fwdWeaponString ? [self cxx_getEquipmentPriceForKey:*fwdWeaponString] : 0) * 90 / 1000;	// 90% credits
-							price += eqPrice;
-							fwdWeaponString = equipmentKey;
-							fwdWeapon = new_weapon;
-							SetInDict(shipDict, std::string(KEY_EQUIPMENT_FORWARD_WEAPON), *fwdWeaponString);
-							weaponCustomized = YES;
-							fwdWeaponDesc = eqShortDesc;
-						}
-						else
-						{
-							//if less good than current forward, try fitting is to rear
-							if (availableFacings & WEAPON_FACING_AFT && (isWeaponNone(aftWeapon) || [new_weapon weaponThreatAssessment] > [aftWeapon weaponThreatAssessment]))
-							{
-								price -= (aftWeaponString ? [self cxx_getEquipmentPriceForKey:*aftWeaponString] : 0) * 90 / 1000;	// 90% credits
-								price += eqPrice;
-								aftWeaponString = equipmentKey;
-								aftWeapon = new_weapon;
-								SetInDict(shipDict, std::string(KEY_EQUIPMENT_AFT_WEAPON), *aftWeaponString);
-							}
-							else
-							{
-								RemoveOption(options, equipmentKey); //dont try again
-							}
-						}
-
-					}
-					else
-					{
-						if (*equipmentKey == "EQ_PASSENGER_BERTH")
-						{
-							if ((maxCargo >= PASSENGER_BERTH_SPACE) && (randf() < chance))
-							{
-								maxCargo -= PASSENGER_BERTH_SPACE;
-								price += eqPrice;
-								extras.push_back(oo::PList(*equipmentKey));
-								passengerBerthCount++;
-								customised = YES;
-							}
-							else
-							{
-								// remove the option if there's no space left
-								RemoveOption(options, equipmentKey);
-							}
-						}
-						else
-						{
-							price += eqPrice;
-							extras.push_back(oo::PList(*equipmentKey));
-							if ([item isVisible])
-							{
-								shortShipDescription += ExpandKeyWith(shortExtrasKey, "item", eqShortDesc ? oo::PList(*eqShortDesc) : oo::PList());
-								shortExtrasKey = "shipyard-additional-extra";
-							}
-							customised = YES;
-							RemoveOption(options, equipmentKey); //dont add twice
-						}
-					}
-				}
-				else
-				{
-					RemoveOption(options, equipmentKey);
-				}
-			} // end adding optional equipment
-			[testship release];
-			// i18n: Some languages require that no conversion to lower case string takes place.
-			BOOL lowercaseIgnore = [self cxx_descriptions]->get<bool>("lowercase_ignore");
-
-			if (passengerBerthCount)
-			{
-				std::string npb = (passengerBerthCount > 1)? oo::str::format("%d ", passengerBerthCount) : std::string();
-				std::string ppb = cxx_OOLookUpPluralDescriptionPRIV("passenger-berth", passengerBerthCount);
-				std::string extraPassengerBerthsDescription = oo::str::formatRuntime(cxx_OOLookUpDescriptionPRIV("extra-@-@-(passenger-berths)"), { npb, ppb });
-				shortShipDescription += ExpandKeyWith(shortExtrasKey, "item", oo::PList(extraPassengerBerthsDescription));
-				shortExtrasKey = "shipyard-additional-extra";
-			}
-
-			if (!customised)
-			{
-				shortShipDescription += ExpandKey("shipyard-standard-customer-model");
-			}
-
-			if (weaponCustomized)
-			{
-				std::optional<std::string> weapon = fwdWeaponDesc;
-				if (!lowercaseIgnore && weapon.has_value())  weapon = oo::str::lowercase(*weapon);
-				shortShipDescription += ExpandKeyWith("shipyard-forward-weapon-upgraded", "weapon", weapon ? oo::PList(*weapon) : oo::PList());
-			}
-			if (price > base_price)
-			{
-				price = base_price + cunningFee(price - base_price, 0.05);
-			}
-
-			shortShipDescription += ExpandKeyWith("shipyard-price", "price", oo::PList(price));
-
-			std::string shipID = oo::str::format("%06x-%06x", superRand1, superRand2);
-
-			uint16_t personality = RanrotWithSeed(&personalitySeed) & ENTITY_PERSONALITY_MAX;
-
-			oo::PList::Dict ship_info_dictionary;
-			ship_info_dictionary[std::string(SHIPYARD_KEY_ID)] = oo::PList(shipID);
-			ship_info_dictionary[std::string(SHIPYARD_KEY_SHIPDATA_KEY)] = oo::PList(ship_key);
-			ship_info_dictionary[std::string(SHIPYARD_KEY_SHIP)] = shipDict;
-			ship_info_dictionary[std::string(KEY_SHORT_DESCRIPTION)] = oo::PList(shortShipDescription);
-			ship_info_dictionary[std::string(SHIPYARD_KEY_PRICE)] = oo::PList(price);
-			ship_info_dictionary[std::string(KEY_EQUIPMENT_EXTRAS)] = oo::PList(extras);
-			ship_info_dictionary[std::string(SHIPYARD_KEY_PERSONALITY)] = oo::PList(personality);
-
-			resultDictionary[shipID] = oo::PList(std::move(ship_info_dictionary));	// should order them fairly randomly
-		}
-
-		// next contract
-		rotate_seed(&ship_seed);
-		rotate_seed(&ship_seed);
-		rotate_seed(&ship_seed);
-		rotate_seed(&ship_seed);
-	}
-
-	oo::PList::Array resultArray;
-	for (auto &entry : resultDictionary)  resultArray.push_back(std::move(entry.second));
-	std::stable_sort(resultArray.begin(), resultArray.end(), [](const oo::PList &a, const oo::PList &b) { return compareName(a, b) < 0; });
-
-	// remove identically priced ships of the same name
-	i = 1;
-
-	while (i < resultArray.size())
-	{
-		if (compareName(resultArray[i - 1], resultArray[i]) == 0)
-		{
-			resultArray.erase(resultArray.begin() + i);
-		}
-		else
-		{
-			i++;
-		}
-	}
-
-	RANROTSetFullSeed(saved_seed);
-
-	return oo::PList(std::move(resultArray));
-}
-
-
 - (OOCreditsQuantity) cxx_tradeInValueForCommanderDictionary:(const oo::PList &)dict
 {
 	// get basic information about the craft
@@ -11907,6 +11490,432 @@ oo::PList Universe::getStationMarkets()
 	}
 
 	return oo::PList(std::move(markets));
+}
+
+}	// namespace cxx
+
+
+// Slice 22 of docs/phases/3-slices/Universe.md (bead oo-05ow5): ships for sale (cxx_shipsForSaleForSystem:withTL:atTime:). The facade forwards
+// each selector (Universe+ObjCBridge.mm); sends to self stay sends (ADR-0056 amendments oo-riqmz,
+// oo-mvzmb).
+namespace cxx {
+
+oo::PList Universe::shipsForSaleForSystem(OOSystemID s, OOTechLevelID specialTL, OOTimeAbsolute current_time)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	RANROTSeed saved_seed = RANROTGetFullSeed();
+	Random_Seed ship_seed = [self marketSeed];
+
+	std::map<std::string, oo::PList>	resultDictionary;	// by ship ID
+
+	float					tech_price_boost = (ship_seed.a + ship_seed.b) / 256.0;
+	unsigned				i;
+	::PlayerEntity			*player = PLAYER;
+	::OOShipRegistry			*registry = [::OOShipRegistry sharedRegistry];
+	RANROTSeed				personalitySeed = RanrotSeedFromRandomSeed(ship_seed);
+
+	for (i = 0; i < 256; i++)
+	{
+		long long reference_time = 0x1000000 * floor(current_time / 0x1000000);
+
+		long long c_time = ship_seed.a * 0x10000 + ship_seed.b * 0x100 + ship_seed.c;
+		double ship_sold_time = reference_time + c_time;
+
+		if (ship_sold_time < 0)
+			ship_sold_time += 0x1000000;	// wraparound
+
+		double days_until_sale = (ship_sold_time - current_time) / 86400.0;
+
+		std::vector<std::string>	keysForShips = [registry cxx_playerShipKeys];
+		unsigned		si;
+		for (si = 0; si < keysForShips.size(); si++)
+		{
+			//eliminate any ships that fail a 'conditions test'
+			const std::string	key = keysForShips[si];
+			const oo::PList		dict = [registry cxx_shipyardInfoForKey:key];
+			const oo::PList		*conditions = dict.get<oo::PList::Array>("conditions");
+
+			if (![player cxx_scriptTestConditions:(conditions != nullptr) ? *conditions : oo::PList()])
+			{
+				RemoveKeyAt(keysForShips, si--);
+			}
+			std::optional<std::string> condition_script = OptionalStringIn(dict, "condition_script");
+			if (condition_script.has_value())
+			{
+				::OOJSScript *condScript = [self cxx_getConditionScript:*condition_script];
+				if (condScript != nil) // should always be non-nil, but just in case
+				{
+					ooscript::Context context = OOJSAcquireContext();
+					BOOL OK;
+					bool allow_purchase;
+					ooscript::Value result;
+					ooscript::Value args[] = { OOJSValueFromPList(context, oo::PList(key)) };
+
+					OK = [condScript callMethod:OOJSID("allowOfferShip")
+												inContext:context
+										withArguments:args count:sizeof args / sizeof *args
+													 result:&result];
+
+					if (OK) OK = ooscript::valueToBoolean(context, result, &allow_purchase);
+
+					OOJSRelinquishContext(context);
+
+					if (OK && !allow_purchase)
+					{
+						/* if the script exists, the function exists, the function
+						 * returns a bool, and that bool is false, block
+						 * purchase. Otherwise allow it as default */
+						RemoveKeyAt(keysForShips, si--);
+					}
+				}
+			}
+
+		}
+
+		const oo::PList	systemInfo = [self cxx_generateSystemData:s];
+		OOTechLevelID	techlevel;
+		if (specialTL != NSNotFound)
+		{
+			//if we are passed a tech level use that
+			techlevel = specialTL;
+		}
+		else
+		{
+			//otherwise use default for system
+			techlevel = systemInfo.get<unsigned int>(std::string(KEY_TECHLEVEL));
+		}
+		unsigned		ship_index = (ship_seed.d * 0x100 + ship_seed.e) % keysForShips.size();
+		const std::string	ship_key = keysForShips[ship_index];
+		const oo::PList	ship_info = [registry cxx_shipyardInfoForKey:ship_key];
+		OOTechLevelID	ship_techlevel = ship_info.get<int>(std::string(KEY_TECHLEVEL));
+
+		double chance = 1.0 - pow(1.0 - ship_info.get<double>(std::string(KEY_CHANCE)), MAX((OOTechLevelID)1, techlevel - ship_techlevel));
+
+		// seed random number generator
+		int superRand1 = ship_seed.a * 0x10000 + ship_seed.c * 0x100 + ship_seed.e;
+		uint32_t superRand2 = ship_seed.b * 0x10000 + ship_seed.d * 0x100 + ship_seed.f;
+		ranrot_srand(superRand2);
+
+		const oo::PList shipBaseDict = [[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:ship_key];
+
+		if ((days_until_sale > 0.0) && (days_until_sale < 30.0) && (ship_techlevel <= techlevel) && (randf() < chance) && !shipBaseDict.isNull())
+		{
+			oo::PList shipDict = shipBaseDict;
+			std::string shortShipDescription;
+			std::optional<std::string> shipName = OptionalStringIn(shipDict, "display_name");
+			if (!shipName.has_value())  shipName = OptionalStringIn(shipDict, std::string(KEY_NAME));
+			OOCreditsQuantity price = ship_info.get<unsigned int>(std::string(KEY_PRICE));
+			OOCreditsQuantity base_price = price;
+			const oo::PList *standardEquipment = ship_info.get<oo::PList::Dict>(std::string(KEY_STANDARD_EQUIPMENT));
+			const oo::PList *standardExtras = (standardEquipment != nullptr) ? standardEquipment->get<oo::PList::Array>(std::string(KEY_EQUIPMENT_EXTRAS)) : nullptr;
+			oo::PList::Array extras = (standardExtras != nullptr) ? *standardExtras->getIf<oo::PList::Array>() : oo::PList::Array();
+			std::optional<std::string> fwdWeaponString = (standardEquipment != nullptr) ? OptionalStringIn(*standardEquipment, std::string(KEY_EQUIPMENT_FORWARD_WEAPON)) : std::nullopt;
+			std::optional<std::string> aftWeaponString = (standardEquipment != nullptr) ? OptionalStringIn(*standardEquipment, std::string(KEY_EQUIPMENT_AFT_WEAPON)) : std::nullopt;
+
+			const oo::PList *optionalEquipment = ship_info.get<oo::PList::Array>(std::string(KEY_OPTIONAL_EQUIPMENT));
+			std::vector<std::optional<std::string>> options;
+			if (optionalEquipment != nullptr)
+			{
+				for (std::size_t k = 0; k < optionalEquipment->count(); k++)  options.push_back(OptionalStringAt(*optionalEquipment, k));
+			}
+			OOCargoQuantity maxCargo = shipDict.get<unsigned int>("max_cargo");
+
+			// more info for potential purchasers - how to reveal this I'm not yet sure...
+			//std::optional<std::string> brochure_desc = [self brochureDescriptionWithDictionary:shipDict standardEquipment:extras optionalEquipment:options];
+			//OO_LOG("shipyard.brochure", "{} Brochure description : \"{}\"", oo::DescriptionOf([ship name]), brochure_desc);
+
+			shortShipDescription += TextOrNull(shipName) + ":";
+
+			OOWeaponFacingSet availableFacings = ship_info.get<unsigned int>(std::string(KEY_WEAPON_FACINGS), VALID_WEAPON_FACINGS) & VALID_WEAPON_FACINGS;
+
+			OOWeaponType fwdWeapon = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(fwdWeaponString.value_or(""));
+			OOWeaponType aftWeapon = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(aftWeaponString.value_or(""));
+			//port and starboard weapons are not modified in the shipyard
+			// apply fwd and aft weapons to the ship
+			if (fwdWeapon && fwdWeaponString) SetInDict(shipDict, std::string(KEY_EQUIPMENT_FORWARD_WEAPON), *fwdWeaponString);
+			if (aftWeapon && aftWeaponString) SetInDict(shipDict, std::string(KEY_EQUIPMENT_AFT_WEAPON), *aftWeaponString);
+
+			int passengerBerthCount = 0;
+			BOOL customised = NO;
+			BOOL weaponCustomized = NO;
+
+			std::optional<std::string> fwdWeaponDesc;
+
+			std::string shortExtrasKey = "shipyard-first-extra";
+
+			// for testing condition scripts
+			::ShipEntity *testship = [[::ProxyPlayerEntity alloc] cxx_initWithKey:ship_key definition:shipDict];
+			// customise the ship (if chance = 1, then ship will get all possible add ons)
+			while ((randf() < chance) && (options.size()))
+			{
+				chance *= chance;	//decrease the chance of a further customisation (unless it is 1, which might be a bug)
+				int				optionIndex = Ranrot() % options.size();
+				const std::optional<std::string>	equipmentKey = options[optionIndex];
+				::OOEquipmentType	*item = equipmentKey.has_value() ? [::OOEquipmentType cxx_equipmentTypeWithIdentifier:*equipmentKey] : nil;
+
+				if (item != nil)
+				{
+					OOTechLevelID		eqTechLevel = [item techLevel];
+					OOCreditsQuantity	eqPrice = [item price] / 10;	// all amounts are x/10 due to being represented in tenths of credits.
+					std::optional<std::string>	eqShortDesc = [item cxx_name];
+
+					if ([item techLevel] > techlevel)
+					{
+						// Cap maximum tech level.
+						eqTechLevel = MIN(eqTechLevel, 15U);
+
+						// Higher tech items are rarer!
+						if (randf() * (eqTechLevel - techlevel) < 1.0)
+						{
+							// All included equip has a 10% discount.
+							eqPrice *= (tech_price_boost + eqTechLevel - techlevel) * 90 / 100;
+						}
+						else
+							break;	// Bar this upgrade.
+					}
+
+					if ([item cxx_incompatibleEquipment].has_value())
+					{
+						BOOL						incompatible = NO;
+						const std::vector<std::string>	incompatibleKeys = *[item cxx_incompatibleEquipment];
+
+						for (const std::string &key : incompatibleKeys)
+						{
+							if (ContainsKey(extras, key))
+							{
+								RemoveOption(options, equipmentKey);
+								incompatible = YES;
+								break;
+							}
+						}
+						if (incompatible) break;
+
+						// make sure the incompatible equipment is not choosen later on.
+						for (const std::string &key : incompatibleKeys)
+						{
+							RemoveOption(options, key);
+						}
+					}
+
+					/* Check condition scripts */
+					std::optional<std::string> condition_script = [item cxx_conditionScript];
+					if (condition_script.has_value())
+					{
+						::OOJSScript *condScript = [self cxx_getConditionScript:*condition_script];
+						if (condScript != nil) // should always be non-nil, but just in case
+						{
+							ooscript::Context JScontext = OOJSAcquireContext();
+							BOOL OK;
+							bool allow_addition;
+							ooscript::Value result;
+							ooscript::Value args[] = { OOJSValueFromPList(JScontext, oo::PList(*equipmentKey)) , OOJSValueFromNativeObject(JScontext, testship) , OOJSValueFromPList(JScontext, oo::PList("newShip"))};
+
+							OK = [condScript callMethod:OOJSID("allowAwardEquipment")
+																inContext:JScontext
+														withArguments:args count:sizeof args / sizeof *args
+																	 result:&result];
+
+							if (OK) OK = ooscript::valueToBoolean(JScontext, result, &allow_addition);
+
+							OOJSRelinquishContext(JScontext);
+
+							if (OK && !allow_addition)
+							{
+								/* if the script exists, the function exists, the function
+								 * returns a bool, and that bool is false, block
+								 * addition. Otherwise allow it as default */
+								break;
+							}
+						}
+					}
+
+
+					if ([item cxx_requiresEquipment].has_value())
+					{
+						BOOL						missing = NO;
+
+						for (const std::string &key : [item cxx_requiresEquipment].value_or(std::vector<std::string>()))
+						{
+							if (!ContainsKey(extras, key))
+							{
+								missing = YES;
+							}
+						}
+						if (missing) break;
+					}
+
+					if ([item cxx_requiresAnyEquipment].has_value())
+					{
+						BOOL						missing = YES;
+
+						for (const std::string &key : [item cxx_requiresAnyEquipment].value_or(std::vector<std::string>()))
+						{
+							if (ContainsKey(extras, key))
+							{
+								missing = NO;
+							}
+						}
+						if (missing) break;
+					}
+
+					// Special case, NEU has to be compatible with EEU inside equipment.plist
+					// but we can only have either one or the other on board.
+					if (*equipmentKey == "EQ_NAVAL_ENERGY_UNIT")
+					{
+						if (ContainsKey(extras, "EQ_ENERGY_UNIT"))
+						{
+							RemoveOption(options, equipmentKey);
+							break;
+						}
+					}
+
+					if (oo::str::hasPrefix(*equipmentKey, "EQ_WEAPON"))
+					{
+						OOWeaponType new_weapon = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(*equipmentKey);
+						//fit best weapon forward
+						if (availableFacings & WEAPON_FACING_FORWARD && [new_weapon weaponThreatAssessment] > [fwdWeapon weaponThreatAssessment])
+						{
+							//again remember to divide price by 10 to get credits from tenths of credit
+							price -= (fwdWeaponString ? [self cxx_getEquipmentPriceForKey:*fwdWeaponString] : 0) * 90 / 1000;	// 90% credits
+							price += eqPrice;
+							fwdWeaponString = equipmentKey;
+							fwdWeapon = new_weapon;
+							SetInDict(shipDict, std::string(KEY_EQUIPMENT_FORWARD_WEAPON), *fwdWeaponString);
+							weaponCustomized = YES;
+							fwdWeaponDesc = eqShortDesc;
+						}
+						else
+						{
+							//if less good than current forward, try fitting is to rear
+							if (availableFacings & WEAPON_FACING_AFT && (isWeaponNone(aftWeapon) || [new_weapon weaponThreatAssessment] > [aftWeapon weaponThreatAssessment]))
+							{
+								price -= (aftWeaponString ? [self cxx_getEquipmentPriceForKey:*aftWeaponString] : 0) * 90 / 1000;	// 90% credits
+								price += eqPrice;
+								aftWeaponString = equipmentKey;
+								aftWeapon = new_weapon;
+								SetInDict(shipDict, std::string(KEY_EQUIPMENT_AFT_WEAPON), *aftWeaponString);
+							}
+							else
+							{
+								RemoveOption(options, equipmentKey); //dont try again
+							}
+						}
+
+					}
+					else
+					{
+						if (*equipmentKey == "EQ_PASSENGER_BERTH")
+						{
+							if ((maxCargo >= PASSENGER_BERTH_SPACE) && (randf() < chance))
+							{
+								maxCargo -= PASSENGER_BERTH_SPACE;
+								price += eqPrice;
+								extras.push_back(oo::PList(*equipmentKey));
+								passengerBerthCount++;
+								customised = YES;
+							}
+							else
+							{
+								// remove the option if there's no space left
+								RemoveOption(options, equipmentKey);
+							}
+						}
+						else
+						{
+							price += eqPrice;
+							extras.push_back(oo::PList(*equipmentKey));
+							if ([item isVisible])
+							{
+								shortShipDescription += ExpandKeyWith(shortExtrasKey, "item", eqShortDesc ? oo::PList(*eqShortDesc) : oo::PList());
+								shortExtrasKey = "shipyard-additional-extra";
+							}
+							customised = YES;
+							RemoveOption(options, equipmentKey); //dont add twice
+						}
+					}
+				}
+				else
+				{
+					RemoveOption(options, equipmentKey);
+				}
+			} // end adding optional equipment
+			[testship release];
+			// i18n: Some languages require that no conversion to lower case string takes place.
+			BOOL lowercaseIgnore = [self cxx_descriptions]->get<bool>("lowercase_ignore");
+
+			if (passengerBerthCount)
+			{
+				std::string npb = (passengerBerthCount > 1)? oo::str::format("%d ", passengerBerthCount) : std::string();
+				std::string ppb = cxx_OOLookUpPluralDescriptionPRIV("passenger-berth", passengerBerthCount);
+				std::string extraPassengerBerthsDescription = oo::str::formatRuntime(cxx_OOLookUpDescriptionPRIV("extra-@-@-(passenger-berths)"), { npb, ppb });
+				shortShipDescription += ExpandKeyWith(shortExtrasKey, "item", oo::PList(extraPassengerBerthsDescription));
+				shortExtrasKey = "shipyard-additional-extra";
+			}
+
+			if (!customised)
+			{
+				shortShipDescription += ExpandKey("shipyard-standard-customer-model");
+			}
+
+			if (weaponCustomized)
+			{
+				std::optional<std::string> weapon = fwdWeaponDesc;
+				if (!lowercaseIgnore && weapon.has_value())  weapon = oo::str::lowercase(*weapon);
+				shortShipDescription += ExpandKeyWith("shipyard-forward-weapon-upgraded", "weapon", weapon ? oo::PList(*weapon) : oo::PList());
+			}
+			if (price > base_price)
+			{
+				price = base_price + cunningFee(price - base_price, 0.05);
+			}
+
+			shortShipDescription += ExpandKeyWith("shipyard-price", "price", oo::PList(price));
+
+			std::string shipID = oo::str::format("%06x-%06x", superRand1, superRand2);
+
+			uint16_t personality = RanrotWithSeed(&personalitySeed) & ENTITY_PERSONALITY_MAX;
+
+			oo::PList::Dict ship_info_dictionary;
+			ship_info_dictionary[std::string(SHIPYARD_KEY_ID)] = oo::PList(shipID);
+			ship_info_dictionary[std::string(SHIPYARD_KEY_SHIPDATA_KEY)] = oo::PList(ship_key);
+			ship_info_dictionary[std::string(SHIPYARD_KEY_SHIP)] = shipDict;
+			ship_info_dictionary[std::string(KEY_SHORT_DESCRIPTION)] = oo::PList(shortShipDescription);
+			ship_info_dictionary[std::string(SHIPYARD_KEY_PRICE)] = oo::PList(price);
+			ship_info_dictionary[std::string(KEY_EQUIPMENT_EXTRAS)] = oo::PList(extras);
+			ship_info_dictionary[std::string(SHIPYARD_KEY_PERSONALITY)] = oo::PList(personality);
+
+			resultDictionary[shipID] = oo::PList(std::move(ship_info_dictionary));	// should order them fairly randomly
+		}
+
+		// next contract
+		rotate_seed(&ship_seed);
+		rotate_seed(&ship_seed);
+		rotate_seed(&ship_seed);
+		rotate_seed(&ship_seed);
+	}
+
+	oo::PList::Array resultArray;
+	for (auto &entry : resultDictionary)  resultArray.push_back(std::move(entry.second));
+	std::stable_sort(resultArray.begin(), resultArray.end(), [](const oo::PList &a, const oo::PList &b) { return compareName(a, b) < 0; });
+
+	// remove identically priced ships of the same name
+	i = 1;
+
+	while (i < resultArray.size())
+	{
+		if (compareName(resultArray[i - 1], resultArray[i]) == 0)
+		{
+			resultArray.erase(resultArray.begin() + i);
+		}
+		else
+		{
+			i++;
+		}
+	}
+
+	RANROTSetFullSeed(saved_seed);
+
+	return oo::PList(std::move(resultArray));
 }
 
 }	// namespace cxx

@@ -546,6 +546,9 @@ public:
 	Random_Seed marketSeed();
 	void loadStationMarkets(const oo::PList &marketData);
 	oo::PList getStationMarkets();
+
+	// Slice 22: ships for sale (cxx_shipsForSaleForSystem:withTL:atTime:).
+	oo::PList shipsForSaleForSystem(OOSystemID s, OOTechLevelID specialTL, OOTimeAbsolute current_time);
 };
 
 }	// namespace cxx
