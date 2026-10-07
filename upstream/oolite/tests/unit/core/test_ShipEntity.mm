@@ -29,6 +29,7 @@
 #import "OOCharacter.h"
 #import "AI.h"
 #import "PlayerEntity.h"
+#import "ShipEntityScriptMethods.h"
 
 #include "oo_test.hpp"
 
@@ -3223,6 +3224,26 @@ OO_TEST(slice34WeaponHelpers)
 	@autoreleasepool
 	{
 		OO_CHECK(isWeaponNone(nil));
+	}
+}
+
+
+// --- ShipEntityScriptMethods.mm (bead oo-42dr): the category ShipEntity (ScriptMethods) --------------
+// The cases that do not reach the universe (it was never initialised here): ejecting nothing and
+// spawning none. Ejecting or spawning a real ship needs the game's ship data, which the goldens run.
+
+OO_TEST(scriptMethodsEjectAndSpawnNothing)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("ejector");
+		// std::nullopt ejects nothing, as nil did.
+		OO_CHECK([ship ejectShipOfType:std::nullopt] == nil);
+		OO_CHECK([ship ejectShipOfRole:std::nullopt] == nil);
+		// A count of zero spawns nothing and answers an empty list.
+		OO_CHECK([ship spawnShipsWithRole:"trader" count:0].empty());
+		OO_CHECK([ship status] == STATUS_IN_FLIGHT);
 	}
 }
 
