@@ -6274,134 +6274,6 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 }	// namespace
 
 
-- (std::optional<std::string>) cxx_shortTimeDescription:(double) interval
-{
-	double r_time = interval;
-	std::string result;
-	int parts = 0;
-
-	if (interval <= 0.0)
-		return cxx_OOLookUpDescriptionPRIV("contracts-no-time");
-
-	if (r_time > 86400)
-	{
-		int days = floor(r_time / 86400);
-		r_time -= 86400 * days;
-		result = oo::str::format("%s %d %s", result.c_str(), days, cxx_OOLookUpPluralDescriptionPRIV("contracts-day-word", days).c_str());
-		parts++;
-	}
-	if (r_time > 3600)
-	{
-		int hours = floor(r_time / 3600);
-		r_time -= 3600 * hours;
-		result = oo::str::format("%s %d %s", result.c_str(), hours, cxx_OOLookUpPluralDescriptionPRIV("contracts-hour-word", hours).c_str());
-		parts++;
-	}
-	if (parts < 2 && r_time > 60)
-	{
-		int mins = floor(r_time / 60);
-		r_time -= 60 * mins;
-		result = oo::str::format("%s %d %s", result.c_str(), mins, cxx_OOLookUpPluralDescriptionPRIV("contracts-minute-word", mins).c_str());
-		parts++;
-	}
-	if (parts < 2 && r_time > 0)
-	{
-		int secs = floor(r_time);
-		result = oo::str::format("%s %d %s", result.c_str(), secs, cxx_OOLookUpPluralDescriptionPRIV("contracts-second-word", secs).c_str());
-	}
-	return oo::str::trim(result, oo::str::CharacterSet::whitespace());
-}
-
-
-- (void) makeSunSkimmer:(ShipEntity *) ship andSetAI:(BOOL)setAI
-{
-	if (setAI) [ship switchAITo:"oolite-traderAI.js"];	// perfectly acceptable for both route 2 & 3
-	[ship setFuel:(Ranrot()&31)];
-	// slow ships need extra insulation or they will burn up when sunskimming. (Tested at biggest sun in G3: Aenqute)
-	float minInsulation = 1000 / [ship maxFlightSpeed] + 1;
-	if ([ship heatInsulation] < minInsulation) [ship setHeatInsulation:minInsulation];
-}
-
-
-- (Random_Seed) marketSeed
-{
-	Random_Seed		ret = [_cxxUniverse->systemManager getRandomSeedForCurrentSystem];
-	
-	// adjust basic seed by market random factor
-	// which for (very bad) historical reasons is 0x80
-
-	ret.f ^= 0x80;	// XOR back to front
-	ret.e ^= ret.f;	// XOR
-	ret.d ^= ret.e;	// XOR
-	ret.c ^= ret.d;	// XOR
-	ret.b ^= ret.c;	// XOR
-	ret.a ^= ret.b;	// XOR
-	
-	return ret;
-}
-
-
-- (void) cxx_loadStationMarkets:(const oo::PList &)marketData
-{
-	if (marketData.isNull())
-	{
-		return;
-	}
-
-	const oo::PList::Array *savedMarkets = marketData.getIf<oo::PList::Array>();
-	if (savedMarkets == nullptr)  return;
-	for (const oo::PList &savedMarket : *savedMarkets)
-	{
-		HPVector pos = HPVectorIn(savedMarket, "position", kZeroHPVector);
-		for (const oo::ObjCRef<StationEntity *> &entry : [self cxx_stations])	// a snapshot
-		{
-			StationEntity *station = entry.get();
-			// must be deterministic and secondary
-			if ([station allowsSaving] && station != [UNIVERSE station])
-			{
-				// allow a km of drift just in case
-				if (HPdistance2(pos,[station position]) < 1000000)
-				{
-					const oo::PList *market = savedMarket.get<oo::PList::Array>("market");
-					[station cxx_setLocalMarket:(market != nullptr) ? *market : oo::PList()];
-					break;
-				}
-			}
-		}
-	}
-
-}
-
-
-// Saved in the savegame: the market rows as OOCommodityMarket saves them, the position as the
-// doubles from cxx_ArrayFromHPVector stored.
-- (oo::PList) cxx_getStationMarkets
-{
-	oo::PList::Array markets;
-
-	OOCommodityMarket *stationMarket = nil;
-
-	for (const oo::ObjCRef<StationEntity *> &entry : [self cxx_stations])	// a snapshot
-	{
-		StationEntity *station = entry.get();
-		// must be deterministic and secondary
-		if ([station allowsSaving] && station != [UNIVERSE station])
-		{
-			stationMarket = [station localMarket];
-			if (stationMarket != nil)
-			{
-				const HPVector position = [station position];
-				markets.push_back(oo::PList(oo::PList::Dict{
-					{ "market", [stationMarket cxx_saveStationAmounts] },
-					{ "position", oo::PList(oo::PList::Array{ oo::PList((double)position.x), oo::PList((double)position.y), oo::PList((double)position.z) }) } }));
-			}
-		}
-	}
-
-	return oo::PList(std::move(markets));
-}
-
-
 namespace {
 
 /*	-removeObjectAtIndex: on the shipyard's candidate keys: an index past the end raised
@@ -6411,7 +6283,7 @@ void RemoveKeyAt(std::vector<std::string> &keys, unsigned index)
 {
 	if (index >= keys.size())
 	{
-		[OOException raise:OORangeException format:"Index %lu is out of range %lu (in 'removeObjectAtIndex:')", (unsigned long)index, (unsigned long)keys.size()];
+		OORaiseException(OORangeException, "Index %lu is out of range %lu (in 'removeObjectAtIndex:')", (unsigned long)index, (unsigned long)keys.size());
 	}
 	keys.erase(keys.begin() + index);
 }
@@ -11892,6 +11764,145 @@ std::optional<std::string> Universe::timeDescription(double interval)
 		result = oo::str::format("%s %d second%s", result.c_str(), secs, (secs > 1) ? "s" : "");
 	}
 	return oo::str::trim(result, oo::str::CharacterSet::whitespace());
+}
+
+}	// namespace cxx
+
+
+// Slice 21 of docs/phases/3-slices/Universe.md (bead oo-enek8): short time descriptions, sun skimmers, station markets. The facade forwards
+// each selector (Universe+ObjCBridge.mm); sends to self stay sends (ADR-0056 amendments oo-riqmz,
+// oo-mvzmb).
+namespace cxx {
+
+std::optional<std::string> Universe::shortTimeDescription(double interval)
+{
+	double r_time = interval;
+	std::string result;
+	int parts = 0;
+
+	if (interval <= 0.0)
+		return cxx_OOLookUpDescriptionPRIV("contracts-no-time");
+
+	if (r_time > 86400)
+	{
+		int days = floor(r_time / 86400);
+		r_time -= 86400 * days;
+		result = oo::str::format("%s %d %s", result.c_str(), days, cxx_OOLookUpPluralDescriptionPRIV("contracts-day-word", days).c_str());
+		parts++;
+	}
+	if (r_time > 3600)
+	{
+		int hours = floor(r_time / 3600);
+		r_time -= 3600 * hours;
+		result = oo::str::format("%s %d %s", result.c_str(), hours, cxx_OOLookUpPluralDescriptionPRIV("contracts-hour-word", hours).c_str());
+		parts++;
+	}
+	if (parts < 2 && r_time > 60)
+	{
+		int mins = floor(r_time / 60);
+		r_time -= 60 * mins;
+		result = oo::str::format("%s %d %s", result.c_str(), mins, cxx_OOLookUpPluralDescriptionPRIV("contracts-minute-word", mins).c_str());
+		parts++;
+	}
+	if (parts < 2 && r_time > 0)
+	{
+		int secs = floor(r_time);
+		result = oo::str::format("%s %d %s", result.c_str(), secs, cxx_OOLookUpPluralDescriptionPRIV("contracts-second-word", secs).c_str());
+	}
+	return oo::str::trim(result, oo::str::CharacterSet::whitespace());
+}
+
+
+void Universe::makeSunSkimmer(::ShipEntity *ship, bool setAI)
+{
+	if (setAI) [ship switchAITo:"oolite-traderAI.js"];	// perfectly acceptable for both route 2 & 3
+	[ship setFuel:(Ranrot()&31)];
+	// slow ships need extra insulation or they will burn up when sunskimming. (Tested at biggest sun in G3: Aenqute)
+	float minInsulation = 1000 / [ship maxFlightSpeed] + 1;
+	if ([ship heatInsulation] < minInsulation) [ship setHeatInsulation:minInsulation];
+}
+
+
+Random_Seed Universe::marketSeed()
+{
+	Random_Seed		ret = [systemManager getRandomSeedForCurrentSystem];
+	
+	// adjust basic seed by market random factor
+	// which for (very bad) historical reasons is 0x80
+
+	ret.f ^= 0x80;	// XOR back to front
+	ret.e ^= ret.f;	// XOR
+	ret.d ^= ret.e;	// XOR
+	ret.c ^= ret.d;	// XOR
+	ret.b ^= ret.c;	// XOR
+	ret.a ^= ret.b;	// XOR
+	
+	return ret;
+}
+
+
+void Universe::loadStationMarkets(const oo::PList &marketData)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	if (marketData.isNull())
+	{
+		return;
+	}
+
+	const oo::PList::Array *savedMarkets = marketData.getIf<oo::PList::Array>();
+	if (savedMarkets == nullptr)  return;
+	for (const oo::PList &savedMarket : *savedMarkets)
+	{
+		HPVector pos = HPVectorIn(savedMarket, "position", kZeroHPVector);
+		for (const oo::ObjCRef<::StationEntity *> &entry : [self cxx_stations])	// a snapshot
+		{
+			::StationEntity *station = entry.get();
+			// must be deterministic and secondary
+			if ([station allowsSaving] && station != [UNIVERSE station])
+			{
+				// allow a km of drift just in case
+				if (HPdistance2(pos,[station position]) < 1000000)
+				{
+					const oo::PList *market = savedMarket.get<oo::PList::Array>("market");
+					[station cxx_setLocalMarket:(market != nullptr) ? *market : oo::PList()];
+					break;
+				}
+			}
+		}
+	}
+
+}
+
+
+// Saved in the savegame: the market rows as OOCommodityMarket saves them, the position as the
+// doubles from cxx_ArrayFromHPVector stored.
+oo::PList Universe::getStationMarkets()
+{
+	::Universe *self = oo::ToObjC(this);
+
+	oo::PList::Array markets;
+
+	::OOCommodityMarket *stationMarket = nil;
+
+	for (const oo::ObjCRef<::StationEntity *> &entry : [self cxx_stations])	// a snapshot
+	{
+		::StationEntity *station = entry.get();
+		// must be deterministic and secondary
+		if ([station allowsSaving] && station != [UNIVERSE station])
+		{
+			stationMarket = [station localMarket];
+			if (stationMarket != nil)
+			{
+				const HPVector position = [station position];
+				markets.push_back(oo::PList(oo::PList::Dict{
+					{ "market", [stationMarket cxx_saveStationAmounts] },
+					{ "position", oo::PList(oo::PList::Array{ oo::PList((double)position.x), oo::PList((double)position.y), oo::PList((double)position.z) }) } }));
+			}
+		}
+	}
+
+	return oo::PList(std::move(markets));
 }
 
 }	// namespace cxx

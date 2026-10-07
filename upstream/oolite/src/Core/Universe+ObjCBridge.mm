@@ -219,3 +219,14 @@ extern Universe *gSharedUniverse;
 - (std::optional<std::string>) timeDescription:(double) interval	{ return _cxxUniverse->timeDescription(interval); }
 
 @end
+
+
+@implementation Universe (OOSlice21)
+
+- (std::optional<std::string>) cxx_shortTimeDescription:(double) interval	{ return _cxxUniverse->shortTimeDescription(interval); }
+- (void) makeSunSkimmer:(ShipEntity *) ship andSetAI:(BOOL)setAI	{ _cxxUniverse->makeSunSkimmer(ship, setAI); }
+- (Random_Seed) marketSeed	{ return _cxxUniverse->marketSeed(); }
+- (void) cxx_loadStationMarkets:(const oo::PList &)marketData	{ _cxxUniverse->loadStationMarkets(marketData); }
+- (oo::PList) cxx_getStationMarkets	{ return _cxxUniverse->getStationMarkets(); }
+
+@end

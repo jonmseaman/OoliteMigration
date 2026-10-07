@@ -539,6 +539,13 @@ public:
 	oo::PList getEquipmentDataOutfitting();
 	::OOCommodityMarket *getCommodityMarket();
 	std::optional<std::string> timeDescription(double interval);
+
+	// Slice 21: short time descriptions, sun skimmers, station markets.
+	std::optional<std::string> shortTimeDescription(double interval);
+	void makeSunSkimmer(::ShipEntity *ship, bool setAI);
+	Random_Seed marketSeed();
+	void loadStationMarkets(const oo::PList &marketData);
+	oo::PList getStationMarkets();
 };
 
 }	// namespace cxx
