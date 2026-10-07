@@ -27,6 +27,7 @@ MA 02110-1301, USA.
 
 #if OO_OXP_VERIFIER_ENABLED
 
+#import "OOTexture.h"
 #import "OOTextureLoader.h"
 #import "OOFileScannerVerifierStage.h"
 #import "OOMaths.h"
