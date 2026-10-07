@@ -1,8 +1,11 @@
 /*
 
-OOCheckPListSyntaxVerifierStage.h
+OOJSSpecialFunctions+ObjCBridge.h
 
-OOOXPVerifierStage which checks that plists have correct syntax
+TRANSITIONAL (proposed ADR-0056): the one-line bridge from cxx_JSSpecialFunctionsObjectWrapper()
+(OOJSSpecialFunctions.h, plain C++) to the Objective-C OOJSValue that its remaining callers
+(OOJavaScriptEngine.mm, OODebugMonitor.mm) hand to Objective-C collections. Deleted when they
+convert and take the cxx::OOJSValue directly.
 
 
 Oolite
@@ -25,21 +28,7 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOFileScannerVerifierStage.h"
+#import "OOJavaScriptEngine.h"
 
-#if OO_OXP_VERIFIER_ENABLED
 
-/*	C++20 since bead oo-li7k (proposed ADR-0056 Amendment 1, amendment oo-up4b item 6): a leaf of
-	OOFileHandlingVerifierStage. It is global and has no facade: nothing outside this file
-	names it, the verifier makes it from its name (kCxxStages in OOOXPVerifier.mm) and holds it
-	(as its OOOXPVerifierStage facade until bead oo-9ht.4).
-*/
-class OOCheckPListSyntaxVerifierStage : public OOFileHandlingVerifierStage
-{
-public:
-	std::optional<std::string> name() override;
-	bool shouldRun() override;
-	void run() override;
-};
-
-#endif
+extern "C" OOJSValue *JSSpecialFunctionsObjectWrapper(ooscript::Context context);
