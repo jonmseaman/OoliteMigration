@@ -997,6 +997,43 @@ public:
 	void launchShipWithRole(const std::string &param);
 	void abortAllDockings();
 
+	// ShipEntityAI.mm slice 2: PureAI part 1: state, speed, scans for prey and loot, planets, legal status.
+	void setStateTo(const std::string &state);
+	void pauseAI(const std::string &intervalString);
+	void randomPauseAI(const std::string &intervalString);
+	void dropMessages(const std::string &messageString);
+	void debugDumpPendingMessages();
+	void setDestinationToCurrentLocation();
+	void setDestinationToJinkPosition();
+	void setDesiredRangeTo(const std::string &rangeString);
+	void setDesiredRangeForWaypoint();
+	void setSpeedTo(const std::string &speedString);
+	void setSpeedFactorTo(const std::string &speedString);
+	void setSpeedToCruiseSpeed();
+	void setThrustFactorTo(const std::string &thrustFactorString);
+	void setTargetToPrimaryAggressor();
+	void addPrimaryAggressorAsDefenseTarget();
+	void scanForNearestMerchantman();
+	void scanForRandomMerchantman();
+	void scanForLoot();
+	void scanForRandomLoot();
+	void setTargetToFoundTarget();
+	void addFoundTargetAsDefenseTarget();
+	void checkForFullHold();
+	void getWitchspaceEntryCoordinates();
+	void setDestinationFromCoordinates();
+	void setCoordinatesFromPosition();
+	void fightOrFleeMissile();
+	void setCourseToPlanet();
+	void setTakeOffFromPlanet();
+	void landOnPlanet();
+	void checkTargetLegalStatus();
+	void checkOwnLegalStatus();
+	void exitAIWithMessage(const std::string &message);
+	void setDestinationToTarget();
+	void setDestinationWithinTarget();
+	void checkCourseToDestination();
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired

@@ -392,4 +392,216 @@ OO_TEST(slice1MembersFromCxx)
 }
 
 
+// --- Slice 2: PureAI part 1: state, speed, scans for prey and loot, planets, legal status (bead
+// oo-xurzn) ------------------------------------------------------------------------------------
+
+// The private category PureAI of ShipEntityAI.mm.
+@interface ShipEntity (TestPureAI1)
+- (void) setStateTo:(const std::string &)state;
+- (void) pauseAI:(const std::string &)intervalString;
+- (void) randomPauseAI:(const std::string &)intervalString;
+- (void) dropMessages:(const std::string &)messageString;
+- (void) debugDumpPendingMessages;
+- (void) setDestinationToCurrentLocation;
+- (void) setDestinationToJinkPosition;
+- (void) setDesiredRangeTo:(const std::string &)rangeString;
+- (void) setDesiredRangeForWaypoint;
+- (void) setSpeedTo:(const std::string &)speedString;
+- (void) setSpeedFactorTo:(const std::string &)speedString;
+- (void) setSpeedToCruiseSpeed;
+- (void) setThrustFactorTo:(const std::string &)thrustFactorString;
+- (void) setTargetToPrimaryAggressor;
+- (void) addPrimaryAggressorAsDefenseTarget;
+- (void) scanForNearestMerchantman;
+- (void) scanForRandomMerchantman;
+- (void) scanForLoot;
+- (void) scanForRandomLoot;
+- (void) setTargetToFoundTarget;
+- (void) addFoundTargetAsDefenseTarget;
+- (void) checkForFullHold;
+- (void) getWitchspaceEntryCoordinates;
+- (void) setDestinationFromCoordinates;
+- (void) setCoordinatesFromPosition;
+- (void) fightOrFleeMissile;
+- (void) setCourseToPlanet;
+- (void) setTakeOffFromPlanet;
+- (void) checkTargetLegalStatus;
+- (void) checkOwnLegalStatus;
+- (void) exitAIWithMessage:(const std::string &)message;
+- (void) setDestinationToTarget;
+- (void) setDestinationWithinTarget;
+@end
+
+
+namespace {
+
+void SetPosition2(Entity *e, HPVector p)			{ e->_cxxEntity->position = p; }
+HPVector Coordinates2(ShipEntity *s)				{ return s->_cxxShip->coordinates; }
+void SetCoordinates2(ShipEntity *s, HPVector c)	{ s->_cxxShip->coordinates = c; }
+void SetCruiseSpeed2(ShipEntity *s, GLfloat v)	{ s->_cxxShip->cruiseSpeed = v; }
+void SetMaxThrust2(ShipEntity *s, GLfloat v)		{ s->_cxxShip->max_thrust = v; }
+GLfloat Thrust2(ShipEntity *s)					{ return s->_cxxShip->thrust; }
+bool PitchingOver2(ShipEntity *s)				{ return s->_cxxShip->pitching_over; }
+void SetCollisionRadius2(Entity *e, GLfloat r)	{ e->_cxxEntity->collision_radius = r; }
+
+}	// namespace
+
+
+OO_TEST(slice2SpeedAndRange)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestAIShip *ship = MakeShip("speedy");
+		SetMaxFlight(ship, 600, 1, 1);
+		[ship setDesiredRangeTo:"123.5"];
+		OO_CHECK(DesiredRange(ship) == 123.5f);
+		[ship setDesiredRangeForWaypoint];
+		OO_CHECK(DesiredRange(ship) == 100.0f);		// top speed / pitch / 6
+		SetMaxFlight(ship, 60, 1, 1);
+		[ship setDesiredRangeForWaypoint];
+		OO_CHECK(DesiredRange(ship) == 50.0f);			// at least 50
+
+		[ship setSpeedTo:"42"];
+		OO_CHECK(DesiredSpeed(ship) == 42.0f);
+		SetMaxFlight(ship, 100, 1, 1);
+		[ship setSpeedFactorTo:"0.5"];
+		OO_CHECK(DesiredSpeed(ship) == 50.0f);
+		SetCruiseSpeed2(ship, 80);
+		[ship setSpeedToCruiseSpeed];
+		OO_CHECK(DesiredSpeed(ship) == 80.0f);
+
+		SetMaxThrust2(ship, 20);
+		[ship setThrustFactorTo:"0.25"];
+		OO_CHECK(Thrust2(ship) == 5.0f);
+		[ship setThrustFactorTo:"3"];					// clamped to 1
+		OO_CHECK(Thrust2(ship) == 20.0f);
+	}
+}
+
+
+OO_TEST(slice2Destinations)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestAIShip *ship = MakeShip("navigator");
+		TestAIShip *target = MakeShip("target");
+		SetPosition2(ship, make_HPvector(10, 20, 30));
+		[ship setDestinationToCurrentLocation];
+		OO_CHECK(HPdistance(Destination(ship), make_HPvector(10, 20, 30)) <= 0.5 + 1e-6);
+
+		[ship setCoordinatesFromPosition];
+		OO_CHECK(HPdistance2(Coordinates2(ship), make_HPvector(10, 20, 30)) == 0);
+		SetCoordinates2(ship, make_HPvector(1, 2, 3));
+		[ship setDestinationFromCoordinates];
+		OO_CHECK(HPdistance2(Destination(ship), make_HPvector(1, 2, 3)) == 0);
+
+		// No target: the destination stays.
+		[ship setDestinationToTarget];
+		[ship setDestinationWithinTarget];
+		OO_CHECK(HPdistance2(Destination(ship), make_HPvector(1, 2, 3)) == 0);
+		SetPosition2(target, make_HPvector(500, 0, 0));
+		SetCollisionRadius2(target, 20);
+		SetPrimaryTarget(ship, target);
+		[ship setDestinationToTarget];
+		OO_CHECK(HPdistance2(Destination(ship), make_HPvector(500, 0, 0)) == 0);
+		[ship setDestinationWithinTarget];
+		OO_CHECK(HPdistance(Destination(ship), make_HPvector(500, 0, 0)) <= 20 + 1e-3);
+
+		[ship setOrientation:kIdentityQuaternion];
+		[ship setDestinationToJinkPosition];
+		OO_CHECK(PitchingOver2(ship));
+
+		// No station in the universe: ten seconds of flight forward.
+		SetMaxFlight(ship, 100, 1, 1);
+		SetPosition2(ship, make_HPvector(0, 0, 0));
+		[ship getWitchspaceEntryCoordinates];
+		OO_CHECK(HPdistance(Coordinates2(ship), make_HPvector(0, 0, 1000)) < 1e-3);
+	}
+}
+
+
+OO_TEST(slice2TargetsAndScans)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestAIShip *ship = MakeShip("hunter");
+		TestAIShip *other = MakeShip("other");
+		SetScannerRange(ship, 25000);
+
+		// No aggressor: nothing to target or defend against.
+		[ship setTargetToPrimaryAggressor];
+		[ship addPrimaryAggressorAsDefenseTarget];
+		OO_CHECK([ship primaryTarget] == nil && ![ship isDefenseTarget:other]);
+
+		// The found target becomes the primary target; none found, none taken.
+		[ship setTargetToFoundTarget];
+		OO_CHECK([ship primaryTarget] == nil);
+		[ship setFoundTarget:other];
+		[ship setTargetToFoundTarget];
+		OO_CHECK([ship primaryTarget] == other);
+
+		// Scans in an empty universe forget the found target.
+		[ship setFoundTarget:other];
+		[ship scanForNearestMerchantman];
+		OO_CHECK([ship foundTarget] == nil);
+		[ship setFoundTarget:other];
+		[ship scanForRandomMerchantman];
+		OO_CHECK([ship foundTarget] == nil);
+		[ship setFoundTarget:other];
+		[ship scanForRandomLoot];			// no scoop: gives up before the scan
+		OO_CHECK([ship foundTarget] == other);
+		[ship scanForLoot];				// no scoop: gives up before the scan
+		OO_CHECK([ship foundTarget] == other);
+		[ship fightOrFleeMissile];		// no missile coming
+		OO_CHECK([ship foundTarget] == other && [ship primaryTarget] == other);
+	}
+}
+
+
+// The methods that only tell the AI (the test's ships have none) or log run without effect.
+OO_TEST(slice2MessagesOnly)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestAIShip *ship = MakeShip("quiet");
+		SetBehaviour(ship, BEHAVIOUR_IDLE);
+		[ship setStateTo:"GLOBAL"];
+		[ship pauseAI:"2.5"];
+		[ship randomPauseAI:"1 2"];
+		[ship randomPauseAI:"1"];			// a syntax error: logged
+		[ship dropMessages:"A, B ,C"];
+		[ship debugDumpPendingMessages];
+		[ship checkForFullHold];
+		[ship checkTargetLegalStatus];
+		[ship checkOwnLegalStatus];
+		[ship exitAIWithMessage:""];
+		[ship setCourseToPlanet];			// no planet
+		[ship setTakeOffFromPlanet];		// no planet: logged
+		OO_CHECK(Behaviour(ship) == BEHAVIOUR_IDLE && [ship status] == STATUS_IN_FLIGHT);
+	}
+}
+
+
+// From C++ (after the conversion): the members.
+OO_TEST(slice2MembersFromCxx)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestAIShip *ship = MakeShip("member2");
+		cxx::ShipEntity *part = ship->_cxxShip;
+		part->setSpeedTo("7");
+		OO_CHECK(DesiredSpeed(ship) == 7.0f);
+		SetPosition2(ship, make_HPvector(4, 5, 6));
+		part->setCoordinatesFromPosition();
+		part->setDestinationFromCoordinates();
+		OO_CHECK(HPdistance2(Destination(ship), make_HPvector(4, 5, 6)) == 0);
+	}
+}
+
+
 OO_TEST_MAIN()
