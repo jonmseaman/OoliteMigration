@@ -46,6 +46,9 @@
 	OOJSScript, OORoleSet, OOShipGroup, OOEquipmentType, OOWeakSet,
 	OOExhaustPlumeEntity, OOFlasherEntity;
 
+// Universe.h's, for the members of ShipEntityAI.mm's scans (ADR-0056 amendment oo-42dr item 3).
+typedef BOOL (*EntityFilterPredicate)(Entity *entity, void *parameter);
+
 #define MAX_TARGETS						24
 #define RAIDER_MAX_CARGO				5
 #define MERCHANTMAN_MAX_CARGO			125
@@ -939,6 +942,60 @@ public:
 	oo::PList savedShipDictionaryWithContext(OOShipSaveContext *context);
 	static ::ShipEntity *shipRestoredFromDictionary(const oo::PList &dictionary, bool fallback, OOShipSaveContext *context);	// autoreleased; nil if it can't
 	void simplifyShipdata(oo::PList::Dict &data, std::vector<std::string> *deletes);	// the file's private category LoadRestoreInternal
+
+	// ShipEntityAI.mm slice 1: AI category, OOAIPrivate (ship and station) and the station stubs.
+	void setAITo(const std::string &aiString);
+	void setAIScript(const std::string &aiString);
+	void switchAITo(const std::string &aiString);
+	void scanForHostiles();
+	void groupAttackTarget();
+	void performAttack();
+	void performCollect();
+	void performEscort();
+	void performFaceDestination();
+	void performFlee();
+	void performFlyToRangeFromDestination();
+	void performHold();
+	void performIdle();
+	void performIntercept();
+	void performLandOnPlanet();
+	void performMining();
+	void performScriptedAI();
+	void performScriptedAttackAI();
+	void performBuoyTumble();
+	void performStop();
+	void performTumble();
+	bool performHyperSpaceToSpecificSystem(OOSystemID systemID);
+	void requestDockingCoordinates();
+	void recallDockingInstructions();
+	void scanForNearestIncomingMissile();
+	void enterPlayerWormhole();
+	void enterTargetWormhole();
+	void wormholeEscorts();
+	void wormholeEntireGroup();
+	bool suggestEscortTo(::ShipEntity *mother);
+	void broadcastDistressMessage();
+	void broadcastDistressMessageWithDumping(bool dumpCargo);
+	void checkFoundTarget();
+	bool performHyperSpaceExitReplace(bool replace);
+	bool performHyperSpaceExitReplace(bool replace, OOSystemID systemID);
+	void scanForNearestShipWithPredicate(EntityFilterPredicate predicate, void *parameter);
+	void scanForNearestShipWithNegatedPredicate(EntityFilterPredicate predicate, void *parameter);
+	virtual void acceptDistressMessageFrom(::ShipEntity *other);
+	// ShipEntityAI.mm slice 1: the category OOAIStationStubs (StationEntity's ObjC methods answer for a station).
+	void increaseAlertLevel();
+	void decreaseAlertLevel();
+	oo::PList launchPolice();
+	void launchDefenseShip();
+	void launchScavenger();
+	void launchMiner();
+	void launchPirateShip();
+	void launchShuttle();
+	void launchTrader();
+	void launchEscort();
+	bool launchPatrol();
+	void launchShipWithRole(const std::string &param);
+	void abortAllDockings();
 
 	// @public in Objective-C
 	// derived variables

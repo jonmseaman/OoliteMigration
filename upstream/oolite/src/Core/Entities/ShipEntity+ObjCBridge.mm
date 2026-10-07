@@ -1064,3 +1064,76 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 + (id) shipRestoredFromDictionary:(const oo::PList &)dictionary useFallback:(BOOL)fallback context:(OOShipSaveContext *)context	{ return cxx::ShipEntity::shipRestoredFromDictionary(dictionary, fallback, context); }
 
 @end
+
+
+// ShipEntityAI.mm slice 1 (bead oo-iebuz): the category ShipEntity (AI).
+@implementation ShipEntity (AI)
+
+- (void) setAITo:(const std::string &)aiString	{ _cxxShip->setAITo(aiString); }
+- (void) setAIScript:(const std::string &)aiString	{ _cxxShip->setAIScript(aiString); }
+- (void) switchAITo:(const std::string &)aiString	{ _cxxShip->switchAITo(aiString); }
+- (void) scanForHostiles	{ _cxxShip->scanForHostiles(); }
+- (void) groupAttackTarget	{ _cxxShip->groupAttackTarget(); }
+- (void) performAttack	{ _cxxShip->performAttack(); }
+- (void) performCollect	{ _cxxShip->performCollect(); }
+- (void) performEscort	{ _cxxShip->performEscort(); }
+- (void) performFaceDestination	{ _cxxShip->performFaceDestination(); }
+- (void) performFlee	{ _cxxShip->performFlee(); }
+- (void) performFlyToRangeFromDestination	{ _cxxShip->performFlyToRangeFromDestination(); }
+- (void) performHold	{ _cxxShip->performHold(); }
+- (void) performIdle	{ _cxxShip->performIdle(); }
+- (void) performIntercept	{ _cxxShip->performIntercept(); }
+- (void) performLandOnPlanet	{ _cxxShip->performLandOnPlanet(); }
+- (void) performMining	{ _cxxShip->performMining(); }
+- (void) performScriptedAI	{ _cxxShip->performScriptedAI(); }
+- (void) performScriptedAttackAI	{ _cxxShip->performScriptedAttackAI(); }
+- (void) performBuoyTumble	{ _cxxShip->performBuoyTumble(); }
+- (void) performStop	{ _cxxShip->performStop(); }
+- (void) performTumble	{ _cxxShip->performTumble(); }
+- (BOOL) performHyperSpaceToSpecificSystem:(OOSystemID)systemID	{ return _cxxShip->performHyperSpaceToSpecificSystem(systemID); }
+- (void) requestDockingCoordinates	{ _cxxShip->requestDockingCoordinates(); }
+- (void) recallDockingInstructions	{ _cxxShip->recallDockingInstructions(); }
+- (void) scanForNearestIncomingMissile	{ _cxxShip->scanForNearestIncomingMissile(); }
+- (void) enterPlayerWormhole	{ _cxxShip->enterPlayerWormhole(); }
+- (void) enterTargetWormhole	{ _cxxShip->enterTargetWormhole(); }
+- (void) wormholeEscorts	{ _cxxShip->wormholeEscorts(); }
+- (void) wormholeEntireGroup	{ _cxxShip->wormholeEntireGroup(); }
+- (BOOL) suggestEscortTo:(ShipEntity *)mother	{ return _cxxShip->suggestEscortTo(mother); }
+- (void) broadcastDistressMessage	{ _cxxShip->broadcastDistressMessage(); }
+- (void) broadcastDistressMessageWithDumping:(BOOL)dumpCargo	{ _cxxShip->broadcastDistressMessageWithDumping(dumpCargo); }
+
+@end
+
+
+// ShipEntityAI.mm slice 1 (bead oo-iebuz): the category ShipEntity (OOAIPrivate).
+@implementation ShipEntity (OOAIPrivate)
+
+- (void) checkFoundTarget	{ _cxxShip->checkFoundTarget(); }
+- (BOOL) performHyperSpaceExitReplace:(BOOL)replace	{ return _cxxShip->performHyperSpaceExitReplace(replace); }
+- (BOOL) performHyperSpaceExitReplace:(BOOL)replace toSystem:(OOSystemID)systemID	{ return _cxxShip->performHyperSpaceExitReplace(replace, systemID); }
+- (void) scanForNearestShipWithPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter	{ _cxxShip->scanForNearestShipWithPredicate(predicate, parameter); }
+- (void) scanForNearestShipWithNegatedPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter	{ _cxxShip->scanForNearestShipWithNegatedPredicate(predicate, parameter); }
+- (void) acceptDistressMessageFrom:(ShipEntity *)other	{ _cxxShip->cxx::ShipEntity::acceptDistressMessageFrom(other); }
+
+@end
+
+
+// ShipEntityAI.mm slice 1 (bead oo-iebuz): the category ShipEntity (OOAIStationStubs), which no
+// header declares (StationEntity declares the selectors it answers for a station).
+@implementation ShipEntity (OOAIStationStubs)
+
+- (void) increaseAlertLevel	{ _cxxShip->increaseAlertLevel(); }
+- (void) decreaseAlertLevel	{ _cxxShip->decreaseAlertLevel(); }
+- (oo::PList) launchPolice	{ return _cxxShip->launchPolice(); }
+- (void) launchDefenseShip	{ _cxxShip->launchDefenseShip(); }
+- (void) launchScavenger	{ _cxxShip->launchScavenger(); }
+- (void) launchMiner	{ _cxxShip->launchMiner(); }
+- (void) launchPirateShip	{ _cxxShip->launchPirateShip(); }
+- (void) launchShuttle	{ _cxxShip->launchShuttle(); }
+- (void) launchTrader	{ _cxxShip->launchTrader(); }
+- (void) launchEscort	{ _cxxShip->launchEscort(); }
+- (BOOL) launchPatrol	{ return _cxxShip->launchPatrol(); }
+- (void) launchShipWithRole:(const std::string &)param	{ _cxxShip->launchShipWithRole(param); }
+- (void) abortAllDockings	{ _cxxShip->abortAllDockings(); }
+
+@end

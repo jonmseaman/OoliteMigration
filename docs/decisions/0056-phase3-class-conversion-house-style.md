@@ -4476,3 +4476,40 @@ façade (`cxx::WormholeEntity`, `cxx::ShipEntity::spawn()`).
 
 **Consequences.** No `@implementation` is left in the ship's category files; their callers are
 unchanged and reach the members through the façade until their own conversion.
+
+## Amendment (bead oo-iebuz): ShipEntityAI.mm, a category file converted slice by slice
+
+- Date: 2026-10-07. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Plan:
+  `docs/phases/3-slices/ShipEntityAI.md` (beads oo-iebuz, oo-xurzn, oo-wc9o3, oo-lqyhf). Exemplar:
+  `src/Core/Entities/ShipEntityAI.h/.mm`, the blocks of `ShipEntity.h`, `StationEntity.h` and the
+  two façades' bridge files naming them, `tests/unit/core/test_ShipEntityAI.mm`. Follows amendments
+  oo-42dr (the ship's category files), oo-mvzmb (later slices) and oo-64ako (the station's shell).
+
+**Context.** `ShipEntityAI.mm` holds four categories of `ShipEntity` (`AI`, `PureAI`,
+`OOAIPrivate`, the macro-generated `OOAIStationStubs`) and one of `StationEntity`
+(`OOAIPrivate`), in four slices; `PureAI` alone spans slices 2-4.
+
+**Decision (recommended defaults).**
+
+1. **Amendment oo-42dr per slice:** the slice's methods are `cxx::ShipEntity` members defined in a
+   `namespace cxx` block at the end of `ShipEntityAI.mm`, declared in a block of `cxx::ShipEntity`
+   naming the slice. A category the slice empties (`AI`, `OOAIPrivate`; `PureAI` at slice 4) keeps
+   its name: its `@interface` moves whole to `ShipEntity+ObjCBridge.h` and its forwarders to
+   `ShipEntity+ObjCBridge.mm`. A category the slice only thins (`PureAI` at slices 2 and 3)
+   forwards from `ShipEntity (OOAISliceN)`, whose `@interface` takes the moved declarations from
+   the private one, so the category's remaining `@implementation` stays complete. A selector no
+   interface declared (`-performBuoyTumble`) is declared with its category's.
+2. **The station's unit is a member of `cxx::StationEntity`** (`acceptDistressMessageFrom()`,
+   `override` of the ship's, which is `virtual` and has its line in `oo::ObjCShipEntity`); its
+   category's `@interface` and forwarder move to `StationEntity+ObjCBridge.h/.mm`.
+3. **The macro-generated stubs are written out as members** (`increaseAlertLevel()` …
+   `abortAllDockings()`), each logging through one file-local function, and forwarded by an
+   implementation-only `ShipEntity (OOAIStationStubs)` in the bridge `.mm`, as the macros made it:
+   `StationEntity` declares the selectors with its own return types. They are not virtual: nothing
+   calls them from C++, AI plists send them by name, and the station's `-launchDefenseShip` answers
+   a ship where the stub answered nothing, which no C++ override can.
+4. **`ShipEntity.h` repeats `Universe.h`'s `EntityFilterPredicate` typedef** for the scans'
+   members (amendment oo-42dr item 3).
+
+**Consequences.** `ShipEntityAI.h` keeps only its imports for the files that import it; the
+ship's façade deletion bead (oo-9ht.144) removes the forwarding categories with the others.

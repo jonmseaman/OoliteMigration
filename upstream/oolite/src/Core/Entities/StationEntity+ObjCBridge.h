@@ -175,6 +175,17 @@ MA 02110-1301, USA.
 @end
 
 
+
+// The category StationEntity (OOAIPrivate) of ShipEntityAI.mm, slice 1 of
+// docs/phases/3-slices/ShipEntityAI.md (bead oo-iebuz): a member of cxx::StationEntity defined in that
+// file, forwarded by the category of the same name in StationEntity+ObjCBridge.mm.
+@interface StationEntity (OOAIPrivate)
+
+- (void) acceptDistressMessageFrom:(ShipEntity *)other;
+
+@end
+
+
 namespace oo {
 
 // The root's crossings, typed (amendment oo-up4b item 3).

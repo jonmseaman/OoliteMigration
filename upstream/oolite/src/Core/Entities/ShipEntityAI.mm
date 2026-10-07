@@ -100,29 +100,6 @@ using ooscript::Context;
 // Byte-identical façade <-> jsapi view, local to this call site (see OOJSVector.mm).
 
 
-
-@interface ShipEntity (OOAIPrivate)
-
-- (void) checkFoundTarget;
-
-- (BOOL)performHyperSpaceExitReplace:(BOOL)replace;
-- (BOOL)performHyperSpaceExitReplace:(BOOL)replace toSystem:(OOSystemID)systemID;
-
-- (void)scanForNearestShipWithPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter;
-- (void)scanForNearestShipWithNegatedPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter;
-
-- (void) acceptDistressMessageFrom:(ShipEntity *)other;
-
-@end
-
-
-@interface StationEntity (OOAIPrivate)
-
-- (void) acceptDistressMessageFrom:(ShipEntity *)other;
-
-@end
-
-
 @interface ShipEntity (PureAI)
 
 // Methods used only by AI.
@@ -296,592 +273,6 @@ using ooscript::Context;
 - (void) addPrimaryAggressorAsDefenseTarget;
 - (void) addFoundTargetAsDefenseTarget;
 - (void) findNewDefenseTarget;
-
-@end
-
-
-@implementation ShipEntity (AI)
-
-
-- (void) setAITo:(const std::string &)aiString	// called by name (ADR-0055 item 5)
-{
-	std::string ai = aiString;
-	// don't try to load real AIs if the game hasn't started yet
-	if (![PLAYER scriptsLoaded])
-	{
-		ai = "oolite-nullAI.js";
-	}
-	if (oo::str::hasSuffix(ai, ".plist"))
-	{
-		[[self getAI] cxx_setStateMachine:ai withJSScript:"oolite-nullAI.js"];
-		[self setAIScript:"oolite-nullAI.js"];
-	}
-	else if (oo::str::hasSuffix(ai, ".js"))
-	{
-		[[self getAI] cxx_setStateMachine:"nullAI.plist" withJSScript:ai];
-		[self setAIScript:ai];
-	}
-	else
-	{
-		const std::optional<std::string> path = [ResourceManager cxx_pathForFileNamed:ai + ".js" inFolder:std::string("AIs")];
-		if (!path) // no js, use plist
-		{
-			[self setAITo:ai + ".plist"];
-		}
-		else
-		{
-			[self setAITo:ai + ".js"];
-		}
-	}
-}
-
-
-- (void) setAIScript:(const std::string &)aiString
-{
-	const oo::PList properties(oo::PList::Dict{ { "ship", oo::PListObject(self) } });
-	
-	[_cxxShip->aiScript autorelease];
-	_cxxShip->aiScript = [OOScript cxx_jsAIScriptFromFileNamed:aiString properties:properties];
-	if (_cxxShip->aiScript == nil)
-	{
-		OO_LOG("ai.load.failed.unknownAI", "Unable to load JS AI {} for ship {} ({} for role {})", aiString, oo::DescriptionOf(self), [self cxx_shipDataKey].value_or("(null)"), [self cxx_primaryRole].value_or("(null)"));
-		_cxxShip->aiScript = [OOScript cxx_jsAIScriptFromFileNamed:"oolite-nullAI.js" properties:properties];
-	}
-	else
-	{
-		_cxxShip->aiScriptWakeTime = 0;
-		_cxxShip->haveStartedJSAI = NO;
-	}
-	[_cxxShip->aiScript retain];
-}
-
-
-- (void) switchAITo:(const std::string &)aiString	// called by name (ADR-0055 item 5)
-{
-	[self setAITo:aiString];
-	[[self getAI] clearStack];
-}
-
-
-- (void) scanForHostiles
-{
-	/*-- Locates all the ships in range targeting the receiver and chooses the nearest --*/
-	DESTROY(_cxxShip->_foundTarget);
-	
-	[self checkScanner];
-	unsigned i;
-	GLfloat found_d2 = _cxxShip->scannerRange * _cxxShip->scannerRange;
-	for (i = 0; i < _cxxShip->n_scanned_ships ; i++)
-	{
-		ShipEntity *thing = _cxxShip->scanned_ships[i];
-		GLfloat d2 = _cxxShip->distance2_scanned_ships[i];
-		if ((d2 < found_d2) 
-			&& ([thing isThargoid] || (([thing primaryTarget] == self) && [thing hasHostileTarget]) || [thing isDefenseTarget:self])
-			&& ![thing isCloaked])
-		{
-			[self setFoundTarget:thing];
-			found_d2 = d2;
-		}
-	}
-	
-	[self checkFoundTarget];
-}
-
-
-- (void) groupAttackTarget
-{
-	ShipEntity			*target = nil, *ship = nil;
-
-	target = [self primaryTarget];
-	
-	if (target == nil) return;
-	
-	if ([self group] == nil)		// ship is alone!
-	{
-		[self setFoundTarget:target];
-		[_cxxShip->shipAI cxx_reactToMessage:"GROUP_ATTACK_TARGET" context:"groupAttackTarget"];
-		[self doScriptEvent:OOJSID("helpRequestReceived") withArgument:self andArgument:target];
-		return;
-	}
-	
-	for (const oo::ObjCRef<ShipEntity *> &member : [[self group] cxx_memberArray])
-	{
-		ship = member.get();
-		[ship setFoundTarget:target];
-		[ship cxx_reactToAIMessage:"GROUP_ATTACK_TARGET" context:"groupAttackTarget"];
-		[ship doScriptEvent:OOJSID("helpRequestReceived") withArgument:self andArgument:target];
-
-		if ([ship escortGroup] != [ship group] && [[ship escortGroup] count] > 1) // Ship has a seperate escort group.
-		{
-			for (const oo::ObjCRef<ShipEntity *> &escortRef : [[ship escortGroup] cxx_memberArrayExcludingLeader])
-			{
-				ShipEntity		*escort = escortRef.get();
-				[escort setFoundTarget:target];
-				[escort cxx_reactToAIMessage:"GROUP_ATTACK_TARGET" context:"groupAttackTarget"];
-				[escort doScriptEvent:OOJSID("helpRequestReceived") withArgument:self andArgument:target];
-			}
-		}
-	}
-}
-
-
-- (void) performAttack
-{
-	if (_cxxShip->behaviour != BEHAVIOUR_EVASIVE_ACTION)
-	{
-		_cxxShip->behaviour = BEHAVIOUR_ATTACK_TARGET;
-		_cxxShip->desired_range = 1250 * randf() + 750; // 750 til 2000
-		_cxxShip->frustration = 0.0;	
-	}
-}
-
-
-- (void) performCollect
-{
-	_cxxShip->behaviour = BEHAVIOUR_COLLECT_TARGET;
-	_cxxShip->frustration = 0.0;
-}
-
-
-- (void) performEscort
-{
-	if(_cxxShip->behaviour != BEHAVIOUR_FORMATION_FORM_UP) 
-	{
-		_cxxShip->behaviour = BEHAVIOUR_FORMATION_FORM_UP;
-		_cxxShip->frustration = 0.0; // behavior changed, reset frustration.
-	}
-}
-
-
-- (void) performFaceDestination
-{
-	_cxxShip->behaviour = BEHAVIOUR_FACE_DESTINATION;
-	_cxxShip->frustration = 0.0;
-}
-
-
-- (void) performFlee
-{
-	if (_cxxShip->behaviour != BEHAVIOUR_FLEE_EVASIVE_ACTION)
-	{
-		_cxxShip->behaviour = BEHAVIOUR_FLEE_TARGET;
-		[self setEvasiveJink:400.0];
-		_cxxShip->frustration = 0.0;
-		if (_cxxShip->accuracy > COMBAT_AI_ISNT_AWFUL)
-		{
-			// alert! they've got us in their sights! react!!
-			if ([self approachAspectToPrimaryTarget] > 0.9995)
-			{
-				_cxxShip->behaviour = randf() < 0.15 ? BEHAVIOUR_EVASIVE_ACTION : BEHAVIOUR_FLEE_EVASIVE_ACTION;
-			}
-		}
-	}
-}
-
-
-- (void) performFlyToRangeFromDestination
-{
-	_cxxShip->behaviour = BEHAVIOUR_FLY_RANGE_FROM_DESTINATION;
-	_cxxShip->frustration = 0.0;
-}
-
-
-- (void) performHold
-{
-	_cxxShip->desired_speed = 0.0;
-	_cxxShip->behaviour = BEHAVIOUR_TRACK_TARGET;
-	_cxxShip->frustration = 0.0;
-}
-
-
-- (void) performIdle
-{
-	_cxxShip->behaviour = BEHAVIOUR_IDLE;
-	_cxxShip->frustration = 0.0;
-}
-
-
-- (void) performIntercept
-{
-	_cxxShip->behaviour = BEHAVIOUR_INTERCEPT_TARGET;
-	_cxxShip->frustration = 0.0;
-}
-
-
-- (void) performLandOnPlanet
-{
-	OOPlanetEntity	*nearest = [self findNearestPlanet];
-	if (_cxxShip->isNearPlanetSurface)
-	{
-		_cxxShip->_destination = [nearest position];
-		_cxxShip->behaviour = BEHAVIOUR_LAND_ON_PLANET;
-		_cxxShip->planetForLanding = [nearest universalID];
-	}
-	else
-	{
-		_cxxShip->behaviour = BEHAVIOUR_IDLE;
-		[_cxxShip->shipAI message:"NO_PLANET_NEARBY"];
-	}
-	
-	_cxxShip->frustration = 0.0;
-}
-
-
-- (void) performMining
-{
-	Entity *target = [self primaryTarget];
-	// mining is not seen as hostile behaviour, so ensure it is only used against rocks.
-	if (target &&  [target scanClass] == CLASS_ROCK)
-	{
-		_cxxShip->behaviour = BEHAVIOUR_ATTACK_MINING_TARGET;
-		_cxxShip->frustration = 0.0;
-	}
-	else
-	{	
-		[self noteLostTargetAndGoIdle];
-	}
-}
-
-
-- (void) performScriptedAI
-{
-	_cxxShip->behaviour = BEHAVIOUR_SCRIPTED_AI;
-	_cxxShip->frustration = 0.0;
-}
-
-
-- (void) performScriptedAttackAI
-{
-	_cxxShip->behaviour = BEHAVIOUR_SCRIPTED_ATTACK_AI;
-	_cxxShip->frustration = 0.0;
-}
-
-
-- (void) performBuoyTumble
-{
-	_cxxShip->stick_roll = 0.10;
-	_cxxShip->stick_pitch = 0.15;
-	_cxxShip->behaviour = BEHAVIOUR_TUMBLE;
-	_cxxShip->frustration = 0.0;
-}
-
-
-- (void) performStop
-{
-	_cxxShip->behaviour = BEHAVIOUR_STOP_STILL;
-	_cxxShip->desired_speed = 0.0;
-	_cxxShip->frustration = 0.0;
-}
-
-
-- (void) performTumble
-{
-	_cxxShip->stick_roll = _cxxShip->max_flight_roll*2.0*(randf() - 0.5);
-	_cxxShip->stick_pitch = _cxxShip->max_flight_pitch*2.0*(randf() - 0.5);
-	_cxxShip->behaviour = BEHAVIOUR_TUMBLE;
-	_cxxShip->frustration = 0.0;
-}
-
-
-- (BOOL) performHyperSpaceToSpecificSystem:(OOSystemID)systemID
-{
-	return [self performHyperSpaceExitReplace:NO toSystem:systemID];
-}
-
-
-- (void) requestDockingCoordinates
-{
-	/*-	requests coordinates from the target station
-	 if the target station can't be found
-	 then use the nearest it can find (which may be a rock hermit) -*/
-	
-	StationEntity	*station =  nil;
-	Entity			*targStation = nil;
-	double		distanceToStation2 = 0.0;
-	
-	targStation = [self targetStation];
-	if ([targStation isStation])
-	{
-		station = (StationEntity*)targStation;
-	}
-	else
-	{
-		station = [UNIVERSE nearestShipMatchingPredicate:IsStationPredicate
-											   parameter:nil
-										relativeToEntity:self];
-	}
-	
-	distanceToStation2 = HPdistance2([station position], [self position]);
-	
-	// Player check for being inside the aegis already exists in PlayerEntityControls. We just
-	// check here that distance to station is less than 2.5 times scanner range to avoid problems with
-	// NPC ships getting stuck with a dockingAI while just outside the aegis - Nikos 20090630, as proposed by Eric
-	// On very busy systems (> 50 docking ships) docking ships can be sent to a hold position outside the range, 
-	// so also test for presence of dockingInstructions. - Eric 20091130
-	if (station != nil && (distanceToStation2 < SCANNER_MAX_RANGE2 * 6.25 || !_cxxShip->dockingInstructions.isNull()))
-	{
-		// remember the instructions (the station's weak reference is kept as an Object node)
-		_cxxShip->dockingInstructions = [station dockingInstructionsForShip:self];
-		if (!_cxxShip->dockingInstructions.isNull())
-		{
-			[self recallDockingInstructions];
-			
-			// the strings the instructions hold (StationEntity -dockingInstructionsForShip:), sent as before (absent: nothing)
-			const oo::PList *aiMessage = _cxxShip->dockingInstructions.find("ai_message");
-			if (aiMessage != nullptr && aiMessage->isString())  [_cxxShip->shipAI message:*aiMessage->getIf<std::string>()];
-			const oo::PList *commsMessage = _cxxShip->dockingInstructions.find("comms_message");
-			if (commsMessage != nullptr && commsMessage->isString())  [station cxx_sendExpandedMessage:*commsMessage->getIf<std::string>() toShip:self];
-		}
-	}
-	else
-	{
-		_cxxShip->dockingInstructions = oo::PList();
-	}
-	
-	if (_cxxShip->dockingInstructions.isNull())
-	{
-		[_cxxShip->shipAI message:"NO_STATION_FOUND"];
-	}
-}
-
-
-- (void) recallDockingInstructions
-{
-	if (!_cxxShip->dockingInstructions.isNull())
-	{
-		const oo::PList *destination = _cxxShip->dockingInstructions.find("destination");
-		_cxxShip->_destination = OOHPVectorFromPList(destination, kZeroHPVector);
-		_cxxShip->desired_speed = fmin(_cxxShip->dockingInstructions.get<float>("speed"), _cxxShip->maxFlightSpeed);
-		_cxxShip->desired_range = _cxxShip->dockingInstructions.get<float>("range");
-		if (const oo::PList *stationRef = _cxxShip->dockingInstructions.find("station"))
-		{
-			StationEntity *targetStation = [oo::ObjectIn(*stationRef) weakRefUnderlyingObject];
-			if (targetStation != nil)
-			{
-				[self addTarget:targetStation];
-				[self setTargetStation:targetStation];
-			}
-			else 
-			{
-				[self removeTarget:[self primaryTarget]];
-			}
-		}
-		_cxxShip->docking_match_rotation = _cxxShip->dockingInstructions.get<bool>("match_rotation");
-	}
-}
-
-
-- (void) scanForNearestIncomingMissile
-{
-	OOScanClass missileClass = CLASS_MISSILE;
-	BinaryOperationPredicateParameter param =
-	{
-		HasScanClassPredicate, &missileClass,	// the predicate reads an OOScanClass
-		IsHostileAgainstTargetPredicate, self
-	};
-	[self scanForNearestShipWithPredicate:ANDPredicate parameter:&param];
-}
-
-- (void) enterPlayerWormhole
-{
-	[self enterWormhole:[PLAYER wormhole] replacing:NO];
-}
-
-- (void) enterTargetWormhole
-{
-	WormholeEntity *whole = nil;
-	ShipEntity		*targEnt = [self primaryTarget];
-	double found_d2 = _cxxShip->scannerRange * _cxxShip->scannerRange;
-	
-	if (targEnt && (HPdistance2(_cxxEntity->position, [targEnt position]) < found_d2))
-	{
-		if ([targEnt isWormhole])
-			whole = (WormholeEntity *)targEnt;
-		else if ([targEnt isPlayer])
-			whole = [PLAYER wormhole];
-	}
-
-	if (!whole)
-	{
-		// locate nearest wormhole
-		int				ent_count =		UNIVERSE->_cxxUniverse->n_entities;
-		Entity**		uni_entities =	UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
-		std::vector<WormholeEntity *>	wormholes(ent_count);
-		int i;
-		int wh_count = 0;
-		for (i = 0; i < ent_count; i++)
-			if (uni_entities[i]->_cxxEntity->isWormhole)
-				wormholes[wh_count++] = [(WormholeEntity *)uni_entities[i] retain];
-		//
-		//double found_d2 = scannerRange * scannerRange;
-		for (i = 0; i < wh_count ; i++)
-		{
-			WormholeEntity *wh = wormholes[i];
-			double d2 = HPdistance2(_cxxEntity->position, wh->_cxxEntity->position);
-			if (d2 < found_d2)
-			{
-				whole = wh;
-				found_d2 = d2;
-			}
-			[wh release];
-		}
-	}
-	
-	[self enterWormhole:whole replacing:NO];
-}
-
-
-// FIXME: resolve this stuff.
-- (void) wormholeEscorts
-{
-	ShipEntity			*ship = nil;
-	WormholeEntity		*whole = nil;
-	
-	whole = [self primaryTarget];
-	if (![whole isWormhole])  return;
-	
-	const std::optional<std::string> context = DebugContext(self, "wormholeEscorts");
-	
-	for (const auto &shipRef : [self cxx_escorts])
-	{
-		ship = shipRef.get();
-		[ship addTarget:whole];
-		[ship cxx_reactToAIMessage:"ENTER WORMHOLE" context:context];
-		[ship doScriptEvent:OOJSID("wormholeSuggested") withArgument:whole];
-	}
-	
-	// We now have no escorts..
-
-	[_cxxShip->_escortGroup release];
-	_cxxShip->_escortGroup = nil;
-
-}
-
-
-- (void) wormholeEntireGroup
-{
-	[self wormholeGroup];
-	[self wormholeEscorts];
-}
-
-
-- (BOOL) suggestEscortTo:(ShipEntity *)mother
-{
-	if (mother)
-	{
-#ifndef NDEBUG
-		if (_cxxShip->reportAIMessages)
-		{
-			OO_LOG("ai.suggestEscort", "DEBUG: {} suggests escorting {}", oo::DescriptionOf(self), oo::DescriptionOf(mother));
-		}
-#endif
-		
-		if ([mother acceptAsEscort:self])
-		{
-			// copy legal status across
-			if (([mother legalStatus] > 0)&&(_cxxShip->bounty <= 0))
-			{
-				int extra = 1 | (ranrot_rand() & 15);
-//				[mother setBounty: [mother legalStatus] + extra withReason:kOOLegalStatusReasonAssistingOffender];
-				[self markAsOffender:extra withReason:kOOLegalStatusReasonAssistingOffender];
-				//				bounty += extra;	// obviously we're dodgier than we thought!
-			}
-			
-			[self setOwner:mother];
-			[self setGroup:[mother escortGroup]];
-			[_cxxShip->shipAI message:"ESCORTING"];
-			return YES;
-		}
-		
-#ifndef NDEBUG
-		if (_cxxShip->reportAIMessages)
-		{
-			OO_LOG("ai.suggestEscort.refused", "DEBUG: {} refused by {}", oo::DescriptionOf(self), oo::DescriptionOf(mother));
-		}
-#endif
-		
-	}
-	[self setOwner:self];
-	[_cxxShip->shipAI message:"NOT_ESCORTING"];
-	[self doScriptEvent:OOJSID("escortRejected") withArgument:mother];
-	return NO;
-}
-
-
-- (void) broadcastDistressMessage
-{
-	/*-- Locates all the stations, bounty hunters and police ships in range and tells them that you are under attack --*/
-	[self broadcastDistressMessageWithDumping:YES];
-}	
-
-- (void) broadcastDistressMessageWithDumping:(BOOL)dumpCargo
-{
-	[self checkScannerIgnoringUnpowered];
-	DESTROY(_cxxShip->_foundTarget);
-	
-	ShipEntity	*aggressor_ship = (ShipEntity*)[self primaryAggressor];
-	if (aggressor_ship == nil)  return;
-	
-	// don't send too many distress messages at once, space them out semi-randomly
-	if (_cxxShip->messageTime > 2.0 * randf())  return;
-	
-	BOOL		is_buoy = (_cxxEntity->scanClass == CLASS_BUOY);
-	const char	*distress_message = is_buoy ? "[buoy-distress-call]" : "[distress-call]";
-	
-	unsigned i;
-	for (i = 0; i < _cxxShip->n_scanned_ships; i++)
-	{
-		ShipEntity*	ship = _cxxShip->scanned_ships[i];
-
-    // dump cargo if energy is low
-		if (dumpCargo && !is_buoy && [self primaryAggressor] == ship && _cxxEntity->energy < 0.375 * _cxxEntity->maxEnergy)
-		{
-			[self ejectCargo];
-			[self performFlee];
-		}
-		
-		// tell it! (only plist AIs send comms here; JS AIs are
-		// expected to handle their own)
-		if (ship->_cxxEntity->isPlayer && ![self hasNewAI])
-		{
-			[ship doScriptEvent:OOJSID("distressMessageReceived") withArgument:aggressor_ship andArgument:self];
-
-			if (!is_buoy && [self primaryAggressor] == ship && _cxxEntity->energy < 0.375 * _cxxEntity->maxEnergy)
-			{
-				[self cxx_sendExpandedMessage:"[beg-for-mercy]" toShip:ship];
-			}
-			else if ([self bounty] == 0)
-			{
-				// only send distress message to player if plausibly sending
-				// one more generally
-				[self cxx_sendExpandedMessage:distress_message toShip:ship];
-			}
-			
-			// reset the thanked_ship_id
-			DESTROY(_cxxShip->_thankedShip);
-		}
-		else if ([self bounty] == 0 && [ship cxx_crew].has_value()) // Only clean ships can have their distress calls accepted
-		{
-			[ship doScriptEvent:OOJSID("distressMessageReceived") withArgument:aggressor_ship andArgument:self];
-			
-			// we only can send distressMessages to ships that are known to have a "ACCEPT_DISTRESS_CALL" reaction
-			// in their AI, or they might react wrong on the added found_target.
-
-			// ship must have a plist AI for this next bit. JS AIs
-			// should already have done something sensible on
-			// distressMessageReceived
-			if (![self hasNewAI])
-			{
-				// FIXME: this test only works with core AIs
-				if (ship->_cxxEntity->isStation || [ship cxx_hasPrimaryRole:"police"] || [ship cxx_hasPrimaryRole:"hunter"])
-				{
-					[ship acceptDistressMessageFrom:self];
-				}
-			}
-		}
-	}
-}
-
 
 @end
 
@@ -1219,9 +610,6 @@ using ooscript::Context;
 		[_cxxShip->shipAI message:"HOLD_NOT_FULL"];
 	}
 }
-
-
-
 
 
 - (void) getWitchspaceEntryCoordinates
@@ -1874,7 +1262,6 @@ using ooscript::Context;
 }
 
 
-
 - (void) escortCheckMother
 {
 	ShipEntity   *mother = [self owner];
@@ -1912,8 +1299,6 @@ using ooscript::Context;
 		[_cxxShip->shipAI message:"ODDS_BAD"];
 	}
 }
-
-
 
 
 - (void) scanForFormationLeader
@@ -2595,7 +1980,6 @@ using ooscript::Context;
 }
 
 
-
 - (void) scriptActionOnTarget:(const std::string &)action	// called by name (ADR-0055 item 5)
 {
 	PlayerEntity	*player = PLAYER;
@@ -2688,7 +2072,6 @@ using ooscript::Context;
 }
 
 
-
 // racing code TODO
 - (void) targetFirstBeaconWithCode:(const std::string &)code	// called by name (ADR-0055 item 5)
 {
@@ -2774,33 +2157,641 @@ using ooscript::Context;
 @end
 
 
-@implementation ShipEntity (OOAIPrivate)
+// Slice 1 of docs/phases/3-slices/ShipEntityAI.md (bead oo-iebuz): AI category, OOAIPrivate (ship
+// and station) and the station stubs. Members of cxx::ShipEntity defined in the category's file
+// (ADR-0056 amendment oo-o89 item 4); the facade forwards each selector (ShipEntity+ObjCBridge.mm);
+// sends to self stay sends, so an Objective-C subclass's override still runs (amendment oo-mvzmb).
+namespace cxx {
 
-
-- (void) checkFoundTarget
+void ShipEntity::setAITo(const std::string &aiString)	// called by name (ADR-0055 item 5)
 {
-	if ([self foundTarget] != nil) 
+	::ShipEntity *self = oo::ToObjC(this);
+	std::string ai = aiString;
+	// don't try to load real AIs if the game hasn't started yet
+	if (![PLAYER scriptsLoaded])
 	{
-		[_cxxShip->shipAI message:"TARGET_FOUND"];
+		ai = "oolite-nullAI.js";
+	}
+	if (oo::str::hasSuffix(ai, ".plist"))
+	{
+		[[self getAI] cxx_setStateMachine:ai withJSScript:"oolite-nullAI.js"];
+		[self setAIScript:"oolite-nullAI.js"];
+	}
+	else if (oo::str::hasSuffix(ai, ".js"))
+	{
+		[[self getAI] cxx_setStateMachine:"nullAI.plist" withJSScript:ai];
+		[self setAIScript:ai];
 	}
 	else
 	{
-		[_cxxShip->shipAI message:"NOTHING_FOUND"];
+		const std::optional<std::string> path = [::ResourceManager cxx_pathForFileNamed:ai + ".js" inFolder:std::string("AIs")];
+		if (!path) // no js, use plist
+		{
+			[self setAITo:ai + ".plist"];
+		}
+		else
+		{
+			[self setAITo:ai + ".js"];
+		}
 	}
 }
 
 
-- (BOOL) performHyperSpaceExitReplace:(BOOL)replace
+void ShipEntity::setAIScript(const std::string &aiString)
 {
+	::ShipEntity *self = oo::ToObjC(this);
+	const oo::PList properties(oo::PList::Dict{ { "ship", oo::PListObject(self) } });
+	
+	[aiScript autorelease];
+	aiScript = [::OOScript cxx_jsAIScriptFromFileNamed:aiString properties:properties];
+	if (aiScript == nil)
+	{
+		OO_LOG("ai.load.failed.unknownAI", "Unable to load JS AI {} for ship {} ({} for role {})", aiString, oo::DescriptionOf(self), [self cxx_shipDataKey].value_or("(null)"), [self cxx_primaryRole].value_or("(null)"));
+		aiScript = [::OOScript cxx_jsAIScriptFromFileNamed:"oolite-nullAI.js" properties:properties];
+	}
+	else
+	{
+		aiScriptWakeTime = 0;
+		haveStartedJSAI = NO;
+	}
+	[aiScript retain];
+}
+
+
+void ShipEntity::switchAITo(const std::string &aiString)	// called by name (ADR-0055 item 5)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self setAITo:aiString];
+	[[self getAI] clearStack];
+}
+
+
+void ShipEntity::scanForHostiles()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	/*-- Locates all the ships in range targeting the receiver and chooses the nearest --*/
+	DESTROY(_foundTarget);
+	
+	[self checkScanner];
+	unsigned i;
+	GLfloat found_d2 = scannerRange * scannerRange;
+	for (i = 0; i < n_scanned_ships ; i++)
+	{
+		::ShipEntity *thing = scanned_ships[i];
+		GLfloat d2 = distance2_scanned_ships[i];
+		if ((d2 < found_d2) 
+			&& ([thing isThargoid] || (([thing primaryTarget] == self) && [thing hasHostileTarget]) || [thing isDefenseTarget:self])
+			&& ![thing isCloaked])
+		{
+			[self setFoundTarget:thing];
+			found_d2 = d2;
+		}
+	}
+	
+	[self checkFoundTarget];
+}
+
+
+void ShipEntity::groupAttackTarget()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::ShipEntity			*target = nil, *ship = nil;
+
+	target = [self primaryTarget];
+	
+	if (target == nil) return;
+	
+	if ([self group] == nil)		// ship is alone!
+	{
+		[self setFoundTarget:target];
+		[shipAI cxx_reactToMessage:"GROUP_ATTACK_TARGET" context:"groupAttackTarget"];
+		[self doScriptEvent:OOJSID("helpRequestReceived") withArgument:self andArgument:target];
+		return;
+	}
+	
+	for (const oo::ObjCRef<::ShipEntity *> &member : [[self group] cxx_memberArray])
+	{
+		ship = member.get();
+		[ship setFoundTarget:target];
+		[ship cxx_reactToAIMessage:"GROUP_ATTACK_TARGET" context:"groupAttackTarget"];
+		[ship doScriptEvent:OOJSID("helpRequestReceived") withArgument:self andArgument:target];
+
+		if ([ship escortGroup] != [ship group] && [[ship escortGroup] count] > 1) // Ship has a seperate escort group.
+		{
+			for (const oo::ObjCRef<::ShipEntity *> &escortRef : [[ship escortGroup] cxx_memberArrayExcludingLeader])
+			{
+				::ShipEntity		*escort = escortRef.get();
+				[escort setFoundTarget:target];
+				[escort cxx_reactToAIMessage:"GROUP_ATTACK_TARGET" context:"groupAttackTarget"];
+				[escort doScriptEvent:OOJSID("helpRequestReceived") withArgument:self andArgument:target];
+			}
+		}
+	}
+}
+
+
+void ShipEntity::performAttack()
+{
+	if (behaviour != BEHAVIOUR_EVASIVE_ACTION)
+	{
+		behaviour = BEHAVIOUR_ATTACK_TARGET;
+		desired_range = 1250 * randf() + 750; // 750 til 2000
+		frustration = 0.0;	
+	}
+}
+
+
+void ShipEntity::performCollect()
+{
+	behaviour = BEHAVIOUR_COLLECT_TARGET;
+	frustration = 0.0;
+}
+
+
+void ShipEntity::performEscort()
+{
+	if(behaviour != BEHAVIOUR_FORMATION_FORM_UP) 
+	{
+		behaviour = BEHAVIOUR_FORMATION_FORM_UP;
+		frustration = 0.0; // behavior changed, reset frustration.
+	}
+}
+
+
+void ShipEntity::performFaceDestination()
+{
+	behaviour = BEHAVIOUR_FACE_DESTINATION;
+	frustration = 0.0;
+}
+
+
+void ShipEntity::performFlee()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (behaviour != BEHAVIOUR_FLEE_EVASIVE_ACTION)
+	{
+		behaviour = BEHAVIOUR_FLEE_TARGET;
+		[self setEvasiveJink:400.0];
+		frustration = 0.0;
+		if (accuracy > COMBAT_AI_ISNT_AWFUL)
+		{
+			// alert! they've got us in their sights! react!!
+			if ([self approachAspectToPrimaryTarget] > 0.9995)
+			{
+				behaviour = randf() < 0.15 ? BEHAVIOUR_EVASIVE_ACTION : BEHAVIOUR_FLEE_EVASIVE_ACTION;
+			}
+		}
+	}
+}
+
+
+void ShipEntity::performFlyToRangeFromDestination()
+{
+	behaviour = BEHAVIOUR_FLY_RANGE_FROM_DESTINATION;
+	frustration = 0.0;
+}
+
+
+void ShipEntity::performHold()
+{
+	desired_speed = 0.0;
+	behaviour = BEHAVIOUR_TRACK_TARGET;
+	frustration = 0.0;
+}
+
+
+void ShipEntity::performIdle()
+{
+	behaviour = BEHAVIOUR_IDLE;
+	frustration = 0.0;
+}
+
+
+void ShipEntity::performIntercept()
+{
+	behaviour = BEHAVIOUR_INTERCEPT_TARGET;
+	frustration = 0.0;
+}
+
+
+void ShipEntity::performLandOnPlanet()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::OOPlanetEntity	*nearest = [self findNearestPlanet];
+	if (isNearPlanetSurface)
+	{
+		_destination = [nearest position];
+		behaviour = BEHAVIOUR_LAND_ON_PLANET;
+		planetForLanding = [nearest universalID];
+	}
+	else
+	{
+		behaviour = BEHAVIOUR_IDLE;
+		[shipAI message:"NO_PLANET_NEARBY"];
+	}
+	
+	frustration = 0.0;
+}
+
+
+void ShipEntity::performMining()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::Entity *target = [self primaryTarget];
+	// mining is not seen as hostile behaviour, so ensure it is only used against rocks.
+	if (target &&  [target scanClass] == CLASS_ROCK)
+	{
+		behaviour = BEHAVIOUR_ATTACK_MINING_TARGET;
+		frustration = 0.0;
+	}
+	else
+	{	
+		[self noteLostTargetAndGoIdle];
+	}
+}
+
+
+void ShipEntity::performScriptedAI()
+{
+	behaviour = BEHAVIOUR_SCRIPTED_AI;
+	frustration = 0.0;
+}
+
+
+void ShipEntity::performScriptedAttackAI()
+{
+	behaviour = BEHAVIOUR_SCRIPTED_ATTACK_AI;
+	frustration = 0.0;
+}
+
+
+void ShipEntity::performBuoyTumble()
+{
+	stick_roll = 0.10;
+	stick_pitch = 0.15;
+	behaviour = BEHAVIOUR_TUMBLE;
+	frustration = 0.0;
+}
+
+
+void ShipEntity::performStop()
+{
+	behaviour = BEHAVIOUR_STOP_STILL;
+	desired_speed = 0.0;
+	frustration = 0.0;
+}
+
+
+void ShipEntity::performTumble()
+{
+	stick_roll = max_flight_roll*2.0*(randf() - 0.5);
+	stick_pitch = max_flight_pitch*2.0*(randf() - 0.5);
+	behaviour = BEHAVIOUR_TUMBLE;
+	frustration = 0.0;
+}
+
+
+bool ShipEntity::performHyperSpaceToSpecificSystem(OOSystemID systemID)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self performHyperSpaceExitReplace:NO toSystem:systemID];
+}
+
+
+void ShipEntity::requestDockingCoordinates()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	/*-	requests coordinates from the target station
+	 if the target station can't be found
+	 then use the nearest it can find (which may be a rock hermit) -*/
+	
+	::StationEntity	*station =  nil;
+	::Entity			*targStation = nil;
+	double		distanceToStation2 = 0.0;
+	
+	targStation = [self targetStation];
+	if ([targStation isStation])
+	{
+		station = (::StationEntity*)targStation;
+	}
+	else
+	{
+		station = [UNIVERSE nearestShipMatchingPredicate:IsStationPredicate
+											   parameter:nil
+										relativeToEntity:self];
+	}
+	
+	distanceToStation2 = HPdistance2([station position], [self position]);
+	
+	// Player check for being inside the aegis already exists in PlayerEntityControls. We just
+	// check here that distance to station is less than 2.5 times scanner range to avoid problems with
+	// NPC ships getting stuck with a dockingAI while just outside the aegis - Nikos 20090630, as proposed by Eric
+	// On very busy systems (> 50 docking ships) docking ships can be sent to a hold position outside the range, 
+	// so also test for presence of dockingInstructions. - Eric 20091130
+	if (station != nil && (distanceToStation2 < SCANNER_MAX_RANGE2 * 6.25 || !dockingInstructions.isNull()))
+	{
+		// remember the instructions (the station's weak reference is kept as an Object node)
+		dockingInstructions = [station dockingInstructionsForShip:self];
+		if (!dockingInstructions.isNull())
+		{
+			[self recallDockingInstructions];
+			
+			// the strings the instructions hold (StationEntity -dockingInstructionsForShip:), sent as before (absent: nothing)
+			const oo::PList *aiMessage = dockingInstructions.find("ai_message");
+			if (aiMessage != nullptr && aiMessage->isString())  [shipAI message:*aiMessage->getIf<std::string>()];
+			const oo::PList *commsMessage = dockingInstructions.find("comms_message");
+			if (commsMessage != nullptr && commsMessage->isString())  [station cxx_sendExpandedMessage:*commsMessage->getIf<std::string>() toShip:self];
+		}
+	}
+	else
+	{
+		dockingInstructions = oo::PList();
+	}
+	
+	if (dockingInstructions.isNull())
+	{
+		[shipAI message:"NO_STATION_FOUND"];
+	}
+}
+
+
+void ShipEntity::recallDockingInstructions()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (!dockingInstructions.isNull())
+	{
+		const oo::PList *destination = dockingInstructions.find("destination");
+		_destination = OOHPVectorFromPList(destination, kZeroHPVector);
+		desired_speed = fmin(dockingInstructions.get<float>("speed"), maxFlightSpeed);
+		desired_range = dockingInstructions.get<float>("range");
+		if (const oo::PList *stationRef = dockingInstructions.find("station"))
+		{
+			::StationEntity *targetStation = [oo::ObjectIn(*stationRef) weakRefUnderlyingObject];
+			if (targetStation != nil)
+			{
+				[self addTarget:targetStation];
+				[self setTargetStation:targetStation];
+			}
+			else 
+			{
+				[self removeTarget:[self primaryTarget]];
+			}
+		}
+		docking_match_rotation = dockingInstructions.get<bool>("match_rotation");
+	}
+}
+
+
+void ShipEntity::scanForNearestIncomingMissile()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	OOScanClass missileClass = CLASS_MISSILE;
+	BinaryOperationPredicateParameter param =
+	{
+		HasScanClassPredicate, &missileClass,	// the predicate reads an OOScanClass
+		IsHostileAgainstTargetPredicate, self
+	};
+	[self scanForNearestShipWithPredicate:ANDPredicate parameter:&param];
+}
+
+
+void ShipEntity::enterPlayerWormhole()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self enterWormhole:[PLAYER wormhole] replacing:NO];
+}
+
+
+void ShipEntity::enterTargetWormhole()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::WormholeEntity *whole = nil;
+	::ShipEntity		*targEnt = [self primaryTarget];
+	double found_d2 = scannerRange * scannerRange;
+	
+	if (targEnt && (HPdistance2(position, [targEnt position]) < found_d2))
+	{
+		if ([targEnt isWormhole])
+			whole = (::WormholeEntity *)targEnt;
+		else if ([targEnt isPlayer])
+			whole = [PLAYER wormhole];
+	}
+
+	if (!whole)
+	{
+		// locate nearest wormhole
+		int				ent_count =		UNIVERSE->_cxxUniverse->n_entities;
+		::Entity**		uni_entities =	UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
+		std::vector<::WormholeEntity *>	wormholes(ent_count);
+		int i;
+		int wh_count = 0;
+		for (i = 0; i < ent_count; i++)
+			if (uni_entities[i]->_cxxEntity->isWormhole)
+				wormholes[wh_count++] = [(::WormholeEntity *)uni_entities[i] retain];
+		//
+		//double found_d2 = scannerRange * scannerRange;
+		for (i = 0; i < wh_count ; i++)
+		{
+			::WormholeEntity *wh = wormholes[i];
+			double d2 = HPdistance2(position, wh->_cxxEntity->position);
+			if (d2 < found_d2)
+			{
+				whole = wh;
+				found_d2 = d2;
+			}
+			[wh release];
+		}
+	}
+	
+	[self enterWormhole:whole replacing:NO];
+}
+
+
+// FIXME: resolve this stuff.
+void ShipEntity::wormholeEscorts()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::ShipEntity			*ship = nil;
+	::WormholeEntity		*whole = nil;
+	
+	whole = [self primaryTarget];
+	if (![whole isWormhole])  return;
+	
+	const std::optional<std::string> context = DebugContext(self, "wormholeEscorts");
+	
+	for (const auto &shipRef : [self cxx_escorts])
+	{
+		ship = shipRef.get();
+		[ship addTarget:whole];
+		[ship cxx_reactToAIMessage:"ENTER WORMHOLE" context:context];
+		[ship doScriptEvent:OOJSID("wormholeSuggested") withArgument:whole];
+	}
+	
+	// We now have no escorts..
+
+	[_escortGroup release];
+	_escortGroup = nil;
+
+}
+
+
+void ShipEntity::wormholeEntireGroup()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self wormholeGroup];
+	[self wormholeEscorts];
+}
+
+
+bool ShipEntity::suggestEscortTo(::ShipEntity *mother)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (mother)
+	{
+#ifndef NDEBUG
+		if (reportAIMessages)
+		{
+			OO_LOG("ai.suggestEscort", "DEBUG: {} suggests escorting {}", oo::DescriptionOf(self), oo::DescriptionOf(mother));
+		}
+#endif
+		
+		if ([mother acceptAsEscort:self])
+		{
+			// copy legal status across
+			if (([mother legalStatus] > 0)&&(bounty <= 0))
+			{
+				int extra = 1 | (ranrot_rand() & 15);
+//				[mother setBounty: [mother legalStatus] + extra withReason:kOOLegalStatusReasonAssistingOffender];
+				[self markAsOffender:extra withReason:kOOLegalStatusReasonAssistingOffender];
+				//				bounty += extra;	// obviously we're dodgier than we thought!
+			}
+			
+			[self setOwner:mother];
+			[self setGroup:[mother escortGroup]];
+			[shipAI message:"ESCORTING"];
+			return YES;
+		}
+		
+#ifndef NDEBUG
+		if (reportAIMessages)
+		{
+			OO_LOG("ai.suggestEscort.refused", "DEBUG: {} refused by {}", oo::DescriptionOf(self), oo::DescriptionOf(mother));
+		}
+#endif
+		
+	}
+	[self setOwner:self];
+	[shipAI message:"NOT_ESCORTING"];
+	[self doScriptEvent:OOJSID("escortRejected") withArgument:mother];
+	return NO;
+}
+
+
+void ShipEntity::broadcastDistressMessage()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	/*-- Locates all the stations, bounty hunters and police ships in range and tells them that you are under attack --*/
+	[self broadcastDistressMessageWithDumping:YES];
+}
+
+
+void ShipEntity::broadcastDistressMessageWithDumping(bool dumpCargo)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self checkScannerIgnoringUnpowered];
+	DESTROY(_foundTarget);
+	
+	::ShipEntity	*aggressor_ship = (::ShipEntity*)[self primaryAggressor];
+	if (aggressor_ship == nil)  return;
+	
+	// don't send too many distress messages at once, space them out semi-randomly
+	if (messageTime > 2.0 * randf())  return;
+	
+	BOOL		is_buoy = (scanClass == CLASS_BUOY);
+	const char	*distress_message = is_buoy ? "[buoy-distress-call]" : "[distress-call]";
+	
+	unsigned i;
+	for (i = 0; i < n_scanned_ships; i++)
+	{
+		::ShipEntity*	ship = scanned_ships[i];
+
+    // dump cargo if energy is low
+		if (dumpCargo && !is_buoy && [self primaryAggressor] == ship && energy < 0.375 * maxEnergy)
+		{
+			[self ejectCargo];
+			[self performFlee];
+		}
+		
+		// tell it! (only plist AIs send comms here; JS AIs are
+		// expected to handle their own)
+		if (ship->_cxxEntity->isPlayer && ![self hasNewAI])
+		{
+			[ship doScriptEvent:OOJSID("distressMessageReceived") withArgument:aggressor_ship andArgument:self];
+
+			if (!is_buoy && [self primaryAggressor] == ship && energy < 0.375 * maxEnergy)
+			{
+				[self cxx_sendExpandedMessage:"[beg-for-mercy]" toShip:ship];
+			}
+			else if ([self bounty] == 0)
+			{
+				// only send distress message to player if plausibly sending
+				// one more generally
+				[self cxx_sendExpandedMessage:distress_message toShip:ship];
+			}
+			
+			// reset the thanked_ship_id
+			DESTROY(_thankedShip);
+		}
+		else if ([self bounty] == 0 && [ship cxx_crew].has_value()) // Only clean ships can have their distress calls accepted
+		{
+			[ship doScriptEvent:OOJSID("distressMessageReceived") withArgument:aggressor_ship andArgument:self];
+			
+			// we only can send distressMessages to ships that are known to have a "ACCEPT_DISTRESS_CALL" reaction
+			// in their AI, or they might react wrong on the added found_target.
+
+			// ship must have a plist AI for this next bit. JS AIs
+			// should already have done something sensible on
+			// distressMessageReceived
+			if (![self hasNewAI])
+			{
+				// FIXME: this test only works with core AIs
+				if (ship->_cxxEntity->isStation || [ship cxx_hasPrimaryRole:"police"] || [ship cxx_hasPrimaryRole:"hunter"])
+				{
+					[ship acceptDistressMessageFrom:self];
+				}
+			}
+		}
+	}
+}
+
+
+void ShipEntity::checkFoundTarget()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if ([self foundTarget] != nil) 
+	{
+		[shipAI message:"TARGET_FOUND"];
+	}
+	else
+	{
+		[shipAI message:"NOTHING_FOUND"];
+	}
+}
+
+
+bool ShipEntity::performHyperSpaceExitReplace(bool replace)
+{
+	::ShipEntity *self = oo::ToObjC(this);
 	return [self performHyperSpaceExitReplace:replace toSystem:-1];
 }
 
 
-- (BOOL) performHyperSpaceExitReplace:(BOOL)replace toSystem:(OOSystemID)systemID
+bool ShipEntity::performHyperSpaceExitReplace(bool replace, OOSystemID systemID)
 {
+	::ShipEntity *self = oo::ToObjC(this);
 	if(![self hasHyperspaceMotor])
 	{
-		[_cxxShip->shipAI cxx_reactToMessage:"WITCHSPACE UNAVAILABLE" context:"performHyperSpaceExit"];
+		[shipAI cxx_reactToMessage:"WITCHSPACE UNAVAILABLE" context:"performHyperSpaceExit"];
 		return NO;
 	}
 	if([self status] == STATUS_ENTERING_WITCHSPACE)
@@ -2813,13 +2804,13 @@ using ooscript::Context;
 	NSUInteger		i = 0;
 	
 	// get a list of destinations within range
-	const oo::PList sDests = [UNIVERSE cxx_nearbyDestinationsWithinRange: 0.1f * _cxxShip->fuel];
+	const oo::PList sDests = [UNIVERSE cxx_nearbyDestinationsWithinRange: 0.1f * fuel];
 	NSUInteger n_dests = sDests.count();
 	
 	// if none available report to the AI and exit
 	if (n_dests == 0)
 	{
-		[_cxxShip->shipAI cxx_reactToMessage:"WITCHSPACE UNAVAILABLE" context:"performHyperSpaceExit"];
+		[shipAI cxx_reactToMessage:"WITCHSPACE UNAVAILABLE" context:"performHyperSpaceExit"];
 		
 		// If no systems exist near us, the AI is switched to a different state, so we do not need
 		// the nearby destinations array anymore.
@@ -2827,11 +2818,11 @@ using ooscript::Context;
 	}
 	
 	// check if we're clear of nearby masses
-	ShipEntity *blocker = [UNIVERSE entityForUniversalID:[self checkShipsInVicinityForWitchJumpExit]];
+	::ShipEntity *blocker = [UNIVERSE entityForUniversalID:[self checkShipsInVicinityForWitchJumpExit]];
 	if (blocker)
 	{
 		[self setFoundTarget:blocker];
-		[_cxxShip->shipAI cxx_reactToMessage:"WITCHSPACE BLOCKED" context:"performHyperSpaceExit"];
+		[shipAI cxx_reactToMessage:"WITCHSPACE BLOCKED" context:"performHyperSpaceExit"];
 		[self doScriptEvent:OOJSID("shipWitchspaceBlocked") withArgument:blocker];
 
 		return NO;
@@ -2863,14 +2854,14 @@ using ooscript::Context;
 		}
 	}
 	float dist = sDests.at(i)->get<float>("distance");
-	if (dist > [self maxHyperspaceDistance] || dist > _cxxShip->fuel/10.0f) 
+	if (dist > [self maxHyperspaceDistance] || dist > fuel/10.0f) 
 	{
-		OO_LOG_WARN("script.debug", "DEBUG: {} Jumping {:f} which is further than allowed.  I have {} fuel", oo::DescriptionOf(self), dist, _cxxShip->fuel);
+		OO_LOG_WARN("script.debug", "DEBUG: {} Jumping {:f} which is further than allowed.  I have {} fuel", oo::DescriptionOf(self), dist, fuel);
 	}
-	_cxxShip->fuel -= 10 * dist;
+	fuel -= 10 * dist;
 	
 	// create wormhole
-	WormholeEntity  *whole = [[[WormholeEntity alloc] initWormholeTo: targetSystem fromShip:self] autorelease];
+	::WormholeEntity  *whole = [[[::WormholeEntity alloc] initWormholeTo: targetSystem fromShip:self] autorelease];
 	[UNIVERSE addEntity: whole];
 	
 	[self enterWormhole:whole replacing:replace];
@@ -2880,22 +2871,23 @@ using ooscript::Context;
 }
 
 
-- (void) scanForNearestShipWithPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter
+void ShipEntity::scanForNearestShipWithPredicate(EntityFilterPredicate predicate, void *parameter)
 {
+	::ShipEntity *self = oo::ToObjC(this);
 	// Locates all the ships in range for which predicate returns YES, and chooses the nearest.
 	unsigned		i;
-	ShipEntity		*candidate;
-	float			d2, found_d2 = _cxxShip->scannerRange * _cxxShip->scannerRange;
+	::ShipEntity		*candidate;
+	float			d2, found_d2 = scannerRange * scannerRange;
 	
-	DESTROY(_cxxShip->_foundTarget);
+	DESTROY(_foundTarget);
 	[self checkScanner];
 	
 	if (predicate == NULL)  return;
 	
-	for (i = 0; i < _cxxShip->n_scanned_ships ; i++)
+	for (i = 0; i < n_scanned_ships ; i++)
 	{
-		candidate = _cxxShip->scanned_ships[i];
-		d2 = _cxxShip->distance2_scanned_ships[i];
+		candidate = scanned_ships[i];
+		d2 = distance2_scanned_ships[i];
 		if ((d2 < found_d2) && (candidate->_cxxEntity->scanClass != CLASS_CARGO) && ([candidate status] != STATUS_DOCKED) 
 					&& predicate(candidate, parameter) && ![candidate isCloaked])
 		{
@@ -2908,77 +2900,85 @@ using ooscript::Context;
 }
 
 
-- (void) scanForNearestShipWithNegatedPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter
+void ShipEntity::scanForNearestShipWithNegatedPredicate(EntityFilterPredicate predicate, void *parameter)
 {
+	::ShipEntity *self = oo::ToObjC(this);
 	ChainedEntityPredicateParameter param = { predicate, parameter };
 	[self scanForNearestShipWithPredicate:NOTPredicate parameter:&param];
 }
 
 
-- (void) acceptDistressMessageFrom:(ShipEntity *)other
+void ShipEntity::acceptDistressMessageFrom(::ShipEntity *other)
 {
+	::ShipEntity *self = oo::ToObjC(this);
 	[self setFoundTarget:[other primaryTarget]];
 	if ([self isPolice])
 	{
-		[(ShipEntity*)[self foundTarget] markAsOffender:8 withReason:kOOLegalStatusReasonDistressCall];  // you have been warned!!
+		[(::ShipEntity*)[self foundTarget] markAsOffender:8 withReason:kOOLegalStatusReasonDistressCall];  // you have been warned!!
 	}
 	
-	[_cxxShip->shipAI cxx_reactToMessage:"ACCEPT_DISTRESS_CALL" context:DebugContext(other, "broadcastDistressMessage")];
+	[shipAI cxx_reactToMessage:"ACCEPT_DISTRESS_CALL" context:DebugContext(other, "broadcastDistressMessage")];
 	
 }
 
 
+}	// namespace cxx
 
 
-@end
+// The category ShipEntity (OOAIStationStubs): AI methods for stations, which have no effect on
+// normal ships (StationEntity's own answer them for a station). They were generated by the
+// STATION_STUB_* macros; as members they are written out.
+namespace {
 
-
-@implementation StationEntity (OOAIPrivate)
-
-- (void) acceptDistressMessageFrom:(ShipEntity *)other
+void LogNotAStation(cxx::ShipEntity *ship, const char *method)
 {
-	if (self != [UNIVERSE station])  return;
-	
-	OOWeakReference *old_target = _cxxShip->_primaryTarget;
-	_cxxShip->_primaryTarget = [[[other primaryTarget] weakRetain] autorelease];
-	[(ShipEntity *)[other primaryTarget] markAsOffender:8 withReason:kOOLegalStatusReasonDistressCall];	// mark their card
-	[self launchDefenseShip];
-	_cxxShip->_primaryTarget = old_target;
-	
+	OO_LOG("ai.invalid.notAStation", "Attempt to use station AI method \"{}\" on non-station {}.", method, oo::DescriptionOf(oo::ToObjC(ship)));
 }
 
-@end
+}	// namespace
 
 
-@implementation ShipEntity (OOAIStationStubs)
+namespace cxx {
 
-// AI methods for stations, have no effect on normal ships.
+void ShipEntity::increaseAlertLevel()	{ LogNotAStation(this, "increaseAlertLevel"); }
+void ShipEntity::decreaseAlertLevel()	{ LogNotAStation(this, "decreaseAlertLevel"); }
 
-#define STATION_STUB_BASE(PROTO, NAME)  PROTO { OO_LOG("ai.invalid.notAStation", "Attempt to use station AI method \"{}\" on non-station {}.", NAME, oo::DescriptionOf(self)); }
-#define STATION_STUB_NOARG(NAME)	STATION_STUB_BASE(- (void) NAME, #NAME)  // NOLINT(bugprone-macro-parentheses): Objective-C method-name macro arg, pre-existing; behaviour unchanged by this retarget.
-#define STATION_STUB_ARG(NAME)		STATION_STUB_BASE(- (void) NAME (const std::string &)param, #NAME)	// called by name (ADR-0055 item 5)
-
-STATION_STUB_NOARG(increaseAlertLevel)
-STATION_STUB_NOARG(decreaseAlertLevel)
-- (oo::PList) launchPolice	// called by name (ADR-0055 item 5): StationEntity's returns the ships launched
+oo::PList ShipEntity::launchPolice()	// called by name (ADR-0055 item 5): StationEntity's returns the ships launched
 {
-	OO_LOG("ai.invalid.notAStation", "Attempt to use station AI method \"{}\" on non-station {}.", "launchPolice", oo::DescriptionOf(self));
+	LogNotAStation(this, "launchPolice");
 	return oo::PList();
 }
-STATION_STUB_NOARG(launchDefenseShip)
-STATION_STUB_NOARG(launchScavenger)
-STATION_STUB_NOARG(launchMiner)
-STATION_STUB_NOARG(launchPirateShip)
-STATION_STUB_NOARG(launchShuttle)
-STATION_STUB_NOARG(launchTrader)
-STATION_STUB_NOARG(launchEscort)
-- (BOOL) launchPatrol
+
+void ShipEntity::launchDefenseShip()	{ LogNotAStation(this, "launchDefenseShip"); }
+void ShipEntity::launchScavenger()	{ LogNotAStation(this, "launchScavenger"); }
+void ShipEntity::launchMiner()	{ LogNotAStation(this, "launchMiner"); }
+void ShipEntity::launchPirateShip()	{ LogNotAStation(this, "launchPirateShip"); }
+void ShipEntity::launchShuttle()	{ LogNotAStation(this, "launchShuttle"); }
+void ShipEntity::launchTrader()	{ LogNotAStation(this, "launchTrader"); }
+void ShipEntity::launchEscort()	{ LogNotAStation(this, "launchEscort"); }
+
+bool ShipEntity::launchPatrol()
 {
-	OO_LOG("ai.invalid.notAStation", "Attempt to use station AI method \"{}\" on non-station {}.", "launchPatrol", oo::DescriptionOf(self));
+	LogNotAStation(this, "launchPatrol");
 	return NO;
 }
-STATION_STUB_ARG(launchShipWithRole:)
-STATION_STUB_NOARG(abortAllDockings)
 
-@end
+void ShipEntity::launchShipWithRole(const std::string & /* param */)	{ LogNotAStation(this, "launchShipWithRole:"); }	// called by name (ADR-0055 item 5)
+void ShipEntity::abortAllDockings()	{ LogNotAStation(this, "abortAllDockings"); }
 
+
+// The station's unit of the category StationEntity (OOAIPrivate), overriding the ship's.
+void StationEntity::acceptDistressMessageFrom(::ShipEntity *other)
+{
+	::StationEntity *self = oo::ToObjC(this);
+	if (self != [UNIVERSE station])  return;
+
+	::OOWeakReference *old_target = _primaryTarget;
+	_primaryTarget = [[[other primaryTarget] weakRetain] autorelease];
+	[(::ShipEntity *)[other primaryTarget] markAsOffender:8 withReason:kOOLegalStatusReasonDistressCall];	// mark their card
+	[self launchDefenseShip];
+	_primaryTarget = old_target;
+
+}
+
+}	// namespace cxx

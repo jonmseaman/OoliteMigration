@@ -168,6 +168,9 @@ public:
 	void doScriptEvent(ooscript::PropertyId message, ooscript::Context context, ooscript::Value *argv, unsigned argc) override	{ [(::ShipEntity *)this->_objcOwner doScriptEvent:message inContext:context withArguments:argv count:argc]; }
 	OOAlertCondition alertCondition() override	{ return [(::ShipEntity *)this->_objcOwner alertCondition]; }
 	OOAlertCondition realAlertCondition() override	{ return [(::ShipEntity *)this->_objcOwner realAlertCondition]; }
+
+	// ShipEntityAI.mm slice 1 (bead oo-iebuz).
+	void acceptDistressMessageFrom(::ShipEntity *other) override	{ [(::ShipEntity *)this->_objcOwner acceptDistressMessageFrom:other]; }
 };
 
 }	// namespace oo

@@ -128,6 +128,9 @@ public:
 	std::optional<std::string> descriptionComponents() const override;
 	void dumpSelfState() override;
 
+	// ShipEntityAI.mm slice 1 (bead oo-iebuz): the category StationEntity (OOAIPrivate).
+	void acceptDistressMessageFrom(::ShipEntity *other) override;
+
 	// @private in Objective-C: private once StationEntity is converted; public while the facade's
 	// unconverted methods read them, since an Objective-C class cannot be a C++ friend
 	::OOWeakSet				*_shipsOnHold = {};
