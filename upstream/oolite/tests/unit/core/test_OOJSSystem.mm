@@ -363,7 +363,10 @@ void SetUp()
 	stdfs::current_path(sRoot);
 	const std::string info = "{ CFBundleVersion = \"9.9.9-test\"; }";
 	OO_CHECK(oo::fs::writeFile(sRoot / "Resources" / "Info-gnustep.plist", oo::Data(info.data(), info.size()), oo::fs::WriteMode::direct).has_value());
-	(void)[OOJavaScriptEngine sharedEngine];
+	@autoreleasepool	// the engine autoreleases facades as it starts (as Eval(), bead oo-9ht.172)
+	{
+		(void)[OOJavaScriptEngine sharedEngine];
+	}
 
 	sUniverse = [[FakeUniverse alloc] init];
 	gSharedUniverse = (Universe *)sUniverse;
@@ -419,10 +422,11 @@ void SetUp()
 
 // Evaluates src in the engine's context and gives its result as a string ("undefined", "null",
 // ...), or "threw: <message>".
-// In its own autorelease pool, as the game's frame is (bead oo-9ht.172): an object the binding
-// autoreleases is freed here, while the engine is alive. With no pool it went to the main thread's
-// implicit pool, which libobjc drains at thread detach, after the C++ static destructors: an
-// OOJSValue freed there looked its context up in the destroyed ooscript context table
+// In its own autorelease pool, as the game's frame is (bead oo-9ht.172): an object the engine or
+// the binding autoreleases is freed here, while the engine is alive. With no pool it went to the
+// main thread's implicit pool, which libobjc drains at thread detach, after the C++ static
+// destructors: an OOJSValue freed there (the special-functions facade the engine makes as it
+// starts, in SetUp()) looked its context up in the destroyed ooscript context table
 // (heap-use-after-free; the test crashed at exit about 1 run in 6).
 std::string Eval(const std::string &src)
 {
