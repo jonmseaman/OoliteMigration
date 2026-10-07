@@ -112,3 +112,28 @@ extern Universe *gSharedUniverse;
 - (OOViewID) viewDirection	{ return _cxxUniverse->getViewDirection(); }
 
 @end
+
+
+@implementation Universe (OOSlice16)
+
+- (void) setViewDirection:(OOViewID) vd	{ _cxxUniverse->setViewDirection(vd); }
+- (void) enterGUIViewModeWithMouseInteraction:(BOOL)mouseInteraction	{ _cxxUniverse->enterGUIViewModeWithMouseInteraction(mouseInteraction); }
+- (std::optional<std::string>) soundNameForCustomSoundKey:(const std::string &)soundKey	{ return _cxxUniverse->soundNameForCustomSoundKey(soundKey); }
+- (oo::PList) cxx_screenTextureDescriptorForKey:(const std::string &)key	{ return _cxxUniverse->screenTextureDescriptorForKey(key); }
+- (void) cxx_setScreenTextureDescriptorForKey:(const std::string &)key descriptor:(const oo::PList &)desc	{ _cxxUniverse->setScreenTextureDescriptorForKey(key, desc); }
+- (void) clearPreviousMessage	{ _cxxUniverse->clearPreviousMessage(); }
+- (void) setMessageGuiBackgroundColor:(OOColor *)some_color	{ _cxxUniverse->setMessageGuiBackgroundColor(some_color); }
+- (void) cxx_displayMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta)count	{ _cxxUniverse->displayMessage(text, count); }
+- (void) cxx_displayCountdownMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta)count	{ _cxxUniverse->displayCountdownMessage(text, count); }
+- (void) cxx_addDelayedMessage:(const std::optional<std::string> &)text forCount:(OOTimeDelta)count afterDelay:(double)delay	{ _cxxUniverse->addDelayedMessage(text, count, delay); }
+- (void) addDelayedMessage:(OOUniverseDelayedMessage *)holder	{ _cxxUniverse->addDelayedMessage(holder); }
+- (void) cxx_addMessage:(const std::optional<std::string> &)text forCount:(OOTimeDelta)count	{ _cxxUniverse->addMessage(text, count); }
+- (void) speakWithSubstitutions:(const std::optional<std::string> &)text	{ _cxxUniverse->speakWithSubstitutions(text); }
+- (void) cxx_addMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count forceDisplay:(BOOL) forceDisplay	{ _cxxUniverse->addMessage(text, count, forceDisplay); }
+- (void) cxx_addCommsMessage:(const std::optional<std::string> &)text forCount:(OOTimeDelta)count	{ _cxxUniverse->addCommsMessage(text, count); }
+- (void) cxx_addCommsMessage:(const std::optional<std::string> &)text forCount:(OOTimeDelta)count andShowComms:(BOOL)showComms logOnly:(BOOL)logOnly	{ _cxxUniverse->addCommsMessage(text, count, showComms, logOnly); }
+- (void) showCommsLog:(OOTimeDelta)how_long	{ _cxxUniverse->showCommsLog(how_long); }
+- (void) showGUIMessage:(const std::optional<std::string> &)text withScroll:(BOOL)scroll andColor:(OOColor *)selectedColor overDuration:(OOTimeDelta)how_long	{ _cxxUniverse->showGUIMessage(text, scroll, selectedColor, how_long); }
+- (void) repopulateSystem	{ _cxxUniverse->repopulateSystem(); }
+
+@end

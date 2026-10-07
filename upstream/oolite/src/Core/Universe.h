@@ -197,6 +197,7 @@ inline constexpr std::string_view PLANETINFO_INTERSTELLAR_KEY			= "interstellar 
 
 
 @class Universe;
+@class OOUniverseDelayedMessage;	// Universe.mm's holder of a delayed message (slice 16)
 
 /*	The universe's state (bead oo-riqmz, slice 1 of docs/phases/3-slices/Universe.md): the old
 	@interface's ivars, by the same names and types, every one zero-initialised as the runtime
@@ -451,6 +452,27 @@ public:
 	std::string collisionDescription();
 	void dumpCollisions();
 	OOViewID getViewDirection();
+
+	// Slice 16: setting the view direction, GUI view mode, custom sounds, screen textures, messages and comms, delayed messages, repopulating.
+	void setViewDirection(OOViewID vd);
+	void enterGUIViewModeWithMouseInteraction(bool mouseInteraction);
+	std::optional<std::string> soundNameForCustomSoundKey(const std::string &soundKey);
+	oo::PList screenTextureDescriptorForKey(const std::string &key);
+	void setScreenTextureDescriptorForKey(const std::string &key, const oo::PList &desc);
+	void clearPreviousMessage();
+	void setMessageGuiBackgroundColor(::OOColor *some_color);
+	void displayMessage(const std::optional<std::string> &text, OOTimeDelta count);
+	void displayCountdownMessage(const std::optional<std::string> &text, OOTimeDelta count);
+	void addDelayedMessage(const std::optional<std::string> &text, OOTimeDelta count, double delay);
+	void addDelayedMessage(::OOUniverseDelayedMessage *holder);
+	void addMessage(const std::optional<std::string> &text, OOTimeDelta count);
+	void speakWithSubstitutions(const std::optional<std::string> &text);
+	void addMessage(const std::optional<std::string> &text, OOTimeDelta count, bool forceDisplay);
+	void addCommsMessage(const std::optional<std::string> &text, OOTimeDelta count);
+	void addCommsMessage(const std::optional<std::string> &text, OOTimeDelta count, bool showComms, bool logOnly);
+	void showCommsLog(OOTimeDelta how_long);
+	void showGUIMessage(const std::optional<std::string> &text, bool scroll, ::OOColor *selectedColor, OOTimeDelta how_long);
+	void repopulateSystem();
 };
 
 }	// namespace cxx

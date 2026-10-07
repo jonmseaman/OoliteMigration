@@ -418,3 +418,4 @@
 [oo-uqen] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOShipRegistry && bash tools/tier-c.sh --only goldens
 [oo-7jhs5] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Universe && bash tools/tier-c.sh --only goldens
 [oo-dg9d1] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Universe && bash tools/tier-c.sh --only goldens
+[oo-focfo] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Universe && bash tools/tier-c.sh --only goldens

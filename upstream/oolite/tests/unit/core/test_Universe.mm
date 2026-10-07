@@ -523,4 +523,98 @@ OO_TEST(slice15TimeAndCollisions)
 }
 
 
+// Slice 16 (bead oo-focfo): the view direction, custom sounds, screen
+// backgrounds, messages. Written against the Objective-C API and run on the unconverted class
+// first. A headless universe has no GUIs and no player (the messages that reach the player's
+// script events are left to the goldens), so the messages are seen in the members that remember
+// them (the current message and its repeat times).
+namespace {
+
+std::optional<std::string> CurrentMessage(Universe *u)	{ return u->_cxxUniverse->currentMessage; }
+OOTimeAbsolute MessageRepeatTime(Universe *u)			{ return u->_cxxUniverse->messageRepeatTime; }
+OOTimeAbsolute CountdownRepeatTime(Universe *u)		{ return u->_cxxUniverse->countdown_messageRepeatTime; }
+
+}	// namespace
+
+
+OO_TEST(slice16Messages)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+		u->_cxxUniverse->universal_time = 10.0;
+
+		[u cxx_displayMessage:std::string("a") forCount:3];
+		OO_CHECK(CurrentMessage(u) == "a" && MessageRepeatTime(u) == 16.0);
+		u->_cxxUniverse->universal_time = 12.0;
+		[u cxx_displayMessage:std::string("a") forCount:3];	// the same message, too soon: nothing
+		OO_CHECK(MessageRepeatTime(u) == 16.0);
+		[u cxx_displayMessage:std::string("b") forCount:3];
+		OO_CHECK(CurrentMessage(u) == "b" && MessageRepeatTime(u) == 18.0);
+		u->_cxxUniverse->universal_time = 20.0;
+		[u cxx_displayMessage:std::string("b") forCount:3];	// the same, once the repeat time has passed
+		OO_CHECK(CurrentMessage(u) == "b" && MessageRepeatTime(u) == 26.0);
+
+		// A countdown message waits for its own repeat time, whatever the message.
+		[u cxx_displayCountdownMessage:std::string("c") forCount:5];
+		OO_CHECK(CurrentMessage(u) == "c" && CountdownRepeatTime(u) == 25.0);
+		[u cxx_displayCountdownMessage:std::string("d") forCount:5];
+		OO_CHECK(CurrentMessage(u) == "c" && CountdownRepeatTime(u) == 25.0);
+		[u cxx_displayCountdownMessage:std::string("c") forCount:5];	// the same message: nothing
+		OO_CHECK(CountdownRepeatTime(u) == 25.0);
+
+		[u clearPreviousMessage];
+		OO_CHECK(!CurrentMessage(u).has_value());
+	}
+}
+
+
+OO_TEST(slice16ViewDirection)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+
+		// The view it already has, with no GUI shown: nothing changes and nothing is said. (A
+		// change speaks through the player's script events, which need the whole game.)
+		u->_cxxUniverse->viewDirection = VIEW_AFT;
+		[u setViewDirection:VIEW_AFT];
+		OO_CHECK([u viewDirection] == VIEW_AFT && !CurrentMessage(u).has_value() && ![u displayGUI]);
+	}
+}
+
+
+OO_TEST(slice16SoundsAndBackgrounds)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+		u->_cxxUniverse->customSounds = oo::PList(oo::PList::Dict{
+			{ "[slice16-boom]", oo::PList("boom.ogg") },
+			{ "[slice16-alias]", oo::PList("[slice16-boom]") },
+			{ "[slice16-loop1]", oo::PList("[slice16-loop2]") },
+			{ "[slice16-loop2]", oo::PList("[slice16-loop1]") },
+		});
+
+		OO_CHECK([u soundNameForCustomSoundKey:"[slice16-boom]"] == "boom.ogg");
+		OO_CHECK([u soundNameForCustomSoundKey:"[slice16-alias]"] == "boom.ogg");
+		OO_CHECK(![u soundNameForCustomSoundKey:"[slice16-missing]"].has_value());
+		OO_CHECK(![u soundNameForCustomSoundKey:"[slice16-loop1]"].has_value());	// recursion: no sound
+
+		// Backgrounds: none loaded, setting changes nothing; loaded, set and remove by key.
+		[u cxx_setScreenTextureDescriptorForKey:"slice16" descriptor:oo::PList("x.png")];
+		OO_CHECK(u->_cxxUniverse->screenBackgrounds.isNull());
+		u->_cxxUniverse->screenBackgrounds = oo::PList(oo::PList::Dict{});
+		[u cxx_setScreenTextureDescriptorForKey:"slice16" descriptor:oo::PList("x.png")];
+		const oo::PList *set = u->_cxxUniverse->screenBackgrounds.find("slice16");
+		OO_CHECK(set != nullptr && set->isString());
+		[u cxx_setScreenTextureDescriptorForKey:"slice16" descriptor:oo::PList()];
+		OO_CHECK(u->_cxxUniverse->screenBackgrounds.find("slice16") == nullptr);
+		// With no GUI to preload it, no descriptor is answered.
+		[u cxx_setScreenTextureDescriptorForKey:"slice16" descriptor:oo::PList("x.png")];
+		OO_CHECK([u cxx_screenTextureDescriptorForKey:"slice16"].isNull());
+	}
+}
+
+
 OO_TEST_MAIN()
