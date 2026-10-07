@@ -770,6 +770,23 @@ public:
 	double approachAspectToPrimaryTarget();
 	bool hasProximityAlertIgnoringTarget(bool ignore_target);
 
+	// Slice 27: aim tolerance, sun glare, main weapons and turret fire, laser colours.
+	GLfloat currentAimTolerance();
+	virtual GLfloat lookingAtSunWithThresholdAngleCos(GLfloat thresholdAngleCos);
+	bool onTarget(OOWeaponFacing direction, OOWeaponType weapon_type);
+	bool fireWeapon(OOWeaponType weapon_type, OOWeaponFacing direction, double range);
+	bool fireMainWeapon(double range);
+	bool fireAftWeapon(double range);
+	bool firePortWeapon(double range);
+	bool fireStarboardWeapon(double range);
+	OOTimeDelta shotTime();
+	void resetShotTime();
+	bool fireTurretCannon(double range);
+	void setLaserColor(::OOColor *color);
+	void setExhaustEmissiveColor(::OOColor *color);
+	::OOColor *laserColor();
+	::OOColor *exhaustEmissiveColor();
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired

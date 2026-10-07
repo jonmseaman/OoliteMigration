@@ -388,3 +388,4 @@
 [oo-zd80m] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntity && bash tools/tier-c.sh --only goldens
 [oo-k6wuw] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntity && bash tools/tier-c.sh --only goldens
 [oo-v92af] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntity && bash tools/tier-c.sh --only goldens
+[oo-pnfyp] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntity && bash tools/tier-c.sh --only goldens

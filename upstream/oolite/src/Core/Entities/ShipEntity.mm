@@ -516,449 +516,6 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 }
 
 
-// lower is better. Defines angular size of circle in which ship
-// thinks is on target
-- (GLfloat) currentAimTolerance
-{
-	GLfloat basic_aim = _cxxShip->aim_tolerance;
-	GLfloat best_cos = 0.99999; // ~45m in 10km (track won't go better than 40)
-	if (_cxxShip->accuracy >= COMBAT_AI_ISNT_AWFUL)
-	{ 
-		// better general targeting
-		best_cos = 0.999999; // ~14m in 10km (track won't go better than 10)
-		// if missing, aim better!
-		basic_aim /= 1.0 + ((GLfloat)[self missedShots] / 4.0);
-	}
-	if (_cxxShip->accuracy >= COMBAT_AI_TRACKS_CLOSER)
-	{ 
-		// deadly shots
-		best_cos = 0.9999999; // ~4m in 10km (track won't go better than 4)
-		// and start with extremely good aim circle
-		basic_aim /= 5.0;
-	}
-	if (_cxxShip->currentWeaponFacing == WEAPON_FACING_AFT && _cxxShip->accuracy < COMBAT_AI_ISNT_AWFUL)
-	{ // bad shots with aft lasers
-		basic_aim *= 1.3;
-	}
-	else if (_cxxShip->currentWeaponFacing == WEAPON_FACING_PORT || _cxxShip->currentWeaponFacing == WEAPON_FACING_STARBOARD)
-	{ // everyone a bit worse with side lasers
-		if (_cxxShip->accuracy < COMBAT_AI_ISNT_AWFUL) 
-		{ // especially these
-			basic_aim *= 1.3 + randf();
-		}
-		else
-		{
-			basic_aim *= 1.3;
-		}
-	}
-	// only apply glare if ship is not shadowed
-	if (_cxxEntity->isSunlit) {
-		OOSunEntity *sun = [UNIVERSE sun];
-		if (sun)
-		{
-			GLfloat sunGlareAngularSize = atan([sun radius]/HPdistance([self position], [sun position])) * SUN_GLARE_MULT_FACTOR + (SUN_GLARE_ADD_FACTOR);
-			GLfloat glareLevel = [self lookingAtSunWithThresholdAngleCos:cos(sunGlareAngularSize)] * (1.0f - [self sunGlareFilter]);
-			if (glareLevel > 0.1f)
-			{
-				// looking towards sun can seriously mess up aim (glareLevel 0..1)
-				basic_aim *= (1.0 + glareLevel*3.0);
-//				OO_LOG("aim.debug", "Sun glare affecting aim: {:f} for {}", glareLevel, oo::DescriptionOf(self));
-				if (glareLevel > 0.5f)
-				{
-					// strong glare makes precise targeting impossible
-					best_cos = 0.99999;
-				}
-			}
-		}
-	}
-
-
-	GLfloat max_cos = sqrt(1-(basic_aim * basic_aim / 100000000.0));
-
-	if (max_cos < best_cos)
-	{
-		return max_cos;
-	}
-	return best_cos;
-}
-
-
-// much simpler than player version
-- (GLfloat) lookingAtSunWithThresholdAngleCos:(GLfloat) thresholdAngleCos
-{
-	OOSunEntity	*sun = [UNIVERSE sun];
-	GLfloat measuredCos = 999.0f, measuredCosAbs;
-	GLfloat sunBrightness = 0.0f;
-	Vector relativePosition, unitRelativePosition;
-	
-	if (EXPECT_NOT(!sun))  return 0.0f;
-	
-	relativePosition = HPVectorToVector(HPvector_subtract([self position], [sun position]));
-	unitRelativePosition = vector_normal_or_zbasis(relativePosition);
-	switch (_cxxShip->currentWeaponFacing)
-	{
-		case WEAPON_FACING_FORWARD:
-			measuredCos = -dot_product(unitRelativePosition, _cxxShip->v_forward);
-			break;
-		case WEAPON_FACING_AFT:
-			measuredCos = +dot_product(unitRelativePosition, _cxxShip->v_forward);
-			break;
-		case WEAPON_FACING_PORT:
-			measuredCos = +dot_product(unitRelativePosition, _cxxShip->v_right);
-			break;
-		case WEAPON_FACING_STARBOARD:
-			measuredCos = -dot_product(unitRelativePosition, _cxxShip->v_right);
-			break;
-		default:
-			break;
-	}
-	measuredCosAbs = fabs(measuredCos);
-	if (thresholdAngleCos <= measuredCosAbs && measuredCosAbs <= 1.0f)	// angle from viewpoint to sun <= desired threshold
-	{
-		sunBrightness =  (measuredCos - thresholdAngleCos) / (1.0f - thresholdAngleCos);
-		if (sunBrightness < 0.0f)  sunBrightness = 0.0f;
-	}
-	return sunBrightness * sunBrightness * sunBrightness;
-}
-
-
-- (BOOL) onTarget:(OOWeaponFacing)direction withWeapon:(OOWeaponType)weapon_type
-{
-	// initialize dq to a value that would normally return NO; dq is handled inside the defaultless switch(direction) statement
-	// and should alaways be recalculated anyway. Initialization here needed to silence compiler warning - Nikos 20120526
-	GLfloat dq = -1.0f;
-	GLfloat d2, radius, astq;
-	Vector rel_pos, urp;
-	if ([weapon_type isTurretLaser])
-	{
-		return YES;
-	}
-	
-	Entity  *target = [self primaryTarget];
-	if (target == nil)  return NO;
-	if ([target status] == STATUS_DEAD)  return NO;
-	
-	if (_cxxEntity->isSunlit && (target->_cxxEntity->isSunlit == NO) && (randf() < 0.75))
-	{
-		return NO;	// 3/4 of the time you can't see from a lit place into a darker place
-	}
-	radius = target->_cxxEntity->collision_radius;
-	rel_pos = HPVectorToVector(HPvector_subtract([self calculateTargetPosition], _cxxEntity->position));
-	d2 = magnitude2(rel_pos);
-	urp = vector_normal_or_zbasis(rel_pos);
-	
-	switch (direction)
-	{
-		case WEAPON_FACING_FORWARD:
-			dq = +dot_product(urp, _cxxShip->v_forward);		// cosine of angle between v_forward and unit relative position
-			break;
-			
-		case WEAPON_FACING_AFT:
-			dq = -dot_product(urp, _cxxShip->v_forward);		// cosine of angle between v_forward and unit relative position
-			break;
-			
-		case WEAPON_FACING_PORT:
-			dq = -dot_product(urp, _cxxShip->v_right);		// cosine of angle between v_right and unit relative position
-			break;
-			
-		case WEAPON_FACING_STARBOARD:
-			dq = +dot_product(urp, _cxxShip->v_right);		// cosine of angle between v_right and unit relative position
-			break;
-			
-		case WEAPON_FACING_NONE:
-			break;
-	}
-
-	if (dq < 0.0)  return NO;
-	
-	GLfloat aim = [self currentAimTolerance];
-	if (dq > aim*aim) return YES;
-
-	// cosine of 1/3 of half angle subtended by target (mostly they'll
-	// fire sooner anyway due to currentAimTolerance, but this should
-	// almost always be a solid hit)
-	astq = sqrt(1.0 - radius * radius / (d2 * 9));	
-
-	return (fabs(dq) >= astq);
-}
-
-
-- (BOOL) fireWeapon:(OOWeaponType)weapon_type direction:(OOWeaponFacing)direction range:(double)range
-{
-	_cxxShip->weapon_temp = 0.0;
-	switch (direction)
-	{
-		case WEAPON_FACING_FORWARD:
-			_cxxShip->weapon_temp = _cxxShip->forward_weapon_temp;
-			break;
-			
-		case WEAPON_FACING_AFT:
-			_cxxShip->weapon_temp = _cxxShip->aft_weapon_temp;
-			break;
-			
-		case WEAPON_FACING_PORT:
-			_cxxShip->weapon_temp = _cxxShip->port_weapon_temp;
-			break;
-			
-		case WEAPON_FACING_STARBOARD:
-			_cxxShip->weapon_temp = _cxxShip->starboard_weapon_temp;
-			break;
-			
-		case WEAPON_FACING_NONE:
-			break;
-	}
-	if (_cxxShip->weapon_temp / NPC_MAX_WEAPON_TEMP >= WEAPON_COOLING_CUTOUT) return NO;
-
-	NSUInteger multiplier = 1;
-	if (_cxxShip->_multiplyWeapons)
-	{
-		// multiple fitted
-		multiplier = [self cxx_laserPortOffset:direction].size();
-	}
-
-	if (_cxxEntity->energy <= _cxxShip->weapon_energy_use * multiplier) return NO;
-	if ([self shotTime] < _cxxShip->weapon_recharge_rate)  return NO;
-	if (![weapon_type isTurretLaser])
-	{ // thargoid laser may just pick secondary target in this case
-		if (range > randf() * _cxxShip->weaponRange * (_cxxShip->accuracy+7.5))  return NO;
-		if (range > _cxxShip->weaponRange)  return NO;
-	}
-	if (![self onTarget:direction withWeapon:weapon_type])  return NO;
-	
-	BOOL fired = NO;
-	if (!isWeaponNone(weapon_type))
-	{
-		if ([weapon_type isTurretLaser])
-		{
-			[self fireDirectLaserShot:range];
-			fired = YES;
-		}
-		else
-		{
-			[self cxx_fireLaserShotInDirection:direction weaponIdentifier:[weapon_type cxx_identifier].value_or("")];
-			fired = YES;
-		}
-	}
-
-	if (fired)
-	{
-		_cxxEntity->energy -= _cxxShip->weapon_energy_use * multiplier;
-		switch (direction)
-		{
-			case WEAPON_FACING_FORWARD:
-				_cxxShip->forward_weapon_temp += _cxxShip->weapon_shot_temperature * multiplier;
-				break;
-				
-			case WEAPON_FACING_AFT:
-				_cxxShip->aft_weapon_temp += _cxxShip->weapon_shot_temperature * multiplier;
-				break;
-				
-			case WEAPON_FACING_PORT:
-				_cxxShip->port_weapon_temp += _cxxShip->weapon_shot_temperature * multiplier;
-				break;
-				
-			case WEAPON_FACING_STARBOARD:
-				_cxxShip->starboard_weapon_temp += _cxxShip->weapon_shot_temperature * multiplier;
-				break;
-				
-			case WEAPON_FACING_NONE:
-				break;
-		}
-	}
-	
-	if (direction == WEAPON_FACING_FORWARD)
-	{
-		//can we fire lasers from our subentities?
-		for (const auto &se : [self cxx_shipSubEntities])
-		{
-			if ([se.get() fireSubentityLaserShot:range])
-			{
-				fired = YES;
-			}
-		}
-	}
-	
-	if (fired && _cxxShip->cloaking_device_active && _cxxShip->cloakPassive)
-	{
-		[self deactivateCloakingDevice];
-	}
-	
-	return fired;
-}
-
-
-- (BOOL) fireMainWeapon:(double)range
-{
-	// set the values from forward_weapon_type.
-	// OXPs can override the default front laser energy damage.
-	_cxxShip->currentWeaponFacing = WEAPON_FACING_FORWARD;
-	[self setWeaponDataFromType:_cxxShip->forward_weapon_type];
-
-//  weapon damage override no longer effective
-//	weapon_damage = weapon_damage_override;
-	
-	BOOL result = [self fireWeapon:_cxxShip->forward_weapon_type direction:WEAPON_FACING_FORWARD range:range];
-	if (isWeaponNone(_cxxShip->forward_weapon_type))
-	{
-		// need to check subentities to avoid AI oddities
-		// will already have fired them by now, though
-		OOWeaponType 			weapon_type = nil;
-		BOOL hasTurrets = NO;
-		for (const auto &sub : [self cxx_shipSubEntities])
-		{
-			if (!isWeaponNone(weapon_type))  break;
-			ShipEntity *se = sub.get();
-			weapon_type = se->_cxxShip->forward_weapon_type;
-			_cxxShip->weapon_temp = se->_cxxShip->forward_weapon_temp;
-			if (se->_cxxShip->behaviour == BEHAVIOUR_TRACK_AS_TURRET)
-			{
-				hasTurrets = YES;
-			}
-		}
-		if (isWeaponNone(weapon_type) && hasTurrets)
-		{ /* no forward weapon but has turrets, so set up range calculations accordingly
-		     note: this was hard-coded to 10000.0, although turrets have a notably 
-		     shorter range. We are using a multiplier of 1.667 in order to not change
-		     something that already works, but probably it would be best to use
-		     TURRET_SHOT_RANGE * COMBAT_WEAPON_RANGE_FACTOR here
-		  */
-			 _cxxShip->weaponRange = TURRET_SHOT_RANGE * 1.667;
-		}
-		else
-		{
-			[self setWeaponDataFromType:weapon_type];
-		}
-	}
-	return result;
-}
-
-
-- (BOOL) fireAftWeapon:(double)range
-{
-	// set the values from aft_weapon_type.
-	_cxxShip->currentWeaponFacing = WEAPON_FACING_AFT;
-	[self setWeaponDataFromType:_cxxShip->aft_weapon_type];
-	
-	return [self fireWeapon:_cxxShip->aft_weapon_type direction:WEAPON_FACING_AFT range:range];
-}
-
-
-- (BOOL) firePortWeapon:(double)range
-{
-	// set the values from port_weapon_type.
-	_cxxShip->currentWeaponFacing = WEAPON_FACING_PORT;
-	[self setWeaponDataFromType:_cxxShip->port_weapon_type];
-	
-	return [self fireWeapon:_cxxShip->port_weapon_type direction:WEAPON_FACING_PORT range:range];
-}
-
-
-- (BOOL) fireStarboardWeapon:(double)range
-{
-	// set the values from starboard_weapon_type.
-	_cxxShip->currentWeaponFacing = WEAPON_FACING_STARBOARD;
-	[self setWeaponDataFromType:_cxxShip->starboard_weapon_type];
-	
-	return [self fireWeapon:_cxxShip->starboard_weapon_type direction:WEAPON_FACING_STARBOARD range:range];
-}
-
-
-- (OOTimeDelta) shotTime
-{
-	return _cxxShip->shot_time;
-}
-
-
-- (void) resetShotTime
-{
-	_cxxShip->shot_time = 0.0;
-}
-
-
-- (BOOL) fireTurretCannon:(double) range
-{
-	if ([self shotTime] < _cxxShip->weapon_recharge_rate)
-		return NO;
-	if (range > _cxxShip->weaponRange * 1.01) // 1% more than max range - open up just slightly early
-		return NO;
-	ShipEntity *root = [self rootShipEntity];
-	if ([root isPlayer] && ![PLAYER weaponsOnline])
-		return NO;
-
-	if ([root isCloaked] && [root cloakPassive])
-	{
-		// can't fire turrets while cloaked
-		return NO;
-	}
-
-	Vector		vel;	
-	HPVector		origin = [self position];
-
-	Entity		*last = nil;
-	Entity		*father = [self parentEntity];
-	OOMatrix	r_mat;
-
-	vel = vector_forward_from_quaternion(_cxxEntity->orientation);		// Facing
-	// adjust velocity and position vectors to absolute coordinates
-	while ((father)&&(father != last) && (father != (Entity *)NO_TARGET))
-	{
-		r_mat = [father drawRotationMatrix];
-		origin = HPvector_add(OOHPVectorMultiplyMatrix(origin, r_mat), [father position]);
-		vel = OOVectorMultiplyMatrix(vel, r_mat);
-		last = father;
-		if (![last isSubEntity]) break;
-		father = [father owner];
-	}
-	
-	origin = HPvector_add(origin, vectorToHPVector(vector_multiply_scalar(vel, _cxxEntity->collision_radius + 0.5)));	// Start just outside collision sphere
-	vel = vector_multiply_scalar(vel, TURRET_SHOT_SPEED);	// Shot velocity
-	
-	Entity *shot = oo::NewEntityFacade(OOPlasmaShotEntity::shotWithPosition(origin,
-																			vel,
-																			_cxxShip->weapon_damage,
-																			_cxxShip->weaponRange/TURRET_SHOT_SPEED,
-																			oo::ToCxx(_cxxShip->laser_color)));
-	
-	[UNIVERSE addEntity:shot];
-	[shot setOwner:[self rootShipEntity]];	// has to be done AFTER adding shot to the UNIVERSE
-	
-	[self resetShotTime];
-	return YES;
-}
-
-
-- (void) setLaserColor:(OOColor *) color
-{
-	if (color)
-	{
-		[_cxxShip->laser_color release];
-		_cxxShip->laser_color = [color retain];
-	}
-}
-
-
-- (void) setExhaustEmissiveColor:(OOColor *) color
-{
-	if (color)
-	{
-		[_cxxShip->exhaust_emissive_color release];
-		_cxxShip->exhaust_emissive_color = [color retain];
-	}
-}
-
-
-- (OOColor *)laserColor
-{
-	return [[_cxxShip->laser_color retain] autorelease];
-}
-
-
-- (OOColor *)exhaustEmissiveColor
-{
-	return [[_cxxShip->exhaust_emissive_color retain] autorelease];
-}
-
-
 - (BOOL) fireSubentityLaserShot:(double)range
 {
 	[self setShipHitByLaser:nil];
@@ -15480,6 +15037,468 @@ bool ShipEntity::hasProximityAlertIgnoringTarget(bool ignore_target)
 
 
 }	// namespace cxx
+
+
+// Slice 27 of docs/phases/3-slices/ShipEntity.md (bead oo-pnfyp): aim tolerance, sun glare, main
+// weapons and turret fire, laser colours. The facade forwards each selector
+// (ShipEntity+ObjCBridge.mm); sends to self stay sends, so an Objective-C subclass's override still
+// runs (ADR-0056 amendment oo-mvzmb).
+namespace cxx {
+
+// lower is better. Defines angular size of circle in which ship
+// thinks is on target
+GLfloat ShipEntity::currentAimTolerance()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	GLfloat basic_aim = aim_tolerance;
+	GLfloat best_cos = 0.99999; // ~45m in 10km (track won't go better than 40)
+	if (accuracy >= COMBAT_AI_ISNT_AWFUL)
+	{ 
+		// better general targeting
+		best_cos = 0.999999; // ~14m in 10km (track won't go better than 10)
+		// if missing, aim better!
+		basic_aim /= 1.0 + ((GLfloat)[self missedShots] / 4.0);
+	}
+	if (accuracy >= COMBAT_AI_TRACKS_CLOSER)
+	{ 
+		// deadly shots
+		best_cos = 0.9999999; // ~4m in 10km (track won't go better than 4)
+		// and start with extremely good aim circle
+		basic_aim /= 5.0;
+	}
+	if (currentWeaponFacing == WEAPON_FACING_AFT && accuracy < COMBAT_AI_ISNT_AWFUL)
+	{ // bad shots with aft lasers
+		basic_aim *= 1.3;
+	}
+	else if (currentWeaponFacing == WEAPON_FACING_PORT || currentWeaponFacing == WEAPON_FACING_STARBOARD)
+	{ // everyone a bit worse with side lasers
+		if (accuracy < COMBAT_AI_ISNT_AWFUL) 
+		{ // especially these
+			basic_aim *= 1.3 + randf();
+		}
+		else
+		{
+			basic_aim *= 1.3;
+		}
+	}
+	// only apply glare if ship is not shadowed
+	if (isSunlit) {
+		::OOSunEntity *sun = [UNIVERSE sun];
+		if (sun)
+		{
+			GLfloat sunGlareAngularSize = atan([sun radius]/HPdistance([self position], [sun position])) * SUN_GLARE_MULT_FACTOR + (SUN_GLARE_ADD_FACTOR);
+			GLfloat glareLevel = [self lookingAtSunWithThresholdAngleCos:cos(sunGlareAngularSize)] * (1.0f - [self sunGlareFilter]);
+			if (glareLevel > 0.1f)
+			{
+				// looking towards sun can seriously mess up aim (glareLevel 0..1)
+				basic_aim *= (1.0 + glareLevel*3.0);
+//				OO_LOG("aim.debug", "Sun glare affecting aim: {:f} for {}", glareLevel, oo::DescriptionOf(self));
+				if (glareLevel > 0.5f)
+				{
+					// strong glare makes precise targeting impossible
+					best_cos = 0.99999;
+				}
+			}
+		}
+	}
+
+
+	GLfloat max_cos = sqrt(1-(basic_aim * basic_aim / 100000000.0));
+
+	if (max_cos < best_cos)
+	{
+		return max_cos;
+	}
+	return best_cos;
+}
+
+
+// much simpler than player version
+GLfloat ShipEntity::lookingAtSunWithThresholdAngleCos(GLfloat thresholdAngleCos)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::OOSunEntity	*sun = [UNIVERSE sun];
+	GLfloat measuredCos = 999.0f, measuredCosAbs;
+	GLfloat sunBrightness = 0.0f;
+	Vector relativePosition, unitRelativePosition;
+	
+	if (EXPECT_NOT(!sun))  return 0.0f;
+	
+	relativePosition = HPVectorToVector(HPvector_subtract([self position], [sun position]));
+	unitRelativePosition = vector_normal_or_zbasis(relativePosition);
+	switch (currentWeaponFacing)
+	{
+		case WEAPON_FACING_FORWARD:
+			measuredCos = -dot_product(unitRelativePosition, v_forward);
+			break;
+		case WEAPON_FACING_AFT:
+			measuredCos = +dot_product(unitRelativePosition, v_forward);
+			break;
+		case WEAPON_FACING_PORT:
+			measuredCos = +dot_product(unitRelativePosition, v_right);
+			break;
+		case WEAPON_FACING_STARBOARD:
+			measuredCos = -dot_product(unitRelativePosition, v_right);
+			break;
+		default:
+			break;
+	}
+	measuredCosAbs = fabs(measuredCos);
+	if (thresholdAngleCos <= measuredCosAbs && measuredCosAbs <= 1.0f)	// angle from viewpoint to sun <= desired threshold
+	{
+		sunBrightness =  (measuredCos - thresholdAngleCos) / (1.0f - thresholdAngleCos);
+		if (sunBrightness < 0.0f)  sunBrightness = 0.0f;
+	}
+	return sunBrightness * sunBrightness * sunBrightness;
+}
+
+
+bool ShipEntity::onTarget(OOWeaponFacing direction, OOWeaponType weapon_type)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// initialize dq to a value that would normally return NO; dq is handled inside the defaultless switch(direction) statement
+	// and should alaways be recalculated anyway. Initialization here needed to silence compiler warning - Nikos 20120526
+	GLfloat dq = -1.0f;
+	GLfloat d2, radius, astq;
+	Vector rel_pos, urp;
+	if ([weapon_type isTurretLaser])
+	{
+		return YES;
+	}
+	
+	::Entity  *target = [self primaryTarget];
+	if (target == nil)  return NO;
+	if ([target status] == STATUS_DEAD)  return NO;
+	
+	if (isSunlit && (target->_cxxEntity->isSunlit == NO) && (randf() < 0.75))
+	{
+		return NO;	// 3/4 of the time you can't see from a lit place into a darker place
+	}
+	radius = target->_cxxEntity->collision_radius;
+	rel_pos = HPVectorToVector(HPvector_subtract([self calculateTargetPosition], position));
+	d2 = magnitude2(rel_pos);
+	urp = vector_normal_or_zbasis(rel_pos);
+	
+	switch (direction)
+	{
+		case WEAPON_FACING_FORWARD:
+			dq = +dot_product(urp, v_forward);		// cosine of angle between v_forward and unit relative position
+			break;
+			
+		case WEAPON_FACING_AFT:
+			dq = -dot_product(urp, v_forward);		// cosine of angle between v_forward and unit relative position
+			break;
+			
+		case WEAPON_FACING_PORT:
+			dq = -dot_product(urp, v_right);		// cosine of angle between v_right and unit relative position
+			break;
+			
+		case WEAPON_FACING_STARBOARD:
+			dq = +dot_product(urp, v_right);		// cosine of angle between v_right and unit relative position
+			break;
+			
+		case WEAPON_FACING_NONE:
+			break;
+	}
+
+	if (dq < 0.0)  return NO;
+	
+	GLfloat aim = [self currentAimTolerance];
+	if (dq > aim*aim) return YES;
+
+	// cosine of 1/3 of half angle subtended by target (mostly they'll
+	// fire sooner anyway due to currentAimTolerance, but this should
+	// almost always be a solid hit)
+	astq = sqrt(1.0 - radius * radius / (d2 * 9));	
+
+	return (fabs(dq) >= astq);
+}
+
+
+bool ShipEntity::fireWeapon(OOWeaponType weapon_type, OOWeaponFacing direction, double range)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	weapon_temp = 0.0;
+	switch (direction)
+	{
+		case WEAPON_FACING_FORWARD:
+			weapon_temp = forward_weapon_temp;
+			break;
+			
+		case WEAPON_FACING_AFT:
+			weapon_temp = aft_weapon_temp;
+			break;
+			
+		case WEAPON_FACING_PORT:
+			weapon_temp = port_weapon_temp;
+			break;
+			
+		case WEAPON_FACING_STARBOARD:
+			weapon_temp = starboard_weapon_temp;
+			break;
+			
+		case WEAPON_FACING_NONE:
+			break;
+	}
+	if (weapon_temp / NPC_MAX_WEAPON_TEMP >= WEAPON_COOLING_CUTOUT) return NO;
+
+	NSUInteger multiplier = 1;
+	if (_multiplyWeapons)
+	{
+		// multiple fitted
+		multiplier = [self cxx_laserPortOffset:direction].size();
+	}
+
+	if (energy <= weapon_energy_use * multiplier) return NO;
+	if ([self shotTime] < weapon_recharge_rate)  return NO;
+	if (![weapon_type isTurretLaser])
+	{ // thargoid laser may just pick secondary target in this case
+		if (range > randf() * weaponRange * (accuracy+7.5))  return NO;
+		if (range > weaponRange)  return NO;
+	}
+	if (![self onTarget:direction withWeapon:weapon_type])  return NO;
+	
+	BOOL fired = NO;
+	if (!isWeaponNone(weapon_type))
+	{
+		if ([weapon_type isTurretLaser])
+		{
+			[self fireDirectLaserShot:range];
+			fired = YES;
+		}
+		else
+		{
+			[self cxx_fireLaserShotInDirection:direction weaponIdentifier:[weapon_type cxx_identifier].value_or("")];
+			fired = YES;
+		}
+	}
+
+	if (fired)
+	{
+		energy -= weapon_energy_use * multiplier;
+		switch (direction)
+		{
+			case WEAPON_FACING_FORWARD:
+				forward_weapon_temp += weapon_shot_temperature * multiplier;
+				break;
+				
+			case WEAPON_FACING_AFT:
+				aft_weapon_temp += weapon_shot_temperature * multiplier;
+				break;
+				
+			case WEAPON_FACING_PORT:
+				port_weapon_temp += weapon_shot_temperature * multiplier;
+				break;
+				
+			case WEAPON_FACING_STARBOARD:
+				starboard_weapon_temp += weapon_shot_temperature * multiplier;
+				break;
+				
+			case WEAPON_FACING_NONE:
+				break;
+		}
+	}
+	
+	if (direction == WEAPON_FACING_FORWARD)
+	{
+		//can we fire lasers from our subentities?
+		for (const auto &se : [self cxx_shipSubEntities])
+		{
+			if ([se.get() fireSubentityLaserShot:range])
+			{
+				fired = YES;
+			}
+		}
+	}
+	
+	if (fired && cloaking_device_active && cloakPassive)
+	{
+		[self deactivateCloakingDevice];
+	}
+	
+	return fired;
+}
+
+
+bool ShipEntity::fireMainWeapon(double range)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// set the values from forward_weapon_type.
+	// OXPs can override the default front laser energy damage.
+	currentWeaponFacing = WEAPON_FACING_FORWARD;
+	[self setWeaponDataFromType:forward_weapon_type];
+
+//  weapon damage override no longer effective
+//	weapon_damage = weapon_damage_override;
+	
+	BOOL result = [self fireWeapon:forward_weapon_type direction:WEAPON_FACING_FORWARD range:range];
+	if (isWeaponNone(forward_weapon_type))
+	{
+		// need to check subentities to avoid AI oddities
+		// will already have fired them by now, though
+		OOWeaponType 			weapon_type = nil;
+		BOOL hasTurrets = NO;
+		for (const auto &sub : [self cxx_shipSubEntities])
+		{
+			if (!isWeaponNone(weapon_type))  break;
+			::ShipEntity *se = sub.get();
+			weapon_type = se->_cxxShip->forward_weapon_type;
+			weapon_temp = se->_cxxShip->forward_weapon_temp;
+			if (se->_cxxShip->behaviour == BEHAVIOUR_TRACK_AS_TURRET)
+			{
+				hasTurrets = YES;
+			}
+		}
+		if (isWeaponNone(weapon_type) && hasTurrets)
+		{ /* no forward weapon but has turrets, so set up range calculations accordingly
+		     note: this was hard-coded to 10000.0, although turrets have a notably 
+		     shorter range. We are using a multiplier of 1.667 in order to not change
+		     something that already works, but probably it would be best to use
+		     TURRET_SHOT_RANGE * COMBAT_WEAPON_RANGE_FACTOR here
+		  */
+			 weaponRange = TURRET_SHOT_RANGE * 1.667;
+		}
+		else
+		{
+			[self setWeaponDataFromType:weapon_type];
+		}
+	}
+	return result;
+}
+
+
+bool ShipEntity::fireAftWeapon(double range)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// set the values from aft_weapon_type.
+	currentWeaponFacing = WEAPON_FACING_AFT;
+	[self setWeaponDataFromType:aft_weapon_type];
+	
+	return [self fireWeapon:aft_weapon_type direction:WEAPON_FACING_AFT range:range];
+}
+
+
+bool ShipEntity::firePortWeapon(double range)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// set the values from port_weapon_type.
+	currentWeaponFacing = WEAPON_FACING_PORT;
+	[self setWeaponDataFromType:port_weapon_type];
+	
+	return [self fireWeapon:port_weapon_type direction:WEAPON_FACING_PORT range:range];
+}
+
+
+bool ShipEntity::fireStarboardWeapon(double range)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// set the values from starboard_weapon_type.
+	currentWeaponFacing = WEAPON_FACING_STARBOARD;
+	[self setWeaponDataFromType:starboard_weapon_type];
+	
+	return [self fireWeapon:starboard_weapon_type direction:WEAPON_FACING_STARBOARD range:range];
+}
+
+
+OOTimeDelta ShipEntity::shotTime()
+{
+	return shot_time;
+}
+
+
+void ShipEntity::resetShotTime()
+{
+	shot_time = 0.0;
+}
+
+
+bool ShipEntity::fireTurretCannon(double range)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if ([self shotTime] < weapon_recharge_rate)
+		return NO;
+	if (range > weaponRange * 1.01) // 1% more than max range - open up just slightly early
+		return NO;
+	::ShipEntity *root = [self rootShipEntity];
+	if ([root isPlayer] && ![PLAYER weaponsOnline])
+		return NO;
+
+	if ([root isCloaked] && [root cloakPassive])
+	{
+		// can't fire turrets while cloaked
+		return NO;
+	}
+
+	Vector		vel;	
+	HPVector		origin = [self position];
+
+	::Entity		*last = nil;
+	::Entity		*father = [self parentEntity];
+	OOMatrix	r_mat;
+
+	vel = vector_forward_from_quaternion(orientation);		// Facing
+	// adjust velocity and position vectors to absolute coordinates
+	while ((father)&&(father != last) && (father != nil))	// (Entity *)NO_TARGET
+	{
+		r_mat = [father drawRotationMatrix];
+		origin = HPvector_add(OOHPVectorMultiplyMatrix(origin, r_mat), [father position]);
+		vel = OOVectorMultiplyMatrix(vel, r_mat);
+		last = father;
+		if (![last isSubEntity]) break;
+		father = [father owner];
+	}
+	
+	origin = HPvector_add(origin, vectorToHPVector(vector_multiply_scalar(vel, collision_radius + 0.5)));	// Start just outside collision sphere
+	vel = vector_multiply_scalar(vel, TURRET_SHOT_SPEED);	// Shot velocity
+	
+	::Entity *shot = oo::NewEntityFacade(OOPlasmaShotEntity::shotWithPosition(origin,
+																			vel,
+																			weapon_damage,
+																			weaponRange/TURRET_SHOT_SPEED,
+																			oo::ToCxx(laser_color)));
+	
+	[UNIVERSE addEntity:shot];
+	[shot setOwner:[self rootShipEntity]];	// has to be done AFTER adding shot to the UNIVERSE
+	
+	[self resetShotTime];
+	return YES;
+}
+
+
+void ShipEntity::setLaserColor(::OOColor *color)
+{
+	if (color)
+	{
+		[laser_color release];
+		laser_color = [color retain];
+	}
+}
+
+
+void ShipEntity::setExhaustEmissiveColor(::OOColor *color)
+{
+	if (color)
+	{
+		[exhaust_emissive_color release];
+		exhaust_emissive_color = [color retain];
+	}
+}
+
+
+::OOColor *ShipEntity::laserColor()
+{
+	return [[laser_color retain] autorelease];
+}
+
+
+::OOColor *ShipEntity::exhaustEmissiveColor()
+{
+	return [[exhaust_emissive_color retain] autorelease];
+}
+
+
+}	// namespace cxx
+
 
 
 
