@@ -118,6 +118,11 @@ public:
 	void setMaxFlightRoll(GLfloat newValue) override	{ [(::ShipEntity *)_objcOwner setMaxFlightRoll:newValue]; }
 	void setMaxFlightYaw(GLfloat newValue) override	{ [(::ShipEntity *)_objcOwner setMaxFlightYaw:newValue]; }
 	void noteTakingDamage(double amount, ::Entity *entity, OOShipDamageType type) override	{ [(::ShipEntity *)_objcOwner noteTakingDamage:amount from:entity type:type]; }
+
+	// Slice 22 (bead oo-z1utw).
+	void getDestroyedBy(::Entity *whom, OOShipDamageType type) override	{ [(::ShipEntity *)_objcOwner getDestroyedBy:whom damageType:type]; }
+	void becomeExplosion() override	{ [(::ShipEntity *)_objcOwner becomeExplosion]; }
+	void becomeEnergyBlast() override	{ [(::ShipEntity *)_objcOwner becomeEnergyBlast]; }
 };
 
 }	// namespace
@@ -814,5 +819,21 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 - (void) setHulk:(BOOL)isNowHulk	{ _cxxShip->setHulk(isNowHulk); }
 - (void) noteTakingDamage:(double)amount from:(Entity *)entity type:(OOShipDamageType)type	{ _cxxShip->cxx::ShipEntity::noteTakingDamage(amount, entity, type); }
 - (void) noteKilledBy:(Entity *)whom damageType:(OOShipDamageType)type	{ _cxxShip->noteKilledBy(whom, type); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice22)
+
+- (void) getDestroyedBy:(Entity *)whom damageType:(OOShipDamageType)type	{ _cxxShip->cxx::ShipEntity::getDestroyedBy(whom, type); }
+- (void) rescaleBy:(GLfloat)factor	{ _cxxShip->rescaleBy(factor); }
+- (void) rescaleBy:(GLfloat)factor writeToCache:(BOOL)writeToCache	{ _cxxShip->rescaleBy(factor, writeToCache); }
+- (void) releaseCargoPodsDebris	{ _cxxShip->releaseCargoPodsDebris(); }
+- (void) setIsWreckage:(BOOL)isw	{ _cxxShip->setIsWreckage(isw); }
+- (BOOL) showDamage	{ return _cxxShip->showDamage(); }
+- (void) becomeExplosion	{ _cxxShip->cxx::ShipEntity::becomeExplosion(); }
+- (void) becomeEnergyBlast	{ _cxxShip->cxx::ShipEntity::becomeEnergyBlast(); }
+- (void) broadcastEnergyBlastImminent	{ _cxxShip->broadcastEnergyBlastImminent(); }
+- (void) removeExhaust:(OOExhaustPlumeEntity *)exhaust	{ _cxxShip->removeExhaust(exhaust); }
 
 @end

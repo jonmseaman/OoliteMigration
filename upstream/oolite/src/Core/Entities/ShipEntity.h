@@ -669,6 +669,18 @@ public:
 	virtual void noteTakingDamage(double amount, ::Entity *entity, OOShipDamageType type);
 	void noteKilledBy(::Entity *whom, OOShipDamageType type);
 
+	// Slice 22: destruction, rescaling, cargo debris, explosions, energy blast.
+	virtual void getDestroyedBy(::Entity *whom, OOShipDamageType type);
+	void rescaleBy(GLfloat factor);
+	void rescaleBy(GLfloat factor, bool writeToCache);
+	void releaseCargoPodsDebris();
+	void setIsWreckage(bool isw);
+	bool showDamage();
+	virtual void becomeExplosion();
+	virtual void becomeEnergyBlast();
+	void broadcastEnergyBlastImminent();
+	void removeExhaust(::OOExhaustPlumeEntity *exhaust);
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired
