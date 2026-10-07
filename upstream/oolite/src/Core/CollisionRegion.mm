@@ -658,7 +658,7 @@ void CollisionRegion::findShadowedEntities()
 			e1->_cxxEntity->shadingEntityID = NO_TARGET;
 			//
 			// check demo mode here..
-			if ([e1 isPlayer] && ([(PlayerEntity*)e1 showDemoShips]))
+			if ([e1 isPlayer] && ([(::PlayerEntity*)e1 showDemoShips]))
 			{
 				continue;	// don't check shading in demo mode
 			}
@@ -690,7 +690,7 @@ void CollisionRegion::findShadowedEntities()
 				}
 				if ([e1 isPlayer])
 				{
-					[(PlayerEntity *)e1 setOcclusionLevel:occlusionNumber];
+					[(::PlayerEntity *)e1 setOcclusionLevel:occlusionNumber];
 				}
 			}
 			if (!e1->_cxxEntity->isSunlit)
