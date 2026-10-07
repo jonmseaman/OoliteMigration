@@ -4152,7 +4152,7 @@ void ShipEntity::removeEquipmentItem(const std::string &equipmentKey)
 		// if all docking computers are damaged while active
 		if ([self isPlayer] && [self status] == STATUS_AUTOPILOT_ENGAGED && ![self hasDockingComputer])
 		{
-			[(PlayerEntity *)self disengageAutopilot];
+			[(::PlayerEntity *)self disengageAutopilot];
 		}
 
 
@@ -4697,7 +4697,7 @@ void ShipEntity::behaviour_tractored(double delta_t)
 			BOOL lost_contact = (distance > hauler->_cxxEntity->collision_radius + collision_radius + 250.0f);	// 250m range for tractor beam
 			if ([hauler isPlayer])
 			{
-				switch ([(PlayerEntity*)hauler dialFuelScoopStatus])
+				switch ([(::PlayerEntity*)hauler dialFuelScoopStatus])
 				{
 					case SCOOP_STATUS_NOT_INSTALLED:
 					case SCOOP_STATUS_FULL_HOLD:
@@ -4723,7 +4723,7 @@ void ShipEntity::behaviour_tractored(double delta_t)
 			}
 			else if ([hauler isPlayer])
 			{
-				[(PlayerEntity*)hauler setScoopsActive];
+				[(::PlayerEntity*)hauler setScoopsActive];
 			}
 		}
 	}

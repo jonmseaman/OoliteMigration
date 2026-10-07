@@ -235,7 +235,7 @@ void OOLightParticleEntity::drawImmediate(bool /*immediate*/, bool translucent)
 			
 		case VIEW_CUSTOM:
 			{
-				PlayerEntity *player = PLAYER;
+				::PlayerEntity *player = PLAYER;
 				Vector vi = [player customViewRightVector];		vi.x *= _diameter;	vi.y *= _diameter;	vi.z *= _diameter;
 				Vector vj = [player customViewUpVector];		vj.x *= _diameter;	vj.y *= _diameter;	vj.z *= _diameter;
 				Vector vk = [player customViewForwardVector];	vk.x *= viewOffset;	vk.y *= viewOffset;	vk.z *= viewOffset;

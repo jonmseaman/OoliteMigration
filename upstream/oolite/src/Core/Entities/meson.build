@@ -39,6 +39,7 @@ oolite_sources += files(
     'OOWaypointEntity.mm',
     'OOWaypointEntity+ObjCBridge.mm',
     'PlayerEntity.mm',
+    'PlayerEntity+ObjCBridge.mm',
     'PlayerEntityContracts.mm',
     'PlayerEntityControls.mm',
     'PlayerEntityKeyMapper.mm',
