@@ -866,6 +866,33 @@ public:
 	void setTargetToNearestStation();
 	void setTargetToSystemStation();
 
+	// Slice 33: landing, docking abort, broadcasts and comms, fines, AI messages, spawning, close contacts, salvage.
+	void landOnPlanet(::OOPlanetEntity *planet);
+	void abortDocking();
+	oo::PList getDockingInstructions();
+	void broadcastThargoidDestroyed();
+	void broadcastHitByLaserFrom(::ShipEntity *aggressor_ship);
+	void sendMessage(const std::string &message_text, ::ShipEntity *other_ship, bool unpilotedOverride);
+	void sendExpandedMessage(const std::string &message_text, ::ShipEntity *other_ship);
+	void broadcastAIMessage(const std::string &ai_message);
+	void broadcastMessage(const std::string &message_text, bool unpilotedOverride);
+	void setCommsMessageColor();
+	virtual void receiveCommsMessage(const std::string &message_text, ::ShipEntity *other);
+	void commsMessage(const std::string &valueString, bool unpilotedOverride);
+	bool markedForFines();
+	bool markForFines();
+	virtual bool isMining();
+	virtual void interpretAIMessage(const std::string &ms);
+	BoundingBox findBoundingBoxRelativeTo(::Entity *other, Vector _i, Vector _j, Vector _k);
+	void spawn(const std::string &roles_number);
+	int checkShipsInVicinityForWitchJumpExit();
+	bool getTrackCloseContacts();
+	void setTrackCloseContacts(bool value);
+#if OO_SALVAGE_SUPPORT
+	void claimAsSalvage();
+	void sendCoordinatesToPilot();
+#endif
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired
