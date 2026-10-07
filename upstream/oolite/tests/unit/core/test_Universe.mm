@@ -369,4 +369,132 @@ OO_TEST(slice14Hazard)
 }
 
 
+// Slice 15 (bead oo-dg9d1): counting and finding entities by predicate, time, collisions, the view
+// direction. Written against the Objective-C API and run on the unconverted class first; the
+// entities sit in the sorted list by hand, as slice 14's.
+@interface Slice15ShipLike: Entity	// counts as a ship for the ship predicates
+@end
+
+@implementation Slice15ShipLike
+- (BOOL) isShip	{ return YES; }
+@end
+
+
+namespace {
+
+Entity *MakeShipLike(HPVector position, GLfloat radius)
+{
+	Entity *entity = [[[Slice15ShipLike alloc] init] autorelease];
+	[entity setPosition:position];
+	[entity setCollisionRadius:radius];
+	return entity;
+}
+
+
+BOOL IsFarPredicate(Entity *entity, void *parameter)	// x beyond *(double *)parameter
+{
+	return [entity position].x > *(double *)parameter;
+}
+
+}	// namespace
+
+
+OO_TEST(slice15CountAndFind)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+		Entity *a = MakeEntity(make_HPvector(0, 0, 0), 10);
+		Entity *b = MakeEntity(make_HPvector(100, 0, 0), 10);
+		Entity *c = MakeShipLike(make_HPvector(1000, 0, 0), 10);
+		SetSortedEntities(u, { a, b, c });
+
+		// No predicate is every entity; no entity counts from the origin; the reference itself never counts.
+		OO_CHECK([u countEntitiesMatchingPredicate:NULL parameter:NULL inRange:-1 ofEntity:nil] == 3);
+		OO_CHECK([u countEntitiesMatchingPredicate:NULL parameter:NULL inRange:-1 ofEntity:a] == 2);
+		// The range reaches the other entity's surface: b's is 90 away from a, c's 990.
+		OO_CHECK([u countEntitiesMatchingPredicate:NULL parameter:NULL inRange:95 ofEntity:a] == 1);
+		OO_CHECK([u countEntitiesMatchingPredicate:NULL parameter:NULL inRange:85 ofEntity:a] == 0);
+		double far = 50;
+		OO_CHECK([u countEntitiesMatchingPredicate:IsFarPredicate parameter:&far inRange:-1 ofEntity:nil] == 2);
+
+		// Ships: only c.
+		OO_CHECK([u countShipsMatchingPredicate:NULL parameter:NULL inRange:-1 ofEntity:a] == 1);
+		OO_CHECK([u countShipsMatchingPredicate:IsFarPredicate parameter:&far inRange:-1 ofEntity:nil] == 1);
+		OO_CHECK([u countShipsMatchingPredicate:NULL parameter:NULL inRange:500 ofEntity:a] == 0);
+
+		std::vector<oo::ObjCRef<Entity *>> found = [u cxx_findEntitiesMatchingPredicate:NULL parameter:NULL inRange:-1 ofEntity:a];
+		OO_CHECK(found.size() == 2 && found[0].get() == b && found[1].get() == c);	// in the sorted list's order
+		found = [u cxx_findEntitiesMatchingPredicate:IsFarPredicate parameter:&far inRange:95 ofEntity:a];
+		OO_CHECK(found.size() == 1 && found[0].get() == b);
+		found = [u cxx_findShipsMatchingPredicate:NULL parameter:NULL inRange:-1 ofEntity:nil];
+		OO_CHECK(found.size() == 1 && found[0].get() == c);
+		OO_CHECK([u cxx_findVisualEffectsMatchingPredicate:NULL parameter:NULL inRange:-1 ofEntity:nil].empty());
+
+		// Within range of an entity: the ships only; none for no entity.
+		OO_CHECK([u cxx_entitiesWithinRange:2000 ofEntity:a].size() == 1);
+		OO_CHECK([u cxx_entitiesWithinRange:500 ofEntity:a].empty());
+		OO_CHECK([u cxx_entitiesWithinRange:2000 ofEntity:nil].empty());
+
+		// The scan class.
+		[c setScanClass:CLASS_ROCK];
+		OO_CHECK([u countShipsWithScanClass:CLASS_ROCK inRange:-1 ofEntity:nil] == 1);
+		OO_CHECK([u countShipsWithScanClass:CLASS_NEUTRAL inRange:-1 ofEntity:nil] == 0);
+
+		u->_cxxUniverse->n_entities = 0;
+	}
+}
+
+
+OO_TEST(slice15FindOneAndNearest)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+		Entity *a = MakeEntity(make_HPvector(0, 0, 0), 10);
+		Entity *b = MakeEntity(make_HPvector(300, 0, 0), 10);
+		Entity *c = MakeShipLike(make_HPvector(200, 0, 0), 10);
+		Entity *d = MakeShipLike(make_HPvector(-500, 0, 0), 10);
+		SetSortedEntities(u, { a, b, c, d });
+		double far = 250;
+
+		OO_CHECK([u findOneEntityMatchingPredicate:NULL parameter:NULL] == a);
+		OO_CHECK([u findOneEntityMatchingPredicate:IsFarPredicate parameter:&far] == b);
+		far = 5000;
+		OO_CHECK([u findOneEntityMatchingPredicate:IsFarPredicate parameter:&far] == nil);
+
+		OO_CHECK([u nearestEntityMatchingPredicate:NULL parameter:NULL relativeToEntity:a] == c);
+		OO_CHECK([u nearestEntityMatchingPredicate:NULL parameter:NULL relativeToEntity:nil] == a);
+		far = 250;
+		OO_CHECK([u nearestEntityMatchingPredicate:IsFarPredicate parameter:&far relativeToEntity:a] == b);
+		OO_CHECK([u nearestShipMatchingPredicate:NULL parameter:NULL relativeToEntity:b] == c);
+		OO_CHECK([u nearestShipMatchingPredicate:IsFarPredicate parameter:&far relativeToEntity:a] == nil);
+		far = -1000;
+		OO_CHECK([u nearestShipMatchingPredicate:IsFarPredicate parameter:&far relativeToEntity:c] == d);
+
+		u->_cxxUniverse->n_entities = 0;
+	}
+}
+
+
+OO_TEST(slice15TimeAndCollisions)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+		u->_cxxUniverse->universal_time = 12.5;
+		u->_cxxUniverse->time_delta = 0.25;
+		OO_CHECK([u getTime] == 12.5 && [u getTimeDelta] == 0.25);
+
+		// No collision region yet: the description is a dash.
+		OO_CHECK([u collisionDescription] == "-");
+		[u dumpCollisions];
+		OO_CHECK(u->_cxxUniverse->dumpCollisionInfo);
+
+		u->_cxxUniverse->viewDirection = VIEW_AFT;
+		OO_CHECK([u viewDirection] == VIEW_AFT);
+	}
+}
+
+
 OO_TEST_MAIN()
