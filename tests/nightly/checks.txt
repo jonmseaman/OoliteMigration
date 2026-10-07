@@ -379,3 +379,5 @@
 [oo-umyg2] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntity && bash tools/tier-c.sh --only goldens
 [oo-66inv] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntity && bash tools/tier-c.sh --only goldens
 [oo-cicod] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntity && bash tools/tier-c.sh --only goldens
+[oo-z1utw] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntity && bash tools/tier-c.sh --only goldens
+[oo-xmrgd] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntity && bash tools/tier-c.sh --only goldens
