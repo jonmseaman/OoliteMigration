@@ -290,7 +290,7 @@ OO_TEST(placeholderMaterial)
 	{
 		OOMaterial *placeholder = [OOMesh placeholderMaterial];
 		OO_CHECK(placeholder != nil);
-		OO_CHECK([placeholder isKindOfClass:[OOBasicMaterial class]]);
+		OO_CHECK(dynamic_cast<OOBasicMaterial *>(oo::ToCxx(placeholder)) != nullptr);
 		OO_CHECK_EQ([placeholder cxx_name].value_or("<none>"), "/placeholder/");
 		OO_CHECK([OOMesh placeholderMaterial] == placeholder);
 	}

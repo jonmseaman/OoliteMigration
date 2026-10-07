@@ -1,8 +1,8 @@
 /*
 
-OOCheckPListSyntaxVerifierStage.h
+OOJSSpecialFunctions+ObjCBridge.mm
 
-OOOXPVerifierStage which checks that plists have correct syntax
+TRANSITIONAL (proposed ADR-0056): see OOJSSpecialFunctions+ObjCBridge.h.
 
 
 Oolite
@@ -25,21 +25,11 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOFileScannerVerifierStage.h"
+#import "OOJSSpecialFunctions+ObjCBridge.h"
+#import "OOJSSpecialFunctions.h"
 
-#if OO_OXP_VERIFIER_ENABLED
 
-/*	C++20 since bead oo-li7k (proposed ADR-0056 Amendment 1, amendment oo-up4b item 6): a leaf of
-	OOFileHandlingVerifierStage. It is global and has no facade: nothing outside this file
-	names it, the verifier makes it from its name (kCxxStages in OOOXPVerifier.mm) and holds it
-	(as its OOOXPVerifierStage facade until bead oo-9ht.4).
-*/
-class OOCheckPListSyntaxVerifierStage : public OOFileHandlingVerifierStage
+OOJSValue *JSSpecialFunctionsObjectWrapper(ooscript::Context context)
 {
-public:
-	std::optional<std::string> name() override;
-	bool shouldRun() override;
-	void run() override;
-};
-
-#endif
+	return oo::ToObjC(cxx_JSSpecialFunctionsObjectWrapper(context).get());
+}

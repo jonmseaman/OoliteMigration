@@ -536,7 +536,7 @@ OO_TEST(texturesApplyAndUnapply)
 		// Anything else: no program, and each texture unit cleared (the superclass is not asked).
 		m->unapplyWithNext(nullptr);
 		OO_CHECK(gProgramApplyNones == programApplyNones + 1 && gTextureApplyNones == applyNones + 3);
-		m->unapplyWithNext(oo::ToCxx(static_cast<OOMaterial *>([[[OOBasicMaterial alloc] cxx_initWithName:std::string("Basic")] autorelease])));
+		m->unapplyWithNext(OOBasicMaterial::materialWithName(std::string("Basic")).get());
 		OO_CHECK(gProgramApplyNones == programApplyNones + 2 && gTextureApplyNones == applyNones + 6);
 
 		// No textures: one unit is still cleared.
@@ -624,7 +624,7 @@ OO_TEST(cxxAPI)
 }
 
 
-// Objective-C sees a shader material as the nearest facade, OOBasicMaterial's (bead oo-9ht.46).
+// Objective-C sees a shader material as an OOMaterial (beads oo-9ht.46, oo-9ht.33).
 OO_TEST(crossesAsTheBasicMaterialFacade)
 {
 	if (!OOTestGLContext())  { OO_CHECK(false); return; }
@@ -632,7 +632,7 @@ OO_TEST(crossesAsTheBasicMaterialFacade)
 	{
 		const oo::Ref<OOShaderMaterial> m = OOShaderMaterial::shaderMaterialWithName(std::string("Cxx"), kSources, oo::PList(), nil);
 		OOMaterial *facade = oo::ToObjC(static_cast<cxx::OOMaterial *>(m.get()));
-		OO_CHECK([facade isMemberOfClass:[OOBasicMaterial class]]);
+		OO_CHECK([facade isMemberOfClass:[OOMaterial class]]);
 		OO_CHECK(oo::ToCxx(facade) == m.get() && oo::AsObjCMaterial(m.get()) == nullptr);
 		OO_CHECK(oo::DescriptionOf(facade).starts_with("<OOShaderMaterial 0x"));
 	}

@@ -7527,7 +7527,7 @@ void ShipEntity::setUpMixedEscorts()
 
 namespace cxx {
 
-void ShipEntity::setUpOneEscort(::ShipEntity *escorter, ::OOShipGroup *escortGroup, const std::string &escortRole, HPVector ex_pos, uint8_t currentEscortCount)
+void ShipEntity::setUpOneEscort(::ShipEntity *escorter, ::OOShipGroup *escortGroup, const std::string &/*escortRole*/, HPVector ex_pos, uint8_t currentEscortCount)
 {
 	::ShipEntity *self = oo::ToObjC(this);
 	std::string		autoAI;
@@ -7770,7 +7770,8 @@ Triangle ShipEntity::absoluteIJKForSubentity()
 	::Entity		*father = self;
 	OOMatrix	r_mat;
 	
-	while ((father)&&(father != last) && (father != (::Entity *)NO_TARGET))
+	// NO_TARGET is 0, so the old `father != (Entity *)NO_TARGET` test only repeated the null check.
+	while ((father)&&(father != last))
 	{
 		r_mat = [father drawRotationMatrix];
 		result.v[0] = OOVectorMultiplyMatrix(result.v[0], r_mat);
@@ -8293,7 +8294,7 @@ void ShipEntity::update(OOTimeDelta delta_t)
 	if ([self status] == STATUS_BEING_SCOOPED)
 	{
 		//if we are being tractored, but we have no owner, then we have a problem
-		if (behaviour != BEHAVIOUR_TRACTORED  || [self owner] == nil || [self owner] == self || [self owner] == (id)NO_TARGET)
+		if (behaviour != BEHAVIOUR_TRACTORED  || [self owner] == nil || [self owner] == self)	// NO_TARGET is 0: `[self owner] == (id)NO_TARGET` only repeated the nil test
 		{
 			// escaped tractor beam
 			[self setStatus:STATUS_IN_FLIGHT];	// should correct 'uncollidable objects' bug
@@ -8601,7 +8602,7 @@ void ShipEntity::respondToAttackFrom(::Entity *from, ::Entity *other)
 			{
 				//we are in the same group, do we forgive you?
 				//criminals are less likely to forgive
-				if (randf() < (0.8 - (bounty/100))) 
+				if (randf() < (0.8 - static_cast<OOCreditsQuantity>(bounty/100)))	// whole hundreds, as before
 				{
 					//it was an honest mistake, lets get on with it
 					return;
@@ -10276,7 +10277,7 @@ void ShipEntity::behaviour_evasive_action(double delta_t)
 // oo-mvzmb).
 namespace cxx {
 
-void ShipEntity::behaviour_attack_target(double delta_t)
+void ShipEntity::behaviour_attack_target(double /*delta_t*/)
 {
 	::ShipEntity *self = oo::ToObjC(this);
 	double  range = [self rangeToPrimaryTarget];
@@ -10476,7 +10477,7 @@ void ShipEntity::behaviour_attack_target(double delta_t)
 }
 
 
-void ShipEntity::behaviour_attack_broadside(double delta_t)
+void ShipEntity::behaviour_attack_broadside(double /*delta_t*/)
 {
 	::ShipEntity *self = oo::ToObjC(this);
 	BOOL	canBurn = [self hasFuelInjection] && (fuel > MIN_FUEL);
