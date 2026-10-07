@@ -226,6 +226,16 @@ MA 02110-1301, USA.
 @end
 
 
+// Slice 3's facade forwarder for the system markers (ADR-0056 amendment oo-bwjb item 2). Slice 4
+// no longer sends it, but test_GuiDisplayGen cxxSlice3API pins that the facade answers it (bead
+// oo-iro0g); deleted with the facade.
+@interface GuiDisplayGen (OOGuiDisplayGenInternalForwarded)
+
+- (void) drawSystemMarkers:(const oo::PList &)marker atX:(GLfloat)x andY:(GLfloat)y andZ:(GLfloat)z withAlpha:(GLfloat)alpha andScale:(GLfloat)scale;
+
+@end
+
+
 // One-line bridges (ADR-0056 amendment oo-9ht.139 item 3) for the file-scope helpers of
 // GuiDisplayGen.mm, which may not message the universe themselves. Deleted with the universe's
 // conversion.
