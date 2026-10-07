@@ -37,6 +37,8 @@ MA 02110-1301, USA.
 #import "OOJSPropID.h"
 
 #include "oofnd/objc/OOAssert.h"
+#include "oofnd/objc/OOObjCRef.h"
+#include "oofnd/Ref.hpp"
 
 /*	The plain C++ part of the engine API (bead oo-9ht.72): reporters, converters, argument and
 	return macros, the native wrappers. A binding with no Objective-C includes only that header.
@@ -48,146 +50,140 @@ MA 02110-1301, USA.
 @protocol OOJavaScriptEngineMonitor;
 
 
-@interface OOJavaScriptEngine: OOObject
+namespace cxx {
+
+/*	The engine (proposed ADR-0056; docs/phases/3-slices/OOJavaScriptEngine.md): the singleton
+	that owns the JS runtime and the main thread context. The Objective-C OOJavaScriptEngine
+	(OOJavaScriptEngine+ObjCBridge.h) is its facade while anything messages it.
+*/
+class OOJavaScriptEngine : public oo::RefCounted
 {
-@private
-	ooscript::Runtime _runtime;
-	ooscript::Object _globalObject;
-	BOOL							_showErrorLocations;
-	
-	ooscript::ClassDef							*_objectClass;
-	ooscript::ClassDef							*_stringClass;
-	ooscript::ClassDef							*_arrayClass;
-	ooscript::ClassDef							*_numberClass;
-	ooscript::ClassDef							*_booleanClass;
-	
+public:
+	// The shared engine, made on first use; borrowed, never released (proposed ADR-0056
+	// amendment oo-r7m0).
+	static OOJavaScriptEngine *sharedEngine();
+
+	~OOJavaScriptEngine();
+
+	void runMissionCallback();
+
+	/*	Tear down context and global object and rebuild them from scratch. This
+		invalidates -globalObject and the main thread context.
+	*/
+	bool reset();
+
+	ooscript::Object globalObject();
+
+	// Call a JS function, setting up new contexts as necessary. Caller is responsible for ensuring the ooscript::Value passed really is a function.
+	bool callJSFunction(ooscript::Value function, ooscript::Object jsThis, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult);
+
+	void removeGCObjectRoot(ooscript::Object *rootPtr);
+	void removeGCValueRoot(ooscript::Value *rootPtr);
+
+	void garbageCollectionOpportunity(bool force);
+
+	bool showErrorLocations();
+	void setShowErrorLocations(bool value);
+
+	ooscript::ClassDef *objectClass();
+	ooscript::ClassDef *stringClass();
+	ooscript::ClassDef *arrayClass();
+	ooscript::ClassDef *numberClass();
+	ooscript::ClassDef *booleanClass();
+
 #ifndef NDEBUG
-	BOOL							_dumpStackForErrors;
-	BOOL							_dumpStackForWarnings;
+	bool dumpStackForErrors();
+	void setDumpStackForErrors(bool value);
+
+	bool dumpStackForWarnings();
+	void setDumpStackForWarnings(bool value);
+
+	// Install handler for JS "debugger" statment.
+	void enableDebuggerStatement();
+#endif
+
+#if OOJSENGINE_MONITOR_SUPPORT
+	// (OOMonitorSupport)
+	void setMonitor(id<OOJavaScriptEngineMonitor> monitor);
+
+	// (OOMonitorSupportInternal)
+	void sendMonitorError(ooscript::ErrorReport *errorReport, const std::string &message, ooscript::Context context);
+	// nullopt is meaningful to the monitor (Log() with a null message; no class for Log()).
+	void sendMonitorLogMessage(const std::optional<std::string> &message, const std::optional<std::string> &messageClass, ooscript::Context context);
+#endif
+
+private:
+	void init();	// -init's body after [super init]: run by sharedEngine() on the new object
+
+	bool lookUpStandardClassPointers();
+	void registerStandardObjectConverters();
+
+	void createMainThreadContext();
+	void destroyMainThreadContext();
+
+	ooscript::Runtime				_runtime = {};
+	ooscript::Object				_globalObject = {};
+	bool							_showErrorLocations = {};
+
+	ooscript::ClassDef				*_objectClass = {};
+	ooscript::ClassDef				*_stringClass = {};
+	ooscript::ClassDef				*_arrayClass = {};
+	ooscript::ClassDef				*_numberClass = {};
+	ooscript::ClassDef				*_booleanClass = {};
+
+#ifndef NDEBUG
+	bool							_dumpStackForErrors = {};
+	bool							_dumpStackForWarnings = {};
 #endif
 #if OOJSENGINE_MONITOR_SUPPORT
-	id<OOJavaScriptEngineMonitor>	_monitor;
+	oo::ObjCRef<id<OOJavaScriptEngineMonitor>>	_monitor;
 #endif
-}
+};
 
-+ (OOJavaScriptEngine *) sharedEngine;
+}	// namespace cxx
 
-- (ooscript::Object) globalObject;
 
-- (void) runMissionCallback;
 
-/*	Tear down context and global object and rebuild them from scratch. This
-	invalidates -globalObject and the main thread context.
+/*	The root-class JS glue for classes rooted on OOObject: the category OOObject (OOJavaScript)
+	(OOJavaScriptEngine+ObjCBridge.h) and the bodies of its default methods, which the category
+	forwards to (amendment oo-ppc item 3).
 */
-- (BOOL) reset;
+ooscript::Value OOObjectJSValueInContext(ooscript::Context context);
+std::optional<std::string> OOObjectJSClassName();
+std::optional<std::string> OOObjectJSDescription(id object);
+std::optional<std::string> OOObjectJSDescriptionWithClassName(id object, const std::optional<std::string> &className);
+void OOObjectClearJSSelf(ooscript::Object selfVal);
 
-// Call a JS function, setting up new contexts as necessary. Caller is responsible for ensuring the ooscript::Value passed really is a function.
-- (BOOL) callJSFunction:(ooscript::Value)function
-			  forObject:(ooscript::Object)jsThis
-				   argc:(unsigned)argc
-				   argv:(ooscript::Value *)argv
-				 result:(ooscript::Value *)outResult;
-
-- (void) removeGCObjectRoot:(ooscript::Object *)rootPtr;
-- (void) removeGCValueRoot:(ooscript::Value *)rootPtr;
-
-- (void) garbageCollectionOpportunity:(BOOL)force;
-
-- (BOOL) showErrorLocations;
-- (void) setShowErrorLocations:(BOOL)value;
-
-- (ooscript::ClassDef *) objectClass;
-- (ooscript::ClassDef *) stringClass;
-- (ooscript::ClassDef *) arrayClass;
-- (ooscript::ClassDef *) numberClass;
-- (ooscript::ClassDef *) booleanClass;
-
-#ifndef NDEBUG
-- (BOOL) dumpStackForErrors;
-- (void) setDumpStackForErrors:(BOOL)value;
-
-- (BOOL) dumpStackForWarnings;
-- (void) setDumpStackForWarnings:(BOOL)value;
-
-// Install handler for JS "debugger" statment.
-- (void) enableDebuggerStatement;
-#endif
-
-@end
+// OONativeVector (OOJavaScriptConversion)'s -oo_jsValueInContext:.
+namespace cxx { class OONativeVector; }
+ooscript::Value OONativeVectorJSValueInContext(cxx::OONativeVector *vector, ooscript::Context context);
 
 
-
-/*	The root-class JS glue for classes rooted on OOObject (ADR-0029). An object on another root
-	has none: OOJSValueFromNativeObject() gives undefined for it (oo-qps.72).
-
-	-oo_jsValueInContext:
-
-	Return the JavaScript value representation of an object. The default
-	implementation returns ooscript::undefinedValue().
-
-	SAFETY NOTE: if this message is sent to nil, the return value depends on
-	the platform and the engine's value representation. If the
-	receiver may be nil, use OOJSValueFromNativeObject() instead.
-
-	Requires a request on context.
-
-	-cxx_oo_jsDescription
-	-cxx_oo_jsDescriptionWithClassName:
-	-cxx_oo_jsClassName
-
-	They wrap -cxx_descriptionComponents (OODescription.h) as [jsClassName components]. C++ string twins on OOObject.
-
-	oo_clearJSSelf:
-	This is called by OOJSObjectWrapperFinalize() when a JS object wrapper is
-	collected. The default implementation does nothing.
-*/
-@interface OOObject (OOJavaScript)
-
-- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context;
-- (std::optional<std::string>) cxx_oo_jsDescription;
-- (std::optional<std::string>) cxx_oo_jsDescriptionWithClassName:(const std::optional<std::string> &)className;
-- (std::optional<std::string>) cxx_oo_jsClassName;
-- (void) oo_clearJSSelf:(ooscript::Object)selfVal;
-
-@end
-
-
+namespace cxx {
 
 /*	OONull: the placeholder for null inside native collections, which cannot
 	hold nil (was Foundation's null singleton, ADR-0029 Decision 5). A JS array
 	element that is null or undefined becomes [OONull null] in the native array, and
-[OONull null] becomes JS null, so JS null round-trips as before. Game code
+	[OONull null] becomes JS null, so JS null round-trips as before. Game code
 	uses it where a collection slot is empty (MFD settings, target memory,
 	script event arguments). It describes itself as "<null>", as its
-	predecessor did, and -copy returns itself.
+	predecessor did, and -copy returns itself. Its Objective-C facade OONull
+	(OOJavaScriptEngine+ObjCBridge.h) is the object the collections hold.
 */
-@interface OONull: OOObject <OOCopying>
-
-+ (OONull *) null;
-
-@end
-
-
-/*	OOJSValue: an object whose purpose in life is to hold a JavaScript value.
-	This is somewhat useful for putting JavaScript objects in ObjC collections,
-	for instance to pass as properties to script loaders. The value is
-	GC rooted for the lifetime of the OOJSValue.
-	
-	All methods take a context parameter, which must either be nil or a context
-	in a request.
-*/
-@interface OOJSValue: OOObject
+class OONull : public oo::RefCounted
 {
-	ooscript::Value					_val;
-}
+public:
+	// The one null, made on first use; borrowed, never released (amendment oo-r7m0).
+	static OONull *null();
 
-+ (id) valueWithJSValue:(ooscript::Value)value inContext:(ooscript::Context)context;
-+ (id) valueWithJSObject:(ooscript::Object)object inContext:(ooscript::Context)context;
+	std::optional<std::string> description();	// "<null>"
+	ooscript::Value jsValueInContext(ooscript::Context context);	// JS null
+};
 
-- (id) initWithJSValue:(ooscript::Value)value inContext:(ooscript::Context)context;
-- (id) initWithJSObject:(ooscript::Object)object inContext:(ooscript::Context)context;
+}	// namespace cxx
 
-@end
+
+// cxx::OOJSValue is declared in OOJSEngineCore.h (a plain C++ header, so C++-only bindings can use it).
 
 
 
@@ -256,38 +252,9 @@ OOJS_EXTERN_C BOOL OOJSObjectGetterImplPRIVATE(ooscript::Context context, ooscri
 
 
 
-#if OOJSENGINE_MONITOR_SUPPORT
-
-/*	Protocol for debugging "monitor" object.
-	The monitor is an object -- in Oolite, or via Distributed Objects -- which
-	is provided with debugging information by the OOJavaScriptEngine.
-*/
-
-@protocol OOJavaScriptEngineMonitor <OOObject>
-
-// Sent for JS errors or warnings.
-- (void)jsEngine:(OOJavaScriptEngine *)engine
-		 context:(ooscript::Context)context
-		   error:(ooscript::ErrorReport *)errorReport
-	   stackSkip:(unsigned)stackSkip
- showingLocation:(BOOL)showLocation
-	 withMessage:(const std::string &)message;
-
-// Sent for JS log messages. Note: messageClass is nullopt if Log() is used rather than LogWithClass().
-- (void)jsEngine:(OOJavaScriptEngine *)engine
-		 context:(ooscript::Context)context
-	  logMessage:(const std::string &)message
-		 ofClass:(const std::optional<std::string> &)messageClass;
-
-@end
-
-
-@interface OOJavaScriptEngine (OOMonitorSupport)
-
-- (void)setMonitor:(id<OOJavaScriptEngineMonitor>)monitor;
-
-@end
-
-#endif
+// Transitional: the Objective-C OOJavaScriptEngine (with its OOJavaScriptEngineMonitor protocol and
+// OOMonitorSupport category), for code not yet converted. Deleted, with namespace cxx above, by
+// the bridge's deletion bead.
+#import "OOJavaScriptEngine+ObjCBridge.h"
 
 

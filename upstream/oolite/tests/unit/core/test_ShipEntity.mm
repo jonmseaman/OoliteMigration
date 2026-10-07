@@ -1142,6 +1142,31 @@ OO_TEST(attackBehavioursWithoutATarget)
 }
 
 
+// -behaviour_attack_target: chooses the next attack behaviour: an unarmed ship (no weapon on any
+// mount or subentity) flies from its target, and the choice resets the ship's frustration. The
+// broadside on either side, with no target, notes the lost target and goes idle.
+OO_TEST(attackTargetChoiceAndBroadsideSides)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"unarmed" definition:Definition()] autorelease];
+		MutablePart(ship)->behaviour = BEHAVIOUR_ATTACK_TARGET;
+		MutablePart(ship)->frustration = 5.0f;
+		[ship behaviour_attack_target:0.1];
+		OO_CHECK(Part(ship)->behaviour == BEHAVIOUR_ATTACK_FLY_FROM_TARGET);
+		OO_CHECK(Part(ship)->frustration == 0.0f);
+
+		MutablePart(ship)->behaviour = BEHAVIOUR_ATTACK_BROADSIDE_LEFT;
+		[ship behaviour_attack_broadside_target:0.1 leftside:YES];
+		OO_CHECK(Part(ship)->behaviour == BEHAVIOUR_IDLE);
+		MutablePart(ship)->behaviour = BEHAVIOUR_ATTACK_BROADSIDE_RIGHT;
+		[ship behaviour_attack_broadside_target:0.1 leftside:NO];
+		OO_CHECK(Part(ship)->behaviour == BEHAVIOUR_IDLE);
+	}
+}
+
+
 // --- Slices 13-15: the behaviours (the expectations were run on the Objective-C methods first) ----
 
 namespace {
