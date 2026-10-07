@@ -449,7 +449,7 @@ void OOCharacter::setLegacyScript(const oo::PList &some_actions)
 }
 
 
-OOJSScript *OOCharacter::script()
+::OOJSScript *OOCharacter::script()
 {
 	return _script.get();
 }
@@ -458,7 +458,7 @@ OOJSScript *OOCharacter::script()
 void OOCharacter::setCharacterScript(const std::string &scriptName)
 {
 	// (the script's "character" is this character's Objective-C facade, as it was self)
-	_script = oo::ObjCRef<OOJSScript *>([::OOScript cxx_jsScriptFromFileNamed:scriptName
+	_script = oo::ObjCRef<::OOJSScript *>([::OOScript cxx_jsScriptFromFileNamed:scriptName
 																  properties:oo::PList(oo::PList::Dict{ { "character", oo::PListObject(oo::ToObjC(this)) } })]);
 }
 

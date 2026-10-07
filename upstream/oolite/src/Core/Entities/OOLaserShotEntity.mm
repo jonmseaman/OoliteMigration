@@ -60,11 +60,11 @@ static OOTexture *sShotTexture2 = nil;
 
 namespace cxx {
 
-void OOLaserShotEntity::initLaserFromShip(ShipEntity *srcEntity, OOWeaponFacing direction, Vector offset)
+void OOLaserShotEntity::initLaserFromShip(::ShipEntity *srcEntity, OOWeaponFacing direction, Vector offset)
 {
 	// [super init] could not fail: the constructor ran Entity's -init body.
 
-	ShipEntity			*ship = [srcEntity rootShipEntity];
+	::ShipEntity			*ship = [srcEntity rootShipEntity];
 	Vector				middle = OOBoundingBoxCenter([srcEntity boundingBox]);
 
 	OOCParameterAssert([srcEntity isShip] && [ship isShip]);
@@ -121,7 +121,7 @@ void OOLaserShotEntity::initLaserFromShip(ShipEntity *srcEntity, OOWeaponFacing 
 }
 
 
-oo::Ref<OOLaserShotEntity> OOLaserShotEntity::laserFromShip(ShipEntity *ship, OOWeaponFacing direction, Vector offset)
+oo::Ref<OOLaserShotEntity> OOLaserShotEntity::laserFromShip(::ShipEntity *ship, OOWeaponFacing direction, Vector offset)
 {
 	const oo::Ref<OOLaserShotEntity> shot = oo::makeRef<OOLaserShotEntity>();
 	shot->initLaserFromShip(ship, direction, offset);
@@ -160,7 +160,7 @@ void OOLaserShotEntity::update(OOTimeDelta delta_t)
 {
 	Entity::update(delta_t);
 	_lifetime -= delta_t;
-	ShipEntity		*ship = owner();
+	::ShipEntity		*ship = owner();
 
 	if ([ship isPlayer])
 	{

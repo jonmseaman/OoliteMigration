@@ -97,7 +97,7 @@ std::optional<std::string> OOCheckShipDataPListVerifierStage::name()
 
 std::optional<std::vector<std::string>> OOCheckShipDataPListVerifierStage::dependents()
 {
-	std::vector<std::string> result = cxx::OOTextureHandlingStage::dependents().value_or(std::vector<std::string>());
+	std::vector<std::string> result = OOTextureHandlingStage::dependents().value_or(std::vector<std::string>());
 	for (const std::string &name : { OOModelVerifierStage::nameForReverseDependencyForVerifier(verifier()),
 									 OOAIStateMachineVerifierStage::nameForReverseDependencyForVerifier(verifier()) })
 	{
@@ -109,27 +109,27 @@ std::optional<std::vector<std::string>> OOCheckShipDataPListVerifierStage::depen
 
 bool OOCheckShipDataPListVerifierStage::shouldRun()
 {
-	cxx::OOFileScannerVerifierStage	*fileScanner = nullptr;
+	OOFileScannerVerifierStage	*fileScanner = nullptr;
 
-	fileScanner = oo::ToCxx([verifier() fileScannerStage]);
+	fileScanner = static_cast<OOFileScannerVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName]);
 	return fileScanner != nullptr && fileScanner->fileExists("shipdata.plist", "Config", std::nullopt, false);
 }
 
 
 void OOCheckShipDataPListVerifierStage::run()
 {
-	cxx::OOFileScannerVerifierStage	*fileScanner = nullptr;
+	OOFileScannerVerifierStage	*fileScanner = nullptr;
 	std::vector<std::string>	ooliteShipData;	// the keys of Oolite's own merged shipdata.plist
 	oo::PList					settings;
 	std::vector<std::string>	shipList;
 
-	fileScanner = oo::ToCxx([verifier() fileScannerStage]);
+	fileScanner = static_cast<OOFileScannerVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName]);
 	if (fileScanner != nullptr)  _shipdataPList = fileScanner->plistNamed("shipdata.plist", "Config", std::nullopt, false);
 
 	if (_shipdataPList.isNull())  return;
 
-	// Get AI verifier stage (may be null). C++ since bead oo-94qk; the verifier holds it as its facade.
-	_aiVerifierStage = static_cast<OOAIStateMachineVerifierStage *>(oo::ToCxx(static_cast<::OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOAIStateMachineVerifierStage::nameForReverseDependencyForVerifier(verifier())])));
+	// Get AI verifier stage (may be null). C++ since bead oo-94qk; the verifier holds it.
+	_aiVerifierStage = static_cast<OOAIStateMachineVerifierStage *>([verifier() cxx_stageWithName:OOAIStateMachineVerifierStage::nameForReverseDependencyForVerifier(verifier())]);
 	
 	const oo::PList ooliteShipDataPList = [ResourceManager cxx_dictionaryFromFilesNamed:"shipdata.plist" inFolder:"Config" andMerge:YES];
 	if (const oo::PList::Dict *shipDataDict = ooliteShipDataPList.getIf<oo::PList::Dict>())
@@ -161,9 +161,8 @@ void OOCheckShipDataPListVerifierStage::run()
 	_allKeys = _playerKeys;
 	for (const std::string &key : _stationKeys)  AddString(_allKeys, key);
 
-	_schemaVerifier = [OOPListSchemaVerifier verifierWithSchema:[ResourceManager cxx_dictionaryFromFilesNamed:"shipdataEntrySchema.plist" inFolder:"Schemata" andMerge:NO]];
-	_schemaDelegate = oo::adoptObjC([[OOCheckShipDataPListVerifierStageSchemaDelegate alloc] initWithStage:this]);
-	[_schemaVerifier setDelegate:_schemaDelegate.get()];
+	_schemaVerifier = OOPListSchemaVerifier::verifierWithSchema([ResourceManager cxx_dictionaryFromFilesNamed:"shipdataEntrySchema.plist" inFolder:"Schemata" andMerge:NO]);
+	if (_schemaVerifier != nullptr)  _schemaVerifier->setDelegate(this);	// the stage itself since bead oo-9ht.119 (a message to nil did nothing)
 
 	for (const auto &[shipKey, value] : *_shipdataPList.getIf<oo::PList::Dict>())  shipList.push_back(shipKey);
 	std::stable_sort(shipList.begin(), shipList.end(), [](const std::string &a, const std::string &b)
@@ -318,7 +317,7 @@ void OOCheckShipDataPListVerifierStage::checkKeys()
 
 void OOCheckShipDataPListVerifierStage::checkSchema()
 {
-	[_schemaVerifier verifyPropertyList:_info named:_name];
+	if (_schemaVerifier != nullptr)  _schemaVerifier->verifyPropertyList(_info, _name);	// a message to nil did nothing
 }
 
 
@@ -330,8 +329,8 @@ void OOCheckShipDataPListVerifierStage::checkModel()
 
 	if (model.has_value())
 	{
-		// C++ since bead oo-5zby; the verifier holds it as its facade (may be null).
-		OOModelVerifierStage *modelStage = static_cast<OOModelVerifierStage *>(oo::ToCxx([verifier() modelVerifierStage]));
+		// C++ since bead oo-5zby; the verifier holds it (may be null).
+		OOModelVerifierStage *modelStage = static_cast<OOModelVerifierStage *>([verifier() cxx_stageWithName:OOModelVerifierStage::kName]);
 		if (modelStage == nullptr || !modelStage->modelNamed(*model,
 															 _name,
 															 "shipdata.plist",
@@ -378,7 +377,7 @@ bool OOCheckShipDataPListVerifierStage::verifierTestProperty(OOPListSchemaVerifi
 															 const oo::PList &typeKey,
 															 std::optional<OOPListSchemaVerifierError> *)
 {
-	verboseMessage(oo::str::formatRuntime("- Skipping verification for type %@ at %@.%@.", { oo::DescriptionOf(typeKey), _name, TextOrNull([OOPListSchemaVerifier descriptionForKeyPath:keyPath]) }));
+	verboseMessage(oo::str::formatRuntime("- Skipping verification for type %@ at %@.%@.", { oo::DescriptionOf(typeKey), _name, TextOrNull(OOPListSchemaVerifier::descriptionForKeyPath(keyPath)) }));
 	return true;
 }
 
@@ -391,7 +390,7 @@ bool OOCheckShipDataPListVerifierStage::verifierFailedForProperty(OOPListSchemaV
 																  const oo::PList &)
 {
 	// FIXME: use fancy new error codes to provide useful error descriptions.
-	reportMessage(oo::str::formatRuntime("***** ERROR: verification of ship \"%@\" failed at \"%@\": %@", { name, TextOrNull([OOPListSchemaVerifier descriptionForKeyPath:(error.userInfo.find(kPListKeyPathErrorKey) != nullptr) ? *error.userInfo.find(kPListKeyPathErrorKey) : oo::PList()]), TextOrNull(error.failureReason) }));
+	reportMessage(oo::str::formatRuntime("***** ERROR: verification of ship \"%@\" failed at \"%@\": %@", { name, TextOrNull(OOPListSchemaVerifier::descriptionForKeyPath((error.userInfo.find(kPListKeyPathErrorKey) != nullptr) ? *error.userInfo.find(kPListKeyPathErrorKey) : oo::PList())), TextOrNull(error.failureReason) }));
 	return true;
 }
 

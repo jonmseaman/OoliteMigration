@@ -16,6 +16,10 @@
 #                renamed out of the COLLECTED set, or gutted
 #   deny-list    no NEW hit for a tools/deny-list.txt pattern in a changed source file
 #
+# Plus one check that is not a CLAUDE.md rule but a merge hazard (bead oo-w6uwu):
+#
+#   markers      no text file in the change gains a merge-conflict marker line
+#
 # ---------------------------------------------------------------------------------------
 # RENAMES ARE FIRST-CLASS, AND THAT IS THE MOST IMPORTANT THING IN THIS FILE
 #
@@ -1199,8 +1203,53 @@ check_upstream_delta() {
   fi
 }
 
+# --- merge-conflict markers (bead oo-w6uwu) --------------------------------------------------
+#
+# Not one of the four rules: a merge hazard. Agents resolving merges of main into stacked bead
+# branches twice committed conflict markers (into ADR-0056 and a meson.build) and nothing caught
+# them until a later reader did. A line ADDED by the change (git's own diff against the base, so
+# a rename charges only what it changed, and a file's pre-existing lines are never charged) is
+# refused when it is a marker line: seven '<' or '>' then a space or end of line, the bare
+# seven-'=' separator, or seven '|' (diff3's base marker). A CR before end of line is ignored,
+# so a CRLF file cannot hide one. Untracked files are new in full and are grepped whole.
+#
+# ONE git diff and one grep, no per-file forks: this must stay well inside accept's 300 s.
+# A file that legitimately holds such a line goes in MARKER_EXEMPT, with its reason:
+#   upstream/oolite/Resources/Schemata/README.txt  a plain-text heading underlined by 7 '='
+MARKER_EXEMPT="upstream/oolite/Resources/Schemata/README.txt"
+check_conflict_markers() {
+  local hits more cr=$'\r'
+  hits=$(git -c core.quotePath=false diff --no-color --no-ext-diff --src-prefix=a/ --dst-prefix=b/ \
+          -U0 --find-renames "$BASE" -- 2>/dev/null | awk -v ex="$MARKER_EXEMPT" '
+    BEGIN { n = split(ex, e, " "); for (i = 1; i <= n; i++) skip[e[i]] = 1 }
+    /^diff --git / { hdr = 1; next }
+    hdr && /^\+\+\+ / { f = substr($0, 5); sub(/^b\//, "", f); next }
+    /^@@ / { hdr = 0; split($0, h, " "); ln = h[3]; sub(/^\+/, "", ln); sub(/,.*/, "", ln); ln += 0; next }
+    !hdr && /^\+/ {
+      l = substr($0, 2); sub(/\r$/, "", l)
+      if (!(f in skip) && (l ~ /^(<<<<<<<|>>>>>>>)( |$)/ || l == "=======" || l ~ /^\|\|\|\|\|\|\|( |$)/))
+        print f ":" ln ": " l
+      ln++
+    }')
+  more=$(git ls-files -z --others --exclude-standard | xargs -0 -r grep -nIHE -- \
+          "^(<<<<<<<|>>>>>>>)( |[$cr]?\$)|^=======[$cr]?\$|^[|]{7}( |[$cr]?\$)" 2>/dev/null)
+  if [ -n "$more" ]; then
+    local x
+    while IFS= read -r x; do
+      case " $MARKER_EXEMPT " in *" ${x%%:*} "*) continue ;; esac
+      hits="${hits:+$hits
+}$x"
+    done <<< "$more"
+  fi
+  if [ -n "$hits" ]; then
+    bad "markers: the change adds merge-conflict marker lines (an unresolved merge; resolve hunk by hunk):"
+    printf '%s\n' "$hits" | sed 's/\r$//; s/^/    /' >&2
+  fi
+}
+
 prime_is_code
 check_goldens
+check_conflict_markers
 check_suppression
 check_tests
 check_denylist
@@ -1210,5 +1259,5 @@ if [ "$fail" -ne 0 ]; then
   note "FAIL"
   exit 1
 fi
-note "OK (goldens, suppression, tests, deny-list, upstream-delta) against $BASE_SHA"
+note "OK (goldens, suppression, tests, deny-list, upstream-delta, markers) against $BASE_SHA"
 exit 0
