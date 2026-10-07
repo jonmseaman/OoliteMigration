@@ -108,72 +108,62 @@ std::string TrimmedForHighlight(const std::string &text)
 @end
 
 
-@implementation GuiDisplayGen
-
-static BOOL _refreshStarChart = NO;
-
-- (id) init
+cxx::GuiDisplayGen::GuiDisplayGen()
 {
-	if ((self = [super init]))
+	size_in_pixels  = NSMakeSize(MAIN_GUI_PIXEL_WIDTH, MAIN_GUI_PIXEL_HEIGHT);
+	n_columns		= GUI_DEFAULT_COLUMNS;
+	n_rows			= GUI_DEFAULT_ROWS;
+	pixel_row_center = size_in_pixels.width / 2;
+	pixel_row_height = MAIN_GUI_ROW_HEIGHT;
+	pixel_row_start	= MAIN_GUI_PIXEL_ROW_START;		// first position down the page...
+	max_alpha = 1.0;
+
+	pixel_text_size = NSMakeSize(0.9f * pixel_row_height, pixel_row_height);	// main gui has 18x20 characters
+
+	pixel_title_size = NSMakeSize(pixel_row_height * 1.75f, pixel_row_height * 1.5f);
+
+	int stops[6] = {0, 192, 256, 320, 384, 448};
+	unsigned i;
+
+	rowRange = NSMakeRange(0,n_rows);
+
+	rowText.reserve(n_rows);
+	rowKey.reserve(n_rows);
+	rowColor.reserve(n_rows);
+
+	for (i = 0; i < n_rows; i++)
 	{
-		size_in_pixels  = NSMakeSize(MAIN_GUI_PIXEL_WIDTH, MAIN_GUI_PIXEL_HEIGHT);
-		n_columns		= GUI_DEFAULT_COLUMNS;
-		n_rows			= GUI_DEFAULT_ROWS;
-		pixel_row_center = size_in_pixels.width / 2;
-		pixel_row_height = MAIN_GUI_ROW_HEIGHT;
-		pixel_row_start	= MAIN_GUI_PIXEL_ROW_START;		// first position down the page...
-		max_alpha = 1.0;
-		
-		pixel_text_size = NSMakeSize(0.9f * pixel_row_height, pixel_row_height);	// main gui has 18x20 characters
-		
-		pixel_title_size = NSMakeSize(pixel_row_height * 1.75f, pixel_row_height * 1.5f);
-		
-		int stops[6] = {0, 192, 256, 320, 384, 448};
-		unsigned i;
-		
-		rowRange = NSMakeRange(0,n_rows);
-		
-		rowText.reserve(n_rows);
-		rowKey.reserve(n_rows);
-		rowColor.reserve(n_rows);
-
-		for (i = 0; i < n_rows; i++)
-		{
-			rowText.push_back(oo::PList("."));
-			rowKey.push_back(oo::str::format("%d", (int)i));
-			rowColor.push_back(oo::ObjCRef<OOColor *>([OOColor yellowColor]));
-			rowPosition[i].x = 0.0f;
-			rowPosition[i].y = size_in_pixels.height - (pixel_row_start + i * pixel_row_height);
-			rowAlignment[i] = GUI_ALIGN_LEFT;
-		}
-		
-		for (i = 0; i < n_columns; i++)
-		{
-			tabStops[i] = stops[i];
-		}
-		
-		title = std::string();	// an empty title, not none (-setTitle: would have made it none)
-		textColor = [[OOColor yellowColor] retain];
-		
-		drawPosition = make_vector(0.0f, 0.0f, 640.0f);
-		
-		backgroundSpecial = GUI_BACKGROUND_SPECIAL_NONE;
-
-		guiUserSettings = [ResourceManager cxx_dictionaryFromFilesNamed:"gui-settings.plist" inFolder:"Config" andMerge:YES];
+		rowText.push_back(oo::PList("."));
+		rowKey.push_back(oo::str::format("%d", (int)i));
+		rowColor.push_back(oo::ObjCRef<::OOColor *>([::OOColor yellowColor]));
+		rowPosition[i].x = 0.0f;
+		rowPosition[i].y = size_in_pixels.height - (pixel_row_start + i * pixel_row_height);
+		rowAlignment[i] = GUI_ALIGN_LEFT;
 	}
-	return self;
+
+	for (i = 0; i < n_columns; i++)
+	{
+		tabStops[i] = stops[i];
+	}
+
+	title = std::string();	// an empty title, not none (-setTitle: would have made it none)
+	textColor = oo::ObjCRef<::OOColor *>([::OOColor yellowColor]);
+
+	drawPosition = make_vector(0.0f, 0.0f, 640.0f);
+
+	backgroundSpecial = GUI_BACKGROUND_SPECIAL_NONE;
+
+	guiUserSettings = [ResourceManager cxx_dictionaryFromFilesNamed:"gui-settings.plist" inFolder:"Config" andMerge:YES];
 }
 
 
-- (id) cxx_initWithPixelSize:(NSSize)gui_size
-					 columns:(int)gui_cols
-						rows:(int)gui_rows
-				   rowHeight:(int)gui_row_height
-					rowStart:(int)gui_row_start
-					   title:(const std::optional<std::string> &)gui_title
+cxx::GuiDisplayGen::GuiDisplayGen(NSSize gui_size,
+								  int gui_cols,
+								  int gui_rows,
+								  int gui_row_height,
+								  int gui_row_start,
+								  const std::optional<std::string> &gui_title)
 {
-	self = [super init];
-		
 	size_in_pixels  = gui_size;
 	n_columns		= gui_cols;
 	n_rows			= gui_rows;
@@ -183,11 +173,11 @@ static BOOL _refreshStarChart = NO;
 	max_alpha = 1.0;
 
 	pixel_text_size = NSMakeSize(pixel_row_height, pixel_row_height);
-	
+
 	pixel_title_size = NSMakeSize(pixel_row_height * 1.75f, pixel_row_height * 1.5f);
-	
+
 	unsigned i;
-	
+
 	rowRange = NSMakeRange(0,n_rows);
 
 	rowText.reserve(n_rows);
@@ -198,38 +188,32 @@ static BOOL _refreshStarChart = NO;
 	{
 		rowText.push_back(oo::PList(""));
 		rowKey.push_back(std::string());
-		rowColor.push_back(oo::ObjCRef<OOColor *>([OOColor greenColor]));
+		rowColor.push_back(oo::ObjCRef<::OOColor *>([::OOColor greenColor]));
 		rowPosition[i].x = 0.0f;
 		rowPosition[i].y = size_in_pixels.height - (pixel_row_start + i * pixel_row_height);
 		rowAlignment[i] = GUI_ALIGN_LEFT;
 	}
-	
-	title = gui_title;	// as given (not through -setTitle:)	
-	textColor = [[OOColor yellowColor] retain];
 
-	return self;
+	title = gui_title;	// as given (not through -setTitle:)
+	textColor = oo::ObjCRef<::OOColor *>([::OOColor yellowColor]);
 }
 
 
-- (void) dealloc
+cxx::GuiDisplayGen::~GuiDisplayGen()
 {
 	[backgroundSprite release];
 	[foregroundSprite release];
-	[backgroundColor release];
-	[textColor release];
-
-	[super dealloc];
 }
 
 
-- (void) cxx_resizeWithPixelSize:(NSSize)gui_size
-						 columns:(int)gui_cols
-							rows:(int)gui_rows
-					   rowHeight:(int)gui_row_height
-						rowStart:(int)gui_row_start
-						   title:(const std::optional<std::string> &)gui_title
+void cxx::GuiDisplayGen::resizeWithPixelSize(NSSize gui_size,
+											 int gui_cols,
+											 int gui_rows,
+											 int gui_row_height,
+											 int gui_row_start,
+											 const std::optional<std::string> &gui_title)
 {
-	[self clear];
+	clear();
 	//
 	size_in_pixels  = gui_size;
 	n_columns		= gui_cols;
@@ -242,17 +226,17 @@ static BOOL _refreshStarChart = NO;
 	pixel_title_size = NSMakeSize(pixel_row_height * 1.75f, pixel_row_height * 1.5f);
 
 	rowRange = NSMakeRange(0,n_rows);
-	[self clear];
+	clear();
 	//
 	title = TitleFrom(gui_title);
 }
 
 
-- (void) cxx_resizeTo:(NSSize)gui_size
-	  characterHeight:(int)csize
-				title:(const std::optional<std::string> &)gui_title
+void cxx::GuiDisplayGen::resizeTo(NSSize gui_size,
+								  int csize,
+								  const std::optional<std::string> &gui_title)
 {
-	[self clear];
+	clear();
 	//
 	size_in_pixels  = gui_size;
 	n_columns		= gui_size.width / csize;
@@ -278,7 +262,7 @@ static BOOL _refreshStarChart = NO;
 	{
 		rowText.push_back(oo::PList(""));
 		rowKey.push_back(std::string());
-		rowColor.push_back(oo::ObjCRef<OOColor *>([OOColor greenColor]));
+		rowColor.push_back(oo::ObjCRef<::OOColor *>([::OOColor greenColor]));
 		rowPosition[i].x = 0.0f;
 		rowPosition[i].y = size_in_pixels.height - (pixel_row_start + i * pixel_row_height);
 		rowAlignment[i] = GUI_ALIGN_LEFT;
@@ -286,77 +270,77 @@ static BOOL _refreshStarChart = NO;
 
 	pixel_text_size = NSMakeSize(csize, csize);
 	pixel_title_size = NSMakeSize(csize * 1.75f, csize * 1.5f);
-	
-	OO_LOG("gui.reset", "gui {} reset to rows:{} columns:{} start:{}", oo::DescriptionOf(self), n_rows, n_columns, pixel_row_start);
+
+	OO_LOG("gui.reset", "gui {} reset to rows:{} columns:{} start:{}", oo::DescriptionOf(oo::ToObjC(this)), n_rows, n_columns, pixel_row_start);
 
 	rowRange = NSMakeRange(0,n_rows);
-	[self clear];
+	clear();
 }
 
 
-- (NSSize)size
+NSSize cxx::GuiDisplayGen::size()
 {
 	return size_in_pixels;
 }
 
 
-- (unsigned)columns
+unsigned cxx::GuiDisplayGen::columns()
 {
 	return n_columns;
 }
 
 
-- (unsigned)rows
+unsigned cxx::GuiDisplayGen::rows()
 {
 	return n_rows;
 }
 
 
-- (unsigned)rowHeight
+unsigned cxx::GuiDisplayGen::rowHeight()
 {
 	return pixel_row_height;
 }
 
 
-- (int)rowStart
+int cxx::GuiDisplayGen::rowStart()
 {
 	return pixel_row_start;
 }
 
 
-- (std::optional<std::string>)cxx_title
+std::optional<std::string> cxx::GuiDisplayGen::getTitle()
 {
 	return title;
 }
 
 
-- (void) cxx_setTitle:(const std::optional<std::string> &)str
+void cxx::GuiDisplayGen::setTitle(const std::optional<std::string> &str)
 {
 	title = TitleFrom(str);
 }
 
 
-- (void) setDrawPosition:(Vector) vector
+void cxx::GuiDisplayGen::setDrawPosition(Vector vector)
 {
 	drawPosition = vector;
 }
 
 
-- (Vector) drawPosition
+Vector cxx::GuiDisplayGen::getDrawPosition()
 {
 	return drawPosition;
 }
 
 
-- (oo::PList) cxx_userSettings
+oo::PList cxx::GuiDisplayGen::userSettings()
 {
 	return guiUserSettings;
 }
 
 
-- (void) fadeOutFromTime:(OOTimeAbsolute) now_time overDuration:(OOTimeDelta) duration
+void cxx::GuiDisplayGen::fadeOutFromTime(OOTimeAbsolute /*now_time*/, OOTimeDelta duration)
 {
-	if (fade_alpha <= 0.0f) 
+	if (fade_alpha <= 0.0f)
 	{
 		return;
 	}
@@ -367,97 +351,94 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (void) stopFadeOuts
+void cxx::GuiDisplayGen::stopFadeOuts()
 {
 	fade_sign = 0.0f;
 }
 
 
-- (GLfloat) alpha
+GLfloat cxx::GuiDisplayGen::alpha()
 {
 	return fade_alpha;
 }
 
 
-- (void) setAlpha:(GLfloat) an_alpha
+void cxx::GuiDisplayGen::setAlpha(GLfloat an_alpha)
 {
 	fade_alpha = an_alpha * max_alpha;
 }
 
 
-- (void) setMaxAlpha:(GLfloat) an_alpha
+void cxx::GuiDisplayGen::setMaxAlpha(GLfloat an_alpha)
 {
 	max_alpha = an_alpha;
 }
 
 
-- (void) setBackgroundColor:(OOColor*) color
+void cxx::GuiDisplayGen::setBackgroundColor(::OOColor *color)
 {
-	[backgroundColor release];
-	backgroundColor = [color retain];
+	backgroundColor = oo::ObjCRef<::OOColor *>(color);
 }
 
 
-- (OOColor *) textColor
+::OOColor *cxx::GuiDisplayGen::getTextColor()
 {
-	return textColor;
+	return textColor.get();
 }
 
 
 // default text colour for rows
-- (void) setTextColor:(OOColor*) color
+void cxx::GuiDisplayGen::setTextColor(::OOColor *color)
 {
-	[textColor release];
-	if (color == nil)  color = [[OOColor yellowColor] retain];
-	textColor = [color retain];
+	if (color == nil)  color = [[::OOColor yellowColor] retain];
+	textColor = oo::ObjCRef<::OOColor *>(color);
 }
 
 
-- (OOColor *) textCommsColor
+::OOColor *cxx::GuiDisplayGen::getTextCommsColor()
 {
-	return textCommsColor;
+	return textCommsColor.get();
 }
 
 
-- (void) setTextCommsColor:(OOColor*) color
+void cxx::GuiDisplayGen::setTextCommsColor(::OOColor *color)
 {
-	[textCommsColor release];
-	if (color == nil)  color = [[OOColor yellowColor] retain];
-	textCommsColor = [color retain];
+	if (color == nil)  color = [[::OOColor yellowColor] retain];
+	textCommsColor = oo::ObjCRef<::OOColor *>(color);
 }
 
 
-- (OOColor *) cxx_colorFromSetting:(const std::optional<std::string> &)setting defaultValue:(OOColor *)def
+::OOColor *cxx::GuiDisplayGen::colorFromSetting(const std::optional<std::string> &setting, ::OOColor *def)
 {
-	
-	OOColor *col = nil;
+
+	::OOColor *col = nil;
 	if (setting.has_value()) {
 		const oo::PList *description = guiUserSettings.find(*setting);
-		col = [OOColor cxx_colorWithDescription:(description != nullptr) ? *description : oo::PList()];
+		col = [::OOColor cxx_colorWithDescription:(description != nullptr) ? *description : oo::PList()];
 	}
 	if (col == nil) {
 		if (def != nil) {
 			col = def;
 			// def = nil => use default_text_color
 		} else {
-			col = textColor;
+			col = textColor.get();
 		}
 	}
 	return [[col copy] autorelease];
 }
 
 
-- (void) cxx_setGLColorFromSetting:(const std::optional<std::string> &)setting defaultValue:(OOColor *)def alpha:(GLfloat)alpha
+void cxx::GuiDisplayGen::setGLColorFromSetting(const std::optional<std::string> &setting, ::OOColor *def, GLfloat alpha)
 {
 	GLfloat r,g,b,a;
-	OOColor *col = [self cxx_colorFromSetting:setting defaultValue:def];
+	::OOColor *col = colorFromSetting(setting, def);
 	[col getRed:&r green:&g blue:&b alpha:&a];
 
 	OOGL(glColor4f(r, g, b, a*alpha));
 }
 
 
-- (void) cxx_setGuiColorSettingFromKey:(const std::string &)key color:(OOColor *)col
+void cxx::GuiDisplayGen::setGuiColorSettingFromKey(const std::string &key, ::OOColor *col)
 {
 	// With no settings (nil), the mutable copy was nil too and nothing changed.
 	oo::PList::Dict *settings = guiUserSettings.getIf<oo::PList::Dict>();
@@ -473,26 +454,26 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (void) setCharacterSize:(NSSize) character_size
+void cxx::GuiDisplayGen::setCharacterSize(NSSize character_size)
 {
 	pixel_text_size = character_size;
 }
 
 
-- (void)setShowAdvancedNavArray:(BOOL)inFlag
+void cxx::GuiDisplayGen::setShowAdvancedNavArray(bool inFlag)
 {
 	showAdvancedNavArray = inFlag;
 }
 
 
-- (void) setColor:(OOColor *) color forRow:(OOGUIRow)row
+void cxx::GuiDisplayGen::setColor(::OOColor *color, OOGUIRow row)
 {
 	if (RowInRange(row, rowRange))
-		rowColor[row] = oo::ObjCRef<OOColor *>(color);
+		rowColor[row] = oo::ObjCRef<::OOColor *>(color);
 }
 
 
-- (oo::PList) objectForRow:(OOGUIRow)row
+oo::PList cxx::GuiDisplayGen::objectForRow(OOGUIRow row)
 {
 	if (RowInRange(row, rowRange))
 		return rowText[row];	// a string, or an array of column strings
@@ -501,7 +482,7 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (OOGUIRow) cxx_rowForKey:(const std::optional<std::string> &)key
+OOGUIRow cxx::GuiDisplayGen::rowForKey(const std::optional<std::string> &key)
 {
 	if (!key.has_value())  return -1;	// a nil key matched nothing
 	for (unsigned i=0;i<rowKey.size();i++)
@@ -515,7 +496,7 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (std::optional<std::string>) cxx_keyForRow:(OOGUIRow)row
+std::optional<std::string> cxx::GuiDisplayGen::keyForRow(OOGUIRow row)
 {
 	if (RowInRange(row, rowRange))
 		return rowKey[row];
@@ -524,7 +505,7 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (OOGUIRow) selectedRow
+OOGUIRow cxx::GuiDisplayGen::getSelectedRow()
 {
 	if (RowInRange(selectedRow, selectableRange))
 		return selectedRow;
@@ -533,26 +514,26 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (BOOL) setSelectedRow:(OOGUIRow)row
+bool cxx::GuiDisplayGen::setSelectedRow(OOGUIRow row)
 {
 	if ((row == selectedRow) && RowInRange(row, selectableRange))
 	{
-		return YES;
+		return true;
 	}
 	if (RowInRange(row, selectableRange))
 	{
 		if (!IsSkipKey(rowKey[row]))
 		{
 			selectedRow = row;
-			[self reportSelectedRow:row];
-			return YES;
+			reportSelectedRow(row);
+			return true;
 		}
 	}
-	return NO;
+	return false;
 }
 
 
-- (BOOL) setNextRow:(int) direction
+bool cxx::GuiDisplayGen::setNextRow(int direction)
 {
 	OOGUIRow row = selectedRow + direction;
 	while (RowInRange(row, selectableRange))
@@ -560,16 +541,16 @@ static BOOL _refreshStarChart = NO;
 		if (!IsSkipKey(rowKey[row]))
 		{
 			selectedRow = row;
-			[self reportSelectedRow:row];
-			return YES;
+			reportSelectedRow(row);
+			return true;
 		}
 		row += direction;
 	}
-	return NO;
+	return false;
 }
 
 
-- (BOOL) setFirstSelectableRow
+bool cxx::GuiDisplayGen::setFirstSelectableRow()
 {
 	NSUInteger row = selectableRange.location;
 	while (RowInRange(row, selectableRange))
@@ -577,17 +558,17 @@ static BOOL _refreshStarChart = NO;
 		if (!IsSkipKey(rowKey[row]))
 		{
 			selectedRow = row;
-			[self reportSelectedRow:row];
-			return YES;
+			reportSelectedRow(row);
+			return true;
 		}
 		row++;
 	}
 	selectedRow = -1;
-	return NO;
+	return false;
 }
 
 
-- (BOOL) setLastSelectableRow
+bool cxx::GuiDisplayGen::setLastSelectableRow()
 {
 	NSUInteger row = selectableRange.location + selectableRange.length - 1;
 	while (RowInRange(row, selectableRange))
@@ -595,39 +576,39 @@ static BOOL _refreshStarChart = NO;
 		if (!IsSkipKey(rowKey[row]))
 		{
 			selectedRow = row;
-			[self reportSelectedRow:row];
-			return YES;
+			reportSelectedRow(row);
+			return true;
 		}
 		row--;
 	}
 	selectedRow = -1;
-	return NO;
+	return false;
 }
 
 
-- (void) reportSelectedRow:(int) row
+void cxx::GuiDisplayGen::reportSelectedRow(int row)
 {
 	// key, row, text - stopping at the first missing one, as +arrayWithObjects: stopped at nil.
 	std::vector<oo::PList> arguments;
-	const std::optional<std::string> key = [self cxx_keyForRow:row];
+	const std::optional<std::string> key = keyForRow(row);
 	if (key.has_value())
 	{
 		arguments.emplace_back(*key);
 		arguments.emplace_back(row);	// +numberWithInt: (the same JS number)
-		const std::optional<std::string> text = [self cxx_selectedRowText];
+		const std::optional<std::string> text = selectedRowText();
 		if (text.has_value())  arguments.emplace_back(*text);
 	}
 	[PLAYER cxx_doScriptEvent:OOJSID("guiSelectedRowChanged") withPListArguments:arguments];
 }
 
 
-- (void) setNoSelectedRow
+void cxx::GuiDisplayGen::setNoSelectedRow()
 {
 	selectedRow = -1;
 }
 
 
-- (std::optional<std::string>) cxx_selectedRowText
+std::optional<std::string> cxx::GuiDisplayGen::selectedRowText()
 {
 	const oo::PList &text = rowText[selectedRow];
 	if (const std::string *string = text.getIf<std::string>())
@@ -641,7 +622,7 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (std::optional<std::string>) cxx_selectedRowKey
+std::optional<std::string> cxx::GuiDisplayGen::selectedRowKey()
 {
 	// (the old test let selectedRow == count through, and -objectAtIndex: then raised)
 	if ((selectedRow < 0)||((unsigned)selectedRow >= rowKey.size()))
@@ -651,17 +632,17 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (void) setShowTextCursor:(BOOL) yesno
+void cxx::GuiDisplayGen::setShowTextCursor(bool yesno)
 {
 	showTextCursor = yesno;
 }
 
 
-- (void) setCurrentRow:(OOGUIRow) value
+void cxx::GuiDisplayGen::setCurrentRow(OOGUIRow value)
 {
 	if ((value < 0)||((unsigned)value >= n_rows))
 	{
-		showTextCursor = NO;
+		showTextCursor = false;
 		currentRow = -1;
 	}
 	else
@@ -671,24 +652,24 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (NSRange) selectableRange
+NSRange cxx::GuiDisplayGen::getSelectableRange()
 {
 	return selectableRange;
 }
 
 
-- (void) setSelectableRange:(NSRange) range
+void cxx::GuiDisplayGen::setSelectableRange(NSRange range)
 {
 	selectableRange = range;
 }
 
 
-- (void) setTabStops:(OOGUITabSettings)stops
+void cxx::GuiDisplayGen::setTabStops(OOGUITabSettings stops)
 {
 	if (stops != NULL)  memmove(tabStops, stops, sizeof tabStops);
 }
 
-- (void) cxx_overrideTabs:(OOGUITabSettings)stops from:(const std::string &)setting length:(NSUInteger)len
+void cxx::GuiDisplayGen::overrideTabs(OOGUITabSettings stops, const std::string &setting, NSUInteger len)
 {
 	const oo::PList *override = guiUserSettings.get<oo::PList::Array>(setting, nullptr);
 	NSUInteger i;
@@ -698,7 +679,7 @@ static BOOL _refreshStarChart = NO;
 		{
 			len = GUI_MAX_COLUMNS;
 		}
-		for (i=0;i<len;i++) 
+		for (i=0;i<len;i++)
 		{
 			stops[i] = override->at<NSUInteger>(i, stops[i]);
 		}
@@ -706,39 +687,39 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (void) clear
+void cxx::GuiDisplayGen::clear()
 {
-	[self clearAndKeepBackground:NO];
+	clearAndKeepBackground(false);
 }
 
 
-- (void) clearAndKeepBackground:(BOOL)keepBackground
+void cxx::GuiDisplayGen::clearAndKeepBackground(bool keepBackground)
 {
 	unsigned i;
-	[self cxx_setTitle:std::nullopt];
+	setTitle(std::nullopt);
 	for (i = 0; i < n_rows; i++)
 	{
-		[self cxx_setText:"" forRow:i align:GUI_ALIGN_LEFT];
-		[self setColor:textColor forRow:i];
+		setText("", i, GUI_ALIGN_LEFT);
+		setColor(textColor.get(), i);
 		//
-		[self cxx_setKey:std::string(GUI_KEY_SKIP) forRow:i];
+		setKey(std::string(GUI_KEY_SKIP), i);
 		//
 		rowFadeTime[i] = 0.0f;
 	}
-	[self setShowTextCursor:NO];
-	[self setSelectableRange:NSMakeRange(0,0)];
-	if (!keepBackground) [self clearBackground];
+	setShowTextCursor(false);
+	setSelectableRange(NSMakeRange(0,0));
+	if (!keepBackground) [oo::ToObjC(this) clearBackground];	// slice 2's, on the facade (amendment oo-3bgz item 2)
 }
 
 
-- (void) cxx_setKey:(const std::string &)str forRow:(OOGUIRow)row
+void cxx::GuiDisplayGen::setKey(const std::string &str, OOGUIRow row)
 {
 	if (RowInRange(row, rowRange))
 		rowKey[row] = str;
 }
 
 
-- (void) cxx_setText:(const std::string &)str forRow:(OOGUIRow)row
+void cxx::GuiDisplayGen::setText(const std::string &str, OOGUIRow row)
 {
 	if (RowInRange(row, rowRange))
 	{
@@ -747,7 +728,7 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (void) cxx_setText:(const std::optional<std::string> &)str forRow:(OOGUIRow)row align:(OOGUIAlignment)alignment
+void cxx::GuiDisplayGen::setText(const std::optional<std::string> &str, OOGUIRow row, OOGUIAlignment alignment)
 {
 	if (str.has_value() && RowInRange(row, rowRange))
 	{
@@ -755,6 +736,26 @@ static BOOL _refreshStarChart = NO;
 		rowAlignment[row] = alignment;
 	}
 }
+
+
+int cxx::GuiDisplayGen::rowAtVirtualJoystickPosition(NSPoint vjpos)
+{
+	// The cursor maths of -drawGUI:drawCursor: (which calls this), y only: the row does not depend
+	// on x. Bead oo-3rb.348.
+	double cursor_y = -size_in_pixels.height * vjpos.y;
+	if (cursor_y < -size_in_pixels.height * 0.5)  cursor_y = -size_in_pixels.height * 0.5f;
+	if (cursor_y > size_in_pixels.height * 0.5)   cursor_y = size_in_pixels.height * 0.5f;
+
+	return 1 + (float)floor((0.5f * size_in_pixels.height - pixel_row_start - cursor_y) / pixel_row_height);
+}
+
+
+// Slices 2-4 of docs/phases/3-slices/GuiDisplayGen.md, still Objective-C: a category of the
+// facade, reading and writing the C++ GUI's state through oo::ToCxx(self) (ADR-0056 amendment
+// oo-3bgz). Each slice's bead moves its methods into cxx::GuiDisplayGen above.
+@implementation GuiDisplayGen (OOGuiDisplayGenUnconverted)
+
+static BOOL _refreshStarChart = NO;
 
 
 - (OOGUIRow) cxx_addLongText:(const std::optional<std::string> &)str
@@ -773,9 +774,9 @@ static BOOL _refreshStarChart = NO;
 		return row;
 	}
 	
-	NSSize chSize = pixel_text_size;
+	NSSize chSize = oo::ToCxx(self)->pixel_text_size;
 	NSSize strsize = cxx_OORectFromString(*str, 0.0f, 0.0f, chSize).size;
-	if (strsize.width < size_in_pixels.width)
+	if (strsize.width < oo::ToCxx(self)->size_in_pixels.width)
 	{
 		[self cxx_setText:str forRow:row align:alignment];
 		return row + 1;
@@ -786,7 +787,7 @@ static BOOL _refreshStarChart = NO;
 		std::size_t						next = 0;	// words moved to string1
 		std::string						string1;
 		strsize.width = 0.0f;
-		while ((strsize.width < size_in_pixels.width)&&(next < words.size()))
+		while ((strsize.width < oo::ToCxx(self)->size_in_pixels.width)&&(next < words.size()))
 		{
 			string1 += words[next];
 			string1 += " ";
@@ -805,7 +806,7 @@ static BOOL _refreshStarChart = NO;
 - (std::optional<std::string>) cxx_reflowTextForMFD:(const std::optional<std::string> &)input
 {
 	std::string		output;
-	NSSize  		chSize = pixel_text_size;
+	NSSize  		chSize = oo::ToCxx(self)->pixel_text_size;
 	NSUInteger  	limit = chSize.width * 15;
 	// nil split into no lines: the result was an empty string, not nil.
 	if (!input.has_value())  return output;
@@ -843,26 +844,26 @@ static BOOL _refreshStarChart = NO;
 - (void) leaveLastLine
 {
 	unsigned i;
-	for (i=0; i < n_rows-1; i++)
+	for (i=0; i < oo::ToCxx(self)->n_rows-1; i++)
 	{
-		rowText[i] = oo::PList("");
-		rowColor[i] = oo::ObjCRef<OOColor *>(textColor);
-		rowKey[i] = std::string();
-		rowAlignment[i] = GUI_ALIGN_LEFT;
-		rowFadeTime[i]	= 0.0f;
+		oo::ToCxx(self)->rowText[i] = oo::PList("");
+		oo::ToCxx(self)->rowColor[i] = oo::ObjCRef<OOColor *>(oo::ToCxx(self)->textColor.get());
+		oo::ToCxx(self)->rowKey[i] = std::string();
+		oo::ToCxx(self)->rowAlignment[i] = GUI_ALIGN_LEFT;
+		oo::ToCxx(self)->rowFadeTime[i]	= 0.0f;
 	}
-	rowFadeTime[i]	= 0.4f; // fade the last line...
+	oo::ToCxx(self)->rowFadeTime[i]	= 0.4f; // fade the last line...
 }
 
 
 - (oo::PList) cxx_getLastLines	// text, colour, fade time - text, colour, fade time
 {
-	if (n_rows <1) return oo::PList();
+	if (oo::ToCxx(self)->n_rows <1) return oo::PList();
 	
 	// we have at least 1 row!
 	
-	unsigned				i = n_rows-1;
-	OORGBAComponents		col = [rowColor[i].get() rgbaComponents];
+	unsigned				i = oo::ToCxx(self)->n_rows-1;
+	OORGBAComponents		col = [oo::ToCxx(self)->rowColor[i].get() rgbaComponents];
 	oo::PList::Array		result;
 
 	/*	Row r's text, colour and fade time, as -arrayWithObjects: took them: the text is what
@@ -871,18 +872,18 @@ static BOOL _refreshStarChart = NO;
 	*/
 	auto appendRow = [&](unsigned r, const OORGBAComponents &c) -> bool
 	{
-		const oo::PList &text = rowText[r];
+		const oo::PList &text = oo::ToCxx(self)->rowText[r];
 		if (!text.isString() && !text.isNumber())  return false;
 		result.emplace_back(oo::PList(oo::PList::Array{ text }).at<std::string>(0));
 		result.emplace_back(oo::str::format("%.3g %.3g %.3g %.3g", c.r, c.g, c.b, c.a));
-		result.push_back(oo::PList::singleReal(rowFadeTime[r]));	// +numberWithFloat:
+		result.push_back(oo::PList::singleReal(oo::ToCxx(self)->rowFadeTime[r]));	// +numberWithFloat:
 		return true;
 	};
 	
 	if (i>0)
 	{
 		// we have at least 2 rows!
-		OORGBAComponents	col0 = [rowColor[i-1].get() rgbaComponents];
+		OORGBAComponents	col0 = [oo::ToCxx(self)->rowColor[i-1].get() rgbaComponents];
 		if (appendRow(i-1, col0))  appendRow(i, col);
 	}
 	else
@@ -911,21 +912,21 @@ static BOOL _refreshStarChart = NO;
 		return;
 	}
 	
-	OOGUIRow row = currentRow;
-	if (row == (OOGUIRow)n_rows - 1)
+	OOGUIRow row = oo::ToCxx(self)->currentRow;
+	if (row == (OOGUIRow)oo::ToCxx(self)->n_rows - 1)
 		[self scrollUp:1];
-	NSSize chSize = pixel_text_size;
+	NSSize chSize = oo::ToCxx(self)->pixel_text_size;
 	NSSize strsize = cxx_OORectFromString(*str, 0.0f, 0.0f, chSize).size;
-	if (strsize.width < size_in_pixels.width)
+	if (strsize.width < oo::ToCxx(self)->size_in_pixels.width)
 	{
 		[self cxx_setText:str forRow:row align:alignment];
 		if (text_color)
 			[self setColor:text_color forRow:row];
 		if (text_key.has_value())
 			[self cxx_setKey:*text_key forRow:row];
-		rowFadeTime[row] = text_fade;
-		if (currentRow < (OOGUIRow)n_rows - 1)
-			currentRow++;
+		oo::ToCxx(self)->rowFadeTime[row] = text_fade;
+		if (oo::ToCxx(self)->currentRow < (OOGUIRow)oo::ToCxx(self)->n_rows - 1)
+			oo::ToCxx(self)->currentRow++;
 		if (text_array)
 			text_array->push_back(*str);
 	}
@@ -935,7 +936,7 @@ static BOOL _refreshStarChart = NO;
 		std::size_t						next = 0;	// words moved to string1
 		std::string						string1;
 		strsize.width = 0.0f;
-		while ((strsize.width < size_in_pixels.width)&&(next < words.size()))
+		while ((strsize.width < oo::ToCxx(self)->size_in_pixels.width)&&(next < words.size()))
 		{
 			string1 += words[next];
 			string1 += " ";
@@ -954,7 +955,7 @@ static BOOL _refreshStarChart = NO;
 			[self cxx_setKey:*text_key forRow:row];
 		if (text_array)
 			text_array->push_back(string1);
-		rowFadeTime[row] = text_fade;
+		oo::ToCxx(self)->rowFadeTime[row] = text_fade;
 		[self cxx_printLongText:string2 align:alignment color:text_color fadeTime:text_fade key:text_key addToArray:text_array];
 	}
 }
@@ -967,24 +968,24 @@ static BOOL _refreshStarChart = NO;
 						   key:(const std::optional<std::string> &)text_key
 					addToArray:(std::vector<std::string> *)text_array
 {
-	[self cxx_setText:str forRow:currentRow align:alignment];
+	[self cxx_setText:str forRow:oo::ToCxx(self)->currentRow align:alignment];
 	if (text_color)
-		[self setColor:text_color forRow:currentRow];
+		[self setColor:text_color forRow:oo::ToCxx(self)->currentRow];
 	if (text_key.has_value())
-		[self cxx_setKey:*text_key forRow:currentRow];
+		[self cxx_setKey:*text_key forRow:oo::ToCxx(self)->currentRow];
 	if (text_array && str.has_value())	// adding nil raised
 		text_array->push_back(*str);
-	rowFadeTime[currentRow] = text_fade;
+	oo::ToCxx(self)->rowFadeTime[oo::ToCxx(self)->currentRow] = text_fade;
 }
 
 
 - (void) cxx_setArray:(const std::vector<std::string> &)arr forRow:(OOGUIRow)row
 {
-	if (RowInRange(row, rowRange))
+	if (RowInRange(row, oo::ToCxx(self)->rowRange))
 	{
 		oo::PList::Array columns;
 		for (const std::string &column : arr)  columns.push_back(oo::PList(column));
-		rowText[row] = oo::PList(std::move(columns));
+		oo::ToCxx(self)->rowText[row] = oo::PList(std::move(columns));
 	}
 }
 
@@ -1008,13 +1009,13 @@ static BOOL _refreshStarChart = NO;
 	}
 
 	unsigned i;
-	for (i = n_rows; i >= row + n_items ; i--)
+	for (i = oo::ToCxx(self)->n_rows; i >= row + n_items ; i--)
 	{
 		[self cxx_setKey:[self cxx_keyForRow:i - n_items].value_or("") forRow:i];
 		// the row's text or columns moved down (-objectForRow: gave nil out of range)
-		const oo::PList old_row_info = RowInRange(i - n_items, rowRange) ? rowText[i - n_items] : oo::PList();
-		if (old_row_info.isArray() && RowInRange(i, rowRange))
-			rowText[i] = old_row_info;
+		const oo::PList old_row_info = RowInRange(i - n_items, oo::ToCxx(self)->rowRange) ? oo::ToCxx(self)->rowText[i - n_items] : oo::PList();
+		if (old_row_info.isArray() && RowInRange(i, oo::ToCxx(self)->rowRange))
+			oo::ToCxx(self)->rowText[i] = old_row_info;
 		if (const std::string *text = old_row_info.getIf<std::string>())
 			[self cxx_setText:*text forRow:i];
 	}
@@ -1024,7 +1025,7 @@ static BOOL _refreshStarChart = NO;
 		if (text_color)
 			[self setColor:text_color forRow: row + i];
 		else
-			[self setColor:textColor forRow: row + i];
+			[self setColor:oo::ToCxx(self)->textColor.get() forRow: row + i];
 		if (const oo::PList::Array *columns = new_row_info.getIf<oo::PList::Array>())
 		{
 			std::vector<std::string> columnTexts;
@@ -1047,21 +1048,21 @@ static BOOL _refreshStarChart = NO;
 - (void) scrollUp:(int) how_much
 {
 	unsigned i;
-	for (i = 0; i + how_much < n_rows; i++)
+	for (i = 0; i + how_much < oo::ToCxx(self)->n_rows; i++)
 	{
-		rowText[i] = rowText[i + how_much];
-		rowColor[i] = rowColor[i + how_much];
-		rowKey[i] = rowKey[i + how_much];
-		rowAlignment[i] = rowAlignment[i + how_much];
-		rowFadeTime[i]	= rowFadeTime[i + how_much];
+		oo::ToCxx(self)->rowText[i] = oo::ToCxx(self)->rowText[i + how_much];
+		oo::ToCxx(self)->rowColor[i] = oo::ToCxx(self)->rowColor[i + how_much];
+		oo::ToCxx(self)->rowKey[i] = oo::ToCxx(self)->rowKey[i + how_much];
+		oo::ToCxx(self)->rowAlignment[i] = oo::ToCxx(self)->rowAlignment[i + how_much];
+		oo::ToCxx(self)->rowFadeTime[i]	= oo::ToCxx(self)->rowFadeTime[i + how_much];
 	}
-	for (; i < n_rows; i++)
+	for (; i < oo::ToCxx(self)->n_rows; i++)
 	{
-		rowText[i] = oo::PList("");
-		rowColor[i] = oo::ObjCRef<OOColor *>(textColor);
-		rowKey[i] = std::string();
-		rowAlignment[i] = GUI_ALIGN_LEFT;
-		rowFadeTime[i]	= 0.0f;
+		oo::ToCxx(self)->rowText[i] = oo::PList("");
+		oo::ToCxx(self)->rowColor[i] = oo::ObjCRef<OOColor *>(oo::ToCxx(self)->textColor.get());
+		oo::ToCxx(self)->rowKey[i] = std::string();
+		oo::ToCxx(self)->rowAlignment[i] = GUI_ALIGN_LEFT;
+		oo::ToCxx(self)->rowFadeTime[i]	= 0.0f;
 	}
 }
 
@@ -1216,27 +1217,27 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 			[self cxx_setBackgroundTextureDescriptor:bgDescriptor];
 		}
 	}
-	backgroundSpecial = spec;
+	oo::ToCxx(self)->backgroundSpecial = spec;
 	[self refreshStarChart];
 }
 
 
 - (BOOL) cxx_setBackgroundTextureDescriptor:(const oo::PList &)descriptor
 {
-	[backgroundSprite autorelease];
-	backgroundSpecial = GUI_BACKGROUND_SPECIAL_NONE; // reset
-	backgroundSprite = NewTextureSpriteWithDescriptor(descriptor, kOOTextureSRGBA);
-	return backgroundSprite != nil;
+	[oo::ToCxx(self)->backgroundSprite autorelease];
+	oo::ToCxx(self)->backgroundSpecial = GUI_BACKGROUND_SPECIAL_NONE; // reset
+	oo::ToCxx(self)->backgroundSprite = NewTextureSpriteWithDescriptor(descriptor, kOOTextureSRGBA);
+	return oo::ToCxx(self)->backgroundSprite != nil;
 }
 
 
 - (BOOL) cxx_setForegroundTextureDescriptor:(const oo::PList &)descriptor
 {
-	[foregroundSprite autorelease];
+	[oo::ToCxx(self)->foregroundSprite autorelease];
 	// FIXME: for some reason passing kOOTextureSRGBA when in SDR results in double gamma correction
 	uint32_t srgbaOption = [[UNIVERSE gameView] hdrOutput] ? kOOTextureSRGBA : 0;
-	foregroundSprite = NewTextureSpriteWithDescriptor(descriptor, srgbaOption);
-	return foregroundSprite != nil;
+	oo::ToCxx(self)->foregroundSprite = NewTextureSpriteWithDescriptor(descriptor, srgbaOption);
+	return oo::ToCxx(self)->foregroundSprite != nil;
 }
 
 
@@ -1305,20 +1306,20 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 
 - (void) setStatusPage:(NSInteger)pageNum
 {
-	if (pageNum == 0 || (pageNum < 0 && ((NSUInteger)-pageNum) >= statusPage))
+	if (pageNum == 0 || (pageNum < 0 && ((NSUInteger)-pageNum) >= oo::ToCxx(self)->statusPage))
 	{ 
-		statusPage = 1;
+		oo::ToCxx(self)->statusPage = 1;
 	}
 	else 
 	{
-		statusPage += pageNum;
+		oo::ToCxx(self)->statusPage += pageNum;
 	}
 }
 
 
 - (NSUInteger) statusPage
 {
-	return statusPage;
+	return oo::ToCxx(self)->statusPage;
 }
 
 
@@ -1356,26 +1357,26 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 		if (eqptCount <= i) // two pages
 		{
 			pageCount++;
-			if (statusPage == 1)
+			if (oo::ToCxx(self)->statusPage == 1)
 			{
 				start = 0;
 			}
 			else
 			{
-				statusPage = 2;
-				start = i/statusPage; // for the for loop
+				oo::ToCxx(self)->statusPage = 2;
+				start = i/oo::ToCxx(self)->statusPage; // for the for loop
 			}
 		}
 		else // three or more
 		{
 			pageCount = ceil((float)(eqptCount-i)/(itemsPerColumn*2)) + 2;
-			statusPage = (NSInteger)OOClampInteger(statusPage, 1, pageCount);
-			start = (statusPage == 1) ? 0 : (statusPage-1) * itemsPerColumn * 2 + 2;
+			oo::ToCxx(self)->statusPage = (NSInteger)OOClampInteger(oo::ToCxx(self)->statusPage, 1, pageCount);
+			start = (oo::ToCxx(self)->statusPage == 1) ? 0 : (oo::ToCxx(self)->statusPage-1) * itemsPerColumn * 2 + 2;
 		}
 	}
 	else
 	{
-		statusPage = pageCount; // one page
+		oo::ToCxx(self)->statusPage = pageCount; // one page
 		start = 0;
 		// if we have mouse interaction active, it means that we had more than one
 		// pages earlier, but only one now, as e.g. in the case of a hud that wss
@@ -1394,37 +1395,37 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 		}
 	}
 	
-	if (statusPage > 1)
+	if (oo::ToCxx(self)->statusPage > 1)
 	{
 		[self setColor:[self cxx_colorFromSetting:cxx_kGuiStatusEquipmentScrollColor defaultValue:[OOColor greenColor]] forRow:firstRow];
 		[self cxx_setArray:{ OO_DESC("gui-back"), "", " <-- " } forRow:firstRow];
 		[self cxx_setKey:"OK" forRow:firstRow];
 		firstY -= 16; // start 1 row down!
-		if (statusPage == pageCount)
+		if (oo::ToCxx(self)->statusPage == pageCount)
 		{
 			[self setSelectableRange:NSMakeRange(firstRow, 1)];
 			[self setSelectedRow:firstRow];
 		}
 	}
-	if (statusPage < pageCount)
+	if (oo::ToCxx(self)->statusPage < pageCount)
 	{
 		[self setColor:[self cxx_colorFromSetting:cxx_kGuiStatusEquipmentScrollColor defaultValue:[OOColor greenColor]] forRow:firstRow + maxRows];
 		[self cxx_setArray:{ OO_DESC("gui-more"), "", " --> " } forRow:firstRow + maxRows];
 		[self cxx_setKey:"OK" forRow:firstRow + maxRows];
-		if (statusPage == 1)
+		if (oo::ToCxx(self)->statusPage == 1)
 		{
 			[self setSelectableRange:NSMakeRange(firstRow + maxRows, 1)];
 			[self setSelectedRow:firstRow + maxRows];
 		}
 	}
-	if (statusPage > 1 && statusPage < pageCount)
+	if (oo::ToCxx(self)->statusPage > 1 && oo::ToCxx(self)->statusPage < pageCount)
 	{
 		[self setSelectableRange:NSMakeRange(firstRow, MIN(firstRow + maxRows, GUI_DEFAULT_ROWS - firstRow))];
 		// default selected row to 'More -->' if we are looking at one of the middle pages
 		if ([self selectedRow] == -1)  [self setSelectedRow:firstRow + maxRows];
 	}
 
-	if (statusPage == 1 || statusPage == pageCount) itemsPerColumn++;
+	if (oo::ToCxx(self)->statusPage == 1 || oo::ToCxx(self)->statusPage == pageCount) itemsPerColumn++;
 	eqptCount = (NSInteger)OOClampInteger(eqptCount, 1, start + itemsPerColumn * 2);
 	for (i = start; i < eqptCount; i++)
 	{
@@ -1466,13 +1467,13 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 
 - (void) drawGUIBackground
 {
-	GLfloat x = drawPosition.x;
-	GLfloat y = drawPosition.y;
+	GLfloat x = oo::ToCxx(self)->drawPosition.x;
+	GLfloat y = oo::ToCxx(self)->drawPosition.y;
 	GLfloat z = [[UNIVERSE gameView] display_z];
 
-	if (backgroundSprite!=nil)
+	if (oo::ToCxx(self)->backgroundSprite!=nil)
 	{
-		[backgroundSprite blitBackgroundCentredToX:x Y:y Z:z alpha:1.0f];
+		[oo::ToCxx(self)->backgroundSprite blitBackgroundCentredToX:x Y:y Z:z alpha:1.0f];
 	}
 	
 }
@@ -1484,47 +1485,35 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 }
 
 
-- (int) rowAtVirtualJoystickPosition:(NSPoint) vjpos
-{
-	// The cursor maths of -drawGUI:drawCursor: (which calls this), y only: the row does not depend
-	// on x. Bead oo-3rb.348.
-	double cursor_y = -size_in_pixels.height * vjpos.y;
-	if (cursor_y < -size_in_pixels.height * 0.5)  cursor_y = -size_in_pixels.height * 0.5f;
-	if (cursor_y > size_in_pixels.height * 0.5)   cursor_y = size_in_pixels.height * 0.5f;
-
-	return 1 + (float)floor((0.5f * size_in_pixels.height - pixel_row_start - cursor_y) / pixel_row_height);
-}
-
-
 - (int) drawGUI:(GLfloat) alpha drawCursor:(BOOL) drawCursor
 {
-	GLfloat x = drawPosition.x;
-	GLfloat y = drawPosition.y;
+	GLfloat x = oo::ToCxx(self)->drawPosition.x;
+	GLfloat y = oo::ToCxx(self)->drawPosition.y;
 	GLfloat z = [[UNIVERSE gameView] display_z];
 	
 	if (alpha > 0.05f)
 	{
 		PlayerEntity* player = PLAYER;
 		
-		[self drawGLDisplay:x - 0.5f * size_in_pixels.width :y - 0.5f * size_in_pixels.height :z :alpha];
+		[self drawGLDisplay:x - 0.5f * oo::ToCxx(self)->size_in_pixels.width :y - 0.5f * oo::ToCxx(self)->size_in_pixels.height :z :alpha];
 		
 		if (self == [UNIVERSE gui])
 		{
 			if ([player guiScreen] == GUI_SCREEN_SHORT_RANGE_CHART || [player guiScreen] == GUI_SCREEN_LONG_RANGE_CHART || 
-				backgroundSpecial == GUI_BACKGROUND_SPECIAL_SHORT ||
-				backgroundSpecial == GUI_BACKGROUND_SPECIAL_SHORT_ANA_QUICKEST ||
-				backgroundSpecial == GUI_BACKGROUND_SPECIAL_SHORT_ANA_SHORTEST ||
-				backgroundSpecial == GUI_BACKGROUND_SPECIAL_CUSTOM ||
-				backgroundSpecial == GUI_BACKGROUND_SPECIAL_CUSTOM_ANA_QUICKEST ||
-				backgroundSpecial == GUI_BACKGROUND_SPECIAL_CUSTOM_ANA_SHORTEST)
+				oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_SHORT ||
+				oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_SHORT_ANA_QUICKEST ||
+				oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_SHORT_ANA_SHORTEST ||
+				oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_CUSTOM ||
+				oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_CUSTOM_ANA_QUICKEST ||
+				oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_CUSTOM_ANA_SHORTEST)
 			{
-				[self drawStarChart:x - 0.5f * size_in_pixels.width :y - 0.5f * size_in_pixels.height :z :alpha :NO];
+				[self drawStarChart:x - 0.5f * oo::ToCxx(self)->size_in_pixels.width :y - 0.5f * oo::ToCxx(self)->size_in_pixels.height :z :alpha :NO];
 			}
-			if (backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG || 
-					backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG_ANA_QUICKEST ||
-					backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG_ANA_SHORTEST)
+			if (oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG || 
+					oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG_ANA_QUICKEST ||
+					oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG_ANA_SHORTEST)
 			{
-				[self drawStarChart:x - 0.5f * size_in_pixels.width :y - 0.5f * size_in_pixels.height :z :alpha :YES];
+				[self drawStarChart:x - 0.5f * oo::ToCxx(self)->size_in_pixels.width :y - 0.5f * oo::ToCxx(self)->size_in_pixels.height :z :alpha :YES];
 			}
 			if ([player guiScreen] == GUI_SCREEN_STATUS)
 			{
@@ -1532,22 +1521,22 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 			}
 			if ([player guiScreen] == GUI_SCREEN_STICKPROFILE)
 			{
-				[player stickProfileGraphAxisProfile: alpha screenAt: make_vector(x,y,z) screenSize: size_in_pixels];
+				[player stickProfileGraphAxisProfile: alpha screenAt: make_vector(x,y,z) screenSize: oo::ToCxx(self)->size_in_pixels];
 			}
 		}
 		
-		if (fade_sign)
+		if (oo::ToCxx(self)->fade_sign)
 		{
-			fade_alpha += (float)(fade_sign * [UNIVERSE getTimeDelta]);
-			if (fade_alpha < 0.05f)	// done fading out
+			oo::ToCxx(self)->fade_alpha += (float)(oo::ToCxx(self)->fade_sign * [UNIVERSE getTimeDelta]);
+			if (oo::ToCxx(self)->fade_alpha < 0.05f)	// done fading out
 			{
-				fade_alpha = 0.0f;
-				fade_sign = 0.0f;
+				oo::ToCxx(self)->fade_alpha = 0.0f;
+				oo::ToCxx(self)->fade_sign = 0.0f;
 			}
-			if (fade_alpha >= max_alpha)	// done fading in
+			if (oo::ToCxx(self)->fade_alpha >= oo::ToCxx(self)->max_alpha)	// done fading in
 			{
-				fade_alpha = max_alpha;
-				fade_sign = 0.0f;
+				oo::ToCxx(self)->fade_alpha = oo::ToCxx(self)->max_alpha;
+				oo::ToCxx(self)->fade_sign = 0.0f;
 			}
 		}
 	}
@@ -1557,12 +1546,12 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	if (drawCursor)
 	{
 		NSPoint vjpos = [[UNIVERSE gameView] virtualJoystickPosition];
-		double cursor_x = size_in_pixels.width * vjpos.x;
-		if (cursor_x < -size_in_pixels.width * 0.5)  cursor_x = -size_in_pixels.width * 0.5f;
-		if (cursor_x > size_in_pixels.width * 0.5)   cursor_x = size_in_pixels.width * 0.5f;
-		double cursor_y = -size_in_pixels.height * vjpos.y;
-		if (cursor_y < -size_in_pixels.height * 0.5)  cursor_y = -size_in_pixels.height * 0.5f;
-		if (cursor_y > size_in_pixels.height * 0.5)   cursor_y = size_in_pixels.height * 0.5f;
+		double cursor_x = oo::ToCxx(self)->size_in_pixels.width * vjpos.x;
+		if (cursor_x < -oo::ToCxx(self)->size_in_pixels.width * 0.5)  cursor_x = -oo::ToCxx(self)->size_in_pixels.width * 0.5f;
+		if (cursor_x > oo::ToCxx(self)->size_in_pixels.width * 0.5)   cursor_x = oo::ToCxx(self)->size_in_pixels.width * 0.5f;
+		double cursor_y = -oo::ToCxx(self)->size_in_pixels.height * vjpos.y;
+		if (cursor_y < -oo::ToCxx(self)->size_in_pixels.height * 0.5)  cursor_y = -oo::ToCxx(self)->size_in_pixels.height * 0.5f;
+		if (cursor_y > oo::ToCxx(self)->size_in_pixels.height * 0.5)   cursor_y = oo::ToCxx(self)->size_in_pixels.height * 0.5f;
 
 		cursor_row = [self rowAtVirtualJoystickPosition:vjpos];
 
@@ -1573,7 +1562,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 		
 		cursor_x += x;
 		cursor_y += y;
-		[[UNIVERSE gameView] setVirtualJoystick:cursor_x/size_in_pixels.width :-cursor_y/size_in_pixels.height];
+		[[UNIVERSE gameView] setVirtualJoystick:cursor_x/oo::ToCxx(self)->size_in_pixels.width :-cursor_y/oo::ToCxx(self)->size_in_pixels.height];
 
 		OOGLBEGIN(GL_LINES);
 			glVertex3f((float)cursor_x - h1, (float)cursor_y, z);	glVertex3f((float)cursor_x - h3, (float)cursor_y, z);
@@ -1594,32 +1583,32 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	NSSize		strsize;
 	unsigned	i;
 	OOTimeDelta	delta_t = [UNIVERSE getTimeDelta];
-	NSSize		characterSize = pixel_text_size;
-	NSSize		titleCharacterSize = pixel_title_size;
+	NSSize		characterSize = oo::ToCxx(self)->pixel_text_size;
+	NSSize		titleCharacterSize = oo::ToCxx(self)->pixel_title_size;
 	float		backgroundAlpha = self == [UNIVERSE messageGUI] && ![UNIVERSE permanentMessageLog] ? 0.0f : alpha;
-	std::vector<float>	row_alpha(n_rows);
+	std::vector<float>	row_alpha(oo::ToCxx(self)->n_rows);
 	
 	// calculate fade out time and alpha for each row. Do it before
 	// applying a potential background because we need the maximum alpha
 	// of all rows to be the alpha applied to the background color
-	for (i = 0; i < n_rows; i++)
+	for (i = 0; i < oo::ToCxx(self)->n_rows; i++)
 	{
 		row_alpha[i] = alpha;
 		
 		if(![UNIVERSE autoMessageLogBg] && [PLAYER guiScreen] == GUI_SCREEN_MAIN)  backgroundAlpha = alpha;
 		
-		if (rowFadeTime[i] > 0.0f && ![UNIVERSE permanentMessageLog])
+		if (oo::ToCxx(self)->rowFadeTime[i] > 0.0f && ![UNIVERSE permanentMessageLog])
 		{
-			rowFadeTime[i] -= (float)delta_t;
-			if (rowFadeTime[i] <= 0.0f)
+			oo::ToCxx(self)->rowFadeTime[i] -= (float)delta_t;
+			if (oo::ToCxx(self)->rowFadeTime[i] <= 0.0f)
 			{
-				rowText[i] = oo::PList("");
-				rowFadeTime[i] = 0.0f;
+				oo::ToCxx(self)->rowText[i] = oo::PList("");
+				oo::ToCxx(self)->rowFadeTime[i] = 0.0f;
 				continue;
 			}
-			if ((rowFadeTime[i] > 0.0f)&&(rowFadeTime[i] < 1.0))
+			if ((oo::ToCxx(self)->rowFadeTime[i] > 0.0f)&&(oo::ToCxx(self)->rowFadeTime[i] < 1.0))
 			{
-				row_alpha[i] *= rowFadeTime[i];
+				row_alpha[i] *= oo::ToCxx(self)->rowFadeTime[i];
 				if (backgroundAlpha < row_alpha[i])  backgroundAlpha = row_alpha[i];
 			}
 			else
@@ -1632,85 +1621,85 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	// do backdrop
 	// don't draw it if docked, unless message_gui is permanent
 	// don't draw it on the intro screens
-	if (backgroundColor)
+	if (oo::ToCxx(self)->backgroundColor.get())
 	{
 		int playerStatus = [PLAYER status];
 		if (playerStatus != STATUS_START_GAME && playerStatus != STATUS_DEAD)
 		{
-			OOGL(glColor4f([backgroundColor redComponent], [backgroundColor greenComponent], [backgroundColor blueComponent], backgroundAlpha * [backgroundColor alphaComponent]));
+			OOGL(glColor4f([oo::ToCxx(self)->backgroundColor.get() redComponent], [oo::ToCxx(self)->backgroundColor.get() greenComponent], [oo::ToCxx(self)->backgroundColor.get() blueComponent], backgroundAlpha * [oo::ToCxx(self)->backgroundColor.get() alphaComponent]));
 			OOGLBEGIN(GL_QUADS);
 				glVertex3f(x + 0.0f,					y + 0.0f,					z);
-				glVertex3f(x + size_in_pixels.width,	y + 0.0f,					z);
-				glVertex3f(x + size_in_pixels.width,	y + size_in_pixels.height,	z);
-				glVertex3f(x + 0.0f,					y + size_in_pixels.height,	z);
+				glVertex3f(x + oo::ToCxx(self)->size_in_pixels.width,	y + 0.0f,					z);
+				glVertex3f(x + oo::ToCxx(self)->size_in_pixels.width,	y + oo::ToCxx(self)->size_in_pixels.height,	z);
+				glVertex3f(x + 0.0f,					y + oo::ToCxx(self)->size_in_pixels.height,	z);
 			OOGLEND();
 		}
 	}
 	
 	// show the 'foreground', aka overlay!
 	
-	if (foregroundSprite != nil)
+	if (oo::ToCxx(self)->foregroundSprite != nil)
 	{
-		[foregroundSprite blitCentredToX:x + 0.5f * size_in_pixels.width Y:y + 0.5f * size_in_pixels.height Z:z alpha:alpha];
+		[oo::ToCxx(self)->foregroundSprite blitCentredToX:x + 0.5f * oo::ToCxx(self)->size_in_pixels.width Y:y + 0.5f * oo::ToCxx(self)->size_in_pixels.height Z:z alpha:alpha];
 	}
 	
-	if (!RowInRange(selectedRow, selectableRange))
-		selectedRow = -1;   // out of Range;
+	if (!RowInRange(oo::ToCxx(self)->selectedRow, oo::ToCxx(self)->selectableRange))
+		oo::ToCxx(self)->selectedRow = -1;   // out of Range;
 	
 	////
 	// drawing operations here
 	
-	if (title.has_value())
+	if (oo::ToCxx(self)->title.has_value())
 	{
 		//
 		// draw the title
 		//
-		strsize = cxx_OORectFromString(*title, 0.0f, 0.0f, titleCharacterSize).size;
+		strsize = cxx_OORectFromString(*oo::ToCxx(self)->title, 0.0f, 0.0f, titleCharacterSize).size;
 		[self cxx_setGLColorFromSetting:cxx_kGuiScreenTitleColor defaultValue:[OOColor redColor] alpha:alpha];
 
-		cxx_OODrawString(*title, x + pixel_row_center - strsize.width/2.0, y + size_in_pixels.height - pixel_title_size.height, z, titleCharacterSize);
+		cxx_OODrawString(*oo::ToCxx(self)->title, x + oo::ToCxx(self)->pixel_row_center - strsize.width/2.0, y + oo::ToCxx(self)->size_in_pixels.height - oo::ToCxx(self)->pixel_title_size.height, z, titleCharacterSize);
 		
 		// draw a horizontal divider
 		//
 		[self cxx_setGLColorFromSetting:cxx_kGuiScreenDividerColor defaultValue:[OOColor colorWithWhite:0.75 alpha:1.0] alpha:alpha];
 
 		OOGLBEGIN(GL_QUADS);
-			glVertex3f(x + 0,					y + size_in_pixels.height - pixel_title_size.height + 4,	z);
-			glVertex3f(x + size_in_pixels.width,	y + size_in_pixels.height - pixel_title_size.height + 4,	z);
-			glVertex3f(x + size_in_pixels.width,	y + size_in_pixels.height - pixel_title_size.height + 2,		z);
-			glVertex3f(x + 0,					y + size_in_pixels.height - pixel_title_size.height + 2,		z);
+			glVertex3f(x + 0,					y + oo::ToCxx(self)->size_in_pixels.height - oo::ToCxx(self)->pixel_title_size.height + 4,	z);
+			glVertex3f(x + oo::ToCxx(self)->size_in_pixels.width,	y + oo::ToCxx(self)->size_in_pixels.height - oo::ToCxx(self)->pixel_title_size.height + 4,	z);
+			glVertex3f(x + oo::ToCxx(self)->size_in_pixels.width,	y + oo::ToCxx(self)->size_in_pixels.height - oo::ToCxx(self)->pixel_title_size.height + 2,		z);
+			glVertex3f(x + 0,					y + oo::ToCxx(self)->size_in_pixels.height - oo::ToCxx(self)->pixel_title_size.height + 2,		z);
 		OOGLEND();
 	}
 	
 	// draw each row of text
 	//
 	OOStartDrawingStrings();
-	for (i = 0; i < n_rows; i++)
+	for (i = 0; i < oo::ToCxx(self)->n_rows; i++)
 	{
-		OOColor* row_color = rowColor[i].get();
+		OOColor* row_color = oo::ToCxx(self)->rowColor[i].get();
 		glColor4f([row_color redComponent], [row_color greenComponent], [row_color blueComponent], row_alpha[i]);
 		
-		if (const std::string *rowString = rowText[i].getIf<std::string>())
+		if (const std::string *rowString = oo::ToCxx(self)->rowText[i].getIf<std::string>())
 		{
 			const std::string &text = *rowString;
 			if (!text.empty())
 			{
 				strsize = cxx_OORectFromString(text, 0.0f, 0.0f, characterSize).size;
-				switch (rowAlignment[i])
+				switch (oo::ToCxx(self)->rowAlignment[i])
 				{
 					case GUI_ALIGN_LEFT :
-						rowPosition[i].x = 0.0f;
+						oo::ToCxx(self)->rowPosition[i].x = 0.0f;
 						break;
 					case GUI_ALIGN_RIGHT :
-						rowPosition[i].x = size_in_pixels.width - strsize.width;
+						oo::ToCxx(self)->rowPosition[i].x = oo::ToCxx(self)->size_in_pixels.width - strsize.width;
 						break;
 					case GUI_ALIGN_CENTER :
-						rowPosition[i].x = (size_in_pixels.width - strsize.width)/2.0f;
+						oo::ToCxx(self)->rowPosition[i].x = (oo::ToCxx(self)->size_in_pixels.width - strsize.width)/2.0f;
 						break;
 				}
-				if (i == (unsigned)selectedRow)
+				if (i == (unsigned)oo::ToCxx(self)->selectedRow)
 				{
-					NSRect		block = cxx_OORectFromString(text, x + rowPosition[i].x + 2, y + rowPosition[i].y + 2, characterSize);
+					NSRect		block = cxx_OORectFromString(text, x + oo::ToCxx(self)->rowPosition[i].x + 2, y + oo::ToCxx(self)->rowPosition[i].y + 2, characterSize);
 					OOStopDrawingStrings();
 					[self cxx_setGLColorFromSetting:cxx_kGuiSelectedRowBackgroundColor defaultValue:[OOColor redColor] alpha:alpha];
 					OOGLBEGIN(GL_QUADS);
@@ -1722,14 +1711,14 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 					[self cxx_setGLColorFromSetting:cxx_kGuiSelectedRowColor defaultValue:[OOColor blackColor] alpha:alpha];
 					OOStartDrawingStrings();
 				}
-				cxx_OODrawStringQuadsAligned(text, x + rowPosition[i].x, y + rowPosition[i].y, z, characterSize, NO);
+				cxx_OODrawStringQuadsAligned(text, x + oo::ToCxx(self)->rowPosition[i].x, y + oo::ToCxx(self)->rowPosition[i].y, z, characterSize, NO);
 
 				// draw cursor at end of current Row
 				//
-				if ((showTextCursor)&&(i == (unsigned)currentRow))
+				if ((oo::ToCxx(self)->showTextCursor)&&(i == (unsigned)oo::ToCxx(self)->currentRow))
 				{
 					NSRect	tr = cxx_OORectFromString(text, 0.0f, 0.0f, characterSize);
-					NSPoint cu = NSMakePoint(x + rowPosition[i].x + tr.size.width + 0.2f * characterSize.width, y + rowPosition[i].y);
+					NSPoint cu = NSMakePoint(x + oo::ToCxx(self)->rowPosition[i].x + tr.size.width + 0.2f * characterSize.width, y + oo::ToCxx(self)->rowPosition[i].y);
 					tr.origin = cu;
 					tr.size.width = 0.5f * characterSize.width;
 					GLfloat g_alpha = 0.5f * (1.0f + (float)sin(6 * [UNIVERSE getTime]));
@@ -1745,10 +1734,10 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 				}
 			}
 		}
-		if (rowText[i].isArray())
+		if (oo::ToCxx(self)->rowText[i].isArray())
 		{
-			const oo::PList	&array = rowText[i];
-			NSUInteger	j, max_columns = MIN(array.count(), n_columns);
+			const oo::PList	&array = oo::ToCxx(self)->rowText[i];
+			NSUInteger	j, max_columns = MIN(array.count(), oo::ToCxx(self)->n_columns);
 			BOOL		isLeftAligned;
 
 			for (j = 0; j < max_columns; j++)
@@ -1756,8 +1745,8 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 				const std::string text = array.at<std::string>(j);	// -oo_stringAtIndex: ("" for none)
 				if (text.size() != 0)
 				{
-					isLeftAligned = tabStops[j] >= 0;
-					rowPosition[i].x = llabs(tabStops[j]);
+					isLeftAligned = oo::ToCxx(self)->tabStops[j] >= 0;
+					oo::ToCxx(self)->rowPosition[i].x = llabs(oo::ToCxx(self)->tabStops[j]);
 
 					// we don't want to highlight leading space(s) or narrow spaces (\037s)
 					std::string	hilitedText = TrimmedForHighlight(text);
@@ -1782,22 +1771,22 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 						
 						if (txtRange.location == 0) // bingo!
 						{
-							rowPosition[i].x += OORectFromString(@"0", 0, 0, characterSize).size.width - OORectFromString(qtyNone, 0, 0, characterSize).size.width;
+							oo::ToCxx(self)->rowPosition[i].x += OORectFromString(@"0", 0, 0, characterSize).size.width - OORectFromString(qtyNone, 0, 0, characterSize).size.width;
 							} */
 					}
 					
 					// baseline text rect, needed for correct highlight positioning.
-					NSRect		block = cxx_OORectFromString(text, x + rowPosition[i].x + 2, y + rowPosition[i].y + 2, characterSize);
+					NSRect		block = cxx_OORectFromString(text, x + oo::ToCxx(self)->rowPosition[i].x + 2, y + oo::ToCxx(self)->rowPosition[i].y + 2, characterSize);
 
 					if(!isLeftAligned)
 					{
-						rowPosition[i].x -= block.size.width + 3;
+						oo::ToCxx(self)->rowPosition[i].x -= block.size.width + 3;
 					}
-					block = cxx_OORectFromString(hilitedText, x + rowPosition[i].x + 1 + leadingSpaces, y + rowPosition[i].y + 2, characterSize);
+					block = cxx_OORectFromString(hilitedText, x + oo::ToCxx(self)->rowPosition[i].x + 1 + leadingSpaces, y + oo::ToCxx(self)->rowPosition[i].y + 2, characterSize);
 					block.size.width += 3;
 						
 					
-					if (i == (unsigned)selectedRow)
+					if (i == (unsigned)oo::ToCxx(self)->selectedRow)
 					{
 						OOStopDrawingStrings();
 						[self cxx_setGLColorFromSetting:cxx_kGuiSelectedRowBackgroundColor defaultValue:[OOColor redColor] alpha:alpha];
@@ -1810,7 +1799,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 						[self cxx_setGLColorFromSetting:cxx_kGuiSelectedRowColor defaultValue:[OOColor blackColor] alpha:alpha];
 						OOStartDrawingStrings();
 					}
-					cxx_OODrawStringQuadsAligned(text, x + rowPosition[i].x, y + rowPosition[i].y, z, characterSize,NO);
+					cxx_OODrawStringQuadsAligned(text, x + oo::ToCxx(self)->rowPosition[i].x, y + oo::ToCxx(self)->rowPosition[i].y, z, characterSize,NO);
 				}
 			}
 		}
@@ -1884,19 +1873,19 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 
 	double fuel = 35.0 * [player dialFuel];
 	
-	double		hcenter = size_in_pixels.width/2.0;
-	double		hscale = size_in_pixels.width / (CHART_WIDTH_AT_MAX_ZOOM*zoom);
-	double		vscale = -size_in_pixels.height / (2*CHART_HEIGHT_AT_MAX_ZOOM*zoom);
+	double		hcenter = oo::ToCxx(self)->size_in_pixels.width/2.0;
+	double		hscale = oo::ToCxx(self)->size_in_pixels.width / (CHART_WIDTH_AT_MAX_ZOOM*zoom);
+	double		vscale = -oo::ToCxx(self)->size_in_pixels.height / (2*CHART_HEIGHT_AT_MAX_ZOOM*zoom);
 	double		vcenter = CHART_SCREEN_VERTICAL_CENTRE;
 	double		hoffset = hcenter - chart_centre_coordinates.x*hscale;
-	double		voffset = size_in_pixels.height - vcenter - chart_centre_coordinates.y*vscale;
+	double		voffset = oo::ToCxx(self)->size_in_pixels.height - vcenter - chart_centre_coordinates.y*vscale;
 
 	if (compact)
 	{
-		hscale = size_in_pixels.width / 256.0;
-		vscale = -1.0 * size_in_pixels.height / 512.0;
+		hscale = oo::ToCxx(self)->size_in_pixels.width / 256.0;
+		vscale = -1.0 * oo::ToCxx(self)->size_in_pixels.height / 512.0;
 		hoffset = 0.0f;
-		voffset = size_in_pixels.height - pixel_title_size.height - 5;
+		voffset = oo::ToCxx(self)->size_in_pixels.height - oo::ToCxx(self)->pixel_title_size.height - 5;
 		vcenter = CHART_SCREEN_VERTICAL_CENTRE_COMPACT;
 		chart_centre_coordinates.x = 128.0;
 		chart_centre_coordinates.y = 128.0;
@@ -1944,9 +1933,9 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 
 	NSInteger textRow = compact ? GUI_ROW_CHART_SYSTEM_COMPACT : GUI_ROW_CHART_SYSTEM;
 	
-	clipRect = NSMakeRect((viewSize.width - size_in_pixels.width*pixelRatio)/2.0,
-				(viewSize.height + size_in_pixels.height*pixelRatio)/2.0 - (pixel_title_size.height + 15 + (textRow-2)*MAIN_GUI_ROW_HEIGHT) * pixelRatio,
-				size_in_pixels.width * pixelRatio,
+	clipRect = NSMakeRect((viewSize.width - oo::ToCxx(self)->size_in_pixels.width*pixelRatio)/2.0,
+				(viewSize.height + oo::ToCxx(self)->size_in_pixels.height*pixelRatio)/2.0 - (oo::ToCxx(self)->pixel_title_size.height + 15 + (textRow-2)*MAIN_GUI_ROW_HEIGHT) * pixelRatio,
+				oo::ToCxx(self)->size_in_pixels.width * pixelRatio,
 				(textRow-1) * MAIN_GUI_ROW_HEIGHT * pixelRatio);
 
 	OOSystemID target = [PLAYER targetSystemID];
@@ -2009,15 +1998,15 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	static oo::PList routeInfo;	// null: no cached route
 
 	/* May override current mode for mission screens */
-	if (backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG_ANA_SHORTEST || 
-		backgroundSpecial == GUI_BACKGROUND_SPECIAL_SHORT_ANA_SHORTEST || 
-		backgroundSpecial == GUI_BACKGROUND_SPECIAL_CUSTOM_ANA_SHORTEST)
+	if (oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG_ANA_SHORTEST || 
+		oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_SHORT_ANA_SHORTEST || 
+		oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_CUSTOM_ANA_SHORTEST)
 	{
 		advancedNavArrayMode = OPTIMIZED_BY_JUMPS;
 	}
-	else if (backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG_ANA_QUICKEST ||
-		backgroundSpecial == GUI_BACKGROUND_SPECIAL_SHORT_ANA_QUICKEST ||
-		backgroundSpecial == GUI_BACKGROUND_SPECIAL_CUSTOM_ANA_QUICKEST)
+	else if (oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG_ANA_QUICKEST ||
+		oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_SHORT_ANA_QUICKEST ||
+		oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_CUSTOM_ANA_QUICKEST)
 	{
 		advancedNavArrayMode = OPTIMIZED_BY_TIME;
 	}
@@ -2130,7 +2119,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 		}
 
 		const oo::PList systemInfo = [systemManager cxx_getPropertiesForSystem:i inGalaxy:galaxy_id];
-		float blob_factor = guiUserSettings.get<float>(cxx_kGuiChartCircleScale, 0.0017);
+		float blob_factor = oo::ToCxx(self)->guiUserSettings.get<float>(cxx_kGuiChartCircleScale, 0.0017);
 		float blob_size = (1.0f + blob_factor * systemInfo.get<float>("radius"))/zoom;
 		if (blob_size < 0.5) blob_size = 0.5;
 
@@ -2227,7 +2216,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	
 	// draw found stars and captions
 	//
-	GLfloat systemNameScale = guiUserSettings.get<float>(cxx_kGuiChartLabelScale, 1.0);
+	GLfloat systemNameScale = oo::ToCxx(self)->guiUserSettings.get<float>(cxx_kGuiChartLabelScale, 1.0);
 
 	OOGL(GLScaledLineWidth(1.5f));
 	[self cxx_setGLColorFromSetting:cxx_kGuiChartMatchBoxColor defaultValue:[OOColor greenColor] alpha:alpha];
@@ -2236,15 +2225,15 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	
 	for (i = 0; i < 256; i++) if (systemsFound[i])
 	{
-		if(foundSystem == n_matches) foundIndex = i;
+		if(oo::ToCxx(self)->foundSystem == n_matches) foundIndex = i;
 		n_matches++;
 	}
 	
 	if (n_matches == 0)
 	{
-		foundSystem = 0;
+		oo::ToCxx(self)->foundSystem = 0;
 	}
-	else if (backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG_ANA_SHORTEST || backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG_ANA_QUICKEST || backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG)
+	else if (oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG_ANA_SHORTEST || oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG_ANA_QUICKEST || oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG)
 	{
 		// do nothing at this stage
 	}
@@ -2276,7 +2265,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 				OOGLEND();
 				if (i == foundIndex || n_matches == 1)
 				{
-					if (n_matches == 1) foundSystem = 0;
+					if (n_matches == 1) oo::ToCxx(self)->foundSystem = 0;
 					if (zoom > CHART_ZOOM_SHOW_LABELS && advancedNavArrayMode == OPTIMIZED_BY_NONE)
 					{
 						[self cxx_setGLColorFromSetting:cxx_kGuiChartMatchLabelColor defaultValue:[OOColor cyanColor] alpha:alpha];
@@ -2298,7 +2287,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	
 	int targetIdx = -1;
 	struct saved_system *sys;
-	NSSize chSize = NSMakeSize(pixel_row_height*systemNameScale/zoom,pixel_row_height*systemNameScale/zoom);
+	NSSize chSize = NSMakeSize(oo::ToCxx(self)->pixel_row_height*systemNameScale/zoom,oo::ToCxx(self)->pixel_row_height*systemNameScale/zoom);
 	
 	double jumpRange = MAX_JUMP_RANGE * [PLAYER dialFuel];
 	for (i = 0; i < num_nearby_systems; i++)
@@ -2452,10 +2441,10 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	// Draw bottom divider
 	[self cxx_setGLColorFromSetting:cxx_kGuiScreenDividerColor defaultValue:[OOColor colorWithWhite:0.75 alpha:1.0] alpha:alpha];
 	OOGLBEGIN(GL_QUADS);
-		glVertex3f(x + 0, (float)(y + size_in_pixels.height - (textRow-1)*MAIN_GUI_ROW_HEIGHT - pixel_title_size.height),	z);
-		glVertex3f(x + size_in_pixels.width, (GLfloat)(y + size_in_pixels.height - (textRow-1)*MAIN_GUI_ROW_HEIGHT - pixel_title_size.height), z);
-		glVertex3f(x + size_in_pixels.width, (GLfloat)(y + size_in_pixels.height - (textRow-1)*MAIN_GUI_ROW_HEIGHT - pixel_title_size.height - 2), z);
-		glVertex3f(x + 0, (GLfloat)(y + size_in_pixels.height - (textRow-1)*MAIN_GUI_ROW_HEIGHT - pixel_title_size.height - 2), z);
+		glVertex3f(x + 0, (float)(y + oo::ToCxx(self)->size_in_pixels.height - (textRow-1)*MAIN_GUI_ROW_HEIGHT - oo::ToCxx(self)->pixel_title_size.height),	z);
+		glVertex3f(x + oo::ToCxx(self)->size_in_pixels.width, (GLfloat)(y + oo::ToCxx(self)->size_in_pixels.height - (textRow-1)*MAIN_GUI_ROW_HEIGHT - oo::ToCxx(self)->pixel_title_size.height), z);
+		glVertex3f(x + oo::ToCxx(self)->size_in_pixels.width, (GLfloat)(y + oo::ToCxx(self)->size_in_pixels.height - (textRow-1)*MAIN_GUI_ROW_HEIGHT - oo::ToCxx(self)->pixel_title_size.height - 2), z);
+		glVertex3f(x + 0, (GLfloat)(y + oo::ToCxx(self)->size_in_pixels.height - (textRow-1)*MAIN_GUI_ROW_HEIGHT - oo::ToCxx(self)->pixel_title_size.height - 2), z);
 	OOGLEND();
 }
 
@@ -2540,7 +2529,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	
 	BOOL		*systemsFound = [UNIVERSE systemsFound];
 	unsigned 	i, first = 0, last = 0, count = 0;
-	int 		systemIndex = foundSystem + direction;
+	int 		systemIndex = oo::ToCxx(self)->foundSystem + direction;
 	
 	if (direction == 0) systemIndex = 0;
 	
@@ -2578,7 +2567,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 		sys = first;
 	}
 	
-	foundSystem = systemIndex;
+	oo::ToCxx(self)->foundSystem = systemIndex;
 	return sys;
 }
 
@@ -2587,8 +2576,8 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 - (void) drawAdvancedNavArrayAtX:(float)x y:(float)y z:(float)z alpha:(float)alpha usingRoute:(const oo::PList &) routeInfo optimizedBy:(OORouteType) optimizeBy zoom: (OOScalar) zoom
 {
 	GLfloat lr,lg,lb,la,lr2,lg2,lb2,la2;
-	double			hscale = size_in_pixels.width / (CHART_WIDTH_AT_MAX_ZOOM*zoom);
-	double			vscale = -1.0 * size_in_pixels.height / (2*CHART_HEIGHT_AT_MAX_ZOOM*zoom);
+	double			hscale = oo::ToCxx(self)->size_in_pixels.width / (CHART_WIDTH_AT_MAX_ZOOM*zoom);
+	double			vscale = -1.0 * oo::ToCxx(self)->size_in_pixels.height / (2*CHART_HEIGHT_AT_MAX_ZOOM*zoom);
 	NSPoint			star = NSZeroPoint, 
 		star2 = NSZeroPoint, 
 		starabs = NSZeroPoint, 
