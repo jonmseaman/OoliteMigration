@@ -4710,3 +4710,67 @@ steps: `-init` (by `+sharedPlayer`, before there is ship data) makes the ship th
 
 **Consequences.** As amendment oo-60fwo's. The facade's deletion bead removes every `_cxxPlayer->`,
 makes the members private and depends on the umbrella oo-a70.
+
+## Amendment (bead oo-6symp): a JS private slot that holds a C++ object (amendment oo-ppc item 5)
+
+- Date: 2026-10-07. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Exemplar:
+  `src/Core/Scripting/OOJSPrivateObject.h/.cpp`, its first user `src/Core/Scripting/OOJSTimer.h/.mm`,
+  `tests/unit/core/test_OOJSPrivateObject.mm` and `test_OOJSTimer.mm`. Carries out amendment oo-ppc
+  item 5; seam for the deletion beads oo-9ht.37, .63, .94, .95 and .102.
+
+**Context.** Amendment oo-ppc item 5 left every JS private slot holding a retained Objective-C object,
+so the engine could keep reaching it by selector: `-oo_jsValueInContext:` to wrap it,
+`-oo_clearJSSelf:` from `OOJSObjectWrapperFinalize`, `-cxx_oo_jsDescription` from
+`OOJSObjectWrapperToString`, `-isKindOfClass:` in `DEFINE_JS_OBJECT_GETTER`. A binding whose wrapped
+class has converted cannot lose its façade while the slot holds it, and its `_jsSelf` stays a façade
+ivar (amendment oo-bwrq item 1). Item 5 said the change "lands with the first façade deletion of a
+wrapped class"; each deletion bead found it missing and stopped.
+
+**Decision (recommended defaults).**
+
+1. **The protocol is a C++ interface, `OOJSPrivateObject`** (`OOJSPrivateObject.h`, plain C++), with
+   the selectors as virtual members: `jsValueInContext(context)`, `clearJSSelf(selfVal)` and
+   `jsDescription()` (default nullopt). A converted class implements it beside its `oo::RefCounted`
+   base (`class X : public Base, public ::OOJSPrivateObject`); no class changes its base.
+2. **The slot holds the object as an `oo::RefCounted *` with one retain.** The engine glue
+   (`OOJSPrivateObject.cpp`, beside `OOJavaScriptEngine.mm`'s Objective-C versions, each the
+   counterpart of one) is: `OOJSSetCxxPrivate` (retain + `setPrivate`), `OOJSGetCxxPrivate<T>` (the
+   getter: `DEFINE_JS_OBJECT_GETTER`'s JS class check with `OOJSIsSubclass` and the same error text,
+   then the slot `static_cast` to `T`; the JS class fixes the slot's type, so no Objective-C class
+   check is left), `OOJSCxxObjectWrapperFinalize` (the class's finalize hook: `clearJSSelf` through
+   `dynamic_cast<OOJSPrivateObject *>`, then `release`), `OOJSCxxObjectWrapperToString(context, args,
+   jsClass)` (called from a one-line native that names the class: `jsDescription()`, else `[object
+   <JS class name>]`; a `this` of another class goes to `OOJSObjectWrapperToString` as before) and
+   `OOJSValueFromCxxObject` (null for null, else `jsValueInContext`). The Objective-C path stays for
+   every slot that still holds an Objective-C object; one JS class uses one path.
+3. **The slot changes per binding, in a bead of its own or in the class's deletion bead, and
+   `_jsSelf` moves with it.** Once the JS object no longer retains the façade, the façade can die and
+   be made again, so the JS object must live in the C++ object (a member read by
+   `jsValueInContext`/`clearJSSelf`) or one object would get two wrappers. The façade's
+   `-oo_jsValueInContext:` (and `-oo_clearJSSelf:`) become one-line forwarders to the members, kept
+   while Objective-C code still sends them.
+4. **What the façade's selectors answered is kept.** `jsDescription()` returns what the façade's
+   `-cxx_oo_jsDescription` did (`[<jsClassName> <components>]`, `OOObject (OOJavaScriptConversion)`'s
+   format); a finalizer's warning moves into `clearJSSelf`, described from the live façade
+   (`oo::LiveObjC`) where the old text named it. While the façade exists the class's converter
+   (`OOJSRegisterObjectConverter`) answers it (`oo::PListObject(oo::ToObjC(x))`), so Objective-C
+   callers of `OOJSNativeObjectFromJSValue`/`OfClass` get what they got; the façade's deletion bead
+   moves those callers to the binding's C++ getter.
+5. **Where the class's file and its binding are different files** (`OOShipGroup.mm` and
+   `OOJSShipGroup.mm`), the three members are declared in the class's header and defined in the
+   binding file (amendment oo-ppc item 3: the category's bodies were already free functions there). A
+   core test that links the class's file without its binding defines them as stand-ins that answer
+   `undefined` and do nothing (its objects never reach JS), because the vtable names them (amendment
+   oo-9ht.12 item 2's C++ stand-ins, with an approval line under oo-9n5p9).
+6. **Tests.** `test_OOJSPrivateObject` pins the glue on the test's own class (one wrapper per object,
+   null for null, the slot's retain, the getter's class check and error with a registered subclass,
+   the finalizer's `clearJSSelf` and release, toString's description, fallbacks and a native's
+   exception). A binding whose slot changes keeps every expectation; a case that checked the slot
+   held the façade checks it holds the C++ object, and the engine stand-ins it no longer reaches are
+   replaced by linking `OOJSPrivateObject.cpp` (with an `OOJSIsSubclass` stand-in).
+
+**Consequences.** This bead moves the Timer (its `_jsSelf` was already C++): its slot holds the
+`cxx::OOJSTimer`, the finalizer is the engine's (its warning in `clearJSSelf`), toString() is
+`OOJSCxxObjectWrapperToString`. ShipGroup (oo-9ht.94), SystemInfo (oo-9ht.95) and EquipmentInfo
+(oo-9ht.102) move in child beads of oo-6symp, each before its deletion bead. `OOTimeProfile` has no
+private slot (its JS value is a fresh plain object), so oo-9ht.63 needs nothing more from this seam.
