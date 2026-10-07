@@ -242,10 +242,6 @@ MA 02110-1301, USA.
 
 ///////////////////////////////////////
 
-/**
- * Finds systems within range.  If range is greater than 7.0LY then only look within 7.0LY.
- */
-
 - (void) preloadSounds;
 
 - (oo::PList) cxx_shipsForSaleForSystem:(OOSystemID) s withTL:(OOTechLevelID) specialTL atTime:(OOTimeAbsolute) current_time;	// an array of offer dictionaries, by name and price
@@ -525,6 +521,9 @@ MA 02110-1301, USA.
 // the category of the same name in Universe+ObjCBridge.mm (amendment oo-mvzmb item 1).
 @interface Universe (OOSlice20)
 
+/**
+ * Finds systems within range.  If range is greater than 7.0LY then only look within 7.0LY.
+ */
 - (oo::PList) cxx_nearbyDestinationsWithinRange:(double) range;	// an array of {distance, sysID, nova}
 - (OOSystemID) findNeighbouringSystemToCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) gal;
 - (OOSystemID) findConnectedSystemAtCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) gal;
