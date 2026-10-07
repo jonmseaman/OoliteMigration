@@ -380,8 +380,6 @@ void ShipEntity::initWithKey(const std::string &key)
 }	// namespace cxx
 
 
-@implementation ShipEntity
-
 
 static constexpr std::string_view kBoulderRole = "boulder";
 
@@ -555,8 +553,6 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	// Reject others
 	return NO;
 }
-
-@end
 
 
 namespace cxx {
