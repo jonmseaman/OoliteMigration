@@ -221,6 +221,226 @@ public:
 	// this ship agrees.
 	bool isShipWithSubEntityShip(::Entity *other);
 
+	// Slice 2: set-up from the ship dictionary (cxx_setUpFromDictionary:).
+	bool setUpFromDictionary(const oo::PList &inShipDict);
+
+	// Slice 3: setUpShipFromDictionary:, subentity serialisation and set-up.
+	virtual bool setUpShipFromDictionary(const oo::PList &shipDict);
+	void setSubIdx(NSUInteger value);
+	NSUInteger subIdx();
+	NSUInteger maxShipSubEntities();
+	std::optional<std::string> serializeShipSubEntities();
+	void deserializeShipSubEntitiesFrom(const std::string &string);
+	virtual bool setUpSubEntities();
+	GLfloat frustumRadius() override;
+	bool setUpOneSubentity(const oo::PList &subentDict);
+	bool setUpOneFlasher(const oo::PList &subentDict);
+
+	// Slice 4: standard subentities and cargo pods; descriptions, mesh, vectors, misjump, subentity lists, AI scripts.
+	bool setUpOneStandardSubentity(const oo::PList &subentDict, bool asTurret);
+	bool isTemplateCargoPod();
+	void setUpCargoType(const std::string &cargoString);
+	void removeScript();
+	void clearSubEntities();
+	Quaternion subEntityRotationalVelocity();
+	void setSubEntityRotationalVelocity(Quaternion rv);
+	std::optional<std::string> shortDescriptionComponents();
+	GLfloat getSunGlareFilter();
+	void setSunGlareFilter(GLfloat newValue);
+	GLfloat getAccuracy();
+	void setAccuracy(GLfloat new_accuracy);
+	::OOMesh *mesh();
+	void setMesh(::OOMesh *mesh);
+	BoundingBox getTotalBoundingBox();
+	Vector forwardVector();
+	Vector upVector();
+	Vector rightVector();
+	bool scriptedMisjump();
+	void setScriptedMisjump(bool newValue);
+	GLfloat scriptedMisjumpRange();
+	void setScriptedMisjumpRange(GLfloat newValue);
+	std::vector<oo::ObjCRef<::Entity *>> getSubEntities();
+	NSUInteger subEntityCount();
+	bool hasSubEntity(::Entity *sub);
+	std::vector<oo::ObjCRef<::Entity *>> subEntityEnumerator();
+	std::vector<oo::ObjCRef<::ShipEntity *>> shipSubEntities();
+	std::vector<oo::ObjCRef<::OOFlasherEntity *>> flasherEnumerator();
+	std::vector<oo::ObjCRef<::OOExhaustPlumeEntity *>> exhausts();
+	::ShipEntity *subEntityTakingDamage();
+	void setSubEntityTakingDamage(::ShipEntity *sub);
+	::OOScript *shipScript();
+	::OOScript *shipAIScript();
+	OOTimeAbsolute shipAIScriptWakeTime();
+	void setAIScriptWakeTime(OOTimeAbsolute t);
+	std::optional<std::string> descriptionComponents() const override;
+
+	// Slice 5: bounding boxes, octree hit tests, universe add / remove, beacons, boulders, escort set-up.
+	BoundingBox findBoundingBoxRelativeToPosition(HPVector opv, Vector _i, Vector _j, Vector _k);
+	::Octree *getOctree();
+	float volume();
+	GLfloat doesHitLine(HPVector v0, HPVector v1);
+	virtual GLfloat doesHitLine(HPVector v0, HPVector v1, ::ShipEntity **hitEntity);
+	GLfloat doesHitLine(HPVector v0, HPVector v1, HPVector o, Vector i, Vector j, Vector k);
+	void wasAddedToUniverse() override;
+	void wasRemovedFromUniverse() override;
+	HPVector absoluteTractorPosition();
+	std::optional<std::string> beaconCode();
+	void setBeaconCode(const std::optional<std::string> &bcode);
+	std::optional<std::string> beaconLabel();
+	void setBeaconLabel(const std::optional<std::string> &blabel);
+	bool isVisible() override;
+	bool isBeacon();
+	id <OOHUDBeaconIcon> beaconDrawable();
+	::Entity *prevBeacon();
+	::Entity *nextBeacon();
+	void setPrevBeacon(::Entity *beaconShip);
+	void setNextBeacon(::Entity *beaconShip);
+	void setIsBoulder(bool flag);
+	bool isBoulder();
+	bool isMinable();
+	bool countsAsKill();
+	void setUpEscorts();
+	void setUpMixedEscorts();
+
+	// Slice 6: escort creation, ship data key, weapon offsets, octree collision checks, subentity geometry, escape-pod launch.
+	void setUpOneEscort(::ShipEntity *escorter, ::OOShipGroup *escortGroup, const std::string &escortRole, HPVector ex_pos, uint8_t currentEscortCount);
+	std::optional<std::string> shipDataKey();
+	std::optional<std::string> shipDataKeyAutoRole();
+	void setShipDataKey(const std::optional<std::string> &key);
+	oo::PList shipInfoDictionary();
+	std::vector<Vector> weaponOffsetsFrom(const oo::PList &dict, const std::string &key, const std::string &mode);
+	std::vector<Vector> getAftWeaponOffset();
+	std::vector<Vector> getForwardWeaponOffset();
+	std::vector<Vector> getPortWeaponOffset();
+	std::vector<Vector> getStarboardWeaponOffset();
+	bool getIsFrangible();
+	bool suppressFlightNotifications();
+	OOScanClass getScanClass() override;
+	bool canCollide() override;
+	bool checkCloseCollisionWith(cxx::Entity *other) override;
+	BoundingBox findSubentityBoundingBox();
+	Triangle absoluteIJKForSubentity();
+	void addSubentityToCollisionRadius(::Entity *subent);
+	::ShipEntity *launchPodWithCrew(const std::vector<oo::ObjCRef<::OOCharacter *>> &podCrew);
+	bool validForAddToUniverse() override;
+
+	// Slice 7: update:.
+	void update(OOTimeDelta delta_t) override;
+
+	// Slice 8: behaviour dispatch, attack response, equipment queries.
+	void processBehaviour(OOTimeDelta delta_t);
+	void noteFrustration(const std::string &context);
+	void respondToAttackFrom(::Entity *from, ::Entity *other);
+	bool hasOneEquipmentItem(const std::string &itemKey, bool includeWeapons, bool loading);
+	bool hasOneEquipmentItemIncludingMissiles(const std::string &itemKey, bool includeMissiles, bool loading);
+	virtual bool hasPrimaryWeapon(OOWeaponType weaponType);
+	NSUInteger countEquipmentItem(const std::string &eqkey);
+	bool hasEquipmentItem(const oo::PList &equipmentKeys, bool includeWeapons, bool loading);
+	bool hasEquipmentItem(const oo::PList &equipmentKeys);
+	bool hasEquipmentItemProviding(const std::string &equipmentType);
+	std::optional<std::string> equipmentItemProviding(const std::string &equipmentType);
+	bool hasAllEquipment(const oo::PList &equipmentKeys, bool includeWeapons, bool loading);
+	bool hasAllEquipment(const oo::PList &equipmentKeys);
+	bool hasHyperspaceMotor();
+	float hyperspaceSpinTime();
+	void setHyperspaceSpinTime(float newValue);
+
+	// Slice 9: equipment validity and adding, weapon mounts, scripting lists.
+	virtual bool canAddEquipment(const std::string &equipmentKeyIn, const std::string &context);
+	OOWeaponFacingSet weaponFacings();
+	OOWeaponType weaponTypeIDForFacing(OOWeaponFacing facing, bool strict);
+	virtual ::OOEquipmentType *weaponTypeForFacing(OOWeaponFacing facing, bool strict);
+	virtual std::vector<oo::ObjCRef<::OOEquipmentType *>> missilesList();
+	virtual oo::PList passengerListForScripting();
+	virtual oo::PList parcelListForScripting();
+	virtual oo::PList contractListForScripting();
+	::OOEquipmentType *generateMissileEquipmentTypeFrom(const std::string &role);
+	std::vector<oo::ObjCRef<::OOEquipmentType *>> equipmentListForScripting();
+	bool equipmentValidToAdd(const std::string &equipmentKey, const std::string &context);
+	bool equipmentValidToAdd(const std::string &fullEquipmentKey, bool loading, const std::string &context);
+	virtual bool setWeaponMount(OOWeaponFacing facing, const std::string &eqKey);
+	virtual bool addEquipmentItem(const std::string &equipmentKey, const std::string &context);
+	virtual bool addEquipmentItem(const std::string &equipmentKeyIn, bool validateAddition, const std::string &context);
+	std::vector<std::string> equipmentKeys();
+	NSUInteger equipmentCount();
+
+	// Slice 10: equipment removal, missile selection, capacities and has-equipment predicates, shields.
+	virtual void removeEquipmentItem(const std::string &equipmentKey);
+	virtual bool removeExternalStore(::OOEquipmentType *eqType);
+	::OOEquipmentType *verifiedMissileTypeFromRole(const std::string &requestedRole);
+	::OOEquipmentType *selectMissile();
+	void removeAllEquipment();
+	virtual OOCreditsQuantity removeMissiles();
+	virtual NSUInteger parcelCount();
+	virtual NSUInteger passengerCount();
+	virtual NSUInteger passengerCapacity();
+	NSUInteger missileCount();
+	NSUInteger missileCapacity();
+	NSUInteger extraCargo();
+	bool hasScoop();
+	bool hasFuelScoop();
+	bool hasCargoScoop();
+	bool hasECM();
+	bool hasCloakingDevice();
+	bool hasMilitaryScannerFilter();
+	bool hasMilitaryJammer();
+	bool hasExpandedCargoBay();
+	bool hasShieldBooster();
+	bool hasMilitaryShieldEnhancer();
+	bool hasHeatShield();
+	bool hasFuelInjection();
+	bool hasCascadeMine();
+	bool hasEscapePod();
+	bool hasDockingComputer();
+	bool hasGalacticHyperdrive();
+	float shieldBoostFactor();
+	virtual float maxForwardShieldLevel();
+	virtual float maxAftShieldLevel();
+	float shieldRechargeRate();
+	double maxHyperspaceDistance();
+
+	// Slice 11: thrust and afterburner; behaviours: idle, tumble, tractored, track, intercept, break off, dogfight, evasive.
+	float afterburnerFactor();
+	float afterburnerRate();
+	void setAfterburnerFactor(GLfloat newValue);
+	void setAfterburnerRate(GLfloat newValue);
+	float maxThrust();
+	void setMaxThrust(GLfloat newValue);
+	float getThrust();
+	void behaviour_stop_still(double delta_t);
+	void behaviour_idle(double delta_t);
+	void behaviour_tumble(double delta_t);
+	void behaviour_tractored(double delta_t);
+	void behaviour_track_target(double delta_t);
+	void behaviour_intercept_target(double delta_t);
+	void behaviour_attack_break_off_target(double delta_t);
+	void behaviour_attack_slow_dogfight(double delta_t);
+	void behaviour_evasive_action(double delta_t);
+
+	// Slice 12: behaviours: attack target, broadside, close with target.
+	void behaviour_attack_target(double delta_t);
+	void behaviour_attack_broadside(double delta_t);
+	void behaviour_attack_broadside_left(double delta_t);
+	void behaviour_attack_broadside_right(double delta_t);
+	void behaviour_attack_broadside_target(double delta_t, bool leftside);
+	void behaviour_close_to_broadside_range(double delta_t);
+	void behaviour_close_with_target(double delta_t);
+
+	// Slice 13: behaviours: sniper, fly to target six, mining target, attack fly to target.
+	void behaviour_attack_sniper(double delta_t);
+	void behaviour_fly_to_target_six(double delta_t);
+	void behaviour_attack_mining_target(double delta_t);
+	void behaviour_attack_fly_to_target(double delta_t);
+
+	// Slice 14: behaviours: fly from target, running defence, flee, range from destination, face destination, land on planet, formation.
+	void behaviour_attack_fly_from_target(double delta_t);
+	void behaviour_running_defense(double delta_t);
+	void behaviour_flee_target(double delta_t);
+	void behaviour_fly_range_from_destination(double delta_t);
+	void behaviour_face_destination(double delta_t);
+	void behaviour_land_on_planet(double delta_t);
+	void behaviour_formation_form_up(double delta_t);
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired
