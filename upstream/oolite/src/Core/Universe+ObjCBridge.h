@@ -59,30 +59,6 @@ MA 02110-1301, USA.
 
 // find a valid station in interstellar space
 
-- (OOCreditsQuantity) cxx_getEquipmentPriceForKey:(const std::string &) eq_key;
-
-- (OOCommodities *) commodities;
-
-- (ShipEntity *) reifyCargoPod:(ShipEntity *)cargoObj;
-- (ShipEntity *) cargoPodFromTemplate:(ShipEntity *)cargoObj;
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_getContainersOfGoods:(OOCargoQuantity)how_many scarce:(BOOL)scarce legal:(BOOL)legal;
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_getContainersOfCommodity:(const std::string &) commodity_name :(OOCargoQuantity) how_many;
-- (void) fillCargopodWithRandomCargo:(ShipEntity *)cargopod;
-
-- (std::string) getRandomCommodity;	// a commodity key
-- (OOCargoQuantity) cxx_getRandomAmountOfCommodity:(const std::string &) co_type;
-
-- (oo::PList) commodityDataForType:(const std::string &)type;	// null: no such good
-- (std::optional<std::string>) cxx_displayNameForCommodity:(const std::string &)co_type;
-- (std::optional<std::string>) cxx_describeCommodity:(const std::string &)co_type amount:(OOCargoQuantity) co_amount;
-
-- (void) setGameView:(MyOpenGLView *)view;
-- (MyOpenGLView *) gameView;
-- (GameController *) gameController;
-- (oo::PList) cxx_gameSettings;
-
-- (void) useGUILightSource:(BOOL)GUILight;
-
 - (void) drawUniverse;
 
 - (void) defineFrustum;
@@ -287,6 +263,35 @@ MA 02110-1301, USA.
 - (Class) cxx_shipClassForShipDictionary:(const oo::PList &)dict;	// Nil for a null PList
 - (std::optional<std::string>) defaultAIForRole:(const std::string &)role;		// autoAImap.plist lookup
 - (OOCargoQuantity) cxx_maxCargoForShip:(const std::string &) desc;
+
+@end
+
+
+// Slice 10 of docs/phases/3-slices/Universe.md: members of cxx::Universe, forwarded by the
+// category of the same name in Universe+ObjCBridge.mm (the class's @implementation, still in
+// Universe.mm, stays complete).
+@interface Universe (OOSlice10)
+
+- (OOCreditsQuantity) cxx_getEquipmentPriceForKey:(const std::string &) eq_key;
+- (OOCommodities *) commodities;
+- (ShipEntity *) reifyCargoPod:(ShipEntity *)cargoObj;
+- (ShipEntity *) cargoPodFromTemplate:(ShipEntity *)cargoObj;
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_getContainersOfGoods:(OOCargoQuantity)how_many scarce:(BOOL)scarce legal:(BOOL)legal;
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_getContainersOfCommodity:(const std::string &) commodity_name :(OOCargoQuantity) how_many;
+- (void) fillCargopodWithRandomCargo:(ShipEntity *)cargopod;
+- (std::string) getRandomCommodity;	// a commodity key
+- (OOCargoQuantity) cxx_getRandomAmountOfCommodity:(const std::string &) co_type;
+- (oo::PList) commodityDataForType:(const std::string &)type;	// null: no such good
+- (std::optional<std::string>) cxx_displayNameForCommodity:(const std::string &)co_type;
+- (std::optional<std::string>) cxx_describeCommodity:(const std::string &)co_type amount:(OOCargoQuantity) co_amount;
+- (void) setGameView:(MyOpenGLView *)view;
+- (MyOpenGLView *) gameView;
+- (GameController *) gameController;
+- (oo::PList) cxx_gameSettings;
+- (void) useGUILightSource:(BOOL)GUILight;
+- (void) lightForEntity:(BOOL)isLit;
+- (void) getActiveViewMatrix:(OOMatrix *)outMatrix forwardVector:(Vector *)outForward upVector:(Vector *)outUp;
+- (OOMatrix) activeViewMatrix;
 
 @end
 

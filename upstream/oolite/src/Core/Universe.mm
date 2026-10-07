@@ -621,405 +621,6 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 
 #define PROFILE_SHIP_SELECTION 0
 
-/*
- * Price for an item expressed in 10ths of credits (divide by 10 to get credits)
- */
-- (OOCreditsQuantity) cxx_getEquipmentPriceForKey:(const std::string &)eq_key
-{
-	if (const oo::PList::Array *items = _cxxUniverse->equipmentData.getIf<oo::PList::Array>())
-	{
-		for (const oo::PList &itemData : *items)
-		{
-			std::optional<std::string> itemType = OptionalStringAt(itemData, EQUIPMENT_KEY_INDEX);
-
-			if (itemType.has_value() && *itemType == eq_key)
-			{
-				return itemData.at<unsigned long long>(EQUIPMENT_PRICE_INDEX);
-			}
-		}
-	}
-	return 0;
-}
-
-
-- (OOCommodities *) commodities
-{
-	return _cxxUniverse->commodities;
-}
-
-
-/* Converts template cargo pods to real ones */
-- (ShipEntity *) reifyCargoPod:(ShipEntity *)cargoObj
-{
-	if ([cargoObj isTemplateCargoPod])
-	{
-		return [UNIVERSE cargoPodFromTemplate:cargoObj];
-	}
-	else
-	{
-		return cargoObj;
-	}
-}
-
-
-- (ShipEntity *) cargoPodFromTemplate:(ShipEntity *)cargoObj
-{
-	ShipEntity *container = nil;
-	// this is a template container, so we need to make a real one
-	const std::optional<std::string> co_type = [cargoObj cxx_commodityType];
-	OOCargoQuantity co_amount = co_type.has_value() ? [UNIVERSE cxx_getRandomAmountOfCommodity:*co_type] : 0;
-	if (randf() < 0.5) // stops OXP monopolising pods for commodities
-	{
-		container = co_type.has_value() ? [UNIVERSE cxx_newShipWithRole:*co_type] : nil; // newShipWithRole returns retained object
-	}
-	if (container == nil)
-	{
-		container = [UNIVERSE cxx_newShipWithRole:"cargopod"];
-	}
-	if (co_type.has_value())  [container cxx_setCommodity:*co_type andAmount:co_amount];	// nil: no change, as before
-	return [container autorelease];
-}
-
-
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_getContainersOfGoods:(OOCargoQuantity)how_many scarce:(BOOL)scarce legal:(BOOL)legal
-{
-	/*	build list of goods allocating 0..100 for each based on how much of
-		each quantity there is. Use a ratio of n x 100/64 for plentiful goods;
-		reverse the probabilities for scarce goods.
-	*/
-	std::vector<oo::ObjCRef<ShipEntity *>>	accumulator;
-	accumulator.reserve(how_many);
-	NSUInteger		i=0, commodityCount = [_cxxUniverse->commodityMarket count];
-	OOCargoQuantity quantities[commodityCount];
-	OOCargoQuantity total_quantity = 0;
-
-	const std::vector<std::string>	goodsKeys = [_cxxUniverse->commodityMarket goods];
-
-	for (const std::string &goodsKey : goodsKeys)
-	{
-		OOCargoQuantity q = [_cxxUniverse->commodityMarket cxx_quantityForGood:goodsKey];
-		if (scarce)
-		{
-			if (q < 64)  q = 64 - q;
-			else  q = 0;
-		}
-		// legal YES restricts (almost) only to legal goods
-		// legal NO allows illegal goods, but not necessarily a full hold
-		if (legal && [_cxxUniverse->commodityMarket cxx_exportLegalityForGood:goodsKey] > 0)
-		{
-			q &= 1; // keep a very small chance, sometimes
-		}
-		if (q > 64) q = 64;
-		q *= 100;   q/= 64;
-		quantities[i++] = q;
-		total_quantity += q;
-	}
-	// quantities is now used to determine which good get into the containers
-	for (i = 0; i < how_many; i++)
-	{
-		NSUInteger co_type = 0;
-		
-		int qr=0;
-		if(total_quantity)
-		{
-			qr = 1+(Ranrot() % total_quantity);
-			co_type = 0;
-			while (qr > 0)
-			{
-				OOAssert((NSUInteger)co_type < commodityCount, "Commodity type index out of range.");
-				qr -= quantities[co_type++];
-			}
-			co_type--;
-		}
-
-		const std::optional<std::string> goodsKey = (co_type < goodsKeys.size()) ? std::optional<std::string>(goodsKeys[co_type]) : std::nullopt;
-		ShipEntity *container = nil;
-		if (goodsKey.has_value())
-		{
-			const auto pod = _cxxUniverse->cargoPods.find(*goodsKey);
-			if (pod != _cxxUniverse->cargoPods.end())  container = pod->second.get();
-		}
-
-		if (container != nil)
-		{
-			accumulator.push_back(oo::ObjCRef<ShipEntity *>(container));
-		}
-		else
-		{
-			OO_LOG("universe.createContainer.failed", "***** ERROR: failed to find a container to fill with {} ({}).", goodsKey.value_or("(null)"), static_cast<size_t>(co_type));
-
-		}
-	}
-	return accumulator;
-}
-
-
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_getContainersOfCommodity:(const std::string &)commodity_name :(OOCargoQuantity)how_much
-{
-	std::vector<oo::ObjCRef<ShipEntity *>>	accumulator;
-	accumulator.reserve(how_much);
-	if (![_cxxUniverse->commodities cxx_goodDefined:commodity_name])
-	{
-		return accumulator; // empty array
-	}
-
-	ShipEntity *container = nil;
-	const auto pod = _cxxUniverse->cargoPods.find(commodity_name);
-	if (pod != _cxxUniverse->cargoPods.end())  container = pod->second.get();
-	while (how_much > 0)
-	{
-		if (container)
-		{
-			accumulator.push_back(oo::ObjCRef<ShipEntity *>(container));
-		}
-		else
-		{
-			OO_LOG("universe.createContainer.failed", "***** ERROR: failed to find a container to fill with {}", commodity_name);
-		}
-
-		how_much--;
-	}
-	return accumulator;
-}
-
-
-- (void) fillCargopodWithRandomCargo:(ShipEntity *)cargopod
-{
-	if (cargopod == nil || ![cargopod hasRole:"cargopod"] || [cargopod cargoType] == CARGO_SCRIPTED_ITEM)  return;
-
-	if (![cargopod cxx_commodityType].has_value() || ![cargopod commodityAmount])
-	{
-		const std::string aCommodity = [self getRandomCommodity];
-		OOCargoQuantity aQuantity = [self cxx_getRandomAmountOfCommodity:aCommodity];
-		[cargopod cxx_setCommodity:aCommodity andAmount:aQuantity];
-	}
-}
-
-
-- (std::string) getRandomCommodity
-{
-	return [_cxxUniverse->commodities getRandomCommodity];
-}
-
-
-- (OOCargoQuantity) cxx_getRandomAmountOfCommodity:(const std::string &)co_type
-{
-	OOMassUnit		units;
-
-	units = [_cxxUniverse->commodities massUnitForGood:co_type];
-	switch (units)
-	{
-		case 0 :	// TONNES
-			return 1;
-		case 1 :	// KILOGRAMS
-			return 1 + (Ranrot() % 6) + (Ranrot() % 6) + (Ranrot() % 6);
-		case 2 :	// GRAMS
-			return 4 + (Ranrot() % 16) + (Ranrot() % 11) + (Ranrot() % 6);
-		case UNITS_UNKNOWN :	// not a unit (ADR-0036): warned about below, as any other value was
-			break;
-	}
-	OO_LOG("universe.commodityAmount.warning", "Commodity {} has an unrecognised mass unit, assuming tonnes", co_type);
-	return 1;
-}
-
-
-- (oo::PList) commodityDataForType:(const std::string &)type
-{
-	return [_cxxUniverse->commodityMarket cxx_definitionForGood:type];
-}
-
-
-- (std::optional<std::string>) cxx_displayNameForCommodity:(const std::string &)co_type
-{
-	return [_cxxUniverse->commodityMarket cxx_nameForGood:co_type];
-}
-
-
-- (std::optional<std::string>) cxx_describeCommodity:(const std::string &)co_type amount:(OOCargoQuantity)co_amount
-{
-	int				units;
-	std::string		unitDesc;
-	std::optional<std::string>	typeDesc;
-	const oo::PList	commodity = [self commodityDataForType:co_type];
-
-	if (commodity.isNull()) return std::string();
-
-	units = [_cxxUniverse->commodityMarket massUnitForGood:co_type];
-	if (co_amount == 1)
-	{
-		switch (units)
-		{
-			case UNITS_KILOGRAMS :	// KILOGRAM
-				unitDesc = cxx_OOLookUpDescriptionPRIV("cargo-kilogram");
-				break;
-			case UNITS_GRAMS :	// GRAM
-				unitDesc = cxx_OOLookUpDescriptionPRIV("cargo-gram");
-				break;
-			case UNITS_TONS :	// TONNE
-			default :
-				unitDesc = cxx_OOLookUpDescriptionPRIV("cargo-ton");
-				break;
-		}
-	}
-	else
-	{
-		switch (units)
-		{
-			case UNITS_KILOGRAMS :	// KILOGRAMS
-				unitDesc = cxx_OOLookUpDescriptionPRIV("cargo-kilograms");
-				break;
-			case UNITS_GRAMS :	// GRAMS
-				unitDesc = cxx_OOLookUpDescriptionPRIV("cargo-grams");
-				break;
-			case UNITS_TONS :	// TONNES
-			default :
-				unitDesc = cxx_OOLookUpDescriptionPRIV("cargo-tons");
-				break;
-		}
-	}
-
-	typeDesc = [_cxxUniverse->commodityMarket cxx_nameForGood:co_type];
-
-	return oo::str::format("%d %s %s",co_amount, unitDesc.c_str(), TextOrNull(typeDesc).c_str());
-}
-
-////////////////////////////////////////////////////
-
-- (void) setGameView:(MyOpenGLView *)view
-{
-	[_cxxUniverse->gameView release];
-	_cxxUniverse->gameView = [view retain];
-}
-
-
-- (MyOpenGLView *) gameView
-{
-	return _cxxUniverse->gameView;
-}
-
-
-- (GameController *) gameController
-{
-	return [[self gameView] gameController];
-}
-
-
-// The number kinds the old dictionary held: oo_setInteger: a signed integer, oo_setBool: a
-// boolean, oo_setFloat: / +numberWithFloat: a single-precision real.
-- (oo::PList) cxx_gameSettings
-{
-	oo::PList::Dict result;
-
-	result["speechOn"] = oo::PList::signedInteger([PLAYER isSpeechOn]);
-	result["autosave"] = oo::PList(static_cast<bool>(_cxxUniverse->autoSave));
-	result["wireframeGraphics"] = oo::PList(static_cast<bool>(_cxxUniverse->wireframeGraphics));
-	result["procedurallyTexturedPlanets"] = oo::PList(static_cast<bool>(_cxxUniverse->doProcedurallyTexturedPlanets));
-
-	result["fovValue"] = oo::PList::singleReal([_cxxUniverse->gameView fov:NO]);
-
-#if OOLITE_WINDOWS
-	if ([_cxxUniverse->gameView hdrOutput])
-	{
-		result["hdr-max-brightness"] = oo::PList::singleReal([_cxxUniverse->gameView hdrMaxBrightness]);
-		result["hdr-paperwhite-brightness"] = oo::PList::singleReal([_cxxUniverse->gameView hdrPaperWhiteBrightness]);
-		result["hdr-tone-mapper"] = oo::PList(cxx_OOStringFromHDRToneMapper([_cxxUniverse->gameView hdrToneMapper]));
-	}
-#endif
-
-	result["sdr-tone-mapper"] = oo::PList(cxx_OOStringFromSDRToneMapper([_cxxUniverse->gameView sdrToneMapper]));
-
-	result["detailLevel"] = oo::PList(cxx_OOStringFromGraphicsDetail([self detailLevel]));
-
-	const char *desc = "UNDEFINED";
-	switch ([[OOMusicController sharedController] mode])
-	{
-		case kOOMusicOff:		desc = "MUSIC_OFF"; break;
-		case kOOMusicOn:		desc = "MUSIC_ON"; break;
-		case kOOMusicITunes:	desc = "MUSIC_ITUNES"; break;
-	}
-	result["musicMode"] = oo::PList(desc);
-
-	result["gameWindow"] = oo::PList(oo::PList::Dict{
-		{ "width", oo::PList::singleReal([_cxxUniverse->gameView backingViewSize].width) },
-		{ "height", oo::PList::singleReal([_cxxUniverse->gameView backingViewSize].height) },
-		{ "fullScreen", oo::PList(static_cast<bool>([[self gameController] inFullScreenMode])) },
-	});
-
-	result["keyConfig"] = [PLAYER cxx_keyConfig];
-
-	return oo::PList(std::move(result));
-}
-
-
-- (void) useGUILightSource:(BOOL)GUILight
-{
-	if (GUILight != demo_light_on)
-	{
-		if (![self useShaders])
-		{
-			if (GUILight) 
-			{
-				OOGL(glEnable(GL_LIGHT0));
-				OOGL(glDisable(GL_LIGHT1));
-			}
-			else
-			{
-				OOGL(glEnable(GL_LIGHT1));
-				OOGL(glDisable(GL_LIGHT0));
-			}
-		}
-		// There should be nothing to do for shaders, they use the same (always on) light source
-		// both in flight & in gui mode. According to the standard, shaders should treat lights as
-		// always enabled. At least one non-standard shader implementation (windows' X3100 Intel
-		// core with GM965 chipset and version 6.14.10.4990 driver) does _not_ use glDisabled lights,
-		// making the following line necessary.
-		
-		else OOGL(glEnable(GL_LIGHT1)); // make sure we have a light, even with shaders (!)
-		
-		demo_light_on = GUILight;
-	}
-}
-
-
-- (void) lightForEntity:(BOOL)isLit
-{
-	if (isLit != object_light_on)
-	{
-		if ([self useShaders])
-		{
-			if (isLit)
-			{
-				OOGL(glLightfv(GL_LIGHT1, GL_DIFFUSE, _cxxUniverse->sun_diffuse));
-				OOGL(glLightfv(GL_LIGHT1, GL_SPECULAR, _cxxUniverse->sun_specular));
-			}
-			else
-			{
-				OOGL(glLightfv(GL_LIGHT1, GL_DIFFUSE, sun_off));
-				OOGL(glLightfv(GL_LIGHT1, GL_SPECULAR, sun_off));
-			}
-		}
-		else
-		{
-			if (!demo_light_on)
-			{
-				if (isLit) OOGL(glEnable(GL_LIGHT1));
-				else OOGL(glDisable(GL_LIGHT1));
-			}
-			else
-			{
-				// If we're in demo/GUI mode we should always have a lit object.
-				OOGL(glEnable(GL_LIGHT0));
-				
-				// Redundant, see above.
-				//if (isLit)  OOGL(glEnable(GL_LIGHT0));
-				//else  OOGL(glDisable(GL_LIGHT0));
-			}
-		}
-		
-		object_light_on = isLit;
-	}
-}
-
 
 // global rotation matrix definitions
 static const OOMatrix	fwd_matrix =
@@ -1050,62 +651,6 @@ static const OOMatrix	starboard_matrix =
 							{-1.0f,  0.0f,  0.0f,  0.0f },
 							{ 0.0f,  0.0f,  0.0f,  1.0f }
 						}};
-
-
-- (void) getActiveViewMatrix:(OOMatrix *)outMatrix forwardVector:(Vector *)outForward upVector:(Vector *)outUp
-{
-	assert(outMatrix != NULL && outForward != NULL && outUp != NULL);
-	
-	PlayerEntity			*player = nil;
-	
-	switch (_cxxUniverse->viewDirection)
-	{
-		case VIEW_AFT:
-			*outMatrix = aft_matrix;
-			*outForward = vector_flip(kBasisZVector);
-			*outUp = kBasisYVector;
-			return;
-			
-		case VIEW_PORT:
-			*outMatrix = port_matrix;
-			*outForward = vector_flip(kBasisXVector);
-			*outUp = kBasisYVector;
-			return;
-			
-		case VIEW_STARBOARD:
-			*outMatrix = starboard_matrix;
-			*outForward = kBasisXVector;
-			*outUp = kBasisYVector;
-			return;
-			
-		case VIEW_CUSTOM:
-			player = PLAYER;
-			*outMatrix = [player customViewMatrix];
-			*outForward = [player customViewForwardVector];
-			*outUp = [player customViewUpVector];
-			return;
-			
-		case VIEW_FORWARD:
-		case VIEW_NONE:
-		case VIEW_GUI_DISPLAY:
-		case VIEW_BREAK_PATTERN:
-			;
-	}
-	
-	*outMatrix = fwd_matrix;
-	*outForward = kBasisZVector;
-	*outUp = kBasisYVector;
-}
-
-
-- (OOMatrix) activeViewMatrix
-{
-	OOMatrix			m;
-	Vector				f, u;
-	
-	[self getActiveViewMatrix:&m forwardVector:&f upVector:&u];
-	return m;
-}
 
 
 /* Code adapted from http://www.crownandcutlass.com/features/technicaldetails/frustum.html
@@ -6108,6 +5653,479 @@ std::optional<std::string> Universe::defaultAIForRole(const std::string &role)
 OOCargoQuantity Universe::maxCargoForShip(const std::string &desc)
 {
 	return [[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:desc].get<unsigned int>("max_cargo", 0);
+}
+
+
+}	// namespace cxx
+
+
+// Slice 10 of docs/phases/3-slices/Universe.md (bead oo-e9enf): equipment prices, commodities and
+// cargo pods, the game view and controller, settings, entity lighting, the active view matrix. The
+// facade forwards each selector (Universe+ObjCBridge.mm); sends to self stay sends (ADR-0056
+// amendment oo-27jxj).
+namespace cxx {
+
+/*
+ * Price for an item expressed in 10ths of credits (divide by 10 to get credits)
+ */
+OOCreditsQuantity Universe::getEquipmentPriceForKey(const std::string &eq_key)
+{
+	if (const oo::PList::Array *items = equipmentData.getIf<oo::PList::Array>())
+	{
+		for (const oo::PList &itemData : *items)
+		{
+			std::optional<std::string> itemType = OptionalStringAt(itemData, EQUIPMENT_KEY_INDEX);
+
+			if (itemType.has_value() && *itemType == eq_key)
+			{
+				return itemData.at<unsigned long long>(EQUIPMENT_PRICE_INDEX);
+			}
+		}
+	}
+	return 0;
+}
+
+
+::OOCommodities * Universe::getCommodities()
+{
+	return commodities;
+}
+
+
+/* Converts template cargo pods to real ones */
+::ShipEntity * Universe::reifyCargoPod(::ShipEntity *cargoObj)
+{
+	if ([cargoObj isTemplateCargoPod])
+	{
+		return [UNIVERSE cargoPodFromTemplate:cargoObj];
+	}
+	else
+	{
+		return cargoObj;
+	}
+}
+
+
+::ShipEntity * Universe::cargoPodFromTemplate(::ShipEntity *cargoObj)
+{
+	::ShipEntity *container = nil;
+	// this is a template container, so we need to make a real one
+	const std::optional<std::string> co_type = [cargoObj cxx_commodityType];
+	OOCargoQuantity co_amount = co_type.has_value() ? [UNIVERSE cxx_getRandomAmountOfCommodity:*co_type] : 0;
+	if (randf() < 0.5) // stops OXP monopolising pods for commodities
+	{
+		container = co_type.has_value() ? [UNIVERSE cxx_newShipWithRole:*co_type] : nil; // newShipWithRole returns retained object
+	}
+	if (container == nil)
+	{
+		container = [UNIVERSE cxx_newShipWithRole:"cargopod"];
+	}
+	if (co_type.has_value())  [container cxx_setCommodity:*co_type andAmount:co_amount];	// nil: no change, as before
+	return [container autorelease];
+}
+
+
+std::vector<oo::ObjCRef<::ShipEntity *>> Universe::getContainersOfGoods(OOCargoQuantity how_many, bool scarce, bool legal)
+{
+	/*	build list of goods allocating 0..100 for each based on how much of
+		each quantity there is. Use a ratio of n x 100/64 for plentiful goods;
+		reverse the probabilities for scarce goods.
+	*/
+	std::vector<oo::ObjCRef<::ShipEntity *>>	accumulator;
+	accumulator.reserve(how_many);
+	NSUInteger		i=0, commodityCount = [commodityMarket count];
+	OOCargoQuantity quantities[commodityCount];
+	OOCargoQuantity total_quantity = 0;
+
+	const std::vector<std::string>	goodsKeys = [commodityMarket goods];
+
+	for (const std::string &goodsKey : goodsKeys)
+	{
+		OOCargoQuantity q = [commodityMarket cxx_quantityForGood:goodsKey];
+		if (scarce)
+		{
+			if (q < 64)  q = 64 - q;
+			else  q = 0;
+		}
+		// legal YES restricts (almost) only to legal goods
+		// legal NO allows illegal goods, but not necessarily a full hold
+		if (legal && [commodityMarket cxx_exportLegalityForGood:goodsKey] > 0)
+		{
+			q &= 1; // keep a very small chance, sometimes
+		}
+		if (q > 64) q = 64;
+		q *= 100;   q/= 64;
+		quantities[i++] = q;
+		total_quantity += q;
+	}
+	// quantities is now used to determine which good get into the containers
+	for (i = 0; i < how_many; i++)
+	{
+		NSUInteger co_type = 0;
+		
+		int qr=0;
+		if(total_quantity)
+		{
+			qr = 1+(Ranrot() % total_quantity);
+			co_type = 0;
+			while (qr > 0)
+			{
+				OOCAssert((NSUInteger)co_type < commodityCount, "Commodity type index out of range.");
+				qr -= quantities[co_type++];
+			}
+			co_type--;
+		}
+
+		const std::optional<std::string> goodsKey = (co_type < goodsKeys.size()) ? std::optional<std::string>(goodsKeys[co_type]) : std::nullopt;
+		::ShipEntity *container = nil;
+		if (goodsKey.has_value())
+		{
+			const auto pod = cargoPods.find(*goodsKey);
+			if (pod != cargoPods.end())  container = pod->second.get();
+		}
+
+		if (container != nil)
+		{
+			accumulator.push_back(oo::ObjCRef<::ShipEntity *>(container));
+		}
+		else
+		{
+			OO_LOG("universe.createContainer.failed", "***** ERROR: failed to find a container to fill with {} ({}).", goodsKey.value_or("(null)"), static_cast<size_t>(co_type));
+
+		}
+	}
+	return accumulator;
+}
+
+
+std::vector<oo::ObjCRef<::ShipEntity *>> Universe::getContainersOfCommodity(const std::string &commodity_name, OOCargoQuantity how_much)
+{
+	std::vector<oo::ObjCRef<::ShipEntity *>>	accumulator;
+	accumulator.reserve(how_much);
+	if (![commodities cxx_goodDefined:commodity_name])
+	{
+		return accumulator; // empty array
+	}
+
+	::ShipEntity *container = nil;
+	const auto pod = cargoPods.find(commodity_name);
+	if (pod != cargoPods.end())  container = pod->second.get();
+	while (how_much > 0)
+	{
+		if (container)
+		{
+			accumulator.push_back(oo::ObjCRef<::ShipEntity *>(container));
+		}
+		else
+		{
+			OO_LOG("universe.createContainer.failed", "***** ERROR: failed to find a container to fill with {}", commodity_name);
+		}
+
+		how_much--;
+	}
+	return accumulator;
+}
+
+
+void Universe::fillCargopodWithRandomCargo(::ShipEntity *cargopod)
+{
+	::Universe *self = oo::ToObjC(this);
+	if (cargopod == nil || ![cargopod hasRole:"cargopod"] || [cargopod cargoType] == CARGO_SCRIPTED_ITEM)  return;
+
+	if (![cargopod cxx_commodityType].has_value() || ![cargopod commodityAmount])
+	{
+		const std::string aCommodity = [self getRandomCommodity];
+		OOCargoQuantity aQuantity = [self cxx_getRandomAmountOfCommodity:aCommodity];
+		[cargopod cxx_setCommodity:aCommodity andAmount:aQuantity];
+	}
+}
+
+
+std::string Universe::getRandomCommodity()
+{
+	return [commodities getRandomCommodity];
+}
+
+
+OOCargoQuantity Universe::getRandomAmountOfCommodity(const std::string &co_type)
+{
+	OOMassUnit		units;
+
+	units = [commodities massUnitForGood:co_type];
+	switch (units)
+	{
+		case 0 :	// TONNES
+			return 1;
+		case 1 :	// KILOGRAMS
+			return 1 + (Ranrot() % 6) + (Ranrot() % 6) + (Ranrot() % 6);
+		case 2 :	// GRAMS
+			return 4 + (Ranrot() % 16) + (Ranrot() % 11) + (Ranrot() % 6);
+		case UNITS_UNKNOWN :	// not a unit (ADR-0036): warned about below, as any other value was
+			break;
+	}
+	OO_LOG("universe.commodityAmount.warning", "Commodity {} has an unrecognised mass unit, assuming tonnes", co_type);
+	return 1;
+}
+
+
+oo::PList Universe::commodityDataForType(const std::string &type)
+{
+	return [commodityMarket cxx_definitionForGood:type];
+}
+
+
+std::optional<std::string> Universe::displayNameForCommodity(const std::string &co_type)
+{
+	return [commodityMarket cxx_nameForGood:co_type];
+}
+
+
+std::optional<std::string> Universe::describeCommodity(const std::string &co_type, OOCargoQuantity co_amount)
+{
+	::Universe *self = oo::ToObjC(this);
+	int				units;
+	std::string		unitDesc;
+	std::optional<std::string>	typeDesc;
+	const oo::PList	commodity = [self commodityDataForType:co_type];
+
+	if (commodity.isNull()) return std::string();
+
+	units = [commodityMarket massUnitForGood:co_type];
+	if (co_amount == 1)
+	{
+		switch (units)
+		{
+			case UNITS_KILOGRAMS :	// KILOGRAM
+				unitDesc = cxx_OOLookUpDescriptionPRIV("cargo-kilogram");
+				break;
+			case UNITS_GRAMS :	// GRAM
+				unitDesc = cxx_OOLookUpDescriptionPRIV("cargo-gram");
+				break;
+			case UNITS_TONS :	// TONNE
+			default :
+				unitDesc = cxx_OOLookUpDescriptionPRIV("cargo-ton");
+				break;
+		}
+	}
+	else
+	{
+		switch (units)
+		{
+			case UNITS_KILOGRAMS :	// KILOGRAMS
+				unitDesc = cxx_OOLookUpDescriptionPRIV("cargo-kilograms");
+				break;
+			case UNITS_GRAMS :	// GRAMS
+				unitDesc = cxx_OOLookUpDescriptionPRIV("cargo-grams");
+				break;
+			case UNITS_TONS :	// TONNES
+			default :
+				unitDesc = cxx_OOLookUpDescriptionPRIV("cargo-tons");
+				break;
+		}
+	}
+
+	typeDesc = [commodityMarket cxx_nameForGood:co_type];
+
+	return oo::str::format("%d %s %s",co_amount, unitDesc.c_str(), TextOrNull(typeDesc).c_str());
+}
+
+
+////////////////////////////////////////////////////
+
+void Universe::setGameView(::MyOpenGLView *view)
+{
+	[gameView release];
+	gameView = [view retain];
+}
+
+
+::MyOpenGLView * Universe::getGameView()
+{
+	return gameView;
+}
+
+
+::GameController * Universe::gameController()
+{
+	::Universe *self = oo::ToObjC(this);
+	return [[self gameView] gameController];
+}
+
+
+// The number kinds the old dictionary held: oo_setInteger: a signed integer, oo_setBool: a
+// boolean, oo_setFloat: / +numberWithFloat: a single-precision real.
+oo::PList Universe::gameSettings()
+{
+	::Universe *self = oo::ToObjC(this);
+	oo::PList::Dict result;
+
+	result["speechOn"] = oo::PList::signedInteger([PLAYER isSpeechOn]);
+	result["autosave"] = oo::PList(static_cast<bool>(autoSave));
+	result["wireframeGraphics"] = oo::PList(static_cast<bool>(wireframeGraphics));
+	result["procedurallyTexturedPlanets"] = oo::PList(static_cast<bool>(doProcedurallyTexturedPlanets));
+
+	result["fovValue"] = oo::PList::singleReal([gameView fov:NO]);
+
+#if OOLITE_WINDOWS
+	if ([gameView hdrOutput])
+	{
+		result["hdr-max-brightness"] = oo::PList::singleReal([gameView hdrMaxBrightness]);
+		result["hdr-paperwhite-brightness"] = oo::PList::singleReal([gameView hdrPaperWhiteBrightness]);
+		result["hdr-tone-mapper"] = oo::PList(cxx_OOStringFromHDRToneMapper([gameView hdrToneMapper]));
+	}
+#endif
+
+	result["sdr-tone-mapper"] = oo::PList(cxx_OOStringFromSDRToneMapper([gameView sdrToneMapper]));
+
+	result["detailLevel"] = oo::PList(cxx_OOStringFromGraphicsDetail([self detailLevel]));
+
+	const char *desc = "UNDEFINED";
+	switch ([[::OOMusicController sharedController] mode])
+	{
+		case kOOMusicOff:		desc = "MUSIC_OFF"; break;
+		case kOOMusicOn:		desc = "MUSIC_ON"; break;
+		case kOOMusicITunes:	desc = "MUSIC_ITUNES"; break;
+	}
+	result["musicMode"] = oo::PList(desc);
+
+	result["gameWindow"] = oo::PList(oo::PList::Dict{
+		{ "width", oo::PList::singleReal([gameView backingViewSize].width) },
+		{ "height", oo::PList::singleReal([gameView backingViewSize].height) },
+		{ "fullScreen", oo::PList(static_cast<bool>([[self gameController] inFullScreenMode])) },
+	});
+
+	result["keyConfig"] = [PLAYER cxx_keyConfig];
+
+	return oo::PList(std::move(result));
+}
+
+
+void Universe::useGUILightSource(bool GUILight)
+{
+	::Universe *self = oo::ToObjC(this);
+	if (GUILight != demo_light_on)
+	{
+		if (![self useShaders])
+		{
+			if (GUILight) 
+			{
+				OOGL(glEnable(GL_LIGHT0));
+				OOGL(glDisable(GL_LIGHT1));
+			}
+			else
+			{
+				OOGL(glEnable(GL_LIGHT1));
+				OOGL(glDisable(GL_LIGHT0));
+			}
+		}
+		// There should be nothing to do for shaders, they use the same (always on) light source
+		// both in flight & in gui mode. According to the standard, shaders should treat lights as
+		// always enabled. At least one non-standard shader implementation (windows' X3100 Intel
+		// core with GM965 chipset and version 6.14.10.4990 driver) does _not_ use glDisabled lights,
+		// making the following line necessary.
+		
+		else OOGL(glEnable(GL_LIGHT1)); // make sure we have a light, even with shaders (!)
+		
+		demo_light_on = GUILight;
+	}
+}
+
+
+void Universe::lightForEntity(bool isLit)
+{
+	::Universe *self = oo::ToObjC(this);
+	if (isLit != object_light_on)
+	{
+		if ([self useShaders])
+		{
+			if (isLit)
+			{
+				OOGL(glLightfv(GL_LIGHT1, GL_DIFFUSE, sun_diffuse));
+				OOGL(glLightfv(GL_LIGHT1, GL_SPECULAR, sun_specular));
+			}
+			else
+			{
+				OOGL(glLightfv(GL_LIGHT1, GL_DIFFUSE, sun_off));
+				OOGL(glLightfv(GL_LIGHT1, GL_SPECULAR, sun_off));
+			}
+		}
+		else
+		{
+			if (!demo_light_on)
+			{
+				if (isLit) OOGL(glEnable(GL_LIGHT1));
+				else OOGL(glDisable(GL_LIGHT1));
+			}
+			else
+			{
+				// If we're in demo/GUI mode we should always have a lit object.
+				OOGL(glEnable(GL_LIGHT0));
+				
+				// Redundant, see above.
+				//if (isLit)  OOGL(glEnable(GL_LIGHT0));
+				//else  OOGL(glDisable(GL_LIGHT0));
+			}
+		}
+		
+		object_light_on = isLit;
+	}
+}
+
+
+void Universe::getActiveViewMatrix(OOMatrix *outMatrix, Vector *outForward, Vector *outUp)
+{
+	assert(outMatrix != NULL && outForward != NULL && outUp != NULL);
+	
+	::PlayerEntity			*player = nil;
+	
+	switch (viewDirection)
+	{
+		case VIEW_AFT:
+			*outMatrix = aft_matrix;
+			*outForward = vector_flip(kBasisZVector);
+			*outUp = kBasisYVector;
+			return;
+			
+		case VIEW_PORT:
+			*outMatrix = port_matrix;
+			*outForward = vector_flip(kBasisXVector);
+			*outUp = kBasisYVector;
+			return;
+			
+		case VIEW_STARBOARD:
+			*outMatrix = starboard_matrix;
+			*outForward = kBasisXVector;
+			*outUp = kBasisYVector;
+			return;
+			
+		case VIEW_CUSTOM:
+			player = PLAYER;
+			*outMatrix = [player customViewMatrix];
+			*outForward = [player customViewForwardVector];
+			*outUp = [player customViewUpVector];
+			return;
+			
+		case VIEW_FORWARD:
+		case VIEW_NONE:
+		case VIEW_GUI_DISPLAY:
+		case VIEW_BREAK_PATTERN:
+			;
+	}
+	
+	*outMatrix = fwd_matrix;
+	*outForward = kBasisZVector;
+	*outUp = kBasisYVector;
+}
+
+
+OOMatrix Universe::activeViewMatrix()
+{
+	::Universe *self = oo::ToObjC(this);
+	OOMatrix			m;
+	Vector				f, u;
+	
+	[self getActiveViewMatrix:&m forwardVector:&f upVector:&u];
+	return m;
 }
 
 
