@@ -516,454 +516,6 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 }
 
 
-- (BOOL) fireSubentityLaserShot:(double)range
-{
-	[self setShipHitByLaser:nil];
-	
-	if (isWeaponNone(_cxxShip->forward_weapon_type))  return NO;
-	[self setWeaponDataFromType:_cxxShip->forward_weapon_type];
-	
-	ShipEntity *parent = [self owner];
-	OOAssert([parent isShipWithSubEntityShip:self], "-fireSubentityLaserShot: called on ship which is not a subentity.");
-
-	// subentity lasers still draw power from the main entity
-	if ([parent energy] <= _cxxShip->weapon_energy_use) return NO;
-	if ([self shotTime] < _cxxShip->weapon_recharge_rate)  return NO;
-	if (_cxxShip->forward_weapon_temp > WEAPON_COOLING_CUTOUT * NPC_MAX_WEAPON_TEMP)  return NO;
-	if (range > _cxxShip->weaponRange)  return NO;
-
-	_cxxShip->forward_weapon_temp += _cxxShip->weapon_shot_temperature;
-	[parent setEnergy:([parent energy] - _cxxShip->weapon_energy_use)];
-
-	GLfloat hitAtRange = _cxxShip->weaponRange;
-	OOWeaponFacing direction = WEAPON_FACING_FORWARD;
-	ShipEntity *victim = [UNIVERSE firstShipHitByLaserFromShip:self inDirection:direction offset:kZeroVector gettingRangeFound:&hitAtRange];
-	[self setShipHitByLaser:victim];
-	
-	OOLaserShotEntity *shot = [OOLaserShotEntity laserFromShip:self direction:direction offset:kZeroVector];
-	[shot setColor:_cxxShip->laser_color];
-	[shot setScanClass:CLASS_NO_DRAW];
-	
-	if (victim != nil)
-	{
-		[self adjustMissedShots:-1];
-		
-		if ([self isPlayer])
-		{
-			[PLAYER addRoleForAggression:victim];
-		}
-
-		ShipEntity *subent = [victim subEntityTakingDamage];
-		if (subent != nil && [victim isFrangible])
-		{
-			// do 1% bleed-through damage...
-			[victim takeEnergyDamage:0.01 * _cxxShip->weapon_damage from:self becauseOf:parent weaponIdentifier:[[self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES] cxx_identifier].value_or(std::string())];
-			victim = subent;
-		}
-		
-		if (hitAtRange < _cxxShip->weaponRange)
-		{
-			[victim takeEnergyDamage:_cxxShip->weapon_damage from:self becauseOf:parent weaponIdentifier:[[self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES] cxx_identifier].value_or(std::string())];  // a very palpable hit
-			
-			[shot setRange:hitAtRange];
-			Vector vd = vector_forward_from_quaternion([shot orientation]);
-			HPVector flash_pos = HPvector_add([shot position], vectorToHPVector(vector_multiply_scalar(vd, hitAtRange)));
-			[UNIVERSE addLaserHitEffectsAt:flash_pos against:victim damage:_cxxShip->weapon_damage color:_cxxShip->laser_color];
-		}
-	}
-	else
-	{
-		[self adjustMissedShots:+1];
-
-		// see ATTACKER_MISSED section of main entity laser routine
-		if (![parent isCloaked])
-		{
-			victim = [parent primaryTarget];
-			
-			Vector shotDirection = vector_forward_from_quaternion([shot orientation]);
-			Vector victimDirection = vector_normal(HPVectorToVector(HPvector_subtract([victim position], [parent position])));
-			if (dot_product(shotDirection, victimDirection) > 0.995)	// Within 84.26 degrees
-			{
-				if ([self isPlayer])
-				{
-					[PLAYER addRoleForAggression:victim];
-				}
-				[victim setPrimaryAggressor:parent];
-				[victim setFoundTarget:parent];
-				[victim cxx_reactToAIMessage:"ATTACKER_MISSED" context:"attacker narrowly misses"];
-				[victim doScriptEvent:OOJSID("shipBeingAttackedUnsuccessfully") withArgument:parent];
-
-			}
-		}
-	}
-	
-	[UNIVERSE addEntity:shot];
-	[self resetShotTime];
-	
-	return YES;
-}
-
-
-- (BOOL) fireDirectLaserShot:(double)range
-{
-	Entity			*my_target = [self primaryTarget];
-	if (my_target == nil)  return [self fireDirectLaserDefensiveShot];
-	if (range > randf() * _cxxShip->weaponRange * (_cxxShip->accuracy+5.5))  return [self fireDirectLaserDefensiveShot];
-	if (range > _cxxShip->weaponRange)  return [self fireDirectLaserDefensiveShot];
-	return [self fireDirectLaserShotAt:my_target];
-}
-
-
-- (BOOL) fireDirectLaserDefensiveShot
-{
-	for (const auto &targetRef : [self cxx_defenseTargets])
-	{
-		Entity *target = targetRef.get();
-		// can't fire defensively at cloaked ships
-		if ([target scanClass] == CLASS_NO_DRAW || [(ShipEntity *)target isCloaked] || [target energy] <= 0.0)
-		{
-			[self removeDefenseTarget:target];
-		}
-		else 
-		{
-			double range = [self rangeToSecondaryTarget:target];
-			if (range < _cxxShip->weaponRange)
-			{
-				return [self fireDirectLaserShotAt:target];
-			}
-			else if (range > _cxxShip->scannerRange)
-			{
-				[self removeDefenseTarget:target];
-			}
-		}
-	}
-	return NO;
-}
-
-
-- (BOOL) fireDirectLaserShotAt:(Entity *)my_target
-{
-	GLfloat			hit_at_range;
-	double			range_limit2 = _cxxShip->weaponRange*_cxxShip->weaponRange;
-	Vector			r_pos;
-	
-	r_pos = vector_normal_or_zbasis([self vectorTo:my_target]);
-
-	Quaternion		q_laser = quaternion_rotation_between(r_pos, kBasisZVector);
-
-	GLfloat acc_factor = (10.0 - _cxxShip->accuracy) * 0.001;
-
-	q_laser.x += acc_factor * (randf() - 0.5);	// randomise aim a little (+/- 0.005 at accuracy 0, never miss at accuracy 10)
-	q_laser.y += acc_factor * (randf() - 0.5);
-	q_laser.z += acc_factor * (randf() - 0.5);
-	quaternion_normalize(&q_laser);
-
-	Quaternion q_save = _cxxEntity->orientation;	// save rotation
-	_cxxEntity->orientation = q_laser;			// face in direction of laser
-	// weapon offset for thargoid lasers is always zero
-	ShipEntity *victim = [UNIVERSE firstShipHitByLaserFromShip:self inDirection:WEAPON_FACING_FORWARD offset:kZeroVector gettingRangeFound:&hit_at_range];
-	[self setShipHitByLaser:victim];
-	_cxxEntity->orientation = q_save;			// restore rotation
-
-	Vector  vel = vector_multiply_scalar(_cxxShip->v_forward, _cxxShip->flightSpeed);
-	
-	// do special effects laser line
-	OOLaserShotEntity *shot = [OOLaserShotEntity laserFromShip:self direction:WEAPON_FACING_FORWARD offset:kZeroVector];
-	[shot setColor:_cxxShip->laser_color];
-	[shot setScanClass: CLASS_NO_DRAW];
-	[shot setPosition: _cxxEntity->position];
-	[shot setOrientation: q_laser];
-	[shot setVelocity: vel];
-	
-	if (victim != nil)
-	{
-		ShipEntity *subent = [victim subEntityTakingDamage];
-		if (subent != nil && [victim isFrangible])
-		{
-			// do 1% bleed-through damage...
-			[victim takeEnergyDamage: 0.01 * _cxxShip->weapon_damage from:self becauseOf:self weaponIdentifier:[[self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES] cxx_identifier].value_or(std::string())];
-			victim = subent;
-		}
-
-		if (hit_at_range * hit_at_range < range_limit2)
-		{
-			[victim takeEnergyDamage:_cxxShip->weapon_damage from:self becauseOf:self weaponIdentifier:[[self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES] cxx_identifier].value_or(std::string())];	// a very palpable hit
-
-			[shot setRange:hit_at_range];
-			Vector vd = vector_forward_from_quaternion([shot orientation]);
-			HPVector flash_pos = HPvector_add([shot position], vectorToHPVector(vector_multiply_scalar(vd, hit_at_range)));
-			[UNIVERSE addLaserHitEffectsAt:flash_pos against:victim damage:_cxxShip->weapon_damage color:_cxxShip->laser_color];
-		}
-	}
-	
-	[UNIVERSE addEntity:shot];
-	
-	[self resetShotTime];
-	
-	return YES;
-}
-
-
-- (std::vector<Vector>) cxx_laserPortOffset:(OOWeaponFacing)direction
-{
-	std::vector<Vector> laserPortOffset;
-	switch (direction)
-	{
-		case WEAPON_FACING_FORWARD:
-		case WEAPON_FACING_NONE:
-			laserPortOffset = _cxxShip->forwardWeaponOffset;
-			break;
-			
-		case WEAPON_FACING_AFT:
-			laserPortOffset = _cxxShip->aftWeaponOffset;
-			break;
-			
-		case WEAPON_FACING_PORT:
-			laserPortOffset = _cxxShip->portWeaponOffset;
-			break;
-			
-		case WEAPON_FACING_STARBOARD:
-			laserPortOffset = _cxxShip->starboardWeaponOffset;
-			break;
-	}
-	return laserPortOffset;
-}
-
-
-- (BOOL) cxx_fireLaserShotInDirection:(OOWeaponFacing)direction weaponIdentifier:(const std::string &)weaponIdentifier
-{
-	double			range_limit2 = _cxxShip->weaponRange * _cxxShip->weaponRange;
-	GLfloat			hit_at_range;
-	NSUInteger		i, barrels;
-	Vector			vel = vector_multiply_scalar(_cxxShip->v_forward, _cxxShip->flightSpeed);
-	const std::vector<Vector> laserPortOffsets = [self cxx_laserPortOffset:direction];
-	OOLaserShotEntity *shot = nil;
-
-	barrels = laserPortOffsets.size();
-	std::vector<oo::ObjCRef<OOLaserShotEntity *>> shotEntities;
-	shotEntities.reserve(barrels);
-
-	
-	GLfloat			effective_damage = _cxxShip->weapon_damage;
-	if (barrels > 1 && !_cxxShip->_multiplyWeapons)
-	{
-		// then divide the shot power between the shots
-		effective_damage /= (GLfloat)barrels;
-	}
-	
-	for (i=0;i<barrels;i++)
-	{
-		Vector 			laserPortOffset = laserPortOffsets[i];
-	
-		_cxxShip->last_shot_time = [UNIVERSE getTime];
-
-		ShipEntity *victim = [UNIVERSE firstShipHitByLaserFromShip:self inDirection:direction offset:laserPortOffset gettingRangeFound:&hit_at_range];
-		[self setShipHitByLaser:victim];
-	
-		shot = [OOLaserShotEntity laserFromShip:self direction:direction offset:laserPortOffset];
-		if ([self isPlayer])
-		{
-			shotEntities.emplace_back(shot);
-		}
-	
-		[shot setColor:_cxxShip->laser_color];
-		[shot setScanClass: CLASS_NO_DRAW];
-		[shot setVelocity: vel];
-	
-		if (victim != nil)
-		{
-			[self adjustMissedShots:-1];
-			if ([self isPlayer])
-			{
-				[PLAYER addRoleForAggression:victim];
-			}
-		
-			/*	CRASH in [victim->sub_entities containsObject:subent] here (1.69, OS X/x86).
-				Analysis: Crash is in _freedHandler called from CFEqual, indicating either a dead
-				object in victim->sub_entities or dead victim->subentity_taking_damage. I suspect
-				the latter. Probable solution: dying subentities must cause parent to clean up
-				properly. This was probably obscured by the entity recycling scheme in the past.
-				Fix: made subentity_taking_damage a weak reference accessed via a method.
-				-- Ahruman 20070706, 20080304
-			*/
-			ShipEntity *subent = [victim subEntityTakingDamage];
-			if (subent != nil && [victim isFrangible])
-			{
-				// do 1% bleed-through damage...
-				[victim takeEnergyDamage: 0.01 * effective_damage from:self becauseOf:self weaponIdentifier:weaponIdentifier];
-				victim = subent;
-			}
-		
-			if (hit_at_range * hit_at_range < range_limit2)
-			{
-				[victim takeEnergyDamage:effective_damage from:self becauseOf:self weaponIdentifier:weaponIdentifier];	// a very palpable hit
-
-				[shot setRange:hit_at_range];
-				Vector vd = vector_forward_from_quaternion([shot orientation]);
-				HPVector flash_pos = HPvector_add([shot position], vectorToHPVector(vector_multiply_scalar(vd, hit_at_range)));
-				[UNIVERSE addLaserHitEffectsAt:flash_pos against:victim damage:effective_damage color:_cxxShip->laser_color];
-			}
-		}
-		else
-		{
-			[self adjustMissedShots:+1];
-
-			// shot missed
-			if (![self isCloaked])
-			{
-				victim = [self primaryTarget];
-				if ([victim isShip]) // it might not be - fixes crash bug
-				{
-
-					/* player currently gets a bit of an advantage here if
-					 * they ambush without having their target actually
-					 * targeted. Though in those circumstances they
-					 * shouldn't be missing their first shot anyway. */
-					if (dot_product(vector_forward_from_quaternion([shot orientation]),vector_normal([self vectorTo:victim])) > 0.995)
-					{
-						/* plausibly aimed at target. Allows reaction
-						 * before attacker actually hits. But we need to
-						 * be able to distinguish in AI from ATTACKED so
-						 * that ships in combat aren't bothered by
-						 * amateurs. So should only respond to
-						 * ATTACKER_MISSED if not already fighting */
-						if ([self isPlayer])
-						{
-							[PLAYER addRoleForAggression:victim];
-						}
-						[victim setPrimaryAggressor:self];
-						[victim setFoundTarget:self];
-						[victim cxx_reactToAIMessage:"ATTACKER_MISSED" context:"attacker narrowly misses"];
-						[victim doScriptEvent:OOJSID("shipBeingAttackedUnsuccessfully") withArgument:self];
-					}
-				}
-			}
-		}
-	
-		[UNIVERSE addEntity:shot];
-
-	}
-	
-	if ([self isPlayer])
-	{
-		[(PlayerEntity *)self cxx_setLastShot:shotEntities];
-	}
-	
-	[self resetShotTime];
-
-	return YES;
-}
-
-
-- (void) adjustMissedShots:(int) delta
-{
-	if ([self isSubEntity])
-	{
-		[[self owner] adjustMissedShots:delta];
-	}
-	else
-	{
-		_cxxShip->_missed_shots += delta;
-		if (_cxxShip->_missed_shots < 0)
-		{
-			_cxxShip->_missed_shots = 0;
-		}
-	}
-}
-
-
-- (int) missedShots
-{
-	if ([self isSubEntity])
-	{
-		return [[self owner] missedShots];
-	}
-	else
-	{
-		return _cxxShip->_missed_shots;
-	}
-}
-
-
-- (void) throwSparks
-{
-	Vector offset =
-	{
-		randf() * (_cxxEntity->boundingBox.max.x - _cxxEntity->boundingBox.min.x) + _cxxEntity->boundingBox.min.x,
-		randf() * (_cxxEntity->boundingBox.max.y - _cxxEntity->boundingBox.min.y) + _cxxEntity->boundingBox.min.y,
-		randf() * _cxxEntity->boundingBox.max.z + _cxxEntity->boundingBox.min.z	// rear section only
-	};
-	HPVector origin = HPvector_add(_cxxEntity->position, vectorToHPVector(quaternion_rotate_vector([self normalOrientation], offset)));
-
-	float	w = _cxxEntity->boundingBox.max.x - _cxxEntity->boundingBox.min.x;
-	float	h = _cxxEntity->boundingBox.max.y - _cxxEntity->boundingBox.min.y;
-	float	m = (w < h) ? 0.25 * w: 0.25 * h;
-	
-	float	sz = m * (1 + randf() + randf());	// half minimum dimension on average
-	
-	Vector vel = vector_multiply_scalar(HPVectorToVector(HPvector_subtract(origin, _cxxEntity->position)), 2.0);
-	
-	OOColor *color = [OOColor colorWithHue:0.08 + 0.17 * randf() saturation:1.0 brightness:1.0 alpha:1.0];
-	
-	Entity *spark = oo::NewEntityFacade(OOSparkEntity::sparkWithPosition(origin,
-																		 vel,
-																		 2.0 + 3.0 * randf(),
-																		 sz,
-																		 oo::ToCxx(color)));
-	
-	[spark setOwner:self];
-	[UNIVERSE addEntity:spark];
-
-	_cxxShip->next_spark_time = randf();
-}
-
-
-- (void) considerFiringMissile:(double)delta_t
-{
-	int missile_chance = 0;
-	int rhs = 3.2 / delta_t;
-	if (rhs) missile_chance = 1 + (ranrot_rand() % rhs);
-
-	double hurt_factor = 16 * pow(_cxxEntity->energy/_cxxEntity->maxEnergy, 4.0);
-	if (_cxxShip->missiles > missile_chance * hurt_factor)
-	{
-		[self fireMissile];
-	}
-}
-
-
-- (Vector) missileLaunchPosition
-{
-	Vector start;
-	// default launching position
-	start.x = 0.0f;						// in the middle
-	start.y = _cxxEntity->boundingBox.min.y - 4.0f;	// 4m below bounding box
-	start.z = _cxxEntity->boundingBox.max.z + 1.0f;	// 1m ahead of bounding box
-	
-	// custom launching position
-	start = VectorForKey(_cxxShip->shipinfoDictionary, "missile_launch_position", start);
-	if (EXPECT_NOT(_cxxShip->_scaleFactor != 1.0))
-	{
-		start = vector_multiply_scalar(start,_cxxShip->_scaleFactor);
-	}
-	
-	if (start.x == 0.0f && start.y == 0.0f && start.z <= 0.0f) // The kZeroVector as start is illegal also.
-	{
-		OO_LOG("ship.missileLaunch.invalidPosition", "***** ERROR: The missile_launch_position defines a position {} behind the {}. In future versions such missiles may explode on launch because they have to travel through the ship.", VectorDescription(start), oo::DescriptionOf(self));
-		start.x = 0.0f;
-		start.y = _cxxEntity->boundingBox.min.y - 4.0f;
-		start.z = _cxxEntity->boundingBox.max.z + 1.0f;
-	}
-	return start;
-}
-
-
-- (ShipEntity *) fireMissile
-{
-	return [self cxx_fireMissileWithIdentifier:std::nullopt andTarget:[self primaryTarget]];
-}
-
-
 - (ShipEntity *) cxx_fireMissileWithIdentifier:(const std::optional<std::string> &) requestedIdentifier andTarget:(Entity *) target
 {
 	std::optional<std::string>	identifier = requestedIdentifier;
@@ -15498,6 +15050,475 @@ void ShipEntity::setExhaustEmissiveColor(::OOColor *color)
 
 
 }	// namespace cxx
+
+
+// Slice 28 of docs/phases/3-slices/ShipEntity.md (bead oo-40ocf): laser shots, missed shots,
+// sparks, missile launch decision. The facade forwards each selector (ShipEntity+ObjCBridge.mm);
+// sends to self stay sends, so an Objective-C subclass's override still runs (ADR-0056 amendment
+// oo-mvzmb).
+namespace cxx {
+
+bool ShipEntity::fireSubentityLaserShot(double range)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self setShipHitByLaser:nil];
+	
+	if (isWeaponNone(forward_weapon_type))  return NO;
+	[self setWeaponDataFromType:forward_weapon_type];
+	
+	::ShipEntity *parent = [self owner];
+	OOCAssert([parent isShipWithSubEntityShip:self], "-fireSubentityLaserShot: called on ship which is not a subentity.");
+
+	// subentity lasers still draw power from the main entity
+	if ([parent energy] <= weapon_energy_use) return NO;
+	if ([self shotTime] < weapon_recharge_rate)  return NO;
+	if (forward_weapon_temp > WEAPON_COOLING_CUTOUT * NPC_MAX_WEAPON_TEMP)  return NO;
+	if (range > weaponRange)  return NO;
+
+	forward_weapon_temp += weapon_shot_temperature;
+	[parent setEnergy:([parent energy] - weapon_energy_use)];
+
+	GLfloat hitAtRange = weaponRange;
+	OOWeaponFacing direction = WEAPON_FACING_FORWARD;
+	::ShipEntity *victim = [UNIVERSE firstShipHitByLaserFromShip:self inDirection:direction offset:kZeroVector gettingRangeFound:&hitAtRange];
+	[self setShipHitByLaser:victim];
+	
+	::OOLaserShotEntity *shot = [::OOLaserShotEntity laserFromShip:self direction:direction offset:kZeroVector];
+	[shot setColor:laser_color];
+	[shot setScanClass:CLASS_NO_DRAW];
+	
+	if (victim != nil)
+	{
+		[self adjustMissedShots:-1];
+		
+		if ([self isPlayer])
+		{
+			[PLAYER addRoleForAggression:victim];
+		}
+
+		::ShipEntity *subent = [victim subEntityTakingDamage];
+		if (subent != nil && [victim isFrangible])
+		{
+			// do 1% bleed-through damage...
+			[victim takeEnergyDamage:0.01 * weapon_damage from:self becauseOf:parent weaponIdentifier:[[self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES] cxx_identifier].value_or(std::string())];
+			victim = subent;
+		}
+		
+		if (hitAtRange < weaponRange)
+		{
+			[victim takeEnergyDamage:weapon_damage from:self becauseOf:parent weaponIdentifier:[[self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES] cxx_identifier].value_or(std::string())];  // a very palpable hit
+			
+			[shot setRange:hitAtRange];
+			Vector vd = vector_forward_from_quaternion([shot orientation]);
+			HPVector flash_pos = HPvector_add([shot position], vectorToHPVector(vector_multiply_scalar(vd, hitAtRange)));
+			[UNIVERSE addLaserHitEffectsAt:flash_pos against:victim damage:weapon_damage color:laser_color];
+		}
+	}
+	else
+	{
+		[self adjustMissedShots:+1];
+
+		// see ATTACKER_MISSED section of main entity laser routine
+		if (![parent isCloaked])
+		{
+			victim = [parent primaryTarget];
+			
+			Vector shotDirection = vector_forward_from_quaternion([shot orientation]);
+			Vector victimDirection = vector_normal(HPVectorToVector(HPvector_subtract([victim position], [parent position])));
+			if (dot_product(shotDirection, victimDirection) > 0.995)	// Within 84.26 degrees
+			{
+				if ([self isPlayer])
+				{
+					[PLAYER addRoleForAggression:victim];
+				}
+				[victim setPrimaryAggressor:parent];
+				[victim setFoundTarget:parent];
+				[victim cxx_reactToAIMessage:"ATTACKER_MISSED" context:"attacker narrowly misses"];
+				[victim doScriptEvent:OOJSID("shipBeingAttackedUnsuccessfully") withArgument:parent];
+
+			}
+		}
+	}
+	
+	[UNIVERSE addEntity:shot];
+	[self resetShotTime];
+	
+	return YES;
+}
+
+
+bool ShipEntity::fireDirectLaserShot(double range)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::Entity			*my_target = [self primaryTarget];
+	if (my_target == nil)  return [self fireDirectLaserDefensiveShot];
+	if (range > randf() * weaponRange * (accuracy+5.5))  return [self fireDirectLaserDefensiveShot];
+	if (range > weaponRange)  return [self fireDirectLaserDefensiveShot];
+	return [self fireDirectLaserShotAt:my_target];
+}
+
+
+bool ShipEntity::fireDirectLaserDefensiveShot()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	for (const auto &targetRef : [self cxx_defenseTargets])
+	{
+		::Entity *target = targetRef.get();
+		// can't fire defensively at cloaked ships
+		if ([target scanClass] == CLASS_NO_DRAW || [(::ShipEntity *)target isCloaked] || [target energy] <= 0.0)
+		{
+			[self removeDefenseTarget:target];
+		}
+		else 
+		{
+			double range = [self rangeToSecondaryTarget:target];
+			if (range < weaponRange)
+			{
+				return [self fireDirectLaserShotAt:target];
+			}
+			else if (range > scannerRange)
+			{
+				[self removeDefenseTarget:target];
+			}
+		}
+	}
+	return NO;
+}
+
+
+bool ShipEntity::fireDirectLaserShotAt(::Entity *my_target)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	GLfloat			hit_at_range;
+	double			range_limit2 = weaponRange*weaponRange;
+	Vector			r_pos;
+	
+	r_pos = vector_normal_or_zbasis([self vectorTo:my_target]);
+
+	Quaternion		q_laser = quaternion_rotation_between(r_pos, kBasisZVector);
+
+	GLfloat acc_factor = (10.0 - accuracy) * 0.001;
+
+	q_laser.x += acc_factor * (randf() - 0.5);	// randomise aim a little (+/- 0.005 at accuracy 0, never miss at accuracy 10)
+	q_laser.y += acc_factor * (randf() - 0.5);
+	q_laser.z += acc_factor * (randf() - 0.5);
+	quaternion_normalize(&q_laser);
+
+	Quaternion q_save = orientation;	// save rotation
+	orientation = q_laser;			// face in direction of laser
+	// weapon offset for thargoid lasers is always zero
+	::ShipEntity *victim = [UNIVERSE firstShipHitByLaserFromShip:self inDirection:WEAPON_FACING_FORWARD offset:kZeroVector gettingRangeFound:&hit_at_range];
+	[self setShipHitByLaser:victim];
+	orientation = q_save;			// restore rotation
+
+	Vector  vel = vector_multiply_scalar(v_forward, flightSpeed);
+	
+	// do special effects laser line
+	::OOLaserShotEntity *shot = [::OOLaserShotEntity laserFromShip:self direction:WEAPON_FACING_FORWARD offset:kZeroVector];
+	[shot setColor:laser_color];
+	[shot setScanClass: CLASS_NO_DRAW];
+	[shot setPosition: position];
+	[shot setOrientation: q_laser];
+	[shot setVelocity: vel];
+	
+	if (victim != nil)
+	{
+		::ShipEntity *subent = [victim subEntityTakingDamage];
+		if (subent != nil && [victim isFrangible])
+		{
+			// do 1% bleed-through damage...
+			[victim takeEnergyDamage: 0.01 * weapon_damage from:self becauseOf:self weaponIdentifier:[[self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES] cxx_identifier].value_or(std::string())];
+			victim = subent;
+		}
+
+		if (hit_at_range * hit_at_range < range_limit2)
+		{
+			[victim takeEnergyDamage:weapon_damage from:self becauseOf:self weaponIdentifier:[[self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES] cxx_identifier].value_or(std::string())];	// a very palpable hit
+
+			[shot setRange:hit_at_range];
+			Vector vd = vector_forward_from_quaternion([shot orientation]);
+			HPVector flash_pos = HPvector_add([shot position], vectorToHPVector(vector_multiply_scalar(vd, hit_at_range)));
+			[UNIVERSE addLaserHitEffectsAt:flash_pos against:victim damage:weapon_damage color:laser_color];
+		}
+	}
+	
+	[UNIVERSE addEntity:shot];
+	
+	[self resetShotTime];
+	
+	return YES;
+}
+
+
+std::vector<Vector> ShipEntity::laserPortOffset(OOWeaponFacing direction)
+{
+	std::vector<Vector> laserPortOffset;
+	switch (direction)
+	{
+		case WEAPON_FACING_FORWARD:
+		case WEAPON_FACING_NONE:
+			laserPortOffset = forwardWeaponOffset;
+			break;
+			
+		case WEAPON_FACING_AFT:
+			laserPortOffset = aftWeaponOffset;
+			break;
+			
+		case WEAPON_FACING_PORT:
+			laserPortOffset = portWeaponOffset;
+			break;
+			
+		case WEAPON_FACING_STARBOARD:
+			laserPortOffset = starboardWeaponOffset;
+			break;
+	}
+	return laserPortOffset;
+}
+
+
+bool ShipEntity::fireLaserShotInDirection(OOWeaponFacing direction, const std::string &weaponIdentifier)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	double			range_limit2 = weaponRange * weaponRange;
+	GLfloat			hit_at_range;
+	NSUInteger		i, barrels;
+	Vector			vel = vector_multiply_scalar(v_forward, flightSpeed);
+	const std::vector<Vector> laserPortOffsets = [self cxx_laserPortOffset:direction];
+	::OOLaserShotEntity *shot = nil;
+
+	barrels = laserPortOffsets.size();
+	std::vector<oo::ObjCRef<::OOLaserShotEntity *>> shotEntities;
+	shotEntities.reserve(barrels);
+
+	
+	GLfloat			effective_damage = weapon_damage;
+	if (barrels > 1 && !_multiplyWeapons)
+	{
+		// then divide the shot power between the shots
+		effective_damage /= (GLfloat)barrels;
+	}
+	
+	for (i=0;i<barrels;i++)
+	{
+		Vector 			laserPortOffset = laserPortOffsets[i];
+	
+		last_shot_time = [UNIVERSE getTime];
+
+		::ShipEntity *victim = [UNIVERSE firstShipHitByLaserFromShip:self inDirection:direction offset:laserPortOffset gettingRangeFound:&hit_at_range];
+		[self setShipHitByLaser:victim];
+	
+		shot = [::OOLaserShotEntity laserFromShip:self direction:direction offset:laserPortOffset];
+		if ([self isPlayer])
+		{
+			shotEntities.emplace_back(shot);
+		}
+	
+		[shot setColor:laser_color];
+		[shot setScanClass: CLASS_NO_DRAW];
+		[shot setVelocity: vel];
+	
+		if (victim != nil)
+		{
+			[self adjustMissedShots:-1];
+			if ([self isPlayer])
+			{
+				[PLAYER addRoleForAggression:victim];
+			}
+		
+			/*	CRASH in [victim->sub_entities containsObject:subent] here (1.69, OS X/x86).
+				Analysis: Crash is in _freedHandler called from CFEqual, indicating either a dead
+				object in victim->sub_entities or dead victim->subentity_taking_damage. I suspect
+				the latter. Probable solution: dying subentities must cause parent to clean up
+				properly. This was probably obscured by the entity recycling scheme in the past.
+				Fix: made subentity_taking_damage a weak reference accessed via a method.
+				-- Ahruman 20070706, 20080304
+			*/
+			::ShipEntity *subent = [victim subEntityTakingDamage];
+			if (subent != nil && [victim isFrangible])
+			{
+				// do 1% bleed-through damage...
+				[victim takeEnergyDamage: 0.01 * effective_damage from:self becauseOf:self weaponIdentifier:weaponIdentifier];
+				victim = subent;
+			}
+		
+			if (hit_at_range * hit_at_range < range_limit2)
+			{
+				[victim takeEnergyDamage:effective_damage from:self becauseOf:self weaponIdentifier:weaponIdentifier];	// a very palpable hit
+
+				[shot setRange:hit_at_range];
+				Vector vd = vector_forward_from_quaternion([shot orientation]);
+				HPVector flash_pos = HPvector_add([shot position], vectorToHPVector(vector_multiply_scalar(vd, hit_at_range)));
+				[UNIVERSE addLaserHitEffectsAt:flash_pos against:victim damage:effective_damage color:laser_color];
+			}
+		}
+		else
+		{
+			[self adjustMissedShots:+1];
+
+			// shot missed
+			if (![self isCloaked])
+			{
+				victim = [self primaryTarget];
+				if ([victim isShip]) // it might not be - fixes crash bug
+				{
+
+					/* player currently gets a bit of an advantage here if
+					 * they ambush without having their target actually
+					 * targeted. Though in those circumstances they
+					 * shouldn't be missing their first shot anyway. */
+					if (dot_product(vector_forward_from_quaternion([shot orientation]),vector_normal([self vectorTo:victim])) > 0.995)
+					{
+						/* plausibly aimed at target. Allows reaction
+						 * before attacker actually hits. But we need to
+						 * be able to distinguish in AI from ATTACKED so
+						 * that ships in combat aren't bothered by
+						 * amateurs. So should only respond to
+						 * ATTACKER_MISSED if not already fighting */
+						if ([self isPlayer])
+						{
+							[PLAYER addRoleForAggression:victim];
+						}
+						[victim setPrimaryAggressor:self];
+						[victim setFoundTarget:self];
+						[victim cxx_reactToAIMessage:"ATTACKER_MISSED" context:"attacker narrowly misses"];
+						[victim doScriptEvent:OOJSID("shipBeingAttackedUnsuccessfully") withArgument:self];
+					}
+				}
+			}
+		}
+	
+		[UNIVERSE addEntity:shot];
+
+	}
+	
+	if ([self isPlayer])
+	{
+		[(::PlayerEntity *)self cxx_setLastShot:shotEntities];
+	}
+	
+	[self resetShotTime];
+
+	return YES;
+}
+
+
+void ShipEntity::adjustMissedShots(int delta)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if ([self isSubEntity])
+	{
+		[[self owner] adjustMissedShots:delta];
+	}
+	else
+	{
+		_missed_shots += delta;
+		if (_missed_shots < 0)
+		{
+			_missed_shots = 0;
+		}
+	}
+}
+
+
+int ShipEntity::missedShots()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if ([self isSubEntity])
+	{
+		return [[self owner] missedShots];
+	}
+	else
+	{
+		return _missed_shots;
+	}
+}
+
+
+void ShipEntity::throwSparks()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	Vector offset =
+	{
+		randf() * (boundingBox.max.x - boundingBox.min.x) + boundingBox.min.x,
+		randf() * (boundingBox.max.y - boundingBox.min.y) + boundingBox.min.y,
+		randf() * boundingBox.max.z + boundingBox.min.z	// rear section only
+	};
+	HPVector origin = HPvector_add(position, vectorToHPVector(quaternion_rotate_vector([self normalOrientation], offset)));
+
+	float	w = boundingBox.max.x - boundingBox.min.x;
+	float	h = boundingBox.max.y - boundingBox.min.y;
+	float	m = (w < h) ? 0.25 * w: 0.25 * h;
+	
+	float	sz = m * (1 + randf() + randf());	// half minimum dimension on average
+	
+	Vector vel = vector_multiply_scalar(HPVectorToVector(HPvector_subtract(origin, position)), 2.0);
+	
+	::OOColor *color = [::OOColor colorWithHue:0.08 + 0.17 * randf() saturation:1.0 brightness:1.0 alpha:1.0];
+	
+	::Entity *spark = oo::NewEntityFacade(OOSparkEntity::sparkWithPosition(origin,
+																		 vel,
+																		 2.0 + 3.0 * randf(),
+																		 sz,
+																		 oo::ToCxx(color)));
+	
+	[spark setOwner:self];
+	[UNIVERSE addEntity:spark];
+
+	next_spark_time = randf();
+}
+
+
+void ShipEntity::considerFiringMissile(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	int missile_chance = 0;
+	int rhs = 3.2 / delta_t;
+	if (rhs) missile_chance = 1 + (ranrot_rand() % rhs);
+
+	double hurt_factor = 16 * pow(energy/maxEnergy, 4.0);
+	if (missiles > missile_chance * hurt_factor)
+	{
+		[self fireMissile];
+	}
+}
+
+
+Vector ShipEntity::missileLaunchPosition()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	Vector start;
+	// default launching position
+	start.x = 0.0f;						// in the middle
+	start.y = boundingBox.min.y - 4.0f;	// 4m below bounding box
+	start.z = boundingBox.max.z + 1.0f;	// 1m ahead of bounding box
+	
+	// custom launching position
+	start = VectorForKey(shipinfoDictionary, "missile_launch_position", start);
+	if (EXPECT_NOT(_scaleFactor != 1.0))
+	{
+		start = vector_multiply_scalar(start,_scaleFactor);
+	}
+	
+	if (start.x == 0.0f && start.y == 0.0f && start.z <= 0.0f) // The kZeroVector as start is illegal also.
+	{
+		OO_LOG("ship.missileLaunch.invalidPosition", "***** ERROR: The missile_launch_position defines a position {} behind the {}. In future versions such missiles may explode on launch because they have to travel through the ship.", VectorDescription(start), oo::DescriptionOf(self));
+		start.x = 0.0f;
+		start.y = boundingBox.min.y - 4.0f;
+		start.z = boundingBox.max.z + 1.0f;
+	}
+	return start;
+}
+
+
+::ShipEntity *ShipEntity::fireMissile()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self cxx_fireMissileWithIdentifier:std::nullopt andTarget:[self primaryTarget]];
+}
+
+
+}	// namespace cxx
+
 
 
 

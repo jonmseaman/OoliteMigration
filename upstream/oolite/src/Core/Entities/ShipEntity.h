@@ -787,6 +787,20 @@ public:
 	::OOColor *laserColor();
 	::OOColor *exhaustEmissiveColor();
 
+	// Slice 28: laser shots, missed shots, sparks, missile launch decision.
+	bool fireSubentityLaserShot(double range);
+	bool fireDirectLaserShot(double range);
+	bool fireDirectLaserDefensiveShot();
+	bool fireDirectLaserShotAt(::Entity *my_target);
+	std::vector<Vector> laserPortOffset(OOWeaponFacing direction);
+	bool fireLaserShotInDirection(OOWeaponFacing direction, const std::string &weaponIdentifier);
+	void adjustMissedShots(int delta);
+	int missedShots();
+	void throwSparks() override;
+	void considerFiringMissile(double delta_t);
+	Vector missileLaunchPosition();
+	virtual ::ShipEntity *fireMissile();
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired
