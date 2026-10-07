@@ -820,4 +820,36 @@ OO_TEST(slice20DataAndTime)
 }
 
 
+// Slice 21 (bead oo-enek8): short time descriptions, sun skimmers, station markets. Written against
+// the Objective-C API and run on the unconverted class first; the words come from descriptions set
+// in the member by hand (no plural rules: "%0" is the singular, "%1" the plural).
+OO_TEST(slice21ShortTimeAndMarkets)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+		oo::PList::Dict words{ { "contracts-no-time", oo::PList("no time") } };
+		for (const char *unit : { "day", "hour", "minute", "second" })
+		{
+			words[oo::str::format("contracts-%s-word%%0", unit)] = oo::PList(std::string(unit));
+			words[oo::str::format("contracts-%s-word%%1", unit)] = oo::PList(std::string(unit) + "s");
+		}
+		u->_cxxUniverse->_descriptions = oo::PList(std::move(words));
+
+		OO_CHECK([u cxx_shortTimeDescription:0] == "no time");
+		OO_CHECK([u cxx_shortTimeDescription:-5] == "no time");
+		OO_CHECK([u cxx_shortTimeDescription:90061] == "1 day 1 hour");	// two parts at most
+		OO_CHECK([u cxx_shortTimeDescription:2 * 3600 + 5] == "2 hours 5 seconds");
+		OO_CHECK([u cxx_shortTimeDescription:125] == "2 minutes 5 seconds");
+		OO_CHECK([u cxx_shortTimeDescription:1] == "1 second");
+
+		// No stations: no markets to save, and none to load into.
+		const oo::PList saved = [u cxx_getStationMarkets];
+		OO_CHECK(saved.isArray() && saved.count() == 0);
+		[u cxx_loadStationMarkets:oo::PList()];
+		[u cxx_loadStationMarkets:oo::PList(oo::PList::Array{ oo::PList(oo::PList::Dict{}) })];
+	}
+}
+
+
 OO_TEST_MAIN()
