@@ -629,6 +629,46 @@ public:
 	void setDesiredSpeed(double amount);
 	double desiredSpeed();
 
+	// Slice 21: flight controls and limits, temperature, dealing damage, hulks, damage notes.
+	double desiredRange();
+	void setDesiredRange(double amount);
+	double getCruiseSpeed();
+	void increase_flight_speed(double delta);
+	void decrease_flight_speed(double delta);
+	void increase_flight_roll(double delta);
+	void decrease_flight_roll(double delta);
+	void increase_flight_pitch(double delta);
+	void decrease_flight_pitch(double delta);
+	void increase_flight_yaw(double delta);
+	void decrease_flight_yaw(double delta);
+	GLfloat getFlightRoll();
+	GLfloat getFlightPitch();
+	GLfloat getFlightYaw();
+	GLfloat getFlightSpeed();
+	GLfloat maxFlightPitch();
+	GLfloat getMaxFlightSpeed();
+	GLfloat maxFlightRoll();
+	GLfloat maxFlightYaw();
+	virtual void setMaxFlightPitch(GLfloat newValue);
+	void setMaxFlightSpeed(GLfloat newValue);
+	virtual void setMaxFlightRoll(GLfloat newValue);
+	virtual void setMaxFlightYaw(GLfloat newValue);
+	GLfloat speedFactor();
+	GLfloat temperature();
+	void setTemperature(GLfloat value);
+	float randomEjectaTemperature();
+	float randomEjectaTemperatureWithMaxFactor(float factor);
+	GLfloat heatInsulation();
+	void setHeatInsulation(GLfloat value);
+	int damage();
+	void dealEnergyDamage(GLfloat baseDamage, GLfloat range, GLfloat velocityBias);
+	void dealEnergyDamageWithinDesiredRange();
+	void dealMomentumWithinDesiredRange(double amount);
+	bool getIsHulk();
+	void setHulk(bool isNowHulk);
+	virtual void noteTakingDamage(double amount, ::Entity *entity, OOShipDamageType type);
+	void noteKilledBy(::Entity *whom, OOShipDamageType type);
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired

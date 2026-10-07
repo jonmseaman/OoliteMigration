@@ -95,10 +95,6 @@ MA 02110-1301, USA.
 // Shield information derived from equipment. NPCs can't have shields, but that should change at some point.
 
 
-- (void) setMaxFlightPitch:(GLfloat)newValue;
-- (void) setMaxFlightSpeed:(GLfloat)newValue;
-- (void) setMaxFlightRoll:(GLfloat)newValue;
-- (void) setMaxFlightYaw:(GLfloat)newValue;
 
 
 // Behaviours
@@ -173,52 +169,20 @@ MA 02110-1301, USA.
 
 
 
-- (double) desiredRange;
-- (void) setDesiredRange:(double)amount;
 
-- (double) cruiseSpeed;
 
 - (Vector) thrustVector;
 - (void) setTotalVelocity:(Vector)vel;	// Set velocity to vel - thrustVector, effectively setting the instanteneous velocity to vel.
 
-- (void) increase_flight_speed:(double)delta;
-- (void) decrease_flight_speed:(double)delta;
-- (void) increase_flight_roll:(double)delta;
-- (void) decrease_flight_roll:(double)delta;
-- (void) increase_flight_pitch:(double)delta;
-- (void) decrease_flight_pitch:(double)delta;
-- (void) increase_flight_yaw:(double)delta;
-- (void) decrease_flight_yaw:(double)delta;
 
-- (GLfloat) flightRoll;
-- (GLfloat) flightPitch;
-- (GLfloat) flightYaw;
-- (GLfloat) flightSpeed;
-- (GLfloat) maxFlightPitch;
-- (GLfloat) maxFlightSpeed;
-- (GLfloat) maxFlightRoll;
-- (GLfloat) maxFlightYaw;
-- (GLfloat) speedFactor;
 
-- (GLfloat) temperature;
-- (void) setTemperature:(GLfloat) value;
-- (GLfloat) heatInsulation;
-- (void) setHeatInsulation:(GLfloat) value;
 
-- (float) randomEjectaTemperature;
-- (float) randomEjectaTemperatureWithMaxFactor:(float)factor;
 
 // the percentage of damage taken (100 is destroyed, 0 is fine)
-- (int) damage;
 
-- (void) dealEnergyDamage:(GLfloat) baseDamage atRange:(GLfloat) range withBias:(GLfloat) velocityBias;
-- (void) dealEnergyDamageWithinDesiredRange;
-- (void) dealMomentumWithinDesiredRange:(double)amount;
 
 // Dispatch shipTakingDamage() event.
-- (void) noteTakingDamage:(double)amount from:(Entity *)entity type:(OOShipDamageType)type;
 // Dispatch shipDied() and possibly shipKilledOther() events. This is only for use by getDestroyedBy:damageType:, but needs to be visible to PlayerEntity's version.
-- (void) noteKilledBy:(Entity *)whom damageType:(OOShipDamageType)type;
 
 - (void) getDestroyedBy:(Entity *)whom damageType:(OOShipDamageType)type;
 - (void) becomeExplosion;
@@ -454,8 +418,6 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
  * Changes a ship to a hulk, for example when the pilot ejects.
  * Aso unsets hulkiness for example when a new pilot gets in.
  */
-- (void) setHulk:(BOOL) isNowHulk;
-- (BOOL) isHulk;
 #if OO_SALVAGE_SUPPORT
 - (void) claimAsSalvage;
 - (void) sendCoordinatesToPilot;
@@ -1094,6 +1056,53 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (void) setSpeed:(double)amount;
 - (void) setDesiredSpeed:(double)amount;
 - (double) desiredSpeed;
+
+@end
+
+
+// Slice 21 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice21)
+
+- (double) desiredRange;
+- (void) setDesiredRange:(double)amount;
+- (double) cruiseSpeed;
+- (void) increase_flight_speed:(double)delta;
+- (void) decrease_flight_speed:(double)delta;
+- (void) increase_flight_roll:(double)delta;
+- (void) decrease_flight_roll:(double)delta;
+- (void) increase_flight_pitch:(double)delta;
+- (void) decrease_flight_pitch:(double)delta;
+- (void) increase_flight_yaw:(double)delta;
+- (void) decrease_flight_yaw:(double)delta;
+- (GLfloat) flightRoll;
+- (GLfloat) flightPitch;
+- (GLfloat) flightYaw;
+- (GLfloat) flightSpeed;
+- (GLfloat) maxFlightPitch;
+- (GLfloat) maxFlightSpeed;
+- (GLfloat) maxFlightRoll;
+- (GLfloat) maxFlightYaw;
+- (void) setMaxFlightPitch:(GLfloat)newValue;
+- (void) setMaxFlightSpeed:(GLfloat)newValue;
+- (void) setMaxFlightRoll:(GLfloat)newValue;
+- (void) setMaxFlightYaw:(GLfloat)newValue;
+- (GLfloat) speedFactor;
+- (GLfloat) temperature;
+- (void) setTemperature:(GLfloat) value;
+- (float) randomEjectaTemperature;
+- (float) randomEjectaTemperatureWithMaxFactor:(float)factor;
+- (GLfloat) heatInsulation;
+- (void) setHeatInsulation:(GLfloat) value;
+- (int) damage;
+- (void) dealEnergyDamage:(GLfloat) baseDamage atRange:(GLfloat) range withBias:(GLfloat) velocityBias;
+- (void) dealEnergyDamageWithinDesiredRange;
+- (void) dealMomentumWithinDesiredRange:(double)amount;
+- (BOOL) isHulk;
+- (void) setHulk:(BOOL) isNowHulk;
+- (void) noteTakingDamage:(double)amount from:(Entity *)entity type:(OOShipDamageType)type;
+- (void) noteKilledBy:(Entity *)whom damageType:(OOShipDamageType)type;
 
 @end
 

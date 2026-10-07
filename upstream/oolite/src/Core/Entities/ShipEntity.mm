@@ -464,444 +464,6 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 }
 
 
-- (double) desiredRange
-{
-	return _cxxShip->desired_range;
-}
-
-
-- (void) setDesiredRange:(double) amount
-{
-	_cxxShip->desired_range = amount;
-}
-
-
-- (double) cruiseSpeed
-{
-	return _cxxShip->cruiseSpeed;
-}
-
-
-- (void) increase_flight_speed:(double) delta
-{
-	double factor = 1.0;
-	if (_cxxShip->desired_speed > _cxxShip->maxFlightSpeed && [self hasFuelInjection] && _cxxShip->fuel > MIN_FUEL) factor = [self afterburnerFactor];
-
-	if (_cxxShip->flightSpeed < _cxxShip->maxFlightSpeed * factor)
-		_cxxShip->flightSpeed += delta * factor;
-	else
-		_cxxShip->flightSpeed = _cxxShip->maxFlightSpeed * factor;
-}
-
-
-- (void) decrease_flight_speed:(double) delta
-{
-	double factor = 1.0;
-	if (_cxxShip->flightSpeed > _cxxShip->maxFlightSpeed) 
-	{
-		factor = MIN_HYPERSPEED_FACTOR;
-	}
-
-	if (_cxxShip->flightSpeed > factor * delta)
-	{
-		_cxxShip->flightSpeed -= factor * delta;
-	}
-	else
-	{
-		_cxxShip->flightSpeed = 0;
-	}
-}
-
-
-- (void) increase_flight_roll:(double) delta
-{
-	_cxxShip->flightRoll += delta;
-	if (_cxxShip->flightRoll > _cxxShip->max_flight_roll)
-		_cxxShip->flightRoll = _cxxShip->max_flight_roll;
-	else if (_cxxShip->flightRoll < -_cxxShip->max_flight_roll)
-		_cxxShip->flightRoll = -_cxxShip->max_flight_roll;
-}
-
-
-- (void) decrease_flight_roll:(double) delta
-{
-	_cxxShip->flightRoll -= delta;
-	if (_cxxShip->flightRoll > _cxxShip->max_flight_roll)
-		_cxxShip->flightRoll = _cxxShip->max_flight_roll;
-	else if (_cxxShip->flightRoll < -_cxxShip->max_flight_roll)
-		_cxxShip->flightRoll = -_cxxShip->max_flight_roll;
-}
-
-
-- (void) increase_flight_pitch:(double) delta
-{
-	_cxxShip->flightPitch += delta;
-	if (_cxxShip->flightPitch > _cxxShip->max_flight_pitch)
-		_cxxShip->flightPitch = _cxxShip->max_flight_pitch;
-	else if (_cxxShip->flightPitch < -_cxxShip->max_flight_pitch)
-		_cxxShip->flightPitch = -_cxxShip->max_flight_pitch;
-}
-
-
-- (void) decrease_flight_pitch:(double) delta
-{
-	_cxxShip->flightPitch -= delta;
-	if (_cxxShip->flightPitch > _cxxShip->max_flight_pitch)
-		_cxxShip->flightPitch = _cxxShip->max_flight_pitch;
-	else if (_cxxShip->flightPitch < -_cxxShip->max_flight_pitch)
-		_cxxShip->flightPitch = -_cxxShip->max_flight_pitch;
-}
-
-
-- (void) increase_flight_yaw:(double) delta
-{
-	_cxxShip->flightYaw += delta;
-	if (_cxxShip->flightYaw > _cxxShip->max_flight_yaw)
-		_cxxShip->flightYaw = _cxxShip->max_flight_yaw;
-	else if (_cxxShip->flightYaw < -_cxxShip->max_flight_yaw)
-		_cxxShip->flightYaw = -_cxxShip->max_flight_yaw;
-}
-
-
-- (void) decrease_flight_yaw:(double) delta
-{
-	_cxxShip->flightYaw -= delta;
-	if (_cxxShip->flightYaw > _cxxShip->max_flight_yaw)
-		_cxxShip->flightYaw = _cxxShip->max_flight_yaw;
-	else if (_cxxShip->flightYaw < -_cxxShip->max_flight_yaw)
-		_cxxShip->flightYaw = -_cxxShip->max_flight_yaw;
-}
-
-
-- (GLfloat) flightRoll
-{
-	return _cxxShip->flightRoll;
-}
-
-
-- (GLfloat) flightPitch
-{
-	return _cxxShip->flightPitch;
-}
-
-
-- (GLfloat) flightYaw
-{
-	return _cxxShip->flightYaw;
-}
-
-
-- (GLfloat) flightSpeed
-{
-	return _cxxShip->flightSpeed;
-}
-
-
-- (GLfloat) maxFlightPitch
-{
-	return _cxxShip->max_flight_pitch;
-}
-
-
-- (GLfloat) maxFlightSpeed
-{
-	return _cxxShip->maxFlightSpeed;
-}
-
-
-- (GLfloat) maxFlightRoll
-{
-	return _cxxShip->max_flight_roll;
-}
-
-
-- (GLfloat) maxFlightYaw
-{
-	return _cxxShip->max_flight_yaw;
-}
-
-
-- (void) setMaxFlightPitch:(GLfloat)newValue
-{
-	_cxxShip->max_flight_pitch = newValue;
-}
-
-
-- (void) setMaxFlightSpeed:(GLfloat)newValue
-{
-	_cxxShip->maxFlightSpeed = newValue;
-}
-
-
-- (void) setMaxFlightRoll:(GLfloat)newValue
-{
-	_cxxShip->max_flight_roll = newValue;
-}
-
-
-- (void) setMaxFlightYaw:(GLfloat)newValue
-{
-	_cxxShip->max_flight_yaw = newValue;
-}
-
-
-- (GLfloat) speedFactor
-{
-	if (_cxxShip->maxFlightSpeed <= 0.0)  return 0.0;
-	return _cxxShip->flightSpeed / _cxxShip->maxFlightSpeed;
-}
-
-
-- (GLfloat) temperature
-{
-	return _cxxShip->ship_temperature;
-}
-
-
-- (void) setTemperature:(GLfloat) value
-{
-	_cxxShip->ship_temperature = value;
-}
-
-
-- (float) randomEjectaTemperature
-{
-	return [self randomEjectaTemperatureWithMaxFactor:0.99f];
-}
-
-
-- (float) randomEjectaTemperatureWithMaxFactor:(float)factor
-{
-	const float kRange = 0.02f;
-	factor -= kRange;
-	
-	float parentTemp = [self temperature];
-	float adjusted = parentTemp * (bellf(5) * (kRange * 2.0f) - kRange + factor);
-	if (adjusted > SHIP_MAX_CABIN_TEMP)
-	{
-		adjusted = SHIP_MAX_CABIN_TEMP;
-	}
-	
-	// Interpolate so that result == parentTemp when parentTemp is SHIP_MIN_CABIN_TEMP
-	float interp = OOClamp_0_1_f((parentTemp - SHIP_MIN_CABIN_TEMP) / (SHIP_MAX_CABIN_TEMP - SHIP_MIN_CABIN_TEMP));
-	
-	return OOLerp(SHIP_MIN_CABIN_TEMP, adjusted, interp);
-}
-
-
-- (GLfloat) heatInsulation
-{
-	return _cxxShip->_heatInsulation;
-}
-
-
-- (void) setHeatInsulation:(GLfloat) value
-{
-	_cxxShip->_heatInsulation = value;
-}
-
-
-- (int) damage
-{
-	return (int)(100 - (100 * _cxxEntity->energy / _cxxEntity->maxEnergy));
-}
-
-
-- (void) dealEnergyDamage:(GLfloat) baseDamage atRange:(GLfloat) range withBias:(GLfloat) velocityBias
-{
-	// this is limited to the player's scanner range
-	GLfloat maxRange = fmin(range * sqrt(baseDamage), SCANNER_MAX_RANGE);
-	
-	OO_LOG("missile.damage.calc", "Range: {:f} | Damage: {:f} | MaxRange: {:f}", range, baseDamage, maxRange);
-
-	const std::vector<oo::ObjCRef<Entity *>> targets = [UNIVERSE cxx_entitiesWithinRange:maxRange ofEntity:self];
-	if (targets.size() > 0)
-	{
-		unsigned i;
-		for (i = 0; i < targets.size(); i++)
-		{
-			Entity *e2 = targets[i].get();
-			Vector p2 = [self vectorTo:e2];
-			double ecr = [e2 collisionRadius];
-			double d = (magnitude(p2) - ecr) / range;
-			// base damage within defined range, inverse-square falloff outside
-			double localDamage = baseDamage;
-			OO_LOG("missile.damage.calc", "Base damage: {:f}", baseDamage);
-			if (velocityBias > 0)
-			{
-				Vector v2 = vector_subtract([self velocity], [e2 velocity]);
-				double vSign = dot_product(vector_normal([self velocity]), vector_normal(p2));
-				// vSign should always be positive for the missile's actual target
-        // but might be negative for other nearby ships which are
-        // actually moving further away from the missile
-//				double vMag = vSign > 0.0 ? magnitude(v2) : -magnitude(v2);
-				double vMag = vSign * magnitude(v2);
-				if (vMag > 1000.0) {
-					vMag = 1000.0; 
-// cap effective closing speed to 1.0LM or injector-collisions can still do
-// ridiculous damage
-				}
-
-				localDamage += vMag * velocityBias;
-				OO_LOG("missile.damage.calc", "Velocity magnitude + sign: {:f} , {:f}", magnitude(v2), vSign);
-				OO_LOG("missile.damage.calc", "Velocity magnitude factor: {:f}", vMag);
-				OO_LOG("missile.damage.calc", "Velocity corrected damage: {:f}", localDamage);
-			}
-			double damage = (d > 1) ? localDamage / (d * d) : localDamage;
-			OO_LOG("missile.damage.calc", "{:f} at range {:f} (d={:f})", damage, magnitude(p2)-ecr, d);
-			if (damage > 0.0)
-			{
-				if ([self owner])
-				{
-					[e2 takeEnergyDamage:damage from:self becauseOf:[self owner] weaponIdentifier:[self cxx_primaryRole].value_or(std::string())];
-				} 
-				else
-				{
-					[e2 takeEnergyDamage:damage from:self becauseOf:self weaponIdentifier:[self cxx_primaryRole].value_or(std::string())];
-				}
-			}
-		}
-	}
-	
-	/* the actual damage can't go more than S_M_R, so cap the range
-	 * for exploding purposes so that the visual appearance isn't
-	 * larger than that */
-	if (range > SCANNER_MAX_RANGE / 4.0)
-	{
-		range = SCANNER_MAX_RANGE / 4.0;
-	}
-	// and a visual sign of the explosion
-	// "fireball" explosion effect
-	[UNIVERSE addEntity:oo::NewEntityFacade(OOExplosionCloudEntity::explosionCloudFromEntity(self, range*3.0, [UNIVERSE cxx_explosionSetting:"oolite-default-ship-explosion"]))];
-
-}
-
-
-// dealEnergyDamage preferred
-// Exposed to AI
-- (void) dealEnergyDamageWithinDesiredRange
-{
-	cxx_OOStandardsDeprecated(oo::str::format("dealEnergyDamageWithinDesiredRange is deprecated for %s", oo::DescriptionOf(self).c_str()));
-	// not over scannerRange
-	const std::vector<oo::ObjCRef<Entity *>> targets = [UNIVERSE cxx_entitiesWithinRange:(_cxxShip->desired_range < SCANNER_MAX_RANGE ? _cxxShip->desired_range : SCANNER_MAX_RANGE) ofEntity:self];
-	if (targets.size() > 0)
-	{
-		unsigned i;
-		for (i = 0; i < targets.size(); i++)
-		{
-			Entity *e2 = targets[i].get();
-			Vector p2 = [self vectorTo:e2];
-			double ecr = [e2 collisionRadius];
-			double d = (magnitude(p2) - ecr) * 2.6; // 2.6 is a correction constant to stay in limits of the old code.
-			double damage = (d > 0) ? _cxxShip->weapon_damage * _cxxShip->desired_range / (d * d) : _cxxShip->weapon_damage;
-			[e2 takeEnergyDamage:damage from:self becauseOf:[self owner] weaponIdentifier:[self cxx_primaryRole].value_or(std::string())];
-		}
-	}
-}
-
-
-- (void) dealMomentumWithinDesiredRange:(double)amount
-{
-	const std::vector<oo::ObjCRef<Entity *>> targets = [UNIVERSE cxx_entitiesWithinRange:_cxxShip->desired_range ofEntity:self];
-	if (targets.size() > 0)
-	{
-		unsigned i;
-		for (i = 0; i < targets.size(); i++)
-		{
-			ShipEntity *e2 = (ShipEntity*)targets[i].get();
-			if ([e2 isShip] && [e2 isInSpace])
-			{
-				Vector p2 = [self vectorTo:e2];
-				double ecr = [e2 collisionRadius];
-				double d2 = magnitude2(p2) - ecr * ecr;
-				// limit momentum transfer to relatively sensible levels
-				if (d2 < 0.1)
-				{
-					d2 = 0.1;
-				}
-				double moment = amount*_cxxShip->desired_range/d2;
-				[e2 addImpactMoment:vector_normal(p2) fraction:moment];
-			}
-		}
-	}
-}
-
-
-- (BOOL) isHulk
-{
-	return _cxxShip->isHulk;
-}
-
-
-- (void) setHulk:(BOOL)isNowHulk
-{
-	if (![self isSubEntity]) 
-	{
-		_cxxShip->isHulk = isNowHulk;
-	}
-}
-
-
-- (void) noteTakingDamage:(double)amount from:(Entity *)entity type:(OOShipDamageType)type
-{
-	if (amount < 0 || (amount == 0 && [[UNIVERSE gameController] isGamePaused]))  return;
-	
-	ooscript::Context context = OOJSAcquireContext();
-	
-	ooscript::Value amountVal = ooscript::undefinedValue();
-	ooscript::newNumberValue(context, amount, &amountVal);
-	ooscript::Value entityVal = OOJSValueFromNativeObject(context, entity);
-	ooscript::Value typeVal = OOJSValueFromShipDamageType(context, type);
-	
-	ShipScriptEvent(context, self, "shipTakingDamage", amountVal, entityVal, typeVal);
-	OOJSRelinquishContext(context);
-	
-	if ([entity isShip]) {
-//		ShipEntity* attacker = (ShipEntity *)entity;
-		if ([self hasHostileTarget] && _cxxShip->accuracy >= COMBAT_AI_IS_SMART && (randf()*10.0 < _cxxShip->accuracy || _cxxShip->desired_speed < 0.5 * _cxxShip->maxFlightSpeed) && _cxxShip->behaviour != BEHAVIOUR_EVASIVE_ACTION && _cxxShip->behaviour != BEHAVIOUR_FLEE_EVASIVE_ACTION && _cxxShip->behaviour != BEHAVIOUR_SCRIPTED_ATTACK_AI)
-		{
-			if (_cxxShip->behaviour == BEHAVIOUR_FLEE_TARGET)
-			{
-// jink should be sufficient to avoid being hit most of the time
-// if not, this will make a sharp turn and then select a new jink position
-				_cxxShip->behaviour = BEHAVIOUR_FLEE_EVASIVE_ACTION;
-			}
-			else
-			{
-				_cxxShip->behaviour = BEHAVIOUR_EVASIVE_ACTION;
-			}
-			_cxxShip->frustration = 0.0;
-		}
-	}
-
-}
-
-
-- (void) noteKilledBy:(Entity *)whom damageType:(OOShipDamageType)type
-{
-	if ([self status] == STATUS_DEAD)  return;
-	
-	[PLAYER setScriptTarget:self];
-	
-	ooscript::Context context = OOJSAcquireContext();
-	
-	ooscript::Value whomVal = OOJSValueFromNativeObject(context, whom);
-	ooscript::Value typeVal = OOJSValueFromShipDamageType(context, type);
-	OOEntityStatus originalStatus = [self status];
-	[self setStatus:STATUS_DEAD];
-	
-	ShipScriptEvent(context, self, "shipDied", whomVal, typeVal);
-	if ([whom isShip])
-	{
-		ooscript::Value selfVal = OOJSValueFromNativeObject(context, self);
-		ShipScriptEvent(context, (ShipEntity *)whom, "shipKilledOther", selfVal, typeVal);
-	}
-	
-	[self setStatus:originalStatus];
-	OOJSRelinquishContext(context);
-}
-
-
 - (void) getDestroyedBy:(Entity *)whom damageType:(OOShipDamageType)type
 {
 	[self noteKilledBy:whom damageType:type];
@@ -15364,6 +14926,462 @@ void ShipEntity::setDesiredSpeed(double amount)
 double ShipEntity::desiredSpeed()
 {
 	return desired_speed;
+}
+
+
+}	// namespace cxx
+
+
+// Slice 21 of docs/phases/3-slices/ShipEntity.md (bead oo-cicod): flight controls and limits,
+// temperature, dealing damage, hulks, damage notes. The facade forwards each selector
+// (ShipEntity+ObjCBridge.mm); sends to self stay sends, so an Objective-C subclass's override still
+// runs (ADR-0056 amendment oo-mvzmb).
+namespace cxx {
+
+double ShipEntity::desiredRange()
+{
+	return desired_range;
+}
+
+
+void ShipEntity::setDesiredRange(double amount)
+{
+	desired_range = amount;
+}
+
+
+double ShipEntity::getCruiseSpeed()
+{
+	return cruiseSpeed;
+}
+
+
+void ShipEntity::increase_flight_speed(double delta)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	double factor = 1.0;
+	if (desired_speed > maxFlightSpeed && [self hasFuelInjection] && fuel > MIN_FUEL) factor = [self afterburnerFactor];
+
+	if (flightSpeed < maxFlightSpeed * factor)
+		flightSpeed += delta * factor;
+	else
+		flightSpeed = maxFlightSpeed * factor;
+}
+
+
+void ShipEntity::decrease_flight_speed(double delta)
+{
+	double factor = 1.0;
+	if (flightSpeed > maxFlightSpeed) 
+	{
+		factor = MIN_HYPERSPEED_FACTOR;
+	}
+
+	if (flightSpeed > factor * delta)
+	{
+		flightSpeed -= factor * delta;
+	}
+	else
+	{
+		flightSpeed = 0;
+	}
+}
+
+
+void ShipEntity::increase_flight_roll(double delta)
+{
+	flightRoll += delta;
+	if (flightRoll > max_flight_roll)
+		flightRoll = max_flight_roll;
+	else if (flightRoll < -max_flight_roll)
+		flightRoll = -max_flight_roll;
+}
+
+
+void ShipEntity::decrease_flight_roll(double delta)
+{
+	flightRoll -= delta;
+	if (flightRoll > max_flight_roll)
+		flightRoll = max_flight_roll;
+	else if (flightRoll < -max_flight_roll)
+		flightRoll = -max_flight_roll;
+}
+
+
+void ShipEntity::increase_flight_pitch(double delta)
+{
+	flightPitch += delta;
+	if (flightPitch > max_flight_pitch)
+		flightPitch = max_flight_pitch;
+	else if (flightPitch < -max_flight_pitch)
+		flightPitch = -max_flight_pitch;
+}
+
+
+void ShipEntity::decrease_flight_pitch(double delta)
+{
+	flightPitch -= delta;
+	if (flightPitch > max_flight_pitch)
+		flightPitch = max_flight_pitch;
+	else if (flightPitch < -max_flight_pitch)
+		flightPitch = -max_flight_pitch;
+}
+
+
+void ShipEntity::increase_flight_yaw(double delta)
+{
+	flightYaw += delta;
+	if (flightYaw > max_flight_yaw)
+		flightYaw = max_flight_yaw;
+	else if (flightYaw < -max_flight_yaw)
+		flightYaw = -max_flight_yaw;
+}
+
+
+void ShipEntity::decrease_flight_yaw(double delta)
+{
+	flightYaw -= delta;
+	if (flightYaw > max_flight_yaw)
+		flightYaw = max_flight_yaw;
+	else if (flightYaw < -max_flight_yaw)
+		flightYaw = -max_flight_yaw;
+}
+
+
+GLfloat ShipEntity::getFlightRoll()
+{
+	return flightRoll;
+}
+
+
+GLfloat ShipEntity::getFlightPitch()
+{
+	return flightPitch;
+}
+
+
+GLfloat ShipEntity::getFlightYaw()
+{
+	return flightYaw;
+}
+
+
+GLfloat ShipEntity::getFlightSpeed()
+{
+	return flightSpeed;
+}
+
+
+GLfloat ShipEntity::maxFlightPitch()
+{
+	return max_flight_pitch;
+}
+
+
+GLfloat ShipEntity::getMaxFlightSpeed()
+{
+	return maxFlightSpeed;
+}
+
+
+GLfloat ShipEntity::maxFlightRoll()
+{
+	return max_flight_roll;
+}
+
+
+GLfloat ShipEntity::maxFlightYaw()
+{
+	return max_flight_yaw;
+}
+
+
+void ShipEntity::setMaxFlightPitch(GLfloat newValue)
+{
+	max_flight_pitch = newValue;
+}
+
+
+void ShipEntity::setMaxFlightSpeed(GLfloat newValue)
+{
+	maxFlightSpeed = newValue;
+}
+
+
+void ShipEntity::setMaxFlightRoll(GLfloat newValue)
+{
+	max_flight_roll = newValue;
+}
+
+
+void ShipEntity::setMaxFlightYaw(GLfloat newValue)
+{
+	max_flight_yaw = newValue;
+}
+
+
+GLfloat ShipEntity::speedFactor()
+{
+	if (maxFlightSpeed <= 0.0)  return 0.0;
+	return flightSpeed / maxFlightSpeed;
+}
+
+
+GLfloat ShipEntity::temperature()
+{
+	return ship_temperature;
+}
+
+
+void ShipEntity::setTemperature(GLfloat value)
+{
+	ship_temperature = value;
+}
+
+
+float ShipEntity::randomEjectaTemperature()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self randomEjectaTemperatureWithMaxFactor:0.99f];
+}
+
+
+float ShipEntity::randomEjectaTemperatureWithMaxFactor(float factor)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	const float kRange = 0.02f;
+	factor -= kRange;
+	
+	float parentTemp = [self temperature];
+	float adjusted = parentTemp * (bellf(5) * (kRange * 2.0f) - kRange + factor);
+	if (adjusted > SHIP_MAX_CABIN_TEMP)
+	{
+		adjusted = SHIP_MAX_CABIN_TEMP;
+	}
+	
+	// Interpolate so that result == parentTemp when parentTemp is SHIP_MIN_CABIN_TEMP
+	float interp = OOClamp_0_1_f((parentTemp - SHIP_MIN_CABIN_TEMP) / (SHIP_MAX_CABIN_TEMP - SHIP_MIN_CABIN_TEMP));
+	
+	return OOLerp(SHIP_MIN_CABIN_TEMP, adjusted, interp);
+}
+
+
+GLfloat ShipEntity::heatInsulation()
+{
+	return _heatInsulation;
+}
+
+
+void ShipEntity::setHeatInsulation(GLfloat value)
+{
+	_heatInsulation = value;
+}
+
+
+int ShipEntity::damage()
+{
+	return (int)(100 - (100 * energy / maxEnergy));
+}
+
+
+void ShipEntity::dealEnergyDamage(GLfloat baseDamage, GLfloat range, GLfloat velocityBias)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// this is limited to the player's scanner range
+	GLfloat maxRange = fmin(range * sqrt(baseDamage), SCANNER_MAX_RANGE);
+	
+	OO_LOG("missile.damage.calc", "Range: {:f} | Damage: {:f} | MaxRange: {:f}", range, baseDamage, maxRange);
+
+	const std::vector<oo::ObjCRef<::Entity *>> targets = [UNIVERSE cxx_entitiesWithinRange:maxRange ofEntity:self];
+	if (targets.size() > 0)
+	{
+		unsigned i;
+		for (i = 0; i < targets.size(); i++)
+		{
+			::Entity *e2 = targets[i].get();
+			Vector p2 = [self vectorTo:e2];
+			double ecr = [e2 collisionRadius];
+			double d = (magnitude(p2) - ecr) / range;
+			// base damage within defined range, inverse-square falloff outside
+			double localDamage = baseDamage;
+			OO_LOG("missile.damage.calc", "Base damage: {:f}", baseDamage);
+			if (velocityBias > 0)
+			{
+				Vector v2 = vector_subtract([self velocity], [e2 velocity]);
+				double vSign = dot_product(vector_normal([self velocity]), vector_normal(p2));
+				// vSign should always be positive for the missile's actual target
+        // but might be negative for other nearby ships which are
+        // actually moving further away from the missile
+//				double vMag = vSign > 0.0 ? magnitude(v2) : -magnitude(v2);
+				double vMag = vSign * magnitude(v2);
+				if (vMag > 1000.0) {
+					vMag = 1000.0; 
+// cap effective closing speed to 1.0LM or injector-collisions can still do
+// ridiculous damage
+				}
+
+				localDamage += vMag * velocityBias;
+				OO_LOG("missile.damage.calc", "Velocity magnitude + sign: {:f} , {:f}", magnitude(v2), vSign);
+				OO_LOG("missile.damage.calc", "Velocity magnitude factor: {:f}", vMag);
+				OO_LOG("missile.damage.calc", "Velocity corrected damage: {:f}", localDamage);
+			}
+			double damage = (d > 1) ? localDamage / (d * d) : localDamage;
+			OO_LOG("missile.damage.calc", "{:f} at range {:f} (d={:f})", damage, magnitude(p2)-ecr, d);
+			if (damage > 0.0)
+			{
+				if ([self owner])
+				{
+					[e2 takeEnergyDamage:damage from:self becauseOf:[self owner] weaponIdentifier:[self cxx_primaryRole].value_or(std::string())];
+				} 
+				else
+				{
+					[e2 takeEnergyDamage:damage from:self becauseOf:self weaponIdentifier:[self cxx_primaryRole].value_or(std::string())];
+				}
+			}
+		}
+	}
+	
+	/* the actual damage can't go more than S_M_R, so cap the range
+	 * for exploding purposes so that the visual appearance isn't
+	 * larger than that */
+	if (range > SCANNER_MAX_RANGE / 4.0)
+	{
+		range = SCANNER_MAX_RANGE / 4.0;
+	}
+	// and a visual sign of the explosion
+	// "fireball" explosion effect
+	[UNIVERSE addEntity:oo::NewEntityFacade(OOExplosionCloudEntity::explosionCloudFromEntity(self, range*3.0, [UNIVERSE cxx_explosionSetting:"oolite-default-ship-explosion"]))];
+
+}
+
+
+// dealEnergyDamage preferred
+// Exposed to AI
+void ShipEntity::dealEnergyDamageWithinDesiredRange()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	cxx_OOStandardsDeprecated(oo::str::format("dealEnergyDamageWithinDesiredRange is deprecated for %s", oo::DescriptionOf(self).c_str()));
+	// not over scannerRange
+	const std::vector<oo::ObjCRef<::Entity *>> targets = [UNIVERSE cxx_entitiesWithinRange:(desired_range < SCANNER_MAX_RANGE ? desired_range : SCANNER_MAX_RANGE) ofEntity:self];
+	if (targets.size() > 0)
+	{
+		unsigned i;
+		for (i = 0; i < targets.size(); i++)
+		{
+			::Entity *e2 = targets[i].get();
+			Vector p2 = [self vectorTo:e2];
+			double ecr = [e2 collisionRadius];
+			double d = (magnitude(p2) - ecr) * 2.6; // 2.6 is a correction constant to stay in limits of the old code.
+			double damage = (d > 0) ? weapon_damage * desired_range / (d * d) : weapon_damage;
+			[e2 takeEnergyDamage:damage from:self becauseOf:[self owner] weaponIdentifier:[self cxx_primaryRole].value_or(std::string())];
+		}
+	}
+}
+
+
+void ShipEntity::dealMomentumWithinDesiredRange(double amount)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	const std::vector<oo::ObjCRef<::Entity *>> targets = [UNIVERSE cxx_entitiesWithinRange:desired_range ofEntity:self];
+	if (targets.size() > 0)
+	{
+		unsigned i;
+		for (i = 0; i < targets.size(); i++)
+		{
+			::ShipEntity *e2 = (::ShipEntity*)targets[i].get();
+			if ([e2 isShip] && [e2 isInSpace])
+			{
+				Vector p2 = [self vectorTo:e2];
+				double ecr = [e2 collisionRadius];
+				double d2 = magnitude2(p2) - ecr * ecr;
+				// limit momentum transfer to relatively sensible levels
+				if (d2 < 0.1)
+				{
+					d2 = 0.1;
+				}
+				double moment = amount*desired_range/d2;
+				[e2 addImpactMoment:vector_normal(p2) fraction:moment];
+			}
+		}
+	}
+}
+
+
+bool ShipEntity::getIsHulk()
+{
+	return isHulk;
+}
+
+
+void ShipEntity::setHulk(bool isNowHulk)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (![self isSubEntity]) 
+	{
+		isHulk = isNowHulk;
+	}
+}
+
+
+void ShipEntity::noteTakingDamage(double amount, ::Entity *entity, OOShipDamageType type)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (amount < 0 || (amount == 0 && [[UNIVERSE gameController] isGamePaused]))  return;
+	
+	ooscript::Context context = OOJSAcquireContext();
+	
+	ooscript::Value amountVal = ooscript::undefinedValue();
+	ooscript::newNumberValue(context, amount, &amountVal);
+	ooscript::Value entityVal = OOJSValueFromNativeObject(context, entity);
+	ooscript::Value typeVal = OOJSValueFromShipDamageType(context, type);
+	
+	ShipScriptEvent(context, self, "shipTakingDamage", amountVal, entityVal, typeVal);
+	OOJSRelinquishContext(context);
+	
+	if ([entity isShip]) {
+//		ShipEntity* attacker = (ShipEntity *)entity;
+		if ([self hasHostileTarget] && accuracy >= COMBAT_AI_IS_SMART && (randf()*10.0 < accuracy || desired_speed < 0.5 * maxFlightSpeed) && behaviour != BEHAVIOUR_EVASIVE_ACTION && behaviour != BEHAVIOUR_FLEE_EVASIVE_ACTION && behaviour != BEHAVIOUR_SCRIPTED_ATTACK_AI)
+		{
+			if (behaviour == BEHAVIOUR_FLEE_TARGET)
+			{
+// jink should be sufficient to avoid being hit most of the time
+// if not, this will make a sharp turn and then select a new jink position
+				behaviour = BEHAVIOUR_FLEE_EVASIVE_ACTION;
+			}
+			else
+			{
+				behaviour = BEHAVIOUR_EVASIVE_ACTION;
+			}
+			frustration = 0.0;
+		}
+	}
+
+}
+
+
+void ShipEntity::noteKilledBy(::Entity *whom, OOShipDamageType type)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if ([self status] == STATUS_DEAD)  return;
+	
+	[PLAYER setScriptTarget:self];
+	
+	ooscript::Context context = OOJSAcquireContext();
+	
+	ooscript::Value whomVal = OOJSValueFromNativeObject(context, whom);
+	ooscript::Value typeVal = OOJSValueFromShipDamageType(context, type);
+	OOEntityStatus originalStatus = [self status];
+	[self setStatus:STATUS_DEAD];
+	
+	ShipScriptEvent(context, self, "shipDied", whomVal, typeVal);
+	if ([whom isShip])
+	{
+		ooscript::Value selfVal = OOJSValueFromNativeObject(context, self);
+		ShipScriptEvent(context, (::ShipEntity *)whom, "shipKilledOther", selfVal, typeVal);
+	}
+	
+	[self setStatus:originalStatus];
+	OOJSRelinquishContext(context);
 }
 
 
