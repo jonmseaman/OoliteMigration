@@ -1379,4 +1379,98 @@ OO_TEST(scriptedAIAndReactionTime)
 }
 
 
+// Slice 16: the tracking curve through a target that is standing still is that target's position,
+// with or without a reaction time.
+OO_TEST(trackingCurve)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("tracker");
+		[ship setReactionTime:0.6f];
+		TargetAt(ship, 1500);
+		[ship startTrackingCurve];
+		HPVector led = [ship calculateTargetPosition];
+		OO_CHECK(fabs(led.x) < 1e-6 && fabs(led.y) < 1e-6 && fabs(led.z - 1500) < 1e-6);
+		[ship updateTrackingCurve];	// too soon after the start: unchanged
+		led = [ship calculateTargetPosition];
+		OO_CHECK(fabs(led.z - 1500) < 1e-6);
+
+		[ship setReactionTime:0];
+		[ship calculateTrackingCurve];
+		OO_CHECK(HPvector_equal([ship calculateTargetPosition], make_HPvector(0, 0, 1500)));
+	}
+}
+
+
+// Slice 16: the scanner colours, scripted and by scan class.
+OO_TEST(scannerColours)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("coloured");
+		OOColor *red = [OOColor colorWithRed:1 green:0 blue:0 alpha:1];
+		OOColor *blue = [OOColor colorWithRed:0 green:0 blue:1 alpha:1];
+		OO_CHECK([ship scannerDisplayColor1] == nil && [ship scannerDisplayColorHostile2] == nil);
+		[ship setScannerDisplayColor1:red];
+		[ship setScannerDisplayColor2:blue];
+		[ship setScannerDisplayColorHostile1:blue];
+		[ship setScannerDisplayColorHostile2:red];
+		OO_CHECK([ship scannerDisplayColor1] == red && [ship scannerDisplayColor2] == blue);
+		OO_CHECK([ship scannerDisplayColorHostile1] == blue && [ship scannerDisplayColorHostile2] == red);
+		[ship setScannerDisplayColor2:nil];		// nil: the ship's definition's, which has none
+		OO_CHECK([ship scannerDisplayColor2] == nil);
+
+		TestShip *other = FlyingShip("viewer");
+		GLfloat *c = [ship scannerDisplayColorForShip:other :NO :YES :red :nil :nil :nil];
+		OO_CHECK(c[0] == 1 && c[1] == 0 && c[2] == 0 && c[3] == 1);
+		c = [ship scannerDisplayColorForShip:other :YES :NO :red :nil :red :blue];	// hostile, not flashing: the second
+		OO_CHECK(c[0] == 0 && c[2] == 1);
+		[ship setScanClass:CLASS_CARGO];
+		c = [ship scannerDisplayColorForShip:other :NO :NO :nil :nil :nil :nil];
+		OO_CHECK(c[0] == 0.9f && c[1] == 0.9f && c[2] == 0.9f && c[3] == 1);
+		[ship setScanClass:CLASS_POLICE];
+		c = [ship scannerDisplayColorForShip:other :YES :YES :nil :nil :nil :nil];
+		OO_CHECK(c[0] == 1 && c[1] == 0 && c[2] == 0.5f);
+		[ship setScanClass:CLASS_NEUTRAL];
+		c = [ship scannerDisplayColorForShip:other :NO :NO :nil :nil :nil :nil];
+		OO_CHECK(c[0] == 1 && c[1] == 1 && c[2] == 0);
+	}
+}
+
+
+// Slice 16: cloaking flags, owner, thrust and orientation.
+OO_TEST(cloakOwnerThrustAndOrientation)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("flier");
+		OO_CHECK(![ship isCloaked] && ![ship hasAutoCloak] && ![ship isJammingScanning]);
+		[ship setAutoCloak:YES];
+		OO_CHECK([ship hasAutoCloak]);
+
+		TestShip *mother = FlyingShip("mother");
+		[ship setOwner:mother];
+		OO_CHECK([ship owner] == mother);
+		[ship setOwner:nil];
+
+		// Full thrust from a standstill: up to the desired speed, and forward by speed x time.
+		[ship setThrust:1000];
+		[ship setDesiredSpeed:100];
+		[ship applyThrust:0.5];
+		OO_CHECK([ship flightSpeed] == 100);
+		OO_CHECK(fabs([ship position].z - 50) < 1e-6);
+
+		// Turned at random: the vectors follow the orientation.
+		Quaternion q;
+		quaternion_set_random(&q);
+		[ship setOrientation:q];
+		Vector f = [ship forwardVector], expected = vector_forward_from_quaternion([ship orientation]);
+		OO_CHECK(fabs(f.x - expected.x) < 1e-6 && fabs(f.y - expected.y) < 1e-6 && fabs(f.z - expected.z) < 1e-6);
+	}
+}
+
+
 OO_TEST_MAIN()

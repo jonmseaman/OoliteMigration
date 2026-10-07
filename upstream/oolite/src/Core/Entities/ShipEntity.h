@@ -452,6 +452,35 @@ public:
 	void setReactionTime(float newReactionTime);
 	HPVector calculateTargetPosition();
 
+	// Slice 16: tracking curve, drawing, scanner colours, cloaking, subentities and owner, thrust.
+	void startTrackingCurve();
+	void updateTrackingCurve();
+	void calculateTrackingCurve();
+	void drawImmediate(bool immediate, bool translucent) override;
+#ifndef NDEBUG
+	void drawDebugStuff();
+#endif
+	void drawSubEntityImmediate(bool immediate, bool translucent);
+	GLfloat *scannerDisplayColorForShip(::ShipEntity *otherShip, bool isHostile, bool flash, ::OOColor *scannerDisplayColor1, ::OOColor *scannerDisplayColor2, ::OOColor *scannerDisplayColorH1, ::OOColor *scannerDisplayColorH2);
+	void setScannerDisplayColor1(::OOColor *color);
+	void setScannerDisplayColor2(::OOColor *color);
+	::OOColor *scannerDisplayColor1();
+	::OOColor *scannerDisplayColor2();
+	void setScannerDisplayColorHostile1(::OOColor *color);
+	void setScannerDisplayColorHostile2(::OOColor *color);
+	::OOColor *scannerDisplayColorHostile1();
+	::OOColor *scannerDisplayColorHostile2();
+	bool isCloaked();
+	bool getCloakPassive();
+	void setCloaked(bool cloak);
+	bool hasAutoCloak();
+	void setAutoCloak(bool automatic);
+	bool isJammingScanning();
+	void addSubEntity(::Entity *sub);	// an Entity<OOSubEntity> (amendment oo-mvzmb item 5)
+	void setOwner(Entity *who_owns_entity) override;
+	void applyThrust(double delta_t);
+	void orientationChanged() override;
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired
