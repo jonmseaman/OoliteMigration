@@ -116,49 +116,19 @@ MA 02110-1301, USA.
 
 
 
-- (void) applyAttitudeChanges:(double) delta_t;
 
-- (void) avoidCollision;
-- (void) resumePostProximityAlert;
 
-- (double) messageTime;
-- (void) setMessageTime:(double) value;
 
-- (OOShipGroup *) group;
-- (void) setGroup:(OOShipGroup *)group;
 
-- (OOShipGroup *) escortGroup;
-- (void) setEscortGroup:(OOShipGroup *)group;	// Only for use in unconventional set-up situations.
 
-- (OOShipGroup *) stationGroup; // should probably be defined in stationEntity.m
 
-- (BOOL) hasEscorts;
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_escorts;	// the escorts (the group without self), a snapshot
-- (std::vector<oo::ObjCRef<ShipEntity *>>) escortArray;	// the same snapshot
 
-- (uint8_t) escortCount;
 
 // Pending escort count: number of escorts to set up "later".
-- (uint8_t) pendingEscortCount;
-- (void) setPendingEscortCount:(uint8_t)count;
 
 // allow adjustment of escort numbers from shipdata.plist levels
-- (uint8_t) maxEscortCount;
-- (void) setMaxEscortCount:(uint8_t)newCount;
 
-- (NSUInteger) turretCount;
 
-- (std::optional<std::string>) cxx_name;	// nullopt: none (bead oo-3rb.289.13)
-- (std::optional<std::string>) cxx_shipUniqueName;
-- (std::optional<std::string>) cxx_shipClassName;
-- (std::optional<std::string>) displayName;	// flipped with its family (bead oo-3rb.267)
-- (std::optional<std::string>) cxx_scanDescription;
-- (std::optional<std::string>) cxx_scanDescriptionForScripting;
-- (void) cxx_setName:(const std::optional<std::string> &)inName;	// PlayerEntity blocks it
-- (void) cxx_setShipUniqueName:(const std::optional<std::string> &)inName;
-- (void) cxx_setShipClassName:(const std::optional<std::string> &)inName;
-- (void) cxx_setDisplayName:(const std::optional<std::string> &)inName;
-- (void) cxx_setScanDescription:(const std::optional<std::string> &)inName;
 - (std::optional<std::string>) identFromShip:(ShipEntity*) otherShip;	// Name displayed to other ships (flipped with its family, bead oo-3rb.279)
 
 - (BOOL) hasRole:(const std::string &)role;	// flipped with its family (bead oo-3rb.280)
@@ -401,13 +371,11 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 - (Entity *)lastEscortTarget;
 - (Entity *)thankedShip;
 - (Entity *)rememberedShip;
-- (Entity *)proximityAlert;
 - (void) setFoundTarget:(Entity *) targetEntity;
 - (void) setPrimaryAggressor:(Entity *) targetEntity;
 - (void) setLastEscortTarget:(Entity *) targetEntity;
 - (void) setThankedShip:(Entity *) targetEntity;
 - (void) setRememberedShip:(Entity *) targetEntity;
-- (void) setProximityAlert:(ShipEntity *) targetEntity;
 - (void) setTargetStation:(Entity *) targetEntity;
 - (BOOL) isValidTarget:(Entity *) target;
 - (void) addTarget:(Entity *) targetEntity;
@@ -1054,6 +1022,49 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (void) setOwner:(Entity *)who_owns_entity;
 - (void) applyThrust:(double) delta_t;
 - (void) orientationChanged;
+
+@end
+
+
+// Slice 17 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice17)
+
+- (void) applyRoll:(GLfloat)roll1 andClimb:(GLfloat)climb1;
+- (void) applyRoll:(GLfloat)roll1 climb:(GLfloat)climb1 andYaw:(GLfloat)yaw1;
+- (void) applyAttitudeChanges:(double) delta_t;
+- (void) avoidCollision;
+- (void) resumePostProximityAlert;
+- (double) messageTime;
+- (void) setMessageTime:(double) value;
+- (OOShipGroup *) group;
+- (void) setGroup:(OOShipGroup *)group;
+- (OOShipGroup *) escortGroup;
+- (void) setEscortGroup:(OOShipGroup *)group;	// Only for use in unconventional set-up situations.
+- (OOShipGroup *) stationGroup; // should probably be defined in stationEntity.m
+- (BOOL) hasEscorts;
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_escorts;	// the escorts (the group without self), a snapshot
+- (std::vector<oo::ObjCRef<ShipEntity *>>) escortArray;	// the same snapshot
+- (uint8_t) escortCount;
+- (uint8_t) pendingEscortCount;
+- (void) setPendingEscortCount:(uint8_t)count;
+- (uint8_t) maxEscortCount;
+- (void) setMaxEscortCount:(uint8_t)newCount;
+- (NSUInteger) turretCount;
+- (Entity *)proximityAlert;
+- (void) setProximityAlert:(ShipEntity *) targetEntity;
+- (std::optional<std::string>) cxx_name;	// nullopt: none (bead oo-3rb.289.13)
+- (std::optional<std::string>) cxx_shipUniqueName;
+- (std::optional<std::string>) cxx_shipClassName;
+- (std::optional<std::string>) displayName;	// flipped with its family (bead oo-3rb.267)
+- (std::optional<std::string>) cxx_scanDescriptionForScripting;
+- (std::optional<std::string>) cxx_scanDescription;
+- (void) cxx_setName:(const std::optional<std::string> &)inName;	// PlayerEntity blocks it
+- (void) cxx_setShipUniqueName:(const std::optional<std::string> &)inName;
+- (void) cxx_setShipClassName:(const std::optional<std::string> &)inName;
+- (void) cxx_setDisplayName:(const std::optional<std::string> &)inName;
+- (void) cxx_setScanDescription:(const std::optional<std::string> &)inName;
 
 @end
 

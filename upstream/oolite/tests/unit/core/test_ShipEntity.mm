@@ -112,6 +112,12 @@ void SetPrimaryTarget(ShipEntity *s, Entity *target)
 	s->_cxxShip->_primaryTarget = [target weakRetain];
 }
 
+void SetProximityAlert(ShipEntity *s, Entity *other)
+{
+	[s->_cxxShip->_proximityAlert release];
+	s->_cxxShip->_proximityAlert = [other weakRetain];
+}
+
 void SetNavpoints(ShipEntity *s, std::initializer_list<HPVector> points, unsigned next)
 {
 	unsigned n = 0;
@@ -1473,6 +1479,152 @@ OO_TEST(cloakOwnerThrustAndOrientation)
 		[ship setOrientation:q];
 		Vector f = [ship forwardVector], expected = vector_forward_from_quaternion([ship orientation]);
 		OO_CHECK(fabs(f.x - expected.x) < 1e-6 && fabs(f.y - expected.y) < 1e-6 && fabs(f.z - expected.z) < 1e-6);
+	}
+}
+
+
+// Slice 17: rolling, climbing and yawing turn the ship by the product of the turns, and update its
+// vectors; with no turn and no rotation so far, nothing happens.
+OO_TEST(attitude)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("acrobat");
+		[ship applyRoll:0 andClimb:0];
+		OO_CHECK(quaternion_equal([ship orientation], kIdentityQuaternion));
+
+		Quaternion q = kIdentityQuaternion;
+		quaternion_rotate_about_z(&q, -0.1f);
+		quaternion_rotate_about_x(&q, -0.2f);
+		[ship applyRoll:0.1f andClimb:0.2f];
+		Quaternion o = [ship orientation];
+		OO_CHECK(fabs(o.w - q.w) < 1e-6 && fabs(o.x - q.x) < 1e-6 && fabs(o.y - q.y) < 1e-6 && fabs(o.z - q.z) < 1e-6);
+		Vector f = [ship forwardVector], expected = vector_forward_from_quaternion(o);
+		OO_CHECK(fabs(f.x - expected.x) < 1e-6 && fabs(f.y - expected.y) < 1e-6 && fabs(f.z - expected.z) < 1e-6);
+
+		// The attitude rates times the time step, as one turn.
+		TestShip *a = FlyingShip("rates");
+		TestShip *b = FlyingShip("by hand");
+		[a setRoll:0.5];
+		[a setPitch:0.25];
+		[a setYaw:-0.5];
+		[a applyAttitudeChanges:0.2];
+		[b applyRoll:(GLfloat)(0.5 * M_PI / 2.0) * 0.2 climb:(GLfloat)(0.25 * M_PI / 2.0) * 0.2 andYaw:(GLfloat)(-0.5 * M_PI / 2.0) * 0.2];	// -setRoll: is a fraction of a right angle
+		Quaternion qa = [a orientation], qb = [b orientation];
+		OO_CHECK(fabs(qa.w - qb.w) < 1e-6 && fabs(qa.x - qb.x) < 1e-6 && fabs(qa.y - qb.y) < 1e-6 && fabs(qa.z - qb.z) < 1e-6);
+	}
+}
+
+
+// Slice 17: avoiding a collision remembers what the ship was doing and heads for the point between
+// the two ships; resuming restores it.
+OO_TEST(avoidCollisionAndResume)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("careful");
+		TestShip *rock = FlyingShip("rock");
+		[rock setPosition:make_HPvector(0, 0, 400)];
+		[ship setBehaviour:BEHAVIOUR_FLY_TO_DESTINATION];
+		[ship setDestination:make_HPvector(0, 0, 9000)];
+		[ship setDesiredRange:300];
+		[ship setDesiredSpeed:12];
+
+		[ship avoidCollision];		// no alert: nothing
+		OO_CHECK(Behaviour(ship) == BEHAVIOUR_FLY_TO_DESTINATION);
+
+		SetProximityAlert(ship, rock);
+		OO_CHECK([ship proximityAlert] == rock);
+		[ship avoidCollision];
+		OO_CHECK(Behaviour(ship) == BEHAVIOUR_AVOID_COLLISION);
+		OO_CHECK(HPvector_equal([ship destination], make_HPvector(0, 0, 200)));
+
+		[ship resumePostProximityAlert];
+		OO_CHECK(Behaviour(ship) == BEHAVIOUR_FLY_TO_DESTINATION && [ship desiredRange] == 300 && [ship desiredSpeed] == 12);
+		OO_CHECK(HPvector_equal([ship destination], make_HPvector(0, 0, 9000)));
+		OO_CHECK([ship proximityAlert] == nil);
+
+		// A missile does not avoid anything.
+		[ship setScanClass:CLASS_MISSILE];
+		SetProximityAlert(ship, rock);
+		[ship avoidCollision];
+		OO_CHECK(Behaviour(ship) == BEHAVIOUR_FLY_TO_DESTINATION);
+
+		// Clearing the alert, and a light object never raises one.
+		[ship setProximityAlert:nil];
+		OO_CHECK([ship proximityAlert] == nil);
+		[ship setProximityAlert:rock];		// mass 0
+		OO_CHECK([ship proximityAlert] == nil);
+	}
+}
+
+
+// Slice 17: message time, groups and escorts.
+OO_TEST(groupsAndEscorts)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("leader");
+		[ship setMessageTime:4.5];
+		OO_CHECK([ship messageTime] == 4.5);
+
+		OO_CHECK(![ship hasEscorts] && [ship escortCount] == 0 && [ship cxx_escorts].empty());
+		OOShipGroup *escorts = [ship escortGroup];		// made on demand, led by the ship
+		OO_CHECK(escorts != nil && [escorts leader] == ship && [ship escortGroup] == escorts);
+		TestShip *wingman = FlyingShip("wingman");
+		[escorts addShip:wingman];
+		OO_CHECK([ship hasEscorts] && [ship escortCount] == 1);
+		OO_CHECK([ship cxx_escorts].size() == 1 && [ship cxx_escorts][0].get() == wingman && [ship escortArray].size() == 1);
+
+		OOShipGroup *other = [[[OOShipGroup alloc] init] autorelease];
+		[ship setEscortGroup:other];
+		OO_CHECK([ship escortGroup] == other && [other leader] == ship);
+
+		OOShipGroup *group = [[[OOShipGroup alloc] init] autorelease];
+		[wingman setGroup:group];
+		OO_CHECK([wingman group] == group && [group containsShip:wingman]);
+		[wingman setGroup:nil];
+		OO_CHECK([wingman group] == nil && ![group containsShip:wingman]);
+
+		TestShip *station = FlyingShip("station");
+		OOShipGroup *stationGroup = [station stationGroup];
+		OO_CHECK(stationGroup != nil && [stationGroup leader] == station && [station group] == stationGroup);
+
+		[ship setMaxEscortCount:3];
+		[ship setPendingEscortCount:5];
+		OO_CHECK([ship maxEscortCount] == 3 && [ship pendingEscortCount] == 3);
+		OO_CHECK([ship turretCount] == 0);
+	}
+}
+
+
+// Slice 17: the names, and what the ship is called on screen.
+OO_TEST(names)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("named");
+		[ship cxx_setName:std::string("Cobra Mk III")];
+		OO_CHECK([ship cxx_name] == std::optional<std::string>("Cobra Mk III"));
+		OO_CHECK([ship displayName] == std::optional<std::string>("Cobra Mk III"));
+		[ship cxx_setShipUniqueName:std::string("Lucky")];
+		OO_CHECK([ship cxx_shipUniqueName] == std::optional<std::string>("Lucky"));
+		OO_CHECK([ship displayName] == std::optional<std::string>("Cobra Mk III: Lucky"));
+		[ship cxx_setShipClassName:std::string("Cobra")];
+		OO_CHECK([ship cxx_shipClassName] == std::optional<std::string>("Cobra"));
+		OO_CHECK([ship displayName] == std::optional<std::string>("Cobra: Lucky"));
+		[ship cxx_setShipUniqueName:std::string("")];
+		OO_CHECK([ship displayName] == std::optional<std::string>("Cobra"));
+		[ship cxx_setDisplayName:std::string("The Cobra")];
+		OO_CHECK([ship displayName] == std::optional<std::string>("The Cobra"));
+
+		OO_CHECK([ship cxx_scanDescriptionForScripting] == std::nullopt);
+		[ship cxx_setScanDescription:std::string("Trader")];
+		OO_CHECK([ship cxx_scanDescription] == std::optional<std::string>("Trader") && [ship cxx_scanDescriptionForScripting] == std::optional<std::string>("Trader"));
 	}
 }
 
