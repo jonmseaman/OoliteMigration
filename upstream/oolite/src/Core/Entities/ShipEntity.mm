@@ -14335,7 +14335,7 @@ std::optional<std::string> ShipEntity::getDisplayName()
 			}
 			else
 			{
-				return *shipClassName;
+				return shipClassName;	// engaged here
 			}
 		}
 		else
@@ -14351,7 +14351,7 @@ std::optional<std::string> ShipEntity::getDisplayName()
 			}
 		}
 	}
-	return *displayName;
+	return displayName;	// engaged here
 }
 
 
