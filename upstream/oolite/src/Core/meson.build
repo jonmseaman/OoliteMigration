@@ -106,6 +106,7 @@ oolite_sources += files(
     'OOSoundSourcePool.mm',
     'OOSoundSourcePool+ObjCBridge.mm',
     'OOStringExpander.mm',
+    'OOStringExpander+ObjCBridge.mm',
     'OOStringParsing.mm',
     'OOSystemDescriptionManager.mm',
     'OOSystemDescriptionManager+ObjCBridge.mm',
