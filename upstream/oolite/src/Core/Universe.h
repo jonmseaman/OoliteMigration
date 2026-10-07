@@ -266,6 +266,18 @@ public:
 	bool deterministicPopulation();
 	void populateSystemFromDictionariesWithSun(::OOSunEntity *sun, ::OOPlanetEntity *planet);
 
+	// Slice 5: locations by code, lighting, adding ships by role, coordinate systems.
+	HPVector locationByCode(const std::string &code, ::OOSunEntity *sun, ::OOPlanetEntity *planet);
+	void setAmbientLightLevel(float newValue);
+	float getAmbientLightLevel();
+	void setLighting();
+	void forceLightSwitch();
+	void setMainLightPosition(Vector sunPos);
+	::ShipEntity *addShipWithRole(const std::string &desc, HPVector launchPos, GLfloat rfactor);
+	void addShipWithRole(const std::string &desc, double route_fraction);
+	HPVector coordinatesForPosition(HPVector pos, const std::string &system, GLfloat *my_scalar);
+	std::optional<std::string> expressPosition(HPVector pos, const std::string &system);
+
 	Universe(const Universe &) = delete;
 	Universe &operator=(const Universe &) = delete;
 

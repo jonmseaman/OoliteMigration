@@ -60,17 +60,7 @@ MA 02110-1301, USA.
 
 - (BOOL) reinitAndShowDemo:(BOOL)showDemo;
 
-- (HPVector) cxx_locationByCode:(const std::string &)code withSun:(OOSunEntity *)sun andPlanet:(OOPlanetEntity *)planet;
-- (void) setAmbientLightLevel:(float)newValue;
-- (float) ambientLightLevel;
-- (void) setLighting;
-- (void) forceLightSwitch;
-- (void) setMainLightPosition: (Vector) sunPos;
-
 - (void) makeSunSkimmer:(ShipEntity *) ship andSetAI:(BOOL)setAI;
-- (void) cxx_addShipWithRole:(const std::string &) desc nearRouteOneAt:(double) route_fraction;
-- (HPVector) cxx_coordinatesForPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system returningScalar:(GLfloat*) my_scalar;
-- (std::optional<std::string>) cxx_expressPosition:(HPVector) pos inCoordinateSystem:(const std::string &) system;
 - (HPVector) cxx_legacyPositionFrom:(HPVector) pos asCoordinateSystem:(const std::string &) system;
 - (HPVector) cxx_coordinatesFromCoordinateSystemString:(const std::string &) system_x_y_z;
 - (BOOL) cxx_addShipWithRole:(const std::string &) desc nearPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system;
@@ -529,6 +519,25 @@ MA 02110-1301, USA.
 - (void) cxx_setPopulatorSetting:(const std::string &)key to:(const oo::PList &)setting;	// a null setting removes
 - (BOOL) deterministicPopulation;
 - (void) populateSystemFromDictionariesWithSun:(OOSunEntity *)sun andPlanet:(OOPlanetEntity *)planet;
+
+@end
+
+
+// Slice 5 of docs/phases/3-slices/Universe.md: members of cxx::Universe, forwarded by the
+// category of the same name in Universe+ObjCBridge.mm (the class's @implementation, still in
+// Universe.mm, stays complete).
+@interface Universe (OOSlice5)
+
+- (HPVector) cxx_locationByCode:(const std::string &)code withSun:(OOSunEntity *)sun andPlanet:(OOPlanetEntity *)planet;
+- (void) setAmbientLightLevel:(float)newValue;
+- (float) ambientLightLevel;
+- (void) setLighting;
+- (void) forceLightSwitch;
+- (void) setMainLightPosition: (Vector) sunPos;
+- (ShipEntity *) addShipWithRole:(const std::string &)desc launchPos:(HPVector)launchPos rfactor:(GLfloat)rfactor;
+- (void) cxx_addShipWithRole:(const std::string &) desc nearRouteOneAt:(double) route_fraction;
+- (HPVector) cxx_coordinatesForPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system returningScalar:(GLfloat*) my_scalar;
+- (std::optional<std::string>) cxx_expressPosition:(HPVector) pos inCoordinateSystem:(const std::string &) system;
 
 @end
 
