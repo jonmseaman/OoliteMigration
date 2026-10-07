@@ -1073,6 +1073,39 @@ public:
 	void markTargetForOffence(const std::string &valueString);
 	void storeTarget();
 
+	// ShipEntityAI.mm slice 4: PureAI part 3: stored targets, nearest-ship scans, stations, script actions, beacons.
+	void recallStoredTarget();
+	void scanForRocks();
+	void setDestinationToDockingAbort();
+	void requestNewTarget();
+	void rollD(const std::string &die_number);
+	void scanForNearestShipWithPrimaryRole(const std::string &scanRole);
+	void scanForNearestShipHavingRole(const std::string &scanRole);
+	void scanForNearestShipWithAnyPrimaryRole(const std::string &scanRoles);
+	void scanForNearestShipHavingAnyRole(const std::string &scanRoles);
+	void scanForNearestShipWithScanClass(const std::string &scanScanClass);
+	void scanForNearestShipWithoutPrimaryRole(const std::string &scanRole);
+	void scanForNearestShipNotHavingRole(const std::string &scanRole);
+	void scanForNearestShipWithoutAnyPrimaryRole(const std::string &scanRoles);
+	void scanForNearestShipNotHavingAnyRole(const std::string &scanRoles);
+	void scanForNearestShipWithoutScanClass(const std::string &scanScanClass);
+	void scanForNearestShipMatchingPredicate(const std::string &predicateExpression);
+	void setCoordinates(const std::string &system_x_y_z);
+	void checkForNormalSpace();
+	void setTargetToRandomStation();
+	void setTargetToLastStation();
+	void addFuel(const std::string &fuel_number);
+	void scriptActionOnTarget(const std::string &action);
+	void safeScriptActionOnTarget(const std::string &action);
+	void sendScriptMessage(const std::string &message);
+	void ai_throwSparks();
+	void explodeSelf();
+	void ai_debugMessage(const std::string &message);
+	void targetFirstBeaconWithCode(const std::string &code);
+	void targetNextBeaconWithCode(const std::string &code);
+	void setRacepointsFromTarget();
+	void performFlyRacepoints();
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired

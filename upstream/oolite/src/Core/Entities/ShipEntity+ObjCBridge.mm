@@ -1223,3 +1223,41 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 - (void) storeTarget	{ _cxxShip->storeTarget(); }
 
 @end
+
+
+// ShipEntityAI.mm slice 4 (bead oo-lqyhf): the category ShipEntity (PureAI).
+@implementation ShipEntity (PureAI)
+
+- (void) recallStoredTarget	{ _cxxShip->recallStoredTarget(); }
+- (void) scanForRocks	{ _cxxShip->scanForRocks(); }
+- (void) setDestinationToDockingAbort	{ _cxxShip->setDestinationToDockingAbort(); }
+- (void) requestNewTarget	{ _cxxShip->requestNewTarget(); }
+- (void) rollD:(const std::string &)die_number	{ _cxxShip->rollD(die_number); }
+- (void) scanForNearestShipWithPrimaryRole:(const std::string &)scanRole	{ _cxxShip->scanForNearestShipWithPrimaryRole(scanRole); }
+- (void) scanForNearestShipHavingRole:(const std::string &)scanRole	{ _cxxShip->scanForNearestShipHavingRole(scanRole); }
+- (void) scanForNearestShipWithAnyPrimaryRole:(const std::string &)scanRoles	{ _cxxShip->scanForNearestShipWithAnyPrimaryRole(scanRoles); }
+- (void) scanForNearestShipHavingAnyRole:(const std::string &)scanRoles	{ _cxxShip->scanForNearestShipHavingAnyRole(scanRoles); }
+- (void) scanForNearestShipWithScanClass:(const std::string &)scanScanClass	{ _cxxShip->scanForNearestShipWithScanClass(scanScanClass); }
+- (void) scanForNearestShipWithoutPrimaryRole:(const std::string &)scanRole	{ _cxxShip->scanForNearestShipWithoutPrimaryRole(scanRole); }
+- (void) scanForNearestShipNotHavingRole:(const std::string &)scanRole	{ _cxxShip->scanForNearestShipNotHavingRole(scanRole); }
+- (void) scanForNearestShipWithoutAnyPrimaryRole:(const std::string &)scanRoles	{ _cxxShip->scanForNearestShipWithoutAnyPrimaryRole(scanRoles); }
+- (void) scanForNearestShipNotHavingAnyRole:(const std::string &)scanRoles	{ _cxxShip->scanForNearestShipNotHavingAnyRole(scanRoles); }
+- (void) scanForNearestShipWithoutScanClass:(const std::string &)scanScanClass	{ _cxxShip->scanForNearestShipWithoutScanClass(scanScanClass); }
+- (void) scanForNearestShipMatchingPredicate:(const std::string &)predicateExpression	{ _cxxShip->scanForNearestShipMatchingPredicate(predicateExpression); }
+- (void) setCoordinates:(const std::string &)system_x_y_z	{ _cxxShip->setCoordinates(system_x_y_z); }
+- (void) checkForNormalSpace	{ _cxxShip->checkForNormalSpace(); }
+- (void) setTargetToRandomStation	{ _cxxShip->setTargetToRandomStation(); }
+- (void) setTargetToLastStation	{ _cxxShip->setTargetToLastStation(); }
+- (void) addFuel:(const std::string &)fuel_number	{ _cxxShip->addFuel(fuel_number); }
+- (void) scriptActionOnTarget:(const std::string &)action	{ _cxxShip->scriptActionOnTarget(action); }
+- (void) safeScriptActionOnTarget:(const std::string &)action	{ _cxxShip->safeScriptActionOnTarget(action); }
+- (void) sendScriptMessage:(const std::string &)message	{ _cxxShip->sendScriptMessage(message); }
+- (void) ai_throwSparks	{ _cxxShip->ai_throwSparks(); }
+- (void) explodeSelf	{ _cxxShip->explodeSelf(); }
+- (void) ai_debugMessage:(const std::string &)message	{ _cxxShip->ai_debugMessage(message); }
+- (void) targetFirstBeaconWithCode:(const std::string &)code	{ _cxxShip->targetFirstBeaconWithCode(code); }
+- (void) targetNextBeaconWithCode:(const std::string &)code	{ _cxxShip->targetNextBeaconWithCode(code); }
+- (void) setRacepointsFromTarget	{ _cxxShip->setRacepointsFromTarget(); }
+- (void) performFlyRacepoints	{ _cxxShip->performFlyRacepoints(); }
+
+@end

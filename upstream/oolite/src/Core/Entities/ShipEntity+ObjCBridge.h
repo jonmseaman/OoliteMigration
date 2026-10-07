@@ -1451,6 +1451,120 @@ unsigned argc = sizeof argv / sizeof *argv; \
 @end
 
 
+// The category ShipEntity (PureAI) of ShipEntityAI.mm, slice 4 of docs/phases/3-slices/ShipEntityAI.md
+// (bead oo-lqyhf): members of cxx::ShipEntity defined in that file (ADR-0056 amendment oo-42dr),
+// forwarded by the category of the same name in ShipEntity+ObjCBridge.mm.
+@interface ShipEntity (PureAI)
+
+// Methods used only by AI.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+- (void) recallStoredTarget;
+
+- (void) scanForRocks;
+
+- (void) setDestinationToDockingAbort;
+
+- (void) requestNewTarget;
+
+- (void) rollD:(const std::string &)die_number;	// called by name (ADR-0055 item 5)
+
+- (void) scanForNearestShipWithPrimaryRole:(const std::string &)scanRole;	// called by name (ADR-0055 item 5)
+- (void) scanForNearestShipHavingRole:(const std::string &)scanRole;	// called by name (ADR-0055 item 5)
+- (void) scanForNearestShipWithAnyPrimaryRole:(const std::string &)scanRoles;	// called by name (ADR-0055 item 5)
+- (void) scanForNearestShipHavingAnyRole:(const std::string &)scanRoles;	// called by name (ADR-0055 item 5)
+- (void) scanForNearestShipWithScanClass:(const std::string &)scanScanClass;	// called by name (ADR-0055 item 5)
+
+- (void) scanForNearestShipWithoutPrimaryRole:(const std::string &)scanRole;	// called by name (ADR-0055 item 5)
+- (void) scanForNearestShipNotHavingRole:(const std::string &)scanRole;	// called by name (ADR-0055 item 5)
+- (void) scanForNearestShipWithoutAnyPrimaryRole:(const std::string &)scanRoles;	// called by name (ADR-0055 item 5)
+- (void) scanForNearestShipNotHavingAnyRole:(const std::string &)scanRoles;	// called by name (ADR-0055 item 5)
+- (void) scanForNearestShipWithoutScanClass:(const std::string &)scanScanClass;	// called by name (ADR-0055 item 5)
+
+- (void) setCoordinates:(const std::string &)system_x_y_z;	// called by name (ADR-0055 item 5)
+
+- (void) checkForNormalSpace;
+
+- (void) setTargetToRandomStation;
+- (void) setTargetToLastStation;
+
+- (void) addFuel:(const std::string &)fuel_number;	// called by name (ADR-0055 item 5)
+
+- (void) scriptActionOnTarget:(const std::string &)action;	// called by name (ADR-0055 item 5)
+
+- (void) sendScriptMessage:(const std::string &)message;	// called by name (ADR-0055 item 5)
+
+- (void) ai_throwSparks;
+
+- (void) explodeSelf;
+
+- (void) ai_debugMessage:(const std::string &)message;	// called by name (ADR-0055 item 5)
+
+// racing code.
+- (void) targetFirstBeaconWithCode:(const std::string &)code;	// called by name (ADR-0055 item 5)
+- (void) targetNextBeaconWithCode:(const std::string &)code;	// called by name (ADR-0055 item 5)
+- (void) setRacepointsFromTarget;
+- (void) performFlyRacepoints;
+
+// defense targets 
+
+- (void) scanForNearestShipMatchingPredicate:(const std::string &)predicateExpression;
+- (void) safeScriptActionOnTarget:(const std::string &)action;
+
+@end
+
+
 // The sends of ShipEntity.mm's C functions to classes they reach as Objective-C objects (amendment
 // oo-9ht.139 item 3); deleted with this header.
 double ShipEntityStellarBodyRadius(Entity<OOStellarBody> *stellar);	// [stellar radius]
