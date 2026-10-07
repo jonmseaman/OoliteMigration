@@ -920,3 +920,13 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 - (double) ballTrackLeadingTarget:(double)delta_t atTarget:(Entity *)target	{ return _cxxShip->ballTrackLeadingTarget(delta_t, target); }
 
 @end
+
+
+@implementation ShipEntity (OOSlice25)
+
+- (void) setEvasiveJink:(GLfloat)z	{ _cxxShip->setEvasiveJink(z); }
+- (void) evasiveAction:(double)delta_t	{ _cxxShip->evasiveAction(delta_t); }
+- (double) trackPrimaryTarget:(double)delta_t :(BOOL)retreat	{ return _cxxShip->trackPrimaryTarget(delta_t, retreat); }
+- (double) trackSideTarget:(double)delta_t :(BOOL)leftside	{ return _cxxShip->trackSideTarget(delta_t, leftside); }
+
+@end

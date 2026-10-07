@@ -742,6 +742,12 @@ public:
 	void trackOntoTarget(double delta_t, GLfloat dp);
 	double ballTrackLeadingTarget(double delta_t, ::Entity *target);
 
+	// Slice 25: evasive jink, primary and side target tracking.
+	void setEvasiveJink(GLfloat z);
+	void evasiveAction(double delta_t);
+	double trackPrimaryTarget(double delta_t, bool retreat);
+	double trackSideTarget(double delta_t, bool leftside);
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired

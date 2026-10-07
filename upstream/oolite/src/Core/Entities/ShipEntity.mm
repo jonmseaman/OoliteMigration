@@ -516,426 +516,6 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 }
 
 
-- (void) setEvasiveJink:(GLfloat) z
-{
-	if (_cxxShip->accuracy < COMBAT_AI_ISNT_AWFUL)
-	{
-		_cxxShip->jink = kZeroVector;
-	}
-	else 
-	{
-		_cxxShip->jink.x = (ranrot_rand() % 256) - 128.0;
-		_cxxShip->jink.y = (ranrot_rand() % 256) - 128.0;
-		_cxxShip->jink.z = z;
-		
-		// make sure we don't accidentally have near-zero jink
-		if (_cxxShip->jink.x < 0.0) 
-		{
-			_cxxShip->jink.x -= 128.0;
-		}
-		else
-		{
-			_cxxShip->jink.x += 128.0;
-		}
-		if (_cxxShip->jink.y < 0) 
-		{
-			_cxxShip->jink.y -= 128.0;
-		}
-		else
-		{
-			_cxxShip->jink.y += 128.0;
-		}
-	}
-}
-
-
-- (void) evasiveAction:(double) delta_t
-{
-	_cxxShip->stick_roll = _cxxShip->flightRoll;	//desired roll and pitch
-	_cxxShip->stick_pitch = _cxxShip->flightPitch;
-
-	ShipEntity* target = [self primaryTarget];
-	if (!target)   // leave now!
-	{
-		[self noteLostTargetAndGoIdle];	// NOTE: was AI message: rather than reactToMessage:
-		return;
-	}
-
-	double agreement = dot_product(_cxxShip->v_right,target->_cxxShip->v_right);
-	if (agreement > -0.3 && agreement < 0.3)
-	{
-		_cxxShip->stick_roll = 0.0;
-	}
-	else
-	{
-		if (_cxxShip->stick_roll >= 0.0) {
-			_cxxShip->stick_roll = _cxxShip->max_flight_roll;
-		} else {
-			_cxxShip->stick_roll = -_cxxShip->max_flight_roll;
-		}
-	}
-	if (_cxxShip->stick_pitch >= 0.0) {
-		_cxxShip->stick_pitch = _cxxShip->max_flight_pitch;
-	} else {
-		_cxxShip->stick_pitch = -_cxxShip->max_flight_pitch;
-	}
-	
-  [self applySticks:delta_t];
-}
-
-
-- (double) trackPrimaryTarget:(double) delta_t :(BOOL) retreat
-{
-	Entity*	target = [self primaryTarget];
-
-	if (!target)   // leave now!
-	{
-		[self noteLostTargetAndGoIdle];	// NOTE: was AI message: rather than reactToMessage:
-		return 0.0;
-	}
-
-	if (![self canStillTrackPrimaryTarget])
-	{
-		[self noteLostTargetAndGoIdle];	// NOTE: was AI message: rather than reactToMessage:
-		return 0.0;
-	}
-
-	/* 1.81 change: do the above check first: if a missile can't be
-	 * fired outside scanner range it should self-destruct if the
-	 * target gets far enough away (it's going to miss anyway) -
-	 * CIM */
-	if (_cxxEntity->scanClass == CLASS_MISSILE)
-		return [self missileTrackPrimaryTarget: delta_t];
-
-	GLfloat  d_forward, d_up, d_right;
-	
-	Vector  relPos = HPVectorToVector(HPvector_subtract([self calculateTargetPosition], _cxxEntity->position));
-	
-	double	range2 = HPmagnitude2(HPvector_subtract([target position], _cxxEntity->position));
-
-	//jink if retreating
-	if (retreat) // calculate jink position when flying away from target.
-	{
-		Vector vx, vy, vz;
-		if (target->_cxxEntity->isShip)
-		{
-			ShipEntity* targetShip = (ShipEntity*)target;
-			vx = targetShip->_cxxShip->v_right;
-			vy = targetShip->_cxxShip->v_up;
-			vz = targetShip->_cxxShip->v_forward;
-		}
-		else
-		{
-			Quaternion q = target->_cxxEntity->orientation;
-			vx = vector_right_from_quaternion(q);
-			vy = vector_up_from_quaternion(q);
-			vz = vector_forward_from_quaternion(q);
-		}
-		
-		BOOL avoidCollision = NO;
-		if (range2 < _cxxEntity->collision_radius * target->_cxxEntity->collision_radius * 100.0) // Check direction within 10 * collision radius.
-		{
-			Vector targetDirection = kBasisZVector;
-			if (!vector_equal(relPos, kZeroVector))  targetDirection = vector_normal(relPos);
-			avoidCollision  =  (dot_product(targetDirection, _cxxShip->v_forward) > -0.1); // is flying toward target or only slightly outward.
-		}
-		
-		GLfloat dist_adjust_factor = 1.0;
-		if (_cxxShip->accuracy >= COMBAT_AI_FLEES_BETTER)
-		{
-			double	range = magnitude(relPos);
-			if (range > 2000.0)
-			{
-				dist_adjust_factor = range / 2000.0;
-				if (_cxxShip->accuracy >= COMBAT_AI_FLEES_BETTER_2)
-				{
-					dist_adjust_factor *= 3;
-				}
-			}
-			if (_cxxShip->jink.x == 0.0 && _cxxShip->behaviour != BEHAVIOUR_RUNNING_DEFENSE)
-			{ // test for zero jink and correct
-				[self setEvasiveJink:400.0];
-			}
-		}
-
-		if (!avoidCollision)  // it is safe to jink
-		{
-			relPos.x += (_cxxShip->jink.x * vx.x + _cxxShip->jink.y * vy.x + _cxxShip->jink.z * vz.x) * dist_adjust_factor;
-			relPos.y += (_cxxShip->jink.x * vx.y + _cxxShip->jink.y * vy.y + _cxxShip->jink.z * vz.y) * dist_adjust_factor;
-			relPos.z += (_cxxShip->jink.x * vx.z + _cxxShip->jink.y * vy.z + _cxxShip->jink.z * vz.z);
-		}
-
-	}
-
-	if (!vector_equal(relPos, kZeroVector))  relPos = vector_normal(relPos);
-	else  relPos.z = 1.0;
-
-	double	max_cos = [self currentAimTolerance];
-
-	_cxxShip->stick_roll = 0.0;	//desired roll and pitch
-	_cxxShip->stick_pitch = 0.0;
-
-	double reverse = (retreat)? -1.0: 1.0;
-
-	double min_d = 0.004; // ~= 40m at 10km
-	int max_factor = 8;
-	double r_max_factor = 0.125;
-	if (!retreat)
-	{	
-		if (_cxxShip->accuracy >= COMBAT_AI_TRACKS_CLOSER)
-		{ 
-			// much greater precision in combat
-			if (_cxxShip->max_flight_pitch > 1.0)
-			{
-				max_factor = floor(_cxxShip->max_flight_pitch/0.125);
-				r_max_factor = 1.0/max_factor;
-			}
-			min_d = 0.0004; // 10 times more precision ~= 4m at 10km
-			max_factor *= 3;
-			r_max_factor /= 3.0;
-		}
-		else if (_cxxShip->accuracy >= COMBAT_AI_ISNT_AWFUL)
-		{
-			// slowly improve precision to target, but only if missing
-			min_d -= 0.0001 * [self missedShots];
-			if (min_d < 0.001)
-			{
-				min_d = 0.001;
-				max_factor *= 2;
-				r_max_factor /= 2.0;
-			}
-		}
-	}
-
-	d_right		=   dot_product(relPos, _cxxShip->v_right);
-	d_up		=   dot_product(relPos, _cxxShip->v_up);
-	d_forward   =   dot_product(relPos, _cxxShip->v_forward);	// == cos of angle between v_forward and vector to target
-
-	if (d_forward * reverse > max_cos)	// on_target!
-	{
-		return d_forward;
-	}
-
-	// begin rule-of-thumb manoeuvres
-	_cxxShip->stick_pitch = 0.0;
-	_cxxShip->stick_roll = 0.0;
-
-
-	if ((reverse * d_forward < -0.5) && !_cxxShip->pitching_over) // we're going the wrong way!
-		_cxxShip->pitching_over = YES;
-
-	if (_cxxShip->pitching_over)
-	{
-		if (reverse * d_up > 0) // pitch up
-			_cxxShip->stick_pitch = -_cxxShip->max_flight_pitch;
-		else
-			_cxxShip->stick_pitch = _cxxShip->max_flight_pitch;
-		_cxxShip->pitching_over = (reverse * d_forward < 0.707);
-	}
-
-	// check if we are flying toward the destination..
-	if ((d_forward < max_cos)||(retreat))	// not on course so we must adjust controls..
-	{
-		if (d_forward < -max_cos)  // hack to avoid just flying away from the destination
-		{
-			d_up = min_d * 2.0;
-		}
-
-		if (d_up > min_d)
-		{
-			int factor = sqrt(fabs(d_right) / fabs(min_d));
-			if (factor > max_factor)
-				factor = max_factor;
-			if (d_right > min_d)
-				_cxxShip->stick_roll = - _cxxShip->max_flight_roll * r_max_factor * factor; // note#
-			if (d_right < -min_d)
-				_cxxShip->stick_roll = + _cxxShip->max_flight_roll * r_max_factor * factor; // note#
-		}
-		if (d_up < -min_d)
-		{
-			int factor = sqrt(fabs(d_right) / fabs(min_d));
-			if (factor > max_factor)
-				factor = max_factor;
-			if (d_right > min_d)
-				_cxxShip->stick_roll = + _cxxShip->max_flight_roll * r_max_factor * factor; // note#
-			if (d_right < -min_d)
-				_cxxShip->stick_roll = - _cxxShip->max_flight_roll * r_max_factor * factor; // note#
-		}
-
-		if (_cxxShip->stick_roll == 0.0)
-		{
-			int factor = sqrt(fabs(d_up) / fabs(min_d));
-			if (factor > max_factor)
-				factor = max_factor;
-			if (d_up > min_d)
-				_cxxShip->stick_pitch = - _cxxShip->max_flight_pitch * reverse * r_max_factor * factor;
-			if (d_up < -min_d)
-				_cxxShip->stick_pitch = + _cxxShip->max_flight_pitch * reverse * r_max_factor * factor;
-		}
-
-		if (_cxxShip->accuracy >= COMBAT_AI_ISNT_AWFUL)
-		{
-			// don't overshoot target (helps accuracy at low frame rates)
-			if (fabs(d_right) < fabs(_cxxShip->stick_roll) * delta_t) 
-			{
-				_cxxShip->stick_roll = fabs(d_right) / delta_t * (_cxxShip->stick_roll<0 ? -1 : 1);
-			}
-			if (fabs(d_up) < fabs(_cxxShip->stick_pitch) * delta_t) 
-			{
-				_cxxShip->stick_pitch = fabs(d_up) / delta_t * (_cxxShip->stick_pitch<0 ? -0.9 : 0.9);
-			}
-		}
-
-	}
-	/*	#  note
-		Eric 9-9-2010: Removed the "reverse" variable from the stick_roll calculation. This was mathematical wrong and
-		made the ship roll in the wrong direction, preventing the ship to fly away in a straight line from the target.
-		This means all the places were a jink was set, this jink never worked correctly. The main reason a ship still
-		managed to turn at close range was probably by the fail-safe mechanisme with the "pitching_over" variable.
-		The jink was programmed to do nothing within 500 meters of the ship and just fly away in direct line from the target
-		in that range. Because of the bug the ships always rolled to the wrong side needed to fly away in direct line
-		resulting in making it a difficult target.
-		After fixing the bug, the ship realy flew away in direct line during the first 500 meters, making it a easy target
-		for the player. All jink settings are retested and changed to give a turning behaviour that felt like the old
-		situation, but now more deliberately set.
-	 */
-
-	// end rule-of-thumb manoeuvres
-	_cxxShip->stick_yaw = 0.0;
-	
-	[self applySticks:delta_t];
-
-	if (retreat)
-		d_forward *= d_forward;	// make positive AND decrease granularity
-
-	if (d_forward < 0.0)
-		return 0.0;
-
-	if ((!_cxxShip->flightRoll)&&(!_cxxShip->flightPitch))	// no correction
-		return 1.0;
-
-	return d_forward;
-}
-
-
-- (double) trackSideTarget:(double) delta_t :(BOOL) leftside
-{
-	Entity*	target = [self primaryTarget];
-
-	if (!target)   // leave now!
-	{
-		[self noteLostTargetAndGoIdle];	// NOTE: was AI message: rather than reactToMessage:
-		return 0.0;
-	}
-
-	if (![self canStillTrackPrimaryTarget])
-	{
-		[self noteLostTargetAndGoIdle];	// NOTE: was AI message: rather than reactToMessage:
-		return 0.0;
-	}
-
-
-	if (_cxxEntity->scanClass == CLASS_MISSILE) // never?
-		return [self missileTrackPrimaryTarget: delta_t];
-
-	GLfloat  d_forward, d_up, d_right;
-	
-	Vector  relPos = HPVectorToVector(HPvector_subtract([self calculateTargetPosition], _cxxEntity->position));
-
-
-	if (!vector_equal(relPos, kZeroVector))  relPos = vector_normal(relPos);
-	else  relPos.z = 1.0;
-
-// worse shots with side lasers than fore/aft, in general
-
-	double	max_cos = [self currentAimTolerance];
-
-	_cxxShip->stick_roll = 0.0;	//desired roll and pitch
-	_cxxShip->stick_pitch = 0.0;
-	_cxxShip->stick_yaw = 0.0;
-
-	double reverse = (leftside)? -1.0: 1.0;
-
-	double min_d = 0.004;
-	if (_cxxShip->accuracy >= COMBAT_AI_TRACKS_CLOSER) 
-	{
-		min_d = 0.002;
-	}
-	int max_factor = 8;
-	double r_max_factor = 0.125;
-
-	d_right		=   dot_product(relPos, _cxxShip->v_right);
-	d_up		=   dot_product(relPos, _cxxShip->v_up);
-	d_forward   =   dot_product(relPos, _cxxShip->v_forward);	// == cos of angle between v_forward and vector to target
-
-	if (d_right * reverse > max_cos)	// on_target!
-	{
-		return d_right * reverse;
-	}
-
-	// begin rule-of-thumb manoeuvres
-	_cxxShip->stick_pitch = 0.0;
-	_cxxShip->stick_roll = 0.0;
-	_cxxShip->stick_yaw = 0.0;
-
-	// check if we are flying toward the destination..
-	if ((d_right * reverse < max_cos))	// not on course so we must adjust controls..
-	{
-		if (d_right < -max_cos)  // hack to avoid just pointing away from the destination
-		{
-			d_forward = min_d * 2.0;
-		}
-
-		if (d_forward > min_d)
-		{
-			int factor = sqrt(fabs(d_up) / fabs(min_d));
-			if (factor > max_factor)
-				factor = max_factor;
-			if (d_up > min_d)
-				_cxxShip->stick_pitch = + _cxxShip->max_flight_pitch * r_max_factor * factor; // note#
-			if (d_up < -min_d)
-				_cxxShip->stick_pitch = - _cxxShip->max_flight_pitch * r_max_factor * factor; // note#
-		}
-		if (d_forward < -min_d)
-		{
-			int factor = sqrt(fabs(d_up) / fabs(min_d));
-			if (factor > max_factor)
-				factor = max_factor;
-			if (d_up > min_d)
-				_cxxShip->stick_pitch = + _cxxShip->max_flight_pitch * r_max_factor * factor; // note#
-			if (d_up < -min_d)
-				_cxxShip->stick_pitch = - _cxxShip->max_flight_pitch * r_max_factor * factor; // note#
-		}
-
-		if (fabs(_cxxShip->stick_pitch) == 0.0 || fabs(d_forward) > 0.5)
-		{
-			_cxxShip->stick_pitch = 0.0;
-			int factor = sqrt(fabs(d_forward) / fabs(min_d));
-			if (factor > max_factor)
-				factor = max_factor;
-			if (d_forward > min_d)
-				_cxxShip->stick_yaw = - _cxxShip->max_flight_yaw * reverse * r_max_factor * factor;
-			if (d_forward < -min_d)
-			{
-				if (factor < max_factor/2.0) // compensate for forward thrust
-					factor *= 2.0;
-				_cxxShip->stick_yaw = + _cxxShip->max_flight_yaw * reverse * r_max_factor * factor;
-			}
-		}
-	}
-
-
-	// end rule-of-thumb manoeuvres
-
-	[self applySticks:delta_t];
-
-	if ((!_cxxShip->flightPitch)&&(!_cxxShip->flightYaw))	// no correction
-		return 1.0;
-
-	return d_right * reverse;
-}
-
-
 - (double) missileTrackPrimaryTarget:(double) delta_t
 {
 	Vector  relPos;
@@ -15453,6 +15033,438 @@ double ShipEntity::ballTrackLeadingTarget(double delta_t, ::Entity *target)
 
 
 }	// namespace cxx
+
+
+// Slice 25 of docs/phases/3-slices/ShipEntity.md (bead oo-k6wuw): evasive jink, primary and side
+// target tracking. The facade forwards each selector (ShipEntity+ObjCBridge.mm); sends to self stay
+// sends, so an Objective-C subclass's override still runs (ADR-0056 amendment oo-mvzmb).
+namespace cxx {
+
+void ShipEntity::setEvasiveJink(GLfloat z)
+{
+	if (accuracy < COMBAT_AI_ISNT_AWFUL)
+	{
+		jink = kZeroVector;
+	}
+	else 
+	{
+		jink.x = (ranrot_rand() % 256) - 128.0;
+		jink.y = (ranrot_rand() % 256) - 128.0;
+		jink.z = z;
+		
+		// make sure we don't accidentally have near-zero jink
+		if (jink.x < 0.0) 
+		{
+			jink.x -= 128.0;
+		}
+		else
+		{
+			jink.x += 128.0;
+		}
+		if (jink.y < 0) 
+		{
+			jink.y -= 128.0;
+		}
+		else
+		{
+			jink.y += 128.0;
+		}
+	}
+}
+
+
+void ShipEntity::evasiveAction(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	stick_roll = flightRoll;	//desired roll and pitch
+	stick_pitch = flightPitch;
+
+	::ShipEntity* target = [self primaryTarget];
+	if (!target)   // leave now!
+	{
+		[self noteLostTargetAndGoIdle];	// NOTE: was AI message: rather than reactToMessage:
+		return;
+	}
+
+	double agreement = dot_product(v_right,target->_cxxShip->v_right);
+	if (agreement > -0.3 && agreement < 0.3)
+	{
+		stick_roll = 0.0;
+	}
+	else
+	{
+		if (stick_roll >= 0.0) {
+			stick_roll = max_flight_roll;
+		} else {
+			stick_roll = -max_flight_roll;
+		}
+	}
+	if (stick_pitch >= 0.0) {
+		stick_pitch = max_flight_pitch;
+	} else {
+		stick_pitch = -max_flight_pitch;
+	}
+	
+  [self applySticks:delta_t];
+}
+
+
+double ShipEntity::trackPrimaryTarget(double delta_t, bool retreat)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::Entity*	target = [self primaryTarget];
+
+	if (!target)   // leave now!
+	{
+		[self noteLostTargetAndGoIdle];	// NOTE: was AI message: rather than reactToMessage:
+		return 0.0;
+	}
+
+	if (![self canStillTrackPrimaryTarget])
+	{
+		[self noteLostTargetAndGoIdle];	// NOTE: was AI message: rather than reactToMessage:
+		return 0.0;
+	}
+
+	/* 1.81 change: do the above check first: if a missile can't be
+	 * fired outside scanner range it should self-destruct if the
+	 * target gets far enough away (it's going to miss anyway) -
+	 * CIM */
+	if (scanClass == CLASS_MISSILE)
+		return [self missileTrackPrimaryTarget: delta_t];
+
+	GLfloat  d_forward, d_up, d_right;
+	
+	Vector  relPos = HPVectorToVector(HPvector_subtract([self calculateTargetPosition], position));
+	
+	double	range2 = HPmagnitude2(HPvector_subtract([target position], position));
+
+	//jink if retreating
+	if (retreat) // calculate jink position when flying away from target.
+	{
+		Vector vx, vy, vz;
+		if (target->_cxxEntity->isShip)
+		{
+			::ShipEntity* targetShip = (::ShipEntity*)target;
+			vx = targetShip->_cxxShip->v_right;
+			vy = targetShip->_cxxShip->v_up;
+			vz = targetShip->_cxxShip->v_forward;
+		}
+		else
+		{
+			Quaternion q = target->_cxxEntity->orientation;
+			vx = vector_right_from_quaternion(q);
+			vy = vector_up_from_quaternion(q);
+			vz = vector_forward_from_quaternion(q);
+		}
+		
+		BOOL avoidCollision = NO;
+		if (range2 < collision_radius * target->_cxxEntity->collision_radius * 100.0) // Check direction within 10 * collision radius.
+		{
+			Vector targetDirection = kBasisZVector;
+			if (!vector_equal(relPos, kZeroVector))  targetDirection = vector_normal(relPos);
+			avoidCollision  =  (dot_product(targetDirection, v_forward) > -0.1); // is flying toward target or only slightly outward.
+		}
+		
+		GLfloat dist_adjust_factor = 1.0;
+		if (accuracy >= COMBAT_AI_FLEES_BETTER)
+		{
+			double	range = magnitude(relPos);
+			if (range > 2000.0)
+			{
+				dist_adjust_factor = range / 2000.0;
+				if (accuracy >= COMBAT_AI_FLEES_BETTER_2)
+				{
+					dist_adjust_factor *= 3;
+				}
+			}
+			if (jink.x == 0.0 && behaviour != BEHAVIOUR_RUNNING_DEFENSE)
+			{ // test for zero jink and correct
+				[self setEvasiveJink:400.0];
+			}
+		}
+
+		if (!avoidCollision)  // it is safe to jink
+		{
+			relPos.x += (jink.x * vx.x + jink.y * vy.x + jink.z * vz.x) * dist_adjust_factor;
+			relPos.y += (jink.x * vx.y + jink.y * vy.y + jink.z * vz.y) * dist_adjust_factor;
+			relPos.z += (jink.x * vx.z + jink.y * vy.z + jink.z * vz.z);
+		}
+
+	}
+
+	if (!vector_equal(relPos, kZeroVector))  relPos = vector_normal(relPos);
+	else  relPos.z = 1.0;
+
+	double	max_cos = [self currentAimTolerance];
+
+	stick_roll = 0.0;	//desired roll and pitch
+	stick_pitch = 0.0;
+
+	double reverse = (retreat)? -1.0: 1.0;
+
+	double min_d = 0.004; // ~= 40m at 10km
+	int max_factor = 8;
+	double r_max_factor = 0.125;
+	if (!retreat)
+	{	
+		if (accuracy >= COMBAT_AI_TRACKS_CLOSER)
+		{ 
+			// much greater precision in combat
+			if (max_flight_pitch > 1.0)
+			{
+				max_factor = floor(max_flight_pitch/0.125);
+				r_max_factor = 1.0/max_factor;
+			}
+			min_d = 0.0004; // 10 times more precision ~= 4m at 10km
+			max_factor *= 3;
+			r_max_factor /= 3.0;
+		}
+		else if (accuracy >= COMBAT_AI_ISNT_AWFUL)
+		{
+			// slowly improve precision to target, but only if missing
+			min_d -= 0.0001 * [self missedShots];
+			if (min_d < 0.001)
+			{
+				min_d = 0.001;
+				max_factor *= 2;
+				r_max_factor /= 2.0;
+			}
+		}
+	}
+
+	d_right		=   dot_product(relPos, v_right);
+	d_up		=   dot_product(relPos, v_up);
+	d_forward   =   dot_product(relPos, v_forward);	// == cos of angle between v_forward and vector to target
+
+	if (d_forward * reverse > max_cos)	// on_target!
+	{
+		return d_forward;
+	}
+
+	// begin rule-of-thumb manoeuvres
+	stick_pitch = 0.0;
+	stick_roll = 0.0;
+
+
+	if ((reverse * d_forward < -0.5) && !pitching_over) // we're going the wrong way!
+		pitching_over = YES;
+
+	if (pitching_over)
+	{
+		if (reverse * d_up > 0) // pitch up
+			stick_pitch = -max_flight_pitch;
+		else
+			stick_pitch = max_flight_pitch;
+		pitching_over = (reverse * d_forward < 0.707);
+	}
+
+	// check if we are flying toward the destination..
+	if ((d_forward < max_cos)||(retreat))	// not on course so we must adjust controls..
+	{
+		if (d_forward < -max_cos)  // hack to avoid just flying away from the destination
+		{
+			d_up = min_d * 2.0;
+		}
+
+		if (d_up > min_d)
+		{
+			int factor = sqrt(fabs(d_right) / fabs(min_d));
+			if (factor > max_factor)
+				factor = max_factor;
+			if (d_right > min_d)
+				stick_roll = - max_flight_roll * r_max_factor * factor; // note#
+			if (d_right < -min_d)
+				stick_roll = + max_flight_roll * r_max_factor * factor; // note#
+		}
+		if (d_up < -min_d)
+		{
+			int factor = sqrt(fabs(d_right) / fabs(min_d));
+			if (factor > max_factor)
+				factor = max_factor;
+			if (d_right > min_d)
+				stick_roll = + max_flight_roll * r_max_factor * factor; // note#
+			if (d_right < -min_d)
+				stick_roll = - max_flight_roll * r_max_factor * factor; // note#
+		}
+
+		if (stick_roll == 0.0)
+		{
+			int factor = sqrt(fabs(d_up) / fabs(min_d));
+			if (factor > max_factor)
+				factor = max_factor;
+			if (d_up > min_d)
+				stick_pitch = - max_flight_pitch * reverse * r_max_factor * factor;
+			if (d_up < -min_d)
+				stick_pitch = + max_flight_pitch * reverse * r_max_factor * factor;
+		}
+
+		if (accuracy >= COMBAT_AI_ISNT_AWFUL)
+		{
+			// don't overshoot target (helps accuracy at low frame rates)
+			if (fabs(d_right) < fabs(stick_roll) * delta_t) 
+			{
+				stick_roll = fabs(d_right) / delta_t * (stick_roll<0 ? -1 : 1);
+			}
+			if (fabs(d_up) < fabs(stick_pitch) * delta_t) 
+			{
+				stick_pitch = fabs(d_up) / delta_t * (stick_pitch<0 ? -0.9 : 0.9);
+			}
+		}
+
+	}
+	/*	#  note
+		Eric 9-9-2010: Removed the "reverse" variable from the stick_roll calculation. This was mathematical wrong and
+		made the ship roll in the wrong direction, preventing the ship to fly away in a straight line from the target.
+		This means all the places were a jink was set, this jink never worked correctly. The main reason a ship still
+		managed to turn at close range was probably by the fail-safe mechanisme with the "pitching_over" variable.
+		The jink was programmed to do nothing within 500 meters of the ship and just fly away in direct line from the target
+		in that range. Because of the bug the ships always rolled to the wrong side needed to fly away in direct line
+		resulting in making it a difficult target.
+		After fixing the bug, the ship realy flew away in direct line during the first 500 meters, making it a easy target
+		for the player. All jink settings are retested and changed to give a turning behaviour that felt like the old
+		situation, but now more deliberately set.
+	 */
+
+	// end rule-of-thumb manoeuvres
+	stick_yaw = 0.0;
+	
+	[self applySticks:delta_t];
+
+	if (retreat)
+		d_forward *= d_forward;	// make positive AND decrease granularity
+
+	if (d_forward < 0.0)
+		return 0.0;
+
+	if ((!flightRoll)&&(!flightPitch))	// no correction
+		return 1.0;
+
+	return d_forward;
+}
+
+
+double ShipEntity::trackSideTarget(double delta_t, bool leftside)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::Entity*	target = [self primaryTarget];
+
+	if (!target)   // leave now!
+	{
+		[self noteLostTargetAndGoIdle];	// NOTE: was AI message: rather than reactToMessage:
+		return 0.0;
+	}
+
+	if (![self canStillTrackPrimaryTarget])
+	{
+		[self noteLostTargetAndGoIdle];	// NOTE: was AI message: rather than reactToMessage:
+		return 0.0;
+	}
+
+
+	if (scanClass == CLASS_MISSILE) // never?
+		return [self missileTrackPrimaryTarget: delta_t];
+
+	GLfloat  d_forward, d_up, d_right;
+	
+	Vector  relPos = HPVectorToVector(HPvector_subtract([self calculateTargetPosition], position));
+
+
+	if (!vector_equal(relPos, kZeroVector))  relPos = vector_normal(relPos);
+	else  relPos.z = 1.0;
+
+// worse shots with side lasers than fore/aft, in general
+
+	double	max_cos = [self currentAimTolerance];
+
+	stick_roll = 0.0;	//desired roll and pitch
+	stick_pitch = 0.0;
+	stick_yaw = 0.0;
+
+	double reverse = (leftside)? -1.0: 1.0;
+
+	double min_d = 0.004;
+	if (accuracy >= COMBAT_AI_TRACKS_CLOSER) 
+	{
+		min_d = 0.002;
+	}
+	int max_factor = 8;
+	double r_max_factor = 0.125;
+
+	d_right		=   dot_product(relPos, v_right);
+	d_up		=   dot_product(relPos, v_up);
+	d_forward   =   dot_product(relPos, v_forward);	// == cos of angle between v_forward and vector to target
+
+	if (d_right * reverse > max_cos)	// on_target!
+	{
+		return d_right * reverse;
+	}
+
+	// begin rule-of-thumb manoeuvres
+	stick_pitch = 0.0;
+	stick_roll = 0.0;
+	stick_yaw = 0.0;
+
+	// check if we are flying toward the destination..
+	if ((d_right * reverse < max_cos))	// not on course so we must adjust controls..
+	{
+		if (d_right < -max_cos)  // hack to avoid just pointing away from the destination
+		{
+			d_forward = min_d * 2.0;
+		}
+
+		if (d_forward > min_d)
+		{
+			int factor = sqrt(fabs(d_up) / fabs(min_d));
+			if (factor > max_factor)
+				factor = max_factor;
+			if (d_up > min_d)
+				stick_pitch = + max_flight_pitch * r_max_factor * factor; // note#
+			if (d_up < -min_d)
+				stick_pitch = - max_flight_pitch * r_max_factor * factor; // note#
+		}
+		if (d_forward < -min_d)
+		{
+			int factor = sqrt(fabs(d_up) / fabs(min_d));
+			if (factor > max_factor)
+				factor = max_factor;
+			if (d_up > min_d)
+				stick_pitch = + max_flight_pitch * r_max_factor * factor; // note#
+			if (d_up < -min_d)
+				stick_pitch = - max_flight_pitch * r_max_factor * factor; // note#
+		}
+
+		if (fabs(stick_pitch) == 0.0 || fabs(d_forward) > 0.5)
+		{
+			stick_pitch = 0.0;
+			int factor = sqrt(fabs(d_forward) / fabs(min_d));
+			if (factor > max_factor)
+				factor = max_factor;
+			if (d_forward > min_d)
+				stick_yaw = - max_flight_yaw * reverse * r_max_factor * factor;
+			if (d_forward < -min_d)
+			{
+				if (factor < max_factor/2.0) // compensate for forward thrust
+					factor *= 2.0;
+				stick_yaw = + max_flight_yaw * reverse * r_max_factor * factor;
+			}
+		}
+	}
+
+
+	// end rule-of-thumb manoeuvres
+
+	[self applySticks:delta_t];
+
+	if ((!flightPitch)&&(!flightYaw))	// no correction
+		return 1.0;
+
+	return d_right * reverse;
+}
+
+
+}	// namespace cxx
+
 
 
 

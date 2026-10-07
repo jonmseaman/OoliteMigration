@@ -215,10 +215,6 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 - (double) trackDestination:(double) delta_t :(BOOL) retreat;
 
 
-- (void) setEvasiveJink:(GLfloat) z;
-- (void) evasiveAction:(double) delta_t;
-- (double) trackPrimaryTarget:(double) delta_t :(BOOL) retreat;
-- (double) trackSideTarget:(double) delta_t :(BOOL) leftside;
 - (double) missileTrackPrimaryTarget:(double) delta_t;
 
 //return 0.0 if there is no primary target
@@ -1138,6 +1134,19 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (HPVector) distance_twelve: (GLfloat) dist withOffset:(GLfloat)offset;
 - (void) trackOntoTarget:(double) delta_t withDForward: (GLfloat) dp;
 - (double) ballTrackLeadingTarget:(double) delta_t atTarget:(Entity *)target;
+
+@end
+
+
+// Slice 25 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice25)
+
+- (void) setEvasiveJink:(GLfloat) z;
+- (void) evasiveAction:(double) delta_t;
+- (double) trackPrimaryTarget:(double) delta_t :(BOOL) retreat;
+- (double) trackSideTarget:(double) delta_t :(BOOL) leftside;
 
 @end
 
