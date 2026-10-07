@@ -273,6 +273,7 @@
 [oo-2g51] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_GuiDisplayGen && bash tools/tier-c.sh --only goldens
 [oo-6dvw] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_GuiDisplayGen && bash tools/tier-c.sh --only goldens
 [oo-bcz4] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_GuiDisplayGen && bash tools/tier-c.sh --only goldens
+[oo-v3ao] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_GuiDisplayGen && bash tools/tier-c.sh --only goldens
 [oo-60fwo] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntity test_Entity test_OOEntityWithDrawable && bash tools/tier-c.sh --only goldens
 [oo-jfno] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ResourceManager && bash tools/tier-c.sh --only goldens
 [oo-he11] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ResourceManager && bash tools/tier-c.sh --only goldens
