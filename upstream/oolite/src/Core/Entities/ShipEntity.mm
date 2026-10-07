@@ -91,6 +91,7 @@ MA 02110-1301, USA.
 #import "OOJSEngineTimeManagement.h"
 #import "OOPListGameTypes.h"
 #include "oofnd/objc/OOAssert.h"
+#include <objc/runtime.h>
 #include <string_view>
 #import "OOObjCPList.h"
 #include "oofnd/String.hpp"
@@ -554,385 +555,6 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	// Reject others
 	return NO;
 }
-
-
-#if OO_SALVAGE_SUPPORT
-
-
-- (void) pilotArrived
-{
-	[self setHulk:NO];
-	[self cxx_reactToAIMessage:"PILOT_ARRIVED" context:"flight update"];
-}
-#endif
-
-
-#ifndef NDEBUG
-- (void)dumpSelfState
-{
-	std::vector<std::string>	flags;
-	std::string				flagsString;
-
-	[super dumpSelfState];
-	
-	OO_LOG("dumpState.shipEntity", "Type: {}", [self cxx_shipDataKey].value_or("(null)"));
-	OO_LOG("dumpState.shipEntity", "Name: {}", _cxxShip->name.value_or("(null)"));
-	OO_LOG("dumpState.shipEntity", "Display Name: {}", [self displayName].value_or("(null)"));
-	OO_LOG("dumpState.shipEntity", "Roles: {}", oo::DescriptionOf([self roleSet]));
-	OO_LOG("dumpState.shipEntity", "Primary role: {}", _cxxShip->primaryRole.value_or("(null)"));
-	OO_LOG("dumpState.shipEntity", "Script: {}", oo::DescriptionOf(_cxxShip->script));
-	OO_LOG("dumpState.shipEntity", "Subentity count: {}", [self subEntityCount]);
-	OO_LOG("dumpState.shipEntity", "Behaviour: {}", cxx_OOStringFromBehaviour(_cxxShip->behaviour));
-	id target = [self primaryTarget];
-	if (target == nil)  target = @"<none>";
-	OO_LOG("dumpState.shipEntity", "Target: {}", oo::DescriptionOf(target));
-	OO_LOG("dumpState.shipEntity", "Destination: {}", cxx_HPVectorDescription(_cxxShip->_destination));
-	OO_LOG("dumpState.shipEntity", "Other destination: {}", cxx_HPVectorDescription(_cxxShip->coordinates));
-	OO_LOG("dumpState.shipEntity", "Waypoint count: {}", _cxxShip->number_of_navpoints);
-	OO_LOG("dumpState.shipEntity", "Desired speed: {:g}", _cxxShip->desired_speed);
-	OO_LOG("dumpState.shipEntity", "Thrust: {:g}", _cxxShip->thrust);
-	if ([self escortCount] != 0)  OO_LOG("dumpState.shipEntity", "Escort count: {}", static_cast<unsigned>([self escortCount]));
-	OO_LOG("dumpState.shipEntity", "Fuel: {}", _cxxShip->fuel);
-	OO_LOG("dumpState.shipEntity", "Fuel accumulator: {:g}", _cxxShip->fuel_accumulator);
-	OO_LOG("dumpState.shipEntity", "Missile count: {}", _cxxShip->missiles);
-	
-	if (_cxxShip->shipAI != nil && oo::log::willDisplay("dumpState.shipEntity.ai"))
-	{
-		OO_LOG("dumpState.shipEntity.ai", "{}", "AI:");
-		OOLogPushIndent();
-		OOLogIndent();
-		@try
-		{
-			[_cxxShip->shipAI dumpState];
-		}
-		@catch (id exception) {}
-		OOLogPopIndent();
-	}
-	OO_LOG("dumpState.shipEntity", "Accuracy: {:g}", _cxxShip->accuracy);
-	OO_LOG("dumpState.shipEntity", "Jink position: {}", VectorDescription(_cxxShip->jink));
-	OO_LOG("dumpState.shipEntity", "Frustration: {:g}", _cxxShip->frustration);
-	OO_LOG("dumpState.shipEntity", "Success factor: {:g}", _cxxShip->success_factor);
-	OO_LOG("dumpState.shipEntity", "Shots fired: {}", static_cast<unsigned>(_cxxShip->shot_counter));
-	OO_LOG("dumpState.shipEntity", "Time since shot: {:g}", [self shotTime]);
-	OO_LOG("dumpState.shipEntity", "Spawn time: {:g} ({:g} seconds ago)", [self spawnTime], [self timeElapsedSinceSpawn]);
-	if ([self isBeacon])
-	{
-		OO_LOG("dumpState.shipEntity", "Beacon code: {}", [self beaconCode].value_or("(null)"));
-	}
-	OO_LOG("dumpState.shipEntity", "Hull temperature: {:g}", _cxxShip->ship_temperature);
-	OO_LOG("dumpState.shipEntity", "Heat insulation: {:g}", [self heatInsulation]);
-	
-	#define ADD_FLAG_IF_SET(x)		if (x) { flags.push_back(#x); }
-	ADD_FLAG_IF_SET(_cxxShip->military_jammer_active);
-	ADD_FLAG_IF_SET(_cxxShip->docking_match_rotation);
-	ADD_FLAG_IF_SET(_cxxShip->pitching_over);
-	ADD_FLAG_IF_SET(_cxxShip->reportAIMessages);
-	ADD_FLAG_IF_SET(_cxxShip->being_mined);
-	ADD_FLAG_IF_SET(_cxxShip->being_fined);
-	ADD_FLAG_IF_SET(_cxxShip->isHulk);
-	ADD_FLAG_IF_SET(_cxxShip->trackCloseContacts);
-	ADD_FLAG_IF_SET(_cxxShip->isNearPlanetSurface);
-	ADD_FLAG_IF_SET(_cxxShip->isFrangible);
-	ADD_FLAG_IF_SET(_cxxShip->cloaking_device_active);
-	ADD_FLAG_IF_SET(_cxxShip->canFragment);
-	ADD_FLAG_IF_SET([self proximityAlert] != nil);
-	for (const std::string &flag : flags)
-	{
-		if (!flagsString.empty())  flagsString += ", ";
-		flagsString += flag;
-	}
-	if (flags.empty())  flagsString = "none";
-	OO_LOG("dumpState.shipEntity", "Flags: {}", flagsString);
-}
-#endif
-
-
-- (OOJSScript *)script
-{
-	return _cxxShip->script;
-}
-
-
-- (oo::PList)scriptInfo
-{
-	return _cxxShip->scriptInfo.isNull() ? oo::PList(oo::PList::Dict{}) : _cxxShip->scriptInfo;	// empty rather than null
-}
-
-
-- (void) overrideScriptInfo:(const oo::PList &)override
-{
-	if (_cxxShip->scriptInfo.isNull())  _cxxShip->scriptInfo = override;
-	else if (!override.isNull())
-	{
-		// both are dictionaries: a copy with the override's entries added, replacing duplicates
-		oo::PList::Dict newInfo = *_cxxShip->scriptInfo.getIf<oo::PList::Dict>();
-		for (const auto &[key, value] : *override.getIf<oo::PList::Dict>())  newInfo[key] = value;
-		_cxxShip->scriptInfo = oo::PList(std::move(newInfo));
-	}
-}
-
-
-- (Entity *)entityForShaderProperties
-{
-	return [self rootShipEntity];
-}
-
-- (void) setDemoShip: (OOScalar) rate
-{
-	_cxxShip->demoStartOrientation = _cxxEntity->orientation;
-	_cxxShip->demoRate = rate;
-	_cxxShip->isDemoShip = YES;
-	[self setPitch: 0.0f];
-	[self setRoll: 0.0f];
-}
-
-- (BOOL) isDemoShip
-{
-	return _cxxShip->isDemoShip;
-}
-
-- (void) setDemoStartTime: (OOTimeAbsolute) time
-{
-	_cxxShip->demoStartTime = time;
-}
-
-- (OOTimeAbsolute) getDemoStartTime
-{
-	return _cxxShip->demoStartTime;
-}
-
-// *** Script event dispatch.
-- (void) doScriptEvent:(ooscript::PropertyId)message
-{
-	ooscript::Context context = OOJSAcquireContext();
-	[self doScriptEvent:message inContext:context withArguments:NULL count:0];
-	OOJSRelinquishContext(context);
-}
-
-
-- (void) doScriptEvent:(ooscript::PropertyId)message withArgument:(id)argument
-{
-	ooscript::Context context = OOJSAcquireContext();
-	
-	ooscript::Value value = OOJSValueFromNativeObject(context, argument);
-	[self doScriptEvent:message inContext:context withArguments:&value count:1];
-	
-	OOJSRelinquishContext(context);
-}
-
-
-- (void) doScriptEvent:(ooscript::PropertyId)message
-		  withArgument:(id)argument1
-		   andArgument:(id)argument2
-{
-	ooscript::Context context = OOJSAcquireContext();
-	
-	ooscript::Value argv[2] = { OOJSValueFromNativeObject(context, argument1), OOJSValueFromNativeObject(context, argument2) };
-	[self doScriptEvent:message inContext:context withArguments:argv count:2];
-	
-	OOJSRelinquishContext(context);
-}
-
-
-- (void) cxx_doScriptEvent:(ooscript::PropertyId)message withPListArguments:(const std::vector<oo::PList> &)arguments
-{
-	ooscript::Context context = OOJSAcquireContext();
-	unsigned					i, argc;
-	ooscript::Value					*argv = NULL;
-
-	// Convert arguments to JS values and make them temporarily un-garbage-collectable.
-	argc = (unsigned)arguments.size();
-	if (argc != 0)
-	{
-		argv = (decltype(argv))malloc(sizeof *argv * argc);
-		if (argv != NULL)
-		{
-			for (i = 0; i != argc; ++i)
-			{
-				argv[i] = OOJSValueFromPList(context, arguments[i]);
-				OOJSAddGCValueRoot(context, &argv[i], "event parameter");
-			}
-		}
-		else  argc = 0;
-	}
-	
-	[self doScriptEvent:message inContext:context withArguments:argv count:argc];
-	
-	// Re-garbage-collectibalize the arguments and free the array.
-	if (argv != NULL)
-	{
-		for (i = 0; i != argc; ++i)
-		{
-			ooscript::removeValueRoot(context, &argv[i]);
-		}
-		free(argv);
-	}
-	
-	OOJSRelinquishContext(context);
-}
-
-
-- (void) doScriptEvent:(ooscript::PropertyId)message withArguments:(ooscript::Value *)argv count:(unsigned)argc
-{
-	ooscript::Context context = OOJSAcquireContext();
-	[self doScriptEvent:message inContext:context withArguments:argv count:argc];
-	OOJSRelinquishContext(context);
-}
-
-
-- (void) doScriptEvent:(ooscript::PropertyId)message inContext:(ooscript::Context)context withArguments:(ooscript::Value *)argv count:(unsigned)argc
-{
-	// This method is a bottleneck so that PlayerEntity can override at one point.
-	[_cxxShip->script callMethod:message inContext:context withArguments:argv count:argc result:NULL];
-	[_cxxShip->aiScript callMethod:message inContext:context withArguments:argv count:argc result:NULL];
-}
-
-
-- (void) cxx_reactToAIMessage:(const std::string &)message context:(const std::optional<std::string> &)debugContext
-{
-	[_cxxShip->shipAI cxx_reactToMessage:message context:debugContext];
-}
-
-
-- (void) sendAIMessage:(const std::string &)message
-{
-	[_cxxShip->shipAI message:message];
-}
-
-
-- (void) cxx_doScriptEvent:(ooscript::PropertyId)scriptEvent andReactToAIMessage:(const std::string &)aiMessage
-{
-	[self doScriptEvent:scriptEvent];
-	[self cxx_reactToAIMessage:aiMessage context:std::nullopt];
-}
-
-
-- (void) cxx_doScriptEvent:(ooscript::PropertyId)scriptEvent withArgument:(id)argument andReactToAIMessage:(const std::string &)aiMessage
-{
-	[self doScriptEvent:scriptEvent withArgument:argument];
-	[self cxx_reactToAIMessage:aiMessage context:std::nullopt];
-}
-
-
-// exposed for shaders; fake alert level
-// since NPCs don't have torus drive, they're never at condition green
-- (OOAlertCondition) alertCondition
-{
-	if ([self status] == STATUS_DOCKED) 
-	{
-		return ALERT_CONDITION_DOCKED;
-	}
-	if ([self hasHostileTarget] || _cxxEntity->energy < _cxxEntity->maxEnergy / 4)
-	{
-		return ALERT_CONDITION_RED;
-	}
-	return ALERT_CONDITION_YELLOW;
-}
-
-
-- (OOAlertCondition) realAlertCondition
-{
-	if ([self status] == STATUS_DOCKED) 
-	{
-		return ALERT_CONDITION_DOCKED;
-	}
-	if ([self hasHostileTarget])
-	{
-		return ALERT_CONDITION_RED;
-	}
-	else
-	{
-		ShipEntity *ship = nil;
-		double scanrange2 = _cxxShip->scannerRange * _cxxShip->scannerRange;
-		for (const auto &defenseTarget : [self cxx_defenseTargets])
-		{
-			ship = defenseTarget.get();
-			if ([ship hasHostileTarget] || ([ship isPlayer] && [PLAYER weaponsOnline]))
-			{
-				if (HPdistance2([ship position],_cxxEntity->position) < scanrange2)
-				{
-					return ALERT_CONDITION_RED;
-				}
-			}
-		}
-		// also need to check primary target separately
-		if ([self hasHostileTarget])
-		{
-			Entity *ptarget = [self primaryTargetWithoutValidityCheck];
-			if (ptarget != nil && [ptarget isShip])
-			{
-				ship = (ShipEntity *)ptarget;
-				if ([ship hasHostileTarget] || ([ship isPlayer] && [PLAYER weaponsOnline]))
-				{
-					if (HPdistance2([ship position],_cxxEntity->position) < scanrange2 * 1.5625)
-					{
-						return ALERT_CONDITION_RED;
-					}
-				}
-			}
-		}
-		if (_cxxShip->_group)
-		{
-			OOShipGroupCursor cursor(_cxxShip->_group);
-			ShipEntity *batch[16];
-			for (NSUInteger count = ShipGroupCursorBatch(cursor, batch); count != 0; count = ShipGroupCursorBatch(cursor, batch))
-			{
-				for (NSUInteger i = 0; i < count; i++)
-				{
-					ship = batch[i];
-					if ([ship hasHostileTarget] || ([ship isPlayer] && [PLAYER weaponsOnline]))
-					{
-						if (HPdistance2([ship position],_cxxEntity->position) < scanrange2)
-						{
-							return ALERT_CONDITION_RED;
-						}
-					}
-				}
-			}
-		}
-		if (_cxxShip->_escortGroup && _cxxShip->_group != _cxxShip->_escortGroup)
-		{
-			OOShipGroupCursor cursor(_cxxShip->_escortGroup);
-			ShipEntity *batch[16];
-			for (NSUInteger count = ShipGroupCursorBatch(cursor, batch); count != 0; count = ShipGroupCursorBatch(cursor, batch))
-			{
-				for (NSUInteger i = 0; i < count; i++)
-				{
-					ship = batch[i];
-					if ([ship hasHostileTarget] || ([ship isPlayer] && [PLAYER weaponsOnline]))
-					{
-						if (HPdistance2([ship position],_cxxEntity->position) < scanrange2)
-						{
-							return ALERT_CONDITION_RED;
-						}
-					}
-				}
-			}
-		}
-	}
-	return ALERT_CONDITION_YELLOW;
-}
-
-
-// Exposed to AI and scripts.
-- (void) doNothing
-{
-	
-}
-
-
-#ifndef NDEBUG
-- (std::optional<std::string>) descriptionForObjDump
-{
-	// DescriptionOf(nil) was "(null)"; preserve that for a disengaged super result.
-	std::string desc = oo::str::format("%s mass %g", [super descriptionForObjDump].value_or("(null)").c_str(), [self mass]);
-	if (![self isPlayer])
-	{
-		desc = oo::str::format("%s AI: %s", desc.c_str(), [[self getAI] cxx_shortDescriptionComponents].value_or("(null)").c_str());
-	}
-	return desc;
-}
-#endif
 
 @end
 
@@ -15650,23 +15272,420 @@ void ShipEntity::sendCoordinatesToPilot()
 }	// namespace cxx
 
 
+// Slice 34 of docs/phases/3-slices/ShipEntity.md (bead oo-nkyn3): salvage pilot, debug dump, script
+// info, demo ship, script events and AI reactions, alert condition, shader helpers. The facade
+// forwards each selector (ShipEntity+ObjCBridge.mm); sends to self stay sends, so an Objective-C
+// subclass's override still runs (ADR-0056 amendment oo-mvzmb).
+namespace cxx {
+
+#if OO_SALVAGE_SUPPORT
+void ShipEntity::pilotArrived()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self setHulk:NO];
+	[self cxx_reactToAIMessage:"PILOT_ARRIVED" context:"flight update"];
+}
+#endif
 
 
+#ifndef NDEBUG
+void ShipEntity::dumpSelfState()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	std::vector<std::string>	flags;
+	std::string				flagsString;
+
+	OOEntityWithDrawable::dumpSelfState();	// [super dumpSelfState]
+	
+	OO_LOG("dumpState.shipEntity", "Type: {}", [self cxx_shipDataKey].value_or("(null)"));
+	OO_LOG("dumpState.shipEntity", "Name: {}", name.value_or("(null)"));
+	OO_LOG("dumpState.shipEntity", "Display Name: {}", [self displayName].value_or("(null)"));
+	OO_LOG("dumpState.shipEntity", "Roles: {}", oo::DescriptionOf([self roleSet]));
+	OO_LOG("dumpState.shipEntity", "Primary role: {}", primaryRole.value_or("(null)"));
+	OO_LOG("dumpState.shipEntity", "Script: {}", oo::DescriptionOf(script));
+	OO_LOG("dumpState.shipEntity", "Subentity count: {}", [self subEntityCount]);
+	OO_LOG("dumpState.shipEntity", "Behaviour: {}", cxx_OOStringFromBehaviour(behaviour));
+	id target = [self primaryTarget];
+	if (target == nil)  target = @"<none>";
+	OO_LOG("dumpState.shipEntity", "Target: {}", oo::DescriptionOf(target));
+	OO_LOG("dumpState.shipEntity", "Destination: {}", cxx_HPVectorDescription(_destination));
+	OO_LOG("dumpState.shipEntity", "Other destination: {}", cxx_HPVectorDescription(coordinates));
+	OO_LOG("dumpState.shipEntity", "Waypoint count: {}", number_of_navpoints);
+	OO_LOG("dumpState.shipEntity", "Desired speed: {:g}", desired_speed);
+	OO_LOG("dumpState.shipEntity", "Thrust: {:g}", thrust);
+	if ([self escortCount] != 0)  OO_LOG("dumpState.shipEntity", "Escort count: {}", static_cast<unsigned>([self escortCount]));
+	OO_LOG("dumpState.shipEntity", "Fuel: {}", fuel);
+	OO_LOG("dumpState.shipEntity", "Fuel accumulator: {:g}", fuel_accumulator);
+	OO_LOG("dumpState.shipEntity", "Missile count: {}", missiles);
+	
+	if (shipAI != nil && oo::log::willDisplay("dumpState.shipEntity.ai"))
+	{
+		OO_LOG("dumpState.shipEntity.ai", "{}", "AI:");
+		OOLogPushIndent();
+		OOLogIndent();
+		@try
+		{
+			[shipAI dumpState];
+		}
+		@catch (id exception) {}
+		OOLogPopIndent();
+	}
+	OO_LOG("dumpState.shipEntity", "Accuracy: {:g}", accuracy);
+	OO_LOG("dumpState.shipEntity", "Jink position: {}", VectorDescription(jink));
+	OO_LOG("dumpState.shipEntity", "Frustration: {:g}", frustration);
+	OO_LOG("dumpState.shipEntity", "Success factor: {:g}", success_factor);
+	OO_LOG("dumpState.shipEntity", "Shots fired: {}", static_cast<unsigned>(shot_counter));
+	OO_LOG("dumpState.shipEntity", "Time since shot: {:g}", [self shotTime]);
+	OO_LOG("dumpState.shipEntity", "Spawn time: {:g} ({:g} seconds ago)", [self spawnTime], [self timeElapsedSinceSpawn]);
+	if ([self isBeacon])
+	{
+		OO_LOG("dumpState.shipEntity", "Beacon code: {}", [self beaconCode].value_or("(null)"));
+	}
+	OO_LOG("dumpState.shipEntity", "Hull temperature: {:g}", ship_temperature);
+	OO_LOG("dumpState.shipEntity", "Heat insulation: {:g}", [self heatInsulation]);
+	
+	#define ADD_FLAG_IF_SET(x)		if (x) { flags.push_back(#x); }
+	ADD_FLAG_IF_SET(military_jammer_active);
+	ADD_FLAG_IF_SET(docking_match_rotation);
+	ADD_FLAG_IF_SET(pitching_over);
+	ADD_FLAG_IF_SET(reportAIMessages);
+	ADD_FLAG_IF_SET(being_mined);
+	ADD_FLAG_IF_SET(being_fined);
+	ADD_FLAG_IF_SET(isHulk);
+	ADD_FLAG_IF_SET(trackCloseContacts);
+	ADD_FLAG_IF_SET(isNearPlanetSurface);
+	ADD_FLAG_IF_SET(isFrangible);
+	ADD_FLAG_IF_SET(cloaking_device_active);
+	ADD_FLAG_IF_SET(canFragment);
+	ADD_FLAG_IF_SET([self proximityAlert] != nil);
+	for (const std::string &flag : flags)
+	{
+		if (!flagsString.empty())  flagsString += ", ";
+		flagsString += flag;
+	}
+	if (flags.empty())  flagsString = "none";
+	OO_LOG("dumpState.shipEntity", "Flags: {}", flagsString);
+}
+#endif
 
 
+::OOJSScript *ShipEntity::getScript()
+{
+	return script;
+}
 
 
+oo::PList ShipEntity::getScriptInfo()
+{
+	return scriptInfo.isNull() ? oo::PList(oo::PList::Dict{}) : scriptInfo;	// empty rather than null
+}
 
 
+void ShipEntity::overrideScriptInfo(const oo::PList &override)
+{
+	if (scriptInfo.isNull())  scriptInfo = override;
+	else if (!override.isNull())
+	{
+		// both are dictionaries: a copy with the override's entries added, replacing duplicates
+		oo::PList::Dict newInfo = *scriptInfo.getIf<oo::PList::Dict>();
+		for (const auto &[key, value] : *override.getIf<oo::PList::Dict>())  newInfo[key] = value;
+		scriptInfo = oo::PList(std::move(newInfo));
+	}
+}
 
 
+::Entity *ShipEntity::entityForShaderProperties()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self rootShipEntity];
+}
 
+
+void ShipEntity::setDemoShip(OOScalar rate)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	demoStartOrientation = orientation;
+	demoRate = rate;
+	isDemoShip = YES;
+	[self setPitch: 0.0f];
+	[self setRoll: 0.0f];
+}
+
+
+bool ShipEntity::getIsDemoShip()
+{
+	return isDemoShip;
+}
+
+
+void ShipEntity::setDemoStartTime(OOTimeAbsolute time)
+{
+	demoStartTime = time;
+}
+
+
+OOTimeAbsolute ShipEntity::getDemoStartTime()
+{
+	return demoStartTime;
+}
+
+
+// *** Script event dispatch.
+void ShipEntity::doScriptEvent(ooscript::PropertyId message)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	ooscript::Context context = OOJSAcquireContext();
+	[self doScriptEvent:message inContext:context withArguments:NULL count:0];
+	OOJSRelinquishContext(context);
+}
+
+
+void ShipEntity::doScriptEvent(ooscript::PropertyId message, id argument)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	ooscript::Context context = OOJSAcquireContext();
+	
+	ooscript::Value value = OOJSValueFromNativeObject(context, argument);
+	[self doScriptEvent:message inContext:context withArguments:&value count:1];
+	
+	OOJSRelinquishContext(context);
+}
+
+
+void ShipEntity::doScriptEvent(ooscript::PropertyId message, id argument1, id argument2)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	ooscript::Context context = OOJSAcquireContext();
+	
+	ooscript::Value argv[2] = { OOJSValueFromNativeObject(context, argument1), OOJSValueFromNativeObject(context, argument2) };
+	[self doScriptEvent:message inContext:context withArguments:argv count:2];
+	
+	OOJSRelinquishContext(context);
+}
+
+
+void ShipEntity::doScriptEvent(ooscript::PropertyId message, const std::vector<oo::PList> &arguments)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	ooscript::Context context = OOJSAcquireContext();
+	unsigned					i, argc;
+	ooscript::Value					*argv = NULL;
+
+	// Convert arguments to JS values and make them temporarily un-garbage-collectable.
+	argc = (unsigned)arguments.size();
+	if (argc != 0)
+	{
+		argv = (decltype(argv))malloc(sizeof *argv * argc);
+		if (argv != NULL)
+		{
+			for (i = 0; i != argc; ++i)
+			{
+				argv[i] = OOJSValueFromPList(context, arguments[i]);
+				OOJSAddGCValueRoot(context, &argv[i], "event parameter");
+			}
+		}
+		else  argc = 0;
+	}
+	
+	[self doScriptEvent:message inContext:context withArguments:argv count:argc];
+	
+	// Re-garbage-collectibalize the arguments and free the array.
+	if (argv != NULL)
+	{
+		for (i = 0; i != argc; ++i)
+		{
+			ooscript::removeValueRoot(context, &argv[i]);
+		}
+		free(argv);
+	}
+	
+	OOJSRelinquishContext(context);
+}
+
+
+void ShipEntity::doScriptEvent(ooscript::PropertyId message, ooscript::Value *argv, unsigned argc)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	ooscript::Context context = OOJSAcquireContext();
+	[self doScriptEvent:message inContext:context withArguments:argv count:argc];
+	OOJSRelinquishContext(context);
+}
+
+
+void ShipEntity::doScriptEvent(ooscript::PropertyId message, ooscript::Context context, ooscript::Value *argv, unsigned argc)
+{
+	// This method is a bottleneck so that PlayerEntity can override at one point.
+	[script callMethod:message inContext:context withArguments:argv count:argc result:NULL];
+	[aiScript callMethod:message inContext:context withArguments:argv count:argc result:NULL];
+}
+
+
+void ShipEntity::reactToAIMessage(const std::string &message, const std::optional<std::string> &debugContext)
+{
+	[shipAI cxx_reactToMessage:message context:debugContext];
+}
+
+
+void ShipEntity::sendAIMessage(const std::string &message)
+{
+	[shipAI message:message];
+}
+
+
+void ShipEntity::doScriptEvent(ooscript::PropertyId scriptEvent, const std::string &aiMessage)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self doScriptEvent:scriptEvent];
+	[self cxx_reactToAIMessage:aiMessage context:std::nullopt];
+}
+
+
+void ShipEntity::doScriptEvent(ooscript::PropertyId scriptEvent, id argument, const std::string &aiMessage)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self doScriptEvent:scriptEvent withArgument:argument];
+	[self cxx_reactToAIMessage:aiMessage context:std::nullopt];
+}
+
+
+// exposed for shaders; fake alert level
+// since NPCs don't have torus drive, they're never at condition green
+OOAlertCondition ShipEntity::alertCondition()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if ([self status] == STATUS_DOCKED) 
+	{
+		return ALERT_CONDITION_DOCKED;
+	}
+	if ([self hasHostileTarget] || energy < maxEnergy / 4)
+	{
+		return ALERT_CONDITION_RED;
+	}
+	return ALERT_CONDITION_YELLOW;
+}
+
+
+OOAlertCondition ShipEntity::realAlertCondition()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if ([self status] == STATUS_DOCKED) 
+	{
+		return ALERT_CONDITION_DOCKED;
+	}
+	if ([self hasHostileTarget])
+	{
+		return ALERT_CONDITION_RED;
+	}
+	else
+	{
+		::ShipEntity *ship = nil;
+		double scanrange2 = scannerRange * scannerRange;
+		for (const auto &defenseTarget : [self cxx_defenseTargets])
+		{
+			ship = defenseTarget.get();
+			if ([ship hasHostileTarget] || ([ship isPlayer] && [PLAYER weaponsOnline]))
+			{
+				if (HPdistance2([ship position],position) < scanrange2)
+				{
+					return ALERT_CONDITION_RED;
+				}
+			}
+		}
+		// also need to check primary target separately
+		if ([self hasHostileTarget])
+		{
+			::Entity *ptarget = [self primaryTargetWithoutValidityCheck];
+			if (ptarget != nil && [ptarget isShip])
+			{
+				ship = (::ShipEntity *)ptarget;
+				if ([ship hasHostileTarget] || ([ship isPlayer] && [PLAYER weaponsOnline]))
+				{
+					if (HPdistance2([ship position],position) < scanrange2 * 1.5625)
+					{
+						return ALERT_CONDITION_RED;
+					}
+				}
+			}
+		}
+		if (_group)
+		{
+			OOShipGroupCursor cursor(_group);
+			::ShipEntity *batch[16];
+			for (NSUInteger count = ShipGroupCursorBatch(cursor, batch); count != 0; count = ShipGroupCursorBatch(cursor, batch))
+			{
+				for (NSUInteger i = 0; i < count; i++)
+				{
+					ship = batch[i];
+					if ([ship hasHostileTarget] || ([ship isPlayer] && [PLAYER weaponsOnline]))
+					{
+						if (HPdistance2([ship position],position) < scanrange2)
+						{
+							return ALERT_CONDITION_RED;
+						}
+					}
+				}
+			}
+		}
+		if (_escortGroup && _group != _escortGroup)
+		{
+			OOShipGroupCursor cursor(_escortGroup);
+			::ShipEntity *batch[16];
+			for (NSUInteger count = ShipGroupCursorBatch(cursor, batch); count != 0; count = ShipGroupCursorBatch(cursor, batch))
+			{
+				for (NSUInteger i = 0; i < count; i++)
+				{
+					ship = batch[i];
+					if ([ship hasHostileTarget] || ([ship isPlayer] && [PLAYER weaponsOnline]))
+					{
+						if (HPdistance2([ship position],position) < scanrange2)
+						{
+							return ALERT_CONDITION_RED;
+						}
+					}
+				}
+			}
+		}
+	}
+	return ALERT_CONDITION_YELLOW;
+}
+
+
+// Exposed to AI and scripts.
+void ShipEntity::doNothing()
+{
+	
+}
+
+
+#ifndef NDEBUG
+std::optional<std::string> ShipEntity::descriptionForObjDump()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// DescriptionOf(nil) was "(null)"; preserve that for a disengaged super result.
+	std::string desc = oo::str::format("%s mass %g", OOEntityWithDrawable::descriptionForObjDump().value_or("(null)").c_str(), [self mass]);
+	if (![self isPlayer])
+	{
+		desc = oo::str::format("%s AI: %s", desc.c_str(), [[self getAI] cxx_shortDescriptionComponents].value_or("(null)").c_str());
+	}
+	return desc;
+}
+#endif
+
+
+}	// namespace cxx
+
+
+/*	Slice 34 (bead oo-nkyn3): the shader and weapon-range helpers, without messages. The resource
+	manager and the equipment types answer through their C++ classes; the binding target's class is
+	asked of the runtime, and its kind of entity of the entity's C++ part (getIsShip(),
+	getIsVisualEffect(): the facade's -isShip and -isVisualEffect answer the same).
+*/
 oo::PList OODefaultShipShaderMacros(void)
 {
 	// "ship-prefix-macros" of the material defaults, read once; an empty dictionary if it is not one.
 	static const oo::PList macros = []
 	{
-		const oo::PList materialDefaults = [ResourceManager cxx_materialDefaults];
+		const oo::PList materialDefaults = cxx::ResourceManager::materialDefaults();
 		const oo::PList *prefixMacros = materialDefaults.get<oo::PList::Dict>("ship-prefix-macros");
 		return prefixMacros != nullptr ? *prefixMacros : oo::PList(oo::PList::Dict{});
 	}();
@@ -15674,28 +15693,47 @@ oo::PList OODefaultShipShaderMacros(void)
 	return macros;
 }
 
+
+namespace {
+
+// [object isKindOfClass:<the class named className>], asked of the runtime; NO for nil.
+bool IsKindOfClassNamed(id object, const char *className)
+{
+	Class required = objc_getClass(className);
+	for (Class cls = object_getClass(object); cls != Nil; cls = class_getSuperclass(cls))
+	{
+		if (cls == required)  return true;
+	}
+	return false;
+}
+
+}	// namespace
+
+
 // is this the right place for this function now? - CIM
 BOOL OOUniformBindingPermitted(const std::string &propertyName, id bindingTarget)
 {
 	// the whitelists, read once (membership only)
-	static const oo::PList					wlDict = [ResourceManager cxx_whitelistDictionary];
+	static const oo::PList					wlDict = cxx::ResourceManager::whitelistDictionary();
 	static const std::set<std::string>		entityWhitelist = NamesInArrayForKey(wlDict, "shader_entity_binding_methods");
 	static const std::set<std::string>		shipWhitelist = NamesInArrayForKey(wlDict, "shader_ship_binding_methods");
 	static const std::set<std::string>		playerShipWhitelist = NamesInArrayForKey(wlDict, "shader_player_ship_binding_methods");
 	static const std::set<std::string>		visualEffectWhitelist = NamesInArrayForKey(wlDict, "shader_visual_effect_binding_methods");
 
-	if ([bindingTarget isKindOfClass:[Entity class]])
+	if (IsKindOfClassNamed(bindingTarget, "Entity"))
 	{
+		cxx::Entity *entity = oo::ToCxx((::Entity *)bindingTarget);
 		if (entityWhitelist.contains(propertyName))  return YES;
-		if ([bindingTarget isShip])
+		if (entity->getIsShip())
 		{
 			if (shipWhitelist.contains(propertyName))  return YES;
 		}
-		if ([bindingTarget isPlayerLikeShip])
+		// -isPlayerLikeShip answers YES for these two classes only (ProxyPlayerEntity.mm).
+		if (IsKindOfClassNamed(bindingTarget, "PlayerEntity") || IsKindOfClassNamed(bindingTarget, "ProxyPlayerEntity"))
 		{
 			if (playerShipWhitelist.contains(propertyName))  return YES;
 		}
-		if ([bindingTarget isVisualEffect])
+		if (entity->getIsVisualEffect())
 		{
 			if (visualEffectWhitelist.contains(propertyName))  return YES;
 		}
@@ -15707,11 +15745,12 @@ BOOL OOUniformBindingPermitted(const std::string &propertyName, id bindingTarget
 
 GLfloat getWeaponRangeFromType(OOWeaponType weapon_type)
 {
-	return [weapon_type weaponRange];
+	// [nil weaponRange] answered 0.
+	return weapon_type != nil ? oo::ToCxx(weapon_type)->weaponRange() : 0.0f;
 }
 
 
 BOOL isWeaponNone(OOWeaponType weapon)
 {
-	return weapon == nil || ([weapon cxx_identifier] == "EQ_WEAPON_NONE");
+	return weapon == nil || (oo::ToCxx(weapon)->identifier() == "EQ_WEAPON_NONE");
 }
