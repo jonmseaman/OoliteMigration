@@ -4441,3 +4441,38 @@ methods and the Objective-C ship methods it overrides are reached from C++ throu
 **Consequences.** One more façade (`StationEntity+ObjCBridge`, deletion bead filed with this one);
 `ShipEntity+ObjCBridge`'s deletion bead also deletes `ShipEntity+ObjCAdapter.h`. Slices 2-4 each
 move their units into `cxx::StationEntity` and drop `_cxxStation->` from them.
+
+## Amendment (bead oo-42dr): ShipEntity's category files, after the class's last slice
+
+- Date: 2026-10-07. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Exemplar:
+  `src/Core/Entities/ShipEntityScriptMethods.h/.mm` (bead oo-42dr), `ShipEntityLoadRestore.h/.mm`
+  (bead oo-kw44), the blocks of `ShipEntity.h` and `ShipEntity+ObjCBridge.h/.mm` naming them,
+  `tests/unit/core/test_ShipEntity.mm`. Follows amendments oo-o89 item 4, oo-9fwb and oo-mvzmb.
+
+**Context.** `ShipEntityScriptMethods.mm` and `ShipEntityLoadRestore.mm` are categories of
+`ShipEntity` in files of their own, converted after the 34 slices of `ShipEntity.mm`. Their
+callers are Objective-C (`OOJSShip`, the legacy script engine) or C++ that still messages the
+façade (`cxx::WormholeEntity`, `cxx::ShipEntity::spawn()`).
+
+**Decision (recommended defaults).**
+
+1. **The category's methods become members of `cxx::ShipEntity`, defined in the category's own
+   file** in a `namespace cxx` block, and declared in a block of `cxx::ShipEntity` under a comment
+   naming the category and its bead (amendment oo-o89 item 4). A class method is a static member
+   (`shipRestoredFromDictionary()`, which answers `::ShipEntity *` where it answered `id`); a
+   method of a private category of the file (`LoadRestoreInternal`) is a member like the others,
+   public while the class is half converted (amendment oo-60fwo item 2). Sends to `self` stay sends
+   to the façade (amendment oo-mvzmb item 4).
+2. **The category's `@interface` moves to `ShipEntity+ObjCBridge.h`, and its forwarders to
+   `ShipEntity+ObjCBridge.mm`**, under the category's own name, not to bridge files of the
+   category's file (amendment oo-9fwb item 2): the façade is the ship's, and its deletion bead
+   (oo-9ht.144) removes every forwarding category at once.
+3. **The category's header stays**, for the files that import it, with what it declared that is
+   not the category (`OOShipSaveContext`); `ShipEntity.h` forward-declares such a type for its
+   members.
+4. **The tests** pin the cases that reach neither the uninitialised universe nor the ship
+   registry (whose data the unit test does not load: it would scan for add-ons); the goldens run
+   the rest.
+
+**Consequences.** No `@implementation` is left in the ship's category files; their callers are
+unchanged and reach the members through the façade until their own conversion.

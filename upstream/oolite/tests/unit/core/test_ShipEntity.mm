@@ -29,6 +29,8 @@
 #import "OOCharacter.h"
 #import "AI.h"
 #import "PlayerEntity.h"
+#import "ShipEntityScriptMethods.h"
+#import "ShipEntityLoadRestore.h"
 
 #include "oo_test.hpp"
 
@@ -3223,6 +3225,46 @@ OO_TEST(slice34WeaponHelpers)
 	@autoreleasepool
 	{
 		OO_CHECK(isWeaponNone(nil));
+	}
+}
+
+
+// --- ShipEntityScriptMethods.mm (bead oo-42dr): the category ShipEntity (ScriptMethods) --------------
+// The cases that do not reach the universe (it was never initialised here): ejecting nothing and
+// spawning none. Ejecting or spawning a real ship needs the game's ship data, which the goldens run.
+
+OO_TEST(scriptMethodsEjectAndSpawnNothing)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("ejector");
+		// std::nullopt ejects nothing, as nil did.
+		OO_CHECK([ship ejectShipOfType:std::nullopt] == nil);
+		OO_CHECK([ship ejectShipOfRole:std::nullopt] == nil);
+		// A count of zero spawns nothing and answers an empty list.
+		OO_CHECK([ship spawnShipsWithRole:"trader" count:0].empty());
+		OO_CHECK([ship status] == STATUS_IN_FLIGHT);
+	}
+}
+
+
+// --- ShipEntityLoadRestore.mm (bead oo-kw44): the category ShipEntity (LoadRestore) -------------------
+// The cases that reach neither the ship registry nor the universe: restoring from no dictionary.
+// Saving a ship, and restoring one, look its key up in the ship registry, whose data the unit test
+// does not load (it would scan for add-ons); the goldens' wormholes run those.
+
+OO_TEST(loadRestoreFromNothing)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		// Null restores no ship, with or without fallback and a context, as nil did.
+		OO_CHECK([ShipEntity shipRestoredFromDictionary:oo::PList() useFallback:NO context:nullptr] == nil);
+		OO_CHECK([ShipEntity shipRestoredFromDictionary:oo::PList() useFallback:YES context:nullptr] == nil);
+		OOShipSaveContext context;
+		OO_CHECK([ShipEntity shipRestoredFromDictionary:oo::PList() useFallback:YES context:&context] == nil);
+		OO_CHECK(context.nextGroupID == 0 && context.groups.empty() && context.groupsByID.empty());
 	}
 }
 

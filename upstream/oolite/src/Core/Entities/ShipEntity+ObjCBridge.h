@@ -1251,6 +1251,45 @@ unsigned argc = sizeof argv / sizeof *argv; \
 @end
 
 
+// The category ShipEntity (ScriptMethods) of ShipEntityScriptMethods.mm (bead oo-42dr): members of
+// cxx::ShipEntity defined in that file (ADR-0056 amendments oo-o89 item 4 and oo-9fwb), forwarded
+// by the category of the same name in ShipEntity+ObjCBridge.mm for the Objective-C callers that
+// remain (OOJSShip, the legacy script engine).
+@interface ShipEntity (ScriptMethods)
+
+// Foundation sweep (proposed ADR-0043, bead oo-tm7d): std::nullopt ejects nothing, as nil did.
+- (ShipEntity *) ejectShipOfType:(const std::optional<std::string> &)shipKey;	// Note: ship type, not role.
+- (ShipEntity *) ejectShipOfRole:(const std::optional<std::string> &)role;
+
+- (std::vector<oo::ObjCRef<ShipEntity *>>) spawnShipsWithRole:(const std::string &)role count:(NSUInteger)count;
+
+@end
+
+
+// The category ShipEntity (LoadRestore) of ShipEntityLoadRestore.mm (bead oo-kw44): members of
+// cxx::ShipEntity defined in that file (ADR-0056 amendment oo-42dr), forwarded by the category of
+// the same name in ShipEntity+ObjCBridge.mm for the callers that still message the facade
+// (cxx::WormholeEntity).
+@interface ShipEntity (LoadRestore)
+
+/*	Produces a property list representation of a specific ship. Intended for
+	use with wormholes, but should probably generalize quite well.
+	
+	The optional "context" (nullptr for none) is used to synchronise certain
+	state when saving multiple ships - currently, groups. It is not a property
+	list and does not need to be saved alongside the ships.
+*/
+- (oo::PList) savedShipDictionaryWithContext:(OOShipSaveContext *)context;
+
+/*	Restore a ship from a property list representation generated with
+	-savedShipDictionary. If the ship can't be restored and fallback is YES,
+	an attempt will be made to generate a new ship with the same primary role.
+*/
++ (id) shipRestoredFromDictionary:(const oo::PList &)dictionary useFallback:(BOOL)fallback context:(OOShipSaveContext *)context;
+
+@end
+
+
 // The sends of ShipEntity.mm's C functions to classes they reach as Objective-C objects (amendment
 // oo-9ht.139 item 3); deleted with this header.
 double ShipEntityStellarBodyRadius(Entity<OOStellarBody> *stellar);	// [stellar radius]
