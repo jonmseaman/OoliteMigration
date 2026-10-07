@@ -80,7 +80,7 @@ namespace cxx {
 
 void SkyEntity::initWithColors(OOColor *col1In, OOColor *col2In, const oo::PList &systemInfo)
 {
-	OOSkyDrawable			*skyDrawable;
+	oo::Ref<OOSkyDrawable>	skyDrawable;
 	float					clusterChance,
 							alpha,
 							scale,
@@ -155,19 +155,17 @@ void SkyEntity::initWithColors(OOColor *col1In, OOColor *col2In, const oo::PList
 		}
 	}
 
-	skyDrawable = [[OOSkyDrawable alloc]
-				   initWithColor1:oo::ToObjC(col1)
-				   Color2:oo::ToObjC(col2)
-				   Color3:oo::ToObjC(col3)
-				   Color4:oo::ToObjC(col4)
-				   starCount:starCount
-				   nebulaCount:nebulaCount
-				   nebulaHueFix:nebulaColorSet
-				   clusterFactor:clusterChance
-				   alpha:alpha
-				   scale:scale];
-	setDrawable(skyDrawable);
-	[skyDrawable release];
+	skyDrawable = oo::makeRef<OOSkyDrawable>(col1.get(),
+											 col2.get(),
+											 col3.get(),
+											 col4.get(),
+											 starCount,
+											 nebulaCount,
+											 nebulaColorSet,
+											 clusterChance,
+											 alpha,
+											 scale);
+	setDrawable(oo::ToObjC(skyDrawable.get()));	// the root facade (no OOSkyDrawable facade; bead oo-4jjl)
 
 	setStatus(STATUS_EFFECT);
 }

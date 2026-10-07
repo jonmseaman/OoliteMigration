@@ -120,13 +120,13 @@ public:
 
 	// The JavaScript engine's monitor (OOJavaScriptEngineMonitor): errors and warnings, and log
 	// messages (messageClass nullopt if Log() is used rather than LogWithClass()).
-	void jsEngine(OOJavaScriptEngine *engine,
+	void jsEngine(::OOJavaScriptEngine *engine,
 				  ooscript::Context context,
 				  ooscript::ErrorReport *errorReport,
 				  unsigned stackSkip,
 				  bool showLocation,
 				  const std::string &message);
-	void jsEngine(OOJavaScriptEngine *engine,
+	void jsEngine(::OOJavaScriptEngine *engine,
 				  ooscript::Context context,
 				  const std::string &message,
 				  const std::optional<std::string> &messageClass);
@@ -162,7 +162,7 @@ private:
 	oo::ObjCRef<id<OODebuggerInterface>>	_debugger;
 
 	// JavaScript console support.
-	oo::ObjCRef<OOJSScript *>				_script;
+	oo::ObjCRef<::OOJSScript *>				_script;
 	ooscript::Object _jsSelf = {};
 
 	oo::PList							_configFromOXPs;	// Settings from debugConfig.plist (a Dict, never null after init())

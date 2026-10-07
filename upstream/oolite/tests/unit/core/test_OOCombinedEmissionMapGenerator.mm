@@ -13,7 +13,9 @@
 	manager in strict mode (the built-in Resources alone), so no game resource and no add-on is
 	read. It links the whole game but main (tests/unit/core/meson.build entry ['*']), on the
 	hidden GL context of oo_gl_test_context.hpp. The expectations were written against the
-	Objective-C API and run on the unconverted class first.
+	Objective-C API and run on the unconverted class first (commit 49fa6013a); that API is now the
+	facade of cxx::OOCombinedEmissionMapGenerator (its caller's test stubs the class by name), so
+	they run through it unchanged. The last test pins the C++ API and the crossing.
 	Run: bash tools/check-core-tests.sh test_OOCombinedEmissionMapGenerator
 */
 
@@ -291,7 +293,7 @@ OO_TEST(aTextureOfTheGenerator)
 	@autoreleasepool
 	{
 		OOTexture *texture = [OOTexture textureWithGenerator:NewGenerator(oo::PList("e.png"), [OOColor redColor], nil, nil, oo::PList(), nil, oo::PList("e.png"))];
-		OO_CHECK([texture isKindOfClass:[OOConcreteTexture class]]);
+		OO_CHECK((dynamic_cast<OOConcreteTexture *>(oo::ToCxx(texture)) != nullptr));
 		[texture ensureFinishedLoading];
 		OO_CHECK([texture isFinishedLoading] && [texture dimensions].width > 0);
 		OO_CHECK([texture cxx_cacheKey] == [NewGenerator(oo::PList("e.png"), [OOColor redColor], nil, nil, oo::PList(), nil, oo::PList("e.png")) cxx_cacheKey]);
@@ -318,6 +320,38 @@ OO_TEST(description)
 	}
 }
 #endif
+
+
+// --- The C++ API (after the conversion) --------------------------------------------------------
+
+OO_TEST(cxxApi)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		OO_CHECK(!cxx::OOCombinedEmissionMapGenerator::generatorWithEmissionMapSpec(oo::PList(), nullptr, nil, nullptr, oo::PList(), nullptr, oo::PList()));
+		OO_CHECK(!cxx::OOCombinedEmissionMapGenerator::generatorWithEmissionAndIlluminationMapSpec(oo::PList(), nil, nullptr, nullptr, nullptr, oo::PList()));
+
+		const oo::Ref<cxx::OOColor> red = cxx::OOColor::colorWithRGBAComponents((OORGBAComponents){ 1.0f, 0.0f, 0.0f, 1.0f });
+		const oo::Ref<cxx::OOCombinedEmissionMapGenerator> generator = cxx::OOCombinedEmissionMapGenerator::generatorWithEmissionMapSpec(oo::PList("e.png"), red.get(), nil, nullptr, oo::PList(), nullptr, oo::PList("e.png"));
+		OO_CHECK(generator && generator->cacheKey() == std::optional<std::string>("emission map;emission:{" + KeyOf("e.png") + "}*" + red->rgbaDescription().value_or("") + ";"));
+
+		// Its facade is an OOCombinedEmissionMapGenerator, the same one each time, and back.
+		OOCombinedEmissionMapGenerator *facade = oo::ToObjC(generator.get());
+		OO_CHECK([facade class] == [OOCombinedEmissionMapGenerator class] && [facade isKindOfClass:[OOTextureGenerator class]]);
+		OO_CHECK(oo::ToCxx(facade) == generator.get() && oo::ToObjC(generator.get()) == facade);
+		OO_CHECK([facade cxx_cacheKey] == generator->cacheKey() && [facade textureOptions] == generator->textureOptions());
+
+		// The facade's initialiser answers a C++ generator's facade.
+		OOCombinedEmissionMapGenerator *made = NewGenerator(oo::PList("e.png"), nil, nil, nil, oo::PList(), nil, oo::PList("e.png"));
+		OO_CHECK([made class] == [OOCombinedEmissionMapGenerator class] && dynamic_cast<cxx::OOCombinedEmissionMapGenerator *>(oo::ToCxx(made)) != nullptr);
+
+		// Baking through the C++ object.
+		generator->loadTexture();
+		OO_CHECK(generator->_data != nullptr && generator->_format == kOOPixMapRGBA && ((const uint8_t *)generator->_data)[0] == 200 && ((const uint8_t *)generator->_data)[1] == 0);
+	}
+	ClearCache();
+}
 
 
 OO_TEST_MAIN()

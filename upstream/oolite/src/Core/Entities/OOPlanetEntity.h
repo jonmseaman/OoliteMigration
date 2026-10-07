@@ -25,9 +25,6 @@ MA 02110-1301, USA.
 */
 
 #import "OOStellarBody.h"
-#if !NEW_PLANETS
-#import "PlanetEntity.h"
-#else
 
 #import "Entity.h"
 #import "OOColor.h"
@@ -66,7 +63,7 @@ public:
 
 	bool planetHasStation();
 	void launchShuttle();
-	void welcomeShuttle(ShipEntity *shuttle);
+	void welcomeShuttle(::ShipEntity *shuttle);
 
 	bool hasAtmosphere();
 
@@ -165,4 +162,3 @@ private:
 // bridge's deletion bead.
 #import "OOPlanetEntity+ObjCBridge.h"
 
-#endif	// NEW_PLANETS

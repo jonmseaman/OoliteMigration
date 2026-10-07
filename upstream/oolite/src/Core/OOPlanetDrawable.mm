@@ -23,7 +23,6 @@
  */
 
 #import "OOStellarBody.h"
-#if NEW_PLANETS
 
 
 #import "OOPlanetDrawable.h"
@@ -142,7 +141,7 @@ void OOPlanetDrawable::setTextureName(const std::string &textureName)
 			{ "diffuse_map", oo::PList(oo::PList::Dict{ { "repeat_s", oo::PList("yes") }, { "cube_map", oo::PList("yes") } }) } });
 		// [_material release], then [[OOSingleTextureMaterial alloc] initWithName:configuration:]:
 		// the factory's material, kept as its facade (nil for none).
-		_material = oo::ObjCRef<OOMaterial *>(oo::ToObjC(cxx::OOSingleTextureMaterial::materialWithName(textureName, spec).get()));
+		_material = oo::ObjCRef<OOMaterial *>(oo::ToObjC(static_cast<cxx::OOMaterial *>(OOSingleTextureMaterial::materialWithName(textureName, spec).get())));
 	}
 }
 
@@ -429,4 +428,3 @@ std::vector<oo::ObjCRef<::OOTexture *>> OOPlanetDrawable::allTextures()
 
 #endif
 
-#endif	/* NEW_PLANETS */
