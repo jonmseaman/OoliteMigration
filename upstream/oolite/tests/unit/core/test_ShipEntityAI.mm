@@ -777,4 +777,24 @@ OO_TEST(slice3TargetsAndFighting)
 }
 
 
+// From C++ (after the conversion): the members.
+OO_TEST(slice3MembersFromCxx)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestAIShip *ship = MakeShip("member3");
+		TestAIShip *other = MakeShip("other");
+		cxx::ShipEntity *part = ship->_cxxShip;
+		SetPrimaryTarget(ship, other);
+		part->storeTarget();
+		OO_CHECK([ship rememberedShip] == other);
+		SetAegisStatus3(ship, 42);
+		part->checkAegis();
+		OO_CHECK(AegisStatus3(ship) == AEGIS_NONE);
+		part->disengageAutopilot();		// virtual: the ship's, which logs
+	}
+}
+
+
 OO_TEST_MAIN()

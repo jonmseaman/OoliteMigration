@@ -1034,6 +1034,45 @@ public:
 	void setDestinationWithinTarget();
 	void checkCourseToDestination();
 
+	// ShipEntityAI.mm slice 3: PureAI part 2: checks, comms, Thargoids, escorts, patrols, target marking.
+	void checkAegis();
+	void checkEnergy();
+	void checkHeatInsulation();
+	void findNewDefenseTarget();
+	void scanForOffenders();
+	void setCourseToWitchpoint();
+	void setDestinationToWitchpoint();
+	void setDestinationToStationBeacon();
+	void performHyperSpaceExit();
+	void performHyperSpaceExitWithoutReplacing();
+	virtual void disengageAutopilot();
+	void wormholeGroup();
+	virtual void commsMessage(const std::string &valueString);
+	virtual void commsMessageByUnpiloted(const std::string &valueString);
+	void ejectCargo();
+	void scanForThargoid();
+	void scanForNonThargoid();
+	void thargonCheckMother();
+	void becomeUncontrolledThargon();
+	void checkDistanceTravelled();
+	void fightOrFleeHostiles();
+	void suggestEscort();
+	void escortCheckMother();
+	void checkGroupOddsVersusTarget();
+	void scanForFormationLeader();
+	void messageMother(const std::string &msgString);
+	void messageSelf(const std::string &msgString);
+	void setPlanetPatrolCoordinates();
+	void setSunSkimStartCoordinates();
+	void setSunSkimEndCoordinates();
+	void setSunSkimExitCoordinates();
+	void patrolReportIn();
+	void checkForMotherStation();
+	void sendTargetCommsMessage(const std::string &message);
+	void markTargetForFines();
+	void markTargetForOffence(const std::string &valueString);
+	void storeTarget();
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired

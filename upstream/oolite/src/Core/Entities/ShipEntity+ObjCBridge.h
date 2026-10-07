@@ -1405,6 +1405,52 @@ unsigned argc = sizeof argv / sizeof *argv; \
 @end
 
 
+// Slice 3 of docs/phases/3-slices/ShipEntityAI.md (bead oo-wc9o3): methods of the category
+// ShipEntity (PureAI) of ShipEntityAI.mm that are members of cxx::ShipEntity, forwarded by the category
+// of the same name in ShipEntity+ObjCBridge.mm.
+@interface ShipEntity (OOAISlice3)
+
+- (void) checkAegis;
+- (void) checkEnergy;
+- (void) checkHeatInsulation;
+- (void) findNewDefenseTarget;
+- (void) scanForOffenders;
+- (void) setCourseToWitchpoint;
+- (void) setDestinationToWitchpoint;
+- (void) setDestinationToStationBeacon;
+- (void) performHyperSpaceExit;
+- (void) performHyperSpaceExitWithoutReplacing;
+- (void) disengageAutopilot;
+- (void) wormholeGroup;
+- (void) commsMessage:(const std::string &)valueString;	// called by name (ADR-0055 item 5)
+- (void) commsMessageByUnpiloted:(const std::string &)valueString;	// called by name (ADR-0055 item 5)
+- (void) ejectCargo;
+- (void) scanForThargoid;
+- (void) scanForNonThargoid;
+- (void) thargonCheckMother;
+- (void) becomeUncontrolledThargon;
+- (void) checkDistanceTravelled;
+- (void) fightOrFleeHostiles;
+- (void) suggestEscort;
+- (void) escortCheckMother;
+- (void) checkGroupOddsVersusTarget;
+- (void) scanForFormationLeader;
+- (void) messageMother:(const std::string &)msgString;	// called by name (ADR-0055 item 5)
+- (void) messageSelf:(const std::string &)msgString;
+- (void) setPlanetPatrolCoordinates;
+- (void) setSunSkimStartCoordinates;
+- (void) setSunSkimEndCoordinates;
+- (void) setSunSkimExitCoordinates;
+- (void) patrolReportIn;
+- (void) checkForMotherStation;
+- (void) sendTargetCommsMessage:(const std::string &)message;	// called by name (ADR-0055 item 5)
+- (void) markTargetForFines;
+- (void) markTargetForOffence:(const std::string &)valueString;	// called by name (ADR-0055 item 5)
+- (void) storeTarget;
+
+@end
+
+
 // The sends of ShipEntity.mm's C functions to classes they reach as Objective-C objects (amendment
 // oo-9ht.139 item 3); deleted with this header.
 double ShipEntityStellarBodyRadius(Entity<OOStellarBody> *stellar);	// [stellar radius]

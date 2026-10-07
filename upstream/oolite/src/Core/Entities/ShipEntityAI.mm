@@ -131,65 +131,31 @@ using ooscript::Context;
 
 
 
-- (void) checkAegis;
 
-- (void) checkEnergy;
-- (void) checkHeatInsulation;
 
-- (void) scanForOffenders;
 
-- (void) setCourseToWitchpoint;
 
-- (void) setDestinationToWitchpoint;
-- (void) setDestinationToStationBeacon;
 
-- (void) performHyperSpaceExit;
-- (void) performHyperSpaceExitWithoutReplacing;
-- (void) wormholeGroup;
 
-- (void) commsMessage:(const std::string &)valueString;	// called by name (ADR-0055 item 5)
-- (void) commsMessageByUnpiloted:(const std::string &)valueString;	// called by name (ADR-0055 item 5)
 
-- (void) ejectCargo;
 
-- (void) scanForThargoid;
-- (void) scanForNonThargoid;
-- (void) thargonCheckMother;
-- (void) becomeUncontrolledThargon;
 
-- (void) checkDistanceTravelled;
 
-- (void) fightOrFleeHostiles;
 
-- (void) suggestEscort;
 
-- (void) escortCheckMother;
 
-- (void) checkGroupOddsVersusTarget;
 
-- (void) scanForFormationLeader;
 
-- (void) messageMother:(const std::string &)msgString;	// called by name (ADR-0055 item 5)
 
-- (void) setPlanetPatrolCoordinates;
 
-- (void) setSunSkimStartCoordinates;
 
-- (void) setSunSkimEndCoordinates;
 
-- (void) setSunSkimExitCoordinates;
 
-- (void) patrolReportIn;
 
-- (void) checkForMotherStation;
 
-- (void) sendTargetCommsMessage:(const std::string &)message;	// called by name (ADR-0055 item 5)
 
-- (void) markTargetForFines;
 
-- (void) markTargetForOffence:(const std::string &)valueString;	// called by name (ADR-0055 item 5)
 
-- (void) storeTarget;
 - (void) recallStoredTarget;
 
 - (void) scanForRocks;
@@ -238,679 +204,11 @@ using ooscript::Context;
 - (void) performFlyRacepoints;
 
 // defense targets 
-- (void) findNewDefenseTarget;
 
 @end
 
 
 @implementation ShipEntity (PureAI)
-
-
-- (void) checkAegis
-{
-	switch (_cxxShip->aegis_status)
-	{
-		case AEGIS_CLOSE_TO_MAIN_PLANET: 
-			[_cxxShip->shipAI message:"AEGIS_CLOSE_TO_MAIN_PLANET"];
-			// It's been a few years since 1.71 - it should be safe enough to comment out the line below for 1.77/1.78 -- Kaks 20120917
-			//[shipAI message:@"AEGIS_CLOSE_TO_PLANET"];	     // fires only for main planets, kept for compatibility with pre-1.72 AI plists.
-			return;
-		case AEGIS_CLOSE_TO_ANY_PLANET:
-		{
-			Entity<OOStellarBody> *nearest = [self findNearestStellarBody];
-			
-			if([nearest isSun])
-			{
-				[_cxxShip->shipAI message:"CLOSE_TO_SUN"];
-			}
-			else
-			{
-				[_cxxShip->shipAI message:"CLOSE_TO_PLANET"];
-				if ([nearest planetType] == STELLAR_TYPE_MOON)
-				{
-					[_cxxShip->shipAI message:"CLOSE_TO_MOON"];
-				}
-				else
-				{
-					[_cxxShip->shipAI message:"CLOSE_TO_SECONDARY_PLANET"];
-				}
-			}
-			return;
-		}
-		case AEGIS_IN_DOCKING_RANGE:
-			[_cxxShip->shipAI message:"AEGIS_IN_DOCKING_RANGE"];
-			return;
-		case AEGIS_NONE:
-			[_cxxShip->shipAI message:"AEGIS_NONE"];
-			return;
-	}
-	
-	OO_LOG("unclassified", "Aegis status for {} has taken on invalid value {}. This is an internal error, please report it.", oo::DescriptionOf(self), static_cast<int>(_cxxShip->aegis_status));
-	_cxxShip->aegis_status = AEGIS_NONE;
-	[_cxxShip->shipAI message:"AEGIS_NONE"];
-}
-
-
-- (void) checkEnergy
-{
-	if (_cxxEntity->energy == _cxxEntity->maxEnergy)
-	{
-		[_cxxShip->shipAI message:"ENERGY_FULL"];
-		return;
-	}
-	if (_cxxEntity->energy >= _cxxEntity->maxEnergy * 0.75)
-	{
-		[_cxxShip->shipAI message:"ENERGY_HIGH"];
-		return;
-	}
-	if (_cxxEntity->energy <= _cxxEntity->maxEnergy * 0.25)
-	{
-		[_cxxShip->shipAI message:"ENERGY_LOW"];
-		return;
-	}
-	[_cxxShip->shipAI message:"ENERGY_MEDIUM"];
-}
-
-- (void) checkHeatInsulation
-{
-	float minInsulation = 1000 / [self maxFlightSpeed] + 1;
-	
-	if ([self heatInsulation] < minInsulation)
-	{
-		[_cxxShip->shipAI message:"INSULATION_POOR"];
-		return;
-	}
-	[_cxxShip->shipAI message:"INSULATION_OK"];
-}
-
-
-- (void) findNewDefenseTarget
-{
-	[self checkScanner];
-	unsigned i;
-	for (i = 0; i < _cxxShip->n_scanned_ships ; i++)
-	{
-		ShipEntity *ship = _cxxShip->scanned_ships[i];
-		if (![ship isCloaked] && (([ship primaryTarget] == self && [ship hasHostileTarget]) || [ship isMine] || ([ship isThargoid] != [self isThargoid])))
-		{
-			if (![self isDefenseTarget:ship])
-			{
-				[self addDefenseTarget:ship];
-				return;
-			}
-		}
-	}
-}
-
-
-- (void) scanForOffenders
-{
-	/*-- Locates all the ships in range and compares their legal status or bounty against ranrot_rand() & 255 - chooses the worst offender --*/
-	float gov_factor =	0.4 * [UNIVERSE cxx_currentSystemData].get<int>(std::string(KEY_GOVERNMENT)); // 0 .. 7 (0 anarchic .. 7 most stable) --> [0.0, 0.4, 0.8, 1.2, 1.6, 2.0, 2.4, 2.8]
-	//
-	if ([UNIVERSE sun] == nil)
-		gov_factor = 1.0;
-	//
-	DESTROY(_cxxShip->_foundTarget);
-	
-	// find the worst offender on the scanner
-	//
-	[self checkScanner];
-	unsigned i;
-	float	worst_legal_factor = 0;
-	GLfloat found_d2 = _cxxShip->scannerRange * _cxxShip->scannerRange;
-	OOShipGroup *group = [self group];
-	for (i = 0; i < _cxxShip->n_scanned_ships ; i++)
-	{
-		ShipEntity *ship = _cxxShip->scanned_ships[i];
-		if ((ship->_cxxEntity->scanClass != CLASS_CARGO)&&([ship status] != STATUS_DEAD)&&([ship status] != STATUS_DOCKED)&& ![ship isCloaked])
-		{
-			GLfloat	d2 = _cxxShip->distance2_scanned_ships[i];
-			float	legal_factor = [ship legalStatus] * gov_factor;
-			int random_factor = ranrot_rand() & 255;   // 25% chance of spotting a fugitive in 15s
-			if ((d2 < found_d2)&&(random_factor < legal_factor)&&(legal_factor > worst_legal_factor))
-			{
-				if (group == nil || group != [ship group])  // fellows with bounty can't be offenders
-				{
-					[self setFoundTarget:ship];
-					worst_legal_factor = legal_factor;
-				}
-			}
-		}
-	}
-	
-	[self checkFoundTarget];
-}
-
-
-- (void) setCourseToWitchpoint
-{
-	if (UNIVERSE)
-	{
-		_cxxShip->_destination = [UNIVERSE getWitchspaceExitPosition];
-		_cxxShip->desired_range = 10000.0;   // 10km away
-	}
-}
-
-
-- (void) setDestinationToWitchpoint
-{
-	_cxxShip->_destination = [UNIVERSE getWitchspaceExitPosition];
-}
-
-
-- (void) setDestinationToStationBeacon
-{
-	if ([UNIVERSE station])
-	{
-		_cxxShip->_destination = [[UNIVERSE station] beaconPosition];
-	}
-}
-
-
-- (void) performHyperSpaceExit
-{
-	[self performHyperSpaceExitReplace:YES];
-}
-
-
-- (void) performHyperSpaceExitWithoutReplacing
-{
-	[self performHyperSpaceExitReplace:NO];
-}
-
-
-- (void) disengageAutopilot
-{
-	OO_LOG_ERR("ai.invalid.notPlayer", "Error in {}:{}, AI method endAutoPilot is only applicable to the player.", [_cxxShip->shipAI cxx_name].value_or("(null)"), [_cxxShip->shipAI cxx_state].value_or("(null)"));
-}
-
-
-- (void) wormholeGroup
-{
-	ShipEntity			*ship = nil;
-	WormholeEntity		*whole = nil;
-	
-	whole = [self primaryTarget];
-	if (![whole isWormhole])  return;
-	
-	for (const oo::ObjCRef<ShipEntity *> &member : [[self group] cxx_memberArray])
-	{
-		ship = member.get();
-		[ship addTarget:whole];
-		[ship cxx_reactToAIMessage:"ENTER WORMHOLE" context:"wormholeGroup"];
-		[ship doScriptEvent:OOJSID("wormholeSuggested") withArgument:whole];
-	}
-}
-
-
-- (void) commsMessage:(const std::string &)valueString	// called by name (ADR-0055 item 5)
-{
-	[self cxx_commsMessage:valueString withUnpilotedOverride:NO];
-}
-
-
-- (void) commsMessageByUnpiloted:(const std::string &)valueString	// called by name (ADR-0055 item 5)
-{
-	[self cxx_commsMessage:valueString withUnpilotedOverride:YES];
-}
-
-
-- (void) ejectCargo
-{
-	OOCargoQuantity i, cargo_to_go = 0.1 * [self maxAvailableCargoSpace];
-	while (cargo_to_go > 15)
-	{
-		cargo_to_go = ranrot_rand() % cargo_to_go;
-	}
-	[self dumpCargo];
-	for (i = 1; i < cargo_to_go; i++)
-	{
-		OOScheduleDeferredCall(self, @selector(dumpCargo), nil, 0.75 * i);	// drop 3 canisters per 2 seconds
-	}
-}
-
-
-- (void) scanForThargoid
-{
-	return [self scanForNearestShipWithPrimaryRole:"thargoid"];
-}
-
-
-- (void) scanForNonThargoid
-{
-	/*-- Locates all the non thargoid ships in range and chooses the nearest --*/
-	DESTROY(_cxxShip->_foundTarget);
-	
-	[self checkScanner];
-	unsigned i;
-	GLfloat	found_d2 = _cxxShip->scannerRange * _cxxShip->scannerRange;
-	for (i = 0; i < _cxxShip->n_scanned_ships ; i++)
-	{
-		ShipEntity *thing = _cxxShip->scanned_ships[i];
-		GLfloat d2 = _cxxShip->distance2_scanned_ships[i];
-		if (([thing scanClass] != CLASS_CARGO) && ([thing status] != STATUS_DOCKED) && ![thing isThargoid] && ![thing isCloaked] && (d2 < found_d2))
-		{
-			[self setFoundTarget:thing];
-			if ([thing isPlayer]) d2 = 0.0;   // prefer the player
-			found_d2 = d2;
-		}
-	}
-
-	[self checkFoundTarget];
-}
-
-
-- (void) thargonCheckMother
-{
-	ShipEntity   *mother = [self owner];
-	if (mother == nil && [self group])  mother = [[self group] leader];
-	
-	double	maxRange2 = _cxxShip->scannerRange * _cxxShip->scannerRange;
-	
-	if (mother && mother != self && HPdistance2(mother->_cxxEntity->position, _cxxEntity->position) < maxRange2)
-	{
-		[_cxxShip->shipAI message:"TARGET_FOUND"]; // no need for scanning, we still have our mother.
-	}
-	else
-	{
-		// we lost the old mother, search for a new one
-		[self scanForNearestShipHavingRole:"thargoid-mothership"]; // the scan will send further AI messages.
-		if ([self foundTarget] != nil)
-		{
-			mother = (ShipEntity*)[self foundTarget];
-			[self setOwner:mother];
-			if ([mother group] != [mother escortGroup]) // avoid adding thargon to an escort group.
-			{
-				[self setGroup:[mother group]];
-			}
-		};
-	}
-}
-
-
-- (void) becomeUncontrolledThargon
-{
-	int			ent_count =		UNIVERSE->_cxxUniverse->n_entities;
-	Entity**	uni_entities =	UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
-	int i;
-	for (i = 0; i < ent_count; i++) if (uni_entities[i]->_cxxEntity->isShip)
-	{
-		ShipEntity *other = (ShipEntity*)uni_entities[i];
-		if ([other primaryTarget] == self)
-		{
-			[other removeTarget:self];
-		}
-		if ([other isDefenseTarget:self])
-		{
-			[other removeDefenseTarget:self];
-		}
-	}
-	// now we're just a bunch of alien artefacts!
-	_cxxEntity->scanClass = CLASS_CARGO;
-	_cxxShip->reportAIMessages = NO;
-	[self setAITo:"dumbAI.plist"];
-	DESTROY(_cxxShip->_primaryTarget);
-	[self setSpeed: 0.0];
-	[self setGroup:nil];
-}
-
-
-- (void) checkDistanceTravelled
-{
-	if (_cxxEntity->distanceTravelled > _cxxShip->desired_range)
-		[_cxxShip->shipAI message:"GONE_BEYOND_RANGE"];
-}
-
-
-- (void) fightOrFleeHostiles
-{
-	[self addDefenseTarget:[self foundTarget]];
-	
-	if ([self hasEscorts])
-	{
-		Entity *leTarget = [self lastEscortTarget];
-		if (leTarget != nil)
-		{
-			[self setFoundTarget:leTarget];
-			[_cxxShip->shipAI message:"FLEEING"];
-			return;
-		}
-		
-		[self setPrimaryAggressor:[self foundTarget]];
-		[self addTarget:[self foundTarget]];
-		[self deployEscorts];
-		[_cxxShip->shipAI message:"DEPLOYING_ESCORTS"];
-		[_cxxShip->shipAI message:"FLEEING"];
-		return;
-	}
-	
-	// consider launching a missile
-	if (_cxxShip->missiles > 2)   // keep a reserve
-	{
-		if (randf() < 0.50)
-		{
-			[self setPrimaryAggressor:[self foundTarget]];
-			[self addTarget:[self foundTarget]];
-			[self fireMissile];
-			[_cxxShip->shipAI message:"FLEEING"];
-			return;
-		}
-	}
-	
-	// consider fighting
-	if (_cxxEntity->energy > _cxxEntity->maxEnergy * 0.80)
-	{
-		[self setPrimaryAggressor:[self foundTarget]];
-		//[self performAttack];
-		[_cxxShip->shipAI message:"FIGHTING"];
-		return;
-	}
-	
-	[_cxxShip->shipAI message:"FLEEING"];
-}
-
-
-- (void) suggestEscort
-{
-	ShipEntity   *mother = [self primaryTarget];
-	[self suggestEscortTo:mother];
-}
-
-
-- (void) escortCheckMother
-{
-	ShipEntity   *mother = [self owner];
-	
-	if ([mother acceptAsEscort:self])
-	{
-		[self setOwner:mother];
-		[self setGroup:[mother escortGroup]];
-		[_cxxShip->shipAI message:"ESCORTING"];
-	}
-	else
-	{
-		[self setOwner:self];
-		if ([self group] == [mother escortGroup])  [self setGroup:nil];
-		[_cxxShip->shipAI message:"NOT_ESCORTING"];
-	}
-}
-
-
-- (void) checkGroupOddsVersusTarget
-{
-	NSUInteger ownGroupCount = [[self group] count] + (ranrot_rand() & 3);			// add a random fudge factor
-	NSUInteger targetGroupCount = [[[self primaryTarget] group] count] + (ranrot_rand() & 3);	// add a random fudge factor
-	
-	if (ownGroupCount == targetGroupCount)
-	{
-		[_cxxShip->shipAI message:"ODDS_LEVEL"];
-	}
-	else if (ownGroupCount > targetGroupCount)
-	{
-		[_cxxShip->shipAI message:"ODDS_GOOD"];
-	}
-	else
-	{
-		[_cxxShip->shipAI message:"ODDS_BAD"];
-	}
-}
-
-
-- (void) scanForFormationLeader
-{
-	//-- Locates the nearest suitable formation leader in range --//
-	DESTROY(_cxxShip->_foundTarget);
-	[self checkScannerIgnoringUnpowered];
-	unsigned i;
-	GLfloat	found_d2 = _cxxShip->scannerRange * _cxxShip->scannerRange;
-	for (i = 0; i < _cxxShip->n_scanned_ships; i++)
-	{
-		ShipEntity *ship = _cxxShip->scanned_ships[i];
-		if ((ship != self) && (!ship->_cxxEntity->isPlayer) && (ship->_cxxEntity->scanClass == _cxxEntity->scanClass) && [ship primaryTarget] != self && ![ship isCloaked])	// look for alike
-		{
-			GLfloat d2 = _cxxShip->distance2_scanned_ships[i];
-			if ((d2 < found_d2) && [ship canAcceptEscort:self])
-			{
-				found_d2 = d2;
-				[self setFoundTarget:ship];
-			}
-		}
-	}
-	
-	if ([self foundTarget] != nil)  [_cxxShip->shipAI message:"TARGET_FOUND"];
-	else
-	{
-		[_cxxShip->shipAI message:"NOTHING_FOUND"];
-		if ([self cxx_hasPrimaryRole:"wingman"])
-		{
-			// become free-lance police :)
-			[self setAITo:"route1patrolAI.plist"];	// use this to avoid referencing a released AI
-			[self setPrimaryRole:"police"]; // other wingman can now select this ship as leader.
-		}
-	}
-	
-}
-
-
-- (void) messageMother:(const std::string &)msgString	// called by name (ADR-0055 item 5)
-{
-	ShipEntity *mother = [self owner];
-	if (mother != nil && mother != self)
-	{
-		[mother cxx_reactToAIMessage:msgString context:DebugContext(self, "messageMother")];
-	}
-}
-
-
-- (void) messageSelf:(const std::string &)msgString	// called by name (ADR-0055 item 5)
-{
-	[self sendAIMessage:msgString];
-}
-
-
-- (void) setPlanetPatrolCoordinates
-{
-	// check we've arrived near the last given coordinates
-	HPVector r_pos = HPvector_subtract(_cxxEntity->position, _cxxShip->coordinates);
-	if (HPmagnitude2(r_pos) < 1000000 || _cxxShip->patrol_counter == 0)
-	{
-		Entity *the_sun = [UNIVERSE sun];
-		ShipEntity *the_station = [[self group] leader];
-		if(!the_station || ![the_station isStation]) the_station = [UNIVERSE station];
-		if ((!the_sun)||(!the_station))
-			return;
-		HPVector sun_pos = the_sun->_cxxEntity->position;
-		HPVector stn_pos = the_station->_cxxEntity->position;
-		HPVector sun_dir = HPvector_subtract(sun_pos,stn_pos);
-		Vector vSun = make_vector(0, 0, 1);
-		if (sun_dir.x||sun_dir.y||sun_dir.z)
-			vSun = HPVectorToVector(HPvector_normal(sun_dir));
-		Vector v0 = [the_station forwardVector];
-		Vector v1 = cross_product(v0, vSun);
-		Vector v2 = cross_product(v0, v1);
-		switch (_cxxShip->patrol_counter)
-		{
-			case 0:		// first go to 5km ahead of the station
-				_cxxShip->coordinates = make_HPvector(stn_pos.x + 5000 * v0.x, stn_pos.y + 5000 * v0.y, stn_pos.z + 5000 * v0.z);
-				_cxxShip->desired_range = 250.0;
-				break;
-			case 1:		// go to 25km N of the station
-				_cxxShip->coordinates = make_HPvector(stn_pos.x + 25000 * v1.x, stn_pos.y + 25000 * v1.y, stn_pos.z + 25000 * v1.z);
-				_cxxShip->desired_range = 250.0;
-				break;
-			case 2:		// go to 25km E of the station
-				_cxxShip->coordinates = make_HPvector(stn_pos.x + 25000 * v2.x, stn_pos.y + 25000 * v2.y, stn_pos.z + 25000 * v2.z);
-				_cxxShip->desired_range = 250.0;
-				break;
-			case 3:		// go to 25km S of the station
-				_cxxShip->coordinates = make_HPvector(stn_pos.x - 25000 * v1.x, stn_pos.y - 25000 * v1.y, stn_pos.z - 25000 * v1.z);
-				_cxxShip->desired_range = 250.0;
-				break;
-			case 4:		// go to 25km W of the station
-				_cxxShip->coordinates = make_HPvector(stn_pos.x - 25000 * v2.x, stn_pos.y - 25000 * v2.y, stn_pos.z - 25000 * v2.z);
-				_cxxShip->desired_range = 250.0;
-				break;
-			default:	// We should never come here
-				_cxxShip->coordinates = make_HPvector(stn_pos.x + 5000 * v0.x, stn_pos.y + 5000 * v0.y, stn_pos.z + 5000 * v0.z);
-				_cxxShip->desired_range = 250.0;
-				break;
-		}
-		_cxxShip->patrol_counter++;
-		if (_cxxShip->patrol_counter > 4)
-		{
-			if (randf() < .25)
-			{
-				// consider docking
-				[self setTargetStation:the_station];
-				[self setAITo:"dockingAI.plist"];
-				return;
-			}
-			else
-			{
-				// go around again
-				_cxxShip->patrol_counter = 1;
-			}
-		}
-	}
-	[_cxxShip->shipAI message:"APPROACH_COORDINATES"];
-}
-
-
-- (void) setSunSkimStartCoordinates
-{
-	if ([UNIVERSE sun] == nil)
-	{
-		[_cxxShip->shipAI message:"NO_SUN_FOUND"];
-		return;
-	}
-	
-	HPVector v0 = [UNIVERSE getSunSkimStartPositionForShip:self];
-	
-	if (!HPvector_equal(v0, kZeroHPVector))
-	{
-		_cxxShip->coordinates = v0;
-		[_cxxShip->shipAI message:"APPROACH_COORDINATES"];
-	}
-	else
-	{
-		[_cxxShip->shipAI message:"WAIT_FOR_SUN"];
-	}
-}
-
-
-- (void) setSunSkimEndCoordinates
-{
-	if ([UNIVERSE sun] == nil)
-	{
-		[_cxxShip->shipAI message:"NO_SUN_FOUND"];
-		return;
-	}
-	
-	_cxxShip->coordinates = [UNIVERSE getSunSkimEndPositionForShip:self];
-	[_cxxShip->shipAI message:"APPROACH_COORDINATES"];
-}
-
-
-- (void) setSunSkimExitCoordinates
-{
-	Entity *the_sun = [UNIVERSE sun];
-	if (the_sun == nil)  return;
-	HPVector v1 = [UNIVERSE getSunSkimEndPositionForShip:self];
-	HPVector vs = the_sun->_cxxEntity->position;
-	HPVector vout = HPvector_subtract(v1,vs);
-	if (vout.x||vout.y||vout.z)
-		vout = HPvector_normal(vout);
-	else
-		vout.z = 1.0;
-	v1.x += 10000 * vout.x;	v1.y += 10000 * vout.y;	v1.z += 10000 * vout.z;
-	_cxxShip->coordinates = v1;
-	[_cxxShip->shipAI message:"APPROACH_COORDINATES"];
-}
-
-
-- (void) patrolReportIn
-{
-	// Set a report time in the patrolled station to delay a new launch.
-	ShipEntity *the_station = [[self group] leader];
-	if(!the_station || ![the_station isStation]) the_station = [UNIVERSE station];
-	[(StationEntity*)the_station acceptPatrolReportFrom:self];
-}
-
-
-- (void) checkForMotherStation
-{
-	ShipEntity *motherStation = [[self group] leader];
-	if ((!motherStation) || (!(motherStation->_cxxEntity->isStation)))
-	{
-		[_cxxShip->shipAI message:"NOTHING_FOUND"];
-		return;
-	}
-	double found_d2 = _cxxShip->scannerRange * _cxxShip->scannerRange;
-	HPVector v0 = motherStation->_cxxEntity->position;
-	if (HPdistance2(v0,_cxxEntity->position) > found_d2)
-	{
-		[_cxxShip->shipAI message:"NOTHING_FOUND"];
-		return;
-	}
-	[_cxxShip->shipAI message:"STATION_FOUND"];		
-}
-
-
-- (void) sendTargetCommsMessage:(const std::string &)message	// called by name (ADR-0055 item 5)
-{
-	ShipEntity *ship = [self primaryTarget];
-	if ((ship == nil) || ([ship status] == STATUS_DEAD) || ([ship status] == STATUS_DOCKED))
-	{
-		[self noteLostTarget];
-		return;
-	}
-	[self cxx_sendExpandedMessage:message toShip:[self primaryTarget]];
-}
-
-
-- (void) markTargetForFines
-{
-	ShipEntity *ship = [self primaryTarget];
-	if ((ship == nil) || ([ship status] == STATUS_DEAD) || ([ship status] == STATUS_DOCKED))
-	{
-		[self noteLostTarget];
-		return;
-	}
-	if ([ship markForFines])  [_cxxShip->shipAI message:"TARGET_MARKED"];
-}
-
-
-- (void) markTargetForOffence:(const std::string &)valueString	// called by name (ADR-0055 item 5)
-{
-	if ((_cxxEntity->isStation)||(_cxxEntity->scanClass == CLASS_POLICE))
-	{
-		ShipEntity *ship = [self primaryTarget];
-		if ((ship == nil) || ([ship status] == STATUS_DEAD) || ([ship status] == STATUS_DOCKED))
-		{
-			[self noteLostTarget];
-			return;
-		}
-		const std::string finalValue = cxx_OOExpand(valueString).value_or(std::string());	// expand values
-		[ship markAsOffender:oo::str::intValue(finalValue) withReason:kOOLegalStatusReasonSeenByPolice];
-	}
-}
-
-
-- (void) storeTarget
-{
-	Entity	*target = [self primaryTarget];
-	
-	if (target)
-	{
-		[self setRememberedShip:target];
-	}
-	else
-	{
-		DESTROY(_cxxShip->_rememberedShip);
-	}
-	
-}
 
 - (void) recallStoredTarget
 {
@@ -2981,6 +2279,715 @@ void ShipEntity::checkCourseToDestination()
 		_destination = [UNIVERSE getSafeVectorFromEntity:self toDistance:desired_range fromPoint:_destination];
 		[shipAI message:"WAYPOINT_SET"];
 	}
+}
+
+
+}	// namespace cxx
+
+
+// Slice 3 of docs/phases/3-slices/ShipEntityAI.md (bead oo-wc9o3): PureAI part 2: checks, comms,
+// Thargoids, escorts, patrols, target marking. Members of cxx::ShipEntity defined in the category's
+// file (ADR-0056 amendment oo-o89 item 4); the facade forwards each selector
+// (ShipEntity+ObjCBridge.mm); sends to self stay sends, so an Objective-C subclass's override still
+// runs (amendment oo-mvzmb).
+namespace cxx {
+
+void ShipEntity::checkAegis()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	switch (aegis_status)
+	{
+		case AEGIS_CLOSE_TO_MAIN_PLANET: 
+			[shipAI message:"AEGIS_CLOSE_TO_MAIN_PLANET"];
+			// It's been a few years since 1.71 - it should be safe enough to comment out the line below for 1.77/1.78 -- Kaks 20120917
+			//[shipAI message:@"AEGIS_CLOSE_TO_PLANET"];	     // fires only for main planets, kept for compatibility with pre-1.72 AI plists.
+			return;
+		case AEGIS_CLOSE_TO_ANY_PLANET:
+		{
+			::Entity<OOStellarBody> *nearest = [self findNearestStellarBody];
+			
+			if([nearest isSun])
+			{
+				[shipAI message:"CLOSE_TO_SUN"];
+			}
+			else
+			{
+				[shipAI message:"CLOSE_TO_PLANET"];
+				if ([nearest planetType] == STELLAR_TYPE_MOON)
+				{
+					[shipAI message:"CLOSE_TO_MOON"];
+				}
+				else
+				{
+					[shipAI message:"CLOSE_TO_SECONDARY_PLANET"];
+				}
+			}
+			return;
+		}
+		case AEGIS_IN_DOCKING_RANGE:
+			[shipAI message:"AEGIS_IN_DOCKING_RANGE"];
+			return;
+		case AEGIS_NONE:
+			[shipAI message:"AEGIS_NONE"];
+			return;
+	}
+	
+	OO_LOG("unclassified", "Aegis status for {} has taken on invalid value {}. This is an internal error, please report it.", oo::DescriptionOf(self), static_cast<int>(aegis_status));
+	aegis_status = AEGIS_NONE;
+	[shipAI message:"AEGIS_NONE"];
+}
+
+
+void ShipEntity::checkEnergy()
+{
+	if (energy == maxEnergy)
+	{
+		[shipAI message:"ENERGY_FULL"];
+		return;
+	}
+	if (energy >= maxEnergy * 0.75)
+	{
+		[shipAI message:"ENERGY_HIGH"];
+		return;
+	}
+	if (energy <= maxEnergy * 0.25)
+	{
+		[shipAI message:"ENERGY_LOW"];
+		return;
+	}
+	[shipAI message:"ENERGY_MEDIUM"];
+}
+
+
+void ShipEntity::checkHeatInsulation()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	float minInsulation = 1000 / [self maxFlightSpeed] + 1;
+	
+	if ([self heatInsulation] < minInsulation)
+	{
+		[shipAI message:"INSULATION_POOR"];
+		return;
+	}
+	[shipAI message:"INSULATION_OK"];
+}
+
+
+void ShipEntity::findNewDefenseTarget()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self checkScanner];
+	unsigned i;
+	for (i = 0; i < n_scanned_ships ; i++)
+	{
+		::ShipEntity *ship = scanned_ships[i];
+		if (![ship isCloaked] && (([ship primaryTarget] == self && [ship hasHostileTarget]) || [ship isMine] || ([ship isThargoid] != [self isThargoid])))
+		{
+			if (![self isDefenseTarget:ship])
+			{
+				[self addDefenseTarget:ship];
+				return;
+			}
+		}
+	}
+}
+
+
+void ShipEntity::scanForOffenders()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	/*-- Locates all the ships in range and compares their legal status or bounty against ranrot_rand() & 255 - chooses the worst offender --*/
+	float gov_factor =	0.4 * [UNIVERSE cxx_currentSystemData].get<int>(std::string(KEY_GOVERNMENT)); // 0 .. 7 (0 anarchic .. 7 most stable) --> [0.0, 0.4, 0.8, 1.2, 1.6, 2.0, 2.4, 2.8]
+	//
+	if ([UNIVERSE sun] == nil)
+		gov_factor = 1.0;
+	//
+	DESTROY(_foundTarget);
+	
+	// find the worst offender on the scanner
+	//
+	[self checkScanner];
+	unsigned i;
+	float	worst_legal_factor = 0;
+	GLfloat found_d2 = scannerRange * scannerRange;
+	::OOShipGroup *group = [self group];
+	for (i = 0; i < n_scanned_ships ; i++)
+	{
+		::ShipEntity *ship = scanned_ships[i];
+		if ((ship->_cxxEntity->scanClass != CLASS_CARGO)&&([ship status] != STATUS_DEAD)&&([ship status] != STATUS_DOCKED)&& ![ship isCloaked])
+		{
+			GLfloat	d2 = distance2_scanned_ships[i];
+			float	legal_factor = [ship legalStatus] * gov_factor;
+			int random_factor = ranrot_rand() & 255;   // 25% chance of spotting a fugitive in 15s
+			if ((d2 < found_d2)&&(random_factor < legal_factor)&&(legal_factor > worst_legal_factor))
+			{
+				if (group == nil || group != [ship group])  // fellows with bounty can't be offenders
+				{
+					[self setFoundTarget:ship];
+					worst_legal_factor = legal_factor;
+				}
+			}
+		}
+	}
+	
+	[self checkFoundTarget];
+}
+
+
+void ShipEntity::setCourseToWitchpoint()
+{
+	if (UNIVERSE)
+	{
+		_destination = [UNIVERSE getWitchspaceExitPosition];
+		desired_range = 10000.0;   // 10km away
+	}
+}
+
+
+void ShipEntity::setDestinationToWitchpoint()
+{
+	_destination = [UNIVERSE getWitchspaceExitPosition];
+}
+
+
+void ShipEntity::setDestinationToStationBeacon()
+{
+	if ([UNIVERSE station])
+	{
+		_destination = [[UNIVERSE station] beaconPosition];
+	}
+}
+
+
+void ShipEntity::performHyperSpaceExit()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self performHyperSpaceExitReplace:YES];
+}
+
+
+void ShipEntity::performHyperSpaceExitWithoutReplacing()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self performHyperSpaceExitReplace:NO];
+}
+
+
+void ShipEntity::disengageAutopilot()
+{
+	OO_LOG_ERR("ai.invalid.notPlayer", "Error in {}:{}, AI method endAutoPilot is only applicable to the player.", [shipAI cxx_name].value_or("(null)"), [shipAI cxx_state].value_or("(null)"));
+}
+
+
+void ShipEntity::wormholeGroup()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::ShipEntity			*ship = nil;
+	::WormholeEntity		*whole = nil;
+	
+	whole = [self primaryTarget];
+	if (![whole isWormhole])  return;
+	
+	for (const oo::ObjCRef<::ShipEntity *> &member : [[self group] cxx_memberArray])
+	{
+		ship = member.get();
+		[ship addTarget:whole];
+		[ship cxx_reactToAIMessage:"ENTER WORMHOLE" context:"wormholeGroup"];
+		[ship doScriptEvent:OOJSID("wormholeSuggested") withArgument:whole];
+	}
+}
+
+
+void ShipEntity::commsMessage(const std::string &valueString)	// called by name (ADR-0055 item 5)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self cxx_commsMessage:valueString withUnpilotedOverride:NO];
+}
+
+
+void ShipEntity::commsMessageByUnpiloted(const std::string &valueString)	// called by name (ADR-0055 item 5)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self cxx_commsMessage:valueString withUnpilotedOverride:YES];
+}
+
+
+void ShipEntity::ejectCargo()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	OOCargoQuantity i, cargo_to_go = 0.1 * [self maxAvailableCargoSpace];
+	while (cargo_to_go > 15)
+	{
+		cargo_to_go = ranrot_rand() % cargo_to_go;
+	}
+	[self dumpCargo];
+	for (i = 1; i < cargo_to_go; i++)
+	{
+		OOScheduleDeferredCall(self, @selector(dumpCargo), nil, 0.75 * i);	// drop 3 canisters per 2 seconds
+	}
+}
+
+
+void ShipEntity::scanForThargoid()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self scanForNearestShipWithPrimaryRole:"thargoid"];
+}
+
+
+void ShipEntity::scanForNonThargoid()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	/*-- Locates all the non thargoid ships in range and chooses the nearest --*/
+	DESTROY(_foundTarget);
+	
+	[self checkScanner];
+	unsigned i;
+	GLfloat	found_d2 = scannerRange * scannerRange;
+	for (i = 0; i < n_scanned_ships ; i++)
+	{
+		::ShipEntity *thing = scanned_ships[i];
+		GLfloat d2 = distance2_scanned_ships[i];
+		if (([thing scanClass] != CLASS_CARGO) && ([thing status] != STATUS_DOCKED) && ![thing isThargoid] && ![thing isCloaked] && (d2 < found_d2))
+		{
+			[self setFoundTarget:thing];
+			if ([thing isPlayer]) d2 = 0.0;   // prefer the player
+			found_d2 = d2;
+		}
+	}
+
+	[self checkFoundTarget];
+}
+
+
+void ShipEntity::thargonCheckMother()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::ShipEntity   *mother = [self owner];
+	if (mother == nil && [self group])  mother = [[self group] leader];
+	
+	double	maxRange2 = scannerRange * scannerRange;
+	
+	if (mother && mother != self && HPdistance2(mother->_cxxEntity->position, position) < maxRange2)
+	{
+		[shipAI message:"TARGET_FOUND"]; // no need for scanning, we still have our mother.
+	}
+	else
+	{
+		// we lost the old mother, search for a new one
+		[self scanForNearestShipHavingRole:"thargoid-mothership"]; // the scan will send further AI messages.
+		if ([self foundTarget] != nil)
+		{
+			mother = (::ShipEntity*)[self foundTarget];
+			[self setOwner:mother];
+			if ([mother group] != [mother escortGroup]) // avoid adding thargon to an escort group.
+			{
+				[self setGroup:[mother group]];
+			}
+		};
+	}
+}
+
+
+void ShipEntity::becomeUncontrolledThargon()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	int			ent_count =		UNIVERSE->_cxxUniverse->n_entities;
+	::Entity**	uni_entities =	UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
+	int i;
+	for (i = 0; i < ent_count; i++) if (uni_entities[i]->_cxxEntity->isShip)
+	{
+		::ShipEntity *other = (::ShipEntity*)uni_entities[i];
+		if ([other primaryTarget] == self)
+		{
+			[other removeTarget:self];
+		}
+		if ([other isDefenseTarget:self])
+		{
+			[other removeDefenseTarget:self];
+		}
+	}
+	// now we're just a bunch of alien artefacts!
+	scanClass = CLASS_CARGO;
+	reportAIMessages = NO;
+	[self setAITo:"dumbAI.plist"];
+	DESTROY(_primaryTarget);
+	[self setSpeed: 0.0];
+	[self setGroup:nil];
+}
+
+
+void ShipEntity::checkDistanceTravelled()
+{
+	if (distanceTravelled > desired_range)
+		[shipAI message:"GONE_BEYOND_RANGE"];
+}
+
+
+void ShipEntity::fightOrFleeHostiles()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self addDefenseTarget:[self foundTarget]];
+	
+	if ([self hasEscorts])
+	{
+		::Entity *leTarget = [self lastEscortTarget];
+		if (leTarget != nil)
+		{
+			[self setFoundTarget:leTarget];
+			[shipAI message:"FLEEING"];
+			return;
+		}
+		
+		[self setPrimaryAggressor:[self foundTarget]];
+		[self addTarget:[self foundTarget]];
+		[self deployEscorts];
+		[shipAI message:"DEPLOYING_ESCORTS"];
+		[shipAI message:"FLEEING"];
+		return;
+	}
+	
+	// consider launching a missile
+	if (missiles > 2)   // keep a reserve
+	{
+		if (randf() < 0.50)
+		{
+			[self setPrimaryAggressor:[self foundTarget]];
+			[self addTarget:[self foundTarget]];
+			[self fireMissile];
+			[shipAI message:"FLEEING"];
+			return;
+		}
+	}
+	
+	// consider fighting
+	if (energy > maxEnergy * 0.80)
+	{
+		[self setPrimaryAggressor:[self foundTarget]];
+		//[self performAttack];
+		[shipAI message:"FIGHTING"];
+		return;
+	}
+	
+	[shipAI message:"FLEEING"];
+}
+
+
+void ShipEntity::suggestEscort()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::ShipEntity   *mother = [self primaryTarget];
+	[self suggestEscortTo:mother];
+}
+
+
+void ShipEntity::escortCheckMother()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::ShipEntity   *mother = [self owner];
+	
+	if ([mother acceptAsEscort:self])
+	{
+		[self setOwner:mother];
+		[self setGroup:[mother escortGroup]];
+		[shipAI message:"ESCORTING"];
+	}
+	else
+	{
+		[self setOwner:self];
+		if ([self group] == [mother escortGroup])  [self setGroup:nil];
+		[shipAI message:"NOT_ESCORTING"];
+	}
+}
+
+
+void ShipEntity::checkGroupOddsVersusTarget()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	NSUInteger ownGroupCount = [[self group] count] + (ranrot_rand() & 3);			// add a random fudge factor
+	NSUInteger targetGroupCount = [[[self primaryTarget] group] count] + (ranrot_rand() & 3);	// add a random fudge factor
+	
+	if (ownGroupCount == targetGroupCount)
+	{
+		[shipAI message:"ODDS_LEVEL"];
+	}
+	else if (ownGroupCount > targetGroupCount)
+	{
+		[shipAI message:"ODDS_GOOD"];
+	}
+	else
+	{
+		[shipAI message:"ODDS_BAD"];
+	}
+}
+
+
+void ShipEntity::scanForFormationLeader()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	//-- Locates the nearest suitable formation leader in range --//
+	DESTROY(_foundTarget);
+	[self checkScannerIgnoringUnpowered];
+	unsigned i;
+	GLfloat	found_d2 = scannerRange * scannerRange;
+	for (i = 0; i < n_scanned_ships; i++)
+	{
+		::ShipEntity *ship = scanned_ships[i];
+		if ((ship != self) && (!ship->_cxxEntity->isPlayer) && (ship->_cxxEntity->scanClass == scanClass) && [ship primaryTarget] != self && ![ship isCloaked])	// look for alike
+		{
+			GLfloat d2 = distance2_scanned_ships[i];
+			if ((d2 < found_d2) && [ship canAcceptEscort:self])
+			{
+				found_d2 = d2;
+				[self setFoundTarget:ship];
+			}
+		}
+	}
+	
+	if ([self foundTarget] != nil)  [shipAI message:"TARGET_FOUND"];
+	else
+	{
+		[shipAI message:"NOTHING_FOUND"];
+		if ([self cxx_hasPrimaryRole:"wingman"])
+		{
+			// become free-lance police :)
+			[self setAITo:"route1patrolAI.plist"];	// use this to avoid referencing a released AI
+			[self setPrimaryRole:"police"]; // other wingman can now select this ship as leader.
+		}
+	}
+	
+}
+
+
+void ShipEntity::messageMother(const std::string &msgString)	// called by name (ADR-0055 item 5)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::ShipEntity *mother = [self owner];
+	if (mother != nil && mother != self)
+	{
+		[mother cxx_reactToAIMessage:msgString context:DebugContext(self, "messageMother")];
+	}
+}
+
+
+void ShipEntity::messageSelf(const std::string &msgString)	// called by name (ADR-0055 item 5)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self sendAIMessage:msgString];
+}
+
+
+void ShipEntity::setPlanetPatrolCoordinates()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// check we've arrived near the last given coordinates
+	HPVector r_pos = HPvector_subtract(position, coordinates);
+	if (HPmagnitude2(r_pos) < 1000000 || patrol_counter == 0)
+	{
+		::Entity *the_sun = [UNIVERSE sun];
+		::ShipEntity *the_station = [[self group] leader];
+		if(!the_station || ![the_station isStation]) the_station = [UNIVERSE station];
+		if ((!the_sun)||(!the_station))
+			return;
+		HPVector sun_pos = the_sun->_cxxEntity->position;
+		HPVector stn_pos = the_station->_cxxEntity->position;
+		HPVector sun_dir = HPvector_subtract(sun_pos,stn_pos);
+		Vector vSun = make_vector(0, 0, 1);
+		if (sun_dir.x||sun_dir.y||sun_dir.z)
+			vSun = HPVectorToVector(HPvector_normal(sun_dir));
+		Vector v0 = [the_station forwardVector];
+		Vector v1 = cross_product(v0, vSun);
+		Vector v2 = cross_product(v0, v1);
+		switch (patrol_counter)
+		{
+			case 0:		// first go to 5km ahead of the station
+				coordinates = make_HPvector(stn_pos.x + 5000 * v0.x, stn_pos.y + 5000 * v0.y, stn_pos.z + 5000 * v0.z);
+				desired_range = 250.0;
+				break;
+			case 1:		// go to 25km N of the station
+				coordinates = make_HPvector(stn_pos.x + 25000 * v1.x, stn_pos.y + 25000 * v1.y, stn_pos.z + 25000 * v1.z);
+				desired_range = 250.0;
+				break;
+			case 2:		// go to 25km E of the station
+				coordinates = make_HPvector(stn_pos.x + 25000 * v2.x, stn_pos.y + 25000 * v2.y, stn_pos.z + 25000 * v2.z);
+				desired_range = 250.0;
+				break;
+			case 3:		// go to 25km S of the station
+				coordinates = make_HPvector(stn_pos.x - 25000 * v1.x, stn_pos.y - 25000 * v1.y, stn_pos.z - 25000 * v1.z);
+				desired_range = 250.0;
+				break;
+			case 4:		// go to 25km W of the station
+				coordinates = make_HPvector(stn_pos.x - 25000 * v2.x, stn_pos.y - 25000 * v2.y, stn_pos.z - 25000 * v2.z);
+				desired_range = 250.0;
+				break;
+			default:	// We should never come here
+				coordinates = make_HPvector(stn_pos.x + 5000 * v0.x, stn_pos.y + 5000 * v0.y, stn_pos.z + 5000 * v0.z);
+				desired_range = 250.0;
+				break;
+		}
+		patrol_counter++;
+		if (patrol_counter > 4)
+		{
+			if (randf() < .25)
+			{
+				// consider docking
+				[self setTargetStation:the_station];
+				[self setAITo:"dockingAI.plist"];
+				return;
+			}
+			else
+			{
+				// go around again
+				patrol_counter = 1;
+			}
+		}
+	}
+	[shipAI message:"APPROACH_COORDINATES"];
+}
+
+
+void ShipEntity::setSunSkimStartCoordinates()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if ([UNIVERSE sun] == nil)
+	{
+		[shipAI message:"NO_SUN_FOUND"];
+		return;
+	}
+	
+	HPVector v0 = [UNIVERSE getSunSkimStartPositionForShip:self];
+	
+	if (!HPvector_equal(v0, kZeroHPVector))
+	{
+		coordinates = v0;
+		[shipAI message:"APPROACH_COORDINATES"];
+	}
+	else
+	{
+		[shipAI message:"WAIT_FOR_SUN"];
+	}
+}
+
+
+void ShipEntity::setSunSkimEndCoordinates()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if ([UNIVERSE sun] == nil)
+	{
+		[shipAI message:"NO_SUN_FOUND"];
+		return;
+	}
+	
+	coordinates = [UNIVERSE getSunSkimEndPositionForShip:self];
+	[shipAI message:"APPROACH_COORDINATES"];
+}
+
+
+void ShipEntity::setSunSkimExitCoordinates()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::Entity *the_sun = [UNIVERSE sun];
+	if (the_sun == nil)  return;
+	HPVector v1 = [UNIVERSE getSunSkimEndPositionForShip:self];
+	HPVector vs = the_sun->_cxxEntity->position;
+	HPVector vout = HPvector_subtract(v1,vs);
+	if (vout.x||vout.y||vout.z)
+		vout = HPvector_normal(vout);
+	else
+		vout.z = 1.0;
+	v1.x += 10000 * vout.x;	v1.y += 10000 * vout.y;	v1.z += 10000 * vout.z;
+	coordinates = v1;
+	[shipAI message:"APPROACH_COORDINATES"];
+}
+
+
+void ShipEntity::patrolReportIn()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// Set a report time in the patrolled station to delay a new launch.
+	::ShipEntity *the_station = [[self group] leader];
+	if(!the_station || ![the_station isStation]) the_station = [UNIVERSE station];
+	[(::StationEntity*)the_station acceptPatrolReportFrom:self];
+}
+
+
+void ShipEntity::checkForMotherStation()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::ShipEntity *motherStation = [[self group] leader];
+	if ((!motherStation) || (!(motherStation->_cxxEntity->isStation)))
+	{
+		[shipAI message:"NOTHING_FOUND"];
+		return;
+	}
+	double found_d2 = scannerRange * scannerRange;
+	HPVector v0 = motherStation->_cxxEntity->position;
+	if (HPdistance2(v0,position) > found_d2)
+	{
+		[shipAI message:"NOTHING_FOUND"];
+		return;
+	}
+	[shipAI message:"STATION_FOUND"];		
+}
+
+
+void ShipEntity::sendTargetCommsMessage(const std::string &message)	// called by name (ADR-0055 item 5)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::ShipEntity *ship = [self primaryTarget];
+	if ((ship == nil) || ([ship status] == STATUS_DEAD) || ([ship status] == STATUS_DOCKED))
+	{
+		[self noteLostTarget];
+		return;
+	}
+	[self cxx_sendExpandedMessage:message toShip:[self primaryTarget]];
+}
+
+
+void ShipEntity::markTargetForFines()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::ShipEntity *ship = [self primaryTarget];
+	if ((ship == nil) || ([ship status] == STATUS_DEAD) || ([ship status] == STATUS_DOCKED))
+	{
+		[self noteLostTarget];
+		return;
+	}
+	if ([ship markForFines])  [shipAI message:"TARGET_MARKED"];
+}
+
+
+void ShipEntity::markTargetForOffence(const std::string &valueString)	// called by name (ADR-0055 item 5)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if ((isStation)||(scanClass == CLASS_POLICE))
+	{
+		::ShipEntity *ship = [self primaryTarget];
+		if ((ship == nil) || ([ship status] == STATUS_DEAD) || ([ship status] == STATUS_DOCKED))
+		{
+			[self noteLostTarget];
+			return;
+		}
+		const std::string finalValue = cxx_OOExpand(valueString).value_or(std::string());	// expand values
+		[ship markAsOffender:oo::str::intValue(finalValue) withReason:kOOLegalStatusReasonSeenByPolice];
+	}
+}
+
+
+void ShipEntity::storeTarget()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::Entity	*target = [self primaryTarget];
+	
+	if (target)
+	{
+		[self setRememberedShip:target];
+	}
+	else
+	{
+		DESTROY(_rememberedShip);
+	}
+	
 }
 
 

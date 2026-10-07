@@ -171,6 +171,11 @@ public:
 
 	// ShipEntityAI.mm slice 1 (bead oo-iebuz).
 	void acceptDistressMessageFrom(::ShipEntity *other) override	{ [(::ShipEntity *)this->_objcOwner acceptDistressMessageFrom:other]; }
+
+	// ShipEntityAI.mm slice 3 (bead oo-wc9o3).
+	void disengageAutopilot() override	{ [(::ShipEntity *)this->_objcOwner disengageAutopilot]; }
+	void commsMessage(const std::string &valueString) override	{ [(::ShipEntity *)this->_objcOwner commsMessage:valueString]; }
+	void commsMessageByUnpiloted(const std::string &valueString) override	{ [(::ShipEntity *)this->_objcOwner commsMessageByUnpiloted:valueString]; }
 };
 
 }	// namespace oo
