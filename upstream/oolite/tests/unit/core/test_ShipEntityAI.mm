@@ -315,10 +315,13 @@ OO_TEST(slice1NothingToActOn)
 		[ship groupAttackTarget];
 		OO_CHECK([ship foundTarget] == other);
 
-		// No hyperspace motor: no jump.
+		// Already entering witchspace: no second jump (the universe's destinations are not asked).
+		[ship setStatus:STATUS_ENTERING_WITCHSPACE];
 		OO_CHECK(![ship performHyperSpaceToSpecificSystem:7]);
 		OO_CHECK(![ship performHyperSpaceExitReplace:NO]);
 		OO_CHECK(![ship performHyperSpaceExitReplace:YES toSystem:3]);
+		OO_CHECK([ship status] == STATUS_ENTERING_WITCHSPACE);
+		[ship setStatus:STATUS_IN_FLIGHT];
 	}
 }
 
