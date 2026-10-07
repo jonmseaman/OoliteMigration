@@ -817,6 +817,21 @@ public:
 	::ShipEntity *dumpCargoItem(const std::optional<std::string> &preferred);
 	OOCargoType dumpItem(::ShipEntity *cargoObj);
 
+	// Slice 30: collisions, velocity, tractoring and scooping.
+	void manageCollisions();
+	virtual bool collideWithShip(::ShipEntity *other);
+	Vector thrustVector();
+	Vector getVelocity() override;
+	void setTotalVelocity(Vector vel);
+	virtual void adjustVelocity(Vector xVel);
+	void addImpactMoment(Vector moment, GLfloat howmuch);
+	virtual bool canScoop(::ShipEntity *other);
+	void getTractoredBy(::ShipEntity *other);
+	void scoopIn(::ShipEntity *other);
+	virtual void suppressTargetLost();
+	void scoopUp(::ShipEntity *other);
+	void scoopUpProcess(::ShipEntity *other, bool procEvents, bool procMessages);
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired

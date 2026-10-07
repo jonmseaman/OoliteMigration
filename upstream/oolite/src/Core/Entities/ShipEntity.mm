@@ -516,450 +516,6 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 }
 
 
-- (void) manageCollisions
-{
-	// deal with collisions
-	//
-	Entity*		ent;
-	ShipEntity* other_ship;
-	
-	while (!_cxxEntity->collidingEntities.empty())
-	{
-		// EMMSTRAN: investigate if doing this backwards would be more efficient. (Not entirely obvious, the vector is kinda funky.) -- Ahruman 2011-02-12
-		ent = [[_cxxEntity->collidingEntities.front().get() retain] autorelease];
-		_cxxEntity->collidingEntities.erase(_cxxEntity->collidingEntities.begin());
-		if (ent)
-		{
-			if ([ent isShip])
-			{
-				other_ship = (ShipEntity *)ent;
-				[self collideWithShip:other_ship];
-			}
-			else if ([ent isStellarObject])
-			{
-				[self getDestroyedBy:ent damageType:[ent isSun] ? kOODamageTypeHitASun : kOODamageTypeHitAPlanet];
-				if (self == PLAYER)  [self retain];
-			}
-			else if ([ent isWormhole])
-			{
-				if( [self isPlayer] ) [self enterWormhole:(WormholeEntity*)ent];
-				else [self enterWormhole:(WormholeEntity*)ent replacing:NO];
-			}
-		}
-	}
-}
-
-
-- (BOOL) collideWithShip:(ShipEntity *)other
-{
-	HPVector  hploc;
-	Vector loc;
-	double  dam1, dam2;
-	
-	if (!other)
-		return NO;
-	
-	ShipEntity* otherParent = [other parentEntity];
-	BOOL otherIsStation = other == [UNIVERSE station];
-	// calculate line of centers using centres
-	hploc = HPvector_normal_or_zbasis(HPvector_subtract([other absolutePositionForSubentity], _cxxEntity->position));
-	loc = HPVectorToVector(hploc);
-
-	
-	if ([self canScoop:other])
-	{
-		[self scoopIn:other];
-		return NO;
-	}
-	if ([other canScoop:self])
-	{
-		[other scoopIn:self];
-		return NO;
-	}
-	if (_cxxEntity->universalID == NO_TARGET)
-		return NO;
-	if (other->_cxxEntity->universalID == NO_TARGET)
-		return NO;
-
-	// find velocity along line of centers
-	//
-	// momentum = mass x velocity
-	// ke = mass x velocity x velocity
-	//
-	GLfloat m1 = _cxxEntity->mass;			// mass of self
-	GLfloat m2 = [other mass];	// mass of other
-
-	// starting velocities:
-	Vector	v, vel1b =	[self velocity];
-	
-	if (otherParent != nil)
-	{
-		// Subentity
-		/*	TODO: if the subentity is rotating (subentityRotationalVelocity is
-			not 1 0 0 0) we should calculate the tangential velocity from the
-			other's position relative to our absolute position and add that in.
-		*/
-		v = [otherParent velocity];
-	}
-	else
-	{
-		v = [other velocity];
-	}
-
-	v = vector_subtract(vel1b, v);
-	
-	GLfloat	v2b = dot_product(v, loc);			// velocity of other along loc before collision
-	
-	GLfloat v1a = sqrt(v2b * v2b * m2 / m1);	// velocity of self along loc after elastic collision
-	if (v2b < 0.0f)	v1a = -v1a;					// in same direction as v2b
-	
-	// are they moving apart at over 1m/s already?
-	if (v2b < 0.0f)
-	{
-		if (v2b < -1.0f)  return NO;
-		else
-		{
-			_cxxEntity->position = HPvector_subtract(_cxxEntity->position, hploc);	// adjust self position
-			v = kZeroVector;	// go for the 1m/s solution
-		}
-	}
-
-	// convert change in velocity into damage energy (KE)
-	dam1 = m2 * v2b * v2b / 50000000;
-	dam2 = m1 * v2b * v2b / 50000000;
-	
-	// calculate adjustments to velocity after collision
-	Vector vel1a = vector_multiply_scalar(loc, -v1a);
-	Vector vel2a = vector_multiply_scalar(loc, v2b);
-
-	if (magnitude2(v) <= 0.1)	// virtually no relative velocity - we must provide at least 1m/s to avoid conjoined objects
-	{
-		vel1a = vector_multiply_scalar(loc, -1);
-		vel2a = loc;
-	}
-
-	// apply change in velocity
-	if (otherParent != nil)
-	{
-		[otherParent adjustVelocity:vel2a];	// move the otherParent not the subentity
-	}
-	else
-	{
-		[other adjustVelocity:vel2a];
-	}
-	
-	[self adjustVelocity:vel1a];
-	
-	BOOL selfDestroyed = (dam1 > _cxxEntity->energy);
-	BOOL otherDestroyed = (dam2 > [other energy]) && !otherIsStation;
-	
-	if (dam1 > 0.05)
-	{
-		[self takeScrapeDamage: dam1 from:other];
-		if (selfDestroyed)	// inelastic! - take xplosion velocity damage instead
-		{
-			vel2a = vector_multiply_scalar(vel2a, -1);
-			[other adjustVelocity:vel2a];
-		}
-	}
-	
-	if (dam2 > 0.05)
-	{
-		if (otherParent != nil && ![otherParent isFrangible])
-		{
-			[otherParent takeScrapeDamage: dam2 from:self];
-		}
-		else
-		{
-			[other	takeScrapeDamage: dam2 from:self];
-		}
-		
-		if (otherDestroyed)	// inelastic! - take explosion velocity damage instead
-		{
-			vel1a = vector_multiply_scalar(vel1a, -1);
-			[self adjustVelocity:vel1a];
-		}
-	}
-	
-	if (!selfDestroyed && !otherDestroyed)
-	{
-		float t = 10.0 * [UNIVERSE getTimeDelta];	// 10 ticks
-		
-		HPVector pos1a = HPvector_add([self position], vectorToHPVector(vector_multiply_scalar(loc, t * v1a)));
-		[self setPosition:pos1a];
-		
-		if (!otherIsStation)
-		{
-			HPVector pos2a = HPvector_add([other position], vectorToHPVector(vector_multiply_scalar(loc, t * v2b)));
-			[other setPosition:pos2a];
-		}
-	}
-	
-	// remove self from other's collision list
-	if (std::vector<oo::ObjCRef<Entity *>> *colliding = [other cxx_collidingEntities])  std::erase_if(*colliding, [self](const oo::ObjCRef<Entity *> &e) { return e.get() == self; });	// -removeObject:
-	
-	[self cxx_doScriptEvent:OOJSID("shipCollided") withArgument:other andReactToAIMessage:"COLLISION"];
-	[other cxx_doScriptEvent:OOJSID("shipCollided") withArgument:self andReactToAIMessage:"COLLISION"];
-	
-	return YES;
-}
-
-
-- (Vector) thrustVector
-{
-	return vector_multiply_scalar(_cxxShip->v_forward, _cxxShip->flightSpeed);
-}
-
-
-- (Vector) velocity
-{
-	return vector_add([super velocity], [self thrustVector]);
-}
-
-
-- (void) setTotalVelocity:(Vector)vel
-{
-	[self setVelocity:vector_subtract(vel, [self thrustVector])];
-}
-
-
-- (void) adjustVelocity:(Vector) xVel
-{
-	_cxxEntity->velocity = vector_add(_cxxEntity->velocity, xVel);
-}
-
-
-- (void) addImpactMoment:(Vector) moment fraction:(GLfloat) howmuch
-{
-	_cxxEntity->velocity = vector_add(_cxxEntity->velocity, vector_multiply_scalar(moment, howmuch / _cxxEntity->mass));
-}
-
-
-- (BOOL) canScoop:(ShipEntity*)other
-{
-	if (other == nil)							return NO;
-	if (![self hasCargoScoop])						return NO;
-	if (_cxxShip->cargo.size() >= [self maxAvailableCargoSpace])	return NO;
-	if (_cxxEntity->scanClass == CLASS_CARGO)				return NO;  // we have no power so we can't scoop
-	if ([other scanClass] != CLASS_CARGO)		return NO;
-	if ([other cargoType] == CARGO_NOT_CARGO)	return NO;
-	
-	if ([other isStation])						return NO;
-
-	HPVector  loc = HPvector_between(_cxxEntity->position, [other position]);
-	
-	if (dot_product(_cxxShip->v_forward, HPVectorToVector(loc)) < 0.0f)		return NO;  // Must be in front of us
-	if ([self isPlayer] && dot_product(_cxxShip->v_up, HPVectorToVector(loc)) > 0.0f)  return NO;  // player has to scoop on underside, give more flexibility to NPCs
-	
-	return YES;
-}
-
-
-- (void) getTractoredBy:(ShipEntity *)other
-{
-	if([self status] == STATUS_BEING_SCOOPED) return; // both cargo and ship call this. Act only once.
-	_cxxShip->desired_speed = 0.0;
-	[self setAITo:"nullAI.plist"];	// prevent AI from changing status or behaviour.
-	_cxxShip->behaviour = BEHAVIOUR_TRACTORED;
-	[self setStatus:STATUS_BEING_SCOOPED];
-	[self addTarget:other];
-	[self setOwner:other];
-	// should we make this an all rather than first 16? - CIM
-	// made it ignore other cargopods and similar at least. - CIM 28/7/2013
-	[self checkScannerIgnoringUnpowered]; 
-	unsigned i;
-	ShipEntity *scooper;
-	for (i = 0; i < _cxxShip->n_scanned_ships ; i++)
-	{
-		scooper = (ShipEntity *)_cxxShip->scanned_ships[i];
-		// 'Dibs!' - Stops other ships from trying to scoop/shoot this cargo.
-		if (other != scooper && (id) self == [scooper primaryTarget])
-		{
-			[scooper noteLostTarget];
-		}
-	}
-}
-
-
-- (void) scoopIn:(ShipEntity *)other
-{
-	[other getTractoredBy:self];
-}
-
-
-- (void) suppressTargetLost
-{
-	
-}
-
-
-- (void) scoopUp:(ShipEntity *)other
-{
-	[self scoopUpProcess:other processEvents:YES processMessages:YES];
-}
-
-
-- (void) scoopUpProcess:(ShipEntity *)other processEvents:(BOOL) procEvents processMessages:(BOOL) procMessages
-{
-	if (other == nil)  return;
-	
-	std::optional<std::string>	co_type;
-	OOCargoQuantity	co_amount;
-	
-	// don't even think of trying to scoop if the cargo hold is already full
-	if (_cxxShip->max_cargo && _cxxShip->cargo.size() >= [self maxAvailableCargoSpace])
-	{
-		[other setStatus:STATUS_IN_FLIGHT];
-		return;
-	}
-	
-	switch ([other cargoType])
-	{
-		case CARGO_RANDOM:
-			co_type = [other cxx_commodityType];
-			co_amount = [other commodityAmount];
-			break;
-		
-		case CARGO_SCRIPTED_ITEM:
-			{
-				//scripting
-				PlayerEntity *player = PLAYER;
-				[player setScriptTarget:self];
-				if (procEvents)
-				{
-					[other doScriptEvent:OOJSID("shipWasScooped") withArgument:self];
-				}
-				
-				if ([other cxx_commodityType].has_value())
-				{
-					co_type = [other cxx_commodityType];
-					co_amount = [other commodityAmount];
-					// don't show scoop message now, will happen later.
-				}
-				else
-				{
-					if (_cxxEntity->isPlayer && [other showScoopMessage] && procMessages)
-					{
-						[UNIVERSE clearPreviousMessage];
-						const std::optional<std::string> shipName = [other displayName];
-						[UNIVERSE cxx_addMessage:ExpandKeyWithArgument("scripted-item-scooped", "shipName", shipName) forCount:4];
-					}
-					[other cxx_setCommodityForPod:std::nullopt andAmount:0];
-					co_amount = 0;
-					co_type = std::nullopt;
-				}
-			}
-			break;
-
-		default :
-			co_amount = 0;
-			co_type = std::nullopt;
-			break;
-	}
-	
-	/*	Bug: docking failed due to OORangeException while looking for element
-		NSNotFound of cargo mainfest in -[PlayerEntity unloadCargoPods].
-		Analysis: bad cargo pods being generated due to
-		-[Universe commodityForName:] looking in wrong place for names.
-		Fix 1: fix -[Universe commodityForName:].
-		Fix 2: catch NSNotFound here and substitute random cargo type.
-		-- Ahruman 20070714
-	*/
-	if (!co_type.has_value() && co_amount > 0)
-	{
-		co_type = std::optional<std::string>([UNIVERSE getRandomCommodity]);
-		co_amount = co_type.has_value() ? [UNIVERSE cxx_getRandomAmountOfCommodity:*co_type] : 0;
-	}
-
-	if (co_amount > 0)
-	{
-		if (co_type.has_value())  [other cxx_setCommodity:*co_type andAmount:co_amount];   // belt and braces setting this! (nil changed nothing)
-		_cxxShip->cargo_flag = CARGO_FLAG_CANISTERS;
-		
-		if (_cxxEntity->isPlayer)
-		{
-			const std::optional<std::vector<oo::ObjCRef<OOCharacter *>>> otherCrew = [other cxx_crew];
-			if (otherCrew.has_value())
-			{
-				if ([other showScoopMessage] && procMessages)
-				{
-					[UNIVERSE clearPreviousMessage];
-					unsigned i;
-					for (i = 0; i < otherCrew->size(); i++)
-					{
-						OOCharacter *rescuee = (*otherCrew)[i].get();
-						const std::optional<std::string> characterName = [rescuee cxx_name];
-						if ([rescuee legalStatus])
-						{
-							[UNIVERSE cxx_addMessage:ExpandKeyWithArgument("scoop-captured-character", "characterName", characterName) forCount: 4.5];
-						}
-						else if ([rescuee insuranceCredits])
-						{
-							[UNIVERSE cxx_addMessage:ExpandKeyWithArgument("scoop-rescued-character", "characterName", characterName) forCount: 4.5];
-						}
-						else
-						{
-							[UNIVERSE cxx_addMessage:OO_DESC("scoop-got-slave") forCount: 4.5];
-						}
-					}
-				}
-				if (procEvents) 
-				{
-					[(PlayerEntity *)self playEscapePodScooped];
-				}
-			}
-			else
-			{
-				if ([other showScoopMessage] && procMessages)
-				{
-					[UNIVERSE clearPreviousMessage];
-					[UNIVERSE cxx_addMessage:[UNIVERSE cxx_describeCommodity:co_type.value_or("") amount:co_amount] forCount:4.5];
-				}
-			}
-		}
-		_cxxShip->cargo.insert(_cxxShip->cargo.begin(), oo::ObjCRef<ShipEntity *>(other));	// places most recently scooped object at eject position
-		[other setStatus:STATUS_IN_HOLD];
-		[other performTumble];
-		[_cxxShip->shipAI message:"CARGO_SCOOPED"];
-		if (_cxxShip->max_cargo && _cxxShip->cargo.size() >= [self maxAvailableCargoSpace])  [_cxxShip->shipAI message:"HOLD_FULL"];
-	}
-	if (procEvents)
-	{
-		[self doScriptEvent:OOJSID("shipScoopedOther") withArgument:other]; // always fire, even without commodity.
-	}
-
-	// if shipScoopedOther does something strange to the object, we must
-	// then remove it from the hold, or it will be over-retained
-	if ([other status] != STATUS_IN_HOLD) 
-	{
-		if ((std::find(_cxxShip->cargo.begin(), _cxxShip->cargo.end(), other) != _cxxShip->cargo.end()))
-		{
-			std::erase(_cxxShip->cargo, other);
-		}
-	}
-
-	if (std::vector<oo::ObjCRef<Entity *>> *colliding = [other cxx_collidingEntities])  std::erase_if(*colliding, [self](const oo::ObjCRef<Entity *> &e) { return e.get() == self; });	// -removeObject:, so it can't be scooped twice!
-	// make sure other ships trying to scoop it lose it
-	// probably already happened, but some may have acquired it
-	// after the scooping started, and they might get stuck in a scooping
-	// attempt as a result
-	[self checkScannerIgnoringUnpowered];
-	unsigned i;
-	ShipEntity *scooper;
-	for (i = 0; i < _cxxShip->n_scanned_ships ; i++)
-	{
-		scooper = (ShipEntity *)_cxxShip->scanned_ships[i];
-		if (self != scooper && (id) other == [scooper primaryTargetWithoutValidityCheck])
-		{
-			[scooper noteLostTarget];
-		}
-	}
-
-	[self suppressTargetLost];
-	[UNIVERSE removeEntity:other];
-}
-
-
 - (BOOL) cascadeIfAppropriateWithDamageAmount:(double)amount cascadeOwner:(Entity *)owner
 {
 	BOOL cascade = NO;
@@ -15536,6 +15092,468 @@ OOCargoType ShipEntity::dumpItem(::ShipEntity *cargoObj)
 
 
 }	// namespace cxx
+
+
+// Slice 30 of docs/phases/3-slices/ShipEntity.md (bead oo-ogoct): collisions, velocity, tractoring
+// and scooping. The facade forwards each selector (ShipEntity+ObjCBridge.mm); sends to self stay
+// sends, so an Objective-C subclass's override still runs (ADR-0056 amendment oo-mvzmb).
+namespace cxx {
+
+void ShipEntity::manageCollisions()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// deal with collisions
+	//
+	::Entity*		ent;
+	::ShipEntity* other_ship;
+	
+	while (!collidingEntities.empty())
+	{
+		// EMMSTRAN: investigate if doing this backwards would be more efficient. (Not entirely obvious, the vector is kinda funky.) -- Ahruman 2011-02-12
+		ent = [[collidingEntities.front().get() retain] autorelease];
+		collidingEntities.erase(collidingEntities.begin());
+		if (ent)
+		{
+			if ([ent isShip])
+			{
+				other_ship = (::ShipEntity *)ent;
+				[self collideWithShip:other_ship];
+			}
+			else if ([ent isStellarObject])
+			{
+				[self getDestroyedBy:ent damageType:[ent isSun] ? kOODamageTypeHitASun : kOODamageTypeHitAPlanet];
+				if (self == PLAYER)  [self retain];
+			}
+			else if ([ent isWormhole])
+			{
+				if( [self isPlayer] ) [self enterWormhole:(::WormholeEntity*)ent];
+				else [self enterWormhole:(::WormholeEntity*)ent replacing:NO];
+			}
+		}
+	}
+}
+
+
+bool ShipEntity::collideWithShip(::ShipEntity *other)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	HPVector  hploc;
+	Vector loc;
+	double  dam1, dam2;
+	
+	if (!other)
+		return NO;
+	
+	::ShipEntity* otherParent = [other parentEntity];
+	BOOL otherIsStation = other == [UNIVERSE station];
+	// calculate line of centers using centres
+	hploc = HPvector_normal_or_zbasis(HPvector_subtract([other absolutePositionForSubentity], position));
+	loc = HPVectorToVector(hploc);
+
+	
+	if ([self canScoop:other])
+	{
+		[self scoopIn:other];
+		return NO;
+	}
+	if ([other canScoop:self])
+	{
+		[other scoopIn:self];
+		return NO;
+	}
+	if (universalID == NO_TARGET)
+		return NO;
+	if (other->_cxxEntity->universalID == NO_TARGET)
+		return NO;
+
+	// find velocity along line of centers
+	//
+	// momentum = mass x velocity
+	// ke = mass x velocity x velocity
+	//
+	GLfloat m1 = mass;			// mass of self
+	GLfloat m2 = [other mass];	// mass of other
+
+	// starting velocities:
+	Vector	v, vel1b =	[self velocity];
+	
+	if (otherParent != nil)
+	{
+		// Subentity
+		/*	TODO: if the subentity is rotating (subentityRotationalVelocity is
+			not 1 0 0 0) we should calculate the tangential velocity from the
+			other's position relative to our absolute position and add that in.
+		*/
+		v = [otherParent velocity];
+	}
+	else
+	{
+		v = [other velocity];
+	}
+
+	v = vector_subtract(vel1b, v);
+	
+	GLfloat	v2b = dot_product(v, loc);			// velocity of other along loc before collision
+	
+	GLfloat v1a = sqrt(v2b * v2b * m2 / m1);	// velocity of self along loc after elastic collision
+	if (v2b < 0.0f)	v1a = -v1a;					// in same direction as v2b
+	
+	// are they moving apart at over 1m/s already?
+	if (v2b < 0.0f)
+	{
+		if (v2b < -1.0f)  return NO;
+		else
+		{
+			position = HPvector_subtract(position, hploc);	// adjust self position
+			v = kZeroVector;	// go for the 1m/s solution
+		}
+	}
+
+	// convert change in velocity into damage energy (KE)
+	dam1 = m2 * v2b * v2b / 50000000;
+	dam2 = m1 * v2b * v2b / 50000000;
+	
+	// calculate adjustments to velocity after collision
+	Vector vel1a = vector_multiply_scalar(loc, -v1a);
+	Vector vel2a = vector_multiply_scalar(loc, v2b);
+
+	if (magnitude2(v) <= 0.1)	// virtually no relative velocity - we must provide at least 1m/s to avoid conjoined objects
+	{
+		vel1a = vector_multiply_scalar(loc, -1);
+		vel2a = loc;
+	}
+
+	// apply change in velocity
+	if (otherParent != nil)
+	{
+		[otherParent adjustVelocity:vel2a];	// move the otherParent not the subentity
+	}
+	else
+	{
+		[other adjustVelocity:vel2a];
+	}
+	
+	[self adjustVelocity:vel1a];
+	
+	BOOL selfDestroyed = (dam1 > energy);
+	BOOL otherDestroyed = (dam2 > [other energy]) && !otherIsStation;
+	
+	if (dam1 > 0.05)
+	{
+		[self takeScrapeDamage: dam1 from:other];
+		if (selfDestroyed)	// inelastic! - take xplosion velocity damage instead
+		{
+			vel2a = vector_multiply_scalar(vel2a, -1);
+			[other adjustVelocity:vel2a];
+		}
+	}
+	
+	if (dam2 > 0.05)
+	{
+		if (otherParent != nil && ![otherParent isFrangible])
+		{
+			[otherParent takeScrapeDamage: dam2 from:self];
+		}
+		else
+		{
+			[other	takeScrapeDamage: dam2 from:self];
+		}
+		
+		if (otherDestroyed)	// inelastic! - take explosion velocity damage instead
+		{
+			vel1a = vector_multiply_scalar(vel1a, -1);
+			[self adjustVelocity:vel1a];
+		}
+	}
+	
+	if (!selfDestroyed && !otherDestroyed)
+	{
+		float t = 10.0 * [UNIVERSE getTimeDelta];	// 10 ticks
+		
+		HPVector pos1a = HPvector_add([self position], vectorToHPVector(vector_multiply_scalar(loc, t * v1a)));
+		[self setPosition:pos1a];
+		
+		if (!otherIsStation)
+		{
+			HPVector pos2a = HPvector_add([other position], vectorToHPVector(vector_multiply_scalar(loc, t * v2b)));
+			[other setPosition:pos2a];
+		}
+	}
+	
+	// remove self from other's collision list
+	if (std::vector<oo::ObjCRef<::Entity *>> *colliding = [other cxx_collidingEntities])  std::erase_if(*colliding, [self](const oo::ObjCRef<::Entity *> &e) { return e.get() == self; });	// -removeObject:
+	
+	[self cxx_doScriptEvent:OOJSID("shipCollided") withArgument:other andReactToAIMessage:"COLLISION"];
+	[other cxx_doScriptEvent:OOJSID("shipCollided") withArgument:self andReactToAIMessage:"COLLISION"];
+	
+	return YES;
+}
+
+
+Vector ShipEntity::thrustVector()
+{
+	return vector_multiply_scalar(v_forward, flightSpeed);
+}
+
+
+Vector ShipEntity::getVelocity()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return vector_add(OOEntityWithDrawable::getVelocity(), [self thrustVector]);	// [super velocity]
+}
+
+
+void ShipEntity::setTotalVelocity(Vector vel)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self setVelocity:vector_subtract(vel, [self thrustVector])];
+}
+
+
+void ShipEntity::adjustVelocity(Vector xVel)
+{
+	velocity = vector_add(velocity, xVel);
+}
+
+
+void ShipEntity::addImpactMoment(Vector moment, GLfloat howmuch)
+{
+	velocity = vector_add(velocity, vector_multiply_scalar(moment, howmuch / mass));
+}
+
+
+bool ShipEntity::canScoop(::ShipEntity *other)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (other == nil)							return NO;
+	if (![self hasCargoScoop])						return NO;
+	if (cargo.size() >= [self maxAvailableCargoSpace])	return NO;
+	if (scanClass == CLASS_CARGO)				return NO;  // we have no power so we can't scoop
+	if ([other scanClass] != CLASS_CARGO)		return NO;
+	if ([other cargoType] == CARGO_NOT_CARGO)	return NO;
+	
+	if ([other isStation])						return NO;
+
+	HPVector  loc = HPvector_between(position, [other position]);
+	
+	if (dot_product(v_forward, HPVectorToVector(loc)) < 0.0f)		return NO;  // Must be in front of us
+	if ([self isPlayer] && dot_product(v_up, HPVectorToVector(loc)) > 0.0f)  return NO;  // player has to scoop on underside, give more flexibility to NPCs
+	
+	return YES;
+}
+
+
+void ShipEntity::getTractoredBy(::ShipEntity *other)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if([self status] == STATUS_BEING_SCOOPED) return; // both cargo and ship call this. Act only once.
+	desired_speed = 0.0;
+	[self setAITo:"nullAI.plist"];	// prevent AI from changing status or behaviour.
+	behaviour = BEHAVIOUR_TRACTORED;
+	[self setStatus:STATUS_BEING_SCOOPED];
+	[self addTarget:other];
+	[self setOwner:other];
+	// should we make this an all rather than first 16? - CIM
+	// made it ignore other cargopods and similar at least. - CIM 28/7/2013
+	[self checkScannerIgnoringUnpowered]; 
+	unsigned i;
+	::ShipEntity *scooper;
+	for (i = 0; i < n_scanned_ships ; i++)
+	{
+		scooper = (::ShipEntity *)scanned_ships[i];
+		// 'Dibs!' - Stops other ships from trying to scoop/shoot this cargo.
+		if (other != scooper && (id) self == [scooper primaryTarget])
+		{
+			[scooper noteLostTarget];
+		}
+	}
+}
+
+
+void ShipEntity::scoopIn(::ShipEntity *other)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[other getTractoredBy:self];
+}
+
+
+void ShipEntity::suppressTargetLost()
+{
+	
+}
+
+
+void ShipEntity::scoopUp(::ShipEntity *other)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self scoopUpProcess:other processEvents:YES processMessages:YES];
+}
+
+
+void ShipEntity::scoopUpProcess(::ShipEntity *other, bool procEvents, bool procMessages)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (other == nil)  return;
+	
+	std::optional<std::string>	co_type;
+	OOCargoQuantity	co_amount;
+	
+	// don't even think of trying to scoop if the cargo hold is already full
+	if (max_cargo && cargo.size() >= [self maxAvailableCargoSpace])
+	{
+		[other setStatus:STATUS_IN_FLIGHT];
+		return;
+	}
+	
+	switch ([other cargoType])
+	{
+		case CARGO_RANDOM:
+			co_type = [other cxx_commodityType];
+			co_amount = [other commodityAmount];
+			break;
+		
+		case CARGO_SCRIPTED_ITEM:
+			{
+				//scripting
+				::PlayerEntity *player = PLAYER;
+				[player setScriptTarget:self];
+				if (procEvents)
+				{
+					[other doScriptEvent:OOJSID("shipWasScooped") withArgument:self];
+				}
+				
+				if ([other cxx_commodityType].has_value())
+				{
+					co_type = [other cxx_commodityType];
+					co_amount = [other commodityAmount];
+					// don't show scoop message now, will happen later.
+				}
+				else
+				{
+					if (isPlayer && [other showScoopMessage] && procMessages)
+					{
+						[UNIVERSE clearPreviousMessage];
+						const std::optional<std::string> shipName = [other displayName];
+						[UNIVERSE cxx_addMessage:ExpandKeyWithArgument("scripted-item-scooped", "shipName", shipName) forCount:4];
+					}
+					[other cxx_setCommodityForPod:std::nullopt andAmount:0];
+					co_amount = 0;
+					co_type = std::nullopt;
+				}
+			}
+			break;
+
+		default :
+			co_amount = 0;
+			co_type = std::nullopt;
+			break;
+	}
+	
+	/*	Bug: docking failed due to OORangeException while looking for element
+		NSNotFound of cargo mainfest in -[PlayerEntity unloadCargoPods].
+		Analysis: bad cargo pods being generated due to
+		-[Universe commodityForName:] looking in wrong place for names.
+		Fix 1: fix -[Universe commodityForName:].
+		Fix 2: catch NSNotFound here and substitute random cargo type.
+		-- Ahruman 20070714
+	*/
+	if (!co_type.has_value() && co_amount > 0)
+	{
+		co_type = std::optional<std::string>([UNIVERSE getRandomCommodity]);
+		co_amount = co_type.has_value() ? [UNIVERSE cxx_getRandomAmountOfCommodity:*co_type] : 0;
+	}
+
+	if (co_amount > 0)
+	{
+		if (co_type.has_value())  [other cxx_setCommodity:*co_type andAmount:co_amount];   // belt and braces setting this! (nil changed nothing)
+		cargo_flag = CARGO_FLAG_CANISTERS;
+		
+		if (isPlayer)
+		{
+			const std::optional<std::vector<oo::ObjCRef<::OOCharacter *>>> otherCrew = [other cxx_crew];
+			if (otherCrew.has_value())
+			{
+				if ([other showScoopMessage] && procMessages)
+				{
+					[UNIVERSE clearPreviousMessage];
+					unsigned i;
+					for (i = 0; i < otherCrew->size(); i++)
+					{
+						::OOCharacter *rescuee = (*otherCrew)[i].get();
+						const std::optional<std::string> characterName = [rescuee cxx_name];
+						if ([rescuee legalStatus])
+						{
+							[UNIVERSE cxx_addMessage:ExpandKeyWithArgument("scoop-captured-character", "characterName", characterName) forCount: 4.5];
+						}
+						else if ([rescuee insuranceCredits])
+						{
+							[UNIVERSE cxx_addMessage:ExpandKeyWithArgument("scoop-rescued-character", "characterName", characterName) forCount: 4.5];
+						}
+						else
+						{
+							[UNIVERSE cxx_addMessage:OO_DESC("scoop-got-slave") forCount: 4.5];
+						}
+					}
+				}
+				if (procEvents) 
+				{
+					[(::PlayerEntity *)self playEscapePodScooped];
+				}
+			}
+			else
+			{
+				if ([other showScoopMessage] && procMessages)
+				{
+					[UNIVERSE clearPreviousMessage];
+					[UNIVERSE cxx_addMessage:[UNIVERSE cxx_describeCommodity:co_type.value_or("") amount:co_amount] forCount:4.5];
+				}
+			}
+		}
+		cargo.insert(cargo.begin(), oo::ObjCRef<::ShipEntity *>(other));	// places most recently scooped object at eject position
+		[other setStatus:STATUS_IN_HOLD];
+		[other performTumble];
+		[shipAI message:"CARGO_SCOOPED"];
+		if (max_cargo && cargo.size() >= [self maxAvailableCargoSpace])  [shipAI message:"HOLD_FULL"];
+	}
+	if (procEvents)
+	{
+		[self doScriptEvent:OOJSID("shipScoopedOther") withArgument:other]; // always fire, even without commodity.
+	}
+
+	// if shipScoopedOther does something strange to the object, we must
+	// then remove it from the hold, or it will be over-retained
+	if ([other status] != STATUS_IN_HOLD) 
+	{
+		if ((std::find(cargo.begin(), cargo.end(), other) != cargo.end()))
+		{
+			std::erase(cargo, other);
+		}
+	}
+
+	if (std::vector<oo::ObjCRef<::Entity *>> *colliding = [other cxx_collidingEntities])  std::erase_if(*colliding, [self](const oo::ObjCRef<::Entity *> &e) { return e.get() == self; });	// -removeObject:, so it can't be scooped twice!
+	// make sure other ships trying to scoop it lose it
+	// probably already happened, but some may have acquired it
+	// after the scooping started, and they might get stuck in a scooping
+	// attempt as a result
+	[self checkScannerIgnoringUnpowered];
+	unsigned i;
+	::ShipEntity *scooper;
+	for (i = 0; i < n_scanned_ships ; i++)
+	{
+		scooper = (::ShipEntity *)scanned_ships[i];
+		if (self != scooper && (id) other == [scooper primaryTargetWithoutValidityCheck])
+		{
+			[scooper noteLostTarget];
+		}
+	}
+
+	[self suppressTargetLost];
+	[UNIVERSE removeEntity:other];
+}
+
+
+}	// namespace cxx
+
 
 
 
