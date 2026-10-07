@@ -240,4 +240,48 @@ OO_TEST(dockReleasedBeforeInit)
 }
 
 
+// --- The crossing (after the conversion) ---------------------------------------------------------
+
+// A dock's C++ part is a cxx::DockEntity, the facade's typed alias is that part, and from C++ the
+// entity's virtual members reach the dock's.
+OO_TEST(objCDockPartIsADock)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		DockEntity *dock = MakeDock("crossing");
+		cxx::DockEntity *part = oo::ToCxx(dock);
+		OO_CHECK(part != nullptr && part == dock->_cxxDock);
+		OO_CHECK(static_cast<cxx::ShipEntity *>(part) == dock->_cxxShip);
+		OO_CHECK(oo::ToObjC(part) == dock);
+
+		cxx::Entity *asEntity = part;
+		OO_CHECK(asEntity->isDock());
+		OO_CHECK(part->allowsDocking() && part->allowsLaunching() && !part->disallowedDockingCollides());
+		part->setAllowsDocking(false);
+		OO_CHECK(![dock allowsDocking]);
+		OO_CHECK(part->countOfShipsInDockingQueue() == 0 && part->countOfShipsInLaunchQueue() == 0);
+
+		part->setVirtual();
+		OO_CHECK(part->virtual_dock);
+		const double energy = [dock energy];
+		asEntity->takeEnergyDamage(10.0, nullptr, nullptr, "");
+		OO_CHECK([dock energy] == energy);
+	}
+}
+
+
+// A dock released before its initialiser: the facade's -dealloc runs without a C++ part.
+OO_TEST(dockWithoutPart)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		DockEntity *dock = [DockEntity alloc];
+		OO_CHECK(dock->_cxxDock == nullptr);
+		[dock release];
+	}
+}
+
+
 OO_TEST_MAIN()
