@@ -967,4 +967,22 @@ OO_TEST(slice4ActionsAndRacepoints)
 }
 
 
+// From C++ (after the conversion): the members.
+OO_TEST(slice4MembersFromCxx)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestAIShip *ship = MakeShip("member4");
+		cxx::ShipEntity *part = ship->_cxxShip;
+		[ship setFuel:0];
+		part->addFuel("2");
+		OO_CHECK([ship fuel] == 20);
+		SetCollisionRadius4(ship, 12);
+		part->performFlyRacepoints();
+		OO_CHECK(Behaviour(ship) == BEHAVIOUR_FLY_THRU_NAVPOINTS && DesiredRange(ship) == 12);
+	}
+}
+
+
 OO_TEST_MAIN()
