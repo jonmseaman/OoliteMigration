@@ -35,6 +35,7 @@ MA 02110-1301, USA.
 
 #import "OOTexture.h"
 #import "OOGraphicsResetManager.h"
+#import "OOJSExhaustPlume.h"
 
 
 #define kOverallAlpha		1.0f
@@ -49,7 +50,18 @@ MA 02110-1301, USA.
 static OOTexture *sPlumeTexture = nil;
 
 
-namespace cxx {
+namespace {
+
+// The plume texture's graphics reset client, which the façade class was until bead oo-9ht.110
+// (ADR-0056 amendment oo-9ht.107 item 5): registered once, with the texture, and never destroyed.
+class PlumeTextureResetClient : public cxx::OOGraphicsResetClient
+{
+public:
+	void resetGraphicsState() override  { OOExhaustPlumeEntity::resetGraphicsState(); }
+};
+
+}	// namespace
+
 
 oo::Ref<OOExhaustPlumeEntity> OOExhaustPlumeEntity::exhaustForShip(::ShipEntity *ship, const std::vector<std::string> &definition, float scale)
 {
@@ -640,7 +652,7 @@ void OOExhaustPlumeEntity::setUpTexture()
 										   options:kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureAlphaMask | kOOTextureRepeatT | kOOTextureRepeatS
 										anisotropy:kOOTextureDefaultAnisotropy / 2.0
 										   lodBias:0.0] retain];
-		OOGraphicsResetManager::sharedManager()->registerClient([::OOExhaustPlumeEntity class]);	// the facade class answers +resetGraphicsState
+		cxx::OOGraphicsResetManager::sharedManager()->registerCxxClient(new PlumeTextureResetClient);
 
 	}
 }
@@ -659,4 +671,21 @@ void OOExhaustPlumeEntity::resetGraphicsState()
 	sPlumeTexture = nil;
 }
 
-}	// namespace cxx
+
+// The binding's bodies (OOJSExhaustPlume.mm), which the façade forwarded to until bead oo-9ht.110.
+void OOExhaustPlumeEntity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)
+{
+	::OOJSExhaustPlumeGetJSClass(outClass, outPrototype);
+}
+
+
+std::optional<std::string> OOExhaustPlumeEntity::jsClassName()
+{
+	return ::OOJSExhaustPlumeJSClassName();
+}
+
+
+bool OOExhaustPlumeEntity::isVisibleToScripts()
+{
+	return ::OOJSExhaustPlumeIsVisibleToScripts();
+}

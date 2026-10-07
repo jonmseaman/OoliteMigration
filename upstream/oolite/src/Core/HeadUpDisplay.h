@@ -244,7 +244,7 @@ enum
 };
 
 
-@class Entity, PlayerEntity, OOTextureSprite, GuiDisplayGen;
+@class Entity, PlayerEntity, GuiDisplayGen;
 
 
 /*	The HUD itself (Phase 3, beads oo-engam .. oo-0tx6c: the six slices of
