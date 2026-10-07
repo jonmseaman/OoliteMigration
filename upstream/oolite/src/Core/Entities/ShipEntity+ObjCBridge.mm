@@ -1197,3 +1197,13 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 - (std::vector<oo::ObjCRef<ShipEntity *>>) spawnShipsWithRole:(const std::string &)role count:(NSUInteger)count	{ return _cxxShip->spawnShipsWithRole(role, count); }
 
 @end
+
+
+// The category ShipEntity (LoadRestore) of ShipEntityLoadRestore.mm (bead oo-kw44), whose members
+// are cxx::ShipEntity's, defined in that file.
+@implementation ShipEntity (LoadRestore)
+
+- (oo::PList) savedShipDictionaryWithContext:(OOShipSaveContext *)context	{ return _cxxShip->savedShipDictionaryWithContext(context); }
++ (id) shipRestoredFromDictionary:(const oo::PList &)dictionary useFallback:(BOOL)fallback context:(OOShipSaveContext *)context	{ return cxx::ShipEntity::shipRestoredFromDictionary(dictionary, fallback, context); }
+
+@end
