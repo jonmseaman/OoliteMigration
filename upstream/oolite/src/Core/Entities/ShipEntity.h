@@ -441,6 +441,17 @@ public:
 	void behaviour_land_on_planet(double delta_t);
 	void behaviour_formation_form_up(double delta_t);
 
+	// Slice 15: behaviours: fly to / from destination, avoid collision, turret, navpoints, scripted AI; reaction time.
+	void behaviour_fly_to_destination(double delta_t);
+	void behaviour_fly_from_destination(double delta_t);
+	void behaviour_avoid_collision(double delta_t);
+	void behaviour_track_as_turret(double delta_t);
+	void behaviour_fly_thru_navpoints(double delta_t);
+	void behaviour_scripted_ai(double delta_t);
+	float getReactionTime();
+	void setReactionTime(float newReactionTime);
+	HPVector calculateTargetPosition();
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired

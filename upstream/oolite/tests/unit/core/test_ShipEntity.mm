@@ -29,6 +29,7 @@
 #include "oo_test.hpp"
 
 #include <cmath>
+#include <initializer_list>
 #include <string>
 
 
@@ -102,11 +103,21 @@ OOBehaviour Behaviour(ShipEntity *s)	{ return s->_cxxShip->behaviour; }
 void SetSubEntity(Entity *e, bool value)	{ e->_cxxEntity->isSubEntity = value; }
 void SetFrustration(ShipEntity *s, GLfloat value)	{ s->_cxxShip->frustration = value; }
 void SetPlanetForLanding(ShipEntity *s, OOUniversalID uid)	{ s->_cxxShip->planetForLanding = uid; }
+void SetPreviousCondition(ShipEntity *s, const oo::PList &condition)	{ s->_cxxShip->previousCondition = condition; }
+unsigned NextNavpoint(ShipEntity *s)	{ return s->_cxxShip->next_navpoint_index; }
 
 void SetPrimaryTarget(ShipEntity *s, Entity *target)
 {
 	[s->_cxxShip->_primaryTarget release];
 	s->_cxxShip->_primaryTarget = [target weakRetain];
+}
+
+void SetNavpoints(ShipEntity *s, std::initializer_list<HPVector> points, unsigned next)
+{
+	unsigned n = 0;
+	for (HPVector p : points)  s->_cxxShip->navpoints[n++] = p;
+	s->_cxxShip->number_of_navpoints = n;
+	s->_cxxShip->next_navpoint_index = next;
 }
 
 // --------------------------------------------------------------------------------------------------
@@ -1284,6 +1295,86 @@ OO_TEST(destinationDecisions)
 		[escort setBehaviour:BEHAVIOUR_FORMATION_FORM_UP];
 		[escort behaviour_formation_form_up:0.1];
 		OO_CHECK([escort desiredSpeed] == 200);
+	}
+}
+
+
+// Slice 15: arriving, leaving, resuming after a proximity alert, and the navpoints.
+OO_TEST(destinationArrivals)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("arriving");
+		[ship setDestination:make_HPvector(0, 0, 10)];
+		[ship setDesiredRange:100];
+		[ship setDesiredSpeed:50];
+		SetFrustration(ship, 3);
+		[ship setBehaviour:BEHAVIOUR_FLY_TO_DESTINATION];
+		[ship behaviour_fly_to_destination:0.1];
+		OO_CHECK(Behaviour(ship) == BEHAVIOUR_IDLE && [ship desiredSpeed] == 0 && [ship frustration] == 0);
+
+		TestShip *leaving = FlyingShip("leaving");
+		[leaving setDestination:make_HPvector(0, 0, 1000)];
+		[leaving setDesiredRange:100];
+		[leaving setDesiredSpeed:50];
+		[leaving setBehaviour:BEHAVIOUR_FLY_FROM_DESTINATION];
+		[leaving behaviour_fly_from_destination:0.1];
+		OO_CHECK(Behaviour(leaving) == BEHAVIOUR_IDLE && [leaving desiredSpeed] == 0);
+
+		// Clear of the obstacle: what the ship did before the alert resumes.
+		TestShip *avoider = FlyingShip("avoider");
+		[avoider setDestination:make_HPvector(0, 0, 1000)];
+		[avoider setDesiredRange:100];
+		[avoider setBehaviour:BEHAVIOUR_AVOID_COLLISION];
+		SetFrustration(avoider, 3);
+		SetPreviousCondition(avoider, oo::PList(oo::PList::Dict{
+			{ "behaviour", oo::PList((double)BEHAVIOUR_FLY_TO_DESTINATION) },
+			{ "desired_range", oo::PList(300.0) },
+			{ "desired_speed", oo::PList(12.0) } }));
+		[avoider behaviour_avoid_collision:0.1];
+		OO_CHECK(Behaviour(avoider) == BEHAVIOUR_FLY_TO_DESTINATION && [avoider desiredRange] == 300 && [avoider desiredSpeed] == 12 && [avoider frustration] == 0);
+
+		// A turret with no mount and no targets does nothing.
+		TestShip *turret = FlyingShip("turret");
+		[turret setBehaviour:BEHAVIOUR_TRACK_AS_TURRET];
+		[turret behaviour_track_as_turret:0.1];
+		OO_CHECK(Behaviour(turret) == BEHAVIOUR_TRACK_AS_TURRET);
+
+		// Reaching a navpoint moves on to the next; reaching the last one is the end of the route.
+		TestShip *nav = FlyingShip("navigator");
+		[nav setDesiredRange:50];
+		[nav setBehaviour:BEHAVIOUR_FLY_THRU_NAVPOINTS];
+		SetNavpoints(nav, { make_HPvector(0, 0, 10), make_HPvector(0, 0, 5000), make_HPvector(0, 5000, 5000) }, 0);
+		[nav behaviour_fly_thru_navpoints:0.1];
+		OO_CHECK(NextNavpoint(nav) == 1 && Behaviour(nav) == BEHAVIOUR_FLY_THRU_NAVPOINTS);
+		SetNavpoints(nav, { make_HPvector(0, 5000, 5000), make_HPvector(0, 0, 10) }, 1);
+		[nav behaviour_fly_thru_navpoints:0.1];
+		OO_CHECK(NextNavpoint(nav) == 0 && Behaviour(nav) == BEHAVIOUR_IDLE);
+	}
+}
+
+
+// Slice 15: a scripted AI with no ship script reverts to idle; the reaction time, and the target
+// position it leads by.
+OO_TEST(scriptedAIAndReactionTime)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("scripted");
+		[ship setBehaviour:BEHAVIOUR_SCRIPTED_AI];
+		[ship behaviour_scripted_ai:0.1];
+		OO_CHECK(Behaviour(ship) == BEHAVIOUR_IDLE);
+
+		OO_CHECK([ship reactionTime] == 0);
+		[ship setReactionTime:0.75f];
+		OO_CHECK([ship reactionTime] == 0.75f);
+
+		OO_CHECK(HPvector_equal([ship calculateTargetPosition], kZeroHPVector));		// no target
+		TestShip *hunter = FlyingShip("hunter");
+		TargetAt(hunter, 1234);
+		OO_CHECK(HPvector_equal([hunter calculateTargetPosition], make_HPvector(0, 0, 1234)));	// no reaction time: where it is
 	}
 }
 
