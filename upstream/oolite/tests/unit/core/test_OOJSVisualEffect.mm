@@ -1,11 +1,13 @@
 /*	test_OOJSVisualEffect.mm
 	Unit tests for the VisualEffect JS binding (src/Core/Scripting/OOJSVisualEffect.h/.mm) and its
-	OOVisualEffectEntity category (OOJSVisualEffect+ObjCBridge.mm): bead oo-s1wq, converted the way
-	bead oo-ppc converted OOJSVector (proposed ADR-0056 amendments oo-ppc and oo-ykoy).
+	OOVisualEffectEntity category (whose forwarders are on the OOVisualEffectEntity facade since bead
+	oo-9ht.93; this test's stand-in OOVisualEffectEntity forwards the same way): bead oo-s1wq,
+	converted the way bead oo-ppc converted OOJSVector (proposed ADR-0056 amendments oo-ppc and
+	oo-ykoy).
 
 	As test_OOJSWormhole.mm does (amendment oo-ykoy, item 4), it runs the JS class in a real
 	context on the game's own façade backend (ooscript/JSEngine_quickjs.cpp), links the game's own
-	objects for the binding, its bridge, the engine's exception translator
+	objects for the binding, the engine's exception translator
 	(OOJSEngineNativeWrappers.mm) and OOColor (a converted class, reached through its façade), and
 	stands in for the classes the binding messages (Entity, OOVisualEffectEntity, OOMesh,
 	ResourceManager, and the universe's beacon list and the player's compass answer only the
@@ -165,6 +167,11 @@
 @end
 
 extern "C" void InitOOJSVisualEffect(ooscript::Context context, ooscript::Object global);
+// The category's bodies, which the stand-in forwards to as the facade does (declared in OOJSVisualEffect.h).
+void OOJSVisualEffectGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
+std::optional<std::string> OOJSVisualEffectJSClassName(void);
+bool OOJSVisualEffectIsVisibleToScripts(void);
+std::vector<oo::ObjCRef<Entity *>> OOJSVisualEffectSubEntitiesForScript(OOVisualEffectEntity *effect);
 
 
 #include "oo_test.hpp"
@@ -307,6 +314,15 @@ int sMeshesMade = 0;
 	if (!subs.empty())  _subs = subs;
 	return YES;
 }
+
+
+// The binding's category, as the OOVisualEffectEntity facade forwards it
+// (OOVisualEffectEntity+ObjCBridge.mm, bead oo-9ht.93): the engine sends these selectors to the
+// wrapped object.
+- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype  { ::OOJSVisualEffectGetJSClass(outClass, outPrototype); }
+- (std::optional<std::string>) cxx_oo_jsClassName  { return ::OOJSVisualEffectJSClassName(); }
+- (BOOL) isVisibleToScripts  { return ::OOJSVisualEffectIsVisibleToScripts(); }
+- (std::vector<oo::ObjCRef<Entity *>>) subEntitiesForScript  { return ::OOJSVisualEffectSubEntitiesForScript(self); }
 
 @end
 
