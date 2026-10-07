@@ -3779,6 +3779,30 @@ class, façade-contract test cases (CLAUDE.md rule 2), and a lifetime the façad
 no test case and changes no stand-in. Deletion beads whose readiness check fails gain the missing
 deps instead of growing into conversions.
 
+## Amendment (bead oo-ukxy8): an entity leaf's class-shell slice whose later slice answers a protocol
+
+- Date: 2026-10-06. Status: Proposed, as above (recommended default, CLAUDE.md rule 10). Exemplar:
+  `src/Core/Entities/OOVisualEffectEntity.h/.mm` (slice 1 of
+  `docs/phases/3-slices/OOVisualEffectEntity.md`), `OOVisualEffectEntity+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_OOVisualEffectEntity.mm`. Follows amendments oo-dnbf, oo-0mxi and oo-ubjo.
+
+**Decision (recommended defaults).**
+
+1. **The shell slice's members are one `namespace cxx { }` block before the later slice's in-place
+   category** (`OOVisualEffectEntity (OOVisualEffectEntityScripting)`), moved there from between that
+   slice's methods (amendment oo-zkpmt item 2), so the category is one block.
+2. **A protocol whose methods are all the later slice's** (`OOBeaconEntity`) is adopted by that
+   category's interface in `X+ObjCBridge.h`, not by the façade's `@interface`, so the façade's own
+   `@implementation` is complete; static conformance (`Entity<OOBeaconEntity> *`) is unchanged.
+   A protocol the shell answers (`OOSubEntity`) stays on the façade, forwarded in one line each.
+3. **A protocol-qualified Objective-C type named inside `namespace cxx`** (`Entity<OOSubEntity> *`,
+   where `::Entity<…>` parses as a template) gets a global typedef in `X.h`
+   (`typedef Entity<OOSubEntity> OOVisualEffectSubEntity;`).
+4. **A file-local helper of the slice that asked an entity `-isVisualEffect`** asks the converted
+   root (`oo::ToCxx((::Entity *)e)->getIsVisualEffect()`), which answers for Objective-C subclasses
+   through their adapters (amendment oo-9ht.139 item 1).
+5. **An initialiser that released itself on failure** is a `bool` member the façade's initialiser
+   runs after making the C++ part; on false the façade releases itself and answers nil.
 ## Amendment (bead oo-zkpmt): a class-shell slice whose later slices are the class's own `@X` block
 
 - Date: 2026-10-06. Status: Proposed, as above (recommended default, CLAUDE.md rule 10). Exemplar:

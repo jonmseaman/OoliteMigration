@@ -57,17 +57,6 @@ MA 02110-1301, USA.
 #import "OOObjCPList.h"
 #include "oofnd/String.hpp"
 
-@interface OOVisualEffectEntity (Private)
-
-- (void) drawSubEntityImmediate:(bool)immediate translucent:(bool)translucent;
-
-- (void) addSubEntity:(Entity<OOSubEntity> *) subent;
-- (BOOL) setUpOneSubentity:(const oo::PList &) subentDict;
-- (BOOL) setUpOneFlasher:(const oo::PList &) subentDict;
-- (BOOL) setUpOneStandardSubentity:(const oo::PList &)subentDict;
-
-@end
-
 
 namespace {
 
@@ -110,7 +99,7 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 	std::vector<oo::ObjCRef<OOVisualEffectEntity *>> result;
 	for (const auto &sub : subEntities)
 	{
-		if (![sub.get() isVisualEffect])  continue;
+		if (!oo::ToCxx((::Entity *)sub.get())->getIsVisualEffect())  continue;	// -isVisualEffect, through the converted root
 		result.emplace_back((OOVisualEffectEntity *)sub.get());
 	}
 	return result;
@@ -119,76 +108,71 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 }	// namespace
 
 
-@implementation OOVisualEffectEntity
+namespace cxx {
 
-- (id) init
-{
-	return [self cxx_initWithKey:std::string{} definition:oo::PList()];
-}
-
-- (id)cxx_initWithKey:(const std::string &)key definition:(const oo::PList &)dict
+/*	-cxx_initWithKey:definition:'s body after [super init] (the constructor ran Entity's). The
+	façade runs it once it holds this object (amendment oo-0mxi item 2); false where the
+	initialiser released itself and answered nil.
+*/
+bool OOVisualEffectEntity::initWithKey(const std::string &key, const oo::PList &dict)
 {
 	OOJS_PROFILE_ENTER
-	
-	self = [super init];
-	if (self == nil)  return nil;
 
 	_effectKey = key;
 
-	if (![self setUpVisualEffectFromDictionary:dict])
+	if (!setUpVisualEffectFromDictionary(dict))
 	{
-		[self release];
-		self = nil;
+		return false;
 	}
 
-	_haveExecutedSpawnAction = NO;
+	_haveExecutedSpawnAction = false;
 
-	return self;
-	
+	return true;
+
 	OOJS_PROFILE_EXIT
 }
 
 
-- (BOOL) setUpVisualEffectFromDictionary:(const oo::PList &) effectDict
+bool OOVisualEffectEntity::setUpVisualEffectFromDictionary(const oo::PList &effectDict)
 {
 	OOJS_PROFILE_ENTER
 
 	effectinfoDictionary = effectDict;
 	if (effectinfoDictionary.isNull())  effectinfoDictionary = oo::PList(oo::PList::Dict{});
 
-	_cxxEntity->orientation = kIdentityQuaternion;
-	_cxxEntity->rotMatrix	= kIdentityMatrix;
+	orientation = kIdentityQuaternion;
+	rotMatrix	= kIdentityMatrix;
 
-	_cxxEntity->collision_radius = 0.0;
+	collision_radius = 0.0;
 
 	const std::optional<std::string> modelName = OptionalStringForKey(effectDict, "model");
 	if (modelName.has_value())
 	{
-		OOMesh *mesh = [OOMesh meshWithName:*modelName
+		::OOMesh *mesh = [::OOMesh meshWithName:*modelName
 								   cacheKey:_effectKey
 						 materialDictionary:DictionaryForKey(effectDict, "materials")
 						  shadersDictionary:DictionaryForKey(effectDict, "shaders")
-									 smooth:effectDict.get<bool>("smooth", NO)
+									 smooth:effectDict.get<bool>("smooth", false)
 							   shaderMacros:OODefaultShipShaderMacros()
-						shaderBindingTarget:self];
-		if (mesh == nil)  return NO;
-		[self setMesh:mesh];
+						shaderBindingTarget:oo::ToObjC(this)];
+		if (mesh == nil)  return false;
+		setMesh(mesh);
 	}
 
-	_cxxEntity->isImmuneToBreakPatternHide = effectDict.get<bool>("is_break_pattern");
-	scaleX = 1.0;
-	scaleY = 1.0;
-	scaleZ = 1.0;
+	isImmuneToBreakPatternHide = effectDict.get<bool>("is_break_pattern");
+	_scaleX = 1.0;
+	_scaleY = 1.0;
+	_scaleZ = 1.0;
 
-	[self clearSubEntities];
-	[self setUpSubEntities];
+	clearSubEntities();
+	setUpSubEntities();
 
-	[self setScannerDisplayColor1:nil];
-	[self setScannerDisplayColor2:nil];
+	[oo::ToObjC(this) setScannerDisplayColor1:nil];
+	[oo::ToObjC(this) setScannerDisplayColor2:nil];
 
-	_cxxEntity->scanClass = CLASS_VISUAL_EFFECT;
+	scanClass = CLASS_VISUAL_EFFECT;
 
-	[self setStatus:STATUS_EFFECT];
+	setStatus(STATUS_EFFECT);
 
 	_hullHeatLevel = 60.0 / 256.0;
 	_shaderFloat1 = 0.0;
@@ -198,195 +182,193 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 	_shaderVector1 = kZeroVector;
 	_shaderVector2 = kZeroVector;
 
-	[self setBeaconCode:OptionalStringForKey(effectDict, "beacon")];
+	[oo::ToObjC(this) setBeaconCode:OptionalStringForKey(effectDict, "beacon")];
 	const std::optional<std::string> beaconLabel = OptionalStringForKey(effectDict, "beacon_label");
-	[self setBeaconLabel:beaconLabel.has_value() ? beaconLabel : [self beaconCode]];
+	[oo::ToObjC(this) setBeaconLabel:beaconLabel.has_value() ? beaconLabel : [oo::ToObjC(this) beaconCode]];
 
 	const oo::PList *scriptInfoValue = effectDict.get<oo::PList::Dict>("script_info");
 	scriptInfo = scriptInfoValue != nullptr ? *scriptInfoValue : oo::PList();
-	[self setScript:OptionalStringForKey(effectDict, "script")];
+	[oo::ToObjC(this) setScript:OptionalStringForKey(effectDict, "script")];
 
-	return YES;
+	return true;
 
 	OOJS_PROFILE_EXIT
 }
 
 
-- (void) dealloc
+OOVisualEffectEntity::~OOVisualEffectEntity()
 {
-	[self clearSubEntities];
+	clearSubEntities();
 	DESTROY(scanner_display_color1);
 	DESTROY(scanner_display_color2);
 	DESTROY(script);
 	DESTROY(_beaconDrawable);
-
-	[super dealloc];
 }
 
 
-- (BOOL) isEffect
+bool OOVisualEffectEntity::isEffect()
 {
-	return YES;
+	return true;
 }
 
 
-- (BOOL) isVisualEffect
+bool OOVisualEffectEntity::getIsVisualEffect()
 {
-	return YES;
+	return true;
 }
 
 
-- (BOOL) canCollide
+bool OOVisualEffectEntity::canCollide()
 {
-	return NO;
+	return false;
 }
 
 
-- (OOMesh *)mesh 
+::OOMesh *OOVisualEffectEntity::mesh()
 {
-	return (OOMesh *)[self drawable];
+	return (::OOMesh *)getDrawable();
 }
 
 
-- (void)setMesh:(OOMesh *)mesh 
+void OOVisualEffectEntity::setMesh(::OOMesh *mesh)
 {
-	if (mesh != [self mesh])
+	if (mesh != this->mesh())
 	{
-		[self setDrawable:mesh];
+		setDrawable(mesh);
 	}
 }
 
 
-- (std::optional<std::string>)effectKey
+std::optional<std::string> OOVisualEffectEntity::effectKey()
 {
 	return _effectKey;
 }
 
 
-- (GLfloat)frustumRadius 
+GLfloat OOVisualEffectEntity::frustumRadius()
 {
-	return [self scaleMax] * _profileRadius;
+	return scaleMax() * _profileRadius;
 }
 
 
-- (void) clearSubEntities 
+void OOVisualEffectEntity::clearSubEntities()
 {
-	for (const auto &sub : SubEntitiesOf(subEntities))  [sub.get() setOwner:nil];	// Ensure backlinks are broken
-	subEntities.reset();
-	
+	for (const auto &sub : SubEntitiesOf(_subEntities))  [sub.get() setOwner:nil];	// Ensure backlinks are broken
+	_subEntities.reset();
+
 	// reset size & mass!
-	if ([self mesh])
+	if (mesh())
 	{
-		_cxxEntity->collision_radius = [self findCollisionRadius];
+		collision_radius = findCollisionRadius();
 	}
 	else
 	{
-		_cxxEntity->collision_radius = 0.0;
+		collision_radius = 0.0;
 	}
-	_profileRadius = _cxxEntity->collision_radius;
+	_profileRadius = collision_radius;
 }
 
 
-- (BOOL)setUpSubEntities 
+bool OOVisualEffectEntity::setUpSubEntities()
 {
 	unsigned int	i;
-	_profileRadius = _cxxEntity->collision_radius;
+	_profileRadius = collision_radius;
 	const oo::PList *subs = effectinfoDictionary.get<oo::PList::Array>("subentities");
 
 	for (i = 0; subs != nullptr && i < subs->count(); i++)
 	{
 		const oo::PList *subentDict = subs->at<oo::PList::Dict>(i);	// nil for anything but a dictionary
-		[self setUpOneSubentity:subentDict != nullptr ? *subentDict : oo::PList()];
+		setUpOneSubentity(subentDict != nullptr ? *subentDict : oo::PList());
 	}
 
-	[self setNoDrawDistance];
+	setNoDrawDistance();
 
-	return YES;
+	return true;
 }
 
 
-- (void) removeSubEntity:(Entity<OOSubEntity> *)sub
+void OOVisualEffectEntity::removeSubEntity(OOVisualEffectSubEntity *sub)
 {
 	[sub setOwner:nil];
-	if (subEntities.has_value())  std::erase_if(*subEntities, [sub](const auto &entry) { return entry.get() == sub; });
+	if (_subEntities.has_value())  std::erase_if(*_subEntities, [sub](const auto &entry) { return entry.get() == sub; });
 }
 
 
-- (void) setNoDrawDistance
+void OOVisualEffectEntity::setNoDrawDistance()
 {
-	GLfloat r = _profileRadius * [self scaleMax];
-	_cxxEntity->no_draw_distance = r * r * NO_DRAW_DISTANCE_FACTOR * NO_DRAW_DISTANCE_FACTOR * 2.0;
+	GLfloat r = _profileRadius * scaleMax();
+	no_draw_distance = r * r * NO_DRAW_DISTANCE_FACTOR * NO_DRAW_DISTANCE_FACTOR * 2.0;
 
 }
 
 
-- (BOOL) setUpOneSubentity:(const oo::PList &) subentDict
+bool OOVisualEffectEntity::setUpOneSubentity(const oo::PList &subentDict)
 {
 	const std::optional<std::string> type = OptionalStringForKey(subentDict, "type");
 	if (type == "flasher")
 	{
-		return [self setUpOneFlasher:subentDict];
+		return setUpOneFlasher(subentDict);
 	}
 	else
 	{
-		return [self setUpOneStandardSubentity:subentDict];
+		return setUpOneStandardSubentity(subentDict);
 	}
 
 
 }
 
 
-- (BOOL) setUpOneFlasher:(const oo::PList &) subentDict
+bool OOVisualEffectEntity::setUpOneFlasher(const oo::PList &subentDict)
 {
-	OOFlasherEntity *flasher = [OOFlasherEntity flasherWithDictionary:subentDict];
+	::OOFlasherEntity *flasher = [::OOFlasherEntity flasherWithDictionary:subentDict];
 	[flasher setPosition:subentDict ? OOHPVectorFromPList(subentDict.find("position"), kZeroHPVector) : kZeroHPVector];
-	[self addSubEntity:flasher];
-	return YES;
+	addSubEntity(flasher);
+	return true;
 }
 
 
-- (BOOL) setUpOneStandardSubentity:(const oo::PList &)subentDict
+bool OOVisualEffectEntity::setUpOneStandardSubentity(const oo::PList &subentDict)
 {
-	OOVisualEffectEntity			*subentity = nil;
+	::OOVisualEffectEntity			*subentity = nil;
 	std::optional<std::string>	subentKey;
 	HPVector				subPosition;
 	Quaternion			subOrientation;
-	
+
 	subentKey = OptionalStringForKey(subentDict, "subentity_key");
 	if (!subentKey.has_value()) {
 		OO_LOG("setup.visualeffect.badEntry.subentities", "Failed to set up entity - no subentKey in {}", oo::DescriptionOf(subentDict));
-		return NO;
+		return false;
 	}
-	
+
 	subentity = [UNIVERSE cxx_newVisualEffectWithName:*subentKey];
 	if (subentity == nil) {
 		OO_LOG("setup.visualeffect.badEntry.subentities", "Failed to set up entity {}", *subentKey);
-		return NO;
+		return false;
 	}
-	
+
 	subPosition = OOHPVectorFromPList(subentDict.find("position"), kZeroHPVector);
 	subOrientation = OOQuaternionFromPList(subentDict.find("orientation"), kIdentityQuaternion);
-	
+
 	[subentity setPosition:subPosition];
 	[subentity setOrientation:subOrientation];
-	
-	[self addSubEntity:subentity];
+
+	addSubEntity(subentity);
 
 	[subentity release];
-	
-	return YES;
+
+	return true;
 }
 
 
-- (void) addSubEntity:(Entity<OOSubEntity> *)sub
+void OOVisualEffectEntity::addSubEntity(OOVisualEffectSubEntity *sub)
 {
 	if (sub == nil)  return;
-	
-	if (!subEntities.has_value())  subEntities.emplace();
-	sub->_cxxEntity->isSubEntity = YES;
+
+	if (!_subEntities.has_value())  _subEntities.emplace();
+	sub->_cxxEntity->isSubEntity = true;
 	// Order matters - need consistent state in setOwner:. -- Ahruman 2008-04-20
-	subEntities->emplace_back(sub);
-	[sub setOwner:self];
+	_subEntities->emplace_back(sub);
+	[sub setOwner:oo::ToObjC(this)];
 
 	double distance = HPmagnitude([sub position]) + [sub findCollisionRadius];
 	if (distance > _profileRadius)
@@ -396,12 +378,12 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 }
 
 
-- (std::vector<oo::ObjCRef<Entity *>>)subEntities
+std::vector<oo::ObjCRef<::Entity *>> OOVisualEffectEntity::subEntities()
 {
-	if (!subEntities.has_value())  return {};
-	std::vector<oo::ObjCRef<Entity *>> result;
-	result.reserve(subEntities->size());
-	for (const auto &sub : *subEntities)
+	if (!_subEntities.has_value())  return {};
+	std::vector<oo::ObjCRef<::Entity *>> result;
+	result.reserve(_subEntities->size());
+	for (const auto &sub : *_subEntities)
 	{
 		result.emplace_back(sub.get());
 	}
@@ -409,139 +391,139 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 }
 
 
-- (NSUInteger) subEntityCount
+NSUInteger OOVisualEffectEntity::subEntityCount()
 {
-	return subEntities.has_value() ? subEntities->size() : 0;
+	return _subEntities.has_value() ? _subEntities->size() : 0;
 }
 
 
-- (std::optional<std::vector<oo::ObjCRef<OOVisualEffectEntity *>>>) visualEffectSubEntityEnumerator
+std::optional<std::vector<oo::ObjCRef<::OOVisualEffectEntity *>>> OOVisualEffectEntity::visualEffectSubEntityEnumerator()
 {
-	if (!subEntities.has_value())  return std::nullopt;
-	return VisualEffectsIn(*subEntities);
+	if (!_subEntities.has_value())  return std::nullopt;
+	return VisualEffectsIn(*_subEntities);
 }
 
 
-- (BOOL) hasSubEntity:(Entity<OOSubEntity> *)sub 
+bool OOVisualEffectEntity::hasSubEntity(OOVisualEffectSubEntity *sub)
 {
-	if (!subEntities.has_value())  return NO;
-	return std::find_if(subEntities->begin(), subEntities->end(), [sub](const auto &entry) { return entry.get() == sub; }) != subEntities->end();
+	if (!_subEntities.has_value())  return false;
+	return std::find_if(_subEntities->begin(), _subEntities->end(), [sub](const auto &entry) { return entry.get() == sub; }) != _subEntities->end();
 }
 
 
-- (std::vector<oo::ObjCRef<Entity *>>)subEntityEnumerator
+std::vector<oo::ObjCRef<::Entity *>> OOVisualEffectEntity::subEntityEnumerator()
 {
-	return [self subEntities];
+	return subEntities();
 }
 
 
-- (std::vector<oo::ObjCRef<OOVisualEffectEntity *>>)effectSubEntityEnumerator
+std::vector<oo::ObjCRef<::OOVisualEffectEntity *>> OOVisualEffectEntity::effectSubEntityEnumerator()
 {
-	return VisualEffectsIn(SubEntitiesOf(subEntities));
+	return VisualEffectsIn(SubEntitiesOf(_subEntities));
 }
 
 
-- (std::vector<oo::ObjCRef<OOFlasherEntity *>>)flasherEnumerator
+std::vector<oo::ObjCRef<::OOFlasherEntity *>> OOVisualEffectEntity::flasherEnumerator()
 {
-	std::vector<oo::ObjCRef<OOFlasherEntity *>> flashers;
-	if (!subEntities.has_value())  return flashers;
-	for (const auto &sub : *subEntities)
+	std::vector<oo::ObjCRef<::OOFlasherEntity *>> flashers;
+	if (!_subEntities.has_value())  return flashers;
+	for (const auto &sub : *_subEntities)
 	{
 		if (![sub.get() isFlasher])  continue;
-		flashers.emplace_back((OOFlasherEntity *)sub.get());
+		flashers.emplace_back((::OOFlasherEntity *)sub.get());
 	}
 	return flashers;
 }
 
 
-- (void) drawSubEntityImmediate:(bool)immediate translucent:(bool)translucent
+void OOVisualEffectEntity::drawSubEntityImmediate(bool immediate, bool translucent)
 {
-	if (_cxxEntity->cam_zero_distance > _cxxEntity->no_draw_distance) // this test provides an opportunity to do simple LoD culling
+	if (cam_zero_distance > no_draw_distance) // this test provides an opportunity to do simple LoD culling
 	{
 		return; // TOO FAR AWAY
 	}
 	OOGLPushModelView();
 	// HPVect: camera position
-	OOGLTranslateModelView(HPVectorToVector(_cxxEntity->position));
-	OOGLMultModelView(_cxxEntity->rotMatrix);
-	[self drawImmediate:immediate translucent:translucent];
+	OOGLTranslateModelView(HPVectorToVector(position));
+	OOGLMultModelView(rotMatrix);
+	drawImmediate(immediate, translucent);
 
 	OOGLPopModelView();
 }
 
 
-- (void) rescaleBy:(GLfloat)factor 
+void OOVisualEffectEntity::rescaleBy(GLfloat factor)
 {
-	if ([self mesh] != nil) {
-		[self setMesh:[[self mesh] meshRescaledBy:factor]];
+	if (mesh() != nil) {
+		setMesh([mesh() meshRescaledBy:factor]);
 	}
-	
+
 	// rescale subentities
-	Entity<OOSubEntity>	*se = nil;
-	for (const auto &seRef : SubEntitiesOf(subEntities))
+	OOVisualEffectSubEntity	*se = nil;
+	for (const auto &seRef : SubEntitiesOf(_subEntities))
 	{
 		se = seRef.get();
 		[se setPosition:HPvector_multiply_scalar([se position], factor)];
 		[se rescaleBy:factor];
 	}
 
-	_cxxEntity->collision_radius *= factor;
+	collision_radius *= factor;
 	_profileRadius *= factor;
 }
 
 
-- (void) rescaleBy:(GLfloat)factor writeToCache:(BOOL)writeToCache
+void OOVisualEffectEntity::rescaleBy(GLfloat /*factor*/, bool /*writeToCache*/)
 {
 	/* Do nothing; this is only needed because of OOEntityWithDrawable
 	   implementation requirements */
 }
 
 
-- (GLfloat) scaleMax
+GLfloat OOVisualEffectEntity::scaleMax()
 {
 	GLfloat scale = 1.0;
-	if (scaleX > scaleY)
+	if (_scaleX > _scaleY)
 	{
-		if (scaleX > scaleZ)
+		if (_scaleX > _scaleZ)
 		{
-			scale *= scaleX;
+			scale *= _scaleX;
 		}
 		else
 		{
-			scale *= scaleZ;
+			scale *= _scaleZ;
 		}
 	}
-	else if (scaleY > scaleZ)
+	else if (_scaleY > _scaleZ)
 	{
-		scale *= scaleY;
+		scale *= _scaleY;
 	}
 	else
 	{
-		scale *= scaleZ;
+		scale *= _scaleZ;
 	}
 	return scale;
 }
 
-- (GLfloat) scaleX
+GLfloat OOVisualEffectEntity::scaleX()
 {
-	return scaleX;
+	return _scaleX;
 }
 
 
-- (void) setScaleX:(GLfloat)factor
+void OOVisualEffectEntity::setScaleX(GLfloat factor)
 {
 	// rescale subentities
-	Entity<OOSubEntity>	*se = nil;
-	GLfloat flasher_factor = pow(factor/scaleX,1.0/3.0);
-	for (const auto &seRef : SubEntitiesOf(subEntities))
+	OOVisualEffectSubEntity	*se = nil;
+	GLfloat flasher_factor = pow(factor/_scaleX,1.0/3.0);
+	for (const auto &seRef : SubEntitiesOf(_subEntities))
 	{
 		se = seRef.get();
 		HPVector move = [se position];
-		move.x *= factor/scaleX;
+		move.x *= factor/_scaleX;
 		[se setPosition:move];
 		if ([se isVisualEffect])
 		{
-			[(OOVisualEffectEntity*)se setScaleX:factor];
+			[(::OOVisualEffectEntity*)se setScaleX:factor];
 		}
 		else
 		{
@@ -549,31 +531,31 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 		}
 	}
 
-	scaleX = factor;
-	[self setNoDrawDistance];
+	_scaleX = factor;
+	setNoDrawDistance();
 }
 
 
-- (GLfloat) scaleY
+GLfloat OOVisualEffectEntity::scaleY()
 {
-	return scaleY;
+	return _scaleY;
 }
 
 
-- (void) setScaleY:(GLfloat)factor
+void OOVisualEffectEntity::setScaleY(GLfloat factor)
 {
 	// rescale subentities
-	Entity<OOSubEntity>	*se = nil;
-	GLfloat flasher_factor = pow(factor/scaleY,1.0/3.0);
-	for (const auto &seRef : SubEntitiesOf(subEntities))
+	OOVisualEffectSubEntity	*se = nil;
+	GLfloat flasher_factor = pow(factor/_scaleY,1.0/3.0);
+	for (const auto &seRef : SubEntitiesOf(_subEntities))
 	{
 		se = seRef.get();
 		HPVector move = [se position];
-		move.y *= factor/scaleY;
+		move.y *= factor/_scaleY;
 		[se setPosition:move];
 		if ([se isVisualEffect])
 		{
-			[(OOVisualEffectEntity*)se setScaleY:factor];
+			[(::OOVisualEffectEntity*)se setScaleY:factor];
 		}
 		else
 		{
@@ -581,31 +563,31 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 		}
 	}
 
-	scaleY = factor;
-	[self setNoDrawDistance];
+	_scaleY = factor;
+	setNoDrawDistance();
 }
 
 
-- (GLfloat) scaleZ
+GLfloat OOVisualEffectEntity::scaleZ()
 {
-	return scaleZ;
+	return _scaleZ;
 }
 
 
-- (void) setScaleZ:(GLfloat)factor
+void OOVisualEffectEntity::setScaleZ(GLfloat factor)
 {
 	// rescale subentities
-	Entity<OOSubEntity>	*se = nil;
-	GLfloat flasher_factor = pow(factor/scaleZ,1.0/3.0);
-	for (const auto &seRef : SubEntitiesOf(subEntities))
+	OOVisualEffectSubEntity	*se = nil;
+	GLfloat flasher_factor = pow(factor/_scaleZ,1.0/3.0);
+	for (const auto &seRef : SubEntitiesOf(_subEntities))
 	{
 		se = seRef.get();
 		HPVector move = [se position];
-		move.z *= factor/scaleZ;
+		move.z *= factor/_scaleZ;
 		[se setPosition:move];
 		if ([se isVisualEffect])
 		{
-			[(OOVisualEffectEntity*)se setScaleZ:factor];
+			[(::OOVisualEffectEntity*)se setScaleZ:factor];
 		}
 		else
 		{
@@ -613,75 +595,172 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 		}
 	}
 
-	scaleZ = factor;
-	[self setNoDrawDistance];
+	_scaleZ = factor;
+	setNoDrawDistance();
 }
 
 
-- (GLfloat) collisionRadius
+GLfloat OOVisualEffectEntity::collisionRadius()
 {
-	return [self scaleMax] * _cxxEntity->collision_radius;
+	return scaleMax() * collision_radius;
 }
 
 
-- (void) orientationChanged
+void OOVisualEffectEntity::orientationChanged()
 {
-	[super orientationChanged];
-	
-	_v_forward   = vector_forward_from_quaternion(_cxxEntity->orientation);
-	_v_up		= vector_up_from_quaternion(_cxxEntity->orientation);
-	_v_right		= vector_right_from_quaternion(_cxxEntity->orientation);
+	OOEntityWithDrawable::orientationChanged();
+
+	_v_forward   = vector_forward_from_quaternion(orientation);
+	_v_up		= vector_up_from_quaternion(orientation);
+	_v_right		= vector_right_from_quaternion(orientation);
 }
 
 
 // exposed to shaders
-- (Vector) forwardVector
+Vector OOVisualEffectEntity::forwardVector()
 {
 	return _v_forward;
 }
 
 
 // exposed to shaders
-- (Vector) upVector
+Vector OOVisualEffectEntity::upVector()
 {
 	return _v_up;
 }
 
 
 // exposed to shaders
-- (Vector) rightVector
+Vector OOVisualEffectEntity::rightVector()
 {
 	return _v_right;
 }
 
 
+void OOVisualEffectEntity::drawImmediate(bool immediate, bool translucent)
+{
+	if (no_draw_distance < cam_zero_distance)
+	{
+		return; // too far away to draw
+	}
+	OOGLPushModelView();
+	OOGLScaleModelView(make_vector(_scaleX,_scaleY,_scaleZ));
+
+	if (mesh() != nil)
+	{
+		OOEntityWithDrawable::drawImmediate(immediate, translucent);
+	}
+	OOGLPopModelView();
+
+	// Draw subentities.
+	if (!immediate)	// TODO: is this relevant any longer?
+	{
+		OOVisualEffectSubEntity *subEntity = nil;
+		for (const auto &subEntityRef : SubEntitiesOf(_subEntities))
+		{
+			subEntity = subEntityRef.get();
+			[subEntity drawSubEntityImmediate:immediate translucent:translucent];
+		}
+	}
+}
+
+
+void OOVisualEffectEntity::update(OOTimeDelta delta_t)
+{
+	OOEntityWithDrawable::update(delta_t);
+
+	if (!_haveExecutedSpawnAction) {
+		[oo::ToObjC(this) doScriptEvent:OOJSID("effectSpawned")];
+		_haveExecutedSpawnAction = true;
+	}
+
+	::Entity *se = nil;
+	for (const auto &seRef : SubEntitiesOf(_subEntities))
+	{
+		se = seRef.get();
+		[se update:delta_t];
+	}
+}
+
+
+bool OOVisualEffectEntity::isBreakPattern()
+{
+	return isImmuneToBreakPatternHide;
+}
+
+
+void OOVisualEffectEntity::setIsBreakPattern(bool bp)
+{
+	isImmuneToBreakPatternHide = bp;
+}
+
+
+oo::PList OOVisualEffectEntity::effectInfoDictionary()
+{
+	return effectinfoDictionary;
+}
+
+
+// (SubEntityRelationship) a slightly misnamed test now things other than ships can have subents
+bool OOVisualEffectEntity::isShipWithSubEntityShip(::Entity *other)
+{
+	assert (getIsVisualEffect());
+
+	if (![other isVisualEffect])  return false;
+	if (![other isSubEntity])  return false;
+	if ([other owner] != oo::ToObjC(this))  return false;
+
+#ifndef NDEBUG
+	// Sanity check; this should always be true.
+	if (!hasSubEntity((::OOVisualEffectEntity *)other))
+	{
+		OO_LOG_ERR("visualeffect.subentity.sanityCheck.failed", "{} thinks it's a subentity of {}, but the supposed parent does not agree. {}", oo::ShortDescriptionOf(other), oo::ShortDescriptionOf(oo::ToObjC(this)), "This is an internal error, please report it.");
+		[other setOwner:nil];
+		return false;
+	}
+#endif
+
+	return true;
+}
+
+}	// namespace cxx
+
+
+// Slice 2 of docs/phases/3-slices/OOVisualEffectEntity.md (scanner colours, the script and its events,
+// the beacons and the shader uniforms): still Objective-C, a category of the façade declared in
+// OOVisualEffectEntity+ObjCBridge.h, reading the state through oo::ToCxx(self) (amendment oo-dnbf
+// item 2) until its bead.
+@implementation OOVisualEffectEntity (OOVisualEffectEntityScripting)
+
+
+
 - (OOColor *)scannerDisplayColor1
 {
-	return [[scanner_display_color1 retain] autorelease];
+	return [[oo::ToCxx(self)->scanner_display_color1 retain] autorelease];
 }
 
 
 - (OOColor *)scannerDisplayColor2
 {
-	return [[scanner_display_color2 retain] autorelease];
+	return [[oo::ToCxx(self)->scanner_display_color2 retain] autorelease];
 }
 
 
 - (void)setScannerDisplayColor1:(OOColor *)color
 {
-	DESTROY(scanner_display_color1);
+	DESTROY(oo::ToCxx(self)->scanner_display_color1);
 	
-	if (color == nil)  color = [OOColor cxx_colorWithDescription:ValueForKey(effectinfoDictionary, "scanner_display_color1")];
-	scanner_display_color1 = [color retain];
+	if (color == nil)  color = [OOColor cxx_colorWithDescription:ValueForKey(oo::ToCxx(self)->effectinfoDictionary, "scanner_display_color1")];
+	oo::ToCxx(self)->scanner_display_color1 = [color retain];
 }
 
 
 - (void)setScannerDisplayColor2:(OOColor *)color
 {
-	DESTROY(scanner_display_color2);
+	DESTROY(oo::ToCxx(self)->scanner_display_color2);
 	
-	if (color == nil)  color = [OOColor cxx_colorWithDescription:ValueForKey(effectinfoDictionary, "scanner_display_color2")];
-	scanner_display_color2 = [color retain];
+	if (color == nil)  color = [OOColor cxx_colorWithDescription:ValueForKey(oo::ToCxx(self)->effectinfoDictionary, "scanner_display_color2")];
+	oo::ToCxx(self)->scanner_display_color2 = [color retain];
 }
 
 static GLfloat default_color[4] =	{ 0.0, 0.0, 0.0, 0.0};
@@ -716,69 +795,6 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 	return default_color; // transparent black if not specified
 }
 
-- (void) drawImmediate:(bool)immediate translucent:(bool)translucent 
-{
-	if (_cxxEntity->no_draw_distance < _cxxEntity->cam_zero_distance)
-	{
-		return; // too far away to draw
-	}
-	OOGLPushModelView();
-	OOGLScaleModelView(make_vector(scaleX,scaleY,scaleZ));
-
-	if ([self mesh] != nil)
-	{
-		[super drawImmediate:immediate translucent:translucent];
-	}
-	OOGLPopModelView();
-
-	// Draw subentities.
-	if (!immediate)	// TODO: is this relevant any longer?
-	{
-		Entity<OOSubEntity> *subEntity = nil;
-		for (const auto &subEntityRef : SubEntitiesOf(subEntities))
-		{
-			subEntity = subEntityRef.get();
-			[subEntity drawSubEntityImmediate:immediate translucent:translucent];
-		}
-	}
-}
-
-
-- (void) update:(OOTimeDelta)delta_t
-{
-	[super update:delta_t];
-
-	if (!_haveExecutedSpawnAction) {
-		[self doScriptEvent:OOJSID("effectSpawned")];
-		_haveExecutedSpawnAction = YES;
-	}
-
-	Entity *se = nil;
-	for (const auto &seRef : SubEntitiesOf(subEntities))
-	{
-		se = seRef.get();
-		[se update:delta_t];
-	}
-}
-
-
-- (BOOL) isBreakPattern
-{
-	return _cxxEntity->isImmuneToBreakPatternHide;
-}
-
-
-- (void) setIsBreakPattern:(BOOL)bp
-{
-	_cxxEntity->isImmuneToBreakPatternHide = bp;
-}
-
-
-- (oo::PList)effectInfoDictionary
-{
-	return effectinfoDictionary;
-}
-
 
 /* scripting */
 
@@ -788,32 +804,32 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 	propertyList["visualEffect"] = oo::PListObject(self);
 	const oo::PList properties(std::move(propertyList));
 
-	[script autorelease];
-	script = [OOScript cxx_jsScriptFromFileNamed:script_name.value_or(std::string()) properties:properties];
+	[oo::ToCxx(self)->script autorelease];
+	oo::ToCxx(self)->script = [OOScript cxx_jsScriptFromFileNamed:script_name.value_or(std::string()) properties:properties];
 	// does not support legacy scripting
-	if (script == nil) {
-		script = [OOScript cxx_jsScriptFromFileNamed:"oolite-default-effect-script.js" properties:properties];
+	if (oo::ToCxx(self)->script == nil) {
+		oo::ToCxx(self)->script = [OOScript cxx_jsScriptFromFileNamed:"oolite-default-effect-script.js" properties:properties];
 	}
-	[script retain];
+	[oo::ToCxx(self)->script retain];
 }
 
 
 - (OOJSScript *)script
 {
-	return script;
+	return oo::ToCxx(self)->script;
 }
 
 
 - (oo::PList)scriptInfo
 {
-	return scriptInfo ? scriptInfo : oo::PList(oo::PList::Dict{});
+	return oo::ToCxx(self)->scriptInfo ? oo::ToCxx(self)->scriptInfo : oo::PList(oo::PList::Dict{});
 }
 
 // unlikely to need events with arguments
 - (void) doScriptEvent:(ooscript::PropertyId)message
 {
 	ooscript::Context context = OOJSAcquireContext();
-	[script callMethod:message inContext:context withArguments:NULL count:0 result:NULL];
+	[oo::ToCxx(self)->script callMethod:message inContext:context withArguments:NULL count:0 result:NULL];
 	OOJSRelinquishContext(context);
 }
 
@@ -835,7 +851,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 
 - (std::optional<std::string>) beaconCode
 {
-	return _beaconCode;
+	return oo::ToCxx(self)->_beaconCode;
 }
 
 
@@ -846,14 +862,14 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 	std::optional<std::string> code = bcode;
 	if (code.has_value() && code->empty())  code.reset();
 
-	if (code.has_value() || _beaconCode.has_value())
+	if (code.has_value() || oo::ToCxx(self)->_beaconCode.has_value())
 	{
-		_beaconCode = code;
+		oo::ToCxx(self)->_beaconCode = code;
 
-		DESTROY(_beaconDrawable);
+		DESTROY(oo::ToCxx(self)->_beaconDrawable);
 	}
 	// if not blanking code and label is currently blank, default label to code
-	if (code.has_value() && (!_beaconLabel.has_value() || _beaconLabel->empty()))
+	if (code.has_value() && (!oo::ToCxx(self)->_beaconLabel.has_value() || oo::ToCxx(self)->_beaconLabel->empty()))
 	{
 		[self setBeaconLabel:code];
 	}
@@ -863,7 +879,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 
 - (std::optional<std::string>) beaconLabel
 {
-	return _beaconLabel;
+	return oo::ToCxx(self)->_beaconLabel;
 }
 
 
@@ -872,9 +888,9 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 	std::optional<std::string> label = blabel;
 	if (label.has_value() && label->empty())  label.reset();
 
-	if (label.has_value() || _beaconLabel.has_value())
+	if (label.has_value() || oo::ToCxx(self)->_beaconLabel.has_value())
 	{
-		_beaconLabel = label.has_value() ? cxx_OOExpand(*label) : std::nullopt;
+		oo::ToCxx(self)->_beaconLabel = label.has_value() ? cxx_OOExpand(*label) : std::nullopt;
 	}
 }
 
@@ -887,38 +903,38 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 
 - (id <OOHUDBeaconIcon>) beaconDrawable
 {
-	if (_beaconDrawable == nil)
+	if (oo::ToCxx(self)->_beaconDrawable == nil)
 	{
-		const std::u16string	beaconCode = oo::utf8ToUtf16(_beaconCode.value_or(std::string()));
+		const std::u16string	beaconCode = oo::utf8ToUtf16(oo::ToCxx(self)->_beaconCode.value_or(std::string()));
 		NSUInteger	length = beaconCode.size();	// -length: UTF-16 units
 
 		if (length > 1)
 		{
-			const oo::PList *iconEntry = [UNIVERSE cxx_descriptions]->find(*_beaconCode);
+			const oo::PList *iconEntry = [UNIVERSE cxx_descriptions]->find(*oo::ToCxx(self)->_beaconCode);
 			const oo::PList iconData = (iconEntry != nullptr) ? *iconEntry : oo::PList();
-			if (iconData.isArray())  _beaconDrawable = [[OOPolygonSprite alloc] initWithDataArray:iconData outlineWidth:0.5 name:*_beaconCode];
+			if (iconData.isArray())  oo::ToCxx(self)->_beaconDrawable = [[OOPolygonSprite alloc] initWithDataArray:iconData outlineWidth:0.5 name:*oo::ToCxx(self)->_beaconCode];
 		}
 
-		if (_beaconDrawable == nil)
+		if (oo::ToCxx(self)->_beaconDrawable == nil)
 		{
-			if (length > 0)  _beaconDrawable = [[OOHUDBeaconCodeIcon alloc] initWithText:oo::utf16ToUtf8(beaconCode.substr(0, 1))];	// -substringToIndex:1
-			else  _beaconDrawable = [[OOHUDBeaconCodeIcon alloc] initWithText:std::string()];
+			if (length > 0)  oo::ToCxx(self)->_beaconDrawable = [[OOHUDBeaconCodeIcon alloc] initWithText:oo::utf16ToUtf8(beaconCode.substr(0, 1))];	// -substringToIndex:1
+			else  oo::ToCxx(self)->_beaconDrawable = [[OOHUDBeaconCodeIcon alloc] initWithText:std::string()];
 		}
 	}
 	
-	return _beaconDrawable;
+	return oo::ToCxx(self)->_beaconDrawable;
 }
 
 
 - (Entity <OOBeaconEntity> *) prevBeacon
 {
-	return [_prevBeacon weakRefUnderlyingObject];
+	return [oo::ToCxx(self)->_prevBeacon weakRefUnderlyingObject];
 }
 
 
 - (Entity <OOBeaconEntity> *) nextBeacon
 {
-	return [_nextBeacon weakRefUnderlyingObject];
+	return [oo::ToCxx(self)->_nextBeacon weakRefUnderlyingObject];
 }
 
 
@@ -926,8 +942,8 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 {
 	if (beaconShip != [self prevBeacon])
 	{
-		[_prevBeacon release];
-		_prevBeacon = [beaconShip weakRetain];
+		[oo::ToCxx(self)->_prevBeacon release];
+		oo::ToCxx(self)->_prevBeacon = [beaconShip weakRetain];
 	}
 }
 
@@ -936,8 +952,8 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 {
 	if (beaconShip != [self nextBeacon])
 	{
-		[_nextBeacon release];
-		_nextBeacon = [beaconShip weakRetain];
+		[oo::ToCxx(self)->_nextBeacon release];
+		oo::ToCxx(self)->_nextBeacon = [beaconShip weakRetain];
 	}
 }
 
@@ -953,112 +969,86 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 // no automatic change of this, but simplifies use of default shader
 - (GLfloat)hullHeatLevel
 {
-	return _hullHeatLevel;
+	return oo::ToCxx(self)->_hullHeatLevel;
 }
 
 
 - (void)setHullHeatLevel:(GLfloat)value
 {
-	_hullHeatLevel = OOClamp_0_1_f(value);
+	oo::ToCxx(self)->_hullHeatLevel = OOClamp_0_1_f(value);
 }
 
 
 - (GLfloat) shaderFloat1 
 {
-	return _shaderFloat1;
+	return oo::ToCxx(self)->_shaderFloat1;
 }
 
 
 - (void)setShaderFloat1:(GLfloat)value
 {
-	_shaderFloat1 = value;
+	oo::ToCxx(self)->_shaderFloat1 = value;
 }
 
 
 - (GLfloat) shaderFloat2 
 {
-	return _shaderFloat2;
+	return oo::ToCxx(self)->_shaderFloat2;
 }
 
 
 - (void)setShaderFloat2:(GLfloat)value
 {
-	_shaderFloat2 = value;
+	oo::ToCxx(self)->_shaderFloat2 = value;
 }
 
 
 - (int) shaderInt1 
 {
-	return _shaderInt1;
+	return oo::ToCxx(self)->_shaderInt1;
 }
 
 
 - (void)setShaderInt1:(int)value
 {
-	_shaderInt1 = value;
+	oo::ToCxx(self)->_shaderInt1 = value;
 }
 
 
 - (int) shaderInt2 
 {
-	return _shaderInt2;
+	return oo::ToCxx(self)->_shaderInt2;
 }
 
 
 - (void)setShaderInt2:(int)value
 {
-	_shaderInt2 = value;
+	oo::ToCxx(self)->_shaderInt2 = value;
 }
 
 
 - (Vector) shaderVector1 
 {
-	return _shaderVector1;
+	return oo::ToCxx(self)->_shaderVector1;
 }
 
 
 - (void)setShaderVector1:(Vector)value
 {
-	_shaderVector1 = value;
+	oo::ToCxx(self)->_shaderVector1 = value;
 }
 
 
 - (Vector) shaderVector2 
 {
-	return _shaderVector2;
+	return oo::ToCxx(self)->_shaderVector2;
 }
 
 
 - (void)setShaderVector2:(Vector)value
 {
-	_shaderVector2 = value;
+	oo::ToCxx(self)->_shaderVector2 = value;
 }
 
-
-@end
-
-@implementation OOVisualEffectEntity (SubEntityRelationship)
-
-// a slightly misnamed test now things other than ships can have subents
-- (BOOL) isShipWithSubEntityShip:(Entity *)other
-{
-	assert ([self isVisualEffect]);
-	
-	if (![other isVisualEffect])  return NO;
-	if (![other isSubEntity])  return NO;
-	if ([other owner] != self)  return NO;
-	
-#ifndef NDEBUG
-	// Sanity check; this should always be true.
-	if (![self hasSubEntity:(OOVisualEffectEntity *)other])
-	{
-		OO_LOG_ERR("visualeffect.subentity.sanityCheck.failed", "{} thinks it's a subentity of {}, but the supposed parent does not agree. {}", oo::ShortDescriptionOf(other), oo::ShortDescriptionOf(self), "This is an internal error, please report it.");
-		[other setOwner:nil];
-		return NO;
-	}
-#endif
-	
-	return YES;
-}
 
 @end
