@@ -26,7 +26,10 @@ MA 02110-1301, USA.
 #include "OOMaths.h"
 #include "oofnd/String.hpp"
 #if OOMATHS_OPENGL_INTEGRATION
-#import "OOOpenGLExtensionManager.h"
+#include "OOOpenGLExtensionPointers.h"	// glUniformMatrix3fvARB, Windows' extension pointer (bead oo-9ht.120)
+#include "OOOpenGLCheck.h"	// OOGL() (bead oo-9ht.163)
+#include "OOOpenGLOnly.h"	// GL_FALSE
+#include <SDL3/SDL_opengl.h>	// GL_FALSE
 #endif
 
 const OOMatrix	kIdentityMatrix = 
@@ -177,7 +180,7 @@ OOMatrix OOMatrixOrthogonalize(OOMatrix m)
 }
 
 
-#if __OBJC__
+#ifdef __cplusplus
 std::string OOMatrixDescription(OOMatrix matrix)
 {
 	return oo::str::format("{{%g, %g, %g, %g}, {%g, %g, %g, %g}, {%g, %g, %g, %g}, {%g, %g, %g, %g}}",
@@ -467,7 +470,7 @@ void GLUniformMatrix3(int location, OOMatrix M)
 	m[6] = M.m[2][0];
 	m[7] = M.m[2][1];
 	m[8] = M.m[2][2];
-	OOGL(glUniformMatrix3fvARB(location, 1, NO, m));
+	OOGL(glUniformMatrix3fvARB(location, 1, GL_FALSE, m));	// GL_FALSE: objc.h's NO is not in C++ (oo-s37k)
 }
 
 #endif

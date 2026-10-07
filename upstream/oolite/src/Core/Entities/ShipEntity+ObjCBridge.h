@@ -184,38 +184,15 @@ MA 02110-1301, USA.
 // Dispatch shipTakingDamage() event.
 // Dispatch shipDied() and possibly shipKilledOther() events. This is only for use by getDestroyedBy:damageType:, but needs to be visible to PlayerEntity's version.
 
-- (void) getDestroyedBy:(Entity *)whom damageType:(OOShipDamageType)type;
-- (void) becomeExplosion;
-- (void) becomeLargeExplosion:(double) factor;
-- (void) becomeEnergyBlast;
-- (void) broadcastEnergyBlastImminent;
-- (void) setIsWreckage:(BOOL)isw;
-- (BOOL) showDamage;
 
-- (Vector) positionOffsetForAlignment:(const std::string &) align;
 Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q, const std::string &align);
 
-- (void) collectBountyFor:(ShipEntity *)other;
 
 
 
-- (GLfloat)weaponRecoveryTime;
-- (GLfloat)laserHeatLevel;
-- (GLfloat)laserHeatLevelAft;
-- (GLfloat)laserHeatLevelForward;
-- (GLfloat)laserHeatLevelPort;
-- (GLfloat)laserHeatLevelStarboard;
-- (GLfloat)hullHeatLevel;
-- (GLfloat)entityPersonality;
-- (GLint)entityPersonalityInt;
-- (void) setEntityPersonalityInt:(uint16_t)value;
 
-- (void)setSuppressExplosion:(BOOL)suppress;
 
-- (void) resetExhaustPlumes;
 
-- (void) removeExhaust:(OOExhaustPlumeEntity *)exhaust;
-- (void) removeFlasher:(OOFlasherEntity *)flasher;
 
 
 /*-----------------------------------------
@@ -224,19 +201,9 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
  
  -----------------------------------------*/
 
-- (void) checkScanner;
-- (void) checkScannerIgnoringUnpowered;
-- (ShipEntity**) scannedShips;
-- (int) numberOfScannedShips;
 
-- (Entity *)foundTarget;
-- (Entity *)primaryAggressor;
-- (Entity *)lastEscortTarget;
 - (Entity *)thankedShip;
 - (Entity *)rememberedShip;
-- (void) setFoundTarget:(Entity *) targetEntity;
-- (void) setPrimaryAggressor:(Entity *) targetEntity;
-- (void) setLastEscortTarget:(Entity *) targetEntity;
 - (void) setThankedShip:(Entity *) targetEntity;
 - (void) setRememberedShip:(Entity *) targetEntity;
 - (void) setTargetStation:(Entity *) targetEntity;
@@ -1103,6 +1070,64 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (void) setHulk:(BOOL) isNowHulk;
 - (void) noteTakingDamage:(double)amount from:(Entity *)entity type:(OOShipDamageType)type;
 - (void) noteKilledBy:(Entity *)whom damageType:(OOShipDamageType)type;
+
+@end
+
+
+// Slice 22 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice22)
+
+- (void) getDestroyedBy:(Entity *)whom damageType:(OOShipDamageType)type;
+- (void) rescaleBy:(GLfloat)factor;
+- (void) rescaleBy:(GLfloat)factor writeToCache:(BOOL)writeToCache;
+- (void) releaseCargoPodsDebris;
+- (void) setIsWreckage:(BOOL)isw;
+- (BOOL) showDamage;
+- (void) becomeExplosion;
+- (void) becomeEnergyBlast;
+- (void) broadcastEnergyBlastImminent;
+- (void) removeExhaust:(OOExhaustPlumeEntity *)exhaust;
+
+@end
+
+
+// Slice 23 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice23)
+
+- (void) removeFlasher:(OOFlasherEntity *)flasher;
+- (void) subEntityDied:(ShipEntity *)sub;
+- (void) subEntityReallyDied:(ShipEntity *)sub;
+- (Vector) positionOffsetForAlignment:(const std::string &) align;
+- (void) becomeLargeExplosion:(double) factor;
+- (void) collectBountyFor:(ShipEntity *)other;
+- (OOComparisonResult) compareBeaconCodeWith:(Entity<OOBeaconEntity> *)other;
+- (GLfloat)weaponRecoveryTime;
+- (GLfloat)laserHeatLevel;
+- (GLfloat)laserHeatLevelAft;
+- (GLfloat)laserHeatLevelForward;
+- (GLfloat)laserHeatLevelPort;
+- (GLfloat)laserHeatLevelStarboard;
+- (GLfloat)hullHeatLevel;
+- (GLfloat)entityPersonality;
+- (GLint)entityPersonalityInt;
+- (uint32_t) randomSeedForShaders;
+- (void) setEntityPersonalityInt:(uint16_t)value;
+- (void)setSuppressExplosion:(BOOL)suppress;
+- (void) resetExhaustPlumes;
+- (void) checkScanner;
+- (void) checkScannerIgnoringUnpowered;
+- (ShipEntity**) scannedShips;
+- (int) numberOfScannedShips;
+- (Entity *)foundTarget;
+- (void) setFoundTarget:(Entity *) targetEntity;
+- (Entity *)primaryAggressor;
+- (void) setPrimaryAggressor:(Entity *) targetEntity;
+- (Entity *)lastEscortTarget;
+- (void) setLastEscortTarget:(Entity *) targetEntity;
 
 @end
 
