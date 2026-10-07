@@ -12799,7 +12799,7 @@ void ShipEntity::behaviour_attack_mining_target(double delta_t)
 	}
 	else if ((range < 650) || ([self proximityAlert] != nil))
 	{
-		if ([self proximityAlert] == (::Entity *)NO_TARGET)
+		if ([self proximityAlert] == nil)	// NO_TARGET is 0: `== (Entity *)NO_TARGET` was the nil test
 		{
 			desired_speed = range * maxFlightSpeed / (650.0 * 16.0);
 		}
