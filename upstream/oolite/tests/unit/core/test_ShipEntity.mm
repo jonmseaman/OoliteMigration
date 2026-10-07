@@ -101,6 +101,7 @@ OOTimeDelta ShotTime(ShipEntity *s)		{ return s->_cxxShip->shot_time; }
 OOBehaviour Behaviour(ShipEntity *s)	{ return s->_cxxShip->behaviour; }
 void SetSubEntity(Entity *e, bool value)	{ e->_cxxEntity->isSubEntity = value; }
 void SetFrustration(ShipEntity *s, GLfloat value)	{ s->_cxxShip->frustration = value; }
+void SetPlanetForLanding(ShipEntity *s, OOUniversalID uid)	{ s->_cxxShip->planetForLanding = uid; }
 
 void SetPrimaryTarget(ShipEntity *s, Entity *target)
 {
@@ -1238,6 +1239,51 @@ OO_TEST(attackApproaches)
 		[attacker setBehaviour:BEHAVIOUR_ATTACK_FLY_TO_TARGET];
 		[attacker behaviour_attack_fly_to_target:0.1];
 		OO_CHECK(Behaviour(attacker) == BEHAVIOUR_ATTACK_TARGET);
+	}
+}
+
+
+// Slice 14: the destination behaviours that only decide.
+OO_TEST(destinationDecisions)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		// Inside the range it should keep: fly away from the destination, at least at top speed.
+		TestShip *ship = FlyingShip("ranger");
+		[ship setDestination:make_HPvector(0, 0, 100)];
+		[ship setDesiredRange:500];
+		[ship setDesiredSpeed:10];
+		SetFrustration(ship, 3);
+		[ship behaviour_fly_range_from_destination:0.1];
+		OO_CHECK(Behaviour(ship) == BEHAVIOUR_FLY_FROM_DESTINATION && [ship desiredSpeed] == 200 && [ship frustration] == 0);
+
+		// Outside it: fly to the destination.
+		[ship setDesiredRange:50];
+		[ship behaviour_fly_range_from_destination:0.1];
+		OO_CHECK(Behaviour(ship) == BEHAVIOUR_FLY_TO_DESTINATION);
+
+		// Facing a destination stops the ship.
+		TestShip *facer = FlyingShip("facer");
+		[facer setDestination:make_HPvector(0, 1000, 0)];
+		[facer setDesiredSpeed:50];
+		[facer setBehaviour:BEHAVIOUR_FACE_DESTINATION];
+		[facer behaviour_face_destination:0.1];
+		OO_CHECK([facer desiredSpeed] == 0);
+
+		// Landing with no planet to land on: idle, and the JS AI is woken to reconsider.
+		TestShip *lander = FlyingShip("lander");
+		SetPlanetForLanding(lander, NO_TARGET);
+		[lander setBehaviour:BEHAVIOUR_LAND_ON_PLANET];
+		[lander behaviour_land_on_planet:0.1];
+		OO_CHECK(Behaviour(lander) == BEHAVIOUR_IDLE && [lander shipAIScriptWakeTime] == 1 && [lander desiredSpeed] == 0);
+
+		// Forming up with no leader: top speed.
+		TestShip *escort = FlyingShip("escort");
+		[escort setDestination:make_HPvector(0, 0, 3000)];
+		[escort setBehaviour:BEHAVIOUR_FORMATION_FORM_UP];
+		[escort behaviour_formation_form_up:0.1];
+		OO_CHECK([escort desiredSpeed] == 200);
 	}
 }
 

@@ -385,385 +385,6 @@ void ShipEntity::initWithKey(const std::string &key)
 static constexpr std::string_view kBoulderRole = "boulder";
 
 
-- (void) behaviour_attack_fly_from_target:(double) delta_t
-{
-	double  range = [self rangeToPrimaryTarget];
-	double last_success_factor = _cxxShip->success_factor;
-	_cxxShip->success_factor = range;
-	
-	if ([self primaryTarget] == nil)
-	{
-		[self noteLostTargetAndGoIdle];
-		return;
-	}
-	if (last_success_factor > _cxxShip->success_factor) // our target is closing in.
-	{
-		_cxxShip->frustration += delta_t;
-	}
-	else
-	{ // not getting away fast enough?
-		_cxxShip->frustration += delta_t / 4.0 ;
-	}
-
-	if (_cxxShip->frustration > 10.0)
-	{
-		if (randf() < 0.3) {
-			_cxxShip->desired_speed = _cxxShip->maxFlightSpeed * (([self hasFuelInjection] && (_cxxShip->fuel > MIN_FUEL)) ? [self afterburnerFactor] : 1);
-		}
-		else if (range > COMBAT_IN_RANGE_FACTOR * _cxxShip->weaponRange && randf() < 0.3)
-		{
-			_cxxShip->behaviour = BEHAVIOUR_ATTACK_TARGET;
-		}
-		GLfloat z = _cxxShip->jink.z;
-		if (randf() < 0.3)
-		{
-			z /= 2; // move the z-offset closer to the target to let him fly away from the target.
-			_cxxShip->desired_speed = _cxxShip->flightSpeed * 2; // increase speed a bit.
-		}
-		[self setEvasiveJink:z];
-
-		_cxxShip->frustration /= 2.0;
-	}
-	if (_cxxShip->desired_speed > _cxxShip->maxFlightSpeed)
-	{
-		ShipEntity*	target = [self primaryTarget];
-		double target_speed = [target speed];
-		if (_cxxShip->desired_speed > target_speed * 2.0)
-		{
-			_cxxShip->desired_speed = _cxxShip->maxFlightSpeed; // don't overuse the injectors
-		}
-	}
-	else if (_cxxShip->desired_speed < _cxxShip->maxFlightSpeed * 0.5)
-	{
-		_cxxShip->desired_speed = _cxxShip->maxFlightSpeed;
-	}
-
-	if (range > COMBAT_OUT_RANGE_FACTOR * _cxxShip->weaponRange + 15.0 * _cxxShip->jink.x || 
-			_cxxShip->flightSpeed > (_cxxShip->scannerRange - range) * _cxxShip->max_flight_pitch / 6.28)
-	{
-		_cxxShip->jink = kZeroVector;
-		_cxxShip->behaviour = BEHAVIOUR_ATTACK_TARGET;
-		_cxxShip->frustration = 0.0;
-	}
-	[self trackPrimaryTarget:delta_t:YES];
-
-	if (_cxxShip->missiles) [self considerFiringMissile:delta_t];
-
-	if (_cxxShip->cloakAutomatic) [self activateCloakingDevice];
-	if ([self hasProximityAlertIgnoringTarget:YES])
-		[self avoidCollision];
-
-	if (_cxxShip->accuracy >= COMBAT_AI_FLEES_BETTER_2) 
-	{
-		double aspect = [self approachAspectToPrimaryTarget];
-		// if we're right in their gunsights, dodge!
-		// need to dodge sooner if in aft sights
-		if (aspect > 0.99999 || aspect < -0.999) 
-		{
-			_cxxShip->frustration = 0.0;
-			_cxxShip->behaviour = BEHAVIOUR_EVASIVE_ACTION;
-		}
-	}
-	
-}
-
-
-- (void) behaviour_running_defense:(double) delta_t
-{
-	if (![self canStillTrackPrimaryTarget])
-	{
-		[self noteLostTargetAndGoIdle];
-		return;
-	}
-
-	double  range = [self rangeToPrimaryTarget];
-	_cxxShip->desired_speed = _cxxShip->maxFlightSpeed; // not injectors
-	_cxxShip->jink = kZeroVector;
-	if (range > _cxxShip->weaponRange || range > 0.8 * _cxxShip->scannerRange || range == 0)
-	{
-		_cxxShip->behaviour = BEHAVIOUR_CLOSE_WITH_TARGET;
-		if ([_cxxShip->forward_weapon_type isTurretLaser]) 
-		{
-				_cxxShip->behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET_TWELVE;
-		} 
-		_cxxShip->frustration = 0.0;
-	}
-	[self trackPrimaryTarget:delta_t:YES];
-	if ([_cxxShip->forward_weapon_type isTurretLaser]) 
-	{
-		// most Thargoids will only have the forward weapon
-		[self fireMainWeapon:range];
-	}
-	else 
-	{
-		[self fireAftWeapon:range];
-	}
-	if (_cxxShip->cloakAutomatic) [self activateCloakingDevice];
-	if ([self hasProximityAlertIgnoringTarget:YES])
-		[self avoidCollision];
-
-	if (_cxxShip->behaviour != BEHAVIOUR_CLOSE_WITH_TARGET && _cxxShip->weapon_temp > COMBAT_AI_WEAPON_TEMP_USABLE)
-	{
-		_cxxShip->behaviour = BEHAVIOUR_ATTACK_TARGET;
-	}
-
-	// remember to look where you're going?
-	if (_cxxShip->accuracy >= COMBAT_AI_ISNT_AWFUL && [self hasProximityAlertIgnoringTarget:YES])
-	{
-		[self avoidCollision];
-	}
-
-
-}
-
-
-- (void) behaviour_flee_target:(double) delta_t
-{
-	BOOL	canBurn = [self hasFuelInjection] && (_cxxShip->fuel > MIN_FUEL);
-	float	max_available_speed = _cxxShip->maxFlightSpeed;
-	double  range = [self rangeToPrimaryTarget];
-	if ([self primaryTarget] == nil)
-	{
-		[self noteLostTargetAndGoIdle];
-		return;
-	}
-	if (canBurn) max_available_speed *= [self afterburnerFactor];
-	
-	double last_range = _cxxShip->success_factor;
-	_cxxShip->success_factor = range;
-
-	if (range > _cxxShip->desired_range || range == 0)
-		[_cxxShip->shipAI message:"REACHED_SAFETY"];
-	else
-		_cxxShip->desired_speed = max_available_speed;
-
-	if (range > last_range)	// improvement
-	{
-		_cxxShip->frustration -= 0.25 * delta_t;
-		if (_cxxShip->frustration < 0.0)
-			_cxxShip->frustration = 0.0;
-	}
-	else
-	{
-		_cxxShip->frustration += delta_t;
-		if (_cxxShip->frustration > 15.0)	// 15s of frustration
-		{
-			[self noteFrustration:"BEHAVIOUR_FLEE_TARGET"];
-			_cxxShip->frustration = 0.0;
-		}
-	}
-
-	[self trackPrimaryTarget:delta_t:YES];
-
-	Entity *target = [self primaryTarget];
-
-	if (_cxxShip->missiles && [target isShip] && [(ShipEntity *)target primaryTarget] == self)
-	{
-		[self considerFiringMissile:delta_t];
-	}
-
-	if (([self hasCascadeMine]) && (range < 10000.0) && canBurn)
-	{
-		float	qbomb_chance = 0.01 * delta_t;
-		if (randf() < qbomb_chance)
-		{
-			[self launchCascadeMine];
-		}
-	}
-
-// thargoids won't normally be fleeing, but if they do, they can still shoot
-	if ([_cxxShip->forward_weapon_type isTurretLaser])
-	{
-		[self fireMainWeapon:range];
-	}
-
-	if (_cxxShip->cloakAutomatic) [self activateCloakingDevice];
-
-	// remember to look where you're going?
-	if (_cxxShip->accuracy >= COMBAT_AI_ISNT_AWFUL && [self hasProximityAlertIgnoringTarget:YES])
-	{
-		[self avoidCollision];
-	}
-
-}
-
-
-- (void) behaviour_fly_range_from_destination:(double) delta_t
-{
-	double distance = [self rangeToDestination];
-	if (distance < _cxxShip->desired_range)
-	{
-		_cxxShip->behaviour = BEHAVIOUR_FLY_FROM_DESTINATION;
-		if (_cxxShip->desired_speed < _cxxShip->maxFlightSpeed) 
-		{
-			_cxxShip->desired_speed = _cxxShip->maxFlightSpeed;  // Not all AI define speed when flying away. Start with max speed to stay compatible with such AI's, but allow faster flight if it's (e.g.) used to flee from coordinates rather than entity
-		}
-	}
-	else
-	{
-		_cxxShip->behaviour = BEHAVIOUR_FLY_TO_DESTINATION;
-	}
-	if ([self hasProximityAlertIgnoringTarget:YES])
-	{
-		[self avoidCollision];
-	}
-	_cxxShip->frustration = 0.0;
-
-	
-}
-
-
-- (void) behaviour_face_destination:(double) delta_t
-{
-	double max_cos = MAX_COS;
-	double distance = [self rangeToDestination];
-	double old_pitch = _cxxShip->flightPitch;
-	_cxxShip->desired_speed = 0.0;
-	if (_cxxShip->desired_range > 1.0 && distance > _cxxShip->desired_range)
-	{
-		max_cos = sqrt(1 - 0.90 * _cxxShip->desired_range*_cxxShip->desired_range/(distance * distance));   // Head for a point within 95% of desired_range (must match the value in trackDestination)
-	}
-	double confidenceFactor = [self trackDestination:delta_t:NO];
-	if (confidenceFactor >= max_cos && _cxxShip->flightPitch == 0.0)
-	{
-		// desired facing achieved and movement stabilised.
-		[_cxxShip->shipAI message:"FACING_DESTINATION"];
-		[self doScriptEvent:OOJSID("shipNowFacingDestination")];
-		_cxxShip->frustration = 0.0;
-		if(_cxxShip->docking_match_rotation)  // IDLE stops rotating while docking
-		{
-			_cxxShip->behaviour = BEHAVIOUR_FLY_TO_DESTINATION;
-		}
-		else
-		{
-			_cxxShip->behaviour = BEHAVIOUR_IDLE;
-		}
-	}
-
-	if(_cxxShip->flightSpeed == 0) _cxxShip->frustration += delta_t;
-	if (_cxxShip->frustration > 15.0 / _cxxShip->max_flight_pitch)	// allow more time for slow ships.
-	{
-		_cxxShip->frustration = 0.0;
-		[self noteFrustration:"BEHAVIOUR_FACE_DESTINATION"];
-		if(_cxxShip->flightPitch == old_pitch) _cxxShip->flightPitch = 0.5 * _cxxShip->max_flight_pitch; // hack to get out of frustration.
-	}	
-	
-	/* 2009-7-18 Eric: the condition check below is intended to eliminate the flippering between two positions for fast turning ships
-	   during low FPS conditions. This flippering is particular frustrating on slow computers during docking. But with my current computer I can't
-	   induce those low FPS conditions so I can't properly test if it helps.
-	   I did try with the TAF time acceleration that also generated larger frame jumps and than it seemed to help.
-	*/
-	if(_cxxShip->flightSpeed == 0 && _cxxShip->frustration > 5 && confidenceFactor > 0.5 && ((_cxxShip->flightPitch > 0 && old_pitch < 0) || (_cxxShip->flightPitch < 0 && old_pitch > 0)))
-	{
-		_cxxShip->flightPitch += 0.5 * old_pitch; // damping with last pitch value.
-	}
-	
-	if ([self hasProximityAlertIgnoringTarget:YES])
-	{
-		[self avoidCollision];
-	}
-	
-	
-}
-
-
-- (void) behaviour_land_on_planet:(double) delta_t
-{
-	double max_cos = MAX_COS2; // trackDestination returns the squared confidence in reverse mode.
-	_cxxShip->desired_speed = 0.0;
-	
-	OOPlanetEntity* planet = [UNIVERSE entityForUniversalID:_cxxShip->planetForLanding];
-	
-	if (![planet isPlanet]) 
-	{
-		_cxxShip->behaviour = BEHAVIOUR_IDLE;
-		_cxxShip->aiScriptWakeTime = 1; // reconsider JSAI
-		[_cxxShip->shipAI message:"NO_PLANET_NEARBY"];
-		return;
-	}
-		  
-	if (HPdistance(_cxxEntity->position, [planet position]) + [self collisionRadius] < [planet radius])
-	{
-		// we have landed. (completely disappeared inside planet)
-		[self landOnPlanet:planet];
-		return;
-	}
-
-	double confidenceFactor = [self trackDestination:delta_t:YES]; // turn away from destination
-	
-	if (confidenceFactor >= max_cos && _cxxShip->flightSpeed == 0.0)
-	{
-		// We are now turned away from planet. Start landing by flying backward.
-		_cxxShip->thrust = 0.0; // stop forward acceleration.
-		if (magnitude2(_cxxEntity->velocity) < MAX_LANDING_SPEED2)
-		{
-			[self adjustVelocity:vector_multiply_scalar([self forwardVector], -_cxxShip->max_thrust * delta_t)];
-		}
-	}
-	
-	
-	if ([self hasProximityAlertIgnoringTarget:YES])
-	{
-		[self avoidCollision];
-	}
-	
-	
-}
-
-
-- (void) behaviour_formation_form_up:(double) delta_t
-{
-	// destination for each escort is set in update() from owner.
-	ShipEntity* leadShip = [self owner];
-	double distance = [self rangeToDestination];
-	double eta = (distance - _cxxShip->desired_range) / _cxxShip->flightSpeed;
-	if(eta < 0) eta = 0;
-	if ((eta < 5.0)&&(leadShip)&&(leadShip->_cxxEntity->isShip))
-		_cxxShip->desired_speed = [leadShip flightSpeed] * (1 + eta * 0.05);
-	else
-		_cxxShip->desired_speed = _cxxShip->maxFlightSpeed;
-
-	double last_distance = _cxxShip->success_factor;
-	_cxxShip->success_factor = distance;
-
-	// do the actual piloting!!
-	[self trackDestination:delta_t: NO];
-
-	eta = eta / 0.51;	// 2% safety margin assuming an average of half current speed
-	GLfloat slowdownTime = (_cxxShip->thrust > 0.0)? _cxxShip->flightSpeed / (_cxxShip->thrust) : 4.0;
-	GLfloat minTurnSpeedFactor = 0.05 * _cxxShip->max_flight_pitch * _cxxShip->max_flight_roll;	// faster turning implies higher speeds
-
-	if ((eta < slowdownTime)&&(_cxxShip->flightSpeed > _cxxShip->maxFlightSpeed * minTurnSpeedFactor))
-		_cxxShip->desired_speed = _cxxShip->flightSpeed * 0.50;   // cut speed by 50% to a minimum minTurnSpeedFactor of speed
-		
-	if (distance < last_distance)	// improvement
-	{
-		_cxxShip->frustration -= 0.25 * delta_t;
-		if (_cxxShip->frustration < 0.0)
-			_cxxShip->frustration = 0.0;
-	}
-	else
-	{
-		_cxxShip->frustration += delta_t;
-		if (_cxxShip->frustration > 15.0)
-		{
-			if (!leadShip) [self noteFrustration:"BEHAVIOUR_FORMATION_FORM_UP"]; // escorts never reach their destination when following leader.
-			else if (distance > 0.5 * _cxxShip->scannerRange && !_cxxShip->pitching_over) 
-			{
-				_cxxShip->pitching_over = YES; // Force the ship in a 180 degree turn. Do it here to allow escorts to break out formation for some seconds.
-			}
-			_cxxShip->frustration = 0;
-		}
-	}
-	if ([self hasProximityAlertIgnoringTarget:YES])
-	{
-		[self avoidCollision];
-	}
-	
-	
-}
-
-
 - (void) behaviour_fly_to_destination:(double) delta_t
 {
 	double distance = [self rangeToDestination];
@@ -14929,7 +14550,6 @@ void ShipEntity::behaviour_fly_to_target_six(double delta_t)
 	[self fireMainWeapon:range];
 	
 	
-
 	if (weapon_temp > COMBAT_AI_WEAPON_TEMP_USABLE)
 	{
 		behaviour = BEHAVIOUR_ATTACK_TARGET;
@@ -15118,7 +14738,6 @@ void ShipEntity::behaviour_attack_fly_to_target(double delta_t)
 	[self fireMainWeapon:range];
 	
 	
-
 	if (weapon_temp > COMBAT_AI_WEAPON_TEMP_USABLE && accuracy >= COMBAT_AI_ISNT_AWFUL && aim_tolerance * range < COMBAT_AI_CONFIDENCE_FACTOR)
 	{
 		// don't do this if the target is fleeing and the front laser is
@@ -15146,6 +14765,409 @@ void ShipEntity::behaviour_attack_fly_to_target(double delta_t)
 			}
 		}
 	}
+}
+
+
+}	// namespace cxx
+
+
+// Slice 14 of docs/phases/3-slices/ShipEntity.md (bead oo-v9sa5): behaviours: fly from target,
+// running defence, flee, range from destination, face destination, land on planet, formation. The
+// facade forwards each selector (ShipEntity+ObjCBridge.mm); sends to self stay sends, so an
+// Objective-C subclass's override still runs (ADR-0056 amendment oo-mvzmb).
+namespace cxx {
+
+void ShipEntity::behaviour_attack_fly_from_target(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	double  range = [self rangeToPrimaryTarget];
+	double last_success_factor = success_factor;
+	success_factor = range;
+	
+	if ([self primaryTarget] == nil)
+	{
+		[self noteLostTargetAndGoIdle];
+		return;
+	}
+	if (last_success_factor > success_factor) // our target is closing in.
+	{
+		frustration += delta_t;
+	}
+	else
+	{ // not getting away fast enough?
+		frustration += delta_t / 4.0 ;
+	}
+
+	if (frustration > 10.0)
+	{
+		if (randf() < 0.3) {
+			desired_speed = maxFlightSpeed * (([self hasFuelInjection] && (fuel > MIN_FUEL)) ? [self afterburnerFactor] : 1);
+		}
+		else if (range > COMBAT_IN_RANGE_FACTOR * weaponRange && randf() < 0.3)
+		{
+			behaviour = BEHAVIOUR_ATTACK_TARGET;
+		}
+		GLfloat z = jink.z;
+		if (randf() < 0.3)
+		{
+			z /= 2; // move the z-offset closer to the target to let him fly away from the target.
+			desired_speed = flightSpeed * 2; // increase speed a bit.
+		}
+		[self setEvasiveJink:z];
+
+		frustration /= 2.0;
+	}
+	if (desired_speed > maxFlightSpeed)
+	{
+		::ShipEntity*	target = [self primaryTarget];
+		double target_speed = [target speed];
+		if (desired_speed > target_speed * 2.0)
+		{
+			desired_speed = maxFlightSpeed; // don't overuse the injectors
+		}
+	}
+	else if (desired_speed < maxFlightSpeed * 0.5)
+	{
+		desired_speed = maxFlightSpeed;
+	}
+
+	if (range > COMBAT_OUT_RANGE_FACTOR * weaponRange + 15.0 * jink.x || 
+			flightSpeed > (scannerRange - range) * max_flight_pitch / 6.28)
+	{
+		jink = kZeroVector;
+		behaviour = BEHAVIOUR_ATTACK_TARGET;
+		frustration = 0.0;
+	}
+	[self trackPrimaryTarget:delta_t:YES];
+
+	if (missiles) [self considerFiringMissile:delta_t];
+
+	if (cloakAutomatic) [self activateCloakingDevice];
+	if ([self hasProximityAlertIgnoringTarget:YES])
+		[self avoidCollision];
+
+	if (accuracy >= COMBAT_AI_FLEES_BETTER_2) 
+	{
+		double aspect = [self approachAspectToPrimaryTarget];
+		// if we're right in their gunsights, dodge!
+		// need to dodge sooner if in aft sights
+		if (aspect > 0.99999 || aspect < -0.999) 
+		{
+			frustration = 0.0;
+			behaviour = BEHAVIOUR_EVASIVE_ACTION;
+		}
+	}
+	
+}
+
+
+void ShipEntity::behaviour_running_defense(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	if (![self canStillTrackPrimaryTarget])
+	{
+		[self noteLostTargetAndGoIdle];
+		return;
+	}
+
+	double  range = [self rangeToPrimaryTarget];
+	desired_speed = maxFlightSpeed; // not injectors
+	jink = kZeroVector;
+	if (range > weaponRange || range > 0.8 * scannerRange || range == 0)
+	{
+		behaviour = BEHAVIOUR_CLOSE_WITH_TARGET;
+		if ([forward_weapon_type isTurretLaser]) 
+		{
+				behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET_TWELVE;
+		} 
+		frustration = 0.0;
+	}
+	[self trackPrimaryTarget:delta_t:YES];
+	if ([forward_weapon_type isTurretLaser]) 
+	{
+		// most Thargoids will only have the forward weapon
+		[self fireMainWeapon:range];
+	}
+	else 
+	{
+		[self fireAftWeapon:range];
+	}
+	if (cloakAutomatic) [self activateCloakingDevice];
+	if ([self hasProximityAlertIgnoringTarget:YES])
+		[self avoidCollision];
+
+	if (behaviour != BEHAVIOUR_CLOSE_WITH_TARGET && weapon_temp > COMBAT_AI_WEAPON_TEMP_USABLE)
+	{
+		behaviour = BEHAVIOUR_ATTACK_TARGET;
+	}
+
+	// remember to look where you're going?
+	if (accuracy >= COMBAT_AI_ISNT_AWFUL && [self hasProximityAlertIgnoringTarget:YES])
+	{
+		[self avoidCollision];
+	}
+
+
+}
+
+
+void ShipEntity::behaviour_flee_target(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	BOOL	canBurn = [self hasFuelInjection] && (fuel > MIN_FUEL);
+	float	max_available_speed = maxFlightSpeed;
+	double  range = [self rangeToPrimaryTarget];
+	if ([self primaryTarget] == nil)
+	{
+		[self noteLostTargetAndGoIdle];
+		return;
+	}
+	if (canBurn) max_available_speed *= [self afterburnerFactor];
+	
+	double last_range = success_factor;
+	success_factor = range;
+
+	if (range > desired_range || range == 0)
+		[shipAI message:"REACHED_SAFETY"];
+	else
+		desired_speed = max_available_speed;
+
+	if (range > last_range)	// improvement
+	{
+		frustration -= 0.25 * delta_t;
+		if (frustration < 0.0)
+			frustration = 0.0;
+	}
+	else
+	{
+		frustration += delta_t;
+		if (frustration > 15.0)	// 15s of frustration
+		{
+			[self noteFrustration:"BEHAVIOUR_FLEE_TARGET"];
+			frustration = 0.0;
+		}
+	}
+
+	[self trackPrimaryTarget:delta_t:YES];
+
+	::Entity *target = [self primaryTarget];
+
+	if (missiles && [target isShip] && [(::ShipEntity *)target primaryTarget] == self)
+	{
+		[self considerFiringMissile:delta_t];
+	}
+
+	if (([self hasCascadeMine]) && (range < 10000.0) && canBurn)
+	{
+		float	qbomb_chance = 0.01 * delta_t;
+		if (randf() < qbomb_chance)
+		{
+			[self launchCascadeMine];
+		}
+	}
+
+// thargoids won't normally be fleeing, but if they do, they can still shoot
+	if ([forward_weapon_type isTurretLaser])
+	{
+		[self fireMainWeapon:range];
+	}
+
+	if (cloakAutomatic) [self activateCloakingDevice];
+
+	// remember to look where you're going?
+	if (accuracy >= COMBAT_AI_ISNT_AWFUL && [self hasProximityAlertIgnoringTarget:YES])
+	{
+		[self avoidCollision];
+	}
+
+}
+
+
+void ShipEntity::behaviour_fly_range_from_destination(double /*delta_t*/)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	double distance = [self rangeToDestination];
+	if (distance < desired_range)
+	{
+		behaviour = BEHAVIOUR_FLY_FROM_DESTINATION;
+		if (desired_speed < maxFlightSpeed) 
+		{
+			desired_speed = maxFlightSpeed;  // Not all AI define speed when flying away. Start with max speed to stay compatible with such AI's, but allow faster flight if it's (e.g.) used to flee from coordinates rather than entity
+		}
+	}
+	else
+	{
+		behaviour = BEHAVIOUR_FLY_TO_DESTINATION;
+	}
+	if ([self hasProximityAlertIgnoringTarget:YES])
+	{
+		[self avoidCollision];
+	}
+	frustration = 0.0;
+
+	
+	
+}
+
+
+void ShipEntity::behaviour_face_destination(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	double max_cos = MAX_COS;
+	double distance = [self rangeToDestination];
+	double old_pitch = flightPitch;
+	desired_speed = 0.0;
+	if (desired_range > 1.0 && distance > desired_range)
+	{
+		max_cos = sqrt(1 - 0.90 * desired_range*desired_range/(distance * distance));   // Head for a point within 95% of desired_range (must match the value in trackDestination)
+	}
+	double confidenceFactor = [self trackDestination:delta_t:NO];
+	if (confidenceFactor >= max_cos && flightPitch == 0.0)
+	{
+		// desired facing achieved and movement stabilised.
+		[shipAI message:"FACING_DESTINATION"];
+		[self doScriptEvent:OOJSID("shipNowFacingDestination")];
+		frustration = 0.0;
+		if(docking_match_rotation)  // IDLE stops rotating while docking
+		{
+			behaviour = BEHAVIOUR_FLY_TO_DESTINATION;
+		}
+		else
+		{
+			behaviour = BEHAVIOUR_IDLE;
+		}
+	}
+
+	if(flightSpeed == 0) frustration += delta_t;
+	if (frustration > 15.0 / max_flight_pitch)	// allow more time for slow ships.
+	{
+		frustration = 0.0;
+		[self noteFrustration:"BEHAVIOUR_FACE_DESTINATION"];
+		if(flightPitch == old_pitch) flightPitch = 0.5 * max_flight_pitch; // hack to get out of frustration.
+	}	
+	
+	/* 2009-7-18 Eric: the condition check below is intended to eliminate the flippering between two positions for fast turning ships
+	   during low FPS conditions. This flippering is particular frustrating on slow computers during docking. But with my current computer I can't
+	   induce those low FPS conditions so I can't properly test if it helps.
+	   I did try with the TAF time acceleration that also generated larger frame jumps and than it seemed to help.
+	*/
+	if(flightSpeed == 0 && frustration > 5 && confidenceFactor > 0.5 && ((flightPitch > 0 && old_pitch < 0) || (flightPitch < 0 && old_pitch > 0)))
+	{
+		flightPitch += 0.5 * old_pitch; // damping with last pitch value.
+	}
+	
+	if ([self hasProximityAlertIgnoringTarget:YES])
+	{
+		[self avoidCollision];
+	}
+	
+	
+}
+
+
+void ShipEntity::behaviour_land_on_planet(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	double max_cos = MAX_COS2; // trackDestination returns the squared confidence in reverse mode.
+	desired_speed = 0.0;
+	
+	::OOPlanetEntity* planet = [UNIVERSE entityForUniversalID:planetForLanding];
+	
+	if (![planet isPlanet]) 
+	{
+		behaviour = BEHAVIOUR_IDLE;
+		aiScriptWakeTime = 1; // reconsider JSAI
+		[shipAI message:"NO_PLANET_NEARBY"];
+		return;
+	}
+		  
+	if (HPdistance(position, [planet position]) + [self collisionRadius] < [planet radius])
+	{
+		// we have landed. (completely disappeared inside planet)
+		[self landOnPlanet:planet];
+		return;
+	}
+
+	double confidenceFactor = [self trackDestination:delta_t:YES]; // turn away from destination
+	
+	if (confidenceFactor >= max_cos && flightSpeed == 0.0)
+	{
+		// We are now turned away from planet. Start landing by flying backward.
+		thrust = 0.0; // stop forward acceleration.
+		if (magnitude2(velocity) < MAX_LANDING_SPEED2)
+		{
+			[self adjustVelocity:vector_multiply_scalar([self forwardVector], -max_thrust * delta_t)];
+		}
+	}
+	
+	
+	if ([self hasProximityAlertIgnoringTarget:YES])
+	{
+		[self avoidCollision];
+	}
+	
+	
+}
+
+
+void ShipEntity::behaviour_formation_form_up(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	// destination for each escort is set in update() from owner.
+	::ShipEntity* leadShip = [self owner];
+	double distance = [self rangeToDestination];
+	double eta = (distance - desired_range) / flightSpeed;
+	if(eta < 0) eta = 0;
+	if ((eta < 5.0)&&(leadShip)&&(leadShip->_cxxEntity->isShip))
+		desired_speed = [leadShip flightSpeed] * (1 + eta * 0.05);
+	else
+		desired_speed = maxFlightSpeed;
+
+	double last_distance = success_factor;
+	success_factor = distance;
+
+	// do the actual piloting!!
+	[self trackDestination:delta_t: NO];
+
+	eta = eta / 0.51;	// 2% safety margin assuming an average of half current speed
+	GLfloat slowdownTime = (thrust > 0.0)? flightSpeed / (thrust) : 4.0;
+	GLfloat minTurnSpeedFactor = 0.05 * max_flight_pitch * max_flight_roll;	// faster turning implies higher speeds
+
+	if ((eta < slowdownTime)&&(flightSpeed > maxFlightSpeed * minTurnSpeedFactor))
+		desired_speed = flightSpeed * 0.50;   // cut speed by 50% to a minimum minTurnSpeedFactor of speed
+		
+	if (distance < last_distance)	// improvement
+	{
+		frustration -= 0.25 * delta_t;
+		if (frustration < 0.0)
+			frustration = 0.0;
+	}
+	else
+	{
+		frustration += delta_t;
+		if (frustration > 15.0)
+		{
+			if (!leadShip) [self noteFrustration:"BEHAVIOUR_FORMATION_FORM_UP"]; // escorts never reach their destination when following leader.
+			else if (distance > 0.5 * scannerRange && !pitching_over) 
+			{
+				pitching_over = YES; // Force the ship in a 180 degree turn. Do it here to allow escorts to break out formation for some seconds.
+			}
+			frustration = 0;
+		}
+	}
+	if ([self hasProximityAlertIgnoringTarget:YES])
+	{
+		[self avoidCollision];
+	}
+	
+	
 }
 
 

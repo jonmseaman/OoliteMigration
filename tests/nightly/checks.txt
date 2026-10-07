@@ -361,3 +361,4 @@
 [oo-9ht.163] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOOpenGLExtensionManager test_OOShaderUniformMethodType test_OOMesh test_OOPlanetDrawable && bash tools/tier-c.sh --only goldens
 [oo-9ht.161] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOPixMapTextureLoader test_OOConcreteTexture test_OOCombinedEmissionMapGenerator test_OOPlanetTextureGenerator test_OOPNGTextureLoader test_OOTextureGenerator && bash tools/tier-c.sh --only goldens
 [oo-xmajv] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntity && bash tools/tier-c.sh --only goldens
+[oo-v9sa5] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntity && bash tools/tier-c.sh --only goldens
