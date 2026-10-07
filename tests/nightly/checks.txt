@@ -442,3 +442,4 @@
 [oo-m0rz6] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Universe && bash tools/tier-c.sh --only goldens
 [oo-hkvet] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Universe && bash tools/tier-c.sh --only goldens
 [oo-e9enf] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Universe && bash tools/tier-c.sh --only goldens
+[oo-8rsqz] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Universe && bash tools/tier-c.sh --only goldens

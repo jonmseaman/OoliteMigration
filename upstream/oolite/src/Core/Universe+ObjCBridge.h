@@ -61,9 +61,6 @@ MA 02110-1301, USA.
 
 - (void) drawUniverse;
 
-- (void) defineFrustum;
-- (BOOL) viewFrustumIntersectsSphereAt:(Vector)position withRadius:(GLfloat)radius;
-
 - (void) drawMessage;
 
 - (void) drawWatermarkString:(const std::string &)watermarkString;
@@ -292,6 +289,17 @@ MA 02110-1301, USA.
 - (void) lightForEntity:(BOOL)isLit;
 - (void) getActiveViewMatrix:(OOMatrix *)outMatrix forwardVector:(Vector *)outForward upVector:(Vector *)outUp;
 - (OOMatrix) activeViewMatrix;
+
+@end
+
+
+// Slice 11 of docs/phases/3-slices/Universe.md: members of cxx::Universe, forwarded by the
+// category of the same name in Universe+ObjCBridge.mm (the class's @implementation, still in
+// Universe.mm, stays complete).
+@interface Universe (OOSlice11)
+
+- (void) defineFrustum;
+- (BOOL) viewFrustumIntersectsSphereAt:(Vector)position withRadius:(GLfloat)radius;
 
 @end
 

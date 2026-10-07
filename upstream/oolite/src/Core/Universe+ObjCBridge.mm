@@ -264,6 +264,14 @@ extern Universe *gSharedUniverse;
 @end
 
 
+@implementation Universe (OOSlice11)
+
+- (void) defineFrustum	{ _cxxUniverse->defineFrustum(); }
+- (BOOL) viewFrustumIntersectsSphereAt:(Vector)position withRadius:(GLfloat)radius	{ return _cxxUniverse->viewFrustumIntersectsSphereAt(position, radius); }
+
+@end
+
+
 @implementation Universe (OOSlice14)
 
 - (ShipEntity *) cxx_makeDemoShipWithRole:(const std::string &)role spinning:(BOOL)spinning	{ return _cxxUniverse->makeDemoShipWithRole(role, spinning); }
