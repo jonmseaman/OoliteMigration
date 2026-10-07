@@ -13115,7 +13115,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	// Experimental: the state of repair affects the fuel charge rate - more fuel needed for jumps, etc... 
 	if (EXPECT(_cxxPlayer->ship_trade_in_factor <= 90 && _cxxPlayer->ship_trade_in_factor >= 75))
 	{
-		rate *= 2.0 - (_cxxPlayer->ship_trade_in_factor / 100); // between 1.1x and 1.25x
+		rate *= 2.0 - static_cast<double>(_cxxPlayer->ship_trade_in_factor / 100); // between 1.1x and 1.25x (integer division kept: upstream behaviour)
 		//fuelPrices: shipDataKey repair status ship_trade_in_factor rate (retired log)
 	}
 
