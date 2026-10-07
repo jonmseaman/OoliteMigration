@@ -832,8 +832,8 @@ OO_TEST(slice21ShortTimeAndMarkets)
 		oo::PList::Dict words{ { "contracts-no-time", oo::PList("no time") } };
 		for (const char *unit : { "day", "hour", "minute", "second" })
 		{
-			words[oo::str::format("contracts-%s-word%%0", unit)] = oo::PList(std::string(unit));
-			words[oo::str::format("contracts-%s-word%%1", unit)] = oo::PList(std::string(unit) + "s");
+			words[std::string("contracts-") + unit + "-word%0"] = oo::PList(std::string(unit));
+			words[std::string("contracts-") + unit + "-word%1"] = oo::PList(std::string(unit) + "s");
 		}
 		u->_cxxUniverse->_descriptions = oo::PList(std::move(words));
 
