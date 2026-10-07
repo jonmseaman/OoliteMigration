@@ -356,3 +356,6 @@ OO_TEST(positionPlanetAndDescription)
 #endif
 	}
 }
+
+
+OO_TEST_MAIN()
