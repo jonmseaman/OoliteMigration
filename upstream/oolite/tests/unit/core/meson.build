@@ -144,6 +144,7 @@ core_tests = {
     'test_Entity': ['*'],
     'test_Universe': ['*'],
     'test_ShipEntity': ['*'],
+    'test_PlayerEntity': ['*'],
     'test_StationEntity': ['*'],
     'test_ShipEntityAI': ['*'],
     'test_OOEntityWithDrawable': ['*'],

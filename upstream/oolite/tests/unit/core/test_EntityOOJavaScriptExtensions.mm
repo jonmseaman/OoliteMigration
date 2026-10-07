@@ -309,4 +309,54 @@ OO_TEST(setTargetOnANonShipRootDoesNothing)
 }
 
 
+// Bead oo-9ht.107 (ADR-0056 amendment oo-9ht.107): the root category asks the entity's C++ part,
+// so a C++ entity with no façade of its own answers the engine through its overrides, the defaults
+// are the category's bodies, and an Objective-C class's own selectors still answer first.
+namespace {
+
+ooscript::ClassDef sTestScriptedClass = { "TestScripted", ooscript::ClassFlag::HasPrivate };
+
+class TestScriptedEntity : public cxx::Entity
+{
+public:
+	void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype) override
+	{
+		*outClass = &sTestScriptedClass;
+		*outPrototype = nullptr;
+	}
+	std::optional<std::string> jsClassName() override  { return std::string("TestScripted"); }
+	bool isVisibleToScripts() override  { return true; }
+};
+
+}	// namespace
+
+
+OO_TEST(cxxEntityAnswersThroughItsJSMembers)
+{
+	@autoreleasepool
+	{
+		ooscript::ClassDef *jsClass = nullptr;
+		ooscript::Object prototype = reinterpret_cast<ooscript::Object>(1);
+
+		Entity *plain = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
+		OO_CHECK(plain != nil && [plain class] == [Entity class]);
+		OO_CHECK(![plain isVisibleToScripts] && !oo::ToCxx(plain)->isVisibleToScripts());
+		OO_CHECK([plain cxx_oo_jsClassName] == std::optional<std::string>("Entity"));
+		[plain getJSClass:&jsClass andPrototype:&prototype];
+		OO_CHECK(jsClass == JSEntityClass() && prototype == JSEntityPrototype());
+
+		Entity *scripted = oo::NewEntityFacade(oo::makeRef<TestScriptedEntity>());
+		OO_CHECK(scripted != nil && [scripted class] == [Entity class]);
+		OO_CHECK([scripted isVisibleToScripts]);
+		OO_CHECK([scripted cxx_oo_jsClassName] == std::optional<std::string>("TestScripted"));
+		[scripted getJSClass:&jsClass andPrototype:&prototype];
+		OO_CHECK(jsClass == &sTestScriptedClass && prototype == nullptr);
+
+		// An Objective-C override answers first; the C++ part keeps the default.
+		TestVisibleEntity *visible = [[[TestVisibleEntity alloc] init] autorelease];
+		OO_CHECK([visible isVisibleToScripts] && !oo::ToCxx(visible)->isVisibleToScripts());
+	}
+}
+
+
 OO_TEST_MAIN()

@@ -258,7 +258,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 
 - (void) resetKeyFunctions
 {
-	keyFunctions.clear();
+	_cxxPlayer->keyFunctions.clear();
 }
 
 
@@ -273,7 +273,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 
 	GuiDisplayGen *gui = [UNIVERSE gui];
 	MyOpenGLView *gameView = [UNIVERSE gameView];
-	OOGUIScreenID oldScreen = gui_screen;
+	OOGUIScreenID oldScreen = _cxxPlayer->gui_screen;
 	OOGUITabStop tabStop[GUI_MAX_COLUMNS];
 	tabStop[0] = 10;
 	tabStop[1] = 290;
@@ -282,8 +282,8 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 
 	if (!kdic_check) [self initCheckingDictionary];
 
-	gui_screen = GUI_SCREEN_KEYBOARD;
-	BOOL guiChanged = (oldScreen != gui_screen);
+	_cxxPlayer->gui_screen = GUI_SCREEN_KEYBOARD;
+	BOOL guiChanged = (oldScreen != _cxxPlayer->gui_screen);
 	[[UNIVERSE gameController] setMouseInteractionModeForUIWithMouseInteraction:YES];
 
 	[gui clear];
@@ -318,7 +318,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	if (resetCurrentRow)
 	{
 		int offset = 0;
-		if (KeyFunctionAt(keyFunctions, skip).find(std::string(KEY_KC_HEADER)) != nullptr) offset = 1;
+		if (KeyFunctionAt(_cxxPlayer->keyFunctions, skip).find(std::string(KEY_KC_HEADER)) != nullptr) offset = 1;
 		[gui setSelectedRow:GUI_ROW_KC_FUNCSTART + offset];
 	}
 	else 
@@ -333,21 +333,21 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	[gameView clearKeys];
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:YES];
 
-	if (guiChanged) [self noteGUIDidChangeFrom:oldScreen to:gui_screen];
+	if (guiChanged) [self noteGUIDidChangeFrom:oldScreen to:_cxxPlayer->gui_screen];
 }
 
 
 - (void) keyMapperInputHandler:(GuiDisplayGen *)gui view:(MyOpenGLView *)gameView
 {
 	[self handleGUIUpDownArrowKeys];
-	BOOL selectKeyPress = ([self checkKeyPress:n_key_gui_select] || [gameView isDown:gvMouseDoubleClick]);
+	BOOL selectKeyPress = ([self checkKeyPress:_cxxPlayer->n_key_gui_select] || [gameView isDown:gvMouseDoubleClick]);
 	if ([gameView isDown:gvMouseDoubleClick])  [gameView clearMouse];
 
 	const std::string key = [gui cxx_keyForRow: [gui selectedRow]].value_or("");	// a nil key has no prefix
 	if (oo::str::hasPrefix(key, "Index:"))
-		selFunctionIdx=SecondFieldIntValue(key);
+		_cxxPlayer->selFunctionIdx=SecondFieldIntValue(key);
 	else
-		selFunctionIdx=-1;
+		_cxxPlayer->selFunctionIdx=-1;
 
 	if (selectKeyPress)
 	{
@@ -369,11 +369,11 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 			return;
 		}
 		current_row = [gui selectedRow];
-		selected_entry = KeyFunctionAt(keyFunctions, selFunctionIdx);
+		selected_entry = KeyFunctionAt(_cxxPlayer->keyFunctions, _cxxPlayer->selFunctionIdx);
 		oo::PList definitions;
 		if (![self entryIsDictCustomEquip:selected_entry])
 		{
-			definitions = KeyConfigEntry(keyconfig2_settings, OptionalStringForKey(selected_entry, std::string(KEY_KC_DEFINITION)));
+			definitions = KeyConfigEntry(_cxxPlayer->keyconfig2_settings, OptionalStringForKey(selected_entry, std::string(KEY_KC_DEFINITION)));
 		}
 		else
 		{
@@ -390,7 +390,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 		if (oo::str::hasPrefix(key, "More:")) return;
 
 		current_row = [gui selectedRow];
-		[self unsetKeySetting:OptionalStringForKey(KeyFunctionAt(keyFunctions, selFunctionIdx), std::string(KEY_KC_DEFINITION)).value_or("")];
+		[self unsetKeySetting:OptionalStringForKey(KeyFunctionAt(_cxxPlayer->keyFunctions, _cxxPlayer->selFunctionIdx), std::string(KEY_KC_DEFINITION)).value_or("")];
 		[self reloadPage];
 	}
 
@@ -404,7 +404,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 
 			current_row = [gui selectedRow];
 			
-			const std::optional<std::string> delkey = OptionalStringForKey(KeyFunctionAt(keyFunctions, selFunctionIdx), std::string(KEY_KC_DEFINITION));
+			const std::optional<std::string> delkey = OptionalStringForKey(KeyFunctionAt(_cxxPlayer->keyFunctions, _cxxPlayer->selFunctionIdx), std::string(KEY_KC_DEFINITION));
 			[self deleteKeySetting:delkey.value_or("")];
 			// special case - when default activate/mode key set in custom equipment
 			if ([self entryIsCustomEquip:delkey.value_or("")])
@@ -428,7 +428,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 				OOEquipmentType	*item = (eq.has_value() ? [OOEquipmentType cxx_equipmentTypeWithIdentifier:*eq] : nil);
 
 				// the customEquipActivation entry is edited in place, as before
-				oo::PList::Dict *fields = CustomEquipFields(customEquipActivation, idx);
+				oo::PList::Dict *fields = CustomEquipFields(_cxxPlayer->customEquipActivation, idx);
 				if ([item cxx_defaultActivateKey] && lookupKey == std::string(CUSTOMEQUIP_KEYACTIVATE) && fields != nullptr)
 				{
 					fields->insert_or_assign(*lookupKey, [item cxx_defaultActivateKey]);
@@ -443,7 +443,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 				if (update) 
 				{
 					oo::Defaults &defaults = oo::Defaults::standard();
-					defaults.setObject(std::string(KEYCONFIG_CUSTOMEQUIP), oo::PList(customEquipActivation));
+					defaults.setObject(std::string(KEYCONFIG_CUSTOMEQUIP), oo::PList(_cxxPlayer->customEquipActivation));
 				}
 			}
 			
@@ -460,7 +460,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 
 - (BOOL) entryIsIndexCustomEquip:(NSUInteger)idx
 {
-	return [self entryIsCustomEquip:KeyFunctionAt(keyFunctions, idx).get<std::string>(std::string(KEY_KC_DEFINITION))];
+	return [self entryIsCustomEquip:KeyFunctionAt(_cxxPlayer->keyFunctions, idx).get<std::string>(std::string(KEY_KC_DEFINITION))];
 }
 
 
@@ -493,9 +493,9 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 		key = std::string(CUSTOMEQUIP_KEYMODE);
 	}
 	if (!eq) return oo::PList();
-	for (i = 0; i < customEquipActivation.size(); i++)
+	for (i = 0; i < _cxxPlayer->customEquipActivation.size(); i++)
 	{
-		const oo::PList equip = customEquipActivation[i];
+		const oo::PList equip = _cxxPlayer->customEquipActivation[i];
 		if (OptionalStringForKey(equip, std::string(CUSTOMEQUIP_EQUIPKEY)) == eq)
 		{
 			const oo::PList *array = equip.get<oo::PList::Array>(key);	// -oo_arrayForKey:
@@ -519,9 +519,9 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 		eq = oo::str::replaceOccurrences(key_def, "mode_", "");
 	}
 	if (!eq) return -1;
-	for (i = 0; i < customEquipActivation.size(); i++)
+	for (i = 0; i < _cxxPlayer->customEquipActivation.size(); i++)
 	{
-		if (OptionalStringForKey(customEquipActivation[i], std::string(CUSTOMEQUIP_EQUIPKEY)) == eq)
+		if (OptionalStringForKey(_cxxPlayer->customEquipActivation[i], std::string(CUSTOMEQUIP_EQUIPKEY)) == eq)
 		{
 			return i;
 		}
@@ -554,14 +554,14 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 {
 	NSUInteger i = 0;
 	GuiDisplayGen *gui=[UNIVERSE gui];
-	OOGUIScreenID oldScreen = gui_screen;
+	OOGUIScreenID oldScreen = _cxxPlayer->gui_screen;
 	OOGUITabStop tabStop[GUI_MAX_COLUMNS];
 	tabStop[0] = 10;
 	tabStop[1] = 290;
 	[gui setTabStops:tabStop];
 
-	gui_screen = GUI_SCREEN_KEYBOARD_CONFIG;
-	BOOL guiChanged = (oldScreen != gui_screen);
+	_cxxPlayer->gui_screen = GUI_SCREEN_KEYBOARD_CONFIG;
+	BOOL guiChanged = (oldScreen != _cxxPlayer->gui_screen);
 	[gui clear];
 	[gui cxx_setTitle:OO_DESC("oolite-keyconfig-update-title")];	// @"%@"
 
@@ -621,11 +621,11 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	const std::optional<std::string> validate = [self validateKey:definition checkKeys:key_list];
 	if (validate)
 	{
-		for (i = 0; i < keyFunctions.size(); i++)
+		for (i = 0; i < _cxxPlayer->keyFunctions.size(); i++)
 		{
-			if (OptionalStringForKey(keyFunctions[i], std::string(KEY_KC_DEFINITION)) == validate)
+			if (OptionalStringForKey(_cxxPlayer->keyFunctions[i], std::string(KEY_KC_DEFINITION)) == validate)
 			{
-				[gui cxx_setText:oo::str::formatRuntime(OO_DESC("oolite-keyconfig-update-validation-@"), { TextArg(OptionalStringForKey(keyFunctions[i], std::string(KEY_KC_GUIDESC))) })
+				[gui cxx_setText:oo::str::formatRuntime(OO_DESC("oolite-keyconfig-update-validation-@"), { TextArg(OptionalStringForKey(_cxxPlayer->keyFunctions[i], std::string(KEY_KC_GUIDESC))) })
 					forRow:GUI_ROW_KC_VALIDATION align:GUI_ALIGN_CENTER];
 				[gui setColor:[OOColor orangeColor] forRow:GUI_ROW_KC_VALIDATION];
 				break;
@@ -642,7 +642,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	[gui cxx_setBackgroundTextureKey:std::string("keyboardsettings")];
 	[[UNIVERSE gameView] clearMouse];
 	[[UNIVERSE gameView] clearKeys];
-	if (guiChanged) [self noteGUIDidChangeFrom:oldScreen to:gui_screen];
+	if (guiChanged) [self noteGUIDidChangeFrom:oldScreen to:_cxxPlayer->gui_screen];
 }
 
 
@@ -690,7 +690,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 - (void) handleKeyConfigKeys:(GuiDisplayGen *)gui view:(MyOpenGLView *)gameView
 {
 	[self handleGUIUpDownArrowKeys];
-	BOOL selectKeyPress = ([self checkKeyPress:n_key_gui_select]||[gameView isDown:gvMouseDoubleClick]);
+	BOOL selectKeyPress = ([self checkKeyPress:_cxxPlayer->n_key_gui_select]||[gameView isDown:gvMouseDoubleClick]);
 	if ([gameView isDown:gvMouseDoubleClick])  [gameView clearMouse];
 	
 	if (selectKeyPress && ([gui selectedRow] == GUI_ROW_KC_KEY || [gui selectedRow] == (GUI_ROW_KC_KEY + 5)))
@@ -733,9 +733,9 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 {
 	GuiDisplayGen *gui = [UNIVERSE gui];
 	MyOpenGLView *gameView = [UNIVERSE gameView];
-	OOGUIScreenID oldScreen = gui_screen;
-	gui_screen = GUI_SCREEN_KEYBOARD_ENTRY;
-	BOOL guiChanged = (oldScreen != gui_screen);
+	OOGUIScreenID oldScreen = _cxxPlayer->gui_screen;
+	_cxxPlayer->gui_screen = GUI_SCREEN_KEYBOARD_ENTRY;
+	BOOL guiChanged = (oldScreen != _cxxPlayer->gui_screen);
 
 	// make sure the index we're looking for exists
 	oo::PList::Array *keys = key_list.getIf<oo::PList::Array>();
@@ -775,7 +775,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 
 	[gameView clearMouse];
 	[gameView clearKeys];
-	if (guiChanged) [self noteGUIDidChangeFrom:oldScreen to:gui_screen];
+	if (guiChanged) [self noteGUIDidChangeFrom:oldScreen to:_cxxPlayer->gui_screen];
 }
 
 
@@ -795,7 +795,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 		  forRow: end_row];
 	[gui setColor:[OOColor cyanColor] forRow:end_row];
 
-	if ([self checkKeyPress:n_key_gui_select]) 
+	if ([self checkKeyPress:_cxxPlayer->n_key_gui_select]) 
 	{
 		[gameView suppressKeysUntilKeyUp];
 		// update function key
@@ -881,10 +881,10 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 - (void) setGuiToConfirmClearScreen
 {
 	GuiDisplayGen *gui=[UNIVERSE gui];
-	OOGUIScreenID oldScreen = gui_screen;
+	OOGUIScreenID oldScreen = _cxxPlayer->gui_screen;
 
-	gui_screen = GUI_SCREEN_KEYBOARD_CONFIRMCLEAR;
-	BOOL guiChanged = (oldScreen != gui_screen);
+	_cxxPlayer->gui_screen = GUI_SCREEN_KEYBOARD_CONFIRMCLEAR;
+	BOOL guiChanged = (oldScreen != _cxxPlayer->gui_screen);
 
 	[gui clear];
 	[gui cxx_setTitle:OO_DESC("oolite-keyconfig-clear-overrides-title")];	// @"%@"
@@ -906,7 +906,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 
 	[[UNIVERSE gameView] clearMouse];
 	[[UNIVERSE gameView] clearKeys];
-	if (guiChanged) [self noteGUIDidChangeFrom:oldScreen to:gui_screen];
+	if (guiChanged) [self noteGUIDidChangeFrom:oldScreen to:_cxxPlayer->gui_screen];
 }
 
 
@@ -914,7 +914,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 {
 	[self handleGUIUpDownArrowKeys];
 
-	BOOL selectKeyPress = ([self checkKeyPress:n_key_gui_select]||[gameView isDown:gvMouseDoubleClick]);
+	BOOL selectKeyPress = ([self checkKeyPress:_cxxPlayer->n_key_gui_select]||[gameView isDown:gvMouseDoubleClick]);
 	if ([gameView isDown:gvMouseDoubleClick]) [gameView clearMouse];
 
 	// Translation issue: we can't confidently use raw Y and N ascii as shortcuts. It's better to use the load-previous-commander keys.
@@ -951,12 +951,12 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 
 	const oo::PList overrides = [self loadKeySettings];
 
-	if(keyFunctions.empty())	// the list is never empty once built
+	if(_cxxPlayer->keyFunctions.empty())	// the list is never empty once built
 	{
-		keyFunctions = [self keyFunctionList];
+		_cxxPlayer->keyFunctions = [self keyFunctionList];
 	}
 
-	NSUInteger i, n_functions = keyFunctions.size();
+	NSUInteger i, n_functions = _cxxPlayer->keyFunctions.size();
 	NSInteger n_rows, start_row, previous = 0;
 	std::optional<std::string> validate;
 
@@ -996,7 +996,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 		
 		for(i = 0; i < (n_functions - skip) && (int)i < n_rows; i++)
 		{
-			const oo::PList &entry = keyFunctions[i + skip];
+			const oo::PList &entry = _cxxPlayer->keyFunctions[i + skip];
 			if (entry.find(std::string(KEY_KC_HEADER)) != nullptr) {
 				const std::optional<std::string> header = OptionalStringForKey(entry, std::string(KEY_KC_HEADER));
 				[gui cxx_setArray:Columns({ header, "", "" }) forRow:i + start_row];
@@ -1012,13 +1012,13 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 					// Find out what's assigned for this function currently.
 					assignment = [PLAYER cxx_keyBindingDescription2:definition.value_or(std::string())];
 					override = (definition && overrides.find(*definition) != nullptr ? "Yes" : ""); // work out whether this assignment is overriding the setting in keyconfig2.plist
-					validate = [self validateKey:definition.value_or("") checkKeys:KeyConfigEntry(keyconfig2_settings, definition)];
+					validate = [self validateKey:definition.value_or("") checkKeys:KeyConfigEntry(_cxxPlayer->keyconfig2_settings, definition)];
 				}
 				else
 				{
 					const std::optional<std::string> custom_keytype = [self getCustomEquipKeyDefType:definition.value_or("")];
 					NSUInteger idx = [self getCustomEquipIndex:definition.value_or("")];
-					const oo::PList &equip = CustomEquipEntry(customEquipActivation, idx);
+					const oo::PList &equip = CustomEquipEntry(_cxxPlayer->customEquipActivation, idx);
 					const oo::PList *keyArray = equip.get<oo::PList::Array>(custom_keytype.value_or(""));	// -oo_arrayForKey:
 					assignment = [PLAYER cxx_getKeyBindingDescription:(keyArray != nullptr ? *keyArray : oo::PList())];
 					const std::optional<std::string> itemKey = OptionalStringForKey(equip, std::string(CUSTOMEQUIP_EQUIPKEY));
@@ -1235,13 +1235,13 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_debug_shaders") keyDef:"key_debug_shaders"]);
 	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_debug_off") keyDef:"key_debug_off"]);
 
-	if (customEquipActivation.size() > 0) 
+	if (_cxxPlayer->customEquipActivation.size() > 0) 
 	{
 		funcList.push_back([self makeKeyGuiDictHeader:OO_DESC("oolite-keydesc-header-oxp-equip")]);
 		int i;
-		for (i = 0; i < customEquipActivation.size(); i++)
+		for (i = 0; i < _cxxPlayer->customEquipActivation.size(); i++)
 		{
-			const oo::PList equip = customEquipActivation[i];
+			const oo::PList equip = _cxxPlayer->customEquipActivation[i];
 			const std::string equipName = DescriptionOfString(OptionalStringForKey(equip, std::string(CUSTOMEQUIP_EQUIPNAME)));	// %@: "(null)" for nil
 			const std::string equipKey = DescriptionOfString(OptionalStringForKey(equip, std::string(CUSTOMEQUIP_EQUIPKEY)));
 			funcList.push_back([self makeKeyGuiDict:oo::str::format("Activate '%s'", equipName.c_str())
@@ -1286,14 +1286,14 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 {
 	GuiDisplayGen *gui = [UNIVERSE gui];
 	MyOpenGLView *gameView = [UNIVERSE gameView];
-	OOGUIScreenID oldScreen = gui_screen;
+	OOGUIScreenID oldScreen = _cxxPlayer->gui_screen;
 	OOGUITabStop tabStop[GUI_MAX_COLUMNS];
 	tabStop[0] = 10;
 	tabStop[1] = 290;
 	[gui setTabStops:tabStop];
 
-	gui_screen = GUI_SCREEN_KEYBOARD_LAYOUT;
-	BOOL guiChanged = (oldScreen != gui_screen);
+	_cxxPlayer->gui_screen = GUI_SCREEN_KEYBOARD_LAYOUT;
+	BOOL guiChanged = (oldScreen != _cxxPlayer->gui_screen);
 
 	[[UNIVERSE gameController] setMouseInteractionModeForUIWithMouseInteraction:YES];
 
@@ -1313,14 +1313,14 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	[gameView clearKeys];
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:YES];
 
-	if (guiChanged) [self noteGUIDidChangeFrom:oldScreen to:gui_screen];
+	if (guiChanged) [self noteGUIDidChangeFrom:oldScreen to:_cxxPlayer->gui_screen];
 }
 
 
 - (void) handleKeyboardLayoutEntryKeys:(GuiDisplayGen *)gui view:(MyOpenGLView *)gameView
 {
 	[self handleGUIUpDownArrowKeys];
-	BOOL selectKeyPress = ([self checkKeyPress:n_key_gui_select] || [gameView isDown:gvMouseDoubleClick]);
+	BOOL selectKeyPress = ([self checkKeyPress:_cxxPlayer->n_key_gui_select] || [gameView isDown:gvMouseDoubleClick]);
 	if ([gameView isDown:gvMouseDoubleClick])  [gameView clearMouse];
 
 	const std::string key = [gui cxx_keyForRow: [gui selectedRow]].value_or("");	// a nil key has no prefix
@@ -1340,7 +1340,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 
 		// update the keyboard code
 		NSUInteger idx =SecondFieldIntValue(key);
-		const std::optional<std::string> kbd = idx < kbdLayouts.size() ? OptionalStringForKey(kbdLayouts[idx], "key") : std::nullopt;
+		const std::optional<std::string> kbd = idx < _cxxPlayer->kbdLayouts.size() ? OptionalStringForKey(_cxxPlayer->kbdLayouts[idx], "key") : std::nullopt;
 		oo::Defaults &defaults = oo::Defaults::standard();
 		defaults.setObject("keyboard-code", kbd ? oo::PList(*kbd) : oo::PList());
 		[self initKeyConfigSettings];
@@ -1414,9 +1414,9 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	[gui setColor:[OOColor greenColor] forRow:GUI_ROW_KC_HEADING];
 	[gui cxx_setArray:{ "Keyboard layout" } forRow:GUI_ROW_KC_HEADING];
 
-	if (kbdLayouts.empty()) kbdLayouts = [self keyboardLayoutList];	// never empty once built ("default" first)
+	if (_cxxPlayer->kbdLayouts.empty()) _cxxPlayer->kbdLayouts = [self keyboardLayoutList];	// never empty once built ("default" first)
 
-	NSUInteger i, n_functions = kbdLayouts.size();
+	NSUInteger i, n_functions = _cxxPlayer->kbdLayouts.size();
 	NSInteger n_rows, start_row, previous = 0;
 
 	if (skip >= n_functions)
@@ -1457,7 +1457,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 
 		for(i = 0; i < (n_functions - skip) && (int)i < n_rows; i++)
 		{
-			const oo::PList &entry = kbdLayouts[i + skip];
+			const oo::PList &entry = _cxxPlayer->kbdLayouts[i + skip];
 			const std::optional<std::string> desc = OptionalStringForKey(entry, "description");
 			std::string selected;
 			if (OptionalStringForKey(entry, "key") == kbd) selected = "Current";
@@ -1484,10 +1484,10 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	std::vector<std::string> failed;
 	NSUInteger i;
 
-	for (i = 0; i < keyFunctions.size(); i++)
+	for (i = 0; i < _cxxPlayer->keyFunctions.size(); i++)
 	{
-		const std::optional<std::string> definition = OptionalStringForKey(keyFunctions[i], std::string(KEY_KC_DEFINITION));
-		const std::optional<std::string> validate = [self validateKey:definition.value_or("") checkKeys:KeyConfigEntry(keyconfig2_settings, definition)];
+		const std::optional<std::string> definition = OptionalStringForKey(_cxxPlayer->keyFunctions[i], std::string(KEY_KC_DEFINITION));
+		const std::optional<std::string> validate = [self validateKey:definition.value_or("") checkKeys:KeyConfigEntry(_cxxPlayer->keyconfig2_settings, definition)];
 		if (validate)
 		{
 			failed.push_back(*validate);
@@ -1549,9 +1549,9 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	
 	if ([self entryIsCustomEquip:key]) {
 		NSUInteger i;
-		for (i = 0; i < customEquipActivation.size(); i++)
+		for (i = 0; i < _cxxPlayer->customEquipActivation.size(); i++)
 		{
-			const std::optional<std::string> equipKey = OptionalStringForKey(customEquipActivation[i], std::string(CUSTOMEQUIP_EQUIPKEY));
+			const std::optional<std::string> equipKey = OptionalStringForKey(_cxxPlayer->customEquipActivation[i], std::string(CUSTOMEQUIP_EQUIPKEY));
 			inflight_keys.push_back(oo::str::format("activate_%s", DescriptionOfString(equipKey).c_str()));
 			inflight_keys.push_back(oo::str::format("mode_%s", DescriptionOfString(equipKey).c_str()));
 		}
@@ -1648,13 +1648,13 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 			oo::PList current;
 			if (![self entryIsCustomEquip:search])
 			{
-				current = KeyConfigEntry(keyconfig2_settings, search);
+				current = KeyConfigEntry(_cxxPlayer->keyconfig2_settings, search);
 			}
 			else
 			{
 				NSUInteger idx = [self getCustomEquipIndex:search];
 				const std::optional<std::string> keytype = [self getCustomEquipKeyDefType:search];
-				const oo::PList *field = keytype.has_value() ? CustomEquipEntry(customEquipActivation, idx).find(*keytype) : nullptr;
+				const oo::PList *field = keytype.has_value() ? CustomEquipEntry(_cxxPlayer->customEquipActivation, idx).find(*keytype) : nullptr;
 				current = (field != nullptr) ? *field : oo::PList();
 			}
 			for (j = 0; j < current.count(); j++)
@@ -1755,8 +1755,8 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	else
 	{
 		NSUInteger idx = [self getCustomEquipIndex:key];
-		if (oo::PList::Dict *fields = CustomEquipFields(customEquipActivation, idx))  (*fields)[[self getCustomEquipKeyDefType:key].value_or("")] = key_list;	// in place
-		defaults.setObject(std::string(KEYCONFIG_CUSTOMEQUIP), oo::PList(customEquipActivation));
+		if (oo::PList::Dict *fields = CustomEquipFields(_cxxPlayer->customEquipActivation, idx))  (*fields)[[self getCustomEquipKeyDefType:key].value_or("")] = key_list;	// in place
+		defaults.setObject(std::string(KEYCONFIG_CUSTOMEQUIP), oo::PList(_cxxPlayer->customEquipActivation));
 	}
 	// reload settings
 	[self initKeyConfigSettings];
@@ -1776,8 +1776,8 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	else
 	{
 		NSUInteger idx = [self getCustomEquipIndex:key];
-		if (oo::PList::Dict *fields = CustomEquipFields(customEquipActivation, idx))  fields->erase([self getCustomEquipKeyDefType:key].value_or(""));	// in place
-		defaults.setObject(std::string(KEYCONFIG_CUSTOMEQUIP), oo::PList(customEquipActivation));
+		if (oo::PList::Dict *fields = CustomEquipFields(_cxxPlayer->customEquipActivation, idx))  fields->erase([self getCustomEquipKeyDefType:key].value_or(""));	// in place
+		defaults.setObject(std::string(KEYCONFIG_CUSTOMEQUIP), oo::PList(_cxxPlayer->customEquipActivation));
 	}
 	// reload settings
 	[self initKeyConfigSettings];
@@ -1798,9 +1798,9 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	{
 		// the customEquipActivation entry is edited in place, as before
 		const std::optional<std::string> keyDefType = [self getCustomEquipKeyDefType:key];
-		oo::PList::Dict *fields = CustomEquipFields(customEquipActivation, [self getCustomEquipIndex:key]);
+		oo::PList::Dict *fields = CustomEquipFields(_cxxPlayer->customEquipActivation, [self getCustomEquipIndex:key]);
 		if (fields != nullptr && keyDefType.has_value())  fields->erase(*keyDefType);
-		defaults.setObject(std::string(KEYCONFIG_CUSTOMEQUIP), oo::PList(customEquipActivation));
+		defaults.setObject(std::string(KEYCONFIG_CUSTOMEQUIP), oo::PList(_cxxPlayer->customEquipActivation));
 	}
 	// reload settings
 	[self initKeyConfigSettings];
@@ -1812,14 +1812,14 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 {
 	oo::Defaults &defaults = oo::Defaults::standard();
 	defaults.removeObject(std::string(KEYCONFIG_OVERRIDES));
-	if (customEquipActivation.size() > 0)
+	if (_cxxPlayer->customEquipActivation.size() > 0)
 	{
 		NSUInteger i;
-		for (i = 0; i < customEquipActivation.size(); i++)
+		for (i = 0; i < _cxxPlayer->customEquipActivation.size(); i++)
 		{
-			const std::optional<std::string> eq = OptionalStringForKey(customEquipActivation[i], std::string(CUSTOMEQUIP_EQUIPKEY));
+			const std::optional<std::string> eq = OptionalStringForKey(_cxxPlayer->customEquipActivation[i], std::string(CUSTOMEQUIP_EQUIPKEY));
 			OOEquipmentType *item = (eq.has_value() ? [OOEquipmentType cxx_equipmentTypeWithIdentifier:*eq] : nil);
-			oo::PList::Dict *fields = CustomEquipFields(customEquipActivation, i);	// edited in place
+			oo::PList::Dict *fields = CustomEquipFields(_cxxPlayer->customEquipActivation, i);	// edited in place
 			if (fields == nullptr)  continue;
 			if ([item cxx_defaultActivateKey])
 				fields->insert_or_assign(std::string(CUSTOMEQUIP_KEYACTIVATE), [item cxx_defaultActivateKey]);
@@ -1831,7 +1831,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 			else
 				fields->erase(std::string(CUSTOMEQUIP_KEYMODE));
 		}
-		defaults.setObject(std::string(KEYCONFIG_CUSTOMEQUIP), oo::PList(customEquipActivation));
+		defaults.setObject(std::string(KEYCONFIG_CUSTOMEQUIP), oo::PList(_cxxPlayer->customEquipActivation));
 	}
 	// reload settings
 	[self initKeyConfigSettings];
@@ -1850,13 +1850,13 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 {
 	// Update the GUI (this will refresh the function list).
 	unsigned skip;
-	if (selFunctionIdx < MAX_ROWS_KC_FUNCTIONS - 1)
+	if (_cxxPlayer->selFunctionIdx < MAX_ROWS_KC_FUNCTIONS - 1)
 	{
 		skip = 0;
 	}
 	else
 	{
-		skip = ((selFunctionIdx - 1) / (MAX_ROWS_KC_FUNCTIONS - 2)) * (MAX_ROWS_KC_FUNCTIONS - 2) + 1;
+		skip = ((_cxxPlayer->selFunctionIdx - 1) / (MAX_ROWS_KC_FUNCTIONS - 2)) * (MAX_ROWS_KC_FUNCTIONS - 2) + 1;
 	}
 	
 	[self setGuiToKeyMapperScreen:skip];
