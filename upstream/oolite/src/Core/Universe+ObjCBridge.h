@@ -610,4 +610,13 @@ inline ::Universe *ToObjC(cxx::Universe *universe)  { return universe != nullptr
 
 }	// namespace oo
 
+
+/*	The messages to UNIVERSE behind the description and custom-sound look-ups (slice 26): sends,
+	not member calls, because many tests stand in for the universe with a class of their own
+	(amendment oo-rmd7 item 3; ADR-0056 amendment oo-7jhs5). Defined in Universe+ObjCBridge.mm.
+*/
+std::optional<std::string> OOUniverseDescriptionForKey(const std::string &key);	// [UNIVERSE cxx_descriptionForKey:key]
+const oo::PList *OOUniverseDescriptions();	// [UNIVERSE cxx_descriptions]
+std::optional<std::string> OOUniverseSoundNameForCustomSoundKey(const std::string &key);	// [UNIVERSE soundNameForCustomSoundKey:key]
+
 #endif	// UNIVERSE_OBJCBRIDGE_H

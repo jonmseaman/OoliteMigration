@@ -385,3 +385,9 @@ extern Universe *gSharedUniverse;
 - (void) cxx_playCustomSoundWithKey:(const std::string &)key	{ OOSoundSourcePlayCustomSoundWithKey(self, key); }
 
 @end
+
+
+// The look-ups' messages to UNIVERSE (Universe+ObjCBridge.h).
+std::optional<std::string> OOUniverseDescriptionForKey(const std::string &key)	{ return [UNIVERSE cxx_descriptionForKey:key]; }
+const oo::PList *OOUniverseDescriptions()	{ return [UNIVERSE cxx_descriptions]; }
+std::optional<std::string> OOUniverseSoundNameForCustomSoundKey(const std::string &key)	{ return [UNIVERSE soundNameForCustomSoundKey:key]; }

@@ -6374,11 +6374,10 @@ std::vector<std::string> CachedConditionScripts(const std::string &key)
 */
 
 // +[OOSound cxx_soundWithCustomSoundKey:]: the sound for a customsounds.plist key, autoreleased; nil
-// for none (as the message to a nil universe answered).
+// for none.
 ::OOSound *OOSoundWithCustomSoundKey(const std::string &key)
 {
-	cxx::Universe *universe = oo::ToCxx(UNIVERSE);
-	const std::optional<std::string> fileName = (universe != nullptr) ? universe->soundNameForCustomSoundKey(key) : std::nullopt;
+	const std::optional<std::string> fileName = OOUniverseSoundNameForCustomSoundKey(key);
 	if (!fileName.has_value())  return nil;
 	return cxx::ResourceManager::ooSoundNamed(*fileName, std::string("Sounds"));
 }
@@ -6393,8 +6392,7 @@ void OOSoundSourcePlayCustomSoundWithKey(::OOSoundSource *source, const std::str
 
 std::string cxx_OOLookUpDescriptionPRIV(const std::string &key)
 {
-	cxx::Universe *universe = oo::ToCxx(UNIVERSE);	// none: no description, as the message to nil answered
-	std::optional<std::string> result = (universe != nullptr) ? universe->descriptionForKey(key) : std::nullopt;
+	std::optional<std::string> result = OOUniverseDescriptionForKey(key);
 	if (!result.has_value())  result = key;
 	return *result;
 }
@@ -6403,12 +6401,11 @@ std::string cxx_OOLookUpDescriptionPRIV(const std::string &key)
 // There's a hint of gettext about this...
 std::string cxx_OOLookUpPluralDescriptionPRIV(const std::string &key, NSInteger count)
 {
-	cxx::Universe *universe = oo::ToCxx(UNIVERSE);	// none: no descriptions, as the message to nil answered
-	const oo::PList *descriptions = (universe != nullptr) ? universe->descriptions() : nullptr;
+	const oo::PList *descriptions = OOUniverseDescriptions();
 	const oo::PList *conditions = (descriptions != nullptr) ? descriptions->get<oo::PList::Array>("plural-rules") : nullptr;
 
 	// are we using an older descriptions.plist (1.72.x) ?
-	std::optional<std::string> tmp = (universe != nullptr) ? universe->descriptionForKey(key) : std::nullopt;
+	std::optional<std::string> tmp = OOUniverseDescriptionForKey(key);
 	if (tmp.has_value())
 	{
 		static std::set<std::string> warned;
