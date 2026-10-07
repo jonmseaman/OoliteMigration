@@ -11236,6 +11236,8 @@ OOSystemID Universe::findSystemAtCoords(NSPoint coords, OOGalaxyID g)
 	docs/phases/3-slices/Universe.md, bead oo-lftoq): the Objective-C RouteElement as a C++ class,
 	its accessors by the same names (ADR-0056 amendment oo-7jhs5).
 */
+namespace {
+
 class RouteElement : public oo::RefCounted
 {
 public:
@@ -11274,6 +11276,8 @@ double RouteElement::cost() { return _cost; }
 double RouteElement::distance() { return _distance; }
 double RouteElement::time() { return _time; }
 int RouteElement::jumps() { return _jumps; }
+
+}	// namespace
 
 
 // Slice 20 of docs/phases/3-slices/Universe.md (bead oo-lftoq): neighbouring systems, system-name look-up, routes (with RouteElement), planet textures, global and equipment data, the commodity market, time descriptions. The facade forwards
