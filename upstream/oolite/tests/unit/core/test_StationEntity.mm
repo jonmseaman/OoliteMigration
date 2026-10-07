@@ -534,4 +534,22 @@ OO_TEST(slice2StationCount)
 }
 
 
+// From C++ (after the conversion): the members.
+OO_TEST(slice2MembersFromCxx)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestStation *station = MakeStation("member2");
+		TestVisitor *ship = MakeVisitor("guest");
+		cxx::StationEntity *part = station->_cxxStation;
+		OO_CHECK(!part->hasMultipleDocks() && !part->fitsInDock(nil) && part->selectDockForDocking() == nil);
+		[ShipsOnHold2(station) addObject:ship];
+		OO_CHECK(part->holdPositionInstructionForShip(ship).get<std::string>("ai_message", "") == "HOLD_POSITION");
+		part->clear();
+		OO_CHECK([ShipsOnHold2(station) count] == 0);
+	}
+}
+
+
 OO_TEST_MAIN()

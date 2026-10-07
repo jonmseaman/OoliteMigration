@@ -131,6 +131,34 @@ public:
 	// ShipEntityAI.mm slice 1 (bead oo-iebuz): the category StationEntity (OOAIPrivate).
 	void acceptDistressMessageFrom(::ShipEntity *other) override;
 
+	// Slice 2: docking traffic control and the launch queue.
+	void sanityCheckShipsOnApproach();
+	void launchShip(::ShipEntity *ship);
+	void abortAllDockings();
+	void autoDockShipsOnHold();
+	void autoDockShipsOnApproach();
+	Vector portUpVectorForShip(::ShipEntity *ship);
+	oo::PList dockingInstructionsForShip(::ShipEntity *ship);
+	oo::PList holdPositionInstructionForShip(::ShipEntity *ship);
+	void abortDockingForShip(::ShipEntity *ship);
+	bool shipIsInDockingCorridor(::ShipEntity *ship);
+	void pullInShipIfPermitted(::ShipEntity *ship);
+	bool dockingCorridorIsEmpty();
+	void clearDockingCorridor();
+	void update(OOTimeDelta delta_t) override;
+	void clear();
+	bool hasMultipleDocks();
+	bool hasClearDock();
+	bool hasEligibleDock();
+	bool hasLaunchDock();
+	::DockEntity *selectDockForDocking();
+	void addShipToLaunchQueue(::ShipEntity *ship, bool priority);
+	unsigned countOfShipsInLaunchQueueWithPrimaryRole(const std::string &role);
+	bool fitsInDock(::ShipEntity *ship);
+	bool fitsInDock(::ShipEntity *ship, bool logNoFit);
+	void noteDockedShip(::ShipEntity *ship);
+	void addShipToStationCount(::ShipEntity *ship);
+
 	// @private in Objective-C: private once StationEntity is converted; public while the facade's
 	// unconverted methods read them, since an Objective-C class cannot be a C++ friend
 	::OOWeakSet				*_shipsOnHold = {};
