@@ -43,8 +43,9 @@ void InitOOJSVisualEffect(ooscript::Context context, ooscript::Object global);
 
 
 /*	The bodies of OOVisualEffectEntity (OOJavaScriptExtensions), which the engine reaches by
-	selector. Its methods are one-line forwarders to these in OOJSVisualEffect+ObjCBridge.mm
-	until OOVisualEffectEntity converts (proposed ADR-0056 amendments oo-ppc and oo-ykoy).
+	selector. Its methods are one-line forwarders to these on the OOVisualEffectEntity facade, in
+	OOVisualEffectEntity+ObjCBridge.mm (bead oo-9ht.93), until that facade goes (oo-9ht.165;
+	proposed ADR-0056 amendments oo-ppc, oo-ykoy and oo-6ia4).
 */
 void OOJSVisualEffectGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
 std::optional<std::string> OOJSVisualEffectJSClassName(void);
