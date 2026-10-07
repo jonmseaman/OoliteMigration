@@ -245,6 +245,18 @@ public:
 	// What "%@" prints between the braces of <Class 0x...>{...} (OODescription.h).
 	virtual std::optional<std::string> descriptionComponents() const;
 
+	/*	Entity (OOJavaScriptExtensions)'s class questions, which the engine asks by selector: the
+		root category forwards them here, so a C++ entity whose own façade is gone answers for its
+		class by overriding them (ADR-0056 amendment oo-9ht.107). The defaults are the category's
+		bodies (EntityOOJavaScriptExtensions.h). An Objective-C class, or a façade, that implements
+		the selectors still answers first. oo::ObjCEntity must not forward these: the category
+		reaches them only for an Objective-C entity with no override of its own, and a forwarding
+		adapter would send the selector back to the category, which would call the adapter again.
+	*/
+	virtual void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
+	virtual std::optional<std::string> jsClassName();
+	virtual bool isVisibleToScripts();
+
 #ifndef NDEBUG
 	std::optional<std::string> descriptionForObjDumpBasic();
 	virtual std::optional<std::string> descriptionForObjDump();
@@ -334,6 +346,23 @@ private:
 
 	oo::ObjCRef<::OOWeakReference *>	_owner;
 	OOEntityStatus			_status = {};
+};
+
+
+/*	The protocol OOSubEntity's methods, for a C++ subentity whose own façade is gone (ADR-0056
+	amendment oo-9ht.107): the owner that sent a subentity -rescaleBy: or
+	-drawSubEntityImmediate:translucent: calls these when the subentity's C++ part adopts this
+	interface, and sends the selector otherwise. (Not named OOSubEntity: inside namespace cxx the
+	protocol-qualified type Entity<OOSubEntity> would then name a class as its argument.)
+*/
+class OOSubEntityInterface
+{
+public:
+	virtual ~OOSubEntityInterface() = default;
+
+	virtual void rescaleBy(GLfloat factor) = 0;
+	virtual void rescaleBy(GLfloat factor, bool writeToCache) = 0;
+	virtual void drawSubEntityImmediate(bool immediate, bool translucent) = 0;
 };
 
 }	// namespace cxx

@@ -32,6 +32,7 @@ MA 02110-1301, USA.
 #import "OOFlasherEntity.h"
 #import "ShipEntity.h"
 #import "OOColor.h"
+#import "OOJSVisualEffect.h"
 
 
 @implementation OOVisualEffectEntity
@@ -75,7 +76,7 @@ MA 02110-1301, USA.
 - (BOOL) hasSubEntity:(Entity<OOSubEntity> *)sub							{ return oo::ToCxx(self)->hasSubEntity(sub); }
 - (std::vector<oo::ObjCRef<Entity *>>)subEntityEnumerator					{ return oo::ToCxx(self)->subEntityEnumerator(); }
 - (std::vector<oo::ObjCRef<OOVisualEffectEntity *>>)effectSubEntityEnumerator	{ return oo::ToCxx(self)->effectSubEntityEnumerator(); }
-- (std::vector<oo::ObjCRef<OOFlasherEntity *>>)flasherEnumerator			{ return oo::ToCxx(self)->flasherEnumerator(); }
+- (std::vector<oo::ObjCRef<Entity *>>)flasherEnumerator			{ return oo::ToCxx(self)->flasherEnumerator(); }
 - (void) orientationChanged													{ oo::ToCxx(self)->orientationChanged(); }
 - (Vector) forwardVector													{ return oo::ToCxx(self)->forwardVector(); }
 - (Vector) rightVector														{ return oo::ToCxx(self)->rightVector(); }
@@ -137,6 +138,16 @@ MA 02110-1301, USA.
 - (void) rescaleBy:(GLfloat)factor											{ oo::ToCxx(self)->rescaleBy(factor); }
 - (void) rescaleBy:(GLfloat)factor writeToCache:(BOOL)writeToCache			{ oo::ToCxx(self)->rescaleBy(factor, writeToCache); }
 - (void) drawSubEntityImmediate:(bool)immediate translucent:(bool)translucent	{ oo::ToCxx(self)->drawSubEntityImmediate(immediate, translucent); }
+
+
+// The JS side, which the engine asks for by selector (Entity (OOJavaScriptExtensions)): the
+// binding's category, moved here from the binding's bridge file, which it deletes (bead oo-9ht.93;
+// ADR-0056 amendment oo-6ia4 item 3). Each forwards to the OOJSVisualEffect.mm function that holds
+// its old body; they become members of the C++ class with this facade's deletion (oo-9ht.165).
+- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype	{ ::OOJSVisualEffectGetJSClass(outClass, outPrototype); }
+- (std::optional<std::string>) cxx_oo_jsClassName							{ return ::OOJSVisualEffectJSClassName(); }
+- (BOOL) isVisibleToScripts													{ return ::OOJSVisualEffectIsVisibleToScripts(); }
+- (std::vector<oo::ObjCRef<Entity *>>) subEntitiesForScript					{ return ::OOJSVisualEffectSubEntitiesForScript(self); }	// empty before the first subentity
 
 @end
 
