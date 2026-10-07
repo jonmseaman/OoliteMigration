@@ -140,6 +140,9 @@ public:
 
 	// Slice 27 (bead oo-pnfyp).
 	GLfloat lookingAtSunWithThresholdAngleCos(GLfloat thresholdAngleCos) override	{ return [(::ShipEntity *)_objcOwner lookingAtSunWithThresholdAngleCos:thresholdAngleCos]; }
+
+	// Slice 28 (bead oo-40ocf).
+	::ShipEntity *fireMissile() override	{ return [(::ShipEntity *)_objcOwner fireMissile]; }
 };
 
 }	// namespace
@@ -978,5 +981,23 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 - (void) setExhaustEmissiveColor:(OOColor *)color	{ _cxxShip->setExhaustEmissiveColor(color); }
 - (OOColor *) laserColor	{ return _cxxShip->laserColor(); }
 - (OOColor *) exhaustEmissiveColor	{ return _cxxShip->exhaustEmissiveColor(); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice28)
+
+- (BOOL) fireSubentityLaserShot:(double)range	{ return _cxxShip->fireSubentityLaserShot(range); }
+- (BOOL) fireDirectLaserShot:(double)range	{ return _cxxShip->fireDirectLaserShot(range); }
+- (BOOL) fireDirectLaserDefensiveShot	{ return _cxxShip->fireDirectLaserDefensiveShot(); }
+- (BOOL) fireDirectLaserShotAt:(Entity *)my_target	{ return _cxxShip->fireDirectLaserShotAt(my_target); }
+- (std::vector<Vector>) cxx_laserPortOffset:(OOWeaponFacing)direction	{ return _cxxShip->laserPortOffset(direction); }
+- (BOOL) cxx_fireLaserShotInDirection:(OOWeaponFacing)direction weaponIdentifier:(const std::string &)weaponIdentifier	{ return _cxxShip->fireLaserShotInDirection(direction, weaponIdentifier); }
+- (void) adjustMissedShots:(int)delta	{ _cxxShip->adjustMissedShots(delta); }
+- (int) missedShots	{ return _cxxShip->missedShots(); }
+- (void) throwSparks	{ _cxxShip->cxx::ShipEntity::throwSparks(); }
+- (void) considerFiringMissile:(double)delta_t	{ _cxxShip->considerFiringMissile(delta_t); }
+- (Vector) missileLaunchPosition	{ return _cxxShip->missileLaunchPosition(); }
+- (ShipEntity *) fireMissile	{ return _cxxShip->cxx::ShipEntity::fireMissile(); }
 
 @end

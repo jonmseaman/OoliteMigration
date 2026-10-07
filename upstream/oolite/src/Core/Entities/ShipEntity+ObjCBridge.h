@@ -211,17 +211,6 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 
 
 
-- (BOOL) fireSubentityLaserShot:(double)range;
-- (BOOL) fireDirectLaserShot:(double)range;
-- (BOOL) fireDirectLaserDefensiveShot;
-- (BOOL) fireDirectLaserShotAt:(Entity *)my_target;
-- (std::vector<Vector>) cxx_laserPortOffset:(OOWeaponFacing)direction;
-- (BOOL) cxx_fireLaserShotInDirection:(OOWeaponFacing)direction weaponIdentifier:(const std::string &)weaponIdentifier;
-- (void) adjustMissedShots:(int)delta;
-- (int) missedShots;
-- (void) considerFiringMissile:(double)delta_t;
-- (Vector) missileLaunchPosition;
-- (ShipEntity *) fireMissile;
 - (ShipEntity *) cxx_fireMissileWithIdentifier:(const std::optional<std::string> &) identifier andTarget:(Entity *) target;	// nullopt: a random missile from the list
 - (BOOL) isMissileFlagSet;
 - (void) setIsMissileFlag:(BOOL)newValue;
@@ -1166,6 +1155,27 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (void) setExhaustEmissiveColor:(OOColor *)color;
 - (OOColor *)laserColor;
 - (OOColor *)exhaustEmissiveColor;
+
+@end
+
+
+// Slice 28 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice28)
+
+- (BOOL) fireSubentityLaserShot:(double)range;
+- (BOOL) fireDirectLaserShot:(double)range;
+- (BOOL) fireDirectLaserDefensiveShot;
+- (BOOL) fireDirectLaserShotAt:(Entity *)my_target;
+- (std::vector<Vector>) cxx_laserPortOffset:(OOWeaponFacing)direction;
+- (BOOL) cxx_fireLaserShotInDirection:(OOWeaponFacing)direction weaponIdentifier:(const std::string &)weaponIdentifier;
+- (void) adjustMissedShots:(int)delta;
+- (int) missedShots;
+- (void) throwSparks;
+- (void) considerFiringMissile:(double)delta_t;
+- (Vector) missileLaunchPosition;
+- (ShipEntity *) fireMissile;
 
 @end
 
