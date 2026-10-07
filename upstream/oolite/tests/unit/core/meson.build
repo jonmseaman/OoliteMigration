@@ -140,6 +140,7 @@ core_tests = {
     'test_ResourceManager': ['*'],
     'test_PlayerEntityStickProfile': ['*'],
     'test_HeadUpDisplay': ['*'],
+    'test_GameController': ['*'],
     'test_Entity': ['*'],
     'test_ShipEntity': ['*'],
     'test_OOEntityWithDrawable': ['*'],

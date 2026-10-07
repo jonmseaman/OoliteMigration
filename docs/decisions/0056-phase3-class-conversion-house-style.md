@@ -3779,6 +3779,53 @@ class, façade-contract test cases (CLAUDE.md rule 2), and a lifetime the façad
 no test case and changes no stand-in. Deletion beads whose readiness check fails gain the missing
 deps instead of growing into conversions.
 
+## Amendment (bead oo-zkpmt): a class-shell slice whose later slices are the class's own `@X` block
+
+- Date: 2026-10-06. Status: Proposed, as above (recommended default, CLAUDE.md rule 10). Exemplar:
+  `src/Core/GameController.h/.mm` (slice 1 of `docs/phases/3-slices/GameController.md`),
+  `GameController+ObjCBridge.h/.mm`, `SDL/GameController+SDLFullScreen.mm`,
+  `tests/unit/core/test_GameController.mm`. Follows amendments oo-r7m0, oo-bj8 item 2 and oo-bwjb.
+
+**Context.** Amendment oo-bwjb item 1 keeps the shell slice's selectors in the façade's
+`@interface` (forwarded by `X+ObjCBridge.mm`'s `@implementation X`) and moves the later slices'
+methods into a category `X (XSlices)` in `X.mm`. That works when the plan names the later slices'
+methods one by one. `GameController.md` gives slice 3 the whole block (`@GameController`), and
+`tools/check-slice-plan.py` matches an `@X` entry against the block's name: renamed to
+`GameController(GameControllerSlices)`, slice 3's eighteen methods became unassigned (the plan
+check fails) and `--slice-done 3` passed with nothing converted. The plan may not be edited by the
+slice bead.
+
+**Decision (recommended defaults).**
+
+1. **The later slices keep the class's `@implementation X` in `X.mm`, under its name, in place;**
+   the façade's own methods go in a category: `X+ObjCBridge.h` declares the old `@interface` with
+   the later slices' selectors (old order, unchanged) and the shell slice's selectors in
+   `@interface X (OOObjCBridge)`, which `X+ObjCBridge.mm` implements in one-line forwarders, with
+   the crossings, `-initWithCxxX:` and `-dealloc`. Both `@implementation`s are complete, callers see
+   the same selectors with the same types, and the plan's `@X` entry still finds the later slices.
+2. **The shell slice's members are defined in one `namespace cxx { }` block before the
+   `@implementation`,** moved there from their places in the block (here `-finishedLaunching` and
+   `-suppressClangStuff`), because one class may have only one `@implementation` per file.
+3. **The later slices and the class's other categories read the state through the façade's
+   `@public _cxxController`** (amendment oo-bj8 item 2's scripted, word-bounded rewrite, string
+   literals excluded); an ivar named like its getter takes a leading underscore (`_gameView`,
+   amendment oo-rdfh item 1). A shell member that told an Objective-C object of `self` hands it
+   `oo::ToObjC(this)` (`[_gameView setGameController:oo::ToObjC(this)]`), the façade
+   `+sharedController` keeps.
+4. **Header macros that message the class name the façade `::X`** (`OO_DEBUG_PROGRESS`), so a
+   caller inside `namespace cxx` still reaches the Objective-C class.
+5. **A singleton that callers also `alloc`/`init`** (`main.mm` makes the application's controller
+   that way, apart from `+sharedController`'s) keeps `-init` on the façade: it makes a new C++ object
+   (the constructor is the old `-init` body, raising where it raised, after releasing the receiver)
+   and becomes its peer. Converted senders name the façade `[::X sharedX]` (amendment oo-jfno item 2).
+6. **A Mac-only declaration with a Foundation type** (`-snapshotsURLCreatingIfNeeded:`) is not
+   copied into the new bridge header when only the fenced Mac category sends it: the type would be a
+   new deny-list hit in a new file (the guardrails' file-split limitation).
+
+**Consequences.** One façade and its deletion bead, which waits for slices 2 and 3 and the
+`FullScreen` category (oo-qinv); each later slice turns its methods into members and deletes their
+declarations from the façade's `@interface`.
+
 ## Amendment (bead oo-zmix): the rendering slice of a converted subclass, and a façade that stays a protocol client
 
 - Date: 2026-10-05. Status: Proposed, as above. Exemplar: slice 4 of `docs/phases/3-slices/OOMesh.md`
