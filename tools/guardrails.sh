@@ -16,6 +16,10 @@
 #                renamed out of the COLLECTED set, or gutted
 #   deny-list    no NEW hit for a tools/deny-list.txt pattern in a changed source file
 #
+# Plus one check that is not a CLAUDE.md rule but a merge hazard (bead oo-w6uwu):
+#
+#   markers      no text file in the change gains a merge-conflict marker line
+#
 # ---------------------------------------------------------------------------------------
 # RENAMES ARE FIRST-CLASS, AND THAT IS THE MOST IMPORTANT THING IN THIS FILE
 #
@@ -314,6 +318,12 @@ upstream/oolite/tests/unit/expander/OOHarnessFoundation.h|the string-expander ha
 upstream/oolite/tests/unit/expander/OOFoundationBridge.h|the string-expander harness's own Foundation bridge stub (bead oo-3rb.335, Jon approved 2026-09-30): the harness links gnustep-base as test infrastructure, like tools/plist-fuzz/gnustep_oracle.mm, so its job is the NSString/NSNumber/NSDictionary conversions the deleted bridge headers made, copied unchanged so the pinned digests stay identical; compiled only by tools/check-string-expander.sh, never part of the game build
 upstream/oolite/tests/unit/sysdesc/OOHarnessFoundation.h|the sysdesc-tools harness's own Foundation prefix (bead oo-3rb.335, Jon approved 2026-09-30): the harness links gnustep-base as test infrastructure, like tools/plist-fuzz/gnustep_oracle.mm, so its job is to import Foundation ahead of the game headers; compiled only by tools/check-sysdesc-tools.sh, never part of the game build
 upstream/oolite/tests/unit/sysdesc/OOFoundationBridge.h|the sysdesc-tools harness's own Foundation bridge stub (bead oo-3rb.335, Jon approved 2026-09-30): the harness links gnustep-base as test infrastructure, like tools/plist-fuzz/gnustep_oracle.mm, so its job is the NSString/NSNumber/NSDictionary conversions the deleted bridge headers made, copied unchanged so the pinned digests stay identical; compiled only by tools/check-sysdesc-tools.sh, never part of the game build
+tools/check-foundation-free.sh|the Foundation census (ADR-0054/0055): its job is to find the NS* names, so its kind table and its --selftest fixtures spell them (bead oo-3rb.345); like tools/check-jsengine-facade.sh, it greps for the names it must not find and is never part of the game build
+tools/check-selector-types-probe.sh|probes tools/check-selector-types.py on synthetic trees: fixture 13 (oo-qps.72, ADR-0055 Amendment 2) must declare an NS*-typed result to prove --strict-called-by-name rejects it (bead oo-3rb.345); a test utility, never part of the game build
+tools/codemods/description-family.py|the -description-family codemod (ADR-0055 item 1, bead oo-qps.43): its inline self-test cases are Objective-C fixtures that must spell the Foundation string type to prove the rewrite leaves it alone (bead oo-3rb.345); pattern text and fixtures, never built into the game
+tools/codemods/key-constants.py|the key-constant codemod (bead oo-qps.42): its job is to find and rewrite Foundation-string key constants, so its regex, docstring and self-test fixtures spell the type it rewrites (bead oo-3rb.345); pattern text and fixtures, never built into the game
+upstream/oolite/tests/unit/expander/OOStringExpanderTestSurface.h|the Foundation forms of the string expander (ADR-0052's OO_EXPANDER_TEST_SURFACE block, moved verbatim out of src/Core/OOStringExpander.mm into the harness by bead oo-3rb.345): the harness links gnustep-base as test infrastructure, like tools/plist-fuzz/gnustep_oracle.mm, so its job is the Foundation-to-C++ conversions its test drives; compiled only by tools/check-string-expander.sh, never part of the game build
+upstream/oolite/tests/gui/test_g8_scenario_screen_back_out.py|GUI test G8: it reads PlayerEntityLoadSave.mm and must accept either spelling of -loadPlayerFromFile:asNew:, the legacy Foundation-typed one included (Jon approved both, bead oo-3rb.332), so the legacy signature is a string it searches for, not a use (bead oo-3rb.345); a test, never part of the game build
 tools/refactor/testdata/OOJSVector.pre-retarget.m|frozen pre-retarget fixture (restored from git history) used only to prove js-stubs.sh's rewrite (bead oo-oio); never built, never linked
 tools/refactor/testdata/js-stubs-string-literal.m|regression fixture proving js-stubs.sh leaves JS_* tokens inside string literals untouched (bead oo-oio review round 2); never built, never linked
 tools/refactor/testdata/js-stubs-comment-call.m|regression fixture proving js-stubs.sh leaves JS_* call-shaped mentions inside comments untouched (bead oo-oio review round 2); never built, never linked
@@ -1193,8 +1203,53 @@ check_upstream_delta() {
   fi
 }
 
+# --- merge-conflict markers (bead oo-w6uwu) --------------------------------------------------
+#
+# Not one of the four rules: a merge hazard. Agents resolving merges of main into stacked bead
+# branches twice committed conflict markers (into ADR-0056 and a meson.build) and nothing caught
+# them until a later reader did. A line ADDED by the change (git's own diff against the base, so
+# a rename charges only what it changed, and a file's pre-existing lines are never charged) is
+# refused when it is a marker line: seven '<' or '>' then a space or end of line, the bare
+# seven-'=' separator, or seven '|' (diff3's base marker). A CR before end of line is ignored,
+# so a CRLF file cannot hide one. Untracked files are new in full and are grepped whole.
+#
+# ONE git diff and one grep, no per-file forks: this must stay well inside accept's 300 s.
+# A file that legitimately holds such a line goes in MARKER_EXEMPT, with its reason:
+#   upstream/oolite/Resources/Schemata/README.txt  a plain-text heading underlined by 7 '='
+MARKER_EXEMPT="upstream/oolite/Resources/Schemata/README.txt"
+check_conflict_markers() {
+  local hits more cr=$'\r'
+  hits=$(git -c core.quotePath=false diff --no-color --no-ext-diff --src-prefix=a/ --dst-prefix=b/ \
+          -U0 --find-renames "$BASE" -- 2>/dev/null | awk -v ex="$MARKER_EXEMPT" '
+    BEGIN { n = split(ex, e, " "); for (i = 1; i <= n; i++) skip[e[i]] = 1 }
+    /^diff --git / { hdr = 1; next }
+    hdr && /^\+\+\+ / { f = substr($0, 5); sub(/^b\//, "", f); next }
+    /^@@ / { hdr = 0; split($0, h, " "); ln = h[3]; sub(/^\+/, "", ln); sub(/,.*/, "", ln); ln += 0; next }
+    !hdr && /^\+/ {
+      l = substr($0, 2); sub(/\r$/, "", l)
+      if (!(f in skip) && (l ~ /^(<<<<<<<|>>>>>>>)( |$)/ || l == "=======" || l ~ /^\|\|\|\|\|\|\|( |$)/))
+        print f ":" ln ": " l
+      ln++
+    }')
+  more=$(git ls-files -z --others --exclude-standard | xargs -0 -r grep -nIHE -- \
+          "^(<<<<<<<|>>>>>>>)( |[$cr]?\$)|^=======[$cr]?\$|^[|]{7}( |[$cr]?\$)" 2>/dev/null)
+  if [ -n "$more" ]; then
+    local x
+    while IFS= read -r x; do
+      case " $MARKER_EXEMPT " in *" ${x%%:*} "*) continue ;; esac
+      hits="${hits:+$hits
+}$x"
+    done <<< "$more"
+  fi
+  if [ -n "$hits" ]; then
+    bad "markers: the change adds merge-conflict marker lines (an unresolved merge; resolve hunk by hunk):"
+    printf '%s\n' "$hits" | sed 's/\r$//; s/^/    /' >&2
+  fi
+}
+
 prime_is_code
 check_goldens
+check_conflict_markers
 check_suppression
 check_tests
 check_denylist
@@ -1204,5 +1259,5 @@ if [ "$fail" -ne 0 ]; then
   note "FAIL"
   exit 1
 fi
-note "OK (goldens, suppression, tests, deny-list, upstream-delta) against $BASE_SHA"
+note "OK (goldens, suppression, tests, deny-list, upstream-delta, markers) against $BASE_SHA"
 exit 0

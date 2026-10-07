@@ -641,7 +641,7 @@ oo::PList NormalizedColorComponents(OOColor *color)
 	return oo::PList(std::move(components));
 }
 
-// A string, or null for none (what an NSString or nil gave JavaScript).
+// A string, or null for none (what a Foundation string or nil gave JavaScript).
 oo::PList StringOrNull(const std::optional<std::string> &string)
 {
 	return string.has_value() ? oo::PList(*string) : oo::PList();
@@ -1893,13 +1893,15 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 				else if (fValue > MIN_HYPERSPEED_FACTOR)
 				{
 					cxx_OOJSReportError(context, "ship.injectorSpeedFactor cannot be higher than minimum torus speed factor (%f).",MIN_HYPERSPEED_FACTOR);
+					return NO;
+				}
 #else
 				else if (fValue > HYPERSPEED_FACTOR)
 				{
 					cxx_OOJSReportError(context, "ship.injectorSpeedFactor cannot be higher than torus speed factor (%f).",HYPERSPEED_FACTOR);
-#endif
 					return NO;
 				}
+#endif
 				[entity setAfterburnerFactor:fValue];
 				return YES;
 			}
@@ -3225,7 +3227,7 @@ static bool ShipSetCrew(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 		{
 			OOCharacter *crew = [OOCharacter characterWithDictionary:cxx_OOJSPListFromJSObject(context, ooscript::toObject(OOJS_ARGV[0]))];
 			std::vector<oo::ObjCRef<OOCharacter *>> members;
-			if (crew != nil)  members.emplace_back(crew);	// a nil character was skipped (an NSArray cannot hold nil)
+			if (crew != nil)  members.emplace_back(crew);	// a nil character was skipped (a Foundation array cannot hold nil)
 			[thisEnt cxx_setCrew:members];
 		}
 	}
@@ -4140,7 +4142,7 @@ static bool ShipCheckScanner(ooscript::Context context, ooscript::CallArgs &oojs
 	oo::PList::Array scanResult;
 	for (unsigned i = 0; i < num; i++)
 	{
-		if (scannedShips[i] != nil)  scanResult.push_back(oo::PListObject(scannedShips[i]));	// nil skipped, as an NSArray skipped it
+		if (scannedShips[i] != nil)  scanResult.push_back(oo::PListObject(scannedShips[i]));	// nil skipped, as a Foundation array skipped it
 	}
 	OOJS_RETURN_PLIST(oo::PList(std::move(scanResult)));
 

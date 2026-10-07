@@ -32,6 +32,9 @@ slice 1: class shell, factories, lifecycle, accessors, OOCacheManager categories
   Profile()
   IsLegacyNormalMode()
   IsPerVertexNormalMode()
+  NormalModeDescription()         # was in @OOMesh; slice 1 (oo-dnbf) made the class C++ (oo-7j62d)
+  OOCacheManager*()               # the @OOCacheManager(OOMesh)/(Octree) bodies, now free functions
+  VFR*()                          # was in @OOCacheManager(Octree)
 
 slice 2: loading - designated initialiser, copying, model data, the .dat parser
   -[OOMesh initWithName:cacheKey:materialDictionary:shadersDictionary:smooth:shaderMacros:shaderBindingTarget:scaleFactor:cacheWriteable:]
@@ -42,6 +45,7 @@ slice 2: loading - designated initialiser, copying, model data, the .dat parser
 
 slice 3: geometry - winding, normals, tangents, bounding volumes, rescaling, octree
   @OOMesh(Private)
+  FaceArea*()                     # was in @OOMesh(Private); free since slice 1 landed (oo-7j62d)
   -[OOMesh octree]
   -[OOMesh octreeDepth]
   -[OOMesh findBoundingBoxRelativeToPosition:basis:ri:rj:selfPosition:selfBasis:si:sj:]

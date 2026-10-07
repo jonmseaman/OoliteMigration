@@ -51,8 +51,6 @@ using ooscript::Object;
 
 
 
-namespace cxx {
-
 // Pseudo-singleton: a single instance exists at a given time, but can be released.
 namespace {
 static OORegExpMatcher *sActiveInstance;
@@ -81,7 +79,7 @@ bool OORegExpMatcher::init()
 	unsigned codeLine = __LINE__ + 1;	// NB: should remain line before code.
 	const char *code = "return regexp.test(string);";
 	
-	[OOJavaScriptEngine sharedEngine];	// Summon the beast from the Pit.
+	[::OOJavaScriptEngine sharedEngine];	// Summon the beast from the Pit.
 	
 	ooscript::Context context = OOJSAcquireContext();
 	_tester = [[::OOJSFunction alloc] initWithName:std::string("matchesRegExp")
@@ -140,7 +138,7 @@ bool OORegExpMatcher::string(const std::string &string, const std::string &regEx
 		_cachedRegExpString = regExp;
 		Object regExpFacadeObj = ooscript::newUCRegExpObjectNoStatics((context), reinterpret_cast<const ooscript::Char16 *>(buffer), expLength, static_cast<std::uint32_t>(flags));
 		ooscript::Object regExpObj = (regExpFacadeObj);
-		_cachedRegExpObject = [[OOJSValue alloc] initWithJSObject:regExpObj inContext:context];
+		_cachedRegExpObject = [[::OOJSValue alloc] initWithJSObject:regExpObj inContext:context];
 		_cachedFlags = flags;
 		
 		free(buffer);
@@ -166,5 +164,3 @@ bool OORegExpMatcher::string(const std::string &string, const std::string &regEx
 	
 	return result;
 }
-
-}	// namespace cxx

@@ -5,6 +5,12 @@ OOPListSchemaVerifier.h
 Utility class to verify the structure of a property list based on a schema
 (which is itself a property list).
 
+C++20 since beads oo-pni4 and oo-pgh9 (Phase 3 slice plan docs/phases/3-slices/
+OOPListSchemaVerifier.md). Bead oo-9ht.119 deleted its transitional Objective-C facade (the
+class's bridge files) and moved the class out of namespace cxx (ADR-0056 amendment "deleting a
+facade"); the delegate's informal protocol became the C++ interface OOPListSchemaVerifierDelegate
+(amendment oo-9ht.86 item 1).
+
 Copyright (C) 2007-2013 Jens Ayton
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -37,35 +43,7 @@ SOFTWARE.
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
-
-@interface OOPListSchemaVerifier: OOObject
-{
-@private
-	oo::PList					_schema;
-	oo::PList					_definitions;		// the schema's $definitions (null if none)
-	
-	id							_delegate;
-	uint32_t					_badDelegateWarning: 1;
-}
-
-+ (instancetype)verifierWithSchema:(const oo::PList &)schema;	// nil for a null schema
-- (id)initWithSchema:(const oo::PList &)schema;
-
-- (void)setDelegate:(id)delegate;
-- (id)delegate;
-
-- (BOOL)verifyPropertyList:(const oo::PList &)plist named:(const std::string &)name;
-
-/*	Convert a key path (such as provided to the delegate method
-	-verifier:withPropertyList:failedForProperty:atPath:expectedType:) to a
-	human-readable string. Strings are separated by dots and numbers are give
-	brackets. For instance, the key path ( "adder-player", "custom_views", 0,
-	"view_description" ) is transfomed to
-	"adder-player.custom_views[0].view_description".
-*/
-+ (std::optional<std::string>)descriptionForKeyPath:(const oo::PList &)keyPath;	// a null or empty path is "root"; nullopt for a component that is neither string nor number
-
-@end
+#include "oofnd/Ref.hpp"
 
 /*	A schema verifier error (ADR-0029 decision 5, bead oo-3rb.16): what the Foundation error object
 	carried. domain is kOOPListSchemaVerifierErrorDomain, code an OOPListSchemaVerifierErrorCode,
@@ -82,30 +60,87 @@ struct OOPListSchemaVerifierError
 };
 
 
-@interface OOObject (OOPListSchemaVerifierDelegate)
-
-// Handle "delegated types". Return YES for valid, NO for invalid.
-// name: a string; keyPath: an array of strings and numbers; typeKey: a string.
-- (BOOL)verifier:(OOPListSchemaVerifier *)verifier
-withPropertyList:(const oo::PList &)rootPList
-		   named:(const std::string &)name
-	testProperty:(const oo::PList &)subPList
-		  atPath:(const oo::PList &)keyPath
-	 againstType:(const oo::PList &)typeKey
-		   error:(std::optional<OOPListSchemaVerifierError> *)outError;	// flipped with its family (bead oo-3rb.275)
-
-/*	Method notifying of verification failure.
-	Return YES to continue verifying, NO to stop.
+/*	The key path the verification core hands down, one link per level. Defined in
+	OOPListSchemaVerifier.mm, the only file that uses it (it was defined here from bead oo-pni4
+	until bead oo-9ht.119); the verification core's members below take it.
 */
-// name: a string; localSchema: the schema type specifier (a string or a dictionary).
-- (BOOL)verifier:(OOPListSchemaVerifier *)verifier
-withPropertyList:(const oo::PList &)rootPList
-		   named:(const std::string &)name
- failedForProperty:(const oo::PList &)subPList
-	   withError:(const OOPListSchemaVerifierError &)error
-	expectedType:(const oo::PList &)localSchema;	// flipped with its family (bead oo-3rb.275)
+struct BackLinkChain;
 
-@end
+class OOPListSchemaVerifier;
+
+
+/*	The verifier's delegate: was the informal OOObject (OOPListSchemaVerifierDelegate) category, any
+	object answering the two selectors below (bead oo-9ht.119; ADR-0056 amendment oo-9ht.86 item 1).
+	The verifier holds it unretained, as before. Both selectors begin with verifier:, which a
+	verifier stage could not use as a member name (it would hide the stage's verifier()), so each
+	member adds the selector's distinguishing keyword.
+*/
+class OOPListSchemaVerifierDelegate
+{
+public:
+	// Handle "delegated types". Return true for valid, false for invalid.
+	// name: a string; keyPath: an array of strings and numbers; typeKey: a string.
+	virtual bool verifierTestProperty(OOPListSchemaVerifier *verifier,
+									  const oo::PList &rootPList,
+									  const std::string &name,
+									  const oo::PList &subPList,
+									  const oo::PList &keyPath,
+									  const oo::PList &typeKey,
+									  std::optional<OOPListSchemaVerifierError> *outError) = 0;
+
+	/*	Method notifying of verification failure.
+		Return true to continue verifying, false to stop.
+	*/
+	// name: a string; localSchema: the schema type specifier (a string or a dictionary).
+	virtual bool verifierFailedForProperty(OOPListSchemaVerifier *verifier,
+										   const oo::PList &rootPList,
+										   const std::string &name,
+										   const oo::PList &subPList,
+										   const OOPListSchemaVerifierError &error,
+										   const oo::PList &localSchema) = 0;
+
+protected:
+	~OOPListSchemaVerifierDelegate() = default;
+};
+
+
+class OOPListSchemaVerifier : public oo::RefCounted
+{
+public:
+	static oo::Ref<OOPListSchemaVerifier> verifierWithSchema(const oo::PList &schema);	// null for a null schema
+	static oo::Ref<OOPListSchemaVerifier> initWithSchema(const oo::PList &schema);	// -initWithSchema:; null for a null schema
+
+	void setDelegate(OOPListSchemaVerifierDelegate *delegate);	// not retained
+	OOPListSchemaVerifierDelegate *delegate();
+
+	bool verifyPropertyList(const oo::PList &plist, const std::string &name);
+
+	/*	Convert a key path (such as provided to the delegate method
+		-verifier:withPropertyList:failedForProperty:atPath:expectedType:) to a
+		human-readable string. Strings are separated by dots and numbers are give
+		brackets. For instance, the key path ( "adder-player", "custom_views", 0,
+		"view_description" ) is transfomed to
+		"adder-player.custom_views[0].view_description".
+	*/
+	static std::optional<std::string> descriptionForKeyPath(const oo::PList &keyPath);	// a null or empty path is "root"; nullopt for a component that is neither string nor number
+
+	// Internal (the OOPrivate category): the verification core and the delegate calls, which the
+	// type verifiers in OOPListSchemaVerifier.mm (file-static functions) call directly.
+	bool delegateVerifierWithPropertyList(const oo::PList &rootPList, const std::string &name, const oo::PList &subPList, BackLinkChain keyPath, const oo::PList &typeKey, std::optional<OOPListSchemaVerifierError> *outError);
+	bool delegateVerifierWithPropertyList(const oo::PList &rootPList, const std::string &name, const oo::PList &subPList, const OOPListSchemaVerifierError &error, const oo::PList &localSchema);
+	bool verifyPList(const oo::PList &rootPList, const std::string &name, const oo::PList &subProperty, const oo::PList &subSchema, BackLinkChain keyPath, bool tentative, std::optional<OOPListSchemaVerifierError> *outError, BOOL *outStop);
+	oo::PList resolveSchemaType(const oo::PList &specifier, BackLinkChain keyPath, std::optional<OOPListSchemaVerifierError> *outError);	// null: not resolved (*outError says why)
+
+private:
+	explicit OOPListSchemaVerifier(const oo::PList &schema);	// -initWithSchema:, less its failure
+
+	oo::PList					_schema;
+	oo::PList					_definitions;		// the schema's $definitions (null if none)
+
+	OOPListSchemaVerifierDelegate	*_delegate = {};	// Not retained.
+	uint32_t					_badDelegateWarning: 1 = 0;
+};
+
 
 // Error domain and codes used to report schema verifier errors (UTF-8; the error's domain and
 // userInfo keys are these texts).

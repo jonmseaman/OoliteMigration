@@ -132,8 +132,8 @@ public:
 
 	virtual void setOwner(Entity *ent);
 	id owner();
-	ShipEntity *parentEntity();		// owner if self is subentity of owner, otherwise nil.
-	ShipEntity *rootShipEntity();	// like parentEntity, but recursive.
+	::ShipEntity *parentEntity();		// owner if self is subentity of owner, otherwise nil.
+	::ShipEntity *rootShipEntity();	// like parentEntity, but recursive.
 	id<OOWeakReferenceSupport> superShaderBindingTarget();
 
 	virtual void setPosition(HPVector posn);
@@ -212,7 +212,7 @@ public:
 	void dumpState();		// General "describe situtation verbosely in log" command.
 	virtual void dumpSelfState();	// Subclasses should override this, not -dumpState, and call throught to super first.
 
-	virtual void subEntityReallyDied(ShipEntity *sub);
+	virtual void subEntityReallyDied(::ShipEntity *sub);
 
 	NSUInteger getLastDrawCounter();
 	void setLastDrawCounter(NSUInteger drawCounter);
@@ -230,6 +230,17 @@ public:
 	GLfloat timeElapsedSinceSpawn();
 	void setAtmosphereFogging(OOColor *fogging);
 	oo::Ref<OOColor> fogUniform();
+
+	// The category ShaderBindings (EntityShaderBindings.mm, bead oo-aeev; amendment oo-9fwb): more
+	// values the shader uniforms bind to by name. The facade's category answers the selectors.
+	GLfloat clock();
+	unsigned pseudoFixedD100();
+	unsigned pseudoFixedD256();
+	unsigned systemGovernment();
+	unsigned systemEconomy();
+	unsigned systemTechLevel();
+	unsigned systemPopulation();
+	unsigned systemProductivity();
 
 	// What "%@" prints between the braces of <Class 0x...>{...} (OODescription.h).
 	virtual std::optional<std::string> descriptionComponents() const;

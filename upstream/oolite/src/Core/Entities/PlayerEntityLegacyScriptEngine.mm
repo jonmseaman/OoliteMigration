@@ -1158,7 +1158,7 @@ static int shipsFound;
 
 - (oo::PList) fuelLevel_number	// called by name (ADR-0043 item 21); returns the fuel level in LY
 {
-	return oo::PList::singleReal((float)(floor(0.1 * fuel)));
+	return oo::PList::singleReal((float)(floor(0.1 * _cxxShip->fuel)));
 }
 
 
@@ -1391,7 +1391,7 @@ static int shipsFound;
 	const std::string equipKey = equipString;
 	if (equipKey == "EQ_FUEL")
 	{
-		fuel = 0;
+		_cxxShip->fuel = 0;
 		return;
 	}
 
@@ -1524,13 +1524,13 @@ static int shipsFound;
 	if (forceRemoval && [self status] != STATUS_DOCKED)
 	{
 		NSInteger i;
-		for (i = cargo.size() - 1; i >= 0; i--)
+		for (i = _cxxShip->cargo.size() - 1; i >= 0; i--)
 		{
-			ShipEntity* canister = cargo[i].get();
+			ShipEntity* canister = _cxxShip->cargo[i].get();
 			if (!canister)  break;
 			// Since we are forcing cargo removal, we don't really care about the unit of measurement. Any
 			// commodity at more than 1000kg or 1000000gr will be inside cargopods, so remove those too.
-			cargo.erase(cargo.begin() + i);
+			_cxxShip->cargo.erase(_cxxShip->cargo.begin() + i);
 		}
 	}
 
@@ -2868,7 +2868,6 @@ static int shipsFound;
 
 		[UNIVERSE setMainLightPosition:_sysInfoLight]; // set light origin
 
-#if NEW_PLANETS
 		OOPlanetEntity *originalPlanet = nil;
 		if (i_key == "local-planet" && [UNIVERSE sun])
 		{
@@ -2881,32 +2880,6 @@ static int shipsFound;
 		OOPlanetEntity *doppelganger = [originalPlanet miniatureVersion];
 		if (doppelganger == nil)  return NO;
 
-#else
-		// (the planet info is a mixed configuration: plist data and the texture object, Amendment 2)
-		OOPlanetEntity* doppelganger = nil;
-		oo::PList planetInfo = [UNIVERSE cxx_generateSystemData:target_system_seed];
-		if (!planetInfo.isDict())  planetInfo = oo::PList(oo::PList::Dict{});
-
-		if (i_key == "local-planet" && [UNIVERSE sun])
-		{
-			OOPlanetEntity *mainPlanet = [UNIVERSE planet];
-			OOTexture *texture = [mainPlanet texture];
-			if (texture != nil)
-			{
-				oo::PList::Dict &info = *planetInfo.getIf<oo::PList::Dict>();
-				info["_oo_textureObject"] = oo::PListObject(texture);
-				info["_oo_isExplicitlyTextured"] = oo::PList((bool)[mainPlanet isExplicitlyTextured]);
-				info["mainForLocalSystem"] = oo::PList(true);
-				//[planetInfo oo_setQuaternion:[mainPlanet orientation] forKey:@"orientation"]; // the orientation is overwritten later on, without regard for the real planet's orientation.
-			}
-		}
-
-		doppelganger = [[OOPlanetEntity alloc] initFromDictionary:planetInfo withAtmosphere:YES andSeed:target_system_seed];
-		[doppelganger miniaturize];
-		[doppelganger autorelease];
-
-		if (doppelganger == nil)  return NO;
-#endif
 
 		cxx_ScanVectorFromString(joined(1, 3), &model_p0);
 
@@ -2916,14 +2889,9 @@ static int shipsFound;
 		model_p0 = vector_add(model_p0, off);
 
 		// TODO: find better quaternion values.
-#if NEW_PLANETS
 		//Quaternion model_q = { 0.83, 0.365148, 0.182574, 0.0 }; // shows new planets' north pole.
 		//Quaternion model_q = { 0.83, -0.365148, 0.182574, 0.0 }; // shows new planets' south pole.
 		Quaternion model_q = { 0.83, 0.12, 0.44, 0.0 };	// new planets - default orientation.
-#else
-		//model_q = make_quaternion( M_SQRT1_2, 0.314, M_SQRT1_2, 0.0 );
-		Quaternion model_q = { 0.833492, 0.333396, 0.440611, 0.0 };
-#endif
 		OO_LOG(kOOLogDebugProcessSceneStringAddMiniPlanet, "::::: adding {} to scene:'{}'", i_key, oo::DescriptionOf(doppelganger));
 		[doppelganger setOrientation: model_q];
 		// HPVect: mission screen coordinates are small enough that we don't need high-precision for calculations

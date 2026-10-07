@@ -82,7 +82,9 @@ oo::ObjCRef<::OOTextureLoader *> OOTextureLoader::loaderWithPath(const std::opti
 	extension = oo::str::lowercase(oo::str::pathExtension(*inPath));
 	if (extension == "png")
 	{
-		result = oo::adoptObjC<::OOTextureLoader *>([[::OOPNGTextureLoader alloc] cxx_initWithPath:inPath options:options]);
+		// A C++ loader (bead oo-z889); the work manager holds its facade, which owns it.
+		const oo::Ref<::OOPNGTextureLoader> loader = oo::makeRef<::OOPNGTextureLoader>();
+		if (loader->initWithPath(inPath, options))  result = oo::ObjCRef<::OOTextureLoader *>(oo::ToObjC(loader.get()));
 	}
 	else
 	{
@@ -106,7 +108,7 @@ oo::ObjCRef<::OOTextureLoader *> OOTextureLoader::loaderWithTextureSpecifier(con
 
 	if (!cxx_OOInterpretTextureSpecifier(specifier, &name, &options, NULL, NULL, NO))  return nullptr;
 	options |= extraOptions;
-	path = [ResourceManager cxx_pathForFileNamed:name inFolder:folder];
+	path = [::ResourceManager cxx_pathForFileNamed:name inFolder:folder];
 	if (!path.has_value())
 	{
 		if (!(options & kOOTextureNoFNFMessage))

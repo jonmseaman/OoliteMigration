@@ -654,8 +654,15 @@ def sweep_slices(titles=None, base=None, report=None):
                     f"`python3 tools/check-slice-plan.py --slice-done {sid} {prel}` sees the slice is done. "
                     "If the conversion touches observable ship, AI or weapon behaviour, add a component scenario under "
                     "upstream/oolite/tests/component/features/ using existing steps (ADR-0018); a missing step is a new interface, so report it rather than writing one.")
-            files = f"- {source} ({a['total']} lines; read the preamble and this slice's units only)" + (f"\n- {header} ({a['header_lines']} lines)" if header else "") + f"\n- {prel} (the slice plan)"
-            budget = (f"Reads ~{r['read']} lines: header {a['header_lines']} + preamble {a['preamble']} + this slice's units {r['own']} "
+            if r.get("frontier"):   # one-unit-slices: frontier (bead oo-9ht.157): one method over the own budget
+                what += (f" This slice is one method of {r['own']} lines, over the 800-line own budget that no plan can cut: "
+                         "it is a frontier story (the bead is labelled frontier), not a fleet one.")
+            # header-decls: per-slice (bead oo-9ht.140): the slice reads the header less the other slices' declarations
+            hdr_note = "; read its macros, types and ivars and this slice's units' declarations only" if plan.get("header_decls") else ""
+            if plan.get("header_names"):   # header-names: by-use (bead oo-9ht.154): only the declarations the slice's units use
+                hdr_note = "; read only the declarations (ivars, macros, enums, constants) this slice's units use" + (" and their method declarations" if plan.get("header_decls") else "")
+            files = f"- {source} ({a['total']} lines; read the preamble and this slice's units only)" + (f"\n- {header} ({a['header_lines']} lines{hdr_note})" if header else "") + f"\n- {prel} (the slice plan)"
+            budget = (f"Reads ~{r['read']} lines: header {r.get('header', a['header_lines'])} + preamble {a['preamble']} + this slice's units {r['own']} "
                       "(tools/check-slice-plan.py; under 1,500).")
             units = "\n".join(f"- `{m}`" for m in r["members"])
             desc = f"{what}\n\n## Files\n{files}\n\n## Read budget\n{budget}\n\n## Units ({r['units']})\n{units}"

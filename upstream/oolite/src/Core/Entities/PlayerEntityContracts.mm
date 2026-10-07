@@ -124,9 +124,9 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 
 	// step through the cargo removing crew from any escape pods
 	// No enumerator because we're mutating the array -- Ahruman
-	for (i = 0; i < cargo.size(); i++)
+	for (i = 0; i < _cxxShip->cargo.size(); i++)
 	{
-		ShipEntity	*cargoItem = cargo[i].get();
+		ShipEntity	*cargoItem = _cxxShip->cargo[i].get();
 
 		const std::optional<std::vector<oo::ObjCRef<OOCharacter *>>> podCrew = [cargoItem cxx_crew];
 		if (podCrew.has_value())
@@ -134,7 +134,7 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 			// Has crew -> is escape pod.
 			rescuees.insert(rescuees.end(), podCrew->begin(), podCrew->end());
 			[cargoItem cxx_setCrew:std::nullopt];
-			cargo.erase(cargo.begin() + i);
+			_cxxShip->cargo.erase(_cxxShip->cargo.begin() + i);
 			i--;
 		}
 	}
@@ -1935,7 +1935,7 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 		if (eq_key == "EQ_PASSENGER_BERTH")
 		{
 			max_passengers++;
-			max_cargo -= PASSENGER_BERTH_SPACE;
+			_cxxShip->max_cargo -= PASSENGER_BERTH_SPACE;
 		}
 		else
 		{
@@ -2001,7 +2001,7 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 		if (eq_key == "EQ_PASSENGER_BERTH")
 		{
 			max_passengers++;
-			max_cargo -= PASSENGER_BERTH_SPACE;
+			_cxxShip->max_cargo -= PASSENGER_BERTH_SPACE;
 		}
 		else
 		{
@@ -2044,36 +2044,36 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 
 	// not retained - weapon types are references to the objects in OOEquipmentType's cache
 	if (available_facings & WEAPON_FACING_AFT)
-		aft_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(OptionalStringForKey(shipDict, "aft_weapon_type").value_or(""));
+		_cxxShip->aft_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(OptionalStringForKey(shipDict, "aft_weapon_type").value_or(""));
 	else
-		aft_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("EQ_WEAPON_NONE");
+		_cxxShip->aft_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("EQ_WEAPON_NONE");
 
 	if (available_facings & WEAPON_FACING_PORT)
-		port_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(OptionalStringForKey(shipDict, "port_weapon_type").value_or(""));
+		_cxxShip->port_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(OptionalStringForKey(shipDict, "port_weapon_type").value_or(""));
 	else
-		port_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("EQ_WEAPON_NONE");
+		_cxxShip->port_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("EQ_WEAPON_NONE");
 
 	if (available_facings & WEAPON_FACING_STARBOARD)
-		starboard_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(OptionalStringForKey(shipDict, "starboard_weapon_type").value_or(""));
+		_cxxShip->starboard_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(OptionalStringForKey(shipDict, "starboard_weapon_type").value_or(""));
 	else
-		starboard_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("EQ_WEAPON_NONE");
+		_cxxShip->starboard_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("EQ_WEAPON_NONE");
 
 	if (available_facings & WEAPON_FACING_FORWARD)
-		forward_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(OptionalStringForKey(shipDict, "forward_weapon_type").value_or(""));
+		_cxxShip->forward_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(OptionalStringForKey(shipDict, "forward_weapon_type").value_or(""));
 	else
-		forward_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("EQ_WEAPON_NONE");
+		_cxxShip->forward_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("EQ_WEAPON_NONE");
 	
 	// new ships start with weapons online
 	weapons_online = 1;
 
 	// get basic max_cargo
-	max_cargo = [UNIVERSE cxx_maxCargoForShip:[self cxx_shipDataKey].value_or(std::string())];
+	_cxxShip->max_cargo = [UNIVERSE cxx_maxCargoForShip:[self cxx_shipDataKey].value_or(std::string())];
 
 	// ensure all missiles are tidied up and start at pylon 0
 	[self tidyMissilePylons];
 
 	// get missiles from ship_info
-	missiles = shipDict.get<unsigned int>("missiles");
+	_cxxShip->missiles = shipDict.get<unsigned int>("missiles");
 	
 	// reset max_passengers
 	max_passengers = 0;

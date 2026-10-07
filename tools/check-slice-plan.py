@@ -8,6 +8,23 @@ The plan is the markdown file's single fenced block tagged `slice-plan`:
 
     source: upstream/oolite/src/Core/Foo.mm      # the file being split (required)
     header: upstream/oolite/src/Core/Foo.h       # its header; every slice reads it (optional)
+    header-decls: per-slice                      # optional (bead oo-9ht.140): a slice reads the
+                                                 # header's method declarations of its own units
+                                                 # only, and all the rest of the header (macros,
+                                                 # ivars, types); for a header too big to charge
+                                                 # whole to every slice (ShipEntity.h)
+    header-names: by-use                         # optional (bead oo-9ht.154): a slice reads the
+                                                 # header's other declarations (ivars, macros,
+                                                 # enums, types, constants, functions) only where
+                                                 # its own units use the names they declare; for a
+                                                 # header whose ivars and constants leave a big
+                                                 # method no room (PlayerEntity.h)
+    one-unit-slices: frontier                    # optional (bead oo-9ht.157): a slice that owns
+                                                 # exactly one unit may own more than --max-own
+                                                 # (it must still read under --max-read): one
+                                                 # method the plan cannot cut is a frontier story,
+                                                 # not a fleet one (PlayerEntityControls.mm's
+                                                 # 1,105-line pollGuiArrowKeyControls:)
     retired-by: oo-xxxx                          # optional: the file is deleted by that bead; an
                                                  # absent source then passes, a present one is checked
     slice 1: class shell and lifecycle           # a slice: "slice <n>: <title>", then its entries
@@ -39,9 +56,19 @@ Checks (exit 1 on any failure):
     wins: exact name, then a name with '*', then @block, then a lone '*' catch-all), so a slice
     can take a whole category by @block and another slice can still claim single methods of it;
   * each slice's read estimate, header + preamble + its own units, is under --max-read (1,500);
+    with `header-decls: per-slice` the header part is the header less every method declaration
+    of an @interface block, plus the declarations (and the comment lines directly above them) of
+    the slice's own methods, matched by -[Class selector]; with `header-names: by-use` it is also
+    less every other declaration (an ivar, #define, enum, typedef, constant or function, with the
+    comment lines directly above it), plus those that declare a name the slice's units use, and
+    the ones those use in turn;
   * each slice's own units total at most --max-own lines (default 800): converting a method
     rewrites roughly half its lines, so this keeps a story near the ~400-lines-written budget;
-  * no verbatim unit contains Objective-C (message send, @"...", @selector, @try, ...);
+    with `one-unit-slices: frontier` a slice of a single unit is exempt (no plan can cut one
+    method) and is reported as "frontier", which is the label its story bead takes;
+  * no verbatim unit contains Objective-C (message send, @"...", @selector, @try, ...), except an
+    out-of-line C++ member definition (X::m, its head qualified): that is a member a landed slice
+    already converted, which ADR-0056 lets keep sends to Objective-C objects and @try (oo-9ht.117);
   * every mac-only unit lies wholly inside an OOLITE_MAC_OS_X preprocessor arm.
 An exact entry that matches no unit is a warning (the method was removed or renamed upstream).
 
@@ -105,7 +132,7 @@ def selector_of(decl):
     m = re.search(r"\w+", s)
     return m.group(0) if m else "?"
 
-FUNC_NAME = re.compile(r"(~?[A-Za-z_][\w:]*|operator\s*\S+)\s*\([^;]*\)\s*(const\s*|noexcept\s*|override\s*|->\s*[\w:<>*& ]+)*$", re.S)
+FUNC_NAME = re.compile(r"((?:[A-Za-z_]\w*\s*::\s*)*(?:~?[A-Za-z_]\w*|operator\s*\S+))\s*\([^;]*\)\s*(const\s*|noexcept\s*|override\s*|->\s*[\w:<>*& ]+)*$", re.S)
 NOT_FUNC = re.compile(r"^\s*(struct|class|union|enum|typedef|namespace|extern\s*\"C\"|template\s*<[^>]*>\s*(struct|class))\b|=\s*$|=[^=]*$")
 
 def parse_units(path):
@@ -157,15 +184,18 @@ def parse_units(path):
                     head = "".join(buf).strip()
                     if impl and head[:1] in "-+":
                         cur = {"name": f"{head[0]}[{impl.split('(')[0]} {selector_of(head)}]",
-                               "block": "@" + impl, "kind": "method", "start": buf_line}
+                               "block": "@" + impl, "kind": "method", "member": False, "cls": None, "start": buf_line}
                         stack.append("body")
                     elif re.match(r"^(namespace\b[^{]*|extern\s*\"C\"\s*)$", head):
                         stack.append("ns")
                     elif head and not NOT_FUNC.search(head) and FUNC_NAME.search(head):
                         name = FUNC_NAME.search(head).group(1)
+                        name = re.sub(r"\s*::\s*", "::", name)
+                        member = "::" in name   # an out-of-line C++ member definition: X::m(...) { (oo-9ht.117)
+                        cls = name.split("::")[-2] if member else None   # cxx::X::m -> X (oo-7j62d)
                         mac = re.fullmatch(r"([A-Z][A-Z0-9_]+)\s*\(([^()]*)\)", head)
                         name = f"{mac.group(1)}({mac.group(2).strip()})" if mac else name.split("::")[-1] + "()"
-                        cur = {"name": name, "block": "@" + impl if impl else "", "kind": "function", "start": buf_line}
+                        cur = {"name": name, "block": "@" + impl if impl else "", "kind": "function", "member": member, "cls": cls, "start": buf_line}
                         stack.append("body")
                     else:
                         stack.append("other")
@@ -200,18 +230,149 @@ def parse_units(path):
     preamble = sum(1 for t in taken if not t)
     return units, preamble, len(raw_lines), code_lines, raw_lines
 
+def header_decls(path, taken=None):
+    """The method declarations of a header's @interface blocks: (total lines, {'-[Class sel]': lines}).
+
+    A declaration runs from its '-'/'+' line to its ';' and owns the comment-only lines directly
+    above it (its doc comment). Ivar blocks, macros and everything outside @interface are not
+    declarations. Used by `header-decls: per-slice` (bead oo-9ht.140)."""
+    raw = open(path, encoding="utf-8", errors="replace").read()
+    code_lines = blank_comments_and_strings(raw).split("\n"); raw_lines = raw.split("\n")
+    if raw_lines and raw_lines[-1] == "": raw_lines.pop(); code_lines = code_lines[:len(raw_lines)]
+    decls = {}; cls = None; depth = 0; pp = False; cur = None
+    for ln, line in enumerate(code_lines):
+        s = line.strip()
+        if pp or (cur is None and s.startswith("#")):   # directives and macro bodies
+            pp = line.rstrip().endswith("\\"); continue
+        if cls is None:
+            m = re.match(r"@interface\s+(\w+)", s)
+            if m and not s.endswith(";"): cls = m.group(1); depth = s.count("{") - s.count("}")
+            continue
+        if depth > 0 or (cur is None and s.startswith("{")):   # the ivar block
+            depth += line.count("{") - line.count("}"); continue
+        if cur is None:
+            if s.startswith("@end"): cls = None; continue
+            if s[:1] not in ("-", "+"): continue
+            cur = {"start": ln, "text": ""}
+        cur["text"] += line + " "
+        if ";" in line:
+            head = cur["text"].split(";", 1)[0]
+            name = f"{head.strip()[0]}[{cls} {selector_of(head)}]"
+            k = cur["start"]
+            while k > 0 and code_lines[k-1].strip() == "" and raw_lines[k-1].strip() != "":
+                k -= 1   # the doc comment directly above
+            decls[name] = decls.get(name, 0) + ln - k + 1
+            if taken is not None: taken.update(range(k, ln + 1))
+            cur = None
+    return len(raw_lines), decls
+
+def header_names(path):
+    """The header's other declarations, charged by use: [(lines, {names declared}, {identifiers used})].
+
+    Everything but the @interface method declarations (`header-decls`) is cut into declarations:
+    each ivar statement of an ivar block (`int a, b;` declares a and b), each #define (with its
+    continuation lines), and each top-level C statement: an enum or struct with its enumerators,
+    tag and typedef name, a typedef, a constant or variable, a function declaration or inline
+    definition. Each owns the comment-only lines directly above it. What declares nothing (#import,
+    #if arms, @interface / @end lines, access keywords, blank lines, a namespace's braces) stays
+    charged to every slice. Used by `header-names: by-use` (bead oo-9ht.154)."""
+    raw = open(path, encoding="utf-8", errors="replace").read()
+    code_lines = blank_comments_and_strings(raw).split("\n"); raw_lines = raw.split("\n")
+    if raw_lines and raw_lines[-1] == "": raw_lines.pop(); code_lines = code_lines[:len(raw_lines)]
+    taken = set(); header_decls(path, taken)
+    IDENT = re.compile(r"[A-Za-z_]\w*")
+    out = []
+    def emit(start, end, names):
+        k = start
+        while k > 0 and (k - 1) not in taken and code_lines[k-1].strip() == "" and raw_lines[k-1].strip() != "":
+            k -= 1   # the comment directly above
+        text = " ".join(l for l in code_lines[start:end+1] if not l.strip().startswith("#"))
+        if code_lines[start].strip().startswith("#"):   # a #define: what its body uses
+            text = re.sub(r"^\s*#\s*define\s+\w+", " ", " ".join(code_lines[start:end+1]))
+        out.append((end - k + 1, set(names), set(IDENT.findall(text)) - set(names)))
+    def names_of(text):
+        """The names one C statement (no trailing ';') declares."""
+        t = text.strip()
+        m = re.match(r"(typedef\s+)?(enum|struct|union|class)\b\s*(\w*)[^{]*\{(.*)\}\s*([^{}]*)$", t, re.S)
+        if m:
+            names = {m.group(3)} if m.group(3) else set()
+            if m.group(2) == "enum":
+                body = re.sub(r"\([^()]*\)", " ", m.group(4))
+                for item in body.split(","):
+                    ids = IDENT.findall(item.split("=")[0])
+                    if ids: names.add(ids[0])
+            names |= set(IDENT.findall(re.sub(r"\[[^\]]*\]", " ", m.group(5))))
+            return names
+        t = t.split("{", 1)[0]           # an inline function's head
+        t = re.sub(r"\[[^\]]*\]", " ", t)
+        while re.search(r"<[^<>]*>", t): t = re.sub(r"<[^<>]*>", " ", t)
+        if "(" in t.split("=")[0]:              # a function: the name before its parameter list
+            ids = IDENT.findall(t.split("(")[0])
+            return {ids[-1]} if ids else set()
+        names = set()
+        for part in t.split("=")[0].split(","):
+            part = re.sub(r":\s*\w+\s*$", "", part)   # a bit-field width
+            ids = IDENT.findall(part)
+            if ids: names.add(ids[-1])
+        return names
+    iface = False; ivar_depth = 0; cur = None; depth = 0; pp = None; fwd = False
+    for ln, line in enumerate(code_lines):
+        if ln in taken: continue
+        s = line.strip()
+        if pp is not None:                     # a #define's continuation lines
+            if not line.rstrip().endswith("\\"): emit(pp[0], ln, pp[1]); pp = None
+            continue
+        if s.startswith("#"):
+            m = re.match(r"#\s*define\s+(\w+)", s)
+            if m and cur is None:
+                if line.rstrip().endswith("\\"): pp = (ln, {m.group(1)})
+                else: emit(ln, ln, {m.group(1)})
+            continue
+        if ivar_depth > 0:                    # inside an ivar block
+            ivar_depth += line.count("{") - line.count("}")
+            if ivar_depth <= 0: ivar_depth = 0; cur = None; continue
+            if cur is None:
+                if not s or re.fullmatch(r"@(private|public|protected|package)", s): continue
+                cur = ln
+            if ";" in line and ivar_depth == 1:
+                emit(cur, ln, names_of(" ".join(l for l in code_lines[cur:ln+1] if not l.strip().startswith("#")).split(";", 1)[0])); cur = None
+            continue
+        if iface:
+            if s.startswith("@end"): iface = False
+            elif s.startswith("{"): ivar_depth = line.count("{") - line.count("}")
+            continue
+        if cur is None:
+            if not s: continue
+            if re.match(r"@(interface|protocol)\b", s) and not s.endswith(";"):
+                iface = True
+                if "{" in line: ivar_depth = line.count("{") - line.count("}")
+                continue
+            if s.startswith("@class") and not s.endswith(";"):
+                fwd = True; continue          # a forward declaration over several lines
+            if fwd:
+                fwd = not s.endswith(";"); continue
+            if s.startswith("@") or s == "}" or re.match(r"(namespace\b[^{;]*|extern\s*\"[^\"]*\"\s*)\{\s*$", s):
+                continue                      # @class/@end lines, a namespace's or extern "C"'s braces
+            cur = ln; depth = 0
+        depth += line.count("{") - line.count("}")
+        text = " ".join(l for l in code_lines[cur:ln+1] if not l.strip().startswith("#"))   # #if arms inside an enum
+        head = text.split("{", 1)[0]
+        if depth <= 0 and (";" in line.split("//")[0] or ("{" in text and "(" in head and not re.match(r"\s*(typedef|enum|struct|union|class)\b", head))):
+            emit(cur, ln, names_of(text.rsplit(";", 1)[0] if text.rstrip().endswith(";") else text)); cur = None
+    return out
+
 # ---------------------------------------------------------------- plan
 def read_plan(path):
     text = open(path, encoding="utf-8").read()
     m = re.search(r"^```slice-plan[ \t]*\n(.*?)^```", text, re.S | re.M)
     if not m: raise SystemExit(f"{path}: no ```slice-plan fenced block")
-    plan = {"source": None, "header": None, "retired_by": None, "groups": []}
+    plan = {"source": None, "header": None, "retired_by": None, "header_decls": None, "header_names": None, "one_unit_slices": None, "groups": []}
     group = None
     for raw in m.group(1).splitlines():
         line = raw.split("#", 1)[0].rstrip() if not raw.lstrip().startswith("#") else ""
         if not line.strip(): continue
         s = line.strip()
-        kv = re.match(r"(source|header|retired-by):\s*(\S+)$", s)
+        kv = re.match(r"(source|header|retired-by|header-decls|header-names|one-unit-slices):\s*(\S+)$", s)
         if kv and not raw[:1].isspace():
             plan[kv.group(1).replace("-", "_")] = kv.group(2); continue
         g = re.match(r"slice\s+(\w+)\s*:\s*(.*)$", s)
@@ -226,6 +387,11 @@ def read_plan(path):
         if group is None: raise SystemExit(f"{path}: entry before any slice: {s!r}")
         group["entries"].append(s)
     if not plan["source"]: raise SystemExit(f"{path}: plan has no 'source:'")
+    if plan["header_decls"] not in (None, "per-slice"): raise SystemExit(f"{path}: header-decls must be 'per-slice'")
+    if plan["header_decls"] and not plan["header"]: raise SystemExit(f"{path}: header-decls needs a 'header:'")
+    if plan["header_names"] not in (None, "by-use"): raise SystemExit(f"{path}: header-names must be 'by-use'")
+    if plan["header_names"] and not plan["header"]: raise SystemExit(f"{path}: header-names needs a 'header:'")
+    if plan["one_unit_slices"] not in (None, "frontier"): raise SystemExit(f"{path}: one-unit-slices must be 'frontier'")
     ids = [g["id"] for g in plan["groups"]]
     if len(ids) != len(set(ids)): raise SystemExit(f"{path}: duplicate slice id")
     return plan
@@ -264,6 +430,11 @@ def analyse(plan_path, max_read=1500, max_own=800, base=ROOT):
         hp = os.path.join(base, plan["header"])
         if os.path.exists(hp): hdr = sum(1 for _ in open(hp, encoding="utf-8", errors="replace"))
         else: errors.append(f"header {plan['header']} missing")
+    decls = {}
+    if plan["header_decls"] and hdr:
+        hdr, decls = header_decls(hp)
+    hnames = header_names(hp) if plan["header_names"] and hdr else []
+    hdr_shared = hdr - sum(decls.values()) - sum(n for n, _, _ in hnames)
     names = [u["name"] for u in units]
     for n in sorted(set(x for x in names if names.count(x) > 1)):
         warnings.append(f"unit name {n} occurs {names.count(n)} times (preprocessor alternatives?); each copy is assigned the same way, except that a mac-only entry claims a copy in an OOLITE_MAC_OS_X arm")
@@ -283,6 +454,11 @@ def analyse(plan_path, max_read=1500, max_own=800, base=ROOT):
                     elif t == best: owners.add(g["id"])
         if not owners and any(g["mac_only"] and any(entry_matches(e, u) for e in g["entries"]) for g in plan["groups"]):
             assign[i] = "mac-only"   # claimed by mac-only only, but compiled: reported below
+        elif not owners and u["member"]:
+            # A converted member (cxx::X::m) no entry names: a landed slice turned -[X m] into it, so the
+            # plan's -[X m] / @X entries no longer match. It is verbatim (the oo-9ht.117 rule) whether
+            # the plan's verbatim group is '*' or a list of names, or absent (oo-7j62d).
+            assign[i] = "verbatim"
         elif not owners: unassigned.append(i); errors.append(f"unassigned: {u['name']} (line {u['start']+1}-{u['end']+1}, {u['end']-u['start']+1} lines)")
         elif len(owners) > 1:
             errors.append(f"assigned to {len(owners)} slices ({', '.join(sorted(owners))}): {u['name']}"); shared[i] = owners
@@ -291,6 +467,14 @@ def analyse(plan_path, max_read=1500, max_own=800, base=ROOT):
         for e in g["entries"]:
             if not any(entry_matches(e, u) for u in units):
                 warnings.append(f"slice {g['id']}: entry matches nothing: {e}")
+    converted = set(u["cls"] for u in units if u["member"])
+    def landed(g):
+        """A slice that matches nothing because it LANDED (oo-7j62d): every entry names a method or
+        an @block of a class X that now has converted out-of-line members (cxx::X::m) in the file."""
+        for e in g["entries"]:
+            m = re.match(r"[-+]\[(\w+)\s", e) or re.match(r"@(\w+)", e)
+            if not m or m.group(1) not in converted: return False
+        return bool(g["entries"])
     report = []
     for g in plan["groups"]:
         mine = [units[i] for i, gid in assign.items() if gid == g["id"]]
@@ -299,6 +483,11 @@ def analyse(plan_path, max_read=1500, max_own=800, base=ROOT):
             for u in mine:
                 if u["kind"] == "method":
                     errors.append(f"verbatim unit {u['name']} is a method: it must become a member function in some slice"); continue
+                if u["member"]:
+                    # A converted member (cxx::X::m) that a landed slice moved out of its @implementation:
+                    # ADR-0056 keeps sends to unconverted Objective-C objects and @try/@catch (amendment
+                    # oo-puw9 item 4) in it, so it is not plain C and is not held to that (oo-9ht.117).
+                    continue
                 hits = objc_sites(code_lines[u["start"]:u["end"]+1])
                 if hits: errors.append(f"verbatim unit {u['name']} contains Objective-C at line {u['start']+hits[0]+1}: {raw_lines[u['start']+hits[0]].strip()[:90]}")
             report.append({"id": g["id"], "title": g["title"], "verbatim": True, "mac_only": False, "units": len(mine), "own": own, "read": 0,
@@ -310,12 +499,26 @@ def analyse(plan_path, max_read=1500, max_own=800, base=ROOT):
             report.append({"id": g["id"], "title": g["title"], "verbatim": False, "mac_only": True, "units": len(mine), "own": own, "read": 0,
                            "members": [u["name"] for u in mine]})
             continue
-        read = hdr + preamble + own
-        if not mine: empty.append(g["id"]); errors.append(f"slice {g['id']} is empty")
-        if read >= max_read: errors.append(f"slice {g['id']} reads ~{read} lines (header {hdr} + preamble {preamble} + own {own}); must be under {max_read}")
-        if own > max_own: errors.append(f"slice {g['id']} owns {own} lines of units; at most {max_own}")
+        h = hdr_shared + sum(decls.get(n, 0) for n in sorted(set(u["name"] for u in mine))) if (decls or hnames) else hdr
+        if hnames:   # header-names: by-use (bead oo-9ht.154): the declarations the slice's units use, and theirs
+            toks = set(re.findall(r"[A-Za-z_]\w*", " ".join(code_lines[k] for u in mine for k in range(u["start"], u["end"] + 1))))
+            used = set(); grew = True
+            while grew:
+                grew = False
+                for i, (_, declared, uses) in enumerate(hnames):
+                    if i not in used and declared & toks: used.add(i); toks |= uses; grew = True
+            h += sum(hnames[i][0] for i in used)
+        read = h + preamble + own
+        if not mine:
+            empty.append(g["id"])
+            if landed(g): warnings.append(f"slice {g['id']} is empty: landed (its class has converted members)")
+            else: errors.append(f"slice {g['id']} is empty")
+        if read >= max_read: errors.append(f"slice {g['id']} reads ~{read} lines (header {h} + preamble {preamble} + own {own}); must be under {max_read}")
+        # one-unit-slices: frontier (bead oo-9ht.157): one method over --max-own is a frontier story
+        frontier = bool(plan["one_unit_slices"]) and len(mine) == 1 and own > max_own
+        if own > max_own and not frontier: errors.append(f"slice {g['id']} owns {own} lines of units; at most {max_own}" + ("" if len(mine) != 1 else " (one unit: see one-unit-slices: frontier)"))
         report.append({"id": g["id"], "title": g["title"], "verbatim": False, "mac_only": False, "units": len(mine), "own": own, "read": read,
-                       "members": [u["name"] for u in mine]})
+                       "header": h, "frontier": frontier, "members": [u["name"] for u in mine]})
     return {"plan": plan, "retired": False, "missing": False, "units": units, "assign": assign, "shared": shared,
             "unassigned": unassigned, "empty": empty,
             "total": total, "preamble": preamble, "header_lines": hdr, "slices": report, "errors": errors,
@@ -371,7 +574,7 @@ def check(plan_path, max_read, max_own, as_json=False, show_units=False, base=RO
         print(f"{plan['source']}: {total} lines, {len(units)} units, preamble {preamble}, header {hdr}")
         for r in report:
             tag = "verbatim" if r["verbatim"] else "mac-only" if r["mac_only"] else f"slice {r['id']}"
-            print(f"  {tag:>9}: {r['units']:3d} units, own {r['own']:4d}, reads ~{r['read']:4d}  {r['title']}")
+            print(f"  {tag:>9}: {r['units']:3d} units, own {r['own']:4d}, reads ~{r['read']:4d}  {r['title']}" + ("  [frontier: one unit over --max-own]" if r.get("frontier") else ""))
         if show_units:
             for u in units:
                 print(f"    {u['start']+1:5d}-{u['end']+1:5d} {u['end']-u['start']+1:4d}  {assign.get(units.index(u), '-'):>8}  {u['name']}")
@@ -486,6 +689,87 @@ def selftest():
     if a["errors"] or sorted(a["assign"].values()) != ["1", "mac-only", "mac-only"]: fails.append(f"mac arm of a sliced method: {a['errors']} {a['assign']}")
     macplan("slice 1: all\n  -[Foo a]\n  nf()\nmac-only: Mac\n  -[Foo m]\n  -[Foo e]\n  mf()\n", 1)   # the #else arm is compiled
     macplan("slice 1: all\n  -[Foo e]\n  -[Foo m]\n  mf()\nmac-only: Mac\n  -[Foo a]\n  nf()\n", 1)    # outside any arm / #if !MAC
+    # a landed class-shell slice (oo-9ht.117): its converted out-of-line members fall to the verbatim
+    # catch-all and may still message Objective-C objects; a plain function that does still fails
+    landed = SELFTEST_SRC.replace(private, 'void Foo::hidden()\n{\n\t[_delegate log:@"}"];\n\t@try { x(); } @catch (id e) { }\n}\n')
+    if landed == SELFTEST_SRC: fails.append("selftest landed-slice fixture edit did not apply")
+    open(os.path.join(d, "Foo.mm"), "w").write(landed)
+    rest = "slice 1: shell\n  -[Foo init]\n  -[Foo set*]\n  helper()\nverbatim: C\n  *\n"
+    run(rest, 0)                                                              # converted member in verbatim
+    open(os.path.join(d, "Foo.mm"), "w").write(landed.replace("int plainC(int y) { return y * 2; }", "int plainC(int y) { return [Foo twice:y]; }"))
+    run(rest, 1)                                                              # a plain function still may not
+    # a plan whose verbatim group lists names (oo-7j62d): a converted member no entry names is verbatim
+    # too, as is one in a plan with no verbatim group; a converted destructor is a member; a slice that
+    # is empty because its class's methods became members has landed, an empty slice of another class
+    # has not; a plain function no entry names is still unassigned
+    open(os.path.join(d, "Foo.mm"), "w").write(landed + "Foo::~Foo()\n{\n\t[_delegate release];\n}\n")
+    if not any(u["name"] == "~Foo()" and u["member"] and u["cls"] == "Foo" for u in parse_units(os.path.join(d, "Foo.mm"))[0]):
+        fails.append("a converted destructor Foo::~Foo() is not a member of Foo")
+    named = "slice 1: shell\n  -[Foo init]\n  -[Foo set*]\n  helper()\nslice 2: private\n  @Foo(Private)\nverbatim: C\n  plainC()\n"
+    run(named, 0)                                                             # members, named verbatim list
+    run(named.replace("verbatim: C\n  plainC()\n", "slice 3: c\n  plainC()\n"), 0)   # members, no verbatim group
+    run(named.replace("  @Foo(Private)\n", "  -[Bar gone]\n"), 1)            # an empty slice of a class with no members
+    run(named.replace("  plainC()\n", ""), 1)                                # a plain function is still unassigned
+    a = analyse(os.path.join(d, "plan.md"), base=d)
+    if a["unassigned"] != [i for i, u in enumerate(a["units"]) if u["name"] == "plainC()"]: fails.append(f"unassigned: {a['unassigned']}")
+    # header-decls: per-slice (bead oo-9ht.140): a slice is charged the header less its method
+    # declarations, plus its own units' declarations (with their doc comments)
+    open(os.path.join(d, "Foo.mm"), "w").write(SELFTEST_SRC)
+    open(os.path.join(d, "Foo.h"), "w").write("#define X 1\n@interface Foo : Bar\n{\n\tint _x;\n\t- not a decl;\n}\n"
+                                              "- (id) init;\n/* doc */\n- (void) setA:(int)a\n\tb:(oo::PList *)b;\n\n- (void) gone;\n"
+                                              "#define M(x) do { \\n- (void) notOne; \\n} while (0)\n@end\n@interface Foo (Private)\n- (void) hidden;\n@end\n")
+    hl, hd = header_decls(os.path.join(d, "Foo.h"))
+    if hl != 17 or hd != {"-[Foo init]": 1, "-[Foo setA:b:]": 3, "-[Foo gone]": 1, "-[Foo hidden]": 1}: fails.append(f"header decls: {hl} {hd}")
+    p = os.path.join(d, "hd.md"); open(p, "w").write("```slice-plan\nsource: Foo.mm\nheader: Foo.h\nheader-decls: per-slice\n" + good + "```\n")
+    hr = {r["id"]: r.get("header") for r in analyse(p, base=d)["slices"] if not r["verbatim"]}
+    if hr != {"1": 11 + 1 + 3, "2": 11 + 1}: fails.append(f"header-decls charges: {hr}")
+    open(p, "w").write("```slice-plan\nsource: Foo.mm\nheader-decls: per-slice\n" + good + "```\n")
+    try:
+        analyse(p, base=d); fails.append("header-decls without a header accepted")
+    except SystemExit: pass
+    # header-names: by-use (bead oo-9ht.154): a slice is charged the declarations its units use
+    open(os.path.join(d, "Iv.h"), "w").write(
+        "#import \"Bar.h\"\n#define X 1\n#define Y(a) \\\n\t((a) + X)\n// doc\ntypedef enum\n{\n\tkA = 1,\n#if B\n\tkB,\n#endif\n} OOMode;\n"
+        "inline constexpr std::string_view KEY = \"k\";\n@interface Foo : Bar\n{\n@private\n\tint _x, _y;\n\t// doc\n"
+        "\tstd::map<int, std::vector<int>> _m;\n#if A\n\tunsigned _f: 1;\n#endif\n\tOOMode _buf[4];\n}\n- (id) init;\n@end\n"
+        "OOINLINE Foo *GetFoo(void)\n{\n\treturn Y(gFoo);\n}\nstd::string cxx_Name(int x);\n")
+    got = {frozenset(n): (k, frozenset(u)) for k, n, u in header_names(os.path.join(d, "Iv.h"))}
+    want = {frozenset({"X"}): (1, frozenset()), frozenset({"Y"}): (2, frozenset({"a", "X"})),
+            frozenset({"kA", "kB", "OOMode"}): (8, frozenset({"typedef", "enum"})),
+            frozenset({"KEY"}): (1, frozenset({"inline", "constexpr", "std", "string_view"})),
+            frozenset({"_x", "_y"}): (1, frozenset({"int"})), frozenset({"_m"}): (2, frozenset({"std", "map", "int", "vector"})),
+            frozenset({"_f"}): (1, frozenset({"unsigned"})), frozenset({"_buf"}): (1, frozenset({"OOMode"})),
+            frozenset({"GetFoo"}): (4, frozenset({"OOINLINE", "Foo", "void", "return", "Y", "gFoo"})),
+            frozenset({"cxx_Name"}): (1, frozenset({"std", "string", "int", "x"}))}
+    if got != want: fails.append(f"header names: {got}")
+    p = os.path.join(d, "iv.md"); open(p, "w").write("```slice-plan\nsource: Foo.mm\nheader: Iv.h\nheader-decls: per-slice\nheader-names: by-use\n" + good + "```\n")
+    hr = {r["id"]: r.get("header") for r in analyse(p, base=d)["slices"] if not r["verbatim"]}
+    shared = 31 - 1 - sum(k for k, _ in want.values())    # 31 lines less init's declaration and the declarations
+    if hr != {"1": shared + 1 + 1, "2": shared}: fails.append(f"header-names charges: {hr} (shared {shared})")   # slice 1: init's decl, and it names _x
+    open(os.path.join(d, "Foo.mm"), "w").write(SELFTEST_SRC.replace("_x = helper(1);", "_buf[0] = GetFoo();"))
+    hr = {r["id"]: r.get("header") for r in analyse(p, base=d)["slices"] if not r["verbatim"]}
+    if hr["1"] != shared + 1 + 1 + 1 + 8 + 4 + 2 + 1: fails.append(f"header-names closure: {hr}")   # _x (setA:b:), _buf -> OOMode; GetFoo -> Y -> X
+    open(os.path.join(d, "Foo.mm"), "w").write(SELFTEST_SRC)
+    open(p, "w").write("```slice-plan\nsource: Foo.mm\nheader-names: by-use\n" + good + "```\n")
+    try:
+        analyse(p, base=d); fails.append("header-names without a header accepted")
+    except SystemExit: pass
+    # one-unit-slices: frontier (bead oo-9ht.157): a one-unit slice over --max-own passes with the
+    # key and is reported frontier; without the key, or for a slice of two units, it still fails
+    def own_check(body, max_own):
+        open(p, "w").write("```slice-plan\nsource: Foo.mm\n" + body + "```\n")
+        with contextlib.redirect_stdout(io.StringIO()): r = check(p, 1500, max_own, base=d)
+        return r, {x["id"]: x.get("frontier") for x in analyse(p, 1500, max_own, base=d)["slices"] if not x["verbatim"]}
+    one = "slice 1: init\n  -[Foo init]\nslice 2: set\n  -[Foo set*]\n  helper()\nslice 3: private\n  @Foo(Private)\nverbatim: C\n  plainC()\n"
+    two = "slice 1: init and set\n  -[Foo init]\n  -[Foo set*]\nslice 2: helper\n  helper()\nslice 3: private\n  @Foo(Private)\nverbatim: C\n  plainC()\n"
+    if own_check(one, 5)[0] != 1: fails.append("a one-unit slice over --max-own passed without one-unit-slices")
+    got = own_check("one-unit-slices: frontier\n" + one, 5)
+    if got != (0, {"1": True, "2": False, "3": False}): fails.append(f"one-unit-slices: frontier: {got}")
+    if own_check("one-unit-slices: frontier\n" + two, 5)[0] != 1: fails.append("one-unit-slices exempted a slice of two units")
+    open(p, "w").write("```slice-plan\nsource: Foo.mm\none-unit-slices: yes\n" + good + "```\n")
+    try:
+        analyse(p, base=d); fails.append("one-unit-slices: yes accepted")
+    except SystemExit: pass
     import shutil; shutil.rmtree(d, ignore_errors=True)
     for f in fails: print("SELFTEST FAIL:", f)
     print("selftest OK" if not fails else "selftest FAILED")

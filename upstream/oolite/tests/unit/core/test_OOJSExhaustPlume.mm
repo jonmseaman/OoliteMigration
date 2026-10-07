@@ -1,11 +1,13 @@
 /*	test_OOJSExhaustPlume.mm
 	Unit tests for the ExhaustPlume JS binding (src/Core/Scripting/OOJSExhaustPlume.h/.mm) and its
-	OOExhaustPlumeEntity category (OOJSExhaustPlume+ObjCBridge.mm): bead oo-utlm, converted the way
-	bead oo-ppc converted OOJSVector (proposed ADR-0056 amendments oo-ppc and oo-ykoy).
+	OOExhaustPlumeEntity category (whose forwarders are on the OOExhaustPlumeEntity facade since
+	bead oo-9ht.48; this test's stand-in OOExhaustPlumeEntity forwards the same way): bead oo-utlm,
+	converted the way bead oo-ppc converted OOJSVector (proposed ADR-0056 amendments oo-ppc and
+	oo-ykoy).
 
 	As test_OOJSWormhole.mm does (amendment oo-ykoy, item 4), it runs the JS class in a real
 	context on the game's own façade backend (ooscript/JSEngine_quickjs.cpp), links the game's own
-	objects for the binding, its bridge and the engine's exception translator
+	objects for the binding and the engine's exception translator
 	(OOJSEngineNativeWrappers.mm), and stands in for the entity classes (Entity, ShipEntity,
 	OOExhaustPlumeEntity answer only the selectors the binding sends), for the Vector3D conversions
 	(a vector is the array [x, y, z] here) and for the engine functions the binding links against,
@@ -67,6 +69,10 @@
 
 
 extern "C" void InitOOJSExhaustPlume(ooscript::Context context, ooscript::Object global);
+// The category's bodies, which the stand-in forwards to as the facade does (declared in OOJSExhaustPlume.h).
+void OOJSExhaustPlumeGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
+std::optional<std::string> OOJSExhaustPlumeJSClassName(void);
+bool OOJSExhaustPlumeIsVisibleToScripts(void);
 
 #include "oo_test.hpp"
 
@@ -102,6 +108,14 @@ extern "C" void InitOOJSExhaustPlume(ooscript::Context context, ooscript::Object
 }
 
 - (void) setScale:(Vector)scale  { _scale = scale; }
+
+
+// The binding's category, as the OOExhaustPlumeEntity facade forwards it
+// (OOExhaustPlumeEntity+ObjCBridge.mm, bead oo-9ht.48): the engine sends these selectors to the
+// wrapped object.
+- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype  { ::OOJSExhaustPlumeGetJSClass(outClass, outPrototype); }
+- (std::optional<std::string>) cxx_oo_jsClassName  { return ::OOJSExhaustPlumeJSClassName(); }
+- (BOOL) isVisibleToScripts  { return ::OOJSExhaustPlumeIsVisibleToScripts(); }
 
 @end
 
