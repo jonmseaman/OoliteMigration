@@ -42,7 +42,8 @@ SOFTWARE.
 #include "oofnd/Ref.hpp"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/StdLib.hpp"
-@class OOJSFunction, OOJSValue;
+@class OOJSValue;
+class OOJSFunction;
 
 
 enum
@@ -74,7 +75,7 @@ private:
 	// calls it right after making the object, and drops the object when it returns false.
 	bool init();
 
-	::OOJSFunction			*_tester = {};	// the facade (ADR-0056 amendment oo-rmd7 item 3)
+	oo::Ref<OOJSFunction>	_tester = {};
 	std::optional<std::string>	_cachedRegExpString = {};	// UTF-8; nullopt: nothing cached (proposed ADR-0043)
 	::OOJSValue				*_cachedRegExpObject = {};
 	NSUInteger				_cachedFlags = {};
