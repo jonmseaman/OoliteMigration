@@ -54,7 +54,7 @@ MA 02110-1301, USA.
 #import "OOEntityFilterPredicate.h"
 #include "oofnd/objc/OOException.h"
 #import "OOCallByName.h"
-#import "MyOpenGLView+Input.h"
+#import "MyOpenGLView.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
