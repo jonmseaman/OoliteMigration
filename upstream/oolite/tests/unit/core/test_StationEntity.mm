@@ -668,4 +668,64 @@ OO_TEST(slice3MembersFromCxx)
 }
 
 
+// --- Slice 4: NPC launchers (bead oo-tqem7) -------------------------------------------------------
+// Written against the Objective-C API and run on the unconverted slice first. The test's station
+// has no docks (its virtual dock is only recorded), so every launcher takes its "no launch docks"
+// path: nothing is made, queued or counted, and the station's universe is never asked for a ship.
+
+namespace {
+
+unsigned DefendersLaunched4(StationEntity *s)	{ return s->_cxxStation->defenders_launched; }
+unsigned ScavengersLaunched4(StationEntity *s)	{ return s->_cxxStation->scavengers_launched; }
+unsigned DockedShuttles4(StationEntity *s)		{ return s->_cxxStation->docked_shuttles; }
+
+}	// namespace
+
+
+OO_TEST(slice4LaunchersWithoutLaunchDock)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestStation *station = MakeStation("launcher", { { "max_police", oo::PList(4) }, { "max_defense_ships", oo::PList(4) } });
+		SetPrimaryTarget3(station, MakeVisitor("quarry"));
+		OO_CHECK(![station hasLaunchDock]);
+		const unsigned defenders = DefendersLaunched4(station);
+		const unsigned scavengers = ScavengersLaunched4(station);
+		const unsigned shuttles = DockedShuttles4(station);
+
+		OO_CHECK([station launchIndependentShip:"trader"].isNull());
+		OO_CHECK(oo::ObjCRefsIn<ShipEntity *>([station launchPolice]).empty());
+		OO_CHECK([station launchDefenseShip] == nil);
+		OO_CHECK([station launchScavenger] == nil);
+		OO_CHECK([station launchMiner] == nil);
+		OO_CHECK([station launchPirateShip] == nil);
+		OO_CHECK([station launchShuttle] == nil);
+		OO_CHECK([station launchEscort] == nil);
+		OO_CHECK([station launchPatrol] == nil);
+		[station launchShipWithRole:"shuttle"];
+
+		OO_CHECK(DefendersLaunched4(station) == defenders && ScavengersLaunched4(station) == scavengers && DockedShuttles4(station) == shuttles);
+		OO_CHECK([station countOfShipsInLaunchQueueWithPrimaryRole:"police"] == 0 && [station currentlyInLaunchingQueues] == 0);
+		OO_CHECK([station status] == STATUS_IN_FLIGHT);
+	}
+}
+
+
+// The launchers stay reachable by selector (ADR-0055 item 5: AI and scripts send them by name).
+OO_TEST(slice4LaunchersAnswerTheirSelectors)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestStation *station = MakeStation("selectors");
+		OO_CHECK([station respondsToSelector:@selector(launchIndependentShip:)] && [station respondsToSelector:@selector(launchShipWithRole:)]);
+		OO_CHECK([station respondsToSelector:@selector(launchPolice)] && [station respondsToSelector:@selector(launchDefenseShip)]);
+		OO_CHECK([station respondsToSelector:@selector(launchScavenger)] && [station respondsToSelector:@selector(launchMiner)]);
+		OO_CHECK([station respondsToSelector:@selector(launchPirateShip)] && [station respondsToSelector:@selector(launchShuttle)]);
+		OO_CHECK([station respondsToSelector:@selector(launchEscort)] && [station respondsToSelector:@selector(launchPatrol)]);
+	}
+}
+
+
 OO_TEST_MAIN()
