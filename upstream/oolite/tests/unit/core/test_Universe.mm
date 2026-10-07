@@ -648,4 +648,59 @@ OO_TEST(slice17Settings)
 }
 
 
+// Slice 18 (bead oo-tail0): filterSortedLists, which marks the entities that cannot meet another
+// on the z axis and chains the rest for the collision test. Written against the Objective-C API
+// and run on the unconverted class first. The x, y and z lists are linked by hand in one order.
+namespace {
+
+void LinkLists(Universe *u, std::initializer_list<Entity *> list)
+{
+	Entity *previous = nil;
+	for (Entity *e : list)
+	{
+		cxx::Entity *part = e->_cxxEntity;
+		part->x_previous = part->y_previous = part->z_previous = previous;
+		part->x_next = part->y_next = part->z_next = nil;
+		if (previous != nil)  previous->_cxxEntity->x_next = previous->_cxxEntity->y_next = previous->_cxxEntity->z_next = e;
+		previous = e;
+	}
+	Entity *first = list.size() > 0 ? *list.begin() : nil;
+	u->_cxxUniverse->x_list_start = u->_cxxUniverse->y_list_start = u->_cxxUniverse->z_list_start = first;
+}
+
+}	// namespace
+
+
+OO_TEST(slice18FilterSortedLists)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+		Entity *a = MakeEntity(make_HPvector(0, 0, 0), 10);
+		Entity *ghost = [[[Slice14GhostEntity alloc] init] autorelease];
+		[ghost setPosition:make_HPvector(0, 0, 5)];
+		[ghost setCollisionRadius:10];
+		Entity *b = MakeEntity(make_HPvector(0, 0, 15), 10);
+		Entity *c = MakeEntity(make_HPvector(0, 0, 1000), 10);
+		a->_cxxEntity->collision_chain = c;	// stale chains are cleared
+		c->_cxxEntity->collision_chain = a;
+		LinkLists(u, { a, ghost, b, c });
+
+		[u filterSortedLists];
+
+		// a and b overlap on z: chained, past the entity that cannot collide; c is alone.
+		OO_CHECK(a->_cxxEntity->collision_chain == b);
+		OO_CHECK(b->_cxxEntity->collision_chain == nil);
+		OO_CHECK(c->_cxxEntity->collision_chain == nil && ghost->_cxxEntity->collision_chain == nil);
+		OO_CHECK(a->_cxxEntity->collisionTestFilter == 0 && b->_cxxEntity->collisionTestFilter == 0);
+		OO_CHECK(c->_cxxEntity->collisionTestFilter == 1);
+		OO_CHECK(ghost->_cxxEntity->collisionTestFilter == 3);
+
+		LinkLists(u, {});
+		[u filterSortedLists];	// no entities: nothing to do
+		OO_CHECK(u->_cxxUniverse->z_list_start == nil);
+	}
+}
+
+
 OO_TEST_MAIN()
