@@ -124,20 +124,8 @@ MA 02110-1301, USA.
 - (OOAlertCondition) realAlertCondition; // full calculation for scripting
 
 // defense target handling
-- (NSUInteger) defenseTargetCount;
-- (std::vector<oo::ObjCRef<ShipEntity *>>) allDefenseTargets;	// the live ones (zeroed references skipped)
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_defenseTargets;	// a snapshot in the weak set's order, up to the first zeroed reference
-- (void) validateDefenseTargets;
-- (BOOL) addDefenseTarget:(Entity *)target;
-- (BOOL) isDefenseTarget:(Entity *)target;
-- (void) removeDefenseTarget:(Entity *)target;
-- (void) removeAllDefenseTargets;
 
 // collision exceptions
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_collisionExceptions;
-- (void) addCollisionException:(ShipEntity *)ship;
-- (void) removeCollisionException:(ShipEntity *)ship;
-- (BOOL) collisionExceptedFor:(ShipEntity *)ship;
 
 
 
@@ -202,79 +190,27 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
  -----------------------------------------*/
 
 
-- (Entity *)thankedShip;
-- (Entity *)rememberedShip;
-- (void) setThankedShip:(Entity *) targetEntity;
-- (void) setRememberedShip:(Entity *) targetEntity;
-- (void) setTargetStation:(Entity *) targetEntity;
-- (BOOL) isValidTarget:(Entity *) target;
-- (void) addTarget:(Entity *) targetEntity;
-- (void) removeTarget:(Entity *) targetEntity;
-- (BOOL) canStillTrackPrimaryTarget;
-- (id) primaryTarget;
-- (id) primaryTargetWithoutValidityCheck;
-- (StationEntity *) targetStation;
 
-- (BOOL) isFriendlyTo:(ShipEntity *)otherShip;
 
-- (ShipEntity *) shipHitByLaser;
 
-- (void) noteLostTarget;
-- (void) noteLostTargetAndGoIdle;
-- (void) noteTargetDestroyed:(ShipEntity *)target;
 
-- (OOBehaviour) behaviour;
-- (void) setBehaviour:(OOBehaviour) cond;
 
-- (void) trackOntoTarget:(double) delta_t withDForward: (GLfloat) dp;
 
-- (double) ballTrackLeadingTarget:(double) delta_t atTarget:(Entity *)target;
 
-- (GLfloat) rollToMatchUp:(Vector) up_vec rotating:(GLfloat) match_roll;
 
-- (GLfloat) rangeToDestination;
-- (double) trackDestination:(double) delta_t :(BOOL) retreat;
 
-- (void) setCoordinate:(HPVector)coord;
-- (HPVector) coordinates;
-- (HPVector) destination;
-- (HPVector) distance_six: (GLfloat) dist;
-- (HPVector) distance_twelve: (GLfloat) dist withOffset:(GLfloat)offset;
 
-- (void) setEvasiveJink:(GLfloat) z;
-- (void) evasiveAction:(double) delta_t;
-- (double) trackPrimaryTarget:(double) delta_t :(BOOL) retreat;
-- (double) trackSideTarget:(double) delta_t :(BOOL) leftside;
-- (double) missileTrackPrimaryTarget:(double) delta_t;
 
 //return 0.0 if there is no primary target
-- (double) rangeToPrimaryTarget;
-- (double) approachAspectToPrimaryTarget;
-- (double) rangeToSecondaryTarget:(Entity *)target;
-- (BOOL) hasProximityAlertIgnoringTarget:(BOOL)ignore_target;
-- (GLfloat) currentAimTolerance;
 /* This method returns a value between 0.0f and 1.0f, depending on how directly our view point
    faces the sun and is used for generating the "staring at the sun" glare effect. 0.0f means that
    we are not facing the sun, 1.0f means that we are looking directly at it. The cosine of the 
    threshold angle between view point and sun, below which we consider the ship as looking
    at the sun, is passed as parameter to the method.
 */
-- (GLfloat) lookingAtSunWithThresholdAngleCos:(GLfloat) thresholdAngleCos;
 
-- (BOOL) onTarget:(OOWeaponFacing)direction withWeapon:(OOWeaponType)weapon;
 
-- (OOTimeDelta) shotTime;
-- (void) resetShotTime;
 
-- (BOOL) fireMainWeapon:(double)range;
-- (BOOL) fireAftWeapon:(double)range;
-- (BOOL) firePortWeapon:(double)range;
-- (BOOL) fireStarboardWeapon:(double)range;
-- (BOOL) fireTurretCannon:(double)range;
-- (void) setLaserColor:(OOColor *)color;
-- (void) setExhaustEmissiveColor:(OOColor *)color;
-- (OOColor *)laserColor;
-- (OOColor *)exhaustEmissiveColor;
 - (BOOL) fireSubentityLaserShot:(double)range;
 - (BOOL) fireDirectLaserShot:(double)range;
 - (BOOL) fireDirectLaserDefensiveShot;
@@ -1128,6 +1064,108 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (void) setPrimaryAggressor:(Entity *) targetEntity;
 - (Entity *)lastEscortTarget;
 - (void) setLastEscortTarget:(Entity *) targetEntity;
+
+@end
+
+
+// Slice 24 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice24)
+
+- (Entity *)thankedShip;
+- (void) setThankedShip:(Entity *) targetEntity;
+- (Entity *)rememberedShip;
+- (void) setRememberedShip:(Entity *) targetEntity;
+- (StationEntity *) targetStation;
+- (void) setTargetStation:(Entity *) targetEntity;
+- (BOOL) isValidTarget:(Entity *) target;
+- (void) addTarget:(Entity *) targetEntity;
+- (void) removeTarget:(Entity *) targetEntity;
+- (BOOL) canStillTrackPrimaryTarget;
+- (id) primaryTarget;
+- (id) primaryTargetWithoutValidityCheck;
+- (BOOL) isFriendlyTo:(ShipEntity *)otherShip;
+- (ShipEntity *) shipHitByLaser;
+- (void) setShipHitByLaser:(ShipEntity *)ship;
+- (void) noteLostTarget;
+- (void) noteLostTargetAndGoIdle;
+- (void) noteTargetDestroyed:(ShipEntity *)target;
+- (OOBehaviour) behaviour;
+- (void) setBehaviour:(OOBehaviour) cond;
+- (HPVector) destination;
+- (HPVector) coordinates;
+- (void) setCoordinate:(HPVector)coord;
+- (HPVector) distance_six: (GLfloat) dist;
+- (HPVector) distance_twelve: (GLfloat) dist withOffset:(GLfloat)offset;
+- (void) trackOntoTarget:(double) delta_t withDForward: (GLfloat) dp;
+- (double) ballTrackLeadingTarget:(double) delta_t atTarget:(Entity *)target;
+
+@end
+
+
+// Slice 25 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice25)
+
+- (void) setEvasiveJink:(GLfloat) z;
+- (void) evasiveAction:(double) delta_t;
+- (double) trackPrimaryTarget:(double) delta_t :(BOOL) retreat;
+- (double) trackSideTarget:(double) delta_t :(BOOL) leftside;
+
+@end
+
+
+// Slice 26 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice26)
+
+- (double) missileTrackPrimaryTarget:(double) delta_t;
+- (double) trackDestination:(double) delta_t :(BOOL) retreat;
+- (GLfloat) rollToMatchUp:(Vector) up_vec rotating:(GLfloat) match_roll;
+- (GLfloat) rangeToDestination;
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_collisionExceptions;
+- (void) addCollisionException:(ShipEntity *)ship;
+- (void) removeCollisionException:(ShipEntity *)ship;
+- (BOOL) collisionExceptedFor:(ShipEntity *)ship;
+- (NSUInteger) defenseTargetCount;
+- (std::vector<oo::ObjCRef<ShipEntity *>>) allDefenseTargets;	// the live ones (zeroed references skipped)
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_defenseTargets;	// a snapshot in the weak set's order, up to the first zeroed reference
+- (BOOL) addDefenseTarget:(Entity *)target;
+- (void) validateDefenseTargets;
+- (BOOL) isDefenseTarget:(Entity *)target;
+- (void) removeAllDefenseTargets;
+- (void) removeDefenseTarget:(Entity *)target;
+- (double) rangeToPrimaryTarget;
+- (double) rangeToSecondaryTarget:(Entity *)target;
+- (double) approachAspectToPrimaryTarget;
+- (BOOL) hasProximityAlertIgnoringTarget:(BOOL)ignore_target;
+
+@end
+
+
+// Slice 27 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice27)
+
+- (GLfloat) currentAimTolerance;
+- (GLfloat) lookingAtSunWithThresholdAngleCos:(GLfloat) thresholdAngleCos;
+- (BOOL) onTarget:(OOWeaponFacing)direction withWeapon:(OOWeaponType)weapon;
+- (BOOL) fireWeapon:(OOWeaponType)weapon_type direction:(OOWeaponFacing)direction range:(double)range;
+- (BOOL) fireMainWeapon:(double)range;
+- (BOOL) fireAftWeapon:(double)range;
+- (BOOL) firePortWeapon:(double)range;
+- (BOOL) fireStarboardWeapon:(double)range;
+- (OOTimeDelta) shotTime;
+- (void) resetShotTime;
+- (BOOL) fireTurretCannon:(double)range;
+- (void) setLaserColor:(OOColor *)color;
+- (void) setExhaustEmissiveColor:(OOColor *)color;
+- (OOColor *)laserColor;
+- (OOColor *)exhaustEmissiveColor;
 
 @end
 

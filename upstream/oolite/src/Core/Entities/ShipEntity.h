@@ -713,6 +713,80 @@ public:
 	::Entity *lastEscortTarget();
 	void setLastEscortTarget(::Entity *targetEntity);
 
+	// Slice 24: target memory and validity, behaviour and destination accessors, distances, leading the target.
+	::Entity *thankedShip();
+	void setThankedShip(::Entity *targetEntity);
+	::Entity *rememberedShip();
+	void setRememberedShip(::Entity *targetEntity);
+	::StationEntity *targetStation();
+	void setTargetStation(::Entity *targetEntity);
+	virtual bool isValidTarget(::Entity *target);
+	virtual void addTarget(::Entity *targetEntity);
+	void removeTarget(::Entity *targetEntity);
+	bool canStillTrackPrimaryTarget();
+	id primaryTarget();
+	id primaryTargetWithoutValidityCheck();
+	bool isFriendlyTo(::ShipEntity *otherShip);
+	::ShipEntity *shipHitByLaser();
+	void setShipHitByLaser(::ShipEntity *ship);
+	void noteLostTarget();
+	void noteLostTargetAndGoIdle();
+	void noteTargetDestroyed(::ShipEntity *target);
+	OOBehaviour getBehaviour();
+	void setBehaviour(OOBehaviour cond);
+	HPVector destination();
+	HPVector getCoordinates();
+	void setCoordinate(HPVector coord);
+	HPVector distance_six(GLfloat dist);
+	HPVector distance_twelve(GLfloat dist, GLfloat offset);
+	void trackOntoTarget(double delta_t, GLfloat dp);
+	double ballTrackLeadingTarget(double delta_t, ::Entity *target);
+
+	// Slice 25: evasive jink, primary and side target tracking.
+	void setEvasiveJink(GLfloat z);
+	void evasiveAction(double delta_t);
+	double trackPrimaryTarget(double delta_t, bool retreat);
+	double trackSideTarget(double delta_t, bool leftside);
+
+	// Slice 26: missile and destination tracking, collision exceptions, defence targets, ranges.
+	double missileTrackPrimaryTarget(double delta_t);
+	double trackDestination(double delta_t, bool retreat);
+	GLfloat rollToMatchUp(Vector up_vec, GLfloat match_roll);
+	GLfloat rangeToDestination();
+	std::vector<oo::ObjCRef<::ShipEntity *>> collisionExceptions();
+	void addCollisionException(::ShipEntity *ship);
+	void removeCollisionException(::ShipEntity *ship);
+	bool collisionExceptedFor(::ShipEntity *ship);
+	NSUInteger defenseTargetCount();
+	std::vector<oo::ObjCRef<::ShipEntity *>> allDefenseTargets();
+	std::vector<oo::ObjCRef<::ShipEntity *>> defenseTargets();
+	bool addDefenseTarget(::Entity *target);
+	void validateDefenseTargets();
+	bool isDefenseTarget(::Entity *target);
+	void removeAllDefenseTargets();
+	void removeDefenseTarget(::Entity *target);
+	double rangeToPrimaryTarget();
+	double rangeToSecondaryTarget(::Entity *target);
+	double approachAspectToPrimaryTarget();
+	bool hasProximityAlertIgnoringTarget(bool ignore_target);
+
+	// Slice 27: aim tolerance, sun glare, main weapons and turret fire, laser colours.
+	GLfloat currentAimTolerance();
+	virtual GLfloat lookingAtSunWithThresholdAngleCos(GLfloat thresholdAngleCos);
+	bool onTarget(OOWeaponFacing direction, OOWeaponType weapon_type);
+	bool fireWeapon(OOWeaponType weapon_type, OOWeaponFacing direction, double range);
+	bool fireMainWeapon(double range);
+	bool fireAftWeapon(double range);
+	bool firePortWeapon(double range);
+	bool fireStarboardWeapon(double range);
+	OOTimeDelta shotTime();
+	void resetShotTime();
+	bool fireTurretCannon(double range);
+	void setLaserColor(::OOColor *color);
+	void setExhaustEmissiveColor(::OOColor *color);
+	::OOColor *laserColor();
+	::OOColor *exhaustEmissiveColor();
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired
