@@ -4086,6 +4086,61 @@ deletion bead waits for oo-a70 as well as `Universe`, `GuiDisplayGen` and the en
 test runs the real engine and the real `player.ship`, with stand-ins for what `PLAYER` and
 `UNIVERSE` answer and a real HUD in a hidden GL context.
 
+## Amendment (bead oo-riqmz): the class shell of a giant singleton that is not an entity (Universe)
+
+- Date: 2026-10-06. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Plan:
+  `docs/phases/3-slices/Universe.md` "Slice 1". Exemplar: `src/Core/Universe.h/.mm`,
+  `Universe+ObjCBridge.h/.mm`, `tests/unit/core/test_Universe.mm`. Follows amendments oo-bj8 items
+  2, 4, 6 and 7 and oo-60fwo (the state moves first, the methods follow slice by slice).
+
+**Context.** `Universe` (11,800 lines, ~390 methods, 122 ivars) converts in 26 slices. Slice 1 moves
+its state into `cxx::Universe` so every later slice has a class to move its methods into. Unlike
+`ShipEntity` it is no entity: no root owns its part, its superclass `OOWeakRefObject` keeps state,
+and the Objective-C object is the game's one universe, `gSharedUniverse`, which about 150 files
+message through `UNIVERSE`. Ten other files read its `@public` ivars (`n_entities`,
+`sortedEntities`, the collision list heads, `cursor_row`, `stars_ambient`), and the unit tests of
+the entities use a Universe that was never initialised (`class_createInstance`).
+
+**Decision (recommended defaults).**
+
+1. **The facade owns the part:** one `@public` ivar, `oo::Ref<cxx::Universe> _cxxUniverse`, and
+   `cxx::Universe` is `oo::RefCounted` (the house's ownership, not a raw owning pointer). The part
+   keeps a borrowed `_objcOwner`, so `oo::ToObjC(cxx::Universe *)` answers the object (a converted
+   slice sends an unconverted method to it) and `oo::ToCxx(::Universe *)` answers `_cxxUniverse`.
+   Every member keeps its ivar's name and type and is zero-initialised; the `@private` ones are public
+   while the class is half converted (amendment oo-60fwo items 2 and 3).
+2. **The rewrite is amendment oo-bj8 item 2's**, compiler-guided: `_cxxUniverse->` in the facade's
+   unconverted methods and in the plain functions of `Universe.mm` that took the object
+   (`uni->_cxxUniverse->x_list_start`), and `UNIVERSE->_cxxUniverse->n_entities` in the other
+   files; proved by a poison-ivar syntax check of every TU that includes the header.
+3. **The initialiser and `-dealloc` are a category of the facade in `Universe+ObjCBridge.mm`**
+   (amendment oo-60fwo item 6), and their bodies are members: `-initWithGameView:` makes the part
+   *first*, then does the one-universe check, `[super init]` and `_cxxUniverse->initWithGameView()`;
+   `-dealloc` sends `_cxxUniverse->dealloc()`, releases the part and sends `[super dealloc]`. The
+   member bodies stay in `Universe.mm` beside the private category they message, naming the object
+   once (`::Universe *self = oo::ToObjC(this);`, amendment oo-bj8 item 4), so they are verbatim but
+   for the Objective-C classes that now have a C++ twin, named `::X`. Making the part before the
+   check keeps a refused second universe's teardown (its `[self release]` ran the whole `-dealloc`)
+   as it was; a universe released with no part (allocated, never initialised) skips the body
+   (oo-s6ic6). The part's remaining members (the property lists) are released when the facade
+   releases it, just before `[super dealloc]`, as the runtime released the ivars then.
+4. **`UNIVERSE`, `OOGetUniverse()` and `gSharedUniverse` stay the facade** (`@class Universe` before
+   the C++ class in `Universe.h`); so do the `OOSound` / `OOSoundSource` category interfaces.
+5. **A test's never-initialised Universe gets a part:** `class_createInstance` does not send
+   `-initWithGameView:`, so the tests that ask such a universe for its state set
+   `u->_cxxUniverse = oo::makeRef<cxx::Universe>(u)` where they made it, and read its members
+   through it (amendment oo-bj8 item 11): a set-up line, no expectation changed. In this bead that
+   was the set-up of the 22 entity tests that make one (`test_DustEntity` ... `test_WormholeEntity`,
+   each crashed on a null part without it) and, in `test_Entity`, its ivar helper (by name, now the
+   members) and its reads of the list heads and `n_entities` (`sUniverse->_cxxUniverse->`). Tests
+   that stub `Universe` with their own `@interface` (they do not import `Universe.h`) are untouched.
+6. **The deletion bead** "Delete Universe+ObjCBridge" waits on the umbrella oo-pas; it removes every
+   `_cxxUniverse->`, makes the item 1 members private, and turns the members that hold Objective-C
+   objects into `oo::Ref`/`oo::ObjCRef` as their classes convert.
+
+**Consequences.** One more load per member read from unconverted code. Slices 2-26 each move their
+methods into `cxx::Universe`, leave a forwarder on the facade and delete `_cxxUniverse->` from the
+moved bodies.
 ## Amendment (bead oo-10qz): the JavaScript engine, whose later slice is the class's own block, and the file's categories on other classes
 
 - Date: 2026-10-05. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Exemplar:

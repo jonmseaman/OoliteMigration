@@ -2808,7 +2808,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 				[UNIVERSE addEntity:oo::NewEntityFacade(ring)];
 			}
 			
-			BOOL add_debris = (UNIVERSE->n_entities < 0.95 * UNIVERSE_MAX_ENTITIES) &&
+			BOOL add_debris = (UNIVERSE->_cxxUniverse->n_entities < 0.95 * UNIVERSE_MAX_ENTITIES) &&
 									  ([UNIVERSE getTimeDelta] < 0.125);	  // FPS > 8
 			
 			
@@ -2944,7 +2944,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 				{
 					NSUInteger n_wreckage = 0;
 					
-					if (UNIVERSE->n_entities < 0.50 * UNIVERSE_MAX_ENTITIES)
+					if (UNIVERSE->_cxxUniverse->n_entities < 0.50 * UNIVERSE_MAX_ENTITIES)
 					{
 						// Create wreckage only when UNIVERSE is less than half full.
 						// (condition set in r906 - was < 0.75 before) --Kaks 2011.10.17
@@ -7505,8 +7505,8 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	/*- selects the nearest station it can find -*/
 	if (!UNIVERSE)
 		return;
-	int			ent_count = UNIVERSE->n_entities;
-	Entity		**uni_entities = UNIVERSE->sortedEntities;	// grab the public sorted list
+	int			ent_count = UNIVERSE->_cxxUniverse->n_entities;
+	Entity		**uni_entities = UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
 	Entity		*my_entities[ent_count];
 	int i;
 	int station_count = 0;
@@ -7921,8 +7921,8 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 
 	GLfloat k = 0.1;
 
-	int			ent_count =		UNIVERSE->n_entities;
-	Entity**	uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
+	int			ent_count =		UNIVERSE->_cxxUniverse->n_entities;
+	Entity**	uni_entities =	UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
 	ShipEntity*	my_entities[ent_count];
 	int i;
 

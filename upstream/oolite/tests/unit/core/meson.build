@@ -142,6 +142,7 @@ core_tests = {
     'test_HeadUpDisplay': ['*'],
     'test_GameController': ['*'],
     'test_Entity': ['*'],
+    'test_Universe': ['*'],
     'test_ShipEntity': ['*'],
     'test_OOEntityWithDrawable': ['*'],
     'test_OOPlanetEntity': ['*'],

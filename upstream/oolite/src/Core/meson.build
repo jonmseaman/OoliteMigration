@@ -128,6 +128,7 @@ oolite_sources += files(
     'ResourceManager.mm',
     'ResourceManager+ObjCBridge.mm',
     'Universe.mm',
+    'Universe+ObjCBridge.mm',
     'legacy_random.c',
 )
 
