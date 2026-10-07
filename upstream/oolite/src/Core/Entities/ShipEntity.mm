@@ -464,565 +464,6 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 }
 
 
-- (void) getDestroyedBy:(Entity *)whom damageType:(OOShipDamageType)type
-{
-	[self noteKilledBy:whom damageType:type];
-	[self abortDocking];
-	[self becomeExplosion];
-}
-
-
-- (void) rescaleBy:(GLfloat)factor
-{
-	[self rescaleBy:factor writeToCache:YES];
-}
-
-
-- (void) rescaleBy:(GLfloat)factor writeToCache:(BOOL)writeToCache
-{
-	_cxxShip->_scaleFactor *= factor;
-	OOMesh *mesh = nil;
-
-	const oo::PList &shipDict = _cxxShip->shipinfoDictionary;
-	const std::optional<std::string> modelName = StringForKey(shipDict, "model");
-	if (modelName.has_value())
-	{
-		mesh = [OOMesh meshWithName:*modelName
-						   cacheKey:oo::str::format("%s-%.3f", _cxxShip->_shipKey.value_or("(null)").c_str(), _cxxShip->_scaleFactor)	// %@ printed nil as (null)
-				 materialDictionary:DictionaryForKey(shipDict, "materials")
-				  shadersDictionary:DictionaryForKey(shipDict, "shaders")
-							 smooth:shipDict.get<bool>("smooth", false)
-					   shaderMacros:OODefaultShipShaderMacros()
-					   shaderBindingTarget:self
-						scaleFactor:factor
-					 cacheWriteable:writeToCache];
-
-		if (mesh == nil)  return;
-		[self setMesh:mesh];
-	}
-
-	// rescale subentities
-	const std::vector<oo::ObjCRef<Entity *>> subs = _cxxShip->subEntities;	// a snapshot, as -subEntities copied
-	for (const auto &sub : subs)
-	{
-		Entity<OOSubEntity>	*se = (Entity<OOSubEntity> *)sub.get();
-		[se setPosition:HPvector_multiply_scalar([se position], factor)];
-		[se rescaleBy:factor writeToCache:writeToCache];
-	}
-	
-	// rescale mass
-	_cxxEntity->mass *= factor * factor * factor;
-}
-
-
-- (void) releaseCargoPodsDebris
-{
-	HPVector xposition = _cxxEntity->position;
-	NSUInteger i;
-	Vector v;
-	Quaternion q;
-	int speed_low = 200;
-
-	std::vector<oo::ObjCRef<ShipEntity *>> jetsam;  // this will contain the stuff to get thrown out
-	unsigned cargo_chance = 70;
-	jetsam = _cxxShip->cargo;   // what the ship is carrying
-	_cxxShip->cargo.clear();   // dispense with it!
-	unsigned limit = 15;
-	//  Throw out cargo
-	NSUInteger n_jetsam = jetsam.size();
-					
-	for (i = 0; i < n_jetsam; i++)
-	{
-		if (Ranrot() % 100 < cargo_chance)  //  chance of any given piece of cargo surviving decompression
-		{
-			// a higher chance of getting at least a couple of bits of cargo out
-			if (cargo_chance > 10)
-			{
-				if (EXPECT_NOT([self isPlayer]))
-				{
-					cargo_chance -= 20;
-				}
-				else
-				{
-					cargo_chance -= 30;
-				}
-			}
-			limit--;
-			ShipEntity* cargoObj = jetsam[i].get();
-			ShipEntity* container = [UNIVERSE reifyCargoPod:cargoObj];
-			/* TODO: this debris position/velocity setting code is
-			 * duplicated - sometimes not very cleanly - all over the
-			 * place. Unify to a single function - CIM */
-			HPVector  rpos = xposition;
-			Vector	rrand = OORandomPositionInBoundingBox(_cxxEntity->boundingBox);
-			rpos.x += rrand.x;	rpos.y += rrand.y;	rpos.z += rrand.z;
-			rpos.x += (ranrot_rand() % 7) - 3;
-			rpos.y += (ranrot_rand() % 7) - 3;
-			rpos.z += (ranrot_rand() % 7) - 3;
-			[container setPosition:rpos];
-			v.x = 0.1 *((ranrot_rand() % speed_low) - speed_low / 2);
-			v.y = 0.1 *((ranrot_rand() % speed_low) - speed_low / 2);
-			v.z = 0.1 *((ranrot_rand() % speed_low) - speed_low / 2);
-			[container setVelocity:vector_add(v,[self velocity])];
-			quaternion_set_random(&q);
-			[container setOrientation:q];
-							
-			[container setTemperature:[self randomEjectaTemperature]];
-			[container setScanClass: CLASS_CARGO];
-			[UNIVERSE addEntity:container];	// STATUS_IN_FLIGHT, AI state GLOBAL
-
-			AI *containerAI = [container getAI];
-			if ([containerAI hasSuspendedStateMachines]) // check if new or recycled cargo.
-			{
-				[containerAI cxx_exitStateMachineWithMessage:std::nullopt];
-				[container setThrust:[container maxThrust]]; // restore old value. Was set to zero on previous scooping.
-				[container setOwner:container];
-			}
-		}
-		if (limit <= 0)
-		{
-			break; // even really big ships won't have too much cargo survive an explosion
-		}
-	}
-
-}
-
-
-- (void) setIsWreckage:(BOOL)isw
-{
-	_cxxShip->isWreckage = isw;
-}
-
-
-- (BOOL) showDamage
-{
-	return _cxxShip->_showDamage;
-}
-
-
-- (void) becomeExplosion
-{
-	
-	// check if we're destroying a subentity
-	ShipEntity *parent = [self parentEntity];
-	if (parent != nil)
-	{
-		ShipEntity *this_ship = [self retain];
-		HPVector this_pos = [self absolutePositionForSubentity];
-		
-		// remove this ship from its parent's subentity list
-		[parent subEntityDied:self];
-		[UNIVERSE addEntity:this_ship];
-		[this_ship setPosition:this_pos];
-		[this_ship release];
-		if ([parent isPlayer])
-		{
-			// make the parent ship less reliable.
-			[(PlayerEntity *)parent adjustTradeInFactorBy:-PLAYER_SHIP_SUBENTITY_TRADE_IN_VALUE];
-		}
-	}
-	
-	HPVector xposition = _cxxEntity->position;
-	NSUInteger i;
-	Vector v;
-	Quaternion q;
-	int speed_low = 200;
-	GLfloat n_alloys = sqrtf(sqrtf(_cxxEntity->mass / 6000.0f));
-	NSUInteger numAlloys = 0;
-	BOOL canReleaseSubWreckage = _cxxShip->isWreckage && ([UNIVERSE detailLevel] >= DETAIL_LEVEL_EXTRAS);
-
-	if ([self status] == STATUS_DEAD)
-	{
-		[UNIVERSE removeEntity:self];
-		return;
-	}
-	[self setStatus:STATUS_DEAD];
-	
-	@try
-	{
-		if ([self isThargoid] && [_cxxShip->roleSet hasRole:"thargoid-mothership"])  [self broadcastThargoidDestroyed];
-		
-		if (!_cxxShip->suppressExplosion && ([self isVisible] || HPdistance2([self position], [PLAYER position]) < SCANNER_MAX_RANGE2))
-		{
-			if (!_cxxShip->isWreckage && _cxxEntity->mass > 500000.0f && randf() < 0.25f) // big!
-			{
-				// draw an expanding ring
-				oo::Ref<OORingEffectEntity> ring = OORingEffectEntity::ringFromEntity(self);
-				if (ring != nullptr)  ring->setVelocity(vector_multiply_scalar([self velocity], 0.25f));
-				[UNIVERSE addEntity:oo::NewEntityFacade(ring)];
-			}
-			
-			BOOL add_debris = (UNIVERSE->_cxxUniverse->n_entities < 0.95 * UNIVERSE_MAX_ENTITIES) &&
-									  ([UNIVERSE getTimeDelta] < 0.125);	  // FPS > 8
-			
-			
-			// There are several parts to explosions, show only the main
-			// explosion effect if UNIVERSE is almost full.
-			
-			if (add_debris)
-			{
-				if ([UNIVERSE reducedDetail])
-				{
-					// Quick explosion effects for reduced detail mode
-					
-					// 1. fast sparks
-					[UNIVERSE addEntity:oo::NewEntityFacade(OOSmallFragmentBurstEntity::fragmentBurstFromEntity(self))];
-					// 2. slow clouds
-					[UNIVERSE addEntity:oo::NewEntityFacade(OOBigFragmentBurstEntity::fragmentBurstFromEntity(self))];
-					// 3. flash
-					[UNIVERSE addEntity:[OOFlashEffectEntity explosionFlashFromEntity:self]];
-					/* This mode used to be the default for
-					 * cargo/munitions but this now must be explicitly
-					 * specified. */
-				}
-				else
-				{
-					if (_cxxShip->explosionType.isNull())
-					{
-						[UNIVERSE addEntity:oo::NewEntityFacade(OOExplosionCloudEntity::explosionCloudFromEntity(self, [UNIVERSE cxx_explosionSetting:"oolite-default-ship-explosion"]))];
-						// 3. flash
-						[UNIVERSE addEntity:[OOFlashEffectEntity explosionFlashFromEntity:self]];
-					}
-					for (NSUInteger i=0;i<_cxxShip->explosionType.count();i++)
-					{
-						// The string reader at index i: a string, or a number's text, else none.
-						const oo::PList *entry = _cxxShip->explosionType.at(i);
-						if (entry != nullptr && (entry->isString() || entry->isNumber()))
-						{
-							const std::string explosionKey = oo::PListGet<std::string>::from(entry, std::string());
-							// three special-case builtins
-							if (explosionKey == "oolite-builtin-flash")
-							{
-								[UNIVERSE addEntity:[OOFlashEffectEntity explosionFlashFromEntity:self]];
-							}
-							else if (explosionKey == "oolite-builtin-slowcloud")
-							{
-								[UNIVERSE addEntity:oo::NewEntityFacade(OOBigFragmentBurstEntity::fragmentBurstFromEntity(self))];
-							}
-							else if (explosionKey == "oolite-builtin-fastspark")
-							{
-								[UNIVERSE addEntity:oo::NewEntityFacade(OOSmallFragmentBurstEntity::fragmentBurstFromEntity(self))];
-							}
-							else
-							{
-								[UNIVERSE addEntity:oo::NewEntityFacade(OOExplosionCloudEntity::explosionCloudFromEntity(self, [UNIVERSE cxx_explosionSetting:explosionKey]))];
-							}
-						}
-					}
-					// "fireball" explosion effect
-
-				}
-			}
-			 
-			// If UNIVERSE is nearing limit for entities don't add to it!
-			if (add_debris)
-			{
-				// we need to throw out cargo at this point.
-				[self releaseCargoPodsDebris];
-				
-				//  Throw out rocks and alloys to be scooped up
-				if ([self hasRole:"asteroid"] || [self isBoulder])
-				{
-					if (!_cxxShip->noRocks && (_cxxShip->being_mined || randf() < 0.20))
-					{
-						std::string defaultRole = "boulder";
-						float defaultSpeed = 50.0;
-						if ([self isBoulder])
-						{
-							defaultRole = "splinter";
-							defaultSpeed = 20.0;
-							if (_cxxShip->likely_cargo == 0)
-							{
-								_cxxShip->likely_cargo = 4; // compatibility with older boulders
-							}
-						}
-						else if ([[self primaryAggressor] isPlayer])
-						{
-							[PLAYER addRoleForMining];
-						}
-						NSUInteger n_rocks = 2 + (Ranrot() % (_cxxShip->likely_cargo + 1));
-						
-						const std::string debrisRole = [self cxx_shipInfoDictionary].get<std::string>("debris_role", defaultRole);
-						for (i = 0; i < n_rocks; i++)
-						{
-							ShipEntity* rock = [UNIVERSE cxx_newShipWithRole:debrisRole];   // retain count = 1
-							if (rock)
-							{
-								float  r_speed = [rock maxFlightSpeed] > 0 ? 2.0 * [rock maxFlightSpeed] : defaultSpeed;
-								float cr = (_cxxEntity->collision_radius < rock->_cxxEntity->collision_radius) ? _cxxEntity->collision_radius : 2 * rock->_cxxEntity->collision_radius;
-								v.x = ((randf() * r_speed) - r_speed / 2);
-								v.y = ((randf() * r_speed) - r_speed / 2);
-								v.z = ((randf() * r_speed) - r_speed / 2);
-								[rock setVelocity:vector_add(v,[self velocity])];
-								HPVector rpos = HPvector_add(xposition,vectorToHPVector(vector_multiply_scalar(vector_normal(v),cr)));
-								[rock setPosition:rpos];
-
-								quaternion_set_random(&q);
-								[rock setOrientation:q];
-								
-								[rock setTemperature:[self randomEjectaTemperature]];
-								if ([self isBoulder])
-								{
-									[rock setScanClass: CLASS_CARGO];
-									[rock setBounty: 0 withReason:kOOLegalStatusReasonSetup];
-									// only make the rock have minerals if something isn't already defined for the rock
-									if (!StringForKey([rock cxx_shipInfoDictionary], "cargo_carried").has_value())
-										[rock cxx_setCommodity:"minerals" andAmount: 1];
-								}
-								else
-								{
-									[rock setScanClass:CLASS_ROCK];
-									[rock setIsBoulder:YES];
-								}
-								[UNIVERSE addEntity:rock];	// STATUS_IN_FLIGHT, AI state GLOBAL
-								[rock release];
-							}
-						}
-					}
-					return;
-				}
-
-				// throw out burning chunks of wreckage
-				//
-				if ((n_alloys && _cxxShip->canFragment) || canReleaseSubWreckage)
-				{
-					NSUInteger n_wreckage = 0;
-					
-					if (UNIVERSE->_cxxUniverse->n_entities < 0.50 * UNIVERSE_MAX_ENTITIES)
-					{
-						// Create wreckage only when UNIVERSE is less than half full.
-						// (condition set in r906 - was < 0.75 before) --Kaks 2011.10.17
-						NSUInteger maxWrecks = 3;
-						if (n_alloys == 0)
-						{
-							// must be sub-wreckage here
-							n_wreckage = (_cxxEntity->mass > 600.0 && randf() < 0.2)?2:0;
-						}
-						else
-						{
-							n_wreckage = (n_alloys < maxWrecks)? floorf(randf()*(n_alloys+2)) : maxWrecks;
-						}
-					}
-					
-					for (i = 0; i < n_wreckage; i++)
-					{
-						Vector r1 = [_cxxShip->octree randomPoint];
-						Vector dir = quaternion_rotate_vector([self normalOrientation], r1);
-						HPVector rpos = HPvector_add(vectorToHPVector(dir), xposition);
-						GLfloat lifetime = 750.0 * randf() + 250.0 * i + 100.0;
-						ShipEntity *wreck = [UNIVERSE cxx_addWreckageFrom:self withRole:"wreckage" at:rpos scale:1.0 lifetime:lifetime/2];
-
-						[wreck setVelocity:vector_add([wreck velocity],vector_multiply_scalar(vector_normal(dir),randf()*[wreck collisionRadius]))];
-
-					}
-					n_alloys = randf() * n_alloys;
-				}
-			} 
-
-			if (!_cxxShip->canFragment)
-			{
-				n_alloys = 0.0;
-			}
-			// If UNIVERSE is almost full, don't create more than 1 piece of scrap metal.
-			else if (!add_debris)
-			{
-				n_alloys = (n_alloys > 1.0) ? 1.0 : 0.0;
-			}
-
-			// now convert to uint
-			numAlloys = floorf(n_alloys);
-
-			// Throw out scrap metal
-			//
-			for (i = 0; i < numAlloys; i++)
-			{
-				ShipEntity* plate = [UNIVERSE cxx_newShipWithRole:"alloy"];   // retain count = 1
-				if (plate)
-				{
-					HPVector  rpos = xposition;
-					Vector	rrand = OORandomPositionInBoundingBox(_cxxEntity->boundingBox);
-					rpos.x += rrand.x;	rpos.y += rrand.y;	rpos.z += rrand.z;
-					rpos.x += (ranrot_rand() % 7) - 3;
-					rpos.y += (ranrot_rand() % 7) - 3;
-					rpos.z += (ranrot_rand() % 7) - 3;
-					[plate setPosition:rpos];
-					v.x = 0.1 *((ranrot_rand() % speed_low) - speed_low / 2);
-					v.y = 0.1 *((ranrot_rand() % speed_low) - speed_low / 2);
-					v.z = 0.1 *((ranrot_rand() % speed_low) - speed_low / 2);
-					[plate setVelocity:vector_add(v,[self velocity])];
-					quaternion_set_random(&q);
-					[plate setOrientation:q];
-					
-					[plate setTemperature:[self randomEjectaTemperature]];
-					[plate setScanClass: CLASS_CARGO];
-					[plate cxx_setCommodity:"alloys" andAmount:1];
-					[UNIVERSE addEntity:plate];	// STATUS_IN_FLIGHT, AI state GLOBAL
-					
-					[plate release];
-				}
-			}
-		}
-		
-		// Explode subentities.
-		for (const auto &sub : [self cxx_shipSubEntities])
-		{
-			ShipEntity *se = sub.get();
-			[se setSuppressExplosion:_cxxShip->suppressExplosion];
-			[se becomeExplosion];
-		}
-		[self clearSubEntities];
-
-		// momentum from explosions
-		if (!_cxxShip->suppressExplosion)
-		{
-			_cxxShip->desired_range = _cxxEntity->collision_radius * 2.5f;
-			[self dealMomentumWithinDesiredRange:0.125f * _cxxEntity->mass];
-		}
-		
-		if (self != PLAYER)	// was if !isPlayer - but I think this may cause ghosts (Who's "I"? -- Ahruman)
-		{
-			if (_cxxEntity->isPlayer)
-			{
-	#ifndef NDEBUG
-				OO_LOG("becomeExplosion.suspectedGhost.confirm", "{}", "Ship spotted with isPlayer set when not actually the player.");
-	#endif
-				_cxxEntity->isPlayer = NO;
-			}
-		}
-	}
-	@finally
-	{
-		if (self != PLAYER)
-		{
-			[UNIVERSE removeEntity:self];
-		}
-	}
-}
-
-
-// Exposed to AI
-- (void) becomeEnergyBlast
-{
-	[UNIVERSE addEntity:oo::NewEntityFacade(OOQuiriumCascadeEntity::quiriumCascadeFromShip(self))];
-	[self broadcastEnergyBlastImminent];
-	[self noteKilledBy:nil damageType:kOODamageTypeCascadeWeapon];
-	[UNIVERSE removeEntity:self];
-}
-
-
-// Exposed to AI
-- (void) broadcastEnergyBlastImminent
-{
-	// anyone further away than typical scanner range probably doesn't need to hear
-	const std::vector<oo::ObjCRef<Entity *>> targets = [UNIVERSE cxx_entitiesWithinRange:SCANNER_MAX_RANGE ofEntity:self];
-	if (targets.size() > 0)
-	{
-		unsigned i;
-		for (i = 0; i < targets.size(); i++)
-		{
-			Entity *e2 = targets[i].get();
-			if ([e2 isShip])
-			{
-				ShipEntity *se = (ShipEntity *)e2;
-				[se setFoundTarget:self];
-				[se cxx_reactToAIMessage:"CASCADE_WEAPON_DETECTED" context:"nearby Q-mine"];
-				[se doScriptEvent:OOJSID("cascadeWeaponDetected") withArgument:self];
-			}
-		}
-	}
-}
-
-
-- (void) removeExhaust:(OOExhaustPlumeEntity *)exhaust
-{
-	std::erase(_cxxShip->subEntities, (Entity *)exhaust);
-	[exhaust setOwner:nil];
-}
-
-
-- (void) removeFlasher:(OOFlasherEntity *)flasher
-{
-	std::erase(_cxxShip->subEntities, (Entity *)flasher);
-	[flasher setOwner:nil];
-}
-
-
-- (void)subEntityDied:(ShipEntity *)sub
-{
-	if ([self subEntityTakingDamage] == sub)  [self setSubEntityTakingDamage:nil];
-	
-	[sub setOwner:nil];
-	// TODO? Recalculating collision radius should increase collision testing efficiency,
-	// but for most ship models the difference would be marginal. -- Kaks 20110429
-	_cxxEntity->mass -= [sub mass]; // missing subents affect fuel charge rate, etc..
-	std::erase(_cxxShip->subEntities, (Entity *)sub);
-}
-
-
-- (void)subEntityReallyDied:(ShipEntity *)sub
-{
-	if ([self subEntityTakingDamage] == sub)  [self setSubEntityTakingDamage:nil];
-	
-	if ([self hasSubEntity:sub])
-	{
-		OO_LOG_ERR("shipEntity.bug.subEntityRetainUnderflow", "Subentity of {} died while still in subentity list! This is bad. Leaking subentity list to avoid crash. {}", oo::DescriptionOf(self), "This is an internal error, please report it.");
-		
-		// Leak subentity list: one more retain each, so that emptying the list keeps them all alive,
-		// as dropping the array pointer did.
-		for (const auto &leaked : _cxxShip->subEntities)  objc_retain(leaked.get());
-		_cxxShip->subEntities.clear();
-	}
-}
-
-
-- (Vector) positionOffsetForAlignment:(const std::string &) align
-{
-	// indexed in UTF-16 units, as -characterAtIndex: was
-	const std::u16string padAlign = oo::utf8ToUtf16(oo::str::format("%s---", align.c_str()));
-	Vector result = kZeroVector;
-	switch (padAlign[0])
-	{
-		case (uint16_t)'c':
-		case (uint16_t)'C':
-			result.x = 0.5 * (_cxxEntity->boundingBox.min.x + _cxxEntity->boundingBox.max.x);
-			break;
-		case (uint16_t)'M':
-			result.x = _cxxEntity->boundingBox.max.x;
-			break;
-		case (uint16_t)'m':
-			result.x = _cxxEntity->boundingBox.min.x;
-			break;
-	}
-	switch (padAlign[1])
-	{
-		case (uint16_t)'c':
-		case (uint16_t)'C':
-			result.y = 0.5 * (_cxxEntity->boundingBox.min.y + _cxxEntity->boundingBox.max.y);
-			break;
-		case (uint16_t)'M':
-			result.y = _cxxEntity->boundingBox.max.y;
-			break;
-		case (uint16_t)'m':
-			result.y = _cxxEntity->boundingBox.min.y;
-			break;
-	}
-	switch (padAlign[2])
-	{
-		case (uint16_t)'c':
-		case (uint16_t)'C':
-			result.z = 0.5 * (_cxxEntity->boundingBox.min.z + _cxxEntity->boundingBox.max.z);
-			break;
-		case (uint16_t)'M':
-			result.z = _cxxEntity->boundingBox.max.z;
-			break;
-		case (uint16_t)'m':
-			result.z = _cxxEntity->boundingBox.min.z;
-			break;
-	}
-	return result;
-}
-
-
 Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q, const std::string &align)
 {
 	// indexed in UTF-16 units, as -characterAtIndex: was
@@ -1030,7 +471,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	Vector i = vector_right_from_quaternion(q);
 	Vector j = vector_up_from_quaternion(q);
 	Vector k = vector_forward_from_quaternion(q);
-	BoundingBox arbb = [ship findBoundingBoxRelativeToPosition:kZeroHPVector InVectors:i :j :k];
+	BoundingBox arbb = oo::ToCxx(ship)->findBoundingBoxRelativeToPosition(kZeroHPVector, i, j, k);
 	Vector result = kZeroVector;
 	switch (padAlign[0])
 	{
@@ -1072,333 +513,6 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 			break;
 	}
 	return result;
-}
-
-
-- (void) becomeLargeExplosion:(double)factor
-{
-	
-	if ([self status] == STATUS_DEAD)  return;
-	[self setStatus:STATUS_DEAD];
-	
-	@try
-	{
-		// two parts to the explosion:
-		// 1. fast sparks
-		float how_many = factor;
-		while (how_many > 0.5f)
-		{
-			[UNIVERSE addEntity:oo::NewEntityFacade(OOSmallFragmentBurstEntity::fragmentBurstFromEntity(self))];
-			how_many -= 1.0f;
-		}
-		// 2. slow clouds
-		how_many = factor;
-		while (how_many > 0.5f)
-		{
-			[UNIVERSE addEntity:oo::NewEntityFacade(OOBigFragmentBurstEntity::fragmentBurstFromEntity(self))];
-			how_many -= 1.0f;
-		}
-
-		[self releaseCargoPodsDebris];
-		
-		for (const auto &sub : [self cxx_shipSubEntities])
-		{
-			ShipEntity *se = sub.get();
-			[se setSuppressExplosion:_cxxShip->suppressExplosion];
-			[se becomeExplosion];
-		}
-		[self clearSubEntities];
-		
-	}
-	@finally
-	{
-		if (!_cxxEntity->isPlayer)  [UNIVERSE removeEntity:self];
-	}
-}
-
-
-- (void) collectBountyFor:(ShipEntity *)other
-{
-	if ([other isPolice])   // oops, we shot a copper!
-	{
-		[self markAsOffender:64 withReason:kOOLegalStatusReasonAttackedPolice];
-	}
-}
-
-
-- (OOComparisonResult) compareBeaconCodeWith:(Entity<OOBeaconEntity> *) other
-{
-	return (OOComparisonResult)oo::str::caseInsensitiveCompare([self beaconCode].value_or(""), [other beaconCode].value_or(""));
-}
-
-
-// for shaders, equivalent to 1.76's NPC laserHeatLevel
-- (GLfloat) weaponRecoveryTime
-{
-	float result = (_cxxShip->weapon_recharge_rate - [self shotTime]) / _cxxShip->weapon_recharge_rate;
-	return OOClamp_0_1_f(result);
-}
-
-
-- (GLfloat)laserHeatLevel
-{
-	GLfloat result = _cxxShip->weapon_temp / NPC_MAX_WEAPON_TEMP;
-	return OOClamp_0_1_f(result);
-}
-
-
-- (GLfloat)laserHeatLevelAft
-{
-	GLfloat result = _cxxShip->aft_weapon_temp / NPC_MAX_WEAPON_TEMP;
-	return OOClamp_0_1_f(result);
-}
-
-
-- (GLfloat)laserHeatLevelForward
-{
-	GLfloat result = _cxxShip->forward_weapon_temp / NPC_MAX_WEAPON_TEMP;
-	if (isWeaponNone(_cxxShip->forward_weapon_type)) 
-	{ // must check subents
-		OOWeaponType forward_weapon_real_type = nil;
-		for (const auto &sub : [self cxx_shipSubEntities])
-		{
-			if (!isWeaponNone(forward_weapon_real_type))  break;
-			ShipEntity *se = sub.get();
-			if (!isWeaponNone(se->_cxxShip->forward_weapon_type))
-			{
-				forward_weapon_real_type = se->_cxxShip->forward_weapon_type;
-				result = se->_cxxShip->forward_weapon_temp / NPC_MAX_WEAPON_TEMP;
-			}
-		}
-	}
-	return OOClamp_0_1_f(result);
-}
-
-
-- (GLfloat)laserHeatLevelPort
-{
-	GLfloat result = _cxxShip->port_weapon_temp / NPC_MAX_WEAPON_TEMP;
-	return OOClamp_0_1_f(result);
-}
-
-
-- (GLfloat)laserHeatLevelStarboard
-{
-	GLfloat result = _cxxShip->starboard_weapon_temp / NPC_MAX_WEAPON_TEMP;
-	return OOClamp_0_1_f(result);
-}
-
-
-- (GLfloat)hullHeatLevel
-{
-	GLfloat result = (GLfloat)_cxxShip->ship_temperature / (GLfloat)SHIP_MAX_CABIN_TEMP;
-	return OOClamp_0_1_f(result);
-}
-
-
-- (GLfloat)entityPersonality
-{
-	return _cxxShip->entity_personality / (float)ENTITY_PERSONALITY_MAX;
-}
-
-
-- (GLint)entityPersonalityInt
-{
-	return _cxxShip->entity_personality;
-}
-
-
-- (uint32_t) randomSeedForShaders
-{
-	return _cxxShip->entity_personality * 0x00010001;
-}
-
-
-- (void) setEntityPersonalityInt:(uint16_t)value
-{
-	if (value <= ENTITY_PERSONALITY_MAX)
-	{
-		_cxxShip->entity_personality = value;
-		[[self mesh] rebindMaterials];
-	}
-}
-
-
-- (void)setSuppressExplosion:(BOOL)suppress
-{
-	_cxxShip->suppressExplosion = !!suppress;
-}
-
-
-- (void) resetExhaustPlumes
-{
-	for (const auto &exEnt : [self cxx_exhausts])
-	{
-		[exEnt.get() resetPlume];
-	}
-}
-
-
-/*-----------------------------------------
-
-	AI piloting methods
-
------------------------------------------*/
-
-
-- (void) checkScanner
-{
-	Entity* scan;
-	_cxxShip->n_scanned_ships = 0;
-	//
-	scan = _cxxEntity->z_previous;	while ((scan)&&(scan->_cxxEntity->isShip == NO))	scan = scan->_cxxEntity->z_previous;	// skip non-ships
-	GLfloat scannerRange2 = _cxxShip->scannerRange * _cxxShip->scannerRange;
-	while ((scan)&&(scan->_cxxEntity->position.z > _cxxEntity->position.z - _cxxShip->scannerRange)&&(_cxxShip->n_scanned_ships < MAX_SCAN_NUMBER))
-	{
-		// can't scan cloaked ships
-		if (scan->_cxxEntity->isShip && ![(ShipEntity*)scan isCloaked] && [self isValidTarget:scan])
-		{
-			_cxxShip->distance2_scanned_ships[_cxxShip->n_scanned_ships] = HPdistance2(_cxxEntity->position, scan->_cxxEntity->position);
-			if (_cxxShip->distance2_scanned_ships[_cxxShip->n_scanned_ships] < scannerRange2)
-				_cxxShip->scanned_ships[_cxxShip->n_scanned_ships++] = (ShipEntity*)scan;
-		}
-		scan = scan->_cxxEntity->z_previous;	while ((scan)&&(scan->_cxxEntity->isShip == NO))	scan = scan->_cxxEntity->z_previous;
-	}
-	//
-	scan = _cxxEntity->z_next;	while ((scan)&&(scan->_cxxEntity->isShip == NO))	scan = scan->_cxxEntity->z_next;	// skip non-ships
-	while ((scan)&&(scan->_cxxEntity->position.z < _cxxEntity->position.z + _cxxShip->scannerRange)&&(_cxxShip->n_scanned_ships < MAX_SCAN_NUMBER))
-	{
-		if (scan->_cxxEntity->isShip && ![(ShipEntity*)scan isCloaked] && [self isValidTarget:scan])
-		{
-			_cxxShip->distance2_scanned_ships[_cxxShip->n_scanned_ships] = HPdistance2(_cxxEntity->position, scan->_cxxEntity->position);
-			if (_cxxShip->distance2_scanned_ships[_cxxShip->n_scanned_ships] < scannerRange2)
-				_cxxShip->scanned_ships[_cxxShip->n_scanned_ships++] = (ShipEntity*)scan;
-		}
-		scan = scan->_cxxEntity->z_next;	while ((scan)&&(scan->_cxxEntity->isShip == NO))	scan = scan->_cxxEntity->z_next;	// skip non-ships
-	}
-	//
-	_cxxShip->scanned_ships[_cxxShip->n_scanned_ships] = nil;	// terminate array
-}
-
-
-- (void) checkScannerIgnoringUnpowered
-{
-	Entity* scan;
-	_cxxShip->n_scanned_ships = 0;
-	//
-	GLfloat scannerRange2 = _cxxShip->scannerRange * _cxxShip->scannerRange;
-	scan = _cxxEntity->z_previous;	
-	while ((scan)&&((scan->_cxxEntity->isShip == NO)||(scan->_cxxEntity->scanClass==CLASS_ROCK)||(scan->_cxxEntity->scanClass==CLASS_CARGO)))	
-	{
-		scan = scan->_cxxEntity->z_previous;	// skip non-ships
-	}
-	while ((scan)&&(scan->_cxxEntity->position.z > _cxxEntity->position.z - _cxxShip->scannerRange)&&(_cxxShip->n_scanned_ships < MAX_SCAN_NUMBER))
-	{
-		if (scan->_cxxEntity->isShip && ![(ShipEntity*)scan isCloaked])
-		{
-			_cxxShip->distance2_scanned_ships[_cxxShip->n_scanned_ships] = HPdistance2(_cxxEntity->position, scan->_cxxEntity->position);
-			if (_cxxShip->distance2_scanned_ships[_cxxShip->n_scanned_ships] < scannerRange2)
-				_cxxShip->scanned_ships[_cxxShip->n_scanned_ships++] = (ShipEntity*)scan;
-		}
-		scan = scan->_cxxEntity->z_previous;
-		while ((scan)&&((scan->_cxxEntity->isShip == NO)||(scan->_cxxEntity->scanClass==CLASS_ROCK)||(scan->_cxxEntity->scanClass==CLASS_CARGO)))	
-		{
-			scan = scan->_cxxEntity->z_previous;	// skip non-ships
-		}
-	}
-	//
-	scan = _cxxEntity->z_next;	
-	while ((scan)&&((scan->_cxxEntity->isShip == NO)||(scan->_cxxEntity->scanClass==CLASS_ROCK)||(scan->_cxxEntity->scanClass==CLASS_CARGO)))	
-	{
-		scan = scan->_cxxEntity->z_next;	// skip non-ships
-	}
-
-	while ((scan)&&(scan->_cxxEntity->position.z < _cxxEntity->position.z + _cxxShip->scannerRange)&&(_cxxShip->n_scanned_ships < MAX_SCAN_NUMBER))
-	{
-		if (scan->_cxxEntity->isShip && ![(ShipEntity*)scan isCloaked])
-		{
-			_cxxShip->distance2_scanned_ships[_cxxShip->n_scanned_ships] = HPdistance2(_cxxEntity->position, scan->_cxxEntity->position);
-			if (_cxxShip->distance2_scanned_ships[_cxxShip->n_scanned_ships] < scannerRange2)
-				_cxxShip->scanned_ships[_cxxShip->n_scanned_ships++] = (ShipEntity*)scan;
-		}
-		scan = scan->_cxxEntity->z_next;
-		while ((scan)&&((scan->_cxxEntity->isShip == NO)||(scan->_cxxEntity->scanClass==CLASS_ROCK)||(scan->_cxxEntity->scanClass==CLASS_CARGO)))	
-		{
-			scan = scan->_cxxEntity->z_next;	// skip non-ships
-		}
-	}
-	//
-	_cxxShip->scanned_ships[_cxxShip->n_scanned_ships] = nil;	// terminate array
-}
-
-
-- (ShipEntity**) scannedShips
-{
-	_cxxShip->scanned_ships[_cxxShip->n_scanned_ships] = nil;	// terminate array
-	return _cxxShip->scanned_ships;
-}
-
-
-- (int) numberOfScannedShips
-{
-	return _cxxShip->n_scanned_ships;
-}
-
-
-- (Entity *) foundTarget
-{
-	Entity *result = [_cxxShip->_foundTarget weakRefUnderlyingObject];
-	if (result == nil || ![self isValidTarget:result])
-	{
-		DESTROY(_cxxShip->_foundTarget);
-		return nil;
-	}
-	return result;
-}
-
-
-- (void) setFoundTarget:(Entity *) targetEntity
-{
-	[_cxxShip->_foundTarget release];
-	_cxxShip->_foundTarget = [targetEntity weakRetain];
-}
-
-
-- (Entity *) primaryAggressor
-{
-	Entity *result = [_cxxShip->_primaryAggressor weakRefUnderlyingObject];
-	if (result == nil || ![self isValidTarget:result])
-	{
-		DESTROY(_cxxShip->_primaryAggressor);
-		return nil;
-	}
-	return result;
-}
-
-
-- (void) setPrimaryAggressor:(Entity *) targetEntity
-{
-	[_cxxShip->_primaryAggressor release];
-	_cxxShip->_primaryAggressor = [targetEntity weakRetain];
-}
-
-
-- (Entity *) lastEscortTarget
-{
-	Entity *result = [_cxxShip->_lastEscortTarget weakRefUnderlyingObject];
-	if (result == nil || ![self isValidTarget:result])
-	{
-		DESTROY(_cxxShip->_lastEscortTarget);
-		return nil;
-	}
-	return result;
-}
-
-
-- (void) setLastEscortTarget:(Entity *) targetEntity
-{
-	[_cxxShip->_lastEscortTarget release];
-	_cxxShip->_lastEscortTarget = [targetEntity weakRetain];
 }
 
 
@@ -15382,6 +14496,930 @@ void ShipEntity::noteKilledBy(::Entity *whom, OOShipDamageType type)
 	
 	[self setStatus:originalStatus];
 	OOJSRelinquishContext(context);
+}
+
+
+}	// namespace cxx
+
+
+// Slice 22 of docs/phases/3-slices/ShipEntity.md (bead oo-z1utw): destruction, rescaling, cargo
+// debris, explosions, energy blast. The facade forwards each selector (ShipEntity+ObjCBridge.mm);
+// sends to self stay sends, so an Objective-C subclass's override still runs (ADR-0056 amendment
+// oo-mvzmb).
+namespace cxx {
+
+void ShipEntity::getDestroyedBy(::Entity *whom, OOShipDamageType type)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self noteKilledBy:whom damageType:type];
+	[self abortDocking];
+	[self becomeExplosion];
+}
+
+
+void ShipEntity::rescaleBy(GLfloat factor)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self rescaleBy:factor writeToCache:YES];
+}
+
+
+void ShipEntity::rescaleBy(GLfloat factor, bool writeToCache)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	_scaleFactor *= factor;
+	::OOMesh *mesh = nil;
+
+	const oo::PList &shipDict = shipinfoDictionary;
+	const std::optional<std::string> modelName = StringForKey(shipDict, "model");
+	if (modelName.has_value())
+	{
+		mesh = [::OOMesh meshWithName:*modelName
+						   cacheKey:oo::str::format("%s-%.3f", _shipKey.value_or("(null)").c_str(), _scaleFactor)	// %@ printed nil as (null)
+				 materialDictionary:DictionaryForKey(shipDict, "materials")
+				  shadersDictionary:DictionaryForKey(shipDict, "shaders")
+							 smooth:shipDict.get<bool>("smooth", false)
+					   shaderMacros:OODefaultShipShaderMacros()
+					   shaderBindingTarget:self
+						scaleFactor:factor
+					 cacheWriteable:writeToCache];
+
+		if (mesh == nil)  return;
+		[self setMesh:mesh];
+	}
+
+	// rescale subentities
+	const std::vector<oo::ObjCRef<::Entity *>> subs = subEntities;	// a snapshot, as -subEntities copied
+	for (const auto &sub : subs)
+	{
+		::Entity<OOSubEntity>	*se = (::Entity<OOSubEntity> *)sub.get();
+		[se setPosition:HPvector_multiply_scalar([se position], factor)];
+		[se rescaleBy:factor writeToCache:writeToCache];
+	}
+	
+	// rescale mass
+	mass *= factor * factor * factor;
+}
+
+
+void ShipEntity::releaseCargoPodsDebris()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	HPVector xposition = position;
+	NSUInteger i;
+	Vector v;
+	Quaternion q;
+	int speed_low = 200;
+
+	std::vector<oo::ObjCRef<::ShipEntity *>> jetsam;  // this will contain the stuff to get thrown out
+	unsigned cargo_chance = 70;
+	jetsam = cargo;   // what the ship is carrying
+	cargo.clear();   // dispense with it!
+	unsigned limit = 15;
+	//  Throw out cargo
+	NSUInteger n_jetsam = jetsam.size();
+					
+	for (i = 0; i < n_jetsam; i++)
+	{
+		if (Ranrot() % 100 < cargo_chance)  //  chance of any given piece of cargo surviving decompression
+		{
+			// a higher chance of getting at least a couple of bits of cargo out
+			if (cargo_chance > 10)
+			{
+				if (EXPECT_NOT([self isPlayer]))
+				{
+					cargo_chance -= 20;
+				}
+				else
+				{
+					cargo_chance -= 30;
+				}
+			}
+			limit--;
+			::ShipEntity* cargoObj = jetsam[i].get();
+			::ShipEntity* container = [UNIVERSE reifyCargoPod:cargoObj];
+			/* TODO: this debris position/velocity setting code is
+			 * duplicated - sometimes not very cleanly - all over the
+			 * place. Unify to a single function - CIM */
+			HPVector  rpos = xposition;
+			Vector	rrand = OORandomPositionInBoundingBox(boundingBox);
+			rpos.x += rrand.x;	rpos.y += rrand.y;	rpos.z += rrand.z;
+			rpos.x += (ranrot_rand() % 7) - 3;
+			rpos.y += (ranrot_rand() % 7) - 3;
+			rpos.z += (ranrot_rand() % 7) - 3;
+			[container setPosition:rpos];
+			v.x = 0.1 *((ranrot_rand() % speed_low) - speed_low / 2);
+			v.y = 0.1 *((ranrot_rand() % speed_low) - speed_low / 2);
+			v.z = 0.1 *((ranrot_rand() % speed_low) - speed_low / 2);
+			[container setVelocity:vector_add(v,[self velocity])];
+			quaternion_set_random(&q);
+			[container setOrientation:q];
+							
+			[container setTemperature:[self randomEjectaTemperature]];
+			[container setScanClass: CLASS_CARGO];
+			[UNIVERSE addEntity:container];	// STATUS_IN_FLIGHT, AI state GLOBAL
+
+			::AI *containerAI = [container getAI];
+			if ([containerAI hasSuspendedStateMachines]) // check if new or recycled cargo.
+			{
+				[containerAI cxx_exitStateMachineWithMessage:std::nullopt];
+				[container setThrust:[container maxThrust]]; // restore old value. Was set to zero on previous scooping.
+				[container setOwner:container];
+			}
+		}
+		if (limit <= 0)
+		{
+			break; // even really big ships won't have too much cargo survive an explosion
+		}
+	}
+
+}
+
+
+void ShipEntity::setIsWreckage(bool isw)
+{
+	isWreckage = isw;
+}
+
+
+bool ShipEntity::showDamage()
+{
+	return _showDamage;
+}
+
+
+void ShipEntity::becomeExplosion()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	
+	// check if we're destroying a subentity
+	::ShipEntity *parent = [self parentEntity];
+	if (parent != nil)
+	{
+		::ShipEntity *this_ship = [self retain];
+		HPVector this_pos = [self absolutePositionForSubentity];
+		
+		// remove this ship from its parent's subentity list
+		[parent subEntityDied:self];
+		[UNIVERSE addEntity:this_ship];
+		[this_ship setPosition:this_pos];
+		[this_ship release];
+		if ([parent isPlayer])
+		{
+			// make the parent ship less reliable.
+			[(::PlayerEntity *)parent adjustTradeInFactorBy:-PLAYER_SHIP_SUBENTITY_TRADE_IN_VALUE];
+		}
+	}
+	
+	HPVector xposition = position;
+	NSUInteger i;
+	Vector v;
+	Quaternion q;
+	int speed_low = 200;
+	GLfloat n_alloys = sqrtf(sqrtf(mass / 6000.0f));
+	NSUInteger numAlloys = 0;
+	BOOL canReleaseSubWreckage = isWreckage && ([UNIVERSE detailLevel] >= DETAIL_LEVEL_EXTRAS);
+
+	if ([self status] == STATUS_DEAD)
+	{
+		[UNIVERSE removeEntity:self];
+		return;
+	}
+	[self setStatus:STATUS_DEAD];
+	
+	@try
+	{
+		if ([self isThargoid] && [roleSet hasRole:"thargoid-mothership"])  [self broadcastThargoidDestroyed];
+		
+		if (!suppressExplosion && ([self isVisible] || HPdistance2([self position], [PLAYER position]) < SCANNER_MAX_RANGE2))
+		{
+			if (!isWreckage && mass > 500000.0f && randf() < 0.25f) // big!
+			{
+				// draw an expanding ring
+				oo::Ref<OORingEffectEntity> ring = OORingEffectEntity::ringFromEntity(self);
+				if (ring != nullptr)  ring->setVelocity(vector_multiply_scalar([self velocity], 0.25f));
+				[UNIVERSE addEntity:oo::NewEntityFacade(ring)];
+			}
+			
+			BOOL add_debris = (UNIVERSE->_cxxUniverse->n_entities < 0.95 * UNIVERSE_MAX_ENTITIES) &&
+									  ([UNIVERSE getTimeDelta] < 0.125);	  // FPS > 8
+			
+			
+			// There are several parts to explosions, show only the main
+			// explosion effect if UNIVERSE is almost full.
+			
+			if (add_debris)
+			{
+				if ([UNIVERSE reducedDetail])
+				{
+					// Quick explosion effects for reduced detail mode
+					
+					// 1. fast sparks
+					[UNIVERSE addEntity:oo::NewEntityFacade(OOSmallFragmentBurstEntity::fragmentBurstFromEntity(self))];
+					// 2. slow clouds
+					[UNIVERSE addEntity:oo::NewEntityFacade(OOBigFragmentBurstEntity::fragmentBurstFromEntity(self))];
+					// 3. flash
+					[UNIVERSE addEntity:[::OOFlashEffectEntity explosionFlashFromEntity:self]];
+					/* This mode used to be the default for
+					 * cargo/munitions but this now must be explicitly
+					 * specified. */
+				}
+				else
+				{
+					if (explosionType.isNull())
+					{
+						[UNIVERSE addEntity:oo::NewEntityFacade(OOExplosionCloudEntity::explosionCloudFromEntity(self, [UNIVERSE cxx_explosionSetting:"oolite-default-ship-explosion"]))];
+						// 3. flash
+						[UNIVERSE addEntity:[::OOFlashEffectEntity explosionFlashFromEntity:self]];
+					}
+					for (NSUInteger i=0;i<explosionType.count();i++)
+					{
+						// The string reader at index i: a string, or a number's text, else none.
+						const oo::PList *entry = explosionType.at(i);
+						if (entry != nullptr && (entry->isString() || entry->isNumber()))
+						{
+							const std::string explosionKey = oo::PListGet<std::string>::from(entry, std::string());
+							// three special-case builtins
+							if (explosionKey == "oolite-builtin-flash")
+							{
+								[UNIVERSE addEntity:[::OOFlashEffectEntity explosionFlashFromEntity:self]];
+							}
+							else if (explosionKey == "oolite-builtin-slowcloud")
+							{
+								[UNIVERSE addEntity:oo::NewEntityFacade(OOBigFragmentBurstEntity::fragmentBurstFromEntity(self))];
+							}
+							else if (explosionKey == "oolite-builtin-fastspark")
+							{
+								[UNIVERSE addEntity:oo::NewEntityFacade(OOSmallFragmentBurstEntity::fragmentBurstFromEntity(self))];
+							}
+							else
+							{
+								[UNIVERSE addEntity:oo::NewEntityFacade(OOExplosionCloudEntity::explosionCloudFromEntity(self, [UNIVERSE cxx_explosionSetting:explosionKey]))];
+							}
+						}
+					}
+					// "fireball" explosion effect
+
+				}
+			}
+			 
+			// If UNIVERSE is nearing limit for entities don't add to it!
+			if (add_debris)
+			{
+				// we need to throw out cargo at this point.
+				[self releaseCargoPodsDebris];
+				
+				//  Throw out rocks and alloys to be scooped up
+				if ([self hasRole:"asteroid"] || [self isBoulder])
+				{
+					if (!noRocks && (being_mined || randf() < 0.20))
+					{
+						std::string defaultRole = "boulder";
+						float defaultSpeed = 50.0;
+						if ([self isBoulder])
+						{
+							defaultRole = "splinter";
+							defaultSpeed = 20.0;
+							if (likely_cargo == 0)
+							{
+								likely_cargo = 4; // compatibility with older boulders
+							}
+						}
+						else if ([[self primaryAggressor] isPlayer])
+						{
+							[PLAYER addRoleForMining];
+						}
+						NSUInteger n_rocks = 2 + (Ranrot() % (likely_cargo + 1));
+						
+						const std::string debrisRole = [self cxx_shipInfoDictionary].get<std::string>("debris_role", defaultRole);
+						for (i = 0; i < n_rocks; i++)
+						{
+							::ShipEntity* rock = [UNIVERSE cxx_newShipWithRole:debrisRole];   // retain count = 1
+							if (rock)
+							{
+								float  r_speed = [rock maxFlightSpeed] > 0 ? 2.0 * [rock maxFlightSpeed] : defaultSpeed;
+								float cr = (collision_radius < rock->_cxxEntity->collision_radius) ? collision_radius : 2 * rock->_cxxEntity->collision_radius;
+								v.x = ((randf() * r_speed) - r_speed / 2);
+								v.y = ((randf() * r_speed) - r_speed / 2);
+								v.z = ((randf() * r_speed) - r_speed / 2);
+								[rock setVelocity:vector_add(v,[self velocity])];
+								HPVector rpos = HPvector_add(xposition,vectorToHPVector(vector_multiply_scalar(vector_normal(v),cr)));
+								[rock setPosition:rpos];
+
+								quaternion_set_random(&q);
+								[rock setOrientation:q];
+								
+								[rock setTemperature:[self randomEjectaTemperature]];
+								if ([self isBoulder])
+								{
+									[rock setScanClass: CLASS_CARGO];
+									[rock setBounty: 0 withReason:kOOLegalStatusReasonSetup];
+									// only make the rock have minerals if something isn't already defined for the rock
+									if (!StringForKey([rock cxx_shipInfoDictionary], "cargo_carried").has_value())
+										[rock cxx_setCommodity:"minerals" andAmount: 1];
+								}
+								else
+								{
+									[rock setScanClass:CLASS_ROCK];
+									[rock setIsBoulder:YES];
+								}
+								[UNIVERSE addEntity:rock];	// STATUS_IN_FLIGHT, AI state GLOBAL
+								[rock release];
+							}
+						}
+					}
+					return;
+				}
+
+				// throw out burning chunks of wreckage
+				//
+				if ((n_alloys && canFragment) || canReleaseSubWreckage)
+				{
+					NSUInteger n_wreckage = 0;
+					
+					if (UNIVERSE->_cxxUniverse->n_entities < 0.50 * UNIVERSE_MAX_ENTITIES)
+					{
+						// Create wreckage only when UNIVERSE is less than half full.
+						// (condition set in r906 - was < 0.75 before) --Kaks 2011.10.17
+						NSUInteger maxWrecks = 3;
+						if (n_alloys == 0)
+						{
+							// must be sub-wreckage here
+							n_wreckage = (mass > 600.0 && randf() < 0.2)?2:0;
+						}
+						else
+						{
+							n_wreckage = (n_alloys < maxWrecks)? floorf(randf()*(n_alloys+2)) : maxWrecks;
+						}
+					}
+					
+					for (i = 0; i < n_wreckage; i++)
+					{
+						Vector r1 = [octree randomPoint];
+						Vector dir = quaternion_rotate_vector([self normalOrientation], r1);
+						HPVector rpos = HPvector_add(vectorToHPVector(dir), xposition);
+						GLfloat lifetime = 750.0 * randf() + 250.0 * i + 100.0;
+						::ShipEntity *wreck = [UNIVERSE cxx_addWreckageFrom:self withRole:"wreckage" at:rpos scale:1.0 lifetime:lifetime/2];
+
+						[wreck setVelocity:vector_add([wreck velocity],vector_multiply_scalar(vector_normal(dir),randf()*[wreck collisionRadius]))];
+
+					}
+					n_alloys = randf() * n_alloys;
+				}
+			} 
+
+			if (!canFragment)
+			{
+				n_alloys = 0.0;
+			}
+			// If UNIVERSE is almost full, don't create more than 1 piece of scrap metal.
+			else if (!add_debris)
+			{
+				n_alloys = (n_alloys > 1.0) ? 1.0 : 0.0;
+			}
+
+			// now convert to uint
+			numAlloys = floorf(n_alloys);
+
+			// Throw out scrap metal
+			//
+			for (i = 0; i < numAlloys; i++)
+			{
+				::ShipEntity* plate = [UNIVERSE cxx_newShipWithRole:"alloy"];   // retain count = 1
+				if (plate)
+				{
+					HPVector  rpos = xposition;
+					Vector	rrand = OORandomPositionInBoundingBox(boundingBox);
+					rpos.x += rrand.x;	rpos.y += rrand.y;	rpos.z += rrand.z;
+					rpos.x += (ranrot_rand() % 7) - 3;
+					rpos.y += (ranrot_rand() % 7) - 3;
+					rpos.z += (ranrot_rand() % 7) - 3;
+					[plate setPosition:rpos];
+					v.x = 0.1 *((ranrot_rand() % speed_low) - speed_low / 2);
+					v.y = 0.1 *((ranrot_rand() % speed_low) - speed_low / 2);
+					v.z = 0.1 *((ranrot_rand() % speed_low) - speed_low / 2);
+					[plate setVelocity:vector_add(v,[self velocity])];
+					quaternion_set_random(&q);
+					[plate setOrientation:q];
+					
+					[plate setTemperature:[self randomEjectaTemperature]];
+					[plate setScanClass: CLASS_CARGO];
+					[plate cxx_setCommodity:"alloys" andAmount:1];
+					[UNIVERSE addEntity:plate];	// STATUS_IN_FLIGHT, AI state GLOBAL
+					
+					[plate release];
+				}
+			}
+		}
+		
+		// Explode subentities.
+		for (const auto &sub : [self cxx_shipSubEntities])
+		{
+			::ShipEntity *se = sub.get();
+			[se setSuppressExplosion:suppressExplosion];
+			[se becomeExplosion];
+		}
+		[self clearSubEntities];
+
+		// momentum from explosions
+		if (!suppressExplosion)
+		{
+			desired_range = collision_radius * 2.5f;
+			[self dealMomentumWithinDesiredRange:0.125f * mass];
+		}
+		
+		if (self != PLAYER)	// was if !isPlayer - but I think this may cause ghosts (Who's "I"? -- Ahruman)
+		{
+			if (isPlayer)
+			{
+	#ifndef NDEBUG
+				OO_LOG("becomeExplosion.suspectedGhost.confirm", "{}", "Ship spotted with isPlayer set when not actually the player.");
+	#endif
+				isPlayer = NO;
+			}
+		}
+	}
+	@finally
+	{
+		if (self != PLAYER)
+		{
+			[UNIVERSE removeEntity:self];
+		}
+	}
+}
+
+
+// Exposed to AI
+void ShipEntity::becomeEnergyBlast()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[UNIVERSE addEntity:oo::NewEntityFacade(OOQuiriumCascadeEntity::quiriumCascadeFromShip(self))];
+	[self broadcastEnergyBlastImminent];
+	[self noteKilledBy:nil damageType:kOODamageTypeCascadeWeapon];
+	[UNIVERSE removeEntity:self];
+}
+
+
+// Exposed to AI
+void ShipEntity::broadcastEnergyBlastImminent()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// anyone further away than typical scanner range probably doesn't need to hear
+	const std::vector<oo::ObjCRef<::Entity *>> targets = [UNIVERSE cxx_entitiesWithinRange:SCANNER_MAX_RANGE ofEntity:self];
+	if (targets.size() > 0)
+	{
+		unsigned i;
+		for (i = 0; i < targets.size(); i++)
+		{
+			::Entity *e2 = targets[i].get();
+			if ([e2 isShip])
+			{
+				::ShipEntity *se = (::ShipEntity *)e2;
+				[se setFoundTarget:self];
+				[se cxx_reactToAIMessage:"CASCADE_WEAPON_DETECTED" context:"nearby Q-mine"];
+				[se doScriptEvent:OOJSID("cascadeWeaponDetected") withArgument:self];
+			}
+		}
+	}
+}
+
+
+void ShipEntity::removeExhaust(::OOExhaustPlumeEntity *exhaust)
+{
+	std::erase(subEntities, (::Entity *)exhaust);
+	[exhaust setOwner:nil];
+}
+
+
+}	// namespace cxx
+
+
+// Slice 23 of docs/phases/3-slices/ShipEntity.md (bead oo-xmrgd): subentity death, alignment
+// offsets, large explosion, laser heat, personality, scanner, remembered ships. The facade forwards
+// each selector (ShipEntity+ObjCBridge.mm); sends to self stay sends, so an Objective-C subclass's
+// override still runs (ADR-0056 amendment oo-mvzmb).
+namespace cxx {
+
+void ShipEntity::removeFlasher(::OOFlasherEntity *flasher)
+{
+	std::erase(subEntities, (::Entity *)flasher);
+	[flasher setOwner:nil];
+}
+
+
+void ShipEntity::subEntityDied(::ShipEntity *sub)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if ([self subEntityTakingDamage] == sub)  [self setSubEntityTakingDamage:nil];
+	
+	[sub setOwner:nil];
+	// TODO? Recalculating collision radius should increase collision testing efficiency,
+	// but for most ship models the difference would be marginal. -- Kaks 20110429
+	mass -= [sub mass]; // missing subents affect fuel charge rate, etc..
+	std::erase(subEntities, (::Entity *)sub);
+}
+
+
+void ShipEntity::subEntityReallyDied(::ShipEntity *sub)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if ([self subEntityTakingDamage] == sub)  [self setSubEntityTakingDamage:nil];
+	
+	if ([self hasSubEntity:sub])
+	{
+		OO_LOG_ERR("shipEntity.bug.subEntityRetainUnderflow", "Subentity of {} died while still in subentity list! This is bad. Leaking subentity list to avoid crash. {}", oo::DescriptionOf(self), "This is an internal error, please report it.");
+		
+		// Leak subentity list: one more retain each, so that emptying the list keeps them all alive,
+		// as dropping the array pointer did.
+		for (const auto &leaked : subEntities)  objc_retain(leaked.get());
+		subEntities.clear();
+	}
+}
+
+
+Vector ShipEntity::positionOffsetForAlignment(const std::string &align)
+{
+	// indexed in UTF-16 units, as -characterAtIndex: was
+	const std::u16string padAlign = oo::utf8ToUtf16(oo::str::format("%s---", align.c_str()));
+	Vector result = kZeroVector;
+	switch (padAlign[0])
+	{
+		case (uint16_t)'c':
+		case (uint16_t)'C':
+			result.x = 0.5 * (boundingBox.min.x + boundingBox.max.x);
+			break;
+		case (uint16_t)'M':
+			result.x = boundingBox.max.x;
+			break;
+		case (uint16_t)'m':
+			result.x = boundingBox.min.x;
+			break;
+	}
+	switch (padAlign[1])
+	{
+		case (uint16_t)'c':
+		case (uint16_t)'C':
+			result.y = 0.5 * (boundingBox.min.y + boundingBox.max.y);
+			break;
+		case (uint16_t)'M':
+			result.y = boundingBox.max.y;
+			break;
+		case (uint16_t)'m':
+			result.y = boundingBox.min.y;
+			break;
+	}
+	switch (padAlign[2])
+	{
+		case (uint16_t)'c':
+		case (uint16_t)'C':
+			result.z = 0.5 * (boundingBox.min.z + boundingBox.max.z);
+			break;
+		case (uint16_t)'M':
+			result.z = boundingBox.max.z;
+			break;
+		case (uint16_t)'m':
+			result.z = boundingBox.min.z;
+			break;
+	}
+	return result;
+}
+
+
+void ShipEntity::becomeLargeExplosion(double factor)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	
+	if ([self status] == STATUS_DEAD)  return;
+	[self setStatus:STATUS_DEAD];
+	
+	@try
+	{
+		// two parts to the explosion:
+		// 1. fast sparks
+		float how_many = factor;
+		while (how_many > 0.5f)
+		{
+			[UNIVERSE addEntity:oo::NewEntityFacade(OOSmallFragmentBurstEntity::fragmentBurstFromEntity(self))];
+			how_many -= 1.0f;
+		}
+		// 2. slow clouds
+		how_many = factor;
+		while (how_many > 0.5f)
+		{
+			[UNIVERSE addEntity:oo::NewEntityFacade(OOBigFragmentBurstEntity::fragmentBurstFromEntity(self))];
+			how_many -= 1.0f;
+		}
+
+		[self releaseCargoPodsDebris];
+		
+		for (const auto &sub : [self cxx_shipSubEntities])
+		{
+			::ShipEntity *se = sub.get();
+			[se setSuppressExplosion:suppressExplosion];
+			[se becomeExplosion];
+		}
+		[self clearSubEntities];
+		
+	}
+	@finally
+	{
+		if (!isPlayer)  [UNIVERSE removeEntity:self];
+	}
+}
+
+
+void ShipEntity::collectBountyFor(::ShipEntity *other)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if ([other isPolice])   // oops, we shot a copper!
+	{
+		[self markAsOffender:64 withReason:kOOLegalStatusReasonAttackedPolice];
+	}
+}
+
+
+OOComparisonResult ShipEntity::compareBeaconCodeWith(::Entity *other)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return (OOComparisonResult)oo::str::caseInsensitiveCompare([self beaconCode].value_or(""), [(::Entity<OOBeaconEntity> *)other beaconCode].value_or(""));
+}
+
+
+// for shaders, equivalent to 1.76's NPC laserHeatLevel
+GLfloat ShipEntity::weaponRecoveryTime()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	float result = (weapon_recharge_rate - [self shotTime]) / weapon_recharge_rate;
+	return OOClamp_0_1_f(result);
+}
+
+
+GLfloat ShipEntity::laserHeatLevel()
+{
+	GLfloat result = weapon_temp / NPC_MAX_WEAPON_TEMP;
+	return OOClamp_0_1_f(result);
+}
+
+
+GLfloat ShipEntity::laserHeatLevelAft()
+{
+	GLfloat result = aft_weapon_temp / NPC_MAX_WEAPON_TEMP;
+	return OOClamp_0_1_f(result);
+}
+
+
+GLfloat ShipEntity::laserHeatLevelForward()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	GLfloat result = forward_weapon_temp / NPC_MAX_WEAPON_TEMP;
+	if (isWeaponNone(forward_weapon_type)) 
+	{ // must check subents
+		OOWeaponType forward_weapon_real_type = nil;
+		for (const auto &sub : [self cxx_shipSubEntities])
+		{
+			if (!isWeaponNone(forward_weapon_real_type))  break;
+			::ShipEntity *se = sub.get();
+			if (!isWeaponNone(se->_cxxShip->forward_weapon_type))
+			{
+				forward_weapon_real_type = se->_cxxShip->forward_weapon_type;
+				result = se->_cxxShip->forward_weapon_temp / NPC_MAX_WEAPON_TEMP;
+			}
+		}
+	}
+	return OOClamp_0_1_f(result);
+}
+
+
+GLfloat ShipEntity::laserHeatLevelPort()
+{
+	GLfloat result = port_weapon_temp / NPC_MAX_WEAPON_TEMP;
+	return OOClamp_0_1_f(result);
+}
+
+
+GLfloat ShipEntity::laserHeatLevelStarboard()
+{
+	GLfloat result = starboard_weapon_temp / NPC_MAX_WEAPON_TEMP;
+	return OOClamp_0_1_f(result);
+}
+
+
+GLfloat ShipEntity::hullHeatLevel()
+{
+	GLfloat result = (GLfloat)ship_temperature / (GLfloat)SHIP_MAX_CABIN_TEMP;
+	return OOClamp_0_1_f(result);
+}
+
+
+GLfloat ShipEntity::entityPersonality()
+{
+	return entity_personality / (float)ENTITY_PERSONALITY_MAX;
+}
+
+
+GLint ShipEntity::entityPersonalityInt()
+{
+	return entity_personality;
+}
+
+
+uint32_t ShipEntity::randomSeedForShaders()
+{
+	return entity_personality * 0x00010001;
+}
+
+
+void ShipEntity::setEntityPersonalityInt(uint16_t value)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (value <= ENTITY_PERSONALITY_MAX)
+	{
+		entity_personality = value;
+		[[self mesh] rebindMaterials];
+	}
+}
+
+
+void ShipEntity::setSuppressExplosion(bool suppress)
+{
+	suppressExplosion = !!suppress;
+}
+
+
+void ShipEntity::resetExhaustPlumes()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	for (const auto &exEnt : [self cxx_exhausts])
+	{
+		[exEnt.get() resetPlume];
+	}
+}
+
+
+/*-----------------------------------------
+
+	AI piloting methods
+
+-----------------------------------------*/
+
+
+void ShipEntity::checkScanner()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::Entity* scan;
+	n_scanned_ships = 0;
+	//
+	scan = z_previous;	while ((scan)&&(scan->_cxxEntity->isShip == NO))	scan = scan->_cxxEntity->z_previous;	// skip non-ships
+	GLfloat scannerRange2 = scannerRange * scannerRange;
+	while ((scan)&&(scan->_cxxEntity->position.z > position.z - scannerRange)&&(n_scanned_ships < MAX_SCAN_NUMBER))
+	{
+		// can't scan cloaked ships
+		if (scan->_cxxEntity->isShip && ![(::ShipEntity*)scan isCloaked] && [self isValidTarget:scan])
+		{
+			distance2_scanned_ships[n_scanned_ships] = HPdistance2(position, scan->_cxxEntity->position);
+			if (distance2_scanned_ships[n_scanned_ships] < scannerRange2)
+				scanned_ships[n_scanned_ships++] = (::ShipEntity*)scan;
+		}
+		scan = scan->_cxxEntity->z_previous;	while ((scan)&&(scan->_cxxEntity->isShip == NO))	scan = scan->_cxxEntity->z_previous;
+	}
+	//
+	scan = z_next;	while ((scan)&&(scan->_cxxEntity->isShip == NO))	scan = scan->_cxxEntity->z_next;	// skip non-ships
+	while ((scan)&&(scan->_cxxEntity->position.z < position.z + scannerRange)&&(n_scanned_ships < MAX_SCAN_NUMBER))
+	{
+		if (scan->_cxxEntity->isShip && ![(::ShipEntity*)scan isCloaked] && [self isValidTarget:scan])
+		{
+			distance2_scanned_ships[n_scanned_ships] = HPdistance2(position, scan->_cxxEntity->position);
+			if (distance2_scanned_ships[n_scanned_ships] < scannerRange2)
+				scanned_ships[n_scanned_ships++] = (::ShipEntity*)scan;
+		}
+		scan = scan->_cxxEntity->z_next;	while ((scan)&&(scan->_cxxEntity->isShip == NO))	scan = scan->_cxxEntity->z_next;	// skip non-ships
+	}
+	//
+	scanned_ships[n_scanned_ships] = nil;	// terminate array
+}
+
+
+void ShipEntity::checkScannerIgnoringUnpowered()
+{
+	::Entity* scan;
+	n_scanned_ships = 0;
+	//
+	GLfloat scannerRange2 = scannerRange * scannerRange;
+	scan = z_previous;	
+	while ((scan)&&((scan->_cxxEntity->isShip == NO)||(scan->_cxxEntity->scanClass==CLASS_ROCK)||(scan->_cxxEntity->scanClass==CLASS_CARGO)))	
+	{
+		scan = scan->_cxxEntity->z_previous;	// skip non-ships
+	}
+	while ((scan)&&(scan->_cxxEntity->position.z > position.z - scannerRange)&&(n_scanned_ships < MAX_SCAN_NUMBER))
+	{
+		if (scan->_cxxEntity->isShip && ![(::ShipEntity*)scan isCloaked])
+		{
+			distance2_scanned_ships[n_scanned_ships] = HPdistance2(position, scan->_cxxEntity->position);
+			if (distance2_scanned_ships[n_scanned_ships] < scannerRange2)
+				scanned_ships[n_scanned_ships++] = (::ShipEntity*)scan;
+		}
+		scan = scan->_cxxEntity->z_previous;
+		while ((scan)&&((scan->_cxxEntity->isShip == NO)||(scan->_cxxEntity->scanClass==CLASS_ROCK)||(scan->_cxxEntity->scanClass==CLASS_CARGO)))	
+		{
+			scan = scan->_cxxEntity->z_previous;	// skip non-ships
+		}
+	}
+	//
+	scan = z_next;	
+	while ((scan)&&((scan->_cxxEntity->isShip == NO)||(scan->_cxxEntity->scanClass==CLASS_ROCK)||(scan->_cxxEntity->scanClass==CLASS_CARGO)))	
+	{
+		scan = scan->_cxxEntity->z_next;	// skip non-ships
+	}
+
+	while ((scan)&&(scan->_cxxEntity->position.z < position.z + scannerRange)&&(n_scanned_ships < MAX_SCAN_NUMBER))
+	{
+		if (scan->_cxxEntity->isShip && ![(::ShipEntity*)scan isCloaked])
+		{
+			distance2_scanned_ships[n_scanned_ships] = HPdistance2(position, scan->_cxxEntity->position);
+			if (distance2_scanned_ships[n_scanned_ships] < scannerRange2)
+				scanned_ships[n_scanned_ships++] = (::ShipEntity*)scan;
+		}
+		scan = scan->_cxxEntity->z_next;
+		while ((scan)&&((scan->_cxxEntity->isShip == NO)||(scan->_cxxEntity->scanClass==CLASS_ROCK)||(scan->_cxxEntity->scanClass==CLASS_CARGO)))	
+		{
+			scan = scan->_cxxEntity->z_next;	// skip non-ships
+		}
+	}
+	//
+	scanned_ships[n_scanned_ships] = nil;	// terminate array
+}
+
+
+::ShipEntity **ShipEntity::scannedShips()
+{
+	scanned_ships[n_scanned_ships] = nil;	// terminate array
+	return scanned_ships;
+}
+
+
+int ShipEntity::numberOfScannedShips()
+{
+	return n_scanned_ships;
+}
+
+
+::Entity *ShipEntity::foundTarget()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::Entity *result = [_foundTarget weakRefUnderlyingObject];
+	if (result == nil || ![self isValidTarget:result])
+	{
+		DESTROY(_foundTarget);
+		return nil;
+	}
+	return result;
+}
+
+
+void ShipEntity::setFoundTarget(::Entity *targetEntity)
+{
+	[_foundTarget release];
+	_foundTarget = [targetEntity weakRetain];
+}
+
+
+::Entity *ShipEntity::primaryAggressor()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::Entity *result = [_primaryAggressor weakRefUnderlyingObject];
+	if (result == nil || ![self isValidTarget:result])
+	{
+		DESTROY(_primaryAggressor);
+		return nil;
+	}
+	return result;
+}
+
+
+void ShipEntity::setPrimaryAggressor(::Entity *targetEntity)
+{
+	[_primaryAggressor release];
+	_primaryAggressor = [targetEntity weakRetain];
+}
+
+
+::Entity *ShipEntity::lastEscortTarget()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::Entity *result = [_lastEscortTarget weakRefUnderlyingObject];
+	if (result == nil || ![self isValidTarget:result])
+	{
+		DESTROY(_lastEscortTarget);
+		return nil;
+	}
+	return result;
+}
+
+
+void ShipEntity::setLastEscortTarget(::Entity *targetEntity)
+{
+	[_lastEscortTarget release];
+	_lastEscortTarget = [targetEntity weakRetain];
 }
 
 

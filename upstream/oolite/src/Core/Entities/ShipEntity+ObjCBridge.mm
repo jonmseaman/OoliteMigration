@@ -118,6 +118,21 @@ public:
 	void setMaxFlightRoll(GLfloat newValue) override	{ [(::ShipEntity *)_objcOwner setMaxFlightRoll:newValue]; }
 	void setMaxFlightYaw(GLfloat newValue) override	{ [(::ShipEntity *)_objcOwner setMaxFlightYaw:newValue]; }
 	void noteTakingDamage(double amount, ::Entity *entity, OOShipDamageType type) override	{ [(::ShipEntity *)_objcOwner noteTakingDamage:amount from:entity type:type]; }
+
+	// Slice 22 (bead oo-z1utw).
+	void getDestroyedBy(::Entity *whom, OOShipDamageType type) override	{ [(::ShipEntity *)_objcOwner getDestroyedBy:whom damageType:type]; }
+	void becomeExplosion() override	{ [(::ShipEntity *)_objcOwner becomeExplosion]; }
+	void becomeEnergyBlast() override	{ [(::ShipEntity *)_objcOwner becomeEnergyBlast]; }
+
+	// Slice 23 (bead oo-xmrgd).
+	void becomeLargeExplosion(double factor) override	{ [(::ShipEntity *)_objcOwner becomeLargeExplosion:factor]; }
+	void collectBountyFor(::ShipEntity *other) override	{ [(::ShipEntity *)_objcOwner collectBountyFor:other]; }
+	GLfloat laserHeatLevel() override	{ return [(::ShipEntity *)_objcOwner laserHeatLevel]; }
+	GLfloat laserHeatLevelAft() override	{ return [(::ShipEntity *)_objcOwner laserHeatLevelAft]; }
+	GLfloat laserHeatLevelForward() override	{ return [(::ShipEntity *)_objcOwner laserHeatLevelForward]; }
+	GLfloat laserHeatLevelPort() override	{ return [(::ShipEntity *)_objcOwner laserHeatLevelPort]; }
+	GLfloat laserHeatLevelStarboard() override	{ return [(::ShipEntity *)_objcOwner laserHeatLevelStarboard]; }
+	void setFoundTarget(::Entity *targetEntity) override	{ [(::ShipEntity *)_objcOwner setFoundTarget:targetEntity]; }
 };
 
 }	// namespace
@@ -814,5 +829,57 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 - (void) setHulk:(BOOL)isNowHulk	{ _cxxShip->setHulk(isNowHulk); }
 - (void) noteTakingDamage:(double)amount from:(Entity *)entity type:(OOShipDamageType)type	{ _cxxShip->cxx::ShipEntity::noteTakingDamage(amount, entity, type); }
 - (void) noteKilledBy:(Entity *)whom damageType:(OOShipDamageType)type	{ _cxxShip->noteKilledBy(whom, type); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice22)
+
+- (void) getDestroyedBy:(Entity *)whom damageType:(OOShipDamageType)type	{ _cxxShip->cxx::ShipEntity::getDestroyedBy(whom, type); }
+- (void) rescaleBy:(GLfloat)factor	{ _cxxShip->rescaleBy(factor); }
+- (void) rescaleBy:(GLfloat)factor writeToCache:(BOOL)writeToCache	{ _cxxShip->rescaleBy(factor, writeToCache); }
+- (void) releaseCargoPodsDebris	{ _cxxShip->releaseCargoPodsDebris(); }
+- (void) setIsWreckage:(BOOL)isw	{ _cxxShip->setIsWreckage(isw); }
+- (BOOL) showDamage	{ return _cxxShip->showDamage(); }
+- (void) becomeExplosion	{ _cxxShip->cxx::ShipEntity::becomeExplosion(); }
+- (void) becomeEnergyBlast	{ _cxxShip->cxx::ShipEntity::becomeEnergyBlast(); }
+- (void) broadcastEnergyBlastImminent	{ _cxxShip->broadcastEnergyBlastImminent(); }
+- (void) removeExhaust:(OOExhaustPlumeEntity *)exhaust	{ _cxxShip->removeExhaust(exhaust); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice23)
+
+- (void) removeFlasher:(OOFlasherEntity *)flasher	{ _cxxShip->removeFlasher(flasher); }
+- (void) subEntityDied:(ShipEntity *)sub	{ _cxxShip->subEntityDied(sub); }
+- (void) subEntityReallyDied:(ShipEntity *)sub	{ _cxxShip->cxx::ShipEntity::subEntityReallyDied(sub); }
+- (Vector) positionOffsetForAlignment:(const std::string &)align	{ return _cxxShip->positionOffsetForAlignment(align); }
+- (void) becomeLargeExplosion:(double)factor	{ _cxxShip->cxx::ShipEntity::becomeLargeExplosion(factor); }
+- (void) collectBountyFor:(ShipEntity *)other	{ _cxxShip->cxx::ShipEntity::collectBountyFor(other); }
+- (OOComparisonResult) compareBeaconCodeWith:(Entity<OOBeaconEntity> *)other	{ return _cxxShip->compareBeaconCodeWith(other); }
+- (GLfloat) weaponRecoveryTime	{ return _cxxShip->weaponRecoveryTime(); }
+- (GLfloat) laserHeatLevel	{ return _cxxShip->cxx::ShipEntity::laserHeatLevel(); }
+- (GLfloat) laserHeatLevelAft	{ return _cxxShip->cxx::ShipEntity::laserHeatLevelAft(); }
+- (GLfloat) laserHeatLevelForward	{ return _cxxShip->cxx::ShipEntity::laserHeatLevelForward(); }
+- (GLfloat) laserHeatLevelPort	{ return _cxxShip->cxx::ShipEntity::laserHeatLevelPort(); }
+- (GLfloat) laserHeatLevelStarboard	{ return _cxxShip->cxx::ShipEntity::laserHeatLevelStarboard(); }
+- (GLfloat) hullHeatLevel	{ return _cxxShip->hullHeatLevel(); }
+- (GLfloat) entityPersonality	{ return _cxxShip->entityPersonality(); }
+- (GLint) entityPersonalityInt	{ return _cxxShip->entityPersonalityInt(); }
+- (uint32_t) randomSeedForShaders	{ return _cxxShip->randomSeedForShaders(); }
+- (void) setEntityPersonalityInt:(uint16_t)value	{ _cxxShip->setEntityPersonalityInt(value); }
+- (void) setSuppressExplosion:(BOOL)suppress	{ _cxxShip->setSuppressExplosion(suppress); }
+- (void) resetExhaustPlumes	{ _cxxShip->resetExhaustPlumes(); }
+- (void) checkScanner	{ _cxxShip->checkScanner(); }
+- (void) checkScannerIgnoringUnpowered	{ _cxxShip->checkScannerIgnoringUnpowered(); }
+- (ShipEntity**) scannedShips	{ return _cxxShip->scannedShips(); }
+- (int) numberOfScannedShips	{ return _cxxShip->numberOfScannedShips(); }
+- (Entity *) foundTarget	{ return _cxxShip->foundTarget(); }
+- (void) setFoundTarget:(Entity *)targetEntity	{ _cxxShip->cxx::ShipEntity::setFoundTarget(targetEntity); }
+- (Entity *) primaryAggressor	{ return _cxxShip->primaryAggressor(); }
+- (void) setPrimaryAggressor:(Entity *)targetEntity	{ _cxxShip->setPrimaryAggressor(targetEntity); }
+- (Entity *) lastEscortTarget	{ return _cxxShip->lastEscortTarget(); }
+- (void) setLastEscortTarget:(Entity *)targetEntity	{ _cxxShip->setLastEscortTarget(targetEntity); }
 
 @end
