@@ -166,6 +166,10 @@ public:
 	void enterWormhole(::WormholeEntity *w_hole) override	{ [(::ShipEntity *)_objcOwner enterWormhole:w_hole]; }
 	void enterWitchspace() override	{ [(::ShipEntity *)_objcOwner enterWitchspace]; }
 	void leaveWitchspace() override	{ [(::ShipEntity *)_objcOwner leaveWitchspace]; }
+
+	// Slice 32 (bead oo-5e0ny).
+	void markAsOffender(int offence_value) override	{ [(::ShipEntity *)_objcOwner markAsOffender:offence_value]; }
+	void markAsOffender(int offence_value, OOLegalStatusReason reason) override	{ [(::ShipEntity *)_objcOwner markAsOffender:offence_value withReason:reason]; }
 };
 
 }	// namespace
@@ -1078,5 +1082,30 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 - (void) enterWormhole:(WormholeEntity *)w_hole replacing:(BOOL)replacing	{ _cxxShip->enterWormhole(w_hole, replacing); }
 - (void) enterWitchspace	{ _cxxShip->cxx::ShipEntity::enterWitchspace(); }
 - (void) leaveWitchspace	{ _cxxShip->cxx::ShipEntity::leaveWitchspace(); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice32)
+
+- (BOOL) witchspaceLeavingEffects	{ return _cxxShip->witchspaceLeavingEffects(); }
+- (void) markAsOffender:(int)offence_value	{ _cxxShip->cxx::ShipEntity::markAsOffender(offence_value); }
+- (void) markAsOffender:(int)offence_value withReason:(OOLegalStatusReason)reason	{ _cxxShip->cxx::ShipEntity::markAsOffender(offence_value, reason); }
+- (void) switchLightsOn	{ _cxxShip->switchLightsOn(); }
+- (void) switchLightsOff	{ _cxxShip->switchLightsOff(); }
+- (BOOL) lightsActive	{ return _cxxShip->lightsActive(); }
+- (void) setDestination:(HPVector)dest	{ _cxxShip->setDestination(dest); }
+- (void) setEscortDestination:(HPVector)dest	{ _cxxShip->setEscortDestination(dest); }
+- (BOOL) canAcceptEscort:(ShipEntity *)potentialEscort	{ return _cxxShip->canAcceptEscort(potentialEscort); }
+- (BOOL) acceptAsEscort:(ShipEntity *)other_ship	{ return _cxxShip->acceptAsEscort(other_ship); }
+- (void) updateEscortFormation	{ _cxxShip->updateEscortFormation(); }
+- (void) refreshEscortPositions	{ _cxxShip->refreshEscortPositions(); }
+- (HPVector) coordinatesForEscortPosition:(unsigned)idx	{ return _cxxShip->coordinatesForEscortPosition(idx); }
+- (void) deployEscorts	{ _cxxShip->deployEscorts(); }
+- (void) dockEscorts	{ _cxxShip->dockEscorts(); }
+- (void) setTargetToNearestStationIncludingHostiles:(BOOL)includeHostiles	{ _cxxShip->setTargetToNearestStationIncludingHostiles(includeHostiles); }
+- (void) setTargetToNearestFriendlyStation	{ _cxxShip->setTargetToNearestFriendlyStation(); }
+- (void) setTargetToNearestStation	{ _cxxShip->setTargetToNearestStation(); }
+- (void) setTargetToSystemStation	{ _cxxShip->setTargetToSystemStation(); }
 
 @end

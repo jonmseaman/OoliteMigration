@@ -71,7 +71,6 @@ MA 02110-1301, USA.
 
 
 
-- (void) updateEscortFormation;
 
 
 
@@ -214,30 +213,15 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 
 
 
-- (BOOL) witchspaceLeavingEffects;
 
 /* 
  Mark this ship as an offender, this is different to setBounty as some ships such as police 
  are not markable.  The final bounty may not be equal to existing bounty plus offence_value.
  */
-- (void) markAsOffender:(int)offence_value;
-- (void) markAsOffender:(int)offence_value withReason:(OOLegalStatusReason)reason;
 
-- (void) switchLightsOn;
-- (void) switchLightsOff;
-- (BOOL) lightsActive;
 
-- (void) setDestination:(HPVector) dest;
-- (void) setEscortDestination:(HPVector) dest;
 
-- (BOOL) canAcceptEscort:(ShipEntity *)potentialEscort;
-- (BOOL) acceptAsEscort:(ShipEntity *) other_ship;
-- (void) deployEscorts;
-- (void) dockEscorts;
 
-- (void) setTargetToNearestFriendlyStation;
-- (void) setTargetToNearestStation;
-- (void) setTargetToSystemStation;
 
 - (void) landOnPlanet:(OOPlanetEntity *)planet;
 
@@ -1206,6 +1190,34 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (void) enterWormhole:(WormholeEntity *) w_hole replacing:(BOOL)replacing;
 - (void) enterWitchspace;
 - (void) leaveWitchspace;
+
+@end
+
+
+// Slice 32 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice32)
+
+- (BOOL) witchspaceLeavingEffects;
+- (void) markAsOffender:(int)offence_value;
+- (void) markAsOffender:(int)offence_value withReason:(OOLegalStatusReason)reason;
+- (void) switchLightsOn;
+- (void) switchLightsOff;
+- (BOOL) lightsActive;
+- (void) setDestination:(HPVector) dest;
+- (void) setEscortDestination:(HPVector) dest;
+- (BOOL) canAcceptEscort:(ShipEntity *)potentialEscort;
+- (BOOL) acceptAsEscort:(ShipEntity *) other_ship;
+- (void) updateEscortFormation;
+- (void) refreshEscortPositions;
+- (HPVector) coordinatesForEscortPosition:(unsigned)idx;
+- (void) deployEscorts;
+- (void) dockEscorts;
+- (void) setTargetToNearestStationIncludingHostiles:(BOOL)includeHostiles;
+- (void) setTargetToNearestFriendlyStation;
+- (void) setTargetToNearestStation;
+- (void) setTargetToSystemStation;
 
 @end
 

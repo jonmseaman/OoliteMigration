@@ -516,462 +516,6 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 }
 
 
-- (BOOL) witchspaceLeavingEffects
-{
-	// all ships exiting witchspace will share the same orientation.
-	_cxxEntity->orientation = [UNIVERSE getWitchspaceExitRotation];
-	_cxxShip->flightRoll = 0.0;
-	_cxxShip->stick_roll = 0.0;
-	_cxxShip->flightPitch = 0.0;
-	_cxxShip->stick_pitch = 0.0;
-	_cxxShip->flightYaw = 0.0;
-	_cxxShip->stick_yaw = 0.0;
-	_cxxShip->flightSpeed = 50.0; // constant speed same for all ships
-// was a quarter of max speed, so the Anaconda speeds up and most
-// others slow down - CIM
-// will be overridden if left witchspace via a genuine wormhole
-	_cxxEntity->velocity = kZeroVector;
-	if (![UNIVERSE addEntity:self])	// AI and status get initialised here
-	{
-		return NO;
-	}
-	[self setStatus:STATUS_EXITING_WITCHSPACE];
-	[_cxxShip->shipAI message:"EXITED_WITCHSPACE"];
-	
-	[UNIVERSE addWitchspaceJumpEffectForShip:self];
-	[self setStatus:STATUS_IN_FLIGHT];
-	return YES;
-}
-
-
-- (void) markAsOffender:(int)offence_value
-{
-	[self markAsOffender:offence_value withReason:kOOLegalStatusReasonUnknown];
-}
-
-
-- (void) markAsOffender:(int)offence_value withReason:(OOLegalStatusReason)reason
-{
-	if (![self isPolice] && ![self isCloaked] && self != [UNIVERSE station])
-	{
-		if ([self isSubEntity]) 
-		{
-			[[self parentEntity] markAsOffender:offence_value withReason:reason];
-		}
-		else
-		{
-			if ((_cxxEntity->scanClass == CLASS_THARGOID || _cxxEntity->scanClass == CLASS_STATION) && reason != kOOLegalStatusReasonSetup && reason != kOOLegalStatusReasonByScript)
-			{
-				return; // no non-scripted bounties for thargoids and stations
-			}
-
-			ooscript::Context context = OOJSAcquireContext();
-	
-			ooscript::Value amountVal = ooscript::undefinedValue();
-			ooscript::newNumberValue(context, (_cxxShip->bounty | offence_value)-_cxxShip->bounty, &amountVal);
-
-			_cxxShip->bounty |= offence_value; // can't set the new bounty until the size of the change is known
-
-			ooscript::Value reasonVal = OOJSValueFromLegalStatusReason(context, reason);
-		
-			ShipScriptEvent(context, self, "shipBountyChanged", amountVal, reasonVal);
-		
-			OOJSRelinquishContext(context);
-		
-		}
-	}
-}
-
-
-// Exposed to AI
-- (void) switchLightsOn
-{
-	_cxxShip->_lightsActive = YES;
-
-	const std::vector<oo::ObjCRef<Entity *>> subs = _cxxShip->subEntities;
-	for (const auto &se : subs)
-	{
-		if ([se.get() isFlasher])  [(OOFlasherEntity *)se.get() setActive:YES];
-	}
-	for (const auto &sub : [self cxx_shipSubEntities])
-	{
-		[sub.get() switchLightsOn];
-	}
-}
-
-// Exposed to AI
-- (void) switchLightsOff
-{
-	_cxxShip->_lightsActive = NO;
-
-	const std::vector<oo::ObjCRef<Entity *>> subs = _cxxShip->subEntities;
-	for (const auto &se : subs)
-	{
-		if ([se.get() isFlasher])  [(OOFlasherEntity *)se.get() setActive:NO];
-	}
-	for (const auto &sub : [self cxx_shipSubEntities])
-	{
-		[sub.get() switchLightsOff];
-	}
-}
-
-
-- (BOOL) lightsActive
-{
-	return _cxxShip->_lightsActive;
-}
-
-
-- (void) setDestination:(HPVector) dest
-{
-	_cxxShip->_destination = dest;
-	_cxxShip->frustration = 0.0;	// new destination => no frustration!
-}
-
-
-- (void) setEscortDestination:(HPVector) dest
-{
-	_cxxShip->_destination = dest; // don't reset frustration for escorts.
-}
-
-
-- (BOOL) canAcceptEscort:(ShipEntity *)potentialEscort
-{
-	if (!_cxxShip->dockingInstructions.isNull()) // we are busy with docking.
-	{
-		return NO;
-	}
-	if (_cxxEntity->scanClass != [potentialEscort scanClass]) // this makes sure that wingman can only select police, thargons only thargoids.
-	{
-		return NO;
-	}
-	if ([self bounty] == 0 && [potentialEscort bounty] != 0) // clean mothers can only accept clean escorts
-	{
-		return NO;
-	}
-	if (![self isEscort]) // self is NOT wingman or escort or thargon
-	{
-		return [potentialEscort isEscort]; // is wingman or escort or thargon
-	}
-	return NO;
-}
-	
-
-- (BOOL) acceptAsEscort:(ShipEntity *) other_ship
-{
-	// can't pair with self
-	if (self == other_ship)  return NO;
-	
-	// no longer in flight, probably entered wormhole without telling escorts.
-	if ([self status] != STATUS_IN_FLIGHT)  return NO;
-	
-	//increased stack depth at which it can accept escorts to avoid rejections at this stage.
-	//doesn't seem to have any adverse effect for now. - Kaks.
-	if ([_cxxShip->shipAI stackDepth] > 3)
-	{
-		OO_LOG("ship.escort.reject", "{} rejecting escort {} because AI stack depth is {}.", oo::DescriptionOf(self), oo::DescriptionOf(other_ship), [_cxxShip->shipAI stackDepth]);
-		return NO;
-	}
-	
-	if ([self canAcceptEscort:other_ship])
-	{
-		OOShipGroup *escortGroup = [self escortGroup];
-		
-		if ([escortGroup containsShip:other_ship])  return YES;
-		
-		// check total number acceptable
-		// the system's patrols don't have escorts set inside their dictionary, but accept max escorts.
-		if (_cxxShip->_maxEscortCount == 0 && ([self cxx_hasPrimaryRole:"police"] || [self cxx_hasPrimaryRole:"hunter"] || [self hasRole:"thargoid-mothership"])) 
-		{
-			_cxxShip->_maxEscortCount = MAX_ESCORTS;
-		}
-		
-		NSUInteger maxEscorts = _cxxShip->_maxEscortCount; 	// never bigger than MAX_ESCORTS.
-		NSUInteger escortCount = [escortGroup count] - 1;	// always 0 or higher.
-		
-		if (escortCount < maxEscorts)
-		{
-			[other_ship setGroup:escortGroup];
-			if ([self group] == nil)
-			{
-				[self setGroup:escortGroup];
-			}
-			else if ([self group] != escortGroup)  [[self group] addShip:other_ship];
-			
-			if (([other_ship maxFlightSpeed] < _cxxShip->cruiseSpeed) && ([other_ship maxFlightSpeed] > _cxxShip->cruiseSpeed * 0.3))
-			{
-				_cxxShip->cruiseSpeed = [other_ship maxFlightSpeed] * 0.99;
-			}
-			
-			OO_LOG("ship.escort.accept", "{} accepting escort {}.", oo::DescriptionOf(self), oo::DescriptionOf(other_ship));
-			
-			[self doScriptEvent:OOJSID("shipAcceptedEscort") withArgument:other_ship];
-			[other_ship doScriptEvent:OOJSID("escortAccepted") withArgument:self];
-			[_cxxShip->shipAI message:"ACCEPTED_ESCORT"];
-			return YES;
-		}
-		else
-		{
-			OO_LOG("ship.escort.reject", "{} already got max escorts({}). Escort rejected: {}.", oo::DescriptionOf(self), escortCount, oo::DescriptionOf(other_ship));
-		}
-	}
-	else
-	{
-		OO_LOG("ship.escort.reject", "{} failed canAcceptEscort for escort {}.", oo::DescriptionOf(self), oo::DescriptionOf(other_ship));
-	}
-
-	
-	return NO;
-}
-
-
-// Exposed to AI
-- (void) updateEscortFormation
-{
-	_cxxShip->_escortPositionsValid = NO;
-}
-
-
-/*
-	NOTE: it's tempting to call refreshEscortPositions from coordinatesForEscortPosition:
-	as needed, but that would cause unnecessary extra work if the formation
-	callback itself calls updateEscortFormation.
-*/
-- (void) refreshEscortPositions
-{
-	if (!_cxxShip->_escortPositionsValid)
-	{
-		ooscript::Context context = OOJSAcquireContext();
-		ooscript::Value				result;
-		ooscript::Value				args[] = { ooscript::int32Value(0), ooscript::int32Value(_cxxShip->_maxEscortCount) };
-		BOOL				OK;
-		
-		// Reset validity first so updateEscortFormation can be called from the update callback.
-		_cxxShip->_escortPositionsValid = YES;
-		
-		uint8_t i;
-		for (i = 0; i < _cxxShip->_maxEscortCount; i++)
-		{
-			args[0] = ooscript::int32Value(i);
-			OK = [_cxxShip->script callMethod:OOJSID("coordinatesForEscortPosition")
-						  inContext:context
-					  withArguments:args count:sizeof args / sizeof *args
-							 result:&result];
-			
-			if (OK)  OK = JSValueToVector(context, result, &_cxxShip->_escortPositions[i]);
-			
-			if (!OK)  _cxxShip->_escortPositions[i] = kZeroVector;
-		}
-		
-		OOJSRelinquishContext(context);
-	}
-}
-
-
-- (HPVector) coordinatesForEscortPosition:(unsigned)idx
-{
-	/*
-		This function causes problems with Thargoids: their missiles (aka Thargons) are automatically
-		added to the escorts group, and when a mother ship dies all thargons will attach themselves
-		as escorts to the surviving battleships. This can lead to huge escort groups.
-		TODO: better handling of Thargoid groups:
-			- put thargons (& all other thargon missiles) in their own non-escort group perhaps?
-	*/
-	
-	// The _escortPositions array is always MAX_ESCORTS long.
-	// Kludge: return the same last escort position if we have escorts above MAX_ESCORTS...
-	idx = MIN(idx, (unsigned)(MAX_ESCORTS - 1));
-	
-	return HPvector_add(self->_cxxEntity->position, vectorToHPVector(quaternion_rotate_vector([self normalOrientation], _cxxShip->_escortPositions[idx])));
-}
-
-
-// Exposed to AI
-- (void) deployEscorts
-{
-	ShipEntity		*target = nil;
-	std::vector<oo::ObjCRef<ShipEntity *>>	idleEscorts;	// in escort order (was a mutable set: hash order)
-	unsigned		deployCount;
-	
-	if ([self primaryTarget] == nil || _cxxShip->_escortGroup == nil)  return;
-	
-	OOShipGroup *escortGroup = [self escortGroup];
-	NSUInteger escortCount = [escortGroup count] - 1;  // escorts minus leader.
-	if (escortCount == 0)  return;
-	
-	if ([self group] == nil)  [self setGroup:escortGroup];
-	
-	if ([self primaryTarget] == [self lastEscortTarget])
-	{
-		// already deployed escorts onto this target!
-		return;
-	}
-	
-	[self setLastEscortTarget:[self primaryTarget]];
-	
-	// Find idle escorts
-	for (const auto &escortRef : [self cxx_escorts])
-	{
-		ShipEntity *escort = escortRef.get();
-		if ([[escort getAI] cxx_name].value_or(std::string()) != "interceptAI.plist" && ![escort hasNewAI])
-		{
-			idleEscorts.push_back(escortRef);
-		}
-		else if ([escort hasNewAI])
-		{
-			// JS-based escorts get a help request
-			[escort doScriptEvent:OOJSID("helpRequestReceived") withArgument:self andArgument:[self primaryTarget]];
-		}
-	}
-	
-	escortCount = idleEscorts.size();
-	if (escortCount == 0)  return;
-
-	deployCount = ranrot_rand() % escortCount + 1;
-
-	// Deploy deployCount idle escorts.
-	target = [self primaryTarget];
-	for (const auto &escortRef : idleEscorts)
-	{
-		ShipEntity *escort = escortRef.get();
-		[escort addTarget:target];
-		[escort setAITo:"interceptAI.plist"];
-		[escort doScriptEvent:OOJSID("escortAttack") withArgument:target];
-		
-		if (--deployCount == 0)  break;
-	}
-	
-	[self updateEscortFormation];
-}
-
-
-// Exposed to AI
-- (void) dockEscorts
-{
-	if (![self hasEscorts])  return;
-	
-	OOShipGroup			*escortGroup = [self escortGroup];
-	ShipEntity			*target = [self primaryTarget];
-	unsigned			i = 0;
-	// Note: works on escortArray rather than escortEnumerator because escorts may be mutated.
-	for (const auto &escortRef : [self escortArray])
-	{
-		ShipEntity	*escort = escortRef.get();
-		float		delay = i++ * 3.0 + 1.5;		// send them off at three second intervals
-		AI			*ai = [escort getAI];
-		
-		// act individually now!
-		if ([escort group] == escortGroup)  [escort setGroup:nil];
-		if ([escort owner] == self)  [escort setOwner:escort];
-		if(target && [target isStation]) [escort setTargetStation:target];
-		// JSAI: handles own delay
-		if (![escort hasNewAI])
-		{
-			[escort setAITo:"dockingAI.plist"];
-			[ai cxx_setState:"ABORT" afterDelay:delay + 0.25];
-		}
-		[escort cxx_doScriptEvent:OOJSID("escortDock") withPListArguments:{ oo::PList::singleReal(delay) }];
-	}
-	
-	// We now have no escorts.
-	[_cxxShip->_escortGroup release];
-	_cxxShip->_escortGroup = nil;
-}
-
-
-- (void) setTargetToNearestStationIncludingHostiles:(BOOL) includeHostiles
-{
-	// check if the groupID (parent ship) points to a station...
-	Entity		*mother = [[self group] leader];
-	if ([mother isStation])
-	{
-		[self addTarget:mother];
-		[self setTargetStation:mother];
-		return;	// head for mother!
-	}
-
-	/*- selects the nearest station it can find -*/
-	if (!UNIVERSE)
-		return;
-	int			ent_count = UNIVERSE->_cxxUniverse->n_entities;
-	Entity		**uni_entities = UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
-	Entity		*my_entities[ent_count];
-	int i;
-	int station_count = 0;
-	for (i = 0; i < ent_count; i++)
-		if (uni_entities[i]->_cxxEntity->isStation)
-			my_entities[station_count++] = [uni_entities[i] retain];		//	retained
-	//
-	StationEntity *thing = nil, *station = nil;
-	double range2, nearest2 = SCANNER_MAX_RANGE2 * 1000000.0; // 1000x typical scanner range (25600 km), squared.
-	for (i = 0; i < station_count; i++)
-	{
-		thing = (StationEntity *)my_entities[i];
-		range2 = HPdistance2(_cxxEntity->position, thing->_cxxEntity->position);
-		if (range2 < nearest2 && (includeHostiles || ![thing isHostileTo:self]))
-		{
-			station = thing;
-			nearest2 = range2;
-		}
-	}
-	for (i = 0; i < station_count; i++)
-		[my_entities[i] release];		//	released
-	//
-	if (station)
-	{
-		[self addTarget:station];
-		[self setTargetStation:station];
-	}
-	else
-	{
-		[_cxxShip->shipAI message:"NO_STATION_FOUND"];
-	}
-}
-
-
-// Exposed to AI
-- (void) setTargetToNearestFriendlyStation
-{
-	[self setTargetToNearestStationIncludingHostiles:NO];
-}
-
-
-// Exposed to AI
-- (void) setTargetToNearestStation
-{
-	[self setTargetToNearestStationIncludingHostiles:YES];
-}
-
-
-// Exposed to AI
-- (void) setTargetToSystemStation
-{
-	StationEntity* system_station = [UNIVERSE station];
-	
-	if (!system_station)
-	{
-		[_cxxShip->shipAI message:"NOTHING_FOUND"];
-		[_cxxShip->shipAI message:"NO_STATION_FOUND"];
-		DESTROY(_cxxShip->_primaryTarget);
-		[self setTargetStation:nil];
-		return;
-	}
-	
-	if (!system_station->_cxxEntity->isStation)
-	{
-		[_cxxShip->shipAI message:"NOTHING_FOUND"];
-		[_cxxShip->shipAI message:"NO_STATION_FOUND"];
-		DESTROY(_cxxShip->_primaryTarget);
-		[self setTargetStation:nil];
-		return;
-	}
-	
-	[self addTarget:system_station];
-	[self setTargetStation:system_station];
-	return;
-}
-
-
 - (void) landOnPlanet:(OOPlanetEntity *)planet
 {
 	if (planet && [self isShuttle])
@@ -15575,6 +15119,487 @@ void ShipEntity::leaveWitchspace()
 
 
 }	// namespace cxx
+
+
+// Slice 32 of docs/phases/3-slices/ShipEntity.md (bead oo-5e0ny): witchspace effects, offences,
+// lights, escort formation and deployment, nearest stations. The facade forwards each selector
+// (ShipEntity+ObjCBridge.mm); sends to self stay sends, so an Objective-C subclass's override still
+// runs (ADR-0056 amendment oo-mvzmb).
+namespace cxx {
+
+bool ShipEntity::witchspaceLeavingEffects()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// all ships exiting witchspace will share the same orientation.
+	orientation = [UNIVERSE getWitchspaceExitRotation];
+	flightRoll = 0.0;
+	stick_roll = 0.0;
+	flightPitch = 0.0;
+	stick_pitch = 0.0;
+	flightYaw = 0.0;
+	stick_yaw = 0.0;
+	flightSpeed = 50.0; // constant speed same for all ships
+// was a quarter of max speed, so the Anaconda speeds up and most
+// others slow down - CIM
+// will be overridden if left witchspace via a genuine wormhole
+	velocity = kZeroVector;
+	if (![UNIVERSE addEntity:self])	// AI and status get initialised here
+	{
+		return NO;
+	}
+	[self setStatus:STATUS_EXITING_WITCHSPACE];
+	[shipAI message:"EXITED_WITCHSPACE"];
+	
+	[UNIVERSE addWitchspaceJumpEffectForShip:self];
+	[self setStatus:STATUS_IN_FLIGHT];
+	return YES;
+}
+
+
+void ShipEntity::markAsOffender(int offence_value)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self markAsOffender:offence_value withReason:kOOLegalStatusReasonUnknown];
+}
+
+
+void ShipEntity::markAsOffender(int offence_value, OOLegalStatusReason reason)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (![self isPolice] && ![self isCloaked] && self != [UNIVERSE station])
+	{
+		if ([self isSubEntity]) 
+		{
+			[[self parentEntity] markAsOffender:offence_value withReason:reason];
+		}
+		else
+		{
+			if ((scanClass == CLASS_THARGOID || scanClass == CLASS_STATION) && reason != kOOLegalStatusReasonSetup && reason != kOOLegalStatusReasonByScript)
+			{
+				return; // no non-scripted bounties for thargoids and stations
+			}
+
+			ooscript::Context context = OOJSAcquireContext();
+	
+			ooscript::Value amountVal = ooscript::undefinedValue();
+			ooscript::newNumberValue(context, (bounty | offence_value)-bounty, &amountVal);
+
+			bounty |= offence_value; // can't set the new bounty until the size of the change is known
+
+			ooscript::Value reasonVal = OOJSValueFromLegalStatusReason(context, reason);
+		
+			ShipScriptEvent(context, self, "shipBountyChanged", amountVal, reasonVal);
+		
+			OOJSRelinquishContext(context);
+		
+		}
+	}
+}
+
+
+// Exposed to AI
+void ShipEntity::switchLightsOn()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	_lightsActive = YES;
+
+	const std::vector<oo::ObjCRef<::Entity *>> subs = subEntities;
+	for (const auto &se : subs)
+	{
+		if ([se.get() isFlasher])  [(::OOFlasherEntity *)se.get() setActive:YES];
+	}
+	for (const auto &sub : [self cxx_shipSubEntities])
+	{
+		[sub.get() switchLightsOn];
+	}
+}
+
+
+// Exposed to AI
+void ShipEntity::switchLightsOff()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	_lightsActive = NO;
+
+	const std::vector<oo::ObjCRef<::Entity *>> subs = subEntities;
+	for (const auto &se : subs)
+	{
+		if ([se.get() isFlasher])  [(::OOFlasherEntity *)se.get() setActive:NO];
+	}
+	for (const auto &sub : [self cxx_shipSubEntities])
+	{
+		[sub.get() switchLightsOff];
+	}
+}
+
+
+bool ShipEntity::lightsActive()
+{
+	return _lightsActive;
+}
+
+
+void ShipEntity::setDestination(HPVector dest)
+{
+	_destination = dest;
+	frustration = 0.0;	// new destination => no frustration!
+}
+
+
+void ShipEntity::setEscortDestination(HPVector dest)
+{
+	_destination = dest; // don't reset frustration for escorts.
+}
+
+
+bool ShipEntity::canAcceptEscort(::ShipEntity *potentialEscort)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (!dockingInstructions.isNull()) // we are busy with docking.
+	{
+		return NO;
+	}
+	if (scanClass != [potentialEscort scanClass]) // this makes sure that wingman can only select police, thargons only thargoids.
+	{
+		return NO;
+	}
+	if ([self bounty] == 0 && [potentialEscort bounty] != 0) // clean mothers can only accept clean escorts
+	{
+		return NO;
+	}
+	if (![self isEscort]) // self is NOT wingman or escort or thargon
+	{
+		return [potentialEscort isEscort]; // is wingman or escort or thargon
+	}
+	return NO;
+}
+
+
+bool ShipEntity::acceptAsEscort(::ShipEntity *other_ship)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// can't pair with self
+	if (self == other_ship)  return NO;
+	
+	// no longer in flight, probably entered wormhole without telling escorts.
+	if ([self status] != STATUS_IN_FLIGHT)  return NO;
+	
+	//increased stack depth at which it can accept escorts to avoid rejections at this stage.
+	//doesn't seem to have any adverse effect for now. - Kaks.
+	if ([shipAI stackDepth] > 3)
+	{
+		OO_LOG("ship.escort.reject", "{} rejecting escort {} because AI stack depth is {}.", oo::DescriptionOf(self), oo::DescriptionOf(other_ship), [shipAI stackDepth]);
+		return NO;
+	}
+	
+	if ([self canAcceptEscort:other_ship])
+	{
+		::OOShipGroup *escortGroup = [self escortGroup];
+		
+		if ([escortGroup containsShip:other_ship])  return YES;
+		
+		// check total number acceptable
+		// the system's patrols don't have escorts set inside their dictionary, but accept max escorts.
+		if (_maxEscortCount == 0 && ([self cxx_hasPrimaryRole:"police"] || [self cxx_hasPrimaryRole:"hunter"] || [self hasRole:"thargoid-mothership"])) 
+		{
+			_maxEscortCount = MAX_ESCORTS;
+		}
+		
+		NSUInteger maxEscorts = _maxEscortCount; 	// never bigger than MAX_ESCORTS.
+		NSUInteger escortCount = [escortGroup count] - 1;	// always 0 or higher.
+		
+		if (escortCount < maxEscorts)
+		{
+			[other_ship setGroup:escortGroup];
+			if ([self group] == nil)
+			{
+				[self setGroup:escortGroup];
+			}
+			else if ([self group] != escortGroup)  [[self group] addShip:other_ship];
+			
+			if (([other_ship maxFlightSpeed] < cruiseSpeed) && ([other_ship maxFlightSpeed] > cruiseSpeed * 0.3))
+			{
+				cruiseSpeed = [other_ship maxFlightSpeed] * 0.99;
+			}
+			
+			OO_LOG("ship.escort.accept", "{} accepting escort {}.", oo::DescriptionOf(self), oo::DescriptionOf(other_ship));
+			
+			[self doScriptEvent:OOJSID("shipAcceptedEscort") withArgument:other_ship];
+			[other_ship doScriptEvent:OOJSID("escortAccepted") withArgument:self];
+			[shipAI message:"ACCEPTED_ESCORT"];
+			return YES;
+		}
+		else
+		{
+			OO_LOG("ship.escort.reject", "{} already got max escorts({}). Escort rejected: {}.", oo::DescriptionOf(self), escortCount, oo::DescriptionOf(other_ship));
+		}
+	}
+	else
+	{
+		OO_LOG("ship.escort.reject", "{} failed canAcceptEscort for escort {}.", oo::DescriptionOf(self), oo::DescriptionOf(other_ship));
+	}
+
+	
+	return NO;
+}
+
+
+// Exposed to AI
+void ShipEntity::updateEscortFormation()
+{
+	_escortPositionsValid = NO;
+}
+
+
+/*
+	NOTE: it's tempting to call refreshEscortPositions from coordinatesForEscortPosition:
+	as needed, but that would cause unnecessary extra work if the formation
+	callback itself calls updateEscortFormation.
+*/
+void ShipEntity::refreshEscortPositions()
+{
+	if (!_escortPositionsValid)
+	{
+		ooscript::Context context = OOJSAcquireContext();
+		ooscript::Value				result;
+		ooscript::Value				args[] = { ooscript::int32Value(0), ooscript::int32Value(_maxEscortCount) };
+		BOOL				OK;
+		
+		// Reset validity first so updateEscortFormation can be called from the update callback.
+		_escortPositionsValid = YES;
+		
+		uint8_t i;
+		for (i = 0; i < _maxEscortCount; i++)
+		{
+			args[0] = ooscript::int32Value(i);
+			OK = [script callMethod:OOJSID("coordinatesForEscortPosition")
+						  inContext:context
+					  withArguments:args count:sizeof args / sizeof *args
+							 result:&result];
+			
+			if (OK)  OK = JSValueToVector(context, result, &_escortPositions[i]);
+			
+			if (!OK)  _escortPositions[i] = kZeroVector;
+		}
+		
+		OOJSRelinquishContext(context);
+	}
+}
+
+
+HPVector ShipEntity::coordinatesForEscortPosition(unsigned idx)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	/*
+		This function causes problems with Thargoids: their missiles (aka Thargons) are automatically
+		added to the escorts group, and when a mother ship dies all thargons will attach themselves
+		as escorts to the surviving battleships. This can lead to huge escort groups.
+		TODO: better handling of Thargoid groups:
+			- put thargons (& all other thargon missiles) in their own non-escort group perhaps?
+	*/
+	
+	// The _escortPositions array is always MAX_ESCORTS long.
+	// Kludge: return the same last escort position if we have escorts above MAX_ESCORTS...
+	idx = MIN(idx, (unsigned)(MAX_ESCORTS - 1));
+	
+	return HPvector_add(self->_cxxEntity->position, vectorToHPVector(quaternion_rotate_vector([self normalOrientation], _escortPositions[idx])));
+}
+
+
+// Exposed to AI
+void ShipEntity::deployEscorts()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::ShipEntity		*target = nil;
+	std::vector<oo::ObjCRef<::ShipEntity *>>	idleEscorts;	// in escort order (was a mutable set: hash order)
+	unsigned		deployCount;
+	
+	if ([self primaryTarget] == nil || _escortGroup == nil)  return;
+	
+	::OOShipGroup *escortGroup = [self escortGroup];
+	NSUInteger escortCount = [escortGroup count] - 1;  // escorts minus leader.
+	if (escortCount == 0)  return;
+	
+	if ([self group] == nil)  [self setGroup:escortGroup];
+	
+	if ([self primaryTarget] == [self lastEscortTarget])
+	{
+		// already deployed escorts onto this target!
+		return;
+	}
+	
+	[self setLastEscortTarget:[self primaryTarget]];
+	
+	// Find idle escorts
+	for (const auto &escortRef : [self cxx_escorts])
+	{
+		::ShipEntity *escort = escortRef.get();
+		if ([[escort getAI] cxx_name].value_or(std::string()) != "interceptAI.plist" && ![escort hasNewAI])
+		{
+			idleEscorts.push_back(escortRef);
+		}
+		else if ([escort hasNewAI])
+		{
+			// JS-based escorts get a help request
+			[escort doScriptEvent:OOJSID("helpRequestReceived") withArgument:self andArgument:[self primaryTarget]];
+		}
+	}
+	
+	escortCount = idleEscorts.size();
+	if (escortCount == 0)  return;
+
+	deployCount = ranrot_rand() % escortCount + 1;
+
+	// Deploy deployCount idle escorts.
+	target = [self primaryTarget];
+	for (const auto &escortRef : idleEscorts)
+	{
+		::ShipEntity *escort = escortRef.get();
+		[escort addTarget:target];
+		[escort setAITo:"interceptAI.plist"];
+		[escort doScriptEvent:OOJSID("escortAttack") withArgument:target];
+		
+		if (--deployCount == 0)  break;
+	}
+	
+	[self updateEscortFormation];
+}
+
+
+// Exposed to AI
+void ShipEntity::dockEscorts()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (![self hasEscorts])  return;
+	
+	::OOShipGroup			*escortGroup = [self escortGroup];
+	::ShipEntity			*target = [self primaryTarget];
+	unsigned			i = 0;
+	// Note: works on escortArray rather than escortEnumerator because escorts may be mutated.
+	for (const auto &escortRef : [self escortArray])
+	{
+		::ShipEntity	*escort = escortRef.get();
+		float		delay = i++ * 3.0 + 1.5;		// send them off at three second intervals
+		::AI			*ai = [escort getAI];
+		
+		// act individually now!
+		if ([escort group] == escortGroup)  [escort setGroup:nil];
+		if ([escort owner] == self)  [escort setOwner:escort];
+		if(target && [target isStation]) [escort setTargetStation:target];
+		// JSAI: handles own delay
+		if (![escort hasNewAI])
+		{
+			[escort setAITo:"dockingAI.plist"];
+			[ai cxx_setState:"ABORT" afterDelay:delay + 0.25];
+		}
+		[escort cxx_doScriptEvent:OOJSID("escortDock") withPListArguments:{ oo::PList::singleReal(delay) }];
+	}
+	
+	// We now have no escorts.
+	[_escortGroup release];
+	_escortGroup = nil;
+}
+
+
+void ShipEntity::setTargetToNearestStationIncludingHostiles(bool includeHostiles)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// check if the groupID (parent ship) points to a station...
+	::Entity		*mother = [[self group] leader];
+	if ([mother isStation])
+	{
+		[self addTarget:mother];
+		[self setTargetStation:mother];
+		return;	// head for mother!
+	}
+
+	/*- selects the nearest station it can find -*/
+	if (!UNIVERSE)
+		return;
+	int			ent_count = UNIVERSE->_cxxUniverse->n_entities;
+	::Entity		**uni_entities = UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
+	::Entity		*my_entities[ent_count];
+	int i;
+	int station_count = 0;
+	for (i = 0; i < ent_count; i++)
+		if (uni_entities[i]->_cxxEntity->isStation)
+			my_entities[station_count++] = [uni_entities[i] retain];		//	retained
+	//
+	::StationEntity *thing = nil, *station = nil;
+	double range2, nearest2 = SCANNER_MAX_RANGE2 * 1000000.0; // 1000x typical scanner range (25600 km), squared.
+	for (i = 0; i < station_count; i++)
+	{
+		thing = (::StationEntity *)my_entities[i];
+		range2 = HPdistance2(position, thing->_cxxEntity->position);
+		if (range2 < nearest2 && (includeHostiles || ![thing isHostileTo:self]))
+		{
+			station = thing;
+			nearest2 = range2;
+		}
+	}
+	for (i = 0; i < station_count; i++)
+		[my_entities[i] release];		//	released
+	//
+	if (station)
+	{
+		[self addTarget:station];
+		[self setTargetStation:station];
+	}
+	else
+	{
+		[shipAI message:"NO_STATION_FOUND"];
+	}
+}
+
+
+// Exposed to AI
+void ShipEntity::setTargetToNearestFriendlyStation()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self setTargetToNearestStationIncludingHostiles:NO];
+}
+
+
+// Exposed to AI
+void ShipEntity::setTargetToNearestStation()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self setTargetToNearestStationIncludingHostiles:YES];
+}
+
+
+// Exposed to AI
+void ShipEntity::setTargetToSystemStation()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::StationEntity* system_station = [UNIVERSE station];
+	
+	if (!system_station)
+	{
+		[shipAI message:"NOTHING_FOUND"];
+		[shipAI message:"NO_STATION_FOUND"];
+		DESTROY(_primaryTarget);
+		[self setTargetStation:nil];
+		return;
+	}
+	
+	if (!system_station->_cxxEntity->isStation)
+	{
+		[shipAI message:"NOTHING_FOUND"];
+		[shipAI message:"NO_STATION_FOUND"];
+		DESTROY(_primaryTarget);
+		[self setTargetStation:nil];
+		return;
+	}
+	
+	[self addTarget:system_station];
+	[self setTargetStation:system_station];
+	return;
+}
+
+
+}	// namespace cxx
+
 
 
 

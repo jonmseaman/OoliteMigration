@@ -845,6 +845,27 @@ public:
 	virtual void enterWitchspace();
 	virtual void leaveWitchspace();
 
+	// Slice 32: witchspace effects, offences, lights, escort formation and deployment, nearest stations.
+	bool witchspaceLeavingEffects();
+	virtual void markAsOffender(int offence_value);
+	virtual void markAsOffender(int offence_value, OOLegalStatusReason reason);
+	void switchLightsOn();
+	void switchLightsOff();
+	bool lightsActive();
+	void setDestination(HPVector dest);
+	void setEscortDestination(HPVector dest);
+	bool canAcceptEscort(::ShipEntity *potentialEscort);
+	bool acceptAsEscort(::ShipEntity *other_ship);
+	void updateEscortFormation();
+	void refreshEscortPositions();
+	HPVector coordinatesForEscortPosition(unsigned idx);
+	void deployEscorts();
+	void dockEscorts();
+	void setTargetToNearestStationIncludingHostiles(bool includeHostiles);
+	void setTargetToNearestFriendlyStation();
+	void setTargetToNearestStation();
+	void setTargetToSystemStation();
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired
