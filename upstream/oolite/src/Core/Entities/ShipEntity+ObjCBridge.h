@@ -364,7 +364,7 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (BOOL) hasSubEntity:(Entity<OOSubEntity> *)sub;
 - (std::vector<oo::ObjCRef<Entity *>>)subEntityEnumerator;	// snapshot, same as -subEntities
 - (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_shipSubEntities;
-- (std::vector<oo::ObjCRef<OOFlasherEntity *>>)flasherEnumerator;	// flasher subentities, a snapshot
+- (std::vector<oo::ObjCRef<Entity *>>)flasherEnumerator;	// flasher subentities, a snapshot (the C++ OOFlasherEntity's objects)
 - (std::vector<oo::ObjCRef<OOExhaustPlumeEntity *>>) cxx_exhausts;
 - (ShipEntity *) subEntityTakingDamage;
 - (void) setSubEntityTakingDamage:(ShipEntity *)sub;
@@ -928,7 +928,7 @@ unsigned argc = sizeof argv / sizeof *argv; \
 // ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
 @interface ShipEntity (OOSlice23)
 
-- (void) removeFlasher:(OOFlasherEntity *)flasher;
+- (void) removeFlasher:(OOFlasherEntity *)flasher;	// the C++ flasher (bead oo-9ht.107)
 - (void) subEntityDied:(ShipEntity *)sub;
 - (void) subEntityReallyDied:(ShipEntity *)sub;
 - (Vector) positionOffsetForAlignment:(const std::string &) align;
