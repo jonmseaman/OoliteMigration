@@ -32,6 +32,7 @@
 #import "GuiDisplayGen.h"
 #import "OOColor.h"
 #import "OOJavaScriptEngine.h"
+#import "OOJSEngineCore.h"
 
 #include "oofnd/Data.hpp"
 #include "oofnd/FileSystem.hpp"
@@ -39,6 +40,7 @@
 
 #include "oo_test.hpp"
 
+#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <process.h>
@@ -563,6 +565,258 @@ OO_TEST(facadeContract)
 		// The facade's category (slices 2-4) reaches the same state.
 		[madeFacade cxx_setArray:{ "a", "b" } forRow:2];
 		OO_CHECK(made->objectForRow(2).isArray());
+	}
+}
+
+
+// --- bead oo-6dvw: slice 2 (text layout and printing, arrays, scrolling, textures, the status page) ---
+// The unit test links no font: until the HUD's text engine has loaded oolite-font.plist every
+// glyph is 0 wide, so a line always fits and long text is split only at its newlines.
+
+OO_TEST(longTextAndReflow)
+{
+	@autoreleasepool
+	{
+		GuiDisplayGen *gui = SmallGUI("T");
+		OO_CHECK_EQ([gui cxx_addLongText:std::nullopt startingAtRow:1 align:GUI_ALIGN_LEFT], 1);
+		OO_CHECK_EQ([gui cxx_addLongText:"one line" startingAtRow:1 align:GUI_ALIGN_LEFT], 2);
+		OO_CHECK(RowString(gui, 1) == std::optional<std::string>("one line"));
+		OO_CHECK_EQ([gui cxx_addLongText:"a\nb\nc" startingAtRow:2 align:GUI_ALIGN_CENTER], 5);
+		OO_CHECK(RowString(gui, 2) == std::optional<std::string>("a"));
+		OO_CHECK(RowString(gui, 4) == std::optional<std::string>("c"));
+
+		OO_CHECK([gui cxx_reflowTextForMFD:std::nullopt] == std::optional<std::string>(""));
+		OO_CHECK([gui cxx_reflowTextForMFD:"one  two\nthree"] == std::optional<std::string>("one two\nthree\n"));
+		OO_CHECK([gui cxx_reflowTextForMFD:""] == std::optional<std::string>("\n"));
+	}
+}
+
+
+OO_TEST(printingScrollsAndKeepsTheLines)
+{
+	@autoreleasepool
+	{
+		GuiDisplayGen *gui = SmallGUI("T");	// 5 rows
+		[gui setCurrentRow:3];
+		std::vector<std::string> printed;
+		[gui cxx_printLongText:"first\nsecond" align:GUI_ALIGN_LEFT color:[OOColor redColor] fadeTime:2.0f key:"pk" addToArray:&printed];
+		OO_CHECK(printed == (std::vector<std::string>{ "first", "second" }));
+		// "first" goes on row 3; "second" would go on the last row, so everything scrolls up by one
+		// before it is printed: "first" on row 2, row 3 empty.
+		OO_CHECK(RowString(gui, 2) == std::optional<std::string>("first"));
+		OO_CHECK(RowString(gui, 3) == std::optional<std::string>(""));
+		OO_CHECK(RowString(gui, 4) == std::optional<std::string>("second"));
+		OO_CHECK([gui cxx_keyForRow:4] == std::optional<std::string>("pk"));
+		// The current row is still the last: the next line scrolls everything up by one again.
+		[gui cxx_printLongText:"third" align:GUI_ALIGN_LEFT color:nil fadeTime:0.0f key:std::nullopt addToArray:nullptr];
+		OO_CHECK(RowString(gui, 1) == std::optional<std::string>("first"));
+		OO_CHECK(RowString(gui, 2) == std::optional<std::string>(""));
+		OO_CHECK(RowString(gui, 3) == std::optional<std::string>("second"));
+		OO_CHECK(RowString(gui, 4) == std::optional<std::string>("third"));
+		[gui cxx_printLongText:std::nullopt align:GUI_ALIGN_LEFT color:nil fadeTime:0.0f key:std::nullopt addToArray:&printed];
+		OO_CHECK_EQ(printed.size(), 2u);
+
+		const oo::PList lines = [gui cxx_getLastLines];
+		OO_CHECK(lines.at<std::string>(0) == "second");
+		OO_CHECK(lines.at<std::string>(1) == "1 0 0 1");
+		OO_CHECK(lines.at<double>(2) == 2.0);
+		OO_CHECK(lines.at<std::string>(3) == "third");
+
+		[gui scrollUp:2];
+		OO_CHECK(RowString(gui, 0) == std::optional<std::string>(""));
+		OO_CHECK(RowString(gui, 1) == std::optional<std::string>("second"));
+		OO_CHECK(RowString(gui, 2) == std::optional<std::string>("third"));
+		OO_CHECK(RowString(gui, 3) == std::optional<std::string>(""));
+		OO_CHECK([gui cxx_keyForRow:4] == std::optional<std::string>(""));
+
+		[gui leaveLastLine];
+		OO_CHECK(RowString(gui, 0) == std::optional<std::string>(""));
+		OO_CHECK(RowString(gui, 4) == std::optional<std::string>(""));	// the last row is kept (it was empty)
+		const oo::PList last = [gui cxx_getLastLines];
+		OO_CHECK(last.at<double>(5) > 0.39 && last.at<double>(5) < 0.41);	// it fades
+	}
+}
+
+
+OO_TEST(arraysAndInsertedItems)
+{
+	@autoreleasepool
+	{
+		GuiDisplayGen *gui = SmallGUI("T");
+		[gui cxx_setArray:{ "a", "b", "c" } forRow:0];
+		OO_CHECK_EQ([gui objectForRow:0].count(), 3u);
+		[gui cxx_setArray:{ "x" } forRow:5];	// out of range
+		OO_CHECK([gui objectForRow:5].isNull());
+
+		for (OOGUIRow row = 0; row < 5; row++)
+		{
+			[gui cxx_setText:oo::str::format("r%d", (int)row) forRow:row];
+			[gui cxx_setKey:oo::str::format("k%d", (int)row) forRow:row];
+		}
+		const oo::PList items(oo::PList::Array{ oo::PList("new1"), oo::PList(oo::PList::Array{ oo::PList("c1"), oo::PList("c2") }) });
+		const oo::PList keys(oo::PList::Array{ oo::PList("n1"), oo::PList("n2") });
+		[gui cxx_insertItemsFromArray:items withKeys:keys intoRow:1 color:nil];
+		OO_CHECK(RowString(gui, 0) == std::optional<std::string>("r0"));
+		OO_CHECK(RowString(gui, 1) == std::optional<std::string>("new1"));
+		OO_CHECK([gui objectForRow:2].isArray());
+		OO_CHECK(RowString(gui, 3) == std::optional<std::string>("r1"));
+		OO_CHECK(RowString(gui, 4) == std::optional<std::string>("r2"));
+		OO_CHECK([gui cxx_keyForRow:2] == std::optional<std::string>("n2"));
+		OO_CHECK([gui cxx_keyForRow:4] == std::optional<std::string>("k2"));
+
+		// Without keys the inserted rows get empty keys; nothing to insert changes nothing.
+		[gui cxx_insertItemsFromArray:oo::PList(oo::PList::Array{ oo::PList("only") }) withKeys:oo::PList() intoRow:0 color:[OOColor redColor]];
+		OO_CHECK(RowString(gui, 0) == std::optional<std::string>("only"));
+		OO_CHECK([gui cxx_keyForRow:0] == std::optional<std::string>(""));
+		[gui cxx_insertItemsFromArray:oo::PList() withKeys:oo::PList() intoRow:0 color:nil];
+		[gui cxx_insertItemsFromArray:oo::PList(oo::PList::Array{}) withKeys:oo::PList() intoRow:0 color:nil];
+		OO_CHECK(RowString(gui, 0) == std::optional<std::string>("only"));
+
+		// Keys of another length raise.
+		bool raised = false;
+		@try
+		{
+			[gui cxx_insertItemsFromArray:items withKeys:oo::PList(oo::PList::Array{ oo::PList("one") }) intoRow:0 color:nil];
+		}
+		@catch (id exception)
+		{
+			raised = true;
+		}
+		OO_CHECK(raised);
+	}
+}
+
+
+OO_TEST(statusPage)
+{
+	@autoreleasepool
+	{
+		GuiDisplayGen *gui = SmallGUI("T");
+		[gui setStatusPage:0];
+		OO_CHECK_EQ([gui statusPage], 1u);
+		[gui setStatusPage:2];
+		OO_CHECK_EQ([gui statusPage], 3u);
+		[gui setStatusPage:-1];
+		OO_CHECK_EQ([gui statusPage], 2u);
+		[gui setStatusPage:-2];	// would reach 0: back to the first page
+		OO_CHECK_EQ([gui statusPage], 1u);
+		[gui cxx_drawEquipmentList:oo::PList() z:0.0f];	// nothing to draw
+		[gui cxx_drawEquipmentList:oo::PList(oo::PList::Array{}) z:0.0f];
+	}
+}
+
+
+OO_TEST(noTexturesWithoutAUniverse)
+{
+	@autoreleasepool
+	{
+		StartJavaScript();
+		GuiDisplayGen *gui = SmallGUI("T");
+		// No texture is named: no sprite.
+		OO_CHECK(![gui cxx_setBackgroundTextureDescriptor:oo::PList()]);
+		OO_CHECK(![gui cxx_setForegroundTextureDescriptor:oo::PList()]);
+		OO_CHECK(![gui cxx_setBackgroundTextureKey:std::nullopt]);
+		OO_CHECK(![gui cxx_setForegroundTextureKey:"anything"]);
+		OO_CHECK(![gui cxx_preloadGUITexture:oo::PList()]);
+		[gui clearBackground];
+		[gui setBackgroundTextureSpecial:GUI_BACKGROUND_SPECIAL_LONG withBackground:YES];
+		[gui setBackgroundTextureSpecial:GUI_BACKGROUND_SPECIAL_NONE withBackground:NO];
+
+		// A JS null is "no texture" (an empty descriptor), and an empty string the same.
+		ooscript::Context context = OOJSAcquireContext();
+		const oo::PList none = [gui cxx_textureDescriptorFromJSValue:ooscript::nullValue() inContext:context callerDescription:"test"];
+		OO_CHECK(none.isDict() && none.count() == 0);
+		OOJSRelinquishContext(context);
+	}
+}
+
+
+OO_TEST(cxxSlice2API)
+{
+	@autoreleasepool
+	{
+		StartJavaScript();
+		oo::Ref<cxx::GuiDisplayGen> gui = oo::makeRef<cxx::GuiDisplayGen>(NSMakeSize(200, 100), 4, 5, 12, 8, std::optional<std::string>("T"));
+		OO_CHECK_EQ(gui->addLongText("a\nb", 0, GUI_ALIGN_LEFT), 2);
+		OO_CHECK(gui->objectForRow(1) == oo::PList("b"));
+		OO_CHECK(gui->reflowTextForMFD("x y") == std::optional<std::string>("x y\n"));
+		gui->setCurrentRow(2);
+		std::vector<std::string> printed;
+		gui->printLineNoScroll("p", GUI_ALIGN_LEFT, nil, 0.0f, std::optional<std::string>("pk"), &printed);
+		OO_CHECK(gui->keyForRow(2) == std::optional<std::string>("pk") && printed.size() == 1);
+		gui->setArray({ "c1", "c2" }, 3);
+		OO_CHECK(gui->objectForRow(3).isArray());
+		gui->scrollUp(1);
+		OO_CHECK(gui->objectForRow(2).isArray());
+		gui->setStatusPage(0);
+		OO_CHECK_EQ(gui->getStatusPage(), 1u);
+		OO_CHECK(!gui->setBackgroundTextureDescriptor(oo::PList()));
+		OO_CHECK(!gui->preloadGUITexture(oo::PList()));
+		gui->clearBackground();
+		gui->leaveLastLine();
+		OO_CHECK(gui->getLastLines().isArray());
+		// The facade forwards slice 2's selectors to the same object.
+		GuiDisplayGen *facade = oo::ToObjC(gui);
+		[facade cxx_setArray:{ "f" } forRow:0];
+		OO_CHECK(gui->objectForRow(0).isArray());
+		OO_CHECK_EQ([facade statusPage], 1u);
+	}
+}
+
+
+// --- bead oo-bcz4: slice 3 (drawing, the star chart's title, found systems) ---
+// No universe and no player (both nil): the drawing has no view to ask, no chart to draw and no
+// found systems, so these pin what the units do without them.
+
+OO_TEST(drawingWithoutAUniverse)
+{
+	@autoreleasepool
+	{
+		StartJavaScript();
+		GuiDisplayGen *gui = SmallGUI("T");
+		OO_CHECK_EQ([gui drawGUI:0.0f drawCursor:NO], 0);	// too faint to draw: nothing, row 0
+		[gui setAlpha:0.5f];
+		[gui fadeOutFromTime:0.0 overDuration:1.0];
+		OO_CHECK_EQ([gui drawGUI:0.0f drawCursor:NO], 0);
+		OO_CHECK_EQ([gui alpha], 0.5f);	// the fade moves only as the GUI is drawn visibly
+		[gui drawGUIBackground];	// no background sprite
+		[gui refreshStarChart];
+		OO_CHECK_EQ([gui targetNextFoundSystem:1], 0);	// not on a chart screen: the player's target
+		OO_CHECK_EQ([gui targetNextFoundSystem:0], 0);
+	}
+}
+
+
+OO_TEST(starChartTitleWithoutAUniverse)
+{
+	@autoreleasepool
+	{
+		StartJavaScript();
+		GuiDisplayGen *gui = SmallGUI("T");
+		[gui setStarChartTitle];
+		const std::optional<std::string> title = [gui cxx_title];
+		std::printf("  star chart title: %s\n", title ? title->c_str() : "(none)");
+		OO_CHECK(title != std::optional<std::string>("T"));	// replaced
+	}
+}
+
+
+OO_TEST(cxxSlice3API)
+{
+	@autoreleasepool
+	{
+		StartJavaScript();
+		oo::Ref<cxx::GuiDisplayGen> gui = oo::makeRef<cxx::GuiDisplayGen>(NSMakeSize(200, 100), 4, 5, 12, 8, std::optional<std::string>("T"));
+		OO_CHECK_EQ(gui->drawGUI(0.0f, false), 0);
+		gui->drawGUIBackground();
+		gui->refreshStarChart();
+		OO_CHECK_EQ(gui->targetNextFoundSystem(1), 0);
+		gui->setStarChartTitle();
+		OO_CHECK(gui->getTitle() != std::optional<std::string>("T"));
+		// The facade forwards slice 3's selectors, and the ones slice 4 still sends.
+		GuiDisplayGen *facade = oo::ToObjC(gui);
+		OO_CHECK_EQ([facade drawGUI:0.0f drawCursor:NO], 0);
+		OO_CHECK([facade respondsToSelector:@selector(drawSystemMarkers:atX:andY:andZ:withAlpha:andScale:)]);
 	}
 }
 

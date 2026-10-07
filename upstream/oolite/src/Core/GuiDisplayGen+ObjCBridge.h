@@ -153,14 +153,6 @@ MA 02110-1301, USA.
 // NOW, not the row of the last render (bead oo-3rb.348).
 - (int) rowAtVirtualJoystickPosition:(NSPoint) vjpos;
 
-@end
-
-
-// Slices 2-4 of docs/phases/3-slices/GuiDisplayGen.md: still Objective-C, implemented by this
-// category in GuiDisplayGen.mm on the facade. Each slice's bead moves its methods to the C++ class
-// and their forwarders to GuiDisplayGen+ObjCBridge.mm.
-@interface GuiDisplayGen (OOGuiDisplayGenUnconverted)
-
 // Chunk 2 (oo-3rb.93): a nil text or key is std::nullopt (nothing printed / no key set, as before);
 // text_array, when not nullptr, receives each line printed.
 - (std::optional<std::string>) cxx_reflowTextForMFD:(const std::optional<std::string> &)input;
@@ -188,8 +180,6 @@ MA 02110-1301, USA.
 						 withKeys:(const oo::PList &)item_keys
 						  intoRow:(OOGUIRow)row
 							color:(OOColor *)text_color;
-
-/////////////////////////////////////////////////////
 
 - (void) scrollUp:(int) how_much;
 
@@ -226,18 +216,43 @@ MA 02110-1301, USA.
 
 - (void) leaveLastLine;
 - (oo::PList) cxx_getLastLines;	// text, colour, fade time (x 2); null with no rows
+- (void) setStatusPage:(NSInteger) pageNum;
+- (NSUInteger) statusPage;
+- (void) cxx_drawEquipmentList:(const oo::PList &)eqptList z:(GLfloat)z;
 
 - (int) drawGUI:(GLfloat) alpha drawCursor:(BOOL) drawCursor;
 - (void) drawGUIBackground;
-- (void) setStatusPage:(NSInteger) pageNum;
-- (NSUInteger) statusPage;
 - (void) refreshStarChart;
 - (void) setStarChartTitle;
-- (void) cxx_drawEquipmentList:(const oo::PList &)eqptList z:(GLfloat)z;
 
 - (OOSystemID) targetNextFoundSystem:(int)direction;
 
 @end
+
+
+// The private drawing methods that slice 4's star chart, still Objective-C, sends to the facade
+// (ADR-0056 amendment oo-bwjb item 2). Deleted with slice 4's conversion.
+@interface GuiDisplayGen (OOGuiDisplayGenInternalForwarded)
+
+- (void) drawCrossHairsWithSize:(GLfloat) size x:(GLfloat)x y:(GLfloat)y z:(GLfloat)z;
+- (void) drawSystemMarkers:(const oo::PList &)marker atX:(GLfloat)x andY:(GLfloat)y andZ:(GLfloat)z withAlpha:(GLfloat)alpha andScale:(GLfloat)scale;
+- (void) drawAdvancedNavArrayAtX:(float)x y:(float)y z:(float)z alpha:(float)alpha usingRoute:(const oo::PList &) route optimizedBy:(OORouteType) optimizeBy zoom: (OOScalar) zoom;
+
+@end
+
+
+// Slice 4 of docs/phases/3-slices/GuiDisplayGen.md: still Objective-C, implemented by this
+// category in GuiDisplayGen.mm on the facade. Each slice's bead moves its methods to the C++ class
+// and their forwarders to GuiDisplayGen+ObjCBridge.mm.
+@interface GuiDisplayGen (OOGuiDisplayGenUnconverted)
+
+@end
+
+
+// One-line bridges (ADR-0056 amendment oo-9ht.139 item 3) for the file-scope helpers of
+// GuiDisplayGen.mm, which may not message the universe themselves. Deleted with the universe's
+// conversion.
+bool GuiDisplayGenUniverseUseShaders();
 
 
 namespace oo {
