@@ -83,242 +83,6 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 
 @implementation StationEntity
 
-/* Override ShipEntity: stations of CLASS_ROCK or CLASS_CARGO are not automatically unpiloted. */
-- (BOOL)isUnpiloted
-{
-	return [self isExplicitlyUnpiloted] || [self isHulk];
-}
-
-
-- (OOTechLevelID) equivalentTechLevel
-{
-	if (equivalentTechLevel == NSNotFound)
-	{
-		return [UNIVERSE cxx_currentSystemData].get<int>(std::string(KEY_TECHLEVEL));
-	}
-	else
-	{
-		return equivalentTechLevel;
-	}
-}
-
-
-- (void) setEquivalentTechLevel:(OOTechLevelID) value
-{
-	equivalentTechLevel = value;
-}
-
-
-- (Vector) virtualPortDimensions
-{
-	return port_dimensions;
-}
-
-
-- (DockEntity*) playerReservedDock
-{
-	return player_reserved_dock;
-}
-
-
-- (HPVector) beaconPosition
-{
-	double buoy_distance = 10000.0;				// distance from station entrance
-	Vector v_f = vector_forward_from_quaternion([self orientation]);
-	HPVector result = HPvector_add([self position], vectorToHPVector(vector_multiply_scalar(v_f, buoy_distance)));
-	
-	return result;
-}
-
-
-- (float) equipmentPriceFactor
-{
-	return equipmentPriceFactor;
-}
-
-
-- (OOCargoQuantity) marketCapacity
-{
-	return marketCapacity;
-}
-
-
-- (oo::PList) cxx_marketDefinition
-{
-	return marketDefinition;
-}
-
-
-- (std::optional<std::string>) cxx_marketScriptName
-{
-	return marketScriptName;
-}
-
-
-- (BOOL) marketMonitored
-{
-	if (self == [UNIVERSE station])
-	{
-		return YES;
-	}
-	return marketMonitored;
-}
-
-
-- (BOOL) marketBroadcast
-{
-	if (self == [UNIVERSE station])
-	{
-		return YES;
-	}
-	return marketBroadcast;
-}
-
-
-- (OOCreditsQuantity) legalStatusOfManifest:(OOCommodityMarket *)manifest export:(BOOL)isExport
-{
-	OOCreditsQuantity penalty, status = 0;
-	OOCommodityMarket *market = [self localMarket];
-	for (const std::string &good : [market goods])
-	{
-		if (isExport)
-		{
-			penalty = [market cxx_exportLegalityForGood:good];
-		}
-		else
-		{
-			penalty = [market cxx_importLegalityForGood:good];
-		}
-		status += penalty * [manifest cxx_quantityForGood:good];
-	}
-	return status;
-}
-
-
-- (OOCommodityMarket *) localMarket
-{
-	if (self == [UNIVERSE station])
-	{
-		// main stations use the system market
-		// just return a reference
-		return [UNIVERSE commodityMarket];
-	}
-	if (!localMarket)
-	{
-		[self initialiseLocalMarket];
-	}
-	return localMarket;
-}
-
-
-- (void) cxx_setLocalMarket:(const oo::PList &) some_market
-{
-	[[self localMarket] cxx_loadStationAmounts:some_market];
-}
-
-
-- (oo::PList) cxx_localMarketForScripting
-{
-	return [[self localMarket] dictionaryForScripting];
-}
-
-
-- (void) cxx_setPrice:(OOCreditsQuantity)price forCommodity:(const std::string &)commodity
-{
-	[[self localMarket] cxx_setPrice:price forGood:commodity];
-}
-
-
-- (void) cxx_setQuantity:(OOCargoQuantity)quantity forCommodity:(const std::string &)commodity
-{
-	[[self localMarket] cxx_setQuantity:quantity forGood:commodity];
-}
-
-
-- (std::vector<oo::PList> *) cxx_localShipyard
-{
-	return localShipyard ? &*localShipyard : nullptr;
-}
-
-
-- (void) cxx_setLocalShipyard:(const std::vector<oo::PList> &) some_market
-{
-	localShipyard = some_market;
-}
-
-
-- (std::map<std::string, oo::ObjCRef<OOJSInterfaceDefinition *>, std::less<>> *) cxx_localInterfaces
-{
-	return &localInterfaces;
-}
-
-
-- (void) cxx_setInterfaceDefinition:(OOJSInterfaceDefinition *)definition forKey:(const std::string &)key
-{
-	if (definition == nil)
-	{
-		localInterfaces.erase(key);
-	}
-	else
-	{
-		localInterfaces[key] = oo::ObjCRef<OOJSInterfaceDefinition *>(definition);
-	}
-}
-
-
-- (OOCommodityMarket *) initialiseLocalMarket
-{
-	DESTROY(localMarket);
-	localMarket = [[[UNIVERSE commodities] generateMarketForStation:self] retain];	
-	return localMarket;
-}
-
-
-- (void) setPlanet:(OOPlanetEntity *)planet_entity
-{
-	if (planet_entity)
-		planet = [planet_entity universalID];
-	else
-		planet = NO_TARGET;
-}
-
-
-- (OOPlanetEntity *) planet
-{
-	return [UNIVERSE entityForUniversalID:planet];
-}
-
-
-- (unsigned) countOfDockedContractors
-{
-	return max_scavengers > scavengers_launched ? max_scavengers - scavengers_launched : 0;
-}
-
-
-- (unsigned) countOfDockedPolice
-{
-	return max_police > defenders_launched ? max_police - defenders_launched : 0;
-}
-
-
-- (unsigned) countOfDockedDefenders
-{
-	return max_defense_ships > defenders_launched ? max_defense_ships - defenders_launched : 0;
-}
-
-
-- (std::vector<oo::ObjCRef<DockEntity *>>) cxx_dockSubEntities
-{
-	std::vector<oo::ObjCRef<DockEntity *>> result;
-	for (const auto &subRef : [self subEntities])
-	{
-		Entity *sub = subRef.get();
-		if (![sub isDock])  continue;
-		result.push_back(oo::ObjCRef<DockEntity *>((DockEntity *)sub));
-	}
-	return result;
-}
-
 
 - (void) sanityCheckShipsOnApproach
 {
@@ -386,8 +150,8 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	}
 	
 	// -makeObjectsPerformSelector:withObject: of the live ships on hold, in order
-	for (const oo::ObjCRef<id> &holdRef : [_shipsOnHold cxx_objectEnumerator])  [static_cast<ShipEntity *>(holdRef.get()) sendAIMessage:"DOCKING_ABORTED"];
-	for (const oo::ObjCRef<id> &holdRef : [_shipsOnHold cxx_objectEnumerator])
+	for (const oo::ObjCRef<id> &holdRef : [_cxxStation->_shipsOnHold cxx_objectEnumerator])  [static_cast<ShipEntity *>(holdRef.get()) sendAIMessage:"DOCKING_ABORTED"];
+	for (const oo::ObjCRef<id> &holdRef : [_cxxStation->_shipsOnHold cxx_objectEnumerator])
 	{
 		ShipEntity *hold = static_cast<ShipEntity *>(holdRef.get());
 		[hold doScriptEvent:OOJSID("stationWithdrewDockingClearance")];
@@ -404,7 +168,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 		[player doScriptEvent:OOJSID("stationWithdrewDockingClearance")];
 	}
 
-	[_shipsOnHold removeAllObjects];
+	[_cxxStation->_shipsOnHold removeAllObjects];
 	
 	[_cxxShip->shipAI message:"DOCKING_COMPLETE"];
 	[self doScriptEvent:OOJSID("stationDockingQueuesAreEmpty")];
@@ -414,13 +178,13 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 
 - (void) autoDockShipsOnHold
 {
-	for (const oo::ObjCRef<id> &shipRef : [_shipsOnHold cxx_objectEnumerator])
+	for (const oo::ObjCRef<id> &shipRef : [_cxxStation->_shipsOnHold cxx_objectEnumerator])
 	{
 		ShipEntity *ship = static_cast<ShipEntity *>(shipRef.get());
 		[self pullInShipIfPermitted:ship];
 	}
 	
-	[_shipsOnHold removeAllObjects];
+	[_cxxStation->_shipsOnHold removeAllObjects];
 }
 
 
@@ -488,7 +252,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 	if ([ship isPlayer])
 	{
-		player_reserved_dock = nil; // clear any dock reservation for manual docking
+		_cxxStation->player_reserved_dock = nil; // clear any dock reservation for manual docking
 	}
 
 	if ([ship isPlayer] && [ship legalStatus] > 50)	// note: non-player fugitives dock as normal
@@ -526,7 +290,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 			// can't allocate a new queue while player is manually docking
 			continue;
 		}
-		if (sub != player_reserved_dock || [ship isPlayer])
+		if (sub != _cxxStation->player_reserved_dock || [ship isPlayer])
 		{
 			docking = [sub canAcceptShipForDocking:ship];
 			if (docking == "DOCK_CLOSED")
@@ -589,7 +353,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	}
 	
 	// we made it through holding!
-	[_shipsOnHold removeObject:ship];
+	[_cxxStation->_shipsOnHold removeObject:ship];
 	
 	[_cxxShip->shipAI cxx_reactToMessage:"DOCKING_REQUESTED" context:"requestDockingCoordinates"];	// react to the request	
 	[self doScriptEvent:OOJSID("stationAcceptedDockingRequest") withArgument:ship];
@@ -600,10 +364,10 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 - (oo::PList)holdPositionInstructionForShip:(ShipEntity *)ship
 {
-	if (![_shipsOnHold containsObject:ship])
+	if (![_cxxStation->_shipsOnHold containsObject:ship])
 	{
 		[self cxx_sendExpandedMessage:"[station-acknowledges-hold-position]" toShip:ship];
-		[_shipsOnHold addObject:ship];
+		[_cxxStation->_shipsOnHold addObject:ship];
 	}
 	
 	return cxx_OOMakeDockingInstructions(self, [ship position], 0, 100, "HOLD_POSITION", std::nullopt, NO, -1);
@@ -615,7 +379,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	[ship sendAIMessage:"DOCKING_ABORTED"];
 	[ship doScriptEvent:OOJSID("stationWithdrewDockingClearance")];
 	
-	[_shipsOnHold removeObject:ship];
+	[_cxxStation->_shipsOnHold removeObject:ship];
 	
 	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
 	{
@@ -625,7 +389,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	
 	if ([ship isPlayer])
 	{
-		player_reserved_dock = nil;
+		_cxxStation->player_reserved_dock = nil;
 	}
 
 	[self sanityCheckShipsOnApproach];
@@ -633,186 +397,6 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 
 //////////////////////////////////////////////// from superclass
-
-- (id)cxx_initWithKey:(const std::string &)key definition:(const oo::PList &)dict
-{
-	OOJS_PROFILE_ENTER
-	
-		self = [super cxx_initWithKey:key definition:dict];
-	if (self != nil)
-	{
-		_cxxEntity->isStation = YES;
-		_shipsOnHold = [[OOWeakSet alloc] init];
-		hasBreakPattern = YES;
-	}
-	return self;
-	
-	OOJS_PROFILE_EXIT
-		}
-
-
-- (void) dealloc
-{
-	DESTROY(_shipsOnHold);
-	DESTROY(localMarket);
-//	DESTROY(localPassengers);
-//	DESTROY(localContracts);
-
-	[super dealloc];
-}
-
-
-- (BOOL) setUpShipFromDictionary:(const oo::PList &) dict
-{
-	OOJS_PROFILE_ENTER
-	
-		_cxxEntity->isShip = YES;
-	_cxxEntity->isStation = YES;
-	alertLevel = STATION_ALERT_LEVEL_GREEN;
-	
-	port_radius = dict.get<oo::NonNegative<double>>("port_radius", 500.0);
-	
-	// port_dimensions is deprecated
-	port_dimensions = make_vector(69, 69, 250);
-	const std::optional<std::string> portDimensionsStr = OptionalStringValue(dict.find("port_dimensions"));	// -oo_stringForKey:
-	if (portDimensionsStr)
-	{
-		cxx_OOStandardsDeprecated("The port_dimensions key is deprecated");
-		if (!OOEnforceStandards())
-		{
-			const std::vector<std::string> tokens = oo::str::split(*portDimensionsStr, "x");
-			if (tokens.size() == 3)
-			{
-				// -floatValue
-				port_dimensions = make_vector((float)oo::str::doubleValue(tokens[0]),
-											  (float)oo::str::doubleValue(tokens[1]),
-											  (float)oo::str::doubleValue(tokens[2]));
-			}
-		}
-	}
-	
-	if (![super setUpShipFromDictionary:dict])  return NO;
-	
-	equivalentTechLevel = dict.get<NSUInteger>("equivalent_tech_level", NSNotFound);
-	max_scavengers = dict.get<unsigned int>("max_scavengers", 3);
-	max_defense_ships = dict.get<unsigned int>("max_defense_ships", 3);
-	max_police = dict.get<unsigned int>("max_police", STATION_MAX_POLICE);
-	equipmentPriceFactor = dict.get<oo::NonNegative<float>>("equipment_price_factor", 1.0);
-	equipmentPriceFactor = fmax(equipmentPriceFactor, 0.5f);
-	hasNPCTraffic = (unsigned char)OOFuzzyBooleanFromPList(dict.find("has_npc_traffic"), (_cxxShip->maxFlightSpeed == 0)); // carriers default to NO
-	hasPatrolShips = OOFuzzyBooleanFromPList(dict.find("has_patrol_ships"), NO);
-	suppress_arrival_reports = (unsigned char)dict.get<bool>("suppress_arrival_reports", NO);
-	[self cxx_setAllegiance:OptionalStringValue(dict.find("allegiance"))];
-
-	marketCapacity = dict.get<unsigned int>("market_capacity", MAIN_SYSTEM_MARKET_LIMIT);
-	const oo::PList *marketDefinitionValue = dict.get<oo::PList::Array>("market_definition");
-	marketDefinition = (marketDefinitionValue != nullptr) ? *marketDefinitionValue : oo::PList();	// oo_arrayForKey:
-	marketScriptName = OptionalStringValue(dict.find("market_script"));
-	marketMonitored = (unsigned char)dict.get<bool>("market_monitored", NO);
-	marketBroadcast = (unsigned char)dict.get<bool>("market_broadcast", YES);
-
-	// Non main stations may have requiresDockingClearance set to yes as a result of the code below,
-	// but this variable should be irrelevant for them, as they do not make use of it anyway.
-	requiresDockingClearance = (unsigned char)dict.get<bool>("requires_docking_clearance", [UNIVERSE dockingClearanceProtocolActive]);
-	
-	allowsFastDocking = (unsigned char)dict.get<bool>("allows_fast_docking", NO);
-	
-	allowsAutoDocking = (unsigned char)dict.get<bool>("allows_auto_docking", YES);
-	
-	allowsSaving = [UNIVERSE deterministicPopulation];
-
-	interstellarUndockingAllowed = (unsigned char)dict.get<bool>("interstellar_undocking", NO);
-	
-	double unitime = [UNIVERSE getTime];
-
-	if ([self hasNPCTraffic])  // removed the 'isRotatingStation' restriction.
-	{
-		docked_shuttles = ranrot_rand() & 3;   // 0..3;
-		shuttle_launch_interval = 15.0 * 60.0;  // every 15 minutes
-		last_shuttle_launch_time = unitime - (ranrot_rand() & 63) * shuttle_launch_interval / 60.0;
-			
-		docked_traders = 3 + (ranrot_rand() & 7);   // 1..3;
-		trader_launch_interval = 3600.0 / docked_traders;  // every few minutes
-		last_trader_launch_time = unitime + 60.0 - trader_launch_interval; // in one minute's time
-	}
-	else
-	{
-		docked_shuttles = 0;
-		docked_traders = 0;   // 1..3;
-	}
-	
-	patrol_launch_interval = 300.0;	// 5 minutes
-	last_patrol_report_time = unitime - patrol_launch_interval;
-	
-	if (![self cxx_crew].has_value())
-	{
-		[self cxx_setSingleCrewWithRole:"police"];
-	}
-	
-	if ([self group] == nil)
-	{
-		[self setGroup:[self stationGroup]];
-	}
-	return YES;
-	
-	OOJS_PROFILE_EXIT
-}
-
-
-// used to set up a virtual dock if necessary
-- (BOOL) setUpSubEntities
-{
-	if (![super setUpSubEntities])
-	{
-		return NO;
-	}
-
-
-#ifndef NDEBUG
-	for (const auto &subRef : [self subEntities])
-	{
-		Entity *sub = subRef.get();
-		if (![sub isShip])  continue;
-		ShipEntity *subEntity = (ShipEntity *)sub;
-		if ([subEntity isStation])
-		{
-			OO_LOG("setup.ship.badType.subentities", "Subentity {} ({}) of station {} is itself a StationEntity. This is an internal error - please report it. ", oo::DescriptionOf(subEntity), [subEntity cxx_shipDataKey].value_or("(null)"), [self displayName].value_or("(null)"));
-		}
-	}
-#endif
-
-	// and now check for docks
-	if (![self cxx_dockSubEntities].empty())
-	{
-		return YES;
-	}
-
-	cxx_OOStandardsDeprecated(oo::str::format("No docks set up for %s", oo::DescriptionOf(self).c_str()));
-	OO_LOG("ship.setup.docks", "No docks set up for {}, making virtual dock", oo::DescriptionOf(self));
-
-	// no real docks, make a virtual one
-	// position and orientation as OOPropertyListFromVector / OOPropertyListFromQuaternion built them (floats)
-	Vector dockPosition = make_vector(0,0,port_radius);
-	oo::PList::Dict virtualDockDict;
-	virtualDockDict["type"] = oo::PList("standard");
-	virtualDockDict["subentity_key"] = oo::PList("oolite-dock-virtual");
-	virtualDockDict["position"] = oo::PList(oo::PList::Dict{ { "x", oo::PList::singleReal(dockPosition.x) }, { "y", oo::PList::singleReal(dockPosition.y) }, { "z", oo::PList::singleReal(dockPosition.z) } });
-	virtualDockDict["orientation"] = oo::PList(oo::PList::Dict{ { "w", oo::PList::singleReal(kIdentityQuaternion.w) }, { "x", oo::PList::singleReal(kIdentityQuaternion.x) }, { "y", oo::PList::singleReal(kIdentityQuaternion.y) }, { "z", oo::PList::singleReal(kIdentityQuaternion.z) } });
-	virtualDockDict["is_dock"] = oo::PList(true);
-	virtualDockDict["dock_label"] = oo::PList("the docking bay");
-	virtualDockDict["allow_docking"] = oo::PList(true);
-	virtualDockDict["disallowed_docking_collides"] = oo::PList(false);
-	virtualDockDict["allow_launching"] = oo::PList(true);
-	virtualDockDict["_is_virtual_dock"] = oo::PList(true);
-
-	if (![self cxx_setUpOneStandardSubentity:oo::PList(std::move(virtualDockDict)) asTurret:NO])
-	{
-		return NO;
-	}
-	return YES;
-}
-
-
 
 
 - (BOOL) shipIsInDockingCorridor:(ShipEntity *)ship
@@ -879,7 +463,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	
 	double unitime = [UNIVERSE getTime];
 	
-	if (!isMainStation && localMarket == nil)
+	if (!isMainStation && _cxxStation->localMarket == nil)
 	{
 		[self initialiseLocalMarket];
 	}
@@ -893,12 +477,12 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	{
 		if ([player getDockingClearanceStatus] >= DOCKING_CLEARANCE_STATUS_GRANTED)
 		{
-			if (last_launch_time-30 < unitime && [player getDockingClearanceStatus] != DOCKING_CLEARANCE_STATUS_TIMING_OUT)
+			if (_cxxStation->last_launch_time-30 < unitime && [player getDockingClearanceStatus] != DOCKING_CLEARANCE_STATUS_TIMING_OUT)
 			{
 				[self cxx_sendExpandedMessage:"[station-docking-clearance-about-to-expire]" toShip:player];
 				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_TIMING_OUT];
 			}
-			else if (last_launch_time < unitime)
+			else if (_cxxStation->last_launch_time < unitime)
 			{
 				[self cxx_sendExpandedMessage:"[station-docking-clearance-expired]" toShip:player];
 				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];	// Docking clearance for player has expired.
@@ -908,13 +492,13 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 					[[self getAI] message:"DOCKING_COMPLETE"];
 					[self doScriptEvent:OOJSID("stationDockingQueuesAreEmpty")];
 				}
-				player_reserved_dock = nil;
+				_cxxStation->player_reserved_dock = nil;
 			}
 		}
 
 		else if ([player getDockingClearanceStatus] == DOCKING_CLEARANCE_STATUS_NOT_REQUIRED)
 		{
-			if (last_launch_time < unitime)
+			if (_cxxStation->last_launch_time < unitime)
 			{
 				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
 				if ([self currentlyInDockingQueues] == 0) 
@@ -929,7 +513,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 				[self hasClearDock])
 		{
 			DockEntity *dock = [self selectDockForDocking];
-			last_launch_time = unitime + DOCKING_CLEARANCE_WINDOW;
+			_cxxStation->last_launch_time = unitime + DOCKING_CLEARANCE_WINDOW;
 			if ([self hasMultipleDocks]) 
 			{
 				[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-granted-in-@-until-@"),
@@ -943,7 +527,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 								{ cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) })
 					toShip:player];
 			}
-			player_reserved_dock = dock;
+			_cxxStation->player_reserved_dock = dock;
 			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_GRANTED];
 			[player doScriptEvent:OOJSID("playerDockingClearanceGranted")];
 
@@ -951,10 +535,10 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	}
 	
 	
-	if (approach_spacing > 0.0)
+	if (_cxxStation->approach_spacing > 0.0)
 	{
-		approach_spacing -= delta_t * 10.0;	// reduce by 10 m/s
-		if (approach_spacing < 0.0)   approach_spacing = 0.0;
+		_cxxStation->approach_spacing -= delta_t * 10.0;	// reduce by 10 m/s
+		if (_cxxStation->approach_spacing < 0.0)   _cxxStation->approach_spacing = 0.0;
 	}
 
 	/* JSAI: JS-based AIs handle their own traffic either alone or 
@@ -962,36 +546,36 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	if (![self hasNewAI])
 	{
 		// begin launch of shuttles, traders, patrols
-		if ((docked_shuttles > 0)&&(!isRockHermit))
+		if ((_cxxStation->docked_shuttles > 0)&&(!isRockHermit))
 		{
-			if (unitime > last_shuttle_launch_time + shuttle_launch_interval)
+			if (unitime > _cxxStation->last_shuttle_launch_time + _cxxStation->shuttle_launch_interval)
 			{
 				if (([self hasNPCTraffic])&&(_cxxShip->aegis_status != AEGIS_NONE))
 				{
 					[self launchShuttle];
 				}
-				last_shuttle_launch_time = unitime;
+				_cxxStation->last_shuttle_launch_time = unitime;
 			}
 		}
 
-		if ((docked_traders > 0)&&(!isRockHermit))
+		if ((_cxxStation->docked_traders > 0)&&(!isRockHermit))
 		{
-			if (unitime > last_trader_launch_time + trader_launch_interval)
+			if (unitime > _cxxStation->last_trader_launch_time + _cxxStation->trader_launch_interval)
 			{
 				if ([self hasNPCTraffic])
 				{
 					[self launchIndependentShip:"trader"];
-					docked_traders--;
+					_cxxStation->docked_traders--;
 				}
-				last_trader_launch_time = unitime;
+				_cxxStation->last_trader_launch_time = unitime;
 			}
 		}
 	
 		// testing patrols
-		if (unitime > (last_patrol_report_time + patrol_launch_interval))
+		if (unitime > (_cxxStation->last_patrol_report_time + _cxxStation->patrol_launch_interval))
 		{
-			if (!((isMainStation && [self hasNPCTraffic]) || hasPatrolShips) || [self launchPatrol] != nil)
-				last_patrol_report_time = unitime;
+			if (!((isMainStation && [self hasNPCTraffic]) || _cxxStation->hasPatrolShips) || [self launchPatrol] != nil)
+				_cxxStation->last_patrol_report_time = unitime;
 		}
 
 	}
@@ -1006,7 +590,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		[sub clear];
 	}
 	
-	[_shipsOnHold removeAllObjects];
+	[_cxxStation->_shipsOnHold removeAllObjects];
 }
 
 
@@ -1091,7 +675,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
 		{
 			DockEntity *sub = dock.get();
-			if (sub != player_reserved_dock)
+			if (sub != _cxxStation->player_reserved_dock)
 			{
 				if ([sub countOfShipsInDockingQueue] == 0)
 				{
@@ -1187,7 +771,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	if ([player getDockingClearanceStatus] != DOCKING_CLEARANCE_STATUS_GRANTED)
 	{
 		// avoid interfering with docking clearance on another bay
-		last_launch_time = [UNIVERSE getTime];
+		_cxxStation->last_launch_time = [UNIVERSE getTime];
 	}
 	[self addShipToStationCount: ship];
 	
@@ -1223,40 +807,22 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 	if ([ship isPlayer])
 	{
-		player_reserved_dock = nil;
+		_cxxStation->player_reserved_dock = nil;
 	}
 }
 
 - (void) addShipToStationCount:(ShipEntity *) ship
 {
- 	if ([ship isShuttle])  docked_shuttles++;
-	else if ([ship isTrader] && ![ship isPlayer])  docked_traders++;
+ 	if ([ship isShuttle])  _cxxStation->docked_shuttles++;
+	else if ([ship isTrader] && ![ship isPlayer])  _cxxStation->docked_traders++;
 	else if (([ship isPolice] && ![ship isEscort]) || [ship cxx_hasPrimaryRole:"defense_ship"])
 	{
-		if (0 < defenders_launched)  defenders_launched--;
+		if (0 < _cxxStation->defenders_launched)  _cxxStation->defenders_launched--;
 	}
 	else if ([ship cxx_hasPrimaryRole:"scavenger"] || [ship cxx_hasPrimaryRole:"miner"])	// treat miners and scavengers alike!
 	{
-		if (0 < scavengers_launched)  scavengers_launched--;
+		if (0 < _cxxStation->scavengers_launched)  _cxxStation->scavengers_launched--;
 	}
-}
-
-
-- (BOOL) interstellarUndockingAllowed
-{
-	return interstellarUndockingAllowed;
-}
-
-
-- (BOOL)hasNPCTraffic
-{
-	return hasNPCTraffic;
-}
-
-
-- (void)setHasNPCTraffic:(BOOL)flag
-{
-	hasNPCTraffic = flag != NO;
 }
 
 
@@ -1275,7 +841,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 - (BOOL) hasHostileTarget
 {
-	return [super hasHostileTarget] || ([self primaryTarget] != nil && ((alertLevel == STATION_ALERT_LEVEL_YELLOW) || (alertLevel == STATION_ALERT_LEVEL_RED)));
+	return [super hasHostileTarget] || ([self primaryTarget] != nil && ((_cxxStation->alertLevel == STATION_ALERT_LEVEL_YELLOW) || (_cxxStation->alertLevel == STATION_ALERT_LEVEL_RED)));
 }
 
 - (void) takeEnergyDamage:(double)amount from:(Entity *)ent becauseOf:(Entity *)other weaponIdentifier:(const std::string &)weaponIdentifier
@@ -1346,19 +912,19 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 - (std::optional<std::string>) cxx_allegiance
 {
-	return allegiance;
+	return _cxxStation->allegiance;
 }
 
 
 - (void) cxx_setAllegiance:(const std::optional<std::string> &)newAllegiance
 {
-	allegiance = newAllegiance;
+	_cxxStation->allegiance = newAllegiance;
 }
 
 
 - (OOStationAlertLevel) alertLevel
 {
-	return alertLevel;
+	return _cxxStation->alertLevel;
 }
 
 
@@ -1367,10 +933,10 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	if (level < STATION_ALERT_LEVEL_GREEN)  level = STATION_ALERT_LEVEL_GREEN;
 	if (level > STATION_ALERT_LEVEL_RED)  level = STATION_ALERT_LEVEL_RED;
 	
-	if (alertLevel != level)
+	if (_cxxStation->alertLevel != level)
 	{
-		OOStationAlertLevel oldLevel = alertLevel;
-		alertLevel = level;
+		OOStationAlertLevel oldLevel = _cxxStation->alertLevel;
+		_cxxStation->alertLevel = level;
 		if (signallingScript)
 		{
 			ShipScriptEventNoCx(self, "alertConditionChanged", ooscript::int32Value(level), ooscript::int32Value(oldLevel));
@@ -1512,7 +1078,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 	result.reserve(4);
 
-	for (i = 0; (i < 4)&&(defenders_launched < max_police) ; i++)
+	for (i = 0; (i < 4)&&(_cxxStation->defenders_launched < _cxxStation->max_police) ; i++)
 	{
 		ShipEntity  *police_ship = nil;
 		if (![UNIVERSE entityForUniversalID:police_target])
@@ -1549,7 +1115,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 				[police_ship setHeatInsulation:[self heatInsulation]];
 			[police_ship switchAITo:"oolite-defenseShipAI.js"];
 			[self addShipToLaunchQueue:police_ship withPriority:YES];
-			defenders_launched++;
+			_cxxStation->defenders_launched++;
 			result.push_back(oo::ObjCRef<ShipEntity *>(police_ship));
 		}
 		[police_ship autorelease];
@@ -1586,7 +1152,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	if (_cxxEntity->scanClass == CLASS_ROCK)
 		default_defense_ship_role	= "hermit-ship";
 	
-	if (defenders_launched >= max_defense_ships)   // shuttles are to rockhermits what police ships are to stations
+	if (_cxxStation->defenders_launched >= _cxxStation->max_defense_ships)   // shuttles are to rockhermits what police ships are to stations
 		return nil;
 	
 	if (![UNIVERSE entityForUniversalID:defense_target])
@@ -1627,7 +1193,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	
 	[defense_ship setPrimaryRole:"defense_ship"];
 	
-	defenders_launched++;
+	_cxxStation->defenders_launched++;
 	
 	if (![defense_ship cxx_crew].has_value())
 	{
@@ -1686,8 +1252,8 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	
 	unsigned scavs = [UNIVERSE cxx_countShipsWithPrimaryRole:"scavenger" inRange:SCANNER_MAX_RANGE ofEntity:self] + [self countOfShipsInLaunchQueueWithPrimaryRole:"scavenger"];
 	
-	if (scavs >= max_scavengers)  return nil;
-	if (scavengers_launched >= max_scavengers)  return nil;
+	if (scavs >= _cxxStation->max_scavengers)  return nil;
+	if (_cxxStation->scavengers_launched >= _cxxStation->max_scavengers)  return nil;
 			
 	scavenger_ship = [UNIVERSE cxx_newShipWithRole:"scavenger"];   // retain count = 1
 	
@@ -1704,7 +1270,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 			[scavenger_ship cxx_setSingleCrewWithRole:"miner"];
 		}
 				
-		scavengers_launched++;
+		_cxxStation->scavengers_launched++;
 		[scavenger_ship setScanClass: CLASS_NEUTRAL];
 		if ([scavenger_ship heatInsulation] < [self heatInsulation])
 			[scavenger_ship setHeatInsulation:[self heatInsulation]];
@@ -1735,7 +1301,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		return nil;
 	
 	// count miners as scavengers...
-	if (scavengers_launched >= max_scavengers)  return nil;
+	if (_cxxStation->scavengers_launched >= _cxxStation->max_scavengers)  return nil;
 	
 	miner_ship = [UNIVERSE cxx_newShipWithRole:"miner"];   // retain count = 1
 
@@ -1752,7 +1318,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 			[miner_ship cxx_setSingleCrewWithRole:"miner"];
 		}
 				
-		scavengers_launched++;
+		_cxxStation->scavengers_launched++;
 		[miner_ship setScanClass:CLASS_NEUTRAL];
 		if ([miner_ship heatInsulation] < [self heatInsulation])
 			[miner_ship setHeatInsulation:[self heatInsulation]];
@@ -1779,7 +1345,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	OOUniversalID	defense_target = [[self primaryTarget] universalID];
 	ShipEntity		*pirate_ship = nil;
 	
-	if (defenders_launched >= max_defense_ships)  return nil;   // shuttles are to rockhermits what police ships are to stations
+	if (_cxxStation->defenders_launched >= _cxxStation->max_defense_ships)  return nil;   // shuttles are to rockhermits what police ships are to stations
 	
 	if (![UNIVERSE entityForUniversalID:defense_target])
 	{
@@ -1804,7 +1370,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 			[pirate_ship cxx_setSingleCrewWithRole:"pirate"];
 		}
 				
-		defenders_launched++;
+		_cxxStation->defenders_launched++;
 		
 		// set the owner of the ship to the station so that it can check back for docking later
 		[pirate_ship setOwner:self];
@@ -1851,7 +1417,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 			[shuttle_ship cxx_setSingleCrewWithRole:"trader"];
 		}
 		
-		docked_shuttles--;
+		_cxxStation->docked_shuttles--;
 		[shuttle_ship setScanClass: CLASS_NEUTRAL];
 		[shuttle_ship setCargoFlag:CARGO_FLAG_FULL_SCARCE];
 		[shuttle_ship switchAITo:"oolite-shuttleAI.js"];
@@ -1903,7 +1469,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 			  [self displayName].value_or("(null)"));
 		return nil;
 	}
-	if (defenders_launched < max_police)
+	if (_cxxStation->defenders_launched < _cxxStation->max_police)
 	{
 		ShipEntity		*patrol_ship = nil;
 		OOTechLevelID	techlevel;
@@ -1930,7 +1496,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 				[patrol_ship cxx_setSingleCrewWithRole:"police"];
 			}
 			
-			defenders_launched++;
+			_cxxStation->defenders_launched++;
 			[patrol_ship switchLightsOff];
 			if ([patrol_ship scanClass] == CLASS_NOT_SET)
 				[patrol_ship setScanClass: CLASS_POLICE];
@@ -2021,7 +1587,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 - (void) acceptPatrolReportFrom:(ShipEntity*) patrol_ship
 {
-	last_patrol_report_time = [UNIVERSE getTime];
+	_cxxStation->last_patrol_report_time = [UNIVERSE getTime];
 }
 
 
@@ -2059,7 +1625,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		[_cxxShip->shipAI cxx_reactToMessage:"DOCKING_REQUESTED" context:std::nullopt];	// react to the request	
 		[self doScriptEvent:OOJSID("stationAcceptedDockingRequest") withArgument:other];
 
-		last_launch_time = timeNow + DOCKING_CLEARANCE_WINDOW;
+		_cxxStation->last_launch_time = timeNow + DOCKING_CLEARANCE_WINDOW;
 		result = "DOCKING_CLEARANCE_NOT_REQUIRED";
 	}
 
@@ -2070,9 +1636,9 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		switch( [player getDockingClearanceStatus] )
 		{
 			case DOCKING_CLEARANCE_STATUS_TIMING_OUT:
-				if (!no_docking_while_launching)
+				if (!_cxxStation->no_docking_while_launching)
 				{
-					last_launch_time = timeNow + DOCKING_CLEARANCE_WINDOW;
+					_cxxStation->last_launch_time = timeNow + DOCKING_CLEARANCE_WINDOW;
 					[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-extended-until-@"),
 							{ cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) })
 						toShip:other];
@@ -2083,11 +1649,11 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 				// else, continue with canceling.
 			case DOCKING_CLEARANCE_STATUS_REQUESTED:
 			case DOCKING_CLEARANCE_STATUS_GRANTED:
-				last_launch_time = timeNow;
+				_cxxStation->last_launch_time = timeNow;
 				[self cxx_sendExpandedMessage:"[station-docking-clearance-cancelled]" toShip:other];
 				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
 				result = "DOCKING_CLEARANCE_CANCELLED";
-				player_reserved_dock = nil;
+				_cxxStation->player_reserved_dock = nil;
 				if ([self currentlyInDockingQueues] == 0)
 				{
 					[_cxxShip->shipAI message:"DOCKING_COMPLETE"];
@@ -2104,7 +1670,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	// switching docking targets - even if we later set it back to NONE.
 	if (!result && [other isPlayer] && self != [player getTargetDockStation])
 	{
-		player_reserved_dock = nil; // and clear any previously reserved dock
+		_cxxStation->player_reserved_dock = nil; // and clear any previously reserved dock
 		[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_REQUESTED];
 	}
 
@@ -2142,7 +1708,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		// Put ship in queue if we've got incoming or outgoing traffic or
 		// if the player is waiting for manual clearance and we are not
 		// the player
-		if (!result && (([self currentlyInDockingQueues] && last_launch_time < timeNow) || (![other isPlayer] && [player getDockingClearanceStatus] == DOCKING_CLEARANCE_STATUS_REQUESTED)))
+		if (!result && (([self currentlyInDockingQueues] && _cxxStation->last_launch_time < timeNow) || (![other isPlayer] && [player getDockingClearanceStatus] == DOCKING_CLEARANCE_STATUS_REQUESTED)))
 		{
 			[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-acknowledged-d-ships-approaching"),
 																					{ [self currentlyInDockingQueues]+1 }) toShip:other];
@@ -2207,17 +1773,17 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	// Ship has passed all checks - grant docking!
 	if (!result)
 	{
-		last_launch_time = timeNow + DOCKING_CLEARANCE_WINDOW;
+		_cxxStation->last_launch_time = timeNow + DOCKING_CLEARANCE_WINDOW;
 		if ([other isPlayer]) 
 		{
 			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_GRANTED];
-			player_reserved_dock = [self selectDockForDocking];
+			_cxxStation->player_reserved_dock = [self selectDockForDocking];
 		}
 
 		if ([self hasMultipleDocks] && [other isPlayer])
 		{
 			[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-granted-in-@-until-@"),
-					{ [player_reserved_dock displayName].value_or("(null)"),
+					{ [_cxxStation->player_reserved_dock displayName].value_or("(null)"),
 					  cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) })
 				toShip:other];
 		}
@@ -2244,7 +1810,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		DockEntity *sub = dock.get();
 		soa += [sub countOfShipsInDockingQueue];
 	}
-	soa += [_shipsOnHold count];
+	soa += [_cxxStation->_shipsOnHold count];
 	return soa;
 }
 
@@ -2261,79 +1827,510 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 }
 
 
-- (BOOL) requiresDockingClearance
+@end
+
+
+// Slice 1 of docs/phases/3-slices/StationEntity.md (bead oo-64ako): class shell, market and
+// shipyard, flags and accessors. The facade forwards each selector (StationEntity (OOSlice1),
+// StationEntity+ObjCBridge.mm); its initialiser and -dealloc are the facade's.
+
+namespace cxx {
+
+/* Override ShipEntity: stations of CLASS_ROCK or CLASS_CARGO are not automatically unpiloted. */
+bool StationEntity::isUnpiloted()
+{
+	::StationEntity *self = oo::ToObjC(this);
+	return [self isExplicitlyUnpiloted] || [self isHulk];
+}
+
+
+OOTechLevelID StationEntity::getEquivalentTechLevel()
+{
+	if (equivalentTechLevel == NSNotFound)
+	{
+		return [UNIVERSE cxx_currentSystemData].get<int>(std::string(KEY_TECHLEVEL));
+	}
+	else
+	{
+		return equivalentTechLevel;
+	}
+}
+
+
+void StationEntity::setEquivalentTechLevel(OOTechLevelID value)
+{
+	equivalentTechLevel = value;
+}
+
+
+Vector StationEntity::virtualPortDimensions()
+{
+	return port_dimensions;
+}
+
+
+::DockEntity *StationEntity::playerReservedDock()
+{
+	return player_reserved_dock;
+}
+
+
+HPVector StationEntity::beaconPosition()
+{
+	::StationEntity *self = oo::ToObjC(this);
+	double buoy_distance = 10000.0;				// distance from station entrance
+	Vector v_f = vector_forward_from_quaternion([self orientation]);
+	HPVector result = HPvector_add([self position], vectorToHPVector(vector_multiply_scalar(v_f, buoy_distance)));
+	
+	return result;
+}
+
+
+float StationEntity::getEquipmentPriceFactor()
+{
+	return equipmentPriceFactor;
+}
+
+
+OOCargoQuantity StationEntity::getMarketCapacity()
+{
+	return marketCapacity;
+}
+
+
+oo::PList StationEntity::getMarketDefinition()
+{
+	return marketDefinition;
+}
+
+
+std::optional<std::string> StationEntity::getMarketScriptName()
+{
+	return marketScriptName;
+}
+
+
+bool StationEntity::getMarketMonitored()
+{
+	::StationEntity *self = oo::ToObjC(this);
+	if (self == [UNIVERSE station])
+	{
+		return YES;
+	}
+	return marketMonitored;
+}
+
+
+bool StationEntity::getMarketBroadcast()
+{
+	::StationEntity *self = oo::ToObjC(this);
+	if (self == [UNIVERSE station])
+	{
+		return YES;
+	}
+	return marketBroadcast;
+}
+
+
+OOCreditsQuantity StationEntity::legalStatusOfManifest(::OOCommodityMarket *manifest, bool isExport)
+{
+	::StationEntity *self = oo::ToObjC(this);
+	OOCreditsQuantity penalty, status = 0;
+	::OOCommodityMarket *market = [self localMarket];
+	for (const std::string &good : [market goods])
+	{
+		if (isExport)
+		{
+			penalty = [market cxx_exportLegalityForGood:good];
+		}
+		else
+		{
+			penalty = [market cxx_importLegalityForGood:good];
+		}
+		status += penalty * [manifest cxx_quantityForGood:good];
+	}
+	return status;
+}
+
+
+::OOCommodityMarket *StationEntity::getLocalMarket()
+{
+	::StationEntity *self = oo::ToObjC(this);
+	if (self == [UNIVERSE station])
+	{
+		// main stations use the system market
+		// just return a reference
+		return [UNIVERSE commodityMarket];
+	}
+	if (!localMarket)
+	{
+		[self initialiseLocalMarket];
+	}
+	return localMarket;
+}
+
+
+void StationEntity::setLocalMarket(const oo::PList &some_market)
+{
+	::StationEntity *self = oo::ToObjC(this);
+	[[self localMarket] cxx_loadStationAmounts:some_market];
+}
+
+
+oo::PList StationEntity::localMarketForScripting()
+{
+	::StationEntity *self = oo::ToObjC(this);
+	return [[self localMarket] dictionaryForScripting];
+}
+
+
+void StationEntity::setPrice(OOCreditsQuantity price, const std::string &commodity)
+{
+	::StationEntity *self = oo::ToObjC(this);
+	[[self localMarket] cxx_setPrice:price forGood:commodity];
+}
+
+
+void StationEntity::setQuantity(OOCargoQuantity quantity, const std::string &commodity)
+{
+	::StationEntity *self = oo::ToObjC(this);
+	[[self localMarket] cxx_setQuantity:quantity forGood:commodity];
+}
+
+
+std::vector<oo::PList> *StationEntity::getLocalShipyard()
+{
+	return localShipyard ? &*localShipyard : nullptr;
+}
+
+
+void StationEntity::setLocalShipyard(const std::vector<oo::PList> &some_market)
+{
+	localShipyard = some_market;
+}
+
+
+std::map<std::string, oo::ObjCRef<::OOJSInterfaceDefinition *>, std::less<>> *StationEntity::getLocalInterfaces()
+{
+	return &localInterfaces;
+}
+
+
+void StationEntity::setInterfaceDefinition(::OOJSInterfaceDefinition *definition, const std::string &key)
+{
+	if (definition == nil)
+	{
+		localInterfaces.erase(key);
+	}
+	else
+	{
+		localInterfaces[key] = oo::ObjCRef<::OOJSInterfaceDefinition *>(definition);
+	}
+}
+
+
+::OOCommodityMarket *StationEntity::initialiseLocalMarket()
+{
+	::StationEntity *self = oo::ToObjC(this);
+	DESTROY(localMarket);
+	localMarket = [[[UNIVERSE commodities] generateMarketForStation:self] retain];	
+	return localMarket;
+}
+
+
+void StationEntity::setPlanet(::OOPlanetEntity *planet_entity)
+{
+	if (planet_entity)
+		planet = [planet_entity universalID];
+	else
+		planet = NO_TARGET;
+}
+
+
+::OOPlanetEntity *StationEntity::getPlanet()
+{
+	return [UNIVERSE entityForUniversalID:planet];
+}
+
+
+unsigned StationEntity::countOfDockedContractors()
+{
+	return max_scavengers > scavengers_launched ? max_scavengers - scavengers_launched : 0;
+}
+
+
+unsigned StationEntity::countOfDockedPolice()
+{
+	return max_police > defenders_launched ? max_police - defenders_launched : 0;
+}
+
+
+unsigned StationEntity::countOfDockedDefenders()
+{
+	return max_defense_ships > defenders_launched ? max_defense_ships - defenders_launched : 0;
+}
+
+
+std::vector<oo::ObjCRef<::DockEntity *>> StationEntity::dockSubEntities()
+{
+	::StationEntity *self = oo::ToObjC(this);
+	std::vector<oo::ObjCRef<::DockEntity *>> result;
+	for (const auto &subRef : [self subEntities])
+	{
+		::Entity *sub = subRef.get();
+		if (![sub isDock])  continue;
+		result.push_back(oo::ObjCRef<::DockEntity *>((::DockEntity *)sub));
+	}
+	return result;
+}
+
+
+bool StationEntity::setUpShipFromDictionary(const oo::PList &dict)
+{
+	::StationEntity *self = oo::ToObjC(this);
+	OOJS_PROFILE_ENTER
+	
+		isShip = YES;
+	isStation = YES;
+	alertLevel = STATION_ALERT_LEVEL_GREEN;
+	
+	port_radius = dict.get<oo::NonNegative<double>>("port_radius", 500.0);
+	
+	// port_dimensions is deprecated
+	port_dimensions = make_vector(69, 69, 250);
+	const std::optional<std::string> portDimensionsStr = OptionalStringValue(dict.find("port_dimensions"));	// -oo_stringForKey:
+	if (portDimensionsStr)
+	{
+		cxx_OOStandardsDeprecated("The port_dimensions key is deprecated");
+		if (!OOEnforceStandards())
+		{
+			const std::vector<std::string> tokens = oo::str::split(*portDimensionsStr, "x");
+			if (tokens.size() == 3)
+			{
+				// -floatValue
+				port_dimensions = make_vector((float)oo::str::doubleValue(tokens[0]),
+											  (float)oo::str::doubleValue(tokens[1]),
+											  (float)oo::str::doubleValue(tokens[2]));
+			}
+		}
+	}
+	
+	if (!ShipEntity::setUpShipFromDictionary(dict))  return NO;
+	
+	equivalentTechLevel = dict.get<NSUInteger>("equivalent_tech_level", NSNotFound);
+	max_scavengers = dict.get<unsigned int>("max_scavengers", 3);
+	max_defense_ships = dict.get<unsigned int>("max_defense_ships", 3);
+	max_police = dict.get<unsigned int>("max_police", STATION_MAX_POLICE);
+	equipmentPriceFactor = dict.get<oo::NonNegative<float>>("equipment_price_factor", 1.0);
+	equipmentPriceFactor = fmax(equipmentPriceFactor, 0.5f);
+	hasNPCTraffic = (unsigned char)OOFuzzyBooleanFromPList(dict.find("has_npc_traffic"), (maxFlightSpeed == 0)); // carriers default to NO
+	hasPatrolShips = OOFuzzyBooleanFromPList(dict.find("has_patrol_ships"), NO);
+	suppress_arrival_reports = (unsigned char)dict.get<bool>("suppress_arrival_reports", NO);
+	[self cxx_setAllegiance:OptionalStringValue(dict.find("allegiance"))];
+
+	marketCapacity = dict.get<unsigned int>("market_capacity", MAIN_SYSTEM_MARKET_LIMIT);
+	const oo::PList *marketDefinitionValue = dict.get<oo::PList::Array>("market_definition");
+	marketDefinition = (marketDefinitionValue != nullptr) ? *marketDefinitionValue : oo::PList();	// oo_arrayForKey:
+	marketScriptName = OptionalStringValue(dict.find("market_script"));
+	marketMonitored = (unsigned char)dict.get<bool>("market_monitored", NO);
+	marketBroadcast = (unsigned char)dict.get<bool>("market_broadcast", YES);
+
+	// Non main stations may have requiresDockingClearance set to yes as a result of the code below,
+	// but this variable should be irrelevant for them, as they do not make use of it anyway.
+	requiresDockingClearance = (unsigned char)dict.get<bool>("requires_docking_clearance", [UNIVERSE dockingClearanceProtocolActive]);
+	
+	allowsFastDocking = (unsigned char)dict.get<bool>("allows_fast_docking", NO);
+	
+	allowsAutoDocking = (unsigned char)dict.get<bool>("allows_auto_docking", YES);
+	
+	allowsSaving = [UNIVERSE deterministicPopulation];
+
+	interstellarUndockingAllowed = (unsigned char)dict.get<bool>("interstellar_undocking", NO);
+	
+	double unitime = [UNIVERSE getTime];
+
+	if ([self hasNPCTraffic])  // removed the 'isRotatingStation' restriction.
+	{
+		docked_shuttles = ranrot_rand() & 3;   // 0..3;
+		shuttle_launch_interval = 15.0 * 60.0;  // every 15 minutes
+		last_shuttle_launch_time = unitime - (ranrot_rand() & 63) * shuttle_launch_interval / 60.0;
+			
+		docked_traders = 3 + (ranrot_rand() & 7);   // 1..3;
+		trader_launch_interval = 3600.0 / docked_traders;  // every few minutes
+		last_trader_launch_time = unitime + 60.0 - trader_launch_interval; // in one minute's time
+	}
+	else
+	{
+		docked_shuttles = 0;
+		docked_traders = 0;   // 1..3;
+	}
+	
+	patrol_launch_interval = 300.0;	// 5 minutes
+	last_patrol_report_time = unitime - patrol_launch_interval;
+	
+	if (![self cxx_crew].has_value())
+	{
+		[self cxx_setSingleCrewWithRole:"police"];
+	}
+	
+	if ([self group] == nil)
+	{
+		[self setGroup:[self stationGroup]];
+	}
+	return YES;
+	
+	OOJS_PROFILE_EXIT
+}
+
+
+// used to set up a virtual dock if necessary
+bool StationEntity::setUpSubEntities()
+{
+	::StationEntity *self = oo::ToObjC(this);
+	if (!ShipEntity::setUpSubEntities())
+	{
+		return NO;
+	}
+
+
+#ifndef NDEBUG
+	for (const auto &subRef : [self subEntities])
+	{
+		::Entity *sub = subRef.get();
+		if (![sub isShip])  continue;
+		::ShipEntity *subEntity = (::ShipEntity *)sub;
+		if ([subEntity isStation])
+		{
+			OO_LOG("setup.ship.badType.subentities", "Subentity {} ({}) of station {} is itself a StationEntity. This is an internal error - please report it. ", oo::DescriptionOf(subEntity), [subEntity cxx_shipDataKey].value_or("(null)"), [self displayName].value_or("(null)"));
+		}
+	}
+#endif
+
+	// and now check for docks
+	if (![self cxx_dockSubEntities].empty())
+	{
+		return YES;
+	}
+
+	cxx_OOStandardsDeprecated(oo::str::format("No docks set up for %s", oo::DescriptionOf(self).c_str()));
+	OO_LOG("ship.setup.docks", "No docks set up for {}, making virtual dock", oo::DescriptionOf(self));
+
+	// no real docks, make a virtual one
+	// position and orientation as OOPropertyListFromVector / OOPropertyListFromQuaternion built them (floats)
+	Vector dockPosition = make_vector(0,0,port_radius);
+	oo::PList::Dict virtualDockDict;
+	virtualDockDict["type"] = oo::PList("standard");
+	virtualDockDict["subentity_key"] = oo::PList("oolite-dock-virtual");
+	virtualDockDict["position"] = oo::PList(oo::PList::Dict{ { "x", oo::PList::singleReal(dockPosition.x) }, { "y", oo::PList::singleReal(dockPosition.y) }, { "z", oo::PList::singleReal(dockPosition.z) } });
+	virtualDockDict["orientation"] = oo::PList(oo::PList::Dict{ { "w", oo::PList::singleReal(kIdentityQuaternion.w) }, { "x", oo::PList::singleReal(kIdentityQuaternion.x) }, { "y", oo::PList::singleReal(kIdentityQuaternion.y) }, { "z", oo::PList::singleReal(kIdentityQuaternion.z) } });
+	virtualDockDict["is_dock"] = oo::PList(true);
+	virtualDockDict["dock_label"] = oo::PList("the docking bay");
+	virtualDockDict["allow_docking"] = oo::PList(true);
+	virtualDockDict["disallowed_docking_collides"] = oo::PList(false);
+	virtualDockDict["allow_launching"] = oo::PList(true);
+	virtualDockDict["_is_virtual_dock"] = oo::PList(true);
+
+	if (![self cxx_setUpOneStandardSubentity:oo::PList(std::move(virtualDockDict)) asTurret:NO])
+	{
+		return NO;
+	}
+	return YES;
+}
+
+
+bool StationEntity::getInterstellarUndockingAllowed()
+{
+	return interstellarUndockingAllowed;
+}
+
+
+bool StationEntity::getHasNPCTraffic()
+{
+	return hasNPCTraffic;
+}
+
+
+void StationEntity::setHasNPCTraffic(bool flag)
+{
+	hasNPCTraffic = flag != NO;
+}
+
+
+bool StationEntity::getRequiresDockingClearance()
 {
 	return requiresDockingClearance;
 }
 
 
-- (void) setRequiresDockingClearance:(BOOL)newValue
+void StationEntity::setRequiresDockingClearance(bool newValue)
 {
 	requiresDockingClearance = !!newValue;	// Ensure yes or no
 }
 
 
-- (BOOL) allowsFastDocking
+bool StationEntity::getAllowsFastDocking()
 {
 	return allowsFastDocking;
 }
 
 
-- (void) setAllowsFastDocking:(BOOL)newValue
+void StationEntity::setAllowsFastDocking(bool newValue)
 {
 	allowsFastDocking = !!newValue;	// Ensure yes or no
 }
 
 
-- (BOOL) allowsAutoDocking
+bool StationEntity::getAllowsAutoDocking()
 {
 	return allowsAutoDocking;
 }
 
 
-- (void) setAllowsAutoDocking:(BOOL)newValue
+void StationEntity::setAllowsAutoDocking(bool newValue)
 {
 	allowsAutoDocking = !!newValue; // Ensure yes or no
 }
 
 
-- (BOOL) allowsSaving
+bool StationEntity::getAllowsSaving()
 {
+	::StationEntity *self = oo::ToObjC(this);
 	// fixed stations only, not carriers!
 	return allowsSaving && ([self maxFlightSpeed] == 0);
 }
 
 
-- (BOOL) isRotatingStation
+bool StationEntity::isRotatingStation()
 {
-	if (_cxxShip->shipinfoDictionary.get<bool>("rotating", false))  return YES;
+	if (shipinfoDictionary.get<bool>("rotating", false))  return YES;
 	// legacy. -rangeOfString: of the roles string; absent, a message to nil gave a zeroed range, which is not NSNotFound.
-	const oo::PList *roles = _cxxShip->shipinfoDictionary.find("roles");
+	const oo::PList *roles = shipinfoDictionary.find("roles");
 	if (roles == nullptr)  return YES;
 	const std::string *rolesString = roles->getIf<std::string>();
 	return rolesString != nullptr && rolesString->find("rotating-station") != std::string::npos;
 }
 
 
-- (std::optional<std::string>) marketOverrideName
+std::optional<std::string> StationEntity::marketOverrideName()
 {
 	// 2010.06.14 - Micha - we can't default to the primary role as otherwise the logic
 	//				generating the market in [Universe commodityDataForEconomy:] doesn't
 	//				work properly with the various overrides.  The primary role will get
 	//				used if either there is no market override, or the market wasn't
 	//				defined.
-	return OptionalStringValue(_cxxShip->shipinfoDictionary.find("market"));
+	return OptionalStringValue(shipinfoDictionary.find("market"));
 }
 
 
-- (BOOL) hasShipyard
+bool StationEntity::hasShipyard()
 {
+	::StationEntity *self = oo::ToObjC(this);
 	if ([UNIVERSE station] == self)
 		return YES;
-	const oo::PList	*determinantValue = _cxxShip->shipinfoDictionary.find("has_shipyard");
+	const oo::PList	*determinantValue = shipinfoDictionary.find("has_shipyard");
 
 	if (determinantValue == nullptr)
-		determinantValue = _cxxShip->shipinfoDictionary.find("hasShipyard");
+		determinantValue = shipinfoDictionary.find("hasShipyard");
 	
 	// NOTE: non-standard capitalization is documented and entrenched.
 	if (determinantValue != nullptr && !determinantValue->isNull())
@@ -2354,14 +2351,16 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 }
 
 
-- (void) generateShipyard
+void StationEntity::generateShipyard()
 {
+	::StationEntity *self = oo::ToObjC(this);
 	[self generateShipyard:[self equivalentTechLevel]];
 }
 
 
-- (void) generateShipyard:(OOTechLevelID)stationTechLevel
+void StationEntity::generateShipyard(OOTechLevelID stationTechLevel)
 {
+	::StationEntity *self = oo::ToObjC(this);
 	unsigned		i;
 
 	if ([self cxx_localShipyard] == nullptr)
@@ -2386,43 +2385,44 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 }
 
 
-- (BOOL) suppressArrivalReports
+bool StationEntity::suppressArrivalReports()
 {
 	return suppress_arrival_reports;
 }
 
 
-- (void) setSuppressArrivalReports:(BOOL)newValue
+void StationEntity::setSuppressArrivalReports(bool newValue)
 {
 	suppress_arrival_reports = !!newValue;	// ensure YES or NO
 }
 
 
-- (BOOL) hasBreakPattern
+bool StationEntity::getHasBreakPattern()
 {
 	return hasBreakPattern;
 }
 
 
-- (void) setHasBreakPattern:(BOOL)newValue
+void StationEntity::setHasBreakPattern(bool newValue)
 {
 	hasBreakPattern = !!newValue;
 }
 
 
-- (std::optional<std::string>) cxx_descriptionComponents
+std::optional<std::string> StationEntity::descriptionComponents() const
 {
-	return oo::str::format("\"%s\" %s", _cxxShip->name.value_or("(null)").c_str(), [super cxx_descriptionComponents].value_or("(null)").c_str());
+	return oo::str::format("\"%s\" %s", name.value_or("(null)").c_str(), ShipEntity::descriptionComponents().value_or("(null)").c_str());
 }
 
 
-- (void)dumpSelfState
+void StationEntity::dumpSelfState()
 {
+	::StationEntity *self = oo::ToObjC(this);
 	std::vector<std::string>	flags;
 	std::string					flagsString;
 	std::string					alertString = "*** ERROR: UNKNOWN ALERT LEVEL ***";
 	
-	[super dumpSelfState];
+	ShipEntity::dumpSelfState();
 	
 	switch (alertLevel)
 	{
@@ -2473,11 +2473,11 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		unsigned		i = 1;
 		for (const oo::ObjCRef<id> &shipRef : [_shipsOnHold cxx_objectEnumerator])
 		{
-			ShipEntity *ship = static_cast<ShipEntity *>(shipRef.get());
+			::ShipEntity *ship = static_cast<::ShipEntity *>(shipRef.get());
 			OO_LOG("dumpState.stationEntity", "Nr {}: {} at distance {:g} with role: {}", i++, [ship displayName].value_or("(null)"), HPdistance([self position], [ship position]), [ship cxx_primaryRole].value_or("(null)"));
 		}
 		oo::log::outdent();
 	}
 }
 
-@end
+}	// namespace cxx

@@ -3013,7 +3013,7 @@ void ShipEntity::update(OOTimeDelta delta_t)
 	{
 		if ([UNIVERSE getTime] > launch_time + launch_delay)		// move for while before thinking
 		{
-			StationEntity *stationLaunchedFrom = [UNIVERSE nearestEntityMatchingPredicate:IsStationPredicate parameter:NULL relativeToEntity:self];
+			::StationEntity *stationLaunchedFrom = [UNIVERSE nearestEntityMatchingPredicate:IsStationPredicate parameter:NULL relativeToEntity:self];
 			[self setStatus:STATUS_IN_FLIGHT];
 			// awaken JS-based AIs
 			haveStartedJSAI = YES;

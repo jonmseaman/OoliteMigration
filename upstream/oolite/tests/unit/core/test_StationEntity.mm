@@ -361,4 +361,46 @@ OO_TEST(positionPlanetAndDescription)
 }
 
 
+// --- The crossing (after the conversion) ---------------------------------------------------------
+
+// A station's C++ part is a cxx::StationEntity, the facade's typed alias is that part, and from C++
+// the ship's virtual members reach the station's.
+OO_TEST(objCStationPartIsAStation)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestStation *station = MakeStation("crossing", { { "name", oo::PList(std::string("Dodo")) } });
+		Entity *asEntity = station;
+		cxx::StationEntity *part = oo::ToCxx(station);
+		OO_CHECK(part != nullptr && part == station->_cxxStation);
+		OO_CHECK(static_cast<cxx::ShipEntity *>(part) == station->_cxxShip);
+		OO_CHECK(dynamic_cast<cxx::StationEntity *>(oo::ToCxx(asEntity)) == part);
+		OO_CHECK(oo::AsObjCEntity(part) != nullptr && oo::ToObjC(part) == station);
+		OO_CHECK(part->getHasBreakPattern() && part->getMarketCapacity() == MAIN_SYSTEM_MARKET_LIMIT);
+
+		cxx::ShipEntity *asShip = part;
+		OO_CHECK(asShip->isUnpiloted());		// unpiloted = yes
+		SetExplicitlyUnpiloted(station, false);
+		OO_CHECK(!asShip->isUnpiloted());
+		cxx::Entity *asCxxEntity = part;
+		OO_CHECK(asCxxEntity->descriptionComponents() == [station cxx_descriptionComponents]);
+	}
+}
+
+
+// A failing initialiser that releases the station before [super init]: the facade's -dealloc runs
+// without a C++ part.
+OO_TEST(stationReleasedBeforeInit)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestStation *station = [TestStation alloc];
+		OO_CHECK(station->_cxxStation == nullptr);
+		[station release];
+	}
+}
+
+
 OO_TEST_MAIN()

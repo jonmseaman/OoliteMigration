@@ -4395,3 +4395,49 @@ override a good part of them.
 
 **Consequences.** One adapter class for the ship whichever block lands first; the façade's
 deletion bead removes the categories, the forwarders and the adapter's lines.
+
+## Amendment (bead oo-64ako): the class shell of an Objective-C subclass of the half-converted ShipEntity (StationEntity)
+
+- Date: 2026-10-07. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Plan:
+  `docs/phases/3-slices/StationEntity.md` slice 1. Exemplar: `src/Core/Entities/StationEntity.h/.mm`,
+  `StationEntity+ObjCBridge.h/.mm`, `ShipEntity+ObjCAdapter.h`, `tests/unit/core/test_StationEntity.mm`.
+  Follows amendments oo-60fwo (ShipEntity's class shell) and oo-mvzmb / oo-zd80m (its later slices).
+
+**Context.** `StationEntity` is the first subclass of `ShipEntity` to convert. The ship's C++ part
+is made by the ship's façade (`-initShipPart`) as the adapter `ObjCShipEntity`, private to
+`ShipEntity+ObjCBridge.mm`, over `cxx::ShipEntity`; a station's part must be a
+`cxx::StationEntity` and still carry every line of that adapter, since the station's unconverted
+methods and the Objective-C ship methods it overrides are reached from C++ through them.
+
+**Decision (recommended defaults).**
+
+1. **The subclass shell is amendment oo-60fwo's, one level down:** `cxx::StationEntity :
+   cxx::ShipEntity` holds the ivars as public, zero-initialised members with their names, and the
+   façade `@interface StationEntity : ShipEntity` carries one `@public`, borrowed, typed alias,
+   `cxx::StationEntity *_cxxStation`, set by its override of `-initWithCxxEntity:` (a checked
+   `dynamic_cast`). Unconverted station code reads its ivars as `_cxxStation->alertLevel` (the
+   compiler-guided rewrite of oo-60fwo item 1); typed `oo::ToCxx(::StationEntity *)` and
+   `oo::ToObjC(cxx::StationEntity *)` are the root's crossings, `static_cast`.
+2. **The ship's adapter becomes a template, `oo::ObjCShipEntity<Base>`,** moved unchanged (each
+   line's `_objcOwner` is `this->_objcOwner`, the base being dependent) to the private header
+   `ShipEntity+ObjCAdapter.h` with the façade's private `-initShipPart`. The ship's façade makes
+   `ObjCShipEntity<cxx::ShipEntity>`; the station's façade overrides `-initShipPart` to make
+   `ObjCShipEntity<cxx::StationEntity>`. Every later ship slice still adds its lines in one place;
+   `PlayerEntity` and `DockEntity` take the same route when they convert.
+3. **Slice 1's units are members of `cxx::StationEntity`** in one `namespace cxx` block after the
+   `@implementation`, forwarded by the category `StationEntity (OOSlice1)` in the bridge `.mm`,
+   whose `@interface` in the bridge header takes their declarations from the primary interface
+   (amendment oo-mvzmb item 1). The initialiser (`-cxx_initWithKey:definition:`, three assignments
+   after `[super ...]`) and `-dealloc` (with the root's no-part guard) are the façade's category
+   `StationEntity (OOObjCBridge)`, as oo-60fwo item 6. Members that override the ship's
+   (`isUnpiloted`, `setUpShipFromDictionary`, `setUpSubEntities`, `descriptionComponents`,
+   `dumpSelfState`) are `override`; their forwarders call `cxx::StationEntity`'s own member and a
+   `[super x]` in a moved body is `ShipEntity::x()`. Getters named like a member take `get`
+   (amendment oo-zd80m item 4: `getEquivalentTechLevel()`, `getPlanet()`, `getHasNPCTraffic()`).
+4. **Tests:** `test_StationEntity.mm` (['*'], as `test_ShipEntity`), against the façade, run on the
+   unconverted class first; its station is a subclass whose only override is the virtual dock's
+   `-cxx_setUpOneStandardSubentity:asTurret:` (the dock is a shipdata entry).
+
+**Consequences.** One more façade (`StationEntity+ObjCBridge`, deletion bead filed with this one);
+`ShipEntity+ObjCBridge`'s deletion bead also deletes `ShipEntity+ObjCAdapter.h`. Slices 2-4 each
+move their units into `cxx::StationEntity` and drop `_cxxStation->` from them.

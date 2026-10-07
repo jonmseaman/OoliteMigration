@@ -44,152 +44,9 @@ MA 02110-1301, USA.
 #import "OODescription.h"
 #include "oofnd/Log.hpp"
 #include "oofnd/objc/OOAssert.h"
+#import "ShipEntity+ObjCAdapter.h"
 
 #include <cmath>
-
-
-namespace {
-
-/*	The C++ part of an Objective-C ship (ShipEntity, StationEntity, DockEntity, PlayerEntity, ...):
-	the root's adapter over cxx::ShipEntity, plus the members cxx::ShipEntity added that the
-	Objective-C subclasses override, which message the Objective-C object (ADR-0056 amendments
-	oo-vl43 item 1 and oo-mvzmb). Each slice that makes such a member virtual adds its line
-	(docs/phases/3-slices/ShipEntity.md); the facade's forwarder calls cxx::ShipEntity's own
-	member, which is what [super ...] (or not overriding) reached.
-*/
-class ObjCShipEntity final : public oo::ObjCEntity<cxx::ShipEntity>
-{
-public:
-	explicit ObjCShipEntity(::Entity *objcOwner) : oo::ObjCEntity<cxx::ShipEntity>(objcOwner) {}
-
-	// Slice 3 (bead oo-mvzmb).
-	bool setUpShipFromDictionary(const oo::PList &shipDict) override	{ return [(::ShipEntity *)_objcOwner setUpShipFromDictionary:shipDict]; }
-	bool setUpSubEntities() override	{ return [(::ShipEntity *)_objcOwner setUpSubEntities]; }
-
-	// Slice 5 (bead oo-ddnn8).
-	GLfloat doesHitLine(HPVector v0, HPVector v1, ::ShipEntity **hitEntity) override	{ return [(::ShipEntity *)_objcOwner doesHitLine:v0 :v1 :hitEntity]; }
-
-	// Slice 8 (bead oo-vxdsc).
-	bool hasPrimaryWeapon(OOWeaponType weaponType) override	{ return [(::ShipEntity *)_objcOwner hasPrimaryWeapon:weaponType]; }
-
-	// Slice 9 (bead oo-ke13m).
-	bool canAddEquipment(const std::string &equipmentKeyIn, const std::string &context) override	{ return [(::ShipEntity *)_objcOwner canAddEquipment:equipmentKeyIn inContext:context]; }
-	::OOEquipmentType *weaponTypeForFacing(OOWeaponFacing facing, bool strict) override	{ return [(::ShipEntity *)_objcOwner weaponTypeForFacing:facing strict:strict]; }
-	std::vector<oo::ObjCRef<::OOEquipmentType *>> missilesList() override	{ return [(::ShipEntity *)_objcOwner missilesList]; }
-	oo::PList passengerListForScripting() override	{ return [(::ShipEntity *)_objcOwner passengerListForScripting]; }
-	oo::PList parcelListForScripting() override	{ return [(::ShipEntity *)_objcOwner parcelListForScripting]; }
-	oo::PList contractListForScripting() override	{ return [(::ShipEntity *)_objcOwner contractListForScripting]; }
-	bool setWeaponMount(OOWeaponFacing facing, const std::string &eqKey) override	{ return [(::ShipEntity *)_objcOwner setWeaponMount:facing toWeapon:eqKey]; }
-	bool addEquipmentItem(const std::string &equipmentKey, const std::string &context) override	{ return [(::ShipEntity *)_objcOwner addEquipmentItem:equipmentKey inContext:context]; }
-	bool addEquipmentItem(const std::string &equipmentKeyIn, bool validateAddition, const std::string &context) override	{ return [(::ShipEntity *)_objcOwner addEquipmentItem:equipmentKeyIn withValidation:validateAddition inContext:context]; }
-
-	// Slice 10 (bead oo-wvcs2).
-	void removeEquipmentItem(const std::string &equipmentKey) override	{ [(::ShipEntity *)_objcOwner removeEquipmentItem:equipmentKey]; }
-	bool removeExternalStore(::OOEquipmentType *eqType) override	{ return [(::ShipEntity *)_objcOwner removeExternalStore:eqType]; }
-	OOCreditsQuantity removeMissiles() override	{ return [(::ShipEntity *)_objcOwner removeMissiles]; }
-	NSUInteger parcelCount() override	{ return [(::ShipEntity *)_objcOwner parcelCount]; }
-	NSUInteger passengerCount() override	{ return [(::ShipEntity *)_objcOwner passengerCount]; }
-	NSUInteger passengerCapacity() override	{ return [(::ShipEntity *)_objcOwner passengerCapacity]; }
-	float maxForwardShieldLevel() override	{ return [(::ShipEntity *)_objcOwner maxForwardShieldLevel]; }
-	float maxAftShieldLevel() override	{ return [(::ShipEntity *)_objcOwner maxAftShieldLevel]; }
-
-	// Slice 17 (bead oo-6hofy).
-	void applyAttitudeChanges(double delta_t) override	{ [(::ShipEntity *)_objcOwner applyAttitudeChanges:delta_t]; }
-	void setName(const std::optional<std::string> &inName) override	{ [(::ShipEntity *)_objcOwner cxx_setName:inName]; }
-
-	// Slice 18 (bead oo-vho1o).
-	bool isUnpiloted() override	{ return [(::ShipEntity *)_objcOwner isUnpiloted]; }
-	bool hasHostileTarget() override	{ return [(::ShipEntity *)_objcOwner hasHostileTarget]; }
-
-	// Slice 19 (bead oo-umyg2).
-	GLfloat fuelChargeRate() override	{ return [(::ShipEntity *)_objcOwner fuelChargeRate]; }
-
-	// Slice 20 (bead oo-66inv).
-	void setBounty(OOCreditsQuantity amount) override	{ [(::ShipEntity *)_objcOwner setBounty:amount]; }
-	void setBounty(OOCreditsQuantity amount, OOLegalStatusReason reason) override	{ [(::ShipEntity *)_objcOwner setBounty:amount withReason:reason]; }
-	void setBounty(OOCreditsQuantity amount, const std::string &reason) override	{ [(::ShipEntity *)_objcOwner setBounty:amount withReasonAsString:reason]; }
-	OOCreditsQuantity getBounty() override	{ return [(::ShipEntity *)_objcOwner bounty]; }
-	int legalStatus() override	{ return [(::ShipEntity *)_objcOwner legalStatus]; }
-	OOCargoQuantity cargoQuantityOnBoard() override	{ return [(::ShipEntity *)_objcOwner cargoQuantityOnBoard]; }
-	oo::PList cargoListForScripting() override	{ return [(::ShipEntity *)_objcOwner cargoListForScripting]; }
-
-	// Slice 21 (bead oo-cicod).
-	void setMaxFlightPitch(GLfloat newValue) override	{ [(::ShipEntity *)_objcOwner setMaxFlightPitch:newValue]; }
-	void setMaxFlightRoll(GLfloat newValue) override	{ [(::ShipEntity *)_objcOwner setMaxFlightRoll:newValue]; }
-	void setMaxFlightYaw(GLfloat newValue) override	{ [(::ShipEntity *)_objcOwner setMaxFlightYaw:newValue]; }
-	void noteTakingDamage(double amount, ::Entity *entity, OOShipDamageType type) override	{ [(::ShipEntity *)_objcOwner noteTakingDamage:amount from:entity type:type]; }
-
-	// Slice 22 (bead oo-z1utw).
-	void getDestroyedBy(::Entity *whom, OOShipDamageType type) override	{ [(::ShipEntity *)_objcOwner getDestroyedBy:whom damageType:type]; }
-	void becomeExplosion() override	{ [(::ShipEntity *)_objcOwner becomeExplosion]; }
-	void becomeEnergyBlast() override	{ [(::ShipEntity *)_objcOwner becomeEnergyBlast]; }
-
-	// Slice 23 (bead oo-xmrgd).
-	void becomeLargeExplosion(double factor) override	{ [(::ShipEntity *)_objcOwner becomeLargeExplosion:factor]; }
-	void collectBountyFor(::ShipEntity *other) override	{ [(::ShipEntity *)_objcOwner collectBountyFor:other]; }
-	GLfloat laserHeatLevel() override	{ return [(::ShipEntity *)_objcOwner laserHeatLevel]; }
-	GLfloat laserHeatLevelAft() override	{ return [(::ShipEntity *)_objcOwner laserHeatLevelAft]; }
-	GLfloat laserHeatLevelForward() override	{ return [(::ShipEntity *)_objcOwner laserHeatLevelForward]; }
-	GLfloat laserHeatLevelPort() override	{ return [(::ShipEntity *)_objcOwner laserHeatLevelPort]; }
-	GLfloat laserHeatLevelStarboard() override	{ return [(::ShipEntity *)_objcOwner laserHeatLevelStarboard]; }
-	void setFoundTarget(::Entity *targetEntity) override	{ [(::ShipEntity *)_objcOwner setFoundTarget:targetEntity]; }
-
-	// Slice 24 (bead oo-zd80m).
-	bool isValidTarget(::Entity *target) override	{ return [(::ShipEntity *)_objcOwner isValidTarget:target]; }
-	void addTarget(::Entity *targetEntity) override	{ [(::ShipEntity *)_objcOwner addTarget:targetEntity]; }
-
-	// Slice 27 (bead oo-pnfyp).
-	GLfloat lookingAtSunWithThresholdAngleCos(GLfloat thresholdAngleCos) override	{ return [(::ShipEntity *)_objcOwner lookingAtSunWithThresholdAngleCos:thresholdAngleCos]; }
-
-	// Slice 28 (bead oo-40ocf).
-	::ShipEntity *fireMissile() override	{ return [(::ShipEntity *)_objcOwner fireMissile]; }
-
-	// Slice 29 (bead oo-g900k).
-	void noticeECM() override	{ [(::ShipEntity *)_objcOwner noticeECM]; }
-	bool fireECM() override	{ return [(::ShipEntity *)_objcOwner fireECM]; }
-	bool activateCloakingDevice() override	{ return [(::ShipEntity *)_objcOwner activateCloakingDevice]; }
-	void deactivateCloakingDevice() override	{ [(::ShipEntity *)_objcOwner deactivateCloakingDevice]; }
-	::ShipEntity *launchEscapeCapsule() override	{ return [(::ShipEntity *)_objcOwner launchEscapeCapsule]; }
-	void dumpCargo() override	{ [(::ShipEntity *)_objcOwner dumpCargo]; }
-
-	// Slice 30 (bead oo-ogoct).
-	bool collideWithShip(::ShipEntity *other) override	{ return [(::ShipEntity *)_objcOwner collideWithShip:other]; }
-	void adjustVelocity(Vector xVel) override	{ [(::ShipEntity *)_objcOwner adjustVelocity:xVel]; }
-	bool canScoop(::ShipEntity *other) override	{ return [(::ShipEntity *)_objcOwner canScoop:other]; }
-	void suppressTargetLost() override	{ [(::ShipEntity *)_objcOwner suppressTargetLost]; }
-
-	// Slice 31 (bead oo-gx86h).
-	void takeScrapeDamage(double amount, ::Entity *ent) override	{ [(::ShipEntity *)_objcOwner takeScrapeDamage:amount from:ent]; }
-	void takeHeatDamage(double amount) override	{ [(::ShipEntity *)_objcOwner takeHeatDamage:amount]; }
-	void enterDock(::StationEntity *station) override	{ [(::ShipEntity *)_objcOwner enterDock:station]; }
-	void leaveDock(::StationEntity *station) override	{ [(::ShipEntity *)_objcOwner leaveDock:station]; }
-	void enterWormhole(::WormholeEntity *w_hole) override	{ [(::ShipEntity *)_objcOwner enterWormhole:w_hole]; }
-	void enterWitchspace() override	{ [(::ShipEntity *)_objcOwner enterWitchspace]; }
-	void leaveWitchspace() override	{ [(::ShipEntity *)_objcOwner leaveWitchspace]; }
-
-	// Slice 32 (bead oo-5e0ny).
-	void markAsOffender(int offence_value) override	{ [(::ShipEntity *)_objcOwner markAsOffender:offence_value]; }
-	void markAsOffender(int offence_value, OOLegalStatusReason reason) override	{ [(::ShipEntity *)_objcOwner markAsOffender:offence_value withReason:reason]; }
-
-	// Slice 33 (bead oo-tz2ra).
-	void receiveCommsMessage(const std::string &message_text, ::ShipEntity *other) override	{ [(::ShipEntity *)_objcOwner receiveCommsMessage:message_text from:other]; }
-	bool isMining() override	{ return [(::ShipEntity *)_objcOwner isMining]; }
-	void interpretAIMessage(const std::string &ms) override	{ [(::ShipEntity *)_objcOwner interpretAIMessage:ms]; }
-
-	// Slice 34 (bead oo-nkyn3).
-	void doScriptEvent(ooscript::PropertyId message, ooscript::Context context, ooscript::Value *argv, unsigned argc) override	{ [(::ShipEntity *)_objcOwner doScriptEvent:message inContext:context withArguments:argv count:argc]; }
-	OOAlertCondition alertCondition() override	{ return [(::ShipEntity *)_objcOwner alertCondition]; }
-	OOAlertCondition realAlertCondition() override	{ return [(::ShipEntity *)_objcOwner realAlertCondition]; }
-};
-
-}	// namespace
-
-
-@interface ShipEntity (OOObjCBridgePrivate)
-
-- (id) initShipPart;
-
-@end
 
 
 @implementation ShipEntity (OOObjCBridge)
@@ -246,7 +103,7 @@ public:
 {
 	// -init sent again to an initialised ship keeps its C++ part (the root's -initWithCxxEntity:).
 	if (_cxxEntity != nullptr)  return [self initWithCxxEntity:_cxxEntity.get()];
-	return [self initWithCxxEntity:oo::makeRef<ObjCShipEntity>(self).get()];
+	return [self initWithCxxEntity:oo::makeRef<oo::ObjCShipEntity<cxx::ShipEntity>>(self).get()];
 }
 
 
