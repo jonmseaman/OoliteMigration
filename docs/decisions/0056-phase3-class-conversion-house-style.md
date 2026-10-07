@@ -4513,3 +4513,71 @@ unchanged and reach the members through the façade until their own conversion.
 
 **Consequences.** `ShipEntityAI.h` keeps only its imports for the files that import it; the
 ship's façade deletion bead (oo-9ht.144) removes the forwarding categories with the others.
+
+## Amendment (bead oo-9ht.107): deleting an entity subclass's façade while the root's stands
+
+- Date: 2026-10-07. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Exemplar:
+  the first entity-subclass façade deletions, beads oo-9ht.107 (`OOFlasherEntity+ObjCBridge`) and
+  oo-9ht.110 (`OOExhaustPlumeEntity+ObjCBridge`): `src/Core/Entities/Entity.h/.mm`,
+  `src/Core/Scripting/EntityOOJavaScriptExtensions+ObjCBridge.mm`, `OOFlasherEntity.h/.mm`,
+  `OOJSFlasher.h/.mm`, `ShipEntity.h/.mm`, `OOVisualEffectEntity.h/.mm` and their bridge files,
+  `tests/unit/core/test_OOFlasherEntity.mm`, `test_OOJSFlasher.mm`,
+  `test_EntityOOJavaScriptExtensions.mm`. Follows amendment oo-9ht.12 (deleting a façade).
+
+**Context.** A converted entity leaf's object is the façade `oo::NewEntityFacade` picks. Once its
+own façade is gone (amendment oo-9ht.12 item 6) the object is the nearest façade left
+(`OOLightParticleEntity`'s for a flasher, the root `Entity`'s for a plume), and the selectors the
+deleted façade alone answered have no receiver: the engine's JS questions
+(`-getJSClass:andPrototype:`, `-cxx_oo_jsClassName`, `-isVisibleToScripts`, moved onto the leaf
+façades by oo-9ht.49/oo-9ht.48) and the protocol `OOSubEntity` that owners send their subentities
+(`-rescaleBy:`, `-rescaleBy:writeToCache:`, `-drawSubEntityImmediate:translucent:`). The root's own
+façade stays until oo-9ht.39, so the engine still asks by selector.
+
+**Decision (recommended defaults).**
+
+1. **The root category's JS class questions ask the C++ part.** `cxx::Entity` has three virtual
+   members, `getJSClass(ooscript::ClassDef **, ooscript::Object *)`, `jsClassName()` and
+   `isVisibleToScripts()`, whose defaults call the category's bodies (`EntityJSGetJSClass`,
+   `EntityJSClassName`, `EntityJSIsVisibleToScripts`). `Entity (OOJavaScriptExtensions)` forwards
+   its three methods to `_cxxEntity`. An Objective-C class or façade that implements the selectors
+   (`ShipEntity (OOJavaScriptExtensions)`, `PlayerEntity`, the planet, sun, wormhole and waypoint
+   façades) still answers first by Objective-C dispatch, so nothing else changes.
+   **`oo::ObjCEntity` does not forward them**: the category reaches the C++ part only for an
+   Objective-C entity with no override of its own, and a forwarding adapter would send the
+   selector back to the category, which would call the adapter again. The header says so.
+2. **A deleted leaf façade's JS forwarders become `override`s on the C++ class** that call the
+   binding's functions that held the bodies (`OOJSFlasherGetJSClass` …). The leaf test's
+   `jsExtensions` case keeps its expectations and now sends the selectors to the object the
+   callers get; `test_EntityOOJavaScriptExtensions` gains a case pinning the root path (a plain
+   C++ entity answers the defaults, a C++ subclass its overrides, an Objective-C override first).
+3. **`OOSubEntity` gets a C++ interface for façade-less subentities,** `cxx::OOSubEntityInterface`
+   in `Entity.h` (its three methods as pure virtuals; not named `OOSubEntity`, because inside
+   `namespace cxx` the protocol-qualified type `Entity<OOSubEntity>` would then read a class as
+   its argument). A converted leaf whose façade goes adopts it as a second base. Each owner that
+   sent a subentity one of the protocol's selectors asks first
+   (`if (OOSubEntityInterface *cxxSub = dynamic_cast<OOSubEntityInterface *>(oo::ToCxx(se)))
+   cxxSub->rescaleBy(f); else [se rescaleBy:f];`), so a ship or visual-effect subentity, whose
+   façade answers, is unchanged. The protocol itself goes with the last façade that adopts it.
+4. **Lists of a deleted leaf's objects keep the objects, typed as the root façade.** An enumerator
+   the scripting bindings turn into JS values (`-flasherEnumerator`, `-cxx_exhausts`, read by
+   `OOJSShip`'s `PListFromObjects`) answers `std::vector<oo::ObjCRef<::Entity *>>`, filtered by
+   `dynamic_cast<X *>(oo::ToCxx(e))`; C++ callers that need the leaf cast the same way. This is
+   the most conservative shape: the JS side, the owners' subentity lists and the tests keep the
+   same objects, and only the element's static type changes. The root façade, not the nearest
+   intermediate one, is used because the intermediate's own deletion bead comes next.
+5. **A leaf's maker becomes the C++ factory plus `oo::NewEntityFacade`** where the caller needs the
+   object (to add it as a subentity), and a selector that took the leaf (`-removeFlasher:`) takes
+   the C++ class: the bridge header's parameter type keeps its spelling and now names the C++ class.
+   The Entity category the leaf's bridge declared (`-isFlasher`, `-isExhaust`) goes with it;
+   callers ask `dynamic_cast`. A leaf that was a graphics reset client through its façade class
+   registers a C++ `OOGraphicsResetClient` instead (oo-9ht.110).
+6. **A binding test that stood in for the leaf's Objective-C class** gets a C++ stand-in (amendment
+   oo-9ht.12 item 2): the leaf class and its C++ bases declared with the game headers' names and
+   member signatures but not their classes (the headers pull in the game), as `test_OOJSGlobal.mm`
+   stands in for the engine; the stand-in root `Entity` gains the `_cxxEntity` ivar `oo::ToCxx`
+   reads, and its JS category asks the stand-in C++ part, as the game's does. Every case and
+   expectation stays; the approval line names the stand-in.
+
+**Consequences.** The root's façade deletion (oo-9ht.39) inherits one JS path (the C++ virtuals)
+instead of a selector per leaf, and `cxx::OOSubEntityInterface` is where the remaining
+`OOSubEntity` adopters (ships, visual effects) land when their façades go.
