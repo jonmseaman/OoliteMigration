@@ -45,11 +45,11 @@ SOFTWARE.
 	deleted the Objective-C facades of OOFileScannerVerifierStage and OOFileHandlingVerifierStage,
 	and the verifier's -fileScannerStage, once every stage was C++ (ADR-0056 amendment "deleting a
 	facade"): both classes are global, as OOListUnusedFilesStage (bead oo-cwz) always was. A stage
-	finds the scanner by its name through the verifier's stage lookup (an id: cast to the root
-	facade before oo::ToCxx) until the verifier is C++ (oo-tsa4).
+	finds the scanner by its name through the verifier's stage lookup, which answers the C++
+	stage (it answered the root facade, an id, until bead oo-9ht.4 deleted that facade).
 */
 
-class OOFileScannerVerifierStage : public cxx::OOOXPVerifierStage
+class OOFileScannerVerifierStage : public OOOXPVerifierStage
 {
 public:
 	// The stage's name, as name() returns it (the stages look the scanner up by it).
@@ -140,11 +140,11 @@ private:
 
 
 /*	C++20 since bead oo-cwz, the converted stage of the Phase 3 class-hierarchy exemplar (proposed
-	ADR-0056 Amendment 1). A C++ subclass of cxx::OOOXPVerifierStage that overrides its virtual
-	members. It has no facade of its own: nothing outside this file names it, and the Objective-C
-	verifier holds it as an OOOXPVerifierStage (oo::ToObjC).
+	ADR-0056 Amendment 1). A C++ subclass of OOOXPVerifierStage that overrides its virtual
+	members. It has no facade of its own: nothing outside this file names it, and the verifier
+	holds it (as its OOOXPVerifierStage facade until bead oo-9ht.4).
 */
-class OOListUnusedFilesStage : public cxx::OOOXPVerifierStage
+class OOListUnusedFilesStage : public OOOXPVerifierStage
 {
 public:
 	// Returns name to be used in dependents() by other stages; also registers stage.
@@ -157,7 +157,7 @@ public:
 
 
 // Convenience base class for stages that require OOFileScannerVerifierStage and OOListUnusedFilesStage.
-class OOFileHandlingVerifierStage : public cxx::OOOXPVerifierStage
+class OOFileHandlingVerifierStage : public OOOXPVerifierStage
 {
 public:
 	std::optional<std::vector<std::string>> dependencies() override;

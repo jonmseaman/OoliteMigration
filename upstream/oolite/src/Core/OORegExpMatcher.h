@@ -76,7 +76,7 @@ private:
 
 	::OOJSFunction			*_tester = {};	// the facade (ADR-0056 amendment oo-rmd7 item 3)
 	std::optional<std::string>	_cachedRegExpString = {};	// UTF-8; nullopt: nothing cached (proposed ADR-0043)
-	OOJSValue				*_cachedRegExpObject = {};
+	::OOJSValue				*_cachedRegExpObject = {};
 	NSUInteger				_cachedFlags = {};
 };
 
