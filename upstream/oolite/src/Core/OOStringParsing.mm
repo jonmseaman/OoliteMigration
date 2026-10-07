@@ -266,7 +266,7 @@ std::string cxx_OOPadStringToEms(const std::string &string, float padEms)
 std::string cxx_OOStringFromDeciCredits(OOCreditsQuantity tenthsOfCredits, BOOL includeDecimal, BOOL includeSymbol)
 {
 	ooscript::Context context = OOJSAcquireContext();
-	ooscript::Object global = [[OOJavaScriptEngine sharedEngine] globalObject];
+	ooscript::Object global = cxx::OOJavaScriptEngine::sharedEngine()->globalObject();
 	ooscript::Value				method;
 	ooscript::Value				rval;
 	std::optional<std::string>	result;

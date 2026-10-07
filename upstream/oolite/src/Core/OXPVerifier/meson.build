@@ -8,15 +8,12 @@ oolite_sources += files(
     'OOCheckPListSyntaxVerifierStage.mm',
     'OOCheckRequiresPListVerifierStage.mm',
     'OOCheckShipDataPListVerifierStage.mm',
-    'OOCheckShipDataPListVerifierStage+ObjCBridge.mm',
     'OOFileScannerVerifierStage.mm',
     'OOModelVerifierStage.mm',
     'OOOXPVerifier.mm',
     'OOOXPVerifier+ObjCBridge.mm',
     'OOOXPVerifierStage.mm',
-    'OOOXPVerifierStage+ObjCBridge.mm',
     'OOPListSchemaVerifier.mm',
-    'OOPListSchemaVerifier+ObjCBridge.mm',
     'OOTextureVerifierStage.mm',
 )
 
