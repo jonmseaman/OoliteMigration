@@ -226,7 +226,7 @@ cxx::GuiDisplayGen::GuiDisplayGen()
 
 	backgroundSpecial = GUI_BACKGROUND_SPECIAL_NONE;
 
-	guiUserSettings = [ResourceManager cxx_dictionaryFromFilesNamed:"gui-settings.plist" inFolder:"Config" andMerge:YES];
+	guiUserSettings = [::ResourceManager cxx_dictionaryFromFilesNamed:"gui-settings.plist" inFolder:"Config" andMerge:YES];
 }
 
 
@@ -1247,7 +1247,7 @@ oo::PList cxx::GuiDisplayGen::textureDescriptorFromJSValue(ooscript::Value value
 
 		ooscript::Object objValue = ooscript::toObject(value);
 
-		if (OOJSGetClass(context, objValue) != [[OOJavaScriptEngine sharedEngine] stringClass])
+		if (OOJSGetClass(context, objValue) != [[::OOJavaScriptEngine sharedEngine] stringClass])
 		{
 			result = cxx_OOJSDictionaryFromJSObject(context, objValue);
 		}
@@ -1778,7 +1778,7 @@ void cxx::GuiDisplayGen::drawGLDisplay(GLfloat x, GLfloat y, GLfloat z, GLfloat 
 		}
 	}
 	OOStopDrawingStrings();
-	[OOTexture applyNone];
+	[::OOTexture applyNone];
 }
 
 
@@ -1956,7 +1956,7 @@ void cxx::GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, floa
 		star2 = NSZeroPoint, 
 		starabs = NSZeroPoint, 
 		star2abs = NSZeroPoint;
-	OOSystemDescriptionManager *systemManager = [UNIVERSE systemManager];
+	::OOSystemDescriptionManager *systemManager = [UNIVERSE systemManager];
 	OOGalaxyID		g = [PLAYER galaxyNumber];
 	OOSystemID planetNumber = [PLAYER systemID];
 
@@ -2403,7 +2403,7 @@ void cxx::GuiDisplayGen::drawStarChart(GLfloat x, GLfloat y, GLfloat z, GLfloat 
 		star.y = (float)(sys_coordinates.y * vscale + voffset);
 
 		noNova = !nearby_systems[i].nova;
-		OOAssert(chart_mode <= OOLRC_MODE_TECHLEVEL, "Long range chart mode %i out of range", (int)chart_mode);
+		OOCAssert(chart_mode <= OOLRC_MODE_TECHLEVEL, "Long range chart mode %i out of range", (int)chart_mode);
 	
 		if (markedDestinations.has_value())
 		{
