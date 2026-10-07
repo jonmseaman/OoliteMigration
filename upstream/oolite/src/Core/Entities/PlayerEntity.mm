@@ -3097,7 +3097,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			_cxxShip->flightSpeed = (float)(_cxxShip->maxFlightSpeed * HYPERSPEED_FACTOR);
 		
 		// check for mass lock
-		_cxxPlayer->hyperspeed_locked = [self massLocked];
+		_cxxPlayer->hyperspeed_locked = ([self massLocked] != NO);
 		// check for mass lock & external temperature?
 		//hyperspeed_locked = flightSpeed * air_friction > 40.0f+(ship_temperature - external_temp ) * SHIP_COOLING_FACTOR || [self massLocked];
 		
@@ -4032,7 +4032,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	{
 		BOOL was_mouse_control_on = _cxxPlayer->mouse_control_on;
 		[UNIVERSE handleGameOver];				//  we restart the UNIVERSE
-		_cxxPlayer->mouse_control_on = was_mouse_control_on;
+		_cxxPlayer->mouse_control_on = (was_mouse_control_on != NO);
 	}
 }
 
@@ -4665,7 +4665,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 - (void) setShowDemoShips:(BOOL)value
 {
-	_cxxPlayer->showDemoShips = value;
+	_cxxPlayer->showDemoShips = (value != NO);
 }
 
 
@@ -5597,6 +5597,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 {
 	if ([[self hud] mfdCount] == 0) return;
 	std::vector<std::string> keys;	// byte order (was -allKeys hash order)
+	keys.reserve(_cxxPlayer->multiFunctionDisplayText.size());
 	for (const auto &entry : _cxxPlayer->multiFunctionDisplayText)  keys.push_back(entry.first);
 	std::optional<std::string> key;
 	if (keys.empty())
@@ -5636,6 +5637,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 {
 	if ([[self hud] mfdCount] == 0) return;
 	std::vector<std::string> keys;	// byte order (was -allKeys hash order)
+	keys.reserve(_cxxPlayer->multiFunctionDisplayText.size());
 	for (const auto &entry : _cxxPlayer->multiFunctionDisplayText)  keys.push_back(entry.first);
 	std::optional<std::string> key;
 	if (keys.empty())
@@ -6248,7 +6250,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		return NO;
 	}
 
-	_cxxPlayer->using_mining_laser = [weapon_to_be_fired isMiningLaser];
+	_cxxPlayer->using_mining_laser = ([weapon_to_be_fired isMiningLaser] != NO);
 
 	_cxxEntity->energy -= _cxxShip->weapon_energy_use * multiplier;
 
@@ -12949,6 +12951,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 - (std::vector<std::string>) cxx_worldScriptNames
 {
 	std::vector<std::string> names;
+	names.reserve(_cxxPlayer->worldScripts.size());
 	for (const auto &entry : _cxxPlayer->worldScripts)  names.push_back(entry.first);
 	return names;
 }
@@ -12968,7 +12971,11 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	}
 	OOScript *cscript = nil;
 	const auto found = _cxxPlayer->commodityScripts.find(*scriptName);
-	if (found != _cxxPlayer->commodityScripts.end() && (cscript = found->second.get()))
+	if (found != _cxxPlayer->commodityScripts.end())
+	{
+		cscript = found->second.get();
+	}
+	if (cscript != nil)
 	{
 		return cscript;
 	}
@@ -13115,7 +13122,8 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	// Experimental: the state of repair affects the fuel charge rate - more fuel needed for jumps, etc... 
 	if (EXPECT(_cxxPlayer->ship_trade_in_factor <= 90 && _cxxPlayer->ship_trade_in_factor >= 75))
 	{
-		rate *= 2.0 - static_cast<double>(_cxxPlayer->ship_trade_in_factor / 100); // between 1.1x and 1.25x (integer division kept: upstream behaviour)
+		const int tradeInHundreds = _cxxPlayer->ship_trade_in_factor / 100;	// integer division kept: upstream behaviour
+		rate *= 2.0 - tradeInHundreds; // between 1.1x and 1.25x
 		//fuelPrices: shipDataKey repair status ship_trade_in_factor rate (retired log)
 	}
 
