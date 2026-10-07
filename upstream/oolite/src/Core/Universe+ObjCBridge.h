@@ -57,18 +57,6 @@ MA 02110-1301, USA.
 }
 
 
-- (HPVector) cxx_legacyPositionFrom:(HPVector) pos asCoordinateSystem:(const std::string &) system;
-- (HPVector) cxx_coordinatesFromCoordinateSystemString:(const std::string &) system_x_y_z;
-- (BOOL) cxx_addShipWithRole:(const std::string &) desc nearPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system;
-- (BOOL) cxx_addShips:(int) howMany withRole:(const std::string &) desc atPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system;
-- (BOOL) cxx_addShips:(int) howMany withRole:(const std::string &) desc nearPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system;
-- (BOOL) cxx_addShips:(int) howMany withRole:(const std::string &) desc nearPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system withinRadius:(GLfloat) radius;
-- (BOOL) cxx_addShips:(int) howMany withRole:(const std::string &) desc intoBoundingBox:(BoundingBox) bbox;
-- (BOOL) cxx_spawnShip:(const std::string &) shipdesc;	// the legacy spawnShip: action's ship key
-- (void) cxx_witchspaceShipWithPrimaryRole:(const std::string &)role;
-- (ShipEntity *) cxx_spawnShipWithRole:(const std::string &) desc near:(Entity *) entity;
-
-- (OOVisualEffectEntity *) cxx_addVisualEffectAt:(HPVector)pos withKey:(const std::string &)key;
 - (ShipEntity *) addShipAt:(HPVector)pos withRole:(const std::string &)role withinRadius:(GLfloat)radius;
 // Empty where the old methods returned nil (no ship added).
 - (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_addShipsAt:(HPVector)pos withRole:(const std::string &)role quantity:(unsigned)count withinRadius:(GLfloat)radius asGroup:(BOOL)isGroup;
@@ -263,6 +251,26 @@ MA 02110-1301, USA.
 - (void) cxx_addShipWithRole:(const std::string &) desc nearRouteOneAt:(double) route_fraction;
 - (HPVector) cxx_coordinatesForPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system returningScalar:(GLfloat*) my_scalar;
 - (std::optional<std::string>) cxx_expressPosition:(HPVector) pos inCoordinateSystem:(const std::string &) system;
+
+@end
+
+
+// Slice 6 of docs/phases/3-slices/Universe.md: members of cxx::Universe, forwarded by the
+// category of the same name in Universe+ObjCBridge.mm (the class's @implementation, still in
+// Universe.mm, stays complete).
+@interface Universe (OOSlice6)
+
+- (HPVector) cxx_legacyPositionFrom:(HPVector) pos asCoordinateSystem:(const std::string &) system;
+- (HPVector) cxx_coordinatesFromCoordinateSystemString:(const std::string &) system_x_y_z;
+- (BOOL) cxx_addShipWithRole:(const std::string &) desc nearPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system;
+- (BOOL) cxx_addShips:(int) howMany withRole:(const std::string &) desc atPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system;
+- (BOOL) cxx_addShips:(int) howMany withRole:(const std::string &) desc nearPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system;
+- (BOOL) cxx_addShips:(int) howMany withRole:(const std::string &) desc nearPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system withinRadius:(GLfloat) radius;
+- (BOOL) cxx_addShips:(int) howMany withRole:(const std::string &) desc intoBoundingBox:(BoundingBox) bbox;
+- (BOOL) cxx_spawnShip:(const std::string &) shipdesc;	// the legacy spawnShip: action's ship key
+- (void) cxx_witchspaceShipWithPrimaryRole:(const std::string &)role;
+- (ShipEntity *) cxx_spawnShipWithRole:(const std::string &) desc near:(Entity *) entity;
+- (OOVisualEffectEntity *) cxx_addVisualEffectAt:(HPVector)pos withKey:(const std::string &)key;
 
 @end
 

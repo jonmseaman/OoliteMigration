@@ -478,6 +478,19 @@ public:
 	HPVector coordinatesForPosition(HPVector pos, const std::string &system, GLfloat *my_scalar);
 	std::optional<std::string> expressPosition(HPVector pos, const std::string &system);
 
+	// Slice 6: legacy positions, adding ships at / near positions and in boxes, spawning, visual effects.
+	HPVector legacyPositionFrom(HPVector pos, const std::string &system);
+	HPVector coordinatesFromCoordinateSystemString(const std::string &system_x_y_z);
+	bool addShipWithRole(const std::string &desc, HPVector pos, const std::string &system);
+	bool addShipsAtPosition(int howMany, const std::string &desc, HPVector pos, const std::string &system);
+	bool addShipsNearPosition(int howMany, const std::string &desc, HPVector pos, const std::string &system);
+	bool addShipsNearPosition(int howMany, const std::string &desc, HPVector pos, const std::string &system, GLfloat radius);
+	bool addShips(int howMany, const std::string &desc, BoundingBox bbox);
+	bool spawnShip(const std::string &shipdesc);
+	void witchspaceShipWithPrimaryRole(const std::string &role);
+	::ShipEntity *spawnShipWithRole(const std::string &desc, ::Entity *entity);
+	::OOVisualEffectEntity *addVisualEffectAt(HPVector pos, const std::string &key);
+
 	// Slice 14: making demo ships, safe vectors, hazards on route, wreckage, laser hits.
 	::ShipEntity *makeDemoShipWithRole(const std::string &role, bool spinning);
 	bool isVectorClearFromEntity(::Entity *e1, double dist, HPVector p2);
