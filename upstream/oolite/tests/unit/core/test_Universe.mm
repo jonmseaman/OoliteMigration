@@ -852,4 +852,51 @@ OO_TEST(slice21ShortTimeAndMarkets)
 }
 
 
+// Slice 23 (bead oo-ni1hw): witchspace exit and sun-skim positions, beacons by code, script events
+// to all ships, the GUIs and display flags. Written against the Objective-C API and run on the
+// unconverted class first; trade-in values and brochures need the ship registry (the goldens).
+OO_TEST(slice23PositionsAndLists)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+
+		OO_CHECK(HPvector_equal([u getWitchspaceExitPosition], kZeroHPVector));
+		Quaternion q = [u getWitchspaceExitRotation];	// close to the identity, normalised
+		OO_CHECK(fabs(q.w * q.w + q.x * q.x + q.y * q.y + q.z * q.z - 1.0) < 1e-5);
+		OO_CHECK(q.w > 0.9f);
+
+		// No ship, or no sun: the origin.
+		OO_CHECK(HPvector_equal([u getSunSkimStartPositionForShip:nil], kZeroHPVector));
+		OO_CHECK(HPvector_equal([u getSunSkimEndPositionForShip:nil], kZeroHPVector));
+
+		// No beacons.
+		OO_CHECK([u cxx_listBeaconsWithCode:"A"].empty());
+	}
+}
+
+
+OO_TEST(slice23GUIsAndFlags)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+		OO_CHECK([u gui] == nil && [u commLogGUI] == nil && [u messageGUI] == nil);
+
+		[u setDisplayText:5];
+		OO_CHECK([u displayGUI] == YES && u->_cxxUniverse->displayGUI == YES);	// normalised
+		[u setDisplayText:NO];
+		OO_CHECK(![u displayGUI]);
+		[u setDisplayFPS:YES];
+		OO_CHECK([u displayFPS]);
+		[u setDisplayFPS:NO];
+		OO_CHECK(![u displayFPS]);
+		[u setAutoSaveNow:3];
+		OO_CHECK(u->_cxxUniverse->autoSaveNow == YES);
+		u->_cxxUniverse->autoSave = YES;
+		OO_CHECK([u autoSave]);
+	}
+}
+
+
 OO_TEST_MAIN()
