@@ -118,3 +118,21 @@ MA 02110-1301, USA.
 - (void) drawImmediate:(bool)immediate translucent:(bool)translucent	{ _cxxDock->cxx::DockEntity::drawImmediate(immediate, translucent); }
 
 @end
+
+
+// Slice 2 of docs/phases/3-slices/DockEntity.md (bead oo-9ht.178).
+@implementation DockEntity (OOSlice2)
+
+- (oo::PList) dockingInstructionsForShip:(ShipEntity *)ship	{ return _cxxDock->dockingInstructionsForShip(ship); }
+- (std::optional<std::string>) canAcceptShipForDocking:(ShipEntity *)ship	{ return _cxxDock->canAcceptShipForDocking(ship); }
+- (BOOL) shipIsInDockingQueue:(ShipEntity *)ship	{ return _cxxDock->shipIsInDockingQueue(ship); }
+- (void) abortDockingForShip:(ShipEntity *)ship	{ _cxxDock->abortDockingForShip(ship); }
+- (void) abortAllDockings	{ _cxxDock->abortAllDockings(); }
+- (void) autoDockShipsOnApproach	{ _cxxDock->autoDockShipsOnApproach(); }
+- (NSUInteger) pruneAndCountShipsOnApproach	{ return _cxxDock->pruneAndCountShipsOnApproach(); }
+- (void) noteDockingForShip:(ShipEntity *)ship	{ _cxxDock->noteDockingForShip(ship); }
+- (void) autoDockShipsInQueue:(std::map<unsigned short, std::vector<oo::PList>> &)queue	{ _cxxDock->autoDockShipsInQueue(queue); }
+- (void) addShipToShipsOnApproach:(ShipEntity *)ship	{ _cxxDock->addShipToShipsOnApproach(ship); }
+- (void) pullInShipIfPermitted:(ShipEntity *)ship	{ _cxxDock->pullInShipIfPermitted(ship); }
+
+@end

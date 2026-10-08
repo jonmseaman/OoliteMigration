@@ -46,6 +46,55 @@ MA 02110-1301, USA.
 }
 
 // Docking
+- (BOOL) shipIsInDockingCorridor:(ShipEntity *)ship;
+- (BOOL) dockingCorridorIsEmpty;
+- (void) clearDockingCorridor;
+
+// Launching
+- (NSUInteger) countOfShipsInLaunchQueueWithPrimaryRole:(const std::string &)role;
+- (BOOL) allowsLaunchingOf:(ShipEntity *)ship;
+- (void) launchShip:(ShipEntity *)ship;
+- (void) addShipToLaunchQueue:(ShipEntity *)ship withPriority:(BOOL)priority;
+
+@end
+
+
+// Slice 1 of docs/phases/3-slices/DockEntity.md (bead oo-ao2d): class shell, flags, geometry and
+// lifecycle. Forwarders to cxx::DockEntity, in DockEntity+ObjCBridge.mm.
+@interface DockEntity (OOSlice1)
+
+- (void) clear;
+
+// Docking
+- (BOOL) allowsDocking;
+- (void) setAllowsDocking:(BOOL)allow;
+- (BOOL) disallowedDockingCollides; 
+- (void) setDisallowedDockingCollides:(BOOL)ddc;
+- (NSUInteger) countOfShipsInDockingQueue;
+
+// Launching
+- (BOOL) allowsLaunching;
+- (void) setAllowsLaunching:(BOOL)allow;
+- (NSUInteger) countOfShipsInLaunchQueue;
+
+// Geometry
+- (void) setDimensionsAndCorridor:(BOOL)docking :(BOOL)ddc :(BOOL)launching;
+- (Vector) portUpVectorForShipsBoundingBox:(BoundingBox)bb;
+- (BOOL) isOffCentre;
+- (void) setVirtual;
+
+// The private category of DockEntity.mm, for its unconverted slices.
+- (void) clearIdLocks:(ShipEntity *)ship;
+- (void) clearAllIdLocks;
+
+@end
+
+
+// Slice 2 of docs/phases/3-slices/DockEntity.md (bead oo-9ht.178): docking guidance, the approach
+// queue and docking instructions. Forwarders to cxx::DockEntity, in DockEntity+ObjCBridge.mm.
+@interface DockEntity (OOSlice2)
+
+// Docking
 /**
  * Guides a ship into the dock. 
  * <h3>Possible results:</h3>
@@ -88,52 +137,17 @@ MA 02110-1301, USA.
  */
 - (oo::PList) dockingInstructionsForShip:(ShipEntity *)ship;	// a dictionary (the station an Object node); null: none (bead oo-3rb.262)
 - (std::optional<std::string>) canAcceptShipForDocking:(ShipEntity *)ship;
-- (BOOL) shipIsInDockingCorridor:(ShipEntity *)ship;
 - (BOOL) shipIsInDockingQueue:(ShipEntity *)ship;
 - (void) abortDockingForShip:(ShipEntity *)ship;
 - (void) abortAllDockings;
-- (BOOL) dockingCorridorIsEmpty;
-- (void) clearDockingCorridor;
 - (void) autoDockShipsOnApproach;
 - (NSUInteger) pruneAndCountShipsOnApproach;
 - (void) noteDockingForShip:(ShipEntity *)ship;
 
-// Launching
-- (NSUInteger) countOfShipsInLaunchQueueWithPrimaryRole:(const std::string &)role;
-- (BOOL) allowsLaunchingOf:(ShipEntity *)ship;
-- (void) launchShip:(ShipEntity *)ship;
-- (void) addShipToLaunchQueue:(ShipEntity *)ship withPriority:(BOOL)priority;
-
-@end
-
-
-// Slice 1 of docs/phases/3-slices/DockEntity.md (bead oo-ao2d): class shell, flags, geometry and
-// lifecycle. Forwarders to cxx::DockEntity, in DockEntity+ObjCBridge.mm.
-@interface DockEntity (OOSlice1)
-
-- (void) clear;
-
-// Docking
-- (BOOL) allowsDocking;
-- (void) setAllowsDocking:(BOOL)allow;
-- (BOOL) disallowedDockingCollides; 
-- (void) setDisallowedDockingCollides:(BOOL)ddc;
-- (NSUInteger) countOfShipsInDockingQueue;
-
-// Launching
-- (BOOL) allowsLaunching;
-- (void) setAllowsLaunching:(BOOL)allow;
-- (NSUInteger) countOfShipsInLaunchQueue;
-
-// Geometry
-- (void) setDimensionsAndCorridor:(BOOL)docking :(BOOL)ddc :(BOOL)launching;
-- (Vector) portUpVectorForShipsBoundingBox:(BoundingBox)bb;
-- (BOOL) isOffCentre;
-- (void) setVirtual;
-
 // The private category of DockEntity.mm, for its unconverted slices.
-- (void) clearIdLocks:(ShipEntity *)ship;
-- (void) clearAllIdLocks;
+- (void) autoDockShipsInQueue:(std::map<unsigned short, std::vector<oo::PList>> &)queue;
+- (void) addShipToShipsOnApproach:(ShipEntity *)ship;
+- (void) pullInShipIfPermitted:(ShipEntity *)ship;
 
 @end
 
