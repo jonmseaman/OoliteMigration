@@ -65,8 +65,8 @@ MA 02110-1301, USA.
 	ADR-0056 amendment oo-ppc). The JS class was already C++ on the ooscript façade;
 	OOJS_NATIVE_ENTER/EXIT and OOJS_PROFILE_ENTER/EXIT are C++ try/catch and scope guards
 	(OOJSEngineNativeWrappers.h); BOOL/YES/NO are bool/true/false. The category on StationEntity
-	became two free functions, and its methods moved to OOJSStation+ObjCBridge.mm (amendment
-	oo-ykoy). OOCommodities, OOCommodityMarket, OOEquipmentType and OOJSInterfaceDefinition, which
+	became two free functions, and its methods became cxx::StationEntity members (amendment
+	oo-ykoy, bead oo-9ht.97). OOCommodities, OOCommodityMarket, OOEquipmentType and OOJSInterfaceDefinition, which
 	are C++ since beads oo-fqyw, oo-ih7y, oo-fg7i and oo-8fpc, are reached as cxx:: classes through
 	oo::ToCxx (amendment oo-ppc, item 4), null-guarded where a message to nil answered; an interface
 	definition is still made as its façade, which the station keeps (amendment oo-q9q4 item 1).
@@ -395,9 +395,8 @@ static bool JSStationGetShipEntity(ooscript::Context context, ooscript::Object s
 } // namespace
 
 
-// The bodies of StationEntity (OOJavaScriptExtensions), whose methods are in
-// OOJSStation+ObjCBridge.mm until StationEntity converts (proposed ADR-0056 amendments oo-ppc and
-// oo-ykoy).
+// The bodies of StationEntity (OOJavaScriptExtensions), which cxx::StationEntity's getJSClass and
+// jsClassName call (proposed ADR-0056 amendments oo-ppc and oo-ykoy).
 void OOJSStationGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)
 {
 	*outClass = &sStationClass;

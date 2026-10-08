@@ -550,6 +550,8 @@ public:
 	bool isPirateVictim();
 	bool isExplicitlyUnpiloted();
 	virtual bool isUnpiloted();	// StationEntity overrides
+	void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype) override;	// StationEntity overrides
+	std::optional<std::string> jsClassName() override;	// StationEntity overrides
 	virtual bool hasHostileTarget();	// PlayerEntity and StationEntity override
 	bool isHostileTo(::Entity *entity);
 	GLfloat getWeaponRange();

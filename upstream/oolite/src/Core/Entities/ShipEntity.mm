@@ -26,6 +26,7 @@ MA 02110-1301, USA.
 #import "ShipEntity.h"
 #import "ShipEntityAI.h"
 #import "ShipEntityScriptMethods.h"
+#import "EntityOOJavaScriptExtensions.h"
 
 #import "OOMaths.h"
 #import "Universe.h"
@@ -8045,6 +8046,18 @@ bool ShipEntity::isPirateVictim()
 bool ShipEntity::isExplicitlyUnpiloted()
 {
 	return _explicitlyUnpiloted;
+}
+
+
+void ShipEntity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)
+{
+	::ShipEntityJSGetJSClass(outClass, outPrototype);
+}
+
+
+std::optional<std::string> ShipEntity::jsClassName()
+{
+	return ::ShipEntityJSClassName();
 }
 
 

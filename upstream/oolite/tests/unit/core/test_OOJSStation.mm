@@ -1,6 +1,6 @@
 /*	test_OOJSStation.mm
 	Unit tests for the Station JS binding (src/Core/Scripting/OOJSStation.h/.mm) and its
-	StationEntity category (OOJSStation+ObjCBridge.mm): bead oo-3oxq, converted the way bead oo-ppc
+	StationEntity answers for the class (cxx::StationEntity::getJSClass): bead oo-3oxq, converted the way bead oo-ppc
 	converted OOJSVector (proposed ADR-0056 amendments oo-ppc, oo-ykoy and oo-6ia4).
 
 	As test_OOJSWormhole.mm does (amendment oo-ykoy, item 4), it runs the JS class in a real
@@ -284,6 +284,9 @@ ShipEntity *NewShip(const char *name)
 
 @implementation StationEntity
 
+// As cxx::StationEntity::getJSClass and ::jsClassName answer for the engine.
+- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype  { OOJSStationGetJSClass(outClass, outPrototype); }
+- (std::optional<std::string>) cxx_oo_jsClassName  { return OOJSStationJSClassName(); }
 - (BOOL) hasNPCTraffic  { return _npcTraffic; }
 - (void) setHasNPCTraffic:(BOOL)flag  { _npcTraffic = flag; }
 - (BOOL) hasShipyard  { return _hasShipyard; }

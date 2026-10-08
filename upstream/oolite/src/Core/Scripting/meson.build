@@ -51,7 +51,6 @@ oolite_sources += files(
     'OOJSSpecialFunctions.cpp',
     'OOJSSpecialFunctions+ObjCBridge.mm',
     'OOJSStation.mm',
-    'OOJSStation+ObjCBridge.mm',
     'OOJSSun.mm',
     'OOJSSystem.mm',
     'OOJSSystem+ObjCBridge.mm',
