@@ -1055,4 +1055,13 @@ OO_TEST(nativeExceptions)
 }
 
 
+// The JS glue of cxx::OOEquipmentType (OOJSPrivateObject), defined in OOJSEquipmentInfo.mm, which
+// this test does not link (bead oo-6symp.3): the vtable names these.
+namespace cxx {
+ooscript::Value OOEquipmentType::jsValueInContext(ooscript::Context)  { return ooscript::Value(); }
+void OOEquipmentType::clearJSSelf(ooscript::Object)  {}
+std::optional<std::string> OOEquipmentType::jsDescription()  { return std::nullopt; }
+}	// namespace cxx
+
+
 OO_TEST_MAIN()

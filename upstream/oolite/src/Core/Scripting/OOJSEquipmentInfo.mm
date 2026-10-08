@@ -245,10 +245,15 @@ static PropertySpec sEquipmentInfoStaticProperties[] =
 
 
 namespace {
+static bool EquipmentInfoToString(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+}
+
+
+namespace {
 static FunctionSpec sEquipmentInfoMethods[] =
 {
 	// JS name					Function						min args
-	{ "toString",				OOJSObjectWrapperToString,	0,	0 },
+	{ "toString",				EquipmentInfoToString,		0,	0 },
 	{ 0 }
 };
 } // namespace
@@ -278,7 +283,7 @@ static ClassDef sEquipmentInfoClass =
 	nullptr,					// newEnumerate (ooscript::ClassFlag::NewEnumerate not used)
 	nullptr,					// resolve (engine default: ResolveStub)
 	nullptr,					// convert (engine default: ConvertStub)
-	OOJSObjectWrapperFinalize,	// finalize
+	OOJSCxxObjectWrapperFinalize,	// finalize
 	nullptr,					// call
 	nullptr,					// construct
 	nullptr,					// backend: owned by the façade backend, must start null
@@ -287,7 +292,21 @@ static ClassDef sEquipmentInfoClass =
 
 
 namespace {
-DEFINE_JS_OBJECT_GETTER(JSEquipmentInfoGetEquipmentType, &sEquipmentInfoClass, sEquipmentInfoPrototype, OOEquipmentType)
+// DEFINE_JS_OBJECT_GETTER for the C++ type the slot holds (null for the prototype).
+bool JSEquipmentInfoGetEquipmentType(ooscript::Context context, ooscript::Object inObject, cxx::OOEquipmentType **outObject)
+{
+	return OOJSGetCxxPrivate(context, inObject, &sEquipmentInfoClass, outObject);
+}
+
+
+// OOJSBasicPrivateObjectConverter for the C++ type the slot holds: its facade, which is what the
+// slot held, for the Objective-C callers of OOJSNativeObjectFromJSObject (null for the prototype).
+oo::PList EquipmentInfoConverter(ooscript::Context context, ooscript::Object object)
+{
+	cxx::OOEquipmentType *type = static_cast<cxx::OOEquipmentType *>(static_cast<oo::RefCounted *>(ooscript::getPrivate(context, object)));
+	if (type == nullptr)  return oo::PList();
+	return oo::PListObject(oo::ToObjC(type));
+}
 } // namespace
 
 
@@ -298,7 +317,7 @@ void InitOOJSEquipmentInfo(ooscript::Context context, ooscript::Object global)
 	Object proto = ooscript::initClass((context), (global), nullptr, &sEquipmentInfoClass, OOJSUnconstructableConstruct, 0, sEquipmentInfoProperties, sEquipmentInfoMethods, sEquipmentInfoStaticProperties, sEquipmentInfoStaticMethods);
 	sEquipmentInfoPrototype = (proto);
 	
-	OOJSRegisterObjectConverter(&sEquipmentInfoClass, OOJSBasicPrivateObjectConverter);
+	OOJSRegisterObjectConverter(&sEquipmentInfoClass, EquipmentInfoConverter);
 }
 
 
@@ -311,7 +330,8 @@ OOEquipmentType *JSValueToEquipmentType(ooscript::Context context, ooscript::Val
 		ooscript::Object object = ooscript::toObject(value);
 		if (ooscript::instanceOf((context), (ooscript::toObject(value)), &sEquipmentInfoClass, nullptr))
 		{
-			return (OOEquipmentType *)ooscript::getPrivate((context), (object));
+			cxx::OOEquipmentType *type = static_cast<cxx::OOEquipmentType *>(static_cast<oo::RefCounted *>(ooscript::getPrivate((context), (object))));
+			return type != nullptr ? oo::ToObjC(type) : nil;
 		}
 	}
 	
@@ -376,12 +396,11 @@ static bool EquipmentInfoGetProperty(Context cx, Object obj, PropertyId propID, 
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	OOEquipmentType				*eqType = nil;
 	oo::PList					result;	// null maps to null
 	NSUInteger 					inst_time;
 	
-	if (EXPECT_NOT(!JSEquipmentInfoGetEquipmentType(context, thisObj, &eqType)))  return false;
-	cxx::OOEquipmentType		*type = oo::ToCxx(eqType);	// null for the prototype: see Ask()
+	cxx::OOEquipmentType		*type = nullptr;	// null for the prototype: see Ask()
+	if (EXPECT_NOT(!JSEquipmentInfoGetEquipmentType(context, thisObj, &type)))  return false;
 	
 	switch (ooscript::idToInt32(propID))
 	{
@@ -579,12 +598,11 @@ static bool EquipmentInfoSetProperty(Context cx, Object obj, PropertyId propID, 
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	OOEquipmentType				*eqType = nil;
 	int32_t						iValue;
 	oo::Ref<cxx::OOColor>		colorForScript;
 	
-	if (EXPECT_NOT(!JSEquipmentInfoGetEquipmentType(context, thisObj, &eqType)))  return false;
-	cxx::OOEquipmentType		*type = oo::ToCxx(eqType);	// null for the prototype: see Ask()
+	cxx::OOEquipmentType		*type = nullptr;	// null for the prototype: see Ask()
+	if (EXPECT_NOT(!JSEquipmentInfoGetEquipmentType(context, thisObj, &type)))  return false;
 	
 	switch (ooscript::idToInt32(propID))
 	{
@@ -653,33 +671,47 @@ static bool EquipmentInfoGetAllEqipment(Context cx, Object /*obj*/, PropertyId /
 } // namespace
 	
 
-// The bodies of OOEquipmentType (OOJavaScriptExtensions), which the engine reaches by selector:
-// its methods forward to these from OOJSEquipmentInfo+ObjCBridge.mm, passing the façade's _jsSelf
-// ivar (amendment oo-6ia4 item 3).
-ooscript::Value OOJSEquipmentInfoJSValueInContext(OOEquipmentType *equipmentType, ooscript::Object &jsSelf, ooscript::Context context)
+// The JS glue of cxx::OOEquipmentType (OOJSPrivateObject; amendment oo-6symp item 5), which the
+// engine reaches through the slot's C++ object and the facade's category forwards to.
+namespace cxx {
+
+ooscript::Value OOEquipmentType::jsValueInContext(ooscript::Context context)
 {
-	if (jsSelf == NULL)
+	if (_jsSelf == NULL)
 	{
-		jsSelf = (ooscript::newObject((context), &sEquipmentInfoClass, (sEquipmentInfoPrototype), nullptr));
-		if (jsSelf != NULL)
+		_jsSelf = (ooscript::newObject((context), &sEquipmentInfoClass, (sEquipmentInfoPrototype), nullptr));
+		if (_jsSelf != NULL)
 		{
-			if (!ooscript::setPrivate((context), (jsSelf), [equipmentType retain]))  jsSelf = NULL;
+			if (!OOJSSetCxxPrivate(context, _jsSelf, this))  _jsSelf = NULL;
 		}
 	}
 
-	return ooscript::objectValue(jsSelf);
+	return ooscript::objectValue(_jsSelf);
 }
+
+
+void OOEquipmentType::clearJSSelf(ooscript::Object selfVal)
+{
+	if (_jsSelf == selfVal)  _jsSelf = NULL;
+}
+
+
+// What the facade's -cxx_oo_jsDescription answered (OOObject (OOJavaScriptConversion)): the JS
+// class name and the components.
+std::optional<std::string> OOEquipmentType::jsDescription()
+{
+	const std::optional<std::string> components = descriptionComponents();
+	const std::string name = OOJSEquipmentInfoJSClassName().value_or("EquipmentInfo");
+	if (components.has_value())  return oo::str::format("[%s %s]", name.c_str(), components->c_str());
+	return oo::str::format("[object %s]", name.c_str());
+}
+
+}	// namespace cxx
 
 
 std::optional<std::string> OOJSEquipmentInfoJSClassName(void)
 {
 	return std::string("EquipmentInfo");
-}
-
-
-void OOJSEquipmentInfoClearJSSelf(ooscript::Object &jsSelf, ooscript::Object selfVal)
-{
-	if (jsSelf == selfVal)  jsSelf = NULL;
 }
 
 
@@ -703,5 +735,14 @@ static bool EquipmentInfoStaticInfoForKey(ooscript::Context context, ooscript::C
 	OOJS_RETURN_OBJECT(oo::ToObjC(cxx::OOEquipmentType::equipmentTypeWithIdentifier(*key)));
 	
 	OOJS_NATIVE_EXIT
+}
+} // namespace
+
+
+// toString(): the C++ type's jsDescription().
+namespace {
+static bool EquipmentInfoToString(ooscript::Context context, ooscript::CallArgs &oojsArgs)
+{
+	return OOJSCxxObjectWrapperToString(context, oojsArgs, &sEquipmentInfoClass);
 }
 } // namespace
