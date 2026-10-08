@@ -93,7 +93,7 @@ static bool ConsoleSettingsSetProperty(ooscript::Context context, ooscript::Obje
 
 #if OOJS_PROFILE
 namespace {
-bool PerformProfiling(ooscript::Context context, const char *nominalFunction, unsigned argc, ooscript::Value *argv, ooscript::Value *rval, bool trace, OOTimeProfile **profile);
+bool PerformProfiling(ooscript::Context context, const char *nominalFunction, unsigned argc, ooscript::Value *argv, ooscript::Value *rval, bool trace, oo::Ref<OOTimeProfile> *profile);
 }	// namespace
 #endif
 
@@ -1009,12 +1009,12 @@ static bool ConsoleProfile(ooscript::Context context, ooscript::CallArgs &oojsAr
 	bool result;
 	@autoreleasepool
 	{
-		OOTimeProfile		*profile = nil;
+		oo::Ref<OOTimeProfile>	profile;
 		
 		result = PerformProfiling(context, "profile", oojsArgs.count(), OOJS_ARGV, NULL, false, &profile);
 		if (result)
 		{
-			OOJS_SET_RVAL(OOJSValueFromPList(context, profile != nil ? oo::PList(oo::DescriptionOf(profile)) : oo::PList()));
+			OOJS_SET_RVAL(OOJSValueFromPList(context, profile ? oo::PList(profile->description().value_or("(null)")) : oo::PList()));
 		}
 	}
 	
@@ -1039,12 +1039,12 @@ static bool ConsoleGetProfile(ooscript::Context context, ooscript::CallArgs &ooj
 	bool result;
 	@autoreleasepool
 	{
-		OOTimeProfile		*profile = nil;
+		oo::Ref<OOTimeProfile>	profile;
 		
 		result = PerformProfiling(context, "getProfile", oojsArgs.count(), OOJS_ARGV, NULL, false, &profile);
 		if (result)
 		{
-			OOJS_SET_RVAL(OOJSValueFromNativeObject(context, profile));
+			OOJS_SET_RVAL(profile ? profile->oo_jsValueInContext(context) : ooscript::undefinedValue());
 		}
 	}
 	
@@ -1084,7 +1084,7 @@ static bool ConsoleTrace(ooscript::Context context, ooscript::CallArgs &oojsArgs
 
 namespace {
 
-bool PerformProfiling(ooscript::Context context, const char *nominalFunction, unsigned argc, ooscript::Value *argv, ooscript::Value *outRval, bool trace, OOTimeProfile **outProfile)
+bool PerformProfiling(ooscript::Context context, const char *nominalFunction, unsigned argc, ooscript::Value *argv, ooscript::Value *outRval, bool trace, oo::Ref<OOTimeProfile> *outProfile)
 {
 	// Get function.
 	ooscript::Value function = argv[0];
@@ -1124,8 +1124,8 @@ bool PerformProfiling(ooscript::Context context, const char *nominalFunction, un
 	bool result = ooscript::callFunctionValue(context, thisObj, function, 0, NULL, outRval);
 	
 	// Get results.
-	OOTimeProfile *profile = OOJSEndProfiling();
-	if (outProfile != NULL)  *outProfile = profile;
+	oo::Ref<OOTimeProfile> profile = OOJSEndProfiling();
+	if (outProfile != NULL)  *outProfile = std::move(profile);
 	
 	// Restore original timer state.
 	OOJSSetTimeLimiterLimit(originalLimit);

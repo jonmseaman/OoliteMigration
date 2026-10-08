@@ -11,7 +11,6 @@ oolite_sources += files(
     'OOJSEngineDebuggerHelpers.mm',
     'OOJSEngineNativeWrappers.mm',
     'OOJSEngineTimeManagement.mm',
-    'OOJSEngineTimeManagement+ObjCBridge.mm',
     'OOJSEntity.mm',
     'OOJSEquipmentInfo.mm',
     'OOJSEquipmentInfo+ObjCBridge.mm',
