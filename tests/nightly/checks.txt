@@ -482,3 +482,4 @@
 [oo-6symp.2] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSSystemInfo && bash tools/tier-c.sh --only goldens
 [oo-6symp.3] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSEquipmentInfo test_OOEquipmentType test_OOConstToString test_OOJSStation && bash tools/tier-c.sh --only goldens
 [oo-6symp.1] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSShipGroup test_OOShipGroup && bash tools/tier-c.sh --only goldens
+[oo-50zg] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_PlayerEntity && bash tools/tier-c.sh --only goldens
