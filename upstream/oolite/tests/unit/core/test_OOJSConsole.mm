@@ -623,7 +623,7 @@ OO_TEST(profiling)
 	OO_CHECK_EVAL("console.trace(function () { return 7; }, {})", "7");
 	OO_CHECK_EVAL("console.trace(function () { return typeof this; })", "object");
 	OO_CHECK_EVAL("typeof console.profile(function () {})", "string");
-	OO_CHECK_EVAL("console.getProfile(function () {})", "undefined");
+	OO_CHECK_EVAL("console.getProfile(function () {})", "null");	// the profile's property list, which this file's OOJSValueFromPList stand-in gives as null for a dictionary
 	OO_CHECK_EVAL("console.profile(42)", "threw: bad arguments: Console.profile (1): ; expected function");
 }
 
