@@ -653,113 +653,6 @@ static const OOMatrix	starboard_matrix =
 						}};
 
 
-/* Code adapted from http://www.crownandcutlass.com/features/technicaldetails/frustum.html
- * Original license is: "This page and its contents are Copyright 2000 by Mark Morley
- * Unless otherwise noted, you may use any and all code examples provided herein in any way you want."
-*/
-
-- (void) defineFrustum
-{
-	OOMatrix clip;
-	GLfloat   rt;
-	
-	clip = OOGLGetModelViewProjection();
-	
-	/* Extract the numbers for the RIGHT plane */
-	_cxxUniverse->frustum[0][0] = clip.m[0][3] - clip.m[0][0];
-	_cxxUniverse->frustum[0][1] = clip.m[1][3] - clip.m[1][0];
-	_cxxUniverse->frustum[0][2] = clip.m[2][3] - clip.m[2][0];
-	_cxxUniverse->frustum[0][3] = clip.m[3][3] - clip.m[3][0];
-	
-	/* Normalize the result */
-	rt = 1.0f / sqrt(_cxxUniverse->frustum[0][0] * _cxxUniverse->frustum[0][0] + _cxxUniverse->frustum[0][1] * _cxxUniverse->frustum[0][1] + _cxxUniverse->frustum[0][2] * _cxxUniverse->frustum[0][2]);
-	_cxxUniverse->frustum[0][0] *= rt;
-	_cxxUniverse->frustum[0][1] *= rt;
-	_cxxUniverse->frustum[0][2] *= rt;
-	_cxxUniverse->frustum[0][3] *= rt;
-	
-	/* Extract the numbers for the LEFT plane */
-	_cxxUniverse->frustum[1][0] = clip.m[0][3] + clip.m[0][0];
-	_cxxUniverse->frustum[1][1] = clip.m[1][3] + clip.m[1][0];
-	_cxxUniverse->frustum[1][2] = clip.m[2][3] + clip.m[2][0];
-	_cxxUniverse->frustum[1][3] = clip.m[3][3] + clip.m[3][0];
-	
-	/* Normalize the result */
-	rt = 1.0f / sqrt(_cxxUniverse->frustum[1][0] * _cxxUniverse->frustum[1][0] + _cxxUniverse->frustum[1][1] * _cxxUniverse->frustum[1][1] + _cxxUniverse->frustum[1][2] * _cxxUniverse->frustum[1][2]);
-	_cxxUniverse->frustum[1][0] *= rt;
-	_cxxUniverse->frustum[1][1] *= rt;
-	_cxxUniverse->frustum[1][2] *= rt;
-	_cxxUniverse->frustum[1][3] *= rt;
-
-	/* Extract the BOTTOM plane */
-	_cxxUniverse->frustum[2][0] = clip.m[0][3] + clip.m[0][1];
-	_cxxUniverse->frustum[2][1] = clip.m[1][3] + clip.m[1][1];
-	_cxxUniverse->frustum[2][2] = clip.m[2][3] + clip.m[2][1];
-	_cxxUniverse->frustum[2][3] = clip.m[3][3] + clip.m[3][1];
-
-	/* Normalize the result */
-	rt = 1.0 / sqrt(_cxxUniverse->frustum[2][0] * _cxxUniverse->frustum[2][0] + _cxxUniverse->frustum[2][1] * _cxxUniverse->frustum[2][1] + _cxxUniverse->frustum[2][2] * _cxxUniverse->frustum[2][2]);
-	_cxxUniverse->frustum[2][0] *= rt;
-	_cxxUniverse->frustum[2][1] *= rt;
-	_cxxUniverse->frustum[2][2] *= rt;
-	_cxxUniverse->frustum[2][3] *= rt;
-
-	/* Extract the TOP plane */
-	_cxxUniverse->frustum[3][0] = clip.m[0][3] - clip.m[0][1];
-	_cxxUniverse->frustum[3][1] = clip.m[1][3] - clip.m[1][1];
-	_cxxUniverse->frustum[3][2] = clip.m[2][3] - clip.m[2][1];
-	_cxxUniverse->frustum[3][3] = clip.m[3][3] - clip.m[3][1];
-
-	/* Normalize the result */
-	rt = 1.0 / sqrt(_cxxUniverse->frustum[3][0] * _cxxUniverse->frustum[3][0] + _cxxUniverse->frustum[3][1] * _cxxUniverse->frustum[3][1] + _cxxUniverse->frustum[3][2] * _cxxUniverse->frustum[3][2]);
-	_cxxUniverse->frustum[3][0] *= rt;
-	_cxxUniverse->frustum[3][1] *= rt;
-	_cxxUniverse->frustum[3][2] *= rt;
-	_cxxUniverse->frustum[3][3] *= rt;
-
-	/* Extract the FAR plane */
-	_cxxUniverse->frustum[4][0] = clip.m[0][3] - clip.m[0][2];
-	_cxxUniverse->frustum[4][1] = clip.m[1][3] - clip.m[1][2];
-	_cxxUniverse->frustum[4][2] = clip.m[2][3] - clip.m[2][2];
-	_cxxUniverse->frustum[4][3] = clip.m[3][3] - clip.m[3][2];
-
-	/* Normalize the result */
-	rt = sqrt(_cxxUniverse->frustum[4][0] * _cxxUniverse->frustum[4][0] + _cxxUniverse->frustum[4][1] * _cxxUniverse->frustum[4][1] + _cxxUniverse->frustum[4][2] * _cxxUniverse->frustum[4][2]);
-	_cxxUniverse->frustum[4][0] *= rt;
-	_cxxUniverse->frustum[4][1] *= rt;
-	_cxxUniverse->frustum[4][2] *= rt;
-	_cxxUniverse->frustum[4][3] *= rt;
-
-	/* Extract the NEAR plane */
-	_cxxUniverse->frustum[5][0] = clip.m[0][3] + clip.m[0][2];
-	_cxxUniverse->frustum[5][1] = clip.m[1][3] + clip.m[1][2];
-	_cxxUniverse->frustum[5][2] = clip.m[2][3] + clip.m[2][2];
-	_cxxUniverse->frustum[5][3] = clip.m[3][3] + clip.m[3][2];
-
-	/* Normalize the result */
-	rt = sqrt(_cxxUniverse->frustum[5][0] * _cxxUniverse->frustum[5][0] + _cxxUniverse->frustum[5][1] * _cxxUniverse->frustum[5][1] + _cxxUniverse->frustum[5][2] * _cxxUniverse->frustum[5][2]);
-	_cxxUniverse->frustum[5][0] *= rt;
-	_cxxUniverse->frustum[5][1] *= rt;
-	_cxxUniverse->frustum[5][2] *= rt;
-	_cxxUniverse->frustum[5][3] *= rt;
-}
-
-
-- (BOOL) viewFrustumIntersectsSphereAt:(Vector)position withRadius:(GLfloat)radius
-{
-	// position is the relative position between the camera and the object
-	int p;
-	for (p = 0; p < 6; p++)
-	{
-		if (_cxxUniverse->frustum[p][0] * position.x + _cxxUniverse->frustum[p][1] * position.y + _cxxUniverse->frustum[p][2] * position.z + _cxxUniverse->frustum[p][3] <= -radius)
-		{
-			return NO;
-		}
-	}
-	return YES;
-}
-
-
 - (void) drawUniverse
 {
 	int currentPostFX = [self currentPostFX];
@@ -6126,6 +6019,121 @@ OOMatrix Universe::activeViewMatrix()
 	
 	[self getActiveViewMatrix:&m forwardVector:&f upVector:&u];
 	return m;
+}
+
+
+}	// namespace cxx
+
+
+// Slice 11 of docs/phases/3-slices/Universe.md (bead oo-8rsqz): the view frustum. The facade
+// forwards each selector (Universe+ObjCBridge.mm); sends to self stay sends (ADR-0056 amendment
+// oo-27jxj).
+namespace cxx {
+
+/* Code adapted from http://www.crownandcutlass.com/features/technicaldetails/frustum.html
+ * Original license is: "This page and its contents are Copyright 2000 by Mark Morley
+ * Unless otherwise noted, you may use any and all code examples provided herein in any way you want."
+*/
+
+void Universe::defineFrustum()
+{
+	OOMatrix clip;
+	GLfloat   rt;
+	
+	clip = OOGLGetModelViewProjection();
+	
+	/* Extract the numbers for the RIGHT plane */
+	frustum[0][0] = clip.m[0][3] - clip.m[0][0];
+	frustum[0][1] = clip.m[1][3] - clip.m[1][0];
+	frustum[0][2] = clip.m[2][3] - clip.m[2][0];
+	frustum[0][3] = clip.m[3][3] - clip.m[3][0];
+	
+	/* Normalize the result */
+	rt = 1.0f / sqrt(frustum[0][0] * frustum[0][0] + frustum[0][1] * frustum[0][1] + frustum[0][2] * frustum[0][2]);
+	frustum[0][0] *= rt;
+	frustum[0][1] *= rt;
+	frustum[0][2] *= rt;
+	frustum[0][3] *= rt;
+	
+	/* Extract the numbers for the LEFT plane */
+	frustum[1][0] = clip.m[0][3] + clip.m[0][0];
+	frustum[1][1] = clip.m[1][3] + clip.m[1][0];
+	frustum[1][2] = clip.m[2][3] + clip.m[2][0];
+	frustum[1][3] = clip.m[3][3] + clip.m[3][0];
+	
+	/* Normalize the result */
+	rt = 1.0f / sqrt(frustum[1][0] * frustum[1][0] + frustum[1][1] * frustum[1][1] + frustum[1][2] * frustum[1][2]);
+	frustum[1][0] *= rt;
+	frustum[1][1] *= rt;
+	frustum[1][2] *= rt;
+	frustum[1][3] *= rt;
+
+	/* Extract the BOTTOM plane */
+	frustum[2][0] = clip.m[0][3] + clip.m[0][1];
+	frustum[2][1] = clip.m[1][3] + clip.m[1][1];
+	frustum[2][2] = clip.m[2][3] + clip.m[2][1];
+	frustum[2][3] = clip.m[3][3] + clip.m[3][1];
+
+	/* Normalize the result */
+	rt = 1.0 / sqrt(frustum[2][0] * frustum[2][0] + frustum[2][1] * frustum[2][1] + frustum[2][2] * frustum[2][2]);
+	frustum[2][0] *= rt;
+	frustum[2][1] *= rt;
+	frustum[2][2] *= rt;
+	frustum[2][3] *= rt;
+
+	/* Extract the TOP plane */
+	frustum[3][0] = clip.m[0][3] - clip.m[0][1];
+	frustum[3][1] = clip.m[1][3] - clip.m[1][1];
+	frustum[3][2] = clip.m[2][3] - clip.m[2][1];
+	frustum[3][3] = clip.m[3][3] - clip.m[3][1];
+
+	/* Normalize the result */
+	rt = 1.0 / sqrt(frustum[3][0] * frustum[3][0] + frustum[3][1] * frustum[3][1] + frustum[3][2] * frustum[3][2]);
+	frustum[3][0] *= rt;
+	frustum[3][1] *= rt;
+	frustum[3][2] *= rt;
+	frustum[3][3] *= rt;
+
+	/* Extract the FAR plane */
+	frustum[4][0] = clip.m[0][3] - clip.m[0][2];
+	frustum[4][1] = clip.m[1][3] - clip.m[1][2];
+	frustum[4][2] = clip.m[2][3] - clip.m[2][2];
+	frustum[4][3] = clip.m[3][3] - clip.m[3][2];
+
+	/* Normalize the result */
+	rt = sqrt(frustum[4][0] * frustum[4][0] + frustum[4][1] * frustum[4][1] + frustum[4][2] * frustum[4][2]);
+	frustum[4][0] *= rt;
+	frustum[4][1] *= rt;
+	frustum[4][2] *= rt;
+	frustum[4][3] *= rt;
+
+	/* Extract the NEAR plane */
+	frustum[5][0] = clip.m[0][3] + clip.m[0][2];
+	frustum[5][1] = clip.m[1][3] + clip.m[1][2];
+	frustum[5][2] = clip.m[2][3] + clip.m[2][2];
+	frustum[5][3] = clip.m[3][3] + clip.m[3][2];
+
+	/* Normalize the result */
+	rt = sqrt(frustum[5][0] * frustum[5][0] + frustum[5][1] * frustum[5][1] + frustum[5][2] * frustum[5][2]);
+	frustum[5][0] *= rt;
+	frustum[5][1] *= rt;
+	frustum[5][2] *= rt;
+	frustum[5][3] *= rt;
+}
+
+
+bool Universe::viewFrustumIntersectsSphereAt(Vector position, GLfloat radius)
+{
+	// position is the relative position between the camera and the object
+	int p;
+	for (p = 0; p < 6; p++)
+	{
+		if (frustum[p][0] * position.x + frustum[p][1] * position.y + frustum[p][2] * position.z + frustum[p][3] <= -radius)
+		{
+			return NO;
+		}
+	}
+	return YES;
 }
 
 
