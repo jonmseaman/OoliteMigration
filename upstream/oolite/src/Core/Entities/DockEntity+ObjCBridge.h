@@ -45,17 +45,6 @@ MA 02110-1301, USA.
 	cxx::DockEntity	*_cxxDock;		// _cxxEntity, typed; borrowed, set by the initialiser
 }
 
-// Docking
-- (BOOL) shipIsInDockingCorridor:(ShipEntity *)ship;
-- (BOOL) dockingCorridorIsEmpty;
-- (void) clearDockingCorridor;
-
-// Launching
-- (NSUInteger) countOfShipsInLaunchQueueWithPrimaryRole:(const std::string &)role;
-- (BOOL) allowsLaunchingOf:(ShipEntity *)ship;
-- (void) launchShip:(ShipEntity *)ship;
-- (void) addShipToLaunchQueue:(ShipEntity *)ship withPriority:(BOOL)priority;
-
 @end
 
 
@@ -148,6 +137,27 @@ MA 02110-1301, USA.
 - (void) autoDockShipsInQueue:(std::map<unsigned short, std::vector<oo::PList>> &)queue;
 - (void) addShipToShipsOnApproach:(ShipEntity *)ship;
 - (void) pullInShipIfPermitted:(ShipEntity *)ship;
+
+@end
+
+
+// Slice 3 of docs/phases/3-slices/DockEntity.md (bead oo-9ht.179): the docking corridor and
+// launching. Forwarders to cxx::DockEntity, in DockEntity+ObjCBridge.mm.
+@interface DockEntity (OOSlice3)
+
+// Docking
+- (BOOL) shipIsInDockingCorridor:(ShipEntity *)ship;
+- (BOOL) dockingCorridorIsEmpty;
+- (void) clearDockingCorridor;
+
+// Launching
+- (NSUInteger) countOfShipsInLaunchQueueWithPrimaryRole:(const std::string &)role;
+- (BOOL) allowsLaunchingOf:(ShipEntity *)ship;
+- (void) launchShip:(ShipEntity *)ship;
+- (void) addShipToLaunchQueue:(ShipEntity *)ship withPriority:(BOOL)priority;
+
+// The private category of DockEntity.mm, for its unconverted slices.
+- (void) abortAllLaunches;
 
 @end
 

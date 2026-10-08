@@ -79,6 +79,16 @@ public:
 	void addShipToShipsOnApproach(::ShipEntity *ship);
 	void pullInShipIfPermitted(::ShipEntity *ship);
 
+	// Slice 3: the docking corridor and launching.
+	bool shipIsInDockingCorridor(::ShipEntity *ship);
+	void abortAllLaunches();
+	void addShipToLaunchQueue(::ShipEntity *ship, bool priority);
+	void launchShip(::ShipEntity *ship);
+	NSUInteger countOfShipsInLaunchQueueWithPrimaryRole(const std::string &role);
+	bool allowsLaunchingOf(::ShipEntity *ship);
+	bool dockingCorridorIsEmpty();
+	void clearDockingCorridor();
+
 	// From the superclass.
 	bool isDock() override;
 	bool setUpShipFromDictionary(const oo::PList &dict) override;

@@ -136,3 +136,18 @@ MA 02110-1301, USA.
 - (void) pullInShipIfPermitted:(ShipEntity *)ship	{ _cxxDock->pullInShipIfPermitted(ship); }
 
 @end
+
+
+// Slice 3 of docs/phases/3-slices/DockEntity.md (bead oo-9ht.179).
+@implementation DockEntity (OOSlice3)
+
+- (BOOL) shipIsInDockingCorridor:(ShipEntity *)ship	{ return _cxxDock->shipIsInDockingCorridor(ship); }
+- (BOOL) dockingCorridorIsEmpty	{ return _cxxDock->dockingCorridorIsEmpty(); }
+- (void) clearDockingCorridor	{ _cxxDock->clearDockingCorridor(); }
+- (NSUInteger) countOfShipsInLaunchQueueWithPrimaryRole:(const std::string &)role	{ return _cxxDock->countOfShipsInLaunchQueueWithPrimaryRole(role); }
+- (BOOL) allowsLaunchingOf:(ShipEntity *)ship	{ return _cxxDock->allowsLaunchingOf(ship); }
+- (void) launchShip:(ShipEntity *)ship	{ _cxxDock->launchShip(ship); }
+- (void) addShipToLaunchQueue:(ShipEntity *)ship withPriority:(BOOL)priority	{ _cxxDock->addShipToLaunchQueue(ship, priority); }
+- (void) abortAllLaunches	{ _cxxDock->abortAllLaunches(); }
+
+@end

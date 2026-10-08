@@ -321,6 +321,51 @@ OO_TEST(autoDockEmptyQueue)
 }
 
 
+// --- Slice 3: the docking corridor and launching (bead oo-9ht.179) -----------------------------
+// These cases reach only the launch queue and the checks that refuse a non-ship: no player, no
+// script engine, no ship in the universe.
+
+// Not a ship: not in the corridor, not allowed to launch.
+OO_TEST(corridorAndLaunchRefuseNoShip)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		DockEntity *dock = MakeDock("refuse");
+		OO_CHECK(![dock shipIsInDockingCorridor:nil]);
+		OO_CHECK(![dock allowsLaunchingOf:nil]);
+		OO_CHECK(!oo::ToCxx(dock)->shipIsInDockingCorridor(nil));
+		OO_CHECK(!oo::ToCxx(dock)->allowsLaunchingOf(nil));
+	}
+}
+
+
+// The launch queue: a ship joins at the back, or at the front with priority; nothing joins for no
+// ship; aborting the launches empties it.
+OO_TEST(launchQueue)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		DockEntity *dock = MakeDock("launchqueue");
+		ShipEntity *first = MakeQueuedShip(21);
+		ShipEntity *second = MakeQueuedShip(22);
+		[dock addShipToLaunchQueue:nil withPriority:NO];
+		OO_CHECK([dock countOfShipsInLaunchQueue] == 0);
+		[dock addShipToLaunchQueue:first withPriority:NO];
+		oo::ToCxx(dock)->addShipToLaunchQueue(second, true);
+		OO_CHECK([dock countOfShipsInLaunchQueue] == 2);
+		cxx::DockEntity *part = oo::ToCxx(dock);
+		OO_CHECK(part->launchQueue[0].get() == second && part->launchQueue[1].get() == first);
+		OO_CHECK([first status] == STATUS_DOCKED && [second status] == STATUS_DOCKED);
+		OO_CHECK([dock countOfShipsInLaunchQueueWithPrimaryRole:"no-such-role"] == 0);
+		part->no_docking_while_launching = YES;
+		[dock abortAllLaunches];
+		OO_CHECK([dock countOfShipsInLaunchQueue] == 0 && !part->no_docking_while_launching);
+	}
+}
+
+
 // --- The crossing (after the conversion) ---------------------------------------------------------
 
 // A dock's C++ part is a cxx::DockEntity, the facade's typed alias is that part, and from C++ the
