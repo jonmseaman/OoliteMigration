@@ -57,24 +57,11 @@ MA 02110-1301, USA.
 }
 
 
-- (void) setupIntroFirstGo:(BOOL)justCobra;
-- (void) selectIntro2Previous;
-- (void) selectIntro2Next;
-- (void) selectIntro2PreviousCategory;
-- (void) selectIntro2NextCategory;
-
-- (StationEntity *) station;
-- (OOPlanetEntity *) planet;
-- (OOSunEntity *) sun;
-- (std::vector<oo::ObjCRef<OOPlanetEntity *>>) cxx_planets;	// Note: does not include sun.
-- (std::vector<oo::ObjCRef<StationEntity *>>) cxx_stations; // includes main station; in the order added
 - (std::vector<oo::ObjCRef<WormholeEntity *>>) cxx_wormholes;
-- (StationEntity *) cxx_stationWithRole:(const std::string &)role andPosition:(HPVector)position;
 
 // Turn main station into just another station, for blowUpStation.
 - (void) unMagicMainStation;
 // find a valid station in interstellar space
-- (StationEntity *) stationFriendlyTo:(ShipEntity *) ship;
 
 - (void) resetBeacons;
 - (Entity <OOBeaconEntity> *) firstBeacon;
@@ -274,6 +261,29 @@ MA 02110-1301, USA.
 - (BOOL) dockingClearanceProtocolActive;
 - (void) setDockingClearanceProtocolActive:(BOOL)newValue;
 - (void) handleGameOver;
+
+@end
+
+
+// Slice 8 of docs/phases/3-slices/Universe.md: members of cxx::Universe, forwarded by the
+// category of the same name in Universe+ObjCBridge.mm (the class's @implementation, still in
+// Universe.mm, stays complete).
+@interface Universe (OOSlice8)
+
+- (void) setupIntroFirstGo:(BOOL)justCobra;
+- (oo::PList) demoShipData;	// null where there is no such entry
+- (void) setLibraryTextForDemoShip;
+- (void) selectIntro2Previous;
+- (void) selectIntro2PreviousCategory;
+- (void) selectIntro2NextCategory;
+- (void) selectIntro2Next;
+- (StationEntity *) station;
+- (StationEntity *) cxx_stationWithRole:(const std::string &)role andPosition:(HPVector)position;
+- (StationEntity *) stationFriendlyTo:(ShipEntity *) ship;
+- (OOPlanetEntity *) planet;
+- (OOSunEntity *) sun;
+- (std::vector<oo::ObjCRef<OOPlanetEntity *>>) cxx_planets;	// Note: does not include sun.
+- (std::vector<oo::ObjCRef<StationEntity *>>) cxx_stations; // includes main station; in the order added
 
 @end
 
