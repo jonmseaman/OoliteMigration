@@ -57,150 +57,7 @@ MA 02110-1301, USA.
 }
 
 
-- (void) setUpSpace;
-- (void) populateNormalSpace;
-- (void) clearSystemPopulator;
-- (BOOL) deterministicPopulation;
-- (void) populateSystemFromDictionariesWithSun:(OOSunEntity *)sun andPlanet:(OOPlanetEntity *)planet;
-- (oo::PList) cxx_getPopulatorSettings;	// a copy
-- (void) cxx_setPopulatorSetting:(const std::string &)key to:(const oo::PList &)setting;	// a null setting removes
-- (HPVector) cxx_locationByCode:(const std::string &)code withSun:(OOSunEntity *)sun andPlanet:(OOPlanetEntity *)planet;
-- (void) setAmbientLightLevel:(float)newValue;
-- (float) ambientLightLevel;
-- (void) setLighting;
-- (void) forceLightSwitch;
-- (void) setMainLightPosition: (Vector) sunPos;
-
-- (void) cxx_addShipWithRole:(const std::string &) desc nearRouteOneAt:(double) route_fraction;
-- (HPVector) cxx_coordinatesForPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system returningScalar:(GLfloat*) my_scalar;
-- (std::optional<std::string>) cxx_expressPosition:(HPVector) pos inCoordinateSystem:(const std::string &) system;
-- (HPVector) cxx_legacyPositionFrom:(HPVector) pos asCoordinateSystem:(const std::string &) system;
-- (HPVector) cxx_coordinatesFromCoordinateSystemString:(const std::string &) system_x_y_z;
-- (BOOL) cxx_addShipWithRole:(const std::string &) desc nearPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system;
-- (BOOL) cxx_addShips:(int) howMany withRole:(const std::string &) desc atPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system;
-- (BOOL) cxx_addShips:(int) howMany withRole:(const std::string &) desc nearPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system;
-- (BOOL) cxx_addShips:(int) howMany withRole:(const std::string &) desc nearPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system withinRadius:(GLfloat) radius;
-- (BOOL) cxx_addShips:(int) howMany withRole:(const std::string &) desc intoBoundingBox:(BoundingBox) bbox;
-- (BOOL) cxx_spawnShip:(const std::string &) shipdesc;	// the legacy spawnShip: action's ship key
-- (void) cxx_witchspaceShipWithPrimaryRole:(const std::string &)role;
-- (ShipEntity *) cxx_spawnShipWithRole:(const std::string &) desc near:(Entity *) entity;
-
-- (OOVisualEffectEntity *) cxx_addVisualEffectAt:(HPVector)pos withKey:(const std::string &)key;
-- (ShipEntity *) addShipAt:(HPVector)pos withRole:(const std::string &)role withinRadius:(GLfloat)radius;
-// Empty where the old methods returned nil (no ship added).
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_addShipsAt:(HPVector)pos withRole:(const std::string &)role quantity:(unsigned)count withinRadius:(GLfloat)radius asGroup:(BOOL)isGroup;
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_addShipsToRoute:(const std::string &)route withRole:(const std::string &)role quantity:(unsigned)count routeFraction:(double)routeFraction asGroup:(BOOL)isGroup;
-
-- (BOOL) cxx_roleIsPirateVictim:(const std::string &)role;
-- (BOOL) cxx_role:(const std::string &)role isInCategory:(const std::string &)category;
-
-- (void) forceWitchspaceEntries;
-- (void) addWitchspaceJumpEffectForShip:(ShipEntity *)ship;
-- (GLfloat) safeWitchspaceExitDistance;
-
-- (void) setUpBreakPattern:(HPVector)pos orientation:(Quaternion)q forDocking:(BOOL)forDocking;
-- (BOOL) witchspaceBreakPattern;
-- (void) setWitchspaceBreakPattern:(BOOL)newValue;
-
-- (BOOL) dockingClearanceProtocolActive;
-- (void) setDockingClearanceProtocolActive:(BOOL)newValue;
-
-- (void) handleGameOver;
-
-- (void) setupIntroFirstGo:(BOOL)justCobra;
-- (void) selectIntro2Previous;
-- (void) selectIntro2Next;
-- (void) selectIntro2PreviousCategory;
-- (void) selectIntro2NextCategory;
-
-- (StationEntity *) station;
-- (OOPlanetEntity *) planet;
-- (OOSunEntity *) sun;
-- (std::vector<oo::ObjCRef<OOPlanetEntity *>>) cxx_planets;	// Note: does not include sun.
-- (std::vector<oo::ObjCRef<StationEntity *>>) cxx_stations; // includes main station; in the order added
-- (std::vector<oo::ObjCRef<WormholeEntity *>>) cxx_wormholes;
-- (StationEntity *) cxx_stationWithRole:(const std::string &)role andPosition:(HPVector)position;
-
-// Turn main station into just another station, for blowUpStation.
-- (void) unMagicMainStation;
 // find a valid station in interstellar space
-- (StationEntity *) stationFriendlyTo:(ShipEntity *) ship;
-
-- (void) resetBeacons;
-- (Entity <OOBeaconEntity> *) firstBeacon;
-- (Entity <OOBeaconEntity> *) lastBeacon;
-- (void) setNextBeacon:(Entity <OOBeaconEntity> *) beaconShip;
-- (void) clearBeacon:(Entity <OOBeaconEntity> *) beaconShip;
-
-- (std::map<std::string, oo::ObjCRef<OOWaypointEntity *>, std::less<>>) cxx_currentWaypoints;
-- (void) cxx_defineWaypoint:(const oo::PList &)definition forKey:(const std::string &)key;	// a null definition removes
-
-- (GLfloat *) skyClearColor;
-// Note: the alpha value is also air resistance!
-- (void) setSkyColorRed:(GLfloat)red green:(GLfloat)green blue:(GLfloat)blue alpha:(GLfloat)alpha;
-
-- (BOOL) breakPatternOver;
-- (BOOL) breakPatternHide;
-
-- (std::optional<std::string>) cxx_randomShipKeyForRoleRespectingConditions:(const std::string &)role;	// nullopt: none
-- (ShipEntity *) cxx_newShipWithRole:(const std::string &)role OO_RETURNS_RETAINED;		// Selects ship using role weights, applies auto_ai, respects conditions
-- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey OO_RETURNS_RETAINED;	// Does not apply auto_ai or respect conditions
-- (ShipEntity *) cxx_newSubentityWithName:(const std::string &)shipKey andScaleFactor:(float)scale OO_RETURNS_RETAINED;	// Does not apply auto_ai or respect conditions
-- (OOVisualEffectEntity *) cxx_newVisualEffectWithName:(const std::string &)effectKey OO_RETURNS_RETAINED;
-- (DockEntity *) cxx_newDockWithName:(const std::string &)shipKey andScaleFactor:(float)scale OO_RETURNS_RETAINED;	// Does not apply auto_ai or respect conditions
-- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy OO_RETURNS_RETAINED;	// If usePlayerProxy, non-carriers are instantiated as ProxyPlayerEntity.
-- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity OO_RETURNS_RETAINED;
-- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity andScaleFactor:(float)scale OO_RETURNS_RETAINED;
-
-- (Class) cxx_shipClassForShipDictionary:(const oo::PList &)dict;	// Nil for a null PList
-
-- (std::optional<std::string>) defaultAIForRole:(const std::string &)role;		// autoAImap.plist lookup
-
-- (OOCargoQuantity) cxx_maxCargoForShip:(const std::string &) desc;
-
-- (OOCreditsQuantity) cxx_getEquipmentPriceForKey:(const std::string &) eq_key;
-
-- (OOCommodities *) commodities;
-
-- (ShipEntity *) reifyCargoPod:(ShipEntity *)cargoObj;
-- (ShipEntity *) cargoPodFromTemplate:(ShipEntity *)cargoObj;
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_getContainersOfGoods:(OOCargoQuantity)how_many scarce:(BOOL)scarce legal:(BOOL)legal;
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_getContainersOfCommodity:(const std::string &) commodity_name :(OOCargoQuantity) how_many;
-- (void) fillCargopodWithRandomCargo:(ShipEntity *)cargopod;
-
-- (std::string) getRandomCommodity;	// a commodity key
-- (OOCargoQuantity) cxx_getRandomAmountOfCommodity:(const std::string &) co_type;
-
-- (oo::PList) commodityDataForType:(const std::string &)type;	// null: no such good
-- (std::optional<std::string>) cxx_displayNameForCommodity:(const std::string &)co_type;
-- (std::optional<std::string>) cxx_describeCommodity:(const std::string &)co_type amount:(OOCargoQuantity) co_amount;
-
-- (void) setGameView:(MyOpenGLView *)view;
-- (MyOpenGLView *) gameView;
-- (GameController *) gameController;
-- (oo::PList) cxx_gameSettings;
-
-- (void) useGUILightSource:(BOOL)GUILight;
-
-- (void) drawUniverse;
-
-- (void) defineFrustum;
-- (BOOL) viewFrustumIntersectsSphereAt:(Vector)position withRadius:(GLfloat)radius;
-
-- (void) drawMessage;
-
-- (void) drawWatermarkString:(const std::string &)watermarkString;
-
-// Used to draw subentities. Should be getting this from camera.
-- (OOMatrix) viewMatrix;
-
-- (id) entityForUniversalID:(OOUniversalID)u_id;
-
-- (BOOL) addEntity:(Entity *) entity;
-- (BOOL) removeEntity:(Entity *) entity;
-- (void) ensureEntityReallyRemoved:(Entity *)entity;
-- (void) removeAllEntitiesExceptPlayer;
-- (void) removeDemoShips;
 
 ///////////////////////////////////////
 
@@ -214,9 +71,6 @@ MA 02110-1301, USA.
 #endif
 //
 ////
-
-- (int) framesDoneThisUpdate;
-- (void) resetFramesDoneThisUpdate;
 
 @end
 
@@ -245,6 +99,219 @@ MA 02110-1301, USA.
 - (void) setUpWitchspace;
 - (void) setUpWitchspaceBetweenSystem:(OOSystemID)s1 andSystem:(OOSystemID)s2;
 - (OOPlanetEntity *) setUpPlanet;
+
+@end
+
+
+// Slice 4 of docs/phases/3-slices/Universe.md: members of cxx::Universe, forwarded by the
+// category of the same name in Universe+ObjCBridge.mm (the class's @implementation, still in
+// Universe.mm, stays complete).
+@interface Universe (OOSlice4)
+
+- (void) setUpSpace;
+- (void) populateNormalSpace;
+- (void) clearSystemPopulator;
+- (oo::PList) cxx_getPopulatorSettings;	// a copy
+- (void) cxx_setPopulatorSetting:(const std::string &)key to:(const oo::PList &)setting;	// a null setting removes
+- (BOOL) deterministicPopulation;
+- (void) populateSystemFromDictionariesWithSun:(OOSunEntity *)sun andPlanet:(OOPlanetEntity *)planet;
+
+@end
+
+
+// Slice 5 of docs/phases/3-slices/Universe.md: members of cxx::Universe, forwarded by the
+// category of the same name in Universe+ObjCBridge.mm (the class's @implementation, still in
+// Universe.mm, stays complete).
+@interface Universe (OOSlice5)
+
+- (HPVector) cxx_locationByCode:(const std::string &)code withSun:(OOSunEntity *)sun andPlanet:(OOPlanetEntity *)planet;
+- (void) setAmbientLightLevel:(float)newValue;
+- (float) ambientLightLevel;
+- (void) setLighting;
+- (void) forceLightSwitch;
+- (void) setMainLightPosition: (Vector) sunPos;
+- (ShipEntity *) addShipWithRole:(const std::string &)desc launchPos:(HPVector)launchPos rfactor:(GLfloat)rfactor;
+- (void) cxx_addShipWithRole:(const std::string &) desc nearRouteOneAt:(double) route_fraction;
+- (HPVector) cxx_coordinatesForPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system returningScalar:(GLfloat*) my_scalar;
+- (std::optional<std::string>) cxx_expressPosition:(HPVector) pos inCoordinateSystem:(const std::string &) system;
+
+@end
+
+
+// Slice 6 of docs/phases/3-slices/Universe.md: members of cxx::Universe, forwarded by the
+// category of the same name in Universe+ObjCBridge.mm (the class's @implementation, still in
+// Universe.mm, stays complete).
+@interface Universe (OOSlice6)
+
+- (HPVector) cxx_legacyPositionFrom:(HPVector) pos asCoordinateSystem:(const std::string &) system;
+- (HPVector) cxx_coordinatesFromCoordinateSystemString:(const std::string &) system_x_y_z;
+- (BOOL) cxx_addShipWithRole:(const std::string &) desc nearPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system;
+- (BOOL) cxx_addShips:(int) howMany withRole:(const std::string &) desc atPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system;
+- (BOOL) cxx_addShips:(int) howMany withRole:(const std::string &) desc nearPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system;
+- (BOOL) cxx_addShips:(int) howMany withRole:(const std::string &) desc nearPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system withinRadius:(GLfloat) radius;
+- (BOOL) cxx_addShips:(int) howMany withRole:(const std::string &) desc intoBoundingBox:(BoundingBox) bbox;
+- (BOOL) cxx_spawnShip:(const std::string &) shipdesc;	// the legacy spawnShip: action's ship key
+- (void) cxx_witchspaceShipWithPrimaryRole:(const std::string &)role;
+- (ShipEntity *) cxx_spawnShipWithRole:(const std::string &) desc near:(Entity *) entity;
+- (OOVisualEffectEntity *) cxx_addVisualEffectAt:(HPVector)pos withKey:(const std::string &)key;
+
+@end
+
+
+// Slice 7 of docs/phases/3-slices/Universe.md: members of cxx::Universe, forwarded by the
+// category of the same name in Universe+ObjCBridge.mm (the class's @implementation, still in
+// Universe.mm, stays complete).
+@interface Universe (OOSlice7)
+
+- (ShipEntity *) addShipAt:(HPVector)pos withRole:(const std::string &)role withinRadius:(GLfloat)radius;
+// Empty where the old methods returned nil (no ship added).
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_addShipsAt:(HPVector)pos withRole:(const std::string &)role quantity:(unsigned)count withinRadius:(GLfloat)radius asGroup:(BOOL)isGroup;
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_addShipsToRoute:(const std::string &)route withRole:(const std::string &)role quantity:(unsigned)count routeFraction:(double)routeFraction asGroup:(BOOL)isGroup;
+- (BOOL) cxx_roleIsPirateVictim:(const std::string &)role;
+- (BOOL) cxx_role:(const std::string &)role isInCategory:(const std::string &)category;
+- (void) forceWitchspaceEntries;
+- (void) addWitchspaceJumpEffectForShip:(ShipEntity *)ship;
+- (GLfloat) safeWitchspaceExitDistance;
+- (void) setUpBreakPattern:(HPVector)pos orientation:(Quaternion)q forDocking:(BOOL)forDocking;
+- (BOOL) witchspaceBreakPattern;
+- (void) setWitchspaceBreakPattern:(BOOL)newValue;
+- (BOOL) dockingClearanceProtocolActive;
+- (void) setDockingClearanceProtocolActive:(BOOL)newValue;
+- (void) handleGameOver;
+
+@end
+
+
+// Slice 8 of docs/phases/3-slices/Universe.md: members of cxx::Universe, forwarded by the
+// category of the same name in Universe+ObjCBridge.mm (the class's @implementation, still in
+// Universe.mm, stays complete).
+@interface Universe (OOSlice8)
+
+- (void) setupIntroFirstGo:(BOOL)justCobra;
+- (oo::PList) demoShipData;	// null where there is no such entry
+- (void) setLibraryTextForDemoShip;
+- (void) selectIntro2Previous;
+- (void) selectIntro2PreviousCategory;
+- (void) selectIntro2NextCategory;
+- (void) selectIntro2Next;
+- (StationEntity *) station;
+- (StationEntity *) cxx_stationWithRole:(const std::string &)role andPosition:(HPVector)position;
+- (StationEntity *) stationFriendlyTo:(ShipEntity *) ship;
+- (OOPlanetEntity *) planet;
+- (OOSunEntity *) sun;
+- (std::vector<oo::ObjCRef<OOPlanetEntity *>>) cxx_planets;	// Note: does not include sun.
+- (std::vector<oo::ObjCRef<StationEntity *>>) cxx_stations; // includes main station; in the order added
+
+@end
+
+
+// Slice 9 of docs/phases/3-slices/Universe.md: members of cxx::Universe, forwarded by the
+// category of the same name in Universe+ObjCBridge.mm (the class's @implementation, still in
+// Universe.mm, stays complete).
+@interface Universe (OOSlice9)
+
+- (std::vector<oo::ObjCRef<WormholeEntity *>>) cxx_wormholes;
+// Turn main station into just another station, for blowUpStation.
+- (void) unMagicMainStation;
+- (void) resetBeacons;
+- (Entity <OOBeaconEntity> *) firstBeacon;
+- (void) setFirstBeacon:(Entity <OOBeaconEntity> *)beacon;
+- (Entity <OOBeaconEntity> *) lastBeacon;
+- (void) setLastBeacon:(Entity <OOBeaconEntity> *)beacon;
+- (void) setNextBeacon:(Entity <OOBeaconEntity> *) beaconShip;
+- (void) clearBeacon:(Entity <OOBeaconEntity> *) beaconShip;
+- (std::map<std::string, oo::ObjCRef<OOWaypointEntity *>, std::less<>>) cxx_currentWaypoints;
+- (void) cxx_defineWaypoint:(const oo::PList &)definition forKey:(const std::string &)key;	// a null definition removes
+- (GLfloat *) skyClearColor;
+// Note: the alpha value is also air resistance!
+- (void) setSkyColorRed:(GLfloat)red green:(GLfloat)green blue:(GLfloat)blue alpha:(GLfloat)alpha;
+- (BOOL) breakPatternOver;
+- (BOOL) breakPatternHide;
+- (BOOL) canInstantiateShip:(const std::string &)shipKey;
+- (std::optional<std::string>) cxx_randomShipKeyForRoleRespectingConditions:(const std::string &)role;	// nullopt: none
+- (ShipEntity *) cxx_newShipWithRole:(const std::string &)role OO_RETURNS_RETAINED;		// Selects ship using role weights, applies auto_ai, respects conditions
+- (OOVisualEffectEntity *) cxx_newVisualEffectWithName:(const std::string &)effectKey OO_RETURNS_RETAINED;
+- (ShipEntity *) cxx_newSubentityWithName:(const std::string &)shipKey andScaleFactor:(float)scale OO_RETURNS_RETAINED;	// Does not apply auto_ai or respect conditions
+- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy OO_RETURNS_RETAINED;	// If usePlayerProxy, non-carriers are instantiated as ProxyPlayerEntity.
+- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity OO_RETURNS_RETAINED;
+- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity andScaleFactor:(float)scale OO_RETURNS_RETAINED;
+- (DockEntity *) cxx_newDockWithName:(const std::string &)shipKey andScaleFactor:(float)scale OO_RETURNS_RETAINED;	// Does not apply auto_ai or respect conditions
+- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey OO_RETURNS_RETAINED;	// Does not apply auto_ai or respect conditions
+- (Class) cxx_shipClassForShipDictionary:(const oo::PList &)dict;	// Nil for a null PList
+- (std::optional<std::string>) defaultAIForRole:(const std::string &)role;		// autoAImap.plist lookup
+- (OOCargoQuantity) cxx_maxCargoForShip:(const std::string &) desc;
+
+@end
+
+
+// Slice 10 of docs/phases/3-slices/Universe.md: members of cxx::Universe, forwarded by the
+// category of the same name in Universe+ObjCBridge.mm (the class's @implementation, still in
+// Universe.mm, stays complete).
+@interface Universe (OOSlice10)
+
+- (OOCreditsQuantity) cxx_getEquipmentPriceForKey:(const std::string &) eq_key;
+- (OOCommodities *) commodities;
+- (ShipEntity *) reifyCargoPod:(ShipEntity *)cargoObj;
+- (ShipEntity *) cargoPodFromTemplate:(ShipEntity *)cargoObj;
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_getContainersOfGoods:(OOCargoQuantity)how_many scarce:(BOOL)scarce legal:(BOOL)legal;
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_getContainersOfCommodity:(const std::string &) commodity_name :(OOCargoQuantity) how_many;
+- (void) fillCargopodWithRandomCargo:(ShipEntity *)cargopod;
+- (std::string) getRandomCommodity;	// a commodity key
+- (OOCargoQuantity) cxx_getRandomAmountOfCommodity:(const std::string &) co_type;
+- (oo::PList) commodityDataForType:(const std::string &)type;	// null: no such good
+- (std::optional<std::string>) cxx_displayNameForCommodity:(const std::string &)co_type;
+- (std::optional<std::string>) cxx_describeCommodity:(const std::string &)co_type amount:(OOCargoQuantity) co_amount;
+- (void) setGameView:(MyOpenGLView *)view;
+- (MyOpenGLView *) gameView;
+- (GameController *) gameController;
+- (oo::PList) cxx_gameSettings;
+- (void) useGUILightSource:(BOOL)GUILight;
+- (void) lightForEntity:(BOOL)isLit;
+- (void) getActiveViewMatrix:(OOMatrix *)outMatrix forwardVector:(Vector *)outForward upVector:(Vector *)outUp;
+- (OOMatrix) activeViewMatrix;
+
+@end
+
+
+// Slice 11 of docs/phases/3-slices/Universe.md: members of cxx::Universe, forwarded by the
+// category of the same name in Universe+ObjCBridge.mm (the class's @implementation, still in
+// Universe.mm, stays complete).
+@interface Universe (OOSlice11)
+
+- (void) defineFrustum;
+- (BOOL) viewFrustumIntersectsSphereAt:(Vector)position withRadius:(GLfloat)radius;
+
+@end
+
+
+// Slice 12 of docs/phases/3-slices/Universe.md: members of cxx::Universe, forwarded by the
+// category of the same name in Universe+ObjCBridge.mm (the class's @implementation, still in
+// Universe.mm, stays complete).
+@interface Universe (OOSlice12)
+
+- (void) drawUniverse;
+- (void) prepareToRenderIntoDefaultFramebuffer;
+- (int) framesDoneThisUpdate;
+- (void) resetFramesDoneThisUpdate;
+// Used to draw subentities. Should be getting this from camera.
+- (OOMatrix) viewMatrix;
+
+@end
+
+
+// Slice 13 of docs/phases/3-slices/Universe.md: members of cxx::Universe, forwarded by the
+// category of the same name in Universe+ObjCBridge.mm (the class's @implementation, still in
+// Universe.mm, stays complete).
+@interface Universe (OOSlice13)
+
+- (void) drawMessage;
+- (void) drawWatermarkString:(const std::string &)watermarkString;
+- (id) entityForUniversalID:(OOUniversalID)u_id;
+- (BOOL) addEntity:(Entity *) entity;
+- (BOOL) removeEntity:(Entity *) entity;
+- (void) ensureEntityReallyRemoved:(Entity *)entity;
+- (void) removeAllEntitiesExceptPlayer;
+- (void) removeDemoShips;
 
 @end
 

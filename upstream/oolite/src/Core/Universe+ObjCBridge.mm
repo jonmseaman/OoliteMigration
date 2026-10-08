@@ -118,6 +118,185 @@ extern Universe *gSharedUniverse;
 @end
 
 
+@implementation Universe (OOSlice4)
+
+- (void) setUpSpace	{ _cxxUniverse->setUpSpace(); }
+- (void) populateNormalSpace	{ _cxxUniverse->populateNormalSpace(); }
+- (void) clearSystemPopulator	{ _cxxUniverse->clearSystemPopulator(); }
+- (oo::PList) cxx_getPopulatorSettings	{ return _cxxUniverse->getPopulatorSettings(); }
+- (void) cxx_setPopulatorSetting:(const std::string &)key to:(const oo::PList &)setting	{ _cxxUniverse->setPopulatorSetting(key, setting); }
+- (BOOL) deterministicPopulation	{ return _cxxUniverse->deterministicPopulation(); }
+- (void) populateSystemFromDictionariesWithSun:(OOSunEntity *)sun andPlanet:(OOPlanetEntity *)planet	{ _cxxUniverse->populateSystemFromDictionariesWithSun(sun, planet); }
+
+@end
+
+
+@implementation Universe (OOSlice5)
+
+- (HPVector) cxx_locationByCode:(const std::string &)code withSun:(OOSunEntity *)sun andPlanet:(OOPlanetEntity *)planet	{ return _cxxUniverse->locationByCode(code, sun, planet); }
+- (void) setAmbientLightLevel:(float)newValue	{ _cxxUniverse->setAmbientLightLevel(newValue); }
+- (float) ambientLightLevel	{ return _cxxUniverse->getAmbientLightLevel(); }
+- (void) setLighting	{ _cxxUniverse->setLighting(); }
+- (void) forceLightSwitch	{ _cxxUniverse->forceLightSwitch(); }
+- (void) setMainLightPosition:(Vector)sunPos	{ _cxxUniverse->setMainLightPosition(sunPos); }
+- (ShipEntity *) addShipWithRole:(const std::string &)desc launchPos:(HPVector)launchPos rfactor:(GLfloat)rfactor	{ return _cxxUniverse->addShipWithRole(desc, launchPos, rfactor); }
+- (void) cxx_addShipWithRole:(const std::string &)desc nearRouteOneAt:(double)route_fraction	{ _cxxUniverse->addShipWithRole(desc, route_fraction); }
+- (HPVector) cxx_coordinatesForPosition:(HPVector)pos withCoordinateSystem:(const std::string &)system returningScalar:(GLfloat*)my_scalar	{ return _cxxUniverse->coordinatesForPosition(pos, system, my_scalar); }
+- (std::optional<std::string>) cxx_expressPosition:(HPVector)pos inCoordinateSystem:(const std::string &)system	{ return _cxxUniverse->expressPosition(pos, system); }
+
+@end
+
+
+@implementation Universe (OOSlice6)
+
+- (HPVector) cxx_legacyPositionFrom:(HPVector)pos asCoordinateSystem:(const std::string &)system	{ return _cxxUniverse->legacyPositionFrom(pos, system); }
+- (HPVector) cxx_coordinatesFromCoordinateSystemString:(const std::string &)system_x_y_z	{ return _cxxUniverse->coordinatesFromCoordinateSystemString(system_x_y_z); }
+- (BOOL) cxx_addShipWithRole:(const std::string &)desc nearPosition:(HPVector)pos withCoordinateSystem:(const std::string &)system	{ return _cxxUniverse->addShipWithRole(desc, pos, system); }
+- (BOOL) cxx_addShips:(int)howMany withRole:(const std::string &)desc atPosition:(HPVector)pos withCoordinateSystem:(const std::string &)system	{ return _cxxUniverse->addShipsAtPosition(howMany, desc, pos, system); }
+- (BOOL) cxx_addShips:(int)howMany withRole:(const std::string &)desc nearPosition:(HPVector)pos withCoordinateSystem:(const std::string &)system	{ return _cxxUniverse->addShipsNearPosition(howMany, desc, pos, system); }
+- (BOOL) cxx_addShips:(int)howMany withRole:(const std::string &)desc nearPosition:(HPVector)pos withCoordinateSystem:(const std::string &)system withinRadius:(GLfloat)radius	{ return _cxxUniverse->addShipsNearPosition(howMany, desc, pos, system, radius); }
+- (BOOL) cxx_addShips:(int)howMany withRole:(const std::string &)desc intoBoundingBox:(BoundingBox)bbox	{ return _cxxUniverse->addShips(howMany, desc, bbox); }
+- (BOOL) cxx_spawnShip:(const std::string &)shipdesc	{ return _cxxUniverse->spawnShip(shipdesc); }
+- (void) cxx_witchspaceShipWithPrimaryRole:(const std::string &)role	{ _cxxUniverse->witchspaceShipWithPrimaryRole(role); }
+- (ShipEntity *) cxx_spawnShipWithRole:(const std::string &)desc near:(Entity *)entity	{ return _cxxUniverse->spawnShipWithRole(desc, entity); }
+- (OOVisualEffectEntity *) cxx_addVisualEffectAt:(HPVector)pos withKey:(const std::string &)key	{ return _cxxUniverse->addVisualEffectAt(pos, key); }
+
+@end
+
+
+@implementation Universe (OOSlice7)
+
+- (ShipEntity *) addShipAt:(HPVector)pos withRole:(const std::string &)role withinRadius:(GLfloat)radius	{ return _cxxUniverse->addShipAt(pos, role, radius); }
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_addShipsAt:(HPVector)pos withRole:(const std::string &)role quantity:(unsigned)count withinRadius:(GLfloat)radius asGroup:(BOOL)isGroup	{ return _cxxUniverse->addShipsAt(pos, role, count, radius, isGroup); }
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_addShipsToRoute:(const std::string &)route withRole:(const std::string &)role quantity:(unsigned)count routeFraction:(double)routeFraction asGroup:(BOOL)isGroup	{ return _cxxUniverse->addShipsToRoute(route, role, count, routeFraction, isGroup); }
+- (BOOL) cxx_roleIsPirateVictim:(const std::string &)role	{ return _cxxUniverse->roleIsPirateVictim(role); }
+- (BOOL) cxx_role:(const std::string &)role isInCategory:(const std::string &)category	{ return _cxxUniverse->role(role, category); }
+- (void) forceWitchspaceEntries	{ _cxxUniverse->forceWitchspaceEntries(); }
+- (void) addWitchspaceJumpEffectForShip:(ShipEntity *)ship	{ _cxxUniverse->addWitchspaceJumpEffectForShip(ship); }
+- (GLfloat) safeWitchspaceExitDistance	{ return _cxxUniverse->safeWitchspaceExitDistance(); }
+- (void) setUpBreakPattern:(HPVector)pos orientation:(Quaternion)q forDocking:(BOOL)forDocking	{ _cxxUniverse->setUpBreakPattern(pos, q, forDocking); }
+- (BOOL) witchspaceBreakPattern	{ return _cxxUniverse->witchspaceBreakPattern(); }
+- (void) setWitchspaceBreakPattern:(BOOL)newValue	{ _cxxUniverse->setWitchspaceBreakPattern(newValue); }
+- (BOOL) dockingClearanceProtocolActive	{ return _cxxUniverse->dockingClearanceProtocolActive(); }
+- (void) setDockingClearanceProtocolActive:(BOOL)newValue	{ _cxxUniverse->setDockingClearanceProtocolActive(newValue); }
+- (void) handleGameOver	{ _cxxUniverse->handleGameOver(); }
+
+@end
+
+
+@implementation Universe (OOSlice8)
+
+- (void) setupIntroFirstGo:(BOOL)justCobra	{ _cxxUniverse->setupIntroFirstGo(justCobra); }
+- (oo::PList) demoShipData	{ return _cxxUniverse->demoShipData(); }
+- (void) setLibraryTextForDemoShip	{ _cxxUniverse->setLibraryTextForDemoShip(); }
+- (void) selectIntro2Previous	{ _cxxUniverse->selectIntro2Previous(); }
+- (void) selectIntro2PreviousCategory	{ _cxxUniverse->selectIntro2PreviousCategory(); }
+- (void) selectIntro2NextCategory	{ _cxxUniverse->selectIntro2NextCategory(); }
+- (void) selectIntro2Next	{ _cxxUniverse->selectIntro2Next(); }
+- (StationEntity *) station	{ return _cxxUniverse->station(); }
+- (StationEntity *) cxx_stationWithRole:(const std::string &)role andPosition:(HPVector)position	{ return _cxxUniverse->stationWithRole(role, position); }
+- (StationEntity *) stationFriendlyTo:(ShipEntity *)ship	{ return _cxxUniverse->stationFriendlyTo(ship); }
+- (OOPlanetEntity *) planet	{ return _cxxUniverse->planet(); }
+- (OOSunEntity *) sun	{ return _cxxUniverse->sun(); }
+- (std::vector<oo::ObjCRef<OOPlanetEntity *>>) cxx_planets	{ return _cxxUniverse->planets(); }
+- (std::vector<oo::ObjCRef<StationEntity *>>) cxx_stations	{ return _cxxUniverse->stations(); }
+
+@end
+
+
+@implementation Universe (OOSlice9)
+
+- (std::vector<oo::ObjCRef<WormholeEntity *>>) cxx_wormholes	{ return _cxxUniverse->wormholes(); }
+- (void) unMagicMainStation	{ _cxxUniverse->unMagicMainStation(); }
+- (void) resetBeacons	{ _cxxUniverse->resetBeacons(); }
+- (Entity <OOBeaconEntity> *) firstBeacon	{ return (Entity <OOBeaconEntity> *)_cxxUniverse->firstBeacon(); }
+- (void) setFirstBeacon:(Entity <OOBeaconEntity> *)beacon	{ _cxxUniverse->setFirstBeacon(beacon); }
+- (Entity <OOBeaconEntity> *) lastBeacon	{ return (Entity <OOBeaconEntity> *)_cxxUniverse->lastBeacon(); }
+- (void) setLastBeacon:(Entity <OOBeaconEntity> *)beacon	{ _cxxUniverse->setLastBeacon(beacon); }
+- (void) setNextBeacon:(Entity <OOBeaconEntity> *)beaconShip	{ _cxxUniverse->setNextBeacon(beaconShip); }
+- (void) clearBeacon:(Entity <OOBeaconEntity> *)beaconShip	{ _cxxUniverse->clearBeacon(beaconShip); }
+- (std::map<std::string, oo::ObjCRef<OOWaypointEntity *>, std::less<>>) cxx_currentWaypoints	{ return _cxxUniverse->currentWaypoints(); }
+- (void) cxx_defineWaypoint:(const oo::PList &)definition forKey:(const std::string &)key	{ _cxxUniverse->defineWaypoint(definition, key); }
+- (GLfloat *) skyClearColor	{ return _cxxUniverse->getSkyClearColor(); }
+- (void) setSkyColorRed:(GLfloat)red green:(GLfloat)green blue:(GLfloat)blue alpha:(GLfloat)alpha	{ _cxxUniverse->setSkyColorRed(red, green, blue, alpha); }
+- (BOOL) breakPatternOver	{ return _cxxUniverse->breakPatternOver(); }
+- (BOOL) breakPatternHide	{ return _cxxUniverse->breakPatternHide(); }
+- (BOOL) canInstantiateShip:(const std::string &)shipKey	{ return _cxxUniverse->canInstantiateShip(shipKey); }
+- (std::optional<std::string>) cxx_randomShipKeyForRoleRespectingConditions:(const std::string &)role	{ return _cxxUniverse->randomShipKeyForRoleRespectingConditions(role); }
+- (ShipEntity *) cxx_newShipWithRole:(const std::string &)role	{ return _cxxUniverse->newShipWithRole(role); }
+- (OOVisualEffectEntity *) cxx_newVisualEffectWithName:(const std::string &)effectKey	{ return _cxxUniverse->newVisualEffectWithName(effectKey); }
+- (ShipEntity *) cxx_newSubentityWithName:(const std::string &)shipKey andScaleFactor:(float)scale	{ return _cxxUniverse->newSubentityWithName(shipKey, scale); }
+- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy	{ return _cxxUniverse->newShipWithName(shipKey, usePlayerProxy); }
+- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity	{ return _cxxUniverse->newShipWithName(shipKey, usePlayerProxy, isSubentity); }
+- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity andScaleFactor:(float)scale	{ return _cxxUniverse->newShipWithName(shipKey, usePlayerProxy, isSubentity, scale); }
+- (DockEntity *) cxx_newDockWithName:(const std::string &)shipDataKey andScaleFactor:(float)scale	{ return _cxxUniverse->newDockWithName(shipDataKey, scale); }
+- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey	{ return _cxxUniverse->newShipWithName(shipKey); }
+- (Class) cxx_shipClassForShipDictionary:(const oo::PList &)dict	{ return _cxxUniverse->shipClassForShipDictionary(dict); }
+- (std::optional<std::string>) defaultAIForRole:(const std::string &)role	{ return _cxxUniverse->defaultAIForRole(role); }
+- (OOCargoQuantity) cxx_maxCargoForShip:(const std::string &)desc	{ return _cxxUniverse->maxCargoForShip(desc); }
+
+@end
+
+
+@implementation Universe (OOSlice10)
+
+- (OOCreditsQuantity) cxx_getEquipmentPriceForKey:(const std::string &)eq_key	{ return _cxxUniverse->getEquipmentPriceForKey(eq_key); }
+- (OOCommodities *) commodities	{ return _cxxUniverse->getCommodities(); }
+- (ShipEntity *) reifyCargoPod:(ShipEntity *)cargoObj	{ return _cxxUniverse->reifyCargoPod(cargoObj); }
+- (ShipEntity *) cargoPodFromTemplate:(ShipEntity *)cargoObj	{ return _cxxUniverse->cargoPodFromTemplate(cargoObj); }
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_getContainersOfGoods:(OOCargoQuantity)how_many scarce:(BOOL)scarce legal:(BOOL)legal	{ return _cxxUniverse->getContainersOfGoods(how_many, scarce, legal); }
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_getContainersOfCommodity:(const std::string &)commodity_name :(OOCargoQuantity)how_much	{ return _cxxUniverse->getContainersOfCommodity(commodity_name, how_much); }
+- (void) fillCargopodWithRandomCargo:(ShipEntity *)cargopod	{ _cxxUniverse->fillCargopodWithRandomCargo(cargopod); }
+- (std::string) getRandomCommodity	{ return _cxxUniverse->getRandomCommodity(); }
+- (OOCargoQuantity) cxx_getRandomAmountOfCommodity:(const std::string &)co_type	{ return _cxxUniverse->getRandomAmountOfCommodity(co_type); }
+- (oo::PList) commodityDataForType:(const std::string &)type	{ return _cxxUniverse->commodityDataForType(type); }
+- (std::optional<std::string>) cxx_displayNameForCommodity:(const std::string &)co_type	{ return _cxxUniverse->displayNameForCommodity(co_type); }
+- (std::optional<std::string>) cxx_describeCommodity:(const std::string &)co_type amount:(OOCargoQuantity)co_amount	{ return _cxxUniverse->describeCommodity(co_type, co_amount); }
+- (void) setGameView:(MyOpenGLView *)view	{ _cxxUniverse->setGameView(view); }
+- (MyOpenGLView *) gameView	{ return _cxxUniverse->getGameView(); }
+- (GameController *) gameController	{ return _cxxUniverse->gameController(); }
+- (oo::PList) cxx_gameSettings	{ return _cxxUniverse->gameSettings(); }
+- (void) useGUILightSource:(BOOL)GUILight	{ _cxxUniverse->useGUILightSource(GUILight); }
+- (void) lightForEntity:(BOOL)isLit	{ _cxxUniverse->lightForEntity(isLit); }
+- (void) getActiveViewMatrix:(OOMatrix *)outMatrix forwardVector:(Vector *)outForward upVector:(Vector *)outUp	{ _cxxUniverse->getActiveViewMatrix(outMatrix, outForward, outUp); }
+- (OOMatrix) activeViewMatrix	{ return _cxxUniverse->activeViewMatrix(); }
+
+@end
+
+
+@implementation Universe (OOSlice11)
+
+- (void) defineFrustum	{ _cxxUniverse->defineFrustum(); }
+- (BOOL) viewFrustumIntersectsSphereAt:(Vector)position withRadius:(GLfloat)radius	{ return _cxxUniverse->viewFrustumIntersectsSphereAt(position, radius); }
+
+@end
+
+
+@implementation Universe (OOSlice12)
+
+- (void) drawUniverse	{ _cxxUniverse->drawUniverse(); }
+- (void) prepareToRenderIntoDefaultFramebuffer	{ _cxxUniverse->prepareToRenderIntoDefaultFramebuffer(); }
+- (int) framesDoneThisUpdate	{ return _cxxUniverse->getFramesDoneThisUpdate(); }
+- (void) resetFramesDoneThisUpdate	{ _cxxUniverse->resetFramesDoneThisUpdate(); }
+- (OOMatrix) viewMatrix	{ return _cxxUniverse->getViewMatrix(); }
+
+@end
+
+
+@implementation Universe (OOSlice13)
+
+- (void) drawMessage	{ _cxxUniverse->drawMessage(); }
+- (void) drawWatermarkString:(const std::string &)watermarkString	{ _cxxUniverse->drawWatermarkString(watermarkString); }
+- (id) entityForUniversalID:(OOUniversalID)u_id	{ return _cxxUniverse->entityForUniversalID(u_id); }
+- (BOOL) addEntity:(Entity *)entity	{ return _cxxUniverse->addEntity(entity); }
+- (BOOL) removeEntity:(Entity *)entity	{ return _cxxUniverse->removeEntity(entity); }
+- (void) ensureEntityReallyRemoved:(Entity *)entity	{ _cxxUniverse->ensureEntityReallyRemoved(entity); }
+- (void) removeAllEntitiesExceptPlayer	{ _cxxUniverse->removeAllEntitiesExceptPlayer(); }
+- (void) removeDemoShips	{ _cxxUniverse->removeDemoShips(); }
+
+@end
+
+
 @implementation Universe (OOSlice14)
 
 - (ShipEntity *) cxx_makeDemoShipWithRole:(const std::string &)role spinning:(BOOL)spinning	{ return _cxxUniverse->makeDemoShipWithRole(role, spinning); }

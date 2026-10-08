@@ -197,6 +197,10 @@ inline constexpr std::string_view PLANETINFO_INTERSTELLAR_KEY			= "interstellar 
 
 
 @class Universe;
+
+// A beacon, which stays its Objective-C object (the beacon members of slice 9). Named at file scope
+// as OOWaypointEntity.h names it: inside namespace cxx a protocol list cannot follow ::Entity.
+typedef Entity <OOBeaconEntity> OOBeaconEntityObject;
 @class OOUniverseDelayedMessage;	// Universe.mm's holder of a delayed message (slice 16)
 
 /*	The universe's state (bead oo-riqmz, slice 1 of docs/phases/3-slices/Universe.md): the old
@@ -456,6 +460,145 @@ public:
 	void setUpWitchspace();
 	void setUpWitchspaceBetweenSystem(OOSystemID s1, OOSystemID s2);
 	::OOPlanetEntity *setUpPlanet();
+
+	// Slice 4: setUpSpace, populating normal space, the system populator.
+	void setUpSpace();
+	void populateNormalSpace();
+	void clearSystemPopulator();
+	oo::PList getPopulatorSettings();
+	void setPopulatorSetting(const std::string &key, const oo::PList &setting);
+	bool deterministicPopulation();
+	void populateSystemFromDictionariesWithSun(::OOSunEntity *sun, ::OOPlanetEntity *planet);
+
+	// Slice 5: locations by code, lighting, adding ships by role, coordinate systems.
+	HPVector locationByCode(const std::string &code, ::OOSunEntity *sun, ::OOPlanetEntity *planet);
+	void setAmbientLightLevel(float newValue);
+	float getAmbientLightLevel();
+	void setLighting();
+	void forceLightSwitch();
+	void setMainLightPosition(Vector sunPos);
+	::ShipEntity *addShipWithRole(const std::string &desc, HPVector launchPos, GLfloat rfactor);
+	void addShipWithRole(const std::string &desc, double route_fraction);
+	HPVector coordinatesForPosition(HPVector pos, const std::string &system, GLfloat *my_scalar);
+	std::optional<std::string> expressPosition(HPVector pos, const std::string &system);
+
+	// Slice 6: legacy positions, adding ships at / near positions and in boxes, spawning, visual effects.
+	HPVector legacyPositionFrom(HPVector pos, const std::string &system);
+	HPVector coordinatesFromCoordinateSystemString(const std::string &system_x_y_z);
+	bool addShipWithRole(const std::string &desc, HPVector pos, const std::string &system);
+	bool addShipsAtPosition(int howMany, const std::string &desc, HPVector pos, const std::string &system);
+	bool addShipsNearPosition(int howMany, const std::string &desc, HPVector pos, const std::string &system);
+	bool addShipsNearPosition(int howMany, const std::string &desc, HPVector pos, const std::string &system, GLfloat radius);
+	bool addShips(int howMany, const std::string &desc, BoundingBox bbox);
+	bool spawnShip(const std::string &shipdesc);
+	void witchspaceShipWithPrimaryRole(const std::string &role);
+	::ShipEntity *spawnShipWithRole(const std::string &desc, ::Entity *entity);
+	::OOVisualEffectEntity *addVisualEffectAt(HPVector pos, const std::string &key);
+
+	// Slice 7: adding ships within a radius and on routes, role categories, witchspace entries and effects, break patterns, the docking clearance protocol, game over.
+	::ShipEntity *addShipAt(HPVector pos, const std::string &role, GLfloat radius);
+	std::vector<oo::ObjCRef<::ShipEntity *>> addShipsAt(HPVector pos, const std::string &role, unsigned count, GLfloat radius, bool isGroup);
+	std::vector<oo::ObjCRef<::ShipEntity *>> addShipsToRoute(const std::string &route, const std::string &role, unsigned count, double routeFraction, bool isGroup);
+	bool roleIsPirateVictim(const std::string &role);
+	bool role(const std::string &role, const std::string &category);
+	void forceWitchspaceEntries();
+	void addWitchspaceJumpEffectForShip(::ShipEntity *ship);
+	GLfloat safeWitchspaceExitDistance();
+	void setUpBreakPattern(HPVector pos, Quaternion q, bool forDocking);
+	bool witchspaceBreakPattern();
+	void setWitchspaceBreakPattern(bool newValue);
+	bool dockingClearanceProtocolActive();
+	void setDockingClearanceProtocolActive(bool newValue);
+	void handleGameOver();
+
+	// Slice 8: the intro and demo ships, the ship library text, station and planet look-ups.
+	void setupIntroFirstGo(bool justCobra);
+	oo::PList demoShipData();
+	void setLibraryTextForDemoShip();
+	void selectIntro2Previous();
+	void selectIntro2PreviousCategory();
+	void selectIntro2NextCategory();
+	void selectIntro2Next();
+	::StationEntity *station();
+	::StationEntity *stationWithRole(const std::string &role, HPVector position);
+	::StationEntity *stationFriendlyTo(::ShipEntity *ship);
+	::OOPlanetEntity *planet();
+	::OOSunEntity *sun();
+	std::vector<oo::ObjCRef<::OOPlanetEntity *>> planets();
+	std::vector<oo::ObjCRef<::StationEntity *>> stations();
+
+	// Slice 9: wormholes, the main station, beacons, waypoints, sky colour, the break pattern, making ships by role and name, default AIs, cargo capacity.
+	std::vector<oo::ObjCRef<::WormholeEntity *>> wormholes();
+	void unMagicMainStation();
+	void resetBeacons();
+	OOBeaconEntityObject *firstBeacon();
+	void setFirstBeacon(OOBeaconEntityObject *beacon);
+	OOBeaconEntityObject *lastBeacon();
+	void setLastBeacon(OOBeaconEntityObject *beacon);
+	void setNextBeacon(OOBeaconEntityObject *beaconShip);
+	void clearBeacon(OOBeaconEntityObject *beaconShip);
+	std::map<std::string, oo::ObjCRef<::OOWaypointEntity *>, std::less<>> currentWaypoints();
+	void defineWaypoint(const oo::PList &definition, const std::string &key);
+	GLfloat *getSkyClearColor();
+	void setSkyColorRed(GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha);
+	bool breakPatternOver();
+	bool breakPatternHide();
+	bool canInstantiateShip(const std::string &shipKey);
+	std::optional<std::string> randomShipKeyForRoleRespectingConditions(const std::string &role);
+	::ShipEntity *newShipWithRole(const std::string &role);
+	::OOVisualEffectEntity *newVisualEffectWithName(const std::string &effectKey);
+	::ShipEntity *newSubentityWithName(const std::string &shipKey, float scale);
+	::ShipEntity *newShipWithName(const std::string &shipKey, bool usePlayerProxy);
+	::ShipEntity *newShipWithName(const std::string &shipKey, bool usePlayerProxy, bool isSubentity);
+	::ShipEntity *newShipWithName(const std::string &shipKey, bool usePlayerProxy, bool isSubentity, float scale);
+	::DockEntity *newDockWithName(const std::string &shipDataKey, float scale);
+	::ShipEntity *newShipWithName(const std::string &shipKey);
+	Class shipClassForShipDictionary(const oo::PList &dict);
+	std::optional<std::string> defaultAIForRole(const std::string &role);
+	OOCargoQuantity maxCargoForShip(const std::string &desc);
+
+	// Slice 10: equipment prices, commodities and cargo pods, the game view and controller, settings, entity lighting, the active view matrix.
+	OOCreditsQuantity getEquipmentPriceForKey(const std::string &eq_key);
+	::OOCommodities *getCommodities();
+	::ShipEntity *reifyCargoPod(::ShipEntity *cargoObj);
+	::ShipEntity *cargoPodFromTemplate(::ShipEntity *cargoObj);
+	std::vector<oo::ObjCRef<::ShipEntity *>> getContainersOfGoods(OOCargoQuantity how_many, bool scarce, bool legal);
+	std::vector<oo::ObjCRef<::ShipEntity *>> getContainersOfCommodity(const std::string &commodity_name, OOCargoQuantity how_much);
+	void fillCargopodWithRandomCargo(::ShipEntity *cargopod);
+	std::string getRandomCommodity();
+	OOCargoQuantity getRandomAmountOfCommodity(const std::string &co_type);
+	oo::PList commodityDataForType(const std::string &type);
+	std::optional<std::string> displayNameForCommodity(const std::string &co_type);
+	std::optional<std::string> describeCommodity(const std::string &co_type, OOCargoQuantity co_amount);
+	void setGameView(::MyOpenGLView *view);
+	::MyOpenGLView *getGameView();
+	::GameController *gameController();
+	oo::PList gameSettings();
+	void useGUILightSource(bool GUILight);
+	void lightForEntity(bool isLit);
+	void getActiveViewMatrix(OOMatrix *outMatrix, Vector *outForward, Vector *outUp);
+	OOMatrix activeViewMatrix();
+
+	// Slice 11: the view frustum.
+	void defineFrustum();
+	bool viewFrustumIntersectsSphereAt(Vector position, GLfloat radius);
+
+	// Slice 12: drawUniverse, framebuffer preparation, frame counters, the view matrix.
+	void drawUniverse();
+	void prepareToRenderIntoDefaultFramebuffer();
+	int getFramesDoneThisUpdate();
+	void resetFramesDoneThisUpdate();
+	OOMatrix getViewMatrix();
+
+	// Slice 13: messages and the watermark, entity look-up, the linked lists, adding and removing entities, demo ships.
+	void drawMessage();
+	void drawWatermarkString(const std::string &watermarkString);
+	id entityForUniversalID(OOUniversalID u_id);
+	bool addEntity(::Entity *entity);
+	bool removeEntity(::Entity *entity);
+	void ensureEntityReallyRemoved(::Entity *entity);
+	void removeAllEntitiesExceptPlayer();
+	void removeDemoShips();
 
 	// Slice 14: making demo ships, safe vectors, hazards on route, wreckage, laser hits.
 	::ShipEntity *makeDemoShipWithRole(const std::string &role, bool spinning);

@@ -4514,6 +4514,44 @@ unchanged and reach the members through the façade until their own conversion.
 **Consequences.** `ShipEntityAI.h` keeps only its imports for the files that import it; the
 ship's façade deletion bead (oo-9ht.144) removes the forwarding categories with the others.
 
+## Amendment (bead oo-18mg2): a binding's slices over an entity whose class is C++ behind its façade (OOJSShip)
+
+- Date: 2026-10-07. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Plan:
+  `docs/phases/3-slices/OOJSShip.md` (beads oo-18mg2, oo-chjz4, oo-08plt, oo-hqe5l, oo-qzn25,
+  oo-ljuy1). Exemplar: `src/Core/Scripting/OOJSShip.mm` and `OOJSShip+ObjCBridge.h/.mm` after slice
+  1, `tests/unit/core/test_OOJSShip.mm`. Follows amendments oo-luhd, oo-ft5n and oo-9ht.139, whose
+  item 2 says the sends to the wrapped class become member calls once it is C++.
+
+**Decision (recommended defaults).**
+
+1. **A native takes the façade from its JS object as before and crosses once**:
+   `cxx::ShipEntity *ship = oo::ToCxx(entity);` after the stale-entity check, so it is not null.
+   A send to the ship becomes the member its façade forwarder calls (`-fuel` is `getFuel()`,
+   `-isFrangible` is `getIsFrangible()`; the forwarder in `ShipEntity+ObjCBridge.mm` is the
+   table). A forwarder that calls the member qualified (`_cxxShip->cxx::ShipEntity::getBounty()`)
+   marks a member an Objective-C subclass overrides: it is `virtual` with its line in
+   `oo::ObjCShipEntity`, so the native calls it unqualified and the player's override still answers.
+   A selector a subclass overrides whose member is not virtual stays a bridge send (amendment
+   oo-9ht.139 item 3) until the ship's slices make it so.
+2. **A selector of the player alone** (`-availableFacings`, `-fleeingStatus`, after an `isPlayer`
+   test) is a bridge function taking the cast façade, `OOJSShipPlayerAvailableFacings(pent)`.
+3. **What the ship hands out that is converted** (`AI`, `OORoleSet`, `OOShipGroup`, `OOColor`) is
+   crossed with `oo::ToCxx` at the use and null-guarded; repeated reads through one (the AI's name,
+   state, suspended machines) go through one file-local helper each, as `AskHud()` does (amendment
+   oo-ft5n item 3). A box the native made as an Objective-C object for JavaScript
+   (`OONativeVector`) is made as its C++ class and handed over as `oo::ToObjC(box)`.
+4. **A category method on the wrapped class that no subclass overrides and that forwards to a free
+   function** (`-subEntitiesForScript`, `ShipEntityJSSubEntitiesForScript()`) is that function,
+   called with the façade (amendment oo-ft5n item 2).
+5. **The test** makes a real ship with `ShipEntity`'s own set-up (`PlainShip`, a definition in the
+   test) in a never-initialised `Universe` with a plain entity as `PLAYER` (test_ShipEntity.mm's
+   set-up), next to the real engine (test_OOJSPlayerShip.mm's), and binds the ship's JS object to a
+   global; the player branches read the engine's own player with its class swapped for a test
+   subclass that answers the player's selectors. Each later slice adds its natives' cases.
+
+**Consequences.** `OOJSShip+ObjCBridge.mm` holds only sends to the player and the universe (and
+other unconverted classes); its deletion bead waits for oo-pas and oo-a70.
+
 ## Amendment (bead oo-27jxj): Universe slices 2-13, a singleton's later slices
 
 - Date: 2026-10-07. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Plan:
