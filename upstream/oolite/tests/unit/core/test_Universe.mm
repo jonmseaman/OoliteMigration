@@ -22,6 +22,8 @@
 #import "PlayerEntity.h"
 #include "oofnd/objc/OOException.h"	// slice 24: -handleOoliteException:
 
+extern PlayerEntity *gOOPlayer;	// the slice 2-13 cases run before slice 14's stand-in player is installed
+
 #include "oo_test.hpp"
 
 
