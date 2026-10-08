@@ -541,449 +541,6 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 #define SKY_AMBIENT_ADJUSTMENT		0.0625
 
 
-/* Generates a position within one of the named regions:
- *
- * WITCHPOINT: within scanner of witchpoint
- * LANE_*: within two scanner of lane, not too near each end
- * STATION_AEGIS: within two scanner of main station, not in planet
- * *_ORBIT_*: around the object, in a shell relative to object radius
- * TRIANGLE: somewhere in the triangle defined by W, P, S
- * INNER_SYSTEM: closer to the sun than the planet is
- * OUTER_SYSTEM: further from the sun than the planet is
- * *_OFFPLANE: like the above, but not on the orbital plane
- *
- * Can be called with nil sun or planet, but if so the calling function
- * must make sure the location code is WITCHPOINT.
- */
-- (HPVector) cxx_locationByCode:(const std::string &)code withSun:(OOSunEntity *)sun andPlanet:(OOPlanetEntity *)planet
-{
-	HPVector result = kZeroHPVector;
-	if (code == "WITCHPOINT" || sun == nil || planet == nil || [sun goneNova])
-	{
-		result = OOHPVectorRandomSpatial(SCANNER_MAX_RANGE);
-	}
-	// past this point, can assume non-nil sun, planet
-	else
-	{ 
-		if (code == "LANE_WPS")
-		{	
-			// pick position on one of the lanes, weighted by lane length
-			double l1 = HPmagnitude([planet position]);
-			double l2 = HPmagnitude(HPvector_subtract([sun position],[planet position]));
-			double l3 = HPmagnitude([sun position]);
-			double total = l1+l2+l3;
-			float choice = randf();
-			if (choice < l1/total)
-			{
-				return [self cxx_locationByCode:"LANE_WP" withSun:sun andPlanet:planet];
-			}
-			else if (choice < (l1+l2)/total)
-			{
-				return [self cxx_locationByCode:"LANE_PS" withSun:sun andPlanet:planet];
-			}
-			else
-			{
-				return [self cxx_locationByCode:"LANE_WS" withSun:sun andPlanet:planet];
-			}
-		}
-		else if (code == "LANE_WP")
-		{
-			result = OORandomPositionInCylinder(kZeroHPVector,SCANNER_MAX_RANGE,[planet position],[planet radius]*3,LANE_WIDTH);
-		}
-		else if (code == "LANE_WS")
-		{
-			result = OORandomPositionInCylinder(kZeroHPVector,SCANNER_MAX_RANGE,[sun position],[sun radius]*3,LANE_WIDTH);
-		}
-		else if (code == "LANE_PS")
-		{
-			result = OORandomPositionInCylinder([planet position],[planet radius]*3,[sun position],[sun radius]*3,LANE_WIDTH);
-		}
-		else if (code == "STATION_AEGIS")
-		{
-			do 
-			{
-				result = OORandomPositionInShell([[self station] position],[[self station] collisionRadius]*1.2,SCANNER_MAX_RANGE*2.0);
-			} while(HPdistance2(result,[planet position])<[planet radius]*[planet radius]*1.5);
-			// loop to make sure not generated too close to the planet's surface
-		}
-		else if (code == "PLANET_ORBIT_LOW")
-		{
-			result = OORandomPositionInShell([planet position],[planet radius]*1.1,[planet radius]*2.0);
-		}
-		else if (code == "PLANET_ORBIT")
-		{
-			result = OORandomPositionInShell([planet position],[planet radius]*2.0,[planet radius]*4.0);
-		}
-		else if (code == "PLANET_ORBIT_HIGH")
-		{
-			result = OORandomPositionInShell([planet position],[planet radius]*4.0,[planet radius]*8.0);
-		}
-		else if (code == "STAR_ORBIT_LOW")
-		{
-			result = OORandomPositionInShell([sun position],[sun radius]*1.1,[sun radius]*2.0);
-		}
-		else if (code == "STAR_ORBIT")
-		{
-			result = OORandomPositionInShell([sun position],[sun radius]*2.0,[sun radius]*4.0);
-		}
-		else if (code == "STAR_ORBIT_HIGH")
-		{
-			result = OORandomPositionInShell([sun position],[sun radius]*4.0,[sun radius]*8.0);
-		}
-		else if (code == "TRIANGLE")
-		{
-			do {
-				// pick random point in triangle by algorithm at
-				// http://adamswaab.wordpress.com/2009/12/11/random-point-in-a-triangle-barycentric-coordinates/
-				// simplified by using the origin as A
-				OOScalar r = randf();
-				OOScalar s = randf();
-				if (r+s >= 1)
-				{
-					r = 1-r;
-					s = 1-s;
-				}
-				result = HPvector_add(HPvector_multiply_scalar([planet position],r),HPvector_multiply_scalar([sun position],s));
-			}
-			// make sure at least 3 radii from vertices
-			while(HPdistance2(result,[sun position]) < [sun radius]*[sun radius]*9.0 || HPdistance2(result,[planet position]) < [planet radius]*[planet radius]*9.0 || HPmagnitude2(result) < SCANNER_MAX_RANGE2 * 9.0);
-		}
-		else if (code == "INNER_SYSTEM")
-		{
-			do {
-				result = OORandomPositionInShell([sun position],[sun radius]*3.0,HPdistance([sun position],[planet position]));
-				result = OOProjectHPVectorToPlane(result,kZeroHPVector,HPcross_product([sun position],[planet position]));
-				result = HPvector_add(result,OOHPVectorRandomSpatial([planet radius]));
-				// projection to plane could bring back too close to sun
-			} while (HPdistance2(result,[sun position]) < [sun radius]*[sun radius]*9.0);
-		}
-		else if (code == "INNER_SYSTEM_OFFPLANE")
-		{
-			result = OORandomPositionInShell([sun position],[sun radius]*3.0,HPdistance([sun position],[planet position]));
-		}
-		else if (code == "OUTER_SYSTEM")
-		{
-			result = OORandomPositionInShell([sun position],HPdistance([sun position],[planet position]),HPdistance([sun position],[planet position])*10.0); // no more than 10 AU out
-			result = OOProjectHPVectorToPlane(result,kZeroHPVector,HPcross_product([sun position],[planet position]));
-			result = HPvector_add(result,OOHPVectorRandomSpatial(0.01*HPdistance(result,[sun position]))); // within 1% of plane
-		}
-		else if (code == "OUTER_SYSTEM_OFFPLANE")
-		{
-			result = OORandomPositionInShell([sun position],HPdistance([sun position],[planet position]),HPdistance([sun position],[planet position])*10.0); // no more than 10 AU out
-		}
-		else
-		{
-			OO_LOG(kOOLogUniversePopulateError, "Named populator region {} is not implemented, falling back to WITCHPOINT", code); 
-			result = OOHPVectorRandomSpatial(SCANNER_MAX_RANGE);
-		}
-	}
-	return result;
-}
-
-
-- (void) setAmbientLightLevel:(float)newValue
-{
-	OOAssert(UNIVERSE != nil, "Attempt to set ambient light level with a non yet existent universe.");
-	
-	_cxxUniverse->ambientLightLevel = OOClamp_0_max_f(newValue, 10.0f);
-	return;
-}
-
-
-- (float) ambientLightLevel
-{
-	return _cxxUniverse->ambientLightLevel;
-}
-
-
-- (void) setLighting
-{
-	/*
-	
-	GL_LIGHT1 is the sun and is active while a sun exists in space
-	where there is no sun (witch/interstellar space) this is placed at the origin
-	
-	Shaders: this light is also used inside the station and needs to have its position reset
-	relative to the player whenever demo ships or background scenes are to be shown -- 20100111
-	
-	
-	GL_LIGHT0 is the light for inside the station and needs to have its position reset
-	relative to the player whenever demo ships or background scenes are to be shown
-	
-	Shaders: this light is not used.  -- 20100111
-	
-	*/
-	
-	OOSunEntity		*the_sun = [self sun];
-	SkyEntity		*the_sky = nil;
-	GLfloat			sun_pos[] = {0.0, 0.0, 0.0, 1.0};	// equivalent to kZeroVector - for interstellar space.
-	GLfloat			sun_ambient[] = {0.0, 0.0, 0.0, 1.0};	// overridden later in code
-	int i;
-	
-	for (i = _cxxUniverse->n_entities - 1; i > 0; i--)
-		if ((_cxxUniverse->sortedEntities[i]) && ([_cxxUniverse->sortedEntities[i] isKindOfClass:[SkyEntity class]]))
-			the_sky = (SkyEntity*)_cxxUniverse->sortedEntities[i];
-	
-	if (the_sun)
-	{
-		[the_sun getDiffuseComponents:_cxxUniverse->sun_diffuse];
-		[the_sun getSpecularComponents:_cxxUniverse->sun_specular];
-		OOGL(glLightfv(GL_LIGHT1, GL_AMBIENT, sun_ambient));
-		OOGL(glLightfv(GL_LIGHT1, GL_DIFFUSE, _cxxUniverse->sun_diffuse));
-		OOGL(glLightfv(GL_LIGHT1, GL_SPECULAR, _cxxUniverse->sun_specular));
-		sun_pos[0] = the_sun->_cxxEntity->position.x;
-		sun_pos[1] = the_sun->_cxxEntity->position.y;
-		sun_pos[2] = the_sun->_cxxEntity->position.z;
-	}
-	else
-	{
-		// witchspace
-		_cxxUniverse->stars_ambient[0] = 0.05;	_cxxUniverse->stars_ambient[1] = 0.20;	_cxxUniverse->stars_ambient[2] = 0.05;	_cxxUniverse->stars_ambient[3] = 1.0;
-		_cxxUniverse->sun_diffuse[0] = 0.85;	_cxxUniverse->sun_diffuse[1] = 1.0;	_cxxUniverse->sun_diffuse[2] = 0.85;	_cxxUniverse->sun_diffuse[3] = 1.0;
-		_cxxUniverse->sun_specular[0] = 0.95;	_cxxUniverse->sun_specular[1] = 1.0;	_cxxUniverse->sun_specular[2] = 0.95;	_cxxUniverse->sun_specular[3] = 1.0;
-		OOGL(glLightfv(GL_LIGHT1, GL_AMBIENT, sun_ambient));
-		OOGL(glLightfv(GL_LIGHT1, GL_DIFFUSE, _cxxUniverse->sun_diffuse));
-		OOGL(glLightfv(GL_LIGHT1, GL_SPECULAR, _cxxUniverse->sun_specular));
-	}
-	
-	OOGL(glLightfv(GL_LIGHT1, GL_POSITION, sun_pos));
-	
-	if (the_sky)
-	{
-		// ambient lighting!
-		GLfloat r,g,b,a;
-		[[the_sky skyColor] getRed:&r green:&g blue:&b alpha:&a];
-		r = r * (1.0 - SUN_AMBIENT_INFLUENCE) + _cxxUniverse->sun_diffuse[0] * SUN_AMBIENT_INFLUENCE;
-		g = g * (1.0 - SUN_AMBIENT_INFLUENCE) + _cxxUniverse->sun_diffuse[1] * SUN_AMBIENT_INFLUENCE;
-		b = b * (1.0 - SUN_AMBIENT_INFLUENCE) + _cxxUniverse->sun_diffuse[2] * SUN_AMBIENT_INFLUENCE;
-		GLfloat ambient_level = [self ambientLightLevel];
-		_cxxUniverse->stars_ambient[0] = ambient_level * SKY_AMBIENT_ADJUSTMENT * (1.0 + r) * (1.0 + r);
-		_cxxUniverse->stars_ambient[1] = ambient_level * SKY_AMBIENT_ADJUSTMENT * (1.0 + g) * (1.0 + g);
-		_cxxUniverse->stars_ambient[2] = ambient_level * SKY_AMBIENT_ADJUSTMENT * (1.0 + b) * (1.0 + b);
-		_cxxUniverse->stars_ambient[3] = 1.0;
-	}
-	
-	// light for demo ships display..
-	OOGL(glLightfv(GL_LIGHT0, GL_AMBIENT, docked_light_ambient));
-	OOGL(glLightfv(GL_LIGHT0, GL_DIFFUSE, docked_light_diffuse));
-	OOGL(glLightfv(GL_LIGHT0, GL_SPECULAR, docked_light_specular));
-	OOGL(glLightfv(GL_LIGHT0, GL_POSITION, demo_light_position));	
-	OOGL(glLightModelfv(GL_LIGHT_MODEL_AMBIENT, _cxxUniverse->stars_ambient));
-}
-
-
-// Call this method to avoid lighting glich after windowed/fullscreen transition on macs.
-- (void) forceLightSwitch
-{
-	demo_light_on = !demo_light_on;
-}
-
-
-- (void) setMainLightPosition: (Vector) sunPos
-{
-	_cxxUniverse->main_light_position[0] = sunPos.x;
-	_cxxUniverse->main_light_position[1] = sunPos.y;
-	_cxxUniverse->main_light_position[2] = sunPos.z;
-	_cxxUniverse->main_light_position[3] = 1.0;
-}
-
-
-- (ShipEntity *) addShipWithRole:(const std::string &)desc launchPos:(HPVector)launchPos rfactor:(GLfloat)rfactor
-{
-	if (rfactor != 0.0)
-	{
-		// Calculate the position as soon as possible, to minimise 'lollipop flash'
-	 	launchPos.x += 2 * rfactor * (randf() - 0.5);
-		launchPos.y += 2 * rfactor * (randf() - 0.5);
-		launchPos.z += 2 * rfactor * (randf() - 0.5);
-	}
-	
-	ShipEntity  *ship = [self cxx_newShipWithRole:desc];   // retain count = 1
-
-	if (ship)
-	{
-		[ship setPosition:launchPos];	// minimise 'lollipop flash'
-
-		// Deal with scripted cargopods and ensure they are filled with something.
-		if ([ship hasRole:"cargopod"])  [self fillCargopodWithRandomCargo:ship];
-
-		// Ensure piloted ships have pilots.
-		if (![ship cxx_crew].has_value() && ![ship isUnpiloted])
-			[ship cxx_setCrew:std::vector<oo::ObjCRef<OOCharacter *>>{ oo::ObjCRef<OOCharacter *>(
-						   [OOCharacter randomCharacterWithRole:desc
-											  andOriginalSystem:Ranrot() & 255]) }];
-		
-		if ([ship scanClass] == CLASS_NOT_SET)
-		{
-			[ship setScanClass: CLASS_NEUTRAL];
-		}
-		[self addEntity:ship];	// STATUS_IN_FLIGHT, AI state GLOBAL
-		[ship release];
-		return ship;
-	}
-	return nil;
-}
-
-
-- (void) cxx_addShipWithRole:(const std::string &) desc nearRouteOneAt:(double) route_fraction
-{
-	// adds a ship within scanner range of a point on route 1
-	
-	Entity	*theStation = [self station];
-	if (!theStation)
-	{
-		return;
-	}
-	
-	HPVector	launchPos = OOHPVectorInterpolate([self getWitchspaceExitPosition], [theStation position], route_fraction);
-	
-	[self addShipWithRole:desc launchPos:launchPos rfactor:SCANNER_MAX_RANGE];
-}
-
-
-- (HPVector) cxx_coordinatesForPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system returningScalar:(GLfloat*) my_scalar
-{
-	/*	the point is described using a system selected by a string
-		consisting of a three letter code.
-		
-		The first letter indicates the feature that is the origin of the coordinate system.
-			w => witchpoint
-			s => sun
-			p => planet
-			
-		The next letter indicates the feature on the 'z' axis of the coordinate system.
-			w => witchpoint
-			s => sun
-			p => planet
-			
-		Then the 'y' axis of the system is normal to the plane formed by the planet, sun and witchpoint.
-		And the 'x' axis of the system is normal to the y and z axes.
-		So:
-			ps:		z axis = (planet -> sun)		y axis = normal to (planet - sun - witchpoint)	x axis = normal to y and z axes
-			pw:		z axis = (planet -> witchpoint)	y axis = normal to (planet - witchpoint - sun)	x axis = normal to y and z axes
-			sp:		z axis = (sun -> planet)		y axis = normal to (sun - planet - witchpoint)	x axis = normal to y and z axes
-			sw:		z axis = (sun -> witchpoint)	y axis = normal to (sun - witchpoint - planet)	x axis = normal to y and z axes
-			wp:		z axis = (witchpoint -> planet)	y axis = normal to (witchpoint - planet - sun)	x axis = normal to y and z axes
-			ws:		z axis = (witchpoint -> sun)	y axis = normal to (witchpoint - sun - planet)	x axis = normal to y and z axes
-			
-		The third letter denotes the units used:
-			m:		meters
-			p:		planetary radii
-			s:		solar radii
-			u:		distance between first two features indicated (eg. spu means that u = distance from sun to the planet)
-		
-		in interstellar space (== no sun) coordinates are absolute irrespective of the system used.
-		
-		[1.71] The position code "abs" can also be used for absolute coordinates.
-		
-	*/
-	
-	const std::string l_sys = oo::str::lowercase(system);
-	if (oo::str::length(l_sys) != 3)	// UTF-16 units, as -length counted
-		return kZeroHPVector;
-	OOPlanetEntity* the_planet = [self planet];
-	OOSunEntity* the_sun = [self sun];
-	if (the_planet == nil || the_sun == nil || l_sys == "abs")
-	{
-		if (my_scalar)  *my_scalar = 1.0;
-		return pos;
-	}
-	HPVector  w_pos = [self getWitchspaceExitPosition];	// don't reset PRNG
-	HPVector  p_pos = the_planet->_cxxEntity->position;
-	HPVector  s_pos = the_sun->_cxxEntity->position;
-
-	const char* c_sys = l_sys.c_str();
-	HPVector p0, p1, p2;
-	
-	switch (c_sys[0])
-	{
-		case 'w':
-			p0 = w_pos;
-			switch (c_sys[1])
-			{
-				case 'p':
-					p1 = p_pos;	p2 = s_pos;	break;
-				case 's':
-					p1 = s_pos;	p2 = p_pos;	break;
-				default:
-					return kZeroHPVector;
-			}
-			break;
-		case 'p':		
-			p0 = p_pos;
-			switch (c_sys[1])
-			{
-				case 'w':
-					p1 = w_pos;	p2 = s_pos;	break;
-				case 's':
-					p1 = s_pos;	p2 = w_pos;	break;
-				default:
-					return kZeroHPVector;
-			}
-			break;
-		case 's':
-			p0 = s_pos;
-			switch (c_sys[1])
-			{
-				case 'w':
-					p1 = w_pos;	p2 = p_pos;	break;
-				case 'p':
-					p1 = p_pos;	p2 = w_pos;	break;
-				default:
-					return kZeroHPVector;
-			}
-			break;
-		default:
-			return kZeroHPVector;
-	}
-	HPVector k = HPvector_normal_or_zbasis(HPvector_subtract(p1, p0));	// 'forward'
-	HPVector v = HPvector_normal_or_xbasis(HPvector_subtract(p2, p0));	// temporary vector in plane of 'forward' and 'right'
-	
-	HPVector j = HPcross_product(k, v);	// 'up'
-	HPVector i = HPcross_product(j, k);	// 'right'
-	
-	GLfloat scale = 1.0;
-	switch (c_sys[2])
-	{
-		case 'p':
-			scale = [the_planet radius];
-			break;
-			
-		case 's':
-			scale = [the_sun radius];
-			break;
-			
-		case 'u':
-			scale = HPmagnitude(HPvector_subtract(p1, p0));
-			break;
-			
-		case 'm':
-			scale = 1.0f;
-			break;
-			
-		default:
-			return kZeroHPVector;
-	}
-	if (my_scalar)
-		*my_scalar = scale;
-	
-	// result = p0 + ijk
-	HPVector result = p0;	// origin
-	result.x += scale * (pos.x * i.x + pos.y * j.x + pos.z * k.x);
-	result.y += scale * (pos.x * i.y + pos.y * j.y + pos.z * k.y);
-	result.z += scale * (pos.x * i.z + pos.y * j.z + pos.z * k.z);
-	
-	return result;
-}
-
-
-- (std::optional<std::string>) cxx_expressPosition:(HPVector) pos inCoordinateSystem:(const std::string &) system
-{
-	HPVector result = [self cxx_legacyPositionFrom:pos asCoordinateSystem:system];
-	return oo::str::format("%s %.2f %.2f %.2f", system.c_str(), result.x, result.y, result.z);
-}
-
-
 - (HPVector) cxx_legacyPositionFrom:(HPVector) pos asCoordinateSystem:(const std::string &) system
 {
 	const std::string l_sys = oo::str::lowercase(system);
@@ -6021,6 +5578,463 @@ void Universe::populateSystemFromDictionariesWithSun(::OOSunEntity *sun, ::OOPla
 	}
 	// nothing is deterministic once the populator is done
 	deterministic_population = NO;
+}
+
+
+}	// namespace cxx
+
+
+// Slice 5 of docs/phases/3-slices/Universe.md (bead oo-d0i7y): locations by code, lighting, adding
+// ships by role, coordinate systems. The facade forwards each selector (Universe+ObjCBridge.mm);
+// sends to self stay sends (ADR-0056 amendment oo-27jxj).
+namespace cxx {
+
+/* Generates a position within one of the named regions:
+ *
+ * WITCHPOINT: within scanner of witchpoint
+ * LANE_*: within two scanner of lane, not too near each end
+ * STATION_AEGIS: within two scanner of main station, not in planet
+ * *_ORBIT_*: around the object, in a shell relative to object radius
+ * TRIANGLE: somewhere in the triangle defined by W, P, S
+ * INNER_SYSTEM: closer to the sun than the planet is
+ * OUTER_SYSTEM: further from the sun than the planet is
+ * *_OFFPLANE: like the above, but not on the orbital plane
+ *
+ * Can be called with nil sun or planet, but if so the calling function
+ * must make sure the location code is WITCHPOINT.
+ */
+HPVector Universe::locationByCode(const std::string &code, ::OOSunEntity *sun, ::OOPlanetEntity *planet)
+{
+	::Universe *self = oo::ToObjC(this);
+	HPVector result = kZeroHPVector;
+	if (code == "WITCHPOINT" || sun == nil || planet == nil || [sun goneNova])
+	{
+		result = OOHPVectorRandomSpatial(SCANNER_MAX_RANGE);
+	}
+	// past this point, can assume non-nil sun, planet
+	else
+	{ 
+		if (code == "LANE_WPS")
+		{	
+			// pick position on one of the lanes, weighted by lane length
+			double l1 = HPmagnitude([planet position]);
+			double l2 = HPmagnitude(HPvector_subtract([sun position],[planet position]));
+			double l3 = HPmagnitude([sun position]);
+			double total = l1+l2+l3;
+			float choice = randf();
+			if (choice < l1/total)
+			{
+				return [self cxx_locationByCode:"LANE_WP" withSun:sun andPlanet:planet];
+			}
+			else if (choice < (l1+l2)/total)
+			{
+				return [self cxx_locationByCode:"LANE_PS" withSun:sun andPlanet:planet];
+			}
+			else
+			{
+				return [self cxx_locationByCode:"LANE_WS" withSun:sun andPlanet:planet];
+			}
+		}
+		else if (code == "LANE_WP")
+		{
+			result = OORandomPositionInCylinder(kZeroHPVector,SCANNER_MAX_RANGE,[planet position],[planet radius]*3,LANE_WIDTH);
+		}
+		else if (code == "LANE_WS")
+		{
+			result = OORandomPositionInCylinder(kZeroHPVector,SCANNER_MAX_RANGE,[sun position],[sun radius]*3,LANE_WIDTH);
+		}
+		else if (code == "LANE_PS")
+		{
+			result = OORandomPositionInCylinder([planet position],[planet radius]*3,[sun position],[sun radius]*3,LANE_WIDTH);
+		}
+		else if (code == "STATION_AEGIS")
+		{
+			do 
+			{
+				result = OORandomPositionInShell([[self station] position],[[self station] collisionRadius]*1.2,SCANNER_MAX_RANGE*2.0);
+			} while(HPdistance2(result,[planet position])<[planet radius]*[planet radius]*1.5);
+			// loop to make sure not generated too close to the planet's surface
+		}
+		else if (code == "PLANET_ORBIT_LOW")
+		{
+			result = OORandomPositionInShell([planet position],[planet radius]*1.1,[planet radius]*2.0);
+		}
+		else if (code == "PLANET_ORBIT")
+		{
+			result = OORandomPositionInShell([planet position],[planet radius]*2.0,[planet radius]*4.0);
+		}
+		else if (code == "PLANET_ORBIT_HIGH")
+		{
+			result = OORandomPositionInShell([planet position],[planet radius]*4.0,[planet radius]*8.0);
+		}
+		else if (code == "STAR_ORBIT_LOW")
+		{
+			result = OORandomPositionInShell([sun position],[sun radius]*1.1,[sun radius]*2.0);
+		}
+		else if (code == "STAR_ORBIT")
+		{
+			result = OORandomPositionInShell([sun position],[sun radius]*2.0,[sun radius]*4.0);
+		}
+		else if (code == "STAR_ORBIT_HIGH")
+		{
+			result = OORandomPositionInShell([sun position],[sun radius]*4.0,[sun radius]*8.0);
+		}
+		else if (code == "TRIANGLE")
+		{
+			do {
+				// pick random point in triangle by algorithm at
+				// http://adamswaab.wordpress.com/2009/12/11/random-point-in-a-triangle-barycentric-coordinates/
+				// simplified by using the origin as A
+				OOScalar r = randf();
+				OOScalar s = randf();
+				if (r+s >= 1)
+				{
+					r = 1-r;
+					s = 1-s;
+				}
+				result = HPvector_add(HPvector_multiply_scalar([planet position],r),HPvector_multiply_scalar([sun position],s));
+			}
+			// make sure at least 3 radii from vertices
+			while(HPdistance2(result,[sun position]) < [sun radius]*[sun radius]*9.0 || HPdistance2(result,[planet position]) < [planet radius]*[planet radius]*9.0 || HPmagnitude2(result) < SCANNER_MAX_RANGE2 * 9.0);
+		}
+		else if (code == "INNER_SYSTEM")
+		{
+			do {
+				result = OORandomPositionInShell([sun position],[sun radius]*3.0,HPdistance([sun position],[planet position]));
+				result = OOProjectHPVectorToPlane(result,kZeroHPVector,HPcross_product([sun position],[planet position]));
+				result = HPvector_add(result,OOHPVectorRandomSpatial([planet radius]));
+				// projection to plane could bring back too close to sun
+			} while (HPdistance2(result,[sun position]) < [sun radius]*[sun radius]*9.0);
+		}
+		else if (code == "INNER_SYSTEM_OFFPLANE")
+		{
+			result = OORandomPositionInShell([sun position],[sun radius]*3.0,HPdistance([sun position],[planet position]));
+		}
+		else if (code == "OUTER_SYSTEM")
+		{
+			result = OORandomPositionInShell([sun position],HPdistance([sun position],[planet position]),HPdistance([sun position],[planet position])*10.0); // no more than 10 AU out
+			result = OOProjectHPVectorToPlane(result,kZeroHPVector,HPcross_product([sun position],[planet position]));
+			result = HPvector_add(result,OOHPVectorRandomSpatial(0.01*HPdistance(result,[sun position]))); // within 1% of plane
+		}
+		else if (code == "OUTER_SYSTEM_OFFPLANE")
+		{
+			result = OORandomPositionInShell([sun position],HPdistance([sun position],[planet position]),HPdistance([sun position],[planet position])*10.0); // no more than 10 AU out
+		}
+		else
+		{
+			OO_LOG(kOOLogUniversePopulateError, "Named populator region {} is not implemented, falling back to WITCHPOINT", code); 
+			result = OOHPVectorRandomSpatial(SCANNER_MAX_RANGE);
+		}
+	}
+	return result;
+}
+
+
+void Universe::setAmbientLightLevel(float newValue)
+{
+	OOCAssert(UNIVERSE != nil, "Attempt to set ambient light level with a non yet existent universe.");
+	
+	ambientLightLevel = OOClamp_0_max_f(newValue, 10.0f);
+	return;
+}
+
+
+float Universe::getAmbientLightLevel()
+{
+	return ambientLightLevel;
+}
+
+
+void Universe::setLighting()
+{
+	::Universe *self = oo::ToObjC(this);
+	/*
+	
+	GL_LIGHT1 is the sun and is active while a sun exists in space
+	where there is no sun (witch/interstellar space) this is placed at the origin
+	
+	Shaders: this light is also used inside the station and needs to have its position reset
+	relative to the player whenever demo ships or background scenes are to be shown -- 20100111
+	
+	
+	GL_LIGHT0 is the light for inside the station and needs to have its position reset
+	relative to the player whenever demo ships or background scenes are to be shown
+	
+	Shaders: this light is not used.  -- 20100111
+	
+	*/
+	
+	::OOSunEntity		*the_sun = [self sun];
+	::SkyEntity		*the_sky = nil;
+	GLfloat			sun_pos[] = {0.0, 0.0, 0.0, 1.0};	// equivalent to kZeroVector - for interstellar space.
+	GLfloat			sun_ambient[] = {0.0, 0.0, 0.0, 1.0};	// overridden later in code
+	int i;
+	
+	for (i = n_entities - 1; i > 0; i--)
+		if ((sortedEntities[i]) && ([sortedEntities[i] isKindOfClass:[::SkyEntity class]]))
+			the_sky = (::SkyEntity*)sortedEntities[i];
+	
+	if (the_sun)
+	{
+		[the_sun getDiffuseComponents:sun_diffuse];
+		[the_sun getSpecularComponents:sun_specular];
+		OOGL(glLightfv(GL_LIGHT1, GL_AMBIENT, sun_ambient));
+		OOGL(glLightfv(GL_LIGHT1, GL_DIFFUSE, sun_diffuse));
+		OOGL(glLightfv(GL_LIGHT1, GL_SPECULAR, sun_specular));
+		sun_pos[0] = the_sun->_cxxEntity->position.x;
+		sun_pos[1] = the_sun->_cxxEntity->position.y;
+		sun_pos[2] = the_sun->_cxxEntity->position.z;
+	}
+	else
+	{
+		// witchspace
+		stars_ambient[0] = 0.05;	stars_ambient[1] = 0.20;	stars_ambient[2] = 0.05;	stars_ambient[3] = 1.0;
+		sun_diffuse[0] = 0.85;	sun_diffuse[1] = 1.0;	sun_diffuse[2] = 0.85;	sun_diffuse[3] = 1.0;
+		sun_specular[0] = 0.95;	sun_specular[1] = 1.0;	sun_specular[2] = 0.95;	sun_specular[3] = 1.0;
+		OOGL(glLightfv(GL_LIGHT1, GL_AMBIENT, sun_ambient));
+		OOGL(glLightfv(GL_LIGHT1, GL_DIFFUSE, sun_diffuse));
+		OOGL(glLightfv(GL_LIGHT1, GL_SPECULAR, sun_specular));
+	}
+	
+	OOGL(glLightfv(GL_LIGHT1, GL_POSITION, sun_pos));
+	
+	if (the_sky)
+	{
+		// ambient lighting!
+		GLfloat r,g,b,a;
+		[[the_sky skyColor] getRed:&r green:&g blue:&b alpha:&a];
+		r = r * (1.0 - SUN_AMBIENT_INFLUENCE) + sun_diffuse[0] * SUN_AMBIENT_INFLUENCE;
+		g = g * (1.0 - SUN_AMBIENT_INFLUENCE) + sun_diffuse[1] * SUN_AMBIENT_INFLUENCE;
+		b = b * (1.0 - SUN_AMBIENT_INFLUENCE) + sun_diffuse[2] * SUN_AMBIENT_INFLUENCE;
+		GLfloat ambient_level = [self ambientLightLevel];
+		stars_ambient[0] = ambient_level * SKY_AMBIENT_ADJUSTMENT * (1.0 + r) * (1.0 + r);
+		stars_ambient[1] = ambient_level * SKY_AMBIENT_ADJUSTMENT * (1.0 + g) * (1.0 + g);
+		stars_ambient[2] = ambient_level * SKY_AMBIENT_ADJUSTMENT * (1.0 + b) * (1.0 + b);
+		stars_ambient[3] = 1.0;
+	}
+	
+	// light for demo ships display..
+	OOGL(glLightfv(GL_LIGHT0, GL_AMBIENT, docked_light_ambient));
+	OOGL(glLightfv(GL_LIGHT0, GL_DIFFUSE, docked_light_diffuse));
+	OOGL(glLightfv(GL_LIGHT0, GL_SPECULAR, docked_light_specular));
+	OOGL(glLightfv(GL_LIGHT0, GL_POSITION, demo_light_position));	
+	OOGL(glLightModelfv(GL_LIGHT_MODEL_AMBIENT, stars_ambient));
+}
+
+
+// Call this method to avoid lighting glich after windowed/fullscreen transition on macs.
+void Universe::forceLightSwitch()
+{
+	demo_light_on = !demo_light_on;
+}
+
+
+void Universe::setMainLightPosition(Vector sunPos)
+{
+	main_light_position[0] = sunPos.x;
+	main_light_position[1] = sunPos.y;
+	main_light_position[2] = sunPos.z;
+	main_light_position[3] = 1.0;
+}
+
+
+::ShipEntity * Universe::addShipWithRole(const std::string &desc, HPVector launchPos, GLfloat rfactor)
+{
+	::Universe *self = oo::ToObjC(this);
+	if (rfactor != 0.0)
+	{
+		// Calculate the position as soon as possible, to minimise 'lollipop flash'
+	 	launchPos.x += 2 * rfactor * (randf() - 0.5);
+		launchPos.y += 2 * rfactor * (randf() - 0.5);
+		launchPos.z += 2 * rfactor * (randf() - 0.5);
+	}
+	
+	::ShipEntity  *ship = [self cxx_newShipWithRole:desc];   // retain count = 1
+
+	if (ship)
+	{
+		[ship setPosition:launchPos];	// minimise 'lollipop flash'
+
+		// Deal with scripted cargopods and ensure they are filled with something.
+		if ([ship hasRole:"cargopod"])  [self fillCargopodWithRandomCargo:ship];
+
+		// Ensure piloted ships have pilots.
+		if (![ship cxx_crew].has_value() && ![ship isUnpiloted])
+			[ship cxx_setCrew:std::vector<oo::ObjCRef<::OOCharacter *>>{ oo::ObjCRef<::OOCharacter *>(
+						   [::OOCharacter randomCharacterWithRole:desc
+											  andOriginalSystem:Ranrot() & 255]) }];
+		
+		if ([ship scanClass] == CLASS_NOT_SET)
+		{
+			[ship setScanClass: CLASS_NEUTRAL];
+		}
+		[self addEntity:ship];	// STATUS_IN_FLIGHT, AI state GLOBAL
+		[ship release];
+		return ship;
+	}
+	return nil;
+}
+
+
+void Universe::addShipWithRole(const std::string &desc, double route_fraction)
+{
+	::Universe *self = oo::ToObjC(this);
+	// adds a ship within scanner range of a point on route 1
+	
+	::Entity	*theStation = [self station];
+	if (!theStation)
+	{
+		return;
+	}
+	
+	HPVector	launchPos = OOHPVectorInterpolate([self getWitchspaceExitPosition], [theStation position], route_fraction);
+	
+	[self addShipWithRole:desc launchPos:launchPos rfactor:SCANNER_MAX_RANGE];
+}
+
+
+HPVector Universe::coordinatesForPosition(HPVector pos, const std::string &system, GLfloat *my_scalar)
+{
+	::Universe *self = oo::ToObjC(this);
+	/*	the point is described using a system selected by a string
+		consisting of a three letter code.
+		
+		The first letter indicates the feature that is the origin of the coordinate system.
+			w => witchpoint
+			s => sun
+			p => planet
+			
+		The next letter indicates the feature on the 'z' axis of the coordinate system.
+			w => witchpoint
+			s => sun
+			p => planet
+			
+		Then the 'y' axis of the system is normal to the plane formed by the planet, sun and witchpoint.
+		And the 'x' axis of the system is normal to the y and z axes.
+		So:
+			ps:		z axis = (planet -> sun)		y axis = normal to (planet - sun - witchpoint)	x axis = normal to y and z axes
+			pw:		z axis = (planet -> witchpoint)	y axis = normal to (planet - witchpoint - sun)	x axis = normal to y and z axes
+			sp:		z axis = (sun -> planet)		y axis = normal to (sun - planet - witchpoint)	x axis = normal to y and z axes
+			sw:		z axis = (sun -> witchpoint)	y axis = normal to (sun - witchpoint - planet)	x axis = normal to y and z axes
+			wp:		z axis = (witchpoint -> planet)	y axis = normal to (witchpoint - planet - sun)	x axis = normal to y and z axes
+			ws:		z axis = (witchpoint -> sun)	y axis = normal to (witchpoint - sun - planet)	x axis = normal to y and z axes
+			
+		The third letter denotes the units used:
+			m:		meters
+			p:		planetary radii
+			s:		solar radii
+			u:		distance between first two features indicated (eg. spu means that u = distance from sun to the planet)
+		
+		in interstellar space (== no sun) coordinates are absolute irrespective of the system used.
+		
+		[1.71] The position code "abs" can also be used for absolute coordinates.
+		
+	*/
+	
+	const std::string l_sys = oo::str::lowercase(system);
+	if (oo::str::length(l_sys) != 3)	// UTF-16 units, as -length counted
+		return kZeroHPVector;
+	::OOPlanetEntity* the_planet = [self planet];
+	::OOSunEntity* the_sun = [self sun];
+	if (the_planet == nil || the_sun == nil || l_sys == "abs")
+	{
+		if (my_scalar)  *my_scalar = 1.0;
+		return pos;
+	}
+	HPVector  w_pos = [self getWitchspaceExitPosition];	// don't reset PRNG
+	HPVector  p_pos = the_planet->_cxxEntity->position;
+	HPVector  s_pos = the_sun->_cxxEntity->position;
+
+	const char* c_sys = l_sys.c_str();
+	HPVector p0, p1, p2;
+	
+	switch (c_sys[0])
+	{
+		case 'w':
+			p0 = w_pos;
+			switch (c_sys[1])
+			{
+				case 'p':
+					p1 = p_pos;	p2 = s_pos;	break;
+				case 's':
+					p1 = s_pos;	p2 = p_pos;	break;
+				default:
+					return kZeroHPVector;
+			}
+			break;
+		case 'p':		
+			p0 = p_pos;
+			switch (c_sys[1])
+			{
+				case 'w':
+					p1 = w_pos;	p2 = s_pos;	break;
+				case 's':
+					p1 = s_pos;	p2 = w_pos;	break;
+				default:
+					return kZeroHPVector;
+			}
+			break;
+		case 's':
+			p0 = s_pos;
+			switch (c_sys[1])
+			{
+				case 'w':
+					p1 = w_pos;	p2 = p_pos;	break;
+				case 'p':
+					p1 = p_pos;	p2 = w_pos;	break;
+				default:
+					return kZeroHPVector;
+			}
+			break;
+		default:
+			return kZeroHPVector;
+	}
+	HPVector k = HPvector_normal_or_zbasis(HPvector_subtract(p1, p0));	// 'forward'
+	HPVector v = HPvector_normal_or_xbasis(HPvector_subtract(p2, p0));	// temporary vector in plane of 'forward' and 'right'
+	
+	HPVector j = HPcross_product(k, v);	// 'up'
+	HPVector i = HPcross_product(j, k);	// 'right'
+	
+	GLfloat scale = 1.0;
+	switch (c_sys[2])
+	{
+		case 'p':
+			scale = [the_planet radius];
+			break;
+			
+		case 's':
+			scale = [the_sun radius];
+			break;
+			
+		case 'u':
+			scale = HPmagnitude(HPvector_subtract(p1, p0));
+			break;
+			
+		case 'm':
+			scale = 1.0f;
+			break;
+			
+		default:
+			return kZeroHPVector;
+	}
+	if (my_scalar)
+		*my_scalar = scale;
+	
+	// result = p0 + ijk
+	HPVector result = p0;	// origin
+	result.x += scale * (pos.x * i.x + pos.y * j.x + pos.z * k.x);
+	result.y += scale * (pos.x * i.y + pos.y * j.y + pos.z * k.y);
+	result.z += scale * (pos.x * i.z + pos.y * j.z + pos.z * k.z);
+	
+	return result;
+}
+
+
+std::optional<std::string> Universe::expressPosition(HPVector pos, const std::string &system)
+{
+	::Universe *self = oo::ToObjC(this);
+	HPVector result = [self cxx_legacyPositionFrom:pos asCoordinateSystem:system];
+	return oo::str::format("%s %.2f %.2f %.2f", system.c_str(), result.x, result.y, result.z);
 }
 
 
