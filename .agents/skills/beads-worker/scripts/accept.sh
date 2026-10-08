@@ -124,8 +124,6 @@ if [ "$status" -eq 0 ]; then
   git -C "$REPO_ROOT" worktree remove --force "$WORKTREES/$id" >/dev/null 2>&1 || true
   git -C "$REPO_ROOT" branch -D "$branch" >/dev/null 2>&1 || true
   touch "$REPO_ROOT/.fleet-progress.$id"
-  # The tracked export follows the DB, on the base branch only (export.auto is off; see _lib.sh).
-  refresh_beads_export "$base"
   echo "closed $id: merged into $base as $short; worktree and branch removed"
   exit 0
 fi

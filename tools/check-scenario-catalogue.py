@@ -577,9 +577,21 @@ def cmd_selftest():
 
 
 def _beads():
-    if not os.path.isfile(BEADS):
-        raise CannotTell("no bead tracker at %s" % BEADS)
+    # The live Dolt DB through bd first; .beads/issues.jsonl is an untracked local export now
+    # (bead oo-rndqv), so a clean clone has only bd.
     rows = {}
+    try:
+        out = subprocess.run(["bd", "list", "--all", "--json", "--limit", "0"],
+                             capture_output=True, text=True, encoding="utf-8", timeout=120).stdout
+        for r in json.loads(out or "[]"):
+            if r.get("id"):
+                rows[r["id"]] = r
+    except (OSError, ValueError, subprocess.SubprocessError):
+        rows = {}
+    if rows:
+        return rows
+    if not os.path.isfile(BEADS):
+        raise CannotTell("no bead tracker: bd gave nothing and there is no %s" % BEADS)
     with open(BEADS, "r", encoding="utf-8") as handle:
         for line in handle:
             line = line.strip()
