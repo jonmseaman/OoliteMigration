@@ -871,3 +871,50 @@ PlayerEntity		*gOOPlayer = nil;
 #endif
 
 @end
+
+
+// The category PlayerEntity (ScriptMethods) of PlayerEntityScriptMethods.mm (bead oo-50zg), whose
+// members are cxx::PlayerEntity's, defined in that file.
+@implementation PlayerEntity (ScriptMethods)
+
+- (unsigned) score	{ return _cxxPlayer->score(); }
+- (void) setScore:(unsigned)value	{ _cxxPlayer->setScore(value); }
+- (double) creditBalance	{ return _cxxPlayer->creditBalance(); }
+- (void) setCreditBalance:(double)value	{ _cxxPlayer->setCreditBalance(value); }
+- (std::optional<std::string>) cxx_dockedStationName	{ return _cxxPlayer->dockedStationName(); }
+- (std::optional<std::string>) cxx_dockedStationDisplayName	{ return _cxxPlayer->dockedStationDisplayName(); }
+- (BOOL) dockedAtMainStation	{ return _cxxPlayer->dockedAtMainStation(); }
+- (void) cxx_awardCommodityType:(const std::string &)type amount:(OOCargoQuantity)amount	{ _cxxPlayer->awardCommodityType(type, amount); }
+- (void) resetScannerZoom	{ _cxxPlayer->resetScannerZoom(); }
+- (OOGalaxyID) currentGalaxyID	{ return _cxxPlayer->currentGalaxyID(); }
+- (OOSystemID) currentSystemID	{ return _cxxPlayer->currentSystemID(); }
+- (void) cxx_setMissionChoice:(const std::optional<std::string> &)newChoice	{ _cxxPlayer->setMissionChoice(newChoice); }
+- (void) cxx_setMissionChoice:(const std::optional<std::string> &)newChoice withEvent:(BOOL)withEvent	{ _cxxPlayer->setMissionChoice(newChoice, withEvent); }
+- (void) cxx_setMissionChoice:(const std::optional<std::string> &)newChoice keyPress:(const std::optional<std::string> &)keyPress	{ _cxxPlayer->setMissionChoice(newChoice, keyPress); }
+- (void) cxx_setMissionChoice:(const std::optional<std::string> &)newChoice keyPress:(const std::optional<std::string> &)keyPress withEvent:(BOOL)withEvent	{ _cxxPlayer->setMissionChoice(newChoice, keyPress, withEvent); }
+- (void) allowMissionInterrupt	{ _cxxPlayer->allowMissionInterrupt(); }
+- (OOTimeDelta) scriptTimer	{ return _cxxPlayer->scriptTimer(); }
+- (unsigned) systemPseudoRandom100	{ return _cxxPlayer->systemPseudoRandom100(); }
+- (unsigned) systemPseudoRandom256	{ return _cxxPlayer->systemPseudoRandom256(); }
+- (double) systemPseudoRandomFloat	{ return _cxxPlayer->systemPseudoRandomFloat(); }
+- (oo::PList) cxx_passengerContractMarker:(OOSystemID)system	{ return _cxxPlayer->passengerContractMarker(system); }
+- (oo::PList) cxx_parcelContractMarker:(OOSystemID)system	{ return _cxxPlayer->parcelContractMarker(system); }
+- (oo::PList) cxx_cargoContractMarker:(OOSystemID)system	{ return _cxxPlayer->cargoContractMarker(system); }
+- (oo::PList) cxx_defaultMarker:(OOSystemID)system	{ return _cxxPlayer->defaultMarker(system); }
+- (oo::PList) cxx_validatedMarker:(const oo::PList &)marker	{ return _cxxPlayer->validatedMarker(marker); }
+- (std::optional<std::string>) cxx_keyBindingDescription2:(const std::string &)binding	{ return _cxxPlayer->keyBindingDescription2(binding); }
+- (std::optional<std::string>) cxx_getKeyBindingDescription:(const oo::PList &)keyList	{ return _cxxPlayer->getKeyBindingDescription(keyList); }
+- (std::optional<std::string>) cxx_keyCodeDescription:(OOKeyCode)code	{ return _cxxPlayer->keyCodeDescription(code); }
+- (std::optional<std::string>) cxx_keyCodeDescriptionShort:(OOKeyCode)code	{ return _cxxPlayer->keyCodeDescriptionShort(code); }
+- (std::optional<std::string>) cxx_commanderKillsAsString	{ return _cxxPlayer->commanderKillsAsString(); }
+- (std::optional<std::string>) cxx_commanderBountyAsString	{ return _cxxPlayer->commanderBountyAsString(); }
+- (std::optional<std::string>) cxx_creditsFormattedForSubstitution	{ return _cxxPlayer->creditsFormattedForSubstitution(); }
+- (std::optional<std::string>) cxx_creditsFormattedForLegacySubstitution	{ return _cxxPlayer->creditsFormattedForLegacySubstitution(); }
+
+// OOStringExpander's special substitution table sends these by name (ADR-0043 item 21).
+- (oo::PList) commanderKillsAsString	{ const auto result = _cxxPlayer->commanderKillsAsString(); return result.has_value() ? oo::PList(*result) : oo::PList(); }
+- (oo::PList) commanderBountyAsString	{ const auto result = _cxxPlayer->commanderBountyAsString(); return result.has_value() ? oo::PList(*result) : oo::PList(); }
+- (oo::PList) creditsFormattedForSubstitution	{ const auto result = _cxxPlayer->creditsFormattedForSubstitution(); return result.has_value() ? oo::PList(*result) : oo::PList(); }
+- (oo::PList) creditsFormattedForLegacySubstitution	{ const auto result = _cxxPlayer->creditsFormattedForLegacySubstitution(); return result.has_value() ? oo::PList(*result) : oo::PList(); }
+
+@end

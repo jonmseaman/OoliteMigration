@@ -54,12 +54,13 @@ MA 02110-1301, USA.
 
 - (BOOL) isVisibleToScripts													{ return ShipEntityJSIsVisibleToScripts(); }
 
+// To the C++ part, whose ShipEntity bodies are ShipEntityJS* and which cxx::StationEntity overrides.
 - (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype
 {
-	ShipEntityJSGetJSClass(outClass, outPrototype);
+	_cxxEntity->getJSClass(outClass, outPrototype);
 }
 
-- (std::optional<std::string>) cxx_oo_jsClassName							{ return ShipEntityJSClassName(); }
+- (std::optional<std::string>) cxx_oo_jsClassName							{ return _cxxEntity->jsClassName(); }
 - (std::vector<oo::ObjCRef<Entity *>>) subEntitiesForScript				{ return ShipEntityJSSubEntitiesForScript(self); }
 - (void) setTargetForScript:(ShipEntity *)target							{ ShipEntityJSSetTargetForScript(self, target); }
 
