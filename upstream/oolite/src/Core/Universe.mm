@@ -541,483 +541,6 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 #define SKY_AMBIENT_ADJUSTMENT		0.0625
 
 
-- (HPVector) cxx_legacyPositionFrom:(HPVector) pos asCoordinateSystem:(const std::string &) system
-{
-	const std::string l_sys = oo::str::lowercase(system);
-	if (oo::str::length(l_sys) != 3)	// UTF-16 units, as -length counted
-		return kZeroHPVector;
-	OOPlanetEntity* the_planet = [self planet];
-	OOSunEntity* the_sun = [self sun];
-	if (the_planet == nil || the_sun == nil || l_sys == "abs")
-	{
-		return pos;
-	}
-	HPVector  w_pos = [self getWitchspaceExitPosition];	// don't reset PRNG
-	HPVector  p_pos = the_planet->_cxxEntity->position;
-	HPVector  s_pos = the_sun->_cxxEntity->position;
-
-	const char* c_sys = l_sys.c_str();
-	HPVector p0, p1, p2;
-	
-	switch (c_sys[0])
-	{
-		case 'w':
-			p0 = w_pos;
-			switch (c_sys[1])
-			{
-				case 'p':
-					p1 = p_pos;	p2 = s_pos;	break;
-				case 's':
-					p1 = s_pos;	p2 = p_pos;	break;
-				default:
-					return kZeroHPVector;
-			}
-			break;
-		case 'p':		
-			p0 = p_pos;
-			switch (c_sys[1])
-			{
-				case 'w':
-					p1 = w_pos;	p2 = s_pos;	break;
-				case 's':
-					p1 = s_pos;	p2 = w_pos;	break;
-				default:
-					return kZeroHPVector;
-			}
-			break;
-		case 's':
-			p0 = s_pos;
-			switch (c_sys[1])
-			{
-				case 'w':
-					p1 = w_pos;	p2 = p_pos;	break;
-				case 'p':
-					p1 = p_pos;	p2 = w_pos;	break;
-				default:
-					return kZeroHPVector;
-			}
-			break;
-		default:
-			return kZeroHPVector;
-	}
-	HPVector k = HPvector_normal_or_zbasis(HPvector_subtract(p1, p0));	// 'z' axis in m
-	HPVector v = HPvector_normal_or_xbasis(HPvector_subtract(p2, p0));	// temporary vector in plane of 'forward' and 'right'
-	
-	HPVector j = HPcross_product(k, v);	// 'y' axis in m
-	HPVector i = HPcross_product(j, k);	// 'x' axis in m
-	
-	GLfloat scale = 1.0;
-	switch (c_sys[2])
-	{
-		case 'p':
-		{
-			scale = 1.0f / [the_planet radius];
-			break;
-		}
-		case 's':
-		{
-			scale = 1.0f / [the_sun radius];
-			break;
-		}
-			
-		case 'u':
-			scale = 1.0f / HPdistance(p1, p0);
-			break;
-			
-		case 'm':
-			scale = 1.0f;
-			break;
-			
-		default:
-			return kZeroHPVector;
-	}
-	
-	// result = p0 + ijk
-	HPVector r_pos = HPvector_subtract(pos, p0);
-	HPVector result = make_HPvector(scale * (r_pos.x * i.x + r_pos.y * i.y + r_pos.z * i.z),
-								scale * (r_pos.x * j.x + r_pos.y * j.y + r_pos.z * j.z),
-								scale * (r_pos.x * k.x + r_pos.y * k.y + r_pos.z * k.z) ); // scale * dot_products
-	
-	return result;
-}
-
-
-- (HPVector) cxx_coordinatesFromCoordinateSystemString:(const std::string &) system_x_y_z
-{
-	const std::vector<std::string> tokens = oo::str::tokens(system_x_y_z);
-	if (tokens.size() != 4)
-	{
-		// Not necessarily an error.
-		return make_HPvector(0,0,0);
-	}
-	// each number read as at<float> read the token string before
-	oo::PList::Array tokenList;
-	for (const std::string &token : tokens)  tokenList.push_back(oo::PList(token));
-	const oo::PList tokenPList(std::move(tokenList));
-	GLfloat dummy;
-	return [self cxx_coordinatesForPosition:make_HPvector(tokenPList.at<float>(1), tokenPList.at<float>(2), tokenPList.at<float>(3)) withCoordinateSystem:tokens[0] returningScalar:&dummy];
-}
-
-
-- (BOOL) cxx_addShipWithRole:(const std::string &) desc nearPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system
-{
-	// initial position
-	GLfloat scalar = 1.0;
-	HPVector launchPos = [self cxx_coordinatesForPosition:pos withCoordinateSystem:system returningScalar:&scalar];
-	//	randomise
-	GLfloat rfactor = scalar;
-	if (rfactor > SCANNER_MAX_RANGE)
-		rfactor = SCANNER_MAX_RANGE;
-	if (rfactor < 1000)
-		rfactor = 1000;
-	
-	return ([self addShipWithRole:desc launchPos:launchPos rfactor:rfactor] != nil);
-}
-
-
-- (BOOL) cxx_addShips:(int) howMany withRole:(const std::string &) desc atPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system
-{
-	// initial bounding box
-	GLfloat scalar = 1.0;
-	HPVector launchPos = [self cxx_coordinatesForPosition:pos withCoordinateSystem:system returningScalar:&scalar];
-	GLfloat distance_from_center = 0.0;
-	HPVector v_from_center, ship_pos;
-	HPVector ship_positions[howMany];
-	int i = 0;
-	int	scale_up_after = 0;
-	int	current_shell = 0;
-	GLfloat	walk_factor = 2.0;
-	while (i < howMany)
-	{
-	 	ShipEntity  *ship = [self addShipWithRole:desc launchPos:launchPos rfactor:0.0];
-		if (ship == nil) return NO;
-		OOScanClass scanClass = [ship scanClass];
-		[ship setScanClass:CLASS_NO_DRAW];	// avoid lollipop flash
-		
-		GLfloat		safe_distance2 = ship->_cxxEntity->collision_radius * ship->_cxxEntity->collision_radius * SAFE_ADDITION_FACTOR2;
-		BOOL		safe;
-		int			limit_count = 8;
-		
-		v_from_center = kZeroHPVector;
-		do
-		{
-			do
-			{
-				v_from_center.x += walk_factor * (randf() - 0.5);
-				v_from_center.y += walk_factor * (randf() - 0.5);
-				v_from_center.z += walk_factor * (randf() - 0.5);	// drunkards walk
-			} while ((v_from_center.x == 0.0)&&(v_from_center.y == 0.0)&&(v_from_center.z == 0.0));
-			v_from_center = HPvector_normal(v_from_center);	// guaranteed non-zero
-			
-			ship_pos = make_HPvector(	launchPos.x + distance_from_center * v_from_center.x,
-									launchPos.y + distance_from_center * v_from_center.y,
-									launchPos.z + distance_from_center * v_from_center.z);
-			
-			// check this position against previous ship positions in this shell
-			safe = YES;
-			int j = i - 1;
-			while (safe && (j >= current_shell))
-			{
-				safe = (safe && (HPdistance2(ship_pos, ship_positions[j]) > safe_distance2));
-				j--;
-			}
-			if (!safe)
-			{
-				limit_count--;
-				if (!limit_count)	// give up and expand the shell
-				{
-					limit_count = 8;
-					distance_from_center += sqrt(safe_distance2);	// expand to the next distance
-				}
-			}
-			
-		} while (!safe);
-		
-		[ship setPosition:ship_pos];
-		[ship setScanClass:scanClass == CLASS_NOT_SET ? CLASS_NEUTRAL : scanClass];
-		
-		Quaternion qr;
-		quaternion_set_random(&qr);
-		[ship setOrientation:qr];
-		
-		// [self addEntity:ship];	// STATUS_IN_FLIGHT, AI state GLOBAL
-		
-		ship_positions[i] = ship_pos;
-		i++;
-		if (i > scale_up_after)
-		{
-			current_shell = i;
-			scale_up_after += 1 + 2 * i;
-			distance_from_center += sqrt(safe_distance2);	// fill the next shell
-		}
-	}
-	return YES;
-}
-
-
-- (BOOL) cxx_addShips:(int) howMany withRole:(const std::string &) desc nearPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system
-{
-	// initial bounding box
-	GLfloat scalar = 1.0;
-	HPVector launchPos = [self cxx_coordinatesForPosition:pos withCoordinateSystem:system returningScalar:&scalar];
-	GLfloat rfactor = scalar;
-	if (rfactor > SCANNER_MAX_RANGE)
-		rfactor = SCANNER_MAX_RANGE;
-	if (rfactor < 1000)
-		rfactor = 1000;
-	BoundingBox	launch_bbox;
-	bounding_box_reset_to_vector(&launch_bbox, make_vector(launchPos.x - rfactor, launchPos.y - rfactor, launchPos.z - rfactor));
-	bounding_box_add_xyz(&launch_bbox, launchPos.x + rfactor, launchPos.y + rfactor, launchPos.z + rfactor);
-	
-	return [self cxx_addShips: howMany withRole: desc intoBoundingBox: launch_bbox];
-}
-
-
-- (BOOL) cxx_addShips:(int) howMany withRole:(const std::string &) desc nearPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system withinRadius:(GLfloat) radius
-{
-	// initial bounding box
-	GLfloat scalar = 1.0;
-	HPVector launchPos = [self cxx_coordinatesForPosition:pos withCoordinateSystem:system returningScalar:&scalar];
-	GLfloat rfactor = radius;
-	if (rfactor < 1000)
-		rfactor = 1000;
-	BoundingBox	launch_bbox;
-	bounding_box_reset_to_vector(&launch_bbox, make_vector(launchPos.x - rfactor, launchPos.y - rfactor, launchPos.z - rfactor));
-	bounding_box_add_xyz(&launch_bbox, launchPos.x + rfactor, launchPos.y + rfactor, launchPos.z + rfactor);
-	
-	return [self cxx_addShips: howMany withRole: desc intoBoundingBox: launch_bbox];
-}
-
-
-- (BOOL) cxx_addShips:(int) howMany withRole:(const std::string &) desc intoBoundingBox:(BoundingBox) bbox
-{
-	if (howMany < 1)
-		return YES;
-	if (howMany > 1)
-	{
-		// divide the number of ships in two
-		int h0 = howMany / 2;
-		int h1 = howMany - h0;
-		// split the bounding box into two along its longest dimension
-		GLfloat lx = bbox.max.x - bbox.min.x;
-		GLfloat ly = bbox.max.y - bbox.min.y;
-		GLfloat lz = bbox.max.z - bbox.min.z;
-		BoundingBox bbox0 = bbox;
-		BoundingBox bbox1 = bbox;
-		if ((lx > lz)&&(lx > ly))	// longest dimension is x
-		{
-			bbox0.min.x += 0.5 * lx;
-			bbox1.max.x -= 0.5 * lx;
-		}
-		else
-		{
-			if (ly > lz)	// longest dimension is y
-			{
-				bbox0.min.y += 0.5 * ly;
-				bbox1.max.y -= 0.5 * ly;
-			}
-			else			// longest dimension is z
-			{
-				bbox0.min.z += 0.5 * lz;
-				bbox1.max.z -= 0.5 * lz;
-			}
-		}
-		// place half the ships into each bounding box
-		return ([self cxx_addShips: h0 withRole: desc intoBoundingBox: bbox0] && [self cxx_addShips: h1 withRole: desc intoBoundingBox: bbox1]);
-	}
-	
-	//	randomise within the bounding box (biased towards the center of the box)
-	HPVector pos = make_HPvector(bbox.min.x, bbox.min.y, bbox.min.z);
-	pos.x += 0.5 * (randf() + randf()) * (bbox.max.x - bbox.min.x);
-	pos.y += 0.5 * (randf() + randf()) * (bbox.max.y - bbox.min.y);
-	pos.z += 0.5 * (randf() + randf()) * (bbox.max.z - bbox.min.z);
-	
-	return ([self addShipWithRole:desc launchPos:pos rfactor:0.0] != nil);
-}
-
-
-- (BOOL) cxx_spawnShip:(const std::string &)shipdesc	// the legacy spawnShip: action's ship key
-{
-
-	// no need to do any more than log - enforcing modes wouldn't even have
-	// loaded the legacy script
-	cxx_OOStandardsDeprecated(oo::str::format("'spawn' via legacy script is deprecated as a way of adding ships for %s", shipdesc.c_str()));
-
-	ShipEntity		*ship;
-	oo::PList		shipdict;
-
-	shipdict = [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:shipdesc];
-	if (shipdict.isNull())  return NO;
-
-	ship = [self cxx_newShipWithName:shipdesc];	// retain count is 1
-
-	if (ship == nil)  return NO;
-
-	// set any spawning characteristics
-	const oo::PList	*spawnEntry = shipdict.get<oo::PList::Dict>("spawn");
-	const oo::PList	spawndict = (spawnEntry != nullptr) ? *spawnEntry : oo::PList();
-	HPVector			pos, rpos, spos;
-	std::optional<std::string>	positionString;
-
-	// position
-	positionString = OptionalStringIn(spawndict, "position");
-	if (positionString.has_value())
-	{
-		if(oo::str::hasPrefix(*positionString, "abs ") && ([self planet] != nil || [self sun] !=nil))
-		{
-			OO_LOG_WARN("script.deprecated", "setting {} for {} '{}' in 'abs' inside .plists can cause compatibility issues across Oolite versions. Use coordinates relative to main system objects instead.", "position", "entity", shipdesc);
-		}
-
-		pos = [self cxx_coordinatesFromCoordinateSystemString:*positionString];
-	}
-	else
-	{
-		// without position defined, the ship will be added on top of the witchpoint buoy.
-		pos = OOHPVectorRandomRadial(SCANNER_MAX_RANGE);
-		OO_LOG_ERR("universe.spawnShip.error", "***** ERROR: failed to find a spawn position for ship {}.", shipdesc);
-	}
-	[ship setPosition:pos];
-
-	// facing_position
-	positionString = OptionalStringIn(spawndict, "facing_position");
-	if (positionString.has_value())
-	{
-		if(oo::str::hasPrefix(*positionString, "abs ") && ([self planet] != nil || [self sun] !=nil))
-		{
-			OO_LOG_WARN("script.deprecated", "setting {} for {} '{}' in 'abs' inside .plists can cause compatibility issues across Oolite versions. Use coordinates relative to main system objects instead.", "facing_position", "entity", shipdesc);
-		}
-
-		spos = [ship position];
-		Quaternion q1;
-		rpos = [self cxx_coordinatesFromCoordinateSystemString:*positionString];
-		rpos = HPvector_subtract(rpos, spos); // position relative to ship
-		
-		if (!HPvector_equal(rpos, kZeroHPVector))
-		{
-			rpos = HPvector_normal(rpos);
-			
-			if (!HPvector_equal(rpos, HPvector_flip(kBasisZHPVector)))
-			{
-				q1 = quaternion_rotation_between(HPVectorToVector(rpos), kBasisZVector);
-			}
-			else
-			{
-				// for the inverse of the kBasisZVector the rotation is undefined, so we select one.
-				q1 = make_quaternion(0,1,0,0);
-			}
-			
-						
-			[ship setOrientation:q1];
-		}
-	}
-	
-	[self addEntity:ship];	// STATUS_IN_FLIGHT, AI state GLOBAL
-	[ship release];
-	
-	return YES;
-}
-
-
-- (void) cxx_witchspaceShipWithPrimaryRole:(const std::string &)role
-{
-	// adds a ship exiting witchspace (corollary of when ships leave the system)
-	ShipEntity			*ship = nil;
-	oo::PList			systeminfo;
-	OOGovernmentID		government;
-
-	systeminfo = [self cxx_currentSystemData];
- 	government = systeminfo.get<unsigned char>(std::string(KEY_GOVERNMENT));
-
-	ship = [self cxx_newShipWithRole:role];   // retain count = 1
-	
-	// Deal with scripted cargopods and ensure they are filled with something.
-	if (ship && [ship hasRole:"cargopod"])
-	{		
-		[self fillCargopodWithRandomCargo:ship];
-	}
-	
-	if (ship)
-	{
-		if (([ship scanClass] == CLASS_NO_DRAW)||([ship scanClass] == CLASS_NOT_SET))
-			[ship setScanClass: CLASS_NEUTRAL];
-		if (role == "trader")
-		{
-			[ship setCargoFlag: CARGO_FLAG_FULL_SCARCE];
-			if ([ship hasRole:"sunskim-trader"] && randf() < 0.25) // select 1/4 of the traders suitable for sunskimming.
-			{
-				[ship setCargoFlag: CARGO_FLAG_FULL_PLENTIFUL];
-				[self makeSunSkimmer:ship andSetAI:YES];
-			}
-			else
-			{
-				[ship switchAITo:"oolite-traderAI.js"];
-			}
-			
-			if (([ship pendingEscortCount] > 0)&&((Ranrot() % 7) < government))	// remove escorts if we feel safe
-			{
-				int nx = [ship pendingEscortCount] - 2 * (1 + (Ranrot() & 3));	// remove 2,4,6, or 8 escorts
-				[ship setPendingEscortCount:(nx > 0) ? nx : 0];
-			}
-		}
-		if (role == "pirate")
-		{
-			[ship setCargoFlag: CARGO_FLAG_PIRATE];
-			[ship setBounty: (Ranrot() & 7) + (Ranrot() & 7) + ((randf() < 0.05)? 63 : 23) withReason:kOOLegalStatusReasonSetup];	// they already have a price on their heads
-		}
-		if (![ship cxx_crew].has_value() && ![ship isUnpiloted])
-			[ship cxx_setCrew:std::vector<oo::ObjCRef<OOCharacter *>>{ oo::ObjCRef<OOCharacter *>(
-				[OOCharacter randomCharacterWithRole:role
-				andOriginalSystem: Ranrot() & 255]) }];
-		// The following is set inside leaveWitchspace: AI state GLOBAL, STATUS_EXITING_WITCHSPACE, ai message: EXITED_WITCHSPACE, then STATUS_IN_FLIGHT
-		[ship leaveWitchspace];
-		[ship release];
-	}
-}
-
-
-// adds a ship within the collision radius of the other entity
-- (ShipEntity *) cxx_spawnShipWithRole:(const std::string &) desc near:(Entity *) entity
-{
-	if (entity == nil)  return nil;
-	
-	ShipEntity  *ship = nil;
-	HPVector		spawn_pos;
-	Quaternion	spawn_q;
-	GLfloat		offset = (randf() + randf()) * entity->_cxxEntity->collision_radius;
-	
-	quaternion_set_random(&spawn_q);
-	spawn_pos = HPvector_add([entity position], vectorToHPVector(vector_multiply_scalar(vector_forward_from_quaternion(spawn_q), offset)));
-	
-	ship = [self addShipWithRole:desc launchPos:spawn_pos rfactor:0.0];
-	[ship setOrientation:spawn_q];
-	
-	return ship;
-}
-
-
-- (OOVisualEffectEntity *) cxx_addVisualEffectAt:(HPVector)pos withKey:(const std::string &)key
-{
-	OOJS_PROFILE_ENTER
-
-	// minimise the time between creating ship & assigning position.
-
-	OOVisualEffectEntity  		*vis = [self cxx_newVisualEffectWithName:key]; // is retained
-	BOOL				success = NO;
-	if (vis != nil)
-	{
-		[vis setPosition:pos];
-		[vis setOrientation:OORandomQuaternion()];
-		
-		success = [self addEntity:vis]; // retained globally now
-		
-		[vis release];
-	}
-	return success ? vis : (OOVisualEffectEntity *)nil;
-	
-	OOJS_PROFILE_EXIT
-}
-
-
 - (ShipEntity *) addShipAt:(HPVector)pos withRole:(const std::string &)role withinRadius:(GLfloat)radius
 {
 	OOJS_PROFILE_ENTER
@@ -6035,6 +5558,502 @@ std::optional<std::string> Universe::expressPosition(HPVector pos, const std::st
 	::Universe *self = oo::ToObjC(this);
 	HPVector result = [self cxx_legacyPositionFrom:pos asCoordinateSystem:system];
 	return oo::str::format("%s %.2f %.2f %.2f", system.c_str(), result.x, result.y, result.z);
+}
+
+
+}	// namespace cxx
+
+
+// Slice 6 of docs/phases/3-slices/Universe.md (bead oo-15e3o): legacy positions, adding ships at /
+// near positions and in boxes, spawning, visual effects. The facade forwards each selector
+// (Universe+ObjCBridge.mm); sends to self stay sends (ADR-0056 amendment oo-27jxj).
+namespace cxx {
+
+HPVector Universe::legacyPositionFrom(HPVector pos, const std::string &system)
+{
+	::Universe *self = oo::ToObjC(this);
+	const std::string l_sys = oo::str::lowercase(system);
+	if (oo::str::length(l_sys) != 3)	// UTF-16 units, as -length counted
+		return kZeroHPVector;
+	::OOPlanetEntity* the_planet = [self planet];
+	::OOSunEntity* the_sun = [self sun];
+	if (the_planet == nil || the_sun == nil || l_sys == "abs")
+	{
+		return pos;
+	}
+	HPVector  w_pos = [self getWitchspaceExitPosition];	// don't reset PRNG
+	HPVector  p_pos = the_planet->_cxxEntity->position;
+	HPVector  s_pos = the_sun->_cxxEntity->position;
+
+	const char* c_sys = l_sys.c_str();
+	HPVector p0, p1, p2;
+	
+	switch (c_sys[0])
+	{
+		case 'w':
+			p0 = w_pos;
+			switch (c_sys[1])
+			{
+				case 'p':
+					p1 = p_pos;	p2 = s_pos;	break;
+				case 's':
+					p1 = s_pos;	p2 = p_pos;	break;
+				default:
+					return kZeroHPVector;
+			}
+			break;
+		case 'p':		
+			p0 = p_pos;
+			switch (c_sys[1])
+			{
+				case 'w':
+					p1 = w_pos;	p2 = s_pos;	break;
+				case 's':
+					p1 = s_pos;	p2 = w_pos;	break;
+				default:
+					return kZeroHPVector;
+			}
+			break;
+		case 's':
+			p0 = s_pos;
+			switch (c_sys[1])
+			{
+				case 'w':
+					p1 = w_pos;	p2 = p_pos;	break;
+				case 'p':
+					p1 = p_pos;	p2 = w_pos;	break;
+				default:
+					return kZeroHPVector;
+			}
+			break;
+		default:
+			return kZeroHPVector;
+	}
+	HPVector k = HPvector_normal_or_zbasis(HPvector_subtract(p1, p0));	// 'z' axis in m
+	HPVector v = HPvector_normal_or_xbasis(HPvector_subtract(p2, p0));	// temporary vector in plane of 'forward' and 'right'
+	
+	HPVector j = HPcross_product(k, v);	// 'y' axis in m
+	HPVector i = HPcross_product(j, k);	// 'x' axis in m
+	
+	GLfloat scale = 1.0;
+	switch (c_sys[2])
+	{
+		case 'p':
+		{
+			scale = 1.0f / [the_planet radius];
+			break;
+		}
+		case 's':
+		{
+			scale = 1.0f / [the_sun radius];
+			break;
+		}
+			
+		case 'u':
+			scale = 1.0f / HPdistance(p1, p0);
+			break;
+			
+		case 'm':
+			scale = 1.0f;
+			break;
+			
+		default:
+			return kZeroHPVector;
+	}
+	
+	// result = p0 + ijk
+	HPVector r_pos = HPvector_subtract(pos, p0);
+	HPVector result = make_HPvector(scale * (r_pos.x * i.x + r_pos.y * i.y + r_pos.z * i.z),
+								scale * (r_pos.x * j.x + r_pos.y * j.y + r_pos.z * j.z),
+								scale * (r_pos.x * k.x + r_pos.y * k.y + r_pos.z * k.z) ); // scale * dot_products
+	
+	return result;
+}
+
+
+HPVector Universe::coordinatesFromCoordinateSystemString(const std::string &system_x_y_z)
+{
+	::Universe *self = oo::ToObjC(this);
+	const std::vector<std::string> tokens = oo::str::tokens(system_x_y_z);
+	if (tokens.size() != 4)
+	{
+		// Not necessarily an error.
+		return make_HPvector(0,0,0);
+	}
+	// each number read as at<float> read the token string before
+	oo::PList::Array tokenList;
+	for (const std::string &token : tokens)  tokenList.push_back(oo::PList(token));
+	const oo::PList tokenPList(std::move(tokenList));
+	GLfloat dummy;
+	return [self cxx_coordinatesForPosition:make_HPvector(tokenPList.at<float>(1), tokenPList.at<float>(2), tokenPList.at<float>(3)) withCoordinateSystem:tokens[0] returningScalar:&dummy];
+}
+
+
+bool Universe::addShipWithRole(const std::string &desc, HPVector pos, const std::string &system)
+{
+	::Universe *self = oo::ToObjC(this);
+	// initial position
+	GLfloat scalar = 1.0;
+	HPVector launchPos = [self cxx_coordinatesForPosition:pos withCoordinateSystem:system returningScalar:&scalar];
+	//	randomise
+	GLfloat rfactor = scalar;
+	if (rfactor > SCANNER_MAX_RANGE)
+		rfactor = SCANNER_MAX_RANGE;
+	if (rfactor < 1000)
+		rfactor = 1000;
+	
+	return ([self addShipWithRole:desc launchPos:launchPos rfactor:rfactor] != nil);
+}
+
+
+bool Universe::addShipsAtPosition(int howMany, const std::string &desc, HPVector pos, const std::string &system)
+{
+	::Universe *self = oo::ToObjC(this);
+	// initial bounding box
+	GLfloat scalar = 1.0;
+	HPVector launchPos = [self cxx_coordinatesForPosition:pos withCoordinateSystem:system returningScalar:&scalar];
+	GLfloat distance_from_center = 0.0;
+	HPVector v_from_center, ship_pos;
+	HPVector ship_positions[howMany];
+	int i = 0;
+	int	scale_up_after = 0;
+	int	current_shell = 0;
+	GLfloat	walk_factor = 2.0;
+	while (i < howMany)
+	{
+	 	::ShipEntity  *ship = [self addShipWithRole:desc launchPos:launchPos rfactor:0.0];
+		if (ship == nil) return NO;
+		OOScanClass scanClass = [ship scanClass];
+		[ship setScanClass:CLASS_NO_DRAW];	// avoid lollipop flash
+		
+		GLfloat		safe_distance2 = ship->_cxxEntity->collision_radius * ship->_cxxEntity->collision_radius * SAFE_ADDITION_FACTOR2;
+		BOOL		safe;
+		int			limit_count = 8;
+		
+		v_from_center = kZeroHPVector;
+		do
+		{
+			do
+			{
+				v_from_center.x += walk_factor * (randf() - 0.5);
+				v_from_center.y += walk_factor * (randf() - 0.5);
+				v_from_center.z += walk_factor * (randf() - 0.5);	// drunkards walk
+			} while ((v_from_center.x == 0.0)&&(v_from_center.y == 0.0)&&(v_from_center.z == 0.0));
+			v_from_center = HPvector_normal(v_from_center);	// guaranteed non-zero
+			
+			ship_pos = make_HPvector(	launchPos.x + distance_from_center * v_from_center.x,
+									launchPos.y + distance_from_center * v_from_center.y,
+									launchPos.z + distance_from_center * v_from_center.z);
+			
+			// check this position against previous ship positions in this shell
+			safe = YES;
+			int j = i - 1;
+			while (safe && (j >= current_shell))
+			{
+				safe = (safe && (HPdistance2(ship_pos, ship_positions[j]) > safe_distance2));
+				j--;
+			}
+			if (!safe)
+			{
+				limit_count--;
+				if (!limit_count)	// give up and expand the shell
+				{
+					limit_count = 8;
+					distance_from_center += sqrt(safe_distance2);	// expand to the next distance
+				}
+			}
+			
+		} while (!safe);
+		
+		[ship setPosition:ship_pos];
+		[ship setScanClass:scanClass == CLASS_NOT_SET ? CLASS_NEUTRAL : scanClass];
+		
+		Quaternion qr;
+		quaternion_set_random(&qr);
+		[ship setOrientation:qr];
+		
+		// [self addEntity:ship];	// STATUS_IN_FLIGHT, AI state GLOBAL
+		
+		ship_positions[i] = ship_pos;
+		i++;
+		if (i > scale_up_after)
+		{
+			current_shell = i;
+			scale_up_after += 1 + 2 * i;
+			distance_from_center += sqrt(safe_distance2);	// fill the next shell
+		}
+	}
+	return YES;
+}
+
+
+bool Universe::addShipsNearPosition(int howMany, const std::string &desc, HPVector pos, const std::string &system)
+{
+	::Universe *self = oo::ToObjC(this);
+	// initial bounding box
+	GLfloat scalar = 1.0;
+	HPVector launchPos = [self cxx_coordinatesForPosition:pos withCoordinateSystem:system returningScalar:&scalar];
+	GLfloat rfactor = scalar;
+	if (rfactor > SCANNER_MAX_RANGE)
+		rfactor = SCANNER_MAX_RANGE;
+	if (rfactor < 1000)
+		rfactor = 1000;
+	BoundingBox	launch_bbox;
+	bounding_box_reset_to_vector(&launch_bbox, make_vector(launchPos.x - rfactor, launchPos.y - rfactor, launchPos.z - rfactor));
+	bounding_box_add_xyz(&launch_bbox, launchPos.x + rfactor, launchPos.y + rfactor, launchPos.z + rfactor);
+	
+	return [self cxx_addShips: howMany withRole: desc intoBoundingBox: launch_bbox];
+}
+
+
+bool Universe::addShipsNearPosition(int howMany, const std::string &desc, HPVector pos, const std::string &system, GLfloat radius)
+{
+	::Universe *self = oo::ToObjC(this);
+	// initial bounding box
+	GLfloat scalar = 1.0;
+	HPVector launchPos = [self cxx_coordinatesForPosition:pos withCoordinateSystem:system returningScalar:&scalar];
+	GLfloat rfactor = radius;
+	if (rfactor < 1000)
+		rfactor = 1000;
+	BoundingBox	launch_bbox;
+	bounding_box_reset_to_vector(&launch_bbox, make_vector(launchPos.x - rfactor, launchPos.y - rfactor, launchPos.z - rfactor));
+	bounding_box_add_xyz(&launch_bbox, launchPos.x + rfactor, launchPos.y + rfactor, launchPos.z + rfactor);
+	
+	return [self cxx_addShips: howMany withRole: desc intoBoundingBox: launch_bbox];
+}
+
+
+bool Universe::addShips(int howMany, const std::string &desc, BoundingBox bbox)
+{
+	::Universe *self = oo::ToObjC(this);
+	if (howMany < 1)
+		return YES;
+	if (howMany > 1)
+	{
+		// divide the number of ships in two
+		int h0 = howMany / 2;
+		int h1 = howMany - h0;
+		// split the bounding box into two along its longest dimension
+		GLfloat lx = bbox.max.x - bbox.min.x;
+		GLfloat ly = bbox.max.y - bbox.min.y;
+		GLfloat lz = bbox.max.z - bbox.min.z;
+		BoundingBox bbox0 = bbox;
+		BoundingBox bbox1 = bbox;
+		if ((lx > lz)&&(lx > ly))	// longest dimension is x
+		{
+			bbox0.min.x += 0.5 * lx;
+			bbox1.max.x -= 0.5 * lx;
+		}
+		else
+		{
+			if (ly > lz)	// longest dimension is y
+			{
+				bbox0.min.y += 0.5 * ly;
+				bbox1.max.y -= 0.5 * ly;
+			}
+			else			// longest dimension is z
+			{
+				bbox0.min.z += 0.5 * lz;
+				bbox1.max.z -= 0.5 * lz;
+			}
+		}
+		// place half the ships into each bounding box
+		return ([self cxx_addShips: h0 withRole: desc intoBoundingBox: bbox0] && [self cxx_addShips: h1 withRole: desc intoBoundingBox: bbox1]);
+	}
+	
+	//	randomise within the bounding box (biased towards the center of the box)
+	HPVector pos = make_HPvector(bbox.min.x, bbox.min.y, bbox.min.z);
+	pos.x += 0.5 * (randf() + randf()) * (bbox.max.x - bbox.min.x);
+	pos.y += 0.5 * (randf() + randf()) * (bbox.max.y - bbox.min.y);
+	pos.z += 0.5 * (randf() + randf()) * (bbox.max.z - bbox.min.z);
+	
+	return ([self addShipWithRole:desc launchPos:pos rfactor:0.0] != nil);
+}
+
+
+bool Universe::spawnShip(const std::string &shipdesc)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	// no need to do any more than log - enforcing modes wouldn't even have
+	// loaded the legacy script
+	cxx_OOStandardsDeprecated(oo::str::format("'spawn' via legacy script is deprecated as a way of adding ships for %s", shipdesc.c_str()));
+
+	::ShipEntity		*ship;
+	oo::PList		shipdict;
+
+	shipdict = [[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:shipdesc];
+	if (shipdict.isNull())  return NO;
+
+	ship = [self cxx_newShipWithName:shipdesc];	// retain count is 1
+
+	if (ship == nil)  return NO;
+
+	// set any spawning characteristics
+	const oo::PList	*spawnEntry = shipdict.get<oo::PList::Dict>("spawn");
+	const oo::PList	spawndict = (spawnEntry != nullptr) ? *spawnEntry : oo::PList();
+	HPVector			pos, rpos, spos;
+	std::optional<std::string>	positionString;
+
+	// position
+	positionString = OptionalStringIn(spawndict, "position");
+	if (positionString.has_value())
+	{
+		if(oo::str::hasPrefix(*positionString, "abs ") && ([self planet] != nil || [self sun] !=nil))
+		{
+			OO_LOG_WARN("script.deprecated", "setting {} for {} '{}' in 'abs' inside .plists can cause compatibility issues across Oolite versions. Use coordinates relative to main system objects instead.", "position", "entity", shipdesc);
+		}
+
+		pos = [self cxx_coordinatesFromCoordinateSystemString:*positionString];
+	}
+	else
+	{
+		// without position defined, the ship will be added on top of the witchpoint buoy.
+		pos = OOHPVectorRandomRadial(SCANNER_MAX_RANGE);
+		OO_LOG_ERR("universe.spawnShip.error", "***** ERROR: failed to find a spawn position for ship {}.", shipdesc);
+	}
+	[ship setPosition:pos];
+
+	// facing_position
+	positionString = OptionalStringIn(spawndict, "facing_position");
+	if (positionString.has_value())
+	{
+		if(oo::str::hasPrefix(*positionString, "abs ") && ([self planet] != nil || [self sun] !=nil))
+		{
+			OO_LOG_WARN("script.deprecated", "setting {} for {} '{}' in 'abs' inside .plists can cause compatibility issues across Oolite versions. Use coordinates relative to main system objects instead.", "facing_position", "entity", shipdesc);
+		}
+
+		spos = [ship position];
+		Quaternion q1;
+		rpos = [self cxx_coordinatesFromCoordinateSystemString:*positionString];
+		rpos = HPvector_subtract(rpos, spos); // position relative to ship
+		
+		if (!HPvector_equal(rpos, kZeroHPVector))
+		{
+			rpos = HPvector_normal(rpos);
+			
+			if (!HPvector_equal(rpos, HPvector_flip(kBasisZHPVector)))
+			{
+				q1 = quaternion_rotation_between(HPVectorToVector(rpos), kBasisZVector);
+			}
+			else
+			{
+				// for the inverse of the kBasisZVector the rotation is undefined, so we select one.
+				q1 = make_quaternion(0,1,0,0);
+			}
+			
+						
+			[ship setOrientation:q1];
+		}
+	}
+	
+	[self addEntity:ship];	// STATUS_IN_FLIGHT, AI state GLOBAL
+	[ship release];
+	
+	return YES;
+}
+
+
+void Universe::witchspaceShipWithPrimaryRole(const std::string &role)
+{
+	::Universe *self = oo::ToObjC(this);
+	// adds a ship exiting witchspace (corollary of when ships leave the system)
+	::ShipEntity			*ship = nil;
+	oo::PList			systeminfo;
+	OOGovernmentID		government;
+
+	systeminfo = [self cxx_currentSystemData];
+ 	government = systeminfo.get<unsigned char>(std::string(KEY_GOVERNMENT));
+
+	ship = [self cxx_newShipWithRole:role];   // retain count = 1
+	
+	// Deal with scripted cargopods and ensure they are filled with something.
+	if (ship && [ship hasRole:"cargopod"])
+	{		
+		[self fillCargopodWithRandomCargo:ship];
+	}
+	
+	if (ship)
+	{
+		if (([ship scanClass] == CLASS_NO_DRAW)||([ship scanClass] == CLASS_NOT_SET))
+			[ship setScanClass: CLASS_NEUTRAL];
+		if (role == "trader")
+		{
+			[ship setCargoFlag: CARGO_FLAG_FULL_SCARCE];
+			if ([ship hasRole:"sunskim-trader"] && randf() < 0.25) // select 1/4 of the traders suitable for sunskimming.
+			{
+				[ship setCargoFlag: CARGO_FLAG_FULL_PLENTIFUL];
+				[self makeSunSkimmer:ship andSetAI:YES];
+			}
+			else
+			{
+				[ship switchAITo:"oolite-traderAI.js"];
+			}
+			
+			if (([ship pendingEscortCount] > 0)&&((Ranrot() % 7) < government))	// remove escorts if we feel safe
+			{
+				int nx = [ship pendingEscortCount] - 2 * (1 + (Ranrot() & 3));	// remove 2,4,6, or 8 escorts
+				[ship setPendingEscortCount:(nx > 0) ? nx : 0];
+			}
+		}
+		if (role == "pirate")
+		{
+			[ship setCargoFlag: CARGO_FLAG_PIRATE];
+			[ship setBounty: (Ranrot() & 7) + (Ranrot() & 7) + ((randf() < 0.05)? 63 : 23) withReason:kOOLegalStatusReasonSetup];	// they already have a price on their heads
+		}
+		if (![ship cxx_crew].has_value() && ![ship isUnpiloted])
+			[ship cxx_setCrew:std::vector<oo::ObjCRef<::OOCharacter *>>{ oo::ObjCRef<::OOCharacter *>(
+				[::OOCharacter randomCharacterWithRole:role
+				andOriginalSystem: Ranrot() & 255]) }];
+		// The following is set inside leaveWitchspace: AI state GLOBAL, STATUS_EXITING_WITCHSPACE, ai message: EXITED_WITCHSPACE, then STATUS_IN_FLIGHT
+		[ship leaveWitchspace];
+		[ship release];
+	}
+}
+
+
+// adds a ship within the collision radius of the other entity
+::ShipEntity * Universe::spawnShipWithRole(const std::string &desc, ::Entity *entity)
+{
+	::Universe *self = oo::ToObjC(this);
+	if (entity == nil)  return nil;
+	
+	::ShipEntity  *ship = nil;
+	HPVector		spawn_pos;
+	Quaternion	spawn_q;
+	GLfloat		offset = (randf() + randf()) * entity->_cxxEntity->collision_radius;
+	
+	quaternion_set_random(&spawn_q);
+	spawn_pos = HPvector_add([entity position], vectorToHPVector(vector_multiply_scalar(vector_forward_from_quaternion(spawn_q), offset)));
+	
+	ship = [self addShipWithRole:desc launchPos:spawn_pos rfactor:0.0];
+	[ship setOrientation:spawn_q];
+	
+	return ship;
+}
+
+
+::OOVisualEffectEntity * Universe::addVisualEffectAt(HPVector pos, const std::string &key)
+{
+	::Universe *self = oo::ToObjC(this);
+	OOJS_PROFILE_ENTER
+
+	// minimise the time between creating ship & assigning position.
+
+	::OOVisualEffectEntity  		*vis = [self cxx_newVisualEffectWithName:key]; // is retained
+	BOOL				success = NO;
+	if (vis != nil)
+	{
+		[vis setPosition:pos];
+		[vis setOrientation:OORandomQuaternion()];
+		
+		success = [self addEntity:vis]; // retained globally now
+		
+		[vis release];
+	}
+	return success ? vis : (::OOVisualEffectEntity *)nil;
+	
+	OOJS_PROFILE_EXIT
 }
 
 

@@ -147,6 +147,23 @@ extern Universe *gSharedUniverse;
 @end
 
 
+@implementation Universe (OOSlice6)
+
+- (HPVector) cxx_legacyPositionFrom:(HPVector)pos asCoordinateSystem:(const std::string &)system	{ return _cxxUniverse->legacyPositionFrom(pos, system); }
+- (HPVector) cxx_coordinatesFromCoordinateSystemString:(const std::string &)system_x_y_z	{ return _cxxUniverse->coordinatesFromCoordinateSystemString(system_x_y_z); }
+- (BOOL) cxx_addShipWithRole:(const std::string &)desc nearPosition:(HPVector)pos withCoordinateSystem:(const std::string &)system	{ return _cxxUniverse->addShipWithRole(desc, pos, system); }
+- (BOOL) cxx_addShips:(int)howMany withRole:(const std::string &)desc atPosition:(HPVector)pos withCoordinateSystem:(const std::string &)system	{ return _cxxUniverse->addShipsAtPosition(howMany, desc, pos, system); }
+- (BOOL) cxx_addShips:(int)howMany withRole:(const std::string &)desc nearPosition:(HPVector)pos withCoordinateSystem:(const std::string &)system	{ return _cxxUniverse->addShipsNearPosition(howMany, desc, pos, system); }
+- (BOOL) cxx_addShips:(int)howMany withRole:(const std::string &)desc nearPosition:(HPVector)pos withCoordinateSystem:(const std::string &)system withinRadius:(GLfloat)radius	{ return _cxxUniverse->addShipsNearPosition(howMany, desc, pos, system, radius); }
+- (BOOL) cxx_addShips:(int)howMany withRole:(const std::string &)desc intoBoundingBox:(BoundingBox)bbox	{ return _cxxUniverse->addShips(howMany, desc, bbox); }
+- (BOOL) cxx_spawnShip:(const std::string &)shipdesc	{ return _cxxUniverse->spawnShip(shipdesc); }
+- (void) cxx_witchspaceShipWithPrimaryRole:(const std::string &)role	{ _cxxUniverse->witchspaceShipWithPrimaryRole(role); }
+- (ShipEntity *) cxx_spawnShipWithRole:(const std::string &)desc near:(Entity *)entity	{ return _cxxUniverse->spawnShipWithRole(desc, entity); }
+- (OOVisualEffectEntity *) cxx_addVisualEffectAt:(HPVector)pos withKey:(const std::string &)key	{ return _cxxUniverse->addVisualEffectAt(pos, key); }
+
+@end
+
+
 @implementation Universe (OOSlice14)
 
 - (ShipEntity *) cxx_makeDemoShipWithRole:(const std::string &)role spinning:(BOOL)spinning	{ return _cxxUniverse->makeDemoShipWithRole(role, spinning); }
