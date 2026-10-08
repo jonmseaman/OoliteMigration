@@ -31,13 +31,11 @@ MA 02110-1301, USA.
 #include "oofnd/String.hpp"
 
 
-/*	C++20 since bead oo-3smy (proposed ADR-0056): cxx::OOJSFunction. The initialisers answered nil
+/*	C++20 since bead oo-3smy (proposed ADR-0056): OOJSFunction. The initialisers answered nil
 	for their input, so they are static factories of the same name (amendment oo-novu item 1); the
 	part of -initWithFunction:context: that cannot fail is the private constructor. The engine,
 	the script stack and the wrapped arguments are Objective-C and are messaged as before.
 */
-
-namespace cxx {
 
 oo::Ref<OOJSFunction> OOJSFunction::initWithFunction(ooscript::Function function, ooscript::Context context)
 {
@@ -241,4 +239,3 @@ bool OOJSFunction::evaluatePredicateWithContext(ooscript::Context context,
 	return OK && retval;
 }
 
-}	// namespace cxx
