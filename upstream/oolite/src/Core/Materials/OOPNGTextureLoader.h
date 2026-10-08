@@ -31,6 +31,7 @@ SOFTWARE.
 #define OOPNGTEXTURELOADER_H
 
 #import "png.h"
+#import "OOTexture.h"
 #import "OOTextureLoader.h"
 
 #include "oofnd/Data.hpp"
