@@ -91,6 +91,9 @@ public:
 
 	// From the superclass.
 	bool isDock() override;
+	// Entity (OOJavaScriptExtensions): the binding's bodies (OOJSDock.h).
+	void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype) override;
+	std::optional<std::string> jsClassName() override;
 	bool setUpShipFromDictionary(const oo::PList &dict) override;
 	void update(OOTimeDelta delta_t) override;
 	void noteTakingDamage(double amount, ::Entity *entity, OOShipDamageType type) override;
