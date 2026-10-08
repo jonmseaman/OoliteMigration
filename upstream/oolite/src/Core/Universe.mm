@@ -541,425 +541,6 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 #define SKY_AMBIENT_ADJUSTMENT		0.0625
 
 
-- (ShipEntity *) addShipAt:(HPVector)pos withRole:(const std::string &)role withinRadius:(GLfloat)radius
-{
-	OOJS_PROFILE_ENTER
-
-	// minimise the time between creating ship & assigning position.
-	if (radius == NSNotFound)
-	{
-		GLfloat scalar = 1.0;
-		[self cxx_coordinatesForPosition:pos withCoordinateSystem:"abs" returningScalar:&scalar];
-		//	randomise
-		GLfloat rfactor = scalar;
-		if (rfactor > SCANNER_MAX_RANGE)
-			rfactor = SCANNER_MAX_RANGE;
-		if (rfactor < 1000)
-			rfactor = 1000;
-		pos.x += rfactor*(randf() - randf());
-		pos.y += rfactor*(randf() - randf());
-		pos.z += rfactor*(randf() - randf());
-	}
-	else
-	{
-		pos = HPvector_add(pos, OOHPVectorRandomSpatial(radius));
-	}
-	
-	ShipEntity  		*ship = [self cxx_newShipWithRole:role]; // is retained
-	BOOL				success = NO;
-	
-	if (ship != nil)
-	{
-		[ship setPosition:pos];
-		if ([ship hasRole:"cargopod"]) [self fillCargopodWithRandomCargo:ship];
-		OOScanClass scanClass = [ship scanClass];
-		if (scanClass == CLASS_NOT_SET)
-		{
-			scanClass = CLASS_NEUTRAL;
-			[ship setScanClass:scanClass];
-		}
-		
-		if (![ship cxx_crew].has_value() && ![ship isUnpiloted])
-		{
-			[ship cxx_setCrew:std::vector<oo::ObjCRef<OOCharacter *>>{ oo::ObjCRef<OOCharacter *>(
-				[OOCharacter randomCharacterWithRole:role
-				andOriginalSystem:Ranrot() & 255]) }];
-		}
-		
-		[ship setOrientation:OORandomQuaternion()];
-		
-		BOOL trader = role == "trader";
-		if (trader)
-		{
-			// half of traders created anywhere will now have cargo. 
-			if (randf() > 0.5f)
-			{
-				[ship setCargoFlag:(randf() < 0.66f ? CARGO_FLAG_FULL_PLENTIFUL : CARGO_FLAG_FULL_SCARCE)];	// most of them will carry the cargo produced in-system.
-			}
-			
-			uint8_t pendingEscortCount = [ship pendingEscortCount];
-			if (pendingEscortCount > 0)
-			{
-				OOGovernmentID government = [self cxx_currentSystemData].get<unsigned char>(std::string(KEY_GOVERNMENT));
-				if ((Ranrot() % 7) < government)	// remove escorts if we feel safe
-				{
-					int nx = pendingEscortCount - 2 * (1 + (Ranrot() & 3));	// remove 2,4,6, or 8 escorts
-					[ship setPendingEscortCount:(nx > 0) ? nx : 0];
-				}
-			}
-		}
-		
-		if (HPdistance([self getWitchspaceExitPosition], pos) > SCANNER_MAX_RANGE)
-		{
-			// nothing extra to do
-			success = [self addEntity:ship];	// STATUS_IN_FLIGHT, AI state GLOBAL - ship is retained globally			
-		}
-		else	// witchspace incoming traders & pirates need extra settings.
-		{
-			if (trader)
-			{
-				[ship setCargoFlag:CARGO_FLAG_FULL_SCARCE];
-				if ([ship hasRole:"sunskim-trader"] && randf() < 0.25) 
-				{
-					[ship setCargoFlag:CARGO_FLAG_FULL_PLENTIFUL];
-					[self makeSunSkimmer:ship andSetAI:YES];
-				}
-				else
-				{
-					[ship switchAITo:"oolite-traderAI.js"];
-				}
-			}
-			else if (role == "pirate")
-			{
-				[ship setBounty:(Ranrot() & 7) + (Ranrot() & 7) + ((randf() < 0.05)? 63 : 23) withReason:kOOLegalStatusReasonSetup];	// they already have a price on their heads
-			}
-			
-			// Status changes inside the following call: AI state GLOBAL, then STATUS_EXITING_WITCHSPACE, 
-			// with the EXITED_WITCHSPACE message sent to the AI. At last we set STATUS_IN_FLIGHT.
-			// Includes addEntity, so ship is retained globally.
-			success = [ship witchspaceLeavingEffects];
-		}
-		
-		[ship release];
-	}
-	return success ? ship : (ShipEntity *)nil;
-	
-	OOJS_PROFILE_EXIT
-}
-
-
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_addShipsAt:(HPVector)pos withRole:(const std::string &)role quantity:(unsigned)count withinRadius:(GLfloat)radius asGroup:(BOOL)isGroup
-{
-	OOJS_PROFILE_ENTER
-
-	std::vector<oo::ObjCRef<ShipEntity *>>	ships;
-	ships.reserve(count);
-	ShipEntity			*ship = nil;
-	OOShipGroup			*group = nil;
-
-	if (isGroup)
-	{
-		group = [OOShipGroup cxx_groupWithName:oo::str::format("%s group", role.c_str())];
-	}
-
-	while (count--)
-	{
-		ship = [self addShipAt:pos withRole:role withinRadius:radius];
-		if (ship != nil)
-		{
-			// TODO: avoid collisions!!!
-			if (isGroup) [ship setGroup:group];
-			ships.push_back(oo::ObjCRef<ShipEntity *>(ship));
-		}
-	}
-
-	return ships;	// empty where nil was returned
-
-	OOJS_PROFILE_EXIT_VAL(std::vector<oo::ObjCRef<ShipEntity *>>())
-}
-
-
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_addShipsToRoute:(const std::string &)route withRole:(const std::string &)role quantity:(unsigned)count routeFraction:(double)routeFraction asGroup:(BOOL)isGroup
-{
-	std::vector<oo::ObjCRef<ShipEntity *>>	ships;
-	ships.reserve(count);
-	ShipEntity				*ship = nil;
-	Entity<OOStellarBody>	*entity = nil;
-	HPVector					pos = kZeroHPVector, direction = kZeroHPVector, point0 = kZeroHPVector, point1 = kZeroHPVector;
-	double					radius = 0;
-	
-	if (route == "pw" || route == "sw" || route == "ps")
-	{
-		routeFraction = 1.0f - routeFraction;
-	}
-
-	// which route is it?
-	if (route == "wp" || route == "pw")
-	{
-		point0 = [self getWitchspaceExitPosition];
-		entity = [self planet];
-		if (entity == nil)  return {};
-		point1 = [entity position];
-		radius = [entity radius];
-	}
-	else if (route == "ws" || route == "sw")
-	{
-		point0 = [self getWitchspaceExitPosition];
-		entity = [self sun];
-		if (entity == nil)  return {};
-		point1 = [entity position];
-		radius = [entity radius];
-	}
-	else if (route == "sp" || route == "ps")
-	{
-		entity = [self sun];
-		if (entity == nil)  return {};
-		point0 = [entity position];
-		double radius0 = [entity radius];
-
-		entity = [self planet];
-		if (entity == nil)  return {};
-		point1 = [entity position];
-		radius = [entity radius];
-		
-		// shorten the route by scanner range & sun radius, otherwise ships could be created inside it.
-		direction = HPvector_normal(HPvector_subtract(point0, point1));
-		point0 = HPvector_subtract(point0, HPvector_multiply_scalar(direction, radius0 + SCANNER_MAX_RANGE * 1.1f));
-	}
-	else if (route == "st")
-	{
-		point0 = [self getWitchspaceExitPosition];
-		if ([self station] == nil)  return {};
-		point1 = [[self station] position];
-		radius = [[self station] collisionRadius];
-	}
-	else return {};	// no route specifier? We shouldn't be here!
-	
-	// shorten the route by scanner range & radius, otherwise ships could be created inside the route destination.
-	direction = HPvector_normal(HPvector_subtract(point1, point0));
-	point1 = HPvector_subtract(point1, HPvector_multiply_scalar(direction, radius + SCANNER_MAX_RANGE * 1.1f));
-	
-	pos = [self fractionalPositionFrom:point0 to:point1 withFraction:routeFraction];
-	if(isGroup)
-	{	
-		return [self cxx_addShipsAt:pos withRole:role quantity:count withinRadius:(SCANNER_MAX_RANGE / 10.0f) asGroup:YES];
-	}
-	else
-	{
-		while (count--)
-		{
-			ship = [self addShipAt:pos withRole:role withinRadius:0]; // no radius because pos is already randomised with SCANNER_MAX_RANGE.
-			if (ship != nil) ships.push_back(oo::ObjCRef<ShipEntity *>(ship));
-			if (count > 0) pos = [self fractionalPositionFrom:point0 to:point1 withFraction:routeFraction];
-		}
-	}
-
-	return ships;	// empty where nil was returned
-}
-
-
-- (BOOL) cxx_roleIsPirateVictim:(const std::string &)role
-{
-	return [self cxx_role:role isInCategory:"oolite-pirate-victim"];
-}
-
-
-- (BOOL) cxx_role:(const std::string &)role isInCategory:(const std::string &)category
-{
-	const oo::PList *categoryInfo = _cxxUniverse->roleCategories.get<oo::PList::Array>(category);	// the category's roles, each once
-	if (categoryInfo == nullptr)
-	{
-		return NO;
-	}
-	for (const oo::PList &member : *categoryInfo->getIf<oo::PList::Array>())
-	{
-		if (const std::string *memberRole = member.getIf<std::string>(); memberRole != nullptr && *memberRole == role)  return YES;
-	}
-	return NO;
-}
-
-
-// used to avoid having lost escorts when player advances clock while docked
-- (void) forceWitchspaceEntries
-{
-	unsigned i;
-	for (i = 0; i < _cxxUniverse->n_entities; i++)
-	{
-		if (_cxxUniverse->sortedEntities[i]->_cxxEntity->isShip)
-		{
-			ShipEntity *my_ship = (ShipEntity*)_cxxUniverse->sortedEntities[i];
-			Entity* my_target = [my_ship primaryTarget];
-			if ([my_target isWormhole])
-			{
-				[my_ship enterTargetWormhole];
-			}
-			else if ([[my_ship getAI] cxx_state] == "ENTER_WORMHOLE")
-			{
-				[my_ship enterTargetWormhole];
-			}
-		}
-	}
-}
-
-
-- (void) addWitchspaceJumpEffectForShip:(ShipEntity *)ship
-{
-	// don't add rings when system is being populated
-	if ([PLAYER status] != STATUS_ENTERING_WITCHSPACE && [PLAYER status] != STATUS_EXITING_WITCHSPACE)
-	{
-		[self addEntity:oo::NewEntityFacade(OORingEffectEntity::ringFromEntity(ship))];
-		[self addEntity:oo::NewEntityFacade(OORingEffectEntity::shrinkingRingFromEntity(ship))];
-	}
-}
-
-
-- (GLfloat) safeWitchspaceExitDistance
-{
-	for (unsigned i = 0; i < _cxxUniverse->n_entities; i++)
-	{
-		Entity *e2 = _cxxUniverse->sortedEntities[i];
-		if ([e2 isShip] && [(ShipEntity*)e2 cxx_hasPrimaryRole:"buoy-witchpoint"])
-		{
-			return [(ShipEntity*)e2 collisionRadius] + MIN_DISTANCE_TO_BUOY;
-		}
-	}
-	return MIN_DISTANCE_TO_BUOY;
-}
-
-
-- (void) setUpBreakPattern:(HPVector) pos orientation:(Quaternion) q forDocking:(BOOL) forDocking
-{
-	int						i;
-	OOBreakPatternEntity	*ring = nil;
-	oo::PList				colorDesc;
-	OOColor					*color = nil;
-	
-	[self setViewDirection:VIEW_FORWARD];
-	
-	q.w = -q.w;		// reverse the quaternion because this is from the player's viewpoint
-	
-	Vector			v = vector_forward_from_quaternion(q);
-	Vector			vel = vector_multiply_scalar(v, -BREAK_PATTERN_RING_SPEED);
-	
-	// hyperspace colours
-	
-	OOColor *col1 = [OOColor colorWithRed:1.0 green:0.0 blue:0.0 alpha:0.5];	//standard tunnel colour
-	OOColor *col2 = [OOColor colorWithRed:0.0 green:0.0 blue:1.0 alpha:0.25];	//standard tunnel colour
-	
-	colorDesc = PListForKeyIn(_cxxUniverse->globalSettings, "hyperspace_tunnel_color_1");	// +cxx_colorWithDescription: takes any description
-	if (!colorDesc.isNull())
-	{
-		color = [OOColor cxx_colorWithDescription:colorDesc];
-		if (color != nil)  col1 = color;
-		else  OO_LOG_WARN("hyperspaceTunnel.fromDict", "could not interpret \"{}\" as a colour.", oo::DescriptionOf(colorDesc));
-	}
-
-	colorDesc = PListForKeyIn(_cxxUniverse->globalSettings, "hyperspace_tunnel_color_2");
-	if (!colorDesc.isNull())
-	{
-		color = [OOColor cxx_colorWithDescription:colorDesc];
-		if (color != nil)  col2 = color;
-		else  OO_LOG_WARN("hyperspaceTunnel.fromDict", "could not interpret \"{}\" as a colour.", oo::DescriptionOf(colorDesc));
-	}
-	
-	unsigned	sides = kOOBreakPatternMaxSides;
-	GLfloat		startAngle = 0;
-	GLfloat		aspectRatio = 1;
-	
-	if (forDocking)
-	{
-		const oo::PList info = [[PLAYER dockedStation] cxx_shipInfoDictionary];
-		sides = info.get<unsigned int>("tunnel_corners", 4);
-		startAngle = info.get<float>("tunnel_start_angle", 45.0f);
-		aspectRatio = info.get<float>("tunnel_aspect_ratio", 2.67f);
-	}
-	
-	for (i = 1; i < 11; i++)
-	{
-		ring = [OOBreakPatternEntity breakPatternWithPolygonSides:sides startAngle:startAngle aspectRatio:aspectRatio];
-		if (!forDocking)
-		{
-			[ring setInnerColor:col1 outerColor:col2];
-		}
-		
-		Vector offset = vector_multiply_scalar(v, i * BREAK_PATTERN_RING_SPACING);
-		[ring setPosition:HPvector_add(pos, vectorToHPVector(offset))];  // ahead of the player
-		[ring setOrientation:q];
-		[ring setVelocity:vel];
-		[ring setLifetime:i * BREAK_PATTERN_RING_SPACING];
-		
-		// FIXME: better would be to have break pattern timing not depend on
-		// these ring objects existing in the first place. - CIM
-		if (forDocking && ![[PLAYER dockedStation] hasBreakPattern])
-		{
-			ring->_cxxEntity->isImmuneToBreakPatternHide = NO;
-		}
-		else if (!forDocking && ![self witchspaceBreakPattern])
-		{
-			ring->_cxxEntity->isImmuneToBreakPatternHide = NO;
-		}
-		[self addEntity:ring];
-		_cxxUniverse->breakPatternCounter++;
-	}
-}
-
-
-- (BOOL) witchspaceBreakPattern
-{
-	return _cxxUniverse->_witchspaceBreakPattern;
-}
-
-
-- (void) setWitchspaceBreakPattern:(BOOL)newValue
-{
-	_cxxUniverse->_witchspaceBreakPattern = !!newValue;
-}
-
-
-- (BOOL) dockingClearanceProtocolActive
-{
-	return _cxxUniverse->_dockingClearanceProtocolActive;
-}
-
-
-- (void) setDockingClearanceProtocolActive:(BOOL)newValue
-{
-	OOShipRegistry	*registry = [OOShipRegistry sharedRegistry];
-	StationEntity	*station = nil;
-
-	/* CIM: picking a random ship type which can take the same primary
-	 * role as the station to determine whether it has no set docking
-	 * clearance requirements seems unlikely to work entirely
-	 * correctly. To be fixed. */
-						   
-	for (const oo::ObjCRef<StationEntity *> &entry : _cxxUniverse->allStations)
-	{
-		station = entry.get();
-		const std::optional<std::string>	stationKey = [registry cxx_randomShipKeyForRole:[station cxx_primaryRole].value_or("")];
-		const oo::PList	stationInfo = stationKey.has_value() ? [registry cxx_shipInfoForKey:*stationKey] : oo::PList();
-		if (stationInfo.find("requires_docking_clearance") == nullptr)
-		{
-			[station setRequiresDockingClearance:!!newValue];
-		}
-	}
-	
-	_cxxUniverse->_dockingClearanceProtocolActive = !!newValue;
-}
-
-
-- (void) handleGameOver
-{
-	if ([[self gameController] cxx_playerFileToLoad].has_value())
-	{
-		[[self gameController] loadPlayerIfRequired];
-	}
-	else
-	{
-		[self cxx_setUseAddOns:std::string(SCENARIO_OXP_DEFINITION_ALL) fromSaveGame:NO forceReinit:YES]; // calls reinitAndShowDemo
-	} 
-}
-
-
 namespace {
 
 std::optional<std::string> OptionalStringIn(const oo::PList &dict, std::string_view key);	// defined with the other configuration readers below
@@ -6054,6 +5635,441 @@ void Universe::witchspaceShipWithPrimaryRole(const std::string &role)
 	return success ? vis : (::OOVisualEffectEntity *)nil;
 	
 	OOJS_PROFILE_EXIT
+}
+
+
+}	// namespace cxx
+
+
+// Slice 7 of docs/phases/3-slices/Universe.md (bead oo-49wmm): adding ships within a radius and on
+// routes, role categories, witchspace entries and effects, break patterns, the docking clearance
+// protocol, game over. The facade forwards each selector (Universe+ObjCBridge.mm); sends to self
+// stay sends (ADR-0056 amendment oo-27jxj).
+namespace cxx {
+
+::ShipEntity * Universe::addShipAt(HPVector pos, const std::string &role, GLfloat radius)
+{
+	::Universe *self = oo::ToObjC(this);
+	OOJS_PROFILE_ENTER
+
+	// minimise the time between creating ship & assigning position.
+	if (radius == NSNotFound)
+	{
+		GLfloat scalar = 1.0;
+		[self cxx_coordinatesForPosition:pos withCoordinateSystem:"abs" returningScalar:&scalar];
+		//	randomise
+		GLfloat rfactor = scalar;
+		if (rfactor > SCANNER_MAX_RANGE)
+			rfactor = SCANNER_MAX_RANGE;
+		if (rfactor < 1000)
+			rfactor = 1000;
+		pos.x += rfactor*(randf() - randf());
+		pos.y += rfactor*(randf() - randf());
+		pos.z += rfactor*(randf() - randf());
+	}
+	else
+	{
+		pos = HPvector_add(pos, OOHPVectorRandomSpatial(radius));
+	}
+	
+	::ShipEntity  		*ship = [self cxx_newShipWithRole:role]; // is retained
+	BOOL				success = NO;
+	
+	if (ship != nil)
+	{
+		[ship setPosition:pos];
+		if ([ship hasRole:"cargopod"]) [self fillCargopodWithRandomCargo:ship];
+		OOScanClass scanClass = [ship scanClass];
+		if (scanClass == CLASS_NOT_SET)
+		{
+			scanClass = CLASS_NEUTRAL;
+			[ship setScanClass:scanClass];
+		}
+		
+		if (![ship cxx_crew].has_value() && ![ship isUnpiloted])
+		{
+			[ship cxx_setCrew:std::vector<oo::ObjCRef<::OOCharacter *>>{ oo::ObjCRef<::OOCharacter *>(
+				[::OOCharacter randomCharacterWithRole:role
+				andOriginalSystem:Ranrot() & 255]) }];
+		}
+		
+		[ship setOrientation:OORandomQuaternion()];
+		
+		BOOL trader = role == "trader";
+		if (trader)
+		{
+			// half of traders created anywhere will now have cargo. 
+			if (randf() > 0.5f)
+			{
+				[ship setCargoFlag:(randf() < 0.66f ? CARGO_FLAG_FULL_PLENTIFUL : CARGO_FLAG_FULL_SCARCE)];	// most of them will carry the cargo produced in-system.
+			}
+			
+			uint8_t pendingEscortCount = [ship pendingEscortCount];
+			if (pendingEscortCount > 0)
+			{
+				OOGovernmentID government = [self cxx_currentSystemData].get<unsigned char>(std::string(KEY_GOVERNMENT));
+				if ((Ranrot() % 7) < government)	// remove escorts if we feel safe
+				{
+					int nx = pendingEscortCount - 2 * (1 + (Ranrot() & 3));	// remove 2,4,6, or 8 escorts
+					[ship setPendingEscortCount:(nx > 0) ? nx : 0];
+				}
+			}
+		}
+		
+		if (HPdistance([self getWitchspaceExitPosition], pos) > SCANNER_MAX_RANGE)
+		{
+			// nothing extra to do
+			success = [self addEntity:ship];	// STATUS_IN_FLIGHT, AI state GLOBAL - ship is retained globally			
+		}
+		else	// witchspace incoming traders & pirates need extra settings.
+		{
+			if (trader)
+			{
+				[ship setCargoFlag:CARGO_FLAG_FULL_SCARCE];
+				if ([ship hasRole:"sunskim-trader"] && randf() < 0.25) 
+				{
+					[ship setCargoFlag:CARGO_FLAG_FULL_PLENTIFUL];
+					[self makeSunSkimmer:ship andSetAI:YES];
+				}
+				else
+				{
+					[ship switchAITo:"oolite-traderAI.js"];
+				}
+			}
+			else if (role == "pirate")
+			{
+				[ship setBounty:(Ranrot() & 7) + (Ranrot() & 7) + ((randf() < 0.05)? 63 : 23) withReason:kOOLegalStatusReasonSetup];	// they already have a price on their heads
+			}
+			
+			// Status changes inside the following call: AI state GLOBAL, then STATUS_EXITING_WITCHSPACE, 
+			// with the EXITED_WITCHSPACE message sent to the AI. At last we set STATUS_IN_FLIGHT.
+			// Includes addEntity, so ship is retained globally.
+			success = [ship witchspaceLeavingEffects];
+		}
+		
+		[ship release];
+	}
+	return success ? ship : (::ShipEntity *)nil;
+	
+	OOJS_PROFILE_EXIT
+}
+
+
+std::vector<oo::ObjCRef<::ShipEntity *>> Universe::addShipsAt(HPVector pos, const std::string &role, unsigned count, GLfloat radius, bool isGroup)
+{
+	::Universe *self = oo::ToObjC(this);
+	OOJS_PROFILE_ENTER
+
+	std::vector<oo::ObjCRef<::ShipEntity *>>	ships;
+	ships.reserve(count);
+	::ShipEntity			*ship = nil;
+	::OOShipGroup			*group = nil;
+
+	if (isGroup)
+	{
+		group = [::OOShipGroup cxx_groupWithName:oo::str::format("%s group", role.c_str())];
+	}
+
+	while (count--)
+	{
+		ship = [self addShipAt:pos withRole:role withinRadius:radius];
+		if (ship != nil)
+		{
+			// TODO: avoid collisions!!!
+			if (isGroup) [ship setGroup:group];
+			ships.push_back(oo::ObjCRef<::ShipEntity *>(ship));
+		}
+	}
+
+	return ships;	// empty where nil was returned
+
+	OOJS_PROFILE_EXIT_VAL(std::vector<oo::ObjCRef<::ShipEntity *>>())
+}
+
+
+std::vector<oo::ObjCRef<::ShipEntity *>> Universe::addShipsToRoute(const std::string &route, const std::string &role, unsigned count, double routeFraction, bool isGroup)
+{
+	::Universe *self = oo::ToObjC(this);
+	std::vector<oo::ObjCRef<::ShipEntity *>>	ships;
+	ships.reserve(count);
+	::ShipEntity				*ship = nil;
+	::Entity<OOStellarBody>	*entity = nil;
+	HPVector					pos = kZeroHPVector, direction = kZeroHPVector, point0 = kZeroHPVector, point1 = kZeroHPVector;
+	double					radius = 0;
+	
+	if (route == "pw" || route == "sw" || route == "ps")
+	{
+		routeFraction = 1.0f - routeFraction;
+	}
+
+	// which route is it?
+	if (route == "wp" || route == "pw")
+	{
+		point0 = [self getWitchspaceExitPosition];
+		entity = [self planet];
+		if (entity == nil)  return {};
+		point1 = [entity position];
+		radius = [entity radius];
+	}
+	else if (route == "ws" || route == "sw")
+	{
+		point0 = [self getWitchspaceExitPosition];
+		entity = [self sun];
+		if (entity == nil)  return {};
+		point1 = [entity position];
+		radius = [entity radius];
+	}
+	else if (route == "sp" || route == "ps")
+	{
+		entity = [self sun];
+		if (entity == nil)  return {};
+		point0 = [entity position];
+		double radius0 = [entity radius];
+
+		entity = [self planet];
+		if (entity == nil)  return {};
+		point1 = [entity position];
+		radius = [entity radius];
+		
+		// shorten the route by scanner range & sun radius, otherwise ships could be created inside it.
+		direction = HPvector_normal(HPvector_subtract(point0, point1));
+		point0 = HPvector_subtract(point0, HPvector_multiply_scalar(direction, radius0 + SCANNER_MAX_RANGE * 1.1f));
+	}
+	else if (route == "st")
+	{
+		point0 = [self getWitchspaceExitPosition];
+		if ([self station] == nil)  return {};
+		point1 = [[self station] position];
+		radius = [[self station] collisionRadius];
+	}
+	else return {};	// no route specifier? We shouldn't be here!
+	
+	// shorten the route by scanner range & radius, otherwise ships could be created inside the route destination.
+	direction = HPvector_normal(HPvector_subtract(point1, point0));
+	point1 = HPvector_subtract(point1, HPvector_multiply_scalar(direction, radius + SCANNER_MAX_RANGE * 1.1f));
+	
+	pos = [self fractionalPositionFrom:point0 to:point1 withFraction:routeFraction];
+	if(isGroup)
+	{	
+		return [self cxx_addShipsAt:pos withRole:role quantity:count withinRadius:(SCANNER_MAX_RANGE / 10.0f) asGroup:YES];
+	}
+	else
+	{
+		while (count--)
+		{
+			ship = [self addShipAt:pos withRole:role withinRadius:0]; // no radius because pos is already randomised with SCANNER_MAX_RANGE.
+			if (ship != nil) ships.push_back(oo::ObjCRef<::ShipEntity *>(ship));
+			if (count > 0) pos = [self fractionalPositionFrom:point0 to:point1 withFraction:routeFraction];
+		}
+	}
+
+	return ships;	// empty where nil was returned
+}
+
+
+bool Universe::roleIsPirateVictim(const std::string &role)
+{
+	::Universe *self = oo::ToObjC(this);
+	return [self cxx_role:role isInCategory:"oolite-pirate-victim"];
+}
+
+
+bool Universe::role(const std::string &role, const std::string &category)
+{
+	const oo::PList *categoryInfo = roleCategories.get<oo::PList::Array>(category);	// the category's roles, each once
+	if (categoryInfo == nullptr)
+	{
+		return NO;
+	}
+	for (const oo::PList &member : *categoryInfo->getIf<oo::PList::Array>())
+	{
+		if (const std::string *memberRole = member.getIf<std::string>(); memberRole != nullptr && *memberRole == role)  return YES;
+	}
+	return NO;
+}
+
+
+// used to avoid having lost escorts when player advances clock while docked
+void Universe::forceWitchspaceEntries()
+{
+	unsigned i;
+	for (i = 0; i < n_entities; i++)
+	{
+		if (sortedEntities[i]->_cxxEntity->isShip)
+		{
+			::ShipEntity *my_ship = (::ShipEntity*)sortedEntities[i];
+			::Entity* my_target = [my_ship primaryTarget];
+			if ([my_target isWormhole])
+			{
+				[my_ship enterTargetWormhole];
+			}
+			else if ([[my_ship getAI] cxx_state] == "ENTER_WORMHOLE")
+			{
+				[my_ship enterTargetWormhole];
+			}
+		}
+	}
+}
+
+
+void Universe::addWitchspaceJumpEffectForShip(::ShipEntity *ship)
+{
+	::Universe *self = oo::ToObjC(this);
+	// don't add rings when system is being populated
+	if ([PLAYER status] != STATUS_ENTERING_WITCHSPACE && [PLAYER status] != STATUS_EXITING_WITCHSPACE)
+	{
+		[self addEntity:oo::NewEntityFacade(OORingEffectEntity::ringFromEntity(ship))];
+		[self addEntity:oo::NewEntityFacade(OORingEffectEntity::shrinkingRingFromEntity(ship))];
+	}
+}
+
+
+GLfloat Universe::safeWitchspaceExitDistance()
+{
+	for (unsigned i = 0; i < n_entities; i++)
+	{
+		::Entity *e2 = sortedEntities[i];
+		if ([e2 isShip] && [(::ShipEntity*)e2 cxx_hasPrimaryRole:"buoy-witchpoint"])
+		{
+			return [(::ShipEntity*)e2 collisionRadius] + MIN_DISTANCE_TO_BUOY;
+		}
+	}
+	return MIN_DISTANCE_TO_BUOY;
+}
+
+
+void Universe::setUpBreakPattern(HPVector pos, Quaternion q, bool forDocking)
+{
+	::Universe *self = oo::ToObjC(this);
+	int						i;
+	::OOBreakPatternEntity	*ring = nil;
+	oo::PList				colorDesc;
+	::OOColor					*color = nil;
+	
+	[self setViewDirection:VIEW_FORWARD];
+	
+	q.w = -q.w;		// reverse the quaternion because this is from the player's viewpoint
+	
+	Vector			v = vector_forward_from_quaternion(q);
+	Vector			vel = vector_multiply_scalar(v, -BREAK_PATTERN_RING_SPEED);
+	
+	// hyperspace colours
+	
+	::OOColor *col1 = [::OOColor colorWithRed:1.0 green:0.0 blue:0.0 alpha:0.5];	//standard tunnel colour
+	::OOColor *col2 = [::OOColor colorWithRed:0.0 green:0.0 blue:1.0 alpha:0.25];	//standard tunnel colour
+	
+	colorDesc = PListForKeyIn(globalSettings, "hyperspace_tunnel_color_1");	// +cxx_colorWithDescription: takes any description
+	if (!colorDesc.isNull())
+	{
+		color = [::OOColor cxx_colorWithDescription:colorDesc];
+		if (color != nil)  col1 = color;
+		else  OO_LOG_WARN("hyperspaceTunnel.fromDict", "could not interpret \"{}\" as a colour.", oo::DescriptionOf(colorDesc));
+	}
+
+	colorDesc = PListForKeyIn(globalSettings, "hyperspace_tunnel_color_2");
+	if (!colorDesc.isNull())
+	{
+		color = [::OOColor cxx_colorWithDescription:colorDesc];
+		if (color != nil)  col2 = color;
+		else  OO_LOG_WARN("hyperspaceTunnel.fromDict", "could not interpret \"{}\" as a colour.", oo::DescriptionOf(colorDesc));
+	}
+	
+	unsigned	sides = kOOBreakPatternMaxSides;
+	GLfloat		startAngle = 0;
+	GLfloat		aspectRatio = 1;
+	
+	if (forDocking)
+	{
+		const oo::PList info = [[PLAYER dockedStation] cxx_shipInfoDictionary];
+		sides = info.get<unsigned int>("tunnel_corners", 4);
+		startAngle = info.get<float>("tunnel_start_angle", 45.0f);
+		aspectRatio = info.get<float>("tunnel_aspect_ratio", 2.67f);
+	}
+	
+	for (i = 1; i < 11; i++)
+	{
+		ring = [::OOBreakPatternEntity breakPatternWithPolygonSides:sides startAngle:startAngle aspectRatio:aspectRatio];
+		if (!forDocking)
+		{
+			[ring setInnerColor:col1 outerColor:col2];
+		}
+		
+		Vector offset = vector_multiply_scalar(v, i * BREAK_PATTERN_RING_SPACING);
+		[ring setPosition:HPvector_add(pos, vectorToHPVector(offset))];  // ahead of the player
+		[ring setOrientation:q];
+		[ring setVelocity:vel];
+		[ring setLifetime:i * BREAK_PATTERN_RING_SPACING];
+		
+		// FIXME: better would be to have break pattern timing not depend on
+		// these ring objects existing in the first place. - CIM
+		if (forDocking && ![[PLAYER dockedStation] hasBreakPattern])
+		{
+			ring->_cxxEntity->isImmuneToBreakPatternHide = NO;
+		}
+		else if (!forDocking && ![self witchspaceBreakPattern])
+		{
+			ring->_cxxEntity->isImmuneToBreakPatternHide = NO;
+		}
+		[self addEntity:ring];
+		breakPatternCounter++;
+	}
+}
+
+
+bool Universe::witchspaceBreakPattern()
+{
+	return _witchspaceBreakPattern;
+}
+
+
+void Universe::setWitchspaceBreakPattern(bool newValue)
+{
+	_witchspaceBreakPattern = !!newValue;
+}
+
+
+bool Universe::dockingClearanceProtocolActive()
+{
+	return _dockingClearanceProtocolActive;
+}
+
+
+void Universe::setDockingClearanceProtocolActive(bool newValue)
+{
+	::OOShipRegistry	*registry = [::OOShipRegistry sharedRegistry];
+	::StationEntity	*station = nil;
+
+	/* CIM: picking a random ship type which can take the same primary
+	 * role as the station to determine whether it has no set docking
+	 * clearance requirements seems unlikely to work entirely
+	 * correctly. To be fixed. */
+						   
+	for (const oo::ObjCRef<::StationEntity *> &entry : allStations)
+	{
+		station = entry.get();
+		const std::optional<std::string>	stationKey = [registry cxx_randomShipKeyForRole:[station cxx_primaryRole].value_or("")];
+		const oo::PList	stationInfo = stationKey.has_value() ? [registry cxx_shipInfoForKey:*stationKey] : oo::PList();
+		if (stationInfo.find("requires_docking_clearance") == nullptr)
+		{
+			[station setRequiresDockingClearance:!!newValue];
+		}
+	}
+	
+	_dockingClearanceProtocolActive = !!newValue;
+}
+
+
+void Universe::handleGameOver()
+{
+	::Universe *self = oo::ToObjC(this);
+	if ([[self gameController] cxx_playerFileToLoad].has_value())
+	{
+		[[self gameController] loadPlayerIfRequired];
+	}
+	else
+	{
+		[self cxx_setUseAddOns:std::string(SCENARIO_OXP_DEFINITION_ALL) fromSaveGame:NO forceReinit:YES]; // calls reinitAndShowDemo
+	} 
 }
 
 

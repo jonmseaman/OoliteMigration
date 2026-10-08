@@ -57,27 +57,6 @@ MA 02110-1301, USA.
 }
 
 
-- (ShipEntity *) addShipAt:(HPVector)pos withRole:(const std::string &)role withinRadius:(GLfloat)radius;
-// Empty where the old methods returned nil (no ship added).
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_addShipsAt:(HPVector)pos withRole:(const std::string &)role quantity:(unsigned)count withinRadius:(GLfloat)radius asGroup:(BOOL)isGroup;
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_addShipsToRoute:(const std::string &)route withRole:(const std::string &)role quantity:(unsigned)count routeFraction:(double)routeFraction asGroup:(BOOL)isGroup;
-
-- (BOOL) cxx_roleIsPirateVictim:(const std::string &)role;
-- (BOOL) cxx_role:(const std::string &)role isInCategory:(const std::string &)category;
-
-- (void) forceWitchspaceEntries;
-- (void) addWitchspaceJumpEffectForShip:(ShipEntity *)ship;
-- (GLfloat) safeWitchspaceExitDistance;
-
-- (void) setUpBreakPattern:(HPVector)pos orientation:(Quaternion)q forDocking:(BOOL)forDocking;
-- (BOOL) witchspaceBreakPattern;
-- (void) setWitchspaceBreakPattern:(BOOL)newValue;
-
-- (BOOL) dockingClearanceProtocolActive;
-- (void) setDockingClearanceProtocolActive:(BOOL)newValue;
-
-- (void) handleGameOver;
-
 - (void) setupIntroFirstGo:(BOOL)justCobra;
 - (void) selectIntro2Previous;
 - (void) selectIntro2Next;
@@ -271,6 +250,30 @@ MA 02110-1301, USA.
 - (void) cxx_witchspaceShipWithPrimaryRole:(const std::string &)role;
 - (ShipEntity *) cxx_spawnShipWithRole:(const std::string &) desc near:(Entity *) entity;
 - (OOVisualEffectEntity *) cxx_addVisualEffectAt:(HPVector)pos withKey:(const std::string &)key;
+
+@end
+
+
+// Slice 7 of docs/phases/3-slices/Universe.md: members of cxx::Universe, forwarded by the
+// category of the same name in Universe+ObjCBridge.mm (the class's @implementation, still in
+// Universe.mm, stays complete).
+@interface Universe (OOSlice7)
+
+- (ShipEntity *) addShipAt:(HPVector)pos withRole:(const std::string &)role withinRadius:(GLfloat)radius;
+// Empty where the old methods returned nil (no ship added).
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_addShipsAt:(HPVector)pos withRole:(const std::string &)role quantity:(unsigned)count withinRadius:(GLfloat)radius asGroup:(BOOL)isGroup;
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_addShipsToRoute:(const std::string &)route withRole:(const std::string &)role quantity:(unsigned)count routeFraction:(double)routeFraction asGroup:(BOOL)isGroup;
+- (BOOL) cxx_roleIsPirateVictim:(const std::string &)role;
+- (BOOL) cxx_role:(const std::string &)role isInCategory:(const std::string &)category;
+- (void) forceWitchspaceEntries;
+- (void) addWitchspaceJumpEffectForShip:(ShipEntity *)ship;
+- (GLfloat) safeWitchspaceExitDistance;
+- (void) setUpBreakPattern:(HPVector)pos orientation:(Quaternion)q forDocking:(BOOL)forDocking;
+- (BOOL) witchspaceBreakPattern;
+- (void) setWitchspaceBreakPattern:(BOOL)newValue;
+- (BOOL) dockingClearanceProtocolActive;
+- (void) setDockingClearanceProtocolActive:(BOOL)newValue;
+- (void) handleGameOver;
 
 @end
 
