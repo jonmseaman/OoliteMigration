@@ -392,7 +392,6 @@ unsigned argc = sizeof argv / sizeof *argv; \
 @interface ShipEntity (OOSlice5)
 
 - (BoundingBox) findBoundingBoxRelativeToPosition:(HPVector)opv InVectors:(Vector)i :(Vector)j :(Vector)k;
-- (Octree *) octree;
 - (float) volume;
 - (GLfloat)doesHitLine:(HPVector)v0 :(HPVector)v1;
 - (GLfloat)doesHitLine:(HPVector)v0 :(HPVector)v1 :(ShipEntity**)hitEntity;

@@ -40,9 +40,10 @@
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
 #include "oofnd/objc/OOObjCRef.h"
+#include "Octree.h"
 #include <string_view>
 
-@class	OOColor, StationEntity, WormholeEntity, AI, Octree, OOMesh, OOScript, OOCharacter,
+@class	OOColor, StationEntity, WormholeEntity, AI, OOMesh, OOScript, OOCharacter,
 	OOJSScript, OORoleSet, OOShipGroup, OOEquipmentType, OOWeakSet;
 class OOFlasherEntity;	// C++ only since bead oo-9ht.107
 class OOExhaustPlumeEntity;	// C++ only since bead oo-9ht.110
@@ -283,7 +284,7 @@ public:
 
 	// Slice 5: bounding boxes, octree hit tests, universe add / remove, beacons, boulders, escort set-up.
 	BoundingBox findBoundingBoxRelativeToPosition(HPVector opv, Vector _i, Vector _j, Vector _k);
-	::Octree *getOctree();
+	Octree *getOctree();
 	float volume();
 	GLfloat doesHitLine(HPVector v0, HPVector v1);
 	virtual GLfloat doesHitLine(HPVector v0, HPVector v1, ::ShipEntity **hitEntity);
@@ -1337,7 +1338,7 @@ public:
 	unsigned				number_of_navpoints = {};
 	
 	// Collision detection
-	::Octree					*octree = {};
+	oo::Ref<Octree>				octree;
 	
 #ifndef NDEBUG
 	// DEBUGGING
