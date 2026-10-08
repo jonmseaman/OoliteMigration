@@ -33,6 +33,7 @@ Objective-C OOPlanetEntity for the code that makes and messages planets.
 #define NEW_ATMOSPHERE 1
 
 #import "OOPlanetDrawable.h"
+#import "OOTexture.h"
 
 #import "AI.h"
 #import "Universe.h"
