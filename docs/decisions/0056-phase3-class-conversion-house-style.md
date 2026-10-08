@@ -4855,3 +4855,54 @@ other class reads a dock's ivars.
 
 **Consequences.** One more façade (`DockEntity+ObjCBridge`, deletion bead oo-9ht.180, on which the
 ship's façade deletion oo-9ht.144 now waits); `ShipEntity+ObjCAdapter.h` is private to three files.
+
+## Amendment (bead oo-zn1vy): PlayerEntity slices 2-28 in one change
+
+- Date: 2026-10-08. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Plan:
+  `docs/phases/3-slices/PlayerEntity.md` slices 2-28 (beads oo-m4tfc ... oo-zn1vy). Exemplar:
+  `src/Core/Entities/PlayerEntity.h/.mm`, `PlayerEntity+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_PlayerEntity.mm`. Follows amendments oo-mvzmb and oo-zd80m (the ship's
+  later slices), which these slices repeat one level down, and oo-jx5np (the player's shell).
+
+**Context.** Jon asked for the player's 27 later slices as one commit, verified once and merged
+once, to compare batching with one bead at a time. Each slice keeps its own `namespace cxx`
+block, declaration block and `PlayerEntity (OOSliceN)` category, so the result reads as 27
+slices; the beads close together on the one merge.
+
+**Decision (recommended defaults).**
+
+1. **As amendments oo-mvzmb and oo-zd80m**, with `cxx::PlayerEntity` for `cxx::ShipEntity`: a
+   member that overrides one of the ship's virtual members is `override`, and its forwarder calls
+   `_cxxPlayer->cxx::PlayerEntity::m()`; the ship's adapter `oo::ObjCShipEntity<cxx::PlayerEntity>`
+   already sends the selector back to the façade. `[super m]` is `ShipEntity::m()`, qualified.
+2. **An override of the root's `takeEnergyDamage()` takes the root's types** (`cxx::Entity *`) and
+   names the Objective-C objects `ent` / `other` at the top, as the ship's does; the forwarder
+   converts with `oo::ToCxx()`. A selector with unnamed labels (`-doesHitLine:: :`) keeps every
+   parameter.
+3. **A player member that hides other overloads of the ship's name** gets a `using ShipEntity::m;`
+   beside it (`doesHitLine`, `enterWormhole`, `hasOneEquipmentItem`, `doScriptEvent`), as slice
+   10's `applyRoll` did, so C++ callers still reach the ship's other overloads.
+4. **A method compiled under a macro the header does not see** (`-fuelChargeRate` under
+   `MASS_DEPENDENT_FUEL_PRICES`, defined in `Universe.h`) is declared and forwarded
+   unconditionally, and its member keeps the condition inside its body, answering the ship's rate
+   (what the inherited method answered) when the macro is off.
+5. **A macro that names the façade's `_cxxEntity`** (`SHIP_ENERGY_DAMAGE_TO_HEAT_FACTOR`) is
+   written out in the member with a comment naming it, as `cxx::ShipEntity::takeEnergyDamage()`
+   does.
+6. **The plan's C functions with messages** (amendment oo-zd80m item 8): the market sorters
+   (slice 23) take `cxx::OOCommodityMarket *` and read its members, the caller converting with
+   `oo::ToCxx()`; `InterfaceForKey()` (slice 21) takes `cxx::StationEntity *` and reads its
+   `localInterfaces`. A null part answers as a message to nil did (no name, 0, no interface).
+7. **The last slice leaves the `@implementation` empty**; it moves to `PlayerEntity+ObjCBridge.mm`
+   beside the categories, as `ShipEntity`'s did, and `PlayerEntity.mm` holds only C++ and the
+   verbatim C helpers.
+8. **Tests:** slices 14-28 add one case each (slice 19 none: every unit reads the GUI, the ship
+   registry or the game's data, which the goldens cover), run on the unconverted class first. A
+   `RecordingPlayer` subclass overrides the selectors a short form sends to itself, which records
+   what the slice's own body sent, before and after the move (sends to `self` stay sends).
+   `test_Universe.mm` declares `gOOPlayer` before its first use (main failed to compile it after
+   oo-3cmlg moved a case above the declaration).
+
+**Consequences.** `PlayerEntity.mm` has no Objective-C method left; the category files
+(`PlayerEntityControls.mm` and the rest) and the façade's deletion stay with their own beads under
+the umbrella oo-a70.
