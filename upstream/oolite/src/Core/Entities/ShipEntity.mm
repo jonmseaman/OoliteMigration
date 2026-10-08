@@ -1368,10 +1368,10 @@ bool ShipEntity::setUpOneStandardSubentity(const oo::PList &subentDict, bool asT
 		BOOL virtual_dock = subentDict.get<bool>("_is_virtual_dock", false);
 		if (virtual_dock)
 		{
-			[(DockEntity *)subentity setVirtual];
+			[(::DockEntity *)subentity setVirtual];
 		}
 		
-		[(DockEntity *)subentity setDimensionsAndCorridor:allow_docking:ddc:allow_launching];
+		[(::DockEntity *)subentity setDimensionsAndCorridor:allow_docking:ddc:allow_launching];
 		[subentity cxx_setDisplayName:subentDict.get<std::string>("dock_label", "the docking bay")];
 	}
 

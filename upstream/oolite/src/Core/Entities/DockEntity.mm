@@ -515,7 +515,8 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 		}
 		
 		// add the lenght inside the station to the corridor, except for the final position, inside the dock.
-		if (corridor_distance[i] > 0)  corridor_length += _cxxDock->port_corridor;
+		// (Upstream added _cxxDock->port_corridor to corridor_length here when corridor_distance[i] > 0,
+		// after its last read: a dead store, dropped when slice 1 touched the line (bead oo-ao2d).)
 		
 		// -oo_setInteger: stored a signed integer, -oo_setFloat: a double
 		nextCoords["docking_stage"]	= oo::PList::signedInteger(corridor_count - i);
