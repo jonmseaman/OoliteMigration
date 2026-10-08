@@ -124,7 +124,7 @@ cxx::OOSystemInfo *oo::ToCxx(::OOSystemInfo *info)
 - (OOGalaxyID) galaxy												{ return _cxxInfo->galaxy(); }
 - (OOSystemID) system												{ return _cxxInfo->system(); }
 - (NSPoint) coordinates												{ return _cxxInfo->coordinates(); }
-- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context	{ return _cxxInfo->oo_jsValueInContext(context); }
+- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context	{ return _cxxInfo->jsValueInContext(context); }
 
 
 - (BOOL) isEqual:(id)other

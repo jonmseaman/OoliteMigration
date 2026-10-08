@@ -56,8 +56,8 @@ MA 02110-1301, USA.
 	ADR-0056 amendment oo-ppc). The JS class was already C++ on the ooscript façade;
 	OOJS_NATIVE_ENTER/EXIT and OOJS_PROFILE_ENTER/EXIT are C++ try/catch and scope guards
 	(OOJSEngineNativeWrappers.h); BOOL/YES/NO are bool/true/false. The category on the OOShipGroup
-	façade became two free functions that take its _jsSelf ivar by reference, and its methods moved
-	to OOJSShipGroup+ObjCBridge.mm (amendments oo-ykoy and oo-bwrq). OOShipGroup, which is C++ since
+	façade became two members of the C++ group (amendments oo-ykoy, oo-bwrq and oo-6symp), which
+	the façade's -oo_jsValueInContext: and -oo_clearJSSelf: forward to. OOShipGroup, which is C++ since
 	bead oo-bwrq, is reached as cxx::OOShipGroup through oo::ToCxx/oo::ToObjC (amendment oo-ppc,
 	item 4), null-guarded where a message to nil answered. Messages to classes that are still
 	Objective-C (ShipEntity) stay as they are, which is why the file is still .mm until Phase 4.
@@ -348,8 +348,8 @@ static bool ShipGroupConstruct(ooscript::Context context, ooscript::CallArgs &oo
 } // namespace
 
 
-/*	The JS glue of the C++ group (OOJSPrivateObject), whose façade's category methods
-	(OOJSShipGroup+ObjCBridge.mm) forward here. The group's JS object is its _jsSelf (amendment
+/*	The JS glue of the C++ group (OOJSPrivateObject), which the façade's
+	-oo_jsValueInContext: and -oo_clearJSSelf: forward to. The group's JS object is its _jsSelf (amendment
 	oo-6symp, item 5): the object's private slot holds the group, retained.
 */
 namespace cxx {
