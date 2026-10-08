@@ -6,10 +6,9 @@ The Objective-C left over from OOJSEquipmentInfo.mm (bead oo-supk; proposed ADR-
 oo-ppc, oo-ykoy, oo-bwrq and oo-6ia4 item 3): OOEquipmentType (OOJavaScriptExtensions), the
 category through which the engine asks an equipment type's façade for its JS object and class name
 by selector, and tells it that object is gone. Its methods stay methods of the façade, each
-forwarding in one line to the C++ function in OOJSEquipmentInfo.mm that holds its old body, with
-the façade's _jsSelf ivar, the type's JS object, passed by reference. Deleted by oo-9ht.102, once
-the engine's object wrappers hold C++ objects (amendment oo-ppc, item 5) and the JS object lives in
-the C++ equipment type; the façade's own deletion (oo-9ht.28) waits for it.
+forwarding in one line to the C++ equipment type, which owns the JS object and implements
+OOJSPrivateObject (amendment oo-6symp). Deleted by oo-9ht.102, once the engine reaches the
+slot's C++ object only; the façade's own deletion (oo-9ht.28) waits for it.
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -39,7 +38,7 @@ MA 02110-1301, USA.
 
 - (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
 {
-	return ::OOJSEquipmentInfoJSValueInContext(self, _jsSelf, context);
+	return oo::ToCxx(self)->jsValueInContext(context);
 }
 
 
@@ -51,7 +50,7 @@ MA 02110-1301, USA.
 
 - (void) oo_clearJSSelf:(ooscript::Object)selfVal
 {
-	::OOJSEquipmentInfoClearJSSelf(_jsSelf, selfVal);
+	oo::ToCxx(self)->clearJSSelf(selfVal);
 }
 
 @end
