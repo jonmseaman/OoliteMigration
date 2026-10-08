@@ -55,45 +55,8 @@ MA 02110-1301, USA.
 @public
 	oo::Ref<cxx::Universe>	_cxxUniverse;	// the universe's state; owned, made by -initWithGameView:
 }
-- (BOOL) bloom;
-- (void) setBloom: (BOOL)newBloom;
-
-- (int) currentPostFX;
-- (void) setCurrentPostFX: (int) newCurrentPostFX;
-- (void) terminatePostFX:(int) postFX;
 
 
-// SessionID: a value that's incremented when the game is reset.
-- (NSUInteger) sessionID;
-
-- (BOOL) doProcedurallyTexturedPlanets;
-- (void) setDoProcedurallyTexturedPlanets:(BOOL) value;
-
-- (std::optional<std::string>) cxx_useAddOns;
-- (BOOL) cxx_setUseAddOns:(const std::string &)newUse fromSaveGame: (BOOL)saveGame;
-- (BOOL) cxx_setUseAddOns:(const std::string &) newUse fromSaveGame:(BOOL) saveGame forceReinit:(BOOL)force;
-
-- (void) setUpSettings;
-
-- (BOOL) reinitAndShowDemo:(BOOL)showDemo;
-
-- (BOOL) doingStartUp;	// True during initial game startup (not reset).
-
-- (NSUInteger) entityCount;
-#ifndef NDEBUG
-- (void) debugDumpEntities;
-- (std::vector<oo::ObjCRef<Entity *>>) cxx_entityList;
-#endif
-
-- (void) pauseGame;
-- (void) quitGame;
-
-- (void) carryPlayerOn:(StationEntity*)carrier inWormhole:(WormholeEntity*)wormhole;
-- (void) setUpUniverseFromStation;
-- (void) setUpUniverseFromWitchspace;
-- (void) setUpUniverseFromMisjump;
-- (void) setUpWitchspace;
-- (void) setUpWitchspaceBetweenSystem:(OOSystemID)s1 andSystem:(OOSystemID)s2;
 - (void) setUpSpace;
 - (void) populateNormalSpace;
 - (void) clearSystemPopulator;
@@ -107,9 +70,7 @@ MA 02110-1301, USA.
 - (void) setLighting;
 - (void) forceLightSwitch;
 - (void) setMainLightPosition: (Vector) sunPos;
-- (OOPlanetEntity *) setUpPlanet;
 
-- (void) makeSunSkimmer:(ShipEntity *) ship andSetAI:(BOOL)setAI;
 - (void) cxx_addShipWithRole:(const std::string &) desc nearRouteOneAt:(double) route_fraction;
 - (HPVector) cxx_coordinatesForPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system returningScalar:(GLfloat*) my_scalar;
 - (std::optional<std::string>) cxx_expressPosition:(HPVector) pos inCoordinateSystem:(const std::string &) system;
@@ -241,26 +202,80 @@ MA 02110-1301, USA.
 - (void) removeAllEntitiesExceptPlayer;
 - (void) removeDemoShips;
 
-- (ShipEntity *) cxx_makeDemoShipWithRole:(const std::string &)role spinning:(BOOL)spinning;
+///////////////////////////////////////
 
+///////////////////////////////////////
+
+// speech routines: the Mac arms, still the @implementation's (the others are slice 24's)
+#if OOLITE_MAC_OS_X
+- (void) cxx_startSpeakingString:(const std::string &) text;
+- (void) stopSpeaking;
+- (BOOL) isSpeaking;
+#endif
+//
+////
+
+- (int) framesDoneThisUpdate;
+- (void) resetFramesDoneThisUpdate;
+
+@end
+
+
+
+// Implemented by the facade's category in Universe+ObjCBridge.mm with -dealloc: they need the
+// Objective-C object as self (amendments oo-bj8 items 6 and 7, oo-60fwo item 6).
+@interface Universe (OOObjCBridge)
+
+- (id)initWithGameView:(MyOpenGLView *)gameView;
+
+@end
+
+
+// Slice 3 of docs/phases/3-slices/Universe.md: members of cxx::Universe, forwarded by the
+// category of the same name in Universe+ObjCBridge.mm (the class's @implementation, still in
+// Universe.mm, stays complete).
+@interface Universe (OOSlice3)
+
+- (void) pauseGame;
+- (void) quitGame;
+- (void) carryPlayerOn:(StationEntity*)carrier inWormhole:(WormholeEntity*)wormhole;
+- (void) setUpUniverseFromStation;
+- (void) setUpUniverseFromWitchspace;
+- (void) setUpUniverseFromMisjump;
+- (void) setUpWitchspace;
+- (void) setUpWitchspaceBetweenSystem:(OOSystemID)s1 andSystem:(OOSystemID)s2;
+- (OOPlanetEntity *) setUpPlanet;
+
+@end
+
+
+// Slice 14 of docs/phases/3-slices/Universe.md (bead oo-7jhs5): members of cxx::Universe, forwarded by
+// the category of the same name in Universe+ObjCBridge.mm (amendment oo-mvzmb item 1).
+@interface Universe (OOSlice14)
+
+- (ShipEntity *) cxx_makeDemoShipWithRole:(const std::string &)role spinning:(BOOL)spinning;
 - (BOOL) isVectorClearFromEntity:(Entity *) e1 toDistance:(double)dist fromPoint:(HPVector) p2;
 - (Entity*) hazardOnRouteFromEntity:(Entity *) e1 toDistance:(double)dist fromPoint:(HPVector) p2;
 - (HPVector) getSafeVectorFromEntity:(Entity *) e1 toDistance:(double)dist fromPoint:(HPVector) p2;
-
 - (ShipEntity *) cxx_addWreckageFrom:(ShipEntity *)ship withRole:(const std::string &)wreckRole at:(HPVector)rpos scale:(GLfloat)scale lifetime:(GLfloat)lifetime;
 - (void) addLaserHitEffectsAt:(HPVector)pos against:(ShipEntity *)target damage:(float)damage color:(OOColor *)color;
 - (ShipEntity *) firstShipHitByLaserFromShip:(ShipEntity *)srcEntity inDirection:(OOWeaponFacing)direction offset:(Vector)offset gettingRangeFound:(GLfloat*)range_ptr;
+
+@end
+
+
+// Slice 15 of docs/phases/3-slices/Universe.md (bead oo-dg9d1): members of cxx::Universe, forwarded by
+// the category of the same name in Universe+ObjCBridge.mm (amendment oo-mvzmb item 1).
+@interface Universe (OOSlice15)
+
 - (Entity *) firstEntityTargetedByPlayer;
 - (Entity *) firstEntityTargetedByPlayerPrecisely;
-
 - (std::vector<oo::ObjCRef<Entity *>>) cxx_entitiesWithinRange:(double)range ofEntity:(Entity *)entity;
 - (unsigned) cxx_countShipsWithRole:(const std::string &)role inRange:(double)range ofEntity:(Entity *)entity;
 - (unsigned) cxx_countShipsWithRole:(const std::string &)role;
 - (unsigned) cxx_countShipsWithPrimaryRole:(const std::string &)role inRange:(double)range ofEntity:(Entity *)entity;
-- (unsigned) cxx_countShipsWithPrimaryRole:(const std::string &)role;
 - (unsigned) countShipsWithScanClass:(OOScanClass)scanClass inRange:(double)range ofEntity:(Entity *)entity;
-
-
+- (unsigned) cxx_countShipsWithPrimaryRole:(const std::string &)role;
 // General count/search methods. Pass range of -1 and entity of nil to search all of system.
 - (unsigned) countEntitiesMatchingPredicate:(EntityFilterPredicate)predicate
 								  parameter:(void *)parameter
@@ -290,102 +305,125 @@ MA 02110-1301, USA.
 - (id) nearestShipMatchingPredicate:(EntityFilterPredicate)predicate
 						  parameter:(void *)parameter
 				   relativeToEntity:(Entity *)entity;
-
-
 - (OOTimeAbsolute) getTime;
 - (OOTimeDelta) getTimeDelta;
-
 - (void) findCollisionsAndShadows;
 - (std::string) collisionDescription;	// flipped with its family (bead oo-3rb.277)
 - (void) dumpCollisions;
-
 - (OOViewID) viewDirection;
+
+@end
+
+
+// Slice 16 of docs/phases/3-slices/Universe.md (bead oo-focfo): members of cxx::Universe, forwarded by
+// the category of the same name in Universe+ObjCBridge.mm (amendment oo-mvzmb item 1).
+@interface Universe (OOSlice16)
+
 - (void) setViewDirection:(OOViewID)vd;
 - (void) enterGUIViewModeWithMouseInteraction:(BOOL)mouseInteraction;	// Use instead of setViewDirection:VIEW_GUI_DISPLAY
-
 - (std::optional<std::string>) soundNameForCustomSoundKey:(const std::string &)key;	// nullopt: no sound
 - (oo::PList) cxx_screenTextureDescriptorForKey:(const std::string &)key;	// null: none
 - (void) cxx_setScreenTextureDescriptorForKey:(const std::string &) key descriptor:(const oo::PList &)desc;	// a null descriptor removes
-
 // Message texts: nullopt where a nil text was passed (nothing is printed; it still counts as the message shown).
 - (void) clearPreviousMessage;
 - (void) setMessageGuiBackgroundColor:(OOColor *) some_color;
 - (void) cxx_displayMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count;
 - (void) cxx_displayCountdownMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count;
 - (void) cxx_addDelayedMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count afterDelay:(OOTimeDelta) delay;
+- (void) addDelayedMessage:(OOUniverseDelayedMessage *)holder;	// the deferred call of -cxx_addDelayedMessage:forCount:afterDelay:
 - (void) cxx_addMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count;
+- (void) speakWithSubstitutions:(const std::optional<std::string> &)text;
 - (void) cxx_addMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count forceDisplay:(BOOL) forceDisplay;
 - (void) cxx_addCommsMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count;
 - (void) cxx_addCommsMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count andShowComms:(BOOL)showComms logOnly:(BOOL)logOnly;
 - (void) showCommsLog:(OOTimeDelta) how_long;
 - (void) showGUIMessage:(const std::optional<std::string> &)text withScroll:(BOOL)scroll andColor:(OOColor *)selectedColor overDuration:(OOTimeDelta)how_long;
+- (void) repopulateSystem;
 
-- (void) update:(OOTimeDelta)delta_t;
+@end
+
+
+// Slice 17 of docs/phases/3-slices/Universe.md (bead oo-gr7a2): members of cxx::Universe, forwarded by
+// the category of the same name in Universe+ObjCBridge.mm (amendment oo-mvzmb item 1).
+@interface Universe (OOSlice17)
 
 // Time Acelleration Factor. In deployment builds, this is always 1.0 and -setTimeAccelerationFactor: does nothing.
 - (double) timeAccelerationFactor;
 - (void) setTimeAccelerationFactor:(double)newTimeAccelerationFactor;
-
+- (void) update:(OOTimeDelta)delta_t;
 - (BOOL) ECMVisualFXEnabled;
 - (void) setECMVisualFXEnabled:(BOOL)isEnabled;
 
+@end
+
+
+// Slice 18 of docs/phases/3-slices/Universe.md (bead oo-tail0): members of cxx::Universe, forwarded by
+// the category of the same name in Universe+ObjCBridge.mm (amendment oo-mvzmb item 1).
+@interface Universe (OOSlice18)
+
 - (void) filterSortedLists;
-
-///////////////////////////////////////
-
 - (void) setGalaxyTo:(OOGalaxyID) g;
+
+@end
+
+
+// Slice 19 of docs/phases/3-slices/Universe.md (bead oo-z3u03): members of cxx::Universe, forwarded by
+// the category of the same name in Universe+ObjCBridge.mm (amendment oo-mvzmb item 1).
+@interface Universe (OOSlice19)
+
 - (void) setGalaxyTo:(OOGalaxyID) g andReinit:(BOOL) forced;
-
 - (void) setSystemTo:(OOSystemID) s;
-
 - (OOSystemID) currentSystemID;
-
 // The live descriptions dictionary (the built-in descriptions.plist until the merged one is loaded);
 // nullptr only for a nil receiver. The generation changes whenever it is replaced.
 - (const oo::PList *) cxx_descriptions;
 - (unsigned) cxx_descriptionsGeneration;
+- (void) verifyDescriptions;
+- (void) loadDescriptions;
+- (oo::PList) cxx_explosionSetting:(const std::string &)explosion;	// a null PList for none
+- (oo::PList) cxx_scenarios;
+- (void) loadScenarios;
 - (oo::PList) cxx_characters;
 - (oo::PList) cxx_missiontext;
-- (oo::PList) cxx_scenarios;
-- (oo::PList) cxx_explosionSetting:(const std::string &)explosion;	// a null PList for none
-
-- (OOSystemDescriptionManager *) systemManager;
-
 - (std::optional<std::string>) cxx_descriptionForKey:(const std::string &)key;	// String, or random item from array; nullopt for none
 - (std::optional<std::string>) cxx_descriptionForArrayKey:(const std::string &)key index:(unsigned)index;	// Indexed item from array; nullopt for none
 - (BOOL) descriptionBooleanForKey:(const std::string &)key;	// Boolean from descriptions.plist, for configuration.
-
+- (OOSystemDescriptionManager *) systemManager;
 - (std::optional<std::string>) cxx_keyForPlanetOverridesForSystem:(OOSystemID) s inGalaxy:(OOGalaxyID) g;
 - (std::optional<std::string>) keyForInterstellarOverridesForSystems:(OOSystemID) s1 :(OOSystemID) s2 inGalaxy:(OOGalaxyID) g;
 - (oo::PList) cxx_generateSystemData:(OOSystemID) s;
 - (oo::PList) cxx_generateSystemData:(OOSystemID) s useCache:(BOOL) useCache;
 - (oo::PList) cxx_currentSystemData;	// Same as generateSystemData:systemSeed unless in interstellar space.
-
 - (BOOL) inInterstellarSpace;
-
 // value: a script value (a null PList to remove); manifest nullopt where nil was passed.
 - (void) cxx_setSystemDataKey:(const std::string &) key value:(const oo::PList &) value fromManifest:(const std::optional<std::string> &)manifest;
 - (void) cxx_setSystemDataForGalaxy:(OOGalaxyID) gnum planet:(OOSystemID) pnum key:(const std::string &)key value:(const oo::PList &)value fromManifest:(const std::optional<std::string> &)manifest forLayer:(OOSystemLayer)layer;
-- (oo::PList) cxx_systemDataForGalaxy:(OOGalaxyID) gnum planet:(OOSystemID) pnum key:(const std::string &)key;	// a script value (null: none)
+- (oo::PList) generateSystemDataForGalaxy:(OOGalaxyID)gnum planet:(OOSystemID)pnum;
 - (std::vector<std::string>) cxx_systemDataKeysForGalaxy:(OOGalaxyID)gnum planet:(OOSystemID)pnum;	// byte order of the key
+- (oo::PList) cxx_systemDataForGalaxy:(OOGalaxyID) gnum planet:(OOSystemID) pnum key:(const std::string &)key;	// a script value (null: none)
 - (std::optional<std::string>) cxx_getSystemName:(OOSystemID) sys;
 - (std::optional<std::string>) cxx_getSystemName:(OOSystemID) sys forGalaxy:(OOGalaxyID) gnum;
 - (OOGovernmentID) getSystemGovernment:(OOSystemID) sys;
 - (std::optional<std::string>) cxx_getSystemInhabitants:(OOSystemID) sys;
 - (std::optional<std::string>) cxx_getSystemInhabitants:(OOSystemID) sys plural:(BOOL)plural;
-
 - (NSPoint) coordinatesForSystem:(OOSystemID)s;
 - (OOSystemID) cxx_findSystemFromName:(const std::string &) sysName;
+- (OOSystemID) findSystemAtCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) gal;
+
+@end
+
+
+// Slice 20 of docs/phases/3-slices/Universe.md (bead oo-lftoq): members of cxx::Universe, forwarded by
+// the category of the same name in Universe+ObjCBridge.mm (amendment oo-mvzmb item 1).
+@interface Universe (OOSlice20)
 
 /**
  * Finds systems within range.  If range is greater than 7.0LY then only look within 7.0LY.
  */
 - (oo::PList) cxx_nearbyDestinationsWithinRange:(double) range;	// an array of {distance, sysID, nova}
-
 - (OOSystemID) findNeighbouringSystemToCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) gal;
 - (OOSystemID) findConnectedSystemAtCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) gal;
 // old alias for findSystemNumberAtCoords
-- (OOSystemID) findSystemAtCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) gal;
 - (OOSystemID) findSystemNumberAtCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) gal includingHidden:(BOOL)hidden;
 - (NSPoint) cxx_findSystemCoordinatesWithPrefix:(const std::string &) p_fix;
 - (NSPoint) cxx_findSystemCoordinatesWithPrefix:(const std::string &) p_fix exactMatch:(BOOL) exactMatch;
@@ -393,80 +431,77 @@ MA 02110-1301, USA.
 - (std::optional<std::string>) cxx_systemNameIndex:(OOSystemID) index;
 - (oo::PList) cxx_routeFromSystem:(OOSystemID) start toSystem:(OOSystemID) goal optimizedBy:(OORouteType) optimizeBy;	// {route, distance, time, jumps}; null for no route
 - (std::vector<OOSystemID>) neighboursToSystem:(OOSystemID) system_number;
-
 - (void) preloadPlanetTexturesForSystem:(OOSystemID)system;
-- (void) preloadSounds;
-
 - (oo::PList) cxx_globalSettings;
-
 - (oo::PList) cxx_equipmentData;
 - (oo::PList) cxx_equipmentDataOutfitting;
 - (OOCommodityMarket *) commodityMarket;
-- (Random_Seed) marketSeed;
-
 - (std::optional<std::string>) timeDescription:(OOTimeDelta) interval;
-- (std::optional<std::string>) cxx_shortTimeDescription:(OOTimeDelta) interval;
 
+@end
+
+
+// Slice 21 of docs/phases/3-slices/Universe.md (bead oo-enek8): members of cxx::Universe, forwarded by
+// the category of the same name in Universe+ObjCBridge.mm (amendment oo-mvzmb item 1).
+@interface Universe (OOSlice21)
+
+- (std::optional<std::string>) cxx_shortTimeDescription:(OOTimeDelta) interval;
+- (void) makeSunSkimmer:(ShipEntity *) ship andSetAI:(BOOL)setAI;
+- (Random_Seed) marketSeed;
 - (void) cxx_loadStationMarkets:(const oo::PList &)marketData;	// null: nothing to load
 - (oo::PList) cxx_getStationMarkets;	// [{market, position}, ...] as saved in the savegame
 
+@end
+
+
+// Slice 22 of docs/phases/3-slices/Universe.md (bead oo-05ow5): members of cxx::Universe, forwarded by
+// the category of the same name in Universe+ObjCBridge.mm (amendment oo-mvzmb item 1).
+@interface Universe (OOSlice22)
+
 - (oo::PList) cxx_shipsForSaleForSystem:(OOSystemID) s withTL:(OOTechLevelID) specialTL atTime:(OOTimeAbsolute) current_time;	// an array of offer dictionaries, by name and price
+
+@end
+
+
+// Slice 23 of docs/phases/3-slices/Universe.md (bead oo-ni1hw): members of cxx::Universe, forwarded by
+// the category of the same name in Universe+ObjCBridge.mm (amendment oo-mvzmb item 1).
+@interface Universe (OOSlice23)
 
 /* Calculate base cost, before depreciation */
 - (OOCreditsQuantity) cxx_tradeInValueForCommanderDictionary:(const oo::PList &) cmdr_dict;
-
 - (std::optional<std::string>) brochureDescriptionWithDictionary:(const oo::PList &) dict standardEquipment:(const std::vector<std::string> &) extras optionalEquipment:(const std::vector<std::string> &) options;
-
 - (HPVector) getWitchspaceExitPosition;
 - (Quaternion) getWitchspaceExitRotation;
-
 - (HPVector) getSunSkimStartPositionForShip:(ShipEntity*) ship;
 - (HPVector) getSunSkimEndPositionForShip:(ShipEntity*) ship;
-
 - (std::vector<oo::ObjCRef<Entity <OOBeaconEntity> *>>) cxx_listBeaconsWithCode:(const std::string &) code;	// sorted by beacon code
-
 - (void) cxx_allShipsDoScriptEvent:(ooscript::PropertyId)event andReactToAIMessage:(const std::optional<std::string> &)message;	// nullopt: no AI message
-
-///////////////////////////////////////
-
-- (void) clearGUIs;
-
 - (GuiDisplayGen *) gui;
 - (GuiDisplayGen *) commLogGUI;
 - (GuiDisplayGen *) messageGUI;
-
+- (void) clearGUIs;
 - (void) resetCommsLogColor;
-
 - (void) setDisplayText:(BOOL) value;
 - (BOOL) displayGUI;
-
 - (void) setDisplayFPS:(BOOL) value;
 - (BOOL) displayFPS;
-
 - (void) setAutoSave:(BOOL) value;
 - (BOOL) autoSave;
+//autosave 
+- (void) setAutoSaveNow:(BOOL) value;
 
-- (void) setWireframeGraphics:(BOOL) value;
-- (BOOL) wireframeGraphics;
+@end
 
-- (BOOL) reducedDetail;
-- (void) setDetailLevel:(OOGraphicsDetail)value;
-- (OOGraphicsDetail) detailLevel;
-- (BOOL) useShaders;
 
-- (void) handleOoliteException:(OOException *)ooliteException;
+// Slice 24 of docs/phases/3-slices/Universe.md (bead oo-jxitg): members of cxx::Universe, forwarded by
+// the category of the same name in Universe+ObjCBridge.mm (amendment oo-mvzmb item 1).
+@interface Universe (OOSlice24)
 
-- (GLfloat)airResistanceFactor;
-- (void) setAirResistanceFactor:(GLfloat)newFactor;
-
-// speech routines
-//
+#if !OOLITE_MAC_OS_X
 - (void) cxx_startSpeakingString:(const std::string &) text;
-//
 - (void) stopSpeaking;
-//
 - (BOOL) isSpeaking;
-//
+#endif
 #if OOLITE_ESPEAK
 - (std::optional<std::string>) cxx_voiceName:(unsigned int) index;
 - (unsigned int) cxx_voiceNumber:(const std::string &) name;
@@ -474,47 +509,108 @@ MA 02110-1301, USA.
 - (unsigned int) prevVoice:(unsigned int) index;
 - (unsigned int) setVoice:(unsigned int) index withGenderM:(BOOL) isMale;
 #endif
-- (int) nextColorblindMode:(int) index;
-- (int) prevColorblindMode:(int) index;
-- (int) colorblindMode;
-//
-////
-
-//autosave 
-- (void) setAutoSaveNow:(BOOL) value;
 - (BOOL) autoSaveNow;
-
-- (int) framesDoneThisUpdate;
-- (void) resetFramesDoneThisUpdate;
-
+- (void) setWireframeGraphics:(BOOL) value;
+- (BOOL) wireframeGraphics;
+- (BOOL) reducedDetail;
+- (void) setDetailLevelDirectly:(OOGraphicsDetail)value;
+- (void) setDetailLevel:(OOGraphicsDetail)value;
+- (OOGraphicsDetail) detailLevel;
+- (BOOL) useShaders;
+- (void) handleOoliteException:(OOException *)ooliteException;
+- (GLfloat)airResistanceFactor;
+- (void) setAirResistanceFactor:(GLfloat)newFactor;
 // True if textual pause message (as opposed to overlay) is being shown.
 - (BOOL) pauseMessageVisible;
 - (void) setPauseMessageVisible:(BOOL)value;
-
-- (BOOL) permanentCommLog;
-- (void) setPermanentCommLog:(BOOL)value;
-- (void) setAutoCommLog:(BOOL)value;
 - (BOOL) permanentMessageLog;
 - (void) setPermanentMessageLog:(BOOL)value;
 - (BOOL) autoMessageLogBg;
 - (void) setAutoMessageLogBg:(BOOL)value;
-
+- (BOOL) permanentCommLog;
+- (void) setPermanentCommLog:(BOOL)value;
+- (void) setAutoCommLog:(BOOL)value;
 - (BOOL) blockJSPlayerShipProps;
 - (void) setBlockJSPlayerShipProps:(BOOL)value;
-
-- (void) loadConditionScripts;
-- (void) addConditionScripts:(const std::vector<std::string> &)scripts;
-- (OOJSScript *) cxx_getConditionScript:(const std::string &)scriptname;
+- (void) setUpSettings;
+- (void) setUpCargoPods;
+- (void) verifyEntitySessionIDs;
 
 @end
 
 
+// Slice 25 of docs/phases/3-slices/Universe.md (bead oo-wmc72): members of cxx::Universe, forwarded by
+// the category of the same name in Universe+ObjCBridge.mm (amendment oo-mvzmb item 1).
+@interface Universe (OOSlice25)
 
-// Implemented by the facade's category in Universe+ObjCBridge.mm with -dealloc: they need the
-// Objective-C object as self (amendments oo-bj8 items 6 and 7, oo-60fwo item 6).
-@interface Universe (OOObjCBridge)
+- (BOOL) reinitAndShowDemo:(BOOL)showDemo;
+- (void) setUpInitialUniverse;
+- (float) randomDistanceWithinScanner;
+- (Vector) randomPlaceWithinScannerFrom:(Vector)pos alongRoute:(Vector)route withOffset:(double)offset;
+- (HPVector) fractionalPositionFrom:(HPVector)point0 to:(HPVector)point1 withFraction:(double)routeFraction;
+- (BOOL) doRemoveEntity:(Entity *)entity;
+- (void) preloadSounds;
+- (void) populateSpaceFromActiveWormholes;
+- (std::optional<std::string>) chooseStringForKey:(const std::string &)key inDictionary:(const oo::PList &)dictionary;
+#if OO_LOCALIZATION_TOOLS && DEBUG_GRAPHVIZ
+- (void) dumpDebugGraphViz;
+- (void) dumpSystemDescriptionGraphViz;
+#endif
 
-- (id)initWithGameView:(MyOpenGLView *)gameView;
+@end
+
+
+// Slice 2 of docs/phases/3-slices/Universe.md: members of cxx::Universe, forwarded by the
+// category of the same name in Universe+ObjCBridge.mm (the class's @implementation, still in
+// Universe.mm, stays complete).
+@interface Universe (OOSlice2)
+
+- (BOOL) bloom;
+- (void) setBloom: (BOOL)newBloom;
+- (int) currentPostFX;
+- (void) setCurrentPostFX: (int) newCurrentPostFX;
+- (void) terminatePostFX:(int) postFX;
+- (int) nextColorblindMode:(int) index;
+- (int) prevColorblindMode:(int) index;
+- (int) colorblindMode;
+- (void) initTargetFramebufferWithViewSize:(NSSize)viewSize;
+- (void) deleteOpenGLObjects;
+- (void) resizeTargetFramebufferWithViewSize:(NSSize)viewSize;
+- (void) drawTargetTextureIntoDefaultFramebuffer;
+// SessionID: a value that's incremented when the game is reset.
+- (NSUInteger) sessionID;
+- (BOOL) doingStartUp;	// True during initial game startup (not reset).
+- (BOOL) doProcedurallyTexturedPlanets;
+- (void) setDoProcedurallyTexturedPlanets:(BOOL) value;
+- (std::optional<std::string>) cxx_useAddOns;
+- (BOOL) cxx_setUseAddOns:(const std::string &)newUse fromSaveGame: (BOOL)saveGame;
+- (BOOL) cxx_setUseAddOns:(const std::string &) newUse fromSaveGame:(BOOL) saveGame forceReinit:(BOOL)force;
+- (NSUInteger) entityCount;
+#ifndef NDEBUG
+- (void) debugDumpEntities;
+- (std::vector<oo::ObjCRef<Entity *>>) cxx_entityList;
+#endif
+
+
+@end
+
+
+// Slice 26 of docs/phases/3-slices/Universe.md (bead oo-32kcu): members of cxx::Universe, forwarded by
+// the category of the same name in Universe+ObjCBridge.mm (amendment oo-mvzmb item 1).
+@interface Universe (OOSlice26)
+
+#if OO_LOCALIZATION_TOOLS
+- (void) addNumericRefsInString:(const std::string &)string toGraphViz:(std::string &)graphViz fromNode:(const std::string &)fromNode nodeCount:(NSUInteger)nodeCount;
+/**
+ * \ingroup cli
+ * Scans the command line for --complie-sysdesc, --export-sysdec, --xml and --penstep arguments.
+ */
+- (void) runLocalizationTools;
+#endif
+- (void) prunePreloadingPlanetMaterials;
+- (void) loadConditionScripts;
+- (void) addConditionScripts:(const std::vector<std::string> &)scripts;
+- (OOJSScript *) cxx_getConditionScript:(const std::string &)scriptname;
 
 @end
 
@@ -529,5 +625,14 @@ inline cxx::Universe *ToCxx(::Universe *universe)  { return universe != nil ? un
 inline ::Universe *ToObjC(cxx::Universe *universe)  { return universe != nullptr ? universe->_objcOwner : nil; }
 
 }	// namespace oo
+
+
+/*	The messages to UNIVERSE behind the description and custom-sound look-ups (slice 26): sends,
+	not member calls, because many tests stand in for the universe with a class of their own
+	(amendment oo-rmd7 item 3; ADR-0056 amendment oo-7jhs5). Defined in Universe+ObjCBridge.mm.
+*/
+std::optional<std::string> OOUniverseDescriptionForKey(const std::string &key);	// [UNIVERSE cxx_descriptionForKey:key]
+const oo::PList *OOUniverseDescriptions();	// [UNIVERSE cxx_descriptions]
+std::optional<std::string> OOUniverseSoundNameForCustomSoundKey(const std::string &key);	// [UNIVERSE soundNameForCustomSoundKey:key]
 
 #endif	// UNIVERSE_OBJCBRIDGE_H

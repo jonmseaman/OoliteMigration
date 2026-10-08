@@ -24,6 +24,7 @@ MA 02110-1301, USA.
 
 #import "ResourceManager.h"
 #import "OOSound.h"
+#import "OOALMusic.h"
 #import "OOCacheManager.h"
 #import "Universe.h"
 #import "OOStringParsing.h"
@@ -2154,7 +2155,7 @@ id cxx::ResourceManager::retrieveFileNamed(const std::string &fileName,
 	}
 
 	const std::optional<std::string> path = pathForFileNamed(fileName, folderName, useCache);
-	if (path.has_value())  result = [[[klass alloc] cxx_initWithContentsOfFile:path] autorelease];	// klass: OOSound or OOMusic
+	if (path.has_value())  result = [[[klass alloc] cxx_initWithContentsOfFile:path] autorelease];	// klass: OOSound
 
 	if (result != nil && ioCache != NULL)
 	{
@@ -2165,9 +2166,12 @@ id cxx::ResourceManager::retrieveFileNamed(const std::string &fileName,
 }
 
 
-::OOMusic *cxx::ResourceManager::ooMusicNamed(const std::string &fileName, const std::optional<std::string> &folderName)
+oo::Ref<cxx::OOMusic> cxx::ResourceManager::ooMusicNamed(const std::string &fileName, const std::optional<std::string> &folderName)
 {
-	return retrieveFileNamed(fileName, folderName, NULL	/* Don't cache music objects; minimizing latency isn't really important. */, oo::str::format("OOMusic:%s:%s", folderName.has_value() ? folderName->c_str() : "(null)", fileName.c_str()), [::OOMusic class], YES);
+	// Don't cache music objects; minimizing latency isn't really important.
+	const std::optional<std::string> path = pathForFileNamed(fileName, folderName, YES);
+	if (!path.has_value())  return nullptr;
+	return cxx::OOMusic::initWithContentsOfFile(path);
 }
 
 

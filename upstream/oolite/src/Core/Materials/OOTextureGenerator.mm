@@ -25,6 +25,7 @@ SOFTWARE.
 
 */
 
+#import "OOTexture.h"
 #import "OOTextureGenerator.h"
 #import "OOAsyncWorkManager.h"
 
