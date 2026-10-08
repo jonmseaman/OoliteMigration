@@ -4514,6 +4514,44 @@ unchanged and reach the members through the façade until their own conversion.
 **Consequences.** `ShipEntityAI.h` keeps only its imports for the files that import it; the
 ship's façade deletion bead (oo-9ht.144) removes the forwarding categories with the others.
 
+## Amendment (bead oo-18mg2): a binding's slices over an entity whose class is C++ behind its façade (OOJSShip)
+
+- Date: 2026-10-07. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Plan:
+  `docs/phases/3-slices/OOJSShip.md` (beads oo-18mg2, oo-chjz4, oo-08plt, oo-hqe5l, oo-qzn25,
+  oo-ljuy1). Exemplar: `src/Core/Scripting/OOJSShip.mm` and `OOJSShip+ObjCBridge.h/.mm` after slice
+  1, `tests/unit/core/test_OOJSShip.mm`. Follows amendments oo-luhd, oo-ft5n and oo-9ht.139, whose
+  item 2 says the sends to the wrapped class become member calls once it is C++.
+
+**Decision (recommended defaults).**
+
+1. **A native takes the façade from its JS object as before and crosses once**:
+   `cxx::ShipEntity *ship = oo::ToCxx(entity);` after the stale-entity check, so it is not null.
+   A send to the ship becomes the member its façade forwarder calls (`-fuel` is `getFuel()`,
+   `-isFrangible` is `getIsFrangible()`; the forwarder in `ShipEntity+ObjCBridge.mm` is the
+   table). A forwarder that calls the member qualified (`_cxxShip->cxx::ShipEntity::getBounty()`)
+   marks a member an Objective-C subclass overrides: it is `virtual` with its line in
+   `oo::ObjCShipEntity`, so the native calls it unqualified and the player's override still answers.
+   A selector a subclass overrides whose member is not virtual stays a bridge send (amendment
+   oo-9ht.139 item 3) until the ship's slices make it so.
+2. **A selector of the player alone** (`-availableFacings`, `-fleeingStatus`, after an `isPlayer`
+   test) is a bridge function taking the cast façade, `OOJSShipPlayerAvailableFacings(pent)`.
+3. **What the ship hands out that is converted** (`AI`, `OORoleSet`, `OOShipGroup`, `OOColor`) is
+   crossed with `oo::ToCxx` at the use and null-guarded; repeated reads through one (the AI's name,
+   state, suspended machines) go through one file-local helper each, as `AskHud()` does (amendment
+   oo-ft5n item 3). A box the native made as an Objective-C object for JavaScript
+   (`OONativeVector`) is made as its C++ class and handed over as `oo::ToObjC(box)`.
+4. **A category method on the wrapped class that no subclass overrides and that forwards to a free
+   function** (`-subEntitiesForScript`, `ShipEntityJSSubEntitiesForScript()`) is that function,
+   called with the façade (amendment oo-ft5n item 2).
+5. **The test** makes a real ship with `ShipEntity`'s own set-up (`PlainShip`, a definition in the
+   test) in a never-initialised `Universe` with a plain entity as `PLAYER` (test_ShipEntity.mm's
+   set-up), next to the real engine (test_OOJSPlayerShip.mm's), and binds the ship's JS object to a
+   global; the player branches read the engine's own player with its class swapped for a test
+   subclass that answers the player's selectors. Each later slice adds its natives' cases.
+
+**Consequences.** `OOJSShip+ObjCBridge.mm` holds only sends to the player and the universe (and
+other unconverted classes); its deletion bead waits for oo-pas and oo-a70.
+
 ## Amendment (bead oo-27jxj): Universe slices 2-13, a singleton's later slices
 
 - Date: 2026-10-07. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Plan:
@@ -4530,7 +4568,7 @@ none of ShipEntity's adapter or `virtual` machinery applies.
 **Decision (recommended defaults).**
 
 1. **As amendment oo-zd80m item 1:** a slice's members are a `namespace cxx` block of their own
-   after the facade's `@implementation` (before the `OOSound` / `OOSoundSource` categories), under
+   after the facade's `@implementation` (before slices 14-26's blocks, in slice order), under
    a comment naming the slice and its bead, declared in a block of `cxx::Universe` under the same
    comment. The facade forwards each selector from a category `Universe (OOSliceN)` in
    `Universe+ObjCBridge.mm`, and the selector's declaration moves to that category's `@interface`
@@ -4540,10 +4578,16 @@ none of ShipEntity's adapter or `virtual` machinery applies.
 2. **Sends to `self` stay sends** to the facade (`::Universe *self = oo::ToObjC(this);` at the
    top), so a selector of a slice not yet landed still answers. Every Objective-C class named in a
    member is `::X` (amendment oo-zd80m item 3); a member's signature takes no protocol qualifier
-   (`::Entity *` for `Entity <OOBeaconEntity> *`), and its forwarder casts the result back.
+   (`::Entity *` for `Entity <OOBeaconEntity> *`), and its forwarder casts the result back;
+   the beacon members of slice 9, whose bodies message the beacon protocol, take and answer
+   `OOBeaconEntityObject *` instead, the file-scope typedef `OOWaypointEntity.h` has, repeated in
+   `Universe.h`.
 3. **A member whose name would be a data member's is `getX`** (`-doProcedurallyTexturedPlanets`
    is `getDoProcedurallyTexturedPlanets()`, `-cxx_useAddOns` `getUseAddOns()`), as amendment
-   oo-zd80m item 4; `cxx_` drops as usual.
+   oo-zd80m item 4; `cxx_` drops as usual. Two selectors whose first keywords and parameter types
+   are the same get the keyword that tells them apart (`-cxx_addShips:withRole:atPosition:...` is
+   `addShipsAtPosition()`, the two `...nearPosition:...` forms are `addShipsNearPosition()`
+   overloads); different parameter types stay overloads (`addShipWithRole()`).
 4. **A unit inside a preprocessor condition keeps it** around its member, declaration, category
    declaration and forwarder (`#ifndef NDEBUG` for `-debugDumpEntities` and `-cxx_entityList`).
 5. **Tests:** `test_Universe.mm` gains an `OO_TEST(sliceN...)` per slice under one comment, for the
@@ -4551,6 +4595,14 @@ none of ShipEntity's adapter or `virtual` machinery applies.
    the unconverted class first. A slice none of whose units runs without the player, the GUI or
    the game controller (slice 3: pausing, quitting, the set-up from a station or witchspace) adds
    none; the goldens pin it.
+
+6. **A parameter the moved body never reads is named in a comment** (`::StationEntity * /*carrier*/`
+   in `carryPlayerOn()`, slice 3), as amendment oo-xmajv item 1: `-Wunused-parameter` and
+   clang-tidy's `misc-unused-parameters` flag a C++ function's unused parameter and never did an
+   Objective-C method's. Two moved lines whose text changed only by the rewrite carry clang-tidy
+   findings the old lines had (tier-a counts a changed line's findings as new): their expressions
+   are restated with the same behaviour (`-cxx_shipClassForShipDictionary:`'s class choice as an
+   `if`, slice 9; `-drawWatermarkString:`'s integer halves named first, slice 13).
 
 **Consequences.** One category per slice on the facade; the facade's deletion bead (oo-ql9rn)
 removes them with the forwarders.
@@ -4774,3 +4826,32 @@ wrapped class"; each deletion bead found it missing and stopped.
 `OOJSCxxObjectWrapperToString`. ShipGroup (oo-9ht.94), SystemInfo (oo-9ht.95) and EquipmentInfo
 (oo-9ht.102) move in child beads of oo-6symp, each before its deletion bead. `OOTimeProfile` has no
 private slot (its JS value is a fresh plain object), so oo-9ht.63 needs nothing more from this seam.
+
+## Amendment (bead oo-ao2d): the class shell of a second Objective-C subclass of ShipEntity (DockEntity)
+
+- Date: 2026-10-07. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Plan:
+  `docs/phases/3-slices/DockEntity.md` slice 1. Exemplar: `src/Core/Entities/DockEntity.h/.mm`,
+  `DockEntity+ObjCBridge.h/.mm`, `tests/unit/core/test_DockEntity.mm`. Follows amendment oo-64ako,
+  whose item 2 names `DockEntity`.
+
+**Context.** `DockEntity` (1,337 lines) is over the story budget, had no slice plan, and is the
+second subclass of `ShipEntity` to convert. `StationEntity` messages its docks by selector; no
+other class reads a dock's ivars.
+
+**Decision (recommended defaults).**
+
+1. **Amendment oo-64ako applies unchanged, one subclass over:** `cxx::DockEntity :
+   cxx::ShipEntity` with the ivars as public members, the façade's typed alias `_cxxDock`, the
+   override of `-initShipPart` making `oo::ObjCShipEntity<cxx::DockEntity>`, and slice 1's units
+   forwarded by `DockEntity (OOSlice1)`. The plan was written by this bead (no separate pre-split
+   bead) and the bead converts slice 1; slices 2 and 3 have beads of their own (oo-9ht.178,
+   oo-9ht.179).
+2. **The private category's methods of slice 1** (`-clearIdLocks:`, `-clearAllIdLocks`) are
+   declared in the `OOSlice1` interface of the bridge header, so the unconverted slices keep
+   sending them to `self`; a private method of a later slice that a slice 1 member sends
+   (`-abortAllLaunches`) is declared in the `.mm`'s private category.
+3. **A getter of the root's `boundingBox` ivar** is `getBoundingBox()` (amendment oo-862e item 1);
+   the queue counts and the flags keep their names, which no ivar shares.
+
+**Consequences.** One more façade (`DockEntity+ObjCBridge`, deletion bead oo-9ht.180, on which the
+ship's façade deletion oo-9ht.144 now waits); `ShipEntity+ObjCAdapter.h` is private to three files.

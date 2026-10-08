@@ -17,8 +17,10 @@
 #   3. the information argument holds on the live DB: for the ten most recently updated beads a
 #      fresh `bd export` carries exactly the notes `bd show` reports, so anything a branch's copy
 #      had (which came through bd) is in the regenerated export;
-#   4. export.auto is off in .beads/config.yaml and the export is still tracked (option d of the
-#      bead, untracking it, is rejected: reviewers and tools read it).
+#   4. export.auto is off in .beads/config.yaml and the export is NOT tracked. (oo-c4ly rejected
+#      untracking it; Jon reversed that on 2026-10-07, bead oo-rndqv: the Dolt DB is the record,
+#      and tools read it through bd. Steps 1-2 still prove the resolver, on a scratch commit of a
+#      fresh export, for any other tracked .beads/*.jsonl and for branches cut before the change.)
 #
 # Run from the repo root in the UCRT64 shell. ~10 s. Leaves no worktree behind.
 set -euo pipefail
@@ -32,7 +34,7 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 step() { echo "== $*"; }
 
 f=.beads/issues.jsonl
-git ls-files --error-unmatch "$f" >/dev/null 2>&1 || fail "$f is not tracked; the export must stay in git (reviewers and tools/check-file-modes.sh read it)"
+if git ls-files --error-unmatch "$f" >/dev/null 2>&1; then fail "$f is tracked; it is a local export only (bead oo-rndqv)"; fi
 
 T="$(mktemp -d "${TMPDIR:-/tmp}/beadsmerge.XXXXXX")"
 rm -rf "$T"
@@ -45,8 +47,12 @@ cleanup() {
 }
 trap cleanup EXIT
 git worktree add --detach "$T" HEAD >/dev/null 2>&1 || fail "could not create a scratch worktree"
+# The export is untracked (oo-rndqv): commit a fresh one on the scratch worktree's own detached
+# HEAD so steps 1-2 have a tracked copy to conflict on. Nothing outside $T sees this commit.
+real_bd export -o "$T/$f" >/dev/null 2>&1 || fail "bd export into the scratch worktree failed"
+git -C "$T" add -f -- "$f" && git -C "$T" -c user.name=ctl -c user.email=ctl@local commit -q -m "ctl: scratch export" 	|| fail "could not commit the scratch export"
 
-# Three ids to play with: the first three records of the tracked export. (tr strips the CR that
+# Three ids to play with: the first three records of the scratch export. (tr strips the CR that
 # a Windows python adds to stdout; a stray CR in an id matched no record and made the control
 # vacuous on its first run.)
 mapfile -t ids < <(python3 -c 'import json,sys
@@ -140,7 +146,7 @@ for id in $recent; do
 done
 echo "  $n beads: export notes == bd show notes"
 
-step "4/4 export.auto is off and the export stays tracked"
+step "4/4 export.auto is off and the export is not tracked"
 # The `export:` block is read into a variable and matched by the shell rather than piped into
 # `grep -qE`. This file runs under `set -euo pipefail` (line 24), and `producer | grep -q` is
 # the trap bead oo-mxgy audited: grep -q exits on the first match, SIGPIPEs the awk still
@@ -184,4 +190,4 @@ done <<EOF
 $export_block
 EOF
 [ "$auto_off" = 1 ] || fail "export.auto is not false in .beads/config.yaml"
-echo "PASS: export-only conflicts resolve to the base side (no loss, no duplicates), non-export conflicts are refused, a fresh export matches the DB, export.auto is off and the export is tracked"
+echo "PASS: export-only conflicts resolve to the base side (no loss, no duplicates), non-export conflicts are refused, a fresh export matches the DB, export.auto is off and the export is untracked"

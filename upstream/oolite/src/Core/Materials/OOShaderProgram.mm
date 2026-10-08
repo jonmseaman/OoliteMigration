@@ -57,6 +57,14 @@ std::string StringOrNull(const std::optional<std::string> &string)
 BOOL GetShaderSource(const std::optional<std::string> &fileName, const std::string &shaderType, std::optional<std::string> *outResult);
 std::string GetGLSLInfoLog(GLhandleARB shaderObject);
 
+
+// The game view's matrix manager, taken from the C++ view. Null when there is no universe or view.
+OOOpenGLMatrixManager *GameViewMatrixManager()
+{
+	cxx::MyOpenGLView *view = oo::ToCxx([UNIVERSE gameView]);
+	return (view != nullptr) ? view->getOpenGLMatrixManager() : nullptr;
+}
+
 }	// namespace
 
 
@@ -402,9 +410,9 @@ bool OOShaderProgram::initWithVertexShaderSource(const std::optional<std::string
 
 	if (OK)
 	{
-		// The matrix manager is C++: reached from the game view's facade (null-guarded, as a
-		// message to nil answered a null list).
-		OOOpenGLMatrixManager *matrixManager = oo::ToCxx([[UNIVERSE gameView] getOpenGLMatrixManager]);
+		// The matrix manager is C++: taken from the C++ game view (null-guarded, as a message to
+		// nil answered a null list).
+		OOOpenGLMatrixManager *matrixManager = GameViewMatrixManager();
 		standardMatrixUniformLocations = (matrixManager != nullptr) ? matrixManager->standardMatrixUniformLocations(_program) : oo::PList();
 	}
 	else
@@ -436,7 +444,7 @@ void OOShaderProgram::bindStandardMatrixUniforms()
 {
 	if (standardMatrixUniformLocations.isArray())
 	{
-		OOOpenGLMatrixManager *matrixManager = oo::ToCxx([[UNIVERSE gameView] getOpenGLMatrixManager]);
+		OOOpenGLMatrixManager *matrixManager = GameViewMatrixManager();
 
 		OO_ENTER_OPENGL();
 
