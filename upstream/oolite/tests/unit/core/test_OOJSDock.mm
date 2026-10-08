@@ -1,6 +1,6 @@
 /*	test_OOJSDock.mm
-	Unit tests for the Dock JS binding (src/Core/Scripting/OOJSDock.h/.mm) and its DockEntity
-	category (OOJSDock+ObjCBridge.mm): bead oo-zbx3, converted the way bead oo-ppc converted
+	Unit tests for the Dock JS binding (src/Core/Scripting/OOJSDock.h/.mm) and the DockEntity
+	answers that cxx::DockEntity's overrides give the engine (bead oo-9ht.47): bead oo-zbx3, converted the way bead oo-ppc converted
 	OOJSVector (proposed ADR-0056 amendments oo-ppc and oo-ykoy).
 
 	As test_OOJSWormhole.mm does (amendment oo-ykoy, item 4), it runs the JS class in a real
@@ -104,6 +104,19 @@
 	if (_dockingQueue == 99)  [OOException raise:OOInvalidArgumentException format:"queue %s", "boom"];
 	if (_dockingQueue == 98)  throw std::runtime_error("cxx boom");
 	return _dockingQueue;
+}
+
+
+// What the game's C++ DockEntity answers the engine (its overrides call these two functions).
+- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype
+{
+	::OOJSDockGetJSClass(outClass, outPrototype);
+}
+
+
+- (std::optional<std::string>) cxx_oo_jsClassName
+{
+	return ::OOJSDockJSClassName();
 }
 
 @end

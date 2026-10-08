@@ -30,6 +30,7 @@
 #include "oofnd/objc/OOObjCRef.h"
 
 #include "oo_test.hpp"
+#include "test_OOJSEngineTimeManagement.hpp"
 
 #include <chrono>
 #include <cstring>
@@ -40,35 +41,9 @@
 
 // MARK: The file's API, as its header declares it ----------------------------------------------
 
-@class OOJavaScriptEngine, OOTimeProfileEntry;
+@class OOJavaScriptEngine;
 
-@interface OOTimeProfile: OOObject
-- (double) totalTime;
-- (double) javaScriptTime;
-- (double) nativeTime;
-- (double) extensionTime;
-- (double) nonExtensionTime;
-- (double) profilerOverhead;
-- (std::vector<oo::ObjCRef<OOTimeProfileEntry *>>) profileEntries;
-- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context;
-@end
-
-@interface OOTimeProfileEntry: OOObject
-- (std::optional<std::string>) cxx_function;
-- (NSUInteger) hitCount;
-- (double) totalTimeSum;
-- (double) selfTimeSum;
-- (double) totalTimeAverage;
-- (double) selfTimeAverage;
-- (double) totalTimeMax;
-- (double) selfTimeMax;
-- (BOOL) isJavaScriptFrame;
-- (OOComparisonResult) compareByTotalTime:(OOTimeProfileEntry *)other;
-- (OOComparisonResult) compareByTotalTimeReverse:(OOTimeProfileEntry *)other;
-- (OOComparisonResult) compareBySelfTime:(OOTimeProfileEntry *)other;
-- (OOComparisonResult) compareBySelfTimeReverse:(OOTimeProfileEntry *)other;
-- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context;
-@end
+// OOTimeProfile and OOTimeProfileEntry, as OOJSEngineTimeManagement.h declares them (test_OOJSEngineTimeManagement.hpp).
 
 #ifndef NDEBUG
 extern "C" void OOJSStartTimeLimiterWithTimeLimit_(OOTimeDelta limit, const char *file, unsigned line);
@@ -83,7 +58,7 @@ void OOJSStopTimeLimiter(void);
 #endif
 
 extern "C" void OOJSBeginProfiling(bool trace);
-extern "C" OOTimeProfile *OOJSEndProfiling(void);
+oo::Ref<OOTimeProfile> OOJSEndProfiling(void);
 extern "C" bool OOJSIsProfiling(void);
 extern "C" void OOJSResetTimeLimiter(void);
 extern "C" OOTimeDelta OOJSGetTimeLimiterLimit(void);
@@ -168,11 +143,11 @@ void SleepMs(int ms)
 
 OOTimeProfileEntry *EntryNamed(OOTimeProfile *profile, const std::string &name)
 {
-	for (const auto &entry : [profile profileEntries])
+	for (const auto &entry : profile->profileEntries())
 	{
-		if ([entry.get() cxx_function].value_or("<none>") == name)  return entry.get();
+		if (entry->function().value_or("<none>") == name)  return entry.get();
 	}
-	return nil;
+	return nullptr;
 }
 
 
@@ -246,48 +221,49 @@ OO_TEST(profiling)
 		OOJSProfileEnter(&nameless, NULL);
 		OOJSProfileExit(&nameless);
 
-		OOTimeProfile *profile = OOJSEndProfiling();	// +1
+		oo::Ref<OOTimeProfile> profileRef = OOJSEndProfiling();
+		OOTimeProfile *profile = profileRef.get();
 		OO_CHECK(!OOJSIsProfiling());
-		OO_CHECK(profile != nil);
-		OO_CHECK_EQ([profile profileEntries].size(), 3u);
+		OO_CHECK(profile != nullptr);
+		OO_CHECK_EQ(profile->profileEntries().size(), 3u);
 
 		OOTimeProfileEntry *outerEntry = EntryNamed(profile, "outer");
 		OOTimeProfileEntry *innerEntry = EntryNamed(profile, "inner");
-		OO_CHECK(outerEntry != nil && innerEntry != nil);
-		OO_CHECK_EQ([outerEntry hitCount], 1u);
-		OO_CHECK_EQ([innerEntry hitCount], 2u);
-		OO_CHECK(![innerEntry isJavaScriptFrame]);
-		OO_CHECK([outerEntry totalTimeSum] >= [innerEntry totalTimeSum]);	// outer contains inner's first call
-		OO_CHECK([outerEntry totalTimeSum] >= [outerEntry selfTimeSum]);
-		OO_CHECK_EQ([innerEntry totalTimeAverage], [innerEntry totalTimeSum] / 2);
-		OO_CHECK_EQ([innerEntry selfTimeMax], [innerEntry totalTimeMax]);	// nothing below it
-		OO_CHECK([profile totalTime] >= [outerEntry totalTimeSum]);
-		OO_CHECK_EQ([profile nonExtensionTime], [profile totalTime] - [profile extensionTime]);
-		OO_CHECK_EQ([profile javaScriptTime], [profile totalTime] - [profile nativeTime]);
-		OO_CHECK([profile nativeTime] >= [outerEntry selfTimeSum] + [innerEntry selfTimeSum]);
+		OO_CHECK(outerEntry != nullptr && innerEntry != nullptr);
+		OO_CHECK_EQ(outerEntry->hitCount(), 1u);
+		OO_CHECK_EQ(innerEntry->hitCount(), 2u);
+		OO_CHECK(!innerEntry->isJavaScriptFrame());
+		OO_CHECK(outerEntry->totalTimeSum() >= innerEntry->totalTimeSum());	// outer contains inner's first call
+		OO_CHECK(outerEntry->totalTimeSum() >= outerEntry->selfTimeSum());
+		OO_CHECK_EQ(innerEntry->totalTimeAverage(), innerEntry->totalTimeSum() / 2);
+		OO_CHECK_EQ(innerEntry->selfTimeMax(), innerEntry->totalTimeMax());	// nothing below it
+		OO_CHECK(profile->totalTime() >= outerEntry->totalTimeSum());
+		OO_CHECK_EQ(profile->nonExtensionTime(), profile->totalTime() - profile->extensionTime());
+		OO_CHECK_EQ(profile->javaScriptTime(), profile->totalTime() - profile->nativeTime());
+		OO_CHECK(profile->nativeTime() >= outerEntry->selfTimeSum() + innerEntry->selfTimeSum());
 
 		// Comparisons: "reverse" is longest first.
-		OO_CHECK_EQ([outerEntry compareBySelfTime:outerEntry], OOOrderedSame);
-		OO_CHECK_EQ([outerEntry compareByTotalTime:innerEntry], -[outerEntry compareByTotalTimeReverse:innerEntry]);
-		OO_CHECK_EQ([innerEntry compareBySelfTime:outerEntry], -[innerEntry compareBySelfTimeReverse:outerEntry]);
-		if ([outerEntry totalTimeSum] > [innerEntry totalTimeSum])  OO_CHECK_EQ([outerEntry compareByTotalTimeReverse:innerEntry], OOOrderedAscending);
+		OO_CHECK_EQ(outerEntry->compareBySelfTime(outerEntry), OOOrderedSame);
+		OO_CHECK_EQ(outerEntry->compareByTotalTime(innerEntry), -outerEntry->compareByTotalTimeReverse(innerEntry));
+		OO_CHECK_EQ(innerEntry->compareBySelfTime(outerEntry), -innerEntry->compareBySelfTimeReverse(outerEntry));
+		if (outerEntry->totalTimeSum() > innerEntry->totalTimeSum())  OO_CHECK_EQ(outerEntry->compareByTotalTimeReverse(innerEntry), OOOrderedAscending);
 
 		// The descriptions.
-		const std::string profileText = oo::DescriptionOf(profile);
+		const std::string profileText = profile->description().value_or("");
 		OO_CHECK(profileText.find("Total time: ") != std::string::npos);
 		OO_CHECK(profileText.find("NAME  T  COUNT    TOTAL     SELF  TOTAL%   SELF%  SELFMAX") != std::string::npos);
 		OO_CHECK(profileText.find("inner  N      2 ") != std::string::npos);
 		OO_CHECK(profileText.find("outer  N      1 ") != std::string::npos);
 		OO_CHECK(profileText.find("(null)  N      1 ") != std::string::npos);
-		const std::string innerText = oo::DescriptionOf(innerEntry);
+		const std::string innerText = innerEntry->description().value_or("");
 		OO_CHECK(innerText.find("inner: 2 times, total ") != std::string::npos);
-		const std::string outerText = oo::DescriptionOf(outerEntry);
+		const std::string outerText = outerEntry->description().value_or("");
 		OO_CHECK(outerText.find("outer: 1 time, ") != std::string::npos);
 		OO_CHECK(outerText.find("(self ") != std::string::npos);
 
 		// The property lists, as JS gets them.
 		sConverted.clear();
-		[innerEntry oo_jsValueInContext:NULL];
+		innerEntry->oo_jsValueInContext(NULL);
 		OO_CHECK_EQ(sConverted.size(), 1u);
 		if (sConverted.size() == 1)
 		{
@@ -298,11 +274,11 @@ OO_TEST(profiling)
 			OO_CHECK(Key(plist, "isJavaScriptFrame") != nullptr && Key(plist, "isJavaScriptFrame")->type() == oo::PList::Type::Bool && !Key(plist, "isJavaScriptFrame")->boolValue());
 		}
 		sConverted.clear();
-		[EntryNamed(profile, "<none>") oo_jsValueInContext:NULL];
+		EntryNamed(profile, "<none>")->oo_jsValueInContext(NULL);
 		OO_CHECK(sConverted.size() == 1 && sConverted[0].isDict() && sConverted[0].count() == 0);	// a nameless entry
 
 		sConverted.clear();
-		[profile oo_jsValueInContext:NULL];
+		profile->oo_jsValueInContext(NULL);
 		OO_CHECK_EQ(sConverted.size(), 1u);
 		if (sConverted.size() == 1)
 		{
@@ -313,11 +289,10 @@ OO_TEST(profiling)
 			OO_CHECK(profiles != nullptr && profiles->isArray() && profiles->count() == 3);
 			if (profiles != nullptr && profiles->isArray())
 			{
-				for (const oo::PList &entry : *profiles->getIf<oo::PList::Array>())  OO_CHECK(entry.type() == oo::PList::Type::Object && [oo::ObjectIn(entry) isKindOfClass:[OOTimeProfileEntry class]]);
+				for (const oo::PList &entry : *profiles->getIf<oo::PList::Array>())  OO_CHECK(entry.isDict() && (entry.count() == 9 || entry.count() == 0));
 			}
 		}
 
-		[profile release];
 	}
 }
 #endif
