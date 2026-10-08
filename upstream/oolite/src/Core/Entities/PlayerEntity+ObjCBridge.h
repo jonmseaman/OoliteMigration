@@ -778,7 +778,7 @@ MA 02110-1301, USA.
 - (BOOL) cxx_removeMissionDestinationMarker:(const oo::PList &)marker;
 - (oo::PList) cxx_getMissionDestinations;	// a snapshot Dict
 - (oo::PList::Dict *) cxx_shipyardRecord;
-- (void) cxx_setLastShot:(const std::vector<oo::ObjCRef<OOLaserShotEntity *>> &)shot;
+- (void) cxx_setLastShot:(const std::vector<oo::Ref<OOLaserShotEntity>> &)shot;
 - (void) clearExtraMissionKeys;
 - (void) cxx_setExtraMissionKeys:(const oo::PList &)keys;	// a Dict of key name -> key definitions
 - (void) cxx_clearExtraGuiScreenKeys:(OOGUIScreenID)gui key:(const std::string &)key;

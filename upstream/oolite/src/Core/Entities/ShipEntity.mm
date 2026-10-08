@@ -12475,9 +12475,10 @@ bool ShipEntity::fireSubentityLaserShot(double range)
 	::ShipEntity *victim = [UNIVERSE firstShipHitByLaserFromShip:self inDirection:direction offset:kZeroVector gettingRangeFound:&hitAtRange];
 	[self setShipHitByLaser:victim];
 	
-	::OOLaserShotEntity *shot = [::OOLaserShotEntity laserFromShip:self direction:direction offset:kZeroVector];
-	[shot setColor:laser_color];
-	[shot setScanClass:CLASS_NO_DRAW];
+	const oo::Ref<OOLaserShotEntity> shot = OOLaserShotEntity::laserFromShip(self, direction, kZeroVector);
+	::Entity *shotObjC = oo::NewEntityFacade(shot);
+	shot->setColor(oo::ToCxx(laser_color));
+	shot->setScanClass(CLASS_NO_DRAW);
 	
 	if (victim != nil)
 	{
@@ -12500,9 +12501,9 @@ bool ShipEntity::fireSubentityLaserShot(double range)
 		{
 			[victim takeEnergyDamage:weapon_damage from:self becauseOf:parent weaponIdentifier:[[self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES] cxx_identifier].value_or(std::string())];  // a very palpable hit
 			
-			[shot setRange:hitAtRange];
-			Vector vd = vector_forward_from_quaternion([shot orientation]);
-			HPVector flash_pos = HPvector_add([shot position], vectorToHPVector(vector_multiply_scalar(vd, hitAtRange)));
+			shot->setRange(hitAtRange);
+			Vector vd = vector_forward_from_quaternion(shot->getOrientation());
+			HPVector flash_pos = HPvector_add(shot->getPosition(), vectorToHPVector(vector_multiply_scalar(vd, hitAtRange)));
 			[UNIVERSE addLaserHitEffectsAt:flash_pos against:victim damage:weapon_damage color:laser_color];
 		}
 	}
@@ -12515,7 +12516,7 @@ bool ShipEntity::fireSubentityLaserShot(double range)
 		{
 			victim = [parent primaryTarget];
 			
-			Vector shotDirection = vector_forward_from_quaternion([shot orientation]);
+			Vector shotDirection = vector_forward_from_quaternion(shot->getOrientation());
 			Vector victimDirection = vector_normal(HPVectorToVector(HPvector_subtract([victim position], [parent position])));
 			if (dot_product(shotDirection, victimDirection) > 0.995)	// Within 84.26 degrees
 			{
@@ -12532,7 +12533,7 @@ bool ShipEntity::fireSubentityLaserShot(double range)
 		}
 	}
 	
-	[UNIVERSE addEntity:shot];
+	[UNIVERSE addEntity:shotObjC];
 	[self resetShotTime];
 	
 	return YES;
@@ -12606,12 +12607,13 @@ bool ShipEntity::fireDirectLaserShotAt(::Entity *my_target)
 	Vector  vel = vector_multiply_scalar(v_forward, flightSpeed);
 	
 	// do special effects laser line
-	::OOLaserShotEntity *shot = [::OOLaserShotEntity laserFromShip:self direction:WEAPON_FACING_FORWARD offset:kZeroVector];
-	[shot setColor:laser_color];
-	[shot setScanClass: CLASS_NO_DRAW];
-	[shot setPosition: position];
-	[shot setOrientation: q_laser];
-	[shot setVelocity: vel];
+	const oo::Ref<OOLaserShotEntity> shot = OOLaserShotEntity::laserFromShip(self, WEAPON_FACING_FORWARD, kZeroVector);
+	::Entity *shotObjC = oo::NewEntityFacade(shot);
+	shot->setColor(oo::ToCxx(laser_color));
+	shot->setScanClass(CLASS_NO_DRAW);
+	shot->setPosition(position);
+	shot->setOrientation(q_laser);
+	shot->setVelocity(vel);
 	
 	if (victim != nil)
 	{
@@ -12627,14 +12629,14 @@ bool ShipEntity::fireDirectLaserShotAt(::Entity *my_target)
 		{
 			[victim takeEnergyDamage:weapon_damage from:self becauseOf:self weaponIdentifier:[[self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES] cxx_identifier].value_or(std::string())];	// a very palpable hit
 
-			[shot setRange:hit_at_range];
-			Vector vd = vector_forward_from_quaternion([shot orientation]);
-			HPVector flash_pos = HPvector_add([shot position], vectorToHPVector(vector_multiply_scalar(vd, hit_at_range)));
+			shot->setRange(hit_at_range);
+			Vector vd = vector_forward_from_quaternion(shot->getOrientation());
+			HPVector flash_pos = HPvector_add(shot->getPosition(), vectorToHPVector(vector_multiply_scalar(vd, hit_at_range)));
 			[UNIVERSE addLaserHitEffectsAt:flash_pos against:victim damage:weapon_damage color:laser_color];
 		}
 	}
 	
-	[UNIVERSE addEntity:shot];
+	[UNIVERSE addEntity:shotObjC];
 	
 	[self resetShotTime];
 	
@@ -12676,10 +12678,10 @@ bool ShipEntity::fireLaserShotInDirection(OOWeaponFacing direction, const std::s
 	NSUInteger		i, barrels;
 	Vector			vel = vector_multiply_scalar(v_forward, flightSpeed);
 	const std::vector<Vector> laserPortOffsets = [self cxx_laserPortOffset:direction];
-	::OOLaserShotEntity *shot = nil;
+	oo::Ref<OOLaserShotEntity> shot;
 
 	barrels = laserPortOffsets.size();
-	std::vector<oo::ObjCRef<::OOLaserShotEntity *>> shotEntities;
+	std::vector<oo::Ref<OOLaserShotEntity>> shotEntities;
 	shotEntities.reserve(barrels);
 
 	
@@ -12699,15 +12701,16 @@ bool ShipEntity::fireLaserShotInDirection(OOWeaponFacing direction, const std::s
 		::ShipEntity *victim = [UNIVERSE firstShipHitByLaserFromShip:self inDirection:direction offset:laserPortOffset gettingRangeFound:&hit_at_range];
 		[self setShipHitByLaser:victim];
 	
-		shot = [::OOLaserShotEntity laserFromShip:self direction:direction offset:laserPortOffset];
+		shot = OOLaserShotEntity::laserFromShip(self, direction, laserPortOffset);
+		::Entity *shotObjC = oo::NewEntityFacade(shot);
 		if ([self isPlayer])
 		{
 			shotEntities.emplace_back(shot);
 		}
 	
-		[shot setColor:laser_color];
-		[shot setScanClass: CLASS_NO_DRAW];
-		[shot setVelocity: vel];
+		shot->setColor(oo::ToCxx(laser_color));
+		shot->setScanClass(CLASS_NO_DRAW);
+		shot->setVelocity(vel);
 	
 		if (victim != nil)
 		{
@@ -12737,9 +12740,9 @@ bool ShipEntity::fireLaserShotInDirection(OOWeaponFacing direction, const std::s
 			{
 				[victim takeEnergyDamage:effective_damage from:self becauseOf:self weaponIdentifier:weaponIdentifier];	// a very palpable hit
 
-				[shot setRange:hit_at_range];
-				Vector vd = vector_forward_from_quaternion([shot orientation]);
-				HPVector flash_pos = HPvector_add([shot position], vectorToHPVector(vector_multiply_scalar(vd, hit_at_range)));
+				shot->setRange(hit_at_range);
+				Vector vd = vector_forward_from_quaternion(shot->getOrientation());
+				HPVector flash_pos = HPvector_add(shot->getPosition(), vectorToHPVector(vector_multiply_scalar(vd, hit_at_range)));
 				[UNIVERSE addLaserHitEffectsAt:flash_pos against:victim damage:effective_damage color:laser_color];
 			}
 		}
@@ -12758,7 +12761,7 @@ bool ShipEntity::fireLaserShotInDirection(OOWeaponFacing direction, const std::s
 					 * they ambush without having their target actually
 					 * targeted. Though in those circumstances they
 					 * shouldn't be missing their first shot anyway. */
-					if (dot_product(vector_forward_from_quaternion([shot orientation]),vector_normal([self vectorTo:victim])) > 0.995)
+					if (dot_product(vector_forward_from_quaternion(shot->getOrientation()),vector_normal([self vectorTo:victim])) > 0.995)
 					{
 						/* plausibly aimed at target. Allows reaction
 						 * before attacker actually hits. But we need to
@@ -12779,7 +12782,7 @@ bool ShipEntity::fireLaserShotInDirection(OOWeaponFacing direction, const std::s
 			}
 		}
 	
-		[UNIVERSE addEntity:shot];
+		[UNIVERSE addEntity:shotObjC];
 
 	}
 	

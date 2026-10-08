@@ -58,7 +58,18 @@ static OOTexture *sShotTexture = nil;
 static OOTexture *sShotTexture2 = nil;
 
 
-namespace cxx {
+namespace {
+
+// The shot textures' graphics reset client, which the facade class was until bead oo-9ht.78
+// (ADR-0056 amendment oo-jpd8 item 3): registered once, with the textures, and never destroyed.
+class ShotTextureResetClient : public cxx::OOGraphicsResetClient
+{
+public:
+	void resetGraphicsState() override  { OOLaserShotEntity::resetGraphicsState(); }
+};
+
+}	// namespace
+
 
 void OOLaserShotEntity::initLaserFromShip(::ShipEntity *srcEntity, OOWeaponFacing direction, Vector offset)
 {
@@ -135,11 +146,11 @@ oo::Ref<OOLaserShotEntity> OOLaserShotEntity::laserFromShip(::ShipEntity *ship, 
 std::optional<std::string> OOLaserShotEntity::descriptionComponents() const
 {
 	// The getter read this ivar.
-	return oo::str::format("ttl: %.3fs - %s orientation %s", _lifetime, Entity::descriptionComponents().value_or("(null)").c_str(), QuaternionDescription(orientation).c_str());
+	return oo::str::format("ttl: %.3fs - %s orientation %s", _lifetime, cxx::Entity::descriptionComponents().value_or("(null)").c_str(), QuaternionDescription(orientation).c_str());
 }
 
 
-void OOLaserShotEntity::setColor(OOColor *color)
+void OOLaserShotEntity::setColor(cxx::OOColor *color)
 {
 	// Messages to a nil colour answered 0.
 	_color[0] = kLaserBrightness * (color != nullptr ? color->redComponent() : 0.0f)/3.0;
@@ -158,7 +169,7 @@ void OOLaserShotEntity::setRange(GLfloat range)
 
 void OOLaserShotEntity::update(OOTimeDelta delta_t)
 {
-	Entity::update(delta_t);
+	cxx::Entity::update(delta_t);
 	_lifetime -= delta_t;
 	::ShipEntity		*ship = owner();
 
@@ -287,7 +298,7 @@ void OOLaserShotEntity::setUpTexture()
 										   options:kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureAlphaMask | kOOTextureRepeatT
 										anisotropy:kOOTextureDefaultAnisotropy / 2.0
 										   lodBias:0.0] retain];
-		OOGraphicsResetManager::sharedManager()->registerClient([::OOLaserShotEntity class]);	// the facade class answers +resetGraphicsState
+		cxx::OOGraphicsResetManager::sharedManager()->registerCxxClient(new ShotTextureResetClient);
 
 		sShotTexture2 = [[::OOTexture cxx_textureWithName:"oolite-laser-blur2.png"
 										  inFolder:"Textures"
@@ -320,4 +331,3 @@ void OOLaserShotEntity::resetGraphicsState()
 	sShotTexture2 = nil;
 }
 
-}	// namespace cxx
