@@ -348,3 +348,8 @@ From Phase 0. Every story's acceptance includes `tools/tier-a.sh <file>`; the wr
   the four of `3-slices/ShipEntityAI.md` report `--slice-done`; the last `@implementation ShipEntity`
   left `ShipEntity.mm` (its body was only file-scope statics and plain-C helpers, kept verbatim as
   file-scope C++) and the façade's empty primary `@implementation` is now in `ShipEntity+ObjCBridge.mm`.
+- 2026-10-07 — StationEntity fully converted (oo-tqem7): all four slices of `3-slices/StationEntity.md`
+  report `--slice-done`; `StationEntity.mm` has no `@implementation` or `@interface` left
+  (`cxx_OOMakeDockingInstructions()` stays verbatim as a file-scope function), the empty
+  `OOPrivate` interface is gone, and the façade's empty primary `@implementation` is now in
+  `StationEntity+ObjCBridge.mm`, its methods the categories `(OOSlice1)`–`(OOSlice4)`.
