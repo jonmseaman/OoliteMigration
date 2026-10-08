@@ -272,6 +272,17 @@ extern Universe *gSharedUniverse;
 @end
 
 
+@implementation Universe (OOSlice12)
+
+- (void) drawUniverse	{ _cxxUniverse->drawUniverse(); }
+- (void) prepareToRenderIntoDefaultFramebuffer	{ _cxxUniverse->prepareToRenderIntoDefaultFramebuffer(); }
+- (int) framesDoneThisUpdate	{ return _cxxUniverse->getFramesDoneThisUpdate(); }
+- (void) resetFramesDoneThisUpdate	{ _cxxUniverse->resetFramesDoneThisUpdate(); }
+- (OOMatrix) viewMatrix	{ return _cxxUniverse->getViewMatrix(); }
+
+@end
+
+
 @implementation Universe (OOSlice14)
 
 - (ShipEntity *) cxx_makeDemoShipWithRole:(const std::string &)role spinning:(BOOL)spinning	{ return _cxxUniverse->makeDemoShipWithRole(role, spinning); }
