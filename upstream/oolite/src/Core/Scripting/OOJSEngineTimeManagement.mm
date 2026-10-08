@@ -293,9 +293,9 @@ static OOJSProfileStackFrame	*sProfileStack = NULL;
 // Profile key (native name or JS function, by pointer) -> entry, retained. Was a map table with
 // non-owned pointer keys and retained object values (bead oo-3rb.20).
 namespace {
-static std::unordered_map<const void *, oo::Ref<cxx::OOTimeProfileEntry>>	*sProfileInfo;
+static std::unordered_map<const void *, oo::Ref<OOTimeProfileEntry>>	*sProfileInfo;
 
-static cxx::OOTimeProfileEntry *ProfileEntryForKey(const void *key)
+static OOTimeProfileEntry *ProfileEntryForKey(const void *key)
 {
 	auto found = sProfileInfo->find(key);
 	return (found != sProfileInfo->end()) ? found->second.get() : nullptr;
@@ -313,7 +313,7 @@ void OOJSBeginProfiling(bool trace)
 	assert(sProfiling == false);
 	sProfiling = true;
 	sTracing = trace;
-	sProfileInfo = new std::unordered_map<const void *, oo::Ref<cxx::OOTimeProfileEntry>>;
+	sProfileInfo = new std::unordered_map<const void *, oo::Ref<OOTimeProfileEntry>>;
 	sProfileInfo->reserve(100);
 	sProfilerOverhead = 0.0;
 	sProfilerTotalNativeTime = 0.0;
@@ -331,7 +331,7 @@ void OOJSBeginProfiling(bool trace)
 }
 
 
-OOTimeProfile *OOJSEndProfiling(void)
+oo::Ref<OOTimeProfile> OOJSEndProfiling(void)
 {
 	// This should be at the top for precision.
 	OOHighResTimeValue now = OOGetHighResTime();
@@ -342,7 +342,7 @@ OOTimeProfile *OOJSEndProfiling(void)
 	
 	sProfiling = false;
 
-	oo::Ref<cxx::OOTimeProfile> result = oo::makeRef<cxx::OOTimeProfile>();
+	oo::Ref<OOTimeProfile> result = oo::makeRef<OOTimeProfile>();
 	
 	result->setTotalTime(OOHighResTimeDeltaInSeconds(sProfilerStartTime, now));
 	result->setNativeTime(sProfilerTotalNativeTime);
@@ -354,7 +354,7 @@ OOTimeProfile *OOJSEndProfiling(void)
 	double currentTimeLimit = OOJSGetTimeLimiterLimit(); 
 	result->setExtensionTime(currentTimeLimit - sProfilerEntryTimeLimit);
 	
-	std::vector<oo::Ref<cxx::OOTimeProfileEntry>> entries;
+	std::vector<oo::Ref<OOTimeProfileEntry>> entries;
 	entries.reserve(sProfileInfo->size());
 	for (const auto &keyAndEntry : *sProfileInfo)  entries.emplace_back(keyAndEntry.second);
 	std::stable_sort(entries.begin(), entries.end(), [](const auto &a, const auto &b) { return a->compareBySelfTimeReverse(b.get()) == OOOrderedAscending; });
@@ -375,7 +375,7 @@ OOTimeProfile *OOJSEndProfiling(void)
 	OODisposeHighResTime(now);
 	
 	OOJSResumeTimeLimiter();
-	return [oo::ToObjC(result.get()) retain];	// +1, as [[OOTimeProfile alloc] init] was
+	return result;
 }
 
 
@@ -401,7 +401,7 @@ static void CleanUpJSFrame(OOJSProfileStackFrame *frame)
 }
 
 
-static void TraceEnterJSFunction(ooscript::Context context, ooscript::Function function, cxx::OOTimeProfileEntry *profileEntry)
+static void TraceEnterJSFunction(ooscript::Context context, ooscript::Function function, OOTimeProfileEntry *profileEntry)
 {
 	std::string			name = oo::str::format("%s(", profileEntry->function().value_or("(null)").c_str());
 	bool				isNative = ooscript::getFunctionNative(context, function) != NULL;
@@ -485,10 +485,10 @@ static void FunctionCallback(ooscript::Function function, ooscript::Script scrip
 		if (entering > 0)
 		{
 			// Create profile entry up front so we can shove the JS function in it.
-			cxx::OOTimeProfileEntry *entry = ProfileEntryForKey(function);
+			OOTimeProfileEntry *entry = ProfileEntryForKey(function);
 			if (entry == nullptr)
 			{
-				const oo::Ref<cxx::OOTimeProfileEntry> made = oo::makeRef<cxx::OOTimeProfileEntry>(function, context);
+				const oo::Ref<OOTimeProfileEntry> made = oo::makeRef<OOTimeProfileEntry>(function, context);
 				(*sProfileInfo)[function] = made;	// the table's reference
 				entry = made.get();
 			}
@@ -602,10 +602,10 @@ static void UpdateProfileForFrame(OOHighResTimeValue now, OOJSProfileStackFrame 
 {
 	sProfileStack = frame->back;
 	
-	cxx::OOTimeProfileEntry *entry = ProfileEntryForKey(frame->key);
+	OOTimeProfileEntry *entry = ProfileEntryForKey(frame->key);
 	if (entry == nullptr)
 	{
-		const oo::Ref<cxx::OOTimeProfileEntry> made = oo::makeRef<cxx::OOTimeProfileEntry>(frame->function);
+		const oo::Ref<OOTimeProfileEntry> made = oo::makeRef<OOTimeProfileEntry>(frame->function);
 		(*sProfileInfo)[frame->key] = made;	// the table's reference
 		entry = made.get();
 	}
@@ -623,8 +623,6 @@ static void UpdateProfileForFrame(OOHighResTimeValue now, OOJSProfileStackFrame 
 }
 } // namespace
 
-
-namespace cxx {
 
 std::optional<std::string> OOTimeProfile::description()
 {
@@ -757,11 +755,10 @@ ooscript::Value OOTimeProfile::oo_jsValueInContext(ooscript::Context context)
 
 oo::PList OOTimeProfile::propertyListRepresentation()
 {
-	// "profiles" holds the entry objects themselves, as it always did (the converted forms the old
-	// code built were never used; converting each entry to JavaScript calls this method on it).
+	// "profiles" holds each entry's own property list, which is what converting the entry to JavaScript gave.
 	oo::PList::Array profiles;
 	profiles.reserve(_profileEntries.size());
-	for (const auto &entry : _profileEntries)  profiles.push_back(oo::PListObject(oo::ToObjC(entry.get())));	// the entry's facade
+	for (const auto &entry : _profileEntries)  profiles.push_back(entry->propertyListRepresentation());
 	
 	oo::PList::Dict result;
 	result.emplace("profiles", oo::PList(std::move(profiles)));
@@ -987,7 +984,5 @@ oo::PList OOTimeProfileEntry::propertyListRepresentation()
 	}
 	return oo::PList(std::move(result));
 }
-
-}	// namespace cxx
 
 #endif

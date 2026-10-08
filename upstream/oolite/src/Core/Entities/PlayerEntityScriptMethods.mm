@@ -1,6 +1,6 @@
 /*
 
-PlayerEntityScriptMethods.m
+PlayerEntityScriptMethods.mm
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -74,52 +74,62 @@ NSInteger IntegerValueOf(const oo::PList *value)
 }	// namespace
 
 
-@implementation PlayerEntity (ScriptMethods)
+/*	The category PlayerEntity (ScriptMethods), bead oo-50zg: members of cxx::PlayerEntity (ADR-0056
+	amendments oo-o89 item 4 and oo-42dr), declared in PlayerEntity.h and forwarded by the category of
+	the same name in PlayerEntity+ObjCBridge.h/.mm. Sends to self stay sends to the facade (amendment
+	oo-mvzmb item 4).
+*/
+namespace cxx {
 
-- (unsigned) score
+
+unsigned PlayerEntity::score()
 {
-	return _cxxPlayer->ship_kills;
+	return ship_kills;
 }
 
 
-- (void) setScore:(unsigned)value
+void PlayerEntity::setScore(unsigned value)
 {
-	_cxxPlayer->ship_kills = value;
+	ship_kills = value;
 }
 
 
-- (double) creditBalance
+double PlayerEntity::creditBalance()
 {
-	return 0.1 * _cxxPlayer->credits;
+	return 0.1 * credits;
 }
 
 
-- (void) setCreditBalance:(double)value
+void PlayerEntity::setCreditBalance(double value)
 {
-	_cxxPlayer->credits = OODeciCreditsFromDouble(value * 10.0);
+	credits = OODeciCreditsFromDouble(value * 10.0);
 }
 
 
-- (std::optional<std::string>) cxx_dockedStationName
+std::optional<std::string> PlayerEntity::dockedStationName()
 {
+	::PlayerEntity *self = oo::ToObjC(this);
 	return [[self dockedStation] cxx_name];
 }
 
 
-- (std::optional<std::string>) cxx_dockedStationDisplayName
+std::optional<std::string> PlayerEntity::dockedStationDisplayName()
 {
+	::PlayerEntity *self = oo::ToObjC(this);
 	return [[self dockedStation] displayName];
 }
 
 
-- (BOOL) dockedAtMainStation
+bool PlayerEntity::dockedAtMainStation()
 {
+	::PlayerEntity *self = oo::ToObjC(this);
 	return [self status] == STATUS_DOCKED && [self dockedStation] == [UNIVERSE station];
 }
 
 
-- (void) cxx_awardCommodityType:(const std::string &)type amount:(OOCargoQuantity)amount
+void PlayerEntity::awardCommodityType(const std::string &type, OOCargoQuantity amount)
 {
+	::PlayerEntity *self = oo::ToObjC(this);
 	OOMassUnit				unit;
 
 	if (![[UNIVERSE commodities] cxx_goodDefined:type])
@@ -129,7 +139,7 @@ NSInteger IntegerValueOf(const oo::PList *value)
 	
 	OO_LOG("script.debug.note.awardCargo", "Going to award cargo: {} x '{}'", static_cast<int>(amount), type);
 
-	unit = [_cxxPlayer->shipCommodityData massUnitForGood:type];
+	unit = [shipCommodityData massUnitForGood:type];
 	
 	if ([self status] != STATUS_DOCKED)
 	{
@@ -138,10 +148,10 @@ NSInteger IntegerValueOf(const oo::PList *value)
 		{
 			if (unit != UNITS_TONS)
 			{
-				if (_cxxPlayer->specialCargo)
+				if (specialCargo)
 				{
 					// is this correct behaviour?
-					[_cxxPlayer->shipCommodityData cxx_addQuantity:amount forGood:type];
+					[shipCommodityData cxx_addQuantity:amount forGood:type];
 				}
 				else
 				{
@@ -149,9 +159,9 @@ NSInteger IntegerValueOf(const oo::PList *value)
 					while (amount > 0)
 					{
 						int smaller_quantity = 1 + ((amount - 1) % amount_per_container);
-						if (_cxxShip->cargo.size() < [self maxAvailableCargoSpace])
+						if (cargo.size() < [self maxAvailableCargoSpace])
 						{
-							ShipEntity* container = [UNIVERSE cxx_newShipWithRole:"1t-cargopod"];
+							::ShipEntity* container = [UNIVERSE cxx_newShipWithRole:"1t-cargopod"];
 							if (container)
 							{
 								// the cargopod ship is just being set up. If ejected,  will call UNIVERSE addEntity
@@ -159,7 +169,7 @@ NSInteger IntegerValueOf(const oo::PList *value)
 								[container setScanClass: CLASS_CARGO];
 								[container setStatus:STATUS_IN_HOLD];
 								[container cxx_setCommodity:type andAmount:smaller_quantity];
-								_cxxShip->cargo.emplace_back(container);
+								cargo.emplace_back(container);
 								[container release];
 							}
 						}
@@ -167,15 +177,15 @@ NSInteger IntegerValueOf(const oo::PList *value)
 					}
 				}
 			}
-			else if (!_cxxPlayer->specialCargo)
+			else if (!specialCargo)
 			// no adding TCs while special cargo in hold
 			{
 				// put each ton in a separate container
 				while (amount)
 				{
-					if (_cxxShip->cargo.size() < [self maxAvailableCargoSpace])
+					if (cargo.size() < [self maxAvailableCargoSpace])
 					{
-						ShipEntity* container = [UNIVERSE cxx_newShipWithRole:"1t-cargopod"];
+						::ShipEntity* container = [UNIVERSE cxx_newShipWithRole:"1t-cargopod"];
 						if (container)
 						{
 							// the cargopod ship is just being set up. If ejected, will call UNIVERSE addEntity
@@ -183,7 +193,7 @@ NSInteger IntegerValueOf(const oo::PList *value)
 							[container setScanClass: CLASS_CARGO];
 							[container setStatus:STATUS_IN_HOLD];
 							[container cxx_setCommodity:type andAmount:1];
-							_cxxShip->cargo.emplace_back(container);
+							cargo.emplace_back(container);
 							[container release];
 						}
 					}
@@ -195,110 +205,111 @@ NSInteger IntegerValueOf(const oo::PList *value)
 	else
 	{	// docked
 		// like purchasing a commodity
-		int manifest_quantity = [_cxxPlayer->shipCommodityData cxx_quantityForGood:type];
-		while ((amount)&&(_cxxPlayer->current_cargo < [self maxAvailableCargoSpace]))
+		int manifest_quantity = [shipCommodityData cxx_quantityForGood:type];
+		while ((amount)&&(current_cargo < [self maxAvailableCargoSpace]))
 		{
 			manifest_quantity++;
 			amount--;
-			if (unit == UNITS_TONS)  _cxxPlayer->current_cargo++;
+			if (unit == UNITS_TONS)  current_cargo++;
 		}
-		[_cxxPlayer->shipCommodityData cxx_setQuantity:manifest_quantity forGood:type];
+		[shipCommodityData cxx_setQuantity:manifest_quantity forGood:type];
 	}
 	[self calculateCurrentCargo];
 }
 
 
-- (void) resetScannerZoom
+void PlayerEntity::resetScannerZoom()
 {
-	_cxxPlayer->scanner_zoom_rate = SCANNER_ZOOM_RATE_DOWN;
+	scanner_zoom_rate = SCANNER_ZOOM_RATE_DOWN;
 }
 
 
-- (OOGalaxyID) currentGalaxyID
+OOGalaxyID PlayerEntity::currentGalaxyID()
 {
-	return _cxxPlayer->galaxy_number;
+	return galaxy_number;
 }
 
 
-- (OOSystemID) currentSystemID
+OOSystemID PlayerEntity::currentSystemID()
 {
 	if ([UNIVERSE sun] == nil)  return -1;	// Interstellar space
 	return [UNIVERSE currentSystemID];
 }
 
 
-- (void) cxx_setMissionChoice:(const std::optional<std::string> &)newChoice
+void PlayerEntity::setMissionChoice(const std::optional<std::string> &newChoice)
 {
-	[self cxx_setMissionChoice:newChoice keyPress:std::string() withEvent:YES];
+	setMissionChoice(newChoice, std::string(), true);
 }
 
 
-- (void) cxx_setMissionChoice:(const std::optional<std::string> &)newChoice withEvent:(BOOL)withEvent
+void PlayerEntity::setMissionChoice(const std::optional<std::string> &newChoice, bool withEvent)
 {
-	[self cxx_setMissionChoice:newChoice keyPress:std::string() withEvent:withEvent];
+	setMissionChoice(newChoice, std::string(), withEvent);
 }
 
 
-- (void) cxx_setMissionChoice:(const std::optional<std::string> &)newChoice keyPress:(const std::optional<std::string> &)keyPress
+void PlayerEntity::setMissionChoice(const std::optional<std::string> &newChoice, const std::optional<std::string> &keyPress)
 {
-	[self cxx_setMissionChoice:newChoice keyPress:keyPress withEvent:YES];
+	setMissionChoice(newChoice, keyPress, true);
 }
 
 
-- (void) cxx_setMissionChoice:(const std::optional<std::string> &)newChoice keyPress:(const std::optional<std::string> &)keyPress withEvent:(BOOL)withEvent
+void PlayerEntity::setMissionChoice(const std::optional<std::string> &newChoice, const std::optional<std::string> &keyPress, bool withEvent)
 {
-	const std::optional<std::string> oldChoice = _cxxPlayer->missionChoice;
+	::PlayerEntity *self = oo::ToObjC(this);
+	const std::optional<std::string> oldChoice = missionChoice;
 	BOOL equal = newChoice == oldChoice;	// Catch both being nil as well
 	if (!equal)
 	{
 		if (!newChoice.has_value())
 		{
-			_cxxPlayer->missionChoice.reset();
+			missionChoice.reset();
 			if (withEvent) [self cxx_doScriptEvent:OOJSID("missionChoiceWasReset") withPListArguments:{ oldChoice.has_value() ? oo::PList(*oldChoice) : oo::PList() }];
 		}
 		else
 		{
-			_cxxPlayer->missionChoice = newChoice;
+			missionChoice = newChoice;
 		}
 	}
-	equal = keyPress == _cxxPlayer->missionKeyPress;
+	equal = keyPress == missionKeyPress;
 	if (!equal)
 	{
-		_cxxPlayer->missionKeyPress = keyPress;
+		missionKeyPress = keyPress;
 	}
 }
 
 
-- (void) allowMissionInterrupt
+void PlayerEntity::allowMissionInterrupt()
 {
-	_cxxPlayer->_missionAllowInterrupt = YES;
+	_missionAllowInterrupt = YES;
 }
 
 
-- (OOTimeDelta) scriptTimer
+OOTimeDelta PlayerEntity::scriptTimer()
 {
-	return _cxxPlayer->script_time;
+	return script_time;
 }
 
 
 /* FIXME: these next three functions seed the RNG when called. That
  * could cause unwanted effects - should save its state, and then
  * reset it after generating the number. */
-- (unsigned) systemPseudoRandom100
+unsigned PlayerEntity::systemPseudoRandom100()
 {
 	seed_RNG_only_for_planet_description([[UNIVERSE systemManager] getRandomSeedForCurrentSystem]);
 	return (gen_rnd_number() * 256 + gen_rnd_number()) % 100;
 }
 
 
-- (unsigned) systemPseudoRandom256
+unsigned PlayerEntity::systemPseudoRandom256()
 {
 	seed_RNG_only_for_planet_description([[UNIVERSE systemManager] getRandomSeedForCurrentSystem]);
 	return gen_rnd_number();
 }
 
 
-- (double) systemPseudoRandomFloat
+double PlayerEntity::systemPseudoRandomFloat()
 {
 	seed_RNG_only_for_planet_description([[UNIVERSE systemManager] getRandomSeedForCurrentSystem]);
 	unsigned a = gen_rnd_number();
@@ -311,31 +322,31 @@ NSInteger IntegerValueOf(const oo::PList *value)
 }
 
 
-- (oo::PList) cxx_passengerContractMarker:(OOSystemID)system
+oo::PList PlayerEntity::passengerContractMarker(OOSystemID system)
 {
 	return MarkerFor(system, "orangeColor", "MARKER_DIAMOND");
 }
 
 
-- (oo::PList) cxx_parcelContractMarker:(OOSystemID)system
+oo::PList PlayerEntity::parcelContractMarker(OOSystemID system)
 {
 	return MarkerFor(system, "orangeColor", "MARKER_PLUS");
 }
 
 
-- (oo::PList) cxx_cargoContractMarker:(OOSystemID)system
+oo::PList PlayerEntity::cargoContractMarker(OOSystemID system)
 {
 	return MarkerFor(system, "orangeColor", "MARKER_SQUARE");
 }
 
 
-- (oo::PList) cxx_defaultMarker:(OOSystemID)system
+oo::PList PlayerEntity::defaultMarker(OOSystemID system)
 {
 	return MarkerFor(system, "redColor", "MARKER_X");
 }
 
 
-- (oo::PList) cxx_validatedMarker:(const oo::PList &)marker
+oo::PList PlayerEntity::validatedMarker(const oo::PList &marker)
 {
 	if (marker.isNull())
 	{
@@ -364,8 +375,9 @@ NSInteger IntegerValueOf(const oo::PList *value)
 
 
 // Implements string expansion code [credits_number].
-- (std::optional<std::string>) cxx_creditsFormattedForSubstitution
+std::optional<std::string> PlayerEntity::creditsFormattedForSubstitution()
 {
+	::PlayerEntity *self = oo::ToObjC(this);
 	return std::optional<std::string>(cxx_OOStringFromDeciCredits([self deciCredits], YES, NO));
 }
 
@@ -376,8 +388,9 @@ NSInteger IntegerValueOf(const oo::PList *value)
 	[_oo_legacy_credits_number] in the script sanitizer. These are shown
 	unlocalized because legacy scripts may use it for arithmetic.
 */
-- (std::optional<std::string>) cxx_creditsFormattedForLegacySubstitution
+std::optional<std::string> PlayerEntity::creditsFormattedForLegacySubstitution()
 {
+	::PlayerEntity *self = oo::ToObjC(this);
 	OOCreditsQuantity	tenthsOfCredits = [self deciCredits];
 	unsigned long long	integerCredits = tenthsOfCredits / 10;
 	unsigned long long	tenths = tenthsOfCredits % 10;
@@ -387,58 +400,35 @@ NSInteger IntegerValueOf(const oo::PList *value)
 
 
 // Implements string expansion code [commander_bounty].
-- (std::optional<std::string>) cxx_commanderBountyAsString
+std::optional<std::string> PlayerEntity::commanderBountyAsString()
 {
+	::PlayerEntity *self = oo::ToObjC(this);
 	return oo::str::format("%i", [self legalStatus]);
 }
 
 
 // Implements string expansion code [commander_kills].
-- (std::optional<std::string>) cxx_commanderKillsAsString
+std::optional<std::string> PlayerEntity::commanderKillsAsString()
 {
-	return oo::str::format("%i", [self score]);
-}
-
-
-- (oo::PList) commanderKillsAsString	// called by name (ADR-0043 item 21)
-{
-	return ([self cxx_commanderKillsAsString]).has_value() ? oo::PList(*[self cxx_commanderKillsAsString]) : oo::PList();
-}
-
-
-- (oo::PList) commanderBountyAsString	// called by name (ADR-0043 item 21)
-{
-	return ([self cxx_commanderBountyAsString]).has_value() ? oo::PList(*[self cxx_commanderBountyAsString]) : oo::PList();
-}
-
-
-- (oo::PList) creditsFormattedForSubstitution	// called by name (ADR-0043 item 21)
-{
-	return ([self cxx_creditsFormattedForSubstitution]).has_value() ? oo::PList(*[self cxx_creditsFormattedForSubstitution]) : oo::PList();
-}
-
-
-- (oo::PList) creditsFormattedForLegacySubstitution	// called by name (ADR-0043 item 21)
-{
-	return ([self cxx_creditsFormattedForLegacySubstitution]).has_value() ? oo::PList(*[self cxx_creditsFormattedForLegacySubstitution]) : oo::PList();
+	return oo::str::format("%i", score());
 }
 
 
 // utilising new keyconfig2.plist data
-- (std::optional<std::string>) cxx_keyBindingDescription2:(const std::string &)binding
+std::optional<std::string> PlayerEntity::keyBindingDescription2(const std::string &binding)
 {
-	const auto keyEntry = _cxxPlayer->keyconfig2_settings.find(binding);
-	const oo::PList keyList = (keyEntry != _cxxPlayer->keyconfig2_settings.end()) ? keyEntry->second : oo::PList();
+	const auto keyEntry = keyconfig2_settings.find(binding);
+	const oo::PList keyList = (keyEntry != keyconfig2_settings.end()) ? keyEntry->second : oo::PList();
 	if (keyList.isNull())
 	{
 		// no such setting
 		return std::nullopt;
 	}
-	return [self cxx_getKeyBindingDescription:keyList];
+	return getKeyBindingDescription(keyList);
 }
 
 
-- (std::optional<std::string>) cxx_getKeyBindingDescription:(const oo::PList &) keyList
+std::optional<std::string> PlayerEntity::getKeyBindingDescription(const oo::PList &keyList)
 {
 	NSUInteger i = 0;
 	std::string final;
@@ -447,12 +437,12 @@ NSInteger IntegerValueOf(const oo::PList *value)
 		if (i != 0) final += " or ";
 		const oo::PList *def = keyList.at(i);
 		OOKeyCode k_int = (OOKeyCode)IntegerValueOf(def->find("key"));
-		const std::string desc = [self cxx_keyCodeDescription:k_int].value_or("(null)");	// %@ of nil
+		const std::string desc = keyCodeDescription(k_int).value_or("(null)");	// %@ of nil
 		// 0 = key not set
 		if (k_int != 0) {
-			if (BoolValueOf(def->find("mod2")) == YES) final += _cxxPlayer->keyMod2Text + "+";
-			if (BoolValueOf(def->find("mod1")) == YES) final += _cxxPlayer->keyMod1Text + "+";
-			if (BoolValueOf(def->find("shift")) == YES) final += _cxxPlayer->keyShiftText + "+";
+			if (BoolValueOf(def->find("mod2")) == YES) final += keyMod2Text + "+";
+			if (BoolValueOf(def->find("mod1")) == YES) final += keyMod1Text + "+";
+			if (BoolValueOf(def->find("shift")) == YES) final += keyShiftText + "+";
 			final += desc;
 		}
 	}
@@ -460,7 +450,7 @@ NSInteger IntegerValueOf(const oo::PList *value)
 }
 
 
-- (std::optional<std::string>) cxx_keyCodeDescription:(OOKeyCode)code
+std::optional<std::string> PlayerEntity::keyCodeDescription(OOKeyCode code)
 {
 	switch (code)
 	{
@@ -560,7 +550,7 @@ NSInteger IntegerValueOf(const oo::PList *value)
 	}
 }
 
-- (std::optional<std::string>) cxx_keyCodeDescriptionShort:(OOKeyCode)code
+std::optional<std::string> PlayerEntity::keyCodeDescriptionShort(OOKeyCode code)
 {
 	switch (code)
 	{
@@ -659,7 +649,7 @@ NSInteger IntegerValueOf(const oo::PList *value)
 	}
 }
 
-@end
+}	// namespace cxx
 
 
 Vector OOGalacticCoordinatesFromInternal(NSPoint internalCoordinates)

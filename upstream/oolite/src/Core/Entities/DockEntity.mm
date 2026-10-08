@@ -41,6 +41,7 @@ MA 02110-1301, USA.
 #import "OOCharacter.h"
 
 #import "OOJSScript.h"
+#import "OOJSDock.h"
 #import "OODebugGLDrawing.h"
 #import "OODebugFlags.h"
 #include "oofnd/Log.hpp"
@@ -234,6 +235,20 @@ void DockEntity::setDimensionsAndCorridor(bool docking, bool ddc, bool launching
 bool DockEntity::isDock()
 {
 	return YES;
+}
+
+
+// The binding's bodies (OOJSDock.mm), which a category on the façade forwarded to
+// until bead oo-9ht.47.
+void DockEntity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)
+{
+	::OOJSDockGetJSClass(outClass, outPrototype);
+}
+
+
+std::optional<std::string> DockEntity::jsClassName()
+{
+	return ::OOJSDockJSClassName();
 }
 
 

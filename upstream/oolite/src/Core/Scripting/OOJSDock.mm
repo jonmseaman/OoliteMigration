@@ -49,7 +49,7 @@ MA 02110-1301, USA.
 	ADR-0056 amendment oo-ppc). The JS class was already C++ on the ooscript façade;
 	OOJS_NATIVE_ENTER/EXIT and OOJS_PROFILE_ENTER/EXIT are C++ try/catch and scope guards
 	(OOJSEngineNativeWrappers.h); BOOL/YES/NO are bool/true/false. The category on DockEntity
-	became two free functions, and its methods moved to OOJSDock+ObjCBridge.mm (amendment oo-
+	became two free functions, and its methods moved to cxx::DockEntity (amendment oo-
 	ykoy). Messages to classes that are still Objective-C (DockEntity, ShipEntity, Entity) stay
 	as they are, which is why the file is still .mm until Phase 4.
 */
@@ -220,8 +220,8 @@ static bool JSDockGetShipEntity(ooscript::Context context, ooscript::Object ship
 } // namespace
 
 
-// The bodies of DockEntity (OOJavaScriptExtensions), whose methods are in OOJSDock+ObjCBridge.mm
-// until DockEntity converts (proposed ADR-0056 amendments oo-ppc and oo-ykoy).
+// The bodies of DockEntity's class questions, which cxx::DockEntity's overrides call (bead
+// oo-9ht.47; proposed ADR-0056 amendments oo-ppc and oo-ykoy).
 void OOJSDockGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)
 {
 	*outClass = &sDockClass;
