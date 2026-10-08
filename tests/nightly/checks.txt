@@ -406,6 +406,7 @@
 [oo-lqyhf] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntityAI test_ShipEntity && bash tools/tier-c.sh --only goldens
 [oo-9j462] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_StationEntity test_ShipEntity && bash tools/tier-c.sh --only goldens
 [oo-hjzwk] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_StationEntity test_ShipEntity && bash tools/tier-c.sh --only goldens
+[oo-qinv] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_GameController test_MyOpenGLView && bash tools/tier-c.sh --only goldens
 [oo-tqem7] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_StationEntity test_ShipEntity && bash tools/tier-c.sh --only goldens
 [oo-27jxj] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Universe && bash tools/tier-c.sh --only goldens
 [oo-9ht.71] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOTextureSprite test_HeadUpDisplay test_GuiDisplayGen && bash tools/tier-c.sh --only goldens
