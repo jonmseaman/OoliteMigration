@@ -149,6 +149,10 @@ cxx::OOShipGroup *oo::ToCxx(OOShipGroup *group)
 - (NSUInteger) count						{ return _cxxGroup->count(); }
 - (BOOL) isEmpty							{ return _cxxGroup->isEmpty(); }
 
+// What the engine sends the façade by selector for the group's JS object (the group holds it).
+- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context	{ return _cxxGroup->jsValueInContext(context); }
+- (void) oo_clearJSSelf:(ooscript::Object)selfVal					{ _cxxGroup->clearJSSelf(selfVal); }
+
 @end
 
 
