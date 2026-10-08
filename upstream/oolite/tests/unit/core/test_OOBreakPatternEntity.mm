@@ -65,9 +65,9 @@ static Entity *sRemoved = nil;
 
 struct OOBreakPatternEntityTestAccess
 {
-	static NSUInteger VertexCount(OOBreakPatternEntity *e)				{ return oo::ToCxx(e)->_vertexCount; }
-	static Vector VertexPosition(OOBreakPatternEntity *e, NSUInteger i)	{ return oo::ToCxx(e)->_vertexPosition[i]; }
-	static const GLfloat *VertexColor(OOBreakPatternEntity *e, NSUInteger i)	{ return oo::ToCxx(e)->_vertexColor[i]; }
+	static NSUInteger VertexCount(const oo::Ref<OOBreakPatternEntity> &r)				{ OOBreakPatternEntity *e = r.get(); return e->_vertexCount; }
+	static Vector VertexPosition(const oo::Ref<OOBreakPatternEntity> &r, NSUInteger i)	{ OOBreakPatternEntity *e = r.get(); return e->_vertexPosition[i]; }
+	static const GLfloat *VertexColor(const oo::Ref<OOBreakPatternEntity> &r, NSUInteger i)	{ OOBreakPatternEntity *e = r.get(); return e->_vertexColor[i]; }
 };
 
 // --------------------------------------------------------------------------------------------------
@@ -97,7 +97,7 @@ void SetUp()
 bool Near(float a, float b)  { return fabs(a - b) < 1e-4; }
 
 
-bool ColorIs(OOBreakPatternEntity *e, NSUInteger i, GLfloat r, GLfloat g, GLfloat b, GLfloat a)
+bool ColorIs(const oo::Ref<OOBreakPatternEntity> &e, NSUInteger i, GLfloat r, GLfloat g, GLfloat b, GLfloat a)
 {
 	const GLfloat *c = Access::VertexColor(e, i);
 	return c[0] == r && c[1] == g && c[2] == b && c[3] == a;
@@ -111,8 +111,8 @@ OO_TEST(polygon)
 	@autoreleasepool
 	{
 		SetUp();
-		OOBreakPatternEntity *ring = [OOBreakPatternEntity breakPatternWithPolygonSides:4 startAngle:0.0f aspectRatio:2.0f];
-		OO_CHECK(ring != nil && [ring class] == [OOBreakPatternEntity class]);
+		oo::Ref<OOBreakPatternEntity> ring = OOBreakPatternEntity::breakPatternWithPolygonSides(4, 0.0f, 2.0f);
+		OO_CHECK(ring != nullptr);
 		OO_CHECK(Access::VertexCount(ring) == 10);
 
 		// The first side starts at the top; the aspect ratio narrows the other axis (here y).
@@ -125,8 +125,8 @@ OO_TEST(polygon)
 		OO_CHECK(vector_equal(Access::VertexPosition(ring, 8), v0) && vector_equal(Access::VertexPosition(ring, 9), v1));
 
 		// Sides are clamped to 3...128.
-		OO_CHECK(Access::VertexCount([OOBreakPatternEntity breakPatternWithPolygonSides:1 startAngle:0.0f aspectRatio:1.0f]) == 8);
-		OO_CHECK(Access::VertexCount([OOBreakPatternEntity breakPatternWithPolygonSides:1000 startAngle:0.0f aspectRatio:1.0f]) == kOOBreakPatternMaxVertices);
+		OO_CHECK(Access::VertexCount(OOBreakPatternEntity::breakPatternWithPolygonSides(1, 0.0f, 1.0f)) == 8);
+		OO_CHECK(Access::VertexCount(OOBreakPatternEntity::breakPatternWithPolygonSides(1000, 0.0f, 1.0f)) == kOOBreakPatternMaxVertices);
 	}
 }
 
@@ -136,25 +136,23 @@ OO_TEST(flagsAndColors)
 	@autoreleasepool
 	{
 		SetUp();
-		OOBreakPatternEntity *ring = [OOBreakPatternEntity breakPatternWithPolygonSides:3 startAngle:45.0f aspectRatio:1.0f];
-		OO_CHECK([ring status] == STATUS_EFFECT && [ring scanClass] == CLASS_NO_DRAW);
-		OO_CHECK([ring isImmuneToBreakPatternHide] && [ring isBreakPattern] && ![ring canCollide]);
-		Entity *other = [[[Entity alloc] init] autorelease];
-		OO_CHECK(![other isBreakPattern]);
+		oo::Ref<OOBreakPatternEntity> ring = OOBreakPatternEntity::breakPatternWithPolygonSides(3, 45.0f, 1.0f);
+		OO_CHECK(ring->status() == STATUS_EFFECT && ring->scanClass == CLASS_NO_DRAW);
+		OO_CHECK(ring->isImmuneToBreakPatternHide && !ring->canCollide());
+		oo::Ref<cxx::Entity> other = oo::makeRef<cxx::Entity>();
+		OO_CHECK(dynamic_cast<OOBreakPatternEntity *>(ring.get()) != nullptr && dynamic_cast<OOBreakPatternEntity *>(other.get()) == nullptr);
 
 		// Default: red inside, blue outside.
 		OO_CHECK(ColorIs(ring, 0, 1.0f, 0.0f, 0.0f, 0.5f) && ColorIs(ring, 1, 0.0f, 0.0f, 1.0f, 0.25f));
 		OO_CHECK(ColorIs(ring, 7, 0.0f, 0.0f, 1.0f, 0.25f));
 
-		[ring setInnerColor:[OOColor colorWithRed:0.0f green:1.0f blue:0.0f alpha:1.0f] outerColor:[OOColor colorWithRed:1.0f green:1.0f blue:1.0f alpha:0.5f]];
+		ring->setInnerColor(oo::ToCxx([OOColor colorWithRed:0.0f green:1.0f blue:0.0f alpha:1.0f]), oo::ToCxx([OOColor colorWithRed:1.0f green:1.0f blue:1.0f alpha:0.5f]));
 		OO_CHECK(ColorIs(ring, 0, 0.0f, 1.0f, 0.0f, 1.0f) && ColorIs(ring, 1, 1.0f, 1.0f, 1.0f, 0.5f));
 		OO_CHECK(ColorIs(ring, 6, 0.0f, 1.0f, 0.0f, 1.0f) && ColorIs(ring, 7, 1.0f, 1.0f, 1.0f, 0.5f));
 
-		OO_CHECK(oo::DescriptionOf(ring).starts_with("<OOBreakPatternEntity 0x"));
-
 		// Hidden (no longer immune): nothing is drawn.
-		ring->_cxxEntity->isImmuneToBreakPatternHide = NO;
-		[ring drawImmediate:false translucent:true];
+		ring->isImmuneToBreakPatternHide = NO;
+		ring->drawImmediate(false, true);
 	}
 }
 
@@ -164,18 +162,19 @@ OO_TEST(lifetime)
 	@autoreleasepool
 	{
 		SetUp();
-		OOBreakPatternEntity *ring = [OOBreakPatternEntity breakPatternWithPolygonSides:4 startAngle:0.0f aspectRatio:1.0f];
-		[ring setStatus:STATUS_EFFECT];
-		[ring setVelocity:make_vector(0, 0, 10)];
-		[ring setLifetime:100.0];
+		oo::Ref<OOBreakPatternEntity> ring = OOBreakPatternEntity::breakPatternWithPolygonSides(4, 0.0f, 1.0f);
+		Entity *facade = oo::NewEntityFacade(ring);	// what removeEntity: is sent
+		ring->setStatus(STATUS_EFFECT);
+		ring->setVelocity(make_vector(0, 0, 10));
+		ring->setLifetime(100.0);
 
 		// The lifetime runs down at the ring speed (200 a second); the ring moves meanwhile.
-		[ring update:0.25];
-		OO_CHECK(sRemoved == nil && HPvector_equal([ring position], make_HPvector(0, 0, 2.5)));
-		[ring update:0.25];
+		ring->update(0.25);
+		OO_CHECK(sRemoved == nil && HPvector_equal(ring->getPosition(), make_HPvector(0, 0, 2.5)));
+		ring->update(0.25);
 		OO_CHECK(sRemoved == nil);
-		[ring update:0.01];
-		OO_CHECK(sRemoved == ring);
+		ring->update(0.01);
+		OO_CHECK(sRemoved == facade);
 	}
 }
 
