@@ -40,6 +40,7 @@ MA 02110-1301, USA.
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"
 #include "oofnd/objc/OOObjCRef.h"
+#include "OOJSPrivateObject.h"
 
 @class ShipEntity;
 @class OOShipGroup;	// the Objective-C facade (OOShipGroup+ObjCBridge.h), for OOShipGroupCursor's transitional constructor
@@ -50,7 +51,7 @@ class OOShipGroupMembers;	// OOShipGroup.mm's range-for over the members
 
 namespace cxx {
 
-class OOShipGroup : public oo::RefCounted
+class OOShipGroup : public oo::RefCounted, public ::OOJSPrivateObject
 {
 public:
 	// Null if the member array cannot be allocated (-cxx_initWithName: returned nil).
@@ -79,6 +80,13 @@ public:
 	// What "%@" prints between the braces of <OOShipGroup 0x...>{...} (OODescription.h).
 	std::optional<std::string> descriptionComponents() const;
 
+	// The JS glue (OOJSPrivateObject), defined in OOJSShipGroup.mm: the ShipGroup object, made on
+	// first use; forgetting it when it is finalized; "[OOShipGroup <components>]" (proposed ADR-0056
+	// amendment oo-6symp).
+	ooscript::Value jsValueInContext(ooscript::Context context) override;
+	void clearJSSelf(ooscript::Object selfVal) override;
+	std::optional<std::string> jsDescription() override;
+
 private:
 	// The ivars hold the Objective-C facade, ::OOWeakReference; inside namespace cxx the bare name
 	// is cxx::OOWeakReference since bead oo-3kqi (ADR-0056 amendment oo-rmd7 item 3).
@@ -101,8 +109,7 @@ private:
 	OOWeakReference			**_members = {};
 	OOWeakReference			*_leader = {};
 	std::optional<std::string>	_name = {};
-	// _jsSelf stays in the Objective-C facade: it is the facade's JavaScript wrapper, which the
-	// category in OOJSShipGroup.mm makes and clears.
+	ooscript::Object		_jsSelf = {};	// The JS ShipGroup object proxy for this group.
 };
 
 }	// namespace cxx
