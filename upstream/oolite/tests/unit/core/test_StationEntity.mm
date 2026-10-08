@@ -440,7 +440,7 @@ TestVisitor *MakeVisitor(const std::string &key, oo::PList::Dict extra = {})
 	return [[[TestVisitor alloc] cxx_initWithKey:key definition:oo::PList(std::move(dict))] autorelease];
 }
 
-OOWeakSet *ShipsOnHold2(StationEntity *s)				{ return s->_cxxStation->_shipsOnHold; }
+OOWeakSet *ShipsOnHold2(StationEntity *s)				{ return s->_cxxStation->_shipsOnHold.get(); }
 void SetDefendersLaunched2(StationEntity *s, unsigned n)	{ s->_cxxStation->defenders_launched = n; }
 void SetScavengersLaunched2(StationEntity *s, unsigned n)	{ s->_cxxStation->scavengers_launched = n; }
 unsigned DockedShuttles2(StationEntity *s)				{ return s->_cxxStation->docked_shuttles; }
@@ -486,7 +486,7 @@ OO_TEST(slice2HoldPosition)
 		TestStation *station = MakeStation("holder");
 		TestVisitor *ship = MakeVisitor("waiter");
 		[ship setPosition:make_HPvector(1, 2, 3)];
-		[ShipsOnHold2(station) addObject:ship];		// already holding: no message
+		ShipsOnHold2(station)->addObject(ship);		// already holding: no message
 		const oo::PList hold = [station holdPositionInstructionForShip:ship];
 		OO_CHECK(hold.get<std::string>("ai_message", "") == "HOLD_POSITION" && hold.find("comms_message") == nullptr);
 		OO_CHECK(hold.get<double>("speed", -1) == 0 && hold.get<double>("range", -1) == 100);
@@ -495,14 +495,14 @@ OO_TEST(slice2HoldPosition)
 		OO_CHECK(destination != nullptr && destination->get<double>("x", 0) == 1 && destination->get<double>("z", 0) == 3);
 		const oo::PList *stationRef = hold.find("station");
 		OO_CHECK(stationRef != nullptr && [oo::ObjectIn(*stationRef) weakRefUnderlyingObject] == station);
-		OO_CHECK([ShipsOnHold2(station) containsObject:ship] && [ShipsOnHold2(station) count] == 1);
+		OO_CHECK(ShipsOnHold2(station)->containsObject(ship) && ShipsOnHold2(station)->count() == 1);
 
 		[station clear];
-		OO_CHECK([ShipsOnHold2(station) count] == 0);
+		OO_CHECK(ShipsOnHold2(station)->count() == 0);
 
-		[ShipsOnHold2(station) addObject:ship];
+		ShipsOnHold2(station)->addObject(ship);
 		[station abortDockingForShip:ship];
-		OO_CHECK(![ShipsOnHold2(station) containsObject:ship]);
+		OO_CHECK(!ShipsOnHold2(station)->containsObject(ship));
 	}
 }
 
@@ -544,10 +544,10 @@ OO_TEST(slice2MembersFromCxx)
 		TestVisitor *ship = MakeVisitor("guest");
 		cxx::StationEntity *part = station->_cxxStation;
 		OO_CHECK(!part->hasMultipleDocks() && !part->fitsInDock(nil) && part->selectDockForDocking() == nil);
-		[ShipsOnHold2(station) addObject:ship];
+		ShipsOnHold2(station)->addObject(ship);
 		OO_CHECK(part->holdPositionInstructionForShip(ship).get<std::string>("ai_message", "") == "HOLD_POSITION");
 		part->clear();
-		OO_CHECK([ShipsOnHold2(station) count] == 0);
+		OO_CHECK(ShipsOnHold2(station)->count() == 0);
 	}
 }
 

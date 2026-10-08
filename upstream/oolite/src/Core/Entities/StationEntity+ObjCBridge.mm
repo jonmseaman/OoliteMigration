@@ -52,7 +52,7 @@ MA 02110-1301, USA.
 	if (self != nil)
 	{
 		_cxxStation->isStation = YES;
-		_cxxStation->_shipsOnHold = [[OOWeakSet alloc] init];
+		_cxxStation->_shipsOnHold = ::OOWeakSet::set();
 		_cxxStation->hasBreakPattern = YES;
 	}
 	return self;
@@ -91,7 +91,7 @@ MA 02110-1301, USA.
 	*/
 	if (_cxxStation != nullptr)
 	{
-		DESTROY(_cxxStation->_shipsOnHold);
+		_cxxStation->_shipsOnHold = nullptr;
 		DESTROY(_cxxStation->localMarket);
 //	DESTROY(localPassengers);
 //	DESTROY(localContracts);

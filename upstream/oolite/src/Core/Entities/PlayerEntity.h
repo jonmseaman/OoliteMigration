@@ -899,6 +899,42 @@ public:
 	void dumpSelfState() override;
 #endif
 
+	// Category ScriptMethods (PlayerEntityScriptMethods.mm, bead oo-50zg): methods for use by scripting mechanisms.
+	// std::nullopt is nil in the Foundation-typed forms (proposed ADR-0043, bead oo-8mxr).
+	unsigned score();
+	void setScore(unsigned value);
+	double creditBalance();
+	void setCreditBalance(double value);
+	std::optional<std::string> dockedStationName();
+	std::optional<std::string> dockedStationDisplayName();
+	bool dockedAtMainStation();
+	void awardCommodityType(const std::string &type, OOCargoQuantity amount);
+	void resetScannerZoom();
+	OOGalaxyID currentGalaxyID();
+	OOSystemID currentSystemID();
+	void setMissionChoice(const std::optional<std::string> &newChoice);
+	void setMissionChoice(const std::optional<std::string> &newChoice, bool withEvent);
+	void setMissionChoice(const std::optional<std::string> &newChoice, const std::optional<std::string> &keyPress);
+	void setMissionChoice(const std::optional<std::string> &newChoice, const std::optional<std::string> &keyPress, bool withEvent);
+	void allowMissionInterrupt();
+	OOTimeDelta scriptTimer();
+	unsigned systemPseudoRandom100();
+	unsigned systemPseudoRandom256();
+	double systemPseudoRandomFloat();
+	oo::PList passengerContractMarker(OOSystemID system);
+	oo::PList parcelContractMarker(OOSystemID system);
+	oo::PList cargoContractMarker(OOSystemID system);
+	oo::PList defaultMarker(OOSystemID system);
+	oo::PList validatedMarker(const oo::PList &marker);
+	std::optional<std::string> keyBindingDescription2(const std::string &binding);
+	std::optional<std::string> getKeyBindingDescription(const oo::PList &keyList);
+	std::optional<std::string> keyCodeDescription(OOKeyCode code);
+	std::optional<std::string> keyCodeDescriptionShort(OOKeyCode code);
+	std::optional<std::string> commanderKillsAsString();
+	std::optional<std::string> commanderBountyAsString();
+	std::optional<std::string> creditsFormattedForSubstitution();
+	std::optional<std::string> creditsFormattedForLegacySubstitution();
+
 #ifndef NDEBUG
 	/*	Names the members the analyser would call unused because only the categories read them
 		(it was a method of the Objective-C class, built only into debug builds).
