@@ -5,10 +5,9 @@ OOJSShipGroup+ObjCBridge.mm
 The Objective-C left over from OOJSShipGroup.mm (bead oo-n64m; proposed ADR-0056 amendments oo-ppc,
 oo-ykoy and oo-bwrq): OOShipGroup (OOJavaScriptExtensions), the category through which the engine
 asks a group's façade for its JS object by selector, and tells it that object is gone. Its methods
-stay methods of the façade, each forwarding in one line to the C++ function in OOJSShipGroup.mm
-that holds its old body, with the façade's _jsSelf ivar, the group's JS object, passed by
-reference. Deleted with the façade (oo-9ht.19), once the engine's object wrappers hold C++ objects
-(amendment oo-ppc, item 5) and the JS object lives in the C++ group.
+stay methods of the façade, each forwarding in one line to the C++ group's member in
+OOJSShipGroup.mm (the JS object lives in the group, bead oo-6symp.1). Deleted with the façade
+(oo-9ht.94).
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -38,13 +37,13 @@ MA 02110-1301, USA.
 
 - (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
 {
-	return ::OOJSShipGroupJSValueInContext(self, _jsSelf, context);
+	return oo::ToCxx(self)->jsValueInContext(context);
 }
 
 
 - (void) oo_clearJSSelf:(ooscript::Object)selfVal
 {
-	::OOJSShipGroupClearJSSelf(_jsSelf, selfVal);
+	oo::ToCxx(self)->clearJSSelf(selfVal);
 }
 
 @end

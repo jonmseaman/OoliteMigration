@@ -28,6 +28,13 @@
 #include <vector>
 
 
+// The JS glue of cxx::OOShipGroup, which OOJSShipGroup.mm defines (bead oo-6symp.1) and this test
+// does not link: the vtable names them. Nothing here reaches the JS engine.
+ooscript::Value cxx::OOShipGroup::jsValueInContext(ooscript::Context)  { return ooscript::nullValue(); }
+void cxx::OOShipGroup::clearJSSelf(ooscript::Object)  {}
+std::optional<std::string> cxx::OOShipGroup::jsDescription()  { return std::nullopt; }
+
+
 // --- A stand-in for ShipEntity (see the banner) ---------------------------------------------------
 
 @interface ShipEntity: OOWeakRefObject
