@@ -9,7 +9,7 @@
 # tools/check-core-tests.sh fails when a test_*.mm here is missing from this list.
 
 core_tests = {
-    'test_OOJSEngineTimeManagement': ['Core/Scripting/OOJSEngineTimeManagement.mm', 'Core/Scripting/OOJSEngineTimeManagement+ObjCBridge.mm', 'Core/OOProfilingStopwatch.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OODescription.mm'],
+    'test_OOJSEngineTimeManagement': ['Core/Scripting/OOJSEngineTimeManagement.mm', 'Core/OOProfilingStopwatch.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OODescription.mm'],
     'test_OOJSGuiScreenKeyDefinition': ['Core/Scripting/OOJSGuiScreenKeyDefinition.mm', 'Core/Scripting/OOJSGuiScreenKeyDefinition+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OODescription.mm'],
     'test_OOJSInterfaceDefinition': ['Core/Scripting/OOJSInterfaceDefinition.mm', 'Core/Scripting/OOJSInterfaceDefinition+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OODescription.mm'],
     'test_OOJSPopulatorDefinition': ['Core/Scripting/OOJSPopulatorDefinition.mm', 'Core/Scripting/OOJSPopulatorDefinition+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OODescription.mm'],
@@ -97,7 +97,7 @@ core_tests = {
     'test_CollisionRegion': ['*'],
     'test_Octree': ['*'],
     'test_OOJSVector': ['Core/Scripting/OOJSVector.mm', 'Core/Scripting/OOJSVector+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OOHPVector.mm', 'Core/OOVector.mm', 'Core/OOQuaternion.cpp', 'Core/legacy_random.c'],
-    'test_OOJSDock': ['Core/Scripting/OOJSDock.mm', 'Core/Scripting/OOJSDock+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
+    'test_OOJSDock': ['Core/Scripting/OOJSDock.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOJSSoundSource': ['Core/Scripting/OOJSSoundSource.mm', 'Core/Scripting/OOJSSoundSource+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOJSSound': ['Core/Scripting/OOJSSound.mm', 'Core/Scripting/OOJSSound+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOJSSun': ['Core/Scripting/OOJSSun.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
@@ -176,7 +176,7 @@ core_tests = {
     'test_OOParticleSystem': ['*'],
     'test_OORingEffectEntity': ['*'],
     'test_OODebugMonitor': ['Core/Debug/OODebugMonitor.mm', 'Core/Debug/OODebugMonitor+ObjCBridge.mm', 'Core/OOColor.mm', 'Core/OOColor+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/OODescription.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
-    'test_OOJSConsole': ['Core/Debug/OOJSConsole.mm', 'Core/Debug/OOJSConsole+ObjCBridge.mm', 'Core/Debug/OODebugMonitor+ObjCBridge.mm', 'Core/Scripting/OOJSEngineTimeManagement.mm', 'Core/Scripting/OOJSEngineTimeManagement+ObjCBridge.mm', 'Core/OOProfilingStopwatch.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OODescription.mm'],
+    'test_OOJSConsole': ['Core/Debug/OOJSConsole.mm', 'Core/Debug/OOJSConsole+ObjCBridge.mm', 'Core/Debug/OODebugMonitor+ObjCBridge.mm', 'Core/Scripting/OOJSEngineTimeManagement.mm', 'Core/OOProfilingStopwatch.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OODescription.mm'],
     'test_OODebugTCPConsoleClient': ['Core/Debug/OODebugTCPConsoleClient.mm', 'Core/Debug/OODebugTCPConsoleClient+ObjCBridge.mm', 'Core/Debug/OOTCPStreamDecoder.c', 'Core/Debug/OOTCPStreamDecoderAbstractionLayer.mm', 'Core/OODescription.mm'],
     'test_OODebugSupport': ['Core/Debug/OODebugSupport.mm', 'Core/Debug/OODebugSupport+ObjCBridge.mm'],
     'test_OODebugStandards': ['Core/Debug/OODebugStandards.mm'],
