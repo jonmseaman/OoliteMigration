@@ -1,0 +1,1 @@
+[oo-b5e4] 2026-10-08 Verified on main: GameController slices 1-3 converted (check-slice-plan rc=0), GameController.h free of ObjC; the remaining ObjC in GameController.mm is the deliberate OOPrivate/MacOSX categories (ADR-0056 amendment oo-bgmb, Phase 5). No code change needed.
