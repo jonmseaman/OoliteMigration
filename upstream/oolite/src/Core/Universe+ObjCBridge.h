@@ -59,18 +59,6 @@ MA 02110-1301, USA.
 
 // find a valid station in interstellar space
 
-- (void) drawMessage;
-
-- (void) drawWatermarkString:(const std::string &)watermarkString;
-
-- (id) entityForUniversalID:(OOUniversalID)u_id;
-
-- (BOOL) addEntity:(Entity *) entity;
-- (BOOL) removeEntity:(Entity *) entity;
-- (void) ensureEntityReallyRemoved:(Entity *)entity;
-- (void) removeAllEntitiesExceptPlayer;
-- (void) removeDemoShips;
-
 ///////////////////////////////////////
 
 ///////////////////////////////////////
@@ -307,6 +295,23 @@ MA 02110-1301, USA.
 - (void) resetFramesDoneThisUpdate;
 // Used to draw subentities. Should be getting this from camera.
 - (OOMatrix) viewMatrix;
+
+@end
+
+
+// Slice 13 of docs/phases/3-slices/Universe.md: members of cxx::Universe, forwarded by the
+// category of the same name in Universe+ObjCBridge.mm (the class's @implementation, still in
+// Universe.mm, stays complete).
+@interface Universe (OOSlice13)
+
+- (void) drawMessage;
+- (void) drawWatermarkString:(const std::string &)watermarkString;
+- (id) entityForUniversalID:(OOUniversalID)u_id;
+- (BOOL) addEntity:(Entity *) entity;
+- (BOOL) removeEntity:(Entity *) entity;
+- (void) ensureEntityReallyRemoved:(Entity *)entity;
+- (void) removeAllEntitiesExceptPlayer;
+- (void) removeDemoShips;
 
 @end
 

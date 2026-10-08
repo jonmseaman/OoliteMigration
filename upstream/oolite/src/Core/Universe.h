@@ -590,6 +590,16 @@ public:
 	void resetFramesDoneThisUpdate();
 	OOMatrix getViewMatrix();
 
+	// Slice 13: messages and the watermark, entity look-up, the linked lists, adding and removing entities, demo ships.
+	void drawMessage();
+	void drawWatermarkString(const std::string &watermarkString);
+	id entityForUniversalID(OOUniversalID u_id);
+	bool addEntity(::Entity *entity);
+	bool removeEntity(::Entity *entity);
+	void ensureEntityReallyRemoved(::Entity *entity);
+	void removeAllEntitiesExceptPlayer();
+	void removeDemoShips();
+
 	// Slice 14: making demo ships, safe vectors, hazards on route, wreckage, laser hits.
 	::ShipEntity *makeDemoShipWithRole(const std::string &role, bool spinning);
 	bool isVectorClearFromEntity(::Entity *e1, double dist, HPVector p2);
