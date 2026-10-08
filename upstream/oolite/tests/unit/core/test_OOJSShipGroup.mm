@@ -1,6 +1,6 @@
 /*	test_OOJSShipGroup.mm
 	Unit tests for the ShipGroup JS binding (src/Core/Scripting/OOJSShipGroup.h/.mm) and its
-	OOShipGroup category (OOJSShipGroup+ObjCBridge.mm): bead oo-n64m, converted the way bead oo-ppc
+	OOShipGroup façade's JS selectors (OOShipGroup+ObjCBridge.mm): bead oo-n64m, converted the way bead oo-ppc
 	converted OOJSVector (proposed ADR-0056 amendments oo-ppc and oo-ykoy).
 
 	As test_OOJSWormhole.mm does (amendment oo-ykoy, item 4), it runs the JS class in a real
