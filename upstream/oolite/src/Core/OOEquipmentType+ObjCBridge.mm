@@ -129,17 +129,6 @@ cxx::OOEquipmentType *oo::ToCxx(OOEquipmentType *type)
 }
 
 
-/*	This method exists purely to suppress Clang static analyzer warnings that
-	this ivar is unused (but may be used by categories, which it is).
-	FIXME: there must be a feature macro we can use to avoid actually building
-	this into the app, but I can't find it in docs.
-*/
-- (BOOL) suppressClangStuff
-{
-	return !_jsSelf;
-}
-
-
 + (void) loadEquipment
 {
 	cxx::OOEquipmentType::loadEquipment();
