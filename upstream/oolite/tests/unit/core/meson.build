@@ -148,6 +148,7 @@ core_tests = {
     'test_ShipEntity': ['*'],
     'test_PlayerEntity': ['*'],
     'test_StationEntity': ['*'],
+    'test_DockEntity': ['*'],
     'test_ShipEntityAI': ['*'],
     'test_OOEntityWithDrawable': ['*'],
     'test_OOPlanetEntity': ['*'],
