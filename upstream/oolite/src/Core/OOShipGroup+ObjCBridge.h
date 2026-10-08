@@ -14,9 +14,8 @@ C++ member. Imported as the last line of OOShipGroup.h; do not import it directl
 	  handing a group to Objective-C                                        oo::ToObjC(group)
 	  taking one from Objective-C                                           oo::ToCxx(objcGroup)
 
-Two ivars, not one: _jsSelf is the facade's JavaScript wrapper. The category
-OOShipGroup (OOJavaScriptExtensions) in OOJSShipGroup.mm makes and clears it, and the wrapper
-retains the facade, so it belongs to the Objective-C object; the category compiles unchanged.
+The group's JavaScript wrapper is in the C++ group (cxx::OOShipGroup, bead oo-6symp.1);
+the category OOShipGroup (OOJavaScriptExtensions) in OOJSShipGroup+ObjCBridge.mm forwards to it.
 oo::ToObjC gives the group's one live facade (oo::ObjCPeers), so identity (and so the JavaScript
 wrapper) survives a round trip. Never add to this file; converted code does not message the
 facade. Deleted by its deletion bead once no file outside OOShipGroup.* names the Objective-C
@@ -57,8 +56,6 @@ MA 02110-1301, USA.
 {
 @private
 	oo::Ref<cxx::OOShipGroup>	_cxxGroup;
-
-	ooscript::Object _jsSelf;
 }
 
 - (id) init;
