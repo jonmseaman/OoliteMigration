@@ -540,507 +540,6 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 // How dark the default ambient level of 1.0 will be
 #define SKY_AMBIENT_ADJUSTMENT		0.0625
 
-/* At any time other than game start, any call to this must be followed
- * by [self populateNormalSpace]. However, at game start, they need to be
- * separated to allow Javascript startUp routines to be run in-between */
-- (void) setUpSpace
-{
-	Entity				*thing;
-//	ShipEntity			*nav_buoy;
-	StationEntity		*a_station;
-	OOSunEntity			*a_sun;
-	OOPlanetEntity		*a_planet;
-	
-	HPVector				stationPos;
-	
-	Vector				vf;
-	oo::PList	dict_object;
-
-	const oo::PList		systeminfo = [_cxxUniverse->systemManager cxx_getPropertiesForCurrentSystem];
-	unsigned			techlevel = systeminfo.get<unsigned int>(std::string(KEY_TECHLEVEL));
-	std::optional<std::string>	stationDesc, defaultStationDesc;	// the default is never set: nullopt, as nil
-	OOColor				*bgcolor;
-	OOColor				*pale_bgcolor;
-	BOOL				sunGoneNova;
-	
-	Random_Seed systemSeed = [_cxxUniverse->systemManager getRandomSeedForCurrentSystem];
-
-	[[::GameController sharedController] cxx_logProgress:OO_DESC("populating-space")];
-	
-	sunGoneNova = systeminfo.get<bool>("sun_gone_nova", NO);
-
-	OO_DEBUG_PUSH_PROGRESS("setUpSpace - clearSubRegions, sky, dust");
-	[_cxxUniverse->universeRegion clearSubregions];
-	
-	// fixed entities (part of the graphics system really) come first...
-	[self setSkyColorRed:0.0f
-				   green:0.0f
-					blue:0.0f
-				   alpha:0.0f];
-
-	
-#ifdef OO_DUMP_PLANETINFO
-	OO_LOG("planetinfo.record", "seed = {} {} {} {}", system_seed.c, system_seed.d, system_seed.e, system_seed.f);
-	OO_LOG("planetinfo.record", "coordinates = {} {}", system_seed.d, system_seed.b);
-
-#define SPROP(PROP)	OO_LOG("planetinfo.record", #PROP " = \"{}\";", OptionalStringIn(systeminfo, "" #PROP).value_or("(null)"));
-#define IPROP(PROP)	OO_LOG("planetinfo.record", #PROP " = {};", systeminfo.get<int>(#PROP));
-#define FPROP(PROP)	OO_LOG("planetinfo.record", #PROP " = {:f};", systeminfo.get<float>("" #PROP));
-	IPROP(government);
-	IPROP(economy);
-	IPROP(techlevel);
-	IPROP(population);
-	IPROP(productivity);
-	SPROP(name);
-	SPROP(inhabitant);
-	SPROP(inhabitants);
-	SPROP(description);
-#endif
-
-	// set the system seed for random number generation
-	seed_for_planet_description(systemSeed);
-	
-	/*- the sky backdrop -*/
-	// colors...
-	float h1 = randf();
-	float h2 = h1 + 1.0 / (1.0 + (Ranrot() % 5));
-	while (h2 > 1.0)
-		h2 -= 1.0;
-	OOColor *col1 = [OOColor colorWithHue:h1 saturation:randf() brightness:0.5 + randf()/2.0 alpha:1.0];
-	OOColor *col2 = [OOColor colorWithHue:h2 saturation:0.5 + randf()/2.0 brightness:0.5 + randf()/2.0 alpha:1.0];
-	
-	thing = [[SkyEntity alloc] initWithColors:col1:col2 andSystemInfo: systeminfo];	// alloc retains!
-	[thing setScanClass: CLASS_NO_DRAW];
-	[self addEntity:thing];
-//	bgcolor = [(SkyEntity *)thing skyColor];
-//
-	h1 = randf()/3.0;
-	if (h1 > 0.17)
-	{
-		h1 += 0.33;
-	}
-	
-	_cxxUniverse->ambientLightLevel = systeminfo.get<float>("ambient_level", 1.0);
-
-	// pick a main sequence colour
-
-	dict_object=PListForKeyIn(systeminfo, "sun_color");
-	if (!dict_object.isNull())
-	{
-		bgcolor = [OOColor cxx_colorWithDescription:dict_object];
-	}
-	else
-	{
-		bgcolor = [OOColor colorWithHue:h1 saturation:0.75*randf() brightness:0.65+randf()/5.0 alpha:1.0];
-	}
-
-	pale_bgcolor = [bgcolor blendedColorWithFraction:0.5 ofColor:[OOColor whiteColor]];
-	[thing release];
-	/*--*/
-	
-	/*- the dust particle system -*/
-	thing = [[DustEntity alloc] init];	// alloc retains!
-	[thing setScanClass: CLASS_NO_DRAW];
-	[self addEntity:thing];
-	[(DustEntity *)thing setDustColor:pale_bgcolor]; 
-	[thing release];
-	/*--*/
-
-	float defaultSunFlare = randf()*0.1;
-	float defaultSunHues = 0.5+randf()*0.5;
-	OO_DEBUG_POP_PROGRESS();
-	
-	// actual entities next...
-	
-	OO_DEBUG_PUSH_PROGRESS("setUpSpace - planet");
-	a_planet=[self setUpPlanet]; // resets RNG when called
-	double planet_radius = [a_planet radius];
-	OO_DEBUG_POP_PROGRESS();
-	
-	// set the system seed for random number generation
-	seed_for_planet_description(systemSeed);
-	
-	OO_DEBUG_PUSH_PROGRESS("setUpSpace - sun");
-	/*- space sun -*/
-	double		sun_radius;
-	double		sun_distance;
-	double		sunDistanceModifier;
-	double		safeDistance;
-	HPVector		sunPos;
-	
-	sunDistanceModifier = systeminfo.get<oo::NonNegative<double>>("sun_distance_modifier", 0.0);
-	if (sunDistanceModifier < 6.0) // <6 isn't valid
-	{
-		sun_distance = systeminfo.get<oo::NonNegative<double>>("sun_distance", (planet_radius*20));
-		// note, old property was _modifier, new property is _multiplier
-		sun_distance *= systeminfo.get<oo::NonNegative<double>>("sun_distance_multiplier", 1);
-	} 
-	else
-	{
-		sun_distance = planet_radius * sunDistanceModifier;
-	}
-
-	sun_radius = systeminfo.get<oo::NonNegative<double>>("sun_radius", 2.5 * planet_radius);
-	// clamp the sun radius
-	if ((sun_radius < 1000.0) || (sun_radius > sun_distance / 2  && !sunGoneNova))
-	{
-		OO_LOG_WARN("universe.setup.badSun", "Sun radius of {:f} is not valid for this system", sun_radius);
-		sun_radius = sun_radius < 1000.0 ? 1000.0 : (sun_distance / 2);
-	}
-#ifdef OO_DUMP_PLANETINFO
-	OO_LOG("planetinfo.record", "sun_radius = {:f}", sun_radius);
-#endif
-	safeDistance=36 * sun_radius * sun_radius; // 6 times the sun radius
-	
-	// here we need to check if the sun collides with (or is too close to) the witchpoint
-	// otherwise at (for example) Maregais in Galaxy 1 we go BANG!
-	HPVector sun_dir = HPVectorIn(systeminfo, "sun_vector", kZeroHPVector);
-	sun_distance /= 2.0;
-	do
-	{
-		sun_distance *= 2.0;
-		sunPos = HPvector_subtract([a_planet position],
-							  HPvector_multiply_scalar(sun_dir,sun_distance));
-		
-		// if not in the safe distance, multiply by two and try again
-	} 
-	while (HPmagnitude2(sunPos) < safeDistance);
-
-	// set planetary axial tilt to 0 degrees
-	// TODO: allow this to vary
-	[a_planet setOrientation:quaternion_rotation_betweenHP(sun_dir,make_HPvector(1.0,0.0,0.0))];
-
-#ifdef OO_DUMP_PLANETINFO
-	OO_LOG("planetinfo.record", "sun_vector = {:.3f} {:.3f} {:.3f}", vf.x, vf.y, vf.z);
-	OO_LOG("planetinfo.record", "sun_distance = {:.0f}", sun_distance);
-#endif
-	
-
-	
-	// the sun's settings: the values as they were in the system info, else the defaults (floats,
-	// as +numberWithFloat: stored them: item 15); the radius a double
-	oo::PList::Dict sunSettings;
-	sunSettings["sun_radius"] = oo::PList(sun_radius);
-	if (const oo::PList *value = systeminfo.find("corona_shimmer"))  sunSettings["corona_shimmer"] = *value;
-	if (const oo::PList *value = systeminfo.find("corona_hues"))
-	{
-		sunSettings["corona_hues"] = *value;
-	}
-	else
-	{
-		sunSettings["corona_hues"] = oo::PList::singleReal(defaultSunHues);
-	}
-	if (const oo::PList *value = systeminfo.find("corona_flare"))
-	{
-		sunSettings["corona_flare"] = *value;
-	}
-	else
-	{
-		sunSettings["corona_flare"] = oo::PList::singleReal(defaultSunFlare);
-	}
-	if (const oo::PList *value = systeminfo.find(std::string(KEY_SUNNAME)))
-	{
-		sunSettings[std::string(KEY_SUNNAME)] = *value;
-	}
-	const oo::PList sun_dict(std::move(sunSettings));
-#ifdef OO_DUMP_PLANETINFO
-	OO_LOG("planetinfo.record", "corona_flare = {:f}", sun_dict.get<float>("corona_flare"));
-	OO_LOG("planetinfo.record", "corona_hues = {:f}", sun_dict.get<float>("corona_hues"));
-	OO_LOG("planetinfo.record", "sun_color = {}", [bgcolor cxx_descriptionComponents].value_or("(null)"));
-#endif
-	a_sun = [[OOSunEntity alloc] initSunWithColor:bgcolor andDictionary:sun_dict];	// alloc retains!
-	
-	[a_sun setStatus:STATUS_ACTIVE];
-	[a_sun setPosition:sunPos]; // sets also light origin
-	[a_sun setEnergy:1000000.0];
-	[self addEntity:a_sun];
-	
-	if (sunGoneNova)
-	{
-		[a_sun setRadius: sun_radius andCorona:0.3];
-		[a_sun setThrowSparks:YES];
-		[a_sun setVelocity: kZeroVector];
-	}
-	
-	// set the lighting only after we know which sun we have.
-	[self setLighting];
-	OO_DEBUG_POP_PROGRESS();
-	
-	OO_DEBUG_PUSH_PROGRESS("setUpSpace - main station");
-	/*- space station -*/
-	stationPos = [a_planet position];
-
-	vf = VectorIn(systeminfo, "station_vector", kZeroVector);
-#ifdef OO_DUMP_PLANETINFO
-	OO_LOG("planetinfo.record", "station_vector = {:.3f} {:.3f} {:.3f}", vf.x, vf.y, vf.z);
-#endif
-	stationPos = HPvector_subtract(stationPos, vectorToHPVector(vector_multiply_scalar(vf, 2.0 * planet_radius)));
-	
-
-	//// possibly systeminfo has an override for the station
-	stationDesc = systeminfo.get<std::string>("station", "coriolis");
-#ifdef OO_DUMP_PLANETINFO
-	OO_LOG("planetinfo.record", "station = {}", stationDesc.value_or("(null)"));
-#endif
-
-	// a missing role (the unset default) gives no ship, as a nil role did
-	a_station = stationDesc.has_value() ? (StationEntity *)[self cxx_newShipWithRole:*stationDesc] : nil;			// retain count = 1
-	
-	/*	Sanity check: ensure that only stations are generated here. This is an
-		attempt to fix exceptions of the form:
-			OOInvalidArgumentException : *** -[ShipEntity setPlanet:]: selector
-			not recognized [self = 0x19b7e000] *****
-		which I presume to be originating here since all other uses of
-		setPlanet: are guarded by isStation checks. This error could happen if
-		a ship that is not a station has a station role, or equivalently if an
-		OXP sets a system's station role to a role used by non-stations.
-		-- Ahruman 20080303
-	*/
-	if (![a_station isStation] || ![a_station validForAddToUniverse])
-	{
-		if (a_station == nil)
-		{
-			// Should have had a more specific error already, just specify context
-			OO_LOG("universe.setup.badStation", "Failed to set up a ship for role \"{}\" as system station, trying again with \"{}\".", stationDesc.value_or("(null)"), defaultStationDesc.value_or("(null)"));
-		}
-		else
-		{
-			OO_LOG("universe.setup.badStation", "***** ERROR: Attempt to use non-station ship of type \"{}\" for role \"{}\" as system station, trying again with \"{}\".", [a_station cxx_name].value_or("(null)"), stationDesc.value_or("(null)"), defaultStationDesc.value_or("(null)"));
-		}
-		[a_station release];
-		stationDesc = defaultStationDesc;
-		a_station = stationDesc.has_value() ? (StationEntity *)[self cxx_newShipWithRole:*stationDesc] : nil;		 // retain count = 1
-		
-		if (![a_station isStation] || ![a_station validForAddToUniverse])
-		{
-			if (a_station == nil)
-			{
-				OO_LOG("universe.setup.badStation", "On retry, failed to set up a ship for role \"{}\" as system station. Trying to fall back to built-in Coriolis station.", stationDesc.value_or("(null)"));
-			}
-			else
-			{
-				OO_LOG("universe.setup.badStation", "***** ERROR: On retry, rolled non-station ship of type \"{}\" for role \"{}\". Non-station ships should not have this role! Trying to fall back to built-in Coriolis station.", [a_station cxx_name].value_or("(null)"), stationDesc.value_or("(null)"));
-			}
-			[a_station release];
-
-			a_station = (StationEntity *)[self cxx_newShipWithName:"coriolis-station"];
-			if (![a_station isStation] || ![a_station validForAddToUniverse])
-			{
-				OO_LOG("universe.setup.badStation", "{}", "Could not create built-in Coriolis station! Generating a stationless system.");
-				DESTROY(a_station);
-			}
-		}
-	}
-	
-	if (a_station != nil)
-	{
-		[a_station setOrientation:quaternion_rotation_between(vf,make_vector(0.0,0.0,1.0))];
-		[a_station setPosition: stationPos];
-		[a_station setPitch: 0.0];
-		[a_station setScanClass: CLASS_STATION];
-		//[a_station setPlanet:[self planet]];	// done inside addEntity.
-		[a_station setEquivalentTechLevel:techlevel];
-		[self addEntity:a_station];		// STATUS_IN_FLIGHT, AI state GLOBAL
-		[a_station setStatus:STATUS_ACTIVE];	// For backward compatibility. Might not be needed.
-		[a_station setAllowsFastDocking:true];	// Main stations always allow fast docking.
-		[a_station cxx_setAllegiance:"galcop"]; // Main station is galcop controlled
-	}
-	OO_DEBUG_POP_PROGRESS();
-	
-	_cxxUniverse->cachedSun = a_sun;
-	_cxxUniverse->cachedPlanet = a_planet;
-	_cxxUniverse->cachedStation = a_station;
-	_cxxUniverse->closeSystems.reset();
-	OO_DEBUG_POP_PROGRESS();
-	
-	
-	OO_DEBUG_PUSH_PROGRESS("setUpSpace - populate from wormholes");
-	[self populateSpaceFromActiveWormholes];
-	OO_DEBUG_POP_PROGRESS();
-
-	[a_sun release];
-	[a_station release];
-}
-
-
-- (void) populateNormalSpace
-{	
-	const oo::PList		systeminfo = [_cxxUniverse->systemManager cxx_getPropertiesForCurrentSystem];
-
-	BOOL sunGoneNova = systeminfo.get<bool>("sun_gone_nova");
-	// check for nova
-	if (sunGoneNova)
-	{
-	 	OO_DEBUG_PUSH_PROGRESS("setUpSpace - post-nova");
-		
-	 	HPVector v0 = make_HPvector(0,0,34567.89);
-	 	double min_safe_dist2 = 6000000.0 * 6000000.0;
-		HPVector sunPos = [_cxxUniverse->cachedSun position];
-	 	while (HPmagnitude2(_cxxUniverse->cachedSun->_cxxEntity->position) < min_safe_dist2)	// back off the planetary bodies
-	 	{
-	 		v0.z *= 2.0;
-			
-	 		sunPos = HPvector_add(sunPos, v0);
-	 		[_cxxUniverse->cachedSun setPosition:sunPos];  // also sets light origin
-			
-	 	}
-		
-	 	[self removeEntity:_cxxUniverse->cachedPlanet];	// and Poof! it's gone
-	 	_cxxUniverse->cachedPlanet = nil;	
-	 	[self removeEntity:_cxxUniverse->cachedStation];	// also remove main station
-	 	_cxxUniverse->cachedStation = nil;	
-	}
-
-	OO_DEBUG_PUSH_PROGRESS("setUpSpace - populate from hyperpoint");
-//	[self populateSpaceFromHyperPoint:witchPos toPlanetPosition: a_planet->position andSunPosition: a_sun->position];
-	[self clearSystemPopulator];
-
-	if ([PLAYER status] != STATUS_START_GAME)
-	{
-		const std::string populator = systeminfo.get<std::string>("populator", (sunGoneNova)?"novaSystemWillPopulate":"systemWillPopulate");
-		_cxxUniverse->system_repopulator = systeminfo.get<std::string>("repopulator", (sunGoneNova)?"novaSystemWillRepopulate":"systemWillRepopulate");
-
-		ooscript::Context context = OOJSAcquireContext();
-		[PLAYER doWorldScriptEvent:cxx_OOJSIDFromString(populator) inContext:context withArguments:NULL count:0 timeLimit:kOOJSLongTimeLimit];
-		OOJSRelinquishContext(context);
-		[self populateSystemFromDictionariesWithSun:_cxxUniverse->cachedSun andPlanet:_cxxUniverse->cachedPlanet];
-	}
-
-	OO_DEBUG_POP_PROGRESS();
-
-	// systeminfo might have a 'script_actions' resource we want to activate now...
-	const oo::PList *script_actions = systeminfo.get<oo::PList::Array>("script_actions");
-	if (script_actions != nullptr)
-	{
-		cxx_OOStandardsDeprecated(oo::str::format("The script_actions system info key is deprecated for %s.",TextOrNull([self cxx_getSystemName:_cxxUniverse->systemID]).c_str()));
-		if (!OOEnforceStandards())
-		{
-			OO_DEBUG_PUSH_PROGRESS("setUpSpace - legacy script_actions");
-			[PLAYER cxx_runUnsanitizedScriptActions:*script_actions
-							  allowingAIMethods:NO
-								withContextName:"<system script_actions>"
-									  forTarget:nil];
-			OO_DEBUG_POP_PROGRESS();
-		}
-	}
-
-	_cxxUniverse->next_repopulation = randf() * SYSTEM_REPOPULATION_INTERVAL;
-}
-
-
-- (void) clearSystemPopulator
-{
-	_cxxUniverse->populatorSettings = oo::PList(oo::PList::Dict{});
-}
-
-
-- (oo::PList) cxx_getPopulatorSettings
-{
-	return _cxxUniverse->populatorSettings;
-}
-
-
-- (void) cxx_setPopulatorSetting:(const std::string &)key to:(const oo::PList &)setting
-{
-	if (!_cxxUniverse->populatorSettings.isDict())  _cxxUniverse->populatorSettings = oo::PList(oo::PList::Dict{});
-	oo::PList::Dict &settings = *_cxxUniverse->populatorSettings.getIf<oo::PList::Dict>();
-	if (setting.isNull())
-	{
-		settings.erase(key);
-	}
-	else
-	{
-		settings[key] = setting;
-	}
-}
-
-
-- (BOOL) deterministicPopulation
-{
-	return _cxxUniverse->deterministic_population;
-}
-
-
-- (void) populateSystemFromDictionariesWithSun:(OOSunEntity *)sun andPlanet:(OOPlanetEntity *)planet
-{
-	Random_Seed systemSeed = [_cxxUniverse->systemManager getRandomSeedForCurrentSystem];
-	// A copy of the blocks (the callbacks may change the settings), in key byte order (was the
-	// dictionary's hash order), then stably sorted by priority: order-sensitive, the goldens decide.
-	std::vector<oo::PList> sortedBlocks;
-	if (const oo::PList::Dict *blocks = _cxxUniverse->populatorSettings.getIf<oo::PList::Dict>())
-	{
-		for (const auto &[key, block] : *blocks)  sortedBlocks.push_back(block);
-	}
-	std::stable_sort(sortedBlocks.begin(), sortedBlocks.end(), populatorPrioritySort);
-	HPVector location = kZeroHPVector;
-	uint32_t i, locationSeed, groupCount, rndvalue;
-	RANROTSeed rndcache = RANROTGetFullSeed();
-	RANROTSeed rndlocal = RANROTGetFullSeed();
-	std::string locationCode;
-	OOJSPopulatorDefinition *pdef = nil;
-	for (const oo::PList &populator : sortedBlocks)
-	{
-		_cxxUniverse->deterministic_population = populator.get<bool>("deterministic", NO);
-		if (EXPECT_NOT(sun == nil || planet == nil))
-		{
-			// needs to be a non-nova system, and not interstellar space
-			_cxxUniverse->deterministic_population = NO;
-		}
-
-		locationSeed = populator.get<unsigned int>("locationSeed", 0);
-		groupCount = populator.get<unsigned int>("groupCount", 1);
-
-		for (i = 0; i < groupCount; i++)
-		{
-			locationCode = populator.get<std::string>("location", "COORDINATES");
-			if (locationCode == "COORDINATES")
-			{
-				location = HPVectorIn(populator, "coordinates", kZeroHPVector);
-			}
-			else
-			{
-				if (locationSeed != 0)
-				{
-					rndcache = RANROTGetFullSeed();
-					// different place for each system
-					rndlocal = RanrotSeedFromRandomSeed(systemSeed);
-					rndvalue = RanrotWithSeed(&rndlocal);
-					// ...for location seed
-					rndlocal = MakeRanrotSeed(rndvalue+locationSeed);
-					rndvalue = RanrotWithSeed(&rndlocal);
-					// ...for iteration (63647 is nothing special, just a largish prime)
-					RANROTSetFullSeed(MakeRanrotSeed(rndvalue+(i*63647)));
-				}
-				else
-				{
-					// not fixed coordinates and not seeded RNG; can't
-					// be deterministic
-					_cxxUniverse->deterministic_population = NO;
-				}
-				if (sun == nil || planet == nil)
-				{
-					// all interstellar space and nova locations equal to WITCHPOINT
-					location = [self cxx_locationByCode:"WITCHPOINT" withSun:nil andPlanet:nil];
-				}
-				else
-				{
-					location = [self cxx_locationByCode:locationCode withSun:sun andPlanet:planet];
-				}
-				if(locationSeed != 0)
-				{
-					// go back to the main random sequence
-					RANROTSetFullSeed(rndcache);
-				}			
-			}
-			// location now contains a Vector coordinate, one way or another
-			pdef = oo::ObjectIn(PListForKeyIn(populator, "callbackObj"));	// an Object node: the populator definition itself
-			[pdef runPopulatorCallback:location];
-		}
-	}
-	// nothing is deterministic once the populator is done
-	_cxxUniverse->deterministic_population = NO;
-}
-
 
 /* Generates a position within one of the named regions:
  *
@@ -6009,6 +5508,519 @@ void Universe::setUpWitchspaceBetweenSystem(OOSystemID s1, OOSystemID s2)
 		[self addEntity:a_planet];
 	}
 	return [a_planet autorelease];
+}
+
+
+}	// namespace cxx
+
+
+// Slice 4 of docs/phases/3-slices/Universe.md (bead oo-ni9u8): setUpSpace, populating normal space,
+// the system populator. The facade forwards each selector (Universe+ObjCBridge.mm); sends to self
+// stay sends (ADR-0056 amendment oo-27jxj).
+namespace cxx {
+
+/* At any time other than game start, any call to this must be followed
+ * by [self populateNormalSpace]. However, at game start, they need to be
+ * separated to allow Javascript startUp routines to be run in-between */
+void Universe::setUpSpace()
+{
+	::Universe *self = oo::ToObjC(this);
+	::Entity				*thing;
+//	ShipEntity			*nav_buoy;
+	::StationEntity		*a_station;
+	::OOSunEntity			*a_sun;
+	::OOPlanetEntity		*a_planet;
+	
+	HPVector				stationPos;
+	
+	Vector				vf;
+	oo::PList	dict_object;
+
+	const oo::PList		systeminfo = [systemManager cxx_getPropertiesForCurrentSystem];
+	unsigned			techlevel = systeminfo.get<unsigned int>(std::string(KEY_TECHLEVEL));
+	std::optional<std::string>	stationDesc, defaultStationDesc;	// the default is never set: nullopt, as nil
+	::OOColor				*bgcolor;
+	::OOColor				*pale_bgcolor;
+	BOOL				sunGoneNova;
+	
+	Random_Seed systemSeed = [systemManager getRandomSeedForCurrentSystem];
+
+	[[::GameController sharedController] cxx_logProgress:OO_DESC("populating-space")];
+	
+	sunGoneNova = systeminfo.get<bool>("sun_gone_nova", NO);
+
+	OO_DEBUG_PUSH_PROGRESS("setUpSpace - clearSubRegions, sky, dust");
+	[universeRegion clearSubregions];
+	
+	// fixed entities (part of the graphics system really) come first...
+	[self setSkyColorRed:0.0f
+				   green:0.0f
+					blue:0.0f
+				   alpha:0.0f];
+
+	
+#ifdef OO_DUMP_PLANETINFO
+	OO_LOG("planetinfo.record", "seed = {} {} {} {}", system_seed.c, system_seed.d, system_seed.e, system_seed.f);
+	OO_LOG("planetinfo.record", "coordinates = {} {}", system_seed.d, system_seed.b);
+
+#define SPROP(PROP)	OO_LOG("planetinfo.record", #PROP " = \"{}\";", OptionalStringIn(systeminfo, "" #PROP).value_or("(null)"));
+#define IPROP(PROP)	OO_LOG("planetinfo.record", #PROP " = {};", systeminfo.get<int>(#PROP));
+#define FPROP(PROP)	OO_LOG("planetinfo.record", #PROP " = {:f};", systeminfo.get<float>("" #PROP));
+	IPROP(government);
+	IPROP(economy);
+	IPROP(techlevel);
+	IPROP(population);
+	IPROP(productivity);
+	SPROP(name);
+	SPROP(inhabitant);
+	SPROP(inhabitants);
+	SPROP(description);
+#endif
+
+	// set the system seed for random number generation
+	seed_for_planet_description(systemSeed);
+	
+	/*- the sky backdrop -*/
+	// colors...
+	float h1 = randf();
+	float h2 = h1 + 1.0 / (1.0 + (Ranrot() % 5));
+	while (h2 > 1.0)
+		h2 -= 1.0;
+	::OOColor *col1 = [::OOColor colorWithHue:h1 saturation:randf() brightness:0.5 + randf()/2.0 alpha:1.0];
+	::OOColor *col2 = [::OOColor colorWithHue:h2 saturation:0.5 + randf()/2.0 brightness:0.5 + randf()/2.0 alpha:1.0];
+	
+	thing = [[::SkyEntity alloc] initWithColors:col1:col2 andSystemInfo: systeminfo];	// alloc retains!
+	[thing setScanClass: CLASS_NO_DRAW];
+	[self addEntity:thing];
+//	bgcolor = [(SkyEntity *)thing skyColor];
+//
+	h1 = randf()/3.0;
+	if (h1 > 0.17)
+	{
+		h1 += 0.33;
+	}
+	
+	ambientLightLevel = systeminfo.get<float>("ambient_level", 1.0);
+
+	// pick a main sequence colour
+
+	dict_object=PListForKeyIn(systeminfo, "sun_color");
+	if (!dict_object.isNull())
+	{
+		bgcolor = [::OOColor cxx_colorWithDescription:dict_object];
+	}
+	else
+	{
+		bgcolor = [::OOColor colorWithHue:h1 saturation:0.75*randf() brightness:0.65+randf()/5.0 alpha:1.0];
+	}
+
+	pale_bgcolor = [bgcolor blendedColorWithFraction:0.5 ofColor:[::OOColor whiteColor]];
+	[thing release];
+	/*--*/
+	
+	/*- the dust particle system -*/
+	thing = [[::DustEntity alloc] init];	// alloc retains!
+	[thing setScanClass: CLASS_NO_DRAW];
+	[self addEntity:thing];
+	[(::DustEntity *)thing setDustColor:pale_bgcolor]; 
+	[thing release];
+	/*--*/
+
+	float defaultSunFlare = randf()*0.1;
+	float defaultSunHues = 0.5+randf()*0.5;
+	OO_DEBUG_POP_PROGRESS();
+	
+	// actual entities next...
+	
+	OO_DEBUG_PUSH_PROGRESS("setUpSpace - planet");
+	a_planet=[self setUpPlanet]; // resets RNG when called
+	double planet_radius = [a_planet radius];
+	OO_DEBUG_POP_PROGRESS();
+	
+	// set the system seed for random number generation
+	seed_for_planet_description(systemSeed);
+	
+	OO_DEBUG_PUSH_PROGRESS("setUpSpace - sun");
+	/*- space sun -*/
+	double		sun_radius;
+	double		sun_distance;
+	double		sunDistanceModifier;
+	double		safeDistance;
+	HPVector		sunPos;
+	
+	sunDistanceModifier = systeminfo.get<oo::NonNegative<double>>("sun_distance_modifier", 0.0);
+	if (sunDistanceModifier < 6.0) // <6 isn't valid
+	{
+		sun_distance = systeminfo.get<oo::NonNegative<double>>("sun_distance", (planet_radius*20));
+		// note, old property was _modifier, new property is _multiplier
+		sun_distance *= systeminfo.get<oo::NonNegative<double>>("sun_distance_multiplier", 1);
+	} 
+	else
+	{
+		sun_distance = planet_radius * sunDistanceModifier;
+	}
+
+	sun_radius = systeminfo.get<oo::NonNegative<double>>("sun_radius", 2.5 * planet_radius);
+	// clamp the sun radius
+	if ((sun_radius < 1000.0) || (sun_radius > sun_distance / 2  && !sunGoneNova))
+	{
+		OO_LOG_WARN("universe.setup.badSun", "Sun radius of {:f} is not valid for this system", sun_radius);
+		sun_radius = sun_radius < 1000.0 ? 1000.0 : (sun_distance / 2);
+	}
+#ifdef OO_DUMP_PLANETINFO
+	OO_LOG("planetinfo.record", "sun_radius = {:f}", sun_radius);
+#endif
+	safeDistance=36 * sun_radius * sun_radius; // 6 times the sun radius
+	
+	// here we need to check if the sun collides with (or is too close to) the witchpoint
+	// otherwise at (for example) Maregais in Galaxy 1 we go BANG!
+	HPVector sun_dir = HPVectorIn(systeminfo, "sun_vector", kZeroHPVector);
+	sun_distance /= 2.0;
+	do
+	{
+		sun_distance *= 2.0;
+		sunPos = HPvector_subtract([a_planet position],
+							  HPvector_multiply_scalar(sun_dir,sun_distance));
+		
+		// if not in the safe distance, multiply by two and try again
+	} 
+	while (HPmagnitude2(sunPos) < safeDistance);
+
+	// set planetary axial tilt to 0 degrees
+	// TODO: allow this to vary
+	[a_planet setOrientation:quaternion_rotation_betweenHP(sun_dir,make_HPvector(1.0,0.0,0.0))];
+
+#ifdef OO_DUMP_PLANETINFO
+	OO_LOG("planetinfo.record", "sun_vector = {:.3f} {:.3f} {:.3f}", vf.x, vf.y, vf.z);
+	OO_LOG("planetinfo.record", "sun_distance = {:.0f}", sun_distance);
+#endif
+	
+
+	
+	// the sun's settings: the values as they were in the system info, else the defaults (floats,
+	// as +numberWithFloat: stored them: item 15); the radius a double
+	oo::PList::Dict sunSettings;
+	sunSettings["sun_radius"] = oo::PList(sun_radius);
+	if (const oo::PList *value = systeminfo.find("corona_shimmer"))  sunSettings["corona_shimmer"] = *value;
+	if (const oo::PList *value = systeminfo.find("corona_hues"))
+	{
+		sunSettings["corona_hues"] = *value;
+	}
+	else
+	{
+		sunSettings["corona_hues"] = oo::PList::singleReal(defaultSunHues);
+	}
+	if (const oo::PList *value = systeminfo.find("corona_flare"))
+	{
+		sunSettings["corona_flare"] = *value;
+	}
+	else
+	{
+		sunSettings["corona_flare"] = oo::PList::singleReal(defaultSunFlare);
+	}
+	if (const oo::PList *value = systeminfo.find(std::string(KEY_SUNNAME)))
+	{
+		sunSettings[std::string(KEY_SUNNAME)] = *value;
+	}
+	const oo::PList sun_dict(std::move(sunSettings));
+#ifdef OO_DUMP_PLANETINFO
+	OO_LOG("planetinfo.record", "corona_flare = {:f}", sun_dict.get<float>("corona_flare"));
+	OO_LOG("planetinfo.record", "corona_hues = {:f}", sun_dict.get<float>("corona_hues"));
+	OO_LOG("planetinfo.record", "sun_color = {}", [bgcolor cxx_descriptionComponents].value_or("(null)"));
+#endif
+	a_sun = [[::OOSunEntity alloc] initSunWithColor:bgcolor andDictionary:sun_dict];	// alloc retains!
+	
+	[a_sun setStatus:STATUS_ACTIVE];
+	[a_sun setPosition:sunPos]; // sets also light origin
+	[a_sun setEnergy:1000000.0];
+	[self addEntity:a_sun];
+	
+	if (sunGoneNova)
+	{
+		[a_sun setRadius: sun_radius andCorona:0.3];
+		[a_sun setThrowSparks:YES];
+		[a_sun setVelocity: kZeroVector];
+	}
+	
+	// set the lighting only after we know which sun we have.
+	[self setLighting];
+	OO_DEBUG_POP_PROGRESS();
+	
+	OO_DEBUG_PUSH_PROGRESS("setUpSpace - main station");
+	/*- space station -*/
+	stationPos = [a_planet position];
+
+	vf = VectorIn(systeminfo, "station_vector", kZeroVector);
+#ifdef OO_DUMP_PLANETINFO
+	OO_LOG("planetinfo.record", "station_vector = {:.3f} {:.3f} {:.3f}", vf.x, vf.y, vf.z);
+#endif
+	stationPos = HPvector_subtract(stationPos, vectorToHPVector(vector_multiply_scalar(vf, 2.0 * planet_radius)));
+	
+
+	//// possibly systeminfo has an override for the station
+	stationDesc = systeminfo.get<std::string>("station", "coriolis");
+#ifdef OO_DUMP_PLANETINFO
+	OO_LOG("planetinfo.record", "station = {}", stationDesc.value_or("(null)"));
+#endif
+
+	// a missing role (the unset default) gives no ship, as a nil role did
+	a_station = stationDesc.has_value() ? (::StationEntity *)[self cxx_newShipWithRole:*stationDesc] : nil;			// retain count = 1
+	
+	/*	Sanity check: ensure that only stations are generated here. This is an
+		attempt to fix exceptions of the form:
+			OOInvalidArgumentException : *** -[ShipEntity setPlanet:]: selector
+			not recognized [self = 0x19b7e000] *****
+		which I presume to be originating here since all other uses of
+		setPlanet: are guarded by isStation checks. This error could happen if
+		a ship that is not a station has a station role, or equivalently if an
+		OXP sets a system's station role to a role used by non-stations.
+		-- Ahruman 20080303
+	*/
+	if (![a_station isStation] || ![a_station validForAddToUniverse])
+	{
+		if (a_station == nil)
+		{
+			// Should have had a more specific error already, just specify context
+			OO_LOG("universe.setup.badStation", "Failed to set up a ship for role \"{}\" as system station, trying again with \"{}\".", stationDesc.value_or("(null)"), defaultStationDesc.value_or("(null)"));
+		}
+		else
+		{
+			OO_LOG("universe.setup.badStation", "***** ERROR: Attempt to use non-station ship of type \"{}\" for role \"{}\" as system station, trying again with \"{}\".", [a_station cxx_name].value_or("(null)"), stationDesc.value_or("(null)"), defaultStationDesc.value_or("(null)"));
+		}
+		[a_station release];
+		stationDesc = defaultStationDesc;
+		a_station = stationDesc.has_value() ? (::StationEntity *)[self cxx_newShipWithRole:*stationDesc] : nil;		 // retain count = 1
+		
+		if (![a_station isStation] || ![a_station validForAddToUniverse])
+		{
+			if (a_station == nil)
+			{
+				OO_LOG("universe.setup.badStation", "On retry, failed to set up a ship for role \"{}\" as system station. Trying to fall back to built-in Coriolis station.", stationDesc.value_or("(null)"));
+			}
+			else
+			{
+				OO_LOG("universe.setup.badStation", "***** ERROR: On retry, rolled non-station ship of type \"{}\" for role \"{}\". Non-station ships should not have this role! Trying to fall back to built-in Coriolis station.", [a_station cxx_name].value_or("(null)"), stationDesc.value_or("(null)"));
+			}
+			[a_station release];
+
+			a_station = (::StationEntity *)[self cxx_newShipWithName:"coriolis-station"];
+			if (![a_station isStation] || ![a_station validForAddToUniverse])
+			{
+				OO_LOG("universe.setup.badStation", "{}", "Could not create built-in Coriolis station! Generating a stationless system.");
+				DESTROY(a_station);
+			}
+		}
+	}
+	
+	if (a_station != nil)
+	{
+		[a_station setOrientation:quaternion_rotation_between(vf,make_vector(0.0,0.0,1.0))];
+		[a_station setPosition: stationPos];
+		[a_station setPitch: 0.0];
+		[a_station setScanClass: CLASS_STATION];
+		//[a_station setPlanet:[self planet]];	// done inside addEntity.
+		[a_station setEquivalentTechLevel:techlevel];
+		[self addEntity:a_station];		// STATUS_IN_FLIGHT, AI state GLOBAL
+		[a_station setStatus:STATUS_ACTIVE];	// For backward compatibility. Might not be needed.
+		[a_station setAllowsFastDocking:true];	// Main stations always allow fast docking.
+		[a_station cxx_setAllegiance:"galcop"]; // Main station is galcop controlled
+	}
+	OO_DEBUG_POP_PROGRESS();
+	
+	cachedSun = a_sun;
+	cachedPlanet = a_planet;
+	cachedStation = a_station;
+	closeSystems.reset();
+	OO_DEBUG_POP_PROGRESS();
+	
+	
+	OO_DEBUG_PUSH_PROGRESS("setUpSpace - populate from wormholes");
+	[self populateSpaceFromActiveWormholes];
+	OO_DEBUG_POP_PROGRESS();
+
+	[a_sun release];
+	[a_station release];
+}
+
+
+void Universe::populateNormalSpace()
+{
+	::Universe *self = oo::ToObjC(this);
+	const oo::PList		systeminfo = [systemManager cxx_getPropertiesForCurrentSystem];
+
+	BOOL sunGoneNova = systeminfo.get<bool>("sun_gone_nova");
+	// check for nova
+	if (sunGoneNova)
+	{
+	 	OO_DEBUG_PUSH_PROGRESS("setUpSpace - post-nova");
+		
+	 	HPVector v0 = make_HPvector(0,0,34567.89);
+	 	double min_safe_dist2 = 6000000.0 * 6000000.0;
+		HPVector sunPos = [cachedSun position];
+	 	while (HPmagnitude2(cachedSun->_cxxEntity->position) < min_safe_dist2)	// back off the planetary bodies
+	 	{
+	 		v0.z *= 2.0;
+			
+	 		sunPos = HPvector_add(sunPos, v0);
+	 		[cachedSun setPosition:sunPos];  // also sets light origin
+			
+	 	}
+		
+	 	[self removeEntity:cachedPlanet];	// and Poof! it's gone
+	 	cachedPlanet = nil;	
+	 	[self removeEntity:cachedStation];	// also remove main station
+	 	cachedStation = nil;	
+	}
+
+	OO_DEBUG_PUSH_PROGRESS("setUpSpace - populate from hyperpoint");
+//	[self populateSpaceFromHyperPoint:witchPos toPlanetPosition: a_planet->position andSunPosition: a_sun->position];
+	[self clearSystemPopulator];
+
+	if ([PLAYER status] != STATUS_START_GAME)
+	{
+		const std::string populator = systeminfo.get<std::string>("populator", (sunGoneNova)?"novaSystemWillPopulate":"systemWillPopulate");
+		system_repopulator = systeminfo.get<std::string>("repopulator", (sunGoneNova)?"novaSystemWillRepopulate":"systemWillRepopulate");
+
+		ooscript::Context context = OOJSAcquireContext();
+		[PLAYER doWorldScriptEvent:cxx_OOJSIDFromString(populator) inContext:context withArguments:NULL count:0 timeLimit:kOOJSLongTimeLimit];
+		OOJSRelinquishContext(context);
+		[self populateSystemFromDictionariesWithSun:cachedSun andPlanet:cachedPlanet];
+	}
+
+	OO_DEBUG_POP_PROGRESS();
+
+	// systeminfo might have a 'script_actions' resource we want to activate now...
+	const oo::PList *script_actions = systeminfo.get<oo::PList::Array>("script_actions");
+	if (script_actions != nullptr)
+	{
+		cxx_OOStandardsDeprecated(oo::str::format("The script_actions system info key is deprecated for %s.",TextOrNull([self cxx_getSystemName:systemID]).c_str()));
+		if (!OOEnforceStandards())
+		{
+			OO_DEBUG_PUSH_PROGRESS("setUpSpace - legacy script_actions");
+			[PLAYER cxx_runUnsanitizedScriptActions:*script_actions
+							  allowingAIMethods:NO
+								withContextName:"<system script_actions>"
+									  forTarget:nil];
+			OO_DEBUG_POP_PROGRESS();
+		}
+	}
+
+	next_repopulation = randf() * SYSTEM_REPOPULATION_INTERVAL;
+}
+
+
+void Universe::clearSystemPopulator()
+{
+	populatorSettings = oo::PList(oo::PList::Dict{});
+}
+
+
+oo::PList Universe::getPopulatorSettings()
+{
+	return populatorSettings;
+}
+
+
+void Universe::setPopulatorSetting(const std::string &key, const oo::PList &setting)
+{
+	if (!populatorSettings.isDict())  populatorSettings = oo::PList(oo::PList::Dict{});
+	oo::PList::Dict &settings = *populatorSettings.getIf<oo::PList::Dict>();
+	if (setting.isNull())
+	{
+		settings.erase(key);
+	}
+	else
+	{
+		settings[key] = setting;
+	}
+}
+
+
+bool Universe::deterministicPopulation()
+{
+	return deterministic_population;
+}
+
+
+void Universe::populateSystemFromDictionariesWithSun(::OOSunEntity *sun, ::OOPlanetEntity *planet)
+{
+	::Universe *self = oo::ToObjC(this);
+	Random_Seed systemSeed = [systemManager getRandomSeedForCurrentSystem];
+	// A copy of the blocks (the callbacks may change the settings), in key byte order (was the
+	// dictionary's hash order), then stably sorted by priority: order-sensitive, the goldens decide.
+	std::vector<oo::PList> sortedBlocks;
+	if (const oo::PList::Dict *blocks = populatorSettings.getIf<oo::PList::Dict>())
+	{
+		for (const auto &[key, block] : *blocks)  sortedBlocks.push_back(block);
+	}
+	std::stable_sort(sortedBlocks.begin(), sortedBlocks.end(), populatorPrioritySort);
+	HPVector location = kZeroHPVector;
+	uint32_t i, locationSeed, groupCount, rndvalue;
+	RANROTSeed rndcache = RANROTGetFullSeed();
+	RANROTSeed rndlocal = RANROTGetFullSeed();
+	std::string locationCode;
+	::OOJSPopulatorDefinition *pdef = nil;
+	for (const oo::PList &populator : sortedBlocks)
+	{
+		deterministic_population = populator.get<bool>("deterministic", NO);
+		if (EXPECT_NOT(sun == nil || planet == nil))
+		{
+			// needs to be a non-nova system, and not interstellar space
+			deterministic_population = NO;
+		}
+
+		locationSeed = populator.get<unsigned int>("locationSeed", 0);
+		groupCount = populator.get<unsigned int>("groupCount", 1);
+
+		for (i = 0; i < groupCount; i++)
+		{
+			locationCode = populator.get<std::string>("location", "COORDINATES");
+			if (locationCode == "COORDINATES")
+			{
+				location = HPVectorIn(populator, "coordinates", kZeroHPVector);
+			}
+			else
+			{
+				if (locationSeed != 0)
+				{
+					rndcache = RANROTGetFullSeed();
+					// different place for each system
+					rndlocal = RanrotSeedFromRandomSeed(systemSeed);
+					rndvalue = RanrotWithSeed(&rndlocal);
+					// ...for location seed
+					rndlocal = MakeRanrotSeed(rndvalue+locationSeed);
+					rndvalue = RanrotWithSeed(&rndlocal);
+					// ...for iteration (63647 is nothing special, just a largish prime)
+					RANROTSetFullSeed(MakeRanrotSeed(rndvalue+(i*63647)));
+				}
+				else
+				{
+					// not fixed coordinates and not seeded RNG; can't
+					// be deterministic
+					deterministic_population = NO;
+				}
+				if (sun == nil || planet == nil)
+				{
+					// all interstellar space and nova locations equal to WITCHPOINT
+					location = [self cxx_locationByCode:"WITCHPOINT" withSun:nil andPlanet:nil];
+				}
+				else
+				{
+					location = [self cxx_locationByCode:locationCode withSun:sun andPlanet:planet];
+				}
+				if(locationSeed != 0)
+				{
+					// go back to the main random sequence
+					RANROTSetFullSeed(rndcache);
+				}			
+			}
+			// location now contains a Vector coordinate, one way or another
+			pdef = oo::ObjectIn(PListForKeyIn(populator, "callbackObj"));	// an Object node: the populator definition itself
+			[pdef runPopulatorCallback:location];
+		}
+	}
+	// nothing is deterministic once the populator is done
+	deterministic_population = NO;
 }
 
 

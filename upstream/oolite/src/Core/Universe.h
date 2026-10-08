@@ -457,6 +457,15 @@ public:
 	void setUpWitchspaceBetweenSystem(OOSystemID s1, OOSystemID s2);
 	::OOPlanetEntity *setUpPlanet();
 
+	// Slice 4: setUpSpace, populating normal space, the system populator.
+	void setUpSpace();
+	void populateNormalSpace();
+	void clearSystemPopulator();
+	oo::PList getPopulatorSettings();
+	void setPopulatorSetting(const std::string &key, const oo::PList &setting);
+	bool deterministicPopulation();
+	void populateSystemFromDictionariesWithSun(::OOSunEntity *sun, ::OOPlanetEntity *planet);
+
 	// Slice 14: making demo ships, safe vectors, hazards on route, wreckage, laser hits.
 	::ShipEntity *makeDemoShipWithRole(const std::string &role, bool spinning);
 	bool isVectorClearFromEntity(::Entity *e1, double dist, HPVector p2);

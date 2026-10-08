@@ -57,13 +57,6 @@ MA 02110-1301, USA.
 }
 
 
-- (void) setUpSpace;
-- (void) populateNormalSpace;
-- (void) clearSystemPopulator;
-- (BOOL) deterministicPopulation;
-- (void) populateSystemFromDictionariesWithSun:(OOSunEntity *)sun andPlanet:(OOPlanetEntity *)planet;
-- (oo::PList) cxx_getPopulatorSettings;	// a copy
-- (void) cxx_setPopulatorSetting:(const std::string &)key to:(const oo::PList &)setting;	// a null setting removes
 - (HPVector) cxx_locationByCode:(const std::string &)code withSun:(OOSunEntity *)sun andPlanet:(OOPlanetEntity *)planet;
 - (void) setAmbientLightLevel:(float)newValue;
 - (float) ambientLightLevel;
@@ -245,6 +238,22 @@ MA 02110-1301, USA.
 - (void) setUpWitchspace;
 - (void) setUpWitchspaceBetweenSystem:(OOSystemID)s1 andSystem:(OOSystemID)s2;
 - (OOPlanetEntity *) setUpPlanet;
+
+@end
+
+
+// Slice 4 of docs/phases/3-slices/Universe.md: members of cxx::Universe, forwarded by the
+// category of the same name in Universe+ObjCBridge.mm (the class's @implementation, still in
+// Universe.mm, stays complete).
+@interface Universe (OOSlice4)
+
+- (void) setUpSpace;
+- (void) populateNormalSpace;
+- (void) clearSystemPopulator;
+- (oo::PList) cxx_getPopulatorSettings;	// a copy
+- (void) cxx_setPopulatorSetting:(const std::string &)key to:(const oo::PList &)setting;	// a null setting removes
+- (BOOL) deterministicPopulation;
+- (void) populateSystemFromDictionariesWithSun:(OOSunEntity *)sun andPlanet:(OOPlanetEntity *)planet;
 
 @end
 

@@ -118,6 +118,19 @@ extern Universe *gSharedUniverse;
 @end
 
 
+@implementation Universe (OOSlice4)
+
+- (void) setUpSpace	{ _cxxUniverse->setUpSpace(); }
+- (void) populateNormalSpace	{ _cxxUniverse->populateNormalSpace(); }
+- (void) clearSystemPopulator	{ _cxxUniverse->clearSystemPopulator(); }
+- (oo::PList) cxx_getPopulatorSettings	{ return _cxxUniverse->getPopulatorSettings(); }
+- (void) cxx_setPopulatorSetting:(const std::string &)key to:(const oo::PList &)setting	{ _cxxUniverse->setPopulatorSetting(key, setting); }
+- (BOOL) deterministicPopulation	{ return _cxxUniverse->deterministicPopulation(); }
+- (void) populateSystemFromDictionariesWithSun:(OOSunEntity *)sun andPlanet:(OOPlanetEntity *)planet	{ _cxxUniverse->populateSystemFromDictionariesWithSun(sun, planet); }
+
+@end
+
+
 @implementation Universe (OOSlice14)
 
 - (ShipEntity *) cxx_makeDemoShipWithRole:(const std::string &)role spinning:(BOOL)spinning	{ return _cxxUniverse->makeDemoShipWithRole(role, spinning); }
