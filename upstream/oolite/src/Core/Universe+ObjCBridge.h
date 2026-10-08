@@ -57,43 +57,7 @@ MA 02110-1301, USA.
 }
 
 
-- (std::vector<oo::ObjCRef<WormholeEntity *>>) cxx_wormholes;
-
-// Turn main station into just another station, for blowUpStation.
-- (void) unMagicMainStation;
 // find a valid station in interstellar space
-
-- (void) resetBeacons;
-- (Entity <OOBeaconEntity> *) firstBeacon;
-- (Entity <OOBeaconEntity> *) lastBeacon;
-- (void) setNextBeacon:(Entity <OOBeaconEntity> *) beaconShip;
-- (void) clearBeacon:(Entity <OOBeaconEntity> *) beaconShip;
-
-- (std::map<std::string, oo::ObjCRef<OOWaypointEntity *>, std::less<>>) cxx_currentWaypoints;
-- (void) cxx_defineWaypoint:(const oo::PList &)definition forKey:(const std::string &)key;	// a null definition removes
-
-- (GLfloat *) skyClearColor;
-// Note: the alpha value is also air resistance!
-- (void) setSkyColorRed:(GLfloat)red green:(GLfloat)green blue:(GLfloat)blue alpha:(GLfloat)alpha;
-
-- (BOOL) breakPatternOver;
-- (BOOL) breakPatternHide;
-
-- (std::optional<std::string>) cxx_randomShipKeyForRoleRespectingConditions:(const std::string &)role;	// nullopt: none
-- (ShipEntity *) cxx_newShipWithRole:(const std::string &)role OO_RETURNS_RETAINED;		// Selects ship using role weights, applies auto_ai, respects conditions
-- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey OO_RETURNS_RETAINED;	// Does not apply auto_ai or respect conditions
-- (ShipEntity *) cxx_newSubentityWithName:(const std::string &)shipKey andScaleFactor:(float)scale OO_RETURNS_RETAINED;	// Does not apply auto_ai or respect conditions
-- (OOVisualEffectEntity *) cxx_newVisualEffectWithName:(const std::string &)effectKey OO_RETURNS_RETAINED;
-- (DockEntity *) cxx_newDockWithName:(const std::string &)shipKey andScaleFactor:(float)scale OO_RETURNS_RETAINED;	// Does not apply auto_ai or respect conditions
-- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy OO_RETURNS_RETAINED;	// If usePlayerProxy, non-carriers are instantiated as ProxyPlayerEntity.
-- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity OO_RETURNS_RETAINED;
-- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity andScaleFactor:(float)scale OO_RETURNS_RETAINED;
-
-- (Class) cxx_shipClassForShipDictionary:(const oo::PList &)dict;	// Nil for a null PList
-
-- (std::optional<std::string>) defaultAIForRole:(const std::string &)role;		// autoAImap.plist lookup
-
-- (OOCargoQuantity) cxx_maxCargoForShip:(const std::string &) desc;
 
 - (OOCreditsQuantity) cxx_getEquipmentPriceForKey:(const std::string &) eq_key;
 
@@ -284,6 +248,45 @@ MA 02110-1301, USA.
 - (OOSunEntity *) sun;
 - (std::vector<oo::ObjCRef<OOPlanetEntity *>>) cxx_planets;	// Note: does not include sun.
 - (std::vector<oo::ObjCRef<StationEntity *>>) cxx_stations; // includes main station; in the order added
+
+@end
+
+
+// Slice 9 of docs/phases/3-slices/Universe.md: members of cxx::Universe, forwarded by the
+// category of the same name in Universe+ObjCBridge.mm (the class's @implementation, still in
+// Universe.mm, stays complete).
+@interface Universe (OOSlice9)
+
+- (std::vector<oo::ObjCRef<WormholeEntity *>>) cxx_wormholes;
+// Turn main station into just another station, for blowUpStation.
+- (void) unMagicMainStation;
+- (void) resetBeacons;
+- (Entity <OOBeaconEntity> *) firstBeacon;
+- (void) setFirstBeacon:(Entity <OOBeaconEntity> *)beacon;
+- (Entity <OOBeaconEntity> *) lastBeacon;
+- (void) setLastBeacon:(Entity <OOBeaconEntity> *)beacon;
+- (void) setNextBeacon:(Entity <OOBeaconEntity> *) beaconShip;
+- (void) clearBeacon:(Entity <OOBeaconEntity> *) beaconShip;
+- (std::map<std::string, oo::ObjCRef<OOWaypointEntity *>, std::less<>>) cxx_currentWaypoints;
+- (void) cxx_defineWaypoint:(const oo::PList &)definition forKey:(const std::string &)key;	// a null definition removes
+- (GLfloat *) skyClearColor;
+// Note: the alpha value is also air resistance!
+- (void) setSkyColorRed:(GLfloat)red green:(GLfloat)green blue:(GLfloat)blue alpha:(GLfloat)alpha;
+- (BOOL) breakPatternOver;
+- (BOOL) breakPatternHide;
+- (BOOL) canInstantiateShip:(const std::string &)shipKey;
+- (std::optional<std::string>) cxx_randomShipKeyForRoleRespectingConditions:(const std::string &)role;	// nullopt: none
+- (ShipEntity *) cxx_newShipWithRole:(const std::string &)role OO_RETURNS_RETAINED;		// Selects ship using role weights, applies auto_ai, respects conditions
+- (OOVisualEffectEntity *) cxx_newVisualEffectWithName:(const std::string &)effectKey OO_RETURNS_RETAINED;
+- (ShipEntity *) cxx_newSubentityWithName:(const std::string &)shipKey andScaleFactor:(float)scale OO_RETURNS_RETAINED;	// Does not apply auto_ai or respect conditions
+- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy OO_RETURNS_RETAINED;	// If usePlayerProxy, non-carriers are instantiated as ProxyPlayerEntity.
+- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity OO_RETURNS_RETAINED;
+- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity andScaleFactor:(float)scale OO_RETURNS_RETAINED;
+- (DockEntity *) cxx_newDockWithName:(const std::string &)shipKey andScaleFactor:(float)scale OO_RETURNS_RETAINED;	// Does not apply auto_ai or respect conditions
+- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey OO_RETURNS_RETAINED;	// Does not apply auto_ai or respect conditions
+- (Class) cxx_shipClassForShipDictionary:(const oo::PList &)dict;	// Nil for a null PList
+- (std::optional<std::string>) defaultAIForRole:(const std::string &)role;		// autoAImap.plist lookup
+- (OOCargoQuantity) cxx_maxCargoForShip:(const std::string &) desc;
 
 @end
 

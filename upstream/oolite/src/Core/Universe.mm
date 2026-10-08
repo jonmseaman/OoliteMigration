@@ -183,8 +183,6 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range);
 // Set shader effects level without logging or triggering a reset -- should only be used directly during startup.
 - (void) setShaderEffectsLevelDirectly:(OOShaderSetting)value;
 
-- (void) setFirstBeacon:(Entity <OOBeaconEntity> *)beacon;
-- (void) setLastBeacon:(Entity <OOBeaconEntity> *)beacon;
 
 
 @end
@@ -621,522 +619,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 }
 
 
-- (std::vector<oo::ObjCRef<WormholeEntity *>>) cxx_wormholes
-{
-	return _cxxUniverse->activeWormholes;
-}
-
-
-- (void) unMagicMainStation
-{
-	/*	During the demo screens, the player must remain docked in order for the
-		UI to work. This means either enforcing invulnerability or launching
-		the player when the station is destroyed even if on the "new game Y/N"
-		screen.
-		
-		The latter is a) weirder and b) harder. If your OXP relies on being
-		able to destroy the main station before the game has even started,
-		your OXP sucks.
-	*/
-	OOEntityStatus playerStatus = [PLAYER status];
-	if (playerStatus == STATUS_START_GAME)  return;
-	
-	StationEntity *theStation = [self station];
-	if (theStation != nil)  theStation->_cxxEntity->isExplicitlyNotMainStation = YES;
-	_cxxUniverse->cachedStation = nil;
-}
-
-
-- (void) resetBeacons
-{
-	Entity <OOBeaconEntity> *beaconShip = [self firstBeacon], *next = nil;
-	while (beaconShip)
-	{
-		next = [beaconShip nextBeacon];
-		[beaconShip setPrevBeacon:nil];
-		[beaconShip setNextBeacon:nil];
-		beaconShip = next;
-	}
-	
-	[self setFirstBeacon:nil];
-	[self setLastBeacon:nil];
-}
-
-
-- (Entity <OOBeaconEntity> *) firstBeacon
-{
-	return [_cxxUniverse->_firstBeacon weakRefUnderlyingObject];
-}
-
-
-- (void) setFirstBeacon:(Entity <OOBeaconEntity> *)beacon
-{
-	if (beacon != [self firstBeacon])
-	{
-		[beacon setPrevBeacon:nil];
-		[beacon setNextBeacon:[self firstBeacon]];
-		[[self firstBeacon] setPrevBeacon:beacon];
-		[_cxxUniverse->_firstBeacon release];
-		_cxxUniverse->_firstBeacon = [beacon weakRetain];
-	}
-}
-
-
-- (Entity <OOBeaconEntity> *) lastBeacon
-{
-	return [_cxxUniverse->_lastBeacon weakRefUnderlyingObject];
-}
-
-
-- (void) setLastBeacon:(Entity <OOBeaconEntity> *)beacon
-{
-	if (beacon != [self lastBeacon])
-	{
-		[beacon setNextBeacon:nil];
-		[beacon setPrevBeacon:[self lastBeacon]];
-		[[self lastBeacon] setNextBeacon:beacon];
-		[_cxxUniverse->_lastBeacon release];
-		_cxxUniverse->_lastBeacon = [beacon weakRetain];
-	}
-}
-
-
-- (void) setNextBeacon:(Entity <OOBeaconEntity> *) beaconShip
-{
-	if ([beaconShip isBeacon])
-	{
-		[self setLastBeacon:beaconShip];
-		if ([self firstBeacon] == nil)  [self setFirstBeacon:beaconShip];
-	}
-	else
-	{
-		OO_LOG("universe.beacon.error", "***** ERROR: Universe setNextBeacon '{}'. The ship has no beacon code set.", oo::DescriptionOf(beaconShip));
-	}
-}
-
-
-- (void) clearBeacon:(Entity <OOBeaconEntity> *) beaconShip
-{
-	Entity <OOBeaconEntity>				*tmp = nil;
-
-	if ([beaconShip isBeacon])
-	{
-		if ([self firstBeacon] == beaconShip)
-		{
-			tmp = [[beaconShip nextBeacon] nextBeacon];
-			[self setFirstBeacon:[beaconShip nextBeacon]];
-			[[beaconShip prevBeacon] setNextBeacon:tmp];
-		}
-		else if ([self lastBeacon] == beaconShip)
-		{
-			tmp = [[beaconShip prevBeacon] prevBeacon];
-			[self setLastBeacon:[beaconShip prevBeacon]];
-			[[beaconShip nextBeacon] setPrevBeacon:tmp];
-		}
-		else
-		{
-			[[beaconShip nextBeacon] setPrevBeacon:[beaconShip prevBeacon]];
-			[[beaconShip prevBeacon] setNextBeacon:[beaconShip nextBeacon]];
-		}
-		[beaconShip setBeaconCode:std::nullopt];	// not nil: nil built a std::string from a null char* (bead oo-2o5x)
-	}
-}
-
-
-- (std::map<std::string, oo::ObjCRef<OOWaypointEntity *>, std::less<>>) cxx_currentWaypoints
-{
-	return _cxxUniverse->waypoints;
-}
-
-
-- (void) cxx_defineWaypoint:(const oo::PList &)definition forKey:(const std::string &)key
-{
-	OOWaypointEntity *waypoint = nil;
-	BOOL preserveCompass = NO;
-	const auto existing = _cxxUniverse->waypoints.find(key);
-	if (existing != _cxxUniverse->waypoints.end())  waypoint = existing->second.get();
-	if (waypoint != nil)
-	{
-		if ([PLAYER compassTarget] == waypoint)
-		{
-			preserveCompass = YES;
-		}
-		[self removeEntity:waypoint];
-		_cxxUniverse->waypoints.erase(key);
-	}
-	if (!definition.isNull())
-	{
-		waypoint = [OOWaypointEntity waypointWithDictionary:definition];
-		if (waypoint != nil)
-		{
-			[self addEntity:waypoint];
-			_cxxUniverse->waypoints[key] = oo::ObjCRef<OOWaypointEntity *>(waypoint);
-			if (preserveCompass)
-			{
-				[PLAYER setCompassTarget:waypoint];
-				[PLAYER setNextBeacon:waypoint];
-			}
-		}
-	}
-}
-
-
-- (GLfloat *) skyClearColor
-{
-	return _cxxUniverse->skyClearColor;
-}
-
-
-- (void) setSkyColorRed:(GLfloat)red green:(GLfloat)green blue:(GLfloat)blue alpha:(GLfloat)alpha
-{
-	_cxxUniverse->skyClearColor[0] = red;
-	_cxxUniverse->skyClearColor[1] = green;
-	_cxxUniverse->skyClearColor[2] = blue;
-	_cxxUniverse->skyClearColor[3] = alpha;
-	[self setAirResistanceFactor:alpha];
-}
-
-
-- (BOOL) breakPatternOver
-{
-	return (_cxxUniverse->breakPatternCounter == 0);
-}
-
-
-- (BOOL) breakPatternHide
-{
-	Entity* player = PLAYER;
-	return ((_cxxUniverse->breakPatternCounter > 5)||(!player)||([player status] == STATUS_DOCKING));
-}
-
-
 #define PROFILE_SHIP_SELECTION 0
-
-
-- (BOOL) canInstantiateShip:(const std::string &)shipKey
-{
-	oo::PList				shipInfo;
-	const oo::PList			*conditions = nullptr;
-	std::optional<std::string>	condition_script;
-	shipInfo = [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:shipKey];
-
-	condition_script = OptionalStringIn(shipInfo, "condition_script");
-	if (condition_script.has_value())
-	{
-		OOJSScript *condScript = [self cxx_getConditionScript:*condition_script];
-		if (condScript != nil) // should always be non-nil, but just in case
-		{
-			ooscript::Context context = OOJSAcquireContext();
-			BOOL OK;
-			bool allow_instantiation;
-			ooscript::Value result;
-			ooscript::Value args[] = { OOJSValueFromPList(context, oo::PList(shipKey)) };
-			
-			OK = [condScript callMethod:OOJSID("allowSpawnShip")
-						  inContext:context
-					  withArguments:args count:sizeof args / sizeof *args
-							 result:&result];
-
-			if (OK) OK = ooscript::valueToBoolean(context, result, &allow_instantiation);
-			
-			OOJSRelinquishContext(context);
-
-			if (OK && !allow_instantiation)
-			{
-				/* if the script exists, the function exists, the function
-				 * returns a bool, and that bool is false, block
-				 * instantiation. Otherwise allow it as default */
-				return NO;
-			}
-		}
-	}
-
-	conditions = shipInfo.get<oo::PList::Array>("conditions");
-	if (conditions == nullptr)  return YES;
-
-	// Check conditions
-	return [PLAYER cxx_scriptTestConditions:*conditions];
-}
-
-
-- (std::optional<std::string>) cxx_randomShipKeyForRoleRespectingConditions:(const std::string &)role
-{
-	OOJS_PROFILE_ENTER
-
-	OOShipRegistry			*registry = [OOShipRegistry sharedRegistry];
-	std::optional<std::string>	shipKey;
-	oo::Ref<OOMutableProbabilitySet>	pset;
-	
-#if PROFILE_SHIP_SELECTION
-	static unsigned long	profTotal = 0, profSlowPath = 0;
-	++profTotal;
-#endif
-	
-	// Select a ship, check conditions and return it if possible.
-	shipKey = [registry cxx_randomShipKeyForRole:role];
-	if (!shipKey.has_value())  return std::nullopt;	// no ship has the role (a nil key passed the check and was returned)
-	if ([self canInstantiateShip:*shipKey])  return shipKey;
-	
-	/*	If we got here, condition check failed.
-		We now need to keep trying until we either find an acceptable ship or
-		run out of candidates.
-		This is special-cased because it has more overhead than the more
-		common conditionless lookup.
-	*/
-	
-#if PROFILE_SHIP_SELECTION
-	++profSlowPath;
-	if ((profSlowPath % 10) == 0)	// Only print every tenth slow path, to reduce spamminess.
-	{
-		OO_LOG("shipRegistry.selection.profile", "Hit slow path in ship selection for role \"{}\", having selected ship \"{}\". Now {} of {} on slow path ({:f}%).", role, shipKey.value_or("(null)"), static_cast<size_t>(profSlowPath), static_cast<size_t>(profTotal), ((double)profSlowPath)/((double)profTotal) * 100.0f);
-	}
-#endif
-	
-	if (OOProbabilitySet *set = [registry cxx_probabilitySetForRole:role])  pset = set->mutableCopy();
-
-	while (pset != nullptr && pset->count() > 0)
-	{
-		// Select a ship, check conditions and return it if possible.
-		const oo::PList shipKeyObject = pset->randomObject();	// a ship key (a string); null when no weight is positive
-		const std::string *shipKeyString = shipKeyObject.getIf<std::string>();
-		std::string candidate = (shipKeyString != nullptr) ? *shipKeyString : std::string();	// "" as StdString(nil) gave
-		if ([self canInstantiateShip:candidate])  return candidate;
-
-		// Condition failed -> remove ship from consideration.
-		pset->removeObject(shipKeyObject);
-	}
-
-	// If we got here, some ships existed but all failed conditions test.
-	return std::nullopt;
-
-	OOJS_PROFILE_EXIT_VAL(std::nullopt)
-}
-
-
-- (ShipEntity *) cxx_newShipWithRole:(const std::string &)role
-{
-	OOJS_PROFILE_ENTER
-
-	ShipEntity				*ship = nil;
-	std::optional<std::string>	shipKey;
-	oo::PList				shipInfo;
-	std::optional<std::string>	autoAI;
-
-	shipKey = [self cxx_randomShipKeyForRoleRespectingConditions:role];
-	if (shipKey.has_value())
-	{
-		ship = [self cxx_newShipWithName:*shipKey];
-		if (ship != nil)
-		{
-			[ship setPrimaryRole:role];
-
-			shipInfo = [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:*shipKey];
-			if (FuzzyBooleanIn(shipInfo, "auto_ai", YES))
-			{
-				// Set AI based on role
-				autoAI = [self defaultAIForRole:role];
-				if (autoAI.has_value())
-				{
-					[ship setAITo:*autoAI];
-					// Nikos 20090604
-					// Pirate, trader or police with auto_ai? Follow populator rules for them.
-					if (role == "pirate") [ship setBounty:20 + randf() * 50 withReason:kOOLegalStatusReasonSetup];
-					if (role == "trader") [ship setBounty:0 withReason:kOOLegalStatusReasonSetup];
-					if (role == "police") [ship setScanClass:CLASS_POLICE];
-					if (role == "interceptor")
-					{
-						[ship setScanClass: CLASS_POLICE];
-						[ship setPrimaryRole:"police"]; // to make sure interceptors get the correct pilot later on.
-					}
-				}
-				if (role == "thargoid") [ship setScanClass: CLASS_THARGOID]; // thargoids are not on the autoAIMap
-			}
-		}
-	}
-	
-	return ship;
-	
-	OOJS_PROFILE_EXIT
-}
-
-
-- (OOVisualEffectEntity *) cxx_newVisualEffectWithName:(const std::string &)effectKey
-{
-	OOJS_PROFILE_ENTER
-
-	oo::PList				effectDict;
-	OOVisualEffectEntity	*effect = nil;
-
-	effectDict = [[OOShipRegistry sharedRegistry] cxx_effectInfoForKey:effectKey];
-	if (effectDict.isNull())  return nil;
-
-	@try
-	{
-		effect = [[OOVisualEffectEntity alloc] cxx_initWithKey:effectKey definition:effectDict];
-	}
-	@catch (OOException *exception)
-	{
-		if (strcmp([exception name], OOLITE_EXCEPTION_DATA_NOT_FOUND) == 0)
-		{
-			OO_LOG(cxx_kOOLogException, "***** Oolite Exception : '{}' in [Universe newVisualEffectWithName: {} ] *****", [exception reason], effectKey);
-		}
-		else  @throw exception;
-	}
-	
-	return effect;
-	
-	OOJS_PROFILE_EXIT
-}
-
-
-- (ShipEntity *) cxx_newSubentityWithName:(const std::string &)shipKey andScaleFactor:(float)scale
-{
-	return [self cxx_newShipWithName:shipKey usePlayerProxy:NO isSubentity:YES andScaleFactor:scale];
-}
-
-
-- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy
-{
-	return [self cxx_newShipWithName:shipKey usePlayerProxy:usePlayerProxy isSubentity:NO];
-}
-
-- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity
-{
-	return [self cxx_newShipWithName:shipKey usePlayerProxy:usePlayerProxy isSubentity:isSubentity andScaleFactor:1.0f];
-}
-
-- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity andScaleFactor:(float)scale
-{
-	OOJS_PROFILE_ENTER
-
-	oo::PList		shipDict;
-	ShipEntity		*ship = nil;
-
-	shipDict = [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:shipKey];
-	if (shipDict.isNull())  return nil;
-	
-	volatile Class shipClass = nil;
-	if (isSubentity)
-	{
-		shipClass = [ShipEntity class];
-	}
-	else
-	{
-		shipClass = [self cxx_shipClassForShipDictionary:shipDict];
-		if (usePlayerProxy && shipClass == [ShipEntity class])
-		{
-			shipClass = [ProxyPlayerEntity class];
-		}
-	}
-	
-	@try
-	{
-		if (scale != 1.0f)
-		{
-			// a copy with the scale, a float as +numberWithFloat: stored it (ADR-0043 item 15)
-			(*shipDict.getIf<oo::PList::Dict>())["model_scale_factor"] = oo::PList::singleReal(scale);
-		}
-		ship = [[shipClass alloc] cxx_initWithKey:shipKey definition:shipDict];
-	}
-	@catch (OOException *exception)
-	{
-		if (strcmp([exception name], OOLITE_EXCEPTION_DATA_NOT_FOUND) == 0)
-		{
-			OO_LOG(cxx_kOOLogException, "***** Oolite Exception : '{}' in [Universe newShipWithName: {} ] *****", [exception reason], shipKey);
-		}
-		else  @throw exception;
-	}
-
-	// Set primary role to same as ship name, if ship name is also a role.
-	// Otherwise, if caller doesn't set a role, one will be selected randomly.
-	if ([ship hasRole:shipKey])  [ship setPrimaryRole:shipKey];
-	
-	return ship;
-	
-	OOJS_PROFILE_EXIT
-}
-
-
-- (DockEntity *) cxx_newDockWithName:(const std::string &)shipDataKey andScaleFactor:(float)scale
-{
-	OOJS_PROFILE_ENTER
-
-	oo::PList		shipDict;
-	DockEntity		*dock = nil;
-
-	shipDict = [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:shipDataKey];
-	if (shipDict.isNull())  return nil;
-
-	@try
-	{
-		if (scale != 1.0f)
-		{
-			// a copy with the scale, a float as +numberWithFloat: stored it (ADR-0043 item 15)
-			(*shipDict.getIf<oo::PList::Dict>())["model_scale_factor"] = oo::PList::singleReal(scale);
-		}
-		dock = [[DockEntity alloc] cxx_initWithKey:shipDataKey definition:shipDict];
-	}
-	@catch (OOException *exception)
-	{
-		if (strcmp([exception name], OOLITE_EXCEPTION_DATA_NOT_FOUND) == 0)
-		{
-			OO_LOG(cxx_kOOLogException, "***** Oolite Exception : '{}' in [Universe newDockWithName: {} ] *****", [exception reason], shipDataKey);
-		}
-		else  @throw exception;
-	}
-
-	// Set primary role to same as name, if ship name is also a role.
-	// Otherwise, if caller doesn't set a role, one will be selected randomly.
-	if ([dock hasRole:shipDataKey])  [dock setPrimaryRole:shipDataKey];
-	
-	return dock;
-	
-	OOJS_PROFILE_EXIT
-}
-
-
-- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey
-{
-	return [self cxx_newShipWithName:shipKey usePlayerProxy:NO];
-}
-
-
-- (Class) cxx_shipClassForShipDictionary:(const oo::PList &)dict
-{
-	OOJS_PROFILE_ENTER
-
-	if (dict.isNull())  return Nil;
-
-	BOOL		isStation = NO;
-	std::optional<std::string>	shipRoles = OptionalStringIn(dict, "roles");
-
-	if (shipRoles.has_value())
-	{
-		isStation = shipRoles->find("station") != std::string::npos ||
-		shipRoles->find("carrier") != std::string::npos;
-	}
-
-	// Note priority here: is_carrier overrides isCarrier which overrides roles.
-	isStation = dict.get<bool>("isCarrier", isStation);
-	isStation = dict.get<bool>("is_carrier", isStation);
-
-
-	return isStation ? [StationEntity class] : [ShipEntity class];
-
-	OOJS_PROFILE_EXIT
-}
-
-
-- (std::optional<std::string>) defaultAIForRole:(const std::string &)role
-{
-	return OptionalStringIn(_cxxUniverse->autoAIMap, role);
-}
-
-
-- (OOCargoQuantity) cxx_maxCargoForShip:(const std::string &) desc
-{
-	return [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:desc].get<unsigned int>("max_cargo", 0);
-}
 
 /*
  * Price for an item expressed in 10ths of credits (divide by 10 to get credits)
@@ -6082,6 +5565,549 @@ std::vector<oo::ObjCRef<::OOPlanetEntity *>> Universe::planets()
 std::vector<oo::ObjCRef<::StationEntity *>> Universe::stations()
 {
 	return allStations;
+}
+
+
+}	// namespace cxx
+
+
+// Slice 9 of docs/phases/3-slices/Universe.md (bead oo-hkvet): wormholes, the main station,
+// beacons, waypoints, sky colour, the break pattern, making ships by role and name, default AIs,
+// cargo capacity. The facade forwards each selector (Universe+ObjCBridge.mm); sends to self stay
+// sends (ADR-0056 amendment oo-27jxj).
+namespace cxx {
+
+std::vector<oo::ObjCRef<::WormholeEntity *>> Universe::wormholes()
+{
+	return activeWormholes;
+}
+
+
+void Universe::unMagicMainStation()
+{
+	::Universe *self = oo::ToObjC(this);
+	/*	During the demo screens, the player must remain docked in order for the
+		UI to work. This means either enforcing invulnerability or launching
+		the player when the station is destroyed even if on the "new game Y/N"
+		screen.
+		
+		The latter is a) weirder and b) harder. If your OXP relies on being
+		able to destroy the main station before the game has even started,
+		your OXP sucks.
+	*/
+	OOEntityStatus playerStatus = [PLAYER status];
+	if (playerStatus == STATUS_START_GAME)  return;
+	
+	::StationEntity *theStation = [self station];
+	if (theStation != nil)  theStation->_cxxEntity->isExplicitlyNotMainStation = YES;
+	cachedStation = nil;
+}
+
+
+void Universe::resetBeacons()
+{
+	::Universe *self = oo::ToObjC(this);
+	::Entity <OOBeaconEntity> *beaconShip = [self firstBeacon], *next = nil;
+	while (beaconShip)
+	{
+		next = [beaconShip nextBeacon];
+		[beaconShip setPrevBeacon:nil];
+		[beaconShip setNextBeacon:nil];
+		beaconShip = next;
+	}
+	
+	[self setFirstBeacon:nil];
+	[self setLastBeacon:nil];
+}
+
+
+OOBeaconEntityObject * Universe::firstBeacon()
+{
+	return [_firstBeacon weakRefUnderlyingObject];
+}
+
+
+void Universe::setFirstBeacon(OOBeaconEntityObject *beacon)
+{
+	::Universe *self = oo::ToObjC(this);
+	if (beacon != [self firstBeacon])
+	{
+		[beacon setPrevBeacon:nil];
+		[beacon setNextBeacon:[self firstBeacon]];
+		[[self firstBeacon] setPrevBeacon:beacon];
+		[_firstBeacon release];
+		_firstBeacon = [beacon weakRetain];
+	}
+}
+
+
+OOBeaconEntityObject * Universe::lastBeacon()
+{
+	return [_lastBeacon weakRefUnderlyingObject];
+}
+
+
+void Universe::setLastBeacon(OOBeaconEntityObject *beacon)
+{
+	::Universe *self = oo::ToObjC(this);
+	if (beacon != [self lastBeacon])
+	{
+		[beacon setNextBeacon:nil];
+		[beacon setPrevBeacon:[self lastBeacon]];
+		[[self lastBeacon] setNextBeacon:beacon];
+		[_lastBeacon release];
+		_lastBeacon = [beacon weakRetain];
+	}
+}
+
+
+void Universe::setNextBeacon(OOBeaconEntityObject *beaconShip)
+{
+	::Universe *self = oo::ToObjC(this);
+	if ([beaconShip isBeacon])
+	{
+		[self setLastBeacon:beaconShip];
+		if ([self firstBeacon] == nil)  [self setFirstBeacon:beaconShip];
+	}
+	else
+	{
+		OO_LOG("universe.beacon.error", "***** ERROR: Universe setNextBeacon '{}'. The ship has no beacon code set.", oo::DescriptionOf(beaconShip));
+	}
+}
+
+
+void Universe::clearBeacon(OOBeaconEntityObject *beaconShip)
+{
+	::Universe *self = oo::ToObjC(this);
+	::Entity <OOBeaconEntity>				*tmp = nil;
+
+	if ([beaconShip isBeacon])
+	{
+		if ([self firstBeacon] == beaconShip)
+		{
+			tmp = [[beaconShip nextBeacon] nextBeacon];
+			[self setFirstBeacon:[beaconShip nextBeacon]];
+			[[beaconShip prevBeacon] setNextBeacon:tmp];
+		}
+		else if ([self lastBeacon] == beaconShip)
+		{
+			tmp = [[beaconShip prevBeacon] prevBeacon];
+			[self setLastBeacon:[beaconShip prevBeacon]];
+			[[beaconShip nextBeacon] setPrevBeacon:tmp];
+		}
+		else
+		{
+			[[beaconShip nextBeacon] setPrevBeacon:[beaconShip prevBeacon]];
+			[[beaconShip prevBeacon] setNextBeacon:[beaconShip nextBeacon]];
+		}
+		[beaconShip setBeaconCode:std::nullopt];	// not nil: nil built a std::string from a null char* (bead oo-2o5x)
+	}
+}
+
+
+std::map<std::string, oo::ObjCRef<::OOWaypointEntity *>, std::less<>> Universe::currentWaypoints()
+{
+	return waypoints;
+}
+
+
+void Universe::defineWaypoint(const oo::PList &definition, const std::string &key)
+{
+	::Universe *self = oo::ToObjC(this);
+	::OOWaypointEntity *waypoint = nil;
+	BOOL preserveCompass = NO;
+	const auto existing = waypoints.find(key);
+	if (existing != waypoints.end())  waypoint = existing->second.get();
+	if (waypoint != nil)
+	{
+		if ([PLAYER compassTarget] == waypoint)
+		{
+			preserveCompass = YES;
+		}
+		[self removeEntity:waypoint];
+		waypoints.erase(key);
+	}
+	if (!definition.isNull())
+	{
+		waypoint = [::OOWaypointEntity waypointWithDictionary:definition];
+		if (waypoint != nil)
+		{
+			[self addEntity:waypoint];
+			waypoints[key] = oo::ObjCRef<::OOWaypointEntity *>(waypoint);
+			if (preserveCompass)
+			{
+				[PLAYER setCompassTarget:waypoint];
+				[PLAYER setNextBeacon:waypoint];
+			}
+		}
+	}
+}
+
+
+GLfloat * Universe::getSkyClearColor()
+{
+	return skyClearColor;
+}
+
+
+void Universe::setSkyColorRed(GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha)
+{
+	::Universe *self = oo::ToObjC(this);
+	skyClearColor[0] = red;
+	skyClearColor[1] = green;
+	skyClearColor[2] = blue;
+	skyClearColor[3] = alpha;
+	[self setAirResistanceFactor:alpha];
+}
+
+
+bool Universe::breakPatternOver()
+{
+	return (breakPatternCounter == 0);
+}
+
+
+bool Universe::breakPatternHide()
+{
+	::Entity* player = PLAYER;
+	return ((breakPatternCounter > 5)||(!player)||([player status] == STATUS_DOCKING));
+}
+
+
+bool Universe::canInstantiateShip(const std::string &shipKey)
+{
+	::Universe *self = oo::ToObjC(this);
+	oo::PList				shipInfo;
+	const oo::PList			*conditions = nullptr;
+	std::optional<std::string>	condition_script;
+	shipInfo = [[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:shipKey];
+
+	condition_script = OptionalStringIn(shipInfo, "condition_script");
+	if (condition_script.has_value())
+	{
+		::OOJSScript *condScript = [self cxx_getConditionScript:*condition_script];
+		if (condScript != nil) // should always be non-nil, but just in case
+		{
+			ooscript::Context context = OOJSAcquireContext();
+			BOOL OK;
+			bool allow_instantiation;
+			ooscript::Value result;
+			ooscript::Value args[] = { OOJSValueFromPList(context, oo::PList(shipKey)) };
+			
+			OK = [condScript callMethod:OOJSID("allowSpawnShip")
+						  inContext:context
+					  withArguments:args count:sizeof args / sizeof *args
+							 result:&result];
+
+			if (OK) OK = ooscript::valueToBoolean(context, result, &allow_instantiation);
+			
+			OOJSRelinquishContext(context);
+
+			if (OK && !allow_instantiation)
+			{
+				/* if the script exists, the function exists, the function
+				 * returns a bool, and that bool is false, block
+				 * instantiation. Otherwise allow it as default */
+				return NO;
+			}
+		}
+	}
+
+	conditions = shipInfo.get<oo::PList::Array>("conditions");
+	if (conditions == nullptr)  return YES;
+
+	// Check conditions
+	return [PLAYER cxx_scriptTestConditions:*conditions];
+}
+
+
+std::optional<std::string> Universe::randomShipKeyForRoleRespectingConditions(const std::string &role)
+{
+	::Universe *self = oo::ToObjC(this);
+	OOJS_PROFILE_ENTER
+
+	::OOShipRegistry			*registry = [::OOShipRegistry sharedRegistry];
+	std::optional<std::string>	shipKey;
+	oo::Ref<OOMutableProbabilitySet>	pset;
+	
+#if PROFILE_SHIP_SELECTION
+	static unsigned long	profTotal = 0, profSlowPath = 0;
+	++profTotal;
+#endif
+	
+	// Select a ship, check conditions and return it if possible.
+	shipKey = [registry cxx_randomShipKeyForRole:role];
+	if (!shipKey.has_value())  return std::nullopt;	// no ship has the role (a nil key passed the check and was returned)
+	if ([self canInstantiateShip:*shipKey])  return shipKey;
+	
+	/*	If we got here, condition check failed.
+		We now need to keep trying until we either find an acceptable ship or
+		run out of candidates.
+		This is special-cased because it has more overhead than the more
+		common conditionless lookup.
+	*/
+	
+#if PROFILE_SHIP_SELECTION
+	++profSlowPath;
+	if ((profSlowPath % 10) == 0)	// Only print every tenth slow path, to reduce spamminess.
+	{
+		OO_LOG("shipRegistry.selection.profile", "Hit slow path in ship selection for role \"{}\", having selected ship \"{}\". Now {} of {} on slow path ({:f}%).", role, shipKey.value_or("(null)"), static_cast<size_t>(profSlowPath), static_cast<size_t>(profTotal), ((double)profSlowPath)/((double)profTotal) * 100.0f);
+	}
+#endif
+	
+	if (OOProbabilitySet *set = [registry cxx_probabilitySetForRole:role])  pset = set->mutableCopy();
+
+	while (pset != nullptr && pset->count() > 0)
+	{
+		// Select a ship, check conditions and return it if possible.
+		const oo::PList shipKeyObject = pset->randomObject();	// a ship key (a string); null when no weight is positive
+		const std::string *shipKeyString = shipKeyObject.getIf<std::string>();
+		std::string candidate = (shipKeyString != nullptr) ? *shipKeyString : std::string();	// "" as StdString(nil) gave
+		if ([self canInstantiateShip:candidate])  return candidate;
+
+		// Condition failed -> remove ship from consideration.
+		pset->removeObject(shipKeyObject);
+	}
+
+	// If we got here, some ships existed but all failed conditions test.
+	return std::nullopt;
+
+	OOJS_PROFILE_EXIT_VAL(std::nullopt)
+}
+
+
+::ShipEntity * Universe::newShipWithRole(const std::string &role)
+{
+	::Universe *self = oo::ToObjC(this);
+	OOJS_PROFILE_ENTER
+
+	::ShipEntity				*ship = nil;
+	std::optional<std::string>	shipKey;
+	oo::PList				shipInfo;
+	std::optional<std::string>	autoAI;
+
+	shipKey = [self cxx_randomShipKeyForRoleRespectingConditions:role];
+	if (shipKey.has_value())
+	{
+		ship = [self cxx_newShipWithName:*shipKey];
+		if (ship != nil)
+		{
+			[ship setPrimaryRole:role];
+
+			shipInfo = [[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:*shipKey];
+			if (FuzzyBooleanIn(shipInfo, "auto_ai", YES))
+			{
+				// Set AI based on role
+				autoAI = [self defaultAIForRole:role];
+				if (autoAI.has_value())
+				{
+					[ship setAITo:*autoAI];
+					// Nikos 20090604
+					// Pirate, trader or police with auto_ai? Follow populator rules for them.
+					if (role == "pirate") [ship setBounty:20 + randf() * 50 withReason:kOOLegalStatusReasonSetup];
+					if (role == "trader") [ship setBounty:0 withReason:kOOLegalStatusReasonSetup];
+					if (role == "police") [ship setScanClass:CLASS_POLICE];
+					if (role == "interceptor")
+					{
+						[ship setScanClass: CLASS_POLICE];
+						[ship setPrimaryRole:"police"]; // to make sure interceptors get the correct pilot later on.
+					}
+				}
+				if (role == "thargoid") [ship setScanClass: CLASS_THARGOID]; // thargoids are not on the autoAIMap
+			}
+		}
+	}
+	
+	return ship;
+	
+	OOJS_PROFILE_EXIT
+}
+
+
+::OOVisualEffectEntity * Universe::newVisualEffectWithName(const std::string &effectKey)
+{
+	OOJS_PROFILE_ENTER
+
+	oo::PList				effectDict;
+	::OOVisualEffectEntity	*effect = nil;
+
+	effectDict = [[::OOShipRegistry sharedRegistry] cxx_effectInfoForKey:effectKey];
+	if (effectDict.isNull())  return nil;
+
+	@try
+	{
+		effect = [[::OOVisualEffectEntity alloc] cxx_initWithKey:effectKey definition:effectDict];
+	}
+	@catch (::OOException *exception)
+	{
+		if (strcmp([exception name], OOLITE_EXCEPTION_DATA_NOT_FOUND) == 0)
+		{
+			OO_LOG(cxx_kOOLogException, "***** Oolite Exception : '{}' in [Universe newVisualEffectWithName: {} ] *****", [exception reason], effectKey);
+		}
+		else  @throw exception;
+	}
+	
+	return effect;
+	
+	OOJS_PROFILE_EXIT
+}
+
+
+::ShipEntity * Universe::newSubentityWithName(const std::string &shipKey, float scale)
+{
+	::Universe *self = oo::ToObjC(this);
+	return [self cxx_newShipWithName:shipKey usePlayerProxy:NO isSubentity:YES andScaleFactor:scale];
+}
+
+
+::ShipEntity * Universe::newShipWithName(const std::string &shipKey, bool usePlayerProxy)
+{
+	::Universe *self = oo::ToObjC(this);
+	return [self cxx_newShipWithName:shipKey usePlayerProxy:usePlayerProxy isSubentity:NO];
+}
+
+
+::ShipEntity * Universe::newShipWithName(const std::string &shipKey, bool usePlayerProxy, bool isSubentity)
+{
+	::Universe *self = oo::ToObjC(this);
+	return [self cxx_newShipWithName:shipKey usePlayerProxy:usePlayerProxy isSubentity:isSubentity andScaleFactor:1.0f];
+}
+
+
+::ShipEntity * Universe::newShipWithName(const std::string &shipKey, bool usePlayerProxy, bool isSubentity, float scale)
+{
+	::Universe *self = oo::ToObjC(this);
+	OOJS_PROFILE_ENTER
+
+	oo::PList		shipDict;
+	::ShipEntity		*ship = nil;
+
+	shipDict = [[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:shipKey];
+	if (shipDict.isNull())  return nil;
+	
+	volatile Class shipClass = nil;
+	if (isSubentity)
+	{
+		shipClass = [::ShipEntity class];
+	}
+	else
+	{
+		shipClass = [self cxx_shipClassForShipDictionary:shipDict];
+		if (usePlayerProxy && shipClass == [::ShipEntity class])
+		{
+			shipClass = [::ProxyPlayerEntity class];
+		}
+	}
+	
+	@try
+	{
+		if (scale != 1.0f)
+		{
+			// a copy with the scale, a float as +numberWithFloat: stored it (ADR-0043 item 15)
+			(*shipDict.getIf<oo::PList::Dict>())["model_scale_factor"] = oo::PList::singleReal(scale);
+		}
+		ship = [[shipClass alloc] cxx_initWithKey:shipKey definition:shipDict];
+	}
+	@catch (::OOException *exception)
+	{
+		if (strcmp([exception name], OOLITE_EXCEPTION_DATA_NOT_FOUND) == 0)
+		{
+			OO_LOG(cxx_kOOLogException, "***** Oolite Exception : '{}' in [Universe newShipWithName: {} ] *****", [exception reason], shipKey);
+		}
+		else  @throw exception;
+	}
+
+	// Set primary role to same as ship name, if ship name is also a role.
+	// Otherwise, if caller doesn't set a role, one will be selected randomly.
+	if ([ship hasRole:shipKey])  [ship setPrimaryRole:shipKey];
+	
+	return ship;
+	
+	OOJS_PROFILE_EXIT
+}
+
+
+::DockEntity * Universe::newDockWithName(const std::string &shipDataKey, float scale)
+{
+	OOJS_PROFILE_ENTER
+
+	oo::PList		shipDict;
+	::DockEntity		*dock = nil;
+
+	shipDict = [[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:shipDataKey];
+	if (shipDict.isNull())  return nil;
+
+	@try
+	{
+		if (scale != 1.0f)
+		{
+			// a copy with the scale, a float as +numberWithFloat: stored it (ADR-0043 item 15)
+			(*shipDict.getIf<oo::PList::Dict>())["model_scale_factor"] = oo::PList::singleReal(scale);
+		}
+		dock = [[::DockEntity alloc] cxx_initWithKey:shipDataKey definition:shipDict];
+	}
+	@catch (::OOException *exception)
+	{
+		if (strcmp([exception name], OOLITE_EXCEPTION_DATA_NOT_FOUND) == 0)
+		{
+			OO_LOG(cxx_kOOLogException, "***** Oolite Exception : '{}' in [Universe newDockWithName: {} ] *****", [exception reason], shipDataKey);
+		}
+		else  @throw exception;
+	}
+
+	// Set primary role to same as name, if ship name is also a role.
+	// Otherwise, if caller doesn't set a role, one will be selected randomly.
+	if ([dock hasRole:shipDataKey])  [dock setPrimaryRole:shipDataKey];
+	
+	return dock;
+	
+	OOJS_PROFILE_EXIT
+}
+
+
+::ShipEntity * Universe::newShipWithName(const std::string &shipKey)
+{
+	::Universe *self = oo::ToObjC(this);
+	return [self cxx_newShipWithName:shipKey usePlayerProxy:NO];
+}
+
+
+Class Universe::shipClassForShipDictionary(const oo::PList &dict)
+{
+	OOJS_PROFILE_ENTER
+
+	if (dict.isNull())  return Nil;
+
+	BOOL		isStation = NO;
+	std::optional<std::string>	shipRoles = OptionalStringIn(dict, "roles");
+
+	if (shipRoles.has_value())
+	{
+		isStation = shipRoles->find("station") != std::string::npos ||
+		shipRoles->find("carrier") != std::string::npos;
+	}
+
+	// Note priority here: is_carrier overrides isCarrier which overrides roles.
+	isStation = dict.get<bool>("isCarrier", isStation);
+	isStation = dict.get<bool>("is_carrier", isStation);
+
+
+	if (isStation)  return [::StationEntity class];
+	return [::ShipEntity class];
+
+	OOJS_PROFILE_EXIT
+}
+
+
+std::optional<std::string> Universe::defaultAIForRole(const std::string &role)
+{
+	return OptionalStringIn(autoAIMap, role);
+}
+
+
+OOCargoQuantity Universe::maxCargoForShip(const std::string &desc)
+{
+	return [[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:desc].get<unsigned int>("max_cargo", 0);
 }
 
 

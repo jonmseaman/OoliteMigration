@@ -197,6 +197,10 @@ inline constexpr std::string_view PLANETINFO_INTERSTELLAR_KEY			= "interstellar 
 
 
 @class Universe;
+
+// A beacon, which stays its Objective-C object (the beacon members of slice 9). Named at file scope
+// as OOWaypointEntity.h names it: inside namespace cxx a protocol list cannot follow ::Entity.
+typedef Entity <OOBeaconEntity> OOBeaconEntityObject;
 @class OOUniverseDelayedMessage;	// Universe.mm's holder of a delayed message (slice 16)
 
 /*	The universe's state (bead oo-riqmz, slice 1 of docs/phases/3-slices/Universe.md): the old
@@ -522,6 +526,36 @@ public:
 	::OOSunEntity *sun();
 	std::vector<oo::ObjCRef<::OOPlanetEntity *>> planets();
 	std::vector<oo::ObjCRef<::StationEntity *>> stations();
+
+	// Slice 9: wormholes, the main station, beacons, waypoints, sky colour, the break pattern, making ships by role and name, default AIs, cargo capacity.
+	std::vector<oo::ObjCRef<::WormholeEntity *>> wormholes();
+	void unMagicMainStation();
+	void resetBeacons();
+	OOBeaconEntityObject *firstBeacon();
+	void setFirstBeacon(OOBeaconEntityObject *beacon);
+	OOBeaconEntityObject *lastBeacon();
+	void setLastBeacon(OOBeaconEntityObject *beacon);
+	void setNextBeacon(OOBeaconEntityObject *beaconShip);
+	void clearBeacon(OOBeaconEntityObject *beaconShip);
+	std::map<std::string, oo::ObjCRef<::OOWaypointEntity *>, std::less<>> currentWaypoints();
+	void defineWaypoint(const oo::PList &definition, const std::string &key);
+	GLfloat *getSkyClearColor();
+	void setSkyColorRed(GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha);
+	bool breakPatternOver();
+	bool breakPatternHide();
+	bool canInstantiateShip(const std::string &shipKey);
+	std::optional<std::string> randomShipKeyForRoleRespectingConditions(const std::string &role);
+	::ShipEntity *newShipWithRole(const std::string &role);
+	::OOVisualEffectEntity *newVisualEffectWithName(const std::string &effectKey);
+	::ShipEntity *newSubentityWithName(const std::string &shipKey, float scale);
+	::ShipEntity *newShipWithName(const std::string &shipKey, bool usePlayerProxy);
+	::ShipEntity *newShipWithName(const std::string &shipKey, bool usePlayerProxy, bool isSubentity);
+	::ShipEntity *newShipWithName(const std::string &shipKey, bool usePlayerProxy, bool isSubentity, float scale);
+	::DockEntity *newDockWithName(const std::string &shipDataKey, float scale);
+	::ShipEntity *newShipWithName(const std::string &shipKey);
+	Class shipClassForShipDictionary(const oo::PList &dict);
+	std::optional<std::string> defaultAIForRole(const std::string &role);
+	OOCargoQuantity maxCargoForShip(const std::string &desc);
 
 	// Slice 14: making demo ships, safe vectors, hazards on route, wreckage, laser hits.
 	::ShipEntity *makeDemoShipWithRole(const std::string &role, bool spinning);
