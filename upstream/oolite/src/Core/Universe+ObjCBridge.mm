@@ -238,6 +238,32 @@ extern Universe *gSharedUniverse;
 @end
 
 
+@implementation Universe (OOSlice10)
+
+- (OOCreditsQuantity) cxx_getEquipmentPriceForKey:(const std::string &)eq_key	{ return _cxxUniverse->getEquipmentPriceForKey(eq_key); }
+- (OOCommodities *) commodities	{ return _cxxUniverse->getCommodities(); }
+- (ShipEntity *) reifyCargoPod:(ShipEntity *)cargoObj	{ return _cxxUniverse->reifyCargoPod(cargoObj); }
+- (ShipEntity *) cargoPodFromTemplate:(ShipEntity *)cargoObj	{ return _cxxUniverse->cargoPodFromTemplate(cargoObj); }
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_getContainersOfGoods:(OOCargoQuantity)how_many scarce:(BOOL)scarce legal:(BOOL)legal	{ return _cxxUniverse->getContainersOfGoods(how_many, scarce, legal); }
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_getContainersOfCommodity:(const std::string &)commodity_name :(OOCargoQuantity)how_much	{ return _cxxUniverse->getContainersOfCommodity(commodity_name, how_much); }
+- (void) fillCargopodWithRandomCargo:(ShipEntity *)cargopod	{ _cxxUniverse->fillCargopodWithRandomCargo(cargopod); }
+- (std::string) getRandomCommodity	{ return _cxxUniverse->getRandomCommodity(); }
+- (OOCargoQuantity) cxx_getRandomAmountOfCommodity:(const std::string &)co_type	{ return _cxxUniverse->getRandomAmountOfCommodity(co_type); }
+- (oo::PList) commodityDataForType:(const std::string &)type	{ return _cxxUniverse->commodityDataForType(type); }
+- (std::optional<std::string>) cxx_displayNameForCommodity:(const std::string &)co_type	{ return _cxxUniverse->displayNameForCommodity(co_type); }
+- (std::optional<std::string>) cxx_describeCommodity:(const std::string &)co_type amount:(OOCargoQuantity)co_amount	{ return _cxxUniverse->describeCommodity(co_type, co_amount); }
+- (void) setGameView:(MyOpenGLView *)view	{ _cxxUniverse->setGameView(view); }
+- (MyOpenGLView *) gameView	{ return _cxxUniverse->getGameView(); }
+- (GameController *) gameController	{ return _cxxUniverse->gameController(); }
+- (oo::PList) cxx_gameSettings	{ return _cxxUniverse->gameSettings(); }
+- (void) useGUILightSource:(BOOL)GUILight	{ _cxxUniverse->useGUILightSource(GUILight); }
+- (void) lightForEntity:(BOOL)isLit	{ _cxxUniverse->lightForEntity(isLit); }
+- (void) getActiveViewMatrix:(OOMatrix *)outMatrix forwardVector:(Vector *)outForward upVector:(Vector *)outUp	{ _cxxUniverse->getActiveViewMatrix(outMatrix, outForward, outUp); }
+- (OOMatrix) activeViewMatrix	{ return _cxxUniverse->activeViewMatrix(); }
+
+@end
+
+
 @implementation Universe (OOSlice14)
 
 - (ShipEntity *) cxx_makeDemoShipWithRole:(const std::string &)role spinning:(BOOL)spinning	{ return _cxxUniverse->makeDemoShipWithRole(role, spinning); }

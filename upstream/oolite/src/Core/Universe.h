@@ -557,6 +557,28 @@ public:
 	std::optional<std::string> defaultAIForRole(const std::string &role);
 	OOCargoQuantity maxCargoForShip(const std::string &desc);
 
+	// Slice 10: equipment prices, commodities and cargo pods, the game view and controller, settings, entity lighting, the active view matrix.
+	OOCreditsQuantity getEquipmentPriceForKey(const std::string &eq_key);
+	::OOCommodities *getCommodities();
+	::ShipEntity *reifyCargoPod(::ShipEntity *cargoObj);
+	::ShipEntity *cargoPodFromTemplate(::ShipEntity *cargoObj);
+	std::vector<oo::ObjCRef<::ShipEntity *>> getContainersOfGoods(OOCargoQuantity how_many, bool scarce, bool legal);
+	std::vector<oo::ObjCRef<::ShipEntity *>> getContainersOfCommodity(const std::string &commodity_name, OOCargoQuantity how_much);
+	void fillCargopodWithRandomCargo(::ShipEntity *cargopod);
+	std::string getRandomCommodity();
+	OOCargoQuantity getRandomAmountOfCommodity(const std::string &co_type);
+	oo::PList commodityDataForType(const std::string &type);
+	std::optional<std::string> displayNameForCommodity(const std::string &co_type);
+	std::optional<std::string> describeCommodity(const std::string &co_type, OOCargoQuantity co_amount);
+	void setGameView(::MyOpenGLView *view);
+	::MyOpenGLView *getGameView();
+	::GameController *gameController();
+	oo::PList gameSettings();
+	void useGUILightSource(bool GUILight);
+	void lightForEntity(bool isLit);
+	void getActiveViewMatrix(OOMatrix *outMatrix, Vector *outForward, Vector *outUp);
+	OOMatrix activeViewMatrix();
+
 	// Slice 14: making demo ships, safe vectors, hazards on route, wreckage, laser hits.
 	::ShipEntity *makeDemoShipWithRole(const std::string &role, bool spinning);
 	bool isVectorClearFromEntity(::Entity *e1, double dist, HPVector p2);
