@@ -30,6 +30,7 @@ SOFTWARE.
 #ifndef OOPIXMAPTEXTURELOADER_H
 #define OOPIXMAPTEXTURELOADER_H
 
+#import "OOTexture.h"
 #import "OOTextureGenerator.h"
 #import "OOPixMap.h"
 
