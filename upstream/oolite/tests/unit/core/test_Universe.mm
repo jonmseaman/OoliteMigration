@@ -1325,7 +1325,10 @@ OO_TEST(slice9BeaconsWaypointsBreakPatternAndAIs)
 
 		part->breakPatternCounter = 3;
 		OO_CHECK(![u breakPatternOver]);
+		PlayerEntity *standIn = gOOPlayer;
+		gOOPlayer = nil;	// no player: an earlier case leaves its stand-in (slice 14's SetUpTestPlayer())
 		OO_CHECK([u breakPatternHide]);	// no player
+		gOOPlayer = standIn;
 		part->breakPatternCounter = 0;
 		OO_CHECK([u breakPatternOver]);
 

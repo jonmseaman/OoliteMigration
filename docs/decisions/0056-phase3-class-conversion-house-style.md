@@ -4530,7 +4530,7 @@ none of ShipEntity's adapter or `virtual` machinery applies.
 **Decision (recommended defaults).**
 
 1. **As amendment oo-zd80m item 1:** a slice's members are a `namespace cxx` block of their own
-   after the facade's `@implementation` (before the `OOSound` / `OOSoundSource` categories), under
+   after the facade's `@implementation` (before slices 14-26's blocks, in slice order), under
    a comment naming the slice and its bead, declared in a block of `cxx::Universe` under the same
    comment. The facade forwards each selector from a category `Universe (OOSliceN)` in
    `Universe+ObjCBridge.mm`, and the selector's declaration moves to that category's `@interface`
@@ -4540,10 +4540,16 @@ none of ShipEntity's adapter or `virtual` machinery applies.
 2. **Sends to `self` stay sends** to the facade (`::Universe *self = oo::ToObjC(this);` at the
    top), so a selector of a slice not yet landed still answers. Every Objective-C class named in a
    member is `::X` (amendment oo-zd80m item 3); a member's signature takes no protocol qualifier
-   (`::Entity *` for `Entity <OOBeaconEntity> *`), and its forwarder casts the result back.
+   (`::Entity *` for `Entity <OOBeaconEntity> *`), and its forwarder casts the result back;
+   the beacon members of slice 9, whose bodies message the beacon protocol, take and answer
+   `OOBeaconEntityObject *` instead, the file-scope typedef `OOWaypointEntity.h` has, repeated in
+   `Universe.h`.
 3. **A member whose name would be a data member's is `getX`** (`-doProcedurallyTexturedPlanets`
    is `getDoProcedurallyTexturedPlanets()`, `-cxx_useAddOns` `getUseAddOns()`), as amendment
-   oo-zd80m item 4; `cxx_` drops as usual.
+   oo-zd80m item 4; `cxx_` drops as usual. Two selectors whose first keywords and parameter types
+   are the same get the keyword that tells them apart (`-cxx_addShips:withRole:atPosition:...` is
+   `addShipsAtPosition()`, the two `...nearPosition:...` forms are `addShipsNearPosition()`
+   overloads); different parameter types stay overloads (`addShipWithRole()`).
 4. **A unit inside a preprocessor condition keeps it** around its member, declaration, category
    declaration and forwarder (`#ifndef NDEBUG` for `-debugDumpEntities` and `-cxx_entityList`).
 5. **Tests:** `test_Universe.mm` gains an `OO_TEST(sliceN...)` per slice under one comment, for the
@@ -4551,6 +4557,14 @@ none of ShipEntity's adapter or `virtual` machinery applies.
    the unconverted class first. A slice none of whose units runs without the player, the GUI or
    the game controller (slice 3: pausing, quitting, the set-up from a station or witchspace) adds
    none; the goldens pin it.
+
+6. **A parameter the moved body never reads is named in a comment** (`::StationEntity * /*carrier*/`
+   in `carryPlayerOn()`, slice 3), as amendment oo-xmajv item 1: `-Wunused-parameter` and
+   clang-tidy's `misc-unused-parameters` flag a C++ function's unused parameter and never did an
+   Objective-C method's. Two moved lines whose text changed only by the rewrite carry clang-tidy
+   findings the old lines had (tier-a counts a changed line's findings as new): their expressions
+   are restated with the same behaviour (`-cxx_shipClassForShipDictionary:`'s class choice as an
+   `if`, slice 9; `-drawWatermarkString:`'s integer halves named first, slice 13).
 
 **Consequences.** One category per slice on the facade; the facade's deletion bead (oo-ql9rn)
 removes them with the forwarders.
