@@ -71,16 +71,3 @@ EOF
   [ -z "$(git -C "$co" diff --name-only --diff-filter=U 2>/dev/null)" ]
 }
 
-# refresh_beads_export <base>: regenerate .beads/issues.jsonl from Dolt in the root checkout and
-# commit it on the base branch if it changed. With export.auto off in .beads/config.yaml this is
-# the export's only writer, so the tracked copy is always main's and always fresh (an export of
-# ~750 issues takes under a second). Never fatal: a stale export is a nuisance, not a lost bead.
-refresh_beads_export() {
-  local base="$1" out="$REPO_ROOT/.beads/issues.jsonl"
-  [ "$(git -C "$REPO_ROOT" symbolic-ref --quiet --short HEAD 2>/dev/null)" = "$base" ] || return 0
-  real_bd export -o "$out" >/dev/null 2>&1 || { echo "beads-worker: bd export failed; the tracked export is stale until the next accept" >&2; return 0; }
-  git -C "$REPO_ROOT" diff --quiet -- .beads/issues.jsonl 2>/dev/null && return 0
-  git -C "$REPO_ROOT" -c user.name=beads-worker -c user.email=beads-worker@local \
-    commit -q -m "fleet: bead DB export refreshed from Dolt after accept" -- .beads/issues.jsonl >/dev/null 2>&1 \
-    || echo "beads-worker: could not commit the refreshed export on $base; it is left modified in $REPO_ROOT" >&2
-}
