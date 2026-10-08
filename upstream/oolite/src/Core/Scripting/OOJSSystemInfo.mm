@@ -69,6 +69,10 @@ MA 02110-1301, USA.
 	OOCommodities, which are C++ since beads oo-0sr1 and oo-fqyw, are reached the same way
 	(amendment oo-ppc, item 4). Messages to classes that are still Objective-C (Universe,
 	PlayerEntity, OOJSScript) stay as they are, which is why the file is still .mm until Phase 4.
+	Since bead oo-6symp.2 (proposed ADR-0056 amendment oo-6symp) the private slot holds the C++
+	system info itself, which implements OOJSPrivateObject: the natives read it with
+	OOJSGetCxxPrivate, the finalizer and toString() are the engine's OOJSCxxObjectWrapperFinalize
+	and OOJSCxxObjectWrapperToString, and only the converter still answers the facade.
 */
 
 namespace ooscript { }
@@ -115,6 +119,9 @@ static bool SystemInfoSetProperty(Context cx, Object obj, PropertyId propID, boo
 } // namespace
 namespace {
 static void SystemInfoFinalize(Context cx, Object obj);
+} // namespace
+namespace {
+static bool SystemInfoToString(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
 // The state of a SystemInfo enumeration, kept in the enumeration's private slot (was a retained
@@ -217,7 +224,7 @@ namespace {
 static FunctionSpec sSystemInfoMethods[] =
 {
 	// JS name					Function					min args	flags
-	{ "toString",				OOJSObjectWrapperToString,				0,			0 },
+	{ "toString",				SystemInfoToString,				0,			0 },
 	{ "distanceToSystem",		SystemInfoDistanceToSystem,		1,			0 },
 	{ "routeToSystem",			SystemInfoRouteToSystem,		1,			0 },
 	{ "samplePrice",			SystemInfoSamplePrice,			1,			0 },
@@ -270,8 +277,22 @@ int PropertyIntValue(const oo::PList &value)
 }	// namespace
 
 
+// DEFINE_JS_OBJECT_GETTER(JSSystemInfoGetSystemInfo, &sSystemInfoClass, sSystemInfoPrototype,
+// OOSystemInfo) for the C++ system info the slot holds (bead oo-6symp.2).
 namespace {
-DEFINE_JS_OBJECT_GETTER(JSSystemInfoGetSystemInfo, &sSystemInfoClass, sSystemInfoPrototype, OOSystemInfo);
+static bool JSSystemInfoGetSystemInfo(ooscript::Context context, ooscript::Object inObject, cxx::OOSystemInfo **outObject)
+{
+	return OOJSGetCxxPrivate(context, inObject, &sSystemInfoClass, outObject);
+}
+
+
+// The system info of a JS object of the SystemInfo class, else null (as the Objective-C class
+// check of OOJSNativeObjectOfClassFromJSObject answered nil).
+static cxx::OOSystemInfo *SystemInfoOfJSObject(ooscript::Context context, ooscript::Object object)
+{
+	if (object == nullptr || ooscript::getObjectClass(context, object) != &sSystemInfoClass)  return nullptr;
+	return static_cast<cxx::OOSystemInfo *>(static_cast<oo::RefCounted *>(ooscript::getPrivate(context, object)));
+}
 } // namespace
 
 
@@ -403,7 +424,7 @@ NSPoint OOSystemInfo::coordinates()
 }
 
 
-ooscript::Value OOSystemInfo::oo_jsValueInContext(ooscript::Context context)
+ooscript::Value OOSystemInfo::jsValueInContext(ooscript::Context context)
 {
 	ooscript::Object jsSelf = NULL;
 	ooscript::Value						result = ooscript::nullValue();
@@ -411,22 +432,57 @@ ooscript::Value OOSystemInfo::oo_jsValueInContext(ooscript::Context context)
 	jsSelf = (ooscript::newObject((context), &sSystemInfoClass, (sSystemInfoPrototype), nullptr));
 	if (jsSelf != NULL)
 	{
-		if (!ooscript::setPrivate((context), (jsSelf), [oo::ToObjC(this) retain]))  jsSelf = NULL;
+		// The slot holds this, retained (OOJSCxxObjectWrapperFinalize releases it).
+		if (!OOJSSetCxxPrivate(context, jsSelf, this))  jsSelf = NULL;
 	}
-	if (jsSelf != NULL)  result = ooscript::objectValue(jsSelf);
+	if (jsSelf != NULL)
+	{
+		_jsSelf = jsSelf;
+		result = ooscript::objectValue(jsSelf);
+	}
 
 	return result;
+}
+
+
+void OOSystemInfo::clearJSSelf(ooscript::Object selfVal)
+{
+	if (_jsSelf == selfVal)  _jsSelf = NULL;
+}
+
+
+// What the facade's -cxx_oo_jsDescription answered (OOObject (OOJavaScriptConversion)): the JS
+// class name and the components.
+std::optional<std::string> OOSystemInfo::jsDescription()
+{
+	const std::optional<std::string> components = descriptionComponents();
+	const std::string name = oo_jsClassName().value_or("OOSystemInfo");
+	if (components.has_value())  return oo::str::format("[%s %s]", name.c_str(), components->c_str());
+	return oo::str::format("[object %s]", name.c_str());
 }
 
 }	// namespace cxx
 
 
 
+// OOJSBasicPrivateObjectConverter for the C++ system info the slot holds: its facade, which is
+// what the slot held, for the Objective-C callers of OOJSNativeObjectFromJSObject (null for the
+// prototype).
+namespace {
+static oo::PList SystemInfoConverter(ooscript::Context context, ooscript::Object object)
+{
+	cxx::OOSystemInfo *info = static_cast<cxx::OOSystemInfo *>(static_cast<oo::RefCounted *>(ooscript::getPrivate(context, object)));
+	if (info == nullptr)  return oo::PList();
+	return oo::PListObject(oo::ToObjC(info));
+}
+} // namespace
+
+
 void InitOOJSSystemInfo(ooscript::Context context, ooscript::Object global)
 {
 	Object proto = ooscript::initClass((context), (global), nullptr, &sSystemInfoClass, OOJSUnconstructableConstruct, 0, sSystemInfoProperties, sSystemInfoMethods, NULL, sSystemInfoStaticMethods);
 	sSystemInfoPrototype = (proto);
-	OOJSRegisterObjectConverter(&sSystemInfoClass, OOJSBasicPrivateObjectConverter);
+	OOJSRegisterObjectConverter(&sSystemInfoClass, SystemInfoConverter);
 }
 
 
@@ -468,14 +524,21 @@ ooscript::Value GetJSSystemInfoForSystem(ooscript::Context context, OOGalaxyID g
 
 
 namespace {
+static bool SystemInfoToString(ooscript::Context cx, ooscript::CallArgs &oojsArgs)
+{
+	return OOJSCxxObjectWrapperToString(cx, oojsArgs, &sSystemInfoClass);
+}
+} // namespace
+
+
+namespace {
 static void SystemInfoFinalize(Context cx, Object obj)
 {
 	ooscript::Object thisObj = (obj);
 	
 	OOJS_PROFILE_ENTER
 	
-	[(id)ooscript::getPrivate(cx, obj) release];
-	ooscript::setPrivate(cx, obj, nil);
+	OOJSCxxObjectWrapperFinalize(cx, obj);	// clearJSSelf(), the slot's release, the empty slot
 	
 	// Clear now-stale cache entry if appropriate.
 	if (sCachedSystemInfo == thisObj)  sCachedSystemInfo = NULL;
@@ -499,7 +562,7 @@ static bool SystemInfoEnumerate(Context cx, Object obj, EnumerateOp enumOp, Valu
 		case EnumerateOp::Init:
 		case EnumerateOp::InitAll:	// For ES5 Object.getOwnPropertyNames(). Since we have no non-enumerable properties, this is the same as Init.
 		{
-			cxx::OOSystemInfo *info = oo::ToCxx((OOSystemInfo *)ooscript::getPrivate(cx, obj));
+			cxx::OOSystemInfo *info = static_cast<cxx::OOSystemInfo *>(static_cast<oo::RefCounted *>(ooscript::getPrivate(cx, obj)));
 			enumerator = new SystemInfoEnumerationState{ (info != nullptr) ? info->allKeys() : std::vector<std::string>() };	// (none from a message to nil)
 			*state = ooscript::privateValue(enumerator);
 			
@@ -567,7 +630,7 @@ static bool SystemInfoGetProperty(Context cx, Object obj, PropertyId propID, Val
 		return true;
 	}
 	
-	cxx::OOSystemInfo	*info = oo::ToCxx((OOSystemInfo *)OOJSNativeObjectOfClassFromJSObject(context, thisObj, [OOSystemInfo class]));
+	cxx::OOSystemInfo	*info = SystemInfoOfJSObject(context, thisObj);
 	// What if we're trying to access a saved witchspace systemInfo object?
 	bool savedInterstellarInfo = ![UNIVERSE inInterstellarSpace] && SystemOf(info) == -1;
 	bool sameGalaxy = [PLAYER currentGalaxyID] == GalaxyOf(info);
@@ -672,7 +735,7 @@ static bool SystemInfoSetProperty(Context cx, Object obj, PropertyId propID, boo
 	if (ooscript::isStringId(propID))
 	{
 		std::optional<std::string>	key = cxx_OOStringFromJSString(context, (ooscript::idToString(propID)));
-		cxx::OOSystemInfo	*info = oo::ToCxx((OOSystemInfo *)OOJSNativeObjectOfClassFromJSObject(context, thisObj, [OOSystemInfo class]));
+		cxx::OOSystemInfo	*info = SystemInfoOfJSObject(context, thisObj);
 		
 		const oo::PList newValue = StringOrNull(cxx_OOStringFromJSValue(context, *(value)));
 		if (info != nullptr)  info->setValue(newValue, key.value_or(""));	// (a nil key as "")
@@ -691,19 +754,17 @@ static bool SystemInfoDistanceToSystem(ooscript::Context context, ooscript::Call
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	OOSystemInfo			*thisFacade = nil;
+	cxx::OOSystemInfo		*thisInfo = nullptr;
 	ooscript::Object otherObj = NULL;
-	OOSystemInfo			*otherFacade = nil;
+	cxx::OOSystemInfo		*otherInfo = nullptr;
 
-	if (!JSSystemInfoGetSystemInfo(context, OOJS_THIS, &thisFacade))  return false;
-	if (oojsArgs.count() < 1 || !ooscript::valueToObject(context, (OOJS_ARGV[0]), OOJSFOBJP(&otherObj)) || !JSSystemInfoGetSystemInfo(context, otherObj, &otherFacade))
+	if (!JSSystemInfoGetSystemInfo(context, OOJS_THIS, &thisInfo))  return false;
+	if (oojsArgs.count() < 1 || !ooscript::valueToObject(context, (OOJS_ARGV[0]), OOJSFOBJP(&otherObj)) || !JSSystemInfoGetSystemInfo(context, otherObj, &otherInfo))
 	{
 		cxx_OOJSReportBadArguments(context, "SystemInfo", "distanceToSystem", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "system info");
 		return false;
 	}
 	
-	cxx::OOSystemInfo		*thisInfo = oo::ToCxx(thisFacade);
-	cxx::OOSystemInfo		*otherInfo = oo::ToCxx(otherFacade);
 	bool sameGalaxy = (GalaxyOf(thisInfo) == GalaxyOf(otherInfo));
 	if (!sameGalaxy)
 	{
@@ -728,21 +789,19 @@ static bool SystemInfoRouteToSystem(ooscript::Context context, ooscript::CallArg
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	OOSystemInfo			*thisFacade = nil;
+	cxx::OOSystemInfo		*thisInfo = nullptr;
 	ooscript::Object otherObj = NULL;
-	OOSystemInfo			*otherFacade = nil;
+	cxx::OOSystemInfo		*otherInfo = nullptr;
 	oo::PList				result;
 	OORouteType				routeType = OPTIMIZED_BY_JUMPS;
 
-	if (!JSSystemInfoGetSystemInfo(context, OOJS_THIS, &thisFacade))  return false;
-	if (oojsArgs.count() < 1 || !ooscript::valueToObject(context, (OOJS_ARGV[0]), OOJSFOBJP(&otherObj)) || !JSSystemInfoGetSystemInfo(context, otherObj, &otherFacade))
+	if (!JSSystemInfoGetSystemInfo(context, OOJS_THIS, &thisInfo))  return false;
+	if (oojsArgs.count() < 1 || !ooscript::valueToObject(context, (OOJS_ARGV[0]), OOJSFOBJP(&otherObj)) || !JSSystemInfoGetSystemInfo(context, otherObj, &otherInfo))
 	{
 		cxx_OOJSReportBadArguments(context, "SystemInfo", "routeToSystem", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "system info");
 		return false;
 	}
 	
-	cxx::OOSystemInfo		*thisInfo = oo::ToCxx(thisFacade);
-	cxx::OOSystemInfo		*otherInfo = oo::ToCxx(otherFacade);
 	bool sameGalaxy = (GalaxyOf(thisInfo) == GalaxyOf(otherInfo));
 	if (!sameGalaxy)
 	{
@@ -773,10 +832,9 @@ static bool SystemInfoSamplePrice(ooscript::Context context, ooscript::CallArgs 
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	OOSystemInfo			*thisFacade = nil;
+	cxx::OOSystemInfo		*thisInfo = nullptr;
 
-	if (!JSSystemInfoGetSystemInfo(context, OOJS_THIS, &thisFacade))  return false;
-	cxx::OOSystemInfo		*thisInfo = oo::ToCxx(thisFacade);
+	if (!JSSystemInfoGetSystemInfo(context, OOJS_THIS, &thisInfo))  return false;
 	cxx::OOCommodities		*commodities = oo::ToCxx([UNIVERSE commodities]);	// null: no good is defined, as a message to nil
 	std::optional<std::string> commodity = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(commodities == nullptr || !commodities->goodDefined(commodity.value_or(""))))
@@ -807,10 +865,9 @@ static bool SystemInfoSetPropertyMethod(ooscript::Context context, ooscript::Cal
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	OOSystemInfo			*thisFacade = nil;
+	cxx::OOSystemInfo		*thisInfo = nullptr;
 
-	if (!JSSystemInfoGetSystemInfo(context, OOJS_THIS, &thisFacade))  return false;
-	cxx::OOSystemInfo		*thisInfo = oo::ToCxx(thisFacade);
+	if (!JSSystemInfoGetSystemInfo(context, OOJS_THIS, &thisInfo))  return false;
 
 	std::optional<std::string> property;
 	oo::PList value;	// null for a JavaScript null
