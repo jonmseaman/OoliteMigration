@@ -6,9 +6,11 @@ JavaScript object representing system info overrides.
 
 C++20 since bead oo-6ia4 (proposed ADR-0056; amendment oo-ppc for the binding). cxx::OOSystemInfo,
 the object a SystemInfo wraps, was an Objective-C class private to OOJSSystemInfo.mm. Only that
-file makes one, but a SystemInfo's private slot holds it and the engine messages it by selector
-(-oo_jsValueInContext:, -cxx_oo_jsClassName, its description), so it keeps an Objective-C facade,
-OOJSSystemInfo+ObjCBridge.h, imported at the end of this header (amendment oo-kdyh item 3).
+file makes one. Since bead oo-6symp.2 a SystemInfo's private slot holds it directly
+(OOJSPrivateObject.h; proposed ADR-0056 amendment oo-6symp), but Objective-C code still messages
+its facade by selector (-oo_jsValueInContext:, -cxx_oo_jsClassName, its description), so it keeps
+an Objective-C facade, OOJSSystemInfo+ObjCBridge.h, imported at the end of this header
+(amendment oo-kdyh item 3).
 
 
 Oolite
@@ -40,12 +42,13 @@ MA 02110-1301, USA.
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"
 #include "oofnd/PList.hpp"
+#include "OOJSPrivateObject.h"
 
 
 namespace cxx {
 
 // The system a SystemInfo stands for, and its data through the universe.
-class OOSystemInfo : public oo::RefCounted
+class OOSystemInfo : public oo::RefCounted, public ::OOJSPrivateObject
 {
 public:
 	// -initWithGalaxy:system:, as a factory: null for a galaxy or system out of range (it answered
@@ -68,7 +71,11 @@ public:
 	OOSystemID system() const;
 	NSPoint coordinates();
 
-	ooscript::Value oo_jsValueInContext(ooscript::Context context);
+	// The JS glue (OOJSPrivateObject): a new SystemInfo object holding this, remembered as the
+	// latest; forgetting it when it is finalized; "[SystemInfo galaxy g, system s]".
+	ooscript::Value jsValueInContext(ooscript::Context context) override;
+	void clearJSSelf(ooscript::Object selfVal) override;
+	std::optional<std::string> jsDescription() override;
 
 private:
 	OOSystemInfo(OOGalaxyID galaxy, OOSystemID system);
@@ -76,6 +83,7 @@ private:
 	OOGalaxyID				_galaxy;
 	OOSystemID				_system;
 	std::string				_planetKey;
+	ooscript::Object		_jsSelf = {};	// The latest JS SystemInfo object made for this.
 };
 
 }	// namespace cxx

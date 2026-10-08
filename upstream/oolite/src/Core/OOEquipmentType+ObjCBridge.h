@@ -10,12 +10,10 @@ the one OOEquipmentType.h declared before the conversion, copied exactly (same s
 types), so those callers compile and behave unchanged; each method forwards to its C++ member.
 Imported as the last line of OOEquipmentType.h; do not import it directly.
 
-Two things differ from the plain facade (ADR-0056 amendment oo-fg7i):
-- the facade also keeps _jsSelf, the ivar the JavaScript category (OOJSEquipmentInfo.mm) reads and
-  writes: it is the Objective-C object's JavaScript wrapper, not the C++ type's state;
-- a registered type's facade lives as long as it is registered, as the Objective-C type did: ships
-  keep weapon and missile types unretained. +loadEquipment and +cxx_addEquipmentWithInfo: pin the
-  facades of the registries after forwarding.
+One thing differs from the plain facade (ADR-0056 amendment oo-fg7i): a registered type's facade
+lives as long as it is registered, as the Objective-C type did: ships keep weapon and missile
+types unretained. +loadEquipment and +cxx_addEquipmentWithInfo: pin the facades of the registries
+after forwarding. (The EquipmentInfo JS object is the C++ type's: amendment oo-6symp.)
 
 Never add to this file; converted code does not message the facade. Deleted by its deletion bead
 once no file outside OOEquipmentType.* names the Objective-C OOEquipmentType.
@@ -50,8 +48,6 @@ SOFTWARE.
 {
 @private
 	oo::Ref<cxx::OOEquipmentType>	_cxxEquipmentType;
-
-	ooscript::Object _jsSelf;	// the JavaScript category's (OOJSEquipmentInfo.mm)
 }
 
 + (void) loadEquipment;			// Load equipment data; called on loading and when changing to/from strict mode.

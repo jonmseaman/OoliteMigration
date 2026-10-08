@@ -305,7 +305,7 @@ oo::PList cxx_OOJSPListFromJSValue(ooscript::Context context, ooscript::Value va
 		return oo::PList(std::move(array));
 	}
 	const ooscript::ClassDef *jsClass = ooscript::getObjectClass(context, object);
-	if (jsClass != nullptr && std::strcmp(jsClass->name, "EquipmentInfo") == 0)  return oo::PListObject((id)ooscript::getPrivate(context, object));
+	if (jsClass != nullptr && std::strcmp(jsClass->name, "EquipmentInfo") == 0)  return oo::PListObject(oo::ToObjC(static_cast<cxx::OOEquipmentType *>(static_cast<oo::RefCounted *>(ooscript::getPrivate(context, object)))));
 	return oo::PList(std::string("[object]"));
 }
 
@@ -402,6 +402,14 @@ ooscript::Value OOJSValueFromNativeObject(ooscript::Context context, id object)
 {
 	if (object == nil)  return ooscript::nullValue();
 	return [object oo_jsValueInContext:context];
+}
+
+
+// The JS class check of the engine's C++ getter (OOJSPrivateObject.cpp, linked since bead
+// oo-6symp.3, whose slot holds the C++ equipment type): no subclass of EquipmentInfo is registered.
+BOOL OOJSIsSubclass(ooscript::ClassDef *putativeSubclass, ooscript::ClassDef *superclass)
+{
+	return putativeSubclass == superclass;
 }
 
 
@@ -520,7 +528,7 @@ OO_TEST(registration)
 	OO_CHECK_EVAL("typeof EquipmentInfo", "function");
 	OO_CHECK_EVAL("new EquipmentInfo()", "threw: unconstructable");
 	OO_CHECK_EVAL("EquipmentInfo.infoForKey('EQ_FUEL') instanceof EquipmentInfo", "true");
-	OO_CHECK_EVAL("String(EquipmentInfo.infoForKey('EQ_FUEL'))", "[EquipmentInfo]");
+	OO_CHECK_EVAL("String(EquipmentInfo.infoForKey('EQ_FUEL'))", "[EquipmentInfo EQ_FUEL \"Fuel\"]");
 	OO_CHECK_EVAL("Object.keys(EquipmentInfo.prototype).length", "38");
 }
 
@@ -534,7 +542,7 @@ OO_TEST(categoryAnswersTheEngine)
 	ooscript::Value first = [fuel oo_jsValueInContext:sContext];
 	ooscript::Value second = [fuel oo_jsValueInContext:sContext];
 	OO_CHECK(ooscript::isObject(first) && ooscript::toObject(first) == ooscript::toObject(second));
-	OO_CHECK(ooscript::getPrivate(sContext, ooscript::toObject(first)) == fuel);
+	OO_CHECK(ooscript::getPrivate(sContext, ooscript::toObject(first)) == static_cast<oo::RefCounted *>(oo::ToCxx(fuel)));
 	ooscript::Value fromScript = ooscript::undefinedValue();
 	const char *infoForFuel = "EquipmentInfo.infoForKey('EQ_FUEL')";
 	ooscript::evaluateScript(sContext, sGlobal, infoForFuel, static_cast<unsigned>(std::strlen(infoForFuel)), "test.js", 1, &fromScript);
@@ -545,7 +553,7 @@ OO_TEST(categoryAnswersTheEngine)
 	[fuel oo_clearJSSelf:ooscript::toObject(first)];
 	ooscript::Value third = [fuel oo_jsValueInContext:sContext];
 	OO_CHECK(ooscript::isObject(third) && ooscript::toObject(third) != ooscript::toObject(first));
-	OO_CHECK(ooscript::getPrivate(sContext, ooscript::toObject(third)) == fuel);
+	OO_CHECK(ooscript::getPrivate(sContext, ooscript::toObject(third)) == static_cast<oo::RefCounted *>(oo::ToCxx(fuel)));
 }
 
 
