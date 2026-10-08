@@ -76,6 +76,8 @@ class StationEntity : public ShipEntity
 public:
 	// Slice 1: class shell, market and shipyard, flags and accessors.
 	bool isUnpiloted() override;
+	void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype) override;
+	std::optional<std::string> jsClassName() override;
 	OOTechLevelID getEquivalentTechLevel();
 	void setEquivalentTechLevel(OOTechLevelID value);
 	Vector virtualPortDimensions();

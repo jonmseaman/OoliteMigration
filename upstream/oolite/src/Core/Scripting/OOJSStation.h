@@ -41,8 +41,8 @@ void InitOOJSStation(ooscript::Context context, ooscript::Object global);
 
 
 /*	The bodies of StationEntity (OOJavaScriptExtensions), which the engine reaches by selector.
-	Its methods are one-line forwarders to these in OOJSStation+ObjCBridge.mm until
-	StationEntity converts (proposed ADR-0056 amendments oo-ppc and oo-ykoy).
+	cxx::StationEntity::getJSClass and ::jsClassName call these
+	(proposed ADR-0056 amendments oo-ppc and oo-ykoy).
 */
 void OOJSStationGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
 std::optional<std::string> OOJSStationJSClassName(void);

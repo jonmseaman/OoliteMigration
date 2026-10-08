@@ -24,6 +24,7 @@
 
 #import "StationEntity.h"
 #import "DockEntity.h"
+#import "OOJSStation.h"
 #import "ShipEntityAI.h"
 #import "OOStringParsing.h"
 
@@ -686,6 +687,18 @@ bool StationEntity::isUnpiloted()
 {
 	::StationEntity *self = oo::ToObjC(this);
 	return [self isExplicitlyUnpiloted] || [self isHulk];
+}
+
+
+void StationEntity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)
+{
+	::OOJSStationGetJSClass(outClass, outPrototype);
+}
+
+
+std::optional<std::string> StationEntity::jsClassName()
+{
+	return ::OOJSStationJSClassName();
 }
 
 
