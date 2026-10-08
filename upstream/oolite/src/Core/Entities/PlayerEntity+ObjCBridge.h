@@ -46,55 +46,76 @@ MA 02110-1301, USA.
 	cxx::PlayerEntity	*_cxxPlayer;		// _cxxEntity, typed; borrowed, set by the initialiser
 }
 
-- (BOOL) setUpAndConfirmOK:(BOOL)stopOnError;
-- (BOOL) setUpAndConfirmOK:(BOOL)stopOnError saveGame:(BOOL)loadingGame;
-- (void) completeSetUp;
-- (void) completeSetUpAndSetTarget:(BOOL)setTarget;
-- (void) startUpComplete;
+// Dumb setter; callers are responsible for sanity.
 
-- (std::optional<std::string>) cxx_commanderName;
-- (void) cxx_setCommanderName:(const std::optional<std::string> &)value;	// never nullopt
-- (std::optional<std::string>) cxx_lastsaveName;
-- (void) cxx_setLastsaveName:(const std::optional<std::string> &)value;	// never nullopt
+// return keyconfig.plist settings for scripting
 
-- (BOOL) isDocked;
+ 
 
-- (void) warnAboutHostiles;
+// loading and saving trumbleCount
 
-- (void) unloadCargoPods;
-- (void) loadCargoPods;
+/* GILES custom viewpoints */
+
+// custom view points
+
+// Nasty hack to keep background textures around while on equip screens.
+
+// *** World script events.
+// In general, script events should be sent through doScriptEvent:..., which
+// will forward to the world scripts.
+
+/* Fractional expression of amount of entry inside a planet's atmosphere. 0.0f is out of atmosphere,
+   1.0f is fully in and is normally associated with the point of ship destruct due to altitude.
+*/
+
+@end
+
+
+// Slice 2 of docs/phases/3-slices/PlayerEntity.md: members of cxx::PlayerEntity, forwarded by the
+// category of the same name in PlayerEntity+ObjCBridge.mm (the class's @implementation, empty
+// once slice 28 landed, is in that file too). Declared in the class's interface before the slice.
+@interface PlayerEntity (OOSlice2)
+
+- (void) cxx_setName:(const std::optional<std::string> &)inName;
+- (GLfloat) baseMass;
 - (void) unloadAllCargoPodsForType:(const std::string &)type toManifest:(OOCommodityMarket *) manifest;
 - (void) unloadCargoPodsForType:(const std::string &)type amount:(OOCargoQuantity) quantity;
+- (void) unloadCargoPods;
+- (void) createCargoPodWithType:(const std::string &)type andAmount:(OOCargoQuantity)amount;
 - (void) loadCargoPodsForType:(const std::string &)type fromManifest:(OOCommodityMarket *) manifest;
 - (void) loadCargoPodsForType:(const std::string &)type amount:(OOCargoQuantity) quantity;
+- (void) loadCargoPods;
 - (OOCommodityMarket *) shipCommodityData;
-
 - (OOCreditsQuantity) deciCredits;
-
 - (int) random_factor;
 - (void) setRandom_factor:(int)rf;
 - (OOGalaxyID) galaxyNumber;
 - (NSPoint) galaxy_coordinates;
 - (void) setGalaxyCoordinates:(NSPoint)newPosition;
-- (void) setCustomChartCentre:(NSPoint)coords;
 - (NSPoint) cursor_coordinates;
 - (NSPoint) chart_centre_coordinates;
-- (NSPoint) custom_chart_centre_coordinates;
 - (OOScalar) chart_zoom;
 - (OOScalar) custom_chart_zoom;
 - (void) setCustomChartZoom:(OOScalar)zoom;
+- (NSPoint) custom_chart_centre_coordinates;
+- (void) setCustomChartCentre:(NSPoint)coords;
 - (NSPoint) adjusted_chart_centre;
 - (OORouteType) ANAMode;
-
-- (std::optional<std::string>) cxx_jumpCause;
-- (void) cxx_setJumpCause:(const std::optional<std::string> &)value;	// never nullopt
-
 - (OOSystemID) systemID;
 - (void) setSystemID:(OOSystemID) sid;
-- (OOSystemID) targetSystemID;
-- (void) setTargetSystemID:(OOSystemID) sid;
 - (OOSystemID) previousSystemID;
 - (void) setPreviousSystemID:(OOSystemID) sid;
+
+@end
+
+
+// Slice 3 of docs/phases/3-slices/PlayerEntity.md: members of cxx::PlayerEntity, forwarded by the
+// category of the same name in PlayerEntity+ObjCBridge.mm (the class's @implementation, empty
+// once slice 28 landed, is in that file too). Declared in the class's interface before the slice.
+@interface PlayerEntity (OOSlice3)
+
+- (OOSystemID) targetSystemID;
+- (void) setTargetSystemID:(OOSystemID) sid;
 - (OOSystemID) nextHopTargetSystemID;
 - (OOSystemID) infoSystemID;
 - (void) setInfoSystemID: (OOSystemID) sid moveChart:(BOOL) moveChart;
@@ -103,199 +124,216 @@ MA 02110-1301, USA.
 - (void) homeInfoSystem;
 - (void) targetInfoSystem;
 - (BOOL) infoSystemOnRoute;
-
-
+- (WormholeEntity *) wormhole;
+- (void) setWormhole:(WormholeEntity *)newWormhole;
 - (oo::PList) cxx_commanderDataDictionary;	// a Dict, as saved
+
+@end
+
+
+// Slice 4 of docs/phases/3-slices/PlayerEntity.md: members of cxx::PlayerEntity, forwarded by the
+// category of the same name in PlayerEntity+ObjCBridge.mm (the class's @implementation, empty
+// once slice 28 landed, is in that file too). Declared in the class's interface before the slice.
+@interface PlayerEntity (OOSlice4)
+
 - (BOOL) cxx_setCommanderDataFromDictionary:(const oo::PList &) dict;
 
-- (void) addEquipmentWithScriptToCustomKeyArray:(const std::string &)equipmentKey;
-- (void) validateCustomEquipActivationArray;
+@end
+
+
+// Slice 5 of docs/phases/3-slices/PlayerEntity.md: members of cxx::PlayerEntity, forwarded by the
+// category of the same name in PlayerEntity+ObjCBridge.mm (the class's @implementation, empty
+// once slice 28 landed, is in that file too). Declared in the class's interface before the slice.
+@interface PlayerEntity (OOSlice5)
+
+- (BOOL) setUpAndConfirmOK:(BOOL)stopOnError;
+- (BOOL) setUpAndConfirmOK:(BOOL)stopOnError saveGame:(BOOL)loadingGame;
+- (void) completeSetUp;
+- (void) completeSetUpAndSetTarget:(BOOL)setTarget;
+- (void) startUpComplete;
+- (BOOL) setUpShipFromDictionary:(const oo::PList &) shipDict;
+- (NSUInteger) sessionID;
+- (void) warnAboutHostiles;
+- (BOOL) canCollide;
+
+@end
+
+
+// Slice 6 of docs/phases/3-slices/PlayerEntity.md: members of cxx::PlayerEntity, forwarded by the
+// category of the same name in PlayerEntity+ObjCBridge.mm (the class's @implementation, empty
+// once slice 28 landed, is in that file too). Declared in the class's interface before the slice.
+@interface PlayerEntity (OOSlice6)
+
+- (OOComparisonResult) compareZeroDistance:(Entity *)otherEntity;
+- (BOOL) validForAddToUniverse;
+- (GLfloat) lookingAtSunWithThresholdAngleCos:(GLfloat) thresholdAngleCos;
+- (GLfloat) insideAtmosphereFraction;
+- (void) update:(OOTimeDelta)delta_t;
+
+@end
+
+
+// Slice 7 of docs/phases/3-slices/PlayerEntity.md: members of cxx::PlayerEntity, forwarded by the
+// category of the same name in PlayerEntity+ObjCBridge.mm (the class's @implementation, empty
+// once slice 28 landed, is in that file too). Declared in the class's interface before the slice.
+@interface PlayerEntity (OOSlice7)
 
 - (void) doBookkeeping:(double) delta_t;
-- (BOOL) isValidTarget:(Entity*)target;
+- (void) updateMovementFlags;
 
-- (void) setMassLockable:(BOOL)newValue;
-- (BOOL) massLockable;
-- (BOOL) massLocked;
-- (BOOL) atHyperspeed;
+@end
 
-- (float) occlusionLevel;
-- (void) setOcclusionLevel:(float)level;
 
-- (void) setDockedAtMainStation;
-- (StationEntity *) dockedStation;
-// Dumb setter; callers are responsible for sanity.
-- (void) setDockedStation:(StationEntity *)station;
+// Slice 8 of docs/phases/3-slices/PlayerEntity.md: members of cxx::PlayerEntity, forwarded by the
+// category of the same name in PlayerEntity+ObjCBridge.mm (the class's @implementation, empty
+// once slice 28 landed, is in that file too). Declared in the class's interface before the slice.
+@interface PlayerEntity (OOSlice8)
 
+- (void) updateAlertConditionForNearbyEntities;
+- (void) setMaxFlightPitch:(GLfloat)newValue;
+- (void) setMaxFlightRoll:(GLfloat)newValue;
+- (void) setMaxFlightYaw:(GLfloat)newValue;
+- (BOOL) checkEntityForMassLock:(Entity *)ent withScanClass:(int)scanClass;
+- (void) updateAlertCondition;
+- (void) updateFuelScoops:(OOTimeDelta)delta_t;
+- (void) updateClocks:(OOTimeDelta)delta_t;
+- (void) checkScriptsIfAppropriate;
+- (void) updateTrumbles:(OOTimeDelta)delta_t;
+- (void) performAutopilotUpdates:(OOTimeDelta)delta_t;
 - (void) performDockingRequest:(StationEntity *)stationForDocking;
 - (void) requestDockingClearance:(StationEntity *)stationForDocking;
 - (void) cancelDockingRequest:(StationEntity *)stationForDocking;
 - (BOOL) engageAutopilotToStation:(StationEntity *)stationForDocking;
 - (void) disengageAutopilot;
 
+@end
+
+
+// Slice 9 of docs/phases/3-slices/PlayerEntity.md: members of cxx::PlayerEntity, forwarded by the
+// category of the same name in PlayerEntity+ObjCBridge.mm (the class's @implementation, empty
+// once slice 28 landed, is in that file too). Declared in the class's interface before the slice.
+@interface PlayerEntity (OOSlice9)
+
 - (void) resetAutopilotAI;
-
-- (void) setTargetDockStationTo:(StationEntity *) value;
-- (StationEntity *) getTargetDockStation;
-
-- (HeadUpDisplay *) hud;
-- (BOOL) cxx_switchHudTo:(const std::string &)hudFileName;
-- (void) resetHud;
-
-- (float) cxx_dialCustomFloat:(const std::string &)dialKey;
-- (std::string) cxx_dialCustomString:(const std::string &)dialKey;
-- (OOColor *) cxx_dialCustomColor:(const std::string &)dialKey;
-- (void) cxx_setDialCustom:(const oo::PList &)value forKey:(const std::string &)dialKey;	// value: any script value, kept as given (live objects as Object nodes)
-
-
-- (std::vector<std::optional<std::string>>) cxx_multiFunctionDisplayList;	// nullopt = inactive MFD
-- (std::optional<std::string>) cxx_multiFunctionText:(NSUInteger) index;
-- (void) cxx_setMultiFunctionText:(const std::optional<std::string> &)text forKey:(const std::optional<std::string> &)key;
-- (BOOL) cxx_setMultiFunctionDisplay:(NSUInteger) index toKey:(const std::optional<std::string> &)key;
-- (void) cycleNextMultiFunctionDisplay:(NSUInteger) index;
-- (void) cyclePreviousMultiFunctionDisplay:(NSUInteger) index;
-- (void) selectNextMultiFunctionDisplay;
-- (void) selectPreviousMultiFunctionDisplay;
-- (NSUInteger) activeMFD;
-
-- (void) setShowDemoShips:(BOOL) value;
-- (BOOL) showDemoShips;
-
-- (GLfloat) forwardShieldLevel;
-- (GLfloat) aftShieldLevel;
-- (GLfloat) baseMass;
-
-- (void) setForwardShieldLevel:(GLfloat)level;
-- (void) setAftShieldLevel:(GLfloat)level;
-
-- (float) forwardShieldRechargeRate;
-- (float) aftShieldRechargeRate;
-
-- (void) setMaxForwardShieldLevel:(float)newValue;
-- (void) setMaxAftShieldLevel:(float)newValue;
-- (void) setForwardShieldRechargeRate:(float)newValue;
-- (void) setAftShieldRechargeRate:(float)newValue;
-
-// return keyconfig.plist settings for scripting
-- (oo::PList) cxx_keyConfig;
-- (BOOL) isMouseControlOn;
-
-- (GLfloat) dialRoll;
-- (GLfloat) dialPitch;
-- (GLfloat) dialYaw;
-- (GLfloat) dialSpeed;
-- (GLfloat) dialHyperSpeed;
-
-- (void) currentWeaponStats;
-
-- (GLfloat) dialForwardShield;
-- (GLfloat) dialAftShield;
-
-- (GLfloat) dialEnergy;
-- (GLfloat) dialMaxEnergy;
-
-- (GLfloat) dialFuel;
-- (GLfloat) dialHyperRange;
-
-- (GLfloat) dialAltitude;
-
-- (unsigned) countMissiles;
-- (OOMissileStatus) dialMissileStatus;
-
-- (OOFuelScoopStatus) dialFuelScoopStatus;
-
-- (float) fuelLeakRate;
-- (void) setFuelLeakRate:(float)value;
-
 #if OO_VARIABLE_TORUS_SPEED
 - (GLfloat) hyperspeedFactor;
 #endif
 - (BOOL) injectorsEngaged;
 - (BOOL) hyperspeedEngaged;
+- (void) performInFlightUpdates:(OOTimeDelta)delta_t;
+- (void) performWitchspaceCountdownUpdates:(OOTimeDelta)delta_t;
+- (void) performWitchspaceExitUpdates:(OOTimeDelta)delta_t;
+- (void) performLaunchingUpdates:(OOTimeDelta)delta_t;
+- (void) performDockingUpdates:(OOTimeDelta)delta_t;
+- (void) performDeadUpdates:(OOTimeDelta)delta_t;
+- (void) gameOverFadeToBW;
+- (BOOL) isValidTarget:(Entity*)target;
+- (void) showGameOver;
+- (void) cxx_showShipModelWithKey:(const std::string &)shipKey shipData:(const oo::PList &)shipData personality:(uint16_t)personality factorX:(GLfloat)factorX factorY:(GLfloat)factorY factorZ:(GLfloat)factorZ inContext:(const std::optional<std::string> &)context;	// null shipData: the registry's
+- (void) updateTargeting;
 
-- (std::vector<oo::PList> *) cxx_customEquipmentActivation;	// the live entries
+@end
 
 
+// Slice 10 of docs/phases/3-slices/PlayerEntity.md: members of cxx::PlayerEntity, forwarded by the
+// category of the same name in PlayerEntity+ObjCBridge.mm (the class's @implementation, empty
+// once slice 28 landed, is in that file too). Declared in the class's interface before the slice.
+@interface PlayerEntity (OOSlice10)
+
+- (void) orientationChanged;
+- (void) applyAttitudeChanges:(double) delta_t;
+- (void) applyRoll:(GLfloat) roll1 andClimb:(GLfloat) climb1;
+- (void) applyYaw:(GLfloat) yaw;
+- (OOMatrix) drawRotationMatrix;	// override to provide the 'correct' drawing matrix
+- (OOMatrix) drawTransformationMatrix;
+- (Quaternion) normalOrientation;
+- (void) setNormalOrientation:(Quaternion) quat;
+- (void) moveForward:(double) amount;
+- (HPVector) breakPatternPosition;
+- (Vector) viewpointOffset;
+- (Vector) viewpointOffsetAft;
+- (Vector) viewpointOffsetForward;
+- (Vector) viewpointOffsetPort;
+- (Vector) viewpointOffsetStarboard;
+- (HPVector) viewpointPosition;
+- (void) drawImmediate:(bool)immediate translucent:(bool)translucent;
+- (void) setMassLockable:(BOOL)newValue;
+- (BOOL) massLockable;
+- (BOOL) massLocked;
+- (BOOL) atHyperspeed;
+- (float) occlusionLevel;
+- (void) setOcclusionLevel:(float)level;
+- (void) setDockedAtMainStation;
+- (StationEntity *) dockedStation;
+- (void) setDockedStation:(StationEntity *)station;
+- (void) setTargetDockStationTo:(StationEntity *) value;
+- (StationEntity *) getTargetDockStation;
+- (HeadUpDisplay *) hud;
+- (void) resetHud;
+- (BOOL) cxx_switchHudTo:(const std::string &)hudFileName;
+- (float) cxx_dialCustomFloat:(const std::string &)dialKey;
+- (std::string) cxx_dialCustomString:(const std::string &)dialKey;
+- (OOColor *) cxx_dialCustomColor:(const std::string &)dialKey;
+- (void) cxx_setDialCustom:(const oo::PList &)value forKey:(const std::string &)dialKey;	// value: any script value, kept as given (live objects as Object nodes)
+- (void) setShowDemoShips:(BOOL) value;
+- (BOOL) showDemoShips;
+- (float) maxForwardShieldLevel;
+- (float) maxAftShieldLevel;
+- (float) forwardShieldRechargeRate;
+- (float) aftShieldRechargeRate;
+- (void) setMaxForwardShieldLevel:(float)newValue;
+- (void) setMaxAftShieldLevel:(float)newValue;
+- (void) setForwardShieldRechargeRate:(float)newValue;
+- (void) setAftShieldRechargeRate:(float)newValue;
+- (GLfloat) forwardShieldLevel;
+- (GLfloat) aftShieldLevel;
+- (void) setForwardShieldLevel:(GLfloat)level;
+- (void) setAftShieldLevel:(GLfloat)level;
+- (oo::PList) cxx_keyConfig;
+- (BOOL) isMouseControlOn;
+- (GLfloat) dialRoll;
+- (GLfloat) dialPitch;
+- (GLfloat) dialYaw;
+- (GLfloat) dialSpeed;
+- (GLfloat) dialHyperSpeed;
+- (GLfloat) dialForwardShield;
+
+@end
+
+
+// Slice 11 of docs/phases/3-slices/PlayerEntity.md: members of cxx::PlayerEntity, forwarded by the
+// category of the same name in PlayerEntity+ObjCBridge.mm (the class's @implementation, empty
+// once slice 28 landed, is in that file too). Declared in the class's interface before the slice.
+@interface PlayerEntity (OOSlice11)
+
+- (GLfloat) dialAftShield;
+- (GLfloat) dialEnergy;
+- (GLfloat) dialMaxEnergy;
+- (GLfloat) dialFuel;
+- (GLfloat) dialHyperRange;
+- (GLfloat) laserHeatLevel;
+- (GLfloat)laserHeatLevelAft;
+- (GLfloat)laserHeatLevelForward;
+- (GLfloat)laserHeatLevelPort;
+- (GLfloat)laserHeatLevelStarboard;
+- (GLfloat) dialAltitude;
 - (double) clockTime;			// Note that this is not an OOTimeAbsolute
 - (double) clockTimeAdjusted;	// Note that this is not an OOTimeAbsolute
 - (BOOL) clockAdjusting;
 - (void) addToAdjustTime:(double) seconds ;
-
 - (double) escapePodRescueTime;
 - (void) setEscapePodRescueTime:(double) seconds;
-
 - (std::string) cxx_dial_clock;
 - (std::string) cxx_dial_clock_adjusted;
 - (std::string) cxx_dial_fpsinfo;
 - (std::string) cxx_dial_objinfo;
-
+- (unsigned) countMissiles;
+- (OOMissileStatus) dialMissileStatus;
+- (BOOL) canScoop:(ShipEntity *)other;
+- (OOFuelScoopStatus) dialFuelScoopStatus;
+- (float) fuelLeakRate;
+- (void) setFuelLeakRate:(float)value;
 - (std::vector<std::string> *) cxx_commLog;	// the live log, trimmed first (ADR-0043 item 22)
-
-- (Entity *) compassTarget;
-- (void) setCompassTarget:(Entity *)value;
-- (void) validateCompassTarget;
-
-- (std::optional<std::string>) cxx_compassTargetLabel;
-
-- (OOCompassMode) compassMode;
-- (void) setCompassMode:(OOCompassMode)value;
-- (void) setPrevCompassMode;
-- (void) setNextCompassMode;
-
-- (NSUInteger) activeMissile;
-- (void) setActiveMissile:(NSUInteger)value;
-- (NSUInteger) dialMaxMissiles;
-- (BOOL) dialIdentEngaged;
-- (void) setDialIdentEngaged:(BOOL)newValue;
-- (std::optional<std::string>) cxx_specialCargo;
-- (std::optional<std::string>) cxx_dialTargetName;
-- (ShipEntity *) missileForPylon:(NSUInteger)value;
-- (void) safeAllMissiles;
-- (void) selectNextMissile;
-- (void) tidyMissilePylons;
-- (BOOL) removeFromPylon:(NSUInteger) pylon;
-- (BOOL) cxx_assignToActivePylon:(const std::string &)identifierKey;
-
-- (void) clearAlertFlags;
-- (int) alertFlags;
-- (void) setAlertFlag:(int)flag to:(BOOL)value;
-- (OOAlertCondition) alertCondition;
-- (OOPlayerFleeingStatus) fleeingStatus;
-
-- (BOOL) mountMissile:(ShipEntity *)missile;
-- (BOOL) cxx_mountMissileWithRole:(const std::string &)role;
-
-- (OOEnergyUnitType) installedEnergyUnitType;
-- (OOEnergyUnitType) energyUnitType;
-
-- (ShipEntity *) launchMine:(ShipEntity *)mine;
-
-- (BOOL) activateCloakingDevice;
-- (void) deactivateCloakingDevice;
-
-- (double) scannerFuzziness;
-
-- (BOOL) weaponsOnline;
-- (void) setWeaponsOnline:(BOOL)newValue;
-
-- (BOOL) fireMainWeapon;
-
-- (OOWeaponType) weaponForFacing:(OOWeaponFacing)facing;
-- (OOWeaponType) currentWeapon;
-- (std::vector<Vector>) cxx_currentLaserOffset;
-
-- (void) rotateCargo;
-
-- (BOOL) hasSufficientFuelForJump;
-
-- (BOOL) witchJumpChecklist:(BOOL)isGalacticJump;
-- (void) enterGalacticWitchspace;
-- (void) setJumpType:(BOOL)isGalacticJump;
-
-- (BOOL) takeInternalDamage;
-
-- (BOOL) cxx_endScenario:(const std::string &)key;
-
 - (std::vector<std::string>) cxx_roleWeights;	// a copy
 - (void) addRoleForAggression:(ShipEntity *)victim;
 - (void) addRoleForMining;
@@ -305,123 +343,345 @@ MA 02110-1301, USA.
 - (void) clearRolesFromPlayer:(float)chance;
 - (NSUInteger) maxPlayerRoles;
 - (void) updateSystemMemory;
+- (Entity *) compassTarget;
+- (void) setCompassTarget:(Entity *)value;
+- (void) validateCompassTarget;
+- (std::optional<std::string>) cxx_compassTargetLabel;
 
+@end
+
+
+// Slice 12 of docs/phases/3-slices/PlayerEntity.md: members of cxx::PlayerEntity, forwarded by the
+// category of the same name in PlayerEntity+ObjCBridge.mm (the class's @implementation, empty
+// once slice 28 landed, is in that file too). Declared in the class's interface before the slice.
+@interface PlayerEntity (OOSlice12)
+
+- (OOCompassMode) compassMode;
+- (void) setCompassMode:(OOCompassMode)value;
+- (void) setPrevCompassMode;
+- (void) setNextCompassMode;
+- (NSUInteger) activeMissile;
+- (void) setActiveMissile:(NSUInteger)value;
+- (NSUInteger) dialMaxMissiles;
+- (BOOL) dialIdentEngaged;
+- (void) setDialIdentEngaged:(BOOL)newValue;
+- (std::optional<std::string>) cxx_specialCargo;
+- (std::optional<std::string>) cxx_dialTargetName;
+- (std::vector<std::optional<std::string>>) cxx_multiFunctionDisplayList;	// nullopt = inactive MFD
+- (std::optional<std::string>) cxx_multiFunctionText:(NSUInteger) index;
+- (void) cxx_setMultiFunctionText:(const std::optional<std::string> &)text forKey:(const std::optional<std::string> &)key;
+- (BOOL) cxx_setMultiFunctionDisplay:(NSUInteger) index toKey:(const std::optional<std::string> &)key;
+- (void) cycleNextMultiFunctionDisplay:(NSUInteger) index;
+- (void) cyclePreviousMultiFunctionDisplay:(NSUInteger) index;
+- (void) selectNextMultiFunctionDisplay;
+- (void) selectPreviousMultiFunctionDisplay;
+- (NSUInteger) activeMFD;
+- (ShipEntity *) missileForPylon:(NSUInteger)value;
+- (void) safeAllMissiles;
+- (void) tidyMissilePylons;
+- (void) selectNextMissile;
+- (void) clearAlertFlags;
+- (int) alertFlags;
+- (void) setAlertFlag:(int)flag to:(BOOL)value;
+- (OOAlertCondition) realAlertCondition;
+
+@end
+
+
+// Slice 13 of docs/phases/3-slices/PlayerEntity.md: members of cxx::PlayerEntity, forwarded by the
+// category of the same name in PlayerEntity+ObjCBridge.mm (the class's @implementation, empty
+// once slice 28 landed, is in that file too). Declared in the class's interface before the slice.
+@interface PlayerEntity (OOSlice13)
+
+- (OOAlertCondition) alertCondition;
+- (OOPlayerFleeingStatus) fleeingStatus;
+- (void) interpretAIMessage:(const std::string &)message;
+- (BOOL) mountMissile:(ShipEntity *)missile;
+- (BOOL) cxx_mountMissileWithRole:(const std::string &)role;
+- (ShipEntity *) fireMissile;
+- (ShipEntity *) launchMine:(ShipEntity *)mine;
+- (BOOL) cxx_assignToActivePylon:(const std::string &)identifierKey;
+- (BOOL) activateCloakingDevice;
+- (void) deactivateCloakingDevice;
+- (double) scannerFuzziness;
+- (void) noticeECM;
+- (BOOL) fireECM;
+- (OOEnergyUnitType) installedEnergyUnitType;
+- (OOEnergyUnitType) energyUnitType;
+- (void) currentWeaponStats;
+- (BOOL) weaponsOnline;
+- (void) setWeaponsOnline:(BOOL)newValue;
+- (std::vector<Vector>) cxx_currentLaserOffset;
+- (BOOL) fireMainWeapon;
+- (OOWeaponType) weaponForFacing:(OOWeaponFacing)facing;
+- (OOWeaponType) currentWeapon;
+
+@end
+
+
+// Slice 14 of docs/phases/3-slices/PlayerEntity.md: members of cxx::PlayerEntity, forwarded by the
+// category of the same name in PlayerEntity+ObjCBridge.mm (the class's @implementation, empty
+// once slice 28 landed, is in that file too). Declared in the class's interface before the slice.
+@interface PlayerEntity (OOSlice14)
+
+- (GLfloat) doesHitLine:(HPVector)v0 :(HPVector)v1 :(ShipEntity **)hitEntity;
+- (void) takeEnergyDamage:(double)amount from:(Entity *)ent becauseOf:(Entity *)other weaponIdentifier:(const std::string &)weaponIdentifier;
+- (void) takeScrapeDamage:(double) amount from:(Entity *) ent;
+- (void) takeHeatDamage:(double) amount;
+- (ProxyPlayerEntity *) createDoppelganger;
+- (ShipEntity *) launchEscapeCapsule;
+- (void) dumpCargo;
+- (void) rotateCargo;
+- (void) setBounty:(OOCreditsQuantity) amount;
+- (void) setBounty:(OOCreditsQuantity)amount withReason:(OOLegalStatusReason)reason;
+- (void) setBounty:(OOCreditsQuantity)amount withReasonAsString:(const std::string &)reason;
+
+@end
+
+
+// Slice 15 of docs/phases/3-slices/PlayerEntity.md: members of cxx::PlayerEntity, forwarded by the
+// category of the same name in PlayerEntity+ObjCBridge.mm (the class's @implementation, empty
+// once slice 28 landed, is in that file too). Declared in the class's interface before the slice.
+@interface PlayerEntity (OOSlice15)
+
+- (OOCreditsQuantity) bounty;
+- (int) legalStatus;
+- (void) markAsOffender:(int)offence_value;
+- (void) markAsOffender:(int)offence_value withReason:(OOLegalStatusReason)reason;
+- (void) collectBountyFor:(ShipEntity *)other;
+- (BOOL) takeInternalDamage;
+- (void) getDestroyedBy:(Entity *)whom damageType:(OOShipDamageType)type;
 - (void) loseTargetStatus;
-
+- (BOOL) cxx_endScenario:(const std::string &)key;
+- (void) enterDock:(StationEntity *)station;
 - (void) docked;
+- (void) leaveDock:(StationEntity *)station;
 
+@end
+
+
+// Slice 16 of docs/phases/3-slices/PlayerEntity.md: members of cxx::PlayerEntity, forwarded by the
+// category of the same name in PlayerEntity+ObjCBridge.mm (the class's @implementation, empty
+// once slice 28 landed, is in that file too). Declared in the class's interface before the slice.
+@interface PlayerEntity (OOSlice16)
+
+- (void) witchStart;
+- (void) witchEnd;
+- (BOOL) witchJumpChecklist:(BOOL)isGalacticJump;
+- (void) setJumpType:(BOOL)isGalacticJump;
+- (double) hyperspaceJumpDistance;
+- (OOFuelQuantity) fuelRequiredForJump;
+- (BOOL) hasSufficientFuelForJump;
+- (void) noteCompassLostTarget;
+- (void) enterGalacticWitchspace;
+- (void) enterWormhole:(WormholeEntity *) w_hole;
+- (void) enterWitchspace;
+- (void) witchJumpTo:(OOSystemID)sTo misjump:(BOOL)misjump;
+
+@end
+
+
+// Slice 17 of docs/phases/3-slices/PlayerEntity.md: members of cxx::PlayerEntity, forwarded by the
+// category of the same name in PlayerEntity+ObjCBridge.mm (the class's @implementation, empty
+// once slice 28 landed, is in that file too). Declared in the class's interface before the slice.
+@interface PlayerEntity (OOSlice17)
+
+- (void) leaveWitchspace;
 - (void) setGuiToStatusScreen;
 - (std::vector<oo::PList>) cxx_equipmentList;	// Each entry is an Array: a string, a bool for availability (false = damaged), then a colour Object (absent for the default colour).
-- (BOOL) cxx_setPrimedEquipment:(const std::string &)eqKey showMessage:(BOOL)showMsg;
+- (NSUInteger) primedEquipmentCount;
 - (std::optional<std::string>) cxx_primedEquipmentName:(NSInteger)offset;
 - (std::string) cxx_currentPrimedEquipment;	// "": primed-none
-- (NSUInteger) primedEquipmentCount;
+- (BOOL) cxx_setPrimedEquipment:(const std::string &)eqKey showMessage:(BOOL)showMsg;
 - (void) activatePrimableEquipment:(NSUInteger)index withMode:(OOPrimedEquipmentMode)mode;
 - (std::optional<std::string>) cxx_fastEquipmentA;
 - (std::optional<std::string>) cxx_fastEquipmentB;
 - (void) cxx_setFastEquipmentA:(const std::optional<std::string> &)eqKey;
 - (void) cxx_setFastEquipmentB:(const std::optional<std::string> &)eqKey;
+- (OOEquipmentType *) weaponTypeForFacing:(OOWeaponFacing)facing strict:(BOOL)strict;
 
-- (OOCreditsQuantity) cxx_adjustPriceByScriptForEqKey:(const std::string &)eqKey withCurrent:(OOCreditsQuantity)price;
+@end
 
+
+// Slice 18 of docs/phases/3-slices/PlayerEntity.md: members of cxx::PlayerEntity, forwarded by the
+// category of the same name in PlayerEntity+ObjCBridge.mm (the class's @implementation, empty
+// once slice 28 landed, is in that file too). Declared in the class's interface before the slice.
+@interface PlayerEntity (OOSlice18)
+
+- (std::vector<oo::ObjCRef<OOEquipmentType *>>) missilesList;
 - (std::vector<std::string>) cxx_cargoList;
+- (oo::PList) cargoListForScripting;
 - (unsigned) legalStatusOfCargoList;
-
+- (oo::PList::Array) contractsListForScriptingFromArray:(const oo::PList::Array &)contractsArray forCargo:(BOOL)forCargo;
+- (oo::PList) passengerListForScripting;
+- (oo::PList) parcelListForScripting;
+- (oo::PList) contractListForScripting;
 - (void) setGuiToSystemDataScreen;
 - (void) setGuiToSystemDataScreenRefreshBackground: (BOOL) refreshBackground;
 - (std::optional<std::map<int, std::vector<oo::PList>>>) cxx_markedDestinations;	// marker Dicts by system ID, each list in the order the markers were added
 - (void) setGuiToLongRangeChartScreen;
 - (void) setGuiToShortRangeChartScreen;
 - (void) setGuiToChartScreenFrom: (OOGUIScreenID) oldScreen;
-- (void) setGuiToLoadSaveScreen;
+
+@end
+
+
+// Slice 19 of docs/phases/3-slices/PlayerEntity.md: members of cxx::PlayerEntity, forwarded by the
+// category of the same name in PlayerEntity+ObjCBridge.mm (the class's @implementation, empty
+// once slice 28 landed, is in that file too). Declared in the class's interface before the slice.
+@interface PlayerEntity (OOSlice19)
+
 - (void) setGuiToGameOptionsScreen;
+- (void) setGuiToLoadSaveScreen;
+- (void) highlightEquipShipScreenKey:(const std::string &)key;
 - (OOWeaponFacingSet) availableFacings;
+
+@end
+
+
+// Slice 20 of docs/phases/3-slices/PlayerEntity.md: members of cxx::PlayerEntity, forwarded by the
+// category of the same name in PlayerEntity+ObjCBridge.mm (the class's @implementation, empty
+// once slice 28 landed, is in that file too). Declared in the class's interface before the slice.
+@interface PlayerEntity (OOSlice20)
+
 - (void) cxx_setGuiToEquipShipScreen:(int)skip selectingFacingFor:(const std::optional<std::string> &)eqKeyForSelectFacing;	// nullopt: the normal list
 - (void) setGuiToEquipShipScreen:(int)skip;
+- (void) showInformationForSelectedUpgrade;
+- (void) cxx_showInformationForSelectedUpgradeWithFormatString:(const std::optional<std::string> &)extraString;	// a runtime format with one %@
+
+@end
+
+
+// Slice 21 of docs/phases/3-slices/PlayerEntity.md: members of cxx::PlayerEntity, forwarded by the
+// category of the same name in PlayerEntity+ObjCBridge.mm (the class's @implementation, empty
+// once slice 28 landed, is in that file too). Declared in the class's interface before the slice.
+@interface PlayerEntity (OOSlice21)
 
 - (void) setGuiToInterfacesScreen:(int)skip;
 - (void) showInformationForSelectedInterface;
 - (void) activateSelectedInterface;
-
-- (void) highlightEquipShipScreenKey:(const std::string &)key;
-- (void) showInformationForSelectedUpgrade;
-- (void) cxx_showInformationForSelectedUpgradeWithFormatString:(const std::optional<std::string> &)extraString;	// a runtime format with one %@
-- (BOOL) setWeaponMount:(OOWeaponFacing)chosen_weapon_facing toWeapon:(const std::string &)eqKey;	// flipped with its family (bead oo-3rb.258)
-- (BOOL) cxx_setWeaponMount:(OOWeaponFacing)facing toWeapon:(const std::string &)eqKey inContext:(const std::optional<std::string> &) context;
-
-- (BOOL) changePassengerBerths:(int) addRemove;
-- (OOCargoQuantity) cxx_cargoQuantityForType:(const std::string &)type;
-- (OOCargoQuantity) cxx_setCargoQuantityForType:(const std::string &)type amount:(OOCargoQuantity)amount;
-- (void) calculateCurrentCargo;
-- (void) setGuiToMarketScreen;
-- (void) setGuiToMarketInfoScreen;
-- (std::vector<std::string>) cxx_applyMarketFilter:(const std::vector<std::string> &)goods onMarket:(OOCommodityMarket *)market;
-- (std::vector<std::string>) cxx_applyMarketSorter:(const std::vector<std::string> &)goods onMarket:(OOCommodityMarket *)market;
-- (OOCommodityMarket *) localMarket;
-
-
 - (void) setupStartScreenGui;
 - (void) setGuiToIntroFirstGo:(BOOL)justCobra;
 - (void) setGuiToOXZManager;
-
 - (void) noteGUIWillChangeTo:(OOGUIScreenID)toScreen;
-- (void) noteGUIDidChangeFrom:(OOGUIScreenID)fromScreen to:(OOGUIScreenID)toScreen refresh: (BOOL) refresh;
 - (void) noteGUIDidChangeFrom:(OOGUIScreenID)fromScreen to:(OOGUIScreenID)toScreen;
+- (void) noteGUIDidChangeFrom:(OOGUIScreenID)fromScreen to:(OOGUIScreenID)toScreen refresh: (BOOL) refresh;
 - (void) noteViewDidChangeFrom:(OOViewID)fromView toView:(OOViewID)toView;
 
-- (OOGUIScreenID) guiScreen;
+@end
+
+
+// Slice 22 of docs/phases/3-slices/PlayerEntity.md: members of cxx::PlayerEntity, forwarded by the
+// category of the same name in PlayerEntity+ObjCBridge.mm (the class's @implementation, empty
+// once slice 28 landed, is in that file too). Declared in the class's interface before the slice.
+@interface PlayerEntity (OOSlice22)
 
 - (void) buySelectedItem;
+- (OOCreditsQuantity) cxx_adjustPriceByScriptForEqKey:(const std::string &)eqKey withCurrent:(OOCreditsQuantity)price;
+- (BOOL) tryBuyingItem:(const std::string &)eqKey;
+- (BOOL) setWeaponMount:(OOWeaponFacing)chosen_weapon_facing toWeapon:(const std::string &)eqKey;	// flipped with its family (bead oo-3rb.258)
+- (BOOL) cxx_setWeaponMount:(OOWeaponFacing)facing toWeapon:(const std::string &)eqKey inContext:(const std::optional<std::string> &) context;
+- (BOOL) changePassengerBerths:(int) addRemove;
+- (OOCreditsQuantity) removeMissiles;
+- (void) doTradeIn:(OOCreditsQuantity)tradeInValue forPriceFactor:(double)priceFactor;
 
+@end
+
+
+// Slice 23 of docs/phases/3-slices/PlayerEntity.md: members of cxx::PlayerEntity, forwarded by the
+// category of the same name in PlayerEntity+ObjCBridge.mm (the class's @implementation, empty
+// once slice 28 landed, is in that file too). Declared in the class's interface before the slice.
+@interface PlayerEntity (OOSlice23)
+
+- (OOCargoQuantity) cxx_cargoQuantityForType:(const std::string &)type;
+- (OOCargoQuantity) cxx_setCargoQuantityForType:(const std::string &)type amount:(OOCargoQuantity)amount;
+- (void) calculateCurrentCargo;
+- (OOCargoQuantity) cargoQuantityOnBoard;
+- (OOCommodityMarket *) localMarket;
+- (std::vector<std::string>) cxx_applyMarketFilter:(const std::vector<std::string> &)goods onMarket:(OOCommodityMarket *)market;
+- (std::vector<std::string>) cxx_applyMarketSorter:(const std::vector<std::string> &)goods onMarket:(OOCommodityMarket *)market;
+- (void) showMarketScreenHeaders;
+- (void) showMarketScreenDataLine:(OOGUIRow)row forGood:(const std::string &)good inMarket:(OOCommodityMarket *)localMarket holdQuantity:(OOCargoQuantity)quantity;
+- (std::optional<std::string>) marketScreenTitle;
+
+@end
+
+
+// Slice 24 of docs/phases/3-slices/PlayerEntity.md: members of cxx::PlayerEntity, forwarded by the
+// category of the same name in PlayerEntity+ObjCBridge.mm (the class's @implementation, empty
+// once slice 28 landed, is in that file too). Declared in the class's interface before the slice.
+@interface PlayerEntity (OOSlice24)
+
+- (void) setGuiToMarketScreen;
+- (void) setGuiToMarketInfoScreen;
+- (void) showMarketCashAndLoadLine;
+- (OOGUIScreenID) guiScreen;
 - (BOOL) cxx_tryBuyingCommodity:(const std::string &)type all:(BOOL)all;	// "<<<" / ">>>" page the market
 - (BOOL) cxx_trySellingCommodity:(const std::string &)type all:(BOOL)all;
-
+- (BOOL) isMining;
 - (OOSpeechSettings) isSpeechOn;
+- (BOOL) canAddEquipment:(const std::string &)equipmentKey inContext:(const std::string &)context;
+- (BOOL) addEquipmentItem:(const std::string &)equipmentKey inContext:(const std::string &)context;
 
+@end
+
+
+// Slice 25 of docs/phases/3-slices/PlayerEntity.md: members of cxx::PlayerEntity, forwarded by the
+// category of the same name in PlayerEntity+ObjCBridge.mm (the class's @implementation, empty
+// once slice 28 landed, is in that file too). Declared in the class's interface before the slice.
+@interface PlayerEntity (OOSlice25)
+
+- (BOOL) addEquipmentItem:(const std::string &)equipmentKey withValidation:(BOOL)validateAddition inContext:(const std::string &)context;
+- (std::vector<oo::PList> *) cxx_customEquipmentActivation;	// the live entries
+- (void) addEquipmentWithScriptToCustomKeyArray:(const std::string &)equipmentKey;
+- (void) validateCustomEquipActivationArray;
+- (void) removeEquipmentItem:(const std::string &)equipmentKey;
 - (void) addEquipmentFromCollection:(const oo::PList &)equipment;	// equipment may be an array, a dictionary whose values are all YES, or a string.
- 
+- (BOOL) hasOneEquipmentItem:(const std::string &)itemKey includeMissiles:(BOOL)includeMissiles;
+- (BOOL) hasPrimaryWeapon:(OOWeaponType)weaponType;
+- (BOOL) removeExternalStore:(OOEquipmentType *)eqType;
+- (BOOL) removeFromPylon:(NSUInteger) pylon;
+- (NSUInteger) parcelCount;
+- (NSUInteger) passengerCount;
+- (NSUInteger) passengerCapacity;
+- (BOOL) hasHostileTarget;
+- (void) receiveCommsMessage:(const std::string &) message_text from:(ShipEntity *) other;
 - (void) getFined;
 - (void) adjustTradeInFactorBy:(int)value;
 - (int) tradeInFactor;
 - (double) renovationCosts;
 - (double) renovationFactor;
-
-
 - (void) setDefaultViewOffsets;
 - (void) setDefaultCustomViews;
 - (Vector) weaponViewOffset;
-
 - (void) setUpTrumbles;
 - (void) addTrumble:(OOTrumble *)papaTrumble;
 - (void) removeTrumble:(OOTrumble *)deadTrumble;
 - (OOTrumble **) trumbleArray;
 - (NSUInteger) trumbleCount;
-// loading and saving trumbleCount
+
+@end
+
+
+// Slice 26 of docs/phases/3-slices/PlayerEntity.md: members of cxx::PlayerEntity, forwarded by the
+// category of the same name in PlayerEntity+ObjCBridge.mm (the class's @implementation, empty
+// once slice 28 landed, is in that file too). Declared in the class's interface before the slice.
+@interface PlayerEntity (OOSlice26)
+
 - (oo::PList) trumbleValue;	// [count, hash, trumble records]
 - (void) setTrumbleValueFrom:(const oo::PList &)trumbleValue;	// null: none saved
-
 - (float) trumbleAppetiteAccumulator;
 - (void) setTrumbleAppetiteAccumulator:(float)value;
-
 - (void) mungChecksumWithString:(const std::optional<std::string> &)str;	// its UTF-16 units; nullopt does nothing
-
 - (std::optional<std::string>) cxx_screenModeStringForWidth:(unsigned)inWidth height:(unsigned)inHeight refreshRate:(float)inRate;
-
 - (void) suppressTargetLost;
-
 - (void) setScoopsActive;
-
+- (void) setFoundTarget:(Entity *) targetEntity;
+- (void) addTarget:(Entity *) targetEntity;
 - (void) clearTargetMemory;
 - (std::vector<oo::ObjCRef<OOWeakReference *>>) cxx_targetMemory;	// a copy; a null ref is an empty slot
 - (BOOL) moveTargetMemoryBy:(NSInteger)delta;
-
 - (void) printIdentLockedOnForMissile:(BOOL)missile;
-
-- (void) applyYaw:(GLfloat) yaw;
-
-/* GILES custom viewpoints */
-
-// custom view points
 - (Quaternion)customViewQuaternion;
 - (void)setCustomViewQuaternion:(Quaternion)q1;
 - (OOMatrix)customViewMatrix;
@@ -429,16 +689,25 @@ MA 02110-1301, USA.
 - (void)setCustomViewOffset:(Vector)offset;
 - (Vector)customViewRotationCenter;
 - (void)setCustomViewRotationCenter:(Vector)center;
-- (void)customViewZoomOut:(OOScalar) rate;
 - (void)customViewZoomIn: (OOScalar) rate;
+- (void)customViewZoomOut:(OOScalar) rate;
 - (void)customViewRotateLeft:(OOScalar) angle;
 - (void)customViewRotateRight:(OOScalar) angle;
 - (void)customViewRotateUp:(OOScalar) angle;
 - (void)customViewRotateDown:(OOScalar) angle;
-- (void)customViewRollLeft:(OOScalar) angle;
 - (void)customViewRollRight:(OOScalar) angle;
+- (void)customViewRollLeft:(OOScalar) angle;
 - (void)customViewPanUp:(OOScalar) angle;
 - (void)customViewPanDown:(OOScalar) angle;
+
+@end
+
+
+// Slice 27 of docs/phases/3-slices/PlayerEntity.md: members of cxx::PlayerEntity, forwarded by the
+// category of the same name in PlayerEntity+ObjCBridge.mm (the class's @implementation, empty
+// once slice 28 landed, is in that file too). Declared in the class's interface before the slice.
+@interface PlayerEntity (OOSlice27)
+
 - (void)customViewPanLeft:(OOScalar) angle;
 - (void)customViewPanRight:(OOScalar) angle;
 - (Vector)customViewForwardVector;
@@ -448,19 +717,10 @@ MA 02110-1301, USA.
 - (void)resetCustomView;
 - (void)setCustomViewData;
 - (void)cxx_setCustomViewDataFromDictionary:(const oo::PList &) viewDict withScaling:(BOOL)withScaling;	// a null viewDict (was nil) resets the matrix and offset only
-- (HPVector) viewpointPosition;
-- (HPVector) breakPatternPosition;
-- (Vector) viewpointOffset;
-- (Vector) viewpointOffsetAft;
-- (Vector) viewpointOffsetForward;
-- (Vector) viewpointOffsetPort;
-- (Vector) viewpointOffsetStarboard;
-
-
+- (BOOL)showInfoFlag;
 - (oo::PList) cxx_missionOverlayDescriptor;
 - (oo::PList) cxx_missionOverlayDescriptorOrDefault;
 - (void) cxx_setMissionOverlayDescriptor:(const oo::PList &)descriptor;
-
 - (oo::PList) cxx_missionBackgroundDescriptor;
 - (oo::PList) cxx_missionBackgroundDescriptorOrDefault;
 - (void) cxx_setMissionBackgroundDescriptor:(const oo::PList &)descriptor;
@@ -468,72 +728,64 @@ MA 02110-1301, USA.
 - (void) cxx_setMissionBackgroundSpecial:(const std::string &)special;	// "" (was nil) = none
 - (void) setMissionExitScreen:(OOGUIScreenID)screen;
 - (OOGUIScreenID) missionExitScreen;
-- (void) clearExtraMissionKeys;
-- (void) cxx_setExtraMissionKeys:(const oo::PList &)keys;	// a Dict of key name -> key definitions
-
-- (void) cxx_clearExtraGuiScreenKeys:(OOGUIScreenID)gui key:(const std::string &)key;
-- (BOOL) setExtraGuiScreenKeys:(OOGUIScreenID)gui definition:(OOJSGuiScreenKeyDefinition *)definition;
-
-
-// Nasty hack to keep background textures around while on equip screens.
 - (oo::PList) cxx_equipScreenBackgroundDescriptor;
 - (void) cxx_setEquipScreenBackgroundDescriptor:(const oo::PList &)descriptor;
-
 - (BOOL) scriptsLoaded;
 - (std::vector<std::string>) cxx_worldScriptNames;	// in load order
 - (std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>>) cxx_worldScriptsByName;	// in load order
-
 - (OOScript *) cxx_commodityScriptNamed:(const std::optional<std::string> &)script;	// nullopt: nil
-
-// *** World script events.
-// In general, script events should be sent through doScriptEvent:..., which
-// will forward to the world scripts.
+- (void) doScriptEvent:(ooscript::PropertyId)message inContext:(ooscript::Context)context withArguments:(ooscript::Value *)argv count:(unsigned)argc;
 - (BOOL) doWorldEventUntilMissionScreen:(ooscript::PropertyId)message;
 - (void) doWorldScriptEvent:(ooscript::PropertyId)message inContext:(ooscript::Context)context withArguments:(ooscript::Value *)argv count:(unsigned)argc timeLimit:(OOTimeDelta)limit;
-
-- (BOOL)showInfoFlag;
-
 - (void) setGalacticHyperspaceBehaviour:(OOGalacticHyperspaceBehaviour) galacticHyperspaceBehaviour;
 - (OOGalacticHyperspaceBehaviour) galacticHyperspaceBehaviour;
 - (void) setGalacticHyperspaceFixedCoords:(NSPoint)point;
 - (void) setGalacticHyperspaceFixedCoordsX:(unsigned char)x y:(unsigned char)y;
 - (NSPoint) galacticHyperspaceFixedCoords;
 - (void) setWitchspaceCountdown:(int)spin_time;
-
 - (OOLongRangeChartMode) longRangeChartMode;
 - (void) setLongRangeChartMode:(OOLongRangeChartMode) mode;
-
 - (BOOL) scoopOverride;
 - (void) setScoopOverride:(BOOL)newValue;
+- (GLfloat) fuelChargeRate;	// the ship's rate unless MASS_DEPENDENT_FUEL_PRICES (Universe.h)
 - (void) setDockTarget:(ShipEntity *)entity;
+- (std::optional<std::string>) cxx_jumpCause;
+- (void) cxx_setJumpCause:(const std::optional<std::string> &)value;	// never nullopt
+- (std::optional<std::string>) cxx_commanderName;
+- (std::optional<std::string>) cxx_lastsaveName;
+- (void) cxx_setCommanderName:(const std::optional<std::string> &)value;	// never nullopt
+- (void) cxx_setLastsaveName:(const std::optional<std::string> &)value;	// never nullopt
 
+@end
+
+
+// Slice 28 of docs/phases/3-slices/PlayerEntity.md: members of cxx::PlayerEntity, forwarded by the
+// category of the same name in PlayerEntity+ObjCBridge.mm (the class's @implementation, empty
+// once slice 28 landed, is in that file too). Declared in the class's interface before the slice.
+@interface PlayerEntity (OOSlice28)
+
+- (BOOL) isDocked;
 - (BOOL) clearedToDock;
 - (void) setDockingClearanceStatus:(OODockingClearanceStatus) newValue;
 - (OODockingClearanceStatus) getDockingClearanceStatus;
 - (void) penaltyForUnauthorizedDocking;
-
-- (std::vector<oo::ObjCRef<WormholeEntity *>>) cxx_scannedWormholes;
-
-- (WormholeEntity *) wormhole;
-- (void) setWormhole:(WormholeEntity *)newWormhole;
 - (void) addScannedWormhole:(WormholeEntity*)wormhole;
-
+- (void) updateWormholes;
+- (std::vector<oo::ObjCRef<WormholeEntity *>>) cxx_scannedWormholes;
 - (void) initialiseMissionDestinations:(const oo::PList &)destinations andLegacy:(const oo::PList &)legacy;	// used only if a Dict / an Array
 - (std::optional<std::string>)markerKey:(const oo::PList &)marker;
 - (void) cxx_addMissionDestinationMarker:(const oo::PList &)marker;
 - (BOOL) cxx_removeMissionDestinationMarker:(const oo::PList &)marker;
 - (oo::PList) cxx_getMissionDestinations;	// a snapshot Dict
-
 - (oo::PList::Dict *) cxx_shipyardRecord;
-
 - (void) cxx_setLastShot:(const std::vector<oo::ObjCRef<OOLaserShotEntity *>> &)shot;
-
-- (void) cxx_showShipModelWithKey:(const std::string &)shipKey shipData:(const oo::PList &)shipData personality:(uint16_t)personality factorX:(GLfloat)factorX factorY:(GLfloat)factorY factorZ:(GLfloat)factorZ inContext:(const std::optional<std::string> &)context;	// null shipData: the registry's
-
-/* Fractional expression of amount of entry inside a planet's atmosphere. 0.0f is out of atmosphere,
-   1.0f is fully in and is normally associated with the point of ship destruct due to altitude.
-*/
-- (GLfloat) insideAtmosphereFraction;
+- (void) clearExtraMissionKeys;
+- (void) cxx_setExtraMissionKeys:(const oo::PList &)keys;	// a Dict of key name -> key definitions
+- (void) cxx_clearExtraGuiScreenKeys:(OOGUIScreenID)gui key:(const std::string &)key;
+- (BOOL) setExtraGuiScreenKeys:(OOGUIScreenID)gui definition:(OOJSGuiScreenKeyDefinition *)definition;
+#ifndef NDEBUG
+- (void)dumpSelfState;
+#endif
 
 @end
 

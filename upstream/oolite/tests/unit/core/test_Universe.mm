@@ -33,6 +33,7 @@ uint32_t gDebugFlags = 0;
 #endif
 
 extern Universe *gSharedUniverse;
+extern PlayerEntity *gOOPlayer;
 
 
 namespace {
@@ -533,8 +534,6 @@ OO_TEST(slice13EntityLookUp)
 @end
 
 
-@class PlayerEntity;
-extern PlayerEntity *gOOPlayer;
 
 namespace {
 
