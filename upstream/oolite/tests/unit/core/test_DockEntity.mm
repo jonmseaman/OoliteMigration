@@ -240,6 +240,87 @@ OO_TEST(dockReleasedBeforeInit)
 }
 
 
+// --- Slice 2: docking guidance (bead oo-9ht.178) ---------------------------------------------------
+// These cases reach only the approach queue and the dock's flags: no player, no ship in the
+// universe, no clock.
+
+namespace {
+
+// A ship with the universal ID the approach queue keys it by.
+ShipEntity *MakeQueuedShip(OOUniversalID shipID)
+{
+	ShipEntity *ship = [[[ShipEntity alloc] cxx_initWithKey:"queued" definition:Definition()] autorelease];
+	ship->_cxxEntity->universalID = shipID;
+	return ship;
+}
+
+}	// namespace
+
+
+// A dock that is closed rejects a ship outright, before it asks the ship or its script anything
+// (the later tests of an open dock call the script engine, which this test does not start).
+OO_TEST(canAcceptShipForDocking)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		DockEntity *dock = MakeDock("accept");
+		ShipEntity *ship = MakeQueuedShip(11);
+		[dock setAllowsDocking:NO];
+		OO_CHECK([dock canAcceptShipForDocking:ship] == std::optional<std::string>("DOCK_CLOSED"));
+		OO_CHECK(oo::ToCxx(dock)->canAcceptShipForDocking(ship) == std::optional<std::string>("DOCK_CLOSED"));
+	}
+}
+
+
+// The approach queue: a ship is in it by its ID, and aborting its docking takes it out again.
+OO_TEST(approachQueue)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		DockEntity *dock = MakeDock("queue");
+		ShipEntity *ship = MakeQueuedShip(12);
+		OO_CHECK(![dock shipIsInDockingQueue:nil] && ![dock shipIsInDockingQueue:ship]);
+		dock->_cxxDock->shipsOnApproach[12] = std::vector<oo::PList>();
+		OO_CHECK([dock shipIsInDockingQueue:ship]);
+		OO_CHECK([dock countOfShipsInDockingQueue] == 1);
+		[dock abortDockingForShip:ship];
+		OO_CHECK(![dock shipIsInDockingQueue:ship]);
+		OO_CHECK([dock countOfShipsInDockingQueue] == 0);
+	}
+}
+
+
+// Docking instructions for no ship are none.
+OO_TEST(dockingInstructionsForNoShip)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		DockEntity *dock = MakeDock("instructions");
+		OO_CHECK([dock dockingInstructionsForShip:nil].isNull());
+	}
+}
+
+
+// Nothing in the queue: nothing to pull in, and the queue stays empty. The C++ part does the same.
+OO_TEST(autoDockEmptyQueue)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		DockEntity *dock = MakeDock("autodock");
+		[dock autoDockShipsOnApproach];
+		OO_CHECK([dock countOfShipsInDockingQueue] == 0);
+		cxx::DockEntity *part = oo::ToCxx(dock);
+		part->shipsOnApproach[13] = std::vector<oo::PList>();
+		part->autoDockShipsOnApproach();	// no ship has ID 13 in the (never initialised) universe's lookup: dropped
+		OO_CHECK(part->countOfShipsInDockingQueue() == 0);
+	}
+}
+
+
 // --- The crossing (after the conversion) ---------------------------------------------------------
 
 // A dock's C++ part is a cxx::DockEntity, the facade's typed alias is that part, and from C++ the

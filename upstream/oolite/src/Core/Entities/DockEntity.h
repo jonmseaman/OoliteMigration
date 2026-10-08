@@ -66,6 +66,19 @@ public:
 	void clearIdLocks(::ShipEntity *ship);
 	void clearAllIdLocks();
 
+	// Slice 2: docking guidance, the approach queue and docking instructions.
+	oo::PList dockingInstructionsForShip(::ShipEntity *ship);	// a dictionary (the station an Object node); null: none (bead oo-3rb.262)
+	std::optional<std::string> canAcceptShipForDocking(::ShipEntity *ship);
+	bool shipIsInDockingQueue(::ShipEntity *ship);
+	void abortDockingForShip(::ShipEntity *ship);
+	void abortAllDockings();
+	void autoDockShipsOnApproach();
+	NSUInteger pruneAndCountShipsOnApproach();
+	void noteDockingForShip(::ShipEntity *ship);
+	void autoDockShipsInQueue(std::map<unsigned short, std::vector<oo::PList>> &queue);
+	void addShipToShipsOnApproach(::ShipEntity *ship);
+	void pullInShipIfPermitted(::ShipEntity *ship);
+
 	// From the superclass.
 	bool isDock() override;
 	bool setUpShipFromDictionary(const oo::PList &dict) override;
