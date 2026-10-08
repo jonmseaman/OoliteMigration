@@ -1539,7 +1539,7 @@ void cxx::MyOpenGLView::dumpGrayAlphaToFileNamed(const std::string &name, uint8_
 	std::string dumpFile = oo::str::appendingPathComponent(oo::str::appendingPathComponent(oo::fs::utf8String(oo::ResourcePaths::current().homeDirectory()), SAVEDIR), SNAPSHOTDIR);
 	dumpFile = oo::str::appendingPathComponent(dumpFile, name + ".png");
 
-	SDL_Surface* tmpSurface = SDL_CreateSurfaceFrom(width, height, SDL_PIXELFORMAT_RGBA32, bytes, rowBytes);
+	SDL_Surface* tmpSurface = SDL_CreateSurface(width, height, SDL_PIXELFORMAT_RGBA32);	// its own pixels, as -dumpGray: never the caller's 2-byte-a-pixel buffer (bead oo-5thb0)
 	for(int y = 0; y < height; y++)
 	{
 		uint8_t* srcRow = bytes + rowBytes*y;

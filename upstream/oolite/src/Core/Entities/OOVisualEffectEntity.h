@@ -36,7 +36,8 @@
 #include "oofnd/PList.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 
-@class	OOColor, OOMesh, OOScript, OOJSScript, OOFlasherEntity;
+@class	OOColor, OOMesh, OOScript, OOJSScript;
+class OOFlasherEntity;	// C++ only since bead oo-9ht.107
 
 
 /*	Foundation sweep (proposed ADR-0043, bead oo-ensq). The effect definition and script_info are
@@ -93,7 +94,7 @@ public:
 
 	std::vector<oo::ObjCRef<::Entity *>> subEntityEnumerator();	// snapshot, same as subEntities()
 	std::vector<oo::ObjCRef<::OOVisualEffectEntity *>> effectSubEntityEnumerator();
-	std::vector<oo::ObjCRef<::OOFlasherEntity *>> flasherEnumerator();	// flasher subentities, a snapshot
+	std::vector<oo::ObjCRef<::Entity *>> flasherEnumerator();	// flasher subentities' objects (the nearest façade left), a snapshot
 
 	void orientationChanged() override;
 	Vector forwardVector();

@@ -5,9 +5,10 @@ OOJSTimer.h
 JavaScript timer class.
 
 C++20 since bead oo-kdyh (proposed ADR-0056; amendment oo-ppc for the binding), converted with
-its superclass OOScriptTimer. cxx::OOJSTimer has no caller outside OOJSTimer.mm, but the engine
-messages the object in a Timer's private slot by selector (-oo_jsValueInContext:,
--cxx_oo_jsClassName) and the timer queue holds it, so it keeps an Objective-C facade,
+its superclass OOScriptTimer. cxx::OOJSTimer has no caller outside OOJSTimer.mm, and since bead
+oo-6symp a Timer's private slot holds it (OOJSPrivateObject.h), but Objective-C code still sends
+its facade the JS glue selectors (-oo_jsValueInContext:, -cxx_oo_jsClassName) and the timer queue
+holds the facade, so it keeps an Objective-C facade,
 OOJSTimer+ObjCBridge.h, imported at the end of this header: the facade of the root's peer table,
 of this class, with no ivars (ADR-0056 amendment oo-up4b item 3).
 
@@ -38,13 +39,15 @@ MA 02110-1301, USA.
 #import "OOScriptTimer.h"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/objc/OOObjCRef.h"
+#include "OOJSPrivateObject.h"
 
 @class OOJSScript;
 
 
 namespace cxx {
 
-class OOJSTimer : public OOScriptTimer
+// A Timer JS object's private slot holds the timer (proposed ADR-0056 amendment oo-6symp).
+class OOJSTimer : public OOScriptTimer, public ::OOJSPrivateObject
 {
 public:
 	// [[OOJSTimer alloc] initWithDelay:interval:context:function:this:], for the Timer
@@ -58,7 +61,11 @@ public:
 
 	void timerFired() override;
 
-	ooscript::Value oo_jsValueInContext(ooscript::Context context);
+	// The JS glue (OOJSPrivateObject): the Timer object, made by the initialiser; forgetting it
+	// when it is finalized, with a warning if the timer still runs; "[Timer <components>]".
+	ooscript::Value jsValueInContext(ooscript::Context context) override;
+	void clearJSSelf(ooscript::Object selfVal) override;
+	std::optional<std::string> jsDescription() override;
 
 private:
 	OOJSTimer() = default;
