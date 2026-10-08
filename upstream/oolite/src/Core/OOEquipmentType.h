@@ -52,11 +52,12 @@ SOFTWARE.
 #include <vector>
 
 #include "oofnd/PList.hpp"
+#include "Scripting/OOJSPrivateObject.h"
 
 
 namespace cxx {
 
-class OOEquipmentType : public oo::RefCounted
+class OOEquipmentType : public oo::RefCounted, public ::OOJSPrivateObject
 {
 public:
 	static void loadEquipment();			// Load equipment data; called on loading and when changing to/from strict mode.
@@ -149,6 +150,12 @@ public:
 	// What "%@" prints between the braces of <OOEquipmentType 0x...>{...} (OODescription.h).
 	std::optional<std::string> descriptionComponents() const;
 
+	// The JS glue (OOJSPrivateObject), defined in OOJSEquipmentInfo.mm: the EquipmentInfo object,
+	// made on first use; forgetting it when it is finalized; "[EquipmentInfo <components>]".
+	ooscript::Value jsValueInContext(ooscript::Context context) override;
+	void clearJSSelf(ooscript::Object selfVal) override;
+	std::optional<std::string> jsDescription() override;
+
 private:
 	OOEquipmentType() = default;
 
@@ -196,6 +203,7 @@ private:
 	oo::PList				_weaponInfo;			// a dictionary (empty by default)
 	std::optional<std::string>	_script;
 	std::optional<std::string>	_condition_script;
+	ooscript::Object		_jsSelf = {};	// the EquipmentInfo object (OOJSEquipmentInfo.mm)
 };
 
 }	// namespace cxx
