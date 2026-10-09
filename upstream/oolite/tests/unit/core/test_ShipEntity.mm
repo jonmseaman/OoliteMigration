@@ -643,7 +643,7 @@ OO_TEST(simpleAccessors)
 		[ship setScriptedMisjumpRange:0.75f];
 		OO_CHECK([ship scriptedMisjump] && [ship scriptedMisjumpRange] == 0.75f);
 
-		OO_CHECK([ship mesh] == nil && [ship octree] == nil);
+		OO_CHECK([ship mesh] == nil && oo::ToCxx(ship)->getOctree() == nullptr);
 		OO_CHECK([ship shipScript] == nil && [ship shipAIScript] == nil);
 		[ship setAIScriptWakeTime:12.5];
 		OO_CHECK([ship shipAIScriptWakeTime] == 12.5);
@@ -706,7 +706,7 @@ OO_TEST(octreeAndTractorWithoutAModel)
 		SetUp();
 		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"nomodel" definition:Definition()] autorelease];
 		OO_CHECK([ship cxx_setUpFromDictionary:oo::PList(oo::PList::Dict{ { "scoop_position", oo::PList(std::string("0 0 10")) } })]);
-		OO_CHECK([ship octree] == nil && [ship volume] == 0.0f);
+		OO_CHECK(oo::ToCxx(ship)->getOctree() == nullptr && [ship volume] == 0.0f);
 		OO_CHECK([ship doesHitLine:kZeroHPVector :make_HPvector(0, 0, 100)] == 0.0f);
 		[ship setPosition:make_HPvector(1, 2, 3)];
 		[ship setOrientation:kIdentityQuaternion];

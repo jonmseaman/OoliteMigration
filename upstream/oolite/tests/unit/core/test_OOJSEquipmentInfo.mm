@@ -1,6 +1,6 @@
 /*	test_OOJSEquipmentInfo.mm
 	Unit tests for the EquipmentInfo JS binding (src/Core/Scripting/OOJSEquipmentInfo.h/.mm) and its
-	OOEquipmentType category (OOJSEquipmentInfo+ObjCBridge.mm): bead oo-supk, converted the way bead
+	OOEquipmentType façade's JS selectors (OOEquipmentType+ObjCBridge.mm): bead oo-supk, converted the way bead
 	oo-ppc converted OOJSVector (proposed ADR-0056 amendments oo-ppc and oo-6ia4).
 
 	As test_OOJSShipGroup.mm does (amendment oo-6ia4, item 7), it runs the JS class in a real

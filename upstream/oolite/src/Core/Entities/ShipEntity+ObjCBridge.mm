@@ -163,7 +163,7 @@ DESTROY(_cxxShip->laser_color);
 	DESTROY(_cxxShip->scanner_display_color_hostile2);
 	DESTROY(_cxxShip->script);
 	DESTROY(_cxxShip->aiScript);
-	DESTROY(_cxxShip->octree);
+	_cxxShip->octree = nullptr;
 	_cxxShip->_defenseTargets = nullptr;
 	_cxxShip->_collisionExceptions = nullptr;
 
@@ -281,7 +281,6 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 @implementation ShipEntity (OOSlice5)
 
 - (BoundingBox) findBoundingBoxRelativeToPosition:(HPVector)opv InVectors:(Vector)_i :(Vector)_j :(Vector)_k	{ return _cxxShip->findBoundingBoxRelativeToPosition(opv, _i, _j, _k); }
-- (Octree *) octree	{ return _cxxShip->getOctree(); }
 - (float) volume	{ return _cxxShip->volume(); }
 - (GLfloat) doesHitLine:(HPVector)v0 :(HPVector)v1	{ return _cxxShip->doesHitLine(v0, v1); }
 - (GLfloat) doesHitLine:(HPVector)v0 :(HPVector)v1 :(ShipEntity **)hitEntity	{ return _cxxShip->cxx::ShipEntity::doesHitLine(v0, v1, hitEntity); }
