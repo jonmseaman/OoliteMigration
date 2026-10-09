@@ -5358,3 +5358,52 @@ so the planet's shaders would lose five uniforms.
 adopter (its selectors are still sent through `OOStellarBodyRadius()`'s fallback). The root's
 facade deletion (oo-9ht.39) inherits the shader-binding category; the member-pointer table of
 oo-9ht.158 replaces it.
+
+## Amendment (bead oo-9ht.137): a subclass facade that was the object's identity (OOJSScript)
+
+- Date: 2026-10-09. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch H,
+  after oo-9ht.129. Exemplar: `src/Core/Scripting/OOJSScript.h/.mm`, `OOScript+ObjCBridge.h/.mm`,
+  `OOJSSystemInfo.mm`, `tests/unit/core/test_OOJSScript.mm`, `test_OOJSSystemInfo.mm`,
+  `test_OOJSTimer.mm`. Applies amendment oo-9ht.12 item 6 to a facade that was the script's
+  identity (amendments oo-3kqi, oo-u61e.4).
+
+**Context.** The Objective-C `OOJSScript` made and owned its C++ script, and was what everything held:
+the JS object's private slot (a weak reference to it), the stack of running scripts, the weak
+references of the timers and definitions, and the retained holders (ships, visual effects,
+characters, the player's equipment scripts, the universe's condition scripts, the debug console).
+Moving that identity into C++ (`oo::Ref`/`oo::WeakRef`, the JS-private glue of amendment oo-6symp)
+is the root's deletion (oo-9ht.133).
+
+**Decision (recommended defaults).**
+
+1. **The nearest facade left becomes the identity.** A JS script's object is an instance of the
+   root's facade `OOScript`, made once by `OOJSScript::scriptWithPath()` (the old
+   `+scriptWithPath:properties:`: `oo::makeRef`, then `-initWithCxxRootScript:`, which records the
+   peer, autoreleased, then `initWithPath()`; nil when the script cannot be loaded, and releasing the
+   object runs `willDealloc()`, as `DESTROY(self)` did). Every holder typed `OOJSScript *` holds
+   `::OOScript *`, still the retained (or weakly referenced) Objective-C object, so lifetimes and the
+   JS private slot are unchanged.
+2. **The root's facade answers what the deleted facade alone answered, for a JS script's C++ part
+   only** (as amendment oo-9ht.129 item 1): `OOScript (JavaScriptEvents)`'s `-callMethod:...`
+   (moved into `OOScript+ObjCBridge.h/.mm`; NO for any other script, as before), the weak reference
+   support (`-weakRetain`, nil for any other script, and `-weakRefDied:`), the JS glue
+   (`-oo_jsValueInContext:`, `-cxx_oo_jsClassName`; the root's defaults otherwise) and `-dealloc`'s
+   `willDealloc()` first. So the ~25 `-callMethod:` senders stay sends.
+3. **The deleted facade's class methods are the C++ class's statics, typed with the object**:
+   `OOJSScript::currentlyRunningScript()`, `scriptStack()`, `pushScript()`, `popScript()` take and
+   answer `::OOScript *`. Code that needs the running script's C++ part asks
+   `static_cast<OOJSScript *>(oo::ToCxx([OOJSScript::currentlyRunningScript() weakRefUnderlyingObject]))`,
+   null-guarded with the nil answer: the stack holds JS scripts' objects, nil, or the weak
+   references the timers and definitions push (an `OOWeakReference`, whose `oo::ToCxx` would read
+   the wrong ivar; a message to it was forwarded to its referent, which the unwrap keeps). The two
+   C++ callers that already asked `oo::ToCxx` of the running script (the JS error reporter's script
+   name, `System`'s manifest) unwrap the same way.
+4. **Tests.** A test that stood in for the Objective-C `OOJSScript` stands in for the root's facade
+   (an `@interface OOScript` with the same superclass and instance methods) and for the statics it
+   reaches (a `class OOJSScript` declared with the header's static signatures); a binding that asks
+   the C++ script gets `oo::ToCxx` and the member stood in for as well. The facade-contract
+   crossing case is rewritten for the new crossing (standing approval oo-9n5p9).
+
+**Consequences.** No Objective-C `OOJSScript` is left. oo-9ht.133 moves the identity (the weak
+references and the JS private slot) into `cxx::OOScript` and deletes the root's facade, with the
+selectors of item 2.

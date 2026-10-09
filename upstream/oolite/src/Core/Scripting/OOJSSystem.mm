@@ -702,9 +702,11 @@ static bool SystemSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 	
 	if (system == -1)  return true;	// Can't change anything else in interstellar space.
 
-	// The running script is converted (cxx::OOJSScript): a message to no script answered null.
-	::OOJSScript *runningScript = cxx::OOJSScript::currentlyRunningScript();
-	manifest = (runningScript != nil) ? oo::ToCxx(runningScript)->propertyNamed(kLocalManifestProperty) : oo::PList();
+	// The running script is C++ (OOJSScript; its object is the OOScript root's facade since bead
+	// oo-9ht.137): a message to no script answered null.
+	// (The stack may hold a weak reference, pushed by a timer or definition: its referent is the object.)
+	OOJSScript *runningScript = static_cast<OOJSScript *>(oo::ToCxx(static_cast<::OOScript *>([OOJSScript::currentlyRunningScript() weakRefUnderlyingObject])));
+	manifest = (runningScript != nullptr) ? runningScript->propertyNamed(kLocalManifestProperty) : oo::PList();
 	// the identifier as -fromManifest: read it: a string, else none
 	const std::optional<std::string> manifestID = manifest.isString() ? std::optional<std::string>(*manifest.getIf<std::string>()) : std::nullopt;
 	

@@ -90,7 +90,7 @@ std::optional<std::vector<oo::ObjCRef<::OOScript *>>> OOScript::worldScriptsAtPa
 			OO_LOG("script.load.javaScript", "Trying to load JavaScript script {}", filePath);
 			oo::log::indentIf("script.load.javaScript");
 			
-			script = [::OOJSScript scriptWithPath:filePath properties:oo::PList()];
+			script = OOJSScript::scriptWithPath(filePath, oo::PList());
 			if (script != nil)
 			{
 				result = std::vector<oo::ObjCRef<::OOScript *>>{ oo::ObjCRef<::OOScript *>(script) };
@@ -177,7 +177,7 @@ std::optional<std::vector<oo::ObjCRef<::OOScript *>>> OOScript::scriptsFromFileA
 	if (extension == "js" || extension == "es")
 	{
 		std::optional<std::vector<oo::ObjCRef<::OOScript *>>>	result;
-		::OOScript	*script = [::OOJSScript scriptWithPath:filePath properties:oo::PList()];
+		::OOScript	*script = OOJSScript::scriptWithPath(filePath, oo::PList());
 		if (script != nil) result = std::vector<oo::ObjCRef<::OOScript *>>{ oo::ObjCRef<::OOScript *>(script) };
 		return result;
 	}
@@ -212,7 +212,7 @@ id OOScript::jsScriptFromFileNamed(const std::string &fileName, const oo::PList 
 			OO_LOG_ERR("script.load.notFound", "Could not find script file {}.", fileName);
 			return nil;
 		}
-		return [::OOJSScript scriptWithPath:path properties:properties];
+		return OOJSScript::scriptWithPath(path, properties);
 	}
 	else if (extension == "plist")
 	{
@@ -241,7 +241,7 @@ id OOScript::jsAIScriptFromFileNamed(const std::string &fileName, const oo::PLis
 			OO_LOG_ERR("script.load.notFound", "Could not find script file {}.", fileName);
 			return nil;
 		}
-		return [::OOJSScript scriptWithPath:path properties:properties];
+		return OOJSScript::scriptWithPath(path, properties);
 	}
 	else if (extension == "plist")
 	{

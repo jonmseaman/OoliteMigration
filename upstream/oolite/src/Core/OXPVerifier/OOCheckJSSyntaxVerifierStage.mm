@@ -86,12 +86,12 @@ void OOCheckJSSyntaxVerifierStage::run()
 		const std::string fileExt = oo::str::lowercase(oo::str::pathExtension(scriptFile));
 		if (fileExt == "js" || fileExt == "es")
 		{
-			OOScript	*script = [OOJSScript scriptWithPath:fileScanner->pathForFile(scriptFile, "Scripts", std::nullopt, false) properties:oo::PList()];
+			OOScript	*script = OOJSScript::scriptWithPath(fileScanner->pathForFile(scriptFile, "Scripts", std::nullopt, false), oo::PList());
 			(void)script;
 		}
 	}
 	if (configScript == true) {
-		OOScript	*script = [OOJSScript scriptWithPath:fileScanner->pathForFile("script.js", "Config", std::nullopt, false) properties:oo::PList()];
+		OOScript	*script = OOJSScript::scriptWithPath(fileScanner->pathForFile("script.js", "Config", std::nullopt, false), oo::PList());
 		(void)script;
 	}
 }

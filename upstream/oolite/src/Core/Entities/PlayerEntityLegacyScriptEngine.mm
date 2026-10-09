@@ -3029,7 +3029,7 @@ bool cxx::PlayerEntity::addEqScriptForKey(const std::string &eq_key)
 
 	OO_LOG("player.equipmentScript", "Script '{}': installation {}successful.", *scriptName, (s == nil ? "un" : ""));
 
-	eqScripts.emplace_back(eq_key, oo::ObjCRef<::OOJSScript *>(static_cast<::OOJSScript *>(s)));
+	eqScripts.emplace_back(eq_key, oo::ObjCRef<::OOScript *>(static_cast<::OOScript *>(s)));
 	if (primedEquipment == eqScripts.size() - 1) primedEquipment++;	// if primed-none, keep it as primed-none.
 	OO_LOG("player.equipmentScript", "Scriptable equipment available: {}.", eqScripts.size());
 	return YES;

@@ -59,7 +59,7 @@ SOFTWARE.
 #include <string>
 #include <vector>
 
-@class OOJSScript, OOJavaScriptEngine;
+@class OOJavaScriptEngine, OOScript;
 #import "OOColor.h"	// the colour maps hold oo::Ref<OOColor>
 
 
@@ -163,7 +163,7 @@ private:
 	oo::ObjCRef<id<OODebuggerInterface>>	_debugger;
 
 	// JavaScript console support.
-	oo::ObjCRef<::OOJSScript *>				_script;
+	oo::ObjCRef<::OOScript *>				_script;
 	ooscript::Object _jsSelf = {};
 
 	oo::PList							_configFromOXPs;	// Settings from debugConfig.plist (a Dict, never null after init())

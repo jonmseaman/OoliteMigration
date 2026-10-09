@@ -74,6 +74,19 @@ MA 02110-1301, USA.
 	Objective-C facade).
 */
 
+
+// The running script's manifest property (-cxx_propertyNamed: of the running OOJSScript, whose facade
+// bead oo-9ht.137 deleted: its C++ part, as the stack holds only JS scripts' objects, or the weak
+// references the timers and definitions push, which forwarded the message to their referent); null
+// for no script, as the message to nil answered.
+namespace {
+oo::PList RunningScriptManifest()
+{
+	OOJSScript *running = static_cast<OOJSScript *>(oo::ToCxx(static_cast<::OOScript *>([OOJSScript::currentlyRunningScript() weakRefUnderlyingObject])));
+	return running != nullptr ? running->propertyNamed(kLocalManifestProperty) : oo::PList();
+}
+}	// namespace
+
 namespace ooscript { }
 using ooscript::Context;
 using ooscript::Object;
@@ -367,7 +380,7 @@ oo::PList OOSystemInfo::valueForKey(const std::optional<std::string> &key)
 void OOSystemInfo::setValue(const oo::PList &value, const std::string &key)
 {
 	// The running script's manifest identifier, handed on as it was read.
-	const oo::PList manifest = [[::OOJSScript currentlyRunningScript] cxx_propertyNamed:kLocalManifestProperty];
+	const oo::PList manifest = RunningScriptManifest();
 
 	[UNIVERSE cxx_setSystemDataForGalaxy:_galaxy planet:_system key:key value:value fromManifest:ManifestString(manifest) forLayer:OO_LAYER_OXP_DYNAMIC];
 }
@@ -909,7 +922,7 @@ static bool SystemInfoSetPropertyMethod(ooscript::Context context, ooscript::Cal
 	}
 	else
 	{
-		manifest = [[::OOJSScript currentlyRunningScript] cxx_propertyNamed:kLocalManifestProperty];
+		manifest = RunningScriptManifest();
 	}
 
 	[UNIVERSE cxx_setSystemDataForGalaxy:GalaxyOf(thisInfo) planet:SystemOf(thisInfo) key:property.value_or("") value:value fromManifest:ManifestString(manifest) forLayer:layer];
@@ -1091,7 +1104,7 @@ static bool SystemInfoStaticSetInterstellarProperty(ooscript::Context context, o
 	}
 	else
 	{
-		manifest = [[::OOJSScript currentlyRunningScript] cxx_propertyNamed:kLocalManifestProperty];
+		manifest = RunningScriptManifest();
 	}
 
 	std::string key = oo::str::format("interstellar: %u %u %u",g,s1,s2);

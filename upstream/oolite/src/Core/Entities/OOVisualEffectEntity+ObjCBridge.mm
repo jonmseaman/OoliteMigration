@@ -99,7 +99,7 @@ MA 02110-1301, USA.
 - (GLfloat *) scannerDisplayColorForShip:(BOOL)flash :(OOColor *)scannerDisplayColor1 :(OOColor *)scannerDisplayColor2	{ return oo::ToCxx(self)->scannerDisplayColorForShip(flash, scannerDisplayColor1, scannerDisplayColor2); }
 
 - (void) setScript:(const std::optional<std::string> &)script_name			{ oo::ToCxx(self)->setScript(script_name); }
-- (OOJSScript *)script														{ return oo::ToCxx(self)->script(); }
+- (OOScript *)script														{ return oo::ToCxx(self)->script(); }
 - (oo::PList)scriptInfo														{ return oo::ToCxx(self)->scriptInfo(); }
 - (void) doScriptEvent:(ooscript::PropertyId)message						{ oo::ToCxx(self)->doScriptEvent(message); }
 - (void) remove																{ oo::ToCxx(self)->remove(); }

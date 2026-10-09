@@ -819,7 +819,7 @@ void OOVisualEffectEntity::setScript(const std::optional<std::string> &script_na
 }
 
 
-::OOJSScript *OOVisualEffectEntity::script()
+::OOScript *OOVisualEffectEntity::script()
 {
 	return _script;
 }

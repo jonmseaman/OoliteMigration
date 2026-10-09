@@ -1019,7 +1019,7 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 #ifndef NDEBUG
 - (void) dumpSelfState	{ _cxxShip->cxx::ShipEntity::dumpSelfState(); }
 #endif
-- (OOJSScript *) script	{ return _cxxShip->getScript(); }
+- (OOScript *) script	{ return _cxxShip->getScript(); }
 - (oo::PList) scriptInfo	{ return _cxxShip->getScriptInfo(); }
 - (void) overrideScriptInfo:(const oo::PList &)override	{ _cxxShip->overrideScriptInfo(override); }
 - (Entity *) entityForShaderProperties	{ return _cxxShip->entityForShaderProperties(); }

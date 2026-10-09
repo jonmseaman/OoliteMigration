@@ -473,7 +473,7 @@ void OOCharacter::setLegacyScript(const oo::PList &some_actions)
 }
 
 
-::OOJSScript *OOCharacter::script()
+::OOScript *OOCharacter::script()
 {
 	return _script.get();
 }
@@ -483,7 +483,7 @@ void OOCharacter::setCharacterScript(const std::string &scriptName)
 {
 	// (the script's "character" is this character, an Object node, as it was self; it reaches
 	// JavaScript as undefined, as the facade did)
-	_script = oo::ObjCRef<::OOJSScript *>([::OOScript cxx_jsScriptFromFileNamed:scriptName
+	_script = oo::ObjCRef<::OOScript *>([::OOScript cxx_jsScriptFromFileNamed:scriptName
 																  properties:oo::PList(oo::PList::Dict{ { "character", oo::PList(oo::PList::Object(oo::Ref<oo::PListForeign>(this))) } })]);
 }
 

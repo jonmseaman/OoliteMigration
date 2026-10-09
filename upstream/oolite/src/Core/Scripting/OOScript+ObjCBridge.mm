@@ -27,6 +27,8 @@ MA 02110-1301, USA.
 */
 
 #import "OOScript.h"
+#import "OOJSScript.h"
+#import "OOJavaScriptEngine.h"
 
 #include "oofnd/objc/OOObjCPeer.h"
 #include "oofnd/String.hpp"
@@ -230,6 +232,8 @@ cxx::OOScript *oo::ToCxx(::OOScript *script)
 
 - (void) dealloc
 {
+	// A JS script's object: its -dealloc's body first, as the OOJSScript facade's did (bead oo-9ht.137).
+	if (OOJSScript *jsScript = dynamic_cast<OOJSScript *>(_cxxRootScript.get()))  jsScript->willDealloc();
 	if (ObjCScript *objCScript = AsObjCScript(_cxxRootScript.get()))  objCScript->ownerDeallocated();
 	else  Peers().forget(_cxxRootScript.get());
 	[super dealloc];
@@ -293,6 +297,52 @@ cxx::OOScript *oo::ToCxx(::OOScript *script)
 {
 	if (AsObjCScript(_cxxRootScript.get()) != nullptr)  _cxxRootScript->cxx::OOScript::runWithTarget(target);
 	else  _cxxRootScript->runWithTarget(target);
+}
+
+@end
+
+
+// The OOJSScript facade's selectors, for a JS script's object (bead oo-9ht.137; OOScript+ObjCBridge.h).
+@implementation OOScript (JavaScriptEvents)
+
+- (BOOL) callMethod:(ooscript::PropertyId)methodID
+		  inContext:(ooscript::Context)context
+	  withArguments:(ooscript::Value *)argv count:(int)argc
+			 result:(ooscript::Value *)outResult
+{
+	if (OOJSScript *jsScript = dynamic_cast<OOJSScript *>(oo::ToCxx(self)))  return jsScript->callMethod(methodID, context, argv, argc, outResult);
+	return NO;
+}
+
+@end
+
+
+@implementation OOScript (OOJSScriptIdentity)
+
+- (id) weakRetain
+{
+	if (OOJSScript *jsScript = dynamic_cast<OOJSScript *>(oo::ToCxx(self)))  return jsScript->weakRetain();
+	return nil;
+}
+
+
+- (void) weakRefDied:(OOWeakReference *)weakRef
+{
+	if (OOJSScript *jsScript = dynamic_cast<OOJSScript *>(oo::ToCxx(self)))  jsScript->weakRefDied(weakRef);
+}
+
+
+- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
+{
+	if (OOJSScript *jsScript = dynamic_cast<OOJSScript *>(oo::ToCxx(self)))  return jsScript->jsValueInContext(context);
+	return [super oo_jsValueInContext:context];
+}
+
+
+- (std::optional<std::string>) cxx_oo_jsClassName
+{
+	if (OOJSScript *jsScript = dynamic_cast<OOJSScript *>(oo::ToCxx(self)))  return jsScript->jsClassName();
+	return [super cxx_oo_jsClassName];
 }
 
 @end
