@@ -59,15 +59,15 @@ MA 02110-1301, USA.
 	OOJSRegisterObjectConverter() is given &sTimerClass itself.
 
 	C++20 since bead oo-kdyh (proposed ADR-0056, amendment oo-ppc): the class is OOJSTimer,
-	a C++ subclass of cxx::OOScriptTimer (global since bead oo-9ht.37). BOOL/YES/NO are bool/true/false.
+	a C++ subclass of OOScriptTimer (global since beads oo-9ht.37 and oo-9ht.35). BOOL/YES/NO are bool/true/false.
 
 	Since bead oo-6symp (proposed ADR-0056 amendment oo-6symp) the JS private slot holds the
 	OOJSTimer itself, retained, which implements OOJSPrivateObject: the natives read it with
 	OOJSGetCxxPrivate (the class check of DEFINE_JS_OBJECT_GETTER), the finalizer is the engine's
 	OOJSCxxObjectWrapperFinalize (which sends clearJSSelf(), where TimerFinalize's warning now
 	is), and toString() is OOJSCxxObjectWrapperToString with the timer's jsDescription(). The
-	converter still answers the timer's Objective-C facade, the root's OOScriptTimer since bead
-	oo-9ht.37, which answers the JS glue for it, for Objective-C code that holds and messages it.
+	converter answers the timer itself as a plist Object node (bead oo-9ht.35 deleted its
+	Objective-C facade, which it answered before), which converts back to the Timer object.
 */
 
 namespace ooscript { }
@@ -345,8 +345,7 @@ void OOJSTimer::clearJSSelf(ooscript::Object selfVal)
 	{
 		// Described from the timer's own state: its full description reads the function's
 		// name, which runs script inside the collection and corrupts the heap (bead oo-r1ci7).
-		// A scheduled timer's facade is live: the timer queue holds it.
-		OO_LOG_WARN("script.javaScript.unrootedTimer", "Timer {} is being garbage-collected while still running. You must keep a reference to all running timers, or they will stop unpredictably!", oo::TimerDescriptionWithComponents(oo::LiveObjC(this), OOScriptTimer::descriptionComponents()));
+		OO_LOG_WARN("script.javaScript.unrootedTimer", "Timer {} is being garbage-collected while still running. You must keep a reference to all running timers, or they will stop unpredictably!", descriptionWithComponents(OOScriptTimer::descriptionComponents()));
 	}
 	if (_jsSelf == selfVal)  _jsSelf = NULL;
 }
@@ -363,14 +362,14 @@ std::optional<std::string> OOJSTimer::jsDescription()
 }
 
 
-// OOJSBasicPrivateObjectConverter for the C++ timer the slot holds: its facade, which is what the
-// slot held, for the Objective-C callers of OOJSNativeObjectFromJSObject (null for the prototype).
+// OOJSBasicPrivateObjectConverter for the C++ timer the slot holds: the timer as a plist Object
+// node, where it answered the timer's facade (bead oo-9ht.35); null for the prototype.
 namespace {
 static oo::PList TimerConverter(ooscript::Context context, ooscript::Object object)
 {
 	OOJSTimer *timer = static_cast<OOJSTimer *>(static_cast<oo::RefCounted *>(ooscript::getPrivate(context, object)));
 	if (timer == nullptr)  return oo::PList();
-	return oo::PListObject(oo::ToObjC(timer));
+	return oo::PList(oo::PList::Object(oo::Ref<oo::PListForeign>(timer)));
 }
 } // namespace
 
@@ -441,7 +440,7 @@ static bool TimerSetProperty(Context cx, Object obj, PropertyId propID, bool /*s
 			{
 				if (!(timer != nullptr && timer->setNextTime(fValue)))
 				{
-					cxx_OOJSReportWarning(context, "Ignoring attempt to change next fire time for running timer %s.", oo::DescriptionOf(oo::ToObjC(timer)).c_str());
+					cxx_OOJSReportWarning(context, "Ignoring attempt to change next fire time for running timer %s.", (timer != nullptr ? timer->description() : std::string("(null)")).c_str());
 				}
 				return true;
 			}

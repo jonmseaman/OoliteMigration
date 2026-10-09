@@ -44,7 +44,7 @@ class OOJSScript;
 
 
 // A Timer JS object's private slot holds the timer (proposed ADR-0056 amendment oo-6symp).
-class OOJSTimer : public cxx::OOScriptTimer, public ::OOJSPrivateObject
+class OOJSTimer : public OOScriptTimer, public ::OOJSPrivateObject
 {
 public:
 	// [[OOJSTimer alloc] initWithDelay:interval:context:function:this:], for the Timer

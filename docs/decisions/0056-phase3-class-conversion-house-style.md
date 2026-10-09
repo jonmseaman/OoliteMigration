@@ -5621,3 +5621,41 @@ so the ship's virtual members reached the player's overrides through the facade.
 **Consequences.** No Objective-C `PlayerEntity` is left; the ship's facade carries the player's
 by-name selectors until it is deleted (oo-9ht.39's family), when they join the C++ name tables.
 `ProxyPlayerEntity`'s facade (oo-9ht.183) still waits for a C++ ship-construction path.
+
+## Amendment (bead oo-9ht.35): a root facade whose last holder was a queue of Objective-C elements (OOScriptTimer)
+
+- Date: 2026-10-09. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch L
+  (one branch). Exemplar: `src/Core/Scripting/OOScriptTimer.h/.mm`, `OOJSTimer.mm`,
+  `src/Core/OOPriorityQueue.h` (`OOPriorityQueueOf`), `tests/unit/core/test_OOScriptTimer.mm`,
+  `test_OOPriorityQueue.mm`. Finishes what amendment oo-9ht.37 left.
+
+**Context.** After oo-9ht.37 the Objective-C `OOScriptTimer` was held only by the timer queue
+(`OOPriorityQueue`, whose elements are Objective-C objects ordered by a selector), by the Timer
+converter (which answered it as plist data) and messaged by the player (`+updateTimers`,
+`+noteGameReset`).
+
+**Decision (recommended defaults).**
+
+1. **A queue of Objective-C elements gets a C++ twin, not a rewrite.** `OOPriorityQueueOf<T>`
+   (header-only, beside `OOPriorityQueue`) holds `oo::Ref<T>` and orders by a comparator function;
+   its heap is `OOPriorityQueue`'s step for step (bubble up on insertion, last element into the
+   removed slot and bubble down, the identity search going on past a match), so equal elements
+   come out in the same order, which a test pins against the Objective-C queue. `OOPriorityQueue`
+   and its test stay unchanged (no game caller is left; it goes with the runtime, Phase 4).
+2. **What the queue autoreleased, the caller now holds for the step.** `removeNextObject()` answers
+   the `oo::Ref`; `updateTimers()` holds the fired timer for its iteration (fire, then reschedule),
+   and `noteGameReset()` holds the emptied queue's timers to its end, where the autoreleased
+   facades lived until the pool drained. Only a timer nothing else holds (its Timer object already
+   collected) dies earlier; its destructor only unregisters.
+3. **The timer is its own plist payload** (`class OOScriptTimer : public oo::PListForeign`, as
+   amendment oo-9ht.133 item 1 did for scripts): `className()` (already "OOScriptTimer" /
+   "OOJSTimer") and `description()`, the facade's `<name 0x...>{components}` with the timer's
+   address; `descriptionWithComponents()` replaces `oo::TimerDescriptionWithComponents()`. The
+   Timer converter answers an Object node of the timer, which converts back to its Timer object
+   (the engine's `OOJSPrivateObject` case).
+4. **Tests** (standing approval oo-9n5p9, lines on main first): the facade case goes; the cases
+   that used the facade's initialisers and selectors call the C++ factories and members with
+   every expected value kept.
+
+**Consequences.** No Objective-C timer class is left; the queue's C++ twin is the pattern for any
+other container of Objective-C elements a facade deletion meets.

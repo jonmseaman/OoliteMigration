@@ -375,7 +375,7 @@ void Update(double now)
 	sNow = now;
 	@autoreleasepool
 	{
-		[OOScriptTimer updateTimers];
+		OOScriptTimer::updateTimers();
 	}
 }
 
@@ -464,7 +464,7 @@ OO_TEST(toString)
 	OO_CHECK_EQ(Eval("Timer.prototype.toString.call({})"), "[object]");
 	// Stop the running ones above, so that later tests do not fire them.
 	Update(100.0);
-	[OOScriptTimer noteGameReset];
+	OOScriptTimer::noteGameReset();
 }
 
 
