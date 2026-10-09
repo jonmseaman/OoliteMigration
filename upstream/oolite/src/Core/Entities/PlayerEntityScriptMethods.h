@@ -29,9 +29,9 @@ MA 02110-1301, USA.
 
 
 /*	Bead oo-50zg (ADR-0056 amendments oo-o89 item 4 and oo-42dr): the category PlayerEntity
-	(ScriptMethods) is members of cxx::PlayerEntity, declared in PlayerEntity.h and defined in
+	(ScriptMethods) is members of PlayerEntity, declared in PlayerEntity.h and defined in
 	PlayerEntityScriptMethods.mm. Its Objective-C interface, for the callers that remain, is the
-	category of the same name in PlayerEntity+ObjCBridge.h, which PlayerEntity.h imports. This header
+	category of the same name in PlayerEntity+ObjCBridge.h (deleted by bead oo-9ht.177), which PlayerEntity.h imported. This header
 	stays for the files that import it.
 */
 

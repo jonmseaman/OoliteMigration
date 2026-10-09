@@ -1199,7 +1199,7 @@ bool StationEntity::hasShipyard()
 	{
 		if (determinantValue->isArray())
 		{
-			return [PLAYER cxx_scriptTestConditions:OOSanitizeLegacyScriptConditions(*determinantValue, std::nullopt)];
+			return (PLAYER != nullptr ? PLAYER->scriptTestConditions(OOSanitizeLegacyScriptConditions(*determinantValue, std::nullopt)) : false);
 		}
 		else
 		{
@@ -1227,13 +1227,13 @@ void StationEntity::generateShipyard(OOTechLevelID stationTechLevel)
 
 	if ([self cxx_localShipyard] == nullptr)
 	{
-		const oo::PList forSale = [UNIVERSE cxx_shipsForSaleForSystem:[UNIVERSE currentSystemID] withTL:stationTechLevel atTime:[PLAYER clockTime]];
+		const oo::PList forSale = [UNIVERSE cxx_shipsForSaleForSystem:[UNIVERSE currentSystemID] withTL:stationTechLevel atTime:(PLAYER != nullptr ? PLAYER->clockTime() : 0.0)];
 		const oo::PList::Array *entries = forSale.getIf<oo::PList::Array>();
 		[self cxx_setLocalShipyard:entries != nullptr ? *entries : oo::PList::Array()];	// nil gave an empty shipyard
 	}
 
 	std::vector<oo::PList> *shipyard = [self cxx_localShipyard];
-	const oo::PList::Dict *shipyardRecord = [PLAYER cxx_shipyardRecord];
+	const oo::PList::Dict *shipyardRecord = (PLAYER != nullptr ? PLAYER->shipyardRecord() : (oo::PList::Dict *)nullptr);
 		
 	// remove ships that the player has already bought
 	for (i = 0; i < shipyard->size(); i++)
@@ -1430,13 +1430,13 @@ void StationEntity::abortAllDockings()
 
 	::PlayerEntity *player = PLAYER;
 
-	if ([player getTargetDockStation] == self && [player getDockingClearanceStatus] >= DOCKING_CLEARANCE_STATUS_REQUESTED)
+	if ((player != nullptr ? player->getTargetDockStation() : (::StationEntity *)nullptr) == self && (player != nullptr ? player->getDockingClearanceStatus() : OODockingClearanceStatus{}) >= DOCKING_CLEARANCE_STATUS_REQUESTED)
 	{
 		// then docking clearance is requested but hasn't been cancelled
 		// yet by a DockEntity
-		[self cxx_sendExpandedMessage:"[station-docking-clearance-abort-cancelled]" toShip:player];
-		[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
-		[player doScriptEvent:OOJSID("stationWithdrewDockingClearance")];
+		[self cxx_sendExpandedMessage:"[station-docking-clearance-abort-cancelled]" toShip:oo::ToObjC(player)];
+		if (player != nullptr)  player->setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_NONE);
+		if (player != nullptr)  player->doScriptEvent(OOJSID("stationWithdrewDockingClearance"));
 	}
 
 	_shipsOnHold->removeAllObjects();
@@ -1521,7 +1521,7 @@ oo::PList StationEntity::dockingInstructionsForShip(::ShipEntity *ship)
 		return [self holdPositionInstructionForShip:ship];
 	}
 	::PlayerEntity *player = PLAYER;
-	BOOL player_is_ahead = (![ship isPlayer] && [player getDockingClearanceStatus] == DOCKING_CLEARANCE_STATUS_REQUESTED && (self == [player getTargetDockStation]));
+	BOOL player_is_ahead = (![ship isPlayer] && (player != nullptr ? player->getDockingClearanceStatus() : OODockingClearanceStatus{}) == DOCKING_CLEARANCE_STATUS_REQUESTED && (self == (player != nullptr ? player->getTargetDockStation() : (::StationEntity *)nullptr)));
 
 	::DockEntity		*chosenDock = nil;
 	std::optional<std::string>	docking;	// nullopt: no dock asked yet (was nil)
@@ -1729,21 +1729,21 @@ void StationEntity::update(OOTimeDelta delta_t)
 
 	::PlayerEntity *player = PLAYER;
 
-	BOOL isDockingStation = (self == [player getTargetDockStation]);
-	if (isDockingStation && [player status] == STATUS_IN_FLIGHT)
+	BOOL isDockingStation = (self == (player != nullptr ? player->getTargetDockStation() : (::StationEntity *)nullptr));
+	if (isDockingStation && (player != nullptr ? player->status() : OOEntityStatus{}) == STATUS_IN_FLIGHT)
 	{
-		if ([player getDockingClearanceStatus] >= DOCKING_CLEARANCE_STATUS_GRANTED)
+		if ((player != nullptr ? player->getDockingClearanceStatus() : OODockingClearanceStatus{}) >= DOCKING_CLEARANCE_STATUS_GRANTED)
 		{
-			if (last_launch_time-30 < unitime && [player getDockingClearanceStatus] != DOCKING_CLEARANCE_STATUS_TIMING_OUT)
+			if (last_launch_time-30 < unitime && (player != nullptr ? player->getDockingClearanceStatus() : OODockingClearanceStatus{}) != DOCKING_CLEARANCE_STATUS_TIMING_OUT)
 			{
-				[self cxx_sendExpandedMessage:"[station-docking-clearance-about-to-expire]" toShip:player];
-				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_TIMING_OUT];
+				[self cxx_sendExpandedMessage:"[station-docking-clearance-about-to-expire]" toShip:oo::ToObjC(player)];
+				if (player != nullptr)  player->setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_TIMING_OUT);
 			}
 			else if (last_launch_time < unitime)
 			{
-				[self cxx_sendExpandedMessage:"[station-docking-clearance-expired]" toShip:player];
-				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];	// Docking clearance for player has expired.
-				[player doScriptEvent:OOJSID("playerDockingClearanceExpired")];
+				[self cxx_sendExpandedMessage:"[station-docking-clearance-expired]" toShip:oo::ToObjC(player)];
+				if (player != nullptr)  player->setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_NONE);	// Docking clearance for player has expired.
+				if (player != nullptr)  player->doScriptEvent(OOJSID("playerDockingClearanceExpired"));
 				if ([self currentlyInDockingQueues] == 0) 
 				{
 					[[self getAI] message:"DOCKING_COMPLETE"];
@@ -1753,11 +1753,11 @@ void StationEntity::update(OOTimeDelta delta_t)
 			}
 		}
 
-		else if ([player getDockingClearanceStatus] == DOCKING_CLEARANCE_STATUS_NOT_REQUIRED)
+		else if ((player != nullptr ? player->getDockingClearanceStatus() : OODockingClearanceStatus{}) == DOCKING_CLEARANCE_STATUS_NOT_REQUIRED)
 		{
 			if (last_launch_time < unitime)
 			{
-				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
+				if (player != nullptr)  player->setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_NONE);
 				if ([self currentlyInDockingQueues] == 0) 
 				{
 					[[self getAI] message:"DOCKING_COMPLETE"];
@@ -1766,7 +1766,7 @@ void StationEntity::update(OOTimeDelta delta_t)
 			}
 		}
 
-		else if ([player getDockingClearanceStatus] == DOCKING_CLEARANCE_STATUS_REQUESTED &&
+		else if ((player != nullptr ? player->getDockingClearanceStatus() : OODockingClearanceStatus{}) == DOCKING_CLEARANCE_STATUS_REQUESTED &&
 				[self hasClearDock])
 		{
 			::DockEntity *dock = [self selectDockForDocking];
@@ -1775,18 +1775,18 @@ void StationEntity::update(OOTimeDelta delta_t)
 			{
 				[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-granted-in-@-until-@"),
 								{ [dock displayName].value_or("(null)"),
-								  cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) })
-					toShip:player];
+								  cxx_ClockToString((player != nullptr ? player->clockTime() : 0.0) + DOCKING_CLEARANCE_WINDOW, NO) })
+					toShip:oo::ToObjC(player)];
 			}
 			else
 			{
 				[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-granted-until-@"),
-								{ cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) })
-					toShip:player];
+								{ cxx_ClockToString((player != nullptr ? player->clockTime() : 0.0) + DOCKING_CLEARANCE_WINDOW, NO) })
+					toShip:oo::ToObjC(player)];
 			}
 			player_reserved_dock = dock;
-			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_GRANTED];
-			[player doScriptEvent:OOJSID("playerDockingClearanceGranted")];
+			if (player != nullptr)  player->setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_GRANTED);
+			if (player != nullptr)  player->doScriptEvent(OOJSID("playerDockingClearanceGranted"));
 
 		}
 	}
@@ -1869,7 +1869,7 @@ bool StationEntity::hasClearDock()
 		::DockEntity *sub = dock.get();
 		if ([sub allowsDocking] && [sub countOfShipsInLaunchQueue] == 0 && [sub countOfShipsInDockingQueue] == 0)
 		{
-			if ([sub canAcceptShipForDocking:PLAYER] == "DOCKING_POSSIBLE")
+			if ([sub canAcceptShipForDocking:oo::ToObjC(PLAYER)] == "DOCKING_POSSIBLE")
 			{
 				return YES;
 			}
@@ -1886,7 +1886,7 @@ bool StationEntity::hasEligibleDock()
 	{
 		::DockEntity *sub = dock.get();
 		// TRY_AGAIN_LATER in this context means "ships launching now"
-		if ([sub allowsDocking] && ([sub canAcceptShipForDocking:PLAYER] == "DOCKING_POSSIBLE" || [sub canAcceptShipForDocking:PLAYER] == "TRY_AGAIN_LATER"))
+		if ([sub allowsDocking] && ([sub canAcceptShipForDocking:oo::ToObjC(PLAYER)] == "DOCKING_POSSIBLE" || [sub canAcceptShipForDocking:oo::ToObjC(PLAYER)] == "TRY_AGAIN_LATER"))
 		{
 			return YES;
 		}
@@ -2038,7 +2038,7 @@ void StationEntity::noteDockedShip(::ShipEntity *ship)
 	
 	::PlayerEntity *player = PLAYER;
 	// set last launch time to avoid clashes with outgoing ships
-	if ([player getDockingClearanceStatus] != DOCKING_CLEARANCE_STATUS_GRANTED)
+	if ((player != nullptr ? player->getDockingClearanceStatus() : OODockingClearanceStatus{}) != DOCKING_CLEARANCE_STATUS_GRANTED)
 	{
 		// avoid interfering with docking clearance on another bay
 		last_launch_time = [UNIVERSE getTime];
@@ -2054,9 +2054,9 @@ void StationEntity::noteDockedShip(::ShipEntity *ship)
 	
 	[self doScriptEvent:OOJSID("otherShipDocked") withArgument:ship];
 	
-	BOOL isDockingStation = (self == [player getTargetDockStation]);
-	if (isDockingStation && [player status] == STATUS_IN_FLIGHT &&
-			[player getDockingClearanceStatus] == DOCKING_CLEARANCE_STATUS_REQUESTED)
+	BOOL isDockingStation = (self == (player != nullptr ? player->getTargetDockStation() : (::StationEntity *)nullptr));
+	if (isDockingStation && (player != nullptr ? player->status() : OOEntityStatus{}) == STATUS_IN_FLIGHT &&
+			(player != nullptr ? player->getDockingClearanceStatus() : OODockingClearanceStatus{}) == DOCKING_CLEARANCE_STATUS_REQUESTED)
 	{
 		if (![self hasClearDock])
 		{
@@ -2064,12 +2064,12 @@ void StationEntity::noteDockedShip(::ShipEntity *ship)
 			if ([self currentlyInDockingQueues])
 			{
 				[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-holding-d-ships-approaching"),
-																						{ [self currentlyInDockingQueues]+1 }) toShip:player];
+																						{ [self currentlyInDockingQueues]+1 }) toShip:oo::ToObjC(player)];
 			}
 			else if([self currentlyInLaunchingQueues])
 			{
 				[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-holding-d-ships-departing"),
-																						{ [self currentlyInLaunchingQueues]+1 }) toShip:player];
+																						{ [self currentlyInLaunchingQueues]+1 }) toShip:oo::ToObjC(player)];
 			}
 		} 
 	}
@@ -2278,13 +2278,13 @@ void StationEntity::becomeExplosion()
 	
 	// launch docked ships if possible
 	::PlayerEntity* player = PLAYER;
-	if ((player)&&([player status] == STATUS_DOCKED || [player status] == STATUS_DOCKING)&&([player dockedStation] == self))
+	if ((player)&&((player != nullptr ? player->status() : OOEntityStatus{}) == STATUS_DOCKED || (player != nullptr ? player->status() : OOEntityStatus{}) == STATUS_DOCKING)&&((player != nullptr ? player->dockedStation() : (::StationEntity *)nullptr) == self))
 	{
 		// undock the player!
-		[player leaveDock:self];
+		if (player != nullptr)  player->leaveDock(self);
 		[UNIVERSE setViewDirection:VIEW_FORWARD];
 		[[UNIVERSE gameController] setMouseInteractionModeForFlight];
-		[player warnAboutHostiles];	// sound a klaxon
+		if (player != nullptr)  player->warnAboutHostiles();	// sound a klaxon
 	}
 	
 	if (scanClass == CLASS_ROCK)	// ie we're a rock hermit or similar
@@ -2352,7 +2352,7 @@ std::optional<std::string> StationEntity::acceptDockingClearanceRequestFrom(::Sh
 		}
 		if ([other isPlayer])
 		{
-			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NOT_REQUIRED];
+			if (player != nullptr)  player->setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_NOT_REQUIRED);
 		}
 		[shipAI cxx_reactToMessage:"DOCKING_REQUESTED" context:std::nullopt];	// react to the request	
 		[self doScriptEvent:OOJSID("stationAcceptedDockingRequest") withArgument:other];
@@ -2363,18 +2363,18 @@ std::optional<std::string> StationEntity::acceptDockingClearanceRequestFrom(::Sh
 
 	// Docking clearance already granted for this station - check for
 	// time-out or cancellation (but only for the Player).
-	if( !result && [other isPlayer] && self == [player getTargetDockStation])
+	if( !result && [other isPlayer] && self == (player != nullptr ? player->getTargetDockStation() : (::StationEntity *)nullptr))
 	{
-		switch( [player getDockingClearanceStatus] )
+		switch( (player != nullptr ? player->getDockingClearanceStatus() : OODockingClearanceStatus{}) )
 		{
 			case DOCKING_CLEARANCE_STATUS_TIMING_OUT:
 				if (!no_docking_while_launching)
 				{
 					last_launch_time = timeNow + DOCKING_CLEARANCE_WINDOW;
 					[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-extended-until-@"),
-							{ cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) })
+							{ cxx_ClockToString((player != nullptr ? player->clockTime() : 0.0) + DOCKING_CLEARANCE_WINDOW, NO) })
 						toShip:other];
-					[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_GRANTED];
+					if (player != nullptr)  player->setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_GRANTED);
 					result = "DOCKING_CLEARANCE_EXTENDED";
 					break;
 				}
@@ -2383,7 +2383,7 @@ std::optional<std::string> StationEntity::acceptDockingClearanceRequestFrom(::Sh
 			case DOCKING_CLEARANCE_STATUS_GRANTED:
 				last_launch_time = timeNow;
 				[self cxx_sendExpandedMessage:"[station-docking-clearance-cancelled]" toShip:other];
-				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
+				if (player != nullptr)  player->setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_NONE);
 				result = "DOCKING_CLEARANCE_CANCELLED";
 				player_reserved_dock = nil;
 				if ([self currentlyInDockingQueues] == 0)
@@ -2400,10 +2400,10 @@ std::optional<std::string> StationEntity::acceptDockingClearanceRequestFrom(::Sh
 
 	// First we must set the status to REQUESTED to avoid problems when 
 	// switching docking targets - even if we later set it back to NONE.
-	if (!result && [other isPlayer] && self != [player getTargetDockStation])
+	if (!result && [other isPlayer] && self != (player != nullptr ? player->getTargetDockStation() : (::StationEntity *)nullptr))
 	{
 		player_reserved_dock = nil; // and clear any previously reserved dock
-		[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_REQUESTED];
+		if (player != nullptr)  player->setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_REQUESTED);
 	}
 
 	// Deny docking for fugitives at the main station
@@ -2413,7 +2413,7 @@ std::optional<std::string> StationEntity::acceptDockingClearanceRequestFrom(::Sh
 	{
 		[self cxx_sendExpandedMessage:"[station-docking-clearance-H-clearance-refused]" toShip:other];
 		if ([other isPlayer])
-			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
+			if (player != nullptr)  player->setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_NONE);
 		result = "DOCKING_CLEARANCE_DENIED_SHIP_FUGITIVE";
 	}
 	
@@ -2421,7 +2421,7 @@ std::optional<std::string> StationEntity::acceptDockingClearanceRequestFrom(::Sh
 	{
 		[self cxx_sendExpandedMessage:"[station-docking-clearance-denied]" toShip:other];
 		if ([other isPlayer])
-			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
+			if (player != nullptr)  player->setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_NONE);
 		result = "DOCKING_CLEARANCE_DENIED_SHIP_HOSTILE";
 	}
 
@@ -2429,7 +2429,7 @@ std::optional<std::string> StationEntity::acceptDockingClearanceRequestFrom(::Sh
 	{
 		if ([other isPlayer])
 		{
-			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
+			if (player != nullptr)  player->setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_NONE);
 		}
 		[self cxx_sendExpandedMessage:"[station-docking-clearance-denied-no-docks]" toShip:other];
 
@@ -2440,7 +2440,7 @@ std::optional<std::string> StationEntity::acceptDockingClearanceRequestFrom(::Sh
 		// Put ship in queue if we've got incoming or outgoing traffic or
 		// if the player is waiting for manual clearance and we are not
 		// the player
-		if (!result && (([self currentlyInDockingQueues] && last_launch_time < timeNow) || (![other isPlayer] && [player getDockingClearanceStatus] == DOCKING_CLEARANCE_STATUS_REQUESTED)))
+		if (!result && (([self currentlyInDockingQueues] && last_launch_time < timeNow) || (![other isPlayer] && (player != nullptr ? player->getDockingClearanceStatus() : OODockingClearanceStatus{}) == DOCKING_CLEARANCE_STATUS_REQUESTED)))
 		{
 			[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-acknowledged-d-ships-approaching"),
 																					{ [self currentlyInDockingQueues]+1 }) toShip:other];
@@ -2461,7 +2461,7 @@ std::optional<std::string> StationEntity::acceptDockingClearanceRequestFrom(::Sh
 			// docking, so deny clearance
 			if ([other isPlayer])
 			{
-				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
+				if (player != nullptr)  player->setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_NONE);
 			}
 			result = "DOCKING_CLEARANCE_DENIED_NO_DOCKS";
 			// but can check to see if we'll open some for later.
@@ -2508,7 +2508,7 @@ std::optional<std::string> StationEntity::acceptDockingClearanceRequestFrom(::Sh
 		last_launch_time = timeNow + DOCKING_CLEARANCE_WINDOW;
 		if ([other isPlayer]) 
 		{
-			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_GRANTED];
+			if (player != nullptr)  player->setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_GRANTED);
 			player_reserved_dock = [self selectDockForDocking];
 		}
 
@@ -2516,13 +2516,13 @@ std::optional<std::string> StationEntity::acceptDockingClearanceRequestFrom(::Sh
 		{
 			[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-granted-in-@-until-@"),
 					{ [player_reserved_dock displayName].value_or("(null)"),
-					  cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) })
+					  cxx_ClockToString((player != nullptr ? player->clockTime() : 0.0) + DOCKING_CLEARANCE_WINDOW, NO) })
 				toShip:other];
 		}
 		else
 		{
 			[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-granted-until-@"),
-					{ cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) })
+					{ cxx_ClockToString((player != nullptr ? player->clockTime() : 0.0) + DOCKING_CLEARANCE_WINDOW, NO) })
 				toShip:other];
 		}
 

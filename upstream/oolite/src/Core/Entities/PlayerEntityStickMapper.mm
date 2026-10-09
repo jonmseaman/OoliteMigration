@@ -137,21 +137,19 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 }	// namespace
 
 
-void cxx::PlayerEntity::resetStickFunctions()
+void PlayerEntity::resetStickFunctions()
 {
 	stickFunctions.clear();
 }
 
 
-void cxx::PlayerEntity::setGuiToStickMapperScreen(unsigned skip)
+void PlayerEntity::setGuiToStickMapperScreen(unsigned skip)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
-	[self setGuiToStickMapperScreen: skip resetCurrentRow: NO];
+	setGuiToStickMapperScreen(skip, NO);
 }
 
-void cxx::PlayerEntity::setGuiToStickMapperScreen(unsigned skip, bool resetCurrentRow)
+void PlayerEntity::setGuiToStickMapperScreen(unsigned skip, bool resetCurrentRow)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	::GuiDisplayGen	*gui = [UNIVERSE gui];
 	::OOJoystickManager	*stickHandler = [::OOJoystickManager sharedStickHandler];
 	const std::vector<std::string>	stickList = [stickHandler listSticks];
@@ -201,7 +199,7 @@ void cxx::PlayerEntity::setGuiToStickMapperScreen(unsigned skip, bool resetCurre
 
 	gui->setArray(ColumnsUpToNil({ OO_DESC("stickmapper-profile") }), GUI_ROW_STICKPROFILE);
 	gui->setKey(std::string(GUI_KEY_OK), GUI_ROW_STICKPROFILE);
-	[self displayFunctionList:gui skip:skip];
+	displayFunctionList(gui, skip);
 	
 	gui->setArray(std::vector<std::string>{ "Select a function and press Enter to modify or 'u' to unset." }, GUI_ROW_INSTRUCT);
 
@@ -212,14 +210,13 @@ void cxx::PlayerEntity::setGuiToStickMapperScreen(unsigned skip, bool resetCurre
 		gui->setSelectedRow(GUI_ROW_STICKPROFILE);
 	}
 	[[UNIVERSE gameView] suppressKeysUntilKeyUp];
-	gui->setForegroundTextureKey(std::string([self status] == STATUS_DOCKED ? "docked_overlay" : "paused_overlay"));
+	gui->setForegroundTextureKey(std::string(status() == STATUS_DOCKED ? "docked_overlay" : "paused_overlay"));
 	gui->setBackgroundTextureKey(std::string("settings"));
 }
 
 
-void cxx::PlayerEntity::stickMapperInputHandler(::GuiDisplayGen *gui, ::MyOpenGLView *gameView)
+void PlayerEntity::stickMapperInputHandler(::GuiDisplayGen *gui, ::MyOpenGLView *gameView)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	::OOJoystickManager	*stickHandler = [::OOJoystickManager sharedStickHandler];
 
 	// Don't do anything if the user is supposed to be selecting
@@ -237,11 +234,11 @@ void cxx::PlayerEntity::stickMapperInputHandler(::GuiDisplayGen *gui, ::MyOpenGL
 		return;
 	}
 	
-	[self handleGUIUpDownArrowKeys];
+	handleGUIUpDownArrowKeys();
 	
 	if (gui->getSelectedRow() == GUI_ROW_STICKPROFILE && [gameView isDown: 13])
 	{
-		[self setGuiToStickProfileScreen: gui];
+		setGuiToStickProfileScreen(gui);
 		return;
 	}
 	
@@ -258,7 +255,7 @@ void cxx::PlayerEntity::stickMapperInputHandler(::GuiDisplayGen *gui, ::MyOpenGL
 			int from_function = NumberAfterColon(*key);
 			if (from_function < 0)  from_function = 0;
 			
-			[self setGuiToStickMapperScreen:from_function];
+			setGuiToStickMapperScreen(from_function);
 			if ([UNIVERSE gui]->getSelectedRow() < 0)
 				[UNIVERSE gui]->setSelectedRow(GUI_ROW_FUNCSTART);
 			if (from_function == 0)
@@ -269,7 +266,7 @@ void cxx::PlayerEntity::stickMapperInputHandler(::GuiDisplayGen *gui, ::MyOpenGL
 		const oo::PList &entry = StickFunctionAt(stickFunctions, selFunctionIdx);
 		int hw=IntValueForKey(entry, KEY_ALLOWABLE);
 		[stickHandler setCallback: @selector(updateFunction:)
-						   object: self 
+						   object: oo::ToObjC(this) 
 						 hardware: hw];
 		
 		// Print instructions
@@ -291,16 +288,15 @@ void cxx::PlayerEntity::stickMapperInputHandler(::GuiDisplayGen *gui, ::MyOpenGL
 	
 	if([gameView isDown: 'u'])
 	{
-		if (selFunctionIdx >= 0)  [self removeFunction: selFunctionIdx];
+		if (selFunctionIdx >= 0)  removeFunction(selFunctionIdx);
 	}
 }
 
 
 // Callback function, called by JoystickHandler when the callback
 // is set. The dictionary contains the thing that was pressed/moved.
-void cxx::PlayerEntity::updateFunction(const oo::PList &hwDict)	// called by name (joystick callback, ADR-0055 item 5)
+void PlayerEntity::updateFunction(const oo::PList &hwDict)	// called by name (joystick callback, ADR-0055 item 5)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	::OOJoystickManager	*stickHandler = [::OOJoystickManager sharedStickHandler];
 	waitingForStickCallback = NO;
 	
@@ -373,13 +369,13 @@ void cxx::PlayerEntity::updateFunction(const oo::PList &hwDict)	// called by nam
 		}
 		// the customEquipActivation entry is edited in place
 		if (oo::PList::Dict *custEquipDict = CustomEquipFields(customEquipActivation, function))  (*custEquipDict)[key] = hwDict;
-		[self checkCustomEquipButtons:hwDict ignore:function];
+		checkCustomEquipButtons(hwDict, function);
 		oo::Defaults::standard().setObject(std::string(KEYCONFIG_CUSTOMEQUIP), oo::PList(customEquipActivation));
 	}
 	else 
 	{
 		[stickHandler setFunction:function withDict:hwDict];
-		[self checkCustomEquipButtons:hwDict ignore:-1];
+		checkCustomEquipButtons(hwDict, -1);
 		[stickHandler saveStickSettings];
 	}
 	
@@ -394,11 +390,11 @@ void cxx::PlayerEntity::updateFunction(const oo::PList &hwDict)	// called by nam
 		skip = ((selFunctionIdx - 1) / (MAX_ROWS_FUNCTIONS - 2)) * (MAX_ROWS_FUNCTIONS - 2) + 1;
 	}
 	
-	[self setGuiToStickMapperScreen:skip];
+	setGuiToStickMapperScreen(skip);
 }
 
 
-void cxx::PlayerEntity::checkCustomEquipButtons(const oo::PList &stickFn, int idx)
+void PlayerEntity::checkCustomEquipButtons(const oo::PList &stickFn, int idx)
 {
 	const std::string stickNumberKey = std::string(STICK_NUMBER);
 	const std::string stickAxBtKey = std::string(STICK_AXBUT);
@@ -430,9 +426,8 @@ void cxx::PlayerEntity::checkCustomEquipButtons(const oo::PList &stickFn, int id
 }
 
 
-void cxx::PlayerEntity::removeFunction(int idx)
+void PlayerEntity::removeFunction(int idx)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	::OOJoystickManager	*stickHandler = [::OOJoystickManager sharedStickHandler];
 	const oo::PList		&entry = StickFunctionAt(stickFunctions, idx);
 	const oo::PList		*butfunc = entry.find(KEY_BUTTONFN);	// -intValue as before
@@ -482,13 +477,12 @@ void cxx::PlayerEntity::removeFunction(int idx)
 		skip = 0;
 	else
 		skip = ((selFunctionIdx - 1) / (MAX_ROWS_FUNCTIONS - 2)) * (MAX_ROWS_FUNCTIONS - 2) + 1;
-	[self setGuiToStickMapperScreen: skip];
+	setGuiToStickMapperScreen(skip);
 }
 
 
-void cxx::PlayerEntity::displayFunctionList(::GuiDisplayGen *gui, NSUInteger skip)
+void PlayerEntity::displayFunctionList(::GuiDisplayGen *gui, NSUInteger skip)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	::OOJoystickManager	*stickHandler = [::OOJoystickManager sharedStickHandler];
 	
 	gui->setColor(OOColor::greenColor().get(), GUI_ROW_HEADING);
@@ -496,7 +490,7 @@ void cxx::PlayerEntity::displayFunctionList(::GuiDisplayGen *gui, NSUInteger ski
 
 	if(stickFunctions.empty())	// (the list is never empty once built)
 	{
-		stickFunctions = [self stickFunctionList];
+		stickFunctions = stickFunctionList();
 	}
 	const oo::PList assignedAxes = [stickHandler axisFunctions];
 	const oo::PList assignedButs = [stickHandler buttonFunctions];
@@ -560,14 +554,14 @@ void cxx::PlayerEntity::displayFunctionList(::GuiDisplayGen *gui, NSUInteger ski
 				{
 					case HW_AXIS:
 						allowedThings="Axis";
-						assignment=[self describeStickDict:assignedAxis];
+						assignment=describeStickDict(assignedAxis);
 						break;
 					case HW_BUTTON:
 						allowedThings="Button";
 						int bf; bf = butFuncKey.has_value() ? static_cast<int>(oo::str::longLongValue(*butFuncKey)) : 0;	// -integerValue (nil: 0)
 						if (bf < 10000)
 						{
-							assignment=[self describeStickDict:assignedButton];
+							assignment=describeStickDict(assignedButton);
 						}
 						else
 						{
@@ -579,16 +573,16 @@ void cxx::PlayerEntity::displayFunctionList(::GuiDisplayGen *gui, NSUInteger ski
 								key = std::string(CUSTOMEQUIP_BUTTONMODE);
 							}
 							const oo::PList &custom = CustomEquipEntry(customEquipActivation, bf);
-							assignment=[self describeStickDict:custom.find(key)];
+							assignment=describeStickDict(custom.find(key));
 						}
 						break;
 					default:
 						allowedThings="Axis/Button";
 
 						// axis has priority
-						assignment=[self describeStickDict:assignedAxis];
+						assignment=describeStickDict(assignedAxis);
 						if(!assignment.has_value())
-							assignment=[self describeStickDict:assignedButton];
+							assignment=describeStickDict(assignedButton);
 				}
 				
 				// Find out what's assigned for this function currently.
@@ -616,7 +610,7 @@ void cxx::PlayerEntity::displayFunctionList(::GuiDisplayGen *gui, NSUInteger ski
 }
 
 
-std::optional<std::string> cxx::PlayerEntity::describeStickDict(const oo::PList *stickDict)
+std::optional<std::string> PlayerEntity::describeStickDict(const oo::PList *stickDict)
 {
 	std::optional<std::string> desc;
 	if(stickDict != nullptr)
@@ -647,7 +641,7 @@ std::optional<std::string> cxx::PlayerEntity::describeStickDict(const oo::PList 
 }
 
 
-std::string cxx::PlayerEntity::hwToString(int hwFlags)
+std::string PlayerEntity::hwToString(int hwFlags)
 {
 	std::string hwString;
 	switch(hwFlags)
@@ -667,311 +661,151 @@ std::string cxx::PlayerEntity::hwToString(int hwFlags)
 
 // TODO: This data could be put into a plist (i18n or just modifiable by
 // the user). It is otherwise an ugly method, but it'll do for testing.
-std::vector<oo::PList> cxx::PlayerEntity::stickFunctionList()
+std::vector<oo::PList> PlayerEntity::stickFunctionList()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	std::vector<oo::PList> funcList;
 
 	// propulsion	
-	funcList.push_back([self makeStickGuiDictHeader:OO_DESC("stickmapper-header-propulsion")]);
+	funcList.push_back(makeStickGuiDictHeader(OO_DESC("stickmapper-header-propulsion")));
 	funcList.push_back( 
-	 [self makeStickGuiDict:OO_DESC("stickmapper-roll")
-				  allowable:HW_AXIS
-					 axisfn:AXIS_ROLL
-					  butfn:STICK_NOFUNCTION]);
+	 makeStickGuiDict(OO_DESC("stickmapper-roll"), HW_AXIS, AXIS_ROLL, STICK_NOFUNCTION));
 	funcList.push_back( 
-	 [self makeStickGuiDict:OO_DESC("stickmapper-pitch")
-				  allowable:HW_AXIS
-					 axisfn:AXIS_PITCH
-					  butfn:STICK_NOFUNCTION]);
+	 makeStickGuiDict(OO_DESC("stickmapper-pitch"), HW_AXIS, AXIS_PITCH, STICK_NOFUNCTION));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-yaw")
-				  allowable:HW_AXIS
-					 axisfn:AXIS_YAW
-					  butfn:STICK_NOFUNCTION]);
+	 makeStickGuiDict(OO_DESC("stickmapper-yaw"), HW_AXIS, AXIS_YAW, STICK_NOFUNCTION));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-increase-thrust")
-				  allowable:HW_AXIS|HW_BUTTON
-					 axisfn:AXIS_THRUST
-					  butfn:BUTTON_INCTHRUST]);
+	 makeStickGuiDict(OO_DESC("stickmapper-increase-thrust"), HW_AXIS|HW_BUTTON, AXIS_THRUST, BUTTON_INCTHRUST));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-decrease-thrust")
-				  allowable:HW_AXIS|HW_BUTTON
-					 axisfn:AXIS_THRUST
-					  butfn:BUTTON_DECTHRUST]);
+	 makeStickGuiDict(OO_DESC("stickmapper-decrease-thrust"), HW_AXIS|HW_BUTTON, AXIS_THRUST, BUTTON_DECTHRUST));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-fuel-injection")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_FUELINJECT]);
+	 makeStickGuiDict(OO_DESC("stickmapper-fuel-injection"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_FUELINJECT));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-hyperspeed")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_HYPERSPEED]);
+	 makeStickGuiDict(OO_DESC("stickmapper-hyperspeed"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_HYPERSPEED));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-hyperdrive")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_HYPERDRIVE]);
+	 makeStickGuiDict(OO_DESC("stickmapper-hyperdrive"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_HYPERDRIVE));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-gal-hyperdrive")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_GALACTICDRIVE]);
+	 makeStickGuiDict(OO_DESC("stickmapper-gal-hyperdrive"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_GALACTICDRIVE));
 
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-roll/pitch-precision-toggle")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_PRECISION]);
+	 makeStickGuiDict(OO_DESC("stickmapper-roll/pitch-precision-toggle"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_PRECISION));
 
 	// navigation
-	funcList.push_back([self makeStickGuiDictHeader:OO_DESC("stickmapper-header-navigation")]);
+	funcList.push_back(makeStickGuiDictHeader(OO_DESC("stickmapper-header-navigation")));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-compass-mode-next")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_COMPASSMODE]);
+	 makeStickGuiDict(OO_DESC("stickmapper-compass-mode-next"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_COMPASSMODE));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-compass-mode-prev")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_COMPASSMODE_PREV]);
+	 makeStickGuiDict(OO_DESC("stickmapper-compass-mode-prev"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_COMPASSMODE_PREV));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-scanner-zoom")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_SCANNERZOOM]);
+	 makeStickGuiDict(OO_DESC("stickmapper-scanner-zoom"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_SCANNERZOOM));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-scanner-unzoom")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_SCANNERUNZOOM]);
+	 makeStickGuiDict(OO_DESC("stickmapper-scanner-unzoom"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_SCANNERUNZOOM));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-view-forward")
-				  allowable:HW_AXIS|HW_BUTTON
-					 axisfn:AXIS_VIEWY
-					  butfn:BUTTON_VIEWFORWARD]);
+	 makeStickGuiDict(OO_DESC("stickmapper-view-forward"), HW_AXIS|HW_BUTTON, AXIS_VIEWY, BUTTON_VIEWFORWARD));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-view-aft")
-				  allowable:HW_AXIS|HW_BUTTON
-					 axisfn:AXIS_VIEWY
-					  butfn:BUTTON_VIEWAFT]);
+	 makeStickGuiDict(OO_DESC("stickmapper-view-aft"), HW_AXIS|HW_BUTTON, AXIS_VIEWY, BUTTON_VIEWAFT));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-view-port")
-				  allowable:HW_AXIS|HW_BUTTON
-					 axisfn:AXIS_VIEWX
-					  butfn:BUTTON_VIEWPORT]);
+	 makeStickGuiDict(OO_DESC("stickmapper-view-port"), HW_AXIS|HW_BUTTON, AXIS_VIEWX, BUTTON_VIEWPORT));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-view-starboard")
-				  allowable:HW_AXIS|HW_BUTTON
-					 axisfn:AXIS_VIEWX
-					  butfn:BUTTON_VIEWSTARBOARD]);
+	 makeStickGuiDict(OO_DESC("stickmapper-view-starboard"), HW_AXIS|HW_BUTTON, AXIS_VIEWX, BUTTON_VIEWSTARBOARD));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-ext-view-cycle")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_EXTVIEWCYCLE]);
+	 makeStickGuiDict(OO_DESC("stickmapper-ext-view-cycle"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_EXTVIEWCYCLE));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-toggle-ID")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_ID]);
+	 makeStickGuiDict(OO_DESC("stickmapper-toggle-ID"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_ID));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-docking-clearance")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_DOCKINGCLEARANCE]);
+	 makeStickGuiDict(OO_DESC("stickmapper-docking-clearance"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_DOCKINGCLEARANCE));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-dockcpu")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_DOCKCPU]);
+	 makeStickGuiDict(OO_DESC("stickmapper-dockcpu"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_DOCKCPU));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-dockcpufast")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_DOCKCPUFAST]);
+	 makeStickGuiDict(OO_DESC("stickmapper-dockcpufast"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_DOCKCPUFAST));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-docking-music")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_DOCKINGMUSIC]);
+	 makeStickGuiDict(OO_DESC("stickmapper-docking-music"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_DOCKINGMUSIC));
 
 	// offensive
-	funcList.push_back([self makeStickGuiDictHeader:OO_DESC("stickmapper-header-offensive")]);
+	funcList.push_back(makeStickGuiDictHeader(OO_DESC("stickmapper-header-offensive")));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-weapons-online-toggle")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_WEAPONSONLINETOGGLE]);
+	 makeStickGuiDict(OO_DESC("stickmapper-weapons-online-toggle"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_WEAPONSONLINETOGGLE));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-primary-weapon")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_FIRE]);
+	 makeStickGuiDict(OO_DESC("stickmapper-primary-weapon"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_FIRE));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-secondary-weapon")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_LAUNCHMISSILE]);
+	 makeStickGuiDict(OO_DESC("stickmapper-secondary-weapon"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_LAUNCHMISSILE));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-arm-secondary")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_ARMMISSILE]);
+	 makeStickGuiDict(OO_DESC("stickmapper-arm-secondary"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_ARMMISSILE));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-disarm-secondary")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_UNARM]);
+	 makeStickGuiDict(OO_DESC("stickmapper-disarm-secondary"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_UNARM));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-target-nearest-incoming-missile")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_TARGETINCOMINGMISSILE]);
+	 makeStickGuiDict(OO_DESC("stickmapper-target-nearest-incoming-missile"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_TARGETINCOMINGMISSILE));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-cycle-secondary")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_CYCLEMISSILE]);
+	 makeStickGuiDict(OO_DESC("stickmapper-cycle-secondary"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_CYCLEMISSILE));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-next-target")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_NEXTTARGET]);
+	 makeStickGuiDict(OO_DESC("stickmapper-next-target"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_NEXTTARGET));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-previous-target")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_PREVTARGET]);
+	 makeStickGuiDict(OO_DESC("stickmapper-previous-target"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_PREVTARGET));
 
 	// defensive
-	funcList.push_back([self makeStickGuiDictHeader:OO_DESC("stickmapper-header-defensive")]);
+	funcList.push_back(makeStickGuiDictHeader(OO_DESC("stickmapper-header-defensive")));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-ECM")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_ECM]);
+	 makeStickGuiDict(OO_DESC("stickmapper-ECM"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_ECM));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-jettison")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_JETTISON]);
+	 makeStickGuiDict(OO_DESC("stickmapper-jettison"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_JETTISON));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-rotate-cargo")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_ROTATECARGO]);
+	 makeStickGuiDict(OO_DESC("stickmapper-rotate-cargo"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_ROTATECARGO));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-escape-pod")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_ESCAPE]);
+	 makeStickGuiDict(OO_DESC("stickmapper-escape-pod"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_ESCAPE));
 
 	// oxp special equip
-	funcList.push_back([self makeStickGuiDictHeader:OO_DESC("stickmapper-header-special-equip")]);
+	funcList.push_back(makeStickGuiDictHeader(OO_DESC("stickmapper-header-special-equip")));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-mfd-select-next")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_MFDSELECTNEXT]);
+	 makeStickGuiDict(OO_DESC("stickmapper-mfd-select-next"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_MFDSELECTNEXT));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-mfd-select-prev")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_MFDSELECTPREV]);
+	 makeStickGuiDict(OO_DESC("stickmapper-mfd-select-prev"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_MFDSELECTPREV));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-mfd-cycle-next")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_MFDCYCLENEXT]);
+	 makeStickGuiDict(OO_DESC("stickmapper-mfd-cycle-next"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_MFDCYCLENEXT));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-mfd-cycle-prev")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_MFDCYCLEPREV]);
+	 makeStickGuiDict(OO_DESC("stickmapper-mfd-cycle-prev"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_MFDCYCLEPREV));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-prime-equipment")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_PRIMEEQUIPMENT]);
+	 makeStickGuiDict(OO_DESC("stickmapper-prime-equipment"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_PRIMEEQUIPMENT));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-prime-prev-equipment")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_PRIMEEQUIPMENT]);
+	 makeStickGuiDict(OO_DESC("stickmapper-prime-prev-equipment"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_PRIMEEQUIPMENT));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-activate-equipment")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_ACTIVATEEQUIPMENT]);
+	 makeStickGuiDict(OO_DESC("stickmapper-activate-equipment"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_ACTIVATEEQUIPMENT));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-mode-equipment")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_MODEEQUIPMENT]);
+	 makeStickGuiDict(OO_DESC("stickmapper-mode-equipment"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_MODEEQUIPMENT));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-fastactivate-a")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_CLOAK]);
+	 makeStickGuiDict(OO_DESC("stickmapper-fastactivate-a"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_CLOAK));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-fastactivate-b")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_ENERGYBOMB]);
+	 makeStickGuiDict(OO_DESC("stickmapper-fastactivate-b"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_ENERGYBOMB));
 
 	// misc
-	funcList.push_back([self makeStickGuiDictHeader:OO_DESC("stickmapper-header-misc")]);
+	funcList.push_back(makeStickGuiDictHeader(OO_DESC("stickmapper-header-misc")));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-snapshot")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_SNAPSHOT]);
+	 makeStickGuiDict(OO_DESC("stickmapper-snapshot"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_SNAPSHOT));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-pause")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_PAUSE]);
+	 makeStickGuiDict(OO_DESC("stickmapper-pause"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_PAUSE));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-toggle-hud")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_TOGGLEHUD]);
+	 makeStickGuiDict(OO_DESC("stickmapper-toggle-hud"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_TOGGLEHUD));
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-comms-log")
-				  allowable:HW_BUTTON
-					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_COMMSLOG]);
+	 makeStickGuiDict(OO_DESC("stickmapper-comms-log"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_COMMSLOG));
 #if OO_FOV_INFLIGHT_CONTROL_ENABLED
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-increase-field-of-view")
+	 [oo::ToObjC(this) makeStickGuiDict:OO_DESC("stickmapper-increase-field-of-view")
 				  allowable:HW_AXIS|HW_BUTTON
 					 axisfn:AXIS_FIELD_OF_VIEW
 					  butfn:BUTTON_INC_FIELD_OF_VIEW]);
 	funcList.push_back(
-	 [self makeStickGuiDict:OO_DESC("stickmapper-decrease-field-of-view")
+	 [oo::ToObjC(this) makeStickGuiDict:OO_DESC("stickmapper-decrease-field-of-view")
 				  allowable:HW_AXIS|HW_BUTTON
 					 axisfn:AXIS_FIELD_OF_VIEW
 					  butfn:BUTTON_DEC_FIELD_OF_VIEW]);
 #endif
 	if (customEquipActivation.size() > 0) {
-		funcList.push_back([self makeStickGuiDictHeader:OO_DESC("stickmapper-header-oxp-equip")]);
+		funcList.push_back(makeStickGuiDictHeader(OO_DESC("stickmapper-header-oxp-equip")));
 		int i;
 		for (i = 0; i < customEquipActivation.size(); i++)
 		{
 			funcList.push_back(
-			[self makeStickGuiDict:oo::str::format("Activate '%s'", OptionalStringForKey(customEquipActivation[i], std::string(CUSTOMEQUIP_EQUIPNAME)).value_or("(null)").c_str())
-						allowable:HW_BUTTON
-							axisfn:STICK_NOFUNCTION
-							butfn:(i+10000)]);
+			makeStickGuiDict(oo::str::format("Activate '%s'", OptionalStringForKey(customEquipActivation[i], std::string(CUSTOMEQUIP_EQUIPNAME)).value_or("(null)").c_str()), HW_BUTTON, STICK_NOFUNCTION, (i+10000)));
 			funcList.push_back(
-			[self makeStickGuiDict:oo::str::format("Mode '%s'", OptionalStringForKey(customEquipActivation[i], std::string(CUSTOMEQUIP_EQUIPNAME)).value_or("(null)").c_str())
-						allowable:HW_BUTTON
-							axisfn:STICK_NOFUNCTION
-							butfn:(i+20000)]);
+			makeStickGuiDict(oo::str::format("Mode '%s'", OptionalStringForKey(customEquipActivation[i], std::string(CUSTOMEQUIP_EQUIPNAME)).value_or("(null)").c_str()), HW_BUTTON, STICK_NOFUNCTION, (i+20000)));
 		}
 
 	}
@@ -979,7 +813,7 @@ std::vector<oo::PList> cxx::PlayerEntity::stickFunctionList()
 }
 
 
-oo::PList cxx::PlayerEntity::makeStickGuiDict(const std::string &what, int allowable, int axisfn, int butfn)
+oo::PList PlayerEntity::makeStickGuiDict(const std::string &what, int allowable, int axisfn, int butfn)
 {
 	oo::PList::Dict guiDict;
 
@@ -994,7 +828,7 @@ oo::PList cxx::PlayerEntity::makeStickGuiDict(const std::string &what, int allow
 	return oo::PList(std::move(guiDict));
 }
 
-oo::PList cxx::PlayerEntity::makeStickGuiDictHeader(const std::string &header)
+oo::PList PlayerEntity::makeStickGuiDictHeader(const std::string &header)
 {
 	oo::PList::Dict guiDict;
 	guiDict[KEY_HEADER] = header;

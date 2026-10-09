@@ -173,7 +173,7 @@ bool DustEntity::canCollide()
 
 void DustEntity::updateCameraRelativePosition()
 {
-	HPVector c_pos = [PLAYER viewpointPosition];
+	HPVector c_pos = (PLAYER != nullptr ? PLAYER->viewpointPosition() : HPVector{});
 	cameraRelativePosition = make_vector((OOScalar)-fmod(c_pos.x,DUST_SCALE),(OOScalar)-fmod(c_pos.y,DUST_SCALE),(OOScalar)-fmod(c_pos.z,DUST_SCALE));
 }
 
@@ -264,7 +264,7 @@ OOShaderProgram *DustEntity::getShader()
 Vector DustEntity::offsetPlayerPosition()
 {
 	// used as shader uniform, so needs to be low precision
-	HPVector c_pos = [PLAYER viewpointPosition];
+	HPVector c_pos = (PLAYER != nullptr ? PLAYER->viewpointPosition() : HPVector{});
 	Vector offset = make_vector((OOScalar)fmod(c_pos.x,DUST_SCALE),(OOScalar)fmod(c_pos.y,DUST_SCALE),(OOScalar)fmod(c_pos.z,DUST_SCALE));
 	return vector_subtract(offset, make_vector(DUST_SCALE * 0.5f, DUST_SCALE * 0.5f, DUST_SCALE * 0.5f));
 }
@@ -286,7 +286,7 @@ void DustEntity::checkShaderMode()
 
 Vector DustEntity::warpVector()
 {
-	return vector_multiply_scalar([PLAYER velocity], 1.0f / HYPERSPEED_FACTOR);
+	return vector_multiply_scalar((PLAYER != nullptr ? PLAYER->getVelocity() : Vector{}), 1.0f / HYPERSPEED_FACTOR);
 }
 
 
@@ -310,7 +310,7 @@ void DustEntity::drawImmediate(bool /*immediate*/, bool translucent)
 	GLfloat	*fogcolor = [UNIVERSE skyClearColor];
 	float	idealDustSize = [[UNIVERSE gameView] viewSize].width / 800.0f;
 	
-	BOOL	warp_stars = [player atHyperspeed];
+	BOOL	warp_stars = (player != nullptr ? player->atHyperspeed() : false);
 	float	dustIntensity;
 	
 	OO_ENTER_OPENGL();
@@ -345,7 +345,7 @@ void DustEntity::drawImmediate(bool /*immediate*/, bool translucent)
 	{
 
 		float	*color = NULL;
-		if (player->_cxxEntity->isSunlit)  color = color_fv;
+		if (player->isSunlit)  color = color_fv;
 		else  color = UNIVERSE->_cxxUniverse->stars_ambient;
 		OOGL(glColor4f(color[0], color[1], color[2], dustIntensity));
 	

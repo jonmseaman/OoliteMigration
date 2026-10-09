@@ -31,21 +31,30 @@
 uint32_t gDebugFlags = 0;
 #endif
 
-@class PlayerEntity;
+class PlayerEntity;
 extern PlayerEntity *gOOPlayer;
 extern Universe *gSharedUniverse;
 extern ooscript::Context gOOJSMainThreadContext;
 
 
-@interface TestAIPlayer: Entity
-@end
+class TestAIPlayer : public PlayerEntity	// C++ since bead oo-9ht.177 deleted the Objective-C player
+{
+public:
+	HPVector viewpointPosition() override	{ return kZeroHPVector; }
+};
 
-
-@implementation TestAIPlayer
-
-- (HPVector) viewpointPosition	{ return kZeroHPVector; }
-
-@end
+// [[TestPlayer alloc] init] (bead oo-9ht.177): a C++ player under the ship's facade, as
+// PlayerEntity::sharedPlayer() makes the game's, retained (+1) as +alloc's object was.
+template <class T>
+T *NewTestPlayer()
+{
+	oo::Ref<T> player = oo::makeRef<T>();
+	@autoreleasepool
+	{
+		[oo::NewEntityFacade(player) retain];
+	}
+	return player.get();
+}
 
 
 // The private categories of ShipEntityAI.mm.
@@ -120,9 +129,9 @@ void SetUp()
 		universe->_cxxUniverse = oo::makeRef<cxx::Universe>(universe);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
 	}
 	gSharedUniverse = universe;
-	static TestAIPlayer *player = nil;
-	if (player == nil)  player = [[TestAIPlayer alloc] init];
-	gOOPlayer = (PlayerEntity *)player;
+	static TestAIPlayer *player = nullptr;
+	if (player == nullptr)  player = NewTestPlayer<TestAIPlayer>();
+	gOOPlayer = player;
 	if (gOOJSMainThreadContext == nullptr)  gOOJSMainThreadContext = ooscript::newContext(ooscript::newRuntime(8u * 1024u * 1024u), 8192);
 	ranrot_srand(20261007);	// as the game seeds it: an unseeded generator answers one value, and OOHPVectorRandomSpatial() never ends
 }

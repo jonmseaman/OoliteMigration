@@ -45,22 +45,25 @@
 /*	The player: its galaxy and screen, key binding descriptions, extra GUI screen keys and the
 	equipment screen's background.
 */
-@interface PlayerEntity: OOObject
+// PLAYER: C++ since bead oo-9ht.177 deleted the Objective-C player this stood in for: the members
+// the code under test calls, declared as the game headers declare them (the test imports none
+// that defines the classes), with the stand-in's answers.
+class PlayerEntity
 {
-@public
-	OOGalaxyID _galaxy;
-	OOGUIScreenID _screen;
+public:
+	OOGalaxyID currentGalaxyID();
+	OOGUIScreenID guiScreen();
+	std::optional<std::string> keyBindingDescription2(const std::string &binding);
+	void clearExtraGuiScreenKeys(OOGUIScreenID gui, const std::string &key);
+	void setEquipScreenBackgroundDescriptor(const oo::PList &descriptor);
+	bool setExtraGuiScreenKeys(OOGUIScreenID gui, ::OOJSGuiScreenKeyDefinition *definition);
+
+	OOGalaxyID _galaxy = {};
+	OOGUIScreenID _screen = {};
 	std::string _lastKeys;
 	oo::Ref<OOJSGuiScreenKeyDefinition> _definition;
 	oo::PList _equipBackground;
-}
-- (OOGalaxyID) currentGalaxyID;
-- (OOGUIScreenID) guiScreen;
-- (std::optional<std::string>) cxx_keyBindingDescription2:(const std::string &)binding;
-- (void) cxx_clearExtraGuiScreenKeys:(OOGUIScreenID)gui key:(const std::string &)key;
-- (BOOL) setExtraGuiScreenKeys:(OOGUIScreenID)gui definition:(OOJSGuiScreenKeyDefinition *)definition;
-- (void) cxx_setEquipScreenBackgroundDescriptor:(const oo::PList &)descriptor;
-@end
+};
 
 /*	The universe: time acceleration, mission text (whose lookup raises while _raise is set),
 	inhabitants, the view, the GUI, screen textures by key, the game view, pause and quit.
@@ -121,7 +124,7 @@
 
 
 namespace {
-PlayerEntity *sPlayer = nil;
+PlayerEntity *sPlayer = nullptr;
 Universe *sUniverse = nil;
 oo::Ref<GuiDisplayGen> sGui;
 // The GUI stand-in's state: a texture descriptor from JS is {name: <string>}; the backgrounds and
@@ -132,22 +135,23 @@ std::map<std::string, oo::Ref<OOColor>> sGuiColors;
 }
 
 
-@implementation PlayerEntity
-
-- (OOGalaxyID) currentGalaxyID  { return _galaxy; }
-- (OOGUIScreenID) guiScreen  { return _screen; }
-- (std::optional<std::string>) cxx_keyBindingDescription2:(const std::string &)binding  { if (binding == "none")  return std::nullopt; return "key for " + binding; }
-- (void) cxx_clearExtraGuiScreenKeys:(OOGUIScreenID)gui key:(const std::string &)key  { _lastKeys = "clear " + std::to_string(static_cast<int>(gui)) + " " + key; }
-- (void) cxx_setEquipScreenBackgroundDescriptor:(const oo::PList &)descriptor  { _equipBackground = descriptor; }
-
-- (BOOL) setExtraGuiScreenKeys:(OOGUIScreenID)gui definition:(OOJSGuiScreenKeyDefinition *)definition
+OOGalaxyID PlayerEntity::currentGalaxyID()  { return _galaxy; }
+OOGUIScreenID PlayerEntity::guiScreen()  { return _screen; }
+std::optional<std::string> PlayerEntity::keyBindingDescription2(const std::string &binding)
+{
+	if (binding == "none")  return std::nullopt; return "key for " + binding;
+}
+void PlayerEntity::clearExtraGuiScreenKeys(OOGUIScreenID gui, const std::string &key)
+{
+	_lastKeys = "clear " + std::to_string(static_cast<int>(gui)) + " " + key;
+}
+void PlayerEntity::setEquipScreenBackgroundDescriptor(const oo::PList &descriptor)  { _equipBackground = descriptor; }
+bool PlayerEntity::setExtraGuiScreenKeys(OOGUIScreenID gui, ::OOJSGuiScreenKeyDefinition *definition)
 {
 	_lastKeys = "set " + std::to_string(static_cast<int>(gui)) + " " + definition->name().value_or("(none)") + " " + oo::DescriptionOf(definition->registerKeys());
 	_definition = oo::Ref<OOJSGuiScreenKeyDefinition>(definition);
 	return gui != GUI_SCREEN_SHIPYARD;	// the player refuses the shipyard here
 }
-
-@end
 
 
 @implementation Universe
@@ -481,7 +485,7 @@ oo::PList OOJSDictionaryFromStringTable(ooscript::Context context, ooscript::Val
 ooscript::Context gOOJSMainThreadContext = nullptr;
 extern const char * const kOOJavaScriptEngineWillResetNotificationName;
 const char * const kOOJavaScriptEngineWillResetNotificationName = "org.aegidian.oolite OOJavaScriptEngine will reset";
-PlayerEntity *gOOPlayer = nil;
+PlayerEntity *gOOPlayer = nullptr;
 Universe *gSharedUniverse = nil;
 
 
@@ -548,7 +552,7 @@ void SetUpContext()
 	SetUpOOJSGlobal(sContext, sGlobal);
 	oo::log::logger().setInitialized(true);	// as OOLoggingInit() does
 
-	sPlayer = [[PlayerEntity alloc] init];	// kept for the life of the test
+	sPlayer = new PlayerEntity;	// kept for the life of the test
 	sPlayer->_galaxy = 3;
 	sPlayer->_screen = GUI_SCREEN_STATUS;
 	gOOPlayer = sPlayer;

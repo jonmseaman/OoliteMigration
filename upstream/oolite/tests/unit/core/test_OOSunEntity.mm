@@ -22,6 +22,7 @@
 */
 
 #import "OOSunEntity.h"
+#import "PlayerEntity.h"	// PLAYER is C++ (bead oo-9ht.177)
 #import "EntityOOJavaScriptExtensions.h"
 #import "OOJSSun.h"
 #import "OOColor.h"
@@ -41,24 +42,33 @@
 uint32_t gDebugFlags = 0;
 #endif
 
-@class PlayerEntity;
+class PlayerEntity;
 extern PlayerEntity *gOOPlayer;
 extern Universe *gSharedUniverse;
 
 
-@interface TestPlayer: Entity
+class TestPlayer : public PlayerEntity	// C++ since bead oo-9ht.177 deleted the Objective-C player
 {
-@public
-	HPVector	_viewpoint;
+public:
+	HPVector	_viewpoint = {};
+
+	HPVector viewpointPosition() override	{ return _viewpoint; }
+};
+
+// [[TestPlayer alloc] init] (bead oo-9ht.177): a C++ player under the ship's facade, as
+// PlayerEntity::sharedPlayer() makes the game's, retained (+1) as +alloc's object was.
+template <class T>
+T *NewTestPlayer()
+{
+	oo::Ref<T> player = oo::makeRef<T>();
+	@autoreleasepool
+	{
+		[oo::NewEntityFacade(player) retain];
+	}
+	return player.get();
 }
-@end
 
 
-@implementation TestPlayer
-
-- (HPVector) viewpointPosition	{ return _viewpoint; }
-
-@end
 
 
 // UNIVERSE: never initialised; records what the sun sets.
@@ -98,7 +108,7 @@ extern Universe *gSharedUniverse;
 namespace {
 
 TestUniverse *sUniverse = nil;
-TestPlayer *sPlayer = nil;
+TestPlayer *sPlayer = nullptr;
 
 
 void SetUp()
@@ -108,13 +118,13 @@ void SetUp()
 		sUniverse = (TestUniverse *)class_createInstance([TestUniverse class], 0);	// never released
 		sUniverse->_cxxUniverse = oo::makeRef<cxx::Universe>(sUniverse);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
 		new (&sUniverse->_systemData) std::map<std::string, oo::PList>();
-		sPlayer = [[TestPlayer alloc] init];
+		sPlayer = NewTestPlayer<TestPlayer>();
 	}
 	sUniverse->_skySets = 0;
 	sUniverse->_systemData.clear();
 	sUniverse->_mainLight = kZeroVector;
 	gSharedUniverse = sUniverse;
-	gOOPlayer = (PlayerEntity *)sPlayer;
+	gOOPlayer = sPlayer;
 	sPlayer->_viewpoint = kZeroHPVector;
 }
 

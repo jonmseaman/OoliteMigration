@@ -268,7 +268,7 @@ public:
 	::OOMesh *mesh();
 	void setMesh(::OOMesh *mesh);
 	BoundingBox getTotalBoundingBox();
-	Vector forwardVector();
+	virtual Vector forwardVector();
 	Vector upVector();
 	Vector rightVector();
 	bool scriptedMisjump();
@@ -308,7 +308,7 @@ public:
 	bool isBeacon();
 	OOHUDBeaconIcon *beaconDrawable();	// borrowed (the protocol type until bead oo-7ae4p)
 	::Entity *prevBeacon();
-	::Entity *nextBeacon();
+	virtual ::Entity *nextBeacon();
 	void setPrevBeacon(::Entity *beaconShip);
 	void setNextBeacon(::Entity *beaconShip);
 	void setIsBoulder(bool flag);
@@ -353,11 +353,11 @@ public:
 	NSUInteger countEquipmentItem(const std::string &eqkey);
 	bool hasEquipmentItem(const oo::PList &equipmentKeys, bool includeWeapons, bool loading);
 	bool hasEquipmentItem(const oo::PList &equipmentKeys);
-	bool hasEquipmentItemProviding(const std::string &equipmentType);
+	virtual bool hasEquipmentItemProviding(const std::string &equipmentType);
 	std::optional<std::string> equipmentItemProviding(const std::string &equipmentType);
 	bool hasAllEquipment(const oo::PList &equipmentKeys, bool includeWeapons, bool loading);
 	bool hasAllEquipment(const oo::PList &equipmentKeys);
-	bool hasHyperspaceMotor();
+	virtual bool hasHyperspaceMotor();
 	float hyperspaceSpinTime();
 	void setHyperspaceSpinTime(float newValue);
 
@@ -571,7 +571,7 @@ public:
 	float weaponRechargeRate();
 	void setWeaponRechargeRate(float value);
 	void setWeaponEnergy(float value);
-	OOWeaponFacing getCurrentWeaponFacing();
+	virtual OOWeaponFacing getCurrentWeaponFacing();
 	GLfloat getScannerRange();
 	void setScannerRange(GLfloat value);
 	Vector getReference();
@@ -579,7 +579,7 @@ public:
 	bool getReportAIMessages();
 	void setReportAIMessages(bool yn);
 	void transitionToAegisNone();
-	::OOPlanetEntity *findNearestPlanet();
+	virtual ::OOPlanetEntity *findNearestPlanet();
 	::Entity *findNearestStellarBody();	// an Entity<OOStellarBody> (amendment oo-mvzmb item 5)
 	::OOPlanetEntity *findNearestPlanetExcludingMoons();
 
@@ -654,14 +654,14 @@ public:
 	void increase_flight_speed(double delta);
 	void decrease_flight_speed(double delta);
 	void increase_flight_roll(double delta);
-	void decrease_flight_roll(double delta);
+	virtual void decrease_flight_roll(double delta);
 	void increase_flight_pitch(double delta);
-	void decrease_flight_pitch(double delta);
+	virtual void decrease_flight_pitch(double delta);
 	void increase_flight_yaw(double delta);
-	void decrease_flight_yaw(double delta);
-	GLfloat getFlightRoll();
-	GLfloat getFlightPitch();
-	GLfloat getFlightYaw();
+	virtual void decrease_flight_yaw(double delta);
+	virtual GLfloat getFlightRoll();
+	virtual GLfloat getFlightPitch();
+	virtual GLfloat getFlightYaw();
 	GLfloat getFlightSpeed();
 	GLfloat maxFlightPitch();
 	GLfloat getMaxFlightSpeed();
@@ -742,12 +742,12 @@ public:
 	virtual void addTarget(::Entity *targetEntity);
 	void removeTarget(::Entity *targetEntity);
 	bool canStillTrackPrimaryTarget();
-	id primaryTarget();
+	virtual id primaryTarget();
 	id primaryTargetWithoutValidityCheck();
 	bool isFriendlyTo(::ShipEntity *otherShip);
 	::ShipEntity *shipHitByLaser();
 	void setShipHitByLaser(::ShipEntity *ship);
-	void noteLostTarget();
+	virtual void noteLostTarget();
 	void noteLostTargetAndGoIdle();
 	void noteTargetDestroyed(::ShipEntity *target);
 	OOBehaviour getBehaviour();
@@ -926,10 +926,10 @@ public:
 	bool getIsDemoShip();
 	void setDemoStartTime(OOTimeAbsolute time);
 	OOTimeAbsolute getDemoStartTime();
-	void doScriptEvent(ooscript::PropertyId message);
+	virtual void doScriptEvent(ooscript::PropertyId message);
 	void doScriptEvent(ooscript::PropertyId message, id argument);
 	void doScriptEvent(ooscript::PropertyId message, id argument1, id argument2);
-	void doScriptEvent(ooscript::PropertyId message, const std::vector<oo::PList> &arguments);
+	virtual void doScriptEvent(ooscript::PropertyId message, const std::vector<oo::PList> &arguments);
 	void doScriptEvent(ooscript::PropertyId message, ooscript::Value *argv, unsigned argc);
 	virtual void doScriptEvent(ooscript::PropertyId message, ooscript::Context context, ooscript::Value *argv, unsigned argc);
 	void reactToAIMessage(const std::string &message, const std::optional<std::string> &debugContext);

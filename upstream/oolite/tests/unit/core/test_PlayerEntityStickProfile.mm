@@ -23,6 +23,7 @@
 */
 
 #import "PlayerEntityStickProfile.h"
+#import "PlayerEntity.h"	// PLAYER is C++ (bead oo-9ht.177)
 #import "OOJoystickManager.h"
 #import "GuiDisplayGen.h"
 
@@ -49,26 +50,29 @@ extern PlayerEntity *gOOPlayer;	// PlayerEntity.mm's, what PLAYER answers
 extern ooscript::Context gOOJSMainThreadContext;	// the engine's; OOJSID needs it
 
 
-// PLAYER: the screen asks it for its status; the GUI sends it a script event when a row is selected.
-@interface StickProfileTestPlayer: OOObject
-- (OOEntityStatus) status;
-- (void) cxx_doScriptEvent:(ooscript::PropertyId)message withPListArguments:(const std::vector<oo::PList> &)arguments;
-@end
-
-
-@implementation StickProfileTestPlayer
-
-- (OOEntityStatus) status
+// PLAYER: the screen asks it for its status (docked: the root's member, which is not virtual, so the
+// player is made docked); the GUI sends it a script event when a row is selected.
+class StickProfileTestPlayer : public PlayerEntity	// C++ since bead oo-9ht.177 deleted the Objective-C player
 {
-	return STATUS_DOCKED;
+public:
+	using PlayerEntity::doScriptEvent;
+	void doScriptEvent(ooscript::PropertyId message, const std::vector<oo::PList> & arguments) override	{  }
+};
+
+// [[TestPlayer alloc] init] (bead oo-9ht.177): a C++ player under the ship's facade, as
+// PlayerEntity::sharedPlayer() makes the game's, retained (+1) as +alloc's object was.
+template <class T>
+T *NewTestPlayer()
+{
+	oo::Ref<T> player = oo::makeRef<T>();
+	@autoreleasepool
+	{
+		[oo::NewEntityFacade(player) retain];
+	}
+	return player.get();
 }
 
 
-- (void) cxx_doScriptEvent:(ooscript::PropertyId)message withPListArguments:(const std::vector<oo::PList> &)arguments
-{
-}
-
-@end
 
 
 namespace {
@@ -88,7 +92,8 @@ void SetUp()
 	OO_CHECK(::_putenv_s("HOMEPATH", sRoot.string().c_str()) == 0);
 	(void)oo::Defaults::standard();
 
-	gOOPlayer = (PlayerEntity *)[[StickProfileTestPlayer alloc] init];
+	gOOPlayer = NewTestPlayer<StickProfileTestPlayer>();
+	gOOPlayer->cxx::Entity::setStatus(STATUS_DOCKED);	// the root's: what the Objective-C stand-in's -status answered
 	gOOJSMainThreadContext = ooscript::newContext(ooscript::newRuntime(8u * 1024u * 1024u), 8192);
 }
 

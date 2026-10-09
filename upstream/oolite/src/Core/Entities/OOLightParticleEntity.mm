@@ -133,7 +133,7 @@ void OOLightParticleEntity::drawSubEntityImmediate(bool immediate, bool transluc
 	/* Flashers are drawn using the absolute view matrix */
 	OOGLLoadModelView([UNIVERSE viewMatrix]);
 	/* ...modified by the aggregate translation calculated above */
-	OOGLTranslateModelView(HPVectorToVector(HPvector_subtract(abspos,[PLAYER viewpointPosition])));	// move to camera-relative position	
+	OOGLTranslateModelView(HPVectorToVector(HPvector_subtract(abspos,(PLAYER != nullptr ? PLAYER->viewpointPosition() : HPVector{}))));	// move to camera-relative position	
 	drawImmediate(immediate, translucent);
 
 	OOGLLoadModelView(temp_matrix);
@@ -177,7 +177,7 @@ void OOLightParticleEntity::drawImmediate(bool /*immediate*/, bool translucent)
 	OOGL(glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_BLEND));
 	
 	OOViewID viewDir = [UNIVERSE viewDirection];
-	if (viewDir != VIEW_GUI_DISPLAY)  OOGLMultModelView([PLAYER drawRotationMatrix]);
+	if (viewDir != VIEW_GUI_DISPLAY)  OOGLMultModelView((PLAYER != nullptr ? PLAYER->drawRotationMatrix() : OOMatrix{}));
 	[texture() apply];
 	
 	/*	NOTE: nominal diameter is actual radius, because of the black border
@@ -250,9 +250,9 @@ void OOLightParticleEntity::drawImmediate(bool /*immediate*/, bool translucent)
 		case VIEW_CUSTOM:
 			{
 				::PlayerEntity *player = PLAYER;
-				Vector vi = [player customViewRightVector];		vi.x *= _diameter;	vi.y *= _diameter;	vi.z *= _diameter;
-				Vector vj = [player customViewUpVector];		vj.x *= _diameter;	vj.y *= _diameter;	vj.z *= _diameter;
-				Vector vk = [player customViewForwardVector];	vk.x *= viewOffset;	vk.y *= viewOffset;	vk.z *= viewOffset;
+				Vector vi = (player != nullptr ? player->getCustomViewRightVector() : Vector{});		vi.x *= _diameter;	vi.y *= _diameter;	vi.z *= _diameter;
+				Vector vj = (player != nullptr ? player->getCustomViewUpVector() : Vector{});		vj.x *= _diameter;	vj.y *= _diameter;	vj.z *= _diameter;
+				Vector vk = (player != nullptr ? player->getCustomViewForwardVector() : Vector{});	vk.x *= viewOffset;	vk.y *= viewOffset;	vk.z *= viewOffset;
 				glTexCoord2f(0.0, 1.0);
 				glVertex3f(-vi.x -vj.x -vk.x, -vi.y -vj.y -vk.y, -vi.z -vj.z -vk.z);
 				glTexCoord2f(1.0, 1.0);

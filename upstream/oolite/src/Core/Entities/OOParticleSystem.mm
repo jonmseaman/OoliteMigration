@@ -151,7 +151,7 @@ void OOParticleSystem::drawImmediate(bool /*immediate*/, bool translucent)
 	OOGL(glBlendFunc(GL_SRC_ALPHA, GL_ONE));
 	[texture() apply];
 	
-	HPVector		viewPosition = [PLAYER viewpointPosition];
+	HPVector		viewPosition = (PLAYER != nullptr ? PLAYER->viewpointPosition() : HPVector{});
 	HPVector		selfPosition = getPosition();
 	
 	unsigned	i, count = _count;

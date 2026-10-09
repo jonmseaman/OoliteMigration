@@ -336,11 +336,11 @@ static bool GlobalGetProperty(Context cx, Object obj, PropertyId propID, Value *
 	switch (ooscript::idToInt32(propID))
 	{
 		case kGlobal_galaxyNumber:
-			*value = ooscript::int32Value([player currentGalaxyID]);
+			*value = ooscript::int32Value((player != nullptr ? player->PlayerEntity::currentGalaxyID() : OOGalaxyID{}));	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 			return true;
 			
 		case kGlobal_guiScreen:
-			*value = (OOJSValueFromGUIScreenID(context, [player guiScreen]));
+			*value = (OOJSValueFromGUIScreenID(context, (player != nullptr ? player->guiScreen() : OOGUIScreenID{})));
 			return true;
 			
 #ifndef NDEBUG
@@ -497,7 +497,7 @@ static bool GlobalKeyBindingDescription(ooscript::Context context, ooscript::Cal
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
-	string = [player cxx_keyBindingDescription2:*string];
+	string = (player != nullptr ? player->keyBindingDescription2(*string) : std::optional<std::string>());
 	OOJS_END_FULL_NATIVE
 	
 	OOJS_RETURN_STRING_OR_NULL(string);
@@ -641,7 +641,7 @@ static bool GlobalClearExtraGuiScreenKeys(ooscript::Context context, ooscript::C
 		return false;
 	}
 
-	[player cxx_clearExtraGuiScreenKeys:gui key:*key];
+	if (player != nullptr)  player->clearExtraGuiScreenKeys(gui, *key);
 
 	result = true;
 	OOJS_RETURN_BOOL(result);
@@ -746,7 +746,7 @@ static bool GlobalSetExtraGuiScreenKeys(ooscript::Context context, ooscript::Cal
 		// can do .bind(this) for callback instead
 	}
 
-	result = [player setExtraGuiScreenKeys:gui definition:definition.get()];
+	result = (player != nullptr ? player->setExtraGuiScreenKeys(gui, definition.get()) : false);
 
 	OOJS_RETURN_BOOL(result);
 	
@@ -783,7 +783,7 @@ static bool GlobalSetScreenBackground(ooscript::Context context, ooscript::CallA
 		result = gui->setBackgroundTextureDescriptor(descriptor);
 		
 		// add some permanence to the override if we're in the equip ship screen
-		if (result && [PLAYER guiScreen] == GUI_SCREEN_EQUIP_SHIP)  [PLAYER cxx_setEquipScreenBackgroundDescriptor:descriptor];
+		if (result && (PLAYER != nullptr ? PLAYER->guiScreen() : OOGUIScreenID{}) == GUI_SCREEN_EQUIP_SHIP)  { if (PLAYER != nullptr)  PLAYER->setEquipScreenBackgroundDescriptor(descriptor); }
 	}
 	
 	OOJS_RETURN_BOOL(result);
@@ -1084,7 +1084,7 @@ static bool GlobalPauseGame(ooscript::Context context, ooscript::CallArgs &oojsA
 	
 	if (player)
 	{
-		OOGUIScreenID guiScreen = [player guiScreen];
+		OOGUIScreenID guiScreen = (player != nullptr ? player->guiScreen() : OOGUIScreenID{});
 		
 		if 	(guiScreen != GUI_SCREEN_LONG_RANGE_CHART &&
 			 guiScreen != GUI_SCREEN_MISSION &&

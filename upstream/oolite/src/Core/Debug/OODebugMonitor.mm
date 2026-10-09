@@ -451,12 +451,13 @@ void OODebugMonitor::dumpEntity(id entity, EntityDumpState *state, bool parentVi
 			dumpEntity(subRef.get(), state, visible);
 		}
 
-		if ([entity isPlayer])
+		if ([entity isPlayer] && PLAYER != nullptr)
 		{
-			NSUInteger i, count = [entity dialMaxMissiles];
+			PlayerEntity *player = PLAYER;	// the entity that answers -isPlayer (C++ since bead oo-9ht.177)
+			NSUInteger i, count = player->dialMaxMissiles();
 			for (i = 0; i < count; i++)
 			{
-				id subentity = [entity missileForPylon:i];
+				id subentity = player->missileForPylon(i);
 				if (subentity != nil)  dumpEntity(subentity, state, false);
 			}
 		}
@@ -508,7 +509,7 @@ void OODebugMonitor::dumpMemoryStatistics()
 	{
 		dumpEntity(entity.get(), &entityDumpState, true);
 	}
-	for (const oo::ObjCRef<::Entity *> &entityRef : [PLAYER cxx_scannedWormholes])
+	for (const oo::ObjCRef<::Entity *> &entityRef : (PLAYER != nullptr ? PLAYER->getScannedWormholes() : std::vector<oo::ObjCRef<::Entity *>>()))
 	{
 		dumpEntity(entityRef.get(), &entityDumpState, true);
 	}

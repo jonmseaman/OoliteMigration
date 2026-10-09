@@ -377,8 +377,8 @@ bool OOEquipmentType::initWithInfo(const oo::PList &info)
 					if (keydef != nullptr)
 					{
 						// do processing for key
-						defaultKey = [PLAYER cxx_processKeyCode:*keydef];
-						const std::optional<std::string> checking = [PLAYER validateKey:(activate ? "activate_" : "mode_") + _identifier checkKeys:defaultKey];
+						defaultKey = (PLAYER != nullptr ? PLAYER->processKeyCode(*keydef) : oo::PList());
+						const std::optional<std::string> checking = (PLAYER != nullptr ? PLAYER->validateKey((activate ? "activate_" : "mode_") + _identifier, defaultKey) : std::optional<std::string>());
 
 						if (checking.has_value()) {
 							if (activate)
@@ -805,7 +805,7 @@ OOTechLevelID OOEquipmentType::effectiveTechLevel()
 		cxx_OOStandardsDeprecated(oo::str::format("TL99 is deprecated for %s", _identifier.c_str()));
 		if (!OOEnforceStandards())
 		{
-			const oo::PList missionValue = [PLAYER cxx_missionVariableForKey:"mission_TL_FOR_" + _identifier];	// OOUIntegerFromObject: OOUnsignedLongLongFromObject on this 64-bit build
+			const oo::PList missionValue = (PLAYER != nullptr ? PLAYER->missionVariableForKey("mission_TL_FOR_" + _identifier) : oo::PList());	// OOUIntegerFromObject: OOUnsignedLongLongFromObject on this 64-bit build
 			tl = static_cast<NSInteger>(oo::plist_get::unsignedLongLongFrom(!missionValue.isNull() ? &missionValue : nullptr, tl));
 		}
 	}

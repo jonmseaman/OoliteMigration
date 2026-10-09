@@ -24,6 +24,7 @@
 */
 
 #import "GameController.h"
+#import "PlayerEntity.h"	// PLAYER is C++ (bead oo-9ht.177)
 #import "OOJavaScriptEngine.h"
 #import "OOJSPropID.h"
 #import "OOFullScreenController.h"
@@ -47,26 +48,35 @@
 uint32_t gDebugFlags = 0;
 #endif
 
-@class PlayerEntity;
+class PlayerEntity;
 extern PlayerEntity *gOOPlayer;
 
 
-// PLAYER: records the script events it is sent and answers whether mouse control is on.
-@interface TestPlayer: OOObject
+// PLAYER: records the script events it is sent and answers whether mouse control is on (C++ since
+// bead oo-9ht.177 deleted the Objective-C player).
+class TestPlayer : public PlayerEntity
 {
-@public
+public:
 	std::vector<ooscript::PropertyId>	_events;
-	BOOL								_mouseControlOn;
+	BOOL								_mouseControlOn = NO;
+
+	using PlayerEntity::doScriptEvent;
+	void doScriptEvent(ooscript::PropertyId message) override	{ _events.push_back(message); }
+	bool isMouseControlOn() override							{ return _mouseControlOn; }
+};
+
+// [[TestPlayer alloc] init] (bead oo-9ht.177): a C++ player under the ship's facade, as
+// PlayerEntity::sharedPlayer() makes the game's, retained (+1) as +alloc's object was.
+template <class T>
+T *NewTestPlayer()
+{
+	oo::Ref<T> player = oo::makeRef<T>();
+	@autoreleasepool
+	{
+		[oo::NewEntityFacade(player) retain];
+	}
+	return player.get();
 }
-@end
-
-
-@implementation TestPlayer
-
-- (void) doScriptEvent:(ooscript::PropertyId)message	{ _events.push_back(message); }
-- (BOOL) isMouseControlOn								{ return _mouseControlOn; }
-
-@end
 
 
 // The game view: records the controller it is given and the mode changes it is told of, and
@@ -126,7 +136,7 @@ namespace {
 namespace stdfs = std::filesystem;
 
 stdfs::path sRoot;
-TestPlayer *sPlayer = nil;
+TestPlayer *sPlayer = nullptr;
 
 
 // The scratch home and game folder, the engine and the stand-in player, made once, before the
@@ -142,8 +152,8 @@ void SetUp()
 	stdfs::create_directories(sRoot / "Resources");
 	OO_CHECK(oo::fs::writeFile(sRoot / "Resources" / "Info-gnustep.plist", oo::Data("{ CFBundleVersion = \"9.9.9-test\"; }", 35), oo::fs::WriteMode::direct).has_value());
 	(void)[OOJavaScriptEngine sharedEngine];
-	sPlayer = [[TestPlayer alloc] init];	// never released
-	gOOPlayer = (PlayerEntity *)sPlayer;
+	sPlayer = NewTestPlayer<TestPlayer>();	// never released
+	gOOPlayer = sPlayer;
 }
 
 

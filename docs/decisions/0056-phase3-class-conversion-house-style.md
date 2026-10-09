@@ -5538,3 +5538,86 @@ the Timer converter still answers the facade, so the root's facade stays.
 
 **Consequences.** No Objective-C subclass of `OOScriptTimer` is left. oo-9ht.35 deletes the root's
 facade once the queue holds C++ timers; the glue then moves into the Timer converter's node.
+
+
+## Amendment (bead oo-9ht.177): deleting a giant subclass's facade while the ship's stands (PlayerEntity)
+
+- Date: 2026-10-09. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch K
+  (one branch, as batches B-J). Exemplar: `src/Core/Entities/PlayerEntity.h/.mm` (`sharedPlayer()`,
+  `deferredInit()`, `willDealloc()`), `Entities/ShipEntity+ObjCBridge.mm` (`SHIP_PART`, the
+  category `ShipEntity (OOPlayerSelectorsCalledByName)`), `Scripting/EntityOOJavaScriptExtensions+ObjCBridge.mm`,
+  `Entities/PlayerEntityLegacyScriptEngine.mm`, `OOCallByName.mm`, `Scripting/OOJSCall.mm`,
+  `tests/unit/core/test_PlayerEntity.mm`. Follows amendments oo-9ht.12, oo-9ht.107, oo-9ht.23,
+  oo-9ht.129 (whose item 1 it applies to a subclass of the ship) and oo-9ht.15.
+
+**Context.** The Objective-C `PlayerEntity` was a subclass of the ship's facade, the player's
+identity (`gOOPlayer`), the receiver of ~3,800 sends, and the object the game still finds selectors
+on by name: legacy-script actions and queries, AI actions, `ship.call()`/`callObjC()`, the string
+expander's keys, shader bindings (the HUD's and the ship's dials), deferred calls and the joystick
+callback. Its C++ part was the ship's adapter over the player (`oo::ObjCShipEntity<PlayerEntity>`),
+so the ship's virtual members reached the player's overrides through the facade.
+
+**Decision (recommended defaults).**
+
+1. **The player is made in C++ and its object is the ship's facade** (amendment oo-9ht.12 item 6).
+   `PlayerEntity::newPlayerObject()` (the old `[[PlayerEntity alloc] init]`) makes the C++ player
+   with `oo::makeRef` and answers its Objective-C object, the ship's facade (`oo::NewEntityFacade`),
+   retained (+1) as `+alloc`'s object was; `PlayerEntity::sharedPlayer()` (the old `+sharedPlayer`)
+   keeps the first for the process. `gOOPlayer` and `PLAYER` are the C++ player; the class is
+   global (`class PlayerEntity : public cxx::ShipEntity`), as the entity leaves' are.
+   `deferredInit()` sends the ship's initialiser to that object again (the oo-bj8 double-`-init`,
+   unchanged). The facade's `-dealloc` body is `willDealloc()`, which `-[ShipEntity dealloc]` calls
+   first for a player's part, as the subclass's `-dealloc` ran before its superclass's.
+2. **The ship's facade calls a C++ part's override when the part is not the ship's adapter.** Its
+   forwarders of members a subclass overrides called `cxx::ShipEntity`'s own member (what
+   `[super ...]` reached for an Objective-C subclass); `SHIP_PART(call)` keeps that for an adapter
+   and calls the member virtually for any other part, so a send through a ship-typed pointer still
+   reaches the player's override. Three of the facade's overrides answered a getter named for an
+   ivar (`-alertCondition`, `-legalStatus`, `-suppressTargetLost`); the ivars are renamed
+   (`alertConditionLevel`, `legalStatusValue`, `suppressTargetLostFlag`) so the player overrides
+   the ship's virtual members with those getters, and `jsClassName()` answers "PlayerShip" as the
+   facade's JS category did. The ship's JS category asks the C++ part for a ship made in C++.
+3. **Selectors found by name on the player: the ship's facade answers them for the player only**
+   (amendment oo-9ht.129 item 1, for a subclass). The category
+   `ShipEntity (OOPlayerSelectorsCalledByName)` holds exactly the selectors only the player's facade
+   answered whose signature a by-name dispatcher can call (`OOCallByName.h`, `callObjC()`,
+   `OOShaderUniformTypeFromMethod()`): no argument, or one `std::string` / `oo::PList` argument,
+   and a void, property-list, scalar, vector, quaternion, matrix, point or object result (496
+   selectors, generated from the facade's forwarders). Each asks the player's C++ part and answers
+   zero for any other ship; `-[ShipEntity respondsToSelector:]` answers them for the player's part
+   only (a subclass facade that implements one itself, the proxy's dials, still answers). The
+   dispatchers that looked a method up by class ask the object: the legacy-script runner sends
+   `-respondsToSelector:` to its target (it asked `class_respondsToSelector`), and `OOCallByName`
+   logs an unknown selector when the receiver does not respond. `callObjC()`'s table (amendment
+   oo-9ht.15) checks the C++ class; the shader whitelist's player check is `dynamic_cast`.
+4. **Sends become member calls, converted by compiler diagnostics** (the batch F/I converter) with
+   the facade's own forwarders as the map (the player's, then the ship's and the root's), keeping
+   the message to nil's answer for every receiver but `self`. Inside the player's members `[self
+   ...]` is a member call; `self` stays `oo::ToObjC(this)` only where the Objective-C object is
+   passed on. An Objective-C cast to the player (`(PlayerEntity *)entity` after `-isPlayer`) is
+   `static_cast<PlayerEntity *>(oo::ToCxx(entity))`.
+5. **Tests.** Under the standing approval oo-9n5p9 only the facade's own cases go (listed in the
+   approval lines); every other case asks the C++ class with its expectations kept. A whole-game
+   test's Objective-C subclass of the player (or of a stand-in player) is a C++ subclass overriding
+   the members the Objective-C one overrode; those members of `PlayerEntity` (and a few of the
+   ship's: `primaryTarget()`, `noteLostTarget()`, `nextBeacon()`, two `doScriptEvent()` overloads,
+   ...) are `virtual`, the test seams amendment oo-9ht.107 item 6 allows. A narrow test that stood
+   in for the Objective-C player (an `@interface PlayerEntity`) stands in for the C++ class: a
+   `class PlayerEntity` with the header's member signatures and the same answers, as amendment
+   oo-9ht.107 item 6 does for entity leaves. Such a stand-in has no vtable, so a binding a narrow
+   test links calls a virtual member of the player by its final overrider
+   (`player->PlayerEntity::clockTime()`, `PLAYER->cxx::ShipEntity::doScriptEvent(...)`), which
+   is the call the Objective-C send made for the one player class the game has. Where a whole-game
+   test also overrides the member and sees the binding's call (`OOPlayerForScripting()`'s
+   `setScriptTarget()`, which test_OOJSShip logs), the binding calls a non-virtual member of the
+   player that makes the virtual call (`setScriptTargetToSelf()`), which the narrow test stands
+   in for.
+6. **Left as they were (follow-up).** The player's data members stay public (the tests and the
+   whole-game stand-ins read and set them) and its raw retained Objective-C pointers
+   (`missile_entity[]`, `compassTarget`, `wormhole`'s object, ...) stay retained by hand: the
+   bead's "private again" and `oo::ObjCRef` steps are each a change of their own, filed as a
+   follow-up, not part of deleting the facade.
+
+**Consequences.** No Objective-C `PlayerEntity` is left; the ship's facade carries the player's
+by-name selectors until it is deleted (oo-9ht.39's family), when they join the C++ name tables.
+`ProxyPlayerEntity`'s facade (oo-9ht.183) still waits for a C++ ship-construction path.

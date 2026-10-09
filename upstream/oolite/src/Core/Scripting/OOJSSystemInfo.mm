@@ -426,7 +426,7 @@ NSPoint OOSystemInfo::coordinates()
 {
 	if ([UNIVERSE inInterstellarSpace] && _system == -1)
 	{
-		return [PLAYER galaxy_coordinates];
+		return (PLAYER != nullptr ? PLAYER->PlayerEntity::getGalaxy_coordinates() : NSPoint{});	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 	}
 	return [UNIVERSE coordinatesForSystem:_system];
 }
@@ -651,7 +651,7 @@ static bool SystemInfoGetProperty(Context cx, Object obj, PropertyId propID, Val
 	OOSystemInfo	*info = SystemInfoOfJSObject(context, thisObj);
 	// What if we're trying to access a saved witchspace systemInfo object?
 	bool savedInterstellarInfo = ![UNIVERSE inInterstellarSpace] && SystemOf(info) == -1;
-	bool sameGalaxy = [PLAYER currentGalaxyID] == GalaxyOf(info);
+	bool sameGalaxy = (PLAYER != nullptr ? PLAYER->PlayerEntity::currentGalaxyID() : OOGalaxyID{}) == GalaxyOf(info);	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 	
 	
 	if (ooscript::isInt32Id(propID))
@@ -861,7 +861,7 @@ static bool SystemInfoSamplePrice(ooscript::Context context, ooscript::CallArgs 
 		return false;
 	}
 
-	bool sameGalaxy = (GalaxyOf(thisInfo) == [PLAYER galaxyNumber]);
+	bool sameGalaxy = (GalaxyOf(thisInfo) == (PLAYER != nullptr ? PLAYER->PlayerEntity::galaxyNumber() : OOGalaxyID{}));	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 	if (!sameGalaxy)
 	{
 		cxx_OOJSReportErrorForCaller(context, "SystemInfo", "samplePrice", "Cannot calculate sample price for destinations in other galaxies.");
@@ -961,7 +961,7 @@ static bool SystemInfoStaticFilteredSystems(ooscript::Context context, ooscript:
 		
 		// Iterate over systems.
 		OK = true;	// (the array was always made)
-		OOGalaxyID galaxy = [PLAYER currentGalaxyID];
+		OOGalaxyID galaxy = (PLAYER != nullptr ? PLAYER->PlayerEntity::currentGalaxyID() : OOGalaxyID{});	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 		OOSystemID system;
 		for (system = 0; system <= kOOMaximumSystemID; system++)
 		{

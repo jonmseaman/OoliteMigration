@@ -206,7 +206,7 @@ void SkyEntity::update(OOTimeDelta /*delta_t*/)
 	cam_zero_distance = zero_distance;
 	if (player != nil)
 	{
-		position = [player viewpointPosition];
+		position = (player != nullptr ? player->viewpointPosition() : HPVector{});
 	}
 	else
 	{

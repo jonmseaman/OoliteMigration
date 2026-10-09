@@ -121,34 +121,48 @@ float OOCommodityMarket::trumbleOpinionForGood(const std::string &good)
 }
 
 
-@interface PlayerEntity: OOObject
+// PLAYER: C++ since bead oo-9ht.177 deleted the Objective-C player this stood in for: the members
+// the code under test calls, declared as the game headers declare them (the test imports none
+// that defines the classes), with the stand-in's answers.
+namespace cxx {
+class Entity
 {
-@public
-	GLfloat pitch, roll, heat;
-	float appetite;
-	std::vector<oo::ObjCRef<ShipEntity *>> cargo;
-	std::vector<OOTrumble *> added, removed;
-}
-- (GLfloat) dialRoll;
-- (GLfloat) dialPitch;
-- (GLfloat) hullHeatLevel;
-- (std::vector<oo::ObjCRef<ShipEntity *>> *) cxx_cargo;
-- (float) trumbleAppetiteAccumulator;
-- (void) setTrumbleAppetiteAccumulator:(float)value;
-- (void) addTrumble:(OOTrumble *)papaTrumble;
-- (void) removeTrumble:(OOTrumble *)deadTrumble;
-@end
+public:
 
-@implementation PlayerEntity
-- (GLfloat) dialRoll					{ return roll; }
-- (GLfloat) dialPitch					{ return pitch; }
-- (GLfloat) hullHeatLevel				{ return heat; }
-- (std::vector<oo::ObjCRef<ShipEntity *>> *) cxx_cargo	{ return &cargo; }
-- (float) trumbleAppetiteAccumulator	{ return appetite; }
-- (void) setTrumbleAppetiteAccumulator:(float)value	{ appetite = value; }
-- (void) addTrumble:(OOTrumble *)t		{ added.push_back(t); }
-- (void) removeTrumble:(OOTrumble *)t	{ removed.push_back(t); }
-@end
+};
+
+class ShipEntity : public Entity
+{
+public:
+	GLfloat hullHeatLevel();
+	std::vector<oo::ObjCRef<::ShipEntity *>> *getCargo();
+};
+}	// namespace cxx
+
+class PlayerEntity : public cxx::ShipEntity
+{
+public:
+	GLfloat dialRoll();
+	GLfloat dialPitch();
+	float trumbleAppetiteAccumulator();
+	void setTrumbleAppetiteAccumulator(float value);
+	void addTrumble(OOTrumble *papaTrumble);
+	void removeTrumble(OOTrumble *deadTrumble);
+
+	GLfloat pitch = {}, roll = {}, heat = {};
+	float appetite = {};
+	std::vector<oo::ObjCRef<::ShipEntity *>> cargo;
+	std::vector<OOTrumble *> added, removed;
+};
+
+GLfloat PlayerEntity::dialRoll()  { return roll; }
+GLfloat PlayerEntity::dialPitch()  { return pitch; }
+GLfloat cxx::ShipEntity::hullHeatLevel()  { return static_cast<PlayerEntity *>(this)->heat; }
+std::vector<oo::ObjCRef<::ShipEntity *>> *cxx::ShipEntity::getCargo()  { return &static_cast<PlayerEntity *>(this)->cargo; }
+float PlayerEntity::trumbleAppetiteAccumulator()  { return appetite; }
+void PlayerEntity::setTrumbleAppetiteAccumulator(float value)  { appetite = value; }
+void PlayerEntity::addTrumble(OOTrumble *t)  { added.push_back(t); }
+void PlayerEntity::removeTrumble(OOTrumble *t)  { removed.push_back(t); }
 
 
 @interface Universe: OOObject
@@ -239,7 +253,7 @@ namespace {
 
 PlayerEntity *Player()
 {
-	static PlayerEntity *player = [[PlayerEntity alloc] init];
+	static PlayerEntity *player = new PlayerEntity;
 	return player;
 }
 

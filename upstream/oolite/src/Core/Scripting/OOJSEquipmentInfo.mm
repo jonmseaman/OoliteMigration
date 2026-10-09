@@ -413,15 +413,18 @@ static bool EquipmentInfoGetProperty(Context cx, Object obj, PropertyId propID, 
 		case kEquipmentInfo_calculatedPrice:
 			if (Ask(type, &OOEquipmentType::identifier) == "EQ_FUEL") 
 			{
-				return ooscript::newNumberValue(cx, (PLAYER_MAX_FUEL - [OOPlayerForScripting() fuel]) * Ask(type, &OOEquipmentType::price) * [OOPlayerForScripting() fuelChargeRate], value);
+				PlayerEntity *player = OOPlayerForScripting();	// fuelChargeRate qualified: the final overrider, so the binding test stands in for it (bead oo-9ht.177)
+				return ooscript::newNumberValue(cx, (PLAYER_MAX_FUEL - (player != nullptr ? player->getFuel() : 0)) * Ask(type, &OOEquipmentType::price) * (player != nullptr ? player->PlayerEntity::fuelChargeRate() : 0.0f), value);
 			}
 			else if (Ask(type, &OOEquipmentType::identifier) == "EQ_RENOVATION") 
 			{
-				return ooscript::newNumberValue(cx, [OOPlayerForScripting() renovationCosts], value);
+				PlayerEntity *player = OOPlayerForScripting();
+				return ooscript::newNumberValue(cx, (player != nullptr ? player->PlayerEntity::renovationCosts() : 0), value);	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 			}
 			else 
 			{
-				return ooscript::newNumberValue(cx, (Ask(type, &OOEquipmentType::identifier).has_value() ? [OOPlayerForScripting() cxx_adjustPriceByScriptForEqKey:*Ask(type, &OOEquipmentType::identifier) withCurrent:Ask(type, &OOEquipmentType::price)] : Ask(type, &OOEquipmentType::price)), value);
+				PlayerEntity *player = OOPlayerForScripting();
+				return ooscript::newNumberValue(cx, (Ask(type, &OOEquipmentType::identifier).has_value() ? (player != nullptr ? player->adjustPriceByScriptForEqKey(*Ask(type, &OOEquipmentType::identifier), Ask(type, &OOEquipmentType::price)) : 0) : Ask(type, &OOEquipmentType::price)), value);
 			}
 		case kEquipmentInfo_canCarryMultiple:
 			*value = OOJSValueFromBOOL(Ask(type, &OOEquipmentType::canCarryMultiple));
@@ -619,16 +622,14 @@ static bool EquipmentInfoSetProperty(Context cx, Object obj, PropertyId propID, 
 				if (ooscript::isNull(*value)) 
 				{
 					// reset mission variable
-					[OOPlayerForScripting() cxx_setMissionVariable:oo::PList()
-														  forKey:"mission_TL_FOR_" + Ask(type, &OOEquipmentType::identifier).value_or("")];
+					if (PlayerEntity *player = OOPlayerForScripting())  player->setMissionVariable(oo::PList(), "mission_TL_FOR_" + Ask(type, &OOEquipmentType::identifier).value_or(""));
 					return true;
 				}
 				if (ooscript::valueToInt32(cx, *value, &iValue))
 				{
 					if (iValue < 0)  iValue = 0;
 					if (15 < iValue && iValue != kOOVariableTechLevel)  iValue = 15;
-					[OOPlayerForScripting() cxx_setMissionVariable:oo::PList(oo::str::format("%u", iValue))
-														  forKey:"mission_TL_FOR_" + Ask(type, &OOEquipmentType::identifier).value_or("")];
+					if (PlayerEntity *player = OOPlayerForScripting())  player->setMissionVariable(oo::PList(oo::str::format("%u", iValue)), "mission_TL_FOR_" + Ask(type, &OOEquipmentType::identifier).value_or(""));
 					return true;
 				}
 			}

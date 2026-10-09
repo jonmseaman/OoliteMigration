@@ -46,15 +46,18 @@ static OOGalaxyID gGalaxy = 0;
 Universe *gSharedUniverse = nil;
 
 
-@interface PlayerEntity: OOObject
-- (OOGalaxyID) galaxyNumber;
-@end
+// PLAYER: C++ since bead oo-9ht.177 deleted the Objective-C player this stood in for; the members
+// the code under test calls, declared as PlayerEntity.h declares them (the test imports no game
+// header that defines the class), with the same answers.
+class PlayerEntity
+{
+public:
+	OOGalaxyID galaxyNumber();
+};
 
-@implementation PlayerEntity
-- (OOGalaxyID) galaxyNumber  { return gGalaxy; }
-@end
+OOGalaxyID PlayerEntity::galaxyNumber()  { return gGalaxy; }
 
-PlayerEntity *gOOPlayer = nil;
+PlayerEntity *gOOPlayer = nullptr;
 
 
 // ResourceManager: one installed OXP, org.test.installed.
@@ -95,7 +98,7 @@ namespace {
 void Fake()
 {
 	if (gSharedUniverse == nil)  gSharedUniverse = [[Universe alloc] init];
-	if (gOOPlayer == nil)  gOOPlayer = [[PlayerEntity alloc] init];
+	if (gOOPlayer == nullptr)  gOOPlayer = new PlayerEntity;	// never deleted
 	gCurrentSystem = 7;
 	gGalaxy = 0;
 }

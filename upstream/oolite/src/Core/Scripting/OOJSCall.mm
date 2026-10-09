@@ -92,17 +92,18 @@ struct CxxMethod
 
 const CxxMethod kPlayerMethods[] =
 {
-	{ "reportJSVectorStatistics",		&cxx::PlayerEntity::reportJSVectorStatistics,		nullptr },
-	{ "clearJSVectorStatistics",		nullptr,	&cxx::PlayerEntity::clearJSVectorStatistics },
-	{ "reportJSQuaternionStatistics",	&cxx::PlayerEntity::reportJSQuaternionStatistics,	nullptr },
-	{ "clearJSQuaternionStatistics",	nullptr,	&cxx::PlayerEntity::clearJSQuaternionStatistics },
+	{ "reportJSVectorStatistics",		&PlayerEntity::reportJSVectorStatistics,		nullptr },
+	{ "clearJSVectorStatistics",		nullptr,	&PlayerEntity::clearJSVectorStatistics },
+	{ "reportJSQuaternionStatistics",	&PlayerEntity::reportJSQuaternionStatistics,	nullptr },
+	{ "clearJSQuaternionStatistics",	nullptr,	&PlayerEntity::clearJSQuaternionStatistics },
 };
 
 
 // The table's entry for name when object is the player (it answered the categories), else null.
+// The player is C++ since bead oo-9ht.177; object is its Objective-C object (the ship's facade).
 const CxxMethod *CxxMethodNamed(id object, const std::optional<std::string> &name)
 {
-	if (!name.has_value() || ![object isKindOfClass:[PlayerEntity class]])  return nullptr;
+	if (!name.has_value() || PLAYER == nullptr || object != oo::ToObjC(PLAYER))  return nullptr;
 	for (const CxxMethod &method : kPlayerMethods)
 	{
 		if (*name == method.name)  return &method;
@@ -133,7 +134,7 @@ bool OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::s
 	
 	if ([object isKindOfClass:[ShipEntity class]])
 	{
-		[PLAYER setScriptTarget:object];
+		if (PLAYER != nullptr)  PLAYER->PlayerEntity::setScriptTarget(object);	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 	}
 	
 	selectorString = cxx_OOStringFromJSValue(context, argv[0]);

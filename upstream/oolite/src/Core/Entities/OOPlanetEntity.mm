@@ -173,11 +173,11 @@ void OOPlanetEntity::initAsMainPlanetForSystem(OOSystemID s)
 	oo::PList planetInfo = [UNIVERSE cxx_generateSystemData:s];
 
 	SetInfo(planetInfo, "mainForLocalSystem", oo::PList(static_cast<bool>(YES)));
-	if (s != [PLAYER systemID])
+	if (s != (PLAYER != nullptr ? PLAYER->systemID() : 0))
 	{
 		SetInfo(planetInfo, "isMiniature", oo::PList(static_cast<bool>(YES)));
 	}
-	initFromDictionary(planetInfo, planetInfo.get<bool>("has_atmosphere", YES), ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getRandomSeedForSystem(s, [PLAYER galaxyNumber]) : Random_Seed()), s);
+	initFromDictionary(planetInfo, planetInfo.get<bool>("has_atmosphere", YES), ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getRandomSeedForSystem(s, (PLAYER != nullptr ? PLAYER->galaxyNumber() : OOGalaxyID{})) : Random_Seed()), s);
 }
 
 
@@ -322,7 +322,7 @@ void OOPlanetEntity::initFromDictionary(const oo::PList &dictionary, bool atmosp
 	RANROTSetFullSeed(savedRanrotSeed);
 	
 	// rotate planet based on current time, needs to be done here - backported from PlanetEntity.
-	int		deltaT = floor(fmod([PLAYER clockTimeAdjusted], 86400));
+	int		deltaT = floor(fmod((PLAYER != nullptr ? PLAYER->clockTimeAdjusted() : 0.0), 86400));
 	quaternion_rotate_about_axis(&orientation, _rotationAxis, _rotationalVelocity * deltaT);
 	quaternion_rotate_about_axis(&_atmosphereOrientation, kBasisYVector, _atmosphereRotationalVelocity * deltaT);
 	
@@ -651,7 +651,7 @@ void OOPlanetEntity::update(OOTimeDelta delta_t)
 															  
 				// occlusion rate: .9 is 18 degrees after the terminus, where twilight ends.
 				// 1 is the terminus, 1.033 is 6 degrees before the terminus, where the sky begins to redden
-				double rate = ([PLAYER occlusionLevel] - 0.97)/0.06; // from 0.97 to 1.03
+				double rate = ((PLAYER != nullptr ? PLAYER->occlusionLevel() : 0.0f) - 0.97)/0.06; // from 0.97 to 1.03
 
 				if (EXPECT(rate <= 1.0 && rate > 0.0))
 				{
@@ -672,7 +672,7 @@ void OOPlanetEntity::update(OOTimeDelta delta_t)
 				}
 				else
 				{
-					if (PLAYER->_cxxEntity->isSunlit && _airColor != nullptr) mixColor = _airColor;
+					if (PLAYER->isSunlit && _airColor != nullptr) mixColor = _airColor;
 				}
 				[UNIVERSE setSkyColorRed:mixColor->redComponent() * aleph2
 								   green:mixColor->greenComponent() * aleph2
@@ -702,7 +702,7 @@ void OOPlanetEntity::update(OOTimeDelta delta_t)
 				if (_atmosphereDrawable)  _atmosphereDrawable->setRadius(collision_radius);
 				if (_cloudsShaderDrawable) _cloudsShaderDrawable->setRadius(collision_radius);
 			}
-			if ([PLAYER findNearestPlanet] == this) // ensure no problems in case of more than one planets
+			if ((PLAYER != nullptr ? PLAYER->findNearestPlanet() : (OOPlanetEntity *)nullptr) == this) // ensure no problems in case of more than one planets
 			{
 				[UNIVERSE setAirResistanceFactor:0.0f];	// out of atmosphere - no air friction
 			}
@@ -861,7 +861,7 @@ void OOPlanetEntity::launchShuttle()
 	{
 		return;
 	}
-	if ([PLAYER status] == STATUS_START_GAME)
+	if ((PLAYER != nullptr ? PLAYER->status() : OOEntityStatus{}) == STATUS_START_GAME)
 	{
 		// don't launch if game not started
 		return;

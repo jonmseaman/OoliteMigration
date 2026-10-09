@@ -576,7 +576,7 @@ void HeadUpDisplay::resetGuis(const oo::PList &info)
 			TODO: a more usable GUI code! - Kaks 2011.11.05
 		*/
 
-		const std::vector<std::string> *liveLog = [PLAYER cxx_commLog];
+		const std::vector<std::string> *liveLog = (PLAYER != nullptr ? PLAYER->getCommLog() : (std::vector<std::string> *)nullptr);
 		const std::vector<std::string> cLog = (liveLog != nullptr) ? *liveLog : std::vector<std::string>();
 		NSUInteger i, commCount = cLog.size();
 
@@ -885,7 +885,7 @@ std::optional<std::string> HeadUpDisplay::getCrosshairDefinition()
 
 bool HeadUpDisplay::checkPlayerInFlight()
 {
-	return [PLAYER isInSpace] && [PLAYER status] != STATUS_DOCKING;
+	return (PLAYER != nullptr ? PLAYER->isInSpace() : false) && (PLAYER != nullptr ? PLAYER->status() : OOEntityStatus{}) != STATUS_DOCKING;
 }
 
 
@@ -1055,7 +1055,7 @@ void HeadUpDisplay::drawDials()
 	{
 		// trigger the targetChanged event with whom == null
 		_compassActive = NO;
-		[PLAYER cxx_doScriptEvent:OOJSID("compassTargetChanged") withPListArguments:{ oo::PList(), oo::PList(cxx_OOStringFromCompassMode([PLAYER compassMode])) }];	// null, as OONull gave
+		if (PLAYER != nullptr)  PLAYER->doScriptEvent(OOJSID("compassTargetChanged"), { oo::PList(), oo::PList(cxx_OOStringFromCompassMode((PLAYER != nullptr ? PLAYER->getCompassMode() : OOCompassMode{}))) });	// null, as OONull gave
 	}
 	
 }
@@ -1067,7 +1067,7 @@ void HeadUpDisplay::drawMFDs()
 	std::optional<std::string> text;
 	for (i = 0; i < nMFDs; i++)
 	{
-		text = [PLAYER cxx_multiFunctionText:i];
+		text = (PLAYER != nullptr ? PLAYER->multiFunctionText(i) : std::optional<std::string>());
 		if (text.has_value())
 		{
 			sCurrentDrawItem = &mfdArray[i];
@@ -1080,13 +1080,13 @@ void HeadUpDisplay::drawMFDs()
 void HeadUpDisplay::drawCrosshairs()
 {
 	OOViewID					viewID = [UNIVERSE viewDirection];
-	OOWeaponType				weapon = [PLAYER currentWeapon];
-	BOOL						weaponsOnline = [PLAYER weaponsOnline];
+	OOWeaponType				weapon = (PLAYER != nullptr ? PLAYER->currentWeapon() : OOWeaponType{});
+	BOOL						weaponsOnline = (PLAYER != nullptr ? PLAYER->weaponsOnline() : false);
 	oo::PList					points;
 	
 	if (viewID == VIEW_CUSTOM ||
 		overallAlpha == 0.0f ||
-		!([PLAYER status] == STATUS_IN_FLIGHT || [PLAYER status] == STATUS_WITCHSPACE_COUNTDOWN) ||
+		!((PLAYER != nullptr ? PLAYER->status() : OOEntityStatus{}) == STATUS_IN_FLIGHT || (PLAYER != nullptr ? PLAYER->status() : OOEntityStatus{}) == STATUS_WITCHSPACE_COUNTDOWN) ||
 		[UNIVERSE displayGUI]
 		)
 	{
@@ -1184,7 +1184,7 @@ void HeadUpDisplay::drawLegend(const oo::PList &info)
 {
 	// check if equipment is required
 	std::optional<std::string> equipmentRequired = OptionalStringIn(info, EQUIPMENT_REQUIRED_KEY);
-	if (equipmentRequired.has_value() && ![PLAYER cxx_hasEquipmentItemProviding:*equipmentRequired])
+	if (equipmentRequired.has_value() && !(PLAYER != nullptr ? PLAYER->hasEquipmentItemProviding(*equipmentRequired) : false))
 	{
 		return;
 	}
@@ -1194,7 +1194,7 @@ void HeadUpDisplay::drawLegend(const oo::PList &info)
 	// 1=docked, 2=green, 4=yellow, 8=red
 	if (alertMask < 15)
 	{
-		OOAlertCondition alertCondition = [PLAYER alertCondition];
+		OOAlertCondition alertCondition = (PLAYER != nullptr ? PLAYER->getAlertCondition() : OOAlertCondition{});
 		if (~alertMask & (1 << alertCondition)) {
 			return;
 		}
@@ -1202,7 +1202,7 @@ void HeadUpDisplay::drawLegend(const oo::PList &info)
 
 	BOOL viewOnly = info.get<bool>(VIEWSCREEN_KEY, NO);
 	// 1=docked, 2=green, 4=yellow, 8=red
-	if (viewOnly && [PLAYER guiScreen] != GUI_SCREEN_MAIN)
+	if (viewOnly && (PLAYER != nullptr ? PLAYER->guiScreen() : OOGUIScreenID{}) != GUI_SCREEN_MAIN)
 	{
 		return;
 	}
@@ -1259,7 +1259,7 @@ void HeadUpDisplay::drawHUDItem(const oo::PList &info)
 {
 	std::optional<std::string>	equipment = OptionalStringIn(info, EQUIPMENT_REQUIRED_KEY);
 
-	if (equipment.has_value() && ![PLAYER cxx_hasEquipmentItemProviding:*equipment])
+	if (equipment.has_value() && !(PLAYER != nullptr ? PLAYER->hasEquipmentItemProviding(*equipment) : false))
 	{
 		return;
 	}
@@ -1269,7 +1269,7 @@ void HeadUpDisplay::drawHUDItem(const oo::PList &info)
 	// 1=docked, 2=green, 4=yellow, 8=red
 	if (alertMask < 15)
 	{
-		OOAlertCondition alertCondition = [PLAYER alertCondition];
+		OOAlertCondition alertCondition = (PLAYER != nullptr ? PLAYER->getAlertCondition() : OOAlertCondition{});
 		if (~alertMask & (1 << alertCondition)) {
 			return;
 		}
@@ -1278,7 +1278,7 @@ void HeadUpDisplay::drawHUDItem(const oo::PList &info)
 	BOOL viewOnly = info.get<bool>(VIEWSCREEN_KEY, NO);
 
 	// 1=docked, 2=green, 4=yellow, 8=red
-	if (viewOnly && [PLAYER guiScreen] != GUI_SCREEN_MAIN)
+	if (viewOnly && (PLAYER != nullptr ? PLAYER->guiScreen() : OOGUIScreenID{}) != GUI_SCREEN_MAIN)
 	{
 		return;
 	}
@@ -1360,7 +1360,7 @@ void HeadUpDisplay::drawMultiFunctionDisplay(const oo::PList &info, const std::s
 	struct CachedInfo	cached;
 	NSInteger			i, x, y;
 	NSSize				siz, tmpsiz;
-	if ([player1 guiScreen] != GUI_SCREEN_MAIN)	// don't draw on text screens
+	if ((player1 != nullptr ? player1->guiScreen() : OOGUIScreenID{}) != GUI_SCREEN_MAIN)	// don't draw on text screens
 	{
 		return;
 	}
@@ -1372,7 +1372,7 @@ void HeadUpDisplay::drawMultiFunctionDisplay(const oo::PList &info, const std::s
 	{
 		mfdcol->getRed(&mfd_color[0], &mfd_color[1], &mfd_color[2], &mfd_color[3]);
 	}
-	if (index != [player1 activeMFD])
+	if (index != (player1 != nullptr ? player1->getActiveMFD() : 0))
 	{
 		mfd_color[3] *= 0.75;
 	}
@@ -1488,7 +1488,7 @@ void HeadUpDisplay::drawScanner(const oo::PList &info)
 	
 	if (PLAYER == nil)  return;
 	
-	OOMatrix		rotMatrix = [PLAYER rotationMatrix];
+	OOMatrix		rotMatrix = (PLAYER != nullptr ? PLAYER->rotationMatrix() : OOMatrix{});
 	Vector			relativePosition;
 	int				flash = ((int)([UNIVERSE getTime] * 4))&1;
 	
@@ -1572,8 +1572,8 @@ void HeadUpDisplay::drawScanner(const oo::PList &info)
 				}
 				ms_blip -= floor(ms_blip);
 				
-				relativePosition = [PLAYER vectorTo:scannedEntity];
-				double fuzz = [PLAYER scannerFuzziness];
+				relativePosition = (PLAYER != nullptr ? PLAYER->vectorTo(oo::ToCxx(scannedEntity)) : Vector{});
+				double fuzz = (PLAYER != nullptr ? PLAYER->scannerFuzziness() : 0.0);
 				if (fuzz > 0 && ![[UNIVERSE gameController] isGamePaused])
 				{
 					relativePosition = vector_add(relativePosition,OOVectorRandomRadial(fuzz));
@@ -1605,8 +1605,8 @@ void HeadUpDisplay::drawScanner(const oo::PList &info)
 				if ([scannedEntity isShip])
 				{
 					::ShipEntity *ship = (::ShipEntity *)scannedEntity;
-					isHostile = (([ship hasHostileTarget])&&([ship primaryTarget] == PLAYER));
-					GLfloat *base_col = [ship scannerDisplayColorForShip:PLAYER :isHostile :flash
+					isHostile = (([ship hasHostileTarget])&&([ship primaryTarget] == oo::ToObjC(PLAYER)));
+					GLfloat *base_col = [ship scannerDisplayColorForShip:oo::ToObjC(PLAYER) :isHostile :flash
 																		:[ship scannerDisplayColor1] :[ship scannerDisplayColor2]
 																		:[ship scannerDisplayColorHostile1] :[ship scannerDisplayColorHostile2]
 						];
@@ -1804,7 +1804,7 @@ void HeadUpDisplay::drawCompass(const oo::PList &info)
 	alpha = compass_color[3];
 	
 	// draw the compass
-	OOMatrix		rotMatrix = [PLAYER rotationMatrix];
+	OOMatrix		rotMatrix = (PLAYER != nullptr ? PLAYER->rotationMatrix() : OOMatrix{});
 	
 	GLfloat h1 = siz.height * 0.125;
 	GLfloat h3 = siz.height * 0.375;
@@ -1822,13 +1822,13 @@ void HeadUpDisplay::drawCompass(const oo::PList &info)
 	OOGLEND();
 	OOGL(GLScaledLineWidth(lineWidth));	// thinner
 	
-	if (checkPlayerInSystemFlight() && [PLAYER status] != STATUS_LAUNCHING) // normal system
+	if (checkPlayerInSystemFlight() && (PLAYER != nullptr ? PLAYER->status() : OOEntityStatus{}) != STATUS_LAUNCHING) // normal system
 	{
-		::Entity *reference = [PLAYER compassTarget];
+		::Entity *reference = (PLAYER != nullptr ? PLAYER->getCompassTarget() : (Entity *)nullptr);
 		
 		// translate and rotate the view
 
-		Vector relativePosition = [PLAYER vectorTo:reference];
+		Vector relativePosition = (PLAYER != nullptr ? PLAYER->vectorTo(oo::ToCxx(reference)) : Vector{});
 		relativePosition = OOVectorMultiplyMatrix(relativePosition, rotMatrix);
 		relativePosition = vector_normal_or_fallback(relativePosition, kBasisZVector);
 		
@@ -1840,7 +1840,7 @@ void HeadUpDisplay::drawCompass(const oo::PList &info)
 		siz.width *= 0.2;
 		siz.height *= 0.2;
 		OOGL(GLScaledLineWidth(2.0*lineWidth));
-		switch ([PLAYER compassMode])
+		switch ((PLAYER != nullptr ? PLAYER->getCompassMode() : OOCompassMode{}))
 		{
 			case COMPASS_MODE_INACTIVE:
 				break;
@@ -1870,7 +1870,7 @@ void HeadUpDisplay::drawCompass(const oo::PList &info)
 				
 			case COMPASS_MODE_BEACONS:
 				drawCompassBeaconBlipAt(relativePosition, siz, alpha);
-				::Entity <OOBeaconEntity>		*beacon = [PLAYER nextBeacon];
+				::Entity <OOBeaconEntity>		*beacon = (PLAYER != nullptr ? (Entity <OOBeaconEntity> *)PLAYER->nextBeacon() : (Entity <OOBeaconEntity> *)nullptr);
 				OOHUDBeaconIcon	*beaconIcon = [beacon beaconDrawable];	// nil beacon or drawable: nothing, as the message to nil
 				if (beaconIcon != nullptr)  beaconIcon->drawHUDBeaconIconAt(NSMakePoint(x, y), siz, alpha, z1);
 				break;
@@ -1885,7 +1885,7 @@ void HeadUpDisplay::drawCompass(const oo::PList &info)
 
 void HeadUpDisplay::drawAegis(const oo::PList & /*info*/)	// the geometry is the current item's cached info
 {
-	if (([UNIVERSE viewDirection] == VIEW_GUI_DISPLAY)||([UNIVERSE sun] == nil)||([PLAYER checkForAegis] != AEGIS_IN_DOCKING_RANGE))
+	if (([UNIVERSE viewDirection] == VIEW_GUI_DISPLAY)||([UNIVERSE sun] == nil)||((PLAYER != nullptr ? PLAYER->checkForAegis() : OOAegisStatus{}) != AEGIS_IN_DOCKING_RANGE))
 		return;	// don't draw
 	
 	int					x, y;
@@ -1939,13 +1939,13 @@ void HeadUpDisplay::drawTargetReticle(const oo::PList &info)
 {
 	GLfloat alpha = info.get<oo::NonNegative<float>>(ALPHA_KEY, 1.0f) * overallAlpha;
 	
-	if ([PLAYER primaryTarget] != nil)
+	if ((PLAYER != nullptr ? PLAYER->primaryTarget() : id{}) != nil)
 	{
-		hudDrawReticleOnTarget([PLAYER primaryTarget], PLAYER, z1, alpha, reticleTargetSensitive, &propertiesReticleTargetSensitive, NO, YES, info, _reticleColors);
+		hudDrawReticleOnTarget((PLAYER != nullptr ? PLAYER->primaryTarget() : id{}), PLAYER, z1, alpha, reticleTargetSensitive, &propertiesReticleTargetSensitive, NO, YES, info, _reticleColors);
 		drawDirectionCue(info);
 	}
 	// extra feature if extra equipment installed
-	if ([PLAYER cxx_hasEquipmentItemProviding:"EQ_INTEGRATED_TARGETING_SYSTEM"])
+	if ((PLAYER != nullptr ? PLAYER->hasEquipmentItemProviding("EQ_INTEGRATED_TARGETING_SYSTEM") : false))
 	{
 		drawSecondaryTargetReticle(info);
 	}
@@ -1957,14 +1957,14 @@ void HeadUpDisplay::drawSecondaryTargetReticle(const oo::PList &info)
 	GLfloat alpha = info.get<oo::NonNegative<float>>(ALPHA_KEY, 1.0f) * overallAlpha * 0.4;
 	
 	::PlayerEntity *player = PLAYER;
-	if ([player cxx_hasEquipmentItemProviding:"EQ_TARGET_MEMORY"])
+	if ((player != nullptr ? player->hasEquipmentItemProviding("EQ_TARGET_MEMORY") : false))
 	{
 		// needs target memory to be working in addition to any other equipment
 		// this item may be bound to
-		::ShipEntity *primary = [player primaryTarget];
+		::ShipEntity *primary = (player != nullptr ? player->primaryTarget() : id{});
 		for (unsigned i = 0; i < PLAYER_TARGET_MEMORY_SIZE; i++)
 		{
-			id sec_id = [player cxx_targetMemory].at(i).get();	// an empty slot (was OONull) is nil: neither is a proxy
+			id sec_id = (player != nullptr ? player->targetMemory() : std::vector<oo::ObjCRef<OOWeakReference *>>()).at(i).get();	// an empty slot (was OONull) is nil: neither is a proxy
 			// isProxy = weakref ; not = OONull (in this case...)
 			// can't use isKindOfClass because that throws
 			// OOInvalidArgumentException when called on a weakref
@@ -1992,7 +1992,7 @@ void HeadUpDisplay::drawWaypoints(const oo::PList &info)
 	GLfloat scale = info.get<float>("reticle_scale", ONE_SIXTYFOURTH);
 
 	::OOWaypointEntity *waypoint = nil;
-	::Entity *compass = [PLAYER compassTarget];
+	::Entity *compass = (PLAYER != nullptr ? PLAYER->getCompassTarget() : (Entity *)nullptr);
 	
 	for (const auto &[waypointKey, waypointRef] : [UNIVERSE cxx_currentWaypoints])
 	{
@@ -2009,7 +2009,7 @@ void HeadUpDisplay::drawCustomBar(const oo::PList &info)
 	NSSize				siz;
 	BOOL				draw_surround;
 	GLfloat				alpha = overallAlpha;
-	GLfloat				ds = OOClamp_0_1_f([PLAYER cxx_dialCustomFloat:OptionalStringIn(info, CUSTOM_DIAL_KEY).value_or("")]);
+	GLfloat				ds = OOClamp_0_1_f((PLAYER != nullptr ? PLAYER->dialCustomFloat(OptionalStringIn(info, CUSTOM_DIAL_KEY).value_or("")) : 0.0f));
 	struct CachedInfo	cached;
 	
 	GetCurrentCachedInfo(&cached);
@@ -2051,7 +2051,7 @@ void HeadUpDisplay::drawCustomText(const oo::PList &info)
 	int					x, y;
 	NSSize				size;
 	GLfloat				alpha = overallAlpha;
-	std::string			text = [PLAYER cxx_dialCustomString:OptionalStringIn(info, CUSTOM_DIAL_KEY).value_or("")];	// nil drew nothing, as "" does
+	std::string			text = (PLAYER != nullptr ? PLAYER->dialCustomString(OptionalStringIn(info, CUSTOM_DIAL_KEY).value_or("")) : std::string());	// nil drew nothing, as "" does
 	struct CachedInfo	cached;
 	
 	GetCurrentCachedInfo(&cached);
@@ -2083,7 +2083,7 @@ void HeadUpDisplay::drawCustomIndicator(const oo::PList &info)
 	NSSize				siz;
 	BOOL				draw_surround;
 	GLfloat				alpha = overallAlpha;
-	GLfloat				iv = OOClamp_n1_1_f([PLAYER cxx_dialCustomFloat:OptionalStringIn(info, CUSTOM_DIAL_KEY).value_or("")]);
+	GLfloat				iv = OOClamp_n1_1_f((PLAYER != nullptr ? PLAYER->dialCustomFloat(OptionalStringIn(info, CUSTOM_DIAL_KEY).value_or("")) : 0.0f));
 
 	struct CachedInfo	cached;
 	
@@ -2126,7 +2126,7 @@ void HeadUpDisplay::drawCustomLight(const oo::PList &info)
 	
 	GLfloat light_color[4] = { 0.25, 0.25, 0.25, 0.0};
 	
-	oo::Ref<OOColor> color = [PLAYER cxx_dialCustomColor:OptionalStringIn(info, CUSTOM_DIAL_KEY).value_or("")];
+	oo::Ref<OOColor> color = (PLAYER != nullptr ? PLAYER->dialCustomColor(OptionalStringIn(info, CUSTOM_DIAL_KEY).value_or("")) : oo::Ref<OOColor>());
 	if (color != nullptr)	// a message to nil left the colour as it was
 	{
 		color->getRed(&light_color[0],
@@ -2159,7 +2159,7 @@ void HeadUpDisplay::drawCustomImage(const oo::PList &info)
 	y = useDefined(cached.y, 0) + [[UNIVERSE gameView] y_offset] * cached.y0;
 	alpha *= cached.alpha;
 
-	std::optional<std::string> textureFile = std::optional<std::string>([PLAYER cxx_dialCustomString:OptionalStringIn(info, CUSTOM_DIAL_KEY).value_or("")]);
+	std::optional<std::string> textureFile = std::optional<std::string>((PLAYER != nullptr ? PLAYER->dialCustomString(OptionalStringIn(info, CUSTOM_DIAL_KEY).value_or("")) : std::string()));
 	if (!textureFile.has_value() || textureFile->empty()) {
 		return;
 	}
@@ -2197,7 +2197,7 @@ void HeadUpDisplay::drawSpeedBar(const oo::PList &info)
 	NSSize				siz;
 	BOOL				draw_surround;
 	GLfloat				alpha = overallAlpha;
-	GLfloat				ds = [PLAYER dialSpeed];
+	GLfloat				ds = (PLAYER != nullptr ? PLAYER->dialSpeed() : 0.0f);
 	struct CachedInfo	cached;
 	
 	GetCurrentCachedInfo(&cached);
@@ -2260,7 +2260,7 @@ void HeadUpDisplay::drawRollBar(const oo::PList &info)
 	}
 	// draw ROLL bar
 	SET_COLOR(yellow_color);
-	hudDrawIndicatorAt(x, y, z1, siz, [PLAYER dialRoll]);
+	hudDrawIndicatorAt(x, y, z1, siz, (PLAYER != nullptr ? PLAYER->dialRoll() : 0.0f));
 }
 
 
@@ -2289,7 +2289,7 @@ void HeadUpDisplay::drawPitchBar(const oo::PList &info)
 	}
 	// draw PITCH bar
 	SET_COLOR(yellow_color);
-	hudDrawIndicatorAt(x, y, z1, siz, [PLAYER dialPitch]);
+	hudDrawIndicatorAt(x, y, z1, siz, (PLAYER != nullptr ? PLAYER->dialPitch() : 0.0f));
 }
 
 
@@ -2319,7 +2319,7 @@ void HeadUpDisplay::drawYawBar(const oo::PList &info)
 	}
 	// draw YAW bar
 	SET_COLOR(yellow_color);
-	hudDrawIndicatorAt(x, y, z1, siz, [PLAYER dialYaw]);
+	hudDrawIndicatorAt(x, y, z1, siz, (PLAYER != nullptr ? PLAYER->dialYaw() : 0.0f));
 }
 
 
@@ -2333,13 +2333,13 @@ void HeadUpDisplay::drawEnergyGauge(const oo::PList &info)
 	GLfloat				bankHeight, bankY;
 	::PlayerEntity *player = PLAYER;
 
-	unsigned n_bars = [player dialMaxEnergy]/64.0;
+	unsigned n_bars = (player != nullptr ? player->dialMaxEnergy() : 0.0f)/64.0;
 	n_bars = info.get<unsigned int>(N_BARS_KEY, n_bars);
 	if (n_bars < 1)
 	{
 		n_bars = 1;
 	}
-	GLfloat				energy = [player dialEnergy] * n_bars;
+	GLfloat				energy = (player != nullptr ? player->dialEnergy() : 0.0f) * n_bars;
 	struct CachedInfo	cached;
 	
 	GetCurrentCachedInfo(&cached);
@@ -2411,7 +2411,7 @@ void HeadUpDisplay::drawForwardShieldBar(const oo::PList &info)
 	NSSize				siz;
 	BOOL				draw_surround;
 	GLfloat				alpha = overallAlpha;
-	GLfloat				shield = [PLAYER dialForwardShield];
+	GLfloat				shield = (PLAYER != nullptr ? PLAYER->dialForwardShield() : 0.0f);
 	struct CachedInfo	cached;
 	
 	GetCurrentCachedInfo(&cached);
@@ -2452,7 +2452,7 @@ void HeadUpDisplay::drawAftShieldBar(const oo::PList &info)
 	NSSize				siz;
 	BOOL				draw_surround;
 	GLfloat				alpha = overallAlpha;
-	GLfloat				shield = [PLAYER dialAftShield];
+	GLfloat				shield = (PLAYER != nullptr ? PLAYER->dialAftShield() : 0.0f);
 	struct CachedInfo	cached;
 	
 	GetCurrentCachedInfo(&cached);
@@ -2511,8 +2511,8 @@ void HeadUpDisplay::drawFuelBar(const oo::PList &info)
 		hudDrawSurroundAt(x, y, z1, siz);
 	}
 	
-	fu = [PLAYER dialFuel];
-	hr = [PLAYER dialHyperRange];
+	fu = (PLAYER != nullptr ? PLAYER->dialFuel() : 0.0f);
+	hr = (PLAYER != nullptr ? PLAYER->dialHyperRange() : 0.0f);
 	
 	// draw fuel bar
 	SET_COLOR_MEDIUM(yellow_color);
@@ -2521,7 +2521,7 @@ void HeadUpDisplay::drawFuelBar(const oo::PList &info)
 	// draw range indicator
 	if (hr > 0.0f && hr <= 1.0f)
 	{
-		if ([PLAYER hasSufficientFuelForJump])
+		if ((PLAYER != nullptr ? PLAYER->hasSufficientFuelForJump() : false))
 		{
 			SET_COLOR_HIGH(green_color);
 		}
@@ -2538,7 +2538,7 @@ void HeadUpDisplay::drawFuelBar(const oo::PList &info)
 void HeadUpDisplay::drawWitchspaceDestination(const oo::PList &info)
 {
 	// A zero-distance jump counts as 0.1LY
-	if ([PLAYER dialHyperRange] == 0.0f)
+	if ((PLAYER != nullptr ? PLAYER->dialHyperRange() : 0.0f) == 0.0f)
 	{
 		return;
 	}
@@ -2556,8 +2556,8 @@ void HeadUpDisplay::drawWitchspaceDestination(const oo::PList &info)
 	siz.width = useDefined(cached.width, WITCHDEST_WIDTH);
 	siz.height = useDefined(cached.height, WITCHDEST_HEIGHT);
 	alpha *= cached.alpha;
-	std::string dest = [UNIVERSE cxx_getSystemName:[PLAYER targetSystemID]].value_or("");	// nil drew nothing, as "" does
-	NSInteger concealment = ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getPropertiesForSystem([PLAYER targetSystemID], [PLAYER galaxyNumber]) : oo::PList()).get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
+	std::string dest = [UNIVERSE cxx_getSystemName:(PLAYER != nullptr ? PLAYER->targetSystemID() : 0)].value_or("");	// nil drew nothing, as "" does
+	NSInteger concealment = ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getPropertiesForSystem((PLAYER != nullptr ? PLAYER->targetSystemID() : 0), (PLAYER != nullptr ? PLAYER->galaxyNumber() : OOGalaxyID{})) : oo::PList()).get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
 	if (concealment >= OO_SYSTEMCONCEALMENT_NONAME) dest = OO_DESC("status-unknown-system");
 
 	SET_COLOR(green_color);
@@ -2579,7 +2579,7 @@ void HeadUpDisplay::drawCabinTempBar(const oo::PList &info)
 	int					x, y;
 	NSSize				siz;
 	BOOL				draw_surround;
-	GLfloat				temp = [PLAYER hullHeatLevel];
+	GLfloat				temp = (PLAYER != nullptr ? PLAYER->hullHeatLevel() : 0.0f);
 	GLfloat				alpha = overallAlpha;
 	struct CachedInfo	cached;
 	
@@ -2626,7 +2626,7 @@ void HeadUpDisplay::drawWeaponTempBar(const oo::PList &info)
 	int					x, y;
 	NSSize				siz;
 	BOOL				draw_surround;
-	GLfloat				temp = [PLAYER laserHeatLevel];
+	GLfloat				temp = (PLAYER != nullptr ? PLAYER->laserHeatLevel() : 0.0f);
 	GLfloat				alpha = overallAlpha;
 	struct CachedInfo	cached;
 	
@@ -2661,7 +2661,7 @@ void HeadUpDisplay::drawAltitudeBar(const oo::PList &info)
 	int					x, y;
 	NSSize				siz;
 	BOOL				draw_surround;
-	GLfloat				alt = [PLAYER dialAltitude];
+	GLfloat				alt = (PLAYER != nullptr ? PLAYER->dialAltitude() : 0.0f);
 	GLfloat				alpha = overallAlpha;
 	struct CachedInfo	cached;
 	
@@ -2839,20 +2839,20 @@ void HeadUpDisplay::drawMissileDisplay(const oo::PList &info)
 	alpha *= cached.alpha;
 	sp = info.get<unsigned int>(SPACING_KEY, MISSILES_DISPLAY_SPACING);
 	
-	BOOL weaponsOnline = [PLAYER weaponsOnline];
+	BOOL weaponsOnline = (PLAYER != nullptr ? PLAYER->weaponsOnline() : false);
 	if (!weaponsOnline)  alpha *= 0.2f;	// darken missile display if weapons are offline
 	
-	if (![PLAYER dialIdentEngaged])
+	if (!(PLAYER != nullptr ? PLAYER->dialIdentEngaged() : false))
 	{
-		OOMissileStatus status = [PLAYER dialMissileStatus];
-		NSUInteger i, n_mis = [PLAYER dialMaxMissiles];
+		OOMissileStatus status = (PLAYER != nullptr ? PLAYER->dialMissileStatus() : OOMissileStatus{});
+		NSUInteger i, n_mis = (PLAYER != nullptr ? PLAYER->dialMaxMissiles() : 0);
 		for (i = 0; i < n_mis; i++)
 		{
-			::ShipEntity *missile = [PLAYER missileForPylon:i];
+			::ShipEntity *missile = (PLAYER != nullptr ? PLAYER->missileForPylon(i) : (::ShipEntity *)nil);
 			if (missile)
 			{
 				drawIconForMissile(missile,
-								   weaponsOnline && i == [PLAYER activeMissile],
+								   weaponsOnline && i == (PLAYER != nullptr ? PLAYER->getActiveMissile() : 0),
 								   status,
 								   x + (int)i * sp + 2, y,
 								   siz.width * 0.25f, siz.height * 0.25f,
@@ -2871,7 +2871,7 @@ void HeadUpDisplay::drawMissileDisplay(const oo::PList &info)
 		y -= siz.height * 0.75;
 		siz.width *= 0.80;
 		sp *= 0.75;
-		switch ([PLAYER dialMissileStatus])
+		switch ((PLAYER != nullptr ? PLAYER->dialMissileStatus() : OOMissileStatus{}))
 		{
 			case MISSILE_STATUS_SAFE:
 				GLColorWithOverallAlpha(green_color, alpha);	break;
@@ -2887,7 +2887,7 @@ void HeadUpDisplay::drawMissileDisplay(const oo::PList &info)
 			glVertex3i(x , y + siz.height, z1);
 		OOGLEND();
 		GLColorWithOverallAlpha(green_color, alpha);
-		cxx_OODrawString([PLAYER cxx_dialTargetName].value_or(""), x + sp, y - 1, z1, NSMakeSize(siz.width, siz.height));
+		cxx_OODrawString((PLAYER != nullptr ? PLAYER->dialTargetName() : std::optional<std::string>()).value_or(""), x + sp, y - 1, z1, NSMakeSize(siz.width, siz.height));
 	}
 	
 }
@@ -2898,7 +2898,7 @@ void HeadUpDisplay::drawStatusLight(const oo::PList & /*info*/)
 	int					x, y;
 	NSSize				siz;
 	GLfloat				alpha = overallAlpha;
-	BOOL				blueAlert = cloakIndicatorOnStatusLight && [PLAYER isCloaked];
+	BOOL				blueAlert = cloakIndicatorOnStatusLight && (PLAYER != nullptr ? PLAYER->isCloaked() : false);
 	struct CachedInfo	cached;
 	
 	GetCurrentCachedInfo(&cached);
@@ -2910,7 +2910,7 @@ void HeadUpDisplay::drawStatusLight(const oo::PList & /*info*/)
 	alpha *= cached.alpha;
 	
 	GLfloat status_color[4] = { 0.25, 0.25, 0.25, 1.0};
-	int alertCondition = [PLAYER alertCondition];
+	int alertCondition = (PLAYER != nullptr ? PLAYER->getAlertCondition() : OOAlertCondition{});
 	GLfloat flash_alpha = 0.333 * (2.0f + sin((GLfloat)[UNIVERSE getTime] * 2.5f * alertCondition));
 	
 	switch(alertCondition)
@@ -2960,13 +2960,13 @@ void HeadUpDisplay::drawDirectionCue(const oo::PList & /*info*/)
 	
 	if ([UNIVERSE displayGUI])  return;
 	
-	::Entity		*target = [PLAYER primaryTarget];
+	::Entity		*target = (PLAYER != nullptr ? PLAYER->primaryTarget() : id{});
 	if (target == nil)  return;
 	
 	// draw the direction cue
 	OOMatrix	rotMatrix;
 	
-	rotMatrix = [PLAYER rotationMatrix];
+	rotMatrix = (PLAYER != nullptr ? PLAYER->rotationMatrix() : OOMatrix{});
 	
 	if ([UNIVERSE viewDirection] != VIEW_GUI_DISPLAY)
 	{
@@ -2977,7 +2977,7 @@ void HeadUpDisplay::drawDirectionCue(const oo::PList & /*info*/)
 		const float visMax = 0.984807753012208f;	// cos(10 degrees)
 		
 		// Transform the view
-		Vector rpn = [PLAYER vectorTo:target];
+		Vector rpn = (PLAYER != nullptr ? PLAYER->vectorTo(oo::ToCxx(target)) : Vector{});
 		rpn = OOVectorMultiplyMatrix(rpn, rotMatrix);
 		Vector drawPos = rpn;
 		Vector forward = kZeroVector;
@@ -3055,13 +3055,13 @@ void HeadUpDisplay::drawClock(const oo::PList &info)
 	itemColor[3] *= overallAlpha;
 	
 	OOGL(glColor4f(itemColor[0], itemColor[1], itemColor[2], itemColor[3]));
-	cxx_OODrawString([PLAYER cxx_dial_clock], x, y, z1, siz);
+	cxx_OODrawString((PLAYER != nullptr ? PLAYER->dial_clock() : std::string()), x, y, z1, siz);
 }
 
 
 void HeadUpDisplay::drawPrimedEquipment(const oo::PList &info)
 {
-	if ([PLAYER status] == STATUS_DOCKED)
+	if ((PLAYER != nullptr ? PLAYER->status() : OOEntityStatus{}) == STATUS_DOCKED)
 	{
 		// Can't activate equipment while docked
 		return;
@@ -3071,7 +3071,7 @@ void HeadUpDisplay::drawPrimedEquipment(const oo::PList &info)
 	struct CachedInfo	cached;
 	
 	NSUInteger lines = info.get<int>("n_bars", 1);
-	NSInteger pec = (NSInteger)[PLAYER primedEquipmentCount];
+	NSInteger pec = (NSInteger)(PLAYER != nullptr ? PLAYER->primedEquipmentCount() : 0);
 
 	GetCurrentCachedInfo(&cached);
 	
@@ -3096,7 +3096,7 @@ void HeadUpDisplay::drawPrimedEquipment(const oo::PList &info)
 	if (lines == 1)
 	{
 		OOGL(glColor4f(itemColor[0], itemColor[1], itemColor[2], itemColor[3]));
-		const std::optional<std::string> equipmentName = [PLAYER cxx_primedEquipmentName:0];
+		const std::optional<std::string> equipmentName = (PLAYER != nullptr ? PLAYER->primedEquipmentName(0) : std::optional<std::string>());
 		cxx_OODrawString(cxx_OOExpandKey("equipment-primed-hud", equipmentName).value_or(std::string()), x, y, z1, size);
 	}
 	else
@@ -3111,7 +3111,7 @@ void HeadUpDisplay::drawPrimedEquipment(const oo::PList &info)
 				// instead compact the display towards its centre
 				GLfloat alphaScale = 1.0/((i<0)?(1.0-i):(1.0+i));
 				OOGL(glColor4f(itemColor[0], itemColor[1], itemColor[2], itemColor[3]*alphaScale));
-				cxx_OODrawString([PLAYER cxx_primedEquipmentName:i].value_or(""), x, y, z1, size);
+				cxx_OODrawString((PLAYER != nullptr ? PLAYER->primedEquipmentName(i) : std::optional<std::string>()).value_or(""), x, y, z1, size);
 			}
 			y -= size.height;
 		}	
@@ -3121,7 +3121,7 @@ void HeadUpDisplay::drawPrimedEquipment(const oo::PList &info)
 
 void HeadUpDisplay::drawASCTarget(const oo::PList &info)
 {
-	if (!(checkPlayerInSystemFlight() && [PLAYER status] != STATUS_LAUNCHING)) // normal system
+	if (!(checkPlayerInSystemFlight() && (PLAYER != nullptr ? PLAYER->status() : OOEntityStatus{}) != STATUS_LAUNCHING)) // normal system
 	{
 		// Can't have compass target when docked, etc. (matches blip condition)
 		return;
@@ -3147,11 +3147,11 @@ void HeadUpDisplay::drawASCTarget(const oo::PList &info)
 	OOGL(glColor4f(itemColor[0], itemColor[1], itemColor[2], itemColor[3]));
 	if (info.get<int>("align") == 1)
 	{
-		cxx_OODrawStringAligned([PLAYER cxx_compassTargetLabel].value_or(""), x, y, z1, size,YES);
+		cxx_OODrawStringAligned((PLAYER != nullptr ? PLAYER->compassTargetLabel() : std::optional<std::string>()).value_or(""), x, y, z1, size,YES);
 	}
 	else
 	{
-		cxx_OODrawStringAligned([PLAYER cxx_compassTargetLabel].value_or(""), x, y, z1, size,NO);
+		cxx_OODrawStringAligned((PLAYER != nullptr ? PLAYER->compassTargetLabel() : std::optional<std::string>()).value_or(""), x, y, z1, size,NO);
 	}
 	
 }
@@ -3164,7 +3164,7 @@ void HeadUpDisplay::drawWeaponsOfflineText(const oo::PList &info)
 
 	if (viewID == VIEW_CUSTOM ||
 		overallAlpha == 0.0f ||
-		!([PLAYER status] == STATUS_IN_FLIGHT || [PLAYER status] == STATUS_WITCHSPACE_COUNTDOWN) ||
+		!((PLAYER != nullptr ? PLAYER->status() : OOEntityStatus{}) == STATUS_IN_FLIGHT || (PLAYER != nullptr ? PLAYER->status() : OOEntityStatus{}) == STATUS_WITCHSPACE_COUNTDOWN) ||
 		[UNIVERSE displayGUI]
 		)
 	{
@@ -3172,7 +3172,7 @@ void HeadUpDisplay::drawWeaponsOfflineText(const oo::PList &info)
 		return;
 	}
 
-	if (![PLAYER weaponsOnline])
+	if (!(PLAYER != nullptr ? PLAYER->weaponsOnline() : false))
 	{
 		int					x, y;
 		NSSize				siz;
@@ -3211,18 +3211,18 @@ void HeadUpDisplay::drawFPSInfoCounter(const oo::PList &info)
 	siz.width = useDefined(cached.width, FPSINFO_DISPLAY_WIDTH);
 	siz.height = useDefined(cached.height, FPSINFO_DISPLAY_HEIGHT);
 	
-	HPVector playerPos = [PLAYER position];
+	HPVector playerPos = (PLAYER != nullptr ? PLAYER->getPosition() : HPVector{});
 	std::string positionInfo = oo::str::format("abs %.2f %.2f %.2f / %s", playerPos.x, playerPos.y, playerPos.z, [UNIVERSE cxx_expressPosition:playerPos inCoordinateSystem:"pwm"].value_or("(null)").c_str());
 	
 	// We would normally set a variable alpha value here, but in this case we don't.
 	// We prefer the FPS counter to be always visible - Nikos 20100405
 	GetRGBAArrayFromInfo(info, textColor);
 	OOGL(glColor4f(textColor[0], textColor[1], textColor[2], 1.0f));
-	cxx_OODrawString([PLAYER cxx_dial_fpsinfo], x, y, z1, siz);
+	cxx_OODrawString((PLAYER != nullptr ? PLAYER->dial_fpsinfo() : std::string()), x, y, z1, siz);
 	
 #ifndef NDEBUG
 	NSSize siz08 = NSMakeSize(0.8 * siz.width, 0.8 * siz.width);
-	std::string collDebugInfo = oo::str::format("%s - %s", [PLAYER cxx_dial_objinfo].c_str(), [UNIVERSE collisionDescription].c_str());
+	std::string collDebugInfo = oo::str::format("%s - %s", (PLAYER != nullptr ? PLAYER->dial_objinfo() : std::string()).c_str(), [UNIVERSE collisionDescription].c_str());
 	cxx_OODrawString(collDebugInfo, x, y - siz.height, z1, siz);
 
 	cxx_OODrawString(positionInfo, x, y - 1.8 * siz.height, z1, siz08);
@@ -3253,7 +3253,7 @@ void HeadUpDisplay::drawScoopStatus(const oo::PList &info)
 	GLfloat	s1c[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 	GLfloat	s2c[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 	GLfloat	s3c[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-	int scoop_status = [PLAYER dialFuelScoopStatus];
+	int scoop_status = (PLAYER != nullptr ? PLAYER->dialFuelScoopStatus() : OOFuelScoopStatus{});
 	GLfloat t = [UNIVERSE getTime];
 	GLfloat a1 = alpha * 0.5f * (1.0f + sin(t * 8.0f));
 	GLfloat a2 = alpha * 0.5f * (1.0f + sin(t * 8.0f - 1.0f));
@@ -3331,7 +3331,7 @@ void HeadUpDisplay::drawStickSensitivityIndicator(const oo::PList & /*info*/)
 	GLfloat				x, y;
 	NSSize				siz;
 	GLfloat				alpha = overallAlpha;
-	BOOL				mouse = [PLAYER isMouseControlOn];
+	BOOL				mouse = (PLAYER != nullptr ? PLAYER->isMouseControlOn() : false);
 	::OOJoystickManager	*stickHandler = [::OOJoystickManager sharedStickHandler];	// the facade makes the platform's handler (amendment oo-6bux)
 	struct CachedInfo	cached;
 	
@@ -3380,7 +3380,7 @@ void HeadUpDisplay::drawStickSensitivityIndicator(const oo::PList & /*info*/)
 
 void HeadUpDisplay::drawTrumbles(const oo::PList & /*info*/)
 {
-	cxx::PlayerEntity *player = oo::ToCxx(PLAYER);
+	PlayerEntity *player = PLAYER;
 	oo::Ref<OOTrumble> *trumbles = player->trumbleArray();
 	NSUInteger i;
 	for (i = player->getTrumbleCount(); i > 0; i--)
@@ -3888,7 +3888,7 @@ static void hudDrawWaypoint(OOWaypointEntity *waypoint, PlayerEntity *player1, G
 	
 	if (selected)
 	{
-		GLfloat range = HPdistance(HeadUpDisplayEntityPosition(player1),HeadUpDisplayEntityPosition(waypoint)) * 0.001f;
+		GLfloat range = HPdistance(HeadUpDisplayEntityPosition(oo::ToObjC(player1)),HeadUpDisplayEntityPosition(waypoint)) * 0.001f;
 		if (range < 0.001f) range = 0.0f;	// avoids the occasional -0.001 km distance.
 		NSSize textsize = NSMakeSize(rdist * scale, rdist * scale);
 		float line_height = rdist * scale;
@@ -3901,7 +3901,7 @@ static void hudDrawWaypoint(OOWaypointEntity *waypoint, PlayerEntity *player1, G
 
 static void hudRotateViewpointForVirtualDepth(PlayerEntity * player1, Vector p1)
 {
-	Quaternion		back_q = HeadUpDisplayEntityOrientation(player1);
+	Quaternion		back_q = HeadUpDisplayEntityOrientation(oo::ToObjC(player1));
 	back_q.w = -back_q.w;   // invert
 	Vector			v1 = vector_up_from_quaternion(back_q);
 	NSSize			viewSize = HeadUpDisplayGameViewViewSize(HeadUpDisplayUniverseGameView());
@@ -4638,15 +4638,15 @@ NSSize HeadUpDisplayGameViewViewSize(MyOpenGLView *gameView)
 
 // --- Sends of the reticles and waypoints (hudDrawReticleOnTarget(), hudDrawWaypoint(), hudRotateViewpointForVirtualDepth())
 
-OOGUIScreenID HeadUpDisplayPlayerGuiScreen(PlayerEntity *player)	{ return [player guiScreen]; }
-HPVector HeadUpDisplayPlayerViewpointPosition(PlayerEntity *player)	{ return [player viewpointPosition]; }
-GLfloat HeadUpDisplayPlayerWeaponRange(PlayerEntity *player)	{ return [player weaponRange]; }
-std::optional<std::string> HeadUpDisplayPlayerDialTargetName(PlayerEntity *player)	{ return [player cxx_dialTargetName]; }
-double HeadUpDisplayPlayerClockTimeAdjusted(PlayerEntity *player)	{ return [player clockTimeAdjusted]; }
-Vector HeadUpDisplayPlayerCustomViewForwardVector(PlayerEntity *player)	{ return [player customViewForwardVector]; }
-Vector HeadUpDisplayPlayerCustomViewUpVector(PlayerEntity *player)	{ return [player customViewUpVector]; }
-Quaternion HeadUpDisplayPlayerCustomViewQuaternion(PlayerEntity *player)	{ return [player customViewQuaternion]; }
-OOMatrix HeadUpDisplayPlayerRotationMatrix(PlayerEntity *player)	{ return [player rotationMatrix]; }
+OOGUIScreenID HeadUpDisplayPlayerGuiScreen(PlayerEntity *player)	{ return (player != nullptr ? player->guiScreen() : OOGUIScreenID{}); }
+HPVector HeadUpDisplayPlayerViewpointPosition(PlayerEntity *player)	{ return (player != nullptr ? player->viewpointPosition() : HPVector{}); }
+GLfloat HeadUpDisplayPlayerWeaponRange(PlayerEntity *player)	{ return (player != nullptr ? player->getWeaponRange() : 0.0f); }
+std::optional<std::string> HeadUpDisplayPlayerDialTargetName(PlayerEntity *player)	{ return (player != nullptr ? player->dialTargetName() : std::optional<std::string>()); }
+double HeadUpDisplayPlayerClockTimeAdjusted(PlayerEntity *player)	{ return (player != nullptr ? player->clockTimeAdjusted() : 0.0); }
+Vector HeadUpDisplayPlayerCustomViewForwardVector(PlayerEntity *player)	{ return (player != nullptr ? player->getCustomViewForwardVector() : Vector{}); }
+Vector HeadUpDisplayPlayerCustomViewUpVector(PlayerEntity *player)	{ return (player != nullptr ? player->getCustomViewUpVector() : Vector{}); }
+Quaternion HeadUpDisplayPlayerCustomViewQuaternion(PlayerEntity *player)	{ return (player != nullptr ? player->getCustomViewQuaternion() : Quaternion{}); }
+OOMatrix HeadUpDisplayPlayerRotationMatrix(PlayerEntity *player)	{ return (player != nullptr ? player->rotationMatrix() : OOMatrix{}); }
 bool HeadUpDisplayEntityIsShip(Entity *entity)	{ return [entity isShip]; }
 bool HeadUpDisplayEntityIsWormhole(Entity *entity)	{ return [entity isWormhole]; }
 bool HeadUpDisplayEntityIsVisualEffect(Entity *entity)	{ return [entity isVisualEffect]; }
@@ -4655,8 +4655,8 @@ GLfloat HeadUpDisplayEntityCollisionRadius(Entity *entity)	{ return [entity coll
 Quaternion HeadUpDisplayEntityOrientation(Entity *entity)	{ return [entity orientation]; }
 std::optional<std::string> HeadUpDisplayShipScanDescription(ShipEntity *ship)	{ return [ship cxx_scanDescription]; }
 bool HeadUpDisplayShipIsCloaked(ShipEntity *ship)	{ return [ship isCloaked]; }
-bool HeadUpDisplayShipIsHostileToPlayer(ShipEntity *ship)	{ return (([ship hasHostileTarget])&&([ship primaryTarget] == PLAYER)); }
-GLfloat *HeadUpDisplayShipScannerDisplayColor(ShipEntity *ship, BOOL isHostile, BOOL flash)	{ return [ship scannerDisplayColorForShip:PLAYER :isHostile :flash :[ship scannerDisplayColor1] :[ship scannerDisplayColor2] :[ship scannerDisplayColorHostile1] :[ship scannerDisplayColorHostile2]]; }
+bool HeadUpDisplayShipIsHostileToPlayer(ShipEntity *ship)	{ return (([ship hasHostileTarget])&&([ship primaryTarget] == oo::ToObjC(PLAYER))); }
+GLfloat *HeadUpDisplayShipScannerDisplayColor(ShipEntity *ship, BOOL isHostile, BOOL flash)	{ return [ship scannerDisplayColorForShip:oo::ToObjC(PLAYER) :isHostile :flash :[ship scannerDisplayColor1] :[ship scannerDisplayColor2] :[ship scannerDisplayColorHostile1] :[ship scannerDisplayColorHostile2]]; }
 GLfloat *HeadUpDisplayVisualEffectScannerDisplayColor(OOVisualEffectEntity *vis, BOOL flash)	{ return [vis scannerDisplayColorForShip:flash :[vis scannerDisplayColor1] :[vis scannerDisplayColor2]]; }
 WORMHOLE_SCANINFO HeadUpDisplayWormholeScanInfo(WormholeEntity *wormhole)	{ return (wormhole != nullptr ? wormhole->scanInfo() : WORMHOLE_SCANINFO{}); }
 double HeadUpDisplayWormholeEstimatedArrivalTime(WormholeEntity *wormhole)	{ return (wormhole != nullptr ? wormhole->estimatedArrivalTime() : 0.0); }

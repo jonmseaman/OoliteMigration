@@ -94,15 +94,48 @@ uint32_t gDebugFlags = 0;
 @end
 
 
-@interface FakePlayer: OOObject
+class FakePlayer : public PlayerEntity	// C++ since bead oo-9ht.177 deleted the Objective-C player
 {
-@public
-	OOGalaxyID _galaxy;
-	OOSystemID _system;
+public:
+	OOGalaxyID _galaxy = {};
+	OOSystemID _system = {};
 	std::vector<std::string> _log;
-	Entity *_planetToAdd;
+	::Entity *_planetToAdd = {};
+
+	void setScriptTarget(::ShipEntity * ship) override	{  }
+	OOGalaxyID currentGalaxyID() override	{ return _galaxy; }
+	OOSystemID currentSystemID() override	{ return _system; }
+	unsigned systemPseudoRandom100() override	{ return 42; }
+	unsigned systemPseudoRandom256() override	{ return 200; }
+	double systemPseudoRandomFloat() override	{ return 0.25; }
+	void sendAllShipsAway() override	{ _log.push_back("sendAllShipsAway"); }
+	void addShipsAt(const std::string & roles_number_system_x_y_z) override	{ _log.push_back("addShipsAt " + roles_number_system_x_y_z); }
+	void addShipsAtPrecisely(const std::string & roles_number_system_x_y_z) override	{ _log.push_back("addShipsAtPrecisely " + roles_number_system_x_y_z); }
+	void addShipsWithinRadius(const std::string & roles_number_system_x_y_z_r) override	{ _log.push_back("addShipsWithinRadius " + roles_number_system_x_y_z_r); }
+	::OOPlanetEntity * addPlanetEntity(const std::string & planetKey) override
+	{
+		_log.push_back("addPlanet " + planetKey);
+		return static_cast<OOPlanetEntity *>(oo::ToCxx(_planetToAdd));	// the C++ planet since bead oo-9ht.129
+	}
+	::OOPlanetEntity * addMoonEntity(const std::string & moonKey) override
+	{
+		_log.push_back("addMoon " + moonKey);
+		return static_cast<OOPlanetEntity *>(oo::ToCxx(_planetToAdd));	// the C++ planet since bead oo-9ht.129
+	}
+};
+
+// [[TestPlayer alloc] init] (bead oo-9ht.177): a C++ player under the ship's facade, as
+// PlayerEntity::sharedPlayer() makes the game's, retained (+1) as +alloc's object was.
+template <class T>
+T *NewTestPlayer()
+{
+	oo::Ref<T> player = oo::makeRef<T>();
+	@autoreleasepool
+	{
+		[oo::NewEntityFacade(player) retain];
+	}
+	return player.get();
 }
-@end
 
 
 namespace {
@@ -296,32 +329,6 @@ std::string Describe(Entity *entity)
 @end
 
 
-@implementation FakePlayer
-
-- (void) setScriptTarget:(ShipEntity *)ship  { }
-- (OOGalaxyID) currentGalaxyID  { return _galaxy; }
-- (OOSystemID) currentSystemID  { return _system; }
-- (unsigned) systemPseudoRandom100  { return 42; }
-- (unsigned) systemPseudoRandom256  { return 200; }
-- (double) systemPseudoRandomFloat  { return 0.25; }
-- (void) sendAllShipsAway  { _log.push_back("sendAllShipsAway"); }
-- (void) addShipsAt:(const std::string &)roles_number_system_x_y_z  { _log.push_back("addShipsAt " + roles_number_system_x_y_z); }
-- (void) addShipsAtPrecisely:(const std::string &)roles_number_system_x_y_z  { _log.push_back("addShipsAtPrecisely " + roles_number_system_x_y_z); }
-- (void) addShipsWithinRadius:(const std::string &)roles_number_system_x_y_z_r  { _log.push_back("addShipsWithinRadius " + roles_number_system_x_y_z_r); }
-
-- (OOPlanetEntity *) cxx_addPlanet:(const std::string &)planetKey
-{
-	_log.push_back("addPlanet " + planetKey);
-	return static_cast<OOPlanetEntity *>(oo::ToCxx(_planetToAdd));	// the C++ planet since bead oo-9ht.129
-}
-
-- (OOPlanetEntity *) cxx_addMoon:(const std::string &)moonKey
-{
-	_log.push_back("addMoon " + moonKey);
-	return static_cast<OOPlanetEntity *>(oo::ToCxx(_planetToAdd));	// the C++ planet since bead oo-9ht.129
-}
-
-@end
 
 
 namespace {
@@ -330,7 +337,7 @@ namespace stdfs = std::filesystem;
 
 stdfs::path sRoot;
 FakeUniverse *sUniverse = nil;
-FakePlayer *sPlayer = nil;
+FakePlayer *sPlayer = nullptr;
 
 
 TestEntity *MakeEntity(double x, BOOL visible)
@@ -368,8 +375,8 @@ void SetUp()
 
 	sUniverse = [[FakeUniverse alloc] init];
 	gSharedUniverse = (Universe *)sUniverse;
-	sPlayer = [[FakePlayer alloc] init];
-	gOOPlayer = (PlayerEntity *)sPlayer;
+	sPlayer = NewTestPlayer<FakePlayer>();
+	gOOPlayer = sPlayer;
 
 	sPlayer->_galaxy = 3;
 	sPlayer->_system = 17;

@@ -287,14 +287,14 @@ void GameController::setGamePaused(bool value)
 		setMouseInteractionModeForUIWithMouseInteraction(false);
 		setEcoQoS(true);
 		gameIsPaused = true;
-		[PLAYER doScriptEvent:OOJSID("gamePaused")];
+		if (PLAYER != nullptr)  PLAYER->doScriptEvent(OOJSID("gamePaused"));
 	}
 	else if (!value && gameIsPaused)
 	{
 		setMouseInteractionMode(_resumeMode);
 		setEcoQoS(false);
 		gameIsPaused = false;
-		[PLAYER doScriptEvent:OOJSID("gameResumed")];
+		if (PLAYER != nullptr)  PLAYER->doScriptEvent(OOJSID("gameResumed"));
 	}
 }
 
@@ -364,7 +364,7 @@ void GameController::setMouseInteractionMode(OOMouseInteractionMode mode)
 
 void GameController::setMouseInteractionModeForFlight()
 {
-	setMouseInteractionMode([PLAYER isMouseControlOn] ? MOUSE_MODE_FLIGHT_WITH_MOUSE_CONTROL : MOUSE_MODE_FLIGHT_NO_MOUSE_CONTROL);
+	setMouseInteractionMode((PLAYER != nullptr ? PLAYER->isMouseControlOn() : false) ? MOUSE_MODE_FLIGHT_WITH_MOUSE_CONTROL : MOUSE_MODE_FLIGHT_NO_MOUSE_CONTROL);
 }
 
 
@@ -436,7 +436,7 @@ void GameController::doPerformGameTick()
 		}
 		
 		[UNIVERSE update:delta_t];
-		if (EXPECT_NOT([PLAYER status] == STATUS_RESTART_GAME))
+		if (EXPECT_NOT((PLAYER != nullptr ? PLAYER->status() : OOEntityStatus{}) == STATUS_RESTART_GAME))
 		{
 			[UNIVERSE reinitAndShowDemo:YES];
 		}
@@ -680,7 +680,7 @@ void GameController::loadPlayerIfRequired()
 		// the splash screen
 		[UNIVERSE useGUILightSource:YES];
 		[UNIVERSE useGUILightSource:NO];
-		[PLAYER loadPlayerFromFile:*_playerFileToLoad asNew:NO];
+		if (PLAYER != nullptr)  PLAYER->loadPlayerFromFile(*_playerFileToLoad, NO);
 	}
 }
 

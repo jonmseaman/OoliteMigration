@@ -390,12 +390,12 @@ void cxx::Universe::initWithGameView(::MyOpenGLView *inGameView)
 	// set up cargopod templates
 	[self setUpCargoPods];
 
-	::PlayerEntity *player = [::PlayerEntity sharedPlayer];
-	[player deferredInit];
-	[self addEntity:player];
+	::PlayerEntity *player = ::PlayerEntity::sharedPlayer();
+	player->deferredInit();
+	[self addEntity:oo::ToObjC(player)];
 
-	[player setStatus:STATUS_START_GAME];
-	[player setShowDemoShips: YES];
+	if (player != nullptr)  player->setStatus(STATUS_START_GAME);
+	if (player != nullptr)  player->setShowDemoShips(YES);
 
 	[self setUpInitialUniverse];
 
@@ -408,7 +408,7 @@ void cxx::Universe::initWithGameView(::MyOpenGLView *inGameView)
 	OOInitDebugSupport();
 
 	[[::GameController sharedController] cxx_logProgress:OO_DESC("running-scripts")];
-	[player completeSetUp];
+	if (player != nullptr)  player->completeSetUp();
 
 	[[::GameController sharedController] cxx_logProgress:OO_DESC("populating-space")];
 	[self populateNormalSpace];
@@ -422,7 +422,7 @@ void cxx::Universe::initWithGameView(::MyOpenGLView *inGameView)
 #endif
 #endif
 
-	[player startUpComplete];
+	if (player != nullptr)  player->startUpComplete();
 	_doingStartUp = NO;
 }
 
@@ -1305,9 +1305,9 @@ void Universe::pauseGame()
 	::PlayerEntity 	*player = PLAYER;
 	
 	[self setPauseMessageVisible:NO];
-	const std::optional<std::string> pauseKey = [PLAYER cxx_keyBindingDescription2:"key_pausebutton"];
+	const std::optional<std::string> pauseKey = (PLAYER != nullptr ? PLAYER->keyBindingDescription2("key_pausebutton") : std::optional<std::string>());
 	
-	if ([player status] == STATUS_DOCKED)
+	if ((player != nullptr ? player->status() : OOEntityStatus{}) == STATUS_DOCKED)
 	{
 		if (gui != nullptr && gui->setForegroundTextureKey("paused_docked_overlay"))	// a nil GUI answered NO
 		{
@@ -1321,7 +1321,7 @@ void Universe::pauseGame()
 	}
 	else
 	{
-		if ([player guiScreen] != GUI_SCREEN_MAIN && gui != nullptr && gui->setForegroundTextureKey("paused_overlay"))
+		if ((player != nullptr ? player->guiScreen() : OOGUIScreenID{}) != GUI_SCREEN_MAIN && gui != nullptr && gui->setForegroundTextureKey("paused_overlay"))
 		{
 			gui->drawGUI(1.0, NO);
 		}
@@ -1350,20 +1350,20 @@ void Universe::carryPlayerOn(::StationEntity * /*carrier */, ::WormholeEntity *w
 		::PlayerEntity	*player = PLAYER;
 		OOSystemID dest = (wormhole != nullptr ? wormhole->getDestination() : 0);
 
-		[player setWormhole:wormhole];
-		[player addScannedWormhole:wormhole];
+		if (player != nullptr)  player->setWormhole(wormhole);
+		if (player != nullptr)  player->addScannedWormhole(wormhole);
 		ooscript::Context context = OOJSAcquireContext();
-		[player cxx_setJumpCause:"carried"];
-		[player setPreviousSystemID:[player systemID]];
-		ShipScriptEvent(context, player, "shipWillEnterWitchspace", ooscript::stringValue(ooscript::internString(context, [player cxx_jumpCause].value_or("").c_str())), ooscript::int32Value(dest));
+		if (player != nullptr)  player->setJumpCause("carried");
+		if (player != nullptr)  player->setPreviousSystemID((player != nullptr ? player->systemID() : 0));
+		ShipScriptEvent(context, oo::ToObjC(player), "shipWillEnterWitchspace", ooscript::stringValue(ooscript::internString(context, (player != nullptr ? player->jumpCause() : std::optional<std::string>()).value_or("").c_str())), ooscript::int32Value(dest));
 		OOJSRelinquishContext(context);
 	
 		[self cxx_allShipsDoScriptEvent:OOJSID("playerWillEnterWitchspace") andReactToAIMessage:"PLAYER WITCHSPACE"];
 
-		[player setRandom_factor:(ranrot_rand() & 255)];						// random factor for market values is reset
+		if (player != nullptr)  player->setRandom_factor((ranrot_rand() & 255));						// random factor for market values is reset
 
 // misjump on wormhole sets correct travel time if needed
-		[player addToAdjustTime:(wormhole != nullptr ? wormhole->travelTime() : 0.0)];
+		if (player != nullptr)  player->addToAdjustTime((wormhole != nullptr ? wormhole->travelTime() : 0.0));
 // clear old entities
 		[self removeAllEntitiesExceptPlayer];
 
@@ -1372,21 +1372,21 @@ void Universe::carryPlayerOn(::StationEntity * /*carrier */, ::WormholeEntity *w
 
 		if (!(wormhole != nullptr ? wormhole->withMisjump() : false))
 		{
-			[player setSystemID:dest];
+			if (player != nullptr)  player->setSystemID(dest);
 			[self setSystemTo: dest];
 			
 			[self setUpSpace];
 			[self populateNormalSpace];
-			[player setBounty:([player legalStatus]/2) withReason:kOOLegalStatusReasonNewSystem];
-			if ([player random_factor] < 8) [player erodeReputation];		// every 32 systems or so, dro
+			if (player != nullptr)  player->setBounty(((player != nullptr ? player->getLegalStatus() : int{})/2), kOOLegalStatusReasonNewSystem);
+			if ((player != nullptr ? player->random_factor() : int{}) < 8) { if (player != nullptr)  player->erodeReputation(); }		// every 32 systems or so, dro
 		}
 		else
 		{
-			[player setGalaxyCoordinates:(wormhole != nullptr ? wormhole->destinationCoordinates() : NSPoint{})];
+			if (player != nullptr)  player->setGalaxyCoordinates((wormhole != nullptr ? wormhole->destinationCoordinates() : NSPoint{}));
 
 			[self setUpWitchspaceBetweenSystem:(wormhole != nullptr ? wormhole->getOrigin() : 0) andSystem:(wormhole != nullptr ? wormhole->getDestination() : 0)];
 
-			if (randf() < 0.1) [player erodeReputation];		// once every 10 misjumps - should be much rarer than successful jumps!
+			if (randf() < 0.1) { if (player != nullptr)  player->erodeReputation(); }		// once every 10 misjumps - should be much rarer than successful jumps!
 		}
 		// which will kick the ship out of the wormhole with the
 		// player still aboard
@@ -1399,9 +1399,9 @@ void Universe::carryPlayerOn(::StationEntity * /*carrier */, ::WormholeEntity *w
 											 alpha:0.0f];
 
 		[self setWitchspaceBreakPattern:YES];
-		[player cxx_doScriptEvent:OOJSID("shipWillExitWitchspace") withPListArguments:{ StringOrNull([player cxx_jumpCause]) }];
-		[player cxx_doScriptEvent:OOJSID("shipExitedWitchspace") withPListArguments:{ StringOrNull([player cxx_jumpCause]) }];
-		[player setWormhole:nil];
+		if (player != nullptr)  player->doScriptEvent(OOJSID("shipWillExitWitchspace"), { StringOrNull((player != nullptr ? player->jumpCause() : std::optional<std::string>())) });
+		if (player != nullptr)  player->doScriptEvent(OOJSID("shipExitedWitchspace"), { StringOrNull((player != nullptr ? player->jumpCause() : std::optional<std::string>())) });
+		if (player != nullptr)  player->setWormhole(nullptr);
 
 }
 
@@ -1414,24 +1414,24 @@ void Universe::setUpUniverseFromStation()
 		// we're in witchspace...		
 		
 		::PlayerEntity	*player = PLAYER;
-		::StationEntity	*dockedStation = [player dockedStation];
-		NSPoint			coords = [player galaxy_coordinates];
+		::StationEntity	*dockedStation = (player != nullptr ? player->dockedStation() : (::StationEntity *)nullptr);
+		NSPoint			coords = (player != nullptr ? player->getGalaxy_coordinates() : NSPoint{});
 		// check the nearest system
-		OOSystemID sys = [self findSystemNumberAtCoords:coords withGalaxy:[player galaxyNumber] includingHidden:YES];
+		OOSystemID sys = [self findSystemNumberAtCoords:coords withGalaxy:(player != nullptr ? player->galaxyNumber() : OOGalaxyID{}) includingHidden:YES];
 		BOOL interstel =[dockedStation interstellarUndockingAllowed];// && (s_seed.d != coords.x || s_seed.b != coords.y); - Nikos 20110623: Do we really need the commented out check?
-		[player setPreviousSystemID:[player currentSystemID]];
+		if (player != nullptr)  player->setPreviousSystemID((player != nullptr ? player->currentSystemID() : 0));
 
 		// remove everything except the player and the docked station
 		if (dockedStation && !interstel)
 		{	// jump to the nearest system
-			[player setSystemID:sys];
+			if (player != nullptr)  player->setSystemID(sys);
 			closeSystems.reset();
 			[self setSystemTo: sys];
 			int index = 0;
 			while (entities.size() > 2)
 			{
 				::Entity *ent = entities[index].get();
-				if ((ent != player)&&(ent != dockedStation))
+				if ((ent != oo::ToObjC(player))&&(ent != dockedStation))
 				{
 					if (ent->_cxxEntity->isStation)  // clear out queues
 						[(::StationEntity *)ent clear];
@@ -1473,9 +1473,9 @@ void Universe::setUpUniverseFromStation()
 					[dockedStation setPosition: pos];
 				}
 				[self setWitchspaceBreakPattern:YES];
-				[player cxx_setJumpCause:"carried"];
-				[player cxx_doScriptEvent:OOJSID("shipWillExitWitchspace") withPListArguments:{ StringOrNull([player cxx_jumpCause]) }];
-				[player cxx_doScriptEvent:OOJSID("shipExitedWitchspace") withPListArguments:{ StringOrNull([player cxx_jumpCause]) }];
+				if (player != nullptr)  player->setJumpCause("carried");
+				if (player != nullptr)  player->doScriptEvent(OOJSID("shipWillExitWitchspace"), { StringOrNull((player != nullptr ? player->jumpCause() : std::optional<std::string>())) });
+				if (player != nullptr)  player->doScriptEvent(OOJSID("shipExitedWitchspace"), { StringOrNull((player != nullptr ? player->jumpCause() : std::optional<std::string>())) });
 			}
 		}
 	}
@@ -1495,36 +1495,38 @@ void Universe::setUpUniverseFromWitchspace()
 {
 	::Universe *self = oo::ToObjC(this);
 	::PlayerEntity		*player;
-	
+	::ShipEntity		*playerObject;	// the player's Objective-C object (the ship's facade, bead oo-9ht.177)
+
 	//
 	// check the player is still around!
 	//
 	if (entities.empty())
 	{
 		/*- the player ship -*/
-		player = [[::PlayerEntity alloc] init];	// alloc retains!
-		
-		[self addEntity:player];
-		
+		playerObject = ::PlayerEntity::newPlayerObject();	// alloc retains!
+
+		[self addEntity:playerObject];
+
 		/*--*/
 	}
 	else
 	{
-		player = [PLAYER retain];	// retained here
+		playerObject = [oo::ToObjC(PLAYER) retain];	// retained here
 	}
-	
+	player = static_cast<::PlayerEntity *>(oo::ToCxx(playerObject));
+
 	[self setUpSpace];
 	[self populateNormalSpace];
 	
-	[player leaveWitchspace];
-	[player release];											// released here
+	if (player != nullptr)  player->leaveWitchspace();
+	[playerObject release];									// released here
 
 	[self setViewDirection:VIEW_FORWARD];
 	
 	// the printed lines go to the player's comm log
 	std::vector<std::string> printedLines;
-	if (comm_log_gui != nullptr)  comm_log_gui->printLongText(oo::str::format("%s %s", TextOrNull([self cxx_getSystemName:systemID]).c_str(), [player cxx_dial_clock_adjusted].c_str()), GUI_ALIGN_CENTER, OOColor::whiteColor().get(), 0, std::nullopt, &printedLines);
-	std::vector<std::string> *commLog = [player cxx_commLog];
+	if (comm_log_gui != nullptr)  comm_log_gui->printLongText(oo::str::format("%s %s", TextOrNull([self cxx_getSystemName:systemID]).c_str(), (player != nullptr ? player->dial_clock_adjusted() : std::string()).c_str()), GUI_ALIGN_CENTER, OOColor::whiteColor().get(), 0, std::nullopt, &printedLines);
+	std::vector<std::string> *commLog = (player != nullptr ? player->getCommLog() : (std::vector<std::string> *)nullptr);
 	if (commLog != nullptr)  commLog->insert(commLog->end(), printedLines.begin(), printedLines.end());
 	
 	displayGUI = NO;
@@ -1535,31 +1537,33 @@ void Universe::setUpUniverseFromMisjump()
 {
 	::Universe *self = oo::ToObjC(this);
 	::PlayerEntity		*player;
-	
+	::ShipEntity		*playerObject;	// the player's Objective-C object (the ship's facade, bead oo-9ht.177)
+
 	//
 	// check the player is still around!
 	//
 	if (entities.empty())
 	{
 		/*- the player ship -*/
-		player = [[::PlayerEntity alloc] init];	// alloc retains!
-		
-		[self addEntity:player];
-		
+		playerObject = ::PlayerEntity::newPlayerObject();	// alloc retains!
+
+		[self addEntity:playerObject];
+
 		/*--*/
 	}
 	else
 	{
-		player = [PLAYER retain];	// retained here
+		playerObject = [oo::ToObjC(PLAYER) retain];	// retained here
 	}
-	
+	player = static_cast<::PlayerEntity *>(oo::ToCxx(playerObject));
+
 	[self setUpWitchspace];
 	// ensure that if we got here from a jump within a planet's atmosphere,
 	// we don't get any residual air friction
 	[self setAirResistanceFactor:0.0f];
 	
-	[player leaveWitchspace];
-	[player release];											// released here
+	if (player != nullptr)  player->leaveWitchspace();
+	[playerObject release];									// released here
 	
 	[self setViewDirection:VIEW_FORWARD];
 	
@@ -1570,7 +1574,7 @@ void Universe::setUpUniverseFromMisjump()
 void Universe::setUpWitchspace()
 {
 	::Universe *self = oo::ToObjC(this);
-	[self setUpWitchspaceBetweenSystem:[PLAYER systemID] andSystem:[PLAYER nextHopTargetSystemID]];
+	[self setUpWitchspaceBetweenSystem:(PLAYER != nullptr ? PLAYER->systemID() : 0) andSystem:(PLAYER != nullptr ? PLAYER->nextHopTargetSystemID() : 0)];
 }
 
 
@@ -1618,7 +1622,7 @@ void Universe::setUpWitchspaceBetweenSystem(OOSystemID s1, OOSystemID s2)
 	const std::string populator = systeminfo.get<std::string>("populator", "interstellarSpaceWillPopulate");
 	system_repopulator = systeminfo.get<std::string>("repopulator", "interstellarSpaceWillRepopulate");
 	ooscript::Context context = OOJSAcquireContext();
-	[PLAYER doWorldScriptEvent:cxx_OOJSIDFromString(populator) inContext:context withArguments:NULL count:0 timeLimit:kOOJSLongTimeLimit];
+	if (PLAYER != nullptr)  PLAYER->doWorldScriptEvent(cxx_OOJSIDFromString(populator), context, NULL, 0, kOOJSLongTimeLimit);
 	OOJSRelinquishContext(context);
 	[self populateSystemFromDictionariesWithSun:nil andPlanet:nil];
 
@@ -1629,10 +1633,7 @@ void Universe::setUpWitchspaceBetweenSystem(OOSystemID s1, OOSystemID s2)
 		cxx_OOStandardsDeprecated(oo::str::format("The script_actions system info key is deprecated for %s.",override_key.c_str()));
 		if (!OOEnforceStandards())
 		{
-			[player cxx_runUnsanitizedScriptActions:*script_actions
-							  allowingAIMethods:NO
-								withContextName:"<witchspace script_actions>"
-									  forTarget:nil];
+			if (player != nullptr)  player->runUnsanitizedScriptActions(*script_actions, NO, "<witchspace script_actions>", nullptr);
 		}
 	}
 	
@@ -2063,13 +2064,13 @@ void Universe::populateNormalSpace()
 //	[self populateSpaceFromHyperPoint:witchPos toPlanetPosition: a_planet->position andSunPosition: a_sun->position];
 	[self clearSystemPopulator];
 
-	if ([PLAYER status] != STATUS_START_GAME)
+	if ((PLAYER != nullptr ? PLAYER->status() : OOEntityStatus{}) != STATUS_START_GAME)
 	{
 		const std::string populator = systeminfo.get<std::string>("populator", (sunGoneNova)?"novaSystemWillPopulate":"systemWillPopulate");
 		system_repopulator = systeminfo.get<std::string>("repopulator", (sunGoneNova)?"novaSystemWillRepopulate":"systemWillRepopulate");
 
 		ooscript::Context context = OOJSAcquireContext();
-		[PLAYER doWorldScriptEvent:cxx_OOJSIDFromString(populator) inContext:context withArguments:NULL count:0 timeLimit:kOOJSLongTimeLimit];
+		if (PLAYER != nullptr)  PLAYER->doWorldScriptEvent(cxx_OOJSIDFromString(populator), context, NULL, 0, kOOJSLongTimeLimit);
 		OOJSRelinquishContext(context);
 		[self populateSystemFromDictionariesWithSun:cachedSun andPlanet:cachedPlanet];
 	}
@@ -2084,10 +2085,7 @@ void Universe::populateNormalSpace()
 		if (!OOEnforceStandards())
 		{
 			OO_DEBUG_PUSH_PROGRESS("setUpSpace - legacy script_actions");
-			[PLAYER cxx_runUnsanitizedScriptActions:*script_actions
-							  allowingAIMethods:NO
-								withContextName:"<system script_actions>"
-									  forTarget:nil];
+			if (PLAYER != nullptr)  PLAYER->runUnsanitizedScriptActions(*script_actions, NO, "<system script_actions>", nullptr);
 			OO_DEBUG_POP_PROGRESS();
 		}
 	}
@@ -3440,7 +3438,7 @@ void Universe::addWitchspaceJumpEffectForShip(::ShipEntity *ship)
 {
 	::Universe *self = oo::ToObjC(this);
 	// don't add rings when system is being populated
-	if ([PLAYER status] != STATUS_ENTERING_WITCHSPACE && [PLAYER status] != STATUS_EXITING_WITCHSPACE)
+	if ((PLAYER != nullptr ? PLAYER->status() : OOEntityStatus{}) != STATUS_ENTERING_WITCHSPACE && (PLAYER != nullptr ? PLAYER->status() : OOEntityStatus{}) != STATUS_EXITING_WITCHSPACE)
 	{
 		[self addEntity:oo::NewEntityFacade(OORingEffectEntity::ringFromEntity(ship))];
 		[self addEntity:oo::NewEntityFacade(OORingEffectEntity::shrinkingRingFromEntity(ship))];
@@ -3504,7 +3502,7 @@ void Universe::setUpBreakPattern(HPVector pos, Quaternion q, bool forDocking)
 	
 	if (forDocking)
 	{
-		const oo::PList info = [[PLAYER dockedStation] cxx_shipInfoDictionary];
+		const oo::PList info = [(PLAYER != nullptr ? PLAYER->dockedStation() : (::StationEntity *)nullptr) cxx_shipInfoDictionary];
 		sides = info.get<unsigned int>("tunnel_corners", 4);
 		startAngle = info.get<float>("tunnel_start_angle", 45.0f);
 		aspectRatio = info.get<float>("tunnel_aspect_ratio", 2.67f);
@@ -3526,7 +3524,7 @@ void Universe::setUpBreakPattern(HPVector pos, Quaternion q, bool forDocking)
 		
 		// FIXME: better would be to have break pattern timing not depend on
 		// these ring objects existing in the first place. - CIM
-		if (forDocking && ![[PLAYER dockedStation] hasBreakPattern])
+		if (forDocking && ![(PLAYER != nullptr ? PLAYER->dockedStation() : (::StationEntity *)nullptr) hasBreakPattern])
 		{
 			ring->isImmuneToBreakPatternHide = NO;
 		}
@@ -3621,9 +3619,9 @@ void Universe::setupIntroFirstGo(bool justCobra)
 	}
 	if (justCobra)
 	{
-		[player setStatus: STATUS_START_GAME];
+		if (player != nullptr)  player->setStatus(STATUS_START_GAME);
 	}
-	[player setShowDemoShips: YES];
+	if (player != nullptr)  player->setShowDemoShips(YES);
 	displayGUI = YES;
 
 	if (justCobra)
@@ -4143,7 +4141,7 @@ void Universe::unMagicMainStation()
 		able to destroy the main station before the game has even started,
 		your OXP sucks.
 	*/
-	OOEntityStatus playerStatus = [PLAYER status];
+	OOEntityStatus playerStatus = (PLAYER != nullptr ? PLAYER->status() : OOEntityStatus{});
 	if (playerStatus == STATUS_START_GAME)  return;
 	
 	::StationEntity *theStation = [self station];
@@ -4268,7 +4266,7 @@ void Universe::defineWaypoint(const oo::PList &definition, const std::string &ke
 	if (existing != waypoints.end())  waypoint = existing->second.get();
 	if (waypoint != nil)
 	{
-		if ([PLAYER compassTarget] == waypoint)
+		if ((PLAYER != nullptr ? PLAYER->getCompassTarget() : (::Entity *)nullptr) == waypoint)
 		{
 			preserveCompass = YES;
 		}
@@ -4284,8 +4282,8 @@ void Universe::defineWaypoint(const oo::PList &definition, const std::string &ke
 			waypoints[key] = oo::ObjCRef<::OOWaypointEntity *>(waypoint);
 			if (preserveCompass)
 			{
-				[PLAYER setCompassTarget:waypoint];
-				[PLAYER setNextBeacon:waypoint];
+				if (PLAYER != nullptr)  PLAYER->setCompassTarget(waypoint);
+				if (PLAYER != nullptr)  PLAYER->setNextBeacon(waypoint);
 			}
 		}
 	}
@@ -4317,7 +4315,7 @@ bool Universe::breakPatternOver()
 
 bool Universe::breakPatternHide()
 {
-	::Entity* player = PLAYER;
+	::Entity* player = oo::ToObjC(PLAYER);
 	return ((breakPatternCounter > 5)||(!player)||([player status] == STATUS_DOCKING));
 }
 
@@ -4362,7 +4360,7 @@ bool Universe::canInstantiateShip(const std::string &shipKey)
 	if (conditions == nullptr)  return YES;
 
 	// Check conditions
-	return [PLAYER cxx_scriptTestConditions:*conditions];
+	return (PLAYER != nullptr ? PLAYER->scriptTestConditions(*conditions) : false);
 }
 
 
@@ -4959,7 +4957,7 @@ oo::PList Universe::gameSettings()
 	::Universe *self = oo::ToObjC(this);
 	oo::PList::Dict result;
 
-	result["speechOn"] = oo::PList::signedInteger([PLAYER isSpeechOn]);
+	result["speechOn"] = oo::PList::signedInteger((PLAYER != nullptr ? PLAYER->getIsSpeechOn() : OOSpeechSettings{}));
 	result["autosave"] = oo::PList(static_cast<bool>(autoSave));
 	result["wireframeGraphics"] = oo::PList(static_cast<bool>(wireframeGraphics));
 	result["procedurallyTexturedPlanets"] = oo::PList(static_cast<bool>(doProcedurallyTexturedPlanets));
@@ -4994,7 +4992,7 @@ oo::PList Universe::gameSettings()
 		{ "fullScreen", oo::PList(static_cast<bool>([[self gameController] inFullScreenMode])) },
 	});
 
-	result["keyConfig"] = [PLAYER cxx_keyConfig];
+	result["keyConfig"] = (PLAYER != nullptr ? PLAYER->keyConfig() : oo::PList());
 
 	return oo::PList(std::move(result));
 }
@@ -5099,10 +5097,11 @@ void Universe::getActiveViewMatrix(OOMatrix *outMatrix, Vector *outForward, Vect
 			return;
 			
 		case VIEW_CUSTOM:
+			OOCParameterAssert(outUp != nullptr);	// as the assert above (the analyser follows this one)
 			player = PLAYER;
-			*outMatrix = [player customViewMatrix];
-			*outForward = [player customViewForwardVector];
-			*outUp = [player customViewUpVector];
+			*outMatrix = (player != nullptr ? player->getCustomViewMatrix() : OOMatrix{});
+			*outForward = (player != nullptr ? player->getCustomViewForwardVector() : Vector{});
+			*outUp = (player != nullptr ? player->getCustomViewUpVector() : Vector{});
 			return;
 			
 		case VIEW_FORWARD:
@@ -5290,7 +5289,7 @@ void Universe::drawUniverse()
 			int				draw_count = 0;
 			::PlayerEntity	*player = PLAYER;
 			::Entity			*drawthing = nil;
-			BOOL			demoShipMode = [player showDemoShips];
+			BOOL			demoShipMode = (player != nullptr ? player->getShowDemoShips() : false);
 			
 			float   aspect = viewSize.height/viewSize.width;
 
@@ -5316,7 +5315,7 @@ void Universe::drawUniverse()
 				}
 			}
 			
-			v_status = [player status];
+			v_status = (player != nullptr ? player->status() : OOEntityStatus{});
 			
 			cxx_OOCheckOpenGLErrors("Universe before doing anything");
 			
@@ -5412,7 +5411,7 @@ void Universe::drawUniverse()
 				OOMatrix flipMatrix = kIdentityMatrix;
 				flipMatrix.m[2][2] = -1;
 				view_matrix = OOMatrixMultiply(view_matrix, flipMatrix);
-				Vector viewOffset = [player viewpointOffset];
+				Vector viewOffset = (player != nullptr ? player->viewpointOffset() : Vector{});
 			
 				OOGLLookAt(view_dir, kZeroVector, view_up); 
 
@@ -5421,7 +5420,7 @@ void Universe::drawUniverse()
 					if (EXPECT(!demoShipMode))	// we're in flight
 					{
 						// rotate the view
-						OOGLMultModelView([player rotationMatrix]);
+						OOGLMultModelView((player != nullptr ? player->rotationMatrix() : OOMatrix{}));
 						// translate the view
 						// HPVect: camera-relative position
 						OOGL(glLightModelfv(GL_LIGHT_MODEL_AMBIENT, stars_ambient));
@@ -5433,7 +5432,7 @@ void Universe::drawUniverse()
 						else
 						{
 							// in witchspace
-							[self setMainLightPosition:HPVectorToVector(HPvector_flip([PLAYER viewpointPosition]))];
+							[self setMainLightPosition:HPVectorToVector(HPvector_flip((PLAYER != nullptr ? PLAYER->viewpointPosition() : HPVector{})))];
 						}
 						OOGL(glLightfv(GL_LIGHT1, GL_POSITION, main_light_position));	
 					}
@@ -5491,7 +5490,7 @@ void Universe::drawUniverse()
 							OOGL(glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, mat_no));
 						
 							OOGLPushModelView();
-							if (EXPECT(drawthing != player))
+							if (EXPECT(drawthing != oo::ToObjC(player)))
 							{
 								//translate the object
 								// HPVect: camera relative
@@ -5544,7 +5543,7 @@ void Universe::drawUniverse()
 						if (!((d_status == STATUS_COCKPIT_DISPLAY) ^ demoShipMode)) // either in flight or in demo ship mode
 						{
 							OOGLPushModelView();
-							if (EXPECT(drawthing != player))
+							if (EXPECT(drawthing != oo::ToObjC(player)))
 							{
 								//translate the object
 								// HPVect: camera relative positions
@@ -5635,15 +5634,15 @@ void Universe::drawUniverse()
 			if (lineWidth > 1.5)  lineWidth = 1.5; // don't overscale; think of ultra-wide screen setups
 			OOGL(GLScaledLineWidth(lineWidth));
 
-			::HeadUpDisplay *theHUD = [player hud];
+			::HeadUpDisplay *theHUD = (player != nullptr ? player->getHud() : (HeadUpDisplay *)nullptr);
 			
 			// If the HUD has a non-nil deferred name string, it means that a HUD switch was requested while it was being rendered.
 			// If so, execute the deferred HUD switch now - Nikos 20110628
 			if (theHUD != nullptr && theHUD->getDeferredHudName().has_value())	// a nil HUD answered nil
 			{
 				const std::string deferredName = *theHUD->getDeferredHudName();	// a copy: the switch releases the HUD
-				[player cxx_switchHudTo:deferredName];
-				theHUD = [player hud];	// HUD has been changed, so point to its new address
+				if (player != nullptr)  player->switchHudTo(deferredName);
+				theHUD = (player != nullptr ? player->getHud() : (HeadUpDisplay *)nullptr);	// HUD has been changed, so point to its new address
 			}
 			
 			// Hiding HUD: has been a regular - non-debug - feature as of r2749, about 2 yrs ago! --Kaks 2011.10.14
@@ -5669,7 +5668,7 @@ void Universe::drawUniverse()
 				// no HUD rendering in these modes
 				break;
 			default:
-				switch ([player guiScreen])
+				switch ((player != nullptr ? player->guiScreen() : OOGUIScreenID{}))
 				{
 				//case GUI_SCREEN_KEYBOARD:
 					// no HUD rendering on this screen
@@ -5788,7 +5787,8 @@ void Universe::drawMessage()
 	
 	OOGL(glDisable(GL_TEXTURE_2D));	// for background sheets
 	
-	float overallAlpha = ([PLAYER hud] != nullptr) ? [PLAYER hud]->getOverallAlpha() : 0.0f;	// a nil HUD answered 0
+	HeadUpDisplay *hud = (PLAYER != nullptr ? PLAYER->getHud() : (HeadUpDisplay *)nullptr);
+	float overallAlpha = (hud != nullptr) ? hud->getOverallAlpha() : 0.0f;	// a nil HUD answered 0
 	if (displayGUI)
 	{
 		if ([[self gameController] mouseInteractionMode] == MOUSE_MODE_UI_SCREEN_WITH_INTERACTION)
@@ -5823,7 +5823,7 @@ void Universe::drawWatermarkString(const std::string &watermarkString)
 id Universe::entityForUniversalID(OOUniversalID u_id)
 {
 	if (u_id == 100)
-		return PLAYER;	// the player
+		return oo::ToObjC(PLAYER);	// the player
 	
 	if (MAX_ENTITY_UID < u_id)
 	{
@@ -5966,7 +5966,7 @@ bool Universe::addEntity(::Entity *entity)
 		
 		// maintain sorted list (and for the scanner relative position)
 		HPVector entity_pos = entity->_cxxEntity->position;
-		HPVector delta = HPvector_between(entity_pos, PLAYER->_cxxEntity->position);
+		HPVector delta = HPvector_between(entity_pos, PLAYER->position);
 		double z_distance = HPmagnitude2(delta);
 		entity->_cxxEntity->zero_distance = z_distance;
 		unsigned index = n_entities;
@@ -6028,9 +6028,9 @@ bool Universe::removeEntity(::Entity *entity)
 		if ([entity isStation])
 		{
 			std::erase(allStations, entity);
-			if ([PLAYER getTargetDockStation] == entity)
+			if ((PLAYER != nullptr ? PLAYER->getTargetDockStation() : (::StationEntity *)nullptr) == entity)
 			{
-				[PLAYER setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
+				if (PLAYER != nullptr)  PLAYER->setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_NONE);
 			}
 		}
 		return [self doRemoveEntity:entity];
@@ -6134,11 +6134,11 @@ namespace cxx {
 {
 	::Universe *self = oo::ToObjC(this);
 
-	if ([PLAYER dockedStation] == nil)  return nil;
+	if ((PLAYER != nullptr ? PLAYER->dockedStation() : (::StationEntity *)nullptr) == nil)  return nil;
 	
 	[self removeDemoShips];	// get rid of any pre-existing models on display
 	
-	[PLAYER setShowDemoShips: YES];
+	if (PLAYER != nullptr)  PLAYER->setShowDemoShips(YES);
 	Quaternion q2 = { (GLfloat)M_SQRT1_2, (GLfloat)M_SQRT1_2, (GLfloat)0.0, (GLfloat)0.0 };
 	
 	::ShipEntity *ship = [self cxx_newShipWithRole:role];   // retain count = 1
@@ -6596,12 +6596,12 @@ namespace cxx {
 		}
 	}
 	
-	Quaternion q1 = [player normalOrientation];
+	Quaternion q1 = (player != nullptr ? player->normalOrientation() : Quaternion{});
 	Vector u1, f1, r1;
 	basis_vectors_from_quaternion(q1, &r1, &u1, &f1);
-	Vector offset = [player weaponViewOffset];
+	Vector offset = (player != nullptr ? player->weaponViewOffset() : Vector{});
 	
-	HPVector p1 = HPvector_add([player position], vectorToHPVector(OOVectorMultiplyMatrix(offset, OOMatrixFromBasisVectors(r1, u1, f1))));
+	HPVector p1 = HPvector_add((player != nullptr ? player->getPosition() : HPVector{}), vectorToHPVector(OOVectorMultiplyMatrix(offset, OOMatrixFromBasisVectors(r1, u1, f1))));
 	
 	// Note: deliberately tied to view direction, not weapon facing. All custom views count as forward for targeting.
 	switch (viewDirection)
@@ -6648,7 +6648,7 @@ namespace cxx {
 	if (hit_entity != nil && [hit_entity isShip])
 	{
 		::ShipEntity* ship = (::ShipEntity*)hit_entity;
-		if ([ship isJammingScanning] && ![player hasMilitaryScannerFilter])
+		if ([ship isJammingScanning] && !(player != nullptr ? player->hasMilitaryScannerFilter() : false))
 		{
 			hit_entity = nil;
 		}
@@ -6677,31 +6677,31 @@ namespace cxx {
 	{
 		case VIEW_FORWARD:
 			targetFacing = WEAPON_FACING_FORWARD;
-			laserPortOffset = firstWeaponOffset([player cxx_forwardWeaponOffset]);
+			laserPortOffset = firstWeaponOffset((player != nullptr ? player->getForwardWeaponOffset() : std::vector<Vector>()));
 			break;
 			
 		case VIEW_AFT:
 			targetFacing = WEAPON_FACING_AFT;
-			laserPortOffset = firstWeaponOffset([player cxx_aftWeaponOffset]);
+			laserPortOffset = firstWeaponOffset((player != nullptr ? player->getAftWeaponOffset() : std::vector<Vector>()));
 			break;
 			
 		case VIEW_PORT:
 			targetFacing = WEAPON_FACING_PORT;
-			laserPortOffset = firstWeaponOffset([player cxx_portWeaponOffset]);
+			laserPortOffset = firstWeaponOffset((player != nullptr ? player->getPortWeaponOffset() : std::vector<Vector>()));
 			break;
 			
 		case VIEW_STARBOARD:
 			targetFacing = WEAPON_FACING_STARBOARD;
-			laserPortOffset = firstWeaponOffset([player cxx_starboardWeaponOffset]);
+			laserPortOffset = firstWeaponOffset((player != nullptr ? player->getStarboardWeaponOffset() : std::vector<Vector>()));
 			break;
 			
 		default:
 			// Match behaviour of -firstEntityTargetedByPlayer.
 			targetFacing = WEAPON_FACING_FORWARD;
-			laserPortOffset = firstWeaponOffset([player cxx_forwardWeaponOffset]);
+			laserPortOffset = firstWeaponOffset((player != nullptr ? player->getForwardWeaponOffset() : std::vector<Vector>()));
 	}
 	
-	return [self firstShipHitByLaserFromShip:PLAYER inDirection:targetFacing offset:laserPortOffset gettingRangeFound:NULL];
+	return [self firstShipHitByLaserFromShip:oo::ToObjC(PLAYER) inDirection:targetFacing offset:laserPortOffset gettingRangeFound:NULL];
 }
 
 
@@ -7094,7 +7094,7 @@ void Universe::setViewDirection(OOViewID vd)
 			break;
 			
 		case VIEW_CUSTOM:
-			ms = [PLAYER cxx_customViewDescription];
+			ms = (PLAYER != nullptr ? PLAYER->getCustomViewDescription() : std::optional<std::string>());
 			break;
 			
 		case VIEW_GUI_DISPLAY:
@@ -7149,7 +7149,7 @@ void Universe::enterGUIViewModeWithMouseInteraction(bool mouseInteraction)
 	if (viewDirection != vd) {
 		::PlayerEntity	*player = PLAYER;
 		ooscript::Context context = OOJSAcquireContext();
-		ShipScriptEvent(context, player, "viewDirectionChanged", OOJSValueFromViewID(context, viewDirection), OOJSValueFromViewID(context, vd));
+		ShipScriptEvent(context, oo::ToObjC(player), "viewDirectionChanged", OOJSValueFromViewID(context, viewDirection), OOJSValueFromViewID(context, vd));
 		OOJSRelinquishContext(context);
 	}
 	[[self gameController] setMouseInteractionModeForUIWithMouseInteraction:mouseInteraction];
@@ -7348,7 +7348,7 @@ void Universe::speakWithSubstitutions(const std::optional<std::string> &text)
 	//speech synthesis
 
 	::PlayerEntity* player = PLAYER;
-	if ([player isSpeechOn] > OOSPEECHSETTINGS_OFF)
+	if ((player != nullptr ? player->getIsSpeechOn() : OOSpeechSettings{}) > OOSPEECHSETTINGS_OFF)
 	{
 		std::optional<std::string>	systemSaid;
 		std::optional<std::string>	h_systemSaid;
@@ -7357,7 +7357,7 @@ void Universe::speakWithSubstitutions(const std::optional<std::string> &text)
 
 		systemSaid = systemName;
 
-		const std::optional<std::string>	h_systemName = [self cxx_getSystemName:[player targetSystemID]];
+		const std::optional<std::string>	h_systemName = [self cxx_getSystemName:(player != nullptr ? player->targetSystemID() : 0)];
 		h_systemSaid = h_systemName;
 
 		std::optional<std::string>	spokenText = text;
@@ -7398,14 +7398,14 @@ void Universe::addMessage(const std::optional<std::string> &text, OOTimeDelta co
 
 	if (!SameMessage(currentMessage, text) || forceDisplay || universal_time >= messageRepeatTime)
 	{
-		if ([PLAYER isSpeechOn] == OOSPEECHSETTINGS_ALL)
+		if ((PLAYER != nullptr ? PLAYER->getIsSpeechOn() : OOSpeechSettings{}) == OOSPEECHSETTINGS_ALL)
 		{
 			[self speakWithSubstitutions:text];
 		}
 
 		[self showGUIMessage:text withScroll:YES andColor:(message_gui != nullptr ? message_gui->getTextColor() : nullptr) overDuration:count];
 
-		[PLAYER cxx_doScriptEvent:OOJSID("consoleMessageReceived") withPListArguments:{ StringOrNull(text) }];
+		if (PLAYER != nullptr)  PLAYER->doScriptEvent(OOJSID("consoleMessageReceived"), { StringOrNull(text) });
 
 		currentMessage = text;
 		messageRepeatTime=universal_time + 6.0;
@@ -7425,7 +7425,7 @@ void Universe::addCommsMessage(const std::optional<std::string> &text, OOTimeDel
 {
 	::Universe *self = oo::ToObjC(this);
 
-	if ([PLAYER showDemoShips]) return;
+	if ((PLAYER != nullptr ? PLAYER->getShowDemoShips() : false)) return;
 
 	const std::optional<std::string> expandedMessage = text.has_value() ? cxx_OOExpand(*text) : std::nullopt;
 
@@ -7435,7 +7435,7 @@ void Universe::addCommsMessage(const std::optional<std::string> &text, OOTimeDel
 
 		if (!logOnly)
 		{
-			if ([player isSpeechOn] >= OOSPEECHSETTINGS_COMMS)
+			if ((player != nullptr ? player->getIsSpeechOn() : OOSpeechSettings{}) >= OOSPEECHSETTINGS_COMMS)
 			{
 				// EMMSTRAN: should say "Incoming message from ..." when prefixed with sender name.
 				const std::string format = ExpandKey("speech-synthesis-incoming-message-@");
@@ -7451,7 +7451,7 @@ void Universe::addCommsMessage(const std::optional<std::string> &text, OOTimeDel
 		// the printed lines go to the player's comm log
 		std::vector<std::string> printedLines;
 		if (comm_log_gui != nullptr)  comm_log_gui->printLongText(expandedMessage, GUI_ALIGN_LEFT, nil, 0.0, std::nullopt, &printedLines);
-		std::vector<std::string> *commLog = [player cxx_commLog];
+		std::vector<std::string> *commLog = (player != nullptr ? player->getCommLog() : (std::vector<std::string> *)nullptr);
 		if (commLog != nullptr)  commLog->insert(commLog->end(), printedLines.begin(), printedLines.end());
 
 		if (showComms)  [self showCommsLog:6.0];
@@ -7486,12 +7486,12 @@ void Universe::showGUIMessage(const std::optional<std::string> &text, bool scrol
 
 void Universe::repopulateSystem()
 {
-	if (EXPECT_NOT([PLAYER status] == STATUS_START_GAME))
+	if (EXPECT_NOT((PLAYER != nullptr ? PLAYER->status() : OOEntityStatus{}) == STATUS_START_GAME))
 	{
 		return; // no need to be adding ships as this is not a "real" game
 	}
 	ooscript::Context context = OOJSAcquireContext();
-	[PLAYER doWorldScriptEvent:(system_repopulator.has_value() ? cxx_OOJSIDFromString(*system_repopulator) : ooscript::voidId()) inContext:context withArguments:NULL count:0 timeLimit:kOOJSLongTimeLimit];
+	if (PLAYER != nullptr)  PLAYER->doWorldScriptEvent((system_repopulator.has_value() ? cxx_OOJSIDFromString(*system_repopulator) : ooscript::voidId()), context, NULL, 0, kOOJSLongTimeLimit);
 	OOJSRelinquishContext(context);
 	next_repopulation = SYSTEM_REPOPULATION_INTERVAL;
 }
@@ -7547,7 +7547,7 @@ void Universe::update(OOTimeDelta inDeltaT)
 			time_delta = delta_t;
 			universal_time += delta_t;
 			
-			if (EXPECT_NOT([player showDemoShips] && [player guiScreen] == GUI_SCREEN_SHIPLIBRARY))
+			if (EXPECT_NOT((player != nullptr ? player->getShowDemoShips() : false) && (player != nullptr ? player->guiScreen() : OOGUIScreenID{}) == GUI_SCREEN_SHIPLIBRARY))
 			{
 				update_stage = "demo management";
 				
@@ -7778,7 +7778,7 @@ void Universe::update(OOTimeDelta inDeltaT)
 	else
 	{
 		// always perform player's dead updates: allows deferred JS resets.
-		if ([PLAYER status] == STATUS_DEAD)  [PLAYER update:delta_t];
+		if ((PLAYER != nullptr ? PLAYER->status() : OOEntityStatus{}) == STATUS_DEAD)  { if (PLAYER != nullptr)  PLAYER->update(delta_t); }
 	}
 	
 	// The dead stay alive until the autorelease pool drains, as the autoreleased set kept them.
@@ -8395,7 +8395,7 @@ void Universe::setSystemTo(OOSystemID s)
 	OOEconomyID		economy;
 	std::optional<std::string>	scriptName;
 
-	[self setGalaxyTo: [player galaxyNumber]];
+	[self setGalaxyTo: (player != nullptr ? player->galaxyNumber() : OOGalaxyID{})];
 
 	systemID = s;
 	targetSystemID = s;
@@ -8566,7 +8566,7 @@ oo::PList Universe::generateSystemData(OOSystemID s, bool /*useCache*/)
 // TODO: At the moment this method is only called for systems in the
 // same galaxy. At some point probably needs generalising to have a
 // galaxynumber parameter.
-	const std::string systemKey = oo::str::format("%u %u",[PLAYER galaxyNumber],s);
+	const std::string systemKey = oo::str::format("%u %u",(PLAYER != nullptr ? PLAYER->galaxyNumber() : OOGalaxyID{}),s);
 
 	return (systemManager != nullptr ? systemManager->getPropertiesForSystemKey(systemKey) : oo::PList());
 
@@ -8643,7 +8643,7 @@ void Universe::setSystemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum, const st
 		return;
 	}
 
-	BOOL sameGalaxy = (gnum == [PLAYER currentGalaxyID]);
+	BOOL sameGalaxy = (gnum == (PLAYER != nullptr ? PLAYER->currentGalaxyID() : OOGalaxyID{}));
 	BOOL sameSystem = (sameGalaxy && pnum == [self currentSystemID]);
 
 	// trying to set  unsettable properties?  
@@ -8711,7 +8711,7 @@ void Universe::setSystemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum, const st
 			if([self station]){
 				[[self station] setEquivalentTechLevel:ScriptValueInt(object)];
 				const oo::PList shipyard = [self cxx_shipsForSaleForSystem:systemID
-								withTL:ScriptValueInt(object) atTime:[PLAYER clockTime]];
+								withTL:ScriptValueInt(object) atTime:(PLAYER != nullptr ? PLAYER->clockTime() : 0.0)];
 				const oo::PList::Array *entries = shipyard.getIf<oo::PList::Array>();
 				[[self station] cxx_setLocalShipyard:entries != nullptr ? *entries : oo::PList::Array()];
 			}
@@ -8777,7 +8777,7 @@ void Universe::setSystemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum, const st
 	// the same arguments (a nil value ends the list, as it did)
 	std::vector<oo::PList> arguments{ oo::PList::signedInteger(gnum), oo::PList::signedInteger(pnum), oo::PList(key) };
 	if (!object.isNull())  arguments.push_back(object);
-	[PLAYER cxx_doScriptEvent:OOJSID("systemInformationChanged") withPListArguments:arguments];
+	if (PLAYER != nullptr)  PLAYER->doScriptEvent(OOJSID("systemInformationChanged"), arguments);
 	sysdataLocked = NO;
 
 }
@@ -8954,7 +8954,7 @@ oo::PList Universe::nearbyDestinationsWithinRange(double range)
 	oo::PList::Array result;
 	
 	range = OOClamp_0_max_d(range, MAX_JUMP_RANGE); // limit to systems within 7LY
-	NSPoint here = [PLAYER galaxy_coordinates];
+	NSPoint here = (PLAYER != nullptr ? PLAYER->getGalaxy_coordinates() : NSPoint{});
 	
 	for (unsigned short i = 0; i < 256; i++)
 	{
@@ -9107,7 +9107,7 @@ OOSystemID Universe::findSystemNumberAtCoords(NSPoint coords, OOGalaxyID g, bool
 			system = i;
 		}
 		// or if EQUAL but already selected
-		else if ((distance == min_dist)&&(coords.y == ipos.y)&&(i==[PLAYER targetSystemID]))
+		else if ((distance == min_dist)&&(coords.y == ipos.y)&&(i==(PLAYER != nullptr ? PLAYER->targetSystemID() : 0)))
 		{
 			system = i;
 		}
@@ -9615,7 +9615,7 @@ oo::PList Universe::shipsForSaleForSystem(OOSystemID s, OOTechLevelID specialTL,
 			const oo::PList		dict = [registry cxx_shipyardInfoForKey:key];
 			const oo::PList		*conditions = dict.get<oo::PList::Array>("conditions");
 
-			if (![player cxx_scriptTestConditions:(conditions != nullptr) ? *conditions : oo::PList()])
+			if (!(player != nullptr ? player->scriptTestConditions((conditions != nullptr) ? *conditions : oo::PList()) : false))
 			{
 				RemoveKeyAt(keysForShips, si--);
 			}
@@ -10615,7 +10615,7 @@ void Universe::handleOoliteException(::OOException *exception)
 		if (strcmp([exception name], OOLITE_EXCEPTION_FATAL) == 0)
 		{
 			::PlayerEntity *player = PLAYER;
-			[player setStatus:STATUS_HANDLING_ERROR];
+			if (player != nullptr)  player->setStatus(STATUS_HANDLING_ERROR);
 			
 			OO_LOG(cxx_kOOLogException, "***** Handling Fatal : {} : {} *****", [exception name], [exception reason]);
 			std::string exception_msg = oo::str::format("Exception : %s : %s Please take a screenshot and/or press esc or Q to quit.", [exception name], [exception reason]);
@@ -10797,7 +10797,7 @@ void Universe::setBlockJSPlayerShipProps(bool value)
 {
 	if (value)
 	{
-		gOOJSPlayerIfStale = PLAYER;
+		gOOJSPlayerIfStale = oo::ToObjC(PLAYER);
 	}
 	else
 	{
@@ -10977,7 +10977,7 @@ bool Universe::reinitAndShowDemo(bool showDemo)
 	[::OOShipRegistry reload];
 	[[self gameController] setGamePaused:NO];
 	[[self gameController] setMouseInteractionModeForUIWithMouseInteraction:NO];
-	[PLAYER setSpeed:0.0];
+	if (PLAYER != nullptr)  PLAYER->setSpeed(0.0);
 	
 	[self loadDescriptions];
 	[self loadScenarios];
@@ -11005,7 +11005,7 @@ bool Universe::reinitAndShowDemo(bool showDemo)
 	// set up cargopod templates
 	[self setUpCargoPods];
 	
-	if (![player setUpAndConfirmOK:YES]) 
+	if (!(player != nullptr ? player->setUpAndConfirmOK(YES) : false)) 
 	{
 		// reinitAndShowDemo rescheduled inside setUpAndConfirmOK...
 		return NO;	// Abort!
@@ -11014,7 +11014,7 @@ bool Universe::reinitAndShowDemo(bool showDemo)
 	// we can forget the previous settings now.
 	JSResetFlags = 0;
 	
-	[self addEntity:player];
+	[self addEntity:oo::ToObjC(player)];
 	demo_ship = nil;
 	[[self gameController] cxx_setPlayerFileToLoad:""];		// reset Quicksave
 	
@@ -11025,20 +11025,20 @@ bool Universe::reinitAndShowDemo(bool showDemo)
 	
 	if(showDemo)
 	{
-		[player setStatus:STATUS_START_GAME];
+		if (player != nullptr)  player->setStatus(STATUS_START_GAME);
 		// re-read keyconfig.plist just in case we've loaded a keyboard
 		// configuration expansion
-		[player initControls];
+		if (player != nullptr)  player->initControls();
 	}
 	else
 	{
-		[player setDockedAtMainStation];
+		if (player != nullptr)  player->setDockedAtMainStation();
 	}
 	
-	[player completeSetUp];
+	if (player != nullptr)  player->completeSetUp();
 	if(showDemo)
 	{
-		[player setGuiToIntroFirstGo:YES];
+		if (player != nullptr)  player->setGuiToIntroFirstGo(YES);
 	}
 	else
 	{
@@ -11046,13 +11046,13 @@ bool Universe::reinitAndShowDemo(bool showDemo)
 		// now is to load a game
 		[self populateNormalSpace];
 
-		[player startUpComplete];
+		if (player != nullptr)  player->startUpComplete();
 	}
 
 	if(!showDemo)
 	{
-		[player setGuiToStatusScreen];
-		[player doWorldEventUntilMissionScreen:OOJSID("missionScreenOpportunity")];
+		if (player != nullptr)  player->setGuiToStatusScreen();
+		if (player != nullptr)  player->doWorldEventUntilMissionScreen(OOJSID("missionScreenOpportunity"));
 	}
 	
 	[self verifyEntitySessionIDs];
@@ -11077,13 +11077,13 @@ void Universe::setUpInitialUniverse()
 	OO_DEBUG_POP_PROGRESS();
 	
 	OO_DEBUG_PUSH_PROGRESS("Galaxy reset");
-	[self setGalaxyTo: [player galaxyNumber] andReinit:YES];
-	systemID = [player systemID];
+	[self setGalaxyTo: (player != nullptr ? player->galaxyNumber() : OOGalaxyID{}) andReinit:YES];
+	systemID = (player != nullptr ? player->systemID() : 0);
 	OO_DEBUG_POP_PROGRESS();
 	
 	OO_DEBUG_PUSH_PROGRESS("Player init: setUpShipFromDictionary");
-	[player setUpShipFromDictionary:[[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:[player cxx_shipDataKey].value_or(std::string())]];	// the standard cobra at this point
-	[player baseMass]; // bootstrap the base mass used in all fuel charge calculations.
+	if (player != nullptr)  player->setUpShipFromDictionary([[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:(player != nullptr ? player->shipDataKey() : std::optional<std::string>()).value_or(std::string())]);	// the standard cobra at this point
+	if (player != nullptr)  player->baseMass(); // bootstrap the base mass used in all fuel charge calculations.
 	OO_DEBUG_POP_PROGRESS();
 	
 	// Player init above finishes initialising all standard player ship properties. Now that the base mass is set, we can run setUpSpace! 
@@ -11093,8 +11093,8 @@ void Universe::setUpInitialUniverse()
 			  [self cxx_currentSystemData].get<bool>("stations_require_docking_clearance", YES)];
 
 	[self enterGUIViewModeWithMouseInteraction:NO];
-	[player setPosition:[[self station] position]];
-	[player setOrientation:kIdentityQuaternion];
+	if (player != nullptr)  player->setPosition([[self station] position]);
+	if (player != nullptr)  player->setOrientation(kIdentityQuaternion);
 }
 
 
@@ -11291,7 +11291,7 @@ void Universe::populateSpaceFromActiveWormholes()
 				// If the wormhole has been scanned by the player then the
 				// PlayerEntity will take care of it
 				if (!(whole != nullptr ? whole->isScanned() : false) &&
-					NSEqualPoints([PLAYER galaxy_coordinates], (whole != nullptr ? whole->destinationCoordinates() : NSPoint{})) )
+					NSEqualPoints((PLAYER != nullptr ? PLAYER->getGalaxy_coordinates() : NSPoint{}), (whole != nullptr ? whole->destinationCoordinates() : NSPoint{})) )
 				{
 					// this is a wormhole to this system
 					if (whole != nullptr)  whole->disgorgeShips();

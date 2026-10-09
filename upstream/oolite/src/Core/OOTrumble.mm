@@ -474,7 +474,7 @@ void OOTrumble::drawTrumble(double z)
 void OOTrumble::updateTrumble(double delta_t)
 {
 	// player movement
-	NSPoint p_mov = NSMakePoint(TRUMBLE_MAX_ROTATIONAL_VELOCITY * [player dialPitch],	TRUMBLE_MAX_ROTATIONAL_VELOCITY * [player dialRoll]);
+	NSPoint p_mov = NSMakePoint(TRUMBLE_MAX_ROTATIONAL_VELOCITY * (player != nullptr ? player->dialPitch() : 0.0f),	TRUMBLE_MAX_ROTATIONAL_VELOCITY * (player != nullptr ? player->dialRoll() : 0.0f));
 	switch ([UNIVERSE viewDirection])
 	{
 		GLfloat t;
@@ -552,7 +552,7 @@ void OOTrumble::updateTrumble(double delta_t)
 
 	// feelings
 	//
-	GLfloat temp = [player hullHeatLevel];
+	GLfloat temp = (player != nullptr ? player->hullHeatLevel() : 0.0f);
 	discomfort += delta_t * hunger * 0.02 * (1.0 - hunger);
 	if (temp > 0.33)
 		discomfort += delta_t * (temp - 0.33) * (temp - 0.33) * 0.05;
@@ -567,7 +567,7 @@ void OOTrumble::updateTrumble(double delta_t)
 		// consult menu...
 		::ShipEntity *selectedCargopod = nil;
 		float mostYummy = 0.0;
-		std::vector<oo::ObjCRef<::ShipEntity *>> *cargopods = [player cxx_cargo];	// the cargo pods (live: eaten ones are removed)
+		std::vector<oo::ObjCRef<::ShipEntity *>> *cargopods = (player != nullptr ? player->getCargo() : (std::vector<oo::ObjCRef<ShipEntity *>> *)nullptr);	// the cargo pods (live: eaten ones are removed)
 		NSUInteger i, n_pods = cargopods != nullptr ? cargopods->size() : 0;
 		for (i = 0 ; i < n_pods; i++)
 		{
@@ -583,7 +583,7 @@ void OOTrumble::updateTrumble(double delta_t)
 		if (selectedCargopod)
 		{
 			// feed
-			float trumbleAppetiteAccumulator = [player trumbleAppetiteAccumulator];
+			float trumbleAppetiteAccumulator = (player != nullptr ? player->trumbleAppetiteAccumulator() : 0.0f);
 			
 			trumbleAppetiteAccumulator += hunger;
 			hunger = 0.0;
@@ -606,7 +606,7 @@ void OOTrumble::updateTrumble(double delta_t)
 					readyToSpawn = YES;
 				}
 				
-				[player setTrumbleAppetiteAccumulator:trumbleAppetiteAccumulator];
+				if (player != nullptr)  player->setTrumbleAppetiteAccumulator(trumbleAppetiteAccumulator);
 			}
 		}
 	}
@@ -853,7 +853,7 @@ void OOTrumble::updatePop(double delta_t)
 	if (animationTime > animationDuration)
 	{
 		// kaputnik!
-		[player removeTrumble:this];
+		if (player != nullptr)  player->removeTrumble(this);
 	}
 }
 
@@ -915,7 +915,7 @@ void OOTrumble::updateSpawn(double delta_t)
 		eyeFrame = TRUMBLE_EYES_OPEN;
 		mouthFrame = TRUMBLE_MOUTH_NORMAL;
 		randomizeMotionX();
-		[player addTrumble:this];
+		if (player != nullptr)  player->addTrumble(this);
 	}
 }
 

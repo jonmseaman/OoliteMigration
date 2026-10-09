@@ -111,7 +111,7 @@ void ShipEntity::setAITo(const std::string &aiString)	// called by name (ADR-005
 	::ShipEntity *self = oo::ToObjC(this);
 	std::string ai = aiString;
 	// don't try to load real AIs if the game hasn't started yet
-	if (![PLAYER scriptsLoaded])
+	if (!(PLAYER != nullptr ? PLAYER->scriptsLoaded() : false))
 	{
 		ai = "oolite-nullAI.js";
 	}
@@ -500,7 +500,7 @@ void ShipEntity::scanForNearestIncomingMissile()
 void ShipEntity::enterPlayerWormhole()
 {
 	::ShipEntity *self = oo::ToObjC(this);
-	[self enterWormhole:[PLAYER wormhole] replacing:NO];
+	[self enterWormhole:(PLAYER != nullptr ? PLAYER->getWormhole() : (WormholeEntity *)nullptr) replacing:NO];
 }
 
 
@@ -516,7 +516,7 @@ void ShipEntity::enterTargetWormhole()
 		if ([targEnt isWormhole])
 			whole = static_cast<WormholeEntity *>(oo::ToCxx(static_cast<::Entity *>(targEnt)));
 		else if ([targEnt isPlayer])
-			whole = [PLAYER wormhole];
+			whole = (PLAYER != nullptr ? PLAYER->getWormhole() : (WormholeEntity *)nullptr);
 	}
 
 	if (!whole)
@@ -2759,14 +2759,11 @@ void ShipEntity::scriptActionOnTarget(const std::string &action)	// called by na
 	
 	if ([targEnt isShip])
 	{
-		oldTarget = [player scriptTarget];
-		[player setScriptTarget:(::ShipEntity*)targEnt];
-		[player cxx_runUnsanitizedScriptActions:oo::PList(oo::PList::Array{ oo::PList(action) })
-						  allowingAIMethods:YES
-							withContextName:oo::str::format("<AI \"%s\" state %s - scriptActionOnTarget:>", [[self getAI] cxx_name].value_or("(null)").c_str(), [[self getAI] cxx_state].value_or("(null)").c_str())
-								  forTarget:targEnt];
-		[player checkScript];	// react immediately to any changes this makes
-		[player setScriptTarget:oldTarget];
+		oldTarget = (player != nullptr ? player->scriptTarget() : (::ShipEntity *)nullptr);
+		if (player != nullptr)  player->setScriptTarget((::ShipEntity*)targEnt);
+		if (player != nullptr)  player->runUnsanitizedScriptActions(oo::PList(oo::PList::Array{ oo::PList(action) }), YES, oo::str::format("<AI \"%s\" state %s - scriptActionOnTarget:>", [[self getAI] cxx_name].value_or("(null)").c_str(), [[self getAI] cxx_state].value_or("(null)").c_str()), targEnt);
+		if (player != nullptr)  player->checkScript();	// react immediately to any changes this makes
+		if (player != nullptr)  player->setScriptTarget(oldTarget);
 	}
 }
 
@@ -2780,13 +2777,10 @@ void ShipEntity::safeScriptActionOnTarget(const std::string &action)	// called b
 	
 	if ([targEnt isShip])
 	{
-		oldTarget = [player scriptTarget];
-		[player setScriptTarget:(::ShipEntity*)targEnt];
-		[player cxx_runUnsanitizedScriptActions:oo::PList(oo::PList::Array{ oo::PList(action) })
-						  allowingAIMethods:YES
-							withContextName:oo::str::format("<AI \"%s\" state %s - safeScriptActionOnTarget:>", [[self getAI] cxx_name].value_or("(null)").c_str(), [[self getAI] cxx_state].value_or("(null)").c_str())
-								  forTarget:targEnt];
-		[player setScriptTarget:oldTarget];
+		oldTarget = (player != nullptr ? player->scriptTarget() : (::ShipEntity *)nullptr);
+		if (player != nullptr)  player->setScriptTarget((::ShipEntity*)targEnt);
+		if (player != nullptr)  player->runUnsanitizedScriptActions(oo::PList(oo::PList::Array{ oo::PList(action) }), YES, oo::str::format("<AI \"%s\" state %s - safeScriptActionOnTarget:>", [[self getAI] cxx_name].value_or("(null)").c_str(), [[self getAI] cxx_state].value_or("(null)").c_str()), targEnt);
+		if (player != nullptr)  player->setScriptTarget(oldTarget);
 	}
 }
 

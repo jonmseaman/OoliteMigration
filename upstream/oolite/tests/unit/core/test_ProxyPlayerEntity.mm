@@ -32,39 +32,46 @@ extern Universe *gSharedUniverse;
 extern ooscript::Context gOOJSMainThreadContext;
 
 
-@interface TestProxyPlayer: Entity
-@end
+class TestProxyPlayer : public PlayerEntity	// C++ since bead oo-9ht.177 deleted the Objective-C player
+{
+public:
+	HPVector viewpointPosition() override	{ return kZeroHPVector; }
+};
 
-
-@implementation TestProxyPlayer
-
-- (HPVector) viewpointPosition	{ return kZeroHPVector; }
-
-@end
+// [[TestPlayer alloc] init] (bead oo-9ht.177): a C++ player under the ship's facade, as
+// PlayerEntity::sharedPlayer() makes the game's, retained (+1) as +alloc's object was.
+template <class T>
+T *NewTestPlayer()
+{
+	oo::Ref<T> player = oo::makeRef<T>();
+	@autoreleasepool
+	{
+		[oo::NewEntityFacade(player) retain];
+	}
+	return player.get();
+}
 
 
 // A player whose dials answer fixed values (the real ones read the HUD, the universe and the
 // player's equipment).
-@interface TestDialPlayer: PlayerEntity
-@end
+class TestDialPlayer : public PlayerEntity	// C++ since bead oo-9ht.177 deleted the Objective-C player
+{
+public:
+	float fuelLeakRate() override	{ return 2.5f; }
+	bool massLocked() override	{ return YES; }
+	bool atHyperspeed() override	{ return YES; }
+	GLfloat dialForwardShield() override	{ return 0.25f; }
+	GLfloat dialAftShield() override	{ return 0.75f; }
+	OOMissileStatus dialMissileStatus() override	{ return MISSILE_STATUS_TARGET_LOCKED; }
+	OOFuelScoopStatus dialFuelScoopStatus() override	{ return SCOOP_STATUS_ACTIVE; }
+	OOCompassMode getCompassMode() override	{ return COMPASS_MODE_STATION; }
+	bool dialIdentEngaged() override	{ return YES; }
+	OOAlertCondition getAlertCondition() override	{ return ALERT_CONDITION_RED; }
+	NSUInteger getTrumbleCount() override	{ return 7; }
+	int tradeInFactor() override	{ return 80; }
+};
 
 
-@implementation TestDialPlayer
-
-- (float) fuelLeakRate	{ return 2.5f; }
-- (BOOL) massLocked	{ return YES; }
-- (BOOL) atHyperspeed	{ return YES; }
-- (GLfloat) dialForwardShield	{ return 0.25f; }
-- (GLfloat) dialAftShield	{ return 0.75f; }
-- (OOMissileStatus) dialMissileStatus	{ return MISSILE_STATUS_TARGET_LOCKED; }
-- (OOFuelScoopStatus) dialFuelScoopStatus	{ return SCOOP_STATUS_ACTIVE; }
-- (OOCompassMode) compassMode	{ return COMPASS_MODE_STATION; }
-- (BOOL) dialIdentEngaged	{ return YES; }
-- (OOAlertCondition) alertCondition	{ return ALERT_CONDITION_RED; }
-- (NSUInteger) trumbleCount	{ return 7; }
-- (int) tradeInFactor	{ return 80; }
-
-@end
 
 
 namespace {
@@ -78,9 +85,9 @@ void SetUp()
 		universe->_cxxUniverse = oo::makeRef<cxx::Universe>(universe);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
 	}
 	gSharedUniverse = universe;
-	static TestProxyPlayer *player = nil;
-	if (player == nil)  player = [[TestProxyPlayer alloc] init];
-	gOOPlayer = (PlayerEntity *)player;
+	static TestProxyPlayer *player = nullptr;
+	if (player == nullptr)  player = NewTestPlayer<TestProxyPlayer>();
+	gOOPlayer = player;
 	// The ship's -dealloc sends its (absent) scripts entityDestroyed in a request on the main
 	// thread's context, so there is one, with nothing in it.
 	if (gOOJSMainThreadContext == nullptr)  gOOJSMainThreadContext = ooscript::newContext(ooscript::newRuntime(8u * 1024u * 1024u), 8192);
@@ -99,8 +106,9 @@ ProxyPlayerEntity *MakeProxy()
 TestDialPlayer *MakeDialPlayer()
 {
 	PlayerEntity *saved = gOOPlayer;
-	gOOPlayer = nil;
-	TestDialPlayer *player = [[[TestDialPlayer alloc] init] autorelease];
+	gOOPlayer = nullptr;
+	TestDialPlayer *player = NewTestPlayer<TestDialPlayer>();
+	[oo::ToObjC(player) autorelease];	// as [[[TestDialPlayer alloc] init] autorelease]
 	gOOPlayer = saved;
 	return player;
 }
@@ -198,7 +206,7 @@ OO_TEST(isPlayerLikeShip)
 	{
 		SetUp();
 		OO_CHECK([MakeProxy() isPlayerLikeShip]);
-		OO_CHECK([MakeDialPlayer() isPlayerLikeShip]);
+		OO_CHECK([oo::ToObjC(MakeDialPlayer()) isPlayerLikeShip]);	// the player's object (C++ player since bead oo-9ht.177)
 		ShipEntity *ship = [[[ShipEntity alloc] cxx_initWithKey:"ship" definition:oo::PList(oo::PList::Dict{ { "unpiloted", oo::PList(true) } })] autorelease];
 		OO_CHECK(ship != nil && ![ship isPlayerLikeShip]);
 		OO_CHECK(![[[[Entity alloc] init] autorelease] isPlayerLikeShip]);

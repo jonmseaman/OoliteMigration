@@ -523,7 +523,7 @@ void OOShipRegistry::loadDemoShips()
 			const std::optional<std::string> conditions = StringForKey(&key, kOODemoShipConditions);
 			if (conditions.has_value())
 			{
-				if ([PLAYER status] == STATUS_START_GAME)
+				if ((PLAYER != nullptr ? PLAYER->status() : OOEntityStatus{}) == STATUS_START_GAME)
 				{
 					// conditions always false here
 					removeEntry(key);

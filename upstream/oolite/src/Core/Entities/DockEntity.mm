@@ -401,23 +401,23 @@ void DockEntity::abortAllDockings()
 	
 	::PlayerEntity *player = PLAYER;
 	::StationEntity *station = (::StationEntity *)parentEntity();
-	BOOL isDockingStation = (station == [player getTargetDockStation]) && ([station playerReservedDock] == self);
-	if (isDockingStation && [player status] == STATUS_IN_FLIGHT &&
-			[player getDockingClearanceStatus] >= DOCKING_CLEARANCE_STATUS_REQUESTED)
+	BOOL isDockingStation = (station == (player != nullptr ? player->getTargetDockStation() : (::StationEntity *)nullptr)) && ([station playerReservedDock] == self);
+	if (isDockingStation && (player != nullptr ? player->status() : OOEntityStatus{}) == STATUS_IN_FLIGHT &&
+			(player != nullptr ? player->getDockingClearanceStatus() : OODockingClearanceStatus{}) >= DOCKING_CLEARANCE_STATUS_REQUESTED)
 	{
-		if (HPmagnitude2(HPvector_subtract([player position], absolutePositionForSubentity())) > 2250000) // within 1500m of the dock
+		if (HPmagnitude2(HPvector_subtract((player != nullptr ? player->getPosition() : HPVector{}), absolutePositionForSubentity())) > 2250000) // within 1500m of the dock
 		{
-			[station cxx_sendExpandedMessage:"[station-docking-clearance-abort-cancelled]" toShip:player];
-			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
-			[player doScriptEvent:OOJSID("stationWithdrewDockingClearance")];
+			[station cxx_sendExpandedMessage:"[station-docking-clearance-abort-cancelled]" toShip:oo::ToObjC(player)];
+			if (player != nullptr)  player->setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_NONE);
+			if (player != nullptr)  player->doScriptEvent(OOJSID("stationWithdrewDockingClearance"));
 		}
 		else
 		{
 			playerExtraTime = 10; // when very close to the port, give the player a few seconds to react on the abort message.
 			int seconds = round(playerExtraTime);
 			const std::optional<std::string> message = cxx_OOExpandKey("station-docking-clearance-abort-cancelled-in-time", seconds);
-			if (message.has_value())  [station cxx_sendExpandedMessage:*message toShip:player];	// nil: nothing sent, as before
-			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_TIMING_OUT];
+			if (message.has_value())  [station cxx_sendExpandedMessage:*message toShip:oo::ToObjC(player)];	// nil: nothing sent, as before
+			if (player != nullptr)  player->setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_TIMING_OUT);
 		}
 
 	}
@@ -825,20 +825,20 @@ void DockEntity::abortDockingForShip(::ShipEntity *ship)
 	if ([ship isPlayer])
 	{
 		::PlayerEntity * player = PLAYER;
-		if ([player status] == STATUS_IN_FLIGHT &&
-				[player getDockingClearanceStatus] >= DOCKING_CLEARANCE_STATUS_REQUESTED)
+		if ((player != nullptr ? player->status() : OOEntityStatus{}) == STATUS_IN_FLIGHT &&
+				(player != nullptr ? player->getDockingClearanceStatus() : OODockingClearanceStatus{}) >= DOCKING_CLEARANCE_STATUS_REQUESTED)
 		{
-			if (HPmagnitude2(HPvector_subtract([player position], absolutePositionForSubentity())) > 2250000) // within 1500m of the dock
+			if (HPmagnitude2(HPvector_subtract((player != nullptr ? player->getPosition() : HPVector{}), absolutePositionForSubentity())) > 2250000) // within 1500m of the dock
 			{
-				[parentEntity() cxx_sendExpandedMessage:"[station-docking-clearance-abort-cancelled]" toShip:player];
-				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
+				[parentEntity() cxx_sendExpandedMessage:"[station-docking-clearance-abort-cancelled]" toShip:oo::ToObjC(player)];
+				if (player != nullptr)  player->setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_NONE);
 			}
 			else
 			{
 				int seconds = 10; // when very close to the port, give the player a few seconds to react on the abort message.
 				const std::optional<std::string> message = cxx_OOExpandKey("station-docking-clearance-abort-cancelled-in-time", seconds);
-				if (message.has_value())  [parentEntity() cxx_sendExpandedMessage:*message toShip:player];	// nil: nothing sent, as before
-				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_TIMING_OUT];
+				if (message.has_value())  [parentEntity() cxx_sendExpandedMessage:*message toShip:oo::ToObjC(player)];	// nil: nothing sent, as before
+				if (player != nullptr)  player->setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_TIMING_OUT);
 			}
 		}
 	}
@@ -964,7 +964,7 @@ bool DockEntity::shipIsInDockingCorridor(::ShipEntity *ship)
 
 	if ((arbb.max.x < ww * 3.0)&&(arbb.min.x > -ww * 3.0)&&(arbb.max.y < hh * 3.0)&&(arbb.min.y > -hh * 3.0))
 	{
-		if ([station requiresDockingClearance] && [ship isPlayer] && [ship status] != STATUS_LAUNCHING && [ship status] != STATUS_AUTOPILOT_ENGAGED && [PLAYER getDockingClearanceStatus] < DOCKING_CLEARANCE_STATUS_GRANTED)
+		if ([station requiresDockingClearance] && [ship isPlayer] && [ship status] != STATUS_LAUNCHING && [ship status] != STATUS_AUTOPILOT_ENGAGED && (PLAYER != nullptr ? PLAYER->getDockingClearanceStatus() : OODockingClearanceStatus{}) < DOCKING_CLEARANCE_STATUS_GRANTED)
 		{
 			if ((0.90 * arbb.max.z + 0.10 * arbb.min.z < 3000) && (dot_product(vk,[ship forwardVector]) < -0.9))
 			{

@@ -24,6 +24,7 @@
 */
 
 #import "SkyEntity.h"
+#import "PlayerEntity.h"	// PLAYER is C++ (bead oo-9ht.177)
 #import "OOSkyDrawable.h"
 #import "OOColor.h"
 #import "Universe.h"
@@ -39,24 +40,20 @@
 uint32_t gDebugFlags = 0;
 #endif
 
-@class PlayerEntity;
+class PlayerEntity;
 extern PlayerEntity *gOOPlayer;
 extern Universe *gSharedUniverse;
 
 
-@interface TestPlayer: Entity
+class TestPlayer : public PlayerEntity	// C++ since bead oo-9ht.177 deleted the Objective-C player
 {
-@public
-	HPVector	_viewpoint;
-}
-@end
+public:
+	HPVector	_viewpoint = {};
+
+	HPVector viewpointPosition() override	{ return _viewpoint; }
+};
 
 
-@implementation TestPlayer
-
-- (HPVector) viewpointPosition	{ return _viewpoint; }
-
-@end
 
 
 // UNIVERSE: never initialised; counts -setLighting.
@@ -79,7 +76,7 @@ extern Universe *gSharedUniverse;
 namespace {
 
 TestUniverse *sUniverse = nil;
-TestPlayer *sPlayer = nil;
+TestPlayer *sPlayer = nullptr;
 
 // The drawable's star set-up's stand-in: the colours the sky passed.
 oo::Ref<OOColor> sStarColor1;
@@ -103,6 +100,19 @@ struct OOSkyDrawableTestAccess
 	}
 };
 
+// [[TestPlayer alloc] init] (bead oo-9ht.177): a C++ player under the ship's facade, as
+// PlayerEntity::sharedPlayer() makes the game's, retained (+1) as +alloc's object was.
+template <class T>
+T *NewTestPlayer()
+{
+	oo::Ref<T> player = oo::makeRef<T>();
+	@autoreleasepool
+	{
+		[oo::NewEntityFacade(player) retain];
+	}
+	return player.get();
+}
+
 
 namespace {
 
@@ -113,12 +123,12 @@ void SetUp()
 	{
 		sUniverse = (TestUniverse *)class_createInstance([TestUniverse class], 0);	// never released
 		sUniverse->_cxxUniverse = oo::makeRef<cxx::Universe>(sUniverse);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
-		sPlayer = [[TestPlayer alloc] init];
+		sPlayer = NewTestPlayer<TestPlayer>();
 		OOSkyDrawableTestAccess::SetStarSetUpStandIn(SetUpStars);
 	}
 	sUniverse->_lightings = 0;
 	gSharedUniverse = sUniverse;
-	gOOPlayer = (PlayerEntity *)sPlayer;
+	gOOPlayer = sPlayer;
 }
 
 
@@ -235,11 +245,11 @@ OO_TEST(update)
 		OO_CHECK(CamZeroDistance(sky) == ZeroDistance(sky));
 
 		// No player: the position stays.
-		gOOPlayer = nil;
+		gOOPlayer = nullptr;
 		sPlayer->_viewpoint = make_HPvector(8, 8, 8);
 		[sky update:0.1];
 		OO_CHECK(HPvector_equal([sky position], make_HPvector(5, 6, 7)));
-		gOOPlayer = (PlayerEntity *)sPlayer;
+		gOOPlayer = sPlayer;
 	}
 }
 

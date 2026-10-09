@@ -73,17 +73,20 @@
 - (OOSystemID) currentSystemID;
 @end
 
-@interface PlayerEntity: OOObject
+// PLAYER: C++ since bead oo-9ht.177 deleted the Objective-C player this stood in for: the members
+// the code under test calls, declared as the game headers declare them (the test imports none
+// that defines the classes), with the stand-in's answers.
+class PlayerEntity
 {
-@public
-	OOGalaxyID _galaxy;
-	NSPoint _coordinates;
-}
-- (OOGalaxyID) currentGalaxyID;
-- (OOGalaxyID) galaxyNumber;
-- (NSPoint) galaxy_coordinates;
-- (id) cxx_commodityScriptNamed:(const std::optional<std::string> &)script;
-@end
+public:
+	OOGalaxyID currentGalaxyID();
+	OOGalaxyID galaxyNumber();
+	NSPoint getGalaxy_coordinates();
+	::OOScript * commodityScriptNamed(const std::optional<std::string> &scriptName);
+
+	OOGalaxyID _galaxy = {};
+	NSPoint _coordinates = {};
+};
 
 @interface ResourceManager: OOObject
 + (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName mergeMode:(int)mergeMode cache:(BOOL)useCache;
@@ -181,14 +184,10 @@ std::string Key(OOGalaxyID g, OOSystemID s, const std::string &key)
 @end
 
 
-@implementation PlayerEntity
-
-- (OOGalaxyID) currentGalaxyID  { return _galaxy; }
-- (OOGalaxyID) galaxyNumber  { return _galaxy; }
-- (NSPoint) galaxy_coordinates  { return _coordinates; }
-- (id) cxx_commodityScriptNamed:(const std::optional<std::string> &)script  { (void)script; return nil; }
-
-@end
+OOGalaxyID PlayerEntity::currentGalaxyID()  { return _galaxy; }
+OOGalaxyID PlayerEntity::galaxyNumber()  { return _galaxy; }
+NSPoint PlayerEntity::getGalaxy_coordinates()  { return _coordinates; }
+::OOScript * PlayerEntity::commodityScriptNamed(const std::optional<std::string> &script)  { (void)script; return nil; }
 
 
 class OOJSScript;
@@ -424,7 +423,7 @@ namespace {
 std::map<ooscript::ClassDef *, int> sConverters;
 }
 
-PlayerEntity *gOOPlayer = nil;
+PlayerEntity *gOOPlayer = nullptr;
 Universe *gSharedUniverse = nil;
 
 
@@ -560,7 +559,7 @@ ooscript::Runtime sRuntime;
 ooscript::Context sContext;
 ooscript::Object sGlobal;
 Universe *sUniverse = nil;
-PlayerEntity *sPlayer = nil;
+PlayerEntity *sPlayer = nullptr;
 
 
 void Define(const char *name, ooscript::Value value)
@@ -594,7 +593,7 @@ void SetUpContext()
 
 	sUniverse = [[Universe alloc] init];	// kept for the life of the test
 	gSharedUniverse = sUniverse;
-	sPlayer = [[PlayerEntity alloc] init];
+	sPlayer = new PlayerEntity;
 	gOOPlayer = sPlayer;
 	sUniverse->_systemManager = oo::makeRef<OOSystemDescriptionManager>();
 	sUniverse->_commodities = oo::makeRef<OOCommodities>();

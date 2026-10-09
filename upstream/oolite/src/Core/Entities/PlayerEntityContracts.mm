@@ -99,9 +99,8 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 }	// namespace
 
 
-std::optional<std::string> cxx::PlayerEntity::processEscapePods()	// removes pods from cargo bay and treats categories of characters carried
+std::optional<std::string> PlayerEntity::processEscapePods()	// removes pods from cargo bay and treats categories of characters carried
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	unsigned		i;
 	BOOL added_entry = NO; // to prevent empty lines for slaves and the rare empty report.
 	std::string		result;
@@ -142,10 +141,7 @@ std::optional<std::string> cxx::PlayerEntity::processEscapePods()	// removes pod
 		}
 		else if (!rescuee->legacyScript().isNull())
 		{
-			[self cxx_runUnsanitizedScriptActions:rescuee->legacyScript()
-							allowingAIMethods:YES
-							  withContextName:oo::str::format("<character \"%s\" script>", rescuee->name().value_or("(null)").c_str())
-									forTarget:nil];
+			runUnsanitizedScriptActions(rescuee->legacyScript(), YES, oo::str::format("<character \"%s\" script>", rescuee->name().value_or("(null)").c_str()), nullptr);
 		}
 		else if (rescuee->insuranceCredits() && rescuee->legalStatus())
 		{
@@ -157,7 +153,7 @@ std::optional<std::string> cxx::PlayerEntity::processEscapePods()	// removes pod
 				result += oo::str::formatRuntime(OO_DESC("capture-reward-for-@@-@-credits-@-alt"),
 				 { rescuee->name().value_or("(null)"), rescuee->shortDescription().value_or("(null)"), cxx_OOStringFromDeciCredits(reward, YES, NO),
 				 cxx_OOStringFromDeciCredits(insurance, YES, NO) });
-				[self cxx_doScriptEvent:OOJSID("playerRescuedEscapePod") withPListArguments:{ oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("bounty"), rescuee->infoForScripting() }];
+				doScriptEvent(OOJSID("playerRescuedEscapePod"), { oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("bounty"), rescuee->infoForScripting() });
 			}
 			else
 			{
@@ -166,7 +162,7 @@ std::optional<std::string> cxx::PlayerEntity::processEscapePods()	// removes pod
 				 { rescuee->name().value_or("(null)"), rescuee->shortDescription().value_or("(null)"), cxx_OOStringFromDeciCredits(insurance - reward, YES, NO),
 				 cxx_OOStringFromDeciCredits(reward, YES, NO) });
 				reward = insurance - reward;
-				[self cxx_doScriptEvent:OOJSID("playerRescuedEscapePod") withPListArguments:{ oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("insurance"), rescuee->infoForScripting() }];
+				doScriptEvent(OOJSID("playerRescuedEscapePod"), { oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("insurance"), rescuee->infoForScripting() });
 			}
 			credits += reward;
 			added_entry = YES;
@@ -177,7 +173,7 @@ std::optional<std::string> cxx::PlayerEntity::processEscapePods()	// removes pod
 			result += oo::str::formatRuntime(OO_DESC("rescue-reward-for-@@-@-credits"),
 				{ rescuee->name().value_or("(null)"), rescuee->shortDescription().value_or("(null)"), cxx_OOStringFromDeciCredits(rescuee->insuranceCredits() * 10, YES, NO) });
 			credits += 10 * rescuee->insuranceCredits();
-			[self cxx_doScriptEvent:OOJSID("playerRescuedEscapePod") withPListArguments:{ oo::PList::unsignedInteger(static_cast<NSUInteger>(10 * rescuee->insuranceCredits())), oo::PList("insurance"), rescuee->infoForScripting() }];
+			doScriptEvent(OOJSID("playerRescuedEscapePod"), { oo::PList::unsignedInteger(static_cast<NSUInteger>(10 * rescuee->insuranceCredits())), oo::PList("insurance"), rescuee->infoForScripting() });
 
 			added_entry = YES;
 		}
@@ -188,14 +184,14 @@ std::optional<std::string> cxx::PlayerEntity::processEscapePods()	// removes pod
 			result += oo::str::formatRuntime(OO_DESC("capture-reward-for-@@-@-credits"),
 				{ rescuee->name().value_or("(null)"), rescuee->shortDescription().value_or("(null)"), cxx_OOStringFromDeciCredits(reward, YES, NO) });
 			credits += reward;
-			[self cxx_doScriptEvent:OOJSID("playerRescuedEscapePod") withPListArguments:{ oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("bounty"), rescuee->infoForScripting() }];
+			doScriptEvent(OOJSID("playerRescuedEscapePod"), { oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("bounty"), rescuee->infoForScripting() });
 			added_entry = YES;
 		}
 		else
 		{
 			// sell as slave - increase no. of slaves in manifest
 			if (shipCommodityData != nullptr)  shipCommodityData->addQuantity(1, "slaves");
-			[self cxx_doScriptEvent:OOJSID("playerRescuedEscapePod") withPListArguments:{ oo::PList::unsignedInteger(0), oo::PList("slave"), rescuee->infoForScripting() }];
+			doScriptEvent(OOJSID("playerRescuedEscapePod"), { oo::PList::unsignedInteger(0), oo::PList("slave"), rescuee->infoForScripting() });
 
 		}
 		if ((i < rescuees.size() - 1) && added_entry)
@@ -203,16 +199,15 @@ std::optional<std::string> cxx::PlayerEntity::processEscapePods()	// removes pod
 		added_entry = NO;
 	}
 
-	[self calculateCurrentCargo];
+	calculateCurrentCargo();
 
 	return result;	// never nil (the old method returned an empty string when nothing was reported)
 }
 
 
-std::optional<std::string> cxx::PlayerEntity::checkPassengerContracts()	// returns messages from any passengers whose status have changed
+std::optional<std::string> PlayerEntity::checkPassengerContracts()	// returns messages from any passengers whose status have changed
 {
-	::PlayerEntity *self = oo::ToObjC(this);
-	if ([self dockedStation] != [UNIVERSE station])	// only drop off passengers or fulfil contracts at main station
+	if (dockedStation() != [UNIVERSE station])	// only drop off passengers or fulfil contracts at main station
 		return std::nullopt;
 	
 	// check escape pods...
@@ -249,12 +244,12 @@ std::optional<std::string> cxx::PlayerEntity::checkPassengerContracts()	// retur
 				result += oo::str::formatRuntime(OO_DESC("passenger-delivered-okay-@-@-@"), { TextArg(passenger_name), cxx_OOIntCredits(fee), TextArg(passenger_dest_name) }) + "\n";
 				if (passenger_info.get<unsigned int>(std::string(CONTRACT_KEY_RISK), 0) > 0)
 				{
-					[self cxx_addRoleToPlayer:"trader-courier+"];
+					addRoleToPlayer("trader-courier+");
 				}
 
-				[self increasePassengerReputation:RepForRisk(passenger_info.get<unsigned int>(std::string(CONTRACT_KEY_RISK), 0))];
+				increasePassengerReputation(RepForRisk(passenger_info.get<unsigned int>(std::string(CONTRACT_KEY_RISK), 0)));
 				passengers.erase(passengers.begin() + i--);
-				[self cxx_doScriptEvent:OOJSID("playerCompletedContract") withPListArguments:{ oo::PList("passenger"), oo::PList("success"), oo::PList::unsignedInteger(static_cast<NSUInteger>(10*fee)), passenger_info }];
+				doScriptEvent(OOJSID("playerCompletedContract"), { oo::PList("passenger"), oo::PList("success"), oo::PList::unsignedInteger(static_cast<NSUInteger>(10*fee)), passenger_info });
 			}
 			else
 			{
@@ -267,11 +262,11 @@ std::optional<std::string> cxx::PlayerEntity::checkPassengerContracts()	// retur
 				result += oo::str::formatRuntime(OO_DESC("passenger-delivered-late-@-@-@"), { TextArg(passenger_name), cxx_OOIntCredits(fee), TextArg(passenger_dest_name) }) + "\n";
 				if (passenger_info.get<unsigned int>(std::string(CONTRACT_KEY_RISK), 0) > 0)
 				{
-					[self cxx_addRoleToPlayer:"trader-courier+"];
+					addRoleToPlayer("trader-courier+");
 				}
 
 				passengers.erase(passengers.begin() + i--);
-				[self cxx_doScriptEvent:OOJSID("playerCompletedContract") withPListArguments:{ oo::PList("passenger"), oo::PList("late"), oo::PList::unsignedInteger(static_cast<NSUInteger>(10*fee)), passenger_info }];
+				doScriptEvent(OOJSID("playerCompletedContract"), { oo::PList("passenger"), oo::PList("late"), oo::PList::unsignedInteger(static_cast<NSUInteger>(10*fee)), passenger_info });
 
 			}
 		}
@@ -282,9 +277,9 @@ std::optional<std::string> cxx::PlayerEntity::checkPassengerContracts()	// retur
 				// we've run out of time!
 				result += oo::str::formatRuntime(OO_DESC("passenger-failed-@"), { TextArg(passenger_name) }) + "\n";
 				
-				[self decreasePassengerReputation:RepForRisk(passenger_info.get<unsigned int>(std::string(CONTRACT_KEY_RISK), 0))];
+				decreasePassengerReputation(RepForRisk(passenger_info.get<unsigned int>(std::string(CONTRACT_KEY_RISK), 0)));
 				passengers.erase(passengers.begin() + i--);
-				[self cxx_doScriptEvent:OOJSID("playerCompletedContract") withPListArguments:{ oo::PList("passenger"), oo::PList("failed"), oo::PList::unsignedInteger(static_cast<NSUInteger>(0)), passenger_info }];
+				doScriptEvent(OOJSID("playerCompletedContract"), { oo::PList("passenger"), oo::PList("failed"), oo::PList::unsignedInteger(static_cast<NSUInteger>(0)), passenger_info });
 			}
 		}
 	}
@@ -315,14 +310,14 @@ std::optional<std::string> cxx::PlayerEntity::checkPassengerContracts()	// retur
 				
 				result += oo::str::formatRuntime(OO_DESC("parcel-delivered-okay-@-@"), { TextArg(parcel_name), cxx_OOIntCredits(fee) }) + "\n";
 				
-				[self increaseParcelReputation:RepForRisk(parcel_info.get<unsigned int>(std::string(CONTRACT_KEY_RISK), 0))];
+				increaseParcelReputation(RepForRisk(parcel_info.get<unsigned int>(std::string(CONTRACT_KEY_RISK), 0)));
 
 				parcels.erase(parcels.begin() + i--);
 				if (parcel_info.get<unsigned int>(std::string(CONTRACT_KEY_RISK), 0) > 0)
 				{
-					[self cxx_addRoleToPlayer:"trader-courier+"];
+					addRoleToPlayer("trader-courier+");
 				}
-				[self cxx_doScriptEvent:OOJSID("playerCompletedContract") withPListArguments:{ oo::PList("parcel"), oo::PList("success"), oo::PList::unsignedInteger(static_cast<NSUInteger>(10*fee)), parcel_info }];
+				doScriptEvent(OOJSID("playerCompletedContract"), { oo::PList("parcel"), oo::PList("success"), oo::PList::unsignedInteger(static_cast<NSUInteger>(10*fee)), parcel_info });
 
 			}
 			else
@@ -336,10 +331,10 @@ std::optional<std::string> cxx::PlayerEntity::checkPassengerContracts()	// retur
 				result += oo::str::formatRuntime(OO_DESC("parcel-delivered-late-@-@"), { TextArg(parcel_name), cxx_OOIntCredits(fee) }) + "\n";
 				if (parcel_info.get<unsigned int>(std::string(CONTRACT_KEY_RISK), 0) > 0)
 				{
-					[self cxx_addRoleToPlayer:"trader-courier+"];
+					addRoleToPlayer("trader-courier+");
 				}
 				parcels.erase(parcels.begin() + i--);
-				[self cxx_doScriptEvent:OOJSID("playerCompletedContract") withPListArguments:{ oo::PList("parcel"), oo::PList("late"), oo::PList::unsignedInteger(static_cast<NSUInteger>(10*fee)), parcel_info }];
+				doScriptEvent(OOJSID("playerCompletedContract"), { oo::PList("parcel"), oo::PList("late"), oo::PList::unsignedInteger(static_cast<NSUInteger>(10*fee)), parcel_info });
 			}
 		}
 		else
@@ -349,9 +344,9 @@ std::optional<std::string> cxx::PlayerEntity::checkPassengerContracts()	// retur
 				// we've run out of time!
 				result += oo::str::formatRuntime(OO_DESC("parcel-failed-@"), { TextArg(parcel_name) }) + "\n";
 				
-				[self decreaseParcelReputation:RepForRisk(parcel_info.get<unsigned int>(std::string(CONTRACT_KEY_RISK), 0))];
+				decreaseParcelReputation(RepForRisk(parcel_info.get<unsigned int>(std::string(CONTRACT_KEY_RISK), 0)));
 				parcels.erase(parcels.begin() + i--);
-				[self cxx_doScriptEvent:OOJSID("playerCompletedContract") withPListArguments:{ oo::PList("parcel"), oo::PList("failed"), oo::PList::unsignedInteger(static_cast<NSUInteger>(0)), parcel_info }];
+				doScriptEvent(OOJSID("playerCompletedContract"), { oo::PList("parcel"), oo::PList("failed"), oo::PList::unsignedInteger(static_cast<NSUInteger>(0)), parcel_info });
 			}
 		}
 	}
@@ -394,11 +389,11 @@ std::optional<std::string> cxx::PlayerEntity::checkPassengerContracts()	// retur
 
 					if ((shipCommodityData != nullptr ? shipCommodityData->exportLegalityForGood(contract_cargo_type) : 0) > 0)
 					{
-						[self cxx_addRoleToPlayer:"trader-smuggler"];
+						addRoleToPlayer("trader-smuggler");
 					}
 					else
 					{
-						[self cxx_addRoleToPlayer:"trader"];
+						addRoleToPlayer("trader");
 					}
 					
 					credits += fee;
@@ -407,8 +402,8 @@ std::optional<std::string> cxx::PlayerEntity::checkPassengerContracts()	// retur
 					contracts.erase(contracts.begin() + i--);
 					// repute++
 					// +10 as cargo contracts don't have risk modifiers
-					[self increaseContractReputation:10];
-					[self cxx_doScriptEvent:OOJSID("playerCompletedContract") withPListArguments:{ oo::PList("cargo"), oo::PList("success"), oo::PList::unsignedInteger(static_cast<NSUInteger>(fee)), contract_info }];
+					increaseContractReputation(10);
+					doScriptEvent(OOJSID("playerCompletedContract"), { oo::PList("cargo"), oo::PList("success"), oo::PList::unsignedInteger(static_cast<NSUInteger>(fee)), contract_info });
 
 				}
 				else
@@ -430,18 +425,18 @@ std::optional<std::string> cxx::PlayerEntity::checkPassengerContracts()	// retur
 						
 						if ((shipCommodityData != nullptr ? shipCommodityData->exportLegalityForGood(contract_cargo_type) : 0) > 0)
 						{
-							[self cxx_addRoleToPlayer:"trader-smuggler"];
+							addRoleToPlayer("trader-smuggler");
 						}
 						else
 						{
-							[self cxx_addRoleToPlayer:"trader"];
+							addRoleToPlayer("trader");
 						}
 
 						result += oo::str::formatRuntime(OO_DESC("cargo-delivered-short-@-@-d"), { TextArg(contract_cargo_desc), cxx_OOCredits(payment), shortfall }) + "\n";
 						
 						contracts.erase(contracts.begin() + i--);
 						// repute unchanged
-						[self cxx_doScriptEvent:OOJSID("playerCompletedContract") withPListArguments:{ oo::PList("cargo"), oo::PList("short"), oo::PList::unsignedInteger(static_cast<NSUInteger>(payment)), contract_info }];
+						doScriptEvent(OOJSID("playerCompletedContract"), { oo::PList("cargo"), oo::PList("short"), oo::PList::unsignedInteger(static_cast<NSUInteger>(payment)), contract_info });
 
 					}
 					else
@@ -458,8 +453,8 @@ std::optional<std::string> cxx::PlayerEntity::checkPassengerContracts()	// retur
 
 				contracts.erase(contracts.begin() + i--);
 				// repute--
-				[self decreaseContractReputation:10];
-				[self cxx_doScriptEvent:OOJSID("playerCompletedContract") withPListArguments:{ oo::PList("cargo"), oo::PList("late"), oo::PList::unsignedInteger(static_cast<NSUInteger>(0)), contract_info }];
+				decreaseContractReputation(10);
+				doScriptEvent(OOJSID("playerCompletedContract"), { oo::PList("cargo"), oo::PList("late"), oo::PList::unsignedInteger(static_cast<NSUInteger>(0)), contract_info });
 			}
 		}
 		else
@@ -471,8 +466,8 @@ std::optional<std::string> cxx::PlayerEntity::checkPassengerContracts()	// retur
 				
 				contracts.erase(contracts.begin() + i--);
 				// repute--
-				[self decreaseContractReputation:10];
-				[self cxx_doScriptEvent:OOJSID("playerCompletedContract") withPListArguments:{ oo::PList("cargo"), oo::PList("failed"), oo::PList::unsignedInteger(static_cast<NSUInteger>(0)), contract_info }];
+				decreaseContractReputation(10);
+				doScriptEvent(OOJSID("playerCompletedContract"), { oo::PList("cargo"), oo::PList("failed"), oo::PList::unsignedInteger(static_cast<NSUInteger>(0)), contract_info });
 			}
 		}
 	}
@@ -540,7 +535,7 @@ std::optional<std::string> cxx::PlayerEntity::checkPassengerContracts()	// retur
 }
 
 
-OOCargoQuantity cxx::PlayerEntity::contractedVolumeForGood(const std::string &good)
+OOCargoQuantity PlayerEntity::contractedVolumeForGood(const std::string &good)
 {
 	OOCargoQuantity total = 0;
 	for (unsigned i = 0; i < contracts.size(); i++)
@@ -555,7 +550,7 @@ OOCargoQuantity cxx::PlayerEntity::contractedVolumeForGood(const std::string &go
 }
 
 
-void cxx::PlayerEntity::addMessageToReport(const std::string &report)
+void PlayerEntity::addMessageToReport(const std::string &report)
 {
 	if (!report.empty())
 	{
@@ -567,13 +562,13 @@ void cxx::PlayerEntity::addMessageToReport(const std::string &report)
 }
 
 
-oo::PList cxx::PlayerEntity::getReputation()
+oo::PList PlayerEntity::getReputation()
 {
 	return oo::PList(reputation);
 }
 
 
-int cxx::PlayerEntity::passengerReputation()
+int PlayerEntity::passengerReputation()
 {
 	int good = ReputationValue(reputation, std::string(PASSAGE_GOOD_KEY));
 	int bad = ReputationValue(reputation, std::string(PASSAGE_BAD_KEY));
@@ -588,7 +583,7 @@ int cxx::PlayerEntity::passengerReputation()
 }
 
 
-void cxx::PlayerEntity::increasePassengerReputation(unsigned amount)
+void PlayerEntity::increasePassengerReputation(unsigned amount)
 {
 	int good = ReputationValue(reputation, std::string(PASSAGE_GOOD_KEY));
 	int bad = ReputationValue(reputation, std::string(PASSAGE_BAD_KEY));
@@ -618,7 +613,7 @@ void cxx::PlayerEntity::increasePassengerReputation(unsigned amount)
 }
 
 
-void cxx::PlayerEntity::decreasePassengerReputation(unsigned amount)
+void PlayerEntity::decreasePassengerReputation(unsigned amount)
 {
 	int good = ReputationValue(reputation, std::string(PASSAGE_GOOD_KEY));
 	int bad = ReputationValue(reputation, std::string(PASSAGE_BAD_KEY));
@@ -648,7 +643,7 @@ for (unsigned i=0;i<amount;i++)
 }
 
 
-int cxx::PlayerEntity::parcelReputation()
+int PlayerEntity::parcelReputation()
 {
 	int good = ReputationValue(reputation, std::string(PARCEL_GOOD_KEY));
 	int bad = ReputationValue(reputation, std::string(PARCEL_BAD_KEY));
@@ -663,7 +658,7 @@ int cxx::PlayerEntity::parcelReputation()
 }
 
 
-void cxx::PlayerEntity::increaseParcelReputation(unsigned amount)
+void PlayerEntity::increaseParcelReputation(unsigned amount)
 {
 	int good = ReputationValue(reputation, std::string(PARCEL_GOOD_KEY));
 	int bad = ReputationValue(reputation, std::string(PARCEL_BAD_KEY));
@@ -693,7 +688,7 @@ void cxx::PlayerEntity::increaseParcelReputation(unsigned amount)
 }
 
 
-void cxx::PlayerEntity::decreaseParcelReputation(unsigned amount)
+void PlayerEntity::decreaseParcelReputation(unsigned amount)
 {
 	int good = ReputationValue(reputation, std::string(PARCEL_GOOD_KEY));
 	int bad = ReputationValue(reputation, std::string(PARCEL_BAD_KEY));
@@ -723,7 +718,7 @@ void cxx::PlayerEntity::decreaseParcelReputation(unsigned amount)
 }
 
 
-int cxx::PlayerEntity::contractReputation()
+int PlayerEntity::contractReputation()
 {
 	int good = ReputationValue(reputation, std::string(CONTRACTS_GOOD_KEY));
 	int bad = ReputationValue(reputation, std::string(CONTRACTS_BAD_KEY));
@@ -738,7 +733,7 @@ int cxx::PlayerEntity::contractReputation()
 }
 
 
-void cxx::PlayerEntity::increaseContractReputation(unsigned amount)
+void PlayerEntity::increaseContractReputation(unsigned amount)
 {
 	int good = ReputationValue(reputation, std::string(CONTRACTS_GOOD_KEY));
 	int bad = ReputationValue(reputation, std::string(CONTRACTS_BAD_KEY));
@@ -768,7 +763,7 @@ void cxx::PlayerEntity::increaseContractReputation(unsigned amount)
 }
 
 
-void cxx::PlayerEntity::decreaseContractReputation(unsigned amount)
+void PlayerEntity::decreaseContractReputation(unsigned amount)
 {
 	int good = ReputationValue(reputation, std::string(CONTRACTS_GOOD_KEY));
 	int bad = ReputationValue(reputation, std::string(CONTRACTS_BAD_KEY));
@@ -798,7 +793,7 @@ void cxx::PlayerEntity::decreaseContractReputation(unsigned amount)
 }
 
 
-void cxx::PlayerEntity::erodeReputation()
+void PlayerEntity::erodeReputation()
 {
 	int c_good = ReputationValue(reputation, std::string(CONTRACTS_GOOD_KEY));
 	int c_bad = ReputationValue(reputation, std::string(CONTRACTS_BAD_KEY));
@@ -860,7 +855,7 @@ void cxx::PlayerEntity::erodeReputation()
 
 
 /* Update reputation levels in case of change in MAX_CONTRACT_REP */
-void cxx::PlayerEntity::normaliseReputation()
+void PlayerEntity::normaliseReputation()
 {
 	int c_good = ReputationValue(reputation, std::string(CONTRACTS_GOOD_KEY));
 	int c_bad = ReputationValue(reputation, std::string(CONTRACTS_BAD_KEY));
@@ -921,15 +916,14 @@ void cxx::PlayerEntity::normaliseReputation()
 }
 
 
-bool cxx::PlayerEntity::addPassenger(const std::string &Name, unsigned start, unsigned Destination, double eta, double fee, double advance, unsigned risk)
+bool PlayerEntity::addPassenger(const std::string &Name, unsigned start, unsigned Destination, double eta, double fee, double advance, unsigned risk)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	// the number kinds the old dictionary held: +numberWithInt:, +numberWithDouble:, +numberWithUnsignedInt:
 	const oo::PList passenger_info(oo::PList::Dict{
 		{ std::string(PASSENGER_KEY_NAME),								oo::PList(Name) },
 		{ std::string(CONTRACT_KEY_START),				oo::PList::signedInteger(static_cast<int>(start)) },
 		{ std::string(CONTRACT_KEY_DESTINATION),			oo::PList::signedInteger(static_cast<int>(Destination)) },
-		{ std::string(CONTRACT_KEY_DEPARTURE_TIME),		oo::PList([PLAYER clockTime]) },
+		{ std::string(CONTRACT_KEY_DEPARTURE_TIME),		oo::PList((PLAYER != nullptr ? PLAYER->clockTime() : 0.0)) },
 		{ std::string(CONTRACT_KEY_ARRIVAL_TIME),			oo::PList(eta) },
 		{ std::string(CONTRACT_KEY_FEE),					oo::PList(fee) },
 		{ std::string(CONTRACT_KEY_PREMIUM),				oo::PList(advance) },
@@ -941,19 +935,19 @@ bool cxx::PlayerEntity::addPassenger(const std::string &Name, unsigned start, un
 
 	if (risk > 1)
 	{
-		[self cxx_addRoleToPlayer:"trader-courier+"];
+		addRoleToPlayer("trader-courier+");
 	}
 
 	passengers.push_back(passenger_info);
 	passenger_record[Name] = oo::PList(eta);	// +numberWithDouble:
 
-	[self cxx_doScriptEvent:OOJSID("playerEnteredContract") withPListArguments:{ oo::PList("passenger"), passenger_info }];
+	doScriptEvent(OOJSID("playerEnteredContract"), { oo::PList("passenger"), passenger_info });
 
 	return YES;
 }
 
 
-bool cxx::PlayerEntity::removePassenger(const std::string &Name)	// removes the first passenger that answers to Name, returns NO if none found
+bool PlayerEntity::removePassenger(const std::string &Name)	// removes the first passenger that answers to Name, returns NO if none found
 {
 	// extra check, just in case.
 	if (passengers.empty()) return NO;
@@ -976,15 +970,14 @@ bool cxx::PlayerEntity::removePassenger(const std::string &Name)	// removes the 
 }
 
 
-bool cxx::PlayerEntity::addParcel(const std::string &Name, unsigned start, unsigned Destination, double eta, double fee, double premium, unsigned risk)
+bool PlayerEntity::addParcel(const std::string &Name, unsigned start, unsigned Destination, double eta, double fee, double premium, unsigned risk)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	// the number kinds the old dictionary held: +numberWithInt:, +numberWithDouble:, +numberWithUnsignedInt:
 	const oo::PList parcel_info(oo::PList::Dict{
 		{ std::string(PASSENGER_KEY_NAME),								oo::PList(Name) },
 		{ std::string(CONTRACT_KEY_START),				oo::PList::signedInteger(static_cast<int>(start)) },
 		{ std::string(CONTRACT_KEY_DESTINATION),			oo::PList::signedInteger(static_cast<int>(Destination)) },
-		{ std::string(CONTRACT_KEY_DEPARTURE_TIME),		oo::PList([PLAYER clockTime]) },
+		{ std::string(CONTRACT_KEY_DEPARTURE_TIME),		oo::PList((PLAYER != nullptr ? PLAYER->clockTime() : 0.0)) },
 		{ std::string(CONTRACT_KEY_ARRIVAL_TIME),			oo::PList(eta) },
 		{ std::string(CONTRACT_KEY_FEE),					oo::PList(fee) },
 		{ std::string(CONTRACT_KEY_PREMIUM),				oo::PList(premium) },
@@ -999,19 +992,19 @@ bool cxx::PlayerEntity::addParcel(const std::string &Name, unsigned start, unsig
 
 	if (risk > 1)
 	{
-		[self cxx_addRoleToPlayer:"trader-courier+"];
+		addRoleToPlayer("trader-courier+");
 	}
 
 	parcels.push_back(parcel_info);
 	parcel_record[Name] = oo::PList(eta);	// +numberWithDouble:
 
-	[self cxx_doScriptEvent:OOJSID("playerEnteredContract") withPListArguments:{ oo::PList("parcel"), parcel_info }];
+	doScriptEvent(OOJSID("playerEnteredContract"), { oo::PList("parcel"), parcel_info });
 
 	return YES;
 }
 
 
-bool cxx::PlayerEntity::removeParcel(const std::string &Name)	// removes the first parcel that answers to Name, returns NO if none found
+bool PlayerEntity::removeParcel(const std::string &Name)	// removes the first parcel that answers to Name, returns NO if none found
 {
 	// extra check, just in case.
 	if (parcels.empty()) return NO;
@@ -1034,9 +1027,8 @@ bool cxx::PlayerEntity::removeParcel(const std::string &Name)	// removes the fir
 }
 
 
-bool cxx::PlayerEntity::awardContract(unsigned qty, const std::string &type, unsigned start, unsigned Destination, double eta, double fee, double premium)
+bool PlayerEntity::awardContract(unsigned qty, const std::string &type, unsigned start, unsigned Destination, double eta, double fee, double premium)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 
 	unsigned		sr1 = Ranrot()&0x111111;
 	int				sr2 = Ranrot()&0x111111;
@@ -1061,7 +1053,7 @@ bool cxx::PlayerEntity::awardContract(unsigned qty, const std::string &type, uns
 		{ std::string(CARGO_KEY_DESCRIPTION),				oo::PList([UNIVERSE cxx_describeCommodity:type amount:qty].value_or(std::string())) },
 		{ std::string(CONTRACT_KEY_START),				oo::PList::signedInteger(static_cast<int>(start)) },
 		{ std::string(CONTRACT_KEY_DESTINATION),			oo::PList::signedInteger(static_cast<int>(Destination)) },
-		{ std::string(CONTRACT_KEY_DEPARTURE_TIME),		oo::PList([PLAYER clockTime]) },
+		{ std::string(CONTRACT_KEY_DEPARTURE_TIME),		oo::PList((PLAYER != nullptr ? PLAYER->clockTime() : 0.0)) },
 		{ std::string(CONTRACT_KEY_ARRIVAL_TIME),			oo::PList(eta) },
 		{ std::string(CONTRACT_KEY_FEE),					oo::PList(fee) },
 		{ std::string(CONTRACT_KEY_PREMIUM),				oo::PList(premium) },
@@ -1075,34 +1067,34 @@ bool cxx::PlayerEntity::awardContract(unsigned qty, const std::string &type, uns
 	if (contractCargoUnits == UNITS_KILOGRAMS)  cargoSpaceRequired /= 1000;
 	if (contractCargoUnits == UNITS_GRAMS)  cargoSpaceRequired /= 1000000;
 
-	if (cargoSpaceRequired > [self availableCargoSpace]) return NO;
+	if (cargoSpaceRequired > availableCargoSpace()) return NO;
 
 	if (shipCommodityData != nullptr)  shipCommodityData->addQuantity(qty, type);
 
-	current_cargo = [self cargoQuantityOnBoard];
+	current_cargo = cargoQuantityOnBoard();
 
 	// roleWeightFlags entries are signed integers, as +numberWithInt: was
 	if ((shipCommodityData != nullptr ? shipCommodityData->exportLegalityForGood(type) : 0) > 0)
 	{
-		[self cxx_addRoleToPlayer:"trader-smuggler"];
+		addRoleToPlayer("trader-smuggler");
 		roleWeightFlags.insert_or_assign("bought-illegal", oo::PList::signedInteger(1));
 	}
 	else
 	{
-		[self cxx_addRoleToPlayer:"trader"];
+		addRoleToPlayer("trader");
 		roleWeightFlags.insert_or_assign("bought-legal", oo::PList::signedInteger(1));
 	}
 
 	contracts.push_back(cargo_info);
 	contract_record[cargo_ID] = oo::PList(eta);	// +numberWithDouble:
 
-	[self cxx_doScriptEvent:OOJSID("playerEnteredContract") withPListArguments:{ oo::PList("cargo"), cargo_info }];
+	doScriptEvent(OOJSID("playerEnteredContract"), { oo::PList("cargo"), cargo_info });
 
 	return YES;
 }
 
 
-bool cxx::PlayerEntity::removeContract(const std::string &type, unsigned dest)	// removes the first match found, returns NO if none found
+bool PlayerEntity::removeContract(const std::string &type, unsigned dest)	// removes the first match found, returns NO if none found
 {
 	if (contracts.empty() || dest > 255)  return NO;
 
@@ -1129,28 +1121,25 @@ bool cxx::PlayerEntity::removeContract(const std::string &type, unsigned dest)	/
 }
 
 
-std::vector<std::string> cxx::PlayerEntity::passengerList()
+std::vector<std::string> PlayerEntity::passengerList()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
-	return [self cxx_contractsListFromEntries:passengers forCargo:NO forParcels:NO];
+	return contractsListFromEntries(passengers, NO, NO);
 }
 
 
-std::vector<std::string> cxx::PlayerEntity::parcelList()
+std::vector<std::string> PlayerEntity::parcelList()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
-	return [self cxx_contractsListFromEntries:parcels forCargo:NO forParcels:YES];
+	return contractsListFromEntries(parcels, NO, YES);
 }
 
 
-std::vector<std::string> cxx::PlayerEntity::contractList()
+std::vector<std::string> PlayerEntity::contractList()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
-	return [self cxx_contractsListFromEntries:contracts forCargo:YES forParcels:NO];
+	return contractsListFromEntries(contracts, YES, NO);
 }
 
 
-std::vector<std::string> cxx::PlayerEntity::contractsListFromEntries(const oo::PList::Array &contracts_array, bool forCargo, bool forParcels)
+std::vector<std::string> PlayerEntity::contractsListFromEntries(const oo::PList::Array &contracts_array, bool forCargo, bool forParcels)
 {
 	// check  contracts
 	std::vector<std::string> result;
@@ -1184,11 +1173,10 @@ std::vector<std::string> cxx::PlayerEntity::contractsListFromEntries(const oo::P
 
 
 // only use within setGuiToManifestScreen
-#define SET_MANIFEST_ROW(obj,color,row) ([self setManifestScreenRow:obj inColor:color forRow:row ofRows:max_rows andOffset:page_offset inMultipage:multi_page])
+#define SET_MANIFEST_ROW(obj,color,row) (setManifestScreenRow(obj, color, row, max_rows, page_offset, multi_page))
 
-void cxx::PlayerEntity::setGuiToManifestScreen()
+void PlayerEntity::setGuiToManifestScreen()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	OOGUIScreenID	oldScreen = gui_screen;
 	
 	::GuiDisplayGen	*gui = [UNIVERSE gui];
@@ -1207,8 +1195,8 @@ void cxx::PlayerEntity::setGuiToManifestScreen()
 		oo::Ref<OOColor>	scrollColor = gui->colorFromSetting(cxx_kGuiManifestScrollColor, OOColor::greenColor().get());
 		oo::Ref<OOColor>	noScrollColor = gui->colorFromSetting(cxx_kGuiManifestNoScrollColor, OOColor::darkGrayColor().get());
 
-		const std::vector<std::string>	cargoManifest = [self cxx_cargoList];
-		const oo::PList	missionsList = [self cxx_missionsList];	// strings and arrays of strings
+		const std::vector<std::string>	cargoManifest = cargoList();
+		const oo::PList	missionsList = this->missionsList();	// strings and arrays of strings
 		// Its entries as the Foundation array carried them: a null element was dropped.
 		auto nonNull = [](const oo::PList &list)
 		{
@@ -1233,7 +1221,7 @@ void cxx::PlayerEntity::setGuiToManifestScreen()
 		
 		OOGUIRow	nextPageRow = MANIFEST_SCREEN_ROW_NEXT;
 		// show extra lines if no HUD is displayed.
-		if ([self hud] != nullptr && ([self hud]->isHidden() || [self hud]->getAllowBigGui()))
+		if (getHud() != nullptr && (getHud()->isHidden() || getHud()->getAllowBigGui()))
 		{
 			max_rows += 7;
 			nextPageRow += 7;
@@ -1276,15 +1264,15 @@ void cxx::PlayerEntity::setGuiToManifestScreen()
 		gui->setTabStops(tab_stops);
 		
 		// Cargo Manifest
-		current_cargo = [self cargoQuantityOnBoard];
+		current_cargo = cargoQuantityOnBoard();
 
 		gui->clearAndKeepBackground(!guiChanged);
 		gui->setTitle(OO_DESC("manifest-title"));
 		
 		current = current_cargo;
-		max = [self maxAvailableCargoSpace];
+		max = maxAvailableCargoSpace();
 		const std::string cargoString = cxx_OOExpandKey("oolite-manifest-cargo", current, max).value_or(std::string());
-		current = [self cxx_passengerList].size();
+		current = passengerList().size();
 		max = max_passengers;
 		const std::string cabinString = cxx_OOExpandKey("oolite-manifest-cabins", current, max).value_or(std::string());
 		const oo::PList manifestHeader(oo::PList::Array{ oo::PList(cargoString), oo::PList(cabinString) });
@@ -1402,19 +1390,19 @@ void cxx::PlayerEntity::setGuiToManifestScreen()
 	
 	lastTextKey.reset();
 	
-	[self setShowDemoShips:NO];
+	setShowDemoShips(NO);
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:NO];
 	
 	if (guiChanged)
 	{
-		gui->setForegroundTextureKey(std::optional<std::string>([self status] == STATUS_DOCKED ? "docked_overlay" : "overlay"));
+		gui->setForegroundTextureKey(std::optional<std::string>(status() == STATUS_DOCKED ? "docked_overlay" : "overlay"));
 		gui->setBackgroundTextureKey("manifest");
-		[self noteGUIDidChangeFrom:oldScreen to:gui_screen];
+		noteGUIDidChangeFrom(oldScreen, gui_screen);
 	}
 }
 
 
-void cxx::PlayerEntity::setManifestScreenRow(const oo::PList &object, ::OOColor *color, OOGUIRow row, OOGUIRow max_rows, OOGUIRow offset, bool multi)
+void PlayerEntity::setManifestScreenRow(const oo::PList &object, ::OOColor *color, OOGUIRow row, OOGUIRow max_rows, OOGUIRow offset, bool multi)
 {
 	OOGUIRow disp_row = row - offset;
 	if (disp_row < 1 || disp_row > max_rows) return;
@@ -1438,9 +1426,8 @@ void cxx::PlayerEntity::setManifestScreenRow(const oo::PList &object, ::OOColor 
 }
 
 
-void cxx::PlayerEntity::setGuiToDockingReportScreen()
+void PlayerEntity::setGuiToDockingReportScreen()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	::GuiDisplayGen	*gui = [UNIVERSE gui];
 	
 	OOGUIScreenID	oldScreen = gui_screen;
@@ -1482,7 +1469,7 @@ void cxx::PlayerEntity::setGuiToDockingReportScreen()
 			}
 		}
 
-		gui->setText(oo::str::formatRuntime(OO_DESC_PLURAL("contracts-cash-@-load-d-of-d-passengers-d-of-d-berths", max_passengers), { cxx_OOCredits(credits), current_cargo, [self maxAvailableCargoSpace], passengers.size(), max_passengers }), GUI_ROW_MARKET_CASH);
+		gui->setText(oo::str::formatRuntime(OO_DESC_PLURAL("contracts-cash-@-load-d-of-d-passengers-d-of-d-berths", max_passengers), { cxx_OOCredits(credits), current_cargo, maxAvailableCargoSpace(), passengers.size(), max_passengers }), GUI_ROW_MARKET_CASH);
 		gui->setColor(gui->colorFromSetting(std::string(cxx_kGuiDockingSummaryColor), nil).get(), GUI_ROW_MARKET_CASH);
 
 		gui->setText(OO_DESC("press-space-commander"), 21, GUI_ALIGN_CENTER);
@@ -1493,7 +1480,7 @@ void cxx::PlayerEntity::setGuiToDockingReportScreen()
 	
 	lastTextKey.reset();
 	
-	[self setShowDemoShips:NO];
+	setShowDemoShips(NO);
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:NO];
 	
 	if (guiChanged)
@@ -1504,7 +1491,7 @@ void cxx::PlayerEntity::setGuiToDockingReportScreen()
 		if (bgDescriptor.isNull()) bgDescriptor = [UNIVERSE cxx_screenTextureDescriptorForKey:"status_docked"];
 		if (bgDescriptor.isNull()) bgDescriptor = [UNIVERSE cxx_screenTextureDescriptorForKey:"status"];
 		gui->setBackgroundTextureDescriptor(bgDescriptor);
-		[self noteGUIDidChangeFrom:oldScreen to:gui_screen];
+		noteGUIDidChangeFrom(oldScreen, gui_screen);
 	}
 }
 
@@ -1567,15 +1554,14 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 }	// namespace
 
 
-OOCreditsQuantity cxx::PlayerEntity::priceForShipKey(const std::string &key)
+OOCreditsQuantity PlayerEntity::priceForShipKey(const std::string &key)
 {
 	return CurrentShipyardEntry(key).get<unsigned long long>("price");	// SHIPYARD_KEY_PRICE
 }
 
 
-void cxx::PlayerEntity::setGuiToShipyardScreen(NSUInteger skip)
+void PlayerEntity::setGuiToShipyardScreen(NSUInteger skip)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	OOGUIScreenID	oldScreen = gui_screen;
 	
 	::GuiDisplayGen	*gui = [UNIVERSE gui];
@@ -1586,7 +1572,7 @@ void cxx::PlayerEntity::setGuiToShipyardScreen(NSUInteger skip)
 	
 	// set up initial market if there is none
 	OOTechLevelID stationTechLevel;
-	::StationEntity *station = [self dockedStation];
+	::StationEntity *station = dockedStation();
 	
 	if (station != nil)
 	{
@@ -1687,7 +1673,7 @@ void cxx::PlayerEntity::setGuiToShipyardScreen(NSUInteger skip)
 			gui->setSelectableRange(NSMakeRange( GUI_ROW_SHIPYARD_START, i + startRow - GUI_ROW_SHIPYARD_START));
 			// ensure that at least one row is selected at all times
 			if(shipCount == 1)  gui->setFirstSelectableRow();
-			[self showShipyardInfoForSelection];
+			showShipyardInfoForSelection();
 		}
 		else
 		{
@@ -1697,14 +1683,14 @@ void cxx::PlayerEntity::setGuiToShipyardScreen(NSUInteger skip)
 			gui->setNoSelectedRow();
 		}
 		
-		[self showTradeInInformationFooter];
+		showTradeInInformationFooter();
 		
 		gui->setShowTextCursor(NO);
 	}
 	
 	// the following are necessary...
 
-	[self setShowDemoShips:(shipCount > 0)];
+	setShowDemoShips((shipCount > 0));
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:YES];
 	
 	if (guiChanged)
@@ -1715,9 +1701,8 @@ void cxx::PlayerEntity::setGuiToShipyardScreen(NSUInteger skip)
 }
 
 
-void cxx::PlayerEntity::showShipyardInfoForSelection()
+void PlayerEntity::showShipyardInfoForSelection()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	NSUInteger		i;
 	::GuiDisplayGen	*gui = [UNIVERSE gui];
 	OOGUIRow		sel_row = gui->getSelectedRow();
@@ -1767,7 +1752,7 @@ void cxx::PlayerEntity::showShipyardInfoForSelection()
 		row_info[3] = cxx_OOExpandKey("shipyard-speed-value", speedRating).value_or(std::string());
 		
 		// Show footer first. It'll be overwritten by the sales_pitch if that text is longer than usual.
-		[self showTradeInInformationFooter];
+		showTradeInInformationFooter();
 		i = gui->addLongText(salesPitch, GUI_ROW_SHIPYARD_INFO_START, GUI_ALIGN_LEFT);
 		if (i - 1 >= GUI_ROW_MARKET_CASH - 1)
 		{
@@ -1779,9 +1764,7 @@ void cxx::PlayerEntity::showShipyardInfoForSelection()
 		const std::optional<std::string> shipKey = OptionalStringForKey(info, "shipdata_key");	// SHIPYARD_KEY_SHIPDATA_KEY
 		if (shipKey)
 		{
-			[self cxx_showShipyardModel:*shipKey
-							   shipData:shipDict
-							personality:info.get<unsigned short>("personality")];	// SHIPYARD_KEY_PERSONALITY
+			showShipyardModel(*shipKey, shipDict, info.get<unsigned short>("personality"));	// SHIPYARD_KEY_PERSONALITY
 		}
 	}
 	else
@@ -1795,13 +1778,12 @@ void cxx::PlayerEntity::showShipyardInfoForSelection()
 }
 
 
-void cxx::PlayerEntity::showTradeInInformationFooter()
+void PlayerEntity::showTradeInInformationFooter()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	::GuiDisplayGen *gui = [UNIVERSE gui];
-	OOCreditsQuantity tradeIn = [self tradeInValue];
+	OOCreditsQuantity tradeIn = tradeInValue();
 	OOCreditsQuantity total = tradeIn + credits;
-	const oo::PList shipType = oo::PList([self displayName].value_or(""));
+	const oo::PList shipType = oo::PList(getDisplayName().value_or(""));
 	
 	gui->setColor(gui->colorFromSetting(cxx_kGuiShipyardTradeinColor, nil).get(), GUI_ROW_MARKET_CASH - 1);
 	gui->setColor(gui->colorFromSetting(cxx_kGuiShipyardTradeinColor, nil).get(), GUI_ROW_MARKET_CASH);
@@ -1810,26 +1792,23 @@ void cxx::PlayerEntity::showTradeInInformationFooter()
 }
 
 
-void cxx::PlayerEntity::showShipyardModel(const std::string &shipKey, const oo::PList &shipData, uint16_t personality)
+void PlayerEntity::showShipyardModel(const std::string &shipKey, const oo::PList &shipData, uint16_t personality)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
-	if ([self dockedStation] == nil)  return;
-	[self cxx_showShipModelWithKey:shipKey shipData:shipData personality:personality factorX:1.2 factorY:0.8 factorZ:6.4 inContext:"shipyard"];
+	if (dockedStation() == nil)  return;
+	showShipModelWithKey(shipKey, shipData, personality, 1.2, 0.8, 6.4, "shipyard");
 }
 
 
-NSInteger cxx::PlayerEntity::missingSubEntitiesAdjustment()
+NSInteger PlayerEntity::missingSubEntitiesAdjustment()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	// each missing subentity depreciates the ship by 5%, up to a maximum of 35% depreciation.
-	NSUInteger percent = 5 * ([self maxShipSubEntities] - [self cxx_shipSubEntities].size());
+	NSUInteger percent = 5 * (maxShipSubEntities() - shipSubEntities().size());
 	return (percent > 35 ? 35 : percent);
 }
 
 
-OOCreditsQuantity cxx::PlayerEntity::tradeInValue()
+OOCreditsQuantity PlayerEntity::tradeInValue()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	// returns down to ship_trade_in_factor% of the full credit value of your ship
 	
 	/*	FIXME: the trade-in value can be more than the sale value, and
@@ -1842,17 +1821,16 @@ OOCreditsQuantity cxx::PlayerEntity::tradeInValue()
 		for-sale ships.
 		-- Ahruman 20070707, fix applied 20070708
 	*/
-	unsigned long long value = [UNIVERSE cxx_tradeInValueForCommanderDictionary:[self cxx_commanderDataDictionary]];
-	value -= value * 0.006 * [self missingSubEntitiesAdjustment];	// TODO: 0.006 might need rethinking.
+	unsigned long long value = [UNIVERSE cxx_tradeInValueForCommanderDictionary:commanderDataDictionary()];
+	value -= value * 0.006 * missingSubEntitiesAdjustment();	// TODO: 0.006 might need rethinking.
 	const unsigned long long rounded = ((value * 75 * ship_trade_in_factor) + 5000) / 10000;	// Multiply by two percentages, divide by 100*100. The +5000 is to get normal rounding.
 	value = cunningFee(rounded, 0.005);
 	return value * 10;
 }
 
 
-bool cxx::PlayerEntity::buySelectedShip()
+bool PlayerEntity::buySelectedShip()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	::GuiDisplayGen	*gui = [UNIVERSE gui];
 	OOGUIRow		selectedRow = gui->getSelectedRow();
 	
@@ -1866,7 +1844,7 @@ bool cxx::PlayerEntity::buySelectedShip()
 		NSInteger fromShip = keyParts.size() > 1 ? oo::str::longLongValue(keyParts[1]) : 0;
 		if (fromShip < 0)  fromShip = 0;
 		
-		[self setGuiToShipyardScreen:fromShip];
+		setGuiToShipyardScreen(fromShip);
 		if ([UNIVERSE gui]->getSelectedRow() < 0)
 		{
 			[UNIVERSE gui]->setSelectedRow(GUI_ROW_SHIPYARD_START);
@@ -1894,14 +1872,14 @@ bool cxx::PlayerEntity::buySelectedShip()
 	// first check you can afford it!
 	const oo::PList shipInfo = CurrentShipyardEntry(key);
 	OOCreditsQuantity price = shipInfo.get<unsigned long long>("price");	// SHIPYARD_KEY_PRICE
-	OOCreditsQuantity tradeIn = [self tradeInValue];
+	OOCreditsQuantity tradeIn = tradeInValue();
 
 	if (credits + tradeIn < price * 10)
 		return NO;	// you can't afford it!
 	
 	// from this point, the player is committed to buying - raise a pre-buy script event
 	const std::optional<std::string> shipDataKey = OptionalStringForKey(shipInfo, "shipdata_key");	// SHIPYARD_KEY_SHIPDATA_KEY
-	std::vector<oo::PList> *dockedShipyard = [[self dockedStation] cxx_localShipyard];
+	std::vector<oo::PList> *dockedShipyard = [dockedStation() cxx_localShipyard];
 	const NSUInteger boughtIndex = selectedRow - GUI_ROW_SHIPYARD_START;
 	oo::PList::Array buyArguments;
 	for (const oo::PList &argument : { shipDataKey ? oo::PList(*shipDataKey) : oo::PList(),
@@ -1912,13 +1890,12 @@ bool cxx::PlayerEntity::buySelectedShip()
 		if (argument.isNull())  break;	// +arrayWithObjects: stopped at the first nil
 		buyArguments.push_back(argument);
 	}
-	[self cxx_doScriptEvent:OOJSID("playerWillBuyNewShip") 
-		withPListArguments:buyArguments];
+	doScriptEvent(OOJSID("playerWillBuyNewShip"), buyArguments);
 
 	// sell all the commodities carried
 	for (const std::string &good : (shipCommodityData != nullptr ? shipCommodityData->goods() : std::vector<std::string>()))
 	{
-		[self cxx_trySellingCommodity:good all:YES];
+		trySellingCommodity(good, YES);
 	}
 	// We tried to sell everything. If there are still items present in our inventory, it
 	// means that the market got saturated (quantity in station > 127 t) before we could sell
@@ -1928,10 +1905,10 @@ bool cxx::PlayerEntity::buySelectedShip()
 	credits -= 10 * price - tradeIn;
 	
 	const oo::PList *shipDictNode = shipInfo.get<oo::PList::Dict>("ship");	// SHIPYARD_KEY_SHIP
-	[self newShipCommonSetup:shipDataKey.value_or("") yardInfo:shipInfo baseInfo:shipDictNode != nullptr ? *shipDictNode : oo::PList()];
+	newShipCommonSetup(shipDataKey.value_or(""), shipInfo, shipDictNode != nullptr ? *shipDictNode : oo::PList());
 
 	// this ship has a clean record
-	legalStatus = 0;
+	legalStatusValue = 0;
 
 	const oo::PList *extras = shipInfo.get<oo::PList::Array>("extras");	// KEY_EQUIPMENT_EXTRAS
 	for (std::size_t i = 0; extras != nullptr && i < extras->count(); i++)
@@ -1944,7 +1921,7 @@ bool cxx::PlayerEntity::buySelectedShip()
 		}
 		else
 		{
-			[self addEquipmentItem:eq_key.value_or(std::string()) withValidation:YES inContext:"newShip"];	// none: "", as nil was
+			addEquipmentItem(eq_key.value_or(std::string()), YES, "newShip");	// none: "", as nil was
 		}
 	}
 
@@ -1952,19 +1929,19 @@ bool cxx::PlayerEntity::buySelectedShip()
 	const std::optional<std::string> shipID = OptionalStringForKey(shipInfo, "id");	// SHIPYARD_KEY_ID
 	if (shipID)
 	{
-		const std::optional<std::string> dataKey = [self cxx_shipDataKey];
+		const std::optional<std::string> dataKey = this->shipDataKey();
 		shipyard_record[*shipID] = dataKey ? oo::PList(*dataKey) : oo::PList();	// (a nil key raised)
 	}
 	
 	// remove the ship from the localShipyard
-	dockedShipyard = [[self dockedStation] cxx_localShipyard];
+	dockedShipyard = [dockedStation() cxx_localShipyard];
 	if (dockedShipyard != nullptr)  dockedShipyard->erase(dockedShipyard->begin() + (selectedRow - GUI_ROW_SHIPYARD_START));
 	
 	// perform the transformation
-	if (![self cxx_setCommanderDataFromDictionary:[self cxx_commanderDataDictionary]])  return NO;	// gather up all the info
+	if (!setCommanderDataFromDictionary(commanderDataDictionary()))  return NO;	// gather up all the info
 
-	[self setStatus:STATUS_DOCKED];
-	[self setEntityPersonalityInt:shipInfo.get<unsigned short>("personality")];	// SHIPYARD_KEY_PERSONALITY
+	setStatus(STATUS_DOCKED);
+	setEntityPersonalityInt(shipInfo.get<unsigned short>("personality"));	// SHIPYARD_KEY_PERSONALITY
 	
 	// adjust the clock forward by an hour
 	ship_clock_adjust += 3600.0;
@@ -1977,9 +1954,8 @@ bool cxx::PlayerEntity::buySelectedShip()
 	return YES;
 }
 
-bool cxx::PlayerEntity::replaceShipWithNamedShip(const std::string &shipKey)
+bool PlayerEntity::replaceShipWithNamedShip(const std::string &shipKey)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 
 	const oo::PList ship_info = [[::OOShipRegistry sharedRegistry] cxx_shipyardInfoForKey:shipKey];
 	
@@ -1990,12 +1966,12 @@ bool cxx::PlayerEntity::replaceShipWithNamedShip(const std::string &shipKey)
 	}
 
 	// from this point, the player is committed to replacing - raise a pre-replace script event
-	[self cxx_doScriptEvent:OOJSID("playerWillReplaceShip") withPListArguments:{ oo::PList(shipKey) }];
+	doScriptEvent(OOJSID("playerWillReplaceShip"), { oo::PList(shipKey) });
 
-	[self newShipCommonSetup:shipKey yardInfo:ship_info baseInfo:ship_base_dict];
+	newShipCommonSetup(shipKey, ship_info, ship_base_dict);
 
 	// perform the transformation
-	if (![self cxx_setCommanderDataFromDictionary:[self cxx_commanderDataDictionary]])  return NO;	// gather up all the info
+	if (!setCommanderDataFromDictionary(commanderDataDictionary()))  return NO;	// gather up all the info
 
 	// refill from ship_info
 	const oo::PList *standardEquipment = ship_info.get<oo::PList::Dict>("standard_equipment");	// KEY_STANDARD_EQUIPMENT
@@ -2011,18 +1987,17 @@ bool cxx::PlayerEntity::replaceShipWithNamedShip(const std::string &shipKey)
 		}
 		else
 		{
-			[self addEquipmentItem:eq_key.value_or(std::string()) withValidation:YES inContext:"newShip"];	// none: "", as nil was
+			addEquipmentItem(eq_key.value_or(std::string()), YES, "newShip");	// none: "", as nil was
 		}
 	}
 
-	[self setEntityPersonalityInt:ship_info.get<unsigned short>("personality")];	// SHIPYARD_KEY_PERSONALITY
+	setEntityPersonalityInt(ship_info.get<unsigned short>("personality"));	// SHIPYARD_KEY_PERSONALITY
 	
 	return YES;
 }
 
-void cxx::PlayerEntity::newShipCommonSetup(const std::string &shipKey, const oo::PList &ship_info, const oo::PList &ship_base_dict)
+void PlayerEntity::newShipCommonSetup(const std::string &shipKey, const oo::PList &ship_info, const oo::PList &ship_base_dict)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	// Zero out our manifest.
 	if (shipCommodityData != nullptr)  shipCommodityData->removeAllGoods();
 	current_cargo = 0;
@@ -2035,15 +2010,15 @@ void cxx::PlayerEntity::newShipCommonSetup(const std::string &shipKey, const oo:
 	// contracts stay the same, so if you default - tough!
 	// okay we need to switch the model used, lots of the stats, and add all the extras
 	
-	[self clearSubEntities];
+	clearSubEntities();
 
-	[self cxx_setShipDataKey:shipKey];
+	setShipDataKey(shipKey);
 
 	const oo::PList &shipDict = ship_base_dict;
 
 
 	// get a full tank for free
-	[self setFuel:[self fuelCapacity]];
+	setFuel(fuelCapacity());
 	
 	// get forward_weapon aft_weapon port_weapon starboard_weapon from ship_info
 	int base_facings = shipDict.get<unsigned int>("weapon_facings", 15);	// KEY_WEAPON_FACINGS
@@ -2074,10 +2049,10 @@ void cxx::PlayerEntity::newShipCommonSetup(const std::string &shipKey, const oo:
 	weapons_online = 1;
 
 	// get basic max_cargo
-	max_cargo = [UNIVERSE cxx_maxCargoForShip:[self cxx_shipDataKey].value_or(std::string())];
+	max_cargo = [UNIVERSE cxx_maxCargoForShip:shipDataKey().value_or(std::string())];
 
 	// ensure all missiles are tidied up and start at pylon 0
-	[self tidyMissilePylons];
+	tidyMissilePylons();
 
 	// get missiles from ship_info
 	missiles = shipDict.get<unsigned int>("missiles");
@@ -2091,42 +2066,42 @@ void cxx::PlayerEntity::newShipCommonSetup(const std::string &shipKey, const oo:
 
 	std::set<std::string>	portable_equipment;
 	
-	for (const std::string &eq_desc : [self cxx_equipmentKeys])
+	for (const std::string &eq_desc : equipmentKeys())
 	{
 		::OOEquipmentType *item = OOEquipmentType::equipmentTypeWithIdentifier(eq_desc).get();
 		if ((item != nullptr ? item->isPortableBetweenShips() : false))  portable_equipment.insert(eq_desc);
 	}
 	
 	// remove ALL
-	[self removeAllEquipment];
+	removeAllEquipment();
 	
 	// restore  portable equipment (in key order; the set it replaced gave hash order)
 	for (const std::string &eq_desc : portable_equipment)
 	{
-		[self addEquipmentItem:eq_desc withValidation:NO inContext:"portable"];
+		addEquipmentItem(eq_desc, NO, "portable");
 	}
 
 
 	// set up subentities from scratch; new ship could carry more or fewer than the old one
-	[self setUpSubEntities];
+	setUpSubEntities();
 
 	// clear old ship names
-	[self cxx_setShipClassName:OptionalStringForKey(shipDict, "name")];
-	[self cxx_setShipUniqueName:""];
+	setShipClassName(OptionalStringForKey(shipDict, "name"));
+	setShipUniqueName("");
 
 	// new ship, so lose some memory of actions
 	// new ship, so lose some memory of player actions
 	if (ship_kills >= 6400)
 	{
-		[self clearRolesFromPlayer:0.1];
+		clearRolesFromPlayer(0.1);
 	}
 	else if (ship_kills >= 2560)
 	{
-		[self clearRolesFromPlayer:0.25];
+		clearRolesFromPlayer(0.25);
 	}
 	else
 	{
-		[self clearRolesFromPlayer:0.5];
+		clearRolesFromPlayer(0.5);
 	}	
 
 }

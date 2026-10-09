@@ -169,56 +169,67 @@ oo::Ref<OOScript> OOScript::jsScriptFromFileNamed(const std::string &fileName, c
 	"EQ_MISSILE" while _throwCxx is set throws a C++ exception, so the test sees what an exception
 	under a native becomes.
 */
-@interface PlayerEntity: OOObject
+// PLAYER: C++ since bead oo-9ht.177 deleted the Objective-C player this stood in for: the members
+// the code under test calls, declared as the game headers declare them (the test imports none
+// that defines the classes), with the stand-in's answers.
+@class ShipEntity;
+namespace cxx {
+class Entity
 {
-@public
-	OOFuelQuantity _fuel;
-	float _fuelChargeRate;
-	double _renovationCosts;
+public:
+
+};
+
+class ShipEntity : public Entity
+{
+public:
+	OOFuelQuantity getFuel();
+};
+}	// namespace cxx
+
+class PlayerEntity : public cxx::ShipEntity
+{
+public:
+	void setScriptTarget(::ShipEntity *ship);
+	GLfloat fuelChargeRate();
+	double renovationCosts();
+	OOCreditsQuantity adjustPriceByScriptForEqKey(const std::string &eqKey, OOCreditsQuantity price);
+	oo::PList processKeyCode(const oo::PList &key_def);
+	std::optional<std::string> validateKey(const std::string &key, const oo::PList &check_keys);
+	oo::PList missionVariableForKey(const std::string &key);
+	void setMissionVariable(const oo::PList &value, const std::string &key);
+
+	OOFuelQuantity _fuel = {};
+	float _fuelChargeRate = {};
+	double _renovationCosts = {};
 	oo::PList::Dict _missionVariables;
-	BOOL _throwCxx;
-}
-- (void) setScriptTarget:(id)target;
-- (OOFuelQuantity) fuel;
-- (float) fuelChargeRate;
-- (double) renovationCosts;
-- (OOCreditsQuantity) cxx_adjustPriceByScriptForEqKey:(const std::string &)eqKey withCurrent:(OOCreditsQuantity)price;
-- (oo::PList) cxx_processKeyCode:(const oo::PList &)key_def;
-- (std::optional<std::string>) validateKey:(const std::string &)key checkKeys:(const oo::PList &)check_keys;
-- (oo::PList) cxx_missionVariableForKey:(const std::string &)key;
-- (void) cxx_setMissionVariable:(const oo::PList &)value forKey:(const std::string &)key;
-@end
+	BOOL _throwCxx = {};
+};
 
-@implementation PlayerEntity
-- (void) setScriptTarget:(id)target  { (void)target; }
-- (OOFuelQuantity) fuel  { return _fuel; }
-- (float) fuelChargeRate  { return _fuelChargeRate; }
-- (double) renovationCosts  { return _renovationCosts; }
-
-- (OOCreditsQuantity) cxx_adjustPriceByScriptForEqKey:(const std::string &)eqKey withCurrent:(OOCreditsQuantity)price
+void PlayerEntity::setScriptTarget(::ShipEntity *target)  { (void)target; }
+OOFuelQuantity cxx::ShipEntity::getFuel()  { return static_cast<PlayerEntity *>(this)->_fuel; }
+GLfloat PlayerEntity::fuelChargeRate()  { return _fuelChargeRate; }
+double PlayerEntity::renovationCosts()  { return _renovationCosts; }
+OOCreditsQuantity PlayerEntity::adjustPriceByScriptForEqKey(const std::string &eqKey, OOCreditsQuantity price)
 {
 	if (eqKey == "EQ_SCOOPER")  [OOException raise:OOInvalidArgumentException format:"price %s", "boom"];
 	if (eqKey == "EQ_MISSILE" && _throwCxx)  throw std::runtime_error("cxx boom");
 	return price * 2;
 }
-
-- (oo::PList) cxx_processKeyCode:(const oo::PList &)key_def  { return key_def; }
-- (std::optional<std::string>) validateKey:(const std::string &)key checkKeys:(const oo::PList &)check_keys  { (void)key; (void)check_keys; return std::nullopt; }
-
-- (oo::PList) cxx_missionVariableForKey:(const std::string &)key
+oo::PList PlayerEntity::processKeyCode(const oo::PList &key_def)  { return key_def; }
+std::optional<std::string> PlayerEntity::validateKey(const std::string &key, const oo::PList &check_keys)  { (void)key; (void)check_keys; return std::nullopt; }
+oo::PList PlayerEntity::missionVariableForKey(const std::string &key)
 {
 	auto it = _missionVariables.find(key);
 	return it != _missionVariables.end() ? it->second : oo::PList();
 }
-
-- (void) cxx_setMissionVariable:(const oo::PList &)value forKey:(const std::string &)key
+void PlayerEntity::setMissionVariable(const oo::PList &value, const std::string &key)
 {
 	if (value.isNull())  _missionVariables.erase(key);
 	else  _missionVariables[key] = value;
 }
-@end
 
-PlayerEntity *gOOPlayer = nil;
+PlayerEntity *gOOPlayer = nullptr;
 
 
 void cxx_OOStandardsDeprecated(const std::string &message)
@@ -485,14 +496,14 @@ namespace {
 ooscript::Runtime sRuntime;
 ooscript::Context sContext;
 ooscript::Object sGlobal;
-PlayerEntity *sPlayer = nil;
+PlayerEntity *sPlayer = nullptr;
 
 
 void SetUpContext()
 {
 	if (sContext != nullptr)  return;
 	gSharedUniverse = [[Universe alloc] init];	// kept for the life of the test
-	sPlayer = [[PlayerEntity alloc] init];
+	sPlayer = new PlayerEntity;
 	sPlayer->_fuel = 30;
 	sPlayer->_fuelChargeRate = 1.5f;
 	sPlayer->_renovationCosts = 1234.5;

@@ -21,6 +21,7 @@
 #import "OOColor.h"
 #import "OODescription.h"
 #import "Universe.h"
+#import "PlayerEntity.h"	// PLAYER is C++ (bead oo-9ht.177)
 
 #include "oo_gl_test_context.hpp"
 #include "oo_test.hpp"
@@ -33,26 +34,34 @@
 uint32_t gDebugFlags = 0;
 #endif
 
-@class PlayerEntity;
+class PlayerEntity;
 extern PlayerEntity *gOOPlayer;
 extern Universe *gSharedUniverse;
 
 
-// PLAYER: an entity whose viewpoint and hyperspeed factor the test sets.
-@interface TestPlayer: Entity
+// PLAYER: a player whose viewpoint and hyperspeed factor the test sets (C++ since bead oo-9ht.177
+// deleted the Objective-C player).
+class TestPlayer : public PlayerEntity
 {
-@public
-	HPVector	_viewpoint;
+public:
+	HPVector	_viewpoint = kZeroHPVector;
+
+	HPVector viewpointPosition() override	{ return _viewpoint; }
+	GLfloat getHyperspeedFactor() override	{ return 32.0f; }
+};
+
+// [[TestPlayer alloc] init] (bead oo-9ht.177): a C++ player under the ship's facade, as
+// PlayerEntity::sharedPlayer() makes the game's, retained (+1) as +alloc's object was.
+template <class T>
+T *NewTestPlayer()
+{
+	oo::Ref<T> player = oo::makeRef<T>();
+	@autoreleasepool
+	{
+		[oo::NewEntityFacade(player) retain];
+	}
+	return player.get();
 }
-@end
-
-
-@implementation TestPlayer
-
-- (HPVector) viewpointPosition	{ return _viewpoint; }
-- (GLfloat) hyperspeedFactor	{ return 32.0f; }
-
-@end
 
 
 namespace {
@@ -67,11 +76,11 @@ TestPlayer *SetUp()
 		universe->_cxxUniverse = oo::makeRef<cxx::Universe>(universe);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
 	}
 	gSharedUniverse = universe;
-	static TestPlayer *player = nil;
-	if (player == nil)  player = [[TestPlayer alloc] init];
-	gOOPlayer = (PlayerEntity *)player;
+	static TestPlayer *player = nullptr;
+	if (player == nullptr)  player = NewTestPlayer<TestPlayer>();
+	gOOPlayer = player;
 	player->_viewpoint = kZeroHPVector;
-	[player setVelocity:kZeroVector];
+	player->setVelocity(kZeroVector);
 	return player;
 }
 
@@ -147,7 +156,7 @@ OO_TEST(shaderBindings)
 		TestPlayer *player = SetUp();
 		DustEntity *dust = nullptr;
 		MakeDust(&dust);
-		[player setVelocity:make_vector(0, 64, 320)];
+		player->setVelocity(make_vector(0, 64, 320));
 		OO_CHECK(vector_equal(dust->warpVector(), make_vector(0, 2, 10)));
 
 #if OO_SHADERS

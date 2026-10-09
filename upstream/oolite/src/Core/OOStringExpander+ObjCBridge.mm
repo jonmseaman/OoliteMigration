@@ -64,25 +64,25 @@ std::optional<std::string> OOStringExpanderUniverseGetSystemNameForGalaxy(OOSyst
 
 OOSystemID OOStringExpanderPlayerSystemID(void)
 {
-	return [PLAYER systemID];
+	return (PLAYER != nullptr ? PLAYER->systemID() : 0);
 }
 
 
 bool OOStringExpanderPlayerRespondsToSelector(SEL selector)
 {
-	return [PLAYER respondsToSelector:selector];
+	return [oo::ToObjC(PLAYER) respondsToSelector:selector];	// the ship's facade answers the player's selectors (bead oo-9ht.177)
 }
 
 
 std::optional<std::string> OOStringExpanderPlayerKeyBindingDescription2(const std::string &binding)
 {
-	return [PLAYER cxx_keyBindingDescription2:binding];
+	return (PLAYER != nullptr ? PLAYER->keyBindingDescription2(binding) : std::optional<std::string>());
 }
 
 
 oo::PList OOStringExpanderPlayerMissionVariableForKey(const std::string &key)
 {
-	return [PLAYER cxx_missionVariableForKey:key];
+	return (PLAYER != nullptr ? PLAYER->missionVariableForKey(key) : oo::PList());
 }
 
 

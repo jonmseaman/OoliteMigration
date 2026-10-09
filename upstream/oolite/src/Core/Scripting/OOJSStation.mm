@@ -745,14 +745,14 @@ static bool StationDockPlayer(ooscript::Context context, ooscript::CallArgs &ooj
 		[gameController setGamePaused:false];
 	}
 	
-	if (EXPECT(![player isDocked]))
+	if (EXPECT(!(player != nullptr ? player->PlayerEntity::isDocked() : false)))	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 	{
 		StationEntity *stationForDockingPlayer = nil;
 		JSStationGetStationEntity(context, OOJS_THIS, &stationForDockingPlayer); 
-		[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_GRANTED];
-		[player safeAllMissiles];
+		if (player != nullptr)  player->setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_GRANTED);
+		if (player != nullptr)  player->PlayerEntity::safeAllMissiles();	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 		[UNIVERSE setViewDirection:VIEW_FORWARD];
-		[player enterDock:stationForDockingPlayer];
+		if (player != nullptr)  player->PlayerEntity::enterDock(stationForDockingPlayer);	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 	}
 	OOJS_RETURN_VOID;
 	
@@ -1124,9 +1124,9 @@ static bool StationSetMarketPrice(ooscript::Context context, ooscript::CallArgs 
 
 	[station cxx_setPrice:(NSUInteger)price forCommodity:commodity.value_or("")];
 
-	if (station == [PLAYER dockedStation] && [PLAYER guiScreen] == GUI_SCREEN_MARKET)
+	if (station == (PLAYER != nullptr ? PLAYER->PlayerEntity::dockedStation() : (StationEntity *)nullptr) && (PLAYER != nullptr ? PLAYER->guiScreen() : OOGUIScreenID{}) == GUI_SCREEN_MARKET)	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 	{
-		[PLAYER setGuiToMarketScreen]; // refresh screen
+		if (PLAYER != nullptr)  PLAYER->setGuiToMarketScreen(); // refresh screen
 	}
 
 	OOJS_RETURN_BOOL(true);
@@ -1169,9 +1169,9 @@ static bool StationSetMarketQuantity(ooscript::Context context, ooscript::CallAr
 
 	[station cxx_setQuantity:(OOCargoQuantity)quantity forCommodity:commodity];
 	
-	if (station == [PLAYER dockedStation] && [PLAYER guiScreen] == GUI_SCREEN_MARKET)
+	if (station == (PLAYER != nullptr ? PLAYER->PlayerEntity::dockedStation() : (StationEntity *)nullptr) && (PLAYER != nullptr ? PLAYER->guiScreen() : OOGUIScreenID{}) == GUI_SCREEN_MARKET)	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 	{
-		[PLAYER setGuiToMarketScreen]; // refresh screen
+		if (PLAYER != nullptr)  PLAYER->setGuiToMarketScreen(); // refresh screen
 	}
 
 	OOJS_RETURN_BOOL(true);
@@ -1362,9 +1362,9 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 	if (shipyard != nullptr)  shipyard->push_back(oo::PList(std::move(result)));
 
 	// refresh the screen if the shipyard is currently being displayed
-	if(station == [PLAYER dockedStation] && [PLAYER guiScreen] == GUI_SCREEN_SHIPYARD)
+	if(station == (PLAYER != nullptr ? PLAYER->PlayerEntity::dockedStation() : (StationEntity *)nullptr) && (PLAYER != nullptr ? PLAYER->guiScreen() : OOGUIScreenID{}) == GUI_SCREEN_SHIPYARD)	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 	{
-		[PLAYER setGuiToShipyardScreen:0];
+		if (PLAYER != nullptr)  PLAYER->setGuiToShipyardScreen(0);
 	}	
 
 	OOJS_RETURN_BOOL(true);
@@ -1404,9 +1404,9 @@ static bool StationRemoveShipFromShipyard(ooscript::Context context, ooscript::C
 	shipyard->erase(shipyard->begin() + shipIndex);
 
 	// refresh the screen if the shipyard is currently being displayed
-	if(station == [PLAYER dockedStation] && [PLAYER guiScreen] == GUI_SCREEN_SHIPYARD)
+	if(station == (PLAYER != nullptr ? PLAYER->PlayerEntity::dockedStation() : (StationEntity *)nullptr) && (PLAYER != nullptr ? PLAYER->guiScreen() : OOGUIScreenID{}) == GUI_SCREEN_SHIPYARD)	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 	{
-		[PLAYER setGuiToShipyardScreen:0];
+		if (PLAYER != nullptr)  PLAYER->setGuiToShipyardScreen(0);
 	}
 
 	OOJS_RETURN_BOOL(true);

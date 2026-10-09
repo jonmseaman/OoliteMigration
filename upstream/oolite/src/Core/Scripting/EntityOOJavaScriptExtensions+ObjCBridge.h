@@ -5,8 +5,8 @@ EntityOOJavaScriptExtensions+ObjCBridge.h
 TRANSITIONAL (proposed ADR-0056, amendments oo-ppc and oo-ykoy): the categories' @interfaces that
 EntityOOJavaScriptExtensions.h declared, copied exactly, for the engine, the bindings and the
 entities that send their selectors (isVisibleToScripts, getJSClass:andPrototype:, deleteJSSelf,
-subEntitiesForScript, setTargetForScript:, and PlayerEntity's setJSSelf:context:, which
-PlayerEntity.mm implements). Imported as the last line of EntityOOJavaScriptExtensions.h; do not
+subEntitiesForScript, setTargetForScript:; PlayerEntity's setJSSelf:context: went with the player's
+facade, bead oo-9ht.177: OOJSPlayerShipSetJSSelf() is its body). Imported as the last line of EntityOOJavaScriptExtensions.h; do not
 import it directly. Deleted by its deletion bead once Entity, ShipEntity and PlayerEntity are C++.
 
 Oolite
@@ -52,13 +52,6 @@ MA 02110-1301, USA.
 - (std::vector<oo::ObjCRef<Entity *>>) subEntitiesForScript;
 
 - (void) setTargetForScript:(ShipEntity *)target;
-
-@end
-
-
-@interface PlayerEntity (OOJavaScriptExtensions)
-
-- (void) setJSSelf:(ooscript::Object)val context:(ooscript::Context)context;
 
 @end
 

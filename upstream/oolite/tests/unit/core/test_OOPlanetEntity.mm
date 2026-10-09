@@ -24,6 +24,7 @@
 */
 
 #import "OOPlanetEntity.h"
+#import "PlayerEntity.h"	// PLAYER is C++ (bead oo-9ht.177)
 #import "OOPlanetDrawable.h"
 #import "EntityOOJavaScriptExtensions.h"
 #import "OOJSPlanet.h"
@@ -45,28 +46,37 @@
 uint32_t gDebugFlags = 0;
 #endif
 
-@class PlayerEntity;
+class PlayerEntity;
 extern PlayerEntity *gOOPlayer;
 extern Universe *gSharedUniverse;
 
 
-@interface TestPlayer: Entity
+class TestPlayer : public PlayerEntity	// C++ since bead oo-9ht.177 deleted the Objective-C player
 {
-@public
-	double	_clock;
-	OOPlanetEntity	*_nearestPlanet;	// the C++ planet since bead oo-9ht.129
+public:
+	double	_clock = {};
+	OOPlanetEntity	*_nearestPlanet = {};	// the C++ planet since bead oo-9ht.129
+
+	HPVector viewpointPosition() override	{ return kZeroHPVector; }
+	double clockTimeAdjusted() override	{ return _clock; }
+	::OOPlanetEntity * findNearestPlanet() override	{ return _nearestPlanet; }
+	OOSystemID systemID() override	{ return 7; }
+};
+
+// [[TestPlayer alloc] init] (bead oo-9ht.177): a C++ player under the ship's facade, as
+// PlayerEntity::sharedPlayer() makes the game's, retained (+1) as +alloc's object was.
+template <class T>
+T *NewTestPlayer()
+{
+	oo::Ref<T> player = oo::makeRef<T>();
+	@autoreleasepool
+	{
+		[oo::NewEntityFacade(player) retain];
+	}
+	return player.get();
 }
-@end
 
 
-@implementation TestPlayer
-
-- (HPVector) viewpointPosition	{ return kZeroHPVector; }
-- (double) clockTimeAdjusted	{ return _clock; }
-- (OOPlanetEntity *) findNearestPlanet	{ return _nearestPlanet; }
-- (OOSystemID) systemID			{ return 7; }
-
-@end
 
 
 // UNIVERSE: never initialised; answers the system data, the time and the detail level.
@@ -94,7 +104,7 @@ extern Universe *gSharedUniverse;
 namespace {
 
 TestUniverse *sUniverse = nil;
-TestPlayer *sPlayer = nil;
+TestPlayer *sPlayer = nullptr;
 std::vector<std::string> sTexturesAsked;
 
 
@@ -113,7 +123,7 @@ void SetUp()
 		sUniverse = (TestUniverse *)class_createInstance([TestUniverse class], 0);	// never released
 		sUniverse->_cxxUniverse = oo::makeRef<cxx::Universe>(sUniverse);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
 		new (&sUniverse->_systemData) oo::PList();
-		sPlayer = [[TestPlayer alloc] init];
+		sPlayer = NewTestPlayer<TestPlayer>();
 		Method load = class_getClassMethod([OOTexture class], sel_registerName("cxx_textureWithConfiguration:"));
 		method_setImplementation(load, (IMP)NoTexture);
 	}
@@ -121,7 +131,7 @@ void SetUp()
 	sUniverse->_time = 0;
 	sUniverse->_airResistance = -1;
 	gSharedUniverse = sUniverse;
-	gOOPlayer = (PlayerEntity *)sPlayer;
+	gOOPlayer = sPlayer;
 	sPlayer->_clock = 0;
 	sPlayer->_nearestPlanet = nullptr;
 	sTexturesAsked.clear();

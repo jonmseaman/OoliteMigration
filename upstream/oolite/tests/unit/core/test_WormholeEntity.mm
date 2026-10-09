@@ -25,6 +25,7 @@
 */
 
 #import "WormholeEntity.h"
+#import "PlayerEntity.h"	// PLAYER is C++ (bead oo-9ht.177)
 #import "EntityOOJavaScriptExtensions.h"
 #import "OOJSWormhole.h"
 #import "OOSystemDescriptionManager.h"
@@ -43,30 +44,39 @@
 uint32_t gDebugFlags = 0;
 #endif
 
-@class PlayerEntity;
+class PlayerEntity;
 extern PlayerEntity *gOOPlayer;
 extern Universe *gSharedUniverse;
 
 
-@interface TestPlayer: Entity
+class TestPlayer : public PlayerEntity	// C++ since bead oo-9ht.177 deleted the Objective-C player
 {
-@public
-	double		_clock;
-	NSPoint		_coordinates;
+public:
+	double		_clock = {};
+	NSPoint		_coordinates = {};
+
+	HPVector viewpointPosition() override	{ return kZeroHPVector; }
+	OOGalaxyID galaxyNumber() override	{ return 0; }
+	double clockTime() override	{ return _clock; }
+	double clockTimeAdjusted() override	{ return _clock; }
+	NSPoint getGalaxy_coordinates() override	{ return _coordinates; }
+	Vector forwardVector() override	{ return make_vector(0, 0, 1); }
+};
+
+// [[TestPlayer alloc] init] (bead oo-9ht.177): a C++ player under the ship's facade, as
+// PlayerEntity::sharedPlayer() makes the game's, retained (+1) as +alloc's object was.
+template <class T>
+T *NewTestPlayer()
+{
+	oo::Ref<T> player = oo::makeRef<T>();
+	@autoreleasepool
+	{
+		[oo::NewEntityFacade(player) retain];
+	}
+	return player.get();
 }
-@end
 
 
-@implementation TestPlayer
-
-- (HPVector) viewpointPosition	{ return kZeroHPVector; }
-- (OOGalaxyID) galaxyNumber		{ return 0; }
-- (double) clockTime			{ return _clock; }
-- (double) clockTimeAdjusted	{ return _clock; }
-- (NSPoint) galaxy_coordinates	{ return _coordinates; }
-- (Vector) forwardVector		{ return make_vector(0, 0, 1); }
-
-@end
 
 
 // An effect, for the collision test.
@@ -127,7 +137,7 @@ OOSystemDescriptionManager *sManager = nullptr;
 namespace {
 
 TestUniverse *sUniverse = nil;
-TestPlayer *sPlayer = nil;
+TestPlayer *sPlayer = nullptr;
 
 
 void SetUp()
@@ -136,7 +146,7 @@ void SetUp()
 	{
 		sUniverse = (TestUniverse *)class_createInstance([TestUniverse class], 0);	// never released
 		sUniverse->_cxxUniverse = oo::makeRef<cxx::Universe>(sUniverse);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
-		sPlayer = [[TestPlayer alloc] init];
+		sPlayer = NewTestPlayer<TestPlayer>();
 		// Systems 7 at (10, 20) and 9 at (13, 24) of galaxy 0: 5 light-year units apart, 2.0 LY.
 		oo::Ref<OOSystemDescriptionManager> manager = oo::makeRef<OOSystemDescriptionManager>();
 		manager->setProperties(oo::PList(oo::PList::Dict{ { "coordinates", oo::PList("10 20") } }), "0 7");
@@ -149,7 +159,7 @@ void SetUp()
 	sPlayer->_clock = 1000.0;
 	sPlayer->_coordinates = NSMakePoint(10, 20);
 	gSharedUniverse = sUniverse;
-	gOOPlayer = (PlayerEntity *)sPlayer;
+	gOOPlayer = sPlayer;
 }
 
 
@@ -378,7 +388,7 @@ OO_TEST(disgorgeWithPlayer)
 	{
 		SetUp();
 		WormholeEntity *wh = ToNine(Ship(1000.0f));
-		[sPlayer setPosition:make_HPvector(100, 0, 0)];
+		sPlayer->setPosition(make_HPvector(100, 0, 0));
 		wh->disgorgeShips();		// no ships, no player: it stays
 		OO_CHECK(HPvector_equal(wh->getPosition(), make_HPvector(1, 2, 3)));
 		wh->setContainsPlayer(YES);

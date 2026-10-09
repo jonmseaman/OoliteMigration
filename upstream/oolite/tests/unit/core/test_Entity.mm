@@ -24,6 +24,7 @@
 #import "OODescription.h"
 #import "OODebugFlags.h"
 #import "Universe.h"
+#import "PlayerEntity.h"	// PLAYER is C++ (bead oo-9ht.177)
 
 #include "oofnd/Log.hpp"
 #include "oo_test.hpp"
@@ -40,25 +41,33 @@
 uint32_t gDebugFlags = 0;
 #endif
 
-@class PlayerEntity;
+class PlayerEntity;
 extern PlayerEntity *gOOPlayer;
 extern Universe *gSharedUniverse;
 
 
-// PLAYER: an entity whose viewpoint is set by the test (PlayerEntity's is its position plus an offset).
-@interface TestPlayer: Entity
+// PLAYER: a player whose viewpoint is set by the test (PlayerEntity's is its position plus an offset;
+// C++ since bead oo-9ht.177 deleted the Objective-C player).
+class TestPlayer : public PlayerEntity
 {
-@public
-	HPVector	_viewpoint;
+public:
+	HPVector	_viewpoint = kZeroHPVector;
+
+	HPVector viewpointPosition() override	{ return _viewpoint; }
+};
+
+// [[TestPlayer alloc] init] (bead oo-9ht.177): a C++ player under the ship's facade, as
+// PlayerEntity::sharedPlayer() makes the game's, retained (+1) as +alloc's object was.
+template <class T>
+T *NewTestPlayer()
+{
+	oo::Ref<T> player = oo::makeRef<T>();
+	@autoreleasepool
+	{
+		[oo::NewEntityFacade(player) retain];
+	}
+	return player.get();
 }
-@end
-
-
-@implementation TestPlayer
-
-- (HPVector) viewpointPosition	{ return _viewpoint; }
-
-@end
 
 
 // An unconverted entity: an Objective-C subclass, as ShipEntity is. Each override counts, so the
@@ -193,11 +202,11 @@ void SetUpUniverse()
 
 TestPlayer *SetUpPlayer(HPVector position, HPVector viewpoint)
 {
-	static TestPlayer *player = nil;
-	if (player == nil)  player = [[TestPlayer alloc] init];	// never released, as the player is not
-	[player setPosition:position];
+	static TestPlayer *player = nullptr;
+	if (player == nullptr)  player = NewTestPlayer<TestPlayer>();	// never released, as the player is not
+	player->setPosition(position);
 	player->_viewpoint = viewpoint;
-	gOOPlayer = (PlayerEntity *)player;
+	gOOPlayer = player;
 	return player;
 }
 

@@ -121,7 +121,7 @@ std::string WeaponSoundKey(const OOWeaponSoundMap &sounds, const std::string &we
 }	// namespace
 
 
-void cxx::PlayerEntity::setUpSound()
+void PlayerEntity::setUpSound()
 {
 	destroySound();
 	
@@ -155,7 +155,7 @@ void cxx::PlayerEntity::setUpSound()
 // sets up the sound key dictionaries for all the available weapons/missiles/mines defined.
 
 
-void cxx::PlayerEntity::setUpWeaponSounds()
+void PlayerEntity::setUpWeaponSounds()
 {
 	OOWeaponSoundMap	shotMissSounds;
 	OOWeaponSoundMap	shotHitSounds;
@@ -200,7 +200,7 @@ void cxx::PlayerEntity::setUpWeaponSounds()
 }
 
 
-void cxx::PlayerEntity::destroySound()
+void PlayerEntity::destroySound()
 {
 	ReleaseSource(sInterfaceBeepSource);
 	ReleaseSource(sBreakPatternSource);
@@ -224,7 +224,7 @@ void cxx::PlayerEntity::destroySound()
 }
 
 
-void cxx::PlayerEntity::playInterfaceBeep(const std::string & beepKey)
+void PlayerEntity::playInterfaceBeep(const std::string & beepKey)
 {
 #if OOLITE_WINDOWS
 	if (status() == STATUS_START_GAME) { return; }
@@ -233,97 +233,97 @@ void cxx::PlayerEntity::playInterfaceBeep(const std::string & beepKey)
 }
 
 
-bool cxx::PlayerEntity::isBeeping()
+bool PlayerEntity::isBeeping()
 {
 	return IsPlaying(sInterfaceBeepSource);
 }
 
 
-void cxx::PlayerEntity::boop()
+void PlayerEntity::boop()
 {
 	playInterfaceBeep("[general-boop]");
 }
 
 
-void cxx::PlayerEntity::playIdentOn()
+void PlayerEntity::playIdentOn()
 {
 	playInterfaceBeep("[ident-on]");
 }
 
 
-void cxx::PlayerEntity::playIdentOff()
+void PlayerEntity::playIdentOff()
 {
 	playInterfaceBeep("[ident-off]");
 }
 
 
-void cxx::PlayerEntity::playIdentLockedOn()
+void PlayerEntity::playIdentLockedOn()
 {
 	playInterfaceBeep("[ident-locked-on]");
 }
 
 
-void cxx::PlayerEntity::playMissileArmed()
+void PlayerEntity::playMissileArmed()
 {
 	playInterfaceBeep("[missile-armed]");
 }
 
 
-void cxx::PlayerEntity::playMineArmed()
+void PlayerEntity::playMineArmed()
 {
 	playInterfaceBeep("[mine-armed]");
 }
 
 
-void cxx::PlayerEntity::playMissileSafe()
+void PlayerEntity::playMissileSafe()
 {
 	playInterfaceBeep("[missile-safe]");
 }
 
 
-void cxx::PlayerEntity::playMissileLockedOn()
+void PlayerEntity::playMissileLockedOn()
 {
 	playInterfaceBeep("[missile-locked-on]");
 }
 
 
-void cxx::PlayerEntity::playNextEquipmentSelected()
+void PlayerEntity::playNextEquipmentSelected()
 {
 	playInterfaceBeep("[next-equipment-selected]");
 }
 
 
-void cxx::PlayerEntity::playNextMissileSelected()
+void PlayerEntity::playNextMissileSelected()
 {
 	playInterfaceBeep("[next-missile-selected]");
 }
 
 
-void cxx::PlayerEntity::playWeaponsOnline()
+void PlayerEntity::playWeaponsOnline()
 {
 	playInterfaceBeep("[weapons-online]");
 }
 
 
-void cxx::PlayerEntity::playWeaponsOffline()
+void PlayerEntity::playWeaponsOffline()
 {
 	playInterfaceBeep("[weapons-offline]");
 }
 
 
-void cxx::PlayerEntity::playCargoJettisioned()
+void PlayerEntity::playCargoJettisioned()
 {
 	playInterfaceBeep("[cargo-jettisoned]");
 }
 
 
-void cxx::PlayerEntity::playAutopilotOn()
+void PlayerEntity::playAutopilotOn()
 {
 	playInterfaceBeep("[autopilot-on]");
 }
 
 
-void cxx::PlayerEntity::playAutopilotOff()
+void PlayerEntity::playAutopilotOff()
 {
 	// only if still alive
 	if (energy > 0.0)
@@ -333,145 +333,145 @@ void cxx::PlayerEntity::playAutopilotOff()
 }
 
 
-void cxx::PlayerEntity::playAutopilotOutOfRange()
+void PlayerEntity::playAutopilotOutOfRange()
 {
 	playInterfaceBeep("[autopilot-out-of-range]");
 }
 
 
-void cxx::PlayerEntity::playAutopilotCannotDockWithTarget()
+void PlayerEntity::playAutopilotCannotDockWithTarget()
 {
 	playInterfaceBeep("[autopilot-cannot-dock-with-target]");
 }
 
 
-void cxx::PlayerEntity::playSaveOverwriteYes()
+void PlayerEntity::playSaveOverwriteYes()
 {
 	playInterfaceBeep("[save-overwrite-yes]");
 }
 
 
-void cxx::PlayerEntity::playSaveOverwriteNo()
+void PlayerEntity::playSaveOverwriteNo()
 {
 	playInterfaceBeep("[save-overwrite-no]");
 }
 
 
-void cxx::PlayerEntity::playHoldFull()
+void PlayerEntity::playHoldFull()
 {
 	playInterfaceBeep("[hold-full]");
 }
 
 
-void cxx::PlayerEntity::playJumpMassLocked()
+void PlayerEntity::playJumpMassLocked()
 {
 	playInterfaceBeep("[jump-mass-locked]");
 }
 
 
-void cxx::PlayerEntity::playTargetLost()
+void PlayerEntity::playTargetLost()
 {
 	playInterfaceBeep("[target-lost]");
 }
 
 
-void cxx::PlayerEntity::playNoTargetInMemory()
+void PlayerEntity::playNoTargetInMemory()
 {
 	playInterfaceBeep("[no-target-in-memory]");
 }
 
 
-void cxx::PlayerEntity::playTargetSwitched()
+void PlayerEntity::playTargetSwitched()
 {
 	playInterfaceBeep("[target-switched]");
 }
 
 
-void cxx::PlayerEntity::playHyperspaceNoTarget()
+void PlayerEntity::playHyperspaceNoTarget()
 {
 	playInterfaceBeep("[witch-no-target]");
 }
 
 
-void cxx::PlayerEntity::playHyperspaceNoFuel()
+void PlayerEntity::playHyperspaceNoFuel()
 {
 	playInterfaceBeep("[witch-no-fuel]");
 }
 
 
-void cxx::PlayerEntity::playHyperspaceBlocked()
+void PlayerEntity::playHyperspaceBlocked()
 {
 	playInterfaceBeep("[hyperspace-blocked]");
 }
 
 
-void cxx::PlayerEntity::playHyperspaceDistanceTooGreat()
+void PlayerEntity::playHyperspaceDistanceTooGreat()
 {
 	playInterfaceBeep("[witch-too-far]");
 }
 
 
-void cxx::PlayerEntity::playCloakingDeviceOn()
+void PlayerEntity::playCloakingDeviceOn()
 {
 	playInterfaceBeep("[cloaking-device-on]");
 }
 
 
-void cxx::PlayerEntity::playCloakingDeviceOff()
+void PlayerEntity::playCloakingDeviceOff()
 {
 	playInterfaceBeep("[cloaking-device-off]");
 }
 
 
-void cxx::PlayerEntity::playMenuNavigationUp()
+void PlayerEntity::playMenuNavigationUp()
 {
 	playInterfaceBeep("[menu-navigation-up]");
 }
 
 
-void cxx::PlayerEntity::playMenuNavigationDown()
+void PlayerEntity::playMenuNavigationDown()
 {
 	playInterfaceBeep("[menu-navigation-down]");
 }
 
 
-void cxx::PlayerEntity::playMenuNavigationNot()
+void PlayerEntity::playMenuNavigationNot()
 {
 	playInterfaceBeep("[menu-navigation-not]");
 }
 
 
-void cxx::PlayerEntity::playMenuPagePrevious()
+void PlayerEntity::playMenuPagePrevious()
 {
 	playInterfaceBeep("[menu-next-page]");
 }
 
 
-void cxx::PlayerEntity::playMenuPageNext()
+void PlayerEntity::playMenuPageNext()
 {
 	playInterfaceBeep("[menu-previous-page]");
 }
 
 
-void cxx::PlayerEntity::playDismissedReportScreen()
+void PlayerEntity::playDismissedReportScreen()
 {
 	playInterfaceBeep("[dismissed-report-screen]");
 }
 
 
-void cxx::PlayerEntity::playDismissedMissionScreen()
+void PlayerEntity::playDismissedMissionScreen()
 {
 	playInterfaceBeep("[dismissed-mission-screen]");
 }
 
 
-void cxx::PlayerEntity::playChangedOption()
+void PlayerEntity::playChangedOption()
 {
 	playInterfaceBeep("[changed-option]");
 }
 
 
-void cxx::PlayerEntity::updateFuelScoopSoundWithInterval(OOTimeDelta delta_t)
+void PlayerEntity::updateFuelScoopSoundWithInterval(OOTimeDelta delta_t)
 {
 	static double scoopSoundPlayTime = 0.0;
 	scoopSoundPlayTime -= delta_t;
@@ -498,7 +498,7 @@ void cxx::PlayerEntity::updateFuelScoopSoundWithInterval(OOTimeDelta delta_t)
 // crossfade
 
 
-void cxx::PlayerEntity::updateAfterburnerSound()
+void PlayerEntity::updateAfterburnerSound()
 {
 	static uint8_t which = 0;
 	
@@ -512,12 +512,12 @@ void cxx::PlayerEntity::updateAfterburnerSound()
 		if (sAfterburnerSources[which] != nullptr)  sAfterburnerSources[which]->play();
 		which = !which;
 		
-		[oo::ToObjC(this) cxx_scheduleAfterburnerSoundUpdate];	// and swap sounds in 1.25s time
+		OOScheduleDeferredCall(oo::ToObjC(this), @selector(updateAfterburnerSound), nil, 1.25);	// and swap sounds in 1.25s time (by name: the ship's facade answers it, bead oo-9ht.177)
 	}
 }
 
 
-void cxx::PlayerEntity::startAfterburnerSound()
+void PlayerEntity::startAfterburnerSound()
 {
 	if (!afterburnerSoundLooping)
 	{
@@ -527,187 +527,187 @@ void cxx::PlayerEntity::startAfterburnerSound()
 }
 
 
-void cxx::PlayerEntity::stopAfterburnerSound()
+void PlayerEntity::stopAfterburnerSound()
 {
 	// Do nothing, stop is detected in updateAfterburnerSound
 }
 
 
-void cxx::PlayerEntity::playCloakingDeviceInsufficientEnergy()
+void PlayerEntity::playCloakingDeviceInsufficientEnergy()
 {
 	playInterfaceBeep("[cloaking-device-insufficent-energy]");
 }
 
 
-void cxx::PlayerEntity::playBuyCommodity()
+void PlayerEntity::playBuyCommodity()
 {
 	if (sBuySellSourcePool != nullptr)  sBuySellSourcePool->playSoundWithKey("[buy-commodity]");
 }
 
 
-void cxx::PlayerEntity::playBuyShip()
+void PlayerEntity::playBuyShip()
 {
 	if (sBuySellSourcePool != nullptr)  sBuySellSourcePool->playSoundWithKey("[buy-ship]");
 }
 
 
-void cxx::PlayerEntity::playSellCommodity()
+void PlayerEntity::playSellCommodity()
 {
 	if (sBuySellSourcePool != nullptr)  sBuySellSourcePool->playSoundWithKey("[sell-commodity]");
 }
 
 
-void cxx::PlayerEntity::playCantBuyCommodity()
+void PlayerEntity::playCantBuyCommodity()
 {
 	if (sBuySellSourcePool != nullptr)  sBuySellSourcePool->playSoundWithKey("[could-not-buy-commodity]");
 }
 
 
-void cxx::PlayerEntity::playCantSellCommodity()
+void PlayerEntity::playCantSellCommodity()
 {
 	if (sBuySellSourcePool != nullptr)  sBuySellSourcePool->playSoundWithKey("[could-not-sell-commodity]");
 }
 
 
-void cxx::PlayerEntity::playCantBuyShip()
+void PlayerEntity::playCantBuyShip()
 {
 	if (sBuySellSourcePool != nullptr)  sBuySellSourcePool->playSoundWithKey("[could-not-buy-ship]");
 }
 
 
-void cxx::PlayerEntity::playStandardHyperspace()
+void PlayerEntity::playStandardHyperspace()
 {
 	OOSoundSourcePlayCustomSoundWithKey(sHyperspaceSoundSource, "[hyperspace-countdown-begun]");
 }
 
 
-void cxx::PlayerEntity::playGalacticHyperspace()
+void PlayerEntity::playGalacticHyperspace()
 {
 	OOSoundSourcePlayCustomSoundWithKey(sHyperspaceSoundSource, "[galactic-hyperspace-countdown-begun]");
 }
 
 
-void cxx::PlayerEntity::playHyperspaceAborted()
+void PlayerEntity::playHyperspaceAborted()
 {
 	OOSoundSourcePlayCustomSoundWithKey(sHyperspaceSoundSource, "[hyperspace-countdown-aborted]");
 }
 
 
-void cxx::PlayerEntity::playHitByECMSound()
+void PlayerEntity::playHitByECMSound()
 {
 	if (!IsPlaying(sEcmSource)) OOSoundSourcePlayCustomSoundWithKey(sEcmSource, "[player-hit-by-ecm]");
 }
 
 
-void cxx::PlayerEntity::playFiredECMSound()
+void PlayerEntity::playFiredECMSound()
 {
 	if (!IsPlaying(sEcmSource)) OOSoundSourcePlayCustomSoundWithKey(sEcmSource, "[player-fired-ecm]");
 }
 
 
-void cxx::PlayerEntity::playLaunchFromStation()
+void PlayerEntity::playLaunchFromStation()
 {
 	OOSoundSourcePlayCustomSoundWithKey(sBreakPatternSource, "[player-launch-from-station]");
 }
 
 
-void cxx::PlayerEntity::playDockWithStation()
+void PlayerEntity::playDockWithStation()
 {
 	OOSoundSourcePlayCustomSoundWithKey(sBreakPatternSource, "[player-dock-with-station]");
 }
 
 
-void cxx::PlayerEntity::playExitWitchspace()
+void PlayerEntity::playExitWitchspace()
 {
 	OOSoundSourcePlayCustomSoundWithKey(sBreakPatternSource, "[player-exit-witchspace]");
 }
 
 
-void cxx::PlayerEntity::playHostileWarning()
+void PlayerEntity::playHostileWarning()
 {
 	if (sWarningSoundPool != nullptr)  sWarningSoundPool->playSoundWithKey("[hostile-warning]", 1.0f, kInterfaceWarningPosition);
 }
 
 
-void cxx::PlayerEntity::playAlertConditionRed()
+void PlayerEntity::playAlertConditionRed()
 {
 	if (sWarningSoundPool != nullptr)  sWarningSoundPool->playSoundWithKey("[alert-condition-red]", 2.0f, kInterfaceWarningPosition);
 }
 
 
-void cxx::PlayerEntity::playIncomingMissile(Vector missileVector)
+void PlayerEntity::playIncomingMissile(Vector missileVector)
 {
 	if (sWarningSoundPool != nullptr)  sWarningSoundPool->playSoundWithKey("[incoming-missile]", 3.0f, missileVector);
 }
 
 
-void cxx::PlayerEntity::playEnergyLow()
+void PlayerEntity::playEnergyLow()
 {
 	if (sWarningSoundPool != nullptr)  sWarningSoundPool->playSoundWithKey("[energy-low]", 0.5f, kInterfaceWarningPosition);
 }
 
 
-void cxx::PlayerEntity::playDockingDenied()
+void PlayerEntity::playDockingDenied()
 {
 	if (sWarningSoundPool != nullptr)  sWarningSoundPool->playSoundWithKey("[autopilot-denied]", 1.0f, kInterfaceWarningPosition);
 }
 
 
-void cxx::PlayerEntity::playWitchjumpFailure()
+void PlayerEntity::playWitchjumpFailure()
 {
 	if (sWarningSoundPool != nullptr)  sWarningSoundPool->playSoundWithKey("[witchdrive-failure]", 1.5f, kWitchspacePosition);
 }
 
 
-void cxx::PlayerEntity::playWitchjumpMisjump()
+void PlayerEntity::playWitchjumpMisjump()
 {
 	if (sWarningSoundPool != nullptr)  sWarningSoundPool->playSoundWithKey("[witchdrive-malfunction]", 1.5f, kWitchspacePosition);
 }
 
 
-void cxx::PlayerEntity::playWitchjumpBlocked()
+void PlayerEntity::playWitchjumpBlocked()
 {
 	if (sWarningSoundPool != nullptr)  sWarningSoundPool->playSoundWithKey("[witch-blocked-by-@]", 1.3f, kWitchspacePosition);
 }
 
 
-void cxx::PlayerEntity::playWitchjumpDistanceTooGreat()
+void PlayerEntity::playWitchjumpDistanceTooGreat()
 {
 	if (sWarningSoundPool != nullptr)  sWarningSoundPool->playSoundWithKey("[witch-too-far]", 1.3f, kWitchspacePosition);
 }
 
 
-void cxx::PlayerEntity::playWitchjumpInsufficientFuel()
+void PlayerEntity::playWitchjumpInsufficientFuel()
 {
 	if (sWarningSoundPool != nullptr)  sWarningSoundPool->playSoundWithKey("[witch-no-fuel]", 1.3f, kWitchspacePosition);
 }
 
 
-void cxx::PlayerEntity::playFuelLeak()
+void PlayerEntity::playFuelLeak()
 {
 	if (sWarningSoundPool != nullptr)  sWarningSoundPool->playSoundWithKey("[fuel-leak]", 0.5f, kWitchspacePosition);
 }
 
 
-void cxx::PlayerEntity::playShieldHit(Vector attackVector, const std::string & weaponIdentifier)
+void PlayerEntity::playShieldHit(Vector attackVector, const std::string & weaponIdentifier)
 {
 	if (sDamageSoundPool != nullptr)  sDamageSoundPool->playSoundWithKey(WeaponSoundKey(weaponShieldHit, weaponIdentifier, "[player-hit-by-weapon]"), attackVector);
 }
 
 
-void cxx::PlayerEntity::playDirectHit(Vector attackVector, const std::string & weaponIdentifier)
+void PlayerEntity::playDirectHit(Vector attackVector, const std::string & weaponIdentifier)
 {
 	if (sDamageSoundPool != nullptr)  sDamageSoundPool->playSoundWithKey(WeaponSoundKey(weaponUnshieldedHit, weaponIdentifier, "[player-direct-hit]"), attackVector);
 }
 
 
-void cxx::PlayerEntity::playScrapeDamage(Vector attackVector)
+void PlayerEntity::playScrapeDamage(Vector attackVector)
 {
 	if (sDamageSoundPool != nullptr)  sDamageSoundPool->playSoundWithKey("[player-scrape-damage]", attackVector);
 }
 
 
-void cxx::PlayerEntity::playLaserHit(bool hit, Vector weaponOffset, const std::string & weaponIdentifier)
+void PlayerEntity::playLaserHit(bool hit, Vector weaponOffset, const std::string & weaponIdentifier)
 {
 	if (hit)
 	{
@@ -721,49 +721,49 @@ void cxx::PlayerEntity::playLaserHit(bool hit, Vector weaponOffset, const std::s
 }
 
 
-void cxx::PlayerEntity::playWeaponOverheated(Vector weaponOffset)
+void PlayerEntity::playWeaponOverheated(Vector weaponOffset)
 {
 	if (sWeaponSoundPool != nullptr)  sWeaponSoundPool->playSoundWithKey("[weapon-overheat]", static_cast<bool>(NO), weaponOffset);
 }
 
 
-void cxx::PlayerEntity::playMissileLaunched(Vector weaponOffset, const std::string & weaponIdentifier)
+void PlayerEntity::playMissileLaunched(Vector weaponOffset, const std::string & weaponIdentifier)
 {
 	if (sWeaponSoundPool != nullptr)  sWeaponSoundPool->playSoundWithKey(WeaponSoundKey(weaponLaunched, weaponIdentifier, "[missile_launched]"), weaponOffset);
 }
 
 
-void cxx::PlayerEntity::playMineLaunched(Vector weaponOffset, const std::string & weaponIdentifier)
+void PlayerEntity::playMineLaunched(Vector weaponOffset, const std::string & weaponIdentifier)
 {
 	if (sWeaponSoundPool != nullptr)  sWeaponSoundPool->playSoundWithKey(WeaponSoundKey(weaponLaunched, weaponIdentifier, "[mine_launched]"), weaponOffset);
 }
 
 
-void cxx::PlayerEntity::playEscapePodScooped()
+void PlayerEntity::playEscapePodScooped()
 {
 	if (sMiscSoundPool != nullptr)  sMiscSoundPool->playSoundWithKey("[escape-pod-scooped]", kInterfaceBeepPosition);
 }
 
 
-void cxx::PlayerEntity::playAegisCloseToPlanet()
+void PlayerEntity::playAegisCloseToPlanet()
 {
 	if (sMiscSoundPool != nullptr)  sMiscSoundPool->playSoundWithKey("[aegis-planet]", kInterfaceBeepPosition);
 }
 
 
-void cxx::PlayerEntity::playAegisCloseToStation()
+void PlayerEntity::playAegisCloseToStation()
 {
 	if (sMiscSoundPool != nullptr)  sMiscSoundPool->playSoundWithKey("[aegis-station]", kInterfaceBeepPosition);
 }
 
 
-void cxx::PlayerEntity::playGameOver()
+void PlayerEntity::playGameOver()
 {
 	if (sMiscSoundPool != nullptr)  sMiscSoundPool->playSoundWithKey("[game-over]");
 }
 
 
-void cxx::PlayerEntity::playLegacyScriptSound(const std::string & key)
+void PlayerEntity::playLegacyScriptSound(const std::string & key)
 {
 	if (sMiscSoundPool != nullptr)  sMiscSoundPool->playSoundWithKey(key, 1.1f);
 }

@@ -28,8 +28,8 @@ MA 02110-1301, USA.
 
 /*	Beads oo-hsilb, oo-56tmj, oo-4216h, oo-n8wn2, oo-uq8px, oo-fz3l8 and oo-lmdi8 (ADR-0056 amendment
 	oo-lmdi8): the categories PlayerEntity (Controls) and (OOControlsPrivate) are members of
-	cxx::PlayerEntity, declared in PlayerEntity.h and defined in PlayerEntityControls.mm. Its Objective-C interface,
-	for the callers that remain, is the category of the same name in PlayerEntity+ObjCBridge.h,
+	PlayerEntity, declared in PlayerEntity.h and defined in PlayerEntityControls.mm. Its Objective-C interface,
+	for the callers that remained, was the category of the same name in PlayerEntity+ObjCBridge.h (deleted by bead oo-9ht.177),
 	which PlayerEntity.h imports. This header stays for the files that import it.
 */
 

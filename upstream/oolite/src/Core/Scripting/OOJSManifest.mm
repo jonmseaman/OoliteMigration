@@ -205,7 +205,7 @@ static bool ManifestGetProperty(Context cx, Object obj, PropertyId propID, Value
 		switch (ooscript::idToInt32(propID))
 		{
 			case kManifest_list:
-				result = [entity cargoListForScripting];
+				result = (entity != nullptr ? entity->PlayerEntity::cargoListForScripting() : oo::PList());	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 				break;
 				
 			default:
@@ -223,7 +223,7 @@ static bool ManifestGetProperty(Context cx, Object obj, PropertyId propID, Value
 		OOCommodities *commodities = [UNIVERSE commodities];	// null: no good is defined, as a message to nil
 		if (commodities != nullptr && commodities->goodDefined(key))
 		{
-			*value = ooscript::int32Value([entity cxx_cargoQuantityForType:key]);
+			*value = ooscript::int32Value((entity != nullptr ? entity->cargoQuantityForType(key) : 0));
 			return true;
 		}
 		else
@@ -258,7 +258,7 @@ static bool ManifestSetProperty(Context cx, Object obj, PropertyId propID, bool 
 		OOCommodityMarket *market = [UNIVERSE commodityMarket];
 		OOMassUnit unit = (market != nullptr) ? market->massUnitForGood(key) : UNITS_TONS;	// UNITS_TONS (0): what a message to nil answered
 		// we can always change gold, platinum & gem-stones quantities, even with special cargo
-		if (unit == UNITS_TONS && [entity cxx_specialCargo].has_value())
+		if (unit == UNITS_TONS && (entity != nullptr ? entity->PlayerEntity::getSpecialCargo() : std::optional<std::string>()).has_value())	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 		{
 			cxx_OOJSReportWarning(context, "PlayerShip.manifest['foo'] - cannot modify cargo tonnage when Special Cargo is in use.");
 			return true;
@@ -269,7 +269,7 @@ static bool ManifestSetProperty(Context cx, Object obj, PropertyId propID, bool 
 		{
 			iValue = (int32_t)iValue32;
 			if (iValue < 0)  iValue = 0;
-			[entity cxx_setCargoQuantityForType:key amount:iValue];
+			if (entity != nullptr)  entity->setCargoQuantityForType(key, iValue);
 		}
 		else
 		{
@@ -303,7 +303,7 @@ static bool ManifestComment(ooscript::Context context, ooscript::CallArgs &oojsA
 		return false;
 	}
 
-	OOCommodityMarket *market = [PLAYER shipCommodityData];	// null: no comment, as a message to nil
+	OOCommodityMarket *market = (PLAYER != nullptr ? PLAYER->getShipCommodityData() : (OOCommodityMarket *)nullptr);	// null: no comment, as a message to nil
 	if (market != nullptr)  information = market->commentForGood(*good);
 
 	OOJS_RETURN_STRING_OR_NULL(information);
@@ -335,7 +335,7 @@ static bool ManifestSetComment(ooscript::Context context, ooscript::CallArgs &oo
 		return false;
 	}
 
-	OOCommodityMarket *market = [PLAYER shipCommodityData];	// null: false, as a message to nil
+	OOCommodityMarket *market = (PLAYER != nullptr ? PLAYER->getShipCommodityData() : (OOCommodityMarket *)nullptr);	// null: false, as a message to nil
 	OK = market != nullptr && market->setComment(*information, *good);
 
 	OOJS_RETURN_BOOL(OK);
@@ -365,7 +365,7 @@ static bool ManifestShortComment(ooscript::Context context, ooscript::CallArgs &
 		return false;
 	}
 
-	OOCommodityMarket *market = [PLAYER shipCommodityData];	// null: no comment, as a message to nil
+	OOCommodityMarket *market = (PLAYER != nullptr ? PLAYER->getShipCommodityData() : (OOCommodityMarket *)nullptr);	// null: no comment, as a message to nil
 	if (market != nullptr)  information = market->shortCommentForGood(*good);
 
 	OOJS_RETURN_STRING_OR_NULL(information);
@@ -397,7 +397,7 @@ static bool ManifestSetShortComment(ooscript::Context context, ooscript::CallArg
 		return false;
 	}
 
-	OOCommodityMarket *market = [PLAYER shipCommodityData];	// null: false, as a message to nil
+	OOCommodityMarket *market = (PLAYER != nullptr ? PLAYER->getShipCommodityData() : (OOCommodityMarket *)nullptr);	// null: false, as a message to nil
 	OK = market != nullptr && market->setShortComment(*information, *good);
 
 	OOJS_RETURN_BOOL(OK);

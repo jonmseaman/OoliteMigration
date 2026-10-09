@@ -2993,9 +2993,9 @@ void ShipEntity::update(OOTimeDelta delta_t)
 							  (status == STATUS_ACTIVE && self == [UNIVERSE station])
 							  ))
 		{
-			[PLAYER setScriptTarget:self];
+			if (PLAYER != nullptr)  PLAYER->setScriptTarget(self);
 			[self doScriptEvent:OOJSID("shipSpawned")];
-			if ([self status] != STATUS_DEAD)  [PLAYER doScriptEvent:OOJSID("shipSpawned") withArgument:self];
+			if ([self status] != STATUS_DEAD)  { if (PLAYER != nullptr)  PLAYER->doScriptEvent(OOJSID("shipSpawned"), self); }
 		}
 		haveExecutedSpawnAction = YES;
 	}
@@ -3154,7 +3154,7 @@ void ShipEntity::update(OOTimeDelta delta_t)
 		}
 	}
 	
-	if (aiScriptWakeTime > 0 && [PLAYER clockTimeAdjusted] > aiScriptWakeTime)
+	if (aiScriptWakeTime > 0 && (PLAYER != nullptr ? PLAYER->clockTimeAdjusted() : 0.0) > aiScriptWakeTime)
 	{
 		aiScriptWakeTime = 0;
 		[self doScriptEvent:OOJSID("aiAwoken")];
@@ -4150,7 +4150,7 @@ void ShipEntity::removeEquipmentItem(const std::string &equipmentKey)
 		// if all docking computers are damaged while active
 		if ([self isPlayer] && [self status] == STATUS_AUTOPILOT_ENGAGED && ![self hasDockingComputer])
 		{
-			[(::PlayerEntity *)self disengageAutopilot];
+			static_cast<PlayerEntity *>(this)->disengageAutopilot();
 		}
 
 
@@ -4696,7 +4696,7 @@ void ShipEntity::behaviour_tractored(double delta_t)
 			BOOL lost_contact = (distance > hauler->_cxxEntity->collision_radius + collision_radius + 250.0f);	// 250m range for tractor beam
 			if ([hauler isPlayer])
 			{
-				switch ([(::PlayerEntity*)hauler dialFuelScoopStatus])
+				switch (static_cast<PlayerEntity *>(oo::ToCxx(hauler))->dialFuelScoopStatus())
 				{
 					case SCOOP_STATUS_NOT_INSTALLED:
 					case SCOOP_STATUS_FULL_HOLD:
@@ -4722,7 +4722,7 @@ void ShipEntity::behaviour_tractored(double delta_t)
 			}
 			else if ([hauler isPlayer])
 			{
-				[(::PlayerEntity*)hauler setScoopsActive];
+				static_cast<PlayerEntity *>(oo::ToCxx(hauler))->setScoopsActive();
 			}
 		}
 	}
@@ -8732,12 +8732,12 @@ GLfloat ShipEntity::fuelChargeRate()
 	
 #if MASS_DEPENDENT_FUEL_PRICES
 	
-	if (EXPECT(PLAYER != nil && mass> 0 && mass != [PLAYER baseMass]))
+	if (EXPECT(PLAYER != nil && mass> 0 && mass != (PLAYER != nullptr ? PLAYER->baseMass() : 0.0f)))
 	{
 		rate = calcFuelChargeRate(mass);
 	}
 
-	OO_LOG("fuelPrices", "\"{}\" fuel charge rate: {:.2f} (mass ratio: {:.2f}/{:.2f})", [self cxx_shipDataKey].value_or("(null)"), rate, mass, [PLAYER baseMass]);
+	OO_LOG("fuelPrices", "\"{}\" fuel charge rate: {:.2f} (mass ratio: {:.2f}/{:.2f})", [self cxx_shipDataKey].value_or("(null)"), rate, mass, (PLAYER != nullptr ? PLAYER->baseMass() : 0.0f));
 #endif
 	
 	return rate;
@@ -9651,7 +9651,7 @@ void ShipEntity::noteKilledBy(::Entity *whom, OOShipDamageType type)
 	::ShipEntity *self = oo::ToObjC(this);
 	if ([self status] == STATUS_DEAD)  return;
 	
-	[PLAYER setScriptTarget:self];
+	if (PLAYER != nullptr)  PLAYER->setScriptTarget(self);
 	
 	ooscript::Context context = OOJSAcquireContext();
 	
@@ -9841,7 +9841,7 @@ void ShipEntity::becomeExplosion()
 		if ([parent isPlayer])
 		{
 			// make the parent ship less reliable.
-			[(::PlayerEntity *)parent adjustTradeInFactorBy:-PLAYER_SHIP_SUBENTITY_TRADE_IN_VALUE];
+			static_cast<PlayerEntity *>(oo::ToCxx(parent))->adjustTradeInFactorBy(-PLAYER_SHIP_SUBENTITY_TRADE_IN_VALUE);
 		}
 	}
 	
@@ -9865,7 +9865,7 @@ void ShipEntity::becomeExplosion()
 	{
 		if ([self isThargoid] && roleSet != nullptr && roleSet->hasRole("thargoid-mothership"))  [self broadcastThargoidDestroyed];
 		
-		if (!suppressExplosion && ([self isVisible] || HPdistance2([self position], [PLAYER position]) < SCANNER_MAX_RANGE2))
+		if (!suppressExplosion && ([self isVisible] || HPdistance2([self position], (PLAYER != nullptr ? PLAYER->getPosition() : HPVector{})) < SCANNER_MAX_RANGE2))
 		{
 			if (!isWreckage && mass > 500000.0f && randf() < 0.25f) // big!
 			{
@@ -9961,7 +9961,7 @@ void ShipEntity::becomeExplosion()
 						}
 						else if ([[self primaryAggressor] isPlayer])
 						{
-							[PLAYER addRoleForMining];
+							if (PLAYER != nullptr)  PLAYER->addRoleForMining();
 						}
 						NSUInteger n_rocks = 2 + (Ranrot() % (likely_cargo + 1));
 						
@@ -10102,7 +10102,7 @@ void ShipEntity::becomeExplosion()
 			[self dealMomentumWithinDesiredRange:0.125f * mass];
 		}
 		
-		if (self != PLAYER)	// was if !isPlayer - but I think this may cause ghosts (Who's "I"? -- Ahruman)
+		if (this != PLAYER)	// was if !isPlayer - but I think this may cause ghosts (Who's "I"? -- Ahruman)
 		{
 			if (isPlayer)
 			{
@@ -10115,7 +10115,7 @@ void ShipEntity::becomeExplosion()
 	}
 	@finally
 	{
-		if (self != PLAYER)
+		if (this != PLAYER)
 		{
 			[UNIVERSE removeEntity:self];
 		}
@@ -12357,7 +12357,7 @@ bool ShipEntity::fireTurretCannon(double range)
 	if (range > weaponRange * 1.01) // 1% more than max range - open up just slightly early
 		return NO;
 	::ShipEntity *root = [self rootShipEntity];
-	if ([root isPlayer] && ![PLAYER weaponsOnline])
+	if ([root isPlayer] && !(PLAYER != nullptr ? PLAYER->weaponsOnline() : false))
 		return NO;
 
 	if ([root isCloaked] && [root cloakPassive])
@@ -12477,7 +12477,7 @@ bool ShipEntity::fireSubentityLaserShot(double range)
 		
 		if ([self isPlayer])
 		{
-			[PLAYER addRoleForAggression:victim];
+			if (PLAYER != nullptr)  PLAYER->addRoleForAggression(victim);
 		}
 
 		::ShipEntity *subent = [victim subEntityTakingDamage];
@@ -12513,7 +12513,7 @@ bool ShipEntity::fireSubentityLaserShot(double range)
 			{
 				if ([self isPlayer])
 				{
-					[PLAYER addRoleForAggression:victim];
+					if (PLAYER != nullptr)  PLAYER->addRoleForAggression(victim);
 				}
 				[victim setPrimaryAggressor:parent];
 				[victim setFoundTarget:parent];
@@ -12708,7 +12708,7 @@ bool ShipEntity::fireLaserShotInDirection(OOWeaponFacing direction, const std::s
 			[self adjustMissedShots:-1];
 			if ([self isPlayer])
 			{
-				[PLAYER addRoleForAggression:victim];
+				if (PLAYER != nullptr)  PLAYER->addRoleForAggression(victim);
 			}
 		
 			/*	CRASH in [victim->sub_entities containsObject:subent] here (1.69, OS X/x86).
@@ -12762,7 +12762,7 @@ bool ShipEntity::fireLaserShotInDirection(OOWeaponFacing direction, const std::s
 						 * ATTACKER_MISSED if not already fighting */
 						if ([self isPlayer])
 						{
-							[PLAYER addRoleForAggression:victim];
+							if (PLAYER != nullptr)  PLAYER->addRoleForAggression(victim);
 						}
 						[victim setPrimaryAggressor:self];
 						[victim setFoundTarget:self];
@@ -12779,7 +12779,7 @@ bool ShipEntity::fireLaserShotInDirection(OOWeaponFacing direction, const std::s
 	
 	if ([self isPlayer])
 	{
-		[(::PlayerEntity *)self cxx_setLastShot:shotEntities];
+		static_cast<PlayerEntity *>(this)->setLastShot(shotEntities);
 	}
 	
 	[self resetShotTime];
@@ -13166,7 +13166,7 @@ bool ShipEntity::launchCascadeMine()
 		[self deactivateCloakingDevice];
 	}
 	
-	if (self != PLAYER)	// get the heck out of here
+	if (this != PLAYER)	// get the heck out of here
 	{
 		[self addTarget:bomb];
 		[self setBehaviour:BEHAVIOUR_FLEE_TARGET];
@@ -13409,7 +13409,7 @@ void ShipEntity::manageCollisions()
 			else if ([ent isStellarObject])
 			{
 				[self getDestroyedBy:ent damageType:[ent isSun] ? kOODamageTypeHitASun : kOODamageTypeHitAPlanet];
-				if (self == PLAYER)  [self retain];
+				if (this == PLAYER)  [self retain];
 			}
 			else if ([ent isWormhole])
 			{
@@ -13703,7 +13703,7 @@ void ShipEntity::scoopUpProcess(::ShipEntity *other, bool procEvents, bool procM
 			{
 				//scripting
 				::PlayerEntity *player = PLAYER;
-				[player setScriptTarget:self];
+				if (player != nullptr)  player->setScriptTarget(self);
 				if (procEvents)
 				{
 					[other doScriptEvent:OOJSID("shipWasScooped") withArgument:self];
@@ -13784,7 +13784,7 @@ void ShipEntity::scoopUpProcess(::ShipEntity *other, bool procEvents, bool procM
 				}
 				if (procEvents) 
 				{
-					[(::PlayerEntity *)self playEscapePodScooped];
+					static_cast<PlayerEntity *>(this)->playEscapePodScooped();
 				}
 			}
 			else
@@ -14075,7 +14075,7 @@ bool ShipEntity::abandonShip()
 {
 	::ShipEntity *self = oo::ToObjC(this);
 	BOOL OK = NO;
-	if ([self isPlayer] && [(::PlayerEntity *)self isDocked])
+	if ([self isPlayer] && static_cast<PlayerEntity *>(this)->isDocked())
 	{
 		OO_LOG("ShipEntity.abandonShip.failed", "{}", "Player cannot abandon ship while docked.");
 		return OK;
@@ -14916,7 +14916,7 @@ void ShipEntity::sendMessage(const std::string &message_text, ::ShipEntity *othe
 	if (other_ship->_cxxEntity->isPlayer)
 	{
 		[self setCommsMessageColor];
-		[(::PlayerEntity *)other_ship receiveCommsMessage:expandedMessage from:self];
+		static_cast<PlayerEntity *>(oo::ToCxx(other_ship))->receiveCommsMessage(expandedMessage, self);
 		messageTime = 6.0;
 		[UNIVERSE resetCommsLogColor];
 	}
@@ -15000,10 +15000,10 @@ void ShipEntity::broadcastMessage(const std::string &message_text, bool unpilote
 	::PlayerEntity *player = PLAYER; // make sure that the player always receives a message when in range
 	// SCANNER_MAX_RANGE2 because it's the player's scanner range
 	// which is important
-	if (HPdistance2(position, [player position]) < SCANNER_MAX_RANGE2)
+	if (HPdistance2(position, (player != nullptr ? player->getPosition() : HPVector{})) < SCANNER_MAX_RANGE2)
 	{
 		[self setCommsMessageColor];
-		[player receiveCommsMessage:expandedMessage from:self];
+		if (player != nullptr)  player->receiveCommsMessage(expandedMessage, self);
 		messageTime = 6.0;
 		[UNIVERSE resetCommsLogColor];
 	}
@@ -15160,7 +15160,7 @@ int ShipEntity::checkShipsInVicinityForWitchJumpExit()
 		::ShipEntity* ship = my_entities[i];
 		HPVector delta = HPvector_between(position, ship->_cxxEntity->position);
 		GLfloat d2 = HPmagnitude2(delta);
-		if (![ship isPlayer] || ![PLAYER isDocked])
+		if (![ship isPlayer] || !(PLAYER != nullptr ? PLAYER->isDocked() : false))
 		{ // player doesn't block if docked
 			if ((k * [ship mass] > d2)&&(d2 < SCANNER_MAX_RANGE2))	// if you go off (typical) scanner from a blocker - it ceases to block
 				result = [ship universalID];
@@ -15604,7 +15604,7 @@ OOAlertCondition ShipEntity::realAlertCondition()
 		for (const auto &defenseTarget : [self cxx_defenseTargets])
 		{
 			ship = defenseTarget.get();
-			if ([ship hasHostileTarget] || ([ship isPlayer] && [PLAYER weaponsOnline]))
+			if ([ship hasHostileTarget] || ([ship isPlayer] && (PLAYER != nullptr ? PLAYER->weaponsOnline() : false)))
 			{
 				if (HPdistance2([ship position],position) < scanrange2)
 				{
@@ -15619,7 +15619,7 @@ OOAlertCondition ShipEntity::realAlertCondition()
 			if (ptarget != nil && [ptarget isShip])
 			{
 				ship = (::ShipEntity *)ptarget;
-				if ([ship hasHostileTarget] || ([ship isPlayer] && [PLAYER weaponsOnline]))
+				if ([ship hasHostileTarget] || ([ship isPlayer] && (PLAYER != nullptr ? PLAYER->weaponsOnline() : false)))
 				{
 					if (HPdistance2([ship position],position) < scanrange2 * 1.5625)
 					{
@@ -15637,7 +15637,7 @@ OOAlertCondition ShipEntity::realAlertCondition()
 				for (NSUInteger i = 0; i < count; i++)
 				{
 					ship = batch[i];
-					if ([ship hasHostileTarget] || ([ship isPlayer] && [PLAYER weaponsOnline]))
+					if ([ship hasHostileTarget] || ([ship isPlayer] && (PLAYER != nullptr ? PLAYER->weaponsOnline() : false)))
 					{
 						if (HPdistance2([ship position],position) < scanrange2)
 						{
@@ -15656,7 +15656,7 @@ OOAlertCondition ShipEntity::realAlertCondition()
 				for (NSUInteger i = 0; i < count; i++)
 				{
 					ship = batch[i];
-					if ([ship hasHostileTarget] || ([ship isPlayer] && [PLAYER weaponsOnline]))
+					if ([ship hasHostileTarget] || ([ship isPlayer] && (PLAYER != nullptr ? PLAYER->weaponsOnline() : false)))
 					{
 						if (HPdistance2([ship position],position) < scanrange2)
 						{
@@ -15749,8 +15749,9 @@ BOOL OOUniformBindingPermitted(const std::string &propertyName, id bindingTarget
 		{
 			if (shipWhitelist.contains(propertyName))  return YES;
 		}
-		// -isPlayerLikeShip answers YES for these two classes only (ProxyPlayerEntity.mm).
-		if (IsKindOfClassNamed(bindingTarget, "PlayerEntity") || IsKindOfClassNamed(bindingTarget, "ProxyPlayerEntity"))
+		// -isPlayerLikeShip answers YES for these two only (ProxyPlayerEntity.mm); the player's object
+		// is the ship's facade since bead oo-9ht.177, so it is asked of the C++ part.
+		if (dynamic_cast<PlayerEntity *>(entity) != nullptr || IsKindOfClassNamed(bindingTarget, "ProxyPlayerEntity"))
 		{
 			if (playerShipWhitelist.contains(propertyName))  return YES;
 		}

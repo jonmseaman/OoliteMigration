@@ -54,7 +54,8 @@ MA 02110-1301, USA.
 #include <string_view>
 #endif
 
-@class GameController, MyOpenGLView, Entity, ShipEntity, StationEntity, OOVisualEffectEntity, PlayerEntity, DockEntity, OOWaypointEntity, OOException;
+@class GameController, MyOpenGLView, Entity, ShipEntity, StationEntity, OOVisualEffectEntity, DockEntity, OOWaypointEntity, OOException;
+class PlayerEntity;
 #include "OOScript.h"	// oo::Ref<OOScript> members and results (bead oo-9ht.133)
 class WormholeEntity;	// C++ since bead oo-9ht.112
 class OOSunEntity;	// C++ since bead oo-9ht.111
