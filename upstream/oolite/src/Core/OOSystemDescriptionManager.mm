@@ -90,7 +90,6 @@ std::optional<std::string> StringForKey(const oo::PList &dict, const char *key)
 
 }
 
-namespace cxx {
 
 OOSystemDescriptionManager::OOSystemDescriptionManager()
 {
@@ -655,7 +654,6 @@ Random_Seed OOSystemDescriptionManager::getRandomSeedForSystem(OOSystemID s, OOG
 }
 
 
-}	// namespace cxx
 
 
 

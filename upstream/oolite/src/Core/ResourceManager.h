@@ -35,7 +35,8 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOObjCRef.h"
 #include <string_view>
 
-@class OOSystemDescriptionManager, OOScript;
+@class OOScript;
+class OOSystemDescriptionManager;	// OOSystemDescriptionManager.h (C++ since bead oo-0sr1; global since oo-9ht.32)
 class OOSound;	// C++ since bead oo-9ht.68 deleted its facade
 class OOMusic;
 
@@ -62,8 +63,6 @@ inline constexpr std::string_view SCENARIO_OXP_DEFINITION_BYTAG  = "tag:";
 inline constexpr std::string_view SCENARIO_OXP_DEFINITION_NOPLIST  = "exc:";
 
 namespace cxx {
-
-class OOSystemDescriptionManager;	// OOSystemDescriptionManager.h (C++ since bead oo-0sr1)
 
 /*	Class methods over file-scope state: the class is never made, and every member is static
 	(ADR-0056 item 3; amendment oo-jfno item 1). All four slices of
@@ -98,7 +97,7 @@ public:
 	// Clear ResourceManager-internal caches (not those handled by OOCacheManager)
 	static void clearCaches();
 
-	static oo::Ref<cxx::OOSystemDescriptionManager> systemDescriptionManager();	// a new manager (C++ since bead oo-0sr1)
+	static oo::Ref<::OOSystemDescriptionManager> systemDescriptionManager();	// a new manager (C++ since bead oo-0sr1)
 	static oo::PList shaderBindingTypesDictionary();
 	// nullopt when not found (was nil); folderName nullopt where nil was passed.
 	static std::optional<std::string> pathForFileNamed(const std::string &fileName, const std::optional<std::string> &folderName);

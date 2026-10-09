@@ -21,6 +21,7 @@
 #import "OOTrumble.h"
 #import "OOSoundSource.h"
 #import "OOALSound.h"
+#import "OOCommodityMarket.h"
 
 #include "oo_test.hpp"
 
@@ -112,17 +113,12 @@ void OOSoundSource::playOOSound(OOSound *s)		{ gSourceSound = s; gLog.push_back(
 @end
 
 
-// The market: food is loved (1), furs liked (0.5), anything else refused.
-@interface Market: OOObject
-- (float) cxx_trumbleOpinionForGood:(const std::string &)good;
-@end
-
-@implementation Market
-- (float) cxx_trumbleOpinionForGood:(const std::string &)good
+// The market: food is loved (1), furs liked (0.5), anything else refused. The C++ market's one
+// member OOTrumble.mm calls (bead oo-9ht.21 deleted the facade an Objective-C Market stood in for).
+float OOCommodityMarket::trumbleOpinionForGood(const std::string &good)
 {
 	return (good == "food") ? 1.0f : (good == "furs") ? 0.5f : 0.0f;
 }
-@end
 
 
 @interface PlayerEntity: OOObject
@@ -159,17 +155,17 @@ void OOSoundSource::playOOSound(OOSound *s)		{ gSourceSound = s; gLog.push_back(
 {
 @public
 	OOViewID view;
-	Market *market;
+	oo::Ref<OOCommodityMarket> market;
 }
 - (OOViewID) viewDirection;
-- (Market *) commodityMarket;
+- (OOCommodityMarket *) commodityMarket;
 - (std::optional<std::string>) cxx_displayNameForCommodity:(const std::string &)co_type;
 - (void) cxx_addMessage:(const std::optional<std::string> &)text forCount:(OOTimeDelta)count;
 @end
 
 @implementation Universe
 - (OOViewID) viewDirection	{ return view; }
-- (Market *) commodityMarket	{ return market; }
+- (OOCommodityMarket *) commodityMarket	{ return market.get(); }
 - (std::optional<std::string>) cxx_displayNameForCommodity:(const std::string &)co_type	{ return "Display " + co_type; }
 - (void) cxx_addMessage:(const std::optional<std::string> &)text forCount:(OOTimeDelta)count
 {
@@ -253,7 +249,7 @@ void Reset()
 	if (gSharedUniverse == nil)
 	{
 		gSharedUniverse = [[Universe alloc] init];
-		gSharedUniverse->market = [[Market alloc] init];
+		gSharedUniverse->market = oo::makeRef<OOCommodityMarket>();
 	}
 	gSharedUniverse->view = VIEW_FORWARD;
 	PlayerEntity *p = Player();

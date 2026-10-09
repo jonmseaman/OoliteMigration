@@ -39,6 +39,8 @@ MA 02110-1301, USA.
 #import "OOEntityWithDrawable.h"
 #import "OOCommodities.h"
 #import "OOSystemDescriptionManager.h"
+#import "OOCommodityMarket.h"	// C++ since bead oo-9ht.21: the universe keeps its market (oo::Ref)
+#import "OOCharacter.h"	// C++ since bead oo-9ht.10: the character pool is oo::Ref
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
@@ -52,7 +54,7 @@ MA 02110-1301, USA.
 #include <string_view>
 #endif
 
-@class GameController, MyOpenGLView, Entity, ShipEntity, StationEntity, OOPlanetEntity, OOSunEntity, OOVisualEffectEntity, PlayerEntity, WormholeEntity, DockEntity, OOJSScript, OOWaypointEntity, OOSystemDescriptionManager, OOException, OOCharacter;
+@class GameController, MyOpenGLView, Entity, ShipEntity, StationEntity, OOPlanetEntity, OOSunEntity, OOVisualEffectEntity, PlayerEntity, WormholeEntity, DockEntity, OOJSScript, OOWaypointEntity, OOException;
 #import "GuiDisplayGen.h"	// C++ since bead oo-9ht.143: the universe keeps its GUIs (oo::Ref)
 class CollisionRegion;
 
@@ -305,6 +307,12 @@ public:
 	// The GUIs setUpSettings() replaced, kept until it replaces them again: they were autoreleased,
 	// and a caller may still be using one in the pass that reinitialised the universe (bead oo-9ht.143).
 	std::vector<oo::Ref<GuiDisplayGen>>	replacedGuis;
+	// The commodities, the system manager and the character pool setUpSettings() and
+	// setUpInitialUniverse() replaced, kept until they replace them again: they were autoreleased
+	// (beads oo-9ht.25, oo-9ht.32 and oo-9ht.10 deleted their facades).
+	oo::Ref<OOCommodities>	replacedCommodities;
+	oo::Ref<OOSystemDescriptionManager>	replacedSystemManager;
+	std::vector<oo::Ref<OOCharacter>>	replacedCharacterPool;
 
 	BOOL					displayGUI = NO;
 	BOOL					wasDisplayGUI = NO;
@@ -334,8 +342,8 @@ public:
 
 	BOOL					dumpCollisionInfo = NO;
 
-	::OOCommodities			*commodities = nil;
-	::OOCommodityMarket		*commodityMarket = nil;
+	oo::Ref<OOCommodities>		commodities;
+	oo::Ref<OOCommodityMarket>	commodityMarket;
 
 
 	oo::PList				_descriptions;			// holds descriptive text for lots of stuff, loaded at initialisation (a dict; null until loaded)
@@ -344,7 +352,7 @@ public:
 	oo::PList				characters;				// holds descriptons of characters
 	oo::PList				_scenarios;				// game start scenarios (an array)
 	oo::PList				globalSettings;			// miscellaneous global game settings
-	::OOSystemDescriptionManager	*systemManager = nil; // planetinfo data manager
+	oo::Ref<OOSystemDescriptionManager>	systemManager; // planetinfo data manager
 	oo::PList				missiontext;			// holds descriptive text for missions, loaded at initialisation
 	oo::PList				equipmentData;			// holds data on available equipment, loaded at initialisation (an array)
 	oo::PList				equipmentDataOutfitting;
@@ -394,7 +402,7 @@ public:
 
 	std::vector<oo::ObjCRef<::WormholeEntity *>>	activeWormholes;
 
-	std::vector<oo::ObjCRef<::OOCharacter *>>	characterPool;
+	std::vector<oo::Ref<OOCharacter>>	characterPool;
 
 	oo::Ref<::CollisionRegion>	universeRegion;
 

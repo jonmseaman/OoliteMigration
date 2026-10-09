@@ -795,17 +795,17 @@ OOCreditsQuantity StationEntity::legalStatusOfManifest(::OOCommodityMarket *mani
 	::StationEntity *self = oo::ToObjC(this);
 	OOCreditsQuantity penalty, status = 0;
 	::OOCommodityMarket *market = [self localMarket];
-	for (const std::string &good : [market goods])
+	for (const std::string &good : market->goods())
 	{
 		if (isExport)
 		{
-			penalty = [market cxx_exportLegalityForGood:good];
+			penalty = market->exportLegalityForGood(good);
 		}
 		else
 		{
-			penalty = [market cxx_importLegalityForGood:good];
+			penalty = market->importLegalityForGood(good);
 		}
-		status += penalty * [manifest cxx_quantityForGood:good];
+		status += penalty * manifest->quantityForGood(good);
 	}
 	return status;
 }
@@ -824,35 +824,39 @@ OOCreditsQuantity StationEntity::legalStatusOfManifest(::OOCommodityMarket *mani
 	{
 		[self initialiseLocalMarket];
 	}
-	return localMarket;
+	return localMarket.get();
 }
 
 
 void StationEntity::setLocalMarket(const oo::PList &some_market)
 {
 	::StationEntity *self = oo::ToObjC(this);
-	[[self localMarket] cxx_loadStationAmounts:some_market];
+	OOCommodityMarket *market = [self localMarket];	// null: nothing set, as a message to nil
+	if (market != nullptr)  market->loadStationAmounts(some_market);
 }
 
 
 oo::PList StationEntity::localMarketForScripting()
 {
 	::StationEntity *self = oo::ToObjC(this);
-	return [[self localMarket] dictionaryForScripting];
+	OOCommodityMarket *market = [self localMarket];	// null: null, as a message to nil
+	return (market != nullptr) ? market->dictionaryForScripting() : oo::PList();
 }
 
 
 void StationEntity::setPrice(OOCreditsQuantity price, const std::string &commodity)
 {
 	::StationEntity *self = oo::ToObjC(this);
-	[[self localMarket] cxx_setPrice:price forGood:commodity];
+	OOCommodityMarket *market = [self localMarket];	// null: nothing set, as a message to nil
+	if (market != nullptr)  market->setPrice(price, commodity);
 }
 
 
 void StationEntity::setQuantity(OOCargoQuantity quantity, const std::string &commodity)
 {
 	::StationEntity *self = oo::ToObjC(this);
-	[[self localMarket] cxx_setQuantity:quantity forGood:commodity];
+	OOCommodityMarket *market = [self localMarket];	// null: nothing set, as a message to nil
+	if (market != nullptr)  market->setQuantity(quantity, commodity);
 }
 
 
@@ -890,9 +894,8 @@ void StationEntity::setInterfaceDefinition(::OOJSInterfaceDefinition *definition
 ::OOCommodityMarket *StationEntity::initialiseLocalMarket()
 {
 	::StationEntity *self = oo::ToObjC(this);
-	DESTROY(localMarket);
-	localMarket = [[[UNIVERSE commodities] generateMarketForStation:self] retain];	
-	return localMarket;
+	localMarket = ([UNIVERSE commodities] != nullptr ? [UNIVERSE commodities]->generateMarketForStation(self) : oo::Ref<OOCommodityMarket>());
+	return localMarket.get();
 }
 
 

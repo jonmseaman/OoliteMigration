@@ -45,8 +45,9 @@
 #import "OORoleSet.h"
 #include <string_view>
 
-@class StationEntity, WormholeEntity, AI, OOMesh, OOScript, OOCharacter, OOJSScript, OOShipGroup, OOEquipmentType;
+@class StationEntity, WormholeEntity, AI, OOMesh, OOScript, OOJSScript, OOShipGroup, OOEquipmentType;
 #import "OOColor.h"	// the colours are oo::Ref members
+#import "OOCharacter.h"	// C++ since bead oo-9ht.10: the crew is oo::Ref
 class OOFlasherEntity;	// C++ only since bead oo-9ht.107
 class OOExhaustPlumeEntity;	// C++ only since bead oo-9ht.110
 
@@ -331,7 +332,7 @@ public:
 	BoundingBox findSubentityBoundingBox();
 	Triangle absoluteIJKForSubentity();
 	void addSubentityToCollisionRadius(::Entity *subent);
-	::ShipEntity *launchPodWithCrew(const std::vector<oo::ObjCRef<::OOCharacter *>> &podCrew);
+	::ShipEntity *launchPodWithCrew(const std::vector<oo::Ref<OOCharacter>> &podCrew);
 	bool validForAddToUniverse() override;
 
 	// Slice 7: update:.
@@ -589,8 +590,8 @@ public:
 	void setDestinationSystem(OOSystemID s);
 	void setStatus(OOEntityStatus stat) override;
 	void setLaunchDelay(double delay);
-	std::optional<std::vector<oo::ObjCRef<::OOCharacter *>>> getCrew();
-	void setCrew(const std::optional<std::vector<oo::ObjCRef<::OOCharacter *>>> &crewArray);
+	std::optional<std::vector<oo::Ref<OOCharacter>>> getCrew();
+	void setCrew(const std::optional<std::vector<oo::Ref<OOCharacter>>> &crewArray);
 	void setSingleCrewWithRole(const std::string &crewRole);
 	std::vector<oo::PList> crewForScripting();
 	void setStateMachine(const std::string &smName);
@@ -1316,7 +1317,7 @@ public:
 							starboardWeaponOffset;
 	
 	// crew (typically one OOCharacter - the pilot); nullopt: unpiloted (was nil); an empty vector is crewed
-	std::optional<std::vector<oo::ObjCRef<::OOCharacter *>>>	crew;
+	std::optional<std::vector<oo::Ref<OOCharacter>>>	crew;
 	
 	// close contact / collision tracking
 	std::map<std::string, std::string, std::less<>>	closeContactsInfo;	// "%d" universal ID -> "%f %f %f" relative position

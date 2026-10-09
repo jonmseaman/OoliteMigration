@@ -213,7 +213,7 @@ NSUInteger IndexOfGood(const std::vector<std::string> &goods, const std::optiona
 // commodity keys; used with std::stable_sort, as -sortedArrayUsingFunction:context: is a stable
 // sort in GNUstep (probed on gnustep-base: ties keep their order). They read the market's C++ part
 // (slice 23, bead oo-wt5jv); a null market answers as a nil one did (no name, 0).
-int marketSorterByName(const std::string &a, const std::string &b, cxx::OOCommodityMarket *market)
+int marketSorterByName(const std::string &a, const std::string &b, OOCommodityMarket *market)
 {
 	// (-compare: on a nil name: goods always have names)
 	const std::optional<std::string> nameA = (market != nullptr) ? market->nameForGood(a) : std::nullopt;
@@ -222,21 +222,21 @@ int marketSorterByName(const std::string &a, const std::string &b, cxx::OOCommod
 }
 
 
-int marketSorterByPrice(const std::string &a, const std::string &b, cxx::OOCommodityMarket *market)
+int marketSorterByPrice(const std::string &a, const std::string &b, OOCommodityMarket *market)
 {
 	int result = (market != nullptr) ? (int)market->priceForGood(a) - (int)market->priceForGood(b) : 0;
 	return (result < 0) ? -1 : ((result > 0) ? 1 : 0);
 }
 
 
-int marketSorterByQuantity(const std::string &a, const std::string &b, cxx::OOCommodityMarket *market)
+int marketSorterByQuantity(const std::string &a, const std::string &b, OOCommodityMarket *market)
 {
 	int result = (market != nullptr) ? (int)market->quantityForGood(a) - (int)market->quantityForGood(b) : 0;
 	return (result < 0) ? -1 : ((result > 0) ? 1 : 0);
 }
 
 
-int marketSorterByMassUnit(const std::string &a, const std::string &b, cxx::OOCommodityMarket *market)
+int marketSorterByMassUnit(const std::string &a, const std::string &b, OOCommodityMarket *market)
 {
 	int result = (market != nullptr) ? (int)market->massUnitForGood(a) - (int)market->massUnitForGood(b) : 0;
 	return (result < 0) ? -1 : ((result > 0) ? 1 : 0);
@@ -477,7 +477,7 @@ void PlayerEntity::unloadAllCargoPodsForType(const std::string &type, ::OOCommod
 			if (commodityType.has_value())
 			{
 				// transfer
-				[manifest cxx_addQuantity:[cargoItem commodityAmount] forGood:type];
+				manifest->addQuantity([cargoItem commodityAmount], type);
 			}
 			else	// undefined
 			{
@@ -534,7 +534,7 @@ void PlayerEntity::unloadCargoPodsForType(const std::string &type, OOCargoQuanti
 	// now check if we are ready. When not, proceed with quantities in the manifest.
 	if (cargoToGo > 0)
 	{
-		[shipCommodityData cxx_removeQuantity:cargoToGo forGood:type];
+		if (shipCommodityData != nullptr)  shipCommodityData->removeQuantity(cargoToGo, type);
 	}
 }
 
@@ -545,9 +545,9 @@ void PlayerEntity::unloadCargoPods()
 	OOCAssert([self isDocked], "Cannot unload cargo pods unless docked.");
 	
 	/* loads commodities from the cargo pods onto the ship's manifest */
-	for (const std::string &good : [shipCommodityData goods])
+	for (const std::string &good : (shipCommodityData != nullptr ? shipCommodityData->goods() : std::vector<std::string>()))
 	{
-		[self unloadAllCargoPodsForType:good toManifest:shipCommodityData];
+		[self unloadAllCargoPodsForType:good toManifest:shipCommodityData.get()];
 	}
 #ifndef NDEBUG
 	if (cargo.size() > 0)
@@ -588,8 +588,8 @@ void PlayerEntity::loadCargoPodsForType(const std::string &type, ::OOCommodityMa
 	// load commodities from the ships manifest into individual cargo pods
 	unsigned j;
 	
-	OOCargoQuantity	quantity = [manifest cxx_quantityForGood:type];
-	OOMassUnit		units =	[manifest massUnitForGood:type];
+	OOCargoQuantity	quantity = manifest->quantityForGood(type);
+	OOMassUnit		units =	manifest->massUnitForGood(type);
 	
 	if (quantity > 0)
 	{
@@ -600,7 +600,7 @@ void PlayerEntity::loadCargoPodsForType(const std::string &type, ::OOCommodityMa
 			{
 				[self createCargoPodWithType:type andAmount:1];		// or CTD if unsuccesful (!)
 			}
-			[manifest cxx_setQuantity:0 forGood:type];
+			manifest->setQuantity(0, type);
 		}
 		else
 		{
@@ -652,7 +652,7 @@ void PlayerEntity::loadCargoPodsForType(const std::string &type, ::OOCommodityMa
 					quantity -= amountToLoadInCargopod;
 				}
 				// adjust manifest for this commodity
-				[manifest cxx_setQuantity:tmpQuantity forGood:type];
+				manifest->setQuantity(tmpQuantity, type);
 			}
 		}
 	}
@@ -662,7 +662,7 @@ void PlayerEntity::loadCargoPodsForType(const std::string &type, ::OOCommodityMa
 void PlayerEntity::loadCargoPodsForType(const std::string &type, OOCargoQuantity quantity)
 {
 	::PlayerEntity *self = oo::ToObjC(this);
-	OOMassUnit unit = [shipCommodityData massUnitForGood:type];
+	OOMassUnit unit = (shipCommodityData != nullptr ? shipCommodityData->massUnitForGood(type) : UNITS_TONS);
 	
 	while (quantity)
 	{
@@ -688,11 +688,11 @@ void PlayerEntity::loadCargoPodsForType(const std::string &type, OOCargoQuantity
 				else
 				{
 					// try to squeeze any surplus, up to half a ton, in the manifest.
-					int amount = [shipCommodityData cxx_quantityForGood:type] + smaller_quantity;
+					int amount = (shipCommodityData != nullptr ? shipCommodityData->quantityForGood(type) : 0) + smaller_quantity;
 					if (amount > MAX_GRAMS_IN_SAFE && unit == UNITS_GRAMS) amount = MAX_GRAMS_IN_SAFE;
 					else if (amount > MAX_KILOGRAMS_IN_SAFE && unit == UNITS_KILOGRAMS) amount = MAX_KILOGRAMS_IN_SAFE;
 
-					[shipCommodityData cxx_setQuantity:amount forGood:type];
+					if (shipCommodityData != nullptr)  shipCommodityData->setQuantity(amount, type);
 				}
 				quantity -= smaller_quantity;
 			}
@@ -726,9 +726,9 @@ void PlayerEntity::loadCargoPods()
 {
 	::PlayerEntity *self = oo::ToObjC(this);
 	/* loads commodities from the ships manifest into individual cargo pods */
-	for (const std::string &good : [shipCommodityData goods])
+	for (const std::string &good : (shipCommodityData != nullptr ? shipCommodityData->goods() : std::vector<std::string>()))
 	{
-		[self loadCargoPodsForType:good fromManifest:shipCommodityData];
+		[self loadCargoPodsForType:good fromManifest:shipCommodityData.get()];
 	}
 	[self calculateCurrentCargo];	// work out the correct value for current_cargo
 	cargo_dump_time = 0;
@@ -737,7 +737,7 @@ void PlayerEntity::loadCargoPods()
 
 ::OOCommodityMarket *PlayerEntity::getShipCommodityData()
 {
-	return shipCommodityData;
+	return shipCommodityData.get();
 }
 
 
@@ -942,7 +942,7 @@ OOSystemID PlayerEntity::systemID()
 void PlayerEntity::setSystemID(OOSystemID sid)
 {
 	system_id = sid;
-	galaxy_coordinates = PointFromCoordinates([[UNIVERSE systemManager] cxx_getProperty:"coordinates" forSystem:sid inGalaxy:galaxy_number]);
+	galaxy_coordinates = PointFromCoordinates(([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getProperty("coordinates", sid, galaxy_number) : oo::PList()));
 	chart_centre_coordinates = galaxy_coordinates;
 	target_chart_centre = chart_centre_coordinates;
 }
@@ -975,7 +975,7 @@ OOSystemID PlayerEntity::targetSystemID()
 void PlayerEntity::setTargetSystemID(OOSystemID sid)
 {
 	target_system_id = sid;
-	cursor_coordinates = PointFromCoordinates([[UNIVERSE systemManager] cxx_getProperty:"coordinates" forSystemKey:[UNIVERSE cxx_keyForPlanetOverridesForSystem:sid inGalaxy:galaxy_number].value_or(std::string())]);
+	cursor_coordinates = PointFromCoordinates(([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getProperty("coordinates", [UNIVERSE cxx_keyForPlanetOverridesForSystem:sid inGalaxy:galaxy_number].value_or(std::string())) : oo::PList()));
 }
 
 
@@ -1028,7 +1028,7 @@ void PlayerEntity::setInfoSystemID(OOSystemID sid, bool moveChart)
 		{
 			if(moveChart)
 			{
-				target_chart_focus = [[UNIVERSE systemManager] getCoordinatesForSystem:info_system_id inGalaxy:galaxy_number];
+				target_chart_focus = ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getCoordinatesForSystem(info_system_id, galaxy_number) : NSMakePoint(0, 0));
 			}
 		}
 		else
@@ -1039,7 +1039,7 @@ void PlayerEntity::setInfoSystemID(OOSystemID sid, bool moveChart)
 			}
 			if(moveChart)
 			{
-				chart_centre_coordinates = [[UNIVERSE systemManager] getCoordinatesForSystem:info_system_id inGalaxy:galaxy_number];
+				chart_centre_coordinates = ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getCoordinatesForSystem(info_system_id, galaxy_number) : NSMakePoint(0, 0));
 				target_chart_centre = chart_centre_coordinates;
 				chart_focus_coordinates = chart_centre_coordinates;
 				target_chart_focus = chart_focus_coordinates;
@@ -1266,7 +1266,7 @@ oo::PList PlayerEntity::commanderDataDictionary()
 
 	result["max_cargo"] = oo::PList::signedInteger((long)(max_cargo + PASSENGER_BERTH_SPACE * max_passengers));
 
-	result["shipCommodityData"] = [shipCommodityData cxx_savePlayerAmounts];
+	result["shipCommodityData"] = (shipCommodityData != nullptr ? shipCommodityData->savePlayerAmounts() : oo::PList());
 
 
 	oo::PList::Array missileRoles;
@@ -1393,12 +1393,12 @@ oo::PList PlayerEntity::commanderDataDictionary()
 	result["escape_pod_rescue_time"] = oo::PList((double)[self escapePodRescueTime]);	// oo_setFloat:
 
 	//local market for main station
-	if ([[UNIVERSE station] localMarket])  result["localMarket"] = [[[UNIVERSE station] localMarket] cxx_saveStationAmounts];
+	if ([[UNIVERSE station] localMarket])  result["localMarket"] = [[UNIVERSE station] localMarket]->saveStationAmounts();
 
 	// Scenario restriction on OXZs
 	if (const std::optional<std::string> value = [UNIVERSE cxx_useAddOns])  result["scenario_restriction"] = oo::PList(*value);
 
-	result["scripted_planetinfo_overrides"] = [[UNIVERSE systemManager] cxx_exportScriptedChanges];
+	result["scripted_planetinfo_overrides"] = ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->exportScriptedChanges() : oo::PList());
 
 	// trumble information (unmigrated: OOTrumble's records)
 	const oo::PList trumbles = [self trumbleValue];
@@ -1541,7 +1541,7 @@ bool PlayerEntity::setCommanderDataFromDictionary(const oo::PList &dict)
 
 		[UNIVERSE setSystemTo:system_id];
 
-		std::vector<std::string> coord_vals = CoordinateTokens([[UNIVERSE systemManager] cxx_getProperty:"coordinates" forSystem:system_id inGalaxy:galaxy_number]);
+		std::vector<std::string> coord_vals = CoordinateTokens(([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getProperty("coordinates", system_id, galaxy_number) : oo::PList()));
 		galaxy_coordinates.x = CoordinateAt(coord_vals, 0);
 		galaxy_coordinates.y = CoordinateAt(coord_vals, 1);
 		chart_centre_coordinates = galaxy_coordinates;
@@ -1557,7 +1557,7 @@ bool PlayerEntity::setCommanderDataFromDictionary(const oo::PList &dict)
 		target_system_id = dict.get<int>("target_id", system_id);
 		previous_system_id = dict.get<int>("previous_system_id", system_id);
 		info_system_id = target_system_id;
-		coord_vals = CoordinateTokens([[UNIVERSE systemManager] cxx_getProperty:"coordinates" forSystem:target_system_id inGalaxy:galaxy_number]);
+		coord_vals = CoordinateTokens(([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getProperty("coordinates", target_system_id, galaxy_number) : oo::PList()));
 		cursor_coordinates.x = CoordinateAt(coord_vals, 0);
 		cursor_coordinates.y = CoordinateAt(coord_vals, 1);
 
@@ -1634,7 +1634,7 @@ bool PlayerEntity::setCommanderDataFromDictionary(const oo::PList &dict)
 	[self cxx_setShipClassName:savedClassName];
 
 	const oo::PList *savedAmounts = dict.get<oo::PList::Array>("shipCommodityData");
-	[shipCommodityData cxx_loadPlayerAmounts:(savedAmounts != nullptr) ? *savedAmounts : oo::PList()];
+	if (shipCommodityData != nullptr)  shipCommodityData->loadPlayerAmounts((savedAmounts != nullptr) ? *savedAmounts : oo::PList());
 
 	// extra equipment flags
 	[self removeAllEquipment];
@@ -1733,7 +1733,7 @@ bool PlayerEntity::setCommanderDataFromDictionary(const oo::PList &dict)
 		{
 			// look it up, and replace with a string
 			NSUInteger legacy_type = contractInfo.get<NSUInteger>(std::string(CARGO_KEY_TYPE));
-			(*contractInfo.getIf<oo::PList::Dict>())[std::string(CARGO_KEY_TYPE)] = oo::PList([::OOCommodities cxx_legacyCommodityType:legacy_type].value_or(""));
+			(*contractInfo.getIf<oo::PList::Dict>())[std::string(CARGO_KEY_TYPE)] = oo::PList(OOCommodities::legacyCommodityType(legacy_type).value_or(""));
 			contracts[i] = std::move(contractInfo);
 		}
 		else
@@ -1742,7 +1742,7 @@ bool PlayerEntity::setCommanderDataFromDictionary(const oo::PList &dict)
 			const oo::PList *typeValue = contractInfo.find(std::string(CARGO_KEY_TYPE));
 			const std::optional<std::string> new_type = (typeValue != nullptr && typeValue->isString()) ? std::optional<std::string>(*typeValue->getIf<std::string>()) : std::nullopt;
 			// check that that the type still exists
-			if (![[UNIVERSE commodities] cxx_goodDefined:new_type.value_or("")])
+			if (!([UNIVERSE commodities] != nullptr ? [UNIVERSE commodities]->goodDefined(new_type.value_or("")) : false))
 			{
 				OO_LOG("setCommanderDataFromDictionary.warning.contract", "Cargo contract to deliver {} could not be loaded from the saved game, as the commodity is no longer defined", new_type.value_or("(null)"));
 				contracts.erase(contracts.begin() + i);
@@ -1817,11 +1817,11 @@ bool PlayerEntity::setCommanderDataFromDictionary(const oo::PList &dict)
 		OOCargoQuantity remainingExcess = (OOCargoQuantity)excessCargo;
 		
 		// manifest always contains entries for all 17 commodities, even if their quantity is 0.
-		for (const std::string &type : [shipCommodityData goods])
+		for (const std::string &type : (shipCommodityData != nullptr ? shipCommodityData->goods() : std::vector<std::string>()))
 		{
-			units =	[shipCommodityData massUnitForGood:type];
+			units =	(shipCommodityData != nullptr ? shipCommodityData->massUnitForGood(type) : UNITS_TONS);
 
-			oldAmount = [shipCommodityData cxx_quantityForGood:type];
+			oldAmount = (shipCommodityData != nullptr ? shipCommodityData->quantityForGood(type) : 0);
 			BOOL roundedTon = (units != UNITS_TONS) && ((units == UNITS_KILOGRAMS && oldAmount > MAX_KILOGRAMS_IN_SAFE) || (units == UNITS_GRAMS && oldAmount > MAX_GRAMS_IN_SAFE));
 			if (roundedTon || (units == UNITS_TONS && oldAmount > 0))
 			{
@@ -1848,7 +1848,7 @@ bool PlayerEntity::setCommanderDataFromDictionary(const oo::PList &dict)
 						partAmount = 0;
 					}
 				}
-				[shipCommodityData cxx_removeQuantity:toRemove forGood:type];
+				if (shipCommodityData != nullptr)  shipCommodityData->removeQuantity(toRemove, type);
 			}
 		}
 	}
@@ -1939,7 +1939,7 @@ bool PlayerEntity::setCommanderDataFromDictionary(const oo::PList &dict)
 	const oo::PList *planetInfoOverrides = dict.get<oo::PList::Dict>("scripted_planetinfo_overrides");
 	if (planetInfoOverrides != nullptr)
 	{
-		[[UNIVERSE systemManager] cxx_importScriptedChanges:*planetInfoOverrides];	
+		if ([UNIVERSE systemManager] != nullptr)  [UNIVERSE systemManager]->importScriptedChanges(*planetInfoOverrides);	
 	} 
 	else
 	{
@@ -1947,7 +1947,7 @@ bool PlayerEntity::setCommanderDataFromDictionary(const oo::PList &dict)
 		planetInfoOverrides = dict.get<oo::PList::Dict>("local_planetinfo_overrides");
 		if (planetInfoOverrides != nullptr)
 		{
-			[[UNIVERSE systemManager] cxx_importLegacyScriptedChanges:*planetInfoOverrides];
+			if ([UNIVERSE systemManager] != nullptr)  [UNIVERSE systemManager]->importLegacyScriptedChanges(*planetInfoOverrides);
 		}
 	}
 	
@@ -2335,8 +2335,7 @@ bool PlayerEntity::setUpAndConfirmOK(bool stopOnError, bool saveGame)
 	max_cargo				= 20; // will be reset later
 	marketFilterMode		= MARKET_FILTER_MODE_OFF;
 	
-	DESTROY(shipCommodityData);
-	shipCommodityData = [[[UNIVERSE commodities] generateManifestForPlayer] retain];
+	shipCommodityData = ([UNIVERSE commodities] != nullptr ? [UNIVERSE commodities]->generateManifestForPlayer() : oo::Ref<OOCommodityMarket>());
 	
 	// set up missiles
 	missiles				= PLAYER_STARTING_MISSILES;
@@ -3104,7 +3103,7 @@ void PlayerEntity::doBookkeeping(double delta_t)
 			system_id = target_system_id;
 			info_system_id = target_system_id;
 			[UNIVERSE setSystemTo:system_id];
-			galaxy_coordinates = PointFromCoordinates([[UNIVERSE systemManager] cxx_getProperty:"coordinates" forSystem:system_id inGalaxy:galaxy_number]);
+			galaxy_coordinates = PointFromCoordinates(([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getProperty("coordinates", system_id, galaxy_number) : oo::PList()));
 			
 			[UNIVERSE setUpSpace];
 			// run initial system population
@@ -7418,7 +7417,7 @@ void PlayerEntity::docked()
 	if ([dockedStation marketMonitored])
 	{
 		OOCreditsQuantity oldbounty = [self bounty];
-		[self markAsOffender:[dockedStation legalStatusOfManifest:shipCommodityData export:NO] withReason:kOOLegalStatusReasonIllegalImports];
+		[self markAsOffender:[dockedStation legalStatusOfManifest:shipCommodityData.get() export:NO] withReason:kOOLegalStatusReasonIllegalImports];
 		if ([self bounty] > oldbounty)
 		{
 			[self cxx_addRoleToPlayer:"trader-smuggler"];
@@ -7495,7 +7494,7 @@ void PlayerEntity::leaveDock(::StationEntity *station)
 	{
 		// 'leaving with those guns were you sir?'
 		OOCreditsQuantity oldbounty = [self bounty];
-		[self markAsOffender:[station legalStatusOfManifest:shipCommodityData export:YES] withReason:kOOLegalStatusReasonIllegalExports];
+		[self markAsOffender:[station legalStatusOfManifest:shipCommodityData.get() export:YES] withReason:kOOLegalStatusReasonIllegalExports];
 		if ([self bounty] > oldbounty)
 		{
 			[self cxx_addRoleToPlayer:"trader-smuggler"];
@@ -7629,7 +7628,7 @@ void PlayerEntity::witchStart()
 void PlayerEntity::witchEnd()
 {
 	[UNIVERSE setSystemTo:system_id];
-	galaxy_coordinates = [[UNIVERSE systemManager] getCoordinatesForSystem:system_id inGalaxy:galaxy_number];
+	galaxy_coordinates = ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getCoordinatesForSystem(system_id, galaxy_number) : NSMakePoint(0, 0));
 
 	[UNIVERSE setUpUniverseFromWitchspace];
 	[[UNIVERSE planet] update: 2.34375 * market_rnd];	// from 0..10 minutes
@@ -7738,7 +7737,7 @@ void PlayerEntity::setJumpType(bool isGalacticJump)
 double PlayerEntity::hyperspaceJumpDistance()
 {
 	::PlayerEntity *self = oo::ToObjC(this);
-	NSPoint targetCoordinates = PointFromCoordinates([[UNIVERSE systemManager] cxx_getProperty:"coordinates" forSystem:[self nextHopTargetSystemID] inGalaxy:galaxy_number]);
+	NSPoint targetCoordinates = PointFromCoordinates(([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getProperty("coordinates", [self nextHopTargetSystemID], galaxy_number) : oo::PList()));
 	return distanceBetweenPlanetPositions(targetCoordinates.x,targetCoordinates.y,galaxy_coordinates.x,galaxy_coordinates.y);
 }
 
@@ -7866,7 +7865,7 @@ void PlayerEntity::enterGalacticWitchspace()
 	info_system_id = system_id;
 	
 	[self setBounty:0 withReason:kOOLegalStatusReasonNewGalaxy];	// let's make a fresh start!
-	cursor_coordinates = PointFromCoordinates([[UNIVERSE systemManager] cxx_getProperty:"coordinates" forSystem:system_id inGalaxy:galaxy_number]);
+	cursor_coordinates = PointFromCoordinates(([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getProperty("coordinates", system_id, galaxy_number) : oo::PList()));
 
 	[self witchEnd]; // sets coordinates, calls exiting witchspace JS events
 }
@@ -8028,7 +8027,7 @@ void PlayerEntity::witchJumpTo(OOSystemID sTo, bool misjump)
 	}
 	
 	// set clock after "playerWillEnterWitchspace" and before  removeAllEntitiesExceptPlayer, to allow escorts time to follow their mother. 
-	NSPoint destCoords = PointFromCoordinates([[UNIVERSE systemManager] cxx_getProperty:"coordinates" forSystem:sTo inGalaxy:galaxy_number]);
+	NSPoint destCoords = PointFromCoordinates(([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getProperty("coordinates", sTo, galaxy_number) : oo::PList()));
 	double distance = distanceBetweenPlanetPositions(destCoords.x,destCoords.y,galaxy_coordinates.x,galaxy_coordinates.y);
 	
 	// if we just escaped a system gone nova, make sure all nova parameters are reset
@@ -8206,14 +8205,14 @@ void PlayerEntity::setGuiToStatusScreen()
 	}
 
 	targetSystemName =	[UNIVERSE cxx_getSystemName:target_system_id];
-	oo::PList systemInfo = [[UNIVERSE systemManager] cxx_getPropertiesForSystem:target_system_id inGalaxy:galaxy_number];
+	oo::PList systemInfo = ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getPropertiesForSystem(target_system_id, galaxy_number) : oo::PList());
 	NSInteger concealment = systemInfo.get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
 	if (concealment >= OO_SYSTEMCONCEALMENT_NONAME) targetSystemName = OO_DESC("status-unknown-system");
 
 	OOSystemID nextHop = [self nextHopTargetSystemID];
 	if (nextHop != target_system_id) {
 		std::optional<std::string> nextHopSystemName = [UNIVERSE cxx_getSystemName:nextHop];
-		systemInfo = [[UNIVERSE systemManager] cxx_getPropertiesForSystem:nextHop inGalaxy:galaxy_number];
+		systemInfo = ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getPropertiesForSystem(nextHop, galaxy_number) : oo::PList());
 		concealment = systemInfo.get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
 		if (concealment >= OO_SYSTEMCONCEALMENT_NONAME) nextHopSystemName = OO_DESC("status-unknown-system");
 		// (a nil name raised in the expansion)
@@ -8649,7 +8648,7 @@ oo::PList PlayerEntity::cargoListForScripting()
 {
 	oo::PList::Array	list;
 
-	const std::vector<std::string> goods = [shipCommodityData goods];
+	const std::vector<std::string> goods = (shipCommodityData != nullptr ? shipCommodityData->goods() : std::vector<std::string>());
 	NSUInteger			i, commodityCount = goods.size();
 	std::vector<OOCargoQuantity>	quantityInHold(commodityCount, 0);
 	std::vector<OOCargoQuantity>	containersInHold(commodityCount, 0);
@@ -8657,7 +8656,7 @@ oo::PList PlayerEntity::cargoListForScripting()
 	// following changed to work whether docked or not
 	for (i = 0; i < commodityCount; i++)
 	{
-		quantityInHold[i] = [shipCommodityData cxx_quantityForGood:goods[i]];
+		quantityInHold[i] = (shipCommodityData != nullptr ? shipCommodityData->quantityForGood(goods[i]) : 0);
 	}
 	for (i = 0; i < cargo.size(); i++)
 	{
@@ -8680,7 +8679,7 @@ oo::PList PlayerEntity::cargoListForScripting()
 			commodity["commodity"] = symName;
 			commodity["quantity"] = oo::PList::unsignedInteger(quantityInHold[i]);	// +numberWithUnsignedInt:
 			commodity["containers"] = oo::PList::unsignedInteger(containersInHold[i]);
-			const std::optional<std::string> goodName = [shipCommodityData cxx_nameForGood:symName];
+			const std::optional<std::string> goodName = (shipCommodityData != nullptr ? shipCommodityData->nameForGood(symName) : std::optional<std::string>());
 			if (goodName.has_value())  commodity["displayName"] = *goodName;	// (nil raised before)
 			commodity["unit"] = cxx_DisplayStringForMassUnitForCommodity(symName).value_or("");
 			list.emplace_back(std::move(commodity));
@@ -8697,10 +8696,10 @@ unsigned PlayerEntity::legalStatusOfCargoList()
 	OOCargoQuantity amount;
 	unsigned		penalty = 0;
 
-	for (const std::string &good : [shipCommodityData goods])
+	for (const std::string &good : (shipCommodityData != nullptr ? shipCommodityData->goods() : std::vector<std::string>()))
 	{
-		amount = [shipCommodityData cxx_quantityForGood:good];
-		penalty += [shipCommodityData cxx_exportLegalityForGood:good] * amount;
+		amount = (shipCommodityData != nullptr ? shipCommodityData->quantityForGood(good) : 0);
+		penalty += (shipCommodityData != nullptr ? shipCommodityData->exportLegalityForGood(good) : 0) * amount;
 	}
 	return penalty;
 }
@@ -8797,8 +8796,7 @@ void PlayerEntity::setGuiToSystemDataScreenRefreshBackground(bool refreshBackgro
 	gui_screen = GUI_SCREEN_SYSTEM_DATA;
 	BOOL			guiChanged = (oldScreen != gui_screen);
 
-	Random_Seed		infoSystemRandomSeed = [[UNIVERSE systemManager] getRandomSeedForSystem:info_system_id
-																				  inGalaxy:[self galaxyNumber]];
+	Random_Seed		infoSystemRandomSeed = ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getRandomSeedForSystem(info_system_id, [self galaxyNumber]) : Random_Seed());
 	
 	[[UNIVERSE gameController] setMouseInteractionModeForUIWithMouseInteraction:NO];
 	
@@ -8864,7 +8862,7 @@ void PlayerEntity::setGuiToSystemDataScreenRefreshBackground(bool refreshBackgro
 		}
 		else
 		{
-			NSPoint infoSystemCoordinates = [[UNIVERSE systemManager] getCoordinatesForSystem: info_system_id inGalaxy: galaxy_number];
+			NSPoint infoSystemCoordinates = ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getCoordinatesForSystem(info_system_id, galaxy_number) : NSMakePoint(0, 0));
 			double distance = distanceBetweenPlanetPositions(infoSystemCoordinates.x, infoSystemCoordinates.y, galaxy_coordinates.x, galaxy_coordinates.y);
 			if(distance == 0.0 && info_system_id != system_id)
 			{
@@ -10483,12 +10481,12 @@ void PlayerEntity::noteGUIDidChangeFrom(OOGUIScreenID fromScreen, OOGUIScreenID 
 		if (toScreen == GUI_SCREEN_SYSTEM_DATA)
 		{
 			// system data screen: ensure correct sun light color is used on miniature planet
-			[[UNIVERSE sun] setSunColor:OOColor::colorWithDescription([[UNIVERSE systemManager] cxx_getProperty:"sun_color" forSystem:info_system_id inGalaxy:[self galaxyNumber]]).get()];
+			[[UNIVERSE sun] setSunColor:OOColor::colorWithDescription(([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getProperty("sun_color", info_system_id, [self galaxyNumber]) : oo::PList())).get()];
 		}
 		else
 		{
 			// any other screen: reset local sun light color
-			[[UNIVERSE sun] setSunColor:OOColor::colorWithDescription([[UNIVERSE systemManager] cxx_getProperty:"sun_color" forSystem:system_id inGalaxy:[self galaxyNumber]]).get()];
+			[[UNIVERSE sun] setSunColor:OOColor::colorWithDescription(([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getProperty("sun_color", system_id, [self galaxyNumber]) : oo::PList())).get()];
 		}
 		
 		if (![[UNIVERSE gameController] isGamePaused])
@@ -11040,7 +11038,7 @@ namespace cxx {
 OOCargoQuantity PlayerEntity::cargoQuantityForType(const std::string &type)
 {
 	::PlayerEntity *self = oo::ToObjC(this);
-	OOCargoQuantity 	amount = [shipCommodityData cxx_quantityForGood:type];
+	OOCargoQuantity 	amount = (shipCommodityData != nullptr ? shipCommodityData->quantityForGood(type) : 0);
 
 	if  ([self status] != STATUS_DOCKED)
 	{
@@ -11064,7 +11062,7 @@ OOCargoQuantity PlayerEntity::cargoQuantityForType(const std::string &type)
 OOCargoQuantity PlayerEntity::setCargoQuantityForType(const std::string &type, OOCargoQuantity amount)
 {
 	::PlayerEntity *self = oo::ToObjC(this);
-	OOMassUnit			unit = [shipCommodityData massUnitForGood:type];
+	OOMassUnit			unit = (shipCommodityData != nullptr ? shipCommodityData->massUnitForGood(type) : UNITS_TONS);
 	if([self cxx_specialCargo].has_value() && unit == UNITS_TONS) return 0;	// don't do anything if we've got a special cargo...
 	
 	OOCargoQuantity		oldAmount = [self cxx_cargoQuantityForType:type];
@@ -11103,11 +11101,11 @@ OOCargoQuantity PlayerEntity::setCargoQuantityForType(const std::string &type, O
 	}
 	else
 	{
-		[shipCommodityData cxx_setQuantity:amount forGood:type];
+		if (shipCommodityData != nullptr)  shipCommodityData->setQuantity(amount, type);
 	}
 
 	[self calculateCurrentCargo];
-	return [shipCommodityData cxx_quantityForGood:type];
+	return (shipCommodityData != nullptr ? shipCommodityData->quantityForGood(type) : 0);
 }
 
 
@@ -11135,11 +11133,11 @@ OOCargoQuantity PlayerEntity::cargoQuantityOnBoard()
 	*/
 	OOCargoQuantity		cargoQtyOnBoard = 0;
 
-	for (const std::string &good : [shipCommodityData goods])
+	for (const std::string &good : (shipCommodityData != nullptr ? shipCommodityData->goods() : std::vector<std::string>()))
 	{
-		OOCargoQuantity quantity = [shipCommodityData cxx_quantityForGood:good];
+		OOCargoQuantity quantity = (shipCommodityData != nullptr ? shipCommodityData->quantityForGood(good) : 0);
 
-		OOMassUnit commodityUnits = [shipCommodityData massUnitForGood:good];
+		OOMassUnit commodityUnits = (shipCommodityData != nullptr ? shipCommodityData->massUnitForGood(good) : UNITS_TONS);
 		
 		if (commodityUnits != UNITS_TONS)
 		{
@@ -11207,7 +11205,7 @@ std::vector<std::string> PlayerEntity::applyMarketFilter(const std::vector<std::
 			filteredGoods.push_back(good);
 			break;
 		case MARKET_FILTER_MODE_TRADE:
-			if ([market cxx_quantityForGood:good] > 0 || [self cxx_cargoQuantityForType:good] > 0)
+			if (market->quantityForGood(good) > 0 || [self cxx_cargoQuantityForType:good] > 0)
 			{
 				filteredGoods.push_back(good);
 			}
@@ -11219,19 +11217,19 @@ std::vector<std::string> PlayerEntity::applyMarketFilter(const std::vector<std::
 			}
 			break;
 		case MARKET_FILTER_MODE_STOCK:
-			if ([market cxx_quantityForGood:good] > 0)
+			if (market->quantityForGood(good) > 0)
 			{
 				filteredGoods.push_back(good);
 			}
 			break;
 		case MARKET_FILTER_MODE_LEGAL:
-			if ([market cxx_exportLegalityForGood:good] == 0 && [market cxx_importLegalityForGood:good] == 0)
+			if (market->exportLegalityForGood(good) == 0 && market->importLegalityForGood(good) == 0)
 			{
 				filteredGoods.push_back(good);
 			}
 			break;
 		case MARKET_FILTER_MODE_RESTRICTED:
-			if ([market cxx_exportLegalityForGood:good] > 0 || [market cxx_importLegalityForGood:good] > 0)
+			if (market->exportLegalityForGood(good) > 0 || market->importLegalityForGood(good) > 0)
 			{
 				filteredGoods.push_back(good);
 			}
@@ -11245,10 +11243,10 @@ std::vector<std::string> PlayerEntity::applyMarketFilter(const std::vector<std::
 std::vector<std::string> PlayerEntity::applyMarketSorter(const std::vector<std::string> &goods, ::OOCommodityMarket *market)
 {
 	// -sortedArrayUsingFunction:context: was a stable sort (probed), so std::stable_sort gives the same order
-	const auto sortedBy = [&goods](int (*sorter)(const std::string &, const std::string &, cxx::OOCommodityMarket *), ::OOCommodityMarket *objcMarket)
+	const auto sortedBy = [&goods](int (*sorter)(const std::string &, const std::string &, OOCommodityMarket *), ::OOCommodityMarket *sortMarket)
 	{
 		std::vector<std::string> sorted = goods;
-		std::stable_sort(sorted.begin(), sorted.end(), [sorter, context = oo::ToCxx(objcMarket)](const std::string &a, const std::string &b) { return sorter(a, b, context) < 0; });
+		std::stable_sort(sorted.begin(), sorted.end(), [sorter, context = sortMarket](const std::string &a, const std::string &b) { return sorter(a, b, context) < 0; });
 		return sorted;
 	};
 	switch (marketSorterMode)
@@ -11260,7 +11258,7 @@ std::vector<std::string> PlayerEntity::applyMarketSorter(const std::vector<std::
 	case MARKET_SORTER_MODE_STOCK:
 		return sortedBy(marketSorterByQuantity, market);
 	case MARKET_SORTER_MODE_HOLD:
-		return sortedBy(marketSorterByQuantity, shipCommodityData);
+		return sortedBy(marketSorterByQuantity, shipCommodityData.get());
 	case MARKET_SORTER_MODE_UNIT:
 		return sortedBy(marketSorterByMassUnit, market);
 	case MARKET_SORTER_MODE_OFF:
@@ -11293,11 +11291,11 @@ void PlayerEntity::showMarketScreenHeaders()
 void PlayerEntity::showMarketScreenDataLine(OOGUIRow row, const std::string &good, ::OOCommodityMarket *localMarket, OOCargoQuantity quantity)
 {
 	::GuiDisplayGen		*gui = [UNIVERSE gui];
-	const std::string desc = oo::str::format(" %s ", [shipCommodityData cxx_nameForGood:good].value_or("(null)").c_str());	// %@ of nil
-	OOCargoQuantity available_units = [localMarket cxx_quantityForGood:good];
+	const std::string desc = oo::str::format(" %s ", (shipCommodityData != nullptr ? shipCommodityData->nameForGood(good) : std::optional<std::string>()).value_or("(null)").c_str());	// %@ of nil
+	OOCargoQuantity available_units = (localMarket != nullptr ? localMarket->quantityForGood(good) : 0);
 	OOCargoQuantity units_in_hold = quantity;
-	OOCreditsQuantity pricePerUnit = [localMarket cxx_priceForGood:good];
-	OOMassUnit unit = [shipCommodityData massUnitForGood:good];
+	OOCreditsQuantity pricePerUnit = (localMarket != nullptr ? localMarket->priceForGood(good) : 0);
+	OOMassUnit unit = (shipCommodityData != nullptr ? shipCommodityData->massUnitForGood(good) : UNITS_TONS);
 
 	const std::string available = cxx_OOPadStringToEms(((available_units > 0) ? oo::str::format("%d",available_units) : OO_DESC("commodity-quantity-none")), 2.5);
 
@@ -11311,8 +11309,8 @@ void PlayerEntity::showMarketScreenDataLine(OOGUIRow row, const std::string &goo
 	const std::string units_available = oo::str::format(" %s %s ",available.c_str(), units.c_str());
 	const std::string units_owned = oo::str::format(" %s %s ",owned.c_str(), units.c_str());
 
-	NSUInteger import_legality = [localMarket cxx_importLegalityForGood:good];
-	NSUInteger export_legality = [localMarket cxx_exportLegalityForGood:good];
+	NSUInteger import_legality = (localMarket != nullptr ? localMarket->importLegalityForGood(good) : 0);
+	NSUInteger export_legality = (localMarket != nullptr ? localMarket->exportLegalityForGood(good) : 0);
 	std::string legaldesc;
 	if (import_legality == 0)
 	{
@@ -11338,7 +11336,7 @@ void PlayerEntity::showMarketScreenDataLine(OOGUIRow row, const std::string &goo
 	}
 	legaldesc = oo::str::format(" %s ",legaldesc.c_str());
 
-	const std::optional<std::string> extradesc = [shipCommodityData cxx_shortCommentForGood:good];
+	const std::optional<std::string> extradesc = (shipCommodityData != nullptr ? shipCommodityData->shortCommentForGood(good) : std::optional<std::string>());
 
 	gui->setKey(good, row);
 	gui->setColor(gui->colorFromSetting(cxx_kGuiMarketCommodityColor, nil).get(), row);
@@ -11404,25 +11402,27 @@ void PlayerEntity::setGuiToMarketScreen()
 	[[UNIVERSE gameController] setMouseInteractionModeForUIWithMouseInteraction:YES];
 	
 	// fix problems with economies in witchspace
+	oo::Ref<OOCommodityMarket>	blankMarket;	// held for the screen, as the autoreleased market was
 	if (localMarket == nil)
 	{
-		localMarket = [[UNIVERSE commodities] generateBlankMarket];
+		blankMarket = ([UNIVERSE commodities] != nullptr ? [UNIVERSE commodities]->generateBlankMarket() : oo::Ref<OOCommodityMarket>());
+		localMarket = blankMarket.get();
 	}
 
 	// following changed to work whether docked or not
-	const std::vector<std::string> goods = [self cxx_applyMarketSorter:[self cxx_applyMarketFilter:[localMarket goods] onMarket:localMarket] onMarket:localMarket];
+	const std::vector<std::string> goods = [self cxx_applyMarketSorter:[self cxx_applyMarketFilter:(localMarket != nullptr ? localMarket->goods() : std::vector<std::string>()) onMarket:localMarket] onMarket:localMarket];
 	NSInteger maxOffset = 0;
 	if (goods.size() > (GUI_ROW_MARKET_END-GUI_ROW_MARKET_START))
 	{
 		maxOffset = goods.size()-(GUI_ROW_MARKET_END-GUI_ROW_MARKET_START);
 	}
 
-	NSUInteger			commodityCount = [shipCommodityData count];
+	NSUInteger			commodityCount = (shipCommodityData != nullptr ? shipCommodityData->count() : 0);
 	OOCargoQuantity		quantityInHold[commodityCount];
 		
 	for (NSUInteger i = 0; i < commodityCount; i++)
 	{
-		quantityInHold[i] = (i < goods.size()) ? [shipCommodityData cxx_quantityForGood:goods[i]] : 0;	// (a nil good had none)
+		quantityInHold[i] = (i < goods.size()) ? (shipCommodityData != nullptr ? shipCommodityData->quantityForGood(goods[i]) : 0) : 0;	// (a nil good had none)
 	}
 	for (NSUInteger i = 0; i < cargo.size(); i++)
 	{
@@ -11606,20 +11606,22 @@ void PlayerEntity::setGuiToMarketInfoScreen()
 	[[UNIVERSE gameController] setMouseInteractionModeForUIWithMouseInteraction:YES];
 	
 	// fix problems with economies in witchspace
+	oo::Ref<OOCommodityMarket>	blankMarket;	// held for the screen, as the autoreleased market was
 	if (localMarket == nil)
 	{
-		localMarket = [[UNIVERSE commodities] generateBlankMarket];
+		blankMarket = ([UNIVERSE commodities] != nullptr ? [UNIVERSE commodities]->generateBlankMarket() : oo::Ref<OOCommodityMarket>());
+		localMarket = blankMarket.get();
 	}
 
 	// following changed to work whether docked or not
-	const std::vector<std::string>	goods = [self cxx_applyMarketSorter:[self cxx_applyMarketFilter:[localMarket goods] onMarket:localMarket] onMarket:localMarket];
+	const std::vector<std::string>	goods = [self cxx_applyMarketSorter:[self cxx_applyMarketFilter:(localMarket != nullptr ? localMarket->goods() : std::vector<std::string>()) onMarket:localMarket] onMarket:localMarket];
 
-	NSUInteger			i, j, commodityCount = [shipCommodityData count];
+	NSUInteger			i, j, commodityCount = (shipCommodityData != nullptr ? shipCommodityData->count() : 0);
 	OOCargoQuantity		quantityInHold[commodityCount];
 		
 	for (i = 0; i < commodityCount; i++)
 	{
-		quantityInHold[i] = (i < goods.size()) ? [shipCommodityData cxx_quantityForGood:goods[i]] : 0;	// (a nil good had none)
+		quantityInHold[i] = (i < goods.size()) ? (shipCommodityData != nullptr ? shipCommodityData->quantityForGood(goods[i]) : 0) : 0;	// (a nil good had none)
 	}
 	for (i = 0; i < cargo.size(); i++)
 	{
@@ -11649,7 +11651,7 @@ void PlayerEntity::setGuiToMarketInfoScreen()
 		gui->clearAndKeepBackground(!guiChanged);
 
 		const std::string selectedCommodity = *marketSelectedCommodity;	// (non-nil here)
-		gui->setTitle(oo::str::formatRuntime(OO_DESC("oolite-commodity-information-@"), { TextArg([shipCommodityData cxx_nameForGood:selectedCommodity]) }));
+		gui->setTitle(oo::str::formatRuntime(OO_DESC("oolite-commodity-information-@"), { TextArg((shipCommodityData != nullptr ? shipCommodityData->nameForGood(selectedCommodity) : std::optional<std::string>())) }));
 
 		[self showMarketScreenHeaders];
 		[self showMarketScreenDataLine:GUI_ROW_MARKET_START forGood:selectedCommodity inMarket:localMarket holdQuantity:quantityInHold[j]];
@@ -11657,12 +11659,12 @@ void PlayerEntity::setGuiToMarketInfoScreen()
 		OOCargoQuantity contracted = [self cxx_contractedVolumeForGood:selectedCommodity];
 		if (contracted > 0)
 		{
-			OOMassUnit unit = [shipCommodityData massUnitForGood:selectedCommodity];
+			OOMassUnit unit = (shipCommodityData != nullptr ? shipCommodityData->massUnitForGood(selectedCommodity) : UNITS_TONS);
 			gui->setColor(gui->colorFromSetting(cxx_kGuiMarketContractedColor, nil).get(), GUI_ROW_MARKET_START+1);
 			gui->setText(oo::str::formatRuntime(OO_DESC("oolite-commodity-contracted-d-@"), { contracted, cxx_DisplayStringForMassUnit(unit).value_or("(null)") }), GUI_ROW_MARKET_START+1);
 		}
 
-		const std::optional<std::string> info = [shipCommodityData cxx_commentForGood:selectedCommodity];
+		const std::optional<std::string> info = (shipCommodityData != nullptr ? shipCommodityData->commentForGood(selectedCommodity) : std::optional<std::string>());
 		OOGUIRow i = 0;
 		if (!info.has_value() || info->empty())
 		{
@@ -11724,15 +11726,15 @@ bool PlayerEntity::tryBuyingCommodity(const std::string &index, bool all)
 	if (![self isDocked])  return NO; // can't buy if not docked.
 	
 	::OOCommodityMarket	*localMarket = [self localMarket];
-	OOCreditsQuantity	pricePerUnit	= [localMarket cxx_priceForGood:index];
-	OOMassUnit			unit			= [localMarket massUnitForGood:index];
+	OOCreditsQuantity	pricePerUnit	= (localMarket != nullptr ? localMarket->priceForGood(index) : 0);
+	OOMassUnit			unit			= (localMarket != nullptr ? localMarket->massUnitForGood(index) : UNITS_TONS);
 
 	if (specialCargo.has_value() && unit == UNITS_TONS)
 	{
 		return NO;									// can't buy tons of stuff when carrying a specialCargo
 	}
-	int manifest_quantity = [shipCommodityData cxx_quantityForGood:index];
-	int market_quantity = [localMarket cxx_quantityForGood:index];
+	int manifest_quantity = (shipCommodityData != nullptr ? shipCommodityData->quantityForGood(index) : 0);
+	int market_quantity = (localMarket != nullptr ? localMarket->quantityForGood(index) : 0);
 	
 	int purchase = 1;
 	if (all)
@@ -11741,7 +11743,7 @@ bool PlayerEntity::tryBuyingCommodity(const std::string &index, bool all)
 		int contracted = [self cxx_contractedVolumeForGood:index];
 		if (manifest_quantity >= contracted)
 		{
-			purchase = [localMarket cxx_capacityForGood:index];
+			purchase = (localMarket != nullptr ? localMarket->capacityForGood(index) : 0);
 		}
 		else
 		{
@@ -11791,8 +11793,8 @@ bool PlayerEntity::tryBuyingCommodity(const std::string &index, bool all)
 		return NO;									// stop if that results in nothing to be bought
 	}
 	
-	[localMarket cxx_removeQuantity:purchase forGood:index];
-	[shipCommodityData cxx_addQuantity:purchase forGood:index];
+	if (localMarket != nullptr)  localMarket->removeQuantity(purchase, index);
+	if (shipCommodityData != nullptr)  shipCommodityData->addQuantity(purchase, index);
 	credits -= pricePerUnit * purchase;
 
 	[self calculateCurrentCargo];
@@ -11800,7 +11802,7 @@ bool PlayerEntity::tryBuyingCommodity(const std::string &index, bool all)
 	if ([UNIVERSE autoSave])  [UNIVERSE setAutoSaveNow:YES];
 	
 	[self cxx_doScriptEvent:OOJSID("playerBoughtCargo") withPListArguments:{ oo::PList(index), oo::PList::signedInteger(purchase), oo::PList::unsignedInteger(pricePerUnit) }];	// the same number kinds (signed, unsigned long long)
-	if ([localMarket cxx_exportLegalityForGood:index] > 0)
+	if ((localMarket != nullptr ? localMarket->exportLegalityForGood(index) : 0) > 0)
 	{
 		roleWeightFlags.insert_or_assign("bought-illegal", oo::PList::signedInteger(1));	// +numberWithInt:
 	}
@@ -11825,14 +11827,14 @@ bool PlayerEntity::trySellingCommodity(const std::string &index, bool all)
 	if (![self isDocked])  return NO; // can't sell if not docked.
 	
 	::OOCommodityMarket *localMarket = [self localMarket];
-	int available_units = [shipCommodityData cxx_quantityForGood:index];
-	OOCreditsQuantity pricePerUnit = [localMarket cxx_priceForGood:index];
+	int available_units = (shipCommodityData != nullptr ? shipCommodityData->quantityForGood(index) : 0);
+	OOCreditsQuantity pricePerUnit = (localMarket != nullptr ? localMarket->priceForGood(index) : 0);
 	
 	if (available_units == 0)  return NO;
 
-	int market_quantity = [localMarket cxx_quantityForGood:index];
+	int market_quantity = (localMarket != nullptr ? localMarket->quantityForGood(index) : 0);
 
-	int capacity = [localMarket cxx_capacityForGood:index];
+	int capacity = (localMarket != nullptr ? localMarket->capacityForGood(index) : 0);
 	int sell = 1;
 	if (all)
 	{
@@ -11855,8 +11857,8 @@ bool PlayerEntity::trySellingCommodity(const std::string &index, bool all)
 	if (sell <= 0)
 		return NO;								// stop if that results in nothing to be sold
 	
-	[localMarket cxx_addQuantity:sell forGood:index];
-	[shipCommodityData cxx_removeQuantity:sell forGood:index];
+	if (localMarket != nullptr)  localMarket->addQuantity(sell, index);
+	if (shipCommodityData != nullptr)  shipCommodityData->removeQuantity(sell, index);
 	credits += pricePerUnit * sell;
 
 	[self calculateCurrentCargo];

@@ -687,7 +687,7 @@ static bool SystemInfoGetProperty(Context cx, Object obj, PropertyId propID, Val
 	{
 		std::optional<std::string> key = cxx_OOStringFromJSString(context, (ooscript::idToString(propID)));
 		
-		cxx::OOSystemDescriptionManager *systemManager = oo::ToCxx([UNIVERSE systemManager]);
+		OOSystemDescriptionManager *systemManager = [UNIVERSE systemManager];
 		oo::PList propValue;
 		// interstellar space needs more work at this stage
 		if (SystemOf(info) != -1)
@@ -841,7 +841,7 @@ static bool SystemInfoSamplePrice(ooscript::Context context, ooscript::CallArgs 
 	OOSystemInfo		*thisInfo = nullptr;
 
 	if (!JSSystemInfoGetSystemInfo(context, OOJS_THIS, &thisInfo))  return false;
-	cxx::OOCommodities		*commodities = oo::ToCxx([UNIVERSE commodities]);	// null: no good is defined, as a message to nil
+	OOCommodities		*commodities = [UNIVERSE commodities];	// null: no good is defined, as a message to nil
 	std::optional<std::string> commodity = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(commodities == nullptr || !commodities->goodDefined(commodity.value_or(""))))
 	{
@@ -1096,7 +1096,7 @@ static bool SystemInfoStaticSetInterstellarProperty(ooscript::Context context, o
 
 	std::string key = oo::str::format("interstellar: %u %u %u",g,s1,s2);
 	
-	cxx::OOSystemDescriptionManager *systemManager = oo::ToCxx([UNIVERSE systemManager]);	// null: nothing set, as a message to nil
+	OOSystemDescriptionManager *systemManager = [UNIVERSE systemManager];	// null: nothing set, as a message to nil
 	if (systemManager != nullptr)  systemManager->setProperty(property.value_or(""), key, layer, value, ManifestString(manifest));
 
 	OOJS_RETURN_VOID;

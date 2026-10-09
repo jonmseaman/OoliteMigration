@@ -7,8 +7,9 @@
 	context on the game's own façade backend (ooscript/JSEngine_quickjs.cpp), links the game's own
 	objects for the binding, its bridge, the engine's exception translator
 	(OOJSEngineNativeWrappers.mm) and the converted classes it uses (OOCommodities and
-	OOCommodityMarket and OOEquipmentType, reached through their façades, and OOJSInterfaceDefinition,
-	C++ since bead oo-9ht.61 deleted its façade), and
+	OOCommodityMarket, C++ since beads oo-9ht.25 and oo-9ht.21 deleted their façades (held as
+	oo::Ref), OOEquipmentType, reached through its façade, and OOJSInterfaceDefinition, C++ since
+	bead oo-9ht.61 deleted its façade), and
 	stands in for the classes the binding messages (Entity, ShipEntity and StationEntity, the
 	player, the universe, the game controller and the ship registry answer only the selectors the
 	binding sends), for the resource manager and string expander the commodities call, the script
@@ -94,7 +95,7 @@ typedef OOEquipmentType* OOWeaponType;
 	BOOL _breakPattern;
 	std::vector<oo::PList> *_shipyard;
 	int _shipyardsMade;
-	OOCommodityMarket *_market;
+	oo::Ref<OOCommodityMarket> _market;
 	int _abortAll;
 	id _abortedShip;
 	BOOL _fits;
@@ -184,7 +185,7 @@ typedef OOEquipmentType* OOWeaponType;
 {
 @public
 	StationEntity *_station;
-	OOCommodities *_commodities;
+	oo::Ref<OOCommodities> _commodities;
 	GameController *_controller;
 	OOViewID _view;
 }
@@ -314,10 +315,10 @@ ShipEntity *NewShip(const char *name)
 - (BOOL) hasBreakPattern  { return _breakPattern; }
 - (void) setHasBreakPattern:(BOOL)newValue  { _breakPattern = newValue; }
 - (std::vector<oo::PList> *) cxx_localShipyard  { return _shipyard; }
-- (OOCommodityMarket *) localMarket  { return _market; }
-- (oo::PList) cxx_localMarketForScripting  { return [_market dictionaryForScripting]; }
-- (void) cxx_setPrice:(OOCreditsQuantity)price forCommodity:(const std::string &)commodity  { [_market cxx_setPrice:price forGood:commodity]; }
-- (void) cxx_setQuantity:(OOCargoQuantity)quantity forCommodity:(const std::string &)commodity  { [_market cxx_setQuantity:quantity forGood:commodity]; }
+- (OOCommodityMarket *) localMarket  { return _market.get(); }
+- (oo::PList) cxx_localMarketForScripting  { return _market->dictionaryForScripting(); }
+- (void) cxx_setPrice:(OOCreditsQuantity)price forCommodity:(const std::string &)commodity  { _market->setPrice(price, commodity); }
+- (void) cxx_setQuantity:(OOCargoQuantity)quantity forCommodity:(const std::string &)commodity  { _market->setQuantity(quantity, commodity); }
 - (void) abortAllDockings  { _abortAll++; }
 - (void) abortDockingForShip:(ShipEntity *)ship  { _abortedShip = ship; }
 - (BOOL) fitsInDock:(ShipEntity *)ship andLogNoFit:(BOOL)logNoFit  { (void)ship; (void)logNoFit; return _fits; }
@@ -400,7 +401,7 @@ ShipEntity *NewShip(const char *name)
 
 @implementation Universe
 - (StationEntity *) station  { return _station; }
-- (OOCommodities *) commodities  { return _commodities; }
+- (OOCommodities *) commodities  { return _commodities.get(); }
 - (GameController *) gameController  { return _controller; }
 - (void) setViewDirection:(OOViewID)vd  { _view = vd; }
 - (Random_Seed) marketSeed  { return Random_Seed{}; }
@@ -759,7 +760,7 @@ void SetUpContext()
 	sUniverse = [[Universe alloc] init];	// kept for the life of the test
 	gSharedUniverse = sUniverse;
 	sUniverse->_controller = [[GameController alloc] init];
-	sUniverse->_commodities = [[OOCommodities alloc] init];
+	sUniverse->_commodities = oo::makeRef<OOCommodities>();
 	sPlayer = [[PlayerEntity alloc] init];
 	sPlayer->_name = "player";
 	sPlayer->_screen = GUI_SCREEN_STATUS;
@@ -776,7 +777,7 @@ void SetUpContext()
 	sStation->_defenders = 4;
 	sStation->_techLevel = 9;
 	sStation->_priceFactor = 1.5f;
-	sStation->_market = [[sUniverse->_commodities generateBlankMarket] retain];
+	sStation->_market = sUniverse->_commodities->generateBlankMarket();
 	sUniverse->_station = sStation;
 	sOther = [[StationEntity alloc] init];
 	sOther->_name = "Rock Hermit";
@@ -982,11 +983,11 @@ OO_TEST(market)
 {
 	SetUpContext();
 	OO_CHECK_EVAL("station.setMarketPrice('food', 120)", "true");
-	OO_CHECK_EQ([sStation->_market cxx_priceForGood:"food"], 120u);
+	OO_CHECK_EQ(sStation->_market->priceForGood("food"), 120u);
 	// A blank market has no capacity: only 0 fits.
-	[sStation->_market cxx_setQuantity:5 forGood:"food"];
+	sStation->_market->setQuantity(5, "food");
 	OO_CHECK_EVAL("station.setMarketQuantity('food', 0)", "true");
-	OO_CHECK_EQ([sStation->_market cxx_quantityForGood:"food"], 0u);
+	OO_CHECK_EQ(sStation->_market->quantityForGood("food"), 0u);
 	OO_CHECK_EVAL("station.market.food.quantity + ' ' + station.market.food.price", "0 120");
 	OO_CHECK_EVAL("station.setMarketQuantity('food', 1)", "threw: bad arguments: Station.setMarketQuantity(2) - / Quantity must be between 0 and the station market capacity");
 	OO_CHECK_EVAL("station.setMarketQuantity('food', -1)", "threw: bad arguments: Station.setMarketQuantity(2) - / Quantity must be between 0 and the station market capacity");

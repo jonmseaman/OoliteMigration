@@ -45,10 +45,19 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	return dict.get<std::string>(key);
 }
 
+
+// [object intValue], as Foundation's number and string classes declared it (an Object node's
+// object may answer it): the method's implementation called with that type. The facade's
+// oo::SendIntValue sent it until bead oo-9ht.10 deleted the facade.
+int SendIntValue(id object, SEL intValue)
+{
+	using IntValueIMP = int (*)(id, SEL);
+	return reinterpret_cast<IntValueIMP>(class_getMethodImplementation(object_getClass(object), intValue))(object, intValue);
+}
+
 }	// namespace
 
 
-namespace cxx {
 
 std::optional<std::string> OOCharacter::descriptionComponents() const
 {
@@ -61,6 +70,21 @@ std::optional<std::string> OOCharacter::descriptionComponents() const
 std::optional<std::string> OOCharacter::oo_jsClassName()
 {
 	return std::string("Character");
+}
+
+
+std::string OOCharacter::className() const
+{
+	return "OOCharacter";
+}
+
+
+std::string OOCharacter::description() const
+{
+	std::string result = oo::str::format("<OOCharacter %s>", oo::str::pointerDescription(this).c_str());
+	const std::optional<std::string> components = descriptionComponents();
+	if (components.has_value())  result += "{" + *components + "}";
+	return result;
 }
 
 
@@ -457,9 +481,10 @@ void OOCharacter::setLegacyScript(const oo::PList &some_actions)
 
 void OOCharacter::setCharacterScript(const std::string &scriptName)
 {
-	// (the script's "character" is this character's Objective-C facade, as it was self)
+	// (the script's "character" is this character, an Object node, as it was self; it reaches
+	// JavaScript as undefined, as the facade did)
 	_script = oo::ObjCRef<::OOJSScript *>([::OOScript cxx_jsScriptFromFileNamed:scriptName
-																  properties:oo::PList(oo::PList::Dict{ { "character", oo::PListObject(oo::ToObjC(this)) } })]);
+																  properties:oo::PList(oo::PList::Dict{ { "character", oo::PList(oo::PList::Object(oo::Ref<oo::PListForeign>(this))) } })]);
 }
 
 
@@ -481,7 +506,7 @@ void OOCharacter::setCharacterFromDictionary(const oo::PList &dict)
 	const std::string	*originName = (origin != nullptr) ? origin->getIf<std::string>() : nullptr;
 	id					originObject = (origin != nullptr) ? oo::ObjectIn(*origin) : nil;
 	const SEL			intValue = OOSelectorFromName("intValue");
-	const int			originValue = (originObject != nil) ? ([originObject respondsToSelector:intValue] ? oo::SendIntValue(originObject) : 0) : dict.get<int>("origin");
+	const int			originValue = (originObject != nil) ? ([originObject respondsToSelector:intValue] ? SendIntValue(originObject, intValue) : 0) : dict.get<int>("origin");
 	if ((origin != nullptr && origin->isNumber()) ||
 		(((originName != nullptr) || [originObject respondsToSelector:intValue]) && (originValue != 0 || (originName != nullptr && *originName == "0"))))
 	{
@@ -534,4 +559,3 @@ void OOCharacter::setCharacterFromDictionary(const oo::PList &dict)
 
 }
 
-}	// namespace cxx

@@ -132,14 +132,14 @@ void PlayerEntity::awardCommodityType(const std::string &type, OOCargoQuantity a
 	::PlayerEntity *self = oo::ToObjC(this);
 	OOMassUnit				unit;
 
-	if (![[UNIVERSE commodities] cxx_goodDefined:type])
+	if (!([UNIVERSE commodities] != nullptr ? [UNIVERSE commodities]->goodDefined(type) : false))
 	{
 		return;
 	}
 	
 	OO_LOG("script.debug.note.awardCargo", "Going to award cargo: {} x '{}'", static_cast<int>(amount), type);
 
-	unit = [shipCommodityData massUnitForGood:type];
+	unit = (shipCommodityData != nullptr ? shipCommodityData->massUnitForGood(type) : UNITS_TONS);
 	
 	if ([self status] != STATUS_DOCKED)
 	{
@@ -151,7 +151,7 @@ void PlayerEntity::awardCommodityType(const std::string &type, OOCargoQuantity a
 				if (specialCargo)
 				{
 					// is this correct behaviour?
-					[shipCommodityData cxx_addQuantity:amount forGood:type];
+					if (shipCommodityData != nullptr)  shipCommodityData->addQuantity(amount, type);
 				}
 				else
 				{
@@ -205,14 +205,14 @@ void PlayerEntity::awardCommodityType(const std::string &type, OOCargoQuantity a
 	else
 	{	// docked
 		// like purchasing a commodity
-		int manifest_quantity = [shipCommodityData cxx_quantityForGood:type];
+		int manifest_quantity = (shipCommodityData != nullptr ? shipCommodityData->quantityForGood(type) : 0);
 		while ((amount)&&(current_cargo < [self maxAvailableCargoSpace]))
 		{
 			manifest_quantity++;
 			amount--;
 			if (unit == UNITS_TONS)  current_cargo++;
 		}
-		[shipCommodityData cxx_setQuantity:manifest_quantity forGood:type];
+		if (shipCommodityData != nullptr)  shipCommodityData->setQuantity(manifest_quantity, type);
 	}
 	[self calculateCurrentCargo];
 }
@@ -297,21 +297,21 @@ OOTimeDelta PlayerEntity::scriptTimer()
  * reset it after generating the number. */
 unsigned PlayerEntity::systemPseudoRandom100()
 {
-	seed_RNG_only_for_planet_description([[UNIVERSE systemManager] getRandomSeedForCurrentSystem]);
+	seed_RNG_only_for_planet_description(([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getRandomSeedForCurrentSystem() : Random_Seed()));
 	return (gen_rnd_number() * 256 + gen_rnd_number()) % 100;
 }
 
 
 unsigned PlayerEntity::systemPseudoRandom256()
 {
-	seed_RNG_only_for_planet_description([[UNIVERSE systemManager] getRandomSeedForCurrentSystem]);
+	seed_RNG_only_for_planet_description(([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getRandomSeedForCurrentSystem() : Random_Seed()));
 	return gen_rnd_number();
 }
 
 
 double PlayerEntity::systemPseudoRandomFloat()
 {
-	seed_RNG_only_for_planet_description([[UNIVERSE systemManager] getRandomSeedForCurrentSystem]);
+	seed_RNG_only_for_planet_description(([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getRandomSeedForCurrentSystem() : Random_Seed()));
 	unsigned a = gen_rnd_number();
 	unsigned b = gen_rnd_number();
 	unsigned c = gen_rnd_number();

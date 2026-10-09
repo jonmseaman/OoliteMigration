@@ -72,7 +72,7 @@ oo::PList Good(std::initializer_list<std::pair<const char *, oo::PList>> entries
 @interface Universe: OOObject
 {
 @public
-	OOCommodityMarket	*market;
+	oo::Ref<OOCommodityMarket>	market;
 }
 - (oo::PList) cxx_equipmentData;
 - (oo::PList) cxx_equipmentDataOutfitting;
@@ -90,7 +90,7 @@ oo::PList Good(std::initializer_list<std::pair<const char *, oo::PList>> entries
 	return &descriptions;
 }
 - (std::optional<std::string>) cxx_descriptionForKey:(const std::string &)key	{ return std::nullopt; }
-- (OOCommodityMarket *) commodityMarket		{ return market; }
+- (OOCommodityMarket *) commodityMarket		{ return market.get(); }
 @end
 
 Universe *gSharedUniverse = nil;
@@ -243,14 +243,14 @@ OO_TEST(massUnitOfACommodity)
 		LoadEquipment();
 
 		// No market: a message to nil answered 0, UNITS_TONS.
-		gSharedUniverse->market = nil;
+		gSharedUniverse->market = nullptr;
 		OO_CHECK(cxx_DisplayStringForMassUnitForCommodity("gold") == std::optional<std::string>("t"));
 
-		OOCommodityMarket *market = [[[OOCommodityMarket alloc] init] autorelease];
-		[market cxx_setGood:"gold" withInfo:Good({ { "name", oo::PList("Gold") }, { "quantity_unit", oo::PList(1) } })];
-		[market cxx_setGood:"gems" withInfo:Good({ { "name", oo::PList("Gem-stones") }, { "quantity_unit", oo::PList(2) } })];
-		[market cxx_setGood:"food" withInfo:Good({ { "name", oo::PList("Food") }, { "quantity_unit", oo::PList(0) } })];
-		[market cxx_setGood:"alloys" withInfo:Good({ { "name", oo::PList("Alloys") }, { "quantity_unit", oo::PList(7) } })];
+		oo::Ref<OOCommodityMarket> market = oo::makeRef<OOCommodityMarket>();
+		market->setGood("gold", Good({ { "name", oo::PList("Gold") }, { "quantity_unit", oo::PList(1) } }));
+		market->setGood("gems", Good({ { "name", oo::PList("Gem-stones") }, { "quantity_unit", oo::PList(2) } }));
+		market->setGood("food", Good({ { "name", oo::PList("Food") }, { "quantity_unit", oo::PList(0) } }));
+		market->setGood("alloys", Good({ { "name", oo::PList("Alloys") }, { "quantity_unit", oo::PList(7) } }));
 		gSharedUniverse->market = market;
 
 		OO_CHECK(cxx_DisplayStringForMassUnitForCommodity("gold") == std::optional<std::string>("kg"));
@@ -259,7 +259,7 @@ OO_TEST(massUnitOfACommodity)
 		OO_CHECK(cxx_DisplayStringForMassUnitForCommodity("unobtainium") == std::optional<std::string>("t"));
 		OO_CHECK(cxx_DisplayStringForMassUnitForCommodity("alloys") == cxx_DisplayStringForMassUnit(UNITS_UNKNOWN));
 
-		gSharedUniverse->market = nil;
+		gSharedUniverse->market = nullptr;
 	}
 }
 

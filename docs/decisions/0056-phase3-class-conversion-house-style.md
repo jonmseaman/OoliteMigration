@@ -5169,3 +5169,48 @@ the `oo::Ref`/pointer fallout the same way.
 **Consequences.** No Objective-C `OOColor`, `GuiDisplayGen` or `HeadUpDisplay` is left;
 `OODebugGLDrawing` takes the C++ colour and waits only for the OOMaterial facade (oo-9ht.8) to become
 the `.cpp` rename of oo-hrcs. The beacon code icon's facade is the HUD's last Objective-C.
+
+## Amendment (bead oo-9ht.21): the planetinfo, commodity, market and character facades in one change
+
+- Date: 2026-10-09. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch E
+  (one branch, as batches B-D): beads oo-9ht.32 (OOSystemDescriptionManager), oo-9ht.25
+  (OOCommodities), oo-9ht.21 (OOCommodityMarket), oo-9ht.10 (OOCharacter). Exemplar:
+  `src/Core/OOCharacter.h/.mm`, `Universe.h/.mm`, `Entities/PlayerEntity.mm`,
+  `tests/unit/core/test_OOCommodities.mm`, `test_OOCharacter.mm`.
+
+**Decision (recommended defaults).**
+
+1. **Members of the giants that retained one of these facades are `oo::Ref`** (the universe's
+   commodities, main market, system manager and character pool, the player's manifest, a station's
+   market, a ship's crew); the giants' getters and the facades' selectors that answered them answer
+   the C++ object borrowed. A facade selector that answered a new object
+   (`+[ResourceManager systemDescriptionManager]`) answers `oo::Ref` (amendment oo-9ht.1 item 2).
+   `DESTROY(x); x = [[maker ...] retain];` is one assignment.
+2. **What the universe replaced while it was autoreleased is kept until the next replacement**
+   (`replacedCommodities`, `replacedSystemManager`, `replacedCharacterPool`), as amendment oo-9ht.1
+   item 4 keeps the GUIs; a screen that made a blank market for its pass holds it in a local
+   `oo::Ref`.
+3. **A character is its own `PList::Object` payload** (`oo::PListForeign`, as `OOColor` is), so its
+   script's `"character"` property still carries it; it reaches JavaScript as `undefined`, as the
+   facade did (the root class's glue). Its `className()`/`description()` answer what the facade's
+   node printed. The facade's `oo::SendIntValue` (an `-intValue` send to an Object node's object)
+   becomes a file-scope helper in `OOCharacter.mm` that calls the method's implementation with the
+   type Foundation declared, through the runtime's C API (no Objective-C syntax).
+4. **Nil stays harmless where it was** (amendment oo-9ht.1 item 3). The universe's system manager,
+   commodities and main market are null until `setUpSettings()` makes them (the ship registry
+   loads first) and in the tests' bare universes; the player's manifest is null when
+   `-deferredInit` first empties the hold; a station's market is null when there are no
+   commodities. Every member call through them is guarded and answers what the message to nil
+   answered (zero, false, `UNITS_TONS`, a null PList, an empty list, a zero seed, a null market),
+   and a statement call is skipped. The string expander's seed (`OOStringExpander+ObjCBridge.mm`)
+   answers a zero seed. A crew's characters are not guarded: the factories never answer null. The
+   bindings that already guarded a null (`OOJSManifest`, `OOJSStation`, `OOJSSystemInfo`,
+   `WormholeEntity`) keep their guards and drop the `oo::ToCxx` crossing.
+5. **Tests** (standing approval oo-9n5p9): the facade-contract cases go (nil crossings and messages
+   to nil, `oo::ToObjC(oo::ToCxx())` identity, a C++ object's one facade); the cases that asked
+   through selectors ask the C++ class, holding the factories' `oo::Ref` where the autoreleased
+   facade was; stand-ins that held a facade in an ivar hold `oo::Ref` and answer it borrowed.
+
+**Consequences.** No Objective-C `OOSystemDescriptionManager`, `OOCommodities`, `OOCommodityMarket`
+or `OOCharacter` is left. The ship registry's, the equipment type's, the ship group's and the
+scripts' facades are the data-model facades still standing.

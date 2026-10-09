@@ -1164,7 +1164,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			return true;
 			
 		case kShip_isPiloted:
-			*value = OOJSValueFromBOOL(ship->getIsPlayer() || ship->getCrew().value_or(std::vector<oo::ObjCRef<OOCharacter *>>()).size() > 0);
+			*value = OOJSValueFromBOOL(ship->getIsPlayer() || ship->getCrew().value_or(std::vector<oo::Ref<OOCharacter>>()).size() > 0);
 			return true;
 			
 		case kShip_scriptedMisjump:
@@ -3298,7 +3298,7 @@ static bool ShipSetCargo(ooscript::Context context, ooscript::CallArgs &oojsArgs
 		return false;
 	}
 	
-	cxx::OOCommodities *commodities = oo::ToCxx(OOJSShipUniverseCommodities());	// null: no good is defined, as a message to nil
+	OOCommodities *commodities = OOJSShipUniverseCommodities();	// null: no good is defined, as a message to nil
 	if (commodities != nullptr && commodities->goodDefined(*commodity))
 	{
 		ship->setCommodityForPod(commodity, count);
@@ -3338,9 +3338,9 @@ static bool ShipSetCrew(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 		}
 		else
 		{
-			const oo::Ref<cxx::OOCharacter> crew = cxx::OOCharacter::characterWithDictionary(cxx_OOJSPListFromJSObject(context, ooscript::toObject(OOJS_ARGV[0])));
-			std::vector<oo::ObjCRef<OOCharacter *>> members;
-			if (crew != nullptr)  members.emplace_back(oo::ToObjC(crew));	// a nil character was skipped (a Foundation array cannot hold nil)
+			const oo::Ref<OOCharacter> crew = OOCharacter::characterWithDictionary(cxx_OOJSPListFromJSObject(context, ooscript::toObject(OOJS_ARGV[0])));
+			std::vector<oo::Ref<OOCharacter>> members;
+			if (crew != nullptr)  members.emplace_back(crew);	// a nil character was skipped (a Foundation array cannot hold nil)
 			ship->setCrew(members);
 		}
 	}

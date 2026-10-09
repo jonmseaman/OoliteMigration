@@ -124,7 +124,6 @@ bool ContainsString(const oo::PList &array, const std::string &string)
 
 } // namespace
 
-namespace cxx {
 
 std::optional<std::string> OOCommodities::legacyCommodityType(NSUInteger i)
 {
@@ -349,7 +348,7 @@ oo::Ref<OOCommodityMarket> OOCommodities::generateMarketForStation(::StationEnti
 
 	oo::Ref<OOCommodityMarket> market = oo::makeRef<OOCommodityMarket>();
 	OOCargoQuantity capacity = [station marketCapacity];
-	OOCommodityMarket *mainMarket = oo::ToCxx([UNIVERSE commodityMarket]);	// (the Objective-C facade Universe holds)
+	OOCommodityMarket *mainMarket = [UNIVERSE commodityMarket];
 
 	for (const auto &[commodity, info] : _commodityLists)	// key order (bead oo-3rb.154)
 	{
@@ -657,4 +656,3 @@ oo::PList OOCommodities::updateInfoFor(const oo::PList &good, const oo::PList &r
 	return tmp;
 }
 
-}	// namespace cxx

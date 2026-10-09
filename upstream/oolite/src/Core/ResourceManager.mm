@@ -1986,10 +1986,10 @@ void cxx::ResourceManager::mergeRoleCategories(const oo::PList &catData, oo::PLi
 }
 
 
-oo::Ref<cxx::OOSystemDescriptionManager> cxx::ResourceManager::systemDescriptionManager()
+oo::Ref<OOSystemDescriptionManager> cxx::ResourceManager::systemDescriptionManager()
 {
 	OO_LOG("resourceManager.planetinfo.load", "{}", "Initialising manager");
-	oo::Ref<cxx::OOSystemDescriptionManager> manager = oo::makeRef<cxx::OOSystemDescriptionManager>();
+	oo::Ref<OOSystemDescriptionManager> manager = oo::makeRef<OOSystemDescriptionManager>();
 	
 	// OODictionaryFromFile (OOPListParsing) and OOSystemDescriptionManager are unmigrated callees:
 	// the planetinfo dictionaries arrive through oo::PListFrom and leave through oo::ObjectFromPList.

@@ -220,7 +220,7 @@ static bool ManifestGetProperty(Context cx, Object obj, PropertyId propID, Value
 		 * compatible-ish with 1.80 and earlier except that
 		 * alienItems and similar aliases don't work */
 		std::string key = cxx_OOStringFromJSString(context, ooscript::idToString(propID)).value_or(std::string());
-		cxx::OOCommodities *commodities = oo::ToCxx([UNIVERSE commodities]);	// null: no good is defined, as a message to nil
+		OOCommodities *commodities = [UNIVERSE commodities];	// null: no good is defined, as a message to nil
 		if (commodities != nullptr && commodities->goodDefined(key))
 		{
 			*value = ooscript::int32Value([entity cxx_cargoQuantityForType:key]);
@@ -255,7 +255,7 @@ static bool ManifestSetProperty(Context cx, Object obj, PropertyId propID, bool 
 	{
 		std::string key = cxx_OOStringFromJSString(context, ooscript::idToString(propID)).value_or(std::string());
 
-		cxx::OOCommodityMarket *market = oo::ToCxx([UNIVERSE commodityMarket]);
+		OOCommodityMarket *market = [UNIVERSE commodityMarket];
 		OOMassUnit unit = (market != nullptr) ? market->massUnitForGood(key) : UNITS_TONS;	// UNITS_TONS (0): what a message to nil answered
 		// we can always change gold, platinum & gem-stones quantities, even with special cargo
 		if (unit == UNITS_TONS && [entity cxx_specialCargo].has_value())
@@ -303,7 +303,7 @@ static bool ManifestComment(ooscript::Context context, ooscript::CallArgs &oojsA
 		return false;
 	}
 
-	cxx::OOCommodityMarket *market = oo::ToCxx([PLAYER shipCommodityData]);	// null: no comment, as a message to nil
+	OOCommodityMarket *market = [PLAYER shipCommodityData];	// null: no comment, as a message to nil
 	if (market != nullptr)  information = market->commentForGood(*good);
 
 	OOJS_RETURN_STRING_OR_NULL(information);
@@ -335,7 +335,7 @@ static bool ManifestSetComment(ooscript::Context context, ooscript::CallArgs &oo
 		return false;
 	}
 
-	cxx::OOCommodityMarket *market = oo::ToCxx([PLAYER shipCommodityData]);	// null: false, as a message to nil
+	OOCommodityMarket *market = [PLAYER shipCommodityData];	// null: false, as a message to nil
 	OK = market != nullptr && market->setComment(*information, *good);
 
 	OOJS_RETURN_BOOL(OK);
@@ -365,7 +365,7 @@ static bool ManifestShortComment(ooscript::Context context, ooscript::CallArgs &
 		return false;
 	}
 
-	cxx::OOCommodityMarket *market = oo::ToCxx([PLAYER shipCommodityData]);	// null: no comment, as a message to nil
+	OOCommodityMarket *market = [PLAYER shipCommodityData];	// null: no comment, as a message to nil
 	if (market != nullptr)  information = market->shortCommentForGood(*good);
 
 	OOJS_RETURN_STRING_OR_NULL(information);
@@ -397,7 +397,7 @@ static bool ManifestSetShortComment(ooscript::Context context, ooscript::CallArg
 		return false;
 	}
 
-	cxx::OOCommodityMarket *market = oo::ToCxx([PLAYER shipCommodityData]);	// null: false, as a message to nil
+	OOCommodityMarket *market = [PLAYER shipCommodityData];	// null: false, as a message to nil
 	OK = market != nullptr && market->setShortComment(*information, *good);
 
 	OOJS_RETURN_BOOL(OK);

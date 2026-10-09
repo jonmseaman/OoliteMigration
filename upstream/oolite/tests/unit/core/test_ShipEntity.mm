@@ -1796,10 +1796,10 @@ OO_TEST(crewAndAI)
 		SetUp();
 		TestShip *ship = FlyingShip("crewed");
 		OO_CHECK(![ship cxx_crew].has_value() && [ship cxx_crewForScripting].empty());
-		[ship cxx_setCrew:std::vector<oo::ObjCRef<OOCharacter *>>{}];
+		[ship cxx_setCrew:std::vector<oo::Ref<OOCharacter>>{}];
 		OO_CHECK([ship cxx_crew].has_value() && [ship cxx_crew]->empty());
 		SetExplicitlyUnpiloted(ship, true);
-		[ship cxx_setCrew:std::vector<oo::ObjCRef<OOCharacter *>>{}];	// unpiloted ships have none
+		[ship cxx_setCrew:std::vector<oo::Ref<OOCharacter>>{}];	// unpiloted ships have none
 		OO_CHECK(![ship cxx_crew].has_value());
 
 		OO_CHECK([ship getAI] == nil && ![ship hasNewAI]);

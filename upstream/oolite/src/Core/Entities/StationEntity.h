@@ -224,7 +224,7 @@ public:
 
 	std::optional<std::string>	allegiance;			// nullopt: none (was nil)
 	
-	::OOCommodityMarket		*localMarket = {};
+	oo::Ref<OOCommodityMarket>	localMarket;
 	OOCargoQuantity			marketCapacity = {};
 	oo::PList				marketDefinition;			// an array; null: none (was nil)
 	std::optional<std::string>	marketScriptName;		// nullopt: none (was nil)

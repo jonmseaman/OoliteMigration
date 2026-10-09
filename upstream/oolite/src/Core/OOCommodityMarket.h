@@ -5,10 +5,8 @@ OOCommodityMarket.h
 Commodity price and quantity list for a particular station/system
 Also used for the player ship's docked manifest
 
-C++20 since bead oo-ih7y (Phase 3, proposed ADR-0056). The class is cxx::OOCommodityMarket while
-OOCommodityMarket+ObjCBridge.h, imported at the end of this header, keeps the Objective-C
-OOCommodityMarket its unconverted callers message; the bridge's deletion bead moves it out of
-namespace cxx.
+C++20 since bead oo-ih7y (Phase 3, proposed ADR-0056). Its Objective-C facade was deleted by bead
+oo-9ht.21 (batch E); the universe, the player and the stations hold markets as oo::Ref.
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -47,8 +45,6 @@ MA 02110-1301, USA.
 	-massUnitForGood: takes const std::string &; -dictionaryForScripting hands JavaScript a
 	PList dictionary.
 */
-namespace cxx {
-
 class OOCommodityMarket : public oo::RefCounted
 {
 public:
@@ -96,11 +92,6 @@ private:
 	std::optional<std::vector<std::string>>			_sortedKeys;	// goods(), built on first use
 };
 
-}	// namespace cxx
 
-
-// Transitional: the Objective-C OOCommodityMarket, for callers not yet converted. Deleted, with
-// namespace cxx above, by the bridge's deletion bead.
-#import "OOCommodityMarket+ObjCBridge.h"
 
 #endif	// OOCOMMODITYMARKET_H
