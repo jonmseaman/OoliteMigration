@@ -26,27 +26,11 @@ MA 02110-1301, USA.
 
 #include "PlayerEntity.h"
 
+/*	Beads oo-hsilb, oo-56tmj, oo-4216h, oo-n8wn2, oo-uq8px, oo-fz3l8 and oo-lmdi8 (ADR-0056 amendment
+	oo-lmdi8): the categories PlayerEntity (Controls) and (OOControlsPrivate) are members of
+	cxx::PlayerEntity, declared in PlayerEntity.h and defined in PlayerEntityControls.mm. Its Objective-C interface,
+	for the callers that remain, is the category of the same name in PlayerEntity+ObjCBridge.h,
+	which PlayerEntity.h imports. This header stays for the files that import it.
+*/
 
-@interface PlayerEntity (Controls)
 
-- (void) initControls;
-- (void) initKeyConfigSettings;
-
-- (void) pollControls:(double)delta_t;
-- (BOOL) handleGUIUpDownArrowKeys;
-- (void) clearPlanetSearchString;
-- (void) targetNewSystem:(int) direction;
-- (void) switchToMainView;
-- (void) noteSwitchToView:(OOViewID)toView fromView:(OOViewID)fromView;
-- (void) beginWitchspaceCountdown:(int)spin_time;
-- (void) beginWitchspaceCountdown;
-- (void) cancelWitchspaceCountdown;
-- (oo::PList) cxx_processKeyCode:(const oo::PList &)key_def;	// an Array of key-definition Dicts, each fully expanded
-- (BOOL) checkNavKeyPress:(const oo::PList &)key_def;
-- (BOOL) checkKeyPress:(const oo::PList &)key_def;
-- (BOOL) checkKeyPress:(const oo::PList &)key_def fKey_only:(BOOL)fKey_only;
-- (BOOL) checkKeyPress:(const oo::PList &)key_def ignore_ctrl:(BOOL)ignore_ctrl;
-- (BOOL) checkKeyPress:(const oo::PList &)key_def fKey_only:(BOOL)fKey_only ignore_ctrl:(BOOL)ignore_ctrl;
-- (int) getFirstKeyCode:(const oo::PList &)key_def;
-
-@end

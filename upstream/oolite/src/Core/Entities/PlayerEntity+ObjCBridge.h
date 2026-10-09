@@ -866,6 +866,648 @@ MA 02110-1301, USA.
 @end
 
 
+// Formerly the (Sound) category (PlayerEntitySound.mm, bead oo-xowh): members of cxx::PlayerEntity, forwarded by
+// the category of the same name in PlayerEntity+ObjCBridge.mm.
+@interface PlayerEntity (OOSound)
+
+- (void) setUpSound;
+- (void) setUpWeaponSounds;
+- (void) destroySound;
+- (BOOL) isBeeping;
+- (void) boop;
+- (void) playIdentOn;
+- (void) playIdentOff;
+- (void) playIdentLockedOn;
+- (void) playMissileArmed;
+- (void) playMineArmed;
+- (void) playMissileSafe;
+- (void) playMissileLockedOn;
+- (void) playNextEquipmentSelected;
+- (void) playNextMissileSelected;
+- (void) playWeaponsOnline;
+- (void) playWeaponsOffline;
+- (void) playCargoJettisioned;
+- (void) playAutopilotOn;
+- (void) playAutopilotOff;
+- (void) playAutopilotOutOfRange;
+- (void) playAutopilotCannotDockWithTarget;
+- (void) playSaveOverwriteYes;
+- (void) playSaveOverwriteNo;
+- (void) playHoldFull;
+- (void) playJumpMassLocked;
+- (void) playTargetLost;
+- (void) playNoTargetInMemory;
+- (void) playTargetSwitched;
+- (void) playHyperspaceNoTarget;
+- (void) playHyperspaceNoFuel;
+- (void) playHyperspaceBlocked;
+- (void) playHyperspaceDistanceTooGreat;
+- (void) playCloakingDeviceOn;
+- (void) playCloakingDeviceOff;
+- (void) playMenuNavigationUp;
+- (void) playMenuNavigationDown;
+- (void) playMenuNavigationNot;
+- (void) playMenuPagePrevious;
+- (void) playMenuPageNext;
+- (void) playDismissedReportScreen;
+- (void) playDismissedMissionScreen;
+- (void) playChangedOption;
+- (void) updateFuelScoopSoundWithInterval:(OOTimeDelta)delta_t;
+- (void) updateAfterburnerSound;
+- (void) startAfterburnerSound;
+- (void) stopAfterburnerSound;
+- (void) playCloakingDeviceInsufficientEnergy;
+- (void) playBuyCommodity;
+- (void) playBuyShip;
+- (void) playSellCommodity;
+- (void) playCantBuyCommodity;
+- (void) playCantSellCommodity;
+- (void) playCantBuyShip;
+- (void) playStandardHyperspace;
+- (void) playGalacticHyperspace;
+- (void) playHyperspaceAborted;
+- (void) playHitByECMSound;
+- (void) playFiredECMSound;
+- (void) playLaunchFromStation;
+- (void) playDockWithStation;
+- (void) playExitWitchspace;
+- (void) playHostileWarning;
+- (void) playAlertConditionRed;
+- (void) playIncomingMissile:(Vector)missileVector;
+- (void) playEnergyLow;
+- (void) playDockingDenied;
+- (void) playWitchjumpFailure;
+- (void) playWitchjumpMisjump;
+- (void) playWitchjumpBlocked;
+- (void) playWitchjumpDistanceTooGreat;
+- (void) playWitchjumpInsufficientFuel;
+- (void) playFuelLeak;
+- (void) cxx_playShieldHit:(Vector)attackVector weaponIdentifier:(const std::string &)weaponIdentifier;
+- (void) cxx_playDirectHit:(Vector)attackVector weaponIdentifier:(const std::string &)weaponIdentifier;
+- (void) playScrapeDamage:(Vector)attackVector;
+- (void) cxx_playLaserHit:(BOOL)hit offset:(Vector)weaponOffset weaponIdentifier:(const std::string &)weaponIdentifier;
+- (void) playWeaponOverheated:(Vector)weaponOffset;
+- (void) cxx_playMissileLaunched:(Vector)weaponOffset weaponIdentifier:(const std::string &)weaponIdentifier;
+- (void) cxx_playMineLaunched:(Vector)weaponOffset weaponIdentifier:(const std::string &)weaponIdentifier;
+- (void) playEscapePodScooped;
+- (void) playAegisCloseToPlanet;
+- (void) playAegisCloseToStation;
+- (void) playGameOver;
+- (void) playLegacyScriptSound:(const std::string &)key;
+- (void) cxx_scheduleAfterburnerSoundUpdate;	// OOScheduleDeferredCall(self, -updateAfterburnerSound, 1.25 s); the C++ member cannot name the selector
+
+@end
+
+
+// The category (StickMapper) of PlayerEntityStickMapper.mm: members of cxx::PlayerEntity defined in that file, forwarded by
+// the category of the same name in PlayerEntity+ObjCBridge.mm (ADR-0056 amendment oo-lmdi8).
+@interface PlayerEntity (StickMapper)
+
+   - (void) resetStickFunctions;
+   - (void) setGuiToStickMapperScreen: (unsigned)skip resetCurrentRow: (BOOL) resetCurrentRow;
+   - (void) setGuiToStickMapperScreen: (unsigned)skip;
+   - (void) stickMapperInputHandler: (GuiDisplayGen *)gui
+							   view: (MyOpenGLView *)gameView;
+   // Callback method: called by name (-performSelector:withObject:) by OOJoystickManager with an
+   // Objective-C dictionary, so its parameter stays an object (proposed ADR-0043).
+   - (void) updateFunction: (const oo::PList &)hwDict;
+
+   // Future: populate via plist
+   - (oo::PList)makeStickGuiDictHeader:(const std::string &)header;
+   - (oo::PList)makeStickGuiDict: (const std::string &)what  
+							allowable: (int)allowable
+							   axisfn: (int)axisfn
+								butfn: (int)butfn;
+                              
+@end
+
+
+// The private category (StickMapperInternal) of PlayerEntityStickMapper.mm, moved here with its members' forwarders.
+@interface PlayerEntity (StickMapperInternal)
+
+- (void) resetStickFunctions;
+- (void) checkCustomEquipButtons:(const oo::PList &)stickFn ignore:(int)idx;
+- (void) removeFunction:(int)selFunctionIdx;
+- (std::vector<oo::PList>)stickFunctionList;
+- (void)displayFunctionList:(GuiDisplayGen *)gui
+					   skip:(NSUInteger) skip;
+- (std::optional<std::string>)describeStickDict:(const oo::PList *)stickDict;	// nullptr: nil
+- (std::string)hwToString:(int)hwFlags;
+
+@end
+
+// The category (StickProfile) of PlayerEntityStickProfile.mm: members of cxx::PlayerEntity defined in that file, forwarded by
+// the category of the same name in PlayerEntity+ObjCBridge.mm (ADR-0056 amendment oo-lmdi8).
+@interface PlayerEntity (StickProfile)
+
+- (void) setGuiToStickProfileScreen: (GuiDisplayGen *) gui;
+- (void) stickProfileInputHandler: (GuiDisplayGen *) gui view: (MyOpenGLView *) gameView;
+- (void) stickProfileGraphAxisProfile: (GLfloat) alpha screenAt: (Vector) screenAt screenSize: (NSSize) screenSize;
+
+@end
+
+// The category (Controls) of PlayerEntityControls.mm: members of cxx::PlayerEntity defined in that file, forwarded by
+// the category of the same name in PlayerEntity+ObjCBridge.mm (ADR-0056 amendment oo-lmdi8).
+@interface PlayerEntity (Controls)
+
+- (void) initControls;
+- (void) initKeyConfigSettings;
+
+- (void) pollControls:(double)delta_t;
+- (BOOL) handleGUIUpDownArrowKeys;
+- (void) clearPlanetSearchString;
+- (void) targetNewSystem:(int) direction;
+- (void) switchToMainView;
+- (void) noteSwitchToView:(OOViewID)toView fromView:(OOViewID)fromView;
+- (void) beginWitchspaceCountdown:(int)spin_time;
+- (void) beginWitchspaceCountdown;
+- (void) cancelWitchspaceCountdown;
+- (oo::PList) cxx_processKeyCode:(const oo::PList &)key_def;	// an Array of key-definition Dicts, each fully expanded
+- (BOOL) checkNavKeyPress:(const oo::PList &)key_def;
+- (BOOL) checkKeyPress:(const oo::PList &)key_def;
+- (BOOL) checkKeyPress:(const oo::PList &)key_def fKey_only:(BOOL)fKey_only;
+- (BOOL) checkKeyPress:(const oo::PList &)key_def ignore_ctrl:(BOOL)ignore_ctrl;
+- (BOOL) checkKeyPress:(const oo::PList &)key_def fKey_only:(BOOL)fKey_only ignore_ctrl:(BOOL)ignore_ctrl;
+- (int) getFirstKeyCode:(const oo::PList &)key_def;
+
+
+// Defined in PlayerEntityControls.mm, declared by no interface before the conversion.
+- (void) targetNewSystem:(int) direction whileTyping:(BOOL) whileTyping;
+
+@end
+
+
+// The private category (OOControlsPrivate) of PlayerEntityControls.mm, moved here with its members' forwarders.
+@interface PlayerEntity (OOControlsPrivate)
+
+- (void) pollFlightControls:(double) delta_t;
+- (void) pollFlightArrowKeyControls:(double) delta_t;
+- (void) pollGuiArrowKeyControls:(double) delta_t;
+- (void) handleGameOptionsScreenKeys;
+- (void) handleKeyMapperScreenKeys;
+- (void) handleKeyboardLayoutKeys;
+- (void) handleStickMapperScreenKeys;
+- (void) pollApplicationControls;
+- (void) pollCustomViewControls;
+- (void) pollViewControls;
+- (void) pollGuiScreenControls;
+- (void) pollGuiScreenControlsWithFKeyAlias:(BOOL)fKeyAlias;
+- (void) pollMarketScreenControls;
+- (void) handleUndockControl;
+- (void) pollGameOverControls:(double) delta_t;
+- (void) pollAutopilotControls:(double) delta_t;
+- (void) pollDockedControls:(double) delta_t;
+- (void) pollDemoControls:(double) delta_t;
+- (void) pollMissionInterruptControls;
+- (void) handleMissionCallback;
+- (void) setGuiToMissionEndScreen;
+- (void) switchToThisView:(OOViewID)viewDirection;
+- (void) switchToThisView:(OOViewID)viewDirection andProcessWeaponFacing:(BOOL)processWeaponFacing;
+- (void) switchToThisView:(OOViewID)viewDirection fromView:(OOViewID)oldViewDirection andProcessWeaponFacing:(BOOL)processWeaponFacing justNotify:(BOOL)justNotify;
+
+- (void) handleAutopilotOn:(BOOL)fastDocking;
+
+// Handlers for individual controls
+- (void) handleButtonIdent;
+- (void) handleButtonTargetMissile;
+@end
+
+// The category (KeyMapper) of PlayerEntityKeyMapper.mm: members of cxx::PlayerEntity defined in that file, forwarded by
+// the category of the same name in PlayerEntity+ObjCBridge.mm (ADR-0056 amendment oo-lmdi8).
+@interface PlayerEntity (KeyMapper)
+   - (void) resetKeyFunctions;
+   - (void) initCheckingDictionary;
+
+   - (void) setGuiToKeyMapperScreen:(unsigned)skip resetCurrentRow:(BOOL)resetCurrentRow;
+   - (void) setGuiToKeyMapperScreen:(unsigned)skip;
+   - (void) keyMapperInputHandler:(GuiDisplayGen *)gui view:(MyOpenGLView *)gameView;
+
+   - (void) setGuiToKeyConfigScreen;
+   - (void) setGuiToKeyConfigScreen:(BOOL) resetSelectedRow;
+   - (void) handleKeyConfigKeys:(GuiDisplayGen *)gui view:(MyOpenGLView *)gameView;
+   - (void) outputKeyDefinition:(const std::string &)key shift:(const std::string &)shift mod1:(const std::string &)mod1 mod2:(const std::string &)mod2 skiprows:(NSUInteger)skiprows;
+
+   - (void) setGuiToKeyConfigEntryScreen;
+   - (void) handleKeyConfigEntryKeys:(GuiDisplayGen *)gui view:(MyOpenGLView *)gameView;
+
+   - (void) setGuiToConfirmClearScreen;
+   - (void) handleKeyMapperConfirmClearKeys:(GuiDisplayGen *)gui view:(MyOpenGLView *)gameView;
+
+   - (void) setGuiToKeyboardLayoutScreen:(unsigned)skip;
+   - (void) setGuiToKeyboardLayoutScreen:(unsigned)skip resetCurrentRow:(BOOL)resetCurrentRow;
+   - (void) handleKeyboardLayoutEntryKeys:(GuiDisplayGen *)gui view:(MyOpenGLView *)gameView;
+
+   - (std::optional<std::string>)validateKey:(const std::string &)key checkKeys:(const oo::PList &)check_keys;	// the conflicting function; nullopt: none
+
+   - (oo::PList)makeKeyGuiDict:(const std::string &)what keyDef:(const std::string &)keyDef;	// a keyFunctions entry
+   - (oo::PList)makeKeyGuiDictHeader:(const std::string &)header;
+
+
+// Defined in PlayerEntityKeyMapper.mm, declared by no interface before the conversion.
+- (std::vector<oo::PList>)keyboardLayoutList;
+
+@end
+
+
+// The private category (KeyMapperInternal) of PlayerEntityKeyMapper.mm, moved here with its members' forwarders.
+@interface PlayerEntity (KeyMapperInternal)
+
+- (void)resetKeyFunctions;
+- (void)updateKeyDefinition:(const std::string &)keystring index:(NSUInteger)index;
+- (void)updateShiftKeyDefinition:(const std::string &)key index:(NSUInteger)index;
+- (void)displayKeyFunctionList:(GuiDisplayGen *)gui skip:(NSUInteger)skip;
+- (std::optional<std::string>)keyboardDescription:(const std::string &)kbd;
+- (void)displayKeyboardLayoutList:(GuiDisplayGen *)gui skip:(NSUInteger)skip;
+- (BOOL)entryIsIndexCustomEquip:(NSUInteger)idx;
+- (BOOL)entryIsDictCustomEquip:(const oo::PList &)dict;
+- (BOOL)entryIsCustomEquip:(const std::string &)entry;
+- (oo::PList)getCustomEquipArray:(const std::string &)key_def;	// null: none (was nil)
+- (std::optional<std::string>)getCustomEquipKeyDefType:(const std::string &)key_def;	// always engaged ("" for neither)
+- (std::vector<oo::PList>)keyFunctionList;
+- (std::vector<std::string>)validateAllKeys;
+- (std::optional<std::string>)searchArrayForMatch:(const std::vector<std::string> &)search_list key:(const std::string &)key checkKeys:(const oo::PList &)check_keys;
+- (NSUInteger)getCustomEquipIndex:(const std::string &)key_def;
+- (BOOL)entryIsEqualToDefault:(const std::string &)key;
+- (BOOL)compareKeyEntries:(const oo::PList &)first second:(const oo::PList &)second;
+- (void)saveKeySetting:(const std::string &)key;
+- (void)unsetKeySetting:(const std::string &)key;
+- (void)deleteKeySetting:(const std::string &)key;
+- (void)deleteAllKeySettings;
+- (oo::PList)loadKeySettings;
+- (void) reloadPage;
+
+@end
+
+// The category (Scripting) of PlayerEntityLegacyScriptEngine.mm: members of cxx::PlayerEntity defined in that file, forwarded by
+// the category of the same name in PlayerEntity+ObjCBridge.mm (ADR-0056 amendment oo-lmdi8).
+@interface PlayerEntity (Scripting)
+
+- (void) checkScript;
+
+- (void) setScriptTarget:(ShipEntity *)ship;
+- (ShipEntity*) scriptTarget;
+
+/*	Foundation sweep (proposed ADR-0043, chunk 1 of oo-j924: bead oo-3rb.190): scripts and
+	conditions are oo::PList trees, context names std::optional (nullopt was nil).
+*/
+- (void) cxx_runScriptActions:(const oo::PList &)sanitizedActions withContextName:(const std::optional<std::string> &)contextName forTarget:(ShipEntity *)target;
+- (void) cxx_runUnsanitizedScriptActions:(const oo::PList &)unsanitizedActions allowingAIMethods:(BOOL)allowAIMethods withContextName:(const std::optional<std::string> &)contextName forTarget:(ShipEntity *)target;
+
+// Test (sanitized) legacy script conditions array.
+- (BOOL) cxx_scriptTestConditions:(const oo::PList &)array;
+
+/*	The mission-variable store (bead oo-3rb.191): a variable is an oo::PList (null = unset; a
+	string, an array from -setMissionInstructionsList:, or whatever JavaScript stored).
+*/
+- (oo::PList) cxx_missionVariables;	// a snapshot
+- (oo::PList) cxx_missionVariableForKey:(const std::string &)key;
+- (void) cxx_setMissionVariable:(const oo::PList &)value forKey:(const std::string &)key;	// null removes
+
+// A mission's local variables (bead oo-3rb.192): a snapshot Dict, null for no mission.
+- (oo::PList) localVariablesForMission:(const std::optional<std::string> &)missionKey;
+- (std::optional<std::string>) localVariableForKey:(const std::string &)variableName andMission:(const std::optional<std::string> &)missionKey;
+- (void) setLocalVariable:(const std::optional<std::string> &)value forKey:(const std::string &)variableName andMission:(const std::optional<std::string> &)missionKey;	// nullopt removes
+
+/*-----------------------------------------------------*/
+
+- (oo::PList) mission_string;	// called by name (ADR-0043 item 21)
+- (oo::PList) status_string;	// called by name (ADR-0043 item 21)
+- (oo::PList) gui_screen_string;	// called by name (ADR-0043 item 21)
+- (oo::PList) galaxy_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) planet_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) score_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) credits_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) scriptTimer_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) shipsFound_number;	// called by name (ADR-0043 item 21)
+
+- (oo::PList) d100_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) pseudoFixedD100_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) d256_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) pseudoFixedD256_number;	// called by name (ADR-0043 item 21)
+
+- (oo::PList) clock_number;	// called by name (ADR-0043 item 21); returns the game time in seconds
+- (oo::PList) clock_secs_number;	// called by name (ADR-0043 item 21); returns the game time in seconds
+- (oo::PList) clock_mins_number;	// called by name (ADR-0043 item 21); returns the game time in minutes
+- (oo::PList) clock_hours_number;	// called by name (ADR-0043 item 21); returns the game time in hours
+- (oo::PList) clock_days_number;	// called by name (ADR-0043 item 21); returns the game time in days
+
+- (oo::PList) fuelLevel_number;	// called by name (ADR-0043 item 21); returns the fuel level in LY
+
+- (oo::PList) dockedAtMainStation_bool;	// called by name (ADR-0043 item 21)
+- (oo::PList) foundEquipment_bool;	// called by name (ADR-0043 item 21)
+
+- (oo::PList) sunWillGoNova_bool;	// called by name (ADR-0043 item 21); returns whether the sun is going to go nova
+- (oo::PList) sunGoneNova_bool;	// called by name (ADR-0043 item 21); returns whether the sun has gone nova
+
+- (oo::PList) missionChoice_string;	// called by name (ADR-0043 item 21); returns nil or the key for the chosen option
+- (oo::PList) missionKeyPress_string;	// called by name (ADR-0043 item 21)
+
+- (oo::PList) dockedTechLevel_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) dockedStationName_string;	// called by name (ADR-0043 item 21); returns 'NONE' if the player isn't docked, [station name] if it is, 'UNKNOWN' otherwise
+
+- (oo::PList) systemGovernment_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) systemGovernment_string;	// called by name (ADR-0043 item 21)
+- (oo::PList) systemEconomy_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) systemEconomy_string;	// called by name (ADR-0043 item 21)
+- (oo::PList) systemTechLevel_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) systemPopulation_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) systemProductivity_number;	// called by name (ADR-0043 item 21)
+
+- (oo::PList) commanderName_string;	// called by name (ADR-0043 item 21)
+- (oo::PList) commanderRank_string;	// called by name (ADR-0043 item 21)
+- (oo::PList) commanderShip_string;	// called by name (ADR-0043 item 21)
+- (oo::PList) commanderShipDisplayName_string;	// called by name (ADR-0043 item 21)
+- (oo::PList) commanderLegalStatus_string;	// called by name (ADR-0043 item 21)
+- (oo::PList) commanderLegalStatus_number;	// called by name (ADR-0043 item 21)
+
+/*-----------------------------------------------------*/
+
+// The F5 manifest (bead oo-3rb.193): strings first, then arrays of a header and its entries.
+- (oo::PList) cxx_missionsList;
+
+- (void) setMissionDescription:(const std::string &)textKey;	// called by name (ADR-0043 item 21)
+- (void) clearMissionDescription;
+- (void) cxx_setMissionInstructions:(const std::string &)text forMission:(const std::optional<std::string> &)key;	// nullopt key: logged, ignored
+- (void) cxx_setMissionInstructionsList:(const oo::PList &)list forMission:(const std::optional<std::string> &)key;
+- (void) setMissionDescription:(const std::string &)textKey forMission:(const std::optional<std::string> &)key;
+- (void) clearMissionDescriptionForMission:(const std::string &)key;	// called by name (ADR-0043 item 21)
+
+- (void) commsMessage:(const std::string &)valueString;	// called by name (ADR-0055 item 5); shared selector (proposed ADR-0043)
+- (void) commsMessageByUnpiloted:(const std::string &)valueString;	// called by name (ADR-0055 item 5); shared selector (proposed ADR-0043)// Enabled 02-May-2008 - Nikos. Same as commsMessage, but
+							   // can be used by scripts to have unpiloted ships sending
+							   // commsMessages, if we want to.
+
+- (void) consoleMessage3s:(const std::string &)valueString;	// called by name (ADR-0043 item 21)
+- (void) consoleMessage6s:(const std::string &)valueString;	// called by name (ADR-0043 item 21)
+
+- (void) setLegalStatus:(const std::string &)valueString;	// called by name (ADR-0043 item 21)
+- (void) awardCredits:(const std::string &)valueString;	// called by name (ADR-0043 item 21)
+- (void) awardShipKills:(const std::string &)valueString;	// called by name (ADR-0043 item 21)
+- (void) awardEquipment:(const std::string &)equipString;	// called by name (ADR-0043 item 21); eg. EQ_NAVAL_ENERGY_UNIT
+- (void) removeEquipment:(const std::string &)equipString;	// called by name (ADR-0043 item 21); eg. EQ_NAVAL_ENERGY_UNIT
+
+- (void) setPlanetinfo:(const std::string &)key_valueString;	// called by name (ADR-0043 item 21); uses key=value format
+- (void) setSpecificPlanetInfo:(const std::string &)key_valueString;	// called by name (ADR-0043 item 21); uses galaxy#=planet#=key=value
+
+- (void) awardCargo:(const std::string &)amount_typeString;	// called by name (ADR-0043 item 21)
+- (void) removeAllCargo;
+- (void) removeAllCargo:(BOOL)forceRemoval;
+
+- (void) useSpecialCargo:(const std::string &)descriptionString;	// called by name (ADR-0043 item 21)
+
+- (void) testForEquipment:(const std::string &)equipString;	// called by name (ADR-0043 item 21); eg. EQ_NAVAL_ENERGY_UNIT
+
+- (void) awardFuel:(const std::string &)valueString;	// called by name (ADR-0043 item 21); add to fuel up to 7.0 LY
+
+- (void) messageShipAIs:(const std::string &)roles_message;	// called by name (ADR-0043 item 21)
+- (void) ejectItem:(const std::string &)item_key;	// called by name (ADR-0043 item 21)
+- (void) addShips:(const std::string &)roles_number;	// called by name (ADR-0043 item 21)
+- (void) addSystemShips:(const std::string &)roles_number_position;	// called by name (ADR-0043 item 21)
+- (void) addShipsAt:(const std::string &)roles_number_system_x_y_z;	// called by name (ADR-0043 item 21)
+- (void) addShipsAtPrecisely:(const std::string &)roles_number_system_x_y_z;	// called by name (ADR-0043 item 21)
+- (void) addShipsWithinRadius:(const std::string &)roles_number_system_x_y_z_r;	// called by name (ADR-0043 item 21)
+- (void) spawnShip:(const std::string &)ship_key;	// called by name (ADR-0055 item 5)
+- (void) set:(const std::string &)missionvariable_value;	// called by name (ADR-0043 item 21)
+- (void) reset:(const std::string &)missionvariable;	// called by name (ADR-0043 item 21)
+/*
+	set:missionvariable_value
+	add:missionvariable_value
+	subtract:missionvariable_value
+
+	the value may be a string constant or one of the above calls
+	ending in _bool, _number, or _string
+
+	egs.
+		set: mission_my_mission_status MISSION_START
+		set: mission_my_mission_value 12.345
+		set: mission_my_mission_clock clock_number
+		add: mission_my_mission_clock 86400
+		subtract: mission_my_mission_clock d100_number
+*/
+
+- (void) increment:(const std::string &)missionVariableString;	// called by name (ADR-0043 item 21)
+- (void) decrement:(const std::string &)missionVariableString;	// called by name (ADR-0043 item 21)
+
+- (void) add:(const std::string &)missionVariableString_value;	// called by name (ADR-0043 item 21)
+- (void) subtract:(const std::string &)missionVariableString_value;	// called by name (ADR-0043 item 21)
+
+- (void) checkForShips:(const std::string &)roleString;	// called by name (ADR-0043 item 21)
+- (void) resetScriptTimer;
+- (void) addMissionText:(const std::string &)textKey;	// called by name (ADR-0043 item 21)
+- (void) addLiteralMissionText:(const std::string &)text;	// called by name (ADR-0043 item 21)
+
+- (void) setMissionChoiceByTextEntry:(BOOL)enable;
+- (void) setMissionChoices:(const std::string &)choicesKey;	// called by name (ADR-0043 item 21); choicesKey is a key for a dictionary of
+													// choices/choice phrases in missiontext.plist and also..
+- (void) cxx_setMissionChoicesDictionary:(const oo::PList &)choicesDict;	// keys are strings (bead oo-3rb.194)
+- (void) resetMissionChoice;						// resets MissionChoice to nil
+
+- (void) clearMissionScreen;
+
+- (void) addMissionDestination:(const std::string &)destinations;	// called by name (ADR-0043 item 21); mark a system on the star charts
+- (void) removeMissionDestination:(const std::string &)destinations;	// called by name (ADR-0043 item 21); stop a system being marked on star charts
+
+- (void) showShipModel:(const std::string &)shipKey;	// called by name (ADR-0043 item 21)
+- (void) setMissionMusic:(const std::string &)value;	// called by name (ADR-0043 item 21)
+
+- (std::optional<std::string>) cxx_missionTitle;
+- (void) cxx_setMissionTitle:(const std::optional<std::string> &)value;
+
+- (void) setFuelLeak:(const std::string &)value;	// called by name (ADR-0043 item 21)
+- (oo::PList) fuelLeakRate_number;	// called by name (ADR-0043 item 21)
+- (void) setSunNovaIn:(const std::string &)time_value;	// called by name (ADR-0043 item 21)
+- (void) launchFromStation;
+- (void) blowUpStation;
+- (void) sendAllShipsAway;
+
+- (void) addPlanet:(const std::string &)planetKey;	// called by name (ADR-0043 item 21)
+- (void) addMoon:(const std::string &)moonKey;	// called by name (ADR-0043 item 21)
+- (OOPlanetEntity *) cxx_addPlanet:(const std::string &)planetKey;	// system.addPlanet(): the planet added, or nil
+- (OOPlanetEntity *) cxx_addMoon:(const std::string &)moonKey;	// system.addMoon(): the moon added, or nil
+
+- (void) debugOn;
+- (void) debugOff;
+- (void) debugMessage:(const std::string &)args;	// called by name (ADR-0043 item 21)
+
+- (std::optional<std::string>) replaceVariablesInString:(const std::string &)args;
+
+- (void) playSound:(const std::string &)soundName;	// called by name (ADR-0043 item 21)
+
+// Equipment scripts (bead oo-3rb.195): no equipment has an empty key.
+- (BOOL) cxx_addEqScriptForKey:(const std::string &)eq_key;
+- (void) cxx_removeEqScriptForKey:(const std::string &)eq_key;
+- (NSUInteger) cxx_eqScriptIndexForKey:(const std::string &)eq_key;	// the count of scripts if none
+
+- (void) targetNearestHostile;
+- (void) targetNearestIncomingMissile;
+
+- (void) setGalacticHyperspaceBehaviourTo:(const std::string &)galacticHyperspaceBehaviourString;	// called by name (ADR-0043 item 21)
+- (void) setGalacticHyperspaceFixedCoordsTo:(const std::string &)galacticHyperspaceFixedCoordsString;	// called by name (ADR-0043 item 21)
+
+/*-----------------------------------------------------*/
+
+- (void) clearMissionScreenID;
+- (void) cxx_setMissionScreenID:(const std::optional<std::string> &)msid;
+- (std::optional<std::string>) cxx_missionScreenID;
+- (void) setGuiToMissionScreen;
+- (void) refreshMissionScreenTextEntry;
+- (void) setGuiToMissionScreenWithCallback:(BOOL) callback;
+- (void) doMissionCallback;
+- (void) endMissionScreenAndNoteOpportunity;
+- (void) cxx_setBackgroundFromDescriptionsKey:(const std::string &)d_key;
+// Scenes (bead oo-3rb.197): a scene is an array of strings, arrays and couplet dictionaries.
+- (void) addScene:(const oo::PList &)items atOffset:(Vector)off;
+- (BOOL) processSceneDictionary:(const oo::PList &)couplet atOffset:(Vector)off;
+- (BOOL) processSceneString:(const std::string &)item atOffset:(Vector)off;
+
+
+// Defined in PlayerEntityLegacyScriptEngine.mm, declared by no interface before the conversion.
+- (std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>>) worldScriptsRequiringTickle;
+- (void) setMissionImage:(const std::string &)value;
+- (void) setMissionBackground:(const std::string &)value;
+
+@end
+
+
+// The private category (ScriptingPrivate) of PlayerEntityLegacyScriptEngine.mm, moved here with its members' forwarders.
+@interface PlayerEntity (ScriptingPrivate)
+
+- (BOOL) scriptTestCondition:(const oo::PList &)scriptCondition;
+- (std::optional<std::string>) expandScriptRightHandSide:(const oo::PList &)rhsComponents;
+
+- (std::optional<std::string>) expandMessage:(const std::string &)valueString;
+
+@end
+
+// The category (Contracts) of PlayerEntityContracts.mm: members of cxx::PlayerEntity defined in that file, forwarded by
+// the category of the same name in PlayerEntity+ObjCBridge.mm (ADR-0056 amendment oo-lmdi8).
+@interface PlayerEntity (Contracts)
+
+- (std::optional<std::string>) cxx_processEscapePods;		// removes pods from cargo bay and treats categories of characters carried (never nullopt)
+- (std::optional<std::string>) cxx_checkPassengerContracts;	// returns messages from any passengers whose status have changed (nullopt: none)
+
+- (oo::PList) reputation;	// a Dict of signed integers; null on nil
+
+- (int) passengerReputation;
+- (void) increasePassengerReputation:(unsigned)amount;
+- (void) decreasePassengerReputation:(unsigned)amount;
+
+- (int) parcelReputation;
+- (void) increaseParcelReputation:(unsigned)amount;
+- (void) decreaseParcelReputation:(unsigned)amount;
+
+- (int) contractReputation;
+- (void) increaseContractReputation:(unsigned)amount;
+- (void) decreaseContractReputation:(unsigned)amount;
+- (OOCargoQuantity) cxx_contractedVolumeForGood:(const std::string &) good;
+
+- (void) erodeReputation;
+- (void) normaliseReputation;
+
+- (void) cxx_addMessageToReport:(const std::string &) report;
+
+// - (void) setGuiToContractsScreen;
+//- (BOOL) pickFromGuiContractsScreen;
+//- (void) highlightSystemFromGuiContractsScreen;
+
+- (BOOL) cxx_addPassenger:(const std::string &)Name start:(unsigned)start destination:(unsigned)destination eta:(double)eta fee:(double)fee advance:(double)advance risk:(unsigned)risk;	// for js scripting
+- (BOOL) cxx_removePassenger:(const std::string &)Name;	// for js scripting
+- (BOOL) cxx_addParcel:(const std::string &)Name start:(unsigned)start destination:(unsigned)destination eta:(double)eta fee:(double)fee premium:(double)premium risk:(unsigned)risk;	// for js scripting
+- (BOOL) cxx_removeParcel:(const std::string &)Name;	// for js scripting
+- (BOOL) cxx_awardContract:(unsigned)qty commodity:(const std::string &)commodity start:(unsigned)start destination:(unsigned)destination eta:(double)eta fee:(double)fee premium:(double)premium;	// for js scripting.
+- (BOOL) cxx_removeContract:(const std::string &)commodity destination:(unsigned)destination;	// for js scripting
+
+// The manifest lines ("oolite-manifest-person-travelling" / "-item-delivery" expanded per entry).
+- (std::vector<std::string>) cxx_passengerList;
+- (std::vector<std::string>) cxx_parcelList;
+- (std::vector<std::string>) cxx_contractList;
+- (void) setGuiToManifestScreen;
+- (void) setManifestScreenRow:(const oo::PList &)object inColor:(OOColor*)color forRow:(OOGUIRow)row ofRows:(OOGUIRow)max_rows andOffset:(OOGUIRow)offset inMultipage:(BOOL)multi;
+
+
+- (void) setGuiToDockingReportScreen;
+
+// ---------------------------------------------------------------------- //
+
+- (void) setGuiToShipyardScreen:(NSUInteger)skip;
+
+- (void) cxx_showShipyardModel:(const std::string &)shipKey shipData:(const oo::PList &)shipDict personality:(uint16_t)personality;
+- (void) showShipyardInfoForSelection;
+- (NSInteger) missingSubEntitiesAdjustment;
+- (void) showTradeInInformationFooter;
+
+- (OOCreditsQuantity) cxx_priceForShipKey:(const std::string &)key;
+- (BOOL) buySelectedShip;
+- (BOOL) cxx_replaceShipWithNamedShip:(const std::string &)shipName;
+- (void) newShipCommonSetup:(const std::string &)shipKey yardInfo:(const oo::PList &)ship_info baseInfo:(const oo::PList &)ship_base_dict;
+
+@end
+
+
+// The private category (ContractsPrivate) of PlayerEntityContracts.mm, moved here with its members' forwarders.
+@interface PlayerEntity (ContractsPrivate)
+
+- (OOCreditsQuantity) tradeInValue;
+- (std::vector<std::string>) cxx_contractsListFromEntries:(const oo::PList::Array &) contracts_array forCargo:(BOOL) forCargo forParcels:(BOOL)forParcels;
+
+@end
+
+// The category (LoadSave) of PlayerEntityLoadSave.mm: members of cxx::PlayerEntity defined in that file, forwarded by
+// the category of the same name in PlayerEntity+ObjCBridge.mm (ADR-0056 amendment oo-lmdi8).
+@interface PlayerEntity (LoadSave)
+
+- (BOOL) loadPlayer;	// Returns NO on immediate failure, i.e. when using an OS X modal open panel which is cancelled.
+- (void) savePlayer;
+- (void) quicksavePlayer;
+- (void) autosavePlayer;
+
+- (void) setGuiToScenarioScreen:(int)page;
+- (void) addScenarioModel:(const std::string &)shipKey;
+- (void) showScenarioDetails;
+- (BOOL) startScenario;
+
+
+#if OO_USE_CUSTOM_LOAD_SAVE
+
+// Interface for PlayerEntityControls
+- (std::optional<std::string>) commanderSelector;	// the saved game chosen, nullopt when none
+- (void) saveCommanderInputHandler;
+- (void) overwriteCommanderInputHandler;
+
+#endif
+
+- (BOOL) loadPlayerFromFile:(const std::string &)fileToOpen asNew:(BOOL)asNew;
+
+@end
+
+
+// The private category (OOLoadSavePrivate) of PlayerEntityLoadSave.mm, moved here with its members' forwarders.
+@interface PlayerEntity (OOLoadSavePrivate)
+
+#if OOLITE_USE_APPKIT_LOAD_SAVE
+
+- (BOOL) loadPlayerWithPanel;
+- (void) savePlayerWithPanel;
+
+#endif
+
+#if OO_USE_CUSTOM_LOAD_SAVE
+
+- (void) setGuiToLoadCommanderScreen;
+- (void) setGuiToSaveCommanderScreen: (const std::string &)cdrName;
+- (void) setGuiToOverwriteScreen: (const std::string &)cdrName;
+- (void) lsCommanders: (GuiDisplayGen *)gui directory: (const std::string &)directory pageNumber: (int)page highlightName: (const std::optional<std::string> &)highlightName;
+- (void) showCommanderShip: (int)cdrArrayIndex;
+- (int) findIndexOfCommander: (const std::string &)cdrName;
+- (void) nativeSavePlayer: (const std::string &)cdrName;
+- (BOOL) existingNativeSave: (const std::string &)cdrName;
+
+#endif
+
+- (void) writePlayerToPath:(const std::string &)path;
+
+@end
+
 namespace oo {
 
 // The root's crossings, typed (amendment oo-up4b item 3).

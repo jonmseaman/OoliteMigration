@@ -25,19 +25,18 @@ MA 02110-1301, USA.
 */
 
 #import "PlayerEntity.h"
+
+/*	Beads oo-9ht.156 (ADR-0056 amendment oo-lmdi8): the category PlayerEntity (StickProfile) is members of
+	cxx::PlayerEntity, declared in PlayerEntity.h and defined in PlayerEntityStickProfile.mm. Its Objective-C interface,
+	for the callers that remain, is the category of the same name in PlayerEntity+ObjCBridge.h,
+	which PlayerEntity.h imports. This header stays for the files that import it.
+*/
 #import "GuiDisplayGen.h"
 #import "MyOpenGLView.h"
 #import "OOJoystickProfile.h"
 #import "Universe.h"
 #include "oofnd/Ref.hpp"
 
-@interface PlayerEntity (StickProfile)
-
-- (void) setGuiToStickProfileScreen: (GuiDisplayGen *) gui;
-- (void) stickProfileInputHandler: (GuiDisplayGen *) gui view: (MyOpenGLView *) gameView;
-- (void) stickProfileGraphAxisProfile: (GLfloat) alpha screenAt: (Vector) screenAt screenSize: (NSSize) screenSize;
-
-@end
 
 namespace cxx { class OOJoystickManager; }
 

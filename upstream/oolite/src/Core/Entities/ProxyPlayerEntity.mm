@@ -26,205 +26,182 @@ MA 02110-1301, USA.
 #import "ProxyPlayerEntity.h"
 
 
-@implementation ProxyPlayerEntity
+namespace cxx {
 
-- (id)cxx_initWithKey:(const std::string &)key definition:(const oo::PList &)dict
+/*	-cxx_initWithKey:definition:'s body after [super cxx_initWithKey:definition:], which the facade's
+	initialiser sends (the ship set-up may release the object and answer nil).
+*/
+void ProxyPlayerEntity::initProxyDefaults()
 {
-	self = [super cxx_initWithKey:key definition:dict];
-	if (self != nil)
-	{
-		[self setDialForwardShield:1.0f];
-		[self setDialAftShield:1.0f];
-		[self setDialFuelScoopStatus:[self hasScoop] ? SCOOP_STATUS_OKAY : SCOOP_STATUS_NOT_INSTALLED];
-		[self setCompassMode:[self cxx_hasEquipmentItemProviding:"EQ_ADVANCED_COMPASS"] ? COMPASS_MODE_PLANET : COMPASS_MODE_BASIC];
-		[self setTradeInFactor:95];
-	}
-	
-	return self;
+	setDialForwardShield(1.0f);
+	setDialAftShield(1.0f);
+	setDialFuelScoopStatus(hasScoop() ? SCOOP_STATUS_OKAY : SCOOP_STATUS_NOT_INSTALLED);
+	setCompassMode(hasEquipmentItemProviding("EQ_ADVANCED_COMPASS") ? COMPASS_MODE_PLANET : COMPASS_MODE_BASIC);
+	setTradeInFactor(95);
 }
 
 
-- (void) copyValuesFromPlayer:(PlayerEntity *)player
+void ProxyPlayerEntity::copyValuesFromPlayer(::PlayerEntity *player)
 {
 	if (player == nil)  return;
 	
-	[self setFuelLeakRate:[player fuelLeakRate]];
-	[self setMassLocked:[player massLocked]];
-	[self setAtHyperspeed:[player atHyperspeed]];
-	[self setDialForwardShield:[player dialForwardShield]];
-	[self setDialAftShield:[player dialAftShield]];
-	[self setDialMissileStatus:[player dialMissileStatus]];
-	[self setDialFuelScoopStatus:[player dialFuelScoopStatus]];
-	[self setCompassMode:[player compassMode]];
-	[self setDialIdentEngaged:[player dialIdentEngaged]];
-	[self setAlertCondition:[player alertCondition]];
-	[self setTrumbleCount:[player trumbleCount]];
-	[self setTradeInFactor:[player tradeInFactor]];
+	setFuelLeakRate([player fuelLeakRate]);
+	setMassLocked([player massLocked]);
+	setAtHyperspeed([player atHyperspeed]);
+	setDialForwardShield([player dialForwardShield]);
+	setDialAftShield([player dialAftShield]);
+	setDialMissileStatus([player dialMissileStatus]);
+	setDialFuelScoopStatus([player dialFuelScoopStatus]);
+	setCompassMode([player compassMode]);
+	setDialIdentEngaged([player dialIdentEngaged]);
+	setAlertCondition([player alertCondition]);
+	setTrumbleCount([player trumbleCount]);
+	setTradeInFactor([player tradeInFactor]);
 
 }
 
 
-- (BOOL) isPlayerLikeShip
+bool ProxyPlayerEntity::isPlayerLikeShip()
 {
 	return YES;
 }
 
 
-- (float) fuelLeakRate
+float ProxyPlayerEntity::fuelLeakRate()
 {
 	return _fuelLeakRate;
 }
 
-- (void) setFuelLeakRate:(float)value
+void ProxyPlayerEntity::setFuelLeakRate(float value)
 {
 	_fuelLeakRate = fmax(value, 0.0f);
 }
 
 
-- (BOOL) massLocked
+bool ProxyPlayerEntity::massLocked()
 {
 	return _massLocked;
 }
 
-- (void) setMassLocked:(BOOL)value
+void ProxyPlayerEntity::setMassLocked(bool value)
 {
 	_massLocked = !!value;
 }
 
 
-- (BOOL) atHyperspeed
+bool ProxyPlayerEntity::atHyperspeed()
 {
 	return _atHyperspeed;
 }
 
-- (void) setAtHyperspeed:(BOOL)value
+void ProxyPlayerEntity::setAtHyperspeed(bool value)
 {
 	_atHyperspeed = !!value;
 }
 
 
-- (GLfloat) dialForwardShield
+GLfloat ProxyPlayerEntity::dialForwardShield()
 {
 	return _dialForwardShield;
 }
 
-- (void) setDialForwardShield:(GLfloat)value
+void ProxyPlayerEntity::setDialForwardShield(GLfloat value)
 {
 	_dialForwardShield = value;
 }
 
 
-- (GLfloat) dialAftShield
+GLfloat ProxyPlayerEntity::dialAftShield()
 {
 	return _dialAftShield;
 }
 
-- (void) setDialAftShield:(GLfloat)value
+void ProxyPlayerEntity::setDialAftShield(GLfloat value)
 {
 	_dialAftShield = value;
 }
 
 
-- (OOMissileStatus) dialMissileStatus
+OOMissileStatus ProxyPlayerEntity::dialMissileStatus()
 {
 	return _missileStatus;
 }
 
-- (void) setDialMissileStatus:(OOMissileStatus)value
+void ProxyPlayerEntity::setDialMissileStatus(OOMissileStatus value)
 {
 	_missileStatus = value;
 }
 
 
-- (OOFuelScoopStatus) dialFuelScoopStatus
+OOFuelScoopStatus ProxyPlayerEntity::dialFuelScoopStatus()
 {
 	return _fuelScoopStatus;
 }
 
-- (void) setDialFuelScoopStatus:(OOFuelScoopStatus)value
+void ProxyPlayerEntity::setDialFuelScoopStatus(OOFuelScoopStatus value)
 {
 	_fuelScoopStatus = value;
 }
 
 
-- (OOCompassMode) compassMode
+OOCompassMode ProxyPlayerEntity::compassMode()
 {
 	return _compassMode;
 }
 
-- (void) setCompassMode:(OOCompassMode)value
+void ProxyPlayerEntity::setCompassMode(OOCompassMode value)
 {
 	_compassMode = value;
 }
 
 
-- (BOOL) dialIdentEngaged
+bool ProxyPlayerEntity::dialIdentEngaged()
 {
 	return _dialIdentEngaged;
 }
 
-- (void) setDialIdentEngaged:(BOOL)value
+void ProxyPlayerEntity::setDialIdentEngaged(bool value)
 {
 	_dialIdentEngaged = !!value;
 }
 
 
-- (OOAlertCondition) alertCondition
+OOAlertCondition ProxyPlayerEntity::alertCondition()
 {
 	return _alertCondition;
 }
 
-- (void) setAlertCondition:(OOAlertCondition)value
+void ProxyPlayerEntity::setAlertCondition(OOAlertCondition value)
 {
 	_alertCondition = value;
 }
 
 
-- (NSUInteger) trumbleCount
+NSUInteger ProxyPlayerEntity::trumbleCount()
 {
 	return _trumbleCount;
 }
 
 
-- (void) setTrumbleCount:(NSUInteger)value
+void ProxyPlayerEntity::setTrumbleCount(NSUInteger value)
 {
 	_trumbleCount = value;
 }
 
 
-- (void) setTradeInFactor:(int)tif
+void ProxyPlayerEntity::setTradeInFactor(int tif)
 {
 	_tradeInFactor = tif;
 }
 
 
-- (int) tradeInFactor
+int ProxyPlayerEntity::tradeInFactor()
 {
 	return _tradeInFactor;
 }
 
 
 
-// If you're here to add more properties, don't forget to update -copyValuesFromPlayer:.
+// If you're here to add more properties, don't forget to update copyValuesFromPlayer().
 
-@end
-
-
-@implementation Entity (ProxyPlayer)
-
-- (BOOL) isPlayerLikeShip
-{
-	return NO;
-}
-
-@end
-
-
-@implementation PlayerEntity (ProxyPlayer)
-
-- (BOOL) isPlayerLikeShip
-{
-	return YES;
-}
-
-@end
+}	// namespace cxx
