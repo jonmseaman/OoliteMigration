@@ -1390,7 +1390,7 @@ void OOOXZManager::gui()
 	/* unlock OXZs ahead of potential changes by making sure sound
 	 * files aren't being held open */
 	[::ResourceManager clearCaches];
-	[PLAYER destroySound];
+	if (PLAYER != nullptr)  PLAYER->destroySound();
 #endif
 
 	if (gui != nullptr)
@@ -1677,7 +1677,7 @@ void OOOXZManager::processSelection()
 		}
 		else
 		{
-			[PLAYER setGuiToIntroFirstGo:YES];
+			if (PLAYER != nullptr)  PLAYER->setGuiToIntroFirstGo(YES);
 			if (_oxzList)
 			{
 				_interfaceState = OXZ_STATE_MAIN;

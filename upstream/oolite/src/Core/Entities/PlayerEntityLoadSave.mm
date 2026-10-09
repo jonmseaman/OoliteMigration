@@ -145,65 +145,62 @@ bool IsCommandModifierKeyDown(::MyOpenGLView *gameView)
 #endif
 
 
-bool cxx::PlayerEntity::loadPlayer()
+bool PlayerEntity::loadPlayer()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	BOOL				OK = YES;
 	
 #if OO_USE_APPKIT_LOAD_SAVE_ALWAYS
-	OK = [self loadPlayerWithPanel];
+	OK = [oo::ToObjC(this) loadPlayerWithPanel];
 #elif OOLITE_USE_APPKIT_LOAD_SAVE
 	// OS X: use system open/save dialogs in windowed mode, custom interface in full-screen.
 	if ([[UNIVERSE gameController] inFullScreenMode])
 	{
-		[self setGuiToLoadCommanderScreen];
+		[oo::ToObjC(this) setGuiToLoadCommanderScreen];
 	}
 	else
 	{
-		OK = [self loadPlayerWithPanel];
+		OK = [oo::ToObjC(this) loadPlayerWithPanel];
 	}
 #else
 	// Other platforms: use custom interface all the time.
-	[self setGuiToLoadCommanderScreen];
+	setGuiToLoadCommanderScreen();
 #endif
 	return OK;
 }
 
 
-void cxx::PlayerEntity::savePlayer()
+void PlayerEntity::savePlayer()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 #if OO_USE_APPKIT_LOAD_SAVE_ALWAYS
-	[self savePlayerWithPanel];
+	[oo::ToObjC(this) savePlayerWithPanel];
 #elif OOLITE_USE_APPKIT_LOAD_SAVE
 	// OS X: use system open/save dialogs in windowed mode, custom interface in full-screen.
 	if ([[UNIVERSE gameController] inFullScreenMode])
 	{
-		[self setGuiToSaveCommanderScreen:oo::StdString(self.lastsaveName)];
+		[oo::ToObjC(this) setGuiToSaveCommanderScreen:oo::StdString(oo::ToObjC(this).lastsaveName)];
 	}
 	else
 	{
-		[self savePlayerWithPanel];
+		[oo::ToObjC(this) savePlayerWithPanel];
 	}
 #else
 	// Other platforms: use custom interface all the time.
-	[self setGuiToSaveCommanderScreen:[self cxx_lastsaveName].value_or("")];
+	setGuiToSaveCommanderScreen(lastsaveName().value_or(""));
 #endif
 }
 
-void cxx::PlayerEntity::autosavePlayer()
+void PlayerEntity::autosavePlayer()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	std::optional<std::string>	tmp_path;
 	std::optional<std::string>	tmp_name;
 	const std::string			dir = [[UNIVERSE gameController] cxx_playerFileDirectory].value_or("");
 
-	tmp_name = [self cxx_lastsaveName];
+	tmp_name = lastsaveName();
 	tmp_path = save_path;
 	
-	ShipScriptEventNoCx(self, "playerWillSaveGame", OOJSSTR("AUTO_SAVE"));
+	ShipScriptEventNoCx(oo::ToObjC(this), "playerWillSaveGame", OOJSSTR("AUTO_SAVE"));
 	
-	std::string saveName = [self cxx_lastsaveName].value_or("");
+	std::string saveName = lastsaveName().value_or("");
 	const std::string autosaveSuffix = OO_DESC("autosave-commander-suffix");
 
 	if (!oo::str::hasSuffix(saveName, autosaveSuffix))
@@ -212,11 +209,11 @@ void cxx::PlayerEntity::autosavePlayer()
 	}
 	const std::string savePath = oo::str::appendingPathComponent(dir, saveName + ".oolite-save");	// a plain append, not the path-extension rule
 
-	[self cxx_setLastsaveName:saveName];
+	setLastsaveName(saveName);
 	
 	@try
 	{
-		[self writePlayerToPath:savePath];
+		writePlayerToPath(savePath);
 	}
 	@catch (id exception)
 	{
@@ -227,13 +224,12 @@ void cxx::PlayerEntity::autosavePlayer()
 	{
 		save_path = *tmp_path;
 	}
-	[self cxx_setLastsaveName:tmp_name];
+	setLastsaveName(tmp_name);
 }
 
 
-void cxx::PlayerEntity::quicksavePlayer()
+void PlayerEntity::quicksavePlayer()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	::MyOpenGLView	*gameView = [UNIVERSE gameView];
 	std::optional<std::string>	path;
 
@@ -246,17 +242,16 @@ void cxx::PlayerEntity::quicksavePlayer()
 					format:"ERROR no file name returned by [[gameView gameController] playerFileToLoad]"];
 	}
 	
-	ShipScriptEventNoCx(self, "playerWillSaveGame", OOJSSTR("QUICK_SAVE"));
+	ShipScriptEventNoCx(oo::ToObjC(this), "playerWillSaveGame", OOJSSTR("QUICK_SAVE"));
 
-	[self writePlayerToPath:*path];
+	writePlayerToPath(*path);
 	[[UNIVERSE gameView] suppressKeysUntilKeyUp];
-	[self setGuiToStatusScreen];
+	setGuiToStatusScreen();
 }
 
 
-void cxx::PlayerEntity::setGuiToScenarioScreen(int page)
+void PlayerEntity::setGuiToScenarioScreen(int page)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	const oo::PList scenarios = [UNIVERSE cxx_scenarios];
 	[UNIVERSE removeDemoShips];
 	// GUI stuff
@@ -289,7 +284,7 @@ void cxx::PlayerEntity::setGuiToScenarioScreen(int page)
 			gui->setKey(oo::str::format("__page:%i",page-1), start_row - 1);
 		}
 
-		[self setShowDemoShips:NO];
+		setShowDemoShips(NO);
 
 		for (i = (NSUInteger)page*n_rows ; i < count && row < start_row + n_rows ; i++)
 		{
@@ -313,7 +308,7 @@ void cxx::PlayerEntity::setGuiToScenarioScreen(int page)
 
 		gui->setSelectableRange(NSMakeRange(start_row - 2,3 + row - start_row));
 		gui->setSelectedRow(start_row);
-		[self showScenarioDetails];
+		showScenarioDetails();
 	
 		if (guiChanged)
 		{
@@ -325,16 +320,14 @@ void cxx::PlayerEntity::setGuiToScenarioScreen(int page)
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:YES];
 }
 
-void cxx::PlayerEntity::addScenarioModel(const std::string &shipKey)
+void PlayerEntity::addScenarioModel(const std::string &shipKey)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
-	[self cxx_showShipModelWithKey:shipKey shipData:oo::PList() personality:0 factorX:1.2 factorY:0.8 factorZ:6.4 inContext:"scenario"];
+	showShipModelWithKey(shipKey, oo::PList(), 0, 1.2, 0.8, 6.4, "scenario");
 }
 
 
-void cxx::PlayerEntity::showScenarioDetails()
+void PlayerEntity::showScenarioDetails()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	::GuiDisplayGen* gui = [UNIVERSE gui];
 	const std::optional<std::string> key = gui->selectedRowKey();
 	[UNIVERSE removeDemoShips];
@@ -344,7 +337,7 @@ void cxx::PlayerEntity::showScenarioDetails()
 		int item = SecondFieldIntValue(key);
 		const oo::PList scenarios = [UNIVERSE cxx_scenarios];
 		const oo::PList *scenario = scenarios.at(item);
-		[self setShowDemoShips:NO];
+		setShowDemoShips(NO);
 		for (NSUInteger i=GUI_ROW_SCENARIOS_DETAIL;i<=27;i++)
 		{
 			gui->setText("", i);
@@ -357,8 +350,8 @@ void cxx::PlayerEntity::showScenarioDetails()
 			const std::optional<std::string> shipKey = OptionalStringValue(scenario->find("model"));
 			if (shipKey)
 			{
-				[self addScenarioModel:*shipKey];
-				[self setShowDemoShips:YES];
+				addScenarioModel(*shipKey);
+				setShowDemoShips(YES);
 			}
 		}
 
@@ -366,9 +359,8 @@ void cxx::PlayerEntity::showScenarioDetails()
 }
 
 
-bool cxx::PlayerEntity::startScenario()
+bool PlayerEntity::startScenario()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	::GuiDisplayGen* gui = [UNIVERSE gui];
 	const std::optional<std::string> key = gui->selectedRowKey();
 
@@ -380,7 +372,7 @@ bool cxx::PlayerEntity::startScenario()
 	if (key && oo::str::hasPrefix(*key, "__page"))
 	{
 		int page = SecondFieldIntValue(key);
-		[self setGuiToScenarioScreen:page];
+		setGuiToScenarioScreen(page);
 		return YES;
 	}
 	int selection = SecondFieldIntValue(key);
@@ -399,7 +391,7 @@ bool cxx::PlayerEntity::startScenario()
 		OO_LOG("scenario.init.error", "Game file not found for scenario {}",*file);
 		return NO;
 	}
-	BOOL result = [self loadPlayerFromFile:*path asNew:YES];
+	BOOL result = loadPlayerFromFile(*path, YES);
 	if (!result)
 	{
 		return NO;
@@ -413,21 +405,20 @@ bool cxx::PlayerEntity::startScenario()
 
 #if OO_USE_CUSTOM_LOAD_SAVE
 
-std::optional<std::string> cxx::PlayerEntity::commanderSelector()
+std::optional<std::string> PlayerEntity::commanderSelector()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	::MyOpenGLView	*gameView = [UNIVERSE gameView];
 	::GuiDisplayGen	*gui = [UNIVERSE gui];
 	std::string		dir = [[UNIVERSE gameController] cxx_playerFileDirectory].value_or("");
 	
 	int idx;
-	if([self handleGUIUpDownArrowKeys])
+	if(handleGUIUpDownArrowKeys())
 	{
 		int guiSelectedRow=gui->getSelectedRow();
 		idx=(guiSelectedRow - STARTROW) + (currentPage * NUMROWS);
 		if (guiSelectedRow != MOREROW && guiSelectedRow != BACKROW && guiSelectedRow != EXITROW)
 		{
-			[self showCommanderShip: idx];
+			showCommanderShip(idx);
 		}
 		else
 		{
@@ -444,42 +435,42 @@ std::optional<std::string> cxx::PlayerEntity::commanderSelector()
 	}
 	
 	// handle page <-- and page --> keys
-	if (([self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up]) && (gui->keyForRow(BACKROW) == GUI_KEY_OK))
+	if ((checkKeyPress(n_key_gui_arrow_left) || checkKeyPress(n_key_gui_page_up)) && (gui->keyForRow(BACKROW) == GUI_KEY_OK))
 	{
 		currentPage--;
-		[self playMenuPagePrevious];
-		[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: std::nullopt];
+		playMenuPagePrevious();
+		lsCommanders(gui, dir, currentPage, std::nullopt);
 		[gameView suppressKeysUntilKeyUp];
 	}
-	if (([self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_page_down]) && (gui->keyForRow(MOREROW) == GUI_KEY_OK))
+	if ((checkKeyPress(n_key_gui_arrow_right) || checkKeyPress(n_key_gui_page_down)) && (gui->keyForRow(MOREROW) == GUI_KEY_OK))
 	{
 		currentPage++;
-		[self playMenuPageNext];
-		[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: std::nullopt];
+		playMenuPageNext();
+		lsCommanders(gui, dir, currentPage, std::nullopt);
 		[gameView suppressKeysUntilKeyUp];
 	}
 	
 	// Enter pressed - find the commander name underneath.
 	// ignore Ctrl for the moment - we check for it explicitly later
-	if ([self checkKeyPress:n_key_gui_select ignore_ctrl:YES]||[gameView isDown:gvMouseDoubleClick])
+	if (checkKeyPressIgnoreCtrl(n_key_gui_select, YES)||[gameView isDown:gvMouseDoubleClick])
 	{
 		switch (gui->getSelectedRow())
 		{
 			case EXITROW:
-				if ([self status] == STATUS_START_GAME)
+				if (status() == STATUS_START_GAME)
 				{
-					[self setGuiToIntroFirstGo:YES];
+					setGuiToIntroFirstGo(YES);
 					return std::nullopt;
 				}
 				break;
 			case BACKROW:
 				currentPage--;
-				[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: std::nullopt];
+				lsCommanders(gui, dir, currentPage, std::nullopt);
 				[gameView suppressKeysUntilKeyUp];
 				break;
 			case MOREROW:
 				currentPage++;
-				[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: std::nullopt];
+				lsCommanders(gui, dir, currentPage, std::nullopt);
 				[gameView suppressKeysUntilKeyUp];
 				break;
 			default:
@@ -497,7 +488,7 @@ std::optional<std::string> cxx::PlayerEntity::commanderSelector()
 						[[UNIVERSE gameController] cxx_setPlayerFileDirectory:newDir];
 						dir = newDir;
 						currentPage = 0;
-						[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: std::nullopt];
+						lsCommanders(gui, dir, currentPage, std::nullopt);
 						[gameView suppressKeysUntilKeyUp];
 					}
 				}
@@ -507,26 +498,25 @@ std::optional<std::string> cxx::PlayerEntity::commanderSelector()
 	
 	if([gameView isDown: 27]) // escape key
 	{
-		[self setGuiToStatusScreen];
+		setGuiToStatusScreen();
 	}
 	return std::nullopt;
 }
 
 
-void cxx::PlayerEntity::saveCommanderInputHandler()
+void PlayerEntity::saveCommanderInputHandler()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	::MyOpenGLView	*gameView = [UNIVERSE gameView];
 	::GuiDisplayGen	*gui = [UNIVERSE gui];
 	std::string		dir = [[UNIVERSE gameController] cxx_playerFileDirectory].value_or("");
 	
-	if ([self handleGUIUpDownArrowKeys])
+	if (handleGUIUpDownArrowKeys())
 	{
 		int guiSelectedRow=gui->getSelectedRow();
 		int	idx = (guiSelectedRow - STARTROW) + (currentPage * NUMROWS);
 		if (guiSelectedRow != MOREROW && guiSelectedRow != BACKROW)
 		{
-			[self showCommanderShip: idx];
+			showCommanderShip(idx);
 			if (idx >= 0 && (std::size_t)idx < cdrDetailArray.size() && cdrDetailArray[idx].get<bool>("isSavedGame"))	// don't show things that aren't saved games
 				commanderNameString = CommanderSaveName(cdrDetailArray[idx]).value_or("");
 			else
@@ -551,24 +541,24 @@ void cxx::PlayerEntity::saveCommanderInputHandler()
 	gui->setColor(OOColor::cyanColor().get(), INPUTROW);
 	
 	// handle page <-- and page --> keys, and on-screen buttons
-	if (((([gameView isDown:gvMouseDoubleClick] || [self checkKeyPress:n_key_gui_select]) && gui->getSelectedRow() == BACKROW) || ([self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up]))
+	if (((([gameView isDown:gvMouseDoubleClick] || checkKeyPress(n_key_gui_select)) && gui->getSelectedRow() == BACKROW) || (checkKeyPress(n_key_gui_arrow_left) || checkKeyPress(n_key_gui_page_up)))
 					&& (gui->keyForRow(BACKROW) == GUI_KEY_OK))
 	{
 		currentPage--;
-		[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: std::nullopt];
+		lsCommanders(gui, dir, currentPage, std::nullopt);
 		[gameView suppressKeysUntilKeyUp];
 	}
 	//
-	if (((([gameView isDown:gvMouseDoubleClick] || [self checkKeyPress:n_key_gui_select]) && gui->getSelectedRow() == MOREROW) || ([self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_page_down]))
+	if (((([gameView isDown:gvMouseDoubleClick] || checkKeyPress(n_key_gui_select)) && gui->getSelectedRow() == MOREROW) || (checkKeyPress(n_key_gui_arrow_right) || checkKeyPress(n_key_gui_page_down)))
 					&& (gui->keyForRow(MOREROW) == GUI_KEY_OK))
 	{
 		currentPage++;
-		[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: std::nullopt];
+		lsCommanders(gui, dir, currentPage, std::nullopt);
 		[gameView suppressKeysUntilKeyUp];
 	}
 	
 	// ignore Ctrl if pressed together with Enter for the moment - we check for it explicitly immediately after
-	if(([self checkKeyPress:n_key_gui_select ignore_ctrl:YES]||[gameView isDown:gvMouseDoubleClick]) && !commanderNameString.empty())
+	if((checkKeyPressIgnoreCtrl(n_key_gui_select, YES)||[gameView isDown:gvMouseDoubleClick]) && !commanderNameString.empty())
 	{
 		if (IsCommandModifierKeyDown(gameView)||[gameView isDown:gvMouseDoubleClick])
 		{
@@ -583,23 +573,23 @@ void cxx::PlayerEntity::saveCommanderInputHandler()
 				[[UNIVERSE gameController] cxx_setPlayerFileDirectory:newDir];
 				dir = newDir;
 				currentPage = 0;
-				[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: std::nullopt];
+				lsCommanders(gui, dir, currentPage, std::nullopt);
 				[gameView suppressKeysUntilKeyUp];
 			}
 		}
 		else
 		{
 			pollControls = YES;
-			if ([self existingNativeSave: commanderNameString])
+			if (existingNativeSave(commanderNameString))
 			{
 				[gameView suppressKeysUntilKeyUp];
-				[self setGuiToOverwriteScreen: commanderNameString];
+				setGuiToOverwriteScreen(commanderNameString);
 			}
 			else
 			{
-				[self nativeSavePlayer: commanderNameString];
+				nativeSavePlayer(commanderNameString);
 				[[UNIVERSE gameView] suppressKeysUntilKeyUp];
-				[self setGuiToStatusScreen];
+				setGuiToStatusScreen();
 			}
 		}
 	}
@@ -609,18 +599,17 @@ void cxx::PlayerEntity::saveCommanderInputHandler()
 		// get out of here
 		pollControls = YES;
 		[[UNIVERSE gameView] resetTypedString];
-		[self setGuiToStatusScreen];
+		setGuiToStatusScreen();
 	}
 }
 
 
-void cxx::PlayerEntity::overwriteCommanderInputHandler()
+void PlayerEntity::overwriteCommanderInputHandler()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	::MyOpenGLView	*gameView = [UNIVERSE gameView];
 	::GuiDisplayGen	*gui = [UNIVERSE gui];
 	
-	[self handleGUIUpDownArrowKeys];
+	handleGUIUpDownArrowKeys();
 	
 	// Translation issue: we can't confidently use raw Y and N ascii as shortcuts. It's better to use the load-previous-commander keys.
 	const std::string valueYes = oo::str::lowercase(OptionalStringValue([UNIVERSE cxx_descriptions]->find("load-previous-commander-yes")).value_or("y"));
@@ -630,30 +619,29 @@ void cxx::PlayerEntity::overwriteCommanderInputHandler()
 	cYes = FirstUnitLowByte(valueYes);	// Use lower byte of unichar.
 	cNo = FirstUnitLowByte(valueNo);	// Use lower byte of unichar.
 	
-	if (([self checkKeyPress:n_key_gui_select] && (gui->getSelectedRow() == SAVE_OVERWRITE_YES_ROW))||[gameView isDown:cYes]||[gameView isDown:cYes - 32])
+	if ((checkKeyPress(n_key_gui_select) && (gui->getSelectedRow() == SAVE_OVERWRITE_YES_ROW))||[gameView isDown:cYes]||[gameView isDown:cYes - 32])
 	{
 		pollControls=YES;
-		[self nativeSavePlayer: commanderNameString];
-		[self playSaveOverwriteYes];
+		nativeSavePlayer(commanderNameString);
+		playSaveOverwriteYes();
 		[[UNIVERSE gameView] suppressKeysUntilKeyUp];
-		[self setGuiToStatusScreen];
+		setGuiToStatusScreen();
 	}
 	
-	if (([self checkKeyPress:n_key_gui_select] && (gui->getSelectedRow() == SAVE_OVERWRITE_NO_ROW))||[gameView isDown:27]||[gameView isDown:cNo]||[gameView isDown:cNo - 32])
+	if ((checkKeyPress(n_key_gui_select) && (gui->getSelectedRow() == SAVE_OVERWRITE_NO_ROW))||[gameView isDown:27]||[gameView isDown:cNo]||[gameView isDown:cNo - 32])
 	{
 		// esc or NO was pressed - get out of here
 		pollControls=YES;
-		[self playSaveOverwriteNo];
-		[self setGuiToSaveCommanderScreen:""];
+		playSaveOverwriteNo();
+		setGuiToSaveCommanderScreen("");
 	}
 }
 
 #endif
 
 
-bool cxx::PlayerEntity::loadPlayerFromFile(const std::string &fileToOpen, bool asNew)
+bool PlayerEntity::loadPlayerFromFile(const std::string &fileToOpen, bool asNew)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	/*	TODO: it would probably be better to load by creating a new
 		PlayerEntity, verifying that's OK, then replacing the global player.
 		
@@ -736,7 +724,7 @@ bool cxx::PlayerEntity::loadPlayerFromFile(const std::string &fileToOpen, bool a
 	if (loadedOK)
 	{
 		OO_LOG("load.progress", "{}", "Initialising player entity");
-		if (![self setUpAndConfirmOK:YES saveGame:YES])
+		if (!setUpAndConfirmOK(YES, YES))
 		{
 			fail_reason = OO_DESC("loadfailed-could-not-reset-javascript");
 			loadedOK = NO;
@@ -746,7 +734,7 @@ bool cxx::PlayerEntity::loadPlayerFromFile(const std::string &fileToOpen, bool a
 	if (loadedOK)
 	{
 		OO_LOG("load.progress", "{}", "Loading commander data");
-		if (![self cxx_setCommanderDataFromDictionary:fileDic])
+		if (!setCommanderDataFromDictionary(fileDic))
 		{
 			// this could still be a reset js issue, if switching from strict / unrestricted
 			// TODO: use "could not reset js message" if that's the case.
@@ -786,15 +774,15 @@ bool cxx::PlayerEntity::loadPlayerFromFile(const std::string &fileToOpen, bool a
 	[UNIVERSE setAutoSaveNow:NO];
 	
 	OO_LOG("load.progress", "{}", "Resetting player flight variables");
-	[self setDockedAtMainStation];
-	::StationEntity *dockedStation = [self dockedStation];
+	setDockedAtMainStation();
+	::StationEntity *dockedStation = this->dockedStation();
 	
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:NO];
 	
 	if (dockedStation)
 	{
 		position = [dockedStation position];
-		[self setOrientation: kIdentityQuaternion];
+		setOrientation(kIdentityQuaternion);
 		v_forward = vector_forward_from_quaternion(orientation);
 		v_right = vector_right_from_quaternion(orientation);
 		v_up = vector_up_from_quaternion(orientation);
@@ -805,7 +793,7 @@ bool cxx::PlayerEntity::loadPlayerFromFile(const std::string &fileToOpen, bool a
 	flightYaw = 0.0;
 	flightSpeed = 0.0;
 	
-	[self setEntityPersonalityInt:PersonalityForCommanderDict(fileDic)];
+	setEntityPersonalityInt(PersonalityForCommanderDict(fileDic));
 	
 	OO_LOG("load.progress", "{}", "Loading system market");
 	// dockedStation is always the main station at this point;
@@ -820,7 +808,7 @@ bool cxx::PlayerEntity::loadPlayerFromFile(const std::string &fileToOpen, bool a
 		[dockedStation initialiseLocalMarket];
 	}
 
-	[self calculateCurrentCargo];
+	calculateCurrentCargo();
 	
 	OO_LOG("load.progress", "{}", "Setting scenario key");
 	// set scenario key if the scenario allows saving and has one
@@ -833,7 +821,7 @@ bool cxx::PlayerEntity::loadPlayerFromFile(const std::string &fileToOpen, bool a
 
 	OO_LOG("load.progress", "{}", "Starting JS engine");
 	// Remember the savegame target, run js startUp.
-	[self completeSetUpAndSetTarget:NO];
+	completeSetUpAndSetTarget(NO);
 	// run initial system population
 	OO_LOG("load.progress", "{}", "Populating initial system");
 	[UNIVERSE populateNormalSpace];
@@ -850,7 +838,7 @@ bool cxx::PlayerEntity::loadPlayerFromFile(const std::string &fileToOpen, bool a
 	::StationEntity *saveStation = [UNIVERSE cxx_stationWithRole:dockedRole andPosition:dockedPos];
 	if (saveStation != nil && [saveStation allowsSaving])
 	{
-		[self setDockedStation:saveStation];
+		setDockedStation(saveStation);
 		position = [saveStation position];
 	}
 	// and initialise markets for the secondary stations
@@ -858,7 +846,7 @@ bool cxx::PlayerEntity::loadPlayerFromFile(const std::string &fileToOpen, bool a
 	[UNIVERSE cxx_loadStationMarkets:stationMarkets != nullptr ? *stationMarkets : oo::PList()];
 
 	OO_LOG("load.progress", "{}", "Completing JS startup");
-	[self startUpComplete];
+	startUpComplete();
 
 	// if the file was specified in the command line at startup, DO NOT suppress the keys!
 	if ([[UNIVERSE gameController] finishedLaunching])  [[UNIVERSE gameView] suppressKeysUntilKeyUp];
@@ -870,8 +858,8 @@ bool cxx::PlayerEntity::loadPlayerFromFile(const std::string &fileToOpen, bool a
 	{
 		gui_screen = GUI_SCREEN_LOAD; // force evaluation of new gui screen on startup
 	}
-	[self setGuiToStatusScreen];
-	if (loadedOK) [self doWorldEventUntilMissionScreen:OOJSID("missionScreenOpportunity")];  // trigger missionScreenOpportunity immediately after loading
+	setGuiToStatusScreen();
+	if (loadedOK) doWorldEventUntilMissionScreen(OOJSID("missionScreenOpportunity"));  // trigger missionScreenOpportunity immediately after loading
 	OO_LOG("load.progress", "{}", "Loading complete");
 	return loadedOK;
 }
@@ -879,9 +867,8 @@ bool cxx::PlayerEntity::loadPlayerFromFile(const std::string &fileToOpen, bool a
 
 #if OOLITE_USE_APPKIT_LOAD_SAVE
 
-bool cxx::PlayerEntity::loadPlayerWithPanel()
+bool PlayerEntity::loadPlayerWithPanel()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	NSOpenPanel *oPanel = [NSOpenPanel openPanel];
 	
 	oPanel.allowsMultipleSelection = NO;
@@ -892,7 +879,7 @@ bool cxx::PlayerEntity::loadPlayerWithPanel()
 		NSURL *url = oPanel.URL;
 		if (url.isFileURL)
 		{
-			return [self loadPlayerFromFile:oo::StdString(url.path) asNew:NO];
+			return [oo::ToObjC(this) loadPlayerFromFile:oo::StdString(url.path) asNew:NO];
 		}
 	}
 	
@@ -900,14 +887,13 @@ bool cxx::PlayerEntity::loadPlayerWithPanel()
 }
 
 
-void cxx::PlayerEntity::savePlayerWithPanel()
+void PlayerEntity::savePlayerWithPanel()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	NSSavePanel *sPanel = [NSSavePanel savePanel];
 	
 	sPanel.allowedFileTypes = [NSArray arrayWithObject:@"oolite-save"];
 	sPanel.canSelectHiddenExtension = YES;
-	sPanel.nameFieldStringValue = self.lastsaveName;
+	sPanel.nameFieldStringValue = oo::ToObjC(this).lastsaveName;
 	
 	if ([sPanel runModal] == NSOKButton)
 	{
@@ -917,20 +903,19 @@ void cxx::PlayerEntity::savePlayerWithPanel()
 		NSString *path = url.path;
 		NSString *newName = [path.lastPathComponent stringByDeletingPathExtension];
 		
-		ShipScriptEventNoCx(self, "playerWillSaveGame", OOJSSTR("STANDARD_SAVE"));
+		ShipScriptEventNoCx(oo::ToObjC(this), "playerWillSaveGame", OOJSSTR("STANDARD_SAVE"));
 		
-		self.lastsaveName = newName;
-		[self writePlayerToPath:oo::StdString(path)];
+		oo::ToObjC(this).lastsaveName = newName;
+		[oo::ToObjC(this) writePlayerToPath:oo::StdString(path)];
 	}
-	[self setGuiToStatusScreen];
+	[oo::ToObjC(this) setGuiToStatusScreen];
 }
 
 #endif
 
 
-void cxx::PlayerEntity::writePlayerToPath(const std::string &path)
+void PlayerEntity::writePlayerToPath(const std::string &path)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	std::string		errDesc;
 	BOOL			didSave = NO;
 	[[UNIVERSE gameView] resetTypedString];
@@ -943,7 +928,7 @@ void cxx::PlayerEntity::writePlayerToPath(const std::string &path)
 
 	// The save dictionary as a property list, converted once (its float values stay single reals,
 	// written %0.7g as before).
-	const oo::PList dict = [self cxx_commanderDataDictionary];
+	const oo::PList dict = commanderDataDictionary();
 	if (dict.isNull())  errDesc = "could not construct commander data dictionary.";
 	else
 	{
@@ -966,29 +951,27 @@ void cxx::PlayerEntity::writePlayerToPath(const std::string &path)
 					format:"Attempt to save game to file '%s' failed: %s", path.c_str(), errDesc.c_str()];
 	}
 	[[UNIVERSE gameView] suppressKeysUntilKeyUp];
-	[self setGuiToStatusScreen];
+	setGuiToStatusScreen();
 }
 
 
-void cxx::PlayerEntity::nativeSavePlayer(const std::string &cdrName)
+void PlayerEntity::nativeSavePlayer(const std::string &cdrName)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	const std::string dir = [[UNIVERSE gameController] cxx_playerFileDirectory].value_or("");
 	const std::string savePath = oo::str::appendingPathComponent(dir, SaveFileName(cdrName));
 
-	ShipScriptEventNoCx(self, "playerWillSaveGame", OOJSSTR("STANDARD_SAVE"));
+	ShipScriptEventNoCx(oo::ToObjC(this), "playerWillSaveGame", OOJSSTR("STANDARD_SAVE"));
 
-	[self cxx_setLastsaveName:cdrName];
+	setLastsaveName(cdrName);
 	
-	[self writePlayerToPath:savePath];
+	writePlayerToPath(savePath);
 }
 
 
 #if OO_USE_CUSTOM_LOAD_SAVE
 
-void cxx::PlayerEntity::setGuiToLoadCommanderScreen()
+void PlayerEntity::setGuiToLoadCommanderScreen()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	::GuiDisplayGen *gui=[UNIVERSE gui];
 	const std::string dir = [[UNIVERSE gameController] cxx_playerFileDirectory].value_or("");
 	
@@ -998,21 +981,20 @@ void cxx::PlayerEntity::setGuiToLoadCommanderScreen()
 	gui->setTitle(OO_DESC("loadscreen-title"));
 	
 	currentPage = 0;
-	[self lsCommanders:gui directory:dir pageNumber: currentPage highlightName:std::nullopt];
+	lsCommanders(gui, dir, currentPage, std::nullopt);
 	
 	gui->setForegroundTextureKey("docked_overlay");
 	gui->setBackgroundTextureKey("load_save");
 	
 	[[UNIVERSE gameView] suppressKeysUntilKeyUp];
 	
-	[self setShowDemoShips:YES];
+	setShowDemoShips(YES);
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:YES];
 }
 
 
-void cxx::PlayerEntity::setGuiToSaveCommanderScreen(const std::string &cdrName)
+void PlayerEntity::setGuiToSaveCommanderScreen(const std::string &cdrName)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	::GuiDisplayGen *gui=[UNIVERSE gui];
 	::MyOpenGLView *gameView = [UNIVERSE gameView];
 	const std::string dir = [[UNIVERSE gameController] cxx_playerFileDirectory].value_or("");
@@ -1024,7 +1006,7 @@ void cxx::PlayerEntity::setGuiToSaveCommanderScreen(const std::string &cdrName)
 	gui->setTitle(OO_DESC("savescreen-title"));
 	
 	currentPage = 0;
-	[self lsCommanders:gui directory:dir pageNumber: currentPage highlightName:std::nullopt];
+	lsCommanders(gui, dir, currentPage, std::nullopt);
 	
 	gui->setText(OO_DESC("savescreen-commander-name"), INPUTROW);
 	gui->setColor(OOColor::cyanColor().get(), INPUTROW);
@@ -1037,14 +1019,13 @@ void cxx::PlayerEntity::setGuiToSaveCommanderScreen(const std::string &cdrName)
 	[gameView cxx_setTypedString:cdrName];
 	[gameView suppressKeysUntilKeyUp];
 	
-	[self setShowDemoShips:YES];
+	setShowDemoShips(YES);
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:YES];
 }
 
 
-void cxx::PlayerEntity::setGuiToOverwriteScreen(const std::string &cdrName)
+void PlayerEntity::setGuiToOverwriteScreen(const std::string &cdrName)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	::GuiDisplayGen *gui=[UNIVERSE gui];
 	::MyOpenGLView*	gameView = [UNIVERSE gameView];
 	
@@ -1072,14 +1053,13 @@ void cxx::PlayerEntity::setGuiToOverwriteScreen(const std::string &cdrName)
 	gui->setForegroundTextureKey("overwrite_overlay");
 	gui->setBackgroundTextureKey("load_save");
 	
-	[self setShowDemoShips:NO];
+	setShowDemoShips(NO);
 	[gameView setStringInput:gvStringInputNo];
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:NO];	// FIXME: should be YES, but was NO before introducing new mouse mode stuff. If set to YES, choices can be selected but not activated.
 }
 
-void cxx::PlayerEntity::lsCommanders(::GuiDisplayGen *gui, const std::string &directory, int page, const std::optional<std::string> &highlightName)
+void PlayerEntity::lsCommanders(::GuiDisplayGen *gui, const std::string &directory, int page, const std::optional<std::string> &highlightName)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	int rangeStart=STARTROW;
 	unsigned lastIndex;
 	unsigned i;
@@ -1154,7 +1134,7 @@ void cxx::PlayerEntity::lsCommanders(::GuiDisplayGen *gui, const std::string &di
 	int highlightIdx=0;
 	if(highlightName)
 	{
-		highlightIdx=[self findIndexOfCommander: *highlightName];
+		highlightIdx=findIndexOfCommander(*highlightName);
 		if(highlightIdx < 0)
 		{
 			OO_LOG("save.list.commanders.commanderNotFound", "Commander {} doesn't exist, very bad", *highlightName);
@@ -1196,7 +1176,7 @@ void cxx::PlayerEntity::lsCommanders(::GuiDisplayGen *gui, const std::string &di
 		rangeStart=STARTROW-1;
 	}
 
-	if ([self status] == STATUS_START_GAME)
+	if (status() == STATUS_START_GAME)
 	{
 		gui->setArray({ OO_DESC("oolite-loadsave-exit"), " <----- " }, EXITROW);
 		gui->setColor(OOColor::redColor().get(), EXITROW);
@@ -1219,7 +1199,7 @@ void cxx::PlayerEntity::lsCommanders(::GuiDisplayGen *gui, const std::string &di
 		gui->setSelectableRange(NSMakeRange(rangeStart, MOREROW));
 	}
 	
-	const std::optional<std::string> lastsaveName = [self cxx_lastsaveName];
+	const std::optional<std::string> lastsaveName = this->lastsaveName();
 	for (i=firstIndex; i < lastIndex; i++)
 	{
 		const oo::PList &cdr = cdrDetailArray[i];
@@ -1257,12 +1237,12 @@ void cxx::PlayerEntity::lsCommanders(::GuiDisplayGen *gui, const std::string &di
 	gui->setSelectedRow(highlightRowOnPage);
 	highlightIdx = (highlightRowOnPage - STARTROW) + (currentPage * NUMROWS);
 	// show the first ship, this will be the selected row
-	[self showCommanderShip: highlightIdx];
+	showCommanderShip(highlightIdx);
 }
 
 
 // check for an existing saved game...
-bool cxx::PlayerEntity::existingNativeSave(const std::string &cdrName)
+bool PlayerEntity::existingNativeSave(const std::string &cdrName)
 {
 	const std::string dir = [[UNIVERSE gameController] cxx_playerFileDirectory].value_or("");
 	
@@ -1272,9 +1252,8 @@ bool cxx::PlayerEntity::existingNativeSave(const std::string &cdrName)
 
 
 // Get some brief details about the commander file.
-void cxx::PlayerEntity::showCommanderShip(int cdrArrayIndex)
+void PlayerEntity::showCommanderShip(int cdrArrayIndex)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	::GuiDisplayGen *gui=[UNIVERSE gui];
 	[UNIVERSE removeDemoShips];
 	if (cdrArrayIndex < 0 || (std::size_t)cdrArrayIndex >= cdrDetailArray.size())  return;	// (-objectAtIndex: raised)
@@ -1303,7 +1282,7 @@ void cxx::PlayerEntity::showCommanderShip(int cdrArrayIndex)
 
 	if (!cdr.get<bool>("isSavedGame"))  return;	// don't show things that aren't saved games
 	
-	if ([self dockedStation] == nil)  [self setDockedAtMainStation];
+	if (dockedStation() == nil)  setDockedAtMainStation();
 	
 	// Display the commander's ship.
 	const std::optional<std::string>	shipDesc = OptionalStringValue(cdr.find("ship_desc"));
@@ -1319,13 +1298,13 @@ void cxx::PlayerEntity::showCommanderShip(int cdrArrayIndex)
 		const oo::PList *subEntStatus = cdr.find("subentities_status");
 		// don't add it to the dictionary if there's no subentities_status key
 		if (subEntStatus != nullptr && dict.isDict())  (*dict.getIf<oo::PList::Dict>())["subentities_status"] = *subEntStatus;
-		[self cxx_showShipyardModel:*shipDesc shipData:dict personality:personality];
+		showShipyardModel(*shipDesc, dict, personality);
 		shipName = OptionalStringValue(shipDict.find("display_name"));
 		if (!shipName) shipName = OptionalStringValue(shipDict.find("name"));	// KEY_NAME
 	}
 	else
 	{
-		[self cxx_showShipyardModel:"oolite-unknown-ship" shipData:oo::PList() personality:personality];
+		showShipyardModel("oolite-unknown-ship", oo::PList(), personality);
 		shipName = OptionalStringValue(cdr.find("ship_name")).value_or("unknown");
 		if ([UNIVERSE cxx_useAddOns] != std::string(SCENARIO_OXP_DEFINITION_ALL))	// nil was not equal either
 		{
@@ -1394,7 +1373,7 @@ void cxx::PlayerEntity::showCommanderShip(int cdrArrayIndex)
 }
 
 
-int cxx::PlayerEntity::findIndexOfCommander(const std::string &cdrName)
+int PlayerEntity::findIndexOfCommander(const std::string &cdrName)
 {
 	unsigned i;
 	for (i=0; i < cdrDetailArray.size(); i++)

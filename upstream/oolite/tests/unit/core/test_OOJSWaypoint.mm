@@ -30,7 +30,8 @@
 
 // MARK: The classes, as far as the binding sees them ----------------------------------------------
 
-@class Universe, PlayerEntity;
+@class Universe;
+class PlayerEntity;
 
 @interface Entity: OOObject
 {
@@ -77,6 +78,29 @@
 - (Entity *) nextBeacon;
 - (void) setCompassMode:(OOCompassMode)mode;
 @end
+
+// PLAYER: C++ since bead oo-9ht.177 deleted the Objective-C player the fake game stood in for: the
+// compass members the binding calls (declared as the game headers declare them; the test imports
+// none that defines the classes), which ask the fake game as the binding asked it.
+namespace cxx {
+class Entity
+{
+};
+
+class ShipEntity : public Entity
+{
+public:
+	::Entity *nextBeacon();
+};
+}	// namespace cxx
+
+class PlayerEntity : public cxx::ShipEntity
+{
+public:
+	void setCompassMode(OOCompassMode value);
+
+	FakeGame *_game = nil;
+};
 
 @interface Entity (OOJavaScriptExtensions)
 - (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
@@ -143,6 +167,9 @@
 
 @end
 
+::Entity *cxx::ShipEntity::nextBeacon()  { return [static_cast<PlayerEntity *>(this)->_game nextBeacon]; }
+void PlayerEntity::setCompassMode(OOCompassMode value)  { [static_cast<PlayerEntity *>(this)->_game setCompassMode:value]; }
+
 
 // MARK: What the rest of the engine provides ------------------------------------------------------
 
@@ -204,7 +231,7 @@ std::map<ooscript::ClassDef *, int> sConverters;
 
 ooscript::Object gOOEntityJSPrototype = nullptr;
 Universe *gSharedUniverse = nil;
-PlayerEntity *gOOPlayer = nil;
+PlayerEntity *gOOPlayer = nullptr;
 
 
 extern "C" {
@@ -389,7 +416,8 @@ void SetUpContext()
 
 	sGame = [[FakeGame alloc] init];	// kept for the life of the test
 	gSharedUniverse = (Universe *)sGame;
-	gOOPlayer = (PlayerEntity *)sGame;
+	gOOPlayer = new PlayerEntity;	// never deleted
+	gOOPlayer->_game = sGame;
 	sWaypoint = [[OOWaypointEntity alloc] init];
 	sWaypoint->_beaconLabel = "Label";
 	sWaypoint->_orientation = make_quaternion(0, 1, 0, 0);

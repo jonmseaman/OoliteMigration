@@ -151,26 +151,34 @@ typedef OOEquipmentType* OOWeaponType;
 - (void) cxx_setInterfaceDefinition:(OOJSInterfaceDefinition *)definition forKey:(const std::string &)key;
 @end
 
-@interface PlayerEntity: ShipEntity
+// PLAYER: C++ since bead oo-9ht.177 deleted the Objective-C player this stood in for: the members
+// the code under test calls, declared as the game headers declare them (the test imports none
+// that defines the classes), with the stand-in's answers.
+class PlayerEntity
 {
-@public
-	StationEntity *_dockedStation;
-	OOGUIScreenID _screen;
-	BOOL _docked;
-	int _marketRefreshes;
-	int _shipyardRefreshes;
+public:
+	::StationEntity * dockedStation();
+	OOGUIScreenID guiScreen();
+	void setGuiToMarketScreen();
+	void setGuiToShipyardScreen(NSUInteger skip);
+	bool isDocked();
+	void setDockingClearanceStatus(OODockingClearanceStatus newValue);
+	void safeAllMissiles();
+	void enterDock(::StationEntity *station);
+	::OOScript * commodityScriptNamed(const std::optional<std::string> &scriptName);
+	// OOEquipmentType.mm's (linked, never reached by these cases: the Objective-C stand-in had none).
+	oo::PList processKeyCode(const oo::PList &key_def);
+	std::optional<std::string> validateKey(const std::string &key, const oo::PList &check_keys);
+	oo::PList missionVariableForKey(const std::string &key);
+
+	StationEntity *_dockedStation = {};
+	OOGUIScreenID _screen = {};
+	BOOL _docked = {};
+	int _marketRefreshes = {};
+	int _shipyardRefreshes = {};
 	std::string _dockLog;
-}
-- (StationEntity *) dockedStation;
-- (OOGUIScreenID) guiScreen;
-- (void) setGuiToMarketScreen;
-- (void) setGuiToShipyardScreen:(NSUInteger)skip;
-- (BOOL) isDocked;
-- (void) setDockingClearanceStatus:(OODockingClearanceStatus)newValue;
-- (void) safeAllMissiles;
-- (void) enterDock:(StationEntity *)station;
-- (id) cxx_commodityScriptNamed:(const std::optional<std::string> &)script;
-@end
+	std::string _name;
+};
 
 @interface GameController: OOObject
 {
@@ -375,19 +383,24 @@ ShipEntity *NewShip(const char *name)
 @end
 
 
-@implementation PlayerEntity
-
-- (StationEntity *) dockedStation  { return _dockedStation; }
-- (OOGUIScreenID) guiScreen  { return _screen; }
-- (void) setGuiToMarketScreen  { _marketRefreshes++; }
-- (void) setGuiToShipyardScreen:(NSUInteger)skip  { (void)skip; _shipyardRefreshes++; }
-- (BOOL) isDocked  { return _docked; }
-- (void) setDockingClearanceStatus:(OODockingClearanceStatus)newValue  { _dockLog += "clearance " + std::to_string(static_cast<int>(newValue)) + "; "; }
-- (void) safeAllMissiles  { _dockLog += "safe; "; }
-- (void) enterDock:(StationEntity *)station  { _dockLog += "dock " + (station != nil ? station->_name : std::string("nil")); _docked = YES; }
-- (id) cxx_commodityScriptNamed:(const std::optional<std::string> &)script  { (void)script; return nil; }
-
-@end
+::StationEntity * PlayerEntity::dockedStation()  { return _dockedStation; }
+OOGUIScreenID PlayerEntity::guiScreen()  { return _screen; }
+void PlayerEntity::setGuiToMarketScreen()  { _marketRefreshes++; }
+void PlayerEntity::setGuiToShipyardScreen(NSUInteger skip)  { (void)skip; _shipyardRefreshes++; }
+bool PlayerEntity::isDocked()  { return _docked; }
+void PlayerEntity::setDockingClearanceStatus(OODockingClearanceStatus newValue)
+{
+	_dockLog += "clearance " + std::to_string(static_cast<int>(newValue)) + "; ";
+}
+void PlayerEntity::safeAllMissiles()  { _dockLog += "safe; "; }
+void PlayerEntity::enterDock(::StationEntity *station)
+{
+	_dockLog += "dock " + (station != nil ? station->_name : std::string("nil")); _docked = YES;
+}
+oo::PList PlayerEntity::processKeyCode(const oo::PList &key_def)  { std::abort(); }
+std::optional<std::string> PlayerEntity::validateKey(const std::string &key, const oo::PList &check_keys)  { std::abort(); }
+oo::PList PlayerEntity::missionVariableForKey(const std::string &key)  { std::abort(); }
+::OOScript * PlayerEntity::commodityScriptNamed(const std::optional<std::string> &script)  { (void)script; return nil; }
 
 
 @implementation GameController
@@ -593,12 +606,12 @@ oo::PList cxx_OOJSPListFromJSObject(ooscript::Context context, ooscript::Object 
 
 
 namespace {
-PlayerEntity *sPlayer = nil;
+PlayerEntity *sPlayer = nullptr;
 }
 
 ooscript::Context gOOJSMainThreadContext = nullptr;
 Entity *gOOJSPlayerIfStale = nil;
-PlayerEntity *gOOPlayer = nil;
+PlayerEntity *gOOPlayer = nullptr;
 Universe *gSharedUniverse = nil;
 
 
@@ -772,7 +785,7 @@ void SetUpContext()
 	gSharedUniverse = sUniverse;
 	sUniverse->_controller = [[GameController alloc] init];
 	sUniverse->_commodities = oo::makeRef<OOCommodities>();
-	sPlayer = [[PlayerEntity alloc] init];
+	sPlayer = new PlayerEntity;
 	sPlayer->_name = "player";
 	sPlayer->_screen = GUI_SCREEN_STATUS;
 	gOOPlayer = sPlayer;

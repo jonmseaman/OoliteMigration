@@ -424,7 +424,7 @@ OO_TEST(slice9BeaconsWaypointsBreakPatternAndAIs)
 		part->breakPatternCounter = 3;
 		OO_CHECK(![u breakPatternOver]);
 		PlayerEntity *standIn = gOOPlayer;
-		gOOPlayer = nil;	// no player: an earlier case leaves its stand-in (slice 14's SetUpTestPlayer())
+		gOOPlayer = nullptr;	// no player: an earlier case leaves its stand-in (slice 14's SetUpTestPlayer())
 		OO_CHECK([u breakPatternHide]);	// no player
 		gOOPlayer = standIn;
 		part->breakPatternCounter = 0;
@@ -509,7 +509,7 @@ OO_TEST(slice13EntityLookUp)
 		OO_CHECK([u entityForUniversalID:NO_TARGET] == nil);
 		OO_CHECK([u entityForUniversalID:MIN_ENTITY_UID + 1] == nil);
 		OO_CHECK([u entityForUniversalID:MAX_ENTITY_UID + 1] == nil);
-		OO_CHECK([u entityForUniversalID:100] == PLAYER);
+		OO_CHECK([u entityForUniversalID:100] == oo::ToObjC(PLAYER));
 
 		// No demo ships among no entities: the demo ship is cleared.
 		[u removeDemoShips];
@@ -525,13 +525,25 @@ OO_TEST(slice13EntityLookUp)
 // PLAYER: a stand-in (OOGetPlayer() asserts there is a player, and an entity's position is kept
 // relative to the player's viewpoint, as test_Entity's TestPlayer). It answers the player
 // messages the tests reach as an absent player's nil did.
-@interface UniverseTestPlayer: Entity
-@end
+class UniverseTestPlayer : public PlayerEntity	// C++ since bead oo-9ht.177 deleted the Objective-C player
+{
+public:
+	HPVector viewpointPosition() override			{ return kZeroHPVector; }
+	::StationEntity *dockedStation() override		{ return nil; }
+};
 
-@implementation UniverseTestPlayer
-- (HPVector) viewpointPosition	{ return kZeroHPVector; }
-- (id) dockedStation			{ return nil; }
-@end
+// [[TestPlayer alloc] init] (bead oo-9ht.177): a C++ player under the ship's facade, as
+// PlayerEntity::sharedPlayer() makes the game's, retained (+1) as +alloc's object was.
+template <class T>
+T *NewTestPlayer()
+{
+	oo::Ref<T> player = oo::makeRef<T>();
+	@autoreleasepool
+	{
+		[oo::NewEntityFacade(player) retain];
+	}
+	return player.get();
+}
 
 
 
@@ -539,9 +551,9 @@ namespace {
 
 void SetUpTestPlayer()
 {
-	static Entity *player = nil;
-	if (player == nil)  player = [[UniverseTestPlayer alloc] init];	// never released, as the player is not
-	gOOPlayer = (PlayerEntity *)player;
+	static UniverseTestPlayer *player = nullptr;
+	if (player == nullptr)  player = NewTestPlayer<UniverseTestPlayer>();	// never released, as the player is not
+	gOOPlayer = player;
 }
 
 

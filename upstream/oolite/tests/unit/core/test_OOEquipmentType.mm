@@ -159,27 +159,30 @@ oo::Ref<OOScript> OOScript::jsScriptFromFileNamed(const std::string &fileName, c
 
 
 // Keys come back as given; "taken" is in use by "compass"; mission_TL_FOR_EQ_SHIELD_BOOSTER is 7.
-@interface PlayerEntity: OOObject
-- (oo::PList) cxx_processKeyCode:(const oo::PList &)key_def;
-- (std::optional<std::string>) validateKey:(const std::string &)key checkKeys:(const oo::PList &)check_keys;
-- (oo::PList) cxx_missionVariableForKey:(const std::string &)key;
-@end
+// PLAYER: C++ since bead oo-9ht.177 deleted the Objective-C player this stood in for; the members
+// the code under test calls, declared as PlayerEntity.h declares them (the test imports no game
+// header that defines the class), with the same answers.
+class PlayerEntity
+{
+public:
+	oo::PList processKeyCode(const oo::PList &key_def);
+	std::optional<std::string> validateKey(const std::string &key, const oo::PList &check_keys);
+	oo::PList missionVariableForKey(const std::string &key);
+};
 
-@implementation PlayerEntity
-- (oo::PList) cxx_processKeyCode:(const oo::PList &)key_def	{ return key_def; }
-- (std::optional<std::string>) validateKey:(const std::string &)key checkKeys:(const oo::PList &)check_keys
+oo::PList PlayerEntity::processKeyCode(const oo::PList &key_def)	{ return key_def; }
+std::optional<std::string> PlayerEntity::validateKey(const std::string &key, const oo::PList &check_keys)
 {
 	gLog.push_back("validate " + key);
 	const oo::PList *first = check_keys.at(0);
 	return (first != nullptr && first->get<std::string>("key") == "taken") ? std::optional<std::string>("compass") : std::nullopt;
 }
-- (oo::PList) cxx_missionVariableForKey:(const std::string &)key
+oo::PList PlayerEntity::missionVariableForKey(const std::string &key)
 {
 	return (key == "mission_TL_FOR_EQ_SHIELD_BOOSTER") ? oo::PList("7") : oo::PList();
 }
-@end
 
-PlayerEntity *gOOPlayer = nil;
+PlayerEntity *gOOPlayer = nullptr;
 
 
 void cxx_OOStandardsDeprecated(const std::string &message)
@@ -204,7 +207,7 @@ namespace {
 void Reset()
 {
 	if (gSharedUniverse == nil)  gSharedUniverse = [[Universe alloc] init];
-	if (gOOPlayer == nil)  gOOPlayer = [[PlayerEntity alloc] init];
+	if (gOOPlayer == nullptr)  gOOPlayer = new PlayerEntity;	// never deleted
 	gLog.clear();
 	gEnforceStandards = NO;
 }

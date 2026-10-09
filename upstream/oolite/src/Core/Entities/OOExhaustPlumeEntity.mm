@@ -401,7 +401,7 @@ void OOExhaustPlumeEntity::drawSubEntityImmediate(bool /*immediate*/, bool trans
 	OOGLPopModelView();
 	OOGLPushModelView();
 //	GLTranslateOOVector(vector_flip([self cameraRelativePosition]));
-	HPVector cam = [PLAYER viewpointPosition];
+	HPVector cam = (PLAYER != nullptr ? PLAYER->viewpointPosition() : HPVector{});
 	for (unsigned n=0;n<34*3;n++)
 	{
 		switch (n%3) 

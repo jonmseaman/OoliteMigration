@@ -961,7 +961,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 		case kShip_weaponFacings:
 			if (ship->getIsPlayer())
 			{
-				PlayerEntity *pent = (PlayerEntity*)entity;
+				PlayerEntity *pent = static_cast<PlayerEntity *>(oo::ToCxx(entity));
 				return ooscript::newNumberValue(context, OOJSShipPlayerAvailableFacings(pent), value);
 			}
 			return ooscript::newNumberValue(context, ship->weaponFacings(), value);
@@ -1148,7 +1148,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 		case kShip_isFleeing:
 			if (ship->getIsPlayer())
 			{
-				*value = OOJSValueFromBOOL(OOJSShipPlayerFleeingStatus((PlayerEntity*)entity) >= PLAYER_FLEEING_CARGO);
+				*value = OOJSValueFromBOOL(OOJSShipPlayerFleeingStatus(static_cast<PlayerEntity *>(oo::ToCxx(entity))) >= PLAYER_FLEEING_CARGO);
 			}
 			else
 			{
@@ -2059,7 +2059,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			}
 			if (ship->getIsPlayer())
 			{
-				PlayerEntity *pent = (PlayerEntity*)entity;
+				PlayerEntity *pent = static_cast<PlayerEntity *>(oo::ToCxx(entity));
 				OOJSShipPlayerSetWeaponMount(pent, facing, weaponKey, "scripted");
 			}
 			else
@@ -2424,7 +2424,7 @@ static bool ShipAddCargoEntity(ooscript::Context context, ooscript::CallArgs &oo
 	GET_THIS_SHIP(thisEnt);
 	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
 
-	if (EXPECT_NOT(ship->getIsPlayer() && OOJSShipPlayerIsDocked((PlayerEntity *)thisEnt)))
+	if (EXPECT_NOT(ship->getIsPlayer() && OOJSShipPlayerIsDocked(static_cast<PlayerEntity *>(oo::ToCxx(thisEnt)))))
 	{
 		cxx_OOJSReportWarningForCaller(context, "PlayerShip", "addCargoEntity", "Can't add cargo entity while docked, ignoring.");
 		return false;
@@ -2504,7 +2504,7 @@ static bool ShipDumpCargo(ooscript::Context context, ooscript::CallArgs &oojsArg
 	GET_THIS_SHIP(thisEnt);
 	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
 	
-	if (EXPECT_NOT(ship->getIsPlayer() && OOJSShipPlayerIsDocked((PlayerEntity *)thisEnt)))
+	if (EXPECT_NOT(ship->getIsPlayer() && OOJSShipPlayerIsDocked(static_cast<PlayerEntity *>(oo::ToCxx(thisEnt)))))
 	{
 		cxx_OOJSReportWarningForCaller(context, "PlayerShip", "dumpCargo", "Can't dump cargo while docked, ignoring.");
 		OOJS_RETURN_NULL;
@@ -2869,7 +2869,7 @@ static bool ShipAwardEquipment(ooscript::Context context, ooscript::CallArgs &oo
 	{
 		if (ship->getIsPlayer())
 		{
-			PlayerEntity *player = (PlayerEntity *)thisEnt;
+			PlayerEntity *player = static_cast<PlayerEntity *>(oo::ToCxx(thisEnt));
 			
 			if (identifier == "EQ_MISSILE_REMOVAL")
 			{
@@ -2957,7 +2957,7 @@ static bool ShipRemoveEquipment(ooscript::Context context, ooscript::CallArgs &o
 				if (ship->passengerCapacity() > ship->passengerCount())
 				{
 					// must be the player's ship!
-					if (ship->getIsPlayer()) OOJSShipPlayerChangePassengerBerths((PlayerEntity*)thisEnt, -1);
+					if (ship->getIsPlayer()) OOJSShipPlayerChangePassengerBerths(static_cast<PlayerEntity *>(oo::ToCxx(thisEnt)), -1);
 				}
 				else OK = false;
 			}
@@ -3003,7 +3003,7 @@ static bool ShipRestoreSubEntities(ooscript::Context context, ooscript::CallArgs
 	if (ship->getIsPlayer())
 	{
 		int tradeInFactorChange = (int)MAX(PLAYER_SHIP_SUBENTITY_TRADE_IN_VALUE * numSubEntitiesRestored, 25U);
-		OOJSShipPlayerAdjustTradeInFactorBy((PlayerEntity *)thisEnt, tradeInFactorChange);
+		OOJSShipPlayerAdjustTradeInFactorBy(static_cast<PlayerEntity *>(oo::ToCxx(thisEnt)), tradeInFactorChange);
 	}
 	
 	OOJS_RETURN_BOOL(numSubEntitiesRestored > 0);
@@ -3599,7 +3599,7 @@ bool RemoveOrExplodeShip(ooscript::Context context, ooscript::CallArgs &oojsArgs
 	if (EXPECT_NOT(ship->getIsPlayer()))
 	{
 		OOCAssert(explode, "RemoveOrExplodeShip(): shouldn't be called for player with !explode.");	// player.ship.remove() is blocked by caller.
-		PlayerEntity *player = (PlayerEntity *)thisEnt;
+		PlayerEntity *player = static_cast<PlayerEntity *>(oo::ToCxx(thisEnt));
 		
 		if (OOJSShipPlayerIsDocked(player))
 		{
@@ -4525,7 +4525,7 @@ static bool ShipThreatAssessment(ooscript::Context context, ooscript::CallArgs &
 	{
 		assessment *= 0.2;
 	}
-	else if (ship->getIsPlayer() && OOJSShipPlayerFleeingStatus((PlayerEntity*)thisEnt) >= PLAYER_FLEEING_CARGO)
+	else if (ship->getIsPlayer() && OOJSShipPlayerFleeingStatus(static_cast<PlayerEntity *>(oo::ToCxx(thisEnt))) >= PLAYER_FLEEING_CARGO)
 	{
 		assessment *= 0.2;
 	}

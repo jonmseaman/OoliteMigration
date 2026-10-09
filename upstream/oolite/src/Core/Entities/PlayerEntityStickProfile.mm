@@ -69,16 +69,15 @@ std::string Bars(char mark, int count)
 }	// namespace
 
 
-void cxx::PlayerEntity::setGuiToStickProfileScreen(::GuiDisplayGen *gui)
+void PlayerEntity::setGuiToStickProfileScreen(::GuiDisplayGen *gui)
 {
 	gui_screen = GUI_SCREEN_STICKPROFILE;
 	if (stickProfileScreen != nullptr)  stickProfileScreen->startGui(gui);	// a nil screen ignored the message
 	return;
 }
 
-void cxx::PlayerEntity::stickProfileInputHandler(::GuiDisplayGen *gui, ::MyOpenGLView *gameView)
+void PlayerEntity::stickProfileInputHandler(::GuiDisplayGen *gui, ::MyOpenGLView *gameView)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	if ([gameView isDown: gvMouseLeftButton])
 	{
 		NSPoint mouse_position = NSMakePoint(
@@ -94,27 +93,27 @@ void cxx::PlayerEntity::stickProfileInputHandler(::GuiDisplayGen *gui, ::MyOpenG
 	{
 		if (stickProfileScreen != nullptr)  stickProfileScreen->deleteSelected();
 	}
-	[self handleGUIUpDownArrowKeys];
+	handleGUIUpDownArrowKeys();
 	
-	if ([self checkKeyPress:n_key_gui_select] && gui->getSelectedRow() == GUI_ROW_STICKPROFILE_BACK)
+	if (checkKeyPress(n_key_gui_select) && gui->getSelectedRow() == GUI_ROW_STICKPROFILE_BACK)
 	{
 		if (stickProfileScreen != nullptr)  stickProfileScreen->saveSettings();
-		[self setGuiToStickMapperScreen: 0 resetCurrentRow: YES];
+		setGuiToStickMapperScreen(0, YES);
 	}
 	switch (gui->getSelectedRow())
 	{
 	case GUI_ROW_STICKPROFILE_AXIS:
-		if ([self checkKeyPress:n_key_gui_arrow_left])
+		if (checkKeyPress(n_key_gui_arrow_left))
 		{
-			if (!stickProfileArrow_pressed && ![self checkKeyPress:n_key_gui_arrow_right])
+			if (!stickProfileArrow_pressed && !checkKeyPress(n_key_gui_arrow_right))
 			{
 				if (stickProfileScreen != nullptr)  stickProfileScreen->previousAxis();
 				stickProfileArrow_pressed = YES;
 			}
 		}
-		else if ([self checkKeyPress: n_key_gui_arrow_right])
+		else if (checkKeyPress(n_key_gui_arrow_right))
 		{
-			if (!stickProfileArrow_pressed && ![self checkKeyPress: n_key_gui_arrow_left])
+			if (!stickProfileArrow_pressed && !checkKeyPress(n_key_gui_arrow_left))
 			{
 				if (stickProfileScreen != nullptr)  stickProfileScreen->nextAxis();
 				stickProfileArrow_pressed = YES;
@@ -127,17 +126,17 @@ void cxx::PlayerEntity::stickProfileInputHandler(::GuiDisplayGen *gui, ::MyOpenG
 		break;
 
 	case GUI_ROW_STICKPROFILE_DEADZONE:
-		if ([self checkKeyPress:n_key_gui_arrow_left])
+		if (checkKeyPress(n_key_gui_arrow_left))
 		{
-			if (!stickProfileArrow_pressed && ![self checkKeyPress: n_key_gui_arrow_right])
+			if (!stickProfileArrow_pressed && !checkKeyPress(n_key_gui_arrow_right))
 			{
 				if (stickProfileScreen != nullptr)  stickProfileScreen->decreaseDeadzone();
 				stickProfileArrow_pressed = YES;
 			}
 		}
-		else if ([self checkKeyPress: n_key_gui_arrow_right])
+		else if (checkKeyPress(n_key_gui_arrow_right))
 		{
-			if (!stickProfileArrow_pressed && ![self checkKeyPress: n_key_gui_arrow_left])
+			if (!stickProfileArrow_pressed && !checkKeyPress(n_key_gui_arrow_left))
 			{
 				if (stickProfileScreen != nullptr)  stickProfileScreen->increaseDeadzone();
 				stickProfileArrow_pressed = YES;
@@ -150,17 +149,17 @@ void cxx::PlayerEntity::stickProfileInputHandler(::GuiDisplayGen *gui, ::MyOpenG
 		break;
 
 	case GUI_ROW_STICKPROFILE_PROFILE_TYPE:
-		if ([self checkKeyPress:n_key_gui_arrow_left])
+		if (checkKeyPress(n_key_gui_arrow_left))
 		{
-			if (!stickProfileArrow_pressed && ![self checkKeyPress: n_key_gui_arrow_right])
+			if (!stickProfileArrow_pressed && !checkKeyPress(n_key_gui_arrow_right))
 			{
 				if (stickProfileScreen != nullptr)  stickProfileScreen->previousProfileType();
 				stickProfileArrow_pressed = YES;
 			}
 		}
-		else if ([self checkKeyPress: n_key_gui_arrow_right])
+		else if (checkKeyPress(n_key_gui_arrow_right))
 		{
-			if (!stickProfileArrow_pressed && ![self checkKeyPress: n_key_gui_arrow_left])
+			if (!stickProfileArrow_pressed && !checkKeyPress(n_key_gui_arrow_left))
 			{
 				if (stickProfileScreen != nullptr)  stickProfileScreen->nextProfileType();
 				stickProfileArrow_pressed = YES;
@@ -177,17 +176,17 @@ void cxx::PlayerEntity::stickProfileInputHandler(::GuiDisplayGen *gui, ::MyOpenG
 	{
 		if (gui->getSelectedRow() == GUI_ROW_STICKPROFILE_POWER)
 		{
-			if ([self checkKeyPress:n_key_gui_arrow_left])
+			if (checkKeyPress(n_key_gui_arrow_left))
 			{
-				if (!stickProfileArrow_pressed && ![self checkKeyPress: n_key_gui_arrow_right])
+				if (!stickProfileArrow_pressed && !checkKeyPress(n_key_gui_arrow_right))
 				{
 					if (stickProfileScreen != nullptr)  stickProfileScreen->DecreasePower();
 					stickProfileArrow_pressed = YES;
 				}
 			}
-			else if ([self checkKeyPress: n_key_gui_arrow_right])
+			else if (checkKeyPress(n_key_gui_arrow_right))
 			{
-				if (!stickProfileArrow_pressed && ![self checkKeyPress: n_key_gui_arrow_left])
+				if (!stickProfileArrow_pressed && !checkKeyPress(n_key_gui_arrow_left))
 				{
 					if (stickProfileScreen != nullptr)  stickProfileScreen->IncreasePower();
 					stickProfileArrow_pressed = YES;
@@ -200,17 +199,17 @@ void cxx::PlayerEntity::stickProfileInputHandler(::GuiDisplayGen *gui, ::MyOpenG
 		}
 		else if (gui->getSelectedRow() == GUI_ROW_STICKPROFILE_PARAM)
 		{
-			if ([self checkKeyPress:n_key_gui_arrow_left])
+			if (checkKeyPress(n_key_gui_arrow_left))
 			{
-				if (!stickProfileArrow_pressed && ![self checkKeyPress: n_key_gui_arrow_right])
+				if (!stickProfileArrow_pressed && !checkKeyPress(n_key_gui_arrow_right))
 				{
 					if (stickProfileScreen != nullptr)  stickProfileScreen->DecreaseParam();
 					stickProfileArrow_pressed = YES;
 				}
 			}
-			else if ([self checkKeyPress: n_key_gui_arrow_right])
+			else if (checkKeyPress(n_key_gui_arrow_right))
 			{
-				if (!stickProfileArrow_pressed && ![self checkKeyPress: n_key_gui_arrow_left])
+				if (!stickProfileArrow_pressed && !checkKeyPress(n_key_gui_arrow_left))
 				{
 					if (stickProfileScreen != nullptr)  stickProfileScreen->IncreaseParam();
 					stickProfileArrow_pressed = YES;
@@ -225,7 +224,7 @@ void cxx::PlayerEntity::stickProfileInputHandler(::GuiDisplayGen *gui, ::MyOpenG
 	return;
 }
 
-void cxx::PlayerEntity::stickProfileGraphAxisProfile(GLfloat alpha, Vector screenAt, NSSize /*screenSize*/)
+void PlayerEntity::stickProfileGraphAxisProfile(GLfloat alpha, Vector screenAt, NSSize /*screenSize*/)
 {
 
 	if (stickProfileScreen != nullptr)  stickProfileScreen->graphProfile(alpha, make_vector(screenAt.x - 110.0, screenAt.y - 100, screenAt.z), NSMakeSize(220,220));
@@ -623,7 +622,7 @@ void StickProfileScreen::showScreen()
 	gui->setKey(std::string(GUI_KEY_OK), GUI_ROW_STICKPROFILE_BACK);
 	gui->setSelectableRange(NSMakeRange(1, GUI_ROW_STICKPROFILE_BACK));
 	[[UNIVERSE gameView] suppressKeysUntilKeyUp];
-	gui->setForegroundTextureKey(std::string([PLAYER status] == STATUS_DOCKED ? "docked_overlay" : "paused_overlay"));
+	gui->setForegroundTextureKey(std::string((PLAYER != nullptr ? PLAYER->status() : OOEntityStatus{}) == STATUS_DOCKED ? "docked_overlay" : "paused_overlay"));
 	gui->setBackgroundTextureKey(std::string("settings"));
 	return;
 }

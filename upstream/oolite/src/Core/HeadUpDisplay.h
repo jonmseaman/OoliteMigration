@@ -245,7 +245,8 @@ enum
 };
 
 
-@class Entity, PlayerEntity;
+@class Entity;
+class PlayerEntity;
 class GuiDisplayGen;
 
 

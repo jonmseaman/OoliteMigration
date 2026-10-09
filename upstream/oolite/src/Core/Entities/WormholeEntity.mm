@@ -101,8 +101,8 @@ void WormholeEntity::initWithDict(const oo::PList &dict)
 			origin = dict.get<int>("origin_id", 0);
 			destination = dict.get<int>("dest_id", 255);
 
-			originCoords = SystemCoordinates(origin, [PLAYER galaxyNumber]);
-			destinationCoords = SystemCoordinates(destination, [PLAYER galaxyNumber]);
+			originCoords = SystemCoordinates(origin, (PLAYER != nullptr ? PLAYER->galaxyNumber() : OOGalaxyID{}));
+			destinationCoords = SystemCoordinates(destination, (PLAYER != nullptr ? PLAYER->galaxyNumber() : OOGalaxyID{}));
 
 			// We only ever init from dictionary if we're loaded by the player, so
 			// by definition we have been scanned
@@ -162,15 +162,15 @@ void WormholeEntity::initWormholeTo(OOSystemID s, ::ShipEntity *ship)
 	init();
 	// [self init] could not fail.
 	{
-		double		now = [PLAYER clockTimeAdjusted];
+		double		now = (PLAYER != nullptr ? PLAYER->clockTimeAdjusted() : 0.0);
 		double		distance;
 		::OOSunEntity	*sun = [UNIVERSE sun];
 		
 		_misjump = NO;
 		origin = [UNIVERSE currentSystemID];
 		destination = s;
-		originCoords = [PLAYER galaxy_coordinates];
-		destinationCoords = SystemCoordinates(destination, [PLAYER galaxyNumber]);
+		originCoords = (PLAYER != nullptr ? PLAYER->getGalaxy_coordinates() : NSPoint{});
+		destinationCoords = SystemCoordinates(destination, (PLAYER != nullptr ? PLAYER->galaxyNumber() : OOGalaxyID{}));
 		distance = distanceBetweenPlanetPositions(originCoords.x, originCoords.y, destinationCoords.x, destinationCoords.y);
 		distance = fmax(distance, 0.1);
 		witch_mass = 200000.0; // MKW 2010.11.21 - originally the ship's mass was added twice - once here and once in suckInShip.  Instead, we give each wormhole a minimum mass.
@@ -198,7 +198,7 @@ void WormholeEntity::initWormholeTo(OOSystemID s, ::ShipEntity *ship)
 			expiry_time = arrival_time - 1.0; 
 		}
 		position = [ship position];
-		zero_distance = HPdistance2([PLAYER position], position);
+		zero_distance = HPdistance2((PLAYER != nullptr ? PLAYER->getPosition() : HPVector{}), position);
 	}
 }
 
@@ -268,12 +268,12 @@ bool WormholeEntity::suckInShip(::ShipEntity *ship)
 		// if we're no longer in the origin system, can't suck in
 		return NO;
 	}
-	if ([PLAYER galaxy_coordinates].x != originCoords.x || [PLAYER galaxy_coordinates].y != originCoords.y)
+	if ((PLAYER != nullptr ? PLAYER->getGalaxy_coordinates() : NSPoint{}).x != originCoords.x || (PLAYER != nullptr ? PLAYER->getGalaxy_coordinates() : NSPoint{}).y != originCoords.y)
 	{
 		// if we're no longer at the origin coordinates, can't suck in (handles interstellar space case)
 		return NO;
 	}
-	double now = [PLAYER clockTimeAdjusted];
+	double now = (PLAYER != nullptr ? PLAYER->clockTimeAdjusted() : 0.0);
 
 /* CIM: removed test. Not valid for wormholes which last longer than their travel time. Most likely for short distances e.g. zero-distance doubles. equal_seeds test above should cover it, with expiry_time test for safety.  */
 /*	if (now > arrival_time)
@@ -331,7 +331,7 @@ bool WormholeEntity::suckInShip(::ShipEntity *ship)
 
 	if ([ship isStation])
 	{
-		if ([PLAYER dockedStation] == (::StationEntity*)ship)
+		if ((PLAYER != nullptr ? PLAYER->dockedStation() : (StationEntity *)nullptr) == (::StationEntity*)ship)
 		{
 			// the carrier has jumped while the player is docked
 			[ship retain];
@@ -346,7 +346,7 @@ bool WormholeEntity::suckInShip(::ShipEntity *ship)
 
 void WormholeEntity::disgorgeShips()
 {
-	double now = [PLAYER clockTimeAdjusted];
+	double now = (PLAYER != nullptr ? PLAYER->clockTimeAdjusted() : 0.0);
 	std::vector<OOWormholeTransit> shipsStillInTransit;
 	shipsStillInTransit.reserve(shipsInTransit.size());
 	BOOL hasShiftedExitPosition = NO;
@@ -413,7 +413,7 @@ void WormholeEntity::disgorgeShips()
 				setExitSpeed([ship maxFlightSpeed]*WORMHOLE_LEADER_SPEED_FACTOR);
 				if (containsPlayer)
 				{ // reset the player's speed to the new speed
-					[PLAYER setSpeed:exit_speed];
+					if (PLAYER != nullptr)  PLAYER->setSpeed(exit_speed);
 				}
 				useExitXYScatter = YES;
 				[ship setPosition:position];
@@ -486,7 +486,7 @@ void WormholeEntity::disgorgeShips()
 	{
 		// ships exiting the wormhole after now are following the player
 		// so appear behind them
-		position = HPvector_add([PLAYER position], vectorToHPVector(vector_multiply_scalar([PLAYER forwardVector], -500.0f)));
+		position = HPvector_add((PLAYER != nullptr ? PLAYER->getPosition() : HPVector{}), vectorToHPVector(vector_multiply_scalar((PLAYER != nullptr ? PLAYER->forwardVector() : Vector{}), -500.0f)));
 		containsPlayer = NO;
 	}
 // else, the wormhole doesn't now (or never) contained the player, so
@@ -605,7 +605,7 @@ oo::PList WormholeEntity::getShipsInTransit()
 
 std::optional<std::string> WormholeEntity::descriptionComponents() const
 {
-	double now = [PLAYER clockTime];
+	double now = (PLAYER != nullptr ? PLAYER->clockTime() : 0.0);
 	return oo::str::format("destination: %s ttl: %.2fs arrival: %s",
 		_misjump ? "Interstellar Space" : [UNIVERSE cxx_getSystemName:destination].value_or("(null)").c_str(),
 		expiry_time - now,
@@ -648,7 +648,7 @@ bool WormholeEntity::canCollide()
 		// if we're no longer in the origin system, can't suck in
 		return NO;
 	}
-	if ([PLAYER galaxy_coordinates].x != originCoords.x || [PLAYER galaxy_coordinates].y != originCoords.y)
+	if ((PLAYER != nullptr ? PLAYER->getGalaxy_coordinates() : NSPoint{}).x != originCoords.x || (PLAYER != nullptr ? PLAYER->getGalaxy_coordinates() : NSPoint{}).y != originCoords.y)
 	{
 		// if we're no longer at the origin coordinates, can't suck in (handles interstellar space case)
 		return NO;
@@ -672,8 +672,8 @@ void WormholeEntity::update(OOTimeDelta delta_t)
 	
 	::PlayerEntity	*player = PLAYER;
 	assert(player != nil);
-	rotMatrix = OOMatrixForBillboard(position, [player viewpointPosition]);
-	double now = [player clockTimeAdjusted];
+	rotMatrix = OOMatrixForBillboard(position, (player != nullptr ? player->viewpointPosition() : HPVector{}));
+	double now = (player != nullptr ? player->clockTimeAdjusted() : 0.0);
 	
 	if (witch_mass > 0.0)
 	{

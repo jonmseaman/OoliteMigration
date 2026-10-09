@@ -562,8 +562,8 @@ std::optional<std::string> OOJSPlayerShipJSClassName(void)
 
 void OOJSPlayerShipSetJSSelf(PlayerEntity *player, ooscript::Object val, ooscript::Context context)
 {
-	player->_cxxEntity->_jsSelf = val;
-	OOJSAddGCObjectRoot(context, &player->_cxxEntity->_jsSelf, "Player jsSelf");
+	player->_jsSelf = val;
+	OOJSAddGCObjectRoot(context, &player->_jsSelf, "Player jsSelf");
 
 	oo::NotificationCenter::defaultCenter().addObserver(player, kOOJavaScriptEngineWillResetNotificationName,
 														OOJSPlayerShipSharedEngine(),
@@ -576,12 +576,12 @@ void OOJSPlayerShipJavaScriptEngineWillReset(PlayerEntity *player, const oo::Not
 	oo::NotificationCenter::defaultCenter().removeObserver(player, kOOJavaScriptEngineWillResetNotificationName,
 															OOJSPlayerShipSharedEngine());
 
-	if (player->_cxxEntity->_jsSelf != NULL)
+	if (player->_jsSelf != NULL)
 	{
 
 		ooscript::Context context = OOJSAcquireContext();
-		ooscript::removeObjectRoot((context), OOJSFOBJP(&player->_cxxEntity->_jsSelf));
-		player->_cxxEntity->_jsSelf = NULL;
+		ooscript::removeObjectRoot((context), OOJSFOBJP(&player->_jsSelf));
+		player->_jsSelf = NULL;
 		OOJSRelinquishContext(context);
 	}
 }

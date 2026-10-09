@@ -35,22 +35,25 @@
 	Asking for the quantity of "furs" raises, and of "gems" while _throwCxx is set throws a C++
 	exception, so the test sees what an exception under a native becomes.
 */
-@interface PlayerEntity: OOObject
+// PLAYER: C++ since bead oo-9ht.177 deleted the Objective-C player this stood in for: the members
+// the code under test calls, declared as the game headers declare them (the test imports none
+// that defines the classes), with the stand-in's answers.
+class PlayerEntity
 {
-@public
+public:
+	oo::PList cargoListForScripting();
+	OOCargoQuantity cargoQuantityForType(const std::string &type);
+	OOCargoQuantity setCargoQuantityForType(const std::string &type, OOCargoQuantity amount);
+	std::optional<std::string> getSpecialCargo();
+	::OOCommodityMarket * getShipCommodityData();
+	::OOScript * commodityScriptNamed(const std::optional<std::string> &scriptName);
+
 	std::map<std::string, OOCargoQuantity> _cargo;
 	std::optional<std::string> _specialCargo;
 	oo::Ref<OOCommodityMarket> _shipCommodityData;
-	int _sets;
-	BOOL _throwCxx;
-}
-- (oo::PList) cargoListForScripting;
-- (OOCargoQuantity) cxx_cargoQuantityForType:(const std::string &)type;
-- (OOCargoQuantity) cxx_setCargoQuantityForType:(const std::string &)type amount:(OOCargoQuantity)amount;
-- (std::optional<std::string>) cxx_specialCargo;
-- (OOCommodityMarket *) shipCommodityData;
-- (id) cxx_commodityScriptNamed:(const std::optional<std::string> &)script;
-@end
+	int _sets = {};
+	BOOL _throwCxx = {};
+};
 
 @interface Universe: OOObject
 {
@@ -107,9 +110,7 @@ oo::PList TradeGoods()
 }	// namespace
 
 
-@implementation PlayerEntity
-
-- (oo::PList) cargoListForScripting
+oo::PList PlayerEntity::cargoListForScripting()
 {
 	oo::PList::Array list;
 	for (const auto &[good, quantity] : _cargo)
@@ -118,26 +119,21 @@ oo::PList TradeGoods()
 	}
 	return oo::PList(std::move(list));
 }
-
-- (OOCargoQuantity) cxx_cargoQuantityForType:(const std::string &)type
+OOCargoQuantity PlayerEntity::cargoQuantityForType(const std::string &type)
 {
 	if (type == "furs")  [OOException raise:OOInvalidArgumentException format:"cargo %s", "boom"];
 	if (type == "gems" && _throwCxx)  throw std::runtime_error("cxx boom");
 	return _cargo[type];
 }
-
-- (OOCargoQuantity) cxx_setCargoQuantityForType:(const std::string &)type amount:(OOCargoQuantity)amount
+OOCargoQuantity PlayerEntity::setCargoQuantityForType(const std::string &type, OOCargoQuantity amount)
 {
 	_sets++;
 	_cargo[type] = amount;
 	return amount;
 }
-
-- (std::optional<std::string>) cxx_specialCargo  { return _specialCargo; }
-- (OOCommodityMarket *) shipCommodityData  { return _shipCommodityData.get(); }
-- (id) cxx_commodityScriptNamed:(const std::optional<std::string> &)script  { (void)script; return nil; }
-
-@end
+std::optional<std::string> PlayerEntity::getSpecialCargo()  { return _specialCargo; }
+::OOCommodityMarket * PlayerEntity::getShipCommodityData()  { return _shipCommodityData.get(); }
+::OOScript * PlayerEntity::commodityScriptNamed(const std::optional<std::string> &script)  { (void)script; return nil; }
 
 
 @implementation Universe
@@ -269,12 +265,12 @@ ooscript::Context gOOJSMainThreadContext = nullptr;
 
 
 namespace {
-PlayerEntity *sPlayer = nil;
+PlayerEntity *sPlayer = nullptr;
 ooscript::Object sPlayerShip = nullptr;
 std::map<ooscript::ClassDef *, int> sConverters;
 }
 
-PlayerEntity *gOOPlayer = nil;
+PlayerEntity *gOOPlayer = nullptr;
 Universe *gSharedUniverse = nil;
 
 
@@ -370,7 +366,7 @@ void SetUpContext()
 
 	sUniverse = [[Universe alloc] init];	// kept for the life of the test
 	gSharedUniverse = sUniverse;
-	sPlayer = [[PlayerEntity alloc] init];
+	sPlayer = new PlayerEntity;
 	gOOPlayer = sPlayer;
 	sUniverse->_commodities = oo::makeRef<OOCommodities>();
 	sUniverse->_market = sUniverse->_commodities->generateBlankMarket();

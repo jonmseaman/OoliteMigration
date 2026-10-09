@@ -212,7 +212,7 @@ static bool ClockGetProperty(Context cx, Object obj, PropertyId propID, Value *v
 	PlayerEntity				*player = OOPlayerForScripting();
 	double						clockTime;
 
-	clockTime = [player clockTime];
+	clockTime = (player != nullptr ? player->PlayerEntity::clockTime() : 0.0);	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 
 	switch (ooscript::idToInt32(propID))
 	{
@@ -246,19 +246,19 @@ static bool ClockGetProperty(Context cx, Object obj, PropertyId propID, Value *v
 			return true;
 
 		case kClock_clockString:
-			*value = OOJSValueFromPList(context, oo::PList([player cxx_dial_clock]));
+			*value = OOJSValueFromPList(context, oo::PList((player != nullptr ? player->dial_clock() : std::string())));
 			return true;
 
 		case kClock_isAdjusting:
-			*value = OOJSValueFromBOOL([player clockAdjusting]);
+			*value = OOJSValueFromBOOL((player != nullptr ? player->clockAdjusting() : false));
 			return true;
 
 		case kClock_adjustedSeconds:
-			return ooscript::newNumberValue(cx, [player clockTimeAdjusted], value);
+			return ooscript::newNumberValue(cx, (player != nullptr ? player->PlayerEntity::clockTimeAdjusted() : 0.0), value);	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 
 		case kClock_legacy_scriptTimer:
 			cxx_OOStandardsDeprecated("The legacy_scriptTimer property is deprecated");
-			return ooscript::newNumberValue(cx, [player scriptTimer], value);
+			return ooscript::newNumberValue(cx, (player != nullptr ? player->scriptTimer() : OOTimeDelta{}), value);
 
 		default:
 			OOJSReportBadPropertySelector(context, thisObj, (propID), sClockProperties);
@@ -278,7 +278,8 @@ static bool JSClockToString(ooscript::Context context, ooscript::CallArgs &oojsA
 {
 	OOJS_NATIVE_ENTER(context)
 
-	OOJS_RETURN_PLIST(oo::PList([OOPlayerForScripting() cxx_dial_clock]));
+	PlayerEntity *player = OOPlayerForScripting();
+	OOJS_RETURN_PLIST(oo::PList(player != nullptr ? player->dial_clock() : std::string()));
 
 	OOJS_NATIVE_EXIT
 }
@@ -330,7 +331,7 @@ static bool ClockAddSeconds(ooscript::Context context, ooscript::CallArgs &oojsA
 		OOJS_RETURN_BOOL(false);
 	}
 
-	[OOPlayerForScripting() addToAdjustTime:time];
+	if (PlayerEntity *player = OOPlayerForScripting())  player->addToAdjustTime(time);
 
 	OOJS_RETURN_BOOL(true);
 

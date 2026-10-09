@@ -146,7 +146,7 @@ static oo::PList MissionVariablesConverter(ooscript::Context context, ooscript::
 {
 	(void)context;
 	(void)object;
-	return [PLAYER cxx_missionVariables];
+	return (PLAYER != nullptr ? PLAYER->missionVariables() : oo::PList());
 }
 } // namespace
 #endif
@@ -168,7 +168,7 @@ static bool MissionVariablesDeleteProperty(Context cx, Object obj, PropertyId pr
 	if (ooscript::isStringId(jsPropID))
 	{
 		std::optional<std::string> key = KeyForPropertyID(context, jsPropID);
-		if (key.has_value())  [player cxx_setMissionVariable:oo::PList() forKey:*key];
+		if (key.has_value())  { if (player != nullptr)  player->setMissionVariable(oo::PList(), *key); }
 	}
 	return true;
 	
@@ -195,7 +195,7 @@ static bool MissionVariablesGetProperty(Context cx, Object obj, PropertyId propI
 		std::optional<std::string> key = KeyForPropertyID(context, jsPropID);
 		if (!key.has_value())  return true;
 		
-		const oo::PList mvar = [player cxx_missionVariableForKey:*key];
+		const oo::PList mvar = (player != nullptr ? player->missionVariableForKey(*key) : oo::PList());
 		
 		if (const std::string *string = mvar.getIf<std::string>())	// Currently there should only be strings, but we may want to change this.
 		{
@@ -241,7 +241,7 @@ static bool MissionVariablesSetProperty(Context cx, Object obj, PropertyId propI
 		// a string and is gone.)
 		std::optional<std::string> objValue = cxx_OOStringFromJSValue(context, *jsvalue);
 		
-		[player cxx_setMissionVariable:objValue.has_value() ? oo::PList(*objValue) : oo::PList() forKey:*key];
+		if (player != nullptr)  player->setMissionVariable(objValue.has_value() ? oo::PList(*objValue) : oo::PList(), *key);
 	}
 	return true;
 	
@@ -269,7 +269,7 @@ static bool MissionVariablesEnumerate(Context cx, Object /*obj*/, EnumerateOp en
 			// A copy of the keys, which is good since the enumerating code might mutate. In key order
 			// (-allKeys gave them in hash order).
 			std::vector<std::string> keys;
-			const oo::PList missionVariables = [PLAYER cxx_missionVariables];
+			const oo::PList missionVariables = (PLAYER != nullptr ? PLAYER->missionVariables() : oo::PList());
 			if (const oo::PList::Dict *dict = missionVariables.getIf<oo::PList::Dict>())
 			{
 				for (const auto &entry : *dict)  keys.push_back(entry.first);

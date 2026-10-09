@@ -81,7 +81,7 @@ void OOQuiriumCascadeEntity::update(OOTimeDelta delta_t)
 	cxx::Entity::update(delta_t);
 	_timePassed += delta_t;
 	
-	rotMatrix = OOMatrixForBillboard(position, [PLAYER position]);
+	rotMatrix = OOMatrixForBillboard(position, (PLAYER != nullptr ? PLAYER->getPosition() : HPVector{}));
 	
 	GLfloat tf = _timePassed / kQuiriumCascadeDuration;
 	GLfloat stf = tf * tf;

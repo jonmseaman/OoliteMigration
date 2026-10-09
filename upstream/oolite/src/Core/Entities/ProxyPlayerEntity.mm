@@ -45,18 +45,18 @@ void ProxyPlayerEntity::copyValuesFromPlayer(::PlayerEntity *player)
 {
 	if (player == nil)  return;
 	
-	setFuelLeakRate([player fuelLeakRate]);
-	setMassLocked([player massLocked]);
-	setAtHyperspeed([player atHyperspeed]);
-	setDialForwardShield([player dialForwardShield]);
-	setDialAftShield([player dialAftShield]);
-	setDialMissileStatus([player dialMissileStatus]);
-	setDialFuelScoopStatus([player dialFuelScoopStatus]);
-	setCompassMode([player compassMode]);
-	setDialIdentEngaged([player dialIdentEngaged]);
-	setAlertCondition([player alertCondition]);
-	setTrumbleCount([player trumbleCount]);
-	setTradeInFactor([player tradeInFactor]);
+	setFuelLeakRate((player != nullptr ? player->fuelLeakRate() : 0.0f));
+	setMassLocked((player != nullptr ? player->massLocked() : false));
+	setAtHyperspeed((player != nullptr ? player->atHyperspeed() : false));
+	setDialForwardShield((player != nullptr ? player->dialForwardShield() : 0.0f));
+	setDialAftShield((player != nullptr ? player->dialAftShield() : 0.0f));
+	setDialMissileStatus((player != nullptr ? player->dialMissileStatus() : OOMissileStatus{}));
+	setDialFuelScoopStatus((player != nullptr ? player->dialFuelScoopStatus() : OOFuelScoopStatus{}));
+	setCompassMode((player != nullptr ? player->getCompassMode() : OOCompassMode{}));
+	setDialIdentEngaged((player != nullptr ? player->dialIdentEngaged() : false));
+	setAlertCondition((player != nullptr ? player->getAlertCondition() : OOAlertCondition{}));
+	setTrumbleCount((player != nullptr ? player->getTrumbleCount() : 0));
+	setTradeInFactor((player != nullptr ? player->tradeInFactor() : int{}));
 
 }
 

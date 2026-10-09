@@ -133,7 +133,7 @@ void cxx::MyOpenGLView::clearKey(int theKey)
 void cxx::MyOpenGLView::resetMouse()
 {
 	setVirtualJoystick(0.0, 0.0);
-	if ([[::PlayerEntity sharedPlayer] isMouseControlOn])
+	if (::PlayerEntity::sharedPlayer()->isMouseControlOn())
 	{
 		SDL_WarpMouseInWindow(window, viewSize.width / 2, viewSize.height / 2);
 		mouseWarped = YES;

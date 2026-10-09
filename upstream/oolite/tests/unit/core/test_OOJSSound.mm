@@ -32,7 +32,7 @@
 
 // MARK: The classes, as far as the binding sees them ----------------------------------------------
 
-@class PlayerEntity;
+class PlayerEntity;
 
 // The player's status, as Entity.h defines it.
 #undef ENTRY
@@ -101,13 +101,23 @@ struct MusicRecord
 	int _stops = 0;
 };
 
-@interface FakePlayer: OOObject
+/*	PLAYER: C++ since bead oo-9ht.177 deleted the Objective-C player this stood in for. The binding
+	asks it its status, the root entity's member (declared as Entity.h declares it; the test imports
+	no game header that defines the classes), answered from the test's value.
+*/
+namespace cxx {
+class Entity
 {
-@public
-	OOEntityStatus _status;
-}
-- (OOEntityStatus) status;
-@end
+public:
+	OOEntityStatus status();
+};
+}	// namespace cxx
+
+class FakePlayer : public cxx::Entity
+{
+public:
+	OOEntityStatus _status = {};
+};
 
 #import "OOJSSound.h"
 #import "OOJSSoundSource.h"
@@ -186,11 +196,7 @@ void OOMusicController::playMusicNamed(const std::string &name, bool loop, float
 }
 
 
-@implementation FakePlayer
-
-- (OOEntityStatus) status  { return _status; }
-
-@end
+OOEntityStatus cxx::Entity::status()  { return static_cast<FakePlayer *>(this)->_status; }
 
 
 // MARK: What the rest of the engine provides ------------------------------------------------------
@@ -254,7 +260,7 @@ namespace {
 std::map<ooscript::ClassDef *, int> sConverters;
 } // namespace
 
-PlayerEntity *gOOPlayer = nil;
+PlayerEntity *gOOPlayer = nullptr;
 
 
 extern "C" {
@@ -320,7 +326,7 @@ namespace {
 ooscript::Runtime sRuntime;
 ooscript::Context sContext;
 ooscript::Object sGlobal;
-FakePlayer *sPlayer = nil;
+FakePlayer *sPlayer = nullptr;
 
 
 void SetUpContext()
@@ -333,9 +339,9 @@ void SetUpContext()
 	ooscript::initStandardClasses(sContext, sGlobal);
 	InitOOJSSound(sContext, sGlobal);
 
-	sPlayer = [[FakePlayer alloc] init];	// kept for the life of the test
+	sPlayer = new FakePlayer;	// kept for the life of the test
 	sPlayer->_status = STATUS_IN_FLIGHT;
-	gOOPlayer = (PlayerEntity *)sPlayer;
+	gOOPlayer = reinterpret_cast<PlayerEntity *>(sPlayer);	// the root part comes first in PlayerEntity: the binding's PLAYER->status() reaches it
 	sMusic = new MusicRecord();
 }
 

@@ -36,7 +36,7 @@ MA 02110-1301, USA.
 #include "oofnd/Notification.hpp"
 #include <optional>
 #include <string>
-@class PlayerEntity;
+class PlayerEntity;
 
 
 #ifdef __cplusplus

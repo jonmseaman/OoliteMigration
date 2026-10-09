@@ -27,8 +27,8 @@ MA 02110-1301, USA.
 #import "PlayerEntity.h"
 
 /*	Beads oo-130j, oo-ng9h, oo-z1nv, oo-vn3o (ADR-0056 amendment oo-lmdi8): the category PlayerEntity (Scripting) is members of
-	cxx::PlayerEntity, declared in PlayerEntity.h and defined in PlayerEntityLegacyScriptEngine.mm. Its Objective-C interface,
-	for the callers that remain, is the category of the same name in PlayerEntity+ObjCBridge.h,
+	PlayerEntity, declared in PlayerEntity.h and defined in PlayerEntityLegacyScriptEngine.mm. Its Objective-C interface,
+	for the callers that remained, was the category of the same name in PlayerEntity+ObjCBridge.h (deleted by bead oo-9ht.177),
 	which PlayerEntity.h imports. This header stays for the files that import it.
 */
 

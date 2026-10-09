@@ -104,19 +104,11 @@ MA 02110-1301, USA.
 
 @implementation Entity (ProxyPlayer)
 
+// YES for the player, whose facade answered YES until bead oo-9ht.177 deleted it; the proxy's own
+// facade answers YES too.
 - (BOOL) isPlayerLikeShip
 {
-	return NO;
-}
-
-@end
-
-
-@implementation PlayerEntity (ProxyPlayer)
-
-- (BOOL) isPlayerLikeShip
-{
-	return YES;
+	return dynamic_cast<PlayerEntity *>(_cxxEntity.get()) != nullptr;
 }
 
 @end

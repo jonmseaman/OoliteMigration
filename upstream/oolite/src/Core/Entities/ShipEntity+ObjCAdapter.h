@@ -5,9 +5,8 @@ ShipEntity+ObjCAdapter.h
 TRANSITIONAL (proposed ADR-0056, amendments oo-mvzmb and oo-64ako): the C++ part of an
 Objective-C ship, oo::ObjCShipEntity<Base>, and the facade's private initialiser that makes it,
 shared by ShipEntity+ObjCBridge.mm (Base cxx::ShipEntity), StationEntity+ObjCBridge.mm (Base
-cxx::StationEntity), PlayerEntity+ObjCBridge.mm (Base cxx::PlayerEntity, bead oo-jx5np) and
-DockEntity+ObjCBridge.mm (Base cxx::DockEntity, bead oo-ao2d), whose facades override
--initShipPart. Private to those files; deleted with ShipEntity+ObjCBridge.h.
+cxx::StationEntity) and DockEntity+ObjCBridge.mm (Base cxx::DockEntity, bead oo-ao2d), whose facades
+override -initShipPart (the player's, Base PlayerEntity, went with its facade, bead oo-9ht.177). Private to those files; deleted with ShipEntity+ObjCBridge.h.
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors

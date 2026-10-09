@@ -91,19 +91,23 @@ oo::PList TradeGoods()
 @end
 
 
-@interface PlayerEntity: OOObject
-- (id) cxx_commodityScriptNamed:(const std::optional<std::string> &)script;
-@end
+// PLAYER: C++ since bead oo-9ht.177 deleted the Objective-C player this stood in for; the member
+// OOCommodities.mm calls, declared as PlayerEntity.h declares it (the test imports no game header
+// that defines the class), with the same answer.
+class OOScript;
+class PlayerEntity
+{
+public:
+	::OOScript *commodityScriptNamed(const std::optional<std::string> &scriptName);
+};
 
-@implementation PlayerEntity
-- (id) cxx_commodityScriptNamed:(const std::optional<std::string> &)script
+::OOScript *PlayerEntity::commodityScriptNamed(const std::optional<std::string> &script)
 {
 	gLog.push_back("script " + script.value_or("(none)"));
-	return nil;
+	return nullptr;
 }
-@end
 
-PlayerEntity *gOOPlayer = nil;
+PlayerEntity *gOOPlayer = nullptr;
 
 
 @interface Universe: OOObject
@@ -176,7 +180,7 @@ namespace {
 void Reset()
 {
 	if (gSharedUniverse == nil)  gSharedUniverse = [[Universe alloc] init];
-	if (gOOPlayer == nil)  gOOPlayer = [[PlayerEntity alloc] init];
+	if (gOOPlayer == nullptr)  gOOPlayer = new PlayerEntity;	// never deleted
 	gLog.clear();
 	ranrot_srand(20260930);
 }

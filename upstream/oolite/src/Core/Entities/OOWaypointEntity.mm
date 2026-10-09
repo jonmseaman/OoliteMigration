@@ -125,7 +125,7 @@ void OOWaypointEntity::drawImmediate(bool /*immediate*/, bool translucent)
 		return;
 	}
 
-	if (![PLAYER cxx_hasEquipmentItemProviding:"EQ_ADVANCED_COMPASS"])
+	if (!(PLAYER != nullptr ? PLAYER->hasEquipmentItemProviding("EQ_ADVANCED_COMPASS") : false))
 	{
 		return;
 	}
@@ -133,7 +133,7 @@ void OOWaypointEntity::drawImmediate(bool /*immediate*/, bool translucent)
 	int8_t i,j,k;
 
 	GLfloat a = 0.75;
-	if ([PLAYER compassTarget] != oo::ToObjC(this))
+	if ((PLAYER != nullptr ? PLAYER->getCompassTarget() : (::Entity *)nullptr) != oo::ToObjC(this))
 	{
 		a *= 0.25;
 	}

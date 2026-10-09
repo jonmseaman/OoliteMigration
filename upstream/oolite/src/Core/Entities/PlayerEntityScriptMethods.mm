@@ -74,12 +74,10 @@ NSInteger IntegerValueOf(const oo::PList *value)
 }	// namespace
 
 
-/*	The category PlayerEntity (ScriptMethods), bead oo-50zg: members of cxx::PlayerEntity (ADR-0056
-	amendments oo-o89 item 4 and oo-42dr), declared in PlayerEntity.h and forwarded by the category of
-	the same name in PlayerEntity+ObjCBridge.h/.mm. Sends to self stay sends to the facade (amendment
-	oo-mvzmb item 4).
+/*	The category PlayerEntity (ScriptMethods), bead oo-50zg: members of PlayerEntity (ADR-0056
+	amendments oo-o89 item 4 and oo-42dr), declared in PlayerEntity.h. The facade's category of the
+	same name forwarded them until bead oo-9ht.177 deleted it; sends to self are member calls.
 */
-namespace cxx {
 
 
 unsigned PlayerEntity::score()
@@ -108,28 +106,24 @@ void PlayerEntity::setCreditBalance(double value)
 
 std::optional<std::string> PlayerEntity::dockedStationName()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
-	return [[self dockedStation] cxx_name];
+	return [dockedStation() cxx_name];
 }
 
 
 std::optional<std::string> PlayerEntity::dockedStationDisplayName()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
-	return [[self dockedStation] displayName];
+	return [dockedStation() displayName];
 }
 
 
 bool PlayerEntity::dockedAtMainStation()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
-	return [self status] == STATUS_DOCKED && [self dockedStation] == [UNIVERSE station];
+	return status() == STATUS_DOCKED && dockedStation() == [UNIVERSE station];
 }
 
 
 void PlayerEntity::awardCommodityType(const std::string &type, OOCargoQuantity amount)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	OOMassUnit				unit;
 
 	if (!([UNIVERSE commodities] != nullptr ? [UNIVERSE commodities]->goodDefined(type) : false))
@@ -141,7 +135,7 @@ void PlayerEntity::awardCommodityType(const std::string &type, OOCargoQuantity a
 
 	unit = (shipCommodityData != nullptr ? shipCommodityData->massUnitForGood(type) : UNITS_TONS);
 	
-	if ([self status] != STATUS_DOCKED)
+	if (status() != STATUS_DOCKED)
 	{
 		// in-flight
 		while (amount)
@@ -159,7 +153,7 @@ void PlayerEntity::awardCommodityType(const std::string &type, OOCargoQuantity a
 					while (amount > 0)
 					{
 						int smaller_quantity = 1 + ((amount - 1) % amount_per_container);
-						if (cargo.size() < [self maxAvailableCargoSpace])
+						if (cargo.size() < maxAvailableCargoSpace())
 						{
 							::ShipEntity* container = [UNIVERSE cxx_newShipWithRole:"1t-cargopod"];
 							if (container)
@@ -183,7 +177,7 @@ void PlayerEntity::awardCommodityType(const std::string &type, OOCargoQuantity a
 				// put each ton in a separate container
 				while (amount)
 				{
-					if (cargo.size() < [self maxAvailableCargoSpace])
+					if (cargo.size() < maxAvailableCargoSpace())
 					{
 						::ShipEntity* container = [UNIVERSE cxx_newShipWithRole:"1t-cargopod"];
 						if (container)
@@ -206,7 +200,7 @@ void PlayerEntity::awardCommodityType(const std::string &type, OOCargoQuantity a
 	{	// docked
 		// like purchasing a commodity
 		int manifest_quantity = (shipCommodityData != nullptr ? shipCommodityData->quantityForGood(type) : 0);
-		while ((amount)&&(current_cargo < [self maxAvailableCargoSpace]))
+		while ((amount)&&(current_cargo < maxAvailableCargoSpace()))
 		{
 			manifest_quantity++;
 			amount--;
@@ -214,7 +208,7 @@ void PlayerEntity::awardCommodityType(const std::string &type, OOCargoQuantity a
 		}
 		if (shipCommodityData != nullptr)  shipCommodityData->setQuantity(manifest_quantity, type);
 	}
-	[self calculateCurrentCargo];
+	calculateCurrentCargo();
 }
 
 
@@ -257,7 +251,6 @@ void PlayerEntity::setMissionChoice(const std::optional<std::string> &newChoice,
 
 void PlayerEntity::setMissionChoice(const std::optional<std::string> &newChoice, const std::optional<std::string> &keyPress, bool withEvent)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	const std::optional<std::string> oldChoice = missionChoice;
 	BOOL equal = newChoice == oldChoice;	// Catch both being nil as well
 	if (!equal)
@@ -265,7 +258,7 @@ void PlayerEntity::setMissionChoice(const std::optional<std::string> &newChoice,
 		if (!newChoice.has_value())
 		{
 			missionChoice.reset();
-			if (withEvent) [self cxx_doScriptEvent:OOJSID("missionChoiceWasReset") withPListArguments:{ oldChoice.has_value() ? oo::PList(*oldChoice) : oo::PList() }];
+			if (withEvent) doScriptEvent(OOJSID("missionChoiceWasReset"), { oldChoice.has_value() ? oo::PList(*oldChoice) : oo::PList() });
 		}
 		else
 		{
@@ -377,8 +370,7 @@ oo::PList PlayerEntity::validatedMarker(const oo::PList &marker)
 // Implements string expansion code [credits_number].
 std::optional<std::string> PlayerEntity::creditsFormattedForSubstitution()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
-	return std::optional<std::string>(cxx_OOStringFromDeciCredits([self deciCredits], YES, NO));
+	return std::optional<std::string>(cxx_OOStringFromDeciCredits(deciCredits(), YES, NO));
 }
 
 
@@ -390,8 +382,7 @@ std::optional<std::string> PlayerEntity::creditsFormattedForSubstitution()
 */
 std::optional<std::string> PlayerEntity::creditsFormattedForLegacySubstitution()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
-	OOCreditsQuantity	tenthsOfCredits = [self deciCredits];
+	OOCreditsQuantity	tenthsOfCredits = deciCredits();
 	unsigned long long	integerCredits = tenthsOfCredits / 10;
 	unsigned long long	tenths = tenthsOfCredits % 10;
 	
@@ -402,8 +393,7 @@ std::optional<std::string> PlayerEntity::creditsFormattedForLegacySubstitution()
 // Implements string expansion code [commander_bounty].
 std::optional<std::string> PlayerEntity::commanderBountyAsString()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
-	return oo::str::format("%i", [self legalStatus]);
+	return oo::str::format("%i", getLegalStatus());
 }
 
 
@@ -649,7 +639,6 @@ std::optional<std::string> PlayerEntity::keyCodeDescriptionShort(OOKeyCode code)
 	}
 }
 
-}	// namespace cxx
 
 
 Vector OOGalacticCoordinatesFromInternal(NSPoint internalCoordinates)

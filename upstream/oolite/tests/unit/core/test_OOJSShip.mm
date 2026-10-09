@@ -63,23 +63,18 @@ BOOL sPlayerDocked = NO;	// what the engine's player answers -isDocked (slice 3)
 
 
 // PLAYER while ships are made (test_ShipEntity.mm's), and the beacon the player's compass was on.
-@interface TestPlayer: Entity
-@end
-
-
-@implementation TestPlayer
-
-- (HPVector) viewpointPosition	{ return kZeroHPVector; }
-- (Entity <OOBeaconEntity> *) nextBeacon  { return (Entity <OOBeaconEntity> *)sNextBeacon; }
-- (void) setCompassMode:(OOCompassMode)value  { sLog.push_back(oo::str::format("setCompassMode %d", static_cast<int>(value))); }
-- (void) setScriptTarget:(ShipEntity *)ship  { sLog.push_back("setScriptTarget " + [ship cxx_name].value_or("(nil)")); }
-- (int) score  { return 1000; }
-- (void) cxx_runUnsanitizedScriptActions:(const oo::PList &)unsanitizedActions allowingAIMethods:(BOOL)allowAIMethods withContextName:(const std::optional<std::string> &)contextName forTarget:(ShipEntity *)target
+class TestPlayer : public PlayerEntity	// C++ since bead oo-9ht.177 deleted the Objective-C player
 {
-	sLog.push_back(oo::str::format("runUnsanitizedScriptActions %s %d %s %s", oo::DescriptionOf(unsanitizedActions).c_str(), allowAIMethods ? 1 : 0, contextName.value_or("(nil)").c_str(), [target cxx_name].value_or("(nil)").c_str()));
-}
+public:
+	HPVector viewpointPosition() override	{ return kZeroHPVector; }
+	::Entity *nextBeacon() override	{ return sNextBeacon; }
+	void setCompassMode(OOCompassMode value) override	{ sLog.push_back(oo::str::format("setCompassMode %d", static_cast<int>(value))); }
+	void setScriptTarget(::ShipEntity * ship) override	{ sLog.push_back("setScriptTarget " + [ship cxx_name].value_or("(nil)")); }
+	unsigned score() override	{ return 1000; }
+	void runUnsanitizedScriptActions(const oo::PList & unsanitizedActions, bool allowAIMethods, const std::optional<std::string> & contextName, ::ShipEntity * target) override	{ sLog.push_back(oo::str::format("runUnsanitizedScriptActions %s %d %s %s", oo::DescriptionOf(unsanitizedActions).c_str(), allowAIMethods ? 1 : 0, contextName.value_or("(nil)").c_str(), [target cxx_name].value_or("(nil)").c_str())); }
+};
 
-@end
+
 
 
 // The universe: never initialised (test_ShipEntity.mm's), recording what the beacon setter tells it.
@@ -137,22 +132,33 @@ OOPlayerFleeingStatus sFleeingStatus = PLAYER_FLEEING_NONE;
 
 
 // The engine's player, with the two answers the getter's player branches ask for set by the test.
-@interface TestPlayerShip: PlayerEntity
-@end
-
-
-@implementation TestPlayerShip
-
-- (OOWeaponFacingSet) availableFacings  { return sAvailableFacings; }
-- (OOPlayerFleeingStatus) fleeingStatus  { return sFleeingStatus; }
-- (BOOL) isDocked  { return sPlayerDocked; }
-- (BOOL) cxx_setWeaponMount:(OOWeaponFacing)facing toWeapon:(const std::string &)eqKey inContext:(const std::optional<std::string> &)context
+class TestPlayerShip : public PlayerEntity	// C++ since bead oo-9ht.177 deleted the Objective-C player
 {
-	sLog.push_back(oo::str::format("player setWeaponMount %d %s %s", static_cast<int>(facing), eqKey.c_str(), context.value_or("(nil)").c_str()));
-	return YES;
+public:
+	OOWeaponFacingSet availableFacings() override	{ return sAvailableFacings; }
+	OOPlayerFleeingStatus fleeingStatus() override	{ return sFleeingStatus; }
+	bool isDocked() override	{ return sPlayerDocked; }
+	bool setWeaponMount(OOWeaponFacing facing, const std::string & eqKey, const std::optional<std::string> & context) override
+	{
+		sLog.push_back(oo::str::format("player setWeaponMount %d %s %s", static_cast<int>(facing), eqKey.c_str(), context.value_or("(nil)").c_str()));
+		return YES;
+	}
+};
+
+// [[TestPlayer alloc] init] (bead oo-9ht.177): a C++ player under the ship's facade, as
+// PlayerEntity::sharedPlayer() makes the game's, retained (+1) as +alloc's object was.
+template <class T>
+T *NewTestPlayer()
+{
+	oo::Ref<T> player = oo::makeRef<T>();
+	@autoreleasepool
+	{
+		[oo::NewEntityFacade(player) retain];
+	}
+	return player.get();
 }
 
-@end
+
 
 
 namespace {
@@ -160,7 +166,7 @@ namespace {
 namespace stdfs = std::filesystem;
 
 stdfs::path sRoot;
-PlayerEntity *sRealPlayer = nil;
+PlayerEntity *sRealPlayer = nullptr;
 PlainShip *sShip = nil;
 PlainShip *sOther = nil;	// a second ship, for the setters that take one (slice 2)
 
@@ -222,16 +228,19 @@ void SetUp()
 	const std::string info = "{ CFBundleVersion = \"9.9.9-test\"; }";
 	OO_CHECK(oo::fs::writeFile(sRoot / "Resources" / "Info-gnustep.plist", oo::Data(info.data(), info.size()), oo::fs::WriteMode::direct).has_value());
 	[ResourceManager cxx_setUseAddOns:std::string(SCENARIO_OXP_DEFINITION_NONE)];	// strict: the built-in Resources alone
+	// The engine's player is a TestPlayerShip: made first, so InitOOJSPlayerShip()'s
+	// PlayerEntity::sharedPlayer() answers it (the C++ player cannot change class, as
+	// object_setClass() made the Objective-C one a TestPlayerShip; bead oo-9ht.177).
+	gOOPlayer = NewTestPlayer<TestPlayerShip>();
 	(void)[OOJavaScriptEngine sharedEngine];
 
 	sRealPlayer = gOOPlayer;	// the one InitOOJSPlayerShip() made, which player.ship holds
-	object_setClass(sRealPlayer, [TestPlayerShip class]);
-	sRealPlayer->_cxxEntity->isPlayer = true;	// what the player's set-up sets, which the engine's player has not run
+	sRealPlayer->isPlayer = true;	// what the player's set-up sets, which the engine's player has not run
 
 	Universe *universe = (Universe *)class_createInstance([TestUniverse class], 0);	// never released
 	universe->_cxxUniverse = oo::makeRef<cxx::Universe>(universe);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
 	gSharedUniverse = universe;
-	gOOPlayer = (PlayerEntity *)[[TestPlayer alloc] init];
+	gOOPlayer = NewTestPlayer<TestPlayer>();
 
 	sShip = [[PlainShip alloc] cxx_initWithKey:"jsship" definition:ShipDefinition()];
 	OO_CHECK(sShip != nil);

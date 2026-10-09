@@ -201,7 +201,9 @@ oo::PList Call(id target, SEL selector, const Argument &argument)
 	if (target == nil)  return oo::PList();
 	id receiver = target;
 	Method method = MethodFor(receiver, selector);
-	if (method == nullptr)
+	// A facade's category may hold a method that only some objects answer (the player's selectors
+	// on the ship's facade, ADR-0056 amendment oo-9ht.177): it asks -respondsToSelector:.
+	if (method == nullptr || ![receiver respondsToSelector:selector])
 	{
 		LogUnknown(target, selector);
 		return oo::PList();

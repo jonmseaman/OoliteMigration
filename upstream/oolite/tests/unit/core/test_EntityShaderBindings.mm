@@ -16,6 +16,7 @@
 */
 
 #import "Entity.h"
+#import "PlayerEntity.h"	// PLAYER is C++ (bead oo-9ht.177)
 
 #include "oo_test.hpp"
 #include "oofnd/PList.hpp"
@@ -29,7 +30,7 @@
 uint32_t gDebugFlags = 0;
 #endif
 
-@class PlayerEntity;
+class PlayerEntity;
 extern PlayerEntity *gOOPlayer;
 
 
@@ -48,45 +49,53 @@ extern PlayerEntity *gOOPlayer;
 @end
 
 
-// PLAYER: answers what the category asks for, with the test's values.
-@interface TestPlayer: Entity
+// PLAYER: answers what the category asks for, with the test's values (C++ since bead oo-9ht.177
+// deleted the Objective-C player).
+class TestPlayer : public PlayerEntity
 {
-@public
-	double		_clockTime;
-	unsigned	_random100;
-	unsigned	_random256;
+public:
+	double		_clockTime = 0;
+	unsigned	_random100 = 0;
+	unsigned	_random256 = 0;
 	oo::PList	_government;
 	oo::PList	_economy;
 	oo::PList	_techLevel;
 	oo::PList	_population;
 	oo::PList	_productivity;
+
+	double clockTime() override						{ return _clockTime; }
+	unsigned systemPseudoRandom100() override		{ return _random100; }
+	unsigned systemPseudoRandom256() override		{ return _random256; }
+	oo::PList systemGovernment_number() override	{ return _government; }
+	oo::PList systemEconomy_number() override		{ return _economy; }
+	oo::PList systemTechLevel_number() override		{ return _techLevel; }
+	oo::PList systemPopulation_number() override	{ return _population; }
+	oo::PList systemProductivity_number() override	{ return _productivity; }
+};
+
+// [[TestPlayer alloc] init] (bead oo-9ht.177): a C++ player under the ship's facade, as
+// PlayerEntity::sharedPlayer() makes the game's, retained (+1) as +alloc's object was.
+template <class T>
+T *NewTestPlayer()
+{
+	oo::Ref<T> player = oo::makeRef<T>();
+	@autoreleasepool
+	{
+		[oo::NewEntityFacade(player) retain];
+	}
+	return player.get();
 }
-@end
-
-
-@implementation TestPlayer
-
-- (double) clockTime						{ return _clockTime; }
-- (unsigned) systemPseudoRandom100			{ return _random100; }
-- (unsigned) systemPseudoRandom256			{ return _random256; }
-- (oo::PList) systemGovernment_number		{ return _government; }
-- (oo::PList) systemEconomy_number			{ return _economy; }
-- (oo::PList) systemTechLevel_number		{ return _techLevel; }
-- (oo::PList) systemPopulation_number		{ return _population; }
-- (oo::PList) systemProductivity_number		{ return _productivity; }
-
-@end
 
 
 namespace {
 
-TestPlayer *sPlayer = nil;
+TestPlayer *sPlayer = nullptr;
 
 
 void SetUp()
 {
-	if (sPlayer == nil)  sPlayer = [[TestPlayer alloc] init];	// never released
-	gOOPlayer = (PlayerEntity *)sPlayer;
+	if (sPlayer == nullptr)  sPlayer = NewTestPlayer<TestPlayer>();	// never released
+	gOOPlayer = sPlayer;
 	sPlayer->_clockTime = 0;
 	sPlayer->_random100 = 0;
 	sPlayer->_random256 = 0;
@@ -208,7 +217,7 @@ OO_TEST(subclassesAnswerToo)
 		SetUp();
 		// A subclass of Entity (here the test's player) answers the category's selectors.
 		sPlayer->_random100 = 7;
-		OO_CHECK([(Entity *)sPlayer pseudoFixedD100] == 7);
+		OO_CHECK([oo::ToObjC(sPlayer) pseudoFixedD100] == 7);	// the player's object (C++ player since bead oo-9ht.177)
 	}
 }
 

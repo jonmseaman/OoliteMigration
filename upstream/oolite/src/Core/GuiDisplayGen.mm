@@ -667,7 +667,7 @@ void GuiDisplayGen::reportSelectedRow(int row)
 		const std::optional<std::string> text = selectedRowText();
 		if (text.has_value())  arguments.emplace_back(*text);
 	}
-	[PLAYER cxx_doScriptEvent:OOJSID("guiSelectedRowChanged") withPListArguments:arguments];
+	if (PLAYER != nullptr)  PLAYER->doScriptEvent(OOJSID("guiSelectedRowChanged"), arguments);
 }
 
 
@@ -1140,7 +1140,7 @@ void GuiDisplayGen::setBackgroundTextureSpecial(OOGUIBackgroundSpecial spec, boo
 	if (withBackground)
 	{
 		oo::PList bgDescriptor;
-		OOGalaxyID galaxy_number = [PLAYER galaxyNumber];
+		OOGalaxyID galaxy_number = (PLAYER != nullptr ? PLAYER->galaxyNumber() : OOGalaxyID{});
 
 		switch (spec)
 		{
@@ -1303,7 +1303,8 @@ void GuiDisplayGen::drawEquipmentList(const oo::PList &eqptList, GLfloat z)
 
 	OOGUIRow		firstRow = STATUS_EQUIPMENT_FIRST_ROW;
 	NSUInteger		maxRows = STATUS_EQUIPMENT_MAX_ROWS;
-	if ([PLAYER hud] != nullptr && [PLAYER hud]->getAllowBigGui())	// a nil HUD (or player) answered NO
+	HeadUpDisplay	*hud = (PLAYER != nullptr ? PLAYER->getHud() : (HeadUpDisplay *)nullptr);
+	if (hud != nullptr && hud->getAllowBigGui())	// a nil HUD (or player) answered NO
 	{
 		maxRows += STATUS_EQUIPMENT_BIGGUI_EXTRA_ROWS;
 	}
@@ -1472,7 +1473,7 @@ int GuiDisplayGen::drawGUI(GLfloat alpha, bool drawCursor)
 		
 		if (this == [UNIVERSE gui])
 		{
-			if ([player guiScreen] == GUI_SCREEN_SHORT_RANGE_CHART || [player guiScreen] == GUI_SCREEN_LONG_RANGE_CHART || 
+			if ((player != nullptr ? player->guiScreen() : OOGUIScreenID{}) == GUI_SCREEN_SHORT_RANGE_CHART || (player != nullptr ? player->guiScreen() : OOGUIScreenID{}) == GUI_SCREEN_LONG_RANGE_CHART || 
 				backgroundSpecial == GUI_BACKGROUND_SPECIAL_SHORT ||
 				backgroundSpecial == GUI_BACKGROUND_SPECIAL_SHORT_ANA_QUICKEST ||
 				backgroundSpecial == GUI_BACKGROUND_SPECIAL_SHORT_ANA_SHORTEST ||
@@ -1488,13 +1489,13 @@ int GuiDisplayGen::drawGUI(GLfloat alpha, bool drawCursor)
 			{
 				drawStarChart(x - 0.5f * size_in_pixels.width, y - 0.5f * size_in_pixels.height, z, alpha, YES);
 			}
-			if ([player guiScreen] == GUI_SCREEN_STATUS)
+			if ((player != nullptr ? player->guiScreen() : OOGUIScreenID{}) == GUI_SCREEN_STATUS)
 			{
-				drawEquipmentList(oo::PList([player cxx_equipmentList]), z);
+				drawEquipmentList(oo::PList((player != nullptr ? player->equipmentList() : std::vector<oo::PList>())), z);
 			}
-			if ([player guiScreen] == GUI_SCREEN_STICKPROFILE)
+			if ((player != nullptr ? player->guiScreen() : OOGUIScreenID{}) == GUI_SCREEN_STICKPROFILE)
 			{
-				[player stickProfileGraphAxisProfile: alpha screenAt: make_vector(x,y,z) screenSize: size_in_pixels];
+				if (player != nullptr)  player->stickProfileGraphAxisProfile(alpha, make_vector(x,y,z), size_in_pixels);
 			}
 		}
 		
@@ -1568,7 +1569,7 @@ void GuiDisplayGen::drawGLDisplay(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha
 	{
 		row_alpha[i] = alpha;
 		
-		if(![UNIVERSE autoMessageLogBg] && [PLAYER guiScreen] == GUI_SCREEN_MAIN)  backgroundAlpha = alpha;
+		if(![UNIVERSE autoMessageLogBg] && (PLAYER != nullptr ? PLAYER->guiScreen() : OOGUIScreenID{}) == GUI_SCREEN_MAIN)  backgroundAlpha = alpha;
 		
 		if (rowFadeTime[i] > 0.0f && ![UNIVERSE permanentMessageLog])
 		{
@@ -1596,7 +1597,7 @@ void GuiDisplayGen::drawGLDisplay(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha
 	// don't draw it on the intro screens
 	if (backgroundColor.get())
 	{
-		int playerStatus = [PLAYER status];
+		int playerStatus = (PLAYER != nullptr ? PLAYER->status() : OOEntityStatus{});
 		if (playerStatus != STATUS_START_GAME && playerStatus != STATUS_DEAD)
 		{
 			OOGL(glColor4f(backgroundColor->redComponent(), backgroundColor->greenComponent(), backgroundColor->blueComponent(), backgroundAlpha * backgroundColor->alphaComponent()));
@@ -1801,8 +1802,8 @@ void GuiDisplayGen::drawCrossHairsWithSize(GLfloat size, GLfloat x, GLfloat y, G
 void GuiDisplayGen::setStarChartTitle()
 {
 	::PlayerEntity *player = PLAYER;
-	OOGalaxyID galaxy_number = [player galaxyNumber];
-	NSInteger system_id = [UNIVERSE findSystemNumberAtCoords:[player cursor_coordinates] withGalaxy:[player galaxyNumber] includingHidden:NO];
+	OOGalaxyID galaxy_number = (player != nullptr ? player->galaxyNumber() : OOGalaxyID{});
+	NSInteger system_id = [UNIVERSE findSystemNumberAtCoords:(player != nullptr ? player->getCursor_coordinates() : NSPoint{}) withGalaxy:(player != nullptr ? player->galaxyNumber() : OOGalaxyID{}) includingHidden:NO];
 
 	const std::string location_key = oo::str::format("long-range-chart-title-%d-%ld", galaxy_number, (long)system_id);
 	if (![UNIVERSE cxx_descriptionForKey:location_key])
@@ -1900,8 +1901,8 @@ void GuiDisplayGen::drawSystemMarker(const oo::PList &marker, GLfloat x, GLfloat
 
 OOSystemID GuiDisplayGen::targetNextFoundSystem(int direction) // +1 , 0 , -1
 {
-	OOSystemID sys = [PLAYER targetSystemID];
-	if ([PLAYER guiScreen] != GUI_SCREEN_SHORT_RANGE_CHART && [PLAYER guiScreen] != GUI_SCREEN_LONG_RANGE_CHART) return sys;
+	OOSystemID sys = (PLAYER != nullptr ? PLAYER->targetSystemID() : 0);
+	if ((PLAYER != nullptr ? PLAYER->guiScreen() : OOGUIScreenID{}) != GUI_SCREEN_SHORT_RANGE_CHART && (PLAYER != nullptr ? PLAYER->guiScreen() : OOGUIScreenID{}) != GUI_SCREEN_LONG_RANGE_CHART) return sys;
 	
 	BOOL		*systemsFound = [UNIVERSE systemsFound];
 	unsigned 	i, first = 0, last = 0, count = 0;
@@ -1959,8 +1960,8 @@ void GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, float alp
 		starabs = NSZeroPoint, 
 		star2abs = NSZeroPoint;
 	::OOSystemDescriptionManager *systemManager = [UNIVERSE systemManager];
-	OOGalaxyID		g = [PLAYER galaxyNumber];
-	OOSystemID planetNumber = [PLAYER systemID];
+	OOGalaxyID		g = (PLAYER != nullptr ? PLAYER->galaxyNumber() : OOGalaxyID{});
+	OOSystemID planetNumber = (PLAYER != nullptr ? PLAYER->systemID() : 0);
 
 	oo::Ref<OOColor>	defaultConnectionColor = colorFromSetting(cxx_kGuiChartConnectionColor, OOColor::colorWithWhite(0.25, 1.0).get());
 	oo::Ref<OOColor>	currentJumpColorStart = colorFromSetting(cxx_kGuiChartCurrentJumpStartColor, OOColor::colorWithWhite(0.25, 0.0).get());
@@ -1969,7 +1970,7 @@ void GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, float alp
 	oo::Ref<OOColor>	thisConnectionColor;
 	oo::Ref<OOColor>	thatConnectionColor;
 	
-	float jumpRange = MAX_JUMP_RANGE * ((optimizeBy == OPTIMIZED_BY_NONE) ? [PLAYER dialFuel] : 1.0);
+	float jumpRange = MAX_JUMP_RANGE * ((optimizeBy == OPTIMIZED_BY_NONE) ? (PLAYER != nullptr ? PLAYER->dialFuel() : 0.0f) : 1.0);
 
 	NSInteger concealment[256];
 	for (NSUInteger i=0;i<256;i++) {
@@ -2137,19 +2138,19 @@ void GuiDisplayGen::drawStarChart(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha
 
 	::OOSystemDescriptionManager *systemManager = [UNIVERSE systemManager];
 
-	OOScalar	zoom = [player chart_zoom];
-	NSPoint	chart_centre_coordinates = [player adjusted_chart_centre];
-	NSPoint	galaxy_coordinates = [player galaxy_coordinates];
-	NSPoint	cursor_coordinates = [player cursor_coordinates];
-	NSPoint info_system_coordinates = ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getCoordinatesForSystem([player infoSystemID], [player galaxyNumber]) : NSMakePoint(0, 0));
-	OOLongRangeChartMode chart_mode = [player longRangeChartMode];
-	OOGalaxyID		galaxy_id = [player galaxyNumber];
+	OOScalar	zoom = (player != nullptr ? player->getChart_zoom() : OOScalar{});
+	NSPoint	chart_centre_coordinates = (player != nullptr ? player->adjusted_chart_centre() : NSPoint{});
+	NSPoint	galaxy_coordinates = (player != nullptr ? player->getGalaxy_coordinates() : NSPoint{});
+	NSPoint	cursor_coordinates = (player != nullptr ? player->getCursor_coordinates() : NSPoint{});
+	NSPoint info_system_coordinates = ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getCoordinatesForSystem((player != nullptr ? player->infoSystemID() : 0), (player != nullptr ? player->galaxyNumber() : OOGalaxyID{})) : NSMakePoint(0, 0));
+	OOLongRangeChartMode chart_mode = (player != nullptr ? player->getLongRangeChartMode() : OOLongRangeChartMode{});
+	OOGalaxyID		galaxy_id = (player != nullptr ? player->galaxyNumber() : OOGalaxyID{});
 	GLfloat			r = 1.0, g = 1.0, b = 1.0;
 	BOOL			noNova;
 	NSPoint	cu;
 	NSUInteger		systemParameter;
 
-	double fuel = 35.0 * [player dialFuel];
+	double fuel = 35.0 * (player != nullptr ? player->dialFuel() : 0.0f);
 	
 	double		hcenter = size_in_pixels.width/2.0;
 	double		hscale = size_in_pixels.width / (CHART_WIDTH_AT_MAX_ZOOM*zoom);
@@ -2177,7 +2178,7 @@ void GuiDisplayGen::drawStarChart(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha
 	OOScalar	pixelRatio;
 	NSRect		clipRect;
 	
-	OORouteType	advancedNavArrayMode = [player ANAMode];
+	OORouteType	advancedNavArrayMode = (player != nullptr ? player->ANAMode() : OORouteType{});
 	BOOL		routeExists = NO;
 
 	NSInteger concealment[256];
@@ -2216,11 +2217,11 @@ void GuiDisplayGen::drawStarChart(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha
 				size_in_pixels.width * pixelRatio,
 				(textRow-1) * MAIN_GUI_ROW_HEIGHT * pixelRatio);
 
-	OOSystemID target = [PLAYER targetSystemID];
+	OOSystemID target = (PLAYER != nullptr ? PLAYER->targetSystemID() : 0);
 	double dx, dy;
 	
 	// get a list of systems marked as contract destinations
-	const std::optional<std::map<int, std::vector<oo::PList>>> markedDestinations = [player cxx_markedDestinations];
+	const std::optional<std::map<int, std::vector<oo::PList>>> markedDestinations = (player != nullptr ? player->markedDestinations() : std::optional<std::map<int, std::vector<oo::PList>>>());
 	
 	// get present location
 	cu = NSMakePoint((float)(hscale*galaxy_coordinates.x+hoffset),(float)(vscale*galaxy_coordinates.y+voffset));
@@ -2267,7 +2268,7 @@ void GuiDisplayGen::drawStarChart(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha
 			nearby_systems[ num_nearby_systems ].nova = [UNIVERSE cxx_generateSystemData:i].get<bool>("sun_gone_nova");
 			num_nearby_systems++;
 		}
-		saved_galaxy_id = [player galaxyNumber];
+		saved_galaxy_id = (player != nullptr ? player->galaxyNumber() : OOGalaxyID{});
 	}
 	
 	static OOSystemID savedPlanetNumber = 0;
@@ -2289,10 +2290,10 @@ void GuiDisplayGen::drawStarChart(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha
 		advancedNavArrayMode = OPTIMIZED_BY_TIME;
 	}
 	
-	if (advancedNavArrayMode != OPTIMIZED_BY_NONE && [player cxx_hasEquipmentItemProviding:"EQ_ADVANCED_NAVIGATIONAL_ARRAY"])
+	if (advancedNavArrayMode != OPTIMIZED_BY_NONE && (player != nullptr ? player->hasEquipmentItemProviding("EQ_ADVANCED_NAVIGATIONAL_ARRAY") : false))
 	{
-		OOSystemID planetNumber = [PLAYER systemID];
-		OOSystemID destNumber = [PLAYER targetSystemID];
+		OOSystemID planetNumber = (PLAYER != nullptr ? PLAYER->systemID() : 0);
+		OOSystemID destNumber = (PLAYER != nullptr ? PLAYER->targetSystemID() : 0);
 		if (routeInfo.isNull() || planetNumber != savedPlanetNumber || destNumber != savedDestNumber || advancedNavArrayMode != savedArrayMode)
 		{
 			routeInfo = [UNIVERSE cxx_routeFromSystem:planetNumber toSystem:destNumber optimizedBy:advancedNavArrayMode];
@@ -2335,14 +2336,14 @@ void GuiDisplayGen::drawStarChart(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha
 		distance = distanceBetweenPlanetPositions(targetCoordinates.x,targetCoordinates.y,galaxy_coordinates.x,galaxy_coordinates.y);
 		if (distance == 0.0)
 		{
-			if (target != [PLAYER systemID])
+			if (target != (PLAYER != nullptr ? PLAYER->systemID() : 0))
 			{
 				// looking at the other half of a zero-distance double
 				// distance is treated as 0.1 LY
 				distance = 0.1;
 			}
 		}
-		if ([player hasHyperspaceMotor] && distance <= [player fuel]/10.0)
+		if ((player != nullptr ? player->hasHyperspaceMotor() : false) && distance <= (player != nullptr ? player->getFuel() : OOFuelQuantity{})/10.0)
 		{
 			time = distance * distance;
 		}
@@ -2352,7 +2353,7 @@ void GuiDisplayGen::drawStarChart(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha
 		}
 	}
 
-	if ([player hasHyperspaceMotor])
+	if ((player != nullptr ? player->hasHyperspaceMotor() : false))
 	{
 		// draw fuel range circle
 		OOGL(GLScaledLineWidth(2.0f));
@@ -2562,7 +2563,7 @@ void GuiDisplayGen::drawStarChart(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha
 	struct saved_system *sys;
 	NSSize chSize = NSMakeSize(pixel_row_height*systemNameScale/zoom,pixel_row_height*systemNameScale/zoom);
 	
-	double jumpRange = MAX_JUMP_RANGE * [PLAYER dialFuel];
+	double jumpRange = MAX_JUMP_RANGE * (PLAYER != nullptr ? PLAYER->dialFuel() : 0.0f);
 	for (i = 0; i < num_nearby_systems; i++)
 	{
 		if (concealment[i] >= OO_SYSTEMCONCEALMENT_NONAME)
@@ -2589,7 +2590,7 @@ void GuiDisplayGen::drawStarChart(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha
 		
 		if (zoom < CHART_ZOOM_SHOW_LABELS)
 		{
-			if (![player showInfoFlag])	// System's name
+			if (!(player != nullptr ? player->showInfoFlag() : false))	// System's name
 			{
 
 				d = distanceBetweenPlanetPositions(galaxy_coordinates.x, galaxy_coordinates.y, sys_coordinates.x, sys_coordinates.y);
@@ -2632,7 +2633,7 @@ void GuiDisplayGen::drawStarChart(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha
 			star.x = (float)(sys_coordinates.x * hscale + hoffset);
 			star.y = (float)(sys_coordinates.y * vscale + voffset);
 		
-			if (![player showInfoFlag])
+			if (!(player != nullptr ? player->showInfoFlag() : false))
 			{
 				d = distanceBetweenPlanetPositions(galaxy_coordinates.x, galaxy_coordinates.y, sys_coordinates.x, sys_coordinates.y);
 				if (d <= jumpRange)
@@ -2690,7 +2691,7 @@ void GuiDisplayGen::drawStarChart(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha
 	{
 		setArray({ "", travelDistLine, travelTimeLine }, textRow);
 	}
-	if ([PLAYER guiScreen] == GUI_SCREEN_SHORT_RANGE_CHART)
+	if ((PLAYER != nullptr ? PLAYER->guiScreen() : OOGUIScreenID{}) == GUI_SCREEN_SHORT_RANGE_CHART)
 	{
 		if (jumps > 0)
 		{

@@ -34,14 +34,14 @@ MA 02110-1301, USA.
 // --- The player (SystemGetProperty(), SystemSetProperty(), SystemToString(), SystemAddPlanet(),
 // SystemAddMoon(), SystemSendAllShipsAway())
 
-OOGalaxyID OOJSSystemPlayerCurrentGalaxyID(PlayerEntity *player)	{ return [player currentGalaxyID]; }
-OOSystemID OOJSSystemPlayerCurrentSystemID(PlayerEntity *player)	{ return [player currentSystemID]; }
-double OOJSSystemPlayerSystemPseudoRandomFloat(PlayerEntity *player)	{ return [player systemPseudoRandomFloat]; }
-unsigned OOJSSystemPlayerSystemPseudoRandom100(PlayerEntity *player)	{ return [player systemPseudoRandom100]; }
-unsigned OOJSSystemPlayerSystemPseudoRandom256(PlayerEntity *player)	{ return [player systemPseudoRandom256]; }
-OOPlanetEntity *OOJSSystemPlayerAddPlanet(PlayerEntity *player, const std::string &planetKey)	{ return [player cxx_addPlanet:planetKey]; }
-OOPlanetEntity *OOJSSystemPlayerAddMoon(PlayerEntity *player, const std::string &moonKey)	{ return [player cxx_addMoon:moonKey]; }
-void OOJSSystemPlayerSendAllShipsAway(PlayerEntity *player)	{ [player sendAllShipsAway]; }
+OOGalaxyID OOJSSystemPlayerCurrentGalaxyID(PlayerEntity *player)	{ return (player != nullptr ? player->currentGalaxyID() : OOGalaxyID{}); }
+OOSystemID OOJSSystemPlayerCurrentSystemID(PlayerEntity *player)	{ return (player != nullptr ? player->currentSystemID() : 0); }
+double OOJSSystemPlayerSystemPseudoRandomFloat(PlayerEntity *player)	{ return (player != nullptr ? player->systemPseudoRandomFloat() : 0.0); }
+unsigned OOJSSystemPlayerSystemPseudoRandom100(PlayerEntity *player)	{ return (player != nullptr ? player->systemPseudoRandom100() : unsigned{}); }
+unsigned OOJSSystemPlayerSystemPseudoRandom256(PlayerEntity *player)	{ return (player != nullptr ? player->systemPseudoRandom256() : unsigned{}); }
+OOPlanetEntity *OOJSSystemPlayerAddPlanet(PlayerEntity *player, const std::string &planetKey)	{ return (player != nullptr ? player->addPlanetEntity(planetKey) : (OOPlanetEntity *)nullptr); }
+OOPlanetEntity *OOJSSystemPlayerAddMoon(PlayerEntity *player, const std::string &moonKey)	{ return (player != nullptr ? player->addMoonEntity(moonKey) : (OOPlanetEntity *)nullptr); }
+void OOJSSystemPlayerSendAllShipsAway(PlayerEntity *player)	{ if (player != nullptr)  player->sendAllShipsAway(); }
 
 
 // --- The entities (SystemGetProperty())
@@ -119,7 +119,7 @@ std::vector<oo::ObjCRef<ShipEntity *>> OOJSSystemUniverseAddShipsToRoute(const s
 	return [UNIVERSE cxx_addShipsToRoute:route withRole:role quantity:count routeFraction:routeFraction asGroup:isGroup];
 }
 
-void OOJSSystemPlayerAddShipsAt(PlayerEntity *player, const std::string &rolesNumberSystemXYZ)	{ [player addShipsAt:rolesNumberSystemXYZ]; }
-void OOJSSystemPlayerAddShipsAtPrecisely(PlayerEntity *player, const std::string &rolesNumberSystemXYZ)	{ [player addShipsAtPrecisely:rolesNumberSystemXYZ]; }
-void OOJSSystemPlayerAddShipsWithinRadius(PlayerEntity *player, const std::string &rolesNumberSystemXYZR)	{ [player addShipsWithinRadius:rolesNumberSystemXYZR]; }
+void OOJSSystemPlayerAddShipsAt(PlayerEntity *player, const std::string &rolesNumberSystemXYZ)	{ if (player != nullptr)  player->addShipsAt(rolesNumberSystemXYZ); }
+void OOJSSystemPlayerAddShipsAtPrecisely(PlayerEntity *player, const std::string &rolesNumberSystemXYZ)	{ if (player != nullptr)  player->addShipsAtPrecisely(rolesNumberSystemXYZ); }
+void OOJSSystemPlayerAddShipsWithinRadius(PlayerEntity *player, const std::string &rolesNumberSystemXYZR)	{ if (player != nullptr)  player->addShipsWithinRadius(rolesNumberSystemXYZR); }
 OOShipGroup *OOJSSystemShipGroup(ShipEntity *ship)	{ return [ship group]; }

@@ -81,9 +81,25 @@ uint32_t gLiveEntityCount = 0;
 @class Entity;
 oo::PList WormholeEntityShipsInTransit(Entity *)  { return oo::PList(); }
 
-@class Universe, PlayerEntity;
+@class Universe, ShipEntity;
 Universe *gSharedUniverse = nil;
-PlayerEntity *gOOPlayer = nil;
+
+// PLAYER: C++ since bead oo-9ht.177 deleted the Objective-C player; the members the monitor calls
+// on it (declared as PlayerEntity.h declares them; the test imports no game header that defines
+// the class). The test has no player, so none is reached.
+class PlayerEntity
+{
+public:
+	NSUInteger dialMaxMissiles();
+	::ShipEntity *missileForPylon(NSUInteger value);
+	std::vector<oo::ObjCRef<::Entity *>> getScannedWormholes();
+};
+
+NSUInteger PlayerEntity::dialMaxMissiles()  { std::abort(); }
+::ShipEntity *PlayerEntity::missileForPylon(NSUInteger value)  { std::abort(); }
+std::vector<oo::ObjCRef<::Entity *>> PlayerEntity::getScannedWormholes()  { std::abort(); }
+
+PlayerEntity *gOOPlayer = nullptr;
 
 ooscript::Context gOOJSMainThreadContext = nullptr;
 

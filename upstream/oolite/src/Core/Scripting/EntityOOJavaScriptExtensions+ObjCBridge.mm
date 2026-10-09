@@ -52,18 +52,29 @@ MA 02110-1301, USA.
 
 @implementation ShipEntity (OOJavaScriptExtensions)
 
-- (BOOL) isVisibleToScripts													{ return ShipEntityJSIsVisibleToScripts(); }
-
-// ShipEntity's own answers (cxx::ShipEntity's members call the same bodies). The facades of the
-// C++ subclasses that override them (StationEntity, DockEntity) override these selectors and ask
-// their C++ part; a ship facade does not reach for its C++ part here, so these answer for one that
-// has none (bead oo-tt7l1).
-- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype
+/*	ShipEntity's own answers (cxx::ShipEntity's members call the same bodies). The facades of the
+	C++ subclasses that override them (StationEntity, DockEntity) override these selectors and ask
+	their C++ part; for an Objective-C ship this facade does not reach for its C++ part, so these
+	answer for one that has none (bead oo-tt7l1). A ship made in C++ (the player, whose facade bead
+	oo-9ht.177 deleted: it answered its own class name) asks its C++ part, whose overrides answer.
+*/
+- (BOOL) isVisibleToScripts
 {
-	ShipEntityJSGetJSClass(outClass, outPrototype);
+	if (_cxxEntity != nullptr && oo::AsObjCEntity(_cxxEntity.get()) == nullptr)  return _cxxEntity->isVisibleToScripts();
+	return ShipEntityJSIsVisibleToScripts();
 }
 
-- (std::optional<std::string>) cxx_oo_jsClassName							{ return ShipEntityJSClassName(); }
+- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype
+{
+	if (_cxxEntity != nullptr && oo::AsObjCEntity(_cxxEntity.get()) == nullptr)  _cxxEntity->getJSClass(outClass, outPrototype);
+	else  ShipEntityJSGetJSClass(outClass, outPrototype);
+}
+
+- (std::optional<std::string>) cxx_oo_jsClassName
+{
+	if (_cxxEntity != nullptr && oo::AsObjCEntity(_cxxEntity.get()) == nullptr)  return _cxxEntity->jsClassName();
+	return ShipEntityJSClassName();
+}
 - (std::vector<oo::ObjCRef<Entity *>>) subEntitiesForScript				{ return ShipEntityJSSubEntitiesForScript(self); }
 - (void) setTargetForScript:(ShipEntity *)target							{ ShipEntityJSSetTargetForScript(self, target); }
 

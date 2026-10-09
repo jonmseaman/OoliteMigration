@@ -621,7 +621,7 @@ GLfloat Entity::cameraRangeBack()
 // so needs to remain at OpenGL precision levels
 Vector Entity::relativePosition()
 {
-	return HPVectorToVector(HPvector_subtract(getPosition(), [PLAYER position]));
+	return HPVectorToVector(HPvector_subtract(getPosition(), (PLAYER != nullptr ? PLAYER->getPosition() : HPVector{})));
 }
 
 Vector Entity::vectorTo(Entity *entity)
@@ -649,7 +649,7 @@ void Entity::setPositionX(OOHPScalar x, OOHPScalar y, OOHPScalar z)
 
 void Entity::updateCameraRelativePosition()
 {
-	cameraRelativePosition = HPVectorToVector(HPvector_subtract(absolutePositionForSubentity(),[PLAYER viewpointPosition]));
+	cameraRelativePosition = HPVectorToVector(HPvector_subtract(absolutePositionForSubentity(),(PLAYER != nullptr ? PLAYER->viewpointPosition() : HPVector{})));
 }
 
 
@@ -927,8 +927,8 @@ void Entity::update(OOTimeDelta delta_t)
 		}
 		else
 		{
-			zero_distance = HPdistance2(oo::ToCxx(PLAYER)->position, position);
-			cam_zero_distance = HPdistance2([PLAYER viewpointPosition], position);
+			zero_distance = HPdistance2(PLAYER->position, position);
+			cam_zero_distance = HPdistance2((PLAYER != nullptr ? PLAYER->viewpointPosition() : HPVector{}), position);
 			updateCameraRelativePosition();
 		}
 	}
@@ -1104,7 +1104,7 @@ std::optional<std::string> Entity::descriptionForObjDump()
 	const std::optional<std::string> result = descriptionForObjDumpBasic();
 	if (!result)  return std::nullopt;	// -stringByAppendingFormat: sent to nil
 
-	return *result + oo::str::format(" range: %g (visible: %s)", HPdistance(getPosition(), [PLAYER position]), isVisible() ? "yes" : "no");
+	return *result + oo::str::format(" range: %g (visible: %s)", HPdistance(getPosition(), (PLAYER != nullptr ? PLAYER->getPosition() : HPVector{})), isVisible() ? "yes" : "no");
 }
 
 

@@ -201,9 +201,8 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 
 
 // sets up a copy of the raw keyconfig.plist file so we can run checks against it to tell if a key is set to default
-void cxx::PlayerEntity::initCheckingDictionary()
+void PlayerEntity::initCheckingDictionary()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	const oo::PList kdicmaster = [::ResourceManager cxx_dictionaryFromFilesNamed:"keyconfig2.plist" inFolder:std::optional<std::string>("Config") mergeMode:MERGE_BASIC cache:NO];
 	const std::string kbd = KeyboardCode();
 	const oo::PList *kdicValue = kdicmaster.get<oo::PList::Dict>(kbd);
@@ -213,7 +212,7 @@ void cxx::PlayerEntity::initCheckingDictionary()
 	{
 		if (value.isArray())
 		{
-			value = [self cxx_processKeyCode:value];
+			value = processKeyCode(value);
 		}
 	}
 	kdic_check = oo::PList(std::move(kdic));
@@ -228,21 +227,19 @@ void cxx::PlayerEntity::initCheckingDictionary()
 }
 
 
-void cxx::PlayerEntity::resetKeyFunctions()
+void PlayerEntity::resetKeyFunctions()
 {
 	keyFunctions.clear();
 }
 
 
-void cxx::PlayerEntity::setGuiToKeyMapperScreen(unsigned skip)
+void PlayerEntity::setGuiToKeyMapperScreen(unsigned skip)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
-	[self setGuiToKeyMapperScreen:skip resetCurrentRow:NO];
+	setGuiToKeyMapperScreen(skip, NO);
 }
 
-void cxx::PlayerEntity::setGuiToKeyMapperScreen(unsigned skip, bool resetCurrentRow)
+void PlayerEntity::setGuiToKeyMapperScreen(unsigned skip, bool resetCurrentRow)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	const std::string kbd = KeyboardCode();
 
 	::GuiDisplayGen *gui = [UNIVERSE gui];
@@ -254,7 +251,7 @@ void cxx::PlayerEntity::setGuiToKeyMapperScreen(unsigned skip, bool resetCurrent
 	tabStop[2] = 400;
 	gui->setTabStops(tabStop);
 
-	if (!kdic_check) [self initCheckingDictionary];
+	if (!kdic_check) initCheckingDictionary();
 
 	gui_screen = GUI_SCREEN_KEYBOARD;
 	BOOL guiChanged = (oldScreen != gui_screen);
@@ -264,14 +261,14 @@ void cxx::PlayerEntity::setGuiToKeyMapperScreen(unsigned skip, bool resetCurrent
 	gui->setTitle(std::string("Configure Keyboard"));
 
 	// show keyboard layout
-	gui->setArray(Columns({ OO_DESC("oolite-keyconfig-keyboard"), [self keyboardDescription:kbd] }), GUI_ROW_KC_SELECTKBD);
+	gui->setArray(Columns({ OO_DESC("oolite-keyconfig-keyboard"), keyboardDescription(kbd) }), GUI_ROW_KC_SELECTKBD);
 	gui->setKey(oo::str::format("kbd:%s", kbd.c_str()), GUI_ROW_KC_SELECTKBD);
 	gui->setColor(OOColor::yellowColor().get(), GUI_ROW_KC_SELECTKBD);
 
-	[self displayKeyFunctionList:gui skip:skip];
+	displayKeyFunctionList(gui, skip);
 
 	has_error = NO;
-	if (![self validateAllKeys].empty())
+	if (!validateAllKeys().empty())
 	{
 		has_error = YES;
 		gui->setText(OO_DESC("oolite-keyconfig-validation-error"), GUI_ROW_KC_ERROR, GUI_ALIGN_CENTER);
@@ -300,22 +297,21 @@ void cxx::PlayerEntity::setGuiToKeyMapperScreen(unsigned skip, bool resetCurrent
 		gui->setSelectedRow(current_row);
 	}
 
-	gui->setForegroundTextureKey(std::string([self status] == STATUS_DOCKED ? "docked_overlay" : "paused_overlay"));
+	gui->setForegroundTextureKey(std::string(status() == STATUS_DOCKED ? "docked_overlay" : "paused_overlay"));
 	gui->setBackgroundTextureKey(std::string("keyboardsettings"));
 
 	[gameView clearMouse];
 	[gameView clearKeys];
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:YES];
 
-	if (guiChanged) [self noteGUIDidChangeFrom:oldScreen to:gui_screen];
+	if (guiChanged) noteGUIDidChangeFrom(oldScreen, gui_screen);
 }
 
 
-void cxx::PlayerEntity::keyMapperInputHandler(::GuiDisplayGen *gui, ::MyOpenGLView *gameView)
+void PlayerEntity::keyMapperInputHandler(::GuiDisplayGen *gui, ::MyOpenGLView *gameView)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
-	[self handleGUIUpDownArrowKeys];
-	BOOL selectKeyPress = ([self checkKeyPress:n_key_gui_select] || [gameView isDown:gvMouseDoubleClick]);
+	handleGUIUpDownArrowKeys();
+	BOOL selectKeyPress = (checkKeyPress(n_key_gui_select) || [gameView isDown:gvMouseDoubleClick]);
 	if ([gameView isDown:gvMouseDoubleClick])  [gameView clearMouse];
 
 	const std::string key = gui->keyForRow(gui->getSelectedRow()).value_or("");	// a nil key has no prefix
@@ -333,30 +329,30 @@ void cxx::PlayerEntity::keyMapperInputHandler(::GuiDisplayGen *gui, ::MyOpenGLVi
 
 			current_row = GUI_ROW_KC_FUNCSTART;
 			if (from_function == 0) current_row = GUI_ROW_KC_FUNCSTART + MAX_ROWS_KC_FUNCTIONS - 1;
-			[self setGuiToKeyMapperScreen:from_function];
+			setGuiToKeyMapperScreen(from_function);
 			if ([gameView isDown:gvMouseDoubleClick]) [gameView clearMouse];
 			return;
 		}
 		if (oo::str::hasPrefix(key, "kbd:"))
 		{
-			[self setGuiToKeyboardLayoutScreen:0];
+			setGuiToKeyboardLayoutScreen(0);
 			if ([gameView isDown:gvMouseDoubleClick]) [gameView clearMouse];
 			return;
 		}
 		current_row = gui->getSelectedRow();
 		selected_entry = KeyFunctionAt(keyFunctions, selFunctionIdx);
 		oo::PList definitions;
-		if (![self entryIsDictCustomEquip:selected_entry])
+		if (!entryIsDictCustomEquip(selected_entry))
 		{
 			definitions = KeyConfigEntry(keyconfig2_settings, OptionalStringForKey(selected_entry, std::string(KEY_KC_DEFINITION)));
 		}
 		else
 		{
-			definitions = [self getCustomEquipArray:selected_entry.get<std::string>(std::string(KEY_KC_DEFINITION))];
+			definitions = getCustomEquipArray(selected_entry.get<std::string>(std::string(KEY_KC_DEFINITION)));
 		}
 		key_list = definitions.isArray() ? definitions : oo::PList(oo::PList::Array());	// -initWithArray:nil was empty
 		[gameView clearKeys];	// try to stop key bounces
-		[self setGuiToKeyConfigScreen:YES];
+		setGuiToKeyConfigScreen(YES);
 	}
 
 	if ([gameView isDown:'u'])
@@ -365,8 +361,8 @@ void cxx::PlayerEntity::keyMapperInputHandler(::GuiDisplayGen *gui, ::MyOpenGLVi
 		if (oo::str::hasPrefix(key, "More:")) return;
 
 		current_row = gui->getSelectedRow();
-		[self unsetKeySetting:OptionalStringForKey(KeyFunctionAt(keyFunctions, selFunctionIdx), std::string(KEY_KC_DEFINITION)).value_or("")];
-		[self reloadPage];
+		unsetKeySetting(OptionalStringForKey(KeyFunctionAt(keyFunctions, selFunctionIdx), std::string(KEY_KC_DEFINITION)).value_or(""));
+		reloadPage();
 	}
 
 	if ([gameView isDown:'r'])
@@ -380,11 +376,11 @@ void cxx::PlayerEntity::keyMapperInputHandler(::GuiDisplayGen *gui, ::MyOpenGLVi
 			current_row = gui->getSelectedRow();
 			
 			const std::optional<std::string> delkey = OptionalStringForKey(KeyFunctionAt(keyFunctions, selFunctionIdx), std::string(KEY_KC_DEFINITION));
-			[self deleteKeySetting:delkey.value_or("")];
+			deleteKeySetting(delkey.value_or(""));
 			// special case - when default activate/mode key set in custom equipment
-			if ([self entryIsCustomEquip:delkey.value_or("")])
+			if (entryIsCustomEquip(delkey.value_or("")))
 			{
-				int idx = [self getCustomEquipIndex:delkey.value_or("")];
+				int idx = getCustomEquipIndex(delkey.value_or(""));
 				std::optional<std::string> eq;
 				std::optional<std::string> lookupKey;
 				bool update = false;
@@ -422,31 +418,29 @@ void cxx::PlayerEntity::keyMapperInputHandler(::GuiDisplayGen *gui, ::MyOpenGLVi
 				}
 			}
 			
-			[self reloadPage];
+			reloadPage();
 		}
 		else
 		{
-			[self setGuiToConfirmClearScreen];
+			setGuiToConfirmClearScreen();
 		}
 	}
-	if ([gameView isDown:' '] && !has_error) [self setGuiToGameOptionsScreen];
+	if ([gameView isDown:' '] && !has_error) setGuiToGameOptionsScreen();
 }
 
 
-bool cxx::PlayerEntity::entryIsIndexCustomEquip(NSUInteger idx)
+bool PlayerEntity::entryIsIndexCustomEquip(NSUInteger idx)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
-	return [self entryIsCustomEquip:KeyFunctionAt(keyFunctions, idx).get<std::string>(std::string(KEY_KC_DEFINITION))];
+	return entryIsCustomEquip(KeyFunctionAt(keyFunctions, idx).get<std::string>(std::string(KEY_KC_DEFINITION)));
 }
 
 
-bool cxx::PlayerEntity::entryIsDictCustomEquip(const oo::PList &dict)
+bool PlayerEntity::entryIsDictCustomEquip(const oo::PList &dict)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
-	return [self entryIsCustomEquip:dict.get<std::string>(std::string(KEY_KC_DEFINITION))];
+	return entryIsCustomEquip(dict.get<std::string>(std::string(KEY_KC_DEFINITION)));
 }
 
-bool cxx::PlayerEntity::entryIsCustomEquip(const std::string &entry)
+bool PlayerEntity::entryIsCustomEquip(const std::string &entry)
 {
 	BOOL result = NO;
 	if (oo::str::hasPrefix(entry, "activate_") || oo::str::hasPrefix(entry, "mode_"))
@@ -454,7 +448,7 @@ bool cxx::PlayerEntity::entryIsCustomEquip(const std::string &entry)
 	return result;
 }
 
-oo::PList cxx::PlayerEntity::getCustomEquipArray(const std::string &key_def)
+oo::PList PlayerEntity::getCustomEquipArray(const std::string &key_def)
 {
 	std::optional<std::string> eq;
 	NSUInteger i;
@@ -483,7 +477,7 @@ oo::PList cxx::PlayerEntity::getCustomEquipArray(const std::string &key_def)
 }
 
 
-NSUInteger cxx::PlayerEntity::getCustomEquipIndex(const std::string &key_def)
+NSUInteger PlayerEntity::getCustomEquipIndex(const std::string &key_def)
 {
 	std::optional<std::string> eq;
 	NSUInteger i;
@@ -507,7 +501,7 @@ NSUInteger cxx::PlayerEntity::getCustomEquipIndex(const std::string &key_def)
 }
 
 
-std::optional<std::string> cxx::PlayerEntity::getCustomEquipKeyDefType(const std::string &key_def)
+std::optional<std::string> PlayerEntity::getCustomEquipKeyDefType(const std::string &key_def)
 {
 	if (oo::str::hasPrefix(key_def, "activate_"))
 	{
@@ -521,16 +515,14 @@ std::optional<std::string> cxx::PlayerEntity::getCustomEquipKeyDefType(const std
 }
 
 
-void cxx::PlayerEntity::setGuiToKeyConfigScreen()
+void PlayerEntity::setGuiToKeyConfigScreen()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
-	[self setGuiToKeyConfigScreen:NO];
+	setGuiToKeyConfigScreen(NO);
 }
 
 
-void cxx::PlayerEntity::setGuiToKeyConfigScreen(bool resetSelectedRow)
+void PlayerEntity::setGuiToKeyConfigScreen(bool resetSelectedRow)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	NSUInteger i = 0;
 	::GuiDisplayGen *gui=[UNIVERSE gui];
 	OOGUIScreenID oldScreen = gui_screen;
@@ -568,14 +560,14 @@ void cxx::PlayerEntity::setGuiToKeyConfigScreen(bool resetSelectedRow)
 			k_int = (OOKeyCode)def.get<long long>("key");	// -integerValue
 			if (k_int > 0)
 			{
-				keystring = [self cxx_keyCodeDescription:k_int];
+				keystring = keyCodeDescription(k_int);
 				if (def.get<bool>("shift") == YES) keyshift = OO_DESC("oolite-keyconfig-modkey-on");
 				if (def.get<bool>("mod1") == YES) keymod1 = OO_DESC("oolite-keyconfig-modkey-on");
 				if (def.get<bool>("mod2") == YES) keymod2 = OO_DESC("oolite-keyconfig-modkey-on");
 			}
 		}
 
-		[self outputKeyDefinition:keystring.value_or("") shift:keyshift.value_or("") mod1:keymod1.value_or("") mod2:keymod2.value_or("") skiprows:(i * 5)];
+		outputKeyDefinition(keystring.value_or(""), keyshift.value_or(""), keymod1.value_or(""), keymod2.value_or(""), (i * 5));
 	}
 
 	const std::string definition = selected_entry.get<std::string>(std::string(KEY_KC_DEFINITION));
@@ -596,7 +588,7 @@ void cxx::PlayerEntity::setGuiToKeyConfigScreen(bool resetSelectedRow)
 
 	gui->setSelectableRange(NSMakeRange(GUI_ROW_KC_KEY, (GUI_ROW_KC_CANCEL - GUI_ROW_KC_KEY) + 1));
 
-	const std::optional<std::string> validate = [self validateKey:definition checkKeys:key_list];
+	const std::optional<std::string> validate = validateKey(definition, key_list);
 	if (validate)
 	{
 		for (i = 0; i < keyFunctions.size(); i++)
@@ -615,15 +607,15 @@ void cxx::PlayerEntity::setGuiToKeyConfigScreen(bool resetSelectedRow)
 		gui->setSelectedRow(GUI_ROW_KC_KEY);
 	}
 
-	gui->setForegroundTextureKey(std::string([self status] == STATUS_DOCKED ? "docked_overlay" : "paused_overlay"));
+	gui->setForegroundTextureKey(std::string(status() == STATUS_DOCKED ? "docked_overlay" : "paused_overlay"));
 	gui->setBackgroundTextureKey(std::string("keyboardsettings"));
 	[[UNIVERSE gameView] clearMouse];
 	[[UNIVERSE gameView] clearKeys];
-	if (guiChanged) [self noteGUIDidChangeFrom:oldScreen to:gui_screen];
+	if (guiChanged) noteGUIDidChangeFrom(oldScreen, gui_screen);
 }
 
 
-void cxx::PlayerEntity::outputKeyDefinition(const std::string &key, const std::string &shift, const std::string &mod1, const std::string &mod2, NSUInteger skiprows)
+void PlayerEntity::outputKeyDefinition(const std::string &key, const std::string &shift, const std::string &mod1, const std::string &mod2, NSUInteger skiprows)
 {
 	::GuiDisplayGen *gui=[UNIVERSE gui];
 	const std::string definition = selected_entry.get<std::string>(std::string(KEY_KC_DEFINITION));
@@ -659,52 +651,50 @@ void cxx::PlayerEntity::outputKeyDefinition(const std::string &key, const std::s
 }
 
 
-void cxx::PlayerEntity::handleKeyConfigKeys(::GuiDisplayGen *gui, ::MyOpenGLView *gameView)
+void PlayerEntity::handleKeyConfigKeys(::GuiDisplayGen *gui, ::MyOpenGLView *gameView)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
-	[self handleGUIUpDownArrowKeys];
-	BOOL selectKeyPress = ([self checkKeyPress:n_key_gui_select]||[gameView isDown:gvMouseDoubleClick]);
+	handleGUIUpDownArrowKeys();
+	BOOL selectKeyPress = (checkKeyPress(n_key_gui_select)||[gameView isDown:gvMouseDoubleClick]);
 	if ([gameView isDown:gvMouseDoubleClick])  [gameView clearMouse];
 	
 	if (selectKeyPress && (gui->getSelectedRow() == GUI_ROW_KC_KEY || gui->getSelectedRow() == (GUI_ROW_KC_KEY + 5)))
 	{
 		key_index = (gui->getSelectedRow() == GUI_ROW_KC_KEY ? 0 : 1);
-		[self setGuiToKeyConfigEntryScreen];
+		setGuiToKeyConfigEntryScreen();
 	}
 
 	if (selectKeyPress && (gui->getSelectedRow() == GUI_ROW_KC_SHIFT || gui->getSelectedRow() == (GUI_ROW_KC_SHIFT + 5)))
 	{
-		[self updateShiftKeyDefinition:"shift" index:(gui->getSelectedRow() == GUI_ROW_KC_SHIFT ? 0 : 1)];
-		[self setGuiToKeyConfigScreen];
+		updateShiftKeyDefinition("shift", (gui->getSelectedRow() == GUI_ROW_KC_SHIFT ? 0 : 1));
+		setGuiToKeyConfigScreen();
 	}
 	if (selectKeyPress && (gui->getSelectedRow() == GUI_ROW_KC_MOD1 || gui->getSelectedRow() == (GUI_ROW_KC_MOD1 + 5)))
 	{
-		[self updateShiftKeyDefinition:"mod1" index:(gui->getSelectedRow() == GUI_ROW_KC_MOD1 ? 0 : 1)];
-		[self setGuiToKeyConfigScreen];
+		updateShiftKeyDefinition("mod1", (gui->getSelectedRow() == GUI_ROW_KC_MOD1 ? 0 : 1));
+		setGuiToKeyConfigScreen();
 	}
 	if (selectKeyPress && (gui->getSelectedRow() == GUI_ROW_KC_MOD2 || gui->getSelectedRow() == (GUI_ROW_KC_MOD2 + 5)))
 	{
-		[self updateShiftKeyDefinition:"mod2" index:(gui->getSelectedRow() == GUI_ROW_KC_MOD2 ? 0 : 1)];
-		[self setGuiToKeyConfigScreen];
+		updateShiftKeyDefinition("mod2", (gui->getSelectedRow() == GUI_ROW_KC_MOD2 ? 0 : 1));
+		setGuiToKeyConfigScreen();
 	}
 
 	if (selectKeyPress && gui->getSelectedRow() == GUI_ROW_KC_SAVE)
 	{
-		[self saveKeySetting:OptionalStringForKey(selected_entry, std::string(KEY_KC_DEFINITION)).value_or("")];
-		[self reloadPage];
+		saveKeySetting(OptionalStringForKey(selected_entry, std::string(KEY_KC_DEFINITION)).value_or(""));
+		reloadPage();
 	}
 
 	if ((selectKeyPress && gui->getSelectedRow() == GUI_ROW_KC_CANCEL) || [gameView isDown:27])
 	{
 		// esc or Cancel was pressed - get out of here
-		[self reloadPage];
+		reloadPage();
 	}
 }
 
 
-void cxx::PlayerEntity::setGuiToKeyConfigEntryScreen()
+void PlayerEntity::setGuiToKeyConfigEntryScreen()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	::GuiDisplayGen *gui = [UNIVERSE gui];
 	::MyOpenGLView *gameView = [UNIVERSE gameView];
 	OOGUIScreenID oldScreen = gui_screen;
@@ -722,14 +712,14 @@ void cxx::PlayerEntity::setGuiToKeyConfigEntryScreen()
 	//if ([key isEqualToString:@"(not set)"]) key = @"";
 	OOKeyCode k_int = (OOKeyCode)(def != nullptr ? def->get<long long>("key") : 0);	// -integerValue
 	[gameView resetTypedString];
-	[gameView cxx_setTypedString:(k_int != 0 ? [self cxx_keyCodeDescriptionShort:k_int].value_or(std::string()) : std::string())];
+	[gameView cxx_setTypedString:(k_int != 0 ? keyCodeDescriptionShort(k_int).value_or(std::string()) : std::string())];
 	[gameView setStringInput:gvStringInputAll];
 
 	gui->clear();
 	gui->setTitle(OO_DESC("oolite-keyconfig-update-entry-title"));	// @"%@"
 
 	NSUInteger end_row = 21;
-	if ([self hud] != nullptr && [self hud]->getAllowBigGui())
+	if (getHud() != nullptr && getHud()->getAllowBigGui())
 	{
 		end_row = 27;
 	}
@@ -743,51 +733,49 @@ void cxx::PlayerEntity::setGuiToKeyConfigEntryScreen()
 	gui->setShowTextCursor(YES);
 	gui->setCurrentRow(end_row);
 
-	gui->setForegroundTextureKey(std::string([self status] == STATUS_DOCKED ? "docked_overlay" : "paused_overlay"));
+	gui->setForegroundTextureKey(std::string(status() == STATUS_DOCKED ? "docked_overlay" : "paused_overlay"));
 	gui->setBackgroundTextureKey(std::string("keyboardsettings"));
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:NO];
 
 	[gameView clearMouse];
 	[gameView clearKeys];
-	if (guiChanged) [self noteGUIDidChangeFrom:oldScreen to:gui_screen];
+	if (guiChanged) noteGUIDidChangeFrom(oldScreen, gui_screen);
 }
 
 
-void cxx::PlayerEntity::handleKeyConfigEntryKeys(::GuiDisplayGen *gui, ::MyOpenGLView *gameView)
+void PlayerEntity::handleKeyConfigEntryKeys(::GuiDisplayGen *gui, ::MyOpenGLView *gameView)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	NSUInteger end_row = 21;
-	if ([self hud] != nullptr && [self hud]->getAllowBigGui()) 
+	if (getHud() != nullptr && getHud()->getAllowBigGui()) 
 	{
 		end_row = 27;
 	}
 
-	[self handleGUIUpDownArrowKeys];
+	handleGUIUpDownArrowKeys();
 	if ([gameView lastKeyWasShifted]) last_shift = YES;
 
 	gui->setText(oo::str::formatRuntime(OO_DESC("Key: %@"), { TextArg([gameView cxx_typedString]) }), end_row);
 	gui->setColor(OOColor::cyanColor().get(), end_row);
 
-	if ([self checkKeyPress:n_key_gui_select]) 
+	if (checkKeyPress(n_key_gui_select)) 
 	{
 		[gameView suppressKeysUntilKeyUp];
 		// update function key
-		[self updateKeyDefinition:[gameView cxx_typedString].value_or("") index:key_index];
+		updateKeyDefinition([gameView cxx_typedString].value_or(""), key_index);
 		[gameView clearKeys];	// try to stop key bounces
-		[self setGuiToKeyConfigScreen:YES];
+		setGuiToKeyConfigScreen(YES);
 	}
 	if ([gameView isDown:27]) // escape
 	{
 		[gameView suppressKeysUntilKeyUp];
 		// don't update function key
-		[self setGuiToKeyConfigScreen:YES];
+		setGuiToKeyConfigScreen(YES);
 	}
 }
 
 // updates the overridden definition of a key to a new keycode value
-void cxx::PlayerEntity::updateKeyDefinition(const std::string &keystring, NSUInteger index)
+void PlayerEntity::updateKeyDefinition(const std::string &keystring, NSUInteger index)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	const oo::PList *entry = key_list.at(index);
 	oo::PList::Dict key_def = (entry != nullptr && entry->isDict()) ? *entry->getIf<oo::PList::Dict>() : oo::PList::Dict();	// a value copy
 	key_def["key"] = oo::PList(keystring);
@@ -803,14 +791,13 @@ void cxx::PlayerEntity::updateKeyDefinition(const std::string &keystring, NSUInt
 	}
 	last_shift = NO;
 	StoreKeyDefinition(index, oo::PList(std::move(key_def)));
-	key_list = [self cxx_processKeyCode:key_list];
+	key_list = processKeyCode(key_list);
 }
 
 
 // changes the shift/ctrl/alt state of an overridden definition
-void cxx::PlayerEntity::updateShiftKeyDefinition(const std::string &key, NSUInteger index)
+void PlayerEntity::updateShiftKeyDefinition(const std::string &key, NSUInteger index)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	const oo::PList *entry = key_list.at(index);
 	oo::PList key_def = (entry != nullptr && entry->isDict()) ? *entry : oo::PList(oo::PList::Dict());	// a value copy
 	oo::PList::Dict &key_fields = *key_def.getIf<oo::PList::Dict>();
@@ -824,7 +811,7 @@ void cxx::PlayerEntity::updateShiftKeyDefinition(const std::string &key, NSUInte
 		NSInteger k_int = (OOKeyCode)key_def.get<long long>("key");	// -integerValue
 		if (k_int > 0)
 		{
-			const std::optional<std::string> keystring = [self cxx_keyCodeDescription:k_int];
+			const std::optional<std::string> keystring = keyCodeDescription(k_int);
 			std::optional<std::string> newstring;
 			if (keystring && oo::str::length(*keystring) == 1)
 			{
@@ -848,14 +835,13 @@ void cxx::PlayerEntity::updateShiftKeyDefinition(const std::string &key, NSUInte
 	StoreKeyDefinition(index, std::move(key_def));
 	if (keycode_changed)
 	{
-		key_list = [self cxx_processKeyCode:key_list];
+		key_list = processKeyCode(key_list);
 	}
 }
 
 
-void cxx::PlayerEntity::setGuiToConfirmClearScreen()
+void PlayerEntity::setGuiToConfirmClearScreen()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	::GuiDisplayGen *gui=[UNIVERSE gui];
 	OOGUIScreenID oldScreen = gui_screen;
 
@@ -877,21 +863,20 @@ void cxx::PlayerEntity::setGuiToConfirmClearScreen()
 	gui->setSelectableRange(NSMakeRange(GUI_ROW_KC_CONFIRMCLEAR_YES, 2));
 	gui->setSelectedRow(GUI_ROW_KC_CONFIRMCLEAR_NO);
 
-	gui->setForegroundTextureKey(std::string([self status] == STATUS_DOCKED ? "docked_overlay" : "paused_overlay"));
+	gui->setForegroundTextureKey(std::string(status() == STATUS_DOCKED ? "docked_overlay" : "paused_overlay"));
 	gui->setBackgroundTextureKey(std::string("keyboardsettings"));
 
 	[[UNIVERSE gameView] clearMouse];
 	[[UNIVERSE gameView] clearKeys];
-	if (guiChanged) [self noteGUIDidChangeFrom:oldScreen to:gui_screen];
+	if (guiChanged) noteGUIDidChangeFrom(oldScreen, gui_screen);
 }
 
 
-void cxx::PlayerEntity::handleKeyMapperConfirmClearKeys(::GuiDisplayGen *gui, ::MyOpenGLView *gameView)
+void PlayerEntity::handleKeyMapperConfirmClearKeys(::GuiDisplayGen *gui, ::MyOpenGLView *gameView)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
-	[self handleGUIUpDownArrowKeys];
+	handleGUIUpDownArrowKeys();
 
-	BOOL selectKeyPress = ([self checkKeyPress:n_key_gui_select]||[gameView isDown:gvMouseDoubleClick]);
+	BOOL selectKeyPress = (checkKeyPress(n_key_gui_select)||[gameView isDown:gvMouseDoubleClick]);
 	if ([gameView isDown:gvMouseDoubleClick]) [gameView clearMouse];
 
 	// Translation issue: we can't confidently use raw Y and N ascii as shortcuts. It's better to use the load-previous-commander keys.
@@ -906,31 +891,30 @@ void cxx::PlayerEntity::handleKeyMapperConfirmClearKeys(::GuiDisplayGen *gui, ::
 	
 	if ((selectKeyPress && (gui->getSelectedRow() == GUI_ROW_KC_CONFIRMCLEAR_YES))||[gameView isDown:cYes]||[gameView isDown:cYes - 32])
 	{
-		[self deleteAllKeySettings];
+		deleteAllKeySettings();
 		[gameView suppressKeysUntilKeyUp];
-		[self setGuiToKeyMapperScreen:0 resetCurrentRow:YES];
+		setGuiToKeyMapperScreen(0, YES);
 	}
 	
 	if ((selectKeyPress && (gui->getSelectedRow() == GUI_ROW_KC_CONFIRMCLEAR_NO))||[gameView isDown:27]||[gameView isDown:cNo]||[gameView isDown:cNo - 32])
 	{
 		// esc or NO was pressed - get out of here
 		[gameView suppressKeysUntilKeyUp];
-		[self setGuiToKeyMapperScreen:0 resetCurrentRow:YES];
+		setGuiToKeyMapperScreen(0, YES);
 	}
 }
 
 
-void cxx::PlayerEntity::displayKeyFunctionList(::GuiDisplayGen *gui, NSUInteger skip)
+void PlayerEntity::displayKeyFunctionList(::GuiDisplayGen *gui, NSUInteger skip)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	gui->setColor(OOColor::greenColor().get(), GUI_ROW_KC_HEADING);
 	gui->setArray({ "Function", "Assigned to", "Overrides" }, GUI_ROW_KC_HEADING);
 
-	const oo::PList overrides = [self loadKeySettings];
+	const oo::PList overrides = loadKeySettings();
 
 	if(keyFunctions.empty())	// the list is never empty once built
 	{
-		keyFunctions = [self keyFunctionList];
+		keyFunctions = keyFunctionList();
 	}
 
 	NSUInteger i, n_functions = keyFunctions.size();
@@ -984,20 +968,20 @@ void cxx::PlayerEntity::displayKeyFunctionList(::GuiDisplayGen *gui, NSUInteger 
 				const std::optional<std::string> definition = OptionalStringForKey(entry, std::string(KEY_KC_DEFINITION));
 				std::optional<std::string> assignment;
 				std::string override;
-				if (![self entryIsDictCustomEquip:entry])
+				if (!entryIsDictCustomEquip(entry))
 				{
 					// Find out what's assigned for this function currently.
-					assignment = [PLAYER cxx_keyBindingDescription2:definition.value_or(std::string())];
+					assignment = (PLAYER != nullptr ? PLAYER->keyBindingDescription2(definition.value_or(std::string())) : std::optional<std::string>());
 					override = (definition && overrides.find(*definition) != nullptr ? "Yes" : ""); // work out whether this assignment is overriding the setting in keyconfig2.plist
-					validate = [self validateKey:definition.value_or("") checkKeys:KeyConfigEntry(keyconfig2_settings, definition)];
+					validate = validateKey(definition.value_or(""), KeyConfigEntry(keyconfig2_settings, definition));
 				}
 				else
 				{
-					const std::optional<std::string> custom_keytype = [self getCustomEquipKeyDefType:definition.value_or("")];
-					NSUInteger idx = [self getCustomEquipIndex:definition.value_or("")];
+					const std::optional<std::string> custom_keytype = getCustomEquipKeyDefType(definition.value_or(""));
+					NSUInteger idx = getCustomEquipIndex(definition.value_or(""));
 					const oo::PList &equip = CustomEquipEntry(customEquipActivation, idx);
 					const oo::PList *keyArray = equip.get<oo::PList::Array>(custom_keytype.value_or(""));	// -oo_arrayForKey:
-					assignment = [PLAYER cxx_getKeyBindingDescription:(keyArray != nullptr ? *keyArray : oo::PList())];
+					assignment = (PLAYER != nullptr ? PLAYER->getKeyBindingDescription((keyArray != nullptr ? *keyArray : oo::PList())) : std::optional<std::string>());
 					const std::optional<std::string> itemKey = OptionalStringForKey(equip, std::string(CUSTOMEQUIP_EQUIPKEY));
 					::OOEquipmentType	*item = itemKey.has_value() ? OOEquipmentType::equipmentTypeWithIdentifier(*itemKey).get() : nil;
 					bool result = true;
@@ -1019,7 +1003,7 @@ void cxx::PlayerEntity::displayKeyFunctionList(::GuiDisplayGen *gui, NSUInteger 
 					{
 						for (k = 0; k < compArray.count(); k++)
 						{
-							if (![self compareKeyEntries:ElementAt(defArray, j) second:ElementAt(compArray, k)])
+							if (!compareKeyEntries(ElementAt(defArray, j), ElementAt(compArray, k)))
 							{
 								result = false;
 								break;
@@ -1029,7 +1013,7 @@ void cxx::PlayerEntity::displayKeyFunctionList(::GuiDisplayGen *gui, NSUInteger 
 					}
 
 					override = (!result ? "Yes" : "");
-					validate = [self validateKey:definition.value_or("") checkKeys:(keyArray != nullptr ? *keyArray : oo::PList())];
+					validate = validateKey(definition.value_or(""), (keyArray != nullptr ? *keyArray : oo::PList()));
 				}
 				if (!assignment)
 				{
@@ -1057,181 +1041,178 @@ void cxx::PlayerEntity::displayKeyFunctionList(::GuiDisplayGen *gui, NSUInteger 
 }
 
 
-std::vector<oo::PList> cxx::PlayerEntity::keyFunctionList()
+std::vector<oo::PList> PlayerEntity::keyFunctionList()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	std::vector<oo::PList> funcList;
 
-	funcList.push_back([self makeKeyGuiDictHeader:OO_DESC("oolite-keydesc-header-screen-access")]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_launch_ship") keyDef:"key_launch_ship"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_gui_screen_options") keyDef:"key_gui_screen_options"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_gui_screen_equipship") keyDef:"key_gui_screen_equipship"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_gui_screen_interfaces") keyDef:"key_gui_screen_interfaces"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_gui_screen_status") keyDef:"key_gui_screen_status"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_gui_chart_screens") keyDef:"key_gui_chart_screens"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_gui_system_data") keyDef:"key_gui_system_data"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_gui_market") keyDef:"key_gui_market"]);
+	funcList.push_back(makeKeyGuiDictHeader(OO_DESC("oolite-keydesc-header-screen-access")));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_launch_ship"), "key_launch_ship"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_gui_screen_options"), "key_gui_screen_options"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_gui_screen_equipship"), "key_gui_screen_equipship"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_gui_screen_interfaces"), "key_gui_screen_interfaces"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_gui_screen_status"), "key_gui_screen_status"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_gui_chart_screens"), "key_gui_chart_screens"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_gui_system_data"), "key_gui_system_data"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_gui_market"), "key_gui_market"));
 
-	funcList.push_back([self makeKeyGuiDictHeader:OO_DESC("oolite-keydesc-header-propulsion")]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_roll_left") keyDef:"key_roll_left"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_roll_right") keyDef:"key_roll_right"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_pitch_forward") keyDef:"key_pitch_forward"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_pitch_back") keyDef:"key_pitch_back"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_yaw_left") keyDef:"key_yaw_left"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_yaw_right") keyDef:"key_yaw_right"]);
+	funcList.push_back(makeKeyGuiDictHeader(OO_DESC("oolite-keydesc-header-propulsion")));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_roll_left"), "key_roll_left"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_roll_right"), "key_roll_right"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_pitch_forward"), "key_pitch_forward"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_pitch_back"), "key_pitch_back"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_yaw_left"), "key_yaw_left"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_yaw_right"), "key_yaw_right"));
 
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_increase_speed") keyDef:"key_increase_speed"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_decrease_speed") keyDef:"key_decrease_speed"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_inject_fuel") keyDef:"key_inject_fuel"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_jumpdrive") keyDef:"key_jumpdrive"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_hyperspace") keyDef:"key_hyperspace"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_galactic_hyperspace") keyDef:"key_galactic_hyperspace"]);
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_increase_speed"), "key_increase_speed"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_decrease_speed"), "key_decrease_speed"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_inject_fuel"), "key_inject_fuel"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_jumpdrive"), "key_jumpdrive"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_hyperspace"), "key_hyperspace"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_galactic_hyperspace"), "key_galactic_hyperspace"));
 
-	funcList.push_back([self makeKeyGuiDictHeader:OO_DESC("oolite-keydesc-header-navigation")]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_next_compass_mode") keyDef:"key_next_compass_mode"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_prev_compass_mode") keyDef:"key_prev_compass_mode"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_scanner_zoom") keyDef:"key_scanner_zoom"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_scanner_unzoom") keyDef:"key_scanner_unzoom"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_view_forward") keyDef:"key_view_forward"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_view_aft") keyDef:"key_view_aft"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_view_port") keyDef:"key_view_port"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_view_starboard") keyDef:"key_view_starboard"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_ident_system") keyDef:"key_ident_system"]);
+	funcList.push_back(makeKeyGuiDictHeader(OO_DESC("oolite-keydesc-header-navigation")));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_next_compass_mode"), "key_next_compass_mode"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_prev_compass_mode"), "key_prev_compass_mode"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_scanner_zoom"), "key_scanner_zoom"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_scanner_unzoom"), "key_scanner_unzoom"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_view_forward"), "key_view_forward"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_view_aft"), "key_view_aft"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_view_port"), "key_view_port"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_view_starboard"), "key_view_starboard"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_ident_system"), "key_ident_system"));
 
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_docking_clearance_request") keyDef:"key_docking_clearance_request"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_autopilot") keyDef:"key_autopilot"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_autodock") keyDef:"key_autodock"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_docking_music") keyDef:"key_docking_music"]);
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_docking_clearance_request"), "key_docking_clearance_request"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_autopilot"), "key_autopilot"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_autodock"), "key_autodock"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_docking_music"), "key_docking_music"));
 
-	funcList.push_back([self makeKeyGuiDictHeader:OO_DESC("oolite-keydesc-header-offensive")]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_weapons_online_toggle") keyDef:"key_weapons_online_toggle"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_fire_lasers") keyDef:"key_fire_lasers"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_launch_missile") keyDef:"key_launch_missile"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_target_missile") keyDef:"key_target_missile"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_untarget_missile") keyDef:"key_untarget_missile"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_target_incoming_missile") keyDef:"key_target_incoming_missile"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_next_missile") keyDef:"key_next_missile"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_next_target") keyDef:"key_next_target"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_previous_target") keyDef:"key_previous_target"]);
+	funcList.push_back(makeKeyGuiDictHeader(OO_DESC("oolite-keydesc-header-offensive")));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_weapons_online_toggle"), "key_weapons_online_toggle"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_fire_lasers"), "key_fire_lasers"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_launch_missile"), "key_launch_missile"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_target_missile"), "key_target_missile"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_untarget_missile"), "key_untarget_missile"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_target_incoming_missile"), "key_target_incoming_missile"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_next_missile"), "key_next_missile"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_next_target"), "key_next_target"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_previous_target"), "key_previous_target"));
 
-	funcList.push_back([self makeKeyGuiDictHeader:OO_DESC("oolite-keydesc-header-defensive")]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_ecm") keyDef:"key_ecm"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_dump_cargo") keyDef:"key_dump_cargo"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_rotate_cargo") keyDef:"key_rotate_cargo"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_launch_escapepod") keyDef:"key_launch_escapepod"]);
+	funcList.push_back(makeKeyGuiDictHeader(OO_DESC("oolite-keydesc-header-defensive")));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_ecm"), "key_ecm"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_dump_cargo"), "key_dump_cargo"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_rotate_cargo"), "key_rotate_cargo"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_launch_escapepod"), "key_launch_escapepod"));
 
-	funcList.push_back([self makeKeyGuiDictHeader:OO_DESC("oolite-keydesc-header-special-equip")]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_cycle_next_mfd") keyDef:"key_cycle_next_mfd"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_cycle_previous_mfd") keyDef:"key_cycle_previous_mfd"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_switch_next_mfd") keyDef:"key_switch_next_mfd"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_switch_previous_mfd") keyDef:"key_switch_previous_mfd"]);
+	funcList.push_back(makeKeyGuiDictHeader(OO_DESC("oolite-keydesc-header-special-equip")));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_cycle_next_mfd"), "key_cycle_next_mfd"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_cycle_previous_mfd"), "key_cycle_previous_mfd"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_switch_next_mfd"), "key_switch_next_mfd"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_switch_previous_mfd"), "key_switch_previous_mfd"));
 
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_prime_next_equipment") keyDef:"key_prime_next_equipment"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_prime_previous_equipment") keyDef:"key_prime_previous_equipment"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_activate_equipment") keyDef:"key_activate_equipment"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_mode_equipment") keyDef:"key_mode_equipment"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_fastactivate_equipment_a") keyDef:"key_fastactivate_equipment_a"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_fastactivate_equipment_b") keyDef:"key_fastactivate_equipment_b"]);
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_prime_next_equipment"), "key_prime_next_equipment"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_prime_previous_equipment"), "key_prime_previous_equipment"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_activate_equipment"), "key_activate_equipment"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_mode_equipment"), "key_mode_equipment"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_fastactivate_equipment_a"), "key_fastactivate_equipment_a"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_fastactivate_equipment_b"), "key_fastactivate_equipment_b"));
 
-	funcList.push_back([self makeKeyGuiDictHeader:OO_DESC("oolite-keydesc-header-chart-screen")]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_advanced_nav_array_next") keyDef:"key_advanced_nav_array_next"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_advanced_nav_array_previous") keyDef:"key_advanced_nav_array_previous"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_map_home") keyDef:"key_map_home"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_map_end") keyDef:"key_map_end"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_map_info") keyDef:"key_map_info"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_map_zoom_in") keyDef:"key_map_zoom_in"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_map_zoom_out") keyDef:"key_map_zoom_out"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_map_next_system") keyDef:"key_map_next_system"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_map_previous_system") keyDef:"key_map_previous_system"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_chart_highlight") keyDef:"key_chart_highlight"]);
+	funcList.push_back(makeKeyGuiDictHeader(OO_DESC("oolite-keydesc-header-chart-screen")));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_advanced_nav_array_next"), "key_advanced_nav_array_next"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_advanced_nav_array_previous"), "key_advanced_nav_array_previous"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_map_home"), "key_map_home"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_map_end"), "key_map_end"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_map_info"), "key_map_info"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_map_zoom_in"), "key_map_zoom_in"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_map_zoom_out"), "key_map_zoom_out"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_map_next_system"), "key_map_next_system"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_map_previous_system"), "key_map_previous_system"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_chart_highlight"), "key_chart_highlight"));
 
-	funcList.push_back([self makeKeyGuiDictHeader:OO_DESC("oolite-keydesc-header-planet-info-screen")]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_system_home") keyDef:"key_system_home"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_system_end") keyDef:"key_system_end"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_system_next_system") keyDef:"key_system_next_system"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_system_previous_system") keyDef:"key_system_previous_system"]);
+	funcList.push_back(makeKeyGuiDictHeader(OO_DESC("oolite-keydesc-header-planet-info-screen")));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_system_home"), "key_system_home"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_system_end"), "key_system_end"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_system_next_system"), "key_system_next_system"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_system_previous_system"), "key_system_previous_system"));
 
-	funcList.push_back([self makeKeyGuiDictHeader:OO_DESC("oolite-keydesc-header-market-screen")]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_market_filter_cycle") keyDef:"key_market_filter_cycle"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_market_sorter_cycle") keyDef:"key_market_sorter_cycle"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_market_buy_one") keyDef:"key_market_buy_one"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_market_sell_one") keyDef:"key_market_sell_one"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_market_buy_max") keyDef:"key_market_buy_max"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_market_sell_max") keyDef:"key_market_sell_max"]);
+	funcList.push_back(makeKeyGuiDictHeader(OO_DESC("oolite-keydesc-header-market-screen")));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_market_filter_cycle"), "key_market_filter_cycle"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_market_sorter_cycle"), "key_market_sorter_cycle"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_market_buy_one"), "key_market_buy_one"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_market_sell_one"), "key_market_sell_one"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_market_buy_max"), "key_market_buy_max"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_market_sell_max"), "key_market_sell_max"));
 
-	funcList.push_back([self makeKeyGuiDictHeader:OO_DESC("oolite-keydesc-header-misc")]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_snapshot") keyDef:"key_snapshot"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_pausebutton") keyDef:"key_pausebutton"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_show_fps") keyDef:"key_show_fps"]);
+	funcList.push_back(makeKeyGuiDictHeader(OO_DESC("oolite-keydesc-header-misc")));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_snapshot"), "key_snapshot"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_pausebutton"), "key_pausebutton"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_show_fps"), "key_show_fps"));
 	//[funcList addObject:[self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_bloom_toggle") keyDef:@"key_bloom_toggle"]];
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_mouse_control_roll") keyDef:"key_mouse_control_roll"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_mouse_control_yaw") keyDef:"key_mouse_control_yaw"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_hud_toggle") keyDef:"key_hud_toggle"]);
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_mouse_control_roll"), "key_mouse_control_roll"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_mouse_control_yaw"), "key_mouse_control_yaw"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_hud_toggle"), "key_hud_toggle"));
 #if OO_FOV_INFLIGHT_CONTROL_ENABLED
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_inc_field_of_view") keyDef:"key_inc_field_of_view"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_dec_field_of_view") keyDef:"key_dec_field_of_view"]);
+	funcList.push_back([oo::ToObjC(this) makeKeyGuiDict:OO_DESC("oolite-keydesc-key_inc_field_of_view") keyDef:"key_inc_field_of_view"]);
+	funcList.push_back([oo::ToObjC(this) makeKeyGuiDict:OO_DESC("oolite-keydesc-key_dec_field_of_view") keyDef:"key_dec_field_of_view"]);
 #endif
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_comms_log") keyDef:"key_comms_log"]);
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_comms_log"), "key_comms_log"));
 
-	funcList.push_back([self makeKeyGuiDictHeader:OO_DESC("oolite-keydesc-header-custom-view")]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_custom_view") keyDef:"key_custom_view"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_custom_view_zoom_in") keyDef:"key_custom_view_zoom_in"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_custom_view_zoom_out") keyDef:"key_custom_view_zoom_out"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_custom_view_roll_left") keyDef:"key_custom_view_roll_left"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_custom_view_roll_right") keyDef:"key_custom_view_roll_right"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_custom_view_pan_left") keyDef:"key_custom_view_pan_left"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_custom_view_pan_right") keyDef:"key_custom_view_pan_right"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_custom_view_pan_up") keyDef:"key_custom_view_pan_up"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_custom_view_pan_down") keyDef:"key_custom_view_pan_down"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_custom_view_rotate_left") keyDef:"key_custom_view_rotate_left"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_custom_view_rotate_right") keyDef:"key_custom_view_rotate_right"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_custom_view_rotate_up") keyDef:"key_custom_view_rotate_up"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_custom_view_rotate_down") keyDef:"key_custom_view_rotate_down"]);
+	funcList.push_back(makeKeyGuiDictHeader(OO_DESC("oolite-keydesc-header-custom-view")));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_custom_view"), "key_custom_view"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_custom_view_zoom_in"), "key_custom_view_zoom_in"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_custom_view_zoom_out"), "key_custom_view_zoom_out"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_custom_view_roll_left"), "key_custom_view_roll_left"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_custom_view_roll_right"), "key_custom_view_roll_right"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_custom_view_pan_left"), "key_custom_view_pan_left"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_custom_view_pan_right"), "key_custom_view_pan_right"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_custom_view_pan_up"), "key_custom_view_pan_up"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_custom_view_pan_down"), "key_custom_view_pan_down"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_custom_view_rotate_left"), "key_custom_view_rotate_left"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_custom_view_rotate_right"), "key_custom_view_rotate_right"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_custom_view_rotate_up"), "key_custom_view_rotate_up"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_custom_view_rotate_down"), "key_custom_view_rotate_down"));
 
-	funcList.push_back([self makeKeyGuiDictHeader:OO_DESC("oolite-keydesc-header-oxz-manager")]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_oxzmanager_setfilter") keyDef:"key_oxzmanager_setfilter"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_oxzmanager_showinfo") keyDef:"key_oxzmanager_showinfo"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_oxzmanager_extract") keyDef:"key_oxzmanager_extract"]);
+	funcList.push_back(makeKeyGuiDictHeader(OO_DESC("oolite-keydesc-header-oxz-manager")));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_oxzmanager_setfilter"), "key_oxzmanager_setfilter"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_oxzmanager_showinfo"), "key_oxzmanager_showinfo"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_oxzmanager_extract"), "key_oxzmanager_extract"));
 
-	funcList.push_back([self makeKeyGuiDictHeader:OO_DESC("oolite-keydesc-header-gui")]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_gui_arrow_left") keyDef:"key_gui_arrow_left"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_gui_arrow_right") keyDef:"key_gui_arrow_right"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_gui_arrow_up") keyDef:"key_gui_arrow_up"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_gui_arrow_down") keyDef:"key_gui_arrow_down"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_gui_page_down") keyDef:"key_gui_page_down"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_gui_page_up") keyDef:"key_gui_page_up"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_gui_select") keyDef:"key_gui_select"]);
+	funcList.push_back(makeKeyGuiDictHeader(OO_DESC("oolite-keydesc-header-gui")));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_gui_arrow_left"), "key_gui_arrow_left"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_gui_arrow_right"), "key_gui_arrow_right"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_gui_arrow_up"), "key_gui_arrow_up"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_gui_arrow_down"), "key_gui_arrow_down"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_gui_page_down"), "key_gui_page_down"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_gui_page_up"), "key_gui_page_up"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_gui_select"), "key_gui_select"));
 
-	funcList.push_back([self makeKeyGuiDictHeader:OO_DESC("oolite-keydesc-header-debug")]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_dump_target_state") keyDef:"key_dump_target_state"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_dump_entity_list") keyDef:"key_dump_entity_list"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_debug_full") keyDef:"key_debug_full"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_debug_collision") keyDef:"key_debug_collision"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_debug_console_connect") keyDef:"key_debug_console_connect"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_debug_bounding_boxes") keyDef:"key_debug_bounding_boxes"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_debug_shaders") keyDef:"key_debug_shaders"]);
-	funcList.push_back([self makeKeyGuiDict:OO_DESC("oolite-keydesc-key_debug_off") keyDef:"key_debug_off"]);
+	funcList.push_back(makeKeyGuiDictHeader(OO_DESC("oolite-keydesc-header-debug")));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_dump_target_state"), "key_dump_target_state"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_dump_entity_list"), "key_dump_entity_list"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_debug_full"), "key_debug_full"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_debug_collision"), "key_debug_collision"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_debug_console_connect"), "key_debug_console_connect"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_debug_bounding_boxes"), "key_debug_bounding_boxes"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_debug_shaders"), "key_debug_shaders"));
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_debug_off"), "key_debug_off"));
 
 	if (customEquipActivation.size() > 0) 
 	{
-		funcList.push_back([self makeKeyGuiDictHeader:OO_DESC("oolite-keydesc-header-oxp-equip")]);
+		funcList.push_back(makeKeyGuiDictHeader(OO_DESC("oolite-keydesc-header-oxp-equip")));
 		int i;
 		for (i = 0; i < customEquipActivation.size(); i++)
 		{
 			const oo::PList equip = customEquipActivation[i];
 			const std::string equipName = DescriptionOfString(OptionalStringForKey(equip, std::string(CUSTOMEQUIP_EQUIPNAME)));	// %@: "(null)" for nil
 			const std::string equipKey = DescriptionOfString(OptionalStringForKey(equip, std::string(CUSTOMEQUIP_EQUIPKEY)));
-			funcList.push_back([self makeKeyGuiDict:oo::str::format("Activate '%s'", equipName.c_str())
-				keyDef:oo::str::format("activate_%s", equipKey.c_str())]);
-			funcList.push_back([self makeKeyGuiDict:oo::str::format("Mode '%s'", equipName.c_str())
-				keyDef:oo::str::format("mode_%s", equipKey.c_str())]);
+			funcList.push_back(makeKeyGuiDict(oo::str::format("Activate '%s'", equipName.c_str()), oo::str::format("activate_%s", equipKey.c_str())));
+			funcList.push_back(makeKeyGuiDict(oo::str::format("Mode '%s'", equipName.c_str()), oo::str::format("mode_%s", equipKey.c_str())));
 		}
 	}
 	return funcList;
 }
 
 
-oo::PList cxx::PlayerEntity::makeKeyGuiDict(const std::string &what, const std::string &key_def)
+oo::PList PlayerEntity::makeKeyGuiDict(const std::string &what, const std::string &key_def)
 {
 	// more than 50 UTF-16 units: the first 48 and "...", as -substringToIndex:48 cut it
 	const std::u16string units = oo::utf8ToUtf16(what);
@@ -1243,7 +1224,7 @@ oo::PList cxx::PlayerEntity::makeKeyGuiDict(const std::string &what, const std::
 }
 
 
-oo::PList cxx::PlayerEntity::makeKeyGuiDictHeader(const std::string &header)
+oo::PList PlayerEntity::makeKeyGuiDictHeader(const std::string &header)
 {
 	oo::PList::Dict guiDict;
 	guiDict[std::string(KEY_KC_HEADER)] = oo::PList(header);
@@ -1253,16 +1234,14 @@ oo::PList cxx::PlayerEntity::makeKeyGuiDictHeader(const std::string &header)
 }
 
 
-void cxx::PlayerEntity::setGuiToKeyboardLayoutScreen(unsigned skip)
+void PlayerEntity::setGuiToKeyboardLayoutScreen(unsigned skip)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
-	[self setGuiToKeyboardLayoutScreen:skip resetCurrentRow:NO];
+	setGuiToKeyboardLayoutScreen(skip, NO);
 }
 
 
-void cxx::PlayerEntity::setGuiToKeyboardLayoutScreen(unsigned skip, bool /*resetCurrentRow*/)
+void PlayerEntity::setGuiToKeyboardLayoutScreen(unsigned skip, bool /*resetCurrentRow*/)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	::GuiDisplayGen *gui = [UNIVERSE gui];
 	::MyOpenGLView *gameView = [UNIVERSE gameView];
 	OOGUIScreenID oldScreen = gui_screen;
@@ -1279,28 +1258,27 @@ void cxx::PlayerEntity::setGuiToKeyboardLayoutScreen(unsigned skip, bool /*reset
 	gui->clear();
 	gui->setTitle(std::string("Select Keyboard Layout"));
 
-	[self displayKeyboardLayoutList:gui skip:skip];
+	displayKeyboardLayoutList(gui, skip);
 
 	gui->setArray(Columns({ OO_DESC("oolite-keyconfig-keyboard-info") }), GUI_ROW_KC_INSTRUCT);
 
 	gui->setSelectedRow(kbd_row);
 
-	gui->setForegroundTextureKey(std::string([self status] == STATUS_DOCKED ? "docked_overlay" : "paused_overlay"));
+	gui->setForegroundTextureKey(std::string(status() == STATUS_DOCKED ? "docked_overlay" : "paused_overlay"));
 	gui->setBackgroundTextureKey(std::string("keyboardsettings"));
 
 	[gameView clearMouse];
 	[gameView clearKeys];
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:YES];
 
-	if (guiChanged) [self noteGUIDidChangeFrom:oldScreen to:gui_screen];
+	if (guiChanged) noteGUIDidChangeFrom(oldScreen, gui_screen);
 }
 
 
-void cxx::PlayerEntity::handleKeyboardLayoutEntryKeys(::GuiDisplayGen *gui, ::MyOpenGLView *gameView)
+void PlayerEntity::handleKeyboardLayoutEntryKeys(::GuiDisplayGen *gui, ::MyOpenGLView *gameView)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
-	[self handleGUIUpDownArrowKeys];
-	BOOL selectKeyPress = ([self checkKeyPress:n_key_gui_select] || [gameView isDown:gvMouseDoubleClick]);
+	handleGUIUpDownArrowKeys();
+	BOOL selectKeyPress = (checkKeyPress(n_key_gui_select) || [gameView isDown:gvMouseDoubleClick]);
 	if ([gameView isDown:gvMouseDoubleClick])  [gameView clearMouse];
 
 	const std::string key = gui->keyForRow(gui->getSelectedRow()).value_or("");	// a nil key has no prefix
@@ -1313,7 +1291,7 @@ void cxx::PlayerEntity::handleKeyboardLayoutEntryKeys(::GuiDisplayGen *gui, ::My
 
 			current_row = GUI_ROW_KC_FUNCSTART;
 			if (from_function == 0) current_row = GUI_ROW_KC_FUNCSTART + MAX_ROWS_KC_FUNCTIONS - 1;
-			[self setGuiToKeyboardLayoutScreen:from_function];
+			setGuiToKeyboardLayoutScreen(from_function);
 			if ([gameView isDown:gvMouseDoubleClick]) [gameView clearMouse];
 			return;
 		}
@@ -1323,21 +1301,21 @@ void cxx::PlayerEntity::handleKeyboardLayoutEntryKeys(::GuiDisplayGen *gui, ::My
 		const std::optional<std::string> kbd = idx < kbdLayouts.size() ? OptionalStringForKey(kbdLayouts[idx], "key") : std::nullopt;
 		oo::Defaults &defaults = oo::Defaults::standard();
 		defaults.setObject("keyboard-code", kbd ? oo::PList(*kbd) : oo::PList());
-		[self initKeyConfigSettings];
-		[self initCheckingDictionary];
+		initKeyConfigSettings();
+		initCheckingDictionary();
 
 		[gameView clearKeys];	// try to stop key bounces
-		[self setGuiToKeyMapperScreen:0 resetCurrentRow:YES];
+		setGuiToKeyMapperScreen(0, YES);
 	}
 	if ([gameView isDown:27]) // escape - return without change
 	{
 		[gameView clearKeys];	// try to stop key bounces
-		[self setGuiToKeyMapperScreen:0 resetCurrentRow:YES];
+		setGuiToKeyMapperScreen(0, YES);
 	}	
 }
 
 
-std::optional<std::string> cxx::PlayerEntity::keyboardDescription(const std::string &kbd)
+std::optional<std::string> PlayerEntity::keyboardDescription(const std::string &kbd)
 {
 	const oo::PList kmap = [::ResourceManager cxx_dictionaryFromFilesNamed:KeyMappingsFileName() inFolder:std::optional<std::string>("Config") mergeMode:MERGE_BASIC cache:NO];
 	const oo::PList *sect = kmap.find(kbd);
@@ -1345,9 +1323,8 @@ std::optional<std::string> cxx::PlayerEntity::keyboardDescription(const std::str
 }
 
 
-std::vector<oo::PList> cxx::PlayerEntity::keyboardLayoutList()
+std::vector<oo::PList> PlayerEntity::keyboardLayoutList()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	const oo::PList kmap = [::ResourceManager cxx_dictionaryFromFilesNamed:KeyMappingsFileName() inFolder:std::optional<std::string>("Config") mergeMode:MERGE_BASIC cache:NO];
 	std::vector<oo::PList> kbdList;
 	oo::PList def;
@@ -1360,7 +1337,7 @@ std::vector<oo::PList> cxx::PlayerEntity::keyboardLayoutList()
 			// +initWithObjectsAndKeys: stopped at a nil description
 			oo::PList::Dict layout;
 			layout["key"] = oo::PList(key);
-			const std::optional<std::string> description = [self keyboardDescription:key];
+			const std::optional<std::string> description = keyboardDescription(key);
 			if (description)  layout["description"] = oo::PList(*description);
 			if (key != "default")
 			{
@@ -1390,13 +1367,12 @@ std::vector<oo::PList> cxx::PlayerEntity::keyboardLayoutList()
 }
 
 
-void cxx::PlayerEntity::displayKeyboardLayoutList(::GuiDisplayGen *gui, NSUInteger skip)
+void PlayerEntity::displayKeyboardLayoutList(::GuiDisplayGen *gui, NSUInteger skip)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	gui->setColor(OOColor::greenColor().get(), GUI_ROW_KC_HEADING);
 	gui->setArray({ "Keyboard layout" }, GUI_ROW_KC_HEADING);
 
-	if (kbdLayouts.empty()) kbdLayouts = [self keyboardLayoutList];	// never empty once built ("default" first)
+	if (kbdLayouts.empty()) kbdLayouts = keyboardLayoutList();	// never empty once built ("default" first)
 
 	NSUInteger i, n_functions = kbdLayouts.size();
 	NSInteger n_rows, start_row, previous = 0;
@@ -1460,16 +1436,15 @@ void cxx::PlayerEntity::displayKeyboardLayoutList(::GuiDisplayGen *gui, NSUInteg
 
 
 // return an array of all functions currently in conflict
-std::vector<std::string> cxx::PlayerEntity::validateAllKeys()
+std::vector<std::string> PlayerEntity::validateAllKeys()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	std::vector<std::string> failed;
 	NSUInteger i;
 
 	for (i = 0; i < keyFunctions.size(); i++)
 	{
 		const std::optional<std::string> definition = OptionalStringForKey(keyFunctions[i], std::string(KEY_KC_DEFINITION));
-		const std::optional<std::string> validate = [self validateKey:definition.value_or("") checkKeys:KeyConfigEntry(keyconfig2_settings, definition)];
+		const std::optional<std::string> validate = validateKey(definition.value_or(""), KeyConfigEntry(keyconfig2_settings, definition));
 		if (validate)
 		{
 			failed.push_back(*validate);
@@ -1480,9 +1455,8 @@ std::vector<std::string> cxx::PlayerEntity::validateAllKeys()
 
 
 // validate a single key against any other key that might apply to it
-std::optional<std::string> cxx::PlayerEntity::validateKey(const std::string &key, const oo::PList &check_keys)
+std::optional<std::string> PlayerEntity::validateKey(const std::string &key, const oo::PList &check_keys)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	std::optional<std::string> result;	// nullopt: no conflict (was nil)
 	
 	// need to group keys into validation groups
@@ -1491,7 +1465,7 @@ std::optional<std::string> cxx::PlayerEntity::validateKey(const std::string &key
 
 	if (Contains(gui_keys, key)) 
 	{
-		result = [self searchArrayForMatch:gui_keys key:key checkKeys:check_keys];
+		result = searchArrayForMatch(gui_keys, key, check_keys);
 		if (result) return result;
 	}
 
@@ -1501,7 +1475,7 @@ std::optional<std::string> cxx::PlayerEntity::validateKey(const std::string &key
 
 	if (Contains(debug_keys, key)) 
 	{
-		result = [self searchArrayForMatch:debug_keys key:key checkKeys:check_keys];
+		result = searchArrayForMatch(debug_keys, key, check_keys);
 		if (result) return result;
 	}
 
@@ -1512,7 +1486,7 @@ std::optional<std::string> cxx::PlayerEntity::validateKey(const std::string &key
 
 	if (Contains(customview_keys, key)) 
 	{
-		result = [self searchArrayForMatch:customview_keys key:key checkKeys:check_keys];
+		result = searchArrayForMatch(customview_keys, key, check_keys);
 		if (result) return result;
 	}
 
@@ -1530,7 +1504,7 @@ std::optional<std::string> cxx::PlayerEntity::validateKey(const std::string &key
 #endif
 		"key_pausebutton", "key_dump_target_state" };
 	
-	if ([self entryIsCustomEquip:key]) {
+	if (entryIsCustomEquip(key)) {
 		NSUInteger i;
 		for (i = 0; i < customEquipActivation.size(); i++)
 		{
@@ -1542,7 +1516,7 @@ std::optional<std::string> cxx::PlayerEntity::validateKey(const std::string &key
 
 	if (Contains(inflight_keys, key)) 
 	{
-		result = [self searchArrayForMatch:inflight_keys key:key checkKeys:check_keys];
+		result = searchArrayForMatch(inflight_keys, key, check_keys);
 		if (result) return result;
 	}
 
@@ -1551,7 +1525,7 @@ std::optional<std::string> cxx::PlayerEntity::validateKey(const std::string &key
 
 	if (Contains(docking_keys, key)) 
 	{
-		result = [self searchArrayForMatch:docking_keys key:key checkKeys:check_keys];
+		result = searchArrayForMatch(docking_keys, key, check_keys);
 		if (result) return result;
 	}
 
@@ -1561,7 +1535,7 @@ std::optional<std::string> cxx::PlayerEntity::validateKey(const std::string &key
 
 	if (Contains(docked_keys, key))
 	{
-		result = [self searchArrayForMatch:docked_keys key:key checkKeys:check_keys];
+		result = searchArrayForMatch(docked_keys, key, check_keys);
 		if (result) return result;
 	}
 
@@ -1572,7 +1546,7 @@ std::optional<std::string> cxx::PlayerEntity::validateKey(const std::string &key
 
 	if (Contains(paused_keys, key))
 	{
-		result = [self searchArrayForMatch:paused_keys key:key checkKeys:check_keys];
+		result = searchArrayForMatch(paused_keys, key, check_keys);
 		if (result) return result;
 	}
 
@@ -1584,7 +1558,7 @@ std::optional<std::string> cxx::PlayerEntity::validateKey(const std::string &key
 
 	if (Contains(chart_keys, key))
 	{
-		result = [self searchArrayForMatch:chart_keys key:key checkKeys:check_keys];
+		result = searchArrayForMatch(chart_keys, key, check_keys);
 		if (result) return result;
 	}
 
@@ -1595,7 +1569,7 @@ std::optional<std::string> cxx::PlayerEntity::validateKey(const std::string &key
 
 	if (Contains(sysinfo_keys, key))
 	{
-		result = [self searchArrayForMatch:sysinfo_keys key:key checkKeys:check_keys];
+		result = searchArrayForMatch(sysinfo_keys, key, check_keys);
 		if (result) return result;
 	}
 
@@ -1607,7 +1581,7 @@ std::optional<std::string> cxx::PlayerEntity::validateKey(const std::string &key
 		
 	if (Contains(market_keys, key))
 	{
-		result = [self searchArrayForMatch:market_keys key:key checkKeys:check_keys];
+		result = searchArrayForMatch(market_keys, key, check_keys);
 		if (result) return result;
 	}
 
@@ -1618,9 +1592,8 @@ std::optional<std::string> cxx::PlayerEntity::validateKey(const std::string &key
 
 // performs a search of all keys in the search_list, and for any key that isn't the one we've passed, check the 
 // keys against the values we're passing in. if there's a hit, return the key found
-std::optional<std::string> cxx::PlayerEntity::searchArrayForMatch(const std::vector<std::string> &search_list, const std::string &key, const oo::PList &check_keys)
+std::optional<std::string> PlayerEntity::searchArrayForMatch(const std::vector<std::string> &search_list, const std::string &key, const oo::PList &check_keys)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	NSUInteger j, k;
 	for (const std::string &search : search_list)
 	{
@@ -1630,14 +1603,14 @@ std::optional<std::string> cxx::PlayerEntity::searchArrayForMatch(const std::vec
 			// get the array from keyconfig2_settings
 			// we need to compare all entries to each other to look for any match, as any match would indicate a conflict
 			oo::PList current;
-			if (![self entryIsCustomEquip:search])
+			if (!entryIsCustomEquip(search))
 			{
 				current = KeyConfigEntry(keyconfig2_settings, search);
 			}
 			else
 			{
-				NSUInteger idx = [self getCustomEquipIndex:search];
-				const std::optional<std::string> keytype = [self getCustomEquipKeyDefType:search];
+				NSUInteger idx = getCustomEquipIndex(search);
+				const std::optional<std::string> keytype = getCustomEquipKeyDefType(search);
 				const oo::PList *field = keytype.has_value() ? CustomEquipEntry(customEquipActivation, idx).find(*keytype) : nullptr;
 				current = (field != nullptr) ? *field : oo::PList();
 			}
@@ -1647,7 +1620,7 @@ std::optional<std::string> cxx::PlayerEntity::searchArrayForMatch(const std::vec
 				{
 					const oo::PList *currentEntry = current.at(j);
 					const oo::PList *checkEntry = check_keys.at(k);
-					if ([self compareKeyEntries:currentEntry != nullptr ? *currentEntry : oo::PList() second:checkEntry != nullptr ? *checkEntry : oo::PList()]) return search;
+					if (compareKeyEntries(currentEntry != nullptr ? *currentEntry : oo::PList(), checkEntry != nullptr ? *checkEntry : oo::PList())) return search;
 				}
 			}
 		}
@@ -1657,9 +1630,8 @@ std::optional<std::string> cxx::PlayerEntity::searchArrayForMatch(const std::vec
 
 
 // compares the currently stored key_list against the base default from keyconfig2.plist
-bool cxx::PlayerEntity::entryIsEqualToDefault(const std::string &key)
+bool PlayerEntity::entryIsEqualToDefault(const std::string &key)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	const oo::PList *defValue = kdic_check.find(key);
 	const oo::PList def = defValue != nullptr ? *defValue : oo::PList();
 	const oo::PList &keys = key_list;
@@ -1670,14 +1642,14 @@ bool cxx::PlayerEntity::entryIsEqualToDefault(const std::string &key)
 	{
 		const oo::PList *orig = def.at(i);
 		const oo::PList *entrd = keys.at(i);
-		if (![self compareKeyEntries:orig != nullptr ? *orig : oo::PList() second:entrd != nullptr ? *entrd : oo::PList()]) return NO;
+		if (!compareKeyEntries(orig != nullptr ? *orig : oo::PList(), entrd != nullptr ? *entrd : oo::PList())) return NO;
 	}
 	return YES;
 }
 
 
 // compares two key dictionaries to see if they have the same settings
-bool cxx::PlayerEntity::compareKeyEntries(const oo::PList &first, const oo::PList &second)
+bool PlayerEntity::compareKeyEntries(const oo::PList &first, const oo::PList &second)
 {
 	// "key" as -integerValue read it (a string or a number); the modifiers as -boolValue
 	if (first.get<long long>("key") == second.get<long long>("key"))
@@ -1692,9 +1664,8 @@ bool cxx::PlayerEntity::compareKeyEntries(const oo::PList &first, const oo::PLis
 
 
 // saves the currently store key_list to the defaults file and updates the global definition
-void cxx::PlayerEntity::saveKeySetting(const std::string &key)
+void PlayerEntity::saveKeySetting(const std::string &key)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	// check for a blank entry
 	oo::PList::Array *keys = key_list.getIf<oo::PList::Array>();
 	if (key_list.count() > 1 && key_list.at(1)->get<long long>("key") == 0)
@@ -1703,7 +1674,7 @@ void cxx::PlayerEntity::saveKeySetting(const std::string &key)
 	}
 	// make sure the primary and alternate keys are different
 	if (key_list.count() > 1) {
-		if ([self compareKeyEntries:*key_list.at(0) second:*key_list.at(1)])
+		if (compareKeyEntries(*key_list.at(0), *key_list.at(1)))
 		{
 			keys->erase(keys->begin() + 1);
 		}
@@ -1713,25 +1684,25 @@ void cxx::PlayerEntity::saveKeySetting(const std::string &key)
 	{
 		if (key_list.count() == 1 || (key_list.count() > 1 && IsEmptyString(key_list.at(1)->find("key"))))
 		{
-			[self deleteKeySetting:key];
+			deleteKeySetting(key);
 			// reload settings
-			[self initKeyConfigSettings];
-			[self reloadPage];
+			initKeyConfigSettings();
+			reloadPage();
 			return;
 		}
 	}
 
 	oo::Defaults &defaults = oo::Defaults::standard();
 
-	if (![self entryIsCustomEquip:key])
+	if (!entryIsCustomEquip(key))
 	{
 		// if we've got the same settings as the default, revert to the default
-		if ([self entryIsEqualToDefault:key])
+		if (entryIsEqualToDefault(key))
 		{
-			[self deleteKeySetting:key];
+			deleteKeySetting(key);
 			// reload settings
-			[self initKeyConfigSettings];
-			[self reloadPage];
+			initKeyConfigSettings();
+			reloadPage();
 			return;
 		}
 		oo::PList::Dict keyconf = KeyConfigOverrides();
@@ -1740,21 +1711,20 @@ void cxx::PlayerEntity::saveKeySetting(const std::string &key)
 	}
 	else
 	{
-		NSUInteger idx = [self getCustomEquipIndex:key];
-		if (oo::PList::Dict *fields = CustomEquipFields(customEquipActivation, idx))  (*fields)[[self getCustomEquipKeyDefType:key].value_or("")] = key_list;	// in place
+		NSUInteger idx = getCustomEquipIndex(key);
+		if (oo::PList::Dict *fields = CustomEquipFields(customEquipActivation, idx))  (*fields)[getCustomEquipKeyDefType(key).value_or("")] = key_list;	// in place
 		defaults.setObject(std::string(KEYCONFIG_CUSTOMEQUIP), oo::PList(customEquipActivation));
 	}
 	// reload settings
-	[self initKeyConfigSettings];
-	[self reloadPage];
+	initKeyConfigSettings();
+	reloadPage();
 }
 
 // unsets the key setting in the overrides, and updates the global definition
-void cxx::PlayerEntity::unsetKeySetting(const std::string &key)
+void PlayerEntity::unsetKeySetting(const std::string &key)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	oo::Defaults &defaults = oo::Defaults::standard();
-	if (![self entryIsCustomEquip:key])
+	if (!entryIsCustomEquip(key))
 	{
 		oo::PList::Dict keyconf = KeyConfigOverrides();
 		keyconf[key] = oo::PList(oo::PList::Array());	// an empty override
@@ -1762,21 +1732,20 @@ void cxx::PlayerEntity::unsetKeySetting(const std::string &key)
 	}
 	else
 	{
-		NSUInteger idx = [self getCustomEquipIndex:key];
-		if (oo::PList::Dict *fields = CustomEquipFields(customEquipActivation, idx))  fields->erase([self getCustomEquipKeyDefType:key].value_or(""));	// in place
+		NSUInteger idx = getCustomEquipIndex(key);
+		if (oo::PList::Dict *fields = CustomEquipFields(customEquipActivation, idx))  fields->erase(getCustomEquipKeyDefType(key).value_or(""));	// in place
 		defaults.setObject(std::string(KEYCONFIG_CUSTOMEQUIP), oo::PList(customEquipActivation));
 	}
 	// reload settings
-	[self initKeyConfigSettings];
+	initKeyConfigSettings();
 }
 
 
 // removes the key setting from the overrides, and updates the global definition
-void cxx::PlayerEntity::deleteKeySetting(const std::string &key)
+void PlayerEntity::deleteKeySetting(const std::string &key)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	oo::Defaults &defaults = oo::Defaults::standard();
-	if (![self entryIsCustomEquip:key])
+	if (!entryIsCustomEquip(key))
 	{
 		oo::PList::Dict keyconf = KeyConfigOverrides();
 		keyconf.erase(key);
@@ -1785,20 +1754,19 @@ void cxx::PlayerEntity::deleteKeySetting(const std::string &key)
 	else
 	{
 		// the customEquipActivation entry is edited in place, as before
-		const std::optional<std::string> keyDefType = [self getCustomEquipKeyDefType:key];
-		oo::PList::Dict *fields = CustomEquipFields(customEquipActivation, [self getCustomEquipIndex:key]);
+		const std::optional<std::string> keyDefType = getCustomEquipKeyDefType(key);
+		oo::PList::Dict *fields = CustomEquipFields(customEquipActivation, getCustomEquipIndex(key));
 		if (fields != nullptr && keyDefType.has_value())  fields->erase(*keyDefType);
 		defaults.setObject(std::string(KEYCONFIG_CUSTOMEQUIP), oo::PList(customEquipActivation));
 	}
 	// reload settings
-	[self initKeyConfigSettings];
+	initKeyConfigSettings();
 }
 
 
 // removes all key settings from the overrides, and updates the global definition
-void cxx::PlayerEntity::deleteAllKeySettings()
+void PlayerEntity::deleteAllKeySettings()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	oo::Defaults &defaults = oo::Defaults::standard();
 	defaults.removeObject(std::string(KEYCONFIG_OVERRIDES));
 	if (customEquipActivation.size() > 0)
@@ -1823,21 +1791,20 @@ void cxx::PlayerEntity::deleteAllKeySettings()
 		defaults.setObject(std::string(KEYCONFIG_CUSTOMEQUIP), oo::PList(customEquipActivation));
 	}
 	// reload settings
-	[self initKeyConfigSettings];
+	initKeyConfigSettings();
 }
 
 
 // returns all key settings from the overrides
-oo::PList cxx::PlayerEntity::loadKeySettings()
+oo::PList PlayerEntity::loadKeySettings()
 {
 	return oo::Defaults::standard().object(std::string(KEYCONFIG_OVERRIDES));
 }
 
 
 // reloads the main page at the appropriate page
-void cxx::PlayerEntity::reloadPage()
+void PlayerEntity::reloadPage()
 {
-	::PlayerEntity *self = oo::ToObjC(this);
 	// Update the GUI (this will refresh the function list).
 	unsigned skip;
 	if (selFunctionIdx < MAX_ROWS_KC_FUNCTIONS - 1)
@@ -1849,5 +1816,5 @@ void cxx::PlayerEntity::reloadPage()
 		skip = ((selFunctionIdx - 1) / (MAX_ROWS_KC_FUNCTIONS - 2)) * (MAX_ROWS_KC_FUNCTIONS - 2) + 1;
 	}
 	
-	[self setGuiToKeyMapperScreen:skip];
+	setGuiToKeyMapperScreen(skip);
 }

@@ -113,9 +113,7 @@ void OOPListScript::runWithTarget(::Entity *target)
 	OO_LOG("script.legacy.run", "Running script {}", displayName().value_or("(null)"));
 	oo::log::indentIf("script.legacy.run");
 
-	[PLAYER cxx_runScriptActions:_script
-			 withContextName:name()
-				   forTarget:(::ShipEntity *)target];
+	if (PLAYER != nullptr)  PLAYER->runScriptActions(_script, name(), (::ShipEntity *)target);
 
 	oo::log::outdentIf("script.legacy.run");
 }
