@@ -56,14 +56,16 @@ MA 02110-1301, USA.
 #endif
 
 
-namespace cxx {
-
-class OOSunEntity : public Entity
+/*	C++ only since bead oo-9ht.111 deleted its Objective-C facade (ADR-0056 amendments oo-9ht.12,
+	oo-9ht.107): the universe makes it with oo::makeRef<OOSunEntity>(), hands it to Objective-C
+	with oo::NewEntityFacade (its object is the root Entity's facade) and holds it as the C++ class;
+	its OOStellarBody answers are members (OOStellarBodyRadius() asks them for an Objective-C object).
+*/
+class OOSunEntity : public cxx::Entity
 {
 public:
-	/*	-initSunWithColor:andDictionary:'s body after [super init] (the constructor ran Entity's).
-		The facade runs it once it holds this object (amendment oo-0mxi item 2), because the
-		universe allocates the sun.
+	/*	-initSunWithColor:andDictionary:'s body after [super init] (the constructor ran Entity's),
+		run on a new sun (the facade ran it once it held this object until bead oo-9ht.111).
 	*/
 	void initSunWithColor(OOColor *sun_color, const oo::PList &dict);
 	bool setSunColor(OOColor *sun_color);
@@ -85,7 +87,7 @@ public:
 	void drawDirectVisionSunGlare();
 	void resetNova();
 
-	// OOStellarBody's name (-cxx_name / -cxx_setName:), answered by the facade.
+	// OOStellarBody's name (-cxx_name / -cxx_setName:), which the facade answered until bead oo-9ht.111.
 	std::optional<std::string> name();
 	void setName(const std::optional<std::string> &name);
 
@@ -100,6 +102,11 @@ public:
 	void setPosition(HPVector posn) override;
 	bool isSun() override;
 	bool isVisible() override;
+
+	// The binding's bodies (OOJSSun.mm), which the facade forwarded to until bead oo-9ht.111.
+	void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype) override;
+	std::optional<std::string> jsClassName() override;
+	bool isVisibleToScripts() override;
 
 private:
 	void calculateGLArrays(GLfloat inner_radius, GLfloat width, GLfloat z_distance);
@@ -133,9 +140,5 @@ private:
 	std::optional<std::string>	_name;	// nullopt: nil
 };
 
-}	// namespace cxx
 
 
-// Transitional: the Objective-C OOSunEntity, for the universe, which makes it, and the many callers
-// that message it. Deleted, with namespace cxx above, by the bridge's deletion bead.
-#import "OOSunEntity+ObjCBridge.h"

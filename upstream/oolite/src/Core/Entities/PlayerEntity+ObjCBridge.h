@@ -770,7 +770,7 @@ MA 02110-1301, USA.
 - (void) penaltyForUnauthorizedDocking;
 - (void) addScannedWormhole:(WormholeEntity*)wormhole;
 - (void) updateWormholes;
-- (std::vector<oo::ObjCRef<WormholeEntity *>>) cxx_scannedWormholes;
+- (std::vector<oo::ObjCRef<::Entity *>>) cxx_scannedWormholes;
 - (void) initialiseMissionDestinations:(const oo::PList &)destinations andLegacy:(const oo::PList &)legacy;	// used only if a Dict / an Array
 - (std::optional<std::string>)markerKey:(const oo::PList &)marker;
 - (void) cxx_addMissionDestinationMarker:(const oo::PList &)marker;

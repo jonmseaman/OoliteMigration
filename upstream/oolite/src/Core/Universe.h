@@ -54,7 +54,9 @@ MA 02110-1301, USA.
 #include <string_view>
 #endif
 
-@class GameController, MyOpenGLView, Entity, ShipEntity, StationEntity, OOPlanetEntity, OOSunEntity, OOVisualEffectEntity, PlayerEntity, WormholeEntity, DockEntity, OOJSScript, OOWaypointEntity, OOException;
+@class GameController, MyOpenGLView, Entity, ShipEntity, StationEntity, OOPlanetEntity, OOVisualEffectEntity, PlayerEntity, DockEntity, OOJSScript, OOWaypointEntity, OOException;
+class WormholeEntity;	// C++ since bead oo-9ht.112
+class OOSunEntity;	// C++ since bead oo-9ht.111
 #import "GuiDisplayGen.h"	// C++ since bead oo-9ht.143: the universe keeps its GUIs (oo::Ref)
 class CollisionRegion;
 
@@ -400,7 +402,7 @@ public:
 
 	BOOL					ECMVisualFXEnabled = NO;
 
-	std::vector<oo::ObjCRef<::WormholeEntity *>>	activeWormholes;
+	std::vector<oo::ObjCRef<::Entity *>>	activeWormholes;
 
 	std::vector<oo::Ref<OOCharacter>>	characterPool;
 
@@ -537,7 +539,7 @@ public:
 	std::vector<oo::ObjCRef<::StationEntity *>> stations();
 
 	// Slice 9: wormholes, the main station, beacons, waypoints, sky colour, the break pattern, making ships by role and name, default AIs, cargo capacity.
-	std::vector<oo::ObjCRef<::WormholeEntity *>> wormholes();
+	std::vector<oo::ObjCRef<::Entity *>> wormholes();
 	void unMagicMainStation();
 	void resetBeacons();
 	OOBeaconEntityObject *firstBeacon();

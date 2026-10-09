@@ -22,6 +22,7 @@
 #import "OOJSSystem.h"
 #import "Universe.h"
 #import "PlayerEntity.h"
+#import "OOSunEntity.h"
 #import "OOJSPropID.h"
 #import "OOJSPopulatorDefinition.h"
 #import "OOShipGroup.h"
@@ -127,7 +128,9 @@ std::string Describe(Entity *entity)
 - (BOOL) inInterstellarSpace  { return _interstellar; }
 - (StationEntity *) station  { return (StationEntity *)_station; }
 - (OOPlanetEntity *) planet  { return (OOPlanetEntity *)_planet; }
-- (OOSunEntity *) sun  { return (OOSunEntity *)_sun; }
+// The sun is C++ since bead oo-9ht.111: the stand-in's entity's C++ part, which only crosses back
+// to its Objective-C object (oo::ToObjC) in the code the test runs.
+- (OOSunEntity *) sun  { return static_cast<OOSunEntity *>(oo::ToCxx(_sun)); }
 
 - (std::vector<oo::ObjCRef<OOPlanetEntity *>>) cxx_planets
 {
@@ -143,11 +146,9 @@ std::string Describe(Entity *entity)
 	return result;
 }
 
-- (std::vector<oo::ObjCRef<WormholeEntity *>>) cxx_wormholes
+- (std::vector<oo::ObjCRef<Entity *>>) cxx_wormholes	// the wormholes' Objective-C objects since bead oo-9ht.112
 {
-	std::vector<oo::ObjCRef<WormholeEntity *>> result;
-	for (const auto &e : _wormholes)  result.push_back(oo::ObjCRef<WormholeEntity *>((WormholeEntity *)e.get()));
-	return result;
+	return _wormholes;
 }
 
 - (std::map<std::string, oo::ObjCRef<OOWaypointEntity *>, std::less<>>) cxx_currentWaypoints  { return _waypoints; }
@@ -238,7 +239,7 @@ std::string Describe(Entity *entity)
 
 - (HPVector) cxx_locationByCode:(const std::string &)code withSun:(OOSunEntity *)sun andPlanet:(OOPlanetEntity *)planet
 {
-	_log.push_back(oo::str::format("location %s %s %s", code.c_str(), Describe((Entity *)sun).c_str(), Describe((Entity *)planet).c_str()));
+	_log.push_back(oo::str::format("location %s %s %s", code.c_str(), Describe(oo::ToObjC(sun)).c_str(), Describe((Entity *)planet).c_str()));
 	return make_HPvector(1, 2, 3);
 }
 

@@ -228,7 +228,7 @@ int ScriptValueInt(const oo::PList &value)
 
 
 // -removeObjectAtIndex:0 on the wormhole list: an empty list raised a range exception.
-void RemoveFirstWormhole(std::vector<oo::ObjCRef<WormholeEntity *>> &wormholes)
+void RemoveFirstWormhole(std::vector<oo::ObjCRef<::Entity *>> &wormholes)
 {
 	if (wormholes.empty())
 	{
@@ -1347,7 +1347,7 @@ void Universe::carryPlayerOn(::StationEntity * /*carrier */, ::WormholeEntity *w
 {
 	::Universe *self = oo::ToObjC(this);
 		::PlayerEntity	*player = PLAYER;
-		OOSystemID dest = [wormhole destination];
+		OOSystemID dest = (wormhole != nullptr ? wormhole->getDestination() : 0);
 
 		[player setWormhole:wormhole];
 		[player addScannedWormhole:wormhole];
@@ -1362,14 +1362,14 @@ void Universe::carryPlayerOn(::StationEntity * /*carrier */, ::WormholeEntity *w
 		[player setRandom_factor:(ranrot_rand() & 255)];						// random factor for market values is reset
 
 // misjump on wormhole sets correct travel time if needed
-		[player addToAdjustTime:[wormhole travelTime]];
+		[player addToAdjustTime:(wormhole != nullptr ? wormhole->travelTime() : 0.0)];
 // clear old entities
 		[self removeAllEntitiesExceptPlayer];
 
 // should we add wear-and-tear to the player ship if they're not doing
 // the jump themselves? Left out for now. - CIM
 
-		if (![wormhole withMisjump])
+		if (!(wormhole != nullptr ? wormhole->withMisjump() : false))
 		{
 			[player setSystemID:dest];
 			[self setSystemTo: dest];
@@ -1381,15 +1381,15 @@ void Universe::carryPlayerOn(::StationEntity * /*carrier */, ::WormholeEntity *w
 		}
 		else
 		{
-			[player setGalaxyCoordinates:[wormhole destinationCoordinates]];
+			[player setGalaxyCoordinates:(wormhole != nullptr ? wormhole->destinationCoordinates() : NSPoint{})];
 
-			[self setUpWitchspaceBetweenSystem:[wormhole origin] andSystem:[wormhole destination]];
+			[self setUpWitchspaceBetweenSystem:(wormhole != nullptr ? wormhole->getOrigin() : 0) andSystem:(wormhole != nullptr ? wormhole->getDestination() : 0)];
 
 			if (randf() < 0.1) [player erodeReputation];		// once every 10 misjumps - should be much rarer than successful jumps!
 		}
 		// which will kick the ship out of the wormhole with the
 		// player still aboard
-		[wormhole disgorgeShips];
+		if (wormhole != nullptr)  wormhole->disgorgeShips();
 
 		//reset atmospherics in case carrier was in atmosphere
 		[UNIVERSE setSkyColorRed:0.0f		// back to black
@@ -1898,18 +1898,25 @@ void Universe::setUpSpace()
 	OO_LOG("planetinfo.record", "corona_hues = {:f}", sun_dict.get<float>("corona_hues"));
 	OO_LOG("planetinfo.record", "sun_color = {}", (bgcolor != nullptr ? bgcolor->descriptionComponents() : std::nullopt).value_or("(null)"));
 #endif
-	a_sun = [[::OOSunEntity alloc] initSunWithColor:bgcolor.get() andDictionary:sun_dict];	// alloc retains!
+	{
+		// +alloc/-initSunWithColor:andDictionary:: a new C++ sun and its Objective-C object, +1 (the
+		// facade went with bead oo-9ht.111).
+		oo::Ref<OOSunEntity> sunRef = oo::makeRef<OOSunEntity>();
+		[oo::NewEntityFacade(sunRef) retain];	// alloc retains!
+		sunRef->initSunWithColor(bgcolor.get(), sun_dict);
+		a_sun = sunRef.get();
+	}
 	
-	[a_sun setStatus:STATUS_ACTIVE];
-	[a_sun setPosition:sunPos]; // sets also light origin
-	[a_sun setEnergy:1000000.0];
-	[self addEntity:a_sun];
+	if (a_sun != nullptr)  a_sun->setStatus(STATUS_ACTIVE);
+	if (a_sun != nullptr)  a_sun->setPosition(sunPos); // sets also light origin
+	if (a_sun != nullptr)  a_sun->setEnergy(1000000.0);
+	[self addEntity:oo::ToObjC(a_sun)];
 	
 	if (sunGoneNova)
 	{
-		[a_sun setRadius: sun_radius andCorona:0.3];
-		[a_sun setThrowSparks:YES];
-		[a_sun setVelocity: kZeroVector];
+		if (a_sun != nullptr)  a_sun->setRadius(sun_radius, 0.3);
+		if (a_sun != nullptr)  a_sun->setThrowSparks(YES);
+		if (a_sun != nullptr)  a_sun->setVelocity(kZeroVector);
 	}
 	
 	// set the lighting only after we know which sun we have.
@@ -2008,7 +2015,7 @@ void Universe::setUpSpace()
 	[self populateSpaceFromActiveWormholes];
 	OO_DEBUG_POP_PROGRESS();
 
-	[a_sun release];
+	[oo::ToObjC(a_sun) release];
 	[a_station release];
 }
 
@@ -2026,13 +2033,13 @@ void Universe::populateNormalSpace()
 		
 	 	HPVector v0 = make_HPvector(0,0,34567.89);
 	 	double min_safe_dist2 = 6000000.0 * 6000000.0;
-		HPVector sunPos = [cachedSun position];
-	 	while (HPmagnitude2(cachedSun->_cxxEntity->position) < min_safe_dist2)	// back off the planetary bodies
+		HPVector sunPos = (cachedSun != nullptr ? cachedSun->getPosition() : HPVector{});
+	 	while (HPmagnitude2(cachedSun->position) < min_safe_dist2)	// back off the planetary bodies
 	 	{
 	 		v0.z *= 2.0;
 			
 	 		sunPos = HPvector_add(sunPos, v0);
-	 		[cachedSun setPosition:sunPos];  // also sets light origin
+	 		if (cachedSun != nullptr)  cachedSun->setPosition(sunPos);  // also sets light origin
 			
 	 	}
 		
@@ -2220,7 +2227,7 @@ HPVector Universe::locationByCode(const std::string &code, ::OOSunEntity *sun, :
 {
 	::Universe *self = oo::ToObjC(this);
 	HPVector result = kZeroHPVector;
-	if (code == "WITCHPOINT" || sun == nil || planet == nil || [sun goneNova])
+	if (code == "WITCHPOINT" || sun == nil || planet == nil || (sun != nullptr ? sun->goneNova() : false))
 	{
 		result = OOHPVectorRandomSpatial(SCANNER_MAX_RANGE);
 	}
@@ -2231,8 +2238,8 @@ HPVector Universe::locationByCode(const std::string &code, ::OOSunEntity *sun, :
 		{	
 			// pick position on one of the lanes, weighted by lane length
 			double l1 = HPmagnitude([planet position]);
-			double l2 = HPmagnitude(HPvector_subtract([sun position],[planet position]));
-			double l3 = HPmagnitude([sun position]);
+			double l2 = HPmagnitude(HPvector_subtract((sun != nullptr ? sun->getPosition() : HPVector{}),[planet position]));
+			double l3 = HPmagnitude((sun != nullptr ? sun->getPosition() : HPVector{}));
 			double total = l1+l2+l3;
 			float choice = randf();
 			if (choice < l1/total)
@@ -2254,11 +2261,11 @@ HPVector Universe::locationByCode(const std::string &code, ::OOSunEntity *sun, :
 		}
 		else if (code == "LANE_WS")
 		{
-			result = OORandomPositionInCylinder(kZeroHPVector,SCANNER_MAX_RANGE,[sun position],[sun radius]*3,LANE_WIDTH);
+			result = OORandomPositionInCylinder(kZeroHPVector,SCANNER_MAX_RANGE,(sun != nullptr ? sun->getPosition() : HPVector{}),(sun != nullptr ? sun->radius() : 0.0)*3,LANE_WIDTH);
 		}
 		else if (code == "LANE_PS")
 		{
-			result = OORandomPositionInCylinder([planet position],[planet radius]*3,[sun position],[sun radius]*3,LANE_WIDTH);
+			result = OORandomPositionInCylinder([planet position],[planet radius]*3,(sun != nullptr ? sun->getPosition() : HPVector{}),(sun != nullptr ? sun->radius() : 0.0)*3,LANE_WIDTH);
 		}
 		else if (code == "STATION_AEGIS")
 		{
@@ -2282,15 +2289,15 @@ HPVector Universe::locationByCode(const std::string &code, ::OOSunEntity *sun, :
 		}
 		else if (code == "STAR_ORBIT_LOW")
 		{
-			result = OORandomPositionInShell([sun position],[sun radius]*1.1,[sun radius]*2.0);
+			result = OORandomPositionInShell((sun != nullptr ? sun->getPosition() : HPVector{}),(sun != nullptr ? sun->radius() : 0.0)*1.1,(sun != nullptr ? sun->radius() : 0.0)*2.0);
 		}
 		else if (code == "STAR_ORBIT")
 		{
-			result = OORandomPositionInShell([sun position],[sun radius]*2.0,[sun radius]*4.0);
+			result = OORandomPositionInShell((sun != nullptr ? sun->getPosition() : HPVector{}),(sun != nullptr ? sun->radius() : 0.0)*2.0,(sun != nullptr ? sun->radius() : 0.0)*4.0);
 		}
 		else if (code == "STAR_ORBIT_HIGH")
 		{
-			result = OORandomPositionInShell([sun position],[sun radius]*4.0,[sun radius]*8.0);
+			result = OORandomPositionInShell((sun != nullptr ? sun->getPosition() : HPVector{}),(sun != nullptr ? sun->radius() : 0.0)*4.0,(sun != nullptr ? sun->radius() : 0.0)*8.0);
 		}
 		else if (code == "TRIANGLE")
 		{
@@ -2305,33 +2312,33 @@ HPVector Universe::locationByCode(const std::string &code, ::OOSunEntity *sun, :
 					r = 1-r;
 					s = 1-s;
 				}
-				result = HPvector_add(HPvector_multiply_scalar([planet position],r),HPvector_multiply_scalar([sun position],s));
+				result = HPvector_add(HPvector_multiply_scalar([planet position],r),HPvector_multiply_scalar((sun != nullptr ? sun->getPosition() : HPVector{}),s));
 			}
 			// make sure at least 3 radii from vertices
-			while(HPdistance2(result,[sun position]) < [sun radius]*[sun radius]*9.0 || HPdistance2(result,[planet position]) < [planet radius]*[planet radius]*9.0 || HPmagnitude2(result) < SCANNER_MAX_RANGE2 * 9.0);
+			while(HPdistance2(result,(sun != nullptr ? sun->getPosition() : HPVector{})) < (sun != nullptr ? sun->radius() : 0.0)*(sun != nullptr ? sun->radius() : 0.0)*9.0 || HPdistance2(result,[planet position]) < [planet radius]*[planet radius]*9.0 || HPmagnitude2(result) < SCANNER_MAX_RANGE2 * 9.0);
 		}
 		else if (code == "INNER_SYSTEM")
 		{
 			do {
-				result = OORandomPositionInShell([sun position],[sun radius]*3.0,HPdistance([sun position],[planet position]));
-				result = OOProjectHPVectorToPlane(result,kZeroHPVector,HPcross_product([sun position],[planet position]));
+				result = OORandomPositionInShell((sun != nullptr ? sun->getPosition() : HPVector{}),(sun != nullptr ? sun->radius() : 0.0)*3.0,HPdistance((sun != nullptr ? sun->getPosition() : HPVector{}),[planet position]));
+				result = OOProjectHPVectorToPlane(result,kZeroHPVector,HPcross_product((sun != nullptr ? sun->getPosition() : HPVector{}),[planet position]));
 				result = HPvector_add(result,OOHPVectorRandomSpatial([planet radius]));
 				// projection to plane could bring back too close to sun
-			} while (HPdistance2(result,[sun position]) < [sun radius]*[sun radius]*9.0);
+			} while (HPdistance2(result,(sun != nullptr ? sun->getPosition() : HPVector{})) < (sun != nullptr ? sun->radius() : 0.0)*(sun != nullptr ? sun->radius() : 0.0)*9.0);
 		}
 		else if (code == "INNER_SYSTEM_OFFPLANE")
 		{
-			result = OORandomPositionInShell([sun position],[sun radius]*3.0,HPdistance([sun position],[planet position]));
+			result = OORandomPositionInShell((sun != nullptr ? sun->getPosition() : HPVector{}),(sun != nullptr ? sun->radius() : 0.0)*3.0,HPdistance((sun != nullptr ? sun->getPosition() : HPVector{}),[planet position]));
 		}
 		else if (code == "OUTER_SYSTEM")
 		{
-			result = OORandomPositionInShell([sun position],HPdistance([sun position],[planet position]),HPdistance([sun position],[planet position])*10.0); // no more than 10 AU out
-			result = OOProjectHPVectorToPlane(result,kZeroHPVector,HPcross_product([sun position],[planet position]));
-			result = HPvector_add(result,OOHPVectorRandomSpatial(0.01*HPdistance(result,[sun position]))); // within 1% of plane
+			result = OORandomPositionInShell((sun != nullptr ? sun->getPosition() : HPVector{}),HPdistance((sun != nullptr ? sun->getPosition() : HPVector{}),[planet position]),HPdistance((sun != nullptr ? sun->getPosition() : HPVector{}),[planet position])*10.0); // no more than 10 AU out
+			result = OOProjectHPVectorToPlane(result,kZeroHPVector,HPcross_product((sun != nullptr ? sun->getPosition() : HPVector{}),[planet position]));
+			result = HPvector_add(result,OOHPVectorRandomSpatial(0.01*HPdistance(result,(sun != nullptr ? sun->getPosition() : HPVector{})))); // within 1% of plane
 		}
 		else if (code == "OUTER_SYSTEM_OFFPLANE")
 		{
-			result = OORandomPositionInShell([sun position],HPdistance([sun position],[planet position]),HPdistance([sun position],[planet position])*10.0); // no more than 10 AU out
+			result = OORandomPositionInShell((sun != nullptr ? sun->getPosition() : HPVector{}),HPdistance((sun != nullptr ? sun->getPosition() : HPVector{}),[planet position]),HPdistance((sun != nullptr ? sun->getPosition() : HPVector{}),[planet position])*10.0); // no more than 10 AU out
 		}
 		else
 		{
@@ -2389,14 +2396,14 @@ void Universe::setLighting()
 	
 	if (the_sun)
 	{
-		[the_sun getDiffuseComponents:sun_diffuse];
-		[the_sun getSpecularComponents:sun_specular];
+		if (the_sun != nullptr)  the_sun->getDiffuseComponents(sun_diffuse);
+		if (the_sun != nullptr)  the_sun->getSpecularComponents(sun_specular);
 		OOGL(glLightfv(GL_LIGHT1, GL_AMBIENT, sun_ambient));
 		OOGL(glLightfv(GL_LIGHT1, GL_DIFFUSE, sun_diffuse));
 		OOGL(glLightfv(GL_LIGHT1, GL_SPECULAR, sun_specular));
-		sun_pos[0] = the_sun->_cxxEntity->position.x;
-		sun_pos[1] = the_sun->_cxxEntity->position.y;
-		sun_pos[2] = the_sun->_cxxEntity->position.z;
+		sun_pos[0] = the_sun->position.x;
+		sun_pos[1] = the_sun->position.y;
+		sun_pos[2] = the_sun->position.z;
 	}
 	else
 	{
@@ -2556,7 +2563,7 @@ HPVector Universe::coordinatesForPosition(HPVector pos, const std::string &syste
 	}
 	HPVector  w_pos = [self getWitchspaceExitPosition];	// don't reset PRNG
 	HPVector  p_pos = the_planet->_cxxEntity->position;
-	HPVector  s_pos = the_sun->_cxxEntity->position;
+	HPVector  s_pos = the_sun->position;
 
 	const char* c_sys = l_sys.c_str();
 	HPVector p0, p1, p2;
@@ -2616,7 +2623,7 @@ HPVector Universe::coordinatesForPosition(HPVector pos, const std::string &syste
 			break;
 			
 		case 's':
-			scale = [the_sun radius];
+			scale = (the_sun != nullptr ? the_sun->radius() : 0.0);
 			break;
 			
 		case 'u':
@@ -2673,7 +2680,7 @@ HPVector Universe::legacyPositionFrom(HPVector pos, const std::string &system)
 	}
 	HPVector  w_pos = [self getWitchspaceExitPosition];	// don't reset PRNG
 	HPVector  p_pos = the_planet->_cxxEntity->position;
-	HPVector  s_pos = the_sun->_cxxEntity->position;
+	HPVector  s_pos = the_sun->position;
 
 	const char* c_sys = l_sys.c_str();
 	HPVector p0, p1, p2;
@@ -2735,7 +2742,7 @@ HPVector Universe::legacyPositionFrom(HPVector pos, const std::string &system)
 		}
 		case 's':
 		{
-			scale = 1.0f / [the_sun radius];
+			scale = 1.0f / (the_sun != nullptr ? the_sun->radius() : 0.0);
 			break;
 		}
 			
@@ -3316,27 +3323,27 @@ std::vector<oo::ObjCRef<::ShipEntity *>> Universe::addShipsToRoute(const std::st
 		entity = [self planet];
 		if (entity == nil)  return {};
 		point1 = [entity position];
-		radius = [entity radius];
+		radius = OOStellarBodyRadius(entity);
 	}
 	else if (route == "ws" || route == "sw")
 	{
 		point0 = [self getWitchspaceExitPosition];
-		entity = [self sun];
+		entity = (::Entity<OOStellarBody> *)oo::ToObjC([self sun]);	// the sun is C++ since bead oo-9ht.111
 		if (entity == nil)  return {};
 		point1 = [entity position];
-		radius = [entity radius];
+		radius = OOStellarBodyRadius(entity);
 	}
 	else if (route == "sp" || route == "ps")
 	{
-		entity = [self sun];
+		entity = (::Entity<OOStellarBody> *)oo::ToObjC([self sun]);	// the sun is C++ since bead oo-9ht.111
 		if (entity == nil)  return {};
 		point0 = [entity position];
-		double radius0 = [entity radius];
+		double radius0 = OOStellarBodyRadius(entity);
 
 		entity = [self planet];
 		if (entity == nil)  return {};
 		point1 = [entity position];
-		radius = [entity radius];
+		radius = OOStellarBodyRadius(entity);
 		
 		// shorten the route by scanner range & sun radius, otherwise ships could be created inside it.
 		direction = HPvector_normal(HPvector_subtract(point0, point1));
@@ -4081,7 +4088,7 @@ void Universe::selectIntro2Next()
 	::Universe *self = oo::ToObjC(this);
 	if (cachedSun == nil)
 	{
-		cachedSun = [self findOneEntityMatchingPredicate:IsSunPredicate parameter:nil];
+		cachedSun = static_cast<OOSunEntity *>(oo::ToCxx(static_cast<::Entity *>([self findOneEntityMatchingPredicate:IsSunPredicate parameter:nil])));	// -isSun
 	}
 	return cachedSun;
 }
@@ -4108,7 +4115,7 @@ std::vector<oo::ObjCRef<::StationEntity *>> Universe::stations()
 // sends (ADR-0056 amendment oo-27jxj).
 namespace cxx {
 
-std::vector<oo::ObjCRef<::WormholeEntity *>> Universe::wormholes()
+std::vector<oo::ObjCRef<::Entity *>> Universe::wormholes()
 {
 	return activeWormholes;
 }
@@ -5283,7 +5290,7 @@ void Universe::drawUniverse()
 			if (!displayGUI && wasDisplayGUI)
 			{
 				// reset light1 position for the shaders
-				if (cachedSun) [UNIVERSE setMainLightPosition:HPVectorToVector([cachedSun position])]; // the main light is the sun.
+				if (cachedSun) [UNIVERSE setMainLightPosition:HPVectorToVector((cachedSun != nullptr ? cachedSun->getPosition() : HPVector{}))]; // the main light is the sun.
 				else [UNIVERSE setMainLightPosition:kZeroVector];
 			}
 			wasDisplayGUI = displayGUI;
@@ -5414,7 +5421,7 @@ void Universe::drawUniverse()
 						// main light position, no shaders, in-flight / shaders, in-flight and docked.
 						if (cachedSun)
 						{
-							[self setMainLightPosition:[cachedSun cameraRelativePosition]];
+							[self setMainLightPosition:(cachedSun != nullptr ? cachedSun->getCameraRelativePosition() : Vector{})];
 						}
 						else
 						{
@@ -5590,8 +5597,8 @@ void Universe::drawUniverse()
 			{
 				if (!bpHide && cachedSun)
 				{
-					[cachedSun drawDirectVisionSunGlare];
-					[cachedSun drawStarGlare];
+					if (cachedSun != nullptr)  cachedSun->drawDirectVisionSunGlare();
+					if (cachedSun != nullptr)  cachedSun->drawStarGlare();
 				}
 			}
 			
@@ -5979,7 +5986,7 @@ bool Universe::addEntity(::Entity *entity)
 		
 		if ([entity isWormhole])
 		{
-			activeWormholes.emplace_back((::WormholeEntity *)entity);
+			activeWormholes.emplace_back(entity);	// the wormhole's Objective-C object (C++ since bead oo-9ht.112)
 		}
 		else if ([entity isPlanet])
 		{
@@ -6052,7 +6059,7 @@ void Universe::removeAllEntitiesExceptPlayer()
 #endif
 	
 	// preserve wormholes
-	std::vector<oo::ObjCRef<::WormholeEntity *>> savedWormholes = activeWormholes;
+	std::vector<oo::ObjCRef<::Entity *>> savedWormholes = activeWormholes;
 
 	while (entities.size() > 1)
 	{
@@ -8721,9 +8728,9 @@ void Universe::setSystemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum, const st
 					::OOColor *color = [the_sky skyColor];
 					if (the_sun != nil)
 					{
-						[the_sun setSunColor:color];
-						[the_sun getDiffuseComponents:sun_diffuse];
-						[the_sun getSpecularComponents:sun_specular];
+						if (the_sun != nullptr)  the_sun->setSunColor(color);
+						if (the_sun != nullptr)  the_sun->getDiffuseComponents(sun_diffuse);
+						if (the_sun != nullptr)  the_sun->getSpecularComponents(sun_specular);
 					}
 					for (i = n_entities - 1; i > 0; i--)
 						if (sortedEntities[i])
@@ -8734,7 +8741,7 @@ void Universe::setSystemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum, const st
 		}
 		else if (the_sun != nil && (oo::str::hasPrefix(key, "sun_") || oo::str::hasPrefix(key, "corona_")))
 		{
-			[the_sun changeSunProperty:key withDictionary:sysInfo];
+			if (the_sun != nullptr)  the_sun->changeSunProperty(key, sysInfo);
 		}
 		else if (key == "texture")
 		{
@@ -10323,14 +10330,14 @@ HPVector Universe::getSunSkimStartPositionForShip(::ShipEntity *ship)
 		OO_LOG(cxx_kOOLogInconsistentState, "{}", "***** No sun set in Universe getSunSkimStartPositionForShip:");
 		return kZeroHPVector;
 	}
-	HPVector v0 = the_sun->_cxxEntity->position;
+	HPVector v0 = the_sun->position;
 	HPVector v1 = ship->_cxxEntity->position;
 	v1.x -= v0.x;	v1.y -= v0.y;	v1.z -= v0.z;	// vector from sun to ship
 	if (v1.x||v1.y||v1.z)
 		v1 = HPvector_normal(v1);
 	else
 		v1.z = 1.0;
-	double radius = SUN_SKIM_RADIUS_FACTOR * the_sun->_cxxEntity->collision_radius - 250.0; // 250 m inside the skim radius
+	double radius = SUN_SKIM_RADIUS_FACTOR * the_sun->collision_radius - 250.0; // 250 m inside the skim radius
 	v1.x *= radius;	v1.y *= radius;	v1.z *= radius;
 	v1.x += v0.x;	v1.y += v0.y;	v1.z += v0.z;
 	
@@ -10355,7 +10362,7 @@ HPVector Universe::getSunSkimEndPositionForShip(::ShipEntity *ship)
 		OO_LOG(cxx_kOOLogInconsistentState, "{}", "***** No sun set in Universe getSunSkimEndPositionForShip:");
 		return kZeroHPVector;
 	}
-	HPVector v0 = the_sun->_cxxEntity->position;
+	HPVector v0 = the_sun->position;
 	HPVector v1 = ship->_cxxEntity->position;
 	v1.x -= v0.x;	v1.y -= v0.y;	v1.z -= v0.z;
 	if (v1.x||v1.y||v1.z)
@@ -10372,7 +10379,7 @@ HPVector Universe::getSunSkimEndPositionForShip(::ShipEntity *ship)
 		v3 = HPvector_normal(v3);
 	else
 		v3.y = 1.0;
-	double radius = SUN_SKIM_RADIUS_FACTOR * the_sun->_cxxEntity->collision_radius - 250.0; // 250 m inside the skim radius
+	double radius = SUN_SKIM_RADIUS_FACTOR * the_sun->collision_radius - 250.0; // 250 m inside the skim radius
 	v1.x *= radius;	v1.y *= radius;	v1.z *= radius;
 	v1.x += v0.x;	v1.y += v0.y;	v1.z += v0.z;
 	v1.x += 15000 * v3.x;	v1.y += 15000 * v3.y;	v1.z += 15000 * v3.z;	// point 15000m at a tangent to sun from v1
@@ -10580,7 +10587,7 @@ void Universe::setDetailLevel(OOGraphicsDetail value)
 	if (old != detailLevel)
 	{
 		OO_LOG("rendering.detail-level", "Detail level set to {}.", cxx_OOStringFromGraphicsDetail(detailLevel));
-		[[::OOGraphicsResetManager sharedManager] resetGraphicsState];
+		::OOGraphicsResetManager::sharedManager()->resetGraphicsState();
 	}
 
 }
@@ -11279,14 +11286,14 @@ void Universe::populateSpaceFromActiveWormholes()
 		{
 			@try
 			{
-				::WormholeEntity* whole = activeWormholes[0].get();
+				WormholeEntity* whole = static_cast<WormholeEntity *>(oo::ToCxx(activeWormholes[0].get()));
 				// If the wormhole has been scanned by the player then the
 				// PlayerEntity will take care of it
-				if (![whole isScanned] &&
-					NSEqualPoints([PLAYER galaxy_coordinates], [whole destinationCoordinates]) )
+				if (!(whole != nullptr ? whole->isScanned() : false) &&
+					NSEqualPoints([PLAYER galaxy_coordinates], (whole != nullptr ? whole->destinationCoordinates() : NSPoint{})) )
 				{
 					// this is a wormhole to this system
-					[whole disgorgeShips];
+					if (whole != nullptr)  whole->disgorgeShips();
 				}
 				RemoveFirstWormhole(activeWormholes);	// empty it out
 			}

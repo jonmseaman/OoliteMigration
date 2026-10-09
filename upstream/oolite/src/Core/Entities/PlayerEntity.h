@@ -902,7 +902,7 @@ public:
 	void penaltyForUnauthorizedDocking();
 	void addScannedWormhole(::WormholeEntity *whole);
 	void updateWormholes();
-	std::vector<oo::ObjCRef<::WormholeEntity *>> getScannedWormholes();
+	std::vector<oo::ObjCRef<::Entity *>> getScannedWormholes();
 	void initialiseMissionDestinations(const oo::PList &destinations, const oo::PList &legacy);
 	std::optional<std::string> markerKey(const oo::PList &marker);
 	void addMissionDestinationMarker(const oo::PList &marker);
@@ -1867,8 +1867,8 @@ public:
 	
 	OODockingClearanceStatus dockingClearanceStatus = {};
 	
-	std::vector<oo::ObjCRef<::WormholeEntity *>>	scannedWormholes;
-	::WormholeEntity			*wormhole = {};
+	std::vector<oo::ObjCRef<::Entity *>>	scannedWormholes;
+	WormholeEntity				*wormhole = {};	// its Objective-C object is retained (C++ since bead oo-9ht.112)
 
 	::ShipEntity				*demoShip = {}; // Used while docked to maintain demo ship rotation.
 	std::vector<oo::Ref<OOLaserShotEntity>>	lastShot; // used to correctly position laser shots on first frame of firing

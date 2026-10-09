@@ -43,10 +43,10 @@ MA 02110-1301, USA.
 /*	C++ only since bead oo-9ht.77 deleted its Objective-C facade (proposed ADR-0056 amendment
 	oo-0mxi): the universe makes it with oo::makeRef<DustEntity>() and init(), hands it to
 	Objective-C with oo::NewEntityFacade, and finds it with dynamic_cast. It is its own graphics
-	reset client (cxx::OOGraphicsResetClient), and the dust shader's uniforms are bound, by
+	reset client (OOGraphicsResetClient), and the dust shader's uniforms are bound, by
 	selector, to a file-local Objective-C object in DustEntity.mm that forwards to it.
 */
-class DustEntity : public cxx::Entity, public cxx::OOGraphicsResetClient
+class DustEntity : public cxx::Entity, public OOGraphicsResetClient
 {
 public:
 	DustEntity() = default;
@@ -72,7 +72,7 @@ public:
 
 	void drawImmediate(bool immediate, bool translucent) override;
 
-	// cxx::OOGraphicsResetClient.
+	// OOGraphicsResetClient.
 	void resetGraphicsState() override;
 
 #ifndef NDEBUG

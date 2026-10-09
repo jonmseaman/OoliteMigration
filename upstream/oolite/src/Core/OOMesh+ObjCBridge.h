@@ -21,8 +21,8 @@ members reach cxx::OOMesh's overrides.
 	  handing the mesh to Objective-C                                      oo::ToObjC(mesh)
 	  taking it from Objective-C                                           oo::ToCxx(objcMesh)
 
-The C++ mesh is its own graphics reset client (amendment oo-rdwg item 3); the facade keeps the
-conformance and forwards -resetGraphicsState for any Objective-C sender. oo::ToObjC(oo::ToCxx(m)) == m.
+The C++ mesh is its own graphics reset client (amendment oo-rdwg item 3; the facade's conformance and
+-resetGraphicsState went with the protocol, bead oo-9ht.23). oo::ToObjC(oo::ToCxx(m)) == m.
 Never add to this file; converted code does not message the facade. Deleted by its deletion bead
 once every caller is C++.
 
@@ -95,11 +95,6 @@ MA 02110-1301, USA.
 
 - (OOMesh *) meshRescaledBy:(GLfloat)scaleFactor;
 
-@end
-
-
-// The facade forwards the graphics-reset client method (the C++ mesh is the registered client).
-@interface OOMesh (OOMeshGraphicsReset) <OOGraphicsResetClient>
 @end
 
 

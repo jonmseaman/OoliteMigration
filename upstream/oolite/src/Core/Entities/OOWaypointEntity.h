@@ -26,6 +26,7 @@ MA 02110-1301, USA.
 */
 
 #import "Entity.h"
+#import "OOPolygonSprite.h"	// OOHUDBeaconIcon (bead oo-7ae4p): the beacon drawable is oo::Ref
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
@@ -72,7 +73,7 @@ public:
 	std::optional<std::string> beaconLabel();
 	void setBeaconLabel(const std::optional<std::string> &blabel);
 	bool isBeacon();
-	id <OOHUDBeaconIcon> beaconDrawable();
+	OOHUDBeaconIcon *beaconDrawable();	// borrowed (the protocol type until bead oo-7ae4p)
 	OOBeaconEntityObject *prevBeacon();
 	OOBeaconEntityObject *nextBeacon();
 	void setPrevBeacon(OOBeaconEntityObject *beaconShip);
@@ -86,7 +87,7 @@ private:
 	std::optional<std::string>	_beaconLabel;
 	oo::ObjCRef<::OOWeakReference *>	_prevBeacon;
 	oo::ObjCRef<::OOWeakReference *>	_nextBeacon;
-	oo::ObjCRef<id <OOHUDBeaconIcon>>	_beaconDrawable;
+	oo::Ref<OOHUDBeaconIcon>	_beaconDrawable;
 	bool					oriented = {};
 };
 

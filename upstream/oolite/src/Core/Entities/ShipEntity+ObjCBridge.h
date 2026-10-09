@@ -405,7 +405,7 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (void) setBeaconLabel:(const std::optional<std::string> &)blabel;
 - (BOOL) isVisible;
 - (BOOL) isBeacon;
-- (id <OOHUDBeaconIcon>) beaconDrawable;
+- (OOHUDBeaconIcon *) beaconDrawable;
 - (Entity <OOBeaconEntity> *) prevBeacon;
 - (Entity <OOBeaconEntity> *) nextBeacon;
 - (void) setPrevBeacon:(Entity <OOBeaconEntity> *)beaconShip;
@@ -1267,7 +1267,7 @@ unsigned argc = sizeof argv / sizeof *argv; \
 // The category ShipEntity (LoadRestore) of ShipEntityLoadRestore.mm (bead oo-kw44): members of
 // cxx::ShipEntity defined in that file (ADR-0056 amendment oo-42dr), forwarded by the category of
 // the same name in ShipEntity+ObjCBridge.mm for the callers that still message the facade
-// (cxx::WormholeEntity).
+// (WormholeEntity).
 @interface ShipEntity (LoadRestore)
 
 /*	Produces a property list representation of a specific ship. Intended for

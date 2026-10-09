@@ -41,6 +41,20 @@ MA 02110-1301, USA.
 static OOTexture *sFlashTexture = nil;
 
 
+namespace {
+
+// The texture's graphics reset client, which the facade class was until bead oo-9ht.23 (ADR-0056
+// amendment oo-jpd8 item 3, as OOLaserShotEntity's): registered once, with the texture, and never
+// destroyed.
+class FlashTextureResetClient : public OOGraphicsResetClient
+{
+public:
+	void resetGraphicsState() override  { cxx::OOFlashEffectEntity::resetGraphicsState(); }
+};
+
+}	// namespace
+
+
 namespace cxx {
 
 void OOFlashEffectEntity::initExplosionFlashWithPosition(HPVector pos, Vector vel, float size)
@@ -132,7 +146,7 @@ void OOFlashEffectEntity::setUpTexture()
 											options:kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureAlphaMask
 										 anisotropy:kOOTextureDefaultAnisotropy
 											lodBias:0.0] retain];
-		OOGraphicsResetManager::sharedManager()->registerClient([::OOFlashEffectEntity class]);	// the facade class answers +resetGraphicsState
+		OOGraphicsResetManager::sharedManager()->registerCxxClient(new FlashTextureResetClient);
 	}
 }
 

@@ -59,7 +59,7 @@ OOSunEntity *OOJSSystemUniverseSun()	{ return [UNIVERSE sun]; }
 std::vector<oo::ObjCRef<OOPlanetEntity *>> OOJSSystemUniversePlanets()	{ return [UNIVERSE cxx_planets]; }
 std::vector<oo::ObjCRef<StationEntity *>> OOJSSystemUniverseStations()	{ return [UNIVERSE cxx_stations]; }
 std::map<std::string, oo::ObjCRef<OOWaypointEntity *>, std::less<>> OOJSSystemUniverseCurrentWaypoints()	{ return [UNIVERSE cxx_currentWaypoints]; }
-std::vector<oo::ObjCRef<WormholeEntity *>> OOJSSystemUniverseWormholes()	{ return [UNIVERSE cxx_wormholes]; }
+std::vector<oo::ObjCRef<::Entity *>> OOJSSystemUniverseWormholes()	{ return [UNIVERSE cxx_wormholes]; }
 
 std::vector<oo::ObjCRef<Entity *>> OOJSSystemUniverseFindShipsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, Entity *entity)
 {

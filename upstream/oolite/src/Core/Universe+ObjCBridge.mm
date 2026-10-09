@@ -246,7 +246,7 @@ extern Universe *gSharedUniverse;
 
 @implementation Universe (OOSlice9)
 
-- (std::vector<oo::ObjCRef<WormholeEntity *>>) cxx_wormholes	{ return _cxxUniverse->wormholes(); }
+- (std::vector<oo::ObjCRef<::Entity *>>) cxx_wormholes	{ return _cxxUniverse->wormholes(); }
 - (void) unMagicMainStation	{ _cxxUniverse->unMagicMainStation(); }
 - (void) resetBeacons	{ _cxxUniverse->resetBeacons(); }
 - (Entity <OOBeaconEntity> *) firstBeacon	{ return (Entity <OOBeaconEntity> *)_cxxUniverse->firstBeacon(); }

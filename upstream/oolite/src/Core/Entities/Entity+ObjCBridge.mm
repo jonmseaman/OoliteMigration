@@ -83,8 +83,6 @@ oo::ObjCPeers &Peers()
 	Class facadeClass = [::Entity class];
 	if (dynamic_cast<cxx::OOEntityWithDrawable *>(entity.get()) != nullptr)  facadeClass = [::OOEntityWithDrawable class];
 	if (dynamic_cast<cxx::OOLightParticleEntity *>(entity.get()) != nullptr)  facadeClass = [::OOLightParticleEntity class];
-	if (dynamic_cast<cxx::WormholeEntity *>(entity.get()) != nullptr)  facadeClass = [::WormholeEntity class];
-	if (dynamic_cast<cxx::OOSunEntity *>(entity.get()) != nullptr)  facadeClass = [::OOSunEntity class];
 	if (dynamic_cast<cxx::SkyEntity *>(entity.get()) != nullptr)  facadeClass = [::SkyEntity class];
 	if (dynamic_cast<cxx::OOWaypointEntity *>(entity.get()) != nullptr)  facadeClass = [::OOWaypointEntity class];
 	if (dynamic_cast<cxx::OOFlashEffectEntity *>(entity.get()) != nullptr)  facadeClass = [::OOFlashEffectEntity class];

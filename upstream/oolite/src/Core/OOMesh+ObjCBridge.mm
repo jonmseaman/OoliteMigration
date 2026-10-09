@@ -107,8 +107,6 @@ cxx::OOMesh *oo::ToCxx(OOMesh *mesh)
 
 - (void) rebindMaterials					{ oo::ToCxx(self)->rebindMaterials(); }
 
-- (void) resetGraphicsState					{ oo::ToCxx(self)->resetGraphicsState(); }
-
 - (oo::PList) materials						{ return oo::ToCxx(self)->getMaterials(); }
 - (oo::PList) shaders						{ return oo::ToCxx(self)->shaders(); }
 

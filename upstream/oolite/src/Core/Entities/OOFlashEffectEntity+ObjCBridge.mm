@@ -47,7 +47,4 @@ MA 02110-1301, USA.
 
 + (void) setUpTexture						{ cxx::OOFlashEffectEntity::setUpTexture(); }
 
-// OOGraphicsResetClient: setUpTexture() registers this class.
-+ (void) resetGraphicsState					{ cxx::OOFlashEffectEntity::resetGraphicsState(); }
-
 @end

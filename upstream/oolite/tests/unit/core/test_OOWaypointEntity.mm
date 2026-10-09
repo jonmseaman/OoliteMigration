@@ -236,12 +236,12 @@ OO_TEST(beaconDrawable)
 	{
 		SetUp();
 		OOWaypointEntity *wp = Waypoint("W");
-		id<OOHUDBeaconIcon> icon = [wp beaconDrawable];
-		OO_CHECK(icon != nil && [wp beaconDrawable] == icon);
-		[(id)icon retain];
+		// A C++ OOHUDBeaconIcon since bead oo-7ae4p (the protocol type before), held as the
+		// test retained it.
+		oo::Ref<OOHUDBeaconIcon> icon(static_cast<OOHUDBeaconIcon *>([wp beaconDrawable]));
+		OO_CHECK(icon != nullptr && [wp beaconDrawable] == icon.get());
 		[wp setBeaconCode:std::string("V")];
-		OO_CHECK([wp beaconDrawable] != nil && [wp beaconDrawable] != icon);
-		[(id)icon release];
+		OO_CHECK([wp beaconDrawable] != nullptr && [wp beaconDrawable] != icon.get());
 	}
 }
 

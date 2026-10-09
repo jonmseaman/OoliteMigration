@@ -30,7 +30,6 @@ oolite_sources += files(
     'OORingEffectEntity.mm',
     'OOSparkEntity.mm',
     'OOSunEntity.mm',
-    'OOSunEntity+ObjCBridge.mm',
     'OOVisualEffectEntity.mm',
     'OOVisualEffectEntity+ObjCBridge.mm',
     'OOWaypointEntity.mm',
@@ -58,7 +57,6 @@ oolite_sources += files(
     'StationEntity.mm',
     'StationEntity+ObjCBridge.mm',
     'WormholeEntity.mm',
-    'WormholeEntity+ObjCBridge.mm',
 )
 
 oolite_includes += include_directories('.')

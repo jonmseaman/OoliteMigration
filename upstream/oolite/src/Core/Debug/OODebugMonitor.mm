@@ -467,7 +467,7 @@ void OODebugMonitor::dumpEntity(id entity, EntityDumpState *state, bool parentVi
 	}
 	if ([entity isWormhole])
 	{
-		const oo::PList shipsInTransit = [entity shipsInTransit];
+		const oo::PList shipsInTransit = WormholeEntityShipsInTransit(entity);	// -shipsInTransit (C++ since bead oo-9ht.112)
 		if (const oo::PList::Array *shipInfos = shipsInTransit.getIf<oo::PList::Array>())
 		{
 			for (const oo::PList &shipInfo : *shipInfos)
@@ -508,7 +508,7 @@ void OODebugMonitor::dumpMemoryStatistics()
 	{
 		dumpEntity(entity.get(), &entityDumpState, true);
 	}
-	for (const oo::ObjCRef<::WormholeEntity *> &entityRef : [PLAYER cxx_scannedWormholes])
+	for (const oo::ObjCRef<::Entity *> &entityRef : [PLAYER cxx_scannedWormholes])
 	{
 		dumpEntity(entityRef.get(), &entityDumpState, true);
 	}

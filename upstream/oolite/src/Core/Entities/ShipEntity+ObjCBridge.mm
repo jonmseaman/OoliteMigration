@@ -177,7 +177,7 @@ _cxxShip->laser_color = nullptr;
 
 	DESTROY(_cxxShip->_lastAegisLock);
 
-	DESTROY(_cxxShip->_beaconDrawable);
+	_cxxShip->_beaconDrawable = nullptr;
 
 
 	[super dealloc];
@@ -186,7 +186,7 @@ _cxxShip->laser_color = nullptr;
 @end
 
 
-double ShipEntityStellarBodyRadius(Entity<OOStellarBody> *stellar)	{ return [stellar radius]; }
+double ShipEntityStellarBodyRadius(Entity<OOStellarBody> *stellar)	{ return OOStellarBodyRadius(stellar); }	// the sun is C++ since bead oo-9ht.111
 GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 
 
@@ -294,7 +294,7 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 - (void) setBeaconLabel:(const std::optional<std::string> &)blabel	{ _cxxShip->setBeaconLabel(blabel); }
 - (BOOL) isVisible	{ return _cxxShip->cxx::ShipEntity::isVisible(); }
 - (BOOL) isBeacon	{ return _cxxShip->isBeacon(); }
-- (id <OOHUDBeaconIcon>) beaconDrawable	{ return _cxxShip->beaconDrawable(); }
+- (OOHUDBeaconIcon *) beaconDrawable	{ return _cxxShip->beaconDrawable(); }
 - (Entity <OOBeaconEntity> *) prevBeacon	{ return (Entity <OOBeaconEntity> *)_cxxShip->prevBeacon(); }
 - (Entity <OOBeaconEntity> *) nextBeacon	{ return (Entity <OOBeaconEntity> *)_cxxShip->nextBeacon(); }
 - (void) setPrevBeacon:(Entity <OOBeaconEntity> *)beaconShip	{ _cxxShip->setPrevBeacon(beaconShip); }

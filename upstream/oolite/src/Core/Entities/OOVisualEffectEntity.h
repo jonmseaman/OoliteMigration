@@ -31,6 +31,7 @@
 #import "HeadUpDisplay.h"
 #import "OOWeakReference.h"
 #import "OOColor.h"
+#import "OOPolygonSprite.h"	// OOHUDBeaconIcon (bead oo-7ae4p): the beacon drawable is oo::Ref
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
@@ -149,7 +150,7 @@ public:
 	std::optional<std::string> beaconLabel();
 	void setBeaconLabel(const std::optional<std::string> &blabel);
 	bool isBeacon();
-	id <OOHUDBeaconIcon> beaconDrawable();
+	OOHUDBeaconIcon *beaconDrawable();	// borrowed (the protocol type until bead oo-7ae4p)
 	OOVisualEffectBeaconEntity *prevBeacon();
 	OOVisualEffectBeaconEntity *nextBeacon();
 	void setPrevBeacon(OOVisualEffectBeaconEntity *beaconShip);
@@ -207,7 +208,7 @@ public:
 	std::optional<std::string>	_beaconLabel;
 	::OOWeakReference		*_prevBeacon = {};
 	::OOWeakReference		*_nextBeacon = {};
-	id <OOHUDBeaconIcon>	_beaconDrawable = {};	// retained
+	oo::Ref<OOHUDBeaconIcon>	_beaconDrawable;
 
 	// scaling (were scaleX, scaleY, scaleZ, named like their getters)
 	GLfloat _scaleX = {};

@@ -44,7 +44,7 @@ struct OOSkyQuadDesc;
 	entity the root facade (oo::ToObjC). It is a graphics reset client through the C++ client
 	interface (amendment oo-jpd8 item 3), which this bead added.
 */
-class OOSkyDrawable : public cxx::OODrawable, public cxx::OOGraphicsResetClient
+class OOSkyDrawable : public cxx::OODrawable, public OOGraphicsResetClient
 {
 public:
 	// -initWithColor1:Color2:Color3:Color4:starCount:nebulaCount:nebulaHueFix:clusterFactor:alpha:scale:

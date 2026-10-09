@@ -1890,7 +1890,7 @@ void ShipEntity::setBeaconCode(const std::optional<std::string> &bcode)
 	{
 		_beaconCode = code;
 
-		DESTROY(_beaconDrawable);
+		_beaconDrawable = nullptr;
 	}
 	// if not blanking code and label is currently blank, default label to code
 	if (code.has_value() && (!_beaconLabel.has_value() || _beaconLabel->empty()))
@@ -1932,9 +1932,9 @@ bool ShipEntity::isBeacon()
 }
 
 
-id <OOHUDBeaconIcon> ShipEntity::beaconDrawable()
+OOHUDBeaconIcon *ShipEntity::beaconDrawable()
 {
-	if (_beaconDrawable == nil)
+	if (_beaconDrawable == nullptr)
 	{
 		const std::u16string	beaconCode = oo::utf8ToUtf16(_beaconCode.value_or(std::string()));
 		NSUInteger	length = beaconCode.size();	// -length: UTF-16 units
@@ -1943,17 +1943,17 @@ id <OOHUDBeaconIcon> ShipEntity::beaconDrawable()
 		{
 			const oo::PList *iconEntry = [UNIVERSE cxx_descriptions]->find(*_beaconCode);
 			const oo::PList iconData = (iconEntry != nullptr) ? *iconEntry : oo::PList();
-			if (iconData.isArray())  _beaconDrawable = [[::OOPolygonSprite alloc] initWithDataArray:iconData outlineWidth:0.5 name:*_beaconCode];
+			if (iconData.isArray())  _beaconDrawable = OOPolygonSprite::initWithDataArray(iconData, 0.5, *_beaconCode);	// null where it answered nil
 		}
 
-		if (_beaconDrawable == nil)
+		if (_beaconDrawable == nullptr)
 		{
-			if (length > 0)  _beaconDrawable = [[::OOHUDBeaconCodeIcon alloc] initWithText:oo::utf16ToUtf8(beaconCode.substr(0, 1))];	// -substringToIndex:1
-			else  _beaconDrawable = [[::OOHUDBeaconCodeIcon alloc] initWithText:std::string()];
+			if (length > 0)  _beaconDrawable = oo::makeRef<OOHUDBeaconCodeIcon>(oo::utf16ToUtf8(beaconCode.substr(0, 1)));	// -substringToIndex:1
+			else  _beaconDrawable = oo::makeRef<OOHUDBeaconCodeIcon>(std::string());
 		}
 }
 	
-	return _beaconDrawable;
+	return _beaconDrawable.get();
 }
 
 
@@ -2867,11 +2867,11 @@ void ShipEntity::update(OOTimeDelta delta_t)
 		if (sun != nil)
 		{
 			// set the ambient temperature here
-			double  sun_zd = HPdistance2(position, [sun position]);	// square of distance
-			double  sun_cr = sun->_cxxEntity->collision_radius;
+			double  sun_zd = HPdistance2(position, (sun != nullptr ? sun->getPosition() : HPVector{}));	// square of distance
+			double  sun_cr = sun->collision_radius;
 			double	alt1 = sun_cr * sun_cr / sun_zd;
 			external_temp = SUN_TEMPERATURE * alt1;
-			if ([sun goneNova])  external_temp *= 100;
+			if ((sun != nullptr ? sun->goneNova() : false))  external_temp *= 100;
 
 			if ([self hasFuelScoop] && alt1 > 0.75 && [self fuel] < [self fuelCapacity])
 			{
@@ -8209,7 +8209,7 @@ void ShipEntity::transitionToAegisNone()
 		{
 			[self doScriptEvent:OOJSID("shipExitedPlanetaryVicinity") withArgument:lastAegisLock];
 			
-			if (lastAegisLock == [UNIVERSE sun])
+			if (lastAegisLock == oo::ToObjC([UNIVERSE sun]))	// the sun's Objective-C object (C++ since bead oo-9ht.111)
 			{
 				[shipAI message:"AWAY_FROM_SUN"];
 			}
@@ -8267,7 +8267,7 @@ void ShipEntity::transitionToAegisNone()
 	::ShipEntity *self = oo::ToObjC(this);
 
 	::Entity<OOStellarBody> *match = [self findNearestPlanet];
-	::OOSunEntity *sun = [UNIVERSE sun];
+	::Entity<OOStellarBody> *sun = (::Entity<OOStellarBody> *)oo::ToObjC([UNIVERSE sun]);	// its Objective-C object (C++ since bead oo-9ht.111)
 	
 	if (sun != nil)
 	{
@@ -8321,7 +8321,7 @@ OOAegisStatus ShipEntity::checkForAegis()
 {
 	::ShipEntity *self = oo::ToObjC(this);
 	::Entity<OOStellarBody>	*nearest = [self findNearestStellarBody];
-	BOOL					sunGoneNova = [[UNIVERSE sun] goneNova];
+	BOOL					sunGoneNova = ([UNIVERSE sun] != nullptr ? [UNIVERSE sun]->goneNova() : false);
 	
 	if (nearest == nil)
 	{
@@ -8333,7 +8333,7 @@ OOAegisStatus ShipEntity::checkForAegis()
 		return AEGIS_NONE;
 	}
 	// check planet
-	float			cr = [nearest radius];
+	float			cr = OOStellarBodyRadius(nearest);
 	float			cr2 = cr * cr;
 	OOAegisStatus	result = AEGIS_NONE;
 	float			d2 = HPmagnitude2(HPvector_subtract([nearest position], [self position]));
@@ -8457,7 +8457,7 @@ OOAegisStatus ShipEntity::checkForAegis()
 					//[shipAI message:@"AEGIS_CLOSE_TO_PLANET"];	    // fires only for main planets, kept for compatibility with pre-1.72 AI plists.
 					[shipAI message:"AEGIS_CLOSE_TO_MAIN_PLANET"];  // fires only for main planet.
 				}
-				else if (EXPECT_NOT([nearest planetType] == STELLAR_TYPE_MOON))
+				else if (EXPECT_NOT(OOStellarBodyPlanetType(nearest) == STELLAR_TYPE_MOON))
 				{
 					[shipAI message:"CLOSE_TO_MOON"];
 				}
@@ -12032,7 +12032,7 @@ GLfloat ShipEntity::currentAimTolerance()
 		::OOSunEntity *sun = [UNIVERSE sun];
 		if (sun)
 		{
-			GLfloat sunGlareAngularSize = atan([sun radius]/HPdistance([self position], [sun position])) * SUN_GLARE_MULT_FACTOR + (SUN_GLARE_ADD_FACTOR);
+			GLfloat sunGlareAngularSize = atan((sun != nullptr ? sun->radius() : 0.0)/HPdistance([self position], (sun != nullptr ? sun->getPosition() : HPVector{}))) * SUN_GLARE_MULT_FACTOR + (SUN_GLARE_ADD_FACTOR);
 			GLfloat glareLevel = [self lookingAtSunWithThresholdAngleCos:cos(sunGlareAngularSize)] * (1.0f - [self sunGlareFilter]);
 			if (glareLevel > 0.1f)
 			{
@@ -12070,7 +12070,7 @@ GLfloat ShipEntity::lookingAtSunWithThresholdAngleCos(GLfloat thresholdAngleCos)
 	
 	if (EXPECT_NOT(!sun))  return 0.0f;
 	
-	relativePosition = HPVectorToVector(HPvector_subtract([self position], [sun position]));
+	relativePosition = HPVectorToVector(HPvector_subtract([self position], (sun != nullptr ? sun->getPosition() : HPVector{})));
 	unitRelativePosition = vector_normal_or_zbasis(relativePosition);
 	switch (currentWeaponFacing)
 	{
@@ -14276,8 +14276,8 @@ void ShipEntity::enterWormhole(::WormholeEntity *w_hole, bool /* replacing */)
 	// MKW 2011.02.27 - Moved here from ShipEntityAI so escorts reliably follow
 	//                  mother in all wormhole cases, not just when the ship
 	//                  creates the wormhole.
-	[self addTarget:w_hole];
-	[self setFoundTarget:w_hole];
+	[self addTarget:oo::ToObjC(w_hole)];	// its Objective-C object (C++ since bead oo-9ht.112)
+	[self setFoundTarget:oo::ToObjC(w_hole)];
 	[shipAI cxx_reactToMessage:"WITCHSPACE OKAY" context:"performHyperSpaceExit"];	// must be a reaction, the ship is about to disappear
 	
 	// CIM 2012.07.22 above only covers those cases where ship expected to leave
@@ -14290,10 +14290,10 @@ void ShipEntity::enterWormhole(::WormholeEntity *w_hole, bool /* replacing */)
 	if ([self scriptedMisjump])
 	{
 		[self setScriptedMisjump:NO];
-		[w_hole setMisjumpWithRange:[self scriptedMisjumpRange]];
+		if (w_hole != nullptr)  w_hole->setMisjumpWithRange([self scriptedMisjumpRange]);
 		[self setScriptedMisjumpRange:0.5];
 	}
-	[w_hole suckInShip: self];	// removes ship from universe
+	if (w_hole != nullptr)  w_hole->suckInShip(self);	// removes ship from universe
 }
 
 
@@ -14303,7 +14303,7 @@ void ShipEntity::enterWitchspace()
 	[UNIVERSE addWitchspaceJumpEffectForShip:self];
 	[shipAI message:"ENTERED_WITCHSPACE"];
 	
-	if (![[UNIVERSE sun] willGoNova])
+	if (!([UNIVERSE sun] != nullptr ? [UNIVERSE sun]->willGoNova() : false))
 	{
 		// if the sun's not going nova, add a new ship like this one leaving.
 		[UNIVERSE cxx_witchspaceShipWithPrimaryRole:[self cxx_primaryRole].value_or("")];

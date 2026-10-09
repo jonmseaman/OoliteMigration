@@ -23,6 +23,8 @@ MA 02110-1301, USA.
 */
 
 #import "OOSunEntity.h"
+#import "OOJSSun.h"
+#import "OOPlanetEntity.h"
 #import "OOOpenGLExtensionManager.h"
 #import "OOMacroOpenGL.h"
 
@@ -42,8 +44,6 @@ MA 02110-1301, USA.
 #include "oofnd/PListGet.hpp"
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOAssert.h"
-
-namespace cxx {
 
 bool OOSunEntity::setSunColor(OOColor *sun_colorIn)
 {
@@ -819,4 +819,38 @@ void OOSunEntity::setName(const std::optional<std::string> &name)
 	_name = name;
 }
 
-}	// namespace cxx
+
+// The binding's bodies (OOJSSun.mm), which the facade forwarded to until bead oo-9ht.111.
+void OOSunEntity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)
+{
+	::OOJSSunGetJSClass(outClass, outPrototype);
+}
+
+
+std::optional<std::string> OOSunEntity::jsClassName()
+{
+	return ::OOJSSunJSClassName();
+}
+
+
+bool OOSunEntity::isVisibleToScripts()
+{
+	return ::OOJSSunIsVisibleToScripts();
+}
+
+
+// OOStellarBody.h: the sun asked directly, any other body by selector (bead oo-9ht.111).
+double OOStellarBodyRadius(::Entity *body)
+{
+	if (body == nil)  return 0.0;
+	if (OOSunEntity *sun = dynamic_cast<OOSunEntity *>(oo::ToCxx(body)))  return sun->radius();
+	return [(::Entity<OOStellarBody> *)body radius];
+}
+
+
+OOStellarBodyType OOStellarBodyPlanetType(::Entity *body)
+{
+	if (body == nil)  return (OOStellarBodyType)0;
+	if (OOSunEntity *sun = dynamic_cast<OOSunEntity *>(oo::ToCxx(body)))  return sun->planetType();
+	return [(::Entity<OOStellarBody> *)body planetType];
+}

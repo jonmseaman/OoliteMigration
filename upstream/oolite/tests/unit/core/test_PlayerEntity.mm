@@ -23,6 +23,7 @@
 */
 
 #import "PlayerEntity.h"
+#import "WormholeEntity.h"
 #import "MyOpenGLView.h"
 #import "OOConstToString.h"
 #import "OODescription.h"
@@ -467,13 +468,16 @@ OO_TEST(slice3Wormhole)
 		SetUp();
 		TestPlayer *player = MakePlayer();
 		OO_CHECK([player wormhole] == nil);
-		WormholeEntity *hole = (WormholeEntity *)[[Entity alloc] init];	// any object: the player only retains it
-		NSUInteger count = [hole retainCount];
+		// A C++ wormhole since bead oo-9ht.112: the player retains its Objective-C object.
+		oo::Ref<WormholeEntity> holeRef = oo::makeRef<WormholeEntity>();
+		::Entity *object = [oo::NewEntityFacade(holeRef) retain];
+		WormholeEntity *hole = holeRef.get();
+		NSUInteger count = [object retainCount];
 		[player setWormhole:hole];
-		OO_CHECK([player wormhole] == hole && [hole retainCount] == count + 1);
-		[player setWormhole:nil];
-		OO_CHECK([player wormhole] == nil && [hole retainCount] == count);
-		[hole release];
+		OO_CHECK([player wormhole] == hole && [object retainCount] == count + 1);
+		[player setWormhole:nullptr];
+		OO_CHECK([player wormhole] == nullptr && [object retainCount] == count);
+		[object release];
 	}
 }
 

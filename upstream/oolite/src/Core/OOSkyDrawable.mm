@@ -171,7 +171,7 @@ OOSkyDrawable::OOSkyDrawable(OOColor *color1,
 		}
 	}
 
-	cxx::OOGraphicsResetManager::sharedManager()->registerCxxClient(this);
+	OOGraphicsResetManager::sharedManager()->registerCxxClient(this);
 }
 
 
@@ -179,7 +179,7 @@ OOSkyDrawable::~OOSkyDrawable()
 {
 	OO_ENTER_OPENGL();
 
-	cxx::OOGraphicsResetManager::sharedManager()->unregisterCxxClient(this);
+	OOGraphicsResetManager::sharedManager()->unregisterCxxClient(this);
 	if (_displayListName != 0)  glDeleteLists(_displayListName, 1);
 }
 

@@ -23,6 +23,7 @@ MA 02110-1301, USA.
 */
 
 #import "WormholeEntity.h"
+#import "OOJSWormhole.h"
 
 #import "ShipEntity.h"
 #import "OOSunEntity.h"
@@ -62,8 +63,6 @@ NSPoint SystemCoordinates(OOSystemID system, OOGalaxyID galaxy)
 
 }	// namespace
 
-
-namespace cxx {
 
 void WormholeEntity::init()
 {
@@ -178,7 +177,7 @@ void WormholeEntity::initWormholeTo(OOSystemID s, ::ShipEntity *ship)
 		if ([ship isPlayer])
 			witch_mass += [ship mass]; // The player ship never gets sucked in, so add its mass here.
 
-		if (sun && ([sun willGoNova] || [sun goneNova]) && [ship mass] > 240000) 
+		if (sun && ((sun != nullptr ? sun->willGoNova() : false) || (sun != nullptr ? sun->goneNova() : false)) && [ship mass] > 240000) 
 			shrink_factor = [ship mass] / 240000; // don't allow longstanding wormholes in nova systems. (60 sec * WORMHOLE_SHRINK_RATE = 240 000)
 		else
 			shrink_factor = 1;
@@ -336,7 +335,7 @@ bool WormholeEntity::suckInShip(::ShipEntity *ship)
 		{
 			// the carrier has jumped while the player is docked
 			[ship retain];
-			[UNIVERSE carryPlayerOn:(::StationEntity*)ship inWormhole:oo::ToObjC(this)];
+			[UNIVERSE carryPlayerOn:(::StationEntity*)ship inWormhole:this];
 			[ship release];
 		}
 	}		
@@ -743,7 +742,6 @@ void WormholeEntity::drawImmediate(bool /*immediate*/, bool translucent)
 }
 
 
-}	// namespace cxx
 
 
 static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int step, GLfloat z_distance, GLfloat *col4v1)
@@ -807,8 +805,6 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 	OOGLEND();
 }
 
-
-namespace cxx {
 
 oo::PList WormholeEntity::getDict()
 {
@@ -879,4 +875,28 @@ void WormholeEntity::dumpSelfState()
 	}
 }
 
-}	// namespace cxx
+
+// The binding's bodies (OOJSWormhole.mm), which the facade forwarded to until bead oo-9ht.112.
+void WormholeEntity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)
+{
+	::OOJSWormholeGetJSClass(outClass, outPrototype);
+}
+
+
+std::optional<std::string> WormholeEntity::jsClassName()
+{
+	return ::OOJSWormholeJSClassName();
+}
+
+
+bool WormholeEntity::isVisibleToScripts()
+{
+	return ::OOJSWormholeIsVisibleToScripts();
+}
+
+
+oo::PList WormholeEntityShipsInTransit(::Entity *entity)
+{
+	WormholeEntity *wormhole = (entity != nil) ? dynamic_cast<WormholeEntity *>(oo::ToCxx(entity)) : nullptr;
+	return (wormhole != nullptr) ? wormhole->getShipsInTransit() : oo::PList();
+}

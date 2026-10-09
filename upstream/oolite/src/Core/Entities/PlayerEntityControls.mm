@@ -4907,7 +4907,7 @@ void cxx::PlayerEntity::handleUndockControl()
 	if ([self dockedStation] == nil)  [self setDockedAtMainStation];
 	
 	::StationEntity *dockedStation = [self dockedStation];
-	if (dockedStation == [UNIVERSE station] && [UNIVERSE autoSaveNow] && !([[UNIVERSE sun] goneNova] || [[UNIVERSE sun] willGoNova]))
+	if (dockedStation == [UNIVERSE station] && [UNIVERSE autoSaveNow] && !(([UNIVERSE sun] != nullptr ? [UNIVERSE sun]->goneNova() : false) || ([UNIVERSE sun] != nullptr ? [UNIVERSE sun]->willGoNova() : false)))
 	{
 		[self autosavePlayer];
 	}

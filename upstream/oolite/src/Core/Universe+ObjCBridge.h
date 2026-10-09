@@ -211,7 +211,7 @@ MA 02110-1301, USA.
 // Universe.mm, stays complete).
 @interface Universe (OOSlice9)
 
-- (std::vector<oo::ObjCRef<WormholeEntity *>>) cxx_wormholes;
+- (std::vector<oo::ObjCRef<::Entity *>>) cxx_wormholes;
 // Turn main station into just another station, for blowUpStation.
 - (void) unMagicMainStation;
 - (void) resetBeacons;

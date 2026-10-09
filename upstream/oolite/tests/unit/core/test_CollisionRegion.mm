@@ -16,6 +16,7 @@
 
 #import "CollisionRegion.h"
 #import "Entity.h"
+#import "OOSunEntity.h"
 #import "OODescription.h"
 
 #include "oo_test.hpp"
@@ -158,8 +159,12 @@ OO_TEST(shadowGeometry)
 {
 	@autoreleasepool
 	{
-		// Casts are what the caller passes: the function reads only Entity ivars of the sun.
-		OOSunEntity *sun = (OOSunEntity *)MakeEntity(make_HPvector(0, 0, 10000), 10);
+		// The function reads only Entity members of the sun, which is C++ since bead oo-9ht.111 (a
+		// cast entity before): a C++ sun with the same position and radius.
+		oo::Ref<OOSunEntity> sunRef = oo::makeRef<OOSunEntity>();
+		sunRef->position = make_HPvector(0, 0, 10000);
+		sunRef->collision_radius = 10;
+		OOSunEntity *sun = sunRef.get();
 		Entity *between = MakeEntity(make_HPvector(0, 0, 100), 50);
 		Entity *behind = MakeEntity(make_HPvector(0, 0, -100), 50);
 		Entity *small = MakeEntity(make_HPvector(0, 0, 100), 0.5f);

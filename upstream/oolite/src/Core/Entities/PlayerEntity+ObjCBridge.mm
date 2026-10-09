@@ -194,7 +194,8 @@ PlayerEntity		*gOOPlayer = nil;
 
 	[self destroySound];
 
-	DESTROY(_cxxPlayer->wormhole);
+	[oo::ToObjC(_cxxPlayer->wormhole) release];	// the wormhole's Objective-C object (bead oo-9ht.112)
+	_cxxPlayer->wormhole = nullptr;
 
 	int i;
 	for (i = 0; i < PLAYER_MAX_MISSILES; i++)  DESTROY(_cxxPlayer->missile_entity[i]);
@@ -853,7 +854,7 @@ PlayerEntity		*gOOPlayer = nil;
 - (void)penaltyForUnauthorizedDocking	{ _cxxPlayer->penaltyForUnauthorizedDocking(); }
 - (void)addScannedWormhole:(WormholeEntity*)whole	{ _cxxPlayer->addScannedWormhole(whole); }
 - (void)updateWormholes	{ _cxxPlayer->updateWormholes(); }
-- (std::vector<oo::ObjCRef<WormholeEntity *>>) cxx_scannedWormholes	{ return _cxxPlayer->getScannedWormholes(); }
+- (std::vector<oo::ObjCRef<::Entity *>>) cxx_scannedWormholes	{ return _cxxPlayer->getScannedWormholes(); }
 - (void) initialiseMissionDestinations:(const oo::PList &)destinations andLegacy:(const oo::PList &)legacy	{ _cxxPlayer->initialiseMissionDestinations(destinations, legacy); }
 - (std::optional<std::string>)markerKey:(const oo::PList &)marker	{ return _cxxPlayer->markerKey(marker); }
 - (void) cxx_addMissionDestinationMarker:(const oo::PList &)marker	{ _cxxPlayer->addMissionDestinationMarker(marker); }
