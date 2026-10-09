@@ -45,9 +45,11 @@
 #import "OORoleSet.h"
 #include <string_view>
 
-@class StationEntity, WormholeEntity, AI, OOMesh, OOScript, OOJSScript, OOShipGroup, OOEquipmentType;
+@class StationEntity, WormholeEntity, AI, OOMesh, OOScript, OOJSScript;
 #import "OOColor.h"	// the colours are oo::Ref members
 #import "OOCharacter.h"	// C++ since bead oo-9ht.10: the crew is oo::Ref
+#import "OOShipGroup.h"	// C++ since bead oo-9ht.19: the groups are oo::Ref
+#import "OOEquipmentType.h"	// C++ since bead oo-9ht.28: OOWeaponType is a C++ pointer
 class OOFlasherEntity;	// C++ only since bead oo-9ht.107
 class OOExhaustPlumeEntity;	// C++ only since bead oo-9ht.110
 
@@ -361,12 +363,12 @@ public:
 	OOWeaponFacingSet weaponFacings();
 	OOWeaponType weaponTypeIDForFacing(OOWeaponFacing facing, bool strict);
 	virtual ::OOEquipmentType *weaponTypeForFacing(OOWeaponFacing facing, bool strict);
-	virtual std::vector<oo::ObjCRef<::OOEquipmentType *>> missilesList();
+	virtual std::vector<oo::Ref<::OOEquipmentType>> missilesList();
 	virtual oo::PList passengerListForScripting();
 	virtual oo::PList parcelListForScripting();
 	virtual oo::PList contractListForScripting();
 	::OOEquipmentType *generateMissileEquipmentTypeFrom(const std::string &role);
-	std::vector<oo::ObjCRef<::OOEquipmentType *>> equipmentListForScripting();
+	std::vector<oo::Ref<::OOEquipmentType>> equipmentListForScripting();
 	bool equipmentValidToAdd(const std::string &equipmentKey, const std::string &context);
 	bool equipmentValidToAdd(const std::string &fullEquipmentKey, bool loading, const std::string &context);
 	virtual bool setWeaponMount(OOWeaponFacing facing, const std::string &eqKey);
@@ -1385,8 +1387,8 @@ public:
 	
 	::OOWeakReference			*_lastAegisLock = {};			// remember last aegis planet/sun
 	
-	::OOShipGroup				*_group = {};
-	::OOShipGroup				*_escortGroup = {};
+	oo::Ref<::OOShipGroup>		_group;			// C++ since bead oo-9ht.19
+	oo::Ref<::OOShipGroup>		_escortGroup;
 	uint8_t					_maxEscortCount = {};
 	uint8_t					_pendingEscortCount = {};
 	// Cache of ship-relative positions, managed by -coordinatesForEscortPosition:.

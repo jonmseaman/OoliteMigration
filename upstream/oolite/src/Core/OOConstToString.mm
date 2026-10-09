@@ -274,7 +274,7 @@ std::optional<std::string> cxx_OOStringFromWeaponType(OOWeaponType weapon)
 	if (weapon == nil) {
 		return "EQ_WEAPON_NONE";
 	} else {
-		return oo::ToCxx(weapon)->identifier();
+		return weapon->identifier();
 	}
 }
 
@@ -288,29 +288,28 @@ OOWeaponType cxx_OOWeaponTypeFromString(const std::string &string)
 std::optional<std::string> cxx_OOEquipmentIdentifierFromWeaponType(OOWeaponType weapon)
 {
 	// No weapon: a message to nil answered a zeroed std::optional, no identifier.
-	cxx::OOEquipmentType *type = oo::ToCxx(weapon);
+	OOEquipmentType *type = weapon;
 	return (type != nullptr) ? type->identifier() : std::nullopt;
 }
 
 
 OOWeaponType cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(const std::string &string)
 {
-	// The weapon type is still the Objective-C OOEquipmentType * (ShipEntity.h): the C++ type
-	// crosses at the return, as +cxx_equipmentTypeWithIdentifier: did.
-	oo::Ref<cxx::OOEquipmentType> w = cxx::OOEquipmentType::equipmentTypeWithIdentifier(string);
+	// The weapon type is the C++ type since bead oo-9ht.28, borrowed: the registry holds it.
+	oo::Ref<OOEquipmentType> w = OOEquipmentType::equipmentTypeWithIdentifier(string);
 	if (w == nullptr)
 	{
 		if (!oo::str::hasPrefix(string, "EQ_"))
 		{
-			w = cxx::OOEquipmentType::equipmentTypeWithIdentifier("EQ_" + string);
+			w = OOEquipmentType::equipmentTypeWithIdentifier("EQ_" + string);
 			if (w != nullptr)
 			{
-				return oo::ToObjC(w);
+				return w.get();
 			}
 		}
-		return oo::ToObjC(cxx::OOEquipmentType::equipmentTypeWithIdentifier("EQ_WEAPON_NONE"));
+		return OOEquipmentType::equipmentTypeWithIdentifier("EQ_WEAPON_NONE").get();
 	}
-	return oo::ToObjC(w);
+	return w.get();
 }
 
 

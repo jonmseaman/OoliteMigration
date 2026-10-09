@@ -882,17 +882,17 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 	
 		case kShip_escorts:
 			{
-				cxx::OOShipGroup *escortGroup = oo::ToCxx(ship->escortGroup());
+				OOShipGroup *escortGroup = ship->escortGroup();
 				result = (escortGroup != nullptr) ? oo::PListFromObjects(escortGroup->memberArrayExcludingLeader()) : oo::PList();
 			}
 			break;
 			
 		case kShip_group:
-			result = oo::PListObject(ship->group());
+			result = OOShipGroupObjectNode(ship->group());
 			break;
 			
 		case kShip_escortGroup:
-			result = oo::PListObject(ship->escortGroup());
+			result = OOShipGroupObjectNode(ship->escortGroup());
 			break;
 			
 		case kShip_temperature:
@@ -1204,27 +1204,27 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			return HPVectorToJSValue(context,ship->getCoordinates(), value);
 		
 		case kShip_equipment:
-			result = oo::PListFromObjects(ship->equipmentListForScripting());
+			result = OOEquipmentTypeObjectNodes(ship->equipmentListForScripting());
 			break;
 			
 		case kShip_currentWeapon:
-			result = oo::PListObject(ship->weaponTypeForFacing(ship->getCurrentWeaponFacing(), true));
+			result = OOEquipmentTypeObjectNode(ship->weaponTypeForFacing(ship->getCurrentWeaponFacing(), true));
 			break;
 		
 		case kShip_forwardWeapon:
-			result = oo::PListObject(ship->weaponTypeForFacing(WEAPON_FACING_FORWARD, true));
+			result = OOEquipmentTypeObjectNode(ship->weaponTypeForFacing(WEAPON_FACING_FORWARD, true));
 			break;
 		
 		case kShip_aftWeapon:
-			result = oo::PListObject(ship->weaponTypeForFacing(WEAPON_FACING_AFT, true));
+			result = OOEquipmentTypeObjectNode(ship->weaponTypeForFacing(WEAPON_FACING_AFT, true));
 			break;
 		
 		case kShip_portWeapon:
-			result = oo::PListObject(ship->weaponTypeForFacing(WEAPON_FACING_PORT, true));
+			result = OOEquipmentTypeObjectNode(ship->weaponTypeForFacing(WEAPON_FACING_PORT, true));
 			break;
 		
 		case kShip_starboardWeapon:
-			result = oo::PListObject(ship->weaponTypeForFacing(WEAPON_FACING_STARBOARD, true));
+			result = OOEquipmentTypeObjectNode(ship->weaponTypeForFacing(WEAPON_FACING_STARBOARD, true));
 			break;
 		
 		case kShip_laserHeatLevel:
@@ -1243,7 +1243,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			return ooscript::newNumberValue(context, ship->laserHeatLevelStarboard(), value);
 		
 		case kShip_missiles:
-			result = oo::PListFromObjects(ship->missilesList());
+			result = OOEquipmentTypeObjectNodes(ship->missilesList());
 			break;
 		
 		case kShip_passengers:
@@ -1611,7 +1611,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			break;
 			
 		case kShip_group:
-			group = OOJSNativeObjectOfClassFromJSValue(context, *value, OOJSShipShipGroupClass());
+			group = OOShipGroupInObjectNode(cxx_OOJSPListFromJSValue(context, *value));	// a ShipGroup's group, else null
 			if (group != nullptr || ooscript::isNull(*value))
 			{
 				ship->setGroup(group);
@@ -2073,7 +2073,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			
 			if (ooscript::valueToInt32(context, *value, &iValue))
 			{
-				cxx::OOShipGroup *escortGroup = oo::ToCxx(ship->escortGroup());
+				OOShipGroup *escortGroup = ship->escortGroup();
 				if ((NSInteger)iValue < (NSInteger)(escortGroup != nullptr ? escortGroup->count() : 0) - 1)
 				{
 					cxx_OOJSReportError(context, "ship.%s must be >= current escort numbers.", cxx_OOStringFromJSPropertyIDAndSpec(context, propID, sShipProperties).value_or("(null)").c_str());
@@ -2848,7 +2848,7 @@ static bool ShipAwardEquipment(ooscript::Context context, ooscript::CallArgs &oo
 	}
 	
 	// Check that equipment is permitted.
-	cxx::OOEquipmentType *cxxEqType = oo::ToCxx(eqType);	// not null: eqType is not
+	OOEquipmentType *cxxEqType = eqType;	// not null: eqType is not
 	identifier = cxxEqType->identifier().value_or("");
 	berth = identifier == "EQ_PASSENGER_BERTH";
 	if (berth)
@@ -3056,7 +3056,7 @@ static bool ShipSetEquipmentStatus(ooscript::Context context, ooscript::CallArgs
 		return false;
 	}
 	
-	cxx::OOEquipmentType *cxxEqType = oo::ToCxx(eqType);	// not null: eqType is not
+	OOEquipmentType *cxxEqType = eqType;	// not null: eqType is not
 	key = cxxEqType->identifier().value_or("");
 	hasOK = ship->hasEquipmentItem(oo::PList(key));
 	bool setOK = *status == "EQUIPMENT_OK";
@@ -3187,7 +3187,7 @@ static bool ShipSelectNewMissile(ooscript::Context context, ooscript::CallArgs &
 	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
 	
 	// if there's a badly defined missile, selectMissile may return nil
-	cxx::OOEquipmentType *missile = oo::ToCxx(ship->selectMissile());
+	OOEquipmentType *missile = ship->selectMissile();
 	const std::string result = ((missile != nullptr) ? missile->identifier() : std::nullopt).value_or("EQ_MISSILE");
 	
 	OOJS_RETURN_PLIST(oo::PList(result));
@@ -4546,7 +4546,7 @@ static double ShipThreatAssessmentWeapon(OOWeaponType wt)
 	{
 		return -1.0;
 	}
-	return oo::ToCxx(wt)->weaponThreatAssessment();
+	return wt->weaponThreatAssessment();
 }
 
 

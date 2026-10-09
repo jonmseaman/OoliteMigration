@@ -1,7 +1,9 @@
 /*	test_OOJSShipGroup.mm
-	Unit tests for the ShipGroup JS binding (src/Core/Scripting/OOJSShipGroup.h/.mm) and its
-	OOShipGroup façade's JS selectors (OOShipGroup+ObjCBridge.mm): bead oo-n64m, converted the way bead oo-ppc
-	converted OOJSVector (proposed ADR-0056 amendments oo-ppc and oo-ykoy).
+	Unit tests for the ShipGroup JS binding (src/Core/Scripting/OOJSShipGroup.h/.mm) and the JS glue
+	of OOShipGroup: bead oo-n64m, converted the way bead oo-ppc converted OOJSVector (proposed
+	ADR-0056 amendments oo-ppc and oo-ykoy); the group's façade was deleted by bead oo-9ht.19, so a
+	group reaches the engine as a PList Object node holding the C++ group, and the stand-in ship
+	holds its groups as oo::Ref where it held the autoreleased façades.
 
 	As test_OOJSWormhole.mm does (amendment oo-ykoy, item 4), it runs the JS class in a real
 	context on the game's own façade backend (ooscript/JSEngine_quickjs.cpp), links the game's own
@@ -39,8 +41,8 @@
 {
 @public
 	std::string _name;
-	OOShipGroup *_group;
-	OOShipGroup *_escortGroup;
+	oo::Ref<OOShipGroup> _group;
+	oo::Ref<OOShipGroup> _escortGroup;
 	BOOL _acceptsEscorts;
 	int _accepted;
 	ooscript::Object _jsSelf;
@@ -84,10 +86,10 @@ ooscript::Object sFakeShipPrototype = nullptr;
 
 @implementation ShipEntity
 
-- (OOShipGroup *) group  { return _group; }
-- (void) setGroup:(OOShipGroup *)group  { _group = group; }
+- (OOShipGroup *) group  { return _group.get(); }
+- (void) setGroup:(OOShipGroup *)group  { _group = oo::Ref<OOShipGroup>(group); }
 - (void) setOwner:(id)owner  { (void)owner; }
-- (OOShipGroup *) escortGroup  { return _escortGroup; }
+- (OOShipGroup *) escortGroup  { return _escortGroup.get(); }
 
 - (BOOL) acceptAsEscort:(ShipEntity *)other_ship
 {
@@ -194,6 +196,10 @@ ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &p
 		return js != nullptr ? ooscript::stringValue(js) : ooscript::nullValue();
 	}
 	if (plist.isNumber())  return ooscript::numberValue(plist.doubleValue());
+	if (const oo::PList::Object *node = plist.getIf<oo::PList::Object>())	// a C++ object that is its own JS glue, as the engine asks it
+	{
+		if (OOJSPrivateObject *glue = dynamic_cast<OOJSPrivateObject *>(node->get()))  return OOJSValueFromCxxObject(context, glue);
+	}
 	if (id object = oo::ObjectIn(plist))  return OOJSValueFromNativeObject(context, object);
 	if (const oo::PList::Array *array = plist.getIf<oo::PList::Array>())
 	{
@@ -407,18 +413,18 @@ OO_TEST(category)
 {
 	SetUpContext();
 	// One JS object per group, made on first use; the engine's finalizer clears it.
-	OOShipGroup *group = [OOShipGroup cxx_groupWithName:std::string("cat")];
-	ooscript::Value first = [group oo_jsValueInContext:sContext];
+	oo::Ref<OOShipGroup> group = OOShipGroup::groupWithName(std::string("cat"));
+	ooscript::Value first = group->jsValueInContext(sContext);
 	OO_CHECK(ooscript::isObject(first));
-	OO_CHECK(ooscript::toObject([group oo_jsValueInContext:sContext]) == ooscript::toObject(first));
-	OO_CHECK(static_cast<oo::RefCounted *>(ooscript::getPrivate(sContext, ooscript::toObject(first))) == static_cast<oo::RefCounted *>(oo::ToCxx(group)));
+	OO_CHECK(ooscript::toObject(group->jsValueInContext(sContext)) == ooscript::toObject(first));
+	OO_CHECK(static_cast<oo::RefCounted *>(ooscript::getPrivate(sContext, ooscript::toObject(first))) == static_cast<oo::RefCounted *>(group.get()));
 	Define("catGroup", first);
 	OO_CHECK_EVAL("catGroup.name", "cat");
 	// Clearing with another object leaves it; clearing with its own makes the next one new.
-	[group oo_clearJSSelf:nullptr];
-	OO_CHECK(ooscript::toObject([group oo_jsValueInContext:sContext]) == ooscript::toObject(first));
-	[group oo_clearJSSelf:ooscript::toObject(first)];
-	ooscript::Value second = [group oo_jsValueInContext:sContext];
+	group->clearJSSelf(nullptr);
+	OO_CHECK(ooscript::toObject(group->jsValueInContext(sContext)) == ooscript::toObject(first));
+	group->clearJSSelf(ooscript::toObject(first));
+	ooscript::Value second = group->jsValueInContext(sContext);
 	OO_CHECK(ooscript::isObject(second) && ooscript::toObject(second) != ooscript::toObject(first));
 }
 
@@ -483,19 +489,19 @@ OO_TEST(escorts)
 	ShipEntity *other = NewShip("otherLeader");
 	ShipEntity *taken = NewShip("taken");
 	// The leader's escort group with escorts already: the new ship must be accepted as an escort.
-	OOShipGroup *escorts = [OOShipGroup cxx_groupWithName:std::string("escorts") leader:leader];
-	[escorts addShip:NewShip("first")];
+	oo::Ref<OOShipGroup> escorts = OOShipGroup::groupWithName(std::string("escorts"), leader);
+	escorts->addShip(NewShip("first"));
 	leader->_escortGroup = escorts;
 	leader->_group = escorts;
-	Define("escorts", [escorts oo_jsValueInContext:sContext]);
+	Define("escorts", escorts->jsValueInContext(sContext));
 	leader->_acceptsEscorts = NO;
 	OO_CHECK_EVAL("[escorts.addShip(escort), escorts.containsShip(escort)].join()", "false,false");
 	leader->_acceptsEscorts = YES;
 	OO_CHECK_EVAL("[escorts.addShip(escort), escorts.containsShip(escort)].join()", "true,true");
 	OO_CHECK_EQ(leader->_accepted, 1);
 	// A ship that already escorts someone else is refused, with a warning.
-	OOShipGroup *otherEscorts = [OOShipGroup cxx_groupWithName:std::string("other") leader:other];
-	[otherEscorts addShip:taken];
+	oo::Ref<OOShipGroup> otherEscorts = OOShipGroup::groupWithName(std::string("other"), other);
+	otherEscorts->addShip(taken);
 	other->_escortGroup = otherEscorts;
 	taken->_group = otherEscorts;
 	sLastWarning.clear();
@@ -504,19 +510,19 @@ OO_TEST(escorts)
 	OO_CHECK(oo::DescriptionOf(taken).find("{taken}") != std::string::npos);
 	// A lone leader whose escort group is its own group gets a new group, and the ship joins that.
 	ShipEntity *lone = NewShip("lone");
-	OOShipGroup *loneGroup = [OOShipGroup cxx_groupWithName:std::string("alone") leader:lone];
+	oo::Ref<OOShipGroup> loneGroup = OOShipGroup::groupWithName(std::string("alone"), lone);
 	lone->_escortGroup = loneGroup;
 	lone->_group = loneGroup;
-	Define("loneGroup", [loneGroup oo_jsValueInContext:sContext]);
+	Define("loneGroup", loneGroup->jsValueInContext(sContext));
 	OO_CHECK_EVAL("[loneGroup.addShip(escort), loneGroup.containsShip(escort)].join()", "true,false");
-	OO_CHECK(lone->_group != loneGroup && [lone->_group containsShip:escort]);
-	OO_CHECK([lone->_group cxx_name] == std::optional<std::string>("ship group"));
+	OO_CHECK(lone->_group != loneGroup && lone->_group->containsShip(escort));
+	OO_CHECK(lone->_group->name() == std::optional<std::string>("ship group"));
 	// A lone leader with a group of its own: it is asked to accept the escort.
 	ShipEntity *custom = NewShip("custom");
-	OOShipGroup *customGroup = [OOShipGroup cxx_groupWithName:std::string("custom") leader:custom];
+	oo::Ref<OOShipGroup> customGroup = OOShipGroup::groupWithName(std::string("custom"), custom);
 	custom->_escortGroup = customGroup;
-	custom->_group = [OOShipGroup cxx_groupWithName:std::string("elsewhere")];
-	Define("customGroup", [customGroup oo_jsValueInContext:sContext]);
+	custom->_group = OOShipGroup::groupWithName(std::string("elsewhere"));
+	Define("customGroup", customGroup->jsValueInContext(sContext));
 	custom->_acceptsEscorts = NO;
 	OO_CHECK_EVAL("customGroup.addShip(escort)", "false");
 	custom->_acceptsEscorts = YES;
@@ -542,11 +548,11 @@ OO_TEST(nativeExceptions)
 	SetUpContext();
 	ShipEntity *chief = NewShip("chief");
 	NewShip("boom");
-	OOShipGroup *group = [OOShipGroup cxx_groupWithName:std::string("ex") leader:chief];
-	[group addShip:NewShip("wingman")];
+	oo::Ref<OOShipGroup> group = OOShipGroup::groupWithName(std::string("ex"), chief);
+	group->addShip(NewShip("wingman"));
 	chief->_escortGroup = group;
 	chief->_group = group;
-	Define("exGroup", [group oo_jsValueInContext:sContext]);
+	Define("exGroup", group->jsValueInContext(sContext));
 	OO_CHECK_EVAL("exGroup.addShip(boom)", "threw: Native exception: escort boom");
 	OO_CHECK_EVAL("exGroup.count", "2");
 	OO_CHECK_EQ(sLimiterPauses, 0);

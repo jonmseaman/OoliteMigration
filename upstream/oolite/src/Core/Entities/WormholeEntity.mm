@@ -292,7 +292,7 @@ bool WormholeEntity::suckInShip(::ShipEntity *ship)
 		float shipSpeed = [ship maxFlightSpeed] * afterburnerFactor;
 		// MKW 2011.02.27 - calculate speed based on group leader, if any, to
 		// try and prevent escorts from entering the wormhole before their mother.
-		::ShipEntity *leader = [[ship group] leader];
+		::ShipEntity *leader = ([ship group] != nullptr ? [ship group]->leader() : (::ShipEntity *)nil);
 		if (leader && (leader != ship))
 		{
 			afterburnerFactor = [leader hasFuelInjection] && [leader fuel] > MIN_FUEL ? [leader afterburnerFactor] : 1.0;

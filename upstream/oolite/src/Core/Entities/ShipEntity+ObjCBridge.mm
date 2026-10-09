@@ -170,10 +170,10 @@ _cxxShip->laser_color = nullptr;
 	[self setSubEntityTakingDamage:nil];
 	[self removeAllEquipment];
 
-	[_cxxShip->_group removeShip:self];
-	DESTROY(_cxxShip->_group);
-	[_cxxShip->_escortGroup removeShip:self];
-	DESTROY(_cxxShip->_escortGroup);
+	if (_cxxShip->_group != nullptr)  _cxxShip->_group->removeShip(self);
+	_cxxShip->_group = nullptr;
+	if (_cxxShip->_escortGroup != nullptr)  _cxxShip->_escortGroup->removeShip(self);
+	_cxxShip->_escortGroup = nullptr;
 
 	DESTROY(_cxxShip->_lastAegisLock);
 
@@ -370,12 +370,12 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 - (OOWeaponFacingSet) weaponFacings	{ return _cxxShip->weaponFacings(); }
 - (OOWeaponType) weaponTypeIDForFacing:(OOWeaponFacing)facing strict:(BOOL)strict	{ return _cxxShip->weaponTypeIDForFacing(facing, strict); }
 - (OOEquipmentType *) weaponTypeForFacing:(OOWeaponFacing)facing strict:(BOOL)strict	{ return _cxxShip->cxx::ShipEntity::weaponTypeForFacing(facing, strict); }
-- (std::vector<oo::ObjCRef<OOEquipmentType *>>) missilesList	{ return _cxxShip->cxx::ShipEntity::missilesList(); }
+- (std::vector<oo::Ref<OOEquipmentType>>) missilesList	{ return _cxxShip->cxx::ShipEntity::missilesList(); }
 - (oo::PList) passengerListForScripting	{ return _cxxShip->cxx::ShipEntity::passengerListForScripting(); }
 - (oo::PList) parcelListForScripting	{ return _cxxShip->cxx::ShipEntity::parcelListForScripting(); }
 - (oo::PList) contractListForScripting	{ return _cxxShip->cxx::ShipEntity::contractListForScripting(); }
 - (OOEquipmentType *) generateMissileEquipmentTypeFrom:(const std::string &)role	{ return _cxxShip->generateMissileEquipmentTypeFrom(role); }
-- (std::vector<oo::ObjCRef<OOEquipmentType *>>) cxx_equipmentListForScripting	{ return _cxxShip->equipmentListForScripting(); }
+- (std::vector<oo::Ref<OOEquipmentType>>) cxx_equipmentListForScripting	{ return _cxxShip->equipmentListForScripting(); }
 - (BOOL) cxx_equipmentValidToAdd:(const std::string &)equipmentKey inContext:(const std::string &)context	{ return _cxxShip->equipmentValidToAdd(equipmentKey, context); }
 - (BOOL) cxx_equipmentValidToAdd:(const std::string &)fullEquipmentKey whileLoading:(BOOL)loading inContext:(const std::string &)context	{ return _cxxShip->equipmentValidToAdd(fullEquipmentKey, loading, context); }
 - (BOOL) setWeaponMount:(OOWeaponFacing)facing toWeapon:(const std::string &)eqKey	{ return _cxxShip->cxx::ShipEntity::setWeaponMount(facing, eqKey); }

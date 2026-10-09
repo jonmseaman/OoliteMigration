@@ -27,7 +27,6 @@ MA 02110-1301, USA.
 
 #import "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
-@class OOShipGroup;
 
 
 #ifdef __cplusplus

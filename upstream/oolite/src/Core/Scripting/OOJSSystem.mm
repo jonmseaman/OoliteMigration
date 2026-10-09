@@ -1769,7 +1769,7 @@ static bool SystemAddShipsOrGroup(Context cx, CallArgs &oojsArgs, bool isGroup)
 	if (isGroup)
 	{
 		const std::vector<oo::ObjCRef<ShipEntity *>> ships = oo::ObjCRefsIn<ShipEntity *>(result);
-		if (ships.size() > 0)  result = oo::PListObject(OOJSSystemShipGroup(ships[0].get()));
+		if (ships.size() > 0)  result = OOShipGroupObjectNode(OOJSSystemShipGroup(ships[0].get()));
 		else  result = oo::PList();
 	}
 	OOJS_END_FULL_NATIVE
@@ -1839,7 +1839,7 @@ static bool SystemAddShipsOrGroupToRoute(Context cx, CallArgs &oojsArgs, bool is
 	if (isGroup)
 	{
 		const std::vector<oo::ObjCRef<ShipEntity *>> ships = oo::ObjCRefsIn<ShipEntity *>(result);
-		if (ships.size() > 0)  result = oo::PListObject(OOJSSystemShipGroup(ships[0].get()));
+		if (ships.size() > 0)  result = OOShipGroupObjectNode(OOJSSystemShipGroup(ships[0].get()));
 		else  result = oo::PList();
 	}
 	OOJS_END_FULL_NATIVE

@@ -56,7 +56,7 @@ uint32_t gDebugFlags = 0;
 {
 @public
 	BOOL _visible;
-	OOShipGroup *_group;
+	oo::Ref<OOShipGroup> _group;	// C++ since bead oo-9ht.19
 }
 @end
 
@@ -64,7 +64,7 @@ uint32_t gDebugFlags = 0;
 @implementation TestEntity
 
 - (BOOL) isVisibleToScripts  { return _visible; }
-- (OOShipGroup *) group  { return _group; }
+- (OOShipGroup *) group  { return _group.get(); }
 
 @end
 
@@ -807,7 +807,7 @@ OO_TEST(shipCreators)
 	Log(sUniverse->_log);
 	TestEntity *first = MakeEntity(60, YES);
 	TestEntity *second = MakeEntity(61, YES);
-	first->_group = [[OOShipGroup cxx_groupWithName:std::string("convoy")] retain];
+	first->_group = OOShipGroup::groupWithName(std::string("convoy"));
 	sUniverse->_shipsToAdd = { oo::ObjCRef<ShipEntity *>((ShipEntity *)first), oo::ObjCRef<ShipEntity *>((ShipEntity *)second) };
 
 	OO_CHECK_EVAL("system.addShips('trader', 2).map(function (s) { return s.position.x; }).join()", "60,61");

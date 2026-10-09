@@ -136,7 +136,7 @@ oo::PList ShipEntity::savedShipDictionaryWithContext(OOShipSaveContext *context)
 		unsigned i;
 		for (i = 0; i < missiles; i++)
 		{
-			const std::optional<std::string> missileType = [missile_list[i] cxx_identifier];
+			const std::optional<std::string> missileType = (missile_list[i] != nullptr ? missile_list[i]->identifier() : std::optional<std::string>());
 			if (missileType.has_value())  missileArray.push_back(*missileType);
 		}
 		result[KEY_MISSILES] = ArrayFromStrings(missileArray);
@@ -145,9 +145,9 @@ oo::PList ShipEntity::savedShipDictionaryWithContext(OOShipSaveContext *context)
 	// Add groups.
 	if (_group != nil)
 	{
-		result[KEY_GROUP_ID] = oo::PList::unsignedInteger(GroupIDForGroup(_group, *context));
-		if ([_group leader] == self)  result[KEY_IS_GROUP_LEADER] = oo::PList(static_cast<bool>(YES));
-		const std::optional<std::string> groupName = [_group cxx_name];
+		result[KEY_GROUP_ID] = oo::PList::unsignedInteger(GroupIDForGroup(_group.get(), *context));
+		if ((_group != nullptr ? _group->leader() : (::ShipEntity *)nil) == self)  result[KEY_IS_GROUP_LEADER] = oo::PList(static_cast<bool>(YES));
+		const std::optional<std::string> groupName = (_group != nullptr ? _group->name() : std::optional<std::string>());
 		if (groupName.has_value())
 		{
 			result[KEY_GROUP_NAME] = *groupName;
@@ -155,15 +155,15 @@ oo::PList ShipEntity::savedShipDictionaryWithContext(OOShipSaveContext *context)
 	}
 	if (_escortGroup != nil)
 	{
-		result[KEY_ESCORT_GROUP_ID] = oo::PList::unsignedInteger(GroupIDForGroup(_escortGroup, *context));
+		result[KEY_ESCORT_GROUP_ID] = oo::PList::unsignedInteger(GroupIDForGroup(_escortGroup.get(), *context));
 	}
 	/*	Eric:
 		The escortGroup property is removed from the lead ship, on entering witchspace.
 		But it is needed in the save file to correctly restore an escorted group.
 	*/
-	else if (_group != nil && [_group leader] == self)
+	else if (_group != nil && (_group != nullptr ? _group->leader() : (::ShipEntity *)nil) == self)
 	{
-		result[KEY_ESCORT_GROUP_ID] = oo::PList::unsignedInteger(GroupIDForGroup(_group, *context));
+		result[KEY_ESCORT_GROUP_ID] = oo::PList::unsignedInteger(GroupIDForGroup(_group.get(), *context));
 	}
 
 	// FIXME: AI.
@@ -267,12 +267,12 @@ oo::PList ShipEntity::savedShipDictionaryWithContext(OOShipSaveContext *context)
 	{
 		::OOShipGroup *group = GroupForGroupID(groupID, *context);
 		[ship setGroup:group];	// Handles adding to group
-		if (dict.get<bool>(KEY_IS_GROUP_LEADER))  [group setLeader:ship];
+		if (dict.get<bool>(KEY_IS_GROUP_LEADER))  { if (group != nullptr)  group->setLeader(ship); }
 		const std::optional<std::string> groupName = OptionalStringForKey(dict, KEY_GROUP_NAME);
-		if (groupName.has_value())  [group cxx_setName:groupName];
-		if ([ship cxx_hasPrimaryRole:"escort"] && ship != [group leader])
+		if (groupName.has_value())  { if (group != nullptr)  group->setName(groupName); }
+		if ([ship cxx_hasPrimaryRole:"escort"] && ship != (group != nullptr ? group->leader() : (::ShipEntity *)nil))
 		{
-			[ship setOwner:[group leader]];
+			[ship setOwner:(group != nullptr ? group->leader() : (::ShipEntity *)nil)];
 		}
 	}
 
@@ -280,8 +280,8 @@ oo::PList ShipEntity::savedShipDictionaryWithContext(OOShipSaveContext *context)
 	if (groupID != NSNotFound)
 	{
 		::OOShipGroup *group = GroupForGroupID(groupID, *context);
-		[group setLeader:ship];
-		[group cxx_setName:std::string("escort group")];
+		if (group != nullptr)  group->setLeader(ship);
+		if (group != nullptr)  group->setName(std::string("escort group"));
 		[ship setEscortGroup:group];
 	}
 
@@ -374,10 +374,10 @@ NSUInteger GroupIDForGroup(OOShipGroup *group, OOShipSaveContext &context)
 
 OOShipGroup *GroupForGroupID(NSUInteger groupID, OOShipSaveContext &context)
 {
-	oo::ObjCRef<OOShipGroup *> &group = context.groupsByID[groupID];
-	if (group.get() == nil)
+	oo::Ref<OOShipGroup> &group = context.groupsByID[groupID];
+	if (group == nullptr)
 	{
-		group = oo::adoptObjC([[OOShipGroup alloc] init]);
+		group = OOShipGroup::groupWithName(std::nullopt);	// -init
 	}
 
 	return group.get();

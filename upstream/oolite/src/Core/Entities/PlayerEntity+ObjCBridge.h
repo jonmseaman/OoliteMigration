@@ -508,7 +508,7 @@ MA 02110-1301, USA.
 // once slice 28 landed, is in that file too). Declared in the class's interface before the slice.
 @interface PlayerEntity (OOSlice18)
 
-- (std::vector<oo::ObjCRef<OOEquipmentType *>>) missilesList;
+- (std::vector<oo::Ref<OOEquipmentType>>) missilesList;
 - (std::vector<std::string>) cxx_cargoList;
 - (oo::PList) cargoListForScripting;
 - (unsigned) legalStatusOfCargoList;

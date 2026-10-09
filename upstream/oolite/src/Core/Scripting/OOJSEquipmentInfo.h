@@ -29,7 +29,6 @@ MA 02110-1301, USA.
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/StdLib.hpp"
 
-@class OOEquipmentType;
 
 
 #ifdef __cplusplus
@@ -49,6 +48,8 @@ void InitOOJSEquipmentInfo(ooscript::Context context, ooscript::Object global);
 	JSValueToEquipmentKeyRelaxed() will return any string that does not end
 	with _DAMAGED.
  */
+class OOEquipmentType;	// C++ since bead oo-9ht.28 (OOEquipmentType.h)
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -66,8 +67,7 @@ std::optional<std::string> JSValueToEquipmentKeyRelaxed(ooscript::Context contex
 #endif
 
 
-/*	The JS class name of cxx::OOEquipmentType's OOJSPrivateObject members, defined in
-	OOJSEquipmentInfo.mm (proposed ADR-0056 amendment oo-6symp). The façade's selectors the engine
-	sends (OOEquipmentType+ObjCBridge.mm) forward to those members since bead oo-9ht.102.
+/*	The JS class name of OOEquipmentType's OOJSPrivateObject members, defined in
+	OOJSEquipmentInfo.mm (proposed ADR-0056 amendment oo-6symp).
 */
 std::optional<std::string> OOJSEquipmentInfoJSClassName(void);

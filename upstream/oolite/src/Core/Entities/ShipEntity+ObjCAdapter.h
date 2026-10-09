@@ -64,7 +64,7 @@ public:
 	// Slice 9 (bead oo-ke13m).
 	bool canAddEquipment(const std::string &equipmentKeyIn, const std::string &context) override	{ return [(::ShipEntity *)this->_objcOwner canAddEquipment:equipmentKeyIn inContext:context]; }
 	::OOEquipmentType *weaponTypeForFacing(OOWeaponFacing facing, bool strict) override	{ return [(::ShipEntity *)this->_objcOwner weaponTypeForFacing:facing strict:strict]; }
-	std::vector<oo::ObjCRef<::OOEquipmentType *>> missilesList() override	{ return [(::ShipEntity *)this->_objcOwner missilesList]; }
+	std::vector<oo::Ref<::OOEquipmentType>> missilesList() override	{ return [(::ShipEntity *)this->_objcOwner missilesList]; }
 	oo::PList passengerListForScripting() override	{ return [(::ShipEntity *)this->_objcOwner passengerListForScripting]; }
 	oo::PList parcelListForScripting() override	{ return [(::ShipEntity *)this->_objcOwner parcelListForScripting]; }
 	oo::PList contractListForScripting() override	{ return [(::ShipEntity *)this->_objcOwner contractListForScripting]; }

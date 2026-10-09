@@ -2097,11 +2097,11 @@ void ShipEntity::setUpEscorts()
 	{
 		[self setGroup:escortGroup]; // should probably become a copy of the escortGroup post NMSR.
 	}
-	[escortGroup setLeader:self];
+	if (escortGroup != nullptr)  escortGroup->setLeader(self);
 	
 	[self refreshEscortPositions];
 	
-	uint8_t currentEscortCount = [escortGroup count] - 1;	// always at least 0.
+	uint8_t currentEscortCount = (escortGroup != nullptr ? escortGroup->count() : 0) - 1;	// always at least 0.
 	
 	while (_pendingEscortCount > 0 && ([self isThargoid] || currentEscortCount < _maxEscortCount))
 	{
@@ -2118,7 +2118,7 @@ void ShipEntity::setUpEscorts()
 		[escorter release];
 
 		_pendingEscortCount--;
-		currentEscortCount = [escortGroup count] - 1;
+		currentEscortCount = (escortGroup != nullptr ? escortGroup->count() : 0) - 1;
 	}
 	// done assigning escorts
 	_pendingEscortCount = 0;
@@ -2146,11 +2146,11 @@ void ShipEntity::setUpMixedEscorts()
 	{
 		[self setGroup:escortGroup]; // should probably become a copy of the escortGroup post NMSR.
 	}
-	[escortGroup setLeader:self];
+	if (escortGroup != nullptr)  escortGroup->setLeader(self);
 	_maxEscortCount = MAX_ESCORTS;
 	[self refreshEscortPositions];
 	
-	uint8_t currentEscortCount = [escortGroup count] - 1;	// always at least 0
+	uint8_t currentEscortCount = (escortGroup != nullptr ? escortGroup->count() : 0) - 1;	// always at least 0
 	
 	_maxEscortCount = 0;
 	int8_t i = 0;
@@ -3107,10 +3107,10 @@ void ShipEntity::update(OOTimeDelta delta_t)
 					[escort.get() setEscortDestination:[self coordinatesForEscortPosition:i++]];
 				}
 			
-				::ShipEntity *leader = [[self escortGroup] leader];
+				::ShipEntity *leader = ([self escortGroup] != nullptr ? [self escortGroup]->leader() : (::ShipEntity *)nil);
 				if (leader != nil && ([leader scanClass] != [self scanClass])) {
 					OO_LOG("ship.sanityCheck.failed", "Ship {} escorting {} with wrong scanclass!", oo::DescriptionOf(self), oo::DescriptionOf(leader));
-					[[self escortGroup] removeShip:self];
+					if ([self escortGroup] != nullptr)  [self escortGroup]->removeShip(self);
 					[self setEscortGroup:nil];
 				}
 			}
@@ -3373,16 +3373,16 @@ void ShipEntity::respondToAttackFrom(::Entity *from, ::Entity *other)
 					return;
 				}
 			
-				::ShipEntity *groupLeader = [group leader];
+				::ShipEntity *groupLeader = (group != nullptr ? group->leader() : (::ShipEntity *)nil);
 				if (hunter == groupLeader)
 				{
 					//oops we were attacked by our leader, desert him
-					[group removeShip:self];
+					if (group != nullptr)  group->removeShip(self);
 				}
 				else 
 				{
 					//evict them from our group
-					[group removeShip:hunter];
+					if (group != nullptr)  group->removeShip(hunter);
 				
 					[groupLeader setFoundTarget:other];
 					[groupLeader setPrimaryAggressor:hunter];
@@ -3444,7 +3444,7 @@ bool ShipEntity::hasOneEquipmentItemIncludingMissiles(const std::string &itemKey
 		const std::string key = (itemKey == "thargon") ? std::string("EQ_THARGON") : itemKey;
 		for (i = 0; i < missiles; i++)
 		{
-			if (missile_list[i] != nil && [missile_list[i] cxx_identifier].value_or("") == key)  return YES;
+			if (missile_list[i] != nil && (missile_list[i] != nullptr ? missile_list[i]->identifier() : std::optional<std::string>()).value_or("") == key)  return YES;
 		}
 	}
 	
@@ -3456,12 +3456,12 @@ bool ShipEntity::hasPrimaryWeapon(OOWeaponType weaponType)
 {
 	::ShipEntity *self = oo::ToObjC(this);
 	// -isEqualToString: of the identifiers: a nil weapon (nullopt) matches nothing.
-	const std::optional<std::string> weaponIdentifier = [weaponType cxx_identifier];
+	const std::optional<std::string> weaponIdentifier = (weaponType != nullptr ? weaponType->identifier() : std::optional<std::string>());
 	if (weaponIdentifier.has_value() &&
-		([forward_weapon_type cxx_identifier] == weaponIdentifier ||
-		 [aft_weapon_type cxx_identifier] == weaponIdentifier ||
-		 [port_weapon_type cxx_identifier] == weaponIdentifier ||
-		 [starboard_weapon_type cxx_identifier] == weaponIdentifier))
+		((forward_weapon_type != nullptr ? forward_weapon_type->identifier() : std::optional<std::string>()) == weaponIdentifier ||
+		 (aft_weapon_type != nullptr ? aft_weapon_type->identifier() : std::optional<std::string>()) == weaponIdentifier ||
+		 (port_weapon_type != nullptr ? port_weapon_type->identifier() : std::optional<std::string>()) == weaponIdentifier ||
+		 (starboard_weapon_type != nullptr ? starboard_weapon_type->identifier() : std::optional<std::string>()) == weaponIdentifier))
 	{
 		return YES;
 	}
@@ -3527,8 +3527,8 @@ bool ShipEntity::hasEquipmentItemProviding(const std::string &equipmentType)
 		}
 		else
 		{
-			::OOEquipmentType *et = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:key];
-			if (et != nil && [et cxx_provides:equipmentType])
+			::OOEquipmentType *et = OOEquipmentType::equipmentTypeWithIdentifier(key).get();
+			if (et != nil && (et != nullptr ? et->provides(equipmentType) : false))
 			{
 				return YES;
 			}
@@ -3548,8 +3548,8 @@ std::optional<std::string> ShipEntity::equipmentItemProviding(const std::string 
 		}
 		else
 		{
-			::OOEquipmentType *et = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:key];
-			if (et != nil && [et cxx_provides:equipmentType])
+			::OOEquipmentType *et = OOEquipmentType::equipmentTypeWithIdentifier(key).get();
+			if (et != nil && (et != nullptr ? et->provides(equipmentType) : false))
 			{
 				return key;
 			}
@@ -3638,10 +3638,10 @@ bool ShipEntity::canAddEquipment(const std::string &equipmentKeyIn, const std::s
 		if (missiles >= max_missiles) return NO;
 	}
 
-	::OOEquipmentType *eqType = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:equipmentKey];
+	::OOEquipmentType *eqType = OOEquipmentType::equipmentTypeWithIdentifier(equipmentKey).get();
 
 	// -hasEquipmentItem: with one string key.
-	if (![eqType canCarryMultiple] && [self cxx_hasOneEquipmentItem:equipmentKey includeWeapons:NO whileLoading:NO])  return NO;
+	if (!(eqType != nullptr ? eqType->canCarryMultiple() : false) && [self cxx_hasOneEquipmentItem:equipmentKey includeWeapons:NO whileLoading:NO])  return NO;
 	if (![self cxx_equipmentValidToAdd:equipmentKey inContext:context])  return NO;
 
 	return YES;
@@ -3705,10 +3705,10 @@ OOWeaponType ShipEntity::weaponTypeIDForFacing(OOWeaponFacing facing, bool stric
 }
 
 
-std::vector<oo::ObjCRef<::OOEquipmentType *>> ShipEntity::missilesList()
+std::vector<oo::Ref<::OOEquipmentType>> ShipEntity::missilesList()
 {
 	// if missile_list is empty, avoid exception and return an empty array instead
-	std::vector<oo::ObjCRef<::OOEquipmentType *>> list;
+	std::vector<oo::Ref<::OOEquipmentType>> list;
 	if (missile_list[0] != nil)
 	{
 		list.reserve(missiles);
@@ -3754,24 +3754,24 @@ oo::PList ShipEntity::contractListForScripting()
 	const oo::PList itemInfo(oo::PList::Array{ "100", "100000", "Missile", role, "Unidentified missile type.",
 							oo::PList(oo::PList::Dict{ { "is_external_store", oo::PList("true") } }) });
 
-	[::OOEquipmentType cxx_addEquipmentWithInfo:itemInfo];
-	return [::OOEquipmentType cxx_equipmentTypeWithIdentifier:role];
+	OOEquipmentType::addEquipmentWithInfo(itemInfo);
+	return OOEquipmentType::equipmentTypeWithIdentifier(role).get();
 }
 
 
-std::vector<oo::ObjCRef<::OOEquipmentType *>> ShipEntity::equipmentListForScripting()
+std::vector<oo::Ref<::OOEquipmentType>> ShipEntity::equipmentListForScripting()
 {
 	::ShipEntity *self = oo::ToObjC(this);
-	std::vector<oo::ObjCRef<::OOEquipmentType *>>	quip;
+	std::vector<oo::Ref<::OOEquipmentType>>	quip;
 	::OOEquipmentType		*eqType = nil;
 	BOOL				isDamaged;
 
-	for (const auto &eqTypeRef : [::OOEquipmentType cxx_allEquipmentTypes])
+	for (const auto &eqTypeRef : OOEquipmentType::allEquipmentTypes())
 	{
 		eqType = eqTypeRef.get();
-		const std::string identifier = [eqType cxx_identifier].value_or("");
+		const std::string identifier = (eqType != nullptr ? eqType->identifier() : std::optional<std::string>()).value_or("");
 		// Equipment list,  consistent with the rest of the API - Kaks
-		if ([eqType canCarryMultiple])
+		if ((eqType != nullptr ? eqType->canCarryMultiple() : false))
 		{
 			const std::string damagedIdentifier = identifier + "_DAMAGED";
 			NSUInteger i, count = 0;
@@ -3796,7 +3796,7 @@ std::vector<oo::ObjCRef<::OOEquipmentType *>> ShipEntity::equipmentListForScript
 	// Passengers - not supported yet for NPCs, but it's here for genericity.
 	if ([self passengerCapacity] > 0)
 	{
-		eqType = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:"EQ_PASSENGER_BERTH"];
+		eqType = OOEquipmentType::equipmentTypeWithIdentifier("EQ_PASSENGER_BERTH").get();
 		//[quip addObject:[self eqDictionaryWithType:eqType isDamaged:NO]];
 		quip.emplace_back(eqType);
 	}
@@ -3824,7 +3824,7 @@ bool ShipEntity::equipmentValidToAdd(const std::string &fullEquipmentKey, bool l
 		equipmentKey.resize(equipmentKey.size() - std::string_view("_DAMAGED").size());
 	}
 
-	eqType = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:equipmentKey];
+	eqType = OOEquipmentType::equipmentTypeWithIdentifier(equipmentKey).get();
 	if (eqType == nil)  return NO;
 	
 	// need to know if we are trying to add a Repair version of the equipment. In some cases
@@ -3832,31 +3832,31 @@ bool ShipEntity::equipmentValidToAdd(const std::string &fullEquipmentKey, bool l
 	// if the condition is not satisfied, but it doesn't make sense to deny repair when the
 	// equipment is already installed. For now, we are checking only the cargo space condition,
 	// but other conditions might need to be revised too. - Nikos, 20151115
-	if ([self hasEquipmentItem:OptionalKeyPList([eqType cxx_damagedIdentifier])])
+	if ([self hasEquipmentItem:OptionalKeyPList((eqType != nullptr ? eqType->damagedIdentifier() : std::optional<std::string>()))])
 	{
 		validationForDamagedEquipment = YES;
 	}
 	
 	// not all conditions make sence checking while loading a game with already purchaged equipment.
 	// while loading, we mainly need to catch changes when the installed oxps set has changed since saving. 
-	if ([eqType requiresEmptyPylon] && [self missileCount] >= [self missileCapacity] && !loading)  return NO;
-	if ([eqType  requiresMountedPylon] && [self missileCount] == 0 && !loading)  return NO;
-	if ([self availableCargoSpace] < [eqType requiredCargoSpace] && !validationForDamagedEquipment && !loading)  return NO;
-	const std::optional<std::vector<std::string>> requiresEquipment = [eqType cxx_requiresEquipment];
-	const std::optional<std::vector<std::string>> requiresAnyEquipment = [eqType cxx_requiresAnyEquipment];
-	const std::optional<std::vector<std::string>> incompatibleEquipment = [eqType cxx_incompatibleEquipment];
+	if ((eqType != nullptr ? eqType->requiresEmptyPylon() : false) && [self missileCount] >= [self missileCapacity] && !loading)  return NO;
+	if ((eqType != nullptr ? eqType->requiresMountedPylon() : false) && [self missileCount] == 0 && !loading)  return NO;
+	if ([self availableCargoSpace] < (eqType != nullptr ? eqType->requiredCargoSpace() : 0) && !validationForDamagedEquipment && !loading)  return NO;
+	const std::optional<std::vector<std::string>> requiresEquipment = (eqType != nullptr ? eqType->requiresEquipment() : std::optional<std::vector<std::string>>());
+	const std::optional<std::vector<std::string>> requiresAnyEquipment = (eqType != nullptr ? eqType->requiresAnyEquipment() : std::optional<std::vector<std::string>>());
+	const std::optional<std::vector<std::string>> incompatibleEquipment = (eqType != nullptr ? eqType->incompatibleEquipment() : std::optional<std::vector<std::string>>());
 	if (requiresEquipment.has_value() && ![self hasAllEquipment:KeysPList(*requiresEquipment) includeWeapons:YES whileLoading:loading])  return NO;
 	if (requiresAnyEquipment.has_value() && ![self hasEquipmentItem:KeysPList(*requiresAnyEquipment) includeWeapons:YES whileLoading:loading])  return NO;
 	if (incompatibleEquipment.has_value() && [self hasEquipmentItem:KeysPList(*incompatibleEquipment) includeWeapons:YES whileLoading:loading])  return NO;
-	if ([eqType requiresCleanLegalRecord] && [self legalStatus] != 0 && !loading)  return NO;
-	if ([eqType requiresNonCleanLegalRecord] && [self legalStatus] == 0 && !loading)  return NO;
-	if ([eqType requiresFreePassengerBerth] && [self passengerCount] >= [self passengerCapacity])  return NO;
-	if ([eqType requiresFullFuel] && [self fuel] < [self fuelCapacity] && !loading)  return NO;
-	if ([eqType requiresNonFullFuel] && [self fuel] >= [self fuelCapacity] && !loading)  return NO;
+	if ((eqType != nullptr ? eqType->requiresCleanLegalRecord() : false) && [self legalStatus] != 0 && !loading)  return NO;
+	if ((eqType != nullptr ? eqType->requiresNonCleanLegalRecord() : false) && [self legalStatus] == 0 && !loading)  return NO;
+	if ((eqType != nullptr ? eqType->requiresFreePassengerBerth() : false) && [self passengerCount] >= [self passengerCapacity])  return NO;
+	if ((eqType != nullptr ? eqType->requiresFullFuel() : false) && [self fuel] < [self fuelCapacity] && !loading)  return NO;
+	if ((eqType != nullptr ? eqType->requiresNonFullFuel() : false) && [self fuel] >= [self fuelCapacity] && !loading)  return NO;
 
 	if (!loading)
 	{
-		const std::optional<std::string> condition_script = [eqType cxx_conditionScript];
+		const std::optional<std::string> condition_script = (eqType != nullptr ? eqType->conditionScript() : std::optional<std::string>());
 		if (condition_script.has_value())
 		{
 			::OOJSScript *condScript = [UNIVERSE cxx_getConditionScript:*condition_script];
@@ -3890,8 +3890,8 @@ bool ShipEntity::equipmentValidToAdd(const std::string &fullEquipmentKey, bool l
 
 	if ([self isPlayer])
 	{
-		if (![eqType isAvailableToPlayer])  return NO;
-		if (![eqType isAvailableToAll])  
+		if (!(eqType != nullptr ? eqType->isAvailableToPlayer() : false))  return NO;
+		if (!(eqType != nullptr ? eqType->isAvailableToAll() : false))  
 		{
 			// find options that agree with this ship. Only player ships have these options.
 			// (Membership only: the string elements of the two arrays.)
@@ -3912,7 +3912,7 @@ bool ShipEntity::equipmentValidToAdd(const std::string &fullEquipmentKey, bool l
 	}
 	else
 	{
-		if (![eqType isAvailableToNPCs])  return NO;
+		if (!(eqType != nullptr ? eqType->isAvailableToNPCs() : false))  return NO;
 	}
 	
 	return YES;
@@ -3982,13 +3982,13 @@ bool ShipEntity::addEquipmentItem(const std::string &equipmentKeyIn, bool valida
 
 	if (oo::str::hasSuffix(equipmentKey, "_DAMAGED"))
 	{
-		eqType = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:equipmentKey.substr(0, equipmentKey.size() - std::string_view("_DAMAGED").size())];
+		eqType = OOEquipmentType::equipmentTypeWithIdentifier(equipmentKey.substr(0, equipmentKey.size() - std::string_view("_DAMAGED").size())).get();
 	}
 	else
 	{
-		eqType = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:equipmentKey];
+		eqType = OOEquipmentType::equipmentTypeWithIdentifier(equipmentKey).get();
 		// in case we have the damaged version!
-		if (![eqType canCarryMultiple])
+		if (!(eqType != nullptr ? eqType->canCarryMultiple() : false))
 		{
 			const std::string damagedKey = equipmentKey + "_DAMAGED";
 			if (std::ranges::find(_equipment, damagedKey) != _equipment.end())
@@ -4003,7 +4003,7 @@ bool ShipEntity::addEquipmentItem(const std::string &equipmentKeyIn, bool valida
 	if (eqType == nil)  return NO;
 	
 	// special cases
-	if ([eqType isMissileOrMine] || ([self isThargoid] && isEqThargon))
+	if ((eqType != nullptr ? eqType->isMissileOrMine() : false) || ([self isThargoid] && isEqThargon))
 	{
 		if (missiles >= max_missiles) return NO;
 		
@@ -4025,11 +4025,11 @@ bool ShipEntity::addEquipmentItem(const std::string &equipmentKeyIn, bool valida
 	if (equipmentKey != "EQ_PASSENGER_BERTH" && !isRepairedEquipment)
 	{
 		// Add to equipment_weight with all other equipment.
-		equipment_weight += [eqType requiredCargoSpace];
+		equipment_weight += (eqType != nullptr ? eqType->requiredCargoSpace() : 0);
 		if (equipment_weight > max_cargo)
 		{
 			// should not even happen with old save games. Reject equipment now.
-			equipment_weight -= [eqType requiredCargoSpace];
+			equipment_weight -= (eqType != nullptr ? eqType->requiredCargoSpace() : 0);
 			return NO;
 		}
 	}
@@ -4090,10 +4090,10 @@ void ShipEntity::removeEquipmentItem(const std::string &equipmentKey)
 	{
 		equipmentTypeCheckKey.resize(equipmentKey.size() - std::string_view("_DAMAGED").size());
 	}
-	::OOEquipmentType *eqType = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:equipmentTypeCheckKey];
+	::OOEquipmentType *eqType = OOEquipmentType::equipmentTypeWithIdentifier(equipmentTypeCheckKey).get();
 	if (eqType == nil)  return;
 
-	if ([eqType isMissileOrMine] || ([self isThargoid] && (oo::str::hasSuffix(lcEquipmentKey, "thargon") || oo::str::hasPrefix(lcEquipmentKey, "thargon"))))
+	if ((eqType != nullptr ? eqType->isMissileOrMine() : false) || ([self isThargoid] && (oo::str::hasSuffix(lcEquipmentKey, "thargon") || oo::str::hasPrefix(lcEquipmentKey, "thargon"))))
 	{
 		[self removeExternalStore:eqType];
 	}
@@ -4103,7 +4103,7 @@ void ShipEntity::removeEquipmentItem(const std::string &equipmentKey)
 		{
 			if (equipmentKey != "EQ_PASSENGER_BERTH")
 			{
-				equipment_weight -= [eqType requiredCargoSpace]; // all other cases;
+				equipment_weight -= (eqType != nullptr ? eqType->requiredCargoSpace() : 0); // all other cases;
 			}
 						
 			if (equipmentKey == "EQ_CLOAKING_DEVICE")
@@ -4131,7 +4131,7 @@ void ShipEntity::removeEquipmentItem(const std::string &equipmentKey)
 			}
 		}
 
-		if (!oo::str::hasSuffix(equipmentKey, "_DAMAGED") && ![eqType canCarryMultiple])
+		if (!oo::str::hasSuffix(equipmentKey, "_DAMAGED") && !(eqType != nullptr ? eqType->canCarryMultiple() : false))
 		{
 			const std::string damagedKey = equipmentKey + "_DAMAGED";
 			const auto damaged = std::ranges::find(_equipment, damagedKey);
@@ -4139,7 +4139,7 @@ void ShipEntity::removeEquipmentItem(const std::string &equipmentKey)
 			{
 				// remove damaged counterpart (the first occurrence, as -indexOfObject: found it)
 				_equipment.erase(damaged);
-				equipment_weight -= [eqType requiredCargoSpace];
+				equipment_weight -= (eqType != nullptr ? eqType->requiredCargoSpace() : 0);
 			}
 		}
 		const auto equipped = std::ranges::find(_equipment, equipmentKey);
@@ -4165,12 +4165,12 @@ void ShipEntity::removeEquipmentItem(const std::string &equipmentKey)
 bool ShipEntity::removeExternalStore(::OOEquipmentType *eqType)
 {
 	// nil (a nil type) matches nothing, as -isEqualTo:nil did.
-	const std::optional<std::string>	identifier = [eqType cxx_identifier];
+	const std::optional<std::string>	identifier = (eqType != nullptr ? eqType->identifier() : std::optional<std::string>());
 	unsigned	i;
 
 	for (i = 0; i < missiles; i++)
 	{
-		if (identifier.has_value() && [missile_list[i] cxx_identifier] == identifier)
+		if (identifier.has_value() && (missile_list[i] != nullptr ? missile_list[i]->identifier() : std::optional<std::string>()) == identifier)
 		{
 			// now 'delete' [i] by compacting the array
 			while ( ++i < missiles ) missile_list[i - 1] = missile_list[i];
@@ -4214,7 +4214,7 @@ bool ShipEntity::removeExternalStore(::OOEquipmentType *eqType)
 		}
 	}
 
-	eqRole = [::OOEquipmentType cxx_getMissileRegistryRoleForShip:*shipKey];	// eqRole != role for generic missiles.
+	eqRole = OOEquipmentType::getMissileRegistryRoleForShip(*shipKey);	// eqRole != role for generic missiles.
 
 	if (!eqRole.has_value())
 	{
@@ -4226,7 +4226,7 @@ bool ShipEntity::removeExternalStore(::OOEquipmentType *eqType)
 			else
 				OO_LOG_WARN("ship.setUp.missiles", "{} \"{}\" used in ship \"{}\" needs a valid {}.plist entry.{}", "missile_role", role, [self cxx_name].value_or("(null)"), "shipdata", " Using defaults instead.");
 
-			[::OOEquipmentType cxx_setMissileRegistryRole:"" forShip:*shipKey];	// no valid role for this shipKey
+			OOEquipmentType::setMissileRegistryRole("", *shipKey);	// no valid role for this shipKey
 			if (isRandomMissile) return [self verifiedMissileTypeFromRole:role];
 			else return nil;
 		}
@@ -4237,18 +4237,18 @@ bool ShipEntity::removeExternalStore(::OOEquipmentType *eqType)
 			for (const std::string &value : (missileRoles != nullptr) ? missileRoles->roles() : std::vector<std::string>())
 			{
 				role = value;
-				missileType = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:role];
+				missileType = OOEquipmentType::equipmentTypeWithIdentifier(role).get();
 				// ensure that we have a missile or mine
-				if ([missileType isMissileOrMine]) break;
+				if ((missileType != nullptr ? missileType->isMissileOrMine() : false)) break;
 			}
 
-			if (![missileType isMissileOrMine])
+			if (!(missileType != nullptr ? missileType->isMissileOrMine() : false))
 			{
 				role = *shipKey;	// unique identifier to use in lieu of a valid equipment type if none are defined inside the generic missile roleset.
 			}
 		}
 
-		missileType = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:role];
+		missileType = OOEquipmentType::equipmentTypeWithIdentifier(role).get();
 
 		if (!missileType)
 		{
@@ -4256,7 +4256,7 @@ bool ShipEntity::removeExternalStore(::OOEquipmentType *eqType)
 			missileType = [self generateMissileEquipmentTypeFrom:role];
 		}
 
-		[::OOEquipmentType cxx_setMissileRegistryRole:role forShip:*shipKey];
+		OOEquipmentType::setMissileRegistryRole(role, *shipKey);
 		[missile release];
 	}
 	else
@@ -4267,7 +4267,7 @@ bool ShipEntity::removeExternalStore(::OOEquipmentType *eqType)
 			if (isRandomMissile) return [self verifiedMissileTypeFromRole:role];	// try and find a valid missile with role 'missile'.
 			return nil;
 		}
-		missileType = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:*eqRole];
+		missileType = OOEquipmentType::equipmentTypeWithIdentifier(*eqRole).get();
 	}
 
 	return missileType;
@@ -4319,16 +4319,16 @@ bool ShipEntity::removeExternalStore(::OOEquipmentType *eqType)
 
 	if (missileType == nil) OO_LOG_ERR("ship.setUp.missiles", "could not resolve missile / mine type for ship \"{}\". Original missile role:\"{}\".", [self cxx_name].value_or("(null)"), _missileRole.value_or("(null)"));
 
-	role = oo::str::lowercase([missileType cxx_identifier].value_or(""));
+	role = oo::str::lowercase((missileType != nullptr ? missileType->identifier() : std::optional<std::string>()).value_or(""));
 	thargoidMissile = [self isThargoid] && (oo::str::hasSuffix(role, "thargon") || oo::str::hasPrefix(role, "thargon"));
 
-	if (thargoidMissile || (!thargoidMissile && [missileType isMissileOrMine]))
+	if (thargoidMissile || (!thargoidMissile && (missileType != nullptr ? missileType->isMissileOrMine() : false)))
 	{
 		return missileType;
 	}
 	else
 	{
-		OO_LOG_WARN("ship.setUp.missiles", "missile_role \"{}\" is not a valid missile / mine type for ship \"{}\".{}", [missileType cxx_identifier].value_or("(null)"), [self cxx_name].value_or("(null)"), " No missile selected.");
+		OO_LOG_WARN("ship.setUp.missiles", "missile_role \"{}\" is not a valid missile / mine type for ship \"{}\".{}", (missileType != nullptr ? missileType->identifier() : std::optional<std::string>()).value_or("(null)"), [self cxx_name].value_or("(null)"), " No missile selected.");
 		return nil;
 	}
 }
@@ -5082,7 +5082,7 @@ void ShipEntity::behaviour_attack_target(double /*delta_t*/)
 		}
 	}
 
-	if ([forward_weapon_real_type isTurretLaser]) 
+	if ((forward_weapon_real_type != nullptr ? forward_weapon_real_type->isTurretLaser() : false)) 
 	{
 		behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET_TWELVE;
 	} 
@@ -5712,7 +5712,7 @@ void ShipEntity::behaviour_fly_to_target_six(double delta_t)
 	// target-twelve
 	if (behaviour == BEHAVIOUR_ATTACK_FLY_TO_TARGET_TWELVE)
 	{
-		if ([forward_weapon_type isTurretLaser])
+		if ((forward_weapon_type != nullptr ? forward_weapon_type->isTurretLaser() : false))
 		{
 			// head for a point near the target, avoiding common Galcop weapon mount locations
 			// TODO: this should account for weapon ranges
@@ -5743,7 +5743,7 @@ void ShipEntity::behaviour_fly_to_target_six(double delta_t)
 	else if(frustration > 0.0) frustration -= delta_t * 0.75;
 
 	double aspect = [self approachAspectToPrimaryTarget];
-	if(![forward_weapon_type isTurretLaser] && (frustration > 10 || aspect > 0.75))
+	if(!(forward_weapon_type != nullptr ? forward_weapon_type->isTurretLaser() : false) && (frustration > 10 || aspect > 0.75))
 	{
 		behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET;
 	}
@@ -6083,14 +6083,14 @@ void ShipEntity::behaviour_running_defense(double delta_t)
 	if (range > weaponRange || range > 0.8 * scannerRange || range == 0)
 	{
 		behaviour = BEHAVIOUR_CLOSE_WITH_TARGET;
-		if ([forward_weapon_type isTurretLaser]) 
+		if ((forward_weapon_type != nullptr ? forward_weapon_type->isTurretLaser() : false)) 
 		{
 				behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET_TWELVE;
 		} 
 		frustration = 0.0;
 	}
 	[self trackPrimaryTarget:delta_t:YES];
-	if ([forward_weapon_type isTurretLaser]) 
+	if ((forward_weapon_type != nullptr ? forward_weapon_type->isTurretLaser() : false)) 
 	{
 		// most Thargoids will only have the forward weapon
 		[self fireMainWeapon:range];
@@ -6175,7 +6175,7 @@ void ShipEntity::behaviour_flee_target(double delta_t)
 	}
 
 // thargoids won't normally be fleeing, but if they do, they can still shoot
-	if ([forward_weapon_type isTurretLaser])
+	if ((forward_weapon_type != nullptr ? forward_weapon_type->isTurretLaser() : false))
 	{
 		[self fireMainWeapon:range];
 	}
@@ -7481,7 +7481,7 @@ void ShipEntity::setMessageTime(double value)
 
 ::OOShipGroup *ShipEntity::group()
 {
-	return _group;
+	return _group.get();
 }
 
 
@@ -7491,16 +7491,15 @@ void ShipEntity::setGroup(::OOShipGroup *group)
 
 	if (group != _group)
 	{
-		if (_escortGroup != _group) 
+		if (_escortGroup != _group && _group != nullptr) 
 		{
-			if (self == [_group leader])  [_group setLeader:nil];
-			[_group removeShip:self];
+			if (self == _group->leader())  _group->setLeader(nil);
+			_group->removeShip(self);
 		}
-		[_group release];
-		[group addShip:self];
-		_group = [group retain];
+		if (group != nullptr)  group->addShip(self);
+		_group = oo::Ref<::OOShipGroup>(group);
 		
-		[[group leader] updateEscortFormation];
+		if (group != nullptr)  [group->leader() updateEscortFormation];
 	}
 }
 
@@ -7509,13 +7508,13 @@ void ShipEntity::setGroup(::OOShipGroup *group)
 {
 	::ShipEntity *self = oo::ToObjC(this);
 
-	if (_escortGroup == nil)
+	if (_escortGroup == nullptr)
 	{
-		_escortGroup = [[::OOShipGroup alloc] cxx_initWithName:std::string("escort group")];
-		[_escortGroup setLeader:self];
+		_escortGroup = ::OOShipGroup::groupWithName(std::string("escort group"));
+		if (_escortGroup != nullptr)  _escortGroup->setLeader(self);
 	}
 	
-	return _escortGroup;
+	return _escortGroup.get();
 }
 
 
@@ -7525,9 +7524,8 @@ void ShipEntity::setEscortGroup(::OOShipGroup *group)
 
 	if (group != _escortGroup)
 	{
-		[_escortGroup release];
-		_escortGroup = [group retain];
-		[group setLeader:self];	// A ship is always leader of its own escort group.
+		_escortGroup = oo::Ref<::OOShipGroup>(group);
+		if (group != nullptr)  group->setLeader(self);	// A ship is always leader of its own escort group.
 		[self updateEscortFormation];
 	}
 }
@@ -7536,7 +7534,7 @@ void ShipEntity::setEscortGroup(::OOShipGroup *group)
 #ifndef NDEBUG
 ::OOShipGroup *ShipEntity::rawEscortGroup()
 {
-	return _escortGroup;
+	return _escortGroup.get();
 }
 #endif
 
@@ -7545,20 +7543,20 @@ void ShipEntity::setEscortGroup(::OOShipGroup *group)
 {
 	::ShipEntity *self = oo::ToObjC(this);
 
-	if (_group == nil)
+	if (_group == nullptr)
 	{
-		_group = [[::OOShipGroup alloc] cxx_initWithName:std::string("station group")];
-		[_group setLeader:self];
+		_group = ::OOShipGroup::groupWithName(std::string("station group"));
+		if (_group != nullptr)  _group->setLeader(self);
 	}
 	
-	return _group;
+	return _group.get();
 }
 
 
 bool ShipEntity::hasEscorts()
 {
-	if (_escortGroup == nil)  return NO;
-	return [_escortGroup count] > 1;	// If only one member, it's self.
+	if (_escortGroup == nullptr)  return NO;
+	return _escortGroup->count() > 1;	// If only one member, it's self.
 }
 
 
@@ -7567,9 +7565,9 @@ std::vector<oo::ObjCRef<::ShipEntity *>> ShipEntity::escorts()
 	::ShipEntity *self = oo::ToObjC(this);
 
 	std::vector<oo::ObjCRef<::ShipEntity *>> escorts;
-	if (_escortGroup == nil)  return escorts;
+	if (_escortGroup == nullptr)  return escorts;
 	// The group's members at this moment, in its order, without self (as -ooExcludingObject: skipped it).
-	for (const oo::ObjCRef<::ShipEntity *> &memberRef : [_escortGroup cxx_memberArray])
+	for (const oo::ObjCRef<::ShipEntity *> &memberRef : _escortGroup->memberArray())
 	{
 		::ShipEntity *member = memberRef.get();
 		if (member == self)  continue;
@@ -7589,8 +7587,8 @@ std::vector<oo::ObjCRef<::ShipEntity *>> ShipEntity::escortArray()
 
 uint8_t ShipEntity::escortCount()
 {
-	if (_escortGroup == nil)  return 0;
-	return [_escortGroup count] - 1;
+	if (_escortGroup == nullptr)  return 0;
+	return _escortGroup->count() - 1;
 }
 
 
@@ -8111,14 +8109,14 @@ void ShipEntity::setWeaponDataFromType(OOWeaponType weapon_type)
 	::ShipEntity *self = oo::ToObjC(this);
 
 	weaponRange = getWeaponRangeFromType(weapon_type);
-	weapon_energy_use = [weapon_type weaponEnergyUse];
-	weapon_recharge_rate = [weapon_type weaponRechargeRate];
-	weapon_shot_temperature = [weapon_type weaponShotTemperature];
-	weapon_damage = [weapon_type weaponDamage];
+	weapon_energy_use = (weapon_type != nullptr ? weapon_type->weaponEnergyUse() : 0.0f);
+	weapon_recharge_rate = (weapon_type != nullptr ? weapon_type->weaponRechargeRate() : 0.0f);
+	weapon_shot_temperature = (weapon_type != nullptr ? weapon_type->weaponShotTemperature() : 0.0f);
+	weapon_damage = (weapon_type != nullptr ? weapon_type->weaponDamage() : 0.0f);
 
 	if (default_laser_color == nil)
 	{
-		oo::Ref<OOColor>	wcol = [weapon_type weaponColor];
+		oo::Ref<OOColor>	wcol = (weapon_type != nullptr ? weapon_type->weaponColor() : oo::Ref<OOColor>());
 		if (wcol != nil)
 		{
 			[self setLaserColor:wcol.get()];
@@ -10820,7 +10818,7 @@ bool ShipEntity::isFriendlyTo(::ShipEntity *otherShip)
 	if ((otherShip == self) ||
 		([self isPolice] && [otherShip isPolice]) ||
 		([self isThargoid] && [otherShip isThargoid]) ||
-		(myGroup != nil && otherGroup != nil && (myGroup == otherGroup || [otherGroup leader] == self)) ||
+		(myGroup != nil && otherGroup != nil && (myGroup == otherGroup || (otherGroup != nullptr ? otherGroup->leader() : (::ShipEntity *)nil) == self)) ||
 		([self scanClass] == CLASS_MILITARY && [otherShip scanClass] == CLASS_MILITARY))
 	{
 		isFriendly = YES;
@@ -12109,7 +12107,7 @@ bool ShipEntity::onTarget(OOWeaponFacing direction, OOWeaponType weapon_type)
 	GLfloat dq = -1.0f;
 	GLfloat d2, radius, astq;
 	Vector rel_pos, urp;
-	if ([weapon_type isTurretLaser])
+	if ((weapon_type != nullptr ? weapon_type->isTurretLaser() : false))
 	{
 		return YES;
 	}
@@ -12199,7 +12197,7 @@ bool ShipEntity::fireWeapon(OOWeaponType weapon_type, OOWeaponFacing direction, 
 
 	if (energy <= weapon_energy_use * multiplier) return NO;
 	if ([self shotTime] < weapon_recharge_rate)  return NO;
-	if (![weapon_type isTurretLaser])
+	if (!(weapon_type != nullptr ? weapon_type->isTurretLaser() : false))
 	{ // thargoid laser may just pick secondary target in this case
 		if (range > randf() * weaponRange * (accuracy+7.5))  return NO;
 		if (range > weaponRange)  return NO;
@@ -12209,14 +12207,14 @@ bool ShipEntity::fireWeapon(OOWeaponType weapon_type, OOWeaponFacing direction, 
 	BOOL fired = NO;
 	if (!isWeaponNone(weapon_type))
 	{
-		if ([weapon_type isTurretLaser])
+		if ((weapon_type != nullptr ? weapon_type->isTurretLaser() : false))
 		{
 			[self fireDirectLaserShot:range];
 			fired = YES;
 		}
 		else
 		{
-			[self cxx_fireLaserShotInDirection:direction weaponIdentifier:[weapon_type cxx_identifier].value_or("")];
+			[self cxx_fireLaserShotInDirection:direction weaponIdentifier:(weapon_type != nullptr ? weapon_type->identifier() : std::optional<std::string>()).value_or("")];
 			fired = YES;
 		}
 	}
@@ -12495,13 +12493,13 @@ bool ShipEntity::fireSubentityLaserShot(double range)
 		if (subent != nil && [victim isFrangible])
 		{
 			// do 1% bleed-through damage...
-			[victim takeEnergyDamage:0.01 * weapon_damage from:self becauseOf:parent weaponIdentifier:[[self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES] cxx_identifier].value_or(std::string())];
+			[victim takeEnergyDamage:0.01 * weapon_damage from:self becauseOf:parent weaponIdentifier:([self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES] != nullptr ? [self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES]->identifier() : std::optional<std::string>()).value_or(std::string())];
 			victim = subent;
 		}
 		
 		if (hitAtRange < weaponRange)
 		{
-			[victim takeEnergyDamage:weapon_damage from:self becauseOf:parent weaponIdentifier:[[self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES] cxx_identifier].value_or(std::string())];  // a very palpable hit
+			[victim takeEnergyDamage:weapon_damage from:self becauseOf:parent weaponIdentifier:([self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES] != nullptr ? [self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES]->identifier() : std::optional<std::string>()).value_or(std::string())];  // a very palpable hit
 			
 			shot->setRange(hitAtRange);
 			Vector vd = vector_forward_from_quaternion(shot->getOrientation());
@@ -12623,13 +12621,13 @@ bool ShipEntity::fireDirectLaserShotAt(::Entity *my_target)
 		if (subent != nil && [victim isFrangible])
 		{
 			// do 1% bleed-through damage...
-			[victim takeEnergyDamage: 0.01 * weapon_damage from:self becauseOf:self weaponIdentifier:[[self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES] cxx_identifier].value_or(std::string())];
+			[victim takeEnergyDamage: 0.01 * weapon_damage from:self becauseOf:self weaponIdentifier:([self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES] != nullptr ? [self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES]->identifier() : std::optional<std::string>()).value_or(std::string())];
 			victim = subent;
 		}
 
 		if (hit_at_range * hit_at_range < range_limit2)
 		{
-			[victim takeEnergyDamage:weapon_damage from:self becauseOf:self weaponIdentifier:[[self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES] cxx_identifier].value_or(std::string())];	// a very palpable hit
+			[victim takeEnergyDamage:weapon_damage from:self becauseOf:self weaponIdentifier:([self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES] != nullptr ? [self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES]->identifier() : std::optional<std::string>()).value_or(std::string())];	// a very palpable hit
 
 			shot->setRange(hit_at_range);
 			Vector vd = vector_forward_from_quaternion(shot->getOrientation());
@@ -12967,7 +12965,7 @@ namespace cxx {
 	{
 		// use a random missile from the list
 		i = floor(randf()*(double)missiles);
-		identifier = [missile_list[i] cxx_identifier];
+		identifier = (missile_list[i] != nullptr ? missile_list[i]->identifier() : std::optional<std::string>());
 		missile = [UNIVERSE cxx_newShipWithRole:identifier.value_or("")];
 		if (EXPECT_NOT(missile == nil))	// invalid missile role.
 		{
@@ -12983,7 +12981,7 @@ namespace cxx {
 	
 	// By definition, the player will always have the specified missile.
 	// What if the NPC didn't actually have the specified missile to begin with?
-	if (!isPlayer && ![self removeExternalStore:(identifier.has_value() ? [::OOEquipmentType cxx_equipmentTypeWithIdentifier:*identifier] : nil)])
+	if (!isPlayer && ![self removeExternalStore:(identifier.has_value() ? OOEquipmentType::equipmentTypeWithIdentifier(*identifier).get() : nil)])
 	{
 		[missile release];
 		return nil;
@@ -13013,9 +13011,9 @@ namespace cxx {
 	//We don't want real missiles in a group. Missiles could become escorts when the group is also used as escortGroup.
 	if ([missile scanClass] == CLASS_THARGOID) 
 	{
-		if([self group] == nil) [self setGroup:[::OOShipGroup cxx_groupWithName:"thargoid group"]];
+		if([self group] == nullptr) [self setGroup:OOShipGroup::groupWithName("thargoid group").get()];	// the ship keeps it (the autoreleased facade lived to the end of the pass)
 		
-		::ShipEntity	*thisGroupLeader = [_group leader];
+		::ShipEntity	*thisGroupLeader = (_group != nullptr ? _group->leader() : (::ShipEntity *)nil);
 		
 		if ([thisGroupLeader escortGroup] != _group) // avoid adding tharons to escort groups
 		{
@@ -13091,7 +13089,7 @@ void ShipEntity::setMissileLoadTime(OOTimeDelta newMissileLoadTime)
 // reactions to ECM that are not dependent on current AI state here
 void ShipEntity::noticeECM()
 {
-	if (accuracy >= COMBAT_AI_ISNT_AWFUL && missiles > 0 && ([missile_list[0] cxx_identifier] == "EQ_MISSILE"))
+	if (accuracy >= COMBAT_AI_ISNT_AWFUL && missiles > 0 && ((missile_list[0] != nullptr ? missile_list[0]->identifier() : std::optional<std::string>()) == "EQ_MISSILE"))
 	{
 // if we're being ECMd, and our missiles appear to be standard, and we
 // have some combat sense, wait a bit before firing the next one!
@@ -13987,7 +13985,7 @@ void ShipEntity::takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::Enti
 			{
 				if ([self isTrader] || [self isEscort])
 				{
-					::ShipEntity *groupLeader = [group leader];
+					::ShipEntity *groupLeader = (group != nullptr ? group->leader() : (::ShipEntity *)nil);
 					if (groupLeader != self)
 					{
 						[groupLeader setFoundTarget:hunter];
@@ -13998,7 +13996,7 @@ void ShipEntity::takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::Enti
 				}
 				if ([self isPirate])
 				{
-					for (const oo::ObjCRef<::ShipEntity *> &otherPirateRef : [group cxx_memberArray])
+					for (const oo::ObjCRef<::ShipEntity *> &otherPirateRef : (group != nullptr ? group->memberArray() : std::vector<oo::ObjCRef<::ShipEntity *>>()))
 					{
 						::ShipEntity *otherPirate = otherPirateRef.get();
 						if (otherPirate != self && randf() < 0.5)	// 50% chance they'll help
@@ -14011,7 +14009,7 @@ void ShipEntity::takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::Enti
 				}
 				else if (iAmTheLaw)
 				{
-					for (const oo::ObjCRef<::ShipEntity *> &otherPoliceRef : [group cxx_memberArray])
+					for (const oo::ObjCRef<::ShipEntity *> &otherPoliceRef : (group != nullptr ? group->memberArray() : std::vector<oo::ObjCRef<::ShipEntity *>>()))
 					{
 						::ShipEntity *otherPolice = otherPoliceRef.get();
 						if (otherPolice != self)
@@ -14130,8 +14128,7 @@ bool ShipEntity::abandonShip()
 				}
 				
 				// We now have no escorts.
-				[_escortGroup release];
-				_escortGroup = nil;
+				_escortGroup = nullptr;
 			}
 		}
 	}
@@ -14519,7 +14516,7 @@ bool ShipEntity::acceptAsEscort(::ShipEntity *other_ship)
 	{
 		::OOShipGroup *escortGroup = [self escortGroup];
 		
-		if ([escortGroup containsShip:other_ship])  return YES;
+		if ((escortGroup != nullptr ? escortGroup->containsShip(other_ship) : false))  return YES;
 		
 		// check total number acceptable
 		// the system's patrols don't have escorts set inside their dictionary, but accept max escorts.
@@ -14529,7 +14526,7 @@ bool ShipEntity::acceptAsEscort(::ShipEntity *other_ship)
 		}
 		
 		NSUInteger maxEscorts = _maxEscortCount; 	// never bigger than MAX_ESCORTS.
-		NSUInteger escortCount = [escortGroup count] - 1;	// always 0 or higher.
+		NSUInteger escortCount = (escortGroup != nullptr ? escortGroup->count() : 0) - 1;	// always 0 or higher.
 		
 		if (escortCount < maxEscorts)
 		{
@@ -14538,7 +14535,7 @@ bool ShipEntity::acceptAsEscort(::ShipEntity *other_ship)
 			{
 				[self setGroup:escortGroup];
 			}
-			else if ([self group] != escortGroup)  [[self group] addShip:other_ship];
+			else if ([self group] != escortGroup)  { if ([self group] != nullptr)  [self group]->addShip(other_ship); }
 			
 			if (([other_ship maxFlightSpeed] < cruiseSpeed) && ([other_ship maxFlightSpeed] > cruiseSpeed * 0.3))
 			{
@@ -14640,7 +14637,7 @@ void ShipEntity::deployEscorts()
 	if ([self primaryTarget] == nil || _escortGroup == nil)  return;
 	
 	::OOShipGroup *escortGroup = [self escortGroup];
-	NSUInteger escortCount = [escortGroup count] - 1;  // escorts minus leader.
+	NSUInteger escortCount = (escortGroup != nullptr ? escortGroup->count() : 0) - 1;  // escorts minus leader.
 	if (escortCount == 0)  return;
 	
 	if ([self group] == nil)  [self setGroup:escortGroup];
@@ -14719,8 +14716,7 @@ void ShipEntity::dockEscorts()
 	}
 	
 	// We now have no escorts.
-	[_escortGroup release];
-	_escortGroup = nil;
+	_escortGroup = nullptr;
 }
 
 
@@ -14728,7 +14724,7 @@ void ShipEntity::setTargetToNearestStationIncludingHostiles(bool includeHostiles
 {
 	::ShipEntity *self = oo::ToObjC(this);
 	// check if the groupID (parent ship) points to a station...
-	::Entity		*mother = [[self group] leader];
+	::Entity		*mother = ([self group] != nullptr ? [self group]->leader() : (::ShipEntity *)nil);
 	if ([mother isStation])
 	{
 		[self addTarget:mother];
@@ -15079,7 +15075,7 @@ bool ShipEntity::markForFines()
 
 bool ShipEntity::isMining()
 {
-	return ((behaviour == BEHAVIOUR_ATTACK_MINING_TARGET)&&([forward_weapon_type isMiningLaser]));
+	return ((behaviour == BEHAVIOUR_ATTACK_MINING_TARGET)&&((forward_weapon_type != nullptr ? forward_weapon_type->isMiningLaser() : false)));
 }
 
 
@@ -15646,7 +15642,7 @@ OOAlertCondition ShipEntity::realAlertCondition()
 		}
 		if (_group)
 		{
-			OOShipGroupCursor cursor(_group);
+			OOShipGroupCursor cursor(_group.get());
 			::ShipEntity *batch[16];
 			for (NSUInteger count = ShipGroupCursorBatch(cursor, batch); count != 0; count = ShipGroupCursorBatch(cursor, batch))
 			{
@@ -15665,7 +15661,7 @@ OOAlertCondition ShipEntity::realAlertCondition()
 		}
 		if (_escortGroup && _group != _escortGroup)
 		{
-			OOShipGroupCursor cursor(_escortGroup);
+			OOShipGroupCursor cursor(_escortGroup.get());
 			::ShipEntity *batch[16];
 			for (NSUInteger count = ShipGroupCursorBatch(cursor, batch); count != 0; count = ShipGroupCursorBatch(cursor, batch))
 			{
@@ -15783,11 +15779,11 @@ BOOL OOUniformBindingPermitted(const std::string &propertyName, id bindingTarget
 GLfloat getWeaponRangeFromType(OOWeaponType weapon_type)
 {
 	// [nil weaponRange] answered 0.
-	return weapon_type != nil ? oo::ToCxx(weapon_type)->weaponRange() : 0.0f;
+	return weapon_type != nullptr ? weapon_type->weaponRange() : 0.0f;
 }
 
 
 BOOL isWeaponNone(OOWeaponType weapon)
 {
-	return weapon == nil || (oo::ToCxx(weapon)->identifier() == "EQ_WEAPON_NONE");
+	return weapon == nullptr || (weapon->identifier() == "EQ_WEAPON_NONE");
 }

@@ -2093,8 +2093,8 @@ void cxx::PlayerEntity::newShipCommonSetup(const std::string &shipKey, const oo:
 	
 	for (const std::string &eq_desc : [self cxx_equipmentKeys])
 	{
-		::OOEquipmentType *item = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:eq_desc];
-		if ([item isPortableBetweenShips])  portable_equipment.insert(eq_desc);
+		::OOEquipmentType *item = OOEquipmentType::equipmentTypeWithIdentifier(eq_desc).get();
+		if ((item != nullptr ? item->isPortableBetweenShips() : false))  portable_equipment.insert(eq_desc);
 	}
 	
 	// remove ALL

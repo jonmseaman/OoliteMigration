@@ -170,13 +170,13 @@ void LoadEquipment()
 {
 	if (gSharedUniverse == nil)  gSharedUniverse = [[Universe alloc] init];
 	if (gOOPlayer == nil)  gOOPlayer = [[PlayerEntity alloc] init];
-	[OOEquipmentType loadEquipment];
+	OOEquipmentType::loadEquipment();
 }
 
 
 std::string IdentifierOf(OOWeaponType weapon)
 {
-	return weapon != nil ? [weapon cxx_identifier].value_or("-") : "nil";
+	return weapon != nil ? weapon->identifier().value_or("-") : "nil";
 }
 
 }	// namespace
@@ -189,7 +189,7 @@ OO_TEST(weaponTypeIdentifiers)
 	@autoreleasepool
 	{
 		LoadEquipment();
-		OOWeaponType pulse = [OOEquipmentType cxx_equipmentTypeWithIdentifier:"EQ_WEAPON_PULSE_LASER"];
+		OOWeaponType pulse = OOEquipmentType::equipmentTypeWithIdentifier("EQ_WEAPON_PULSE_LASER").get();
 		OO_CHECK(pulse != nil);
 
 		OO_CHECK(cxx_OOStringFromWeaponType(pulse) == std::optional<std::string>("EQ_WEAPON_PULSE_LASER"));
@@ -207,21 +207,21 @@ OO_TEST(sloppyLookUp)
 	@autoreleasepool
 	{
 		LoadEquipment();
-		OOWeaponType pulse = [OOEquipmentType cxx_equipmentTypeWithIdentifier:"EQ_WEAPON_PULSE_LASER"];
-		OOWeaponType none = [OOEquipmentType cxx_equipmentTypeWithIdentifier:"EQ_WEAPON_NONE"];
+		OOWeaponType pulse = OOEquipmentType::equipmentTypeWithIdentifier("EQ_WEAPON_PULSE_LASER").get();
+		OOWeaponType none = OOEquipmentType::equipmentTypeWithIdentifier("EQ_WEAPON_NONE").get();
 		OO_CHECK(pulse != nil && none != nil && pulse != none);
 
 		// The identifier itself, then with "EQ_" put in front, then EQ_WEAPON_NONE.
 		OO_CHECK(cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("EQ_WEAPON_PULSE_LASER") == pulse);
 		OO_CHECK(cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("WEAPON_PULSE_LASER") == pulse);
-		OO_CHECK(cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("LASER_WITHOUT_PREFIX") == [OOEquipmentType cxx_equipmentTypeWithIdentifier:"LASER_WITHOUT_PREFIX"]);
-		OO_CHECK(cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("EQ_FUEL") == [OOEquipmentType cxx_equipmentTypeWithIdentifier:"EQ_FUEL"]);
+		OO_CHECK(cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("LASER_WITHOUT_PREFIX") == OOEquipmentType::equipmentTypeWithIdentifier("LASER_WITHOUT_PREFIX").get());
+		OO_CHECK(cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("EQ_FUEL") == OOEquipmentType::equipmentTypeWithIdentifier("EQ_FUEL").get());
 		OO_CHECK(cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("PULSE_LASER") == none);
 		OO_CHECK(cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("EQ_NO_SUCH_THING") == none);
 		OO_CHECK(cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("") == none);
 
 		// The other spellings are the same look-up.
-		OO_CHECK(cxx_OOWeaponTypeFromEquipmentIdentifierStrict("WEAPON_BEAM_LASER") == [OOEquipmentType cxx_equipmentTypeWithIdentifier:"EQ_WEAPON_BEAM_LASER"]);
+		OO_CHECK(cxx_OOWeaponTypeFromEquipmentIdentifierStrict("WEAPON_BEAM_LASER") == OOEquipmentType::equipmentTypeWithIdentifier("EQ_WEAPON_BEAM_LASER").get());
 		OO_CHECK(cxx_OOWeaponTypeFromString("WEAPON_PULSE_LASER") == pulse);
 		OO_CHECK(cxx_OOWeaponTypeFromString("nonsense") == none);
 
@@ -229,7 +229,7 @@ OO_TEST(sloppyLookUp)
 		OO_CHECK(cxx_OOWeaponTypeFromEquipmentIdentifierLegacy("2") == pulse);
 		OO_CHECK(IdentifierOf(cxx_OOWeaponTypeFromEquipmentIdentifierLegacy("3")) == "EQ_WEAPON_BEAM_LASER");
 		OO_CHECK(cxx_OOWeaponTypeFromEquipmentIdentifierLegacy("4") == none);	// no mining laser here
-		OO_CHECK(cxx_OOWeaponTypeFromEquipmentIdentifierLegacy("EQ_FUEL") == [OOEquipmentType cxx_equipmentTypeWithIdentifier:"EQ_FUEL"]);
+		OO_CHECK(cxx_OOWeaponTypeFromEquipmentIdentifierLegacy("EQ_FUEL") == OOEquipmentType::equipmentTypeWithIdentifier("EQ_FUEL").get());
 	}
 }
 
@@ -264,13 +264,11 @@ OO_TEST(massUnitOfACommodity)
 }
 
 
-// The JS glue of cxx::OOEquipmentType (OOJSPrivateObject), defined in OOJSEquipmentInfo.mm, which
+// The JS glue of OOEquipmentType (OOJSPrivateObject), defined in OOJSEquipmentInfo.mm, which
 // this test does not link (bead oo-6symp.3): the vtable names these.
-namespace cxx {
 ooscript::Value OOEquipmentType::jsValueInContext(ooscript::Context)  { return ooscript::Value(); }
 void OOEquipmentType::clearJSSelf(ooscript::Object)  {}
 std::optional<std::string> OOEquipmentType::jsDescription()  { return std::nullopt; }
-}	// namespace cxx
 
 
 OO_TEST_MAIN()

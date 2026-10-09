@@ -5214,3 +5214,46 @@ the `.cpp` rename of oo-hrcs. The beacon code icon's facade is the HUD's last Ob
 **Consequences.** No Objective-C `OOSystemDescriptionManager`, `OOCommodities`, `OOCommodityMarket`
 or `OOCharacter` is left. The ship registry's, the equipment type's, the ship group's and the
 scripts' facades are the data-model facades still standing.
+
+## Amendment (bead oo-9ht.19): the ship group and equipment type facades in one change
+
+- Date: 2026-10-09. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch F
+  (one branch, as batches B-E): beads oo-9ht.19 (OOShipGroup) and oo-9ht.28 (OOEquipmentType).
+  Exemplar: `src/Core/OOShipGroup.h/.mm`, `OOEquipmentType.h/.mm`, `Entities/ShipEntity.mm`,
+  `Scripting/OOJSShipGroup.mm`, `Scripting/OOJSEquipmentInfo.mm`, `tests/unit/core/test_OOShipGroup.mm`,
+  `test_OOJSShipGroup.mm`.
+
+**Decision (recommended defaults).**
+
+1. **A class whose objects travel in plist data and reach JavaScript is its own `PList::Object`
+   payload and its own JS glue** (`class X : public oo::PListForeign, public ::OOJSPrivateObject`,
+   as `OOSystemInfo` is). `X.h` adds `XObjectNode()` / `XInObjectNode()` (and, for lists,
+   `XObjectNodes()`), which replace `oo::PListObject(facade)` / `oo::ObjectIn()` /
+   `oo::PListFromObjects()`; `className()` / `description()` answer what the facade's node printed.
+   The binding's converter answers the object's node, so a reader that asked
+   `OOJSNativeObjectOfClassFromJSValue(..., [X class])` asks `XInObjectNode(cxx_OOJSPListFromJSValue())`
+   (a value of any other class gives null, as the class check did); a native that returned
+   `OOJS_RETURN_OBJECT(oo::ToObjC(x))` returns `OOJSValueFromCxxObject()`, holding a new object in
+   a local `oo::Ref` until the JS object holds it.
+2. **Members that retained the facade are `oo::Ref`** (a ship's group and escort group, the
+   save context's groups); the giants' getters and the facades' selectors answer the C++ object
+   borrowed. Lists of registered types (`missilesList()`, `equipmentListForScripting()`) are
+   `std::vector<oo::Ref<X>>`. A registered type is still kept by its registry only; ships keep
+   weapon and missile types unretained (`OOWeaponType` is `OOEquipmentType *`, null: no weapon), as
+   they kept the pinned facades. A facade that was leaked on purpose (`ShipGroupAddShip`'s
+   `[[OOShipGroup alloc] initWithName:]`) is `.leakRef()`.
+3. **Every converted send keeps what the message to nil answered** (amendments oo-9ht.1 item 3,
+   oo-9ht.21 item 4): the codemod (driven by `-Wreceiver-expr` and the facades' forwarders, as in
+   batches D and E) writes `(r != nullptr ? r->m() : <zero>)` for a value and
+   `if (r != nullptr)  r->m();` for a statement, for every instance receiver, before the first
+   build. Receivers that cannot be null (a type from `allEquipmentTypes()`, a group just made) are
+   guarded all the same: the guard is cheap and the proof is not. A pure lookup used as a receiver
+   (`equipmentTypeWithIdentifier(k).get()`, `[self weaponTypeForFacing:...]`) is evaluated twice.
+   Tests convert without guards.
+4. **Tests** (standing approval oo-9n5p9): the facade-contract cases go; stand-ins that held a
+   facade hold `oo::Ref` and answer it borrowed; an engine stand-in that turned Object nodes into
+   JS values gains the engine's C++ glue path (`OOJSValueFromCxxObject` of an `OOJSPrivateObject`
+   payload); each class gains an `objectNode` case pinning the node round trip and description.
+
+**Consequences.** No Objective-C `OOShipGroup` or `OOEquipmentType` is left. The ship registry's
+and the scripts' facades are the data-model facades still standing.

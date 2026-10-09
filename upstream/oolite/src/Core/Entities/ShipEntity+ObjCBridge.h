@@ -492,12 +492,12 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (OOWeaponFacingSet) weaponFacings;
 - (OOWeaponType) weaponTypeIDForFacing:(OOWeaponFacing)facing strict:(BOOL)strict;
 - (OOEquipmentType *) weaponTypeForFacing:(OOWeaponFacing)facing strict:(BOOL)strict;
-- (std::vector<oo::ObjCRef<OOEquipmentType *>>) missilesList;	// flipped with its family (bead oo-3rb.259)
+- (std::vector<oo::Ref<OOEquipmentType>>) missilesList;	// flipped with its family (bead oo-3rb.259)
 - (oo::PList) passengerListForScripting;	// flipped with its family (bead oo-3rb.259): an array
 - (oo::PList) parcelListForScripting;	// flipped with its family (bead oo-3rb.259): an array
 - (oo::PList) contractListForScripting;	// flipped with its family (bead oo-3rb.259): an array
 - (OOEquipmentType *) generateMissileEquipmentTypeFrom:(const std::string &)role;
-- (std::vector<oo::ObjCRef<OOEquipmentType *>>) cxx_equipmentListForScripting;
+- (std::vector<oo::Ref<OOEquipmentType>>) cxx_equipmentListForScripting;
 - (BOOL) cxx_equipmentValidToAdd:(const std::string &)equipmentKey inContext:(const std::string &)context;	// Actual test if equipment satisfies validation criteria.
 - (BOOL) cxx_equipmentValidToAdd:(const std::string &)equipmentKey whileLoading:(BOOL)loading inContext:(const std::string &)context;
 - (BOOL) setWeaponMount:(OOWeaponFacing)facing toWeapon:(const std::string &)eqKey;	// flipped with its family (bead oo-3rb.258)

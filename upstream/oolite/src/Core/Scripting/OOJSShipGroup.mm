@@ -56,10 +56,9 @@ MA 02110-1301, USA.
 	ADR-0056 amendment oo-ppc). The JS class was already C++ on the ooscript façade;
 	OOJS_NATIVE_ENTER/EXIT and OOJS_PROFILE_ENTER/EXIT are C++ try/catch and scope guards
 	(OOJSEngineNativeWrappers.h); BOOL/YES/NO are bool/true/false. The category on the OOShipGroup
-	façade became two members of the C++ group (amendments oo-ykoy, oo-bwrq and oo-6symp), which
-	the façade's -oo_jsValueInContext: and -oo_clearJSSelf: forward to. OOShipGroup, which is C++ since
-	bead oo-bwrq, is reached as cxx::OOShipGroup through oo::ToCxx/oo::ToObjC (amendment oo-ppc,
-	item 4), null-guarded where a message to nil answered. Messages to classes that are still
+	façade became two members of the C++ group (amendments oo-ykoy, oo-bwrq and oo-6symp). The
+	group, C++ since bead oo-bwrq, is called directly since its façade was deleted (bead oo-9ht.19),
+	null-guarded where a message to nil answered. Messages to classes that are still
 	Objective-C (ShipEntity) stay as they are, which is why the file is still .mm until Phase 4.
 */
 
@@ -184,7 +183,7 @@ static FunctionSpec sShipGroupMethods[] =
 
 
 // The private object getter, DEFINE_JS_OBJECT_GETTER's equivalent for a slot that holds the C++ group
-// (OOJSPrivateObject.h): OOJSGetCxxPrivate<cxx::OOShipGroup>(cx, obj, &sShipGroupClass, &group).
+// (OOJSPrivateObject.h): OOJSGetCxxPrivate<OOShipGroup>(cx, obj, &sShipGroupClass, &group).
 
 
 // OOJSBasicPrivateObjectConverter for the C++ group the slot holds: its façade, which is what the
@@ -192,9 +191,9 @@ static FunctionSpec sShipGroupMethods[] =
 namespace {
 static oo::PList ShipGroupConverter(ooscript::Context context, ooscript::Object object)
 {
-	cxx::OOShipGroup *group = static_cast<cxx::OOShipGroup *>(static_cast<oo::RefCounted *>(ooscript::getPrivate(context, object)));
+	OOShipGroup *group = static_cast<OOShipGroup *>(static_cast<oo::RefCounted *>(ooscript::getPrivate(context, object)));
 	if (group == nullptr)  return oo::PList();
-	return oo::PListObject(oo::ToObjC(group));
+	return OOShipGroupObjectNode(group);
 }
 } // namespace
 
@@ -222,7 +221,7 @@ static bool ShipGroupGetProperty(Context cx, Object obj, PropertyId propID, Valu
 	OOJS_NATIVE_ENTER(context)
 
 	oo::PList				result;	// null: nil
-	cxx::OOShipGroup		*cxxGroup = nullptr;
+	OOShipGroup		*cxxGroup = nullptr;
 
 	if (EXPECT_NOT(!OOJSGetCxxPrivate(context, thisObj, &sShipGroupClass, &cxxGroup)))  return false;
 	// (null for the prototype: each use answers what a message to nil did
@@ -271,7 +270,7 @@ static bool ShipGroupSetProperty(Context cx, Object obj, PropertyId propID, bool
 	OOJS_NATIVE_ENTER(context)
 
 	ShipEntity				*shipValue = nil;
-	cxx::OOShipGroup		*cxxGroup = nullptr;
+	OOShipGroup		*cxxGroup = nullptr;
 
 	if (EXPECT_NOT(!OOJSGetCxxPrivate(context, thisObj, &sShipGroupClass, &cxxGroup)))  return false;
 	// (null for the prototype: the setters do nothing, as messages to nil
@@ -341,18 +340,17 @@ static bool ShipGroupConstruct(ooscript::Context context, ooscript::CallArgs &oo
 		}
 	}
 	
-	OOJS_RETURN_OBJECT(oo::ToObjC(cxx::OOShipGroup::groupWithName(name, leader)));	// +cxx_groupWithName:leader:
+	const oo::Ref<OOShipGroup> group = OOShipGroup::groupWithName(name, leader);	// kept until the JS object holds it
+	OOJS_RETURN(OOJSValueFromCxxObject(context, group.get()));
 	
 	OOJS_NATIVE_EXIT
 }
 } // namespace
 
 
-/*	The JS glue of the C++ group (OOJSPrivateObject), which the façade's
-	-oo_jsValueInContext: and -oo_clearJSSelf: forward to. The group's JS object is its _jsSelf (amendment
+/*	The JS glue of the C++ group (OOJSPrivateObject). The group's JS object is its _jsSelf (amendment
 	oo-6symp, item 5): the object's private slot holds the group, retained.
 */
-namespace cxx {
 
 ooscript::Value OOShipGroup::jsValueInContext(ooscript::Context context)
 {
@@ -388,8 +386,6 @@ std::optional<std::string> OOShipGroup::jsDescription()
 	return std::string("[object OOShipGroup]");
 }
 
-}	// namespace cxx
-
 
 // *** Methods ***
 
@@ -409,7 +405,7 @@ static bool ShipGroupAddShip(ooscript::Context context, ooscript::CallArgs &oojs
 
 	OOJS_NATIVE_ENTER(context)
 	
-	cxx::OOShipGroup		*cxxGroup = nullptr;
+	OOShipGroup		*cxxGroup = nullptr;
 	ShipEntity				*ship = nil;
 	bool					OK = true;
 	
@@ -425,8 +421,8 @@ static bool ShipGroupAddShip(ooscript::Context context, ooscript::CallArgs &oojs
 	}
 	
 	// The groups are C++; a null one (the prototype's, or a ship's that has none) answers what a
-	// message to nil did. The façades still identify the groups the ships hold (one per group).
-	OOShipGroup				*thisGroup = oo::ToObjC(cxxGroup);	// the group's live façade; nil for null
+	// message to nil did.
+	OOShipGroup				*thisGroup = cxxGroup;
 	
 	if (cxxGroup != nullptr && cxxGroup->containsShip(ship))
 	{
@@ -442,7 +438,7 @@ static bool ShipGroupAddShip(ooscript::Context context, ooscript::CallArgs &oojs
 			if (((cxxGroup != nullptr) ? cxxGroup->count() : 0) > 1) // already with some escorts
 			{
 				OOShipGroup			*thatGroup = [ship group];
-				cxx::OOShipGroup	*cxxThatGroup = oo::ToCxx(thatGroup);
+				OOShipGroup			*cxxThatGroup = thatGroup;
 				if (((cxxThatGroup != nullptr) ? cxxThatGroup->count() : 0) > 1 && [((cxxThatGroup != nullptr) ? cxxThatGroup->leader() : nil) escortGroup] == thatGroup)	// new escort already escorting!
 				{
 					cxx_OOJSReportWarningForCaller(context, "ShipGroup", "addShip", "Ship %s cannot be assigned to two escort groups, ignoring.", oo::DescriptionOf(ship).c_str());
@@ -458,9 +454,9 @@ static bool ShipGroupAddShip(ooscript::Context context, ooscript::CallArgs &oojs
 				if ([thisGroupLeader escortGroup] == [thisGroupLeader group])
 				{
 					// Default unescorted, unescortable, ship. Create new group and use that instead.
-					[thisGroupLeader setGroup:[oo::ToObjC(cxx::OOShipGroup::groupWithName(std::string("ship group"))) retain]];	// +1, as [[OOShipGroup alloc] cxx_initWithName:] was
+					[thisGroupLeader setGroup:OOShipGroup::groupWithName(std::string("ship group")).leakRef()];	// +1 kept, as [[OOShipGroup alloc] cxx_initWithName:] was
 					thisGroup = [thisGroupLeader group];
-					cxxGroup = oo::ToCxx(thisGroup);
+					cxxGroup = thisGroup;
 				}
 				else
 				{
@@ -488,7 +484,7 @@ static bool ShipGroupRemoveShip(ooscript::Context context, ooscript::CallArgs &o
 
 	OOJS_NATIVE_ENTER(context)
 	
-	cxx::OOShipGroup		*cxxGroup = nullptr;
+	OOShipGroup		*cxxGroup = nullptr;
 	ShipEntity				*ship = nil;
 	
 	if (EXPECT_NOT(!OOJSGetCxxPrivate(context, OOJS_THIS, &sShipGroupClass, &cxxGroup)))  return false;
@@ -517,7 +513,7 @@ static bool ShipGroupContainsShip(ooscript::Context context, ooscript::CallArgs 
 
 	OOJS_NATIVE_ENTER(context)
 	
-	cxx::OOShipGroup		*cxxGroup = nullptr;
+	OOShipGroup		*cxxGroup = nullptr;
 	ShipEntity				*ship = nil;
 	
 	if (EXPECT_NOT(!OOJSGetCxxPrivate(context, OOJS_THIS, &sShipGroupClass, &cxxGroup)))  return false;

@@ -1288,7 +1288,7 @@ void cxx::PlayerEntity::pollFlightControls(double delta_t)
 				{
 					if ([self fireMainWeapon])
 					{
-						[self cxx_playLaserHit:([self shipHitByLaser] != nil) offset:[self cxx_currentLaserOffset].at(0) weaponIdentifier:[[self currentWeapon] cxx_identifier].value_or("")];
+						[self cxx_playLaserHit:([self shipHitByLaser] != nil) offset:[self cxx_currentLaserOffset].at(0) weaponIdentifier:([self currentWeapon] != nullptr ? [self currentWeapon]->identifier() : std::optional<std::string>()).value_or("")];
 					}
 				}
 				
@@ -1420,7 +1420,7 @@ void cxx::PlayerEntity::pollFlightControls(double delta_t)
 						{
 							[self playNextEquipmentSelected];
 							eqKey = eqScripts[primedEquipment].first;
-							const std::string equipmentName = [[::OOEquipmentType cxx_equipmentTypeWithIdentifier:eqKey] cxx_name].value_or(std::string());
+							const std::string equipmentName = (OOEquipmentType::equipmentTypeWithIdentifier(eqKey).get() != nullptr ? OOEquipmentType::equipmentTypeWithIdentifier(eqKey).get()->name() : std::optional<std::string>()).value_or(std::string());
 							[UNIVERSE cxx_addMessage:ExpandKeyWithArguments("equipment-primed", { { "equipmentName", oo::PList(equipmentName) } }) forCount:2.0];
 						}
 						[self cxx_doScriptEvent:OOJSID("playerChangedPrimedEquipment") withPListArguments:{ oo::PList(eqKey) }];
@@ -2656,10 +2656,10 @@ void cxx::PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 				{
 					BOOL		sameAs = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(gui->selectedRowKey().value_or("")) == weaponType;
 					// override showInformation _completely_ with itemText
-					if ([weaponType cxx_identifier] == "EQ_WEAPON_NONE")  itemText = OO_DESC("no-weapon-enter-to-install");
+					if ((weaponType != nullptr ? weaponType->identifier() : std::optional<std::string>()) == "EQ_WEAPON_NONE")  itemText = OO_DESC("no-weapon-enter-to-install");
 					else
 					{
-						const std::string weaponName = [[::OOEquipmentType cxx_equipmentTypeWithIdentifier:cxx_OOEquipmentIdentifierFromWeaponType(weaponType).value_or("")] cxx_name].value_or(std::string());
+						const std::string weaponName = (OOEquipmentType::equipmentTypeWithIdentifier(cxx_OOEquipmentIdentifierFromWeaponType(weaponType).value_or("")).get() != nullptr ? OOEquipmentType::equipmentTypeWithIdentifier(cxx_OOEquipmentIdentifierFromWeaponType(weaponType).value_or("")).get()->name() : std::optional<std::string>()).value_or(std::string());
 						if (sameAs)  itemText = oo::str::formatRuntime(OO_DESC("weapon-installed-@"), { weaponName });
 						else  itemText = oo::str::formatRuntime(OO_DESC("weapon-@-enter-to-replace"), { weaponName });
 					}
