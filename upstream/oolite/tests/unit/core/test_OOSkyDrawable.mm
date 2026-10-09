@@ -11,7 +11,9 @@
 	given; the sky has opaque parts only and no draw distance limit; it has no quad sets, so no
 	textures; and it is a graphics reset client, so a reset deletes its display list (the GL
 	context is a hidden window's, oo_gl_test_context.hpp). The drawable's private state is read
-	through the one block of helpers below, which is all the conversion changed.
+	through the one block of helpers below, which is all the conversion changed. Bead oo-9ht.9
+	deleted the root's facade the test held the drawable by; it holds the C++ drawable and calls
+	its members, every expected value kept.
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -59,7 +61,7 @@ void SetUpStars(OOSkyDrawable *, OOColor *color1, OOColor *color2)
 struct OOSkyDrawableTestAccess
 {
 	static void InstallStandIn()						{ OOSkyDrawable::sSetUpStarsStandIn = SetUpStars; }
-	static OOSkyDrawable *Cxx(OODrawable *sky)			{ return dynamic_cast<OOSkyDrawable *>(oo::ToCxx(sky)); }
+	static OOSkyDrawable *Cxx(OODrawable *sky)			{ return dynamic_cast<OOSkyDrawable *>(sky); }
 	static unsigned StarCount(OODrawable *sky)			{ return Cxx(sky)->_starCount; }
 	static unsigned NebulaCount(OODrawable *sky)		{ return Cxx(sky)->_nebulaCount; }
 	static GLint &DisplayListName(OODrawable *sky)		{ return Cxx(sky)->_displayListName; }
@@ -71,11 +73,11 @@ namespace {
 void InstallStandIn()	{ OOSkyDrawableTestAccess::InstallStandIn(); }
 
 
-// A sky drawable: the root facade of a new C++ drawable (autoreleased; it keeps the drawable).
-OODrawable *Sky(OOColor *color1, OOColor *color2, unsigned starCount, unsigned nebulaCount)
+// A sky drawable: a new C++ drawable, as the root (the root facade until bead oo-9ht.9).
+oo::Ref<OODrawable> Sky(OOColor *color1, OOColor *color2, unsigned starCount, unsigned nebulaCount)
 {
-	return oo::ToObjC(oo::makeRef<OOSkyDrawable>(color1, color2, OOColor::greenColor().get(),
-												 OOColor::whiteColor().get(), starCount, nebulaCount, false, 0.5f, 1.0f, 1.0f).get());
+	return oo::makeRef<OOSkyDrawable>(color1, color2, OOColor::greenColor().get(),
+									  OOColor::whiteColor().get(), starCount, nebulaCount, false, 0.5f, 1.0f, 1.0f);
 }
 
 
@@ -115,13 +117,13 @@ OO_TEST(made)
 	{
 		SetUp();
 		const unsigned setUpsBefore = sStarSetUps;
-		OODrawable *sky = Sky(OOColor::redColor().get(), OOColor::blueColor().get(), 7, 5);
-		OO_CHECK(sky != nil);
+		const oo::Ref<OODrawable> sky = Sky(OOColor::redColor().get(), OOColor::blueColor().get(), 7, 5);
+		OO_CHECK(sky != nullptr);
 		OO_CHECK(sStarSetUps == setUpsBefore + 1);
 		OO_CHECK(ColorIs(sStarColor1.get(), 1, 0, 0, 1) && ColorIs(sStarColor2.get(), 0, 0, 1, 1));
-		OO_CHECK(StarCount(sky) == 7);
-		OO_CHECK(NebulaCount(sky) == 5);	// minimum detail: the nebulae were not set up
-		OO_CHECK(DisplayListName(sky) == 0);
+		OO_CHECK(StarCount(sky.get()) == 7);
+		OO_CHECK(NebulaCount(sky.get()) == 5);	// minimum detail: the nebulae were not set up
+		OO_CHECK(DisplayListName(sky.get()) == 0);
 	}
 }
 
@@ -131,14 +133,14 @@ OO_TEST(parts)
 	@autoreleasepool
 	{
 		SetUp();
-		OODrawable *sky = Sky(OOColor::whiteColor().get(), OOColor::yellowColor().get(), 0, 0);
-		OO_CHECK([sky hasOpaqueParts]);
-		OO_CHECK(![sky hasTranslucentParts]);
-		OO_CHECK(std::isinf([sky maxDrawDistance]) && [sky maxDrawDistance] > 0);
-		OO_CHECK([sky collisionRadius] == 0);
+		const oo::Ref<OODrawable> sky = Sky(OOColor::whiteColor().get(), OOColor::yellowColor().get(), 0, 0);
+		OO_CHECK(sky->hasOpaqueParts());
+		OO_CHECK(!sky->hasTranslucentParts());
+		OO_CHECK(std::isinf(sky->maxDrawDistance()) && sky->maxDrawDistance() > 0);
+		OO_CHECK(sky->collisionRadius() == 0);
 #ifndef NDEBUG
-		OO_CHECK([sky cxx_allTextures].empty());	// no quad sets
-		OO_CHECK([sky totalSize] > 0);
+		OO_CHECK(sky->allTextures().empty());	// no quad sets
+		OO_CHECK(sky->totalSize() > 0);
 #endif
 	}
 }
@@ -150,14 +152,14 @@ OO_TEST(resetDeletesTheDisplayList)
 	@autoreleasepool
 	{
 		SetUp();
-		OODrawable *sky = Sky(OOColor::redColor().get(), OOColor::blueColor().get(), 0, 0);
+		const oo::Ref<OODrawable> sky = Sky(OOColor::redColor().get(), OOColor::blueColor().get(), 0, 0);
 		const GLuint list = glGenLists(1);
 		OO_CHECK(list != 0);
-		DisplayListName(sky) = (GLint)list;
+		DisplayListName(sky.get()) = (GLint)list;
 		OO_CHECK(glIsList(list));
 
 		OOGraphicsResetManager::sharedManager()->resetGraphicsState();
-		OO_CHECK(DisplayListName(sky) == 0);
+		OO_CHECK(DisplayListName(sky.get()) == 0);
 		OO_CHECK(!glIsList(list));
 	}
 	// Released: no longer a client, so a reset does not reach it.

@@ -26,10 +26,12 @@ SOFTWARE.
 */
 
 #import "OODrawable.h"
-#import "NSObjectOOExtensions.h"
+#include "oofnd/String.hpp"
 
+#include <cstdlib>
+#include <cxxabi.h>
+#include <typeinfo>
 
-namespace cxx {
 
 void OODrawable::renderOpaqueParts()
 {
@@ -91,6 +93,20 @@ std::optional<std::string> OODrawable::descriptionComponents() const
 }
 
 
+// The facade's -cxx_description (bead oo-9ht.9 deleted it): the C++ class's name, as [self class]
+// named it, and the address, now the drawable's.
+std::string OODrawable::description() const
+{
+	int status = 0;
+	char *demangled = abi::__cxa_demangle(typeid(*this).name(), nullptr, nullptr, &status);
+	const std::string name = (status == 0 && demangled != nullptr) ? demangled : typeid(*this).name();
+	std::free(demangled);
+	std::string result = oo::str::format("<%s %s>", name.c_str(), oo::str::pointerDescription(this).c_str());
+	if (const std::optional<std::string> components = descriptionComponents())  result += "{" + *components + "}";
+	return result;
+}
+
+
 #ifndef NDEBUG
 std::vector<oo::ObjCRef<::OOTexture *>> OODrawable::allTextures()
 {
@@ -98,12 +114,43 @@ std::vector<oo::ObjCRef<::OOTexture *>> OODrawable::allTextures()
 }
 
 
-// The instance size of the Objective-C object: an Objective-C drawable's own class, as
-// [self oo_objectSize] was, or a C++ drawable's facade.
+// The object's own size (was [self oo_objectSize], the facade's instance size; bead oo-9ht.9).
 size_t OODrawable::totalSize()
 {
-	return [oo::ToObjC(this) oo_objectSize];
+	return objectSize();
 }
 #endif
 
-}	// namespace cxx
+
+/*	OODrawableAutorelease()'s keeper: an autoreleased Objective-C object that holds the drawable, so
+	the pool's drain releases it as it released the facade. Private to this file; nothing messages
+	it (as OOScript.mm's keeper, amendment oo-9ht.133 item 3).
+*/
+@interface OODrawableAutoreleaseKeeper: OOObject
+{
+@private
+	oo::Ref<OODrawable>	_drawable;
+}
+
+- (id) initWithDrawable:(oo::Ref<OODrawable>)drawable;
+
+@end
+
+
+@implementation OODrawableAutoreleaseKeeper
+
+- (id) initWithDrawable:(oo::Ref<OODrawable>)drawable
+{
+	self = [super init];
+	if (self != nil)  _drawable = std::move(drawable);
+	return self;
+}
+
+@end
+
+
+void OODrawableAutorelease(oo::Ref<OODrawable> drawable)
+{
+	if (drawable == nullptr)  return;
+	[[[OODrawableAutoreleaseKeeper alloc] initWithDrawable:std::move(drawable)] autorelease];
+}

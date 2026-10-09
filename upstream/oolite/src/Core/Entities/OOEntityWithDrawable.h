@@ -32,7 +32,7 @@ MA 02110-1301, USA.
 
 #import "Entity.h"
 
-@class OODrawable;
+#import "OODrawable.h"	// the drawable is held by oo::Ref (a complete type wherever the entity is destroyed)
 
 
 namespace cxx {
@@ -40,8 +40,8 @@ namespace cxx {
 class OOEntityWithDrawable : public Entity
 {
 public:
-	::OODrawable *getDrawable();
-	void setDrawable(::OODrawable *drawable);
+	OODrawable *getDrawable();	// borrowed
+	void setDrawable(OODrawable *drawable);
 
 	double findCollisionRadius() override;
 	void drawImmediate(bool immediate, bool translucent) override;
@@ -51,9 +51,8 @@ public:
 #endif
 
 private:
-	// The Objective-C drawable: OOMesh, a drawable still Objective-C, is kept alive by its own
-	// object, not by its C++ part (amendment oo-smy item 4).
-	oo::ObjCRef<::OODrawable *>	drawable;
+	// The drawable, held (an Objective-C object until bead oo-hahfg: every drawable is C++).
+	oo::Ref<OODrawable>			drawable;
 };
 
 }	// namespace cxx

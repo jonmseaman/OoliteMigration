@@ -175,7 +175,7 @@ OO_TEST(defaults)
 		OO_CHECK([effect isVisualEffect]);
 		OO_CHECK(![effect canCollide]);
 		OO_CHECK([effect effectKey] == std::optional<std::string>("test-effect"));
-		OO_CHECK([effect mesh] == nil);
+		OO_CHECK([effect mesh] == nullptr);	// the C++ mesh since bead oo-9ht.132
 		OO_CHECK([effect scanClass] == CLASS_VISUAL_EFFECT);
 		OO_CHECK([effect status] == STATUS_EFFECT);
 		OO_CHECK(![effect isBreakPattern]);

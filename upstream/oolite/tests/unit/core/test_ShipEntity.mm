@@ -652,7 +652,7 @@ OO_TEST(simpleAccessors)
 		[ship setScriptedMisjumpRange:0.75f];
 		OO_CHECK([ship scriptedMisjump] && [ship scriptedMisjumpRange] == 0.75f);
 
-		OO_CHECK([ship mesh] == nil && oo::ToCxx(ship)->getOctree() == nullptr);
+		OO_CHECK([ship mesh] == nullptr && oo::ToCxx(ship)->getOctree() == nullptr);
 		OO_CHECK([ship shipScript] == nil && [ship shipAIScript] == nil);
 		[ship setAIScriptWakeTime:12.5];
 		OO_CHECK([ship shipAIScriptWakeTime] == 12.5);

@@ -5,8 +5,9 @@
 
 	Like Entity's, its object needs the game graph, so the test links the whole game but main
 	(['*']) and uses a Universe that was never initialised (no frustum planes, so every sphere is in
-	view; no wireframe) and a plain entity as PLAYER. The drawable is an Objective-C subclass of
-	OODrawable that counts what it is asked. The expectations were written against the Objective-C
+	view; no wireframe) and a plain entity as PLAYER. The drawable is a subclass of OODrawable that
+	counts what it is asked (an Objective-C one until bead oo-hahfg moved the entity's drawable to
+	C++; a C++ one since, with the same answers). The expectations were written against the Objective-C
 	API and run on the unconverted class first: -setDrawable: takes the drawable's radius, draw
 	distance and bounding box and makes the entity its binding target; -findCollisionRadius and the
 	debug texture list ask the drawable; -drawImmediate:translucent: skips an entity beyond its draw
@@ -57,28 +58,23 @@ T *NewTestPlayer()
 }
 
 
-// The drawable of an unconverted entity: OOMesh is an Objective-C subclass of OODrawable.
-@interface TestDrawable: OODrawable
+// The drawable: a C++ subclass of OODrawable since bead oo-hahfg (every drawable is C++), with the
+// answers the Objective-C one gave.
+class TestDrawable : public OODrawable
 {
-@public
-	int		_opaqueRenders;
-	int		_translucentRenders;
-	id		_bindingTarget;
-	GLfloat	_maxDrawDistance;
-}
-@end
+public:
+	void renderOpaqueParts() override								{ _opaqueRenders++; }
+	void renderTranslucentParts() override							{ _translucentRenders++; }
+	GLfloat collisionRadius() override								{ return 5.0f; }
+	GLfloat maxDrawDistance() override								{ return _maxDrawDistance; }
+	BoundingBox boundingBox() override								{ return (BoundingBox){ { -1, -2, -3 }, { 1, 2, 3 } }; }
+	void setBindingTarget(id<OOWeakReferenceSupport> target) override	{ _bindingTarget = target; }
 
-
-@implementation TestDrawable
-
-- (void)renderOpaqueParts							{ _opaqueRenders++; }
-- (void)renderTranslucentParts						{ _translucentRenders++; }
-- (GLfloat)collisionRadius							{ return 5.0f; }
-- (GLfloat)maxDrawDistance							{ return _maxDrawDistance; }
-- (BoundingBox)boundingBox							{ return (BoundingBox){ { -1, -2, -3 }, { 1, 2, 3 } }; }
-- (void)setBindingTarget:(id<OOWeakReferenceSupport>)target	{ _bindingTarget = target; }
-
-@end
+	int		_opaqueRenders = 0;
+	int		_translucentRenders = 0;
+	id		_bindingTarget = nil;
+	GLfloat	_maxDrawDistance = 0.0f;
+};
 
 
 // An unconverted subclass, as ShipEntity is.
@@ -151,16 +147,16 @@ OO_TEST(setDrawable)
 	{
 		SetUp();
 		OOEntityWithDrawable *entity = [[[OOEntityWithDrawable alloc] init] autorelease];
-		OO_CHECK([entity drawable] == nil);
+		OO_CHECK([entity drawable] == nullptr);
 		OO_CHECK([entity findCollisionRadius] == 0);
 #ifndef NDEBUG
 		OO_CHECK([entity cxx_allTextures].empty());
 #endif
 
-		TestDrawable *drawable = [[[TestDrawable alloc] init] autorelease];
+		const oo::Ref<TestDrawable> drawable = oo::makeRef<TestDrawable>();
 		drawable->_maxDrawDistance = 1000.0f;
-		[entity setDrawable:drawable];
-		OO_CHECK([entity drawable] == drawable);
+		[entity setDrawable:drawable.get()];
+		OO_CHECK([entity drawable] == drawable.get());
 		OO_CHECK(drawable->_bindingTarget == entity);
 		OO_CHECK([entity collisionRadius] == 5.0f && [entity findCollisionRadius] == 5.0);
 		OO_CHECK(NoDrawDistance(entity) == 1000.0f);
@@ -169,11 +165,11 @@ OO_TEST(setDrawable)
 
 		// Setting the same drawable again changes nothing.
 		[entity setCollisionRadius:1.0f];
-		[entity setDrawable:drawable];
+		[entity setDrawable:drawable.get()];
 		OO_CHECK([entity collisionRadius] == 1.0f);
 
-		[entity setDrawable:nil];
-		OO_CHECK([entity drawable] == nil && [entity collisionRadius] == 0 && NoDrawDistance(entity) == 0);
+		[entity setDrawable:nullptr];
+		OO_CHECK([entity drawable] == nullptr && [entity collisionRadius] == 0 && NoDrawDistance(entity) == 0);
 	}
 }
 
@@ -184,9 +180,9 @@ OO_TEST(drawImmediate)
 	{
 		SetUp();
 		TestObjCEntityWithDrawable *entity = [[[TestObjCEntityWithDrawable alloc] init] autorelease];
-		TestDrawable *drawable = [[[TestDrawable alloc] init] autorelease];
+		const oo::Ref<TestDrawable> drawable = oo::makeRef<TestDrawable>();
 		drawable->_maxDrawDistance = 1.0e9f;
-		[entity setDrawable:drawable];
+		[entity setDrawable:drawable.get()];
 		[entity setPosition:make_HPvector(0, 0, 100)];
 
 		// Near: drawn with no frustum test. (cam_zero_distance is a squared distance, compared with
@@ -235,13 +231,13 @@ OO_TEST(objCSubclassPartIsTheIntermediateClass)
 	{
 		SetUp();
 		TestOverridingEntity *entity = [[[TestOverridingEntity alloc] init] autorelease];
-		TestDrawable *drawable = [[[TestDrawable alloc] init] autorelease];
+		const oo::Ref<TestDrawable> drawable = oo::makeRef<TestDrawable>();
 		drawable->_maxDrawDistance = 1.0e9f;
-		[entity setDrawable:drawable];
+		[entity setDrawable:drawable.get()];
 
 		cxx::OOEntityWithDrawable *part = oo::ToCxx(entity);
 		OO_CHECK(part != nullptr && dynamic_cast<cxx::OOEntityWithDrawable *>(oo::ToCxx(static_cast<Entity *>(entity))) == part);
-		OO_CHECK(part->getDrawable() == drawable && oo::ToObjC(part) == entity);
+		OO_CHECK(part->getDrawable() == drawable.get() && oo::ToObjC(part) == entity);
 
 		// From C++, the Objective-C override runs, and its [super ...] reaches the C++ member.
 		part->drawImmediate(false, false);
@@ -264,10 +260,10 @@ OO_TEST(cxxSubclassFacade)
 		OOEntityWithDrawable *withDrawable = (OOEntityWithDrawable *)facade;
 		OO_CHECK(oo::ToCxx(withDrawable) == entity.get() && oo::ToObjC(entity.get()) == withDrawable);
 
-		TestDrawable *drawable = [[[TestDrawable alloc] init] autorelease];
+		const oo::Ref<TestDrawable> drawable = oo::makeRef<TestDrawable>();
 		drawable->_maxDrawDistance = 1.0e9f;
-		[withDrawable setDrawable:drawable];
-		OO_CHECK([withDrawable drawable] == drawable && drawable->_bindingTarget == facade);
+		[withDrawable setDrawable:drawable.get()];
+		OO_CHECK([withDrawable drawable] == drawable.get() && drawable->_bindingTarget == facade);
 		OO_CHECK([facade findCollisionRadius] == 5.0 && [facade collisionRadius] == 5.0f);
 		[facade drawImmediate:false translucent:false];
 		OO_CHECK(drawable->_opaqueRenders == 1);

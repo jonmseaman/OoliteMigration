@@ -95,17 +95,14 @@ typedef struct
 
 class Octree;
 
-namespace cxx {
-
-class OOMaterial;
+namespace cxx { class OOMaterial; }
 
 
 /*	C++20 since bead oo-dnbf, slice 1 of docs/phases/3-slices/OOMesh.md (proposed ADR-0056,
 	amendments oo-smy, oo-pni4 and oo-dnbf): the class shell, its factories, lifecycle and
-	accessors. The class is cxx::OOMesh, a C++ subclass of cxx::OODrawable, while
-	OOMesh+ObjCBridge.h, imported at the end of this header, keeps the Objective-C OOMesh its
-	callers message. Slices 2, 3 and 4 (loading, geometry and rendering, beads oo-rdwg, oo-9z7x and
-	oo-zmix) are C++ too, so OOMesh.mm has no Objective-C class code left.
+	accessors. Slices 2, 3 and 4 (loading, geometry and rendering, beads oo-rdwg, oo-9z7x and
+	oo-zmix) are C++ too, so OOMesh.mm has no Objective-C class code left. Global since bead
+	oo-9ht.132 deleted the Objective-C OOMesh facade: its callers hold oo::Ref<OOMesh>.
 */
 class OOMesh : public OODrawable, public OOGraphicsResetClient
 {
@@ -128,7 +125,7 @@ public:
 										float factor,
 										bool cacheWriteable);
 
-	static oo::Ref<OOMaterial> placeholderMaterial();
+	static oo::Ref<cxx::OOMaterial> placeholderMaterial();
 
 	OOMesh();
 	OOMesh(const OOMesh &) = default;	// -mutableCopyWithZone:'s copy: every member, the buffers shared
@@ -155,6 +152,7 @@ public:
 	void dumpSelfState() override;
 	std::vector<oo::ObjCRef<::OOTexture *>> allTextures() override;
 	size_t totalSize() override;
+	size_t objectSize() const override	{ return sizeof *this; }
 #endif
 
 	oo::Ref<Octree> getOctree();	// -octree (the member octree is the octree)
@@ -174,7 +172,7 @@ public:
 	// OOGraphicsResetClient: the mesh registers itself once loaded, and unregisters when destroyed.
 	void resetGraphicsState() override;
 
-	// Internal: the state, public while the facade and the test read it (amendment oo-pni4 item 1).
+	// Internal: the state, public while the test reads it (amendment oo-pni4 item 1).
 	// Zero, as class_createInstance left the ivars.
 	uint8_t					_normalMode: 2 = 0,
 							brokenInRender: 1 = 0,
@@ -276,8 +274,6 @@ private:
 	bool suppressClangStuff();
 };
 
-}	// namespace cxx
-
 
 // The OOCacheManager (Octree) category, as free functions next to the cache (the slice plan, bead
 // oo-dnbf). The octree cached for a model key, made afresh from its representation; null when none.
@@ -285,6 +281,3 @@ oo::Ref<Octree> OOCacheManagerOctreeForModel(const std::string &inKey);
 // Caches the octree's representation under the key; a null octree does nothing.
 void OOCacheManagerSetOctree(Octree *inOctree, const std::string &inKey);
 
-
-// Transitional: the Objective-C OOMesh, for its callers not yet converted. Deleted, with namespace cxx above, by the bridge's deletion bead.
-#import "OOMesh+ObjCBridge.h"

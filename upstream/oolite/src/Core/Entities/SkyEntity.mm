@@ -165,7 +165,7 @@ void SkyEntity::initWithColors(OOColor *col1In, OOColor *col2In, const oo::PList
 											 clusterChance,
 											 alpha,
 											 scale);
-	setDrawable(oo::ToObjC(skyDrawable.get()));	// the root facade (no OOSkyDrawable facade; bead oo-4jjl)
+	setDrawable(skyDrawable.get());	// (the root facade until bead oo-hahfg)
 
 	setStatus(STATUS_EFFECT);
 }

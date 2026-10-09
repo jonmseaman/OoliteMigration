@@ -35,20 +35,20 @@ namespace cxx {
 // part at the end of its -dealloc.
 
 
-::OODrawable *OOEntityWithDrawable::getDrawable()
+OODrawable *OOEntityWithDrawable::getDrawable()
 {
 	return drawable.get();
 }
 
 
-void OOEntityWithDrawable::setDrawable(::OODrawable *inDrawable)
+void OOEntityWithDrawable::setDrawable(OODrawable *inDrawable)
 {
 	if (inDrawable != drawable.get())
 	{
-		[[drawable.get() retain] autorelease];	// [drawable autorelease]: the old one lives until the pool drains
-		drawable = oo::ObjCRef<::OODrawable *>(inDrawable);
+		OODrawableAutorelease(std::move(drawable));	// [drawable autorelease]: the old one lives until the pool drains
+		drawable = oo::Ref<OODrawable>(inDrawable);
 		// Messages to a nil drawable did nothing and answered 0.
-		cxx::OODrawable *cxxDrawable = oo::ToCxx(drawable.get());
+		OODrawable *cxxDrawable = drawable.get();
 		if (cxxDrawable != nullptr)  cxxDrawable->setBindingTarget(oo::ToObjC(this));
 
 		collision_radius = cxxDrawable != nullptr ? cxxDrawable->collisionRadius() : 0.0f;
@@ -60,7 +60,7 @@ void OOEntityWithDrawable::setDrawable(::OODrawable *inDrawable)
 
 double OOEntityWithDrawable::findCollisionRadius()
 {
-	cxx::OODrawable *cxxDrawable = oo::ToCxx(drawable.get());
+	OODrawable *cxxDrawable = drawable.get();
 	return cxxDrawable != nullptr ? cxxDrawable->collisionRadius() : 0.0f;
 }
 
@@ -115,7 +115,7 @@ void OOEntityWithDrawable::drawImmediate(bool /*immediate*/, bool translucent)
 
 	if ([UNIVERSE wireframeGraphics])  OOGLWireframeModeOn();
 
-	cxx::OODrawable *cxxDrawable = oo::ToCxx(drawable.get());
+	OODrawable *cxxDrawable = drawable.get();
 	if (cxxDrawable != nullptr)
 	{
 		if (translucent)  cxxDrawable->renderTranslucentParts();
@@ -129,7 +129,7 @@ void OOEntityWithDrawable::drawImmediate(bool /*immediate*/, bool translucent)
 #ifndef NDEBUG
 std::vector<oo::ObjCRef<::OOTexture *>> OOEntityWithDrawable::allTextures()
 {
-	cxx::OODrawable *cxxDrawable = oo::ToCxx(getDrawable());
+	OODrawable *cxxDrawable = getDrawable();
 	return cxxDrawable != nullptr ? cxxDrawable->allTextures() : std::vector<oo::ObjCRef<::OOTexture *>>();
 }
 #endif

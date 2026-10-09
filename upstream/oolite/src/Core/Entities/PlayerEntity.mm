@@ -12268,7 +12268,7 @@ void PlayerEntity::setUpTrumbles()
 		const std::optional<std::string> commanderName = this->commanderName();
 		if (commanderName.has_value() && !commanderName->empty())
 		{
-			trumbleDigrams += oo::utf8ToUtf16(*commanderName + [mesh() modelName].value_or("(null)"));	// "%@%@"
+			trumbleDigrams += oo::utf8ToUtf16(*commanderName + (mesh() != nullptr ? mesh()->modelName() : std::nullopt).value_or("(null)"));	// "%@%@"
 		}
 		else
 		{

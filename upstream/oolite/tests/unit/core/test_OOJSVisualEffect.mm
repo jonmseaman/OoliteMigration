@@ -17,7 +17,10 @@
 	InitOOJSVisualEffect is declared here. The expectations were written against the Objective-C
 	file and run on it first; they pin the JS-visible behaviour (the properties both ways, a beacon
 	code that registers or clears a beacon, the methods, a stale effect, a non-effect, a native's
-	exception) and what the category answers the engine. Run: bash tools/check-core-tests.sh
+	exception) and what the category answers the engine. Bead oo-9ht.132 deleted the Objective-C
+	OOMesh: the binding makes and asks a C++ mesh, so the stand-in for it is a C++ class OOMesh with
+	the members the binding calls and the same answers (ADR-0056 amendment oo-9ht.177 item 5, as for
+	the player). Run: bash tools/check-core-tests.sh
 */
 
 #import "OOCocoa.h"
@@ -58,23 +61,26 @@ class PlayerEntity;
 - (id) owner;
 @end
 
-// A mesh: its materials and shaders, and the arguments the last one was made with.
-@interface OOMesh: OOObject
+// A mesh: its materials and shaders, and the arguments the last one was made with. C++ since bead
+// oo-9ht.132: the members of OOMesh (OOMesh.h) the binding calls, with their signatures.
+@protocol OOWeakReferenceSupport;
+
+class OOMesh : public oo::RefCounted
 {
-@public
+public:
+	static oo::Ref<OOMesh> meshWithName(const std::string &name,
+										const std::optional<std::string> &cacheKey,
+										const oo::PList &materialDict,
+										const oo::PList &shadersDict,
+										bool smooth,
+										const oo::PList &macros,
+										id<OOWeakReferenceSupport> object);
+	oo::PList getMaterials();
+	oo::PList shaders();
+
 	oo::PList _materials;
 	oo::PList _shaders;
-}
-+ (instancetype) meshWithName:(const std::string &)name
-					 cacheKey:(const std::optional<std::string> &)cacheKey
-		   materialDictionary:(const oo::PList &)materialDict
-			shadersDictionary:(const oo::PList &)shadersDict
-					   smooth:(BOOL)smooth
-				 shaderMacros:(const oo::PList &)macros
-		  shaderBindingTarget:(id)object;
-- (oo::PList) materials;
-- (oo::PList) shaders;
-@end
+};
 
 @interface ResourceManager: OOObject
 + (oo::PList) cxx_materialDefaults;
@@ -100,7 +106,7 @@ class PlayerEntity;
 	OOScript *_script;	// a C++ script since bead oo-9ht.133 deleted its facade (retained)
 	oo::PList _scriptInfo;
 	oo::PList _effectInfo;
-	OOMesh *_mesh;
+	oo::Ref<OOMesh> _mesh;
 	id _removedSub;
 	int _removed;
 }
@@ -251,15 +257,13 @@ id sMeshTarget = nil;
 int sMeshesMade = 0;
 }
 
-@implementation OOMesh
-
-+ (instancetype) meshWithName:(const std::string &)name
-					 cacheKey:(const std::optional<std::string> &)cacheKey
-		   materialDictionary:(const oo::PList &)materialDict
-			shadersDictionary:(const oo::PList &)shadersDict
-					   smooth:(BOOL)smooth
-				 shaderMacros:(const oo::PList &)macros
-		  shaderBindingTarget:(id)object
+oo::Ref<OOMesh> OOMesh::meshWithName(const std::string &name,
+									 const std::optional<std::string> &cacheKey,
+									 const oo::PList &materialDict,
+									 const oo::PList &shadersDict,
+									 bool smooth,
+									 const oo::PList &macros,
+									 id<OOWeakReferenceSupport> object)
 {
 	sMeshName = name;
 	sMeshCacheKey = cacheKey;
@@ -269,17 +273,15 @@ int sMeshesMade = 0;
 	sMeshMacros = macros;
 	sMeshTarget = object;
 	sMeshesMade++;
-	if (name == "nomesh.dat")  return nil;
-	OOMesh *mesh = [[[OOMesh alloc] init] autorelease];
+	if (name == "nomesh.dat")  return nullptr;
+	oo::Ref<OOMesh> mesh = oo::makeRef<OOMesh>();
 	mesh->_materials = materialDict;
 	mesh->_shaders = shadersDict;
 	return mesh;
 }
 
-- (oo::PList) materials  { return _materials; }
-- (oo::PList) shaders  { return _shaders; }
-
-@end
+oo::PList OOMesh::getMaterials()  { return _materials; }
+oo::PList OOMesh::shaders()  { return _shaders; }
 
 
 @implementation ResourceManager
@@ -331,8 +333,8 @@ int sMeshesMade = 0;
 - (OOScript *) script  { return _script; }
 - (oo::PList) scriptInfo  { return _scriptInfo; }
 - (oo::PList) effectInfoDictionary  { return _effectInfo; }
-- (OOMesh *) mesh  { return _mesh; }
-- (void) setMesh:(OOMesh *)mesh  { [_mesh release]; _mesh = [mesh retain]; }
+- (OOMesh *) mesh  { return _mesh.get(); }
+- (void) setMesh:(OOMesh *)mesh  { _mesh = oo::Ref<OOMesh>(mesh); }
 - (void) removeSubEntity:(Entity *)sub  { _removedSub = sub; }
 - (void) remove  { _removed++; }
 

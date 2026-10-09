@@ -196,7 +196,6 @@ static BOOL IsPerVertexNormalMode(OOMeshNormalMode mode)
 }
 
 
-namespace cxx {
 
 oo::Ref<OOMesh> OOMesh::meshWithName(const std::string &name,
 									 const std::optional<std::string> &cacheKey,
@@ -228,7 +227,7 @@ oo::Ref<OOMesh> OOMesh::meshWithName(const std::string &name,
 }
 
 
-oo::Ref<OOMaterial> OOMesh::placeholderMaterial()
+oo::Ref<cxx::OOMaterial> OOMesh::placeholderMaterial()
 {
 	static OOBasicMaterial	*placeholderMaterial = nullptr;	// never released, as before
 
@@ -240,7 +239,7 @@ oo::Ref<OOMaterial> OOMesh::placeholderMaterial()
 		placeholderMaterial = OOBasicMaterial::materialWithName(std::string("/placeholder/"), (noTextures != nullptr ? *noTextures : oo::PList())).leakRef();
 	}
 
-	return oo::Ref<OOMaterial>(placeholderMaterial);
+	return oo::Ref<cxx::OOMaterial>(placeholderMaterial);
 }
 
 
@@ -330,10 +329,8 @@ size_t OOMesh::getFaceCount()
 	return faceCount;
 }
 
-}	// namespace cxx
 
 
-namespace cxx {
 
 void OOMesh::renderOpaqueParts()
 {
@@ -356,7 +353,7 @@ void OOMesh::renderOpaqueParts()
 	}
 	
 #if OO_SHADERS
-	if (OOOpenGLExtensionManager::sharedManager()->shadersSupported())
+	if (cxx::OOOpenGLExtensionManager::sharedManager()->shadersSupported())
 	{
 		OOGL(glEnableVertexAttribArrayARB(kTangentAttributeIndex));
 		OOGL(glVertexAttribPointerARB(kTangentAttributeIndex, 3, GL_FLOAT, GL_FALSE, 0, _displayLists.tangentArray));
@@ -394,7 +391,7 @@ void OOMesh::renderOpaqueParts()
 		/*	It should not be possible to have multiple texture units if
 			texture combiners are not available.
 		*/
-		OOCAssert(OOOpenGLExtensionManager::sharedManager()->textureCombinersSupported(), "Mesh %s uses %zu texture units, but multitexturing is not available.", oo::ShortDescriptionOf(oo::ToObjC(this)).c_str(), _textureUnitCount);
+		OOCAssert(cxx::OOOpenGLExtensionManager::sharedManager()->textureCombinersSupported(), "Mesh %s uses %zu texture units, but multitexturing is not available.", oo::str::format("<OOMesh %s>", oo::str::pointerDescription(this).c_str()).c_str(), _textureUnitCount);
 		
 		for (unit = 0; unit < _textureUnitCount; unit++)
 		{
@@ -468,7 +465,7 @@ void OOMesh::renderOpaqueParts()
 	{
 		if (!brokenInRender)
 		{
-			OO_LOG(cxx_kOOLogException, "***** {} for {} encountered exception: {} : {} *****", __PRETTY_FUNCTION__, oo::DescriptionOf(oo::ToObjC(this)), [exception name], [exception reason]);
+			OO_LOG(cxx_kOOLogException, "***** {} for {} encountered exception: {} : {} *****", __PRETTY_FUNCTION__, description(), [exception name], [exception reason]);
 			brokenInRender = YES;
 		}
 		if (strncmp([exception name], "Oolite", 6) == 0)  [UNIVERSE handleOoliteException:exception];	// handle these ourself
@@ -476,14 +473,14 @@ void OOMesh::renderOpaqueParts()
 	}
 	
 #if OO_SHADERS
-	if (OOOpenGLExtensionManager::sharedManager()->shadersSupported())
+	if (cxx::OOOpenGLExtensionManager::sharedManager()->shadersSupported())
 	{
 		OOGL(glDisableVertexAttribArrayARB(kTangentAttributeIndex));
 	}
 #endif
 	
-	OOMaterial::applyNone();
-	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "OOMesh after drawing " + oo::DescriptionOf(oo::ToObjC(this)); });
+	cxx::OOMaterial::applyNone();
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "OOMesh after drawing " + description(); });
 	
 #if OO_MULTITEXTURE
 	if (_textureUnitCount <= 1)
@@ -520,7 +517,7 @@ void OOMesh::renderOpaqueParts()
 void OOMesh::rebindMaterials()
 {
 	OOMeshMaterialCount		i;
-	oo::Ref<OOMaterial>		material;
+	oo::Ref<cxx::OOMaterial>		material;
 
 	if (materialCount != 0)
 	{
@@ -530,7 +527,7 @@ void OOMesh::rebindMaterials()
 
 			if (materialKeys[i] != "_oo_placeholder_material")
 			{
-				material = OOMaterial::materialWithName(materialKeys[i],
+				material = cxx::OOMaterial::materialWithName(materialKeys[i],
 														_cacheKey,
 														_materialDict,
 														_shadersDict,
@@ -561,10 +558,8 @@ void OOMesh::rebindMaterials()
 	}
 }
 
-}	// namespace cxx
 
 
-namespace cxx {
 
 oo::PList OOMesh::getMaterials()
 {
@@ -594,10 +589,8 @@ GLfloat OOMesh::maxDrawDistance()
 	return _maxDrawDistance;
 }
 
-}	// namespace cxx
 
 
-namespace cxx {
 
 #if ADAPTIVE_OCTREE_DEPTH
 unsigned OOMesh::octreeDepth()
@@ -753,10 +746,8 @@ oo::Ref<OOMesh> OOMesh::meshRescaledBy(GLfloat scaleFactor)
 	return result;
 }
 
-}	// namespace cxx
 
 
-namespace cxx {
 
 void OOMesh::setBindingTarget(id<OOWeakReferenceSupport> target)
 {
@@ -765,7 +756,7 @@ void OOMesh::setBindingTarget(id<OOWeakReferenceSupport> target)
 	for (i = 0; i != kOOMeshMaxMaterials; ++i)
 	{
 		// A nil material did nothing.
-		if (OOMaterial *material = oo::ToCxx(materials[i]))  material->setBindingTarget(target);
+		if (cxx::OOMaterial *material = oo::ToCxx(materials[i]))  material->setBindingTarget(target);
 	}
 }
 
@@ -791,7 +782,7 @@ std::vector<oo::ObjCRef<::OOTexture *>> OOMesh::allTextures()
 	for (i = 0; i != materialCount; i++)
 	{
 		// A nil material answered no textures.
-		OOMaterial *material = oo::ToCxx(materials[i]);
+		cxx::OOMaterial *material = oo::ToCxx(materials[i]);
 		if (material == nullptr)  continue;
 		for (const oo::ObjCRef<::OOTexture *> &texture : material->allTextures())  result.push_back(texture);
 	}
@@ -834,10 +825,8 @@ bool OOMesh::suppressClangStuff()
 	return _normals && _tangents && _faces && _boundingBox.min.x;
 }
 
-}	// namespace cxx
 
 
-namespace cxx {
 
 bool OOMesh::initWithName(const std::string &name,
 						  const std::optional<std::string> &cacheKey,
@@ -1540,7 +1529,6 @@ bool OOMesh::loadData(const std::string &filename, float scale)
 	OOJS_PROFILE_EXIT
 }
 
-}	// namespace cxx
 
 
 #if SCRIBBLE
@@ -1561,7 +1549,6 @@ static void Scribble(void *bytes, size_t size)
 #endif
 
 
-namespace cxx {
 
 void OOMesh::deleteDisplayLists()
 {
@@ -1811,7 +1798,6 @@ void OOMesh::renameTexturesFrom(const std::string &from, const std::string &to)
 	}
 }
 
-}	// namespace cxx
 
 
 static float FaceArea(GLuint *vertIndices, Vector *vertices)
@@ -1840,7 +1826,6 @@ static float FaceAreaCorrect(GLuint *vertIndices, Vector *vertices)
 }
 
 
-namespace cxx {
 
 void OOMesh::checkNormalsAndAdjustWinding()
 {
@@ -2128,7 +2113,6 @@ BoundingBox OOMesh::boundingBox()
 	return _boundingBox;
 }
 
-}	// namespace cxx
 
 
 static const char * const kOOCacheMeshes = "OOMesh";

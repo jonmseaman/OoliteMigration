@@ -37,7 +37,7 @@
 #include "oofnd/PList.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 
-@class OOMesh;
+class OOMesh;	// C++ since bead oo-9ht.132
 #include "OOScript.h"	// oo::Ref<OOScript> members and results (bead oo-9ht.133)
 class OOColor;
 class OOFlasherEntity;	// C++ only since bead oo-9ht.107
