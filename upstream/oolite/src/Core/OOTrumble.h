@@ -4,9 +4,8 @@ OOTrumble.h
 
 Implements cute, fuzzy trumbles.
 
-C++20 since bead oo-862e (Phase 3, proposed ADR-0056). The class is cxx::OOTrumble while
-OOTrumble+ObjCBridge.h, imported at the end of this header, keeps the Objective-C OOTrumble its
-unconverted callers message; the bridge's deletion bead moves it out of namespace cxx.
+C++20 since bead oo-862e (Phase 3, proposed ADR-0056); the Objective-C facade was deleted, and the
+class moved out of namespace cxx, by bead oo-9ht.17.
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -79,8 +78,6 @@ enum trumble_mouth
 
 
 struct OOTrumbleTestAccess;	// tests/unit/core/test_OOTrumble.mm
-
-namespace cxx {
 
 class OOTrumble : public oo::RefCounted
 {
@@ -182,12 +179,5 @@ private:
 	bool					readyToSpawn = {};
 };
 
-}	// namespace cxx
-
-
-// Transitional: the Objective-C OOTrumble, for callers not yet converted (PlayerEntity keeps its
-// trumbles as Objective-C objects; HeadUpDisplay draws them). Deleted, with namespace cxx above,
-// by the bridge's deletion bead.
-#import "OOTrumble+ObjCBridge.h"
 
 #endif	// OOTRUMBLE_H

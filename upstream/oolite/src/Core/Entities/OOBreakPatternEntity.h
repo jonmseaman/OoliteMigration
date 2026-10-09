@@ -41,23 +41,19 @@ enum
 struct OOBreakPatternEntityTestAccess;
 
 
-namespace cxx {
-
-class OOBreakPatternEntity : public Entity
+class OOBreakPatternEntity : public cxx::Entity
 {
 public:
-	// +breakPatternWithPolygonSides:startAngle:aspectRatio:: a new ring, initialised. The facade's
-	// class method hands it to Objective-C (oo::NewEntityFacade).
+	// +breakPatternWithPolygonSides:startAngle:aspectRatio:: a new ring, initialised.
 	static oo::Ref<OOBreakPatternEntity> breakPatternWithPolygonSides(NSUInteger sides, float startAngleDegrees, float aspectRatio);
 
-	void setInnerColor(OOColor *color1, OOColor *color2);
+	void setInnerColor(cxx::OOColor *color1, cxx::OOColor *color2);
 
 	void setLifetime(double lifetime);
 
 	void update(OOTimeDelta delta_t) override;
 	void drawImmediate(bool immediate, bool translucent) override;
 	bool canCollide() override;
-	bool isBreakPattern();
 
 private:
 	friend struct ::OOBreakPatternEntityTestAccess;
@@ -73,11 +69,3 @@ private:
 	NSUInteger				_vertexCount = {};
 	double					_lifetime = {};
 };
-
-}	// namespace cxx
-
-
-// Transitional: the Objective-C OOBreakPatternEntity, for the universe, which makes the rings and
-// messages them, and the category the header declared. Deleted, with namespace cxx above, by the
-// bridge's deletion bead.
-#import "OOBreakPatternEntity+ObjCBridge.h"
