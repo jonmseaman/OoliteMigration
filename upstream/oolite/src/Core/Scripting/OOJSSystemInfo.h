@@ -4,13 +4,12 @@ OOJSSystemInfo.h
 
 JavaScript object representing system info overrides.
 
-C++20 since bead oo-6ia4 (proposed ADR-0056; amendment oo-ppc for the binding). cxx::OOSystemInfo,
+C++20 since bead oo-6ia4 (proposed ADR-0056; amendment oo-ppc for the binding). OOSystemInfo,
 the object a SystemInfo wraps, was an Objective-C class private to OOJSSystemInfo.mm. Only that
 file makes one. Since bead oo-6symp.2 a SystemInfo's private slot holds it directly
-(OOJSPrivateObject.h; proposed ADR-0056 amendment oo-6symp), but Objective-C code still messages
-its facade by selector (-oo_jsValueInContext:, -cxx_oo_jsClassName, its description), so it keeps
-an Objective-C facade, OOJSSystemInfo+ObjCBridge.h, imported at the end of this header
-(amendment oo-kdyh item 3).
+(OOJSPrivateObject.h; proposed ADR-0056 amendment oo-6symp), and since bead oo-9ht.95 its
+Objective-C facade is gone: it is a oo::PListForeign, so a PList can carry it (the engine turns
+one back into its JS object with OOJSValueFromCxxObject).
 
 
 Oolite
@@ -45,10 +44,8 @@ MA 02110-1301, USA.
 #include "OOJSPrivateObject.h"
 
 
-namespace cxx {
-
 // The system a SystemInfo stands for, and its data through the universe.
-class OOSystemInfo : public oo::RefCounted, public ::OOJSPrivateObject
+class OOSystemInfo : public oo::PListForeign, public ::OOJSPrivateObject
 {
 public:
 	// -initWithGalaxy:system:, as a factory: null for a galaxy or system out of range (it answered
@@ -77,6 +74,10 @@ public:
 	void clearJSSelf(ooscript::Object selfVal) override;
 	std::optional<std::string> jsDescription() override;
 
+	// oo::PListForeign: for the PList that carries this.
+	std::string className() const override;
+	std::string description() const override;
+
 private:
 	OOSystemInfo(OOGalaxyID galaxy, OOSystemID system);
 
@@ -85,8 +86,6 @@ private:
 	std::string				_planetKey;
 	ooscript::Object		_jsSelf = {};	// The latest JS SystemInfo object made for this.
 };
-
-}	// namespace cxx
 
 
 #ifdef __cplusplus
@@ -101,10 +100,5 @@ ooscript::Value GetJSSystemInfoForSystem(ooscript::Context context, OOGalaxyID g
 #ifdef __cplusplus
 }
 #endif
-
-
-// Transitional: the Objective-C OOSystemInfo facade. Deleted, with namespace cxx above, by the
-// bridge's deletion bead.
-#import "OOJSSystemInfo+ObjCBridge.h"
 
 #endif	// OOJSSYSTEMINFO_H

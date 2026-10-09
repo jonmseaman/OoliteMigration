@@ -59,6 +59,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOObjCPList.h"		// Object nodes (OOJSValueFromPList)
+#include "OOJSPrivateObject.h"
 #import "Universe.h"
 #import "OOPlanetEntity.h"
 #import "OOWeakReference.h"
@@ -1457,6 +1458,11 @@ ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &p
 			return JSObjectValueFromPList(context, *plist.getIf<oo::PList::Dict>());
 
 		case oo::PList::Type::Object:
+			// A C++ object that is its own JS glue (OOJSPrivateObject.h), else an Objective-C object.
+			if (const oo::PList::Object *node = plist.getIf<oo::PList::Object>())
+			{
+				if (OOJSPrivateObject *glue = dynamic_cast<OOJSPrivateObject *>(node->get()))  return OOJSValueFromCxxObject(context, glue);
+			}
 			return OOJSValueFromNativeObject(context, oo::ObjectIn(plist));
 	}
 	return ooscript::undefinedValue();

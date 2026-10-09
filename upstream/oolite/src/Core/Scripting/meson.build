@@ -53,7 +53,6 @@ oolite_sources += files(
     'OOJSSystem.mm',
     'OOJSSystem+ObjCBridge.mm',
     'OOJSSystemInfo.mm',
-    'OOJSSystemInfo+ObjCBridge.mm',
     'OOJSTimer.mm',
     'OOJSTimer+ObjCBridge.mm',
     'OOJSVector.mm',
