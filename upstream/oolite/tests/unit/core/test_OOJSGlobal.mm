@@ -107,10 +107,6 @@
 + (OOJavaScriptEngine *) sharedEngine;
 @end
 
-@interface OOScript: OOWeakRefObject
-@end
-
-
 #import "OOJSGlobal.h"
 
 #include "oo_test.hpp"
@@ -300,25 +296,25 @@ void cxx::OOJavaScriptEngine::sendMonitorLogMessage(const std::optional<std::str
 }
 
 
-@implementation OOScript
-@end
+#import "OOScript.h"
 
 
-// OOJSScript's statics (OOJSScript.h), which the code under test calls since bead oo-9ht.137 deleted
-// the Objective-C OOJSScript: a script's object is the OOScript root's facade (stood in for above).
-class OOJSScript
+// OOJSScript (OOJSScript.h), which the code under test calls. Since bead oo-9ht.133 deleted the
+// OOScript root's facade (a script's object since bead oo-9ht.137) a script is the C++ object, so
+// the stand-in is a C++ subclass of OOScript declaring the members that code calls.
+class OOJSScript : public OOScript
 {
 public:
-	static ::OOScript *currentlyRunningScript();
-	static void pushScript(::OOScript *script);
-	static void popScript(::OOScript *script);
+	static OOJSScript *currentlyRunningScript();
+	static void pushScript(const oo::WeakRef<OOJSScript> &script);
+	static void popScript(OOJSScript *script);
 };
 
-::OOScript *OOJSScript::currentlyRunningScript()  { return nil; }
-// The GUI-screen key definition linked here pushes its owner when its callback runs, which no case
-// does (the class methods were never sent; as C++ statics they must be defined).
-void OOJSScript::pushScript(::OOScript *)  { std::abort(); }
-void OOJSScript::popScript(::OOScript *)  { std::abort(); }
+OOJSScript *OOJSScript::currentlyRunningScript()  { return nullptr; }
+// The GUI-screen key definition linked here pushes its owner when its callback runs, which no case does
+// (the class methods were never sent; as C++ statics they must be defined).
+void OOJSScript::pushScript(const oo::WeakRef<OOJSScript> &)  { std::abort(); }
+void OOJSScript::popScript(OOJSScript *)  { std::abort(); }
 
 
 // MARK: What the rest of the game provides --------------------------------------------------------

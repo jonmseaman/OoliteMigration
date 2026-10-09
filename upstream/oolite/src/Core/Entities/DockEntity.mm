@@ -471,7 +471,7 @@ std::optional<std::string> DockEntity::canAcceptShipForDocking(::ShipEntity *shi
 	ooscript::Value		args[] = { OOJSValueFromNativeObject(context, ship) };
 	bool accept = YES;
 	
-	BOOL OK = [[self script] callMethod:OOJSID("acceptDockingRequestFrom") inContext:context withArguments:args count:1 result:&rval];
+	BOOL OK = ([self script] != nullptr ? [self script]->callMethod(OOJSID("acceptDockingRequestFrom"), context, args, 1, &rval) : false);
 	if (OK)  OK = ooscript::valueToBoolean(context, rval, &accept);
 	if (!OK)  accept = YES; // default to permreject
 	OOJSRelinquishContext(context);
@@ -1171,7 +1171,7 @@ bool DockEntity::allowsLaunchingOf(::ShipEntity *ship)
 	ooscript::Value		args[] = { OOJSValueFromNativeObject(context, ship) };
 	bool accept = YES;
 	
-	BOOL OK = [[self script] callMethod:OOJSID("acceptLaunchingRequestFrom") inContext:context withArguments:args count:1 result:&rval];
+	BOOL OK = ([self script] != nullptr ? [self script]->callMethod(OOJSID("acceptLaunchingRequestFrom"), context, args, 1, &rval) : false);
 	if (OK)  OK = ooscript::valueToBoolean(context, rval, &accept);
 	if (!OK)  accept = YES; // default to permreject
 	OOJSRelinquishContext(context);

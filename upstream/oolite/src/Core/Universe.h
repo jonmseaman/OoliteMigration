@@ -54,7 +54,8 @@ MA 02110-1301, USA.
 #include <string_view>
 #endif
 
-@class GameController, MyOpenGLView, Entity, ShipEntity, StationEntity, OOVisualEffectEntity, PlayerEntity, DockEntity, OOWaypointEntity, OOException, OOScript;
+@class GameController, MyOpenGLView, Entity, ShipEntity, StationEntity, OOVisualEffectEntity, PlayerEntity, DockEntity, OOWaypointEntity, OOException;
+#include "OOScript.h"	// oo::Ref<OOScript> members and results (bead oo-9ht.133)
 class WormholeEntity;	// C++ since bead oo-9ht.112
 class OOSunEntity;	// C++ since bead oo-9ht.111
 class OOPlanetEntity;	// C++ since bead oo-9ht.129
@@ -431,7 +432,7 @@ public:
 
 	GLfloat					frustum[6][4] = {};
 
-	std::map<std::string, oo::ObjCRef<::OOScript *>, std::less<>>	conditionScripts;
+	std::map<std::string, oo::Ref<OOScript>, std::less<>>	conditionScripts;
 
 	BOOL					_pauseMessage = NO;
 	BOOL					_autoCommLog = NO;

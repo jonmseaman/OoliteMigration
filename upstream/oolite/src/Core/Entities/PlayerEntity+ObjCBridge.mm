@@ -31,6 +31,7 @@ MA 02110-1301, USA.
 */
 
 #import "PlayerEntity.h"
+#import "OOScript.h"
 #import "PlayerEntityControls.h"
 #import "PlayerEntitySound.h"
 #import "PlayerEntityStickProfile.h"
@@ -817,7 +818,7 @@ PlayerEntity		*gOOPlayer = nil;
 - (void) cxx_setEquipScreenBackgroundDescriptor:(const oo::PList &)descriptor	{ _cxxPlayer->setEquipScreenBackgroundDescriptor(descriptor); }
 - (BOOL) scriptsLoaded	{ return _cxxPlayer->scriptsLoaded(); }
 - (std::vector<std::string>) cxx_worldScriptNames	{ return _cxxPlayer->worldScriptNames(); }
-- (std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>>) cxx_worldScriptsByName	{ return _cxxPlayer->worldScriptsByName(); }
+- (std::vector<std::pair<std::string, oo::Ref<OOScript>>>) cxx_worldScriptsByName	{ return _cxxPlayer->worldScriptsByName(); }
 - (OOScript *) cxx_commodityScriptNamed:(const std::optional<std::string> &)scriptName	{ return _cxxPlayer->commodityScriptNamed(scriptName); }
 - (void) doScriptEvent:(ooscript::PropertyId)message inContext:(ooscript::Context)context withArguments:(ooscript::Value *)argv count:(unsigned)argc	{ _cxxPlayer->cxx::PlayerEntity::doScriptEvent(message, context, argv, argc); }
 - (BOOL) doWorldEventUntilMissionScreen:(ooscript::PropertyId)message	{ return _cxxPlayer->doWorldEventUntilMissionScreen(message); }
@@ -1157,7 +1158,7 @@ PlayerEntity		*gOOPlayer = nil;
 
 - (void) setScriptTarget:(ShipEntity *)ship	{ _cxxPlayer->setScriptTarget(ship); }
 - (ShipEntity*) scriptTarget	{ return _cxxPlayer->scriptTarget(); }
-- (std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>>) worldScriptsRequiringTickle	{ return _cxxPlayer->getWorldScriptsRequiringTickle(); }
+- (std::vector<std::pair<std::string, oo::Ref<OOScript>>>) worldScriptsRequiringTickle	{ return _cxxPlayer->getWorldScriptsRequiringTickle(); }
 - (void) checkScript	{ _cxxPlayer->checkScript(); }
 - (void) cxx_runScriptActions:(const oo::PList &)actions withContextName:(const std::optional<std::string> &)contextName forTarget:(ShipEntity *)target	{ _cxxPlayer->runScriptActions(actions, contextName, target); }
 - (void) cxx_runUnsanitizedScriptActions:(const oo::PList &)actions allowingAIMethods:(BOOL)allowAIMethods withContextName:(const std::optional<std::string> &)contextName forTarget:(ShipEntity *)target	{ _cxxPlayer->runUnsanitizedScriptActions(actions, allowAIMethods, contextName, target); }

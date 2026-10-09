@@ -2158,8 +2158,7 @@ bool PlayerEntity::setUpAndConfirmOK(bool stopOnError, bool saveGame)
 	if (![gc inFullScreenMode] && stopOnError)	[gc startAnimationTimer];
 	
 	// Load locale script before any regular scripts.
-	[::OOScript cxx_jsScriptFromFileNamed:"oolite-locale-functions.js"
-						   properties:oo::PList()];
+	OOScriptAutorelease(OOScript::jsScriptFromFileNamed("oolite-locale-functions.js", oo::PList()));	// (nothing keeps it)
 	
 	[[::GameController sharedController] cxx_logProgress:OO_DESC("loading-scripts")];
 	
@@ -2574,17 +2573,15 @@ bool PlayerEntity::setUpShipFromDictionary(const oo::PList &shipDict)
 	massLockable = shipDict.get<bool>("mass_lockable", YES);
 	
 	// Load js script
-	[script autorelease];
+	OOScriptAutorelease(std::move(script));	// [script autorelease]
 	const oo::PList scriptProperties(oo::PList::Dict{ { "ship", oo::PListObject(self) } });
-	script = [::OOScript cxx_jsScriptFromFileNamed:StringForKey(shipDict, "script").value_or(std::string())	// (nil loaded nothing)
-										 properties:scriptProperties];
-	if (script == nil)
+	script = OOScript::jsScriptFromFileNamed(StringForKey(shipDict, "script").value_or(std::string()),	// (nil loaded nothing)
+											 scriptProperties);
+	if (script == nullptr)
 	{
 		// Do not switch to using a default value above; we want to use the default script if loading fails.
-		script = [::OOScript cxx_jsScriptFromFileNamed:"oolite-default-player-script.js"
-											 properties:scriptProperties];
+		script = OOScript::jsScriptFromFileNamed("oolite-default-player-script.js", scriptProperties);
 	}
-	[script retain];
 	
 	return YES;
 }
@@ -8554,10 +8551,10 @@ void PlayerEntity::activatePrimableEquipment(NSUInteger index, OOPrimedEquipment
 		switch (mode)
 		{
 			case OOPRIMEDEQUIP_MODE:
-				[eqScript callMethod:OOJSID("mode") inContext:context withArguments:NULL count:0 result:NULL];
+				if (eqScript != nullptr)  eqScript->callMethod(OOJSID("mode"), context, NULL, 0, NULL);
 				break;
 			case OOPRIMEDEQUIP_ACTIVATED:
-				[eqScript callMethod:OOJSID("activated") inContext:context withArguments:NULL count:0 result:NULL];
+				if (eqScript != nullptr)  eqScript->callMethod(OOJSID("activated"), context, NULL, 0, NULL);
 				break;
 		}
 		OOJSRelinquishContext(context);
@@ -10654,10 +10651,7 @@ OOCreditsQuantity PlayerEntity::adjustPriceByScriptForEqKey(const std::string &e
 				
 			if (OK)
 			{
-				OK = [condScript callMethod:OOJSID("updateEquipmentPrice")
-								  inContext:JScontext
-							  withArguments:args count:sizeof args / sizeof *args
-									 result:&result];
+				OK = (condScript != nullptr ? condScript->callMethod(OOJSID("updateEquipmentPrice"), JScontext, args, sizeof args / sizeof *args, &result) : false);
 			}
 
 			if (OK)
@@ -13307,7 +13301,7 @@ std::vector<std::string> PlayerEntity::worldScriptNames()
 }
 
 
-std::vector<std::pair<std::string, oo::ObjCRef<::OOScript *>>> PlayerEntity::worldScriptsByName()
+std::vector<std::pair<std::string, oo::Ref<OOScript>>> PlayerEntity::worldScriptsByName()
 {
 	return worldScripts;
 }
@@ -13319,21 +13313,22 @@ std::vector<std::pair<std::string, oo::ObjCRef<::OOScript *>>> PlayerEntity::wor
 	{
 		return nil;
 	}
-	::OOScript *cscript = nil;
+	::OOScript *cscript = nullptr;
 	const auto found = commodityScripts.find(*scriptName);
 	if (found != commodityScripts.end())
 	{
 		cscript = found->second.get();
 	}
-	if (cscript != nil)
+	if (cscript != nullptr)
 	{
 		return cscript;
 	}
-	cscript = [::OOScript cxx_jsScriptFromFileNamed:*scriptName properties:oo::PList()];
-	if (cscript != nil)
+	const oo::Ref<OOScript> loaded = OOScript::jsScriptFromFileNamed(*scriptName, oo::PList());
+	cscript = loaded.get();
+	if (cscript != nullptr)
 	{
 		// storing it in here retains it
-		commodityScripts[*scriptName] = oo::ObjCRef<::OOScript *>(cscript);
+		commodityScripts[*scriptName] = loaded;
 	}
 	else
 	{
@@ -13355,7 +13350,7 @@ void PlayerEntity::doScriptEvent(ooscript::PropertyId message, ooscript::Context
 bool PlayerEntity::doWorldEventUntilMissionScreen(ooscript::PropertyId message)
 {
 	::PlayerEntity *self = oo::ToObjC(this);
-	const std::vector<std::pair<std::string, oo::ObjCRef<::OOScript *>>> scripts = worldScripts;	// a snapshot, as the enumerator kept the dictionary
+	const std::vector<std::pair<std::string, oo::Ref<OOScript>>> scripts = worldScripts;	// a snapshot, as the enumerator kept the dictionary
 	auto			scriptEntry = scripts.begin();
 
 	// Check for the presence of report messages first.
@@ -13369,7 +13364,7 @@ bool PlayerEntity::doWorldEventUntilMissionScreen(ooscript::PropertyId message)
 	ooscript::Context context = OOJSAcquireContext();
 	while (scriptEntry != scripts.end() && gui_screen != GUI_SCREEN_MISSION && [self isDocked])
 	{
-		[scriptEntry->second.get() callMethod:message inContext:context withArguments:NULL count:0 result:NULL];
+		if (scriptEntry->second.get() != nullptr)  scriptEntry->second.get()->callMethod(message, context, NULL, 0, NULL);
 		++scriptEntry;
 	}
 	OOJSRelinquishContext(context);
@@ -13390,11 +13385,11 @@ void PlayerEntity::doWorldScriptEvent(ooscript::PropertyId message, ooscript::Co
 	OOCParameterAssert(context != NULL && ooscript::isInRequest(context));
 	
 	// ORDER-SENSITIVE (decision D): load order (was -allValues order); a snapshot, as -allValues was.
-	const std::vector<std::pair<std::string, oo::ObjCRef<::OOScript *>>> scripts = worldScripts;
+	const std::vector<std::pair<std::string, oo::Ref<OOScript>>> scripts = worldScripts;
 	for (const auto &entry : scripts)
 	{
 		OOJSStartTimeLimiterWithTimeLimit(limit);
-		[entry.second.get() callMethod:message inContext:context withArguments:argv count:argc result:NULL];
+		if (entry.second.get() != nullptr)  entry.second.get()->callMethod(message, context, argv, argc, NULL);
 		OOJSStopTimeLimiter();
 	}
 }

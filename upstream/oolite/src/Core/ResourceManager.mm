@@ -2221,10 +2221,10 @@ std::optional<std::string> cxx::ResourceManager::stringFromFilesNamed(const std:
 }
 
 
-std::vector<std::pair<std::string, oo::ObjCRef<::OOScript *>>> cxx::ResourceManager::loadScripts()
+std::vector<std::pair<std::string, oo::Ref<OOScript>>> cxx::ResourceManager::loadScripts()
 {
 	// name -> script, in the order each name was first loaded (a later script of the same name replaces the earlier one in place)
-	std::vector<std::pair<std::string, oo::ObjCRef<::OOScript *>>>	loadedScripts;
+	std::vector<std::pair<std::string, oo::Ref<OOScript>>>	loadedScripts;
 
 	OO_LOG("script.load.world.begin", "{}", "Loading world scripts...");
 
@@ -2239,20 +2239,20 @@ std::vector<std::pair<std::string, oo::ObjCRef<::OOScript *>>> cxx::ResourceMana
 			{
 				@try
 				{
-					std::optional<std::vector<oo::ObjCRef<::OOScript *>>> results = [::OOScript cxx_worldScriptsAtPath:oo::str::appendingPathComponent(path, "Config")];
-					if (!results.has_value()) results = [::OOScript cxx_worldScriptsAtPath:path];
+					std::optional<std::vector<oo::Ref<OOScript>>> results = OOScript::worldScriptsAtPath(oo::str::appendingPathComponent(path, "Config"));
+					if (!results.has_value()) results = OOScript::worldScriptsAtPath(path);
 					if (results.has_value())
 					{
-						for (const oo::ObjCRef<::OOScript *> &script : *results)
+						for (const oo::Ref<OOScript> &script : *results)
 						{
-							const std::optional<std::string> name = [script.get() cxx_name];
+							const std::optional<std::string> name = (script != nullptr) ? script->name() : std::nullopt;
 							if (name.has_value())
 							{
 								auto existing = std::find_if(loadedScripts.begin(), loadedScripts.end(), [&](const auto &entry) { return entry.first == *name; });
 								if (existing != loadedScripts.end())  existing->second = script;
 								else  loadedScripts.emplace_back(*name, script);
 							}
-							else  OO_LOG("script.load.unnamed", "Discarding anonymous script {}", oo::DescriptionOf(script.get()));
+							else  OO_LOG("script.load.unnamed", "Discarding anonymous script {}", (script != nullptr) ? script->description() : std::string("(null)"));
 						}
 					}
 				}
@@ -2275,7 +2275,7 @@ std::vector<std::pair<std::string, oo::ObjCRef<::OOScript *>>> cxx::ResourceMana
 
 			for (const auto &[name, script] : loadedScripts)
 			{
-				displayNames.push_back([script.get() displayName].value_or(""));
+				displayNames.push_back(((script != nullptr) ? script->displayName() : std::nullopt).value_or(""));
 			}
 
 			std::stable_sort(displayNames.begin(), displayNames.end(), [](const std::string &a, const std::string &b) { return oo::str::caseInsensitiveCompare(a, b) < 0; });

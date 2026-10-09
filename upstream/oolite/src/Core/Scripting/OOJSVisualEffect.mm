@@ -34,6 +34,7 @@ MA 02110-1301, USA.
 #include <cstring>
 #include <cstdint>
 #import "OOObjCPList.h"
+#import "OOScript.h"
 
 // Retargeted onto the ooscript facade (JSEngine.hpp), the way OOJSVector.mm and
 // OOJSFlasher.mm do it (bead oo-sdz exemplar): stub hooks become nullptr, InitClass
@@ -419,7 +420,7 @@ static bool VisualEffectGetProperty(Context cx, Object obj, PropertyId propID, V
 			
 			
 		case kVisualEffect_script:
-			result = oo::PListObject([entity script]);
+			result = OOScriptObjectNode([entity script]);
 			break;
 
 		case kVisualEffect_scriptInfo:

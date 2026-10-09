@@ -55,6 +55,7 @@ MA 02110-1301, USA.
 #import "OOObjCPList.h"
 #import "OOColor.h"
 #import "OOCommodities.h"
+#import "OOScript.h"
 #import "OOJSShip+ObjCBridge.h"
 #include "oofnd/String.hpp"
 
@@ -1077,11 +1078,11 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			return ooscript::newNumberValue(context, ship->afterburnerFactor(), value);
 			
 		case kShip_script:
-			result = oo::PListObject(ship->shipScript());
+			result = OOScriptObjectNode(ship->shipScript());
 			break;
 
 		case kShip_AIScript:
-			result = oo::PListObject(ship->shipAIScript());
+			result = OOScriptObjectNode(ship->shipAIScript());
 			break;
 
 		case kShip_AIScriptWakeTime:

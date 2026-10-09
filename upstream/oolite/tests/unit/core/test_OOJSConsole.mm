@@ -390,28 +390,24 @@ BOOL JSValueToEntity(ooscript::Context, ooscript::Value value, Entity **outEntit
 }
 
 
-@interface OOScript: OOObject
-@end
-
-@implementation OOScript
-
-@end
+#import "OOScript.h"
 
 
-// OOJSScript's statics (OOJSScript.h), which the code under test calls since bead oo-9ht.137 deleted
-// the Objective-C OOJSScript: a script's object is the OOScript root's facade (stood in for above).
-class OOJSScript
+// OOJSScript (OOJSScript.h), which the code under test calls. Since bead oo-9ht.133 deleted the
+// OOScript root's facade (a script's object since bead oo-9ht.137) a script is the C++ object, so
+// the stand-in is a C++ subclass of OOScript declaring the members that code calls.
+class OOJSScript : public OOScript
 {
 public:
-	static std::vector<oo::ObjCRef<::OOScript *>> scriptStack();
-	static ::OOScript *currentlyRunningScript();
+	static std::vector<oo::Ref<OOJSScript>> scriptStack();
+	static OOJSScript *currentlyRunningScript();
 };
 
 // The time limiter linked here names the running script when a script overruns, which no case does
 // (the class method was never sent; as a C++ static it must be defined).
-::OOScript *OOJSScript::currentlyRunningScript()  { std::abort(); }
+OOJSScript *OOJSScript::currentlyRunningScript()  { std::abort(); }
 
-std::vector<oo::ObjCRef<::OOScript *>> OOJSScript::scriptStack()
+std::vector<oo::Ref<OOJSScript>> OOJSScript::scriptStack()
 {
 	return {};
 }

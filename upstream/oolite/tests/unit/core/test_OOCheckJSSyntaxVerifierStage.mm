@@ -96,28 +96,22 @@ std::vector<std::string> gScriptPaths;		// +scriptWithPath:properties:, in order
 @end
 
 
-@interface OOScript: OOObject
-@end
+#import "OOScript.h"
 
 
-@implementation OOScript
-@end
-
-
-
-
-// OOJSScript's statics (OOJSScript.h), which the code under test calls since bead oo-9ht.137 deleted
-// the Objective-C OOJSScript: a script's object is the OOScript root's facade (stood in for above).
-class OOJSScript
+// OOJSScript (OOJSScript.h), which the code under test calls. Since bead oo-9ht.133 deleted the
+// OOScript root's facade (a script's object since bead oo-9ht.137) a script is the C++ object, so
+// the stand-in is a C++ subclass of OOScript declaring the members that code calls.
+class OOJSScript : public OOScript
 {
 public:
-	static ::OOScript *scriptWithPath(const std::optional<std::string> &path, const oo::PList &properties);
+	static oo::Ref<OOJSScript> scriptWithPath(const std::optional<std::string> &path, const oo::PList &properties);
 };
 
-::OOScript *OOJSScript::scriptWithPath(const std::optional<std::string> &path, const oo::PList &properties)
+oo::Ref<OOJSScript> OOJSScript::scriptWithPath(const std::optional<std::string> &path, const oo::PList &properties)
 {
 	gScriptPaths.push_back(path.value_or("(nil)") + (properties.isNull() ? "" : " with properties"));
-	return nil;
+	return nullptr;
 }
 
 

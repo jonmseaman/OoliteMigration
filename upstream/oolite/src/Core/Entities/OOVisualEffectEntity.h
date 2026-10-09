@@ -37,7 +37,8 @@
 #include "oofnd/PList.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 
-@class OOMesh, OOScript;
+@class OOMesh;
+#include "OOScript.h"	// oo::Ref<OOScript> members and results (bead oo-9ht.133)
 class OOColor;
 class OOFlasherEntity;	// C++ only since bead oo-9ht.107
 
@@ -196,7 +197,7 @@ public:
 	Vector _v_up = {};
 	Vector _v_right = {};
 
-	::OOScript *_script = {};	// retained; was script, named like its getter
+	oo::Ref<OOScript> _script;	// was script, named like its getter
 	oo::PList				_scriptInfo;	// was scriptInfo, named like its getter
 
 	std::optional<std::string>	_effectKey;

@@ -5,13 +5,13 @@ OOJSScript.h
 JavaScript support for Oolite
 Copyright (C) 2007-2013 David Taylor and Jens Ayton.
 
-C++20 since bead oo-u61e.4 (proposed ADR-0056, the OOColor house style), a subclass of
-cxx::OOScript (bead oo-604l). Its Objective-C facade was deleted by bead oo-9ht.137 (ADR-0056
-amendments oo-9ht.12 item 6 and oo-9ht.137): the class is global, and its object (its identity: the
-JS object, the stack of running scripts and the weak references hold it) is the OOScript root's
-facade, made once by scriptWithPath() and owning the C++ script; oo::ToObjC answers it. That facade
-answers what the deleted one did for a JS script (OOScript+ObjCBridge.h: -callMethod:..., the weak
-reference support, the JS glue, -dealloc's willDealloc()).
+C++20 since bead oo-u61e.4 (proposed ADR-0056, the OOColor house style), a subclass of OOScript
+(bead oo-604l). Its Objective-C facade was deleted by bead oo-9ht.137, and the OOScript root's
+facade, which was then its object, by bead oo-9ht.133 (ADR-0056 amendment oo-9ht.133): the script's
+identity is the C++ object. Holders keep it as oo::Ref (the timers and definitions as oo::WeakRef),
+the stack of running scripts holds it weakly, and the Script JS object's private slot holds a weak
+reference to it (OOJSPrivateObject glue, amendment oo-6symp), as it held the facade's
+OOWeakReference.
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -40,40 +40,44 @@ MA 02110-1301, USA.
 // The script property that holds the identifier of the manifest the script was loaded under.
 inline constexpr char kLocalManifestProperty[] = "oolite_manifest_identifier";
 
-@class OOWeakReference;
 
-
-class OOJSScript : public cxx::OOScript
+class OOJSScript : public OOScript
 {
 public:
-	// +scriptWithPath:properties:: a new script and its Objective-C object (the OOScript root's
-	// facade, its identity), autoreleased; nil when the script could not be loaded. path nullopt is
+	// +scriptWithPath:properties:: a new script, null when it could not be loaded. path nullopt is
 	// nil (the script is then named after its address); properties may hold live objects.
-	static ::OOScript *scriptWithPath(const std::optional<std::string> &path, const oo::PList &properties);
+	static oo::Ref<OOJSScript> scriptWithPath(const std::optional<std::string> &path, const oo::PList &properties);
 
-	// The old -initWithPath:properties: after [super init], run by scriptWithPath() once the object
-	// is the peer; false: the script could not be loaded, and the object is released.
+	// The old -dealloc's body (the facade's, which ran it as willDealloc() until bead oo-9ht.133).
+	~OOJSScript() override;
+
+	// The old -initWithPath:properties: after [super init], run by scriptWithPath(); false: the
+	// script could not be loaded, and scriptWithPath() drops it.
 	bool initWithPath(const std::optional<std::string> &path, const oo::PList &properties);
-	// The old -dealloc before [super dealloc], run by the object's -dealloc.
-	void willDealloc();
 
-	// The running scripts' Objective-C objects (the stack holds only JS scripts, or nil).
-	static ::OOScript *currentlyRunningScript();
-	static std::vector<oo::ObjCRef<::OOScript *>> scriptStack();
+	// The running script; null when none runs, for a script-less push, and once a weakly pushed
+	// script has gone (a dead weak reference, which answered every message as nil).
+	static OOJSScript *currentlyRunningScript();
+	// The running scripts, outermost first; an entry is null once a weakly pushed script has gone.
+	// Raises, as -addObject: did on nil, if the stack holds a script-less push.
+	static std::vector<oo::Ref<OOJSScript>> scriptStack();
 
 	/*	External manipulation of acrtive script stack. Used, for instance, by
 		timers. Failing to balance these will crash!
 		Passing a nil script is valid for cases where JS is used which is not
 		attached to a specific script.
+		The weak form is for a holder that keeps its script weakly (it pushed the OOWeakReference
+		-weakRetain gave it); pop it with its get().
 	*/
-	static void pushScript(::OOScript *script);
-	static void popScript(::OOScript *script);
+	static void pushScript(OOJSScript *script);
+	static void pushScript(const oo::WeakRef<OOJSScript> &script);
+	static void popScript(OOJSScript *script);
 
 	/*	Call a method.
 		Requires a request on context.
 		outResult may be NULL.
 	*/
-	bool callMethod(ooscript::PropertyId methodID, ooscript::Context context, ooscript::Value *argv, int argc, ooscript::Value *outResult);
+	bool callMethod(ooscript::PropertyId methodID, ooscript::Context context, ooscript::Value *argv, int argc, ooscript::Value *outResult) override;
 
 	// The property as cxx_OOJSPListFromJSValue() converts it; null when there is no script object or it could not be read.
 	oo::PList propertyWithID(ooscript::PropertyId propID, ooscript::Context context);
@@ -86,11 +90,11 @@ public:
 	bool setProperty(const oo::PList &value, const std::string &name);
 	bool defineProperty(const oo::PList &value, const std::string &name);
 
-	// OOWeakReferenceSupport and the JS glue of OOObject, which the object answers for a JS script.
-	id weakRetain();
-	void weakRefDied(::OOWeakReference *weakRef);
+	// The JS glue (OOJSPrivateObject; -cxx_oo_jsClassName, -oo_jsValueInContext: and the
+	// -cxx_oo_jsDescription toString() answered).
 	std::optional<std::string> jsClassName();
-	ooscript::Value jsValueInContext(ooscript::Context context);
+	ooscript::Value jsValueInContext(ooscript::Context context) override;
+	std::optional<std::string> jsDescription() override;
 
 	// OOScript
 	std::optional<std::string> descriptionComponents() override;
@@ -110,8 +114,6 @@ private:
 	std::optional<std::string>	_description;
 	std::optional<std::string>	_version;
 	std::optional<std::string>	_filePath;
-
-	::OOWeakReference			*_weakSelf = nil;
 };
 
 

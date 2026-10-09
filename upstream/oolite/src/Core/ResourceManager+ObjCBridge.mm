@@ -27,6 +27,7 @@ MA 02110-1301, USA.
 */
 
 #import "ResourceManager.h"
+#import "OOScript.h"
 #import "OOALMusic.h"
 #import "OOSystemDescriptionManager.h"
 
@@ -256,7 +257,7 @@ MA 02110-1301, USA.
 	return cxx::ResourceManager::stringFromFilesNamed(fileName, folderName, useCache);
 }
 
-+ (std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>>) cxx_loadScripts
++ (std::vector<std::pair<std::string, oo::Ref<OOScript>>>) cxx_loadScripts
 {
 	return cxx::ResourceManager::loadScripts();
 }

@@ -61,7 +61,7 @@ OOJSInterfaceDefinition::OOJSInterfaceDefinition() {
 	_callback = ooscript::undefinedValue();
 	_callbackThis = NULL;
 
-	_owningScript = oo::adoptObjC(static_cast<::OOScript *>([OOJSScript::currentlyRunningScript() weakRetain]));
+	_owningScript = OOJSScript::currentlyRunningScript();
 
 	oo::NotificationCenter::defaultCenter().addObserver(this, kOOJavaScriptEngineWillResetNotificationName,
 														[::OOJavaScriptEngine sharedEngine],
@@ -167,8 +167,8 @@ void OOJSInterfaceDefinition::runCallback(const std::string &key)
 
 	ooscript::Value         cKey = OOJSValueFromPList(context, oo::PList(key));
 
-	const oo::ObjCRef<::OOScript *> owner = _owningScript; // local copy needed
-	OOJSScript::pushScript(owner.get());
+	const oo::WeakRef<OOJSScript> owner = _owningScript; // local copy needed
+	OOJSScript::pushScript(owner);
 	
 	[engine callJSFunction:_callback
 				 forObject:_callbackThis

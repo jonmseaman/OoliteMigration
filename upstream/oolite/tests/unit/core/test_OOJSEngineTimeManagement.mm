@@ -120,24 +120,33 @@ extern "C" void OOJSDumpStack(ooscript::Context)
 @end
 
 
-@interface OOScript: OOObject
-- (std::optional<std::string>) cxx_name;
-@end
-
-@implementation OOScript
-- (std::optional<std::string>) cxx_name  { return std::string("test script"); }
-@end
+#import "OOScript.h"
 
 
-// OOJSScript's statics (OOJSScript.h), which the code under test calls since bead oo-9ht.137 deleted
-// the Objective-C OOJSScript: a script's object is the OOScript root's facade (stood in for above).
-class OOJSScript
+// OOJSScript (OOJSScript.h), which the code under test calls. Since bead oo-9ht.133 deleted the
+// OOScript root's facade (a script's object since bead oo-9ht.137) a script is the C++ object, so
+// the stand-in is a C++ subclass of OOScript declaring the members that code calls.
+class OOJSScript : public OOScript
 {
 public:
-	static ::OOScript *currentlyRunningScript();
+	static OOJSScript *currentlyRunningScript();
+	std::optional<std::string> name() override  { return std::string("test script"); }
 };
 
-::OOScript *OOJSScript::currentlyRunningScript()  { static OOScript *script = [[OOScript alloc] init]; return script; }
+// OOScript's virtual members (OOScript.mm reaches the whole game), for the test's scripts' vtable.
+std::optional<std::string> OOScript::descriptionComponents()	{ return std::nullopt; }
+std::optional<std::string> OOScript::name()					{ return std::nullopt; }
+std::optional<std::string> OOScript::scriptDescription()		{ return std::nullopt; }
+std::optional<std::string> OOScript::version()				{ return std::nullopt; }
+bool OOScript::requiresTickle()								{ return false; }
+void OOScript::runWithTarget(::Entity *)						{}
+bool OOScript::callMethod(ooscript::PropertyId, ooscript::Context, ooscript::Value *, int, ooscript::Value *)	{ return false; }
+std::string OOScript::className() const						{ return "OOScript"; }
+std::string OOScript::description() const						{ return "<OOScript>"; }
+ooscript::Value OOScript::jsValueInContext(ooscript::Context)	{ return ooscript::undefinedValue(); }
+void OOScript::clearJSSelf(ooscript::Object)					{}
+
+OOJSScript *OOJSScript::currentlyRunningScript()  { static OOJSScript *script = oo::makeRef<OOJSScript>().leakRef(); return script; }
 
 
 // MARK: Helpers -----------------------------------------------------------------------------------

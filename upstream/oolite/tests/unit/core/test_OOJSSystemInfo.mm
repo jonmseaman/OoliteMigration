@@ -85,11 +85,6 @@
 - (id) cxx_commodityScriptNamed:(const std::optional<std::string> &)script;
 @end
 
-// The running script's object (the OOScript root's facade since bead oo-9ht.137).
-@interface OOScript: OOObject
-- (id) weakRefUnderlyingObject;
-@end
-
 @interface ResourceManager: OOObject
 + (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName mergeMode:(int)mergeMode cache:(BOOL)useCache;
 + (oo::PList) cxx_manifestForIdentifier:(const std::string &)identifier;
@@ -196,43 +191,47 @@ std::string Key(OOGalaxyID g, OOSystemID s, const std::string &key)
 @end
 
 
+class OOJSScript;
+
 namespace {
-OOScript *sScript = nil;
+OOJSScript *sScript = nullptr;	// the running script
 oo::PList sScriptManifest;
 }
 
-@implementation OOScript
-- (id) weakRefUnderlyingObject  { return self; }	// OOObject (OOWeakReference)'s answer
-@end
+
+#import "OOScript.h"
 
 
-// OOJSScript's statics and member (OOJSScript.h), which the binding calls since bead oo-9ht.137
-// deleted the Objective-C OOJSScript: the running script's object is the OOScript root's facade
-// (stood in for above), and its manifest is asked of its C++ part (oo::ToCxx, stood in for below).
-namespace cxx { class OOScript; }
-
-class OOJSScript
+// OOJSScript (OOJSScript.h), which the code under test calls. Since bead oo-9ht.133 deleted the
+// OOScript root's facade (a script's object since bead oo-9ht.137) a script is the C++ object, so
+// the stand-in is a C++ subclass of OOScript declaring the members that code calls: the running
+// script, and its manifest property.
+class OOJSScript : public OOScript
 {
 public:
-	static ::OOScript *currentlyRunningScript();
+	static OOJSScript *currentlyRunningScript();
 	oo::PList propertyNamed(const std::string &name);
 };
 
-::OOScript *OOJSScript::currentlyRunningScript()  { return sScript; }
+// OOScript's virtual members (OOScript.mm reaches the whole game), for the test's scripts' vtable.
+std::optional<std::string> OOScript::descriptionComponents()	{ return std::nullopt; }
+std::optional<std::string> OOScript::name()					{ return std::nullopt; }
+std::optional<std::string> OOScript::scriptDescription()		{ return std::nullopt; }
+std::optional<std::string> OOScript::version()				{ return std::nullopt; }
+bool OOScript::requiresTickle()								{ return false; }
+void OOScript::runWithTarget(::Entity *)						{}
+bool OOScript::callMethod(ooscript::PropertyId, ooscript::Context, ooscript::Value *, int, ooscript::Value *)	{ return false; }
+std::string OOScript::className() const						{ return "OOScript"; }
+std::string OOScript::description() const						{ return "<OOScript>"; }
+ooscript::Value OOScript::jsValueInContext(ooscript::Context)	{ return ooscript::undefinedValue(); }
+void OOScript::clearJSSelf(ooscript::Object)					{}
+
+OOJSScript *OOJSScript::currentlyRunningScript()  { return sScript; }
 
 // The running script's manifest identifier.
 oo::PList OOJSScript::propertyNamed(const std::string &name)
 {
 	return name == "oolite_manifest_identifier" ? sScriptManifest : oo::PList();
-}
-
-namespace {
-OOJSScript sCxxScript;	// the running script's C++ part
-}
-
-// oo::ToCxx (OOScript+ObjCBridge.mm): the script's C++ part, null for nil.
-namespace oo {
-cxx::OOScript *ToCxx(::OOScript *script)  { return script != nil ? reinterpret_cast<cxx::OOScript *>(&sCxxScript) : nullptr; }
 }
 
 
@@ -605,7 +604,7 @@ void SetUpContext()
 	sUniverse->_systemManager->setProperty("name", "0 7", OO_LAYER_CORE, oo::PList(std::string("Lave")), std::nullopt);
 	sUniverse->_systemManager->setProperty("population", "0 7", OO_LAYER_CORE, oo::PList(std::string("2.5")), std::nullopt);
 	sUniverse->_systemManager->setProperty("techlevel", "0 7", OO_LAYER_CORE, oo::PList(8.0), std::nullopt);
-	sScript = [[OOScript alloc] init];
+	sScript = oo::makeRef<OOJSScript>().leakRef();
 	sScriptManifest = oo::PList(std::string("org.test.script"));
 	Define("lave", GetJSSystemInfoForSystem(sContext, 0, 7));
 }

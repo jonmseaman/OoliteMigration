@@ -247,8 +247,6 @@ cxx::OONull *ToCxx(OONull *null);
 oo::PList OOJavaScriptEngineDictionaryFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool mergeFiles);
 // -weakRefUnderlyingObject (OOWeakReferenceSupport): the object itself for a non-weakref, nil for nil.
 id OOJavaScriptEngineWeakRefUnderlyingObject(id object);
-// -displayName of a script (OOScript); nullopt for nil.
-std::optional<std::string> OOJavaScriptEngineDisplayName(id script);
 // The JS glue of any object (OOObject (OOJavaScript)), as the object's class answers it.
 ooscript::Value OOJavaScriptEngineJSValueInContext(id object, ooscript::Context context);
 std::optional<std::string> OOJavaScriptEngineJSClassName(id object);

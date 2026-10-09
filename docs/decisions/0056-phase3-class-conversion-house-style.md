@@ -5407,3 +5407,70 @@ is the root's deletion (oo-9ht.133).
 **Consequences.** No Objective-C `OOJSScript` is left. oo-9ht.133 moves the identity (the weak
 references and the JS private slot) into `cxx::OOScript` and deletes the root's facade, with the
 selectors of item 2.
+
+## Amendment (bead oo-9ht.133): the last script facade, and an identity that moves into C++
+
+- Date: 2026-10-09. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch I
+  (one branch, as batches B-H). Exemplar: `src/Core/Scripting/OOScript.h/.mm`, `OOJSScript.h/.mm`,
+  `OOJSTimer.mm`, `OOJSMission.mm`, `Entities/ShipEntity.mm`, `tests/unit/core/test_OOScript.mm`,
+  `test_OOJSScript.mm`, `test_OOJSInterfaceDefinition.mm`. Carries out what amendment oo-9ht.137
+  left: the identity, the weak references and the JS private slot of a JS script move into C++.
+
+**Context.** Since oo-9ht.137 the root's facade `OOScript` was every script's object: the holders
+retained it (or a weak reference to it), the stack of running scripts held it (or a timer's or
+definition's `OOWeakReference`), and a Script JS object's private slot held its `OOWeakReference`.
+Deleting it means all of these hold the C++ script, with lifetimes and nil answers unchanged.
+
+**Decision (recommended defaults).**
+
+1. **`OOScript` is global C++ and is its own plist payload and JS glue**
+   (`class OOScript : public oo::PListForeign, public ::OOJSPrivateObject`, amendment oo-9ht.19
+   item 1). What the facade answered for every script is a member: `callMethod()` (virtual, false;
+   `OOJSScript` overrides it, so the ~25 `-callMethod:` senders call it null-guarded, amendment
+   oo-9ht.19 item 3), `className()`/`description()` (`<C++ class 0x...>{components}`, the address
+   now the script's), `jsValueInContext()` (undefined, as `OOObject` answered; a JS script's Script
+   object), `clearJSSelf()` (nothing). `OOScriptObjectNode()`/`OOScriptInObjectNode()` replace
+   `oo::PListObject()`/`oo::ObjectIn()`, so the ship's and visual effect's `script` properties and
+   the console's `scriptStack()` reach JS through the node.
+2. **Holders hold `oo::Ref<OOScript>`** (ships' script and AI script, visual effects, characters, the
+   player's world, commodity and equipment scripts, the universe's condition scripts, the debug
+   console's script); getters and the giants' facade selectors answer it borrowed; the loaders
+   answer `oo::Ref` (null where they answered nil). A header whose class holds one includes
+   `OOScript.h` (a plain header) rather than declaring the class, so every unit that makes or
+   destroys the holder sees a complete type (an `oo::Ref<OOJSScript>` member would need the engine's
+   header there).
+3. **`[script autorelease]` is `OOScriptAutorelease()`**: a file-private Objective-C keeper in
+   `OOScript.mm` holds the `oo::Ref` and is autoreleased, so a script a holder replaces or drops
+   (`setShipScript`, `setAIScript`, `removeScript`, the player's and effects' scripts) and a script a
+   caller does not keep (the global prefix, the locale functions, the equipment check) dies when
+   the pool drains, as its facade did. Where the facade was released at once (`DESTROY`, an
+   `ObjCRef` replaced, a failed load's `DESTROY(self)`) the `oo::Ref` is dropped at once.
+4. **Weak holders hold `oo::WeakRef<OOJSScript>`** (timers, the interface, populator and GUI-key
+   definitions), taken from `currentlyRunningScript()` where `-weakRetain` was sent. The running
+   stack holds an `oo::WeakRef<OOJSScript>` per entry: `pushScript(OOJSScript *)` (null: a
+   script-less push) and `pushScript(const oo::WeakRef<OOJSScript> &)` for a weak holder;
+   `currentlyRunningScript()` answers `OOJSScript *`, null once a weakly pushed script has gone (a
+   dead `OOWeakReference`, which answered every message as nil, so the unwrap of amendment
+   oo-9ht.137 item 3 is gone). `scriptStack()` answers `std::vector<oo::Ref<OOJSScript>>`, still
+   raising on a script-less push; a gone weak entry is a null entry (the console lists it as null
+   where the dead reference converted to undefined). The mission callback's script is a raw
+   `OOJSScript *` retained and released by hand, as before.
+5. **The Script object's private slot holds a file-private `ScriptPrivate`** (an `oo::RefCounted`
+   with an `oo::WeakRef<OOJSScript>`, no JS glue of its own), as it held the script's
+   `OOWeakReference`: the JS object does not keep the script, the finalizer is
+   `OOJSCxxObjectWrapperFinalize`, the converter answers the script's node (null once it has gone),
+   and toString() is the class's own native, `OOJSCxxObjectWrapperToString`'s logic asking the
+   script's `jsDescription()` (`[Script <components>]`, or `[object Script]` once it has gone).
+   `~OOJSScript()` is the old `-dealloc`'s body (the facade ran it as `willDealloc()`);
+   `scriptWithPath()` answers `oo::Ref<OOJSScript>`.
+6. **Tests** (standing approval oo-9n5p9, lines on main first): the facade's crossing cases go
+   (`test_OOScript` crossingObjCSubclass, adapterOutlivesOwner and crossingCxxSubclass's identity
+   checks; `test_OOPListScript` plistScriptCrossesAsTheRootFacade, replaced by a C++ identity case;
+   `test_OOJSScript` crossing, rewritten to pin the weak stack entry and the weak private slot); the
+   cases that asked through selectors ask the C++ class with every expectation kept (an Objective-C
+   test subclass becomes a C++ one). A test that stood in for the Objective-C `OOScript` and
+   `OOJSScript` stands in for `class OOJSScript : public OOScript` with the statics the code calls
+   and, where it makes scripts, the definitions of `OOScript`'s virtual members (the vtable).
+
+**Consequences.** No Objective-C script class is left; `OOScriptAutoreleaseKeeper` is the one
+Objective-C object the scripts still use, for the pool's timing, until the pool itself goes.

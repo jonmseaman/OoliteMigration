@@ -277,26 +277,23 @@ void OOJSUnreachable(const char *function, const char *, unsigned)
 @end
 
 
-@interface OOScript: OOObject
-@end
-
-@implementation OOScript
-@end
+#import "OOScript.h"
 
 
-// OOJSScript's statics (OOJSScript.h), which the code under test calls since bead oo-9ht.137 deleted
-// the Objective-C OOJSScript: a script's object is the OOScript root's facade (stood in for above).
-class OOJSScript
+// OOJSScript (OOJSScript.h), which the code under test calls. Since bead oo-9ht.133 deleted the
+// OOScript root's facade (a script's object since bead oo-9ht.137) a script is the C++ object, so
+// the stand-in is a C++ subclass of OOScript declaring the members that code calls.
+class OOJSScript : public OOScript
 {
 public:
-	static ::OOScript *currentlyRunningScript();
-	static void pushScript(::OOScript *script);
-	static void popScript(::OOScript *script);
+	static OOJSScript *currentlyRunningScript();
+	static void pushScript(const oo::WeakRef<OOJSScript> &script);
+	static void popScript(OOJSScript *script);
 };
 
-::OOScript *OOJSScript::currentlyRunningScript()  { return nil; }
-void OOJSScript::pushScript(::OOScript *script)  { (void)script; sScriptDepth++; sScriptPushes++; }
-void OOJSScript::popScript(::OOScript *script)  { (void)script; sScriptDepth--; }
+OOJSScript *OOJSScript::currentlyRunningScript()  { return nullptr; }
+void OOJSScript::pushScript(const oo::WeakRef<OOJSScript> &script)  { (void)script; sScriptDepth++; sScriptPushes++; }
+void OOJSScript::popScript(OOJSScript *script)  { (void)script; sScriptDepth--; }
 
 
 // The universe's clock, which the test sets.

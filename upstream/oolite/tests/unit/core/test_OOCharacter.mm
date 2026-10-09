@@ -104,10 +104,10 @@ void ooscript::beginRequest(ooscript::Context)		{ std::abort(); }
 void ooscript::endRequest(ooscript::Context)		{ std::abort(); }
 bool ooscript::isInRequest(ooscript::Context)		{ std::abort(); }
 
-@interface OOScript: OOObject
-@end
-@implementation OOScript
-@end
+#import "OOScript.h"
+
+// OOScript's loader (an Objective-C OOScript stand-in until bead oo-9ht.133 deleted the facade).
+oo::Ref<OOScript> OOScript::jsScriptFromFileNamed(const std::string &, const oo::PList &)	{ std::abort(); }
 
 
 // The JavaScript class name, declared by OOJavaScriptEngine.h (which the test does not include).

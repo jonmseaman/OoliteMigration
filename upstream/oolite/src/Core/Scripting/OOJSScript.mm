@@ -46,6 +46,7 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOAssert.h"
 
 #include "ooscript/JSEngine.hpp"
+#include "OOJSPrivateObject.h"
 #include <cstring>
 #include "oofnd/String.hpp"
 
@@ -98,20 +99,22 @@ using ooscript::Script;
 using ooscript::ByteBuffer;
 using ooscript::PropertyFlag;
 
-typedef struct RunningStack RunningStack;
+namespace {
 struct RunningStack
 {
-	RunningStack		*back;
-	::OOScript			*current;	// the script's Objective-C object (its identity), or nil
+	RunningStack			*back = nullptr;
+	// The running script, held weakly (bead oo-9ht.133: the stack held its Objective-C object, or
+	// the OOWeakReference a timer or definition pushed); null for a script-less push.
+	oo::WeakRef<OOJSScript>	current;
+	bool					scriptless = false;	// pushed with no script, which scriptStack() refuses
 };
 
 
-namespace {
 static ooscript::Object sScriptPrototype;
 static RunningStack		*sRunningStack = NULL;
 
 
-static void AddStackToArrayReversed(std::vector<oo::ObjCRef<::OOScript *>> &array, RunningStack *stack);
+static void AddStackToArrayReversed(std::vector<oo::Ref<OOJSScript>> &array, RunningStack *stack);
 
 static Script LoadScriptWithName(ooscript::Context context, const std::optional<std::string> &path, ooscript::Object object, ooscript::Object *outScriptObject, std::optional<std::string> *outErrorMessage);
 
@@ -133,6 +136,34 @@ static std::string ValueForKey(const std::optional<std::string> &value, std::str
 
 namespace {
 static bool ScriptAddProperty(Context cx, Object obj, PropertyId propID, Value *value);
+static bool ScriptToString(Context context, CallArgs &oojsArgs);
+static oo::PList ScriptConverter(ooscript::Context context, ooscript::Object object);
+
+
+/*	A Script object's private slot (bead oo-9ht.133): a weak reference to its script, as the slot held
+	the OOWeakReference the script's -weakRetain gave, so the JS object does not keep the script
+	alive. The slot retains it once; OOJSCxxObjectWrapperFinalize releases it (it has no JS glue of
+	its own: the converter and toString() below ask the script, and answer what a dead reference
+	did once it has gone).
+*/
+class ScriptPrivate final : public oo::RefCounted
+{
+public:
+	explicit ScriptPrivate(OOJSScript *script) : _script(script) {}
+
+	OOJSScript *script() const	{ return _script.get(); }
+
+private:
+	oo::WeakRef<OOJSScript> _script;
+};
+
+
+// The script a Script object's slot refers to; null for the prototype or once the script has gone.
+static OOJSScript *ScriptOfJSObject(Context context, Object object)
+{
+	ScriptPrivate *slot = static_cast<ScriptPrivate *>(static_cast<oo::RefCounted *>(ooscript::getPrivate(context, object)));
+	return (slot != nullptr) ? slot->script() : nullptr;
+}
 } // namespace
 
 
@@ -150,7 +181,7 @@ static ClassDef sScriptClass =
 	nullptr,				// newEnumerate (ooscript::ClassFlag::NewEnumerate not used)
 	nullptr,				// resolve (engine default: ResolveStub)
 	nullptr,				// convert (engine default: ConvertStub)
-	OOJSObjectWrapperFinalize,	// finalize
+	OOJSCxxObjectWrapperFinalize,	// finalize
 	nullptr,				// call
 	nullptr,				// construct
 	nullptr,				// backend: owned by the façade backend, must start null
@@ -162,7 +193,7 @@ namespace {
 static FunctionSpec sScriptMethods[] =
 {
 	// JS name					Function					min args
-	{ "toString",				OOJSObjectWrapperToString,	0,			0 },
+	{ "toString",				ScriptToString,				0,			0 },
 	{ 0 }
 };
 } // namespace
@@ -173,21 +204,14 @@ static FunctionSpec sScriptMethods[] =
 static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly;
 
 
-// +scriptWithPath:properties: and the facade's -initWithPath:properties: (bead oo-9ht.137 deleted
-// the facade): the OOScript root's facade is the object, made first and recorded as the peer (so
-// initWithPath() can hand oo::ToObjC(this) to JS); a script that cannot be loaded is released with
-// it, which runs willDealloc(), as DESTROY(self) did.
-::OOScript *OOJSScript::scriptWithPath(const std::optional<std::string> &path, const oo::PList &properties)
+// +scriptWithPath:properties: (the facade's -initWithPath:properties: after [super init] is
+// initWithPath()): a script that cannot be loaded is dropped, which runs the destructor, as
+// DESTROY(self) did.
+oo::Ref<OOJSScript> OOJSScript::scriptWithPath(const std::optional<std::string> &path, const oo::PList &properties)
 {
 	oo::Ref<OOJSScript> script = oo::makeRef<OOJSScript>();
-	::OOScript *object = [[[::OOScript alloc] initWithCxxRootScript:script.get()] autorelease];
-	if (object == nil)
-	{
-		OO_LOG("script.javaScript.load.failed", "***** Error loading JavaScript script {} -- {}", path.value_or("(null)"), "allocation failure");
-		return nil;
-	}
-	if (!script->initWithPath(path, properties))  return nil;
-	return object;
+	if (!script->initWithPath(path, properties))  return nullptr;
+	return script;
 }
 
 
@@ -199,7 +223,6 @@ bool OOJSScript::initWithPath(const std::optional<std::string> &path, const oo::
 	ooscript::Object scriptObject = NULL;
 	ooscript::Value					returnValue = ooscript::undefinedValue();
 
-	// (the facade's [super init] ran before this, and failed with nil: "allocation failure")
 	{
 		context = OOJSAcquireContext();
 
@@ -228,7 +251,8 @@ bool OOJSScript::initWithPath(const std::optional<std::string> &path, const oo::
 
 		if (!problem.has_value())
 		{
-			if (!ooscript::setPrivate((context), (_jsSelf), OOConsumeReference(weakRetain())))
+			// (the slot held the script's -weakRetain: a weak reference, retained)
+			if (!OOJSSetCxxPrivate(context, _jsSelf, oo::makeRef<ScriptPrivate>(this).get()))
 			{
 				problem = "could not set private backreference";
 			}
@@ -238,7 +262,7 @@ bool OOJSScript::initWithPath(const std::optional<std::string> &path, const oo::
 		RunningStack stackElement =
 		{
 			.back = sRunningStack,
-			.current = oo::ToObjC(this)
+			.current = oo::WeakRef<OOJSScript>(this)
 		};
 		sRunningStack = &stackElement;
 
@@ -334,8 +358,8 @@ bool OOJSScript::initWithPath(const std::optional<std::string> &path, const oo::
 	{
 		OO_LOG("script.javaScript.load.failed", "***** Error loading JavaScript script {} -- {}", path.value_or("(null)"), *problem);
 		ooscript::reportPendingException((context));
-		// (was DESTROY(self) here: the facade releases itself when this answers false, after the
-		// context below is relinquished)
+		// (was DESTROY(self) here: scriptWithPath() drops the script when this answers false, after
+		// the context below is relinquished)
 	}
 
 	OOJSRelinquishContext(context);
@@ -351,7 +375,7 @@ bool OOJSScript::initWithPath(const std::optional<std::string> &path, const oo::
 }
 
 
-void OOJSScript::willDealloc()
+OOJSScript::~OOJSScript()
 {
 	oo::NotificationCenter::defaultCenter().removeObserver(this, kOOJavaScriptEngineWillResetNotificationName,
 															[::OOJavaScriptEngine sharedEngine]);
@@ -360,13 +384,11 @@ void OOJSScript::willDealloc()
 	{
 		ooscript::Context context = OOJSAcquireContext();
 
-		OOJSObjectWrapperFinalize(context, _jsSelf);	// Release weakref to self
+		OOJSCxxObjectWrapperFinalize(context, _jsSelf);	// Release weakref to self
 		ooscript::removeObjectRoot((context), &_jsSelf);		// Unroot jsSelf
 
 		OOJSRelinquishContext(context);
 	}
-
-	[_weakSelf weakRefDrop];
 }
 
 
@@ -396,32 +418,19 @@ void OOJSScript::javaScriptEngineWillReset(const oo::Notification &)
 }
 
 
-::OOScript *OOJSScript::currentlyRunningScript()
+OOJSScript *OOJSScript::currentlyRunningScript()
 {
 	if (sRunningStack == NULL)  return NULL;
-	return sRunningStack->current;
+	return sRunningStack->current.get();
 }
 
 
-std::vector<oo::ObjCRef<::OOScript *>> OOJSScript::scriptStack()
+std::vector<oo::Ref<OOJSScript>> OOJSScript::scriptStack()
 {
-	std::vector<oo::ObjCRef<::OOScript *>>	result;
+	std::vector<oo::Ref<OOJSScript>>	result;
 
 	AddStackToArrayReversed(result, sRunningStack);
 	return result;
-}
-
-
-id OOJSScript::weakRetain()
-{
-	if (_weakSelf == nil)  _weakSelf = [::OOWeakReference weakRefWithObject:oo::ToObjC(this)];
-	return [_weakSelf retain];
-}
-
-
-void OOJSScript::weakRefDied(::OOWeakReference *weakRef)
-{
-	if (weakRef == _weakSelf)  _weakSelf = nil;
 }
 
 
@@ -485,7 +494,7 @@ bool OOJSScript::callMethod(ooscript::PropertyId methodID,
 		RunningStack stackElement =
 		{
 			.back = sRunningStack,
-			.current = oo::ToObjC(this)
+			.current = oo::WeakRef<OOJSScript>(this)
 		};
 		sRunningStack = &stackElement;
 
@@ -593,11 +602,31 @@ ooscript::Value OOJSScript::jsValueInContext(ooscript::Context)
 }
 
 
-void OOJSScript::pushScript(::OOScript *script)
+// -cxx_oo_jsDescription (OOObjectJSDescription), which toString() answered: "[Script <components>]".
+std::optional<std::string> OOJSScript::jsDescription()
 {
-	RunningStack			*element = NULL;
+	const std::string className = jsClassName().value_or("Script");
+	const std::optional<std::string> components = descriptionComponents();
+	if (components.has_value())  return oo::str::format("[%s %s]", className.c_str(), components->c_str());
+	return oo::str::format("[object %s]", className.c_str());
+}
 
-	element = static_cast<RunningStack*>(malloc(sizeof *element));
+
+void OOJSScript::pushScript(OOJSScript *script)
+{
+	RunningStack			*element = new (std::nothrow) RunningStack;
+	if (element == NULL)  exit(EXIT_FAILURE);
+
+	element->back = sRunningStack;
+	element->current = script;
+	element->scriptless = (script == nullptr);
+	sRunningStack = element;
+}
+
+
+void OOJSScript::pushScript(const oo::WeakRef<OOJSScript> &script)
+{
+	RunningStack			*element = new (std::nothrow) RunningStack;
 	if (element == NULL)  exit(EXIT_FAILURE);
 
 	element->back = sRunningStack;
@@ -606,15 +635,16 @@ void OOJSScript::pushScript(::OOScript *script)
 }
 
 
-void OOJSScript::popScript(::OOScript *script)
+void OOJSScript::popScript(OOJSScript *script)
 {
 	RunningStack			*element = NULL;
 
-	assert(sRunningStack->current == script);
+	assert(sRunningStack->current.get() == script);
+	(void)script;
 
 	element = sRunningStack;
 	sRunningStack = sRunningStack->back;
-	free(element);
+	delete element;
 }
 
 
@@ -639,7 +669,7 @@ std::string OOJSScript::scriptNameFromPath(const std::optional<std::string> &pat
 	std::string		truncatedPath;
 	std::string		theName;
 
-	if (!path.has_value()) theName = oo::str::pointerDescription(oo::ToObjC(this));	// (the object's address, as self's was)
+	if (!path.has_value()) theName = oo::str::pointerDescription(this);	// (the script's address, as self's was)
 	else
 	{
 		lastComponent = oo::str::lastPathComponent(*path);
@@ -708,11 +738,43 @@ void InitOOJSScript(ooscript::Context context, ooscript::Object global)
 {
 	Object proto = ooscript::initClass((context), (global), nullptr, &sScriptClass, OOJSUnconstructableConstruct, 0, nullptr, sScriptMethods, nullptr, nullptr);
 	sScriptPrototype = (proto);
-	OOJSRegisterObjectConverter(&sScriptClass, OOJSBasicPrivateObjectConverter);
+	OOJSRegisterObjectConverter(&sScriptClass, ScriptConverter);
 }
 
 
 namespace {
+// OOJSBasicPrivateObjectConverter for the slot's weak reference: the script's node, null once it
+// has gone (as the dead reference's referent was nil) or for the prototype.
+static oo::PList ScriptConverter(ooscript::Context context, ooscript::Object object)
+{
+	return OOScriptObjectNode(ScriptOfJSObject(context, object));
+}
+
+
+// OOJSObjectWrapperToString for the slot's weak reference, as OOJSCxxObjectWrapperToString answers
+// for a slot that is its own glue: the script's jsDescription(), else "[object Script]" (once it
+// has gone, as for nil, and for the prototype); a `this` of another class as before.
+static bool ScriptToString(Context context, CallArgs &oojsArgs)
+{
+	OOJS_NATIVE_ENTER(context)
+
+	ooscript::Object thisObj = OOJS_THIS;
+	if (thisObj == nullptr || !OOJSIsSubclass(OOJSGetClass(context, thisObj), &sScriptClass))
+	{
+		return OOJSObjectWrapperToString(context, oojsArgs);
+	}
+
+	OOJSScript *script = ScriptOfJSObject(context, thisObj);
+	std::optional<std::string> description = (script != nullptr) ? script->jsDescription() : std::nullopt;
+	if (!description.has_value())  description = oo::str::format("[object %s]", OOJSGetClass(context, thisObj)->name);
+
+	const std::u16string units = oo::utf8ToUtf16(*description);
+	OOJS_RETURN(ooscript::stringValue(ooscript::newUCStringCopyN(context, reinterpret_cast<const ooscript::Char16 *>(units.data()), units.size())));
+
+	OOJS_NATIVE_EXIT
+}
+
+
 static bool ScriptAddProperty(Context cx, Object obj, PropertyId propID, Value * /*value*/)
 {
 	// Complain about attempts to set the property tickle.
@@ -724,10 +786,10 @@ static bool ScriptAddProperty(Context cx, Object obj, PropertyId propID, Value *
 		bool match = false;
 		if (ooscript::stringEqualsAscii(cx, propNameStr, "tickle", &match) && match)
 		{
-			// A Script object's private slot holds the script's object, the OOScript root's facade since
-			// bead oo-9ht.137 (the JS class fixes that it is a JS script's).
-			::OOScript *thisScript = OOJSNativeObjectOfClassFromJSObject(context, thisObj, [::OOScript class]);
-			cxx_OOJSReportWarning(context, "Script %s appears to use the tickle() event handler, which is no longer supported.", [thisScript cxx_name].value_or("(null)").c_str());
+			// A Script object's private slot refers to its script weakly (null once it has gone, or for
+			// the prototype: a message to nil).
+			OOJSScript *thisScript = ScriptOfJSObject(context, thisObj);
+			cxx_OOJSReportWarning(context, "Script %s appears to use the tickle() event handler, which is no longer supported.", ((thisScript != nullptr) ? thisScript->name() : std::nullopt).value_or("(null)").c_str());
 		}
 	}
 	
@@ -737,14 +799,15 @@ static bool ScriptAddProperty(Context cx, Object obj, PropertyId propID, Value *
 
 
 namespace {
-static void AddStackToArrayReversed(std::vector<oo::ObjCRef<::OOScript *>> &array, RunningStack *stack)
+static void AddStackToArrayReversed(std::vector<oo::Ref<OOJSScript>> &array, RunningStack *stack)
 {
 	if (stack != NULL)
 	{
 		AddStackToArrayReversed(array, stack->back);
-		// -addObject: raised on the nil a script-less push leaves (GNUstep 1.31.1's text).
-		if (stack->current == nil)  [OOException raise:OOInvalidArgumentException format:"Tried to add nil to array"];
-		array.emplace_back(stack->current);
+		// -addObject: raised on the nil a script-less push leaves (GNUstep 1.31.1's text). A weak
+		// push whose script has gone was a dead OOWeakReference, not nil: it is a null entry.
+		if (stack->scriptless)  [OOException raise:OOInvalidArgumentException format:"Tried to add nil to array"];
+		array.emplace_back(stack->current.get());
 	}
 }
 } // namespace

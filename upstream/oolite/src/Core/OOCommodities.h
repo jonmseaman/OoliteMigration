@@ -50,7 +50,8 @@ static inline OOMassUnit OOMassUnitFromNumber(unsigned n)
 	return (n <= UNITS_GRAMS) ? (OOMassUnit)n : UNITS_UNKNOWN;
 }
 
-@class StationEntity, OOScript;
+@class StationEntity;
+class OOScript;
 class OOCommodityMarket;
 
 

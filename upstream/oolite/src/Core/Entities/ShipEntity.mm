@@ -1437,8 +1437,8 @@ void ShipEntity::setUpCargoType(const std::string &cargoString)
 
 void ShipEntity::removeScript()
 {
-	[script autorelease];
-	script = nil;
+	OOScriptAutorelease(std::move(script));	// [script autorelease]
+	script = nullptr;
 }
 
 
@@ -1689,13 +1689,13 @@ void ShipEntity::setSubEntityTakingDamage(::ShipEntity *sub)
 
 ::OOScript *ShipEntity::shipScript()
 {
-	return script;
+	return script.get();
 }
 
 
 ::OOScript *ShipEntity::shipAIScript()
 {
-	return aiScript;
+	return aiScript.get();
 }
 
 
@@ -2987,7 +2987,7 @@ void ShipEntity::update(OOTimeDelta delta_t)
 	{
 		// When crashing into a boulder, STATUS_LAUNCHING is sometimes skipped on scooping the resulting splinters.
 		OOEntityStatus status = [self status];
-		if (script != nil && (status == STATUS_IN_FLIGHT ||
+		if (script != nullptr && (status == STATUS_IN_FLIGHT ||
 							  status == STATUS_LAUNCHING ||
 							  status == STATUS_BEING_SCOOPED ||
 							  (status == STATUS_ACTIVE && self == [UNIVERSE station])
@@ -3868,10 +3868,7 @@ bool ShipEntity::equipmentValidToAdd(const std::string &fullEquipmentKey, bool l
 				ooscript::Value result;
 				ooscript::Value args[] = { OOJSValueFromPList(JScontext, oo::PList(equipmentKey)) , OOJSValueFromNativeObject(JScontext, self) , OOJSValueFromPList(JScontext, oo::PList(context))};
 				
-				OK = [condScript callMethod:OOJSID("allowAwardEquipment")
-											inContext:JScontext
-									withArguments:args count:sizeof args / sizeof *args
-												 result:&result];
+				OK = (condScript != nullptr ? condScript->callMethod(OOJSID("allowAwardEquipment"), JScontext, args, sizeof args / sizeof *args, &result) : false);
 
 				if (OK) OK = ooscript::valueToBoolean(JScontext, result, &allow_addition);
 				
@@ -6705,11 +6702,7 @@ void ShipEntity::behaviour_scripted_ai(double delta_t)
 	BOOL OK = ooscript::newNumberValue(context, delta_t, &deltaJS);
 	if (OK)
 	{
-		OK = [[self script] callMethod:OOJSID("scriptedAI")
-							 inContext:context
-						 withArguments:&deltaJS
-								 count:1
-								result:&rval];
+		OK = ([self script] != nullptr ? [self script]->callMethod(OOJSID("scriptedAI"), context, &deltaJS, 1, &rval) : false);
 	}
 	
 	if (!OK)
@@ -8654,10 +8647,10 @@ void ShipEntity::setShipScript(const std::optional<std::string> &script_name)
 
 	properties["ship"] = oo::PListObject(self);
 
-	[script autorelease];
-	script = [::OOScript cxx_jsScriptFromFileNamed:script_name.value_or(std::string()) properties:oo::PList(properties)];	// nil as "", as the Foundation form sent it
+	OOScriptAutorelease(std::move(script));	// [script autorelease]
+	script = OOScript::jsScriptFromFileNamed(script_name.value_or(std::string()), oo::PList(properties));	// nil as "", as the Foundation form sent it
 
-	if (script == nil)
+	if (script == nullptr)
 	{
 		actions = ArrayForKey(shipinfoDictionary, "launch_actions");
 		if (actions)
@@ -8699,10 +8692,8 @@ void ShipEntity::setShipScript(const std::optional<std::string> &script_name)
 			}
 		}
 
-		script = [::OOScript cxx_jsScriptFromFileNamed:"oolite-default-ship-script.js"
-										  properties:oo::PList(std::move(properties))];
+		script = OOScript::jsScriptFromFileNamed("oolite-default-ship-script.js", oo::PList(std::move(properties)));
 	}
-	[script retain];
 }
 
 
@@ -14592,10 +14583,7 @@ void ShipEntity::refreshEscortPositions()
 		for (i = 0; i < _maxEscortCount; i++)
 		{
 			args[0] = ooscript::int32Value(i);
-			OK = [script callMethod:OOJSID("coordinatesForEscortPosition")
-						  inContext:context
-					  withArguments:args count:sizeof args / sizeof *args
-							 result:&result];
+			OK = (script != nullptr ? script->callMethod(OOJSID("coordinatesForEscortPosition"), context, args, sizeof args / sizeof *args, &result) : false);
 			
 			if (OK)  OK = JSValueToVector(context, result, &_escortPositions[i]);
 			
@@ -15335,7 +15323,7 @@ void ShipEntity::dumpSelfState()
 	OO_LOG("dumpState.shipEntity", "Display Name: {}", [self displayName].value_or("(null)"));
 	OO_LOG("dumpState.shipEntity", "Roles: {}", RoleSetDescription(getRoleSet().get()));
 	OO_LOG("dumpState.shipEntity", "Primary role: {}", primaryRole.value_or("(null)"));
-	OO_LOG("dumpState.shipEntity", "Script: {}", oo::DescriptionOf(script));
+	OO_LOG("dumpState.shipEntity", "Script: {}", (script != nullptr) ? script->description() : std::string("(null)"));
 	OO_LOG("dumpState.shipEntity", "Subentity count: {}", [self subEntityCount]);
 	OO_LOG("dumpState.shipEntity", "Behaviour: {}", cxx_OOStringFromBehaviour(behaviour));
 	id target = [self primaryTarget];
@@ -15404,7 +15392,7 @@ void ShipEntity::dumpSelfState()
 
 ::OOScript *ShipEntity::getScript()
 {
-	return script;
+	return script.get();
 }
 
 
@@ -15548,8 +15536,8 @@ void ShipEntity::doScriptEvent(ooscript::PropertyId message, ooscript::Value *ar
 void ShipEntity::doScriptEvent(ooscript::PropertyId message, ooscript::Context context, ooscript::Value *argv, unsigned argc)
 {
 	// This method is a bottleneck so that PlayerEntity can override at one point.
-	[script callMethod:message inContext:context withArguments:argv count:argc result:NULL];
-	[aiScript callMethod:message inContext:context withArguments:argv count:argc result:NULL];
+	if (script != nullptr)  script->callMethod(message, context, argv, argc, NULL);
+	if (aiScript != nullptr)  aiScript->callMethod(message, context, argv, argc, NULL);
 }
 
 

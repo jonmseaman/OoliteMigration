@@ -731,7 +731,7 @@ MA 02110-1301, USA.
 - (void) cxx_setEquipScreenBackgroundDescriptor:(const oo::PList &)descriptor;
 - (BOOL) scriptsLoaded;
 - (std::vector<std::string>) cxx_worldScriptNames;	// in load order
-- (std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>>) cxx_worldScriptsByName;	// in load order
+- (std::vector<std::pair<std::string, oo::Ref<OOScript>>>) cxx_worldScriptsByName;	// in load order
 - (OOScript *) cxx_commodityScriptNamed:(const std::optional<std::string> &)script;	// nullopt: nil
 - (void) doScriptEvent:(ooscript::PropertyId)message inContext:(ooscript::Context)context withArguments:(ooscript::Value *)argv count:(unsigned)argc;
 - (BOOL) doWorldEventUntilMissionScreen:(ooscript::PropertyId)message;
@@ -1362,7 +1362,7 @@ MA 02110-1301, USA.
 
 
 // Defined in PlayerEntityLegacyScriptEngine.mm, declared by no interface before the conversion.
-- (std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>>) worldScriptsRequiringTickle;
+- (std::vector<std::pair<std::string, oo::Ref<OOScript>>>) worldScriptsRequiringTickle;
 - (void) setMissionImage:(const std::string &)value;
 - (void) setMissionBackground:(const std::string &)value;
 

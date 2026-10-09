@@ -719,7 +719,10 @@ static bool ConsoleScriptStack(ooscript::Context context, ooscript::CallArgs &oo
 {
 	OOJS_NATIVE_ENTER(context)
 	
-	OOJS_RETURN_PLIST(oo::PListFromObjects(OOJSScript::scriptStack()));
+	// The scripts' nodes (a script that has gone, which a timer or definition pushed weakly, is null).
+	oo::PList::Array stack;
+	for (const oo::Ref<OOJSScript> &script : OOJSScript::scriptStack())  stack.push_back(OOScriptObjectNode(script.get()));
+	OOJS_RETURN_PLIST(oo::PList(std::move(stack)));
 	
 	OOJS_NATIVE_EXIT
 }

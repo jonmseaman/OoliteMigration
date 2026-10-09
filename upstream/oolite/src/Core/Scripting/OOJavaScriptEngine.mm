@@ -228,12 +228,10 @@ cxx::OOJavaScriptEngine	*jsEng = cxx::OOJavaScriptEngine::sharedEngine();
 	{
 		// First line: problem description
 		// avoid windows DEP exceptions!
-		// The running script's C++ part (the stack holds only JS scripts' objects, bead oo-9ht.137, or
-		// the weak references the timers and definitions push, whose referent is the object).
-		OOJSScript *runningScript = static_cast<OOJSScript *>(oo::ToCxx(static_cast<::OOScript *>([OOJSScript::currentlyRunningScript() weakRefUnderlyingObject])));
-		id thisScript = (runningScript != nullptr) ? runningScript->weakRetain() : nil;	// a weak reference, retained
-		activeScript = OOJavaScriptEngineDisplayName(OOJavaScriptEngineWeakRefUnderlyingObject(thisScript)).value_or("<unidentified script>");
-		objc_release(thisScript);
+		// The running script (C++ since bead oo-9ht.133; null when none runs, or once a script a timer or
+		// definition pushed weakly has gone: a message to nil).
+		OOJSScript *runningScript = OOJSScript::currentlyRunningScript();
+		activeScript = ((runningScript != nullptr) ? runningScript->displayName() : std::nullopt).value_or("<unidentified script>");
 
 		OO_LOG(messageClass, "{} JavaScript {} ({}): {}", highlight, severity, activeScript, messageText);
 
@@ -420,8 +418,8 @@ void OOJavaScriptEngine::createMainThreadContext()
 	InitOOJSFont(gOOJSMainThreadContext, _globalObject);
 	
 	// Run prefix scripts.
-	[::OOScript cxx_jsScriptFromFileNamed:"oolite-global-prefix.js"
-							 properties:oo::PList(oo::PList::Dict{{"special", oo::PListObject(JSSpecialFunctionsObjectWrapper(gOOJSMainThreadContext))}})];
+	OOScriptAutorelease(OOScript::jsScriptFromFileNamed("oolite-global-prefix.js",	// (nothing keeps it)
+														oo::PList(oo::PList::Dict{{"special", oo::PListObject(JSSpecialFunctionsObjectWrapper(gOOJSMainThreadContext))}})));
 
 	ooscript::endRequest((gOOJSMainThreadContext));
 	
@@ -675,8 +673,8 @@ static void DebuggerHook(ooscript::Context context, void * /*closure*/)
 {
 	OOJSPauseTimeLimiter();
 	
-	::OOScript *runningScript = OOJSScript::currentlyRunningScript();
-	OO_LOG("script.javaScript.debugger", "debugger invoked during {}:", ((runningScript != nil) ? oo::ToCxx(runningScript)->displayName() : std::nullopt).value_or("(null)"));
+	OOJSScript *runningScript = OOJSScript::currentlyRunningScript();
+	OO_LOG("script.javaScript.debugger", "debugger invoked during {}:", ((runningScript != nullptr) ? runningScript->displayName() : std::nullopt).value_or("(null)"));
 	OOJSDumpStack(context);
 	
 	OOJSResumeTimeLimiter();

@@ -45,7 +45,8 @@
 #import "OORoleSet.h"
 #include <string_view>
 
-@class StationEntity, AI, OOMesh, OOScript;
+@class StationEntity, AI, OOMesh;
+#include "OOScript.h"	// oo::Ref<OOScript> members and results (bead oo-9ht.133)
 class WormholeEntity;	// C++ since bead oo-9ht.112
 #import "OOColor.h"	// the colours are oo::Ref members
 #import "OOCharacter.h"	// C++ since bead oo-9ht.10: the crew is oo::Ref
@@ -1144,8 +1145,8 @@ public:
 	Quaternion				subentityRotationalVelocity = {};
 	
 	//scripting
-	::OOScript *script = {};
-	::OOScript *aiScript = {};
+	oo::Ref<OOScript> script;
+	oo::Ref<OOScript> aiScript;
 	OOTimeAbsolute    aiScriptWakeTime = {};
 	
 	//docking instructions
