@@ -59,8 +59,6 @@ static Vector randomFullNodeFrom(Octree_details details, Vector offset);
 static BOOL	isHitByOctree(Octree_details axialDetails, Octree_details otherDetails, Vector delta, Triangle other_ijk);
 
 
-namespace cxx {
-
 // (-init raised, since octrees are immutable: there is no default constructor.)
 
 
@@ -147,16 +145,10 @@ oo::Ref<Octree> Octree::octreeScaledBy(GLfloat factor)
 }
 
 
-}	// namespace cxx
-
-
 static Vector offsetForOctant(int oct, GLfloat r)
 {
 	return make_vector((0.5f - (GLfloat)((oct >> 2) & 1)) * r, (0.5f - (GLfloat)((oct >> 1) & 1)) * r, (0.5f - (GLfloat)(oct & 1)) * r);
 }
-
-
-namespace cxx {
 
 
 #ifndef OODEBUGLDRAWING_DISABLE
@@ -176,7 +168,7 @@ void Octree::drawOctree()
 	OOGLEND();
 	
 	OODebugEndWireframe(state);
-	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "Octree after drawing " + oo::DescriptionOf(oo::ToObjC(this)); });
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "Octree after drawing " + std::format("<Octree {}>", static_cast<const void *>(this)); });
 }
 
 
@@ -268,7 +260,7 @@ void Octree::drawOctreeCollisions()
 	_hasCollision = drawTestForCollisions;
 	
 	OODebugEndWireframe(state);
-	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "Octree after drawing collisions for " + oo::DescriptionOf(oo::ToObjC(this)); });
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "Octree after drawing collisions for " + std::format("<Octree {}>", static_cast<const void *>(this)); });
 }
 
 
@@ -340,8 +332,6 @@ void Octree::drawOctreeCollisionFromLocation(uint32_t loc, GLfloat scale, Vector
 	}
 }
 #endif // OODEBUGLDRAWING_DISABLE
-
-}	// namespace cxx
 
 
 static BOOL isHitByLineSub(const int *octbuffer, unsigned char *collbuffer, int nextLevel, GLfloat rad, GLfloat rd2, Vector v0, Vector v1, int octantMask)
@@ -460,7 +450,7 @@ static BOOL isHitByLine(const int *octbuffer, unsigned char *collbuffer, int lev
 	return NO;
 }
 
-GLfloat cxx::Octree::isHitByLine(Vector v0, Vector v1)
+GLfloat Octree::isHitByLine(Vector v0, Vector v1)
 {
 	memset(_collisionOctree, 0, _nodeCount * sizeof *_collisionOctree);
 	hasCollided = NO;
@@ -620,7 +610,7 @@ static BOOL isHitByOctree(Octree_details axialDetails,
 }
 
 
-bool cxx::Octree::isHitByOctree(Octree *other, Vector v0, Triangle ijk)
+bool Octree::isHitByOctree(Octree *other, Vector v0, Triangle ijk)
 {
 	if (other == nullptr)  return NO;
 
@@ -633,7 +623,7 @@ bool cxx::Octree::isHitByOctree(Octree *other, Vector v0, Triangle ijk)
 }
 
 
-bool cxx::Octree::isHitByOctree(Octree *other, Vector v0, Triangle ijk, GLfloat s1, GLfloat s2)
+bool Octree::isHitByOctree(Octree *other, Vector v0, Triangle ijk, GLfloat s1, GLfloat s2)
 {
 	Octree_details details1 = octreeDetails();
 	Octree_details details2 = (other != nullptr) ? other->octreeDetails() : Octree_details {};	// nil gave a zeroed struct
@@ -650,7 +640,7 @@ bool cxx::Octree::isHitByOctree(Octree *other, Vector v0, Triangle ijk, GLfloat 
 }
 
 
-oo::PList cxx::Octree::dictionaryRepresentation()
+oo::PList Octree::dictionaryRepresentation()
 {
 	// (the radius is a single real: it comes back as +numberWithFloat:, so the cache text is unchanged)
 	oo::PList::Dict result;
@@ -699,7 +689,7 @@ static GLfloat volumeOfOctree(Octree_details octree_details, unsigned depthLimit
 }
 
 
-GLfloat cxx::Octree::volume()
+GLfloat Octree::volume()
 {
 	/*	For backwards compatibility, limit octree iteration for volume
 	 calculation to five levels. Raising the limit means lower calculated
@@ -747,14 +737,14 @@ static Vector randomFullNodeFrom(Octree_details details, Vector offset)
 }
 
 
-Vector cxx::Octree::randomPoint()
+Vector Octree::randomPoint()
 {
 	return randomFullNodeFrom(octreeDetails(), kZeroVector);
 }
 
 
 #ifndef NDEBUG
-size_t cxx::Octree::totalSize()
+size_t Octree::totalSize()
 {
 	// (the data object is now a member: its size is sizeof _data where it was the Foundation object's)
 	// (sizeof *this is the object's own size, as -oo_objectSize was the instance size)
@@ -834,7 +824,7 @@ OOOctreeBuilder::~OOOctreeBuilder()
 }
 
 
-oo::Ref<cxx::Octree> OOOctreeBuilder::buildOctreeWithRadius(GLfloat radius)
+oo::Ref<Octree> OOOctreeBuilder::buildOctreeWithRadius(GLfloat radius)
 {
 	OOCAssert(State(this)->remaining == 0 && _level == 0, "Attempt to produce octree from an octree builder in an incomplete state.");
 	
@@ -852,7 +842,7 @@ oo::Ref<cxx::Octree> OOOctreeBuilder::buildOctreeWithRadius(GLfloat radius)
 	_nodeCount = 0;
 	_capacity = 0;
 	
-	return cxx::Octree::initWithData(data, radius);
+	return Octree::initWithData(data, radius);
 }
 
 

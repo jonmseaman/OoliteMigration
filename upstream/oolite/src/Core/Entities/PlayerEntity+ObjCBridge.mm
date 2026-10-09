@@ -860,7 +860,7 @@ PlayerEntity		*gOOPlayer = nil;
 - (BOOL) cxx_removeMissionDestinationMarker:(const oo::PList &)marker	{ return _cxxPlayer->removeMissionDestinationMarker(marker); }
 - (oo::PList) cxx_getMissionDestinations	{ return _cxxPlayer->getMissionDestinations(); }
 - (oo::PList::Dict *) cxx_shipyardRecord	{ return _cxxPlayer->shipyardRecord(); }
-- (void) cxx_setLastShot:(const std::vector<oo::ObjCRef<OOLaserShotEntity *>> &)shot	{ _cxxPlayer->setLastShot(shot); }
+- (void) cxx_setLastShot:(const std::vector<oo::Ref<OOLaserShotEntity>> &)shot	{ _cxxPlayer->setLastShot(shot); }
 - (void) clearExtraMissionKeys	{ _cxxPlayer->clearExtraMissionKeys(); }
 - (void) cxx_setExtraMissionKeys:(const oo::PList &)keys	{ _cxxPlayer->setExtraMissionKeys(keys); }
 - (void) cxx_clearExtraGuiScreenKeys:(OOGUIScreenID)gui key:(const std::string &)key	{ _cxxPlayer->clearExtraGuiScreenKeys(gui, key); }

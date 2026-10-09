@@ -86,8 +86,6 @@ MA 02110-1301, USA.
 - (size_t) vertexCount;
 - (size_t) faceCount;
 
-- (Octree *) octree;
-
 // This needs a better name.
 - (BoundingBox) findBoundingBoxRelativeToPosition:(Vector)opv
 											basis:(Vector)ri :(Vector)rj :(Vector)rk

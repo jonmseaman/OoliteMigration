@@ -2158,22 +2158,22 @@ static const char * const kOOCacheOctrees = "octrees";
 
 // The OOCacheManager (Octree) category, as free functions next to the cache (OOMesh.h).
 
-oo::Ref<cxx::Octree> OOCacheManagerOctreeForModel(const std::string &inKey)
+oo::Ref<Octree> OOCacheManagerOctreeForModel(const std::string &inKey)
 {
-	oo::Ref<cxx::Octree>	result;
+	oo::Ref<Octree>	result;
 	cxx::OOCacheManager		*cache = cxx::OOCacheManager::sharedCache();
 
 	const oo::PList data = cache->pListForKey(inKey, kOOCacheOctrees);	// null: absent
 	if (data)
 	{
-		result = cxx::Octree::initWithDictionary(data);
+		result = Octree::initWithDictionary(data);
 	}
 
 	return result;
 }
 
 
-void OOCacheManagerSetOctree(cxx::Octree *inOctree, const std::string &inKey)
+void OOCacheManagerSetOctree(Octree *inOctree, const std::string &inKey)
 {
 	if (inOctree != nullptr)
 	{

@@ -769,7 +769,7 @@ bool ShipEntity::setUpFromDictionary(const oo::PList &inShipDict)
 	}
 	
 	float density = shipDict.get<float>("density", 1.0f);
-	if (octree)  mass = (GLfloat)(density * 20.0f * [octree volume]);
+	if (octree)  mass = (GLfloat)(density * 20.0f * octree->volume());
 	
 	DESTROY(default_laser_color);
 	default_laser_color = [[::OOColor cxx_brightColorWithDescription:ValueForKey(shipDict, "laser_color")] retain];
@@ -1453,7 +1453,7 @@ void ShipEntity::clearSubEntities()
 	collision_radius = [self findCollisionRadius];
 	_profileRadius = collision_radius;
 	float density = shipinfoDictionary.get<float>("density", 1.0f);
-	if (octree)  mass = (GLfloat)(density * 20.0f * [octree volume]);
+	if (octree)  mass = (GLfloat)(density * 20.0f * octree->volume());
 }
 
 
@@ -1533,8 +1533,7 @@ void ShipEntity::setMesh(::OOMesh *mesh)
 	if (mesh != [self mesh])
 	{
 		[self setDrawable:mesh];
-		[octree autorelease];
-		octree = [[mesh octree] retain];
+		octree = mesh ? oo::ToCxx(mesh)->getOctree() : oo::Ref<Octree>();
 	}
 }
 
@@ -1752,15 +1751,15 @@ BoundingBox ShipEntity::findBoundingBoxRelativeToPosition(HPVector opv, Vector _
 }
 
 
-::Octree *ShipEntity::getOctree()
+Octree *ShipEntity::getOctree()
 {
-	return octree;
+	return octree.get();
 }
 
 
 float ShipEntity::volume()
 {
-	return [octree volume];
+	return octree ? octree->volume() : 0.0f;
 }
 
 
@@ -1770,7 +1769,7 @@ GLfloat ShipEntity::doesHitLine(HPVector v0, HPVector v1)
 	Vector u1 = HPVectorToVector(HPvector_between(position, v1));
 	Vector w0 = make_vector(dot_product(u0, v_right), dot_product(u0, v_up), dot_product(u0, v_forward));	// in ijk vectors
 	Vector w1 = make_vector(dot_product(u1, v_right), dot_product(u1, v_up), dot_product(u1, v_forward));
-	return [octree isHitByLine:w0 :w1];
+	return octree ? octree->isHitByLine(w0, w1) : 0.0f;
 }
 
 
@@ -1783,7 +1782,7 @@ GLfloat ShipEntity::doesHitLine(HPVector v0, HPVector v1, ::ShipEntity **hitEnti
 	Vector u1 = HPVectorToVector(HPvector_between(position, v1));
 	Vector w0 = make_vector(dot_product(u0, v_right), dot_product(u0, v_up), dot_product(u0, v_forward));	// in ijk vectors
 	Vector w1 = make_vector(dot_product(u1, v_right), dot_product(u1, v_up), dot_product(u1, v_forward));
-	GLfloat hit_distance = [octree isHitByLine:w0 :w1];
+	GLfloat hit_distance = octree ? octree->isHitByLine(w0, w1) : 0.0f;
 	if (hit_distance)
 	{
 		if (hitEntity)
@@ -1800,7 +1799,7 @@ GLfloat ShipEntity::doesHitLine(HPVector v0, HPVector v1, ::ShipEntity **hitEnti
 		w0 = resolveVectorInIJK(u0, ijk);
 		w1 = resolveVectorInIJK(u1, ijk);
 		
-		GLfloat hitSub = [se->_cxxShip->octree isHitByLine:w0 :w1];
+		GLfloat hitSub = (se->_cxxShip->octree ? se->_cxxShip->octree->isHitByLine(w0, w1) : 0.0f);
 		if (hitSub && (hit_distance == 0 || hit_distance > hitSub))
 		{	
 			hit_distance = hitSub;
@@ -1821,7 +1820,7 @@ GLfloat ShipEntity::doesHitLine(HPVector v0, HPVector v1, HPVector o, Vector i, 
 	Vector u1 = HPVectorToVector(HPvector_between(o, v1));
 	Vector w0 = make_vector(dot_product(u0, i), dot_product(u0, j), dot_product(u0, k));	// in ijk vectors
 	Vector w1 = make_vector(dot_product(u1, j), dot_product(u1, j), dot_product(u1, k));
-	return [octree isHitByLine:w0 :w1];
+	return octree ? octree->isHitByLine(w0, w1) : 0.0f;
 }
 
 
@@ -2217,8 +2216,8 @@ void ShipEntity::setUpMixedEscorts()
 ::ShipEntity *doOctreesCollide(::ShipEntity *prime, ::ShipEntity *other)
 {
 	// octree check
-	::Octree		*prime_octree = prime->_cxxShip->octree;
-	::Octree		*other_octree = other->_cxxShip->octree;
+	Octree		*prime_octree = prime->_cxxShip->octree.get();
+	Octree		*other_octree = other->_cxxShip->octree.get();
 	
 	HPVector		prime_position = oo::ToCxx(prime)->absolutePositionForSubentity();
 	Triangle	prime_ijk = oo::ToCxx(prime)->absoluteIJKForSubentity();
@@ -2233,7 +2232,7 @@ void ShipEntity::setUpMixedEscorts()
 	
 	// check hull octree against other hull octree
 	// [nil isHitByOctree:...] answered NO.
-	if (prime_octree != nil && oo::ToCxx(prime_octree)->isHitByOctree(oo::ToCxx(other_octree),
+	if (prime_octree != nullptr && prime_octree->isHitByOctree(other_octree,
 						 relative_position_of_other,
 							 relative_ijk_of_other))
 	{
@@ -10045,7 +10044,7 @@ void ShipEntity::becomeExplosion()
 					
 					for (i = 0; i < n_wreckage; i++)
 					{
-						Vector r1 = [octree randomPoint];
+						Vector r1 = (octree ? octree->randomPoint() : kZeroVector);
 						Vector dir = quaternion_rotate_vector([self normalOrientation], r1);
 						HPVector rpos = HPvector_add(vectorToHPVector(dir), xposition);
 						GLfloat lifetime = 750.0 * randf() + 250.0 * i + 100.0;
@@ -12484,9 +12483,10 @@ bool ShipEntity::fireSubentityLaserShot(double range)
 	::ShipEntity *victim = [UNIVERSE firstShipHitByLaserFromShip:self inDirection:direction offset:kZeroVector gettingRangeFound:&hitAtRange];
 	[self setShipHitByLaser:victim];
 	
-	::OOLaserShotEntity *shot = [::OOLaserShotEntity laserFromShip:self direction:direction offset:kZeroVector];
-	[shot setColor:laser_color];
-	[shot setScanClass:CLASS_NO_DRAW];
+	const oo::Ref<OOLaserShotEntity> shot = OOLaserShotEntity::laserFromShip(self, direction, kZeroVector);
+	::Entity *shotObjC = oo::NewEntityFacade(shot);
+	shot->setColor(oo::ToCxx(laser_color));
+	shot->setScanClass(CLASS_NO_DRAW);
 	
 	if (victim != nil)
 	{
@@ -12509,9 +12509,9 @@ bool ShipEntity::fireSubentityLaserShot(double range)
 		{
 			[victim takeEnergyDamage:weapon_damage from:self becauseOf:parent weaponIdentifier:[[self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES] cxx_identifier].value_or(std::string())];  // a very palpable hit
 			
-			[shot setRange:hitAtRange];
-			Vector vd = vector_forward_from_quaternion([shot orientation]);
-			HPVector flash_pos = HPvector_add([shot position], vectorToHPVector(vector_multiply_scalar(vd, hitAtRange)));
+			shot->setRange(hitAtRange);
+			Vector vd = vector_forward_from_quaternion(shot->getOrientation());
+			HPVector flash_pos = HPvector_add(shot->getPosition(), vectorToHPVector(vector_multiply_scalar(vd, hitAtRange)));
 			[UNIVERSE addLaserHitEffectsAt:flash_pos against:victim damage:weapon_damage color:laser_color];
 		}
 	}
@@ -12524,7 +12524,7 @@ bool ShipEntity::fireSubentityLaserShot(double range)
 		{
 			victim = [parent primaryTarget];
 			
-			Vector shotDirection = vector_forward_from_quaternion([shot orientation]);
+			Vector shotDirection = vector_forward_from_quaternion(shot->getOrientation());
 			Vector victimDirection = vector_normal(HPVectorToVector(HPvector_subtract([victim position], [parent position])));
 			if (dot_product(shotDirection, victimDirection) > 0.995)	// Within 84.26 degrees
 			{
@@ -12541,7 +12541,7 @@ bool ShipEntity::fireSubentityLaserShot(double range)
 		}
 	}
 	
-	[UNIVERSE addEntity:shot];
+	[UNIVERSE addEntity:shotObjC];
 	[self resetShotTime];
 	
 	return YES;
@@ -12615,12 +12615,13 @@ bool ShipEntity::fireDirectLaserShotAt(::Entity *my_target)
 	Vector  vel = vector_multiply_scalar(v_forward, flightSpeed);
 	
 	// do special effects laser line
-	::OOLaserShotEntity *shot = [::OOLaserShotEntity laserFromShip:self direction:WEAPON_FACING_FORWARD offset:kZeroVector];
-	[shot setColor:laser_color];
-	[shot setScanClass: CLASS_NO_DRAW];
-	[shot setPosition: position];
-	[shot setOrientation: q_laser];
-	[shot setVelocity: vel];
+	const oo::Ref<OOLaserShotEntity> shot = OOLaserShotEntity::laserFromShip(self, WEAPON_FACING_FORWARD, kZeroVector);
+	::Entity *shotObjC = oo::NewEntityFacade(shot);
+	shot->setColor(oo::ToCxx(laser_color));
+	shot->setScanClass(CLASS_NO_DRAW);
+	shot->setPosition(position);
+	shot->setOrientation(q_laser);
+	shot->setVelocity(vel);
 	
 	if (victim != nil)
 	{
@@ -12636,14 +12637,14 @@ bool ShipEntity::fireDirectLaserShotAt(::Entity *my_target)
 		{
 			[victim takeEnergyDamage:weapon_damage from:self becauseOf:self weaponIdentifier:[[self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES] cxx_identifier].value_or(std::string())];	// a very palpable hit
 
-			[shot setRange:hit_at_range];
-			Vector vd = vector_forward_from_quaternion([shot orientation]);
-			HPVector flash_pos = HPvector_add([shot position], vectorToHPVector(vector_multiply_scalar(vd, hit_at_range)));
+			shot->setRange(hit_at_range);
+			Vector vd = vector_forward_from_quaternion(shot->getOrientation());
+			HPVector flash_pos = HPvector_add(shot->getPosition(), vectorToHPVector(vector_multiply_scalar(vd, hit_at_range)));
 			[UNIVERSE addLaserHitEffectsAt:flash_pos against:victim damage:weapon_damage color:laser_color];
 		}
 	}
 	
-	[UNIVERSE addEntity:shot];
+	[UNIVERSE addEntity:shotObjC];
 	
 	[self resetShotTime];
 	
@@ -12685,10 +12686,10 @@ bool ShipEntity::fireLaserShotInDirection(OOWeaponFacing direction, const std::s
 	NSUInteger		i, barrels;
 	Vector			vel = vector_multiply_scalar(v_forward, flightSpeed);
 	const std::vector<Vector> laserPortOffsets = [self cxx_laserPortOffset:direction];
-	::OOLaserShotEntity *shot = nil;
+	oo::Ref<OOLaserShotEntity> shot;
 
 	barrels = laserPortOffsets.size();
-	std::vector<oo::ObjCRef<::OOLaserShotEntity *>> shotEntities;
+	std::vector<oo::Ref<OOLaserShotEntity>> shotEntities;
 	shotEntities.reserve(barrels);
 
 	
@@ -12708,15 +12709,16 @@ bool ShipEntity::fireLaserShotInDirection(OOWeaponFacing direction, const std::s
 		::ShipEntity *victim = [UNIVERSE firstShipHitByLaserFromShip:self inDirection:direction offset:laserPortOffset gettingRangeFound:&hit_at_range];
 		[self setShipHitByLaser:victim];
 	
-		shot = [::OOLaserShotEntity laserFromShip:self direction:direction offset:laserPortOffset];
+		shot = OOLaserShotEntity::laserFromShip(self, direction, laserPortOffset);
+		::Entity *shotObjC = oo::NewEntityFacade(shot);
 		if ([self isPlayer])
 		{
 			shotEntities.emplace_back(shot);
 		}
 	
-		[shot setColor:laser_color];
-		[shot setScanClass: CLASS_NO_DRAW];
-		[shot setVelocity: vel];
+		shot->setColor(oo::ToCxx(laser_color));
+		shot->setScanClass(CLASS_NO_DRAW);
+		shot->setVelocity(vel);
 	
 		if (victim != nil)
 		{
@@ -12746,9 +12748,9 @@ bool ShipEntity::fireLaserShotInDirection(OOWeaponFacing direction, const std::s
 			{
 				[victim takeEnergyDamage:effective_damage from:self becauseOf:self weaponIdentifier:weaponIdentifier];	// a very palpable hit
 
-				[shot setRange:hit_at_range];
-				Vector vd = vector_forward_from_quaternion([shot orientation]);
-				HPVector flash_pos = HPvector_add([shot position], vectorToHPVector(vector_multiply_scalar(vd, hit_at_range)));
+				shot->setRange(hit_at_range);
+				Vector vd = vector_forward_from_quaternion(shot->getOrientation());
+				HPVector flash_pos = HPvector_add(shot->getPosition(), vectorToHPVector(vector_multiply_scalar(vd, hit_at_range)));
 				[UNIVERSE addLaserHitEffectsAt:flash_pos against:victim damage:effective_damage color:laser_color];
 			}
 		}
@@ -12767,7 +12769,7 @@ bool ShipEntity::fireLaserShotInDirection(OOWeaponFacing direction, const std::s
 					 * they ambush without having their target actually
 					 * targeted. Though in those circumstances they
 					 * shouldn't be missing their first shot anyway. */
-					if (dot_product(vector_forward_from_quaternion([shot orientation]),vector_normal([self vectorTo:victim])) > 0.995)
+					if (dot_product(vector_forward_from_quaternion(shot->getOrientation()),vector_normal([self vectorTo:victim])) > 0.995)
 					{
 						/* plausibly aimed at target. Allows reaction
 						 * before attacker actually hits. But we need to
@@ -12788,7 +12790,7 @@ bool ShipEntity::fireLaserShotInDirection(OOWeaponFacing direction, const std::s
 			}
 		}
 	
-		[UNIVERSE addEntity:shot];
+		[UNIVERSE addEntity:shotObjC];
 
 	}
 	

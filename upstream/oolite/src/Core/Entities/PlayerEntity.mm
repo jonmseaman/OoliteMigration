@@ -3322,9 +3322,9 @@ void PlayerEntity::doBookkeeping(double delta_t)
 	// mispositioned laser beams particularly noticeable on side view.
 	if (!lastShot.empty())
 	{
-		for (const oo::ObjCRef<::OOLaserShotEntity *> &lse : lastShot)
+		for (const oo::Ref<OOLaserShotEntity> &lse : lastShot)
 		{
-			[lse.get() update:0.0];
+			lse->update(0.0);
 		}
 		lastShot.clear();
 	}
@@ -6547,7 +6547,7 @@ GLfloat PlayerEntity::doesHitLine(HPVector v0, HPVector v1, ::ShipEntity **hitEn
 	Vector u1 = HPVectorToVector(HPvector_between(position, v1));
 	Vector w0 = make_vector(dot_product(u0, v_right), dot_product(u0, v_up), dot_product(u0, v_forward));	// in ijk vectors
 	Vector w1 = make_vector(dot_product(u1, v_right), dot_product(u1, v_up), dot_product(u1, v_forward));
-	GLfloat hit_distance = [octree isHitByLine:w0 :w1];
+	GLfloat hit_distance = octree ? octree->isHitByLine(w0, w1) : 0.0f;
 	if (hit_distance)
 	{
 		if (hitEntity)
@@ -6570,7 +6570,7 @@ GLfloat PlayerEntity::doesHitLine(HPVector v0, HPVector v1, ::ShipEntity **hitEn
 		w0 = resolveVectorInIJK(u0, ijk);
 		w1 = resolveVectorInIJK(u1, ijk);
 		
-		GLfloat hitSub = [se->_cxxShip->octree isHitByLine:w0 :w1];
+		GLfloat hitSub = (se->_cxxShip->octree ? se->_cxxShip->octree->isHitByLine(w0, w1) : 0.0f);
 		if (hitSub && (hit_distance == 0 || hit_distance > hitSub))
 		{	
 			hit_distance = hitSub;
@@ -13802,7 +13802,7 @@ oo::PList::Dict *PlayerEntity::shipyardRecord()
 }
 
 
-void PlayerEntity::setLastShot(const std::vector<oo::ObjCRef<::OOLaserShotEntity *>> &shot)
+void PlayerEntity::setLastShot(const std::vector<oo::Ref<OOLaserShotEntity>> &shot)
 {
 	lastShot = shot;
 }
