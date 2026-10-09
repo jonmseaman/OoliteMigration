@@ -89,7 +89,7 @@ public:
 
 	void toggleDockingMusic();	// Start docking music if none playing, stop docking music if currently playing docking music.
 
-	::OOSoundSource *soundSource();
+	::OOSoundSource *soundSource();	// C++ since bead oo-9ht.88
 
 	std::optional<std::string> playingMusic();	// nullopt: nothing playing
 	bool isPlaying();

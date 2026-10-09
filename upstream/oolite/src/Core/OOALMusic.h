@@ -6,7 +6,8 @@ Subclass of OOSound with additional controls specific to music playback. Only
 one instance of OOMusic may be playing at a time.
 
 C++20 since bead oo-nwbw (proposed ADR-0056, the Audio module: amendment oo-2en). The class is
-OOMusic, a subclass of cxx::OOSound; its Objective-C facade was deleted by bead oo-9ht.85.
+OOMusic, a subclass of OOSound; its Objective-C facade was deleted by bead oo-9ht.85, and the
+facades of the sound and the sound source it uses by beads oo-9ht.68 and oo-9ht.88.
 
 
 OOALSound - OpenAL sound implementation for Oolite.
@@ -39,10 +40,7 @@ SOFTWARE.
 #import "OOALSound.h"
 #import "OOSoundSource.h"
 
-#include "oofnd/objc/OOObjCRef.h"
-
-
-class OOMusic : public cxx::OOSound
+class OOMusic : public OOSound
 {
 public:
 	/*	Was -cxx_initWithContentsOfFile:, OOSound's designated initialiser overridden: a music that
@@ -60,14 +58,13 @@ public:
 	bool isPlaying();
 	void setMusicGain(float newValue);
 	float musicGain();
-	::OOSoundSource *musicSoundSource();
+	OOSoundSource *musicSoundSource();
 
 private:
 	OOMusic() = default;
 
-	// The root's cluster answers an Objective-C sound, which its C++ part does not keep alive
-	// (amendment oo-smy item 4): the Objective-C object is kept, retained as before.
-	oo::ObjCRef<::OOSound *>	sound;
+	// The sound the root's cluster made for the path, retained as before.
+	oo::Ref<OOSound>	sound;
 };
 
 #endif	// OOALMUSIC_H

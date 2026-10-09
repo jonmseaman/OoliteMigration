@@ -7,7 +7,8 @@
 	context on the game's own façade backend (ooscript/JSEngine_quickjs.cpp), links the game's own
 	objects for the binding, its bridge, the engine's exception translator
 	(OOJSEngineNativeWrappers.mm) and the converted classes it uses (OOCommodities and
-	OOCommodityMarket, OOJSInterfaceDefinition, OOEquipmentType, reached through their façades), and
+	OOCommodityMarket and OOEquipmentType, reached through their façades, and OOJSInterfaceDefinition,
+	C++ since bead oo-9ht.61 deleted its façade), and
 	stands in for the classes the binding messages (Entity, ShipEntity and StationEntity, the
 	player, the universe, the game controller and the ship registry answer only the selectors the
 	binding sends), for the resource manager and string expander the commodities call, the script
@@ -97,7 +98,7 @@ typedef OOEquipmentType* OOWeaponType;
 	int _abortAll;
 	id _abortedShip;
 	BOOL _fits;
-	std::map<std::string, oo::ObjCRef<OOJSInterfaceDefinition *>> _interfaces;
+	std::map<std::string, oo::Ref<OOJSInterfaceDefinition>> _interfaces;
 	std::string _lastLaunch;
 	ShipEntity *_launched;
 }
@@ -369,8 +370,8 @@ ShipEntity *NewShip(const char *name)
 
 - (void) cxx_setInterfaceDefinition:(OOJSInterfaceDefinition *)definition forKey:(const std::string &)key
 {
-	if (definition == nil)  _interfaces.erase(key);
-	else  _interfaces[key] = oo::ObjCRef<OOJSInterfaceDefinition *>(definition);
+	if (definition == nullptr)  _interfaces.erase(key);
+	else  _interfaces[key] = oo::Ref<OOJSInterfaceDefinition>(definition);
 }
 
 @end
@@ -952,16 +953,16 @@ OO_TEST(interfaces)
 	if (sStation->_interfaces.count("k") == 1)
 	{
 		OOJSInterfaceDefinition *definition = sStation->_interfaces["k"].get();
-		OO_CHECK([definition cxx_title] == std::optional<std::string>("T"));
-		OO_CHECK([definition summary] == std::optional<std::string>("S"));
-		OO_CHECK([definition category] == std::optional<std::string>("C"));
-		OO_CHECK(ooscript::isObject([definition callback]) && [definition callbackThis] == nullptr);
+		OO_CHECK(definition->title() == std::optional<std::string>("T"));
+		OO_CHECK(definition->summary() == std::optional<std::string>("S"));
+		OO_CHECK(definition->category() == std::optional<std::string>("C"));
+		OO_CHECK(ooscript::isObject(definition->callback()) && definition->callbackThis() == nullptr);
 	}
 	OO_CHECK_EVAL("station.setInterface('k2', {title: 'T', summary: 'S', callback: function () {}, cbThis: station})", "undefined");
-	OO_CHECK(sStation->_interfaces.count("k2") == 1 && [sStation->_interfaces["k2"].get() category] == std::optional<std::string>("desc(interfaces-category-uncategorised)"));
-	OO_CHECK(sStation->_interfaces.count("k2") == 1 && [sStation->_interfaces["k2"].get() callbackThis] == sStation->_jsSelf);
+	OO_CHECK(sStation->_interfaces.count("k2") == 1 && sStation->_interfaces["k2"]->category() == std::optional<std::string>("desc(interfaces-category-uncategorised)"));
+	OO_CHECK(sStation->_interfaces.count("k2") == 1 && sStation->_interfaces["k2"]->callbackThis() == sStation->_jsSelf);
 	OO_CHECK_EVAL("station.setInterface('k2', {title: 'T', summary: 'S', category: '', callback: function () {}})", "undefined");
-	OO_CHECK(sStation->_interfaces.count("k2") == 1 && [sStation->_interfaces["k2"].get() category] == std::optional<std::string>("desc(interfaces-category-uncategorised)"));
+	OO_CHECK(sStation->_interfaces.count("k2") == 1 && sStation->_interfaces["k2"]->category() == std::optional<std::string>("desc(interfaces-category-uncategorised)"));
 	OO_CHECK_EVAL("station.setInterface('k')", "undefined");
 	OO_CHECK(sStation->_interfaces.count("k") == 0);
 	OO_CHECK_EVAL("station.setInterface('k2', null)", "undefined");

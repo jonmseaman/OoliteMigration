@@ -144,7 +144,7 @@ OOWeakReference *StationEntityWeakReference(StationEntity *station)	{ return [[s
 - (void) cxx_setQuantity:(OOCargoQuantity)quantity forCommodity:(const std::string &)commodity	{ _cxxStation->setQuantity(quantity, commodity); }
 - (std::vector<oo::PList> *) cxx_localShipyard	{ return _cxxStation->getLocalShipyard(); }
 - (void) cxx_setLocalShipyard:(const std::vector<oo::PList> &)shipyard	{ _cxxStation->setLocalShipyard(shipyard); }
-- (std::map<std::string, oo::ObjCRef<OOJSInterfaceDefinition *>, std::less<>> *) cxx_localInterfaces	{ return _cxxStation->getLocalInterfaces(); }
+- (std::map<std::string, oo::Ref<OOJSInterfaceDefinition>, std::less<>> *) cxx_localInterfaces	{ return _cxxStation->getLocalInterfaces(); }
 - (void) cxx_setInterfaceDefinition:(OOJSInterfaceDefinition *)definition forKey:(const std::string &)key	{ _cxxStation->setInterfaceDefinition(definition, key); }
 - (OOCommodityMarket *) initialiseLocalMarket	{ return _cxxStation->initialiseLocalMarket(); }
 - (void) setPlanet:(OOPlanetEntity *)planet_entity	{ _cxxStation->setPlanet(planet_entity); }

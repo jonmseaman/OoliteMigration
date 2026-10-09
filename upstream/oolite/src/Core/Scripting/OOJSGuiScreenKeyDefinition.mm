@@ -56,12 +56,10 @@ static inline Object  *OOJSFOBJP(ooscript::Object *o)     { return reinterpret_c
 } // namespace
 
 
-/*	C++20 since bead oo-xg7g (proposed ADR-0056 amendment oo-o89): cxx::OOJSGuiScreenKeyDefinition. -init after
+/*	C++20 since bead oo-xg7g (proposed ADR-0056 amendment oo-o89): OOJSGuiScreenKeyDefinition. -init after
 	[super init] is the constructor, -dealloc the destructor; the engine, the script stack and the
 	owning script's weak reference are Objective-C and are messaged as before.
 */
-
-namespace cxx {
 
 
 OOJSGuiScreenKeyDefinition::OOJSGuiScreenKeyDefinition() {
@@ -186,4 +184,3 @@ OOComparisonResult OOJSGuiScreenKeyDefinition::interfaceCompare(OOJSGuiScreenKey
 	return (order < 0) ? OOOrderedAscending : ((order > 0) ? OOOrderedDescending : OOOrderedSame);
 }
 
-}	// namespace cxx

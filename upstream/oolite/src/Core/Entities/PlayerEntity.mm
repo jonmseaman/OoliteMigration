@@ -2457,7 +2457,7 @@ void PlayerEntity::completeSetUp()
 void PlayerEntity::completeSetUpAndSetTarget(bool /*setTarget*/)
 {
 	::PlayerEntity *self = oo::ToObjC(this);
-	[::OOSoundSource stopAll];
+	::OOSoundSource::stopAll();
 
 	[self setDockedStation:[UNIVERSE station]];
 	[self setLastAegisLock:[UNIVERSE planet]];
@@ -9246,9 +9246,9 @@ void PlayerEntity::setGuiToGameOptionsScreen()
 		[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,AUTOSAVE)];
 	
 		// volume control
-		if ([::OOSound respondsToSelector:@selector(masterVolume)] && [::OOSound isSoundOK])
+		if (::OOSound::isSoundOK())	// (+respondsToSelector:@selector(masterVolume) was always YES)
 		{
-			double volume = 100.0 * [::OOSound masterVolume];
+			double volume = 100.0 * ::OOSound::masterVolume();
 			int vol = (volume / 5.0 + 0.5); // avoid rounding errors
 			const std::string soundVolumeWordDesc = OO_DESC("gameoptions-sound-volume");
 			if (vol > 0)
@@ -10041,7 +10041,7 @@ void PlayerEntity::setGuiToInterfacesScreen(int skip)
 		// sorts by category, then title. ORDER-SENSITIVE: ties now keep the map's byte order of keys
 		std::stable_sort(interfaceKeys.begin(), interfaceKeys.end(), [interfaces](const std::string &a, const std::string &b)
 		{
-			return [interfaces->find(a)->second.get() interfaceCompare:interfaces->find(b)->second.get()] == OOOrderedAscending;
+			return interfaces->find(a)->second->interfaceCompare(interfaces->find(b)->second.get()) == OOOrderedAscending;
 		});
 	}
 	int i;
@@ -10103,11 +10103,11 @@ void PlayerEntity::setGuiToInterfacesScreen(int skip)
 				[gui cxx_setKey:interfaceKey forRow:row];
 				// title, category: the list ends at the first nil, as arrayWithObjects: did
 				std::vector<std::string> columns;
-				const std::optional<std::string> title = [definition cxx_title];
+				const std::optional<std::string> title = definition->title();
 				if (title.has_value())
 				{
 					columns.push_back(*title);
-					const std::optional<std::string> category = [definition category];
+					const std::optional<std::string> category = definition->category();
 					if (category.has_value())  columns.push_back(*category);
 				}
 				[gui cxx_setArray:columns forRow:row];
@@ -10186,7 +10186,7 @@ void PlayerEntity::showInformationForSelectedInterface()
 		::OOJSInterfaceDefinition *definition = InterfaceForKey(oo::ToCxx([self dockedStation]), interfaceKey);
 		if (definition)
 		{
-			[gui cxx_addLongText:[definition summary] startingAtRow:GUI_ROW_INTERFACES_DETAIL align:GUI_ALIGN_LEFT];
+			[gui cxx_addLongText:definition->summary() startingAtRow:GUI_ROW_INTERFACES_DETAIL align:GUI_ALIGN_LEFT];
 		}
 	}
 }
@@ -10217,7 +10217,7 @@ void PlayerEntity::activateSelectedInterface()
 	if (definition)
 	{
 		[[UNIVERSE gameView] clearKeys];
-		[definition runCallback:*key];	// a definition was found, so key has a value
+		definition->runCallback(*key);	// a definition was found, so key has a value
 	}
 	else
 	{
@@ -13807,14 +13807,15 @@ void PlayerEntity::clearExtraGuiScreenKeys(OOGUIScreenID gui, const std::string 
 {
 	const auto screenKeys = extraGuiScreenKeys.find(gui);
 	if (screenKeys == extraGuiScreenKeys.end())  return;
-	std::vector<oo::ObjCRef<::OOJSGuiScreenKeyDefinition *>> &keydefs = screenKeys->second;
+	std::vector<oo::Ref<::OOJSGuiScreenKeyDefinition>> &keydefs = screenKeys->second;
 	std::size_t i = keydefs.size();
 	while (i--)
 	{
 		::OOJSGuiScreenKeyDefinition *def = keydefs[i].get();
 		// the old code read "name" from the definition object with PListView, which only reads
-		// dictionaries, so this never matched; kept as it was (the definition as an Object node)
-		const oo::PList definitionValue = oo::PListObject(def);
+		// dictionaries, so this never matched; kept as it was (the definition was an Object node,
+		// which find() does not look into; bead oo-9ht.62 deleted the facade it wrapped)
+		const oo::PList definitionValue;
 		const oo::PList *definitionName = definitionValue.find("name");
 		if (def && definitionName != nullptr && definitionName->isString() && *definitionName->getIf<std::string>() == key)
 		{
@@ -13831,7 +13832,7 @@ bool PlayerEntity::setExtraGuiScreenKeys(OOGUIScreenID gui, ::OOJSGuiScreenKeyDe
 	// process all the keys in the definition
 	BOOL result = YES;
 	oo::PList::Dict final;
-	const oo::PList keys = [definition registerKeys];
+	const oo::PList keys = (definition != nullptr) ? definition->registerKeys() : oo::PList();	// a message to nil answered nil
 	std::vector<oo::PList> checklist;
 
 	if (const oo::PList::Dict *keyDict = keys.getIf<oo::PList::Dict>())
@@ -13843,9 +13844,9 @@ bool PlayerEntity::setExtraGuiScreenKeys(OOGUIScreenID gui, ::OOJSGuiScreenKeyDe
 			final[key] = std::move(item);
 		}
 	}
-	[definition setRegisterKeys:oo::PList(std::move(final))];
+	if (definition != nullptr)  definition->setRegisterKeys(oo::PList(std::move(final)));
 
-	std::vector<oo::ObjCRef<::OOJSGuiScreenKeyDefinition *>> newarray;
+	std::vector<oo::Ref<::OOJSGuiScreenKeyDefinition>> newarray;
 	const auto existing = extraGuiScreenKeys.find(gui);
 	if (existing != extraGuiScreenKeys.end())
 	{
@@ -13855,14 +13856,14 @@ bool PlayerEntity::setExtraGuiScreenKeys(OOGUIScreenID gui, ::OOJSGuiScreenKeyDe
 		{
 			::OOJSGuiScreenKeyDefinition *def_existing = newarray[i].get();
 			// if we find this name already in the array, remove it
-			if (def_existing && [def_existing cxx_name].has_value() && [def_existing cxx_name] == [definition cxx_name])	// (-isEqualToString: of nil was NO)
+			if (def_existing && def_existing->name().has_value() && def_existing->name() == ((definition != nullptr) ? definition->name() : std::nullopt))	// (-isEqualToString: of nil was NO)
 			{
 				newarray.erase(newarray.begin() + static_cast<std::ptrdiff_t>(i));
 			}
 			else
 			{
 				// check whether any of those keycodes is already in use on this screen
-				const oo::PList keydefs = [def_existing registerKeys];
+				const oo::PList keydefs = (def_existing != nullptr) ? def_existing->registerKeys() : oo::PList();
 				const oo::PList::Dict *keydefsDict = keydefs.getIf<oo::PList::Dict>();
 
 				for (const auto &[key, keydef] : (keydefsDict != nullptr) ? *keydefsDict : oo::PList::Dict())	// byte order (was -allKeys order): only the log order can differ
@@ -13881,7 +13882,7 @@ bool PlayerEntity::setExtraGuiScreenKeys(OOGUIScreenID gui, ::OOJSGuiScreenKeyDe
 			}
 		}
 	}
-	newarray.push_back(oo::ObjCRef<::OOJSGuiScreenKeyDefinition *>(definition));
+	newarray.push_back(oo::Ref<::OOJSGuiScreenKeyDefinition>(definition));
 	// only add the item if there were no errors
 	if (result) extraGuiScreenKeys[gui] = std::move(newarray);
 	return result;

@@ -69,7 +69,7 @@ MA 02110-1301, USA.
 	oo-ykoy, bead oo-9ht.97). OOCommodities, OOCommodityMarket, OOEquipmentType and OOJSInterfaceDefinition, which
 	are C++ since beads oo-fqyw, oo-ih7y, oo-fg7i and oo-8fpc, are reached as cxx:: classes through
 	oo::ToCxx (amendment oo-ppc, item 4), null-guarded where a message to nil answered; an interface
-	definition is still made as its façade, which the station keeps (amendment oo-q9q4 item 1).
+	definition is C++ since bead oo-9ht.61 deleted its façade, and the station keeps it as oo::Ref.
 	Messages to classes that are still Objective-C (StationEntity, ShipEntity, PlayerEntity,
 	Universe, GameController, OOShipRegistry) stay as they are, which is why the file is still .mm
 	until Phase 4.
@@ -996,7 +996,7 @@ static bool StationSetInterface(ooscript::Context context, ooscript::CallArgs &o
 
 	if (oojsArgs.count() < 2 || ooscript::isNull(OOJS_ARGV[1]))
 	{
-		[station cxx_setInterfaceDefinition:nil forKey:key.value_or("")];
+		[station cxx_setInterfaceDefinition:nullptr forKey:key.value_or("")];
 		OOJS_RETURN_VOID;
 	}
 	
@@ -1067,10 +1067,9 @@ static bool StationSetInterface(ooscript::Context context, ooscript::CallArgs &o
 		return false;
 	}
 
-	// The definition is still made as its façade (its superclass, OOWeakRefObject, is Objective-C:
-	// amendment oo-q9q4 item 1), which the station keeps; its members are reached as C++.
-	OOJSInterfaceDefinition* definition = [[OOJSInterfaceDefinition alloc] init];
-	cxx::OOJSInterfaceDefinition *cxxDefinition = oo::ToCxx(definition);
+	// C++ since bead oo-9ht.61 deleted its façade; the station keeps it (oo::Ref).
+	const oo::Ref<OOJSInterfaceDefinition> definition = oo::makeRef<OOJSInterfaceDefinition>();
+	OOJSInterfaceDefinition *cxxDefinition = definition.get();
 	cxxDefinition->setTitle(title);
 	cxxDefinition->setCategory(*category);
 	cxxDefinition->setSummary(*summary);
@@ -1084,9 +1083,7 @@ static bool StationSetInterface(ooscript::Context context, ooscript::CallArgs &o
 		// can do .bind(this) for callback instead
 	}
 	
-	[station cxx_setInterfaceDefinition:definition forKey:key.value_or("")];
-
-	[definition release];
+	[station cxx_setInterfaceDefinition:definition.get() forKey:key.value_or("")];
 
 	OOJS_RETURN_VOID;
 

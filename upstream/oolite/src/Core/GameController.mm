@@ -440,7 +440,7 @@ void GameController::doPerformGameTick()
 		{
 			[UNIVERSE reinitAndShowDemo:YES];
 		}
-		[::OOSound update];
+		::OOSound::update();
 		if (!gameIsPaused)
 		{
 			OOJSFrameCallbacksInvoke(delta_t);

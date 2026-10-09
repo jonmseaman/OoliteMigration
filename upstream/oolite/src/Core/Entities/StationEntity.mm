@@ -868,7 +868,7 @@ void StationEntity::setLocalShipyard(const std::vector<oo::PList> &some_market)
 }
 
 
-std::map<std::string, oo::ObjCRef<::OOJSInterfaceDefinition *>, std::less<>> *StationEntity::getLocalInterfaces()
+std::map<std::string, oo::Ref<::OOJSInterfaceDefinition>, std::less<>> *StationEntity::getLocalInterfaces()
 {
 	return &localInterfaces;
 }
@@ -876,13 +876,13 @@ std::map<std::string, oo::ObjCRef<::OOJSInterfaceDefinition *>, std::less<>> *St
 
 void StationEntity::setInterfaceDefinition(::OOJSInterfaceDefinition *definition, const std::string &key)
 {
-	if (definition == nil)
+	if (definition == nullptr)
 	{
 		localInterfaces.erase(key);
 	}
 	else
 	{
-		localInterfaces[key] = oo::ObjCRef<::OOJSInterfaceDefinition *>(definition);
+		localInterfaces[key] = oo::Ref<::OOJSInterfaceDefinition>(definition);
 	}
 }
 

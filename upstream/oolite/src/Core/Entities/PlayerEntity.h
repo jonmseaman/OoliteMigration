@@ -50,9 +50,11 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOAssert.h"
 
 @class PlayerEntity, GuiDisplayGen, MyOpenGLView, HeadUpDisplay, ShipEntity, ProxyPlayerEntity;
-@class OOSound, OOSoundSource;
+class OOSound;			// C++ since bead oo-9ht.68 deleted its facade
+class OOSoundSource;	// C++ since bead oo-9ht.88 deleted its facade
 @class OOJoystickManager, OOTexture;
-@class OOJSGuiScreenKeyDefinition, OOJSScript;
+@class OOJSScript;
+#import "OOJSGuiScreenKeyDefinition.h"	// C++ since bead oo-9ht.62: extraGuiScreenKeys keeps it (oo::Ref)
 class StickProfileScreen;	// C++ (PlayerEntityStickProfile.h, bead oo-movn)
 
 #define ALLOW_CUSTOM_VIEWS_WHILE_PAUSED	1
@@ -1761,7 +1763,7 @@ public:
 	// dict to hold extra keys for missions screen.
 	std::map<std::string, oo::PList, std::less<>>	extraMissionKeys;	// key name -> processed key definitions
 
-	std::map<int, std::vector<oo::ObjCRef<::OOJSGuiScreenKeyDefinition *>>>	extraGuiScreenKeys;	// by GUI screen ID
+	std::map<int, std::vector<oo::Ref<::OOJSGuiScreenKeyDefinition>>>	extraGuiScreenKeys;	// by GUI screen ID
 
 	// save-file
 	std::optional<std::string>	save_path;

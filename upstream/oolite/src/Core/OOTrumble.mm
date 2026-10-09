@@ -949,40 +949,46 @@ void OOTrumble::setFromDictionary(const oo::PList & dict)
 }
 
 
+// The source and the sounds are C++ since beads oo-9ht.88 and oo-9ht.68 deleted their facades.
+// Each static holds one retain for the process, as alloc/init (and -initWithCustomSoundKey:, which
+// answered the cached sound retained) gave it; the source is made the first time, so it is there
+// whenever the sounds are played.
 static OOSoundSource	*sTrumbleSoundSource;
 static OOSound			*sTrumbleIdleSound;
 static OOSound			*sTrumbleSqealSound;
 
 static void InitTrumbleSounds(void)
 {
-	if (sTrumbleSoundSource == nil)
+	if (sTrumbleSoundSource == nullptr)
 	{
-		sTrumbleSoundSource = [[OOSoundSource alloc] init];
-		sTrumbleIdleSound = [[OOSound alloc] initWithCustomSoundKey:"[trumble-idle]"];
-		sTrumbleSqealSound = [[OOSound alloc] initWithCustomSoundKey:"[trumble-squeal]"];
+		sTrumbleSoundSource = oo::makeRef<OOSoundSource>().leakRef();
+		sTrumbleIdleSound = oo::retain(OOSoundWithCustomSoundKey("[trumble-idle]"));
+		sTrumbleSqealSound = oo::retain(OOSoundWithCustomSoundKey("[trumble-squeal]"));
 	}
 }
 
 
 static void PlayTrumbleIdle(void)
 {
+	if (sTrumbleSoundSource == nullptr)  return;	// a message to nil did nothing
 	// Only play idle sound if no trumble is making noise.
-	if (![sTrumbleSoundSource isPlaying])
+	if (!sTrumbleSoundSource->isPlaying())
 	{
 		// trumble sound from random direction - where's it gone now?
-		[sTrumbleSoundSource setPosition:OORandomUnitVector()];
-		[sTrumbleSoundSource playOOSound:sTrumbleIdleSound];
+		sTrumbleSoundSource->setPosition(OORandomUnitVector());
+		sTrumbleSoundSource->playOOSound(sTrumbleIdleSound);
 	}
 }
 
 
 static void PlayTrumbleSqueal(void)
 {
+	if (sTrumbleSoundSource == nullptr)  return;	// a message to nil did nothing
 	// Play squeal sound if no trumble is currently squealing, but trumping idle sound.
-	if (![sTrumbleSoundSource isPlaying] || [sTrumbleSoundSource sound] == sTrumbleIdleSound)
+	if (!sTrumbleSoundSource->isPlaying() || sTrumbleSoundSource->sound() == sTrumbleIdleSound)
 	{
 		// trumble sound from random direction - where's it gone now?
-		[sTrumbleSoundSource setPosition:OORandomUnitVector()];
-		[sTrumbleSoundSource playOOSound:sTrumbleSqealSound];
+		sTrumbleSoundSource->setPosition(OORandomUnitVector());
+		sTrumbleSoundSource->playOOSound(sTrumbleSqealSound);
 	}
 }

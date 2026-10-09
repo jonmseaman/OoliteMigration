@@ -38,7 +38,8 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOObjCRef.h"
 
 
-@class PlayerEntity, AI, OOSound, OOTexture;
+@class PlayerEntity, AI, OOTexture;
+class OOSound;	// C++ since bead oo-9ht.68 deleted its facade
 
 #define TRUMBLE_MAX_ROTATION				15.0
 #define TRUMBLE_MAX_ROTATIONAL_VELOCITY		5.0

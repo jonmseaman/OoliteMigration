@@ -845,26 +845,13 @@ OOINLINE Universe *OOGetUniverse(void)
 std::string cxx_OOLookUpDescriptionPRIV(const std::string &key);
 std::string cxx_OOLookUpPluralDescriptionPRIV(const std::string &key, NSInteger count);
 
-// The bodies of the two categories below (slice 26), which forward to them.
+/*	The bodies of the custom-sound categories of OOSound and OOSoundSource (slice 26), which went
+	with the two facades (beads oo-9ht.68 and oo-9ht.88): the sound for a customsounds.plist key
+	(borrowed: the resource manager's cache keeps it; null for none), and playing it on a source
+	(nothing for a null source, as a message to nil did).
+*/
 ::OOSound *OOSoundWithCustomSoundKey(const std::string &key);
 void OOSoundSourcePlayCustomSoundWithKey(::OOSoundSource *source, const std::string &key);
-
-@interface OOSound (OOCustomSounds)
-
-+ (id) cxx_soundWithCustomSoundKey:(const std::string &)key;
-- (id) initWithCustomSoundKey:(const std::string &)key;
-
-@end
-
-
-@interface OOSoundSource (OOCustomSounds)
-
-+ (id) sourceWithCustomSoundKey:(const std::string &)key;
-- (id) initWithCustomSoundKey:(const std::string &)key;
-
-- (void) cxx_playCustomSoundWithKey:(const std::string &)key;
-
-@end
 
 
 #ifdef __cplusplus

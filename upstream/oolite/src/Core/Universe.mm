@@ -348,7 +348,7 @@ void cxx::Universe::initWithGameView(::MyOpenGLView *inGameView)
 		speechSynthesizer = synth;
 	});
 #elif OOLITE_ESPEAK
-	int volume = [::OOSound masterVolume] * 100;
+	int volume = ::OOSound::masterVolume() * 100;
 	espeak_SetParameter(espeakPUNCTUATION, espeakPUNCT_NONE, 0);
 	espeak_SetParameter(espeakVOLUME, volume, 0);
 	espeak_voices = espeak_ListVoices(NULL);
@@ -1155,13 +1155,14 @@ std::vector<std::string> CachedConditionScripts(const std::string &key)
 
 
 /*	The custom-sound categories of OOSound and OOSoundSource on converted classes' facades
-	(slice 26 of docs/phases/3-slices/Universe.md, bead oo-32kcu): their bodies are free functions
-	on the facades, and the categories forward to them from Universe+ObjCBridge.mm (ADR-0056
-	amendments oo-6ia4 item 3, oo-9fwb, oo-7jhs5).
+	(slice 26 of docs/phases/3-slices/Universe.md, bead oo-32kcu): their bodies are free functions,
+	which the categories forwarded to from Universe+ObjCBridge.mm (ADR-0056 amendments oo-6ia4
+	item 3, oo-9fwb, oo-7jhs5) until beads oo-9ht.68 and oo-9ht.88 deleted the two facades; the
+	callers call them.
 */
 
-// +[OOSound cxx_soundWithCustomSoundKey:]: the sound for a customsounds.plist key, autoreleased; nil
-// for none.
+// +[OOSound cxx_soundWithCustomSoundKey:]: the sound for a customsounds.plist key, borrowed (the
+// resource manager's cache keeps it; was autoreleased); null for none.
 ::OOSound *OOSoundWithCustomSoundKey(const std::string &key)
 {
 	const std::optional<std::string> fileName = OOUniverseSoundNameForCustomSoundKey(key);
@@ -1173,8 +1174,9 @@ std::vector<std::string> CachedConditionScripts(const std::string &key)
 // -[OOSoundSource cxx_playCustomSoundWithKey:]
 void OOSoundSourcePlayCustomSoundWithKey(::OOSoundSource *source, const std::string &key)
 {
+	if (source == nullptr)  return;	// a message to nil
 	::OOSound *theSound = OOSoundWithCustomSoundKey(key);
-	if (theSound != nil)  oo::ToCxx(source)->playOOSound(theSound);
+	if (theSound != nullptr)  source->playOOSound(theSound);
 }
 
 std::string cxx_OOLookUpDescriptionPRIV(const std::string &key)

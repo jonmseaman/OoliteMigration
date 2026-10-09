@@ -2,12 +2,9 @@
 
 OOJSInterfaceDefinition.h
 
-C++20 since bead oo-8fpc (proposed ADR-0056, the OOColor house style). Its superclass,
-OOWeakRefObject, is still Objective-C (the weak-reference support that OOWeakReference+ObjCBridge
-keeps), so the class is cxx::OOJSInterfaceDefinition holding only its own ivars and methods, and
-OOJSInterfaceDefinition+ObjCBridge.h, imported at the end of this header, keeps the Objective-C
-OOJSInterfaceDefinition : OOWeakRefObject that PlayerEntity makes, StationEntity keeps and both message
-(ADR-0056 amendment oo-o89). The bridge's deletion bead waits for OOWeakRefObject's retirement.
+C++20 since bead oo-8fpc (proposed ADR-0056, the OOColor house style; amendment oo-o89). Bead
+oo-9ht.61 deleted its Objective-C facade (an OOWeakRefObject) and moved it to the global namespace:
+the station keeps its definitions as oo::Ref, and the player reads them as C++.
 
 
 Oolite
@@ -46,13 +43,10 @@ MA 02110-1301, USA.
 @class OOJSScript;	// imported by the .mm, so that a test can stand in for it (ADR-0056 amendment oo-fg7i item 5)
 
 
-namespace cxx {
-
 class OOJSInterfaceDefinition : public oo::RefCounted
 {
 public:
-	// The old -init after [super init]. Made only by the facade (amendment oo-o89 item 2), until
-	// OOWeakRefObject is retired.
+	// The old -init after [super init] (oo::makeRef).
 	OOJSInterfaceDefinition();
 	~OOJSInterfaceDefinition() override;
 
@@ -82,12 +76,5 @@ private:
 	std::optional<std::string>	_summary;
 	std::optional<std::string>	_category;
 };
-
-}	// namespace cxx
-
-
-// Transitional: the Objective-C OOJSInterfaceDefinition, for callers not yet converted. Deleted,
-// with namespace cxx above, by the bridge's deletion bead.
-#import "OOJSInterfaceDefinition+ObjCBridge.h"
 
 #endif	// OOJSINTERFACEDEFINITION_H
