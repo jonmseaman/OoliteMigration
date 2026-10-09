@@ -10,7 +10,8 @@
 	natives read (PLAYER) and the universe are stand-ins of other names (FakePlayer, FakeUniverse,
 	amendment oo-ppc item 6) that answer only the selectors the binding sends and record what they
 	are told; the player's HUD is a real one (made from an empty hud.plist, in a hidden GL context),
-	and the message GUI's colours are real colours. The expectations were written against the
+	and the message GUI's colours are real colours (the GUI stand-in is a C++ subclass since bead
+	oo-9ht.143 deleted the GUI's facade). The expectations were written against the
 	Objective-C file and run on it first; they pin the JS-visible behaviour of the property getter
 	(every property), the passenger, parcel and contract methods with their argument checks
 	(ValidateContracts()), and the PlayerEntity category the engine sends (the class name, and the
@@ -69,30 +70,28 @@ uint32_t gDebugFlags = 0;
 @end
 
 
-@interface FakeGui: OOObject
+// The GUI is C++ since bead oo-9ht.143 deleted its facade: the stand-in overrides the members the
+// facade stand-in answered (proposed ADR-0056 amendment oo-9ht.1), with the same answers.
+class FakeGui : public GuiDisplayGen
 {
-@public
-	OOColor *_textColor, *_textCommsColor;
-}
-@end
+public:
+	FakeGui() : GuiDisplayGen(NSMakeSize(480, 160), 1, 9, 19, 20, std::nullopt) {}
 
+	oo::Ref<OOColor> _textColor, _textCommsColor;
 
-@implementation FakeGui
-
-- (OOColor *) textColor  { return _textColor; }
-- (OOColor *) textCommsColor  { return _textCommsColor; }
-- (void) setTextColor:(OOColor *)color  { [_textColor release]; _textColor = [color retain]; }
-- (void) setTextCommsColor:(OOColor *)color  { [_textCommsColor release]; _textCommsColor = [color retain]; }
-- (std::optional<std::string>) cxx_reflowTextForMFD:(const std::optional<std::string> &)input  { return "[reflowed " + input.value_or("(nil)") + "]"; }
-
-@end
+	OOColor *getTextColor() override  { return _textColor.get(); }
+	OOColor *getTextCommsColor() override  { return _textCommsColor.get(); }
+	void setTextColor(OOColor *color) override  { _textColor = oo::Ref<OOColor>(color); }
+	void setTextCommsColor(OOColor *color) override  { _textCommsColor = oo::Ref<OOColor>(color); }
+	std::optional<std::string> reflowTextForMFD(const std::optional<std::string> &input) override  { return "[reflowed " + input.value_or("(nil)") + "]"; }
+};
 
 
 @interface FakeUniverse: OOObject
 {
 @public
 	OOViewID _viewDirection;
-	FakeGui *_gui;
+	oo::Ref<FakeGui> _gui;
 	std::string _lastCommander;
 	std::vector<std::string> _messages;
 }
@@ -102,7 +101,7 @@ uint32_t gDebugFlags = 0;
 @implementation FakeUniverse
 
 - (OOViewID) viewDirection  { return _viewDirection; }
-- (GuiDisplayGen *) messageGUI  { return (GuiDisplayGen *)_gui; }
+- (GuiDisplayGen *) messageGUI  { return _gui.get(); }
 
 - (OOCreditsQuantity) cxx_tradeInValueForCommanderDictionary:(const oo::PList &)cmdrDict
 {
@@ -111,7 +110,7 @@ uint32_t gDebugFlags = 0;
 }
 
 - (std::optional<std::string>) cxx_descriptionForKey:(const std::string &)key  { return std::nullopt; }
-- (GuiDisplayGen *) gui  { return (GuiDisplayGen *)_gui; }
+- (GuiDisplayGen *) gui  { return _gui.get(); }
 - (void) cxx_addMessage:(const std::optional<std::string> &)text forCount:(OOTimeDelta)count  { _messages.push_back(oo::str::format("%s %g", text.value_or("(nil)").c_str(), count)); }
 
 @end
@@ -120,7 +119,7 @@ uint32_t gDebugFlags = 0;
 @interface FakePlayer: OOObject
 {
 @public
-	HeadUpDisplay *_hud;
+	oo::Ref<HeadUpDisplay> _hud;	// C++ since bead oo-mwd58
 	Entity *_dockedStation, *_compassTarget;
 	BOOL _docked;
 	std::optional<std::string> _specialCargo, _fastA, _fastB;
@@ -147,7 +146,7 @@ uint32_t gDebugFlags = 0;
 - (BOOL) isDocked  { return _docked; }
 - (StationEntity *) dockedStation  { return (StationEntity *)_dockedStation; }
 - (std::optional<std::string>) cxx_specialCargo  { return _specialCargo; }
-- (HeadUpDisplay *) hud  { return _hud; }
+- (HeadUpDisplay *) hud  { return _hud.get(); }
 - (OOGalacticHyperspaceBehaviour) galacticHyperspaceBehaviour  { return GALACTIC_HYPERSPACE_BEHAVIOUR_FIXED_COORDINATES; }
 - (NSPoint) galacticHyperspaceFixedCoords  { return NSMakePoint(64, 128); }
 - (std::optional<std::string>) cxx_fastEquipmentA  { return _fastA; }
@@ -346,13 +345,14 @@ void SetUp()
 
 	sUniverse = [[FakeUniverse alloc] init];
 	sUniverse->_viewDirection = VIEW_AFT;
-	sUniverse->_gui = [[FakeGui alloc] init];
-	sUniverse->_gui->_textColor = [[OOColor colorWithRed:1.0f green:0.5f blue:0.25f alpha:1.0f] retain];
-	sUniverse->_gui->_textCommsColor = [[OOColor colorWithRed:0.0f green:1.0f blue:0.0f alpha:0.5f] retain];
+	sUniverse->_gui = oo::makeRef<FakeGui>();
+	sUniverse->_gui->_textColor = OOColor::colorWithRed(1.0f, 0.5f, 0.25f, 1.0f);
+	sUniverse->_gui->_textCommsColor = OOColor::colorWithRed(0.0f, 1.0f, 0.0f, 0.5f);
 	gSharedUniverse = (Universe *)sUniverse;
 
 	sPlayer = [[FakePlayer alloc] init];
-	sPlayer->_hud = [[HeadUpDisplay alloc] cxx_initWithDictionary:oo::PList(oo::PList::Dict{}) inFile:std::string("test-hud.plist")];
+	sPlayer->_hud = oo::makeRef<HeadUpDisplay>();
+	sPlayer->_hud->initWithDictionary(oo::PList(oo::PList::Dict{}), std::string("test-hud.plist"));
 	sPlayer->_dockedStation = [[TestEntity alloc] init];
 	sPlayer->_other = [[TestEntity alloc] init];
 	[sPlayer->_dockedStation setPosition:make_HPvector(5, 0, 0)];
@@ -515,8 +515,8 @@ OO_TEST(getterHUD)
 	OO_CHECK_EVAL("player.ship.hudHidden", "false");
 
 	// A player with no HUD: what messages to nil answered.
-	HeadUpDisplay *hud = sPlayer->_hud;
-	sPlayer->_hud = nil;
+	oo::Ref<HeadUpDisplay> hud = sPlayer->_hud;
+	sPlayer->_hud = nullptr;
 	OO_CHECK_EVAL("player.ship.reticleColorTarget", "null");
 	OO_CHECK_EVAL("player.ship.reticleTargetSensitive", "false");
 	OO_CHECK_EVAL("player.ship.multiFunctionDisplays", "0");
@@ -670,8 +670,8 @@ OO_TEST(setterHUD)
 	OO_CHECK_EVAL("(function () { player.ship.messageGuiTextColor = 'notAColor'; })()", "threw: Cannot set property messageGuiTextColor of instance of PlayerShip to invalid value \"notAColor\".");
 
 	// No HUD: nothing to set.
-	HeadUpDisplay *hud = sPlayer->_hud;
-	sPlayer->_hud = nil;
+	oo::Ref<HeadUpDisplay> hud = sPlayer->_hud;
+	sPlayer->_hud = nullptr;
 	OO_CHECK_EVAL("(function () { player.ship.hudHidden = true; return player.ship.hudHidden; })()", "false");
 	// A reticle colour answers what the HUD answered, NO: false with no exception, which ends the script.
 	OO_CHECK_EVAL("(function () { player.ship.reticleColorTarget = 'redColor'; })()", "<evaluation failed>");
@@ -806,13 +806,13 @@ OO_TEST(mfdsAndDials)
 
 	// The HUD's selectors.
 	OO_CHECK_EVAL("player.ship.hideHUDSelector('drawCompass:')", "undefined");
-	OO_CHECK([sPlayer->_hud hasHidden:std::string("drawCompass:")]);
+	OO_CHECK(sPlayer->_hud->hasHidden(std::string("drawCompass:")));
 	OO_CHECK_EVAL("player.ship.showHUDSelector('drawCompass:')", "undefined");
-	OO_CHECK(![sPlayer->_hud hasHidden:std::string("drawCompass:")]);
+	OO_CHECK(!sPlayer->_hud->hasHidden(std::string("drawCompass:")));
 	OO_CHECK(Eval("player.ship.hideHUDSelector()").rfind("threw: ", 0) == 0);
 	OO_CHECK(Eval("player.ship.showHUDSelector()").rfind("threw: ", 0) == 0);
-	HeadUpDisplay *hud = sPlayer->_hud;
-	sPlayer->_hud = nil;
+	oo::Ref<HeadUpDisplay> hud = sPlayer->_hud;
+	sPlayer->_hud = nullptr;
 	OO_CHECK_EVAL("player.ship.hideHUDSelector('drawCompass:')", "undefined");	// no HUD: nothing
 	sPlayer->_hud = hud;
 	OO_CHECK_LOG(sPlayer->_log, "");

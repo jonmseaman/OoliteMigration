@@ -2052,7 +2052,7 @@ void cxx::PlayerEntity::addLiteralMissionText(const std::string &text)	// called
 
 	for (const std::string &para : oo::str::split(text, "\n"))
 	{
-		missionTextRow = [gui cxx_addLongText:para startingAtRow:missionTextRow align:GUI_ALIGN_LEFT];
+		missionTextRow = gui->addLongText(para, missionTextRow, GUI_ALIGN_LEFT);
 	}
 }
 
@@ -2096,7 +2096,7 @@ void cxx::PlayerEntity::setMissionChoicesDictionary(const oo::PList &choicesDict
 	//
 
 	NSUInteger end_row = 21;
-	if ([[self hud] allowBigGui])
+	if ([self hud] != nullptr && [self hud]->getAllowBigGui())
 	{
 		end_row = 27;
 	}
@@ -2117,9 +2117,9 @@ void cxx::PlayerEntity::setMissionChoicesDictionary(const oo::PList &choicesDict
 		keysCount = end_row + 1;
 	}
 
-	[gui cxx_setText:std::string() forRow:end_row];				// clears out the 'Press spacebar' message
-	[gui cxx_setKey:std::string() forRow:end_row];					// clears the key to enable pollDemoControls to check for a selection
-	[gui setSelectableRange:NSMakeRange(0,0)];	// clears the selectable range
+	gui->setText(std::string(), end_row);				// clears out the 'Press spacebar' message
+	gui->setKey(std::string(), end_row);					// clears the key to enable pollDemoControls to check for a selection
+	gui->setSelectableRange(NSMakeRange(0,0));	// clears the selectable range
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:YES]; // enables mouse selection of the choices list items
 
 	OOGUIRow			choicesRow = (end_row+1) - keysCount;
@@ -2132,7 +2132,7 @@ void cxx::PlayerEntity::setMissionChoicesDictionary(const oo::PList &choicesDict
 	{
 		const oo::PList &choiceValue = *choicesDict.find(choiceKey);
 		OOGUIAlignment alignment = GUI_ALIGN_CENTER;
-		::OOColor *rowColor = [::OOColor yellowColor];
+		oo::Ref<OOColor>	rowColor = OOColor::yellowColor();
 		BOOL selectable = YES;
 		if (const std::string *text = choiceValue.getIf<std::string>())
 		{
@@ -2160,11 +2160,11 @@ void cxx::PlayerEntity::setMissionChoicesDictionary(const oo::PList &choicesDict
 			}
 			if (colorDesc != nullptr)
 			{
-				rowColor = [::OOColor cxx_colorWithDescription:*colorDesc];
+				rowColor = OOColor::colorWithDescription(*colorDesc);
 			}
 			else if (!selectable) // different default
 			{
-				rowColor = [::OOColor darkGrayColor];
+				rowColor = OOColor::darkGrayColor();
 			}
 		}
 		else
@@ -2176,16 +2176,16 @@ void cxx::PlayerEntity::setMissionChoicesDictionary(const oo::PList &choicesDict
 		// allow blank rows
 		if (choiceText != "  ")
 		{
-			[gui cxx_setText:choiceText forRow:choicesRow align: alignment];
+			gui->setText(choiceText, choicesRow, alignment);
 			if (selectable)
 			{
-				[gui cxx_setKey:choiceKey forRow:choicesRow];
+				gui->setKey(choiceKey, choicesRow);
 			}
 			else
 			{
-				[gui cxx_setKey:std::string(GUI_KEY_SKIP) forRow:choicesRow];
+				gui->setKey(std::string(GUI_KEY_SKIP), choicesRow);
 			}
-			[gui setColor:rowColor forRow:choicesRow];
+			gui->setColor(rowColor.get(), choicesRow);
 			if (selectable && !selectableRowExists)
 			{
 				selectableRowExists = YES;
@@ -2194,7 +2194,7 @@ void cxx::PlayerEntity::setMissionChoicesDictionary(const oo::PList &choicesDict
 		}
 		else
 		{
-			[gui cxx_setKey:std::string(GUI_KEY_SKIP) forRow:choicesRow];
+			gui->setKey(std::string(GUI_KEY_SKIP), choicesRow);
 		}
 		choicesRow++;
 		if (choicesRow > (end_row + 1)) break;
@@ -2203,13 +2203,13 @@ void cxx::PlayerEntity::setMissionChoicesDictionary(const oo::PList &choicesDict
 	if (!selectableRowExists)
 	{
 		// just in case choices are set but they're all blank.
-		[gui cxx_setText:std::optional<std::string>("  ") forRow:end_row align: GUI_ALIGN_CENTER];
-		[gui cxx_setKey:std::string() forRow:end_row];
-		[gui setColor:[::OOColor yellowColor] forRow:end_row];
+		gui->setText(std::optional<std::string>(" "), end_row, GUI_ALIGN_CENTER);
+		gui->setKey(std::string(), end_row);
+		gui->setColor(OOColor::yellowColor().get(), end_row);
 	}
 
-	[gui setSelectableRange:NSMakeRange((end_row+1) - keysCount, keysCount)];
-	[gui setSelectedRow: firstSelectableRow];
+	gui->setSelectableRange(NSMakeRange((end_row+1) - keysCount, keysCount));
+	gui->setSelectedRow(firstSelectableRow);
 
 	[self resetMissionChoice];
 }
@@ -2638,18 +2638,18 @@ void cxx::PlayerEntity::refreshMissionScreenTextEntry()
 	::MyOpenGLView	*gameView = [UNIVERSE gameView];
 	::GuiDisplayGen	*gui = [UNIVERSE gui];
 	NSUInteger end_row = 21;
-	if ([[self hud] allowBigGui]) 
+	if ([self hud] != nullptr && [self hud]->getAllowBigGui()) 
 	{
 		end_row = 27;
 	}
 
 	// The DESC entry is the format (data): ADR-0043 item 19.
 	const std::optional<std::string> typed = [gameView cxx_typedString];
-	[gui cxx_setText:oo::str::formatRuntime(OO_DESC("mission-screen-text-prompt-@"), { typed.has_value() ? oo::str::FormatArg(*typed) : oo::str::FormatArg::null() }) forRow:end_row align:GUI_ALIGN_LEFT];
-	[gui setColor:[::OOColor cyanColor] forRow:end_row];
+	gui->setText(oo::str::formatRuntime(OO_DESC("mission-screen-text-prompt-@"), { typed.has_value() ? oo::str::FormatArg(*typed) : oo::str::FormatArg::null() }), end_row, GUI_ALIGN_LEFT);
+	gui->setColor(OOColor::cyanColor().get(), end_row);
 	
-	[gui setShowTextCursor:YES];
-	[gui setCurrentRow:end_row];
+	gui->setShowTextCursor(YES);
+	gui->setCurrentRow(end_row);
 
 }
 
@@ -2660,34 +2660,34 @@ void cxx::PlayerEntity::setGuiToMissionScreenWithCallback(bool callback)
 	::GuiDisplayGen	*gui = [UNIVERSE gui];
 	OOGUIScreenID	oldScreen = gui_screen;
 	NSUInteger end_row = 21;
-	if ([[self hud] allowBigGui]) 
+	if ([self hud] != nullptr && [self hud]->getAllowBigGui()) 
 	{
 		end_row = 27;
 	}
 
 	// GUI stuff
 	{
-		[gui clear];
-		[gui cxx_setTitle:[self cxx_missionTitle].value_or(OO_DESC("mission-information"))];
+		gui->clear();
+		gui->setTitle([self cxx_missionTitle].value_or(OO_DESC("mission-information")));
 
 		if (!_missionTextEntry)
 		{
-			[gui cxx_setText:OO_DESC("press-space-commander") forRow:end_row align:GUI_ALIGN_CENTER];
-			[gui setColor:[::OOColor yellowColor] forRow:end_row];
-			[gui cxx_setKey:"spacebar" forRow:end_row];
-			[gui setShowTextCursor:NO];
+			gui->setText(OO_DESC("press-space-commander"), end_row, GUI_ALIGN_CENTER);
+			gui->setColor(OOColor::yellowColor().get(), end_row);
+			gui->setKey("spacebar", end_row);
+			gui->setShowTextCursor(NO);
 		}
 		else
 		{
 			[self refreshMissionScreenTextEntry];
 		}
-		[gui setSelectableRange:NSMakeRange(0,0)];
+		gui->setSelectableRange(NSMakeRange(0,0));
 		
-		[gui cxx_setForegroundTextureDescriptor:[self cxx_missionOverlayDescriptorOrDefault]];
-		[gui cxx_setBackgroundTextureDescriptor:[self cxx_missionBackgroundDescriptorOrDefault]];
+		gui->setForegroundTextureDescriptor([self cxx_missionOverlayDescriptorOrDefault]);
+		gui->setBackgroundTextureDescriptor([self cxx_missionBackgroundDescriptorOrDefault]);
 		// must set special second as setting the descriptor resets it
 		BOOL overridden = [self cxx_missionBackgroundDescriptor] ? YES : NO;
-		[gui setBackgroundTextureSpecial:[self missionBackgroundSpecial] withBackground:!overridden];
+		gui->setBackgroundTextureSpecial([self missionBackgroundSpecial], !overridden);
 		
 
 	}

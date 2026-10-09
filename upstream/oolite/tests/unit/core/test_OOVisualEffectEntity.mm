@@ -346,7 +346,7 @@ OO_TEST(scannerColours)
 		OOColor *c2 = [effect scannerDisplayColor2];
 		OO_CHECK(c1 != nil && c2 != nil);
 		float r, g, b, a;
-		[c1 getRed:&r green:&g blue:&b alpha:&a];
+		c1->getRed(&r, &g, &b, &a);
 		OO_CHECK(r == 1.0f && g == 0.0f && b == 0.0f && a == 1.0f);
 
 		GLfloat *flashOn = [effect scannerDisplayColorForShip:YES :c1 :c2];
@@ -357,11 +357,11 @@ OO_TEST(scannerColours)
 		OO_CHECK([effect scannerDisplayColorForShip:YES :nil :c2][2] == 1.0f);
 
 		// A new colour replaces it; nil takes the definition's again.
-		[effect setScannerDisplayColor1:[OOColor greenColor]];
-		[[effect scannerDisplayColor1] getRed:&r green:&g blue:&b alpha:&a];
+		[effect setScannerDisplayColor1:OOColor::greenColor().get()];
+		[effect scannerDisplayColor1]->getRed(&r, &g, &b, &a);
 		OO_CHECK(r == 0.0f && g == 1.0f && b == 0.0f);
 		[effect setScannerDisplayColor1:nil];
-		[[effect scannerDisplayColor1] getRed:&r green:&g blue:&b alpha:&a];
+		[effect scannerDisplayColor1]->getRed(&r, &g, &b, &a);
 		OO_CHECK(r == 1.0f && g == 0.0f && b == 0.0f);
 	}
 }
@@ -480,7 +480,7 @@ OO_TEST(slice2Members)
 	{
 		OOVisualEffectEntity *effect = Effect("members", Dict({ { "scanner_display_color1", oo::PList(std::string("redColor")) } }));
 		cxx::OOVisualEffectEntity *cxxEffect = oo::ToCxx(effect);
-		OO_CHECK(oo::ToObjC(cxxEffect->scannerDisplayColor1()) == [effect scannerDisplayColor1]);
+		OO_CHECK(cxxEffect->scannerDisplayColor1() == [effect scannerDisplayColor1]);
 		OO_CHECK(cxxEffect->scannerDisplayColor2() == nullptr);
 		cxxEffect->setShaderInt2(7);
 		OO_CHECK([effect shaderInt2] == 7);

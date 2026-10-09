@@ -78,10 +78,12 @@ void SetInfo(oo::PList &info, const std::string &key, oo::PList value)
 
 // The live object an Object node for <key> holds (nil when absent, or for any other value, which
 // the callers never store there: the colours this class puts in the planet info).
-id ObjectForKey(const oo::PList &dict, std::string_view key)
+// The colour an Object node of the planet info holds (the colour is the node's foreign object since
+// bead oo-9ht.1); null for none.
+OOColor *ColorForKey(const oo::PList &dict, std::string_view key)
 {
 	const oo::PList *value = dict.find(key);
-	return value != nullptr ? oo::ObjectIn(*value) : nil;
+	return value != nullptr ? OOColorInObjectNode(*value) : nullptr;
 }
 
 
@@ -248,7 +250,7 @@ void OOPlanetEntity::initFromDictionary(const oo::PList &dictionary, bool atmosp
 	_airColorMixRatio = 0.5f;
 	_airDensity = 0.75f;
 	
-	_illuminationColor = oo::Ref<OOColor>(oo::ToCxx((::OOColor *)ObjectForKey(planetInfo, "illumination_color")));
+	_illuminationColor = oo::Ref<OOColor>(ColorForKey(planetInfo, "illumination_color"));
 	
 #if NEW_ATMOSPHERE
 	if (atmosphere)
@@ -266,7 +268,7 @@ void OOPlanetEntity::initFromDictionary(const oo::PList &dictionary, bool atmosp
 		SetInfo(planetInfo, "cloud_fraction", oo::PList::singleReal(0.01 * percent_land));
 		setUpAtmosphereParametersWithSourceInfo(dict, planetInfo);
 		// planetInfo now contains a valid air_color
-		_airColor = oo::Ref<OOColor>(oo::ToCxx((::OOColor *)ObjectForKey(planetInfo, "air_color")));
+		_airColor = oo::Ref<OOColor>(ColorForKey(planetInfo, "air_color"));
 		_airColorMixRatio = planetInfo.get<float>("air_color_mix_ratio");
 
 		_airDensity = OOClamp_0_1_f(planetInfo.get<float>("air_density"));
@@ -327,7 +329,7 @@ void OOPlanetEntity::initFromDictionary(const oo::PList &dictionary, bool atmosp
 	
 	
 #ifdef OO_DUMP_PLANETINFO
-#define CPROP(PROP)	OO_LOG("planetinfo.record", #PROP " = {};", [(::OOColor *)ObjectForKey(planetInfo, #PROP) cxx_descriptionComponents].value_or("(null)"));
+#define CPROP(PROP)	OO_LOG("planetinfo.record", #PROP " = {};", (ColorForKey(planetInfo, #PROP) != nullptr ? ColorForKey(planetInfo, #PROP)->descriptionComponents() : std::nullopt).value_or("(null)"));
 #define FPROP(PROP)	OO_LOG("planetinfo.record", #PROP " = {:f};", planetInfo.get<float>(#PROP));
 	CPROP(air_color);
 	CPROP(illumination_color);
@@ -381,10 +383,10 @@ Vector HSBColorWithColor(OOColor *color)
 }
 
 
-// The planet info's colours are Object nodes of the Objective-C colour.
-::OOColor *ColorWithHSBColor(Vector c)
+// The planet info's colours are Object nodes of the colour (bead oo-9ht.1).
+oo::PList ColorWithHSBColor(Vector c)
 {
-	return oo::ToObjC(OOColor::colorWithHue(c.x, c.y, c.z, 1.0).get());
+	return OOColorObjectNode(OOColor::colorWithHue(c.x, c.y, c.z, 1.0).get());
 }
 
 }	// namespace
@@ -490,11 +492,11 @@ void OOPlanetEntity::setUpColorParametersWithSourceInfo(const oo::PList &sourceI
 			seaPolarHSB = LighterHSBColor(seaHSB);
 		}
 		
-		SetInfo(targetInfo, "land_color", oo::PListObject(ColorWithHSBColor(landHSB)));
-		SetInfo(targetInfo, "sea_color", oo::PListObject(ColorWithHSBColor(seaHSB)));
-		SetInfo(targetInfo, "polar_land_color", oo::PListObject(ColorWithHSBColor(landPolarHSB)));
-		SetInfo(targetInfo, "polar_sea_color", oo::PListObject(ColorWithHSBColor(seaPolarHSB)));
-		SetInfo(targetInfo, "illumination_color", oo::PListObject(ColorWithHSBColor(illumHSB)));
+		SetInfo(targetInfo, "land_color", ColorWithHSBColor(landHSB));
+		SetInfo(targetInfo, "sea_color", ColorWithHSBColor(seaHSB));
+		SetInfo(targetInfo, "polar_land_color", ColorWithHSBColor(landPolarHSB));
+		SetInfo(targetInfo, "polar_sea_color", ColorWithHSBColor(seaPolarHSB));
+		SetInfo(targetInfo, "illumination_color", ColorWithHSBColor(illumHSB));
 	}
 	else
 	{
@@ -521,9 +523,9 @@ void OOPlanetEntity::setUpColorParametersWithSourceInfo(const oo::PList &sourceI
 		color = OOColor::colorWithDescription(ValueForKey(sourceInfo, "polar_cloud_color"));
 		if (color != nullptr) landPolarHSB = HSBColorWithColor(color.get());
 		
-		SetInfo(targetInfo, "air_color", oo::PListObject(ColorWithHSBColor(seaHSB)));
-		SetInfo(targetInfo, "cloud_color", oo::PListObject(ColorWithHSBColor(landHSB)));
-		SetInfo(targetInfo, "polar_cloud_color", oo::PListObject(ColorWithHSBColor(landPolarHSB)));
+		SetInfo(targetInfo, "air_color", ColorWithHSBColor(seaHSB));
+		SetInfo(targetInfo, "cloud_color", ColorWithHSBColor(landHSB));
+		SetInfo(targetInfo, "polar_cloud_color", ColorWithHSBColor(landPolarHSB));
 		SetInfo(targetInfo, "air_color_mix_ratio", oo::PList::singleReal(sourceInfo.get<float>("air_color_mix_ratio")));
 	}
 	terminatorThreshold = VectorForKey(sourceInfo, "terminator_threshold_vector", OO_TERMINATOR_THRESHOLD_VECTOR_DEFAULT);

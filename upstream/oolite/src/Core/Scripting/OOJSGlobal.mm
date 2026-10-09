@@ -778,9 +778,9 @@ static bool GlobalSetScreenBackground(ooscript::Context context, ooscript::CallA
 	if ([UNIVERSE viewDirection] == VIEW_GUI_DISPLAY)
 	{
 		GuiDisplayGen	*gui = [UNIVERSE gui];
-		oo::PList		descriptor = [gui cxx_textureDescriptorFromJSValue:value inContext:context callerDescription:"setScreenBackground()"];
+		oo::PList		descriptor = gui->textureDescriptorFromJSValue(value, context, "setScreenBackground()");
 		
-		result = [gui cxx_setBackgroundTextureDescriptor:descriptor];
+		result = gui->setBackgroundTextureDescriptor(descriptor);
 		
 		// add some permanence to the override if we're in the equip ship screen
 		if (result && [PLAYER guiScreen] == GUI_SCREEN_EQUIP_SHIP)  [PLAYER cxx_setEquipScreenBackgroundDescriptor:descriptor];
@@ -840,7 +840,7 @@ static bool GlobalSetScreenBackgroundForKey(ooscript::Context context, ooscript:
 	}
 
 	GuiDisplayGen	*gui = [UNIVERSE gui];
-	oo::PList		descriptor = [gui cxx_textureDescriptorFromJSValue:value inContext:context callerDescription:"setScreenBackgroundDefault()"];
+	oo::PList		descriptor = gui->textureDescriptorFromJSValue(value, context, "setScreenBackgroundDefault()");
 	
 	[UNIVERSE cxx_setScreenTextureDescriptorForKey:*key descriptor:descriptor];	// (its Foundation round trip was the identity for this JavaScript-derived dictionary)
 	result = true;
@@ -875,9 +875,9 @@ static bool GlobalSetScreenOverlay(ooscript::Context context, ooscript::CallArgs
 	if ([UNIVERSE viewDirection] == VIEW_GUI_DISPLAY)
 	{
 		GuiDisplayGen	*gui = [UNIVERSE gui];
-		oo::PList		descriptor = [gui cxx_textureDescriptorFromJSValue:value inContext:context callerDescription:"setScreenOverlay()"];
+		oo::PList		descriptor = gui->textureDescriptorFromJSValue(value, context, "setScreenOverlay()");
 		
-		result = [gui cxx_setForegroundTextureDescriptor:descriptor];
+		result = gui->setForegroundTextureDescriptor(descriptor);
 	}
 	
 	OOJS_RETURN_BOOL(result);
@@ -911,7 +911,7 @@ static bool GlobalGetGuiColorSettingForKey(ooscript::Context context, ooscript::
 	}
 
 	GuiDisplayGen	*gui = [UNIVERSE gui];
-	cxx::OOColor *col = oo::ToCxx([gui cxx_colorFromSetting:key defaultValue:nil]);
+	oo::Ref<OOColor>	col = gui->colorFromSetting(key, nil);
 
 	// The components as the colour's -normalizedArray gave them: floats, nil for no colour.
 	oo::PList::Array components;
@@ -931,7 +931,7 @@ static bool GlobalSetGuiColorSettingForKey(ooscript::Context context, ooscript::
 	OOJS_NATIVE_ENTER(context)
 	
 	bool			result = false;
-	oo::Ref<cxx::OOColor>	col;
+	oo::Ref<OOColor>	col;
 	
 	if (EXPECT_NOT(oojsArgs.count() != 2))
 	{
@@ -954,7 +954,7 @@ static bool GlobalSetGuiColorSettingForKey(ooscript::Context context, ooscript::
 
 	if (!ooscript::isNull(value))
 	{
-		col = cxx::OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, value));
+		col = OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, value));
 		if (col == nullptr)
 		{
 			cxx_OOJSReportBadArguments(context, std::nullopt, "setGuiColorForKey", 1, OOJS_ARGV, std::nullopt, "color descriptor");
@@ -963,7 +963,7 @@ static bool GlobalSetGuiColorSettingForKey(ooscript::Context context, ooscript::
 	}
 
 	GuiDisplayGen	*gui = [UNIVERSE gui];
-	[gui cxx_setGuiColorSettingFromKey:*key color:oo::ToObjC(col.get())];
+	gui->setGuiColorSettingFromKey(*key, col.get());
 	result = true;
 	
 	OOJS_RETURN_BOOL(result);

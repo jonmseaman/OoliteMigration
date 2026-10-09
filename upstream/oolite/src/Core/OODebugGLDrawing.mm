@@ -38,8 +38,9 @@ OOINLINE void ApplyColor(OOColor *color)
 	
 	OO_ENTER_OPENGL();
 	
-	if (EXPECT_NOT(color == nil))  color = [OOColor lightGrayColor];
-	[color getRed:&r green:&g blue:&b alpha:&a];
+	oo::Ref<OOColor>	applied(color);
+	if (EXPECT_NOT(applied == nullptr))  applied = OOColor::lightGrayColor();
+	applied->getRed(&r, &g, &b, &a);
 	OOGL(glColor4f(r, g, b, a));
 }
 

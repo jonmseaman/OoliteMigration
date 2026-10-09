@@ -210,7 +210,7 @@ std::string Colour(OOColor *color)
 {
 	if (color == nil)  return "nil";
 	char buffer[64];
-	std::snprintf(buffer, sizeof buffer, "(%g %g %g %g)", [color redComponent], [color greenComponent], [color blueComponent], [color alphaComponent]);
+	std::snprintf(buffer, sizeof buffer, "(%g %g %g %g)", color->redComponent(), color->greenComponent(), color->blueComponent(), color->alphaComponent());
 	return buffer;
 }
 
@@ -235,7 +235,7 @@ std::string Describe(OOEquipmentType *t)
 		+ " provides " + provides + "conditions " + std::to_string([t cxx_conditions].count()) + (([t cxx_conditions].isNull()) ? "(null)" : "")
 		+ " condition " + [t cxx_conditionScript].value_or("-") + " script " + [t cxx_scriptName].value_or("-") + " info " + std::to_string([t scriptInfo].count())
 		+ " activate " + std::to_string([t cxx_defaultActivateKey].count()) + " mode " + std::to_string([t cxx_defaultModeKey].count())
-		+ " display " + Colour([t displayColor]) + " weapon " + Colour([t weaponColor]) + " weaponInfo " + std::to_string([t cxx_weaponInfo].count())
+		+ " display " + Colour([t displayColor]) + " weapon " + Colour(([t weaponColor]).get()) + " weaponInfo " + std::to_string([t cxx_weaponInfo].count())
 		+ " fx " + [t cxx_fxShotMissName].value_or("-") + " " + [t cxx_fxShotHitName].value_or("-") + " " + [t cxx_fxShieldHitName].value_or("-") + " "
 		+ [t cxx_fxUnshieldedHitName].value_or("-") + " " + [t cxx_fxWeaponLaunchedName].value_or("-");
 }
@@ -373,7 +373,7 @@ OO_TEST(registries)
 
 		// The display colour can be replaced.
 		OOEquipmentType *laser = [OOEquipmentType cxx_equipmentTypeWithIdentifier:"EQ_WEAPON_PULSE_LASER"];
-		[laser setDisplayColor:[OOColor blueColor]];
+		[laser setDisplayColor:OOColor::blueColor().get()];
 		OO_CHECK(expect(Colour([laser displayColor])));
 		[laser setDisplayColor:nil];
 		OO_CHECK(expect(Colour([laser displayColor])));
@@ -408,7 +408,7 @@ OO_TEST(cxxClass)
 		OO_CHECK(laser->weaponRange() == 15000.0f && laser->weaponDamage() == 10.0f && laser->fxShotHitName() == std::optional<std::string>("[zap]"));
 		OO_CHECK(laser->displayColor() != nullptr && laser->displayColor()->greenComponent() == 1.0f);
 		OO_CHECK(laser->weaponColor()->redComponent() == 1.0f);
-		laser->setDisplayColor(cxx::OOColor::blueColor().get());
+		laser->setDisplayColor(OOColor::blueColor().get());
 		OO_CHECK(laser->displayColor()->blueComponent() == 1.0f);
 		OO_CHECK(laser->descriptionComponents() == std::optional<std::string>("EQ_WEAPON_PULSE_LASER \"Pulse laser\""));
 
@@ -437,7 +437,7 @@ OO_TEST(facadeNilStaysNil)
 OO_TEST(facadeIdentity)
 {
 	OOEquipmentType *fuel = nil;
-	OOColor *blue = nil;
+	oo::Ref<OOColor> blue;	// the C++ colour since bead oo-9ht.1
 	@autoreleasepool
 	{
 		Reset();
@@ -446,9 +446,9 @@ OO_TEST(facadeIdentity)
 		OO_CHECK(oo::ToObjC(oo::ToCxx(fuel)) == fuel);
 		OO_CHECK(oo::ToCxx(fuel) == cxx::OOEquipmentType::equipmentTypeWithIdentifier("EQ_FUEL").get());
 
-		// The display colour crosses as the colour's own facade.
-		blue = [[OOColor blueColor] retain];
-		[fuel setDisplayColor:blue];
+		// The display colour comes back as the same colour.
+		blue = OOColor::blueColor();
+		[fuel setDisplayColor:blue.get()];
 		OO_CHECK([fuel displayColor] == blue);
 	}
 	@autoreleasepool
@@ -459,7 +459,7 @@ OO_TEST(facadeIdentity)
 		cxx::OOEquipmentType::addEquipmentWithInfo(Item(3, 30, "Quiet", "EQ_QUIET", "Added in C++"));
 		OOEquipmentType *quiet = [OOEquipmentType cxx_equipmentTypeWithIdentifier:"EQ_QUIET"];
 		OO_CHECK(quiet != nil && quiet == [OOEquipmentType cxx_equipmentTypeWithIdentifier:"EQ_QUIET"]);
-		[blue release];
+		blue = nullptr;
 	}
 }
 

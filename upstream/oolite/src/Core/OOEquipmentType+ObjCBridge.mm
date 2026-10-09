@@ -211,8 +211,8 @@ cxx::OOEquipmentType *oo::ToCxx(OOEquipmentType *type)
 - (BOOL) canBeDamaged					{ return _cxxEquipmentType->canBeDamaged(); }
 - (BOOL) isVisible						{ return _cxxEquipmentType->isVisible(); }
 - (BOOL) hideValues						{ return _cxxEquipmentType->hideValues(); }
-- (OOColor *) displayColor				{ return oo::ToObjC(_cxxEquipmentType->displayColor()); }
-- (void) setDisplayColor:(OOColor *)newColor	{ _cxxEquipmentType->setDisplayColor(oo::ToCxx(newColor)); }
+- (OOColor *) displayColor				{ return _cxxEquipmentType->displayColor().get(); }	// borrowed: the type holds it
+- (void) setDisplayColor:(OOColor *)newColor	{ _cxxEquipmentType->setDisplayColor(newColor); }
 
 - (BOOL) isAvailableToPlayer			{ return _cxxEquipmentType->isAvailableToPlayer(); }
 - (BOOL) isAvailableToNPCs				{ return _cxxEquipmentType->isAvailableToNPCs(); }
@@ -249,7 +249,7 @@ cxx::OOEquipmentType *oo::ToCxx(OOEquipmentType *type)
 - (GLfloat) weaponRechargeRate			{ return _cxxEquipmentType->weaponRechargeRate(); }
 - (GLfloat) weaponShotTemperature		{ return _cxxEquipmentType->weaponShotTemperature(); }
 - (GLfloat) weaponThreatAssessment		{ return _cxxEquipmentType->weaponThreatAssessment(); }
-- (OOColor *) weaponColor				{ return oo::ToObjC(_cxxEquipmentType->weaponColor()); }
+- (oo::Ref<OOColor>) weaponColor			{ return _cxxEquipmentType->weaponColor(); }
 - (std::optional<std::string>) cxx_fxShotMissName		{ return _cxxEquipmentType->fxShotMissName(); }
 - (std::optional<std::string>) cxx_fxShotHitName		{ return _cxxEquipmentType->fxShotHitName(); }
 - (std::optional<std::string>) cxx_fxShieldHitName		{ return _cxxEquipmentType->fxShieldHitName(); }

@@ -677,7 +677,7 @@ static int ClickedGUIRow(GuiDisplayGen *gui)
 	if (controller != nullptr && controller->mouseInteractionMode() == MOUSE_MODE_UI_SCREEN_WITH_INTERACTION && gui != nullptr)
 	{
 		cxx::MyOpenGLView *view = oo::ToCxx(universe->getGameView());
-		return oo::ToCxx(gui)->rowAtVirtualJoystickPosition(view != nullptr ? view->getVirtualJoystickPosition() : NSPoint{});
+		return gui->rowAtVirtualJoystickPosition(view != nullptr ? view->getVirtualJoystickPosition() : NSPoint{});
 	}
 	return universe->cursor_row;
 }
@@ -699,16 +699,16 @@ bool cxx::PlayerEntity::handleGUIUpDownArrowKeys()
 	{
 		if ((!upDownKeyPressed) || (script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 		{
-			if ([gui setNextRow: +1])
+			if (gui->setNextRow(+1))
 			{
 				result = YES;
 			}
 			else
 			{
-				if ([gui setFirstSelectableRow])  result = YES;
+				if (gui->setFirstSelectableRow())  result = YES;
 			}
 			
-			if (result && [gui selectableRange].length > 1)  [self playMenuNavigationDown];
+			if (result && gui->getSelectableRange().length > 1)  [self playMenuNavigationDown];
 			else  [self playMenuNavigationNot];
 			
 			timeLastKeyPress = script_time;
@@ -719,16 +719,16 @@ bool cxx::PlayerEntity::handleGUIUpDownArrowKeys()
 	{
 		if ((!upDownKeyPressed) || (script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 		{
-			if ([gui setNextRow: -1])
+			if (gui->setNextRow(-1))
 			{
 				result = YES;
 			}
 			else
 			{
-				if ([gui setLastSelectableRow])  result = YES;
+				if (gui->setLastSelectableRow())  result = YES;
 			}
 
-			if (result && [gui selectableRange].length > 1)  [self playMenuNavigationUp];
+			if (result && gui->getSelectableRange().length > 1)  [self playMenuNavigationUp];
 			else  [self playMenuNavigationNot];
 
 			timeLastKeyPress = script_time;
@@ -740,7 +740,7 @@ bool cxx::PlayerEntity::handleGUIUpDownArrowKeys()
 		if (!upDownKeyPressed)
 		{
 			int click_row = ClickedGUIRow(gui);
-			if ([gui setSelectedRow:click_row])
+			if (gui->setSelectedRow(click_row))
 			{
 				result = YES;
 			}
@@ -749,7 +749,7 @@ bool cxx::PlayerEntity::handleGUIUpDownArrowKeys()
 	if (mouse_dbl_click)
 	{
 		int click_row = ClickedGUIRow(gui);
-		if ([gui setSelectedRow:click_row])
+		if (gui->setSelectedRow(click_row))
 		{
 			result = YES;
 		}
@@ -772,7 +772,7 @@ bool cxx::PlayerEntity::handleGUIUpDownArrowKeys()
 void cxx::PlayerEntity::targetNewSystem(int direction, bool whileTyping)
 {
 	::PlayerEntity *self = oo::ToObjC(this);
-	target_system_id = [[UNIVERSE gui] targetNextFoundSystem:direction];
+	target_system_id = [UNIVERSE gui]->targetNextFoundSystem(direction);
 	[self setInfoSystemID: target_system_id moveChart: YES];
 	cursor_coordinates = [[UNIVERSE systemManager] getCoordinatesForSystem:target_system_id inGalaxy:galaxy_number];
 
@@ -1083,7 +1083,7 @@ void cxx::PlayerEntity::pollApplicationControls()
 			if (!hide_hud_pressed)
 			{
 				::HeadUpDisplay *theHUD = [self hud];
-				[theHUD setHidden:![theHUD isHidden]];
+				theHUD->setHidden(!theHUD->isHidden());
 				if (gui_screen == GUI_SCREEN_STATUS)
 				{
 					// ensure refresh of status page screen if looking at it
@@ -1163,7 +1163,7 @@ void cxx::PlayerEntity::pollFlightControls(double delta_t)
 			}
 			else
 			{
-				[[UNIVERSE gui] clearBackground];
+				[UNIVERSE gui]->clearBackground();
 				[self switchToThisView:view];
 				if (_missionWithCallback)
 				{
@@ -1829,8 +1829,8 @@ void cxx::PlayerEntity::pollFlightControls(double delta_t)
 				gui_screen == GUI_SCREEN_STICKPROFILE || gui_screen == GUI_SCREEN_KEYBOARD || gui_screen == GUI_SCREEN_KEYBOARD_CONFIRMCLEAR ||
 				gui_screen == GUI_SCREEN_KEYBOARD_CONFIG || gui_screen == GUI_SCREEN_KEYBOARD_ENTRY || gui_screen == GUI_SCREEN_KEYBOARD_LAYOUT)
 			{
-				if ([UNIVERSE pauseMessageVisible]) [[UNIVERSE messageGUI] leaveLastLine];
-				else [[UNIVERSE messageGUI] clear];
+				if ([UNIVERSE pauseMessageVisible]) [UNIVERSE messageGUI]->leaveLastLine();
+				else [UNIVERSE messageGUI]->clear();
 				NSTimeInterval	time_this_frame = oo::date::monotonicSeconds();	// intervals only (time_last_frame)
 				OOTimeDelta		time_delta;
 				if (![[::GameController sharedController] isGamePaused])
@@ -1982,7 +1982,7 @@ void cxx::PlayerEntity::pollFlightControls(double delta_t)
 					currentWeaponFacing = saved_weapon_facing;
 					// make sure the light comes from the right direction after resuming from pause!
 					if (saved_gui_screen == GUI_SCREEN_SYSTEM_DATA) [UNIVERSE setMainLightPosition:_sysInfoLight];
-					[[UNIVERSE gui] cxx_setForegroundTextureKey:"overlay"];
+					[UNIVERSE gui]->setForegroundTextureKey("overlay");
 					[[UNIVERSE gameController] setGamePaused:NO];
 				}
 				else
@@ -2069,7 +2069,7 @@ void cxx::PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 					if ((search_coords.x >= 0.0)&&(search_coords.y >= 0.0))
 					{
 						// always reset the found system index at the beginning of a new search
-						if (oo::str::length(*planetSearchString) == 1) [[UNIVERSE gui] targetNextFoundSystem:0];
+						if (oo::str::length(*planetSearchString) == 1) [UNIVERSE gui]->targetNextFoundSystem(0);
 						
 						// Always select the right one out of 2 overlapping systems.
 						[self targetNewSystem:0 whileTyping:YES];
@@ -2564,7 +2564,7 @@ void cxx::PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 			break;
 		case GUI_SCREEN_OPTIONS:
 			[self handleGUIUpDownArrowKeys];
-			OOGUIRow guiSelectedRow; guiSelectedRow = [gui selectedRow];
+			OOGUIRow guiSelectedRow; guiSelectedRow = gui->getSelectedRow();
 			BOOL selectKeyPress; selectKeyPress = ([self checkKeyPress:n_key_gui_select]||[gameView isDown:gvMouseDoubleClick]);
 
 			if (selectKeyPress)   // 'enter'
@@ -2644,7 +2644,7 @@ void cxx::PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 		case GUI_SCREEN_EQUIP_SHIP:
 			if ([self handleGUIUpDownArrowKeys])
 			{
-				std::optional<std::string>	itemText = [gui cxx_selectedRowText];	// nil compares unequal, as -isEqual: on nil
+				std::optional<std::string>	itemText = gui->selectedRowText();	// nil compares unequal, as -isEqual: on nil
 				OOWeaponType		weaponType = nil;
 
 				if (itemText == FORWARD_FACING_STRING) weaponType = forward_weapon_type;
@@ -2654,7 +2654,7 @@ void cxx::PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 
 				if (weaponType != nil)
 				{
-					BOOL		sameAs = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy([gui cxx_selectedRowKey].value_or("")) == weaponType;
+					BOOL		sameAs = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(gui->selectedRowKey().value_or("")) == weaponType;
 					// override showInformation _completely_ with itemText
 					if ([weaponType cxx_identifier] == "EQ_WEAPON_NONE")  itemText = OO_DESC("no-weapon-enter-to-install");
 					else
@@ -2674,10 +2674,10 @@ void cxx::PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 			{
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					if (oo::str::hasPrefix([gui cxx_keyForRow:GUI_ROW_EQUIPMENT_START].value_or(""), "More:"))
+					if (oo::str::hasPrefix(gui->keyForRow(GUI_ROW_EQUIPMENT_START).value_or(""), "More:"))
 					{
 						[self playMenuPagePrevious];
-						[gui setSelectedRow:GUI_ROW_EQUIPMENT_START];
+						gui->setSelectedRow(GUI_ROW_EQUIPMENT_START);
 						[self buySelectedItem];
 					}
 					timeLastKeyPress = script_time;
@@ -2687,10 +2687,10 @@ void cxx::PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 			{
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					if (oo::str::hasPrefix([gui cxx_keyForRow:GUI_ROW_EQUIPMENT_START + GUI_MAX_ROWS_EQUIPMENT - 1].value_or(""), "More:"))
+					if (oo::str::hasPrefix(gui->keyForRow(GUI_ROW_EQUIPMENT_START + GUI_MAX_ROWS_EQUIPMENT - 1).value_or(""), "More:"))
 					{
 						[self playMenuPageNext];
-						[gui setSelectedRow:GUI_ROW_EQUIPMENT_START + GUI_MAX_ROWS_EQUIPMENT - 1];
+						gui->setSelectedRow(GUI_ROW_EQUIPMENT_START + GUI_MAX_ROWS_EQUIPMENT - 1);
 						[self buySelectedItem];
 					}
 					timeLastKeyPress = script_time;
@@ -2705,7 +2705,7 @@ void cxx::PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 					selectPressed = NO;
 					[gameView clearMouse];
 				}
-				if ((!selectPressed)&&([gui selectedRow] > -1))
+				if ((!selectPressed)&&(gui->getSelectedRow() > -1))
 				{
 					[self buySelectedItem];
 					selectPressed = YES;
@@ -2726,10 +2726,10 @@ void cxx::PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 			{
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					if (oo::str::hasPrefix([gui cxx_keyForRow:GUI_ROW_INTERFACES_START].value_or(""), "More:"))
+					if (oo::str::hasPrefix(gui->keyForRow(GUI_ROW_INTERFACES_START).value_or(""), "More:"))
 					{
 						[self playMenuPagePrevious];
-						[gui setSelectedRow:GUI_ROW_INTERFACES_START];
+						gui->setSelectedRow(GUI_ROW_INTERFACES_START);
 						[self activateSelectedInterface];
 					}
 					timeLastKeyPress = script_time;
@@ -2739,10 +2739,10 @@ void cxx::PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 			{
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					if (oo::str::hasPrefix([gui cxx_keyForRow:GUI_ROW_INTERFACES_START + GUI_MAX_ROWS_INTERFACES - 1].value_or(""), "More:"))
+					if (oo::str::hasPrefix(gui->keyForRow(GUI_ROW_INTERFACES_START + GUI_MAX_ROWS_INTERFACES - 1).value_or(""), "More:"))
 					{
 						[self playMenuPageNext];
-						[gui setSelectedRow:GUI_ROW_INTERFACES_START + GUI_MAX_ROWS_INTERFACES - 1];
+						gui->setSelectedRow(GUI_ROW_INTERFACES_START + GUI_MAX_ROWS_INTERFACES - 1);
 						[self activateSelectedInterface];
 					}
 					timeLastKeyPress = script_time;
@@ -2756,7 +2756,7 @@ void cxx::PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 					selectPressed = NO;
 					[gameView clearMouse];
 				}
-				if ((!selectPressed)&&([gui selectedRow] > -1))
+				if ((!selectPressed)&&(gui->getSelectedRow() > -1))
 				{
 					[self activateSelectedInterface];
 					selectPressed = YES;
@@ -2845,11 +2845,11 @@ void cxx::PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					if (([gui cxx_keyForRow:STATUS_EQUIPMENT_FIRST_ROW] == std::string(GUI_KEY_OK)))
+					if ((gui->keyForRow(STATUS_EQUIPMENT_FIRST_ROW) == std::string(GUI_KEY_OK)))
 					{
-						[gui setSelectedRow:STATUS_EQUIPMENT_FIRST_ROW];
+						gui->setSelectedRow(STATUS_EQUIPMENT_FIRST_ROW);
 						[self playMenuPagePrevious];
-						[gui setStatusPage:-1];
+						gui->setStatusPage(-1);
 						[self setGuiToStatusScreen];
 					}
 					timeLastKeyPress = script_time;
@@ -2860,12 +2860,12 @@ void cxx::PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					NSUInteger maxRows = [[self hud] allowBigGui] ? STATUS_EQUIPMENT_MAX_ROWS + STATUS_EQUIPMENT_BIGGUI_EXTRA_ROWS : STATUS_EQUIPMENT_MAX_ROWS;
-					if (([gui cxx_keyForRow:STATUS_EQUIPMENT_FIRST_ROW + maxRows] == std::string(GUI_KEY_OK)))
+					NSUInteger maxRows = ([self hud] != nullptr && [self hud]->getAllowBigGui()) ? STATUS_EQUIPMENT_MAX_ROWS + STATUS_EQUIPMENT_BIGGUI_EXTRA_ROWS : STATUS_EQUIPMENT_MAX_ROWS;
+					if ((gui->keyForRow(STATUS_EQUIPMENT_FIRST_ROW + maxRows) == std::string(GUI_KEY_OK)))
 					{
-						[gui setSelectedRow:STATUS_EQUIPMENT_FIRST_ROW + maxRows];
+						gui->setSelectedRow(STATUS_EQUIPMENT_FIRST_ROW + maxRows);
 						[self playMenuPageNext];
-						[gui setStatusPage:+1];
+						gui->setStatusPage(+1);
 						[self setGuiToStatusScreen];
 					}
 					timeLastKeyPress = script_time;
@@ -2880,9 +2880,9 @@ void cxx::PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 					selectPressed = NO;
 					[gameView clearMouse];
 				}
-				if ((!selectPressed)&&([gui selectedRow] > -1))
+				if ((!selectPressed)&&(gui->getSelectedRow() > -1))
 				{
-					[gui setStatusPage:([gui selectedRow] == STATUS_EQUIPMENT_FIRST_ROW ? -1 : +1)];
+					gui->setStatusPage((gui->getSelectedRow() == STATUS_EQUIPMENT_FIRST_ROW ? -1 : +1));
 					[self setGuiToStatusScreen];
 
 					selectPressed = YES;
@@ -2901,11 +2901,11 @@ void cxx::PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					if (([gui cxx_keyForRow:MANIFEST_SCREEN_ROW_BACK] == std::string(GUI_KEY_OK)))
+					if ((gui->keyForRow(MANIFEST_SCREEN_ROW_BACK) == std::string(GUI_KEY_OK)))
 					{
-						[gui setSelectedRow:MANIFEST_SCREEN_ROW_BACK];
+						gui->setSelectedRow(MANIFEST_SCREEN_ROW_BACK);
 						[self playMenuPagePrevious];
-						[gui setStatusPage:-1];
+						gui->setStatusPage(-1);
 						[self setGuiToManifestScreen];
 					}
 					timeLastKeyPress = script_time;
@@ -2914,17 +2914,17 @@ void cxx::PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 			if ([self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_page_down])
 			{
 				OOGUIRow nextRow = MANIFEST_SCREEN_ROW_NEXT;
-				if ([[self hud] isHidden] || [[self hud] allowBigGui])
+				if ([self hud] != nullptr && ([self hud]->isHidden() || [self hud]->getAllowBigGui()))
 				{
 					nextRow += 7;
 				}
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					if (([gui cxx_keyForRow:nextRow] == std::string(GUI_KEY_OK)))
+					if ((gui->keyForRow(nextRow) == std::string(GUI_KEY_OK)))
 					{
-						[gui setSelectedRow:nextRow];
+						gui->setSelectedRow(nextRow);
 						[self playMenuPageNext];
-						[gui setStatusPage:+1];
+						gui->setStatusPage(+1);
 						[self setGuiToManifestScreen];
 					}
 					timeLastKeyPress = script_time;
@@ -2939,9 +2939,9 @@ void cxx::PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 					selectPressed = NO;
 					[gameView clearMouse];
 				}
-				if ((!selectPressed)&&([gui selectedRow] > -1))
+				if ((!selectPressed)&&(gui->getSelectedRow() > -1))
 				{
-					[gui setStatusPage:([gui selectedRow] == MANIFEST_SCREEN_ROW_BACK ? -1 : +1)];
+					gui->setStatusPage((gui->getSelectedRow() == MANIFEST_SCREEN_ROW_BACK ? -1 : +1));
 					[self setGuiToManifestScreen];
 
 					selectPressed = YES;
@@ -2964,10 +2964,10 @@ void cxx::PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 			{
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					if (oo::str::hasPrefix([gui cxx_keyForRow:GUI_ROW_SHIPYARD_START].value_or(""), "More:"))
+					if (oo::str::hasPrefix(gui->keyForRow(GUI_ROW_SHIPYARD_START).value_or(""), "More:"))
 					{
 						[self playMenuPagePrevious];
-						[gui setSelectedRow:GUI_ROW_SHIPYARD_START];
+						gui->setSelectedRow(GUI_ROW_SHIPYARD_START);
 						[self buySelectedShip];
 					}
 					timeLastKeyPress = script_time;
@@ -2977,10 +2977,10 @@ void cxx::PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 			{
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					if (oo::str::hasPrefix([gui cxx_keyForRow:GUI_ROW_SHIPYARD_START + MAX_ROWS_SHIPS_FOR_SALE - 1].value_or(""), "More:"))
+					if (oo::str::hasPrefix(gui->keyForRow(GUI_ROW_SHIPYARD_START + MAX_ROWS_SHIPS_FOR_SALE - 1).value_or(""), "More:"))
 					{
 						[self playMenuPageNext];
-						[gui setSelectedRow:GUI_ROW_SHIPYARD_START + MAX_ROWS_SHIPS_FOR_SALE - 1];
+						gui->setSelectedRow(GUI_ROW_SHIPYARD_START + MAX_ROWS_SHIPS_FOR_SALE - 1);
 						[self buySelectedShip];
 					}
 					timeLastKeyPress = script_time;
@@ -2993,7 +2993,7 @@ void cxx::PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 				if (!selectPressed)
 				{
 					// try to buy the ship!
-					const std::optional<std::string> key = [gui cxx_keyForRow:[gui selectedRow]];	// nil compares as ""
+					const std::optional<std::string> key = gui->keyForRow(gui->getSelectedRow());	// nil compares as ""
 					OOCreditsQuantity shipprice = 0;
 					if (!oo::str::hasPrefix(key.value_or(""), "More:"))
 					{
@@ -3023,16 +3023,16 @@ void cxx::PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 			}
 			if ([gameView isDown:gvMouseDoubleClick])
 			{
-				if (([gui selectedRow] == GUI_ROW_SHIPYARD_START + MAX_ROWS_SHIPS_FOR_SALE - 1) && oo::str::hasPrefix([gui cxx_keyForRow:GUI_ROW_SHIPYARD_START + MAX_ROWS_SHIPS_FOR_SALE - 1].value_or(""), "More:"))
+				if ((gui->getSelectedRow() == GUI_ROW_SHIPYARD_START + MAX_ROWS_SHIPS_FOR_SALE - 1) && oo::str::hasPrefix(gui->keyForRow(GUI_ROW_SHIPYARD_START + MAX_ROWS_SHIPS_FOR_SALE - 1).value_or(""), "More:"))
 				{
 					[self playMenuPageNext];
-					[gui setSelectedRow:GUI_ROW_SHIPYARD_START + MAX_ROWS_SHIPS_FOR_SALE - 1];
+					gui->setSelectedRow(GUI_ROW_SHIPYARD_START + MAX_ROWS_SHIPS_FOR_SALE - 1);
 					[self buySelectedShip];
 				}
-				else if (([gui selectedRow] == GUI_ROW_SHIPYARD_START) && oo::str::hasPrefix([gui cxx_keyForRow:GUI_ROW_SHIPYARD_START].value_or(""), "More:"))
+				else if ((gui->getSelectedRow() == GUI_ROW_SHIPYARD_START) && oo::str::hasPrefix(gui->keyForRow(GUI_ROW_SHIPYARD_START).value_or(""), "More:"))
 				{
 					[self playMenuPagePrevious];
-					[gui setSelectedRow:GUI_ROW_SHIPYARD_START];
+					gui->setSelectedRow(GUI_ROW_SHIPYARD_START);
 					[self buySelectedShip];
 				}
 				[gameView clearMouse];
@@ -3123,7 +3123,7 @@ void cxx::PlayerEntity::pollMarketScreenControls()
 	if (gui_screen == GUI_SCREEN_MARKET)
 	{
 		[self handleGUIUpDownArrowKeys];
-		marketSelectedCommodity = [gui cxx_selectedRowKey];
+		marketSelectedCommodity = gui->selectedRowKey();
 
 		BOOL			page_up = [self checkKeyPress:n_key_gui_page_up]; 
 		BOOL			page_down = [self checkKeyPress:n_key_gui_page_down]; 
@@ -3140,8 +3140,8 @@ void cxx::PlayerEntity::pollMarketScreenControls()
 					NSInteger goodsIndex = (found != goods.end()) ? (found - goods.begin()) : NSNotFound;
 					NSInteger offset1 = 0;
 					NSInteger offset2 = 0;
-					if ([gui cxx_keyForRow:GUI_ROW_MARKET_START] == "<<<") offset1 += 1;
-					if ([gui cxx_keyForRow:GUI_ROW_MARKET_LAST] == ">>>") offset2 += 1;
+					if (gui->keyForRow(GUI_ROW_MARKET_START) == "<<<") offset1 += 1;
+					if (gui->keyForRow(GUI_ROW_MARKET_LAST) == ">>>") offset2 += 1;
 					if (page_up)
 					{
 						[self playMenuPagePrevious];
@@ -3243,12 +3243,12 @@ void cxx::PlayerEntity::pollMarketScreenControls()
 				}
 				else
 				{
-					if (([gui cxx_selectedRowKey] == ">>>"))
+					if ((gui->selectedRowKey() == ">>>"))
 					{
 						[self playMenuNavigationDown];
 						[self setGuiToMarketScreen];
 					}
-					else if (([gui cxx_selectedRowKey] == "<<<"))
+					else if ((gui->selectedRowKey() == "<<<"))
 					{
 						[self playMenuNavigationUp];
 						[self setGuiToMarketScreen];
@@ -3279,12 +3279,12 @@ void cxx::PlayerEntity::pollMarketScreenControls()
 				}
 				else
 				{
-					if (([gui cxx_selectedRowKey] == ">>>"))
+					if ((gui->selectedRowKey() == ">>>"))
 					{
 						[self playMenuNavigationDown];
 						[self setGuiToMarketScreen];
 					}
-					else if (([gui cxx_selectedRowKey] == "<<<"))
+					else if ((gui->selectedRowKey() == "<<<"))
 					{
 						[self playMenuNavigationUp];
 						[self setGuiToMarketScreen];
@@ -3381,7 +3381,7 @@ void cxx::PlayerEntity::handleGameOptionsScreenKeys()
 	GUI_ROW_INIT(gui);
 	
 	[self handleGUIUpDownArrowKeys];
-	OOGUIRow guiSelectedRow = [gui selectedRow];
+	OOGUIRow guiSelectedRow = gui->getSelectedRow();
 	BOOL selectKeyPress = ([self checkKeyPress:n_key_gui_select]||[gameView isDown:gvMouseDoubleClick]);
 	if ([gameView isDown:gvMouseDoubleClick])  [gameView clearMouse];
 	
@@ -3445,7 +3445,7 @@ void cxx::PlayerEntity::handleGameOptionsScreenKeys()
 				[gameView setHDRMaxBrightness:(float)brightnessValue];
 				const std::string maxBrightnessString = cxx_OOExpandKey("gameoptions-hdr-maxbrightness", brightnessValue).value_or(std::string());
 																				
-				[gui cxx_setText:maxBrightnessString forRow:GUI_ROW(GAME,HDRMAXBRIGHTNESS)  align:GUI_ALIGN_CENTER];
+				gui->setText(maxBrightnessString, GUI_ROW(GAME,HDRMAXBRIGHTNESS), GUI_ALIGN_CENTER);
 				
 				hdrMaxBrightnessControlPressed = YES;
 			}
@@ -3489,7 +3489,7 @@ void cxx::PlayerEntity::handleGameOptionsScreenKeys()
 		const std::string displayModeString = [self cxx_screenModeStringForWidth:modeWidth height:modeHeight refreshRate:modeRefresh].value_or("");
 		
 		[self playChangedOption];
-		[gui cxx_setText:displayModeString	forRow:GUI_ROW(GAME,DISPLAY)  align:GUI_ALIGN_CENTER];
+		gui->setText(displayModeString, GUI_ROW(GAME,DISPLAY), GUI_ALIGN_CENTER);
 		switching_resolution = YES;
 		
 #if OOLITE_SDL
@@ -3538,7 +3538,7 @@ void cxx::PlayerEntity::handleGameOptionsScreenKeys()
 					message = OO_DESC("gameoptions-spoken-messages-yes");
 					break;
 				}
-				[gui cxx_setText:message forRow:GUI_ROW(GAME,SPEECH) align:GUI_ALIGN_CENTER];
+				gui->setText(message, GUI_ROW(GAME,SPEECH), GUI_ALIGN_CENTER);
 
 				if (isSpeechOn == OOSPEECHSETTINGS_ALL)
 				{
@@ -3567,7 +3567,7 @@ void cxx::PlayerEntity::handleGameOptionsScreenKeys()
 				[UNIVERSE setVoice: voice_no withGenderM:voice_gender_m];
 				const std::string voiceName = [UNIVERSE cxx_voiceName:voice_no].value_or("");
 				const std::string message = ExpandKeyWithArguments("gameoptions-voice-name", { { "voiceName", oo::PList(voiceName) } });
-				[gui cxx_setText:message forRow:GUI_ROW(GAME,SPEECH_LANGUAGE) align:GUI_ALIGN_CENTER];
+				gui->setText(message, GUI_ROW(GAME,SPEECH_LANGUAGE), GUI_ALIGN_CENTER);
 				if (isSpeechOn == OOSPEECHSETTINGS_ALL)
 				{
 					[UNIVERSE stopSpeaking];
@@ -3594,7 +3594,7 @@ void cxx::PlayerEntity::handleGameOptionsScreenKeys()
 					voice_gender_m = m;
 					[UNIVERSE setVoice:voice_no withGenderM:voice_gender_m];
 					const std::string message = OO_DESC(voice_gender_m ? "gameoptions-voice-M" : "gameoptions-voice-F");
-					[gui cxx_setText:message forRow:GUI_ROW(GAME,SPEECH_GENDER) align:GUI_ALIGN_CENTER];
+					gui->setText(message, GUI_ROW(GAME,SPEECH_GENDER), GUI_ALIGN_CENTER);
 					if (isSpeechOn == OOSPEECHSETTINGS_ALL)
 					{
 						[UNIVERSE stopSpeaking];
@@ -3628,7 +3628,7 @@ void cxx::PlayerEntity::handleGameOptionsScreenKeys()
 				[self playChangedOption];
 				const std::string musicMode = [UNIVERSE cxx_descriptionForArrayKey:"music-mode" index:OOMusicController::sharedController()->mode()].value_or("");
 				const std::string message = ExpandKeyWithArguments("gameoptions-music-mode", { { "musicMode", oo::PList(musicMode) } });
-				[gui cxx_setText:message forRow:GUI_ROW(GAME,MUSIC) align:GUI_ALIGN_CENTER];
+				gui->setText(message, GUI_ROW(GAME,MUSIC), GUI_ALIGN_CENTER);
 			}
 		}
 		musicModeKeyPressed = YES;
@@ -3644,12 +3644,12 @@ void cxx::PlayerEntity::handleGameOptionsScreenKeys()
 		{
 			// if just enabled, we want to autosave immediately
 			[UNIVERSE setAutoSaveNow:YES];
-			[gui cxx_setText:OO_DESC("gameoptions-autosave-yes")	forRow:GUI_ROW(GAME,AUTOSAVE)  align:GUI_ALIGN_CENTER];
+			gui->setText(OO_DESC("gameoptions-autosave-yes"), GUI_ROW(GAME,AUTOSAVE), GUI_ALIGN_CENTER);
 		}
 		else
 		{
 			[UNIVERSE setAutoSaveNow:NO];
-			[gui cxx_setText:OO_DESC("gameoptions-autosave-no")	forRow:GUI_ROW(GAME,AUTOSAVE)  align:GUI_ALIGN_CENTER];
+			gui->setText(OO_DESC("gameoptions-autosave-no"), GUI_ROW(GAME,AUTOSAVE), GUI_ALIGN_CENTER);
 		}
 	}
 
@@ -3677,12 +3677,10 @@ void cxx::PlayerEntity::handleGameOptionsScreenKeys()
 				std::string v0_string = ".........................";
 				v1_string = v1_string.substr(0, static_cast<std::size_t>(vol));
 				v0_string = v0_string.substr(0, static_cast<std::size_t>(20 - vol));
-				[gui cxx_setText:oo::str::format("%s%s%s ", soundVolumeWordDesc.c_str(), v1_string.c_str(), v0_string.c_str())
-					  forRow:GUI_ROW(GAME,VOLUME)
-					   align:GUI_ALIGN_CENTER];
+				gui->setText(oo::str::format("%s%s%s ", soundVolumeWordDesc.c_str(), v1_string.c_str(), v0_string.c_str()), GUI_ROW(GAME,VOLUME), GUI_ALIGN_CENTER);
 			}
 			else
-				[gui cxx_setText:OO_DESC("gameoptions-sound-volume-mute")	forRow:GUI_ROW(GAME,VOLUME)  align:GUI_ALIGN_CENTER];
+				gui->setText(OO_DESC("gameoptions-sound-volume-mute"), GUI_ROW(GAME,VOLUME), GUI_ALIGN_CENTER);
 			timeLastKeyPress = script_time;
 		}
 		volumeControlPressed = YES;
@@ -3712,7 +3710,7 @@ void cxx::PlayerEntity::handleGameOptionsScreenKeys()
 			v1_string = v1_string.substr(0, static_cast<std::size_t>(fovTicks));
 			v0_string = v0_string.substr(0, static_cast<std::size_t>(20 - fovTicks));
 			// %c 176 gave U+00B0 (probed on GNUstep base with this toolchain); written as its UTF-8 bytes
-			[gui cxx_setText:oo::str::format("%s%s%s (%d%s) ", fovWordDesc.c_str(), v1_string.c_str(), v0_string.c_str(), (int)fov, "\xC2\xB0" /*the degrees symbol*/)	forRow:GUI_ROW(GAME,FOV)  align:GUI_ALIGN_CENTER];
+			gui->setText(oo::str::format("%s%s%s (%d%s) ", fovWordDesc.c_str(), v1_string.c_str(), v0_string.c_str(), (int)fov, "\xC2\xB0" /*the degrees symbol*/), GUI_ROW(GAME,FOV), GUI_ALIGN_CENTER);
 			oo::Defaults::standard().setFloat("fov-value", [gameView fov:NO]);
 			timeLastKeyPress = script_time;
 		}
@@ -3740,7 +3738,7 @@ void cxx::PlayerEntity::handleGameOptionsScreenKeys()
 			const oo::PList *colorblindModes = [UNIVERSE cxx_descriptions]->find("colorblind_mode");
 			const std::string colorblindModeDesc = (colorblindModes != nullptr && colorblindModes->isArray()) ? colorblindModes->at<std::string>(static_cast<std::size_t>([UNIVERSE useShaders] ? colorblindMode : 0)) : std::string();
 			const std::string colorblindModeMsg = ExpandKeyWithArguments("gameoptions-colorblind-mode", { { "colorblindModeDesc", oo::PList(colorblindModeDesc) } });
-			[gui cxx_setText:colorblindModeMsg forRow:GUI_ROW(GAME,COLORBLINDMODE) align:GUI_ALIGN_CENTER];
+			gui->setText(colorblindModeMsg, GUI_ROW(GAME,COLORBLINDMODE), GUI_ALIGN_CENTER);
 		}
 		colorblindModeControlPressed = YES;
 	}
@@ -3756,9 +3754,9 @@ void cxx::PlayerEntity::handleGameOptionsScreenKeys()
 				[self playChangedOption];
 			[UNIVERSE setWireframeGraphics:[self checkKeyPress:n_key_gui_arrow_right]];
 			if ([UNIVERSE wireframeGraphics])
-				[gui cxx_setText:OO_DESC("gameoptions-wireframe-graphics-yes")  forRow:GUI_ROW(GAME,WIREFRAMEGRAPHICS)  align:GUI_ALIGN_CENTER];
+				gui->setText(OO_DESC("gameoptions-wireframe-graphics-yes"), GUI_ROW(GAME,WIREFRAMEGRAPHICS), GUI_ALIGN_CENTER);
 			else
-				[gui cxx_setText:OO_DESC("gameoptions-wireframe-graphics-no")  forRow:GUI_ROW(GAME,WIREFRAMEGRAPHICS)  align:GUI_ALIGN_CENTER];
+				gui->setText(OO_DESC("gameoptions-wireframe-graphics-no"), GUI_ROW(GAME,WIREFRAMEGRAPHICS), GUI_ALIGN_CENTER);
 		}
 	}
 #if OOLITE_WINDOWS
@@ -3782,7 +3780,7 @@ void cxx::PlayerEntity::handleGameOptionsScreenKeys()
 				std::string v0_string = ".........................";
 				v1_string = v1_string.substr(0, static_cast<std::size_t>(paperWhiteNorm));
 				v0_string = v0_string.substr(0, static_cast<std::size_t>(20 - paperWhiteNorm));
-				[gui cxx_setText:oo::str::format("%s%s%s (%d) ", paperWhiteWordDesc.c_str(), v1_string.c_str(), v0_string.c_str(), (int)paperWhite)	forRow:GUI_ROW(GAME,HDRPAPERWHITE)  align:GUI_ALIGN_CENTER];
+				gui->setText(oo::str::format("%s%s%s (%d) ", paperWhiteWordDesc.c_str(), v1_string.c_str(), v0_string.c_str(), (int)paperWhite), GUI_ROW(GAME,HDRPAPERWHITE), GUI_ALIGN_CENTER);
 			}
 			hdrPaperWhiteControlPressed = YES;
 		}
@@ -3825,15 +3823,15 @@ void cxx::PlayerEntity::handleGameOptionsScreenKeys()
 			detailLevel = [UNIVERSE detailLevel];
 
 			const std::string shaderEffectsOptionsString = cxx_OOExpand("gameoptions-detaillevel-[detailLevel]", detailLevel).value_or(std::string());
-			[gui cxx_setText:ExpandKeyWithArguments(shaderEffectsOptionsString.c_str(), {}) forRow:GUI_ROW(GAME,SHADEREFFECTS) align:GUI_ALIGN_CENTER];
-			[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,SHADEREFFECTS)];
+			gui->setText(ExpandKeyWithArguments(shaderEffectsOptionsString.c_str(), {}), GUI_ROW(GAME,SHADEREFFECTS), GUI_ALIGN_CENTER);
+			gui->setKey(std::string(GUI_KEY_OK), GUI_ROW(GAME,SHADEREFFECTS));
 
 			timeLastKeyPress = script_time;
 			
 			// changing detail level may result in changes to other settings too
 			// (e.g. colorblind mode status), so refresh the page
 			[self setGuiToGameOptionsScreen];
-			[gui setSelectedRow:GUI_ROW(GAME,SHADEREFFECTS)];
+			gui->setSelectedRow(GUI_ROW(GAME,SHADEREFFECTS));
 		}
 		shaderSelectKeyPressed = YES;
 	}
@@ -3854,9 +3852,9 @@ void cxx::PlayerEntity::handleGameOptionsScreenKeys()
 			[self playChangedOption];
 		[UNIVERSE setDockingClearanceProtocolActive:[self checkKeyPress:n_key_gui_arrow_right]];
 		if ([UNIVERSE dockingClearanceProtocolActive])
-			[gui cxx_setText:OO_DESC("gameoptions-docking-clearance-yes")  forRow:GUI_ROW(GAME,DOCKINGCLEARANCE)  align:GUI_ALIGN_CENTER];
+			gui->setText(OO_DESC("gameoptions-docking-clearance-yes"), GUI_ROW(GAME,DOCKINGCLEARANCE), GUI_ALIGN_CENTER);
 		else
-			[gui cxx_setText:OO_DESC("gameoptions-docking-clearance-no")  forRow:GUI_ROW(GAME,DOCKINGCLEARANCE)  align:GUI_ALIGN_CENTER];
+			gui->setText(OO_DESC("gameoptions-docking-clearance-no"), GUI_ROW(GAME,DOCKINGCLEARANCE), GUI_ALIGN_CENTER);
 	}
 	
 	if ((guiSelectedRow == GUI_ROW(GAME,BACK)) && selectKeyPress)
@@ -3877,14 +3875,14 @@ void cxx::PlayerEntity::handleKeyMapperScreenKeys()
 	leftRightKeyPressed = [self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up] || [self checkKeyPress:n_key_gui_page_down];
 	if (leftRightKeyPressed)
 	{
-		std::optional<std::string> key = [gui cxx_keyForRow: [gui selectedRow]];
+		std::optional<std::string> key = gui->keyForRow(gui->getSelectedRow());
 		if ([self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_page_down])
 		{
-			key = [gui cxx_keyForRow:GUI_ROW_KC_FUNCEND];
+			key = gui->keyForRow(GUI_ROW_KC_FUNCEND);
 		}
 		if ([self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up])
 		{
-			key = [gui cxx_keyForRow:GUI_ROW_KC_FUNCSTART];
+			key = gui->keyForRow(GUI_ROW_KC_FUNCSTART);
 		}
 		int from_function = 0;
 		const std::vector<std::string> keyComponents = key ? oo::str::split(*key, ":") : std::vector<std::string>();	// a nil key has no components
@@ -3894,13 +3892,13 @@ void cxx::PlayerEntity::handleKeyMapperScreenKeys()
 			if (from_function < 0)  from_function = 0;
 			
 			[self setGuiToKeyMapperScreen:from_function resetCurrentRow: YES];
-			if ([[UNIVERSE gui] selectedRow] < GUI_ROW_KC_FUNCSTART)
+			if ([UNIVERSE gui]->getSelectedRow() < GUI_ROW_KC_FUNCSTART)
 			{
-				[[UNIVERSE gui] setSelectedRow: GUI_ROW_KC_FUNCSTART];
+				[UNIVERSE gui]->setSelectedRow(GUI_ROW_KC_FUNCSTART);
 			}
 			if (from_function == 0)
 			{
-				[[UNIVERSE gui] setSelectedRow: GUI_ROW_KC_FUNCSTART + MAX_ROWS_KC_FUNCTIONS - 1];
+				[UNIVERSE gui]->setSelectedRow(GUI_ROW_KC_FUNCSTART + MAX_ROWS_KC_FUNCTIONS - 1);
 			}
 		}
 	}
@@ -3917,14 +3915,14 @@ void cxx::PlayerEntity::handleKeyboardLayoutKeys()
 	leftRightKeyPressed = [self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up] || [self checkKeyPress:n_key_gui_page_down];
 	if (leftRightKeyPressed)
 	{
-		std::optional<std::string> key = [gui cxx_keyForRow: [gui selectedRow]];
+		std::optional<std::string> key = gui->keyForRow(gui->getSelectedRow());
 		if ([self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_page_down])
 		{
-			key = [gui cxx_keyForRow:GUI_ROW_KC_FUNCEND];
+			key = gui->keyForRow(GUI_ROW_KC_FUNCEND);
 		}
 		if ([self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up])
 		{
-			key = [gui cxx_keyForRow:GUI_ROW_KC_FUNCSTART];
+			key = gui->keyForRow(GUI_ROW_KC_FUNCSTART);
 		}
 		int from_function = 0;
 		const std::vector<std::string> keyComponents = key ? oo::str::split(*key, ":") : std::vector<std::string>();	// a nil key has no components
@@ -3934,13 +3932,13 @@ void cxx::PlayerEntity::handleKeyboardLayoutKeys()
 			if (from_function < 0)  from_function = 0;
 			
 			[self setGuiToKeyboardLayoutScreen:from_function resetCurrentRow:YES];
-			if ([[UNIVERSE gui] selectedRow] < GUI_ROW_KC_FUNCSTART)
+			if ([UNIVERSE gui]->getSelectedRow() < GUI_ROW_KC_FUNCSTART)
 			{
-				[[UNIVERSE gui] setSelectedRow: GUI_ROW_KC_FUNCSTART];
+				[UNIVERSE gui]->setSelectedRow(GUI_ROW_KC_FUNCSTART);
 			}
 			if (from_function == 0)
 			{
-				[[UNIVERSE gui] setSelectedRow: GUI_ROW_KC_FUNCSTART + MAX_ROWS_KC_FUNCTIONS - 1];
+				[UNIVERSE gui]->setSelectedRow(GUI_ROW_KC_FUNCSTART + MAX_ROWS_KC_FUNCTIONS - 1);
 			}
 		}
 	}
@@ -3957,14 +3955,14 @@ void cxx::PlayerEntity::handleStickMapperScreenKeys()
 	leftRightKeyPressed = [self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up] || [self checkKeyPress:n_key_gui_page_down];
 	if (leftRightKeyPressed)
 	{
-		std::optional<std::string> key = [gui cxx_keyForRow: [gui selectedRow]];
+		std::optional<std::string> key = gui->keyForRow(gui->getSelectedRow());
 		if ([self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_page_down])
 		{
-			key = [gui cxx_keyForRow:GUI_ROW_FUNCEND];
+			key = gui->keyForRow(GUI_ROW_FUNCEND);
 		}
 		if ([self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up])
 		{
-			key = [gui cxx_keyForRow:GUI_ROW_FUNCSTART];
+			key = gui->keyForRow(GUI_ROW_FUNCSTART);
 		}
 		int from_function = 0;
 		const std::vector<std::string> keyComponents = key ? oo::str::split(*key, ":") : std::vector<std::string>();	// a nil key has no components
@@ -3974,13 +3972,13 @@ void cxx::PlayerEntity::handleStickMapperScreenKeys()
 			if (from_function < 0)  from_function = 0;
 			
 			[self setGuiToStickMapperScreen:from_function resetCurrentRow: YES];
-			if ([[UNIVERSE gui] selectedRow] < GUI_ROW_FUNCSTART)
+			if ([UNIVERSE gui]->getSelectedRow() < GUI_ROW_FUNCSTART)
 			{
-				[[UNIVERSE gui] setSelectedRow: GUI_ROW_FUNCSTART];
+				[UNIVERSE gui]->setSelectedRow(GUI_ROW_FUNCSTART);
 			}
 			if (from_function == 0)
 			{
-				[[UNIVERSE gui] setSelectedRow: GUI_ROW_FUNCSTART + MAX_ROWS_FUNCTIONS - 1];
+				[UNIVERSE gui]->setSelectedRow(GUI_ROW_FUNCSTART + MAX_ROWS_FUNCTIONS - 1);
 			}
 		}
 	}
@@ -4188,9 +4186,9 @@ void cxx::PlayerEntity::pollViewControls()
 	{
 		if (!scanner_zoom_rate)
 		{
-			if ([hud scannerZoom] < 5.0)
+			if (((hud != nullptr) ? hud->scannerZoom() : 0.0f) < 5.0)	// a nil HUD answered 0
 			{
-				if (([hud scannerZoom] > 1.0)||(!zoom_pressed))
+				if ((((hud != nullptr) ? hud->scannerZoom() : 0.0f) > 1.0)||(!zoom_pressed))
 					scanner_zoom_rate = SCANNER_ZOOM_RATE_UP;
 			}
 			else
@@ -4207,11 +4205,11 @@ void cxx::PlayerEntity::pollViewControls()
 	// Unzoom scanner 'Z'
 	if (([self checkKeyPress:n_key_scanner_unzoom] && ([gameView allowingStringInput] == gvStringInputNo)) || joyButtonState[BUTTON_SCANNERUNZOOM]) // look for the 'Z' key
 	{
-		if ((!scanner_zoom_rate)&&([hud scannerZoom] > 1.0))
+		if ((!scanner_zoom_rate)&&(hud != nullptr && hud->scannerZoom() > 1.0))
 			scanner_zoom_rate = SCANNER_ZOOM_RATE_DOWN;
 	}
 	
-	if (EXPECT([[self hud] isCompassActive]))	// only switch compass modes if there is a compass
+	if (EXPECT([self hud] != nullptr && [self hud]->isCompassActive()))	// only switch compass modes if there is a compass
 	{
 		// Compass mode '|'
 		if ([self checkKeyPress:n_key_prev_compass_mode] || joyButtonState[BUTTON_COMPASSMODE_PREV]) // look for the '|' key
@@ -4262,7 +4260,7 @@ void cxx::PlayerEntity::pollViewControls()
 	//  ':' // Select next MFD
 	if ([self checkKeyPress:n_key_switch_next_mfd] || [self checkKeyPress:n_key_switch_previous_mfd] || joyButtonState[BUTTON_MFDSELECTNEXT] || joyButtonState[BUTTON_MFDSELECTPREV])
 	{
-		if ([[self hud] mfdCount] > 1)
+		if ([self hud] != nullptr && [self hud]->mfdCount() > 1)
 		{
 			if (!switchMFD_pressed)
 			{
@@ -4289,7 +4287,7 @@ void cxx::PlayerEntity::pollViewControls()
 	if ([self checkKeyPress:n_key_comms_log])
 	{
 		[UNIVERSE showCommsLog: 1.5];
-		[hud refreshLastTransmitter];
+		if (hud != nullptr)  hud->refreshLastTransmitter();
 	}
 }
 
@@ -4629,14 +4627,14 @@ void cxx::PlayerEntity::pollGuiScreenControlsWithFKeyAlias(bool fKeyAlias)
 		if (gui_screen != GUI_SCREEN_MARKET)
 		{
 			[gameView clearKeys];
-			[gui setNoSelectedRow];
+			gui->setNoSelectedRow();
 			[self noteGUIWillChangeTo:GUI_SCREEN_MARKET];
 			[self setGuiToMarketScreen];
 		}
 		else
 		{
 			[gameView clearKeys];
-			[gui setNoSelectedRow];
+			gui->setNoSelectedRow();
 			[self noteGUIWillChangeTo:GUI_SCREEN_MARKETINFO];
 			[self setGuiToMarketInfoScreen];
 		}
@@ -4662,18 +4660,18 @@ void cxx::PlayerEntity::pollGuiScreenControlsWithFKeyAlias(bool fKeyAlias)
 				{
 					[gameView clearKeys];
 					[self noteGUIWillChangeTo:GUI_SCREEN_SHIPYARD];
-					[gui setNoSelectedRow];
+					gui->setNoSelectedRow();
 					[self setGuiToShipyardScreen:0];
-					[gui setSelectedRow:GUI_ROW_SHIPYARD_START];
+					gui->setSelectedRow(GUI_ROW_SHIPYARD_START);
 					[self showShipyardInfoForSelection];
 				}
 				else
 				{
 					[gameView clearKeys];
 					[self noteGUIWillChangeTo:GUI_SCREEN_EQUIP_SHIP];
-					[gui setNoSelectedRow];
+					gui->setNoSelectedRow();
 					[self setGuiToEquipShipScreen:0];
-					[gui setSelectedRow:GUI_ROW_EQUIPMENT_START];
+					gui->setSelectedRow(GUI_ROW_EQUIPMENT_START);
 				}
 				
 				[self noteGUIDidChangeFrom:oldScreen to:gui_screen]; 
@@ -4688,9 +4686,9 @@ void cxx::PlayerEntity::pollGuiScreenControlsWithFKeyAlias(bool fKeyAlias)
 		if ([self checkKeyPress:n_key_gui_screen_interfaces fKey_only:!fKeyAlias])
 		{
 			if (!switching_interface_screens) {
-				[gui setNoSelectedRow];
+				gui->setNoSelectedRow();
 				[self setGuiToInterfacesScreen:0];
-				[gui setSelectedRow:GUI_ROW_INTERFACES_START];
+				gui->setSelectedRow(GUI_ROW_INTERFACES_START);
 			}
 			switching_interface_screens = YES;
 		}
@@ -4842,7 +4840,7 @@ void cxx::PlayerEntity::pollDockedControls(double delta_t)
 					{
 						[UNIVERSE clearPreviousMessage];	// remove the 'paused' message.
 					}
-					[[UNIVERSE gui] cxx_setForegroundTextureKey:"docked_overlay"];
+					[UNIVERSE gui]->setForegroundTextureKey("docked_overlay");
 					[gameController setGamePaused:NO];
 				}
 				else
@@ -4850,7 +4848,7 @@ void cxx::PlayerEntity::pollDockedControls(double delta_t)
     				if (!isMissionScreenWithTextEntry)
 					{
 						saved_script_time = script_time;
-						[[UNIVERSE messageGUI] clear];
+						[UNIVERSE messageGUI]->clear();
 						
 						[UNIVERSE pauseGame];	// 'paused' handler
       				}
@@ -4935,11 +4933,11 @@ void cxx::PlayerEntity::pollDemoControls(double /*delta_t*/)
 			{
 				if (!disc_operation_in_progress)
 				{
-					if (([gameView isDown:gvMouseDoubleClick] || [self checkKeyPress:n_key_gui_select]) && [gui selectedRow] == 2+row_zero)
+					if (([gameView isDown:gvMouseDoubleClick] || [self checkKeyPress:n_key_gui_select]) && gui->getSelectedRow() == 2+row_zero)
 					{
 						disc_operation_in_progress = YES;
 						[UNIVERSE removeDemoShips];
-						[gui clearBackground];
+						gui->clearBackground();
 						if (![self loadPlayer])
 						{
 							[self setGuiToIntroFirstGo:YES];
@@ -4947,24 +4945,24 @@ void cxx::PlayerEntity::pollDemoControls(double /*delta_t*/)
 						break;
 					}
 				}
-				if (([gameView isDown:gvMouseDoubleClick] || [self checkKeyPress:n_key_gui_select]) && [gui selectedRow] == 1+row_zero)
+				if (([gameView isDown:gvMouseDoubleClick] || [self checkKeyPress:n_key_gui_select]) && gui->getSelectedRow() == 1+row_zero)
 				{
 					missionTextRow = 0;
 					[self setGuiToScenarioScreen:0];
 				} 
-				else if (([gameView isDown:gvMouseDoubleClick] || [self checkKeyPress:n_key_gui_select]) && [gui selectedRow] == 3+row_zero)
+				else if (([gameView isDown:gvMouseDoubleClick] || [self checkKeyPress:n_key_gui_select]) && gui->getSelectedRow() == 3+row_zero)
 				{
 					[self setGuiToIntroFirstGo:NO];
 				}
-				else if (([gameView isDown:gvMouseDoubleClick] || [self checkKeyPress:n_key_gui_select]) && [gui selectedRow] == 4+row_zero)
+				else if (([gameView isDown:gvMouseDoubleClick] || [self checkKeyPress:n_key_gui_select]) && gui->getSelectedRow() == 4+row_zero)
 				{
 					[self setGuiToGameOptionsScreen];
 				}
-				else if (([gameView isDown:gvMouseDoubleClick] || [self checkKeyPress:n_key_gui_select]) && [gui selectedRow] == 5+row_zero)
+				else if (([gameView isDown:gvMouseDoubleClick] || [self checkKeyPress:n_key_gui_select]) && gui->getSelectedRow() == 5+row_zero)
 				{
 					[self setGuiToOXZManager];
 				}
-				else if (([gameView isDown:gvMouseDoubleClick] || [self checkKeyPress:n_key_gui_select]) && [gui selectedRow] == 6+row_zero)
+				else if (([gameView isDown:gvMouseDoubleClick] || [self checkKeyPress:n_key_gui_select]) && gui->getSelectedRow() == 6+row_zero)
 				{
 					[[UNIVERSE gameController] cxx_exitAppWithContext:"Exit Game selected on start screen"];
 				}
@@ -5060,9 +5058,9 @@ void cxx::PlayerEntity::pollDemoControls(double /*delta_t*/)
 				if ([self checkKeyPress:n_key_gui_page_up])
 				{
 					//  find the Back <<< line, select it and press it
-					if (oo::str::hasPrefix([gui cxx_keyForRow:GUI_ROW_SCENARIOS_START - 1].value_or(std::string()), "__page")) 
+					if (oo::str::hasPrefix(gui->keyForRow(GUI_ROW_SCENARIOS_START - 1).value_or(std::string()), "__page")) 
 					{
-						if ([gui setSelectedRow:GUI_ROW_SCENARIOS_START - 1]) 
+						if (gui->setSelectedRow(GUI_ROW_SCENARIOS_START - 1)) 
 						{
 							[self startScenario];
 						}
@@ -5072,9 +5070,9 @@ void cxx::PlayerEntity::pollDemoControls(double /*delta_t*/)
 				else if ([self checkKeyPress:n_key_gui_page_down])
 				{
 					// find the Next >>> line, select it and press it
-					if (oo::str::hasPrefix([gui cxx_keyForRow:GUI_ROW_SCENARIOS_START + GUI_MAX_ROWS_SCENARIOS].value_or(std::string()), "__page")) 
+					if (oo::str::hasPrefix(gui->keyForRow(GUI_ROW_SCENARIOS_START + GUI_MAX_ROWS_SCENARIOS).value_or(std::string()), "__page")) 
 					{
-						if ([gui setSelectedRow:GUI_ROW_SCENARIOS_START + GUI_MAX_ROWS_SCENARIOS]) 
+						if (gui->setSelectedRow(GUI_ROW_SCENARIOS_START + GUI_MAX_ROWS_SCENARIOS)) 
 						{
 							[self startScenario];
 						}
@@ -5190,7 +5188,7 @@ void cxx::PlayerEntity::pollDemoControls(double /*delta_t*/)
 
 	
 		case GUI_SCREEN_MISSION:
-			if ([[self hud] allowBigGui])
+			if ([self hud] != nullptr && [self hud]->getAllowBigGui())
 			{
 				end_row = 27;
 			}
@@ -5216,7 +5214,7 @@ void cxx::PlayerEntity::pollDemoControls(double /*delta_t*/)
 					[self pollMissionInterruptControls];
 				}
 			}
-			else if ([gui cxx_keyForRow:end_row] == "spacebar")
+			else if (gui->keyForRow(end_row) == "spacebar")
 			{
 				if ([gameView isDown:32])	//  '<space>'
 				{
@@ -5262,7 +5260,7 @@ void cxx::PlayerEntity::pollDemoControls(double /*delta_t*/)
 					if (!selectPressed)
 					{
 						if (extraKey.empty()) extraKey = "enter";
-						[self cxx_setMissionChoice:[gui cxx_selectedRowKey] keyPress:extraKey];
+						[self cxx_setMissionChoice:gui->selectedRowKey() keyPress:extraKey];
 						OOMusicController::sharedController()->stopMissionMusic();
 						[self playDismissedMissionScreen];
 						
@@ -5331,7 +5329,7 @@ void cxx::PlayerEntity::handleMissionCallback()
 {
 	::PlayerEntity *self = oo::ToObjC(this);
 	[UNIVERSE removeDemoShips];
-	[[UNIVERSE gui] clearBackground];
+	[UNIVERSE gui]->clearBackground();
 
 	[self setGuiToMissionEndScreen]; // need this to find out if we call a new mission screen inside callback.
 	
@@ -5385,7 +5383,7 @@ void cxx::PlayerEntity::setGuiToMissionEndScreen()
 		{
 			[self noteGUIWillChangeTo:GUI_SCREEN_SHIPYARD];
 			[self setGuiToShipyardScreen:0];
-			[[UNIVERSE gui] setSelectedRow:GUI_ROW_SHIPYARD_START];
+			[UNIVERSE gui]->setSelectedRow(GUI_ROW_SHIPYARD_START);
 			[self showShipyardInfoForSelection];
 		}
 		else

@@ -623,7 +623,7 @@ static oo::PList GetParameterImageDescriptor(ooscript::Context context, ooscript
 	ooscript::Value value = ooscript::nullValue();
 	if (ooscript::getProperty((context), (object), key, (&value)))
 	{
-		return [[UNIVERSE gui] cxx_textureDescriptorFromJSValue:value inContext:context callerDescription:"mission.runScreen()"];
+		return [UNIVERSE gui]->textureDescriptorFromJSValue(value, context, "mission.runScreen()");
 	}
 	else
 	{
@@ -891,10 +891,10 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 	std::optional<std::string> firstKey = GetParameterString(context, params, "initialChoicesKey");
 	if (firstKey.has_value())
 	{
-		OOGUIRow row = [[UNIVERSE gui] cxx_rowForKey:firstKey];
+		OOGUIRow row = [UNIVERSE gui]->rowForKey(firstKey);
 		if (row != -1)
 		{
-			[[UNIVERSE gui] setSelectedRow:row];
+			[UNIVERSE gui]->setSelectedRow(row);
 		}
 	}
 	

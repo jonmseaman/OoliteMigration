@@ -150,7 +150,7 @@ std::optional<std::string> OOLaserShotEntity::descriptionComponents() const
 }
 
 
-void OOLaserShotEntity::setColor(cxx::OOColor *color)
+void OOLaserShotEntity::setColor(OOColor *color)
 {
 	// Messages to a nil colour answered 0.
 	_color[0] = kLaserBrightness * (color != nullptr ? color->redComponent() : 0.0f)/3.0;

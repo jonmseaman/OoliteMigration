@@ -85,7 +85,7 @@ namespace {
 namespace {
 
 // A colour's components as its -normalizedArray gave them to JavaScript: floats, null for no colour.
-oo::PList NormalizedColorComponents(cxx::OOColor *color)
+oo::PList NormalizedColorComponents(OOColor *color)
 {
 	if (color == nullptr)  return oo::PList();
 	oo::PList::Array components;
@@ -599,7 +599,7 @@ static bool EquipmentInfoSetProperty(Context cx, Object obj, PropertyId propID, 
 	OOJS_NATIVE_ENTER(context)
 	
 	int32_t						iValue;
-	oo::Ref<cxx::OOColor>		colorForScript;
+	oo::Ref<OOColor>		colorForScript;
 	
 	cxx::OOEquipmentType		*type = nullptr;	// null for the prototype: see Ask()
 	if (EXPECT_NOT(!JSEquipmentInfoGetEquipmentType(context, thisObj, &type)))  return false;
@@ -607,7 +607,7 @@ static bool EquipmentInfoSetProperty(Context cx, Object obj, PropertyId propID, 
 	switch (ooscript::idToInt32(propID))
 	{
 		case kEquipmentInfo_displayColor:
-			colorForScript = cxx::OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value));
+			colorForScript = OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value));
 			if (colorForScript != nullptr || ooscript::isNull(*value))
 			{
 				if (type != nullptr)  type->setDisplayColor(colorForScript.get());	// (a message to nil did nothing)

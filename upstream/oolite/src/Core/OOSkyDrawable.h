@@ -34,7 +34,7 @@ SOFTWARE.
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"
 
-namespace cxx { class OOColor; }
+class OOColor;
 class OOSkyQuadSet;
 struct OOSkyQuadDesc;
 
@@ -48,10 +48,10 @@ class OOSkyDrawable : public cxx::OODrawable, public cxx::OOGraphicsResetClient
 {
 public:
 	// -initWithColor1:Color2:Color3:Color4:starCount:nebulaCount:nebulaHueFix:clusterFactor:alpha:scale:
-	OOSkyDrawable(cxx::OOColor *color1,
-				  cxx::OOColor *color2,
-				  cxx::OOColor *color3,
-				  cxx::OOColor *color4,
+	OOSkyDrawable(OOColor *color1,
+				  OOColor *color2,
+				  OOColor *color3,
+				  OOColor *color4,
 				  unsigned starCount,
 				  unsigned nebulaCount,
 				  bool nebulaHueFix,
@@ -74,9 +74,9 @@ public:
 private:
 	friend struct OOSkyDrawableTestAccess;
 
-	void setUpStars(cxx::OOColor *color1, cxx::OOColor *color2);
-	void setUpNebulae(cxx::OOColor *color1,
-					  cxx::OOColor *color2,
+	void setUpStars(OOColor *color1, OOColor *color2);
+	void setUpNebulae(OOColor *color1,
+					  OOColor *color2,
 					  float nebulaClusterFactor,
 					  bool nebulaHueFix,
 					  float nebulaAlpha,
@@ -91,7 +91,7 @@ private:
 
 	// The unit test's stand-in for setUpStars(), which needs the game's star textures (decision
 	// oo-jsx0h); null in the game.
-	static void (*sSetUpStarsStandIn)(OOSkyDrawable *sky, cxx::OOColor *color1, cxx::OOColor *color2);
+	static void (*sSetUpStarsStandIn)(OOSkyDrawable *sky, OOColor *color1, OOColor *color2);
 
 	unsigned				_starCount = {};
 	unsigned				_nebulaCount = {};

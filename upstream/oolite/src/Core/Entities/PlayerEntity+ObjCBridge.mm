@@ -151,8 +151,7 @@ PlayerEntity		*gOOPlayer = nil;
 	_cxxPlayer->target_memory_index = 0;
 
 	_cxxPlayer->dockingReport.clear();
-	[_cxxPlayer->hud cxx_resetGuis:oo::PList(oo::PList::Dict{ { "message_gui", oo::PList(oo::PList::Dict()) },
-											{ "comm_log_gui", oo::PList(oo::PList::Dict()) } })];
+	if (_cxxPlayer->hud != nullptr)  _cxxPlayer->hud->resetGuis(oo::PList(oo::PList::Dict{ { "message_gui", oo::PList(oo::PList::Dict()) }, { "comm_log_gui", oo::PList(oo::PList::Dict()) } }));
 
 	[self initControls];
 }
@@ -170,7 +169,7 @@ PlayerEntity		*gOOPlayer = nil;
 	}
 
 	DESTROY(_cxxPlayer->compassTarget);
-	DESTROY(_cxxPlayer->hud);
+	_cxxPlayer->hud = nullptr;
 
 
 
@@ -393,7 +392,7 @@ PlayerEntity		*gOOPlayer = nil;
 - (BOOL) cxx_switchHudTo:(const std::string &)hudFileName	{ return _cxxPlayer->switchHudTo(hudFileName); }
 - (float) cxx_dialCustomFloat:(const std::string &)dialKey	{ return _cxxPlayer->dialCustomFloat(dialKey); }
 - (std::string) cxx_dialCustomString:(const std::string &)dialKey	{ return _cxxPlayer->dialCustomString(dialKey); }
-- (OOColor *) cxx_dialCustomColor:(const std::string &)dialKey	{ return _cxxPlayer->dialCustomColor(dialKey); }
+- (oo::Ref<OOColor>) cxx_dialCustomColor:(const std::string &)dialKey	{ return _cxxPlayer->dialCustomColor(dialKey); }
 - (void) cxx_setDialCustom:(const oo::PList &)value forKey:(const std::string &)dialKey	{ _cxxPlayer->setDialCustom(value, dialKey); }
 - (void) setShowDemoShips:(BOOL)value	{ _cxxPlayer->setShowDemoShips(value); }
 - (BOOL) showDemoShips	{ return _cxxPlayer->getShowDemoShips(); }

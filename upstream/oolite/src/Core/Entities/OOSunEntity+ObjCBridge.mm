@@ -49,12 +49,12 @@ MA 02110-1301, USA.
 {
 	if (_cxxEntity != nullptr)  self = [super initWithCxxEntity:_cxxEntity.get()];
 	else  self = [super initWithCxxEntity:oo::makeRef<cxx::OOSunEntity>().get()];
-	if (self != nil)  oo::ToCxx(self)->initSunWithColor(oo::ToCxx(sun_color), dict);
+	if (self != nil)  oo::ToCxx(self)->initSunWithColor(sun_color, dict);
 	return self;
 }
 
 
-- (BOOL) setSunColor:(OOColor *)sun_color												{ return oo::ToCxx(self)->setSunColor(oo::ToCxx(sun_color)); }
+- (BOOL) setSunColor:(OOColor *)sun_color												{ return oo::ToCxx(self)->setSunColor(sun_color); }
 - (BOOL) changeSunProperty:(const std::string &)key withDictionary:(const oo::PList &)dict	{ return oo::ToCxx(self)->changeSunProperty(key, dict); }
 - (OOStellarBodyType) planetType														{ return oo::ToCxx(self)->planetType(); }
 - (void) getDiffuseComponents:(GLfloat[4])components									{ oo::ToCxx(self)->getDiffuseComponents(components); }

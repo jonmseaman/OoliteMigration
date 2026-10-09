@@ -41,7 +41,7 @@ MA 02110-1301, USA.
 
 + (instancetype) laserFlashWithPosition:(HPVector)pos velocity:(Vector)vel color:(OOColor *)color
 {
-	return (OOFlashEffectEntity *)oo::NewEntityFacade(cxx::OOFlashEffectEntity::laserFlashWithPosition(pos, vel, oo::ToCxx(color)));
+	return (OOFlashEffectEntity *)oo::NewEntityFacade(cxx::OOFlashEffectEntity::laserFlashWithPosition(pos, vel, color));
 }
 
 

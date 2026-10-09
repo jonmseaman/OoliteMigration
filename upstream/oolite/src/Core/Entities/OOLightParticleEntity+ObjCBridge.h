@@ -40,7 +40,7 @@ MA 02110-1301, USA.
 #define OOLIGHTPARTICLEENTITY_OBJCBRIDGE_H
 
 
-@class OOColor;
+class OOColor;
 
 
 @interface OOLightParticleEntity: Entity

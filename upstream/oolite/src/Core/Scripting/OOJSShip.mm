@@ -657,7 +657,7 @@ ooscript::Object JSShipPrototype(void)
 namespace {
 
 // A colour's components as its -normalizedArray gave them to JavaScript: floats, null for no colour.
-oo::PList NormalizedColorComponents(cxx::OOColor *color)
+oo::PList NormalizedColorComponents(OOColor *color)
 {
 	if (color == nullptr)  return oo::PList();
 	oo::PList::Array components;
@@ -1263,23 +1263,23 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			break;
 
 		case kShip_scannerDisplayColor1:
-			result = NormalizedColorComponents(oo::ToCxx(ship->scannerDisplayColor1()));
+			result = NormalizedColorComponents(ship->scannerDisplayColor1());
 			break;
 
 		case kShip_scannerDisplayColor2:
-			result = NormalizedColorComponents(oo::ToCxx(ship->scannerDisplayColor2()));
+			result = NormalizedColorComponents(ship->scannerDisplayColor2());
 			break;
 
 		case kShip_scannerHostileDisplayColor1:
-			result = NormalizedColorComponents(oo::ToCxx(ship->scannerDisplayColorHostile1()));
+			result = NormalizedColorComponents(ship->scannerDisplayColorHostile1());
 			break;
 
 		case kShip_scannerHostileDisplayColor2:
-			result = NormalizedColorComponents(oo::ToCxx(ship->scannerDisplayColorHostile2()));
+			result = NormalizedColorComponents(ship->scannerDisplayColorHostile2());
 			break;
 
 		case kShip_exhaustEmissiveColor:
-			result = NormalizedColorComponents(oo::ToCxx(ship->exhaustEmissiveColor()));
+			result = NormalizedColorComponents(ship->exhaustEmissiveColor());
 			break;
 			
 		case kShip_maxThrust:
@@ -1361,7 +1361,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 	Quaternion					qValue;
 	HPVector						hpvValue;
 	OOShipGroup					*group = nullptr;
-	oo::Ref<cxx::OOColor>		colorForScript;
+	oo::Ref<OOColor>		colorForScript;
 	BOOL exists;	// JSValueToEquipmentKeyRelaxed()'s out parameter
 	
 	if (EXPECT_NOT(!JSShipGetShipEntity(context, thisObject, &entity)))  return false;
@@ -1790,46 +1790,46 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			break;
 			
 		case kShip_scannerDisplayColor1:
-			colorForScript = cxx::OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value));
+			colorForScript = OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value));
 			if (colorForScript != nullptr || ooscript::isNull(*value))
 			{
-				ship->setScannerDisplayColor1(oo::ToObjC(colorForScript));
+				ship->setScannerDisplayColor1(colorForScript.get());
 				return true;
 			}
 			break;
 			
 		case kShip_scannerDisplayColor2:
-			colorForScript = cxx::OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value));
+			colorForScript = OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value));
 			if (colorForScript != nullptr || ooscript::isNull(*value))
 			{
-				ship->setScannerDisplayColor2(oo::ToObjC(colorForScript));
+				ship->setScannerDisplayColor2(colorForScript.get());
 				return true;
 			}
 			break;
 			
 		case kShip_scannerHostileDisplayColor1:
-			colorForScript = cxx::OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value));
+			colorForScript = OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value));
 			if (colorForScript != nullptr || ooscript::isNull(*value))
 			{
-				ship->setScannerDisplayColorHostile1(oo::ToObjC(colorForScript));
+				ship->setScannerDisplayColorHostile1(colorForScript.get());
 				return true;
 			}
 			break;
 			
 		case kShip_scannerHostileDisplayColor2:
-			colorForScript = cxx::OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value));
+			colorForScript = OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value));
 			if (colorForScript != nullptr || ooscript::isNull(*value))
 			{
-				ship->setScannerDisplayColorHostile2(oo::ToObjC(colorForScript));
+				ship->setScannerDisplayColorHostile2(colorForScript.get());
 				return true;
 			}
 			break;
 			
 		case kShip_exhaustEmissiveColor:
-			colorForScript = cxx::OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value));
+			colorForScript = OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value));
 			if (colorForScript != nullptr || ooscript::isNull(*value))
 			{
-				ship->setExhaustEmissiveColor(oo::ToObjC(colorForScript));
+				ship->setExhaustEmissiveColor(colorForScript.get());
 				return true;
 			}
 			break;

@@ -300,7 +300,7 @@ oo::PList EquipmentRow(const std::optional<std::string> &text, bool available, O
 	{
 		row.push_back(oo::PList(*text));
 		row.push_back(oo::PList(available));	// +numberWithBool:
-		if (color != nil)  row.push_back(oo::PListObject(color));
+		if (color != nullptr)  row.push_back(OOColorObjectNode(color));
 	}
 	return oo::PList(std::move(row));
 }
@@ -1259,9 +1259,9 @@ oo::PList PlayerEntity::commanderDataDictionary()
 		if (const std::optional<std::string> identifier = [starboard_weapon_type cxx_identifier])  result["starboard_weapon"] = oo::PList(*identifier);
 	}
 	if (const std::optional<std::string> subentities = [self cxx_serializeShipSubEntities])  result["subentities_status"] = oo::PList(*subentities);
-	if (hud != nil && [hud nonlinearScanner])
+	if (hud != nil && hud->nonlinearScanner())
 	{
-		result["ship_scanner_zoom"] = oo::PList((double)[hud scannerZoom]);	// oo_setFloat:
+		result["ship_scanner_zoom"] = oo::PList((double)hud->scannerZoom());	// oo_setFloat:
 	}
 
 	result["max_cargo"] = oo::PList::signedInteger((long)(max_cargo + PASSENGER_BERTH_SPACE * max_passengers));
@@ -1883,9 +1883,9 @@ bool PlayerEntity::setCommanderDataFromDictionary(const oo::PList &dict)
 
 	[self setWeaponDataFromType:forward_weapon_type];
 
-	if (hud != nil && [hud nonlinearScanner])
+	if (hud != nil && hud->nonlinearScanner())
 	{
-		[hud setScannerZoom: dict.get<float>("ship_scanner_zoom", 1.0)];
+		hud->setScannerZoom(dict.get<float>("ship_scanner_zoom", 1.0));
 	}
 	
 	weapons_online = dict.get<bool>("weapons_online", YES);
@@ -2512,7 +2512,7 @@ bool PlayerEntity::setUpShipFromDictionary(const oo::PList &shipDict)
 	[self addEquipmentFromCollection:(extraEquipment != nullptr) ? *extraEquipment : oo::PList()];
 
 	[self resetHud];
-	[hud setHidden:NO];
+	if (hud != nullptr)  hud->setHidden(NO);	// a message to nil did nothing
 	
 	// set up missiles
 	// sanity check the number of missiles...
@@ -3245,7 +3245,7 @@ void PlayerEntity::doBookkeeping(double delta_t)
 	UPDATE_STAGE("updating scanner zoom");
 	if (scanner_zoom_rate)
 	{
-		double z = [hud scannerZoom];
+		double z = (hud != nullptr) ? hud->scannerZoom() : 0.0f;	// a nil HUD answered 0
 		double z1 = z + scanner_zoom_rate * delta_t;
 		if (scanner_zoom_rate > 0.0)
 		{
@@ -3263,7 +3263,7 @@ void PlayerEntity::doBookkeeping(double delta_t)
 				scanner_zoom_rate = 0.0f;
 			}
 		}
-		[hud setScannerZoom:z1];
+		if (hud != nullptr)  hud->setScannerZoom(z1);
 	}
 
 	[[UNIVERSE gameView] setFov:fieldOfView fromFraction:YES];
@@ -4207,7 +4207,7 @@ bool PlayerEntity::isValidTarget(::Entity *target)
 void PlayerEntity::showGameOver()
 {
 	::PlayerEntity *self = oo::ToObjC(this);
-	[hud cxx_resetGuis:oo::PList(oo::PList::Dict{ { "message_gui", oo::PList(oo::PList::Dict()) } })];
+	if (hud != nullptr)  hud->resetGuis(oo::PList(oo::PList::Dict{ { "message_gui", oo::PList(oo::PList::Dict()) } }));
 	const std::string scoreMS = oo::str::formatRuntime(cxx_OOExpandKey("gameoverscreen-score-@").value_or(std::string()),
 							{ cxx_KillCountToRatingAndKillString(ship_kills) });
 	
@@ -4673,7 +4673,7 @@ void PlayerEntity::setTargetDockStationTo(::StationEntity *value)
 
 ::HeadUpDisplay *PlayerEntity::getHud()
 {
-	return hud;
+	return hud.get();
 }
 
 
@@ -4697,9 +4697,9 @@ bool PlayerEntity::switchHudTo(const std::string &hudFileName)
 
 	// (a nil name returns NO in the bridged -switchHudTo:)
 	// is the HUD in the process of being rendered? If yes, set it to defer state and abort the switching now
-	if (hud != nil && [hud isUpdating])
+	if (hud != nil && hud->isUpdating())
 	{
-		[hud cxx_setDeferredHudName:hudFileName];
+		hud->setDeferredHudName(hudFileName);
 		return NO;
 	}
 	
@@ -4714,27 +4714,28 @@ bool PlayerEntity::switchHudTo(const std::string &hudFileName)
 	if (hud != nil)
 	{
 		// remember these values
-		wasHidden = [hud isHidden];
-		wasCompassActive = [hud isCompassActive];
-		scannerZoom = [hud scannerZoom];
+		wasHidden = hud->isHidden();
+		wasCompassActive = hud->isCompassActive();
+		scannerZoom = hud->scannerZoom();
 		lastMFD = activeMFD;
 	}
 	
 	// buggy oxp could override hud.plist with a non-dictionary.
 	if (!hudDict.isNull())
 	{
-		[hud setHidden:YES];	// hide the hud while rebuilding it.
-		DESTROY(hud);
-		hud = [[::HeadUpDisplay alloc] cxx_initWithDictionary:hudDict inFile:hudFileName];
-		[hud cxx_resetGuis:hudDict];
+		if (hud != nullptr)  hud->setHidden(YES);	// hide the hud while rebuilding it.
+		hud = nullptr;
+		hud = oo::makeRef<HeadUpDisplay>();	// [[HeadUpDisplay alloc] cxx_initWithDictionary:inFile:]
+		hud->initWithDictionary(hudDict, hudFileName);
+		hud->resetGuis(hudDict);
 		// reset zoom & hidden to what they were before the swich
-		[hud setScannerZoom:scannerZoom];
-		[hud setCompassActive:wasCompassActive];
-		[hud setHidden:wasHidden];
+		hud->setScannerZoom(scannerZoom);
+		hud->setCompassActive(wasCompassActive);
+		hud->setHidden(wasHidden);
 		activeMFD = 0;
 		const std::vector<std::optional<std::string>> savedMFDs = multiFunctionDisplaySettings;
 		multiFunctionDisplaySettings.clear();
-		for (i = 0; i < [hud mfdCount] ; i++)
+		for (i = 0; i < hud->mfdCount() ; i++)
 		{
 			if (savedMFDs.size() > i)
 			{
@@ -4745,7 +4746,7 @@ bool PlayerEntity::switchHudTo(const std::string &hudFileName)
 				multiFunctionDisplaySettings.push_back(std::nullopt);
 			}
 		}
-		if (lastMFD < [hud mfdCount]) activeMFD = lastMFD;
+		if (lastMFD < hud->mfdCount()) activeMFD = lastMFD;
 	}
 	
 	return YES;
@@ -4766,10 +4767,10 @@ std::string PlayerEntity::dialCustomString(const std::string &dialKey)
 }
 
 
-::OOColor *PlayerEntity::dialCustomColor(const std::string &dialKey)
+oo::Ref<OOColor> PlayerEntity::dialCustomColor(const std::string &dialKey)
 {
 	const auto found = customDialSettings.find(dialKey);
-	return [::OOColor cxx_colorWithDescription:(found != customDialSettings.end() ? found->second : oo::PList())];
+	return OOColor::colorWithDescription((found != customDialSettings.end() ? found->second : oo::PList()));
 }
 
 
@@ -5716,7 +5717,7 @@ void PlayerEntity::setMultiFunctionText(const std::optional<std::string> &text, 
 
 bool PlayerEntity::setMultiFunctionDisplay(NSUInteger index, const std::optional<std::string> &key)
 {
-	if (index >= [hud mfdCount])
+	if (index >= ((hud != nullptr) ? hud->mfdCount() : 0))	// a nil HUD answered 0
 	{
 		// is first inactive display
 		const auto inactive = std::find(multiFunctionDisplaySettings.begin(), multiFunctionDisplaySettings.end(), std::nullopt);
@@ -5727,7 +5728,7 @@ bool PlayerEntity::setMultiFunctionDisplay(NSUInteger index, const std::optional
 		index = static_cast<NSUInteger>(inactive - multiFunctionDisplaySettings.begin());
 	}
 
-	if (index < [hud mfdCount])
+	if (index < ((hud != nullptr) ? hud->mfdCount() : 0))
 	{
 		multiFunctionDisplaySettings.at(index) = key;	// nullopt = inactive
 		return YES;
@@ -5742,7 +5743,7 @@ bool PlayerEntity::setMultiFunctionDisplay(NSUInteger index, const std::optional
 void PlayerEntity::cycleNextMultiFunctionDisplay(NSUInteger index)
 {
 	::PlayerEntity *self = oo::ToObjC(this);
-	if ([[self hud] mfdCount] == 0) return;
+	if ([self hud] == nullptr || [self hud]->mfdCount() == 0) return;
 	std::vector<std::string> keys;	// byte order (was -allKeys hash order)
 	keys.reserve(multiFunctionDisplayText.size());
 	for (const auto &entry : multiFunctionDisplayText)  keys.push_back(entry.first);
@@ -5783,7 +5784,7 @@ void PlayerEntity::cycleNextMultiFunctionDisplay(NSUInteger index)
 void PlayerEntity::cyclePreviousMultiFunctionDisplay(NSUInteger index)
 {
 	::PlayerEntity *self = oo::ToObjC(this);
-	if ([[self hud] mfdCount] == 0) return;
+	if ([self hud] == nullptr || [self hud]->mfdCount() == 0) return;
 	std::vector<std::string> keys;	// byte order (was -allKeys hash order)
 	keys.reserve(multiFunctionDisplayText.size());
 	for (const auto &entry : multiFunctionDisplayText)  keys.push_back(entry.first);
@@ -5824,8 +5825,8 @@ void PlayerEntity::cyclePreviousMultiFunctionDisplay(NSUInteger index)
 void PlayerEntity::selectNextMultiFunctionDisplay()
 {
 	::PlayerEntity *self = oo::ToObjC(this);
-	if ([[self hud] mfdCount] == 0) return;
-	activeMFD = (activeMFD + 1) % [[self hud] mfdCount];
+	if ([self hud] == nullptr || [self hud]->mfdCount() == 0) return;
+	activeMFD = (activeMFD + 1) % [self hud]->mfdCount();
 	NSUInteger mfdID = activeMFD + 1;
 	[UNIVERSE cxx_addMessage:cxx_OOExpandKey("mfd-N-selected", mfdID) forCount:3.0 ];
 	ooscript::Context context = OOJSAcquireContext();
@@ -5837,10 +5838,10 @@ void PlayerEntity::selectNextMultiFunctionDisplay()
 void PlayerEntity::selectPreviousMultiFunctionDisplay()
 {
 	::PlayerEntity *self = oo::ToObjC(this);
-	if ([[self hud] mfdCount] == 0) return;
+	if ([self hud] == nullptr || [self hud]->mfdCount() == 0) return;
 	if (activeMFD == 0) 
 	{
-		activeMFD = ([[self hud] mfdCount] - 1);
+		activeMFD = ([self hud]->mfdCount() - 1);
 	}
 	else
 	{
@@ -7276,7 +7277,7 @@ void PlayerEntity::getDestroyedBy(::Entity *whom, OOShipDamageType type)
 	flightRoll = 0.0;
 	flightPitch = 0.0;
 	flightYaw = 0.0;
-	[[UNIVERSE messageGUI] clear];		// No messages for the dead.
+	[UNIVERSE messageGUI]->clear();		// No messages for the dead.
 	[self suppressTargetLost];			// No target lost messages when dead.
 	[self playGameOver];
 	[UNIVERSE setBlockJSPlayerShipProps:YES];	// Treat JS player as stale entity.
@@ -7338,9 +7339,9 @@ void PlayerEntity::enterDock(::StationEntity *station)
 	[self setDockedStation:station];
 	[self doScriptEvent:OOJSID("shipWillDockWithStation") withArgument:station];
 
-	if (![hud nonlinearScanner])
+	if (hud != nullptr && !hud->nonlinearScanner())	// (a message to nil did nothing)
 	{
-		[hud setScannerZoom: 1.0];
+		hud->setScannerZoom(1.0);
 	}
 	ident_engaged = NO;
 	afterburner_engaged = NO;
@@ -7481,7 +7482,7 @@ void PlayerEntity::leaveDock(::StationEntity *station)
 	
 	if (gui_screen == GUI_SCREEN_MISSION)
 	{
-		[[UNIVERSE gui] clearBackground];
+		[UNIVERSE gui]->clearBackground();
 		if (_missionWithCallback)
 		{
 			[self doMissionCallback];
@@ -7504,9 +7505,9 @@ void PlayerEntity::leaveDock(::StationEntity *station)
 	gui_screen = GUI_SCREEN_MAIN;
 	[self noteGUIDidChangeFrom:oldScreen to:gui_screen];
 
-	if (![hud nonlinearScanner])
+	if (hud != nullptr && !hud->nonlinearScanner())	// (a message to nil did nothing)
 	{
-		[hud setScannerZoom: 1.0];
+		hud->setScannerZoom(1.0);
 	}
 	[self loadCargoPods];
 	// do not do anything that calls JS handlers between now and calling
@@ -7586,9 +7587,9 @@ void PlayerEntity::witchStart()
 	// so in such cases we need to ensure that at least the docking music stops playing
 	if (autopilot_engaged)  [self disengageAutopilot];
 	
-	if (![hud nonlinearScanner])
+	if (hud != nullptr && !hud->nonlinearScanner())	// (a message to nil did nothing)
 	{
-		[hud setScannerZoom: 1.0];
+		hud->setScannerZoom(1.0);
 	}
 	[self safeAllMissiles];
 	
@@ -7759,7 +7760,7 @@ bool PlayerEntity::hasSufficientFuelForJump()
 void PlayerEntity::noteCompassLostTarget()
 {
 	::PlayerEntity *self = oo::ToObjC(this);
-	if ([[self hud] isCompassActive])
+	if ([self hud] != nullptr && [self hud]->isCompassActive())
 	{
 		// "the compass, it says we're lost!" :)
 		ooscript::Context context = OOJSAcquireContext();
@@ -7767,7 +7768,7 @@ void PlayerEntity::noteCompassLostTarget()
 		ShipScriptEvent(context, self, "compassTargetChanged", ooscript::undefinedValue(), jsmode);
 		OOJSRelinquishContext(context);
 		
-		[[self hud] setCompassActive:NO];	// ensure a target change when returning to normal space.
+		[self hud]->setCompassActive(NO);	// ensure a target change when returning to normal space.
 	}
 }
 
@@ -8232,8 +8233,8 @@ void PlayerEntity::setGuiToStatusScreen()
 		tab_stops[0] = 20;
 		tab_stops[1] = 160;
 		tab_stops[2] = 290;
-		[gui cxx_overrideTabs:tab_stops from:cxx_kGuiStatusTabs length:3];
-		[gui setTabStops:tab_stops];
+		gui->overrideTabs(tab_stops, cxx_kGuiStatusTabs, 3);
+		gui->setTabStops(tab_stops);
 		
 		const std::string	lightYearsDesc = OO_DESC("status-light-years-desc");
 
@@ -8243,33 +8244,33 @@ void PlayerEntity::setGuiToStatusScreen()
 		fuel_desc = oo::str::format("%.1f %s", fuel/10.0, lightYearsDesc.c_str());
 		credits_desc = cxx_OOCredits(credits);
 
-		[gui clearAndKeepBackground:!guiChanged];
+		gui->clearAndKeepBackground(!guiChanged);
 		text = OO_DESC("status-commander-@");
-		[gui cxx_setTitle:oo::str::formatRuntime(text, { [self cxx_commanderName].value_or("(null)") })];
+		gui->setTitle(oo::str::formatRuntime(text, { [self cxx_commanderName].value_or("(null)") }));
 
-		[gui cxx_setText:shipName forRow:0 align:GUI_ALIGN_CENTER];
+		gui->setText(shipName, 0, GUI_ALIGN_CENTER);
 
-		[gui cxx_setArray:RowOf(OO_DESC("status-present-system"), systemName)	forRow:1];
-		if ([self hasHyperspaceMotor]) [gui cxx_setArray:RowOf(OO_DESC("status-hyperspace-system"), targetSystemName) forRow:2];
-		[gui cxx_setArray:RowOf(OO_DESC("status-condition"), alert_desc)			forRow:3];
-		[gui cxx_setArray:RowOf(OO_DESC("status-fuel"), fuel_desc)				forRow:4];
-		[gui cxx_setArray:RowOf(OO_DESC("status-cash"), credits_desc)			forRow:5];
-		[gui cxx_setArray:RowOf(OO_DESC("status-legal-status"), legal_desc)		forRow:6];
-		[gui cxx_setArray:RowOf(OO_DESC("status-rating"), rating_desc)			forRow:7];
+		gui->setArray(RowOf(OO_DESC("status-present-system"), systemName), 1);
+		if ([self hasHyperspaceMotor]) gui->setArray(RowOf(OO_DESC("status-hyperspace-system"), targetSystemName), 2);
+		gui->setArray(RowOf(OO_DESC("status-condition"), alert_desc), 3);
+		gui->setArray(RowOf(OO_DESC("status-fuel"), fuel_desc), 4);
+		gui->setArray(RowOf(OO_DESC("status-cash"), credits_desc), 5);
+		gui->setArray(RowOf(OO_DESC("status-legal-status"), legal_desc), 6);
+		gui->setArray(RowOf(OO_DESC("status-rating"), rating_desc), 7);
 		
 
-		[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiStatusShipnameColor defaultValue:nil] forRow:0];
+		gui->setColor(gui->colorFromSetting(cxx_kGuiStatusShipnameColor, nil).get(), 0);
 		for (i = 1 ; i <= 7 ; ++i)
 		{
 			// nil default = fall back to global default colour
-			[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiStatusDataColor defaultValue:nil] forRow:i];
+			gui->setColor(gui->colorFromSetting(cxx_kGuiStatusDataColor, nil).get(), i);
 		}
 
-		[gui cxx_setText:OO_DESC("status-equipment") forRow:9];
+		gui->setText(OO_DESC("status-equipment"), 9);
 
-		[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiStatusEquipmentHeadingColor defaultValue:nil] forRow:9];
+		gui->setColor(gui->colorFromSetting(cxx_kGuiStatusEquipmentHeadingColor, nil).get(), 9);
 		
-		[gui setShowTextCursor:NO];
+		gui->setShowTextCursor(NO);
 	}
 	/* ends */
 
@@ -8308,12 +8309,12 @@ void PlayerEntity::setGuiToStatusScreen()
 			else bgDescriptor = [UNIVERSE cxx_screenTextureDescriptorForKey:"status_in_flight"];
 		}
 
-		[gui cxx_setForegroundTextureDescriptor:fgDescriptor];
+		gui->setForegroundTextureDescriptor(fgDescriptor);
 
 		if (bgDescriptor.isNull())  bgDescriptor = [UNIVERSE cxx_screenTextureDescriptorForKey:"status"];
-		[gui cxx_setBackgroundTextureDescriptor:bgDescriptor];
+		gui->setBackgroundTextureDescriptor(bgDescriptor);
 		
-		[gui setStatusPage:0];
+		gui->setStatusPage(0);
 		[self noteGUIDidChangeFrom:oldScreen to:gui_screen];
 	}
 }
@@ -8328,7 +8329,7 @@ std::vector<oo::PList> PlayerEntity::equipmentList()
 	std::optional<std::string>	desc;
 	std::optional<std::string>	alldesc;
 
-	BOOL prioritiseDamaged = [gui cxx_userSettings].get<bool>(cxx_kGuiStatusPrioritiseDamaged, true);
+	BOOL prioritiseDamaged = gui->userSettings().get<bool>(cxx_kGuiStatusPrioritiseDamaged, true);
 
 	const std::vector<oo::ObjCRef<::OOEquipmentType *>> allEquipmentTypes = [::OOEquipmentType cxx_allEquipmentTypes];
 	for (auto eqTypeRef = allEquipmentTypes.rbegin(); eqTypeRef != allEquipmentTypes.rend(); ++eqTypeRef)
@@ -8807,8 +8808,8 @@ void PlayerEntity::setGuiToSystemDataScreenRefreshBackground(bool refreshBackgro
 		tab_stops[0] = 0;
 		tab_stops[1] = 96;
 		tab_stops[2] = 144;
-		[gui cxx_overrideTabs:tab_stops from:cxx_kGuiSystemdataTabs length:3];
-		[gui setTabStops:tab_stops];
+		gui->overrideTabs(tab_stops, cxx_kGuiSystemdataTabs, 3);
+		gui->setTabStops(tab_stops);
 		
 		NSUInteger techLevel = infoSystemData.get<int>(std::string(KEY_TECHLEVEL)) + 1;
 		int population = infoSystemData.get<int>(std::string(KEY_POPULATION));
@@ -8840,25 +8841,25 @@ void PlayerEntity::setGuiToSystemDataScreenRefreshBackground(bool refreshBackgro
 		}
 
 		
-		[gui clearAndKeepBackground:!refreshBackground && !guiChanged];
+		gui->clearAndKeepBackground(!refreshBackground && !guiChanged);
 		[UNIVERSE removeDemoShips];
 
 		if (concealment < OO_SYSTEMCONCEALMENT_NONAME)
 		{
-			[gui cxx_setTitle:ExpandKeyWithSeed(infoSystemRandomSeed, "sysdata-data-on-system", { { "system", oo::PList(infoSystemName) } })];
+			gui->setTitle(ExpandKeyWithSeed(infoSystemRandomSeed, "sysdata-data-on-system", { { "system", oo::PList(infoSystemName) } }));
 		}
 		else
 		{
-			[gui cxx_setTitle:cxx_OOExpandKey("sysdata-data-on-system-no-name")];
+			gui->setTitle(cxx_OOExpandKey("sysdata-data-on-system-no-name"));
 		}
 
 		if (concealment >= OO_SYSTEMCONCEALMENT_NODATA)
 		{
-			OOGUIRow i = [gui cxx_addLongText:cxx_OOExpandKey("sysdata-data-on-system-no-data") startingAtRow:15 align:GUI_ALIGN_LEFT];
+			OOGUIRow i = gui->addLongText(cxx_OOExpandKey("sysdata-data-on-system-no-data"), 15, GUI_ALIGN_LEFT);
 			missionTextRow = i;
 			for (i-- ; i > 14 ; --i)
 			{
-				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiSystemdataDescriptionColor defaultValue:[::OOColor greenColor]] forRow:i];
+				gui->setColor(gui->colorFromSetting(cxx_kGuiSystemdataDescriptionColor, OOColor::greenColor().get()).get(), i);
 			}
 		}
 		else
@@ -8911,50 +8912,45 @@ void PlayerEntity::setGuiToSystemDataScreenRefreshBackground(bool refreshBackgro
 					const std::vector<std::string> lines = oo::str::split(line, "\t");
 					if (lines.size() == 1)
 					{
-						[gui cxx_setArray:{ lines[0] }
-							forRow:i];
+						gui->setArray({ lines[0] }, i);
 					}
 					if (lines.size() == 2)
 					{
-						[gui cxx_setArray:{ lines[0], lines[1] }
-							forRow:i];
+						gui->setArray({ lines[0], lines[1] }, i);
 					}
 					if (lines.size() == 3)
 					{
 						if (lines[2].empty())
 						{
-							[gui cxx_setArray:{ lines[0], lines[1] }
-								forRow:i];
+							gui->setArray({ lines[0], lines[1] }, i);
 						}
 						else
 						{
-							[gui cxx_setArray:{ lines[0], lines[1], lines[2] }
-								forRow:i];
+							gui->setArray({ lines[0], lines[1], lines[2] }, i);
 						}
 					}
 				}
 				else
 				{
-					[gui cxx_setArray:std::vector<std::string>{ std::string() }
-						forRow:i];
+					gui->setArray(std::vector<std::string>{ std::string() }, i);
 				}
 			}
 
 
-			i = [gui cxx_addLongText:system_desc startingAtRow:17 align:GUI_ALIGN_LEFT];
+			i = gui->addLongText(system_desc, 17, GUI_ALIGN_LEFT);
 			missionTextRow = i;
 			for (i-- ; i > 16 ; --i)
 			{
-				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiSystemdataDescriptionColor defaultValue:[::OOColor greenColor]] forRow:i];
+				gui->setColor(gui->colorFromSetting(cxx_kGuiSystemdataDescriptionColor, OOColor::greenColor().get()).get(), i);
 			}
 			for (i = 1 ; i <= 14 ; ++i)
 			{
 				// nil default = fall back to global default colour
-				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiSystemdataFactsColor defaultValue:nil] forRow:i];
+				gui->setColor(gui->colorFromSetting(cxx_kGuiSystemdataFactsColor, nil).get(), i);
 			}
 		}
 
-		[gui setShowTextCursor:NO];
+		gui->setShowTextCursor(NO);
 	}
 	/* ends */
 	
@@ -8988,8 +8984,8 @@ void PlayerEntity::setGuiToSystemDataScreenRefreshBackground(bool refreshBackgro
 	
 	if (refreshBackground || guiChanged)
 	{
-		[gui cxx_setForegroundTextureKey:std::optional<std::string>([self status] == STATUS_DOCKED ? "docked_overlay" : "overlay")];
-		[gui cxx_setBackgroundTextureKey:std::optional<std::string>(sunGoneNova ? "system_data_nova" : "system_data")];
+		gui->setForegroundTextureKey(std::optional<std::string>([self status] == STATUS_DOCKED ? "docked_overlay" : "overlay"));
+		gui->setBackgroundTextureKey(std::optional<std::string>(sunGoneNova ? "system_data_nova" : "system_data"));
 		
 		[self noteGUIDidChangeFrom:oldScreen to:gui_screen refresh: refreshBackground];
 		[self checkScript];	// Still needed by some OXPs?
@@ -9037,8 +9033,8 @@ void PlayerEntity::setGuiToLongRangeChartScreen()
 	::PlayerEntity *self = oo::ToObjC(this);
 	OOGUIScreenID	oldScreen = gui_screen;
 	::GuiDisplayGen	*gui = [UNIVERSE gui];
-	[gui clearAndKeepBackground:NO];
-	[gui cxx_setBackgroundTextureKey:"short_range_chart"];
+	gui->clearAndKeepBackground(NO);
+	gui->setBackgroundTextureKey("short_range_chart");
 	[self cxx_setMissionBackgroundSpecial:""];
 	gui_screen = GUI_SCREEN_LONG_RANGE_CHART;
 	target_chart_zoom = CHART_MAX_ZOOM;
@@ -9051,8 +9047,8 @@ void PlayerEntity::setGuiToShortRangeChartScreen()
 	::PlayerEntity *self = oo::ToObjC(this);
 	OOGUIScreenID	oldScreen = gui_screen;
 	::GuiDisplayGen	*gui = [UNIVERSE gui];
-	[gui clearAndKeepBackground:NO];
-	[gui cxx_setBackgroundTextureKey:"short_range_chart"];
+	gui->clearAndKeepBackground(NO);
+	gui->setBackgroundTextureKey("short_range_chart");
 	[self cxx_setMissionBackgroundSpecial:""];
 	gui_screen = GUI_SCREEN_SHORT_RANGE_CHART;
 	[self setGuiToChartScreenFrom: oldScreen];
@@ -9075,9 +9071,9 @@ void PlayerEntity::setGuiToChartScreenFrom(OOGUIScreenID oldScreen)
 	// GUI stuff
 	{
 		//[gui clearAndKeepBackground:!guiChanged];
-		[gui setStarChartTitle];
+		gui->setStarChartTitle();
 		// refresh the short range chart cache, in case we've just loaded a save game with different local overrides, etc.
-		[gui refreshStarChart];
+		gui->refreshStarChart();
 		//[gui setText:targetSystemName forRow:19];
 		// distance-f & est-travel-time-f are identical between short & long range charts in standard Oolite, however can be alterered separately via OXPs
 		//[gui cxx_setText:cxx_OOExpandKey("short-range-chart-distance", distance) forRow:20];
@@ -9092,14 +9088,14 @@ void PlayerEntity::setGuiToChartScreenFrom(OOGUIScreenID oldScreen)
 		{
 			const std::optional<std::string> searchString = planetSearchString;
 			const std::string displaySearchString = searchString.has_value() ? oo::str::capitalized(*searchString) : std::string();
-			[gui cxx_setText:oo::str::formatRuntime(OO_DESC("long-range-chart-find-planet-@"), { displaySearchString }) forRow:GUI_ROW_PLANET_FINDER];
-			[gui setColor:[::OOColor cyanColor] forRow:GUI_ROW_PLANET_FINDER];
-			[gui setShowTextCursor:YES];
-			[gui setCurrentRow:GUI_ROW_PLANET_FINDER];
+			gui->setText(oo::str::formatRuntime(OO_DESC("long-range-chart-find-planet-@"), { displaySearchString }), GUI_ROW_PLANET_FINDER);
+			gui->setColor(OOColor::cyanColor().get(), GUI_ROW_PLANET_FINDER);
+			gui->setShowTextCursor(YES);
+			gui->setCurrentRow(GUI_ROW_PLANET_FINDER);
 		}
 		else
 		{
-			[gui setShowTextCursor:NO];
+			gui->setShowTextCursor(NO);
 		}
 	}
 	/* ends */
@@ -9109,9 +9105,9 @@ void PlayerEntity::setGuiToChartScreenFrom(OOGUIScreenID oldScreen)
 	
 	if (guiChanged)
 	{
-		[gui cxx_setForegroundTextureKey:std::optional<std::string>([self status] == STATUS_DOCKED ? "docked_overlay" : "overlay")];
+		gui->setForegroundTextureKey(std::optional<std::string>([self status] == STATUS_DOCKED ? "docked_overlay" : "overlay"));
 		
-		[gui cxx_setBackgroundTextureKey:"short_range_chart"];
+		gui->setBackgroundTextureKey("short_range_chart");
 		if (found_system_id >= 0)
 		{		
 			const std::optional<std::string> foundName = [UNIVERSE cxx_getSystemName:found_system_id];
@@ -9145,11 +9141,11 @@ void PlayerEntity::setGuiToGameOptionsScreen()
 		do {													\
 			if ((condition))									\
 			{												\
-				[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:(row)];			\
+				gui->setKey(std::string(GUI_KEY_OK), (row));			\
 			}												\
 			else												\
 			{												\
-				[gui setColor:[::OOColor grayColor] forRow:(row)];	\
+				gui->setColor(OOColor::grayColor().get(), (row));	\
 			}												\
 		} while(0)
 		BOOL startingGame = [self status] == STATUS_START_GAME;
@@ -9158,8 +9154,8 @@ void PlayerEntity::setGuiToGameOptionsScreen()
 
 		int first_sel_row = GUI_FIRST_ROW(GAME)-4; // repositioned menu
 
-		[gui clear];
-		[gui cxx_setTitle:oo::str::formatRuntime(OO_DESC("status-commander-@"), { TextArg([self cxx_commanderName]) })]; // Same title as status screen.
+		gui->clear();
+		gui->setTitle(oo::str::formatRuntime(OO_DESC("status-commander-@"), { TextArg([self cxx_commanderName]) })); // Same title as status screen.
 		
 #if OO_RESOLUTION_OPTION
 		::GameController	*controller = [UNIVERSE gameController];
@@ -9193,14 +9189,14 @@ void PlayerEntity::setGuiToGameOptionsScreen()
 		
 		const std::optional<std::string> displayModeString = [self cxx_screenModeStringForWidth:modeWidth height:modeHeight refreshRate:modeRefresh];
 
-		[gui cxx_setText:displayModeString forRow:GUI_ROW(GAME,DISPLAY) align:GUI_ALIGN_CENTER];
+		gui->setText(displayModeString, GUI_ROW(GAME,DISPLAY), GUI_ALIGN_CENTER);
 		if (runningOnPrimaryDisplayDevice)
 		{
-			[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,DISPLAY)];
+			gui->setKey(std::string(GUI_KEY_OK), GUI_ROW(GAME,DISPLAY));
 		}
 		else
 		{
-			[gui setColor:[::OOColor grayColor] forRow:GUI_ROW(GAME,DISPLAY)];
+			gui->setColor(OOColor::grayColor().get(), GUI_ROW(GAME,DISPLAY));
 		}
 #endif	// OO_RESOLUTIOM_OPTION
 
@@ -9233,17 +9229,17 @@ void PlayerEntity::setGuiToGameOptionsScreen()
 			int brightnessValue = brightnesses.at<int>(static_cast<std::size_t>(brightnessIdx));
 			const std::string maxBrightnessString = cxx_OOExpandKey("gameoptions-hdr-maxbrightness", brightnessValue).value_or(std::string());
 
-			[gui cxx_setText:maxBrightnessString forRow:GUI_ROW(GAME,HDRMAXBRIGHTNESS)  align:GUI_ALIGN_CENTER];
-			[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,HDRMAXBRIGHTNESS)];
+			gui->setText(maxBrightnessString, GUI_ROW(GAME,HDRMAXBRIGHTNESS), GUI_ALIGN_CENTER);
+			gui->setKey(std::string(GUI_KEY_OK), GUI_ROW(GAME,HDRMAXBRIGHTNESS));
 		}
 #endif
 
 
 		if ([UNIVERSE autoSave])
-			[gui cxx_setText:OO_DESC("gameoptions-autosave-yes") forRow:GUI_ROW(GAME,AUTOSAVE) align:GUI_ALIGN_CENTER];
+			gui->setText(OO_DESC("gameoptions-autosave-yes"), GUI_ROW(GAME,AUTOSAVE), GUI_ALIGN_CENTER);
 		else
-			[gui cxx_setText:OO_DESC("gameoptions-autosave-no") forRow:GUI_ROW(GAME,AUTOSAVE) align:GUI_ALIGN_CENTER];
-		[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,AUTOSAVE)];
+			gui->setText(OO_DESC("gameoptions-autosave-no"), GUI_ROW(GAME,AUTOSAVE), GUI_ALIGN_CENTER);
+		gui->setKey(std::string(GUI_KEY_OK), GUI_ROW(GAME,AUTOSAVE));
 	
 		// volume control
 		if (::OOSound::isSoundOK())	// (+respondsToSelector:@selector(masterVolume) was always YES)
@@ -9252,15 +9248,15 @@ void PlayerEntity::setGuiToGameOptionsScreen()
 			int vol = (volume / 5.0 + 0.5); // avoid rounding errors
 			const std::string soundVolumeWordDesc = OO_DESC("gameoptions-sound-volume");
 			if (vol > 0)
-				[gui cxx_setText:oo::str::format("%s%s ", soundVolumeWordDesc.c_str(), SliderString(vol).c_str()) forRow:GUI_ROW(GAME,VOLUME) align:GUI_ALIGN_CENTER];
+				gui->setText(oo::str::format("%s%s ", soundVolumeWordDesc.c_str(), SliderString(vol).c_str()), GUI_ROW(GAME,VOLUME), GUI_ALIGN_CENTER);
 			else
-				[gui cxx_setText:OO_DESC("gameoptions-sound-volume-mute") forRow:GUI_ROW(GAME,VOLUME) align:GUI_ALIGN_CENTER];
-			[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,VOLUME)];
+				gui->setText(OO_DESC("gameoptions-sound-volume-mute"), GUI_ROW(GAME,VOLUME), GUI_ALIGN_CENTER);
+			gui->setKey(std::string(GUI_KEY_OK), GUI_ROW(GAME,VOLUME));
 		}
 		else
 		{
-			[gui cxx_setText:OO_DESC("gameoptions-volume-external-only") forRow:GUI_ROW(GAME,VOLUME) align:GUI_ALIGN_CENTER];
-			[gui setColor:[::OOColor grayColor] forRow:GUI_ROW(GAME,VOLUME)];
+			gui->setText(OO_DESC("gameoptions-volume-external-only"), GUI_ROW(GAME,VOLUME), GUI_ALIGN_CENTER);
+			gui->setColor(OOColor::grayColor().get(), GUI_ROW(GAME,VOLUME));
 		}
 		
 
@@ -9269,8 +9265,8 @@ void PlayerEntity::setGuiToGameOptionsScreen()
 		int fovTicks = (int)((fov - MIN_FOV_DEG) * 20 / (MAX_FOV_DEG - MIN_FOV_DEG));
 		const std::string fovWordDesc = OO_DESC("gameoptions-fov-value");
 		// %c 176 gave U+00B0 (probed on GNUstep base, oo-3rb.218); written as its UTF-8 bytes
-		[gui cxx_setText:oo::str::format("%s%s (%d%s) ", fovWordDesc.c_str(), SliderString(fovTicks).c_str(), (int)fov, "\xC2\xB0" /*the degrees symbol*/) forRow:GUI_ROW(GAME,FOV) align:GUI_ALIGN_CENTER];
-		[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,FOV)];
+		gui->setText(oo::str::format("%s%s (%d%s) ", fovWordDesc.c_str(), SliderString(fovTicks).c_str(), (int)fov, "\xC2\xB0" /*the degrees symbol*/), GUI_ROW(GAME,FOV), GUI_ALIGN_CENTER);
+		gui->setKey(std::string(GUI_KEY_OK), GUI_ROW(GAME,FOV));
 		
 		// color blind mode
 		int colorblindMode = [UNIVERSE colorblindMode];
@@ -9278,14 +9274,14 @@ void PlayerEntity::setGuiToGameOptionsScreen()
 		const oo::PList colorblindModes = (colorblindModesNode != nullptr) ? *colorblindModesNode : oo::PList();
 		const std::string colorblindModeDesc = colorblindModes.isArray() ? colorblindModes.at<std::string>(static_cast<std::size_t>([UNIVERSE useShaders] ? colorblindMode : 0)) : std::string();	// (nil raised in the expansion)
 		const std::string colorblindModeMsg = ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "gameoptions-colorblind-mode", { { "colorblindModeDesc", oo::PList(colorblindModeDesc) } });
-		[gui cxx_setText:colorblindModeMsg forRow:GUI_ROW(GAME,COLORBLINDMODE) align:GUI_ALIGN_CENTER];
+		gui->setText(colorblindModeMsg, GUI_ROW(GAME,COLORBLINDMODE), GUI_ALIGN_CENTER);
 		if ([UNIVERSE useShaders])
 		{
-			[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,COLORBLINDMODE)];
+			gui->setKey(std::string(GUI_KEY_OK), GUI_ROW(GAME,COLORBLINDMODE));
 		}
 		else
 		{
-			[gui setColor:[::OOColor grayColor] forRow:GUI_ROW(GAME,COLORBLINDMODE)];
+			gui->setColor(OOColor::grayColor().get(), GUI_ROW(GAME,COLORBLINDMODE));
 		}
 		
 #if OOLITE_SPEECH_SYNTH
@@ -9293,13 +9289,13 @@ void PlayerEntity::setGuiToGameOptionsScreen()
 		switch (isSpeechOn)
 		{
 		case OOSPEECHSETTINGS_OFF:
-			[gui cxx_setText:OO_DESC("gameoptions-spoken-messages-no") forRow:GUI_ROW(GAME,SPEECH) align:GUI_ALIGN_CENTER];
+			gui->setText(OO_DESC("gameoptions-spoken-messages-no"), GUI_ROW(GAME,SPEECH), GUI_ALIGN_CENTER);
 			break;
 		case OOSPEECHSETTINGS_COMMS:
-			[gui cxx_setText:OO_DESC("gameoptions-spoken-messages-comms") forRow:GUI_ROW(GAME,SPEECH) align:GUI_ALIGN_CENTER];
+			gui->setText(OO_DESC("gameoptions-spoken-messages-comms"), GUI_ROW(GAME,SPEECH), GUI_ALIGN_CENTER);
 			break;
 		case OOSPEECHSETTINGS_ALL:
-			[gui cxx_setText:OO_DESC("gameoptions-spoken-messages-yes") forRow:GUI_ROW(GAME,SPEECH) align:GUI_ALIGN_CENTER];
+			gui->setText(OO_DESC("gameoptions-spoken-messages-yes"), GUI_ROW(GAME,SPEECH), GUI_ALIGN_CENTER);
 			break;
 		}
 		OO_SETACCESSCONDITIONFORROW(!startingGame, GUI_ROW(GAME,SPEECH));
@@ -9308,11 +9304,11 @@ void PlayerEntity::setGuiToGameOptionsScreen()
 		{
 			const std::string voiceName = [UNIVERSE cxx_voiceName:voice_no].value_or(std::string());
 			std::string message = ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "gameoptions-voice-name", { { "voiceName", oo::PList(voiceName) } });
-			[gui cxx_setText:message forRow:GUI_ROW(GAME,SPEECH_LANGUAGE) align:GUI_ALIGN_CENTER];
+			gui->setText(message, GUI_ROW(GAME,SPEECH_LANGUAGE), GUI_ALIGN_CENTER);
 			OO_SETACCESSCONDITIONFORROW(!startingGame, GUI_ROW(GAME,SPEECH_LANGUAGE));
 
 			message = OO_DESC(voice_gender_m ? "gameoptions-voice-M" : "gameoptions-voice-F");
-			[gui cxx_setText:message forRow:GUI_ROW(GAME,SPEECH_GENDER) align:GUI_ALIGN_CENTER];
+			gui->setText(message, GUI_ROW(GAME,SPEECH_GENDER), GUI_ALIGN_CENTER);
 			OO_SETACCESSCONDITIONFORROW(!startingGame, GUI_ROW(GAME,SPEECH_GENDER));
 		}
 #endif
@@ -9321,34 +9317,34 @@ void PlayerEntity::setGuiToGameOptionsScreen()
 		// window/fullscreen
 		if([gameView inFullScreenMode])
 		{
-			[gui cxx_setText:OO_DESC("gameoptions-play-in-window") forRow:GUI_ROW(GAME,DISPLAYSTYLE) align:GUI_ALIGN_CENTER];
+			gui->setText(OO_DESC("gameoptions-play-in-window"), GUI_ROW(GAME,DISPLAYSTYLE), GUI_ALIGN_CENTER);
 		}
 		else
 		{
-			[gui cxx_setText:OO_DESC("gameoptions-play-in-fullscreen") forRow:GUI_ROW(GAME,DISPLAYSTYLE) align:GUI_ALIGN_CENTER];
+			gui->setText(OO_DESC("gameoptions-play-in-fullscreen"), GUI_ROW(GAME,DISPLAYSTYLE), GUI_ALIGN_CENTER);
 		}
-		[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,DISPLAYSTYLE)];
+		gui->setKey(std::string(GUI_KEY_OK), GUI_ROW(GAME,DISPLAYSTYLE));
 #endif
 		
-		[gui cxx_setText:OO_DESC("gameoptions-joystick-configuration") forRow: GUI_ROW(GAME,STICKMAPPER) align: GUI_ALIGN_CENTER];
+		gui->setText(OO_DESC("gameoptions-joystick-configuration"), GUI_ROW(GAME,STICKMAPPER), GUI_ALIGN_CENTER);
 		OO_SETACCESSCONDITIONFORROW([[::OOJoystickManager sharedStickHandler] joystickCount], GUI_ROW(GAME,STICKMAPPER));
 
-		[gui cxx_setText:OO_DESC("gameoptions-keyboard-configuration") forRow: GUI_ROW(GAME,KEYMAPPER) align: GUI_ALIGN_CENTER];
-		[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,KEYMAPPER)];
+		gui->setText(OO_DESC("gameoptions-keyboard-configuration"), GUI_ROW(GAME,KEYMAPPER), GUI_ALIGN_CENTER);
+		gui->setKey(std::string(GUI_KEY_OK), GUI_ROW(GAME,KEYMAPPER));
 
 		
 		const std::string musicMode = [UNIVERSE cxx_descriptionForArrayKey:"music-mode" index:OOMusicController::sharedController()->mode()].value_or(std::string());
 		const std::string message = ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "gameoptions-music-mode", { { "musicMode", oo::PList(musicMode) } });
-		[gui cxx_setText:message forRow:GUI_ROW(GAME,MUSIC) align:GUI_ALIGN_CENTER];
-		[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,MUSIC)];
+		gui->setText(message, GUI_ROW(GAME,MUSIC), GUI_ALIGN_CENTER);
+		gui->setKey(std::string(GUI_KEY_OK), GUI_ROW(GAME,MUSIC));
 
 		if (![gameView hdrOutput])
 		{
 			if ([UNIVERSE wireframeGraphics])
-				[gui cxx_setText:OO_DESC("gameoptions-wireframe-graphics-yes") forRow:GUI_ROW(GAME,WIREFRAMEGRAPHICS) align:GUI_ALIGN_CENTER];
+				gui->setText(OO_DESC("gameoptions-wireframe-graphics-yes"), GUI_ROW(GAME,WIREFRAMEGRAPHICS), GUI_ALIGN_CENTER);
 			else
-				[gui cxx_setText:OO_DESC("gameoptions-wireframe-graphics-no") forRow:GUI_ROW(GAME,WIREFRAMEGRAPHICS) align:GUI_ALIGN_CENTER];
-			[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,WIREFRAMEGRAPHICS)];
+				gui->setText(OO_DESC("gameoptions-wireframe-graphics-no"), GUI_ROW(GAME,WIREFRAMEGRAPHICS), GUI_ALIGN_CENTER);
+			gui->setKey(std::string(GUI_KEY_OK), GUI_ROW(GAME,WIREFRAMEGRAPHICS));
 		}
 #if OOLITE_WINDOWS
 		else
@@ -9356,46 +9352,46 @@ void PlayerEntity::setGuiToGameOptionsScreen()
 			float paperWhite = [gameView hdrPaperWhiteBrightness];
 			int paperWhiteTicks = (int)((paperWhite - MIN_HDR_PAPERWHITE) * 20 / (MAX_HDR_PAPERWHITE - MIN_HDR_PAPERWHITE));
 			const std::string paperWhiteWordDesc = OO_DESC("gameoptions-hdr-paperwhite");
-			[gui cxx_setText:oo::str::format("%s%s (%d) ", paperWhiteWordDesc.c_str(), SliderString(paperWhiteTicks).c_str(), (int)paperWhite) forRow:GUI_ROW(GAME,HDRPAPERWHITE) align:GUI_ALIGN_CENTER];
-			[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,HDRPAPERWHITE)];
+			gui->setText(oo::str::format("%s%s (%d) ", paperWhiteWordDesc.c_str(), SliderString(paperWhiteTicks).c_str(), (int)paperWhite), GUI_ROW(GAME,HDRPAPERWHITE), GUI_ALIGN_CENTER);
+			gui->setKey(std::string(GUI_KEY_OK), GUI_ROW(GAME,HDRPAPERWHITE));
 		}
 #endif
 		
 
 		OOGraphicsDetail detailLevel = [UNIVERSE detailLevel];
 		const std::string shaderEffectsOptionsString = cxx_OOExpand("gameoptions-detaillevel-[detailLevel]", detailLevel).value_or(std::string());
-		[gui cxx_setText:ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), shaderEffectsOptionsString, {}) forRow:GUI_ROW(GAME,SHADEREFFECTS) align:GUI_ALIGN_CENTER];
+		gui->setText(ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), shaderEffectsOptionsString, {}), GUI_ROW(GAME,SHADEREFFECTS), GUI_ALIGN_CENTER);
 		if (![[::OOOpenGLExtensionManager sharedManager] shadersForceDisabled])
 		{
-			[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,SHADEREFFECTS)];
+			gui->setKey(std::string(GUI_KEY_OK), GUI_ROW(GAME,SHADEREFFECTS));
 		}
 		else
 		{
 			// deactivate this option if shaders have been disabled from the commend line
-			[gui setColor:[::OOColor grayColor] forRow:GUI_ROW(GAME,SHADEREFFECTS)];
+			gui->setColor(OOColor::grayColor().get(), GUI_ROW(GAME,SHADEREFFECTS));
 		}
 		
 		
 		if ([UNIVERSE dockingClearanceProtocolActive])
 		{
-			[gui cxx_setText:OO_DESC("gameoptions-docking-clearance-yes") forRow:GUI_ROW(GAME,DOCKINGCLEARANCE) align:GUI_ALIGN_CENTER];
+			gui->setText(OO_DESC("gameoptions-docking-clearance-yes"), GUI_ROW(GAME,DOCKINGCLEARANCE), GUI_ALIGN_CENTER);
 		}
 		else
 		{
-			[gui cxx_setText:OO_DESC("gameoptions-docking-clearance-no") forRow:GUI_ROW(GAME,DOCKINGCLEARANCE) align:GUI_ALIGN_CENTER];
+			gui->setText(OO_DESC("gameoptions-docking-clearance-no"), GUI_ROW(GAME,DOCKINGCLEARANCE), GUI_ALIGN_CENTER);
 		}
 		OO_SETACCESSCONDITIONFORROW(!startingGame, GUI_ROW(GAME,DOCKINGCLEARANCE));
 		
 		// Back menu option
-		[gui cxx_setText:OO_DESC("gui-back") forRow:GUI_ROW(GAME,BACK) align:GUI_ALIGN_CENTER];
-		[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,BACK)];
+		gui->setText(OO_DESC("gui-back"), GUI_ROW(GAME,BACK), GUI_ALIGN_CENTER);
+		gui->setKey(std::string(GUI_KEY_OK), GUI_ROW(GAME,BACK));
 
-		[gui setSelectableRange:NSMakeRange(first_sel_row, GUI_ROW_GAMEOPTIONS_END_OF_LIST)];
-		[gui setSelectedRow: first_sel_row];
+		gui->setSelectableRange(NSMakeRange(first_sel_row, GUI_ROW_GAMEOPTIONS_END_OF_LIST));
+		gui->setSelectedRow(first_sel_row);
 
-		[gui setShowTextCursor:NO];
-		[gui cxx_setForegroundTextureKey:std::optional<std::string>([self status] == STATUS_DOCKED ? "docked_overlay" : "paused_overlay")];
-		[gui cxx_setBackgroundTextureKey:"settings"];
+		gui->setShowTextCursor(NO);
+		gui->setForegroundTextureKey(std::optional<std::string>([self status] == STATUS_DOCKED ? "docked_overlay" : "paused_overlay"));
+		gui->setBackgroundTextureKey("settings");
 	}
 	/* ends */
 
@@ -9433,60 +9429,60 @@ void PlayerEntity::setGuiToLoadSaveScreen()
 		if (canQuickSave)
 			first_sel_row = GUI_ROW(,QUICKSAVE);
 
-		[gui clear];
-		[gui cxx_setTitle:oo::str::formatRuntime(OO_DESC("status-commander-@"), { TextArg([self cxx_commanderName]) })]; //Same title as status screen.
+		gui->clear();
+		gui->setTitle(oo::str::formatRuntime(OO_DESC("status-commander-@"), { TextArg([self cxx_commanderName]) })); //Same title as status screen.
 		
-		[gui cxx_setText:OO_DESC("options-quick-save") forRow:GUI_ROW(,QUICKSAVE) align:GUI_ALIGN_CENTER];
+		gui->setText(OO_DESC("options-quick-save"), GUI_ROW(,QUICKSAVE), GUI_ALIGN_CENTER);
 		if (canQuickSave)
-			[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(,QUICKSAVE)];
+			gui->setKey(std::string(GUI_KEY_OK), GUI_ROW(,QUICKSAVE));
 		else
-			[gui setColor:[::OOColor grayColor] forRow:GUI_ROW(,QUICKSAVE)];
+			gui->setColor(OOColor::grayColor().get(), GUI_ROW(,QUICKSAVE));
 
-		[gui cxx_setText:OO_DESC("options-save-commander") forRow:GUI_ROW(,SAVE) align:GUI_ALIGN_CENTER];
-		[gui cxx_setText:OO_DESC("options-load-commander") forRow:GUI_ROW(,LOAD) align:GUI_ALIGN_CENTER];
+		gui->setText(OO_DESC("options-save-commander"), GUI_ROW(,SAVE), GUI_ALIGN_CENTER);
+		gui->setText(OO_DESC("options-load-commander"), GUI_ROW(,LOAD), GUI_ALIGN_CENTER);
 		if (canLoadOrSave)
 		{
-			[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(,SAVE)];
-			[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(,LOAD)];
+			gui->setKey(std::string(GUI_KEY_OK), GUI_ROW(,SAVE));
+			gui->setKey(std::string(GUI_KEY_OK), GUI_ROW(,LOAD));
 		}
 		else
 		{
-			[gui setColor:[::OOColor grayColor] forRow:GUI_ROW(,SAVE)];
-			[gui setColor:[::OOColor grayColor] forRow:GUI_ROW(,LOAD)];
+			gui->setColor(OOColor::grayColor().get(), GUI_ROW(,SAVE));
+			gui->setColor(OOColor::grayColor().get(), GUI_ROW(,LOAD));
 		}
 
-		[gui cxx_setText:OO_DESC("options-return-to-menu") forRow:GUI_ROW(,BEGIN_NEW) align:GUI_ALIGN_CENTER];
-		[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(,BEGIN_NEW)];
+		gui->setText(OO_DESC("options-return-to-menu"), GUI_ROW(,BEGIN_NEW), GUI_ALIGN_CENTER);
+		gui->setKey(std::string(GUI_KEY_OK), GUI_ROW(,BEGIN_NEW));
 
-		[gui cxx_setText:OO_DESC("options-game-options") forRow:GUI_ROW(,GAMEOPTIONS) align:GUI_ALIGN_CENTER];
-		[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(,GAMEOPTIONS)];
+		gui->setText(OO_DESC("options-game-options"), GUI_ROW(,GAMEOPTIONS), GUI_ALIGN_CENTER);
+		gui->setKey(std::string(GUI_KEY_OK), GUI_ROW(,GAMEOPTIONS));
 		
 #if OOLITE_SDL
 		// GNUstep needs a quit option at present (no Cmd-Q) but
 		// doesn't need speech.
 		
 		// quit menu option
-		[gui cxx_setText:OO_DESC("options-exit-game") forRow:GUI_ROW(,QUIT) align:GUI_ALIGN_CENTER];
-		[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(,QUIT)];
+		gui->setText(OO_DESC("options-exit-game"), GUI_ROW(,QUIT), GUI_ALIGN_CENTER);
+		gui->setKey(std::string(GUI_KEY_OK), GUI_ROW(,QUIT));
 #endif
 		
-		[gui setSelectableRange:NSMakeRange(first_sel_row, GUI_ROW_OPTIONS_END_OF_LIST)];
+		gui->setSelectableRange(NSMakeRange(first_sel_row, GUI_ROW_OPTIONS_END_OF_LIST));
 
 		if (gamePaused || (!canLoadOrSave && [self status] == STATUS_DOCKED))
 		{
-			[gui setSelectedRow: GUI_ROW(,GAMEOPTIONS)];
+			gui->setSelectedRow(GUI_ROW(,GAMEOPTIONS));
 		}
 		else
 		{
-			[gui setSelectedRow: first_sel_row];
+			gui->setSelectedRow(first_sel_row);
 		}
 		
-		[gui setShowTextCursor:NO];
+		gui->setShowTextCursor(NO);
 		
-		if ([gui cxx_setForegroundTextureKey:std::optional<std::string>([self status] == STATUS_DOCKED ? "docked_overlay" : "paused_overlay")] && [UNIVERSE pauseMessageVisible])
-					[[UNIVERSE messageGUI] clear];
+		if (gui->setForegroundTextureKey(std::optional<std::string>([self status] == STATUS_DOCKED ? "docked_overlay" : "paused_overlay")) && [UNIVERSE pauseMessageVisible])
+					[UNIVERSE messageGUI]->clear();
 		// Graphically, this screen is analogous to the various settings screens
-		[gui cxx_setBackgroundTextureKey:"settings"];
+		gui->setBackgroundTextureKey("settings");
 	}
 	/* ends */
 	
@@ -9498,7 +9494,7 @@ void PlayerEntity::setGuiToLoadSaveScreen()
 	
 	if (gamePaused)
 	{
-		[[UNIVERSE messageGUI] clear]; 
+		[UNIVERSE messageGUI]->clear(); 
 		const std::optional<std::string> pauseKey = [PLAYER cxx_keyBindingDescription2:"key_pausebutton"];
 		[UNIVERSE cxx_addMessage:ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "game-paused-docked", { { "pauseKey", oo::PList(pauseKey.value_or(std::string())) } }) forCount:1.0 forceDisplay:YES];	// (nil raised in the expansion)
 	}
@@ -9529,7 +9525,7 @@ void PlayerEntity::highlightEquipShipScreenKey(const std::string &highlightKey)
 		[self setGuiToEquipShipScreen:i];
 		for (row = GUI_ROW_EQUIPMENT_START;row<=GUI_MAX_ROWS_EQUIPMENT+2;row++)
 		{
-			otherKey = [gui cxx_keyForRow:row];
+			otherKey = gui->keyForRow(row);
 			if (!otherKey)
 			{
 				[self setGuiToEquipShipScreen:0];
@@ -9537,7 +9533,7 @@ void PlayerEntity::highlightEquipShipScreenKey(const std::string &highlightKey)
 			}
 			if (otherKey == key)
 			{
-				[gui setSelectedRow:row];
+				gui->setSelectedRow(row);
 				[self showInformationForSelectedUpgrade];
 				return;
 			}
@@ -9716,18 +9712,18 @@ void PlayerEntity::setGuiToEquipShipScreen(int skipParam, const std::optional<st
 
 		gui_screen = GUI_SCREEN_EQUIP_SHIP;
 
-		[gui clearAndKeepBackground:!guiChanged];
-		[gui cxx_setTitle:OO_DESC("equip-title")];
+		gui->clearAndKeepBackground(!guiChanged);
+		gui->setTitle(OO_DESC("equip-title"));
 		
-		[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiEquipmentCashColor defaultValue:nil] forRow: GUI_ROW_EQUIPMENT_CASH];
-		[gui cxx_setText:cxx_OOExpandKey("equip-cash-value", credits).value_or(std::string()) forRow:GUI_ROW_EQUIPMENT_CASH];
+		gui->setColor(gui->colorFromSetting(cxx_kGuiEquipmentCashColor, nil).get(), GUI_ROW_EQUIPMENT_CASH);
+		gui->setText(cxx_OOExpandKey("equip-cash-value", credits).value_or(std::string()), GUI_ROW_EQUIPMENT_CASH);
 		
 		OOGUITabSettings tab_stops;
 		tab_stops[0] = 0;
 		tab_stops[1] = -360;
 		tab_stops[2] = -480;
-		[gui cxx_overrideTabs:tab_stops from:cxx_kGuiEquipmentTabs length:3];
-		[gui setTabStops:tab_stops];
+		gui->overrideTabs(tab_stops, cxx_kGuiEquipmentTabs, 3);
+		gui->setTabStops(tab_stops);
 		
 		unsigned n_rows = GUI_MAX_ROWS_EQUIPMENT;
 		NSUInteger count = equipmentAllowed.size();
@@ -9751,14 +9747,14 @@ void PlayerEntity::setGuiToEquipShipScreen(int skipParam, const std::optional<st
 				{
 					previous = 0;
 					// keep weapon selected if we go back.
-					[gui cxx_setKey:oo::str::format("More:%d:%s", previous, eqKeyForSelectFacing->c_str()) forRow:row];
+					gui->setKey(oo::str::format("More:%d:%s", previous, eqKeyForSelectFacing->c_str()), row);
 				}
 				else
 				{
-					[gui cxx_setKey:oo::str::format("More:%d", previous) forRow:row];
+					gui->setKey(oo::str::format("More:%d", previous), row);
 				}
-				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiEquipmentScrollColor defaultValue:[::OOColor greenColor]] forRow:row];
-				[gui cxx_setArray:{ OO_DESC("gui-back"), "", " <-- " } forRow:row];
+				gui->setColor(gui->colorFromSetting(cxx_kGuiEquipmentScrollColor, OOColor::greenColor().get()).get(), row);
+				gui->setArray({ OO_DESC("gui-back"), "", " <-- " }, row);
 				row++;
 			}
 			
@@ -9770,9 +9766,9 @@ void PlayerEntity::setGuiToEquipShipScreen(int skipParam, const std::optional<st
 				std::string			desc = oo::str::format(" %s ", [eqInfo cxx_name].value_or("(null)").c_str());
 				double				price;
 
-				::OOColor				*dispCol = [eqInfo displayColor];
-				if (dispCol == nil) dispCol = [gui cxx_colorFromSetting:cxx_kGuiEquipmentOptionColor defaultValue:nil];
-				[gui setColor:dispCol forRow:row]; 
+				oo::Ref<OOColor>	dispCol([eqInfo displayColor]);
+				if (dispCol == nil) dispCol = gui->colorFromSetting(cxx_kGuiEquipmentOptionColor, nil);
+				gui->setColor(dispCol.get(), row); 
 
 				if (eqKey == "EQ_FUEL")
 				{
@@ -9781,7 +9777,7 @@ void PlayerEntity::setGuiToEquipShipScreen(int skipParam, const std::optional<st
 				else if (eqKey == "EQ_RENOVATION")
 				{
 					price = [self renovationCosts];
-					[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiEquipmentRepairColor defaultValue:[::OOColor orangeColor]] forRow:row];
+					gui->setColor(gui->colorFromSetting(cxx_kGuiEquipmentRepairColor, OOColor::orangeColor().get()).get(), row);
 				}
 				else
 				{
@@ -9807,7 +9803,7 @@ void PlayerEntity::setGuiToEquipShipScreen(int skipParam, const std::optional<st
 					{
 						installTime = 600 + price;
 					}
-					[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiEquipmentRepairColor defaultValue:[::OOColor orangeColor]] forRow:row];
+					gui->setColor(gui->colorFromSetting(cxx_kGuiEquipmentRepairColor, OOColor::orangeColor().get()).get(), row);
 
 				}
 				
@@ -9868,19 +9864,19 @@ void PlayerEntity::setGuiToEquipShipScreen(int skipParam, const std::optional<st
 						
 						if(weaponMounted)
 						{
-							[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiEquipmentLaserFittedColor defaultValue:[::OOColor colorWithRed:0.0f green:0.6f blue:0.0f alpha:1.0f]] forRow:row];
+							gui->setColor(gui->colorFromSetting(cxx_kGuiEquipmentLaserFittedColor, OOColor::colorWithRed(0.0f, 0.6f, 0.0f, 1.0f).get()).get(), row);
 						}
 						else
 						{
-							[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiEquipmentLaserColor defaultValue:[::OOColor greenColor]] forRow:row];
+							gui->setColor(gui->colorFromSetting(cxx_kGuiEquipmentLaserColor, OOColor::greenColor().get()).get(), row);
 						}
 						if (displayRow)	// Always true for the first pass. The first pass is used to display the name of the weapon being purchased.
 						{
 
 							priceString = oo::str::format(" %s ", cxx_OOCredits(price*multiplier).c_str());
 
-							[gui cxx_setKey:eqKey forRow:row];
-							[gui cxx_setArray:{ desc, (facing_count > 0 ? priceString : std::string()), timeString } forRow:row];
+							gui->setKey(eqKey, row);
+							gui->setArray({ desc, (facing_count > 0 ? priceString : std::string()), timeString }, row);
 							row++;
 						}
 						facing_count++;
@@ -9889,16 +9885,16 @@ void PlayerEntity::setGuiToEquipShipScreen(int skipParam, const std::optional<st
 				else
 				{
 					// Normal equipment list.
-					[gui cxx_setKey:eqKey forRow:row];
+					gui->setKey(eqKey, row);
 					// check if the hidevalues property has been set
 					if (![eqInfo hideValues])
 					{
-						[gui cxx_setArray:{ desc, priceString, timeString } forRow:row];
+						gui->setArray({ desc, priceString, timeString }, row);
 					}
 					else
 					{
 						// if so, only output the description
-						[gui cxx_setArray:{ desc } forRow:row];
+						gui->setArray({ desc }, row);
 					}
 					row++;
 				}
@@ -9907,19 +9903,19 @@ void PlayerEntity::setGuiToEquipShipScreen(int skipParam, const std::optional<st
 			if (i < count)
 			{
 				// just overwrite the last item :-)
-				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiEquipmentScrollColor defaultValue:[::OOColor greenColor]] forRow:row-1];
-				[gui cxx_setArray:{ OO_DESC("gui-more"), "", " --> " } forRow:row - 1];
-				[gui cxx_setKey:oo::str::format("More:%d", i - 1) forRow:row - 1];
+				gui->setColor(gui->colorFromSetting(cxx_kGuiEquipmentScrollColor, OOColor::greenColor().get()).get(), row-1);
+				gui->setArray({ OO_DESC("gui-more"), "", " --> " }, row - 1);
+				gui->setKey(oo::str::format("More:%d", i - 1), row - 1);
 			}
 			
-			[gui setSelectableRange:NSMakeRange(start_row,row - start_row)];
+			gui->setSelectableRange(NSMakeRange(start_row,row - start_row));
 
-			if ([gui selectedRow] != start_row)
-				[gui setSelectedRow:start_row];
+			if (gui->getSelectedRow() != start_row)
+				gui->setSelectedRow(start_row);
 
 			if (eqKeyForSelectFacing.has_value())
 			{
-				[gui setSelectedRow:start_row + 1];
+				gui->setSelectedRow(start_row + 1);
 				[self cxx_showInformationForSelectedUpgradeWithFormatString:OO_DESC("@-select-where-to-install")];
 			}
 			else
@@ -9929,32 +9925,32 @@ void PlayerEntity::setGuiToEquipShipScreen(int skipParam, const std::optional<st
 		}
 		else
 		{
-			[gui cxx_setText:OO_DESC("equip-no-equipment-available-for-purchase") forRow:GUI_ROW_NO_SHIPS align:GUI_ALIGN_CENTER];
-			[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiEquipmentUnavailableColor defaultValue:[::OOColor greenColor]] forRow:GUI_ROW_NO_SHIPS];
+			gui->setText(OO_DESC("equip-no-equipment-available-for-purchase"), GUI_ROW_NO_SHIPS, GUI_ALIGN_CENTER);
+			gui->setColor(gui->colorFromSetting(cxx_kGuiEquipmentUnavailableColor, OOColor::greenColor().get()).get(), GUI_ROW_NO_SHIPS);
 			
-			[gui setSelectableRange:NSMakeRange(0,0)];
-			[gui setNoSelectedRow];
+			gui->setSelectableRange(NSMakeRange(0,0));
+			gui->setNoSelectedRow();
 			[self showInformationForSelectedUpgrade];
 		}
 		
-		[gui setShowTextCursor:NO];
+		gui->setShowTextCursor(NO);
 		
 		// TODO: split the mount_weapon sub-screen into a separate screen, and use it for pylon mounted wepons as well?
 		if (guiChanged)
 		{
-			[gui cxx_setForegroundTextureKey:"docked_overlay"];
+			gui->setForegroundTextureKey("docked_overlay");
 			const oo::PList background = [UNIVERSE cxx_screenTextureDescriptorForKey:"equip_ship"];
 			[self cxx_setEquipScreenBackgroundDescriptor:background];
-			[gui cxx_setBackgroundTextureDescriptor:background];
+			gui->setBackgroundTextureDescriptor(background);
 		}
 		else if (eqKeyForSelectFacing.has_value()) // weapon purchase
 		{
 			const oo::PList bgDescriptor = [UNIVERSE cxx_screenTextureDescriptorForKey:"mount_weapon"];
-			if (!bgDescriptor.isNull())  [gui cxx_setBackgroundTextureDescriptor:bgDescriptor];
+			if (!bgDescriptor.isNull())  gui->setBackgroundTextureDescriptor(bgDescriptor);
 		}
 		else // Returning from a weapon purchase. (Also called, redundantly, when paging)
 		{
-			[gui cxx_setBackgroundTextureDescriptor:[self cxx_equipScreenBackgroundDescriptor]];
+			gui->setBackgroundTextureDescriptor([self cxx_equipScreenBackgroundDescriptor]);
 		}
 	}
 	/* ends */
@@ -9984,14 +9980,14 @@ void PlayerEntity::showInformationForSelectedUpgradeWithFormatString(const std::
 {
 	::PlayerEntity *self = oo::ToObjC(this);
 	::GuiDisplayGen* gui = [UNIVERSE gui];
-	const std::optional<std::string> eqKey = [gui cxx_selectedRowKey];
+	const std::optional<std::string> eqKey = gui->selectedRowKey();
 	int i;
 
-	::OOColor *descColor = [gui cxx_colorFromSetting:cxx_kGuiEquipmentDescriptionColor defaultValue:[::OOColor greenColor]];
+	oo::Ref<OOColor>	descColor = gui->colorFromSetting(cxx_kGuiEquipmentDescriptionColor, OOColor::greenColor().get());
 	for (i = GUI_ROW_EQUIPMENT_DETAIL; i < GUI_MAX_ROWS; i++)
 	{
-		[gui cxx_setText:std::string() forRow:i];
-		[gui setColor:descColor forRow:i];
+		gui->setText(std::string(), i);
+		gui->setColor(descColor.get(), i);
 	}
 	if (eqKey)
 	{
@@ -10011,7 +10007,7 @@ void PlayerEntity::showInformationForSelectedUpgradeWithFormatString(const std::
 				if (weight > 0) desc = oo::str::formatRuntime(OO_DESC("upgradeinfo-@-weight-d-of-equipment"), { TextArg(desc), weight });
 			}
 			if (formatString.has_value()) desc = oo::str::formatRuntime(*formatString, { TextArg(desc) });
-			[gui cxx_addLongText:desc startingAtRow:GUI_ROW_EQUIPMENT_DETAIL align:GUI_ALIGN_LEFT];
+			gui->addLongText(desc, GUI_ROW_EQUIPMENT_DETAIL, GUI_ALIGN_LEFT);
 		}
 	}
 }
@@ -10055,16 +10051,16 @@ void PlayerEntity::setGuiToInterfacesScreen(int skip)
 		OOGUIRow		row = start_row;
 		BOOL			guiChanged = (gui_screen != GUI_SCREEN_INTERFACES);
 
-		[gui clearAndKeepBackground:!guiChanged];
-		[gui cxx_setTitle:OO_DESC("interfaces-title")];
+		gui->clearAndKeepBackground(!guiChanged);
+		gui->setTitle(OO_DESC("interfaces-title"));
 		
 		gui_screen = GUI_SCREEN_INTERFACES;
 		
 		OOGUITabSettings tab_stops;
 		tab_stops[0] = 0;
 		tab_stops[1] = -480;
-		[gui cxx_overrideTabs:tab_stops from:cxx_kGuiInterfaceTabs length:2];
-		[gui setTabStops:tab_stops];
+		gui->overrideTabs(tab_stops, cxx_kGuiInterfaceTabs, 2);
+		gui->setTabStops(tab_stops);
 		
 		unsigned n_rows = GUI_MAX_ROWS_INTERFACES;
 		NSUInteger count = interfaceKeys.size();
@@ -10088,9 +10084,9 @@ void PlayerEntity::setGuiToInterfacesScreen(int skip)
 					}
 				}
 				
-				[gui cxx_setKey:oo::str::format("More:%d", static_cast<int>(previous)) forRow:row];
-				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiInterfaceScrollColor defaultValue:[::OOColor greenColor]] forRow:row];
-				[gui cxx_setArray:{ OO_DESC("gui-back"), " <-- " } forRow:row];
+				gui->setKey(oo::str::format("More:%d", static_cast<int>(previous)), row);
+				gui->setColor(gui->colorFromSetting(cxx_kGuiInterfaceScrollColor, OOColor::greenColor().get()).get(), row);
+				gui->setArray({ OO_DESC("gui-back"), " <-- " }, row);
 				row++;
 			}
 			
@@ -10099,8 +10095,8 @@ void PlayerEntity::setGuiToInterfacesScreen(int skip)
 				const std::string &interfaceKey = interfaceKeys[i];
 				::OOJSInterfaceDefinition *definition = interfaces->find(interfaceKey)->second.get();
 
-				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiInterfaceEntryColor defaultValue:nil] forRow:row];
-				[gui cxx_setKey:interfaceKey forRow:row];
+				gui->setColor(gui->colorFromSetting(cxx_kGuiInterfaceEntryColor, nil).get(), row);
+				gui->setKey(interfaceKey, row);
 				// title, category: the list ends at the first nil, as arrayWithObjects: did
 				std::vector<std::string> columns;
 				const std::optional<std::string> title = definition->title();
@@ -10110,7 +10106,7 @@ void PlayerEntity::setGuiToInterfacesScreen(int skip)
 					const std::optional<std::string> category = definition->category();
 					if (category.has_value())  columns.push_back(*category);
 				}
-				[gui cxx_setArray:columns forRow:row];
+				gui->setArray(columns, row);
 
 				row++;
 			}
@@ -10118,42 +10114,42 @@ void PlayerEntity::setGuiToInterfacesScreen(int skip)
 			if (i < (NSInteger)count)
 			{
 				// just overwrite the last item :-)
-				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiInterfaceScrollColor defaultValue:[::OOColor greenColor]] forRow:row - 1];
-				[gui cxx_setArray:{ OO_DESC("gui-more"), " --> " } forRow:row - 1];
-				[gui cxx_setKey:oo::str::format("More:%d", i - 1) forRow:row - 1];
+				gui->setColor(gui->colorFromSetting(cxx_kGuiInterfaceScrollColor, OOColor::greenColor().get()).get(), row - 1);
+				gui->setArray({ OO_DESC("gui-more"), " --> " }, row - 1);
+				gui->setKey(oo::str::format("More:%d", i - 1), row - 1);
 			}
 			
-			[gui setSelectableRange:NSMakeRange(start_row,row - start_row)];
+			gui->setSelectableRange(NSMakeRange(start_row,row - start_row));
 
-			if ([gui selectedRow] != start_row)
+			if (gui->getSelectedRow() != start_row)
 			{
-				[gui setSelectedRow:start_row];
+				gui->setSelectedRow(start_row);
 			}
 
 			[self showInformationForSelectedInterface];
 		}
 		else
 		{
-			[gui cxx_setText:OO_DESC("interfaces-no-interfaces-available-for-use") forRow:GUI_ROW_NO_INTERFACES align:GUI_ALIGN_LEFT];
-			[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiInterfaceNoneColor defaultValue:[::OOColor greenColor]] forRow:GUI_ROW_NO_INTERFACES];
+			gui->setText(OO_DESC("interfaces-no-interfaces-available-for-use"), GUI_ROW_NO_INTERFACES, GUI_ALIGN_LEFT);
+			gui->setColor(gui->colorFromSetting(cxx_kGuiInterfaceNoneColor, OOColor::greenColor().get()).get(), GUI_ROW_NO_INTERFACES);
 			
-			[gui setSelectableRange:NSMakeRange(0,0)];
-			[gui setNoSelectedRow];
+			gui->setSelectableRange(NSMakeRange(0,0));
+			gui->setNoSelectedRow();
 
 		}
 		
-		[gui setShowTextCursor:NO];
+		gui->setShowTextCursor(NO);
 
 		const std::string desc = oo::str::formatRuntime(OO_DESC("interfaces-for-ship-@-and-station-@"),
 			{ [self displayName].value_or("(null)"), [[self dockedStation] displayName].value_or("(null)") });
-		[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiInterfaceHeadingColor defaultValue:nil] forRow:GUI_ROW_INTERFACES_HEADING];
-		[gui cxx_setText:desc forRow:GUI_ROW_INTERFACES_HEADING];
+		gui->setColor(gui->colorFromSetting(cxx_kGuiInterfaceHeadingColor, nil).get(), GUI_ROW_INTERFACES_HEADING);
+		gui->setText(desc, GUI_ROW_INTERFACES_HEADING);
 
 		
 		if (guiChanged)
 		{
-			[gui cxx_setForegroundTextureKey:"docked_overlay"];
-			[gui cxx_setBackgroundTextureDescriptor:[UNIVERSE cxx_screenTextureDescriptorForKey:"interfaces"]];
+			gui->setForegroundTextureKey("docked_overlay");
+			gui->setBackgroundTextureDescriptor([UNIVERSE cxx_screenTextureDescriptorForKey:"interfaces"]);
 		}
 	}
 	/* ends */
@@ -10171,14 +10167,14 @@ void PlayerEntity::showInformationForSelectedInterface()
 {
 	::PlayerEntity *self = oo::ToObjC(this);
 	::GuiDisplayGen* gui = [UNIVERSE gui];
-	const std::optional<std::string> interfaceKey = [gui cxx_selectedRowKey];
+	const std::optional<std::string> interfaceKey = gui->selectedRowKey();
 	
 	int i;
 	
 	for (i = GUI_ROW_EQUIPMENT_DETAIL; i < GUI_MAX_ROWS; i++)
 	{
-		[gui cxx_setText:"" forRow:i];
-		[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiInterfaceDescriptionColor defaultValue:[::OOColor greenColor]] forRow:i];
+		gui->setText("", i);
+		gui->setColor(gui->colorFromSetting(cxx_kGuiInterfaceDescriptionColor, OOColor::greenColor().get()).get(), i);
 	}
 	
 	if (interfaceKey.has_value() && !oo::str::hasPrefix(*interfaceKey, "More:"))
@@ -10186,7 +10182,7 @@ void PlayerEntity::showInformationForSelectedInterface()
 		::OOJSInterfaceDefinition *definition = InterfaceForKey(oo::ToCxx([self dockedStation]), interfaceKey);
 		if (definition)
 		{
-			[gui cxx_addLongText:definition->summary() startingAtRow:GUI_ROW_INTERFACES_DETAIL align:GUI_ALIGN_LEFT];
+			gui->addLongText(definition->summary(), GUI_ROW_INTERFACES_DETAIL, GUI_ALIGN_LEFT);
 		}
 	}
 }
@@ -10196,17 +10192,17 @@ void PlayerEntity::activateSelectedInterface()
 {
 	::PlayerEntity *self = oo::ToObjC(this);
 	::GuiDisplayGen* gui = [UNIVERSE gui];
-	const std::optional<std::string> key = [gui cxx_selectedRowKey];
+	const std::optional<std::string> key = gui->selectedRowKey();
 
 	if (key.has_value() && oo::str::hasPrefix(*key, "More:"))
 	{
 		int 		from_item = oo::str::intValue(RowKeyField(*key, 1).value_or(std::string()));
 		[self setGuiToInterfacesScreen:from_item];
 
-		if ([gui selectedRow] < 0)
-			[gui setSelectedRow:GUI_ROW_INTERFACES_START];
+		if (gui->getSelectedRow() < 0)
+			gui->setSelectedRow(GUI_ROW_INTERFACES_START);
 		if (from_item == 0)
-			[gui setSelectedRow:GUI_ROW_INTERFACES_START + GUI_MAX_ROWS_INTERFACES - 1];
+			gui->setSelectedRow(GUI_ROW_INTERFACES_START + GUI_MAX_ROWS_INTERFACES - 1);
 		[self showInformationForSelectedInterface];
 
 
@@ -10233,66 +10229,66 @@ void PlayerEntity::setupStartScreenGui()
 
 	[[UNIVERSE gameController] setMouseInteractionModeForUIWithMouseInteraction:YES];
 
-	[gui clear];
+	gui->clear();
 
-	[gui cxx_setTitle:"Oolite"];
+	gui->setTitle("Oolite");
 
 	text = OO_DESC("game-copyright");
-	[gui cxx_setText:text forRow:15 align:GUI_ALIGN_CENTER];
-	[gui setColor:[::OOColor whiteColor] forRow:15];
+	gui->setText(text, 15, GUI_ALIGN_CENTER);
+	gui->setColor(OOColor::whiteColor().get(), 15);
 		
 	text = OO_DESC("theme-music-credit");
-	[gui cxx_setText:text forRow:17 align:GUI_ALIGN_CENTER];
-	[gui setColor:[::OOColor grayColor] forRow:17];
+	gui->setText(text, 17, GUI_ALIGN_CENTER);
+	gui->setColor(OOColor::grayColor().get(), 17);
 		
 	int initialRow = 22;
 	int row = initialRow;
 
 	text = OO_DESC("oolite-start-option-1");
-	[gui cxx_setText:text forRow:row align:GUI_ALIGN_CENTER];
-	[gui setColor:[::OOColor yellowColor] forRow:row];
-	[gui cxx_setKey:oo::str::format("Start:%d", row) forRow:row];
+	gui->setText(text, row, GUI_ALIGN_CENTER);
+	gui->setColor(OOColor::yellowColor().get(), row);
+	gui->setKey(oo::str::format("Start:%d", row), row);
 
 	++row;
 
 	text = OO_DESC("oolite-start-option-2");
-	[gui cxx_setText:text forRow:row align:GUI_ALIGN_CENTER];
-	[gui setColor:[::OOColor yellowColor] forRow:row];
-	[gui cxx_setKey:oo::str::format("Start:%d", row) forRow:row];
+	gui->setText(text, row, GUI_ALIGN_CENTER);
+	gui->setColor(OOColor::yellowColor().get(), row);
+	gui->setKey(oo::str::format("Start:%d", row), row);
 
 	++row;
 
 	text = OO_DESC("oolite-start-option-3");
-	[gui cxx_setText:text forRow:row align:GUI_ALIGN_CENTER];
-	[gui setColor:[::OOColor yellowColor] forRow:row];
-	[gui cxx_setKey:oo::str::format("Start:%d", row) forRow:row];
+	gui->setText(text, row, GUI_ALIGN_CENTER);
+	gui->setColor(OOColor::yellowColor().get(), row);
+	gui->setKey(oo::str::format("Start:%d", row), row);
 
 	++row;
 
 	text = OO_DESC("oolite-start-option-4");
-	[gui cxx_setText:text forRow:row align:GUI_ALIGN_CENTER];
-	[gui setColor:[::OOColor yellowColor] forRow:row];
-	[gui cxx_setKey:oo::str::format("Start:%d", row) forRow:row];
+	gui->setText(text, row, GUI_ALIGN_CENTER);
+	gui->setColor(OOColor::yellowColor().get(), row);
+	gui->setKey(oo::str::format("Start:%d", row), row);
 
 	++row;
 
 	text = OO_DESC("oolite-start-option-5");
-	[gui cxx_setText:text forRow:row align:GUI_ALIGN_CENTER];
-	[gui setColor:[::OOColor yellowColor] forRow:row];
-	[gui cxx_setKey:oo::str::format("Start:%d", row) forRow:row];
+	gui->setText(text, row, GUI_ALIGN_CENTER);
+	gui->setColor(OOColor::yellowColor().get(), row);
+	gui->setKey(oo::str::format("Start:%d", row), row);
 
 	++row;
 
 	text = OO_DESC("oolite-start-option-6");
-	[gui cxx_setText:text forRow:row align:GUI_ALIGN_CENTER];
-	[gui setColor:[::OOColor yellowColor] forRow:row];
-	[gui cxx_setKey:oo::str::format("Start:%d", row) forRow:row];
+	gui->setText(text, row, GUI_ALIGN_CENTER);
+	gui->setColor(OOColor::yellowColor().get(), row);
+	gui->setKey(oo::str::format("Start:%d", row), row);
 
 
-	[gui setSelectableRange:NSMakeRange(initialRow, row - initialRow + 1)];
-	[gui setSelectedRow:initialRow];
+	gui->setSelectableRange(NSMakeRange(initialRow, row - initialRow + 1));
+	gui->setSelectedRow(initialRow);
 
-	[gui cxx_setBackgroundTextureKey:"intro"];
+	gui->setBackgroundTextureKey("intro");
 }
 
 
@@ -10328,8 +10324,8 @@ void PlayerEntity::setGuiToIntroFirstGo(bool justCobra)
 		if (errors.has_value())
 		{
 			OOGUIRow ms_start = msgLine;
-			OOGUIRow i = msgLine = [gui cxx_addLongText:errors startingAtRow:ms_start align:GUI_ALIGN_LEFT];
-			for (i-- ; i >= ms_start ; i--) [gui setColor:[::OOColor redColor] forRow:i];
+			OOGUIRow i = msgLine = gui->addLongText(errors, ms_start, GUI_ALIGN_LEFT);
+			for (i-- ; i >= ms_start ; i--) gui->setColor(OOColor::redColor().get(), i);
 			msgLine++;
 		}
 		
@@ -10355,10 +10351,10 @@ void PlayerEntity::setGuiToIntroFirstGo(bool justCobra)
 			}
 
 			OOGUIRow ms_start = msgLine;
-			OOGUIRow i = msgLine = [gui cxx_addLongText:messageToDisplay startingAtRow:ms_start align:GUI_ALIGN_LEFT];
+			OOGUIRow i = msgLine = gui->addLongText(messageToDisplay, ms_start, GUI_ALIGN_LEFT);
 			for (i--; i >= ms_start; i--)
 			{
-				[gui setColor:[::OOColor orangeColor] forRow:i];
+				gui->setColor(OOColor::orangeColor().get(), i);
 			}
 			msgLine++;
 		}
@@ -10372,37 +10368,37 @@ void PlayerEntity::setGuiToIntroFirstGo(bool justCobra)
 			{
 				OOGUIRow ms_start = msgLine;
 				const std::string &message = arguments[i + 1];
-				OOGUIRow i = msgLine = [gui cxx_addLongText:message startingAtRow:ms_start align:GUI_ALIGN_CENTER];
+				OOGUIRow i = msgLine = gui->addLongText(message, ms_start, GUI_ALIGN_CENTER);
 				for (i-- ; i >= ms_start; i--)
 				{
-					[gui setColor:[::OOColor magentaColor] forRow:i];
+					gui->setColor(OOColor::magentaColor().get(), i);
 				}
 			}
 			if (arguments[i] == "-showversion")
 			{
 				OOGUIRow ms_start = msgLine;
 				const std::string version = "Version " OO_VERSION_FULL;
-				OOGUIRow i = msgLine = [gui cxx_addLongText:version startingAtRow:ms_start align:GUI_ALIGN_CENTER];
+				OOGUIRow i = msgLine = gui->addLongText(version, ms_start, GUI_ALIGN_CENTER);
 				for (i-- ; i >= ms_start; i--)
 				{
-					[gui setColor:[::OOColor magentaColor] forRow:i];
+					gui->setColor(OOColor::magentaColor().get(), i);
 				}
 			}
 		}
 	}
 	else
 	{
-		[gui clear];
+		gui->clear();
 
         text = OO_DESC("oolite-ship-library-title");
-		[gui cxx_setTitle:text];
+		gui->setTitle(text);
 
         text = OO_DESC("oolite-ship-library-exit");
-        [gui cxx_setText:text forRow:27 align:GUI_ALIGN_CENTER];
-        [gui setColor:[::OOColor yellowColor] forRow:27];
+        gui->setText(text, 27, GUI_ALIGN_CENTER);
+        gui->setColor(OOColor::yellowColor().get(), 27);
 	}
 	
-	[gui setShowTextCursor:NO];
+	gui->setShowTextCursor(NO);
 	
 	[UNIVERSE setupIntroFirstGo: justCobra];
 	
@@ -10418,11 +10414,11 @@ void PlayerEntity::setGuiToIntroFirstGo(bool justCobra)
 	[self setShowDemoShips:YES];
 	if (justCobra)
 	{
-		[gui cxx_setBackgroundTextureKey:"intro"];
+		gui->setBackgroundTextureKey("intro");
 	}
 	else
 	{
-		[gui cxx_setBackgroundTextureKey:"shiplibrary"];
+		gui->setBackgroundTextureKey("shiplibrary");
 	}
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:YES];
 }
@@ -10437,12 +10433,12 @@ void PlayerEntity::setGuiToOXZManager()
 
 	gui_screen = GUI_SCREEN_OXZMANAGER;
 
-	[[UNIVERSE gui] clearAndKeepBackground:NO];
+	[UNIVERSE gui]->clearAndKeepBackground(NO);
 
 	::OOOXZManager::sharedManager()->gui();
 	
 	OOMusicController::sharedController()->playThemeMusic();
-	[[UNIVERSE gui] cxx_setBackgroundTextureKey:"oxz-manager"];
+	[UNIVERSE gui]->setBackgroundTextureKey("oxz-manager");
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:YES];
 }
 
@@ -10487,12 +10483,12 @@ void PlayerEntity::noteGUIDidChangeFrom(OOGUIScreenID fromScreen, OOGUIScreenID 
 		if (toScreen == GUI_SCREEN_SYSTEM_DATA)
 		{
 			// system data screen: ensure correct sun light color is used on miniature planet
-			[[UNIVERSE sun] setSunColor:[::OOColor cxx_colorWithDescription:[[UNIVERSE systemManager] cxx_getProperty:"sun_color" forSystem:info_system_id inGalaxy:[self galaxyNumber]]]];
+			[[UNIVERSE sun] setSunColor:OOColor::colorWithDescription([[UNIVERSE systemManager] cxx_getProperty:"sun_color" forSystem:info_system_id inGalaxy:[self galaxyNumber]]).get()];
 		}
 		else
 		{
 			// any other screen: reset local sun light color
-			[[UNIVERSE sun] setSunColor:[::OOColor cxx_colorWithDescription:[[UNIVERSE systemManager] cxx_getProperty:"sun_color" forSystem:system_id inGalaxy:[self galaxyNumber]]]];
+			[[UNIVERSE sun] setSunColor:OOColor::colorWithDescription([[UNIVERSE systemManager] cxx_getProperty:"sun_color" forSystem:system_id inGalaxy:[self galaxyNumber]]).get()];
 		}
 		
 		if (![[UNIVERSE gameController] isGamePaused])
@@ -10522,7 +10518,7 @@ void PlayerEntity::buySelectedItem()
 {
 	::PlayerEntity *self = oo::ToObjC(this);
 	::GuiDisplayGen* gui = [UNIVERSE gui];
-	const std::optional<std::string> key = [gui cxx_selectedRowKey];
+	const std::optional<std::string> key = gui->selectedRowKey();
 
 	if (key.has_value() && oo::str::hasPrefix(*key, "More:"))
 	{
@@ -10536,17 +10532,17 @@ void PlayerEntity::buySelectedItem()
 		}
 		else
 		{
-			if ([gui selectedRow] < 0)
-				[gui setSelectedRow:GUI_ROW_EQUIPMENT_START];
+			if (gui->getSelectedRow() < 0)
+				gui->setSelectedRow(GUI_ROW_EQUIPMENT_START);
 			if (from_item == 0)
-				[gui setSelectedRow:GUI_ROW_EQUIPMENT_START + GUI_MAX_ROWS_EQUIPMENT - 1];
+				gui->setSelectedRow(GUI_ROW_EQUIPMENT_START + GUI_MAX_ROWS_EQUIPMENT - 1);
 			[self showInformationForSelectedUpgrade];
 		}
 
 		return;
 	}
 	
-	const std::optional<std::string> itemText = [gui cxx_selectedRowText];
+	const std::optional<std::string> itemText = gui->selectedRowText();
 
 	// isEqual: of the row text (nil matched nothing)
 	const auto itemTextIs = [&itemText](const std::string &facingString) { return itemText.has_value() && *itemText == facingString; };
@@ -11285,14 +11281,12 @@ void PlayerEntity::showMarketScreenHeaders()
 	tab_stops[3] = 267;
 	tab_stops[4] = 321;
 	tab_stops[5] = 431;
-	[gui cxx_overrideTabs:tab_stops from:cxx_kGuiMarketTabs length:6];
-	[gui setTabStops:tab_stops];
+	gui->overrideTabs(tab_stops, cxx_kGuiMarketTabs, 6);
+	gui->setTabStops(tab_stops);
 	
-	[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiMarketHeadingColor defaultValue:[::OOColor greenColor]] forRow:GUI_ROW_MARKET_KEY];
-	[gui cxx_setArray:{ OO_DESC("commodity-column-title"), cxx_OOPadStringToEms(OO_DESC("price-column-title"),3.5),
-						   cxx_OOPadStringToEms(OO_DESC("for-sale-column-title"),3.75), cxx_OOPadStringToEms(OO_DESC("in-hold-column-title"),5.75), OO_DESC("oolite-legality-column-title"), OO_DESC("oolite-extras-column-title") } forRow:GUI_ROW_MARKET_KEY];
-	[gui cxx_setArray:{ OO_DESC("commodity-column-title"), OO_DESC("oolite-extras-column-title"), cxx_OOPadStringToEms(OO_DESC("price-column-title"),3.5),
-						   cxx_OOPadStringToEms(OO_DESC("for-sale-column-title"),3.75), cxx_OOPadStringToEms(OO_DESC("in-hold-column-title"),5.75), OO_DESC("oolite-legality-column-title") } forRow:GUI_ROW_MARKET_KEY];
+	gui->setColor(gui->colorFromSetting(cxx_kGuiMarketHeadingColor, OOColor::greenColor().get()).get(), GUI_ROW_MARKET_KEY);
+	gui->setArray({ OO_DESC("commodity-column-title"), cxx_OOPadStringToEms(OO_DESC("price-column-title"),3.5), cxx_OOPadStringToEms(OO_DESC("for-sale-column-title"),3.75), cxx_OOPadStringToEms(OO_DESC("in-hold-column-title"),5.75), OO_DESC("oolite-legality-column-title"), OO_DESC("oolite-extras-column-title") }, GUI_ROW_MARKET_KEY);
+	gui->setArray({ OO_DESC("commodity-column-title"), OO_DESC("oolite-extras-column-title"), cxx_OOPadStringToEms(OO_DESC("price-column-title"),3.5), cxx_OOPadStringToEms(OO_DESC("for-sale-column-title"),3.75), cxx_OOPadStringToEms(OO_DESC("in-hold-column-title"),5.75), OO_DESC("oolite-legality-column-title") }, GUI_ROW_MARKET_KEY);
 }
 
 
@@ -11346,10 +11340,10 @@ void PlayerEntity::showMarketScreenDataLine(OOGUIRow row, const std::string &goo
 
 	const std::optional<std::string> extradesc = [shipCommodityData cxx_shortCommentForGood:good];
 
-	[gui cxx_setKey:good forRow:row];
-	[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiMarketCommodityColor defaultValue:nil] forRow:row];
-	if (extradesc.has_value())  [gui cxx_setArray:{ desc, *extradesc, price, units_available, units_owned, legaldesc } forRow:row++];
-	else  [gui cxx_setArray:{ desc } forRow:row++];	// a nil comment ended the -arrayWithObjects: list
+	gui->setKey(good, row);
+	gui->setColor(gui->colorFromSetting(cxx_kGuiMarketCommodityColor, nil).get(), row);
+	if (extradesc.has_value())  gui->setArray({ desc, *extradesc, price, units_available, units_owned, legaldesc }, row++);
+	else  gui->setArray({ desc }, row++);	// a nil comment ended the -arrayWithObjects: list
 }
 
 
@@ -11484,9 +11478,9 @@ void PlayerEntity::setGuiToMarketScreen()
 	{
 		OOGUIRow			start_row = GUI_ROW_MARKET_START;
 		OOGUIRow			row = start_row;
-		OOGUIRow			active_row = [gui selectedRow];
+		OOGUIRow			active_row = gui->getSelectedRow();
 
-		[gui clearAndKeepBackground:!guiChanged];
+		gui->clearAndKeepBackground(!guiChanged);
 		
 		
 		::StationEntity *dockedStation = [self dockedStation];
@@ -11495,7 +11489,7 @@ void PlayerEntity::setGuiToMarketScreen()
 			dockedStation = [self primaryTarget];
 		}
 
-		[gui cxx_setTitle:[self marketScreenTitle]];
+		gui->setTitle([self marketScreenTitle]);
 		
 		[self showMarketScreenHeaders];
 
@@ -11538,9 +11532,9 @@ void PlayerEntity::setGuiToMarketScreen()
 				{
 					active_row = GUI_ROW_MARKET_LAST;
 				}
-				[gui cxx_setKey:">>>" forRow:GUI_ROW_MARKET_LAST];
-				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiMarketScrollColor defaultValue:[::OOColor greenColor]] forRow:GUI_ROW_MARKET_LAST];
-				[gui cxx_setArray:{ OO_DESC("gui-more"), "", "", "", " --> " } forRow:GUI_ROW_MARKET_LAST];
+				gui->setKey(">>>", GUI_ROW_MARKET_LAST);
+				gui->setColor(gui->colorFromSetting(cxx_kGuiMarketScrollColor, OOColor::greenColor().get()).get(), GUI_ROW_MARKET_LAST);
+				gui->setArray({ OO_DESC("gui-more"), "", "", "", " --> " }, GUI_ROW_MARKET_LAST);
 			}
 			if (marketOffset > 0)
 			{
@@ -11548,16 +11542,16 @@ void PlayerEntity::setGuiToMarketScreen()
 				{
 					active_row = GUI_ROW_MARKET_START;
 				}
-				[gui cxx_setKey:"<<<" forRow:GUI_ROW_MARKET_START];
-				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiMarketScrollColor defaultValue:[::OOColor greenColor]] forRow:GUI_ROW_MARKET_START];
-				[gui cxx_setArray:{ OO_DESC("gui-back"), "", "", "", " <-- " } forRow:GUI_ROW_MARKET_START];
+				gui->setKey("<<<", GUI_ROW_MARKET_START);
+				gui->setColor(gui->colorFromSetting(cxx_kGuiMarketScrollColor, OOColor::greenColor().get()).get(), GUI_ROW_MARKET_START);
+				gui->setArray({ OO_DESC("gui-back"), "", "", "", " <-- " }, GUI_ROW_MARKET_START);
 			}
 		}
 		else
 		{
 			// filter is excluding everything
-			[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiMarketFilteredAllColor defaultValue:[::OOColor yellowColor]] forRow:GUI_ROW_MARKET_START];
-			[gui cxx_setText:OO_DESC("oolite-market-filtered-all") forRow:GUI_ROW_MARKET_START];
+			gui->setColor(gui->colorFromSetting(cxx_kGuiMarketFilteredAllColor, OOColor::yellowColor().get()).get(), GUI_ROW_MARKET_START);
+			gui->setText(OO_DESC("oolite-market-filtered-all"), GUI_ROW_MARKET_START);
 			active_row = -1;
 		}
 
@@ -11571,16 +11565,16 @@ void PlayerEntity::setGuiToMarketScreen()
 			const std::string filterText = ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "oolite-market-filter-line", { { "filterMode", oo::PList(filterMode) } });
 			const std::string sortMode = cxx_OOExpandKey(cxx_OOExpand("oolite-market-sorter-[marketSorterMode]", marketSorterMode).value_or(std::string())).value_or(std::string());
 			const std::string sorterText = ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "oolite-market-sorter-line", { { "sortMode", oo::PList(sortMode) } });
-			[gui cxx_setArray:{ filterText, "", sorterText } forRow:GUI_ROW_MARKET_END];
+			gui->setArray({ filterText, "", sorterText }, GUI_ROW_MARKET_END);
 		}
-		[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiMarketFilterInfoColor defaultValue:[::OOColor greenColor]] forRow:GUI_ROW_MARKET_END];
+		gui->setColor(gui->colorFromSetting(cxx_kGuiMarketFilterInfoColor, OOColor::greenColor().get()).get(), GUI_ROW_MARKET_END);
 
 		[self showMarketCashAndLoadLine];
 		
-		[gui setSelectableRange:NSMakeRange(start_row,row - start_row)];
-		[gui setSelectedRow:active_row];
+		gui->setSelectableRange(NSMakeRange(start_row,row - start_row));
+		gui->setSelectedRow(active_row);
 		
-		[gui setShowTextCursor:NO];
+		gui->setShowTextCursor(NO);
 	}
 
 	
@@ -11591,8 +11585,8 @@ void PlayerEntity::setGuiToMarketScreen()
 	
 	if (guiChanged)
 	{
-		[gui cxx_setForegroundTextureKey:std::optional<std::string>([self status] == STATUS_DOCKED ? "docked_overlay" : "overlay")];
-		[gui cxx_setBackgroundTextureKey:"market"];
+		gui->setForegroundTextureKey(std::optional<std::string>([self status] == STATUS_DOCKED ? "docked_overlay" : "overlay"));
+		gui->setBackgroundTextureKey("market");
 		[self noteGUIDidChangeFrom:oldScreen to:gui_screen];
 	}
 }
@@ -11652,10 +11646,10 @@ void PlayerEntity::setGuiToMarketInfoScreen()
 			return;
 		}
 
-		[gui clearAndKeepBackground:!guiChanged];
+		gui->clearAndKeepBackground(!guiChanged);
 
 		const std::string selectedCommodity = *marketSelectedCommodity;	// (non-nil here)
-		[gui cxx_setTitle:oo::str::formatRuntime(OO_DESC("oolite-commodity-information-@"), { TextArg([shipCommodityData cxx_nameForGood:selectedCommodity]) })];
+		gui->setTitle(oo::str::formatRuntime(OO_DESC("oolite-commodity-information-@"), { TextArg([shipCommodityData cxx_nameForGood:selectedCommodity]) }));
 
 		[self showMarketScreenHeaders];
 		[self showMarketScreenDataLine:GUI_ROW_MARKET_START forGood:selectedCommodity inMarket:localMarket holdQuantity:quantityInHold[j]];
@@ -11664,23 +11658,23 @@ void PlayerEntity::setGuiToMarketInfoScreen()
 		if (contracted > 0)
 		{
 			OOMassUnit unit = [shipCommodityData massUnitForGood:selectedCommodity];
-			[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiMarketContractedColor defaultValue:nil] forRow:GUI_ROW_MARKET_START+1];
-			[gui cxx_setText:oo::str::formatRuntime(OO_DESC("oolite-commodity-contracted-d-@"), { contracted, cxx_DisplayStringForMassUnit(unit).value_or("(null)") }) forRow:GUI_ROW_MARKET_START+1];
+			gui->setColor(gui->colorFromSetting(cxx_kGuiMarketContractedColor, nil).get(), GUI_ROW_MARKET_START+1);
+			gui->setText(oo::str::formatRuntime(OO_DESC("oolite-commodity-contracted-d-@"), { contracted, cxx_DisplayStringForMassUnit(unit).value_or("(null)") }), GUI_ROW_MARKET_START+1);
 		}
 
 		const std::optional<std::string> info = [shipCommodityData cxx_commentForGood:selectedCommodity];
 		OOGUIRow i = 0;
 		if (!info.has_value() || info->empty())
 		{
-			i = [gui cxx_addLongText:OO_DESC("oolite-commodity-no-comment") startingAtRow:GUI_ROW_MARKET_START+2 align:GUI_ALIGN_LEFT];
+			i = gui->addLongText(OO_DESC("oolite-commodity-no-comment"), GUI_ROW_MARKET_START+2, GUI_ALIGN_LEFT);
 		}
 		else
 		{
-			i = [gui cxx_addLongText:info startingAtRow:GUI_ROW_MARKET_START+2 align:GUI_ALIGN_LEFT];
+			i = gui->addLongText(info, GUI_ROW_MARKET_START+2, GUI_ALIGN_LEFT);
 		}
 		for (i-- ; i > GUI_ROW_MARKET_START+2 ; --i)
 		{
-			[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiMarketDescriptionColor defaultValue:nil] forRow:i];
+			gui->setColor(gui->colorFromSetting(cxx_kGuiMarketDescriptionColor, nil).get(), i);
 		}
 
 		[self showMarketCashAndLoadLine];
@@ -11694,8 +11688,8 @@ void PlayerEntity::setGuiToMarketInfoScreen()
 	
 	if (guiChanged)
 	{
-		[gui cxx_setForegroundTextureKey:std::optional<std::string>([self status] == STATUS_DOCKED ? "docked_overlay" : "overlay")];
-		[gui cxx_setBackgroundTextureKey:"marketinfo"];
+		gui->setForegroundTextureKey(std::optional<std::string>([self status] == STATUS_DOCKED ? "docked_overlay" : "overlay"));
+		gui->setBackgroundTextureKey("marketinfo");
 		[self noteGUIDidChangeFrom:oldScreen to:gui_screen];
 	}
 }
@@ -11707,8 +11701,8 @@ void PlayerEntity::showMarketCashAndLoadLine()
 	::GuiDisplayGen *gui = [UNIVERSE gui];
 	OOCargoQuantity currentCargo = current_cargo;
 	OOCargoQuantity cargoCapacity = [self maxAvailableCargoSpace];
-	[gui cxx_setText:cxx_OOExpandKey("market-cash-and-load", credits, currentCargo, cargoCapacity).value_or(std::string()) forRow:GUI_ROW_MARKET_CASH];
-	[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiMarketCashColor defaultValue:[::OOColor yellowColor]] forRow:GUI_ROW_MARKET_CASH];
+	gui->setText(cxx_OOExpandKey("market-cash-and-load", credits, currentCargo, cargoCapacity).value_or(std::string()), GUI_ROW_MARKET_CASH);
+	gui->setColor(gui->colorFromSetting(cxx_kGuiMarketCashColor, OOColor::yellowColor().get()).get(), GUI_ROW_MARKET_CASH);
 }
 
 
@@ -13344,7 +13338,7 @@ bool PlayerEntity::doWorldEventUntilMissionScreen(ooscript::PropertyId message)
 	if (gui_screen != GUI_SCREEN_MISSION && !dockingReport.empty() && [self isDocked] && ![[self dockedStation] suppressArrivalReports])
 	{
 		[self setGuiToDockingReportScreen];	// go here instead!
-		[[UNIVERSE messageGUI] clear];
+		[UNIVERSE messageGUI]->clear();
 		return YES;
 	}
 	
@@ -13359,7 +13353,7 @@ bool PlayerEntity::doWorldEventUntilMissionScreen(ooscript::PropertyId message)
 	if (gui_screen == GUI_SCREEN_MISSION)
 	{
 		// remove any comms/console messages from the screen!
-		[[UNIVERSE messageGUI] clear];
+		[UNIVERSE messageGUI]->clear();
 		return YES;
 	}
 	

@@ -52,8 +52,8 @@
 	OOStellarBodyType _type;
 	double _radius;
 	std::optional<std::string> _name;
-	OOColor *_airColor;
-	OOColor *_illuminationColor;
+	oo::Ref<OOColor> _airColor;
+	oo::Ref<OOColor> _illuminationColor;
 	float _airColorMixRatio;
 	float _airDensity;
 	BOOL _hasAtmosphere;
@@ -126,10 +126,10 @@
 - (OOStellarBodyType) planetType  { return _type; }
 - (std::optional<std::string>) cxx_name  { return _name; }
 - (void) cxx_setName:(const std::optional<std::string> &)name  { _name = name; }
-- (OOColor *) airColor  { return _airColor; }
-- (void) setAirColor:(OOColor *)newColor  { [_airColor release]; _airColor = [newColor retain]; }
-- (OOColor *) illuminationColor  { return _illuminationColor; }
-- (void) setIlluminationColor:(OOColor *)newColor  { [_illuminationColor release]; _illuminationColor = [newColor retain]; }
+- (OOColor *) airColor  { return _airColor.get(); }
+- (void) setAirColor:(OOColor *)newColor  { _airColor = oo::Ref<OOColor>(newColor); }
+- (OOColor *) illuminationColor  { return _illuminationColor.get(); }
+- (void) setIlluminationColor:(OOColor *)newColor  { _illuminationColor = oo::Ref<OOColor>(newColor); }
 - (float) airColorMixRatio  { return _airColorMixRatio; }
 - (void) setAirColorMixRatio:(float)newRatio  { _airColorMixRatio = newRatio; }
 - (float) airDensity  { return _airDensity; }
@@ -484,7 +484,7 @@ void SetUpContext()
 	sPlanet->_type = STELLAR_TYPE_NORMAL_PLANET;
 	sPlanet->_radius = 5000;
 	sPlanet->_name = "Lave";
-	sPlanet->_airColor = [[OOColor colorWithRed:0.5f green:0.25f blue:1 alpha:1] retain];
+	sPlanet->_airColor = OOColor::colorWithRed(0.5f, 0.25f, 1, 1);
 	sPlanet->_airColorMixRatio = 0.5f;
 	sPlanet->_airDensity = 0.75f;
 	sPlanet->_hasAtmosphere = YES;

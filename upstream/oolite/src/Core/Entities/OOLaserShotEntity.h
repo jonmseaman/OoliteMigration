@@ -43,7 +43,7 @@ public:
 
 	std::optional<std::string> descriptionComponents() const override;
 
-	void setColor(cxx::OOColor *color);
+	void setColor(OOColor *color);
 
 	void setRange(GLfloat range);
 

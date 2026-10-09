@@ -213,7 +213,7 @@ OO_TEST(planetWithAtmosphere)
 		// The dictionary's air colour, through its hue, saturation and brightness.
 		OOColor *air = [planet airColor];
 		OO_CHECK(air != nil);
-		OO_CHECK(air != nil && Near([air redComponent], 0.2, 1e-3) && Near([air greenComponent], 0.4, 1e-3) && Near([air blueComponent], 0.6, 1e-3));
+		OO_CHECK(air != nil && Near(air->redComponent(), 0.2, 1e-3) && Near(air->greenComponent(), 0.4, 1e-3) && Near(air->blueComponent(), 0.6, 1e-3));
 		Vector airVector = [planet airColorAsVector];
 		OO_CHECK(Near(airVector.x, 0.2, 1e-3) && Near(airVector.y, 0.4, 1e-3) && Near(airVector.z, 0.6, 1e-3));
 		OO_CHECK(Near([planet airColorMixRatio], 0.6));
@@ -246,16 +246,16 @@ OO_TEST(shaderValues)
 		SetUp();
 		OOPlanetEntity *planet = Planet(NO);
 
-		OOColor *red = [OOColor colorWithRed:1.0f green:0.0f blue:0.0f alpha:1.0f];
-		[planet setAirColor:red];
+		oo::Ref<OOColor>	red = OOColor::colorWithRed(1.0f, 0.0f, 0.0f, 1.0f);
+		[planet setAirColor:red.get()];
 		OO_CHECK([planet airColor] == red);
 		[planet setAirColor:nil];		// ignored
 		OO_CHECK([planet airColor] == red);
 		Vector v = [planet airColorAsVector];
 		OO_CHECK(v.x == 1.0f && v.y == 0.0f && v.z == 0.0f);
 
-		OOColor *blue = [OOColor colorWithRed:0.0f green:0.0f blue:1.0f alpha:1.0f];
-		[planet setIlluminationColor:blue];
+		oo::Ref<OOColor>	blue = OOColor::colorWithRed(0.0f, 0.0f, 1.0f, 1.0f);
+		[planet setIlluminationColor:blue.get()];
 		OO_CHECK([planet illuminationColor] == blue);
 		[planet setIlluminationColor:nil];	// ignored
 		OO_CHECK([planet illuminationColor] == blue);

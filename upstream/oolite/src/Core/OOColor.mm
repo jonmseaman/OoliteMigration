@@ -4,7 +4,7 @@ OOColor.mm
 
 C++20 since bead oo-11m, the Phase 3 house-style exemplar (proposed ADR-0056). Method bodies
 are the Objective-C ones with message sends turned into calls; the arithmetic is verbatim
-(ADR-0012). Still Objective-C++ until Phase 4: an Object node's colour is an Objective-C object.
+(ADR-0012). An Object node's colour is the node's foreign object (bead oo-9ht.1).
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -28,14 +28,11 @@ MA 02110-1301, USA.
 
 #import "OOColor.h"
 #import "OOMaths.h"
-#import "OOObjCPList.h"
 
 #include "oofnd/String.hpp"
 #include "oofnd/Scanner.hpp"
 #include "oofnd/objc/OOAssert.h"
 
-
-namespace cxx {
 
 namespace {
 
@@ -173,9 +170,8 @@ oo::Ref<OOColor> OOColor::colorWithDescription(const oo::PList &description, flo
 
 	if (description.type() == oo::PList::Type::Object)
 	{
-		// While the bridge exists, the colour in an Object node is an Objective-C OOColor.
-		id object = oo::ObjectIn(description);
-		if ([object isKindOfClass:[::OOColor class]])  result = oo::Ref<OOColor>(oo::ToCxx((::OOColor *)object));
+		// The colour in an Object node is the node's foreign object (bead oo-9ht.1).
+		if (OOColor *color = OOColorInObjectNode(description))  result = oo::Ref<OOColor>(color);
 	}
 	else if (const std::string *string = description.getIf<std::string>())
 	{
@@ -398,6 +394,21 @@ std::optional<std::string> OOColor::descriptionComponents() const
 }
 
 
+std::string OOColor::className() const
+{
+	return "OOColor";
+}
+
+
+std::string OOColor::description() const
+{
+	std::string result = oo::str::format("<OOColor %s>", oo::str::pointerDescription(this).c_str());
+	const std::optional<std::string> components = descriptionComponents();
+	if (components.has_value())  result += "{" + *components + "}";
+	return result;
+}
+
+
 // Get the red, green, or blue components.
 float OOColor::redComponent()
 {
@@ -578,8 +589,6 @@ std::optional<std::string> OOColor::hsbaDescription()
 {
 	return OOHSBAComponentsDescription(hsbaComponents());
 }
-
-}	// namespace cxx
 
 
 std::string OORGBAComponentsDescription(OORGBAComponents components)

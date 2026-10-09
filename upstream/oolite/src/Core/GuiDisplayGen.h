@@ -163,7 +163,9 @@ inline constexpr const char *cxx_kGuiDockingContinueColor	= "docking_continue_co
 
 
 
-@class OOColor, OOTexture, HeadUpDisplay;
+@class OOTexture;
+class OOColor;
+class HeadUpDisplay;
 class OOSound;	// C++ since bead oo-9ht.68 deleted its facade
 
 class OOTextureSprite;	// C++ (OOTextureSprite.h)
@@ -174,8 +176,11 @@ typedef NSInteger OOGUITabStop; // negative value = right align text
 typedef OOGUITabStop OOGUITabSettings[GUI_MAX_COLUMNS];
 
 
-namespace cxx {
-
+/*	The members marked virtual are the ones the whole-game unit tests (test_OOOXZManager,
+	test_OOJSPlayerShip) stood in for through the facade; since bead oo-9ht.143 deleted it, their
+	stand-ins are C++ subclasses that override them (proposed ADR-0056 amendment oo-9ht.1). The game
+	makes no subclass.
+*/
 class GuiDisplayGen : public oo::RefCounted
 {
 public:
@@ -207,7 +212,7 @@ public:
 	int rowStart();
 
 	std::optional<std::string> getTitle();	// nullopt: no title (bead oo-3rb.290)
-	void setTitle(const std::optional<std::string> &str);	// empty string means no title (bead oo-3rb.290)
+	virtual void setTitle(const std::optional<std::string> &str);	// empty string means no title (bead oo-3rb.290)
 
 	void setDrawPosition(Vector vector);
 	Vector getDrawPosition();
@@ -221,27 +226,27 @@ public:
 	void setAlpha(GLfloat an_alpha);
 	void setMaxAlpha(GLfloat an_alpha);
 
-	void setBackgroundColor(::OOColor *color);
+	void setBackgroundColor(OOColor *color);
 
-	::OOColor *getTextColor();
-	void setTextColor(::OOColor *color);
-	::OOColor *getTextCommsColor();
-	void setTextCommsColor(::OOColor *color);
-	::OOColor *colorFromSetting(const std::optional<std::string> &setting, ::OOColor *def);	// autoreleased
-	void setGLColorFromSetting(const std::optional<std::string> &setting, ::OOColor *def, GLfloat alpha);
-	void setGuiColorSettingFromKey(const std::string &key, ::OOColor *col);
+	virtual OOColor *getTextColor();
+	virtual void setTextColor(OOColor *color);
+	virtual OOColor *getTextCommsColor();
+	virtual void setTextCommsColor(OOColor *color);
+	oo::Ref<OOColor> colorFromSetting(const std::optional<std::string> &setting, OOColor *def);
+	void setGLColorFromSetting(const std::optional<std::string> &setting, OOColor *def, GLfloat alpha);
+	void setGuiColorSettingFromKey(const std::string &key, OOColor *col);
 
 	void setCharacterSize(NSSize character_size);
 
 	void setShowAdvancedNavArray(bool inFlag);
 
-	void setColor(::OOColor *color, OOGUIRow row);
+	virtual void setColor(OOColor *color, OOGUIRow row);
 
 	oo::PList objectForRow(OOGUIRow row);	// a string, or an array of column strings; null out of range
 	std::optional<std::string> keyForRow(OOGUIRow row);
 	OOGUIRow rowForKey(const std::optional<std::string> &key);
-	OOGUIRow getSelectedRow();
-	bool setSelectedRow(OOGUIRow row);
+	virtual OOGUIRow getSelectedRow();
+	virtual bool setSelectedRow(OOGUIRow row);
 	bool setNextRow(int direction);
 	bool setFirstSelectableRow();
 	bool setLastSelectableRow();
@@ -254,45 +259,45 @@ public:
 	void setCurrentRow(OOGUIRow value);
 
 	NSRange getSelectableRange();
-	void setSelectableRange(NSRange range);
+	virtual void setSelectableRange(NSRange range);
 
-	void setTabStops(OOGUITabSettings stops);
+	virtual void setTabStops(OOGUITabSettings stops);
 	void overrideTabs(OOGUITabSettings stops, const std::string &setting, NSUInteger len);
 
 	void clear();
-	void clearAndKeepBackground(bool keepBackground);
+	virtual void clearAndKeepBackground(bool keepBackground);
 
-	void setKey(const std::string &str, OOGUIRow row);
-	void setText(const std::string &str, OOGUIRow row);
-	void setText(const std::optional<std::string> &str, OOGUIRow row, OOGUIAlignment alignment);	// nullopt: no change
+	virtual void setKey(const std::string &str, OOGUIRow row);
+	virtual void setText(const std::string &str, OOGUIRow row);
+	virtual void setText(const std::optional<std::string> &str, OOGUIRow row, OOGUIAlignment alignment);	// nullopt: no change
 
 	// Chunk 2 (oo-3rb.93): a nil text or key is std::nullopt (nothing printed / no key set, as before);
 	// text_array, when not nullptr, receives each line printed.
-	std::optional<std::string> reflowTextForMFD(const std::optional<std::string> &input);
-	OOGUIRow addLongText(const std::optional<std::string> &str,
+	virtual std::optional<std::string> reflowTextForMFD(const std::optional<std::string> &input);
+	virtual OOGUIRow addLongText(const std::optional<std::string> &str,
 						 OOGUIRow row,
 						 OOGUIAlignment alignment);
 	void printLongText(const std::optional<std::string> &str,
 					   OOGUIAlignment alignment,
-					   ::OOColor *text_color,
+					   OOColor *text_color,
 					   float text_fade,
 					   const std::optional<std::string> &text_key,
 					   std::vector<std::string> *text_array);
 	void printLineNoScroll(const std::optional<std::string> &str,
 						   OOGUIAlignment alignment,
-						   ::OOColor *text_color,
+						   OOColor *text_color,
 						   float text_fade,
 						   const std::optional<std::string> &text_key,
 						   std::vector<std::string> *text_array);
 
-	void setArray(const std::vector<std::string> &arr, OOGUIRow row);	// one string per column
+	virtual void setArray(const std::vector<std::string> &arr, OOGUIRow row);	// one string per column
 
 	// items: an array of row texts (a string, or an array of column strings); item_keys: null or an
 	// array of the same length.
 	void insertItemsFromArray(const oo::PList &items,
 							  const oo::PList &item_keys,
 							  OOGUIRow row,
-							  ::OOColor *text_color);
+							  OOColor *text_color);
 
 	void scrollUp(int how_much);
 
@@ -345,12 +350,11 @@ public:
 
 	OOSystemID targetNextFoundSystem(int direction);
 
-	// Public for the facade's slice-3 forwarder, which test_GuiDisplayGen pins (bead oo-iro0g);
-	// private again with the facade's deletion.
-	void drawSystemMarkers(const oo::PList &markers, GLfloat x, GLfloat y, GLfloat z, GLfloat alpha, GLfloat scale);
 
 
 private:
+	void drawSystemMarkers(const oo::PList &markers, GLfloat x, GLfloat y, GLfloat z, GLfloat alpha, GLfloat scale);
+
 	NSSize					size_in_pixels = {};
 	unsigned				n_columns = {};
 	unsigned				n_rows = {};
@@ -363,9 +367,9 @@ private:
 
 	NSSize					pixel_title_size = {};
 
-	oo::ObjCRef<::OOColor *>	backgroundColor;
-	oo::ObjCRef<::OOColor *>	textColor;
-	oo::ObjCRef<::OOColor *>	textCommsColor;
+	oo::Ref<OOColor>	backgroundColor;
+	oo::Ref<OOColor>	textColor;
+	oo::Ref<OOColor>	textCommsColor;
 
 	oo::Ref<OOTextureSprite>	backgroundSprite;
 	oo::Ref<OOTextureSprite>	foregroundSprite;
@@ -375,7 +379,7 @@ private:
 
 	std::vector<oo::PList>	rowText;	// each a string, or an array of column strings (chunk 5a, oo-3rb.165)
 	std::vector<std::string>	rowKey;
-	std::vector<oo::ObjCRef<::OOColor *>>	rowColor;
+	std::vector<oo::Ref<OOColor>>	rowColor;
 
 	Vector					drawPosition = {};
 
@@ -409,10 +413,9 @@ private:
 	void drawAdvancedNavArrayAtX(float x, float y, float z, float alpha, const oo::PList &routeInfo, OORouteType optimizeBy, OOScalar zoom);
 };
 
-}	// namespace cxx
 
 
-// Transitional: the Objective-C GuiDisplayGen, for the universe, the player, the HUD, the scripting
-// bindings and the methods of this file's slices 2-4, which are not yet converted. Deleted, with
-// namespace cxx above, by the bridge's deletion bead.
-#import "GuiDisplayGen+ObjCBridge.h"
+// One-line bridge (ADR-0056 amendment oo-9ht.139 item 3) for the file-scope helpers of
+// GuiDisplayGen.mm, which may not message the universe themselves (moved from the GUI's deleted
+// facade by bead oo-9ht.143). Deleted with the universe's conversion.
+bool GuiDisplayGenUniverseUseShaders();

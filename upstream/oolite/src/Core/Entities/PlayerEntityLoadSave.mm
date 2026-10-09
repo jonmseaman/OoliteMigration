@@ -266,27 +266,27 @@ void cxx::PlayerEntity::setGuiToScenarioScreen(int page)
 		OOGUIRow		row = start_row;
 		BOOL			guiChanged = (gui_screen != GUI_SCREEN_NEWGAME);
 
-		[gui clearAndKeepBackground:!guiChanged];
-		[gui cxx_setTitle:OO_DESC("oolite-newgame-title")];
+		gui->clearAndKeepBackground(!guiChanged);
+		gui->setTitle(OO_DESC("oolite-newgame-title"));
 
 		OOGUITabSettings tab_stops;
 		tab_stops[0] = 0;
 		tab_stops[1] = -480;
-		[gui setTabStops:tab_stops];
+		gui->setTabStops(tab_stops);
 
 		unsigned n_rows = GUI_MAX_ROWS_SCENARIOS;
 		NSUInteger i, count = scenarios.count();
 
-		[gui cxx_setArray:{ OO_DESC("oolite-scenario-exit"), " <----- " } forRow:start_row - 2];
-		[gui setColor:[::OOColor redColor] forRow:start_row - 2];
-		[gui cxx_setKey:"exit" forRow:start_row - 2];
+		gui->setArray({ OO_DESC("oolite-scenario-exit"), " <----- " }, start_row - 2);
+		gui->setColor(OOColor::redColor().get(), start_row - 2);
+		gui->setKey("exit", start_row - 2);
 		
 
 		if (page > 0)
 		{
-			[gui cxx_setArray:{ OO_DESC("gui-back"), " <-- " } forRow:start_row - 1];
-			[gui setColor:[::OOColor greenColor] forRow:start_row - 1];
-			[gui cxx_setKey:oo::str::format("__page:%i",page-1) forRow:start_row - 1];
+			gui->setArray({ OO_DESC("gui-back"), " <-- " }, start_row - 1);
+			gui->setColor(OOColor::greenColor().get(), start_row - 1);
+			gui->setKey(oo::str::format("__page:%i",page-1), start_row - 1);
 		}
 
 		[self setShowDemoShips:NO];
@@ -296,29 +296,29 @@ void cxx::PlayerEntity::setGuiToScenarioScreen(int page)
 			const oo::PList *scenario = scenarios.at(i);
 			const std::optional<std::string> scenarioTitle = scenario != nullptr ? OptionalStringValue(scenario->find("name")) : std::nullopt;
 			const std::string scenarioName = " " + scenarioTitle.value_or("(null)") + " ";	// @" %@ "
-			[gui cxx_setText:cxx_OOExpand(scenarioName).value_or(std::string()) forRow:row];
-			[gui cxx_setKey:oo::str::format("Scenario:%zu", i) forRow:row];
+			gui->setText(cxx_OOExpand(scenarioName).value_or(std::string()), row);
+			gui->setKey(oo::str::format("Scenario:%zu", i), row);
 			++row;
 		}
 
 		if ((NSUInteger)(page+1) * n_rows < count)
 		{
-			[gui cxx_setArray:{ OO_DESC("gui-more"), " --> " } forRow:row];
-			[gui setColor:[::OOColor greenColor] forRow:row];
-			[gui cxx_setKey:oo::str::format("__page:%i",page+1) forRow:row];
+			gui->setArray({ OO_DESC("gui-more"), " --> " }, row);
+			gui->setColor(OOColor::greenColor().get(), row);
+			gui->setKey(oo::str::format("__page:%i",page+1), row);
 			++row;
 		}
 		
 		gui_screen = GUI_SCREEN_NEWGAME;
 
-		[gui setSelectableRange:NSMakeRange(start_row - 2,3 + row - start_row)];
-		[gui setSelectedRow:start_row];
+		gui->setSelectableRange(NSMakeRange(start_row - 2,3 + row - start_row));
+		gui->setSelectedRow(start_row);
 		[self showScenarioDetails];
 	
 		if (guiChanged)
 		{
-			[gui cxx_setBackgroundTextureKey:"newgame"];
-			[gui cxx_setForegroundTextureKey:"newgame_overlay"];
+			gui->setBackgroundTextureKey("newgame");
+			gui->setForegroundTextureKey("newgame_overlay");
 		}
 	}
 	
@@ -336,7 +336,7 @@ void cxx::PlayerEntity::showScenarioDetails()
 {
 	::PlayerEntity *self = oo::ToObjC(this);
 	::GuiDisplayGen* gui = [UNIVERSE gui];
-	const std::optional<std::string> key = [gui cxx_selectedRowKey];
+	const std::optional<std::string> key = gui->selectedRowKey();
 	[UNIVERSE removeDemoShips];
 
 	if (key && oo::str::hasPrefix(*key, "Scenario"))
@@ -347,13 +347,13 @@ void cxx::PlayerEntity::showScenarioDetails()
 		[self setShowDemoShips:NO];
 		for (NSUInteger i=GUI_ROW_SCENARIOS_DETAIL;i<=27;i++)
 		{
-			[gui cxx_setText:"" forRow:i];
+			gui->setText("", i);
 		}
 		if (scenario)
 		{
 			const std::optional<std::string> scenarioDescription = OptionalStringValue(scenario->find("description"));
 			const std::optional<std::string> expandedDescription = scenarioDescription.has_value() ? cxx_OOExpand(*scenarioDescription) : std::nullopt;
-			[gui cxx_addLongText:expandedDescription startingAtRow:GUI_ROW_SCENARIOS_DETAIL align:GUI_ALIGN_LEFT];
+			gui->addLongText(expandedDescription, GUI_ROW_SCENARIOS_DETAIL, GUI_ALIGN_LEFT);
 			const std::optional<std::string> shipKey = OptionalStringValue(scenario->find("model"));
 			if (shipKey)
 			{
@@ -370,7 +370,7 @@ bool cxx::PlayerEntity::startScenario()
 {
 	::PlayerEntity *self = oo::ToObjC(this);
 	::GuiDisplayGen* gui = [UNIVERSE gui];
-	const std::optional<std::string> key = [gui cxx_selectedRowKey];
+	const std::optional<std::string> key = gui->selectedRowKey();
 
 	if (key == "exit")
 	{
@@ -423,7 +423,7 @@ std::optional<std::string> cxx::PlayerEntity::commanderSelector()
 	int idx;
 	if([self handleGUIUpDownArrowKeys])
 	{
-		int guiSelectedRow=[gui selectedRow];
+		int guiSelectedRow=gui->getSelectedRow();
 		idx=(guiSelectedRow - STARTROW) + (currentPage * NUMROWS);
 		if (guiSelectedRow != MOREROW && guiSelectedRow != BACKROW && guiSelectedRow != EXITROW)
 		{
@@ -432,26 +432,26 @@ std::optional<std::string> cxx::PlayerEntity::commanderSelector()
 		else
 		{
 			[UNIVERSE removeDemoShips];
-			[gui cxx_setText:"" forRow:CDRDESCROW align:GUI_ALIGN_LEFT];
-			[gui cxx_setText:"" forRow:CDRDESCROW + 1 align:GUI_ALIGN_LEFT];
-			[gui cxx_setText:"" forRow:CDRDESCROW + 2 align:GUI_ALIGN_LEFT];
+			gui->setText("", CDRDESCROW, GUI_ALIGN_LEFT);
+			gui->setText("", CDRDESCROW + 1, GUI_ALIGN_LEFT);
+			gui->setText("", CDRDESCROW + 2, GUI_ALIGN_LEFT);
 		}
 
 	}
 	else
 	{
-		idx=([gui selectedRow] - STARTROW) + (OOGUIRow)(currentPage * NUMROWS);
+		idx=(gui->getSelectedRow() - STARTROW) + (OOGUIRow)(currentPage * NUMROWS);
 	}
 	
 	// handle page <-- and page --> keys
-	if (([self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up]) && ([gui cxx_keyForRow:BACKROW] == GUI_KEY_OK))
+	if (([self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up]) && (gui->keyForRow(BACKROW) == GUI_KEY_OK))
 	{
 		currentPage--;
 		[self playMenuPagePrevious];
 		[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: std::nullopt];
 		[gameView suppressKeysUntilKeyUp];
 	}
-	if (([self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_page_down]) && ([gui cxx_keyForRow:MOREROW] == GUI_KEY_OK))
+	if (([self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_page_down]) && (gui->keyForRow(MOREROW) == GUI_KEY_OK))
 	{
 		currentPage++;
 		[self playMenuPageNext];
@@ -463,7 +463,7 @@ std::optional<std::string> cxx::PlayerEntity::commanderSelector()
 	// ignore Ctrl for the moment - we check for it explicitly later
 	if ([self checkKeyPress:n_key_gui_select ignore_ctrl:YES]||[gameView isDown:gvMouseDoubleClick])
 	{
-		switch ([gui selectedRow])
+		switch (gui->getSelectedRow())
 		{
 			case EXITROW:
 				if ([self status] == STATUS_START_GAME)
@@ -522,7 +522,7 @@ void cxx::PlayerEntity::saveCommanderInputHandler()
 	
 	if ([self handleGUIUpDownArrowKeys])
 	{
-		int guiSelectedRow=[gui selectedRow];
+		int guiSelectedRow=gui->getSelectedRow();
 		int	idx = (guiSelectedRow - STARTROW) + (currentPage * NUMROWS);
 		if (guiSelectedRow != MOREROW && guiSelectedRow != BACKROW)
 		{
@@ -535,9 +535,9 @@ void cxx::PlayerEntity::saveCommanderInputHandler()
 		else
 		{
 			[UNIVERSE removeDemoShips];
-			[gui cxx_setText:"" forRow:CDRDESCROW align:GUI_ALIGN_LEFT];
-			[gui cxx_setText:"" forRow:CDRDESCROW + 1 align:GUI_ALIGN_LEFT];
-			[gui cxx_setText:"" forRow:CDRDESCROW + 2 align:GUI_ALIGN_LEFT];
+			gui->setText("", CDRDESCROW, GUI_ALIGN_LEFT);
+			gui->setText("", CDRDESCROW + 1, GUI_ALIGN_LEFT);
+			gui->setText("", CDRDESCROW + 2, GUI_ALIGN_LEFT);
 		}
 	}
 	else
@@ -547,22 +547,20 @@ void cxx::PlayerEntity::saveCommanderInputHandler()
 	
 	[gameView cxx_setTypedString: commanderNameString];
 	
-	[gui cxx_setText:
-		oo::str::formatRuntime(OO_DESC("savescreen-commander-name-@"), { commanderNameString })
-		  forRow: INPUTROW];
-	[gui setColor:[::OOColor cyanColor] forRow:INPUTROW];
+	gui->setText(oo::str::formatRuntime(OO_DESC("savescreen-commander-name-@"), { commanderNameString }), INPUTROW);
+	gui->setColor(OOColor::cyanColor().get(), INPUTROW);
 	
 	// handle page <-- and page --> keys, and on-screen buttons
-	if (((([gameView isDown:gvMouseDoubleClick] || [self checkKeyPress:n_key_gui_select]) && [gui selectedRow] == BACKROW) || ([self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up]))
-					&& ([gui cxx_keyForRow:BACKROW] == GUI_KEY_OK))
+	if (((([gameView isDown:gvMouseDoubleClick] || [self checkKeyPress:n_key_gui_select]) && gui->getSelectedRow() == BACKROW) || ([self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up]))
+					&& (gui->keyForRow(BACKROW) == GUI_KEY_OK))
 	{
 		currentPage--;
 		[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: std::nullopt];
 		[gameView suppressKeysUntilKeyUp];
 	}
 	//
-	if (((([gameView isDown:gvMouseDoubleClick] || [self checkKeyPress:n_key_gui_select]) && [gui selectedRow] == MOREROW) || ([self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_page_down]))
-					&& ([gui cxx_keyForRow:MOREROW] == GUI_KEY_OK))
+	if (((([gameView isDown:gvMouseDoubleClick] || [self checkKeyPress:n_key_gui_select]) && gui->getSelectedRow() == MOREROW) || ([self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_page_down]))
+					&& (gui->keyForRow(MOREROW) == GUI_KEY_OK))
 	{
 		currentPage++;
 		[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: std::nullopt];
@@ -574,7 +572,7 @@ void cxx::PlayerEntity::saveCommanderInputHandler()
 	{
 		if (IsCommandModifierKeyDown(gameView)||[gameView isDown:gvMouseDoubleClick])
 		{
-			int guiSelectedRow=[gui selectedRow];
+			int guiSelectedRow=gui->getSelectedRow();
 			int	idx = (guiSelectedRow - STARTROW) + (currentPage * NUMROWS);
 			const oo::PList cdr = (idx >= 0 && (std::size_t)idx < cdrDetailArray.size()) ? cdrDetailArray[idx] : oo::PList();	// (-objectAtIndex: raised)
 			
@@ -632,7 +630,7 @@ void cxx::PlayerEntity::overwriteCommanderInputHandler()
 	cYes = FirstUnitLowByte(valueYes);	// Use lower byte of unichar.
 	cNo = FirstUnitLowByte(valueNo);	// Use lower byte of unichar.
 	
-	if (([self checkKeyPress:n_key_gui_select] && ([gui selectedRow] == SAVE_OVERWRITE_YES_ROW))||[gameView isDown:cYes]||[gameView isDown:cYes - 32])
+	if (([self checkKeyPress:n_key_gui_select] && (gui->getSelectedRow() == SAVE_OVERWRITE_YES_ROW))||[gameView isDown:cYes]||[gameView isDown:cYes - 32])
 	{
 		pollControls=YES;
 		[self nativeSavePlayer: commanderNameString];
@@ -641,7 +639,7 @@ void cxx::PlayerEntity::overwriteCommanderInputHandler()
 		[self setGuiToStatusScreen];
 	}
 	
-	if (([self checkKeyPress:n_key_gui_select] && ([gui selectedRow] == SAVE_OVERWRITE_NO_ROW))||[gameView isDown:27]||[gameView isDown:cNo]||[gameView isDown:cNo - 32])
+	if (([self checkKeyPress:n_key_gui_select] && (gui->getSelectedRow() == SAVE_OVERWRITE_NO_ROW))||[gameView isDown:27]||[gameView isDown:cNo]||[gameView isDown:cNo - 32])
 	{
 		// esc or NO was pressed - get out of here
 		pollControls=YES;
@@ -996,14 +994,14 @@ void cxx::PlayerEntity::setGuiToLoadCommanderScreen()
 	
 	gui_screen = GUI_SCREEN_LOAD;
 	
-	[gui clear];
-	[gui cxx_setTitle:OO_DESC("loadscreen-title")];
+	gui->clear();
+	gui->setTitle(OO_DESC("loadscreen-title"));
 	
 	currentPage = 0;
 	[self lsCommanders:gui directory:dir pageNumber: currentPage highlightName:std::nullopt];
 	
-	[gui cxx_setForegroundTextureKey:"docked_overlay"];
-	[gui cxx_setBackgroundTextureKey:"load_save"];
+	gui->setForegroundTextureKey("docked_overlay");
+	gui->setBackgroundTextureKey("load_save");
 	
 	[[UNIVERSE gameView] suppressKeysUntilKeyUp];
 	
@@ -1022,19 +1020,19 @@ void cxx::PlayerEntity::setGuiToSaveCommanderScreen(const std::string &cdrName)
 	pollControls = NO;
 	gui_screen = GUI_SCREEN_SAVE;
 	
-	[gui clear];
-	[gui cxx_setTitle:OO_DESC("savescreen-title")];
+	gui->clear();
+	gui->setTitle(OO_DESC("savescreen-title"));
 	
 	currentPage = 0;
 	[self lsCommanders:gui directory:dir pageNumber: currentPage highlightName:std::nullopt];
 	
-	[gui cxx_setText:OO_DESC("savescreen-commander-name") forRow: INPUTROW];
-	[gui setColor:[::OOColor cyanColor] forRow:INPUTROW];
-	[gui setShowTextCursor: YES];
-	[gui setCurrentRow: INPUTROW];
+	gui->setText(OO_DESC("savescreen-commander-name"), INPUTROW);
+	gui->setColor(OOColor::cyanColor().get(), INPUTROW);
+	gui->setShowTextCursor(YES);
+	gui->setCurrentRow(INPUTROW);
 	
-	[gui cxx_setForegroundTextureKey:"docked_overlay"];
-	[gui cxx_setBackgroundTextureKey:"load_save"];
+	gui->setForegroundTextureKey("docked_overlay");
+	gui->setBackgroundTextureKey("load_save");
 	
 	[gameView cxx_setTypedString:cdrName];
 	[gameView suppressKeysUntilKeyUp];
@@ -1055,25 +1053,24 @@ void cxx::PlayerEntity::setGuiToOverwriteScreen(const std::string &cdrName)
 	
 	gui_screen = GUI_SCREEN_SAVE_OVERWRITE;
 	
-	[gui clear];
-	[gui cxx_setTitle:oo::str::formatRuntime(OO_DESC("overwrite-save-commander-@"), { cdrName })];
+	gui->clear();
+	gui->setTitle(oo::str::formatRuntime(OO_DESC("overwrite-save-commander-@"), { cdrName }));
 	
-	[gui cxx_setText:oo::str::formatRuntime(OO_DESC("overwritescreen-commander-@-already-exists-overwrite-query"), { cdrName })
-								forRow:SAVE_OVERWRITE_WARN_ROW align: GUI_ALIGN_CENTER];
+	gui->setText(oo::str::formatRuntime(OO_DESC("overwritescreen-commander-@-already-exists-overwrite-query"), { cdrName }), SAVE_OVERWRITE_WARN_ROW, GUI_ALIGN_CENTER);
 	
-	[gui cxx_setText:OO_DESC("overwritescreen-yes") forRow: SAVE_OVERWRITE_YES_ROW align: GUI_ALIGN_CENTER];
-	[gui cxx_setKey:std::string(GUI_KEY_OK) forRow: SAVE_OVERWRITE_YES_ROW];
+	gui->setText(OO_DESC("overwritescreen-yes"), SAVE_OVERWRITE_YES_ROW, GUI_ALIGN_CENTER);
+	gui->setKey(std::string(GUI_KEY_OK), SAVE_OVERWRITE_YES_ROW);
 	
-	[gui cxx_setText:OO_DESC("overwritescreen-no") forRow: SAVE_OVERWRITE_NO_ROW align: GUI_ALIGN_CENTER];
-	[gui cxx_setKey:std::string(GUI_KEY_OK) forRow: SAVE_OVERWRITE_NO_ROW];
+	gui->setText(OO_DESC("overwritescreen-no"), SAVE_OVERWRITE_NO_ROW, GUI_ALIGN_CENTER);
+	gui->setKey(std::string(GUI_KEY_OK), SAVE_OVERWRITE_NO_ROW);
 	
-	[gui setSelectableRange: NSMakeRange(SAVE_OVERWRITE_YES_ROW, 2)];
-	[gui setSelectedRow: SAVE_OVERWRITE_NO_ROW];
+	gui->setSelectableRange(NSMakeRange(SAVE_OVERWRITE_YES_ROW, 2));
+	gui->setSelectedRow(SAVE_OVERWRITE_NO_ROW);
 	
 	// We can only leave this screen by answering yes or no, or esc. Therefore
 	// use a specific overlay, to allow visual reminders of the available options.
-	[gui cxx_setForegroundTextureKey:"overwrite_overlay"];
-	[gui cxx_setBackgroundTextureKey:"load_save"];
+	gui->setForegroundTextureKey("overwrite_overlay");
+	gui->setBackgroundTextureKey("load_save");
 	
 	[self setShowDemoShips:NO];
 	[gameView setStringInput:gvStringInputNo];
@@ -1143,7 +1140,7 @@ void cxx::PlayerEntity::lsCommanders(::GuiDisplayGen *gui, const std::string &di
 	if(cdrDetailArray.empty())
 	{
 		// Empty directory; tell the user and exit immediately.
-		[gui cxx_setText:OO_DESC("loadsavescreen-no-commanders-found") forRow:STARTROW align:GUI_ALIGN_CENTER];
+		gui->setText(OO_DESC("loadsavescreen-no-commanders-found"), STARTROW, GUI_ALIGN_CENTER);
 		return;
 	}
 
@@ -1178,34 +1175,32 @@ void cxx::PlayerEntity::lsCommanders(::GuiDisplayGen *gui, const std::string &di
 	tabStop[0]=0;
 	tabStop[1]=160;
 	tabStop[2]=270;
-	[gui setTabStops: tabStop];
+	gui->setTabStops(tabStop);
 	
 	// clear text lines here
 	for (i = EXITROW ; i < ENDROW + 1; i++)
 	{
-		[gui cxx_setText:"" forRow:i align:GUI_ALIGN_LEFT];
-		[gui setColor: [::OOColor yellowColor] forRow: i];
-		[gui cxx_setKey:std::string(GUI_KEY_SKIP) forRow:i];
+		gui->setText("", i, GUI_ALIGN_LEFT);
+		gui->setColor(OOColor::yellowColor().get(), i);
+		gui->setKey(std::string(GUI_KEY_SKIP), i);
 	}
 
-	[gui setColor: [::OOColor greenColor] forRow: LABELROW];
-	[gui cxx_setArray: { OO_DESC("loadsavescreen-commander-name"), OO_DESC("loadsavescreen-rating") }
-		   forRow:LABELROW];
+	gui->setColor(OOColor::greenColor().get(), LABELROW);
+	gui->setArray({ OO_DESC("loadsavescreen-commander-name"), OO_DESC("loadsavescreen-rating") }, LABELROW);
 
 	if (page)
 	{
-		[gui setColor:[::OOColor greenColor] forRow:STARTROW-1];
-		[gui cxx_setArray:{ OO_DESC("gui-back"), " <-- " }
-			   forRow:STARTROW-1];
-		[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:STARTROW-1];
+		gui->setColor(OOColor::greenColor().get(), STARTROW-1);
+		gui->setArray({ OO_DESC("gui-back"), " <-- " }, STARTROW-1);
+		gui->setKey(std::string(GUI_KEY_OK), STARTROW-1);
 		rangeStart=STARTROW-1;
 	}
 
 	if ([self status] == STATUS_START_GAME)
 	{
-		[gui cxx_setArray:{ OO_DESC("oolite-loadsave-exit"), " <----- " } forRow:EXITROW];
-		[gui setColor:[::OOColor redColor] forRow:EXITROW];
-		[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:EXITROW];
+		gui->setArray({ OO_DESC("oolite-loadsave-exit"), " <----- " }, EXITROW);
+		gui->setColor(OOColor::redColor().get(), EXITROW);
+		gui->setKey(std::string(GUI_KEY_OK), EXITROW);
 		rangeStart = EXITROW;
 	}
 
@@ -1213,16 +1208,15 @@ void cxx::PlayerEntity::lsCommanders(::GuiDisplayGen *gui, const std::string &di
 	if (firstIndex + NUMROWS >= cdrDetailArray.size())
 	{
 		lastIndex=cdrDetailArray.size();
-		[gui setSelectableRange: NSMakeRange(rangeStart, rangeStart + NUMROWS + 2)];
+		gui->setSelectableRange(NSMakeRange(rangeStart, rangeStart + NUMROWS + 2));
 	}
 	else
 	{
 		lastIndex=(page * NUMROWS) + NUMROWS;
-		[gui setColor:[::OOColor greenColor] forRow:ENDROW];
-		[gui cxx_setArray:{ OO_DESC("gui-more"), " --> " }
-			   forRow:ENDROW];
-		[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:ENDROW];
-		[gui setSelectableRange: NSMakeRange(rangeStart, MOREROW)];
+		gui->setColor(OOColor::greenColor().get(), ENDROW);
+		gui->setArray({ OO_DESC("gui-more"), " --> " }, ENDROW);
+		gui->setKey(std::string(GUI_KEY_OK), ENDROW);
+		gui->setSelectableRange(NSMakeRange(rangeStart, MOREROW));
 	}
 	
 	const std::optional<std::string> lastsaveName = [self cxx_lastsaveName];
@@ -1233,40 +1227,34 @@ void cxx::PlayerEntity::lsCommanders(::GuiDisplayGen *gui, const std::string &di
 		{
 			const std::string ratingDesc = cxx_OODisplayRatingStringFromKillCount(cdr.get<unsigned int>("ship_kills")).value_or("(null)");
 			const std::optional<std::string> saveName = CommanderSaveName(cdr);
-			[gui cxx_setArray:{
+			gui->setArray({
 				" " + saveName.value_or("(null)") + " ",	// @" %@ "
-				" " + ratingDesc + " " }
-				   forRow:row];
+				" " + ratingDesc + " " },
+				   row);
 			if (lastsaveName && saveName && *lastsaveName == *saveName)
 			{
 				highlightRowOnPage = row;
 			}
 			
-			[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:row];
+			gui->setKey(std::string(GUI_KEY_OK), row);
 			row++;
 		}
 		if (cdr.get<bool>("isParentFolder"))
 		{
-			[gui cxx_setArray:{
-				" (..) " + oo::str::lastPathComponent(cdr.get<std::string>("saved_game_path")) + " ",
-				"" }
-				   forRow:row];
-			[gui setColor: [::OOColor orangeColor] forRow: row];
-			[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:row];
+			gui->setArray({ " (..) " + oo::str::lastPathComponent(cdr.get<std::string>("saved_game_path")) + " ", "" }, row);
+			gui->setColor(OOColor::orangeColor().get(), row);
+			gui->setKey(std::string(GUI_KEY_OK), row);
 			row++;
 		}
 		if (cdr.get<bool>("isFolder"))
 		{
-			[gui cxx_setArray:{
-				" >> " + oo::str::lastPathComponent(cdr.get<std::string>("saved_game_path")) + " ",
-				"" }
-				   forRow:row];
-			[gui setColor: [::OOColor orangeColor] forRow: row];
-			[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:row];
+			gui->setArray({ " >> " + oo::str::lastPathComponent(cdr.get<std::string>("saved_game_path")) + " ", "" }, row);
+			gui->setColor(OOColor::orangeColor().get(), row);
+			gui->setKey(std::string(GUI_KEY_OK), row);
 			row++;
 		}
 	}
-	[gui setSelectedRow: highlightRowOnPage];
+	gui->setSelectedRow(highlightRowOnPage);
 	highlightIdx = (highlightRowOnPage - STARTROW) + (currentPage * NUMROWS);
 	// show the first ship, this will be the selected row
 	[self showCommanderShip: highlightIdx];
@@ -1292,26 +1280,26 @@ void cxx::PlayerEntity::showCommanderShip(int cdrArrayIndex)
 	if (cdrArrayIndex < 0 || (std::size_t)cdrArrayIndex >= cdrDetailArray.size())  return;	// (-objectAtIndex: raised)
 	const oo::PList cdr = cdrDetailArray[cdrArrayIndex];
 	
-	[gui cxx_setText:"" forRow:CDRDESCROW align:GUI_ALIGN_LEFT];
-	[gui cxx_setText:"" forRow:CDRDESCROW + 1 align:GUI_ALIGN_LEFT];
-	[gui cxx_setText:"" forRow:CDRDESCROW + 2 align:GUI_ALIGN_LEFT];
+	gui->setText("", CDRDESCROW, GUI_ALIGN_LEFT);
+	gui->setText("", CDRDESCROW + 1, GUI_ALIGN_LEFT);
+	gui->setText("", CDRDESCROW + 2, GUI_ALIGN_LEFT);
 	
 	if (cdr.get<bool>("isFolder"))
 	{
 		const std::string folderDesc = oo::str::formatRuntime(OO_DESC("loadsavescreen-hold-@-and-press-return-to-open-folder-@"), { COMMAND_MODIFIER_KEY, oo::str::lastPathComponent(cdr.get<std::string>("saved_game_path")) });
-		[gui setColor: [::OOColor orangeColor] forRow: CDRDESCROW];
-		[gui cxx_addLongText: folderDesc startingAtRow: CDRDESCROW align: GUI_ALIGN_LEFT];
+		gui->setColor(OOColor::orangeColor().get(), CDRDESCROW);
+		gui->addLongText(folderDesc, CDRDESCROW, GUI_ALIGN_LEFT);
 		return;
 	}
 	
 	if (cdr.get<bool>("isParentFolder"))
 	{
 		const std::string folderDesc = oo::str::formatRuntime(OO_DESC("loadsavescreen-hold-@-and-press-return-to-open-parent-folder-@"), { COMMAND_MODIFIER_KEY, oo::str::lastPathComponent(cdr.get<std::string>("saved_game_path")) });
-		[gui setColor: [::OOColor orangeColor] forRow: CDRDESCROW];
-		[gui cxx_addLongText: folderDesc startingAtRow: CDRDESCROW align: GUI_ALIGN_LEFT];
+		gui->setColor(OOColor::orangeColor().get(), CDRDESCROW);
+		gui->addLongText(folderDesc, CDRDESCROW, GUI_ALIGN_LEFT);
 		return;
 	}
-	[gui setColor:[gui cxx_colorFromSetting:std::nullopt defaultValue:nil] forRow: CDRDESCROW];
+	gui->setColor(gui->colorFromSetting(std::nullopt, nil).get(), CDRDESCROW);
 
 	if (!cdr.get<bool>("isSavedGame"))  return;	// don't show things that aren't saved games
 	
@@ -1401,7 +1389,7 @@ void cxx::PlayerEntity::showCommanderShip(int cdrArrayIndex)
 	
 	//-------------------------------------------------------------------------------------------------------------------------
 	
-	[gui cxx_addLongText:cdrDesc startingAtRow:CDRDESCROW align:GUI_ALIGN_LEFT];
+	gui->addLongText(cdrDesc, CDRDESCROW, GUI_ALIGN_LEFT);
 	
 }
 

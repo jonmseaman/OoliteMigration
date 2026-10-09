@@ -263,7 +263,7 @@ OO_TEST(defaults)
 
 		OOColor *fog = [entity fogUniform];
 		OO_CHECK(fog != nil);
-		OO_CHECK([fog redComponent] == 0 && [fog greenComponent] == 0 && [fog blueComponent] == 0 && [fog alphaComponent] == 0);
+		OO_CHECK(fog->redComponent() == 0 && fog->greenComponent() == 0 && fog->blueComponent() == 0 && fog->alphaComponent() == 0);
 
 		// The components %@ prints.
 		OO_CHECK(oo::DescriptionOf(entity).ends_with("{position: (0, 0, 0) scanClass: CLASS_NOT_SET status: STATUS_COCKPIT_DISPLAY}"));
@@ -542,8 +542,8 @@ OO_TEST(sessionAndShaderBindings)
 		OO_CHECK([entity timeElapsedSinceSpawn] == 4.5f);
 		OO_CHECK(VectorEqual([entity relativePosition], make_vector(0, -1, 3)));
 
-		[entity setAtmosphereFogging:[OOColor colorWithRed:0.25f green:0.5f blue:0.75f alpha:1.0f]];
-		OO_CHECK([[entity fogUniform] greenComponent] == 0.5f && [[entity fogUniform] alphaComponent] == 1.0f);
+		[entity setAtmosphereFogging:OOColor::colorWithRed(0.25f, 0.5f, 0.75f, 1.0f).get()];
+		OO_CHECK([entity fogUniform]->greenComponent() == 0.5f && [entity fogUniform]->alphaComponent() == 1.0f);
 		[entity setAtmosphereFogging:nil];
 		OO_CHECK([entity fogUniform] == nil);
 

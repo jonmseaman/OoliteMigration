@@ -60,7 +60,7 @@ public:
 	static oo::Ref<OOShaderUniform> initWithName(const std::string &uniformName, OOShaderProgram *shaderProgram, GLint constValue);	// intValue:
 	static oo::Ref<OOShaderUniform> initWithName(const std::string &uniformName, OOShaderProgram *shaderProgram, GLfloat constValue);	// floatValue:
 	static oo::Ref<OOShaderUniform> initWithName(const std::string &uniformName, OOShaderProgram *shaderProgram, GLfloat constValue[4]);	// vectorValue:
-	static oo::Ref<OOShaderUniform> initWithName(const std::string &uniformName, OOShaderProgram *shaderProgram, cxx::OOColor *constValue);	// colorValue: Converted to vector
+	static oo::Ref<OOShaderUniform> initWithName(const std::string &uniformName, OOShaderProgram *shaderProgram, OOColor *constValue);	// colorValue: Converted to vector
 	static oo::Ref<OOShaderUniform> initWithName(const std::string &uniformName, OOShaderProgram *shaderProgram, Quaternion constValue, bool asMatrix);	// quaternionValue:asMatrix: Converted to vector (in xyzw order, not wxyz!) or rotation matrix.
 	static oo::Ref<OOShaderUniform> initWithName(const std::string &uniformName, OOShaderProgram *shaderProgram, OOMatrix constValue);	// matrixValue:
 

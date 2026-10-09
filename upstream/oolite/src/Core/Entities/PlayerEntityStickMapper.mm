@@ -162,11 +162,11 @@ void cxx::PlayerEntity::setGuiToStickMapperScreen(unsigned skip, bool resetCurre
 	tabStop[0] = 10;
 	tabStop[1] = 290;
 	tabStop[2] = 400;
-	[gui setTabStops:tabStop];
+	gui->setTabStops(tabStop);
 	
 	gui_screen = GUI_SCREEN_STICKMAPPER;
-	[gui clear];
-	[gui cxx_setTitle:"Configure Joysticks"];
+	gui->clear();
+	gui->setTitle("Configure Joysticks");
 	
 	for(i=0; i < stickCount; i++)
  	{
@@ -192,29 +192,28 @@ void cxx::PlayerEntity::setGuiToStickMapperScreen(unsigned skip, bool resetCurre
 				} while (cxx_OOStringWidthInEm(*stickNameAdditional) > 11.0);
 			}
 		}
-		[gui cxx_setArray:ColumnsUpToNil({
+		gui->setArray(ColumnsUpToNil({
 					   stickNameForThisRow,
 					   std::string(),	// skip one column
-					   stickNameAdditional })
-			   forRow:i + GUI_ROW_STICKNAME];
+					   stickNameAdditional }),
+			   i + GUI_ROW_STICKNAME);
 	}
 
-	[gui cxx_setArray: ColumnsUpToNil({ OO_DESC("stickmapper-profile") }) forRow: GUI_ROW_STICKPROFILE];
-	[gui cxx_setKey: std::string(GUI_KEY_OK) forRow: GUI_ROW_STICKPROFILE];
+	gui->setArray(ColumnsUpToNil({ OO_DESC("stickmapper-profile") }), GUI_ROW_STICKPROFILE);
+	gui->setKey(std::string(GUI_KEY_OK), GUI_ROW_STICKPROFILE);
 	[self displayFunctionList:gui skip:skip];
 	
-	[gui cxx_setArray:std::vector<std::string>{ "Select a function and press Enter to modify or 'u' to unset." }
-		   forRow:GUI_ROW_INSTRUCT];
+	gui->setArray(std::vector<std::string>{ "Select a function and press Enter to modify or 'u' to unset." }, GUI_ROW_INSTRUCT);
 
-	[gui cxx_setText:std::optional<std::string>("Space to return to previous screen.") forRow:GUI_ROW_INSTRUCT+1 align:GUI_ALIGN_CENTER];
+	gui->setText(std::optional<std::string>("Space to return to previous screen."), GUI_ROW_INSTRUCT+1, GUI_ALIGN_CENTER);
 	
 	if (resetCurrentRow)
 	{
-		[gui setSelectedRow: GUI_ROW_STICKPROFILE];
+		gui->setSelectedRow(GUI_ROW_STICKPROFILE);
 	}
 	[[UNIVERSE gameView] suppressKeysUntilKeyUp];
-	[gui cxx_setForegroundTextureKey:std::string([self status] == STATUS_DOCKED ? "docked_overlay" : "paused_overlay")];
-	[gui cxx_setBackgroundTextureKey:std::string("settings")];
+	gui->setForegroundTextureKey(std::string([self status] == STATUS_DOCKED ? "docked_overlay" : "paused_overlay"));
+	gui->setBackgroundTextureKey(std::string("settings"));
 }
 
 
@@ -230,8 +229,7 @@ void cxx::PlayerEntity::stickMapperInputHandler(::GuiDisplayGen *gui, ::MyOpenGL
 		if([gameView isDown: 27])
 		{
 			[stickHandler clearCallback];
-			[gui cxx_setArray: std::vector<std::string>{ "Function setting aborted." }
-				   forRow: GUI_ROW_INSTRUCT];
+			gui->setArray(std::vector<std::string>{ "Function setting aborted." }, GUI_ROW_INSTRUCT);
 			waitingForStickCallback=NO;
 		}
 
@@ -241,13 +239,13 @@ void cxx::PlayerEntity::stickMapperInputHandler(::GuiDisplayGen *gui, ::MyOpenGL
 	
 	[self handleGUIUpDownArrowKeys];
 	
-	if ([gui selectedRow] == GUI_ROW_STICKPROFILE && [gameView isDown: 13])
+	if (gui->getSelectedRow() == GUI_ROW_STICKPROFILE && [gameView isDown: 13])
 	{
 		[self setGuiToStickProfileScreen: gui];
 		return;
 	}
 	
-	const std::optional<std::string> key = [gui cxx_keyForRow: [gui selectedRow]];
+	const std::optional<std::string> key = gui->keyForRow(gui->getSelectedRow());
 	if (key.has_value() && oo::str::hasPrefix(*key, "Index:"))
 		selFunctionIdx=NumberAfterColon(*key);
 	else
@@ -261,10 +259,10 @@ void cxx::PlayerEntity::stickMapperInputHandler(::GuiDisplayGen *gui, ::MyOpenGL
 			if (from_function < 0)  from_function = 0;
 			
 			[self setGuiToStickMapperScreen:from_function];
-			if ([[UNIVERSE gui] selectedRow] < 0)
-				[[UNIVERSE gui] setSelectedRow: GUI_ROW_FUNCSTART];
+			if ([UNIVERSE gui]->getSelectedRow() < 0)
+				[UNIVERSE gui]->setSelectedRow(GUI_ROW_FUNCSTART);
 			if (from_function == 0)
-				[[UNIVERSE gui] setSelectedRow: GUI_ROW_FUNCSTART + MAX_ROWS_FUNCTIONS - 1];
+				[UNIVERSE gui]->setSelectedRow(GUI_ROW_FUNCSTART + MAX_ROWS_FUNCTIONS - 1);
 			return;
 		}
 		
@@ -287,7 +285,7 @@ void cxx::PlayerEntity::stickMapperInputHandler(::GuiDisplayGen *gui, ::MyOpenGL
 			default:
 				instructions = "Press the button or deflect the axis you want to use for this function.";
 		}
-		[gui cxx_setArray: std::vector<std::string>{ instructions } forRow: GUI_ROW_INSTRUCT];
+		gui->setArray(std::vector<std::string>{ instructions }, GUI_ROW_INSTRUCT);
 		waitingForStickCallback=YES;
 	}
 	
@@ -493,9 +491,8 @@ void cxx::PlayerEntity::displayFunctionList(::GuiDisplayGen *gui, NSUInteger ski
 	::PlayerEntity *self = oo::ToObjC(this);
 	::OOJoystickManager	*stickHandler = [::OOJoystickManager sharedStickHandler];
 	
-	[gui setColor:[::OOColor greenColor] forRow: GUI_ROW_HEADING];
-	[gui cxx_setArray:std::vector<std::string>{ "Function", "Assigned to", "Type" }
-		   forRow:GUI_ROW_HEADING];
+	gui->setColor(OOColor::greenColor().get(), GUI_ROW_HEADING);
+	gui->setArray(std::vector<std::string>{ "Function", "Assigned to", "Type" }, GUI_ROW_HEADING);
 
 	if(stickFunctions.empty())	// (the list is never empty once built)
 	{
@@ -536,9 +533,9 @@ void cxx::PlayerEntity::displayFunctionList(::GuiDisplayGen *gui, NSUInteger ski
 	{
 		if (skip > 0)
 		{
-			[gui setColor:[::OOColor greenColor] forRow:GUI_ROW_FUNCSTART];
-			[gui cxx_setArray:ColumnsUpToNil({ OO_DESC("gui-back"), std::string(" <-- ") }) forRow:GUI_ROW_FUNCSTART];
-			[gui cxx_setKey:oo::str::format("More:%zd", previous) forRow:GUI_ROW_FUNCSTART];
+			gui->setColor(OOColor::greenColor().get(), GUI_ROW_FUNCSTART);
+			gui->setArray(ColumnsUpToNil({ OO_DESC("gui-back"), std::string(" <-- ") }), GUI_ROW_FUNCSTART);
+			gui->setKey(oo::str::format("More:%zd", previous), GUI_ROW_FUNCSTART);
 		}
 		
 		for(i=0; i < (n_functions - skip) && (int)i < n_rows; i++)
@@ -546,8 +543,8 @@ void cxx::PlayerEntity::displayFunctionList(::GuiDisplayGen *gui, NSUInteger ski
 			const oo::PList &entry = StickFunctionAt(stickFunctions, i + skip);
 			if (entry.find(KEY_HEADER) != nullptr) {
 				const std::optional<std::string> header = OptionalStringForKey(entry, KEY_HEADER);
-				[gui cxx_setArray:ColumnsUpToNil({ header, std::string(), std::string() }) forRow:i + start_row];
-				[gui setColor:[::OOColor cyanColor] forRow:i + start_row];
+				gui->setArray(ColumnsUpToNil({ header, std::string(), std::string() }), i + start_row);
+				gui->setColor(OOColor::cyanColor().get(), i + start_row);
 			}
 			else
 			{
@@ -600,22 +597,20 @@ void cxx::PlayerEntity::displayFunctionList(::GuiDisplayGen *gui, NSUInteger ski
 					assignment = "   -   ";
 				}
 
-				[gui cxx_setArray: ColumnsUpToNil({
-								OptionalStringForKey(entry, KEY_GUIDESC), assignment, allowedThings })
-					forRow: i + start_row];
+				gui->setArray(ColumnsUpToNil({ OptionalStringForKey(entry, KEY_GUIDESC), assignment, allowedThings }), i + start_row);
 				//[gui setKey: GUI_KEY_OK forRow: i + start_row];
-				[gui cxx_setKey: oo::str::format("Index:%zu", i + skip) forRow: i + start_row];
+				gui->setKey(oo::str::format("Index:%zu", i + skip), i + start_row);
 			}
 		}
 		if (i < n_functions - skip)
 		{
-			[gui setColor: [::OOColor greenColor] forRow: start_row + i];
-			[gui cxx_setArray: ColumnsUpToNil({ OO_DESC("gui-more"), std::string(" --> ") }) forRow: start_row + i];
-			[gui cxx_setKey: oo::str::format("More:%zu", n_rows + skip) forRow: start_row + i];
+			gui->setColor(OOColor::greenColor().get(), start_row + i);
+			gui->setArray(ColumnsUpToNil({ OO_DESC("gui-more"), std::string(" --> ") }), start_row + i);
+			gui->setKey(oo::str::format("More:%zu", n_rows + skip), start_row + i);
 			i++;
 		}
 		
-		[gui setSelectableRange: NSMakeRange(GUI_ROW_STICKPROFILE, i + start_row - GUI_ROW_STICKPROFILE)];
+		gui->setSelectableRange(NSMakeRange(GUI_ROW_STICKPROFILE, i + start_row - GUI_ROW_STICKPROFILE));
 	}
 	
 }

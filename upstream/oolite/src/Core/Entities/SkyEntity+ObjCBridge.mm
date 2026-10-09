@@ -38,12 +38,12 @@ MA 02110-1301, USA.
 {
 	if (_cxxEntity != nullptr)  self = [super initWithCxxEntity:_cxxEntity.get()];
 	else  self = [super initWithCxxEntity:oo::makeRef<cxx::SkyEntity>().get()];
-	if (self != nil)  oo::ToCxx(self)->initWithColors(oo::ToCxx(col1), oo::ToCxx(col2), systemInfo);
+	if (self != nil)  oo::ToCxx(self)->initWithColors(col1, col2, systemInfo);
 	return self;
 }
 
 
 - (BOOL) changeProperty:(const std::string &)key withDictionary:(const oo::PList &)dict	{ return oo::ToCxx(self)->changeProperty(key, dict); }
-- (OOColor *) skyColor																	{ return oo::ToObjC(oo::ToCxx(self)->getSkyColor()); }
+- (OOColor *) skyColor																	{ return oo::ToCxx(self)->getSkyColor(); }
 
 @end

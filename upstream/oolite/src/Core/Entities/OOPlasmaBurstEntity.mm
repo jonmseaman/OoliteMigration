@@ -48,7 +48,7 @@ void OOPlasmaBurstEntity::initWithPosition(HPVector inPosition)
 		setPosition(inPosition);
 		setCollisionRadius(2.0);
 		
-		setColor(cxx::OOColor::redColor().get());
+		setColor(OOColor::redColor().get());
 	}
 }
 

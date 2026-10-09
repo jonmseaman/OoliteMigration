@@ -92,11 +92,11 @@ MA 02110-1301, USA.
 - (void) setIsBreakPattern:(BOOL)bp											{ oo::ToCxx(self)->setIsBreakPattern(bp); }
 - (oo::PList)effectInfoDictionary											{ return oo::ToCxx(self)->effectInfoDictionary(); }
 
-- (OOColor *)scannerDisplayColor1											{ return oo::ToObjC(oo::ToCxx(self)->scannerDisplayColor1()); }
-- (OOColor *)scannerDisplayColor2											{ return oo::ToObjC(oo::ToCxx(self)->scannerDisplayColor2()); }
-- (void)setScannerDisplayColor1:(OOColor *)color							{ oo::ToCxx(self)->setScannerDisplayColor1(oo::ToCxx(color)); }
-- (void)setScannerDisplayColor2:(OOColor *)color							{ oo::ToCxx(self)->setScannerDisplayColor2(oo::ToCxx(color)); }
-- (GLfloat *) scannerDisplayColorForShip:(BOOL)flash :(OOColor *)scannerDisplayColor1 :(OOColor *)scannerDisplayColor2	{ return oo::ToCxx(self)->scannerDisplayColorForShip(flash, oo::ToCxx(scannerDisplayColor1), oo::ToCxx(scannerDisplayColor2)); }
+- (OOColor *)scannerDisplayColor1											{ return oo::ToCxx(self)->scannerDisplayColor1(); }
+- (OOColor *)scannerDisplayColor2											{ return oo::ToCxx(self)->scannerDisplayColor2(); }
+- (void)setScannerDisplayColor1:(OOColor *)color							{ oo::ToCxx(self)->setScannerDisplayColor1(color); }
+- (void)setScannerDisplayColor2:(OOColor *)color							{ oo::ToCxx(self)->setScannerDisplayColor2(color); }
+- (GLfloat *) scannerDisplayColorForShip:(BOOL)flash :(OOColor *)scannerDisplayColor1 :(OOColor *)scannerDisplayColor2	{ return oo::ToCxx(self)->scannerDisplayColorForShip(flash, scannerDisplayColor1, scannerDisplayColor2); }
 
 - (void) setScript:(const std::optional<std::string> &)script_name			{ oo::ToCxx(self)->setScript(script_name); }
 - (OOJSScript *)script														{ return oo::ToCxx(self)->script(); }

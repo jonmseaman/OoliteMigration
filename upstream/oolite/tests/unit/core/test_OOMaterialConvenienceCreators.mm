@@ -186,12 +186,12 @@ GLfloat cxx::OOTextureGenerator::anisotropy()  { return 0; }
 GLfloat cxx::OOTextureGenerator::lodBias()  { return 0; }
 std::optional<std::string> cxx::OOTextureGenerator::cacheKey()  { return std::nullopt; }
 bool cxx::OOTextureGenerator::enqueue()  { return false; }
-oo::Ref<OOCombinedEmissionMapGenerator> OOCombinedEmissionMapGenerator::generatorWithEmissionMapSpec(const oo::PList &emissionMapSpec, cxx::OOColor *, OOTexture *, cxx::OOColor *, const oo::PList &illuminationMapSpec, cxx::OOColor *, const oo::PList &)
+oo::Ref<OOCombinedEmissionMapGenerator> OOCombinedEmissionMapGenerator::generatorWithEmissionMapSpec(const oo::PList &emissionMapSpec, OOColor *, OOTexture *, OOColor *, const oo::PList &illuminationMapSpec, OOColor *, const oo::PList &)
 {
 	if (emissionMapSpec.isNull() && illuminationMapSpec.isNull())  return {};
 	return oo::makeRef<OOCombinedEmissionMapGenerator>();
 }
-oo::Ref<OOCombinedEmissionMapGenerator> OOCombinedEmissionMapGenerator::generatorWithEmissionAndIlluminationMapSpec(const oo::PList &, OOTexture *, cxx::OOColor *, cxx::OOColor *, cxx::OOColor *, const oo::PList &)
+oo::Ref<OOCombinedEmissionMapGenerator> OOCombinedEmissionMapGenerator::generatorWithEmissionAndIlluminationMapSpec(const oo::PList &, OOTexture *, OOColor *, OOColor *, OOColor *, const oo::PList &)
 {
 	return oo::makeRef<OOCombinedEmissionMapGenerator>();
 }

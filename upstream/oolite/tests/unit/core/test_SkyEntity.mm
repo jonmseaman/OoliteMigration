@@ -82,15 +82,13 @@ TestUniverse *sUniverse = nil;
 TestPlayer *sPlayer = nil;
 
 // The drawable's star set-up's stand-in: the colours the sky passed.
-OOColor *sStarColor1 = nil;
-OOColor *sStarColor2 = nil;
+oo::Ref<OOColor> sStarColor1;
+oo::Ref<OOColor> sStarColor2;
 
-void SetUpStars(OOSkyDrawable *, cxx::OOColor *color1, cxx::OOColor *color2)
+void SetUpStars(OOSkyDrawable *, OOColor *color1, OOColor *color2)
 {
-	[sStarColor1 release];
-	[sStarColor2 release];
-	sStarColor1 = [oo::ToObjC(color1) retain];
-	sStarColor2 = [oo::ToObjC(color2) retain];
+	sStarColor1 = oo::Ref<OOColor>(color1);
+	sStarColor2 = oo::Ref<OOColor>(color2);
 }
 
 }	// namespace
@@ -99,7 +97,7 @@ void SetUpStars(OOSkyDrawable *, cxx::OOColor *color1, cxx::OOColor *color2)
 // The converted drawable's test seam for its star set-up (decision oo-jsx0h).
 struct OOSkyDrawableTestAccess
 {
-	static void SetStarSetUpStandIn(void (*standIn)(OOSkyDrawable *, cxx::OOColor *, cxx::OOColor *))
+	static void SetStarSetUpStandIn(void (*standIn)(OOSkyDrawable *, OOColor *, OOColor *))
 	{
 		OOSkyDrawable::sSetUpStarsStandIn = standIn;
 	}
@@ -148,14 +146,14 @@ bool ColorIs(OOColor *color, float r, float g, float b, float a)
 {
 	if (color == nil)  return false;
 	float cr = -1, cg = -1, cb = -1, ca = -1;
-	[color getRed:&cr green:&cg blue:&cb alpha:&ca];
+	color->getRed(&cr, &cg, &cb, &ca);
 	return Near(cr, r) && Near(cg, g) && Near(cb, b) && Near(ca, a);
 }
 
 
 SkyEntity *Sky(const oo::PList &info)
 {
-	return [[[SkyEntity alloc] initWithColors:[OOColor redColor] :[OOColor blueColor] andSystemInfo:info] autorelease];
+	return [[[SkyEntity alloc] initWithColors:OOColor::redColor().get() :OOColor::blueColor().get() andSystemInfo:info] autorelease];
 }
 
 }	// namespace
@@ -175,7 +173,7 @@ OO_TEST(made)
 		// No sun colour: the blend of the two.
 		OO_CHECK(ColorIs([sky skyColor], 0.5f, 0.0f, 0.5f, 1.0f));
 		// The stars' colours are the ones given.
-		OO_CHECK(ColorIs(sStarColor1, 1, 0, 0, 1) && ColorIs(sStarColor2, 0, 0, 1, 1));
+		OO_CHECK(ColorIs(sStarColor1.get(), 1, 0, 0, 1) && ColorIs(sStarColor2.get(), 0, 0, 1, 1));
 	}
 }
 
@@ -197,12 +195,12 @@ OO_TEST(rgbColours)
 	{
 		SetUp();
 		Sky(Dict({ { "sky_rgb_colors", oo::PList("0.25 0.5 2 0 -1 0.75") }, { "sky_n_stars", oo::PList(0) } }));
-		OO_CHECK(ColorIs(sStarColor1, 0.25f, 0.5f, 1.0f, 1.0f));	// clamped
-		OO_CHECK(ColorIs(sStarColor2, 0.0f, 0.0f, 0.75f, 1.0f));
+		OO_CHECK(ColorIs(sStarColor1.get(), 0.25f, 0.5f, 1.0f, 1.0f));	// clamped
+		OO_CHECK(ColorIs(sStarColor2.get(), 0.0f, 0.0f, 0.75f, 1.0f));
 
 		// Not six numbers: the colours given.
 		Sky(Dict({ { "sky_rgb_colors", oo::PList("0.25 0.5") }, { "sky_n_stars", oo::PList(0) } }));
-		OO_CHECK(ColorIs(sStarColor1, 1, 0, 0, 1) && ColorIs(sStarColor2, 0, 0, 1, 1));
+		OO_CHECK(ColorIs(sStarColor1.get(), 1, 0, 0, 1) && ColorIs(sStarColor2.get(), 0, 0, 1, 1));
 	}
 }
 
@@ -218,8 +216,8 @@ OO_TEST(namedColours)
 			{ "sky_color_2", oo::PList("whiteColor") },
 			{ "sky_n_stars", oo::PList(0) },
 		}));
-		OO_CHECK(ColorIs(sStarColor1, 0.5f, 0.25f, 0.0f, 1.0f));
-		OO_CHECK(ColorIs(sStarColor2, 1, 1, 1, 1));
+		OO_CHECK(ColorIs(sStarColor1.get(), 0.5f, 0.25f, 0.0f, 1.0f));
+		OO_CHECK(ColorIs(sStarColor2.get(), 1, 1, 1, 1));
 	}
 }
 

@@ -171,7 +171,7 @@ OO_TEST(dictionary)
 		OO_CHECK(!flasher->isActive());
 		OO_CHECK(RGBIs(flasher, 0, 0, 0) && ColorComponents(flasher)[3] == 1.0f);	// the first colour
 
-		oo::Ref<cxx::OOColor> color = flasher->color();
+		oo::Ref<OOColor> color = flasher->color();
 		float r = -1, g = -1, b = -1, a = -1;
 		color->getRed(&r, &g, &b, &a);
 		OO_CHECK(r == 0 && g == 0 && b == 0 && a == 1);
@@ -209,7 +209,7 @@ OO_TEST(accessors)
 		OO_CHECK(flasher->phase() == 0.5f);
 		flasher->setFraction(0.125f);
 		OO_CHECK(flasher->fraction() == 0.125f);
-		flasher->setColor(cxx::OOColor::colorWithRed(0.5f, 0.25f, 0.125f, 0.75f).get(), 0.375f);
+		flasher->setColor(OOColor::colorWithRed(0.5f, 0.25f, 0.125f, 0.75f).get(), 0.375f);
 		float r = -1, g = -1, b = -1, a = -1;
 		flasher->color()->getRed(&r, &g, &b, &a);
 		OO_CHECK(r == 0.5f && g == 0.25f && b == 0.125f && a == 0.375f);
@@ -256,7 +256,7 @@ OO_TEST(frequencyZeroIsOpaque)
 	{
 		SetUp();
 		OOFlasherEntity *flasher = Flasher(WhiteBlack(0, 0.5));
-		flasher->setColor(cxx::OOColor::whiteColor().get(), 0.25f);
+		flasher->setColor(OOColor::whiteColor().get(), 0.25f);
 		flasher->update(0.3);
 		OO_CHECK(ColorComponents(flasher)[3] == 1.0f);
 		OO_CHECK(RGBIs(flasher, 1, 1, 1));

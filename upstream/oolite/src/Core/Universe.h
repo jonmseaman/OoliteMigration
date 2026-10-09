@@ -52,11 +52,8 @@ MA 02110-1301, USA.
 #include <string_view>
 #endif
 
-@class	GameController, MyOpenGLView, GuiDisplayGen,
-	Entity, ShipEntity, StationEntity, OOPlanetEntity, OOSunEntity,
-	OOVisualEffectEntity, PlayerEntity, WormholeEntity, 
-	DockEntity, OOJSScript, OOWaypointEntity, OOSystemDescriptionManager,
-	OOException, OOCharacter;
+@class GameController, MyOpenGLView, Entity, ShipEntity, StationEntity, OOPlanetEntity, OOSunEntity, OOVisualEffectEntity, PlayerEntity, WormholeEntity, DockEntity, OOJSScript, OOWaypointEntity, OOSystemDescriptionManager, OOException, OOCharacter;
+#import "GuiDisplayGen.h"	// C++ since bead oo-9ht.143: the universe keeps its GUIs (oo::Ref)
 class CollisionRegion;
 
 
@@ -302,9 +299,12 @@ public:
 	OOTimeAbsolute			messageRepeatTime = 0;
 	OOTimeAbsolute			countdown_messageRepeatTime = 0; 	// Getafix(4/Aug/2010) - Quickfix countdown messages colliding with weapon overheat messages.
 									//                       For proper handling of message dispatching, code refactoring is needed.
-	::GuiDisplayGen			*gui = nil;
-	::GuiDisplayGen			*message_gui = nil;
-	::GuiDisplayGen			*comm_log_gui = nil;
+	oo::Ref<GuiDisplayGen>	gui;
+	oo::Ref<GuiDisplayGen>	message_gui;
+	oo::Ref<GuiDisplayGen>	comm_log_gui;
+	// The GUIs setUpSettings() replaced, kept until it replaces them again: they were autoreleased,
+	// and a caller may still be using one in the pass that reinitialised the universe (bead oo-9ht.143).
+	std::vector<oo::Ref<GuiDisplayGen>>	replacedGuis;
 
 	BOOL					displayGUI = NO;
 	BOOL					wasDisplayGUI = NO;

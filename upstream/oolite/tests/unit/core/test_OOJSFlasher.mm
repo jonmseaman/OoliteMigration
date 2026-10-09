@@ -69,7 +69,7 @@ class OOFlasherEntity : public cxx::OOLightParticleEntity
 public:
 	bool isActive();
 	void setActive(bool active);
-	oo::Ref<cxx::OOColor> color();
+	oo::Ref<OOColor> color();
 	float frequency();
 	void setFrequency(float frequency);
 	float phase();
@@ -179,7 +179,7 @@ void cxx::OOLightParticleEntity::setColor(OOColor *color)  { _color = oo::Ref<OO
 
 bool OOFlasherEntity::isActive()  { return _active; }
 void OOFlasherEntity::setActive(bool active)  { _active = active; }
-oo::Ref<cxx::OOColor> OOFlasherEntity::color()  { return _color; }
+oo::Ref<OOColor> OOFlasherEntity::color()  { return _color; }
 void OOFlasherEntity::setFrequency(float frequency)  { _frequency = frequency; }
 float OOFlasherEntity::fraction()  { return _fraction; }
 void OOFlasherEntity::setFraction(float fraction)  { _fraction = fraction; }
@@ -449,7 +449,7 @@ void SetUpContext()
 	sFlasher->_cxxEntity = part;
 	sFlasherPart = part.get();
 	sFlasherPart->_active = YES;
-	sFlasherPart->_color = cxx::OOColor::colorWithRed(1, 0.5f, 0.25f, 1);
+	sFlasherPart->_color = OOColor::colorWithRed(1, 0.5f, 0.25f, 1);
 	sFlasherPart->_frequency = 2;
 	sFlasherPart->_fraction = 0.5f;
 	sFlasherPart->_phase = 0.25f;

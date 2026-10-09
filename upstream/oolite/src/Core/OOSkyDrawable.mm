@@ -66,7 +66,7 @@ BOOL sInited = NO;
 struct OOSkyQuadDesc
 {
 	Vector					corners[4];
-	oo::Ref<cxx::OOColor>	color;
+	oo::Ref<OOColor>	color;
 	OOTexture				*texture;
 };
 
@@ -122,18 +122,18 @@ OOProbabilisticTextureManager	*sStarTextures;
 OOProbabilisticTextureManager	*sNebulaTextures;
 
 
-oo::Ref<cxx::OOColor> SaturatedColorInRange(cxx::OOColor *color1, cxx::OOColor *color2, BOOL hueFix);
+oo::Ref<OOColor> SaturatedColorInRange(OOColor *color1, OOColor *color2, BOOL hueFix);
 
 }	// namespace
 
 
-void (*OOSkyDrawable::sSetUpStarsStandIn)(OOSkyDrawable *sky, cxx::OOColor *color1, cxx::OOColor *color2) = nullptr;
+void (*OOSkyDrawable::sSetUpStarsStandIn)(OOSkyDrawable *sky, OOColor *color1, OOColor *color2) = nullptr;
 
 
-OOSkyDrawable::OOSkyDrawable(cxx::OOColor *color1,
-							 cxx::OOColor *color2,
-							 cxx::OOColor *color3,
-							 cxx::OOColor *color4,
+OOSkyDrawable::OOSkyDrawable(OOColor *color1,
+							 OOColor *color2,
+							 OOColor *color3,
+							 OOColor *color4,
 							 unsigned starCount,
 							 unsigned nebulaCount,
 							 bool nebulaHueFix,
@@ -276,10 +276,10 @@ size_t OOSkyDrawable::totalSize()
 #if DEBUG_COLORS
 namespace {
 
-oo::Ref<cxx::OOColor> DebugColor(Vector orientation)
+oo::Ref<OOColor> DebugColor(Vector orientation)
 {
 	Vector color = vector_add(make_vector(0.55, 0.55, 0.55), vector_multiply_scalar(vector_normal(orientation), 0.45));
-	return cxx::OOColor::colorWithRed(color.x, color.y, color.z, 1.0);
+	return OOColor::colorWithRed(color.x, color.y, color.z, 1.0);
 }
 
 }	// namespace
@@ -288,7 +288,7 @@ oo::Ref<cxx::OOColor> DebugColor(Vector orientation)
 
 // The category OOSkyDrawable (OOPrivate): private members.
 
-void OOSkyDrawable::setUpStars(cxx::OOColor *color1, cxx::OOColor *color2)
+void OOSkyDrawable::setUpStars(OOColor *color1, OOColor *color2)
 {
 	if (sSetUpStarsStandIn != nullptr)
 	{
@@ -347,8 +347,8 @@ void OOSkyDrawable::setUpStars(cxx::OOColor *color1, cxx::OOColor *color2)
 }
 
 
-void OOSkyDrawable::setUpNebulae(cxx::OOColor *color1,
-								 cxx::OOColor *color2,
+void OOSkyDrawable::setUpNebulae(OOColor *color1,
+								 OOColor *color2,
 								 float nebulaClusterFactor,
 								 bool nebulaHueFix,
 								 float nebulaAlpha,
@@ -357,7 +357,7 @@ void OOSkyDrawable::setUpNebulae(cxx::OOColor *color1,
 	std::vector<OOSkyQuadDesc>	quads;
 	OOSkyQuadDesc		*currQuad = NULL;
 	unsigned			i, actualCount = 0;
-	oo::Ref<cxx::OOColor>	color;
+	oo::Ref<OOColor>	color;
 	Quaternion			q;
 	Vector				vi, vj, vk;
 	double				size, r2;
@@ -591,7 +591,7 @@ do { \
 			if (array[i].texture == texture)
 			{
 				// A message to a nil colour answered 0.
-				cxx::OOColor *color = array[i].color.get();
+				OOColor *color = array[i].color.get();
 				r = (color != nullptr) ? color->redComponent() : 0.0f;
 				g = (color != nullptr) ? color->greenComponent() : 0.0f;
 				b = (color != nullptr) ? color->blueComponent() : 0.0f;
@@ -702,9 +702,9 @@ OOTexture *OOSkyQuadSet::texture()
 
 namespace {
 
-oo::Ref<cxx::OOColor> SaturatedColorInRange(cxx::OOColor *color1, cxx::OOColor *color2, BOOL hueFix)
+oo::Ref<OOColor> SaturatedColorInRange(OOColor *color1, OOColor *color2, BOOL hueFix)
 {
-	oo::Ref<cxx::OOColor>	color;
+	oo::Ref<OOColor>	color;
 	float				hue = 0, saturation = 0, brightness = 0, alpha = 0;	// left 0 by a nil colour
 
 	// The fraction is drawn even for no colour, as the message's argument was.
@@ -727,7 +727,7 @@ oo::Ref<cxx::OOColor> SaturatedColorInRange(cxx::OOColor *color1, cxx::OOColor *
 	}
 	/* else keep it how it was before so the nebula hues are clearer */
 
-	return cxx::OOColor::colorWithHue(hue, saturation, brightness, alpha);
+	return OOColor::colorWithHue(hue, saturation, brightness, alpha);
 }
 
 }	// namespace

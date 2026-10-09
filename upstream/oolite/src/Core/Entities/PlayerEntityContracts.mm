@@ -1196,16 +1196,16 @@ void cxx::PlayerEntity::setGuiToManifestScreen()
 	BOOL			guiChanged = (oldScreen != gui_screen);
 	if (guiChanged)
 	{
-		[gui setStatusPage:0]; // need to do this earlier than the rest
+		gui->setStatusPage(0); // need to do this earlier than the rest
 	}
 	
 	// GUI stuff
 	{
 		NSInteger current, max;
-		::OOColor *subheadColor = [gui cxx_colorFromSetting:cxx_kGuiManifestSubheadColor defaultValue:[::OOColor greenColor]];
-		::OOColor *entryColor = [gui cxx_colorFromSetting:cxx_kGuiManifestEntryColor defaultValue:nil];
-		::OOColor *scrollColor = [gui cxx_colorFromSetting:cxx_kGuiManifestScrollColor defaultValue:[::OOColor greenColor]];
-		::OOColor *noScrollColor = [gui cxx_colorFromSetting:cxx_kGuiManifestNoScrollColor defaultValue:[::OOColor darkGrayColor]];
+		oo::Ref<OOColor>	subheadColor = gui->colorFromSetting(cxx_kGuiManifestSubheadColor, OOColor::greenColor().get());
+		oo::Ref<OOColor>	entryColor = gui->colorFromSetting(cxx_kGuiManifestEntryColor, nil);
+		oo::Ref<OOColor>	scrollColor = gui->colorFromSetting(cxx_kGuiManifestScrollColor, OOColor::greenColor().get());
+		oo::Ref<OOColor>	noScrollColor = gui->colorFromSetting(cxx_kGuiManifestNoScrollColor, OOColor::darkGrayColor().get());
 
 		const std::vector<std::string>	cargoManifest = [self cxx_cargoList];
 		const oo::PList	missionsList = [self cxx_missionsList];	// strings and arrays of strings
@@ -1233,7 +1233,7 @@ void cxx::PlayerEntity::setGuiToManifestScreen()
 		
 		OOGUIRow	nextPageRow = MANIFEST_SCREEN_ROW_NEXT;
 		// show extra lines if no HUD is displayed.
-		if ([[self hud] isHidden] || [[self hud] allowBigGui])
+		if ([self hud] != nullptr && ([self hud]->isHidden() || [self hud]->getAllowBigGui()))
 		{
 			max_rows += 7;
 			nextPageRow += 7;
@@ -1259,10 +1259,10 @@ void cxx::PlayerEntity::setGuiToManifestScreen()
 		if (total_rows > max_rows)
 		{
 			max_rows -= 2;
-			page_offset = ([gui statusPage]-1) * max_rows;
+			page_offset = (gui->getStatusPage()-1) * max_rows;
 			if (page_offset < 0 || (NSUInteger)page_offset >= total_rows)
 			{
-				[gui setStatusPage:0];
+				gui->setStatusPage(0);
 				page_offset = 0;
 			}
 			multi_page = YES;
@@ -1272,14 +1272,14 @@ void cxx::PlayerEntity::setGuiToManifestScreen()
 		OOGUITabSettings tab_stops;
 		tab_stops[0] = 0;
 		tab_stops[1] = 256;
-		[gui cxx_overrideTabs:tab_stops from:cxx_kGuiManifestTabs length:3];
-		[gui setTabStops:tab_stops];
+		gui->overrideTabs(tab_stops, cxx_kGuiManifestTabs, 3);
+		gui->setTabStops(tab_stops);
 		
 		// Cargo Manifest
 		current_cargo = [self cargoQuantityOnBoard];
 
-		[gui clearAndKeepBackground:!guiChanged];
-		[gui cxx_setTitle:OO_DESC("manifest-title")];
+		gui->clearAndKeepBackground(!guiChanged);
+		gui->setTitle(OO_DESC("manifest-title"));
 		
 		current = current_cargo;
 		max = [self maxAvailableCargoSpace];
@@ -1289,7 +1289,7 @@ void cxx::PlayerEntity::setGuiToManifestScreen()
 		const std::string cabinString = cxx_OOExpandKey("oolite-manifest-cabins", current, max).value_or(std::string());
 		const oo::PList manifestHeader(oo::PList::Array{ oo::PList(cargoString), oo::PList(cabinString) });
 
-		SET_MANIFEST_ROW( manifestHeader , entryColor, cargoRow - 1);
+		SET_MANIFEST_ROW( manifestHeader , entryColor.get(), cargoRow - 1);
 		
 		if (manifestCount > 0)
 		{
@@ -1306,12 +1306,12 @@ void cxx::PlayerEntity::setGuiToManifestScreen()
 				{
 					row_info.push_back(oo::PList(std::string()));
 				}
-				SET_MANIFEST_ROW( oo::PList(std::move(row_info)), subheadColor, cargoRow + i);
+				SET_MANIFEST_ROW( oo::PList(std::move(row_info)), subheadColor.get(), cargoRow + i);
 			}
 		}
 		else
 		{
-			SET_MANIFEST_ROW( (oo::PList(OO_DESC("manifest-none"))), subheadColor, cargoRow);
+			SET_MANIFEST_ROW( (oo::PList(OO_DESC("manifest-none"))), subheadColor.get(), cargoRow);
 			cargoRowCount=1;
 		}
 		
@@ -1326,7 +1326,7 @@ void cxx::PlayerEntity::setGuiToManifestScreen()
 			{
 				// then there's at least one without its own heading
 				// to go under the generic 'missions' heading
-				SET_MANIFEST_ROW( (oo::PList(OO_DESC("manifest-missions"))) , entryColor, missionsRow - 1);
+				SET_MANIFEST_ROW( (oo::PList(OO_DESC("manifest-missions"))) , entryColor.get(), missionsRow - 1);
 			}
 			else
 			{
@@ -1340,7 +1340,7 @@ void cxx::PlayerEntity::setGuiToManifestScreen()
 				if (mmEntry.isString())
 				{
 					const std::string mmItem = "\t" + oo::DescriptionOf(mmEntry);	// @"\t%@"
-					SET_MANIFEST_ROW( oo::PList(mmItem) , subheadColor, missionsRow + mmRow);
+					SET_MANIFEST_ROW( oo::PList(mmItem) , subheadColor.get(), missionsRow + mmRow);
 					++mmRow;
 				}
 				else if (mmEntry.isArray())
@@ -1350,11 +1350,11 @@ void cxx::PlayerEntity::setGuiToManifestScreen()
 					{
 						if (isHeading)
 						{
-							SET_MANIFEST_ROW( mmItem , entryColor , missionsRow + mmRow);
+							SET_MANIFEST_ROW( mmItem , entryColor.get() , missionsRow + mmRow);
 						}
 						else
 						{
-							SET_MANIFEST_ROW( oo::PList("\t" + oo::DescriptionOf(mmItem)) , subheadColor , missionsRow + mmRow);	// @"\t%@"
+							SET_MANIFEST_ROW( oo::PList("\t" + oo::DescriptionOf(mmItem)) , subheadColor.get() , missionsRow + mmRow);	// @"\t%@"
 						}
 						isHeading = NO;
 						++mmRow;
@@ -1369,34 +1369,34 @@ void cxx::PlayerEntity::setGuiToManifestScreen()
 			OOGUIRow r_end = nextPageRow;
 			if (page_offset > 0)
 			{
-				[gui setColor:scrollColor forRow:MANIFEST_SCREEN_ROW_BACK];
-				[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:MANIFEST_SCREEN_ROW_BACK];
+				gui->setColor(scrollColor.get(), MANIFEST_SCREEN_ROW_BACK);
+				gui->setKey(std::string(GUI_KEY_OK), MANIFEST_SCREEN_ROW_BACK);
 			}
 			else
 			{
-				[gui setColor:noScrollColor forRow:MANIFEST_SCREEN_ROW_BACK];
+				gui->setColor(noScrollColor.get(), MANIFEST_SCREEN_ROW_BACK);
 				r_start = nextPageRow;
 			}
-			[gui cxx_setArray:{ OO_DESC("gui-back"), " <-- " } forRow:MANIFEST_SCREEN_ROW_BACK];
+			gui->setArray({ OO_DESC("gui-back"), " <-- " }, MANIFEST_SCREEN_ROW_BACK);
 
 			if (total_rows > max_rows + page_offset)
 			{
-				[gui setColor:scrollColor forRow:nextPageRow];
-				[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:nextPageRow];
+				gui->setColor(scrollColor.get(), nextPageRow);
+				gui->setKey(std::string(GUI_KEY_OK), nextPageRow);
 			}
 			else
 			{
-				[gui setColor:noScrollColor forRow:nextPageRow];
+				gui->setColor(noScrollColor.get(), nextPageRow);
 				r_end = MANIFEST_SCREEN_ROW_BACK;
 			}
-			[gui cxx_setArray:{ OO_DESC("gui-more"), " --> " } forRow:nextPageRow];
+			gui->setArray({ OO_DESC("gui-more"), " --> " }, nextPageRow);
 
-			[gui setSelectableRange:NSMakeRange(r_start,r_end+1-r_start)];
-			[gui setSelectedRow:r_start];
+			gui->setSelectableRange(NSMakeRange(r_start,r_end+1-r_start));
+			gui->setSelectedRow(r_start);
 
 		}
 
-		[gui setShowTextCursor:NO];
+		gui->setShowTextCursor(NO);
 	}
 	/* ends */
 	
@@ -1407,8 +1407,8 @@ void cxx::PlayerEntity::setGuiToManifestScreen()
 	
 	if (guiChanged)
 	{
-		[gui cxx_setForegroundTextureKey:std::optional<std::string>([self status] == STATUS_DOCKED ? "docked_overlay" : "overlay")];
-		[gui cxx_setBackgroundTextureKey:"manifest"];
+		gui->setForegroundTextureKey(std::optional<std::string>([self status] == STATUS_DOCKED ? "docked_overlay" : "overlay"));
+		gui->setBackgroundTextureKey("manifest");
 		[self noteGUIDidChangeFrom:oldScreen to:gui_screen];
 	}
 }
@@ -1422,7 +1422,7 @@ void cxx::PlayerEntity::setManifestScreenRow(const oo::PList &object, ::OOColor 
 	::GuiDisplayGen	*gui = [UNIVERSE gui];
 	if (const std::string *text = object.getIf<std::string>())
 	{
-		[gui cxx_setText:*text forRow:disp_row];
+		gui->setText(*text, disp_row);
 	}
 	else if (const oo::PList::Array *elements = object.getIf<oo::PList::Array>())
 	{
@@ -1432,9 +1432,9 @@ void cxx::PlayerEntity::setManifestScreenRow(const oo::PList &object, ::OOColor 
 		{
 			if (const std::string *string = element.getIf<std::string>())  strings.push_back(*string);
 		}
-		[gui cxx_setArray:strings forRow:disp_row];
+		gui->setArray(strings, disp_row);
 	}
-	[gui setColor:color forRow:disp_row];
+	gui->setColor(color, disp_row);
 }
 
 
@@ -1453,11 +1453,11 @@ void cxx::PlayerEntity::setGuiToDockingReportScreen()
 	
 	// GUI stuff
 	{
-		[gui clearAndKeepBackground:!guiChanged];
-		[gui cxx_setTitle:cxx_OOExpandKey("arrival-report-title")];
+		gui->clearAndKeepBackground(!guiChanged);
+		gui->setTitle(cxx_OOExpandKey("arrival-report-title"));
 		
 		for (i=1;i<=18;i++) {
-			[gui setColor:[gui cxx_colorFromSetting:std::string(cxx_kGuiDockingReportColor) defaultValue:nil] forRow:21];
+			gui->setColor(gui->colorFromSetting(std::string(cxx_kGuiDockingReportColor), nil).get(), 21);
 		}
 		
 		// dockingReport might be a multi-line message
@@ -1471,23 +1471,23 @@ void cxx::PlayerEntity::setGuiToDockingReportScreen()
 					const std::size_t line_break = dockingReport.find('\n');
 					const std::string line = dockingReport.substr(0, line_break);
 					dockingReport.erase(0, line_break + 1);
-					text_row = [gui cxx_addLongText:line startingAtRow:text_row align:GUI_ALIGN_LEFT];
+					text_row = gui->addLongText(line, text_row, GUI_ALIGN_LEFT);
 				}
 				dockingReport = oo::str::trimWhitespaceAndNewlines(dockingReport);
 			}
 			else
 			{
-				text_row = [gui cxx_addLongText:dockingReport startingAtRow:text_row align:GUI_ALIGN_LEFT];
+				text_row = gui->addLongText(dockingReport, text_row, GUI_ALIGN_LEFT);
 				dockingReport.clear();
 			}
 		}
 
-		[gui cxx_setText:oo::str::formatRuntime(OO_DESC_PLURAL("contracts-cash-@-load-d-of-d-passengers-d-of-d-berths", max_passengers), { cxx_OOCredits(credits), current_cargo, [self maxAvailableCargoSpace], passengers.size(), max_passengers })  forRow: GUI_ROW_MARKET_CASH];
-		[gui setColor:[gui cxx_colorFromSetting:std::string(cxx_kGuiDockingSummaryColor) defaultValue:nil] forRow:GUI_ROW_MARKET_CASH];
+		gui->setText(oo::str::formatRuntime(OO_DESC_PLURAL("contracts-cash-@-load-d-of-d-passengers-d-of-d-berths", max_passengers), { cxx_OOCredits(credits), current_cargo, [self maxAvailableCargoSpace], passengers.size(), max_passengers }), GUI_ROW_MARKET_CASH);
+		gui->setColor(gui->colorFromSetting(std::string(cxx_kGuiDockingSummaryColor), nil).get(), GUI_ROW_MARKET_CASH);
 
-		[gui cxx_setText:OO_DESC("press-space-commander") forRow:21 align:GUI_ALIGN_CENTER];
-		[gui setColor:[gui cxx_colorFromSetting:std::string(cxx_kGuiDockingContinueColor) defaultValue:nil] forRow:21];
-		[gui setShowTextCursor:NO];
+		gui->setText(OO_DESC("press-space-commander"), 21, GUI_ALIGN_CENTER);
+		gui->setColor(gui->colorFromSetting(std::string(cxx_kGuiDockingContinueColor), nil).get(), 21);
+		gui->setShowTextCursor(NO);
 	}
 	/* ends */
 	
@@ -1498,12 +1498,12 @@ void cxx::PlayerEntity::setGuiToDockingReportScreen()
 	
 	if (guiChanged)
 	{
-		[gui cxx_setForegroundTextureKey:std::string("docked_overlay")];	// has to be docked!
+		gui->setForegroundTextureKey(std::string("docked_overlay"));	// has to be docked!
 
 		oo::PList bgDescriptor = [UNIVERSE cxx_screenTextureDescriptorForKey:"report"];
 		if (bgDescriptor.isNull()) bgDescriptor = [UNIVERSE cxx_screenTextureDescriptorForKey:"status_docked"];
 		if (bgDescriptor.isNull()) bgDescriptor = [UNIVERSE cxx_screenTextureDescriptorForKey:"status"];
-		[gui cxx_setBackgroundTextureDescriptor:bgDescriptor];
+		gui->setBackgroundTextureDescriptor(bgDescriptor);
 		[self noteGUIDidChangeFrom:oldScreen to:gui_screen];
 	}
 }
@@ -1548,7 +1548,7 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 {
 	// its string columns, as oo::StringsFrom of the row's array kept them
 	std::vector<std::string> row_info;
-	cxx::GuiDisplayGen *cxxGui = oo::ToCxx(gui);	// a nil GUI had no row
+	GuiDisplayGen *cxxGui = gui;	// a nil GUI had no row
 	const oo::PList row = (cxxGui != nullptr) ? cxxGui->objectForRow(GUI_ROW_SHIPYARD_LABELS) : oo::PList();
 	if (const oo::PList::Array *columns = row.getIf<oo::PList::Array>())
 	{
@@ -1621,9 +1621,9 @@ void cxx::PlayerEntity::setGuiToShipyardScreen(NSUInteger skip)
 	
 	// GUI stuff
 	{
-		[gui clearAndKeepBackground:!guiChanged];
+		gui->clearAndKeepBackground(!guiChanged);
 		const std::optional<std::string> systemName = [UNIVERSE cxx_getSystemName:system_id];
-		[gui cxx_setTitle:ExpandKey("shipyard-title", { { "system", systemName.has_value() ? oo::PList(*systemName) : oo::PList() } })];
+		gui->setTitle(ExpandKey("shipyard-title", { { "system", systemName.has_value() ? oo::PList(*systemName) : oo::PList() } }));
 		
 		OOGUITabSettings tab_stops;
 		tab_stops[0] = 0;
@@ -1631,8 +1631,8 @@ void cxx::PlayerEntity::setGuiToShipyardScreen(NSUInteger skip)
 		tab_stops[2] = 270;
 		tab_stops[3] = 370;
 		tab_stops[4] = 450;
-		[gui cxx_overrideTabs:tab_stops from:cxx_kGuiShipyardTabs length:5];
-		[gui setTabStops:tab_stops];
+		gui->overrideTabs(tab_stops, cxx_kGuiShipyardTabs, 5);
+		gui->setTabStops(tab_stops);
 		
 		int rowCount = MAX_ROWS_SHIPS_FOR_SALE;
 		int startRow = GUI_ROW_SHIPYARD_START;
@@ -1656,15 +1656,14 @@ void cxx::PlayerEntity::setGuiToShipyardScreen(NSUInteger skip)
 		
 		if (shipCount > 0)
 		{
-			[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiShipyardHeadingColor defaultValue:[::OOColor greenColor]] forRow:GUI_ROW_SHIPYARD_LABELS];
-			[gui cxx_setArray:{ OO_DESC("shipyard-shiptype"), OO_DESC("shipyard-price-label"),
-					OO_DESC("shipyard-cargo-label"), OO_DESC("shipyard-speed-label") } forRow:GUI_ROW_SHIPYARD_LABELS];
+			gui->setColor(gui->colorFromSetting(cxx_kGuiShipyardHeadingColor, OOColor::greenColor().get()).get(), GUI_ROW_SHIPYARD_LABELS);
+			gui->setArray({ OO_DESC("shipyard-shiptype"), OO_DESC("shipyard-price-label"), OO_DESC("shipyard-cargo-label"), OO_DESC("shipyard-speed-label") }, GUI_ROW_SHIPYARD_LABELS);
 
 			if (skip > 0)
 			{
-				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiShipyardScrollColor defaultValue:[::OOColor greenColor]] forRow:GUI_ROW_SHIPYARD_START];
-				[gui cxx_setArray:{ OO_DESC("gui-back"), " <-- " } forRow:GUI_ROW_SHIPYARD_START];
-				[gui cxx_setKey:oo::str::format("More:%zd", previous) forRow:GUI_ROW_SHIPYARD_START];
+				gui->setColor(gui->colorFromSetting(cxx_kGuiShipyardScrollColor, OOColor::greenColor().get()).get(), GUI_ROW_SHIPYARD_START);
+				gui->setArray({ OO_DESC("gui-back"), " <-- " }, GUI_ROW_SHIPYARD_START);
+				gui->setKey(oo::str::format("More:%zd", previous), GUI_ROW_SHIPYARD_START);
 			}
 			for (i = 0; i < (shipCount - skip) && (int)i < rowCount; i++)
 			{
@@ -1673,35 +1672,34 @@ void cxx::PlayerEntity::setGuiToShipyardScreen(NSUInteger skip)
 				const oo::PList *ship = ship_info.get<oo::PList::Dict>("ship");	// SHIPYARD_KEY_SHIP
 				std::optional<std::string> shipName = ship != nullptr ? OptionalStringForKey(*ship, "display_name") : std::nullopt;
 				if (!shipName && ship != nullptr)  shipName = OptionalStringForKey(*ship, "name");	// KEY_NAME
-				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiShipyardEntryColor defaultValue:nil] forRow:startRow + i];
-				[gui cxx_setArray:{ " " + shipName.value_or("(null)") + " ", cxx_OOIntCredits(ship_price) }
-					forRow:startRow + i];
-				[gui cxx_setKey:OptionalStringForKey(ship_info, "id").value_or("") forRow:startRow + i];	// SHIPYARD_KEY_ID
+				gui->setColor(gui->colorFromSetting(cxx_kGuiShipyardEntryColor, nil).get(), startRow + i);
+				gui->setArray({ " " + shipName.value_or("(null)") + " ", cxx_OOIntCredits(ship_price) }, startRow + i);
+				gui->setKey(OptionalStringForKey(ship_info, "id").value_or(""), startRow + i);	// SHIPYARD_KEY_ID
 			}
 			if (i < shipCount - skip)
 			{
-				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiShipyardScrollColor defaultValue:[::OOColor greenColor]] forRow:startRow + i];
-				[gui cxx_setArray:{ OO_DESC("gui-more"), " --> " } forRow:startRow + i];
-				[gui cxx_setKey:oo::str::format("More:%zu", rowCount + skip) forRow:startRow + i];
+				gui->setColor(gui->colorFromSetting(cxx_kGuiShipyardScrollColor, OOColor::greenColor().get()).get(), startRow + i);
+				gui->setArray({ OO_DESC("gui-more"), " --> " }, startRow + i);
+				gui->setKey(oo::str::format("More:%zu", rowCount + skip), startRow + i);
 				i++;
 			}
 
-			[gui setSelectableRange:NSMakeRange( GUI_ROW_SHIPYARD_START, i + startRow - GUI_ROW_SHIPYARD_START)];
+			gui->setSelectableRange(NSMakeRange( GUI_ROW_SHIPYARD_START, i + startRow - GUI_ROW_SHIPYARD_START));
 			// ensure that at least one row is selected at all times
-			if(shipCount == 1)  [gui setFirstSelectableRow];
+			if(shipCount == 1)  gui->setFirstSelectableRow();
 			[self showShipyardInfoForSelection];
 		}
 		else
 		{
-			[gui cxx_setText:OO_DESC("shipyard-no-ships-available-for-purchase") forRow:GUI_ROW_NO_SHIPS align:GUI_ALIGN_CENTER];
-			[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiShipyardNoshipColor defaultValue:[::OOColor greenColor]] forRow:GUI_ROW_NO_SHIPS];
+			gui->setText(OO_DESC("shipyard-no-ships-available-for-purchase"), GUI_ROW_NO_SHIPS, GUI_ALIGN_CENTER);
+			gui->setColor(gui->colorFromSetting(cxx_kGuiShipyardNoshipColor, OOColor::greenColor().get()).get(), GUI_ROW_NO_SHIPS);
 			
-			[gui setNoSelectedRow];
+			gui->setNoSelectedRow();
 		}
 		
 		[self showTradeInInformationFooter];
 		
-		[gui setShowTextCursor:NO];
+		gui->setShowTextCursor(NO);
 	}
 	
 	// the following are necessary...
@@ -1711,8 +1709,8 @@ void cxx::PlayerEntity::setGuiToShipyardScreen(NSUInteger skip)
 	
 	if (guiChanged)
 	{
-		[gui cxx_setForegroundTextureKey:"docked_overlay"];
-		[gui cxx_setBackgroundTextureKey:"shipyard"];
+		gui->setForegroundTextureKey("docked_overlay");
+		gui->setBackgroundTextureKey("shipyard");
 	}
 }
 
@@ -1722,21 +1720,21 @@ void cxx::PlayerEntity::showShipyardInfoForSelection()
 	::PlayerEntity *self = oo::ToObjC(this);
 	NSUInteger		i;
 	::GuiDisplayGen	*gui = [UNIVERSE gui];
-	OOGUIRow		sel_row = [gui selectedRow];
+	OOGUIRow		sel_row = gui->getSelectedRow();
 	
 	if (sel_row <= 0)  return;
 	
 	std::vector<std::string> row_info = ShipyardLabelsRow(gui);
 	
-	const oo::PList info = CurrentShipyardEntry([gui cxx_keyForRow:sel_row]);
+	const oo::PList info = CurrentShipyardEntry(gui->keyForRow(sel_row));
 
 	// clean up the display ready for the newly-selected ship (if there is one)
 	row_info[2] = "";
 	row_info[3] = "";
 	for (i = GUI_ROW_SHIPYARD_INFO_START; i < GUI_ROW_MARKET_CASH - 1; i++)
 	{
-		[gui cxx_setText:"" forRow:i];
-		[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiShipyardDescriptionColor defaultValue:[::OOColor greenColor]] forRow:i];
+		gui->setText("", i);
+		gui->setColor(gui->colorFromSetting(cxx_kGuiShipyardDescriptionColor, OOColor::greenColor().get()).get(), i);
 	}
 	[UNIVERSE removeDemoShips];
 
@@ -1770,11 +1768,11 @@ void cxx::PlayerEntity::showShipyardInfoForSelection()
 		
 		// Show footer first. It'll be overwritten by the sales_pitch if that text is longer than usual.
 		[self showTradeInInformationFooter];
-		i = [gui cxx_addLongText:salesPitch startingAtRow:GUI_ROW_SHIPYARD_INFO_START align:GUI_ALIGN_LEFT];
+		i = gui->addLongText(salesPitch, GUI_ROW_SHIPYARD_INFO_START, GUI_ALIGN_LEFT);
 		if (i - 1 >= GUI_ROW_MARKET_CASH - 1)
 		{
-			[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiShipyardDescriptionColor defaultValue:[::OOColor greenColor]] forRow:i - 1];
-			[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiShipyardDescriptionColor defaultValue:[::OOColor greenColor]] forRow:GUI_ROW_MARKET_CASH - 1];
+			gui->setColor(gui->colorFromSetting(cxx_kGuiShipyardDescriptionColor, OOColor::greenColor().get()).get(), i - 1);
+			gui->setColor(gui->colorFromSetting(cxx_kGuiShipyardDescriptionColor, OOColor::greenColor().get()).get(), GUI_ROW_MARKET_CASH - 1);
 		}
 		
 		// now display the ship
@@ -1793,7 +1791,7 @@ void cxx::PlayerEntity::showShipyardInfoForSelection()
 		// 
 	}
 
-	[gui cxx_setArray:row_info forRow:GUI_ROW_SHIPYARD_LABELS];
+	gui->setArray(row_info, GUI_ROW_SHIPYARD_LABELS);
 }
 
 
@@ -1805,10 +1803,10 @@ void cxx::PlayerEntity::showTradeInInformationFooter()
 	OOCreditsQuantity total = tradeIn + credits;
 	const oo::PList shipType = oo::PList([self displayName].value_or(""));
 	
-	[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiShipyardTradeinColor defaultValue:nil] forRow:GUI_ROW_MARKET_CASH - 1];
-	[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiShipyardTradeinColor defaultValue:nil] forRow:GUI_ROW_MARKET_CASH];
-	[gui cxx_setText:ExpandKey("shipyard-trade-in-value", { { "shipType", shipType }, { "tradeIn", oo::PList::unsignedInteger(tradeIn) } }) forRow: GUI_ROW_MARKET_CASH - 1];
-	[gui cxx_setText:ExpandKey("shipyard-total-available-with-trade-in", { { "shipType", shipType }, { "total", oo::PList::unsignedInteger(total) }, { "credits", oo::PList::unsignedInteger(credits) }, { "tradeIn", oo::PList::unsignedInteger(tradeIn) } }) forRow: GUI_ROW_MARKET_CASH];
+	gui->setColor(gui->colorFromSetting(cxx_kGuiShipyardTradeinColor, nil).get(), GUI_ROW_MARKET_CASH - 1);
+	gui->setColor(gui->colorFromSetting(cxx_kGuiShipyardTradeinColor, nil).get(), GUI_ROW_MARKET_CASH);
+	gui->setText(ExpandKey("shipyard-trade-in-value", { { "shipType", shipType }, { "tradeIn", oo::PList::unsignedInteger(tradeIn) } }), GUI_ROW_MARKET_CASH - 1);
+	gui->setText(ExpandKey("shipyard-total-available-with-trade-in", { { "shipType", shipType }, { "total", oo::PList::unsignedInteger(total) }, { "credits", oo::PList::unsignedInteger(credits) }, { "tradeIn", oo::PList::unsignedInteger(tradeIn) } }), GUI_ROW_MARKET_CASH);
 }
 
 
@@ -1856,11 +1854,11 @@ bool cxx::PlayerEntity::buySelectedShip()
 {
 	::PlayerEntity *self = oo::ToObjC(this);
 	::GuiDisplayGen	*gui = [UNIVERSE gui];
-	OOGUIRow		selectedRow = [gui selectedRow];
+	OOGUIRow		selectedRow = gui->getSelectedRow();
 	
 	if (selectedRow <= 0)  return NO;
 	
-	const std::optional<std::string> key = [gui cxx_keyForRow:selectedRow];
+	const std::optional<std::string> key = gui->keyForRow(selectedRow);
 
 	if (key && oo::str::hasPrefix(*key, "More:"))
 	{
@@ -1869,13 +1867,13 @@ bool cxx::PlayerEntity::buySelectedShip()
 		if (fromShip < 0)  fromShip = 0;
 		
 		[self setGuiToShipyardScreen:fromShip];
-		if ([[UNIVERSE gui] selectedRow] < 0)
+		if ([UNIVERSE gui]->getSelectedRow() < 0)
 		{
-			[[UNIVERSE gui] setSelectedRow:GUI_ROW_SHIPYARD_START];
+			[UNIVERSE gui]->setSelectedRow(GUI_ROW_SHIPYARD_START);
 		}
 		if (fromShip == 0)
 		{
-			[[UNIVERSE gui] setSelectedRow:GUI_ROW_SHIPYARD_START + MAX_ROWS_SHIPS_FOR_SALE - 1];
+			[UNIVERSE gui]->setSelectedRow(GUI_ROW_SHIPYARD_START + MAX_ROWS_SHIPS_FOR_SALE - 1);
 		}
 		// next bit or the first ship on the list gets wrongly previewed
 		// clean up the display
@@ -1885,10 +1883,10 @@ bool cxx::PlayerEntity::buySelectedShip()
 		NSUInteger		i;
 		for (i = GUI_ROW_SHIPYARD_INFO_START; i < GUI_ROW_MARKET_CASH - 1; i++)
 		{
-			[gui cxx_setText:"" forRow:i];
-			[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiShipyardDescriptionColor defaultValue:[::OOColor greenColor]] forRow:i];
+			gui->setText("", i);
+			gui->setColor(gui->colorFromSetting(cxx_kGuiShipyardDescriptionColor, OOColor::greenColor().get()).get(), i);
 		}
-		[gui cxx_setArray:row_info forRow:GUI_ROW_SHIPYARD_LABELS];
+		gui->setArray(row_info, GUI_ROW_SHIPYARD_LABELS);
 		[UNIVERSE removeDemoShips];
 		return YES;
 	}

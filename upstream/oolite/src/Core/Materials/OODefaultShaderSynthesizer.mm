@@ -667,8 +667,8 @@ void OODefaultShaderSynthesizer::writeTextureCoordRead()
 void OODefaultShaderSynthesizer::writeDiffuseColorTermIfNeeded()
 {
 	oo::PList			diffuseMap = cxx_OOMaterialDiffuseMapSpecifier(_configuration, materialKey());
-	oo::Ref<cxx::OOColor>	diffuseColor(oo::ToCxx(cxx_OOMaterialDiffuseColor(_configuration)));
-	if (diffuseColor == nullptr)  diffuseColor = cxx::OOColor::whiteColor();
+	oo::Ref<OOColor>	diffuseColor(cxx_OOMaterialDiffuseColor(_configuration));
+	if (diffuseColor == nullptr)  diffuseColor = OOColor::whiteColor();
 	
 	if (diffuseColor->isBlack())  return;
 	_usesDiffuseTerm = YES;
@@ -836,14 +836,14 @@ void OODefaultShaderSynthesizer::writeSpecularLighting()
 		scaleFactor = specularColorMap.get<double>(cxx_kOOTextureSpecifierScaleFactorKey, 1.0f);
 	}
 	
-	oo::Ref<cxx::OOColor> specularColor;	// never null: both functions below answer a default colour
+	oo::Ref<OOColor> specularColor;	// never null: both functions below answer a default colour
 	if (specularColorMap.isNull())
 	{
-		specularColor = oo::Ref<cxx::OOColor>(oo::ToCxx(cxx_OOMaterialSpecularColor(_configuration)));
+		specularColor = oo::Ref<OOColor>(cxx_OOMaterialSpecularColor(_configuration));
 	}
 	else
 	{
-		specularColor = oo::Ref<cxx::OOColor>(oo::ToCxx(cxx_OOMaterialSpecularModulateColor(_configuration)));
+		specularColor = oo::Ref<OOColor>(cxx_OOMaterialSpecularModulateColor(_configuration));
 	}
 	
 	if (specularColor->isBlack())  return;
@@ -1140,16 +1140,16 @@ oo::PList AddingValue(oo::PList specifier, const char *key, oo::PList value)
 }
 
 
-// cxx::OOColor::colorWithDescription() of the value for key (null if there is none).
-oo::Ref<cxx::OOColor> ColorIn(const oo::PList &spec, const char *key)
+// OOColor::colorWithDescription() of the value for key (null if there is none).
+oo::Ref<OOColor> ColorIn(const oo::PList &spec, const char *key)
 {
 	const oo::PList *value = spec.find(key);
-	return cxx::OOColor::colorWithDescription((value != nullptr) ? *value : oo::PList());
+	return OOColor::colorWithDescription((value != nullptr) ? *value : oo::PList());
 }
 
 
-// cxx::OOColor::normalizedArray(): four +numberWithFloat: components. (The callers never pass null.)
-oo::PList NormalizedArray(cxx::OOColor *color)
+// OOColor::normalizedArray(): four +numberWithFloat: components. (The callers never pass null.)
+oo::PList NormalizedArray(OOColor *color)
 {
 	oo::PList::Array result;
 	for (float component : color->normalizedArray())  result.push_back(oo::PList::singleReal(component));
@@ -1167,7 +1167,7 @@ oo::PList NormalizedArray(cxx::OOColor *color)
 oo::PList CanonicalizeMaterialSpecifier(const oo::PList &spec, const std::optional<std::string> &materialKey)
 {
 	oo::PList::Dict			result;
-	oo::Ref<cxx::OOColor>	col;
+	oo::Ref<OOColor>	col;
 	oo::PList				texSpec;
 	
 	// Colours.
@@ -1324,7 +1324,7 @@ oo::PList CanonicalizeMaterialSpecifier(const oo::PList &spec, const std::option
 			if (modulateColor != lmDict.end() && !modulateColor->second.isArray())
 			{
 				// Don't convert arrays here, because we specifically don't want the behaviour of treating numbers greater than 1 as 0..255 components.
-				col = cxx::OOColor::colorWithDescription(modulateColor->second);
+				col = OOColor::colorWithDescription(modulateColor->second);
 				// A description that is no colour leaves no colour (upstream set nil, which Foundation refuses).
 				if (col != nullptr)  modulateColor->second = NormalizedArray(col.get());
 				else  lmDict.erase(modulateColor);

@@ -45,7 +45,7 @@ MA 02110-1301, USA.
 
 struct OOHUDWidget;	// HeadUpDisplay.mm
 
-@class OOColor;
+class OOColor;
 class OOCrosshairs;
 
 
@@ -244,27 +244,23 @@ enum
 };
 
 
-@class Entity, PlayerEntity, GuiDisplayGen;
+@class Entity, PlayerEntity;
+class GuiDisplayGen;
 
 
 /*	The HUD itself (Phase 3, beads oo-engam .. oo-0tx6c: the six slices of
-	docs/phases/3-slices/HeadUpDisplay.md). Its callers are still Objective-C and reach it through
-	the facade HeadUpDisplay+ObjCBridge.h, which also answers the dials by name; the dial members
-	and the state are public under "Internal" until the facade goes (ADR-0056 amendment oo-pni4
-	item 1). Getters named after their state are get + the name (amendment oo-862e item 1).
+	docs/phases/3-slices/HeadUpDisplay.md). Its Objective-C facade was deleted by bead oo-mwd58,
+	which moved the class out of namespace cxx; the dials are called by name through a table of
+	member pointers (HeadUpDisplay.mm, kDials). Getters named after their state are get + the name
+	(amendment oo-862e item 1).
 */
-namespace cxx {
-
-class OOColor;
-
 class HeadUpDisplay : public oo::RefCounted
 {
 public:
 	HeadUpDisplay();
 	~HeadUpDisplay() override;
 
-	// -cxx_initWithDictionary:inFile:, run by the facade once it is the HUD's peer (the dial check
-	// asks the facade which dials it answers).
+	// -cxx_initWithDictionary:inFile: (callers make the HUD, then run this).
 	void initWithDictionary(const oo::PList &hudinfo, const std::optional<std::string> &hudFileName);
 
 	void resetGuis(const oo::PList &info);
@@ -330,7 +326,7 @@ public:
 	bool checkPlayerInFlight();
 	bool checkPlayerInSystemFlight();
 
-	// Internal: dials, called by name on the facade (ADR-0055 item 5), which forwards them.
+	// Internal: dials, called by name through the dial table (ADR-0055 item 5).
 	void drawSurround(const oo::PList &info);
 	void drawGreenSurround(const oo::PList &info);
 	void drawYellowSurround(const oo::PList &info);
@@ -454,13 +450,11 @@ private:
 	void resetGuiPosition(::GuiDisplayGen *gui, const oo::PList &gui_info);
 };
 
-}	// namespace cxx
-
 
 /*	The compass icon of a beacon whose code names no icon: the code's first character, drawn as
 	text. It replaces the NSString (OOHUDBeaconIcon) category (bead oo-f9rf) the entities' beacon
 	drawables used; the drawing is the category's. The entities hold it by the OOHUDBeaconIcon
-	protocol (HeadUpDisplay+ObjCBridge.h) through its facade (bead oo-2p1ug; ADR-0056 amendments
+	protocol (OOHUDBeaconCodeIcon+ObjCBridge.h) through its facade (bead oo-2p1ug; ADR-0056 amendments
 	oo-jpd8, oo-4nhg).
 */
 namespace cxx {
@@ -520,6 +514,55 @@ NSRect cxx_OORectFromString(const std::string &text, GLfloat x, GLfloat y, NSSiz
 void OOHUDResetTextEngine(void);
 
 
-// Transitional: the Objective-C facade, for the callers that are still Objective-C.
-// Deleted, with namespace cxx above, by the bridge's deletion bead.
-#import "HeadUpDisplay+ObjCBridge.h"
+#import "WormholeEntity.h"	// WORMHOLE_SCANINFO (a send below)
+@class OOVisualEffectEntity;
+
+/*	Sends of converted free functions to classes that are still Objective-C (ADR-0056 amendment
+	oo-9ht.139), one function per send, the body the send verbatim (in HeadUpDisplay.mm since bead
+	oo-mwd58 deleted the HUD's facade). Members keep their sends
+	(amendment oo-ppc item 4). Each goes with its class's conversion.
+*/
+// +[ResourceManager cxx_dictionaryFromFilesNamed:inFolder:andMerge:] (InitTextEngine()).
+oo::PList HeadUpDisplayDictionaryFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool mergeFiles);
+// -[[UNIVERSE gui] cxx_setGLColorFromSetting:defaultValue:alpha:] (OODrawPlanetInfo()).
+void HeadUpDisplayUniverseGUISetGLColorFromSetting(const std::optional<std::string> &setting, OOColor *defaultValue, GLfloat alpha);
+// [UNIVERSE gameView], -[MyOpenGLView fov:] and -[MyOpenGLView viewSize] (drawScannerGrid()).
+MyOpenGLView *HeadUpDisplayUniverseGameView();
+GLfloat HeadUpDisplayGameViewFov(MyOpenGLView *gameView, bool inFraction);
+NSSize HeadUpDisplayGameViewViewSize(MyOpenGLView *gameView);
+// The player, entities and universe as the reticles and waypoints read them (hudDrawReticleOnTarget(),
+// hudDrawWaypoint(), hudRotateViewpointForVirtualDepth()).
+OOGUIScreenID HeadUpDisplayPlayerGuiScreen(PlayerEntity *player);
+HPVector HeadUpDisplayPlayerViewpointPosition(PlayerEntity *player);
+GLfloat HeadUpDisplayPlayerWeaponRange(PlayerEntity *player);
+std::optional<std::string> HeadUpDisplayPlayerDialTargetName(PlayerEntity *player);
+double HeadUpDisplayPlayerClockTimeAdjusted(PlayerEntity *player);
+Vector HeadUpDisplayPlayerCustomViewForwardVector(PlayerEntity *player);
+Vector HeadUpDisplayPlayerCustomViewUpVector(PlayerEntity *player);
+Quaternion HeadUpDisplayPlayerCustomViewQuaternion(PlayerEntity *player);
+OOMatrix HeadUpDisplayPlayerRotationMatrix(PlayerEntity *player);
+bool HeadUpDisplayEntityIsShip(Entity *entity);
+bool HeadUpDisplayEntityIsWormhole(Entity *entity);
+bool HeadUpDisplayEntityIsVisualEffect(Entity *entity);
+HPVector HeadUpDisplayEntityPosition(Entity *entity);
+GLfloat HeadUpDisplayEntityCollisionRadius(Entity *entity);
+Quaternion HeadUpDisplayEntityOrientation(Entity *entity);
+std::optional<std::string> HeadUpDisplayShipScanDescription(ShipEntity *ship);
+bool HeadUpDisplayShipIsCloaked(ShipEntity *ship);
+bool HeadUpDisplayShipIsHostileToPlayer(ShipEntity *ship);
+GLfloat *HeadUpDisplayShipScannerDisplayColor(ShipEntity *ship, BOOL isHostile, BOOL flash);
+GLfloat *HeadUpDisplayVisualEffectScannerDisplayColor(OOVisualEffectEntity *vis, BOOL flash);
+WORMHOLE_SCANINFO HeadUpDisplayWormholeScanInfo(WormholeEntity *wormhole);
+double HeadUpDisplayWormholeEstimatedArrivalTime(WormholeEntity *wormhole);
+double HeadUpDisplayWormholeExpiryTime(WormholeEntity *wormhole);
+OOTimeAbsolute HeadUpDisplayUniverseGetTime();
+const oo::PList *HeadUpDisplayUniverseDescriptions();	// MissileIconDefinition()
+OOViewID HeadUpDisplayUniverseViewDirection();
+Entity *HeadUpDisplayUniverseFirstEntityTargetedByPlayer();
+Entity *HeadUpDisplayUniverseFirstEntityTargetedByPlayerPrecisely();
+
+
+// Transitional: the beacon code icon's facade and the OOHUDBeaconIcon protocol the entities hold
+// it by (bead oo-mwd58 moved them out of the HUD's deleted facade).
+#import "OOHUDBeaconCodeIcon+ObjCBridge.h"
+

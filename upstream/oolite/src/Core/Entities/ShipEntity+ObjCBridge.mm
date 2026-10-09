@@ -154,13 +154,13 @@ MA 02110-1301, USA.
 
 DESTROY(_cxxShip->shipAI);
 	_cxxShip->roleSet = nullptr;
-DESTROY(_cxxShip->laser_color);
-	DESTROY(_cxxShip->default_laser_color);
-	DESTROY(_cxxShip->exhaust_emissive_color);
-	DESTROY(_cxxShip->scanner_display_color1);
-	DESTROY(_cxxShip->scanner_display_color2);
-	DESTROY(_cxxShip->scanner_display_color_hostile1);
-	DESTROY(_cxxShip->scanner_display_color_hostile2);
+_cxxShip->laser_color = nullptr;
+	_cxxShip->default_laser_color = nullptr;
+	_cxxShip->exhaust_emissive_color = nullptr;
+	_cxxShip->scanner_display_color1 = nullptr;
+	_cxxShip->scanner_display_color2 = nullptr;
+	_cxxShip->scanner_display_color_hostile1 = nullptr;
+	_cxxShip->scanner_display_color_hostile2 = nullptr;
 	DESTROY(_cxxShip->script);
 	DESTROY(_cxxShip->aiScript);
 	_cxxShip->octree = nullptr;

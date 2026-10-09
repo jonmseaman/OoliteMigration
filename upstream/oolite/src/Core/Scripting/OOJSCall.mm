@@ -28,6 +28,7 @@ MA 02110-1301, USA.
 
 
 #import "OOJSCall.h"
+#import "OOColor.h"	// a colour result (kMethodTypeColorVoid)
 #include "oofnd/objc/OORuntime.h"
 #import "OOJavaScriptEngine.h"
 #import "OOCallByName.h"
@@ -60,7 +61,8 @@ typedef enum
 	kMethodTypeQuaternionVoid		= kOOShaderUniformTypeQuaternion,
 	kMethodTypeMatrixVoid			= kOOShaderUniformTypeMatrix,
 	kMethodTypePointVoid			= kOOShaderUniformTypePoint,
-	
+	kMethodTypeColorVoid			= kOOShaderUniformTypeColor,	// a colour (OOColor *) since bead oo-9ht.1
+
 	kMethodTypeObjectVoid			= kOOShaderUniformTypeObject,
 	kMethodTypeObjectObject,
 	kMethodTypeVoidVoid,
@@ -138,6 +140,12 @@ bool OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::s
 					result = OOCallByName(object, selector, *paramString);
 					break;
 					
+				case kMethodTypeColorVoid:
+					// A colour result is its PList::Object node, as the colour's facade's was (bead oo-9ht.1).
+					result = OOColorObjectNode(((ColorReturnMsgSend)method)(object, selector));
+					if (selectorString.has_value() && oo::str::hasSuffix(*selectorString, "_bool"))  result = oo::PList(false);	// a colour answered neither -boolValue nor -intValue
+					break;
+
 				case kMethodTypeObjectVoid:
 				case kMethodTypePListVoid:
 					if (type == kMethodTypePListVoid)  result = OOCallByName(object, selector);

@@ -369,8 +369,8 @@ void cxx::Universe::initWithGameView(::MyOpenGLView *inGameView)
 	[[::GameController sharedController] cxx_logProgress:cxx_OOExpandKeyRandomized("loading-miscellany").value_or(std::string())];
 
 	// this MUST have the default no. of rows else the GUI_ROW macros in PlayerEntity.h need modification
-	gui = [[::GuiDisplayGen alloc] init]; // alloc retains
-	comm_log_gui = [[::GuiDisplayGen alloc] init]; // alloc retains
+	gui = oo::makeRef<GuiDisplayGen>();
+	comm_log_gui = oo::makeRef<GuiDisplayGen>();
 
 	missiontext = [::ResourceManager cxx_dictionaryFromFilesNamed:"missiontext.plist" inFolder:std::string("Config") andMerge:YES];
 
@@ -438,9 +438,10 @@ void cxx::Universe::dealloc()
 
 	currentMessage.reset();
 
-	[gui release];
-	[message_gui release];
-	[comm_log_gui release];
+	gui = nullptr;
+	message_gui = nullptr;
+	comm_log_gui = nullptr;
+	replacedGuis.clear();
 
 	entities.clear();
 
@@ -1304,9 +1305,9 @@ void Universe::pauseGame()
 	
 	if ([player status] == STATUS_DOCKED)
 	{
-		if ([gui cxx_setForegroundTextureKey:"paused_docked_overlay"])
+		if (gui != nullptr && gui->setForegroundTextureKey("paused_docked_overlay"))	// a nil GUI answered NO
 		{
-			[gui drawGUI:1.0 drawCursor:NO];
+			gui->drawGUI(1.0, NO);
 		}
 		else
 		{
@@ -1316,9 +1317,9 @@ void Universe::pauseGame()
 	}
 	else
 	{
-		if ([player guiScreen] != GUI_SCREEN_MAIN && [gui cxx_setForegroundTextureKey:"paused_overlay"])
+		if ([player guiScreen] != GUI_SCREEN_MAIN && gui != nullptr && gui->setForegroundTextureKey("paused_overlay"))
 		{
-			[gui drawGUI:1.0 drawCursor:NO];
+			gui->drawGUI(1.0, NO);
 		}
 		else
 		{
@@ -1518,8 +1519,7 @@ void Universe::setUpUniverseFromWitchspace()
 	
 	// the printed lines go to the player's comm log
 	std::vector<std::string> printedLines;
-	[comm_log_gui cxx_printLongText:oo::str::format("%s %s", TextOrNull([self cxx_getSystemName:systemID]).c_str(), [player cxx_dial_clock_adjusted].c_str())
-		align:GUI_ALIGN_CENTER color:[::OOColor whiteColor] fadeTime:0 key:std::nullopt addToArray:&printedLines];
+	if (comm_log_gui != nullptr)  comm_log_gui->printLongText(oo::str::format("%s %s", TextOrNull([self cxx_getSystemName:systemID]).c_str(), [player cxx_dial_clock_adjusted].c_str()), GUI_ALIGN_CENTER, OOColor::whiteColor().get(), 0, std::nullopt, &printedLines);
 	std::vector<std::string> *commLog = [player cxx_commLog];
 	if (commLog != nullptr)  commLog->insert(commLog->end(), printedLines.begin(), printedLines.end());
 	
@@ -1588,9 +1588,9 @@ void Universe::setUpWitchspaceBetweenSystem(OOSystemID s1, OOSystemID s2)
 	// fixed entities (part of the graphics system really) come first...
 	
 	/*- the sky backdrop -*/
-	::OOColor *col1 = [::OOColor colorWithRed:0.0 green:1.0 blue:0.5 alpha:1.0];
-	::OOColor *col2 = [::OOColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
-	thing = [[::SkyEntity alloc] initWithColors:col1:col2 andSystemInfo: systeminfo];	// alloc retains!
+	oo::Ref<OOColor>	col1 = OOColor::colorWithRed(0.0, 1.0, 0.5, 1.0);
+	oo::Ref<OOColor>	col2 = OOColor::colorWithRed(0.0, 1.0, 0.0, 1.0);
+	thing = [[::SkyEntity alloc] initWithColors:col1.get():col2.get() andSystemInfo: systeminfo];	// alloc retains!
 	[thing setScanClass: CLASS_NO_DRAW];
 	quaternion_set_random(&randomQ);
 	[thing setOrientation:randomQ];
@@ -1705,8 +1705,8 @@ void Universe::setUpSpace()
 	const oo::PList		systeminfo = [systemManager cxx_getPropertiesForCurrentSystem];
 	unsigned			techlevel = systeminfo.get<unsigned int>(std::string(KEY_TECHLEVEL));
 	std::optional<std::string>	stationDesc, defaultStationDesc;	// the default is never set: nullopt, as nil
-	::OOColor				*bgcolor;
-	::OOColor				*pale_bgcolor;
+	oo::Ref<OOColor>	bgcolor;
+	oo::Ref<OOColor>	pale_bgcolor;
 	BOOL				sunGoneNova;
 	
 	Random_Seed systemSeed = [systemManager getRandomSeedForCurrentSystem];
@@ -1752,10 +1752,10 @@ void Universe::setUpSpace()
 	float h2 = h1 + 1.0 / (1.0 + (Ranrot() % 5));
 	while (h2 > 1.0)
 		h2 -= 1.0;
-	::OOColor *col1 = [::OOColor colorWithHue:h1 saturation:randf() brightness:0.5 + randf()/2.0 alpha:1.0];
-	::OOColor *col2 = [::OOColor colorWithHue:h2 saturation:0.5 + randf()/2.0 brightness:0.5 + randf()/2.0 alpha:1.0];
+	oo::Ref<OOColor>	col1 = OOColor::colorWithHue(h1, randf(), 0.5 + randf()/2.0, 1.0);
+	oo::Ref<OOColor>	col2 = OOColor::colorWithHue(h2, 0.5 + randf()/2.0, 0.5 + randf()/2.0, 1.0);
 	
-	thing = [[::SkyEntity alloc] initWithColors:col1:col2 andSystemInfo: systeminfo];	// alloc retains!
+	thing = [[::SkyEntity alloc] initWithColors:col1.get():col2.get() andSystemInfo: systeminfo];	// alloc retains!
 	[thing setScanClass: CLASS_NO_DRAW];
 	[self addEntity:thing];
 //	bgcolor = [(SkyEntity *)thing skyColor];
@@ -1773,14 +1773,14 @@ void Universe::setUpSpace()
 	dict_object=PListForKeyIn(systeminfo, "sun_color");
 	if (!dict_object.isNull())
 	{
-		bgcolor = [::OOColor cxx_colorWithDescription:dict_object];
+		bgcolor = OOColor::colorWithDescription(dict_object);
 	}
 	else
 	{
-		bgcolor = [::OOColor colorWithHue:h1 saturation:0.75*randf() brightness:0.65+randf()/5.0 alpha:1.0];
+		bgcolor = OOColor::colorWithHue(h1, 0.75*randf(), 0.65+randf()/5.0, 1.0);
 	}
 
-	pale_bgcolor = [bgcolor blendedColorWithFraction:0.5 ofColor:[::OOColor whiteColor]];
+	pale_bgcolor = (bgcolor != nullptr) ? bgcolor->blendedColorWithFraction(0.5, OOColor::whiteColor().get()) : nullptr;	// nil stayed nil
 	[thing release];
 	/*--*/
 	
@@ -1790,7 +1790,7 @@ void Universe::setUpSpace()
 	dust->setScanClass(CLASS_NO_DRAW);
 	thing = oo::NewEntityFacade(dust);
 	[self addEntity:thing];
-	dust->setDustColor(oo::ToCxx(pale_bgcolor));
+	dust->setDustColor(pale_bgcolor.get());
 	/*--*/
 
 	float defaultSunFlare = randf()*0.1;
@@ -1893,9 +1893,9 @@ void Universe::setUpSpace()
 #ifdef OO_DUMP_PLANETINFO
 	OO_LOG("planetinfo.record", "corona_flare = {:f}", sun_dict.get<float>("corona_flare"));
 	OO_LOG("planetinfo.record", "corona_hues = {:f}", sun_dict.get<float>("corona_hues"));
-	OO_LOG("planetinfo.record", "sun_color = {}", [bgcolor cxx_descriptionComponents].value_or("(null)"));
+	OO_LOG("planetinfo.record", "sun_color = {}", (bgcolor != nullptr ? bgcolor->descriptionComponents() : std::nullopt).value_or("(null)"));
 #endif
-	a_sun = [[::OOSunEntity alloc] initSunWithColor:bgcolor andDictionary:sun_dict];	// alloc retains!
+	a_sun = [[::OOSunEntity alloc] initSunWithColor:bgcolor.get() andDictionary:sun_dict];	// alloc retains!
 	
 	[a_sun setStatus:STATUS_ACTIVE];
 	[a_sun setPosition:sunPos]; // sets also light origin
@@ -2412,7 +2412,8 @@ void Universe::setLighting()
 	{
 		// ambient lighting!
 		GLfloat r,g,b,a;
-		[[the_sky skyColor] getRed:&r green:&g blue:&b alpha:&a];
+		if (::OOColor *skyColor = [the_sky skyColor])  skyColor->getRed(&r, &g, &b, &a);
+		else  r = g = b = a = 0.0f;	// a nil colour wrote nothing; zero, as a message to nil answers
 		r = r * (1.0 - SUN_AMBIENT_INFLUENCE) + sun_diffuse[0] * SUN_AMBIENT_INFLUENCE;
 		g = g * (1.0 - SUN_AMBIENT_INFLUENCE) + sun_diffuse[1] * SUN_AMBIENT_INFLUENCE;
 		b = b * (1.0 - SUN_AMBIENT_INFLUENCE) + sun_diffuse[2] * SUN_AMBIENT_INFLUENCE;
@@ -3450,7 +3451,7 @@ void Universe::setUpBreakPattern(HPVector pos, Quaternion q, bool forDocking)
 	int						i;
 	oo::Ref<OOBreakPatternEntity>	ring;
 	oo::PList				colorDesc;
-	::OOColor					*color = nil;
+	oo::Ref<OOColor>	color;
 	
 	[self setViewDirection:VIEW_FORWARD];
 	
@@ -3461,13 +3462,13 @@ void Universe::setUpBreakPattern(HPVector pos, Quaternion q, bool forDocking)
 	
 	// hyperspace colours
 	
-	::OOColor *col1 = [::OOColor colorWithRed:1.0 green:0.0 blue:0.0 alpha:0.5];	//standard tunnel colour
-	::OOColor *col2 = [::OOColor colorWithRed:0.0 green:0.0 blue:1.0 alpha:0.25];	//standard tunnel colour
+	oo::Ref<OOColor>	col1 = OOColor::colorWithRed(1.0, 0.0, 0.0, 0.5);	//standard tunnel colour
+	oo::Ref<OOColor>	col2 = OOColor::colorWithRed(0.0, 0.0, 1.0, 0.25);	//standard tunnel colour
 	
 	colorDesc = PListForKeyIn(globalSettings, "hyperspace_tunnel_color_1");	// +cxx_colorWithDescription: takes any description
 	if (!colorDesc.isNull())
 	{
-		color = [::OOColor cxx_colorWithDescription:colorDesc];
+		color = OOColor::colorWithDescription(colorDesc);
 		if (color != nil)  col1 = color;
 		else  OO_LOG_WARN("hyperspaceTunnel.fromDict", "could not interpret \"{}\" as a colour.", oo::DescriptionOf(colorDesc));
 	}
@@ -3475,7 +3476,7 @@ void Universe::setUpBreakPattern(HPVector pos, Quaternion q, bool forDocking)
 	colorDesc = PListForKeyIn(globalSettings, "hyperspace_tunnel_color_2");
 	if (!colorDesc.isNull())
 	{
-		color = [::OOColor cxx_colorWithDescription:colorDesc];
+		color = OOColor::colorWithDescription(colorDesc);
 		if (color != nil)  col2 = color;
 		else  OO_LOG_WARN("hyperspaceTunnel.fromDict", "could not interpret \"{}\" as a colour.", oo::DescriptionOf(colorDesc));
 	}
@@ -3497,7 +3498,7 @@ void Universe::setUpBreakPattern(HPVector pos, Quaternion q, bool forDocking)
 		ring = OOBreakPatternEntity::breakPatternWithPolygonSides(sides, startAngle, aspectRatio);
 		if (!forDocking)
 		{
-			ring->setInnerColor(oo::ToCxx(col1), oo::ToCxx(col2));
+			ring->setInnerColor(col1.get(), col2.get());
 		}
 		
 		Vector offset = vector_multiply_scalar(v, i * BREAK_PATTERN_RING_SPACING);
@@ -3706,7 +3707,8 @@ void Universe::setLibraryTextForDemoShip()
 	tab_stops[0] = 0;
 	tab_stops[1] = 170;
 	tab_stops[2] = 340;
-	[gui setTabStops:tab_stops];
+	if (gui == nullptr)  return;	// the messages to nil did nothing, and the rest only writes the GUI
+	gui->setTabStops(tab_stops);
 
 /*	[gui setText:[demo_ship displayName] forRow:19 align:GUI_ALIGN_CENTER];
 	[gui setColor:[OOColor whiteColor] forRow:19]; */
@@ -3723,7 +3725,7 @@ void Universe::setLibraryTextForDemoShip()
 	// clear rows
 	for (NSUInteger i=1;i<=26;i++)
 	{
-		[gui cxx_setText:"" forRow:i];
+		gui->setText("", i);
 	}
 
 	/* Row 1: ScanClass, Name, Summary */
@@ -3743,8 +3745,8 @@ void Universe::setLibraryTextForDemoShip()
 	{
 		field3 = std::string();
 	}
-	[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:1];
-	[gui setColor:[::OOColor greenColor] forRow:1];
+	gui->setArray(FieldsUpToNil({field1,field2,field3}), 1);
+	gui->setColor(OOColor::greenColor().get(), 1);
 
 	// ship_data defaults to true for "ship" class, false for everything else
 	if (!librarySettings.get<bool>(kOODemoShipShipData, LibrarySetting(librarySettings, kOODemoShipClass, "ship") == "ship"))
@@ -3809,7 +3811,7 @@ void Universe::setLibraryTextForDemoShip()
 		}
 
 
-		[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:3];
+		gui->setArray(FieldsUpToNil({field1,field2,field3}), 3);
 
 		/* Row 3: recharge rate, energy banks, witchspace */
 		override = LibrarySetting(librarySettings, kOODemoShipGenerator, nullptr);
@@ -3866,7 +3868,7 @@ void Universe::setLibraryTextForDemoShip()
 		}
 
 
-		[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:4];
+		gui->setArray(FieldsUpToNil({field1,field2,field3}), 4);
 
 
 		/* Row 4: weapons, turrets, size */
@@ -3921,13 +3923,13 @@ void Universe::setLibraryTextForDemoShip()
 			field3 = OOShipLibrarySize(oo::ToCxx(demo_ship));
 		}
 
-		[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:5];
+		gui->setArray(FieldsUpToNil({field1,field2,field3}), 5);
 	}
 
 	override = LibrarySetting(librarySettings, kOODemoShipDescription, nullptr);
 	if (override.has_value())
 	{
-		[gui cxx_addLongText:ExpandText(*override) startingAtRow:descRow align:GUI_ALIGN_LEFT];
+		gui->addLongText(ExpandText(*override), descRow, GUI_ALIGN_LEFT);
 	}
 
 
@@ -3936,8 +3938,8 @@ void Universe::setLibraryTextForDemoShip()
 	field2 = OOShipLibraryCategoryPlural(DemoClassAt(demo_ships, demo_ship_index));
 	field3 = oo::str::format("%s -->",OOShipLibraryCategoryPlural(DemoClassAt(demo_ships, (demo_ship_index+1)%demo_ships.count())).c_str());
 
-	[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:19];
-	[gui setColor:[::OOColor greenColor] forRow:19];
+	gui->setArray(FieldsUpToNil({field1,field2,field3}), 19);
+	gui->setColor(OOColor::greenColor().get(), 19);
 
 	// lines 21-25: ship names
 	const oo::PList *subListEntry = demo_ships.at(demo_ship_index);
@@ -3955,14 +3957,14 @@ void Universe::setLibraryTextForDemoShip()
 	{
 		const oo::PList *shipEntry = subList.at(i);
 		field2 = (shipEntry != nullptr) ? OptionalStringIn(*shipEntry, kOODemoShipName) : std::nullopt;
-		[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:row];
+		gui->setArray(FieldsUpToNil({field1,field2,field3}), row);
 		if (i == demo_ship_subindex)
 		{
-			[gui setColor:[::OOColor yellowColor] forRow:row];
+			gui->setColor(OOColor::yellowColor().get(), row);
 		}
 		else
 		{
-			[gui setColor:[::OOColor whiteColor] forRow:row];
+			gui->setColor(OOColor::whiteColor().get(), row);
 		}
 		row++;
 	}
@@ -3970,13 +3972,13 @@ void Universe::setLibraryTextForDemoShip()
 	field2 = "...";
 	if (start > 0)
 	{
-		[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:20];
-		[gui setColor:[::OOColor whiteColor] forRow:20];
+		gui->setArray(FieldsUpToNil({field1,field2,field3}), 20);
+		gui->setColor(OOColor::whiteColor().get(), 20);
 	}
 	if (end < subList.count()-1)
 	{
-		[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:26];
-		[gui setColor:[::OOColor whiteColor] forRow:26];
+		gui->setArray(FieldsUpToNil({field1,field2,field3}), 26);
+		gui->setColor(OOColor::whiteColor().get(), 26);
 	}
 
 }
@@ -5318,7 +5320,7 @@ void Universe::drawUniverse()
 				// If set, display background GUI image. Must be done before enabling lights to avoid dim backgrounds
 				OOGLResetProjection();
 				OOGLFrustum(-0.5, 0.5, -aspect*0.5, aspect*0.5, 1.0, MAX_CLEAR_DEPTH);
-				[gui drawGUIBackground];
+				if (gui != nullptr)  gui->drawGUIBackground();
 			
 			}
 
@@ -5505,7 +5507,7 @@ void Universe::drawUniverse()
 								OOGL(glFogf(GL_FOG_START, half_scale));
 								OOGL(glFogf(GL_FOG_END, fog_scale));
 								fog_blend = OOClamp_0_1_f((magnitude([drawthing cameraRelativePosition]) - half_scale)/half_scale);
-								[drawthing setAtmosphereFogging: [::OOColor colorWithRed: skyClearColor[0] green: skyClearColor[1] blue: skyClearColor[2] alpha: fog_blend]];
+								[drawthing setAtmosphereFogging: OOColor::colorWithRed(skyClearColor[0], skyClearColor[1], skyClearColor[2], fog_blend).get()];
 							}
 						
 							[self lightForEntity:demoShipMode || drawthing->_cxxEntity->isSunlit];
@@ -5519,7 +5521,7 @@ void Universe::drawUniverse()
 							// atmospheric fog
 							if (fogging)
 							{
-								[drawthing setAtmosphereFogging: [::OOColor colorWithRed: 0.0 green: 0.0 blue: 0.0 alpha: 0.0]];
+								[drawthing setAtmosphereFogging: OOColor::colorWithRed(0.0, 0.0, 0.0, 0.0).get()];
 								OOGL(glDisable(GL_FOG));
 							}
 						
@@ -5558,7 +5560,7 @@ void Universe::drawUniverse()
 								OOGL(glFogf(GL_FOG_START, half_scale));
 								OOGL(glFogf(GL_FOG_END, fog_scale));
 								fog_blend = OOClamp_0_1_f((magnitude([drawthing cameraRelativePosition]) - half_scale)/half_scale);
-								[drawthing setAtmosphereFogging: [::OOColor colorWithRed: skyClearColor[0] green: skyClearColor[1] blue: skyClearColor[2] alpha: fog_blend]];
+								[drawthing setAtmosphereFogging: OOColor::colorWithRed(skyClearColor[0], skyClearColor[1], skyClearColor[2], fog_blend).get()];
 							}
 						
 							// draw the thing
@@ -5568,7 +5570,7 @@ void Universe::drawUniverse()
 							// atmospheric fog
 							if (fogging)
 							{
-								[drawthing setAtmosphereFogging: [::OOColor colorWithRed: 0.0 green: 0.0 blue: 0.0 alpha: 0.0]];
+								[drawthing setAtmosphereFogging: OOColor::colorWithRed(0.0, 0.0, 0.0, 0.0).get()];
 								OOGL(glDisable(GL_FOG));
 							}
 						
@@ -5623,26 +5625,26 @@ void Universe::drawUniverse()
 			
 			// If the HUD has a non-nil deferred name string, it means that a HUD switch was requested while it was being rendered.
 			// If so, execute the deferred HUD switch now - Nikos 20110628
-			if ([theHUD cxx_deferredHudName].has_value())
+			if (theHUD != nullptr && theHUD->getDeferredHudName().has_value())	// a nil HUD answered nil
 			{
-				const std::string deferredName = *[theHUD cxx_deferredHudName];	// a copy: the switch releases the HUD
+				const std::string deferredName = *theHUD->getDeferredHudName();	// a copy: the switch releases the HUD
 				[player cxx_switchHudTo:deferredName];
 				theHUD = [player hud];	// HUD has been changed, so point to its new address
 			}
 			
 			// Hiding HUD: has been a regular - non-debug - feature as of r2749, about 2 yrs ago! --Kaks 2011.10.14
 			static float sPrevHudAlpha = -1.0f;
-			if ([theHUD isHidden])
+			if (theHUD != nullptr && theHUD->isHidden())
 			{
 				if (sPrevHudAlpha < 0.0f)
 				{
-					sPrevHudAlpha = [theHUD overallAlpha];
+					sPrevHudAlpha = theHUD->getOverallAlpha();
 				}
-				[theHUD setOverallAlpha:0.0f];
+				theHUD->setOverallAlpha(0.0f);
 			}
 			else if (sPrevHudAlpha >= 0.0f)
 			{
-				[theHUD setOverallAlpha:sPrevHudAlpha];
+				if (theHUD != nullptr)  theHUD->setOverallAlpha(sPrevHudAlpha);
 				sPrevHudAlpha = -1.0f;
 			}
 			
@@ -5659,8 +5661,11 @@ void Universe::drawUniverse()
 					// no HUD rendering on this screen
 					//break;
 				default:
-					[theHUD setLineWidth:lineWidth];
-					[theHUD renderHUD];
+					if (theHUD != nullptr)
+					{
+						theHUD->setLineWidth(lineWidth);
+						theHUD->renderHUD();
+					}
 				}
 			}
 
@@ -5769,21 +5774,21 @@ void Universe::drawMessage()
 	
 	OOGL(glDisable(GL_TEXTURE_2D));	// for background sheets
 	
-	float overallAlpha = [[PLAYER hud] overallAlpha];
+	float overallAlpha = ([PLAYER hud] != nullptr) ? [PLAYER hud]->getOverallAlpha() : 0.0f;	// a nil HUD answered 0
 	if (displayGUI)
 	{
 		if ([[self gameController] mouseInteractionMode] == MOUSE_MODE_UI_SCREEN_WITH_INTERACTION)
 		{
-			cursor_row = [gui drawGUI:1.0 drawCursor:YES];
+			cursor_row = (gui != nullptr) ? gui->drawGUI(1.0, YES) : 0;	// a nil GUI answered 0
 		}
 		else
 		{
-			[gui drawGUI:1.0 drawCursor:NO];
+			if (gui != nullptr)  gui->drawGUI(1.0, NO);
 		}
 	}
 	
-	[message_gui drawGUI:[message_gui alpha] * overallAlpha drawCursor:NO];
-	[comm_log_gui drawGUI:[comm_log_gui alpha] * overallAlpha drawCursor:NO];
+	if (message_gui != nullptr)  message_gui->drawGUI(message_gui->alpha() * overallAlpha, NO);
+	if (comm_log_gui != nullptr)  comm_log_gui->drawGUI(comm_log_gui->alpha() * overallAlpha, NO);
 	
 	OOVerifyOpenGLState();
 }
@@ -7115,7 +7120,7 @@ void Universe::setViewDirection(OOViewID vd)
 		}
 		else if (gamePaused)
 		{
-			[message_gui clear];
+			if (message_gui != nullptr)  message_gui->clear();
 		}
 	}
 }
@@ -7220,7 +7225,8 @@ oo::PList Universe::screenTextureDescriptorForKey(const std::string &key)
 	else if (!value.isDict())  value = oo::PList();
 
 	// Start loading the texture, and return nil if it doesn't exist.
-	if (![[self gui] cxx_preloadGUITexture:value])  value = oo::PList();
+	::GuiDisplayGen *theGui = [self gui];
+	if (theGui == nullptr || !theGui->preloadGUITexture(value))  value = oo::PList();	// a nil GUI answered NO
 
 	return value;
 }
@@ -7250,7 +7256,8 @@ void Universe::clearPreviousMessage()
 
 void Universe::setMessageGuiBackgroundColor(::OOColor *some_color)
 {
-	[message_gui setBackgroundColor:some_color];
+	if (message_gui == nullptr)  return;	// a message to nil did nothing
+	message_gui->setBackgroundColor(some_color);
 }
 
 
@@ -7262,7 +7269,7 @@ void Universe::displayMessage(const std::optional<std::string> &text, OOTimeDelt
 	{
 		currentMessage = text;
 		messageRepeatTime=universal_time + 6.0;
-		[self showGUIMessage:text withScroll:YES andColor:[message_gui textColor] overDuration:count];
+		[self showGUIMessage:text withScroll:YES andColor:(message_gui != nullptr ? message_gui->getTextColor() : nullptr) overDuration:count];
 	}
 }
 
@@ -7275,7 +7282,7 @@ void Universe::displayCountdownMessage(const std::optional<std::string> &text, O
 	{
 		currentMessage = text;
 		countdown_messageRepeatTime=universal_time + count;
-		[self showGUIMessage:text withScroll:NO andColor:[message_gui textColor] overDuration:count];
+		[self showGUIMessage:text withScroll:NO andColor:(message_gui != nullptr ? message_gui->getTextColor() : nullptr) overDuration:count];
 	}
 }
 
@@ -7382,7 +7389,7 @@ void Universe::addMessage(const std::optional<std::string> &text, OOTimeDelta co
 			[self speakWithSubstitutions:text];
 		}
 
-		[self showGUIMessage:text withScroll:YES andColor:[message_gui textColor] overDuration:count];
+		[self showGUIMessage:text withScroll:YES andColor:(message_gui != nullptr ? message_gui->getTextColor() : nullptr) overDuration:count];
 
 		[PLAYER cxx_doScriptEvent:OOJSID("consoleMessageReceived") withPListArguments:{ StringOrNull(text) }];
 
@@ -7421,7 +7428,7 @@ void Universe::addCommsMessage(const std::optional<std::string> &text, OOTimeDel
 				[self speakWithSubstitutions:oo::str::formatRuntime(format, { expandedMessage.has_value() ? oo::str::FormatArg(*expandedMessage) : oo::str::FormatArg::null() })];
 			}
 
-			[self showGUIMessage:expandedMessage withScroll:YES andColor:[message_gui textCommsColor] overDuration:count];
+			[self showGUIMessage:expandedMessage withScroll:YES andColor:(message_gui != nullptr ? message_gui->getTextCommsColor() : nullptr) overDuration:count];
 
 			currentMessage = expandedMessage;
 			messageRepeatTime=universal_time + 6.0;
@@ -7429,7 +7436,7 @@ void Universe::addCommsMessage(const std::optional<std::string> &text, OOTimeDel
 
 		// the printed lines go to the player's comm log
 		std::vector<std::string> printedLines;
-		[comm_log_gui cxx_printLongText:expandedMessage align:GUI_ALIGN_LEFT color:nil fadeTime:0.0 key:std::nullopt addToArray:&printedLines];
+		if (comm_log_gui != nullptr)  comm_log_gui->printLongText(expandedMessage, GUI_ALIGN_LEFT, nil, 0.0, std::nullopt, &printedLines);
 		std::vector<std::string> *commLog = [player cxx_commLog];
 		if (commLog != nullptr)  commLog->insert(commLog->end(), printedLines.begin(), printedLines.end());
 
@@ -7442,22 +7449,24 @@ void Universe::showCommsLog(OOTimeDelta how_long)
 {
 	::Universe *self = oo::ToObjC(this);
 
-	[comm_log_gui setAlpha:1.0];
-	if (![self permanentCommLog]) [comm_log_gui fadeOutFromTime:[self getTime] overDuration:how_long];
+	if (comm_log_gui == nullptr)  return;	// messages to nil did nothing
+	comm_log_gui->setAlpha(1.0);
+	if (![self permanentCommLog]) comm_log_gui->fadeOutFromTime([self getTime], how_long);
 }
 
 
 void Universe::showGUIMessage(const std::optional<std::string> &text, bool scroll, ::OOColor *selectedColor, OOTimeDelta how_long)
 {
+	if (message_gui == nullptr)  return;	// messages to nil did nothing
 	if (scroll)
 	{
-		[message_gui cxx_printLongText:text align:GUI_ALIGN_CENTER color:selectedColor fadeTime:how_long key:std::nullopt addToArray:nullptr];
+		message_gui->printLongText(text, GUI_ALIGN_CENTER, selectedColor, how_long, std::nullopt, nullptr);
 	}
 	else
 	{
-		[message_gui cxx_printLineNoScroll:text align:GUI_ALIGN_CENTER color:selectedColor fadeTime:how_long key:std::nullopt addToArray:nullptr];
+		message_gui->printLineNoScroll(text, GUI_ALIGN_CENTER, selectedColor, how_long, std::nullopt, nullptr);
 	}
-	[message_gui setAlpha:1.0f];
+	message_gui->setAlpha(1.0f);
 }
 
 
@@ -8642,7 +8651,7 @@ void Universe::setSystemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum, const st
 	oo::PList	sysInfo;
 
 	// short range map fix
-	[gui refreshStarChart];
+	if (gui != nullptr)  gui->refreshStarChart();
 
 	if (!object.isNull()) {
 		// long range map fixes
@@ -8720,7 +8729,7 @@ void Universe::setSystemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum, const st
 					for (i = n_entities - 1; i > 0; i--)
 						if (sortedEntities[i])
 							if (DustEntity *dust = dynamic_cast<DustEntity *>(oo::ToCxx(sortedEntities[i])))
-								dust->setDustColor(oo::ToCxx([color blendedColorWithFraction:0.5 ofColor:[::OOColor whiteColor]]));
+								dust->setDustColor((color != nullptr) ? color->blendedColorWithFraction(0.5, OOColor::whiteColor().get()).get() : nullptr);
 				}
 			}
 		}
@@ -8739,11 +8748,11 @@ void Universe::setSystemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum, const st
 		}
 		else if (key == "air_color")
 		{
-			[[self planet] setAirColor:[::OOColor cxx_brightColorWithDescription:object]];
+			[[self planet] setAirColor:OOColor::brightColorWithDescription(object).get()];
 		}
 		else if (key == "illumination_color")
 		{
-			[[self planet] setIlluminationColor:[::OOColor cxx_colorWithDescription:object]];
+			[[self planet] setIlluminationColor:OOColor::colorWithDescription(object).get()];
 		}
 		else if (key == "air_color_mix_ratio")
 		{
@@ -10434,35 +10443,35 @@ void Universe::allShipsDoScriptEvent(ooscript::PropertyId event, const std::opti
 
 ::GuiDisplayGen *Universe::getGui()
 {
-	return gui;
+	return gui.get();
 }
 
 
 ::GuiDisplayGen *Universe::commLogGUI()
 {
-	return comm_log_gui;
+	return comm_log_gui.get();
 }
 
 
 ::GuiDisplayGen *Universe::messageGUI()
 {
-	return message_gui;
+	return message_gui.get();
 }
 
 
 void Universe::clearGUIs()
 {
-	[gui clear];
-	[message_gui clear];
-	[comm_log_gui clear];
-	[comm_log_gui cxx_printLongText:OO_DESC("communications-log-string")
-						  align:GUI_ALIGN_CENTER color:[::OOColor yellowColor] fadeTime:0 key:std::nullopt addToArray:nullptr];
+	if (gui != nullptr)  gui->clear();	// messages to nil did nothing
+	if (message_gui != nullptr)  message_gui->clear();
+	if (comm_log_gui == nullptr)  return;
+	comm_log_gui->clear();
+	comm_log_gui->printLongText(OO_DESC("communications-log-string"), GUI_ALIGN_CENTER, OOColor::yellowColor().get(), 0, std::nullopt, nullptr);
 }
 
 
 void Universe::resetCommsLogColor()
 {
-	[comm_log_gui setTextColor:[::OOColor whiteColor]];
+	comm_log_gui->setTextColor(OOColor::whiteColor().get());
 }
 
 
@@ -10801,30 +10810,29 @@ void Universe::setUpSettings()
 	
 	[self setMainLightPosition:kZeroVector];
 
-	[gui autorelease];
-	gui = [[::GuiDisplayGen alloc] init];
-	const oo::PList guiSettings = [gui cxx_userSettings];
+	replacedGuis.clear();
+	if (gui)  replacedGuis.push_back(gui);	// [gui autorelease]
+	gui = oo::makeRef<GuiDisplayGen>();
+	const oo::PList guiSettings = gui->userSettings();
 	const oo::PList *defaultTextColor = guiSettings.find(cxx_kGuiDefaultTextColor);
-	[gui setTextColor:[::OOColor cxx_colorWithDescription:(defaultTextColor != nullptr) ? *defaultTextColor : oo::PList()]];
+	gui->setTextColor(OOColor::colorWithDescription((defaultTextColor != nullptr) ? *defaultTextColor : oo::PList()).get());
 
 	// message_gui and comm_log_gui defaults are set up inside [hud resetGuis:] ( via [player deferredInit], called from the code that calls this method). 
-	[message_gui autorelease];
-	message_gui = [[::GuiDisplayGen alloc]
-					cxx_initWithPixelSize:NSMakeSize(480, 160)
-							  columns:1
-								 rows:9
-							rowHeight:19
-							 rowStart:20
-								title:std::nullopt];
+	if (message_gui)  replacedGuis.push_back(message_gui);	// [message_gui autorelease]
+	message_gui = oo::makeRef<GuiDisplayGen>(NSMakeSize(480, 160),
+							  1,	// columns
+							  9,	// rows
+							  19,	// rowHeight
+							  20,	// rowStart
+							  std::nullopt);	// title
 	
-	[comm_log_gui autorelease];
-	comm_log_gui = [[::GuiDisplayGen alloc]
-					cxx_initWithPixelSize:NSMakeSize(360, 120)
-							  columns:1
-								 rows:10
-							rowHeight:12
-							 rowStart:12
-								title:std::nullopt];
+	if (comm_log_gui)  replacedGuis.push_back(comm_log_gui);	// [comm_log_gui autorelease]
+	comm_log_gui = oo::makeRef<GuiDisplayGen>(NSMakeSize(360, 120),
+							  1,	// columns
+							  10,	// rows
+							  12,	// rowHeight
+							  12,	// rowStart
+							  std::nullopt);	// title
 	
 	//
 	

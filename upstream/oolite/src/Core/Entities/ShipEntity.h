@@ -45,8 +45,8 @@
 #import "OORoleSet.h"
 #include <string_view>
 
-@class	OOColor, StationEntity, WormholeEntity, AI, OOMesh, OOScript, OOCharacter,
-	OOJSScript, OOShipGroup, OOEquipmentType;
+@class StationEntity, WormholeEntity, AI, OOMesh, OOScript, OOCharacter, OOJSScript, OOShipGroup, OOEquipmentType;
+#import "OOColor.h"	// the colours are oo::Ref members
 class OOFlasherEntity;	// C++ only since bead oo-9ht.107
 class OOExhaustPlumeEntity;	// C++ only since bead oo-9ht.110
 
@@ -1146,13 +1146,13 @@ public:
 	//docking instructions
 	oo::PList				dockingInstructions;		// null: none (was nil); the station is an Object node (a weak reference)
 	
-	::OOColor					*laser_color = {};
-	::OOColor					*default_laser_color = {};
-	::OOColor					*exhaust_emissive_color = {};
-	::OOColor					*scanner_display_color1 = {};
-	::OOColor					*scanner_display_color2 = {};
-	::OOColor					*scanner_display_color_hostile1 = {};
-	::OOColor					*scanner_display_color_hostile2 = {};
+	oo::Ref<OOColor>			laser_color;
+	oo::Ref<OOColor>			default_laser_color;
+	oo::Ref<OOColor>			exhaust_emissive_color;
+	oo::Ref<OOColor>			scanner_display_color1;
+	oo::Ref<OOColor>			scanner_display_color2;
+	oo::Ref<OOColor>			scanner_display_color_hostile1;
+	oo::Ref<OOColor>			scanner_display_color_hostile2;
 	
 	// per ship-type variables
 	//

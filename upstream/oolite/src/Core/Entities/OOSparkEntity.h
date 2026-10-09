@@ -38,14 +38,14 @@ public:
 													Vector velocity,
 													OOTimeDelta duration,
 													float size,
-													cxx::OOColor *color);
+													OOColor *color);
 
 	// -initWithPosition:...'s body, run once right after construction (amendment oo-vl43 item 2).
 	void initWithPosition(HPVector position,
 						  Vector velocity,
 						  OOTimeDelta duration,
 						  float size,
-						  cxx::OOColor *color);
+						  OOColor *color);
 
 	void update(OOTimeDelta delta_t) override;
 

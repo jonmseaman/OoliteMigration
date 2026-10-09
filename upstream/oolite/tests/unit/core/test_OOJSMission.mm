@@ -109,15 +109,11 @@ typedef NSInteger OOGUIRow;	// as GuiDisplayGen.h declares it
 @end
 
 
-@interface GuiDisplayGen: OOObject
-{
-@public
-	std::vector<std::string> _calls;
-}
-- (oo::PList) cxx_textureDescriptorFromJSValue:(ooscript::Value)value inContext:(ooscript::Context)context callerDescription:(const std::optional<std::string> &)callerDescription;
-- (OOGUIRow) cxx_rowForKey:(const std::optional<std::string> &)key;
-- (BOOL) setSelectedRow:(OOGUIRow)row;
-@end
+// The GUI is C++ since bead oo-9ht.143 deleted its facade: the members the binding calls are defined
+// below (a C++ stand-in with the facade stand-in's answers), recording into sGuiCalls.
+#import "GuiDisplayGen.h"
+#import "OOTextureSprite.h"	// the stand-in's destructor destroys the GUI's sprite members
+#import "OOColor.h"	// and its row colours
 
 
 @interface Universe: OOObject
@@ -325,11 +321,16 @@ void CaptureLog(std::string_view line)
 @end
 
 
-@implementation GuiDisplayGen
+namespace {
+std::vector<std::string> sGuiCalls;	// the facade stand-in's _calls
+}
 
-- (oo::PList) cxx_textureDescriptorFromJSValue:(ooscript::Value)value inContext:(ooscript::Context)context callerDescription:(const std::optional<std::string> &)callerDescription
+GuiDisplayGen::GuiDisplayGen() {}
+GuiDisplayGen::~GuiDisplayGen() {}
+
+oo::PList GuiDisplayGen::textureDescriptorFromJSValue(ooscript::Value value, ooscript::Context context, const std::optional<std::string> &callerDescription)
 {
-	_calls.push_back("texture(" + Optional(callerDescription) + ")");
+	sGuiCalls.push_back("texture(" + Optional(callerDescription) + ")");
 	if (ooscript::isNullOrUndefined(value))  return oo::PList();
 	ooscript::String string = ooscript::valueToString(context, value);
 	std::size_t length = 0;
@@ -339,19 +340,35 @@ void CaptureLog(std::string_view line)
 	return Dict({ { "name", oo::PList(name) } });
 }
 
-- (OOGUIRow) cxx_rowForKey:(const std::optional<std::string> &)key
+OOGUIRow GuiDisplayGen::rowForKey(const std::optional<std::string> &key)
 {
-	_calls.push_back("rowForKey(" + Optional(key) + ")");
+	sGuiCalls.push_back("rowForKey(" + Optional(key) + ")");
 	return key == std::optional<std::string>("2_NO") ? 7 : -1;
 }
 
-- (BOOL) setSelectedRow:(OOGUIRow)row
+bool GuiDisplayGen::setSelectedRow(OOGUIRow row)
 {
-	_calls.push_back(oo::str::format("selectRow(%ld)", static_cast<long>(row)));
-	return YES;
+	sGuiCalls.push_back(oo::str::format("selectRow(%ld)", static_cast<long>(row)));
+	return true;
 }
 
-@end
+// The GUI's virtual members the binding does not call (its vtable needs them): never run.
+void GuiDisplayGen::setTitle(const std::optional<std::string> &)  { std::abort(); }
+OOColor *GuiDisplayGen::getTextColor()  { std::abort(); }
+void GuiDisplayGen::setTextColor(OOColor *)  { std::abort(); }
+OOColor *GuiDisplayGen::getTextCommsColor()  { std::abort(); }
+void GuiDisplayGen::setTextCommsColor(OOColor *)  { std::abort(); }
+void GuiDisplayGen::setColor(OOColor *, OOGUIRow)  { std::abort(); }
+OOGUIRow GuiDisplayGen::getSelectedRow()  { std::abort(); }
+void GuiDisplayGen::setSelectableRange(NSRange)  { std::abort(); }
+void GuiDisplayGen::setTabStops(OOGUITabSettings)  { std::abort(); }
+void GuiDisplayGen::clearAndKeepBackground(bool)  { std::abort(); }
+void GuiDisplayGen::setKey(const std::string &, OOGUIRow)  { std::abort(); }
+void GuiDisplayGen::setText(const std::string &, OOGUIRow)  { std::abort(); }
+void GuiDisplayGen::setText(const std::optional<std::string> &, OOGUIRow, OOGUIAlignment)  { std::abort(); }
+std::optional<std::string> GuiDisplayGen::reflowTextForMFD(const std::optional<std::string> &)  { std::abort(); }
+OOGUIRow GuiDisplayGen::addLongText(const std::optional<std::string> &, OOGUIRow, OOGUIAlignment)  { std::abort(); }
+void GuiDisplayGen::setArray(const std::vector<std::string> &, OOGUIRow)  { std::abort(); }
 
 
 @implementation Universe
@@ -712,7 +729,7 @@ void SetUpContext()
 	sPlayer->_exitScreen = GUI_SCREEN_STATUS;
 	gOOPlayer = sPlayer;
 	sUniverse = [[Universe alloc] init];
-	sUniverse->_gui = [[GuiDisplayGen alloc] init];
+	sUniverse->_gui = oo::makeRef<GuiDisplayGen>().leakRef();	// kept for the life of the test
 	sUniverse->_demoShip = [[ShipEntity alloc] init];
 	gSharedUniverse = sUniverse;
 	sEngine = [[OOJavaScriptEngine alloc] init];
@@ -863,7 +880,7 @@ OO_TEST(runScreen)
 	SetUpContext();
 	sPlayer->_calls.clear();
 	sUniverse->_calls.clear();
-	sUniverse->_gui->_calls.clear();
+	sGuiCalls.clear();
 	sMusic.clear();
 	sLimiterPauses = 0;
 
@@ -875,7 +892,7 @@ OO_TEST(runScreen)
 				   "exitScreen(13); screenID('job'); clearExtraKeys; extraKeys({k:[{key:'k'}]}); textEntry(NO); missionScreen(YES); allowInterrupt; "
 				   "literalText('Hello'); choicesDict({1_YES:'Yes',2_NO:'No'}); overlay(null); background(null); title(nullopt); missionMusic('')");
 	OO_CHECK_CALLS(sUniverse->_calls, "removeDemoShips");
-	OO_CHECK_CALLS(sUniverse->_gui->_calls, "texture('mission.runScreen()'); texture('mission.runScreen()'); rowForKey('2_NO'); selectRow(7)");
+	OO_CHECK_CALLS(sGuiCalls, "texture('mission.runScreen()'); texture('mission.runScreen()'); rowForKey('2_NO'); selectRow(7)");
 	OO_CHECK(sMusic == (std::vector<std::string>{ "'tune.ogg'" }));
 	OO_CHECK_EQ(sLimiterPauses, 0);
 	OO_CHECK_EVAL("'displayModel' in mission", "false");
@@ -902,7 +919,7 @@ OO_TEST(runScreenOtherSettings)
 	SetUpContext();
 	sPlayer->_calls.clear();
 	sUniverse->_calls.clear();
-	sUniverse->_gui->_calls.clear();
+	sGuiCalls.clear();
 	sMusic.clear();
 
 	// No callback, a title key, a model, text entry, a choices key and a message key; a third

@@ -273,7 +273,7 @@ MA 02110-1301, USA.
 - (BOOL) cxx_switchHudTo:(const std::string &)hudFileName;
 - (float) cxx_dialCustomFloat:(const std::string &)dialKey;
 - (std::string) cxx_dialCustomString:(const std::string &)dialKey;
-- (OOColor *) cxx_dialCustomColor:(const std::string &)dialKey;
+- (oo::Ref<OOColor>) cxx_dialCustomColor:(const std::string &)dialKey;
 - (void) cxx_setDialCustom:(const oo::PList &)value forKey:(const std::string &)dialKey;	// value: any script value, kept as given (live objects as Object nodes)
 - (void) setShowDemoShips:(BOOL) value;
 - (BOOL) showDemoShips;

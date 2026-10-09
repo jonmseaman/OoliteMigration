@@ -150,7 +150,7 @@ void SetUp(OOTimeAbsolute time)
 
 Entity *Shot(HPVector position, Vector velocity, float energy, OOTimeDelta duration, OOColor *color)
 {
-	return oo::NewEntityFacade(OOPlasmaShotEntity::shotWithPosition(position, velocity, energy, duration, oo::ToCxx(color)));
+	return oo::NewEntityFacade(OOPlasmaShotEntity::shotWithPosition(position, velocity, energy, duration, color));
 }
 
 const GLfloat *ColorComponents(Entity *shot)	{ return oo::ToCxx((OOLightParticleEntity *)shot)->_colorComponents; }
@@ -162,7 +162,7 @@ void SetIsShip(Entity *e)						{ e->_cxxEntity->isShip = true; }
 
 Entity *RedShot()
 {
-	return Shot(make_HPvector(1, 2, 3), make_vector(4, 5, 6), 7.0f, 2.0, [OOColor colorWithRed:1.0f green:0.0f blue:0.0f alpha:0.5f]);
+	return Shot(make_HPvector(1, 2, 3), make_vector(4, 5, 6), 7.0f, 2.0, OOColor::colorWithRed(1.0f, 0.0f, 0.0f, 0.5f).get());
 }
 
 

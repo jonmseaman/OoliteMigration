@@ -143,7 +143,7 @@ void OOExhaustPlumeEntity::update(OOTimeDelta /*delta_t*/)
 	GLfloat length;
 	HPVector vertex;
 	GLfloat ex_emissive[4];
-	[[ship exhaustEmissiveColor] getRed:&ex_emissive[0] green:&ex_emissive[1] blue:&ex_emissive[2] alpha:&ex_emissive[3]];
+	if (::OOColor *emissive = [ship exhaustEmissiveColor])  emissive->getRed(&ex_emissive[0], &ex_emissive[1], &ex_emissive[2], &ex_emissive[3]);	// a nil colour left them as they were
 	const GLfloat s1[8] = { 0.0, M_SQRT1_2, 1.0, M_SQRT1_2, 0.0, -M_SQRT1_2, -1.0, -M_SQRT1_2};
 	const GLfloat c1[8] = { 1.0, M_SQRT1_2, 0.0, -M_SQRT1_2, -1.0, -M_SQRT1_2, 0.0, M_SQRT1_2};
 	

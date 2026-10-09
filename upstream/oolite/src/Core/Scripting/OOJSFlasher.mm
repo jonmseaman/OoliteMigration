@@ -49,7 +49,7 @@ MA 02110-1301, USA.
 	became three free functions, and its methods and interface moved to a bridge file of the binding
 	(amendment oo-ykoy), then onto the OOFlasherEntity facade (bead oo-9ht.49, amendment oo-6ia4
 	item 3), and with that facade's deletion (bead oo-9ht.107) into the C++ class's overrides of
-	the root's JS members. OOColor, which is C++ since bead oo-11m, is reached as cxx::OOColor
+	the root's JS members. OOColor, which is C++ since bead oo-11m, is reached as OOColor
 	through oo::ToCxx/oo::ToObjC (amendment oo-ppc, item 4). The flasher is the C++ OOFlasherEntity,
 	found through its entity's C++ part (amendment oo-9ht.12 item 6). Messages to classes that are
 	still Objective-C (ShipEntity, OOVisualEffectEntity, Entity) stay as they are, which is why the
@@ -82,7 +82,7 @@ namespace {
 namespace {
 
 // A colour's components as its -normalizedArray gave them to JavaScript: floats, null for no colour.
-oo::PList NormalizedColorComponents(cxx::OOColor *color)
+oo::PList NormalizedColorComponents(OOColor *color)
 {
 	if (color == nullptr)  return oo::PList();
 	oo::PList::Array components;
@@ -303,7 +303,7 @@ static bool FlasherSetProperty(Context cx, Object obj, PropertyId propID, bool /
 	OOFlasherEntity		*entity = nullptr;
 	double          	fValue;
 	bool				bValue;
-	oo::Ref<cxx::OOColor>	colorForScript;
+	oo::Ref<OOColor>	colorForScript;
 	
 	if (!JSFlasherGetFlasherEntity(context, thisObj, &entity)) return false;
 	if (entity == nullptr)  return true;
@@ -319,7 +319,7 @@ static bool FlasherSetProperty(Context cx, Object obj, PropertyId propID, bool /
 			break;
 
 		case kFlasher_color:
-			colorForScript = cxx::OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value_raw));
+			colorForScript = OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value_raw));
 			if (colorForScript != nullptr || ooscript::isNull(*value_raw))
 			{
 				entity->setColor(colorForScript.get());

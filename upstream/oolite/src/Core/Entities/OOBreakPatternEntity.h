@@ -47,7 +47,7 @@ public:
 	// +breakPatternWithPolygonSides:startAngle:aspectRatio:: a new ring, initialised.
 	static oo::Ref<OOBreakPatternEntity> breakPatternWithPolygonSides(NSUInteger sides, float startAngleDegrees, float aspectRatio);
 
-	void setInnerColor(cxx::OOColor *color1, cxx::OOColor *color2);
+	void setInnerColor(OOColor *color1, OOColor *color2);
 
 	void setLifetime(double lifetime);
 

@@ -58,6 +58,7 @@ typedef enum
 	kOOShaderUniformTypeQuaternion,			// Binding or constant
 	kOOShaderUniformTypeMatrix,				// Binding or constant
 	kOOShaderUniformTypePoint,				// Binding only
+	kOOShaderUniformTypeColor,				// Binding only: the C++ colour (OOColor *), since bead oo-9ht.1 deleted its facade
 	kOOShaderUniformTypeObject,				// Binding only
 	
 	kOOShaderUniformTypeCount				// Not valid for bindings or constants
@@ -92,5 +93,8 @@ typedef Quaternion (*QuaternionReturnMsgSend)(id, SEL);
 typedef OOMatrix (*MatrixReturnMsgSend)(id, SEL);
 typedef NSPoint (*PointReturnMsgSend)(id, SEL);
 typedef id (*ObjectReturnMsgSend)(id, SEL);
+// kOOShaderUniformTypeColor: a colour binding answers the C++ colour, borrowed (bead oo-9ht.1).
+class OOColor;
+typedef OOColor *(*ColorReturnMsgSend)(id, SEL);
 
 #endif	// OO_SHADERS

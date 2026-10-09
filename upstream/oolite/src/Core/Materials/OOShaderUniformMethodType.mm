@@ -47,6 +47,7 @@ SOFTWARE.
 
 
 #import "OOMaths.h"
+#import "OOColor.h"	// @encode(OOColor *) is the complete class's, as the bindings' own
 
 static BOOL				sInited = NO;
 static const char		*sTemplates[kOOShaderUniformTypeCount];
@@ -102,6 +103,9 @@ static void InitTemplates(void)
 	GET_TEMPLATE(kOOShaderUniformTypeQuaternion,	Quaternion);
 	GET_TEMPLATE(kOOShaderUniformTypeMatrix,		OOMatrix);
 	GET_TEMPLATE(kOOShaderUniformTypePoint,			NSPoint);
+	// The colour bindings (laserColor, fogUniform) answer the C++ colour since bead oo-9ht.1 deleted
+	// its Objective-C facade; they were the object-valued bindings until then (OOShaderUniform.mm).
+	GET_TEMPLATE(kOOShaderUniformTypeColor,			OOColor *);
 	GET_TEMPLATE(kOOShaderUniformTypeObject,		id);
 	
 	sInited = YES;
