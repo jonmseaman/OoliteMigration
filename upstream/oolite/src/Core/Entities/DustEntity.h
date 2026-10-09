@@ -27,6 +27,7 @@ MA 02110-1301, USA.
 #import "Entity.h"
 #import "OOOpenGLExtensionManager.h"
 #import "OOTexture.h"
+#import "OOGraphicsResetManager.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/objc/OOObjCRef.h"
@@ -39,34 +40,40 @@ MA 02110-1301, USA.
 #define DUST_SCALE			2000
 #define DUST_N_PARTICLES	600
 
-namespace cxx {
-
-class DustEntity : public Entity
+/*	C++ only since bead oo-9ht.77 deleted its Objective-C facade (proposed ADR-0056 amendment
+	oo-0mxi): the universe makes it with oo::makeRef<DustEntity>() and init(), hands it to
+	Objective-C with oo::NewEntityFacade, and finds it with dynamic_cast. It is its own graphics
+	reset client (cxx::OOGraphicsResetClient), and the dust shader's uniforms are bound, by
+	selector, to a file-local Objective-C object in DustEntity.mm that forwards to it.
+*/
+class DustEntity : public cxx::Entity, public cxx::OOGraphicsResetClient
 {
 public:
-	/*	-init's body after [super init] (the constructor ran Entity's). The facade runs it once it
-		holds this object (amendment oo-0mxi), because it hands the facade to the graphics reset
-		manager, and runs it again when the entity is sent -init again, as the Objective-C -init did.
+	DustEntity() = default;
+	~DustEntity() override;
+
+	/*	-init's body after [super init] (the constructor ran Entity's), run once right after
+		construction: it registers this with the graphics reset manager.
 	*/
 	void init();
 
-	void setDustColor(OOColor *color);
-	OOColor *dustColor();
+	void setDustColor(cxx::OOColor *color);
+	cxx::OOColor *dustColor();
 
 	bool canCollide() override;
 	void updateCameraRelativePosition() override;
 	void update(OOTimeDelta delta_t) override;
 
 #if OO_SHADERS
-	OOShaderProgram *getShader();
-	Vector offsetPlayerPosition();	// bound to the dust shader by selector, through the facade
+	cxx::OOShaderProgram *getShader();
+	Vector offsetPlayerPosition();	// bound to the dust shader by selector, through the binding object
 #endif
-	Vector warpVector();			// bound to the dust shader by selector, through the facade
+	Vector warpVector();			// bound to the dust shader by selector, through the binding object
 
 	void drawImmediate(bool immediate, bool translucent) override;
 
-	// OOGraphicsResetClient: the facade is the client, and forwards here.
-	void resetGraphicsState();
+	// cxx::OOGraphicsResetClient.
+	void resetGraphicsState() override;
 
 #ifndef NDEBUG
 	std::optional<std::string> descriptionForObjDump() override;
@@ -77,7 +84,7 @@ private:
 	void checkShaderMode();
 #endif
 
-	oo::Ref<OOColor>	dust_color;
+	oo::Ref<cxx::OOColor>	dust_color;
 	Vector				vertices[DUST_N_PARTICLES * 2] = {};
 	GLushort			indices[DUST_N_PARTICLES * 2] = {};
 	GLfloat				color_fv[4] = {};
@@ -87,15 +94,9 @@ private:
 	
 #if OO_SHADERS
 	GLfloat				warpinessAttr[DUST_N_PARTICLES * 2] = {};
-	oo::Ref<OOShaderProgram>	shader;
+	oo::Ref<cxx::OOShaderProgram>	shader;
 	std::vector<oo::Ref<OOShaderUniform>>	uniforms;
+	oo::ObjCRef<id>		shaderBinding;	// what the uniforms are bound to (DustEntity.mm)
 	uint8_t				shaderMode = {};
 #endif
 };
-
-}	// namespace cxx
-
-
-// Transitional: the Objective-C DustEntity, for the universe, which makes it and messages it.
-// Deleted, with namespace cxx above, by the bridge's deletion bead.
-#import "DustEntity+ObjCBridge.h"

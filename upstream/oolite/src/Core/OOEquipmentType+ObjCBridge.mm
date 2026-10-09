@@ -129,6 +129,28 @@ cxx::OOEquipmentType *oo::ToCxx(OOEquipmentType *type)
 }
 
 
+// The JS side, which the engine asks for by selector (bead oo-9ht.102; these were the
+// OOJavaScriptExtensions category that OOJSEquipmentInfo.mm's old bridge file held). The JS class name is
+// OOJSEquipmentInfoJSClassName()'s, written here so the tests that link the facade without the
+// binding need no stub for it.
+- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
+{
+	return _cxxEquipmentType->jsValueInContext(context);
+}
+
+
+- (std::optional<std::string>) cxx_oo_jsClassName
+{
+	return std::string("EquipmentInfo");
+}
+
+
+- (void) oo_clearJSSelf:(ooscript::Object)selfVal
+{
+	_cxxEquipmentType->clearJSSelf(selfVal);
+}
+
+
 + (void) loadEquipment
 {
 	cxx::OOEquipmentType::loadEquipment();
