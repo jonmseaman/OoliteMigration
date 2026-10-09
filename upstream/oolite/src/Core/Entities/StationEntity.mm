@@ -1323,13 +1323,13 @@ void StationEntity::dumpSelfState()
 	// approach and hold lists.
 	
 	// Ships on hold list, only used with moving stations (= carriers)
-	if([_shipsOnHold count] > 0)
+	if(_shipsOnHold->count() > 0)
 	{
-		OO_LOG("dumpState.stationEntity", "{} Ships on hold (unsorted):", [_shipsOnHold count]);
+		OO_LOG("dumpState.stationEntity", "{} Ships on hold (unsorted):", _shipsOnHold->count());
 		
 		oo::log::indent();
 		unsigned		i = 1;
-		for (const oo::ObjCRef<id> &shipRef : [_shipsOnHold cxx_objectEnumerator])
+		for (const oo::ObjCRef<id> &shipRef : _shipsOnHold->objectEnumerator())
 		{
 			::ShipEntity *ship = static_cast<::ShipEntity *>(shipRef.get());
 			OO_LOG("dumpState.stationEntity", "Nr {}: {} at distance {:g} with role: {}", i++, [ship displayName].value_or("(null)"), HPdistance([self position], [ship position]), [ship cxx_primaryRole].value_or("(null)"));
@@ -1417,8 +1417,8 @@ void StationEntity::abortAllDockings()
 	}
 	
 	// -makeObjectsPerformSelector:withObject: of the live ships on hold, in order
-	for (const oo::ObjCRef<id> &holdRef : [_shipsOnHold cxx_objectEnumerator])  [static_cast<::ShipEntity *>(holdRef.get()) sendAIMessage:"DOCKING_ABORTED"];
-	for (const oo::ObjCRef<id> &holdRef : [_shipsOnHold cxx_objectEnumerator])
+	for (const oo::ObjCRef<id> &holdRef : _shipsOnHold->objectEnumerator())  [static_cast<::ShipEntity *>(holdRef.get()) sendAIMessage:"DOCKING_ABORTED"];
+	for (const oo::ObjCRef<id> &holdRef : _shipsOnHold->objectEnumerator())
 	{
 		::ShipEntity *hold = static_cast<::ShipEntity *>(holdRef.get());
 		[hold doScriptEvent:OOJSID("stationWithdrewDockingClearance")];
@@ -1435,7 +1435,7 @@ void StationEntity::abortAllDockings()
 		[player doScriptEvent:OOJSID("stationWithdrewDockingClearance")];
 	}
 
-	[_shipsOnHold removeAllObjects];
+	_shipsOnHold->removeAllObjects();
 	
 	[shipAI message:"DOCKING_COMPLETE"];
 	[self doScriptEvent:OOJSID("stationDockingQueuesAreEmpty")];
@@ -1446,13 +1446,13 @@ void StationEntity::abortAllDockings()
 void StationEntity::autoDockShipsOnHold()
 {
 	::StationEntity *self = oo::ToObjC(this);
-	for (const oo::ObjCRef<id> &shipRef : [_shipsOnHold cxx_objectEnumerator])
+	for (const oo::ObjCRef<id> &shipRef : _shipsOnHold->objectEnumerator())
 	{
 		::ShipEntity *ship = static_cast<::ShipEntity *>(shipRef.get());
 		[self pullInShipIfPermitted:ship];
 	}
 	
-	[_shipsOnHold removeAllObjects];
+	_shipsOnHold->removeAllObjects();
 }
 
 
@@ -1601,7 +1601,7 @@ oo::PList StationEntity::dockingInstructionsForShip(::ShipEntity *ship)
 	}
 	
 	// we made it through holding!
-	[_shipsOnHold removeObject:ship];
+	_shipsOnHold->removeObject(ship);
 	
 	[shipAI cxx_reactToMessage:"DOCKING_REQUESTED" context:"requestDockingCoordinates"];	// react to the request	
 	[self doScriptEvent:OOJSID("stationAcceptedDockingRequest") withArgument:ship];
@@ -1613,10 +1613,10 @@ oo::PList StationEntity::dockingInstructionsForShip(::ShipEntity *ship)
 oo::PList StationEntity::holdPositionInstructionForShip(::ShipEntity *ship)
 {
 	::StationEntity *self = oo::ToObjC(this);
-	if (![_shipsOnHold containsObject:ship])
+	if (!_shipsOnHold->containsObject(ship))
 	{
 		[self cxx_sendExpandedMessage:"[station-acknowledges-hold-position]" toShip:ship];
-		[_shipsOnHold addObject:ship];
+		_shipsOnHold->addObject(ship);
 	}
 	
 	return cxx_OOMakeDockingInstructions(self, [ship position], 0, 100, "HOLD_POSITION", std::nullopt, NO, -1);
@@ -1629,7 +1629,7 @@ void StationEntity::abortDockingForShip(::ShipEntity *ship)
 	[ship sendAIMessage:"DOCKING_ABORTED"];
 	[ship doScriptEvent:OOJSID("stationWithdrewDockingClearance")];
 	
-	[_shipsOnHold removeObject:ship];
+	_shipsOnHold->removeObject(ship);
 	
 	for (const oo::ObjCRef<::DockEntity *> &dock : [self cxx_dockSubEntities])
 	{
@@ -1844,7 +1844,7 @@ void StationEntity::clear()
 		[sub clear];
 	}
 	
-	[_shipsOnHold removeAllObjects];
+	_shipsOnHold->removeAllObjects();
 }
 
 
@@ -2539,7 +2539,7 @@ unsigned StationEntity::currentlyInDockingQueues()
 		::DockEntity *sub = dock.get();
 		soa += [sub countOfShipsInDockingQueue];
 	}
-	soa += [_shipsOnHold count];
+	soa += _shipsOnHold->count();
 	return soa;
 }
 
