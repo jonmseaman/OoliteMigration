@@ -5314,3 +5314,47 @@ and the scripts' facades are the data-model facades still standing.
 protocols. The planet's facade (oo-9ht.129) is the stellar body facade still standing: its
 shader uniforms bind to it by selector, which the root's facade must answer for a planet's C++
 part (and only for one) when it goes.
+
+## Amendment (bead oo-9ht.129): the planet's facade, and selectors the root's facade answers for one leaf
+
+- Date: 2026-10-09. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch H
+  (one branch, as batches B-G): bead oo-9ht.129 (OOPlanetEntity). Exemplar:
+  `src/Core/Entities/OOPlanetEntity.h/.mm`, `Entities/Entity+ObjCBridge.mm`, `Entities/OOSunEntity.mm`
+  (`OOStellarBodyRadius()`), `Scripting/OOJSPlanet.mm`, `Universe.h/.mm`,
+  `Entities/PlayerEntityLegacyScriptEngine.mm`, `tests/unit/core/test_OOPlanetEntity.mm`,
+  `test_OOJSPlanet.mm`. Follows amendments oo-9ht.12, oo-9ht.107 and oo-9ht.23 (whose item 3 it
+  applies unchanged: the universe's planet list holds `oo::ObjCRef<::Entity *>`, the makers are
+  `oo::makeRef` + `oo::NewEntityFacade` + the initialiser's body, holders take the C++ planet).
+
+**Context.** The planet's materials bind shader uniforms to the planet's Objective-C object by
+selector (`material-defaults.plist` `planet-material` and `atmosphere`: `airColorAsVector`,
+`illuminationColorAsVector`, `airColorMixRatio`, `airDensity`, `terminatorThresholdVector`; the
+uniform asks `-respondsToSelector:`, then takes the implementation and its type from the runtime).
+Once the planet's facade goes its object is the root `Entity`'s facade, which does not answer them,
+so the planet's shaders would lose five uniforms.
+
+**Decision (recommended defaults).**
+
+1. **Selectors that only a deleted leaf's facade answered, and that are found by the runtime (not
+   sent by converted code), go on the root's facade as a category whose methods ask the C++ part**
+   (`Entity (OOPlanetShaderBindings)` in `Entity+ObjCBridge.mm`: each method `dynamic_cast`s
+   `_cxxEntity` to the leaf and answers zero for any other entity), **and `-[Entity
+   respondsToSelector:]` answers those selectors for the leaf's C++ part only**, so every other
+   entity (a ship, whose material may name the same uniform) still fails to bind them, as before.
+   The category is not declared in a header: nothing sends the selectors.
+2. **`OOStellarBodyRadius()` / `OOStellarBodyPlanetType()` ask the C++ planet as they ask the C++
+   sun**; every dynamic `-radius` / `-planetType` of a stellar body already went through them.
+3. **A binding whose test stands in for the entity classes keeps the root's selectors for the
+   entity's C++ virtual members** (`[oo::ToObjC(planet) normalOrientation]`, `-setOrientation:`):
+   the root's facade forwards them to the virtual member, so the planet's override runs, the
+   message to nil keeps the nil answer, and the binding's test (which cannot link a C++ entity
+   vtable) stands in for `oo::ToObjC` instead (a back pointer on its stand-in `cxx::Entity`).
+   Non-virtual members are called directly, null-guarded (amendment oo-9ht.19 item 3).
+4. **A getter that answered an object of any class typed as the planet** (`-[StationEntity planet]`
+   from a universal ID, a landing ship's target) answers `dynamic_cast` of the entity's C++ part:
+   null for any other entity, whose `-isPlanet` was NO.
+
+**Consequences.** No Objective-C `OOPlanetEntity` is left; the `OOStellarBody` protocol has no
+adopter (its selectors are still sent through `OOStellarBodyRadius()`'s fallback). The root's
+facade deletion (oo-9ht.39) inherits the shader-binding category; the member-pointer table of
+oo-9ht.158 replaces it.

@@ -451,8 +451,8 @@ static float SurfaceDistanceSqared(Entity *reference, Entity<OOStellarBody> *ste
 OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 {
 	HPVector p = [(ShipEntity*) context position];
-	OOPlanetEntity* e1 = i1;
-	OOPlanetEntity* e2 = i2;
+	Entity<OOStellarBody>* e1 = i1;	// the planets' Objective-C objects (C++ since bead oo-9ht.129)
+	Entity<OOStellarBody>* e2 = i2;
 	
 	float p1 = SurfaceDistanceSqaredV(p, e1);
 	float p2 = SurfaceDistanceSqaredV(p, e2);
@@ -6281,9 +6281,9 @@ void ShipEntity::behaviour_land_on_planet(double delta_t)
 	double max_cos = MAX_COS2; // trackDestination returns the squared confidence in reverse mode.
 	desired_speed = 0.0;
 	
-	::OOPlanetEntity* planet = [UNIVERSE entityForUniversalID:planetForLanding];
+	::OOPlanetEntity* planet = dynamic_cast<::OOPlanetEntity *>(oo::ToCxx((::Entity *)[UNIVERSE entityForUniversalID:planetForLanding]));	// null for any other entity, whose -isPlanet was NO (C++ since bead oo-9ht.129)
 	
-	if (![planet isPlanet]) 
+	if (!(planet != nullptr ? planet->isPlanet() : false)) 
 	{
 		behaviour = BEHAVIOUR_IDLE;
 		aiScriptWakeTime = 1; // reconsider JSAI
@@ -6291,7 +6291,7 @@ void ShipEntity::behaviour_land_on_planet(double delta_t)
 		return;
 	}
 		  
-	if (HPdistance(position, [planet position]) + [self collisionRadius] < [planet radius])
+	if (HPdistance(position, (planet != nullptr ? planet->getPosition() : HPVector{})) + [self collisionRadius] < (planet != nullptr ? planet->radius() : 0.0))
 	{
 		// we have landed. (completely disappeared inside planet)
 		[self landOnPlanet:planet];
@@ -8246,11 +8246,11 @@ void ShipEntity::transitionToAegisNone()
 	// similar complaints about the other foreach() in this file
 	for (const auto &planetRef : [UNIVERSE cxx_planets])
 	{
-		planet = planetRef.get();
+		planet = static_cast<::OOPlanetEntity *>(oo::ToCxx(planetRef.get()));	// the list holds only planets (C++ since bead oo-9ht.129)
 		// Ignore miniature planets.
-		if ([planet planetType] == STELLAR_TYPE_MINIATURE)  continue;
+		if ((planet != nullptr ? planet->planetType() : OOStellarBodyType{}) == STELLAR_TYPE_MINIATURE)  continue;
 		
-		float range = SurfaceDistanceSqaredV(myPosition, planet);
+		float range = SurfaceDistanceSqaredV(myPosition, (::Entity<OOStellarBody> *)planetRef.get());
 		if (range < bestRange)
 		{
 			bestPlanet = planet;
@@ -8266,7 +8266,7 @@ void ShipEntity::transitionToAegisNone()
 {
 	::ShipEntity *self = oo::ToObjC(this);
 
-	::Entity<OOStellarBody> *match = [self findNearestPlanet];
+	::Entity<OOStellarBody> *match = (::Entity<OOStellarBody> *)oo::ToObjC([self findNearestPlanet]);	// its Objective-C object (C++ since bead oo-9ht.129)
 	::Entity<OOStellarBody> *sun = (::Entity<OOStellarBody> *)oo::ToObjC([UNIVERSE sun]);	// its Objective-C object (C++ since bead oo-9ht.111)
 	
 	if (sun != nil)
@@ -8287,22 +8287,22 @@ void ShipEntity::transitionToAegisNone()
 	::ShipEntity *self = oo::ToObjC(this);
 
 	::OOPlanetEntity		*result = nil;
-	std::vector<oo::ObjCRef<::OOPlanetEntity *>>	planets;
+	std::vector<oo::ObjCRef<::Entity *>>	planets;	// the planets' Objective-C objects (C++ since bead oo-9ht.129)
 
 	for (const auto &planet : [UNIVERSE cxx_planets])
 	{
-		if([planet.get() planetType] == STELLAR_TYPE_NORMAL_PLANET)
+		if(OOStellarBodyPlanetType(planet.get()) == STELLAR_TYPE_NORMAL_PLANET)
 					planets.push_back(planet);
 	}
 
 	if (planets.empty())  return nil;
 
 	// ComparePlanetsBySurfaceDistance's order; the nearest comes first.
-	std::stable_sort(planets.begin(), planets.end(), [self](const oo::ObjCRef<::OOPlanetEntity *> &a, const oo::ObjCRef<::OOPlanetEntity *> &b)
+	std::stable_sort(planets.begin(), planets.end(), [self](const oo::ObjCRef<::Entity *> &a, const oo::ObjCRef<::Entity *> &b)
 	{
 		return ComparePlanetsBySurfaceDistance(a.get(), b.get(), self) == OOOrderedAscending;
 	});
-	result = planets[0].get();
+	result = static_cast<::OOPlanetEntity *>(oo::ToCxx(planets[0].get()));
 
 	return result;
 }
@@ -8373,7 +8373,7 @@ OOAegisStatus ShipEntity::checkForAegis()
 	else if (EXPECT_NOT(isNearPlanetSurface || d2 < cr2 * 9.0f)) // to 3x radius of any planet/moon - or 500m of tiny ones,
 	{
 		result = AEGIS_CLOSE_TO_ANY_PLANET;
-		if (EXPECT((::OOPlanetEntity *)nearest == [UNIVERSE planet]))
+		if (EXPECT(nearest == oo::ToObjC([UNIVERSE planet])))
 		{
 			result = AEGIS_CLOSE_TO_MAIN_PLANET;
 		}
@@ -8384,12 +8384,12 @@ OOAegisStatus ShipEntity::checkForAegis()
 	{
 		// are we also close to the main planet?
 		::OOPlanetEntity *mainPlanet = [UNIVERSE planet];
-		d2 = HPmagnitude2(HPvector_subtract([mainPlanet position], [self position]));
-		cr2 = [mainPlanet radius];
+		d2 = HPmagnitude2(HPvector_subtract((mainPlanet != nullptr ? mainPlanet->getPosition() : HPVector{}), [self position]));
+		cr2 = (mainPlanet != nullptr ? mainPlanet->radius() : 0.0);
 		cr2 *= cr2;	
 		if (d2 < cr2 * 9.0f)
 		{
-			nearest = mainPlanet;
+			nearest = (::Entity<OOStellarBody> *)oo::ToObjC(mainPlanet);	// its Objective-C object (C++ since bead oo-9ht.129)
 			result = AEGIS_CLOSE_TO_MAIN_PLANET;
 		}
 	}
@@ -8420,15 +8420,15 @@ OOAegisStatus ShipEntity::checkForAegis()
 			
 			if([self lastAegisLock] == nil && !sunGoneNova) // With small main planets the station aegis can come before planet aegis
 			{
-				[self doScriptEvent:OOJSID("shipEnteredPlanetaryVicinity") withArgument:[UNIVERSE planet]];
-				[self setLastAegisLock:[UNIVERSE planet]];
+				[self doScriptEvent:OOJSID("shipEnteredPlanetaryVicinity") withArgument:oo::ToObjC([UNIVERSE planet])];	// the planet is C++ since bead oo-9ht.129
+				[self setLastAegisLock:(::Entity<OOStellarBody> *)oo::ToObjC([UNIVERSE planet])];
 			}
 		}
 		else if (EXPECT_NOT(result == AEGIS_NONE && aegis_status != result))
 		{
 			if([self lastAegisLock] == nil && !sunGoneNova)
 			{
-				[self setLastAegisLock:[UNIVERSE planet]];  // in case of a first launch from a near-planet station.
+				[self setLastAegisLock:(::Entity<OOStellarBody> *)oo::ToObjC([UNIVERSE planet])];  // in case of a first launch from a near-planet station.
 			}
 			[self transitionToAegisNone];
 		}
@@ -14831,14 +14831,14 @@ void ShipEntity::landOnPlanet(::OOPlanetEntity *planet)
 	::ShipEntity *self = oo::ToObjC(this);
 	if (planet && [self isShuttle])
 	{
-		[planet welcomeShuttle:self];
+		if (planet != nullptr)  planet->welcomeShuttle(self);
 	}
-	[self cxx_doScriptEvent:OOJSID("shipLandedOnPlanet") withArgument:planet andReactToAIMessage:"LANDED_ON_PLANET"];
+	[self cxx_doScriptEvent:OOJSID("shipLandedOnPlanet") withArgument:oo::ToObjC(planet) andReactToAIMessage:"LANDED_ON_PLANET"];
 	
 #ifndef NDEBUG
 	if ([self reportAIMessages])
 	{
-		OO_LOG("planet.collide.shuttleLanded", "DEBUG: {} landed on planet {}", oo::DescriptionOf(self), oo::DescriptionOf(planet));
+		OO_LOG("planet.collide.shuttleLanded", "DEBUG: {} landed on planet {}", oo::DescriptionOf(self), oo::DescriptionOf(oo::ToObjC(planet)));
 	}
 #endif
 	

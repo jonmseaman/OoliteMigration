@@ -200,7 +200,7 @@ MA 02110-1301, USA.
 - (StationEntity *) stationFriendlyTo:(ShipEntity *) ship;
 - (OOPlanetEntity *) planet;
 - (OOSunEntity *) sun;
-- (std::vector<oo::ObjCRef<OOPlanetEntity *>>) cxx_planets;	// Note: does not include sun.
+- (std::vector<oo::ObjCRef<Entity *>>) cxx_planets;	// Note: does not include sun.
 - (std::vector<oo::ObjCRef<StationEntity *>>) cxx_stations; // includes main station; in the order added
 
 @end

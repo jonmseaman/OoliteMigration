@@ -238,7 +238,7 @@ extern Universe *gSharedUniverse;
 - (StationEntity *) stationFriendlyTo:(ShipEntity *)ship	{ return _cxxUniverse->stationFriendlyTo(ship); }
 - (OOPlanetEntity *) planet	{ return _cxxUniverse->planet(); }
 - (OOSunEntity *) sun	{ return _cxxUniverse->sun(); }
-- (std::vector<oo::ObjCRef<OOPlanetEntity *>>) cxx_planets	{ return _cxxUniverse->planets(); }
+- (std::vector<oo::ObjCRef<Entity *>>) cxx_planets	{ return _cxxUniverse->planets(); }
 - (std::vector<oo::ObjCRef<StationEntity *>>) cxx_stations	{ return _cxxUniverse->stations(); }
 
 @end

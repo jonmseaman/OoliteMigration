@@ -60,7 +60,7 @@ bool OOJSSystemUniverseInInterstellarSpace();
 StationEntity *OOJSSystemUniverseStation();
 OOPlanetEntity *OOJSSystemUniversePlanet();
 OOSunEntity *OOJSSystemUniverseSun();
-std::vector<oo::ObjCRef<OOPlanetEntity *>> OOJSSystemUniversePlanets();
+std::vector<oo::ObjCRef<Entity *>> OOJSSystemUniversePlanets();	// the planets' Objective-C objects
 std::vector<oo::ObjCRef<StationEntity *>> OOJSSystemUniverseStations();
 std::map<std::string, oo::ObjCRef<OOWaypointEntity *>, std::less<>> OOJSSystemUniverseCurrentWaypoints();
 std::vector<oo::ObjCRef<::Entity *>> OOJSSystemUniverseWormholes();

@@ -72,6 +72,7 @@ MA 02110-1301, USA.
 #import "SkyEntity.h"
 #import "DustEntity.h"
 #import "OOPlanetEntity.h"
+#import "OOPlanetDrawable.h"	// oo::makeRef<OOPlanetEntity>() destroys its drawables (bead oo-9ht.129)
 #import "OOVisualEffectEntity.h"
 #import "OOWaypointEntity.h"
 #import "OOSunEntity.h"
@@ -1652,7 +1653,15 @@ void Universe::setUpWitchspaceBetweenSystem(OOSystemID s1, OOSystemID s2)
 	oo::PList planetDict = (systemManager != nullptr ? systemManager->getPropertiesForCurrentSystem() : oo::PList());
 	if (!planetDict.isDict())  planetDict = oo::PList(oo::PList::Dict{});
 	(*planetDict.getIf<oo::PList::Dict>())["mainForLocalSystem"] = oo::PList(true);
-	::OOPlanetEntity *a_planet = [[::OOPlanetEntity alloc] initFromDictionary:planetDict withAtmosphere:planetDict.get<bool>("has_atmosphere", YES) andSeed:systemSeed forSystem:systemID];
+	::OOPlanetEntity *a_planet = nullptr;
+	{
+		// +alloc/-initFromDictionary:withAtmosphere:andSeed:forSystem:: a new C++ planet and its
+		// Objective-C object, +1 (the facade went with bead oo-9ht.129).
+		oo::Ref<::OOPlanetEntity> planetRef = oo::makeRef<::OOPlanetEntity>();
+		[oo::NewEntityFacade(planetRef) retain];
+		planetRef->initFromDictionary(planetDict, planetDict.get<bool>("has_atmosphere", YES), systemSeed, systemID);
+		a_planet = planetRef.get();
+	}
 
 	double planet_zpos = planetDict.get<float>("planet_distance", 500000);
 	planet_zpos *= planetDict.get<float>("planet_distance_multiplier", 1.0);
@@ -1660,23 +1669,24 @@ void Universe::setUpWitchspaceBetweenSystem(OOSystemID s1, OOSystemID s2)
 #ifdef OO_DUMP_PLANETINFO
 	OO_LOG("planetinfo.record", "planet zpos = {:f}", planet_zpos);
 #endif
-	[a_planet setPosition:(HPVector){ 0, 0, planet_zpos }];
-	[a_planet setEnergy:1000000.0];
+	if (a_planet != nullptr)  a_planet->setPosition((HPVector){ 0, 0, planet_zpos });
+	if (a_planet != nullptr)  a_planet->setEnergy(1000000.0);
 	
 	if (allPlanets.size()>0)	// F7 sets [UNIVERSE planet], which can lead to some trouble! TODO: track down where exactly that happens!
 	{
-		::OOPlanetEntity *tmp=allPlanets[0].get();
-		[self addEntity:a_planet];
-		std::erase(allPlanets, a_planet);
+		::Entity *tmp=allPlanets[0].get();
+		[self addEntity:oo::ToObjC(a_planet)];
+		std::erase(allPlanets, oo::ToObjC(a_planet));
 		cachedPlanet=a_planet;
-		allPlanets[0] = oo::ObjCRef<::OOPlanetEntity *>(a_planet);
-		[self removeEntity:(::Entity *)tmp];
+		allPlanets[0] = oo::ObjCRef<::Entity *>(oo::ToObjC(a_planet));
+		[self removeEntity:tmp];
 	}
 	else
 	{
-		[self addEntity:a_planet];
+		[self addEntity:oo::ToObjC(a_planet)];
 	}
-	return [a_planet autorelease];
+	[oo::ToObjC(a_planet) autorelease];
+	return a_planet;
 }
 
 
@@ -1804,7 +1814,7 @@ void Universe::setUpSpace()
 	
 	OO_DEBUG_PUSH_PROGRESS("setUpSpace - planet");
 	a_planet=[self setUpPlanet]; // resets RNG when called
-	double planet_radius = [a_planet radius];
+	double planet_radius = (a_planet != nullptr ? a_planet->radius() : 0.0);
 	OO_DEBUG_POP_PROGRESS();
 	
 	// set the system seed for random number generation
@@ -1849,7 +1859,7 @@ void Universe::setUpSpace()
 	do
 	{
 		sun_distance *= 2.0;
-		sunPos = HPvector_subtract([a_planet position],
+		sunPos = HPvector_subtract((a_planet != nullptr ? a_planet->getPosition() : HPVector{}),
 							  HPvector_multiply_scalar(sun_dir,sun_distance));
 		
 		// if not in the safe distance, multiply by two and try again
@@ -1858,7 +1868,7 @@ void Universe::setUpSpace()
 
 	// set planetary axial tilt to 0 degrees
 	// TODO: allow this to vary
-	[a_planet setOrientation:quaternion_rotation_betweenHP(sun_dir,make_HPvector(1.0,0.0,0.0))];
+	if (a_planet != nullptr)  a_planet->setOrientation(quaternion_rotation_betweenHP(sun_dir,make_HPvector(1.0,0.0,0.0)));
 
 #ifdef OO_DUMP_PLANETINFO
 	OO_LOG("planetinfo.record", "sun_vector = {:.3f} {:.3f} {:.3f}", vf.x, vf.y, vf.z);
@@ -1925,7 +1935,7 @@ void Universe::setUpSpace()
 	
 	OO_DEBUG_PUSH_PROGRESS("setUpSpace - main station");
 	/*- space station -*/
-	stationPos = [a_planet position];
+	stationPos = (a_planet != nullptr ? a_planet->getPosition() : HPVector{});
 
 	vf = VectorIn(systeminfo, "station_vector", kZeroVector);
 #ifdef OO_DUMP_PLANETINFO
@@ -2043,7 +2053,7 @@ void Universe::populateNormalSpace()
 			
 	 	}
 		
-	 	[self removeEntity:cachedPlanet];	// and Poof! it's gone
+	 	[self removeEntity:oo::ToObjC(cachedPlanet)];	// and Poof! it's gone
 	 	cachedPlanet = nil;	
 	 	[self removeEntity:cachedStation];	// also remove main station
 	 	cachedStation = nil;	
@@ -2237,8 +2247,8 @@ HPVector Universe::locationByCode(const std::string &code, ::OOSunEntity *sun, :
 		if (code == "LANE_WPS")
 		{	
 			// pick position on one of the lanes, weighted by lane length
-			double l1 = HPmagnitude([planet position]);
-			double l2 = HPmagnitude(HPvector_subtract((sun != nullptr ? sun->getPosition() : HPVector{}),[planet position]));
+			double l1 = HPmagnitude((planet != nullptr ? planet->getPosition() : HPVector{}));
+			double l2 = HPmagnitude(HPvector_subtract((sun != nullptr ? sun->getPosition() : HPVector{}),(planet != nullptr ? planet->getPosition() : HPVector{})));
 			double l3 = HPmagnitude((sun != nullptr ? sun->getPosition() : HPVector{}));
 			double total = l1+l2+l3;
 			float choice = randf();
@@ -2257,7 +2267,7 @@ HPVector Universe::locationByCode(const std::string &code, ::OOSunEntity *sun, :
 		}
 		else if (code == "LANE_WP")
 		{
-			result = OORandomPositionInCylinder(kZeroHPVector,SCANNER_MAX_RANGE,[planet position],[planet radius]*3,LANE_WIDTH);
+			result = OORandomPositionInCylinder(kZeroHPVector,SCANNER_MAX_RANGE,(planet != nullptr ? planet->getPosition() : HPVector{}),(planet != nullptr ? planet->radius() : 0.0)*3,LANE_WIDTH);
 		}
 		else if (code == "LANE_WS")
 		{
@@ -2265,27 +2275,27 @@ HPVector Universe::locationByCode(const std::string &code, ::OOSunEntity *sun, :
 		}
 		else if (code == "LANE_PS")
 		{
-			result = OORandomPositionInCylinder([planet position],[planet radius]*3,(sun != nullptr ? sun->getPosition() : HPVector{}),(sun != nullptr ? sun->radius() : 0.0)*3,LANE_WIDTH);
+			result = OORandomPositionInCylinder((planet != nullptr ? planet->getPosition() : HPVector{}),(planet != nullptr ? planet->radius() : 0.0)*3,(sun != nullptr ? sun->getPosition() : HPVector{}),(sun != nullptr ? sun->radius() : 0.0)*3,LANE_WIDTH);
 		}
 		else if (code == "STATION_AEGIS")
 		{
 			do 
 			{
 				result = OORandomPositionInShell([[self station] position],[[self station] collisionRadius]*1.2,SCANNER_MAX_RANGE*2.0);
-			} while(HPdistance2(result,[planet position])<[planet radius]*[planet radius]*1.5);
+			} while(HPdistance2(result,(planet != nullptr ? planet->getPosition() : HPVector{}))<(planet != nullptr ? planet->radius() : 0.0)*(planet != nullptr ? planet->radius() : 0.0)*1.5);
 			// loop to make sure not generated too close to the planet's surface
 		}
 		else if (code == "PLANET_ORBIT_LOW")
 		{
-			result = OORandomPositionInShell([planet position],[planet radius]*1.1,[planet radius]*2.0);
+			result = OORandomPositionInShell((planet != nullptr ? planet->getPosition() : HPVector{}),(planet != nullptr ? planet->radius() : 0.0)*1.1,(planet != nullptr ? planet->radius() : 0.0)*2.0);
 		}
 		else if (code == "PLANET_ORBIT")
 		{
-			result = OORandomPositionInShell([planet position],[planet radius]*2.0,[planet radius]*4.0);
+			result = OORandomPositionInShell((planet != nullptr ? planet->getPosition() : HPVector{}),(planet != nullptr ? planet->radius() : 0.0)*2.0,(planet != nullptr ? planet->radius() : 0.0)*4.0);
 		}
 		else if (code == "PLANET_ORBIT_HIGH")
 		{
-			result = OORandomPositionInShell([planet position],[planet radius]*4.0,[planet radius]*8.0);
+			result = OORandomPositionInShell((planet != nullptr ? planet->getPosition() : HPVector{}),(planet != nullptr ? planet->radius() : 0.0)*4.0,(planet != nullptr ? planet->radius() : 0.0)*8.0);
 		}
 		else if (code == "STAR_ORBIT_LOW")
 		{
@@ -2312,33 +2322,33 @@ HPVector Universe::locationByCode(const std::string &code, ::OOSunEntity *sun, :
 					r = 1-r;
 					s = 1-s;
 				}
-				result = HPvector_add(HPvector_multiply_scalar([planet position],r),HPvector_multiply_scalar((sun != nullptr ? sun->getPosition() : HPVector{}),s));
+				result = HPvector_add(HPvector_multiply_scalar((planet != nullptr ? planet->getPosition() : HPVector{}),r),HPvector_multiply_scalar((sun != nullptr ? sun->getPosition() : HPVector{}),s));
 			}
 			// make sure at least 3 radii from vertices
-			while(HPdistance2(result,(sun != nullptr ? sun->getPosition() : HPVector{})) < (sun != nullptr ? sun->radius() : 0.0)*(sun != nullptr ? sun->radius() : 0.0)*9.0 || HPdistance2(result,[planet position]) < [planet radius]*[planet radius]*9.0 || HPmagnitude2(result) < SCANNER_MAX_RANGE2 * 9.0);
+			while(HPdistance2(result,(sun != nullptr ? sun->getPosition() : HPVector{})) < (sun != nullptr ? sun->radius() : 0.0)*(sun != nullptr ? sun->radius() : 0.0)*9.0 || HPdistance2(result,(planet != nullptr ? planet->getPosition() : HPVector{})) < (planet != nullptr ? planet->radius() : 0.0)*(planet != nullptr ? planet->radius() : 0.0)*9.0 || HPmagnitude2(result) < SCANNER_MAX_RANGE2 * 9.0);
 		}
 		else if (code == "INNER_SYSTEM")
 		{
 			do {
-				result = OORandomPositionInShell((sun != nullptr ? sun->getPosition() : HPVector{}),(sun != nullptr ? sun->radius() : 0.0)*3.0,HPdistance((sun != nullptr ? sun->getPosition() : HPVector{}),[planet position]));
-				result = OOProjectHPVectorToPlane(result,kZeroHPVector,HPcross_product((sun != nullptr ? sun->getPosition() : HPVector{}),[planet position]));
-				result = HPvector_add(result,OOHPVectorRandomSpatial([planet radius]));
+				result = OORandomPositionInShell((sun != nullptr ? sun->getPosition() : HPVector{}),(sun != nullptr ? sun->radius() : 0.0)*3.0,HPdistance((sun != nullptr ? sun->getPosition() : HPVector{}),(planet != nullptr ? planet->getPosition() : HPVector{})));
+				result = OOProjectHPVectorToPlane(result,kZeroHPVector,HPcross_product((sun != nullptr ? sun->getPosition() : HPVector{}),(planet != nullptr ? planet->getPosition() : HPVector{})));
+				result = HPvector_add(result,OOHPVectorRandomSpatial((planet != nullptr ? planet->radius() : 0.0)));
 				// projection to plane could bring back too close to sun
 			} while (HPdistance2(result,(sun != nullptr ? sun->getPosition() : HPVector{})) < (sun != nullptr ? sun->radius() : 0.0)*(sun != nullptr ? sun->radius() : 0.0)*9.0);
 		}
 		else if (code == "INNER_SYSTEM_OFFPLANE")
 		{
-			result = OORandomPositionInShell((sun != nullptr ? sun->getPosition() : HPVector{}),(sun != nullptr ? sun->radius() : 0.0)*3.0,HPdistance((sun != nullptr ? sun->getPosition() : HPVector{}),[planet position]));
+			result = OORandomPositionInShell((sun != nullptr ? sun->getPosition() : HPVector{}),(sun != nullptr ? sun->radius() : 0.0)*3.0,HPdistance((sun != nullptr ? sun->getPosition() : HPVector{}),(planet != nullptr ? planet->getPosition() : HPVector{})));
 		}
 		else if (code == "OUTER_SYSTEM")
 		{
-			result = OORandomPositionInShell((sun != nullptr ? sun->getPosition() : HPVector{}),HPdistance((sun != nullptr ? sun->getPosition() : HPVector{}),[planet position]),HPdistance((sun != nullptr ? sun->getPosition() : HPVector{}),[planet position])*10.0); // no more than 10 AU out
-			result = OOProjectHPVectorToPlane(result,kZeroHPVector,HPcross_product((sun != nullptr ? sun->getPosition() : HPVector{}),[planet position]));
+			result = OORandomPositionInShell((sun != nullptr ? sun->getPosition() : HPVector{}),HPdistance((sun != nullptr ? sun->getPosition() : HPVector{}),(planet != nullptr ? planet->getPosition() : HPVector{})),HPdistance((sun != nullptr ? sun->getPosition() : HPVector{}),(planet != nullptr ? planet->getPosition() : HPVector{}))*10.0); // no more than 10 AU out
+			result = OOProjectHPVectorToPlane(result,kZeroHPVector,HPcross_product((sun != nullptr ? sun->getPosition() : HPVector{}),(planet != nullptr ? planet->getPosition() : HPVector{})));
 			result = HPvector_add(result,OOHPVectorRandomSpatial(0.01*HPdistance(result,(sun != nullptr ? sun->getPosition() : HPVector{})))); // within 1% of plane
 		}
 		else if (code == "OUTER_SYSTEM_OFFPLANE")
 		{
-			result = OORandomPositionInShell((sun != nullptr ? sun->getPosition() : HPVector{}),HPdistance((sun != nullptr ? sun->getPosition() : HPVector{}),[planet position]),HPdistance((sun != nullptr ? sun->getPosition() : HPVector{}),[planet position])*10.0); // no more than 10 AU out
+			result = OORandomPositionInShell((sun != nullptr ? sun->getPosition() : HPVector{}),HPdistance((sun != nullptr ? sun->getPosition() : HPVector{}),(planet != nullptr ? planet->getPosition() : HPVector{})),HPdistance((sun != nullptr ? sun->getPosition() : HPVector{}),(planet != nullptr ? planet->getPosition() : HPVector{}))*10.0); // no more than 10 AU out
 		}
 		else
 		{
@@ -2562,7 +2572,7 @@ HPVector Universe::coordinatesForPosition(HPVector pos, const std::string &syste
 		return pos;
 	}
 	HPVector  w_pos = [self getWitchspaceExitPosition];	// don't reset PRNG
-	HPVector  p_pos = the_planet->_cxxEntity->position;
+	HPVector  p_pos = the_planet->position;	// the planet is C++ since bead oo-9ht.129
 	HPVector  s_pos = the_sun->position;
 
 	const char* c_sys = l_sys.c_str();
@@ -2619,7 +2629,7 @@ HPVector Universe::coordinatesForPosition(HPVector pos, const std::string &syste
 	switch (c_sys[2])
 	{
 		case 'p':
-			scale = [the_planet radius];
+			scale = (the_planet != nullptr ? the_planet->radius() : 0.0);
 			break;
 			
 		case 's':
@@ -2679,7 +2689,7 @@ HPVector Universe::legacyPositionFrom(HPVector pos, const std::string &system)
 		return pos;
 	}
 	HPVector  w_pos = [self getWitchspaceExitPosition];	// don't reset PRNG
-	HPVector  p_pos = the_planet->_cxxEntity->position;
+	HPVector  p_pos = the_planet->position;	// the planet is C++ since bead oo-9ht.129
 	HPVector  s_pos = the_sun->position;
 
 	const char* c_sys = l_sys.c_str();
@@ -2737,7 +2747,7 @@ HPVector Universe::legacyPositionFrom(HPVector pos, const std::string &system)
 	{
 		case 'p':
 		{
-			scale = 1.0f / [the_planet radius];
+			scale = 1.0f / (the_planet != nullptr ? the_planet->radius() : 0.0);
 			break;
 		}
 		case 's':
@@ -3320,7 +3330,7 @@ std::vector<oo::ObjCRef<::ShipEntity *>> Universe::addShipsToRoute(const std::st
 	if (route == "wp" || route == "pw")
 	{
 		point0 = [self getWitchspaceExitPosition];
-		entity = [self planet];
+		entity = (::Entity<OOStellarBody> *)oo::ToObjC([self planet]);	// the planet is C++ since bead oo-9ht.129
 		if (entity == nil)  return {};
 		point1 = [entity position];
 		radius = OOStellarBodyRadius(entity);
@@ -3340,7 +3350,7 @@ std::vector<oo::ObjCRef<::ShipEntity *>> Universe::addShipsToRoute(const std::st
 		point0 = [entity position];
 		double radius0 = OOStellarBodyRadius(entity);
 
-		entity = [self planet];
+		entity = (::Entity<OOStellarBody> *)oo::ToObjC([self planet]);	// the planet is C++ since bead oo-9ht.129
 		if (entity == nil)  return {};
 		point1 = [entity position];
 		radius = OOStellarBodyRadius(entity);
@@ -4077,7 +4087,7 @@ void Universe::selectIntro2Next()
 {
 	if (cachedPlanet == nil && allPlanets.size() > 0)
 	{
-		cachedPlanet = allPlanets[0].get();
+		cachedPlanet = static_cast<::OOPlanetEntity *>(oo::ToCxx(allPlanets[0].get()));	// the list holds only planets
 	}
 	return cachedPlanet;
 }
@@ -4094,7 +4104,7 @@ void Universe::selectIntro2Next()
 }
 
 
-std::vector<oo::ObjCRef<::OOPlanetEntity *>> Universe::planets()
+std::vector<oo::ObjCRef<::Entity *>> Universe::planets()
 {
 	return allPlanets;
 }
@@ -5990,7 +6000,7 @@ bool Universe::addEntity(::Entity *entity)
 		}
 		else if ([entity isPlanet])
 		{
-			allPlanets.emplace_back((::OOPlanetEntity *)entity);
+			allPlanets.emplace_back(entity);	// the planet's Objective-C object (C++ since bead oo-9ht.129)
 		}
 		else if ([entity isShip])
 		{
@@ -8746,23 +8756,23 @@ void Universe::setSystemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum, const st
 		else if (key == "texture")
 		{
 			const std::string *texture = object.getIf<std::string>();	// a texture name (a script string)
-			[[self planet] setUpPlanetFromTexture:(texture != nullptr) ? std::optional<std::string>(*texture) : std::nullopt];
+			if ([self planet] != nullptr)  [self planet]->setUpPlanetFromTexture((texture != nullptr) ? std::optional<std::string>(*texture) : std::nullopt);
 		}
 		else if (key == "texture_hsb_color")
 		{
-			[[self planet] setUpPlanetFromTexture: [[self planet] textureFileName]];
+			if ([self planet] != nullptr)  [self planet]->setUpPlanetFromTexture(([self planet] != nullptr ? [self planet]->textureFileName() : std::optional<std::string>()));
 		}
 		else if (key == "air_color")
 		{
-			[[self planet] setAirColor:OOColor::brightColorWithDescription(object).get()];
+			if ([self planet] != nullptr)  [self planet]->setAirColor(OOColor::brightColorWithDescription(object).get());
 		}
 		else if (key == "illumination_color")
 		{
-			[[self planet] setIlluminationColor:OOColor::colorWithDescription(object).get()];
+			if ([self planet] != nullptr)  [self planet]->setIlluminationColor(OOColor::colorWithDescription(object).get());
 		}
 		else if (key == "air_color_mix_ratio")
 		{
-			[[self planet] setAirColorMixRatio:sysInfo.get<float>(key)];
+			if ([self planet] != nullptr)  [self planet]->setAirColorMixRatio(sysInfo.get<float>(key));
 		}
 	}
 	

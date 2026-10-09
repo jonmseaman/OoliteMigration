@@ -2468,7 +2468,7 @@ void PlayerEntity::completeSetUpAndSetTarget(bool /*setTarget*/)
 	::OOSoundSource::stopAll();
 
 	[self setDockedStation:[UNIVERSE station]];
-	[self setLastAegisLock:[UNIVERSE planet]];
+	[self setLastAegisLock:(::Entity<OOStellarBody> *)oo::ToObjC([UNIVERSE planet])];	// the planet is C++ since bead oo-9ht.129
 	// only do this if we're not in strict mode, otherwise all previously saved OXP key/joystick defs will be wiped.
 	if ([UNIVERSE cxx_useAddOns] != std::string(SCENARIO_OXP_DEFINITION_NONE)) 
 	{
@@ -3125,7 +3125,7 @@ void PlayerEntity::doBookkeeping(double delta_t)
 			[self doScriptEvent:OOJSID("shipWillExitWitchspace")];
 			[self doScriptEvent:OOJSID("shipExitedWitchspace")];
 			
-			[[UNIVERSE planet] update: 2.34375 * market_rnd];	// from 0..10 minutes
+			if ([UNIVERSE planet] != nullptr)  [UNIVERSE planet]->update(2.34375 * market_rnd);	// from 0..10 minutes
 			[[UNIVERSE station] update: 2.34375 * market_rnd];	// from 0..10 minutes
 		}
 		
@@ -5384,7 +5384,7 @@ void PlayerEntity::validateCompassTarget()
 {
 	::PlayerEntity *self = oo::ToObjC(this);
 	::OOSunEntity		*the_sun = [UNIVERSE sun];
-	::OOPlanetEntity	*the_planet = [UNIVERSE planet];
+	::Entity			*the_planet = oo::ToObjC([UNIVERSE planet]);	// its Objective-C object (C++ since bead oo-9ht.129)
 	::StationEntity	*the_station = [UNIVERSE station];
 	::Entity			*the_target = [self primaryTarget];
 	::Entity <OOBeaconEntity>		*beacon = [self nextBeacon];
@@ -5469,7 +5469,7 @@ std::optional<std::string> PlayerEntity::compassTargetLabel()
 		return "";
 	}
 	case COMPASS_MODE_PLANET:
-		return [[UNIVERSE planet] cxx_name];
+		return ([UNIVERSE planet] != nullptr ? [UNIVERSE planet]->name() : std::optional<std::string>());
 	case COMPASS_MODE_SUN:
 		return ([UNIVERSE sun] != nullptr ? [UNIVERSE sun]->name() : std::optional<std::string>());
 	case COMPASS_MODE_STATION:
@@ -7646,7 +7646,7 @@ void PlayerEntity::witchEnd()
 	galaxy_coordinates = ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getCoordinatesForSystem(system_id, galaxy_number) : NSMakePoint(0, 0));
 
 	[UNIVERSE setUpUniverseFromWitchspace];
-	[[UNIVERSE planet] update: 2.34375 * market_rnd];	// from 0..10 minutes
+	if ([UNIVERSE planet] != nullptr)  [UNIVERSE planet]->update(2.34375 * market_rnd);	// from 0..10 minutes
 	[[UNIVERSE station] update: 2.34375 * market_rnd];	// from 0..10 minutes
 	
 	chart_centre_coordinates = galaxy_coordinates;

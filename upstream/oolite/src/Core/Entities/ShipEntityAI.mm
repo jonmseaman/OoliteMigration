@@ -323,9 +323,9 @@ void ShipEntity::performLandOnPlanet()
 	::OOPlanetEntity	*nearest = [self findNearestPlanet];
 	if (isNearPlanetSurface)
 	{
-		_destination = [nearest position];
+		_destination = (nearest != nullptr ? nearest->getPosition() : HPVector{});
 		behaviour = BEHAVIOUR_LAND_ON_PLANET;
-		planetForLanding = [nearest universalID];
+		planetForLanding = (nearest != nullptr ? nearest->getUniversalID() : OOUniversalID{});
 	}
 	else
 	{
@@ -1421,8 +1421,8 @@ void ShipEntity::setCourseToPlanet()
 	if (the_planet)
 	{
 		double variation = (aegis_status == AEGIS_NONE ? 0.5 : 0.2); // more random deviation when far from planet.
-		HPVector p_pos = the_planet->_cxxEntity->position;
-		double p_cr = the_planet->_cxxEntity->collision_radius;		// the surface
+		HPVector p_pos = the_planet->position;	// the planet is C++ since bead oo-9ht.129
+		double p_cr = the_planet->collision_radius;		// the surface
 		HPVector p1 = HPvector_between(p_pos, position);
 		p1 = HPvector_normal(p1);			// vector towards ship
 		p1.x += variation * (randf() - variation);
@@ -1446,8 +1446,8 @@ void ShipEntity::setTakeOffFromPlanet()
 	::OOPlanetEntity	*the_planet =  [self findNearestPlanet];
 	if (the_planet)
 	{
-		_destination = HPvector_add([the_planet position], HPvector_multiply_scalar(
-																			   HPvector_normal(HPvector_subtract([the_planet position],position)),-10000.0-the_planet->_cxxEntity->collision_radius));// 10km straight up
+		_destination = HPvector_add((the_planet != nullptr ? the_planet->getPosition() : HPVector{}), HPvector_multiply_scalar(
+																			   HPvector_normal(HPvector_subtract((the_planet != nullptr ? the_planet->getPosition() : HPVector{}),position)),-10000.0-the_planet->collision_radius));// 10km straight up
 		desired_range = 50.0;
 	}
 	else

@@ -902,7 +902,7 @@ void StationEntity::setInterfaceDefinition(::OOJSInterfaceDefinition *definition
 void StationEntity::setPlanet(::OOPlanetEntity *planet_entity)
 {
 	if (planet_entity)
-		planet = [planet_entity universalID];
+		planet = (planet_entity != nullptr ? planet_entity->getUniversalID() : OOUniversalID{});
 	else
 		planet = NO_TARGET;
 }
@@ -910,7 +910,8 @@ void StationEntity::setPlanet(::OOPlanetEntity *planet_entity)
 
 ::OOPlanetEntity *StationEntity::getPlanet()
 {
-	return [UNIVERSE entityForUniversalID:planet];
+	// The planet is C++ since bead oo-9ht.129: null for any other entity (and for none, as nil).
+	return dynamic_cast<::OOPlanetEntity *>(oo::ToCxx((::Entity *)[UNIVERSE entityForUniversalID:planet]));
 }
 
 
