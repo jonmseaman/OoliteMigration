@@ -44,7 +44,7 @@ MA 02110-1301, USA.
 #include "oofnd/PList.hpp"
 #include "oofnd/Ref.hpp"
 
-@class OOMaterial, Octree;
+@class OOMaterial;
 struct VertexFaceRef;	// OOMesh.mm: the faces that use one vertex, while loading
 class OOMeshBuffer;	// OOMesh.mm: one refcounted buffer (an oo::Data), shared by a mesh and its mutable copies
 
@@ -93,9 +93,10 @@ typedef struct
 } OOMeshDisplayLists;
 
 
+class Octree;
+
 namespace cxx {
 
-class Octree;
 class OOMaterial;
 
 
@@ -280,9 +281,9 @@ private:
 
 // The OOCacheManager (Octree) category, as free functions next to the cache (the slice plan, bead
 // oo-dnbf). The octree cached for a model key, made afresh from its representation; null when none.
-oo::Ref<cxx::Octree> OOCacheManagerOctreeForModel(const std::string &inKey);
+oo::Ref<Octree> OOCacheManagerOctreeForModel(const std::string &inKey);
 // Caches the octree's representation under the key; a null octree does nothing.
-void OOCacheManagerSetOctree(cxx::Octree *inOctree, const std::string &inKey);
+void OOCacheManagerSetOctree(Octree *inOctree, const std::string &inKey);
 
 
 // Transitional: the Objective-C OOMesh, for its callers not yet converted. Deleted, with namespace cxx above, by the bridge's deletion bead.

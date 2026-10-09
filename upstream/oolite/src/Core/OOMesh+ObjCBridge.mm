@@ -115,8 +115,6 @@ cxx::OOMesh *oo::ToCxx(OOMesh *mesh)
 - (size_t) vertexCount						{ return oo::ToCxx(self)->getVertexCount(); }
 - (size_t) faceCount						{ return oo::ToCxx(self)->getFaceCount(); }
 
-- (Octree *) octree							{ return oo::ToObjC(oo::ToCxx(self)->getOctree()); }
-
 - (BoundingBox) findBoundingBoxRelativeToPosition:(Vector)opv
 											basis:(Vector)ri :(Vector)rj :(Vector)rk
 									 selfPosition:(Vector)position

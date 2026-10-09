@@ -120,7 +120,6 @@ oolite_sources += files(
     'OOWeakSet.mm',
     'OOXMLExtensions.mm',
     'Octree.mm',
-    'Octree+ObjCBridge.mm',
     'ResourceManager.mm',
     'ResourceManager+ObjCBridge.mm',
     'Universe.mm',
