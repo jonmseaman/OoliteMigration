@@ -39,7 +39,8 @@ MA 02110-1301, USA.
 
 Random_Seed OOStringExpanderUniverseRandomSeedForCurrentSystem(void)
 {
-	return [[UNIVERSE systemManager] getRandomSeedForCurrentSystem];
+	auto *manager = [UNIVERSE systemManager];	// null: a zero seed, as a message to nil (auto: the expander harness stubs the class)
+	return (manager != nullptr) ? manager->getRandomSeedForCurrentSystem() : Random_Seed{};
 }
 
 

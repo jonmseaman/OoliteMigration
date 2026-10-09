@@ -774,7 +774,7 @@ void cxx::PlayerEntity::targetNewSystem(int direction, bool whileTyping)
 	::PlayerEntity *self = oo::ToObjC(this);
 	target_system_id = [UNIVERSE gui]->targetNextFoundSystem(direction);
 	[self setInfoSystemID: target_system_id moveChart: YES];
-	cursor_coordinates = [[UNIVERSE systemManager] getCoordinatesForSystem:target_system_id inGalaxy:galaxy_number];
+	cursor_coordinates = ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getCoordinatesForSystem(target_system_id, galaxy_number) : NSMakePoint(0, 0));
 
 	found_system_id = target_system_id;
 	if (!whileTyping)
@@ -2284,7 +2284,7 @@ void cxx::PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 						{
 							[self clearPlanetSearchString];
 							[self previousInfoSystem];
-							target_chart_focus = [[UNIVERSE systemManager] getCoordinatesForSystem:info_system_id inGalaxy:galaxy_number];
+							target_chart_focus = ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getCoordinatesForSystem(info_system_id, galaxy_number) : NSMakePoint(0, 0));
 						}
 						pressedArrow = 1;
 					}
@@ -2313,7 +2313,7 @@ void cxx::PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 						{
 							[self clearPlanetSearchString];
 							[self nextInfoSystem];
-							target_chart_focus = [[UNIVERSE systemManager] getCoordinatesForSystem:info_system_id inGalaxy:galaxy_number];
+							target_chart_focus = ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getCoordinatesForSystem(info_system_id, galaxy_number) : NSMakePoint(0, 0));
 						}
 						pressedArrow = 2;
 					}
@@ -2376,14 +2376,14 @@ void cxx::PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 					else
 					{
 						// if found with a search string, don't recalculate! Required for overlapping systems, like Divees & Tezabi in galaxy 5
-						NSPoint fpos = [[UNIVERSE systemManager] getCoordinatesForSystem:found_system_id inGalaxy:galaxy_number];
+						NSPoint fpos = ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getCoordinatesForSystem(found_system_id, galaxy_number) : NSMakePoint(0, 0));
 						if (fpos.x != cursor_coordinates.x && fpos.y != cursor_coordinates.y)
 						{
 							target_system_id = [UNIVERSE findSystemNumberAtCoords:cursor_coordinates withGalaxy:galaxy_number includingHidden:NO];
 							[self setInfoSystemID: target_system_id moveChart: YES];
 						}
 					}
-					cursor_coordinates = [[UNIVERSE systemManager] getCoordinatesForSystem:target_system_id inGalaxy:galaxy_number];
+					cursor_coordinates = ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getCoordinatesForSystem(target_system_id, galaxy_number) : NSMakePoint(0, 0));
 				}
 				if (chart_focus_coordinates.x - target_chart_centre.x <= -CHART_SCROLL_AT_X*chart_zoom)
 				{
@@ -3132,7 +3132,7 @@ void cxx::PlayerEntity::pollMarketScreenControls()
 			if ((!pageUpDownKeyPressed) || (script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 			{
 				::OOCommodityMarket	*localMarket = [self localMarket];
-				const std::vector<std::string> goods = [self cxx_applyMarketSorter:[self cxx_applyMarketFilter:[localMarket goods] onMarket:localMarket] onMarket:localMarket];
+				const std::vector<std::string> goods = [self cxx_applyMarketSorter:[self cxx_applyMarketFilter:localMarket->goods() onMarket:localMarket] onMarket:localMarket];
 				if (goods.size() > 0)
 				{
 					const std::optional<std::string> selected = marketSelectedCommodity;
@@ -3186,7 +3186,7 @@ void cxx::PlayerEntity::pollMarketScreenControls()
 			if ((!upDownKeyPressed) || (script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 			{
 				::OOCommodityMarket	*localMarket = [self localMarket];
-				const std::vector<std::string> goods = [self cxx_applyMarketSorter:[self cxx_applyMarketFilter:[localMarket goods] onMarket:localMarket] onMarket:localMarket];
+				const std::vector<std::string> goods = [self cxx_applyMarketSorter:[self cxx_applyMarketFilter:localMarket->goods() onMarket:localMarket] onMarket:localMarket];
 				if (goods.size() > 0)
 				{
 					const std::optional<std::string> selected = marketSelectedCommodity;
@@ -3308,7 +3308,7 @@ void cxx::PlayerEntity::pollMarketScreenControls()
 			if (!wait_for_key_up)
 			{
 				const std::optional<std::string> item = marketSelectedCommodity;	// Amendment 1 item 10
-				OOCargoQuantity yours =	[shipCommodityData cxx_quantityForGood:item.value_or("")];
+				OOCargoQuantity yours =	(shipCommodityData != nullptr ? shipCommodityData->quantityForGood(item.value_or("")) : 0);
 				if (item == ">>>")
 				{
 					[self cxx_tryBuyingCommodity:item.value_or("") all:YES];

@@ -178,7 +178,7 @@ void OOPlanetEntity::initAsMainPlanetForSystem(OOSystemID s)
 	{
 		SetInfo(planetInfo, "isMiniature", oo::PList(static_cast<bool>(YES)));
 	}
-	initFromDictionary(planetInfo, planetInfo.get<bool>("has_atmosphere", YES), [[UNIVERSE systemManager] getRandomSeedForSystem:s inGalaxy:[PLAYER galaxyNumber]], s);
+	initFromDictionary(planetInfo, planetInfo.get<bool>("has_atmosphere", YES), ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getRandomSeedForSystem(s, [PLAYER galaxyNumber]) : Random_Seed()), s);
 }
 
 
@@ -878,7 +878,7 @@ void OOPlanetEntity::launchShuttle()
 	::ShipEntity *shuttle_ship = [UNIVERSE cxx_newShipWithRole:"shuttle"];   // retain count = 1
 	if (shuttle_ship)
 	{
-		if ([shuttle_ship cxx_crew].value_or(std::vector<oo::ObjCRef<::OOCharacter *>>()).empty())
+		if ([shuttle_ship cxx_crew].value_or(std::vector<oo::Ref<OOCharacter>>()).empty())
 		{
 			[shuttle_ship cxx_setSingleCrewWithRole:"trader"];
 		}

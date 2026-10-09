@@ -2556,7 +2556,7 @@ void HeadUpDisplay::drawWitchspaceDestination(const oo::PList &info)
 	siz.height = useDefined(cached.height, WITCHDEST_HEIGHT);
 	alpha *= cached.alpha;
 	std::string dest = [UNIVERSE cxx_getSystemName:[PLAYER targetSystemID]].value_or("");	// nil drew nothing, as "" does
-	NSInteger concealment = [[UNIVERSE systemManager] cxx_getPropertiesForSystem:[PLAYER targetSystemID] inGalaxy:[PLAYER galaxyNumber]].get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
+	NSInteger concealment = ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getPropertiesForSystem([PLAYER targetSystemID], [PLAYER galaxyNumber]) : oo::PList()).get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
 	if (concealment >= OO_SYSTEMCONCEALMENT_NONAME) dest = OO_DESC("status-unknown-system");
 
 	SET_COLOR(green_color);

@@ -1507,7 +1507,7 @@ void cxx::PlayerEntity::awardCargo(const std::string &amount_typeString)	// call
 
 	const oo::PList tokenArray = TokenArray(tokens);
 	const std::string &type = tokens[1];	// the good (Amendment 1 item 10: a std::string)
-	if (![[UNIVERSE commodities] cxx_goodDefined:type])
+	if (!([UNIVERSE commodities] != nullptr ? [UNIVERSE commodities]->goodDefined(type) : false))
 	{
 		OO_LOG(kOOLogSyntaxAwardCargo, "***** SCRIPT ERROR: in {}, CANNOT awardCargo: '{}' ({})", CurrentScriptDescription(), argument, "unknown type");
 		return;
@@ -1520,7 +1520,7 @@ void cxx::PlayerEntity::awardCargo(const std::string &amount_typeString)	// call
 		return;
 	}
 
-	unit = [shipCommodityData massUnitForGood:type];
+	unit = (shipCommodityData != nullptr ? shipCommodityData->massUnitForGood(type) : UNITS_TONS);
 	if (specialCargo && unit == UNITS_TONS)
 	{
 		OO_LOG(kOOLogSyntaxAwardCargo, "***** SCRIPT ERROR: in {}, CANNOT awardCargo: '{}' ({})", CurrentScriptDescription(), argument, "cargo hold full with special cargo");
@@ -1551,11 +1551,11 @@ void cxx::PlayerEntity::removeAllCargo(bool forceRemoval)
 
 	OO_LOG(kOOLogNoteRemoveAllCargo, "{} removeAllCargo", forceRemoval ? "Forcing" : "Going to");
 
-	for (const std::string &type : [shipCommodityData goods])
+	for (const std::string &type : (shipCommodityData != nullptr ? shipCommodityData->goods() : std::vector<std::string>()))
 	{
-		if ([shipCommodityData massUnitForGood:type] == UNITS_TONS)
+		if ((shipCommodityData != nullptr ? shipCommodityData->massUnitForGood(type) : UNITS_TONS) == UNITS_TONS)
 		{
-			[shipCommodityData cxx_setQuantity:0 forGood:type];
+			if (shipCommodityData != nullptr)  shipCommodityData->setQuantity(0, type);
 		}
 	}
 
@@ -2438,7 +2438,7 @@ void cxx::PlayerEntity::addPlanet(const std::string &planetKey)	// called by nam
 	if (!UNIVERSE)
 		return nil;
 	// The system properties, once, as an oo::PList (null when there are none).
-	const oo::PList dict = [[UNIVERSE systemManager] cxx_getPropertiesForSystemKey:planetKey];
+	const oo::PList dict = ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getPropertiesForSystemKey(planetKey) : oo::PList());
 	if (dict.isNull())
 	{
 		OO_LOG("script.error.addPlanet.keyNotFound", "***** ERROR: could not find an entry in planetinfo.plist for '{}'", planetKey);
@@ -2448,7 +2448,7 @@ void cxx::PlayerEntity::addPlanet(const std::string &planetKey)	// called by nam
 	/*- add planet -*/
 	// ("%@" of the dictionary: the round trip prints the same description)
 	OO_LOG(kOOLogDebugAddPlanet, "DEBUG: initPlanetFromDictionary: {}", oo::DescriptionOf(dict));
-	::OOPlanetEntity *planet = [[[::OOPlanetEntity alloc] initFromDictionary:dict withAtmosphere:YES andSeed:[[UNIVERSE systemManager] getRandomSeedForCurrentSystem] forSystem:system_id] autorelease];
+	::OOPlanetEntity *planet = [[[::OOPlanetEntity alloc] initFromDictionary:dict withAtmosphere:YES andSeed:([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getRandomSeedForCurrentSystem() : Random_Seed()) forSystem:system_id] autorelease];
 
 	Quaternion planetOrientation;
 	const oo::PList *orientationValue = dict.find("orientation");
@@ -2501,7 +2501,7 @@ void cxx::PlayerEntity::addMoon(const std::string &moonKey)	// called by name (A
 	if (!UNIVERSE)
 		return nil;
 	// The system properties, once, as an oo::PList (null when there are none).
-	const oo::PList dict = [[UNIVERSE systemManager] cxx_getPropertiesForSystemKey:moonKey];
+	const oo::PList dict = ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getPropertiesForSystemKey(moonKey) : oo::PList());
 	if (dict.isNull())
 	{
 		OO_LOG("script.error.addPlanet.keyNotFound", "***** ERROR: could not find an entry in planetinfo.plist for '{}'", moonKey);
@@ -2511,7 +2511,7 @@ void cxx::PlayerEntity::addMoon(const std::string &moonKey)	// called by name (A
 	/*- add planet -*/
 	// ("%@" of the dictionary: the round trip prints the same description)
 	OO_LOG(kOOLogDebugAddPlanet, "DEBUG: initMoonFromDictionary: {}", oo::DescriptionOf(dict));
-	::OOPlanetEntity *planet = [[[::OOPlanetEntity alloc] initFromDictionary:dict withAtmosphere:NO andSeed:[[UNIVERSE systemManager] getRandomSeedForCurrentSystem] forSystem:system_id] autorelease];
+	::OOPlanetEntity *planet = [[[::OOPlanetEntity alloc] initFromDictionary:dict withAtmosphere:NO andSeed:([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getRandomSeedForCurrentSystem() : Random_Seed()) forSystem:system_id] autorelease];
 
 	Quaternion planetOrientation;
 	const oo::PList *orientationValue = dict.find("orientation");

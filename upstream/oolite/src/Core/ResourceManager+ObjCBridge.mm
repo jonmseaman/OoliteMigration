@@ -221,9 +221,9 @@ MA 02110-1301, USA.
 }
 
 
-+ (OOSystemDescriptionManager *) systemDescriptionManager
++ (oo::Ref<OOSystemDescriptionManager>) systemDescriptionManager
 {
-	return oo::ToObjC(cxx::ResourceManager::systemDescriptionManager().get());
+	return cxx::ResourceManager::systemDescriptionManager();
 }
 
 + (oo::PList) cxx_shaderBindingTypesDictionary

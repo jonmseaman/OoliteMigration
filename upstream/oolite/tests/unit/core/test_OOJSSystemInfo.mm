@@ -8,7 +8,8 @@
 	the game's own façade backend (ooscript/JSEngine_quickjs.cpp), and links the game's own objects
 	for the binding, the engine's exception translator (OOJSEngineNativeWrappers.mm) and the
 	converted classes the binding asks (OOSystemDescriptionManager, OOCommodities and
-	OOCommodityMarket, reached through their façades, linked as their own tests link them). It
+	OOCommodityMarket, C++ since beads oo-9ht.32, oo-9ht.25 and oo-9ht.21 deleted their façades,
+	held as oo::Ref, linked as their own tests link them). It
 	stands in for the universe (its system data, coordinates and routes), the player (its galaxy
 	and position), the running script (its manifest), the resource manager and string expander the
 	converted classes call, and the engine functions the binding links against, with the engine
@@ -54,8 +55,8 @@
 	BOOL _interstellar;
 	std::map<std::string, oo::PList> _data;
 	oo::PList _currentSystemData;
-	OOSystemDescriptionManager *_systemManager;
-	OOCommodities *_commodities;
+	oo::Ref<OOSystemDescriptionManager> _systemManager;
+	oo::Ref<OOCommodities> _commodities;
 	std::string _lastSet;
 	OOSystemID _routeFrom, _routeTo;
 	OORouteType _routeType;
@@ -139,8 +140,8 @@ std::string Key(OOGalaxyID g, OOSystemID s, const std::string &key)
 
 - (BOOL) inInterstellarSpace  { return _interstellar; }
 - (oo::PList) cxx_currentSystemData  { return _currentSystemData; }
-- (OOSystemDescriptionManager *) systemManager  { return _systemManager; }
-- (OOCommodities *) commodities  { return _commodities; }
+- (OOSystemDescriptionManager *) systemManager  { return _systemManager.get(); }
+- (OOCommodities *) commodities  { return _commodities.get(); }
 - (OOSystemID) currentSystemID  { return 7; }
 
 - (oo::PList) cxx_systemDataForGalaxy:(OOGalaxyID)gnum planet:(OOSystemID)pnum key:(const std::string &)key
@@ -574,14 +575,14 @@ void SetUpContext()
 	gSharedUniverse = sUniverse;
 	sPlayer = [[PlayerEntity alloc] init];
 	gOOPlayer = sPlayer;
-	sUniverse->_systemManager = [[OOSystemDescriptionManager alloc] init];
-	sUniverse->_commodities = [[OOCommodities alloc] init];
+	sUniverse->_systemManager = oo::makeRef<OOSystemDescriptionManager>();
+	sUniverse->_commodities = oo::makeRef<OOCommodities>();
 	sUniverse->_data[Key(0, 7, "economy")] = oo::PList(2.0);
 	sUniverse->_data[Key(0, 7, "government")] = oo::PList(std::string("4"));
 	sUniverse->_data[Key(0, 7, "name")] = oo::PList(std::string("Lave"));
-	[sUniverse->_systemManager cxx_setProperty:"name" forSystemKey:"0 7" andLayer:OO_LAYER_CORE toValue:oo::PList(std::string("Lave")) fromManifest:std::nullopt];
-	[sUniverse->_systemManager cxx_setProperty:"population" forSystemKey:"0 7" andLayer:OO_LAYER_CORE toValue:oo::PList(std::string("2.5")) fromManifest:std::nullopt];
-	[sUniverse->_systemManager cxx_setProperty:"techlevel" forSystemKey:"0 7" andLayer:OO_LAYER_CORE toValue:oo::PList(8.0) fromManifest:std::nullopt];
+	sUniverse->_systemManager->setProperty("name", "0 7", OO_LAYER_CORE, oo::PList(std::string("Lave")), std::nullopt);
+	sUniverse->_systemManager->setProperty("population", "0 7", OO_LAYER_CORE, oo::PList(std::string("2.5")), std::nullopt);
+	sUniverse->_systemManager->setProperty("techlevel", "0 7", OO_LAYER_CORE, oo::PList(8.0), std::nullopt);
 	sScript = [[OOJSScript alloc] init];
 	sScriptManifest = oo::PList(std::string("org.test.script"));
 	Define("lave", GetJSSystemInfoForSystem(sContext, 0, 7));
@@ -794,9 +795,9 @@ OO_TEST(staticMethods)
 	OO_CHECK_EQ(sLimiterPauses, 0);
 	// setInterstellarProperty(galaxy, from, to, layer, key, value [, manifest]): in the system manager.
 	OO_CHECK_EVAL("SystemInfo.setInterstellarProperty(0, 7, 10, 2, 'danger', 'high')", "undefined");
-	OO_CHECK([sUniverse->_systemManager cxx_getProperty:"danger" forSystemKey:"interstellar: 0 7 10"] == oo::PList(std::string("high")));
+	OO_CHECK(sUniverse->_systemManager->getProperty("danger", "interstellar: 0 7 10") == oo::PList(std::string("high")));
 	OO_CHECK_EVAL("SystemInfo.setInterstellarProperty(0, 7, 10, 2, 'danger', null)", "undefined");
-	OO_CHECK([sUniverse->_systemManager cxx_getProperty:"danger" forSystemKey:"interstellar: 0 7 10"].isNull());
+	OO_CHECK(sUniverse->_systemManager->getProperty("danger", "interstellar: 0 7 10").isNull());
 	OO_CHECK_EVAL("SystemInfo.setInterstellarProperty(8, 7, 10, 2, 'danger', 'x')", "threw: bad arguments: SystemInfo.setInterstellarProperty(3) - / galaxy out of range");
 	OO_CHECK_EVAL("SystemInfo.setInterstellarProperty(0, 256, 10, 2, 'danger', 'x')", "threw: bad arguments: SystemInfo.setInterstellarProperty(3) - / fromsystem out of range");
 	OO_CHECK_EVAL("SystemInfo.setInterstellarProperty(0, 7, -1, 2, 'danger', 'x')", "threw: bad arguments: SystemInfo.setInterstellarProperty(3) - / tosystem out of range");

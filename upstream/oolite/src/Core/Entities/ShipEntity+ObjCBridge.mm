@@ -329,7 +329,7 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 - (BoundingBox) findSubentityBoundingBox	{ return _cxxShip->findSubentityBoundingBox(); }
 - (Triangle) absoluteIJKForSubentity	{ return _cxxShip->absoluteIJKForSubentity(); }
 - (void) addSubentityToCollisionRadius:(Entity<OOSubEntity> *)subent	{ _cxxShip->addSubentityToCollisionRadius(subent); }
-- (ShipEntity *) launchPodWithCrew:(const std::vector<oo::ObjCRef<OOCharacter *>> &)podCrew	{ return _cxxShip->launchPodWithCrew(podCrew); }
+- (ShipEntity *) launchPodWithCrew:(const std::vector<oo::Ref<OOCharacter>> &)podCrew	{ return _cxxShip->launchPodWithCrew(podCrew); }
 - (BOOL) validForAddToUniverse	{ return _cxxShip->cxx::ShipEntity::validForAddToUniverse(); }
 
 @end
@@ -636,8 +636,8 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 - (void) setDestinationSystem:(OOSystemID)s	{ _cxxShip->setDestinationSystem(s); }
 - (void) setStatus:(OOEntityStatus)stat	{ _cxxShip->cxx::ShipEntity::setStatus(stat); }
 - (void) setLaunchDelay:(double)delay	{ _cxxShip->setLaunchDelay(delay); }
-- (std::optional<std::vector<oo::ObjCRef<OOCharacter *>>>) cxx_crew	{ return _cxxShip->getCrew(); }
-- (void) cxx_setCrew:(const std::optional<std::vector<oo::ObjCRef<OOCharacter *>>> &)crewArray	{ _cxxShip->setCrew(crewArray); }
+- (std::optional<std::vector<oo::Ref<OOCharacter>>>) cxx_crew	{ return _cxxShip->getCrew(); }
+- (void) cxx_setCrew:(const std::optional<std::vector<oo::Ref<OOCharacter>>> &)crewArray	{ _cxxShip->setCrew(crewArray); }
 - (void) cxx_setSingleCrewWithRole:(const std::string &)crewRole	{ _cxxShip->setSingleCrewWithRole(crewRole); }
 - (std::vector<oo::PList>) cxx_crewForScripting	{ return _cxxShip->crewForScripting(); }
 - (void) setStateMachine:(const std::string &)smName	{ _cxxShip->setStateMachine(smName); }

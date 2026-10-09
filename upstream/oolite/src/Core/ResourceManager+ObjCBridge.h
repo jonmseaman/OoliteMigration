@@ -110,7 +110,7 @@ MA 02110-1301, USA.
 + (oo::PList) cxx_logControlDictionary;
 + (oo::PList) cxx_roleCategoriesDictionary;	// category -> array of its roles, each once (a set), in first-seen order
 
-+ (OOSystemDescriptionManager *) systemDescriptionManager;
++ (oo::Ref<OOSystemDescriptionManager>) systemDescriptionManager;	// a new manager (C++ since bead oo-9ht.32 deleted its facade)
 // These are deliberately not merged like normal plists for security reasons.
 + (oo::PList) cxx_shaderBindingTypesDictionary;
 // nullopt when not found (was nil); folderName nullopt where nil was passed.

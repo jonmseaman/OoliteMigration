@@ -92,7 +92,7 @@ MA 02110-1301, USA.
 	if (_cxxStation != nullptr)
 	{
 		_cxxStation->_shipsOnHold = nullptr;
-		DESTROY(_cxxStation->localMarket);
+		_cxxStation->localMarket = nullptr;
 //	DESTROY(localPassengers);
 //	DESTROY(localContracts);
 	}

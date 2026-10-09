@@ -310,7 +310,7 @@ std::set<std::string> NamesInArrayForKey(const oo::PList &dict, std::string_view
 - (void) setUpOneEscort:(ShipEntity *)escorter inGroup:(OOShipGroup *)escortGroup withRole:(const std::string &)escortRole atPosition:(HPVector)ex_pos andCount:(uint8_t)currentEscortCount;
 
 - (void) addSubentityToCollisionRadius:(Entity<OOSubEntity> *) subent;
-- (ShipEntity *) launchPodWithCrew:(const std::vector<oo::ObjCRef<OOCharacter *>> &)podCrew;
+- (ShipEntity *) launchPodWithCrew:(const std::vector<oo::Ref<OOCharacter>> &)podCrew;
 
 // equipment
 - (OOEquipmentType *) generateMissileEquipmentTypeFrom:(const std::string &)role;
@@ -964,18 +964,19 @@ bool ShipEntity::setUpShipFromDictionary(const oo::PList &shipDict)
 			std::optional<std::string>	c_commodity;
 			int				c_amount = 1;
 			oo::str::Scanner	scanner(*cargoString);
+			OOCommodities	*commodities = [UNIVERSE commodities];	// null: no good is defined, as a message to nil
 			if (scanner.scanInt(&c_amount))
 			{
 				scanner.scanCharactersFromSetNoSkip(oo::str::CharacterSet::whitespace());	// skip whitespace
 				c_commodity = scanner.remainder();
-				if ([[UNIVERSE commodities] cxx_goodDefined:c_commodity.value_or("")])
+				if (commodities != nullptr && commodities->goodDefined(c_commodity.value_or("")))
 				{
 					[self cxx_setCommodityForPod:c_commodity andAmount:c_amount];
 				}
 				else
 				{
-					c_commodity = [[UNIVERSE commodities] cxx_goodNamed:c_commodity.value_or("")];
-					if ([[UNIVERSE commodities] cxx_goodDefined:c_commodity.value_or("")])
+					c_commodity = (commodities != nullptr) ? commodities->goodNamed(c_commodity.value_or("")) : std::nullopt;
+					if (commodities != nullptr && commodities->goodDefined(c_commodity.value_or("")))
 					{
 						[self cxx_setCommodityForPod:c_commodity andAmount:c_amount];
 					}
@@ -985,14 +986,14 @@ bool ShipEntity::setUpShipFromDictionary(const oo::PList &shipDict)
 			{
 				c_amount = 1;
 				c_commodity = StringForKey(shipDict, "cargo_carried");
-				if ([[UNIVERSE commodities] cxx_goodDefined:c_commodity.value_or("")])
+				if (commodities != nullptr && commodities->goodDefined(c_commodity.value_or("")))
 				{
 					[self cxx_setCommodityForPod:c_commodity andAmount:c_amount];
 				}
 				else
 				{
-					c_commodity = [[UNIVERSE commodities] cxx_goodNamed:c_commodity.value_or("")];
-					if ([[UNIVERSE commodities] cxx_goodDefined:c_commodity.value_or("")])
+					c_commodity = (commodities != nullptr) ? commodities->goodNamed(c_commodity.value_or("")) : std::nullopt;
+					if (commodities != nullptr && commodities->goodDefined(c_commodity.value_or("")))
 					{
 						[self cxx_setCommodityForPod:c_commodity andAmount:c_amount];
 					}
@@ -1123,8 +1124,8 @@ bool ShipEntity::setUpShipFromDictionary(const oo::PList &shipDict)
 		}
 		if (!cdict.isNull())
 		{
-			::OOCharacter	*pilot = [::OOCharacter characterWithDictionary:cdict];
-			[self cxx_setCrew:std::vector<oo::ObjCRef<::OOCharacter *>>{ oo::ObjCRef<::OOCharacter *>(pilot) }];
+			oo::Ref<OOCharacter>	pilot = OOCharacter::characterWithDictionary(cdict);
+			[self cxx_setCrew:std::vector<oo::Ref<OOCharacter>>{ pilot }];
 		}
 	}
 	
@@ -2571,7 +2572,7 @@ void ShipEntity::addSubentityToCollisionRadius(::Entity *subent)
 }
 
 
-::ShipEntity *ShipEntity::launchPodWithCrew(const std::vector<oo::ObjCRef<::OOCharacter *>> &podCrew)
+::ShipEntity *ShipEntity::launchPodWithCrew(const std::vector<oo::Ref<OOCharacter>> &podCrew)
 {
 	::ShipEntity *self = oo::ToObjC(this);
 	::ShipEntity *pod = nil;
@@ -8555,13 +8556,13 @@ void ShipEntity::setLaunchDelay(double delay)
 }
 
 
-std::optional<std::vector<oo::ObjCRef<::OOCharacter *>>> ShipEntity::getCrew()
+std::optional<std::vector<oo::Ref<OOCharacter>>> ShipEntity::getCrew()
 {
 	return crew;
 }
 
 
-void ShipEntity::setCrew(const std::optional<std::vector<oo::ObjCRef<::OOCharacter *>>> &crewArray)
+void ShipEntity::setCrew(const std::optional<std::vector<oo::Ref<OOCharacter>>> &crewArray)
 {
 	::ShipEntity *self = oo::ToObjC(this);
 	if ([self isExplicitlyUnpiloted])
@@ -8581,9 +8582,8 @@ void ShipEntity::setSingleCrewWithRole(const std::string &crewRole)
 	::ShipEntity *self = oo::ToObjC(this);
 	if (![self isUnpiloted])
 	{
-		::OOCharacter *crewMember = [::OOCharacter randomCharacterWithRole:crewRole
-												 andOriginalSystem:[self homeSystem]];
-		[self cxx_setCrew:std::vector<oo::ObjCRef<::OOCharacter *>>{ oo::ObjCRef<::OOCharacter *>(crewMember) }];
+		oo::Ref<OOCharacter> crewMember = OOCharacter::randomCharacterWithRole(crewRole, [self homeSystem]);
+		[self cxx_setCrew:std::vector<oo::Ref<OOCharacter>>{ crewMember }];
 	}
 }
 
@@ -8598,7 +8598,7 @@ std::vector<oo::PList> ShipEntity::crewForScripting()
 	result.reserve(crew->size());
 	for (const auto &crewMember : *crew)
 	{
-		result.push_back([crewMember.get() infoForScripting]);
+		result.push_back(crewMember->infoForScripting());
 	}
 	return result;
 }
@@ -8968,7 +8968,8 @@ void ShipEntity::setCommodityForPod(const std::optional<std::string> &co_type, O
 	}
 	// pod content should never be greater than 1 ton or this will give cargo counting problems elsewhere in the code.
 	// so do first a mass check for cargo added by script/plist.
-	OOMassUnit	unit = [[UNIVERSE commodityMarket] massUnitForGood:*co_type];
+	OOCommodityMarket *market = [UNIVERSE commodityMarket];	// null: tons, as a message to nil
+	OOMassUnit	unit = (market != nullptr) ? market->massUnitForGood(*co_type) : UNITS_TONS;
 	if (unit == UNITS_TONS && co_amount > 1) co_amount = 1;
 	else if (unit == UNITS_KILOGRAMS && co_amount > 1000) co_amount = 1000;
 	else if (unit == UNITS_GRAMS && co_amount > 1000000) co_amount = 1000000;
@@ -9043,7 +9044,8 @@ oo::PList ShipEntity::cargoListForScripting()
 {
 	oo::PList::Array	list;
 
-	const std::vector<std::string> goods = [[UNIVERSE commodityMarket] goods];
+	OOCommodityMarket *market = [UNIVERSE commodityMarket];	// null: no goods, as a message to nil
+	const std::vector<std::string> goods = (market != nullptr) ? market->goods() : std::vector<std::string>();
 	NSUInteger			i, commodityCount = goods.size();
 	std::vector<OOCargoQuantity> quantityInHold(commodityCount, 0);
 
@@ -9065,7 +9067,7 @@ oo::PList ShipEntity::cargoListForScripting()
 			// commodity, quantity - keep consistency between .manifest and .contracts
 			commodity["commodity"] = good;
 			commodity["quantity"] = oo::PList(quantityInHold[i]);	// an unsigned integer
-			const std::optional<std::string> goodName = [[UNIVERSE commodityMarket] cxx_nameForGood:good];
+			const std::optional<std::string> goodName = market->nameForGood(good);	// (a good: the market is not null)
 			if (goodName.has_value())  commodity["displayName"] = *goodName;
 			commodity["unit"] = cxx_DisplayStringForMassUnitForCommodity(good).value_or("");
 			list.emplace_back(std::move(commodity));
@@ -13209,7 +13211,7 @@ bool ShipEntity::launchCascadeMine()
 		for (i = 0; i < crew->size(); i++)
 		{
 			::OOCharacter *ch = (*crew)[i].get();
-			[ch cxx_setLegalStatus: [self legalStatus] | [ch legalStatus]];
+			ch->setLegalStatus([self legalStatus] | ch->legalStatus());
 		}
 		mainPod = [self launchPodWithCrew:*crew];
 		if (mainPod)
@@ -13224,7 +13226,7 @@ bool ShipEntity::launchCascadeMine()
 	for (i = 1; i < n_pods; i++)
 	{
 		::ShipEntity	*passenger = nil;
-		passenger = [self launchPodWithCrew:std::vector<oo::ObjCRef<::OOCharacter *>>{ oo::ObjCRef<::OOCharacter *>([::OOCharacter randomCharacterWithRole:"passenger" andOriginalSystem:gen_rnd_number()]) }];
+		passenger = [self launchPodWithCrew:std::vector<oo::Ref<OOCharacter>>{ oo::Ref<OOCharacter>(OOCharacter::randomCharacterWithRole("passenger", gen_rnd_number())) }];
 		if (passengers.has_value())  passengers->emplace_back(passenger);
 	}
 
@@ -13766,7 +13768,7 @@ void ShipEntity::scoopUpProcess(::ShipEntity *other, bool procEvents, bool procM
 		
 		if (isPlayer)
 		{
-			const std::optional<std::vector<oo::ObjCRef<::OOCharacter *>>> otherCrew = [other cxx_crew];
+			const std::optional<std::vector<oo::Ref<OOCharacter>>> otherCrew = [other cxx_crew];
 			if (otherCrew.has_value())
 			{
 				if ([other showScoopMessage] && procMessages)
@@ -13776,12 +13778,12 @@ void ShipEntity::scoopUpProcess(::ShipEntity *other, bool procEvents, bool procM
 					for (i = 0; i < otherCrew->size(); i++)
 					{
 						::OOCharacter *rescuee = (*otherCrew)[i].get();
-						const std::optional<std::string> characterName = [rescuee cxx_name];
-						if ([rescuee legalStatus])
+						const std::optional<std::string> characterName = rescuee->name();
+						if (rescuee->legalStatus())
 						{
 							[UNIVERSE cxx_addMessage:ExpandKeyWithArgument("scoop-captured-character", "characterName", characterName) forCount: 4.5];
 						}
-						else if ([rescuee insuranceCredits])
+						else if (rescuee->insuranceCredits())
 						{
 							[UNIVERSE cxx_addMessage:ExpandKeyWithArgument("scoop-rescued-character", "characterName", characterName) forCount: 4.5];
 						}

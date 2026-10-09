@@ -92,7 +92,7 @@ extern Universe *gSharedUniverse;
 
 namespace {
 
-OOSystemDescriptionManager *sManager = nil;
+OOSystemDescriptionManager *sManager = nullptr;
 
 }
 
@@ -137,11 +137,11 @@ void SetUp()
 		sUniverse->_cxxUniverse = oo::makeRef<cxx::Universe>(sUniverse);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
 		sPlayer = [[TestPlayer alloc] init];
 		// Systems 7 at (10, 20) and 9 at (13, 24) of galaxy 0: 5 light-year units apart, 2.0 LY.
-		oo::Ref<cxx::OOSystemDescriptionManager> manager = oo::makeRef<cxx::OOSystemDescriptionManager>();
+		oo::Ref<OOSystemDescriptionManager> manager = oo::makeRef<OOSystemDescriptionManager>();
 		manager->setProperties(oo::PList(oo::PList::Dict{ { "coordinates", oo::PList("10 20") } }), "0 7");
 		manager->setProperties(oo::PList(oo::PList::Dict{ { "coordinates", oo::PList("13 24") } }), "0 9");
 		manager->buildRouteCache();	// fills the coordinates cache
-		sManager = [oo::ToObjC(manager.get()) retain];	// never released
+		sManager = manager.leakRef();	// never released
 	}
 	sUniverse->_system = 7;
 	sUniverse->_removed = nil;

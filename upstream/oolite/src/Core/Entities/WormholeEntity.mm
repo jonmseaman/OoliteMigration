@@ -56,7 +56,7 @@ namespace {
 // to a missing manager answered zeros).
 NSPoint SystemCoordinates(OOSystemID system, OOGalaxyID galaxy)
 {
-	cxx::OOSystemDescriptionManager *manager = oo::ToCxx([UNIVERSE systemManager]);
+	OOSystemDescriptionManager *manager = [UNIVERSE systemManager];
 	return manager != nullptr ? manager->getCoordinatesForSystem(system, galaxy) : NSMakePoint(0, 0);
 }
 

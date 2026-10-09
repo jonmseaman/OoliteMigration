@@ -573,7 +573,7 @@ void OOTrumble::updateTrumble(double delta_t)
 		{
 			::ShipEntity *cargopod = (*cargopods)[i].get();
 			const std::string cargo_type = [cargopod cxx_commodityType].value_or("");	// nil arrived as ""
-			float yumminess = (1.0 + randf()) * [[UNIVERSE commodityMarket] cxx_trumbleOpinionForGood:cargo_type];
+			float yumminess = (1.0 + randf()) * ([UNIVERSE commodityMarket] != nullptr ? [UNIVERSE commodityMarket]->trumbleOpinionForGood(cargo_type) : 0.0f);
 			if (yumminess > mostYummy)
 			{
 				selectedCargopod = cargopod;

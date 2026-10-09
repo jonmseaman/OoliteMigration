@@ -551,7 +551,7 @@ std::optional<std::string> cxx_DisplayStringForMassUnit(OOMassUnit unit)
 std::optional<std::string> cxx_DisplayStringForMassUnitForCommodity(const std::string &commodity)
 {
 	// No market: -massUnitForGood: sent to nil answered 0, UNITS_TONS.
-	cxx::OOCommodityMarket *market = oo::ToCxx([UNIVERSE commodityMarket]);
+	OOCommodityMarket *market = [UNIVERSE commodityMarket];
 	return cxx_DisplayStringForMassUnit((market != nullptr) ? market->massUnitForGood(commodity) : UNITS_TONS);
 }
 

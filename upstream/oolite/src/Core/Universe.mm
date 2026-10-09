@@ -445,11 +445,13 @@ void cxx::Universe::dealloc()
 
 	entities.clear();
 
-	[commodities release];
+	commodities = nullptr;
+	replacedCommodities = nullptr;
 
 	customSounds = oo::PList();
 	globalSettings = oo::PList();
-	[systemManager release];
+	systemManager = nullptr;
+	replacedSystemManager = nullptr;
 	demo_ships = oo::PList();
 	screenBackgrounds = oo::PList();
 	[gameView release];
@@ -458,6 +460,7 @@ void cxx::Universe::dealloc()
 
 	activeWormholes.clear();
 	characterPool.clear();
+	replacedCharacterPool.clear();
 	universeRegion = nullptr;
 
 	DESTROY(_firstBeacon);
@@ -1581,7 +1584,7 @@ void Universe::setUpWitchspaceBetweenSystem(OOSystemID s1, OOSystemID s2)
 	
 	const std::string	override_key = *[self keyForInterstellarOverridesForSystems:s1 :s2 inGalaxy:galaxyID];
 
-	const oo::PList systeminfo = [systemManager cxx_getPropertiesForSystemKey:override_key];
+	const oo::PList systeminfo = (systemManager != nullptr ? systemManager->getPropertiesForSystemKey(override_key) : oo::PList());
 	
 	if (universeRegion != nullptr)  universeRegion->clearSubregions();	// none yet while the initial universe is set up (a nil message did nothing)
 	
@@ -1642,11 +1645,11 @@ void Universe::setUpWitchspaceBetweenSystem(OOSystemID s1, OOSystemID s2)
 {
 	::Universe *self = oo::ToObjC(this);
 	// set the system seed for random number generation
-	Random_Seed systemSeed = [systemManager getRandomSeedForCurrentSystem];
+	Random_Seed systemSeed = (systemManager != nullptr ? systemManager->getRandomSeedForCurrentSystem() : Random_Seed());
 	seed_for_planet_description(systemSeed);
 
 	// a copy of the system data, marked as the main planet (a bool, as -oo_setBool:forKey: stored it)
-	oo::PList planetDict = [systemManager cxx_getPropertiesForCurrentSystem];
+	oo::PList planetDict = (systemManager != nullptr ? systemManager->getPropertiesForCurrentSystem() : oo::PList());
 	if (!planetDict.isDict())  planetDict = oo::PList(oo::PList::Dict{});
 	(*planetDict.getIf<oo::PList::Dict>())["mainForLocalSystem"] = oo::PList(true);
 	::OOPlanetEntity *a_planet = [[::OOPlanetEntity alloc] initFromDictionary:planetDict withAtmosphere:planetDict.get<bool>("has_atmosphere", YES) andSeed:systemSeed forSystem:systemID];
@@ -1702,14 +1705,14 @@ void Universe::setUpSpace()
 	Vector				vf;
 	oo::PList	dict_object;
 
-	const oo::PList		systeminfo = [systemManager cxx_getPropertiesForCurrentSystem];
+	const oo::PList		systeminfo = (systemManager != nullptr ? systemManager->getPropertiesForCurrentSystem() : oo::PList());
 	unsigned			techlevel = systeminfo.get<unsigned int>(std::string(KEY_TECHLEVEL));
 	std::optional<std::string>	stationDesc, defaultStationDesc;	// the default is never set: nullopt, as nil
 	oo::Ref<OOColor>	bgcolor;
 	oo::Ref<OOColor>	pale_bgcolor;
 	BOOL				sunGoneNova;
 	
-	Random_Seed systemSeed = [systemManager getRandomSeedForCurrentSystem];
+	Random_Seed systemSeed = (systemManager != nullptr ? systemManager->getRandomSeedForCurrentSystem() : Random_Seed());
 
 	[[::GameController sharedController] cxx_logProgress:OO_DESC("populating-space")];
 	
@@ -2013,7 +2016,7 @@ void Universe::setUpSpace()
 void Universe::populateNormalSpace()
 {
 	::Universe *self = oo::ToObjC(this);
-	const oo::PList		systeminfo = [systemManager cxx_getPropertiesForCurrentSystem];
+	const oo::PList		systeminfo = (systemManager != nullptr ? systemManager->getPropertiesForCurrentSystem() : oo::PList());
 
 	BOOL sunGoneNova = systeminfo.get<bool>("sun_gone_nova");
 	// check for nova
@@ -2112,7 +2115,7 @@ bool Universe::deterministicPopulation()
 void Universe::populateSystemFromDictionariesWithSun(::OOSunEntity *sun, ::OOPlanetEntity *planet)
 {
 	::Universe *self = oo::ToObjC(this);
-	Random_Seed systemSeed = [systemManager getRandomSeedForCurrentSystem];
+	Random_Seed systemSeed = (systemManager != nullptr ? systemManager->getRandomSeedForCurrentSystem() : Random_Seed());
 	// A copy of the blocks (the callbacks may change the settings), in key byte order (was the
 	// dictionary's hash order), then stably sorted by priority: order-sensitive, the goldens decide.
 	std::vector<oo::PList> sortedBlocks;
@@ -2471,9 +2474,8 @@ void Universe::setMainLightPosition(Vector sunPos)
 
 		// Ensure piloted ships have pilots.
 		if (![ship cxx_crew].has_value() && ![ship isUnpiloted])
-			[ship cxx_setCrew:std::vector<oo::ObjCRef<::OOCharacter *>>{ oo::ObjCRef<::OOCharacter *>(
-						   [::OOCharacter randomCharacterWithRole:desc
-											  andOriginalSystem:Ranrot() & 255]) }];
+			[ship cxx_setCrew:std::vector<oo::Ref<OOCharacter>>{ oo::Ref<OOCharacter>(
+						   OOCharacter::randomCharacterWithRole(desc, Ranrot() & 255)) }];
 		
 		if ([ship scanClass] == CLASS_NOT_SET)
 		{
@@ -3090,9 +3092,8 @@ void Universe::witchspaceShipWithPrimaryRole(const std::string &role)
 			[ship setBounty: (Ranrot() & 7) + (Ranrot() & 7) + ((randf() < 0.05)? 63 : 23) withReason:kOOLegalStatusReasonSetup];	// they already have a price on their heads
 		}
 		if (![ship cxx_crew].has_value() && ![ship isUnpiloted])
-			[ship cxx_setCrew:std::vector<oo::ObjCRef<::OOCharacter *>>{ oo::ObjCRef<::OOCharacter *>(
-				[::OOCharacter randomCharacterWithRole:role
-				andOriginalSystem: Ranrot() & 255]) }];
+			[ship cxx_setCrew:std::vector<oo::Ref<OOCharacter>>{ oo::Ref<OOCharacter>(
+				OOCharacter::randomCharacterWithRole(role, Ranrot() & 255)) }];
 		// The following is set inside leaveWitchspace: AI state GLOBAL, STATUS_EXITING_WITCHSPACE, ai message: EXITED_WITCHSPACE, then STATUS_IN_FLIGHT
 		[ship leaveWitchspace];
 		[ship release];
@@ -3195,9 +3196,8 @@ namespace cxx {
 		
 		if (![ship cxx_crew].has_value() && ![ship isUnpiloted])
 		{
-			[ship cxx_setCrew:std::vector<oo::ObjCRef<::OOCharacter *>>{ oo::ObjCRef<::OOCharacter *>(
-				[::OOCharacter randomCharacterWithRole:role
-				andOriginalSystem:Ranrot() & 255]) }];
+			[ship cxx_setCrew:std::vector<oo::Ref<OOCharacter>>{ oo::Ref<OOCharacter>(
+				OOCharacter::randomCharacterWithRole(role, Ranrot() & 255)) }];
 		}
 		
 		[ship setOrientation:OORandomQuaternion()];
@@ -4674,7 +4674,7 @@ OOCreditsQuantity Universe::getEquipmentPriceForKey(const std::string &eq_key)
 
 ::OOCommodities * Universe::getCommodities()
 {
-	return commodities;
+	return commodities.get();
 }
 
 
@@ -4719,15 +4719,15 @@ std::vector<oo::ObjCRef<::ShipEntity *>> Universe::getContainersOfGoods(OOCargoQ
 	*/
 	std::vector<oo::ObjCRef<::ShipEntity *>>	accumulator;
 	accumulator.reserve(how_many);
-	NSUInteger		i=0, commodityCount = [commodityMarket count];
+	NSUInteger		i=0, commodityCount = (commodityMarket != nullptr ? commodityMarket->count() : 0);
 	OOCargoQuantity quantities[commodityCount];
 	OOCargoQuantity total_quantity = 0;
 
-	const std::vector<std::string>	goodsKeys = [commodityMarket goods];
+	const std::vector<std::string>	goodsKeys = (commodityMarket != nullptr ? commodityMarket->goods() : std::vector<std::string>());
 
 	for (const std::string &goodsKey : goodsKeys)
 	{
-		OOCargoQuantity q = [commodityMarket cxx_quantityForGood:goodsKey];
+		OOCargoQuantity q = (commodityMarket != nullptr ? commodityMarket->quantityForGood(goodsKey) : 0);
 		if (scarce)
 		{
 			if (q < 64)  q = 64 - q;
@@ -4735,7 +4735,7 @@ std::vector<oo::ObjCRef<::ShipEntity *>> Universe::getContainersOfGoods(OOCargoQ
 		}
 		// legal YES restricts (almost) only to legal goods
 		// legal NO allows illegal goods, but not necessarily a full hold
-		if (legal && [commodityMarket cxx_exportLegalityForGood:goodsKey] > 0)
+		if (legal && (commodityMarket != nullptr ? commodityMarket->exportLegalityForGood(goodsKey) : 0) > 0)
 		{
 			q &= 1; // keep a very small chance, sometimes
 		}
@@ -4788,7 +4788,7 @@ std::vector<oo::ObjCRef<::ShipEntity *>> Universe::getContainersOfCommodity(cons
 {
 	std::vector<oo::ObjCRef<::ShipEntity *>>	accumulator;
 	accumulator.reserve(how_much);
-	if (![commodities cxx_goodDefined:commodity_name])
+	if (!(commodities != nullptr ? commodities->goodDefined(commodity_name) : false))
 	{
 		return accumulator; // empty array
 	}
@@ -4829,7 +4829,7 @@ void Universe::fillCargopodWithRandomCargo(::ShipEntity *cargopod)
 
 std::string Universe::getRandomCommodity()
 {
-	return [commodities getRandomCommodity];
+	return (commodities != nullptr ? commodities->getRandomCommodity() : std::string());
 }
 
 
@@ -4837,7 +4837,7 @@ OOCargoQuantity Universe::getRandomAmountOfCommodity(const std::string &co_type)
 {
 	OOMassUnit		units;
 
-	units = [commodities massUnitForGood:co_type];
+	units = (commodities != nullptr ? commodities->massUnitForGood(co_type) : UNITS_TONS);
 	switch (units)
 	{
 		case 0 :	// TONNES
@@ -4856,13 +4856,13 @@ OOCargoQuantity Universe::getRandomAmountOfCommodity(const std::string &co_type)
 
 oo::PList Universe::commodityDataForType(const std::string &type)
 {
-	return [commodityMarket cxx_definitionForGood:type];
+	return (commodityMarket != nullptr ? commodityMarket->definitionForGood(type) : oo::PList());
 }
 
 
 std::optional<std::string> Universe::displayNameForCommodity(const std::string &co_type)
 {
-	return [commodityMarket cxx_nameForGood:co_type];
+	return (commodityMarket != nullptr ? commodityMarket->nameForGood(co_type) : std::optional<std::string>());
 }
 
 
@@ -4876,7 +4876,7 @@ std::optional<std::string> Universe::describeCommodity(const std::string &co_typ
 
 	if (commodity.isNull()) return std::string();
 
-	units = [commodityMarket massUnitForGood:co_type];
+	units = (commodityMarket != nullptr ? commodityMarket->massUnitForGood(co_type) : UNITS_TONS);
 	if (co_amount == 1)
 	{
 		switch (units)
@@ -4910,7 +4910,7 @@ std::optional<std::string> Universe::describeCommodity(const std::string &co_typ
 		}
 	}
 
-	typeDesc = [commodityMarket cxx_nameForGood:co_type];
+	typeDesc = (commodityMarket != nullptr ? commodityMarket->nameForGood(co_type) : std::optional<std::string>());
 
 	return oo::str::format("%d %s %s",co_amount, unitDesc.c_str(), TextOrNull(typeDesc).c_str());
 }
@@ -8364,7 +8364,7 @@ void Universe::setGalaxyTo(OOGalaxyID g, bool forced)
 		{
 			for (i = 0; i < 256; i++)
 			{
-				system_names[i] = SystemPropertyString([systemManager cxx_getProperty:"name" forSystem:i inGalaxy:g]);
+				system_names[i] = SystemPropertyString((systemManager != nullptr ? systemManager->getProperty("name", i, g) : oo::PList()));
 
 			}
 		}
@@ -8390,8 +8390,7 @@ void Universe::setSystemTo(OOSystemID s)
 	economy = systemData.get<unsigned char>(std::string(KEY_ECONOMY));
 	scriptName = OptionalStringIn(systemData, "market_script");
 
-	DESTROY(commodityMarket);
-	commodityMarket = [[commodities cxx_generateMarketForSystemWithEconomy:economy andScript:scriptName] retain];
+	commodityMarket = (commodities != nullptr ? commodities->generateMarketForSystemWithEconomy(economy, scriptName) : oo::Ref<OOCommodityMarket>());
 }
 
 
@@ -8521,7 +8520,7 @@ bool Universe::descriptionBooleanForKey(const std::string &key)
 
 ::OOSystemDescriptionManager *Universe::getSystemManager()
 {
-	return systemManager;
+	return systemManager.get();
 }
 
 
@@ -8555,7 +8554,7 @@ oo::PList Universe::generateSystemData(OOSystemID s, bool /*useCache*/)
 // galaxynumber parameter.
 	const std::string systemKey = oo::str::format("%u %u",[PLAYER galaxyNumber],s);
 
-	return [systemManager cxx_getPropertiesForSystemKey:systemKey];
+	return (systemManager != nullptr ? systemManager->getPropertiesForSystemKey(systemKey) : oo::PList());
 
 	OOJS_PROFILE_EXIT_VAL(oo::PList())
 }
@@ -8680,13 +8679,13 @@ void Universe::setSystemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum, const st
 	}
 
 	// a null value removes the property, as nil did
-	[systemManager cxx_setProperty:key forSystemKey:overrideKey andLayer:layer toValue:object fromManifest:manifest];
+	if (systemManager != nullptr)  systemManager->setProperty(key, overrideKey, layer, object, manifest);
 
 
 	// Apply changes that can be effective immediately, issue warning if they can't be changed just now
 	if (sameSystem)
 	{
-		sysInfo = [systemManager cxx_getPropertiesForCurrentSystem];
+		sysInfo = (systemManager != nullptr ? systemManager->getPropertiesForCurrentSystem() : oo::PList());
 
 		::OOSunEntity* the_sun = [self sun];
 		/* KEY_ECONOMY used to be here, but resetting the main station
@@ -8775,7 +8774,7 @@ oo::PList Universe::generateSystemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum
 	::Universe *self = oo::ToObjC(this);
 
 	const std::optional<std::string> systemKey = [self cxx_keyForPlanetOverridesForSystem:pnum inGalaxy:gnum];
-	return [systemManager cxx_getPropertiesForSystemKey:*systemKey];
+	return (systemManager != nullptr ? systemManager->getPropertiesForSystemKey(*systemKey) : oo::PList());
 }
 
 
@@ -8797,7 +8796,7 @@ std::vector<std::string> Universe::systemDataKeysForGalaxy(OOGalaxyID gnum, OOSy
 /* Only called from OOJSSystemInfo. */
 oo::PList Universe::systemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum, const std::string &key)
 {
-	return [systemManager cxx_getProperty:key forSystem:pnum inGalaxy:gnum];
+	return (systemManager != nullptr ? systemManager->getProperty(key, pnum, gnum) : oo::PList());
 }
 
 
@@ -8811,14 +8810,14 @@ std::optional<std::string> Universe::getSystemName(OOSystemID sys)
 
 std::optional<std::string> Universe::getSystemName(OOSystemID sys, OOGalaxyID gnum)
 {
-	return SystemPropertyString([systemManager cxx_getProperty:"name" forSystem:sys inGalaxy:gnum]);
+	return SystemPropertyString((systemManager != nullptr ? systemManager->getProperty("name", sys, gnum) : oo::PList()));
 }
 
 
 OOGovernmentID Universe::getSystemGovernment(OOSystemID sys)
 {
 	// -unsignedCharValue of the number (nil, where there is none, gave 0)
-	return static_cast<unsigned char>([systemManager cxx_getProperty:"government" forSystem:sys inGalaxy:galaxyID].int64Value());
+	return static_cast<unsigned char>((systemManager != nullptr ? systemManager->getProperty("government", sys, galaxyID) : oo::PList()).int64Value());
 }
 
 
@@ -8835,7 +8834,7 @@ std::optional<std::string> Universe::getSystemInhabitants(OOSystemID sys, bool p
 	std::optional<std::string> ret;
 	if (!plural)
 	{
-		ret = SystemPropertyString([systemManager cxx_getProperty:std::string(KEY_INHABITANT) forSystem:sys inGalaxy:galaxyID]);
+		ret = SystemPropertyString((systemManager != nullptr ? systemManager->getProperty(std::string(KEY_INHABITANT), sys, galaxyID) : oo::PList()));
 	}
 	if (ret.has_value()) // the singular form might be absent.
 	{
@@ -8843,14 +8842,14 @@ std::optional<std::string> Universe::getSystemInhabitants(OOSystemID sys, bool p
 	}
 	else
 	{
-		return SystemPropertyString([systemManager cxx_getProperty:std::string(KEY_INHABITANTS) forSystem:sys inGalaxy:galaxyID]);
+		return SystemPropertyString((systemManager != nullptr ? systemManager->getProperty(std::string(KEY_INHABITANTS), sys, galaxyID) : oo::PList()));
 	}
 }
 
 
 NSPoint Universe::coordinatesForSystem(OOSystemID s)
 {
-	return [systemManager getCoordinatesForSystem:s inGalaxy:galaxyID];
+	return (systemManager != nullptr ? systemManager->getCoordinatesForSystem(s, galaxyID) : NSMakePoint(0, 0));
 }
 
 
@@ -8977,10 +8976,10 @@ OOSystemID Universe::findNeighbouringSystemToCoords(NSPoint coords, OOGalaxyID g
 	{
 		for (i = 0; i < 256; i++)   // flood fill out from system zero
 		{
-			NSPoint ipos = [systemManager getCoordinatesForSystem:i inGalaxy:g];
+			NSPoint ipos = (systemManager != nullptr ? systemManager->getCoordinatesForSystem(i, g) : NSMakePoint(0, 0));
 			for (j = 0; j < 256; j++)
 			{
-				NSPoint jpos = [systemManager getCoordinatesForSystem:j inGalaxy:g];
+				NSPoint jpos = (systemManager != nullptr ? systemManager->getCoordinatesForSystem(j, g) : NSMakePoint(0, 0));
 				double dist = distanceBetweenPlanetPositions(ipos.x,ipos.y,jpos.x,jpos.y);
 				if (dist <= MAX_JUMP_RANGE)
 				{
@@ -8993,7 +8992,7 @@ OOSystemID Universe::findNeighbouringSystemToCoords(NSPoint coords, OOGalaxyID g
 	OOSystemID system = 0;
 	for (i = 0; i < 256; i++)
 	{
-		NSPoint ipos = [systemManager getCoordinatesForSystem:i inGalaxy:g];
+		NSPoint ipos = (systemManager != nullptr ? systemManager->getCoordinatesForSystem(i, g) : NSMakePoint(0, 0));
 		distance = distanceBetweenPlanetPositions((int)coords.x, (int)coords.y, ipos.x, ipos.y);
 		if ((connected[i])&&(distance < min_dist)&&(distance != 0.0))
 		{
@@ -9024,10 +9023,10 @@ OOSystemID Universe::findConnectedSystemAtCoords(NSPoint coords, OOGalaxyID g)
 	{
 		for (i = 0; i < 256; i++)   // flood fill out from system zero
 		{
-			NSPoint ipos = [systemManager getCoordinatesForSystem:i inGalaxy:g];
+			NSPoint ipos = (systemManager != nullptr ? systemManager->getCoordinatesForSystem(i, g) : NSMakePoint(0, 0));
 			for (j = 0; j < 256; j++)
 			{
-				NSPoint jpos = [systemManager getCoordinatesForSystem:j inGalaxy:g];
+				NSPoint jpos = (systemManager != nullptr ? systemManager->getCoordinatesForSystem(j, g) : NSMakePoint(0, 0));
 				double dist = distanceBetweenPlanetPositions(ipos.x,ipos.y,jpos.x,jpos.y);
 				if (dist <= MAX_JUMP_RANGE)
 				{
@@ -9040,7 +9039,7 @@ OOSystemID Universe::findConnectedSystemAtCoords(NSPoint coords, OOGalaxyID g)
 	OOSystemID system = 0;
 	for (i = 0; i < 256; i++)
 	{
-		NSPoint ipos = [systemManager getCoordinatesForSystem:i inGalaxy:g];
+		NSPoint ipos = (systemManager != nullptr ? systemManager->getCoordinatesForSystem(i, g) : NSMakePoint(0, 0));
 		distance = distanceBetweenPlanetPositions((int)coords.x, (int)coords.y, ipos.x, ipos.y);
 		if ((connected[i])&&(distance < min_dist))
 		{
@@ -9069,14 +9068,14 @@ OOSystemID Universe::findSystemNumberAtCoords(NSPoint coords, OOGalaxyID g, bool
 	for (i = 0; i < 256; i++)
 	{
 		if (!hidden) {
-			const oo::PList systemInfo = [systemManager cxx_getPropertiesForSystem:i inGalaxy:g];
+			const oo::PList systemInfo = (systemManager != nullptr ? systemManager->getPropertiesForSystem(i, g) : oo::PList());
 			NSInteger concealment = systemInfo.get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
 			if (concealment >= OO_SYSTEMCONCEALMENT_NOTHING) {
 				// system is not known
 				continue;
 			}
 		}
-		NSPoint ipos = [systemManager getCoordinatesForSystem:i inGalaxy:g];
+		NSPoint ipos = (systemManager != nullptr ? systemManager->getCoordinatesForSystem(i, g) : NSMakePoint(0, 0));
 		dx = ABS(coords.x - ipos.x);
 		dy = ABS(coords.y - ipos.y);
 		
@@ -9125,7 +9124,7 @@ NSPoint Universe::findSystemCoordinatesWithPrefix(const std::string &p_fix, bool
 		if ((exactMatch && system_name == p_fix) || (!exactMatch && oo::str::hasPrefix(system_name, p_fix)))
 		{
 			/* Only used in player-based search routines */
-			const oo::PList systemInfo = [systemManager cxx_getPropertiesForSystem:i inGalaxy:galaxyID];
+			const oo::PList systemInfo = (systemManager != nullptr ? systemManager->getPropertiesForSystem(i, galaxyID) : oo::PList());
 			NSInteger concealment = systemInfo.get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
 			if (concealment >= OO_SYSTEMCONCEALMENT_NONAME) {
 				// system is not known
@@ -9135,7 +9134,7 @@ NSPoint Universe::findSystemCoordinatesWithPrefix(const std::string &p_fix, bool
 			system_found[i] = YES;
 			if (result < 0)
 			{
-				system_coords = [systemManager getCoordinatesForSystem:i inGalaxy:galaxyID];
+				system_coords = (systemManager != nullptr ? systemManager->getCoordinatesForSystem(i, galaxyID) : NSMakePoint(0, 0));
 				result = i;
 			}
 		}
@@ -9194,7 +9193,7 @@ oo::PList Universe::routeFromSystem(OOSystemID start, OOSystemID goal, OORouteTy
 	BOOL concealed[256];
 	for (i = 0; i < 256; i++)
 	{
-		const oo::PList systemInfo = [systemManager cxx_getPropertiesForSystem:i inGalaxy:galaxyID];
+		const oo::PList systemInfo = (systemManager != nullptr ? systemManager->getPropertiesForSystem(i, galaxyID) : oo::PList());
 		NSInteger concealment = systemInfo.get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
 		if (concealment >= OO_SYSTEMCONCEALMENT_NOTHING) {
 			// system is not known
@@ -9233,8 +9232,8 @@ oo::PList Universe::routeFromSystem(OOSystemID start, OOSystemID goal, OORouteTy
 				}
 				OOSystemID c = ce->location();
 				
-				NSPoint cpos = [systemManager getCoordinatesForSystem:c inGalaxy:galaxyID];
-				NSPoint npos = [systemManager getCoordinatesForSystem:n inGalaxy:galaxyID];
+				NSPoint cpos = (systemManager != nullptr ? systemManager->getCoordinatesForSystem(c, galaxyID) : NSMakePoint(0, 0));
+				NSPoint npos = (systemManager != nullptr ? systemManager->getCoordinatesForSystem(n, galaxyID) : NSMakePoint(0, 0));
 
 				double lastDistance = distanceBetweenPlanetPositions(npos.x,npos.y,cpos.x,cpos.y);
 				double lastTime = lastDistance * lastDistance;
@@ -9293,7 +9292,7 @@ std::vector<OOSystemID> Universe::neighboursToSystem(OOSystemID s)
 	{
 		return *closeSystems;
 	}
-	std::vector<OOSystemID> neighbours = [systemManager cxx_getNeighbourIDsForSystem:s inGalaxy:galaxyID];
+	std::vector<OOSystemID> neighbours = (systemManager != nullptr ? systemManager->getNeighbourIDsForSystem(s, galaxyID) : std::vector<OOSystemID>());
 
 	if (s == systemID)
 	{
@@ -9384,7 +9383,7 @@ oo::PList Universe::getEquipmentDataOutfitting()
 
 ::OOCommodityMarket *Universe::getCommodityMarket()
 {
-	return commodityMarket;
+	return commodityMarket.get();
 }
 
 
@@ -9478,7 +9477,7 @@ void Universe::makeSunSkimmer(::ShipEntity *ship, bool setAI)
 
 Random_Seed Universe::marketSeed()
 {
-	Random_Seed		ret = [systemManager getRandomSeedForCurrentSystem];
+	Random_Seed		ret = (systemManager != nullptr ? systemManager->getRandomSeedForCurrentSystem() : Random_Seed());
 	
 	// adjust basic seed by market random factor
 	// which for (very bad) historical reasons is 0x80
@@ -9549,7 +9548,7 @@ oo::PList Universe::getStationMarkets()
 			{
 				const HPVector position = [station position];
 				markets.push_back(oo::PList(oo::PList::Dict{
-					{ "market", [stationMarket cxx_saveStationAmounts] },
+					{ "market", stationMarket->saveStationAmounts() },
 					{ "position", oo::PList(oo::PList::Array{ oo::PList((double)position.x), oo::PList((double)position.y), oo::PList((double)position.z) }) } }));
 			}
 		}
@@ -10848,8 +10847,8 @@ void Universe::setUpSettings()
 	speechArray = [::ResourceManager cxx_arrayFromFilesNamed:"speech_pronunciation_guide.plist" inFolder:std::string("Config") andMerge:YES];
 #endif
 	
-	[commodities autorelease];
-	commodities = [[::OOCommodities alloc] init];
+	replacedCommodities = std::move(commodities);	// [commodities autorelease]
+	commodities = oo::makeRef<OOCommodities>();
 
 	
 	[self loadDescriptions];
@@ -10861,8 +10860,8 @@ void Universe::setUpSettings()
 	globalSettings = [::ResourceManager cxx_dictionaryFromFilesNamed:"global-settings.plist" inFolder:std::string("Config") mergeMode:MERGE_SMART cache:YES];
 
 	
-	[systemManager autorelease];
-	systemManager = [[::ResourceManager systemDescriptionManager] retain];
+	replacedSystemManager = std::move(systemManager);	// [systemManager autorelease]
+	systemManager = [::ResourceManager systemDescriptionManager];
 
 	screenBackgrounds = [::ResourceManager cxx_dictionaryFromFilesNamed:"screenbackgrounds.plist" inFolder:std::string("Config") andMerge:YES];
 
@@ -10893,7 +10892,7 @@ void Universe::setUpCargoPods()
 	::Universe *self = oo::ToObjC(this);
 
 	std::map<std::string, oo::ObjCRef<::ShipEntity *>, std::less<>> tmp;
-	for (const std::string &type : [commodities goods])
+	for (const std::string &type : (commodities != nullptr ? commodities->goods() : std::vector<std::string>()))
 	{
 		::ShipEntity *container = [self cxx_newShipWithRole:"oolite-template-cargopod"];
 		[container setScanClass:CLASS_CARGO];
@@ -11064,7 +11063,8 @@ void Universe::setUpInitialUniverse()
 	OO_DEBUG_PUSH_PROGRESS("Wormhole and character reset");
 	AutoreleaseAll(activeWormholes);	// the old list was autoreleased
 	activeWormholes.reserve(16);
-	AutoreleaseAll(characterPool);	// the old pool was autoreleased
+	replacedCharacterPool = std::move(characterPool);	// the old pool was autoreleased
+	characterPool.clear();
 	characterPool.reserve(256);
 	OO_DEBUG_POP_PROGRESS();
 	

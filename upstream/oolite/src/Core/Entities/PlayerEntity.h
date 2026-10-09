@@ -1586,7 +1586,7 @@ public:
 	OOCreditsQuantity		credits = {};	
 	OOGalaxyID				galaxy_number = {};
 	
-	::OOCommodityMarket		*shipCommodityData = {};
+	oo::Ref<OOCommodityMarket>	shipCommodityData;
 	
 	::ShipEntity				*missile_entity[PLAYER_MAX_MISSILES] = {};	// holds the actual missile entities or equivalents
 	OOUniversalID			_dockTarget = {};	// used by the escape pod code

@@ -442,7 +442,7 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (BoundingBox) findSubentityBoundingBox;
 - (Triangle) absoluteIJKForSubentity;
 - (void) addSubentityToCollisionRadius:(Entity<OOSubEntity> *)subent;
-- (ShipEntity *) launchPodWithCrew:(const std::vector<oo::ObjCRef<OOCharacter *>> &)podCrew;
+- (ShipEntity *) launchPodWithCrew:(const std::vector<oo::Ref<OOCharacter>> &)podCrew;
 - (BOOL) validForAddToUniverse;
 
 @end
@@ -793,8 +793,8 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (void) setDestinationSystem:(OOSystemID)s;
 - (void) setStatus:(OOEntityStatus)stat;
 - (void) setLaunchDelay:(double)delay;
-- (std::optional<std::vector<oo::ObjCRef<OOCharacter *>>>) cxx_crew;	// nullopt: unpiloted
-- (void) cxx_setCrew:(const std::optional<std::vector<oo::ObjCRef<OOCharacter *>>> &)crewArray;
+- (std::optional<std::vector<oo::Ref<OOCharacter>>>) cxx_crew;	// nullopt: unpiloted
+- (void) cxx_setCrew:(const std::optional<std::vector<oo::Ref<OOCharacter>>> &)crewArray;
 - (void) cxx_setSingleCrewWithRole:(const std::string &)crewRole;
 - (std::vector<oo::PList>) cxx_crewForScripting;	// each member's -infoForScripting
 - (void) setStateMachine:(const std::string &)ai_desc;	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)

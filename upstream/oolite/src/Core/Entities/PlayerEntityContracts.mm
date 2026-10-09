@@ -105,7 +105,7 @@ std::optional<std::string> cxx::PlayerEntity::processEscapePods()	// removes pod
 	unsigned		i;
 	BOOL added_entry = NO; // to prevent empty lines for slaves and the rare empty report.
 	std::string		result;
-	std::vector<oo::ObjCRef<::OOCharacter *>>	rescuees;
+	std::vector<oo::Ref<OOCharacter>>	rescuees;
 	// -intValue of the system's government: a string's leading integer, a number truncated, nil 0
 	const oo::PList	systemData = [UNIVERSE cxx_currentSystemData];
 	const oo::PList	*governmentValue = systemData.find(KEY_GOVERNMENT);
@@ -120,7 +120,7 @@ std::optional<std::string> cxx::PlayerEntity::processEscapePods()	// removes pod
 	{
 		::ShipEntity	*cargoItem = cargo[i].get();
 
-		const std::optional<std::vector<oo::ObjCRef<::OOCharacter *>>> podCrew = [cargoItem cxx_crew];
+		const std::optional<std::vector<oo::Ref<OOCharacter>>> podCrew = [cargoItem cxx_crew];
 		if (podCrew.has_value())
 		{
 			// Has crew -> is escape pod.
@@ -136,66 +136,66 @@ std::optional<std::string> cxx::PlayerEntity::processEscapePods()	// removes pod
 	{
 		::OOCharacter *rescuee = rescuees[i].get();
 
-		if ([rescuee script])
+		if (rescuee->script())
 		{
-			[rescuee doScriptEvent:OOJSID("unloadCharacter")];
+			rescuee->doScriptEvent(OOJSID("unloadCharacter"));
 		}
-		else if (![rescuee legacyScript].isNull())
+		else if (!rescuee->legacyScript().isNull())
 		{
-			[self cxx_runUnsanitizedScriptActions:[rescuee legacyScript]
+			[self cxx_runUnsanitizedScriptActions:rescuee->legacyScript()
 							allowingAIMethods:YES
-							  withContextName:oo::str::format("<character \"%s\" script>", [rescuee cxx_name].value_or("(null)").c_str())
+							  withContextName:oo::str::format("<character \"%s\" script>", rescuee->name().value_or("(null)").c_str())
 									forTarget:nil];
 		}
-		else if ([rescuee insuranceCredits] && [rescuee legalStatus])
+		else if (rescuee->insuranceCredits() && rescuee->legalStatus())
 		{
-			float reward = (5.0 + government) * [rescuee legalStatus];
-			float insurance = 10 * [rescuee insuranceCredits];
+			float reward = (5.0 + government) * rescuee->legalStatus();
+			float insurance = 10 * rescuee->insuranceCredits();
 			if (government > (Ranrot() & 7) || reward >= insurance)
 			{
 				// claim bounty for capture, ignore insurance
 				result += oo::str::formatRuntime(OO_DESC("capture-reward-for-@@-@-credits-@-alt"),
-				 { [rescuee cxx_name].value_or("(null)"), oo::ShortDescriptionOf(rescuee), cxx_OOStringFromDeciCredits(reward, YES, NO),
+				 { rescuee->name().value_or("(null)"), rescuee->shortDescription().value_or("(null)"), cxx_OOStringFromDeciCredits(reward, YES, NO),
 				 cxx_OOStringFromDeciCredits(insurance, YES, NO) });
-				[self cxx_doScriptEvent:OOJSID("playerRescuedEscapePod") withPListArguments:{ oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("bounty"), [rescuee infoForScripting] }];
+				[self cxx_doScriptEvent:OOJSID("playerRescuedEscapePod") withPListArguments:{ oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("bounty"), rescuee->infoForScripting() }];
 			}
 			else
 			{
 				// claim insurance reward with reduction of bounty
 				result += oo::str::formatRuntime(OO_DESC("rescue-reward-for-@@-@-credits-@-alt"),
-				 { [rescuee cxx_name].value_or("(null)"), oo::ShortDescriptionOf(rescuee), cxx_OOStringFromDeciCredits(insurance - reward, YES, NO),
+				 { rescuee->name().value_or("(null)"), rescuee->shortDescription().value_or("(null)"), cxx_OOStringFromDeciCredits(insurance - reward, YES, NO),
 				 cxx_OOStringFromDeciCredits(reward, YES, NO) });
 				reward = insurance - reward;
-				[self cxx_doScriptEvent:OOJSID("playerRescuedEscapePod") withPListArguments:{ oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("insurance"), [rescuee infoForScripting] }];
+				[self cxx_doScriptEvent:OOJSID("playerRescuedEscapePod") withPListArguments:{ oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("insurance"), rescuee->infoForScripting() }];
 			}
 			credits += reward;
 			added_entry = YES;
 		}
-		else if ([rescuee insuranceCredits])
+		else if (rescuee->insuranceCredits())
 		{
 			// claim insurance reward
 			result += oo::str::formatRuntime(OO_DESC("rescue-reward-for-@@-@-credits"),
-				{ [rescuee cxx_name].value_or("(null)"), oo::ShortDescriptionOf(rescuee), cxx_OOStringFromDeciCredits([rescuee insuranceCredits] * 10, YES, NO) });
-			credits += 10 * [rescuee insuranceCredits];
-			[self cxx_doScriptEvent:OOJSID("playerRescuedEscapePod") withPListArguments:{ oo::PList::unsignedInteger(static_cast<NSUInteger>(10 * [rescuee insuranceCredits])), oo::PList("insurance"), [rescuee infoForScripting] }];
+				{ rescuee->name().value_or("(null)"), rescuee->shortDescription().value_or("(null)"), cxx_OOStringFromDeciCredits(rescuee->insuranceCredits() * 10, YES, NO) });
+			credits += 10 * rescuee->insuranceCredits();
+			[self cxx_doScriptEvent:OOJSID("playerRescuedEscapePod") withPListArguments:{ oo::PList::unsignedInteger(static_cast<NSUInteger>(10 * rescuee->insuranceCredits())), oo::PList("insurance"), rescuee->infoForScripting() }];
 
 			added_entry = YES;
 		}
-		else if ([rescuee legalStatus])
+		else if (rescuee->legalStatus())
 		{
 			// claim bounty for capture
-			float reward = (5.0 + government) * [rescuee legalStatus];
+			float reward = (5.0 + government) * rescuee->legalStatus();
 			result += oo::str::formatRuntime(OO_DESC("capture-reward-for-@@-@-credits"),
-				{ [rescuee cxx_name].value_or("(null)"), oo::ShortDescriptionOf(rescuee), cxx_OOStringFromDeciCredits(reward, YES, NO) });
+				{ rescuee->name().value_or("(null)"), rescuee->shortDescription().value_or("(null)"), cxx_OOStringFromDeciCredits(reward, YES, NO) });
 			credits += reward;
-			[self cxx_doScriptEvent:OOJSID("playerRescuedEscapePod") withPListArguments:{ oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("bounty"), [rescuee infoForScripting] }];
+			[self cxx_doScriptEvent:OOJSID("playerRescuedEscapePod") withPListArguments:{ oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("bounty"), rescuee->infoForScripting() }];
 			added_entry = YES;
 		}
 		else
 		{
 			// sell as slave - increase no. of slaves in manifest
-			[shipCommodityData cxx_addQuantity:1 forGood:"slaves"];
-			[self cxx_doScriptEvent:OOJSID("playerRescuedEscapePod") withPListArguments:{ oo::PList::unsignedInteger(0), oo::PList("slave"), [rescuee infoForScripting] }];
+			if (shipCommodityData != nullptr)  shipCommodityData->addQuantity(1, "slaves");
+			[self cxx_doScriptEvent:OOJSID("playerRescuedEscapePod") withPListArguments:{ oo::PList::unsignedInteger(0), oo::PList("slave"), rescuee->infoForScripting() }];
 
 		}
 		if ((i < rescuees.size() - 1) && added_entry)
@@ -374,7 +374,7 @@ std::optional<std::string> cxx::PlayerEntity::checkPassengerContracts()	// retur
 			const std::string contract_cargo_type = contract_info.get<std::string>(std::string(CARGO_KEY_TYPE));	// a missing type was nil, which the market read as ""
 			int contract_amount = contract_info.get<int>(std::string(CARGO_KEY_AMOUNT));
 
-			int quantity_on_hand =  [shipCommodityData cxx_quantityForGood:contract_cargo_type];
+			int quantity_on_hand =  (shipCommodityData != nullptr ? shipCommodityData->quantityForGood(contract_cargo_type) : 0);
 
 			// we've arrived in system!
 			if (dest_eta > 0)
@@ -385,14 +385,14 @@ std::optional<std::string> cxx::PlayerEntity::checkPassengerContracts()	// retur
 					// with the goods too!
 					
 					// remove the goods...
-					[shipCommodityData cxx_removeQuantity:contract_amount forGood:contract_cargo_type];
+					if (shipCommodityData != nullptr)  shipCommodityData->removeQuantity(contract_amount, contract_cargo_type);
 
 					// pay the premium and fee
 					// credits += fee + premium;
 					// not any more: all contracts initially awarded by JS, so fee
 					// is now all that needs to be paid - CIM
 
-					if ([shipCommodityData cxx_exportLegalityForGood:contract_cargo_type] > 0)
+					if ((shipCommodityData != nullptr ? shipCommodityData->exportLegalityForGood(contract_cargo_type) : 0) > 0)
 					{
 						[self cxx_addRoleToPlayer:"trader-smuggler"];
 					}
@@ -421,14 +421,14 @@ std::optional<std::string> cxx::PlayerEntity::checkPassengerContracts()	// retur
 					if (percent_delivered >= acceptable_ratio)
 					{
 						// remove the goods...
-						[shipCommodityData cxx_setQuantity:0 forGood:contract_cargo_type];
+						if (shipCommodityData != nullptr)  shipCommodityData->setQuantity(0, contract_cargo_type);
 
 						// pay the fee
 						int shortfall = 100 - percent_delivered;
 						int payment = percent_delivered * (fee) / 100.0;
 						credits += payment;
 						
-						if ([shipCommodityData cxx_exportLegalityForGood:contract_cargo_type] > 0)
+						if ((shipCommodityData != nullptr ? shipCommodityData->exportLegalityForGood(contract_cargo_type) : 0) > 0)
 						{
 							[self cxx_addRoleToPlayer:"trader-smuggler"];
 						}
@@ -1043,7 +1043,7 @@ bool cxx::PlayerEntity::awardContract(unsigned qty, const std::string &type, uns
 
 	std::string		cargo_ID = oo::str::format("%06x-%06x", sr1, sr2);
 
-	if (![[UNIVERSE commodities] cxx_goodDefined:type])  return NO;
+	if (!([UNIVERSE commodities] != nullptr ? [UNIVERSE commodities]->goodDefined(type) : false))  return NO;
 	if (qty < 1)  return NO;
 
 	// avoid duplicate cargo_IDs
@@ -1070,19 +1070,19 @@ bool cxx::PlayerEntity::awardContract(unsigned qty, const std::string &type, uns
 	// check available space
 
 	OOCargoQuantity		cargoSpaceRequired = qty;
-	OOMassUnit			contractCargoUnits	= [shipCommodityData massUnitForGood:type];	// shared selector (OOCommodities): an Objective-C string
+	OOMassUnit			contractCargoUnits	= (shipCommodityData != nullptr ? shipCommodityData->massUnitForGood(type) : UNITS_TONS);	// shared selector (OOCommodities): an Objective-C string
 
 	if (contractCargoUnits == UNITS_KILOGRAMS)  cargoSpaceRequired /= 1000;
 	if (contractCargoUnits == UNITS_GRAMS)  cargoSpaceRequired /= 1000000;
 
 	if (cargoSpaceRequired > [self availableCargoSpace]) return NO;
 
-	[shipCommodityData cxx_addQuantity:qty forGood:type];
+	if (shipCommodityData != nullptr)  shipCommodityData->addQuantity(qty, type);
 
 	current_cargo = [self cargoQuantityOnBoard];
 
 	// roleWeightFlags entries are signed integers, as +numberWithInt: was
-	if ([shipCommodityData cxx_exportLegalityForGood:type] > 0)
+	if ((shipCommodityData != nullptr ? shipCommodityData->exportLegalityForGood(type) : 0) > 0)
 	{
 		[self cxx_addRoleToPlayer:"trader-smuggler"];
 		roleWeightFlags.insert_or_assign("bought-illegal", oo::PList::signedInteger(1));
@@ -1106,7 +1106,7 @@ bool cxx::PlayerEntity::removeContract(const std::string &type, unsigned dest)	/
 {
 	if (contracts.empty() || dest > 255)  return NO;
 
-	if (![[UNIVERSE commodities] cxx_goodDefined:type])  return NO;
+	if (!([UNIVERSE commodities] != nullptr ? [UNIVERSE commodities]->goodDefined(type) : false))  return NO;
 
 	unsigned			i;
 
@@ -1916,7 +1916,7 @@ bool cxx::PlayerEntity::buySelectedShip()
 		withPListArguments:buyArguments];
 
 	// sell all the commodities carried
-	for (const std::string &good : [shipCommodityData goods])
+	for (const std::string &good : (shipCommodityData != nullptr ? shipCommodityData->goods() : std::vector<std::string>()))
 	{
 		[self cxx_trySellingCommodity:good all:YES];
 	}
@@ -2024,7 +2024,7 @@ void cxx::PlayerEntity::newShipCommonSetup(const std::string &shipKey, const oo:
 {
 	::PlayerEntity *self = oo::ToObjC(this);
 	// Zero out our manifest.
-	[shipCommodityData removeAllGoods];
+	if (shipCommodityData != nullptr)  shipCommodityData->removeAllGoods();
 	current_cargo = 0;
 	
 	// drop all passengers

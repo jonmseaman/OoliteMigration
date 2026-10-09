@@ -1107,7 +1107,7 @@ static bool StationSetMarketPrice(ooscript::Context context, ooscript::CallArgs 
 	}
 	
 	std::optional<std::string> commodity = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
-	cxx::OOCommodities *commodities = oo::ToCxx([UNIVERSE commodities]);	// null: no good is defined, as a message to nil
+	OOCommodities *commodities = [UNIVERSE commodities];	// null: no good is defined, as a message to nil
 	if (EXPECT_NOT(commodities == nullptr || !commodities->goodDefined(commodity.value_or(""))))
 	{
 		cxx_OOJSReportBadArguments(context, "Station", "setMarketPrice", MIN(oojsArgs.count(), 2U), OOJS_ARGV, std::nullopt, "Unrecognised commodity type");
@@ -1151,7 +1151,7 @@ static bool StationSetMarketQuantity(ooscript::Context context, ooscript::CallAr
 	}
 	
 	const std::string commodity = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]).value_or("");
-	cxx::OOCommodities *commodities = oo::ToCxx([UNIVERSE commodities]);	// null: no good is defined, as a message to nil
+	OOCommodities *commodities = [UNIVERSE commodities];	// null: no good is defined, as a message to nil
 	if (EXPECT_NOT(commodities == nullptr || !commodities->goodDefined(commodity)))
 	{
 		cxx_OOJSReportBadArguments(context, "Station", "setMarketQuantity", MIN(oojsArgs.count(), 2U), OOJS_ARGV, std::nullopt, "Unrecognised commodity type");
@@ -1160,7 +1160,7 @@ static bool StationSetMarketQuantity(ooscript::Context context, ooscript::CallAr
 
 	int32_t quantity;
 	bool gotQuantity = ooscript::valueToInt32((context), (OOJS_ARGV[1]), &quantity);
-	cxx::OOCommodityMarket *market = oo::ToCxx([station localMarket]);	// null: no capacity, as a message to nil
+	OOCommodityMarket *market = [station localMarket];	// null: no capacity, as a message to nil
 	if (EXPECT_NOT(!gotQuantity || quantity < 0 || (OOCargoQuantity)quantity > ((market != nullptr) ? market->capacityForGood(commodity) : 0)))
 	{
 		cxx_OOJSReportBadArguments(context, "Station", "setMarketQuantity", MIN(oojsArgs.count(), 2U), OOJS_ARGV, std::nullopt, "Quantity must be between 0 and the station market capacity");

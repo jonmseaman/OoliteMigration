@@ -1973,7 +1973,7 @@ void GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, float alp
 
 	NSInteger concealment[256];
 	for (NSUInteger i=0;i<256;i++) {
-		concealment[i] = [systemManager cxx_getPropertiesForSystem:i inGalaxy:g].get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
+		concealment[i] = systemManager->getPropertiesForSystem(i, g).get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
 	}
 
 	
@@ -1992,7 +1992,7 @@ void GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, float alp
 			continue;
 		}
 
-		starabs = [systemManager getCoordinatesForSystem:i inGalaxy:g];
+		starabs = systemManager->getCoordinatesForSystem(i, g);
 
 		star.x = (float)(starabs.x * hscale);
 		star.y = (float)(starabs.y * vscale);
@@ -2013,7 +2013,7 @@ void GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, float alp
 				continue;
 			}
 			
-			star2abs = [systemManager getCoordinatesForSystem:j inGalaxy:g];
+			star2abs = systemManager->getCoordinatesForSystem(j, g);
 			double d = distanceBetweenPlanetPositions(starabs.x, starabs.y, star2abs.x, star2abs.y);
 		
 			if (d <= jumpRange)	// another_commander - Default to 7.0 LY.
@@ -2039,7 +2039,7 @@ void GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, float alp
 				}
 				else
 				{
-					thisConnectionColor = OOColor::colorWithDescription([systemManager cxx_getProperty:"link_color" forSystemKey:oo::str::format("interstellar: %d %ld %ld", g, (long)i, (long)j)]);
+					thisConnectionColor = OOColor::colorWithDescription(systemManager->getProperty("link_color", oo::str::format("interstellar: %d %ld %ld", g, (long)i, (long)j)));
 				
 					if (thisConnectionColor == nil)
 					{
@@ -2051,7 +2051,7 @@ void GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, float alp
 					glVertex3f(x+star.x, y+star.y, z);
 
 					// and the other colour for the other end
-					thatConnectionColor = OOColor::colorWithDescription([systemManager cxx_getProperty:"link_color" forSystemKey:oo::str::format("interstellar: %d %ld %ld", g, (long)j, (long)i)]);
+					thatConnectionColor = OOColor::colorWithDescription(systemManager->getProperty("link_color", oo::str::format("interstellar: %d %ld %ld", g, (long)j, (long)i)));
 				
 					if (thatConnectionColor == nil)
 					{
@@ -2094,8 +2094,8 @@ void GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, float alp
 		for (i = 0; i < route_hops; i++)
 		{
 			loc = route.at<int>(i);
-			starabs = [systemManager getCoordinatesForSystem:loc inGalaxy:g];
-			star2abs = [systemManager getCoordinatesForSystem:route.at<int>(i+1) inGalaxy:g];
+			starabs = systemManager->getCoordinatesForSystem(loc, g);
+			star2abs = systemManager->getCoordinatesForSystem(route.at<int>(i+1), g);
 
 			star.x = (float)(starabs.x * hscale);
 			star.y = (float)(starabs.y * vscale);
@@ -2141,7 +2141,7 @@ void GuiDisplayGen::drawStarChart(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha
 	NSPoint	chart_centre_coordinates = [player adjusted_chart_centre];
 	NSPoint	galaxy_coordinates = [player galaxy_coordinates];
 	NSPoint	cursor_coordinates = [player cursor_coordinates];
-	NSPoint info_system_coordinates = [[UNIVERSE systemManager] getCoordinatesForSystem: [player infoSystemID] inGalaxy: [player galaxyNumber]];
+	NSPoint info_system_coordinates = ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getCoordinatesForSystem([player infoSystemID], [player galaxyNumber]) : NSMakePoint(0, 0));
 	OOLongRangeChartMode chart_mode = [player longRangeChartMode];
 	OOGalaxyID		galaxy_id = [player galaxyNumber];
 	GLfloat			r = 1.0, g = 1.0, b = 1.0;
@@ -2182,7 +2182,7 @@ void GuiDisplayGen::drawStarChart(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha
 
 	NSInteger concealment[256];
 	for (i=0;i<256;i++) {
-		const oo::PList systemInfo = [systemManager cxx_getPropertiesForSystem:i inGalaxy:galaxy_id];
+		const oo::PList systemInfo = systemManager->getPropertiesForSystem(i, galaxy_id);
 		concealment[i] = systemInfo.get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
 	}
 	
@@ -2330,7 +2330,7 @@ void GuiDisplayGen::drawStarChart(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha
 	}
 	if (!routeExists)
 	{
-		NSPoint targetCoordinates = [systemManager getCoordinatesForSystem:target inGalaxy:galaxy_id];
+		NSPoint targetCoordinates = systemManager->getCoordinatesForSystem(target, galaxy_id);
 
 		distance = distanceBetweenPlanetPositions(targetCoordinates.x,targetCoordinates.y,galaxy_coordinates.x,galaxy_coordinates.y);
 		if (distance == 0.0)
@@ -2382,7 +2382,7 @@ void GuiDisplayGen::drawStarChart(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha
 
 	for (i = 0; i < num_nearby_systems; i++)
 	{
-		NSPoint sys_coordinates = [systemManager getCoordinatesForSystem:i inGalaxy:galaxy_id];
+		NSPoint sys_coordinates = systemManager->getCoordinatesForSystem(i, galaxy_id);
 		
 		dx = fabs(chart_centre_coordinates.x - sys_coordinates.x);
 		dy = fabs(chart_centre_coordinates.y - sys_coordinates.y);
@@ -2396,7 +2396,7 @@ void GuiDisplayGen::drawStarChart(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha
 			continue;
 		}
 
-		const oo::PList systemInfo = [systemManager cxx_getPropertiesForSystem:i inGalaxy:galaxy_id];
+		const oo::PList systemInfo = systemManager->getPropertiesForSystem(i, galaxy_id);
 		float blob_factor = guiUserSettings.get<float>(cxx_kGuiChartCircleScale, 0.0017);
 		float blob_size = (1.0f + blob_factor * systemInfo.get<float>("radius"))/zoom;
 		if (blob_size < 0.5) blob_size = 0.5;
@@ -2467,7 +2467,7 @@ void GuiDisplayGen::drawStarChart(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha
 				if (EXPECT(noNova))
 				{
 					r = g = b = 1.0;
-					oo::Ref<OOColor>	sunColor = OOColor::colorWithDescription([[UNIVERSE systemManager] cxx_getProperty:"sun_color" forSystem:i inGalaxy:galaxy_id]);
+					oo::Ref<OOColor>	sunColor = OOColor::colorWithDescription(([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getProperty("sun_color", i, galaxy_id) : oo::PList()));
 					if (sunColor != nil) {
 						sunColor->getRed(&r, &g, &b, &alpha);
 						alpha = 1.0; // reset
@@ -2521,7 +2521,7 @@ void GuiDisplayGen::drawStarChart(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha
 			
 			BOOL mark = systemsFound[i];
 			float marker_size = 8.0/zoom;
-			NSPoint sys_coordinates = [systemManager getCoordinatesForSystem:i inGalaxy:galaxy_id];
+			NSPoint sys_coordinates = systemManager->getCoordinatesForSystem(i, galaxy_id);
 
 			dx = fabs(chart_centre_coordinates.x - sys_coordinates.x);
 			dy = fabs(chart_centre_coordinates.y - sys_coordinates.y);
@@ -2571,7 +2571,7 @@ void GuiDisplayGen::drawStarChart(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha
 		}
 
 		sys = nearby_systems + i;
-		NSPoint sys_coordinates = [systemManager getCoordinatesForSystem:sys->sysid inGalaxy:galaxy_id];
+		NSPoint sys_coordinates = systemManager->getCoordinatesForSystem(sys->sysid, galaxy_id);
 
 		dx = fabs(chart_centre_coordinates.x - sys_coordinates.x);
 		dy = fabs(chart_centre_coordinates.y - sys_coordinates.y);
@@ -2627,7 +2627,7 @@ void GuiDisplayGen::drawStarChart(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha
 		if (concealment[targetIdx] < OO_SYSTEMCONCEALMENT_NONAME)
 		{
 			sys = nearby_systems + targetIdx;
-			NSPoint sys_coordinates = [systemManager getCoordinatesForSystem:sys->sysid inGalaxy:galaxy_id];
+			NSPoint sys_coordinates = systemManager->getCoordinatesForSystem(sys->sysid, galaxy_id);
 
 			star.x = (float)(sys_coordinates.x * hscale + hoffset);
 			star.y = (float)(sys_coordinates.y * vscale + voffset);

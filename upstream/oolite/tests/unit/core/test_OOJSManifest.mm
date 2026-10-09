@@ -5,8 +5,9 @@
 	As the binding tests of amendment oo-ppc item 6 do, it runs the JS class in a real context on
 	the game's own façade backend (ooscript/JSEngine_quickjs.cpp), and links the game's own objects
 	for the binding, the engine's exception translator (OOJSEngineNativeWrappers.mm) and the
-	commodity classes it asks (OOCommodities and OOCommodityMarket, converted classes reached
-	through their façades, as test_OOCommodities.mm links them, reading the trade goods below). It
+	commodity classes it asks (OOCommodities and OOCommodityMarket, C++ since beads oo-9ht.25 and
+	oo-9ht.21 deleted their façades, as test_OOCommodities.mm links them, reading the trade goods
+	below; the stand-ins hold them as oo::Ref). It
 	stands in for the player (its cargo and its manifest market), the universe (its commodities and
 	its market), the resource manager and string expander the commodity classes call, the player
 	ship's JS object, and the engine functions the binding links against, with the engine headers'
@@ -39,7 +40,7 @@
 @public
 	std::map<std::string, OOCargoQuantity> _cargo;
 	std::optional<std::string> _specialCargo;
-	OOCommodityMarket *_shipCommodityData;
+	oo::Ref<OOCommodityMarket> _shipCommodityData;
 	int _sets;
 	BOOL _throwCxx;
 }
@@ -54,8 +55,8 @@
 @interface Universe: OOObject
 {
 @public
-	OOCommodities *_commodities;
-	OOCommodityMarket *_market;
+	oo::Ref<OOCommodities> _commodities;
+	oo::Ref<OOCommodityMarket> _market;
 }
 - (OOCommodities *) commodities;
 - (OOCommodityMarket *) commodityMarket;
@@ -133,7 +134,7 @@ oo::PList TradeGoods()
 }
 
 - (std::optional<std::string>) cxx_specialCargo  { return _specialCargo; }
-- (OOCommodityMarket *) shipCommodityData  { return _shipCommodityData; }
+- (OOCommodityMarket *) shipCommodityData  { return _shipCommodityData.get(); }
 - (id) cxx_commodityScriptNamed:(const std::optional<std::string> &)script  { (void)script; return nil; }
 
 @end
@@ -141,8 +142,8 @@ oo::PList TradeGoods()
 
 @implementation Universe
 
-- (OOCommodities *) commodities  { return _commodities; }
-- (OOCommodityMarket *) commodityMarket  { return _market; }
+- (OOCommodities *) commodities  { return _commodities.get(); }
+- (OOCommodityMarket *) commodityMarket  { return _market.get(); }
 - (OOSystemID) currentSystemID  { return 7; }
 
 @end
@@ -371,9 +372,9 @@ void SetUpContext()
 	gSharedUniverse = sUniverse;
 	sPlayer = [[PlayerEntity alloc] init];
 	gOOPlayer = sPlayer;
-	sUniverse->_commodities = [[OOCommodities alloc] init];
-	sUniverse->_market = [[sUniverse->_commodities generateBlankMarket] retain];
-	sPlayer->_shipCommodityData = [[sUniverse->_commodities generateManifestForPlayer] retain];
+	sUniverse->_commodities = oo::makeRef<OOCommodities>();
+	sUniverse->_market = sUniverse->_commodities->generateBlankMarket();
+	sPlayer->_shipCommodityData = sUniverse->_commodities->generateManifestForPlayer();
 	sPlayer->_cargo["food"] = 3;
 	sPlayer->_cargo["gems"] = 12;
 
@@ -480,7 +481,7 @@ OO_TEST(comments)
 	OO_CHECK_EVAL("manifest.shortComment('food')", "<[oolite-commodity-no-short-comment]>");
 	OO_CHECK_EVAL("manifest.setComment('unobtainium', 'x')", "false");
 	OO_CHECK_EVAL("manifest.comment('unobtainium')", "<[oolite-unknown-commodity-name]>");
-	OO_CHECK([sPlayer->_shipCommodityData cxx_commentForGood:"food"] == std::optional<std::string>("<Edible>"));
+	OO_CHECK(sPlayer->_shipCommodityData->commentForGood("food") == std::optional<std::string>("<Edible>"));
 	OO_CHECK_EVAL("manifest.comment()", "threw: bad arguments: Manifest.comment(0) - / good");
 	OO_CHECK_EVAL("manifest.shortComment(null)", "threw: bad arguments: Manifest.shortComment(1) - / good");
 	OO_CHECK_EVAL("manifest.setComment('food')", "threw: bad arguments: Manifest.setComment(1) - / good and information text");

@@ -4,10 +4,9 @@ OOCharacter.h
 
 Represents an NPC person (as opposed to an NPC ship).
 
-C++20 since bead oo-8kx7 (Phase 3, proposed ADR-0056). The class is cxx::OOCharacter while
-OOCharacter+ObjCBridge.h, imported at the end of this header, keeps the Objective-C OOCharacter its
-unconverted callers message (ships' crews, JS); the bridge's deletion bead moves it out of
-namespace cxx.
+C++20 since bead oo-8kx7 (Phase 3, proposed ADR-0056). Its Objective-C facade was deleted by bead
+oo-9ht.10 (batch E): ships' crews and the character pool hold oo::Ref<OOCharacter>, and a
+character is its own PList::Object payload (oo::PListForeign) for its script's "character".
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -45,9 +44,7 @@ MA 02110-1301, USA.
 @class OOJSScript;
 
 
-namespace cxx {
-
-class OOCharacter : public oo::RefCounted
+class OOCharacter : public oo::PListForeign
 {
 public:
 	OOCharacter() = default;	// [[OOCharacter alloc] init]: every field zero
@@ -86,8 +83,12 @@ public:
 
 	// What "%@" prints between the braces of <OOCharacter 0x...>{...} (OODescription.h).
 	std::optional<std::string> descriptionComponents() const;
-	// The JavaScript class of the character's Objective-C object (-oo_jsClassName).
+	// The JavaScript class the character's Objective-C object answered (-oo_jsClassName).
 	std::optional<std::string> oo_jsClassName();
+
+	// oo::PListForeign: what the facade answered (its class, and "%@" as <OOCharacter 0x...>{...}).
+	std::string className() const override;
+	std::string description() const override;
 
 private:
 	OOCharacter(Random_Seed characterSeed, OOSystemID systemSeed);	// -initWithGenSeed:andOriginalSystem:
@@ -107,11 +108,6 @@ private:
 	oo::ObjCRef<::OOJSScript *>	_script;
 };
 
-}	// namespace cxx
 
-
-// Transitional: the Objective-C OOCharacter, for callers not yet converted. Deleted, with namespace
-// cxx above, by the bridge's deletion bead.
-#import "OOCharacter+ObjCBridge.h"
 
 #endif	// OOCHARACTER_H

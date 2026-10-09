@@ -183,7 +183,7 @@ PlayerEntity		*gOOPlayer = nil;
 
 
 
-	DESTROY(_cxxPlayer->shipCommodityData);
+	_cxxPlayer->shipCommodityData = nullptr;
 
 
 	_cxxPlayer->save_path.reset();
