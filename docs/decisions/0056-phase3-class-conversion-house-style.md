@@ -5701,3 +5701,31 @@ Objective-C caller is left for either facade.
 (the Entity facade, the debug monitor's entity and texture sizes, OOWeakReference), so oo-6e1.1
 stays open; the compiled-out `PRELOAD` block of `OOShipRegistry.mm` still names a `+meshWithName:`
 form no class has had since oo-dnbf.
+
+## Amendment (bead oo-5q11i): a converted class's hand-retained Objective-C members (PlayerEntity)
+
+- Date: 2026-10-09. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch L.
+  Exemplar: `src/Core/Entities/PlayerEntity.h/.mm` (`missile_entity[]`, `demoShip`,
+  `compassTarget`, `_dockedStation`, `wormholeObject`), `PlayerEntityControls.mm`. Carries out
+  item 6's second half of amendment oo-9ht.177.
+
+**Decision (recommended defaults).**
+
+1. **A member the class retained and released by hand is an `oo::ObjCRef`**: `[x release]; x = nil;`
+   and `DESTROY(x)` are `x = nullptr`; an assignment of a +1 object (`+new...`, `-weakRetain`) is
+   `oo::adoptObjC(...)`, of a borrowed one with `[y retain]` is `oo::ObjCRef<T>(y)`; sends read
+   `.get()`. A copy between slots (the missile pylons' tidy-up, which moved a pointer and cleared
+   the source without a release) is an ordinary copy: each slot now holds its own retain, and the
+   counts end where they did.
+2. **A raw pointer dropped without a release keeps doing so**: an assignment of nil that leaked the
+   old object (the demo ship on loading a commander, a wormhole replaced on entering another) is
+   `(void)ref.leakRef()`, with a comment, so no object is freed that was not freed before.
+3. **A C++ object whose Objective-C object was retained** (the wormhole, amendment oo-9ht.112)
+   keeps its C++ pointer and gains a companion `oo::ObjCRef<::Entity *>` holding that object; each
+   assignment sets both. A member that was never retained (`targetDockStation`) stays a raw pointer.
+4. **Tests**: a test that set such a member to `[x retain]` sets it to `oo::adoptObjC([x retain])`,
+   with every expectation kept.
+
+**Consequences.** The player's members are still public (the first half of amendment oo-9ht.177
+item 6), split into a bead of its own: making them private needs a test-access friend for the ~56
+members test_PlayerEntity reads and sets.

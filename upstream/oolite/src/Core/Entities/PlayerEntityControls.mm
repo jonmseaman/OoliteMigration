@@ -2451,8 +2451,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 			if(commanderFile)
 			{
 				// also release the demo ship here (see showShipyardModel and noteGUIDidChangeFrom)
-				[demoShip release];
-				demoShip = nil;
+				demoShip = nullptr;
 
 				loadPlayerFromFile(*commanderFile, NO);
 			}
@@ -5251,8 +5250,7 @@ void PlayerEntity::pollDemoControls(double /*delta_t*/)
 			if(commanderFile)
 			{
 				// also release the demo ship here (see showShipyardModel and noteGUIDidChangeFrom)
-				[demoShip release];
-				demoShip = nil;
+				demoShip = nullptr;
 
 				loadPlayerFromFile(*commanderFile, NO);
 			}
@@ -5606,12 +5604,12 @@ void PlayerEntity::handleButtonTargetMissile()
 	
 	// Arm missile and check for missile lock
 	missile_status = MISSILE_STATUS_ARMED;
-	if ([missile_entity[activeMissile] isMissile])
+	if ([missile_entity[activeMissile].get() isMissile])
 	{
 		if ([primaryTarget() isShip])
 		{
 			missile_status = MISSILE_STATUS_TARGET_LOCKED;
-			[missile_entity[activeMissile] addTarget:primaryTarget()];
+			[missile_entity[activeMissile].get() addTarget:primaryTarget()];
 			printIdentLockedOnForMissile(YES);
 			playMissileLockedOn();
 		}
@@ -5622,15 +5620,15 @@ void PlayerEntity::handleButtonTargetMissile()
 			{
 				noteLostTarget();
 			}
-			[missile_entity[activeMissile] noteLostTarget];
-			const std::string weaponName = [missile_entity[activeMissile] cxx_name].value_or(std::string());	// (nil raised in the expansion)
+			[missile_entity[activeMissile].get() noteLostTarget];
+			const std::string weaponName = [missile_entity[activeMissile].get() cxx_name].value_or(std::string());	// (nil raised in the expansion)
 			[UNIVERSE cxx_addMessage:ExpandKeyWithArguments("missile-armed", { { "weaponName", oo::PList(weaponName) } }) forCount:2.0];
 			playMissileArmed();
 		}
 	}
-	else if ([missile_entity[activeMissile] isMine])
+	else if ([missile_entity[activeMissile].get() isMine])
 	{
-		const std::string weaponName = [missile_entity[activeMissile] cxx_name].value_or(std::string());	// (nil raised in the expansion)
+		const std::string weaponName = [missile_entity[activeMissile].get() cxx_name].value_or(std::string());	// (nil raised in the expansion)
 		[UNIVERSE cxx_addMessage:ExpandKeyWithArguments("mine-armed", { { "weaponName", oo::PList(weaponName) } }) forCount:2.0];
 		playMineArmed();
 	}
