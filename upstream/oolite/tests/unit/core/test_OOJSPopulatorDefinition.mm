@@ -34,9 +34,11 @@
 
 // MARK: What the rest of the engine provides ------------------------------------------------------
 
+class OOJSScript;
+
 namespace {
 ooscript::Object sGlobal;
-std::vector<id> sPushed;
+std::vector<OOJSScript *> sPushed;
 int sScriptDepth = 0;
 int sCalls = 0;
 } // namespace
@@ -84,30 +86,41 @@ extern "C" bool VectorToJSValue(ooscript::Context context, Vector vector, ooscri
 
 
 // The script stack: the running script (set by the test) and what was pushed.
-@interface OOScript: OOWeakRefObject
-@end
-
 namespace {
-OOScript *sRunningScript = nil;
+OOJSScript *sRunningScript = nullptr;
 } // namespace
 
-@implementation OOScript
-@end
+
+#import "OOScript.h"
 
 
-// OOJSScript's statics (OOJSScript.h), which the code under test calls since bead oo-9ht.137 deleted
-// the Objective-C OOJSScript: a script's object is the OOScript root's facade (stood in for above).
-class OOJSScript
+// OOJSScript (OOJSScript.h), which the code under test calls. Since bead oo-9ht.133 deleted the
+// OOScript root's facade (a script's object since bead oo-9ht.137) a script is the C++ object, so
+// the stand-in is a C++ subclass of OOScript declaring the members that code calls.
+class OOJSScript : public OOScript
 {
 public:
-	static ::OOScript *currentlyRunningScript();
-	static void pushScript(::OOScript *script);
-	static void popScript(::OOScript *script);
+	static OOJSScript *currentlyRunningScript();
+	static void pushScript(const oo::WeakRef<OOJSScript> &script);
+	static void popScript(OOJSScript *script);
 };
 
-::OOScript *OOJSScript::currentlyRunningScript()  { return sRunningScript; }
-void OOJSScript::pushScript(::OOScript *script)  { sPushed.push_back([script weakRefUnderlyingObject]); sScriptDepth++; }
-void OOJSScript::popScript(::OOScript *script)  { (void)script; sScriptDepth--; }
+// OOScript's virtual members (OOScript.mm reaches the whole game), for the test's scripts' vtable.
+std::optional<std::string> OOScript::descriptionComponents()	{ return std::nullopt; }
+std::optional<std::string> OOScript::name()					{ return std::nullopt; }
+std::optional<std::string> OOScript::scriptDescription()		{ return std::nullopt; }
+std::optional<std::string> OOScript::version()				{ return std::nullopt; }
+bool OOScript::requiresTickle()								{ return false; }
+void OOScript::runWithTarget(::Entity *)						{}
+bool OOScript::callMethod(ooscript::PropertyId, ooscript::Context, ooscript::Value *, int, ooscript::Value *)	{ return false; }
+std::string OOScript::className() const						{ return "OOScript"; }
+std::string OOScript::description() const						{ return "<OOScript>"; }
+ooscript::Value OOScript::jsValueInContext(ooscript::Context)	{ return ooscript::undefinedValue(); }
+void OOScript::clearJSSelf(ooscript::Object)					{}
+
+OOJSScript *OOJSScript::currentlyRunningScript()  { return sRunningScript; }
+void OOJSScript::pushScript(const oo::WeakRef<OOJSScript> &script)  { sPushed.push_back(script.get()); sScriptDepth++; }
+void OOJSScript::popScript(OOJSScript *script)  { (void)script; sScriptDepth--; }
 
 
 // MARK: The context -------------------------------------------------------------------------------
@@ -169,10 +182,10 @@ OO_TEST(runCallback)
 {
 	@autoreleasepool
 	{
-		OOScript *owner = [[[OOScript alloc] init] autorelease];
-		sRunningScript = owner;
+		const oo::Ref<OOJSScript> owner = oo::makeRef<OOJSScript>();
+		sRunningScript = owner.get();
 		const oo::Ref<OOJSPopulatorDefinition> definition = oo::makeRef<OOJSPopulatorDefinition>();
-		sRunningScript = nil;
+		sRunningScript = nullptr;
 
 		// Neither the function nor `this` has another reference: the definition keeps them alive.
 		definition->setCallback(Evaluate("(function (where) { globalThis.ran = this.tag + ':' + where.join(); })"));
@@ -187,7 +200,7 @@ OO_TEST(runCallback)
 		OO_CHECK_EQ(String(Evaluate("globalThis.ran")), "me:1,2.5,-3");
 		OO_CHECK_EQ(sCalls, 1);
 		OO_CHECK_EQ(sScriptDepth, 0);
-		OO_CHECK(sPushed.size() == 1 && sPushed[0] == owner);	// the script that made it
+		OO_CHECK(sPushed.size() == 1 && sPushed[0] == owner.get());	// the script that made it
 
 		// Replacing the callback: the new one runs.
 		definition->setCallback(Evaluate("(function () { globalThis.ran = 'second'; })"));
@@ -200,7 +213,7 @@ OO_TEST(runCallback)
 		sPushed.clear();
 		orphan->runPopulatorCallback(make_HPvector(0, 0, 0));
 		OO_CHECK_EQ(String(Evaluate("globalThis.ran")), "orphan");
-		OO_CHECK(sPushed.size() == 1 && sPushed[0] == nil);
+		OO_CHECK(sPushed.size() == 1 && sPushed[0] == nullptr);
 	}
 }
 

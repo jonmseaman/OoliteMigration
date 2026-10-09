@@ -38,9 +38,9 @@ MA 02110-1301, USA.
 #include <optional>
 #include <string>
 #include "oofnd/Ref.hpp"
-#include "oofnd/objc/OOObjCRef.h"
+#include "oofnd/Ref.hpp"
 
-@class OOScript;	// imported by the .mm, so that a test can stand in for it (ADR-0056 amendment oo-fg7i item 5)
+class OOJSScript;	// imported by the .mm, so that a test can stand in for it (ADR-0056 amendment oo-fg7i item 5)
 
 
 class OOJSInterfaceDefinition : public oo::RefCounted
@@ -70,7 +70,7 @@ private:
 
 	ooscript::Value				_callback = {};
 	ooscript::Object _callbackThis = {};
-	oo::ObjCRef<::OOScript *>	_owningScript;	// a weak reference (-weakRetain)
+	oo::WeakRef<OOJSScript>		_owningScript;	// a weak reference (was -weakRetain)
 
 	std::optional<std::string>	_title;		// nullopt until set (was nil)
 	std::optional<std::string>	_summary;

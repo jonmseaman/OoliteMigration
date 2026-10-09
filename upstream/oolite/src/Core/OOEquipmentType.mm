@@ -347,7 +347,13 @@ bool OOEquipmentType::initWithInfo(const oo::PList &info)
 			if (const oo::PList *scriptInfo = extraInfo.get<oo::PList::Dict>("script_info"))  _scriptInfo = *scriptInfo;
 
 			_script = StringFor(extraInfo, "script");
-			if (_script.has_value() && ![::OOScript cxx_jsScriptFromFileNamed:*_script properties:oo::PList()])  _script.reset();
+			if (_script.has_value())
+			{
+				// (the loaded script, which nothing keeps, lived until the pool drained)
+				oo::Ref<OOScript> loaded = OOScript::jsScriptFromFileNamed(*_script, oo::PList());
+				if (loaded == nullptr)  _script.reset();
+				OOScriptAutorelease(std::move(loaded));
+			}
 			if (_script.has_value())
 			{
 				_fastAffinityA = !!extraInfo.get<bool>("fast_affinity_defensive");

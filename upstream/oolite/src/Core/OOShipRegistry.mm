@@ -539,10 +539,7 @@ void OOShipRegistry::loadDemoShips()
 						ooscript::Value result;
 						ooscript::Value args[] = { OOJSValueFromPList(context, oo::PList(*shipKey)) };
 
-						OK = [condScript callMethod:OOJSID("allowShowLibraryShip")
-										  inContext:context
-									  withArguments:args count:sizeof args / sizeof *args
-											 result:&result];
+						OK = (condScript != nullptr ? condScript->callMethod(OOJSID("allowShowLibraryShip"), context, args, sizeof args / sizeof *args, &result) : false);
 
 						if (OK) OK = ooscript::valueToBoolean(context, result, &allow_use);
 

@@ -176,7 +176,7 @@ void OODebugMonitor::performJSConsoleCommand(const std::string &command)
 	ooscript::Context context = OOJSAcquireContext();
 	ooscript::Value commandVal = OOJSValueFromPList(context, oo::PList(command));
 	OOJSStartTimeLimiterWithTimeLimit(kOOJSLongTimeLimit);
-	[_script.get() callMethod:OOJSID("consolePerformJSCommand") inContext:context withArguments:&commandVal count:1 result:NULL];
+	if (_script != nullptr)  _script->callMethod(OOJSID("consolePerformJSCommand"), context, &commandVal, 1, NULL);
 	OOJSStopTimeLimiter();
 	OOJSRelinquishContext(context);
 }
@@ -718,7 +718,7 @@ void OODebugMonitor::setUpDebugConsoleScript()
 		jsProps["console"] = oo::PListObject(oo::ToObjC(this));
 		id special = JSSpecialFunctionsObjectWrapper(context);
 		if (special != nil)  jsProps["special"] = oo::PListObject(special);
-		_script = oo::ObjCRef<::OOScript *>(OOJSScript::scriptWithPath(path, oo::PList(std::move(jsProps))));
+		_script = OOJSScript::scriptWithPath(path, oo::PList(std::move(jsProps)));
 	}
 
 	// If no script, just make console visible globally as debugConsole.
@@ -876,9 +876,8 @@ void OODebugMonitor::jsEngine(::OOJavaScriptEngine * /*engine*/,
 	// error, since one script can call another's methods.
 
 	// avoid windows DEP exceptions!
-	::OOScript *thisScript = [OOJSScript::currentlyRunningScript() weakRetain];
-	scriptLine = [[thisScript weakRefUnderlyingObject] displayName];
-	[thisScript release];
+	OOJSScript *thisScript = OOJSScript::currentlyRunningScript();
+	scriptLine = (thisScript != nullptr) ? thisScript->displayName() : std::nullopt;
 
 	if (scriptLine.has_value())
 	{

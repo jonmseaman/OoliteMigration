@@ -27,6 +27,7 @@ MA 02110-1301, USA.
 #import "OOJavaScriptEngine.h"
 #import "PlayerEntity.h"
 #import "OOJSPlayer.h"
+#import "OOScript.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
@@ -103,26 +104,27 @@ static bool WorldScriptsGetProperty(Context cx, Object obj, PropertyId propID, V
 	
 	PlayerEntity				*player = OOPlayerForScripting();
 	std::optional<std::string>	scriptName;
-	id							script = nil;
+	OOScript					*script = nullptr;
 	
 	if (!ooscript::isStringId(jsPropID))  return YES;
 	scriptName = cxx_OOStringFromJSString(context, ooscript::idToString(jsPropID));
 	
 	if (scriptName.has_value())
 	{
-		script = nil;
-		for (const auto &[name, scriptRef] : [player cxx_worldScriptsByName])	// the last of a name, as the dictionary kept
+		script = nullptr;
+		const auto worldScripts = [player cxx_worldScriptsByName];	// kept while script is used
+		for (const auto &[name, scriptRef] : worldScripts)	// the last of a name, as the dictionary kept
 		{
-			if (name == *scriptName && scriptRef.get() != nil)  script = scriptRef.get();
+			if (name == *scriptName && scriptRef.get() != nullptr)  script = scriptRef.get();
 		}
-		if (script != nil)
+		if (script != nullptr)
 		{
 			/*	If script is an OOJSScript, this should return a JS Script
 				object. For other OOScript subclasses, it will return
 				ooscript::nullValue(). If no script exists, the value will be
 				ooscript::undefinedValue().
 			*/
-			*jsValue = [script oo_jsValueInContext:context];
+			*jsValue = script->jsValueInContext(context);
 		}
 		else
 		{

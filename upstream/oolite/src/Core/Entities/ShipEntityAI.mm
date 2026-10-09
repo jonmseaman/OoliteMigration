@@ -145,19 +145,18 @@ void ShipEntity::setAIScript(const std::string &aiString)
 	::ShipEntity *self = oo::ToObjC(this);
 	const oo::PList properties(oo::PList::Dict{ { "ship", oo::PListObject(self) } });
 	
-	[aiScript autorelease];
-	aiScript = [::OOScript cxx_jsAIScriptFromFileNamed:aiString properties:properties];
-	if (aiScript == nil)
+	OOScriptAutorelease(std::move(aiScript));	// [aiScript autorelease]
+	aiScript = OOScript::jsAIScriptFromFileNamed(aiString, properties);
+	if (aiScript == nullptr)
 	{
 		OO_LOG("ai.load.failed.unknownAI", "Unable to load JS AI {} for ship {} ({} for role {})", aiString, oo::DescriptionOf(self), [self cxx_shipDataKey].value_or("(null)"), [self cxx_primaryRole].value_or("(null)"));
-		aiScript = [::OOScript cxx_jsAIScriptFromFileNamed:"oolite-nullAI.js" properties:properties];
+		aiScript = OOScript::jsAIScriptFromFileNamed("oolite-nullAI.js", properties);
 	}
 	else
 	{
 		aiScriptWakeTime = 0;
 		haveStartedJSAI = NO;
 	}
-	[aiScript retain];
 }
 
 

@@ -55,7 +55,7 @@ class GuiDisplayGen;
 class OOSound;			// C++ since bead oo-9ht.68 deleted its facade
 class OOSoundSource;	// C++ since bead oo-9ht.88 deleted its facade
 @class OOJoystickManager, OOTexture;
-@class OOScript;
+#include "OOScript.h"	// oo::Ref<OOScript> members and results (bead oo-9ht.133)
 #import "OOJSGuiScreenKeyDefinition.h"	// C++ since bead oo-9ht.62: extraGuiScreenKeys keeps it (oo::Ref)
 class StickProfileScreen;	// C++ (PlayerEntityStickProfile.h, bead oo-movn)
 
@@ -869,7 +869,7 @@ public:
 	void setEquipScreenBackgroundDescriptor(const oo::PList &descriptor);
 	bool scriptsLoaded();
 	std::vector<std::string> worldScriptNames();
-	std::vector<std::pair<std::string, oo::ObjCRef<::OOScript *>>> worldScriptsByName();
+	std::vector<std::pair<std::string, oo::Ref<OOScript>>> worldScriptsByName();
 	::OOScript *commodityScriptNamed(const std::optional<std::string> &scriptName);
 	using ShipEntity::doScriptEvent;	// the ship's other overloads, which the player does not override
 	void doScriptEvent(ooscript::PropertyId message, ooscript::Context context, ooscript::Value *argv, unsigned argc) override;
@@ -1173,7 +1173,7 @@ public:
 	// Slice 1 of docs/phases/3-slices/PlayerEntityLegacyScriptEngine.md.
 	void setScriptTarget(::ShipEntity *ship);
 	::ShipEntity *scriptTarget();
-	std::vector<std::pair<std::string, oo::ObjCRef<::OOScript *>>> getWorldScriptsRequiringTickle();
+	std::vector<std::pair<std::string, oo::Ref<OOScript>>> getWorldScriptsRequiringTickle();
 	void checkScript();
 	void runScriptActions(const oo::PList &actions, const std::optional<std::string> &contextName, ::ShipEntity *target);
 	void runUnsanitizedScriptActions(const oo::PList &actions, bool allowAIMethods, const std::optional<std::string> &contextName, ::ShipEntity *target);
@@ -1442,9 +1442,9 @@ public:
 	OOSystemID				found_system_id = {};
 	int						ship_trade_in_factor = {};
 	
-	std::vector<std::pair<std::string, oo::ObjCRef<::OOScript *>>>	worldScripts;	// in load order (+cxx_loadScripts)
-	std::optional<std::vector<std::pair<std::string, oo::ObjCRef<::OOScript *>>>>	worldScriptsRequiringTickle;	// PlayerEntityLegacyScriptEngine's cache; nullopt: not built
-	std::map<std::string, oo::ObjCRef<::OOScript *>, std::less<>>	commodityScripts;	// by script file name
+	std::vector<std::pair<std::string, oo::Ref<OOScript>>>	worldScripts;	// in load order (+cxx_loadScripts)
+	std::optional<std::vector<std::pair<std::string, oo::Ref<OOScript>>>>	worldScriptsRequiringTickle;	// PlayerEntityLegacyScriptEngine's cache; nullopt: not built
+	std::map<std::string, oo::Ref<OOScript>, std::less<>>	commodityScripts;	// by script file name
 	oo::PList				mission_variables;	// a Dict (saved as mission_variables); null before set-up
 	std::map<std::string, oo::PList, std::less<>>	localVariables;	// mission key -> that mission's variables (a Dict)
 	std::optional<std::string>	_missionTitle;	// nullopt: the mission screen falls back on its default
@@ -1460,7 +1460,7 @@ public:
 	
 	std::vector<std::string>	commLog;	// trimmed by -cxx_commLog
 
-	std::vector<std::pair<std::string, oo::ObjCRef<::OOScript *>>>	eqScripts;	// (key, script), in insertion order
+	std::vector<std::pair<std::string, oo::Ref<OOScript>>>	eqScripts;	// (key, script), in insertion order
 	
 	oo::PList				_missionOverlayDescriptor;	// null = none (was nil)
 	oo::PList				_missionBackgroundDescriptor;

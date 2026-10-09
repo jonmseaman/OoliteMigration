@@ -32,6 +32,7 @@
 #include "oofnd/PList.hpp"
 #include "oofnd/String.hpp"
 #import "OOObjCPList.h"
+#import "OOScript.h"
 
 
 // MARK: The classes, as far as the binding sees them ----------------------------------------------
@@ -95,7 +96,7 @@
 	Vector _shaderVector1, _shaderVector2;
 	std::optional<std::vector<oo::ObjCRef<OOVisualEffectEntity *>>> _subs;
 	int _subsAfterSetUp;
-	id _script;
+	OOScript *_script;	// a C++ script since bead oo-9ht.133 deleted its facade (retained)
 	oo::PList _scriptInfo;
 	oo::PList _effectInfo;
 	OOMesh *_mesh;
@@ -133,7 +134,7 @@
 - (Vector) shaderVector2;
 - (void) setShaderVector2:(Vector)value;
 - (std::optional<std::vector<oo::ObjCRef<OOVisualEffectEntity *>>>) visualEffectSubEntityEnumerator;
-- (id) script;
+- (OOScript *) script;
 - (oo::PList) scriptInfo;
 - (oo::PList) effectInfoDictionary;
 - (OOMesh *) mesh;
@@ -175,6 +176,22 @@ std::vector<oo::ObjCRef<Entity *>> OOJSVisualEffectSubEntitiesForScript(OOVisual
 
 
 #include "oo_test.hpp"
+
+
+// OOScript's virtual members (OOScript.mm reaches the whole game), for the test's script (bead
+// oo-9ht.133: the effect's script is C++). It stands in for the OOObject the case gave the effect
+// before, so its node names that class.
+std::optional<std::string> OOScript::descriptionComponents()	{ return std::nullopt; }
+std::optional<std::string> OOScript::name()					{ return std::nullopt; }
+std::optional<std::string> OOScript::scriptDescription()		{ return std::nullopt; }
+std::optional<std::string> OOScript::version()				{ return std::nullopt; }
+bool OOScript::requiresTickle()								{ return false; }
+void OOScript::runWithTarget(::Entity *)						{}
+bool OOScript::callMethod(ooscript::PropertyId, ooscript::Context, ooscript::Value *, int, ooscript::Value *)	{ return false; }
+std::string OOScript::className() const						{ return "OOObject"; }
+std::string OOScript::description() const						{ return "<OOObject>"; }
+ooscript::Value OOScript::jsValueInContext(ooscript::Context)	{ return ooscript::undefinedValue(); }
+void OOScript::clearJSSelf(ooscript::Object)					{}
 
 #include <cstdarg>
 #include <cstdint>
@@ -287,7 +304,7 @@ int sMeshesMade = 0;
 - (Vector) shaderVector2  { return _shaderVector2; }
 - (void) setShaderVector2:(Vector)value  { _shaderVector2 = value; }
 - (std::optional<std::vector<oo::ObjCRef<OOVisualEffectEntity *>>>) visualEffectSubEntityEnumerator  { return _subs; }
-- (id) script  { return _script; }
+- (OOScript *) script  { return _script; }
 - (oo::PList) scriptInfo  { return _scriptInfo; }
 - (oo::PList) effectInfoDictionary  { return _effectInfo; }
 - (OOMesh *) mesh  { return _mesh; }
@@ -408,6 +425,12 @@ ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &p
 	if (id object = oo::ObjectIn(plist))
 	{
 		std::string name = std::string("[") + class_getName(object_getClass(object)) + "]";
+		return ooscript::stringValue(ooscript::newStringCopyN(context, name.data(), name.size()));
+	}
+	// A C++ object node (a script since bead oo-9ht.133), named by its className().
+	if (const oo::PList::Object *node = plist.getIf<oo::PList::Object>())
+	{
+		std::string name = "[" + node->get()->className() + "]";
 		return ooscript::stringValue(ooscript::newStringCopyN(context, name.data(), name.size()));
 	}
 	if (const oo::PList::Array *array = plist.getIf<oo::PList::Array>())
@@ -761,10 +784,10 @@ OO_TEST(properties)
 	OO_CHECK_EVAL("effect.shaderInt1 + ' ' + effect.shaderInt2", "0 -3");
 	OO_CHECK_EVAL("effect.shaderVector1 + ';' + effect.shaderVector2", "1,2,3;0,0,0");
 	OO_CHECK_EVAL("effect.script", "null");
-	sEffect->_script = [[OOObject alloc] init];
+	sEffect->_script = oo::makeRef<OOScript>().leakRef();
 	OO_CHECK_EVAL("effect.script", "[OOObject]");
-	[sEffect->_script release];
-	sEffect->_script = nil;
+	sEffect->_script->release();
+	sEffect->_script = nullptr;
 	OO_CHECK_EVAL("JSON.stringify(effect.scriptInfo)", "{\"note\":\"hello\"}");
 	OO_CHECK_EVAL("Object.keys(VisualEffect.prototype).join()", "beaconCode,beaconLabel,dataKey,isBreakPattern,scaleX,scaleY,scaleZ,scannerDisplayColor1,scannerDisplayColor2,hullHeatLevel,script,scriptInfo,shaderFloat1,shaderFloat2,shaderInt1,shaderInt2,shaderVector1,shaderVector2,subEntities,vectorForward,vectorRight,vectorUp");
 	// Read-only.

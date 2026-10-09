@@ -483,15 +483,15 @@ void OOCharacter::setCharacterScript(const std::string &scriptName)
 {
 	// (the script's "character" is this character, an Object node, as it was self; it reaches
 	// JavaScript as undefined, as the facade did)
-	_script = oo::ObjCRef<::OOScript *>([::OOScript cxx_jsScriptFromFileNamed:scriptName
-																  properties:oo::PList(oo::PList::Dict{ { "character", oo::PList(oo::PList::Object(oo::Ref<oo::PListForeign>(this))) } })]);
+	_script = OOScript::jsScriptFromFileNamed(scriptName,
+											  oo::PList(oo::PList::Dict{ { "character", oo::PList(oo::PList::Object(oo::Ref<oo::PListForeign>(this))) } }));
 }
 
 
 void OOCharacter::doScriptEvent(ooscript::PropertyId message)
 {
 	ooscript::Context context = OOJSAcquireContext();
-	[_script.get() callMethod:message inContext:context withArguments:NULL count:0 result:NULL];
+	if (_script != nullptr)  _script->callMethod(message, context, NULL, 0, NULL);
 	OOJSRelinquishContext(context);
 }
 

@@ -124,7 +124,7 @@ namespace {
 ooscript::Value			sCallbackThis;
 } // namespace
 namespace {
-::OOScript		*sCallbackScript = nil;
+OOJSScript		*sCallbackScript = nullptr;	// retained (was the script's Objective-C object)
 } // namespace
 
 namespace {
@@ -223,7 +223,7 @@ void MissionRunCallback()
 	*/
 	ooscript::Value				cbFunction = ooscript::undefinedValue();
 	ooscript::Object cbThis = NULL;
-	::OOScript			*cbScript = nil;
+	OOJSScript			*cbScript = nullptr;
 	
 	OOJSAddGCValueRoot(context, &cbFunction, "Mission callback function");
 	OOJSAddGCObjectRoot(context, &cbThis, "Mission callback this");
@@ -231,7 +231,7 @@ void MissionRunCallback()
 	cbScript = sCallbackScript;
 	ooscript::valueToObject((context), (sCallbackThis), &cbThis);
 	
-	sCallbackScript = nil;
+	sCallbackScript = nullptr;
 	sCallbackFunction = ooscript::nullValue();
 	sCallbackThis = ooscript::nullValue();
 	
@@ -262,7 +262,7 @@ void MissionRunCallback()
 	OOJSScript::popScript(cbScript);
 	
 	// Manage that memory.
-	[cbScript release];
+	if (cbScript != nullptr)  cbScript->release();
 	ooscript::removeValueRoot((context), (&cbFunction));
 	ooscript::removeObjectRoot((context), &cbThis);
 	
@@ -548,7 +548,8 @@ static bool MissionSetInstructionsInternal(ooscript::Context context, ooscript::
 	}
 	else
 	{
-		missionKey = [OOJSScript::currentlyRunningScript() cxx_name];
+		OOJSScript *runningScript = OOJSScript::currentlyRunningScript();
+		missionKey = (runningScript != nullptr) ? runningScript->name() : std::nullopt;
 	}
 	
 	if (text.has_value())
@@ -680,14 +681,15 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 		 * multi-world-script mission screens. (Though, since no-one has
 		 * complained yet, perhaps I'm the only one who uses them?) */
 
-		sCallbackScript = [[OOJSScript::currentlyRunningScript() weakRefUnderlyingObject] retain];
+		sCallbackScript = OOJSScript::currentlyRunningScript();
+		if (sCallbackScript != nullptr)  sCallbackScript->retain();
 		if (oojsArgs.count() > 2)
 		{
 			sCallbackThis = OOJS_ARGV[2];
 		}
 		else
 		{
-			sCallbackThis = OOJSValueFromNativeObject(context, sCallbackScript);
+			sCallbackThis = OOJSValueFromCxxObject(context, sCallbackScript);
 		}
 	}
 	

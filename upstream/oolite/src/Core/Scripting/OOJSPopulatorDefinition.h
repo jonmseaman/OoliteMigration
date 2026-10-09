@@ -35,9 +35,9 @@ MA 02110-1301, USA.
 #import "OOMaths.h"
 #include "oofnd/Ref.hpp"
 #include "oofnd/PList.hpp"
-#include "oofnd/objc/OOObjCRef.h"
+#include "oofnd/Ref.hpp"
 
-@class OOScript;	// imported by the .mm, so that a test can stand in for it (ADR-0056 amendment oo-fg7i item 5)
+class OOJSScript;	// imported by the .mm, so that a test can stand in for it (ADR-0056 amendment oo-fg7i item 5)
 
 
 class OOJSPopulatorDefinition : public oo::RefCounted
@@ -58,7 +58,7 @@ private:
 
 	ooscript::Value				_callback = {};
 	ooscript::Object _callbackThis = {};
-	oo::ObjCRef<::OOScript *>	_owningScript;	// a weak reference (-weakRetain)
+	oo::WeakRef<OOJSScript>		_owningScript;	// a weak reference (was -weakRetain)
 };
 
 

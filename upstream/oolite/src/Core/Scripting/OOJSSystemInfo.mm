@@ -75,14 +75,13 @@ MA 02110-1301, USA.
 */
 
 
-// The running script's manifest property (-cxx_propertyNamed: of the running OOJSScript, whose facade
-// bead oo-9ht.137 deleted: its C++ part, as the stack holds only JS scripts' objects, or the weak
-// references the timers and definitions push, which forwarded the message to their referent); null
-// for no script, as the message to nil answered.
+// The running script's manifest property (-cxx_propertyNamed: of the running OOJSScript, whose
+// facades beads oo-9ht.137 and oo-9ht.133 deleted); null for no script, or once a script a timer or
+// definition pushed weakly has gone, as the message to nil answered.
 namespace {
 oo::PList RunningScriptManifest()
 {
-	OOJSScript *running = static_cast<OOJSScript *>(oo::ToCxx(static_cast<::OOScript *>([OOJSScript::currentlyRunningScript() weakRefUnderlyingObject])));
+	OOJSScript *running = OOJSScript::currentlyRunningScript();
 	return running != nullptr ? running->propertyNamed(kLocalManifestProperty) : oo::PList();
 }
 }	// namespace

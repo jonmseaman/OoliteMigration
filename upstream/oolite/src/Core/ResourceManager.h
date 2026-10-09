@@ -35,7 +35,7 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOObjCRef.h"
 #include <string_view>
 
-@class OOScript;
+#include "OOScript.h"	// oo::Ref<OOScript> members and results (bead oo-9ht.133)
 class OOSystemDescriptionManager;	// OOSystemDescriptionManager.h (C++ since bead oo-0sr1; global since oo-9ht.32)
 class OOSound;	// C++ since bead oo-9ht.68 deleted its facade
 class OOMusic;
@@ -108,7 +108,7 @@ public:
 	static std::optional<std::string> stringFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName);
 	static std::optional<std::string> stringFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool useCache);
 	// World scripts by name, in the order each name was first loaded.
-	static std::vector<std::pair<std::string, oo::ObjCRef<::OOScript *>>> loadScripts();
+	static std::vector<std::pair<std::string, oo::Ref<OOScript>>> loadScripts();
 	/*	writeDiagnosticData()
 		writeDiagnosticString()
 		writeDiagnosticPList()

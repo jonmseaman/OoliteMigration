@@ -1553,7 +1553,7 @@ oo::PList StationEntity::dockingInstructionsForShip(::ShipEntity *ship)
 													 OOJSValueFromNativeObject(context, ship) };
 				bool tempreject = NO;
 
-				BOOL OK = [[self script] callMethod:OOJSID("willOpenDockingPortFor") inContext:context withArguments:args count:2 result:&rval];
+				BOOL OK = ([self script] != nullptr ? [self script]->callMethod(OOJSID("willOpenDockingPortFor"), context, args, 2, &rval) : false);
 				if (OK)  OK = ooscript::valueToBoolean(context, rval, &tempreject);
 				if (!OK)  tempreject = NO; // default to permreject
 				if (tempreject)
@@ -2478,7 +2478,7 @@ std::optional<std::string> StationEntity::acceptDockingClearanceRequestFrom(::Sh
 														 OOJSValueFromNativeObject(context, other) };
 					bool tempreject = NO;
 
-					BOOL OK = [[self script] callMethod:OOJSID("willOpenDockingPortFor") inContext:context withArguments:args count:2 result:&rval];
+					BOOL OK = ([self script] != nullptr ? [self script]->callMethod(OOJSID("willOpenDockingPortFor"), context, args, 2, &rval) : false);
 					if (OK)  OK = ooscript::valueToBoolean(context, rval, &tempreject);
 					if (!OK)  tempreject = NO; // default to permreject
 					if (tempreject)

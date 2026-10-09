@@ -41,14 +41,14 @@ constexpr const char *kCacheName				= "sanitized legacy scripts";
 } // namespace
 
 
-/*	C++20 since bead oo-q9q4 (proposed ADR-0056), a C++ subclass of cxx::OOScript since bead
+/*	C++20 since bead oo-q9q4 (proposed ADR-0056), a C++ subclass of OOScript since bead
 	oo-9ht.57 deleted its facade (amendment oo-o89 item 3): the class's own factories below make
-	the scripts with oo::makeRef, as [[self alloc] ...] did, and hand back their Objective-C
-	objects (the root's facades). -displayName, which OOScript implements, is the inherited
-	member. The cache manager is C++ and is called directly.
+	the scripts with oo::makeRef, as [[self alloc] ...] did, and hand them back (the root's facades
+	until bead oo-9ht.133). -displayName, which OOScript implements, is the inherited member. The
+	cache manager is C++ and is called directly.
 */
 
-std::optional<std::vector<oo::ObjCRef<::OOScript *>>> OOPListScript::scriptsInPListFile(const std::string &filePath)
+std::optional<std::vector<oo::Ref<OOScript>>> OOPListScript::scriptsInPListFile(const std::string &filePath)
 {
 	cxx::OOCacheManager *cache = cxx::OOCacheManager::sharedCache();
 	const oo::PList cachedScripts = (cache != nullptr) ? cache->pListForKey(filePath, kCacheName) : oo::PList();
@@ -121,9 +121,9 @@ void OOPListScript::runWithTarget(::Entity *target)
 }
 
 
-std::vector<oo::ObjCRef<::OOScript *>> OOPListScript::scriptsFromDictionaryOfScripts(const oo::PList &dictionary, const std::string &filePath)
+std::vector<oo::Ref<OOScript>> OOPListScript::scriptsFromDictionaryOfScripts(const oo::PList &dictionary, const std::string &filePath)
 {
-	std::vector<oo::ObjCRef<::OOScript *>>	result;
+	std::vector<oo::Ref<OOScript>>	result;
 	oo::PList::Dict		cachedScripts;
 	const oo::PList		*metadata = nullptr;
 
@@ -141,10 +141,10 @@ std::vector<oo::ObjCRef<::OOScript *>> OOPListScript::scriptsFromDictionaryOfScr
 			if (sanitized)
 			{
 				// [[OOPListScript alloc] initWithName:scriptArray:metadata:], which could not fail: the
-				// new script's facade (the root's), kept by the result.
+				// new script, kept by the result.
 				const oo::Ref<OOPListScript> script = oo::makeRef<OOPListScript>(key, sanitized, metadata);
 				{
-					result.emplace_back(oo::ToObjC(static_cast<cxx::OOScript *>(script.get())));
+					result.emplace_back(script);
 					// +dictionaryWithObjectsAndKeys: stopped at a nil metadata.
 					oo::PList::Dict cacheEntry;
 					cacheEntry[kKeyScript] = sanitized;
@@ -161,9 +161,9 @@ std::vector<oo::ObjCRef<::OOScript *>> OOPListScript::scriptsFromDictionaryOfScr
 }
 
 
-std::vector<oo::ObjCRef<::OOScript *>> OOPListScript::loadCachedScripts(const oo::PList &cachedScripts)
+std::vector<oo::Ref<OOScript>> OOPListScript::loadCachedScripts(const oo::PList &cachedScripts)
 {
-	std::vector<oo::ObjCRef<::OOScript *>> result;
+	std::vector<oo::Ref<OOScript>> result;
 	result.reserve(cachedScripts.count());
 
 	const oo::PList::Dict *entries = cachedScripts.getIf<oo::PList::Dict>();
@@ -176,7 +176,7 @@ std::vector<oo::ObjCRef<::OOScript *>> OOPListScript::loadCachedScripts(const oo
 		const oo::PList *scriptArray = (cacheValue != nullptr) ? cacheValue->get<oo::PList::Array>(kKeyScript) : nullptr;
 		const oo::PList *metadata = (cacheValue != nullptr) ? cacheValue->get<oo::PList::Dict>(kKeyMetadata) : nullptr;
 		const oo::Ref<OOPListScript> script = oo::makeRef<OOPListScript>(key, (scriptArray != nullptr) ? *scriptArray : oo::PList(), metadata);
-		result.emplace_back(oo::ToObjC(static_cast<cxx::OOScript *>(script.get())));	// the root's facade, as the Objective-C script was
+		result.emplace_back(script);
 	}
 
 	return result;

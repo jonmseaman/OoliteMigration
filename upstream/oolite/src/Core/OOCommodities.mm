@@ -265,20 +265,12 @@ oo::PList OOCommodities::modifyGood(const oo::PList &good, ::OOScript *script, :
 	if (localMode)
 	{
 		errorType = "local";
-		OK = [script callMethod:OOJSID("updateLocalCommodityDefinition")
-					  inContext:context
-				  withArguments:args
-						  count:3
-						 result:&rval];
+		OK = (script != nullptr ? script->callMethod(OOJSID("updateLocalCommodityDefinition"), context, args, 3, &rval) : false);
 	}
 	else
 	{
 		errorType = "general";
-		OK = [script callMethod:OOJSID("updateGeneralCommodityDefinition")
-					  inContext:context
-				  withArguments:args
-						  count:3
-						 result:&rval];
+		OK = (script != nullptr ? script->callMethod(OOJSID("updateGeneralCommodityDefinition"), context, args, 3, &rval) : false);
 	}
 
 	if (!OK)

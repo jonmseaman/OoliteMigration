@@ -41,7 +41,7 @@ MA 02110-1301, USA.
 #include "oofnd/PList.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 
-@class OOScript;
+#include "OOScript.h"	// oo::Ref<OOScript> members and results (bead oo-9ht.133)
 
 
 class OOCharacter : public oo::PListForeign
@@ -105,7 +105,7 @@ private:
 	int					_legalStatus = {};
 	OOCreditsQuantity	_insuranceCredits = {};
 	oo::PList			_scriptActions;	// an array; null: none
-	oo::ObjCRef<::OOScript *>	_script;
+	oo::Ref<OOScript>	_script;
 };
 
 

@@ -437,21 +437,25 @@ ShipEntity *NewShip(const char *name)
 @end
 
 
-// OOJSScript's statics (OOJSScript.h), which the code under test calls since bead oo-9ht.137 deleted
-// the Objective-C OOJSScript: a script's object is the OOScript root's facade (stood in for above).
-class OOJSScript
+#import "OOScript.h"
+
+
+// OOJSScript (OOJSScript.h), which the code under test calls. Since bead oo-9ht.133 deleted the
+// OOScript root's facade (a script's object since bead oo-9ht.137) a script is the C++ object, so
+// the stand-in is a C++ subclass of OOScript declaring the members that code calls.
+class OOJSScript : public OOScript
 {
 public:
-	static ::OOScript *currentlyRunningScript();
-	static void pushScript(::OOScript *script);
-	static void popScript(::OOScript *script);
+	static OOJSScript *currentlyRunningScript();
+	static void pushScript(const oo::WeakRef<OOJSScript> &script);
+	static void popScript(OOJSScript *script);
 };
 
-::OOScript *OOJSScript::currentlyRunningScript()  { return nil; }
+OOJSScript *OOJSScript::currentlyRunningScript()  { return nullptr; }
 // The interface definition linked here pushes its owner when its callback runs, which no case does
 // (the class methods were never sent; as C++ statics they must be defined).
-void OOJSScript::pushScript(::OOScript *)  { std::abort(); }
-void OOJSScript::popScript(::OOScript *)  { std::abort(); }
+void OOJSScript::pushScript(const oo::WeakRef<OOJSScript> &)  { std::abort(); }
+void OOJSScript::popScript(OOJSScript *)  { std::abort(); }
 
 
 // MARK: What the rest of the game provides --------------------------------------------------------
@@ -479,10 +483,8 @@ std::string cxx_OOLookUpDescriptionPRIV(const std::string &key)
 @implementation OOCacheManager
 @end
 
-@interface OOScript: OOObject
-@end
-@implementation OOScript
-@end
+oo::Ref<OOScript> OOScript::jsScriptFromFileNamed(const std::string &, const oo::PList &)  { std::abort(); }
+void OOScriptAutorelease(oo::Ref<OOScript>)  { std::abort(); }
 
 void cxx_OOStandardsDeprecated(const std::string &)  { std::abort(); }
 extern "C" BOOL OOEnforceStandards(void)  { std::abort(); }

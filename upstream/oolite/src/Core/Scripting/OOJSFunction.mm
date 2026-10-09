@@ -182,11 +182,11 @@ bool OOJSFunction::evaluateWithContext(ooscript::Context context,
 									   ooscript::Value *argv,
 									   ooscript::Value *result)
 {
-	OOJSScript::pushScript(nil);
+	OOJSScript::pushScript(nullptr);
 	OOJSStartTimeLimiter();
 	bool OK = ooscript::callFunction(context, jsThis, _function, argc, argv, result);
 	OOJSStopTimeLimiter();
-	OOJSScript::popScript(nil);
+	OOJSScript::popScript(nullptr);
 
 	return OK;
 }

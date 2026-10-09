@@ -36,7 +36,7 @@ MA 02110-1301, USA.
 #include "oofnd/PList.hpp"
 
 
-@class OOScript;
+class OOScript;
 
 
 typedef enum

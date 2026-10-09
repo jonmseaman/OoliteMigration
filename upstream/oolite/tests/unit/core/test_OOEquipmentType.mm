@@ -132,18 +132,30 @@ Universe *gSharedUniverse = nil;
 @end
 
 
-// Only good.js loads.
-@interface OOScript: OOObject
-+ (id) cxx_jsScriptFromFileNamed:(const std::string &)fileName properties:(const oo::PList &)properties;
-@end
+#import "OOScript.h"
 
-@implementation OOScript
-+ (id) cxx_jsScriptFromFileNamed:(const std::string &)fileName properties:(const oo::PList &)properties
+
+// OOScript's members that OOEquipmentType.mm calls (the Objective-C OOScript stand-in until bead
+// oo-9ht.133 deleted the facade), and the rest of its virtual members, for the vtable.
+std::optional<std::string> OOScript::descriptionComponents()	{ return std::nullopt; }
+std::optional<std::string> OOScript::name()					{ return std::nullopt; }
+std::optional<std::string> OOScript::scriptDescription()		{ return std::nullopt; }
+std::optional<std::string> OOScript::version()				{ return std::nullopt; }
+bool OOScript::requiresTickle()								{ return false; }
+void OOScript::runWithTarget(::Entity *)						{}
+bool OOScript::callMethod(ooscript::PropertyId, ooscript::Context, ooscript::Value *, int, ooscript::Value *)	{ return false; }
+std::string OOScript::className() const						{ return "OOScript"; }
+std::string OOScript::description() const						{ return "<OOScript>"; }
+ooscript::Value OOScript::jsValueInContext(ooscript::Context)	{ std::abort(); }	// never reached (no engine is linked)
+void OOScript::clearJSSelf(ooscript::Object)					{}
+void OOScriptAutorelease(oo::Ref<OOScript>)					{}
+
+// Only good.js loads.
+oo::Ref<OOScript> OOScript::jsScriptFromFileNamed(const std::string &fileName, const oo::PList &)
 {
 	gLog.push_back("script " + fileName);
-	return (fileName == "good.js") ? [[[OOScript alloc] init] autorelease] : nil;
+	return (fileName == "good.js") ? oo::makeRef<OOScript>() : nullptr;
 }
-@end
 
 
 // Keys come back as given; "taken" is in use by "compass"; mission_TL_FOR_EQ_SHIELD_BOOSTER is 7.

@@ -30,7 +30,6 @@ MA 02110-1301, USA.
 
 #import "OOJavaScriptEngine.h"
 #import "ResourceManager.h"
-#import "OOScript.h"
 #import "OOWeakReference.h"
 #import "OOVector.h"
 #import "OOPlanetEntity.h"
@@ -323,12 +322,6 @@ oo::PList OOJavaScriptEngineDictionaryFromFilesNamed(const std::string &fileName
 id OOJavaScriptEngineWeakRefUnderlyingObject(id object)
 {
 	return [object weakRefUnderlyingObject];
-}
-
-
-std::optional<std::string> OOJavaScriptEngineDisplayName(id script)
-{
-	return [script displayName];
 }
 
 

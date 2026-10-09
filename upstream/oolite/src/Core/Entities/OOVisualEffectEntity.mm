@@ -201,7 +201,7 @@ OOVisualEffectEntity::~OOVisualEffectEntity()
 	clearSubEntities();
 	scanner_display_color1 = nullptr;
 	scanner_display_color2 = nullptr;
-	DESTROY(_script);
+	_script = nullptr;
 	_beaconDrawable = nullptr;
 }
 
@@ -809,19 +809,18 @@ void OOVisualEffectEntity::setScript(const std::optional<std::string> &script_na
 	propertyList["visualEffect"] = oo::PListObject(oo::ToObjC(this));
 	const oo::PList properties(std::move(propertyList));
 
-	[_script autorelease];
-	_script = cxx::OOScript::jsScriptFromFileNamed(script_name.value_or(std::string()), properties);
+	OOScriptAutorelease(std::move(_script));	// [_script autorelease]
+	_script = OOScript::jsScriptFromFileNamed(script_name.value_or(std::string()), properties);
 	// does not support legacy scripting
-	if (_script == nil) {
-		_script = cxx::OOScript::jsScriptFromFileNamed("oolite-default-effect-script.js", properties);
+	if (_script == nullptr) {
+		_script = OOScript::jsScriptFromFileNamed("oolite-default-effect-script.js", properties);
 	}
-	[_script retain];
 }
 
 
 ::OOScript *OOVisualEffectEntity::script()
 {
-	return _script;
+	return _script.get();
 }
 
 
@@ -834,7 +833,7 @@ oo::PList OOVisualEffectEntity::scriptInfo()
 void OOVisualEffectEntity::doScriptEvent(ooscript::PropertyId message)
 {
 	ooscript::Context context = OOJSAcquireContext();
-	[_script callMethod:message inContext:context withArguments:NULL count:0 result:NULL];
+	if (_script != nullptr)  _script->callMethod(message, context, NULL, 0, NULL);
 	OOJSRelinquishContext(context);
 }
 

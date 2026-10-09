@@ -130,14 +130,6 @@ typedef NSInteger OOGUIRow;	// as GuiDisplayGen.h declares it
 @end
 
 
-@interface OOScript: OOObject
-{
-@public
-	std::optional<std::string> _name;
-}
-- (std::optional<std::string>) cxx_name;
-- (id) weakRefUnderlyingObject;
-@end
 
 
 /*	The engine calls the mission screen's callback. While _raise is set it raises instead, as a
@@ -171,12 +163,14 @@ typedef NSInteger OOGUIRow;	// as GuiDisplayGen.h declares it
 #include <vector>
 
 
+class OOJSScript;
+
 namespace {
 
 std::vector<std::string> sMusic;			// what the music controller was told
 std::vector<std::string> sScriptStack;		// pushScript:/popScript:, as "+name"/"-name"
 std::vector<std::string> sLog;
-OOScript *sRunningScript = nil;
+OOJSScript *sRunningScript = nullptr;
 ooscript::Context sContext;
 
 
@@ -383,27 +377,40 @@ void GuiDisplayGen::setArray(const std::vector<std::string> &, OOGUIRow)  { std:
 @end
 
 
-@implementation OOScript
-
-- (std::optional<std::string>) cxx_name  { return _name; }
-- (id) weakRefUnderlyingObject  { return self; }
-
-@end
+#import "OOScript.h"
 
 
-// OOJSScript's statics (OOJSScript.h), which the code under test calls since bead oo-9ht.137 deleted
-// the Objective-C OOJSScript: a script's object is the OOScript root's facade (stood in for above).
-class OOJSScript
+// OOJSScript (OOJSScript.h), which the code under test calls. Since bead oo-9ht.133 deleted the
+// OOScript root's facade (a script's object since bead oo-9ht.137) a script is the C++ object, so
+// the stand-in is a C++ subclass of OOScript declaring the members that code calls.
+class OOJSScript : public OOScript
 {
 public:
-	static ::OOScript *currentlyRunningScript();
-	static void pushScript(::OOScript *script);
-	static void popScript(::OOScript *script);
+	static OOJSScript *currentlyRunningScript();
+	static void pushScript(OOJSScript *script);
+	static void popScript(OOJSScript *script);
+
+	std::optional<std::string> name() override  { return _name; }
+
+	std::optional<std::string> _name;
 };
 
-::OOScript *OOJSScript::currentlyRunningScript()  { return sRunningScript; }
-void OOJSScript::pushScript(::OOScript *script)  { sScriptStack.push_back("+" + (script != nil ? script->_name.value_or("?") : std::string("nil"))); }
-void OOJSScript::popScript(::OOScript *script)  { sScriptStack.push_back("-" + (script != nil ? script->_name.value_or("?") : std::string("nil"))); }
+// OOScript's virtual members (OOScript.mm reaches the whole game), for the test's scripts' vtable.
+std::optional<std::string> OOScript::descriptionComponents()	{ return std::nullopt; }
+std::optional<std::string> OOScript::name()					{ return std::nullopt; }
+std::optional<std::string> OOScript::scriptDescription()		{ return std::nullopt; }
+std::optional<std::string> OOScript::version()				{ return std::nullopt; }
+bool OOScript::requiresTickle()								{ return false; }
+void OOScript::runWithTarget(::Entity *)						{}
+bool OOScript::callMethod(ooscript::PropertyId, ooscript::Context, ooscript::Value *, int, ooscript::Value *)	{ return false; }
+std::string OOScript::className() const						{ return "OOScript"; }
+std::string OOScript::description() const						{ return "<OOScript>"; }
+ooscript::Value OOScript::jsValueInContext(ooscript::Context)	{ return ooscript::undefinedValue(); }
+void OOScript::clearJSSelf(ooscript::Object)					{}
+
+OOJSScript *OOJSScript::currentlyRunningScript()  { return sRunningScript; }
+void OOJSScript::pushScript(OOJSScript *script)  { sScriptStack.push_back("+" + (script != nullptr ? script->_name.value_or("?") : std::string("nil"))); }
+void OOJSScript::popScript(OOJSScript *script)  { sScriptStack.push_back("-" + (script != nullptr ? script->_name.value_or("?") : std::string("nil"))); }
 
 
 namespace {
@@ -660,10 +667,11 @@ bool JSValueToVector(ooscript::Context context, ooscript::Value value, Vector *o
 }
 
 
-// What the engine makes of a native object: the running script's JS object here.
+// What the engine makes of a native object: the running script's JS object here (a C++ object's
+// since bead oo-9ht.133: OOJSValueFromCxxObject, OOJSPrivateObject.cpp).
 ooscript::Value OOJSValueFromNativeObject(ooscript::Context, id object)
 {
-	if (object != nil && object == sRunningScript)  return ooscript::objectValue(sScriptObject);
+	(void)object;
 	return ooscript::nullValue();
 }
 
@@ -708,6 +716,14 @@ void OOJSUnreachable(const char *function, const char *, unsigned)
 }	// extern "C"
 
 
+// (a C++ function, outside the C block above)
+ooscript::Value OOJSValueFromCxxObject(ooscript::Context, OOJSPrivateObject *object)
+{
+	if (object != nullptr && object == static_cast<OOJSPrivateObject *>(sRunningScript))  return ooscript::objectValue(sScriptObject);
+	return ooscript::nullValue();
+}
+
+
 // MARK: The context -------------------------------------------------------------------------------
 
 namespace {
@@ -742,7 +758,7 @@ void SetUpContext()
 	sUniverse->_demoShip = [[ShipEntity alloc] init];
 	gSharedUniverse = sUniverse;
 	sEngine = [[OOJavaScriptEngine alloc] init];
-	sRunningScript = [[OOScript alloc] init];
+	sRunningScript = oo::makeRef<OOJSScript>().leakRef();
 	sRunningScript->_name = "oolite-test-mission";
 	sScriptObject = ooscript::newObject(sContext, nullptr, nullptr, nullptr);
 	ooscript::addNamedObjectRoot(sContext, &sScriptObject, "script");
@@ -876,8 +892,8 @@ OO_TEST(messageAndInstructions)
 	OO_CHECK_EVAL("mission.setInstructionsKey(undefined)", "threw: bad arguments: Mission.setInstructionsKey(1) - / string or null");
 
 	// No running script and no key: the player is told with no key (and logs it).
-	OOScript *running = sRunningScript;
-	sRunningScript = nil;
+	OOJSScript *running = sRunningScript;
+	sRunningScript = nullptr;
 	OO_CHECK_EVAL("mission.setInstructions(null)", "undefined");
 	OO_CHECK_CALLS(sPlayer->_calls, "instructions('', nullopt)");
 	sRunningScript = running;

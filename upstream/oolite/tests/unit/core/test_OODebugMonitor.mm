@@ -190,54 +190,53 @@ const char * const kOOJavaScriptEngineDidResetNotificationName = "org.aegidian.o
 @end
 
 
+
+
+#import "OOScript.h"
+
+
+// OOJSScript (OOJSScript.h), which the code under test calls. Since bead oo-9ht.133 deleted the
+// OOScript root's facade (a script's object since bead oo-9ht.137) a script is the C++ object, so
+// the stand-in is a C++ subclass of OOScript declaring the members that code calls.
 // The console script: made from its path with the console as a property; runs commands.
-@interface OOScript: OOWeakRefObject
-- (BOOL) callMethod:(ooscript::PropertyId)methodID
-		  inContext:(ooscript::Context)context
-	  withArguments:(ooscript::Value *)argv count:(int)argc
-			 result:(ooscript::Value *)outResult;
-- (std::optional<std::string>) displayName;
-@end
-
-@implementation OOScript
-
-- (BOOL) callMethod:(ooscript::PropertyId)methodID
-		  inContext:(ooscript::Context)context
-	  withArguments:(ooscript::Value *)argv count:(int)argc
-			 result:(ooscript::Value *)outResult
-{
-	(void)methodID; (void)context; (void)argv; (void)outResult;
-	if (argc == 1)  sConsoleCommands++;
-	return YES;
-}
-
-- (std::optional<std::string>) displayName
-{
-	return "test script";
-}
-
-@end
-
-
-// OOJSScript's statics (OOJSScript.h), which the code under test calls since bead oo-9ht.137 deleted
-// the Objective-C OOJSScript: a script's object is the OOScript root's facade (stood in for above).
-class OOJSScript
+class OOJSScript : public OOScript
 {
 public:
-	static ::OOScript *scriptWithPath(const std::optional<std::string> &path, const oo::PList &properties);
-	static ::OOScript *currentlyRunningScript();
+	static oo::Ref<OOJSScript> scriptWithPath(const std::optional<std::string> &path, const oo::PList &properties);
+	static OOJSScript *currentlyRunningScript();
+
+	bool callMethod(ooscript::PropertyId methodID, ooscript::Context context, ooscript::Value *argv, int argc, ooscript::Value *outResult) override
+	{
+		(void)methodID; (void)context; (void)argv; (void)outResult;
+		if (argc == 1)  sConsoleCommands++;
+		return true;
+	}
 };
 
-::OOScript *OOJSScript::scriptWithPath(const std::optional<std::string> &path, const oo::PList &properties)
+// OOScript's virtual members (OOScript.mm reaches the whole game), for the test's scripts' vtable.
+std::optional<std::string> OOScript::descriptionComponents()	{ return std::nullopt; }
+std::optional<std::string> OOScript::name()					{ return std::nullopt; }
+std::optional<std::string> OOScript::scriptDescription()		{ return std::nullopt; }
+std::optional<std::string> OOScript::version()				{ return std::nullopt; }
+bool OOScript::requiresTickle()								{ return false; }
+void OOScript::runWithTarget(::Entity *)						{}
+bool OOScript::callMethod(ooscript::PropertyId, ooscript::Context, ooscript::Value *, int, ooscript::Value *)	{ return false; }
+std::string OOScript::className() const						{ return "OOScript"; }
+std::string OOScript::description() const						{ return "<OOScript>"; }
+ooscript::Value OOScript::jsValueInContext(ooscript::Context)	{ return ooscript::undefinedValue(); }
+void OOScript::clearJSSelf(ooscript::Object)					{}
+std::optional<std::string> OOScript::displayName()			{ return "test script"; }
+
+oo::Ref<OOJSScript> OOJSScript::scriptWithPath(const std::optional<std::string> &path, const oo::PList &properties)
 {
 	(void)path;
 	sConsoleScriptsMade++;
 	sConsoleScriptProperties = properties;
-	return [[[OOScript alloc] init] autorelease];
+	return oo::makeRef<OOJSScript>();
 }
-::OOScript *OOJSScript::currentlyRunningScript()
+OOJSScript *OOJSScript::currentlyRunningScript()
 {
-	return nil;
+	return nullptr;
 }
 
 

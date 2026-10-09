@@ -409,15 +409,15 @@ static BOOL sRunningScript = NO;
 
 
 // Return the world scripts that care about -checkScript, by name, in the world scripts' (load) order.
-std::vector<std::pair<std::string, oo::ObjCRef<::OOScript *>>> cxx::PlayerEntity::getWorldScriptsRequiringTickle()
+std::vector<std::pair<std::string, oo::Ref<OOScript>>> cxx::PlayerEntity::getWorldScriptsRequiringTickle()
 {
 	// The cache ivar is PlayerEntity.h's; it is built once per script load.
 	if (worldScriptsRequiringTickle.has_value())  return *worldScriptsRequiringTickle;
 
-	std::vector<std::pair<std::string, oo::ObjCRef<::OOScript *>>> tickleScripts;
+	std::vector<std::pair<std::string, oo::Ref<OOScript>>> tickleScripts;
 	for (const auto &entry : worldScripts)
 	{
-		if ([entry.second.get() requiresTickle])
+		if (entry.second != nullptr && entry.second->requiresTickle())
 		{
 			tickleScripts.push_back(entry);
 		}
@@ -434,7 +434,7 @@ void cxx::PlayerEntity::checkScript()
 	BOOL						wasRunningScript = sRunningScript;
 	OOEntityStatus				status, restoreStatus;
 	
-	const std::vector<std::pair<std::string, oo::ObjCRef<::OOScript *>>> tickleScripts = [self worldScriptsRequiringTickle];
+	const std::vector<std::pair<std::string, oo::Ref<OOScript>>> tickleScripts = [self worldScriptsRequiringTickle];
 	if (tickleScripts.empty())
 	{
 		// Quick exit if we only have JS scripts.
@@ -478,7 +478,7 @@ void cxx::PlayerEntity::checkScript()
 		// load order (was script-name byte order, and before that the hash order of -allValues).
 		for (const auto &entry : tickleScripts)
 		{
-			[entry.second.get() runWithTarget:self];
+			if (entry.second != nullptr)  entry.second->runWithTarget(self);
 		}
 	}
 	@catch (::OOException *exception)
@@ -3024,12 +3024,12 @@ bool cxx::PlayerEntity::addEqScriptForKey(const std::string &eq_key)
 	oo::PList::Dict properties;
 	properties["ship"] = oo::PListObject(self);
 	properties["equipmentKey"] = oo::PList(eq_key);
-	::OOScript *s = [::OOScript cxx_jsScriptFromFileNamed:*scriptName properties:oo::PList(std::move(properties))];
-	if (s == nil) return NO;
+	oo::Ref<OOScript> s = OOScript::jsScriptFromFileNamed(*scriptName, oo::PList(std::move(properties)));
+	if (s == nullptr) return NO;
 
-	OO_LOG("player.equipmentScript", "Script '{}': installation {}successful.", *scriptName, (s == nil ? "un" : ""));
+	OO_LOG("player.equipmentScript", "Script '{}': installation {}successful.", *scriptName, (s == nullptr ? "un" : ""));
 
-	eqScripts.emplace_back(eq_key, oo::ObjCRef<::OOScript *>(static_cast<::OOScript *>(s)));
+	eqScripts.emplace_back(eq_key, std::move(s));
 	if (primedEquipment == eqScripts.size() - 1) primedEquipment++;	// if primed-none, keep it as primed-none.
 	OO_LOG("player.equipmentScript", "Scriptable equipment available: {}.", eqScripts.size());
 	return YES;

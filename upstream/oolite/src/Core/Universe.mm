@@ -4342,10 +4342,7 @@ bool Universe::canInstantiateShip(const std::string &shipKey)
 			ooscript::Value result;
 			ooscript::Value args[] = { OOJSValueFromPList(context, oo::PList(shipKey)) };
 			
-			OK = [condScript callMethod:OOJSID("allowSpawnShip")
-						  inContext:context
-					  withArguments:args count:sizeof args / sizeof *args
-							 result:&result];
+			OK = (condScript != nullptr ? condScript->callMethod(OOJSID("allowSpawnShip"), context, args, sizeof args / sizeof *args, &result) : false);
 
 			if (OK) OK = ooscript::valueToBoolean(context, result, &allow_instantiation);
 			
@@ -9634,10 +9631,7 @@ oo::PList Universe::shipsForSaleForSystem(OOSystemID s, OOTechLevelID specialTL,
 					ooscript::Value result;
 					ooscript::Value args[] = { OOJSValueFromPList(context, oo::PList(key)) };
 
-					OK = [condScript callMethod:OOJSID("allowOfferShip")
-												inContext:context
-										withArguments:args count:sizeof args / sizeof *args
-													 result:&result];
+					OK = (condScript != nullptr ? condScript->callMethod(OOJSID("allowOfferShip"), context, args, sizeof args / sizeof *args, &result) : false);
 
 					if (OK) OK = ooscript::valueToBoolean(context, result, &allow_purchase);
 
@@ -9793,10 +9787,7 @@ oo::PList Universe::shipsForSaleForSystem(OOSystemID s, OOTechLevelID specialTL,
 							ooscript::Value result;
 							ooscript::Value args[] = { OOJSValueFromPList(JScontext, oo::PList(*equipmentKey)) , OOJSValueFromNativeObject(JScontext, testship) , OOJSValueFromPList(JScontext, oo::PList("newShip"))};
 
-							OK = [condScript callMethod:OOJSID("allowAwardEquipment")
-																inContext:JScontext
-														withArguments:args count:sizeof args / sizeof *args
-																	 result:&result];
+							OK = (condScript != nullptr ? condScript->callMethod(OOJSID("allowAwardEquipment"), JScontext, args, sizeof args / sizeof *args, &result) : false);
 
 							if (OK) OK = ooscript::valueToBoolean(JScontext, result, &allow_addition);
 
@@ -11559,10 +11550,10 @@ void Universe::addConditionScripts(const std::vector<std::string> &scripts)
 	{
 		if (!conditionScripts.contains(scriptname))
 		{
-			::OOScript *script = [::OOScript cxx_jsScriptFromFileNamed:scriptname properties:oo::PList()];
-			if (script != nil)
+			oo::Ref<OOScript> script = OOScript::jsScriptFromFileNamed(scriptname, oo::PList());
+			if (script != nullptr)
 			{
-				conditionScripts[scriptname] = oo::ObjCRef<::OOScript *>(script);
+				conditionScripts[scriptname] = std::move(script);
 			}
 		}
 	}
@@ -11572,7 +11563,7 @@ void Universe::addConditionScripts(const std::vector<std::string> &scripts)
 ::OOScript *Universe::getConditionScript(const std::string &scriptname)
 {
 	const auto found = conditionScripts.find(scriptname);
-	return (found != conditionScripts.end()) ? found->second.get() : nil;
+	return (found != conditionScripts.end()) ? found->second.get() : nullptr;
 }
 
 }	// namespace cxx

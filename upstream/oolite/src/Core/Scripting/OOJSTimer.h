@@ -41,7 +41,7 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOObjCRef.h"
 #include "OOJSPrivateObject.h"
 
-@class OOScript;
+class OOJSScript;
 
 
 namespace cxx {
@@ -76,7 +76,7 @@ private:
 	ooscript::Value				_function = {};
 	ooscript::Object _jsThis = {};	// The object that is 'this' in the function call.
 
-	oo::ObjCRef<::OOScript *>	_owningScript;	// a weak reference (-weakRetain)
+	oo::WeakRef<OOJSScript>		_owningScript;	// a weak reference (was -weakRetain)
 
 	ooscript::Object _jsSelf = {};	// The JS Timer object proxy for this OOJSTimer.
 };
