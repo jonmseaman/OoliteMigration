@@ -140,15 +140,22 @@ oo::PList CachedPList(const std::string &key, const std::string &cache)
 
 
 // The OOCacheManager (Octree) category: free functions on the C++ octree since bead oo-dnbf.
-Octree *OctreeForModel(const std::string &key)
+oo::Ref<Octree> OctreeForModel(const std::string &key)
 {
-	return oo::ToObjC(OOCacheManagerOctreeForModel(key));
+	return OOCacheManagerOctreeForModel(key);
+}
+
+
+// The mesh's octree (it was -octree, until the Objective-C Octree was retired).
+Octree *MeshOctree(OOMesh *mesh)
+{
+	return oo::ToCxx(mesh)->getOctree().get();
 }
 
 
 void SetOctreeForModel(Octree *octree, const std::string &key)
 {
-	OOCacheManagerSetOctree(oo::ToCxx(octree), key);
+	OOCacheManagerSetOctree(octree, key);
 }
 
 
@@ -238,7 +245,7 @@ OO_TEST(scaleAndMissingModel)
 		OO_CHECK(SameVector([mesh boundingBox].max, make_vector(20, 20, 20)));
 		// Not cache-writeable: neither the mesh data nor its octree is cached.
 		OO_CHECK(!CachedPList("tetra3.dat:0:2.000", "OOMesh"));
-		OO_CHECK([mesh octree] != nil);
+		OO_CHECK(MeshOctree(mesh) != nullptr);
 		OO_CHECK(!CachedPList("tetra3.dat-2.000", "octrees"));
 
 		OO_CHECK(Mesh("no such model.dat") == nil);
@@ -262,22 +269,22 @@ OO_TEST(caches)
 		OO_CHECK_EQ(meshData.get<unsigned int>("face count"), 4u);
 
 		// The octree is made once, and cached under name-scale.
-		Octree *octree = [mesh octree];
-		OO_CHECK(octree != nil);
-		OO_CHECK([mesh octree] == octree);
+		Octree *octree = MeshOctree(mesh);
+		OO_CHECK(octree != nullptr);
+		OO_CHECK(MeshOctree(mesh) == octree);
 		const oo::PList octreeData = CachedPList("tetra.dat-1.000", "octrees");
 		OO_CHECK(octreeData.isDict());
-		OO_CHECK(octreeData == [octree cxx_dictionaryRepresentation]);
+		OO_CHECK(octreeData == octree->dictionaryRepresentation());
 
 		// The OOCacheManager (Octree) category.
-		Octree *cached = OctreeForModel("tetra.dat-1.000");
-		OO_CHECK(cached != nil);
-		OO_CHECK(cached != octree);
-		OO_CHECK([cached cxx_dictionaryRepresentation] == octreeData);
-		OO_CHECK(OctreeForModel("no such model-1.000") == nil);
+		oo::Ref<Octree> cached = OctreeForModel("tetra.dat-1.000");
+		OO_CHECK(cached.get() != nullptr);
+		OO_CHECK(cached.get() != octree);
+		OO_CHECK(cached->dictionaryRepresentation() == octreeData);
+		OO_CHECK(OctreeForModel("no such model-1.000").get() == nullptr);
 		SetOctreeForModel(octree, "copied-1.000");
 		OO_CHECK(CachedPList("copied-1.000", "octrees") == octreeData);
-		SetOctreeForModel(nil, "nil-1.000");	// does nothing
+		SetOctreeForModel(nullptr, "nil-1.000");	// does nothing
 		OO_CHECK(!CachedPList("nil-1.000", "octrees"));
 	}
 }
@@ -326,7 +333,7 @@ OO_TEST(copies)
 		OO_CHECK_EQ([mutableCopy vertexCount], 4u);
 		OO_CHECK_EQ([mutableCopy faceCount], 4u);
 		OO_CHECK(Near([mutableCopy collisionRadius], 10.0));
-		OO_CHECK([mutableCopy octree] != nil);
+		OO_CHECK(MeshOctree(mutableCopy) != nullptr);
 		[mutableCopy release];
 
 		// The subentity bounding box: the vertices moved by the position and rotated.
@@ -407,7 +414,7 @@ OO_TEST(laterSlices)
 		const BoundingBox flipped = [normals findBoundingBoxRelativeToPosition:make_vector(5, 0, 0) basis:make_vector(-1, 0, 0) :j :k selfPosition:make_vector(0, 0, 0) selfBasis:i :j :k];
 		OO_CHECK(SameVector(flipped.min, make_vector(-5, 0, 0)));
 		OO_CHECK(SameVector(flipped.max, make_vector(5, 10, 10)));
-		OO_CHECK([normals octree] != nil);
+		OO_CHECK(MeshOctree(normals) != nullptr);
 
 		// Rendering (slice 4): rebinding the materials keeps the placeholder.
 		[normals rebindMaterials];
@@ -489,10 +496,10 @@ OO_TEST(geometryMembers)
 		OO_CHECK(cxxMesh != nullptr);
 		if (cxxMesh == nullptr)  return;
 
-		const oo::Ref<cxx::Octree> octree = cxxMesh->getOctree();
+		const oo::Ref<Octree> octree = cxxMesh->getOctree();
 		OO_CHECK(octree.get() != nullptr);
 		OO_CHECK(cxxMesh->getOctree().get() == octree.get());	// made once
-		OO_CHECK(oo::ToCxx([mesh octree]) == octree.get());
+		OO_CHECK(MeshOctree(mesh) == octree.get());
 
 		OO_CHECK(SameVector(cxxMesh->boundingBox().max, make_vector(10, 10, 10)));
 		const Vector i = make_vector(1, 0, 0), j = make_vector(0, 1, 0), k = make_vector(0, 0, 1);

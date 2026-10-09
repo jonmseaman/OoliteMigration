@@ -66,7 +66,7 @@ public:
 
 	void addTriangle(Triangle tri);
 
-	oo::Ref<cxx::Octree> findOctreeToDepth(NSUInteger depth);
+	oo::Ref<Octree> findOctreeToDepth(NSUInteger depth);
 
 	// What "%@" prints between the braces of <OOMeshToOctreeConverter 0x...>{...} (OODescription.h).
 	std::optional<std::string> descriptionComponents() const;

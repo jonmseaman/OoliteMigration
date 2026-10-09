@@ -769,7 +769,7 @@ bool ShipEntity::setUpFromDictionary(const oo::PList &inShipDict)
 	}
 	
 	float density = shipDict.get<float>("density", 1.0f);
-	if (octree)  mass = (GLfloat)(density * 20.0f * [octree volume]);
+	if (octree)  mass = (GLfloat)(density * 20.0f * octree->volume());
 	
 	DESTROY(default_laser_color);
 	default_laser_color = [[::OOColor cxx_brightColorWithDescription:ValueForKey(shipDict, "laser_color")] retain];
@@ -1453,7 +1453,7 @@ void ShipEntity::clearSubEntities()
 	collision_radius = [self findCollisionRadius];
 	_profileRadius = collision_radius;
 	float density = shipinfoDictionary.get<float>("density", 1.0f);
-	if (octree)  mass = (GLfloat)(density * 20.0f * [octree volume]);
+	if (octree)  mass = (GLfloat)(density * 20.0f * octree->volume());
 }
 
 
@@ -1533,8 +1533,7 @@ void ShipEntity::setMesh(::OOMesh *mesh)
 	if (mesh != [self mesh])
 	{
 		[self setDrawable:mesh];
-		[octree autorelease];
-		octree = [[mesh octree] retain];
+		octree = mesh ? oo::ToCxx(mesh)->getOctree() : oo::Ref<Octree>();
 	}
 }
 
@@ -1752,15 +1751,15 @@ BoundingBox ShipEntity::findBoundingBoxRelativeToPosition(HPVector opv, Vector _
 }
 
 
-::Octree *ShipEntity::getOctree()
+Octree *ShipEntity::getOctree()
 {
-	return octree;
+	return octree.get();
 }
 
 
 float ShipEntity::volume()
 {
-	return [octree volume];
+	return octree ? octree->volume() : 0.0f;
 }
 
 
@@ -1770,7 +1769,7 @@ GLfloat ShipEntity::doesHitLine(HPVector v0, HPVector v1)
 	Vector u1 = HPVectorToVector(HPvector_between(position, v1));
 	Vector w0 = make_vector(dot_product(u0, v_right), dot_product(u0, v_up), dot_product(u0, v_forward));	// in ijk vectors
 	Vector w1 = make_vector(dot_product(u1, v_right), dot_product(u1, v_up), dot_product(u1, v_forward));
-	return [octree isHitByLine:w0 :w1];
+	return octree ? octree->isHitByLine(w0, w1) : 0.0f;
 }
 
 
@@ -1783,7 +1782,7 @@ GLfloat ShipEntity::doesHitLine(HPVector v0, HPVector v1, ::ShipEntity **hitEnti
 	Vector u1 = HPVectorToVector(HPvector_between(position, v1));
 	Vector w0 = make_vector(dot_product(u0, v_right), dot_product(u0, v_up), dot_product(u0, v_forward));	// in ijk vectors
 	Vector w1 = make_vector(dot_product(u1, v_right), dot_product(u1, v_up), dot_product(u1, v_forward));
-	GLfloat hit_distance = [octree isHitByLine:w0 :w1];
+	GLfloat hit_distance = octree ? octree->isHitByLine(w0, w1) : 0.0f;
 	if (hit_distance)
 	{
 		if (hitEntity)
@@ -1800,7 +1799,7 @@ GLfloat ShipEntity::doesHitLine(HPVector v0, HPVector v1, ::ShipEntity **hitEnti
 		w0 = resolveVectorInIJK(u0, ijk);
 		w1 = resolveVectorInIJK(u1, ijk);
 		
-		GLfloat hitSub = [se->_cxxShip->octree isHitByLine:w0 :w1];
+		GLfloat hitSub = (se->_cxxShip->octree ? se->_cxxShip->octree->isHitByLine(w0, w1) : 0.0f);
 		if (hitSub && (hit_distance == 0 || hit_distance > hitSub))
 		{	
 			hit_distance = hitSub;
@@ -1821,7 +1820,7 @@ GLfloat ShipEntity::doesHitLine(HPVector v0, HPVector v1, HPVector o, Vector i, 
 	Vector u1 = HPVectorToVector(HPvector_between(o, v1));
 	Vector w0 = make_vector(dot_product(u0, i), dot_product(u0, j), dot_product(u0, k));	// in ijk vectors
 	Vector w1 = make_vector(dot_product(u1, j), dot_product(u1, j), dot_product(u1, k));
-	return [octree isHitByLine:w0 :w1];
+	return octree ? octree->isHitByLine(w0, w1) : 0.0f;
 }
 
 
@@ -2217,8 +2216,8 @@ void ShipEntity::setUpMixedEscorts()
 ::ShipEntity *doOctreesCollide(::ShipEntity *prime, ::ShipEntity *other)
 {
 	// octree check
-	::Octree		*prime_octree = prime->_cxxShip->octree;
-	::Octree		*other_octree = other->_cxxShip->octree;
+	Octree		*prime_octree = prime->_cxxShip->octree.get();
+	Octree		*other_octree = other->_cxxShip->octree.get();
 	
 	HPVector		prime_position = oo::ToCxx(prime)->absolutePositionForSubentity();
 	Triangle	prime_ijk = oo::ToCxx(prime)->absoluteIJKForSubentity();
@@ -2233,7 +2232,7 @@ void ShipEntity::setUpMixedEscorts()
 	
 	// check hull octree against other hull octree
 	// [nil isHitByOctree:...] answered NO.
-	if (prime_octree != nil && oo::ToCxx(prime_octree)->isHitByOctree(oo::ToCxx(other_octree),
+	if (prime_octree != nullptr && prime_octree->isHitByOctree(other_octree,
 						 relative_position_of_other,
 							 relative_ijk_of_other))
 	{
@@ -10045,7 +10044,7 @@ void ShipEntity::becomeExplosion()
 					
 					for (i = 0; i < n_wreckage; i++)
 					{
-						Vector r1 = [octree randomPoint];
+						Vector r1 = (octree ? octree->randomPoint() : kZeroVector);
 						Vector dir = quaternion_rotate_vector([self normalOrientation], r1);
 						HPVector rpos = HPvector_add(vectorToHPVector(dir), xposition);
 						GLfloat lifetime = 750.0 * randf() + 250.0 * i + 100.0;
