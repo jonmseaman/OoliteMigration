@@ -1658,10 +1658,11 @@ void Universe::setUpWitchspaceBetweenSystem(OOSystemID s1, OOSystemID s2)
 	[thing release];
 	
 	/*- the dust particle system -*/
-	thing = [[::DustEntity alloc] init];
-	[thing setScanClass: CLASS_NO_DRAW];
+	oo::Ref<DustEntity> dust = oo::makeRef<DustEntity>();
+	dust->init();
+	dust->setScanClass(CLASS_NO_DRAW);
+	thing = oo::NewEntityFacade(dust);
 	[self addEntity:thing];
-	[thing release];
 	
 	ambientLightLevel = systeminfo.get<float>("ambient_level", 1.0);
 	[self setLighting];	// also sets initial lights positions.
@@ -1844,11 +1845,12 @@ void Universe::setUpSpace()
 	/*--*/
 	
 	/*- the dust particle system -*/
-	thing = [[::DustEntity alloc] init];	// alloc retains!
-	[thing setScanClass: CLASS_NO_DRAW];
+	oo::Ref<DustEntity> dust = oo::makeRef<DustEntity>();
+	dust->init();
+	dust->setScanClass(CLASS_NO_DRAW);
+	thing = oo::NewEntityFacade(dust);
 	[self addEntity:thing];
-	[(::DustEntity *)thing setDustColor:pale_bgcolor]; 
-	[thing release];
+	dust->setDustColor(oo::ToCxx(pale_bgcolor));
 	/*--*/
 
 	float defaultSunFlare = randf()*0.1;
@@ -8772,8 +8774,9 @@ void Universe::setSystemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum, const st
 						[the_sun getSpecularComponents:sun_specular];
 					}
 					for (i = n_entities - 1; i > 0; i--)
-						if ((sortedEntities[i]) && ([sortedEntities[i] isKindOfClass:[::DustEntity class]]))
-							[(::DustEntity*)sortedEntities[i] setDustColor:[color blendedColorWithFraction:0.5 ofColor:[::OOColor whiteColor]]];
+						if (sortedEntities[i])
+							if (DustEntity *dust = dynamic_cast<DustEntity *>(oo::ToCxx(sortedEntities[i])))
+								dust->setDustColor(oo::ToCxx([color blendedColorWithFraction:0.5 ofColor:[::OOColor whiteColor]]));
 				}
 			}
 		}
