@@ -9,17 +9,19 @@
 	folder's, as in test_OOSound.mm. The sound source is the game's; the mixer and its channels
 	under it are this file's stubs, which record what the source tells them, and so are the
 	decoder and the two concrete sounds that OOALSound.mm names (amendment oo-z1s4 item 4; C++
-	stand-ins since beads oo-9ht.83 and oo-9ht.84 deleted their facades): "missing.ogg" has no
-	decoder. These expectations were written against the Objective-C
-	API and ran on the unconverted class first; since bead oo-9ht.85 deleted the facade they run
-	through the C++ API (OOMusic, a subclass of cxx::OOSound). Run: bash tools/check-core-tests.sh test_OOMusic
+	stand-ins since beads oo-9ht.82, oo-9ht.83 and oo-9ht.84 deleted their facades): "missing.ogg"
+	has no decoder. These expectations were written against the Objective-C API and ran on the
+	unconverted class first; since bead oo-9ht.85 deleted the facade they run through the C++ API
+	(OOMusic, a subclass of OOSound), and since beads oo-9ht.68 and oo-9ht.88 deleted the sound's
+	and the source's facades they ask the C++ source (standing approval oo-9n5p9).
+	Run: bash tools/check-core-tests.sh test_OOMusic
 */
 
 #import "OOALMusic.h"
 #import "OOALBufferedSound.h"
 #import "OOALStreamedSound.h"
 #import "OOALSoundMixer.h"
-#import "OODescription.h"
+#import "OOALSoundDecoder.h"
 
 #include "oo_test.hpp"
 
@@ -38,68 +40,53 @@ void OOLogGenericSubclassResponsibilityForFunction(const char *inFunction)
 }
 
 
+/*	The decoder: "missing.ogg" (and no path) has none; any other is small. Counts the decoders
+	alive. A C++ stand-in since bead oo-9ht.82 deleted the Objective-C facade this file stubbed: the
+	factory the cluster calls, a subclass answering the path, and the root's members
+	(OOALSoundDecoder.mm is not linked), which its vtable names.
+*/
 static int gLiveDecoders = 0;
 
-@interface OOALSoundDecoder: OOObject
+namespace {
+class TestDecoder final : public OOALSoundDecoder
 {
-	std::optional<std::string>	_path;
+public:
+	explicit TestDecoder(const std::string &path) : _path(path)  { gLiveDecoders++; }
+	~TestDecoder() override  { gLiveDecoders--; }
+
+	size_t sizeAsBuffer() override  { return 1000; }
+	std::optional<std::string> name() override  { return _path; }
+
+private:
+	std::string	_path;
+};
+}	// namespace
+
+
+oo::Ref<OOALSoundDecoder> OOALSoundDecoder::initWithPath(const std::optional<std::string> &inPath)
+{
+	if (!inPath.has_value() || *inPath == "missing.ogg")  return nullptr;
+	return oo::makeRef<TestDecoder>(*inPath);
 }
 
-- (id)cxx_initWithPath:(const std::optional<std::string> &)inPath OO_RETURNS_RETAINED;
-- (size_t)sizeAsBuffer;
-- (std::optional<std::string>)cxx_name;
-
-@end
-
-
-@implementation OOALSoundDecoder
-
-- (id)cxx_initWithPath:(const std::optional<std::string> &)inPath
-{
-	if (!inPath.has_value() || *inPath == "missing.ogg")
-	{
-		[self release];
-		return nil;
-	}
-	self = [super init];
-	if (self != nil)
-	{
-		_path = inPath;
-		gLiveDecoders++;
-	}
-	return self;
-}
-
-
-- (void)dealloc
-{
-	if (_path.has_value())  gLiveDecoders--;
-	[super dealloc];
-}
-
-
-- (size_t)sizeAsBuffer
-{
-	return 1000;
-}
-
-
-- (std::optional<std::string>)cxx_name
-{
-	return _path;
-}
-
-@end
+bool OOALSoundDecoder::readCreatingBuffer(char **, size_t *)  { return false; }
+size_t OOALSoundDecoder::streamToBuffer(char *)  { return 0; }
+size_t OOALSoundDecoder::sizeAsBuffer()  { return 0; }
+bool OOALSoundDecoder::isStereo()  { return false; }
+long OOALSoundDecoder::sampleRate()  { return 0; }
+void OOALSoundDecoder::reset()  {}
+std::optional<std::string> OOALSoundDecoder::name()  { return std::string(); }
+std::optional<std::string> OOALSoundDecoder::descriptionComponents() const  { return std::nullopt; }
 
 
 static int gLiveSounds = 0;
 
 // The buffered sound: a C++ stand-in since bead oo-9ht.83 deleted the Objective-C facade this file
-// stubbed (the members the cluster and the root's facade call). Counts the live ones.
-oo::Ref<OOALBufferedSound> OOALBufferedSound::initWithDecoder(::OOALSoundDecoder *inDecoder)
+// stubbed (the members the cluster and the root call). Counts the live ones.
+oo::Ref<OOALBufferedSound> OOALBufferedSound::initWithDecoder(OOALSoundDecoder *inDecoder)
 {
 	oo::Ref<OOALBufferedSound> sound = oo::adopt(new OOALBufferedSound);
-	sound->_name = [inDecoder cxx_name];
+	sound->_name = inDecoder->name();
 	gLiveSounds++;
 	return sound;
 }
@@ -119,13 +106,13 @@ std::optional<std::string> OOALBufferedSound::name()
 
 ALuint OOALBufferedSound::soundBuffer()
 {
-	return cxx::OOSound::soundBuffer();	// the stub did not override it
+	return OOSound::soundBuffer();	// the stub did not override it
 }
 
 
 // The streamed sound: a C++ stand-in since bead oo-9ht.84 deleted the Objective-C facade this
 // file stubbed. It refuses every decoder, as the stub did.
-oo::Ref<OOALStreamedSound> OOALStreamedSound::initWithDecoder(::OOALSoundDecoder *inDecoder)	{ (void)inDecoder; return nullptr; }
+oo::Ref<OOALStreamedSound> OOALStreamedSound::initWithDecoder(OOALSoundDecoder *inDecoder)	{ (void)inDecoder; return nullptr; }
 OOALStreamedSound::~OOALStreamedSound()  {}
 std::optional<std::string> OOALStreamedSound::name()  { return _name; }
 void OOALStreamedSound::rewind()  {}
@@ -147,10 +134,10 @@ void OOSoundChannel::setPosition(Vector position)  { (void)position; }
 void OOSoundChannel::setGain(float gain)  { gChannelLog.push_back("gain " + std::to_string(gain)); }
 
 
-bool OOSoundChannel::playSound(::OOSound *sound, bool loop)
+bool OOSoundChannel::playSound(OOSound *sound, bool loop)
 {
-	gChannelLog.push_back("play " + [sound cxx_name].value_or("(none)") + (loop ? " looped" : ""));
-	_sound = oo::ObjCRef<::OOSound *>(sound);	// [sound retain]
+	gChannelLog.push_back("play " + ((sound != nullptr) ? sound->name() : std::nullopt).value_or("(none)") + (loop ? " looped" : ""));
+	_sound = oo::Ref<OOSound>(sound);	// [sound retain]
 	return true;
 }
 
@@ -158,7 +145,7 @@ bool OOSoundChannel::playSound(::OOSound *sound, bool loop)
 void OOSoundChannel::stop()
 {
 	gChannelLog.push_back("stop");
-	oo::ObjCRef<::OOSound *> sound = std::move(_sound);	// _sound = nil; [sound release] at the end of the scope
+	oo::Ref<OOSound> sound = std::move(_sound);	// _sound = nil; [sound release] at the end of the scope
 	if (_delegate != nullptr)  _delegate->channel(this, sound.get());
 }
 
@@ -212,7 +199,7 @@ void SetUp()
 	stdfs::create_directories(sRoot);
 	OO_CHECK(::_putenv_s("HOMEPATH", sRoot.string().c_str()) == 0);
 	stdfs::current_path(sRoot);
-	OO_CHECK([OOSound setUp]);
+	OO_CHECK(OOSound::setUp());
 }
 
 
@@ -275,13 +262,13 @@ OO_TEST(playsThroughTheSharedSource)
 		OO_CHECK((TakeChannelLog() == std::vector<std::string>{ "gain 1.000000", "play theme.ogg looped" }));
 		OO_CHECK(theme->isPlaying() && gChannelsOut == 1);
 		OOSoundSource *source = theme->musicSoundSource();
-		OO_CHECK(source != nil && [source sound] != nil && [source loop]);
+		OO_CHECK(source != nullptr && source->sound() != nullptr && source->loop());
 
 		theme->playLooped(false);	// already playing: nothing
 		OO_CHECK(TakeChannelLog().empty());
 
 		theme->setMusicGain(0.25f);
-		OO_CHECK(theme->musicGain() == 0.25f && [source gain] == 0.25f);
+		OO_CHECK(theme->musicGain() == 0.25f && source->gain() == 0.25f);
 		OO_CHECK((TakeChannelLog() == std::vector<std::string>{ "gain 0.250000" }));
 
 		// Another music takes the source; the first is no longer playing.
@@ -290,18 +277,18 @@ OO_TEST(playsThroughTheSharedSource)
 		docked->playLooped(false);
 		OO_CHECK(docked->musicSoundSource() == source && gChannelsOut == 1);
 		OO_CHECK((TakeChannelLog() == std::vector<std::string>{ "stop", "gain 0.250000", "play docked.ogg" }));
-		OO_CHECK(docked->isPlaying() && !theme->isPlaying() && ![source loop]);
+		OO_CHECK(docked->isPlaying() && !theme->isPlaying() && !source->loop());
 
 		theme->stop();	// not the playing one: nothing
 		OO_CHECK(TakeChannelLog().empty() && docked->isPlaying());
 
 		docked->stop();
 		OO_CHECK((TakeChannelLog() == std::vector<std::string>{ "stop" }));
-		OO_CHECK(!docked->isPlaying() && [source sound] == nil && gChannelsOut == 0);
+		OO_CHECK(!docked->isPlaying() && source->sound() == nullptr && gChannelsOut == 0);
 
 		// Played again after it was stopped.
 		docked->playLooped(true);
-		OO_CHECK(docked->isPlaying() && [source sound] != nil);
+		OO_CHECK(docked->isPlaying() && source->sound() != nullptr);
 		docked->stop();
 		TakeChannelLog();
 	}
@@ -313,7 +300,7 @@ OO_TEST(releasedWhilePlaying)
 {
 	SetUp();
 	TakeChannelLog();
-	OOSoundSource *source = nil;
+	OOSoundSource *source = nullptr;
 	@autoreleasepool
 	{
 		oo::Ref<OOMusic> music = OOMusic::initWithContentsOfFile(std::string("theme.ogg"));
@@ -323,7 +310,7 @@ OO_TEST(releasedWhilePlaying)
 		music = nullptr;
 	}
 	OO_CHECK((TakeChannelLog() == std::vector<std::string>{ "stop" }));
-	OO_CHECK(source != nil && [source sound] == nil && ![source isPlaying]);
+	OO_CHECK(source != nullptr && source->sound() == nullptr && !source->isPlaying());
 	OO_CHECK(gLiveSounds == 0);
 }
 

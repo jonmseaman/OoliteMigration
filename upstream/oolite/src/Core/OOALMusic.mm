@@ -32,8 +32,11 @@ namespace {
 
 OOMusic		*sPlayingMusic = nullptr;
 
+// The music's one source, made on first play and never released (bead oo-9ht.88 deleted its
+// Objective-C facade). A message to it while there was none did nothing, so each use checks.
+OOSoundSource	*sMusicSource = nullptr;
+
 }	// namespace
-static OOSoundSource	*sMusicSource = nil;
 
 
 
@@ -46,7 +49,7 @@ oo::Ref<OOMusic> OOMusic::initWithContentsOfFile(const std::optional<std::string
 {
 	oo::Ref<OOMusic> self = oo::adopt(new OOMusic);
 	{
-		self->sound = cxx::OOSound::initWithContentsOfFile(inPath);
+		self->sound = OOSound::initWithContentsOfFile(inPath);
 		if (!self->sound)
 		{
 			self = nullptr;
@@ -59,24 +62,23 @@ oo::Ref<OOMusic> OOMusic::initWithContentsOfFile(const std::optional<std::string
 
 std::optional<std::string> OOMusic::name()
 {
-	cxx::OOSound *wrapped = oo::ToCxx(sound.get());
-	return wrapped != nullptr ? wrapped->name() : std::nullopt;
+	return sound != nullptr ? sound->name() : std::nullopt;
 }
 
 
 void OOMusic::setMusicGain(float newValue)
 {
-	if (nil != sMusicSource)
+	if (nullptr != sMusicSource)
 	{
-		[sMusicSource setGain:newValue];
+		sMusicSource->setGain(newValue);
 	}
 }
 
 
 float OOMusic::musicGain()
 {
-	if (nil == sMusicSource)  return 0.0f;
-	return [sMusicSource gain];
+	if (nullptr == sMusicSource)  return 0.0f;
+	return sMusicSource->gain();
 }
 
 
@@ -84,21 +86,21 @@ void OOMusic::playLooped(bool inLoop)
 {
 	if (sPlayingMusic != this)
 	{
-		if (nil == sMusicSource)
+		if (nullptr == sMusicSource)
 		{
-			sMusicSource = [[::OOSoundSource alloc] init];
+			sMusicSource = oo::makeRef<OOSoundSource>().leakRef();
 		}
-		[sMusicSource stop];
-		[sMusicSource setLoop:inLoop];
-		[sMusicSource setSound:sound.get()];
-		[sMusicSource play];
+		sMusicSource->stop();
+		sMusicSource->setLoop(inLoop);
+		sMusicSource->setSound(sound.get());
+		sMusicSource->play();
 
 		sPlayingMusic = this;
 	}
 }
 
 
-::OOSoundSource *OOMusic::musicSoundSource()
+OOSoundSource *OOMusic::musicSoundSource()
 {
 	return sMusicSource;
 }
@@ -106,7 +108,7 @@ void OOMusic::playLooped(bool inLoop)
 
 bool OOMusic::isPlaying()
 {
-	return sPlayingMusic == this && [sMusicSource isPlaying];
+	return sPlayingMusic == this && sMusicSource != nullptr && sMusicSource->isPlaying();
 }
 
 
@@ -115,8 +117,11 @@ void OOMusic::stop()
 	if (sPlayingMusic == this)
 	{
 		sPlayingMusic = nullptr;
-		[sMusicSource stop];
-		[sMusicSource setSound:nil];
+		if (sMusicSource != nullptr)
+		{
+			sMusicSource->stop();
+			sMusicSource->setSound(nullptr);
+		}
 	}
 }
 

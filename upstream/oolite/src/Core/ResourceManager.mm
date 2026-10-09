@@ -350,7 +350,7 @@ static BOOL				sAllMet = NO;
 //
 namespace {
 
-std::map<std::string, oo::ObjCRef<id>, std::less<>>	sSoundCache;
+std::map<std::string, oo::Ref<::OOSound>, std::less<>>	sSoundCache;
 std::map<std::string, std::string, std::less<>>		sStringCache;
 
 }	// namespace
@@ -2137,14 +2137,13 @@ std::optional<std::string> cxx::ResourceManager::pathForFileNamed(const std::str
 
 /* use extreme caution in calling with usePathCache:NO - this can be
  * an extremely expensive operation */
-id cxx::ResourceManager::retrieveFileNamed(const std::string &fileName,
+::OOSound *cxx::ResourceManager::retrieveFileNamed(const std::string &fileName,
 										 const std::optional<std::string> &folderName,
-										 std::map<std::string, oo::ObjCRef<id>, std::less<>> *ioCache,
+										 std::map<std::string, oo::Ref<::OOSound>, std::less<>> *ioCache,
 										 std::optional<std::string> key,
-										 Class klass,
 										 bool useCache)
 {
-	id				result = nil;
+	oo::Ref<::OOSound>	result;
 
 	if (ioCache)
 	{
@@ -2154,15 +2153,19 @@ id cxx::ResourceManager::retrieveFileNamed(const std::string &fileName,
 		if (cached != ioCache->end())  return cached->second.get();
 	}
 
+	// [[[OOSound alloc] cxx_initWithContentsOfFile:path] autorelease], the facade's class cluster
+	// until bead oo-9ht.68: the C++ factory. With no cache the caller is the only user, as the
+	// autoreleased sound lived until the pool drained: oo::autorelease keeps that.
 	const std::optional<std::string> path = pathForFileNamed(fileName, folderName, useCache);
-	if (path.has_value())  result = [[[klass alloc] cxx_initWithContentsOfFile:path] autorelease];	// klass: OOSound
+	if (path.has_value())  result = ::OOSound::initWithContentsOfFile(path);
 
-	if (result != nil && ioCache != NULL)
+	if (result != nullptr && ioCache != NULL)
 	{
-		(*ioCache)[*key] = oo::ObjCRef<id>(result);
+		(*ioCache)[*key] = result;
+		return result.get();
 	}
 
-	return result;
+	return oo::autorelease(result.leakRef());
 }
 
 
@@ -2177,7 +2180,7 @@ oo::Ref<OOMusic> cxx::ResourceManager::ooMusicNamed(const std::string &fileName,
 
 ::OOSound *cxx::ResourceManager::ooSoundNamed(const std::string &fileName, const std::optional<std::string> &folderName)
 {
-	return retrieveFileNamed(fileName, folderName, &sSoundCache, oo::str::format("OOSound:%s:%s", folderName.has_value() ? folderName->c_str() : "(null)", fileName.c_str()), [::OOSound class], YES);
+	return retrieveFileNamed(fileName, folderName, &sSoundCache, oo::str::format("OOSound:%s:%s", folderName.has_value() ? folderName->c_str() : "(null)", fileName.c_str()), YES);
 }
 
 

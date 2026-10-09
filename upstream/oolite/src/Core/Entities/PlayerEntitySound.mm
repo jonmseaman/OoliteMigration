@@ -49,12 +49,16 @@ static OOSoundSourcePool	*sWarningSoundPool;
 static OOSoundSourcePool	*sWeaponSoundPool;
 static OOSoundSourcePool	*sDamageSoundPool;
 static OOSoundSourcePool	*sMiscSoundPool;
-static OOSoundSource		*sHyperspaceSoundSource;
-static OOSoundSource		*sInterfaceBeepSource;
-static OOSoundSource		*sEcmSource;
-static OOSoundSource		*sBreakPatternSource;
+namespace {
+::OOSoundSource		*sHyperspaceSoundSource;
+::OOSoundSource		*sInterfaceBeepSource;
+::OOSoundSource		*sEcmSource;
+::OOSoundSource		*sBreakPatternSource;
+}	// namespace
 static OOSoundSourcePool	*sBuySellSourcePool;
-static OOSoundSource		*sAfterburnerSources[2];
+namespace {
+::OOSoundSource		*sAfterburnerSources[2];
+}	// namespace
 
 // The pools are C++ (bead oo-9ht.89 deleted their Objective-C facade); each static holds one
 // retain, as the facades did, given up by ReleasePool where the facades were DESTROYed. A message
@@ -64,6 +68,25 @@ void ReleasePool(OOSoundSourcePool *&pool)
 {
 	if (pool != nullptr)  pool->release();
 	pool = nullptr;
+}
+
+// The sources are C++ too (bead oo-9ht.88 deleted their Objective-C facade): each static holds the
+// retain alloc/init gave it, given up by ReleaseSource where DESTROY released it. A message to a
+// nil source did nothing and -isPlaying answered NO, so each use checks for none.
+::OOSoundSource *NewSource(::OOSound *sound = nullptr)
+{
+	return oo::makeRef<::OOSoundSource>(sound).leakRef();
+}
+
+void ReleaseSource(::OOSoundSource *&source)
+{
+	if (source != nullptr)  source->release();
+	source = nullptr;
+}
+
+bool IsPlaying(::OOSoundSource *source)
+{
+	return source != nullptr && source->isPlaying();
 }
 }	// namespace
 
@@ -102,17 +125,17 @@ void cxx::PlayerEntity::setUpSound()
 {
 	destroySound();
 	
-	sInterfaceBeepSource = [[::OOSoundSource alloc] init];
-	[sInterfaceBeepSource setPosition:kInterfaceBeepPosition];
+	sInterfaceBeepSource = NewSource();
+	sInterfaceBeepSource->setPosition(kInterfaceBeepPosition);
 
-	sBreakPatternSource = [[::OOSoundSource alloc] init];
-	[sBreakPatternSource setPosition:kBreakPatternPosition];
+	sBreakPatternSource = NewSource();
+	sBreakPatternSource->setPosition(kBreakPatternPosition);
 
-	sEcmSource = [[::OOSoundSource alloc] init];
-	[sEcmSource setPosition:kEcmPosition];
+	sEcmSource = NewSource();
+	sEcmSource->setPosition(kEcmPosition);
 
-	sHyperspaceSoundSource = [[::OOSoundSource alloc] init];
-	[sHyperspaceSoundSource setPosition:kWitchspacePosition];
+	sHyperspaceSoundSource = NewSource();
+	sHyperspaceSoundSource->setPosition(kWitchspacePosition);
 	
 	sBuySellSourcePool = OOSoundSourcePool::poolWithCount(kBuySellSourcePoolSize, 0.0).leakRef();
 	sWarningSoundPool = OOSoundSourcePool::poolWithCount(kWarningPoolSize, 0.0).leakRef();
@@ -121,11 +144,11 @@ void cxx::PlayerEntity::setUpSound()
 	sMiscSoundPool = OOSoundSourcePool::poolWithCount(kMiscPoolSize, 0.0).leakRef();
 	
 	// Two sources with the same sound are used to simulate looping.
-	::OOSound *afterburnerSound = [::ResourceManager cxx_ooSoundNamed:"afterburner1.ogg" inFolder:"Sounds"];
-	sAfterburnerSources[0] = [[::OOSoundSource alloc] initWithSound:afterburnerSound];
-	[sAfterburnerSources[0] setPosition:kAfterburner1Position];
-	sAfterburnerSources[1] = [[::OOSoundSource alloc] initWithSound:afterburnerSound];
-	[sAfterburnerSources[1] setPosition:kAfterburner2Position];
+	::OOSound *afterburnerSound = cxx::ResourceManager::ooSoundNamed("afterburner1.ogg", std::string("Sounds"));
+	sAfterburnerSources[0] = NewSource(afterburnerSound);
+	sAfterburnerSources[0]->setPosition(kAfterburner1Position);
+	sAfterburnerSources[1] = NewSource(afterburnerSound);
+	sAfterburnerSources[1]->setPosition(kAfterburner2Position);
 }
 
 
@@ -179,13 +202,13 @@ void cxx::PlayerEntity::setUpWeaponSounds()
 
 void cxx::PlayerEntity::destroySound()
 {
-	DESTROY(sInterfaceBeepSource);
-	DESTROY(sBreakPatternSource);
-	DESTROY(sEcmSource);
-	DESTROY(sHyperspaceSoundSource);
+	ReleaseSource(sInterfaceBeepSource);
+	ReleaseSource(sBreakPatternSource);
+	ReleaseSource(sEcmSource);
+	ReleaseSource(sHyperspaceSoundSource);
 	
-	DESTROY(sAfterburnerSources[0]);
-	DESTROY(sAfterburnerSources[1]);
+	ReleaseSource(sAfterburnerSources[0]);
+	ReleaseSource(sAfterburnerSources[1]);
 
 	ReleasePool(sBuySellSourcePool);
 	ReleasePool(sWarningSoundPool);
@@ -206,13 +229,13 @@ void cxx::PlayerEntity::playInterfaceBeep(const std::string & beepKey)
 #if OOLITE_WINDOWS
 	if (status() == STATUS_START_GAME) { return; }
 #endif
-	[sInterfaceBeepSource playOOSound:[::OOSound cxx_soundWithCustomSoundKey:beepKey]];
+	if (sInterfaceBeepSource != nullptr)  sInterfaceBeepSource->playOOSound(OOSoundWithCustomSoundKey(beepKey));
 }
 
 
 bool cxx::PlayerEntity::isBeeping()
 {
-	return [sInterfaceBeepSource isPlaying];
+	return IsPlaying(sInterfaceBeepSource);
 }
 
 
@@ -454,7 +477,7 @@ void cxx::PlayerEntity::updateFuelScoopSoundWithInterval(OOTimeDelta delta_t)
 	scoopSoundPlayTime -= delta_t;
 	if (scoopSoundPlayTime < 0.0)
 	{
-		if(![sInterfaceBeepSource isPlaying])
+		if(!IsPlaying(sInterfaceBeepSource))
 		{
 		/* TODO: this should use the scoop position, not the standard
 		 * interface beep position */
@@ -486,7 +509,7 @@ void cxx::PlayerEntity::updateAfterburnerSound()
 	
 	if (afterburnerSoundLooping)
 	{
-		[sAfterburnerSources[which] play];
+		if (sAfterburnerSources[which] != nullptr)  sAfterburnerSources[which]->play();
 		which = !which;
 		
 		[oo::ToObjC(this) cxx_scheduleAfterburnerSoundUpdate];	// and swap sounds in 1.25s time
@@ -554,49 +577,49 @@ void cxx::PlayerEntity::playCantBuyShip()
 
 void cxx::PlayerEntity::playStandardHyperspace()
 {
-	[sHyperspaceSoundSource cxx_playCustomSoundWithKey:"[hyperspace-countdown-begun]"];
+	OOSoundSourcePlayCustomSoundWithKey(sHyperspaceSoundSource, "[hyperspace-countdown-begun]");
 }
 
 
 void cxx::PlayerEntity::playGalacticHyperspace()
 {
-	[sHyperspaceSoundSource cxx_playCustomSoundWithKey:"[galactic-hyperspace-countdown-begun]"];
+	OOSoundSourcePlayCustomSoundWithKey(sHyperspaceSoundSource, "[galactic-hyperspace-countdown-begun]");
 }
 
 
 void cxx::PlayerEntity::playHyperspaceAborted()
 {
-	[sHyperspaceSoundSource cxx_playCustomSoundWithKey:"[hyperspace-countdown-aborted]"];
+	OOSoundSourcePlayCustomSoundWithKey(sHyperspaceSoundSource, "[hyperspace-countdown-aborted]");
 }
 
 
 void cxx::PlayerEntity::playHitByECMSound()
 {
-	if (![sEcmSource isPlaying]) [sEcmSource cxx_playCustomSoundWithKey:"[player-hit-by-ecm]"];
+	if (!IsPlaying(sEcmSource)) OOSoundSourcePlayCustomSoundWithKey(sEcmSource, "[player-hit-by-ecm]");
 }
 
 
 void cxx::PlayerEntity::playFiredECMSound()
 {
-	if (![sEcmSource isPlaying]) [sEcmSource cxx_playCustomSoundWithKey:"[player-fired-ecm]"];
+	if (!IsPlaying(sEcmSource)) OOSoundSourcePlayCustomSoundWithKey(sEcmSource, "[player-fired-ecm]");
 }
 
 
 void cxx::PlayerEntity::playLaunchFromStation()
 {
-	[sBreakPatternSource cxx_playCustomSoundWithKey:"[player-launch-from-station]"];
+	OOSoundSourcePlayCustomSoundWithKey(sBreakPatternSource, "[player-launch-from-station]");
 }
 
 
 void cxx::PlayerEntity::playDockWithStation()
 {
-	[sBreakPatternSource cxx_playCustomSoundWithKey:"[player-dock-with-station]"];
+	OOSoundSourcePlayCustomSoundWithKey(sBreakPatternSource, "[player-dock-with-station]");
 }
 
 
 void cxx::PlayerEntity::playExitWitchspace()
 {
-	[sBreakPatternSource cxx_playCustomSoundWithKey:"[player-exit-witchspace]"];
+	OOSoundSourcePlayCustomSoundWithKey(sBreakPatternSource, "[player-exit-witchspace]");
 }
 
 

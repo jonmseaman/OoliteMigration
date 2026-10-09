@@ -97,7 +97,7 @@ public:
 	void setQuantity(OOCargoQuantity quantity, const std::string &commodity);
 	std::vector<oo::PList> *getLocalShipyard();
 	void setLocalShipyard(const std::vector<oo::PList> &some_market);
-	std::map<std::string, oo::ObjCRef<::OOJSInterfaceDefinition *>, std::less<>> *getLocalInterfaces();
+	std::map<std::string, oo::Ref<::OOJSInterfaceDefinition>, std::less<>> *getLocalInterfaces();
 	void setInterfaceDefinition(::OOJSInterfaceDefinition *definition, const std::string &key);
 	::OOCommodityMarket *initialiseLocalMarket();
 	void setPlanet(::OOPlanetEntity *planet_entity);
@@ -230,7 +230,7 @@ public:
 	std::optional<std::string>	marketScriptName;		// nullopt: none (was nil)
 	std::optional<std::vector<oo::PList>>	localShipyard;	// nullopt: not generated yet (was nil)
 	
-	std::map<std::string, oo::ObjCRef<::OOJSInterfaceDefinition *>, std::less<>>	localInterfaces;
+	std::map<std::string, oo::Ref<::OOJSInterfaceDefinition>, std::less<>>	localInterfaces;
 
 	unsigned				docked_shuttles = {};
 	double					last_shuttle_launch_time = {};

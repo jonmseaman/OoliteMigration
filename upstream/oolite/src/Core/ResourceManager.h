@@ -35,7 +35,8 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOObjCRef.h"
 #include <string_view>
 
-@class OOSound, OOSystemDescriptionManager, OOScript;
+@class OOSystemDescriptionManager, OOScript;
+class OOSound;	// C++ since bead oo-9ht.68 deleted its facade
 class OOMusic;
 
 
@@ -103,7 +104,7 @@ public:
 	static std::optional<std::string> pathForFileNamed(const std::string &fileName, const std::optional<std::string> &folderName);
 	static std::optional<std::string> pathForFileNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool useCache);
 	static oo::Ref<OOMusic> ooMusicNamed(const std::string &fileName, const std::optional<std::string> &folderName);	// a new music each call (not cached); null when none
-	static ::OOSound *ooSoundNamed(const std::string &fileName, const std::optional<std::string> &folderName);	// autoreleased
+	static ::OOSound *ooSoundNamed(const std::string &fileName, const std::optional<std::string> &folderName);	// borrowed: the cache keeps it (was autoreleased)
 	// nullopt when no file was found (was nil); folderName nullopt where nil was passed.
 	static std::optional<std::string> stringFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName);
 	static std::optional<std::string> stringFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool useCache);
@@ -152,7 +153,7 @@ private:
 	static void preloadFileListFromOXZ(const std::string &path, const std::vector<std::string> &folders);
 	static void preloadFileListFromFolder(const std::string &path, const std::vector<std::string> &folders);
 	static void preloadFilePathFor(const std::string &fileName, const std::string &subFolder, const std::string &path);
-	static id retrieveFileNamed(const std::string &fileName, const std::optional<std::string> &folderName, std::map<std::string, oo::ObjCRef<id>, std::less<>> *ioCache, std::optional<std::string> key, Class klass, bool useCache);	// klass: the facade class OOSound; autoreleased
+	static ::OOSound *retrieveFileNamed(const std::string &fileName, const std::optional<std::string> &folderName, std::map<std::string, oo::Ref<::OOSound>, std::less<>> *ioCache, std::optional<std::string> key, bool useCache);	// the class was always OOSound (C++ since bead oo-9ht.68); borrowed: the cache keeps it
 	static bool directoryExists(const std::string &inPath, bool inCreate);
 	static bool checkCacheUpToDateForPaths(const std::vector<std::string> &searchPaths);
 	static void mergeRoleCategories(const oo::PList &catData, oo::PList &categories);

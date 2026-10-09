@@ -3046,13 +3046,13 @@ void cxx::PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 
 	// check for any extra keys added by scripting
 	const auto screenKeys = extraGuiScreenKeys.find(gui_screen);
-	const std::vector<oo::ObjCRef<::OOJSGuiScreenKeyDefinition *>> keys = (screenKeys != extraGuiScreenKeys.end()) ? screenKeys->second : std::vector<oo::ObjCRef<::OOJSGuiScreenKeyDefinition *>>();
+	const std::vector<oo::Ref<::OOJSGuiScreenKeyDefinition>> keys = (screenKeys != extraGuiScreenKeys.end()) ? screenKeys->second : std::vector<oo::Ref<::OOJSGuiScreenKeyDefinition>>();
 	if (!keys.empty()) {
 		std::size_t kc = keys.size();
-		::OOJSGuiScreenKeyDefinition *definition = nil;
+		::OOJSGuiScreenKeyDefinition *definition = nullptr;
 		while (kc--) {
 			definition = keys[kc].get();
-			const oo::PList keydefs = [definition registerKeys];
+			const oo::PList keydefs = (definition != nullptr) ? definition->registerKeys() : oo::PList();
 			const oo::PList::Dict *keydefsDict = keydefs.getIf<oo::PList::Dict>();
 			if (keydefsDict == nullptr)  continue;
 			for (const auto &[key, keydef] : *keydefsDict)	// byte order (was -allKeys order)
@@ -3065,11 +3065,11 @@ void cxx::PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 						if (definition)
 						{
 							[[UNIVERSE gameView] clearKeys];
-							[definition runCallback:key];
+							definition->runCallback(key);
 						}
 						else
 						{
-							OO_LOG("interface.missingCallback", "Unable to find callback definition for {} using key {}", [definition cxx_name].value_or("(null)"), key);
+							OO_LOG("interface.missingCallback", "Unable to find callback definition for {} using key {}", ((definition != nullptr) ? definition->name() : std::nullopt).value_or("(null)"), key);
 						}
 					}
 					extra_gui_key_pressed = YES;
@@ -3654,19 +3654,18 @@ void cxx::PlayerEntity::handleGameOptionsScreenKeys()
 	}
 
 	if ((guiSelectedRow == GUI_ROW(GAME,VOLUME))
-		&&(([self checkKeyPress:n_key_gui_arrow_right])||([self checkKeyPress:n_key_gui_arrow_left]))
-		&&[::OOSound respondsToSelector:@selector(masterVolume)])
+		&&(([self checkKeyPress:n_key_gui_arrow_right])||([self checkKeyPress:n_key_gui_arrow_left])))	// (+[OOSound respondsToSelector:@selector(masterVolume)] was always YES)
 	{
 		if ((!volumeControlPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 		{
 			BOOL rightKeyDown = [self checkKeyPress:n_key_gui_arrow_right];
 			BOOL leftKeyDown = [self checkKeyPress:n_key_gui_arrow_left];
-			double volume = 100.0 * [::OOSound masterVolume];
+			double volume = 100.0 * ::OOSound::masterVolume();
 			int vol = (volume / 5.0 + 0.5);
 			if (rightKeyDown) vol++;
 			if (leftKeyDown) vol--;
 			vol = (int)OOClampInteger(vol, 0, 20);
-			[::OOSound setMasterVolume: 0.05 * vol];
+			::OOSound::setMasterVolume(0.05 * vol);
 			[self playChangedOption];
 #if OOLITE_ESPEAK
 			espeak_SetParameter(espeakVOLUME, vol * 5, 0);

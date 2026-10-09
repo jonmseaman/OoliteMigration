@@ -7,22 +7,21 @@
 	registers, and a JS callback and its `this` that it keeps alive (GC roots) and runs with the
 	entry's key, pushing the script that made it. The test runs it in a real context on the game's
 	own façade backend (ooscript/JSEngine_quickjs.cpp) and links the game's own objects for the
-	class and its superclass (OOWeakReference.mm and its bridge). What the rest of the engine would
+	class and the script's weak reference (OOWeakReference.mm and its bridge). What the rest of the engine would
 	provide is defined below as the smallest stand-in that does the same thing: the engine object
 	(which calls the function), the script stack (OOJSScript) and the property-list converter. The
 	engine's and OOJSScript's headers are not imported, because the test defines those classes
 	(amendment oo-z1s4 item 4); the class's header names OOJSScript with @class for that (amendment
 	oo-fg7i item 5). The expectations were written against the Objective-C class and run on it
-	first (they now run through the facade, its forwarding test; the facade's own contract is
-	checked last); they pin the initial state, the name and the keys, the callback and its `this` (kept
-	alive across a garbage collection), the run, the sort order (-interfaceCompare:, with its nil
-	cases), an engine reset, and the weak reference to a definition.
+	first; since bead oo-9ht.62 deleted the façade (an OOWeakRefObject) they ask the C++ class. They
+	pin the initial state, the name and the keys, the callback and its `this` (kept alive across a
+	garbage collection), the run, the sort order (interfaceCompare(), with its null cases) and an
+	engine reset.
 	Run: bash tools/check-core-tests.sh
 */
 
 #import "OOJSGuiScreenKeyDefinition.h"
 #import "OOWeakReference.h"
-#import "OODescription.h"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/Notification.hpp"
 #include "oofnd/String.hpp"
@@ -145,26 +144,21 @@ std::string String(ooscript::Value value)
 
 OO_TEST(initialState)
 {
-	@autoreleasepool
-	{
-		Context();
-		OOJSGuiScreenKeyDefinition *definition = [[[OOJSGuiScreenKeyDefinition alloc] init] autorelease];
-		OO_CHECK(definition != nil);
-		OO_CHECK(ooscript::isUndefined([definition callback]));
-		OO_CHECK([definition callbackThis] == NULL);
-		OO_CHECK([definition isKindOfClass:[OOWeakRefObject class]]);
-		OO_CHECK(oo::DescriptionOf(definition).find("OOJSGuiScreenKeyDefinition") != std::string::npos);
-		OO_CHECK(![definition cxx_name].has_value());
-		OO_CHECK([definition registerKeys].isNull());
-		[definition cxx_setName:std::string("Name")];
-		oo::PList::Dict keys;
-		keys["key_a"] = oo::PList(std::string("a"));
-		[definition setRegisterKeys:oo::PList(std::move(keys))];
-		OO_CHECK_EQ([definition cxx_name].value_or("<none>"), "Name");
-		OO_CHECK([definition registerKeys].isDict() && [definition registerKeys].count() == 1);
-		[definition cxx_setName:std::nullopt];
-		OO_CHECK(![definition cxx_name].has_value());
-	}
+	Context();
+	const oo::Ref<OOJSGuiScreenKeyDefinition> definition = oo::makeRef<OOJSGuiScreenKeyDefinition>();
+	OO_CHECK(definition != nullptr);
+	OO_CHECK(ooscript::isUndefined(definition->callback()));
+	OO_CHECK(definition->callbackThis() == NULL);
+	OO_CHECK(!definition->name().has_value());
+	OO_CHECK(definition->registerKeys().isNull());
+	definition->setName(std::string("Name"));
+	oo::PList::Dict keys;
+	keys["key_a"] = oo::PList(std::string("a"));
+	definition->setRegisterKeys(oo::PList(std::move(keys)));
+	OO_CHECK_EQ(definition->name().value_or("<none>"), "Name");
+	OO_CHECK(definition->registerKeys().isDict() && definition->registerKeys().count() == 1);
+	definition->setName(std::nullopt);
+	OO_CHECK(!definition->name().has_value());
 }
 
 
@@ -174,38 +168,38 @@ OO_TEST(runCallback)
 	{
 		OOJSScript *owner = [[[OOJSScript alloc] init] autorelease];
 		sRunningScript = owner;
-		OOJSGuiScreenKeyDefinition *definition = [[[OOJSGuiScreenKeyDefinition alloc] init] autorelease];
+		const oo::Ref<OOJSGuiScreenKeyDefinition> definition = oo::makeRef<OOJSGuiScreenKeyDefinition>();
 		sRunningScript = nil;
 
 		// Neither the function nor `this` has another reference: the definition keeps them alive.
-		[definition setCallback:Evaluate("(function (key) { globalThis.ran = this.tag + ':' + key + ':' + arguments.length; })")];
-		[definition setCallbackThis:ooscript::toObject(Evaluate("({ tag: 'me' })"))];
-		OO_CHECK(ooscript::isObject([definition callback]));
-		OO_CHECK([definition callbackThis] != NULL);
+		definition->setCallback(Evaluate("(function (key) { globalThis.ran = this.tag + ':' + key + ':' + arguments.length; })"));
+		definition->setCallbackThis(ooscript::toObject(Evaluate("({ tag: 'me' })")));
+		OO_CHECK(ooscript::isObject(definition->callback()));
+		OO_CHECK(definition->callbackThis() != NULL);
 		ooscript::gc(Context());
 
 		sPushed.clear();
 		sCalls = 0;
-		[definition runCallback:"key_a"];
+		definition->runCallback("key_a");
 		OO_CHECK_EQ(String(Evaluate("globalThis.ran")), "me:key_a:1");
 		OO_CHECK_EQ(sCalls, 1);
 		OO_CHECK_EQ(sScriptDepth, 0);
 		OO_CHECK(sPushed.size() == 1 && sPushed[0] == owner);	// the script that made it
 
 		// Replacing the callback and `this`: the new ones run.
-		[definition setCallback:Evaluate("(function (key) { globalThis.ran = 'second ' + key + ' ' + (this === globalThis); })")];
-		[definition setCallbackThis:NULL];
-		[definition runCallback:"k"];
+		definition->setCallback(Evaluate("(function (key) { globalThis.ran = 'second ' + key + ' ' + (this === globalThis); })"));
+		definition->setCallbackThis(NULL);
+		definition->runCallback("k");
 		OO_CHECK_EQ(String(Evaluate("globalThis.ran")), "second k true");
 	}
 }
 
 
 namespace {
-OOJSGuiScreenKeyDefinition *Keys(std::optional<std::string> name)
+oo::Ref<OOJSGuiScreenKeyDefinition> Keys(std::optional<std::string> name)
 {
-	OOJSGuiScreenKeyDefinition *definition = [[[OOJSGuiScreenKeyDefinition alloc] init] autorelease];
-	[definition cxx_setName:name];
+	const oo::Ref<OOJSGuiScreenKeyDefinition> definition = oo::makeRef<OOJSGuiScreenKeyDefinition>();
+	definition->setName(name);
 	return definition;
 }
 } // namespace
@@ -213,76 +207,32 @@ OOJSGuiScreenKeyDefinition *Keys(std::optional<std::string> name)
 
 OO_TEST(interfaceCompare)
 {
-	@autoreleasepool
-	{
-		// By name, ignoring case.
-		OO_CHECK_EQ([Keys("apple") interfaceCompare:Keys("Banana")], OOOrderedAscending);
-		OO_CHECK_EQ([Keys("banana") interfaceCompare:Keys("APPLE")], OOOrderedDescending);
-		OO_CHECK_EQ([Keys("same") interfaceCompare:Keys("SAME")], OOOrderedSame);
-		// No name of its own: the same as anything (a message to nil); the other's missing name is
-		// the empty string, as is nil's.
-		OO_CHECK_EQ([Keys(std::nullopt) interfaceCompare:Keys("a")], OOOrderedSame);
-		OO_CHECK_EQ([Keys("a") interfaceCompare:Keys(std::nullopt)], OOOrderedDescending);
-		OO_CHECK_EQ([Keys("") interfaceCompare:Keys(std::nullopt)], OOOrderedSame);
-		OO_CHECK_EQ([Keys("a") interfaceCompare:nil], OOOrderedDescending);
-	}
+	// By name, ignoring case.
+	OO_CHECK_EQ(Keys("apple")->interfaceCompare(Keys("Banana").get()), OOOrderedAscending);
+	OO_CHECK_EQ(Keys("banana")->interfaceCompare(Keys("APPLE").get()), OOOrderedDescending);
+	OO_CHECK_EQ(Keys("same")->interfaceCompare(Keys("SAME").get()), OOOrderedSame);
+	// No name of its own: the same as anything (a message to nil); the other's missing name is
+	// the empty string, as is null's.
+	OO_CHECK_EQ(Keys(std::nullopt)->interfaceCompare(Keys("a").get()), OOOrderedSame);
+	OO_CHECK_EQ(Keys("a")->interfaceCompare(Keys(std::nullopt).get()), OOOrderedDescending);
+	OO_CHECK_EQ(Keys("")->interfaceCompare(Keys(std::nullopt).get()), OOOrderedSame);
+	OO_CHECK_EQ(Keys("a")->interfaceCompare(nullptr), OOOrderedDescending);
 }
 
 
 OO_TEST(engineReset)
 {
-	@autoreleasepool
 	{
-		OOJSGuiScreenKeyDefinition *definition = [[[OOJSGuiScreenKeyDefinition alloc] init] autorelease];
-		[definition setCallback:Evaluate("(function () {})")];
-		[definition setCallbackThis:ooscript::toObject(Evaluate("({})"))];
+		const oo::Ref<OOJSGuiScreenKeyDefinition> definition = oo::makeRef<OOJSGuiScreenKeyDefinition>();
+		definition->setCallback(Evaluate("(function () {})"));
+		definition->setCallbackThis(ooscript::toObject(Evaluate("({})")));
 		oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineWillResetNotificationName, [OOJavaScriptEngine sharedEngine]);
-		OO_CHECK(ooscript::isUndefined([definition callback]));
-		OO_CHECK([definition callbackThis] == NULL);
+		OO_CHECK(ooscript::isUndefined(definition->callback()));
+		OO_CHECK(definition->callbackThis() == NULL);
 	}
 	// A definition that is gone no longer observes: another reset is harmless.
 	oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineWillResetNotificationName, [OOJavaScriptEngine sharedEngine]);
 	OO_CHECK(true);
-}
-
-
-OO_TEST(weakReference)
-{
-	id reference = nil;
-	@autoreleasepool
-	{
-		OOJSGuiScreenKeyDefinition *definition = [[OOJSGuiScreenKeyDefinition alloc] init];
-		reference = [definition weakRetain];
-		OO_CHECK([reference weakRefUnderlyingObject] == definition);
-		[definition release];
-	}
-	OO_CHECK([reference weakRefUnderlyingObject] == nil);
-	[reference release];
-}
-
-
-OO_TEST(facade)
-{
-	@autoreleasepool
-	{
-		OOJSGuiScreenKeyDefinition *facade = Keys("keys");
-		cxx::OOJSGuiScreenKeyDefinition *definition = oo::ToCxx(facade);
-		OO_CHECK(definition != nullptr);
-		OO_CHECK(oo::ToObjC(definition) == facade);
-		OO_CHECK(oo::ToCxx(static_cast<OOJSGuiScreenKeyDefinition *>(nil)) == nullptr);
-
-		// The facade forwards: what the C++ object holds is what the facade answers.
-		OO_CHECK_EQ(definition->name().value_or("<none>"), "keys");
-		definition->setName("other");
-		OO_CHECK_EQ([facade cxx_name].value_or("<none>"), "other");
-		OO_CHECK_EQ(definition->interfaceCompare(oo::ToCxx(Keys("OTHER"))), OOOrderedSame);
-		OO_CHECK_EQ(definition->interfaceCompare(nullptr), OOOrderedDescending);
-
-		// ToObjC never makes a facade: a C++ definition with none answers nil.
-		const oo::Ref<cxx::OOJSGuiScreenKeyDefinition> bare = oo::makeRef<cxx::OOJSGuiScreenKeyDefinition>();
-		OO_CHECK(oo::ToObjC(bare.get()) == nil);
-		OO_CHECK(!bare->name().has_value());
-	}
 }
 
 

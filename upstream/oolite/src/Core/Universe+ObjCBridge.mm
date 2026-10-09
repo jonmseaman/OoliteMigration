@@ -45,7 +45,7 @@ extern Universe *gSharedUniverse;
 
 - (void) cxx_startSpeakingString:(const std::string &) text
 {
-	[_cxxUniverse->speechSynthesizer startSpeakingString:oo::NSStringFrom(oo::str::format("[[volm %.3f]]%s", 0.3333333f * [OOSound masterVolume], text.c_str()))];
+	[_cxxUniverse->speechSynthesizer startSpeakingString:oo::NSStringFrom(oo::str::format("[[volm %.3f]]%s", 0.3333333f * OOSound::masterVolume(), text.c_str()))];
 }
 
 
@@ -601,52 +601,6 @@ extern Universe *gSharedUniverse;
 - (void) loadConditionScripts	{ _cxxUniverse->loadConditionScripts(); }
 - (void) addConditionScripts:(const std::vector<std::string> &)scripts	{ _cxxUniverse->addConditionScripts(scripts); }
 - (OOJSScript*) cxx_getConditionScript:(const std::string &)scriptname	{ return _cxxUniverse->getConditionScript(scriptname); }
-
-@end
-
-
-// The custom-sound categories (slice 26 of docs/phases/3-slices/Universe.md): their bodies are
-// OOSoundWithCustomSoundKey() and OOSoundSourcePlayCustomSoundWithKey() in Universe.mm; the
-// initialisers keep their retains and releases here.
-@implementation OOSound (OOCustomSounds)
-
-+ (id) cxx_soundWithCustomSoundKey:(const std::string &)key	{ return OOSoundWithCustomSoundKey(key); }
-
-
-- (id) initWithCustomSoundKey:(const std::string &)key
-{
-	[self release];
-	return [OOSoundWithCustomSoundKey(key) retain];
-}
-
-@end
-
-
-@implementation OOSoundSource (OOCustomSounds)
-
-+ (id) sourceWithCustomSoundKey:(const std::string &)key
-{
-	return [[[self alloc] initWithCustomSoundKey:key] autorelease];
-}
-
-
-- (id) initWithCustomSoundKey:(const std::string &)key
-{
-	OOSound *theSound = OOSoundWithCustomSoundKey(key);
-	if (theSound != nil)
-	{
-		self = [self initWithSound:theSound];
-	}
-	else
-	{
-		[self release];
-		self = nil;
-	}
-	return self;
-}
-
-
-- (void) cxx_playCustomSoundWithKey:(const std::string &)key	{ OOSoundSourcePlayCustomSoundWithKey(self, key); }
 
 @end
 

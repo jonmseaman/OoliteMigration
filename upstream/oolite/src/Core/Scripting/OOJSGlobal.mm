@@ -79,9 +79,10 @@ MA 02110-1301, USA.
 	ADR-0056 amendment oo-ppc). The JS class was already C++ on the ooscript façade;
 	OOJS_NATIVE_ENTER/EXIT and OOJS_PROFILE_ENTER/EXIT are C++ try/catch and scope guards
 	(OOJSEngineNativeWrappers.h); BOOL/YES/NO are bool/true/false. log() calls the C++ engine's
-	monitor member directly (bead oo-9ht.98; amendments oo-9ht.66 and oo-6ia4 item 6). OOColor and OOJSGuiScreenKeyDefinition, which are C++ since beads oo-11m and oo-xg7g,
-	are reached as cxx:: classes through oo::ToCxx/oo::ToObjC (amendment oo-ppc, item 4); the key
-	definition is still made as its façade, which the player keeps (amendment oo-q9q4 item 1).
+	monitor member directly (bead oo-9ht.98; amendments oo-9ht.66 and oo-6ia4 item 6). OOColor, which
+	is C++ since bead oo-11m, is reached as a cxx:: class through oo::ToCxx/oo::ToObjC (amendment
+	oo-ppc, item 4); OOJSGuiScreenKeyDefinition is C++ since bead oo-xg7g and has no façade since
+	bead oo-9ht.62: the key definition is made with oo::makeRef and the player keeps it.
 	Messages to classes that are still Objective-C (PlayerEntity, Universe, GuiDisplayGen,
 	MyOpenGLView, ResourceManager) stay as they are, which is why the file is still .mm until Phase
 	4.
@@ -728,10 +729,9 @@ static bool GlobalSetExtraGuiScreenKeys(ooscript::Context context, ooscript::Cal
 		return false;
 	}
 
-	// The definition is still made as its façade (its superclass, OOWeakRefObject, is Objective-C:
-	// amendment oo-q9q4 item 1), which the player keeps; its members are reached as C++.
-	OOJSGuiScreenKeyDefinition* definition = [[OOJSGuiScreenKeyDefinition alloc] init];
-	cxx::OOJSGuiScreenKeyDefinition *cxxDefinition = oo::ToCxx(definition);
+	// C++ since bead oo-9ht.62 deleted its façade; the player keeps it (oo::Ref).
+	const oo::Ref<OOJSGuiScreenKeyDefinition> definition = oo::makeRef<OOJSGuiScreenKeyDefinition>();
+	OOJSGuiScreenKeyDefinition *cxxDefinition = definition.get();
 	cxxDefinition->setName(key);
 	cxxDefinition->setRegisterKeys(keydefs);
 	cxxDefinition->setCallback(callback);
@@ -746,8 +746,7 @@ static bool GlobalSetExtraGuiScreenKeys(ooscript::Context context, ooscript::Cal
 		// can do .bind(this) for callback instead
 	}
 
-	result = [player setExtraGuiScreenKeys:gui definition:definition];
-	[definition release];
+	result = [player setExtraGuiScreenKeys:gui definition:definition.get()];
 
 	OOJS_RETURN_BOOL(result);
 	

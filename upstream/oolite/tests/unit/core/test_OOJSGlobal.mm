@@ -7,8 +7,8 @@
 	context on the game's own façade backend (ooscript/JSEngine_quickjs.cpp) with the file's own
 	CreateOOJSGlobal()/SetUpOOJSGlobal(), and links the game's own objects for the binding, the
 	engine's exception translator (OOJSEngineNativeWrappers.mm) and the converted classes it uses
-	(OOColor, OOJSGuiScreenKeyDefinition, reached through their façades, linked as their own tests
-	link them). It stands in for the player, the universe, its GUI and game view, the resource
+	(OOColor, reached through its façade, and OOJSGuiScreenKeyDefinition, C++ since bead oo-9ht.62
+	deleted its façade, linked as their own tests link them). It stands in for the player, the universe, its GUI and game view, the resource
 	manager, the script engine (its monitor and JS calls), the running script, the string
 	expander, the GUI screen names and the commodity names, with the engine headers' linkage.
 	The expectations were written against the Objective-C file and run on it first; they pin the
@@ -49,7 +49,7 @@
 	OOGalaxyID _galaxy;
 	OOGUIScreenID _screen;
 	std::string _lastKeys;
-	oo::ObjCRef<OOJSGuiScreenKeyDefinition *> _definition;
+	oo::Ref<OOJSGuiScreenKeyDefinition> _definition;
 	oo::PList _equipBackground;
 }
 - (OOGalaxyID) currentGalaxyID;
@@ -152,8 +152,8 @@ GuiDisplayGen *sGui = nil;
 
 - (BOOL) setExtraGuiScreenKeys:(OOGUIScreenID)gui definition:(OOJSGuiScreenKeyDefinition *)definition
 {
-	_lastKeys = "set " + std::to_string(static_cast<int>(gui)) + " " + [definition cxx_name].value_or("(none)") + " " + oo::DescriptionOf([definition registerKeys]);
-	_definition = oo::ObjCRef<OOJSGuiScreenKeyDefinition *>(definition);
+	_lastKeys = "set " + std::to_string(static_cast<int>(gui)) + " " + definition->name().value_or("(none)") + " " + oo::DescriptionOf(definition->registerKeys());
+	_definition = oo::Ref<OOJSGuiScreenKeyDefinition>(definition);
 	return gui != GUI_SCREEN_SHIPYARD;	// the player refuses the shipyard here
 }
 
@@ -697,9 +697,9 @@ OO_TEST(extraGuiScreenKeys)
 	SetUpContext();
 	OO_CHECK_EVAL("setExtraGuiScreenKeys('myKeys', {guiScreen: 'GUI_SCREEN_STATUS', registerKeys: {keys: ['a', 'b']}, callback: function () {}})", "true");
 	OO_CHECK_EQ(sPlayer->_lastKeys, std::string("set ") + std::to_string(static_cast<int>(GUI_SCREEN_STATUS)) + " myKeys " + oo::DescriptionOf(oo::PList(oo::PList::Dict{ { "keys", oo::PList(oo::PList::Array{ oo::PList(std::string("a")), oo::PList(std::string("b")) }) } })));
-	OO_CHECK(sPlayer->_definition.get() != nil && ooscript::isObject([sPlayer->_definition.get() callback]) && [sPlayer->_definition.get() callbackThis] == nullptr);
+	OO_CHECK(sPlayer->_definition.get() != nullptr && ooscript::isObject(sPlayer->_definition->callback()) && sPlayer->_definition->callbackThis() == nullptr);
 	OO_CHECK_EVAL("setExtraGuiScreenKeys('myKeys', {guiScreen: 'GUI_SCREEN_STATUS', registerKeys: null, callback: function () {}, cbThis: global})", "true");
-	OO_CHECK([sPlayer->_definition.get() callbackThis] == sGlobal);
+	OO_CHECK(sPlayer->_definition->callbackThis() == sGlobal);
 	OO_CHECK_EVAL("setExtraGuiScreenKeys('myKeys', {guiScreen: 'GUI_SCREEN_SHIPYARD', registerKeys: {}, callback: function () {}})", "false");
 	OO_CHECK_EVAL("setExtraGuiScreenKeys('k')", "threw: bad arguments: global.setExtraGuiScreenKeys(2) - / key, definition: definition is not a valid dictionary.");
 	OO_CHECK_EVAL("setExtraGuiScreenKeys()", "threw: bad arguments: -.setExtraGuiScreenKeys(0) - / key, definition");

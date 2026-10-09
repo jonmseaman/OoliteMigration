@@ -10,13 +10,17 @@
 
 	The game around it is replaced (ADR-0056 amendments oo-zffj, oo-8kx7): UNIVERSE, the player, the
 	cargo pods, the commodity market, textures and sounds are fakes below that answer from fields and
-	record what they are asked; drawTrumble: is GL and its matrix calls are aborting link stubs. The
+	record what they are asked (the sound and the sound source are C++ stand-ins since beads
+	oo-9ht.68 and oo-9ht.88 deleted the facades they stood in for); drawTrumble: is GL and its
+	matrix calls are aborting link stubs. The
 	RNG is the game's own (legacy_random.c). The expectations were written against the Objective-C
 	class and run on it first, reading its private state through the runtime; they now run through
 	the C++ API and read that state through the class's test friend. Run: bash tools/check-core-tests.sh
 */
 
 #import "OOTrumble.h"
+#import "OOSoundSource.h"
+#import "OOALSound.h"
 
 #include "oo_test.hpp"
 
@@ -53,42 +57,46 @@ static std::vector<std::string> gLog;	// what the trumble asked of the game, in 
 @end
 
 
-@interface OOSound: OOObject
+// A sound is its key: the root's members its vtable names (OOALSound.mm is not linked), and the
+// custom-sound look-up the trumbles call (Universe.h), which keeps each sound as the resource
+// manager's cache does.
+OOSound::OOSound()  {}
+std::optional<std::string> OOSound::name()  { return std::nullopt; }
+ALuint OOSound::soundBuffer()  { return 0; }
+bool OOSound::soundIncomplete()  { return false; }
+void OOSound::rewind()  {}
+std::optional<std::string> OOSound::descriptionComponents() const  { return std::nullopt; }
+
+class TestSound final : public OOSound
 {
-@public
+public:
+	explicit TestSound(const std::string &aKey) : key(aKey)  {}
+
 	std::string key;
-}
-- (id) initWithCustomSoundKey:(const std::string &)key;
-@end
+};
 
-@implementation OOSound
-- (id) initWithCustomSoundKey:(const std::string &)aKey
+::OOSound *OOSoundWithCustomSoundKey(const std::string &key);
+
+::OOSound *OOSoundWithCustomSoundKey(const std::string &aKey)
 {
-	if ((self = [super init]))  key = aKey;
+	static std::vector<oo::Ref<OOSound>> sKept;
 	gLog.push_back("sound " + aKey);
-	return self;
+	sKept.push_back(oo::makeRef<TestSound>(aKey));
+	return sKept.back().get();
 }
-@end
 
 
+// The one sound source the trumbles make: the members they call (and the ones its vtable names).
 static BOOL gSoundSourcePlaying = NO;
+static OOSound *gSourceSound = nullptr;
 
-@interface OOSoundSource: OOObject
-{
-	OOSound *_sound;
-}
-- (BOOL) isPlaying;
-- (OOSound *) sound;
-- (void) setPosition:(Vector)inPosition;
-- (void) playOOSound:(OOSound *)inSound;
-@end
-
-@implementation OOSoundSource
-- (BOOL) isPlaying					{ return gSoundSourcePlaying; }
-- (OOSound *) sound					{ return _sound; }
-- (void) setPosition:(Vector)v		{ }
-- (void) playOOSound:(OOSound *)s	{ _sound = s; gLog.push_back("play " + s->key); }
-@end
+OOSoundSource::OOSoundSource()  {}
+OOSoundSource::~OOSoundSource()  {}
+void OOSoundSource::channel(OOSoundChannel *, OOSound *)  {}
+bool OOSoundSource::isPlaying()					{ return gSoundSourcePlaying; }
+OOSound *OOSoundSource::sound()					{ return gSourceSound; }
+void OOSoundSource::setPosition(Vector v)		{ (void)v; }
+void OOSoundSource::playOOSound(OOSound *s)		{ gSourceSound = s; gLog.push_back("play " + static_cast<TestSound *>(s)->key); }
 
 
 @interface ShipEntity: OOObject

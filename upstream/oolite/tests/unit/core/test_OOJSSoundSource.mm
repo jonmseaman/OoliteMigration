@@ -1,18 +1,23 @@
 /*	test_OOJSSoundSource.mm
-	Unit tests for the SoundSource JS binding (src/Core/Scripting/OOJSSoundSource.h/.mm) and its
-	OOSoundSource category (OOJSSoundSource+ObjCBridge.mm): bead oo-cib0, converted the way bead
-	oo-ppc converted OOJSVector (proposed ADR-0056 amendments oo-ppc and oo-ykoy).
+	Unit tests for the SoundSource JS binding (src/Core/Scripting/OOJSSoundSource.h/.mm) and the
+	bodies of its OOSoundSource category (the Scripting bridge file until bead oo-9ht.88 deleted
+	it with the source's facade): bead oo-cib0, converted the way bead oo-ppc converted OOJSVector
+	(proposed ADR-0056 amendments oo-ppc and oo-ykoy).
 
 	As test_OOJSWormhole.mm does (amendment oo-ykoy, item 4), it runs the JS class in a real
 	context on the game's own façade backend (ooscript/JSEngine_quickjs.cpp), links the game's own
-	objects for the binding, its bridge and the engine's exception translator
-	(OOJSEngineNativeWrappers.mm), and stands in for the classes the binding messages (OOSoundSource
-	and OOSound answer only the selectors the binding sends), for the Sound and Vector3D
-	conversions (a vector is the array [x, y, z] here) and for the engine functions it links
-	against, with the engine headers' linkage. The expectations were written against the
-	Objective-C file and run on it first; they pin the JS-visible behaviour (construction, the seven
-	properties and their clamps, play(), stop(), playOrRepeat(), a native's exception) and what the
-	category answers the engine. Run: bash tools/check-core-tests.sh
+	objects for the binding and the engine's exception translator (OOJSEngineNativeWrappers.mm), and
+	stands in for the classes the binding calls (the source and the sound answer only what the
+	binding asks), for the Sound and Vector3D conversions (a vector is the array [x, y, z] here)
+	and for the engine functions it links against, with the engine headers' linkage. The
+	expectations were written against the Objective-C file and run on it first; they pin the
+	JS-visible behaviour (construction, the seven properties and their clamps, play(), stop(),
+	playOrRepeat(), a native's exception) and what the category answered the engine. Since beads
+	oo-9ht.88 and oo-9ht.68 deleted the source's and the sound's facades the two are C++ stand-ins
+	(their members over a record per object), the category's answers are the functions that held
+	its bodies, and the engine's C++ private-slot glue (OOJSPrivateObject.h) is stood in for as its
+	Objective-C getter, finalizer and toString() were (standing approval oo-9n5p9).
+	Run: bash tools/check-core-tests.sh
 */
 
 #import "OOCocoa.h"
@@ -27,54 +32,8 @@
 
 // MARK: The classes, as far as the binding sees them ----------------------------------------------
 
-@interface OOSound: OOObject
-{
-@public
-	std::string _name;
-}
-@end
-
-/*	A source whose gain is 0.99 raises from -gain, one whose gain is 0.98 throws a C++ exception,
-	so the test sees what an exception under a native becomes.
-*/
-@interface OOSoundSource: OOObject
-{
-@public
-	OOSound *_sound;
-	BOOL _loop;
-	uint8_t _repeatCount;
-	BOOL _playing;
-	BOOL _positional;
-	Vector _position;
-	float _gain;
-	int _plays;
-	int _playOrRepeats;
-	int _stops;
-}
-- (OOSound *) sound;
-- (void) setSound:(OOSound *)inSound;
-- (BOOL) loop;
-- (void) setLoop:(BOOL)inLoop;
-- (uint8_t) repeatCount;
-- (void) setRepeatCount:(uint8_t)inCount;
-- (BOOL) isPlaying;
-- (void) play;
-- (void) playOrRepeat;
-- (void) stop;
-- (void) setPositional:(BOOL)inPositional;
-- (BOOL) positional;
-- (void) setPosition:(Vector)inPosition;
-- (Vector) position;
-- (void) setGain:(float)gain;
-- (float) gain;
-@end
-
-@interface OOSoundSource (OOJavaScriptExtentions)
-- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context;
-- (std::optional<std::string>) cxx_oo_jsClassName;
-@end
-
-
+#import "OOSoundSource.h"
+#import "OOJSPrivateObject.h"
 #import "OOJSSoundSource.h"
 
 #include "oo_test.hpp"
@@ -86,36 +45,73 @@
 #include <string>
 
 
-@implementation OOSound
-@end
+// The sound: an object the binding hands on (the root's members its vtable names; OOALSound.mm is
+// not linked). A C++ stand-in since bead oo-9ht.68 deleted the facade this file stubbed.
+OOSound::OOSound()  {}
+std::optional<std::string> OOSound::name()  { return std::nullopt; }
+ALuint OOSound::soundBuffer()  { return 0; }
+bool OOSound::soundIncomplete()  { return false; }
+void OOSound::rewind()  {}
+std::optional<std::string> OOSound::descriptionComponents() const  { return std::nullopt; }
 
-
-@implementation OOSoundSource
-
-- (OOSound *) sound  { return _sound; }
-- (void) setSound:(OOSound *)inSound  { [_sound release]; _sound = [inSound retain]; }
-- (BOOL) loop  { return _loop; }
-- (void) setLoop:(BOOL)inLoop  { _loop = inLoop; }
-- (uint8_t) repeatCount  { return _repeatCount; }
-- (void) setRepeatCount:(uint8_t)inCount  { _repeatCount = inCount; }
-- (BOOL) isPlaying  { return _playing; }
-- (void) play  { _plays++; _playing = YES; }
-- (void) playOrRepeat  { _playOrRepeats++; _playing = YES; }
-- (void) stop  { _stops++; _playing = NO; }
-- (void) setPositional:(BOOL)inPositional  { _positional = inPositional; }
-- (BOOL) positional  { return _positional; }
-- (void) setPosition:(Vector)inPosition  { _position = inPosition; }
-- (Vector) position  { return _position; }
-- (void) setGain:(float)gain  { _gain = gain; }
-
-- (float) gain
+class TestSound final : public OOSound
 {
-	if (_gain == 0.99f)  [OOException raise:OOInvalidArgumentException format:"gain %s", "boom"];
-	if (_gain == 0.98f)  throw std::runtime_error("cxx boom");
-	return _gain;
-}
+public:
+	std::string _name;
+};
 
-@end
+
+/*	The source: a C++ stand-in since bead oo-9ht.88 deleted the facade this file stubbed. Its
+	members answer from a record per source (its ivars were the stub's). A source whose gain is 0.99
+	raises from gain(), one whose gain is 0.98 throws a C++ exception, so the test sees what an
+	exception under a native becomes.
+*/
+struct SourceRecord
+{
+	oo::Ref<OOSound> _sound;
+	BOOL _loop = NO;
+	uint8_t _repeatCount = 0;
+	BOOL _playing = NO;
+	BOOL _positional = NO;
+	Vector _position = {};
+	float _gain = 0.0f;
+	int _plays = 0;
+	int _playOrRepeats = 0;
+	int _stops = 0;
+};
+
+namespace {
+std::map<const OOSoundSource *, SourceRecord> sRecords;
+} // namespace
+
+OOSoundSource::OOSoundSource()  { sRecords[this]; }
+OOSoundSource::~OOSoundSource()  { sRecords.erase(this); }
+void OOSoundSource::channel(OOSoundChannel *, OOSound *)  {}
+std::optional<std::string> OOSoundSource::descriptionComponents() const  { return std::nullopt; }
+
+OOSound *OOSoundSource::sound()  { return sRecords[this]._sound.get(); }
+void OOSoundSource::setSound(OOSound *inSound)  { sRecords[this]._sound = oo::Ref<OOSound>(inSound); }
+bool OOSoundSource::loop()  { return sRecords[this]._loop; }
+void OOSoundSource::setLoop(bool inLoop)  { sRecords[this]._loop = inLoop; }
+uint8_t OOSoundSource::repeatCount()  { return sRecords[this]._repeatCount; }
+void OOSoundSource::setRepeatCount(uint8_t inCount)  { sRecords[this]._repeatCount = inCount; }
+bool OOSoundSource::isPlaying()  { return sRecords[this]._playing; }
+void OOSoundSource::play()  { sRecords[this]._plays++; sRecords[this]._playing = YES; }
+void OOSoundSource::playOrRepeat()  { sRecords[this]._playOrRepeats++; sRecords[this]._playing = YES; }
+void OOSoundSource::stop()  { sRecords[this]._stops++; sRecords[this]._playing = NO; }
+void OOSoundSource::setPositional(bool inPositional)  { sRecords[this]._positional = inPositional; }
+bool OOSoundSource::positional()  { return sRecords[this]._positional; }
+void OOSoundSource::setPosition(Vector inPosition)  { sRecords[this]._position = inPosition; }
+Vector OOSoundSource::position()  { return sRecords[this]._position; }
+void OOSoundSource::setGain(float gain)  { sRecords[this]._gain = gain; }
+
+float OOSoundSource::gain()
+{
+	const float gain = sRecords[this]._gain;
+	if (gain == 0.99f)  [OOException raise:OOInvalidArgumentException format:"gain %s", "boom"];
+	if (gain == 0.98f)  throw std::runtime_error("cxx boom");
+	return gain;
+}
 
 
 // MARK: What the rest of the engine provides ------------------------------------------------------
@@ -187,60 +183,6 @@ BOOL OOJSIsSubclass(ooscript::ClassDef *putativeSubclass, ooscript::ClassDef *su
 }
 
 
-// The engine's object getter: the JS class must be the required one, and the private slot holds
-// the object itself.
-BOOL OOJSObjectGetterImplPRIVATE(ooscript::Context context, ooscript::Object object, ooscript::ClassDef *requiredJSClass, Class requiredObjCClass, const char *, id *outObject)
-{
-	ooscript::ClassDef *actualClass = const_cast<ooscript::ClassDef *>(ooscript::getObjectClass(context, object));
-	if (!OOJSIsSubclass(actualClass, requiredJSClass))
-	{
-		cxx_OOJSReportError(context, "Native method expected %s, got %s.", requiredJSClass->name, cxx_OOStringFromJSValue(context, ooscript::objectValue(object)).value_or("(null)").c_str());
-		return NO;
-	}
-	*outObject = (id)ooscript::getPrivate(context, object);
-	if (*outObject != nil && ![*outObject isKindOfClass:requiredObjCClass])
-	{
-		*outObject = nil;
-		return NO;
-	}
-	return YES;
-}
-
-
-// An object's JS value, as the engine gives it: its category's -oo_jsValueInContext: for a sound
-// source, a JS Sound holding the sound for a sound.
-ooscript::Value OOJSValueFromNativeObject(ooscript::Context context, id object)
-{
-	if (object == nil)  return ooscript::nullValue();
-	if ([object isKindOfClass:[OOSoundSource class]])  return [(OOSoundSource *)object oo_jsValueInContext:context];
-	ooscript::Object sound = ooscript::newObject(context, &sFakeSoundClass, nullptr, nullptr);
-	if (sound == nullptr || !ooscript::setPrivate(context, sound, [object retain]))  return ooscript::nullValue();
-	return ooscript::objectValue(sound);
-}
-
-
-// A JS Sound's sound, or nil for anything else (a name is not looked up here).
-OOSound *SoundFromJSValue(ooscript::Context context, ooscript::Value value)
-{
-	if (!ooscript::isObject(value) || ooscript::toObject(value) == nullptr)  return nil;
-	if (ooscript::getObjectClass(context, ooscript::toObject(value)) != &sFakeSoundClass)  return nil;
-	return (OOSound *)ooscript::getPrivate(context, ooscript::toObject(value));
-}
-
-
-bool OOJSObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &args)
-{
-	std::string text = "[SoundSource]";
-	args.setRval(ooscript::stringValue(ooscript::newStringCopyN(context, text.data(), text.size())));
-	return true;
-}
-
-
-void OOJSObjectWrapperFinalize(ooscript::Context, ooscript::Object)
-{
-}
-
-
 // A vector is the array [x, y, z] here: enough to see what the binding hands over and takes.
 bool VectorToJSValue(ooscript::Context context, Vector vector, ooscript::Value *outValue)
 {
@@ -286,9 +228,65 @@ void OOJSUnreachable(const char *function, const char *, unsigned)
 }	// extern "C"
 
 
-oo::PList OOJSBasicPrivateObjectConverter(ooscript::Context, ooscript::Object)
+// A sound's JS value, as the Sound binding gives it: a JS Sound holding the sound (OOJSSound.mm is
+// not linked); null for none.
+ooscript::Value OOJSSoundJSValueInContext(OOSound *sound, ooscript::Context context)
 {
-	return oo::PList();
+	if (sound == nullptr)  return ooscript::nullValue();
+	ooscript::Object object = ooscript::newObject(context, &sFakeSoundClass, nullptr, nullptr);
+	if (object == nullptr || !ooscript::setPrivate(context, object, sound))  return ooscript::nullValue();
+	return ooscript::objectValue(object);
+}
+
+
+// A JS Sound's sound, or null for anything else (a name is not looked up here). C linkage, as
+// OOJSSound.h declares it.
+extern "C" OOSound *SoundFromJSValue(ooscript::Context context, ooscript::Value value);
+extern "C" OOSound *SoundFromJSValue(ooscript::Context context, ooscript::Value value)
+{
+	if (!ooscript::isObject(value) || ooscript::toObject(value) == nullptr)  return nullptr;
+	if (ooscript::getObjectClass(context, ooscript::toObject(value)) != &sFakeSoundClass)  return nullptr;
+	return static_cast<OOSound *>(ooscript::getPrivate(context, ooscript::toObject(value)));
+}
+
+
+/*	The engine's C++ private-slot glue (OOJSPrivateObject.cpp), stood in for as its Objective-C
+	counterparts were: the slot holds the object retained; the getter checks the JS class and gives
+	the slot's object; the finalizer does nothing (as the stub's did); toString() is the shared
+	one's answer here.
+*/
+bool OOJSSetCxxPrivate(ooscript::Context context, ooscript::Object jsObject, oo::RefCounted *object)
+{
+	if (object != nullptr)  object->retain();
+	if (ooscript::setPrivate(context, jsObject, object))  return true;
+	if (object != nullptr)  object->release();
+	return false;
+}
+
+
+bool OOJSGetCxxPrivateImpl(ooscript::Context context, ooscript::Object object, ooscript::ClassDef *requiredJSClass, oo::RefCounted **outObject)
+{
+	ooscript::ClassDef *actualClass = const_cast<ooscript::ClassDef *>(ooscript::getObjectClass(context, object));
+	if (!OOJSIsSubclass(actualClass, requiredJSClass))
+	{
+		cxx_OOJSReportError(context, "Native method expected %s, got %s.", requiredJSClass->name, cxx_OOStringFromJSValue(context, ooscript::objectValue(object)).value_or("(null)").c_str());
+		return false;
+	}
+	*outObject = static_cast<oo::RefCounted *>(ooscript::getPrivate(context, object));
+	return true;
+}
+
+
+void OOJSCxxObjectWrapperFinalize(ooscript::Context, ooscript::Object)
+{
+}
+
+
+bool OOJSCxxObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &args, ooscript::ClassDef *)
+{
+	std::string text = "[SoundSource]";
+	args.setRval(ooscript::stringValue(ooscript::newStringCopyN(context, text.data(), text.size())));
+	return true;
 }
 
 
@@ -299,8 +297,9 @@ namespace {
 ooscript::Runtime sRuntime;
 ooscript::Context sContext;
 ooscript::Object sGlobal;
-OOSoundSource *sSource = nil;
-OOSound *sSound = nil;
+OOSoundSource *sSourceObject = nullptr;	// the source the tests ask through `source`
+SourceRecord *sSource = nullptr;		// what it was asked
+TestSound *sSound = nullptr;
 
 
 void Define(const char *name, ooscript::Value value)
@@ -320,15 +319,16 @@ void SetUpContext()
 	ooscript::initClass(sContext, sGlobal, nullptr, &sFakeSoundClass, nullptr, 0, nullptr, nullptr, nullptr, nullptr);
 	InitOOJSSoundSource(sContext, sGlobal);
 
-	sSound = [[OOSound alloc] init];	// kept for the life of the test
+	sSound = oo::makeRef<TestSound>().leakRef();	// kept for the life of the test
 	sSound->_name = "ping";
-	sSource = [[OOSoundSource alloc] init];
-	sSource->_sound = [sSound retain];
+	sSourceObject = oo::makeRef<OOSoundSource>().leakRef();	// kept for the life of the test
+	sSource = &sRecords[sSourceObject];
+	sSource->_sound = oo::Ref<OOSound>(sSound);
 	sSource->_repeatCount = 1;
 	sSource->_position = make_vector(1, 2, 3);
 	sSource->_gain = 0.5f;
-	Define("source", [sSource oo_jsValueInContext:sContext]);
-	Define("aSound", OOJSValueFromNativeObject(sContext, sSound));
+	Define("source", OOJSSoundSourceJSValueInContext(sSourceObject, sContext));
+	Define("aSound", OOJSSoundJSValueInContext(sSound, sContext));
 }
 
 
@@ -366,14 +366,15 @@ OO_TEST(registration)
 	SetUpContext();
 	OO_CHECK_EVAL("typeof SoundSource", "function");
 	OO_CHECK_EQ(sConverters.size(), 1u);
-	OO_CHECK([sSource cxx_oo_jsClassName] == std::optional<std::string>("SoundSource"));
+	OO_CHECK(OOJSSoundSourceJSClassName() == std::optional<std::string>("SoundSource"));
 	// -oo_jsValueInContext: makes a new SoundSource object each time, holding the source retained.
-	NSUInteger before = [sSource retainCount];
-	ooscript::Value a = [sSource oo_jsValueInContext:sContext];
-	ooscript::Value b = [sSource oo_jsValueInContext:sContext];
+	const std::uint32_t before = sSourceObject->retainCount();
+	ooscript::Value a = OOJSSoundSourceJSValueInContext(sSourceObject, sContext);
+	ooscript::Value b = OOJSSoundSourceJSValueInContext(sSourceObject, sContext);
 	OO_CHECK(ooscript::isObject(a) && ooscript::isObject(b) && ooscript::toObject(a) != ooscript::toObject(b));
-	OO_CHECK(ooscript::getPrivate(sContext, ooscript::toObject(a)) == sSource);
-	OO_CHECK_EQ([sSource retainCount], before + 2);
+	Define("sourceA", a);	// the slot's holder holds the source: the object answers its record
+	OO_CHECK_EVAL("sourceA.volume", "0.5");
+	OO_CHECK_EQ(sSourceObject->retainCount(), before + 2);
 	OO_CHECK_EVAL("source instanceof SoundSource", "true");
 	OO_CHECK_EVAL("String(source)", "[SoundSource]");
 }
@@ -414,9 +415,9 @@ OO_TEST(setters)
 	OO_CHECK_EVAL("(function () { source.volume = 3; return source.volume; })()", "1");
 	OO_CHECK_EVAL("(function () { source.volume = -3; return source.volume; })()", "0");
 	OO_CHECK_EVAL("(function () { source.sound = null; return source.sound; })()", "null");
-	OO_CHECK(sSource->_sound == nil);
+	OO_CHECK(sSource->_sound == nullptr);
 	OO_CHECK_EVAL("(function () { source.sound = aSound; return source.sound === null; })()", "false");
-	OO_CHECK(sSource->_sound == sSound);
+	OO_CHECK(sSource->_sound.get() == sSound);
 	sSource->_gain = 0.5f;
 }
 

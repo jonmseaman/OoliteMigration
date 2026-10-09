@@ -69,8 +69,8 @@ MA 02110-1301, USA.
 - (void) cxx_setLocalShipyard:(const std::vector<oo::PList> &)shipyard;
 - (void) generateShipyard;
 - (void) generateShipyard:(OOTechLevelID)stationTechLevel;
-- (std::map<std::string, oo::ObjCRef<OOJSInterfaceDefinition *>, std::less<>> *) cxx_localInterfaces;	// the live map; nullptr on nil
-- (void) cxx_setInterfaceDefinition:(OOJSInterfaceDefinition *)definition forKey:(const std::string &)key;	// nil removes
+- (std::map<std::string, oo::Ref<OOJSInterfaceDefinition>, std::less<>> *) cxx_localInterfaces;	// the live map; nullptr on nil
+- (void) cxx_setInterfaceDefinition:(OOJSInterfaceDefinition *)definition forKey:(const std::string &)key;	// null removes
 - (OOCommodityMarket *) initialiseLocalMarket;
 - (OOTechLevelID) equivalentTechLevel;
 - (void) setEquivalentTechLevel:(OOTechLevelID)value;

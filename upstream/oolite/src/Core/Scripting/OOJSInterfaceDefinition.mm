@@ -52,13 +52,10 @@ static OOComparisonResult CaseInsensitiveCompare(const std::optional<std::string
 } // namespace
 
 
-/*	C++20 since bead oo-8fpc (proposed ADR-0056 amendment oo-o89): cxx::OOJSInterfaceDefinition. -init after
+/*	C++20 since bead oo-8fpc (proposed ADR-0056 amendment oo-o89): OOJSInterfaceDefinition. -init after
 	[super init] is the constructor, -dealloc the destructor; the engine, the script stack and the
 	owning script's weak reference are Objective-C and are messaged as before.
 */
-
-namespace cxx {
-
 
 OOJSInterfaceDefinition::OOJSInterfaceDefinition() {
 	_callback = ooscript::undefinedValue();
@@ -198,4 +195,3 @@ OOComparisonResult OOJSInterfaceDefinition::interfaceCompare(OOJSInterfaceDefini
 	}
 }
 
-}	// namespace cxx

@@ -5055,3 +5055,54 @@ forwarding categories, the moved interfaces and the `::PlayerEntity *self` lines
 **Consequences.** `Universe.mm`, `PlayerEntity*.mm` (but the bridge), `PlayerEntityControls.mm` and
 `OOJSShip.mm` have no Objective-C class syntax; every `@implementation` of the three giants is in
 their `+ObjCBridge.mm`, which their facade-deletion beads (oo-ql9rn, oo-9ht.177, oo-9ht.181) remove.
+
+## Amendment (bead oo-9ht.68): the audio facades and two OOWeakRefObject facades in one change
+
+- Date: 2026-10-09. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch C
+  (one branch, as batch B): beads oo-9ht.68 (OOSound), oo-9ht.88 (OOSoundSource), oo-9ht.82
+  (OOALSoundDecoder), oo-9ht.52 and oo-9ht.53 (their JS category forwarders), oo-9ht.61
+  (OOJSInterfaceDefinition), oo-9ht.62 (OOJSGuiScreenKeyDefinition). Exemplar: `src/Core/OOALSound.h/.mm`,
+  `OOSoundSource.h/.mm`, `Scripting/OOJSSound.mm`, `Scripting/OOJSSoundSource.mm`,
+  `Entities/PlayerEntitySound.mm`, `tests/unit/core/test_OOSound.mm`, `test_OOJSSoundSource.mm`.
+
+**Decision (recommended defaults).**
+
+1. **A class cluster's root and its concrete classes go together.** Once the root's facade
+   (`OOSound`) and the decoder's are gone, the cluster's factory answers `oo::Ref<Root>`
+   (`OOSound::initWithContentsOfFile`), the subclasses take the C++ decoder, and a subclass that
+   overrode the initialiser (`OOMusic`) hides the factory as before (amendment oo-2en item 3).
+   The facade's `-cxx_description` becomes a non-virtual `description()` on the root (the C++
+   class's name, its address and components), which the sound source's components print.
+2. **A JS class whose `-oo_jsValueInContext:` made a new object on every call** (Sound,
+   SoundSource: no `_jsSelf`) puts a small holder in the slot (amendment oo-6symp item 2): a
+   `final` `oo::RefCounted` + `OOJSPrivateObject` in the binding's file that retains the C++
+   object and answers its `toString()`; `clearJSSelf` does nothing. The class itself does not
+   implement `OOJSPrivateObject`, so the audio tests that link it without its binding need no
+   stand-ins (item 5). Its converter answers null (no Objective-C object is left to hand over);
+   the binding's own readers (`SoundFromJSValue`) read the holder.
+3. **An object that kept itself alive through its facade** (a playing sound source's `[self
+   retain]`) calls `retain()` / `release()`; nothing touches the object after the last
+   `release()`. A set of such objects holds `oo::Ref`.
+4. **A static that held an alloc/init'd facade for the process** holds the +1 of
+   `oo::makeRef<X>().leakRef()` (and `oo::release` where `DESTROY` was), and each use is
+   null-checked where a message to nil was harmless (batch B's lesson: CollisionRegion before
+   creation).
+5. **A category on a converted class's facade that lives in another facade's file**
+   (`Universe+ObjCBridge.mm`'s `OOSound (OOCustomSounds)` / `OOSoundSource (OOCustomSounds)`) goes
+   with the facade; its free-function bodies (`OOSoundWithCustomSoundKey()`,
+   `OOSoundSourcePlayCustomSoundWithKey()`, null-safe) are called directly. A facade selector of a
+   facade that stays (`+[ResourceManager cxx_ooSoundNamed:inFolder:]`) is retyped to the C++
+   class; the resource manager's cache holds `oo::Ref`.
+6. **A subclass of `OOWeakRefObject` whose holders only retained it** (the interface and GUI-key
+   definitions: no `-weakRetain` of them existed) becomes a plain `oo::RefCounted` held as
+   `oo::Ref`; amendment oo-o89 item 3's `oo::WeakRef` is not needed. A header that keeps one in a
+   member includes its header (a forward declaration does not destroy an `oo::Ref`).
+7. **Tests** (standing approval oo-9n5p9): a C++ stand-in replaces each Objective-C stand-in with
+   the same answers; a test that relied on an autoreleased object's lifetime uses an
+   `oo::AutoreleaseScope` where it had `@autoreleasepool`; the facade's `"%@"` checks ask
+   `description()` / `descriptionComponents()`; a binding test that stood in for the engine's
+   Objective-C getter, finalizer and `toString()` stands in for the C++ glue the same way.
+
+**Consequences.** The Audio module has no Objective-C class; `PlayerEntitySound.mm`, `OOTrumble.mm`,
+`OOSoundSourcePool.mm`, `OOALMusic.mm` and the two sound bindings call it directly. The
+`OOWeakRefObject` deletion (oo-9ht.22) no longer waits for the two definitions.

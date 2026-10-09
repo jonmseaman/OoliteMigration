@@ -38,7 +38,7 @@ enum
 
 typedef struct OOSoundSourcePoolElement
 {
-	OOSoundSource			*source;
+	OOSoundSource			*source;	// one retain, or null (C++ since bead oo-9ht.88)
 	OOTimeAbsolute			expiryTime;
 	float					priority;
 } PoolElement;
@@ -82,14 +82,15 @@ OOSoundSourcePool::~OOSoundSourcePool()
 
 	for (i = 0; i != _count; i++)
 	{
-		[_sources[i].source release];
+		oo::release(_sources[i].source);
 	}
 	free(_sources);
 }
 
 
-/*	The sounds and the sources are Objective-C objects, which the pool makes by their class methods
-	and alloc/init (its test stubs both; amendment oo-rmd7 item 3).
+/*	The sounds and the sources are C++ since beads oo-9ht.68 and oo-9ht.88 deleted their facades:
+	the sound for a key is OOSoundWithCustomSoundKey() (Universe.h) and the pool makes its sources
+	(its test stands in for both; amendment oo-rmd7 item 3).
 */
 void OOSoundSourcePool::playSoundWithKey(const std::string &key,
 				 float priority,
@@ -108,7 +109,7 @@ void OOSoundSourcePool::playSoundWithKey(const std::string &key,
 
 	// Avoid repeats if required
 	if (now < _nextRepeat && _lastKey == key)  return;
-	if (!overlap && _reserved != kNoSlot && [_sources[_reserved].source isPlaying]) return;
+	if (!overlap && _reserved != kNoSlot && _sources[_reserved].source != nullptr && _sources[_reserved].source->isPlaying()) return;
 
 	// Look for a slot in the source list to use
 	slot = selectSlotForPriority(priority);
@@ -116,22 +117,22 @@ void OOSoundSourcePool::playSoundWithKey(const std::string &key,
 	element = &_sources[slot];
 
 	// Load sound
-	sound = [::OOSound cxx_soundWithCustomSoundKey:key];
-	if (sound == nil)  return;
+	sound = OOSoundWithCustomSoundKey(key);
+	if (sound == nullptr)  return;
 
 	// Stop playing sound or set up sound source as appropriate
-	if (element->source != nil)  [element->source stop];
+	if (element->source != nullptr)  element->source->stop();
 	else
 	{
-		element->source = [[::OOSoundSource alloc] init];
-		if (element->source == nil)  return;
+		element->source = oo::makeRef<::OOSoundSource>().leakRef();
+		if (element->source == nullptr)  return;
 	}
 	if (slot == _reserved) _reserved = kNoSlot;	// _reserved has finished playing!
 	if (!overlap) _reserved = slot;
 
 	// Play and store metadata
-	[element->source setPosition:position];
-	[element->source playOOSound:sound];
+	element->source->setPosition(position);
+	element->source->playOOSound(sound);
 	element->expiryTime = absExpiryTime;
 	element->priority = priority;
 	if (_minRepeat > 0.0)
@@ -226,7 +227,7 @@ uint8_t OOSoundSourcePool::selectSlotForPriority(float priority)
 		curr = NEXT(curr);
 		element = &_sources[curr];
 
-		if (element->source == nil || ![element->source isPlaying])  return curr;	// Best type of slot: empty
+		if (element->source == nullptr || !element->source->isPlaying())  return curr;	// Best type of slot: empty
 		else if (element->priority < priority)
 		{
 			if (element->expiryTime <= now)  expiredLower = curr;	// Second-best type: expired lower-priority

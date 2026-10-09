@@ -29,7 +29,7 @@ SOFTWARE.
 #import "OOALStreamedSound.h"
 #import "OOALSoundDecoder.h"
 
-// The decoder is released by its oo::ObjCRef.
+// The decoder is released by its oo::Ref.
 OOALStreamedSound::~OOALStreamedSound()
 {
 	free(_buffer);
@@ -44,16 +44,16 @@ std::optional<std::string> OOALStreamedSound::name()
 
 
 /*	The body of -initWithDecoder:, with self as the new sound; its [self release]; self = nil; is
-	the null it answers. The decoder is still the Objective-C one, which the root's class cluster
-	makes; [inDecoder retain] is the oo::ObjCRef.
+	the null it answers. The decoder is the C++ one since bead oo-9ht.82; [inDecoder retain] is the
+	oo::Ref.
 */
-oo::Ref<OOALStreamedSound> OOALStreamedSound::initWithDecoder(::OOALSoundDecoder *inDecoder)
+oo::Ref<OOALStreamedSound> OOALStreamedSound::initWithDecoder(OOALSoundDecoder *inDecoder)
 {
 	bool					OK = true;
 	oo::Ref<OOALStreamedSound>	self;
 	
 	setUp();
-	if (!isSoundOK() || nil == inDecoder) OK = false;
+	if (!isSoundOK() || nullptr == inDecoder) OK = false;
 	
 	if (OK)
 	{
@@ -62,12 +62,12 @@ oo::Ref<OOALStreamedSound> OOALStreamedSound::initWithDecoder(::OOALSoundDecoder
 	
 	if (OK)
 	{
-		self->_name = [inDecoder cxx_name];
-		self->_sampleRate = [inDecoder sampleRate];
-		self->_stereo = [inDecoder isStereo];
+		self->_name = inDecoder->name();
+		self->_sampleRate = inDecoder->sampleRate();
+		self->_stereo = inDecoder->isStereo();
 		self->_reachedEnd = false;
 		self->_buffer = (char *)malloc(OOAL_STREAM_CHUNK_SIZE);
-		self->decoder = oo::ObjCRef<::OOALSoundDecoder *>(inDecoder);
+		self->decoder = oo::Ref<OOALSoundDecoder>(inDecoder);
 		self->rewind();
 	}
 	
@@ -81,7 +81,7 @@ oo::Ref<OOALStreamedSound> OOALStreamedSound::initWithDecoder(::OOALSoundDecoder
 
 void OOALStreamedSound::rewind()
 {
-	[decoder.get() reset];
+	if (decoder != nullptr)  decoder->reset();	// a message to nil did nothing
 	_reachedEnd = false;
 }
 
@@ -94,7 +94,7 @@ bool OOALStreamedSound::soundIncomplete()
 
 ALuint OOALStreamedSound::soundBuffer()
 {
-	size_t transferred = [decoder.get() streamToBuffer:_buffer];
+	size_t transferred = (decoder != nullptr) ? decoder->streamToBuffer(_buffer) : 0;	// a message to nil answered 0
 	if (transferred < OOAL_STREAM_CHUNK_SIZE)
 	{
 		// otherwise keep going

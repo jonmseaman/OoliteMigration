@@ -1392,11 +1392,10 @@ OO_TEST(slice26ConditionScriptsAndSounds)
 		OO_CHECK(u->_cxxUniverse->conditionScripts.empty());
 		OO_CHECK([u cxx_getConditionScript:"slice26-missing.js"] == nil);
 
-		// A key with no custom sound makes no sound and no source.
+		// A key with no custom sound makes no sound. (The OOSoundSource category's initialisers, which
+		// made no source for it, went with that facade: bead oo-9ht.88.)
 		u->_cxxUniverse->customSounds = oo::PList(oo::PList::Dict{});
-		OO_CHECK([OOSound cxx_soundWithCustomSoundKey:"[slice26-missing]"] == nil);
-		OO_CHECK([OOSoundSource sourceWithCustomSoundKey:"[slice26-missing]"] == nil);
-		OO_CHECK([[OOSoundSource alloc] initWithCustomSoundKey:"[slice26-missing]"] == nil);
+		OO_CHECK(OOSoundWithCustomSoundKey("[slice26-missing]") == nullptr);
 	}
 }
 
