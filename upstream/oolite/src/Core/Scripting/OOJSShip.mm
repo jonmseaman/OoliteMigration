@@ -695,18 +695,18 @@ bool IsShip(Entity *entity)
 	return dynamic_cast<cxx::ShipEntity *>(oo::ToCxx(entity)) != nullptr;
 }
 
-/*	The ship's mesh is converted (cxx::OOMesh), and the ship answers its facade. A ship with no mesh
-	answered null to -materials and -shaders; so does a null mesh here.
+/*	The ship's mesh is C++ (OOMesh, global since bead oo-9ht.132). A ship with no mesh answered
+	null to -materials and -shaders; so does a null mesh here.
 */
 oo::PList MeshMaterials(cxx::ShipEntity *ship)
 {
-	cxx::OOMesh *mesh = oo::ToCxx(ship->mesh());
+	OOMesh *mesh = ship->mesh();
 	return (mesh != nullptr) ? mesh->getMaterials() : oo::PList();
 }
 
 oo::PList MeshShaders(cxx::ShipEntity *ship)
 {
-	cxx::OOMesh *mesh = oo::ToCxx(ship->mesh());
+	OOMesh *mesh = ship->mesh();
 	return (mesh != nullptr) ? mesh->shaders() : oo::PList();
 }
 
@@ -3516,7 +3516,7 @@ bool ShipSetMaterialsInternal(ooscript::Context context, ooscript::CallArgs &ooj
 	const oo::PList			*prefixMacros = materialDefaults.find("ship-prefix-macros");
 
 	// First we test to see if we can create the mesh.
-	const oo::Ref<cxx::OOMesh> mesh = cxx::OOMesh::meshWithName(shipDict.get<std::string>("model"),
+	const oo::Ref<OOMesh> mesh = OOMesh::meshWithName(shipDict.get<std::string>("model"),
 							   std::nullopt,
 					 materials,
 					  shaders,
@@ -3526,7 +3526,7 @@ bool ShipSetMaterialsInternal(ooscript::Context context, ooscript::CallArgs &ooj
 	
 	if (mesh != nullptr)
 	{
-		ship->setMesh(oo::ToObjC(mesh));
+		ship->setMesh(mesh.get());
 		success = true;
 	}
 	OOJS_END_FULL_NATIVE

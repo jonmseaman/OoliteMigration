@@ -5659,3 +5659,45 @@ converter (which answered it as plist data) and messaged by the player (`+update
 
 **Consequences.** No Objective-C timer class is left; the queue's C++ twin is the pattern for any
 other container of Objective-C elements a facade deletion meets.
+
+## Amendment (beads oo-hahfg, oo-9ht.132, oo-9ht.9): the drawable family's facades, deleted together
+
+- Date: 2026-10-09. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch L
+  (one branch for the seam and both deletions). Exemplar: `src/Core/OODrawable.h/.mm`,
+  `OOMesh.h/.mm`, `Entities/OOEntityWithDrawable.h/.mm`, `Entities/ShipEntity.mm` (`mesh()`,
+  `setMesh()`), `Scripting/OOJSVisualEffect.mm`, `tests/unit/core/test_OODrawable.mm`,
+  `test_OOMesh.mm`, `test_OOJSVisualEffect.mm`.
+
+**Context.** Every drawable was already C++ (OOMesh's four slices, OOPlanetDrawable, OOSkyDrawable);
+the facades `OODrawable` and `OOMesh` remained for the holders: the entities kept an
+`oo::ObjCRef<OODrawable *>`, the ship and visual effect made meshes with `+meshWithName:...` and
+their `-mesh`/`-setMesh:` and the entity's `-drawable`/`-setDrawable:` were typed with the facades.
+The seam (moving the holders) and the two deletions are one change: once the holders are C++ no
+Objective-C caller is left for either facade.
+
+**Decision (recommended defaults).**
+
+1. **The entity holds `oo::Ref<OODrawable>`**, and its header includes `OODrawable.h` (amendment
+   oo-9ht.133 item 2). `[drawable autorelease]` on replacement is `OODrawableAutorelease()`, a
+   file-private keeper as `OOScriptAutorelease()` (amendment oo-9ht.133 item 3).
+2. **An entity facade's selectors that answered a deleted facade answer the C++ object**: the
+   entity's `-drawable`/`-setDrawable:`, the ship's and visual effect's `-mesh`/`-setMesh:` are
+   kept and typed with the C++ classes (`class OOMesh;` replaces `@class OOMesh`), so their
+   senders compile unchanged; a send to the result (`[[self mesh] rebindMaterials]`) becomes a
+   member call guarded for null with the zero a message to nil answered (`BoundingBox{}`, a null
+   `oo::PList`).
+3. **The classes move to the global namespace** (`OODrawable`, `OOMesh`); names that are still
+   `cxx::` classes behind a facade (`cxx::OOMaterial`, `cxx::OOOpenGLExtensionManager`) are
+   qualified where the code was inside namespace cxx.
+4. **The debug size is the C++ object's**: `totalSize()` starts from a virtual `objectSize()`
+   (`sizeof *this`, each drawable answering its own) where it was the facade's instance size;
+   `description()` is the facade's `<Class 0x...>{components}` with the drawable's address.
+5. **Tests** (standing approval oo-9n5p9, lines on main first): the facades' crossing cases go
+   (identity, nil, an Objective-C subclass's adapter, the bitwise copy, facade classes); an
+   Objective-C test drawable is a C++ subclass with the same answers; a narrow test that stood in
+   for the Objective-C `OOMesh` stands in for the C++ class (amendment oo-9ht.177 item 5).
+
+**Consequences.** No Objective-C drawable class is left. `NSObjectOOExtensions` still has senders
+(the Entity facade, the debug monitor's entity and texture sizes, OOWeakReference), so oo-6e1.1
+stays open; the compiled-out `PRELOAD` block of `OOShipRegistry.mm` still names a `+meshWithName:`
+form no class has had since oo-dnbf.

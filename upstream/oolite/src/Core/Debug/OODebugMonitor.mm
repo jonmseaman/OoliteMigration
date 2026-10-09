@@ -415,8 +415,8 @@ void OODebugMonitor::dumpEntity(id entity, EntityDumpState *state, bool parentVi
 	size_t drawableSize = 0;
 	if ([entity isKindOfClass:[::OOEntityWithDrawable class]])
 	{
-		::OODrawable *drawable = [entity drawable];
-		drawableSize = [drawable totalSize];
+		OODrawable *drawable = [entity drawable];	// C++ since bead oo-hahfg
+		drawableSize = (drawable != nullptr) ? drawable->totalSize() : 0;
 	}
 
 	bool visible = parentVisible && [entity isVisible];

@@ -51,7 +51,8 @@ MA 02110-1301, USA.
 	OOVisualEffectEntity+ObjCBridge.mm (bead oo-9ht.93, amendment oo-6ia4 item 3);
 	restoreSubEntities() calls the function that holds -subEntitiesForScript's body. OOColor, which is C++ since bead oo-11m, is reached as
 	OOColor through oo::ToCxx/oo::ToObjC (amendment oo-ppc, item 4). Messages to classes that
-	are still Objective-C (OOVisualEffectEntity, OOMesh, ResourceManager, Universe, PlayerEntity)
+	are still Objective-C (OOVisualEffectEntity, ResourceManager, Universe, PlayerEntity; OOMesh is
+	C++ since bead oo-9ht.132)
 	stay as they are, which is why the file is still .mm until Phase 4.
 */
 
@@ -632,6 +633,23 @@ static bool VisualEffectSetProperty(Context cx, Object obj, PropertyId propID, b
 
 // *** Methods ***
 
+// The effect's mesh's materials and shaders: C++ since bead oo-9ht.132 (the effect's -mesh answers
+// the C++ mesh); null for no mesh, as a message to nil answered.
+namespace {
+oo::PList MeshMaterials(OOVisualEffectEntity *effect)
+{
+	OOMesh *mesh = [effect mesh];
+	return (mesh != nullptr) ? mesh->getMaterials() : oo::PList();
+}
+
+oo::PList MeshShaders(OOVisualEffectEntity *effect)
+{
+	OOMesh *mesh = [effect mesh];
+	return (mesh != nullptr) ? mesh->shaders() : oo::PList();
+}
+} // namespace
+
+
 #define GET_THIS_EFFECT(THISENT) do { \
 	if (EXPECT_NOT(!JSVisualEffectGetVisualEffectEntity(context, OOJS_THIS, &(THISENT))))  return false; /* Exception */ \
 	if (OOIsStaleEntity(THISENT))  OOJS_RETURN_VOID; \
@@ -678,7 +696,7 @@ static bool VisualEffectGetMaterials(ooscript::Context cx, ooscript::CallArgs &o
 
 	GET_THIS_EFFECT(thisEnt);
 	
-	result = [[thisEnt mesh] materials];
+	result = MeshMaterials(thisEnt);
 	if (result.isNull())  result = oo::PList(oo::PList::Dict{});	// an empty dictionary
 	OOJS_RETURN_PLIST(result);
 	
@@ -699,7 +717,7 @@ static bool VisualEffectGetShaders(ooscript::Context cx, ooscript::CallArgs &ooj
 
 	GET_THIS_EFFECT(thisEnt);
 	
-	result = [[thisEnt mesh] shaders];
+	result = MeshShaders(thisEnt);
 	if (result.isNull())  result = oo::PList(oo::PList::Dict{});	// an empty dictionary
 	OOJS_RETURN_PLIST(result);
 	
@@ -801,7 +819,7 @@ static bool VisualEffectSetMaterialsInternal(ooscript::Context context, ooscript
 	
 	if (fromShaders)
 	{
-		materials = [[thisEnt mesh] materials];
+		materials = MeshMaterials(thisEnt);
 		params = ooscript::toObject(OOJS_ARGV[0]);
 		shaders = cxx_OOJSPListFromJSObject(context, params);
 	}
@@ -816,7 +834,7 @@ static bool VisualEffectSetMaterialsInternal(ooscript::Context context, ooscript
 		}
 		else
 		{
-			shaders = [[thisEnt mesh] shaders];
+			shaders = MeshShaders(thisEnt);
 		}
 	}
 	
@@ -833,17 +851,17 @@ static bool VisualEffectSetMaterialsInternal(ooscript::Context context, ooscript
 	const oo::PList		shaderMacros = (macros != nullptr) ? *macros : oo::PList();
 	
 	// First we test to see if we can create the mesh.
-	OOMesh *mesh = [OOMesh meshWithName:modelName.value_or(std::string())
-							   cacheKey:std::nullopt
-					 materialDictionary:materials
-					  shadersDictionary:shaders
-								 smooth:effectDict.get<bool>("smooth", false)
-						   shaderMacros:shaderMacros
-					shaderBindingTarget:thisEnt];
+	const oo::Ref<OOMesh> mesh = OOMesh::meshWithName(modelName.value_or(std::string()),
+							   std::nullopt,
+					 materials,
+					  shaders,
+								 effectDict.get<bool>("smooth", false),
+						   shaderMacros,
+					thisEnt);
 	
-	if (mesh != nil)
+	if (mesh != nullptr)
 	{
-		[thisEnt setMesh:mesh];
+		[thisEnt setMesh:mesh.get()];
 		success = true;
 	}
 	OOJS_END_FULL_NATIVE

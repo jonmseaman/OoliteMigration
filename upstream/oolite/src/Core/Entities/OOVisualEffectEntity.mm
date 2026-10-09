@@ -148,15 +148,15 @@ bool OOVisualEffectEntity::setUpVisualEffectFromDictionary(const oo::PList &effe
 	const std::optional<std::string> modelName = OptionalStringForKey(effectDict, "model");
 	if (modelName.has_value())
 	{
-		::OOMesh *mesh = [::OOMesh meshWithName:*modelName
-								   cacheKey:_effectKey
-						 materialDictionary:DictionaryForKey(effectDict, "materials")
-						  shadersDictionary:DictionaryForKey(effectDict, "shaders")
-									 smooth:effectDict.get<bool>("smooth", false)
-							   shaderMacros:OODefaultShipShaderMacros()
-						shaderBindingTarget:oo::ToObjC(this)];
-		if (mesh == nil)  return false;
-		setMesh(mesh);
+		const oo::Ref<::OOMesh> mesh = ::OOMesh::meshWithName(*modelName,
+								   _effectKey,
+								   DictionaryForKey(effectDict, "materials"),
+								   DictionaryForKey(effectDict, "shaders"),
+								   effectDict.get<bool>("smooth", false),
+								   OODefaultShipShaderMacros(),
+								   oo::ToObjC(this));
+		if (mesh == nullptr)  return false;
+		setMesh(mesh.get());
 	}
 
 	isImmuneToBreakPatternHide = effectDict.get<bool>("is_break_pattern");
@@ -226,7 +226,7 @@ bool OOVisualEffectEntity::canCollide()
 
 ::OOMesh *OOVisualEffectEntity::mesh()
 {
-	return (::OOMesh *)getDrawable();
+	return static_cast<::OOMesh *>(getDrawable());	// an effect's drawable is its mesh
 }
 
 
@@ -455,8 +455,8 @@ void OOVisualEffectEntity::drawSubEntityImmediate(bool immediate, bool transluce
 
 void OOVisualEffectEntity::rescaleBy(GLfloat factor)
 {
-	if (mesh() != nil) {
-		setMesh([mesh() meshRescaledBy:factor]);
+	if (mesh() != nullptr) {
+		setMesh(mesh()->meshRescaledBy(factor).get());
 	}
 
 	// rescale subentities
@@ -660,7 +660,7 @@ void OOVisualEffectEntity::drawImmediate(bool immediate, bool translucent)
 	OOGLPushModelView();
 	OOGLScaleModelView(make_vector(_scaleX,_scaleY,_scaleZ));
 
-	if (mesh() != nil)
+	if (mesh() != nullptr)
 	{
 		OOEntityWithDrawable::drawImmediate(immediate, translucent);
 	}

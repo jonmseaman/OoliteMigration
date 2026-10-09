@@ -752,20 +752,18 @@ bool ShipEntity::setUpFromDictionary(const oo::PList &inShipDict)
 	const std::optional<std::string> modelName = StringForKey(shipDict, "model");
 	if (modelName.has_value())
 	{
-		::OOMesh *mesh = nil;
+		const oo::Ref<::OOMesh> mesh = ::OOMesh::meshWithName(*modelName,
+						   oo::str::format("%s-%.3f", _shipKey.value_or("(null)").c_str(), _scaleFactor),	// %@ printed nil as (null)
+						   DictionaryForKey(shipDict, "materials"),
+						   DictionaryForKey(shipDict, "shaders"),
+						   shipDict.get<bool>("smooth", false),
+						   OODefaultShipShaderMacros(),
+						   self,
+						   _scaleFactor,
+						   true);
 
-		mesh = [::OOMesh meshWithName:*modelName
-						   cacheKey:oo::str::format("%s-%.3f", _shipKey.value_or("(null)").c_str(), _scaleFactor)	// %@ printed nil as (null)
-				 materialDictionary:DictionaryForKey(shipDict, "materials")
-				  shadersDictionary:DictionaryForKey(shipDict, "shaders")
-							 smooth:shipDict.get<bool>("smooth", false)
-					   shaderMacros:OODefaultShipShaderMacros()
-					   shaderBindingTarget:self
-						scaleFactor:_scaleFactor
-					 cacheWriteable:YES];
-
-		if (mesh == nil)  return NO;
-		[self setMesh:mesh];
+		if (mesh == nullptr)  return NO;
+		[self setMesh:mesh.get()];
 	}
 	
 	float density = shipDict.get<float>("density", 1.0f);
@@ -1522,18 +1520,16 @@ void ShipEntity::setAccuracy(GLfloat new_accuracy)
 
 ::OOMesh *ShipEntity::mesh()
 {
-	::ShipEntity *self = oo::ToObjC(this);
-	return (::OOMesh *)[self drawable];
+	return static_cast<::OOMesh *>(getDrawable());	// a ship's drawable is its mesh
 }
 
 
 void ShipEntity::setMesh(::OOMesh *mesh)
 {
-	::ShipEntity *self = oo::ToObjC(this);
-	if (mesh != [self mesh])
+	if (mesh != this->mesh())
 	{
-		[self setDrawable:mesh];
-		octree = mesh ? oo::ToCxx(mesh)->getOctree() : oo::Ref<Octree>();
+		setDrawable(mesh);
+		octree = mesh ? mesh->getOctree() : oo::Ref<Octree>();
 	}
 }
 
@@ -1742,12 +1738,10 @@ namespace cxx {
 
 BoundingBox ShipEntity::findBoundingBoxRelativeToPosition(HPVector opv, Vector _i, Vector _j, Vector _k)
 {
-	::ShipEntity *self = oo::ToObjC(this);
 	// HPVect: check that this conversion doesn't lose needed precision
-	return [[self mesh] findBoundingBoxRelativeToPosition:HPVectorToVector(opv)
-													basis:_i :_j :_k
-										 selfPosition:HPVectorToVector(position)
-												selfBasis:v_right :v_up :v_forward];
+	::OOMesh *mesh = this->mesh();
+	if (mesh == nullptr)  return BoundingBox{};	// a message to nil answered zero
+	return mesh->findBoundingBoxRelativeToPosition(HPVectorToVector(opv), _i, _j, _k, HPVectorToVector(position), v_right, v_up, v_forward);
 }
 
 
@@ -2522,8 +2516,9 @@ bool ShipEntity::canCollide()
 
 BoundingBox ShipEntity::findSubentityBoundingBox()
 {
-	::ShipEntity *self = oo::ToObjC(this);
-	return [[self mesh] findSubentityBoundingBoxWithPosition:HPVectorToVector(position) rotMatrix:rotMatrix];
+	::OOMesh *mesh = this->mesh();
+	if (mesh == nullptr)  return BoundingBox{};	// a message to nil answered zero
+	return mesh->findSubentityBoundingBoxWithPosition(HPVectorToVector(position), rotMatrix);
 }
 
 
@@ -7281,7 +7276,7 @@ void ShipEntity::setOwner(Entity *who_owns_entity)
 	*/
 	if (isSubEntity)
 	{
-		[[self drawable] setBindingTarget:self];
+		if (OODrawable *drawable = getDrawable())  drawable->setBindingTarget(self);
 	}
 }
 
@@ -9701,24 +9696,24 @@ void ShipEntity::rescaleBy(GLfloat factor, bool writeToCache)
 {
 	::ShipEntity *self = oo::ToObjC(this);
 	_scaleFactor *= factor;
-	::OOMesh *mesh = nil;
+	oo::Ref<::OOMesh> mesh;
 
 	const oo::PList &shipDict = shipinfoDictionary;
 	const std::optional<std::string> modelName = StringForKey(shipDict, "model");
 	if (modelName.has_value())
 	{
-		mesh = [::OOMesh meshWithName:*modelName
-						   cacheKey:oo::str::format("%s-%.3f", _shipKey.value_or("(null)").c_str(), _scaleFactor)	// %@ printed nil as (null)
-				 materialDictionary:DictionaryForKey(shipDict, "materials")
-				  shadersDictionary:DictionaryForKey(shipDict, "shaders")
-							 smooth:shipDict.get<bool>("smooth", false)
-					   shaderMacros:OODefaultShipShaderMacros()
-					   shaderBindingTarget:self
-						scaleFactor:factor
-					 cacheWriteable:writeToCache];
+		mesh = ::OOMesh::meshWithName(*modelName,
+						   oo::str::format("%s-%.3f", _shipKey.value_or("(null)").c_str(), _scaleFactor),	// %@ printed nil as (null)
+						   DictionaryForKey(shipDict, "materials"),
+						   DictionaryForKey(shipDict, "shaders"),
+						   shipDict.get<bool>("smooth", false),
+						   OODefaultShipShaderMacros(),
+						   self,
+						   factor,
+						   writeToCache);
 
-		if (mesh == nil)  return;
-		[self setMesh:mesh];
+		if (mesh == nullptr)  return;
+		[self setMesh:mesh.get()];
 	}
 
 	// rescale subentities
@@ -10411,7 +10406,7 @@ void ShipEntity::setEntityPersonalityInt(uint16_t value)
 	if (value <= ENTITY_PERSONALITY_MAX)
 	{
 		entity_personality = value;
-		[[self mesh] rebindMaterials];
+		if (::OOMesh *mesh = this->mesh())  mesh->rebindMaterials();
 	}
 }
 

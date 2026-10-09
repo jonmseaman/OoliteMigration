@@ -40,7 +40,7 @@ core_tests = {
     'test_OOTextureVerifierStage': ['Core/OXPVerifier/OOTextureVerifierStage.mm', 'Core/OXPVerifier/OOFileScannerVerifierStage.mm', 'Core/OXPVerifier/OOOXPVerifierStage.mm', 'Core/OODescription.mm'],
     'test_OOCheckShipDataPListVerifierStage': ['Core/OXPVerifier/OOCheckShipDataPListVerifierStage.mm', 'Core/OXPVerifier/OOModelVerifierStage.mm', 'Core/OXPVerifier/OOAIStateMachineVerifierStage.mm', 'Core/OXPVerifier/OOTextureVerifierStage.mm', 'Core/OXPVerifier/OOFileScannerVerifierStage.mm', 'Core/OXPVerifier/OOOXPVerifierStage.mm', 'Core/OODescription.mm'],
     'test_OOModelVerifierStage': ['Core/OXPVerifier/OOModelVerifierStage.mm', 'Core/OXPVerifier/OOTextureVerifierStage.mm', 'Core/OXPVerifier/OOFileScannerVerifierStage.mm', 'Core/OXPVerifier/OOOXPVerifierStage.mm', 'Core/OODescription.mm'],
-    'test_OODrawable': ['Core/OODrawable.mm', 'Core/OODrawable+ObjCBridge.mm', 'Core/NSObjectOOExtensions.mm', 'Core/OOVector.mm', 'Core/legacy_random.c', 'Core/OODescription.mm'],
+    'test_OODrawable': ['Core/OODrawable.mm', 'Core/OOVector.mm', 'Core/legacy_random.c', 'Core/OODescription.mm'],
     'test_OOMaterial': ['Core/Materials/OOMaterial.mm', 'Core/Materials/OOMaterial+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OOShaderUniformMethodType': ['Core/Materials/OOShaderUniformMethodType.mm', 'Core/OOMatrix.cpp', 'Core/OOOpenGLExtensionManager.mm', 'Core/OOOpenGLExtensionManager+ObjCBridge.mm', 'Core/OOVector.mm', 'Core/OOHPVector.mm', 'Core/OOQuaternion.cpp', 'Core/legacy_random.c'],
     'test_OOBasicMaterial': ['Core/Materials/OOBasicMaterial.mm', 'Core/Materials/OOMaterial.mm', 'Core/Materials/OOMaterial+ObjCBridge.mm', 'Core/Materials/OOMaterialSpecifier.mm', 'Core/OOColor.mm', 'Core/OOOpenGL.mm', 'Core/OODescription.mm'],

@@ -40,11 +40,11 @@ struct OOSkyQuadDesc;
 
 
 /*	Phase 3 (bead oo-4jjl, proposed ADR-0056 amendments oo-smy, oo-zffj, oo-mw4u and oo-4jjl): a
-	drawable with no facade. Its one caller, SkyEntity, makes it with oo::makeRef and hands the
-	entity the root facade (oo::ToObjC). It is a graphics reset client through the C++ client
+	drawable with no facade. Its one caller, SkyEntity, makes it with oo::makeRef and hands it to
+	the entity (the root facade until bead oo-hahfg). It is a graphics reset client through the C++ client
 	interface (amendment oo-jpd8 item 3), which this bead added.
 */
-class OOSkyDrawable : public cxx::OODrawable, public OOGraphicsResetClient
+class OOSkyDrawable : public OODrawable, public OOGraphicsResetClient
 {
 public:
 	// -initWithColor1:Color2:Color3:Color4:starCount:nebulaCount:nebulaHueFix:clusterFactor:alpha:scale:
@@ -66,6 +66,7 @@ public:
 #ifndef NDEBUG
 	std::vector<oo::ObjCRef<::OOTexture *>> allTextures() override;
 	size_t totalSize() override;
+	size_t objectSize() const override	{ return sizeof *this; }
 #endif
 
 	// OOGraphicsResetClient

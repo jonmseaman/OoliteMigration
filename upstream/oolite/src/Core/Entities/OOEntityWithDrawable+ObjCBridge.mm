@@ -39,6 +39,7 @@ MA 02110-1301, USA.
 }
 
 
+// Typed with the C++ drawable since bead oo-hahfg (no Objective-C drawable is left).
 - (OODrawable *)drawable						{ return oo::ToCxx(self)->getDrawable(); }
 - (void)setDrawable:(OODrawable *)inDrawable	{ oo::ToCxx(self)->setDrawable(inDrawable); }
 

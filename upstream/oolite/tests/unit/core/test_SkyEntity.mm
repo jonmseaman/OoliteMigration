@@ -176,7 +176,7 @@ OO_TEST(made)
 		SetUp();
 		SkyEntity *sky = Sky(Dict({ { "sky_n_stars", oo::PList(7) } }));
 		OO_CHECK(sky != nil && [sky isKindOfClass:[SkyEntity class]] && [sky isKindOfClass:[OOEntityWithDrawable class]]);
-		OO_CHECK(dynamic_cast<OOSkyDrawable *>(oo::ToCxx([sky drawable])) != nullptr);
+		OO_CHECK(dynamic_cast<OOSkyDrawable *>([sky drawable]) != nullptr);
 		OO_CHECK([sky status] == STATUS_EFFECT);
 		OO_CHECK([sky isSky] && [sky isVisible] && ![sky canCollide]);
 		OO_CHECK([sky cameraRangeFront] == (GLfloat)MAX_CLEAR_DEPTH && [sky cameraRangeBack] == (GLfloat)MAX_CLEAR_DEPTH);

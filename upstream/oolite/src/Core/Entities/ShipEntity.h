@@ -45,7 +45,8 @@
 #import "OORoleSet.h"
 #include <string_view>
 
-@class StationEntity, AI, OOMesh;
+@class StationEntity, AI;
+class OOMesh;	// C++ since bead oo-9ht.132
 #include "OOScript.h"	// oo::Ref<OOScript> members and results (bead oo-9ht.133)
 class WormholeEntity;	// C++ since bead oo-9ht.112
 #import "OOColor.h"	// the colours are oo::Ref members

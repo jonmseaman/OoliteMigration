@@ -261,7 +261,7 @@ std::vector<oo::ObjCRef<OOTexture *>> OOSkyDrawable::allTextures()
 
 size_t OOSkyDrawable::totalSize()
 {
-	size_t result = cxx::OODrawable::totalSize();
+	size_t result = OODrawable::totalSize();
 
 	for (const oo::Ref<OOSkyQuadSet> &quadSet : _quadSets)
 	{
