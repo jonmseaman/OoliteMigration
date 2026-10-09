@@ -2,12 +2,12 @@
 
 OOOXPVerifier.mm
 
-cxx::OOOXPVerifier (bead oo-tsa4; proposed ADR-0056). The bodies are the Objective-C methods'
+OOOXPVerifier (bead oo-tsa4; proposed ADR-0056). The bodies are the Objective-C methods'
 with the message syntax converted: the verifier's own methods are member calls, the stages' are
 calls on the C++ stages, and the cache manager is the C++ one. The stages are kept as the C++
 stages and described with their description() (they were kept, and handed to OO_LOG, as their
-Objective-C objects until bead oo-9ht.4 deleted the stage facade); the verifier's own facade is
-OOOXPVerifier+ObjCBridge.mm.
+Objective-C objects until bead oo-9ht.4 deleted the stage facade). Global since bead oo-9ht.130
+deleted the verifier's own Objective-C facade.
 
 
 Copyright (C) 2007-2013 Jens Ayton and contributors
@@ -151,8 +151,6 @@ constexpr CxxStage kCxxStages[] =
 }
 
 
-
-namespace cxx {
 
 oo::Ref<::OOOXPVerifierStage> (*OOOXPVerifier::sTestStageMaker)(const std::string &name) = nullptr;
 
@@ -380,8 +378,8 @@ void OOOXPVerifier::run()
 	/*	We need to be able to look up internal files, but not other OXP files.
 		To do this without clobbering the disk cache, we disable cache writes.
 	*/
-	OOCacheManager::sharedCache()->flush();
-	OOCacheManager::sharedCache()->setAllowCacheWrites(false);
+	cxx::OOCacheManager::sharedCache()->flush();
+	cxx::OOCacheManager::sharedCache()->setAllowCacheWrites(false);
 	/* FIXME: the OXP verifier should load files from OXPs which have
 	 * been explicitly listed as required_oxps in the
 	 * manifest. Reading the manifest from the OXP being verified and
@@ -777,7 +775,6 @@ void OOOXPVerifier::dumpDebugGraphviz()
 	}
 }
 
-}	// namespace cxx
 
 
 #import "OOLogOutputHandler.h"
