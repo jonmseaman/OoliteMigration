@@ -51,7 +51,10 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 #include <unistd.h>
 #endif
 
-GameController* controller;
+namespace
+{
+oo::Ref<cxx::GameController> controller;
+}
 #endif
 
 
@@ -170,7 +173,7 @@ int main(int argc, char *argv[])
 	{
 		// dajt: allocate and set the NSApplication delegate manually because not
 		// using NIB to do this
-		controller = [[GameController alloc] init];
+		controller = oo::makeRef<cxx::GameController>();
 		
 		for (i = 1; i < argc; i++)
 		{
@@ -182,7 +185,7 @@ int main(int argc, char *argv[])
 			const std::string argument = (i < argc) ? argv[i] : "";
 			if (i < argc && oo::str::hasSuffix(oo::str::lowercase(argument), ".oolite-save"))
 			{
-				[controller cxx_setPlayerFileToLoad:argument];
+				controller->setPlayerFileToLoad(argument);
 			}
 
    			if (!strcmp("-help", argv[i]) || !strcmp("--help", argv[i]))
@@ -238,7 +241,7 @@ int main(int argc, char *argv[])
 		
 		// Call applicationDidFinishLaunching because NSApp is not running in
 		// GNUstep port.
-		[controller applicationDidFinishLaunching];
+		controller->applicationDidFinishLaunching();
 	}
 	@catch (OOException *exception)
 	{

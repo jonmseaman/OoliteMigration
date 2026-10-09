@@ -34,6 +34,7 @@ MA 02110-1301, USA.
 #import "PlayerEntityControls.h"
 #import "PlayerEntitySound.h"
 #import "PlayerEntityStickProfile.h"
+#import "GameController.h"
 #import "HeadUpDisplay.h"
 #import "MyOpenGLView.h"
 #import "OOTrumble.h"
@@ -917,3 +918,496 @@ PlayerEntity		*gOOPlayer = nil;
 - (oo::PList) creditsFormattedForLegacySubstitution	{ const auto result = _cxxPlayer->creditsFormattedForLegacySubstitution(); return result.has_value() ? oo::PList(*result) : oo::PList(); }
 
 @end
+
+
+// Formerly the (Sound) category (PlayerEntitySound.mm, bead oo-xowh).
+@implementation PlayerEntity (OOSound)
+
+- (void) setUpSound	{ _cxxPlayer->setUpSound(); }
+- (void) setUpWeaponSounds	{ _cxxPlayer->setUpWeaponSounds(); }
+- (void) destroySound	{ _cxxPlayer->destroySound(); }
+- (BOOL) isBeeping	{ return _cxxPlayer->isBeeping(); }
+- (void) boop	{ _cxxPlayer->boop(); }
+- (void) playIdentOn	{ _cxxPlayer->playIdentOn(); }
+- (void) playIdentOff	{ _cxxPlayer->playIdentOff(); }
+- (void) playIdentLockedOn	{ _cxxPlayer->playIdentLockedOn(); }
+- (void) playMissileArmed	{ _cxxPlayer->playMissileArmed(); }
+- (void) playMineArmed	{ _cxxPlayer->playMineArmed(); }
+- (void) playMissileSafe	{ _cxxPlayer->playMissileSafe(); }
+- (void) playMissileLockedOn	{ _cxxPlayer->playMissileLockedOn(); }
+- (void) playNextEquipmentSelected	{ _cxxPlayer->playNextEquipmentSelected(); }
+- (void) playNextMissileSelected	{ _cxxPlayer->playNextMissileSelected(); }
+- (void) playWeaponsOnline	{ _cxxPlayer->playWeaponsOnline(); }
+- (void) playWeaponsOffline	{ _cxxPlayer->playWeaponsOffline(); }
+- (void) playCargoJettisioned	{ _cxxPlayer->playCargoJettisioned(); }
+- (void) playAutopilotOn	{ _cxxPlayer->playAutopilotOn(); }
+- (void) playAutopilotOff	{ _cxxPlayer->playAutopilotOff(); }
+- (void) playAutopilotOutOfRange	{ _cxxPlayer->playAutopilotOutOfRange(); }
+- (void) playAutopilotCannotDockWithTarget	{ _cxxPlayer->playAutopilotCannotDockWithTarget(); }
+- (void) playSaveOverwriteYes	{ _cxxPlayer->playSaveOverwriteYes(); }
+- (void) playSaveOverwriteNo	{ _cxxPlayer->playSaveOverwriteNo(); }
+- (void) playHoldFull	{ _cxxPlayer->playHoldFull(); }
+- (void) playJumpMassLocked	{ _cxxPlayer->playJumpMassLocked(); }
+- (void) playTargetLost	{ _cxxPlayer->playTargetLost(); }
+- (void) playNoTargetInMemory	{ _cxxPlayer->playNoTargetInMemory(); }
+- (void) playTargetSwitched	{ _cxxPlayer->playTargetSwitched(); }
+- (void) playHyperspaceNoTarget	{ _cxxPlayer->playHyperspaceNoTarget(); }
+- (void) playHyperspaceNoFuel	{ _cxxPlayer->playHyperspaceNoFuel(); }
+- (void) playHyperspaceBlocked	{ _cxxPlayer->playHyperspaceBlocked(); }
+- (void) playHyperspaceDistanceTooGreat	{ _cxxPlayer->playHyperspaceDistanceTooGreat(); }
+- (void) playCloakingDeviceOn	{ _cxxPlayer->playCloakingDeviceOn(); }
+- (void) playCloakingDeviceOff	{ _cxxPlayer->playCloakingDeviceOff(); }
+- (void) playMenuNavigationUp	{ _cxxPlayer->playMenuNavigationUp(); }
+- (void) playMenuNavigationDown	{ _cxxPlayer->playMenuNavigationDown(); }
+- (void) playMenuNavigationNot	{ _cxxPlayer->playMenuNavigationNot(); }
+- (void) playMenuPagePrevious	{ _cxxPlayer->playMenuPagePrevious(); }
+- (void) playMenuPageNext	{ _cxxPlayer->playMenuPageNext(); }
+- (void) playDismissedReportScreen	{ _cxxPlayer->playDismissedReportScreen(); }
+- (void) playDismissedMissionScreen	{ _cxxPlayer->playDismissedMissionScreen(); }
+- (void) playChangedOption	{ _cxxPlayer->playChangedOption(); }
+- (void) updateFuelScoopSoundWithInterval:(OOTimeDelta)delta_t	{ _cxxPlayer->updateFuelScoopSoundWithInterval(delta_t); }
+- (void) updateAfterburnerSound	{ _cxxPlayer->updateAfterburnerSound(); }
+- (void) startAfterburnerSound	{ _cxxPlayer->startAfterburnerSound(); }
+- (void) stopAfterburnerSound	{ _cxxPlayer->stopAfterburnerSound(); }
+- (void) playCloakingDeviceInsufficientEnergy	{ _cxxPlayer->playCloakingDeviceInsufficientEnergy(); }
+- (void) playBuyCommodity	{ _cxxPlayer->playBuyCommodity(); }
+- (void) playBuyShip	{ _cxxPlayer->playBuyShip(); }
+- (void) playSellCommodity	{ _cxxPlayer->playSellCommodity(); }
+- (void) playCantBuyCommodity	{ _cxxPlayer->playCantBuyCommodity(); }
+- (void) playCantSellCommodity	{ _cxxPlayer->playCantSellCommodity(); }
+- (void) playCantBuyShip	{ _cxxPlayer->playCantBuyShip(); }
+- (void) playStandardHyperspace	{ _cxxPlayer->playStandardHyperspace(); }
+- (void) playGalacticHyperspace	{ _cxxPlayer->playGalacticHyperspace(); }
+- (void) playHyperspaceAborted	{ _cxxPlayer->playHyperspaceAborted(); }
+- (void) playHitByECMSound	{ _cxxPlayer->playHitByECMSound(); }
+- (void) playFiredECMSound	{ _cxxPlayer->playFiredECMSound(); }
+- (void) playLaunchFromStation	{ _cxxPlayer->playLaunchFromStation(); }
+- (void) playDockWithStation	{ _cxxPlayer->playDockWithStation(); }
+- (void) playExitWitchspace	{ _cxxPlayer->playExitWitchspace(); }
+- (void) playHostileWarning	{ _cxxPlayer->playHostileWarning(); }
+- (void) playAlertConditionRed	{ _cxxPlayer->playAlertConditionRed(); }
+- (void) playIncomingMissile:(Vector)missileVector	{ _cxxPlayer->playIncomingMissile(missileVector); }
+- (void) playEnergyLow	{ _cxxPlayer->playEnergyLow(); }
+- (void) playDockingDenied	{ _cxxPlayer->playDockingDenied(); }
+- (void) playWitchjumpFailure	{ _cxxPlayer->playWitchjumpFailure(); }
+- (void) playWitchjumpMisjump	{ _cxxPlayer->playWitchjumpMisjump(); }
+- (void) playWitchjumpBlocked	{ _cxxPlayer->playWitchjumpBlocked(); }
+- (void) playWitchjumpDistanceTooGreat	{ _cxxPlayer->playWitchjumpDistanceTooGreat(); }
+- (void) playWitchjumpInsufficientFuel	{ _cxxPlayer->playWitchjumpInsufficientFuel(); }
+- (void) playFuelLeak	{ _cxxPlayer->playFuelLeak(); }
+- (void) cxx_playShieldHit:(Vector)attackVector weaponIdentifier:(const std::string &)weaponIdentifier	{ _cxxPlayer->playShieldHit(attackVector, weaponIdentifier); }
+- (void) cxx_playDirectHit:(Vector)attackVector weaponIdentifier:(const std::string &)weaponIdentifier	{ _cxxPlayer->playDirectHit(attackVector, weaponIdentifier); }
+- (void) playScrapeDamage:(Vector)attackVector	{ _cxxPlayer->playScrapeDamage(attackVector); }
+- (void) cxx_playLaserHit:(BOOL)hit offset:(Vector)weaponOffset weaponIdentifier:(const std::string &)weaponIdentifier	{ _cxxPlayer->playLaserHit(hit, weaponOffset, weaponIdentifier); }
+- (void) playWeaponOverheated:(Vector)weaponOffset	{ _cxxPlayer->playWeaponOverheated(weaponOffset); }
+- (void) cxx_playMissileLaunched:(Vector)weaponOffset weaponIdentifier:(const std::string &)weaponIdentifier	{ _cxxPlayer->playMissileLaunched(weaponOffset, weaponIdentifier); }
+- (void) cxx_playMineLaunched:(Vector)weaponOffset weaponIdentifier:(const std::string &)weaponIdentifier	{ _cxxPlayer->playMineLaunched(weaponOffset, weaponIdentifier); }
+- (void) playEscapePodScooped	{ _cxxPlayer->playEscapePodScooped(); }
+- (void) playAegisCloseToPlanet	{ _cxxPlayer->playAegisCloseToPlanet(); }
+- (void) playAegisCloseToStation	{ _cxxPlayer->playAegisCloseToStation(); }
+- (void) playGameOver	{ _cxxPlayer->playGameOver(); }
+- (void) playLegacyScriptSound:(const std::string &)key	{ _cxxPlayer->playLegacyScriptSound(key); }
+- (void) cxx_scheduleAfterburnerSoundUpdate	{ OOScheduleDeferredCall(self, @selector(updateAfterburnerSound), nil, 1.25); }
+
+@end
+
+
+// The category (StickMapper) of PlayerEntityStickMapper.mm, whose members are cxx::PlayerEntity's, defined in that file.
+@implementation PlayerEntity (StickMapper)
+
+- (void) resetStickFunctions	{ _cxxPlayer->resetStickFunctions(); }
+- (void) setGuiToStickMapperScreen:(unsigned)skip	{ _cxxPlayer->setGuiToStickMapperScreen(skip); }
+- (void) setGuiToStickMapperScreen:(unsigned)skip resetCurrentRow: (BOOL) resetCurrentRow	{ _cxxPlayer->setGuiToStickMapperScreen(skip, resetCurrentRow); }
+- (void) stickMapperInputHandler:(GuiDisplayGen *)gui view:(MyOpenGLView *)gameView	{ _cxxPlayer->stickMapperInputHandler(gui, gameView); }
+- (void) updateFunction: (const oo::PList &)hwDict	{ _cxxPlayer->updateFunction(hwDict); }
+- (void) checkCustomEquipButtons:(const oo::PList &)stickFn ignore:(int)idx	{ _cxxPlayer->checkCustomEquipButtons(stickFn, idx); }
+- (void) removeFunction:(int)idx	{ _cxxPlayer->removeFunction(idx); }
+- (void) displayFunctionList:(GuiDisplayGen *)gui skip:(NSUInteger)skip	{ _cxxPlayer->displayFunctionList(gui, skip); }
+- (std::optional<std::string>) describeStickDict: (const oo::PList *)stickDict	{ return _cxxPlayer->describeStickDict(stickDict); }
+- (std::string)hwToString: (int)hwFlags	{ return _cxxPlayer->hwToString(hwFlags); }
+- (std::vector<oo::PList>)stickFunctionList	{ return _cxxPlayer->stickFunctionList(); }
+- (oo::PList)makeStickGuiDict:(const std::string &)what allowable:(int)allowable axisfn:(int)axisfn butfn:(int)butfn	{ return _cxxPlayer->makeStickGuiDict(what, allowable, axisfn, butfn); }
+- (oo::PList)makeStickGuiDictHeader:(const std::string &)header	{ return _cxxPlayer->makeStickGuiDictHeader(header); }
+
+@end
+
+
+// The category (StickProfile) of PlayerEntityStickProfile.mm, whose members are cxx::PlayerEntity's, defined in that file.
+@implementation PlayerEntity (StickProfile)
+
+- (void) setGuiToStickProfileScreen: (GuiDisplayGen *) gui	{ _cxxPlayer->setGuiToStickProfileScreen(gui); }
+- (void) stickProfileInputHandler: (GuiDisplayGen *) gui view: (MyOpenGLView *) gameView	{ _cxxPlayer->stickProfileInputHandler(gui, gameView); }
+- (void) stickProfileGraphAxisProfile: (GLfloat) alpha screenAt: (Vector) screenAt screenSize: (NSSize) screenSize	{ _cxxPlayer->stickProfileGraphAxisProfile(alpha, screenAt, screenSize); }
+
+@end
+
+
+// The category (Controls) of PlayerEntityControls.mm, whose members are cxx::PlayerEntity's, defined in that file.
+@implementation PlayerEntity (Controls)
+
+- (void) initControls	{ _cxxPlayer->initControls(); }
+- (void) initKeyConfigSettings	{ _cxxPlayer->initKeyConfigSettings(); }
+- (oo::PList) cxx_processKeyCode:(const oo::PList &)key_def	{ return _cxxPlayer->processKeyCode(key_def); }
+- (BOOL) checkNavKeyPress:(const oo::PList &)key_def	{ return _cxxPlayer->checkNavKeyPress(key_def); }
+- (BOOL) checkKeyPress:(const oo::PList &)key_def	{ return _cxxPlayer->checkKeyPress(key_def); }
+- (BOOL) checkKeyPress:(const oo::PList &)key_def fKey_only:(BOOL)fKey_only	{ return _cxxPlayer->checkKeyPress(key_def, fKey_only); }
+- (BOOL) checkKeyPress:(const oo::PList &)key_def ignore_ctrl:(BOOL)ignore_ctrl	{ return _cxxPlayer->checkKeyPressIgnoreCtrl(key_def, ignore_ctrl); }
+- (BOOL) checkKeyPress:(const oo::PList &)key_def fKey_only:(BOOL)fKey_only ignore_ctrl:(BOOL)ignore_ctrl	{ return _cxxPlayer->checkKeyPress(key_def, fKey_only, ignore_ctrl); }
+- (int) getFirstKeyCode:(const oo::PList &)key_def	{ return _cxxPlayer->getFirstKeyCode(key_def); }
+- (void) pollControls:(double)delta_t	{ _cxxPlayer->getPollControls(delta_t); }
+- (BOOL) handleGUIUpDownArrowKeys	{ return _cxxPlayer->handleGUIUpDownArrowKeys(); }
+- (void) targetNewSystem:(int) direction whileTyping:(BOOL) whileTyping	{ _cxxPlayer->targetNewSystem(direction, whileTyping); }
+- (void) clearPlanetSearchString	{ _cxxPlayer->clearPlanetSearchString(); }
+- (void) targetNewSystem:(int) direction	{ _cxxPlayer->targetNewSystem(direction); }
+- (void) switchToMainView	{ _cxxPlayer->switchToMainView(); }
+- (void) noteSwitchToView:(OOViewID)toView fromView:(OOViewID)fromView	{ _cxxPlayer->noteSwitchToView(toView, fromView); }
+-(void) beginWitchspaceCountdown:(int)spin_time	{ _cxxPlayer->beginWitchspaceCountdown(spin_time); }
+-(void) beginWitchspaceCountdown	{ _cxxPlayer->beginWitchspaceCountdown(); }
+-(void) cancelWitchspaceCountdown	{ _cxxPlayer->cancelWitchspaceCountdown(); }
+
+@end
+
+
+
+// The category (OOControlsPrivate) of PlayerEntityControls.mm, whose members are cxx::PlayerEntity's, defined in that file.
+@implementation PlayerEntity (OOControlsPrivate)
+
+- (void) pollApplicationControls	{ _cxxPlayer->pollApplicationControls(); }
+- (void) pollFlightControls:(double)delta_t	{ _cxxPlayer->pollFlightControls(delta_t); }
+- (void) pollGuiArrowKeyControls:(double) delta_t	{ _cxxPlayer->pollGuiArrowKeyControls(delta_t); }
+- (void) pollMarketScreenControls	{ _cxxPlayer->pollMarketScreenControls(); }
+- (void) handleGameOptionsScreenKeys	{ _cxxPlayer->handleGameOptionsScreenKeys(); }
+- (void) handleKeyMapperScreenKeys	{ _cxxPlayer->handleKeyMapperScreenKeys(); }
+- (void) handleKeyboardLayoutKeys	{ _cxxPlayer->handleKeyboardLayoutKeys(); }
+- (void) handleStickMapperScreenKeys	{ _cxxPlayer->handleStickMapperScreenKeys(); }
+- (void) pollCustomViewControls	{ _cxxPlayer->pollCustomViewControls(); }
+- (void) pollViewControls	{ _cxxPlayer->pollViewControls(); }
+- (void) pollFlightArrowKeyControls:(double)delta_t	{ _cxxPlayer->pollFlightArrowKeyControls(delta_t); }
+- (void) pollGuiScreenControls	{ _cxxPlayer->pollGuiScreenControls(); }
+- (void) pollGuiScreenControlsWithFKeyAlias:(BOOL)fKeyAlias	{ _cxxPlayer->pollGuiScreenControlsWithFKeyAlias(fKeyAlias); }
+- (void) pollGameOverControls:(double)delta_t	{ _cxxPlayer->pollGameOverControls(delta_t); }
+- (void) pollAutopilotControls:(double)delta_t	{ _cxxPlayer->pollAutopilotControls(delta_t); }
+- (void) pollDockedControls:(double)delta_t	{ _cxxPlayer->pollDockedControls(delta_t); }
+- (void) handleUndockControl	{ _cxxPlayer->handleUndockControl(); }
+- (void) pollDemoControls:(double)delta_t	{ _cxxPlayer->pollDemoControls(delta_t); }
+- (void) pollMissionInterruptControls	{ _cxxPlayer->pollMissionInterruptControls(); }
+- (void) handleMissionCallback	{ _cxxPlayer->handleMissionCallback(); }
+- (void) setGuiToMissionEndScreen	{ _cxxPlayer->setGuiToMissionEndScreen(); }
+- (void) switchToThisView:(OOViewID)viewDirection	{ _cxxPlayer->switchToThisView(viewDirection); }
+- (void) switchToThisView:(OOViewID)viewDirection andProcessWeaponFacing:(BOOL)processWeaponFacing	{ _cxxPlayer->switchToThisView(viewDirection, processWeaponFacing); }
+- (void) switchToThisView:(OOViewID)viewDirection fromView:(OOViewID)oldViewDirection andProcessWeaponFacing:(BOOL)processWeaponFacing justNotify:(BOOL)justNotify	{ _cxxPlayer->switchToThisView(viewDirection, oldViewDirection, processWeaponFacing, justNotify); }
+- (void) handleAutopilotOn:(BOOL)fastDocking	{ _cxxPlayer->handleAutopilotOn(fastDocking); }
+- (void) handleButtonIdent	{ _cxxPlayer->handleButtonIdent(); }
+- (void) handleButtonTargetMissile	{ _cxxPlayer->handleButtonTargetMissile(); }
+
+@end
+
+
+// The category (KeyMapper) of PlayerEntityKeyMapper.mm, whose members are cxx::PlayerEntity's, defined in that file.
+@implementation PlayerEntity (KeyMapper)
+
+- (void) initCheckingDictionary	{ _cxxPlayer->initCheckingDictionary(); }
+- (void) resetKeyFunctions	{ _cxxPlayer->resetKeyFunctions(); }
+- (void) setGuiToKeyMapperScreen:(unsigned)skip	{ _cxxPlayer->setGuiToKeyMapperScreen(skip); }
+- (void) setGuiToKeyMapperScreen:(unsigned)skip resetCurrentRow:(BOOL)resetCurrentRow	{ _cxxPlayer->setGuiToKeyMapperScreen(skip, resetCurrentRow); }
+- (void) keyMapperInputHandler:(GuiDisplayGen *)gui view:(MyOpenGLView *)gameView	{ _cxxPlayer->keyMapperInputHandler(gui, gameView); }
+- (BOOL) entryIsIndexCustomEquip:(NSUInteger)idx	{ return _cxxPlayer->entryIsIndexCustomEquip(idx); }
+- (BOOL) entryIsDictCustomEquip:(const oo::PList &)dict	{ return _cxxPlayer->entryIsDictCustomEquip(dict); }
+- (BOOL) entryIsCustomEquip:(const std::string &)entry	{ return _cxxPlayer->entryIsCustomEquip(entry); }
+- (oo::PList) getCustomEquipArray:(const std::string &)key_def	{ return _cxxPlayer->getCustomEquipArray(key_def); }
+- (NSUInteger) getCustomEquipIndex:(const std::string &)key_def	{ return _cxxPlayer->getCustomEquipIndex(key_def); }
+- (std::optional<std::string>) getCustomEquipKeyDefType:(const std::string &)key_def	{ return _cxxPlayer->getCustomEquipKeyDefType(key_def); }
+- (void) setGuiToKeyConfigScreen	{ _cxxPlayer->setGuiToKeyConfigScreen(); }
+- (void) setGuiToKeyConfigScreen:(BOOL)resetSelectedRow	{ _cxxPlayer->setGuiToKeyConfigScreen(resetSelectedRow); }
+- (void) outputKeyDefinition:(const std::string &)key shift:(const std::string &)shift mod1:(const std::string &)mod1 mod2:(const std::string &)mod2 skiprows:(NSUInteger)skiprows	{ _cxxPlayer->outputKeyDefinition(key, shift, mod1, mod2, skiprows); }
+- (void) handleKeyConfigKeys:(GuiDisplayGen *)gui view:(MyOpenGLView *)gameView	{ _cxxPlayer->handleKeyConfigKeys(gui, gameView); }
+- (void) setGuiToKeyConfigEntryScreen	{ _cxxPlayer->setGuiToKeyConfigEntryScreen(); }
+- (void) handleKeyConfigEntryKeys:(GuiDisplayGen *)gui view:(MyOpenGLView *)gameView	{ _cxxPlayer->handleKeyConfigEntryKeys(gui, gameView); }
+- (void) updateKeyDefinition:(const std::string &)keystring index:(NSUInteger)index	{ _cxxPlayer->updateKeyDefinition(keystring, index); }
+- (void) updateShiftKeyDefinition:(const std::string &)key index:(NSUInteger)index	{ _cxxPlayer->updateShiftKeyDefinition(key, index); }
+- (void) setGuiToConfirmClearScreen	{ _cxxPlayer->setGuiToConfirmClearScreen(); }
+- (void) handleKeyMapperConfirmClearKeys:(GuiDisplayGen *)gui view:(MyOpenGLView *)gameView	{ _cxxPlayer->handleKeyMapperConfirmClearKeys(gui, gameView); }
+- (void) displayKeyFunctionList:(GuiDisplayGen *)gui skip:(NSUInteger)skip	{ _cxxPlayer->displayKeyFunctionList(gui, skip); }
+- (std::vector<oo::PList>)keyFunctionList	{ return _cxxPlayer->keyFunctionList(); }
+- (oo::PList)makeKeyGuiDict:(const std::string &)what keyDef:(const std::string &)key_def	{ return _cxxPlayer->makeKeyGuiDict(what, key_def); }
+- (oo::PList)makeKeyGuiDictHeader:(const std::string &)header	{ return _cxxPlayer->makeKeyGuiDictHeader(header); }
+- (void) setGuiToKeyboardLayoutScreen:(unsigned)skip	{ _cxxPlayer->setGuiToKeyboardLayoutScreen(skip); }
+- (void) setGuiToKeyboardLayoutScreen:(unsigned)skip resetCurrentRow:(BOOL)resetCurrentRow	{ _cxxPlayer->setGuiToKeyboardLayoutScreen(skip, resetCurrentRow); }
+- (void) handleKeyboardLayoutEntryKeys:(GuiDisplayGen *)gui view:(MyOpenGLView *)gameView	{ _cxxPlayer->handleKeyboardLayoutEntryKeys(gui, gameView); }
+- (std::optional<std::string>)keyboardDescription:(const std::string &)kbd	{ return _cxxPlayer->keyboardDescription(kbd); }
+- (std::vector<oo::PList>)keyboardLayoutList	{ return _cxxPlayer->keyboardLayoutList(); }
+- (void) displayKeyboardLayoutList:(GuiDisplayGen *)gui skip:(NSUInteger)skip	{ _cxxPlayer->displayKeyboardLayoutList(gui, skip); }
+- (std::vector<std::string>) validateAllKeys	{ return _cxxPlayer->validateAllKeys(); }
+- (std::optional<std::string>) validateKey:(const std::string &)key checkKeys:(const oo::PList &)check_keys	{ return _cxxPlayer->validateKey(key, check_keys); }
+- (std::optional<std::string>) searchArrayForMatch:(const std::vector<std::string> &)search_list key:(const std::string &)key checkKeys:(const oo::PList &)check_keys	{ return _cxxPlayer->searchArrayForMatch(search_list, key, check_keys); }
+- (BOOL) entryIsEqualToDefault:(const std::string &)key	{ return _cxxPlayer->entryIsEqualToDefault(key); }
+- (BOOL) compareKeyEntries:(const oo::PList &)first second:(const oo::PList &)second	{ return _cxxPlayer->compareKeyEntries(first, second); }
+- (void) saveKeySetting:(const std::string &)key	{ _cxxPlayer->saveKeySetting(key); }
+- (void) unsetKeySetting:(const std::string &)key	{ _cxxPlayer->unsetKeySetting(key); }
+- (void) deleteKeySetting:(const std::string &)key	{ _cxxPlayer->deleteKeySetting(key); }
+- (void) deleteAllKeySettings	{ _cxxPlayer->deleteAllKeySettings(); }
+- (oo::PList) loadKeySettings	{ return _cxxPlayer->loadKeySettings(); }
+- (void) reloadPage	{ _cxxPlayer->reloadPage(); }
+
+@end
+
+
+// The category (Scripting) of PlayerEntityLegacyScriptEngine.mm, whose members are cxx::PlayerEntity's, defined in that file.
+@implementation PlayerEntity (Scripting)
+
+- (void) setScriptTarget:(ShipEntity *)ship	{ _cxxPlayer->setScriptTarget(ship); }
+- (ShipEntity*) scriptTarget	{ return _cxxPlayer->scriptTarget(); }
+- (std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>>) worldScriptsRequiringTickle	{ return _cxxPlayer->getWorldScriptsRequiringTickle(); }
+- (void) checkScript	{ _cxxPlayer->checkScript(); }
+- (void) cxx_runScriptActions:(const oo::PList &)actions withContextName:(const std::optional<std::string> &)contextName forTarget:(ShipEntity *)target	{ _cxxPlayer->runScriptActions(actions, contextName, target); }
+- (void) cxx_runUnsanitizedScriptActions:(const oo::PList &)actions allowingAIMethods:(BOOL)allowAIMethods withContextName:(const std::optional<std::string> &)contextName forTarget:(ShipEntity *)target	{ _cxxPlayer->runUnsanitizedScriptActions(actions, allowAIMethods, contextName, target); }
+- (BOOL) cxx_scriptTestConditions:(const oo::PList &)array	{ return _cxxPlayer->scriptTestConditions(array); }
+- (BOOL) scriptTestCondition:(const oo::PList &)scriptCondition	{ return _cxxPlayer->scriptTestCondition(scriptCondition); }
+- (std::optional<std::string>) expandScriptRightHandSide:(const oo::PList &)rhsComponents	{ return _cxxPlayer->expandScriptRightHandSide(rhsComponents); }
+- (oo::PList) cxx_missionVariables	{ return _cxxPlayer->missionVariables(); }
+- (oo::PList) cxx_missionVariableForKey:(const std::string &)key	{ return _cxxPlayer->missionVariableForKey(key); }
+- (void) cxx_setMissionVariable:(const oo::PList &)value forKey:(const std::string &)key	{ _cxxPlayer->setMissionVariable(value, key); }
+- (oo::PList) localVariablesForMission:(const std::optional<std::string> &)missionKey	{ return _cxxPlayer->localVariablesForMission(missionKey); }
+- (std::optional<std::string>) localVariableForKey:(const std::string &)variableName andMission:(const std::optional<std::string> &)missionKey	{ return _cxxPlayer->localVariableForKey(variableName, missionKey); }
+- (void) setLocalVariable:(const std::optional<std::string> &)value forKey:(const std::string &)variableName andMission:(const std::optional<std::string> &)missionKey	{ _cxxPlayer->setLocalVariable(value, variableName, missionKey); }
+- (oo::PList) cxx_missionsList	{ return _cxxPlayer->missionsList(); }
+- (std::optional<std::string>) replaceVariablesInString:(const std::string &)args	{ return _cxxPlayer->replaceVariablesInString(args); }
+- (void) setMissionDescription:(const std::string &)textKey	{ _cxxPlayer->setMissionDescription(textKey); }
+- (void) setMissionDescription:(const std::string &)textKey forMission:(const std::optional<std::string> &)key	{ _cxxPlayer->setMissionDescription(textKey, key); }
+- (void) cxx_setMissionInstructions:(const std::string &)text forMission:(const std::optional<std::string> &)key	{ _cxxPlayer->setMissionInstructions(text, key); }
+- (void) cxx_setMissionInstructionsList:(const oo::PList &)list forMission:(const std::optional<std::string> &)key	{ _cxxPlayer->setMissionInstructionsList(list, key); }
+- (void) clearMissionDescription	{ _cxxPlayer->clearMissionDescription(); }
+- (void) clearMissionDescriptionForMission:(const std::string &)key	{ _cxxPlayer->clearMissionDescriptionForMission(key); }
+- (oo::PList) mission_string	{ return _cxxPlayer->mission_string(); }
+- (oo::PList) status_string	{ return _cxxPlayer->status_string(); }
+- (oo::PList) gui_screen_string	{ return _cxxPlayer->gui_screen_string(); }
+- (oo::PList) galaxy_number	{ return _cxxPlayer->getGalaxy_number(); }
+- (oo::PList) planet_number	{ return _cxxPlayer->planet_number(); }
+- (oo::PList) score_number	{ return _cxxPlayer->score_number(); }
+- (oo::PList) credits_number	{ return _cxxPlayer->credits_number(); }
+- (oo::PList) scriptTimer_number	{ return _cxxPlayer->scriptTimer_number(); }
+- (oo::PList) shipsFound_number	{ return _cxxPlayer->shipsFound_number(); }
+- (oo::PList) commanderLegalStatus_number	{ return _cxxPlayer->commanderLegalStatus_number(); }
+- (void) setLegalStatus:(const std::string &)valueString	{ _cxxPlayer->setLegalStatus(valueString); }
+- (oo::PList) commanderLegalStatus_string	{ return _cxxPlayer->commanderLegalStatus_string(); }
+- (oo::PList) d100_number	{ return _cxxPlayer->d100_number(); }
+- (oo::PList) pseudoFixedD100_number	{ return _cxxPlayer->pseudoFixedD100_number(); }
+- (oo::PList) d256_number	{ return _cxxPlayer->d256_number(); }
+- (oo::PList) pseudoFixedD256_number	{ return _cxxPlayer->pseudoFixedD256_number(); }
+- (oo::PList) clock_number	{ return _cxxPlayer->clock_number(); }
+- (oo::PList) clock_secs_number	{ return _cxxPlayer->clock_secs_number(); }
+- (oo::PList) clock_mins_number	{ return _cxxPlayer->clock_mins_number(); }
+- (oo::PList) clock_hours_number	{ return _cxxPlayer->clock_hours_number(); }
+- (oo::PList) clock_days_number	{ return _cxxPlayer->clock_days_number(); }
+- (oo::PList) fuelLevel_number	{ return _cxxPlayer->fuelLevel_number(); }
+- (oo::PList) dockedAtMainStation_bool	{ return _cxxPlayer->dockedAtMainStation_bool(); }
+- (oo::PList) foundEquipment_bool	{ return _cxxPlayer->foundEquipment_bool(); }
+- (oo::PList) sunWillGoNova_bool	{ return _cxxPlayer->sunWillGoNova_bool(); }
+- (oo::PList) sunGoneNova_bool	{ return _cxxPlayer->sunGoneNova_bool(); }
+- (oo::PList) missionChoice_string	{ return _cxxPlayer->missionChoice_string(); }
+- (oo::PList) missionKeyPress_string	{ return _cxxPlayer->missionKeyPress_string(); }
+- (oo::PList) dockedTechLevel_number	{ return _cxxPlayer->dockedTechLevel_number(); }
+- (oo::PList) dockedStationName_string	{ return _cxxPlayer->dockedStationName_string(); }
+- (oo::PList) systemGovernment_string	{ return _cxxPlayer->systemGovernment_string(); }
+- (oo::PList) systemGovernment_number	{ return _cxxPlayer->systemGovernment_number(); }
+- (oo::PList) systemEconomy_string	{ return _cxxPlayer->systemEconomy_string(); }
+- (oo::PList) systemEconomy_number	{ return _cxxPlayer->systemEconomy_number(); }
+- (oo::PList) systemTechLevel_number	{ return _cxxPlayer->systemTechLevel_number(); }
+- (oo::PList) systemPopulation_number	{ return _cxxPlayer->systemPopulation_number(); }
+- (oo::PList) systemProductivity_number	{ return _cxxPlayer->systemProductivity_number(); }
+- (oo::PList) commanderName_string	{ return _cxxPlayer->commanderName_string(); }
+- (oo::PList) commanderRank_string	{ return _cxxPlayer->commanderRank_string(); }
+- (oo::PList) commanderShip_string	{ return _cxxPlayer->commanderShip_string(); }
+- (oo::PList) commanderShipDisplayName_string	{ return _cxxPlayer->commanderShipDisplayName_string(); }
+- (std::optional<std::string>) expandMessage:(const std::string &)valueString	{ return _cxxPlayer->expandMessage(valueString); }
+- (void) commsMessage:(const std::string &)valueString	{ _cxxPlayer->cxx::PlayerEntity::commsMessage(valueString); }
+- (void) commsMessageByUnpiloted:(const std::string &)valueString	{ _cxxPlayer->cxx::PlayerEntity::commsMessageByUnpiloted(valueString); }
+- (void) consoleMessage3s:(const std::string &)valueString	{ _cxxPlayer->consoleMessage3s(valueString); }
+- (void) consoleMessage6s:(const std::string &)valueString	{ _cxxPlayer->consoleMessage6s(valueString); }
+- (void) awardCredits:(const std::string &)valueString	{ _cxxPlayer->awardCredits(valueString); }
+- (void) awardShipKills:(const std::string &)valueString	{ _cxxPlayer->awardShipKills(valueString); }
+- (void) awardEquipment:(const std::string &)equipString	{ _cxxPlayer->awardEquipment(equipString); }
+- (void) removeEquipment:(const std::string &)equipString	{ _cxxPlayer->removeEquipment(equipString); }
+- (void) setPlanetinfo:(const std::string &)key_valueString	{ _cxxPlayer->setPlanetinfo(key_valueString); }
+- (void) setSpecificPlanetInfo:(const std::string &)key_valueString	{ _cxxPlayer->setSpecificPlanetInfo(key_valueString); }
+- (void) awardCargo:(const std::string &)amount_typeString	{ _cxxPlayer->awardCargo(amount_typeString); }
+- (void) removeAllCargo	{ _cxxPlayer->removeAllCargo(); }
+- (void) removeAllCargo:(BOOL)forceRemoval	{ _cxxPlayer->removeAllCargo(forceRemoval); }
+- (void) useSpecialCargo:(const std::string &)descriptionString	{ _cxxPlayer->useSpecialCargo(descriptionString); }
+- (void) testForEquipment:(const std::string &)equipString	{ _cxxPlayer->testForEquipment(equipString); }
+- (void) awardFuel:(const std::string &)valueString	{ _cxxPlayer->awardFuel(valueString); }
+- (void) messageShipAIs:(const std::string &)roles_message	{ _cxxPlayer->messageShipAIs(roles_message); }
+- (void) ejectItem:(const std::string &)itemKey	{ _cxxPlayer->ejectItem(itemKey); }
+- (void) addShips:(const std::string &)roles_number	{ _cxxPlayer->addShips(roles_number); }
+- (void) addSystemShips:(const std::string &)roles_number_position	{ _cxxPlayer->addSystemShips(roles_number_position); }
+- (void) addShipsAt:(const std::string &)roles_number_system_x_y_z	{ _cxxPlayer->addShipsAt(roles_number_system_x_y_z); }
+- (void) addShipsAtPrecisely:(const std::string &)roles_number_system_x_y_z	{ _cxxPlayer->addShipsAtPrecisely(roles_number_system_x_y_z); }
+- (void) addShipsWithinRadius:(const std::string &)roles_number_system_x_y_z_r	{ _cxxPlayer->addShipsWithinRadius(roles_number_system_x_y_z_r); }
+- (void) spawnShip:(const std::string &)ship_key	{ _cxxPlayer->spawnShip(ship_key); }
+- (void) set:(const std::string &)missionvariable_value	{ _cxxPlayer->set(missionvariable_value); }
+- (void) reset:(const std::string &)missionvariable	{ _cxxPlayer->reset(missionvariable); }
+- (void) increment:(const std::string &)missionVariableObject	{ _cxxPlayer->increment(missionVariableObject); }
+- (void) decrement:(const std::string &)missionVariableObject	{ _cxxPlayer->decrement(missionVariableObject); }
+- (void) add:(const std::string &)missionVariableString_value	{ _cxxPlayer->add(missionVariableString_value); }
+- (void) subtract:(const std::string &)missionVariableString_value	{ _cxxPlayer->subtract(missionVariableString_value); }
+- (void) checkForShips:(const std::string &)roleString	{ _cxxPlayer->checkForShips(roleString); }
+- (void) resetScriptTimer	{ _cxxPlayer->resetScriptTimer(); }
+- (void) addMissionText:(const std::string &)textKey	{ _cxxPlayer->addMissionText(textKey); }
+- (void) addLiteralMissionText:(const std::string &)text	{ _cxxPlayer->addLiteralMissionText(text); }
+- (void) setMissionChoiceByTextEntry:(BOOL)enable	{ _cxxPlayer->setMissionChoiceByTextEntry(enable); }
+- (void) setMissionChoices:(const std::string &)choicesKey	{ _cxxPlayer->setMissionChoices(choicesKey); }
+- (void) cxx_setMissionChoicesDictionary:(const oo::PList &)choicesDict	{ _cxxPlayer->setMissionChoicesDictionary(choicesDict); }
+- (void) resetMissionChoice	{ _cxxPlayer->resetMissionChoice(); }
+- (void) clearMissionScreen	{ _cxxPlayer->clearMissionScreen(); }
+- (void) addMissionDestination:(const std::string &)destinations	{ _cxxPlayer->addMissionDestination(destinations); }
+- (void) removeMissionDestination:(const std::string &)destinations	{ _cxxPlayer->removeMissionDestination(destinations); }
+- (void) showShipModel:(const std::string &)role	{ _cxxPlayer->showShipModel(role); }
+- (void) setMissionMusic:(const std::string &)value	{ _cxxPlayer->setMissionMusic(value); }
+- (std::optional<std::string>) cxx_missionTitle	{ return _cxxPlayer->missionTitle(); }
+- (void) cxx_setMissionTitle:(const std::optional<std::string> &)value	{ _cxxPlayer->setMissionTitle(value); }
+- (void) setMissionImage:(const std::string &)value	{ _cxxPlayer->setMissionImage(value); }
+- (void) setMissionBackground:(const std::string &)value	{ _cxxPlayer->setMissionBackground(value); }
+- (void) setFuelLeak:(const std::string &)value	{ _cxxPlayer->setFuelLeak(value); }
+- (oo::PList) fuelLeakRate_number	{ return _cxxPlayer->fuelLeakRate_number(); }
+- (void) setSunNovaIn:(const std::string &)time_value	{ _cxxPlayer->setSunNovaIn(time_value); }
+- (void) launchFromStation	{ _cxxPlayer->launchFromStation(); }
+- (void) blowUpStation	{ _cxxPlayer->blowUpStation(); }
+- (void) sendAllShipsAway	{ _cxxPlayer->sendAllShipsAway(); }
+- (void) addPlanet:(const std::string &)planetKey	{ _cxxPlayer->addPlanet(planetKey); }
+- (OOPlanetEntity *) cxx_addPlanet:(const std::string &)planetKey	{ return _cxxPlayer->addPlanetEntity(planetKey); }
+- (void) addMoon:(const std::string &)moonKey	{ _cxxPlayer->addMoon(moonKey); }
+- (OOPlanetEntity *) cxx_addMoon:(const std::string &)moonKey	{ return _cxxPlayer->addMoonEntity(moonKey); }
+- (void) debugOn	{ _cxxPlayer->debugOn(); }
+- (void) debugOff	{ _cxxPlayer->debugOff(); }
+- (void) debugMessage:(const std::string &)args	{ _cxxPlayer->debugMessage(args); }
+- (void) playSound:(const std::string &)soundName	{ _cxxPlayer->playSound(soundName); }
+- (void) doMissionCallback	{ _cxxPlayer->doMissionCallback(); }
+- (void) clearMissionScreenID	{ _cxxPlayer->clearMissionScreenID(); }
+- (void) cxx_setMissionScreenID:(const std::optional<std::string> &)msid	{ _cxxPlayer->setMissionScreenID(msid); }
+- (std::optional<std::string>) cxx_missionScreenID	{ return _cxxPlayer->missionScreenID(); }
+- (void) endMissionScreenAndNoteOpportunity	{ _cxxPlayer->endMissionScreenAndNoteOpportunity(); }
+- (void) setGuiToMissionScreen	{ _cxxPlayer->setGuiToMissionScreen(); }
+- (void) refreshMissionScreenTextEntry	{ _cxxPlayer->refreshMissionScreenTextEntry(); }
+- (void) setGuiToMissionScreenWithCallback:(BOOL) callback	{ _cxxPlayer->setGuiToMissionScreenWithCallback(callback); }
+- (void) cxx_setBackgroundFromDescriptionsKey:(const std::string &)d_key	{ _cxxPlayer->setBackgroundFromDescriptionsKey(d_key); }
+- (void) addScene:(const oo::PList &)items atOffset:(Vector)off	{ _cxxPlayer->addScene(items, off); }
+- (BOOL) processSceneDictionary:(const oo::PList &) couplet atOffset:(Vector) off	{ return _cxxPlayer->processSceneDictionary(couplet, off); }
+- (BOOL) processSceneString:(const std::string &) item atOffset:(Vector) off	{ return _cxxPlayer->processSceneString(item, off); }
+- (BOOL) cxx_addEqScriptForKey:(const std::string &)eq_key	{ return _cxxPlayer->addEqScriptForKey(eq_key); }
+- (void) cxx_removeEqScriptForKey:(const std::string &)eq_key	{ _cxxPlayer->removeEqScriptForKey(eq_key); }
+- (NSUInteger) cxx_eqScriptIndexForKey:(const std::string &)eq_key	{ return _cxxPlayer->eqScriptIndexForKey(eq_key); }
+- (void) targetNearestHostile	{ _cxxPlayer->targetNearestHostile(); }
+- (void) targetNearestIncomingMissile	{ _cxxPlayer->targetNearestIncomingMissile(); }
+- (void) setGalacticHyperspaceBehaviourTo:(const std::string &)galacticHyperspaceBehaviourString	{ _cxxPlayer->setGalacticHyperspaceBehaviourTo(galacticHyperspaceBehaviourString); }
+- (void) setGalacticHyperspaceFixedCoordsTo:(const std::string &)galacticHyperspaceFixedCoordsString	{ _cxxPlayer->setGalacticHyperspaceFixedCoordsTo(galacticHyperspaceFixedCoordsString); }
+
+@end
+
+
+// The category (Contracts) of PlayerEntityContracts.mm, whose members are cxx::PlayerEntity's, defined in that file.
+@implementation PlayerEntity (Contracts)
+
+- (std::optional<std::string>) cxx_processEscapePods	{ return _cxxPlayer->processEscapePods(); }
+- (std::optional<std::string>) cxx_checkPassengerContracts	{ return _cxxPlayer->checkPassengerContracts(); }
+- (OOCargoQuantity) cxx_contractedVolumeForGood:(const std::string &) good	{ return _cxxPlayer->contractedVolumeForGood(good); }
+- (void) cxx_addMessageToReport:(const std::string &) report	{ _cxxPlayer->addMessageToReport(report); }
+- (oo::PList) reputation	{ return _cxxPlayer->getReputation(); }
+- (int) passengerReputation	{ return _cxxPlayer->passengerReputation(); }
+- (void) increasePassengerReputation:(unsigned)amount	{ _cxxPlayer->increasePassengerReputation(amount); }
+- (void) decreasePassengerReputation:(unsigned)amount	{ _cxxPlayer->decreasePassengerReputation(amount); }
+- (int) parcelReputation	{ return _cxxPlayer->parcelReputation(); }
+- (void) increaseParcelReputation:(unsigned)amount	{ _cxxPlayer->increaseParcelReputation(amount); }
+- (void) decreaseParcelReputation:(unsigned)amount	{ _cxxPlayer->decreaseParcelReputation(amount); }
+- (int) contractReputation	{ return _cxxPlayer->contractReputation(); }
+- (void) increaseContractReputation:(unsigned)amount	{ _cxxPlayer->increaseContractReputation(amount); }
+- (void) decreaseContractReputation:(unsigned)amount	{ _cxxPlayer->decreaseContractReputation(amount); }
+- (void) erodeReputation	{ _cxxPlayer->erodeReputation(); }
+- (void) normaliseReputation	{ _cxxPlayer->normaliseReputation(); }
+- (BOOL) cxx_addPassenger:(const std::string &)Name start:(unsigned)start destination:(unsigned)Destination eta:(double)eta fee:(double)fee advance:(double)advance risk:(unsigned)risk	{ return _cxxPlayer->addPassenger(Name, start, Destination, eta, fee, advance, risk); }
+- (BOOL) cxx_removePassenger:(const std::string &)Name	{ return _cxxPlayer->removePassenger(Name); }
+- (BOOL) cxx_addParcel:(const std::string &)Name start:(unsigned)start destination:(unsigned)Destination eta:(double)eta fee:(double)fee premium:(double)premium risk:(unsigned)risk	{ return _cxxPlayer->addParcel(Name, start, Destination, eta, fee, premium, risk); }
+- (BOOL) cxx_removeParcel:(const std::string &)Name	{ return _cxxPlayer->removeParcel(Name); }
+- (BOOL) cxx_awardContract:(unsigned)qty commodity:(const std::string &)type start:(unsigned)start destination:(unsigned)Destination eta:(double)eta fee:(double)fee premium:(double)premium	{ return _cxxPlayer->awardContract(qty, type, start, Destination, eta, fee, premium); }
+- (BOOL) cxx_removeContract:(const std::string &)type destination:(unsigned)dest	{ return _cxxPlayer->removeContract(type, dest); }
+- (std::vector<std::string>) cxx_passengerList	{ return _cxxPlayer->passengerList(); }
+- (std::vector<std::string>) cxx_parcelList	{ return _cxxPlayer->parcelList(); }
+- (std::vector<std::string>) cxx_contractList	{ return _cxxPlayer->contractList(); }
+- (std::vector<std::string>) cxx_contractsListFromEntries:(const oo::PList::Array &) contracts_array forCargo:(BOOL) forCargo forParcels:(BOOL)forParcels	{ return _cxxPlayer->contractsListFromEntries(contracts_array, forCargo, forParcels); }
+- (void) setGuiToManifestScreen	{ _cxxPlayer->setGuiToManifestScreen(); }
+- (void) setManifestScreenRow:(const oo::PList &)object inColor:(OOColor*)color forRow:(OOGUIRow)row ofRows:(OOGUIRow)max_rows andOffset:(OOGUIRow)offset inMultipage:(BOOL)multi	{ _cxxPlayer->setManifestScreenRow(object, color, row, max_rows, offset, multi); }
+- (void) setGuiToDockingReportScreen	{ _cxxPlayer->setGuiToDockingReportScreen(); }
+- (OOCreditsQuantity) cxx_priceForShipKey:(const std::string &)key	{ return _cxxPlayer->priceForShipKey(key); }
+- (void) setGuiToShipyardScreen:(NSUInteger)skip	{ _cxxPlayer->setGuiToShipyardScreen(skip); }
+- (void) showShipyardInfoForSelection	{ _cxxPlayer->showShipyardInfoForSelection(); }
+- (void) showTradeInInformationFooter	{ _cxxPlayer->showTradeInInformationFooter(); }
+- (void) cxx_showShipyardModel:(const std::string &)shipKey shipData:(const oo::PList &)shipData personality:(uint16_t)personality	{ _cxxPlayer->showShipyardModel(shipKey, shipData, personality); }
+- (NSInteger) missingSubEntitiesAdjustment	{ return _cxxPlayer->missingSubEntitiesAdjustment(); }
+- (OOCreditsQuantity) tradeInValue	{ return _cxxPlayer->tradeInValue(); }
+- (BOOL) buySelectedShip	{ return _cxxPlayer->buySelectedShip(); }
+- (BOOL) cxx_replaceShipWithNamedShip:(const std::string &)shipKey	{ return _cxxPlayer->replaceShipWithNamedShip(shipKey); }
+- (void) newShipCommonSetup:(const std::string &)shipKey yardInfo:(const oo::PList &)ship_info baseInfo:(const oo::PList &)ship_base_dict	{ _cxxPlayer->newShipCommonSetup(shipKey, ship_info, ship_base_dict); }
+
+@end
+
+
+// The category (LoadSave) of PlayerEntityLoadSave.mm, whose members are cxx::PlayerEntity's, defined in that file.
+@implementation PlayerEntity (LoadSave)
+
+- (BOOL)loadPlayer	{ return _cxxPlayer->loadPlayer(); }
+- (void)savePlayer	{ _cxxPlayer->savePlayer(); }
+- (void) autosavePlayer	{ _cxxPlayer->autosavePlayer(); }
+- (void) quicksavePlayer	{ _cxxPlayer->quicksavePlayer(); }
+- (void) setGuiToScenarioScreen:(int)page	{ _cxxPlayer->setGuiToScenarioScreen(page); }
+- (void) addScenarioModel:(const std::string &)shipKey	{ _cxxPlayer->addScenarioModel(shipKey); }
+- (void) showScenarioDetails	{ _cxxPlayer->showScenarioDetails(); }
+- (BOOL) startScenario	{ return _cxxPlayer->startScenario(); }
+#if OO_USE_CUSTOM_LOAD_SAVE
+- (std::optional<std::string>)commanderSelector	{ return _cxxPlayer->commanderSelector(); }
+#endif
+#if OO_USE_CUSTOM_LOAD_SAVE
+- (void) saveCommanderInputHandler	{ _cxxPlayer->saveCommanderInputHandler(); }
+#endif
+#if OO_USE_CUSTOM_LOAD_SAVE
+- (void) overwriteCommanderInputHandler	{ _cxxPlayer->overwriteCommanderInputHandler(); }
+#endif
+- (BOOL) loadPlayerFromFile:(const std::string &)fileToOpen asNew:(BOOL)asNew	{ return _cxxPlayer->loadPlayerFromFile(fileToOpen, asNew); }
+
+@end
+
+
+
+// The category (OOLoadSavePrivate) of PlayerEntityLoadSave.mm, whose members are cxx::PlayerEntity's, defined in that file.
+@implementation PlayerEntity (OOLoadSavePrivate)
+
+#if OOLITE_USE_APPKIT_LOAD_SAVE
+- (BOOL)loadPlayerWithPanel	{ return _cxxPlayer->loadPlayerWithPanel(); }
+#endif
+#if OOLITE_USE_APPKIT_LOAD_SAVE
+- (void) savePlayerWithPanel	{ _cxxPlayer->savePlayerWithPanel(); }
+#endif
+- (void) writePlayerToPath:(const std::string &)path	{ _cxxPlayer->writePlayerToPath(path); }
+- (void)nativeSavePlayer:(const std::string &)cdrName	{ _cxxPlayer->nativeSavePlayer(cdrName); }
+#if OO_USE_CUSTOM_LOAD_SAVE
+- (void) setGuiToLoadCommanderScreen	{ _cxxPlayer->setGuiToLoadCommanderScreen(); }
+#endif
+#if OO_USE_CUSTOM_LOAD_SAVE
+- (void) setGuiToSaveCommanderScreen:(const std::string &)cdrName	{ _cxxPlayer->setGuiToSaveCommanderScreen(cdrName); }
+#endif
+#if OO_USE_CUSTOM_LOAD_SAVE
+- (void) setGuiToOverwriteScreen:(const std::string &)cdrName	{ _cxxPlayer->setGuiToOverwriteScreen(cdrName); }
+#endif
+#if OO_USE_CUSTOM_LOAD_SAVE
+- (void) lsCommanders: (GuiDisplayGen *)gui directory: (const std::string &) directory pageNumber: (int)page highlightName: (const std::optional<std::string> &)highlightName	{ _cxxPlayer->lsCommanders(gui, directory, page, highlightName); }
+#endif
+#if OO_USE_CUSTOM_LOAD_SAVE
+- (BOOL) existingNativeSave: (const std::string &)cdrName	{ return _cxxPlayer->existingNativeSave(cdrName); }
+#endif
+#if OO_USE_CUSTOM_LOAD_SAVE
+- (void) showCommanderShip:(int)cdrArrayIndex	{ _cxxPlayer->showCommanderShip(cdrArrayIndex); }
+#endif
+#if OO_USE_CUSTOM_LOAD_SAVE
+- (int) findIndexOfCommander: (const std::string &)cdrName	{ return _cxxPlayer->findIndexOfCommander(cdrName); }
+#endif
+
+@end
+

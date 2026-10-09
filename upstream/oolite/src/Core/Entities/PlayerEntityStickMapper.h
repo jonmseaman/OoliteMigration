@@ -25,6 +25,12 @@ MA 02110-1301, USA.
 */
 
 #import "PlayerEntity.h"
+
+/*	Beads oo-ibm8 (ADR-0056 amendment oo-lmdi8): the category PlayerEntity (StickMapper) is members of
+	cxx::PlayerEntity, declared in PlayerEntity.h and defined in PlayerEntityStickMapper.mm. Its Objective-C interface,
+	for the callers that remain, is the category of the same name in PlayerEntity+ObjCBridge.h,
+	which PlayerEntity.h imports. This header stays for the files that import it.
+*/
 #import "GuiDisplayGen.h"
 #import "MyOpenGLView.h"
 #import "Universe.h"
@@ -52,23 +58,4 @@ MA 02110-1301, USA.
 #define KEY_AXISFN "axisfunc"
 #define KEY_BUTTONFN "buttonfunc"
 
-@interface PlayerEntity (StickMapper)
-
-   - (void) resetStickFunctions;
-   - (void) setGuiToStickMapperScreen: (unsigned)skip resetCurrentRow: (BOOL) resetCurrentRow;
-   - (void) setGuiToStickMapperScreen: (unsigned)skip;
-   - (void) stickMapperInputHandler: (GuiDisplayGen *)gui
-							   view: (MyOpenGLView *)gameView;
-   // Callback method: called by name (-performSelector:withObject:) by OOJoystickManager with an
-   // Objective-C dictionary, so its parameter stays an object (proposed ADR-0043).
-   - (void) updateFunction: (const oo::PList &)hwDict;
-
-   // Future: populate via plist
-   - (oo::PList)makeStickGuiDictHeader:(const std::string &)header;
-   - (oo::PList)makeStickGuiDict: (const std::string &)what  
-							allowable: (int)allowable
-							   axisfn: (int)axisfn
-								butfn: (int)butfn;
-                              
-@end
 

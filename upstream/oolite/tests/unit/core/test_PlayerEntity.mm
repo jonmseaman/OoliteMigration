@@ -27,6 +27,14 @@
 #import "OOConstToString.h"
 #import "OODescription.h"
 #import "Universe.h"
+#import "PlayerEntityContracts.h"
+#import "PlayerEntityControls.h"
+#import "PlayerEntityKeyMapper.h"
+#import "PlayerEntityLegacyScriptEngine.h"
+#import "PlayerEntityLoadSave.h"
+#import "PlayerEntitySound.h"
+#import "PlayerEntityStickMapper.h"
+#import "OOJoystickManager.h"
 
 #include "oo_test.hpp"
 
@@ -1230,5 +1238,391 @@ OO_TEST(slice28ClearanceMarkerKeyAndExtraKeys)
 		OO_CHECK([player cxx_scannedWormholes].empty());
 	}
 }
+
+// --- The category files (the Convert-to-C++20 batch, bead oo-lmdi8): PlayerEntitySound.mm,
+// PlayerEntityStickMapper.mm, PlayerEntityControls.mm, PlayerEntityKeyMapper.mm,
+// PlayerEntityLegacyScriptEngine.mm, PlayerEntityContracts.mm, PlayerEntityLoadSave.mm. Each case
+// pins units a player in a never-initialised universe can answer, written against the Objective-C
+// categories and run on them first; the screens, the controls' polling and the load / save panels
+// read the GUI, the keyboard or the game's files, which the goldens cover. ------------------------
+
+@interface PlayerEntity (TestCategories)
+- (std::string) hwToString:(int)hwFlags;
+- (BOOL) entryIsCustomEquip:(const std::string &)entry;
+- (BOOL) entryIsDictCustomEquip:(const oo::PList &)dict;
+- (std::optional<std::string>) getCustomEquipKeyDefType:(const std::string &)key_def;
+- (BOOL) compareKeyEntries:(const oo::PList &)first second:(const oo::PList &)second;
+- (int) findIndexOfCommander:(const std::string &)cdrName;
+- (void) set:(const std::string &)missionvariable_value;
+- (void) reset:(const std::string &)missionvariable;
+- (void) increment:(const std::string &)missionVariableObject;
+- (void) decrement:(const std::string &)missionVariableObject;
+- (oo::PList) credits_number;
+- (void) cxx_setMissionScreenID:(const std::optional<std::string> &)msid;
+- (std::optional<std::string>) cxx_missionScreenID;
+- (void) clearMissionScreenID;
+- (NSUInteger) cxx_eqScriptIndexForKey:(const std::string &)eq_key;
+- (void) handleButtonIdent;
+@end
+
+
+namespace {
+Entity *sCategoryTarget = nil;	// what a CategoryPlayer answers as its primary target (not retained)
+}
+
+
+/*	A recording player whose script events, roles, missiles and ident sounds only count, so that a
+	category unit's own logic is what the case sees (sends to self stay sends after the move).
+*/
+@interface CategoryPlayer: RecordingPlayer
+@end
+
+
+@implementation CategoryPlayer
+
+- (void) cxx_doScriptEvent:(ooscript::PropertyId)message withPListArguments:(const std::vector<oo::PList> &)arguments
+{
+	sSent.count++; sSent.number = (int)arguments.size();
+}
+
+
+- (void) cxx_addRoleToPlayer:(const std::string &)role
+{
+	sSent.count++; sSent.text = role;
+}
+
+
+- (void) safeAllMissiles	{ sSent.count++; }
+- (void) noteLostTarget	{ sSent.count++; }
+- (void) playIdentOn	{ sSent.count++; sSent.flag = true; }
+- (void) playIdentLockedOn	{ sSent.count++; }
+- (void) printIdentLockedOnForMissile:(BOOL)missile	{ sSent.count++; sSent.number = missile ? 1 : 2; }
+
+// The target the ident button finds: the unit test's universe has no descriptions to expand the
+// "ident-on" message with (expanding one exits), so the case keeps a target.
+- (id) primaryTarget	{ return sCategoryTarget; }
+
+@end
+
+
+namespace {
+
+// A string value's text; a value that is not a string never matches.
+std::string StringOf(const oo::PList &value)
+{
+	const std::string *text = value.getIf<std::string>();
+	return text != nullptr ? *text : std::string("<not a string>");
+}
+
+
+CategoryPlayer *MakeCategoryPlayer()
+{
+	sSent = Sent();
+	gOOPlayer = nil;
+	return [[[CategoryPlayer alloc] init] autorelease];
+}
+
+}	// namespace
+
+
+// PlayerEntitySound.mm (bead oo-xowh): with no interface source playing, the player is not beeping.
+OO_TEST(soundIsNotBeepingWithNothingPlaying)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		RecordingPlayer *player = MakeRecordingPlayer();
+		OO_CHECK(![player isBeeping]);
+	}
+}
+
+
+// PlayerEntityStickMapper.mm (bead oo-ibm8): hardware flags as words, and the GUI entries the
+// function list is made of (a long description cut to 28 units and "...", absent functions left out).
+OO_TEST(stickMapperHardwareAndGuiDicts)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		RecordingPlayer *player = MakeRecordingPlayer();
+		OO_CHECK([player hwToString:HW_AXIS] == "axis");
+		OO_CHECK([player hwToString:HW_BUTTON] == "button");
+		OO_CHECK([player hwToString:HW_AXIS | HW_BUTTON] == "axis/button");
+		const oo::PList dict = [player makeStickGuiDict:"Roll" allowable:HW_AXIS axisfn:3 butfn:-1];
+		OO_CHECK(dict.get<std::string>(std::string(KEY_GUIDESC)) == "Roll");
+		OO_CHECK(dict.get<long long>(std::string(KEY_ALLOWABLE)) == HW_AXIS && dict.get<long long>(std::string(KEY_AXISFN)) == 3);
+		OO_CHECK(dict.find(KEY_BUTTONFN) == nullptr);
+		const std::string longName(60, 'x');
+		const oo::PList cut = [player makeStickGuiDict:longName allowable:HW_BUTTON axisfn:-1 butfn:4];
+		OO_CHECK(cut.get<std::string>(std::string(KEY_GUIDESC)) == std::string(28, 'x') + "...");
+		OO_CHECK(cut.find(KEY_AXISFN) == nullptr && cut.get<long long>(std::string(KEY_BUTTONFN)) == 4);
+		const oo::PList header = [player makeStickGuiDictHeader:"Flight"];
+		OO_CHECK(header.get<std::string>(std::string(KEY_HEADER)) == "Flight" && header.get<std::string>(std::string(KEY_AXISFN)).empty());
+	}
+}
+
+
+// PlayerEntityControls.mm slice 1 (bead oo-hsilb): the first key code of a definition (0 for none),
+// and clearing the planet search string.
+OO_TEST(controlsSlice1FirstKeyCodeAndPlanetSearch)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		RecordingPlayer *player = MakeRecordingPlayer();
+		const oo::PList keyDef(oo::PList::Array{ oo::PList(oo::PList::Dict{ { "key", oo::PList(65) } }), oo::PList(oo::PList::Dict{ { "key", oo::PList(66) } }) });
+		OO_CHECK([player getFirstKeyCode:keyDef] == 65);
+		OO_CHECK([player getFirstKeyCode:oo::PList(oo::PList::Array{})] == 0);
+		player->_cxxPlayer->planetSearchString = std::string("Lave");
+		[player clearPlanetSearchString];
+		OO_CHECK(!player->_cxxPlayer->planetSearchString.has_value());
+	}
+}
+
+// PlayerEntityControls.mm slices 2-6 (beads oo-56tmj, oo-4216h, oo-n8wn2, oo-uq8px, oo-fz3l8) have
+// no unit case: every unit polls the keyboard, the joystick or the GUI, which the goldens cover.
+
+// PlayerEntityControls.mm slice 7 (bead oo-lmdi8): the ident button safes the missiles, engages
+// ident and, with a target, plays the locked-on sound and prints the lock (not for a missile);
+// pressed again it first drops the target.
+OO_TEST(controlsSlice7IdentButton)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		CategoryPlayer *player = MakeCategoryPlayer();
+		sCategoryTarget = player;
+		[player handleButtonIdent];
+		OO_CHECK(player->_cxxPlayer->ident_engaged);
+		OO_CHECK(sSent.count == 3 && !sSent.flag && sSent.number == 2);
+		sSent = Sent();
+		[player handleButtonIdent];
+		OO_CHECK(sSent.count == 4 && !sSent.flag);
+		sCategoryTarget = nil;
+	}
+}
+
+
+// PlayerEntityKeyMapper.mm slice 1 (bead oo-5uo7): the key-function list's GUI entries (a long
+// description cut to 48 units and "...").
+OO_TEST(keyMapperSlice1GuiDicts)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		RecordingPlayer *player = MakeRecordingPlayer();
+		const oo::PList dict = [player makeKeyGuiDict:"Fire laser" keyDef:"key_fire_lasers"];
+		OO_CHECK(dict.get<std::string>(std::string(KEY_KC_GUIDESC)) == "Fire laser");
+		OO_CHECK(dict.get<std::string>(std::string(KEY_KC_DEFINITION)) == "key_fire_lasers");
+		const oo::PList cut = [player makeKeyGuiDict:std::string(51, 'y') keyDef:"k"];
+		OO_CHECK(cut.get<std::string>(std::string(KEY_KC_GUIDESC)) == std::string(48, 'y') + "...");
+		const oo::PList header = [player makeKeyGuiDictHeader:"Navigation"];
+		OO_CHECK(header.get<std::string>(std::string(KEY_KC_HEADER)) == "Navigation");
+		OO_CHECK(header.get<std::string>(std::string(KEY_KC_DEFINITION)).empty());
+	}
+}
+
+
+// PlayerEntityKeyMapper.mm slice 2 (bead oo-10jz): custom-equipment entries are activate_ and mode_
+// keys, and their key-definition type.
+OO_TEST(keyMapperSlice2CustomEquipEntries)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		RecordingPlayer *player = MakeRecordingPlayer();
+		OO_CHECK([player entryIsCustomEquip:"activate_EQ_ECM"] && [player entryIsCustomEquip:"mode_EQ_ECM"]);
+		OO_CHECK(![player entryIsCustomEquip:"key_ecm"]);
+		OO_CHECK([player entryIsDictCustomEquip:oo::PList(oo::PList::Dict{ { std::string(KEY_KC_DEFINITION), oo::PList(std::string("mode_EQ_X")) } })]);
+		OO_CHECK(![player entryIsDictCustomEquip:oo::PList(oo::PList::Dict{})]);
+		OO_CHECK([player getCustomEquipKeyDefType:"activate_EQ_ECM"] == std::optional<std::string>(std::string(CUSTOMEQUIP_KEYACTIVATE)));
+		OO_CHECK([player getCustomEquipKeyDefType:"mode_EQ_ECM"] == std::optional<std::string>(std::string(CUSTOMEQUIP_KEYMODE)));
+		OO_CHECK([player getCustomEquipKeyDefType:"key_ecm"] == std::optional<std::string>(std::string()));
+	}
+}
+
+
+// PlayerEntityKeyMapper.mm slice 3 (bead oo-mofd): two key entries are the same when the key and
+// the three modifiers are.
+OO_TEST(keyMapperSlice3CompareKeyEntries)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		RecordingPlayer *player = MakeRecordingPlayer();
+		const oo::PList a(oo::PList::Dict{ { "key", oo::PList(65) }, { "shift", oo::PList(true) } });
+		const oo::PList b(oo::PList::Dict{ { "key", oo::PList(std::string("65")) }, { "shift", oo::PList(true) } });
+		const oo::PList c(oo::PList::Dict{ { "key", oo::PList(65) } });
+		OO_CHECK([player compareKeyEntries:a second:a]);
+		OO_CHECK([player compareKeyEntries:a second:b]);
+		OO_CHECK(![player compareKeyEntries:a second:c]);
+		OO_CHECK(![player compareKeyEntries:c second:oo::PList(oo::PList::Dict{ { "key", oo::PList(66) } })]);
+	}
+}
+
+
+// PlayerEntityLegacyScriptEngine.mm slice 1 (bead oo-130j): mission variables need the store
+// (nothing is kept before set-up); a null value removes one; local variables are per mission.
+OO_TEST(legacyScriptSlice1MissionAndLocalVariables)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		RecordingPlayer *player = MakeRecordingPlayer();
+		player->_cxxPlayer->mission_variables = oo::PList();
+		[player cxx_setMissionVariable:oo::PList(std::string("1")) forKey:"mission_x"];
+		OO_CHECK([player cxx_missionVariableForKey:"mission_x"].isNull());
+		player->_cxxPlayer->mission_variables = oo::PList(oo::PList::Dict{});
+		[player cxx_setMissionVariable:oo::PList(std::string("1")) forKey:"mission_x"];
+		OO_CHECK(StringOf([player cxx_missionVariableForKey:"mission_x"]) == "1");
+		OO_CHECK([player cxx_missionVariables].count() == 1);
+		[player cxx_setMissionVariable:oo::PList() forKey:"mission_x"];
+		OO_CHECK([player cxx_missionVariableForKey:"mission_x"].isNull());
+		[player setLocalVariable:std::string("7") forKey:"local_y" andMission:std::string("m1")];
+		OO_CHECK([player localVariableForKey:"local_y" andMission:std::string("m1")] == std::optional<std::string>("7"));
+		OO_CHECK(![player localVariableForKey:"local_y" andMission:std::string("m2")].has_value());
+		OO_CHECK(![player localVariableForKey:"local_y" andMission:std::nullopt].has_value());
+		OO_CHECK([player localVariablesForMission:std::nullopt].isNull());
+	}
+}
+
+
+// PlayerEntityLegacyScriptEngine.mm slice 2 (bead oo-ng9h): the credits query answers the balance.
+OO_TEST(legacyScriptSlice2CreditsQuery)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		RecordingPlayer *player = MakeRecordingPlayer();
+		[player setCreditBalance:42.5];
+		const oo::PList credits = [player credits_number];
+		OO_CHECK(credits.isNumber() && credits.doubleValue() == 42.5);
+	}
+}
+
+
+// PlayerEntityLegacyScriptEngine.mm slice 3 (bead oo-z1nv): set:, increment:, decrement: and reset:
+// on a mission variable, and the mission title.
+OO_TEST(legacyScriptSlice3VariableArithmeticAndTitle)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		RecordingPlayer *player = MakeRecordingPlayer();
+		player->_cxxPlayer->mission_variables = oo::PList(oo::PList::Dict{});
+		[player set:"mission_count 5"];
+		OO_CHECK(StringOf([player cxx_missionVariableForKey:"mission_count"]) == "5");
+		[player increment:"mission_count"];
+		OO_CHECK(StringOf([player cxx_missionVariableForKey:"mission_count"]) == "6");
+		[player decrement:"mission_count"];
+		[player decrement:"mission_count"];
+		OO_CHECK(StringOf([player cxx_missionVariableForKey:"mission_count"]) == "4");
+		[player set:"no_prefix 1"];
+		OO_CHECK([player cxx_missionVariableForKey:"no_prefix"].isNull());
+		[player reset:"mission_count"];
+		OO_CHECK([player cxx_missionVariableForKey:"mission_count"].isNull());
+		[player cxx_setMissionTitle:std::string("A title")];
+		OO_CHECK([player cxx_missionTitle] == std::optional<std::string>("A title"));
+		[player cxx_setMissionTitle:std::nullopt];
+		OO_CHECK(![player cxx_missionTitle].has_value());
+	}
+}
+
+
+// PlayerEntityLegacyScriptEngine.mm slice 4 (bead oo-vn3o): the mission screen's identifier, and
+// the index of an equipment script that is not there (the count).
+OO_TEST(legacyScriptSlice4MissionScreenIDAndEqScripts)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		RecordingPlayer *player = MakeRecordingPlayer();
+		[player cxx_setMissionScreenID:std::string("screen-1")];
+		OO_CHECK([player cxx_missionScreenID] == std::optional<std::string>("screen-1"));
+		[player clearMissionScreenID];
+		OO_CHECK(![player cxx_missionScreenID].has_value());
+		OO_CHECK([player cxx_eqScriptIndexForKey:"EQ_NONE"] == player->_cxxPlayer->eqScripts.size());
+	}
+}
+
+
+// PlayerEntityContracts.mm slice 1 (bead oo-6e3h): a passenger is added once (a risky one adds the
+// courier role, and the event is sent with two arguments) and removed by name; contracted volume
+// counts a good's contracts; the docking report joins messages with a blank line.
+OO_TEST(contractsSlice1PassengersVolumeAndReport)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		CategoryPlayer *player = MakeCategoryPlayer();
+		player->_cxxPlayer->max_passengers = 2;
+		OO_CHECK([player cxx_addPassenger:"Ann" start:1 destination:2 eta:100.0 fee:10.0 advance:1.0 risk:2]);
+		OO_CHECK(sSent.count == 2 && sSent.text == "trader-courier+" && sSent.number == 2);
+		OO_CHECK(![player cxx_addPassenger:"Ann" start:1 destination:2 eta:100.0 fee:10.0 advance:1.0 risk:0]);
+		OO_CHECK(player->_cxxPlayer->passengers.size() == 1);
+		OO_CHECK(![player cxx_removePassenger:"Bob"]);
+		OO_CHECK([player cxx_removePassenger:"Ann"] && player->_cxxPlayer->passengers.empty());
+		player->_cxxPlayer->contracts.push_back(oo::PList(oo::PList::Dict{ { std::string(CARGO_KEY_TYPE), oo::PList(std::string("food")) }, { std::string(CARGO_KEY_AMOUNT), oo::PList(3) } }));
+		player->_cxxPlayer->contracts.push_back(oo::PList(oo::PList::Dict{ { std::string(CARGO_KEY_TYPE), oo::PList(std::string("food")) }, { std::string(CARGO_KEY_AMOUNT), oo::PList(4) } }));
+		OO_CHECK([player cxx_contractedVolumeForGood:"food"] == 7 && [player cxx_contractedVolumeForGood:"gold"] == 0);
+		player->_cxxPlayer->dockingReport.clear();
+		[player cxx_addMessageToReport:"one"];
+		[player cxx_addMessageToReport:""];
+		[player cxx_addMessageToReport:"two"];
+		OO_CHECK(player->_cxxPlayer->dockingReport == "one\n\ntwo");
+	}
+}
+
+
+// PlayerEntityContracts.mm slice 2 (bead oo-t2t5): with no record each reputation is the middle of
+// its range (unknown counts as the maximum), and the record is a dictionary.
+OO_TEST(contractsSlice2Reputation)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		RecordingPlayer *player = MakeRecordingPlayer();
+		player->_cxxPlayer->reputation.clear();
+		OO_CHECK([player passengerReputation] == MAX_CONTRACT_REP / 2);
+		OO_CHECK([player parcelReputation] == MAX_CONTRACT_REP / 2);
+		OO_CHECK([player contractReputation] == MAX_CONTRACT_REP / 2);
+		OO_CHECK([player reputation].isDict());
+	}
+}
+
+
+// PlayerEntityContracts.mm slice 3 (bead oo-oo99): a ship with all its subentities loses nothing.
+OO_TEST(contractsSlice3MissingSubEntities)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		RecordingPlayer *player = MakeRecordingPlayer();
+		OO_CHECK([player missingSubEntitiesAdjustment] == 0);
+	}
+}
+
+
+// PlayerEntityLoadSave.mm slice 1 (bead oo-xmvt) has no unit case: its units read the save files,
+// the scenarios and the GUI, which the goldens cover.
+
+// PlayerEntityLoadSave.mm slice 2 (bead oo-rczn): a commander is found by its save name, else its
+// name; one not in the list is not found.
+OO_TEST(loadSaveSlice2FindCommander)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		RecordingPlayer *player = MakeRecordingPlayer();
+		player->_cxxPlayer->cdrDetailArray.clear();
+		OO_CHECK([player findIndexOfCommander:"Jameson"] == -1);
+		player->_cxxPlayer->cdrDetailArray.push_back(oo::PList(oo::PList::Dict{ { "player_name", oo::PList(std::string("Jameson")) } }));
+		player->_cxxPlayer->cdrDetailArray.push_back(oo::PList(oo::PList::Dict{ { "player_save_name", oo::PList(std::string("Other")) }, { "player_name", oo::PList(std::string("Jameson")) } }));
+		OO_CHECK([player findIndexOfCommander:"Jameson"] == 0);
+		OO_CHECK([player findIndexOfCommander:"Other"] == 1);
+		player->_cxxPlayer->cdrDetailArray.clear();
+	}
+}
+
 
 OO_TEST_MAIN()

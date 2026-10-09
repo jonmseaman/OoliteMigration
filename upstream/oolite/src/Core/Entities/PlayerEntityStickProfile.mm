@@ -69,56 +69,54 @@ std::string Bars(char mark, int count)
 }	// namespace
 
 
-@implementation PlayerEntity (StickProfile)
-
-- (void) setGuiToStickProfileScreen: (GuiDisplayGen *) gui
+void cxx::PlayerEntity::setGuiToStickProfileScreen(::GuiDisplayGen *gui)
 {
-	_cxxPlayer->gui_screen = GUI_SCREEN_STICKPROFILE;
-	if (_cxxPlayer->stickProfileScreen != nullptr)  _cxxPlayer->stickProfileScreen->startGui(gui);	// a nil screen ignored the message
+	gui_screen = GUI_SCREEN_STICKPROFILE;
+	if (stickProfileScreen != nullptr)  stickProfileScreen->startGui(gui);	// a nil screen ignored the message
 	return;
 }
 
-- (void) stickProfileInputHandler: (GuiDisplayGen *) gui
-	view: (MyOpenGLView *) gameView
+void cxx::PlayerEntity::stickProfileInputHandler(::GuiDisplayGen *gui, ::MyOpenGLView *gameView)
 {
+	::PlayerEntity *self = oo::ToObjC(this);
 	if ([gameView isDown: gvMouseLeftButton])
 	{
 		NSPoint mouse_position = NSMakePoint(
 			[gameView virtualJoystickPosition].x * [gui size].width,
 			[gameView virtualJoystickPosition].y * [gui size].height );
-		if (_cxxPlayer->stickProfileScreen != nullptr)  _cxxPlayer->stickProfileScreen->mouseDown(mouse_position);
+		if (stickProfileScreen != nullptr)  stickProfileScreen->mouseDown(mouse_position);
 	}
 	else
 	{
-		if (_cxxPlayer->stickProfileScreen != nullptr)  _cxxPlayer->stickProfileScreen->mouseUp();
+		if (stickProfileScreen != nullptr)  stickProfileScreen->mouseUp();
 	}
 	if ([gameView isDown: gvDeleteKey])
 	{
-		if (_cxxPlayer->stickProfileScreen != nullptr)  _cxxPlayer->stickProfileScreen->deleteSelected();
+		if (stickProfileScreen != nullptr)  stickProfileScreen->deleteSelected();
 	}
 	[self handleGUIUpDownArrowKeys];
 	
-	if ([self checkKeyPress:_cxxPlayer->n_key_gui_select] && [gui selectedRow] == GUI_ROW_STICKPROFILE_BACK)
+	if ([self checkKeyPress:n_key_gui_select] && [gui selectedRow] == GUI_ROW_STICKPROFILE_BACK)
 	{
-		if (_cxxPlayer->stickProfileScreen != nullptr)  _cxxPlayer->stickProfileScreen->saveSettings();
+		if (stickProfileScreen != nullptr)  stickProfileScreen->saveSettings();
 		[self setGuiToStickMapperScreen: 0 resetCurrentRow: YES];
 	}
 	switch ([gui selectedRow])
 	{
 	case GUI_ROW_STICKPROFILE_AXIS:
-		if ([self checkKeyPress:_cxxPlayer->n_key_gui_arrow_left])
+		if ([self checkKeyPress:n_key_gui_arrow_left])
 		{
-			if (!stickProfileArrow_pressed && ![self checkKeyPress:_cxxPlayer->n_key_gui_arrow_right])
+			if (!stickProfileArrow_pressed && ![self checkKeyPress:n_key_gui_arrow_right])
 			{
-				if (_cxxPlayer->stickProfileScreen != nullptr)  _cxxPlayer->stickProfileScreen->previousAxis();
+				if (stickProfileScreen != nullptr)  stickProfileScreen->previousAxis();
 				stickProfileArrow_pressed = YES;
 			}
 		}
-		else if ([self checkKeyPress: _cxxPlayer->n_key_gui_arrow_right])
+		else if ([self checkKeyPress: n_key_gui_arrow_right])
 		{
-			if (!stickProfileArrow_pressed && ![self checkKeyPress: _cxxPlayer->n_key_gui_arrow_left])
+			if (!stickProfileArrow_pressed && ![self checkKeyPress: n_key_gui_arrow_left])
 			{
-				if (_cxxPlayer->stickProfileScreen != nullptr)  _cxxPlayer->stickProfileScreen->nextAxis();
+				if (stickProfileScreen != nullptr)  stickProfileScreen->nextAxis();
 				stickProfileArrow_pressed = YES;
 			}
 		}
@@ -129,19 +127,19 @@ std::string Bars(char mark, int count)
 		break;
 
 	case GUI_ROW_STICKPROFILE_DEADZONE:
-		if ([self checkKeyPress:_cxxPlayer->n_key_gui_arrow_left])
+		if ([self checkKeyPress:n_key_gui_arrow_left])
 		{
-			if (!stickProfileArrow_pressed && ![self checkKeyPress: _cxxPlayer->n_key_gui_arrow_right])
+			if (!stickProfileArrow_pressed && ![self checkKeyPress: n_key_gui_arrow_right])
 			{
-				if (_cxxPlayer->stickProfileScreen != nullptr)  _cxxPlayer->stickProfileScreen->decreaseDeadzone();
+				if (stickProfileScreen != nullptr)  stickProfileScreen->decreaseDeadzone();
 				stickProfileArrow_pressed = YES;
 			}
 		}
-		else if ([self checkKeyPress: _cxxPlayer->n_key_gui_arrow_right])
+		else if ([self checkKeyPress: n_key_gui_arrow_right])
 		{
-			if (!stickProfileArrow_pressed && ![self checkKeyPress: _cxxPlayer->n_key_gui_arrow_left])
+			if (!stickProfileArrow_pressed && ![self checkKeyPress: n_key_gui_arrow_left])
 			{
-				if (_cxxPlayer->stickProfileScreen != nullptr)  _cxxPlayer->stickProfileScreen->increaseDeadzone();
+				if (stickProfileScreen != nullptr)  stickProfileScreen->increaseDeadzone();
 				stickProfileArrow_pressed = YES;
 			}
 		}
@@ -152,19 +150,19 @@ std::string Bars(char mark, int count)
 		break;
 
 	case GUI_ROW_STICKPROFILE_PROFILE_TYPE:
-		if ([self checkKeyPress:_cxxPlayer->n_key_gui_arrow_left])
+		if ([self checkKeyPress:n_key_gui_arrow_left])
 		{
-			if (!stickProfileArrow_pressed && ![self checkKeyPress: _cxxPlayer->n_key_gui_arrow_right])
+			if (!stickProfileArrow_pressed && ![self checkKeyPress: n_key_gui_arrow_right])
 			{
-				if (_cxxPlayer->stickProfileScreen != nullptr)  _cxxPlayer->stickProfileScreen->previousProfileType();
+				if (stickProfileScreen != nullptr)  stickProfileScreen->previousProfileType();
 				stickProfileArrow_pressed = YES;
 			}
 		}
-		else if ([self checkKeyPress: _cxxPlayer->n_key_gui_arrow_right])
+		else if ([self checkKeyPress: n_key_gui_arrow_right])
 		{
-			if (!stickProfileArrow_pressed && ![self checkKeyPress: _cxxPlayer->n_key_gui_arrow_left])
+			if (!stickProfileArrow_pressed && ![self checkKeyPress: n_key_gui_arrow_left])
 			{
-				if (_cxxPlayer->stickProfileScreen != nullptr)  _cxxPlayer->stickProfileScreen->nextProfileType();
+				if (stickProfileScreen != nullptr)  stickProfileScreen->nextProfileType();
 				stickProfileArrow_pressed = YES;
 			}
 		}
@@ -175,23 +173,23 @@ std::string Bars(char mark, int count)
 		break;
 	}
 		
-	if (!(_cxxPlayer->stickProfileScreen != nullptr && _cxxPlayer->stickProfileScreen->currentProfileIsSpline()))
+	if (!(stickProfileScreen != nullptr && stickProfileScreen->currentProfileIsSpline()))
 	{
 		if ([gui selectedRow] == GUI_ROW_STICKPROFILE_POWER)
 		{
-			if ([self checkKeyPress:_cxxPlayer->n_key_gui_arrow_left])
+			if ([self checkKeyPress:n_key_gui_arrow_left])
 			{
-				if (!stickProfileArrow_pressed && ![self checkKeyPress: _cxxPlayer->n_key_gui_arrow_right])
+				if (!stickProfileArrow_pressed && ![self checkKeyPress: n_key_gui_arrow_right])
 				{
-					if (_cxxPlayer->stickProfileScreen != nullptr)  _cxxPlayer->stickProfileScreen->DecreasePower();
+					if (stickProfileScreen != nullptr)  stickProfileScreen->DecreasePower();
 					stickProfileArrow_pressed = YES;
 				}
 			}
-			else if ([self checkKeyPress: _cxxPlayer->n_key_gui_arrow_right])
+			else if ([self checkKeyPress: n_key_gui_arrow_right])
 			{
-				if (!stickProfileArrow_pressed && ![self checkKeyPress: _cxxPlayer->n_key_gui_arrow_left])
+				if (!stickProfileArrow_pressed && ![self checkKeyPress: n_key_gui_arrow_left])
 				{
-					if (_cxxPlayer->stickProfileScreen != nullptr)  _cxxPlayer->stickProfileScreen->IncreasePower();
+					if (stickProfileScreen != nullptr)  stickProfileScreen->IncreasePower();
 					stickProfileArrow_pressed = YES;
 				}
 			}
@@ -202,19 +200,19 @@ std::string Bars(char mark, int count)
 		}
 		else if ([gui selectedRow] == GUI_ROW_STICKPROFILE_PARAM)
 		{
-			if ([self checkKeyPress:_cxxPlayer->n_key_gui_arrow_left])
+			if ([self checkKeyPress:n_key_gui_arrow_left])
 			{
-				if (!stickProfileArrow_pressed && ![self checkKeyPress: _cxxPlayer->n_key_gui_arrow_right])
+				if (!stickProfileArrow_pressed && ![self checkKeyPress: n_key_gui_arrow_right])
 				{
-					if (_cxxPlayer->stickProfileScreen != nullptr)  _cxxPlayer->stickProfileScreen->DecreaseParam();
+					if (stickProfileScreen != nullptr)  stickProfileScreen->DecreaseParam();
 					stickProfileArrow_pressed = YES;
 				}
 			}
-			else if ([self checkKeyPress: _cxxPlayer->n_key_gui_arrow_right])
+			else if ([self checkKeyPress: n_key_gui_arrow_right])
 			{
-				if (!stickProfileArrow_pressed && ![self checkKeyPress: _cxxPlayer->n_key_gui_arrow_left])
+				if (!stickProfileArrow_pressed && ![self checkKeyPress: n_key_gui_arrow_left])
 				{
-					if (_cxxPlayer->stickProfileScreen != nullptr)  _cxxPlayer->stickProfileScreen->IncreaseParam();
+					if (stickProfileScreen != nullptr)  stickProfileScreen->IncreaseParam();
 					stickProfileArrow_pressed = YES;
 				}
 			}
@@ -227,14 +225,13 @@ std::string Bars(char mark, int count)
 	return;
 }
 
-- (void) stickProfileGraphAxisProfile: (GLfloat) alpha screenAt: (Vector) screenAt screenSize: (NSSize) screenSize
+void cxx::PlayerEntity::stickProfileGraphAxisProfile(GLfloat alpha, Vector screenAt, NSSize /*screenSize*/)
 {
 
-	if (_cxxPlayer->stickProfileScreen != nullptr)  _cxxPlayer->stickProfileScreen->graphProfile(alpha, make_vector(screenAt.x - 110.0, screenAt.y - 100, screenAt.z), NSMakeSize(220,220));
+	if (stickProfileScreen != nullptr)  stickProfileScreen->graphProfile(alpha, make_vector(screenAt.x - 110.0, screenAt.y - 100, screenAt.z), NSMakeSize(220,220));
 	return;
 }
 
-@end
 
 /*	StickProfileScreen (bead oo-movn): the Objective-C class's methods as members, the message syntax
 	converted. The stick handler and its profiles are C++ (oo-6bux, oo-fn2f); "is kind of" a

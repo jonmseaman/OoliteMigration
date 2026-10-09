@@ -87,41 +87,41 @@ std::string WeaponSoundKey(const OOWeaponSoundMap &sounds, const std::string &we
 }	// namespace
 
 
-@implementation PlayerEntity (Sound)
-
-- (void) setUpSound
+void cxx::PlayerEntity::setUpSound()
 {
-	[self destroySound];
+	destroySound();
 	
-	sInterfaceBeepSource = [[OOSoundSource alloc] init];
+	sInterfaceBeepSource = [[::OOSoundSource alloc] init];
 	[sInterfaceBeepSource setPosition:kInterfaceBeepPosition];
 
-	sBreakPatternSource = [[OOSoundSource alloc] init];
+	sBreakPatternSource = [[::OOSoundSource alloc] init];
 	[sBreakPatternSource setPosition:kBreakPatternPosition];
 
-	sEcmSource = [[OOSoundSource alloc] init];
+	sEcmSource = [[::OOSoundSource alloc] init];
 	[sEcmSource setPosition:kEcmPosition];
 
-	sHyperspaceSoundSource = [[OOSoundSource alloc] init];
+	sHyperspaceSoundSource = [[::OOSoundSource alloc] init];
 	[sHyperspaceSoundSource setPosition:kWitchspacePosition];
 	
-	sBuySellSourcePool = [[OOSoundSourcePool alloc] initWithCount:kBuySellSourcePoolSize minRepeatTime:0.0];
-	sWarningSoundPool = [[OOSoundSourcePool alloc] initWithCount:kWarningPoolSize minRepeatTime:0.0];
-	sWeaponSoundPool = [[OOSoundSourcePool alloc] initWithCount:kWeaponPoolSize minRepeatTime:0.0];
-	sDamageSoundPool = [[OOSoundSourcePool alloc] initWithCount:kDamagePoolSize minRepeatTime:0.1];	// Repeat time limit is to avoid playing a scrape sound every frame on glancing scrapes. This does limit the number of laser hits that can be played in a furrball, though; maybe lasers and scrapes should use different pools.
-	sMiscSoundPool = [[OOSoundSourcePool alloc] initWithCount:kMiscPoolSize minRepeatTime:0.0];
+	sBuySellSourcePool = [[::OOSoundSourcePool alloc] initWithCount:kBuySellSourcePoolSize minRepeatTime:0.0];
+	sWarningSoundPool = [[::OOSoundSourcePool alloc] initWithCount:kWarningPoolSize minRepeatTime:0.0];
+	sWeaponSoundPool = [[::OOSoundSourcePool alloc] initWithCount:kWeaponPoolSize minRepeatTime:0.0];
+	sDamageSoundPool = [[::OOSoundSourcePool alloc] initWithCount:kDamagePoolSize minRepeatTime:0.1];	// Repeat time limit is to avoid playing a scrape sound every frame on glancing scrapes. This does limit the number of laser hits that can be played in a furrball, though; maybe lasers and scrapes should use different pools.
+	sMiscSoundPool = [[::OOSoundSourcePool alloc] initWithCount:kMiscPoolSize minRepeatTime:0.0];
 	
 	// Two sources with the same sound are used to simulate looping.
-	OOSound *afterburnerSound = [ResourceManager cxx_ooSoundNamed:"afterburner1.ogg" inFolder:"Sounds"];
-	sAfterburnerSources[0] = [[OOSoundSource alloc] initWithSound:afterburnerSound];
+	::OOSound *afterburnerSound = [::ResourceManager cxx_ooSoundNamed:"afterburner1.ogg" inFolder:"Sounds"];
+	sAfterburnerSources[0] = [[::OOSoundSource alloc] initWithSound:afterburnerSound];
 	[sAfterburnerSources[0] setPosition:kAfterburner1Position];
-	sAfterburnerSources[1] = [[OOSoundSource alloc] initWithSound:afterburnerSound];
+	sAfterburnerSources[1] = [[::OOSoundSource alloc] initWithSound:afterburnerSound];
 	[sAfterburnerSources[1] setPosition:kAfterburner2Position];
 }
 
 
 // sets up the sound key dictionaries for all the available weapons/missiles/mines defined.
-- (void) setUpWeaponSounds
+
+
+void cxx::PlayerEntity::setUpWeaponSounds()
 {
 	OOWeaponSoundMap	shotMissSounds;
 	OOWeaponSoundMap	shotHitSounds;
@@ -136,13 +136,13 @@ std::string WeaponSoundKey(const OOWeaponSoundMap &sounds, const std::string &we
 	unshieldedHitSounds["EQ_WEAPON_PLASMA_SHOT"] = "[player-direct-hit]";
 	// grab a local copy of the sound identifiers for weapons to make the process of looking up a sound ref as fast as possible
 	// a missing sound identifier is stored as an empty key
-	auto assignSound = [](OOWeaponSoundMap &sounds, OOEquipmentType *eqType, std::string soundName) {
+	auto assignSound = [](OOWeaponSoundMap &sounds, ::OOEquipmentType *eqType, std::string soundName) {
 		sounds[[eqType cxx_identifier].value_or("")] = std::move(soundName);
 	};
 
-	for (const oo::ObjCRef<OOEquipmentType *> &eqTypeRef : [OOEquipmentType cxx_allEquipmentTypes])
+	for (const oo::ObjCRef<::OOEquipmentType *> &eqTypeRef : [::OOEquipmentType cxx_allEquipmentTypes])
 	{
-		OOEquipmentType *eqType = eqTypeRef.get();
+		::OOEquipmentType *eqType = eqTypeRef.get();
 		if (oo::str::hasPrefix([eqType cxx_identifier].value_or(""), "EQ_WEAPON"))
 		{
 			assignSound(shotMissSounds, eqType, [eqType cxx_fxShotMissName].value_or(""));
@@ -165,7 +165,8 @@ std::string WeaponSoundKey(const OOWeaponSoundMap &sounds, const std::string &we
 	weaponLaunched = std::move(weaponLaunchedSounds);
 }
 
-- (void) destroySound
+
+void cxx::PlayerEntity::destroySound()
 {
 	DESTROY(sInterfaceBeepSource);
 	DESTROY(sBreakPatternSource);
@@ -189,252 +190,254 @@ std::string WeaponSoundKey(const OOWeaponSoundMap &sounds, const std::string &we
 }
 
 
-- (void) playInterfaceBeep:(const std::string &)beepKey
+void cxx::PlayerEntity::playInterfaceBeep(const std::string & beepKey)
 {
 #if OOLITE_WINDOWS
-	if ([self status] == STATUS_START_GAME) { return; }
+	if (status() == STATUS_START_GAME) { return; }
 #endif
-	[sInterfaceBeepSource playOOSound:[OOSound cxx_soundWithCustomSoundKey:beepKey]];
+	[sInterfaceBeepSource playOOSound:[::OOSound cxx_soundWithCustomSoundKey:beepKey]];
 }
 
 
-- (BOOL) isBeeping
+bool cxx::PlayerEntity::isBeeping()
 {
 	return [sInterfaceBeepSource isPlaying];
 }
 
 
-- (void) boop
+void cxx::PlayerEntity::boop()
 {
-	[self playInterfaceBeep:"[general-boop]"];
+	playInterfaceBeep("[general-boop]");
 }
 
 
-- (void) playIdentOn
+void cxx::PlayerEntity::playIdentOn()
 {
-	[self playInterfaceBeep:"[ident-on]"];
+	playInterfaceBeep("[ident-on]");
 }
 
 
-- (void) playIdentOff
+void cxx::PlayerEntity::playIdentOff()
 {
-	[self playInterfaceBeep:"[ident-off]"];
+	playInterfaceBeep("[ident-off]");
 }
 
 
-- (void) playIdentLockedOn
+void cxx::PlayerEntity::playIdentLockedOn()
 {
-	[self playInterfaceBeep:"[ident-locked-on]"];
+	playInterfaceBeep("[ident-locked-on]");
 }
 
 
-- (void) playMissileArmed
+void cxx::PlayerEntity::playMissileArmed()
 {
-	[self playInterfaceBeep:"[missile-armed]"];
+	playInterfaceBeep("[missile-armed]");
 }
 
 
-- (void) playMineArmed
+void cxx::PlayerEntity::playMineArmed()
 {
-	[self playInterfaceBeep:"[mine-armed]"];
+	playInterfaceBeep("[mine-armed]");
 }
 
 
-- (void) playMissileSafe
+void cxx::PlayerEntity::playMissileSafe()
 {
-	[self playInterfaceBeep:"[missile-safe]"];
+	playInterfaceBeep("[missile-safe]");
 }
 
 
-- (void) playMissileLockedOn
+void cxx::PlayerEntity::playMissileLockedOn()
 {
-	[self playInterfaceBeep:"[missile-locked-on]"];
+	playInterfaceBeep("[missile-locked-on]");
 }
 
 
-- (void) playNextEquipmentSelected
+void cxx::PlayerEntity::playNextEquipmentSelected()
 {
-	[self playInterfaceBeep:"[next-equipment-selected]"];
+	playInterfaceBeep("[next-equipment-selected]");
 }
 
 
-- (void) playNextMissileSelected
+void cxx::PlayerEntity::playNextMissileSelected()
 {
-	[self playInterfaceBeep:"[next-missile-selected]"];
+	playInterfaceBeep("[next-missile-selected]");
 }
 
 
-- (void) playWeaponsOnline
+void cxx::PlayerEntity::playWeaponsOnline()
 {
-	[self playInterfaceBeep:"[weapons-online]"];
+	playInterfaceBeep("[weapons-online]");
 }
 
 
-- (void) playWeaponsOffline
+void cxx::PlayerEntity::playWeaponsOffline()
 {
-	[self playInterfaceBeep:"[weapons-offline]"];
+	playInterfaceBeep("[weapons-offline]");
 }
 
 
-- (void) playCargoJettisioned
+void cxx::PlayerEntity::playCargoJettisioned()
 {
-	[self playInterfaceBeep:"[cargo-jettisoned]"];
+	playInterfaceBeep("[cargo-jettisoned]");
 }
 
 
-- (void) playAutopilotOn
+void cxx::PlayerEntity::playAutopilotOn()
 {
-	[self playInterfaceBeep:"[autopilot-on]"];
+	playInterfaceBeep("[autopilot-on]");
 }
 
 
-- (void) playAutopilotOff
+void cxx::PlayerEntity::playAutopilotOff()
 {
 	// only if still alive
-	if (_cxxEntity->energy > 0.0)
+	if (energy > 0.0)
 	{
-		[self playInterfaceBeep:"[autopilot-off]"];
+		playInterfaceBeep("[autopilot-off]");
 	}
 }
 
 
-- (void) playAutopilotOutOfRange
+void cxx::PlayerEntity::playAutopilotOutOfRange()
 {
-	[self playInterfaceBeep:"[autopilot-out-of-range]"];
+	playInterfaceBeep("[autopilot-out-of-range]");
 }
 
 
-- (void) playAutopilotCannotDockWithTarget
+void cxx::PlayerEntity::playAutopilotCannotDockWithTarget()
 {
-	[self playInterfaceBeep:"[autopilot-cannot-dock-with-target]"];
+	playInterfaceBeep("[autopilot-cannot-dock-with-target]");
 }
 
 
-- (void) playSaveOverwriteYes
+void cxx::PlayerEntity::playSaveOverwriteYes()
 {
-	[self playInterfaceBeep:"[save-overwrite-yes]"];
+	playInterfaceBeep("[save-overwrite-yes]");
 }
 
 
-- (void) playSaveOverwriteNo
+void cxx::PlayerEntity::playSaveOverwriteNo()
 {
-	[self playInterfaceBeep:"[save-overwrite-no]"];
+	playInterfaceBeep("[save-overwrite-no]");
 }
 
 
-- (void) playHoldFull
+void cxx::PlayerEntity::playHoldFull()
 {
-	[self playInterfaceBeep:"[hold-full]"];
+	playInterfaceBeep("[hold-full]");
 }
 
 
-- (void) playJumpMassLocked
+void cxx::PlayerEntity::playJumpMassLocked()
 {
-	[self playInterfaceBeep:"[jump-mass-locked]"];
+	playInterfaceBeep("[jump-mass-locked]");
 }
 
 
-- (void) playTargetLost
+void cxx::PlayerEntity::playTargetLost()
 {
-	[self playInterfaceBeep:"[target-lost]"];
+	playInterfaceBeep("[target-lost]");
 }
 
 
-- (void) playNoTargetInMemory
+void cxx::PlayerEntity::playNoTargetInMemory()
 {
-	[self playInterfaceBeep:"[no-target-in-memory]"];
+	playInterfaceBeep("[no-target-in-memory]");
 }
 
 
-- (void) playTargetSwitched
+void cxx::PlayerEntity::playTargetSwitched()
 {
-	[self playInterfaceBeep:"[target-switched]"];
+	playInterfaceBeep("[target-switched]");
 }
 
 
-- (void) playHyperspaceNoTarget
+void cxx::PlayerEntity::playHyperspaceNoTarget()
 {
-	[self playInterfaceBeep:"[witch-no-target]"];
+	playInterfaceBeep("[witch-no-target]");
 }
 
 
-- (void) playHyperspaceNoFuel
+void cxx::PlayerEntity::playHyperspaceNoFuel()
 {
-	[self playInterfaceBeep:"[witch-no-fuel]"];
+	playInterfaceBeep("[witch-no-fuel]");
 }
 
 
-- (void) playHyperspaceBlocked
+void cxx::PlayerEntity::playHyperspaceBlocked()
 {
-	[self playInterfaceBeep:"[hyperspace-blocked]"];
-}
-
-- (void) playHyperspaceDistanceTooGreat
-{
-	[self playInterfaceBeep:"[witch-too-far]"];
-}
-
-- (void) playCloakingDeviceOn
-{
-	[self playInterfaceBeep:"[cloaking-device-on]"];
+	playInterfaceBeep("[hyperspace-blocked]");
 }
 
 
-- (void) playCloakingDeviceOff
+void cxx::PlayerEntity::playHyperspaceDistanceTooGreat()
 {
-	[self playInterfaceBeep:"[cloaking-device-off]"];
+	playInterfaceBeep("[witch-too-far]");
 }
 
 
-- (void) playMenuNavigationUp
+void cxx::PlayerEntity::playCloakingDeviceOn()
 {
-	[self playInterfaceBeep:"[menu-navigation-up]"];
+	playInterfaceBeep("[cloaking-device-on]");
 }
 
 
-- (void) playMenuNavigationDown
+void cxx::PlayerEntity::playCloakingDeviceOff()
 {
-	[self playInterfaceBeep:"[menu-navigation-down]"];
+	playInterfaceBeep("[cloaking-device-off]");
 }
 
 
-- (void) playMenuNavigationNot
+void cxx::PlayerEntity::playMenuNavigationUp()
 {
-	[self playInterfaceBeep:"[menu-navigation-not]"];
+	playInterfaceBeep("[menu-navigation-up]");
 }
 
 
-- (void) playMenuPagePrevious
+void cxx::PlayerEntity::playMenuNavigationDown()
 {
-	[self playInterfaceBeep:"[menu-next-page]"];
+	playInterfaceBeep("[menu-navigation-down]");
 }
 
 
-- (void) playMenuPageNext
+void cxx::PlayerEntity::playMenuNavigationNot()
 {
-	[self playInterfaceBeep:"[menu-previous-page]"];
+	playInterfaceBeep("[menu-navigation-not]");
 }
 
 
-- (void) playDismissedReportScreen
+void cxx::PlayerEntity::playMenuPagePrevious()
 {
-	[self playInterfaceBeep:"[dismissed-report-screen]"];
+	playInterfaceBeep("[menu-next-page]");
 }
 
 
-- (void) playDismissedMissionScreen
+void cxx::PlayerEntity::playMenuPageNext()
 {
-	[self playInterfaceBeep:"[dismissed-mission-screen]"];
+	playInterfaceBeep("[menu-previous-page]");
 }
 
 
-- (void) playChangedOption
+void cxx::PlayerEntity::playDismissedReportScreen()
 {
-	[self playInterfaceBeep:"[changed-option]"];
+	playInterfaceBeep("[dismissed-report-screen]");
 }
 
 
-- (void) updateFuelScoopSoundWithInterval:(OOTimeDelta)delta_t
+void cxx::PlayerEntity::playDismissedMissionScreen()
+{
+	playInterfaceBeep("[dismissed-mission-screen]");
+}
+
+
+void cxx::PlayerEntity::playChangedOption()
+{
+	playInterfaceBeep("[changed-option]");
+}
+
+
+void cxx::PlayerEntity::updateFuelScoopSoundWithInterval(OOTimeDelta delta_t)
 {
 	static double scoopSoundPlayTime = 0.0;
 	scoopSoundPlayTime -= delta_t;
@@ -444,12 +447,12 @@ std::string WeaponSoundKey(const OOWeaponSoundMap &sounds, const std::string &we
 		{
 		/* TODO: this should use the scoop position, not the standard
 		 * interface beep position */
-			[self playInterfaceBeep:"[scoop]"];
+			playInterfaceBeep("[scoop]");
 			scoopSoundPlayTime = 0.5;
 		}
 		else scoopSoundPlayTime = 0.0;
 	}
-	if (![self scoopOverride])
+	if (!scoopOverride)
 	{
 		scoopSoundPlayTime = 0.0;
 	}
@@ -459,216 +462,218 @@ std::string WeaponSoundKey(const OOWeaponSoundMap &sounds, const std::string &we
 // time delay method for playing afterburner sounds
 // this overlaps two sounds each 2 seconds long, but with a 0.75s
 // crossfade
-- (void) updateAfterburnerSound
+
+
+void cxx::PlayerEntity::updateAfterburnerSound()
 {
 	static uint8_t which = 0;
 	
-	if (!_cxxPlayer->afterburner_engaged)				// end the loop cycle
+	if (!afterburner_engaged)				// end the loop cycle
 	{
-		_cxxPlayer->afterburnerSoundLooping = NO;
+		afterburnerSoundLooping = NO;
 	}
 	
-	if (_cxxPlayer->afterburnerSoundLooping)
+	if (afterburnerSoundLooping)
 	{
 		[sAfterburnerSources[which] play];
 		which = !which;
 		
-		OOScheduleDeferredCall(self, @selector(updateAfterburnerSound), nil, 1.25);	// and swap sounds in 1.25s time
+		[oo::ToObjC(this) cxx_scheduleAfterburnerSoundUpdate];	// and swap sounds in 1.25s time
 	}
 }
 
 
-- (void) startAfterburnerSound
+void cxx::PlayerEntity::startAfterburnerSound()
 {
-	if (!_cxxPlayer->afterburnerSoundLooping)
+	if (!afterburnerSoundLooping)
 	{
-		_cxxPlayer->afterburnerSoundLooping = YES;
-		[self updateAfterburnerSound];
+		afterburnerSoundLooping = YES;
+		updateAfterburnerSound();
 	}
 }
 
 
-- (void) stopAfterburnerSound
+void cxx::PlayerEntity::stopAfterburnerSound()
 {
 	// Do nothing, stop is detected in updateAfterburnerSound
 }
 
 
-- (void) playCloakingDeviceInsufficientEnergy
+void cxx::PlayerEntity::playCloakingDeviceInsufficientEnergy()
 {
-	[self playInterfaceBeep:"[cloaking-device-insufficent-energy]"];
+	playInterfaceBeep("[cloaking-device-insufficent-energy]");
 }
 
 
-- (void) playBuyCommodity
+void cxx::PlayerEntity::playBuyCommodity()
 {
 	[sBuySellSourcePool playSoundWithKey:"[buy-commodity]"];
 }
 
 
-- (void) playBuyShip
+void cxx::PlayerEntity::playBuyShip()
 {
 	[sBuySellSourcePool playSoundWithKey:"[buy-ship]"];
 }
 
 
-- (void) playSellCommodity
+void cxx::PlayerEntity::playSellCommodity()
 {
 	[sBuySellSourcePool playSoundWithKey:"[sell-commodity]"];
 }
 
 
-- (void) playCantBuyCommodity
+void cxx::PlayerEntity::playCantBuyCommodity()
 {
 	[sBuySellSourcePool playSoundWithKey:"[could-not-buy-commodity]"];
 }
 
 
-- (void) playCantSellCommodity
+void cxx::PlayerEntity::playCantSellCommodity()
 {
 	[sBuySellSourcePool playSoundWithKey:"[could-not-sell-commodity]"];
 }
 
 
-- (void) playCantBuyShip
+void cxx::PlayerEntity::playCantBuyShip()
 {
 	[sBuySellSourcePool playSoundWithKey:"[could-not-buy-ship]"];
 }
 
 
-- (void) playStandardHyperspace
+void cxx::PlayerEntity::playStandardHyperspace()
 {
 	[sHyperspaceSoundSource cxx_playCustomSoundWithKey:"[hyperspace-countdown-begun]"];
 }
 
 
-- (void) playGalacticHyperspace
+void cxx::PlayerEntity::playGalacticHyperspace()
 {
 	[sHyperspaceSoundSource cxx_playCustomSoundWithKey:"[galactic-hyperspace-countdown-begun]"];
 }
 
 
-- (void) playHyperspaceAborted
+void cxx::PlayerEntity::playHyperspaceAborted()
 {
 	[sHyperspaceSoundSource cxx_playCustomSoundWithKey:"[hyperspace-countdown-aborted]"];
 }
 
 
-- (void) playHitByECMSound
+void cxx::PlayerEntity::playHitByECMSound()
 {
 	if (![sEcmSource isPlaying]) [sEcmSource cxx_playCustomSoundWithKey:"[player-hit-by-ecm]"];
 }
 
 
-- (void) playFiredECMSound
+void cxx::PlayerEntity::playFiredECMSound()
 {
 	if (![sEcmSource isPlaying]) [sEcmSource cxx_playCustomSoundWithKey:"[player-fired-ecm]"];
 }
 
 
-- (void) playLaunchFromStation
+void cxx::PlayerEntity::playLaunchFromStation()
 {
 	[sBreakPatternSource cxx_playCustomSoundWithKey:"[player-launch-from-station]"];
 }
 
 
-- (void) playDockWithStation
+void cxx::PlayerEntity::playDockWithStation()
 {
 	[sBreakPatternSource cxx_playCustomSoundWithKey:"[player-dock-with-station]"];
 }
 
 
-- (void) playExitWitchspace
+void cxx::PlayerEntity::playExitWitchspace()
 {
 	[sBreakPatternSource cxx_playCustomSoundWithKey:"[player-exit-witchspace]"];
 }
 
 
-- (void) playHostileWarning
+void cxx::PlayerEntity::playHostileWarning()
 {
 	[sWarningSoundPool playSoundWithKey:"[hostile-warning]" priority:1 position:kInterfaceWarningPosition];
 }
 
 
-- (void) playAlertConditionRed
+void cxx::PlayerEntity::playAlertConditionRed()
 {
 	[sWarningSoundPool playSoundWithKey:"[alert-condition-red]" priority:2 position:kInterfaceWarningPosition];
 }
 
 
-- (void) playIncomingMissile:(Vector)missileVector
+void cxx::PlayerEntity::playIncomingMissile(Vector missileVector)
 {
 	[sWarningSoundPool playSoundWithKey:"[incoming-missile]" priority:3 position:missileVector];
 }
 
 
-- (void) playEnergyLow
+void cxx::PlayerEntity::playEnergyLow()
 {
 	[sWarningSoundPool playSoundWithKey:"[energy-low]" priority:0.5 position:kInterfaceWarningPosition];
 }
 
 
-- (void) playDockingDenied
+void cxx::PlayerEntity::playDockingDenied()
 {
 	[sWarningSoundPool playSoundWithKey:"[autopilot-denied]" priority:1 position:kInterfaceWarningPosition];
 }
 
 
-- (void) playWitchjumpFailure
+void cxx::PlayerEntity::playWitchjumpFailure()
 {
 	[sWarningSoundPool playSoundWithKey:"[witchdrive-failure]" priority:1.5 position:kWitchspacePosition];
 }
 
 
-- (void) playWitchjumpMisjump
+void cxx::PlayerEntity::playWitchjumpMisjump()
 {
 	[sWarningSoundPool playSoundWithKey:"[witchdrive-malfunction]" priority:1.5 position:kWitchspacePosition];
 }
 
 
-- (void) playWitchjumpBlocked
+void cxx::PlayerEntity::playWitchjumpBlocked()
 {
 	[sWarningSoundPool playSoundWithKey:"[witch-blocked-by-@]" priority:1.3 position:kWitchspacePosition];
 }
 
 
-- (void) playWitchjumpDistanceTooGreat
+void cxx::PlayerEntity::playWitchjumpDistanceTooGreat()
 {
 	[sWarningSoundPool playSoundWithKey:"[witch-too-far]" priority:1.3 position:kWitchspacePosition];
 }
 
 
-- (void) playWitchjumpInsufficientFuel
+void cxx::PlayerEntity::playWitchjumpInsufficientFuel()
 {
 	[sWarningSoundPool playSoundWithKey:"[witch-no-fuel]" priority:1.3 position:kWitchspacePosition];
 }
 
 
-- (void) playFuelLeak
+void cxx::PlayerEntity::playFuelLeak()
 {
 	[sWarningSoundPool playSoundWithKey:"[fuel-leak]" priority:0.5 position:kWitchspacePosition];
 }
 
 
-- (void) cxx_playShieldHit:(Vector)attackVector weaponIdentifier:(const std::string &)weaponIdentifier
+void cxx::PlayerEntity::playShieldHit(Vector attackVector, const std::string & weaponIdentifier)
 {
 	[sDamageSoundPool playSoundWithKey:WeaponSoundKey(weaponShieldHit, weaponIdentifier, "[player-hit-by-weapon]") position:attackVector];
 }
 
 
-- (void) cxx_playDirectHit:(Vector)attackVector weaponIdentifier:(const std::string &) weaponIdentifier
+void cxx::PlayerEntity::playDirectHit(Vector attackVector, const std::string & weaponIdentifier)
 {
 	[sDamageSoundPool playSoundWithKey:WeaponSoundKey(weaponUnshieldedHit, weaponIdentifier, "[player-direct-hit]") position:attackVector];
 }
 
 
-- (void) playScrapeDamage:(Vector)attackVector
+void cxx::PlayerEntity::playScrapeDamage(Vector attackVector)
 {
 	[sDamageSoundPool playSoundWithKey:"[player-scrape-damage]" position:attackVector];
 }
 
 
-- (void) cxx_playLaserHit:(BOOL)hit offset:(Vector)weaponOffset weaponIdentifier:(const std::string &)weaponIdentifier
+void cxx::PlayerEntity::playLaserHit(bool hit, Vector weaponOffset, const std::string & weaponIdentifier)
 {
 	if (hit)
 	{
@@ -682,51 +687,50 @@ std::string WeaponSoundKey(const OOWeaponSoundMap &sounds, const std::string &we
 }
 
 
-- (void) playWeaponOverheated:(Vector)weaponOffset
+void cxx::PlayerEntity::playWeaponOverheated(Vector weaponOffset)
 {
 	[sWeaponSoundPool playSoundWithKey:"[weapon-overheat]" overlap:NO position:weaponOffset];
 }
 
 
-- (void) cxx_playMissileLaunched:(Vector)weaponOffset weaponIdentifier:(const std::string &)weaponIdentifier
+void cxx::PlayerEntity::playMissileLaunched(Vector weaponOffset, const std::string & weaponIdentifier)
 {
 	[sWeaponSoundPool playSoundWithKey:WeaponSoundKey(weaponLaunched, weaponIdentifier, "[missile_launched]") position:weaponOffset];
 }
 
 
-- (void) cxx_playMineLaunched:(Vector)weaponOffset weaponIdentifier:(const std::string &)weaponIdentifier
+void cxx::PlayerEntity::playMineLaunched(Vector weaponOffset, const std::string & weaponIdentifier)
 {
 	[sWeaponSoundPool playSoundWithKey:WeaponSoundKey(weaponLaunched, weaponIdentifier, "[mine_launched]") position:weaponOffset];
 }
 
 
-- (void) playEscapePodScooped
+void cxx::PlayerEntity::playEscapePodScooped()
 {
 	[sMiscSoundPool playSoundWithKey:"[escape-pod-scooped]" position:kInterfaceBeepPosition];
 }
 
 
-- (void) playAegisCloseToPlanet
+void cxx::PlayerEntity::playAegisCloseToPlanet()
 {
 	[sMiscSoundPool playSoundWithKey:"[aegis-planet]" position:kInterfaceBeepPosition];
 }
 
 
-- (void) playAegisCloseToStation
+void cxx::PlayerEntity::playAegisCloseToStation()
 {
 	[sMiscSoundPool playSoundWithKey:"[aegis-station]" position:kInterfaceBeepPosition];
 }
 
 
-- (void) playGameOver
+void cxx::PlayerEntity::playGameOver()
 {
 	[sMiscSoundPool playSoundWithKey:"[game-over]"];
 }
 
 
-- (void) playLegacyScriptSound:(const std::string &)key
+void cxx::PlayerEntity::playLegacyScriptSound(const std::string & key)
 {
 	[sMiscSoundPool playSoundWithKey:key priority:1.1];
 }
 
-@end

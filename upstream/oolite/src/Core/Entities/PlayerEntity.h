@@ -109,6 +109,20 @@ typedef enum
 #define OO_RESOLUTION_OPTION		1
 #endif
 
+// The load / save macros, moved from PlayerEntityLoadSave.h: they condition the declarations of
+// that file's members below (ADR-0056 amendment oo-lmdi8).
+// Set to 1 to use custom load/save dialogs in windowed mode on Macs in debug builds. No effect on other platforms.
+#define USE_CUSTOM_LOAD_SAVE_ON_MAC_DEBUG		0
+
+// OOLITE_USE_APPKIT_LOAD_SAVE is true if we ever want AppKit dialogs.
+#define OOLITE_USE_APPKIT_LOAD_SAVE				(OOLITE_MAC_OS_X && !USE_CUSTOM_LOAD_SAVE_ON_MAC_DEBUG)
+
+// Mac 64-bit builds: never use custom load/save dialogs.
+#define OO_USE_APPKIT_LOAD_SAVE_ALWAYS			(OOLITE_USE_APPKIT_LOAD_SAVE && OOLITE_64_BIT)
+
+// OO_USE_CUSTOM_LOAD_SAVE is true if we will ever want custom dialogs.
+#define OO_USE_CUSTOM_LOAD_SAVE					(!OO_USE_APPKIT_LOAD_SAVE_ALWAYS)
+
 // dictionary keys - used in the custom key config for oxp equipment
 inline constexpr std::string_view CUSTOMEQUIP_EQUIPKEY = "equipmentKey";
 inline constexpr std::string_view CUSTOMEQUIP_EQUIPNAME = "equipmentName";
@@ -935,6 +949,474 @@ public:
 	std::optional<std::string> commanderBountyAsString();
 	std::optional<std::string> creditsFormattedForSubstitution();
 	std::optional<std::string> creditsFormattedForLegacySubstitution();
+
+	// PlayerEntitySound.mm: the interface, warning, damage and weapon sounds, and the afterburner loop.
+	void setUpSound();
+	void setUpWeaponSounds();
+	void destroySound();
+	void playInterfaceBeep(const std::string &beepKey);
+	bool isBeeping();
+	void boop();
+	void playIdentOn();
+	void playIdentOff();
+	void playIdentLockedOn();
+	void playMissileArmed();
+	void playMineArmed();
+	void playMissileSafe();
+	void playMissileLockedOn();
+	void playNextEquipmentSelected();
+	void playNextMissileSelected();
+	void playWeaponsOnline();
+	void playWeaponsOffline();
+	void playCargoJettisioned();
+	void playAutopilotOn();
+	void playAutopilotOff();
+	void playAutopilotOutOfRange();
+	void playAutopilotCannotDockWithTarget();
+	void playSaveOverwriteYes();
+	void playSaveOverwriteNo();
+	void playHoldFull();
+	void playJumpMassLocked();
+	void playTargetLost();
+	void playNoTargetInMemory();
+	void playTargetSwitched();
+	void playHyperspaceNoTarget();
+	void playHyperspaceNoFuel();
+	void playHyperspaceBlocked();
+	void playHyperspaceDistanceTooGreat();
+	void playCloakingDeviceOn();
+	void playCloakingDeviceOff();
+	void playMenuNavigationUp();
+	void playMenuNavigationDown();
+	void playMenuNavigationNot();
+	void playMenuPagePrevious();
+	void playMenuPageNext();
+	void playDismissedReportScreen();
+	void playDismissedMissionScreen();
+	void playChangedOption();
+	void updateFuelScoopSoundWithInterval(OOTimeDelta delta_t);
+	void updateAfterburnerSound();
+	void startAfterburnerSound();
+	void stopAfterburnerSound();
+	void playCloakingDeviceInsufficientEnergy();
+	void playBuyCommodity();
+	void playBuyShip();
+	void playSellCommodity();
+	void playCantBuyCommodity();
+	void playCantSellCommodity();
+	void playCantBuyShip();
+	void playStandardHyperspace();
+	void playGalacticHyperspace();
+	void playHyperspaceAborted();
+	void playHitByECMSound();
+	void playFiredECMSound();
+	void playLaunchFromStation();
+	void playDockWithStation();
+	void playExitWitchspace();
+	void playHostileWarning();
+	void playAlertConditionRed();
+	void playIncomingMissile(Vector missileVector);
+	void playEnergyLow();
+	void playDockingDenied();
+	void playWitchjumpFailure();
+	void playWitchjumpMisjump();
+	void playWitchjumpBlocked();
+	void playWitchjumpDistanceTooGreat();
+	void playWitchjumpInsufficientFuel();
+	void playFuelLeak();
+	void playShieldHit(Vector attackVector, const std::string &weaponIdentifier);
+	void playDirectHit(Vector attackVector, const std::string &weaponIdentifier);
+	void playScrapeDamage(Vector attackVector);
+	void playLaserHit(bool hit, Vector weaponOffset, const std::string &weaponIdentifier);
+	void playWeaponOverheated(Vector weaponOffset);
+	void playMissileLaunched(Vector weaponOffset, const std::string &weaponIdentifier);
+	void playMineLaunched(Vector weaponOffset, const std::string &weaponIdentifier);
+	void playEscapePodScooped();
+	void playAegisCloseToPlanet();
+	void playAegisCloseToStation();
+	void playGameOver();
+	void playLegacyScriptSound(const std::string &key);
+
+	// PlayerEntityStickMapper.mm, the categories StickMapper (ADR-0056 amendment oo-lmdi8): defined in that file.
+	void resetStickFunctions();
+	void setGuiToStickMapperScreen(unsigned skip);
+	void setGuiToStickMapperScreen(unsigned skip, bool resetCurrentRow);
+	void stickMapperInputHandler(::GuiDisplayGen *gui, ::MyOpenGLView *gameView);
+	void updateFunction(const oo::PList &hwDict);
+	void checkCustomEquipButtons(const oo::PList &stickFn, int idx);
+	void removeFunction(int idx);
+	void displayFunctionList(::GuiDisplayGen *gui, NSUInteger skip);
+	std::optional<std::string> describeStickDict(const oo::PList *stickDict);
+	std::string hwToString(int hwFlags);
+	std::vector<oo::PList> stickFunctionList();
+	oo::PList makeStickGuiDict(const std::string &what, int allowable, int axisfn, int butfn);
+	oo::PList makeStickGuiDictHeader(const std::string &header);
+
+	// PlayerEntityStickProfile.mm, the categories StickProfile (ADR-0056 amendment oo-lmdi8): defined in that file.
+	void setGuiToStickProfileScreen(::GuiDisplayGen *gui);
+	void stickProfileInputHandler(::GuiDisplayGen *gui, ::MyOpenGLView *gameView);
+	void stickProfileGraphAxisProfile(GLfloat alpha, Vector screenAt, NSSize screenSize);
+
+	// PlayerEntityControls.mm, the categories Controls, OOControlsPrivate (ADR-0056 amendment oo-lmdi8): defined in that file.
+	// Slice 1 of docs/phases/3-slices/PlayerEntityControls.md.
+	void initControls();
+	void initKeyConfigSettings();
+	oo::PList processKeyCode(const oo::PList &key_def);
+	bool checkNavKeyPress(const oo::PList &key_def);
+	bool checkKeyPress(const oo::PList &key_def);
+	bool checkKeyPress(const oo::PList &key_def, bool fKey_only);
+	bool checkKeyPressIgnoreCtrl(const oo::PList &key_def, bool ignore_ctrl);
+	bool checkKeyPress(const oo::PList &key_def, bool fKey_only, bool ignore_ctrl);
+	int getFirstKeyCode(const oo::PList &key_def);
+	void getPollControls(double delta_t);
+	bool handleGUIUpDownArrowKeys();
+	void targetNewSystem(int direction, bool whileTyping);
+	void clearPlanetSearchString();
+	void targetNewSystem(int direction);
+	void switchToMainView();
+	void noteSwitchToView(OOViewID toView, OOViewID fromView);
+	void beginWitchspaceCountdown(int spin_time);
+	void beginWitchspaceCountdown();
+	void cancelWitchspaceCountdown();
+	// Slice 2 of docs/phases/3-slices/PlayerEntityControls.md.
+	void pollApplicationControls();
+	// Slice 3 of docs/phases/3-slices/PlayerEntityControls.md.
+	void pollFlightControls(double delta_t);
+	// Slice 4 of docs/phases/3-slices/PlayerEntityControls.md.
+	void pollGuiArrowKeyControls(double delta_t);
+	// Slice 5 of docs/phases/3-slices/PlayerEntityControls.md.
+	void pollMarketScreenControls();
+	void handleGameOptionsScreenKeys();
+	// Slice 6 of docs/phases/3-slices/PlayerEntityControls.md.
+	void handleKeyMapperScreenKeys();
+	void handleKeyboardLayoutKeys();
+	void handleStickMapperScreenKeys();
+	// Slice 2 of docs/phases/3-slices/PlayerEntityControls.md.
+	void pollCustomViewControls();
+	void pollViewControls();
+	void pollFlightArrowKeyControls(double delta_t);
+	// Slice 6 of docs/phases/3-slices/PlayerEntityControls.md.
+	void pollGuiScreenControls();
+	void pollGuiScreenControlsWithFKeyAlias(bool fKeyAlias);
+	void pollGameOverControls(double delta_t);
+	void pollAutopilotControls(double delta_t);
+	void pollDockedControls(double delta_t);
+	void handleUndockControl();
+	// Slice 7 of docs/phases/3-slices/PlayerEntityControls.md.
+	void pollDemoControls(double delta_t);
+	// Slice 6 of docs/phases/3-slices/PlayerEntityControls.md.
+	void pollMissionInterruptControls();
+	void handleMissionCallback();
+	void setGuiToMissionEndScreen();
+	// Slice 7 of docs/phases/3-slices/PlayerEntityControls.md.
+	void switchToThisView(OOViewID viewDirection);
+	void switchToThisView(OOViewID viewDirection, bool processWeaponFacing);
+	void switchToThisView(OOViewID viewDirection, OOViewID oldViewDirection, bool processWeaponFacing, bool justNotify);
+	void handleAutopilotOn(bool fastDocking);
+	void handleButtonIdent();
+	void handleButtonTargetMissile();
+
+	// PlayerEntityKeyMapper.mm, the categories KeyMapper (ADR-0056 amendment oo-lmdi8): defined in that file.
+	// Slice 1 of docs/phases/3-slices/PlayerEntityKeyMapper.md.
+	void initCheckingDictionary();
+	void resetKeyFunctions();
+	void setGuiToKeyMapperScreen(unsigned skip);
+	void setGuiToKeyMapperScreen(unsigned skip, bool resetCurrentRow);
+	void keyMapperInputHandler(::GuiDisplayGen *gui, ::MyOpenGLView *gameView);
+	// Slice 2 of docs/phases/3-slices/PlayerEntityKeyMapper.md.
+	bool entryIsIndexCustomEquip(NSUInteger idx);
+	bool entryIsDictCustomEquip(const oo::PList &dict);
+	bool entryIsCustomEquip(const std::string &entry);
+	oo::PList getCustomEquipArray(const std::string &key_def);
+	NSUInteger getCustomEquipIndex(const std::string &key_def);
+	std::optional<std::string> getCustomEquipKeyDefType(const std::string &key_def);
+	void setGuiToKeyConfigScreen();
+	void setGuiToKeyConfigScreen(bool resetSelectedRow);
+	void outputKeyDefinition(const std::string &key, const std::string &shift, const std::string &mod1, const std::string &mod2, NSUInteger skiprows);
+	void handleKeyConfigKeys(::GuiDisplayGen *gui, ::MyOpenGLView *gameView);
+	void setGuiToKeyConfigEntryScreen();
+	void handleKeyConfigEntryKeys(::GuiDisplayGen *gui, ::MyOpenGLView *gameView);
+	void updateKeyDefinition(const std::string &keystring, NSUInteger index);
+	void updateShiftKeyDefinition(const std::string &key, NSUInteger index);
+	void setGuiToConfirmClearScreen();
+	void handleKeyMapperConfirmClearKeys(::GuiDisplayGen *gui, ::MyOpenGLView *gameView);
+	// Slice 1 of docs/phases/3-slices/PlayerEntityKeyMapper.md.
+	void displayKeyFunctionList(::GuiDisplayGen *gui, NSUInteger skip);
+	std::vector<oo::PList> keyFunctionList();
+	oo::PList makeKeyGuiDict(const std::string &what, const std::string &key_def);
+	oo::PList makeKeyGuiDictHeader(const std::string &header);
+	// Slice 3 of docs/phases/3-slices/PlayerEntityKeyMapper.md.
+	void setGuiToKeyboardLayoutScreen(unsigned skip);
+	void setGuiToKeyboardLayoutScreen(unsigned skip, bool resetCurrentRow);
+	void handleKeyboardLayoutEntryKeys(::GuiDisplayGen *gui, ::MyOpenGLView *gameView);
+	std::optional<std::string> keyboardDescription(const std::string &kbd);
+	std::vector<oo::PList> keyboardLayoutList();
+	void displayKeyboardLayoutList(::GuiDisplayGen *gui, NSUInteger skip);
+	std::vector<std::string> validateAllKeys();
+	std::optional<std::string> validateKey(const std::string &key, const oo::PList &check_keys);
+	std::optional<std::string> searchArrayForMatch(const std::vector<std::string> &search_list, const std::string &key, const oo::PList &check_keys);
+	bool entryIsEqualToDefault(const std::string &key);
+	bool compareKeyEntries(const oo::PList &first, const oo::PList &second);
+	void saveKeySetting(const std::string &key);
+	void unsetKeySetting(const std::string &key);
+	void deleteKeySetting(const std::string &key);
+	void deleteAllKeySettings();
+	oo::PList loadKeySettings();
+	// Slice 1 of docs/phases/3-slices/PlayerEntityKeyMapper.md.
+	void reloadPage();
+
+	// PlayerEntityLegacyScriptEngine.mm, the categories Scripting (ADR-0056 amendment oo-lmdi8): defined in that file.
+	// Slice 1 of docs/phases/3-slices/PlayerEntityLegacyScriptEngine.md.
+	void setScriptTarget(::ShipEntity *ship);
+	::ShipEntity *scriptTarget();
+	std::vector<std::pair<std::string, oo::ObjCRef<::OOScript *>>> getWorldScriptsRequiringTickle();
+	void checkScript();
+	void runScriptActions(const oo::PList &actions, const std::optional<std::string> &contextName, ::ShipEntity *target);
+	void runUnsanitizedScriptActions(const oo::PList &actions, bool allowAIMethods, const std::optional<std::string> &contextName, ::ShipEntity *target);
+	bool scriptTestConditions(const oo::PList &array);
+	bool scriptTestCondition(const oo::PList &scriptCondition);
+	std::optional<std::string> expandScriptRightHandSide(const oo::PList &rhsComponents);
+	oo::PList missionVariables();
+	oo::PList missionVariableForKey(const std::string &key);
+	void setMissionVariable(const oo::PList &value, const std::string &key);
+	oo::PList localVariablesForMission(const std::optional<std::string> &missionKey);
+	std::optional<std::string> localVariableForKey(const std::string &variableName, const std::optional<std::string> &missionKey);
+	void setLocalVariable(const std::optional<std::string> &value, const std::string &variableName, const std::optional<std::string> &missionKey);
+	oo::PList missionsList();
+	std::optional<std::string> replaceVariablesInString(const std::string &args);
+	void setMissionDescription(const std::string &textKey);
+	void setMissionDescription(const std::string &textKey, const std::optional<std::string> &key);
+	void setMissionInstructions(const std::string &text, const std::optional<std::string> &key);
+	void setMissionInstructionsList(const oo::PList &list, const std::optional<std::string> &key);
+	void clearMissionDescription();
+	void clearMissionDescriptionForMission(const std::string &key);
+	// Slice 2 of docs/phases/3-slices/PlayerEntityLegacyScriptEngine.md.
+	oo::PList mission_string();
+	oo::PList status_string();
+	oo::PList gui_screen_string();
+	oo::PList getGalaxy_number();
+	oo::PList planet_number();
+	oo::PList score_number();
+	oo::PList credits_number();
+	oo::PList scriptTimer_number();
+	oo::PList shipsFound_number();
+	oo::PList commanderLegalStatus_number();
+	void setLegalStatus(const std::string &valueString);
+	oo::PList commanderLegalStatus_string();
+	oo::PList d100_number();
+	oo::PList pseudoFixedD100_number();
+	oo::PList d256_number();
+	oo::PList pseudoFixedD256_number();
+	oo::PList clock_number();
+	oo::PList clock_secs_number();
+	oo::PList clock_mins_number();
+	oo::PList clock_hours_number();
+	oo::PList clock_days_number();
+	oo::PList fuelLevel_number();
+	oo::PList dockedAtMainStation_bool();
+	oo::PList foundEquipment_bool();
+	oo::PList sunWillGoNova_bool();
+	oo::PList sunGoneNova_bool();
+	oo::PList missionChoice_string();
+	oo::PList missionKeyPress_string();
+	oo::PList dockedTechLevel_number();
+	oo::PList dockedStationName_string();
+	oo::PList systemGovernment_string();
+	oo::PList systemGovernment_number();
+	oo::PList systemEconomy_string();
+	oo::PList systemEconomy_number();
+	oo::PList systemTechLevel_number();
+	oo::PList systemPopulation_number();
+	oo::PList systemProductivity_number();
+	oo::PList commanderName_string();
+	oo::PList commanderRank_string();
+	oo::PList commanderShip_string();
+	oo::PList commanderShipDisplayName_string();
+	std::optional<std::string> expandMessage(const std::string &valueString);
+	using ShipEntity::commsMessage;
+	void commsMessage(const std::string &valueString) override;
+	void commsMessageByUnpiloted(const std::string &valueString) override;
+	void consoleMessage3s(const std::string &valueString);
+	void consoleMessage6s(const std::string &valueString);
+	void awardCredits(const std::string &valueString);
+	void awardShipKills(const std::string &valueString);
+	void awardEquipment(const std::string &equipString);
+	void removeEquipment(const std::string &equipString);
+	void setPlanetinfo(const std::string &key_valueString);
+	void setSpecificPlanetInfo(const std::string &key_valueString);
+	void awardCargo(const std::string &amount_typeString);
+	void removeAllCargo();
+	void removeAllCargo(bool forceRemoval);
+	void useSpecialCargo(const std::string &descriptionString);
+	void testForEquipment(const std::string &equipString);
+	void awardFuel(const std::string &valueString);
+	void messageShipAIs(const std::string &roles_message);
+	void ejectItem(const std::string &itemKey);
+	// Slice 3 of docs/phases/3-slices/PlayerEntityLegacyScriptEngine.md.
+	void addShips(const std::string &roles_number);
+	void addSystemShips(const std::string &roles_number_position);
+	void addShipsAt(const std::string &roles_number_system_x_y_z);
+	void addShipsAtPrecisely(const std::string &roles_number_system_x_y_z);
+	void addShipsWithinRadius(const std::string &roles_number_system_x_y_z_r);
+	void spawnShip(const std::string &ship_key);
+	void set(const std::string &missionvariable_value);
+	void reset(const std::string &missionvariable);
+	void increment(const std::string &missionVariableObject);
+	void decrement(const std::string &missionVariableObject);
+	void add(const std::string &missionVariableString_value);
+	void subtract(const std::string &missionVariableString_value);
+	void checkForShips(const std::string &roleString);
+	void resetScriptTimer();
+	void addMissionText(const std::string &textKey);
+	void addLiteralMissionText(const std::string &text);
+	void setMissionChoiceByTextEntry(bool enable);
+	void setMissionChoices(const std::string &choicesKey);
+	void setMissionChoicesDictionary(const oo::PList &choicesDict);
+	void resetMissionChoice();
+	void clearMissionScreen();
+	void addMissionDestination(const std::string &destinations);
+	void removeMissionDestination(const std::string &destinations);
+	void showShipModel(const std::string &role);
+	void setMissionMusic(const std::string &value);
+	std::optional<std::string> missionTitle();
+	void setMissionTitle(const std::optional<std::string> &value);
+	void setMissionImage(const std::string &value);
+	void setMissionBackground(const std::string &value);
+	void setFuelLeak(const std::string &value);
+	oo::PList fuelLeakRate_number();
+	void setSunNovaIn(const std::string &time_value);
+	void launchFromStation();
+	void blowUpStation();
+	void sendAllShipsAway();
+	// Slice 4 of docs/phases/3-slices/PlayerEntityLegacyScriptEngine.md.
+	void addPlanet(const std::string &planetKey);
+	// Slice 2 of docs/phases/3-slices/PlayerEntityLegacyScriptEngine.md.
+	::OOPlanetEntity *addPlanetEntity(const std::string &planetKey);
+	// Slice 4 of docs/phases/3-slices/PlayerEntityLegacyScriptEngine.md.
+	void addMoon(const std::string &moonKey);
+	// Slice 2 of docs/phases/3-slices/PlayerEntityLegacyScriptEngine.md.
+	::OOPlanetEntity *addMoonEntity(const std::string &moonKey);
+	// Slice 4 of docs/phases/3-slices/PlayerEntityLegacyScriptEngine.md.
+	void debugOn();
+	void debugOff();
+	void debugMessage(const std::string &args);
+	void playSound(const std::string &soundName);
+	void doMissionCallback();
+	void clearMissionScreenID();
+	void setMissionScreenID(const std::optional<std::string> &msid);
+	std::optional<std::string> missionScreenID();
+	void endMissionScreenAndNoteOpportunity();
+	void setGuiToMissionScreen();
+	void refreshMissionScreenTextEntry();
+	void setGuiToMissionScreenWithCallback(bool callback);
+	void setBackgroundFromDescriptionsKey(const std::string &d_key);
+	void addScene(const oo::PList &items, Vector off);
+	bool processSceneDictionary(const oo::PList &couplet, Vector off);
+	bool processSceneString(const std::string &item, Vector off);
+	bool addEqScriptForKey(const std::string &eq_key);
+	void removeEqScriptForKey(const std::string &eq_key);
+	NSUInteger eqScriptIndexForKey(const std::string &eq_key);
+	void targetNearestHostile();
+	void targetNearestIncomingMissile();
+	void setGalacticHyperspaceBehaviourTo(const std::string &galacticHyperspaceBehaviourString);
+	void setGalacticHyperspaceFixedCoordsTo(const std::string &galacticHyperspaceFixedCoordsString);
+
+	// PlayerEntityContracts.mm, the categories Contracts (ADR-0056 amendment oo-lmdi8): defined in that file.
+	// Slice 1 of docs/phases/3-slices/PlayerEntityContracts.md.
+	std::optional<std::string> processEscapePods();
+	std::optional<std::string> checkPassengerContracts();
+	OOCargoQuantity contractedVolumeForGood(const std::string &good);
+	void addMessageToReport(const std::string &report);
+	// Slice 2 of docs/phases/3-slices/PlayerEntityContracts.md.
+	oo::PList getReputation();
+	int passengerReputation();
+	void increasePassengerReputation(unsigned amount);
+	void decreasePassengerReputation(unsigned amount);
+	int parcelReputation();
+	void increaseParcelReputation(unsigned amount);
+	void decreaseParcelReputation(unsigned amount);
+	int contractReputation();
+	void increaseContractReputation(unsigned amount);
+	void decreaseContractReputation(unsigned amount);
+	void erodeReputation();
+	void normaliseReputation();
+	// Slice 1 of docs/phases/3-slices/PlayerEntityContracts.md.
+	bool addPassenger(const std::string &Name, unsigned start, unsigned Destination, double eta, double fee, double advance, unsigned risk);
+	bool removePassenger(const std::string &Name);
+	bool addParcel(const std::string &Name, unsigned start, unsigned Destination, double eta, double fee, double premium, unsigned risk);
+	bool removeParcel(const std::string &Name);
+	bool awardContract(unsigned qty, const std::string &type, unsigned start, unsigned Destination, double eta, double fee, double premium);
+	bool removeContract(const std::string &type, unsigned dest);
+	std::vector<std::string> passengerList();
+	std::vector<std::string> parcelList();
+	std::vector<std::string> contractList();
+	std::vector<std::string> contractsListFromEntries(const oo::PList::Array &contracts_array, bool forCargo, bool forParcels);
+	// Slice 2 of docs/phases/3-slices/PlayerEntityContracts.md.
+	void setGuiToManifestScreen();
+	void setManifestScreenRow(const oo::PList &object, ::OOColor *color, OOGUIRow row, OOGUIRow max_rows, OOGUIRow offset, bool multi);
+	void setGuiToDockingReportScreen();
+	// Slice 3 of docs/phases/3-slices/PlayerEntityContracts.md.
+	OOCreditsQuantity priceForShipKey(const std::string &key);
+	void setGuiToShipyardScreen(NSUInteger skip);
+	void showShipyardInfoForSelection();
+	void showTradeInInformationFooter();
+	void showShipyardModel(const std::string &shipKey, const oo::PList &shipData, uint16_t personality);
+	NSInteger missingSubEntitiesAdjustment();
+	OOCreditsQuantity tradeInValue();
+	bool buySelectedShip();
+	bool replaceShipWithNamedShip(const std::string &shipKey);
+	void newShipCommonSetup(const std::string &shipKey, const oo::PList &ship_info, const oo::PList &ship_base_dict);
+
+	// PlayerEntityLoadSave.mm, the categories LoadSave, OOLoadSavePrivate (ADR-0056 amendment oo-lmdi8): defined in that file.
+	// Slice 1 of docs/phases/3-slices/PlayerEntityLoadSave.md.
+	bool loadPlayer();
+	void savePlayer();
+	void autosavePlayer();
+	void quicksavePlayer();
+	void setGuiToScenarioScreen(int page);
+	void addScenarioModel(const std::string &shipKey);
+	void showScenarioDetails();
+	bool startScenario();
+#if OO_USE_CUSTOM_LOAD_SAVE
+	std::optional<std::string> commanderSelector();
+#endif
+#if OO_USE_CUSTOM_LOAD_SAVE
+	void saveCommanderInputHandler();
+#endif
+#if OO_USE_CUSTOM_LOAD_SAVE
+	void overwriteCommanderInputHandler();
+#endif
+	bool loadPlayerFromFile(const std::string &fileToOpen, bool asNew);
+	// Slice 2 of docs/phases/3-slices/PlayerEntityLoadSave.md.
+#if OOLITE_USE_APPKIT_LOAD_SAVE
+	bool loadPlayerWithPanel();
+#endif
+#if OOLITE_USE_APPKIT_LOAD_SAVE
+	void savePlayerWithPanel();
+#endif
+	void writePlayerToPath(const std::string &path);
+	void nativeSavePlayer(const std::string &cdrName);
+#if OO_USE_CUSTOM_LOAD_SAVE
+	void setGuiToLoadCommanderScreen();
+#endif
+#if OO_USE_CUSTOM_LOAD_SAVE
+	void setGuiToSaveCommanderScreen(const std::string &cdrName);
+#endif
+#if OO_USE_CUSTOM_LOAD_SAVE
+	void setGuiToOverwriteScreen(const std::string &cdrName);
+#endif
+#if OO_USE_CUSTOM_LOAD_SAVE
+	void lsCommanders(::GuiDisplayGen *gui, const std::string &directory, int page, const std::optional<std::string> &highlightName);
+#endif
+#if OO_USE_CUSTOM_LOAD_SAVE
+	bool existingNativeSave(const std::string &cdrName);
+#endif
+#if OO_USE_CUSTOM_LOAD_SAVE
+	void showCommanderShip(int cdrArrayIndex);
+#endif
+#if OO_USE_CUSTOM_LOAD_SAVE
+	int findIndexOfCommander(const std::string &cdrName);
+#endif
 
 #ifndef NDEBUG
 	/*	Names the members the analyser would call unused because only the categories read them

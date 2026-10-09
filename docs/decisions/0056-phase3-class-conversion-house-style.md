@@ -4906,3 +4906,112 @@ slices; the beads close together on the one merge.
 **Consequences.** `PlayerEntity.mm` has no Objective-C method left; the category files
 (`PlayerEntityControls.mm` and the rest) and the façade's deletion stay with their own beads under
 the umbrella oo-a70.
+
+## Amendment (bead oo-amwj): a whole small subclass of the half-converted ShipEntity (ProxyPlayerEntity)
+
+- Date: 2026-10-07. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Exemplar:
+  `src/Core/Entities/ProxyPlayerEntity.h/.mm`, `ProxyPlayerEntity+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_ProxyPlayerEntity.mm`. Follows amendments oo-64ako (the station's shell)
+  and oo-jx5np (the player's).
+
+**Context.** `ProxyPlayerEntity` (230 lines, no slice plan) is a subclass of `ShipEntity` that
+stands in for the player's ship and answers the player's dials to the shader bindings, which
+message it by selector. It converts in one bead, so nothing of it stays Objective-C but the façade.
+
+**Decision (recommended defaults).**
+
+1. **The class is `cxx::ProxyPlayerEntity : cxx::ShipEntity`**, its ivars private members,
+   zero-initialised, its methods members by their selectors' names (the members are named with a
+   leading underscore, so no `get` is needed, amendment oo-zd80m item 4). A method that overrides
+   a virtual member of the ship (`alertCondition()`) is `override`, and its forwarder calls the
+   proxy's own member by name (amendment oo-mvzmb item 3).
+2. **The façade is amendment oo-64ako's:** `@interface ProxyPlayerEntity : ShipEntity` with one
+   `@public` borrowed alias, `_cxxProxyPlayer`, set by its `-initWithCxxEntity:` override; its
+   `-initShipPart` override makes `oo::ObjCShipEntity<cxx::ProxyPlayerEntity>`. The initialiser
+   stays the façade's (amendment oo-bj8 item 6) and runs the member `initProxyDefaults()` after
+   the ship's set-up. Every other selector forwards. The class has no Objective-C object to
+   release, so no `-dealloc`.
+3. **The file's categories on other classes** (`Entity (ProxyPlayer)`, `PlayerEntity
+   (ProxyPlayer)`, `-isPlayerLikeShip`) move, interface and implementation, to the bridge files
+   (amendment oo-bj8 item 12): the class's own files keep no `@interface` or `@implementation`.
+
+**Consequences.** One more façade (`ProxyPlayerEntity+ObjCBridge`, deletion bead filed with this
+one), which goes when the universe and the player make the proxy in C++.
+
+## Amendment (bead oo-lmdi8): the player's category files, the binding's later slices and main.mm in one change
+
+- Date: 2026-10-08. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Plans:
+  `docs/phases/3-slices/PlayerEntityControls.md`, `PlayerEntityKeyMapper.md`,
+  `PlayerEntityLegacyScriptEngine.md`, `PlayerEntityContracts.md`, `PlayerEntityLoadSave.md` and
+  `OOJSShip.md` slices 2-6. Exemplar: `src/Core/Entities/PlayerEntityControls.mm` (and the other
+  category files), the blocks of `PlayerEntity.h` and `PlayerEntity+ObjCBridge.h/.mm` naming them,
+  `tests/unit/core/test_PlayerEntity.mm`. Follows amendments oo-42dr and oo-iebuz (the ship's
+  category files), oo-zn1vy (the player's slices in one change) and oo-xowh's `PlayerEntitySound.mm`.
+
+**Context.** Jon asked for every remaining Convert-to-C++20 bead (29) on one branch, verified once
+and merged once: the player's category files (`PlayerEntitySound`, `StickMapper`, `StickProfile`,
+`Controls` slices 1-7, `KeyMapper` 1-3, `LegacyScriptEngine` 1-4, `Contracts` 1-3, `LoadSave` 1-2),
+`ProxyPlayerEntity` (amendment oo-amwj), `OOJSShip.mm` slices 2-6 (amendment oo-18mg2) and
+`SDL/main.mm`. Every slice of each category file lands in this change, so no category is left
+half converted.
+
+**Decision (recommended defaults).**
+
+1. **A category file converted whole is converted in place.** Each method becomes an out-of-line
+   member, `Ret cxx::PlayerEntity::m(params)`, where the method stood (the shape oo-xowh gave
+   `PlayerEntitySound.mm`), so the file keeps its order and its file-scope helpers stay where they
+   were; the `@implementation` and `@end` lines go. Names, `BOOL` and `::X` follow amendments
+   oo-mvzmb and oo-zd80m; sends to `self` stay sends to the facade (`::PlayerEntity *self =
+   oo::ToObjC(this);`). The members are declared in `PlayerEntity.h` in one block per file, marked
+   by slice where the file has a plan.
+2. **Each category's `@interface` moves whole to `PlayerEntity+ObjCBridge.h` under its own name**,
+   from the file's header and from the file's private categories (`OOControlsPrivate`,
+   `KeyMapperInternal`, `ScriptingPrivate`, ...); a method no interface declared is declared with
+   its category. The forwarders are in `PlayerEntity+ObjCBridge.mm` under the implementing
+   category's name, wrapped in the method's own preprocessor condition. The file's header keeps
+   only what is not the category. The load / save macros (`OO_USE_CUSTOM_LOAD_SAVE` and the three
+   it is made from) move from `PlayerEntityLoadSave.h` to `PlayerEntity.h`, which needs them for the
+   declarations.
+3. **A file-scope variable named like a new member is written `::x`** in the members
+   (`::scriptTarget` in `PlayerEntityLegacyScriptEngine.mm`, now that `scriptTarget()` is a
+   member).
+4. **Two selectors with one first keyword and the same parameter types** take a name each:
+   `-checkKeyPress:ignore_ctrl:` is `checkKeyPressIgnoreCtrl()` (beside `checkKeyPress(key,
+   fKey_only)`); `-cxx_addPlanet:` and `-cxx_addMoon:`, which answer the entity, are
+   `addPlanetEntity()` and `addMoonEntity()` beside the script actions `addPlanet()` and
+   `addMoon()`. `-commsMessage:` and `-commsMessageByUnpiloted:` override the ship's virtual
+   members, with `using ShipEntity::commsMessage;` for the ship's two-argument form (amendment
+   oo-zn1vy item 3).
+5. **A plan's C function with messages reads C++ parts** (amendment oo-zn1vy item 6):
+   `ClickedGUIRow()`, `ShipyardLabelsRow()`, `MissionTextForKey()`, `CurrentSystemDataValue()`
+   (left outside any block when its `@implementation` went), `TestScriptConditions()` and
+   `PerformActionStatment()` cross with `oo::ToCxx()` and call the members the facades' forwarders
+   call; a null part answers as a message to nil did. `-respondsToSelector:`, as `OOObject` answers
+   it and no entity overrides, is `class_respondsToSelector(object_getClass(target), selector)`.
+6. **A category of another converted class's facade in the file** (`MyOpenGLView
+   (OOLoadSaveExtensions)`, one method) becomes a file-local function over the facade,
+   `IsCommandModifierKeyDown(::MyOpenGLView *)`, reading the view's C++ part. Its plan entry then
+   matches nothing; `--slice-done 2` passes, while the plan's full check reports slice 2 empty (its
+   landed rule looks for `cxx::MyOpenGLView` members in the file). The plan is not edited.
+7. **Selectors the game still passes by name stay `@selector(...)` in the members** (the stick
+   mapper's joystick callback, the full-screen pause, the legacy query table), as in
+   `PlayerEntity.mm`; the facade's deletion bead removes them with the facade.
+8. **`main.mm` holds the controller as `oo::Ref<cxx::GameController>`** and calls its members; its
+   `@try`/`@catch` stays (no class: rule 9).
+9. **Tests.** `test_PlayerEntity.mm` gains one case per bead whose units a player in a
+   never-initialised universe can answer, written against the Objective-C categories and run on
+   them first (54 of 54 passed); slices that only poll the keyboard, the GUI or the files have none.
+   `CategoryPlayer` records the sends a unit makes to itself. The unit universe cannot expand a
+   description (expanding one exits the process), so a case keeps clear of units that would.
+   `test_OOJSShip.mm`'s new slice 2-6 cases, which had never run, were run on the Objective-C
+   natives and their expectations set to what those answered (bead oo-lk92s), before the
+   conversion: no expectation that exists on `main` changed.
+
+10. **Moved lines that tier-a now counts as new** (amendment oo-27jxj item 6) are restated with the
+    same behaviour: a `BOOL` stored in a one-bit member is compared with `NO`
+    (`hyperspeed_locked`, `keyboardRollOverride`), the trade-in value's integer quotient is named
+    before `cunningFee()` takes it, and the save path's directory is passed as the engaged optional.
+
+**Consequences.** `PlayerEntity`'s `@implementation`s are all in `PlayerEntity+ObjCBridge.mm`;
+no category file holds Objective-C methods. The facade's deletion bead (under oo-a70) removes the
+forwarding categories, the moved interfaces and the `::PlayerEntity *self` lines with it.

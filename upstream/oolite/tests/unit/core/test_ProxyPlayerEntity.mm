@@ -1,0 +1,234 @@
+/*	test_ProxyPlayerEntity.mm
+	Unit tests for ProxyPlayerEntity (src/Core/Entities/ProxyPlayerEntity.h), the ship that stands in
+	for the player's ship where only a ship can be shown (the shipyard, the doppelganger) and answers
+	the player's dials to the shaders (bead oo-amwj; proposed ADR-0056, amendment oo-amwj).
+
+	As test_StationEntity's, the ship needs the game graph, so the test links the whole game but
+	main (['*']) and uses a Universe that was never initialised and a plain entity as PLAYER. The
+	proxy keeps ShipEntity's own set-up from an unpiloted definition. The cases test the class's
+	units through the Objective-C API, written against it and run on the unconverted class first:
+	the initialiser's defaults, each dial's accessors, -copyValuesFromPlayer: from a player whose
+	dials answer fixed values, and -isPlayerLikeShip for the three classes that answer it. The
+	cases after "The crossing" pin the C++ part once it exists.
+	Run: bash tools/check-core-tests.sh test_ProxyPlayerEntity
+*/
+
+#import "ProxyPlayerEntity.h"
+#import "Universe.h"
+#import "PlayerEntity.h"
+
+#include "oo_test.hpp"
+
+#include <string>
+
+
+// main.mm defines the debug flags, and the test has its own main.
+#ifndef NDEBUG
+uint32_t gDebugFlags = 0;
+#endif
+
+extern PlayerEntity *gOOPlayer;
+extern Universe *gSharedUniverse;
+extern ooscript::Context gOOJSMainThreadContext;
+
+
+@interface TestProxyPlayer: Entity
+@end
+
+
+@implementation TestProxyPlayer
+
+- (HPVector) viewpointPosition	{ return kZeroHPVector; }
+
+@end
+
+
+// A player whose dials answer fixed values (the real ones read the HUD, the universe and the
+// player's equipment).
+@interface TestDialPlayer: PlayerEntity
+@end
+
+
+@implementation TestDialPlayer
+
+- (float) fuelLeakRate	{ return 2.5f; }
+- (BOOL) massLocked	{ return YES; }
+- (BOOL) atHyperspeed	{ return YES; }
+- (GLfloat) dialForwardShield	{ return 0.25f; }
+- (GLfloat) dialAftShield	{ return 0.75f; }
+- (OOMissileStatus) dialMissileStatus	{ return MISSILE_STATUS_TARGET_LOCKED; }
+- (OOFuelScoopStatus) dialFuelScoopStatus	{ return SCOOP_STATUS_ACTIVE; }
+- (OOCompassMode) compassMode	{ return COMPASS_MODE_STATION; }
+- (BOOL) dialIdentEngaged	{ return YES; }
+- (OOAlertCondition) alertCondition	{ return ALERT_CONDITION_RED; }
+- (NSUInteger) trumbleCount	{ return 7; }
+- (int) tradeInFactor	{ return 80; }
+
+@end
+
+
+namespace {
+
+void SetUp()
+{
+	static Universe *universe = nil;
+	if (universe == nil)
+	{
+		universe = (Universe *)class_createInstance([Universe class], 0);	// never released
+		universe->_cxxUniverse = oo::makeRef<cxx::Universe>(universe);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
+	}
+	gSharedUniverse = universe;
+	static TestProxyPlayer *player = nil;
+	if (player == nil)  player = [[TestProxyPlayer alloc] init];
+	gOOPlayer = (PlayerEntity *)player;
+	// The ship's -dealloc sends its (absent) scripts entityDestroyed in a request on the main
+	// thread's context, so there is one, with nothing in it.
+	if (gOOJSMainThreadContext == nullptr)  gOOJSMainThreadContext = ooscript::newContext(ooscript::newRuntime(8u * 1024u * 1024u), 8192);
+}
+
+
+// An unpiloted ship (a crewed one would ask the universe for a pilot).
+ProxyPlayerEntity *MakeProxy()
+{
+	oo::PList::Dict dict{ { "unpiloted", oo::PList(true) } };
+	return [[[ProxyPlayerEntity alloc] cxx_initWithKey:"proxy" definition:oo::PList(std::move(dict))] autorelease];
+}
+
+
+// The player -copyValuesFromPlayer: reads (-init asserts that it is the only player).
+TestDialPlayer *MakeDialPlayer()
+{
+	PlayerEntity *saved = gOOPlayer;
+	gOOPlayer = nil;
+	TestDialPlayer *player = [[[TestDialPlayer alloc] init] autorelease];
+	gOOPlayer = saved;
+	return player;
+}
+
+}	// namespace
+
+
+// The initialiser: the ship set up from its definition, then the proxy's defaults (no fuel scoop
+// and no advanced compass in an empty definition).
+OO_TEST(initDefaults)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		ProxyPlayerEntity *proxy = MakeProxy();
+		OO_CHECK(proxy != nil && [proxy isShip]);
+		OO_CHECK([proxy dialForwardShield] == 1.0f && [proxy dialAftShield] == 1.0f);
+		OO_CHECK([proxy dialFuelScoopStatus] == SCOOP_STATUS_NOT_INSTALLED);
+		OO_CHECK([proxy compassMode] == COMPASS_MODE_BASIC);
+		OO_CHECK([proxy tradeInFactor] == 95);
+		OO_CHECK([proxy fuelLeakRate] == 0 && ![proxy massLocked] && ![proxy atHyperspeed]);
+		OO_CHECK([proxy dialMissileStatus] == MISSILE_STATUS_SAFE && ![proxy dialIdentEngaged]);
+		OO_CHECK([proxy alertCondition] == ALERT_CONDITION_DOCKED && [proxy trumbleCount] == 0);
+	}
+}
+
+
+// Each dial's setter and getter; the fuel leak rate is never negative, and the flags are YES or NO.
+OO_TEST(accessors)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		ProxyPlayerEntity *proxy = MakeProxy();
+		[proxy setFuelLeakRate:-3.0f];
+		OO_CHECK([proxy fuelLeakRate] == 0);
+		[proxy setFuelLeakRate:1.5f];
+		OO_CHECK([proxy fuelLeakRate] == 1.5f);
+		[proxy setMassLocked:(BOOL)4];
+		OO_CHECK([proxy massLocked] == YES);
+		[proxy setMassLocked:NO];
+		OO_CHECK([proxy massLocked] == NO);
+		[proxy setAtHyperspeed:(BOOL)2];
+		OO_CHECK([proxy atHyperspeed] == YES);
+		[proxy setDialForwardShield:0.5f];
+		[proxy setDialAftShield:0.125f];
+		OO_CHECK([proxy dialForwardShield] == 0.5f && [proxy dialAftShield] == 0.125f);
+		[proxy setDialMissileStatus:MISSILE_STATUS_ARMED];
+		OO_CHECK([proxy dialMissileStatus] == MISSILE_STATUS_ARMED);
+		[proxy setDialFuelScoopStatus:SCOOP_STATUS_FULL_HOLD];
+		OO_CHECK([proxy dialFuelScoopStatus] == SCOOP_STATUS_FULL_HOLD);
+		[proxy setCompassMode:COMPASS_MODE_TARGET];
+		OO_CHECK([proxy compassMode] == COMPASS_MODE_TARGET);
+		[proxy setDialIdentEngaged:(BOOL)9];
+		OO_CHECK([proxy dialIdentEngaged] == YES);
+		[proxy setAlertCondition:ALERT_CONDITION_YELLOW];
+		OO_CHECK([proxy alertCondition] == ALERT_CONDITION_YELLOW);
+		[proxy setTrumbleCount:12];
+		OO_CHECK([proxy trumbleCount] == 12);
+		[proxy setTradeInFactor:42];
+		OO_CHECK([proxy tradeInFactor] == 42);
+	}
+}
+
+
+// -copyValuesFromPlayer: takes every dial from the player; nil changes nothing.
+OO_TEST(copyValuesFromPlayer)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		ProxyPlayerEntity *proxy = MakeProxy();
+		[proxy copyValuesFromPlayer:nil];
+		OO_CHECK([proxy tradeInFactor] == 95 && [proxy dialForwardShield] == 1.0f);
+
+		[proxy copyValuesFromPlayer:MakeDialPlayer()];
+		OO_CHECK([proxy fuelLeakRate] == 2.5f);
+		OO_CHECK([proxy massLocked] && [proxy atHyperspeed]);
+		OO_CHECK([proxy dialForwardShield] == 0.25f && [proxy dialAftShield] == 0.75f);
+		OO_CHECK([proxy dialMissileStatus] == MISSILE_STATUS_TARGET_LOCKED);
+		OO_CHECK([proxy dialFuelScoopStatus] == SCOOP_STATUS_ACTIVE);
+		OO_CHECK([proxy compassMode] == COMPASS_MODE_STATION);
+		OO_CHECK([proxy dialIdentEngaged]);
+		OO_CHECK([proxy alertCondition] == ALERT_CONDITION_RED);
+		OO_CHECK([proxy trumbleCount] == 7);
+		OO_CHECK([proxy tradeInFactor] == 80);
+	}
+}
+
+
+// -isPlayerLikeShip: YES for the proxy and the player, NO for any other entity.
+OO_TEST(isPlayerLikeShip)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		OO_CHECK([MakeProxy() isPlayerLikeShip]);
+		OO_CHECK([MakeDialPlayer() isPlayerLikeShip]);
+		ShipEntity *ship = [[[ShipEntity alloc] cxx_initWithKey:"ship" definition:oo::PList(oo::PList::Dict{ { "unpiloted", oo::PList(true) } })] autorelease];
+		OO_CHECK(ship != nil && ![ship isPlayerLikeShip]);
+		OO_CHECK(![[[[Entity alloc] init] autorelease] isPlayerLikeShip]);
+	}
+}
+
+
+// --- The crossing --------------------------------------------------------------------------------
+
+// An Objective-C proxy's C++ part is a cxx::ProxyPlayerEntity, the facade's _cxxProxyPlayer,
+// beside the ship's _cxxShip; the ship's virtual alertCondition() answers the proxy's.
+OO_TEST(objCProxyPartIsAProxy)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		ProxyPlayerEntity *proxy = MakeProxy();
+		Entity *asEntity = proxy;
+		cxx::ProxyPlayerEntity *part = oo::ToCxx(proxy);
+		OO_CHECK(part != nullptr && part == proxy->_cxxProxyPlayer);
+		OO_CHECK(static_cast<cxx::ShipEntity *>(part) == proxy->_cxxShip);
+		OO_CHECK(dynamic_cast<cxx::ProxyPlayerEntity *>(oo::ToCxx(asEntity)) == part);
+		OO_CHECK(oo::AsObjCEntity(part) != nullptr && oo::ToObjC(part) == proxy);
+
+		part->setAlertCondition(ALERT_CONDITION_GREEN);
+		cxx::ShipEntity *asShip = part;
+		OO_CHECK(asShip->alertCondition() == ALERT_CONDITION_GREEN);
+		OO_CHECK(part->tradeInFactor() == 95 && part->isPlayerLikeShip());
+	}
+}
+
+
+OO_TEST_MAIN()

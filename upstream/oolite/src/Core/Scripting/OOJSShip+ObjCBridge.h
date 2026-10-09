@@ -38,10 +38,59 @@ MA 02110-1301, USA.
 #define OOJSSHIP_OBJCBRIDGE_H
 
 #import "PlayerEntity.h"
+#import "Universe.h"
 
 
 // A player's ship, as ShipGetProperty() reads it.
 OOWeaponFacingSet OOJSShipPlayerAvailableFacings(PlayerEntity *player);
 OOPlayerFleeingStatus OOJSShipPlayerFleeingStatus(PlayerEntity *player);
+// ... and as ShipSetProperty() arms it.
+bool OOJSShipPlayerSetWeaponMount(PlayerEntity *player, OOWeaponFacing facing, const std::string &eqKey, const std::optional<std::string> &context);
+
+// The player, as ShipSetProperty() reads and tells it (PLAYER).
+Entity *OOJSShipPlayerNextBeacon();
+void OOJSShipPlayerSetCompassMode(OOCompassMode mode);
+
+// The universe's beacon list, as ShipSetProperty() keeps it (UNIVERSE).
+void OOJSShipUniverseClearBeacon(ShipEntity *beacon);
+void OOJSShipUniverseSetNextBeacon(ShipEntity *beacon);
+
+// [OOShipGroup class] (ShipSetProperty(): ship.group).
+Class OOJSShipShipGroupClass();
+
+// The player (a player's ship, or OOPlayerForScripting()), as the slice 3 natives ask and tell it.
+bool OOJSShipPlayerIsDocked(PlayerEntity *player);
+void OOJSShipPlayerSetScriptTarget(PlayerEntity *player, ShipEntity *ship);
+void OOJSShipPlayerRunUnsanitizedScriptActions(PlayerEntity *player, const oo::PList &actions, bool allowAIMethods, const std::optional<std::string> &contextName, ShipEntity *target);
+
+// The universe's main station, as RemoveOrExplodeShip() checks for it (UNIVERSE).
+StationEntity *OOJSShipUniverseStation();
+void OOJSShipUniverseUnMagicMainStation();
+
+// The ship's -dumpCargo, sent after delay (ShipDumpCargo(): an NPC's queued canisters).
+void OOJSShipScheduleDumpCargo(ShipEntity *ship, OOTimeDelta delay);
+
+// A player's ship, as the equipment natives arm and refit it (slice 4).
+bool OOJSShipPlayerMountMissileWithRole(PlayerEntity *player, const std::string &role);
+bool OOJSShipPlayerChangePassengerBerths(PlayerEntity *player, int addRemove);
+void OOJSShipPlayerAdjustTradeInFactorBy(PlayerEntity *player, int value);
+
+// The universe's stations and commodities (ShipFindNearestStation(), ShipSetCargo()).
+std::vector<oo::ObjCRef<StationEntity *>> OOJSShipUniverseStations();
+OOCommodities *OOJSShipUniverseCommodities();
+
+// The player's status (ShipEnterWormhole(): only while it enters witchspace) (PLAYER).
+OOEntityStatus OOJSShipPlayerStatus();
+
+// The universe's course checks (ShipCheckCourseToDestination(), ShipGetSafeCourseToDestination()).
+Entity *OOJSShipUniverseHazardOnRoute(Entity *entity, double distance, HPVector point);
+HPVector OOJSShipUniverseSafeVector(Entity *entity, double distance, HPVector point);
+
+// The player's score (ShipThreatAssessment(): a player's skill) (PLAYER).
+unsigned OOJSShipPlayerScore();
+
+// The universe's cargo templates and role categories (ShipAdjustCargo(), Ship.roleIsInCategory()).
+std::vector<oo::ObjCRef<ShipEntity *>> OOJSShipUniverseContainersOfCommodity(const std::string &commodity, OOCargoQuantity howMany);
+bool OOJSShipUniverseRoleIsInCategory(const std::string &role, const std::string &category);
 
 #endif	// OOJSSHIP_OBJCBRIDGE_H
