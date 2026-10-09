@@ -1,7 +1,7 @@
 /*	test_OOJSSystemInfo.mm
 	Unit tests for the SystemInfo JS binding (src/Core/Scripting/OOJSSystemInfo.h/.mm) and the
-	object it wraps, OOSystemInfo (cxx::OOSystemInfo and its faÃ§ade, OOJSSystemInfo+ObjCBridge.h/.mm,
-	after the conversion): bead oo-6ia4, converted the way bead oo-ppc converted OOJSVector (proposed
+	object it wraps, OOSystemInfo (its Objective-C facade deleted by bead oo-9ht.95), after the conversion):
+	bead oo-6ia4, converted the way bead oo-ppc converted OOJSVector (proposed
 	ADR-0056 amendment oo-ppc).
 
 	As the binding tests of amendment oo-ppc item 6 do, it runs the JS class in a real context on
@@ -357,6 +357,10 @@ ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &p
 		return js != nullptr ? ooscript::stringValue(js) : ooscript::nullValue();
 	}
 	if (plist.isNumber())  return ooscript::numberValue(plist.doubleValue());
+	if (const oo::PList::Object *node = plist.getIf<oo::PList::Object>())
+	{
+		if (OOJSPrivateObject *glue = dynamic_cast<OOJSPrivateObject *>(node->get()))  return OOJSValueFromCxxObject(context, glue);
+	}
 	if (id object = oo::ObjectIn(plist))  return OOJSValueFromNativeObject(context, object);
 	if (const oo::PList::Array *array = plist.getIf<oo::PList::Array>())
 	{
@@ -645,24 +649,20 @@ OO_TEST(wrappedObject)
 	SetUpContext();
 	ooscript::Value a = GetJSSystemInfoForSystem(sContext, 0, 7);
 	ooscript::Value b = GetJSSystemInfoForSystem(sContext, 3, 7);
-	// The slot holds the C++ system info (bead oo-6symp.2); the façade is its Objective-C peer.
-	auto slot = [](ooscript::Value v) { return static_cast<cxx::OOSystemInfo *>(static_cast<oo::RefCounted *>(ooscript::getPrivate(sContext, ooscript::toObject(v)))); };
-	cxx::OOSystemInfo *cxxA = slot(a);
-	cxx::OOSystemInfo *cxxB = slot(b);
+	// The slot holds the C++ system info (bead oo-6symp.2).
+	auto slot = [](ooscript::Value v) { return static_cast<OOSystemInfo *>(static_cast<oo::RefCounted *>(ooscript::getPrivate(sContext, ooscript::toObject(v)))); };
+	OOSystemInfo *cxxA = slot(a);
+	OOSystemInfo *cxxB = slot(b);
 	ooscript::Value c = GetJSSystemInfoForSystem(sContext, 0, 7);
-	cxx::OOSystemInfo *cxxC = slot(c);
+	OOSystemInfo *cxxC = slot(c);
 	OO_CHECK(cxxA != nullptr && cxxB != nullptr && cxxC != nullptr && cxxA != cxxC);
-	id infoA = oo::ToObjC(cxxA);
-	id infoB = oo::ToObjC(cxxB);
-	id infoC = oo::ToObjC(cxxC);
-	OO_CHECK(infoA != nil && infoB != nil && infoC != nil && infoA != infoC);
-	OO_CHECK([infoA cxx_oo_jsClassName] == std::optional<std::string>("SystemInfo"));
-	OO_CHECK([infoA isEqual:infoC]);
-	OO_CHECK(![infoA isEqual:infoB]);
-	OO_CHECK(![infoA isEqual:sUniverse]);
-	OO_CHECK_EQ([infoA hash], [infoC hash]);
-	OO_CHECK_EQ([infoB hash], static_cast<NSUInteger>((3u << 16) | 7u));
-	OO_CHECK(oo::DescriptionOf(infoA).find(">{galaxy 0, system 7}") != std::string::npos);
+	OO_CHECK(cxxA->oo_jsClassName() == std::optional<std::string>("SystemInfo"));
+	OO_CHECK(cxxA->isEqual(cxxC));
+	OO_CHECK(!cxxA->isEqual(cxxB));
+	OO_CHECK(!cxxA->isEqual(nullptr));
+	OO_CHECK_EQ(cxxA->hash(), cxxC->hash());
+	OO_CHECK_EQ(cxxB->hash(), static_cast<NSUInteger>((3u << 16) | 7u));
+	OO_CHECK(cxxA->description().find(">{galaxy 0, system 7}") != std::string::npos);
 	// toString() is the engine's OOJSCxxObjectWrapperToString: the system info's jsDescription().
 	OO_CHECK_EVAL("String(lave)", "[SystemInfo galaxy 0, system 7]");
 	// Its JS value is a new object each time.
