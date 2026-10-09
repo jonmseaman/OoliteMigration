@@ -165,7 +165,7 @@ oo::PList StationEntity::launchIndependentShip(const std::string &role)	// calle
 		::OOShipGroup *escortGroup = [ship escortGroup];
 		if ([ship group] == nil) [ship setGroup:escortGroup];
 		// Eric: Escorts are defined both as _group and as _escortGroup because friendly attacks are only handled within _group.
-		[escortGroup setLeader:ship];
+		if (escortGroup != nullptr)  escortGroup->setLeader(ship);
 				
 		// add escorts to the trader
 		unsigned escorts = [ship pendingEscortCount];
@@ -2138,7 +2138,7 @@ void StationEntity::takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::E
 	if ([other isShip] && group != nil)
 	{
 		::OOShipGroup *otherGroup = [(::ShipEntity *)other group];
-		isFriend = otherGroup == group || [otherGroup leader] == self;
+		isFriend = otherGroup == group || (otherGroup != nullptr ? otherGroup->leader() : (::ShipEntity *)nil) == self;
 	}
 	
 	// If this is the system's main station...

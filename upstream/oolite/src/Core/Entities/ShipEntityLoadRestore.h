@@ -31,7 +31,6 @@ MA 02110-1301, USA.
 #include "oofnd/PList.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 
-@class OOShipGroup;
 
 
 /*	Foundation sweep (proposed ADR-0043, bead oo-0s1h): a saved ship is an oo::PList (a Dict; null
@@ -42,8 +41,8 @@ struct OOShipSaveContext
 {
 	std::map<OOShipGroup *, unsigned>			groupIDs;		// not retained, as the pointer-box keys were not
 	unsigned									nextGroupID = 0;
-	std::vector<oo::ObjCRef<OOShipGroup *>>		groups;			// keeps the groups alive while they have IDs
-	std::map<NSUInteger, oo::ObjCRef<OOShipGroup *>>	groupsByID;
+	std::vector<oo::Ref<OOShipGroup>>		groups;			// keeps the groups alive while they have IDs
+	std::map<NSUInteger, oo::Ref<OOShipGroup>>	groupsByID;
 };
 
 

@@ -63,14 +63,14 @@ class OOShipGroupMembers
 public:
 	enum { kBatchSize = 16 };
 
-	explicit OOShipGroupMembers(cxx::OOShipGroup *group): _group(group) {}
+	explicit OOShipGroupMembers(OOShipGroup *group): _group(group) {}
 
 	struct End {};
 
 	class Iterator
 	{
 	public:
-		explicit Iterator(cxx::OOShipGroup *group): _group(group), _updateCount(group->updateCount())
+		explicit Iterator(OOShipGroup *group): _group(group), _updateCount(group->updateCount())
 		{
 			Fill();
 		}
@@ -91,7 +91,7 @@ public:
 			_position = 0;
 		}
 
-		cxx::OOShipGroup	*_group;
+		OOShipGroup	*_group;
 		NSUInteger		_updateCount;
 		NSUInteger		_index = 0, _batchCount = 0, _position = 0;
 		id				_buffer[kBatchSize];
@@ -101,14 +101,12 @@ public:
 	End end() const  { return End(); }
 
 private:
-	// One batch of live members (a friend of cxx::OOShipGroup, for its ivars).
-	static NSUInteger FillBatch(cxx::OOShipGroup *group, NSUInteger *ioIndex, id *buffer, NSUInteger length);
+	// One batch of live members (a friend of OOShipGroup, for its ivars).
+	static NSUInteger FillBatch(OOShipGroup *group, NSUInteger *ioIndex, id *buffer, NSUInteger length);
 
-	cxx::OOShipGroup	*_group;
+	OOShipGroup	*_group;
 };
 
-
-namespace cxx {
 
 bool OOShipGroup::initWithName(const std::optional<std::string> &name)
 {
@@ -137,6 +135,21 @@ oo::Ref<OOShipGroup> OOShipGroup::groupWithName(const std::optional<std::string>
 {
 	oo::Ref<OOShipGroup> result = groupWithName(name);
 	if (result != nullptr)  result->setLeader(leader);
+	return result;
+}
+
+
+std::string OOShipGroup::className() const
+{
+	return "OOShipGroup";
+}
+
+
+std::string OOShipGroup::description() const
+{
+	std::string result = oo::str::format("<OOShipGroup %s>", oo::str::pointerDescription(this).c_str());
+	const std::optional<std::string> components = descriptionComponents();
+	if (components.has_value())  result += "{" + *components + "}";
 	return result;
 }
 
@@ -392,15 +405,13 @@ NSUInteger OOShipGroup::updateCount()
 	return _updateCount;
 }
 
-}	// namespace cxx
-
 
 ::ShipEntity *OOShipGroupCursor::next()
 {
-	// The cursor is a friend of cxx::OOShipGroup, so that we can have access to both OOShipGroup's and OOShipGroupCursor's ivars.
+	// The cursor is a friend of OOShipGroup, so that we can have access to both OOShipGroup's and OOShipGroupCursor's ivars.
 
 	OOShipGroupCursor		*enumerator = this;
-	cxx::OOShipGroup		*group = enumerator->_group.get();
+	OOShipGroup		*group = enumerator->_group.get();
 	::ShipEntity				*result = nil;
 	BOOL					cleanupNeeded = NO;
 
@@ -439,7 +450,7 @@ NSUInteger OOShipGroup::updateCount()
 
 // One batch of live members for OOShipGroupMembers: the body of the former
 // -countByEnumeratingWithState:objects:count:, unchanged.
-NSUInteger OOShipGroupMembers::FillBatch(cxx::OOShipGroup *group, NSUInteger *ioIndex, id *buffer, NSUInteger length)
+NSUInteger OOShipGroupMembers::FillBatch(OOShipGroup *group, NSUInteger *ioIndex, id *buffer, NSUInteger length)
 {
 	NSUInteger				srcIndex, dstIndex = 0;
 	::ShipEntity				*item = nil;
@@ -469,11 +480,11 @@ NSUInteger OOShipGroupMembers::FillBatch(cxx::OOShipGroup *group, NSUInteger *io
 }
 
 
-OOShipGroupCursor::OOShipGroupCursor(cxx::OOShipGroup *group)
+OOShipGroupCursor::OOShipGroupCursor(OOShipGroup *group)
 {
 	assert(group != nullptr);
 
-	_group = oo::Ref<cxx::OOShipGroup>(group);
+	_group = oo::Ref<OOShipGroup>(group);
 	_considerCleanup = YES;
 	_updateCount = group->updateCount();
 }

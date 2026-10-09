@@ -827,7 +827,7 @@ static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Val
 			return VectorToJSValue(context, OOJSPlayerShipPlayerViewpointOffsetStarboard(player), value_raw);
 
 		case kPlayerShip_currentWeapon:
-			result = oo::PListObject(OOJSPlayerShipPlayerWeaponTypeForFacing(player, OOJSPlayerShipPlayerCurrentWeaponFacing(player), false));
+			result = OOEquipmentTypeObjectNode(OOJSPlayerShipPlayerWeaponTypeForFacing(player, OOJSPlayerShipPlayerCurrentWeaponFacing(player), false));
 			break;
 		
 	  case kPlayerShip_price:
@@ -1516,10 +1516,10 @@ static bool PlayerShipAwardEquipmentToCurrentPylon(ooscript::Context context, oo
 	
 	PlayerEntity			*player = OOPlayerForScripting();
 	std::optional<std::string>				key;
-	oo::Ref<cxx::OOEquipmentType>	eqType;	// the equipment types are converted (cxx::OOEquipmentType)
+	oo::Ref<OOEquipmentType>	eqType;	// the equipment types are converted (OOEquipmentType)
 	
 	if (oojsArgs.count() > 0)  key = JSValueToEquipmentKey(context, OOJS_ARGV[0]);
-	if (key.has_value())  eqType = cxx::OOEquipmentType::equipmentTypeWithIdentifier(*key);
+	if (key.has_value())  eqType = OOEquipmentType::equipmentTypeWithIdentifier(*key);
 	if (EXPECT_NOT(!(eqType != nullptr && eqType->isMissileOrMine())))
 	{
 		cxx_OOJSReportBadArguments(context, "PlayerShip", "awardEquipmentToCurrentPylon", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "equipment type (external store)");

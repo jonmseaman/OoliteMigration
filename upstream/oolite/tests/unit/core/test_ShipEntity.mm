@@ -283,21 +283,21 @@ OO_TEST(initSentAgain)
 
 OO_TEST(deallocLeavesItsGroups)
 {
-	OOShipGroup *group = nil;
-	OOShipGroup *escorts = nil;
+	oo::Ref<OOShipGroup> group;	// C++ since bead oo-9ht.19: held where the facades were retained
+	oo::Ref<OOShipGroup> escorts;
 	@autoreleasepool
 	{
 		SetUp();
-		group = [[OOShipGroup alloc] init];
+		group = OOShipGroup::groupWithName(std::nullopt);	// -init
 		TestShip *ship = [[TestShip alloc] cxx_initWithKey:"grouped" definition:Definition()];
-		[ship setGroup:group];
-		escorts = [[ship escortGroup] retain];
-		OO_CHECK([group containsShip:ship] && [escorts containsShip:ship] && [escorts leader] == ship);
+		[ship setGroup:group.get()];
+		escorts = oo::Ref<OOShipGroup>([ship escortGroup]);
+		OO_CHECK(group->containsShip(ship) && escorts->containsShip(ship) && escorts->leader() == ship);
 		[ship release];
 	}
-	OO_CHECK([group count] == 0 && [escorts count] == 0);
-	[group release];
-	[escorts release];
+	OO_CHECK(group->count() == 0 && escorts->count() == 0);
+	group = nullptr;
+	escorts = nullptr;
 }
 
 
@@ -1595,25 +1595,25 @@ OO_TEST(groupsAndEscorts)
 
 		OO_CHECK(![ship hasEscorts] && [ship escortCount] == 0 && [ship cxx_escorts].empty());
 		OOShipGroup *escorts = [ship escortGroup];		// made on demand, led by the ship
-		OO_CHECK(escorts != nil && [escorts leader] == ship && [ship escortGroup] == escorts);
+		OO_CHECK(escorts != nil && escorts->leader() == ship && [ship escortGroup] == escorts);
 		TestShip *wingman = FlyingShip("wingman");
-		[escorts addShip:wingman];
+		escorts->addShip(wingman);
 		OO_CHECK([ship hasEscorts] && [ship escortCount] == 1);
 		OO_CHECK([ship cxx_escorts].size() == 1 && [ship cxx_escorts][0].get() == wingman && [ship escortArray].size() == 1);
 
-		OOShipGroup *other = [[[OOShipGroup alloc] init] autorelease];
-		[ship setEscortGroup:other];
-		OO_CHECK([ship escortGroup] == other && [other leader] == ship);
+		oo::Ref<OOShipGroup> other = OOShipGroup::groupWithName(std::nullopt);	// -init; held where the autoreleased facade was
+		[ship setEscortGroup:other.get()];
+		OO_CHECK([ship escortGroup] == other.get() && other->leader() == ship);
 
-		OOShipGroup *group = [[[OOShipGroup alloc] init] autorelease];
-		[wingman setGroup:group];
-		OO_CHECK([wingman group] == group && [group containsShip:wingman]);
+		oo::Ref<OOShipGroup> group = OOShipGroup::groupWithName(std::nullopt);
+		[wingman setGroup:group.get()];
+		OO_CHECK([wingman group] == group.get() && group->containsShip(wingman));
 		[wingman setGroup:nil];
-		OO_CHECK([wingman group] == nil && ![group containsShip:wingman]);
+		OO_CHECK([wingman group] == nil && !group->containsShip(wingman));
 
 		TestShip *station = FlyingShip("station");
 		OOShipGroup *stationGroup = [station stationGroup];
-		OO_CHECK(stationGroup != nil && [stationGroup leader] == station && [station group] == stationGroup);
+		OO_CHECK(stationGroup != nil && stationGroup->leader() == station && [station group] == stationGroup);
 
 		[ship setMaxEscortCount:3];
 		[ship setPendingEscortCount:5];
@@ -2278,9 +2278,9 @@ OO_TEST(slice24IsFriendlyTo)
 		[other setScanClass:CLASS_NEUTRAL];
 		OO_CHECK(![ship isFriendlyTo:other]);
 
-		OOShipGroup *group = [[[OOShipGroup alloc] init] autorelease];
-		[ship setGroup:group];
-		[other setGroup:group];
+		oo::Ref<OOShipGroup> group = OOShipGroup::groupWithName(std::nullopt);	// -init; held where the autoreleased facade was
+		[ship setGroup:group.get()];
+		[other setGroup:group.get()];
 		OO_CHECK([ship isFriendlyTo:other] && [other isFriendlyTo:ship]);
 		[ship setGroup:nil];
 		[other setGroup:nil];

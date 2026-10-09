@@ -46,7 +46,6 @@ Entity *OOJSShipPlayerNextBeacon()	{ return [PLAYER nextBeacon]; }
 void OOJSShipPlayerSetCompassMode(OOCompassMode mode)	{ [PLAYER setCompassMode:mode]; }
 void OOJSShipUniverseClearBeacon(ShipEntity *beacon)	{ [UNIVERSE clearBeacon:beacon]; }
 void OOJSShipUniverseSetNextBeacon(ShipEntity *beacon)	{ [UNIVERSE setNextBeacon:beacon]; }
-Class OOJSShipShipGroupClass()	{ return [OOShipGroup class]; }
 
 
 // MARK: The player, the universe and a deferred send (slice 3, bead oo-08plt)

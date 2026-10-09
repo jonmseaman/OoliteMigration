@@ -3270,11 +3270,11 @@ std::vector<oo::ObjCRef<::ShipEntity *>> Universe::addShipsAt(HPVector pos, cons
 	std::vector<oo::ObjCRef<::ShipEntity *>>	ships;
 	ships.reserve(count);
 	::ShipEntity			*ship = nil;
-	::OOShipGroup			*group = nil;
+	oo::Ref<::OOShipGroup>	group;	// kept for the pass, as the autoreleased facade was
 
 	if (isGroup)
 	{
-		group = [::OOShipGroup cxx_groupWithName:oo::str::format("%s group", role.c_str())];
+		group = OOShipGroup::groupWithName(oo::str::format("%s group", role.c_str()));
 	}
 
 	while (count--)
@@ -3283,7 +3283,7 @@ std::vector<oo::ObjCRef<::ShipEntity *>> Universe::addShipsAt(HPVector pos, cons
 		if (ship != nil)
 		{
 			// TODO: avoid collisions!!!
-			if (isGroup) [ship setGroup:group];
+			if (isGroup) [ship setGroup:group.get()];
 			ships.push_back(oo::ObjCRef<::ShipEntity *>(ship));
 		}
 	}
@@ -9717,15 +9717,15 @@ oo::PList Universe::shipsForSaleForSystem(OOSystemID s, OOTechLevelID specialTL,
 				chance *= chance;	//decrease the chance of a further customisation (unless it is 1, which might be a bug)
 				int				optionIndex = Ranrot() % options.size();
 				const std::optional<std::string>	equipmentKey = options[optionIndex];
-				::OOEquipmentType	*item = equipmentKey.has_value() ? [::OOEquipmentType cxx_equipmentTypeWithIdentifier:*equipmentKey] : nil;
+				::OOEquipmentType	*item = equipmentKey.has_value() ? OOEquipmentType::equipmentTypeWithIdentifier(*equipmentKey).get() : nil;
 
 				if (item != nil)
 				{
-					OOTechLevelID		eqTechLevel = [item techLevel];
-					OOCreditsQuantity	eqPrice = [item price] / 10;	// all amounts are x/10 due to being represented in tenths of credits.
-					std::optional<std::string>	eqShortDesc = [item cxx_name];
+					OOTechLevelID		eqTechLevel = (item != nullptr ? item->techLevel() : 0);
+					OOCreditsQuantity	eqPrice = (item != nullptr ? item->price() : 0) / 10;	// all amounts are x/10 due to being represented in tenths of credits.
+					std::optional<std::string>	eqShortDesc = (item != nullptr ? item->name() : std::optional<std::string>());
 
-					if ([item techLevel] > techlevel)
+					if ((item != nullptr ? item->techLevel() : 0) > techlevel)
 					{
 						// Cap maximum tech level.
 						eqTechLevel = MIN(eqTechLevel, 15U);
@@ -9740,10 +9740,10 @@ oo::PList Universe::shipsForSaleForSystem(OOSystemID s, OOTechLevelID specialTL,
 							break;	// Bar this upgrade.
 					}
 
-					if ([item cxx_incompatibleEquipment].has_value())
+					if ((item != nullptr ? item->incompatibleEquipment() : std::optional<std::vector<std::string>>()).has_value())
 					{
 						BOOL						incompatible = NO;
-						const std::vector<std::string>	incompatibleKeys = *[item cxx_incompatibleEquipment];
+						const std::vector<std::string>	incompatibleKeys = *(item != nullptr ? item->incompatibleEquipment() : std::optional<std::vector<std::string>>());
 
 						for (const std::string &key : incompatibleKeys)
 						{
@@ -9764,7 +9764,7 @@ oo::PList Universe::shipsForSaleForSystem(OOSystemID s, OOTechLevelID specialTL,
 					}
 
 					/* Check condition scripts */
-					std::optional<std::string> condition_script = [item cxx_conditionScript];
+					std::optional<std::string> condition_script = (item != nullptr ? item->conditionScript() : std::optional<std::string>());
 					if (condition_script.has_value())
 					{
 						::OOJSScript *condScript = [self cxx_getConditionScript:*condition_script];
@@ -9796,11 +9796,11 @@ oo::PList Universe::shipsForSaleForSystem(OOSystemID s, OOTechLevelID specialTL,
 					}
 
 
-					if ([item cxx_requiresEquipment].has_value())
+					if ((item != nullptr ? item->requiresEquipment() : std::optional<std::vector<std::string>>()).has_value())
 					{
 						BOOL						missing = NO;
 
-						for (const std::string &key : [item cxx_requiresEquipment].value_or(std::vector<std::string>()))
+						for (const std::string &key : (item != nullptr ? item->requiresEquipment() : std::optional<std::vector<std::string>>()).value_or(std::vector<std::string>()))
 						{
 							if (!ContainsKey(extras, key))
 							{
@@ -9810,11 +9810,11 @@ oo::PList Universe::shipsForSaleForSystem(OOSystemID s, OOTechLevelID specialTL,
 						if (missing) break;
 					}
 
-					if ([item cxx_requiresAnyEquipment].has_value())
+					if ((item != nullptr ? item->requiresAnyEquipment() : std::optional<std::vector<std::string>>()).has_value())
 					{
 						BOOL						missing = YES;
 
-						for (const std::string &key : [item cxx_requiresAnyEquipment].value_or(std::vector<std::string>()))
+						for (const std::string &key : (item != nullptr ? item->requiresAnyEquipment() : std::optional<std::vector<std::string>>()).value_or(std::vector<std::string>()))
 						{
 							if (ContainsKey(extras, key))
 							{
@@ -9839,7 +9839,7 @@ oo::PList Universe::shipsForSaleForSystem(OOSystemID s, OOTechLevelID specialTL,
 					{
 						OOWeaponType new_weapon = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(*equipmentKey);
 						//fit best weapon forward
-						if (availableFacings & WEAPON_FACING_FORWARD && [new_weapon weaponThreatAssessment] > [fwdWeapon weaponThreatAssessment])
+						if (availableFacings & WEAPON_FACING_FORWARD && (new_weapon != nullptr ? new_weapon->weaponThreatAssessment() : 0.0f) > (fwdWeapon != nullptr ? fwdWeapon->weaponThreatAssessment() : 0.0f))
 						{
 							//again remember to divide price by 10 to get credits from tenths of credit
 							price -= (fwdWeaponString ? [self cxx_getEquipmentPriceForKey:*fwdWeaponString] : 0) * 90 / 1000;	// 90% credits
@@ -9853,7 +9853,7 @@ oo::PList Universe::shipsForSaleForSystem(OOSystemID s, OOTechLevelID specialTL,
 						else
 						{
 							//if less good than current forward, try fitting is to rear
-							if (availableFacings & WEAPON_FACING_AFT && (isWeaponNone(aftWeapon) || [new_weapon weaponThreatAssessment] > [aftWeapon weaponThreatAssessment]))
+							if (availableFacings & WEAPON_FACING_AFT && (isWeaponNone(aftWeapon) || (new_weapon != nullptr ? new_weapon->weaponThreatAssessment() : 0.0f) > (aftWeapon != nullptr ? aftWeapon->weaponThreatAssessment() : 0.0f)))
 							{
 								price -= (aftWeaponString ? [self cxx_getEquipmentPriceForKey:*aftWeaponString] : 0) * 90 / 1000;	// 90% credits
 								price += eqPrice;
@@ -9890,7 +9890,7 @@ oo::PList Universe::shipsForSaleForSystem(OOSystemID s, OOTechLevelID specialTL,
 						{
 							price += eqPrice;
 							extras.push_back(oo::PList(*equipmentKey));
-							if ([item isVisible])
+							if ((item != nullptr ? item->isVisible() : false))
 							{
 								shortShipDescription += ExpandKeyWith(shortExtrasKey, "item", eqShortDesc ? oo::PList(*eqShortDesc) : oo::PList());
 								shortExtrasKey = "shipyard-additional-extra";
@@ -10021,7 +10021,7 @@ OOCreditsQuantity Universe::tradeInValueForCommanderDictionary(const oo::PList &
 	auto weaponTypeForKey = [&dict](const char *key) -> OOWeaponType	// nil for a missing key
 	{
 		const std::optional<std::string> identifier = OptionalStringIn(dict, key);
-		return identifier.has_value() ? [::OOEquipmentType cxx_equipmentTypeWithIdentifier:*identifier] : nil;
+		return identifier.has_value() ? OOEquipmentType::equipmentTypeWithIdentifier(*identifier).get() : nil;
 	};
 	OOWeaponType		ship_fwd_weapon = weaponTypeForKey("forward_weapon");
 	OOWeaponType		ship_aft_weapon = weaponTypeForKey("aft_weapon");
@@ -10142,8 +10142,8 @@ OOCreditsQuantity Universe::tradeInValueForCommanderDictionary(const oo::PList &
 
 	for (i = (NSInteger)ship_extra_equipment.size()-1; i >= 0; i--)
 	{
-		item = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:ship_extra_equipment[i]];
-		if ([item isPortableBetweenShips]) ship_extra_equipment.erase(ship_extra_equipment.begin() + i);
+		item = OOEquipmentType::equipmentTypeWithIdentifier(ship_extra_equipment[i]).get();
+		if ((item != nullptr ? item->isPortableBetweenShips() : false)) ship_extra_equipment.erase(ship_extra_equipment.begin() + i);
 	}
 
 	// add up what we've got left.
@@ -10880,7 +10880,7 @@ void Universe::setUpSettings()
 	equipmentData = oo::PList(std::move(sortedEquipment));
 	equipmentDataOutfitting = oo::PList(std::move(sortedOutfitting));
 	
-	[::OOEquipmentType loadEquipment];
+	OOEquipmentType::loadEquipment();
 
 	explosionSettings = [::ResourceManager cxx_dictionaryFromFilesNamed:"explosions.plist" inFolder:std::string("Config") andMerge:YES];
 

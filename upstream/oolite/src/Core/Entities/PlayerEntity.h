@@ -707,7 +707,7 @@ public:
 	::OOEquipmentType *weaponTypeForFacing(OOWeaponFacing facing, bool /*strict*/) override;
 
 	// Slice 18: scripting lists (missiles, cargo, contracts), the system data screen, marked destinations, the chart screens.
-	std::vector<oo::ObjCRef<::OOEquipmentType *>> missilesList() override;
+	std::vector<oo::Ref<::OOEquipmentType>> missilesList() override;
 	std::vector<std::string> cargoList();
 	oo::PList cargoListForScripting() override;
 	unsigned legalStatusOfCargoList();

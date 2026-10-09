@@ -212,16 +212,16 @@ void ShipEntity::groupAttackTarget()
 		return;
 	}
 	
-	for (const oo::ObjCRef<::ShipEntity *> &member : [[self group] cxx_memberArray])
+	for (const oo::ObjCRef<::ShipEntity *> &member : ([self group] != nullptr ? [self group]->memberArray() : std::vector<oo::ObjCRef<::ShipEntity *>>()))
 	{
 		ship = member.get();
 		[ship setFoundTarget:target];
 		[ship cxx_reactToAIMessage:"GROUP_ATTACK_TARGET" context:"groupAttackTarget"];
 		[ship doScriptEvent:OOJSID("helpRequestReceived") withArgument:self andArgument:target];
 
-		if ([ship escortGroup] != [ship group] && [[ship escortGroup] count] > 1) // Ship has a seperate escort group.
+		if ([ship escortGroup] != [ship group] && ([ship escortGroup] != nullptr ? [ship escortGroup]->count() : 0) > 1) // Ship has a seperate escort group.
 		{
-			for (const oo::ObjCRef<::ShipEntity *> &escortRef : [[ship escortGroup] cxx_memberArrayExcludingLeader])
+			for (const oo::ObjCRef<::ShipEntity *> &escortRef : ([ship escortGroup] != nullptr ? [ship escortGroup]->memberArrayExcludingLeader() : std::vector<oo::ObjCRef<::ShipEntity *>>()))
 			{
 				::ShipEntity		*escort = escortRef.get();
 				[escort setFoundTarget:target];
@@ -572,8 +572,7 @@ void ShipEntity::wormholeEscorts()
 	
 	// We now have no escorts..
 
-	[_escortGroup release];
-	_escortGroup = nil;
+	_escortGroup = nullptr;
 
 }
 
@@ -1380,7 +1379,7 @@ void ShipEntity::fightOrFleeMissile()
 		// Note: prior to 1.73 this was done only if we had ECM.
 		::ShipEntity		*police = nil;
 		
-		for (const oo::ObjCRef<::ShipEntity *> &member : [[self group] cxx_memberArray])
+		for (const oo::ObjCRef<::ShipEntity *> &member : ([self group] != nullptr ? [self group]->memberArray() : std::vector<oo::ObjCRef<::ShipEntity *>>()))
 		{
 			police = member.get();
 			[police setFoundTarget:hunter];
@@ -1777,7 +1776,7 @@ void ShipEntity::wormholeGroup()
 	whole = [self primaryTarget];
 	if (![whole isWormhole])  return;
 	
-	for (const oo::ObjCRef<::ShipEntity *> &member : [[self group] cxx_memberArray])
+	for (const oo::ObjCRef<::ShipEntity *> &member : ([self group] != nullptr ? [self group]->memberArray() : std::vector<oo::ObjCRef<::ShipEntity *>>()))
 	{
 		ship = member.get();
 		[ship addTarget:whole];
@@ -1853,7 +1852,7 @@ void ShipEntity::thargonCheckMother()
 {
 	::ShipEntity *self = oo::ToObjC(this);
 	::ShipEntity   *mother = [self owner];
-	if (mother == nil && [self group])  mother = [[self group] leader];
+	if (mother == nil && [self group])  mother = ([self group] != nullptr ? [self group]->leader() : (::ShipEntity *)nil);
 	
 	double	maxRange2 = scannerRange * scannerRange;
 	
@@ -1993,8 +1992,8 @@ void ShipEntity::escortCheckMother()
 void ShipEntity::checkGroupOddsVersusTarget()
 {
 	::ShipEntity *self = oo::ToObjC(this);
-	NSUInteger ownGroupCount = [[self group] count] + (ranrot_rand() & 3);			// add a random fudge factor
-	NSUInteger targetGroupCount = [[[self primaryTarget] group] count] + (ranrot_rand() & 3);	// add a random fudge factor
+	NSUInteger ownGroupCount = ([self group] != nullptr ? [self group]->count() : 0) + (ranrot_rand() & 3);			// add a random fudge factor
+	NSUInteger targetGroupCount = ([[self primaryTarget] group] != nullptr ? [[self primaryTarget] group]->count() : 0) + (ranrot_rand() & 3);	// add a random fudge factor
 	
 	if (ownGroupCount == targetGroupCount)
 	{
@@ -2074,7 +2073,7 @@ void ShipEntity::setPlanetPatrolCoordinates()
 	if (HPmagnitude2(r_pos) < 1000000 || patrol_counter == 0)
 	{
 		::Entity *the_sun = [UNIVERSE sun];
-		::ShipEntity *the_station = [[self group] leader];
+		::ShipEntity *the_station = ([self group] != nullptr ? [self group]->leader() : (::ShipEntity *)nil);
 		if(!the_station || ![the_station isStation]) the_station = [UNIVERSE station];
 		if ((!the_sun)||(!the_station))
 			return;
@@ -2194,7 +2193,7 @@ void ShipEntity::patrolReportIn()
 {
 	::ShipEntity *self = oo::ToObjC(this);
 	// Set a report time in the patrolled station to delay a new launch.
-	::ShipEntity *the_station = [[self group] leader];
+	::ShipEntity *the_station = ([self group] != nullptr ? [self group]->leader() : (::ShipEntity *)nil);
 	if(!the_station || ![the_station isStation]) the_station = [UNIVERSE station];
 	[(::StationEntity*)the_station acceptPatrolReportFrom:self];
 }
@@ -2203,7 +2202,7 @@ void ShipEntity::patrolReportIn()
 void ShipEntity::checkForMotherStation()
 {
 	::ShipEntity *self = oo::ToObjC(this);
-	::ShipEntity *motherStation = [[self group] leader];
+	::ShipEntity *motherStation = ([self group] != nullptr ? [self group]->leader() : (::ShipEntity *)nil);
 	if ((!motherStation) || (!(motherStation->_cxxEntity->isStation)))
 	{
 		[shipAI message:"NOTHING_FOUND"];
@@ -2390,7 +2389,7 @@ void ShipEntity::setDestinationToDockingAbort()
 void ShipEntity::requestNewTarget()
 {
 	::ShipEntity *self = oo::ToObjC(this);
-	::ShipEntity *mother = [[self group] leader];
+	::ShipEntity *mother = ([self group] != nullptr ? [self group]->leader() : (::ShipEntity *)nil);
 	if (mother == nil)
 	{
 		[shipAI message:"MOTHER_LOST"];

@@ -38,7 +38,8 @@ MA 02110-1301, USA.
 #import "Universe.h"
 #import "PlayerEntityScriptMethods.h"
 
-@class OOShipGroup, OOVisualEffectEntity;
+@class OOVisualEffectEntity;
+class OOShipGroup;	// C++ since bead oo-9ht.19 (OOShipGroup.h)
 
 
 // The player, as the property getter and setter, toString() and the planet methods read it.

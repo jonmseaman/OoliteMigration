@@ -1397,9 +1397,9 @@ void cxx::PlayerEntity::awardEquipment(const std::string &equipString)	// called
 		[self setFuel:[self fuelCapacity]];
 	}
 
-	::OOEquipmentType *eqType = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:equipKey];
+	::OOEquipmentType *eqType = OOEquipmentType::equipmentTypeWithIdentifier(equipKey).get();
 
-	if ([eqType isMissileOrMine])
+	if ((eqType != nullptr ? eqType->isMissileOrMine() : false))
 	{
 		[self cxx_mountMissileWithRole:equipKey];
 	}
@@ -1412,7 +1412,7 @@ void cxx::PlayerEntity::awardEquipment(const std::string &equipString)	// called
 	{
 		OO_LOG(kOOLogSyntaxAwardEquipment, "***** SCRIPT ERROR: in {}, CANNOT award damaged equipment:'{}'. Undamaged version already equipped.", CurrentScriptDescription(), equipKey);
 	}
-	else if ([eqType canCarryMultiple] || ![self hasEquipmentItem:oo::PList(equipKey)])
+	else if ((eqType != nullptr ? eqType->canCarryMultiple() : false) || ![self hasEquipmentItem:oo::PList(equipKey)])
 	{
 		[self addEquipmentItem:equipKey withValidation:YES inContext:"scripted"];
 	}
@@ -2983,7 +2983,7 @@ bool cxx::PlayerEntity::processSceneString(const std::string &item, Vector off)
 bool cxx::PlayerEntity::addEqScriptForKey(const std::string &eq_key)
 {
 	::PlayerEntity *self = oo::ToObjC(this);
-	const std::optional<std::string> scriptName = [[::OOEquipmentType cxx_equipmentTypeWithIdentifier:eq_key] cxx_scriptName];
+	const std::optional<std::string> scriptName = (OOEquipmentType::equipmentTypeWithIdentifier(eq_key).get() != nullptr ? OOEquipmentType::equipmentTypeWithIdentifier(eq_key).get()->scriptName() : std::optional<std::string>());
 
 	OO_LOG("player.equipmentScript", "Added equipment {}, with the following script property: '{}'.", eq_key, scriptName.value_or("(null)"));
 
@@ -3023,7 +3023,7 @@ void cxx::PlayerEntity::removeEqScriptForKey(const std::string &eq_key)
 			else if (i < primedEquipment)  primedEquipment--; // track the primed equipment
 			if (count == primedEquipment)  primedEquipment--; // the array has shrunk by one!
 
-			OO_LOG("player.equipmentScript", "Removed equipment {}, with the following script property: '{}'.", eq_key, [[::OOEquipmentType cxx_equipmentTypeWithIdentifier:eq_key] cxx_scriptName].value_or("(null)"));
+			OO_LOG("player.equipmentScript", "Removed equipment {}, with the following script property: '{}'.", eq_key, (OOEquipmentType::equipmentTypeWithIdentifier(eq_key).get() != nullptr ? OOEquipmentType::equipmentTypeWithIdentifier(eq_key).get()->scriptName() : std::optional<std::string>()).value_or("(null)"));
 		}
 	}
 }

@@ -611,7 +611,7 @@ PlayerEntity		*gOOPlayer = nil;
 // Slice 18 of docs/phases/3-slices/PlayerEntity.md (bead oo-3fzv5).
 @implementation PlayerEntity (OOSlice18)
 
-- (std::vector<oo::ObjCRef<OOEquipmentType *>>) missilesList	{ return _cxxPlayer->cxx::PlayerEntity::missilesList(); }
+- (std::vector<oo::Ref<OOEquipmentType>>) missilesList	{ return _cxxPlayer->cxx::PlayerEntity::missilesList(); }
 - (std::vector<std::string>) cxx_cargoList	{ return _cxxPlayer->cargoList(); }
 - (oo::PList) cargoListForScripting	{ return _cxxPlayer->cxx::PlayerEntity::cargoListForScripting(); }
 - (unsigned) legalStatusOfCargoList	{ return _cxxPlayer->legalStatusOfCargoList(); }

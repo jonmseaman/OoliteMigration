@@ -55,8 +55,6 @@ void OOJSShipPlayerSetCompassMode(OOCompassMode mode);
 void OOJSShipUniverseClearBeacon(ShipEntity *beacon);
 void OOJSShipUniverseSetNextBeacon(ShipEntity *beacon);
 
-// [OOShipGroup class] (ShipSetProperty(): ship.group).
-Class OOJSShipShipGroupClass();
 
 // The player (a player's ship, or OOPlayerForScripting()), as the slice 3 natives ask and tell it.
 bool OOJSShipPlayerIsDocked(PlayerEntity *player);

@@ -1,7 +1,8 @@
 /*	test_OOJSEquipmentInfo.mm
-	Unit tests for the EquipmentInfo JS binding (src/Core/Scripting/OOJSEquipmentInfo.h/.mm) and its
-	OOEquipmentType façade's JS selectors (OOEquipmentType+ObjCBridge.mm): bead oo-supk, converted the way bead
-	oo-ppc converted OOJSVector (proposed ADR-0056 amendments oo-ppc and oo-6ia4).
+	Unit tests for the EquipmentInfo JS binding (src/Core/Scripting/OOJSEquipmentInfo.h/.mm) and the
+	JS glue of OOEquipmentType: bead oo-supk, converted the way bead oo-ppc converted OOJSVector
+	(proposed ADR-0056 amendments oo-ppc and oo-6ia4); the type's façade was deleted by bead
+	oo-9ht.28, so a type reaches the engine as a PList Object node holding the C++ type.
 
 	As test_OOJSShipGroup.mm does (amendment oo-6ia4, item 7), it runs the JS class in a real
 	context on the game's own façade backend (ooscript/JSEngine_quickjs.cpp), links the game's own
@@ -31,12 +32,12 @@
 #import "OOObjCPList.h"
 
 
-// The category on the façade, which the engine sends by selector.
-@interface OOEquipmentType (OOJavaScriptExtensions)
+// What the engine sends an Objective-C object by selector for its JS value (the equipment type's
+// façade answered it until bead oo-9ht.28; the engine stand-in below still sends it).
+@interface OOObject (OOJSTestGlue)
 - (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context;
-- (std::optional<std::string>) cxx_oo_jsClassName;
-- (void) oo_clearJSSelf:(ooscript::Object)selfVal;
 @end
+
 
 
 #import "OOJSEquipmentInfo.h"
@@ -305,7 +306,7 @@ oo::PList cxx_OOJSPListFromJSValue(ooscript::Context context, ooscript::Value va
 		return oo::PList(std::move(array));
 	}
 	const ooscript::ClassDef *jsClass = ooscript::getObjectClass(context, object);
-	if (jsClass != nullptr && std::strcmp(jsClass->name, "EquipmentInfo") == 0)  return oo::PListObject(oo::ToObjC(static_cast<cxx::OOEquipmentType *>(static_cast<oo::RefCounted *>(ooscript::getPrivate(context, object)))));
+	if (jsClass != nullptr && std::strcmp(jsClass->name, "EquipmentInfo") == 0)  return OOEquipmentTypeObjectNode(static_cast<OOEquipmentType *>(static_cast<oo::RefCounted *>(ooscript::getPrivate(context, object))));
 	return oo::PList(std::string("[object]"));
 }
 
@@ -323,6 +324,10 @@ ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &p
 	}
 	if (const bool *boolean = plist.getIf<bool>())  return ooscript::booleanValue(*boolean);
 	if (plist.isNumber())  return ooscript::numberValue(plist.doubleValue());
+	if (const oo::PList::Object *node = plist.getIf<oo::PList::Object>())	// a C++ object that is its own JS glue, as the engine asks it
+	{
+		if (OOJSPrivateObject *glue = dynamic_cast<OOJSPrivateObject *>(node->get()))  return OOJSValueFromCxxObject(context, glue);
+	}
 	if (id object = oo::ObjectIn(plist))  return OOJSValueFromNativeObject(context, object);
 	if (const oo::PList::Array *array = plist.getIf<oo::PList::Array>())
 	{
@@ -481,7 +486,7 @@ void SetUpContext()
 	sPlayer->_fuelChargeRate = 1.5f;
 	sPlayer->_renovationCosts = 1234.5;
 	gOOPlayer = sPlayer;
-	[OOEquipmentType loadEquipment];
+	OOEquipmentType::loadEquipment();
 
 	sRuntime = ooscript::newRuntime(8u * 1024u * 1024u);
 	sContext = ooscript::newContext(sRuntime, 8192);
@@ -536,24 +541,24 @@ OO_TEST(registration)
 OO_TEST(categoryAnswersTheEngine)
 {
 	SetUpContext();
-	OOEquipmentType *fuel = [OOEquipmentType cxx_equipmentTypeWithIdentifier:"EQ_FUEL"];
-	OO_CHECK([fuel cxx_oo_jsClassName] == std::optional<std::string>("EquipmentInfo"));
+	OOEquipmentType *fuel = OOEquipmentType::equipmentTypeWithIdentifier("EQ_FUEL").get();
+	OO_CHECK(OOJSEquipmentInfoJSClassName() == std::optional<std::string>("EquipmentInfo"));
 	// One JS object per type, made on first use, with the type (retained) in its private slot.
-	ooscript::Value first = [fuel oo_jsValueInContext:sContext];
-	ooscript::Value second = [fuel oo_jsValueInContext:sContext];
+	ooscript::Value first = fuel->jsValueInContext(sContext);
+	ooscript::Value second = fuel->jsValueInContext(sContext);
 	OO_CHECK(ooscript::isObject(first) && ooscript::toObject(first) == ooscript::toObject(second));
-	OO_CHECK(ooscript::getPrivate(sContext, ooscript::toObject(first)) == static_cast<oo::RefCounted *>(oo::ToCxx(fuel)));
+	OO_CHECK(ooscript::getPrivate(sContext, ooscript::toObject(first)) == static_cast<oo::RefCounted *>(fuel));
 	ooscript::Value fromScript = ooscript::undefinedValue();
 	const char *infoForFuel = "EquipmentInfo.infoForKey('EQ_FUEL')";
 	ooscript::evaluateScript(sContext, sGlobal, infoForFuel, static_cast<unsigned>(std::strlen(infoForFuel)), "test.js", 1, &fromScript);
 	OO_CHECK(ooscript::isObject(fromScript) && ooscript::toObject(fromScript) == ooscript::toObject(first));
 	// Clearing another object leaves it; clearing its own makes a new one next time.
-	[fuel oo_clearJSSelf:sGlobal];
-	OO_CHECK(ooscript::toObject([fuel oo_jsValueInContext:sContext]) == ooscript::toObject(first));
-	[fuel oo_clearJSSelf:ooscript::toObject(first)];
-	ooscript::Value third = [fuel oo_jsValueInContext:sContext];
+	fuel->clearJSSelf(sGlobal);
+	OO_CHECK(ooscript::toObject(fuel->jsValueInContext(sContext)) == ooscript::toObject(first));
+	fuel->clearJSSelf(ooscript::toObject(first));
+	ooscript::Value third = fuel->jsValueInContext(sContext);
 	OO_CHECK(ooscript::isObject(third) && ooscript::toObject(third) != ooscript::toObject(first));
-	OO_CHECK(ooscript::getPrivate(sContext, ooscript::toObject(third)) == static_cast<oo::RefCounted *>(oo::ToCxx(fuel)));
+	OO_CHECK(ooscript::getPrivate(sContext, ooscript::toObject(third)) == static_cast<oo::RefCounted *>(fuel));
 }
 
 
@@ -656,8 +661,8 @@ OO_TEST(staticMembers)
 OO_TEST(cFunctions)
 {
 	SetUpContext();
-	OOEquipmentType *missile = [OOEquipmentType cxx_equipmentTypeWithIdentifier:"EQ_MISSILE"];
-	ooscript::Value missileValue = [missile oo_jsValueInContext:sContext];
+	OOEquipmentType *missile = OOEquipmentType::equipmentTypeWithIdentifier("EQ_MISSILE").get();
+	ooscript::Value missileValue = missile->jsValueInContext(sContext);
 	ooscript::Value key = ooscript::stringValue(ooscript::newStringCopyZ(sContext, "EQ_MISSILE"));
 	ooscript::Value damagedKey = ooscript::stringValue(ooscript::newStringCopyZ(sContext, "EQ_MISSILE_DAMAGED"));
 	ooscript::Value unknownKey = ooscript::stringValue(ooscript::newStringCopyZ(sContext, "EQ_SOMETHING"));

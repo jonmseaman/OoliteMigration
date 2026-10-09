@@ -1187,7 +1187,7 @@ namespace {
 // weapon, as a message to nil answered.
 GLfloat WeaponThreatAssessment(OOWeaponType weapon)
 {
-	cxx::OOEquipmentType *type = oo::ToCxx(weapon);
+	OOEquipmentType *type = weapon;
 	return (type != nullptr) ? type->weaponThreatAssessment() : 0;
 }
 

@@ -400,18 +400,18 @@ void cxx::PlayerEntity::keyMapperInputHandler(::GuiDisplayGen *gui, ::MyOpenGLVi
 					lookupKey = std::string(CUSTOMEQUIP_KEYMODE);
 				}
 
-				::OOEquipmentType	*item = (eq.has_value() ? [::OOEquipmentType cxx_equipmentTypeWithIdentifier:*eq] : nil);
+				::OOEquipmentType	*item = (eq.has_value() ? OOEquipmentType::equipmentTypeWithIdentifier(*eq).get() : nil);
 
 				// the customEquipActivation entry is edited in place, as before
 				oo::PList::Dict *fields = CustomEquipFields(customEquipActivation, idx);
-				if ([item cxx_defaultActivateKey] && lookupKey == std::string(CUSTOMEQUIP_KEYACTIVATE) && fields != nullptr)
+				if ((item != nullptr ? item->defaultActivateKey() : oo::PList()) && lookupKey == std::string(CUSTOMEQUIP_KEYACTIVATE) && fields != nullptr)
 				{
-					fields->insert_or_assign(*lookupKey, [item cxx_defaultActivateKey]);
+					fields->insert_or_assign(*lookupKey, (item != nullptr ? item->defaultActivateKey() : oo::PList()));
 					update = true;
 				}
-				if ([item cxx_defaultModeKey] && lookupKey == std::string(CUSTOMEQUIP_KEYMODE) && fields != nullptr)
+				if ((item != nullptr ? item->defaultModeKey() : oo::PList()) && lookupKey == std::string(CUSTOMEQUIP_KEYMODE) && fields != nullptr)
 				{
-					fields->insert_or_assign(*lookupKey, [item cxx_defaultModeKey]);
+					fields->insert_or_assign(*lookupKey, (item != nullptr ? item->defaultModeKey() : oo::PList()));
 					update = true;
 				}
 
@@ -999,7 +999,7 @@ void cxx::PlayerEntity::displayKeyFunctionList(::GuiDisplayGen *gui, NSUInteger 
 					const oo::PList *keyArray = equip.get<oo::PList::Array>(custom_keytype.value_or(""));	// -oo_arrayForKey:
 					assignment = [PLAYER cxx_getKeyBindingDescription:(keyArray != nullptr ? *keyArray : oo::PList())];
 					const std::optional<std::string> itemKey = OptionalStringForKey(equip, std::string(CUSTOMEQUIP_EQUIPKEY));
-					::OOEquipmentType	*item = itemKey.has_value() ? [::OOEquipmentType cxx_equipmentTypeWithIdentifier:*itemKey] : nil;
+					::OOEquipmentType	*item = itemKey.has_value() ? OOEquipmentType::equipmentTypeWithIdentifier(*itemKey).get() : nil;
 					bool result = true;
 					int j, k;
 					oo::PList defArray;
@@ -1007,12 +1007,12 @@ void cxx::PlayerEntity::displayKeyFunctionList(::GuiDisplayGen *gui, NSUInteger 
 
 					if (custom_keytype == std::string(CUSTOMEQUIP_KEYACTIVATE))
 					{
-						defArray = [item cxx_defaultActivateKey];
+						defArray = (item != nullptr ? item->defaultActivateKey() : oo::PList());
 						compArray = keyArray != nullptr ? *keyArray : oo::PList();
 					}
 					if (custom_keytype == std::string(CUSTOMEQUIP_KEYMODE))
 					{
-						defArray = [item cxx_defaultModeKey];
+						defArray = (item != nullptr ? item->defaultModeKey() : oo::PList());
 						compArray = keyArray != nullptr ? *keyArray : oo::PList();
 					}
 					for (j = 0; j < defArray.count(); j++)
@@ -1807,16 +1807,16 @@ void cxx::PlayerEntity::deleteAllKeySettings()
 		for (i = 0; i < customEquipActivation.size(); i++)
 		{
 			const std::optional<std::string> eq = OptionalStringForKey(customEquipActivation[i], std::string(CUSTOMEQUIP_EQUIPKEY));
-			::OOEquipmentType *item = (eq.has_value() ? [::OOEquipmentType cxx_equipmentTypeWithIdentifier:*eq] : nil);
+			::OOEquipmentType *item = (eq.has_value() ? OOEquipmentType::equipmentTypeWithIdentifier(*eq).get() : nil);
 			oo::PList::Dict *fields = CustomEquipFields(customEquipActivation, i);	// edited in place
 			if (fields == nullptr)  continue;
-			if ([item cxx_defaultActivateKey])
-				fields->insert_or_assign(std::string(CUSTOMEQUIP_KEYACTIVATE), [item cxx_defaultActivateKey]);
+			if ((item != nullptr ? item->defaultActivateKey() : oo::PList()))
+				fields->insert_or_assign(std::string(CUSTOMEQUIP_KEYACTIVATE), (item != nullptr ? item->defaultActivateKey() : oo::PList()));
 			else
 				fields->erase(std::string(CUSTOMEQUIP_KEYACTIVATE));
 
-			if ([item cxx_defaultModeKey])
-				fields->insert_or_assign(std::string(CUSTOMEQUIP_KEYMODE), [item cxx_defaultModeKey]);
+			if ((item != nullptr ? item->defaultModeKey() : oo::PList()))
+				fields->insert_or_assign(std::string(CUSTOMEQUIP_KEYMODE), (item != nullptr ? item->defaultModeKey() : oo::PList()));
 			else
 				fields->erase(std::string(CUSTOMEQUIP_KEYMODE));
 		}

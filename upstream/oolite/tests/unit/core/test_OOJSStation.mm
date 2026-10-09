@@ -42,7 +42,7 @@
 
 // MARK: The classes, as far as the binding sees them ----------------------------------------------
 
-@class StationEntity, GameController, OOEquipmentType;
+@class StationEntity, GameController;
 
 // As ShipEntity.h and StationEntity.h declare them (the test imports neither).
 typedef enum
@@ -1060,13 +1060,11 @@ OO_TEST(nativeExceptions)
 }
 
 
-// The JS glue of cxx::OOEquipmentType (OOJSPrivateObject), defined in OOJSEquipmentInfo.mm, which
+// The JS glue of OOEquipmentType (OOJSPrivateObject), defined in OOJSEquipmentInfo.mm, which
 // this test does not link (bead oo-6symp.3): the vtable names these.
-namespace cxx {
 ooscript::Value OOEquipmentType::jsValueInContext(ooscript::Context)  { return ooscript::Value(); }
 void OOEquipmentType::clearJSSelf(ooscript::Object)  {}
 std::optional<std::string> OOEquipmentType::jsDescription()  { return std::nullopt; }
-}	// namespace cxx
 
 
 OO_TEST_MAIN()

@@ -40,14 +40,12 @@ SOFTWARE.
 
 #include <algorithm>
 
-namespace cxx {
 namespace {
 std::vector<oo::Ref<OOEquipmentType>>							sEquipmentTypes;
 std::vector<oo::Ref<OOEquipmentType>>							sEquipmentTypesOutfitting;
 std::map<std::string, oo::Ref<OOEquipmentType>, std::less<>>	sEquipmentTypesByIdentifier;
 std::map<std::string, std::string, std::less<>>					sMissilesRegistry;	// ship key -> missile role
 }
-}	// namespace cxx
 
 
 namespace {
@@ -109,8 +107,6 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 }
 }
 
-
-namespace cxx {
 
 void OOEquipmentType::loadEquipment()
 {
@@ -402,6 +398,21 @@ bool OOEquipmentType::initWithInfo(const oo::PList &info)
 std::optional<std::string> OOEquipmentType::descriptionComponents() const
 {
 	return oo::str::format("%s \"%s\"", _identifier.c_str(), _name.c_str());
+}
+
+
+std::string OOEquipmentType::className() const
+{
+	return "OOEquipmentType";
+}
+
+
+std::string OOEquipmentType::description() const
+{
+	std::string result = oo::str::format("<OOEquipmentType %s>", oo::str::pointerDescription(this).c_str());
+	const std::optional<std::string> components = descriptionComponents();
+	if (components.has_value())  result += "{" + *components + "}";
+	return result;
 }
 
 
@@ -796,4 +807,3 @@ OOTechLevelID OOEquipmentType::effectiveTechLevel()
 	return tl;
 }
 
-}	// namespace cxx

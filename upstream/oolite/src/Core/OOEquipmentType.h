@@ -2,11 +2,11 @@
 
 OOEquipmentType.h
 
-C++20 since bead oo-fg7i (Phase 3, proposed ADR-0056). The class is cxx::OOEquipmentType while
-OOEquipmentType+ObjCBridge.h, imported at the end of this header, keeps the Objective-C
-OOEquipmentType its unconverted callers message (ships, the player, the JS bindings); the bridge's
-deletion bead moves it out of namespace cxx. The registries of types are the class's; the facade
-keeps each registered type's Objective-C object alive while it is registered.
+C++20 since bead oo-fg7i (Phase 3, proposed ADR-0056). Its Objective-C facade was deleted by bead
+oo-9ht.28 (batch F, ADR-0056 amendment oo-9ht.19). The registries of types are the class's and
+keep each registered type alive while it is registered; ships keep weapon and missile types
+unretained (OOWeaponType, null: no weapon). A type is its own PList::Object payload
+(oo::PListForeign) and its own JS glue (OOJSPrivateObject).
 
 Class representing a type of ship equipment. Exposed to JavaScript as
 EquipmentInfo.
@@ -55,9 +55,7 @@ SOFTWARE.
 #include "Scripting/OOJSPrivateObject.h"
 
 
-namespace cxx {
-
-class OOEquipmentType : public oo::RefCounted, public ::OOJSPrivateObject
+class OOEquipmentType : public oo::PListForeign, public ::OOJSPrivateObject
 {
 public:
 	static void loadEquipment();			// Load equipment data; called on loading and when changing to/from strict mode.
@@ -156,6 +154,10 @@ public:
 	void clearJSSelf(ooscript::Object selfVal) override;
 	std::optional<std::string> jsDescription() override;
 
+	// oo::PListForeign: what the facade answered (its class, and "%@" as <OOEquipmentType 0x...>{...}).
+	std::string className() const override;
+	std::string description() const override;
+
 private:
 	OOEquipmentType() = default;
 
@@ -206,11 +208,34 @@ private:
 	ooscript::Object		_jsSelf = {};	// the EquipmentInfo object (OOJSEquipmentInfo.mm)
 };
 
-}	// namespace cxx
 
+/*	A type carried through plist data as a PList::Object node (proposed ADR-0043 Amendment 2):
+	the type is the node's foreign object (bead oo-9ht.28; what oo::PListObject() and
+	oo::ObjectIn() did for the facade).
+*/
+inline oo::PList OOEquipmentTypeObjectNode(OOEquipmentType *type)	// null type -> null PList
+{
+	if (type == nullptr)  return oo::PList();
+	return oo::PList(oo::PList::Object(oo::Ref<oo::PListForeign>(type)));
+}
 
-// Transitional: the Objective-C OOEquipmentType, for callers not yet converted. Deleted, with
-// namespace cxx above, by the bridge's deletion bead.
-#import "OOEquipmentType+ObjCBridge.h"
+inline OOEquipmentType *OOEquipmentTypeInObjectNode(const oo::PList &plist)	// null for any other node
+{
+	const oo::PList::Object *node = plist.getIf<oo::PList::Object>();
+	return (node != nullptr) ? dynamic_cast<OOEquipmentType *>(node->get()) : nullptr;
+}
+
+// An array of Object nodes, one per non-null type, in order (what oo::PListFromObjects() made of
+// the facades).
+inline oo::PList OOEquipmentTypeObjectNodes(const std::vector<oo::Ref<OOEquipmentType>> &types)
+{
+	oo::PList::Array result;
+	result.reserve(types.size());
+	for (const oo::Ref<OOEquipmentType> &type : types)
+	{
+		if (type != nullptr)  result.push_back(OOEquipmentTypeObjectNode(type.get()));
+	}
+	return oo::PList(std::move(result));
+}
 
 #endif	// OOEQUIPMENTTYPE_H
