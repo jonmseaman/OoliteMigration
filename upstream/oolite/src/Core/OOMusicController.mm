@@ -32,7 +32,7 @@ MA 02110-1301, USA.
 
 namespace {
 
-cxx::OOMusicController *sSingleton = nullptr;
+OOMusicController *sSingleton = nullptr;
 
 }	// namespace
 
@@ -48,8 +48,6 @@ enum
 	kSpecialMission
 };
 
-
-namespace cxx {
 
 OOMusicController *OOMusicController::sharedController()
 {
@@ -91,7 +89,7 @@ void OOMusicController::playMusicNamed(const std::string &name, bool loop, float
 
 	if (_mode == kOOMusicOn || (_mode == kOOMusicITunes && name == "OoliteTheme.ogg"))
 	{
-		oo::Ref<OOMusic> music = ResourceManager::ooMusicNamed(name, std::string("Music"));
+		oo::Ref<OOMusic> music = cxx::ResourceManager::ooMusicNamed(name, std::string("Music"));
 		if (music)
 		{
 			if (_current)  _current->stop();
@@ -327,4 +325,4 @@ void OOMusicController::playiTunesPlaylist(const char * /*playlistName*/) {}
 void OOMusicController::pauseiTunes() {}
 #endif
 
-}	// namespace cxx
+

@@ -174,8 +174,9 @@ BOOL HasRoleInSetPredicate(Entity *ship, void *parameter)
 {
 	// parameter: the role strings, as the callers pass them (none empty); -intersectsSet: of them
 	const std::vector<std::string> &roles = *static_cast<const std::vector<std::string> *>(parameter);
-	OORoleSet *roleSet = [(ShipEntity *)ship roleSet];
-	return std::any_of(roles.begin(), roles.end(), [roleSet](const std::string &role) { return [roleSet hasRole:role]; });
+	const oo::Ref<OORoleSet> roleSet = oo::ToCxx((ShipEntity *)ship)->getRoleSet();
+	if (roleSet == nullptr)  return NO;
+	return std::any_of(roles.begin(), roles.end(), [&roleSet](const std::string &role) { return roleSet->hasRole(role); });
 }
 
 

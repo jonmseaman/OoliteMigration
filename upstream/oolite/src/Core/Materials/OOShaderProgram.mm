@@ -68,8 +68,6 @@ OOOpenGLMatrixManager *GameViewMatrixManager()
 }	// namespace
 
 
-namespace cxx {
-
 /*	Cache key -> program, not retained: a program removes itself in its destructor. Was an
 	Objective-C mutable dictionary of boxed values (bead oo-3rb.10); keys are the cache keys' UTF-8.
 	Allocated on first use and never freed, as the dictionary was, so a program destroyed
@@ -93,14 +91,12 @@ void CacheShaderProgram(const std::string &cacheKey, OOShaderProgram *program)
 }
 
 
-/*	The program in use, retained (sActiveProgram). It holds the Objective-C object (the facade),
-	which owns the C++ program and is what sActiveProgram retained, so a program in use keeps its
-	facade while the facade exists (proposed ADR-0056, amendment oo-f9zg item 2). Never destroyed,
-	as the static pointer was not (amendment oo-smy item 3).
+/*	The program in use, retained (sActiveProgram). Never destroyed, as the static pointer was not
+	(proposed ADR-0056, amendment oo-smy item 3).
 */
-oo::ObjCRef<::OOShaderProgram *> &ActiveProgram()
+oo::Ref<OOShaderProgram> &ActiveProgram()
 {
-	static auto *active = new oo::ObjCRef<::OOShaderProgram *>;
+	static auto *active = new oo::Ref<OOShaderProgram>;
 	return *active;
 }
 
@@ -196,7 +192,7 @@ OOShaderProgram::~OOShaderProgram()
 
 #ifndef NDEBUG
 	// Cannot happen while being in use retains the program; kept as the old imbalance check.
-	if (EXPECT_NOT(ActiveProgram() != nullptr && oo::ToCxx(ActiveProgram().get()) == this))
+	if (EXPECT_NOT(ActiveProgram() != nullptr && ActiveProgram().get() == this))
 	{
 		OO_LOG("shader.dealloc.imbalance", "{}", "***** OOShaderProgram deallocated while active, indicating a retain/release imbalance. Expect imminent crash.");
 		// applyNone(), but not released: it is being destroyed.
@@ -219,14 +215,9 @@ void OOShaderProgram::apply()
 {
 	OO_ENTER_OPENGL();
 
-	if (oo::ToCxx(ActiveProgram().get()) != this)
+	if (ActiveProgram().get() != this)
 	{
-		// The pool drains oo::ToObjC's autorelease here, so the program in use carries only the
-		// slot's retain, as [program retain] did (amendment oo-f9zg item 2).
-		@autoreleasepool
-		{
-			ActiveProgram() = oo::ObjCRef<::OOShaderProgram *>(oo::ToObjC(this));
-		}
+		ActiveProgram() = oo::Ref<OOShaderProgram>(this);
 		OOGL(glUseProgramObjectARB(_program));
 		bindStandardMatrixUniforms();
 	}
@@ -249,8 +240,6 @@ GLhandleARB OOShaderProgram::program()
 {
 	return _program;
 }
-
-}	// namespace cxx
 
 
 namespace {
@@ -327,8 +316,6 @@ BOOL ValidateShaderObject(GLhandleARB object, const std::optional<std::string> &
 
 }	// namespace
 
-
-namespace cxx {
 
 bool OOShaderProgram::initWithVertexShaderSource(const std::optional<std::string> &vertexSource,
 												 const std::optional<std::string> &fragmentSource,
@@ -471,8 +458,6 @@ void OOShaderProgram::bindStandardMatrixUniforms()
 	}
 	return;
 }
-
-}	// namespace cxx
 
 
 namespace {

@@ -101,7 +101,7 @@ std::string ClassName(cxx::OOSound &sound)
 
 /*	The class of a C++ sound's facade: a converted subclass in namespace cxx that its callers make
 	by alloc/init has a facade of its own, the Objective-C class of the same name, a subclass of
-	this one (cxx::OOMusic's is OOMusic; amendment oo-up4b item 3). Any other
+	this one (the music's was OOMusic until bead oo-9ht.85; amendment oo-up4b item 3). Any other
 	C++ sound (a global class) is an OOSound.
 */
 Class FacadeClass(cxx::OOSound &sound)

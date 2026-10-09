@@ -283,9 +283,11 @@ std::optional<std::string> JoinedTags(const oo::PList &manifest)
 	}
 	return result;
 }
-} // namespace
 
-static cxx::OOOXZManager *sSingleton = nullptr;	// the one +1 is never released (amendment oo-r7m0 item 1)
+
+OOOXZManager *sSingleton = nullptr;	// the one +1 is never released (amendment oo-r7m0 item 1)
+
+} // namespace
 
 namespace {
 
@@ -306,8 +308,6 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 }
 
 }  // namespace
-
-namespace cxx {
 
 OOOXZManager *OOOXZManager::sharedManager()
 {
@@ -416,7 +416,7 @@ bool OOOXZManager::ensureInstallPath()
 
 std::optional<std::string> OOOXZManager::manifestPath()
 {
-	const std::optional<std::string> cacheDirectory = OOCacheManager::sharedCache()->cacheDirectoryPathCreatingIfNecessary(true);
+	const std::optional<std::string> cacheDirectory = cxx::OOCacheManager::sharedCache()->cacheDirectoryPathCreatingIfNecessary(true);
 	if (!cacheDirectory.has_value())  return std::nullopt;
 	return oo::str::appendingPathComponent(*cacheDirectory, kOOOXZManifestCache);
 }
@@ -427,7 +427,7 @@ std::optional<std::string> OOOXZManager::manifestPath()
  * off to the side a bit */
 std::optional<std::string> OOOXZManager::downloadPath()
 {
-	const std::optional<std::string> cacheDirectory = OOCacheManager::sharedCache()->cacheDirectoryPathCreatingIfNecessary(true);
+	const std::optional<std::string> cacheDirectory = cxx::OOCacheManager::sharedCache()->cacheDirectoryPathCreatingIfNecessary(true);
 	if (!cacheDirectory.has_value())  return std::nullopt;
 	if (_interfaceState == OXZ_STATE_UPDATING)
 	{
@@ -1218,28 +1218,28 @@ OXZInstallableState OOOXZManager::installableState(const oo::PList &manifest)
 }
 
 
-oo::Ref<OOColor> OOOXZManager::colorForManifest(const oo::PList &manifest)
+oo::Ref<cxx::OOColor> OOOXZManager::colorForManifest(const oo::PList &manifest)
 {
 	switch (installableState(manifest))
 	{
 	case OXZ_INSTALLABLE_OKAY:
-		return OOColor::yellowColor();
+		return cxx::OOColor::yellowColor();
 	case OXZ_INSTALLABLE_UPDATE:
-		return OOColor::cyanColor();
+		return cxx::OOColor::cyanColor();
 	case OXZ_INSTALLABLE_DEPENDENCIES:
-		return OOColor::orangeColor();
+		return cxx::OOColor::orangeColor();
 	case OXZ_INSTALLABLE_CONFLICTS:
-		return OOColor::brownColor();
+		return cxx::OOColor::brownColor();
 	case OXZ_UNINSTALLABLE_ALREADY:
-		return OOColor::whiteColor();
+		return cxx::OOColor::whiteColor();
 	case OXZ_UNINSTALLABLE_MANUAL:
-		return OOColor::redColor();
+		return cxx::OOColor::redColor();
 	case OXZ_UNINSTALLABLE_VERSION:
-		return OOColor::grayColor();
+		return cxx::OOColor::grayColor();
 	case OXZ_UNINSTALLABLE_NOREMOTE:
-		return OOColor::blueColor();
+		return cxx::OOColor::blueColor();
 	}
-	return OOColor::yellowColor(); // never
+	return cxx::OOColor::yellowColor(); // never
 }
 
 
@@ -1441,7 +1441,7 @@ void OOOXZManager::gui()
 		if (_interfaceState != OXZ_STATE_MAIN)
 		{
 			[gui cxx_setText:DescFormat(OO_DESC("oolite-oxzmanager-currentfilter-is-@-@"), {cxx_OOExpand("[oolite_key_oxzmanager_setfilter]").value_or("(null)"), _currentFilter}) forRow:OXZ_GUI_ROW_LISTFILTER align:GUI_ALIGN_LEFT];
-			[gui setColor:oo::ToObjC(OOColor::greenColor()) forRow:OXZ_GUI_ROW_LISTFILTER];
+			[gui setColor:oo::ToObjC(cxx::OOColor::greenColor()) forRow:OXZ_GUI_ROW_LISTFILTER];
 		}
 
 		[gui cxx_setText:OO_DESC("oolite-oxzmanager-install") forRow:OXZ_GUI_ROW_INSTALL align:GUI_ALIGN_CENTER];
@@ -1526,8 +1526,8 @@ void OOOXZManager::gui()
 			[gui cxx_addLongText:OO_DESC("oolite-oxzmanager-extract-info") startingAtRow:2 align:GUI_ALIGN_LEFT];
 #ifdef NDEBUG
 			[gui cxx_addLongText:OO_DESC("oolite-oxzmanager-extract-releasebuild") startingAtRow:7 align:GUI_ALIGN_LEFT];
-			[gui setColor:oo::ToObjC(OOColor::orangeColor()) forRow:7];
-			[gui setColor:oo::ToObjC(OOColor::orangeColor()) forRow:8];
+			[gui setColor:oo::ToObjC(cxx::OOColor::orangeColor()) forRow:7];
+			[gui setColor:oo::ToObjC(cxx::OOColor::orangeColor()) forRow:8];
 #endif
 			// (a nil identifier or version read "(null)" in the directory name)
 			const std::optional<std::string> path = extractionBasePathForIdentifier(identifier.value_or("(null)"), version.value_or("(null)"));
@@ -1537,7 +1537,7 @@ void OOOXZManager::gui()
 				  startingAtRow:10 align:GUI_ALIGN_LEFT];
 				startRow = OXZ_GUI_ROW_CANCEL;
 				[gui cxx_setText:OO_DESC("oolite-oxzmanager-extract-unavailable") forRow:OXZ_GUI_ROW_PROCEED align:GUI_ALIGN_CENTER];
-				[gui setColor:oo::ToObjC(OOColor::grayColor()) forRow:OXZ_GUI_ROW_PROCEED];
+				[gui setColor:oo::ToObjC(cxx::OOColor::grayColor()) forRow:OXZ_GUI_ROW_PROCEED];
 			}
 			else
 			{
@@ -1779,11 +1779,11 @@ void OOOXZManager::refreshTextInput(const std::string &input)
 	[gui cxx_setText:DescFormat(OO_DESC("oolite-oxzmanager-text-prompt-@"), {input}) forRow:OXZ_GUI_ROW_INPUT align:GUI_ALIGN_LEFT];
 	if (validateFilter(input))
 	{
-		[gui setColor:oo::ToObjC(OOColor::cyanColor()) forRow:OXZ_GUI_ROW_INPUT];
+		[gui setColor:oo::ToObjC(cxx::OOColor::cyanColor()) forRow:OXZ_GUI_ROW_INPUT];
 	}
 	else
 	{
-		[gui setColor:oo::ToObjC(OOColor::orangeColor()) forRow:OXZ_GUI_ROW_INPUT];
+		[gui setColor:oo::ToObjC(cxx::OOColor::orangeColor()) forRow:OXZ_GUI_ROW_INPUT];
 	}
 }
 
@@ -1871,7 +1871,7 @@ void OOOXZManager::processShowInfoKey()
 				  
 // instructions
 			[gui cxx_setText:cxx_OOExpand(cxx_OOLookUpDescriptionPRIV("oolite-oxzmanager-infopage-return")) forRow:27 align:GUI_ALIGN_CENTER];
-			[gui setColor:oo::ToObjC(OOColor::greenColor()) forRow:27];
+			[gui setColor:oo::ToObjC(cxx::OOColor::greenColor()) forRow:27];
 
 		}
 	}
@@ -1939,7 +1939,7 @@ OOGUIRow OOOXZManager::showInstallOptions()
 
 	if (_offset > 0)
 	{
-		[gui setColor:oo::ToObjC(OOColor::greenColor()) forRow:OXZ_GUI_ROW_LISTPREV];
+		[gui setColor:oo::ToObjC(cxx::OOColor::greenColor()) forRow:OXZ_GUI_ROW_LISTPREV];
 		[gui cxx_setArray:Columns({OO_DESC("gui-back"), "", "", " <-- "}) forRow:OXZ_GUI_ROW_LISTPREV];
 		[gui cxx_setKey:"_BACK" forRow:OXZ_GUI_ROW_LISTPREV];
 	}
@@ -1954,7 +1954,7 @@ OOGUIRow OOOXZManager::showInstallOptions()
 	}
 	if (_offset + 10 < optCount)
 	{
-		[gui setColor:oo::ToObjC(OOColor::greenColor()) forRow:OXZ_GUI_ROW_LISTNEXT];
+		[gui setColor:oo::ToObjC(cxx::OOColor::greenColor()) forRow:OXZ_GUI_ROW_LISTNEXT];
 		[gui cxx_setArray:Columns({OO_DESC("gui-more"), "", "", " --> "}) forRow:OXZ_GUI_ROW_LISTNEXT];
 		[gui cxx_setKey:"_NEXT" forRow:OXZ_GUI_ROW_LISTNEXT];
 	}
@@ -2039,7 +2039,7 @@ OOGUIRow OOOXZManager::showInstallOptions()
 			oxzLineSelected = true;
 
 			[gui cxx_setText:installStatusForManifest(manifest).value_or(std::string()) forRow:OXZ_GUI_ROW_LISTSTATUS];
-			[gui setColor:oo::ToObjC(OOColor::greenColor()) forRow:OXZ_GUI_ROW_LISTSTATUS];
+			[gui setColor:oo::ToObjC(cxx::OOColor::greenColor()) forRow:OXZ_GUI_ROW_LISTSTATUS];
 
 			[gui cxx_addLongText:FirstDescriptionLine(manifest) startingAtRow:OXZ_GUI_ROW_LISTDESC align:GUI_ALIGN_LEFT];
 
@@ -2137,7 +2137,7 @@ OOGUIRow OOOXZManager::showRemoveOptions()
 						   OO_DESC("oolite-oxzmanager-heading-version")}) forRow:OXZ_GUI_ROW_LISTHEAD];
 	if (_offset > 0)
 	{
-		[gui setColor:oo::ToObjC(OOColor::greenColor()) forRow:OXZ_GUI_ROW_LISTPREV];
+		[gui setColor:oo::ToObjC(cxx::OOColor::greenColor()) forRow:OXZ_GUI_ROW_LISTPREV];
 		[gui cxx_setArray:Columns({OO_DESC("gui-back"), "", " <-- "}) forRow:OXZ_GUI_ROW_LISTPREV];
 		[gui cxx_setKey:"_BACK" forRow:OXZ_GUI_ROW_LISTPREV];
 	}
@@ -2152,7 +2152,7 @@ OOGUIRow OOOXZManager::showRemoveOptions()
 	}
 	if (_offset + OXZ_GUI_NUM_LISTROWS < managedOXZs().count())
 	{
-		[gui setColor:oo::ToObjC(OOColor::greenColor()) forRow:OXZ_GUI_ROW_LISTNEXT];
+		[gui setColor:oo::ToObjC(cxx::OOColor::greenColor()) forRow:OXZ_GUI_ROW_LISTNEXT];
 		[gui cxx_setArray:Columns({OO_DESC("gui-more"), "", " --> "}) forRow:OXZ_GUI_ROW_LISTNEXT];
 		[gui cxx_setKey:"_NEXT" forRow:OXZ_GUI_ROW_LISTNEXT];
 	}
@@ -2199,7 +2199,7 @@ OOGUIRow OOOXZManager::showRemoveOptions()
 		if (row == [gui selectedRow])
 		{
 			[gui cxx_setText:installStatusForManifest(manifest).value_or(std::string()) forRow:OXZ_GUI_ROW_LISTSTATUS];
-			[gui setColor:oo::ToObjC(OOColor::greenColor()) forRow:OXZ_GUI_ROW_LISTSTATUS];
+			[gui setColor:oo::ToObjC(cxx::OOColor::greenColor()) forRow:OXZ_GUI_ROW_LISTSTATUS];
 
 			[gui cxx_addLongText:FirstDescriptionLine(manifest) startingAtRow:OXZ_GUI_ROW_LISTDESC align:GUI_ALIGN_LEFT];
 			
@@ -2521,5 +2521,4 @@ void OOOXZManager::downloadDidFailWithError(const std::string &error)
 	_currentDownload = nullptr;
 }
 
-}	// namespace cxx
 

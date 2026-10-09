@@ -2166,12 +2166,12 @@ id cxx::ResourceManager::retrieveFileNamed(const std::string &fileName,
 }
 
 
-oo::Ref<cxx::OOMusic> cxx::ResourceManager::ooMusicNamed(const std::string &fileName, const std::optional<std::string> &folderName)
+oo::Ref<OOMusic> cxx::ResourceManager::ooMusicNamed(const std::string &fileName, const std::optional<std::string> &folderName)
 {
 	// Don't cache music objects; minimizing latency isn't really important.
 	const std::optional<std::string> path = pathForFileNamed(fileName, folderName, YES);
 	if (!path.has_value())  return nullptr;
-	return cxx::OOMusic::initWithContentsOfFile(path);
+	return OOMusic::initWithContentsOfFile(path);
 }
 
 

@@ -65,7 +65,7 @@ public:
 	void update(OOTimeDelta delta_t) override;
 
 #if OO_SHADERS
-	cxx::OOShaderProgram *getShader();
+	OOShaderProgram *getShader();
 	Vector offsetPlayerPosition();	// bound to the dust shader by selector, through the binding object
 #endif
 	Vector warpVector();			// bound to the dust shader by selector, through the binding object
@@ -94,7 +94,7 @@ private:
 	
 #if OO_SHADERS
 	GLfloat				warpinessAttr[DUST_N_PARTICLES * 2] = {};
-	oo::Ref<cxx::OOShaderProgram>	shader;
+	oo::Ref<OOShaderProgram>	shader;
 	std::vector<oo::Ref<OOShaderUniform>>	uniforms;
 	oo::ObjCRef<id>		shaderBinding;	// what the uniforms are bound to (DustEntity.mm)
 	uint8_t				shaderMode = {};

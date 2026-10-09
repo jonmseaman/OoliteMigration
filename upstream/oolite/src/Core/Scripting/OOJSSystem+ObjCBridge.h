@@ -38,7 +38,7 @@ MA 02110-1301, USA.
 #import "Universe.h"
 #import "PlayerEntityScriptMethods.h"
 
-@class OOJSPopulatorDefinition, OOShipGroup, OOVisualEffectEntity;
+@class OOShipGroup, OOVisualEffectEntity;
 
 
 // The player, as the property getter and setter, toString() and the planet methods read it.
@@ -96,7 +96,5 @@ void OOJSSystemPlayerAddShipsAt(PlayerEntity *player, const std::string &rolesNu
 void OOJSSystemPlayerAddShipsAtPrecisely(PlayerEntity *player, const std::string &rolesNumberSystemXYZ);
 void OOJSSystemPlayerAddShipsWithinRadius(PlayerEntity *player, const std::string &rolesNumberSystemXYZR);
 OOShipGroup *OOJSSystemShipGroup(ShipEntity *ship);
-// [[OOJSPopulatorDefinition alloc] init]: the facade of a new definition, retained (+1).
-OOJSPopulatorDefinition *OOJSSystemNewPopulatorDefinition() OO_RETURNS_RETAINED;
 
 #endif	// OOJSSYSTEM_OBJCBRIDGE_H

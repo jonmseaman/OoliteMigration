@@ -45,7 +45,7 @@ SOFTWARE.
 // The public initialisers, each [[self alloc] init...] of the old (self is result): a new uniform
 // whose initialiser answered nil is dropped (null) instead of released.
 
-oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &uniformName, ::OOShaderProgram *shaderProgram, GLint constValue)
+oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &uniformName, OOShaderProgram *shaderProgram, GLint constValue)
 {
 	oo::Ref<OOShaderUniform> result = oo::adopt(new OOShaderUniform());
 	if (!result->initWithName(uniformName, shaderProgram))  return nullptr;
@@ -58,7 +58,7 @@ oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &unifor
 }
 
 
-oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &uniformName, ::OOShaderProgram *shaderProgram, GLfloat constValue)
+oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &uniformName, OOShaderProgram *shaderProgram, GLfloat constValue)
 {
 	oo::Ref<OOShaderUniform> result = oo::adopt(new OOShaderUniform());
 	if (!result->initWithName(uniformName, shaderProgram))  return nullptr;
@@ -71,7 +71,7 @@ oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &unifor
 }
 
 
-oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &uniformName, ::OOShaderProgram *shaderProgram, GLfloat constValue[4])
+oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &uniformName, OOShaderProgram *shaderProgram, GLfloat constValue[4])
 {
 	oo::Ref<OOShaderUniform> result = oo::adopt(new OOShaderUniform());
 	if (!result->initWithName(uniformName, shaderProgram))  return nullptr;
@@ -84,7 +84,7 @@ oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &unifor
 }
 
 
-oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &uniformName, ::OOShaderProgram *shaderProgram, cxx::OOColor *constValue)
+oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &uniformName, OOShaderProgram *shaderProgram, cxx::OOColor *constValue)
 {
 	if (EXPECT_NOT(constValue == nullptr))
 	{
@@ -105,7 +105,7 @@ oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &unifor
 }
 
 
-oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &uniformName, ::OOShaderProgram *shaderProgram, Quaternion constValue, bool asMatrix)
+oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &uniformName, OOShaderProgram *shaderProgram, Quaternion constValue, bool asMatrix)
 {
 	oo::Ref<OOShaderUniform> result = oo::adopt(new OOShaderUniform());
 	if (!result->initWithName(uniformName, shaderProgram))  return nullptr;
@@ -129,7 +129,7 @@ oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &unifor
 }
 
 
-oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &uniformName, ::OOShaderProgram *shaderProgram, OOMatrix constValue)
+oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &uniformName, OOShaderProgram *shaderProgram, OOMatrix constValue)
 {
 	oo::Ref<OOShaderUniform> result = oo::adopt(new OOShaderUniform());
 	if (!result->initWithName(uniformName, shaderProgram))  return nullptr;
@@ -143,7 +143,7 @@ oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &unifor
 
 
 oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &uniformName,
-													   ::OOShaderProgram *shaderProgram,
+													   OOShaderProgram *shaderProgram,
 													   id<OOWeakReferenceSupport> target,
 													   SEL selector,
 													   OOUniformConvertOptions options)
@@ -160,7 +160,7 @@ oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &unifor
 
 	if (OK)
 	{
-		result->location = glGetUniformLocationARB([shaderProgram program], uniformName.c_str());
+		result->location = glGetUniformLocationARB(shaderProgram->program(), uniformName.c_str());
 		if (result->location == -1)
 		{
 			OK = NO;
@@ -393,7 +393,7 @@ void OOShaderUniform::setBindingTarget(id<OOWeakReferenceSupport> target)
 
 
 // Designated initializer.
-bool OOShaderUniform::initWithName(const std::string &uniformName, ::OOShaderProgram *shaderProgram)
+bool OOShaderUniform::initWithName(const std::string &uniformName, OOShaderProgram *shaderProgram)
 {
 	BOOL					OK = YES;
 
@@ -403,7 +403,7 @@ bool OOShaderUniform::initWithName(const std::string &uniformName, ::OOShaderPro
 
 	if (OK)
 	{
-		location = glGetUniformLocationARB([shaderProgram program], uniformName.c_str());
+		location = glGetUniformLocationARB(shaderProgram->program(), uniformName.c_str());
 		if (location == -1)  OK = NO;
 	}
 

@@ -88,9 +88,8 @@ oo::PList NativeVectorArray(const std::vector<Vector> &vectors)
 	result.reserve(vectors.size());
 	for (Vector v : vectors)
 	{
-		// The box is C++ (cxx::OONativeVector); JavaScript is handed its facade, as before.
-		const oo::Ref<cxx::OONativeVector> vector = oo::makeRef<cxx::OONativeVector>(v);
-		result.push_back(oo::PListObject(oo::ToObjC(vector)));
+		// The box is the Object node's foreign object; the engine gives JavaScript its Vector3D.
+		result.push_back(oo::PList(oo::PList::Object(oo::makeRef<OONativeVector>(v))));
 	}
 	return oo::PList(std::move(result));
 }
@@ -762,7 +761,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 
 		case kShip_roles:
 			{
-				cxx::OORoleSet *roleSet = oo::ToCxx(ship->getRoleSet());
+				const oo::Ref<OORoleSet> roleSet = ship->getRoleSet();
 				result = roleSet != nullptr ? StringArray(roleSet->sortedRoles()) : oo::PList();
 			}
 			break;
@@ -770,7 +769,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 		case kShip_roleWeights:
 			{
 				// Floats, as numberWithFloat: made them; nil when there is no role set.
-				cxx::OORoleSet *roleSet = oo::ToCxx(ship->getRoleSet());
+				const oo::Ref<OORoleSet> roleSet = ship->getRoleSet();
 				if (const auto roleWeights = (roleSet != nullptr) ? roleSet->rolesAndProbabilities() : std::nullopt)
 				{
 					oo::PList::Dict weights;

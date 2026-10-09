@@ -39,8 +39,6 @@ MA 02110-1301, USA.
 #include "oofnd/String.hpp"
 
 
-namespace cxx {
-
 // basic alloc/ dealloc routines
 //
 static int crid_counter = 1;
@@ -239,7 +237,7 @@ bool CollisionRegion::checkEntity(::Entity *ent)
 	}
 	
 	addEntity(ent);
-	[ent setCollisionRegion:oo::ToObjC(this)];
+	ent->_cxxEntity->setCollisionRegion(this);
 	return YES;
 }
 
@@ -275,7 +273,7 @@ void CollisionRegion::findCollisions()
 #ifndef NDEBUG
 	if (gDebugFlags & DEBUG_COLLISIONS)
 	{
-		OO_LOG("collisionRegion.debug", "DEBUG in collision region {} testing {} out of {} entities", oo::DescriptionOf(oo::ToObjC(this)), n_entities_to_test, n_entities);
+		OO_LOG("collisionRegion.debug", "DEBUG in collision region {} testing {} out of {} entities", oo::str::format("<CollisionRegion %s>{%s}", oo::str::pointerDescription(this).c_str(), descriptionComponents().value_or("").c_str()), n_entities_to_test, n_entities);
 	}
 #endif
 	
@@ -435,8 +433,6 @@ void CollisionRegion::findCollisions()
 }
 
 
-}	// namespace cxx
-
 
 // an outValue of 1 means it's just being occluded.
 static BOOL entityByEntityOcclusionToValue(::Entity *e1, ::Entity *e2, OOSunEntity *the_sun, float *outValue)
@@ -574,8 +570,6 @@ static inline BOOL testEntityOccludedByEntity(::Entity *e1, ::Entity *e2, OOSunE
 	return entityByEntityOcclusionToValue(e1, e2, the_sun, &tmp);
 }
 
-
-namespace cxx {
 
 void CollisionRegion::findShadowedEntities()
 {
@@ -729,5 +723,3 @@ std::optional<std::string> CollisionRegion::debugOut()
 	}
 	return result;
 }
-
-}	// namespace cxx

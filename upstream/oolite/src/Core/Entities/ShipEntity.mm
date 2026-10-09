@@ -1019,8 +1019,8 @@ bool ShipEntity::setUpShipFromDictionary(const oo::PList &shipDict)
 	hasScoopMessage = shipDict.get<bool>("has_scoop_message", YES);
 
 	
-	[roleSet release];
-	roleSet = [[[::OORoleSet roleSetWithString:shipDict.get<std::string>("roles")] roleSetWithRemovedRole:"player"] retain];
+	roleSet = nullptr;
+	if (const oo::Ref<::OORoleSet> roles = ::OORoleSet::roleSetWithString(shipDict.get<std::string>("roles")))  roleSet = roles->roleSetWithRemovedRole("player");
 	primaryRole.reset();
 
 	[self setOwner:self];
@@ -2001,7 +2001,7 @@ void ShipEntity::setIsBoulder(bool flag)
 
 bool ShipEntity::isBoulder()
 {
-	return [roleSet hasRole:std::string(kBoulderRole)];
+	return roleSet != nullptr && roleSet->hasRole(std::string(kBoulderRole));
 }
 
 
@@ -4233,7 +4233,8 @@ bool ShipEntity::removeExternalStore(::OOEquipmentType *eqType)
 
 		if(isRandomMissile)
 		{
-			for (const std::string &value : [[missile roleSet] roles])
+			const oo::Ref<::OORoleSet> missileRoles = oo::ToCxx(missile)->getRoleSet();
+			for (const std::string &value : (missileRoles != nullptr) ? missileRoles->roles() : std::vector<std::string>())
 			{
 				role = value;
 				missileType = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:role];
@@ -7869,17 +7870,21 @@ bool ShipEntity::hasRole(const std::string &role)
 {
 	::ShipEntity *self = oo::ToObjC(this);
 
-	if ([roleSet hasRole:role])  return YES;
+	if (roleSet != nullptr && roleSet->hasRole(role))  return YES;
 	return role == primaryRole || role == [self cxx_shipDataKeyAutoRole];
 }
 
 
-::OORoleSet *ShipEntity::getRoleSet()
+oo::Ref<::OORoleSet> ShipEntity::getRoleSet()
 {
 	::ShipEntity *self = oo::ToObjC(this);
 
-	if (roleSet == nil)  roleSet = [[::OORoleSet alloc] initWithRoleString:primaryRole.value_or(std::string())];
-	return [[roleSet roleSetWithAddedRoleIfNotSet:primaryRole.value_or(std::string()) probability:1.0] roleSetWithAddedRoleIfNotSet:*[self cxx_shipDataKeyAutoRole] probability:1.0];
+	// A null set answers null, as the messages to a nil set did.
+	if (roleSet == nullptr)  roleSet = ::OORoleSet::roleSetWithString(primaryRole.value_or(std::string()));
+	if (roleSet == nullptr)  return nullptr;
+	const oo::Ref<::OORoleSet> withPrimary = roleSet->roleSetWithAddedRoleIfNotSet(primaryRole.value_or(std::string()), 1.0);
+	if (withPrimary == nullptr)  return nullptr;
+	return withPrimary->roleSetWithAddedRoleIfNotSet(*[self cxx_shipDataKeyAutoRole], 1.0);
 }
 
 
@@ -7897,13 +7902,12 @@ void ShipEntity::addRole(const std::string &role, float probability)
 
 	if (![self hasRole:role])
 	{
-		::OORoleSet *newRoles = nil;
-		if (roleSet != nil)  newRoles = [roleSet roleSetWithAddedRole:role probability:probability];
-		else  newRoles = [::OORoleSet roleSetWithRole:role probability:probability];
-		if (newRoles != nil)
+		oo::Ref<::OORoleSet> newRoles;
+		if (roleSet != nullptr)  newRoles = roleSet->roleSetWithAddedRole(role, probability);
+		else  newRoles = ::OORoleSet::roleSetWithRole(role, probability);
+		if (newRoles != nullptr)
 		{
-			[roleSet release];
-			roleSet = [newRoles retain];
+			roleSet = newRoles;
 		}
 	}
 }
@@ -7915,11 +7919,10 @@ void ShipEntity::removeRole(const std::string &role)
 
 	if ([self hasRole:role])
 	{
-		::OORoleSet *newRoles = [roleSet roleSetWithRemovedRole:role];
-		if (newRoles != nil)
+		const oo::Ref<::OORoleSet> newRoles = (roleSet != nullptr) ? roleSet->roleSetWithRemovedRole(role) : nullptr;
+		if (newRoles != nullptr)
 		{
-			[roleSet release];
-			roleSet = [newRoles retain];
+			roleSet = newRoles;
 		}
 	}
 }
@@ -7931,7 +7934,7 @@ std::optional<std::string> ShipEntity::getPrimaryRole()
 
 	if (!primaryRole.has_value())
 	{
-		primaryRole = [roleSet anyRole];
+		primaryRole = (roleSet != nullptr) ? roleSet->anyRole() : std::nullopt;
 		if (!primaryRole.has_value())  primaryRole = "trader";
 		OO_LOG("ship.noPrimaryRole", "{} had no primary role, randomly selected \"{}\".", [self cxx_name].value_or("(null)"), primaryRole.value_or("(null)"));
 	}
@@ -9878,7 +9881,7 @@ void ShipEntity::becomeExplosion()
 	
 	@try
 	{
-		if ([self isThargoid] && [roleSet hasRole:"thargoid-mothership"])  [self broadcastThargoidDestroyed];
+		if ([self isThargoid] && roleSet != nullptr && roleSet->hasRole("thargoid-mothership"))  [self broadcastThargoidDestroyed];
 		
 		if (!suppressExplosion && ([self isVisible] || HPdistance2([self position], [PLAYER position]) < SCANNER_MAX_RANGE2))
 		{
@@ -15211,14 +15214,30 @@ void ShipEntity::setTrackCloseContacts(bool value)
 }
 
 
+#if OO_SALVAGE_SUPPORT || !defined(NDEBUG)
+// What oo::DescriptionOf printed for the deleted facade: "(null)" for none, else
+// <OORoleSet 0x...>{roles} (OODescription.h).
+namespace {
+std::string RoleSetDescription(::OORoleSet *roleSet)
+{
+	if (roleSet == nullptr)  return "(null)";
+	std::string result = oo::str::format("<OORoleSet %s>", oo::str::pointerDescription(roleSet).c_str());
+	if (const std::optional<std::string> components = roleSet->descriptionComponents())  result += "{" + *components + "}";
+	return result;
+}
+}	// namespace
+#endif
+
+
 #if OO_SALVAGE_SUPPORT
 // Never used.
+
 void ShipEntity::claimAsSalvage()
 {
 	::ShipEntity *self = oo::ToObjC(this);
 	// Create a bouy and beacon where the hulk is.
 	// Get the main GalCop station to launch a pilot boat to deliver a pilot to the hulk.
-	OO_LOG("claimAsSalvage.called", "claimAsSalvage called on {} {}", [self cxx_name].value_or("(null)"), oo::DescriptionOf([self roleSet]));
+	OO_LOG("claimAsSalvage.called", "claimAsSalvage called on {} {}", [self cxx_name].value_or("(null)"), RoleSetDescription(getRoleSet().get()));
 	
 	// Not an abandoned hulk, so don't allow the salvage
 	if (![self isHulk])
@@ -15327,7 +15346,7 @@ void ShipEntity::dumpSelfState()
 	OO_LOG("dumpState.shipEntity", "Type: {}", [self cxx_shipDataKey].value_or("(null)"));
 	OO_LOG("dumpState.shipEntity", "Name: {}", name.value_or("(null)"));
 	OO_LOG("dumpState.shipEntity", "Display Name: {}", [self displayName].value_or("(null)"));
-	OO_LOG("dumpState.shipEntity", "Roles: {}", oo::DescriptionOf([self roleSet]));
+	OO_LOG("dumpState.shipEntity", "Roles: {}", RoleSetDescription(getRoleSet().get()));
 	OO_LOG("dumpState.shipEntity", "Primary role: {}", primaryRole.value_or("(null)"));
 	OO_LOG("dumpState.shipEntity", "Script: {}", oo::DescriptionOf(script));
 	OO_LOG("dumpState.shipEntity", "Subentity count: {}", [self subEntityCount]);

@@ -44,8 +44,6 @@ typedef struct OOSoundSourcePoolElement
 } PoolElement;
 
 
-namespace cxx {
-
 oo::Ref<OOSoundSourcePool> OOSoundSourcePool::poolWithCount(uint8_t count, OOTimeDelta minRepeat)
 {
 	oo::Ref<OOSoundSourcePool> pool = oo::makeRef<OOSoundSourcePool>();
@@ -245,4 +243,4 @@ uint8_t OOSoundSourcePool::selectSlotForPriority(float priority)
 	return expiredEqual;	// Will be kNoSlot if none found
 }
 
-}	// namespace cxx
+

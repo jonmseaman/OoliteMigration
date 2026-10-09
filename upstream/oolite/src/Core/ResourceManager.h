@@ -36,7 +36,7 @@ MA 02110-1301, USA.
 #include <string_view>
 
 @class OOSound, OOSystemDescriptionManager, OOScript;
-namespace cxx { class OOMusic; }
+class OOMusic;
 
 
 typedef enum

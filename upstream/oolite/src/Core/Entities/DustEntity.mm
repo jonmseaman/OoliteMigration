@@ -214,7 +214,7 @@ void DustEntity::update(OOTimeDelta /*delta_t*/)
 
 
 #if OO_SHADERS
-cxx::OOShaderProgram *DustEntity::getShader()
+OOShaderProgram *DustEntity::getShader()
 {
 	if (shader == nullptr)
 	{
@@ -237,19 +237,19 @@ cxx::OOShaderProgram *DustEntity::getShader()
 		oo::PList::Dict attributes;
 		attributes["aWarpiness"] = oo::PList::signedInteger(kTangentAttributeIndex);	// +numberWithInt:
 		
-		shader = cxx::OOShaderProgram::shaderProgramWithVertexShaderName("oolite-dust.vertex",
+		shader = OOShaderProgram::shaderProgramWithVertexShaderName("oolite-dust.vertex",
 																	 "oolite-dust.fragment",
 																	 std::optional<std::string>(std::move(prefix)),
 																	 oo::PList(std::move(attributes)));
 		
 		uniforms.clear();
 		oo::Ref<OOShaderUniform> uWarp = OOShaderUniform::initWithName("uWarp",
-																		oo::ToObjC(shader),
+																		shader.get(),
 																		self,
 																		OOSelectorFromName("warpVector"),
 																		0);
 		oo::Ref<OOShaderUniform> uOffsetPlayerPosition = OOShaderUniform::initWithName("uOffsetPlayerPosition",
-																						oo::ToObjC(shader),
+																						shader.get(),
 																						self,
 																						OOSelectorFromName("offsetPlayerPosition"),
 																						0);
@@ -353,7 +353,7 @@ void DustEntity::drawImmediate(bool /*immediate*/, bool translucent)
 		if (useShader)
 		{
 			// A message to a nil program did nothing.
-			cxx::OOShaderProgram *program = getShader();
+			OOShaderProgram *program = getShader();
 			if (program != nullptr)  program->apply();
 			// A message to a nil uniform (the initialiser answered nil) did nothing.
 			for (const oo::Ref<OOShaderUniform> &uniform : uniforms)  if (uniform != nullptr)  uniform->apply();
@@ -433,7 +433,7 @@ void DustEntity::drawImmediate(bool /*immediate*/, bool translucent)
 #if OO_SHADERS
 		if (useShader)
 		{
-			cxx::OOShaderProgram::applyNone();
+			OOShaderProgram::applyNone();
 		}
 		else
 #endif

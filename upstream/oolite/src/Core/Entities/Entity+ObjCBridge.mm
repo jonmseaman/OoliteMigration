@@ -174,7 +174,7 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 	}
 
 	[UNIVERSE ensureEntityReallyRemoved:self];
-	[self setCollisionRegion:nil];		// DESTROY(collisionRegion)
+	_cxxEntity->setCollisionRegion(nullptr);		// DESTROY(collisionRegion)
 	[self deleteJSSelf];
 	[self setOwner:nil];
 	[self setAtmosphereFogging:nil];	// [atmosphereFogging release]
@@ -318,8 +318,6 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 }
 
 
-- (CollisionRegion *) collisionRegion					{ return oo::ToObjC(_cxxEntity->getCollisionRegion()); }
-- (void) setCollisionRegion:(CollisionRegion *)region	{ _cxxEntity->setCollisionRegion(oo::ToCxx(region)); }
 - (void) setUniversalID:(OOUniversalID)uid				{ _cxxEntity->setUniversalID(uid); }
 - (OOUniversalID) universalID							{ return _cxxEntity->getUniversalID(); }
 - (BOOL) throwingSparks									{ return _cxxEntity->throwingSparks(); }

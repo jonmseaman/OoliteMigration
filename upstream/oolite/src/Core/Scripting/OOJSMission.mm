@@ -56,7 +56,7 @@ MA 02110-1301, USA.
 	ADR-0056 amendment oo-ppc). The JS class was already C++ on the ooscript façade;
 	OOJS_NATIVE_ENTER/EXIT and OOJS_PROFILE_ENTER/EXIT are C++ try/catch and scope guards
 	(OOJSEngineNativeWrappers.h); BOOL/YES/NO are bool/true/false. OOMusicController, which is C++
-	since bead oo-lfkq, is reached as cxx::OOMusicController (amendment oo-ppc, item 4).
+	since bead oo-lfkq, is reached as OOMusicController (amendment oo-ppc, item 4).
 	MissionRunCallback()'s @try/@catch (OOException *) around the callback stays verbatim (amendment
 	oo-puw9 item 4); Phase 4 replaces it with the rest of the Objective-C exception sites.
 	mission.markedSystems kept the destinations it reads in a local: it read them through a pointer
@@ -714,7 +714,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 		}
 	}
 	
-	cxx::OOMusicController::sharedController()->setMissionMusic(GetParameterString(context, params, "music"));
+	OOMusicController::sharedController()->setMissionMusic(GetParameterString(context, params, "music"));
 	[player cxx_setMissionOverlayDescriptor:GetParameterImageDescriptor(context, params, "overlay")];
 	[player cxx_setMissionBackgroundDescriptor:GetParameterImageDescriptor(context, params, "background")];
 	[player cxx_setMissionBackgroundSpecial:GetParameterString(context, params, "backgroundSpecial").value_or("")];

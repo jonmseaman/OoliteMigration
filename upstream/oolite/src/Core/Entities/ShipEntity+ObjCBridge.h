@@ -733,7 +733,6 @@ unsigned argc = sizeof argv / sizeof *argv; \
 
 - (std::optional<std::string>) identFromShip:(ShipEntity*) otherShip;	// Name displayed to other ships (flipped with its family, bead oo-3rb.279)
 - (BOOL) hasRole:(const std::string &)role;	// flipped with its family (bead oo-3rb.280)
-- (OORoleSet *)roleSet;
 - (void) addRole:(const std::string &)role;
 - (void) cxx_addRole:(const std::string &)role withProbability:(float)probability;
 - (void) cxx_removeRole:(const std::string &)role;

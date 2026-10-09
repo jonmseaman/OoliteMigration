@@ -2278,7 +2278,7 @@ void cxx::PlayerEntity::showShipModel(const std::string &role)	// called by name
 void cxx::PlayerEntity::setMissionMusic(const std::string &value)	// called by name (ADR-0043 item 21)
 {
 	// "" (was nil) and "none" clear it
-	[[::OOMusicController	sharedController] cxx_setMissionMusic:IsNoneValue(value) ? std::nullopt : std::optional<std::string>(value)];
+	OOMusicController::sharedController()->setMissionMusic(IsNoneValue(value) ? std::nullopt : std::optional<std::string>(value));
 }
 
 
@@ -2701,7 +2701,7 @@ void cxx::PlayerEntity::setGuiToMissionScreenWithCallback(bool callback)
 
 	lastTextKey.reset();
 	
-	[[::OOMusicController sharedController] playMissionMusic];
+	OOMusicController::sharedController()->playMissionMusic();
 	
 	// the following are necessary...
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:NO];

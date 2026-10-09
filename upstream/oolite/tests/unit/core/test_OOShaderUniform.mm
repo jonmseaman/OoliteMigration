@@ -67,19 +67,19 @@ OOShaderSetting cxx_OOShaderSettingFromString(const std::string &string)
 }
 
 
-// The shader program (OOShaderProgram.mm reaches the resource manager): the one message the
-// uniform sends, -program, answering the program the test linked.
-@interface OOShaderProgram: OOObject
-{
-@public
-	GLhandleARB	_program;
-}
-- (GLhandleARB) program;
-@end
+// The shader program (OOShaderProgram.mm reaches the resource manager): the one member the
+// uniform calls, program(), answering the program the test linked. OOShaderProgram is C++ since
+// its facade was deleted (bead oo-9ht.58): the stand-in is definitions of the members it uses.
+static GLhandleARB gStandInProgram = 0;
 
-@implementation OOShaderProgram
-- (GLhandleARB) program	{ return _program; }
-@end
+OOShaderProgram::~OOShaderProgram()  {}
+GLhandleARB OOShaderProgram::program()  { return _program; }
+oo::Ref<OOShaderProgram> OOShaderProgram::shaderProgramWithVertexShaderName(const std::string &, const std::string &, const std::optional<std::string> &, const oo::PList &)
+{
+	oo::Ref<OOShaderProgram> made = oo::adopt(new OOShaderProgram());
+	made->_program = gStandInProgram;
+	return made;
+}
 
 
 // A binding target: one property per supported return type, and some that are not.
@@ -127,7 +127,8 @@ typedef void (APIENTRY *GetUniformiv)(GLhandleARB, GLint, GLint *);
 GLhandleARB gProgram = 0;
 GetUniformfv gGetUniformfv = nullptr;
 GetUniformiv gGetUniformiv = nullptr;
-OOShaderProgram *gShaderProgram = nil;
+OOShaderProgram *gShaderProgram = nullptr;
+oo::Ref<OOShaderProgram> gShaderProgramHeld;
 
 
 // A program with one uniform of each kind, each used so that the linker keeps it.
@@ -162,8 +163,9 @@ bool SetUpProgram()
 	glLinkProgramARB(gProgram);
 	glUseProgramObjectARB(gProgram);
 
-	gShaderProgram = [[OOShaderProgram alloc] init];
-	gShaderProgram->_program = gProgram;
+	gStandInProgram = gProgram;
+	gShaderProgramHeld = OOShaderProgram::shaderProgramWithVertexShaderName("", "", std::nullopt, oo::PList());
+	gShaderProgram = gShaderProgramHeld.get();
 	return glGetUniformLocationARB(gProgram, "uFloat") != -1;
 }
 

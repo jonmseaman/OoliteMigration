@@ -95,9 +95,6 @@ MA 02110-1301, USA.
 
 - (void) warnAboutHostiles;
 
-- (CollisionRegion *) collisionRegion;
-- (void) setCollisionRegion:(CollisionRegion*)region;
-
 - (void) setUniversalID:(OOUniversalID)uid;
 - (OOUniversalID) universalID;
 

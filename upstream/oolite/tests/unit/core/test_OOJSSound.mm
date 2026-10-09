@@ -57,20 +57,29 @@ typedef enum OOEntityStatus
 + (OOSound *) cxx_ooSoundNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName;
 @end
 
-@interface OOMusicController: OOObject
+/*	The music controller is C++ (bead oo-9ht.90 deleted its Objective-C facade): the members the
+	binding calls, declared as OOMusicController.h declares them (that header would bring the real
+	OOSoundSource into this file) and defined below over this file's record of what was asked.
+*/
+#include "oofnd/Ref.hpp"
+class OOMusicController : public oo::RefCounted
 {
-@public
+public:
+	static OOMusicController *sharedController();
+	void playMusicNamed(const std::string &name, bool loop, float gain);
+	void stop();
+	::OOSoundSource *soundSource();
+	std::optional<std::string> playingMusic();
+};
+
+// What the controller was asked.
+struct MusicRecord
+{
 	std::optional<std::string> _playing;
-	BOOL _loop;
-	float _gain;
-	int _stops;
-}
-+ (OOMusicController *) sharedController;
-- (void) playMusicNamed:(const std::string &)name loop:(BOOL)loop gain:(float)gain;
-- (void) stop;
-- (OOSoundSource *) soundSource;
-- (std::optional<std::string>) playingMusic;
-@end
+	BOOL _loop = NO;
+	float _gain = 0.0f;
+	int _stops = 0;
+};
 
 @interface FakePlayer: OOObject
 {
@@ -102,7 +111,7 @@ typedef enum OOEntityStatus
 
 namespace {
 std::vector<OOSound *> sLoaded;
-OOMusicController *sMusic = nil;
+MusicRecord *sMusic = nullptr;
 OOSoundSource *sMusicSource = nil;
 } // namespace
 
@@ -146,21 +155,22 @@ OOSoundSource *sMusicSource = nil;
 @end
 
 
-@implementation OOMusicController
-
-+ (OOMusicController *) sharedController  { return sMusic; }
-- (OOSoundSource *) soundSource  { return sMusicSource; }
-- (std::optional<std::string>) playingMusic  { return _playing; }
-- (void) stop  { _playing = std::nullopt; _stops++; }
-
-- (void) playMusicNamed:(const std::string &)name loop:(BOOL)loop gain:(float)gain
+OOMusicController *OOMusicController::sharedController()
 {
-	_playing = name;
-	_loop = loop;
-	_gain = gain;
+	static OOMusicController *shared = new OOMusicController();	// never released, as the game's
+	return shared;
 }
 
-@end
+::OOSoundSource *OOMusicController::soundSource()  { return sMusicSource; }
+std::optional<std::string> OOMusicController::playingMusic()  { return sMusic->_playing; }
+void OOMusicController::stop()  { sMusic->_playing = std::nullopt; sMusic->_stops++; }
+
+void OOMusicController::playMusicNamed(const std::string &name, bool loop, float gain)
+{
+	sMusic->_playing = name;
+	sMusic->_loop = loop;
+	sMusic->_gain = gain;
+}
 
 
 @implementation FakePlayer
@@ -365,7 +375,7 @@ void SetUpContext()
 	sPlayer = [[FakePlayer alloc] init];	// kept for the life of the test
 	sPlayer->_status = STATUS_IN_FLIGHT;
 	gOOPlayer = (PlayerEntity *)sPlayer;
-	sMusic = [[OOMusicController alloc] init];
+	sMusic = new MusicRecord();
 	sMusicSource = [[OOSoundSource alloc] init];
 }
 
