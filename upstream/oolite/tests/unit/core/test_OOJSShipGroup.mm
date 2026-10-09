@@ -1,6 +1,6 @@
 /*	test_OOJSShipGroup.mm
 	Unit tests for the ShipGroup JS binding (src/Core/Scripting/OOJSShipGroup.h/.mm) and its
-	OOShipGroup category (OOJSShipGroup+ObjCBridge.mm): bead oo-n64m, converted the way bead oo-ppc
+	OOShipGroup façade's JS selectors (OOShipGroup+ObjCBridge.mm): bead oo-n64m, converted the way bead oo-ppc
 	converted OOJSVector (proposed ADR-0056 amendments oo-ppc and oo-ykoy).
 
 	As test_OOJSWormhole.mm does (amendment oo-ykoy, item 4), it runs the JS class in a real
@@ -269,6 +269,15 @@ id OOJSNativeObjectOfClassFromJSValue(ooscript::Context context, ooscript::Value
 }
 
 
+// The JS class check of the engine's C++ getter (OOJSPrivateObject.cpp, linked since bead
+// oo-6symp.1, whose slot holds the C++ group): no subclass of ShipGroup is registered.
+BOOL OOJSIsSubclass(ooscript::ClassDef *putativeSubclass, ooscript::ClassDef *superclass)
+{
+	return putativeSubclass == superclass;
+}
+
+
+// (No longer reached for a group, whose toString() is OOJSCxxObjectWrapperToString.)
 bool OOJSObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	id object = (id)ooscript::getPrivate(context, oojsArgs.thisObject());
@@ -402,7 +411,7 @@ OO_TEST(category)
 	ooscript::Value first = [group oo_jsValueInContext:sContext];
 	OO_CHECK(ooscript::isObject(first));
 	OO_CHECK(ooscript::toObject([group oo_jsValueInContext:sContext]) == ooscript::toObject(first));
-	OO_CHECK((id)ooscript::getPrivate(sContext, ooscript::toObject(first)) == group);
+	OO_CHECK(static_cast<oo::RefCounted *>(ooscript::getPrivate(sContext, ooscript::toObject(first))) == static_cast<oo::RefCounted *>(oo::ToCxx(group)));
 	Define("catGroup", first);
 	OO_CHECK_EVAL("catGroup.name", "cat");
 	// Clearing with another object leaves it; clearing with its own makes the next one new.
@@ -425,7 +434,7 @@ OO_TEST(constructor)
 	OO_CHECK_EVAL("new ShipGroup('wing', null).leader", "null");
 	OO_CHECK_EVAL("new ShipGroup(5)", "threw: bad arguments: -.ShipGroup()(1) Could not create ShipGroup / group name");
 	OO_CHECK_EVAL("new ShipGroup('wing', {})", "threw: bad arguments: -.ShipGroup()(1) Could not create ShipGroup / ship");
-	OO_CHECK_EVAL("String(new ShipGroup('wing')).replace(/0x[0-9a-f]+/, 'ADDR')", "[<OOShipGroup ADDR>{\"wing\", 0 ships}]");
+	OO_CHECK_EVAL("String(new ShipGroup('wing')).replace(/0x[0-9a-f]+/, 'ADDR')", "[OOShipGroup \"wing\", 0 ships]");
 }
 
 

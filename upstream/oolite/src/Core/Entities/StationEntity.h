@@ -40,7 +40,7 @@ MA 02110-1301, USA.
 #include "oofnd/PList.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 
-@class OOWeakSet, StationEntity;
+@class StationEntity;
 
 
 typedef enum
@@ -76,6 +76,8 @@ class StationEntity : public ShipEntity
 public:
 	// Slice 1: class shell, market and shipyard, flags and accessors.
 	bool isUnpiloted() override;
+	void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype) override;
+	std::optional<std::string> jsClassName() override;
 	OOTechLevelID getEquivalentTechLevel();
 	void setEquivalentTechLevel(OOTechLevelID value);
 	Vector virtualPortDimensions();
@@ -180,9 +182,22 @@ public:
 	unsigned currentlyInDockingQueues();
 	unsigned currentlyInLaunchingQueues();
 
+	// Slice 4: NPC launchers. Not overrides: cxx::ShipEntity's same-named members are not virtual (the
+	// ship's answer "not a station" through its facade, which the station's facade overrides).
+	oo::PList launchIndependentShip(const std::string &role);	// the ship launched, as an Object node (null: none)
+	oo::PList launchPolice();	// the ships launched, as Object nodes
+	::ShipEntity *launchDefenseShip();
+	::ShipEntity *launchScavenger();
+	::ShipEntity *launchMiner();
+	::ShipEntity *launchPirateShip();
+	::ShipEntity *launchShuttle();
+	::ShipEntity *launchEscort();
+	::ShipEntity *launchPatrol();
+	void launchShipWithRole(const std::string &role);
+
 	// @private in Objective-C: private once StationEntity is converted; public while the facade's
 	// unconverted methods read them, since an Objective-C class cannot be a C++ friend
-	::OOWeakSet				*_shipsOnHold = {};
+	oo::Ref<::OOWeakSet>		_shipsOnHold = {};
 	::DockEntity				*player_reserved_dock = {};
 	double					last_launch_time = {};
 	double					approach_spacing = {};

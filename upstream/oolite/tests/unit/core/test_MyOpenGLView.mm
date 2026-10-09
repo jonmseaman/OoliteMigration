@@ -92,8 +92,9 @@ OO_TEST(initWithoutAWindow)
 		OO_CHECK([view allowingStringInput] == gvStringInputNo);
 		OO_CHECK(![view isAlphabetKeyDown]);
 		OO_CHECK_EQ([view mouseWheelDelta], 0.0f);
-		OO_CHECK([view getOpenGLMatrixManager] != nil);
-		OO_CHECK([view getOpenGLMatrixManager] == [view getOpenGLMatrixManager]);
+		// The matrix manager is C++: the C++ view's getter answers it, the same one each time.
+		OO_CHECK(oo::ToCxx(view) != nullptr && oo::ToCxx(view)->getOpenGLMatrixManager() != nullptr);
+		OO_CHECK(oo::ToCxx(view) != nullptr && oo::ToCxx(view)->getOpenGLMatrixManager() == oo::ToCxx(view)->getOpenGLMatrixManager());
 		OO_CHECK(![view hdrOutput]);	// set when the window is made
 		OO_CHECK(![view msaa]);
 		OO_CHECK(![view getScreenSizeArray].empty());	// the display's modes, the native one first
@@ -223,7 +224,7 @@ OO_TEST(slice2AccessorsAndViewSettings)
 
 		// +pollShiftKey reads the keyboard: nobody holds shift during a test run.
 		OO_CHECK(![MyOpenGLView pollShiftKey]);
-		OO_CHECK([view getOpenGLMatrixManager] != nil);
+		OO_CHECK(oo::ToCxx(view) != nullptr && oo::ToCxx(view)->getOpenGLMatrixManager() != nullptr);
 
 #if OOLITE_WINDOWS
 		// No window: -isRunningOnPrimaryDisplayDevice answers NO, and -atDesktopResolution is unset.
@@ -374,6 +375,27 @@ OO_TEST(slice3DebugImageDumps)
 		[view cxx_dumpRGBAToRGBFileNamed:std::nullopt andGrayFileNamed:std::nullopt bytes:translucent.data() width:3 height:2 rowBytes:16];
 	}
 }
+
+// Bead oo-5thb0: a gray+alpha dump reads the caller's bytes (2 a pixel, tightly packed rows) and
+// writes neither them nor past their end.
+OO_TEST(dumpGrayAlphaLeavesTheCallersBytes)
+{
+	@autoreleasepool
+	{
+		namespace stdfs = std::filesystem;
+		MyOpenGLView *view = View();
+		stdfs::create_directories(stdfs::current_path() / "oolite-saves" / "snapshots");
+
+		const NSUInteger width = 3, height = 2, rowBytes = 2 * width;
+		std::vector<uint8_t> buffer(rowBytes * height + 64, 0xA5);	// the image, then a guard
+		for (size_t i = 0; i < rowBytes * height; i++)  buffer[i] = static_cast<uint8_t>(i * 17 + 3);
+		const std::vector<uint8_t> before = buffer;
+		[view cxx_dumpGrayAlphaToFileNamed:"oo-test-grayalpha-tight" bytes:buffer.data() width:width height:height rowBytes:rowBytes];
+		OO_CHECK(stdfs::exists(DumpPath("oo-test-grayalpha-tight")));
+		OO_CHECK(buffer == before);
+	}
+}
+
 #endif
 
 
@@ -393,8 +415,8 @@ OO_TEST(facadeContract)
 		cxxView->updateGLSize(NSMakeSize(1024, 768));
 		OO_CHECK([view viewSize].width == 1024 && cxxView->viewSize.height == 768);
 		OO_CHECK(Near(cxxView->display_z, 640.0));
-		// The matrix manager is C++; the facade's getter answers its facade.
-		OO_CHECK(oo::ToCxx([view getOpenGLMatrixManager]) == cxxView->matrixManager.get());
+		// The matrix manager is C++; the view's getter answers it.
+		OO_CHECK(cxxView->getOpenGLMatrixManager() == cxxView->matrixManager.get());
 	}
 }
 
@@ -429,7 +451,6 @@ OO_TEST(cxxSlice2API)
 		OO_CHECK_EQ(cxxView->indexOfDisplayModeForWidth(7, 5, 3), 0);
 		OO_CHECK(cxxView->loadWindowSize().width == [view loadWindowSize].width);
 		OO_CHECK(cxx::MyOpenGLView::pollShiftKey() == static_cast<bool>([MyOpenGLView pollShiftKey]));
-		OO_CHECK(oo::ToObjC(cxxView->getOpenGLMatrixManager()) == [view getOpenGLMatrixManager]);
 #if OOLITE_WINDOWS
 		cxxView->setHDRMaxBrightness(700.0f);
 		OO_CHECK(Near([view hdrMaxBrightness], 700.0));

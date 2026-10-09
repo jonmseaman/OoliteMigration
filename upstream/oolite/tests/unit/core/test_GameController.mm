@@ -356,6 +356,73 @@ OO_TEST(fullScreenDisplayModes)
 }
 
 
+// The full-screen members (bead oo-qinv): the C++ calls give what the façade's selectors give, on
+// the same state, and pausing full-screen mode records the call to make and leaves full screen.
+OO_TEST(fullScreenMembers)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		GameController *facade = [GameController sharedController];
+		cxx::GameController *controller = cxx::GameController::sharedController();
+		TestView *view = (TestView *)controller->gameView();
+		view->_screenModes = { Mode(640, 480, 60), Mode(1280, 720, 60), Mode(1280, 720, 75), Mode(9000, 9000, 60) };
+		view->_currentMode = Mode(1280, 720, 75);
+		controller->setUpDisplayModes();
+
+		OO_CHECK_EQ(controller->getDisplayModes().count(), 3u);
+		OO_CHECK([facade displayModes] == controller->getDisplayModes());
+		OO_CHECK_EQ(controller->width, 1280u);
+		OO_CHECK_EQ(controller->height, 720u);
+		OO_CHECK_EQ(controller->refresh, 75u);
+		OO_CHECK(controller->indexOfCurrentDisplayMode() == 2u);
+		OO_CHECK([facade indexOfCurrentDisplayMode] == 2u);
+		OO_CHECK(controller->findDisplayModeForWidth(640, 480, 60) == Mode(640, 480, 60));
+		OO_CHECK(controller->findDisplayModeForWidth(9000, 9000, 60).isNull());
+
+		OO_CHECK(controller->setDisplayWidth(640, 480, 60));
+		OO_CHECK(controller->indexOfCurrentDisplayMode() == 0u);
+		OO_CHECK(controller->fullscreenDisplayMode == Mode(640, 480, 60));
+		OO_CHECK_EQ(oo::Defaults::standard().integerForKey("display_refresh"), 60);
+		OO_CHECK(!controller->setDisplayWidth(1280, 720, 30));
+		OO_CHECK_EQ(controller->width, 640u);
+
+		// No current mode: the screen's size, refresh unchanged; no match is NSNotFound.
+		view->_currentMode = oo::PList();
+		controller->setUpDisplayModes();
+		OO_CHECK_EQ(controller->width, 0u);
+		OO_CHECK(controller->indexOfCurrentDisplayMode() == NSNotFound);
+
+		view->_inFullScreen = YES;
+		OO_CHECK(controller->inFullScreenMode());
+		view->_inFullScreen = NO;
+		OO_CHECK(!controller->inFullScreenMode());
+
+		controller->setFullScreenMode(true);
+		OO_CHECK(controller->fullscreen);
+		controller->setFullScreenMode(false);
+		OO_CHECK(!controller->fullscreen);
+
+		controller->stayInFullScreenMode = true;
+		oo::Defaults::standard().setBool("fullscreen", true);
+		controller->exitFullScreenMode();
+		OO_CHECK(!controller->stayInFullScreenMode);
+		OO_CHECK(!oo::Defaults::standard().boolForKey("fullscreen"));
+
+		TestTarget *target = [[TestTarget alloc] init];
+		controller->stayInFullScreenMode = true;
+		[facade pauseFullScreenModeToPerform:@selector(record:) onTarget:target];
+		OO_CHECK(controller->pauseSelector == @selector(record:));
+		OO_CHECK(controller->pauseTarget == target);
+		OO_CHECK(!controller->stayInFullScreenMode);
+		controller->pauseFullScreenModeToPerform(@selector(raise:), nil);
+		OO_CHECK(controller->pauseSelector == @selector(raise:));
+		OO_CHECK(controller->pauseTarget == nil);
+		[target release];
+	}
+}
+
+
 // Slice 3's player-file paths, through the façade.
 OO_TEST(playerFilePaths)
 {

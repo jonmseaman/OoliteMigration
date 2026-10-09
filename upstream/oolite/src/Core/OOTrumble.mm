@@ -39,8 +39,6 @@ static void PlayTrumbleIdle(void);
 static void PlayTrumbleSqueal(void);
 
 
-namespace cxx {
-
 OOTrumble::OOTrumble()
 {
 	int i;
@@ -51,17 +49,17 @@ OOTrumble::OOTrumble()
 	}
 }
 
-OOTrumble::OOTrumble(PlayerEntity* p1)
+OOTrumble::OOTrumble(::PlayerEntity* p1)
 {
 	setupForPlayer(p1, "a1");
 }
 
-OOTrumble::OOTrumble(PlayerEntity* p1, const std::string & digramString)
+OOTrumble::OOTrumble(::PlayerEntity* p1, const std::string & digramString)
 {
 	setupForPlayer(p1, digramString);
 }
 
-void OOTrumble::setupForPlayer(PlayerEntity* p1, const std::string & digramString)
+void OOTrumble::setupForPlayer(::PlayerEntity* p1, const std::string & digramString)
 {
 	// set digram (UTF-16 units, as -characterAtIndex: read them; a missing string read as 0s)
 	//
@@ -855,7 +853,7 @@ void OOTrumble::updatePop(double delta_t)
 	if (animationTime > animationDuration)
 	{
 		// kaputnik!
-		[player removeTrumble:oo::ToObjC(this)];
+		[player removeTrumble:this];
 	}
 }
 
@@ -917,7 +915,7 @@ void OOTrumble::updateSpawn(double delta_t)
 		eyeFrame = TRUMBLE_EYES_OPEN;
 		mouthFrame = TRUMBLE_MOUTH_NORMAL;
 		randomizeMotionX();
-		[player addTrumble:oo::ToObjC(this)];
+		[player addTrumble:this];
 	}
 }
 
@@ -949,8 +947,6 @@ void OOTrumble::setFromDictionary(const oo::PList & dict)
 	position =	cxx_PointFromString(dict.get<std::string>("position"));
 	movement =	cxx_PointFromString(dict.get<std::string>("movement"));
 }
-
-}	// namespace cxx
 
 
 static OOSoundSource	*sTrumbleSoundSource;

@@ -618,7 +618,11 @@ void GameController::applicationDidFinishLaunching()
 		SetUpSparkle();
 #endif
 		
+#if OOLITE_SDL
+		setUpDisplayModes();
+#else
 		[oo::ToObjC(this) setUpDisplayModes];
+#endif
 		
 		// moved to before the Universe is created
 		for (const std::string &expansionPath : expansionPathsToInclude)

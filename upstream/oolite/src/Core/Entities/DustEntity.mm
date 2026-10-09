@@ -59,7 +59,41 @@ enum
 #endif
 
 
-namespace cxx {
+#if OO_SHADERS
+/*	What the dust shader's uniforms are bound to, by selector (-warpVector, -offsetPlayerPosition),
+	until the shader binding takes a C++ target: the DustEntity's own, private Objective-C object
+	(bead oo-9ht.77, which deleted the DustEntity facade that was bound before). It does not retain
+	the dust; the dust clears it in its destructor.
+*/
+@interface OODustShaderBinding: OOWeakRefObject
+{
+@public
+	DustEntity	*_dust;
+}
+
+- (Vector) warpVector;
+- (Vector) offsetPlayerPosition;
+
+@end
+
+
+@implementation OODustShaderBinding
+
+- (Vector) warpVector				{ return _dust != nullptr ? _dust->warpVector() : kZeroVector; }
+- (Vector) offsetPlayerPosition		{ return _dust != nullptr ? _dust->offsetPlayerPosition() : kZeroVector; }
+
+@end
+#endif
+
+
+DustEntity::~DustEntity()
+{
+#if OO_SHADERS
+	if (shaderBinding.get() != nil)  ((OODustShaderBinding *)shaderBinding.get())->_dust = nullptr;
+#endif
+	cxx::OOGraphicsResetManager::sharedManager()->unregisterCxxClient(this);
+}
+
 
 void DustEntity::init()
 {
@@ -93,10 +127,10 @@ void DustEntity::init()
 	
 	drawDust = !oo::process::hasArgument("-nodust");
 	
-	dust_color = OOColor::colorWithRed(0.5, 1.0, 1.0, 1.0);
+	dust_color = cxx::OOColor::colorWithRed(0.5, 1.0, 1.0, 1.0);
 	setStatus(STATUS_ACTIVE);
 
-	hasPointSprites = OOOpenGLExtensionManager::sharedManager()->haveExtension("GL_ARB_point_sprite");
+	hasPointSprites = cxx::OOOpenGLExtensionManager::sharedManager()->haveExtension("GL_ARB_point_sprite");
 	
 	if (hasPointSprites)
 	{
@@ -109,23 +143,23 @@ void DustEntity::init()
 
 	collision_radius = DUST_SCALE; // for draw pass calculations
 
-	OOGraphicsResetManager::sharedManager()->registerClient(oo::ToObjC(this));	// the facade answers -resetGraphicsState
+	cxx::OOGraphicsResetManager::sharedManager()->registerCxxClient(this);
 }
 
 
-// -dealloc is the facade's: it unregisters the facade from the graphics reset manager. The members
-// release the colour, texture, shader and uniforms when the facade releases its C++ part.
+// The destructor unregisters this from the graphics reset manager. The members release the colour,
+// texture, shader and uniforms.
 
 
-void DustEntity::setDustColor(OOColor *color)
+void DustEntity::setDustColor(cxx::OOColor *color)
 {
-	dust_color = oo::Ref<OOColor>(color);
+	dust_color = oo::Ref<cxx::OOColor>(color);
 	// A message to a nil colour did nothing.
 	if (dust_color != nullptr)  dust_color->getRed(&color_fv[0], &color_fv[1], &color_fv[2], &color_fv[3]);
 }
 
 
-OOColor *DustEntity::dustColor()
+cxx::OOColor *DustEntity::dustColor()
 {
 	return dust_color.get();
 }
@@ -180,11 +214,17 @@ void DustEntity::update(OOTimeDelta /*delta_t*/)
 
 
 #if OO_SHADERS
-OOShaderProgram *DustEntity::getShader()
+cxx::OOShaderProgram *DustEntity::getShader()
 {
 	if (shader == nullptr)
 	{
-		::DustEntity *self = oo::ToObjC(this);	// what the uniforms are bound to
+		if (shaderBinding.get() == nil)
+		{
+			OODustShaderBinding *binding = [[OODustShaderBinding alloc] init];
+			binding->_dust = this;
+			shaderBinding = oo::adoptObjC<id>(binding);	// what the uniforms are bound to
+		}
+		id self = shaderBinding.get();
 		std::string prefix = oo::str::format(
 						   "#define OODUST_SCALE_MAX    (float(%g))\n"
 							"#define OODUST_SCALE_FACTOR (float(%g))\n"
@@ -197,7 +237,7 @@ OOShaderProgram *DustEntity::getShader()
 		oo::PList::Dict attributes;
 		attributes["aWarpiness"] = oo::PList::signedInteger(kTangentAttributeIndex);	// +numberWithInt:
 		
-		shader = OOShaderProgram::shaderProgramWithVertexShaderName("oolite-dust.vertex",
+		shader = cxx::OOShaderProgram::shaderProgramWithVertexShaderName("oolite-dust.vertex",
 																	 "oolite-dust.fragment",
 																	 std::optional<std::string>(std::move(prefix)),
 																	 oo::PList(std::move(attributes)));
@@ -235,7 +275,7 @@ void DustEntity::checkShaderMode()
 	shaderMode = kShaderModeOff;
 	if ([UNIVERSE detailLevel] >= DETAIL_LEVEL_SHADERS)
 	{
-		if (OOOpenGLExtensionManager::sharedManager()->useDustShader())
+		if (cxx::OOOpenGLExtensionManager::sharedManager()->useDustShader())
 		{
 			shaderMode = kShaderModeOn;
 		}
@@ -254,7 +294,7 @@ void DustEntity::drawImmediate(bool /*immediate*/, bool translucent)
 {
 	if (!drawDust || [UNIVERSE breakPatternHide] || !translucent)  return;	// DON'T DRAW
 	
-	PlayerEntity* player = PLAYER;
+	::PlayerEntity* player = PLAYER;
 	assert(player != nil);
 	
 #ifndef NDEBUG
@@ -313,7 +353,7 @@ void DustEntity::drawImmediate(bool /*immediate*/, bool translucent)
 		if (useShader)
 		{
 			// A message to a nil program did nothing.
-			OOShaderProgram *program = getShader();
+			cxx::OOShaderProgram *program = getShader();
 			if (program != nullptr)  program->apply();
 			// A message to a nil uniform (the initialiser answered nil) did nothing.
 			for (const oo::Ref<OOShaderUniform> &uniform : uniforms)  if (uniform != nullptr)  uniform->apply();
@@ -393,7 +433,7 @@ void DustEntity::drawImmediate(bool /*immediate*/, bool translucent)
 #if OO_SHADERS
 		if (useShader)
 		{
-			OOShaderProgram::applyNone();
+			cxx::OOShaderProgram::applyNone();
 		}
 		else
 #endif
@@ -437,4 +477,3 @@ std::optional<std::string> DustEntity::descriptionForObjDump()
 }
 #endif
 
-}	// namespace cxx

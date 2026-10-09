@@ -31,8 +31,6 @@ MA 02110-1301, USA.
 #import "OOMacroOpenGL.h"
 
 
-namespace cxx {
-
 void OOBreakPatternEntity::initWithPolygonSides(NSUInteger sides, float startAngleDegrees, float aspectRatio)
 {
 	sides = MIN(MAX((NSUInteger)3, sides), (NSUInteger)kOOBreakPatternMaxSides);
@@ -79,7 +77,7 @@ oo::Ref<OOBreakPatternEntity> OOBreakPatternEntity::breakPatternWithPolygonSides
 }
 
 
-void OOBreakPatternEntity::setInnerColor(OOColor *color1, OOColor *color2)
+void OOBreakPatternEntity::setInnerColor(cxx::OOColor *color1, cxx::OOColor *color2)
 {
 	// Messages to a nil colour did nothing: those components stay uninitialised, as they did.
 	GLfloat inner[4], outer[4];
@@ -158,11 +156,3 @@ bool OOBreakPatternEntity::canCollide()
 {
 	return NO;
 }
-
-
-bool OOBreakPatternEntity::isBreakPattern()
-{
-	return YES;
-}
-
-}	// namespace cxx

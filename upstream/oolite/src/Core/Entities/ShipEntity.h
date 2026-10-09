@@ -39,12 +39,14 @@
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
+#import "OOWeakSet.h"
 #include "oofnd/objc/OOObjCRef.h"
 #include <string_view>
 
 @class	OOColor, StationEntity, WormholeEntity, AI, Octree, OOMesh, OOScript, OOCharacter,
-	OOJSScript, OORoleSet, OOShipGroup, OOEquipmentType, OOWeakSet,
-	OOExhaustPlumeEntity, OOFlasherEntity;
+	OOJSScript, OORoleSet, OOShipGroup, OOEquipmentType;
+class OOFlasherEntity;	// C++ only since bead oo-9ht.107
+class OOExhaustPlumeEntity;	// C++ only since bead oo-9ht.110
 
 // Universe.h's, for the members of ShipEntityAI.mm's scans (ADR-0056 amendment oo-42dr item 3).
 typedef BOOL (*EntityFilterPredicate)(Entity *entity, void *parameter);
@@ -270,8 +272,8 @@ public:
 	bool hasSubEntity(::Entity *sub);
 	std::vector<oo::ObjCRef<::Entity *>> subEntityEnumerator();
 	std::vector<oo::ObjCRef<::ShipEntity *>> shipSubEntities();
-	std::vector<oo::ObjCRef<::OOFlasherEntity *>> flasherEnumerator();
-	std::vector<oo::ObjCRef<::OOExhaustPlumeEntity *>> exhausts();
+	std::vector<oo::ObjCRef<::Entity *>> flasherEnumerator();	// the flashers' objects (the nearest façade left)
+	std::vector<oo::ObjCRef<::Entity *>> exhausts();	// the plumes' objects (the root façade)
 	::ShipEntity *subEntityTakingDamage();
 	void setSubEntityTakingDamage(::ShipEntity *sub);
 	::OOScript *shipScript();
@@ -549,6 +551,8 @@ public:
 	bool isPirateVictim();
 	bool isExplicitlyUnpiloted();
 	virtual bool isUnpiloted();	// StationEntity overrides
+	void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype) override;	// StationEntity overrides
+	std::optional<std::string> jsClassName() override;	// StationEntity overrides
 	virtual bool hasHostileTarget();	// PlayerEntity and StationEntity override
 	bool isHostileTo(::Entity *entity);
 	GLfloat getWeaponRange();
@@ -685,10 +689,10 @@ public:
 	virtual void becomeExplosion();
 	virtual void becomeEnergyBlast();
 	void broadcastEnergyBlastImminent();
-	void removeExhaust(::OOExhaustPlumeEntity *exhaust);
+	void removeExhaust(OOExhaustPlumeEntity *exhaust);
 
 	// Slice 23: subentity death, alignment offsets, large explosion, laser heat, personality, scanner, remembered ships.
-	void removeFlasher(::OOFlasherEntity *flasher);
+	void removeFlasher(OOFlasherEntity *flasher);
 	void subEntityDied(::ShipEntity *sub);
 	void subEntityReallyDied(::ShipEntity *sub) override;
 	Vector positionOffsetForAlignment(const std::string &align);
@@ -1386,10 +1390,10 @@ public:
 	Vector					_escortPositions[MAX_ESCORTS] = {};
 	BOOL					_escortPositionsValid = {};
 	
-	::OOWeakSet				*_defenseTargets = {};			 // defense targets
+	oo::Ref<::OOWeakSet>		_defenseTargets = {};			 // defense targets
 	
 	// ships in this set can't be collided with
-	::OOWeakSet				*_collisionExceptions = {};
+	oo::Ref<::OOWeakSet>		_collisionExceptions = {};
 
 	GLfloat					_profileRadius = {};
 	

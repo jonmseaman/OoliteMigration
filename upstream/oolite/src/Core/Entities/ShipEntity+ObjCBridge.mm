@@ -164,8 +164,8 @@ DESTROY(_cxxShip->laser_color);
 	DESTROY(_cxxShip->script);
 	DESTROY(_cxxShip->aiScript);
 	DESTROY(_cxxShip->octree);
-	DESTROY(_cxxShip->_defenseTargets);
-	DESTROY(_cxxShip->_collisionExceptions);
+	_cxxShip->_defenseTargets = nullptr;
+	_cxxShip->_collisionExceptions = nullptr;
 
 	[self setSubEntityTakingDamage:nil];
 	[self removeAllEquipment];
@@ -265,8 +265,8 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 - (BOOL) hasSubEntity:(Entity<OOSubEntity> *)sub	{ return _cxxShip->hasSubEntity(sub); }
 - (std::vector<oo::ObjCRef<Entity *>>) subEntityEnumerator	{ return _cxxShip->subEntityEnumerator(); }
 - (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_shipSubEntities	{ return _cxxShip->shipSubEntities(); }
-- (std::vector<oo::ObjCRef<OOFlasherEntity *>>) flasherEnumerator	{ return _cxxShip->flasherEnumerator(); }
-- (std::vector<oo::ObjCRef<OOExhaustPlumeEntity *>>) cxx_exhausts	{ return _cxxShip->exhausts(); }
+- (std::vector<oo::ObjCRef<Entity *>>) flasherEnumerator	{ return _cxxShip->flasherEnumerator(); }
+- (std::vector<oo::ObjCRef<Entity *>>) cxx_exhausts	{ return _cxxShip->exhausts(); }
 - (ShipEntity *) subEntityTakingDamage	{ return _cxxShip->subEntityTakingDamage(); }
 - (void) setSubEntityTakingDamage:(ShipEntity *)sub	{ _cxxShip->setSubEntityTakingDamage(sub); }
 - (OOScript *) shipScript	{ return _cxxShip->shipScript(); }
