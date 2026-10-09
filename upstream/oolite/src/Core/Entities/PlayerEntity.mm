@@ -2224,8 +2224,8 @@ bool PlayerEntity::setUpAndConfirmOK(bool stopOnError, bool saveGame)
 	marketSelectedCommodity.reset();
 	
 	// Reset JavaScript.
-	[::OOScriptTimer noteGameReset];
-	[::OOScriptTimer updateTimers];
+	::OOScriptTimer::noteGameReset();
+	::OOScriptTimer::updateTimers();
 	
 	::GameController		*gc = [[UNIVERSE gameView] gameController];
 	
@@ -2848,7 +2848,7 @@ void PlayerEntity::update(OOTimeDelta delta_t)
 	
 	// scripting
 	UPDATE_STAGE("updateTimers");
-	[::OOScriptTimer updateTimers];
+	::OOScriptTimer::updateTimers();
 	UPDATE_STAGE("checkScriptsIfAppropriate");
 	checkScriptsIfAppropriate();
 	

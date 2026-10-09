@@ -28,21 +28,25 @@ MA 02110-1301, USA.
 #import "OOLogging.h"
 #import "OOPriorityQueue.h"
 #include "oofnd/String.hpp"
-#include "oofnd/objc/OORuntime.h"
 
 
-static OOPriorityQueue	*sTimers;
+namespace {
+
+// The queue's order (it sent -compareByNextFireTime: to its Objective-C elements).
+OOComparisonResult CompareByNextFireTime(OOScriptTimer *a, OOScriptTimer *b)
+{
+	return a->compareByNextFireTime(b);
+}
+
+// The scheduled timers, held (the queue held their facades, which held them).
+OOPriorityQueueOf<OOScriptTimer>	*sTimers;
 
 // During an update, new timers must be deferred to avoid an infinite loop.
-namespace {
-static bool				sUpdating;
-} // namespace
-namespace {
-static std::vector<oo::ObjCRef<OOScriptTimer *>>	*sDeferredTimers;
-} // namespace
+bool							sUpdating;
+std::vector<oo::Ref<OOScriptTimer>>	*sDeferredTimers;
 
+}	// namespace
 
-namespace cxx {
 
 oo::Ref<OOScriptTimer> OOScriptTimer::timerWithNextTime(OOTimeAbsolute nextTime, OOTimeDelta interval)
 {
@@ -98,6 +102,22 @@ OOScriptTimer::~OOScriptTimer()
 }
 
 
+std::string OOScriptTimer::description() const
+{
+	return descriptionWithComponents(descriptionComponents());
+}
+
+
+// The deleted facade's description (bead oo-9ht.35): oo::DescriptionWithComponents() of an object
+// of the C++ class's name.
+std::string OOScriptTimer::descriptionWithComponents(const std::optional<std::string> &components) const
+{
+	std::string result = oo::str::format("<%s %s>", className().c_str(), oo::str::pointerDescription(this).c_str());
+	if (components.has_value())  result += "{" + *components + "}";
+	return result;
+}
+
+
 std::optional<std::string> OOScriptTimer::descriptionComponents() const
 {
 	std::string					intervalDesc;
@@ -150,13 +170,13 @@ bool OOScriptTimer::scheduleTimer()
 	
 	if (EXPECT(!sUpdating))
 	{
-		if (EXPECT_NOT(sTimers == nullptr))  sTimers = OOPriorityQueue::queueWithComparator(OOSelectorFromName("compareByNextFireTime:")).leakRef();
-		sTimers->addObject(oo::ToObjC(this));	// the queue holds (and retains) the timer's facade
+		if (EXPECT_NOT(sTimers == nullptr))  sTimers = new OOPriorityQueueOf<OOScriptTimer>(CompareByNextFireTime);
+		sTimers->addObject(this);	// the queue holds the timer
 	}
 	else
 	{
-		if (sDeferredTimers == NULL)  sDeferredTimers = new std::vector<oo::ObjCRef<::OOScriptTimer *>>;
-		sDeferredTimers->emplace_back(oo::ToObjC(this));
+		if (sDeferredTimers == NULL)  sDeferredTimers = new std::vector<oo::Ref<OOScriptTimer>>;
+		sDeferredTimers->emplace_back(this);
 	}
 	
 	_isScheduled = true;
@@ -166,9 +186,9 @@ bool OOScriptTimer::scheduleTimer()
 
 void OOScriptTimer::unscheduleTimer()
 {
-	// A queued timer's facade is alive (the queue retains it), so a timer with no live facade is not
-	// in the queue; this is also what makes the call safe from the destructors.
-	if (sTimers != nullptr)  sTimers->removeExactObject(oo::LiveObjC(this));
+	// The queue compares pointers, so this is safe from the destructors (a queued timer is held,
+	// so a dying one is not in the queue).
+	if (sTimers != nullptr)  sTimers->removeExactObject(this);
 	_isScheduled = false;
 	_hasBeenRun = false;
 }
@@ -182,7 +202,7 @@ bool OOScriptTimer::isScheduled()
 
 void OOScriptTimer::updateTimers()
 {
-	OOScriptTimer		*timer = nullptr;
+	OOScriptTimer		*next = nullptr;
 	OOTimeAbsolute		now;
 	
 	sUpdating = true;
@@ -190,10 +210,11 @@ void OOScriptTimer::updateTimers()
 	now = [UNIVERSE getTime];
 	for (;;)
 	{
-		timer = (sTimers != nullptr) ? oo::ToCxx(static_cast<::OOScriptTimer *>(sTimers->peekAtNextObject())) : nullptr;
-		if (timer == nullptr || now < timer->nextTime())  break;
+		next = (sTimers != nullptr) ? sTimers->peekAtNextObject() : nullptr;
+		if (next == nullptr || now < next->nextTime())  break;
 		
-		sTimers->removeNextObject();	// autoreleases the facade, which keeps the timer alive
+		// Held while it fires and is rescheduled (the queue autoreleased its facade).
+		const oo::Ref<OOScriptTimer> timer = sTimers->removeNextObject();
 		
 		// Must fire before rescheduling so that the timer callback can stop itself. -- Ahruman 2011-01-01
 		timer->timerFired();
@@ -221,10 +242,10 @@ void OOScriptTimer::updateTimers()
 void OOScriptTimer::noteGameReset()
 {
 	// Intermediate array is required so we don't get stuck in an endless loop over reinserted timers. Note that -sortedObjects also clears the queue!
-	const std::vector<oo::ObjCRef<id>> timers = (sTimers != nullptr) ? sTimers->sortedObjects() : std::vector<oo::ObjCRef<id>>();	// (no C++ value from a message to nil)
+	const std::vector<oo::Ref<OOScriptTimer>> timers = (sTimers != nullptr) ? sTimers->sortedObjects() : std::vector<oo::Ref<OOScriptTimer>>();
 	for (const auto &timer : timers)
 	{
-		oo::ToCxx(static_cast<::OOScriptTimer *>(timer.get()))->_isScheduled = false;
+		timer->_isScheduled = false;
 	}
 }
 
@@ -265,5 +286,3 @@ OOComparisonResult OOScriptTimer::compareByNextFireTime(OOScriptTimer *other)
 	else if (_nextTime > otherTime) return OOOrderedDescending;
 	else  return OOOrderedSame;
 }
-
-}	// namespace cxx

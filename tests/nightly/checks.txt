@@ -555,3 +555,4 @@
 [oo-9ht.15] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSCall test_OOJSVector test_OOJSQuaternion test_PlayerEntity test_OOJSConsole && bash tools/tier-c.sh --only goldens
 [oo-9ht.37] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSTimer test_OOScriptTimer test_OOJavaScriptEngine test_OOJSConsole && bash tools/tier-c.sh --only goldens
 [oo-9ht.177] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/check-string-expander.sh && bash tools/js-api-contract.sh && bash tools/tier-c.sh --only goldens
+[oo-9ht.35] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOScriptTimer test_OOJSTimer test_OOPriorityQueue test_PlayerEntity && bash tools/tier-c.sh --only goldens
