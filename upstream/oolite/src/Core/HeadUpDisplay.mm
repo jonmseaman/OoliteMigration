@@ -3316,12 +3316,12 @@ void cxx::HeadUpDisplay::drawStickSensitivityIndicator(const oo::PList & /*info*
 
 void cxx::HeadUpDisplay::drawTrumbles(const oo::PList & /*info*/)
 {
-	::OOTrumble** trumbles = [PLAYER trumbleArray];
+	cxx::PlayerEntity *player = oo::ToCxx(PLAYER);
+	oo::Ref<OOTrumble> *trumbles = player->trumbleArray();
 	NSUInteger i;
-	for (i = [PLAYER trumbleCount]; i > 0; i--)
+	for (i = player->getTrumbleCount(); i > 0; i--)
 	{
-		::OOTrumble* trum = trumbles[i - 1];
-		oo::ToCxx(trum)->drawTrumble(z1);
+		trumbles[i - 1]->drawTrumble(z1);
 	}
 }
 

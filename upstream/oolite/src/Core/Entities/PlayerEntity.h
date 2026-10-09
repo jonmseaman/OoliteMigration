@@ -42,13 +42,14 @@ MA 02110-1301, USA.
 #import "OOTypes.h"
 #import "OOJSPropID.h"
 #import "OOCommodityMarket.h"
+#import "OOTrumble.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
 #include "oofnd/Ref.hpp"
 #include "oofnd/objc/OOAssert.h"
 
-@class PlayerEntity, GuiDisplayGen, OOTrumble, MyOpenGLView, HeadUpDisplay, ShipEntity, ProxyPlayerEntity;
+@class PlayerEntity, GuiDisplayGen, MyOpenGLView, HeadUpDisplay, ShipEntity, ProxyPlayerEntity;
 @class OOSound, OOSoundSource;
 @class OOJoystickManager, OOTexture;
 @class OOJSGuiScreenKeyDefinition, OOJSScript;
@@ -787,9 +788,9 @@ public:
 	void setDefaultCustomViews();
 	Vector weaponViewOffset();
 	void setUpTrumbles();
-	void addTrumble(::OOTrumble *papaTrumble);
-	void removeTrumble(::OOTrumble *deadTrumble);
-	::OOTrumble **trumbleArray();
+	void addTrumble(OOTrumble *papaTrumble);
+	void removeTrumble(OOTrumble *deadTrumble);
+	oo::Ref<OOTrumble> *trumbleArray();
 	NSUInteger getTrumbleCount();
 
 	// Slice 26: trumble values, checksums, screen modes, target memory, missile ident, rotating and panning the custom view.
@@ -1290,7 +1291,7 @@ public:
 	
 	// trumbles
 	NSUInteger				trumbleCount = {};
-	::OOTrumble				*trumble[PLAYER_MAX_TRUMBLES] = {};
+	oo::Ref<OOTrumble>		trumble[PLAYER_MAX_TRUMBLES];
 	float					_trumbleAppetiteAccumulator = {};
 	
 	// smart zoom

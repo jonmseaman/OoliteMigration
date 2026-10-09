@@ -657,7 +657,6 @@ MA 02110-1301, USA.
 - (void) setUpTrumbles;
 - (void) addTrumble:(OOTrumble *)papaTrumble;
 - (void) removeTrumble:(OOTrumble *)deadTrumble;
-- (OOTrumble **) trumbleArray;
 - (NSUInteger) trumbleCount;
 
 @end

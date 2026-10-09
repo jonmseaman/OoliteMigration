@@ -1658,10 +1658,11 @@ void Universe::setUpWitchspaceBetweenSystem(OOSystemID s1, OOSystemID s2)
 	[thing release];
 	
 	/*- the dust particle system -*/
-	thing = [[::DustEntity alloc] init];
-	[thing setScanClass: CLASS_NO_DRAW];
+	oo::Ref<DustEntity> dust = oo::makeRef<DustEntity>();
+	dust->init();
+	dust->setScanClass(CLASS_NO_DRAW);
+	thing = oo::NewEntityFacade(dust);
 	[self addEntity:thing];
-	[thing release];
 	
 	ambientLightLevel = systeminfo.get<float>("ambient_level", 1.0);
 	[self setLighting];	// also sets initial lights positions.
@@ -1844,11 +1845,12 @@ void Universe::setUpSpace()
 	/*--*/
 	
 	/*- the dust particle system -*/
-	thing = [[::DustEntity alloc] init];	// alloc retains!
-	[thing setScanClass: CLASS_NO_DRAW];
+	oo::Ref<DustEntity> dust = oo::makeRef<DustEntity>();
+	dust->init();
+	dust->setScanClass(CLASS_NO_DRAW);
+	thing = oo::NewEntityFacade(dust);
 	[self addEntity:thing];
-	[(::DustEntity *)thing setDustColor:pale_bgcolor]; 
-	[thing release];
+	dust->setDustColor(oo::ToCxx(pale_bgcolor));
 	/*--*/
 
 	float defaultSunFlare = randf()*0.1;
@@ -3506,7 +3508,7 @@ void Universe::setUpBreakPattern(HPVector pos, Quaternion q, bool forDocking)
 {
 	::Universe *self = oo::ToObjC(this);
 	int						i;
-	::OOBreakPatternEntity	*ring = nil;
+	oo::Ref<OOBreakPatternEntity>	ring;
 	oo::PList				colorDesc;
 	::OOColor					*color = nil;
 	
@@ -3552,29 +3554,29 @@ void Universe::setUpBreakPattern(HPVector pos, Quaternion q, bool forDocking)
 	
 	for (i = 1; i < 11; i++)
 	{
-		ring = [::OOBreakPatternEntity breakPatternWithPolygonSides:sides startAngle:startAngle aspectRatio:aspectRatio];
+		ring = OOBreakPatternEntity::breakPatternWithPolygonSides(sides, startAngle, aspectRatio);
 		if (!forDocking)
 		{
-			[ring setInnerColor:col1 outerColor:col2];
+			ring->setInnerColor(oo::ToCxx(col1), oo::ToCxx(col2));
 		}
 		
 		Vector offset = vector_multiply_scalar(v, i * BREAK_PATTERN_RING_SPACING);
-		[ring setPosition:HPvector_add(pos, vectorToHPVector(offset))];  // ahead of the player
-		[ring setOrientation:q];
-		[ring setVelocity:vel];
-		[ring setLifetime:i * BREAK_PATTERN_RING_SPACING];
+		ring->setPosition(HPvector_add(pos, vectorToHPVector(offset)));  // ahead of the player
+		ring->setOrientation(q);
+		ring->setVelocity(vel);
+		ring->setLifetime(i * BREAK_PATTERN_RING_SPACING);
 		
 		// FIXME: better would be to have break pattern timing not depend on
 		// these ring objects existing in the first place. - CIM
 		if (forDocking && ![[PLAYER dockedStation] hasBreakPattern])
 		{
-			ring->_cxxEntity->isImmuneToBreakPatternHide = NO;
+			ring->isImmuneToBreakPatternHide = NO;
 		}
 		else if (!forDocking && ![self witchspaceBreakPattern])
 		{
-			ring->_cxxEntity->isImmuneToBreakPatternHide = NO;
+			ring->isImmuneToBreakPatternHide = NO;
 		}
-		[self addEntity:ring];
+		[self addEntity:oo::NewEntityFacade(ring)];
 		breakPatternCounter++;
 	}
 }
@@ -8772,8 +8774,9 @@ void Universe::setSystemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum, const st
 						[the_sun getSpecularComponents:sun_specular];
 					}
 					for (i = n_entities - 1; i > 0; i--)
-						if ((sortedEntities[i]) && ([sortedEntities[i] isKindOfClass:[::DustEntity class]]))
-							[(::DustEntity*)sortedEntities[i] setDustColor:[color blendedColorWithFraction:0.5 ofColor:[::OOColor whiteColor]]];
+						if (sortedEntities[i])
+							if (DustEntity *dust = dynamic_cast<DustEntity *>(oo::ToCxx(sortedEntities[i])))
+								dust->setDustColor(oo::ToCxx([color blendedColorWithFraction:0.5 ofColor:[::OOColor whiteColor]]));
 				}
 			}
 		}
@@ -11248,7 +11251,7 @@ bool Universe::doRemoveEntity(::Entity *entity)
 	if (std::find(entities.begin(), entities.end(), entity) != entities.end())
 	{
 		// FIXME: better approach needed for core break patterns - CIM
-		if ([entity isBreakPattern] && ![entity isVisualEffect])
+		if (dynamic_cast<OOBreakPatternEntity *>(oo::ToCxx(entity)) != nullptr)
 		{
 			breakPatternCounter--;
 		}

@@ -10,8 +10,10 @@
 	(status, the collision radius the draw pass uses, the pale cyan colour), the dust colour
 	setter, the camera-relative position (the viewpoint wrapped to the dust cube), the two vectors the
 	dust shader binds by selector (-warpVector, -offsetPlayerPosition), and that the universe can
-	still find the dust by its class. No line was ported: callers still make it with
-	[[DustEntity alloc] init] and message it, through its facade.
+	still find the dust. Bead oo-9ht.77 deleted the Objective-C facade (proposed ADR-0056 amendment
+	oo-0mxi): the universe makes it with oo::makeRef<DustEntity>() and init() and hands it over with
+	oo::NewEntityFacade, so the test does the same and asks the C++ class; the facade checks
+	(class, selectors) went with the facade (ADR-0049, oo-9n5p9).
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -53,16 +55,6 @@ extern Universe *gSharedUniverse;
 @end
 
 
-// What the dust shader's uniforms are bound to, by selector, and what the reset manager sends.
-@interface DustEntity (TestSelectors)
-
-- (Vector) warpVector;
-- (Vector) offsetPlayerPosition;
-- (void) resetGraphicsState;
-
-@end
-
-
 namespace {
 
 TestPlayer *SetUp()
@@ -84,10 +76,20 @@ TestPlayer *SetUp()
 }
 
 
-bool ColorIs(OOColor *color, float r, float g, float b, float a)
+// What the universe does: a dust entity, and its root facade.
+Entity *MakeDust(DustEntity **outDust)
+{
+	oo::Ref<DustEntity> dust = oo::makeRef<DustEntity>();
+	dust->init();
+	*outDust = dust.get();
+	return oo::NewEntityFacade(dust);
+}
+
+
+bool ColorIs(cxx::OOColor *color, float r, float g, float b, float a)
 {
 	float cr, cg, cb, ca;
-	[color getRed:&cr green:&cg blue:&cb alpha:&ca];
+	color->getRed(&cr, &cg, &cb, &ca);
 	return cr == r && cg == g && cb == b && ca == a;
 }
 
@@ -99,21 +101,22 @@ OO_TEST(init)
 	@autoreleasepool
 	{
 		SetUp();
-		DustEntity *dust = [[[DustEntity alloc] init] autorelease];
-		OO_CHECK(dust != nil && [dust isKindOfClass:[DustEntity class]]);
-		OO_CHECK([dust status] == STATUS_ACTIVE);
-		OO_CHECK([dust collisionRadius] == DUST_SCALE && ![dust canCollide]);
-		OO_CHECK(ColorIs([dust dustColor], 0.5f, 1.0f, 1.0f, 1.0f));
-		OO_CHECK(oo::DescriptionOf(dust).starts_with("<DustEntity 0x"));
+		DustEntity *dust = nullptr;
+		Entity *object = MakeDust(&dust);
+		OO_CHECK(object != nil && dust != nullptr && dynamic_cast<DustEntity *>(oo::ToCxx(object)) == dust);
+		OO_CHECK(dust->status() == STATUS_ACTIVE);
+		OO_CHECK(dust->collisionRadius() == DUST_SCALE && !dust->canCollide());
+		OO_CHECK(ColorIs(dust->dustColor(), 0.5f, 1.0f, 1.0f, 1.0f));
+		OO_CHECK(oo::EntityClassName(dust) == "DustEntity");
 
-		OOColor *color = [OOColor colorWithRed:0.25f green:0.5f blue:0.75f alpha:1.0f];
-		[dust setDustColor:color];
-		OO_CHECK([dust dustColor] == color);
+		::OOColor *color = [::OOColor colorWithRed:0.25f green:0.5f blue:0.75f alpha:1.0f];
+		dust->setDustColor(oo::ToCxx(color));
+		OO_CHECK(dust->dustColor() == oo::ToCxx(color));
 
 		// Nothing is drawn in the opaque pass.
-		[dust drawImmediate:false translucent:false];
+		dust->drawImmediate(false, false);
 		// A graphics reset is safe at any time.
-		[dust resetGraphicsState];
+		dust->resetGraphicsState();
 	}
 }
 
@@ -123,15 +126,16 @@ OO_TEST(cameraRelativePosition)
 	@autoreleasepool
 	{
 		TestPlayer *player = SetUp();
-		DustEntity *dust = [[[DustEntity alloc] init] autorelease];
+		DustEntity *dust = nullptr;
+		Entity *object = MakeDust(&dust);
 		player->_viewpoint = make_HPvector(2500, -100, 4000);
-		[dust updateCameraRelativePosition];
-		Vector relative = [dust cameraRelativePosition];
+		dust->updateCameraRelativePosition();
+		Vector relative = [object cameraRelativePosition];
 		OO_CHECK(relative.x == -500 && relative.y == 100 && relative.z == 0);
 
-		// -update: puts the dust at zero distance (it is always around the player).
-		[dust update:0.1];
-		OO_CHECK([dust zeroDistance] == 0.0);
+		// update(): puts the dust at zero distance (it is always around the player).
+		dust->update(0.1);
+		OO_CHECK(dust->zeroDistance() == 0.0);
 	}
 }
 
@@ -141,16 +145,15 @@ OO_TEST(shaderBindings)
 	@autoreleasepool
 	{
 		TestPlayer *player = SetUp();
-		DustEntity *dust = [[[DustEntity alloc] init] autorelease];
+		DustEntity *dust = nullptr;
+		MakeDust(&dust);
 		[player setVelocity:make_vector(0, 64, 320)];
-		OO_CHECK(vector_equal([dust warpVector], make_vector(0, 2, 10)));
-		OO_CHECK([dust respondsToSelector:@selector(warpVector)]);
+		OO_CHECK(vector_equal(dust->warpVector(), make_vector(0, 2, 10)));
 
 #if OO_SHADERS
 		player->_viewpoint = make_HPvector(2500, -100, 0);
-		Vector offset = [dust offsetPlayerPosition];
+		Vector offset = dust->offsetPlayerPosition();
 		OO_CHECK(offset.x == -500 && offset.y == -1100 && offset.z == -1000);
-		OO_CHECK([dust respondsToSelector:@selector(offsetPlayerPosition)]);
 #endif
 	}
 }

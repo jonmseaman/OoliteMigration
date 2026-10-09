@@ -3753,14 +3753,13 @@ void PlayerEntity::checkScriptsIfAppropriate()
 
 void PlayerEntity::updateTrumbles(OOTimeDelta delta_t)
 {
-	::PlayerEntity *self = oo::ToObjC(this);
-	::OOTrumble	**trumbles = [self trumbleArray];
+	oo::Ref<OOTrumble> *trumbles = trumbleArray();
 	NSUInteger	i;
 	
-	for (i = [self trumbleCount] ; i > 0; i--)
+	for (i = getTrumbleCount() ; i > 0; i--)
 	{
-		::OOTrumble* trum = trumbles[i - 1];
-		[trum updateTrumble:delta_t];
+		oo::Ref<OOTrumble> trum = trumbles[i - 1];
+		trum->updateTrumble(delta_t);
 	}
 }
 
@@ -11956,7 +11955,7 @@ bool PlayerEntity::addEquipmentItem(const std::string &equipmentKey, bool valida
 		// the old trumbles will kill the new one if there are enough of them.
 		if ((trumbleCount < PLAYER_MAX_TRUMBLES / 6) || (trumbleCount < PLAYER_MAX_TRUMBLES / 3 && ranrot_rand() % 2 > 0))
 		{
-			[self addTrumble:trumble[ranrot_rand() % PLAYER_MAX_TRUMBLES]];	// randomise its looks.
+			addTrumble(trumble[ranrot_rand() % PLAYER_MAX_TRUMBLES].get());	// randomise its looks.
 			return YES;
 		}
 		return NO;
@@ -12411,8 +12410,7 @@ void PlayerEntity::setUpTrumbles()
 		digramchars[1] = ((trumbleDigrams[i + 1] ^ xchar) & 0x007f) | 0x0020;
 		xchar = digramchars[0];
 		const std::string digramstring = { static_cast<char>(digramchars[0]), static_cast<char>(digramchars[1]) };	// both ASCII
-		[trumble[i] release];
-		trumble[i] = [[::OOTrumble alloc] initForPlayer:self digram:digramstring];
+		trumble[i] = oo::makeRef<OOTrumble>(self, digramstring);
 	}
 	
 	trumbleCount = 0;
@@ -12421,19 +12419,18 @@ void PlayerEntity::setUpTrumbles()
 }
 
 
-void PlayerEntity::addTrumble(::OOTrumble *papaTrumble)
+void PlayerEntity::addTrumble(OOTrumble *papaTrumble)
 {
 	if (trumbleCount >= PLAYER_MAX_TRUMBLES)
 	{
 		return;
 	}
-	::OOTrumble *trumblePup = trumble[trumbleCount];
-	[trumblePup spawnFrom:papaTrumble];
+	trumble[trumbleCount]->spawnFrom(papaTrumble);
 	trumbleCount++;
 }
 
 
-void PlayerEntity::removeTrumble(::OOTrumble *deadTrumble)
+void PlayerEntity::removeTrumble(OOTrumble *deadTrumble)
 {
 	if (trumbleCount <= 0)
 	{
@@ -12449,16 +12446,15 @@ void PlayerEntity::removeTrumble(::OOTrumble *deadTrumble)
 	}
 	if (trumble_index == NSNotFound)
 	{
-		OO_LOG("trumble.zombie", "DEBUG can't get rid of inactive trumble {}", oo::DescriptionOf(deadTrumble));
+		OO_LOG("trumble.zombie", "DEBUG can't get rid of inactive trumble {}", static_cast<const void *>(deadTrumble));
 		return;
 	}
 	trumbleCount--;	// reduce number of trumbles
-	trumble[trumble_index] = trumble[trumbleCount];	// swap with the current last trumble
-	trumble[trumbleCount] = deadTrumble;				// swap with the current last trumble
+	std::swap(trumble[trumble_index], trumble[trumbleCount]);	// swap with the current last trumble
 }
 
 
-::OOTrumble **PlayerEntity::trumbleArray()
+oo::Ref<OOTrumble> *PlayerEntity::trumbleArray()
 {
 	return trumble;
 }
@@ -12495,7 +12491,7 @@ oo::PList PlayerEntity::trumbleValue()
 	trumbleArray.reserve(PLAYER_MAX_TRUMBLES);
 	for (i = 0; i < PLAYER_MAX_TRUMBLES; i++)
 	{
-		trumbleArray.push_back([trumble[i] dictionary]);
+		trumbleArray.push_back(trumble[i]->dictionary());
 	}
 
 	// [count (unsigned), hash (signed), trumbles]: the same number kinds as before
@@ -12600,7 +12596,7 @@ void PlayerEntity::setTrumbleValueFrom(const oo::PList &trumbleValue)
 	if ((!putativeTrumbleArray.isNull()) && (putativeTrumbleArray.count() == PLAYER_MAX_TRUMBLES))
 	{
 		for (i = 0; i < PLAYER_MAX_TRUMBLES; i++)
-			[trumble[i] setFromDictionary:(putativeTrumbleArray.at(i)->isDict() ? *putativeTrumbleArray.at(i) : oo::PList())];	// null PList unless a dictionary
+			trumble[i]->setFromDictionary(putativeTrumbleArray.at(i)->isDict() ? *putativeTrumbleArray.at(i) : oo::PList());	// null PList unless a dictionary
 	}
 	
 	clear_checksum();

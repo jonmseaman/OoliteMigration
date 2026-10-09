@@ -198,7 +198,7 @@ PlayerEntity		*gOOPlayer = nil;
 
 	int i;
 	for (i = 0; i < PLAYER_MAX_MISSILES; i++)  DESTROY(_cxxPlayer->missile_entity[i]);
-	for (i = 0; i < PLAYER_MAX_TRUMBLES; i++)  DESTROY(_cxxPlayer->trumble[i]);
+	for (i = 0; i < PLAYER_MAX_TRUMBLES; i++)  _cxxPlayer->trumble[i] = oo::Ref<OOTrumble>();
 
 
 
@@ -746,7 +746,6 @@ PlayerEntity		*gOOPlayer = nil;
 - (void) setUpTrumbles	{ _cxxPlayer->setUpTrumbles(); }
 - (void) addTrumble:(OOTrumble *)papaTrumble	{ _cxxPlayer->addTrumble(papaTrumble); }
 - (void) removeTrumble:(OOTrumble *)deadTrumble	{ _cxxPlayer->removeTrumble(deadTrumble); }
-- (OOTrumble**) trumbleArray	{ return _cxxPlayer->trumbleArray(); }
 - (NSUInteger) trumbleCount	{ return _cxxPlayer->getTrumbleCount(); }
 
 @end
