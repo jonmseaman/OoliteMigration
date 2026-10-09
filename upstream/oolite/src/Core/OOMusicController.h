@@ -5,9 +5,7 @@ OOMusicController.h
 Singleton controller for music playback.
 
 C++20 since bead oo-lfkq (proposed ADR-0056, the Audio module: amendment oo-2en; a singleton:
-amendment oo-r7m0). The class is cxx::OOMusicController while OOMusicController+ObjCBridge.h,
-imported at the end of this header, keeps the Objective-C OOMusicController that the player, the
-universe and the JS Sound and Mission classes message; the bridge's deletion bead moves it out of
+amendment oo-r7m0). Its Objective-C facade was deleted by bead oo-9ht.90, and the class left
 namespace cxx.
 
 
@@ -62,8 +60,6 @@ typedef enum
 } OOMusicMode;
 
 
-namespace cxx {
-
 class OOMusicController : public oo::RefCounted
 {
 public:
@@ -112,11 +108,6 @@ private:
 	uint8_t					_special = {};
 };
 
-}	// namespace cxx
 
-
-// Transitional: the Objective-C OOMusicController, for its callers.
-// Deleted, with namespace cxx above, by the bridge's deletion bead.
-#import "OOMusicController+ObjCBridge.h"
 
 #endif	// OOMUSICCONTROLLER_H

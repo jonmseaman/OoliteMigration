@@ -52,11 +52,12 @@ MA 02110-1301, USA.
 #include <string_view>
 #endif
 
-@class	GameController, CollisionRegion, MyOpenGLView, GuiDisplayGen,
+@class	GameController, MyOpenGLView, GuiDisplayGen,
 	Entity, ShipEntity, StationEntity, OOPlanetEntity, OOSunEntity,
-	OOVisualEffectEntity, PlayerEntity, OORoleSet, WormholeEntity, 
+	OOVisualEffectEntity, PlayerEntity, WormholeEntity, 
 	DockEntity, OOJSScript, OOWaypointEntity, OOSystemDescriptionManager,
 	OOException, OOCharacter;
+class CollisionRegion;
 
 
 typedef BOOL (*EntityFilterPredicate)(Entity *entity, void *parameter);
@@ -395,7 +396,7 @@ public:
 
 	std::vector<oo::ObjCRef<::OOCharacter *>>	characterPool;
 
-	::CollisionRegion		*universeRegion = nil;
+	oo::Ref<::CollisionRegion>	universeRegion;
 
 	// check and maintain linked lists occasionally
 	BOOL					doLinkedListMaintenanceThisUpdate = NO;
@@ -439,9 +440,9 @@ public:
 	GLuint					targetDepthBufferID = 0;
 	GLuint					targetFramebufferID = 0;
 	GLuint					passthroughFramebufferID = 0;
-	::OOShaderProgram		*textureProgram = nil;
-	::OOShaderProgram		*blurProgram = nil;
-	::OOShaderProgram		*finalProgram = nil;
+	oo::Ref<OOShaderProgram>	textureProgram = {};
+	oo::Ref<OOShaderProgram>	blurProgram = {};
+	oo::Ref<OOShaderProgram>	finalProgram = {};
 	GLuint 					quadTextureVBO = 0, quadTextureVAO = 0, quadTextureEBO = 0;
 	GLint 					defaultDrawFBO = 0;
 	GLuint					pingpongFBO[2] = {};

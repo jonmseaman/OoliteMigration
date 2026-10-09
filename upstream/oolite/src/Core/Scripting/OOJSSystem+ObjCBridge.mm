@@ -28,7 +28,6 @@ MA 02110-1301, USA.
 #import "OOJSSystem+ObjCBridge.h"
 #import "PlayerEntityLegacyScriptEngine.h"
 #import "EntityOOJavaScriptExtensions.h"
-#import "OOJSPopulatorDefinition.h"
 #import "ShipEntity.h"
 
 
@@ -124,4 +123,3 @@ void OOJSSystemPlayerAddShipsAt(PlayerEntity *player, const std::string &rolesNu
 void OOJSSystemPlayerAddShipsAtPrecisely(PlayerEntity *player, const std::string &rolesNumberSystemXYZ)	{ [player addShipsAtPrecisely:rolesNumberSystemXYZ]; }
 void OOJSSystemPlayerAddShipsWithinRadius(PlayerEntity *player, const std::string &rolesNumberSystemXYZR)	{ [player addShipsWithinRadius:rolesNumberSystemXYZR]; }
 OOShipGroup *OOJSSystemShipGroup(ShipEntity *ship)	{ return [ship group]; }
-OOJSPopulatorDefinition *OOJSSystemNewPopulatorDefinition()	{ return [[OOJSPopulatorDefinition alloc] init]; }

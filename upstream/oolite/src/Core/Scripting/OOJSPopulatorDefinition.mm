@@ -53,12 +53,10 @@ static inline Object   *OOJSFOBJP(ooscript::Object *o)     { return reinterpret_
 } // namespace
 
 
-/*	C++20 since bead oo-1h0h (proposed ADR-0056 amendment oo-o89): cxx::OOJSPopulatorDefinition.
+/*	C++20 since bead oo-1h0h (proposed ADR-0056 amendment oo-o89): OOJSPopulatorDefinition.
 	-init after [super init] is the constructor, -dealloc the destructor; the engine, the script
 	stack and the owning script's weak reference are Objective-C and are messaged as before.
 */
-
-namespace cxx {
 
 OOJSPopulatorDefinition::OOJSPopulatorDefinition() {
 	_callback = ooscript::undefinedValue();
@@ -148,4 +146,34 @@ void OOJSPopulatorDefinition::runPopulatorCallback(HPVector location)
 	OOJSRelinquishContext(context);
 }
 
-}	// namespace cxx
+
+namespace {
+class PopulatorDefinitionForeign final : public oo::PListForeign
+{
+public:
+	explicit PopulatorDefinitionForeign(oo::Ref<OOJSPopulatorDefinition> definition) : definition_(std::move(definition)) {}
+	OOJSPopulatorDefinition *definition() const noexcept { return definition_.get(); }
+	std::string className() const override { return "OOJSPopulatorDefinition"; }
+	std::string description() const override { return "<OOJSPopulatorDefinition>"; }
+
+private:
+	oo::Ref<OOJSPopulatorDefinition> definition_;
+};
+} // namespace
+
+
+oo::PList OOJSPopulatorDefinitionToPList(oo::Ref<OOJSPopulatorDefinition> definition)
+{
+	if (!definition)  return oo::PList();
+	return oo::PList(oo::PList::Object(oo::makeRef<PopulatorDefinitionForeign>(std::move(definition))));
+}
+
+
+OOJSPopulatorDefinition *OOJSPopulatorDefinitionIn(const oo::PList &plist)
+{
+	if (const oo::PList::Object *node = plist.getIf<oo::PList::Object>())
+	{
+		if (const auto *foreign = dynamic_cast<const PopulatorDefinitionForeign *>(node->get()))  return foreign->definition();
+	}
+	return nullptr;
+}

@@ -59,8 +59,8 @@ Vector OOVectorFromPList(const oo::PList *value, Vector defaultValue)
 
 		case oo::plist_get::TupleSource::object:
 		{
-			id object = oo::ObjectIn(*value);
-			if ([object isKindOfClass:[OONativeVector class]])  result = [object getVector];
+			const oo::PList::Object *node = value->getIf<oo::PList::Object>();
+			if (OONativeVector *box = (node != nullptr) ? dynamic_cast<OONativeVector *>(node->get()) : nullptr)  result = box->getVector();
 			break;
 		}
 

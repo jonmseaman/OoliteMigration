@@ -6,9 +6,7 @@ Subclass of OOSound with additional controls specific to music playback. Only
 one instance of OOMusic may be playing at a time.
 
 C++20 since bead oo-nwbw (proposed ADR-0056, the Audio module: amendment oo-2en). The class is
-cxx::OOMusic, a subclass of cxx::OOSound, while OOALMusic+ObjCBridge.h, imported at the end of this
-header, keeps the Objective-C OOMusic that the resource manager makes and the music controller
-messages; the bridge's deletion bead moves it out of namespace cxx.
+OOMusic, a subclass of cxx::OOSound; its Objective-C facade was deleted by bead oo-9ht.85.
 
 
 OOALSound - OpenAL sound implementation for Oolite.
@@ -44,9 +42,7 @@ SOFTWARE.
 #include "oofnd/objc/OOObjCRef.h"
 
 
-namespace cxx {
-
-class OOMusic : public OOSound
+class OOMusic : public cxx::OOSound
 {
 public:
 	/*	Was -cxx_initWithContentsOfFile:, OOSound's designated initialiser overridden: a music that
@@ -73,12 +69,5 @@ private:
 	// (amendment oo-smy item 4): the Objective-C object is kept, retained as before.
 	oo::ObjCRef<::OOSound *>	sound;
 };
-
-}	// namespace cxx
-
-
-// Transitional: the Objective-C OOMusic, for the resource manager and the music controller.
-// Deleted, with namespace cxx above, by the bridge's deletion bead.
-#import "OOALMusic+ObjCBridge.h"
 
 #endif	// OOALMUSIC_H

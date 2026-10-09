@@ -5,11 +5,10 @@ OOOXZManager.h
 Responsible for installing and uninstalling OXZs
 
 C++20 since bead oo-bwjb, slice 1 of docs/phases/3-slices/OOOXZManager.md (proposed ADR-0056: a
-singleton, amendment oo-r7m0; a class-shell slice, amendment oo-pni4). OOOXZManager+ObjCBridge.h,
-imported at the end of this header, keeps the Objective-C OOOXZManager as a facade over this class
-for its callers (GameController, PlayerEntity, PlayerEntityControls); slices 2 to 4 (beads oo-0hyr,
-oo-q7r3, oo-qbgo) converted the rest of the file. The bridge's deletion bead moves the class out of
-namespace cxx.
+singleton, amendment oo-r7m0; a class-shell slice, amendment oo-pni4); slices 2 to 4 (beads oo-0hyr,
+oo-q7r3, oo-qbgo) converted the rest of the file. Its Objective-C facade was deleted by bead
+oo-9ht.131: the callers (GameController, PlayerEntity, PlayerEntityControls) call
+OOOXZManager::sharedManager(), and the class left namespace cxx.
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -91,8 +90,6 @@ typedef enum {
 } OXZInstallableState;
 
 
-namespace cxx {
-
 class OOOXZManager : public oo::RefCounted
 {
 public:
@@ -155,7 +152,7 @@ public:
 
 	oo::PList installedManifestForIdentifier(const std::string &identifier);	// null: not installed
 	OXZInstallableState installableState(const oo::PList &manifest);
-	oo::Ref<OOColor> colorForManifest(const oo::PList &manifest);
+	oo::Ref<cxx::OOColor> colorForManifest(const oo::PList &manifest);
 	std::optional<std::string> installStatusForManifest(const oo::PList &manifest);	// nullopt: its description is missing
 
 	bool installOXZ(NSUInteger item);
@@ -224,9 +221,4 @@ private:
 	FILE				*_fileWriter = {};
 };
 
-}	// namespace cxx
 
-
-// Transitional: the Objective-C OOOXZManager, for code not yet converted. Deleted, with namespace
-// cxx above, by the bridge's deletion bead.
-#import "OOOXZManager+ObjCBridge.h"

@@ -1458,12 +1458,17 @@ ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &p
 			return JSObjectValueFromPList(context, *plist.getIf<oo::PList::Dict>());
 
 		case oo::PList::Type::Object:
+		{
 			// A C++ object that is its own JS glue (OOJSPrivateObject.h), else an Objective-C object.
 			if (const oo::PList::Object *node = plist.getIf<oo::PList::Object>())
 			{
 				if (OOJSPrivateObject *glue = dynamic_cast<OOJSPrivateObject *>(node->get()))  return OOJSValueFromCxxObject(context, glue);
+				if (OONativeVector *box = dynamic_cast<OONativeVector *>(node->get()))  return OONativeVectorJSValueInContext(box, context);
 			}
-			return OOJSValueFromNativeObject(context, oo::ObjectIn(plist));
+			id object = oo::ObjectIn(plist);
+			if (object == nil)  return ooscript::undefinedValue();	// a node that holds no Objective-C object (a C++ one): no JS glue
+			return OOJSValueFromNativeObject(context, object);
+		}
 	}
 	return ooscript::undefinedValue();
 
@@ -1884,9 +1889,9 @@ std::string cxx_OOJSEscapedForJavaScriptLiteral(std::string_view string)
 }
 
 
-// OONativeVector (OOJavaScriptConversion)'s -oo_jsValueInContext:, which forwards here from
-// OOJavaScriptEngine+ObjCBridge.mm (amendment oo-ppc item 3).
-ooscript::Value OONativeVectorJSValueInContext(cxx::OONativeVector *vector, ooscript::Context context)
+// A vector box's JS value, a Vector3D (was OONativeVector (OOJavaScriptConversion)'s
+// -oo_jsValueInContext:, amendment oo-ppc item 3; the box's facade was deleted by bead oo-9ht.5).
+ooscript::Value OONativeVectorJSValueInContext(OONativeVector *vector, ooscript::Context context)
 {
 	ooscript::Value value = ooscript::undefinedValue();
 	VectorToJSValue(context, vector->getVector(), &value);

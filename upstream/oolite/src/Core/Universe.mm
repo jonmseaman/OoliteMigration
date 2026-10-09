@@ -398,7 +398,7 @@ void cxx::Universe::initWithGameView(::MyOpenGLView *inGameView)
 
 	[self setUpInitialUniverse];
 
-	universeRegion = [[::CollisionRegion alloc] initAsUniverse];
+	universeRegion = oo::makeRef<::CollisionRegion>(::CollisionRegion::AsUniverse {});
 	entitiesDeadThisUpdate.clear();
 	framesDoneThisUpdate = 0;
 	drawCounter = 0;
@@ -457,7 +457,7 @@ void cxx::Universe::dealloc()
 
 	activeWormholes.clear();
 	characterPool.clear();
-	[universeRegion release];
+	universeRegion = nullptr;
 
 	DESTROY(_firstBeacon);
 	DESTROY(_lastBeacon);
@@ -1581,7 +1581,7 @@ void Universe::setUpWitchspaceBetweenSystem(OOSystemID s1, OOSystemID s2)
 
 	const oo::PList systeminfo = [systemManager cxx_getPropertiesForSystemKey:override_key];
 	
-	[universeRegion clearSubregions];
+	if (universeRegion != nullptr)  universeRegion->clearSubregions();	// none yet while the initial universe is set up (a nil message did nothing)
 	
 	// fixed entities (part of the graphics system really) come first...
 	
@@ -1714,7 +1714,7 @@ void Universe::setUpSpace()
 	sunGoneNova = systeminfo.get<bool>("sun_gone_nova", NO);
 
 	OO_DEBUG_PUSH_PROGRESS("setUpSpace - clearSubRegions, sky, dust");
-	[universeRegion clearSubregions];
+	if (universeRegion != nullptr)  universeRegion->clearSubregions();	// none yet while the initial universe is set up (a nil message did nothing)
 	
 	// fixed entities (part of the graphics system really) come first...
 	[self setSkyColorRed:0.0f
@@ -2124,7 +2124,7 @@ void Universe::populateSystemFromDictionariesWithSun(::OOSunEntity *sun, ::OOPla
 	RANROTSeed rndcache = RANROTGetFullSeed();
 	RANROTSeed rndlocal = RANROTGetFullSeed();
 	std::string locationCode;
-	::OOJSPopulatorDefinition *pdef = nil;
+	OOJSPopulatorDefinition *pdef = nullptr;
 	for (const oo::PList &populator : sortedBlocks)
 	{
 		deterministic_population = populator.get<bool>("deterministic", NO);
@@ -2180,8 +2180,8 @@ void Universe::populateSystemFromDictionariesWithSun(::OOSunEntity *sun, ::OOPla
 				}			
 			}
 			// location now contains a Vector coordinate, one way or another
-			pdef = oo::ObjectIn(PListForKeyIn(populator, "callbackObj"));	// an Object node: the populator definition itself
-			[pdef runPopulatorCallback:location];
+			pdef = OOJSPopulatorDefinitionIn(PListForKeyIn(populator, "callbackObj"));	// an Object node: the populator definition itself
+			if (pdef != nullptr)  pdef->runPopulatorCallback(location);	// a message to nil did nothing
 		}
 	}
 	// nothing is deterministic once the populator is done
@@ -4962,7 +4962,7 @@ oo::PList Universe::gameSettings()
 	result["detailLevel"] = oo::PList(cxx_OOStringFromGraphicsDetail([self detailLevel]));
 
 	const char *desc = "UNDEFINED";
-	switch ([[::OOMusicController sharedController] mode])
+	switch (OOMusicController::sharedController()->mode())
 	{
 		case kOOMusicOff:		desc = "MUSIC_OFF"; break;
 		case kOOMusicOn:		desc = "MUSIC_ON"; break;
@@ -6997,26 +6997,30 @@ void Universe::findCollisionsAndShadows()
 
 	unsigned i;
 	
-	[universeRegion clearEntityList];
+	// The region is made after the initial universe is set up; until then there is nothing to do,
+	// as the messages to the nil region did nothing.
+	if (universeRegion == nullptr)  return;
+
+	universeRegion->clearEntityList();
 	
 	for (i = 0; i < n_entities; i++)
 	{
-		[universeRegion checkEntity:sortedEntities[i]];	// sorts out which region it's in
+		universeRegion->checkEntity(sortedEntities[i]);	// sorts out which region it's in
 	}
 	
 	if (![[self gameController] isGamePaused])
 	{
-		[universeRegion findCollisions];
+		universeRegion->findCollisions();
 	}
 	
 	// do check for entities that can't see the sun!
-	[universeRegion findShadowedEntities];
+	universeRegion->findShadowedEntities();
 }
 
 
 std::string Universe::collisionDescription()
 {
-	if (universeRegion != nil)  return [universeRegion collisionDescription];
+	if (universeRegion != nullptr)  return universeRegion->collisionDescription();
 	else  return "-";
 }
 
@@ -11763,24 +11767,24 @@ void Universe::initTargetFramebufferWithViewSize(NSSize viewSize)
 	// shader for drawing a textured quad on the passthrough framebuffer and preparing it for bloom using MRT
 	if (![[::OOOpenGLExtensionManager sharedManager] shadersForceDisabled])
 	{
-		textureProgram = [[::OOShaderProgram shaderProgramWithVertexShaderName:"oolite-texture.vertex"
-													fragmentShaderName:"oolite-texture.fragment"
-													prefix:"#version 330\n"
-													attributeBindings:oo::PList(oo::PList::Dict{})] retain];
+		textureProgram = OOShaderProgram::shaderProgramWithVertexShaderName("oolite-texture.vertex",
+													"oolite-texture.fragment",
+													"#version 330\n",
+													oo::PList(oo::PList::Dict{}));
 		// shader for blurring the over-threshold brightness image generated from the previous step using Gaussian filter
-		blurProgram = [[::OOShaderProgram shaderProgramWithVertexShaderName:"oolite-blur.vertex"
-													fragmentShaderName:"oolite-blur.fragment"
-													prefix:"#version 330\n"
-													attributeBindings:oo::PList(oo::PList::Dict{})] retain];
+		blurProgram = OOShaderProgram::shaderProgramWithVertexShaderName("oolite-blur.vertex",
+													"oolite-blur.fragment",
+													"#version 330\n",
+													oo::PList(oo::PList::Dict{}));
 		// shader for applying bloom and any necessary post-proc fx, tonemapping and gamma correction
-		finalProgram = [[::OOShaderProgram shaderProgramWithVertexShaderName:"oolite-final.vertex"
+		finalProgram = OOShaderProgram::shaderProgramWithVertexShaderName("oolite-final.vertex",
 #if OOLITE_WINDOWS
-													fragmentShaderName:[[UNIVERSE gameView] hdrOutput] ? "oolite-final-hdr.fragment" : "oolite-final.fragment"
+													[[UNIVERSE gameView] hdrOutput] ? "oolite-final-hdr.fragment" : "oolite-final.fragment",
 #else
-													fragmentShaderName:"oolite-final.fragment"
+													"oolite-final.fragment",
 #endif
-													prefix:"#version 330\n"
-													attributeBindings:oo::PList(oo::PList::Dict{})] retain];
+													"#version 330\n",
+													oo::PList(oo::PList::Dict{}));
 	}
 	
 	OOGL(glGenVertexArrays(1, &quadTextureVAO));
@@ -11828,9 +11832,9 @@ void Universe::deleteOpenGLObjects()
 	OOGL(glDeleteVertexArrays(1, &quadTextureVAO));
 	OOGL(glDeleteBuffers(1, &quadTextureVBO));
 	OOGL(glDeleteBuffers(1, &quadTextureEBO));
-	[textureProgram release];
-	[blurProgram release];
-	[finalProgram release];
+	textureProgram = nullptr;
+	blurProgram = nullptr;
+	finalProgram = nullptr;
 }
 
 
@@ -11895,9 +11899,9 @@ void Universe::drawTargetTextureIntoDefaultFramebuffer()
 	// fixes transparency issue for some reason
 	OOGL(glDisable(GL_BLEND));
 	
-	GLhandleARB program = [textureProgram program];
-	GLhandleARB blur = [blurProgram program];
-	GLhandleARB final = [finalProgram program];
+	GLhandleARB program = textureProgram->program();
+	GLhandleARB blur = blurProgram->program();
+	GLhandleARB final = finalProgram->program();
 	NSSize viewSize = [gameView backingViewSize];
 	float fboResolution[2] = {(float)viewSize.width, (float)viewSize.height};
 
@@ -11926,7 +11930,7 @@ void Universe::drawTargetTextureIntoDefaultFramebuffer()
 		OOGL(glActiveTexture(GL_TEXTURE0));
 		// bind texture of other framebuffer (or scene if first iteration)
 		OOGL(glBindTexture(GL_TEXTURE_2D, firstIteration ? passthroughTextureID[1] : pingpongColorbuffers[!horizontal]));  
-		OOGL(glUniform1i(glGetUniformLocation([blurProgram program], "imageIn"), 0));
+		OOGL(glUniform1i(glGetUniformLocation(blurProgram->program(), "imageIn"), 0));
 		OOGL(glBindVertexArray(quadTextureVAO));
 		OOGL(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0));
 		OOGL(glBindVertexArray(0));

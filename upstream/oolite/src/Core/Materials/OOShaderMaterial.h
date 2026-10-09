@@ -38,6 +38,7 @@ SOFTWARE.
 
 #import "OOBasicMaterial.h"
 #import "OOWeakReference.h"
+#import "OOShaderProgram.h"
 #import "OOMaths.h"
 #include "oofnd/objc/OOObjCRef.h"
 #include "oofnd/PList.hpp"
@@ -51,7 +52,7 @@ SOFTWARE.
 #if OO_SHADERS
 
 
-@class OOShaderProgram, OOTexture;
+@class OOTexture;
 class OOShaderUniform;
 
 
@@ -187,7 +188,7 @@ private:
 	// Load up an array of texture objects.
 	void addTexturesFromArray(const std::vector<oo::ObjCRef<::OOTexture *>> &textureObjects, GLuint max);
 
-	oo::ObjCRef<::OOShaderProgram *>	shaderProgram = {};	// the facade while OOShaderProgram has one (bead oo-f9zg; ADR-0056 amendment oo-rmd7 item 3)
+	oo::Ref<OOShaderProgram>	shaderProgram = {};
 	std::map<std::string, oo::Ref<OOShaderUniform>, std::less<>>	uniforms = {};	// by uniform name (C++ since bead oo-9ht.55 deleted OOShaderUniform's facade)
 
 	uint32_t						texCount = {};

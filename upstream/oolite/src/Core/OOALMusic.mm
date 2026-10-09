@@ -30,15 +30,11 @@ SOFTWARE.
 
 namespace {
 
-cxx::OOMusic		*sPlayingMusic = nullptr;
+OOMusic		*sPlayingMusic = nullptr;
 
 }	// namespace
 static OOSoundSource	*sMusicSource = nil;
 
-
-namespace cxx {
-
-// +allocWithZone: (an OOMusic whatever the receiver) stays with the facade, whose class it is.
 
 
 OOMusic::~OOMusic()
@@ -50,7 +46,7 @@ oo::Ref<OOMusic> OOMusic::initWithContentsOfFile(const std::optional<std::string
 {
 	oo::Ref<OOMusic> self = oo::adopt(new OOMusic);
 	{
-		self->sound = OOSound::initWithContentsOfFile(inPath);
+		self->sound = cxx::OOSound::initWithContentsOfFile(inPath);
 		if (!self->sound)
 		{
 			self = nullptr;
@@ -124,4 +120,3 @@ void OOMusic::stop()
 	}
 }
 
-}	// namespace cxx

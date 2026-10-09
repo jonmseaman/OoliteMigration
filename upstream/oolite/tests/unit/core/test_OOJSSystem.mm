@@ -758,14 +758,14 @@ OO_TEST(populators)
 	const oo::PList *coordinates = settings.find("coordinates");
 	OO_CHECK(coordinates != nullptr && coordinates->isArray() && coordinates->count() == 3 && coordinates->at(2)->doubleValue() == 3.0);
 	const oo::PList *callbackObj = settings.find("callbackObj");
-	id definition = callbackObj != nullptr ? oo::ObjectIn(*callbackObj) : nil;
-	OO_CHECK(definition != nil && [definition isKindOfClass:[OOJSPopulatorDefinition class]]);
-	if (definition != nil)
+	OOJSPopulatorDefinition *definition = callbackObj != nullptr ? OOJSPopulatorDefinitionIn(*callbackObj) : nullptr;
+	OO_CHECK(definition != nullptr);
+	if (definition != nullptr)
 	{
 		@autoreleasepool	// as Eval() (bead oo-9ht.172)
 		{
 			ooscript::Context context = OOJSAcquireContext();
-			OO_CHECK(OOJSValueIsFunction(context, [(OOJSPopulatorDefinition *)definition callback]));
+			OO_CHECK(OOJSValueIsFunction(context, definition->callback()));
 			OOJSRelinquishContext(context);
 		}
 	}

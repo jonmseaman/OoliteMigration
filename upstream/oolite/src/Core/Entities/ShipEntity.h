@@ -42,10 +42,11 @@
 #import "OOWeakSet.h"
 #include "oofnd/objc/OOObjCRef.h"
 #include "Octree.h"
+#import "OORoleSet.h"
 #include <string_view>
 
 @class	OOColor, StationEntity, WormholeEntity, AI, OOMesh, OOScript, OOCharacter,
-	OOJSScript, OORoleSet, OOShipGroup, OOEquipmentType;
+	OOJSScript, OOShipGroup, OOEquipmentType;
 class OOFlasherEntity;	// C++ only since bead oo-9ht.107
 class OOExhaustPlumeEntity;	// C++ only since bead oo-9ht.110
 
@@ -532,7 +533,7 @@ public:
 	// Slice 18: roles, ship-type predicates, hostility, weapon data, scanner range, aegis transition, nearest planet.
 	std::optional<std::string> identFromShip(::ShipEntity *otherShip);
 	bool hasRole(const std::string &role);
-	::OORoleSet *getRoleSet();
+	oo::Ref<::OORoleSet> getRoleSet();	// null where the facade's -roleSet was nil
 	void addRole(const std::string &role);
 	void addRole(const std::string &role, float probability);
 	void removeRole(const std::string &role);
@@ -1248,7 +1249,7 @@ public:
 	std::optional<std::string>	shipClassName;			// e.g. "Cobra III"; nullopt: nil
 	std::optional<std::string>	displayName;			// name shown on screen; nullopt: nil
 	std::optional<std::string>	scan_description;		// scan class name; nullopt: nil
-	::OORoleSet				*roleSet = {};					// Roles a ship can take, eg. trader, hunter, police, pirate, scavenger &c.
+	oo::Ref<::OORoleSet>		roleSet;					// Roles a ship can take, eg. trader, hunter, police, pirate, scavenger &c.
 	std::optional<std::string>	primaryRole;			// "Main" role of the ship; nullopt: not chosen yet
 
 	oo::PList				explosionType;				// explosion.plist entries; null: absent

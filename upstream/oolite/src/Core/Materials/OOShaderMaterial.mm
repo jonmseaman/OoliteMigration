@@ -185,14 +185,8 @@ bool OOShaderMaterial::initWithName(const std::optional<std::string> &name,
 				macroString.has_value() ? macroString->c_str() : "(null)");
 
 			OOLogIndent();
-			// Retained here (the ivar is an oo::ObjCRef), where the old code retained it once OK.
-			shaderProgram = oo::ObjCRef<::OOShaderProgram *>([::OOShaderProgram shaderProgramWithVertexShader:vertexShader
-																						   fragmentShader:fragmentShader
-																						 vertexShaderName:vsName
-																					   fragmentShaderName:fsName
-																								   prefix:macroString
-																						attributeBindings:attributeBindings
-																								 cacheKey:cacheKey]);
+			// Held by the Ref for as long as the material wants the cached program.
+			shaderProgram = OOShaderProgram::shaderProgramWithVertexShader(vertexShader, fragmentShader, vsName, fsName, macroString, attributeBindings, cacheKey);
 			OOLogOutdent();
 
 // no reduced complexity mode now
@@ -213,13 +207,7 @@ bool OOShaderMaterial::initWithName(const std::optional<std::string> &name,
 					cacheKey = *cacheKey + "\n$SIMPLIFIED FALLBACK\n";
 
 					OOLogIndent();
-					shaderProgram = [::OOShaderProgram shaderProgramWithVertexShader:vertexShader
-																	fragmentShader:fragmentShader
-																  vertexShaderName:vsName
-																fragmentShaderName:fsName
-																			prefix:macroString
-																 attributeBindings:attributeBindings
-																		  cacheKey:cacheKey];
+					shaderProgram = OOShaderProgram::shaderProgramWithVertexShader(vertexShader, fragmentShader, vsName, fsName, macroString, attributeBindings, cacheKey);
 					OOLogOutdent();
 
 					if (shaderProgram != nil)
@@ -647,7 +635,7 @@ bool OOShaderMaterial::doApply()
 	OO_ENTER_OPENGL();
 
 	OOBasicMaterial::doApply();
-	[shaderProgram.get() apply];
+	shaderProgram->apply();
 
 	for (i = 0; i != texCount; ++i)
 	{
@@ -712,7 +700,7 @@ void OOShaderMaterial::unapplyWithNext(OOMaterial *next)
 	if (dynamic_cast<OOShaderMaterial *>(next) == nullptr)	// Avoid redundant state change (-isKindOfClass:; nil is not one)
 	{
 		OO_ENTER_OPENGL();
-		[::OOShaderProgram applyNone];
+		OOShaderProgram::applyNone();
 
 		/*	BUG: unapplyWithNext: was failing to clear texture state. If a
 			shader material was followed by a basic material (with no texture),

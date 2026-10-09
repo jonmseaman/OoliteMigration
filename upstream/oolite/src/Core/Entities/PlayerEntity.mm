@@ -2441,7 +2441,7 @@ bool PlayerEntity::setUpAndConfirmOK(bool stopOnError, bool saveGame)
 
 	demoShip = nil;
 	
-	[[::OOMusicController sharedController] justStop];
+	OOMusicController::sharedController()->justStop();
 	stickProfileScreen = oo::makeRef<StickProfileScreen>();
 	return YES;
 }
@@ -2504,8 +2504,7 @@ bool PlayerEntity::setUpShipFromDictionary(const oo::PList &shipDict)
 	//if (forward_weapon_type == WEAPON_NONE) [self setWeaponDataFromType:forward_weapon_type]; 
 	scannerRange = (float)SCANNER_MAX_RANGE; 
 	
-	[roleSet release];
-	roleSet = nil;
+	roleSet = nullptr;
 	[self setPrimaryRole:"player"];
 	
 	[self removeAllEquipment];
@@ -3825,7 +3824,7 @@ bool PlayerEntity::engageAutopilotToStation(::StationEntity *stationForDocking)
 	[self resetAutopilotAI];
 	[shipAI cxx_setState:"BEGIN_DOCKING"];	// reboot the AI
 	[self playAutopilotOn];
-	[[::OOMusicController sharedController] playDockingMusic];
+	OOMusicController::sharedController()->playDockingMusic();
 	[self doScriptEvent:OOJSID("playerStartedAutoPilot") withArgument:stationForDocking];
 	[self setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_GRANTED];
 		
@@ -3852,7 +3851,7 @@ void PlayerEntity::disengageAutopilot()
 		[self setStatus:STATUS_IN_FLIGHT];
 		[self playAutopilotOff];
 		[self setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
-		[[::OOMusicController sharedController] stopDockingMusic];
+		OOMusicController::sharedController()->stopDockingMusic();
 		[self doScriptEvent:OOJSID("playerCancelledAutoPilot")];
 		
 		[self resetAutopilotAI];
@@ -6084,7 +6083,7 @@ void PlayerEntity::interpretAIMessage(const std::string &message)
 		[self resetAutopilotAI];
 		DESTROY(_primaryTarget);
 		[self setStatus:STATUS_IN_FLIGHT];
-		[[::OOMusicController sharedController] stopDockingMusic];
+		OOMusicController::sharedController()->stopDockingMusic();
 		[self doScriptEvent:OOJSID("playerDockingRefused")];
 	}
 
@@ -7431,8 +7430,8 @@ void PlayerEntity::docked()
 		
 	[UNIVERSE setDisplayText:YES];
 	
-	[[::OOMusicController sharedController] stopDockingMusic];
-	[[::OOMusicController sharedController] playDockedMusic];
+	OOMusicController::sharedController()->stopDockingMusic();
+	OOMusicController::sharedController()->playDockedMusic();
 	
 	// Did we fail to observe traffic control regulations? However, due to the state of emergency,
 	// apply no unauthorized docking penalties if a nova is ongoing.
@@ -7546,7 +7545,7 @@ void PlayerEntity::leaveDock(::StationEntity *station)
 		[[UNIVERSE gameView] resetMouse];
 	}
 	
-	[[::OOMusicController sharedController] stop];
+	OOMusicController::sharedController()->stop();
 
 	[UNIVERSE forceWitchspaceEntries];
 	ship_clock_adjust += 600.0;			// 10 minutes to leave dock
@@ -9338,7 +9337,7 @@ void PlayerEntity::setGuiToGameOptionsScreen()
 		[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,KEYMAPPER)];
 
 		
-		const std::string musicMode = [UNIVERSE cxx_descriptionForArrayKey:"music-mode" index:[[::OOMusicController sharedController] mode]].value_or(std::string());
+		const std::string musicMode = [UNIVERSE cxx_descriptionForArrayKey:"music-mode" index:OOMusicController::sharedController()->mode()].value_or(std::string());
 		const std::string message = ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "gameoptions-music-mode", { { "musicMode", oo::PList(musicMode) } });
 		[gui cxx_setText:message forRow:GUI_ROW(GAME,MUSIC) align:GUI_ALIGN_CENTER];
 		[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,MUSIC)];
@@ -10413,7 +10412,7 @@ void PlayerEntity::setGuiToIntroFirstGo(bool justCobra)
 	}
 	if ([self status] == STATUS_START_GAME)
 	{
-		[[::OOMusicController sharedController] playThemeMusic];
+		OOMusicController::sharedController()->playThemeMusic();
 	}
 	
 	[self setShowDemoShips:YES];
@@ -10440,9 +10439,9 @@ void PlayerEntity::setGuiToOXZManager()
 
 	[[UNIVERSE gui] clearAndKeepBackground:NO];
 
-	[[::OOOXZManager sharedManager] gui];
+	::OOOXZManager::sharedManager()->gui();
 	
-	[[::OOMusicController sharedController] playThemeMusic];
+	OOMusicController::sharedController()->playThemeMusic();
 	[[UNIVERSE gui] cxx_setBackgroundTextureKey:"oxz-manager"];
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:YES];
 }

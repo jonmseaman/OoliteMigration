@@ -11,9 +11,8 @@
 	decoder and the two concrete sounds that OOALSound.mm names (amendment oo-z1s4 item 4; C++
 	stand-ins since beads oo-9ht.83 and oo-9ht.84 deleted their facades): "missing.ogg" has no
 	decoder. These expectations were written against the Objective-C
-	API and ran on the unconverted class first; they now run through the facade, which is its
-	forwarding test. After them come the C++ API (cxx::OOMusic, a subclass of cxx::OOSound) and the
-	facade's contract. Run: bash tools/check-core-tests.sh test_OOMusic
+	API and ran on the unconverted class first; since bead oo-9ht.85 deleted the facade they run
+	through the C++ API (OOMusic, a subclass of cxx::OOSound). Run: bash tools/check-core-tests.sh test_OOMusic
 */
 
 #import "OOALMusic.h"
@@ -233,13 +232,13 @@ OO_TEST(noSourceBeforeTheFirstPlay)
 	SetUp();
 	@autoreleasepool
 	{
-		OOMusic *music = [[[OOMusic alloc] cxx_initWithContentsOfFile:std::string("theme.ogg")] autorelease];
+		oo::Ref<OOMusic> music = OOMusic::initWithContentsOfFile(std::string("theme.ogg"));
 		OO_CHECK(music != nil);
-		OO_CHECK([music musicSoundSource] == nil);
-		OO_CHECK([music musicGain] == 0.0f);
-		[music setMusicGain:0.5f];
-		OO_CHECK(![music isPlaying]);
-		[music stop];
+		OO_CHECK(music->musicSoundSource() == nil);
+		OO_CHECK(music->musicGain() == 0.0f);
+		music->setMusicGain(0.5f);
+		OO_CHECK(!music->isPlaying());
+		music->stop();
 		OO_CHECK(TakeChannelLog().empty() && gChannelsOut == 0);
 	}
 }
@@ -251,14 +250,14 @@ OO_TEST(wrapsTheClustersSound)
 	SetUp();
 	@autoreleasepool
 	{
-		OOMusic *music = [[[OOMusic alloc] cxx_initWithContentsOfFile:std::string("theme.ogg")] autorelease];
-		OO_CHECK([music isKindOfClass:[OOMusic class]] && [music isKindOfClass:[OOSound class]]);
-		OO_CHECK([music cxx_name] == std::optional<std::string>("theme.ogg"));
+		oo::Ref<OOMusic> music = OOMusic::initWithContentsOfFile(std::string("theme.ogg"));
+		OO_CHECK(music.get() != nullptr);
+		OO_CHECK(music->name() == std::optional<std::string>("theme.ogg"));
 		OO_CHECK(gLiveSounds == 1 && gLiveDecoders == 0);
-		OO_CHECK(![music soundIncomplete]);
+		OO_CHECK(!music->soundIncomplete());
 
-		OO_CHECK([[OOMusic alloc] cxx_initWithContentsOfFile:std::string("missing.ogg")] == nil);
-		OO_CHECK([[OOMusic alloc] cxx_initWithContentsOfFile:std::nullopt] == nil);
+		OO_CHECK(!OOMusic::initWithContentsOfFile(std::string("missing.ogg")));
+		OO_CHECK(!OOMusic::initWithContentsOfFile(std::nullopt));
 		OO_CHECK(gLiveSounds == 1);
 	}
 	OO_CHECK(gLiveSounds == 0);	// released with the music
@@ -271,39 +270,39 @@ OO_TEST(playsThroughTheSharedSource)
 	TakeChannelLog();
 	@autoreleasepool
 	{
-		OOMusic *theme = [[[OOMusic alloc] cxx_initWithContentsOfFile:std::string("theme.ogg")] autorelease];
-		[theme playLooped:YES];
+		oo::Ref<OOMusic> theme = OOMusic::initWithContentsOfFile(std::string("theme.ogg"));
+		theme->playLooped(true);
 		OO_CHECK((TakeChannelLog() == std::vector<std::string>{ "gain 1.000000", "play theme.ogg looped" }));
-		OO_CHECK([theme isPlaying] && gChannelsOut == 1);
-		OOSoundSource *source = [theme musicSoundSource];
+		OO_CHECK(theme->isPlaying() && gChannelsOut == 1);
+		OOSoundSource *source = theme->musicSoundSource();
 		OO_CHECK(source != nil && [source sound] != nil && [source loop]);
 
-		[theme playLooped:NO];	// already playing: nothing
+		theme->playLooped(false);	// already playing: nothing
 		OO_CHECK(TakeChannelLog().empty());
 
-		[theme setMusicGain:0.25f];
-		OO_CHECK([theme musicGain] == 0.25f && [source gain] == 0.25f);
+		theme->setMusicGain(0.25f);
+		OO_CHECK(theme->musicGain() == 0.25f && [source gain] == 0.25f);
 		OO_CHECK((TakeChannelLog() == std::vector<std::string>{ "gain 0.250000" }));
 
 		// Another music takes the source; the first is no longer playing.
-		OOMusic *docked = [[[OOMusic alloc] cxx_initWithContentsOfFile:std::string("docked.ogg")] autorelease];
-		OO_CHECK(![docked isPlaying]);
-		[docked playLooped:NO];
-		OO_CHECK([docked musicSoundSource] == source && gChannelsOut == 1);
+		oo::Ref<OOMusic> docked = OOMusic::initWithContentsOfFile(std::string("docked.ogg"));
+		OO_CHECK(!docked->isPlaying());
+		docked->playLooped(false);
+		OO_CHECK(docked->musicSoundSource() == source && gChannelsOut == 1);
 		OO_CHECK((TakeChannelLog() == std::vector<std::string>{ "stop", "gain 0.250000", "play docked.ogg" }));
-		OO_CHECK([docked isPlaying] && ![theme isPlaying] && ![source loop]);
+		OO_CHECK(docked->isPlaying() && !theme->isPlaying() && ![source loop]);
 
-		[theme stop];	// not the playing one: nothing
-		OO_CHECK(TakeChannelLog().empty() && [docked isPlaying]);
+		theme->stop();	// not the playing one: nothing
+		OO_CHECK(TakeChannelLog().empty() && docked->isPlaying());
 
-		[docked stop];
+		docked->stop();
 		OO_CHECK((TakeChannelLog() == std::vector<std::string>{ "stop" }));
-		OO_CHECK(![docked isPlaying] && [source sound] == nil && gChannelsOut == 0);
+		OO_CHECK(!docked->isPlaying() && [source sound] == nil && gChannelsOut == 0);
 
 		// Played again after it was stopped.
-		[docked playLooped:YES];
-		OO_CHECK([docked isPlaying] && [source sound] != nil);
-		[docked stop];
+		docked->playLooped(true);
+		OO_CHECK(docked->isPlaying() && [source sound] != nil);
+		docked->stop();
 		TakeChannelLog();
 	}
 }
@@ -317,11 +316,11 @@ OO_TEST(releasedWhilePlaying)
 	OOSoundSource *source = nil;
 	@autoreleasepool
 	{
-		OOMusic *music = [[OOMusic alloc] cxx_initWithContentsOfFile:std::string("theme.ogg")];
-		[music playLooped:YES];
-		source = [music musicSoundSource];
+		oo::Ref<OOMusic> music = OOMusic::initWithContentsOfFile(std::string("theme.ogg"));
+		music->playLooped(true);
+		source = music->musicSoundSource();
 		TakeChannelLog();
-		[music release];
+		music = nullptr;
 	}
 	OO_CHECK((TakeChannelLog() == std::vector<std::string>{ "stop" }));
 	OO_CHECK(source != nil && [source sound] == nil && ![source isPlaying]);
@@ -336,8 +335,8 @@ OO_TEST(cxxApi)
 	TakeChannelLog();
 	@autoreleasepool
 	{
-		OO_CHECK(!cxx::OOMusic::initWithContentsOfFile(std::string("missing.ogg")));
-		const oo::Ref<cxx::OOMusic> music = cxx::OOMusic::initWithContentsOfFile(std::string("theme.ogg"));
+		OO_CHECK(!OOMusic::initWithContentsOfFile(std::string("missing.ogg")));
+		const oo::Ref<OOMusic> music = OOMusic::initWithContentsOfFile(std::string("theme.ogg"));
 		OO_CHECK(music && music->name() == std::optional<std::string>("theme.ogg"));
 		OO_CHECK(!music->isPlaying() && music->soundBuffer() == 0);	// the root's default
 		music->playLooped(false);
@@ -349,30 +348,6 @@ OO_TEST(cxxApi)
 		OO_CHECK((TakeChannelLog() == std::vector<std::string>{ "gain 0.250000", "play theme.ogg", "gain 0.500000", "stop" }));
 	}
 	OO_CHECK(gLiveSounds == 0);
-}
-
-
-// The facade's contract: a music's facade is an OOMusic, one per music, and is what
-// [[OOMusic alloc] cxx_initWithContentsOfFile:] answers.
-OO_TEST(facade)
-{
-	SetUp();
-	@autoreleasepool
-	{
-		const oo::Ref<cxx::OOMusic> music = cxx::OOMusic::initWithContentsOfFile(std::string("theme.ogg"));
-		OOMusic *facade = oo::ToObjC(music.get());
-		OO_CHECK([facade isKindOfClass:[OOMusic class]]);
-		OO_CHECK(facade == oo::ToObjC(static_cast<cxx::OOSound *>(music.get())));
-		OO_CHECK(oo::ToCxx(facade) == music.get());
-		OO_CHECK(oo::DescriptionOf(facade).starts_with("<OOMusic 0x"));
-
-		OOMusic *made = [[[OOMusic alloc] cxx_initWithContentsOfFile:std::string("docked.ogg")] autorelease];
-		OO_CHECK(oo::ToObjC(oo::ToCxx(made)) == made);
-		OO_CHECK(oo::ToCxx(made)->name() == std::optional<std::string>("docked.ogg"));
-	}
-	OOMusic *none = nil;
-	OO_CHECK(oo::ToCxx(none) == nullptr);
-	OO_CHECK(oo::ToObjC(static_cast<cxx::OOMusic *>(nullptr)) == nil);
 }
 
 

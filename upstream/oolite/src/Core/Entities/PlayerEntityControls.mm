@@ -964,7 +964,7 @@ void cxx::PlayerEntity::pollApplicationControls()
 
 		if (([self checkKeyPress:n_key_snapshot] || joyButtonState[BUTTON_SNAPSHOT]) &&
 			([gameView allowingStringInput] <= gvStringInputAlpha) && // not while entering text on the keyboard config screens
-			![[::OOOXZManager sharedManager] isAcceptingTextInput])   //  '*' key but not while filtering inside OXZ Manager
+			!::OOOXZManager::sharedManager()->isAcceptingTextInput())   //  '*' key but not while filtering inside OXZ Manager
 		{
 			exceptionContext = "snapshot";
 			if (!taking_snapshot)
@@ -2039,7 +2039,7 @@ void cxx::PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 #if 0
 	// at the moment this function is never called for GUI_SCREEN_OXZMANAGER
 	// but putting this here in case we do later
-	else if (gui_screen == GUI_SCREEN_OXZMANAGER && [[::OOOXZManager sharedManager] isAcceptingTextInput])
+	else if (gui_screen == GUI_SCREEN_OXZMANAGER && ::OOOXZManager::sharedManager()->isAcceptingTextInput())
 	{
 		[gameView setStringInput: gvStringInputAll];
 	}
@@ -3614,19 +3614,19 @@ void cxx::PlayerEntity::handleGameOptionsScreenKeys()
 	{
 		if (!musicModeKeyPressed)
 		{
-			::OOMusicController	*musicController = [::OOMusicController sharedController];
-			int					initialMode = [musicController mode];
+			::OOMusicController	*musicController = ::OOMusicController::sharedController();
+			int					initialMode = musicController->mode();
 			int					mode = initialMode;
 			
 			if ([self checkKeyPress:n_key_gui_arrow_right])  mode++;
 			if ([self checkKeyPress:n_key_gui_arrow_left])  mode--;
 			
-			[musicController setMode:(OOMusicMode)MAX(mode, 0)];
+			musicController->setMode((OOMusicMode)MAX(mode, 0));
 			
-			if ((int)[musicController mode] != initialMode)
+			if ((int)musicController->mode() != initialMode)
 			{
 				[self playChangedOption];
-				const std::string musicMode = [UNIVERSE cxx_descriptionForArrayKey:"music-mode" index:[[::OOMusicController sharedController] mode]].value_or("");
+				const std::string musicMode = [UNIVERSE cxx_descriptionForArrayKey:"music-mode" index:OOMusicController::sharedController()->mode()].value_or("");
 				const std::string message = ExpandKeyWithArguments("gameoptions-music-mode", { { "musicMode", oo::PList(musicMode) } });
 				[gui cxx_setText:message forRow:GUI_ROW(GAME,MUSIC) align:GUI_ALIGN_CENTER];
 			}
@@ -4769,7 +4769,7 @@ void cxx::PlayerEntity::pollAutopilotControls(double delta_t)
 		{
 			if (!toggling_music)
 			{
-				[[::OOMusicController sharedController] toggleDockingMusic];
+				OOMusicController::sharedController()->toggleDockingMusic();
 			}
 			toggling_music = YES;
 		}
@@ -4782,8 +4782,8 @@ void cxx::PlayerEntity::pollAutopilotControls(double delta_t)
 		{
 			if (!autopilot_pause)
 			{
-				playing_music = [[::OOMusicController sharedController] isPlaying];
-				if (playing_music)  [[::OOMusicController sharedController] toggleDockingMusic];
+				playing_music = OOMusicController::sharedController()->isPlaying();
+				if (playing_music)  OOMusicController::sharedController()->toggleDockingMusic();
 				// normal flight controls can handle the rest.
 				pause_pressed = NO;	// pause button flag must be NO for pollflightControls to react!
 				[self pollFlightControls:delta_t];
@@ -4802,7 +4802,7 @@ void cxx::PlayerEntity::pollAutopilotControls(double delta_t)
 		{
 			if (!autopilot_pause)
 			{
-				if (playing_music)  [[::OOMusicController sharedController] toggleDockingMusic];
+				if (playing_music)  OOMusicController::sharedController()->toggleDockingMusic();
 			}
 			autopilot_pause = YES;
 		}
@@ -4924,7 +4924,7 @@ void cxx::PlayerEntity::pollDemoControls(double /*delta_t*/)
 	::MyOpenGLView	*gameView = [UNIVERSE gameView];
 	::GuiDisplayGen	*gui = [UNIVERSE gui];
 	NSUInteger end_row = 21;
-	::OOOXZManager *oxzmanager = [::OOOXZManager sharedManager];
+	::OOOXZManager *oxzmanager = ::OOOXZManager::sharedManager();
 
 	switch (gui_screen)
 	{
@@ -5104,15 +5104,15 @@ void cxx::PlayerEntity::pollDemoControls(double /*delta_t*/)
 
 		case GUI_SCREEN_OXZMANAGER:
 			// release locks on music on this screen
-			[[::OOMusicController sharedController] stopThemeMusic];
-			if (EXPECT(![oxzmanager isRestarting]))
+			OOMusicController::sharedController()->stopThemeMusic();
+			if (EXPECT(!oxzmanager->isRestarting()))
 			{
-				if ([oxzmanager isAcceptingGUIInput])
+				if (oxzmanager->isAcceptingGUIInput())
 				{
-					if ([oxzmanager isAcceptingTextInput])
+					if (oxzmanager->isAcceptingTextInput())
 					{
 						[gameView setStringInput: gvStringInputAll];
-						[oxzmanager refreshTextInput:[gameView cxx_typedString].value_or(std::string())];
+						oxzmanager->refreshTextInput([gameView cxx_typedString].value_or(std::string()));
 					}
 					else
 					{
@@ -5121,20 +5121,20 @@ void cxx::PlayerEntity::pollDemoControls(double /*delta_t*/)
 					if ([self handleGUIUpDownArrowKeys])
 					{
 						// only has an effect on install/remove selection screens
-						[oxzmanager showOptionsUpdate];
+						oxzmanager->showOptionsUpdate();
 					}
 					if ([self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up])
 					{
 						if ((!leftRightKeyPressed))
 						{
-							[oxzmanager processOptionsPrev];
+							oxzmanager->processOptionsPrev();
 						}
 					}
 					else if ([self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_page_down])
 					{
 						if ((!leftRightKeyPressed))
 						{
-							[oxzmanager processOptionsNext];
+							oxzmanager->processOptionsNext();
 						}
 					}
 					leftRightKeyPressed = [self checkKeyPress:n_key_gui_arrow_right]|[self checkKeyPress:n_key_gui_arrow_left]|[self checkKeyPress:n_key_gui_page_down]|[self checkKeyPress:n_key_gui_page_up];
@@ -5143,13 +5143,13 @@ void cxx::PlayerEntity::pollDemoControls(double /*delta_t*/)
 					{
 						if ([self checkKeyPress:n_key_gui_select] || [gameView isDown:gvMouseDoubleClick]) // enter
 						{
-							if ([oxzmanager isAcceptingTextInput])
+							if (oxzmanager->isAcceptingTextInput())
 							{
-								[oxzmanager processTextInput:[gameView cxx_typedString].value_or(std::string())];
+								oxzmanager->processTextInput([gameView cxx_typedString].value_or(std::string()));
 							}
 							else
 							{
-								[oxzmanager processSelection];
+								oxzmanager->processSelection();
 							}
 						}
 					}
@@ -5168,15 +5168,15 @@ void cxx::PlayerEntity::pollDemoControls(double /*delta_t*/)
 						oxz_manager_pressed = YES;
 						if ([self checkKeyPress:n_key_oxzmanager_setfilter])
 						{
-							[oxzmanager processFilterKey];
+							oxzmanager->processFilterKey();
 						}
 						else if ([self checkKeyPress:n_key_oxzmanager_showinfo])
 						{
-							[oxzmanager processShowInfoKey];
+							oxzmanager->processShowInfoKey();
 						}
 						else if ([self checkKeyPress:n_key_oxzmanager_extract])
 						{
-							[oxzmanager processExtractKey];
+							oxzmanager->processExtractKey();
 						}
 						
 					}
@@ -5201,7 +5201,7 @@ void cxx::PlayerEntity::pollDemoControls(double /*delta_t*/)
 				if ([self checkKeyPress:n_key_gui_select] || [gameView isDown:gvMouseDoubleClick])	//  '<enter/return>' or double click
 				{
 					[self cxx_setMissionChoice:[gameView cxx_typedString] keyPress:std::string("enter")];
-					[[::OOMusicController sharedController] stopMissionMusic];
+					OOMusicController::sharedController()->stopMissionMusic();
 					[self playDismissedMissionScreen];
 					
 					[self handleMissionCallback];
@@ -5223,7 +5223,7 @@ void cxx::PlayerEntity::pollDemoControls(double /*delta_t*/)
 				{
 					if (!spacePressed)
 					{
-						[[::OOMusicController sharedController] stopMissionMusic];
+						OOMusicController::sharedController()->stopMissionMusic();
 						[self handleMissionCallback];
 						
 					}
@@ -5264,7 +5264,7 @@ void cxx::PlayerEntity::pollDemoControls(double /*delta_t*/)
 					{
 						if (extraKey.empty()) extraKey = "enter";
 						[self cxx_setMissionChoice:[gui cxx_selectedRowKey] keyPress:extraKey];
-						[[::OOMusicController sharedController] stopMissionMusic];
+						OOMusicController::sharedController()->stopMissionMusic();
 						[self playDismissedMissionScreen];
 						
 						[self handleMissionCallback];

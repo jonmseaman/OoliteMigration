@@ -153,7 +153,7 @@ MA 02110-1301, USA.
 	[self clearSubEntities];
 
 DESTROY(_cxxShip->shipAI);
-	DESTROY(_cxxShip->roleSet);
+	_cxxShip->roleSet = nullptr;
 DESTROY(_cxxShip->laser_color);
 	DESTROY(_cxxShip->default_laser_color);
 	DESTROY(_cxxShip->exhaust_emissive_color);
@@ -579,7 +579,6 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 
 - (std::optional<std::string>) identFromShip:(ShipEntity*)otherShip	{ return _cxxShip->identFromShip(otherShip); }
 - (BOOL) hasRole:(const std::string &)role	{ return _cxxShip->hasRole(role); }
-- (OORoleSet *) roleSet	{ return _cxxShip->getRoleSet(); }
 - (void) addRole:(const std::string &)role	{ _cxxShip->addRole(role); }
 - (void) cxx_addRole:(const std::string &)role withProbability:(float)probability	{ _cxxShip->addRole(role, probability); }
 - (void) cxx_removeRole:(const std::string &)role	{ _cxxShip->removeRole(role); }

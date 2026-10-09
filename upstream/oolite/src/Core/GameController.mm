@@ -537,7 +537,7 @@ void GameController::runFrameLoop()
 				haveWake = true;
 			}
 			// The OXZ download's callbacks, which the run loop delivered (proposed ADR-0044).
-			cxx::OOOXZManager::sharedManager()->processDownloadEvents();
+			OOOXZManager::sharedManager()->processDownloadEvents();
 			
 #ifndef NDEBUG
 			if (OODebugTCPConsoleIsWaitingForInput())
@@ -631,7 +631,7 @@ void GameController::applicationDidFinishLaunching()
 		}
 		
 		// initialise OXZ manager
-		cxx::OOOXZManager::sharedManager();
+		OOOXZManager::sharedManager();
 
 		// moved here to try to avoid initialising this before having an Open GL context
 		//logProgress(OO_DESC("Initialising universe")); // DESC expansions only possible after Universe init

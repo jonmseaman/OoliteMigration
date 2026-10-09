@@ -1613,14 +1613,13 @@ static bool SystemSetPopulator(ooscript::Context context, ooscript::CallArgs &oo
 			return false;
 		}
 
-		// The definition is converted (cxx::OOJSPopulatorDefinition), and only alloc/init makes its
-		// facade (ADR-0056 amendment oo-o89 item 2); the reference releases it where -release did.
-		oo::ObjCRef<OOJSPopulatorDefinition *> populator = oo::adoptObjC(OOJSSystemNewPopulatorDefinition());
-		oo::ToCxx(populator.get())->setCallback(callback);
+		// The reference releases the definition where -release did.
+		oo::Ref<OOJSPopulatorDefinition> populator = oo::makeRef<OOJSPopulatorDefinition>();
+		populator->setCallback(callback);
 
 		settings = cxx_OOJSPListFromJSObject(context, ooscript::toObject(OOJS_ARGV[1]));
 		oo::PList::Dict *settingsDict = settings.getIf<oo::PList::Dict>();	// messages to a nil dictionary did nothing
-		if (settingsDict != nullptr)  (*settingsDict)["callbackObj"] = oo::PListObject(populator.get());
+		if (settingsDict != nullptr)  (*settingsDict)["callbackObj"] = OOJSPopulatorDefinitionToPList(populator);
 
 		ooscript::Value				coords = ooscript::nullValue();
 		if (ooscript::getProperty(context, (params), "coordinates", (&coords)) && !ooscript::isUndefined(coords))

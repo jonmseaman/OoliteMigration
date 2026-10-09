@@ -1666,8 +1666,8 @@ OO_TEST(roles)
 		OO_CHECK([ship hasRole:"pirate"]);
 		[ship cxx_addRole:"hunter" withProbability:0.5f];
 		OO_CHECK([ship hasRole:"hunter"]);
-		OORoleSet *roles = [ship roleSet];
-		OO_CHECK([roles hasRole:"pirate"] && [roles hasRole:"hunter"] && [roles hasRole:"trader"] && [roles hasRole:"[cobra3-trader]"]);
+		const oo::Ref<OORoleSet> roles = oo::ToCxx(ship)->getRoleSet();
+		OO_CHECK(roles->hasRole("pirate") && roles->hasRole("hunter") && roles->hasRole("trader") && roles->hasRole("[cobra3-trader]"));
 		[ship cxx_removeRole:"pirate"];
 		OO_CHECK(![ship hasRole:"pirate"] && [ship hasRole:"hunter"]);
 

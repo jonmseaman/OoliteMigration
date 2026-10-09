@@ -97,7 +97,8 @@ oo::PList ShipEntity::savedShipDictionaryWithContext(OOShipSaveContext *context)
 	oo::PList::Dict updatedShipInfo = DictFrom(shipinfoDictionary);
 
 	// A role set without a role string (nil before, which -setObject:forKey: refused) adds no key.
-	if (const std::optional<std::string> roleString = [[self roleSet] roleString])  updatedShipInfo[KEY_ROLES] = *roleString;
+	const oo::Ref<OORoleSet> roles = oo::ToCxx(self)->getRoleSet();
+	if (const std::optional<std::string> roleString = (roles != nullptr) ? roles->roleString() : std::nullopt)  updatedShipInfo[KEY_ROLES] = *roleString;
 	updatedShipInfo[KEY_FUEL] = oo::PList::unsignedInteger(fuel);
 	updatedShipInfo[KEY_BOUNTY] = oo::PList::unsignedInteger(bounty);
 	updatedShipInfo[KEY_FORWARD_WEAPON] = cxx_OOStringFromWeaponType(forward_weapon_type).value_or("");

@@ -24,6 +24,7 @@
 */
 
 #import "ResourceManager.h"
+#import "OOALMusic.h"
 #import "OODescription.h"
 #import "OOSystemDescriptionManager.h"
 
@@ -458,7 +459,7 @@ OO_TEST(singleFileLookups)
 
 		// No such sound or music file: nil.
 		OO_CHECK([ResourceManager cxx_ooSoundNamed:"oo-test-missing.ogg" inFolder:std::string("Sounds")] == nil);
-		OO_CHECK([ResourceManager cxx_ooMusicNamed:"oo-test-missing.ogg" inFolder:std::string("Music")] == nil);
+		OO_CHECK(!cxx::ResourceManager::ooMusicNamed("oo-test-missing.ogg", std::string("Music")));
 
 		// No shader-uniform-bindings.plist and no material-defaults.plist in the scratch data.
 		OO_CHECK([ResourceManager cxx_shaderBindingTypesDictionary].isNull());

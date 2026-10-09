@@ -398,19 +398,19 @@ OOJavaScriptEngine *sEngine = nil;
 @end
 
 
-cxx::OOMusicController::OOMusicController()
+OOMusicController::OOMusicController()
 {
 }
 
 
-cxx::OOMusicController *cxx::OOMusicController::sharedController()
+OOMusicController *OOMusicController::sharedController()
 {
-	static cxx::OOMusicController *shared = new cxx::OOMusicController();	// never released, as the game's
+	static OOMusicController *shared = new OOMusicController();	// never released, as the game's
 	return shared;
 }
 
 
-void cxx::OOMusicController::setMissionMusic(const std::optional<std::string> &missionMusicName)
+void OOMusicController::setMissionMusic(const std::optional<std::string> &missionMusicName)
 {
 	sMusic.push_back(Optional(missionMusicName));
 }

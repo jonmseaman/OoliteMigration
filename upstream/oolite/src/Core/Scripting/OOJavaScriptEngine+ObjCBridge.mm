@@ -4,8 +4,8 @@ OOJavaScriptEngine+ObjCBridge.mm
 
 TRANSITIONAL (proposed ADR-0056, beads oo-10qz, oo-903c, oo-elta and oo-k4nu): the Objective-C OOJavaScriptEngine
 facade (see OOJavaScriptEngine+ObjCBridge.h). Every method forwards to its C++ member in one line.
-Then the OONull and OOJSValue facades, the categories on OOObject and OONativeVector that forward to the free
-functions holding their bodies (amendment oo-ppc item 3), and the one-line bridges of OOJavaScriptEngine.mm's free functions (amendment oo-9ht.139).
+Then the OONull and OOJSValue facades, the category on OOObject that forwards to the free
+functions holding its bodies (amendment oo-ppc item 3; OONativeVector's went with its facade, oo-9ht.5), and the one-line bridges of OOJavaScriptEngine.mm's free functions (amendment oo-9ht.139).
 Deleted with OOJavaScriptEngine+ObjCBridge.h.
 
 JavaScript support for Oolite
@@ -310,13 +310,6 @@ cxx::OONull *oo::ToCxx(OONull *null)
 - (std::optional<std::string>) cxx_oo_jsDescription		{ return OOObjectJSDescription(self); }
 - (std::optional<std::string>) cxx_oo_jsDescriptionWithClassName:(const std::optional<std::string> &)className	{ return OOObjectJSDescriptionWithClassName(self, className); }
 - (void) oo_clearJSSelf:(ooscript::Object)selfVal		{ OOObjectClearJSSelf(selfVal); }
-
-@end
-
-
-@implementation OONativeVector (OOJavaScriptConversion)
-
-- (ooscript::Value)oo_jsValueInContext:(ooscript::Context)context	{ return OONativeVectorJSValueInContext(oo::ToCxx(self), context); }
 
 @end
 

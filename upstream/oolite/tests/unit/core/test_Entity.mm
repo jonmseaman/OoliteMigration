@@ -256,7 +256,7 @@ OO_TEST(defaults)
 		OO_CHECK([entity collisionRadius] == 0 && [entity frustumRadius] == 0);
 		OO_CHECK([entity universalID] == NO_TARGET && [entity lastDrawCounter] == 0);
 		OO_CHECK([entity owner] == nil && [entity parentEntity] == nil && [entity rootShipEntity] == nil);
-		OO_CHECK([entity collisionRegion] == nil);
+		OO_CHECK(oo::ToCxx(entity)->getCollisionRegion() == nullptr);
 		OO_CHECK([entity cxx_collidingEntities] != nullptr && [entity cxx_collidingEntities]->empty());
 		OO_CHECK([entity canCollide] && [entity isVisible] && ![entity throwingSparks]);
 		OO_CHECK(NoDrawDistance(entity) == 100000.0f);

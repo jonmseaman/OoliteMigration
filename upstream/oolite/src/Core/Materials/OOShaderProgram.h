@@ -6,10 +6,9 @@ Encapsulates a vertex + fragment shader combo. In general, this should only be
 used though OOShaderMaterial. The point of this separation is that more than
 one OOShaderMaterial can use the same OOShaderProgram.
 
-C++20 since bead oo-f9zg (proposed ADR-0056). The class is cxx::OOShaderProgram while
-OOShaderProgram+ObjCBridge.h, imported at the end of this header, keeps the Objective-C
-OOShaderProgram that its callers make and message; the bridge's deletion bead moves it out of
-namespace cxx.
+C++20 since bead oo-f9zg (proposed ADR-0056); its Objective-C facade was deleted by bead
+oo-9ht.58, so callers hold an oo::Ref<OOShaderProgram> for as long as they want the cached
+program (amendment oo-ct7c item 3).
 
 Copyright (C) 2007-2013 Jens Ayton
 
@@ -52,8 +51,6 @@ SOFTWARE.
 	prefix counts as none). Attribute bindings are a property-list dictionary of attribute name ->
 	location (oo::PList, null for none).
 */
-namespace cxx {
-
 class OOShaderProgram : public oo::RefCounted
 {
 public:
@@ -98,13 +95,6 @@ private:
 	std::optional<std::string>		key = {};
 	oo::PList						standardMatrixUniformLocations = {};
 };
-
-}	// namespace cxx
-
-
-// Transitional: the Objective-C OOShaderProgram, for callers not yet converted. Deleted, with
-// namespace cxx above, by the bridge's deletion bead.
-#import "OOShaderProgram+ObjCBridge.h"
 
 #endif // OO_SHADERS
 
