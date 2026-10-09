@@ -66,9 +66,8 @@ std::optional<std::string> JSValueToEquipmentKeyRelaxed(ooscript::Context contex
 #endif
 
 
-/*	The JS class name that OOEquipmentType (OOJavaScriptExtensions), the category on the converted
-	class's façade that the engine reaches by selector, answers (OOJSEquipmentInfo+ObjCBridge.mm).
-	The rest of the category forwards to cxx::OOEquipmentType's OOJSPrivateObject members, defined
-	in OOJSEquipmentInfo.mm (proposed ADR-0056 amendment oo-6symp; deletion bead oo-9ht.102).
+/*	The JS class name of cxx::OOEquipmentType's OOJSPrivateObject members, defined in
+	OOJSEquipmentInfo.mm (proposed ADR-0056 amendment oo-6symp). The façade's selectors the engine
+	sends (OOEquipmentType+ObjCBridge.mm) forward to those members since bead oo-9ht.102.
 */
 std::optional<std::string> OOJSEquipmentInfoJSClassName(void);

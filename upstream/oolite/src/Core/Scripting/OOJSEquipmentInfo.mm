@@ -52,7 +52,7 @@ MA 02110-1301, USA.
 	(OOJSEngineNativeWrappers.h); BOOL/YES/NO are bool/true/false. OOEquipmentType
 	(OOJavaScriptExtensions), the category on the converted class's façade that owns its _jsSelf
 	ivar, became three free functions that take the façade's ivar by reference, and its methods
-	moved to OOJSEquipmentInfo+ObjCBridge.mm (amendment oo-6ia4 item 3). OOEquipmentType and
+	moved to the façade (OOEquipmentType+ObjCBridge.mm; amendment oo-6ia4 item 3, bead oo-9ht.102). OOEquipmentType and
 	OOColor, which are C++ since beads oo-fg7i and oo-11m, are reached as cxx:: classes through
 	oo::ToCxx/oo::ToObjC (amendment oo-ppc, item 4); the property hooks cross once, and Ask()
 	answers what a message to nil answered for the prototype, which has no type.
