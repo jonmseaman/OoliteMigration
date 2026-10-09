@@ -1460,9 +1460,11 @@ public:
 	bool suppressClangStuff() const;
 #endif
 
-	// @private in Objective-C: public still (bead oo-9ht.177 deleted the facade that read them), as
-	// test_PlayerEntity and the whole-game tests' stand-ins read and set them; private is a
-	// follow-up of its own.
+	// @private in Objective-C, and private again since bead oo-4yscj (they were public while the
+	// facade read them, bead oo-9ht.177): test_PlayerEntity reaches them through its
+	// PlayerEntityTestAccess (ADR-0056 amendment oo-4yscj).
+	friend struct PlayerEntityTestAccess;
+private:
 	OOSystemID				system_id = {};
 	OOSystemID				target_system_id = {};
 	OOSystemID				info_system_id = {};
