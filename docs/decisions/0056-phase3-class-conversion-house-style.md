@@ -5729,3 +5729,21 @@ form no class has had since oo-dnbf.
 **Consequences.** The player's members are still public (the first half of amendment oo-9ht.177
 item 6), split into a bead of its own: making them private needs a test-access friend for the ~56
 members test_PlayerEntity reads and sets.
+
+## Amendment (bead oo-4yscj): a converted class's data members private again, with a test-access friend
+
+- Date: 2026-10-09. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch L
+  (split from oo-5q11i). Exemplar: `src/Core/Entities/PlayerEntity.h`,
+  `tests/unit/core/test_PlayerEntity.mm` (`PlayerEntityTestAccess`). Carries out the first half of
+  amendment oo-9ht.177 item 6.
+
+**Decision (recommended defaults).**
+
+1. **Members that were `@private` in Objective-C are `private`** once no facade reads them; the
+   class declares `friend struct PlayerEntityTestAccess;` (one friend, defined by the test only).
+2. **The test reaches them through that friend, one accessor per member**, answering a reference
+   (`PlayerEntityTestAccess::credits(player)` where it read `player->credits`), so each check reads
+   and writes exactly what it did; a one-bit member, which has no reference, answers a proxy that
+   reads as its value and assigns through. No expectation changes.
+3. Game code outside the class's own members reads none of them (checked by a survey and the
+   compiler); a test's C++ subclass that declares a member of the same name keeps its own.

@@ -46,6 +46,99 @@
 #include <string>
 
 
+// The player's data members are private since bead oo-4yscj (they were @private in Objective-C):
+// the test reaches each one it reads or sets through this friend, one accessor per member
+// answering a reference, so every check reads and writes exactly what it did.
+#define OO_PLAYER_MEMBER(name)	static auto &name(PlayerEntity *player)	{ return player->name; }
+
+// A one-bit member has no reference: its accessor answers a proxy that reads as the member's value
+// and assigns through to it.
+template <class Get, class Set>
+struct PlayerBitMember
+{
+	Get get;
+	Set set;
+	operator unsigned() const						{ return get(); }
+	PlayerBitMember &operator=(unsigned value)		{ set(value); return *this; }
+};
+template <class Get, class Set>
+PlayerBitMember<Get, Set> MakePlayerBitMember(Get get, Set set)	{ return { get, set }; }
+#define OO_PLAYER_BIT(name)	static auto name(PlayerEntity *player)	{ return MakePlayerBitMember([player]() -> unsigned { return player->name; }, [player](unsigned value) { player->name = value; }); }
+
+struct PlayerEntityTestAccess
+{
+	OO_PLAYER_MEMBER(ANA_mode)
+	OO_PLAYER_MEMBER(_missionBackgroundSpecial)
+	OO_PLAYER_MEMBER(aftViewOffset)
+	OO_PLAYER_MEMBER(alertFlags)
+	OO_PLAYER_MEMBER(cdrDetailArray)
+	OO_PLAYER_MEMBER(chart_centre_coordinates)
+	OO_PLAYER_MEMBER(chart_focus_coordinates)
+	OO_PLAYER_MEMBER(chart_zoom)
+	OO_PLAYER_MEMBER(compassTarget)
+	OO_PLAYER_MEMBER(contracts)
+	OO_PLAYER_MEMBER(credits)
+	OO_PLAYER_MEMBER(current_cargo)
+	OO_PLAYER_MEMBER(cursor_coordinates)
+	OO_PLAYER_MEMBER(customDialSettings)
+	OO_PLAYER_MEMBER(customViewOffset)
+	OO_PLAYER_MEMBER(custom_chart_centre_coordinates)
+	OO_PLAYER_MEMBER(custom_chart_zoom)
+	OO_PLAYER_MEMBER(dockingClearanceStatus)
+	OO_PLAYER_MEMBER(dockingReport)
+	OO_PLAYER_MEMBER(eqScripts)
+	OO_PLAYER_MEMBER(extraMissionKeys)
+	OO_PLAYER_MEMBER(fleeing_status)
+	OO_PLAYER_MEMBER(forwardViewOffset)
+	OO_PLAYER_MEMBER(galaxy_coordinates)
+	OO_PLAYER_MEMBER(galaxy_number)
+	OO_PLAYER_MEMBER(gui_screen)
+	OO_PLAYER_MEMBER(hud)
+	OO_PLAYER_MEMBER(hyperspeedFactor)
+	OO_PLAYER_MEMBER(info_system_id)
+	OO_PLAYER_MEMBER(isSpeechOn)
+	OO_PLAYER_MEMBER(legalStatusValue)
+	OO_PLAYER_MEMBER(market_rnd)
+	OO_PLAYER_MEMBER(maxFieldOfView)
+	OO_PLAYER_MEMBER(max_passengers)
+	OO_PLAYER_MEMBER(missile_entity)
+	OO_PLAYER_MEMBER(mission_variables)
+	OO_PLAYER_MEMBER(multiFunctionDisplaySettings)
+	OO_PLAYER_MEMBER(multiFunctionDisplayText)
+	OO_PLAYER_MEMBER(passengers)
+	OO_PLAYER_MEMBER(pitch_delta)
+	OO_PLAYER_MEMBER(planetSearchString)
+	OO_PLAYER_MEMBER(portViewOffset)
+	OO_PLAYER_MEMBER(reputation)
+	OO_PLAYER_MEMBER(roll_delta)
+	OO_PLAYER_MEMBER(save_path)
+	OO_PLAYER_MEMBER(scenarioKey)
+	OO_PLAYER_MEMBER(ship_clock)
+	OO_PLAYER_MEMBER(ship_kills)
+	OO_PLAYER_MEMBER(ship_trade_in_factor)
+	OO_PLAYER_MEMBER(shipyard_record)
+	OO_PLAYER_MEMBER(system_id)
+	OO_PLAYER_MEMBER(target_memory_index)
+	OO_PLAYER_MEMBER(target_system_id)
+	OO_PLAYER_MEMBER(worldScripts)
+	OO_PLAYER_MEMBER(wormhole)
+	OO_PLAYER_MEMBER(yaw_delta)
+	OO_PLAYER_BIT(afterburner_engaged)
+	OO_PLAYER_BIT(autopilot_engaged)
+	OO_PLAYER_BIT(galactic_witchjump)
+	OO_PLAYER_BIT(hyperspeed_engaged)
+	OO_PLAYER_BIT(ident_engaged)
+	OO_PLAYER_BIT(scoopsActive)
+	OO_PLAYER_BIT(suppressTargetLostFlag)
+	OO_PLAYER_BIT(travelling_at_hyperspeed)
+	OO_PLAYER_BIT(using_mining_laser)
+};
+
+#undef OO_PLAYER_MEMBER
+#undef OO_PLAYER_BIT
+
+
+
 // main.mm defines the debug flags, and the test has its own main.
 #ifndef NDEBUG
 uint32_t gDebugFlags = 0;
@@ -180,7 +273,7 @@ OO_TEST(initIsTheShipMadeThePlayersWay)
 		OO_CHECK(player->status() == STATUS_COCKPIT_DISPLAY);
 		OO_CHECK(player->shipDataKey() == std::nullopt);
 		OO_CHECK(player->temperature() == 0 && player->weaponRechargeRate() == 0);
-		OO_CHECK(player->maxFieldOfView == 0);
+		OO_CHECK(PlayerEntityTestAccess::maxFieldOfView(player) == 0);
 		OO_CHECK(gOOPlayer == nullptr);
 		Release(player);
 	}
@@ -218,7 +311,7 @@ OO_TEST(deferredInit)
 		Entity *asEntity = oo::ToObjC(player);
 		void *part = oo::ToCxx(asEntity);
 		player->setFuel(5);
-		player->save_path = std::string("some.oolite-save");
+		PlayerEntityTestAccess::save_path(player) = std::string("some.oolite-save");
 
 		player->deferredInit();
 		OO_CHECK((void *)oo::ToCxx(asEntity) == part);
@@ -228,11 +321,11 @@ OO_TEST(deferredInit)
 		OO_CHECK(player->status() == STATUS_START_GAME);
 		OO_CHECK(player->temperature() == SHIP_MIN_CABIN_TEMP && player->weaponRechargeRate() == 6.0f);
 		OO_CHECK(player->getFuel() == 5);	// what the bodies do not set stays
-		OO_CHECK(std::fabs(player->maxFieldOfView - MAX_FOV) < 1e-6);
+		OO_CHECK(std::fabs(PlayerEntityTestAccess::maxFieldOfView(player) - MAX_FOV) < 1e-6);
 		OO_CHECK(player->getCompassMode() == COMPASS_MODE_BASIC);
-		OO_CHECK(!player->scoopsActive && player->target_memory_index == 0);
-		OO_CHECK(!player->save_path.has_value());
-		for (int i = 0; i < PLAYER_MAX_MISSILES; i++)  OO_CHECK(player->missile_entity[i] == nil);
+		OO_CHECK(!PlayerEntityTestAccess::scoopsActive(player) && PlayerEntityTestAccess::target_memory_index(player) == 0);
+		OO_CHECK(!PlayerEntityTestAccess::save_path(player).has_value());
+		for (int i = 0; i < PLAYER_MAX_MISSILES; i++)  OO_CHECK(PlayerEntityTestAccess::missile_entity(player)[i] == nil);
 		OO_CHECK(sPlayerSetUps == 1 && sPlayerSetUpStopOnError == NO);
 		OO_CHECK(sInitControls == 1);
 
@@ -255,9 +348,9 @@ OO_TEST(deallocReleasesWhatThePlayerHeld)
 		SetUp();
 		missile = [[TestMissile alloc] cxx_initWithKey:"missile" definition:oo::PList()];
 		TestPlayer *player = NewTestPlayer<TestPlayer>();
-		player->missile_entity[2] = oo::adoptObjC([missile retain]);	// held by oo::ObjCRef since bead oo-5q11i
+		PlayerEntityTestAccess::missile_entity(player)[2] = oo::adoptObjC([missile retain]);	// held by oo::ObjCRef since bead oo-5q11i
 		OO_CHECK([missile retainCount] == 2);
-		OO_CHECK(player->missile_entity[2] == missile);
+		OO_CHECK(PlayerEntityTestAccess::missile_entity(player)[2] == missile);
 		Release(player);
 	}
 	OO_CHECK([missile retainCount] == 1);
@@ -299,10 +392,10 @@ OO_TEST(membersStartZeroed)
 		SetUp();
 		TestPlayer *player = NewTestPlayer<TestPlayer>();
 		PlayerEntity *part = player;
-		OO_CHECK(part->hud == nil && part->compassTarget == nil && part->wormhole == nil);
-		OO_CHECK(part->system_id == 0 && part->ship_clock == 0 && part->scoopsActive == NO);
-		for (int i = 0; i < PLAYER_MAX_MISSILES; i++)  OO_CHECK(part->missile_entity[i] == nil);
-		OO_CHECK(!part->save_path.has_value() && part->worldScripts.empty());
+		OO_CHECK(PlayerEntityTestAccess::hud(part) == nil && PlayerEntityTestAccess::compassTarget(part) == nil && PlayerEntityTestAccess::wormhole(part) == nil);
+		OO_CHECK(PlayerEntityTestAccess::system_id(part) == 0 && PlayerEntityTestAccess::ship_clock(part) == 0 && PlayerEntityTestAccess::scoopsActive(part) == NO);
+		for (int i = 0; i < PLAYER_MAX_MISSILES; i++)  OO_CHECK(PlayerEntityTestAccess::missile_entity(part)[i] == nil);
+		OO_CHECK(!PlayerEntityTestAccess::save_path(part).has_value() && PlayerEntityTestAccess::worldScripts(part).empty());
 		Release(player);
 	}
 }
@@ -353,24 +446,24 @@ OO_TEST(slice2Accessors)
 		TestPlayer *player = MakePlayer();
 		PlayerEntity *part = player;
 		OO_CHECK(player->getShipCommodityData() == nil);
-		part->credits = 1234;
+		PlayerEntityTestAccess::credits(part) = 1234;
 		OO_CHECK(player->deciCredits() == 1234);
 		player->setRandom_factor(77);
-		OO_CHECK(player->random_factor() == 77 && part->market_rnd == 77);
-		part->galaxy_number = 3;
+		OO_CHECK(player->random_factor() == 77 && PlayerEntityTestAccess::market_rnd(part) == 77);
+		PlayerEntityTestAccess::galaxy_number(part) = 3;
 		OO_CHECK(player->galaxyNumber() == 3);
 		player->setGalaxyCoordinates(NSMakePoint(12.5, 99.0));
 		OO_CHECK(Near(player->getGalaxy_coordinates(), NSMakePoint(12.5, 99.0)));
-		part->cursor_coordinates = NSMakePoint(4, 5);
-		part->chart_centre_coordinates = NSMakePoint(6, 7);
+		PlayerEntityTestAccess::cursor_coordinates(part) = NSMakePoint(4, 5);
+		PlayerEntityTestAccess::chart_centre_coordinates(part) = NSMakePoint(6, 7);
 		OO_CHECK(Near(player->getCursor_coordinates(), NSMakePoint(4, 5)) && Near(player->getChart_centre_coordinates(), NSMakePoint(6, 7)));
 		player->setCustomChartZoom(2.5);
 		OO_CHECK(player->getCustom_chart_zoom() == 2.5);
 		player->setCustomChartCentre(NSMakePoint(30, 40));
 		OO_CHECK(Near(player->getCustom_chart_centre_coordinates(), NSMakePoint(30, 40)));
-		part->ANA_mode = OPTIMIZED_BY_TIME;
+		PlayerEntityTestAccess::ANA_mode(part) = OPTIMIZED_BY_TIME;
 		OO_CHECK(player->ANAMode() == OPTIMIZED_BY_TIME);
-		part->system_id = 42;
+		PlayerEntityTestAccess::system_id(part) = 42;
 		OO_CHECK(player->systemID() == 42);
 		player->setPreviousSystemID(17);
 		OO_CHECK(player->previousSystemID() == 17);
@@ -386,23 +479,23 @@ OO_TEST(slice2ChartZoomAndCentre)
 		SetUp();
 		TestPlayer *player = MakePlayer();
 		PlayerEntity *part = player;
-		part->chart_zoom = 1.0;
-		part->custom_chart_zoom = 3.0;
-		part->galaxy_coordinates = NSMakePoint(20, 30);
-		part->custom_chart_centre_coordinates = NSMakePoint(50, 60);
-		part->chart_centre_coordinates = NSMakePoint(100, 110);
-		part->chart_focus_coordinates = NSMakePoint(100, 110);
+		PlayerEntityTestAccess::chart_zoom(part) = 1.0;
+		PlayerEntityTestAccess::custom_chart_zoom(part) = 3.0;
+		PlayerEntityTestAccess::galaxy_coordinates(part) = NSMakePoint(20, 30);
+		PlayerEntityTestAccess::custom_chart_centre_coordinates(part) = NSMakePoint(50, 60);
+		PlayerEntityTestAccess::chart_centre_coordinates(part) = NSMakePoint(100, 110);
+		PlayerEntityTestAccess::chart_focus_coordinates(part) = NSMakePoint(100, 110);
 
-		part->_missionBackgroundSpecial = GUI_BACKGROUND_SPECIAL_NONE;
+		PlayerEntityTestAccess::_missionBackgroundSpecial(part) = GUI_BACKGROUND_SPECIAL_NONE;
 		OO_CHECK(player->getChart_zoom() == 1.0);
 		OO_CHECK(Near(player->adjusted_chart_centre(), NSMakePoint(100, 110)));
-		part->_missionBackgroundSpecial = GUI_BACKGROUND_SPECIAL_SHORT;
+		PlayerEntityTestAccess::_missionBackgroundSpecial(part) = GUI_BACKGROUND_SPECIAL_SHORT;
 		OO_CHECK(player->getChart_zoom() == 1.0);
 		OO_CHECK(Near(player->adjusted_chart_centre(), NSMakePoint(20, 30)));
-		part->_missionBackgroundSpecial = GUI_BACKGROUND_SPECIAL_LONG_ANA_QUICKEST;
+		PlayerEntityTestAccess::_missionBackgroundSpecial(part) = GUI_BACKGROUND_SPECIAL_LONG_ANA_QUICKEST;
 		OO_CHECK(player->getChart_zoom() == (OOScalar)CHART_MAX_ZOOM);
 		OO_CHECK(Near(player->adjusted_chart_centre(), NSMakePoint(128, 128)));
-		part->_missionBackgroundSpecial = GUI_BACKGROUND_SPECIAL_CUSTOM;
+		PlayerEntityTestAccess::_missionBackgroundSpecial(part) = GUI_BACKGROUND_SPECIAL_CUSTOM;
 		OO_CHECK(player->getChart_zoom() == 3.0);
 		OO_CHECK(Near(player->adjusted_chart_centre(), NSMakePoint(50, 60)));
 	}
@@ -433,10 +526,10 @@ OO_TEST(slice3TargetAndInfoSystems)
 		SetUp();
 		TestPlayer *player = MakePlayer();
 		PlayerEntity *part = player;
-		part->system_id = 7;
-		part->target_system_id = 9;
-		part->info_system_id = 11;
-		part->ANA_mode = OPTIMIZED_BY_JUMPS;
+		PlayerEntityTestAccess::system_id(part) = 7;
+		PlayerEntityTestAccess::target_system_id(part) = 9;
+		PlayerEntityTestAccess::info_system_id(part) = 11;
+		PlayerEntityTestAccess::ANA_mode(part) = OPTIMIZED_BY_JUMPS;
 		OO_CHECK(player->targetSystemID() == 9);
 		OO_CHECK(player->nextHopTargetSystemID() == 9);
 		OO_CHECK(player->infoSystemID() == 11);
@@ -478,11 +571,11 @@ OO_TEST(slice4RefusesADictionaryWithoutTheRequiredKeys)
 		SetUp();
 		TestPlayer *player = MakePlayer();
 		PlayerEntity *part = player;
-		part->multiFunctionDisplayText["mfd"] = "text";
-		part->multiFunctionDisplaySettings.push_back(std::string("mfd"));
-		part->customDialSettings["dial"] = oo::PList(1);
+		PlayerEntityTestAccess::multiFunctionDisplayText(part)["mfd"] = "text";
+		PlayerEntityTestAccess::multiFunctionDisplaySettings(part).push_back(std::string("mfd"));
+		PlayerEntityTestAccess::customDialSettings(part)["dial"] = oo::PList(1);
 		OO_CHECK(!player->setCommanderDataFromDictionary(oo::PList(oo::PList::Dict{})));
-		OO_CHECK(part->multiFunctionDisplayText.empty() && part->multiFunctionDisplaySettings.empty() && part->customDialSettings.empty());
+		OO_CHECK(PlayerEntityTestAccess::multiFunctionDisplayText(part).empty() && PlayerEntityTestAccess::multiFunctionDisplaySettings(part).empty() && PlayerEntityTestAccess::customDialSettings(part).empty());
 		OO_CHECK(!player->setCommanderDataFromDictionary(oo::PList(oo::PList::Dict{ { "ship_desc", oo::PList(std::string("cobra3-player")) } })));
 	}
 }
@@ -564,12 +657,12 @@ OO_TEST(slice8FlightLimitsAndAutopilot)
 		player->setMaxFlightPitch(1.5f);
 		player->setMaxFlightRoll(2.0f);
 		player->setMaxFlightYaw(0.5f);
-		OO_CHECK(player->max_flight_pitch == 1.5f && part->pitch_delta == 3.0f);
-		OO_CHECK(player->max_flight_roll == 2.0f && part->roll_delta == 4.0f);
-		OO_CHECK(player->max_flight_yaw == 0.5f && part->yaw_delta == 1.0f);
+		OO_CHECK(player->max_flight_pitch == 1.5f && PlayerEntityTestAccess::pitch_delta(part) == 3.0f);
+		OO_CHECK(player->max_flight_roll == 2.0f && PlayerEntityTestAccess::roll_delta(part) == 4.0f);
+		OO_CHECK(player->max_flight_yaw == 0.5f && PlayerEntityTestAccess::yaw_delta(part) == 1.0f);
 		player->setStatus(STATUS_IN_FLIGHT);
 		player->disengageAutopilot();
-		OO_CHECK(!part->autopilot_engaged && player->status() == STATUS_IN_FLIGHT);
+		OO_CHECK(!PlayerEntityTestAccess::autopilot_engaged(part) && player->status() == STATUS_IN_FLIGHT);
 		player->cancelDockingRequest(nullptr);
 		OO_CHECK(player->status() == STATUS_IN_FLIGHT);
 	}
@@ -587,11 +680,11 @@ OO_TEST(slice9HyperspeedFlags)
 		TestPlayer *player = MakePlayer();
 		PlayerEntity *part = player;
 		OO_CHECK(!player->injectorsEngaged() && !player->hyperspeedEngaged());
-		part->afterburner_engaged = YES;
-		part->hyperspeed_engaged = YES;
+		PlayerEntityTestAccess::afterburner_engaged(part) = YES;
+		PlayerEntityTestAccess::hyperspeed_engaged(part) = YES;
 		OO_CHECK(player->injectorsEngaged() && player->hyperspeedEngaged());
 #if OO_VARIABLE_TORUS_SPEED
-		part->hyperspeedFactor = 4.5f;
+		PlayerEntityTestAccess::hyperspeedFactor(part) = 4.5f;
 		OO_CHECK(player->getHyperspeedFactor() == 4.5f);
 #endif
 	}
@@ -618,11 +711,11 @@ OO_TEST(slice10OrientationFlagsAndShields)
 		OO_CHECK(player->occlusionLevel() == 0.75f);
 		player->setShowDemoShips(YES);
 		OO_CHECK(player->getShowDemoShips());
-		part->travelling_at_hyperspeed = YES;
+		PlayerEntityTestAccess::travelling_at_hyperspeed(part) = YES;
 		OO_CHECK(player->atHyperspeed());
-		part->alertFlags = ALERT_FLAG_MASS_LOCK;
+		PlayerEntityTestAccess::alertFlags(part) = ALERT_FLAG_MASS_LOCK;
 		OO_CHECK(player->massLocked());
-		part->alertFlags = 0;
+		PlayerEntityTestAccess::alertFlags(part) = 0;
 		OO_CHECK(!player->massLocked());
 		OO_CHECK(!player->getMassLockable());
 		player->setMaxForwardShieldLevel(100.0f);
@@ -667,7 +760,7 @@ OO_TEST(slice11ClockFuelLeakAndRoles)
 		SetUp();
 		TestPlayer *player = MakePlayer();
 		PlayerEntity *part = player;
-		part->ship_clock = 1000.0;
+		PlayerEntityTestAccess::ship_clock(part) = 1000.0;
 		OO_CHECK(player->clockTime() == 1000.0 && !player->clockAdjusting());
 		player->addToAdjustTime(60.0);
 		OO_CHECK(player->clockAdjusting() && player->clockTimeAdjusted() == 1060.0);
@@ -677,11 +770,11 @@ OO_TEST(slice11ClockFuelLeakAndRoles)
 		OO_CHECK(player->fuelLeakRate() == 0.0f);
 		player->setFuelLeakRate(3.0f);
 		OO_CHECK(player->fuelLeakRate() == 3.0f);
-		part->ship_kills = 0;
+		PlayerEntityTestAccess::ship_kills(part) = 0;
 		OO_CHECK(player->maxPlayerRoles() == 8);
-		part->ship_kills = 128;
+		PlayerEntityTestAccess::ship_kills(part) = 128;
 		OO_CHECK(player->maxPlayerRoles() == 16);
-		part->ship_kills = 6400;
+		PlayerEntityTestAccess::ship_kills(part) = 6400;
 		OO_CHECK(player->maxPlayerRoles() == 32);
 	}
 }
@@ -698,8 +791,8 @@ OO_TEST(slice11CountMissiles)
 		TestPlayer *player = MakePlayer();
 		player->max_missiles = 4;
 		OO_CHECK(player->countMissiles() == 0);
-		player->missile_entity[1] = oo::adoptObjC([missile retain]);	// held by oo::ObjCRef since bead oo-5q11i
-		player->missile_entity[3] = oo::adoptObjC([missile retain]);	// held by oo::ObjCRef since bead oo-5q11i
+		PlayerEntityTestAccess::missile_entity(player)[1] = oo::adoptObjC([missile retain]);	// held by oo::ObjCRef since bead oo-5q11i
+		PlayerEntityTestAccess::missile_entity(player)[3] = oo::adoptObjC([missile retain]);	// held by oo::ObjCRef since bead oo-5q11i
 		OO_CHECK(player->countMissiles() == 2);
 		player->max_missiles = 2;
 		OO_CHECK(player->countMissiles() == 1);
@@ -728,7 +821,7 @@ OO_TEST(slice12CompassIdentAndAlertFlags)
 		OO_CHECK((player->getAlertFlags() & ALERT_FLAG_MASS_LOCK) != 0);
 		player->setAlertFlag(ALERT_FLAG_MASS_LOCK, NO);
 		OO_CHECK((player->getAlertFlags() & ALERT_FLAG_MASS_LOCK) == 0);
-		player->alertFlags = 0x7;
+		PlayerEntityTestAccess::alertFlags(player) = 0x7;
 		player->clearAlertFlags();
 		OO_CHECK(player->getAlertFlags() == 0);
 	}
@@ -745,7 +838,7 @@ OO_TEST(slice13FleeingAndWeaponsOnline)
 		SetUp();
 		TestPlayer *player = MakePlayer();
 		PlayerEntity *part = player;
-		part->fleeing_status = PLAYER_FLEEING_CARGO;
+		PlayerEntityTestAccess::fleeing_status(part) = PLAYER_FLEEING_CARGO;
 		OO_CHECK(player->fleeingStatus() == PLAYER_FLEEING_CARGO);
 		player->setWeaponsOnline(YES);
 		OO_CHECK(player->weaponsOnline());
@@ -911,13 +1004,13 @@ OO_TEST(slice15LegalStatusOffenceAndScenario)
 	{
 		SetUp();
 		RecordingPlayer *player = MakeRecordingPlayer();
-		player->legalStatusValue = 64;
+		PlayerEntityTestAccess::legalStatusValue(player) = 64;
 		OO_CHECK(player->getBounty() == 64 && player->getLegalStatus() == 64);
 		player->markAsOffender(8);
 		OO_CHECK(sSent.count == 1 && sSent.number == 8);
 		OO_CHECK(sSent.text == cxx_OOStringFromLegalStatusReason(kOOLegalStatusReasonUnknown));
 		OO_CHECK(!player->endScenario("some-scenario"));
-		player->scenarioKey = std::string("other-scenario");
+		PlayerEntityTestAccess::scenarioKey(player) = std::string("other-scenario");
 		OO_CHECK(!player->endScenario("some-scenario"));
 	}
 }
@@ -933,9 +1026,9 @@ OO_TEST(slice16JumpTypeAndFuel)
 		SetUp();
 		RecordingPlayer *player = MakeRecordingPlayer();
 		player->setJumpType(YES);
-		OO_CHECK(player->galactic_witchjump);
+		OO_CHECK(PlayerEntityTestAccess::galactic_witchjump(player));
 		player->setJumpType(NO);
-		OO_CHECK(!player->galactic_witchjump);
+		OO_CHECK(!PlayerEntityTestAccess::galactic_witchjump(player));
 		player->fuel = 70;
 		sSent.number = 50;
 		OO_CHECK(player->hasSufficientFuelForJump());
@@ -1044,9 +1137,9 @@ OO_TEST(slice22WeaponMountAndBerths)
 		OO_CHECK(sSent.count == 1 && sSent.number == (int)WEAPON_FACING_AFT && sSent.text == "EQ_WEAPON_PULSE_LASER");
 		OO_CHECK(sSent.optionalText == std::optional<std::string>("purchase"));
 		OO_CHECK(!player->changePassengerBerths(0));
-		player->max_passengers = 0;
+		PlayerEntityTestAccess::max_passengers(player) = 0;
 		OO_CHECK(!player->changePassengerBerths(-1));
-		OO_CHECK(player->max_passengers == 0);
+		OO_CHECK(PlayerEntityTestAccess::max_passengers(player) == 0);
 	}
 }
 
@@ -1060,9 +1153,9 @@ OO_TEST(slice23CalculateCurrentCargo)
 	{
 		SetUp();
 		RecordingPlayer *player = MakeRecordingPlayer();
-		player->current_cargo = 0;
+		PlayerEntityTestAccess::current_cargo(player) = 0;
 		player->calculateCurrentCargo();
-		OO_CHECK(player->current_cargo == 7);
+		OO_CHECK(PlayerEntityTestAccess::current_cargo(player) == 7);
 	}
 }
 
@@ -1077,13 +1170,13 @@ OO_TEST(slice24FlagsAndAddEquipment)
 		SetUp();
 		RecordingPlayer *player = MakeRecordingPlayer();
 		PlayerEntity *part = player;
-		part->gui_screen = GUI_SCREEN_MARKET;
+		PlayerEntityTestAccess::gui_screen(part) = GUI_SCREEN_MARKET;
 		OO_CHECK(player->guiScreen() == GUI_SCREEN_MARKET);
-		part->using_mining_laser = YES;
+		PlayerEntityTestAccess::using_mining_laser(part) = YES;
 		OO_CHECK(player->isMining());
-		part->using_mining_laser = NO;
+		PlayerEntityTestAccess::using_mining_laser(part) = NO;
 		OO_CHECK(!player->isMining());
-		part->isSpeechOn = OOSPEECHSETTINGS_ALL;
+		PlayerEntityTestAccess::isSpeechOn(part) = OOSPEECHSETTINGS_ALL;
 		OO_CHECK(player->getIsSpeechOn() == OOSPEECHSETTINGS_ALL);
 		OO_CHECK(player->addEquipmentItem("EQ_ECM", "purchase"));
 		OO_CHECK(sSent.count == 1 && sSent.text == "EQ_ECM/purchase" && sSent.flag);
@@ -1103,9 +1196,9 @@ OO_TEST(slice25CountsTradeInAndViewOffsets)
 		RecordingPlayer *player = MakeRecordingPlayer();
 		PlayerEntity *part = player;
 		OO_CHECK(player->parcelCount() == 0 && player->passengerCount() == 0 && player->getTrumbleCount() == 0);
-		part->max_passengers = 3;
+		PlayerEntityTestAccess::max_passengers(part) = 3;
 		OO_CHECK(player->passengerCapacity() == 3);
-		part->ship_trade_in_factor = 90;
+		PlayerEntityTestAccess::ship_trade_in_factor(part) = 90;
 		player->adjustTradeInFactorBy(5);
 		OO_CHECK(player->tradeInFactor() == 95);
 		player->adjustTradeInFactorBy(50);
@@ -1115,11 +1208,11 @@ OO_TEST(slice25CountsTradeInAndViewOffsets)
 		player->boundingBox.min = make_vector(-10.0f, -2.0f, -20.0f);
 		player->boundingBox.max = make_vector(10.0f, 2.0f, 40.0f);
 		player->setDefaultViewOffsets();
-		OO_CHECK(NearV(part->forwardViewOffset, make_vector(0.0f, 0.0f, 10.0f)));
-		OO_CHECK(NearV(part->aftViewOffset, make_vector(0.0f, 0.0f, 10.0f)));
-		OO_CHECK(NearV(part->portViewOffset, make_vector(0.0f, 0.0f, 0.0f)));
-		OO_CHECK(NearV(part->customViewOffset, kZeroVector));
-		part->aftViewOffset = make_vector(1.0f, 2.0f, 3.0f);
+		OO_CHECK(NearV(PlayerEntityTestAccess::forwardViewOffset(part), make_vector(0.0f, 0.0f, 10.0f)));
+		OO_CHECK(NearV(PlayerEntityTestAccess::aftViewOffset(part), make_vector(0.0f, 0.0f, 10.0f)));
+		OO_CHECK(NearV(PlayerEntityTestAccess::portViewOffset(part), make_vector(0.0f, 0.0f, 0.0f)));
+		OO_CHECK(NearV(PlayerEntityTestAccess::customViewOffset(part), kZeroVector));
+		PlayerEntityTestAccess::aftViewOffset(part) = make_vector(1.0f, 2.0f, 3.0f);
 		player->currentWeaponFacing = WEAPON_FACING_AFT;
 		OO_CHECK(NearV(player->weaponViewOffset(), make_vector(1.0f, 2.0f, 3.0f)));
 	}
@@ -1141,11 +1234,11 @@ OO_TEST(slice26TargetMemoryAndCustomViewZoom)
 		player->setTrumbleAppetiteAccumulator(2.5f);
 		OO_CHECK(player->trumbleAppetiteAccumulator() == 2.5f);
 		player->getSuppressTargetLost();
-		OO_CHECK(part->suppressTargetLostFlag);
+		OO_CHECK(PlayerEntityTestAccess::suppressTargetLostFlag(part));
 		player->setScoopsActive();
-		OO_CHECK(player->scoopsActive);
+		OO_CHECK(PlayerEntityTestAccess::scoopsActive(player));
 		player->clearTargetMemory();
-		OO_CHECK(player->targetMemory().size() == PLAYER_TARGET_MEMORY_SIZE && player->target_memory_index == 0);
+		OO_CHECK(player->targetMemory().size() == PLAYER_TARGET_MEMORY_SIZE && PlayerEntityTestAccess::target_memory_index(player) == 0);
 		player->setCustomViewRotationCenter(make_vector(0.0f, 0.0f, 1.0f));
 		player->setCustomViewOffset(make_vector(0.0f, 0.0f, 3.0f));
 		OO_CHECK(NearV(player->getCustomViewRotationCenter(), make_vector(0.0f, 0.0f, 1.0f)));
@@ -1206,19 +1299,19 @@ OO_TEST(slice28ClearanceMarkerKeyAndExtraKeys)
 		SetUp();
 		RecordingPlayer *player = MakeRecordingPlayer();
 		PlayerEntity *part = player;
-		part->dockingClearanceStatus = DOCKING_CLEARANCE_STATUS_REQUESTED;
+		PlayerEntityTestAccess::dockingClearanceStatus(part) = DOCKING_CLEARANCE_STATUS_REQUESTED;
 		OO_CHECK(!player->clearedToDock() && player->getDockingClearanceStatus() == DOCKING_CLEARANCE_STATUS_REQUESTED);
-		part->dockingClearanceStatus = DOCKING_CLEARANCE_STATUS_GRANTED;
+		PlayerEntityTestAccess::dockingClearanceStatus(part) = DOCKING_CLEARANCE_STATUS_GRANTED;
 		OO_CHECK(player->clearedToDock());
-		part->dockingClearanceStatus = DOCKING_CLEARANCE_STATUS_NOT_REQUIRED;
+		PlayerEntityTestAccess::dockingClearanceStatus(part) = DOCKING_CLEARANCE_STATUS_NOT_REQUIRED;
 		OO_CHECK(player->clearedToDock());
 		const oo::PList marker(oo::PList::Dict{ { "system", oo::PList(7) }, { "name", oo::PList(std::string("beacon")) } });
 		OO_CHECK(player->markerKey(marker) == std::optional<std::string>("7-beacon"));
 		OO_CHECK(player->markerKey(oo::PList(oo::PList::Dict{})) == std::optional<std::string>("0-(null)"));
-		part->extraMissionKeys["oolite-mission-key"] = oo::PList();
+		PlayerEntityTestAccess::extraMissionKeys(part)["oolite-mission-key"] = oo::PList();
 		player->clearExtraMissionKeys();
-		OO_CHECK(part->extraMissionKeys.empty());
-		OO_CHECK(player->shipyardRecord() == &part->shipyard_record);
+		OO_CHECK(PlayerEntityTestAccess::extraMissionKeys(part).empty());
+		OO_CHECK(player->shipyardRecord() == &PlayerEntityTestAccess::shipyard_record(part));
 		OO_CHECK(player->getScannedWormholes().empty());
 	}
 }
@@ -1339,9 +1432,9 @@ OO_TEST(controlsSlice1FirstKeyCodeAndPlanetSearch)
 		const oo::PList keyDef(oo::PList::Array{ oo::PList(oo::PList::Dict{ { "key", oo::PList(65) } }), oo::PList(oo::PList::Dict{ { "key", oo::PList(66) } }) });
 		OO_CHECK(player->getFirstKeyCode(keyDef) == 65);
 		OO_CHECK(player->getFirstKeyCode(oo::PList(oo::PList::Array{})) == 0);
-		player->planetSearchString = std::string("Lave");
+		PlayerEntityTestAccess::planetSearchString(player) = std::string("Lave");
 		player->clearPlanetSearchString();
-		OO_CHECK(!player->planetSearchString.has_value());
+		OO_CHECK(!PlayerEntityTestAccess::planetSearchString(player).has_value());
 	}
 }
 
@@ -1359,7 +1452,7 @@ OO_TEST(controlsSlice7IdentButton)
 		CategoryPlayer *player = MakeCategoryPlayer();
 		sCategoryTarget = oo::ToObjC(player);
 		player->handleButtonIdent();
-		OO_CHECK(player->ident_engaged);
+		OO_CHECK(PlayerEntityTestAccess::ident_engaged(player));
 		OO_CHECK(sSent.count == 3 && !sSent.flag && sSent.number == 2);
 		sSent = Sent();
 		player->handleButtonIdent();
@@ -1435,10 +1528,10 @@ OO_TEST(legacyScriptSlice1MissionAndLocalVariables)
 	{
 		SetUp();
 		RecordingPlayer *player = MakeRecordingPlayer();
-		player->mission_variables = oo::PList();
+		PlayerEntityTestAccess::mission_variables(player) = oo::PList();
 		player->setMissionVariable(oo::PList(std::string("1")), "mission_x");
 		OO_CHECK(player->missionVariableForKey("mission_x").isNull());
-		player->mission_variables = oo::PList(oo::PList::Dict{});
+		PlayerEntityTestAccess::mission_variables(player) = oo::PList(oo::PList::Dict{});
 		player->setMissionVariable(oo::PList(std::string("1")), "mission_x");
 		OO_CHECK(StringOf(player->missionVariableForKey("mission_x")) == "1");
 		OO_CHECK(player->missionVariables().count() == 1);
@@ -1475,7 +1568,7 @@ OO_TEST(legacyScriptSlice3VariableArithmeticAndTitle)
 	{
 		SetUp();
 		RecordingPlayer *player = MakeRecordingPlayer();
-		player->mission_variables = oo::PList(oo::PList::Dict{});
+		PlayerEntityTestAccess::mission_variables(player) = oo::PList(oo::PList::Dict{});
 		player->set("mission_count 5");
 		OO_CHECK(StringOf(player->missionVariableForKey("mission_count")) == "5");
 		player->increment("mission_count");
@@ -1507,7 +1600,7 @@ OO_TEST(legacyScriptSlice4MissionScreenIDAndEqScripts)
 		OO_CHECK(player->missionScreenID() == std::optional<std::string>("screen-1"));
 		player->clearMissionScreenID();
 		OO_CHECK(!player->missionScreenID().has_value());
-		OO_CHECK(player->eqScriptIndexForKey("EQ_NONE") == player->eqScripts.size());
+		OO_CHECK(player->eqScriptIndexForKey("EQ_NONE") == PlayerEntityTestAccess::eqScripts(player).size());
 	}
 }
 
@@ -1521,21 +1614,21 @@ OO_TEST(contractsSlice1PassengersVolumeAndReport)
 	{
 		SetUp();
 		CategoryPlayer *player = MakeCategoryPlayer();
-		player->max_passengers = 2;
+		PlayerEntityTestAccess::max_passengers(player) = 2;
 		OO_CHECK(player->addPassenger("Ann", 1, 2, 100.0, 10.0, 1.0, 2));
 		OO_CHECK(sSent.count == 2 && sSent.text == "trader-courier+" && sSent.number == 2);
 		OO_CHECK(!player->addPassenger("Ann", 1, 2, 100.0, 10.0, 1.0, 0));
-		OO_CHECK(player->passengers.size() == 1);
+		OO_CHECK(PlayerEntityTestAccess::passengers(player).size() == 1);
 		OO_CHECK(!player->removePassenger("Bob"));
-		OO_CHECK(player->removePassenger("Ann") && player->passengers.empty());
-		player->contracts.push_back(oo::PList(oo::PList::Dict{ { std::string(CARGO_KEY_TYPE), oo::PList(std::string("food")) }, { std::string(CARGO_KEY_AMOUNT), oo::PList(3) } }));
-		player->contracts.push_back(oo::PList(oo::PList::Dict{ { std::string(CARGO_KEY_TYPE), oo::PList(std::string("food")) }, { std::string(CARGO_KEY_AMOUNT), oo::PList(4) } }));
+		OO_CHECK(player->removePassenger("Ann") && PlayerEntityTestAccess::passengers(player).empty());
+		PlayerEntityTestAccess::contracts(player).push_back(oo::PList(oo::PList::Dict{ { std::string(CARGO_KEY_TYPE), oo::PList(std::string("food")) }, { std::string(CARGO_KEY_AMOUNT), oo::PList(3) } }));
+		PlayerEntityTestAccess::contracts(player).push_back(oo::PList(oo::PList::Dict{ { std::string(CARGO_KEY_TYPE), oo::PList(std::string("food")) }, { std::string(CARGO_KEY_AMOUNT), oo::PList(4) } }));
 		OO_CHECK(player->contractedVolumeForGood("food") == 7 && player->contractedVolumeForGood("gold") == 0);
-		player->dockingReport.clear();
+		PlayerEntityTestAccess::dockingReport(player).clear();
 		player->addMessageToReport("one");
 		player->addMessageToReport("");
 		player->addMessageToReport("two");
-		OO_CHECK(player->dockingReport == "one\n\ntwo");
+		OO_CHECK(PlayerEntityTestAccess::dockingReport(player) == "one\n\ntwo");
 	}
 }
 
@@ -1548,7 +1641,7 @@ OO_TEST(contractsSlice2Reputation)
 	{
 		SetUp();
 		RecordingPlayer *player = MakeRecordingPlayer();
-		player->reputation.clear();
+		PlayerEntityTestAccess::reputation(player).clear();
 		OO_CHECK(player->passengerReputation() == MAX_CONTRACT_REP / 2);
 		OO_CHECK(player->parcelReputation() == MAX_CONTRACT_REP / 2);
 		OO_CHECK(player->contractReputation() == MAX_CONTRACT_REP / 2);
@@ -1580,13 +1673,13 @@ OO_TEST(loadSaveSlice2FindCommander)
 	{
 		SetUp();
 		RecordingPlayer *player = MakeRecordingPlayer();
-		player->cdrDetailArray.clear();
+		PlayerEntityTestAccess::cdrDetailArray(player).clear();
 		OO_CHECK(player->findIndexOfCommander("Jameson") == -1);
-		player->cdrDetailArray.push_back(oo::PList(oo::PList::Dict{ { "player_name", oo::PList(std::string("Jameson")) } }));
-		player->cdrDetailArray.push_back(oo::PList(oo::PList::Dict{ { "player_save_name", oo::PList(std::string("Other")) }, { "player_name", oo::PList(std::string("Jameson")) } }));
+		PlayerEntityTestAccess::cdrDetailArray(player).push_back(oo::PList(oo::PList::Dict{ { "player_name", oo::PList(std::string("Jameson")) } }));
+		PlayerEntityTestAccess::cdrDetailArray(player).push_back(oo::PList(oo::PList::Dict{ { "player_save_name", oo::PList(std::string("Other")) }, { "player_name", oo::PList(std::string("Jameson")) } }));
 		OO_CHECK(player->findIndexOfCommander("Jameson") == 0);
 		OO_CHECK(player->findIndexOfCommander("Other") == 1);
-		player->cdrDetailArray.clear();
+		PlayerEntityTestAccess::cdrDetailArray(player).clear();
 	}
 }
 
