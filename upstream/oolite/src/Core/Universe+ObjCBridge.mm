@@ -3,10 +3,12 @@
 Universe+ObjCBridge.mm
 
 TRANSITIONAL (proposed ADR-0056, amendment oo-riqmz): the Objective-C Universe facade (see
-Universe+ObjCBridge.h). Its initialiser and -dealloc are here, in a category while the class's
-@implementation is still Universe.mm, because they need the Objective-C object as self; their
-bodies are cxx::Universe's initWithGameView() and dealloc(), in Universe.mm. The other methods are
-still in Universe.mm until their slices move them. Deleted with Universe+ObjCBridge.h.
+Universe+ObjCBridge.h). Its initialiser and -dealloc are here because they need the Objective-C
+object as self; their bodies are cxx::Universe's initWithGameView() and dealloc(), in Universe.mm.
+Every other method is a forwarder to a cxx::Universe member, in the category of its slice. The
+class's primary @implementation is here too (bead oo-pas, as oo-k8a did for ShipEntity): empty but
+for the Mac speech arms, which stay Objective-C (Mac-only, not adapted in Phase 3). The delayed
+message holder the deferred call retains is here as well. Deleted with Universe+ObjCBridge.h.
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -34,6 +36,44 @@ MA 02110-1301, USA.
 
 
 extern Universe *gSharedUniverse;
+
+
+@implementation Universe
+
+// speech routines (the Mac arms; the others are slice 24's forwarders)
+#if OOLITE_MAC_OS_X
+
+- (void) cxx_startSpeakingString:(const std::string &) text
+{
+	[_cxxUniverse->speechSynthesizer startSpeakingString:oo::NSStringFrom(oo::str::format("[[volm %.3f]]%s", 0.3333333f * [OOSound masterVolume], text.c_str()))];
+}
+
+
+- (void) stopSpeaking
+{
+	if ([_cxxUniverse->speechSynthesizer respondsToSelector:@selector(stopSpeakingAtBoundary:)])
+	{
+		[_cxxUniverse->speechSynthesizer stopSpeakingAtBoundary:NSSpeechWordBoundary];
+	}
+	else
+	{
+		[_cxxUniverse->speechSynthesizer stopSpeaking];
+	}
+}
+
+
+- (BOOL) isSpeaking
+{
+	return [_cxxUniverse->speechSynthesizer isSpeaking];
+}
+
+#endif
+
+@end
+
+
+@implementation OOUniverseDelayedMessage
+@end
 
 
 @implementation Universe (OOObjCBridge)

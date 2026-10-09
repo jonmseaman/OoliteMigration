@@ -21,6 +21,8 @@
 #import "PlayerEntity.h"
 #import "OOWeakSet.h"
 #import "OOObjCPList.h"
+#import "EntityOOJavaScriptExtensions.h"
+#import "OOJSStation.h"
 
 #include "oo_test.hpp"
 
@@ -745,6 +747,38 @@ OO_TEST(slice4MembersFromCxx)
 		OO_CHECK(part->launchPatrol() == nil);
 		part->launchShipWithRole("escort");
 		OO_CHECK(DefendersLaunched4(station) == defenders && part->currentlyInLaunchingQueues() == 0);
+	}
+}
+
+
+// --- The script engine's class questions (bead oo-tt7l1) ---------------------------------------
+
+// What the engine asks a station by selector: its JS class is the Station class, not the Ship
+// class it inherits, both through the facade and from its C++ part. Written and run on main first
+// (the facade then reached the answer through ShipEntity's category and the C++ virtual).
+OO_TEST(stationAnswersTheStationJSClass)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestStation *station = MakeStation("jsclass");
+		ooscript::ClassDef *stationClass = nullptr;
+		ooscript::Object stationPrototype = nullptr;
+		OOJSStationGetJSClass(&stationClass, &stationPrototype);
+
+		OO_CHECK([station cxx_oo_jsClassName] == std::optional<std::string>("Station"));
+		ooscript::ClassDef *jsClass = nullptr;
+		ooscript::Object prototype = reinterpret_cast<ooscript::Object>(1);
+		[station getJSClass:&jsClass andPrototype:&prototype];
+		OO_CHECK(jsClass == stationClass);
+		OO_CHECK(prototype == stationPrototype);
+
+		cxx::ShipEntity *asShip = station->_cxxStation;
+		OO_CHECK(asShip->jsClassName() == std::optional<std::string>("Station"));
+		jsClass = nullptr;
+		prototype = reinterpret_cast<ooscript::Object>(1);
+		asShip->getJSClass(&jsClass, &prototype);
+		OO_CHECK(jsClass == stationClass && prototype == stationPrototype);
 	}
 }
 

@@ -54,13 +54,16 @@ MA 02110-1301, USA.
 
 - (BOOL) isVisibleToScripts													{ return ShipEntityJSIsVisibleToScripts(); }
 
-// To the C++ part, whose ShipEntity bodies are ShipEntityJS* and which cxx::StationEntity overrides.
+// ShipEntity's own answers (cxx::ShipEntity's members call the same bodies). The facades of the
+// C++ subclasses that override them (StationEntity, DockEntity) override these selectors and ask
+// their C++ part; a ship facade does not reach for its C++ part here, so these answer for one that
+// has none (bead oo-tt7l1).
 - (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype
 {
-	_cxxEntity->getJSClass(outClass, outPrototype);
+	ShipEntityJSGetJSClass(outClass, outPrototype);
 }
 
-- (std::optional<std::string>) cxx_oo_jsClassName							{ return _cxxEntity->jsClassName(); }
+- (std::optional<std::string>) cxx_oo_jsClassName							{ return ShipEntityJSClassName(); }
 - (std::vector<oo::ObjCRef<Entity *>>) subEntitiesForScript				{ return ShipEntityJSSubEntitiesForScript(self); }
 - (void) setTargetForScript:(ShipEntity *)target							{ ShipEntityJSSetTargetForScript(self, target); }
 

@@ -353,3 +353,10 @@ From Phase 0. Every story's acceptance includes `tools/tier-a.sh <file>`; the wr
   (`cxx_OOMakeDockingInstructions()` stays verbatim as a file-scope function), the empty
   `OOPrivate` interface is gone, and the façade's empty primary `@implementation` is now in
   `StationEntity+ObjCBridge.mm`, its methods the categories `(OOSlice1)`–`(OOSlice4)`.
+- 2026-10-09 — Universe, PlayerEntity, PlayerEntityControls and OOJSShip fully converted (batch A:
+  oo-pas, oo-a70, oo-e1d, oo-e4i; ADR-0056 amendment oo-pas): every slice of `3-slices/Universe.md`,
+  `PlayerEntity.md`, its four category plans, `PlayerEntityControls.md` and `OOJSShip.md` reports
+  `--slice-done`; the last `@implementation Universe` left `Universe.mm` (file-scope statics and
+  helpers kept verbatim), the façade's primary `@implementation` is in `Universe+ObjCBridge.mm` with
+  the fenced Mac speech arms and `OOUniverseDelayedMessage`, and the empty `OOPrivate` interfaces of
+  `Universe.mm` and `PlayerEntity.mm` are gone.

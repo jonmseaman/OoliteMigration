@@ -5015,3 +5015,43 @@ half converted.
 **Consequences.** `PlayerEntity`'s `@implementation`s are all in `PlayerEntity+ObjCBridge.mm`;
 no category file holds Objective-C methods. The facade's deletion bead (under oo-a70) removes the
 forwarding categories, the moved interfaces and the `::PlayerEntity *self` lines with it.
+
+## Amendment (bead oo-pas): the last of the giants' Objective-C, and the ship's JS class answers
+
+- Date: 2026-10-09. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch A
+  (one branch, as oo-zn1vy and oo-lmdi8): beads oo-pas, oo-a70, oo-e1d, oo-e4i, oo-tt7l1.
+  Exemplar: oo-k8a (`ShipEntity.mm`'s last `@implementation`), `src/Core/Universe.mm`,
+  `Universe+ObjCBridge.h/.mm`, `src/Core/Entities/PlayerEntity.mm`,
+  `src/Core/Scripting/EntityOOJavaScriptExtensions+ObjCBridge.mm`,
+  `src/Core/Entities/StationEntity+ObjCBridge.mm`, `tests/unit/core/test_StationEntity.mm`.
+
+**Decision (recommended defaults).**
+
+1. **A giant's last `@implementation` that holds no method goes, as oo-k8a did.** Every Universe
+   method is a `cxx::Universe` member (slices 1-26). `@implementation Universe` in `Universe.mm`
+   held only file-scope statics, anonymous namespaces and plain-C helpers, kept verbatim as
+   file-scope C++ (rule 9), and the Mac speech arms. The facade's primary `@implementation` moves
+   to `Universe+ObjCBridge.mm`, empty but for those arms, which stay Objective-C behind
+   `#if OOLITE_MAC_OS_X` (Mac-only code is not adapted in Phase 3, amendment oo-bgmb item 2); they
+   read the synthesiser through `_cxxUniverse->speechSynthesizer`, where it now lives. Not compiled
+   on the fleet's platform.
+2. **An Objective-C holder a deferred call retains lives with the facade.**
+   `OOUniverseDelayedMessage` (its `@interface` in `Universe+ObjCBridge.h`, its empty
+   `@implementation` in `Universe+ObjCBridge.mm`), as `OOAIDeferredCallTrampolineInfoHolder` is
+   in `AI+ObjCBridge.h/.mm`.
+3. **A private category interface that declares nothing implemented is deleted**
+   (`Universe (OOPrivate)`'s `-setShaderEffectsLevelDirectly:`, `PlayerEntity (OOPrivate)`'s
+   `-setExtraEquipmentFromFlags`: neither had a definition or a sender).
+4. **`ShipEntity (OOJavaScriptExtensions)` answers ShipEntity's own JS class with the bodies**
+   (`ShipEntityJSGetJSClass`, `ShipEntityJSClassName`), as amendment oo-9ht.107 item 1 has it, and
+   the facade of each C++ subclass that overrides `getJSClass` / `jsClassName` overrides the two
+   selectors and asks its C++ part (`DockEntity`'s already did; `StationEntity`'s does now).
+   oo-9ht.97 had made the ship category ask `_cxxEntity`, which a ship facade without a C++ part
+   (`test_EntityOOJavaScriptExtensions`'s never-initialised ship) dereferenced as null: the
+   segfault of oo-tt7l1. `cxx::ShipEntity`'s and `cxx::StationEntity`'s virtuals are unchanged, so
+   C++ callers and the root path get the same answers. `test_StationEntity` pins the station's
+   answers through the facade and from its C++ part (run on `main` first).
+
+**Consequences.** `Universe.mm`, `PlayerEntity*.mm` (but the bridge), `PlayerEntityControls.mm` and
+`OOJSShip.mm` have no Objective-C class syntax; every `@implementation` of the three giants is in
+their `+ObjCBridge.mm`, which their facade-deletion beads (oo-ql9rn, oo-9ht.177, oo-9ht.181) remove.
