@@ -917,6 +917,16 @@ public:
 #ifndef NDEBUG
 	void dumpSelfState() override;
 #endif
+#if OO_DEBUG
+	// The vector and quaternion conversion statistics the debug console reads by name
+	// (PS.callObjC("reportJSVectorStatistics")): callObjC's name table (OOJSCall.mm) calls them.
+	// They were the categories PlayerEntity (JSVectorStatistics) / (JSQuaternionStatistics),
+	// deleted by bead oo-9ht.15 (ADR-0056 amendment oo-9ht.15); static, as they read no player state.
+	static oo::PList reportJSVectorStatistics();
+	static void clearJSVectorStatistics();
+	static oo::PList reportJSQuaternionStatistics();
+	static void clearJSQuaternionStatistics();
+#endif
 
 	// Category ScriptMethods (PlayerEntityScriptMethods.mm, bead oo-50zg): methods for use by scripting mechanisms.
 	// std::nullopt is nil in the Foundation-typed forms (proposed ADR-0043, bead oo-8mxr).

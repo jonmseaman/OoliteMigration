@@ -45,7 +45,7 @@ MA 02110-1301, USA.
 	ADR-0056 amendment oo-ppc). The JS class was already C++ on the ooscript façade;
 	OOJS_NATIVE_ENTER/EXIT and OOJS_PROFILE_ENTER/EXIT are C++ try/catch and scope guards
 	(OOJSEngineNativeWrappers.h); BOOL/YES/NO are bool/true/false; the debug-build category on
-	PlayerEntity became two free functions, and its methods moved to OOJSQuaternion+ObjCBridge.mm.
+	PlayerEntity became two free functions, which the C++ PlayerEntity's members call (oo-9ht.15).
 	Messages to classes that are still Objective-C (Entity) stay as they are, which is why the
 	file is still .mm until Phase 4.
 */
@@ -253,8 +253,8 @@ static QuaternionStatistics sQuaternionConversionStats;
 } // namespace
 
 
-// The bodies of PlayerEntity (JSQuaternionStatistics), whose methods are in
-// OOJSQuaternion+ObjCBridge.mm until PlayerEntity converts (proposed ADR-0056 amendment oo-ppc).
+// The bodies of the C++ PlayerEntity's statistics members, which were the category PlayerEntity
+// (JSQuaternionStatistics) until bead oo-9ht.15 (proposed ADR-0056 amendments oo-ppc, oo-9ht.15).
 oo::PList reportJSQuaternionStatistics(void)
 {
 	QuaternionStatistics *stats = &sQuaternionConversionStats;

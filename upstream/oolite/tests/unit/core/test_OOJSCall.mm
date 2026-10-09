@@ -158,6 +158,31 @@ extern "C" void OOJSUnreachable(const char *function, const char *, unsigned)
 PlayerEntity *gOOPlayer = nil;
 
 
+#if OO_DEBUG
+// The C++ player's statistics members, which callObjC's name table calls by name (bead oo-9ht.15),
+// as far as the table sees them: each records its call and answers a marker.
+namespace cxx {
+class PlayerEntity
+{
+public:
+	static oo::PList reportJSVectorStatistics();
+	static void clearJSVectorStatistics();
+	static oo::PList reportJSQuaternionStatistics();
+	static void clearJSQuaternionStatistics();
+};
+}	// namespace cxx
+
+namespace {
+std::vector<std::string> sStatisticsCalls;
+}	// namespace
+
+oo::PList cxx::PlayerEntity::reportJSVectorStatistics()		{ sStatisticsCalls.push_back("reportJSVectorStatistics"); return oo::PList(std::string("vector statistics")); }
+void cxx::PlayerEntity::clearJSVectorStatistics()			{ sStatisticsCalls.push_back("clearJSVectorStatistics"); }
+oo::PList cxx::PlayerEntity::reportJSQuaternionStatistics()	{ sStatisticsCalls.push_back("reportJSQuaternionStatistics"); return oo::PList(std::string("quaternion statistics")); }
+void cxx::PlayerEntity::clearJSQuaternionStatistics()		{ sStatisticsCalls.push_back("clearJSQuaternionStatistics"); }
+#endif
+
+
 // MARK: The object called -------------------------------------------------------------------------
 
 @interface TestBoolean: OOObject
@@ -358,6 +383,40 @@ OO_TEST(shipBecomesScriptTarget)
 		OO_CHECK(gOOPlayer->scriptTarget == ship);	// not a ship: unchanged
 	}
 }
+
+
+#if OO_DEBUG
+// The player's conversion statistics by name (PS.callObjC("reportJSVectorStatistics")): the
+// categories' selectors, now C++ members reached through callObjC's name table (bead oo-9ht.15),
+// with the categories' signatures; only the player answers them.
+OO_TEST(playerStatisticsByName)
+{
+	@autoreleasepool
+	{
+		Context();
+		sStatisticsCalls.clear();
+		OO_CHECK_EQ(Call(gOOPlayer, "reportJSVectorStatistics"), "vector statistics");
+		OO_CHECK_EQ(Call(gOOPlayer, "clearJSVectorStatistics"), "<unchanged>");	// void
+		OO_CHECK_EQ(Call(gOOPlayer, "reportJSQuaternionStatistics"), "quaternion statistics");
+		OO_CHECK_EQ(Call(gOOPlayer, { StringValue("clearJSQuaternionStatistics"), StringValue("x") }), "<unchanged>");	// parameters ignored
+		OO_CHECK_EQ(sStatisticsCalls.size(), 4u);
+		if (sStatisticsCalls.size() == 4)
+		{
+			OO_CHECK_EQ(sStatisticsCalls[0], "reportJSVectorStatistics");
+			OO_CHECK_EQ(sStatisticsCalls[1], "clearJSVectorStatistics");
+			OO_CHECK_EQ(sStatisticsCalls[2], "reportJSQuaternionStatistics");
+			OO_CHECK_EQ(sStatisticsCalls[3], "clearJSQuaternionStatistics");
+		}
+		OO_CHECK(gOOPlayer->scriptTarget == gOOPlayer);	// the player is a ship: its own script target
+
+		TestShip *ship = [[[TestShip alloc] init] autorelease];
+		OO_CHECK(Call(ship, "reportJSVectorStatistics").find("> does not respond to method reportJSVectorStatistics.") != std::string::npos);
+		TestTarget *target = [[[TestTarget alloc] init] autorelease];
+		OO_CHECK(Call(target, "clearJSQuaternionStatistics").find("> does not respond to method clearJSQuaternionStatistics.") != std::string::npos);
+		OO_CHECK_EQ(sStatisticsCalls.size(), 4u);
+	}
+}
+#endif
 
 #else
 

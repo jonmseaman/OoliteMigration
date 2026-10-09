@@ -36,6 +36,7 @@ MA 02110-1301, USA.
 
 #import "OOFunctionAttributes.h"
 #import "ShipEntity.h"
+#import "PlayerEntity.h"	// the statistics members of callObjC's name table
 #import "OOShaderUniformMethodType.h"
 #import "OOJSVector.h"
 #import "OOJSQuaternion.h"
@@ -75,6 +76,40 @@ static MethodType GetMethodType(id object, SEL selector);
 
 namespace {
 OOINLINE bool MethodExpectsParameter(MethodType type)	{ return type == kMethodTypeVoidObject || type == kMethodTypeObjectObject; }
+
+
+#if OO_DEBUG
+/*	callObjC()'s names that are C++ members (ADR-0056 amendment oo-9ht.15): exactly the selectors
+	of the deleted categories PlayerEntity (JSVectorStatistics) and (JSQuaternionStatistics), with
+	the signatures they had (a property-list result, or void), answered by the player only.
+*/
+struct CxxMethod
+{
+	const char		*name;
+	oo::PList		(*pListVoid)();		// a -(oo::PList)name method, else null
+	void			(*voidVoid)();		// a -(void)name method
+};
+
+const CxxMethod kPlayerMethods[] =
+{
+	{ "reportJSVectorStatistics",		&cxx::PlayerEntity::reportJSVectorStatistics,		nullptr },
+	{ "clearJSVectorStatistics",		nullptr,	&cxx::PlayerEntity::clearJSVectorStatistics },
+	{ "reportJSQuaternionStatistics",	&cxx::PlayerEntity::reportJSQuaternionStatistics,	nullptr },
+	{ "clearJSQuaternionStatistics",	nullptr,	&cxx::PlayerEntity::clearJSQuaternionStatistics },
+};
+
+
+// The table's entry for name when object is the player (it answered the categories), else null.
+const CxxMethod *CxxMethodNamed(id object, const std::optional<std::string> &name)
+{
+	if (!name.has_value() || ![object isKindOfClass:[PlayerEntity class]])  return nullptr;
+	for (const CxxMethod &method : kPlayerMethods)
+	{
+		if (*name == method.name)  return &method;
+	}
+	return nullptr;
+}
+#endif
 } // namespace
 
 
@@ -119,6 +154,17 @@ bool OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::s
 	
 	selector = OOSelectorFromName(selectorString.has_value() ? selectorString->c_str() : NULL);
 	
+#if OO_DEBUG
+	if (const CxxMethod *cxxMethod = CxxMethodNamed(object, selectorString))
+	{
+		// As the category's method was called: a property-list result as kMethodTypePListVoid's
+		// (no name in the table ends in "_bool"), a void method leaves the result alone.
+		if (cxxMethod->pListVoid != nullptr)  result = cxxMethod->pListVoid();
+		else  cxxMethod->voidVoid();
+		if (!result.isNull())  *outResult = OOJSValueFromPList(context, result);
+	}
+	else
+#endif
 	if ([object respondsToSelector:selector])
 	{
 		// Validate signature.

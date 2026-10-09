@@ -5474,3 +5474,67 @@ Deleting it means all of these hold the C++ script, with lifetimes and nil answe
 
 **Consequences.** No Objective-C script class is left; `OOScriptAutoreleaseKeeper` is the one
 Objective-C object the scripts still use, for the pool's timing, until the pool itself goes.
+
+## Amendment (bead oo-9ht.15): a selector called by name that becomes a C++ member (callObjC's table)
+
+- Date: 2026-10-09. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch J
+  (one branch with oo-9ht.37). Exemplar: `src/Core/Scripting/OOJSCall.mm` (`kPlayerMethods`),
+  `Entities/PlayerEntity.h/.mm`, `tests/unit/core/test_OOJSCall.mm`. Carries out item 4 of the
+  decision (a selector called by name becomes an explicit table) for the first such selectors.
+
+**Context.** The debug console reads the JS vector and quaternion conversion statistics by name
+(`PS.callObjC("reportJSVectorStatistics")`): `PlayerEntity (JSVectorStatistics)` and
+`(JSQuaternionStatistics)`, debug-build categories on the player's Objective-C facade, were all
+that was left in `OOJSVector+ObjCBridge.mm` / `OOJSQuaternion+ObjCBridge.mm`. `callObjC()` still
+dispatches every other name by Objective-C selector (the entity facades stand), so the template
+class of `OOJSCall+ObjCBridge` stays (oo-9ht.44).
+
+**Decision (recommended defaults).**
+
+1. **A by-name method whose category goes becomes a member of the C++ class, and `callObjC()`
+   reaches it through a name table** (`kPlayerMethods` in `OOJSCall.mm`, `#if OO_DEBUG` as the
+   categories were): exactly the four selectors the categories answered, each with the signature
+   it had (`oo::PList` result, or void), looked up before the selector, for the player only (an
+   object that is not the player still "does not respond"). A property-list result reaches JS as
+   the `kMethodTypePListVoid` case gave it; a void method leaves the result alone; the player is
+   still made its own script target first.
+2. **A member that reads no state of the object is `static`** (`cxx::PlayerEntity::
+   reportJSVectorStatistics()` etc., one-line forwarders to the free functions that hold the
+   bodies), so the table needs no C++ object from the facade; when the player's facade goes
+   (oo-9ht.177) the receiver check becomes a check of the C++ class.
+3. **Tests.** A test that links `OOJSCall.mm` alone defines the table's members as stand-ins
+   (a `cxx::PlayerEntity` with the header's static signatures) and adds a case that calls each
+   name on the player and on a non-player; no expectation changes.
+
+**Consequences.** No Objective-C category on the player is left in the scripting bindings. The
+table is where the rest of `callObjC()`'s names go once the entity facades are deleted (oo-9ht.44).
+
+## Amendment (bead oo-9ht.37): a leaf facade whose only selectors were the JS glue (OOJSTimer)
+
+- Date: 2026-10-09. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch J,
+  with oo-9ht.15. Exemplar: `src/Core/Scripting/OOJSTimer.h/.mm`, `OOScriptTimer.h`,
+  `OOScriptTimer+ObjCBridge.h/.mm`. Applies amendment oo-9ht.137 items 1-2 to a timer.
+
+**Context.** The Objective-C `OOJSTimer`, a no-ivar subclass of the `OOScriptTimer` facade, answered
+only `-oo_jsValueInContext:` and `-cxx_oo_jsClassName` for a JS timer (its private slot holds the
+C++ timer since oo-6symp). The timer queue still holds `OOScriptTimer` facades (oo-9ht.35), and
+the Timer converter still answers the facade, so the root's facade stays.
+
+**Decision (recommended defaults).**
+
+1. **The root's facade is every timer's facade and answers the deleted leaf's selectors for a
+   timer whose C++ part has JS glue** (`dynamic_cast` to `OOJSPrivateObject`): its
+   `jsValueInContext()` and a new virtual `cxx::OOScriptTimer::oo_jsClassName()` ("Timer"); the
+   root's defaults for any other timer. (`OOScriptTimer+ObjCBridge.mm` cannot name `OOJSTimer`:
+   the root's test links it without the subclass.)
+2. **Descriptions keep the deleted class's name.** A virtual `className()` ("OOScriptTimer",
+   "OOJSTimer") names the facade in `-cxx_description` / `-cxx_shortDescription` and in
+   `oo::TimerDescriptionWithComponents()` (the unrooted-timer warning's
+   `DescriptionWithComponents` of the live facade), so every log and error still prints
+   `<OOJSTimer 0x...>` for a JS timer, as test_OOJSTimer pins.
+3. **`OOJSTimer` is global C++** (`class OOJSTimer : public cxx::OOScriptTimer, public
+   ::OOJSPrivateObject`); `oo::ToObjC`/`oo::ToCxx` of it are the root's, through the base pointer.
+   `oo::ToObjC` always makes an `OOScriptTimer`: the by-name facade class lookup is gone.
+
+**Consequences.** No Objective-C subclass of `OOScriptTimer` is left. oo-9ht.35 deletes the root's
+facade once the queue holds C++ timers; the glue then moves into the Timer converter's node.

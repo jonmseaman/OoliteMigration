@@ -91,8 +91,8 @@ bool VectorFromArgumentListNoError(ooscript::Context context, unsigned argc, oos
 #include "oofnd/PList.hpp"
 
 /*	The vector-conversion statistics the debug console reads with
-	PS.callObjC("reportJSVectorStatistics"). PlayerEntity (JSVectorStatistics), in
-	OOJSVector+ObjCBridge.mm, forwards its two methods here until PlayerEntity converts.
+	PS.callObjC("reportJSVectorStatistics"): the C++ PlayerEntity's static members of the same
+	names forward here, reached by callObjC's name table (bead oo-9ht.15).
 */
 oo::PList reportJSVectorStatistics(void);
 void clearJSVectorStatistics(void);
