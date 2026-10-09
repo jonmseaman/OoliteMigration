@@ -521,7 +521,7 @@ void PlayerEntity::deferredInit()
 // The player's part of -dealloc, which ran before the ship's: -[ShipEntity dealloc] calls it first.
 void PlayerEntity::willDealloc()
 {
-	DESTROY(compassTarget);
+	compassTarget = nullptr;
 	hud = nullptr;
 
 	worldScripts.clear();
@@ -538,11 +538,11 @@ void PlayerEntity::willDealloc()
 
 	destroySound();
 
-	[oo::ToObjC(wormhole) release];	// the wormhole's Objective-C object (bead oo-9ht.112)
+	wormholeObject = nullptr;	// the wormhole's Objective-C object (beads oo-9ht.112, oo-5q11i)
 	wormhole = nullptr;
 
 	int i;
-	for (i = 0; i < PLAYER_MAX_MISSILES; i++)  DESTROY(missile_entity[i]);
+	for (i = 0; i < PLAYER_MAX_MISSILES; i++)  missile_entity[i] = nullptr;
 	for (i = 0; i < PLAYER_MAX_TRUMBLES; i++)  trumble[i] = oo::Ref<OOTrumble>();
 }
 
@@ -1281,16 +1281,8 @@ void PlayerEntity::setWormhole(::WormholeEntity *newWormhole)
 	// so the object's retain count is its holders' alone afterwards, as before.
 	@autoreleasepool
 	{
-		[oo::ToObjC(wormhole) release];
-		if (newWormhole != nullptr)
-		{
-			[oo::ToObjC(newWormhole) retain];
-			wormhole = newWormhole;
-		}
-		else
-		{
-			wormhole = nullptr;
-		}
+		wormholeObject = oo::ObjCRef<::Entity *>(oo::ToObjC(newWormhole));	// nil for null
+		wormhole = newWormhole;
 	}
 }
 
@@ -1397,7 +1389,7 @@ oo::PList PlayerEntity::commanderDataDictionary()
 	{
 		if (missile_entity[i])
 		{
-			missileRoles.push_back(oo::PList([missile_entity[i] cxx_primaryRole].value_or(std::string())));
+			missileRoles.push_back(oo::PList([missile_entity[i].get() cxx_primaryRole].value_or(std::string())));
 		}
 		else
 		{
@@ -1814,7 +1806,7 @@ bool PlayerEntity::setCommanderDataFromDictionary(const oo::PList &dict)
 
 	if (hasEquipmentItemProviding("EQ_ADVANCED_COMPASS"))  compassMode = COMPASS_MODE_PLANET;
 	else  compassMode = COMPASS_MODE_BASIC;
-	DESTROY(compassTarget);
+	compassTarget = nullptr;
 
 	// speech
 	isSpeechOn = (OOSpeechSettings)dict.get<int>("speech_on");
@@ -2092,8 +2084,7 @@ bool PlayerEntity::setCommanderDataFromDictionary(const oo::PList &dict)
 	setActiveMissile(0);
 	for (NSUInteger i = 0; i < PLAYER_MAX_MISSILES; i++)
 	{
-		[missile_entity[i] release];
-		missile_entity[i] = nil;
+		missile_entity[i] = nullptr;
 	}
 	const oo::PList *missileRoles = dict.get<oo::PList::Array>("missile_roles");
 	if (missileRoles != nullptr)
@@ -2108,7 +2099,7 @@ bool PlayerEntity::setCommanderDataFromDictionary(const oo::PList &dict)
 				if (amiss)
 				{
 					missile_list[missileCount] = OOEquipmentType::equipmentTypeWithIdentifier(*missile_desc).get();
-					missile_entity[missileCount] = amiss;   // retain count = 1
+					missile_entity[missileCount] = oo::adoptObjC(amiss);   // retain count = 1
 					missileCount++;
 				}
 				else
@@ -2124,7 +2115,7 @@ bool PlayerEntity::setCommanderDataFromDictionary(const oo::PList &dict)
 		for (NSUInteger i = 0; i < missiles; i++)
 		{
 			missile_list[i] = OOEquipmentType::equipmentTypeWithIdentifier("EQ_MISSILE").get();
-			missile_entity[i] = [UNIVERSE cxx_newShipWithRole:"EQ_MISSILE"];	// retain count = 1 - should be okay as long as we keep a missile with this role
+			missile_entity[i] = oo::adoptObjC([UNIVERSE cxx_newShipWithRole:"EQ_MISSILE"]);	// retain count = 1 - should be okay as long as we keep a missile with this role
 																			// in the base package.
 		}
 	}
@@ -2464,8 +2455,7 @@ bool PlayerEntity::setUpAndConfirmOK(bool stopOnError, bool saveGame)
 	setActiveMissile(0);
 	for (i = 0; i < missiles; i++)
 	{
-		[missile_entity[i] release];
-		missile_entity[i] = nil;
+		missile_entity[i] = nullptr;
 	}
 	safeAllMissiles();
 	
@@ -2553,7 +2543,7 @@ bool PlayerEntity::setUpAndConfirmOK(bool stopOnError, bool saveGame)
 	
 	cloaking_device_active = NO;
 
-	demoShip = nil;
+	(void)demoShip.leakRef();	// dropped without a release, as assigning nil to the raw pointer did (bead oo-5q11i keeps that)
 	
 	OOMusicController::sharedController()->justStop();
 	stickProfileScreen = oo::makeRef<StickProfileScreen>();
@@ -2596,7 +2586,7 @@ void PlayerEntity::startUpComplete()
 
 bool PlayerEntity::setUpShipFromDictionary(const oo::PList &shipDict)
 {
-	DESTROY(compassTarget);
+	compassTarget = nullptr;
 	[UNIVERSE setBlockJSPlayerShipProps:NO];	// full access to player.ship properties!
 
 	if (!ShipEntity::setUpFromDictionary(shipDict)) return NO;
@@ -2633,13 +2623,12 @@ bool PlayerEntity::setUpShipFromDictionary(const oo::PList &shipDict)
 	unsigned i;
 	for (i = 0; i < PLAYER_MAX_MISSILES; i++)
 	{
-		[missile_entity[i] release];
-		missile_entity[i] = nil;
+		missile_entity[i] = nullptr;
 	}
 	for (i = 0; i < missiles; i++)
 	{
 		missile_list[i] = OOEquipmentType::equipmentTypeWithIdentifier("EQ_MISSILE").get();
-		missile_entity[i] = [UNIVERSE cxx_newShipWithRole:"EQ_MISSILE"];   // retain count = 1
+		missile_entity[i] = oo::adoptObjC([UNIVERSE cxx_newShipWithRole:"EQ_MISSILE"]);   // retain count = 1
 	}
 	
 	DESTROY(_primaryTarget);
@@ -4305,8 +4294,8 @@ void PlayerEntity::showShipModelWithKey(const std::string &shipKey, const oo::PL
 	// MKW - retrieve last demo ships' orientation and release it
 	if( demoShip != nil )
 	{
-		q2 = [demoShip orientation];
-		[demoShip release];
+		q2 = [demoShip.get() orientation];
+		demoShip = nullptr;
 	}
 	
 	::ShipEntity *ship = [[::ProxyPlayerEntity alloc] cxx_initWithKey:shipKey definition:shipData];
@@ -4329,7 +4318,7 @@ void PlayerEntity::showShipModelWithKey(const std::string &shipKey, const oo::PL
 	if (subEntStatus != nullptr) [ship cxx_deserializeShipSubEntitiesFrom:oo::PListGet<std::string>::from(subEntStatus, std::string())];
 	[UNIVERSE addEntity: ship];
 	// MKW - save demo ship for its rotation
-	demoShip = [ship retain];
+	demoShip = oo::ObjCRef<::ShipEntity *>(ship);
 	
 	[ship setStatus: STATUS_COCKPIT_DISPLAY];
 	
@@ -4375,19 +4364,19 @@ void PlayerEntity::updateTargeting()
 		unsigned i;
 		for (i = 0; i < max_missiles; i++)
 		{
-			if ([missile_entity[i] primaryTarget] != nil &&
-					!isValidTarget([missile_entity[i] primaryTarget]))
+			if ([missile_entity[i].get() primaryTarget] != nil &&
+					!isValidTarget([missile_entity[i].get() primaryTarget]))
 			{
 				[UNIVERSE cxx_addMessage:OO_DESC("target-lost") forCount:3.0];
 				playTargetLost();
-				[missile_entity[i] removeTarget:nil];
+				[missile_entity[i].get() removeTarget:nil];
 				if (i == activeMissile)
 				{
 					noteLostTarget();
 					DESTROY(_primaryTarget);
 					missile_status = MISSILE_STATUS_ARMED;
 				}
-			} else if (i == activeMissile && [missile_entity[i] primaryTarget] == nil) {
+			} else if (i == activeMissile && [missile_entity[i].get() primaryTarget] == nil) {
 				missile_status = MISSILE_STATUS_ARMED;
 			}
 		}
@@ -4709,14 +4698,13 @@ void PlayerEntity::setDockedAtMainStation()
 
 ::StationEntity *PlayerEntity::dockedStation()
 {
-	return [_dockedStation weakRefUnderlyingObject];
+	return [_dockedStation.get() weakRefUnderlyingObject];
 }
 
 
 void PlayerEntity::setDockedStation(::StationEntity *station)
 {
-	[_dockedStation release];
-	_dockedStation = [station weakRetain];
+	_dockedStation = oo::adoptObjC([station weakRetain]);
 }
 
 
@@ -5399,10 +5387,10 @@ void PlayerEntity::updateSystemMemory()
 
 ::Entity *PlayerEntity::getCompassTarget()
 {
-	::Entity *result = [compassTarget weakRefUnderlyingObject];
+	::Entity *result = [compassTarget.get() weakRefUnderlyingObject];
 	if (result == nil)
 	{
-		DESTROY(compassTarget);
+		compassTarget = nullptr;
 		return nil;
 	}
 	return result;
@@ -5411,8 +5399,7 @@ void PlayerEntity::updateSystemMemory()
 
 void PlayerEntity::setCompassTarget(::Entity *value)
 {
-	[compassTarget release];
-	compassTarget = [value weakRetain];
+	compassTarget = oo::adoptObjC([value weakRetain]);
 }
 
 
@@ -5902,7 +5889,7 @@ NSUInteger PlayerEntity::getActiveMFD()
 
 ::ShipEntity *PlayerEntity::missileForPylon(NSUInteger value)
 {
-	if (value < max_missiles)  return missile_entity[value];
+	if (value < max_missiles)  return missile_entity[value].get();
 	return nil;
 }
 
@@ -5914,8 +5901,8 @@ void PlayerEntity::safeAllMissiles()
 	unsigned i;
 	for (i = 0; i < max_missiles; i++)
 	{
-		if (missile_entity[i] && [missile_entity[i] primaryTarget] != nil)
-			[missile_entity[i] removeTarget:nil];
+		if (missile_entity[i] && [missile_entity[i].get() primaryTarget] != nil)
+			[missile_entity[i].get() removeTarget:nil];
 	}
 	missile_status = MISSILE_STATUS_SAFE;
 }
@@ -5928,11 +5915,11 @@ void PlayerEntity::tidyMissilePylons()
 	OO_LOG("missile.tidying.debug", "Tidying fitted {} of possible {} missiles", missiles, PLAYER_MAX_MISSILES);
 	for(i = 0; i < PLAYER_MAX_MISSILES; i++)
 	{
-		OO_LOG("missile.tidying.debug", "{} {} {}", i, oo::DescriptionOf(missile_entity[i]), (missile_list[i] != nullptr) ? missile_list[i]->description() : std::string("(null)"));
+		OO_LOG("missile.tidying.debug", "{} {} {}", i, oo::DescriptionOf(missile_entity[i].get()), (missile_list[i] != nullptr) ? missile_list[i]->description() : std::string("(null)"));
 		if(missile_entity[i] != nil)
 		{
 			missile_entity[pylon] = missile_entity[i];
-			const std::optional<std::string> missileRole = [missile_entity[i] cxx_primaryRole];
+			const std::optional<std::string> missileRole = [missile_entity[i].get() cxx_primaryRole];
 			missile_list[pylon] = missileRole.has_value() ? OOEquipmentType::equipmentTypeWithIdentifier(*missileRole).get() : nil;
 			pylon++;
 		}
@@ -5959,9 +5946,9 @@ void PlayerEntity::selectNextMissile()
 		if (missile_entity[next_missile])
 		{
 			// If we don't have the multi-targeting module installed, clear the active missiles' target
-			if( !hasEquipmentItemProviding("EQ_MULTI_TARGET") && [missile_entity[activeMissile] isMissile] )
+			if( !hasEquipmentItemProviding("EQ_MULTI_TARGET") && [missile_entity[activeMissile].get() isMissile] )
 			{
-				[missile_entity[activeMissile] removeTarget:nil];
+				[missile_entity[activeMissile].get() removeTarget:nil];
 			}
 
 			// Set next missile to active
@@ -5972,13 +5959,13 @@ void PlayerEntity::selectNextMissile()
 				missile_status = MISSILE_STATUS_ARMED;
 
 				// If the newly active pylon contains a missile then work out its target, if any
-				if( [missile_entity[activeMissile] isMissile] )
+				if( [missile_entity[activeMissile].get() isMissile] )
 				{
 					if( hasEquipmentItemProviding("EQ_MULTI_TARGET") &&
-							([missile_entity[next_missile] primaryTarget] != nil))
+							([missile_entity[next_missile].get() primaryTarget] != nil))
 					{
 						// copy the missile's target
-						addTarget([missile_entity[next_missile] primaryTarget]);
+						addTarget([missile_entity[next_missile].get() primaryTarget]);
 						missile_status = MISSILE_STATUS_TARGET_LOCKED;
 					}
 					else if (primaryTarget() != nil)
@@ -5994,7 +5981,7 @@ void PlayerEntity::selectNextMissile()
 						}
 						else
 						{
-							[missile_entity[activeMissile] addTarget:primaryTarget()];
+							[missile_entity[activeMissile].get() addTarget:primaryTarget()];
 							missile_status = MISSILE_STATUS_TARGET_LOCKED;
 						}
 					}
@@ -6151,7 +6138,7 @@ bool PlayerEntity::mountMissile(::ShipEntity *missile)
 	{
 		if (missile_entity[i] == nil)
 		{
-			missile_entity[i] = [missile retain];
+			missile_entity[i] = oo::ObjCRef<::ShipEntity *>(missile);
 			const std::optional<std::string> missileRole = [missile cxx_primaryRole];
 			missile_list[missiles] = missileRole.has_value() ? OOEquipmentType::equipmentTypeWithIdentifier(*missileRole).get() : nil;
 			missiles++;
@@ -6173,7 +6160,7 @@ bool PlayerEntity::mountMissileWithRole(const std::string &role)
 
 ::ShipEntity *PlayerEntity::fireMissile()
 {
-	::ShipEntity	*missile = missile_entity[activeMissile];	// retain count is 1
+	::ShipEntity	*missile = missile_entity[activeMissile].get();	// retain count is 1
 	const std::optional<std::string>	identifier = [missile cxx_primaryRole];	// a copy: the missile goes below
 	::ShipEntity	*firedMissile = nil;
 
@@ -6270,8 +6257,7 @@ bool PlayerEntity::assignToActivePylon(const std::string &equipmentKey)
 	if (!amiss) return NO;
 
 	// replace the missile now.
-	[missile_entity[activeMissile] release];
-	missile_entity[activeMissile] = amiss;
+	missile_entity[activeMissile] = oo::adoptObjC(amiss);
 	missile_list[activeMissile] = eqType;
 	
 	// make sure the new missile is properly activated.
@@ -7562,8 +7548,7 @@ void PlayerEntity::leaveDock(::StationEntity *station)
 	
 	[UNIVERSE removeDemoShips];
 	// MKW - ensure GUI Screen ship is removed
-	[demoShip release];
-	demoShip = nil;
+	demoShip = nullptr;
 	
 	playLaunchFromStation();
 }
@@ -7868,7 +7853,8 @@ void PlayerEntity::enterWormhole(::WormholeEntity *w_hole)
 		return; // has already entered a different wormhole
 	}
 	BOOL misjump = scriptedMisjump() || (w_hole != nullptr ? w_hole->withMisjump() : false) || flightPitch == max_flight_pitch || randf() > 0.995;
-	[oo::ToObjC(w_hole) retain];	// its Objective-C object (bead oo-9ht.112)
+	(void)wormholeObject.leakRef();	// a wormhole held here was dropped without a release, as before (bead oo-5q11i keeps that)
+	wormholeObject = oo::ObjCRef<::Entity *>(oo::ToObjC(w_hole));	// its Objective-C object (bead oo-9ht.112)
 	wormhole = w_hole;
 	addScannedWormhole(wormhole);
 	setStatus(STATUS_ENTERING_WITCHSPACE);
@@ -7942,7 +7928,8 @@ void PlayerEntity::enterWitchspace()
 	{
 		// +alloc/-init...: a new C++ wormhole and its Objective-C object, +1 (bead oo-9ht.112).
 		oo::Ref<WormholeEntity> whRef = oo::makeRef<WormholeEntity>();
-		[oo::NewEntityFacade(whRef) retain];
+		(void)wormholeObject.leakRef();	// a wormhole held here was dropped without a release, as before (bead oo-5q11i keeps that)
+		wormholeObject = oo::ObjCRef<::Entity *>(oo::NewEntityFacade(whRef));
 		whRef->initWormholeTo(jumpTarget, oo::ToObjC(this));
 		wormhole = whRef.get();
 	}
@@ -8128,7 +8115,7 @@ void PlayerEntity::leaveWitchspace()
 	 * garbage collection while we have chance. - CIM */
 	[[::OOJavaScriptEngine sharedEngine] garbageCollectionOpportunity:YES];
 	flightSpeed = wormhole ? (wormhole != nullptr ? wormhole->exitSpeed() : 0.0) : fmin(maxFlightSpeed,50.0f);
-	[oo::ToObjC(wormhole) release];	// OK even if nil
+	wormholeObject = nullptr;	// OK even if nil
 	wormhole = nullptr;
 
 	flightRoll = 0.0f;
@@ -10418,8 +10405,7 @@ void PlayerEntity::noteGUIDidChangeFrom(OOGUIScreenID fromScreen, OOGUIScreenID 
 			case GUI_SCREEN_SHIPYARD:
 			case GUI_SCREEN_LOAD:
 			case GUI_SCREEN_SAVE:
-				[demoShip release];
-				demoShip = nil;
+				demoShip = nullptr;
 				break;
 			default:
 				// Nothing
@@ -10947,8 +10933,7 @@ OOCreditsQuantity PlayerEntity::removeMissiles()
 	
 	for (i = 0; i < max_missiles; i++)
 	{
-		[missile_entity[i] release];
-		missile_entity[i] = nil;
+		missile_entity[i] = nullptr;
 	}
 	
 	missiles = 0;
@@ -12084,12 +12069,11 @@ bool PlayerEntity::removeFromPylon(NSUInteger pylon)
 	
 	if (missile_entity[pylon] != nil)
 	{
-		const std::optional<std::string> missileRole = [missile_entity[pylon] cxx_primaryRole];
+		const std::optional<std::string> missileRole = [missile_entity[pylon].get() cxx_primaryRole];
 		ShipEntity::removeExternalStore(missileRole.has_value() ? OOEquipmentType::equipmentTypeWithIdentifier(*missileRole).get() : nil);
 
 		// Remove the missile (must wait until we've finished with its identifier string!)
-		[missile_entity[pylon] release];
-		missile_entity[pylon] = nil;
+		missile_entity[pylon] = nullptr;
 		
 		tidyMissilePylons();
 		
@@ -12593,10 +12577,10 @@ void PlayerEntity::addTarget(::Entity *targetEntity)
 	}
 	else if ([targetEntity isShip] && weaponsOnline()) // Only let missiles target-lock onto ships
 	{
-		if ([missile_entity[activeMissile] isMissile])
+		if ([missile_entity[activeMissile].get() isMissile])
 		{
 			missile_status = MISSILE_STATUS_TARGET_LOCKED;
-			[missile_entity[activeMissile] addTarget:targetEntity];
+			[missile_entity[activeMissile].get() addTarget:targetEntity];
 			playMissileLockedOn();
 			printIdentLockedOnForMissile(YES);
 		}
@@ -12656,9 +12640,9 @@ bool PlayerEntity::moveTargetMemoryBy(NSInteger delta)
 					ShipEntity::addTarget(potential_target);
 					if (missile_status != MISSILE_STATUS_SAFE)
 					{
-						if( [missile_entity[activeMissile] isMissile])
+						if( [missile_entity[activeMissile].get() isMissile])
 						{
-							[missile_entity[activeMissile] addTarget:potential_target];
+							[missile_entity[activeMissile].get() addTarget:potential_target];
 							missile_status = MISSILE_STATUS_TARGET_LOCKED;
 							printIdentLockedOnForMissile(YES);
 						}

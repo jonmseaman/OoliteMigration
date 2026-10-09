@@ -1553,7 +1553,7 @@ public:
 	OOMarketFilterMode		marketFilterMode = {};
 	OOMarketSorterMode		marketSorterMode = {};
 
-	::OOWeakReference			*_dockedStation = {};
+	oo::ObjCRef<::OOWeakReference *>	_dockedStation;	// a weak reference, held (bead oo-5q11i; was retained by hand)
 	
 /* Used by the DOCKING_CLEARANCE code to implement docking at non-main
  * stations. Could possibly overload use of 'dockedStation' instead
@@ -1619,7 +1619,7 @@ public:
 	
 	oo::Ref<OOCommodityMarket>	shipCommodityData;
 	
-	::ShipEntity				*missile_entity[PLAYER_MAX_MISSILES] = {};	// holds the actual missile entities or equivalents
+	oo::ObjCRef<::ShipEntity *>	missile_entity[PLAYER_MAX_MISSILES];	// holds the actual missile entities or equivalents (held; bead oo-5q11i)
 	OOUniversalID			_dockTarget = {};	// used by the escape pod code
 	
 	int						legalStatusValue = {};	// the ivar legalStatus; it both is and isn't an OOCreditsQuantity, because of quantum.
@@ -1627,7 +1627,7 @@ public:
 	unsigned				ship_kills = {};
 	
 	OOCompassMode			compassMode = {};
-	::OOWeakReference			*compassTarget = {};
+	oo::ObjCRef<::OOWeakReference *>	compassTarget;	// a weak reference, held (bead oo-5q11i)
 	
 	GLfloat					fuel_leak_rate = {};
 
@@ -1899,9 +1899,10 @@ public:
 	OODockingClearanceStatus dockingClearanceStatus = {};
 	
 	std::vector<oo::ObjCRef<::Entity *>>	scannedWormholes;
-	WormholeEntity				*wormhole = {};	// its Objective-C object is retained (C++ since bead oo-9ht.112)
+	WormholeEntity				*wormhole = {};	// C++ since bead oo-9ht.112; wormholeObject holds its Objective-C object
+	oo::ObjCRef<::Entity *>		wormholeObject;	// the wormhole's Objective-C object (the root's facade, which owns it), held (bead oo-5q11i)
 
-	::ShipEntity				*demoShip = {}; // Used while docked to maintain demo ship rotation.
+	oo::ObjCRef<::ShipEntity *>	demoShip; // Used while docked to maintain demo ship rotation. (held; bead oo-5q11i)
 	std::vector<oo::Ref<OOLaserShotEntity>>	lastShot; // used to correctly position laser shots on first frame of firing
 	
 	oo::Ref<::StickProfileScreen>	stickProfileScreen;

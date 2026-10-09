@@ -255,7 +255,7 @@ OO_TEST(deallocReleasesWhatThePlayerHeld)
 		SetUp();
 		missile = [[TestMissile alloc] cxx_initWithKey:"missile" definition:oo::PList()];
 		TestPlayer *player = NewTestPlayer<TestPlayer>();
-		player->missile_entity[2] = [missile retain];
+		player->missile_entity[2] = oo::adoptObjC([missile retain]);	// held by oo::ObjCRef since bead oo-5q11i
 		OO_CHECK([missile retainCount] == 2);
 		OO_CHECK(player->missile_entity[2] == missile);
 		Release(player);
@@ -698,8 +698,8 @@ OO_TEST(slice11CountMissiles)
 		TestPlayer *player = MakePlayer();
 		player->max_missiles = 4;
 		OO_CHECK(player->countMissiles() == 0);
-		player->missile_entity[1] = [missile retain];
-		player->missile_entity[3] = [missile retain];
+		player->missile_entity[1] = oo::adoptObjC([missile retain]);	// held by oo::ObjCRef since bead oo-5q11i
+		player->missile_entity[3] = oo::adoptObjC([missile retain]);	// held by oo::ObjCRef since bead oo-5q11i
 		OO_CHECK(player->countMissiles() == 2);
 		player->max_missiles = 2;
 		OO_CHECK(player->countMissiles() == 1);
