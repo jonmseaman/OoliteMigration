@@ -76,6 +76,11 @@ uint32_t gDebugFlags = 0;
 #endif
 uint32_t gLiveEntityCount = 0;
 
+// WormholeEntity.mm's (the wormhole is C++ since bead oo-9ht.112, so the monitor's dump asks it
+// through this function, where it sent -shipsInTransit): the test dumps no entity.
+@class Entity;
+oo::PList WormholeEntityShipsInTransit(Entity *)  { return oo::PList(); }
+
 @class Universe, PlayerEntity;
 Universe *gSharedUniverse = nil;
 PlayerEntity *gOOPlayer = nil;

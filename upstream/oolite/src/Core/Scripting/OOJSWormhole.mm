@@ -169,15 +169,14 @@ static bool JSWormholeGetWormholeEntity(ooscript::Context context, ooscript::Obj
 	Entity						*entity = nil;
 	
 	if (outEntity == NULL)  return false;
-	*outEntity = nil;
+	*outEntity = nullptr;
 	
 	result = OOJSEntityGetEntity(context, wormholeObj, &entity);
 	if (!result)  return false;
 	
-	if (![entity isKindOfClass:[WormholeEntity class]])  return false;
-	
-	*outEntity = (WormholeEntity *)entity;
-	return true;
+	// The wormhole is C++ behind the root's facade since bead oo-9ht.112 (-isKindOfClass: before).
+	*outEntity = dynamic_cast<WormholeEntity *>(oo::ToCxx(entity));
+	return *outEntity != nullptr;
 	
 	OOJS_PROFILE_EXIT
 }
@@ -224,16 +223,16 @@ static bool WormholeGetProperty(Context cx, Object obj, PropertyId propID, Value
 	switch (ooscript::idToInt32(propID))
 	{
   case kWormhole_arrivalTime:
-		return ooscript::newNumberValue(cx, [entity arrivalTime], value);
+		return ooscript::newNumberValue(cx, (entity != nullptr ? entity->arrivalTime() : 0.0), value);
 
   case kWormhole_destination:
-		return ooscript::newNumberValue(cx, [entity destination], value);
+		return ooscript::newNumberValue(cx, (entity != nullptr ? entity->getDestination() : 0), value);
 
   case kWormhole_expiryTime:
-		return ooscript::newNumberValue(cx, [entity expiryTime], value);
+		return ooscript::newNumberValue(cx, (entity != nullptr ? entity->expiryTime() : 0.0), value);
 		
   case kWormhole_origin:
-		return ooscript::newNumberValue(cx, [entity origin], value);
+		return ooscript::newNumberValue(cx, (entity != nullptr ? entity->getOrigin() : 0), value);
 
 	default:
 		OOJSReportBadPropertySelector(context, thisObj, (propID), sWormholePropertiesRaw);

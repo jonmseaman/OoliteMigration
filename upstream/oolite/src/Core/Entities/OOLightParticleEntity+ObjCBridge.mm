@@ -92,7 +92,4 @@ public:
 + (void) setUpTexture						{ cxx::OOLightParticleEntity::setUpTexture(); }
 + (OOTexture *) defaultParticleTexture		{ return cxx::OOLightParticleEntity::defaultParticleTexture(); }
 
-// OOGraphicsResetClient: setUpTexture() registers this class.
-+ (void) resetGraphicsState					{ cxx::OOLightParticleEntity::resetGraphicsState(); }
-
 @end

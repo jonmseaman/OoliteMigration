@@ -62,7 +62,7 @@ namespace {
 
 // The shot textures' graphics reset client, which the facade class was until bead oo-9ht.78
 // (ADR-0056 amendment oo-jpd8 item 3): registered once, with the textures, and never destroyed.
-class ShotTextureResetClient : public cxx::OOGraphicsResetClient
+class ShotTextureResetClient : public OOGraphicsResetClient
 {
 public:
 	void resetGraphicsState() override  { OOLaserShotEntity::resetGraphicsState(); }
@@ -298,7 +298,7 @@ void OOLaserShotEntity::setUpTexture()
 										   options:kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureAlphaMask | kOOTextureRepeatT
 										anisotropy:kOOTextureDefaultAnisotropy / 2.0
 										   lodBias:0.0] retain];
-		cxx::OOGraphicsResetManager::sharedManager()->registerCxxClient(new ShotTextureResetClient);
+		OOGraphicsResetManager::sharedManager()->registerCxxClient(new ShotTextureResetClient);
 
 		sShotTexture2 = [[::OOTexture cxx_textureWithName:"oolite-laser-blur2.png"
 										  inFolder:"Textures"

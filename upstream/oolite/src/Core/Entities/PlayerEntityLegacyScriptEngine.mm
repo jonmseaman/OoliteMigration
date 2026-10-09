@@ -1196,13 +1196,13 @@ oo::PList cxx::PlayerEntity::foundEquipment_bool()	// called by name (ADR-0043 i
 
 oo::PList cxx::PlayerEntity::sunWillGoNova_bool()	// called by name (ADR-0043 item 21); returns whether the sun is going to go nova
 {
-	return oo::PList(([[UNIVERSE sun] willGoNova])? "YES" : "NO");
+	return oo::PList((([UNIVERSE sun] != nullptr ? [UNIVERSE sun]->willGoNova() : false))? "YES" : "NO");
 }
 
 
 oo::PList cxx::PlayerEntity::sunGoneNova_bool()	// called by name (ADR-0043 item 21); returns whether the sun has gone nova
 {
-	return oo::PList(([[UNIVERSE sun] goneNova])? "YES" : "NO");
+	return oo::PList((([UNIVERSE sun] != nullptr ? [UNIVERSE sun]->goneNova() : false))? "YES" : "NO");
 }
 
 
@@ -2357,7 +2357,7 @@ oo::PList cxx::PlayerEntity::fuelLeakRate_number()	// called by name (ADR-0043 i
 void cxx::PlayerEntity::setSunNovaIn(const std::string &time_value)	// called by name (ADR-0043 item 21)
 {
 	double time_until_nova = oo::str::doubleValue(time_value);
-	[[UNIVERSE sun] setGoingNova:YES inTime: time_until_nova];
+	if ([UNIVERSE sun] != nullptr)  [UNIVERSE sun]->setGoingNova(YES, time_until_nova);
 }
 
 

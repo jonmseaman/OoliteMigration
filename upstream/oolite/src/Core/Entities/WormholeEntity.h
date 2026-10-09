@@ -57,17 +57,21 @@ struct OOWormholeTransit
 };
 
 
-namespace cxx {
-
-class WormholeEntity : public Entity
+/*	C++ only since bead oo-9ht.112 deleted its Objective-C facade (ADR-0056 amendments oo-9ht.12,
+	oo-9ht.107): the player and the ships make it with oo::makeRef<WormholeEntity>() and an
+	initialiser, hand it to Objective-C with oo::NewEntityFacade (its object is the root Entity's
+	facade), and find it again with dynamic_cast. The universe's and the player's lists keep the
+	objects as oo::ObjCRef<::Entity *>.
+*/
+class WormholeEntity : public cxx::Entity
 {
 public:
 	// The private -init's body (after [super init]: the constructor ran Entity's). The initialisers
 	// below run it first, as they sent [self init].
 	void init();
 
-	/*	-initWithDict: and -initWormholeTo:fromShip:'s bodies. The facade runs them once it holds
-		this object (amendment oo-0mxi item 2), because the player and the ships allocate wormholes.
+	/*	-initWithDict: and -initWormholeTo:fromShip:'s bodies, run on a new wormhole (after init(), as
+		the facade ran them once it held this object until bead oo-9ht.112).
 	*/
 	void initWithDict(const oo::PList &dict);
 	void initWormholeTo(OOSystemID s, ::ShipEntity *ship);
@@ -114,6 +118,11 @@ public:
 	void drawImmediate(bool immediate, bool translucent) override;
 	void dumpSelfState() override;
 
+	// The binding's bodies (OOJSWormhole.mm), which the facade forwarded to until bead oo-9ht.112.
+	void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype) override;
+	std::optional<std::string> jsClassName() override;
+	bool isVisibleToScripts() override;
+
 private:
 	const char *scanInfoString();
 
@@ -143,10 +152,7 @@ private:
   bool      containsPlayer = {};
 };
 
-}	// namespace cxx
 
-
-// Transitional: the Objective-C WormholeEntity, for the player, the ships, the universe, the HUD and
-// the scripting bindings, which make it and message it. Deleted, with namespace cxx above, by the
-// bridge's deletion bead.
-#import "WormholeEntity+ObjCBridge.h"
+// -[WormholeEntity shipsInTransit] of a wormhole's Objective-C object (the root's facade since bead
+// oo-9ht.112), for the debug monitor's dump; a null PList for nil or another entity.
+oo::PList WormholeEntityShipsInTransit(::Entity *entity);

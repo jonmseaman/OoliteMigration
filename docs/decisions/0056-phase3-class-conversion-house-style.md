@@ -5257,3 +5257,60 @@ scripts' facades are the data-model facades still standing.
 
 **Consequences.** No Objective-C `OOShipGroup` or `OOEquipmentType` is left. The ship registry's
 and the scripts' facades are the data-model facades still standing.
+
+## Amendment (bead oo-9ht.23): the graphics-reset group and two entity leaves in one change
+
+- Date: 2026-10-09. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch G
+  (one branch, as batches B-F): beads oo-9ht.23 (OOGraphicsResetManager and the
+  OOGraphicsResetClient protocol), oo-9ht.30 (OOPolygonSprite), oo-7ae4p (OOHUDBeaconCodeIcon and
+  the OOHUDBeaconIcon protocol), oo-9ht.111 (OOSunEntity), oo-9ht.112 (WormholeEntity). Exemplar:
+  `src/Core/OOGraphicsResetManager.h/.mm`, `OOPolygonSprite.h/.mm`, `HeadUpDisplay.h/.mm`,
+  `Entities/OOSunEntity.h/.mm`, `Entities/OOStellarBody.h`, `Entities/WormholeEntity.h/.mm`,
+  `Scripting/OOJSSun.mm`, `Scripting/OOJSWormhole.mm`, `tests/unit/core/test_OOGraphicsResetManager.mm`,
+  `test_OOJSSun.mm`, `test_WormholeEntity.mm`. Follows amendments oo-9ht.12 and oo-9ht.107.
+
+**Decision (recommended defaults).**
+
+1. **Every graphics reset client is C++.** The manager's client set holds `OOGraphicsResetClient *`
+   only (`registerCxxClient` / `unregisterCxxClient`; the `id` overloads went with the protocol).
+   A facade class that was the client of a static texture (`OOFlashEffectEntity`,
+   `OOLightParticleEntity`) is replaced by a file-local client object registered once, as
+   `OOLaserShotEntity`'s; a converted class whose facade was the client derives from
+   `OOGraphicsResetClient`, registers itself where its initialiser did and unregisters in its
+   destructor (the planet, whose facade otherwise still stands; the polygon sprite, so a sprite
+   with no facade, such as the HUD's missile icons, is a client again as before oo-4111). The
+   facades' `-resetGraphicsState` forwarders go.
+2. **A protocol the entities hold a drawable by becomes a C++ interface** (`OOHUDBeaconIcon` in
+   `OOPolygonSprite.h`: an `oo::RefCounted` with the protocol's method as a pure virtual). Both
+   implementers derive from it; the entities hold `oo::Ref<OOHUDBeaconIcon>` and answer it
+   borrowed; the root's `-beaconDrawable` selector is retyped; the one sender null-guards it, as
+   the message to nil did. A facade's `"%@"` that a test pinned becomes `description()`.
+3. **Deleting a leaf entity's facade whose objects other code holds** (amendment oo-9ht.107 item
+   5, extended): the class's name now means the C++ class, so every `X *` holder and facade
+   selector parameter retypes itself; `@class X` becomes `class X;`. Lists that retained the
+   objects hold `oo::ObjCRef<::Entity *>` (the root facade) and cast with `static_cast<X *>(oo::ToCxx())`
+   where the list holds only Xs; a raw pointer that held a retained object keeps the C++ pointer
+   and retains its Objective-C object (`[oo::ToObjC(x) retain]` / `release`). A maker is
+   `oo::makeRef<X>()`, then `oo::NewEntityFacade()` (retained where `+alloc` gave +1), then the
+   initialiser's body, the facade's order. Code that needs the object (universe lists,
+   `-addEntity:`, targets, script events, Object nodes) passes `oo::ToObjC(x)`.
+4. **Selectors only the deleted facade answered, sent through a looser type, are asked of the C++
+   part:** `-respondsToSelector:@selector(identFromShip:)` asks `dynamic_cast<WormholeEntity *>`
+   first; the debug monitor's `-shipsInTransit` is `WormholeEntityShipsInTransit()`. The
+   `OOStellarBody` protocol's `-radius` / `-planetType` sent to a body that may be the sun are
+   `OOStellarBodyRadius()` / `OOStellarBodyPlanetType()` (`OOStellarBody.h`): the C++ sun, else the
+   selector (the planet's facade) until oo-9ht.129.
+5. **A binding's object getter whose class check named the facade** checks the JS class only
+   (`DEFINE_JS_OBJECT_GETTER` over `Entity`) and answers `dynamic_cast` of the object's C++ part,
+   null for a stale entity (`JSSunGetSunEntity`, `JSWormholeGetWormholeEntity`); the leaf's JS
+   forwarders become `override`s (amendment oo-9ht.107 item 2).
+6. **Every converted send keeps what the message to nil answered** (amendment oo-9ht.19 item 3;
+   the codemod's selector map adds the root `Entity` facade's one-line forwarders, so a leaf's
+   `-position` is `getPosition()`). Tests convert without guards; their C++ stand-ins follow
+   amendment oo-9ht.107 item 6.
+
+**Consequences.** No Objective-C `OOGraphicsResetManager`, `OOPolygonSprite`, `OOHUDBeaconCodeIcon`,
+`OOSunEntity` or `WormholeEntity` is left, nor the `OOGraphicsResetClient` and `OOHUDBeaconIcon`
+protocols. The planet's facade (oo-9ht.129) is the stellar body facade still standing: its
+shader uniforms bind to it by selector, which the root's facade must answer for a planet's C++
+part (and only for one) when it goes.

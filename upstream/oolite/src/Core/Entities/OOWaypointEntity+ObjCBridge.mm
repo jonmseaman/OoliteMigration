@@ -63,7 +63,7 @@ MA 02110-1301, USA.
 - (std::optional<std::string>) beaconLabel										{ return oo::ToCxx(self)->beaconLabel(); }
 - (void) setBeaconLabel:(const std::optional<std::string> &)blabel				{ oo::ToCxx(self)->setBeaconLabel(blabel); }
 - (BOOL) isBeacon																{ return oo::ToCxx(self)->isBeacon(); }
-- (id <OOHUDBeaconIcon>) beaconDrawable											{ return oo::ToCxx(self)->beaconDrawable(); }
+- (OOHUDBeaconIcon *) beaconDrawable											{ return oo::ToCxx(self)->beaconDrawable(); }
 - (Entity <OOBeaconEntity> *) prevBeacon										{ return oo::ToCxx(self)->prevBeacon(); }
 - (Entity <OOBeaconEntity> *) nextBeacon										{ return oo::ToCxx(self)->nextBeacon(); }
 - (void) setPrevBeacon:(Entity <OOBeaconEntity> *)beaconShip					{ oo::ToCxx(self)->setPrevBeacon(beaconShip); }

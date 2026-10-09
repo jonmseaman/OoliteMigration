@@ -91,7 +91,7 @@ DustEntity::~DustEntity()
 #if OO_SHADERS
 	if (shaderBinding.get() != nil)  ((OODustShaderBinding *)shaderBinding.get())->_dust = nullptr;
 #endif
-	cxx::OOGraphicsResetManager::sharedManager()->unregisterCxxClient(this);
+	OOGraphicsResetManager::sharedManager()->unregisterCxxClient(this);
 }
 
 
@@ -143,7 +143,7 @@ void DustEntity::init()
 
 	collision_radius = DUST_SCALE; // for draw pass calculations
 
-	cxx::OOGraphicsResetManager::sharedManager()->registerCxxClient(this);
+	OOGraphicsResetManager::sharedManager()->registerCxxClient(this);
 }
 
 

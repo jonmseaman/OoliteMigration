@@ -248,9 +248,9 @@ bool OOWaypointEntity::isBeacon()
 }
 
 
-id <OOHUDBeaconIcon> OOWaypointEntity::beaconDrawable()
+OOHUDBeaconIcon *OOWaypointEntity::beaconDrawable()
 {
-	if (_beaconDrawable.get() == nil)
+	if (_beaconDrawable == nullptr)
 	{
 		const std::u16string	beaconCode = oo::utf8ToUtf16(_beaconCode.value_or(std::string()));
 		NSUInteger	length = beaconCode.size();	// -length: UTF-16 units
@@ -259,14 +259,13 @@ id <OOHUDBeaconIcon> OOWaypointEntity::beaconDrawable()
 		{
 			const oo::PList *iconEntry = [UNIVERSE cxx_descriptions]->find(*_beaconCode);
 			const oo::PList iconData = (iconEntry != nullptr) ? *iconEntry : oo::PList();
-			// The sprite is converted: its facade is the icon (amendment oo-cc8a item 2), nil where it answered nil.
-			if (iconData.isArray())  _beaconDrawable = oo::ObjCRef<id <OOHUDBeaconIcon>>(oo::ToObjC(OOPolygonSprite::initWithDataArray(iconData, 0.5, *_beaconCode)));
+			if (iconData.isArray())  _beaconDrawable = OOPolygonSprite::initWithDataArray(iconData, 0.5, *_beaconCode);	// null where it answered nil
 		}
 
-		if (_beaconDrawable.get() == nil)
+		if (_beaconDrawable == nullptr)
 		{
-			if (length > 0)  _beaconDrawable = oo::adoptObjC<id <OOHUDBeaconIcon>>([[::OOHUDBeaconCodeIcon alloc] initWithText:oo::utf16ToUtf8(beaconCode.substr(0, 1))]);	// -substringToIndex:1
-			else  _beaconDrawable = oo::adoptObjC<id <OOHUDBeaconIcon>>([[::OOHUDBeaconCodeIcon alloc] initWithText:std::string()]);
+			if (length > 0)  _beaconDrawable = oo::makeRef<OOHUDBeaconCodeIcon>(oo::utf16ToUtf8(beaconCode.substr(0, 1)));	// -substringToIndex:1
+			else  _beaconDrawable = oo::makeRef<OOHUDBeaconCodeIcon>(std::string());
 		}
 	}
 	

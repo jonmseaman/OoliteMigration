@@ -366,13 +366,13 @@ OO_TEST(graphicsResetAfterRelease)
 		OO_CHECK(mesh != nil);
 		OOMesh *mutableCopy = [mesh mutableCopy];
 		// Both are registered: the reset rebinds their materials.
-		[[OOGraphicsResetManager sharedManager] resetGraphicsState];
+		OOGraphicsResetManager::sharedManager()->resetGraphicsState();
 		OO_CHECK_EQ([mesh vertexCount], 4u);
 		OO_CHECK_EQ([mutableCopy vertexCount], 4u);
 		[mutableCopy release];
 	}
 	// Both are gone and unregistered themselves, so the reset does not reach them.
-	[[OOGraphicsResetManager sharedManager] resetGraphicsState];
+	OOGraphicsResetManager::sharedManager()->resetGraphicsState();
 	OO_CHECK(true);
 }
 
@@ -539,7 +539,7 @@ OO_TEST(rendering)
 		OO_CHECK_EQ(glGetError(), static_cast<GLenum>(GL_NO_ERROR));
 
 		// A reset deletes the display lists and rebinds the materials; the next draw remakes them.
-		[[OOGraphicsResetManager sharedManager] resetGraphicsState];
+		OOGraphicsResetManager::sharedManager()->resetGraphicsState();
 		[mesh renderOpaqueParts];
 		OO_CHECK_EQ(glGetError(), static_cast<GLenum>(GL_NO_ERROR));
 		OO_CHECK_EQ([mesh vertexCount], 4u);
@@ -574,10 +574,11 @@ OO_TEST(renderingMembers)
 		drawable->renderOpaqueParts();
 		OO_CHECK_EQ(glGetError(), static_cast<GLenum>(GL_NO_ERROR));
 
-		// The materials: the placeholder's facade, rebound; a reset through the facade.
+		// The materials: the placeholder's facade, rebound; a reset (through the facade until bead
+		// oo-9ht.23 deleted its -resetGraphicsState with the protocol).
 		cxxMesh->rebindMaterials();
 		OO_CHECK(cxxMesh->materials[0] == [OOMesh placeholderMaterial]);
-		[mesh resetGraphicsState];
+		oo::ToCxx(mesh)->resetGraphicsState();
 		OO_CHECK(!cxxMesh->listsReady);
 		OO_CHECK(cxxMesh->materials[0] == [OOMesh placeholderMaterial]);
 
@@ -617,7 +618,7 @@ OO_TEST(loadingMembers)
 		mesh->renderOpaqueParts();
 		copy->renderOpaqueParts();
 		OO_CHECK(mesh->listsReady && copy->listsReady);
-		cxx::OOGraphicsResetManager::sharedManager()->resetGraphicsState();
+		OOGraphicsResetManager::sharedManager()->resetGraphicsState();
 		OO_CHECK(!mesh->listsReady && !copy->listsReady);
 		OO_CHECK_EQ(glGetError(), static_cast<GLenum>(GL_NO_ERROR));
 	}

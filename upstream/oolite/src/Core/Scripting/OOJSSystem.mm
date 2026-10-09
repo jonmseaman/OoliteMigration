@@ -24,6 +24,7 @@
  */
 
 #import "OOJSSystem.h"
+#import "OOSunEntity.h"	// the sun is C++ since bead oo-9ht.111
 #import "OOJavaScriptEngine.h"
 
 #import "OOJSVector.h"
@@ -451,7 +452,7 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			break;
 			
 		case kSystem_sun:
-			result = oo::PListObject(OOJSSystemUniverseSun());
+			result = oo::PListObject(oo::ToObjC(OOJSSystemUniverseSun()));
 			handled = true;
 			break;
 			

@@ -40,7 +40,8 @@ MA 02110-1301, USA.
 #define	COLLISION_MAX_ENTITIES			128
 #define MINIMUM_SHADOWING_ENTITY_RADIUS 75.0
 
-@class Entity, OOSunEntity;
+@class Entity;
+class OOSunEntity;	// C++ since bead oo-9ht.111
 
 
 class CollisionRegion : public oo::RefCounted

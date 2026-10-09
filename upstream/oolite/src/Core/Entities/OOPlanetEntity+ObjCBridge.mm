@@ -32,10 +32,6 @@ MA 02110-1301, USA.
 #import "OOGraphicsResetManager.h"
 
 
-@interface OOPlanetEntity (OOObjCBridgePrivate) <OOGraphicsResetClient>
-@end
-
-
 @implementation OOPlanetEntity
 
 // [[OOPlanetEntity alloc] init]: a C++ planet, which no initialiser has set up (Entity's -init, as
@@ -63,15 +59,6 @@ MA 02110-1301, USA.
 	self = [self init];
 	if (self != nil)  oo::ToCxx(self)->initFromDictionary(dict, atmosphere, seed, systemID);
 	return self;
-}
-
-
-// The planet registered its facade as a graphics reset client (oo::ToObjC(this)).
-- (void) dealloc
-{
-	[[OOGraphicsResetManager sharedManager] unregisterClient:self];
-	
-	[super dealloc];
 }
 
 
@@ -107,9 +94,6 @@ MA 02110-1301, USA.
 - (OOStellarBodyType) planetType												{ return oo::ToCxx(self)->planetType(); }
 - (std::optional<std::string>) cxx_name											{ return oo::ToCxx(self)->name(); }
 - (void) cxx_setName:(const std::optional<std::string> &)name					{ oo::ToCxx(self)->setName(name); }
-
-// OOGraphicsResetClient: the facade is the client the planet registered.
-- (void) resetGraphicsState														{ oo::ToCxx(self)->resetGraphicsState(); }
 
 
 // The JS side, which the engine asks for by selector (Entity (OOJavaScriptExtensions)): the

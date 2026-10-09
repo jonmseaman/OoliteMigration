@@ -28,6 +28,7 @@ MA 02110-1301, USA.
 
 #import "Entity.h"
 #import "OOColor.h"
+#import "OOGraphicsResetManager.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
@@ -46,9 +47,11 @@ class OOPlanetDrawable;	// C++ since bead oo-mw4u (no facade: this class is its 
 
 namespace cxx {
 
-class OOPlanetEntity : public Entity
+class OOPlanetEntity : public Entity, public ::OOGraphicsResetClient
 {
 public:
+	~OOPlanetEntity() override;	// unregisters the graphics reset client (bead oo-9ht.23)
+
 	/*	The initialisers' bodies after [self init] (the constructor ran Entity's). The facade runs
 		them once it holds this object (amendment oo-0mxi item 2), because the universe and the
 		legacy scripts allocate planets.
@@ -100,8 +103,9 @@ public:
 	std::optional<std::string> name();
 	void setName(const std::optional<std::string> &name);
 
-	// OOGraphicsResetClient: the facade is the client and forwards.
-	void resetGraphicsState();
+	// OOGraphicsResetClient: the planet registers itself once set up (bead oo-9ht.23; its facade was
+	// the client until then).
+	void resetGraphicsState() override;
 
 	std::optional<std::string> descriptionComponents() const override;
 	void setOrientation(Quaternion quat) override;

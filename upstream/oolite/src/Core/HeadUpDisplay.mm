@@ -896,7 +896,7 @@ bool HeadUpDisplay::checkPlayerInSystemFlight()
 
 	return checkPlayerInFlight()		// be in the right mode
 		&& the_sun && the_planet		// and be in a system
-		&& !oo::ToCxx(the_sun)->goneNova();
+		&& !the_sun->goneNova();	// C++ since bead oo-9ht.111
 }
 
 
@@ -1871,7 +1871,8 @@ void HeadUpDisplay::drawCompass(const oo::PList &info)
 			case COMPASS_MODE_BEACONS:
 				drawCompassBeaconBlipAt(relativePosition, siz, alpha);
 				::Entity <OOBeaconEntity>		*beacon = [PLAYER nextBeacon];
-				[[beacon beaconDrawable] oo_drawHUDBeaconIconAt:NSMakePoint(x, y) size:siz alpha:alpha z:z1];
+				OOHUDBeaconIcon	*beaconIcon = [beacon beaconDrawable];	// nil beacon or drawable: nothing, as the message to nil
+				if (beaconIcon != nullptr)  beaconIcon->drawHUDBeaconIconAt(NSMakePoint(x, y), siz, alpha, z1);
 				break;
 		}
 		OOGL(GLScaledLineWidth(lineWidth));	// reset
@@ -2720,10 +2721,10 @@ oo::PList MissileIconDefinition(const std::string &key)
 }
 
 
-cxx::OOPolygonSprite *IconForMissileRole(const std::string &role)
+OOPolygonSprite *IconForMissileRole(const std::string &role)
 {
-	static std::map<std::string, oo::Ref<cxx::OOPolygonSprite>, std::less<>>	sIcons;
-	cxx::OOPolygonSprite		*result = nullptr;
+	static std::map<std::string, oo::Ref<OOPolygonSprite>, std::less<>>	sIcons;
+	OOPolygonSprite		*result = nullptr;
 
 	auto cached = sIcons.find(role);
 	if (cached != sIcons.end())  result = cached->second.get();
@@ -2731,8 +2732,8 @@ cxx::OOPolygonSprite *IconForMissileRole(const std::string &role)
 	{
 		std::string key = role;
 		oo::PList iconDef = MissileIconDefinition(key);
-		oo::Ref<cxx::OOPolygonSprite> made;
-		if (!iconDef.isNull())  made = cxx::OOPolygonSprite::initWithDataArray(iconDef, kOutlineWidth, key);
+		oo::Ref<OOPolygonSprite> made;
+		if (!iconDef.isNull())  made = OOPolygonSprite::initWithDataArray(iconDef, kOutlineWidth, key);
 		if (made == nullptr)	// No custom icon or bad data
 		{
 			/*	Backwards compatibility note:
@@ -2746,7 +2747,7 @@ cxx::OOPolygonSprite *IconForMissileRole(const std::string &role)
 			else  key = kDefaultMineIconKey;
 
 			iconDef = MissileIconDefinition(key);
-			made = cxx::OOPolygonSprite::initWithDataArray(iconDef, kOutlineWidth, key);
+			made = OOPolygonSprite::initWithDataArray(iconDef, kOutlineWidth, key);
 		}
 
 		if (made != nullptr)
@@ -2764,7 +2765,7 @@ cxx::OOPolygonSprite *IconForMissileRole(const std::string &role)
 
 void HeadUpDisplay::drawIconForMissile(::ShipEntity *missile, bool selected, int status, int x, int y, GLfloat width, GLfloat height, GLfloat alpha)
 {
-	cxx::OOPolygonSprite *sprite = IconForMissileRole([missile cxx_primaryRole].value_or(""));
+	OOPolygonSprite *sprite = IconForMissileRole([missile cxx_primaryRole].value_or(""));
 	
 	if (selected)
 	{
@@ -2810,7 +2811,7 @@ void HeadUpDisplay::drawIconForMissile(::ShipEntity *missile, bool selected, int
 
 void HeadUpDisplay::drawIconForEmptyPylonAtX(int x, int y, GLfloat width, GLfloat height, GLfloat alpha)
 {
-	cxx::OOPolygonSprite *sprite = IconForMissileRole(kDefaultMissileIconKey);
+	OOPolygonSprite *sprite = IconForMissileRole(kDefaultMissileIconKey);
 	
 	// Draw gray outline.
 	OOGLPushModelView();
@@ -4509,11 +4510,17 @@ static void DrawSpecialOval(GLfloat x, GLfloat y, GLfloat z, NSSize siz, GLfloat
 
 
 /*	The beacon icons (slice 4). OOPolygonSprite's OOHUDBeaconIcon category is a free function on the
-	converted sprite (ADR-0056 amendments oo-6ia4 item 3, oo-9fwb), and the category forwards to it
-	in OOHUDBeaconCodeIcon+ObjCBridge.mm; OOHUDBeaconCodeIcon is cxx::OOHUDBeaconCodeIcon, which the
-	entities hold by the protocol through its facade (amendments oo-jpd8, oo-4nhg).
+	converted sprite (ADR-0056 amendments oo-6ia4 item 3, oo-9fwb), which the sprite's
+	OOHUDBeaconIcon member calls (bead oo-7ae4p: the protocol and the facades are gone; the entities
+	hold their beacon drawables by the C++ interface).
 */
-void OOPolygonSpriteDrawHUDBeaconIcon(cxx::OOPolygonSprite *sprite, NSPoint where, NSSize size, GLfloat alpha, GLfloat z)
+void OOPolygonSprite::drawHUDBeaconIconAt(NSPoint where, NSSize size, GLfloat alpha, GLfloat z)
+{
+	OOPolygonSpriteDrawHUDBeaconIcon(this, where, size, alpha, z);
+}
+
+
+void OOPolygonSpriteDrawHUDBeaconIcon(OOPolygonSprite *sprite, NSPoint where, NSSize size, GLfloat alpha, GLfloat z)
 {
 	GLfloat x = where.x - size.width;
 	GLfloat y = where.y - 1.5 * size.height;
@@ -4533,13 +4540,13 @@ void OOPolygonSpriteDrawHUDBeaconIcon(cxx::OOPolygonSprite *sprite, NSPoint wher
 }
 
 
-cxx::OOHUDBeaconCodeIcon::OOHUDBeaconCodeIcon(const std::string &text)
+OOHUDBeaconCodeIcon::OOHUDBeaconCodeIcon(const std::string &text)
 {
 	_text = text;
 }
 
 
-void cxx::OOHUDBeaconCodeIcon::drawHUDBeaconIconAt(NSPoint where, NSSize size, GLfloat /*alpha*/, GLfloat z)
+void OOHUDBeaconCodeIcon::drawHUDBeaconIconAt(NSPoint where, NSSize size, GLfloat /*alpha*/, GLfloat z)
 {
 	cxx_OODrawString(_text, where.x - 2.5 * size.width, where.y - 3.0 * size.height, z, NSMakeSize(size.width * 2, size.height * 2));
 }
@@ -4651,9 +4658,9 @@ bool HeadUpDisplayShipIsCloaked(ShipEntity *ship)	{ return [ship isCloaked]; }
 bool HeadUpDisplayShipIsHostileToPlayer(ShipEntity *ship)	{ return (([ship hasHostileTarget])&&([ship primaryTarget] == PLAYER)); }
 GLfloat *HeadUpDisplayShipScannerDisplayColor(ShipEntity *ship, BOOL isHostile, BOOL flash)	{ return [ship scannerDisplayColorForShip:PLAYER :isHostile :flash :[ship scannerDisplayColor1] :[ship scannerDisplayColor2] :[ship scannerDisplayColorHostile1] :[ship scannerDisplayColorHostile2]]; }
 GLfloat *HeadUpDisplayVisualEffectScannerDisplayColor(OOVisualEffectEntity *vis, BOOL flash)	{ return [vis scannerDisplayColorForShip:flash :[vis scannerDisplayColor1] :[vis scannerDisplayColor2]]; }
-WORMHOLE_SCANINFO HeadUpDisplayWormholeScanInfo(WormholeEntity *wormhole)	{ return [wormhole scanInfo]; }
-double HeadUpDisplayWormholeEstimatedArrivalTime(WormholeEntity *wormhole)	{ return [wormhole estimatedArrivalTime]; }
-double HeadUpDisplayWormholeExpiryTime(WormholeEntity *wormhole)	{ return [wormhole expiryTime]; }
+WORMHOLE_SCANINFO HeadUpDisplayWormholeScanInfo(WormholeEntity *wormhole)	{ return (wormhole != nullptr ? wormhole->scanInfo() : WORMHOLE_SCANINFO{}); }
+double HeadUpDisplayWormholeEstimatedArrivalTime(WormholeEntity *wormhole)	{ return (wormhole != nullptr ? wormhole->estimatedArrivalTime() : 0.0); }
+double HeadUpDisplayWormholeExpiryTime(WormholeEntity *wormhole)	{ return (wormhole != nullptr ? wormhole->expiryTime() : 0.0); }
 OOTimeAbsolute HeadUpDisplayUniverseGetTime()	{ return [UNIVERSE getTime]; }
 const oo::PList *HeadUpDisplayUniverseDescriptions()	{ return [UNIVERSE cxx_descriptions]; }
 OOViewID HeadUpDisplayUniverseViewDirection()	{ return [UNIVERSE viewDirection]; }

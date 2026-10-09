@@ -156,12 +156,12 @@ OO_TEST(resetDeletesTheDisplayList)
 		DisplayListName(sky) = (GLint)list;
 		OO_CHECK(glIsList(list));
 
-		cxx::OOGraphicsResetManager::sharedManager()->resetGraphicsState();
+		OOGraphicsResetManager::sharedManager()->resetGraphicsState();
 		OO_CHECK(DisplayListName(sky) == 0);
 		OO_CHECK(!glIsList(list));
 	}
 	// Released: no longer a client, so a reset does not reach it.
-	cxx::OOGraphicsResetManager::sharedManager()->resetGraphicsState();
+	OOGraphicsResetManager::sharedManager()->resetGraphicsState();
 }
 
 

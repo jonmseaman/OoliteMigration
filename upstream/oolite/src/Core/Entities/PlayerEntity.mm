@@ -1161,14 +1161,21 @@ bool PlayerEntity::infoSystemOnRoute()
 
 void PlayerEntity::setWormhole(::WormholeEntity *newWormhole)
 {
-	[wormhole release];
-	if (newWormhole != nil)
+	// The wormhole is C++ since bead oo-9ht.112: its Objective-C object (the root's facade, which
+	// owns it) is what is retained. oo::ToObjC answers it autoreleased: the pool drains that here,
+	// so the object's retain count is its holders' alone afterwards, as before.
+	@autoreleasepool
 	{
-		wormhole = [newWormhole retain];
-	}
-	else
-	{
-		wormhole = nil;
+		[oo::ToObjC(wormhole) release];
+		if (newWormhole != nullptr)
+		{
+			[oo::ToObjC(newWormhole) retain];
+			wormhole = newWormhole;
+		}
+		else
+		{
+			wormhole = nullptr;
+		}
 	}
 }
 
@@ -1407,9 +1414,9 @@ oo::PList PlayerEntity::commanderDataDictionary()
 	// wormhole information
 	oo::PList::Array wormholeDicts;
 	wormholeDicts.reserve(scannedWormholes.size());
-	for (const oo::ObjCRef<::WormholeEntity *> &wh : scannedWormholes)
+	for (const oo::ObjCRef<::Entity *> &wh : scannedWormholes)
 	{
-		wormholeDicts.push_back([wh.get() getDict]);
+		wormholeDicts.push_back(static_cast<WormholeEntity *>(oo::ToCxx(wh.get()))->getDict());	// the list holds wormholes only
 	}
 	result["wormholes"] = oo::PList(std::move(wormholeDicts));
 
@@ -2055,8 +2062,10 @@ bool PlayerEntity::setCommanderDataFromDictionary(const oo::PList &dict)
 	if (whList != nullptr)  scannedWormholes.reserve(whList->size());
 	for (const oo::PList &whCurrDict : (whList != nullptr) ? *whList : oo::PList::Array())
 	{
-		::WormholeEntity * wh = [[::WormholeEntity alloc] initWithDict:whCurrDict];
-		scannedWormholes.push_back(oo::ObjCRef<::WormholeEntity *>(wh));	// (the +1 from +alloc is still never released, as before)
+		oo::Ref<WormholeEntity> whRef = oo::makeRef<WormholeEntity>();
+		::Entity *whObject = [oo::NewEntityFacade(whRef) retain];	// (the +1 of the old +alloc is still never released, as before)
+		whRef->initWithDict(whCurrDict);
+		scannedWormholes.push_back(oo::ObjCRef<::Entity *>(whObject));
 		/* TODO - add to Universe if the wormhole hasn't expired yet; but in this case
 		 * we need to save/load position and mass as well, which we currently 
 		 * don't
@@ -2669,7 +2678,7 @@ GLfloat PlayerEntity::lookingAtSunWithThresholdAngleCos(GLfloat thresholdAngleCo
 	}
 
 
-	relativePosition = HPVectorToVector(HPvector_subtract([self viewpointPosition], [sun position]));
+	relativePosition = HPVectorToVector(HPvector_subtract([self viewpointPosition], (sun != nullptr ? sun->getPosition() : HPVector{})));
 	unitRelativePosition = vector_normal_or_zbasis(relativePosition);
 	switch (vdir)
 	{
@@ -3032,15 +3041,15 @@ void PlayerEntity::doBookkeeping(double delta_t)
 		UPDATE_STAGE("updating sun effects");
 		
 		// set the ambient temperature here
-		double  sun_zd = sun->_cxxEntity->zero_distance;	// square of distance
-		double  sun_cr = sun->_cxxEntity->collision_radius;
+		double  sun_zd = sun->zero_distance;	// square of distance
+		double  sun_cr = sun->collision_radius;
 		double	alt1 = sun_cr * sun_cr / sun_zd;
 		external_temp = SUN_TEMPERATURE * alt1;
 
-		if ([sun goneNova])
+		if ((sun != nullptr ? sun->goneNova() : false))
 			external_temp *= 100;
 		// fuel scooping during the nova mission very unlikely
-		if ([sun willGoNova])
+		if ((sun != nullptr ? sun->willGoNova() : false))
 			external_temp *= 3;
 			
 		// do Revised sun-skimming check here...
@@ -3491,7 +3500,7 @@ bool PlayerEntity::checkEntityForMassLock(::Entity *ent, int theirClass)
 	if (EXPECT_NOT([ent isStellarObject]))
 	{
 		::Entity<OOStellarBody> *stellar = (::Entity<OOStellarBody> *)ent;
-		if (EXPECT([stellar planetType] != STELLAR_TYPE_MINIATURE))
+		if (EXPECT(OOStellarBodyPlanetType(stellar) != STELLAR_TYPE_MINIATURE))
 		{
 			double dist = stellar->_cxxEntity->zero_distance;
 			double rad = stellar->_cxxEntity->collision_radius;
@@ -4339,48 +4348,48 @@ void PlayerEntity::updateTargeting()
 	UPDATE_STAGE("checking for additional wormhole information");
 	if ([[self primaryTarget] isWormhole])
 	{
-		::WormholeEntity *wh = [self primaryTarget];
-		switch ([wh scanInfo])
+		WormholeEntity *wh = static_cast<WormholeEntity *>(oo::ToCxx(static_cast<::Entity *>([self primaryTarget])));	// -isWormhole
+		switch ((wh != nullptr ? wh->scanInfo() : WORMHOLE_SCANINFO{}))
 		{
 			case WH_SCANINFO_NONE:
 				OO_LOG(cxx_kOOLogInconsistentState, "{}", "Internal Error - WH_SCANINFO_NONE reached in [PlayerEntity updateTargeting:]");
 				[self dumpState];
-				[wh dumpState];
+				if (wh != nullptr)  wh->dumpState();
 				// Workaround a reported hit of the assert here.  We really
 				// should work out how/why this could happen though and fix
 				// the underlying cause.
 				// - MKW 2011.03.11
 				//assert([wh scanInfo] != WH_SCANINFO_NONE);
-				[wh setScannedAt:[self clockTimeAdjusted]];
+				if (wh != nullptr)  wh->setScannedAt([self clockTimeAdjusted]);
 				break;
 			case WH_SCANINFO_SCANNED:
-				if ([self clockTimeAdjusted] > [wh scanTime] + 2)
+				if ([self clockTimeAdjusted] > (wh != nullptr ? wh->scanTime() : 0.0) + 2)
 				{
-					[wh setScanInfo:WH_SCANINFO_COLLAPSE_TIME];
+					if (wh != nullptr)  wh->setScanInfo(WH_SCANINFO_COLLAPSE_TIME);
 					//[UNIVERSE cxx_addCommsMessage:oo::str::formatRuntime(OO_DESC("wormhole-collapse-time-computed"),
 					//						   { [UNIVERSE cxx_getSystemName:[wh destination]].value_or(std::string()) }) forCount:5.0];
 				}
 				break;
 			case WH_SCANINFO_COLLAPSE_TIME:
-				if([self clockTimeAdjusted] > [wh scanTime] + 4)
+				if([self clockTimeAdjusted] > (wh != nullptr ? wh->scanTime() : 0.0) + 4)
 				{
-					[wh setScanInfo:WH_SCANINFO_ARRIVAL_TIME];
+					if (wh != nullptr)  wh->setScanInfo(WH_SCANINFO_ARRIVAL_TIME);
 					[UNIVERSE cxx_addCommsMessage:oo::str::formatRuntime(OO_DESC("wormhole-arrival-time-computed-@"),
-											   { cxx_ClockToString([wh estimatedArrivalTime], NO) }) forCount:5.0];
+											   { cxx_ClockToString((wh != nullptr ? wh->estimatedArrivalTime() : 0.0), NO) }) forCount:5.0];
 				}
 				break;
 			case WH_SCANINFO_ARRIVAL_TIME:
-				if ([self clockTimeAdjusted] > [wh scanTime] + 7)
+				if ([self clockTimeAdjusted] > (wh != nullptr ? wh->scanTime() : 0.0) + 7)
 				{
-					[wh setScanInfo:WH_SCANINFO_DESTINATION];
+					if (wh != nullptr)  wh->setScanInfo(WH_SCANINFO_DESTINATION);
 					[UNIVERSE cxx_addCommsMessage:oo::str::formatRuntime(OO_DESC("wormhole-destination-computed-@"),
-											   { [UNIVERSE cxx_getSystemName:[wh destination]].value_or("(null)") }) forCount:5.0];
+											   { [UNIVERSE cxx_getSystemName:(wh != nullptr ? wh->getDestination() : 0)].value_or("(null)") }) forCount:5.0];
 				}
 				break;
 			case WH_SCANINFO_DESTINATION:
-				if ([self clockTimeAdjusted] > [wh scanTime] + 10)
+				if ([self clockTimeAdjusted] > (wh != nullptr ? wh->scanTime() : 0.0) + 10)
 				{
-					[wh setScanInfo:WH_SCANINFO_SHIP];
+					if (wh != nullptr)  wh->setScanInfo(WH_SCANINFO_SHIP);
 					// TODO: Extract last ship from wormhole and display its name
 				}
 				break;
@@ -5380,7 +5389,7 @@ void PlayerEntity::validateCompassTarget()
 	::Entity			*the_target = [self primaryTarget];
 	::Entity <OOBeaconEntity>		*beacon = [self nextBeacon];
 	if ([self isInSpace] && the_sun && the_planet		// be in a system
-		&& ![the_sun goneNova])			// and the system has not been novabombed
+		&& !(the_sun != nullptr ? the_sun->goneNova() : false))			// and the system has not been novabombed
 	{
 		::Entity *new_target = nil;
 		OOAegisStatus	aegis = [self checkForAegis];
@@ -5410,7 +5419,7 @@ void PlayerEntity::validateCompassTarget()
 				break;
 				
 			case COMPASS_MODE_SUN:
-				new_target = the_sun;
+				new_target = oo::ToObjC(the_sun);	// the sun is C++ since bead oo-9ht.111
 				break;
 				
 			case COMPASS_MODE_TARGET:
@@ -5462,7 +5471,7 @@ std::optional<std::string> PlayerEntity::compassTargetLabel()
 	case COMPASS_MODE_PLANET:
 		return [[UNIVERSE planet] cxx_name];
 	case COMPASS_MODE_SUN:
-		return [[UNIVERSE sun] cxx_name];
+		return ([UNIVERSE sun] != nullptr ? [UNIVERSE sun]->name() : std::optional<std::string>());
 	case COMPASS_MODE_STATION:
 		return [[UNIVERSE station] displayName];
 	case COMPASS_MODE_TARGET:
@@ -5670,7 +5679,13 @@ std::optional<std::string> PlayerEntity::dialTargetName()
 		result = OO_DESC("no-target-string");
 	}
 
-	if ([target_entity respondsToSelector:@selector(identFromShip:)])
+	// A wormhole answered -identFromShip: through its facade until bead oo-9ht.112; it is asked
+	// directly now, and any other target that answers the selector as before.
+	if (WormholeEntity *wh = (target_entity != nil) ? dynamic_cast<WormholeEntity *>(oo::ToCxx(target_entity)) : nullptr)
+	{
+		result = wh->identFromShip(self);
+	}
+	else if ([target_entity respondsToSelector:@selector(identFromShip:)])
 	{
 		result = [(::ShipEntity*)target_entity identFromShip:self];
 	}
@@ -7436,7 +7451,7 @@ void PlayerEntity::docked()
 	// Did we fail to observe traffic control regulations? However, due to the state of emergency,
 	// apply no unauthorized docking penalties if a nova is ongoing.
 	if ([dockedStation requiresDockingClearance] &&
-			![self clearedToDock] && ![[UNIVERSE sun] willGoNova])
+			![self clearedToDock] && !([UNIVERSE sun] != nullptr ? [UNIVERSE sun]->willGoNova() : false))
 	{
 		[self penaltyForUnauthorizedDocking];
 	}
@@ -7446,7 +7461,7 @@ void PlayerEntity::docked()
 	{
 		// TODO: A proper system to allow some OXP stations to have a
 		// galcop presence for fines. - CIM 18/11/2012
-		if (being_fined && ![[UNIVERSE sun] willGoNova] && ![dockedStation suppressArrivalReports]) [self getFined];
+		if (being_fined && !([UNIVERSE sun] != nullptr ? [UNIVERSE sun]->willGoNova() : false) && ![dockedStation suppressArrivalReports]) [self getFined];
 	}
 
 	// it's time to check the script - can trigger legacy missions
@@ -7881,14 +7896,15 @@ void PlayerEntity::enterWormhole(::WormholeEntity *w_hole)
 	{
 		return; // has already entered a different wormhole
 	}
-	BOOL misjump = [self scriptedMisjump] || [w_hole withMisjump] || flightPitch == max_flight_pitch || randf() > 0.995;
-	wormhole = [w_hole retain];
+	BOOL misjump = [self scriptedMisjump] || (w_hole != nullptr ? w_hole->withMisjump() : false) || flightPitch == max_flight_pitch || randf() > 0.995;
+	[oo::ToObjC(w_hole) retain];	// its Objective-C object (bead oo-9ht.112)
+	wormhole = w_hole;
 	[self addScannedWormhole:wormhole];
 	[self setStatus:STATUS_ENTERING_WITCHSPACE];
 	ooscript::Context context = OOJSAcquireContext();
 	[self cxx_setJumpCause:"wormhole"];
 	[self setPreviousSystemID:[self currentSystemID]];
-	ShipScriptEvent(context, self, "shipWillEnterWitchspace", ooscript::stringValue(ooscript::internString(context, [self cxx_jumpCause].value_or("").c_str())), ooscript::int32Value([w_hole destination]));
+	ShipScriptEvent(context, self, "shipWillEnterWitchspace", ooscript::stringValue(ooscript::internString(context, [self cxx_jumpCause].value_or("").c_str())), ooscript::int32Value((w_hole != nullptr ? w_hole->getDestination() : 0)));
 	OOJSRelinquishContext(context);
 	if ([self scriptedMisjump]) 
 	{
@@ -7899,9 +7915,9 @@ void PlayerEntity::enterWormhole(::WormholeEntity *w_hole)
 #endif
 	if (misjump && [self scriptedMisjumpRange] != 0.5)
 	{
-		[w_hole setMisjumpWithRange:[self scriptedMisjumpRange]]; // overrides wormholes, if player also had non-default scriptedMisjumpRange
+		if (w_hole != nullptr)  w_hole->setMisjumpWithRange([self scriptedMisjumpRange]); // overrides wormholes, if player also had non-default scriptedMisjumpRange
 	}
-	[self witchJumpTo:[w_hole destination] misjump:misjump];
+	[self witchJumpTo:(w_hole != nullptr ? w_hole->getDestination() : 0) misjump:misjump];
 }
 
 
@@ -7953,8 +7969,14 @@ void PlayerEntity::enterWitchspace()
 	fuel -= [self fuelRequiredForJump];
 	
 	// Create the players' wormhole
-	wormhole = [[::WormholeEntity alloc] initWormholeTo:jumpTarget fromShip:self];
-	[UNIVERSE addEntity:wormhole]; // Add new wormhole to Universe to let other ships target it. Required for ships following the player.
+	{
+		// +alloc/-init...: a new C++ wormhole and its Objective-C object, +1 (bead oo-9ht.112).
+		oo::Ref<WormholeEntity> whRef = oo::makeRef<WormholeEntity>();
+		[oo::NewEntityFacade(whRef) retain];
+		whRef->initWormholeTo(jumpTarget, self);
+		wormhole = whRef.get();
+	}
+	[UNIVERSE addEntity:oo::ToObjC(wormhole)]; // Add new wormhole to Universe to let other ships target it. Required for ships following the player.
 	[self addScannedWormhole:wormhole];
 	
 	[self setStatus:STATUS_ENTERING_WITCHSPACE];
@@ -8005,7 +8027,7 @@ void PlayerEntity::enterWitchspace()
 	}
 	if (misjump)
 	{
-		[wormhole setMisjumpWithRange:[self scriptedMisjumpRange]];
+		if (wormhole != nullptr)  wormhole->setMisjumpWithRange([self scriptedMisjumpRange]);
 	}
 	[self witchJumpTo:jumpTarget misjump:misjump];
 }
@@ -8032,9 +8054,9 @@ void PlayerEntity::witchJumpTo(OOSystemID sTo, bool misjump)
 	
 	// if we just escaped a system gone nova, make sure all nova parameters are reset
 	::OOSunEntity *theSun = [UNIVERSE sun];
-	if (theSun && [theSun goneNova])
+	if (theSun && (theSun != nullptr ? theSun->goneNova() : false))
 	{
-		[theSun resetNova];
+		if (theSun != nullptr)  theSun->resetNova();
 	}
 	
 	[UNIVERSE removeAllEntitiesExceptPlayer];
@@ -8052,16 +8074,16 @@ void PlayerEntity::witchJumpTo(OOSystemID sTo, bool misjump)
 		// misjumps do not change legal status.
 		if (randf() < 0.1) [self erodeReputation];		// once every 10 misjumps - should be much rarer than successful jumps!
 
-		[wormhole setMisjump]; 
+		if (wormhole != nullptr)  wormhole->setMisjump(); 
 		// just in case, but this has usually been set already
 
 		// and now the wormhole has travel time and coordinates calculated
 		// so rather than duplicate the calculation we'll just ask it...
-		NSPoint dest = [wormhole destinationCoordinates];
+		NSPoint dest = (wormhole != nullptr ? wormhole->destinationCoordinates() : NSPoint{});
 		galaxy_coordinates.x = dest.x;
 		galaxy_coordinates.y = dest.y;
 
-		ship_clock_adjust += [wormhole travelTime];
+		ship_clock_adjust += (wormhole != nullptr ? wormhole->travelTime() : 0.0);
 
 		[self playWitchjumpMisjump];
 		[UNIVERSE setUpUniverseFromMisjump];
@@ -8100,22 +8122,22 @@ void PlayerEntity::leaveWitchspace()
 	// To avoid this problem, a small wormhole displacement is added.
 	if (wormhole)	// will be nil for galactic jump
 	{
-		if ([wormhole shipsInTransit].count() > 0)
+		if ((wormhole != nullptr ? wormhole->getShipsInTransit() : oo::PList()).count() > 0)
 		{
 			// player is not allone in his wormhole, synchronise player and wormhole position.
-			double	wh_arrival_time = ([PLAYER clockTimeAdjusted] - [wormhole arrivalTime]);
+			double	wh_arrival_time = ([PLAYER clockTimeAdjusted] - (wormhole != nullptr ? wormhole->arrivalTime() : 0.0));
 			if (wh_arrival_time > 0)
 			{
 				// Player is following other ship 
 				whpos = HPvector_add(exitpos, vectorToHPVector(vector_multiply_scalar([self forwardVector], 1000.0f)));
-				[wormhole setContainsPlayer:YES];
+				if (wormhole != nullptr)  wormhole->setContainsPlayer(YES);
 			}
 			else
 			{
 				// Player is the leadship 
 				whpos = HPvector_add(exitpos, vectorToHPVector(vector_multiply_scalar([self forwardVector], -500.0f)));
 				// so it won't contain the player by the time they exit
-				[wormhole setExitSpeed:maxFlightSpeed*WORMHOLE_LEADER_SPEED_FACTOR];
+				if (wormhole != nullptr)  wormhole->setExitSpeed(maxFlightSpeed*WORMHOLE_LEADER_SPEED_FACTOR);
 			} 
 
 			HPVector distance = HPvector_subtract(whpos, pos);
@@ -8127,21 +8149,21 @@ void PlayerEntity::leaveWitchspace()
 				whpos = HPvector_add(whpos, distance);
 				position = HPvector_add(position, distance);
 			}
-			[wormhole setExitPosition: whpos];
+			if (wormhole != nullptr)  wormhole->setExitPosition(whpos);
 		}
 		else
 		{
 			// no-one else in the wormhole
-			[wormhole setExitSpeed:maxFlightSpeed*WORMHOLE_LEADER_SPEED_FACTOR];
+			if (wormhole != nullptr)  wormhole->setExitSpeed(maxFlightSpeed*WORMHOLE_LEADER_SPEED_FACTOR);
 		}
 	}
 	/* there's going to be a slight pause at this stage anyway;
 	 * there's also going to be a lot of stale ship scripts. Force a
 	 * garbage collection while we have chance. - CIM */
 	[[::OOJavaScriptEngine sharedEngine] garbageCollectionOpportunity:YES];
-	flightSpeed = wormhole ? [wormhole exitSpeed] : fmin(maxFlightSpeed,50.0f);
-	[wormhole release];	// OK even if nil
-	wormhole = nil;
+	flightSpeed = wormhole ? (wormhole != nullptr ? wormhole->exitSpeed() : 0.0) : fmin(maxFlightSpeed,50.0f);
+	[oo::ToObjC(wormhole) release];	// OK even if nil
+	wormhole = nullptr;
 
 	flightRoll = 0.0f;
 	flightPitch = 0.0f;
@@ -9413,7 +9435,7 @@ void PlayerEntity::setGuiToLoadSaveScreen()
 	if ([self status] == STATUS_DOCKED)
 	{
 		if ([self dockedStation] == nil)  [self setDockedAtMainStation];
-		canLoadOrSave = (([self dockedStation] == [UNIVERSE station] || [[self dockedStation] allowsSaving]) && !([[UNIVERSE sun] goneNova] || [[UNIVERSE sun] willGoNova]));
+		canLoadOrSave = (([self dockedStation] == [UNIVERSE station] || [[self dockedStation] allowsSaving]) && !(([UNIVERSE sun] != nullptr ? [UNIVERSE sun]->goneNova() : false) || ([UNIVERSE sun] != nullptr ? [UNIVERSE sun]->willGoNova() : false)));
 	}
 	
 	BOOL canQuickSave = (canLoadOrSave && [[gameView gameController] cxx_playerFileToLoad].has_value());
@@ -10481,12 +10503,12 @@ void PlayerEntity::noteGUIDidChangeFrom(OOGUIScreenID fromScreen, OOGUIScreenID 
 		if (toScreen == GUI_SCREEN_SYSTEM_DATA)
 		{
 			// system data screen: ensure correct sun light color is used on miniature planet
-			[[UNIVERSE sun] setSunColor:OOColor::colorWithDescription(([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getProperty("sun_color", info_system_id, [self galaxyNumber]) : oo::PList())).get()];
+			if ([UNIVERSE sun] != nullptr)  [UNIVERSE sun]->setSunColor(OOColor::colorWithDescription(([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getProperty("sun_color", info_system_id, [self galaxyNumber]) : oo::PList())).get());
 		}
 		else
 		{
 			// any other screen: reset local sun light color
-			[[UNIVERSE sun] setSunColor:OOColor::colorWithDescription(([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getProperty("sun_color", system_id, [self galaxyNumber]) : oo::PList())).get()];
+			if ([UNIVERSE sun] != nullptr)  [UNIVERSE sun]->setSunColor(OOColor::colorWithDescription(([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getProperty("sun_color", system_id, [self galaxyNumber]) : oo::PList())).get());
 		}
 		
 		if (![[UNIVERSE gameController] isGamePaused])
@@ -12654,7 +12676,7 @@ void PlayerEntity::addTarget(::Entity *targetEntity)
 	if ([targetEntity isWormhole])
 	{
 		assert ([self cxx_hasEquipmentItemProviding:"EQ_WORMHOLE_SCANNER"]);
-		[self addScannedWormhole:(::WormholeEntity*)targetEntity];
+		[self addScannedWormhole:static_cast<WormholeEntity *>(oo::ToCxx(targetEntity))];
 	}
 	// wormholes don't go in target memory
 	else if ([self cxx_hasEquipmentItemProviding:"EQ_TARGET_MEMORY"] && targetEntity != nil)
@@ -13643,12 +13665,12 @@ void PlayerEntity::addScannedWormhole(::WormholeEntity *whole)
 	assert(whole != nil);
 
 	// Only add if we don't have it already!
-	for (const oo::ObjCRef<::WormholeEntity *> &wh : scannedWormholes)
+	for (const oo::ObjCRef<::Entity *> &wh : scannedWormholes)
 	{
-		if (wh.get() == whole)  return;
+		if (oo::ToCxx(wh.get()) == whole)  return;
 	}
-	[whole setScannedAt:[self clockTimeAdjusted]];
-	scannedWormholes.push_back(oo::ObjCRef<::WormholeEntity *>(whole));
+	if (whole != nullptr)  whole->setScannedAt([self clockTimeAdjusted]);
+	scannedWormholes.push_back(oo::ObjCRef<::Entity *>(oo::ToObjC(whole)));
 }
 
 
@@ -13663,22 +13685,22 @@ void PlayerEntity::updateWormholes()
 
 	double now = [self clockTimeAdjusted];
 
-	std::vector<oo::ObjCRef<::WormholeEntity *>> savedWormholes;
+	std::vector<oo::ObjCRef<::Entity *>> savedWormholes;
 	savedWormholes.reserve(scannedWormholes.size());
 
-	for (const oo::ObjCRef<::WormholeEntity *> &whRef : scannedWormholes)
+	for (const oo::ObjCRef<::Entity *> &whRef : scannedWormholes)
 	{
-		::WormholeEntity *wh = whRef.get();
+		WormholeEntity *wh = static_cast<WormholeEntity *>(oo::ToCxx(whRef.get()));
 		// TODO: Start drawing wormhole exit a few seconds before the first
 		//       ship is disgorged.
-		if ([wh arrivalTime] > now)
+		if ((wh != nullptr ? wh->arrivalTime() : 0.0) > now)
 		{
 			savedWormholes.push_back(whRef);
 		}
-		else if (NSEqualPoints(galaxy_coordinates, [wh destinationCoordinates]))
+		else if (NSEqualPoints(galaxy_coordinates, (wh != nullptr ? wh->destinationCoordinates() : NSPoint{})))
 		{
-			[wh disgorgeShips];
-			if ([wh shipsInTransit].count() > 0)
+			if (wh != nullptr)  wh->disgorgeShips();
+			if ((wh != nullptr ? wh->getShipsInTransit() : oo::PList()).count() > 0)
 			{
 				savedWormholes.push_back(whRef);
 			}
@@ -13690,7 +13712,7 @@ void PlayerEntity::updateWormholes()
 }
 
 
-std::vector<oo::ObjCRef<::WormholeEntity *>> PlayerEntity::getScannedWormholes()
+std::vector<oo::ObjCRef<::Entity *>> PlayerEntity::getScannedWormholes()
 {
 	return scannedWormholes;
 }

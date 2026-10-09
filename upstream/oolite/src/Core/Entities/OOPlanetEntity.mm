@@ -348,7 +348,7 @@ void OOPlanetEntity::initFromDictionary(const oo::PList &dictionary, bool atmosp
 
 	setStatus(STATUS_ACTIVE);
 
-	OOGraphicsResetManager::sharedManager()->registerClient(oo::ToObjC(this));	// the facade answers -resetGraphicsState
+	OOGraphicsResetManager::sharedManager()->registerCxxClient(this);
 }
 
 
@@ -579,7 +579,11 @@ bool OOPlanetEntity::initAsMiniatureVersionOfPlanet(OOPlanetEntity *planet)
 }
 
 
-// -dealloc: the members release themselves; the facade unregisters the graphics reset client.
+// -dealloc: the members release themselves.
+OOPlanetEntity::~OOPlanetEntity()
+{
+	OOGraphicsResetManager::sharedManager()->unregisterCxxClient(this);
+}
 
 
 // -position and -radius read these members.

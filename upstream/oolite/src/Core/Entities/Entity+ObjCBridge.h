@@ -206,7 +206,7 @@ MA 02110-1301, USA.
 
 @end
 
-@protocol OOHUDBeaconIcon;
+class OOHUDBeaconIcon;	// OOPolygonSprite.h (the protocol until bead oo-7ae4p)
 
 // Methods that must be supported by entities with beacons, regardless of type.
 @protocol OOBeaconEntity
@@ -217,7 +217,7 @@ MA 02110-1301, USA.
 - (std::optional<std::string>) beaconLabel;	// flipped with its family (bead oo-3rb.260)
 - (void) setBeaconLabel:(const std::optional<std::string> &)blabel;	// flipped with its family (bead oo-3rb.260)
 - (BOOL) isBeacon;
-- (id <OOHUDBeaconIcon>) beaconDrawable;
+- (OOHUDBeaconIcon *) beaconDrawable;
 - (Entity <OOBeaconEntity> *) prevBeacon;
 - (Entity <OOBeaconEntity> *) nextBeacon;
 - (void) setPrevBeacon:(Entity <OOBeaconEntity> *)beaconShip;

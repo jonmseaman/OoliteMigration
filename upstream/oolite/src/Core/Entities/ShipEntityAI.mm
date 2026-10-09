@@ -508,14 +508,14 @@ void ShipEntity::enterPlayerWormhole()
 void ShipEntity::enterTargetWormhole()
 {
 	::ShipEntity *self = oo::ToObjC(this);
-	::WormholeEntity *whole = nil;
+	WormholeEntity *whole = nullptr;	// C++ since bead oo-9ht.112
 	::ShipEntity		*targEnt = [self primaryTarget];
 	double found_d2 = scannerRange * scannerRange;
 	
 	if (targEnt && (HPdistance2(position, [targEnt position]) < found_d2))
 	{
 		if ([targEnt isWormhole])
-			whole = (::WormholeEntity *)targEnt;
+			whole = static_cast<WormholeEntity *>(oo::ToCxx(static_cast<::Entity *>(targEnt)));
 		else if ([targEnt isPlayer])
 			whole = [PLAYER wormhole];
 	}
@@ -525,21 +525,21 @@ void ShipEntity::enterTargetWormhole()
 		// locate nearest wormhole
 		int				ent_count =		UNIVERSE->_cxxUniverse->n_entities;
 		::Entity**		uni_entities =	UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
-		std::vector<::WormholeEntity *>	wormholes(ent_count);
+		std::vector<::Entity *>	wormholes(ent_count);	// their Objective-C objects (bead oo-9ht.112)
 		int i;
 		int wh_count = 0;
 		for (i = 0; i < ent_count; i++)
 			if (uni_entities[i]->_cxxEntity->isWormhole)
-				wormholes[wh_count++] = [(::WormholeEntity *)uni_entities[i] retain];
+				wormholes[wh_count++] = [uni_entities[i] retain];
 		//
 		//double found_d2 = scannerRange * scannerRange;
 		for (i = 0; i < wh_count ; i++)
 		{
-			::WormholeEntity *wh = wormholes[i];
+			::Entity *wh = wormholes[i];
 			double d2 = HPdistance2(position, wh->_cxxEntity->position);
 			if (d2 < found_d2)
 			{
-				whole = wh;
+				whole = static_cast<WormholeEntity *>(wh->_cxxEntity.get());
 				found_d2 = d2;
 			}
 			[wh release];
@@ -555,7 +555,7 @@ void ShipEntity::wormholeEscorts()
 {
 	::ShipEntity *self = oo::ToObjC(this);
 	::ShipEntity			*ship = nil;
-	::WormholeEntity		*whole = nil;
+	::Entity			*whole = nil;	// the wormhole's Objective-C object (the root's facade since bead oo-9ht.112)
 	
 	whole = [self primaryTarget];
 	if (![whole isWormhole])  return;
@@ -803,8 +803,13 @@ bool ShipEntity::performHyperSpaceExitReplace(bool replace, OOSystemID systemID)
 	fuel -= 10 * dist;
 	
 	// create wormhole
-	::WormholeEntity  *whole = [[[::WormholeEntity alloc] initWormholeTo: targetSystem fromShip:self] autorelease];
-	[UNIVERSE addEntity: whole];
+	// +alloc/-initWormholeTo:fromShip:/-autorelease: a new C++ wormhole and its autoreleased
+	// Objective-C object (bead oo-9ht.112).
+	oo::Ref<WormholeEntity> whRef = oo::makeRef<WormholeEntity>();
+	::Entity *wholeObject = oo::NewEntityFacade(whRef);
+	whRef->initWormholeTo(targetSystem, self);
+	WormholeEntity  *whole = whRef.get();
+	[UNIVERSE addEntity: wholeObject];
 	
 	[self enterWormhole:whole replacing:replace];
 	
@@ -1601,7 +1606,7 @@ void ShipEntity::checkAegis()
 			else
 			{
 				[shipAI message:"CLOSE_TO_PLANET"];
-				if ([nearest planetType] == STELLAR_TYPE_MOON)
+				if (OOStellarBodyPlanetType(nearest) == STELLAR_TYPE_MOON)
 				{
 					[shipAI message:"CLOSE_TO_MOON"];
 				}
@@ -1771,7 +1776,7 @@ void ShipEntity::wormholeGroup()
 {
 	::ShipEntity *self = oo::ToObjC(this);
 	::ShipEntity			*ship = nil;
-	::WormholeEntity		*whole = nil;
+	::Entity			*whole = nil;	// the wormhole's Objective-C object (the root's facade since bead oo-9ht.112)
 	
 	whole = [self primaryTarget];
 	if (![whole isWormhole])  return;
@@ -2072,7 +2077,7 @@ void ShipEntity::setPlanetPatrolCoordinates()
 	HPVector r_pos = HPvector_subtract(position, coordinates);
 	if (HPmagnitude2(r_pos) < 1000000 || patrol_counter == 0)
 	{
-		::Entity *the_sun = [UNIVERSE sun];
+		::Entity *the_sun = oo::ToObjC([UNIVERSE sun]);	// its Objective-C object (C++ since bead oo-9ht.111)
 		::ShipEntity *the_station = ([self group] != nullptr ? [self group]->leader() : (::ShipEntity *)nil);
 		if(!the_station || ![the_station isStation]) the_station = [UNIVERSE station];
 		if ((!the_sun)||(!the_station))
@@ -2174,7 +2179,7 @@ void ShipEntity::setSunSkimEndCoordinates()
 void ShipEntity::setSunSkimExitCoordinates()
 {
 	::ShipEntity *self = oo::ToObjC(this);
-	::Entity *the_sun = [UNIVERSE sun];
+	::Entity *the_sun = oo::ToObjC([UNIVERSE sun]);	// its Objective-C object (C++ since bead oo-9ht.111)
 	if (the_sun == nil)  return;
 	HPVector v1 = [UNIVERSE getSunSkimEndPositionForShip:self];
 	HPVector vs = the_sun->_cxxEntity->position;

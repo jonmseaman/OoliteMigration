@@ -471,8 +471,8 @@ BOOL shadowAtPointOcclusionToValue(HPVector e1pos, GLfloat e1rad, ::Entity *e2, 
 //		return NO;	// things already /in/ shade can't shade things more.
 	//
 	// check projected sizes of discs
-	GLfloat d2_sun = HPdistance2(e1pos, the_sun->_cxxEntity->position);
-	GLfloat d2_e2sun = HPdistance2(e2->_cxxEntity->position, the_sun->_cxxEntity->position);
+	GLfloat d2_sun = HPdistance2(e1pos, the_sun->position);
+	GLfloat d2_e2sun = HPdistance2(e2->_cxxEntity->position, the_sun->position);
 	GLfloat d2_e2 = HPdistance2( e1pos, e2->_cxxEntity->position);
 
 	if (d2_e2sun > d2_sun)
@@ -515,7 +515,7 @@ BOOL shadowAtPointOcclusionToValue(HPVector e1pos, GLfloat e1rad, ::Entity *e2, 
 		return NO;
 	}
 	
-	GLfloat cr_sun = the_sun->_cxxEntity->collision_radius;
+	GLfloat cr_sun = the_sun->collision_radius;
 	
 	GLfloat cr2_sun_scaled = cr_sun * cr_sun * d2_e2 / d2_sun;
 	if (cr_e2 * cr_e2 < cr2_sun_scaled)
@@ -541,7 +541,7 @@ BOOL shadowAtPointOcclusionToValue(HPVector e1pos, GLfloat e1rad, ::Entity *e2, 
 		theta_diff = asin(cr_e2 / d2_e) - asin(cr_sun / sqrt(d2_sun));
 	}
 	
-	HPVector p_sun = the_sun->_cxxEntity->position;
+	HPVector p_sun = the_sun->position;
 	HPVector p_e2 = e2->_cxxEntity->position;
 	HPVector p_e1 = e1pos;
 	Vector v_sun = HPVectorToVector(HPvector_subtract(p_sun, p_e1));

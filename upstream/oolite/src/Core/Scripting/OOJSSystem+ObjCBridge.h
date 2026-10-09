@@ -63,7 +63,7 @@ OOSunEntity *OOJSSystemUniverseSun();
 std::vector<oo::ObjCRef<OOPlanetEntity *>> OOJSSystemUniversePlanets();
 std::vector<oo::ObjCRef<StationEntity *>> OOJSSystemUniverseStations();
 std::map<std::string, oo::ObjCRef<OOWaypointEntity *>, std::less<>> OOJSSystemUniverseCurrentWaypoints();
-std::vector<oo::ObjCRef<WormholeEntity *>> OOJSSystemUniverseWormholes();
+std::vector<oo::ObjCRef<::Entity *>> OOJSSystemUniverseWormholes();
 std::vector<oo::ObjCRef<Entity *>> OOJSSystemUniverseFindShipsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, Entity *entity);
 std::vector<oo::ObjCRef<Entity *>> OOJSSystemUniverseFindVisualEffectsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, Entity *entity);
 std::vector<oo::ObjCRef<Entity *>> OOJSSystemUniverseFindEntitiesMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, Entity *entity);

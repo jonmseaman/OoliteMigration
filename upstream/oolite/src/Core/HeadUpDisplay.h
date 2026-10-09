@@ -32,6 +32,7 @@ MA 02110-1301, USA.
 #import "OOMaths.h"
 #import "MyOpenGLView.h"
 #import "ShipEntity.h"
+#import "OOPolygonSprite.h"	// OOHUDBeaconIcon (bead oo-7ae4p)
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
@@ -453,30 +454,24 @@ private:
 
 /*	The compass icon of a beacon whose code names no icon: the code's first character, drawn as
 	text. It replaces the NSString (OOHUDBeaconIcon) category (bead oo-f9rf) the entities' beacon
-	drawables used; the drawing is the category's. The entities hold it by the OOHUDBeaconIcon
-	protocol (OOHUDBeaconCodeIcon+ObjCBridge.h) through its facade (bead oo-2p1ug; ADR-0056 amendments
-	oo-jpd8, oo-4nhg).
+	drawables used; the drawing is the category's. The entities hold it by the C++ OOHUDBeaconIcon
+	interface (OOPolygonSprite.h); its Objective-C facade and the protocol were deleted by bead
+	oo-7ae4p (ADR-0056 amendments oo-jpd8, oo-4nhg, "deleting a facade").
 */
-namespace cxx {
-
-class OOPolygonSprite;
-
-class OOHUDBeaconCodeIcon : public oo::RefCounted
+class OOHUDBeaconCodeIcon : public OOHUDBeaconIcon
 {
 public:
 	explicit OOHUDBeaconCodeIcon(const std::string &text);	// -initWithText:
 
-	void drawHUDBeaconIconAt(NSPoint where, NSSize size, GLfloat alpha, GLfloat z);	// -oo_drawHUDBeaconIconAt:size:alpha:z:
+	void drawHUDBeaconIconAt(NSPoint where, NSSize size, GLfloat alpha, GLfloat z) override;	// -oo_drawHUDBeaconIconAt:size:alpha:z:
 
 private:
 	std::string				_text;
 };
 
-}	// namespace cxx
-
 
 // -[OOPolygonSprite oo_drawHUDBeaconIconAt:size:alpha:z:] (the sprite's OOHUDBeaconIcon category).
-void OOPolygonSpriteDrawHUDBeaconIcon(cxx::OOPolygonSprite *sprite, NSPoint where, NSSize size, GLfloat alpha, GLfloat z);
+void OOPolygonSpriteDrawHUDBeaconIcon(OOPolygonSprite *sprite, NSPoint where, NSSize size, GLfloat alpha, GLfloat z);
 
 void cxx_OODrawString(const std::string &text, GLfloat x, GLfloat y, GLfloat z, NSSize siz);
 void cxx_OODrawStringAligned(const std::string &text, GLfloat x, GLfloat y, GLfloat z, NSSize siz, BOOL rightAlign);
@@ -560,9 +555,4 @@ const oo::PList *HeadUpDisplayUniverseDescriptions();	// MissileIconDefinition()
 OOViewID HeadUpDisplayUniverseViewDirection();
 Entity *HeadUpDisplayUniverseFirstEntityTargetedByPlayer();
 Entity *HeadUpDisplayUniverseFirstEntityTargetedByPlayerPrecisely();
-
-
-// Transitional: the beacon code icon's facade and the OOHUDBeaconIcon protocol the entities hold
-// it by (bead oo-mwd58 moved them out of the HUD's deleted facade).
-#import "OOHUDBeaconCodeIcon+ObjCBridge.h"
 

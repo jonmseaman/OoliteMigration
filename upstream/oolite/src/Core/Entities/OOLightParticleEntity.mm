@@ -41,6 +41,20 @@ MA 02110-1301, USA.
 static OOTexture *sBlobTexture = nil;
 
 
+namespace {
+
+// The texture's graphics reset client, which the facade class was until bead oo-9ht.23 (ADR-0056
+// amendment oo-jpd8 item 3, as OOLaserShotEntity's): registered once, with the texture, and never
+// destroyed.
+class BlobTextureResetClient : public OOGraphicsResetClient
+{
+public:
+	void resetGraphicsState() override  { cxx::OOLightParticleEntity::resetGraphicsState(); }
+};
+
+}	// namespace
+
+
 namespace cxx {
 
 void OOLightParticleEntity::initWithDiameter(float diameter)
@@ -288,7 +302,7 @@ void OOLightParticleEntity::setUpTexture()
 										   options:kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureAlphaMask
 										anisotropy:kOOTextureDefaultAnisotropy / 2.0
 										   lodBias:0.0] retain];
-		OOGraphicsResetManager::sharedManager()->registerClient([::OOLightParticleEntity class]);	// the facade class answers +resetGraphicsState
+		OOGraphicsResetManager::sharedManager()->registerCxxClient(new BlobTextureResetClient);
 	}
 }
 

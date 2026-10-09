@@ -45,11 +45,13 @@
 #import "OORoleSet.h"
 #include <string_view>
 
-@class StationEntity, WormholeEntity, AI, OOMesh, OOScript, OOJSScript;
+@class StationEntity, AI, OOMesh, OOScript, OOJSScript;
+class WormholeEntity;	// C++ since bead oo-9ht.112
 #import "OOColor.h"	// the colours are oo::Ref members
 #import "OOCharacter.h"	// C++ since bead oo-9ht.10: the crew is oo::Ref
 #import "OOShipGroup.h"	// C++ since bead oo-9ht.19: the groups are oo::Ref
 #import "OOEquipmentType.h"	// C++ since bead oo-9ht.28: OOWeaponType is a C++ pointer
+#import "OOPolygonSprite.h"	// OOHUDBeaconIcon (bead oo-7ae4p): the beacon drawable is oo::Ref
 class OOFlasherEntity;	// C++ only since bead oo-9ht.107
 class OOExhaustPlumeEntity;	// C++ only since bead oo-9ht.110
 
@@ -303,7 +305,7 @@ public:
 	void setBeaconLabel(const std::optional<std::string> &blabel);
 	bool isVisible() override;
 	bool isBeacon();
-	id <OOHUDBeaconIcon> beaconDrawable();
+	OOHUDBeaconIcon *beaconDrawable();	// borrowed (the protocol type until bead oo-7ae4p)
 	::Entity *prevBeacon();
 	::Entity *nextBeacon();
 	void setPrevBeacon(::Entity *beaconShip);
@@ -1409,7 +1411,7 @@ public:
 	std::optional<std::string>	_beaconLabel;			// nullopt: nil (never empty)
 	::OOWeakReference			*_prevBeacon = {};
 	::OOWeakReference			*_nextBeacon = {};
-	id <OOHUDBeaconIcon>	_beaconDrawable = nil;
+	oo::Ref<OOHUDBeaconIcon>	_beaconDrawable;
 
 	double			_nextAegisCheck = {};
 
