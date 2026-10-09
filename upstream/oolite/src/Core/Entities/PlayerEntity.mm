@@ -323,31 +323,6 @@ static GLfloat		sBaseMass = 0.0;
 
 
 
-@interface PlayerEntity (OOPrivate)
-
-- (void) setExtraEquipmentFromFlags;
-
-// Subs of update:
-
-
-
-// Shopping
-
-
-
-// Cargo & passenger contracts
-
-
-
-
-// Jump distance/cost calculations for selected target.
-
-
-
-
-@end
-
-
 namespace {
 
 // An equipment key as -hasEquipmentItem: takes it: a null PList for nullopt (was nil).

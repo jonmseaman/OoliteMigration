@@ -159,34 +159,6 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range);
 #undef CACHE_ROUTE_FROM_SYSTEM_RESULTS
 
 
-/*	Carries -cxx_addDelayedMessage:forCount:afterDelay:'s dictionary through
-	OOScheduleDeferredCall(), which retains it until the call fires, as it did the dictionary
-	(the AI deferred-call trampoline's holder is the exemplar).
-*/
-@interface OOUniverseDelayedMessage: OOObject
-{
-@public
-	oo::PList	message;
-}
-@end
-
-
-@implementation OOUniverseDelayedMessage
-@end
-
-
-@interface Universe (OOPrivate)
-
-
-
-// Set shader effects level without logging or triggering a reset -- should only be used directly during startup.
-- (void) setShaderEffectsLevelDirectly:(OOShaderSetting)value;
-
-
-
-@end
-
-
 namespace {
 
 // The saved detailLevel preference as an OOGraphicsDetail. 0-3 are the levels themselves; any other
@@ -510,8 +482,6 @@ void cxx::Universe::dealloc()
 	[self deleteOpenGLObjects];
 }
 
-
-@implementation Universe
 
 // Flags needed when JS reset fails.
 static int JSResetFlags = 0;
@@ -1133,36 +1103,6 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 }	// namespace
 
 
-// speech routines
-#if OOLITE_MAC_OS_X
-
-- (void) cxx_startSpeakingString:(const std::string &) text
-{
-	[speechSynthesizer startSpeakingString:oo::NSStringFrom(oo::str::format("[[volm %.3f]]%s", 0.3333333f * [OOSound masterVolume], text.c_str()))];
-}
-
-
-- (void) stopSpeaking
-{
-	if ([speechSynthesizer respondsToSelector:@selector(stopSpeakingAtBoundary:)])
-	{
-		[speechSynthesizer stopSpeakingAtBoundary:NSSpeechWordBoundary];
-	}
-	else
-	{
-		[speechSynthesizer stopSpeaking];
-	}
-}
-
-
-- (BOOL) isSpeaking
-{
-	return [speechSynthesizer isSpeaking];
-}
-
-#endif
-
-
 static void PreloadOneSound(const std::string &soundName)
 {
 	if (!oo::str::hasPrefix(soundName, "[") && !oo::str::hasSuffix(soundName, "]"))
@@ -1212,8 +1152,6 @@ std::vector<std::string> CachedConditionScripts(const std::string &key)
 }
 
 }	// namespace
-
-@end
 
 
 /*	The custom-sound categories of OOSound and OOSoundSource on converted classes' facades

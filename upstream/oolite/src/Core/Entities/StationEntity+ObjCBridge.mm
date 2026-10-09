@@ -100,6 +100,21 @@ MA 02110-1301, USA.
 	[super dealloc];
 }
 
+
+// The JS side, which the engine asks for by selector (Entity (OOJavaScriptExtensions)): the
+// ShipEntity category answers for ships, so the station's own answers come from its C++ part, as
+// the dock's do (bead oo-tt7l1).
+- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype
+{
+	_cxxStation->getJSClass(outClass, outPrototype);
+}
+
+
+- (std::optional<std::string>) cxx_oo_jsClassName
+{
+	return _cxxStation->jsClassName();
+}
+
 @end
 
 

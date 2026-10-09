@@ -63,7 +63,8 @@ MA 02110-1301, USA.
 
 ///////////////////////////////////////
 
-// speech routines: the Mac arms, still the @implementation's (the others are slice 24's)
+// speech routines: the Mac arms, Objective-C in the facade's primary @implementation in
+// Universe+ObjCBridge.mm (Mac-only, not adapted in Phase 3; the others are slice 24's)
 #if OOLITE_MAC_OS_X
 - (void) cxx_startSpeakingString:(const std::string &) text;
 - (void) stopSpeaking;
@@ -679,6 +680,20 @@ MA 02110-1301, USA.
 - (void) addConditionScripts:(const std::vector<std::string> &)scripts;
 - (OOJSScript *) cxx_getConditionScript:(const std::string &)scriptname;
 
+@end
+
+
+/*	Carries -cxx_addDelayedMessage:forCount:afterDelay:'s dictionary through
+	OOScheduleDeferredCall(), which retains it until the call fires, as it did the dictionary
+	(the AI deferred-call trampoline's holder is the exemplar, AI+ObjCBridge.h). Its class is
+	Objective-C because the deferred call retains it; cxx::Universe::addDelayedMessage fills and
+	reads it (bead oo-pas).
+*/
+@interface OOUniverseDelayedMessage: OOObject
+{
+@public
+	oo::PList	message;
+}
 @end
 
 
