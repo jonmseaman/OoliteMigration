@@ -45,7 +45,7 @@
 #import "OORoleSet.h"
 #include <string_view>
 
-@class StationEntity, AI, OOMesh, OOScript, OOJSScript;
+@class StationEntity, AI, OOMesh, OOScript;
 class WormholeEntity;	// C++ since bead oo-9ht.112
 #import "OOColor.h"	// the colours are oo::Ref members
 #import "OOCharacter.h"	// C++ since bead oo-9ht.10: the crew is oo::Ref
@@ -917,7 +917,7 @@ public:
 #ifndef NDEBUG
 	void dumpSelfState() override;
 #endif
-	::OOJSScript *getScript();
+	::OOScript *getScript();
 	oo::PList getScriptInfo();
 	void overrideScriptInfo(const oo::PList &override);
 	::Entity *entityForShaderProperties();
@@ -1144,8 +1144,8 @@ public:
 	Quaternion				subentityRotationalVelocity = {};
 	
 	//scripting
-	::OOJSScript				*script = {};
-	::OOJSScript				*aiScript = {};
+	::OOScript *script = {};
+	::OOScript *aiScript = {};
 	OOTimeAbsolute    aiScriptWakeTime = {};
 	
 	//docking instructions

@@ -211,9 +211,6 @@ typedef OOEquipmentType* OOWeaponType;
 + (OOJavaScriptEngine *) sharedEngine;
 @end
 
-@interface OOJSScript: OOWeakRefObject
-+ (OOJSScript *) currentlyRunningScript;
-@end
 
 @interface Entity (OOJavaScriptExtensions)
 - (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
@@ -440,9 +437,21 @@ ShipEntity *NewShip(const char *name)
 @end
 
 
-@implementation OOJSScript
-+ (OOJSScript *) currentlyRunningScript  { return nil; }
-@end
+// OOJSScript's statics (OOJSScript.h), which the code under test calls since bead oo-9ht.137 deleted
+// the Objective-C OOJSScript: a script's object is the OOScript root's facade (stood in for above).
+class OOJSScript
+{
+public:
+	static ::OOScript *currentlyRunningScript();
+	static void pushScript(::OOScript *script);
+	static void popScript(::OOScript *script);
+};
+
+::OOScript *OOJSScript::currentlyRunningScript()  { return nil; }
+// The interface definition linked here pushes its owner when its callback runs, which no case does
+// (the class methods were never sent; as C++ statics they must be defined).
+void OOJSScript::pushScript(::OOScript *)  { std::abort(); }
+void OOJSScript::popScript(::OOScript *)  { std::abort(); }
 
 
 // MARK: What the rest of the game provides --------------------------------------------------------

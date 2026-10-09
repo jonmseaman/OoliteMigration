@@ -228,8 +228,10 @@ cxx::OOJavaScriptEngine	*jsEng = cxx::OOJavaScriptEngine::sharedEngine();
 	{
 		// First line: problem description
 		// avoid windows DEP exceptions!
-		::OOJSScript *runningScript = cxx::OOJSScript::currentlyRunningScript();
-		id thisScript = (runningScript != nil) ? oo::ToCxx(runningScript)->weakRetain() : nil;	// a weak reference, retained
+		// The running script's C++ part (the stack holds only JS scripts' objects, bead oo-9ht.137, or
+		// the weak references the timers and definitions push, whose referent is the object).
+		OOJSScript *runningScript = static_cast<OOJSScript *>(oo::ToCxx(static_cast<::OOScript *>([OOJSScript::currentlyRunningScript() weakRefUnderlyingObject])));
+		id thisScript = (runningScript != nullptr) ? runningScript->weakRetain() : nil;	// a weak reference, retained
 		activeScript = OOJavaScriptEngineDisplayName(OOJavaScriptEngineWeakRefUnderlyingObject(thisScript)).value_or("<unidentified script>");
 		objc_release(thisScript);
 
@@ -418,7 +420,7 @@ void OOJavaScriptEngine::createMainThreadContext()
 	InitOOJSFont(gOOJSMainThreadContext, _globalObject);
 	
 	// Run prefix scripts.
-	[::OOJSScript cxx_jsScriptFromFileNamed:"oolite-global-prefix.js"
+	[::OOScript cxx_jsScriptFromFileNamed:"oolite-global-prefix.js"
 							 properties:oo::PList(oo::PList::Dict{{"special", oo::PListObject(JSSpecialFunctionsObjectWrapper(gOOJSMainThreadContext))}})];
 
 	ooscript::endRequest((gOOJSMainThreadContext));
@@ -673,7 +675,7 @@ static void DebuggerHook(ooscript::Context context, void * /*closure*/)
 {
 	OOJSPauseTimeLimiter();
 	
-	::OOJSScript *runningScript = cxx::OOJSScript::currentlyRunningScript();
+	::OOScript *runningScript = OOJSScript::currentlyRunningScript();
 	OO_LOG("script.javaScript.debugger", "debugger invoked during {}:", ((runningScript != nil) ? oo::ToCxx(runningScript)->displayName() : std::nullopt).value_or("(null)"));
 	OOJSDumpStack(context);
 	

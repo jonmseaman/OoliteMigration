@@ -84,21 +84,30 @@ extern "C" bool VectorToJSValue(ooscript::Context context, Vector vector, ooscri
 
 
 // The script stack: the running script (set by the test) and what was pushed.
-@interface OOJSScript: OOWeakRefObject
-+ (OOJSScript *) currentlyRunningScript;
-+ (void) pushScript:(OOJSScript *)script;
-+ (void) popScript:(OOJSScript *)script;
+@interface OOScript: OOWeakRefObject
 @end
 
 namespace {
-OOJSScript *sRunningScript = nil;
+OOScript *sRunningScript = nil;
 } // namespace
 
-@implementation OOJSScript
-+ (OOJSScript *) currentlyRunningScript  { return sRunningScript; }
-+ (void) pushScript:(OOJSScript *)script  { sPushed.push_back([script weakRefUnderlyingObject]); sScriptDepth++; }
-+ (void) popScript:(OOJSScript *)script  { (void)script; sScriptDepth--; }
+@implementation OOScript
 @end
+
+
+// OOJSScript's statics (OOJSScript.h), which the code under test calls since bead oo-9ht.137 deleted
+// the Objective-C OOJSScript: a script's object is the OOScript root's facade (stood in for above).
+class OOJSScript
+{
+public:
+	static ::OOScript *currentlyRunningScript();
+	static void pushScript(::OOScript *script);
+	static void popScript(::OOScript *script);
+};
+
+::OOScript *OOJSScript::currentlyRunningScript()  { return sRunningScript; }
+void OOJSScript::pushScript(::OOScript *script)  { sPushed.push_back([script weakRefUnderlyingObject]); sScriptDepth++; }
+void OOJSScript::popScript(::OOScript *script)  { (void)script; sScriptDepth--; }
 
 
 // MARK: The context -------------------------------------------------------------------------------
@@ -160,7 +169,7 @@ OO_TEST(runCallback)
 {
 	@autoreleasepool
 	{
-		OOJSScript *owner = [[[OOJSScript alloc] init] autorelease];
+		OOScript *owner = [[[OOScript alloc] init] autorelease];
 		sRunningScript = owner;
 		const oo::Ref<OOJSPopulatorDefinition> definition = oo::makeRef<OOJSPopulatorDefinition>();
 		sRunningScript = nil;

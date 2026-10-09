@@ -718,7 +718,7 @@ void OODebugMonitor::setUpDebugConsoleScript()
 		jsProps["console"] = oo::PListObject(oo::ToObjC(this));
 		id special = JSSpecialFunctionsObjectWrapper(context);
 		if (special != nil)  jsProps["special"] = oo::PListObject(special);
-		_script = oo::ObjCRef<::OOJSScript *>([::OOJSScript scriptWithPath:path properties:oo::PList(std::move(jsProps))]);
+		_script = oo::ObjCRef<::OOScript *>(OOJSScript::scriptWithPath(path, oo::PList(std::move(jsProps))));
 	}
 
 	// If no script, just make console visible globally as debugConsole.
@@ -876,7 +876,7 @@ void OODebugMonitor::jsEngine(::OOJavaScriptEngine * /*engine*/,
 	// error, since one script can call another's methods.
 
 	// avoid windows DEP exceptions!
-	::OOJSScript *thisScript = [[::OOJSScript currentlyRunningScript] weakRetain];
+	::OOScript *thisScript = [OOJSScript::currentlyRunningScript() weakRetain];
 	scriptLine = [[thisScript weakRefUnderlyingObject] displayName];
 	[thisScript release];
 

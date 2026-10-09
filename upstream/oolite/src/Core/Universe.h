@@ -54,7 +54,7 @@ MA 02110-1301, USA.
 #include <string_view>
 #endif
 
-@class GameController, MyOpenGLView, Entity, ShipEntity, StationEntity, OOVisualEffectEntity, PlayerEntity, DockEntity, OOJSScript, OOWaypointEntity, OOException;
+@class GameController, MyOpenGLView, Entity, ShipEntity, StationEntity, OOVisualEffectEntity, PlayerEntity, DockEntity, OOWaypointEntity, OOException, OOScript;
 class WormholeEntity;	// C++ since bead oo-9ht.112
 class OOSunEntity;	// C++ since bead oo-9ht.111
 class OOPlanetEntity;	// C++ since bead oo-9ht.129
@@ -431,7 +431,7 @@ public:
 
 	GLfloat					frustum[6][4] = {};
 
-	std::map<std::string, oo::ObjCRef<::OOJSScript *>, std::less<>>	conditionScripts;
+	std::map<std::string, oo::ObjCRef<::OOScript *>, std::less<>>	conditionScripts;
 
 	BOOL					_pauseMessage = NO;
 	BOOL					_autoCommLog = NO;
@@ -826,7 +826,7 @@ public:
 	void prunePreloadingPlanetMaterials();
 	void loadConditionScripts();
 	void addConditionScripts(const std::vector<std::string> &scripts);
-	::OOJSScript *getConditionScript(const std::string &scriptname);
+	::OOScript *getConditionScript(const std::string &scriptname);
 };
 
 }	// namespace cxx

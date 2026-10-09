@@ -115,15 +115,24 @@ void OOJSStopTimeLimiter(void)  { sLimiterDepth--; }
 @end
 
 
-@interface OOJSScript: OOObject
-+ (void) pushScript:(OOJSScript *)script;
-+ (void) popScript:(OOJSScript *)script;
+@interface OOScript: OOObject
 @end
 
-@implementation OOJSScript
-+ (void) pushScript:(OOJSScript *)script  { (void)script; sScriptDepth++; sScriptPushes++; }
-+ (void) popScript:(OOJSScript *)script  { (void)script; sScriptDepth--; }
+@implementation OOScript
 @end
+
+
+// OOJSScript's statics (OOJSScript.h), which the code under test calls since bead oo-9ht.137 deleted
+// the Objective-C OOJSScript: a script's object is the OOScript root's facade (stood in for above).
+class OOJSScript
+{
+public:
+	static void pushScript(::OOScript *script);
+	static void popScript(::OOScript *script);
+};
+
+void OOJSScript::pushScript(::OOScript *script)  { (void)script; sScriptDepth++; sScriptPushes++; }
+void OOJSScript::popScript(::OOScript *script)  { (void)script; sScriptDepth--; }
 
 
 // MARK: The context -------------------------------------------------------------------------------

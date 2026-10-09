@@ -277,17 +277,26 @@ void OOJSUnreachable(const char *function, const char *, unsigned)
 @end
 
 
-@interface OOJSScript: OOObject
-+ (OOJSScript *) currentlyRunningScript;
-+ (void) pushScript:(OOJSScript *)script;
-+ (void) popScript:(OOJSScript *)script;
+@interface OOScript: OOObject
 @end
 
-@implementation OOJSScript
-+ (OOJSScript *) currentlyRunningScript  { return nil; }
-+ (void) pushScript:(OOJSScript *)script  { (void)script; sScriptDepth++; sScriptPushes++; }
-+ (void) popScript:(OOJSScript *)script  { (void)script; sScriptDepth--; }
+@implementation OOScript
 @end
+
+
+// OOJSScript's statics (OOJSScript.h), which the code under test calls since bead oo-9ht.137 deleted
+// the Objective-C OOJSScript: a script's object is the OOScript root's facade (stood in for above).
+class OOJSScript
+{
+public:
+	static ::OOScript *currentlyRunningScript();
+	static void pushScript(::OOScript *script);
+	static void popScript(::OOScript *script);
+};
+
+::OOScript *OOJSScript::currentlyRunningScript()  { return nil; }
+void OOJSScript::pushScript(::OOScript *script)  { (void)script; sScriptDepth++; sScriptPushes++; }
+void OOJSScript::popScript(::OOScript *script)  { (void)script; sScriptDepth--; }
 
 
 // The universe's clock, which the test sets.

@@ -87,7 +87,7 @@ MA 02110-1301, USA.
 - (GLfloat *) scannerDisplayColorForShip:(BOOL)flash :(OOColor *)scannerDisplayColor1 :(OOColor *)scannerDisplayColor2;
 
 - (void) setScript:(const std::optional<std::string> &)script_name;
-- (OOJSScript *)script;
+- (OOScript *)script;
 - (oo::PList)scriptInfo;	// flipped with its family (bead oo-3rb.284)
 - (void) doScriptEvent:(ooscript::PropertyId)message;
 - (void) remove;

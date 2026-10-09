@@ -102,7 +102,7 @@ typedef struct RunningStack RunningStack;
 struct RunningStack
 {
 	RunningStack		*back;
-	OOJSScript			*current;
+	::OOScript			*current;	// the script's Objective-C object (its identity), or nil
 };
 
 
@@ -111,7 +111,7 @@ static ooscript::Object sScriptPrototype;
 static RunningStack		*sRunningStack = NULL;
 
 
-static void AddStackToArrayReversed(std::vector<oo::ObjCRef<OOJSScript *>> &array, RunningStack *stack);
+static void AddStackToArrayReversed(std::vector<oo::ObjCRef<::OOScript *>> &array, RunningStack *stack);
 
 static Script LoadScriptWithName(ooscript::Context context, const std::optional<std::string> &path, ooscript::Object object, ooscript::Object *outScriptObject, std::optional<std::string> *outErrorMessage);
 
@@ -173,7 +173,23 @@ static FunctionSpec sScriptMethods[] =
 static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly;
 
 
-namespace cxx {
+// +scriptWithPath:properties: and the facade's -initWithPath:properties: (bead oo-9ht.137 deleted
+// the facade): the OOScript root's facade is the object, made first and recorded as the peer (so
+// initWithPath() can hand oo::ToObjC(this) to JS); a script that cannot be loaded is released with
+// it, which runs willDealloc(), as DESTROY(self) did.
+::OOScript *OOJSScript::scriptWithPath(const std::optional<std::string> &path, const oo::PList &properties)
+{
+	oo::Ref<OOJSScript> script = oo::makeRef<OOJSScript>();
+	::OOScript *object = [[[::OOScript alloc] initWithCxxRootScript:script.get()] autorelease];
+	if (object == nil)
+	{
+		OO_LOG("script.javaScript.load.failed", "***** Error loading JavaScript script {} -- {}", path.value_or("(null)"), "allocation failure");
+		return nil;
+	}
+	if (!script->initWithPath(path, properties))  return nil;
+	return object;
+}
+
 
 bool OOJSScript::initWithPath(const std::optional<std::string> &path, const oo::PList &properties)
 {
@@ -380,16 +396,16 @@ void OOJSScript::javaScriptEngineWillReset(const oo::Notification &)
 }
 
 
-::OOJSScript *OOJSScript::currentlyRunningScript()
+::OOScript *OOJSScript::currentlyRunningScript()
 {
 	if (sRunningStack == NULL)  return NULL;
 	return sRunningStack->current;
 }
 
 
-std::vector<oo::ObjCRef<::OOJSScript *>> OOJSScript::scriptStack()
+std::vector<oo::ObjCRef<::OOScript *>> OOJSScript::scriptStack()
 {
-	std::vector<oo::ObjCRef<::OOJSScript *>>	result;
+	std::vector<oo::ObjCRef<::OOScript *>>	result;
 
 	AddStackToArrayReversed(result, sRunningStack);
 	return result;
@@ -577,7 +593,7 @@ ooscript::Value OOJSScript::jsValueInContext(ooscript::Context)
 }
 
 
-void OOJSScript::pushScript(::OOJSScript *script)
+void OOJSScript::pushScript(::OOScript *script)
 {
 	RunningStack			*element = NULL;
 
@@ -590,7 +606,7 @@ void OOJSScript::pushScript(::OOJSScript *script)
 }
 
 
-void OOJSScript::popScript(::OOJSScript *script)
+void OOJSScript::popScript(::OOScript *script)
 {
 	RunningStack			*element = NULL;
 
@@ -623,7 +639,7 @@ std::string OOJSScript::scriptNameFromPath(const std::optional<std::string> &pat
 	std::string		truncatedPath;
 	std::string		theName;
 
-	if (!path.has_value()) theName = oo::str::pointerDescription(oo::ToObjC(this));	// (the facade's address, as self's was)
+	if (!path.has_value()) theName = oo::str::pointerDescription(oo::ToObjC(this));	// (the object's address, as self's was)
 	else
 	{
 		lastComponent = oo::str::lastPathComponent(*path);
@@ -686,7 +702,6 @@ oo::PList::Dict OOJSScript::defaultPropertiesFromPath(const std::optional<std::s
 	return properties;
 }
 
-}	// namespace cxx
 
 
 void InitOOJSScript(ooscript::Context context, ooscript::Object global)
@@ -709,7 +724,9 @@ static bool ScriptAddProperty(Context cx, Object obj, PropertyId propID, Value *
 		bool match = false;
 		if (ooscript::stringEqualsAscii(cx, propNameStr, "tickle", &match) && match)
 		{
-			OOJSScript *thisScript = OOJSNativeObjectOfClassFromJSObject(context, thisObj, [OOJSScript class]);
+			// A Script object's private slot holds the script's object, the OOScript root's facade since
+			// bead oo-9ht.137 (the JS class fixes that it is a JS script's).
+			::OOScript *thisScript = OOJSNativeObjectOfClassFromJSObject(context, thisObj, [::OOScript class]);
 			cxx_OOJSReportWarning(context, "Script %s appears to use the tickle() event handler, which is no longer supported.", [thisScript cxx_name].value_or("(null)").c_str());
 		}
 	}
@@ -720,7 +737,7 @@ static bool ScriptAddProperty(Context cx, Object obj, PropertyId propID, Value *
 
 
 namespace {
-static void AddStackToArrayReversed(std::vector<oo::ObjCRef<OOJSScript *>> &array, RunningStack *stack)
+static void AddStackToArrayReversed(std::vector<oo::ObjCRef<::OOScript *>> &array, RunningStack *stack)
 {
 	if (stack != NULL)
 	{

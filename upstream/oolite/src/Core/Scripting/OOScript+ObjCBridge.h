@@ -8,8 +8,10 @@ declared before the conversion, copied exactly (same selectors, same types, same
 ivars are one C++ reference), so its callers compile and behave unchanged. Imported as the last
 line of OOScript.h; do not import it directly.
 
-It is also the superclass of the Objective-C OOJSScript and of the OOPListScript facade (amendment
-oo-o89), so one Objective-C class has two kinds of instance, as amendment oo-6bux's root has:
+It was also the superclass of the Objective-C OOJSScript (until bead oo-9ht.137, which made this
+class's facade a JS script's object: OOJSScript::scriptWithPath() makes it with
+-initWithCxxRootScript:) and of the OOPListScript facade (amendment oo-o89, until bead oo-9ht.57), so
+one Objective-C class has two kinds of instance, as amendment oo-6bux's root has:
 
 	instance                              its C++ part                 made by
 	------------------------------------  ---------------------------  ------------------------------
@@ -21,7 +23,7 @@ oo-o89), so one Objective-C class has two kinds of instance, as amendment oo-6bu
 The Objective-C object owns its C++ part. On a subclass instance, the methods a subclass overrides
 (-cxx_name, -scriptDescription, -cxx_version, -requiresTickle, -runWithTarget:,
 -cxx_descriptionComponents) answer with the base's own member, as [super ...] or a subclass that
-does not override did. The category OOScript (JavaScriptEvents) stays in OOJSScript.h/.mm.
+does not override did. The category OOScript (JavaScriptEvents) is declared below (bead oo-9ht.137).
 
 	a caller that is                       holds / passes                  crosses with
 	-------------------------------------  ------------------------------  --------------------------
@@ -59,6 +61,8 @@ MA 02110-1301, USA.
 
 #import "OOCocoa.h"
 #import "oofnd/objc/OOObject.h"
+#import "OOWeakReference.h"
+#include "ooscript/JSEngine.hpp"
 
 
 @interface OOScript: OOObject
@@ -96,9 +100,36 @@ MA 02110-1301, USA.
 
 @interface OOScript (OOObjCBridge)
 
-// For a subclass facade that makes its own C++ script (OOJSScript, bead oo-u61e.4): stores it and
-// records the facade as its peer, so oo::ToObjC answers the subclass facade.
+// For a C++ script that makes its own object (OOJSScript::scriptWithPath(), bead oo-9ht.137; the
+// OOJSScript facade until then): stores it and records this facade as its peer, so oo::ToObjC
+// answers it while it lives.
 - (id) initWithCxxRootScript:(cxx::OOScript *)script;
+
+@end
+
+
+/*	What the OOJSScript facade answered, which this facade answers for a JS script's C++ part since
+	bead oo-9ht.137 deleted that facade (ADR-0056 amendment oo-9ht.137): a JS script's object is
+	this facade. The category OOScript (JavaScriptEvents), which every script answers, moved here
+	from the deleted facade's header; the weak reference support answers a JS script only. Every other
+	script answers as before (NO; no weak references). Also answered for a JS script: the JS glue
+	(-oo_jsValueInContext:, -cxx_oo_jsClassName) and -dealloc's OOJSScript::willDealloc().
+*/
+@interface OOScript (JavaScriptEvents)
+
+// For simplicity, calling methods on non-JS scripts works but does nothing.
+- (BOOL) callMethod:(ooscript::PropertyId)methodID
+		  inContext:(ooscript::Context)context
+	  withArguments:(ooscript::Value *)argv count:(int)argc
+			 result:(ooscript::Value *)outResult;
+
+@end
+
+
+@interface OOScript (OOJSScriptIdentity) <OOWeakReferenceSupport>
+
+- (id) weakRetain;	// a JS script's weak reference, retained; nil for any other script
+- (void) weakRefDied:(OOWeakReference *)weakRef;
 
 @end
 

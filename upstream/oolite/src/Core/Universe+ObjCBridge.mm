@@ -600,7 +600,7 @@ extern Universe *gSharedUniverse;
 - (void) prunePreloadingPlanetMaterials	{ _cxxUniverse->prunePreloadingPlanetMaterials(); }
 - (void) loadConditionScripts	{ _cxxUniverse->loadConditionScripts(); }
 - (void) addConditionScripts:(const std::vector<std::string> &)scripts	{ _cxxUniverse->addConditionScripts(scripts); }
-- (OOJSScript*) cxx_getConditionScript:(const std::string &)scriptname	{ return _cxxUniverse->getConditionScript(scriptname); }
+- (OOScript *) cxx_getConditionScript:(const std::string &)scriptname	{ return _cxxUniverse->getConditionScript(scriptname); }
 
 @end
 

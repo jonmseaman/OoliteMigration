@@ -120,15 +120,24 @@ extern "C" void OOJSDumpStack(ooscript::Context)
 @end
 
 
-@interface OOJSScript: OOObject
-+ (OOJSScript *) currentlyRunningScript;
+@interface OOScript: OOObject
 - (std::optional<std::string>) cxx_name;
 @end
 
-@implementation OOJSScript
-+ (OOJSScript *) currentlyRunningScript  { static OOJSScript *script = [[OOJSScript alloc] init]; return script; }
+@implementation OOScript
 - (std::optional<std::string>) cxx_name  { return std::string("test script"); }
 @end
+
+
+// OOJSScript's statics (OOJSScript.h), which the code under test calls since bead oo-9ht.137 deleted
+// the Objective-C OOJSScript: a script's object is the OOScript root's facade (stood in for above).
+class OOJSScript
+{
+public:
+	static ::OOScript *currentlyRunningScript();
+};
+
+::OOScript *OOJSScript::currentlyRunningScript()  { static OOScript *script = [[OOScript alloc] init]; return script; }
 
 
 // MARK: Helpers -----------------------------------------------------------------------------------

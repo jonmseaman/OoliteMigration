@@ -4333,7 +4333,7 @@ bool Universe::canInstantiateShip(const std::string &shipKey)
 	condition_script = OptionalStringIn(shipInfo, "condition_script");
 	if (condition_script.has_value())
 	{
-		::OOJSScript *condScript = [self cxx_getConditionScript:*condition_script];
+		::OOScript *condScript = [self cxx_getConditionScript:*condition_script];
 		if (condScript != nil) // should always be non-nil, but just in case
 		{
 			ooscript::Context context = OOJSAcquireContext();
@@ -9625,7 +9625,7 @@ oo::PList Universe::shipsForSaleForSystem(OOSystemID s, OOTechLevelID specialTL,
 			std::optional<std::string> condition_script = OptionalStringIn(dict, "condition_script");
 			if (condition_script.has_value())
 			{
-				::OOJSScript *condScript = [self cxx_getConditionScript:*condition_script];
+				::OOScript *condScript = [self cxx_getConditionScript:*condition_script];
 				if (condScript != nil) // should always be non-nil, but just in case
 				{
 					ooscript::Context context = OOJSAcquireContext();
@@ -9784,7 +9784,7 @@ oo::PList Universe::shipsForSaleForSystem(OOSystemID s, OOTechLevelID specialTL,
 					std::optional<std::string> condition_script = (item != nullptr ? item->conditionScript() : std::optional<std::string>());
 					if (condition_script.has_value())
 					{
-						::OOJSScript *condScript = [self cxx_getConditionScript:*condition_script];
+						::OOScript *condScript = [self cxx_getConditionScript:*condition_script];
 						if (condScript != nil) // should always be non-nil, but just in case
 						{
 							ooscript::Context JScontext = OOJSAcquireContext();
@@ -11559,17 +11559,17 @@ void Universe::addConditionScripts(const std::vector<std::string> &scripts)
 	{
 		if (!conditionScripts.contains(scriptname))
 		{
-			::OOJSScript *script = [::OOScript cxx_jsScriptFromFileNamed:scriptname properties:oo::PList()];
+			::OOScript *script = [::OOScript cxx_jsScriptFromFileNamed:scriptname properties:oo::PList()];
 			if (script != nil)
 			{
-				conditionScripts[scriptname] = oo::ObjCRef<::OOJSScript *>(script);
+				conditionScripts[scriptname] = oo::ObjCRef<::OOScript *>(script);
 			}
 		}
 	}
 }
 
 
-::OOJSScript *Universe::getConditionScript(const std::string &scriptname)
+::OOScript *Universe::getConditionScript(const std::string &scriptname)
 {
 	const auto found = conditionScripts.find(scriptname);
 	return (found != conditionScripts.end()) ? found->second.get() : nil;

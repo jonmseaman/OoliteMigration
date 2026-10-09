@@ -11,7 +11,7 @@
 	provide is defined below as the smallest stand-in that does the same thing: the engine object
 	(which calls the function), the script stack (OOJSScript) and the property-list converter. The
 	engine's and OOJSScript's headers are not imported, because the test defines those classes
-	(amendment oo-z1s4 item 4); the class's header names OOJSScript with @class for that (amendment
+	(amendment oo-z1s4 item 4); the class's header names OOScript with @class for that (amendment
 	oo-fg7i item 5). The expectations were written against the Objective-C class and run on it
 	first; since bead oo-9ht.62 deleted the façade (an OOWeakRefObject) they ask the C++ class. They
 	pin the initial state, the name and the keys, the callback and its `this` (kept alive across a
@@ -83,21 +83,30 @@ ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &p
 
 
 // The script stack: the running script (set by the test) and what was pushed.
-@interface OOJSScript: OOWeakRefObject
-+ (OOJSScript *) currentlyRunningScript;
-+ (void) pushScript:(OOJSScript *)script;
-+ (void) popScript:(OOJSScript *)script;
+@interface OOScript: OOWeakRefObject
 @end
 
 namespace {
-OOJSScript *sRunningScript = nil;
+OOScript *sRunningScript = nil;
 } // namespace
 
-@implementation OOJSScript
-+ (OOJSScript *) currentlyRunningScript  { return sRunningScript; }
-+ (void) pushScript:(OOJSScript *)script  { sPushed.push_back([script weakRefUnderlyingObject]); sScriptDepth++; }
-+ (void) popScript:(OOJSScript *)script  { (void)script; sScriptDepth--; }
+@implementation OOScript
 @end
+
+
+// OOJSScript's statics (OOJSScript.h), which the code under test calls since bead oo-9ht.137 deleted
+// the Objective-C OOJSScript: a script's object is the OOScript root's facade (stood in for above).
+class OOJSScript
+{
+public:
+	static ::OOScript *currentlyRunningScript();
+	static void pushScript(::OOScript *script);
+	static void popScript(::OOScript *script);
+};
+
+::OOScript *OOJSScript::currentlyRunningScript()  { return sRunningScript; }
+void OOJSScript::pushScript(::OOScript *script)  { sPushed.push_back([script weakRefUnderlyingObject]); sScriptDepth++; }
+void OOJSScript::popScript(::OOScript *script)  { (void)script; sScriptDepth--; }
 
 
 // MARK: The context -------------------------------------------------------------------------------
@@ -166,7 +175,7 @@ OO_TEST(runCallback)
 {
 	@autoreleasepool
 	{
-		OOJSScript *owner = [[[OOJSScript alloc] init] autorelease];
+		OOScript *owner = [[[OOScript alloc] init] autorelease];
 		sRunningScript = owner;
 		const oo::Ref<OOJSGuiScreenKeyDefinition> definition = oo::makeRef<OOJSGuiScreenKeyDefinition>();
 		sRunningScript = nil;

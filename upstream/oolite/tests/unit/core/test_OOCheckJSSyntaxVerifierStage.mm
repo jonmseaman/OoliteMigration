@@ -104,22 +104,21 @@ std::vector<std::string> gScriptPaths;		// +scriptWithPath:properties:, in order
 @end
 
 
-@interface OOJSScript: OOScript
-
-+ (id) scriptWithPath:(const std::optional<std::string> &)path properties:(const oo::PList &)properties;
-
-@end
 
 
-@implementation OOJSScript
+// OOJSScript's statics (OOJSScript.h), which the code under test calls since bead oo-9ht.137 deleted
+// the Objective-C OOJSScript: a script's object is the OOScript root's facade (stood in for above).
+class OOJSScript
+{
+public:
+	static ::OOScript *scriptWithPath(const std::optional<std::string> &path, const oo::PList &properties);
+};
 
-+ (id) scriptWithPath:(const std::optional<std::string> &)path properties:(const oo::PList &)properties
+::OOScript *OOJSScript::scriptWithPath(const std::optional<std::string> &path, const oo::PList &properties)
 {
 	gScriptPaths.push_back(path.value_or("(nil)") + (properties.isNull() ? "" : " with properties"));
 	return nil;
 }
-
-@end
 
 
 namespace {

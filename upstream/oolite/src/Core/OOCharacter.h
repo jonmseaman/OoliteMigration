@@ -41,7 +41,7 @@ MA 02110-1301, USA.
 #include "oofnd/PList.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 
-@class OOJSScript;
+@class OOScript;
 
 
 class OOCharacter : public oo::PListForeign
@@ -75,7 +75,7 @@ public:
 
 	oo::PList legacyScript();	// an array of script actions; null: none
 	void setLegacyScript(const oo::PList &scriptActions);
-	::OOJSScript *script();
+	::OOScript *script();
 	void setCharacterScript(const std::string &scriptName);
 	void doScriptEvent(ooscript::PropertyId message);
 
@@ -105,7 +105,7 @@ private:
 	int					_legalStatus = {};
 	OOCreditsQuantity	_insuranceCredits = {};
 	oo::PList			_scriptActions;	// an array; null: none
-	oo::ObjCRef<::OOJSScript *>	_script;
+	oo::ObjCRef<::OOScript *>	_script;
 };
 
 

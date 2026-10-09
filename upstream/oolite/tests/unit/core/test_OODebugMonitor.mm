@@ -191,9 +191,7 @@ const char * const kOOJavaScriptEngineDidResetNotificationName = "org.aegidian.o
 
 
 // The console script: made from its path with the console as a property; runs commands.
-@interface OOJSScript: OOWeakRefObject
-+ (id) scriptWithPath:(const std::optional<std::string> &)path properties:(const oo::PList &)properties;
-+ (OOJSScript *) currentlyRunningScript;
+@interface OOScript: OOWeakRefObject
 - (BOOL) callMethod:(ooscript::PropertyId)methodID
 		  inContext:(ooscript::Context)context
 	  withArguments:(ooscript::Value *)argv count:(int)argc
@@ -201,22 +199,7 @@ const char * const kOOJavaScriptEngineDidResetNotificationName = "org.aegidian.o
 - (std::optional<std::string>) displayName;
 @end
 
-@implementation OOJSScript
-
-+ (id) scriptWithPath:(const std::optional<std::string> &)path properties:(const oo::PList &)properties
-{
-	(void)path;
-	sConsoleScriptsMade++;
-	sConsoleScriptProperties = properties;
-	return [[[OOJSScript alloc] init] autorelease];
-}
-
-
-+ (OOJSScript *) currentlyRunningScript
-{
-	return nil;
-}
-
+@implementation OOScript
 
 - (BOOL) callMethod:(ooscript::PropertyId)methodID
 		  inContext:(ooscript::Context)context
@@ -228,13 +211,34 @@ const char * const kOOJavaScriptEngineDidResetNotificationName = "org.aegidian.o
 	return YES;
 }
 
-
 - (std::optional<std::string>) displayName
 {
 	return "test script";
 }
 
 @end
+
+
+// OOJSScript's statics (OOJSScript.h), which the code under test calls since bead oo-9ht.137 deleted
+// the Objective-C OOJSScript: a script's object is the OOScript root's facade (stood in for above).
+class OOJSScript
+{
+public:
+	static ::OOScript *scriptWithPath(const std::optional<std::string> &path, const oo::PList &properties);
+	static ::OOScript *currentlyRunningScript();
+};
+
+::OOScript *OOJSScript::scriptWithPath(const std::optional<std::string> &path, const oo::PList &properties)
+{
+	(void)path;
+	sConsoleScriptsMade++;
+	sConsoleScriptProperties = properties;
+	return [[[OOScript alloc] init] autorelease];
+}
+::OOScript *OOJSScript::currentlyRunningScript()
+{
+	return nil;
+}
 
 
 @class OOJSValue;

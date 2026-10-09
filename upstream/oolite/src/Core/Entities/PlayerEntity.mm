@@ -2158,7 +2158,7 @@ bool PlayerEntity::setUpAndConfirmOK(bool stopOnError, bool saveGame)
 	if (![gc inFullScreenMode] && stopOnError)	[gc startAnimationTimer];
 	
 	// Load locale script before any regular scripts.
-	[::OOJSScript cxx_jsScriptFromFileNamed:"oolite-locale-functions.js"
+	[::OOScript cxx_jsScriptFromFileNamed:"oolite-locale-functions.js"
 						   properties:oo::PList()];
 	
 	[[::GameController sharedController] cxx_logProgress:OO_DESC("loading-scripts")];
@@ -8547,7 +8547,7 @@ void PlayerEntity::activatePrimableEquipment(NSUInteger index, OOPrimedEquipment
 	// index == eqScripts.size() means we don't want to activate any equipment.
 	if(index < eqScripts.size())
 	{
-		::OOJSScript *eqScript = eqScripts[index].second.get();
+		::OOScript *eqScript = eqScripts[index].second.get();
 		ooscript::Context context = OOJSAcquireContext();
 		OOCAssert(mode <= OOPRIMEDEQUIP_MODE, "Primable equipment mode %i out of range", (int)mode);
 		
@@ -10642,7 +10642,7 @@ OOCreditsQuantity PlayerEntity::adjustPriceByScriptForEqKey(const std::string &e
 	const std::optional<std::string> condition_script = (OOEquipmentType::equipmentTypeWithIdentifier(eqKey).get() != nullptr ? OOEquipmentType::equipmentTypeWithIdentifier(eqKey).get()->conditionScript() : std::optional<std::string>());
 	if (condition_script.has_value())
 	{
-		::OOJSScript *condScript = [UNIVERSE cxx_getConditionScript:*condition_script];
+		::OOScript *condScript = [UNIVERSE cxx_getConditionScript:*condition_script];
 		if (condScript != nil) // should always be non-nil, but just in case
 		{
 			ooscript::Context JScontext = OOJSAcquireContext();

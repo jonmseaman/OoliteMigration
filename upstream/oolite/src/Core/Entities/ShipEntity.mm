@@ -3859,7 +3859,7 @@ bool ShipEntity::equipmentValidToAdd(const std::string &fullEquipmentKey, bool l
 		const std::optional<std::string> condition_script = (eqType != nullptr ? eqType->conditionScript() : std::optional<std::string>());
 		if (condition_script.has_value())
 		{
-			::OOJSScript *condScript = [UNIVERSE cxx_getConditionScript:*condition_script];
+			::OOScript *condScript = [UNIVERSE cxx_getConditionScript:*condition_script];
 			if (condScript != nil) // should always be non-nil, but just in case
 			{
 				ooscript::Context JScontext = OOJSAcquireContext();
@@ -15402,7 +15402,7 @@ void ShipEntity::dumpSelfState()
 #endif
 
 
-::OOJSScript *ShipEntity::getScript()
+::OOScript *ShipEntity::getScript()
 {
 	return script;
 }

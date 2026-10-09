@@ -124,7 +124,7 @@ namespace {
 ooscript::Value			sCallbackThis;
 } // namespace
 namespace {
-OOJSScript		*sCallbackScript = nil;
+::OOScript		*sCallbackScript = nil;
 } // namespace
 
 namespace {
@@ -223,7 +223,7 @@ void MissionRunCallback()
 	*/
 	ooscript::Value				cbFunction = ooscript::undefinedValue();
 	ooscript::Object cbThis = NULL;
-	OOJSScript			*cbScript = nil;
+	::OOScript			*cbScript = nil;
 	
 	OOJSAddGCValueRoot(context, &cbFunction, "Mission callback function");
 	OOJSAddGCObjectRoot(context, &cbThis, "Mission callback this");
@@ -247,7 +247,7 @@ void MissionRunCallback()
 	// Call the callback.
 	@try
 	{
-		[OOJSScript pushScript:cbScript];
+		OOJSScript::pushScript(cbScript);
 		[engine callJSFunction:cbFunction
 					 forObject:cbThis
 						  argc:2
@@ -259,7 +259,7 @@ void MissionRunCallback()
 		// Squash any exception, allow cleanup to happen and so forth.
 		OO_LOG(cxx_kOOLogException, "Ignoring exception {}:{} during handling of mission screen completion callback.", [exception name], [exception reason]);
 	}
-	[OOJSScript popScript:cbScript];
+	OOJSScript::popScript(cbScript);
 	
 	// Manage that memory.
 	[cbScript release];
@@ -548,7 +548,7 @@ static bool MissionSetInstructionsInternal(ooscript::Context context, ooscript::
 	}
 	else
 	{
-		missionKey = [[OOJSScript currentlyRunningScript] cxx_name];
+		missionKey = [OOJSScript::currentlyRunningScript() cxx_name];
 	}
 	
 	if (text.has_value())
@@ -680,7 +680,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 		 * multi-world-script mission screens. (Though, since no-one has
 		 * complained yet, perhaps I'm the only one who uses them?) */
 
-		sCallbackScript = [[[OOJSScript currentlyRunningScript] weakRefUnderlyingObject] retain];
+		sCallbackScript = [[OOJSScript::currentlyRunningScript() weakRefUnderlyingObject] retain];
 		if (oojsArgs.count() > 2)
 		{
 			sCallbackThis = OOJS_ARGV[2];

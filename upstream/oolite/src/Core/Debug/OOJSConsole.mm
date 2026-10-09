@@ -719,7 +719,7 @@ static bool ConsoleScriptStack(ooscript::Context context, ooscript::CallArgs &oo
 {
 	OOJS_NATIVE_ENTER(context)
 	
-	OOJS_RETURN_PLIST(oo::PListFromObjects([OOJSScript scriptStack]));
+	OOJS_RETURN_PLIST(oo::PListFromObjects(OOJSScript::scriptStack()));
 	
 	OOJS_NATIVE_EXIT
 }

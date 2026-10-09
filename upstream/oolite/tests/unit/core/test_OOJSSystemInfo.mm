@@ -85,10 +85,9 @@
 - (id) cxx_commodityScriptNamed:(const std::optional<std::string> &)script;
 @end
 
-// The running script: its manifest identifier.
-@interface OOJSScript: OOObject
-+ (OOJSScript *) currentlyRunningScript;
-- (oo::PList) cxx_propertyNamed:(const std::string &)name;
+// The running script's object (the OOScript root's facade since bead oo-9ht.137).
+@interface OOScript: OOObject
+- (id) weakRefUnderlyingObject;
 @end
 
 @interface ResourceManager: OOObject
@@ -198,20 +197,43 @@ std::string Key(OOGalaxyID g, OOSystemID s, const std::string &key)
 
 
 namespace {
-OOJSScript *sScript = nil;
+OOScript *sScript = nil;
 oo::PList sScriptManifest;
 }
 
-@implementation OOJSScript
+@implementation OOScript
+- (id) weakRefUnderlyingObject  { return self; }	// OOObject (OOWeakReference)'s answer
+@end
 
-+ (OOJSScript *) currentlyRunningScript  { return sScript; }
 
-- (oo::PList) cxx_propertyNamed:(const std::string &)name
+// OOJSScript's statics and member (OOJSScript.h), which the binding calls since bead oo-9ht.137
+// deleted the Objective-C OOJSScript: the running script's object is the OOScript root's facade
+// (stood in for above), and its manifest is asked of its C++ part (oo::ToCxx, stood in for below).
+namespace cxx { class OOScript; }
+
+class OOJSScript
+{
+public:
+	static ::OOScript *currentlyRunningScript();
+	oo::PList propertyNamed(const std::string &name);
+};
+
+::OOScript *OOJSScript::currentlyRunningScript()  { return sScript; }
+
+// The running script's manifest identifier.
+oo::PList OOJSScript::propertyNamed(const std::string &name)
 {
 	return name == "oolite_manifest_identifier" ? sScriptManifest : oo::PList();
 }
 
-@end
+namespace {
+OOJSScript sCxxScript;	// the running script's C++ part
+}
+
+// oo::ToCxx (OOScript+ObjCBridge.mm): the script's C++ part, null for nil.
+namespace oo {
+cxx::OOScript *ToCxx(::OOScript *script)  { return script != nil ? reinterpret_cast<cxx::OOScript *>(&sCxxScript) : nullptr; }
+}
 
 
 @implementation ResourceManager
@@ -583,7 +605,7 @@ void SetUpContext()
 	sUniverse->_systemManager->setProperty("name", "0 7", OO_LAYER_CORE, oo::PList(std::string("Lave")), std::nullopt);
 	sUniverse->_systemManager->setProperty("population", "0 7", OO_LAYER_CORE, oo::PList(std::string("2.5")), std::nullopt);
 	sUniverse->_systemManager->setProperty("techlevel", "0 7", OO_LAYER_CORE, oo::PList(8.0), std::nullopt);
-	sScript = [[OOJSScript alloc] init];
+	sScript = [[OOScript alloc] init];
 	sScriptManifest = oo::PList(std::string("org.test.script"));
 	Define("lave", GetJSSystemInfoForSystem(sContext, 0, 7));
 }

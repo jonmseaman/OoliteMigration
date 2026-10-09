@@ -7,7 +7,7 @@
 	for the binding, the engine's exception translator (OOJSEngineNativeWrappers.mm) and the
 	constant strings (OOConstToJSString.cpp). It stands in for the player (PlayerEntity records
 	what the binding tells it), the universe and its GUI, a demo ship, the running script and the
-	script engine (OOJSScript and OOJavaScriptEngine, which call the mission screen's callback),
+	script engine (OOScript and OOJavaScriptEngine, which call the mission screen's callback),
 	the music controller (amendment oo-jy98 item 3: a converted class the binding only calls, an
 	Objective-C stand-in before the conversion and C++ member stand-ins after it, which is the one
 	part of this file the conversion ported), the string
@@ -130,14 +130,11 @@ typedef NSInteger OOGUIRow;	// as GuiDisplayGen.h declares it
 @end
 
 
-@interface OOJSScript: OOObject
+@interface OOScript: OOObject
 {
 @public
 	std::optional<std::string> _name;
 }
-+ (OOJSScript *) currentlyRunningScript;
-+ (void) pushScript:(OOJSScript *)script;
-+ (void) popScript:(OOJSScript *)script;
 - (std::optional<std::string>) cxx_name;
 - (id) weakRefUnderlyingObject;
 @end
@@ -179,7 +176,7 @@ namespace {
 std::vector<std::string> sMusic;			// what the music controller was told
 std::vector<std::string> sScriptStack;		// pushScript:/popScript:, as "+name"/"-name"
 std::vector<std::string> sLog;
-OOJSScript *sRunningScript = nil;
+OOScript *sRunningScript = nil;
 ooscript::Context sContext;
 
 
@@ -386,15 +383,27 @@ void GuiDisplayGen::setArray(const std::vector<std::string> &, OOGUIRow)  { std:
 @end
 
 
-@implementation OOJSScript
+@implementation OOScript
 
-+ (OOJSScript *) currentlyRunningScript  { return sRunningScript; }
-+ (void) pushScript:(OOJSScript *)script  { sScriptStack.push_back("+" + (script != nil ? script->_name.value_or("?") : std::string("nil"))); }
-+ (void) popScript:(OOJSScript *)script  { sScriptStack.push_back("-" + (script != nil ? script->_name.value_or("?") : std::string("nil"))); }
 - (std::optional<std::string>) cxx_name  { return _name; }
 - (id) weakRefUnderlyingObject  { return self; }
 
 @end
+
+
+// OOJSScript's statics (OOJSScript.h), which the code under test calls since bead oo-9ht.137 deleted
+// the Objective-C OOJSScript: a script's object is the OOScript root's facade (stood in for above).
+class OOJSScript
+{
+public:
+	static ::OOScript *currentlyRunningScript();
+	static void pushScript(::OOScript *script);
+	static void popScript(::OOScript *script);
+};
+
+::OOScript *OOJSScript::currentlyRunningScript()  { return sRunningScript; }
+void OOJSScript::pushScript(::OOScript *script)  { sScriptStack.push_back("+" + (script != nil ? script->_name.value_or("?") : std::string("nil"))); }
+void OOJSScript::popScript(::OOScript *script)  { sScriptStack.push_back("-" + (script != nil ? script->_name.value_or("?") : std::string("nil"))); }
 
 
 namespace {
@@ -733,7 +742,7 @@ void SetUpContext()
 	sUniverse->_demoShip = [[ShipEntity alloc] init];
 	gSharedUniverse = sUniverse;
 	sEngine = [[OOJavaScriptEngine alloc] init];
-	sRunningScript = [[OOJSScript alloc] init];
+	sRunningScript = [[OOScript alloc] init];
 	sRunningScript->_name = "oolite-test-mission";
 	sScriptObject = ooscript::newObject(sContext, nullptr, nullptr, nullptr);
 	ooscript::addNamedObjectRoot(sContext, &sScriptObject, "script");
@@ -867,7 +876,7 @@ OO_TEST(messageAndInstructions)
 	OO_CHECK_EVAL("mission.setInstructionsKey(undefined)", "threw: bad arguments: Mission.setInstructionsKey(1) - / string or null");
 
 	// No running script and no key: the player is told with no key (and logs it).
-	OOJSScript *running = sRunningScript;
+	OOScript *running = sRunningScript;
 	sRunningScript = nil;
 	OO_CHECK_EVAL("mission.setInstructions(null)", "undefined");
 	OO_CHECK_CALLS(sPlayer->_calls, "instructions('', nullopt)");

@@ -678,7 +678,7 @@ MA 02110-1301, USA.
 - (void) prunePreloadingPlanetMaterials;
 - (void) loadConditionScripts;
 - (void) addConditionScripts:(const std::vector<std::string> &)scripts;
-- (OOJSScript *) cxx_getConditionScript:(const std::string &)scriptname;
+- (OOScript *) cxx_getConditionScript:(const std::string &)scriptname;
 
 @end
 

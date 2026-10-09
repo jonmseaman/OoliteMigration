@@ -37,7 +37,7 @@
 #include "oofnd/PList.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 
-@class OOMesh, OOScript, OOJSScript;
+@class OOMesh, OOScript;
 class OOColor;
 class OOFlasherEntity;	// C++ only since bead oo-9ht.107
 
@@ -138,7 +138,7 @@ public:
 	GLfloat *scannerDisplayColorForShip(bool flash, OOColor *scannerDisplayColor1, OOColor *scannerDisplayColor2);
 
 	void setScript(const std::optional<std::string> &script_name);
-	::OOJSScript *script();
+	::OOScript *script();
 	oo::PList scriptInfo();
 	void doScriptEvent(ooscript::PropertyId message);
 	void remove();
@@ -196,7 +196,7 @@ public:
 	Vector _v_up = {};
 	Vector _v_right = {};
 
-	::OOJSScript			*_script = {};	// retained; was script, named like its getter
+	::OOScript *_script = {};	// retained; was script, named like its getter
 	oo::PList				_scriptInfo;	// was scriptInfo, named like its getter
 
 	std::optional<std::string>	_effectKey;

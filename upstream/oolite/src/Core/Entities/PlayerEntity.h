@@ -55,7 +55,7 @@ class GuiDisplayGen;
 class OOSound;			// C++ since bead oo-9ht.68 deleted its facade
 class OOSoundSource;	// C++ since bead oo-9ht.88 deleted its facade
 @class OOJoystickManager, OOTexture;
-@class OOJSScript;
+@class OOScript;
 #import "OOJSGuiScreenKeyDefinition.h"	// C++ since bead oo-9ht.62: extraGuiScreenKeys keeps it (oo::Ref)
 class StickProfileScreen;	// C++ (PlayerEntityStickProfile.h, bead oo-movn)
 
@@ -1460,7 +1460,7 @@ public:
 	
 	std::vector<std::string>	commLog;	// trimmed by -cxx_commLog
 
-	std::vector<std::pair<std::string, oo::ObjCRef<::OOJSScript *>>>	eqScripts;	// (key, script), in insertion order
+	std::vector<std::pair<std::string, oo::ObjCRef<::OOScript *>>>	eqScripts;	// (key, script), in insertion order
 	
 	oo::PList				_missionOverlayDescriptor;	// null = none (was nil)
 	oo::PList				_missionBackgroundDescriptor;

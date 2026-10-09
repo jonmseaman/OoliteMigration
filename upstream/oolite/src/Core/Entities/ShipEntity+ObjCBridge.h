@@ -1221,7 +1221,7 @@ unsigned argc = sizeof argv / sizeof *argv; \
 #ifndef NDEBUG
 - (void) dumpSelfState;
 #endif
-- (OOJSScript *) script;
+- (OOScript *) script;
 - (oo::PList) scriptInfo;	// flipped with its family (bead oo-3rb.284): empty dict when there is none
 - (void) overrideScriptInfo:(const oo::PList &)override;	// Add items from override (a dictionary, or null for none) to scriptInfo, replacing in case of duplicates. Used for subentities.
 - (Entity *)entityForShaderProperties;
