@@ -7,7 +7,10 @@
 	entity as PLAYER. The ship that fires is an entity of the test's own that answers the selectors
 	the class sends a ship (its root ship, speed and weapon range); the class asserts that it is a
 	ship, so the test sets that flag. The expectations were written against the Objective-C API and
-	run on the unconverted class first: where the shot starts and how it is turned for each facing,
+	run on the unconverted class first (bead oo-9ht.78 then deleted the Objective-C facade, ADR-0049
+	and the standing approval oo-9n5p9: the cases ask the C++ class what they asked the facade, with
+	every expectation kept except the facade's own class check, [shot class] == [OOLaserShotEntity
+	class]; the shots are made as the ship makes them, laserFromShip() then oo::NewEntityFacade): where the shot starts and how it is turned for each facing,
 	its velocity, owner, range and status; its colour (default red, a set colour brightened, the
 	alpha constant); the lifetime in its description; following the player's ship; removal when its
 	lifetime has run out. The colour is private; the test reads it through the access struct below,
@@ -80,7 +83,7 @@ static Entity *sRemoved = nil;
 
 struct OOLaserShotEntityTestAccess
 {
-	static const GLfloat *Color(OOLaserShotEntity *e)	{ return oo::ToCxx(e)->_color; }
+	static const GLfloat *Color(OOLaserShotEntity *e)	{ return e->_color; }
 };
 
 // --------------------------------------------------------------------------------------------------
@@ -113,6 +116,16 @@ TestShip *MakeShip()
 }
 
 
+// A shot, made as the ship makes one: its Objective-C object is autoreleased in the test's pool and
+// holds it.
+oo::Ref<OOLaserShotEntity> Shot(Entity *ship, OOWeaponFacing direction, Vector offset)
+{
+	oo::Ref<OOLaserShotEntity> shot = OOLaserShotEntity::laserFromShip((ShipEntity *)ship, direction, offset);
+	oo::NewEntityFacade(shot);
+	return shot;
+}
+
+
 bool Near(double a, double b)  { return fabs(a - b) < 1e-4; }
 
 
@@ -131,26 +144,26 @@ OO_TEST(laserFromShip)
 	{
 		SetUp();
 		TestShip *ship = MakeShip();
-		OOLaserShotEntity *shot = [OOLaserShotEntity laserFromShip:(ShipEntity *)ship direction:WEAPON_FACING_FORWARD offset:make_vector(0, 0, 10)];
-		OO_CHECK(shot != nil && [shot class] == [OOLaserShotEntity class]);
-		OO_CHECK(HPvector_equal([shot position], make_HPvector(100, 0, 10)));
-		OO_CHECK(vector_equal([shot velocity], make_vector(0, 0, 50)));
-		OO_CHECK(quaternion_equal([shot orientation], kIdentityQuaternion));
-		OO_CHECK([shot owner] == ship);
-		OO_CHECK([shot collisionRadius] == 1000.0f);
-		OO_CHECK([shot status] == STATUS_EFFECT && [shot isEffect] && ![shot canCollide]);
-		OO_CHECK(ColorIs(shot, 1.0f / 3.0f, 0.0f, 0.0f, 0.09f));
-		OO_CHECK(oo::DescriptionOf(shot).starts_with("<OOLaserShotEntity 0x"));
-		OO_CHECK(oo::DescriptionOf(shot).find("{ttl: 0.090s - position: (100, 0, 10)") != std::string::npos);
+		oo::Ref<OOLaserShotEntity> shot = Shot(ship, WEAPON_FACING_FORWARD, make_vector(0, 0, 10));
+		OO_CHECK(shot != nullptr);
+		OO_CHECK(HPvector_equal(shot->getPosition(), make_HPvector(100, 0, 10)));
+		OO_CHECK(vector_equal(shot->getVelocity(), make_vector(0, 0, 50)));
+		OO_CHECK(quaternion_equal(shot->getOrientation(), kIdentityQuaternion));
+		OO_CHECK(shot->owner() == ship);
+		OO_CHECK(shot->collisionRadius() == 1000.0f);
+		OO_CHECK(shot->status() == STATUS_EFFECT && shot->isEffect() && !shot->canCollide());
+		OO_CHECK(ColorIs(shot.get(), 1.0f / 3.0f, 0.0f, 0.0f, 0.09f));
+		OO_CHECK(oo::DescriptionOf(oo::ToObjC(shot.get())).starts_with("<OOLaserShotEntity 0x"));
+		OO_CHECK(oo::DescriptionOf(oo::ToObjC(shot.get())).find("{ttl: 0.090s - position: (100, 0, 10)") != std::string::npos);
 
 		// The other facings turn the shot about the ship's up axis.
-		OOLaserShotEntity *aft = [OOLaserShotEntity laserFromShip:(ShipEntity *)ship direction:WEAPON_FACING_AFT offset:kZeroVector];
-		Vector forward = vector_forward_from_quaternion([aft orientation]);
+		oo::Ref<OOLaserShotEntity> aft = Shot(ship, WEAPON_FACING_AFT, kZeroVector);
+		Vector forward = vector_forward_from_quaternion(aft->getOrientation());
 		OO_CHECK(Near(forward.x, 0) && Near(forward.z, -1));
-		OOLaserShotEntity *port = [OOLaserShotEntity laserFromShip:(ShipEntity *)ship direction:WEAPON_FACING_PORT offset:kZeroVector];
-		OOLaserShotEntity *starboard = [OOLaserShotEntity laserFromShip:(ShipEntity *)ship direction:WEAPON_FACING_STARBOARD offset:kZeroVector];
-		Vector portForward = vector_forward_from_quaternion([port orientation]);
-		Vector starboardForward = vector_forward_from_quaternion([starboard orientation]);
+		oo::Ref<OOLaserShotEntity> port = Shot(ship, WEAPON_FACING_PORT, kZeroVector);
+		oo::Ref<OOLaserShotEntity> starboard = Shot(ship, WEAPON_FACING_STARBOARD, kZeroVector);
+		Vector portForward = vector_forward_from_quaternion(port->getOrientation());
+		Vector starboardForward = vector_forward_from_quaternion(starboard->getOrientation());
 		OO_CHECK(Near(fabs(portForward.x), 1) && Near(portForward.x, -starboardForward.x) && Near(portForward.z, 0));
 	}
 }
@@ -161,18 +174,18 @@ OO_TEST(color)
 	@autoreleasepool
 	{
 		SetUp();
-		OOLaserShotEntity *shot = [OOLaserShotEntity laserFromShip:(ShipEntity *)MakeShip() direction:WEAPON_FACING_FORWARD offset:kZeroVector];
+		oo::Ref<OOLaserShotEntity> shot = Shot(MakeShip(), WEAPON_FACING_FORWARD, kZeroVector);
 		// Brightened five times, then a third; the alpha stays.
-		[shot setColor:[OOColor colorWithRed:0.3f green:0.6f blue:0.9f alpha:0.1f]];
-		OO_CHECK(ColorIs(shot, 0.5f, 1.0f, 1.5f, 0.09f));
-		[shot setColor:nil];
-		OO_CHECK(ColorIs(shot, 0.0f, 0.0f, 0.0f, 0.09f));
+		shot->setColor(oo::ToCxx([OOColor colorWithRed:0.3f green:0.6f blue:0.9f alpha:0.1f]));
+		OO_CHECK(ColorIs(shot.get(), 0.5f, 1.0f, 1.5f, 0.09f));
+		shot->setColor(nullptr);
+		OO_CHECK(ColorIs(shot.get(), 0.0f, 0.0f, 0.0f, 0.09f));
 
-		[shot setRange:250.0f];
-		OO_CHECK([shot collisionRadius] == 250.0f);
+		shot->setRange(250.0f);
+		OO_CHECK(shot->collisionRadius() == 250.0f);
 
 		// Nothing is drawn in the opaque pass.
-		[shot drawImmediate:false translucent:false];
+		shot->drawImmediate(false, false);
 	}
 }
 
@@ -183,23 +196,23 @@ OO_TEST(update)
 	{
 		SetUp();
 		TestShip *ship = MakeShip();
-		OOLaserShotEntity *shot = [OOLaserShotEntity laserFromShip:(ShipEntity *)ship direction:WEAPON_FACING_FORWARD offset:make_vector(0, 0, 10)];
+		oo::Ref<OOLaserShotEntity> shot = Shot(ship, WEAPON_FACING_FORWARD, make_vector(0, 0, 10));
 
 		// An NPC's shot moves by its velocity.
-		[shot update:0.05];
-		OO_CHECK(HPvector_equal([shot position], make_HPvector(100, 0, 12.5)));
+		shot->update(0.05);
+		OO_CHECK(HPvector_equal(shot->getPosition(), make_HPvector(100, 0, 12.5)));
 		OO_CHECK(sRemoved == nil);
-		[shot update:0.05];
-		OO_CHECK(sRemoved == shot);
+		shot->update(0.05);
+		OO_CHECK(sRemoved == oo::ToObjC(shot.get()));
 
 		// The player's shot is put back where its ship's laser is.
 		sRemoved = nil;
 		ship->_cxxEntity->isPlayer = YES;
-		OOLaserShotEntity *playerShot = [OOLaserShotEntity laserFromShip:(ShipEntity *)ship direction:WEAPON_FACING_FORWARD offset:make_vector(0, 0, 10)];
+		oo::Ref<OOLaserShotEntity> playerShot = Shot(ship, WEAPON_FACING_FORWARD, make_vector(0, 0, 10));
 		[ship setPosition:make_HPvector(200, 0, 0)];
-		[playerShot update:0.05];
-		OO_CHECK(HPvector_equal([playerShot position], make_HPvector(200, 0, 10)));
-		OO_CHECK(quaternion_equal([playerShot orientation], kIdentityQuaternion));
+		playerShot->update(0.05);
+		OO_CHECK(HPvector_equal(playerShot->getPosition(), make_HPvector(200, 0, 10)));
+		OO_CHECK(quaternion_equal(playerShot->getOrientation(), kIdentityQuaternion));
 		OO_CHECK(sRemoved == nil);
 	}
 }

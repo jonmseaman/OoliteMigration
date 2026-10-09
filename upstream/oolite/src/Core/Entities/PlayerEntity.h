@@ -37,6 +37,7 @@ MA 02110-1301, USA.
 #include "ooscript/JSEngine.hpp"
 #import "WormholeEntity.h"
 #import "ShipEntity.h"
+#import "OOLaserShotEntity.h"
 #import "GuiDisplayGen.h"
 #import "OOTypes.h"
 #import "OOJSPropID.h"
@@ -50,7 +51,7 @@ MA 02110-1301, USA.
 
 @class PlayerEntity, GuiDisplayGen, MyOpenGLView, HeadUpDisplay, ShipEntity, ProxyPlayerEntity;
 @class OOSound, OOSoundSource;
-@class OOJoystickManager, OOTexture, OOLaserShotEntity;
+@class OOJoystickManager, OOTexture;
 @class OOJSGuiScreenKeyDefinition, OOJSScript;
 class StickProfileScreen;	// C++ (PlayerEntityStickProfile.h, bead oo-movn)
 
@@ -890,7 +891,7 @@ public:
 	bool removeMissionDestinationMarker(const oo::PList &marker);
 	oo::PList getMissionDestinations();
 	oo::PList::Dict *shipyardRecord();
-	void setLastShot(const std::vector<oo::ObjCRef<::OOLaserShotEntity *>> &shot);
+	void setLastShot(const std::vector<oo::Ref<OOLaserShotEntity>> &shot);
 	void clearExtraMissionKeys();
 	void setExtraMissionKeys(const oo::PList &keys);
 	void clearExtraGuiScreenKeys(OOGUIScreenID gui, const std::string &key);
@@ -1384,7 +1385,7 @@ public:
 	::WormholeEntity			*wormhole = {};
 
 	::ShipEntity				*demoShip = {}; // Used while docked to maintain demo ship rotation.
-	std::vector<oo::ObjCRef<::OOLaserShotEntity *>>	lastShot; // used to correctly position laser shots on first frame of firing
+	std::vector<oo::Ref<OOLaserShotEntity>>	lastShot; // used to correctly position laser shots on first frame of firing
 	
 	oo::Ref<::StickProfileScreen>	stickProfileScreen;
 

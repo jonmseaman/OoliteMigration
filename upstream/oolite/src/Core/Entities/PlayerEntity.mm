@@ -3322,9 +3322,9 @@ void PlayerEntity::doBookkeeping(double delta_t)
 	// mispositioned laser beams particularly noticeable on side view.
 	if (!lastShot.empty())
 	{
-		for (const oo::ObjCRef<::OOLaserShotEntity *> &lse : lastShot)
+		for (const oo::Ref<OOLaserShotEntity> &lse : lastShot)
 		{
-			[lse.get() update:0.0];
+			lse->update(0.0);
 		}
 		lastShot.clear();
 	}
@@ -13802,7 +13802,7 @@ oo::PList::Dict *PlayerEntity::shipyardRecord()
 }
 
 
-void PlayerEntity::setLastShot(const std::vector<oo::ObjCRef<::OOLaserShotEntity *>> &shot)
+void PlayerEntity::setLastShot(const std::vector<oo::Ref<OOLaserShotEntity>> &shot)
 {
 	lastShot = shot;
 }
