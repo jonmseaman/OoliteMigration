@@ -86,7 +86,7 @@ Entity *MakeDust(DustEntity **outDust)
 }
 
 
-bool ColorIs(cxx::OOColor *color, float r, float g, float b, float a)
+bool ColorIs(OOColor *color, float r, float g, float b, float a)
 {
 	float cr, cg, cb, ca;
 	color->getRed(&cr, &cg, &cb, &ca);
@@ -109,9 +109,9 @@ OO_TEST(init)
 		OO_CHECK(ColorIs(dust->dustColor(), 0.5f, 1.0f, 1.0f, 1.0f));
 		OO_CHECK(oo::EntityClassName(dust) == "DustEntity");
 
-		::OOColor *color = [::OOColor colorWithRed:0.25f green:0.5f blue:0.75f alpha:1.0f];
-		dust->setDustColor(oo::ToCxx(color));
-		OO_CHECK(dust->dustColor() == oo::ToCxx(color));
+		oo::Ref<OOColor>	color = OOColor::colorWithRed(0.25f, 0.5f, 0.75f, 1.0f);
+		dust->setDustColor(color.get());
+		OO_CHECK(dust->dustColor() == color);
 
 		// Nothing is drawn in the opaque pass.
 		dust->drawImmediate(false, false);

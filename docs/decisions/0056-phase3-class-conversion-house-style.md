@@ -5106,3 +5106,66 @@ their `+ObjCBridge.mm`, which their facade-deletion beads (oo-ql9rn, oo-9ht.177,
 **Consequences.** The Audio module has no Objective-C class; `PlayerEntitySound.mm`, `OOTrumble.mm`,
 `OOSoundSourcePool.mm`, `OOALMusic.mm` and the two sound bindings call it directly. The
 `OOWeakRefObject` deletion (oo-9ht.22) no longer waits for the two definitions.
+
+## Amendment (bead oo-9ht.1): the colour, the GUI and the HUD facades in one change
+
+- Date: 2026-10-09. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch D
+  (one branch, as batches B and C): beads oo-9ht.1 (OOColor), oo-9ht.143 (GuiDisplayGen), oo-mwd58
+  (HeadUpDisplay). Exemplar: `src/Core/OOColor.h/.mm`, `GuiDisplayGen.h/.mm`, `HeadUpDisplay.h/.mm`,
+  `OOHUDBeaconCodeIcon+ObjCBridge.h/.mm`, `Materials/OOShaderUniform.mm`,
+  `tests/unit/core/test_OOOXZManager.mm`, `test_OOJSPlayerShip.mm`, `test_OOJSGlobal.mm`.
+
+**Context.** The three facades were the widest left: about 500 Objective-C colour sites in 70 files,
+the GUI's 92 and the HUD's dial dispatch. The converted callers sent the facades' selectors; the
+deletion turned every such send into a member call with a codemod driven by the compiler's
+`-Wreceiver-expr` diagnostics and a selector map read from the facades' own forwarders, then fixed
+the `oo::Ref`/pointer fallout the same way.
+
+**Decision (recommended defaults).**
+
+1. **A colour is its own `PList::Object` payload.** `OOColor` derives from `oo::PListForeign` (as
+   `OONativeVector` does, amendment oo-9ht.5) and answers `className()` "OOColor" and
+   `description()` "<OOColor 0x...>{components}", what the facade's node printed. `OOColor.h` adds
+   `OOColorObjectNode()` and `OOColorInObjectNode()` for the planet info, the GUI settings and the
+   equipment rows that carried colours in Object nodes; `colorWithDescription()` of such a node
+   answers the colour itself (the decision bead oo-9ht.1's item 3 asked for). An Object node's
+   colour reaches JavaScript as `undefined`, as the facade did.
+2. **Borrowed or owned, as the facade made it.** A facade selector that answered a colour its
+   object keeps (`-laserColor`, `-displayColor`, `-fogUniform`, `-airColor`, ...) answers the C++
+   `OOColor *`, borrowed; one that answered a new colour (`-weaponColor`,
+   `-cxx_dialCustomColor:`) answers `oo::Ref<OOColor>`. A local that held an autoreleased colour is
+   `oo::Ref<OOColor>`; a temporary passed on is `.get()` for the call only. Retained `OOColor *`
+   members (the ship's seven colours) and the universe's GUIs and the player's HUD are `oo::Ref`.
+3. **Nil stays harmless where it was.** A member call on a colour, GUI or HUD that may be null where
+   the message to nil answered zero or did nothing is null-guarded (row colours, a sky's colour,
+   the exhaust colour, the material specifier's white/black tests, the texture generators'
+   colours, the universe's HUD draw, the big-GUI checks, the manifest row macro). The player's own
+   HUD in its in-flight members is not guarded: it is set when the ship is set up and only replaced.
+4. **The universe keeps the GUIs `setUpSettings()` replaces until it replaces them again**
+   (`replacedGuis`): they were autoreleased, and a caller of the reinitialisation may still hold one
+   in the same pass.
+5. **The HUD's dials by name are a table of member pointers** (`kDials` in `HeadUpDisplay.mm`):
+   exactly the 36 selectors the facade's `OODials` category answered, so a whitelisted name the
+   facade did not answer is still "not implemented" and is ignored with the same log. The widget
+   keeps the member pointer where it kept the `SEL`.
+6. **What else was in a deleted bridge moves, verbatim.** The one-line sends of the HUD's and GUI's
+   free functions (amendment oo-9ht.139) move into `HeadUpDisplay.mm`/`GuiDisplayGen.mm` with their
+   declarations in the headers; the beacon code icon's facade and the `OOHUDBeaconIcon` protocol the
+   entities hold it by move to `OOHUDBeaconCodeIcon+ObjCBridge.h/.mm`, still imported last by
+   `HeadUpDisplay.h`, until the entities hold their beacon drawables as C++ objects.
+7. **A colour shader binding is its own uniform type.** `kOOShaderUniformTypeColor` (before
+   `kOOShaderUniformTypeObject`, so `OOJSCall`'s method types after it keep their values) is a method
+   answering `OOColor *`; `kOOShaderUniformTypeObject` stays `id` and sets nothing, as an object that
+   was not a colour did. Both describe as "object-binding". `OOJSCall` answers a colour method's
+   result as its Object node.
+8. **Tests that link the whole game (`['*']`) and stood in for the GUI's facade** (an Objective-C
+   class answering its selectors, test_OOOXZManager's recording screen and test_OOJSPlayerShip's
+   message GUI) cannot define the GUI's members again: the members those stand-ins answered are
+   `virtual` in `GuiDisplayGen` (seventeen; the game makes no subclass), and the stand-ins are C++
+   subclasses overriding them with the same answers. A test that links its own sources defines the
+   members the code it links calls, and never-run definitions of the other virtual members (the
+   vtable needs them). Every expectation is kept (standing approval oo-9n5p9).
+
+**Consequences.** No Objective-C `OOColor`, `GuiDisplayGen` or `HeadUpDisplay` is left;
+`OODebugGLDrawing` takes the C++ colour and waits only for the OOMaterial facade (oo-9ht.8) to become
+the `.cpp` rename of oo-hrcs. The beacon code icon's facade is the HUD's last Objective-C.

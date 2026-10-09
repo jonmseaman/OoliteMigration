@@ -49,7 +49,7 @@ oo::Ref<OOPlasmaShotEntity> OOPlasmaShotEntity::shotWithPosition(HPVector inPosi
 																  Vector inVelocity,
 																  float inEnergy,
 																  OOTimeDelta duration,
-																  cxx::OOColor *color)
+																  OOColor *color)
 {
 	const oo::Ref<OOPlasmaShotEntity> shot = oo::makeRef<OOPlasmaShotEntity>();
 	shot->initWithPosition(inPosition, inVelocity, inEnergy, duration, color);
@@ -61,7 +61,7 @@ void OOPlasmaShotEntity::initWithPosition(HPVector inPosition,
 										  Vector inVelocity,
 										  float inEnergy,
 										  OOTimeDelta duration,
-										  cxx::OOColor *color)
+										  OOColor *color)
 {
 	OOLightParticleEntity::initWithDiameter(kPlasmaShotSize);
 	// [super initWithDiameter:] could not fail.

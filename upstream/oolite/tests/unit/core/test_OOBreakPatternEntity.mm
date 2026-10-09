@@ -146,7 +146,7 @@ OO_TEST(flagsAndColors)
 		OO_CHECK(ColorIs(ring, 0, 1.0f, 0.0f, 0.0f, 0.5f) && ColorIs(ring, 1, 0.0f, 0.0f, 1.0f, 0.25f));
 		OO_CHECK(ColorIs(ring, 7, 0.0f, 0.0f, 1.0f, 0.25f));
 
-		ring->setInnerColor(oo::ToCxx([OOColor colorWithRed:0.0f green:1.0f blue:0.0f alpha:1.0f]), oo::ToCxx([OOColor colorWithRed:1.0f green:1.0f blue:1.0f alpha:0.5f]));
+		ring->setInnerColor(OOColor::colorWithRed(0.0f, 1.0f, 0.0f, 1.0f).get(), OOColor::colorWithRed(1.0f, 1.0f, 1.0f, 0.5f).get());
 		OO_CHECK(ColorIs(ring, 0, 0.0f, 1.0f, 0.0f, 1.0f) && ColorIs(ring, 1, 1.0f, 1.0f, 1.0f, 0.5f));
 		OO_CHECK(ColorIs(ring, 6, 0.0f, 1.0f, 0.0f, 1.0f) && ColorIs(ring, 7, 1.0f, 1.0f, 1.0f, 0.5f));
 

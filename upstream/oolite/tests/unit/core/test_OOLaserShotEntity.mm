@@ -176,7 +176,7 @@ OO_TEST(color)
 		SetUp();
 		oo::Ref<OOLaserShotEntity> shot = Shot(MakeShip(), WEAPON_FACING_FORWARD, kZeroVector);
 		// Brightened five times, then a third; the alpha stays.
-		shot->setColor(oo::ToCxx([OOColor colorWithRed:0.3f green:0.6f blue:0.9f alpha:0.1f]));
+		shot->setColor(OOColor::colorWithRed(0.3f, 0.6f, 0.9f, 0.1f).get());
 		OO_CHECK(ColorIs(shot.get(), 0.5f, 1.0f, 1.5f, 0.09f));
 		shot->setColor(nullptr);
 		OO_CHECK(ColorIs(shot.get(), 0.0f, 0.0f, 0.0f, 0.09f));

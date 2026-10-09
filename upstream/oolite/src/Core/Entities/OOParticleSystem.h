@@ -34,7 +34,8 @@ MA 02110-1301, USA.
 #import "OOTypes.h"
 #import "OOMaths.h"
 
-@class OOTexture, OOColor;
+@class OOTexture;
+class OOColor;
 
 enum
 {

@@ -605,8 +605,8 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 - (GLfloat) universalTime								{ return _cxxEntity->universalTime(); }
 - (GLfloat) spawnTime									{ return _cxxEntity->getSpawnTime(); }
 - (GLfloat) timeElapsedSinceSpawn						{ return _cxxEntity->timeElapsedSinceSpawn(); }
-- (void) setAtmosphereFogging:(OOColor *)fogging		{ _cxxEntity->setAtmosphereFogging(oo::ToCxx(fogging)); }
-- (OOColor *) fogUniform								{ return oo::ToObjC(_cxxEntity->fogUniform()); }
+- (void) setAtmosphereFogging:(OOColor *)fogging		{ _cxxEntity->setAtmosphereFogging(fogging); }
+- (OOColor *) fogUniform								{ return _cxxEntity->fogUniform().get(); }	// borrowed: the entity holds it
 
 
 #ifndef NDEBUG

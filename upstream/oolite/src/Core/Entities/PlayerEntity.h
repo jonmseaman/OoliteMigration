@@ -49,7 +49,9 @@ MA 02110-1301, USA.
 #include "oofnd/Ref.hpp"
 #include "oofnd/objc/OOAssert.h"
 
-@class PlayerEntity, GuiDisplayGen, MyOpenGLView, HeadUpDisplay, ShipEntity, ProxyPlayerEntity;
+@class PlayerEntity, MyOpenGLView, ShipEntity, ProxyPlayerEntity;
+class GuiDisplayGen;
+#import "HeadUpDisplay.h"	// C++ since bead oo-mwd58: the player keeps its HUD (oo::Ref)
 class OOSound;			// C++ since bead oo-9ht.68 deleted its facade
 class OOSoundSource;	// C++ since bead oo-9ht.88 deleted its facade
 @class OOJoystickManager, OOTexture;
@@ -361,7 +363,7 @@ inline constexpr std::string_view PARCEL_UNKNOWN_KEY				= "parcels_unknown";
 inline constexpr std::string_view PLAYER_DOCKING_AI_NAME			= "oolite-player-AI.plist";
 
 #define	MANIFEST_SCREEN_ROW_BACK		1
-#define	MANIFEST_SCREEN_ROW_NEXT		([[PLAYER hud] isHidden]?27:20)
+#define	MANIFEST_SCREEN_ROW_NEXT		(([PLAYER hud] != nullptr && [PLAYER hud]->isHidden())?27:20)	// a nil HUD answered NO
 
 inline constexpr std::string_view MISSION_DEST_LEGACY				= "__oolite_legacy_destinations";
 
@@ -523,7 +525,7 @@ public:
 	bool switchHudTo(const std::string &hudFileName);
 	float dialCustomFloat(const std::string &dialKey);
 	std::string dialCustomString(const std::string &dialKey);
-	::OOColor *dialCustomColor(const std::string &dialKey);
+	oo::Ref<OOColor> dialCustomColor(const std::string &dialKey);
 	void setDialCustom(const oo::PList &value, const std::string &dialKey);
 	void setShowDemoShips(bool value);
 	bool getShowDemoShips();
@@ -1527,7 +1529,7 @@ public:
  * but that needs futher investigation to ensure it doesn't break anything. */
 	::StationEntity			*targetDockStation = {}; 
 	
-	::HeadUpDisplay			*hud = {};
+	oo::Ref<HeadUpDisplay>	hud;
 	std::map<std::string, std::string, std::less<>>	multiFunctionDisplayText;	// MFD key -> text
 	std::vector<std::optional<std::string>>	multiFunctionDisplaySettings;	// one key per MFD; nullopt = inactive (was [OONull null])
 	NSUInteger				activeMFD = {};

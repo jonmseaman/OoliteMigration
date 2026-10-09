@@ -41,14 +41,14 @@ public:
 														Vector velocity,
 														float energy,
 														OOTimeDelta duration,
-														cxx::OOColor *color);
+														OOColor *color);
 
 	// -initWithPosition:...'s body, run once right after construction (amendment oo-vl43 item 2).
 	void initWithPosition(HPVector position,
 						  Vector velocity,
 						  float energy,
 						  OOTimeDelta duration,
-						  cxx::OOColor *color);
+						  OOColor *color);
 
 	bool canCollide() override;
 	bool checkCloseCollisionWith(cxx::Entity *other) override;

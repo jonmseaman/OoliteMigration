@@ -35,7 +35,7 @@ MA 02110-1301, USA.
 #define SKYENTITY_OBJCBRIDGE_H
 
 
-@class OOColor;
+class OOColor;
 
 
 @interface SkyEntity: OOEntityWithDrawable

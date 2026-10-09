@@ -55,7 +55,7 @@ public:
 	bool isActive();
 	void setActive(bool active);
 
-	oo::Ref<cxx::OOColor> color();
+	oo::Ref<OOColor> color();
 	// setColor is defined by superclass
 
 	float frequency();
@@ -87,13 +87,13 @@ public:
 private:
 	void setUpColors(const oo::PList *colorSpecifiers);	// an array node, or nullptr
 	void getCurrentColorComponents();
-	cxx::OOColor *flasherColorAtIndex(NSUInteger index);
+	OOColor *flasherColorAtIndex(NSUInteger index);
 
 	float					_frequency = {};
 	float					_phase = {};
 	float					_wave = {};
 	float         			_brightfraction = {};
-	std::vector<oo::Ref<cxx::OOColor>>	_colors;
+	std::vector<oo::Ref<OOColor>>	_colors;
 	NSUInteger				_activeColor = {};
 	
 	OOTimeDelta				_time = {};

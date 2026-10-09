@@ -739,39 +739,39 @@ bool OOVisualEffectEntity::isShipWithSubEntityShip(::Entity *other)
 }
 
 
-cxx::OOColor *OOVisualEffectEntity::scannerDisplayColor1()
+OOColor *OOVisualEffectEntity::scannerDisplayColor1()
 {
 	return scanner_display_color1.get();
 }
 
 
-cxx::OOColor *OOVisualEffectEntity::scannerDisplayColor2()
+OOColor *OOVisualEffectEntity::scannerDisplayColor2()
 {
 	return scanner_display_color2.get();
 }
 
 
-void OOVisualEffectEntity::setScannerDisplayColor1(cxx::OOColor *color)
+void OOVisualEffectEntity::setScannerDisplayColor1(OOColor *color)
 {
 	scanner_display_color1 = nullptr;
 
-	if (color == nullptr)  scanner_display_color1 = cxx::OOColor::colorWithDescription(ValueForKey(effectinfoDictionary, "scanner_display_color1"));
-	else  scanner_display_color1 = oo::Ref<cxx::OOColor>(color);
+	if (color == nullptr)  scanner_display_color1 = OOColor::colorWithDescription(ValueForKey(effectinfoDictionary, "scanner_display_color1"));
+	else  scanner_display_color1 = oo::Ref<OOColor>(color);
 }
 
 
-void OOVisualEffectEntity::setScannerDisplayColor2(cxx::OOColor *color)
+void OOVisualEffectEntity::setScannerDisplayColor2(OOColor *color)
 {
 	scanner_display_color2 = nullptr;
 
-	if (color == nullptr)  scanner_display_color2 = cxx::OOColor::colorWithDescription(ValueForKey(effectinfoDictionary, "scanner_display_color2"));
-	else  scanner_display_color2 = oo::Ref<cxx::OOColor>(color);
+	if (color == nullptr)  scanner_display_color2 = OOColor::colorWithDescription(ValueForKey(effectinfoDictionary, "scanner_display_color2"));
+	else  scanner_display_color2 = oo::Ref<OOColor>(color);
 }
 
 static GLfloat default_color[4] =	{ 0.0, 0.0, 0.0, 0.0};
 static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 
-GLfloat *OOVisualEffectEntity::scannerDisplayColorForShip(bool flash, cxx::OOColor *scannerDisplayColor1, cxx::OOColor *scannerDisplayColor2)
+GLfloat *OOVisualEffectEntity::scannerDisplayColorForShip(bool flash, OOColor *scannerDisplayColor1, OOColor *scannerDisplayColor2)
 {
 
 	if (scannerDisplayColor1 || scannerDisplayColor2)

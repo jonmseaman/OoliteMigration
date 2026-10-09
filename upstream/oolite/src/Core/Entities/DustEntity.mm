@@ -127,7 +127,7 @@ void DustEntity::init()
 	
 	drawDust = !oo::process::hasArgument("-nodust");
 	
-	dust_color = cxx::OOColor::colorWithRed(0.5, 1.0, 1.0, 1.0);
+	dust_color = OOColor::colorWithRed(0.5, 1.0, 1.0, 1.0);
 	setStatus(STATUS_ACTIVE);
 
 	hasPointSprites = cxx::OOOpenGLExtensionManager::sharedManager()->haveExtension("GL_ARB_point_sprite");
@@ -151,15 +151,15 @@ void DustEntity::init()
 // texture, shader and uniforms.
 
 
-void DustEntity::setDustColor(cxx::OOColor *color)
+void DustEntity::setDustColor(OOColor *color)
 {
-	dust_color = oo::Ref<cxx::OOColor>(color);
+	dust_color = oo::Ref<OOColor>(color);
 	// A message to a nil colour did nothing.
 	if (dust_color != nullptr)  dust_color->getRed(&color_fv[0], &color_fv[1], &color_fv[2], &color_fv[3]);
 }
 
 
-cxx::OOColor *DustEntity::dustColor()
+OOColor *DustEntity::dustColor()
 {
 	return dust_color.get();
 }

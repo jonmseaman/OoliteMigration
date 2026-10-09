@@ -80,7 +80,7 @@ void OODebugDrawPoint(Vector position, OOColor *color);
 
 OOINLINE void OODebugDrawBoundingBoxBetween(Vector min, Vector max)
 {
-	OODebugDrawColoredBoundingBoxBetween(min, max, [OOColor blueColor]);
+	OODebugDrawColoredBoundingBoxBetween(min, max, OOColor::blueColor().get());
 }
 
 
@@ -98,7 +98,7 @@ OOINLINE void OODebugDrawColoredBoundingBox(BoundingBox box, OOColor *color)
 
 OOINLINE void OODebugDrawNormal(Vector position, Vector normal, GLfloat scale)
 {
-	OODebugDrawColoredVector(position, vector_add(position, vector_multiply_scalar(normal, scale)), [OOColor cyanColor]);
+	OODebugDrawColoredVector(position, vector_add(position, vector_multiply_scalar(normal, scale)), OOColor::cyanColor().get());
 }
 
 
@@ -116,7 +116,7 @@ OOINLINE void OODebugDrawColoredVector(Vector position, Vector v, OOColor *color
 
 OOINLINE void OODebugDrawVector(Vector position, Vector v)
 {
-	OODebugDrawColoredVector(position, v, [OOColor magentaColor]);
+	OODebugDrawColoredVector(position, v, OOColor::magentaColor().get());
 }
 
 
@@ -134,7 +134,7 @@ OOINLINE void OODebugDrawColoredVectorAtOrigin(Vector v, OOColor *color)
 
 OOINLINE void OODebugDrawLine(Vector start, Vector end)
 {
-	OODebugDrawColoredLine(start, end, [OOColor whiteColor]);
+	OODebugDrawColoredLine(start, end, OOColor::whiteColor().get());
 }
 
 

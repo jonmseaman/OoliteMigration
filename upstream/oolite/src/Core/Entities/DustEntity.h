@@ -57,8 +57,8 @@ public:
 	*/
 	void init();
 
-	void setDustColor(cxx::OOColor *color);
-	cxx::OOColor *dustColor();
+	void setDustColor(OOColor *color);
+	OOColor *dustColor();
 
 	bool canCollide() override;
 	void updateCameraRelativePosition() override;
@@ -84,7 +84,7 @@ private:
 	void checkShaderMode();
 #endif
 
-	oo::Ref<cxx::OOColor>	dust_color;
+	oo::Ref<OOColor>	dust_color;
 	Vector				vertices[DUST_N_PARTICLES * 2] = {};
 	GLushort			indices[DUST_N_PARTICLES * 2] = {};
 	GLfloat				color_fv[4] = {};

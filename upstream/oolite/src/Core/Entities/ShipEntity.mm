@@ -771,16 +771,15 @@ bool ShipEntity::setUpFromDictionary(const oo::PList &inShipDict)
 	float density = shipDict.get<float>("density", 1.0f);
 	if (octree)  mass = (GLfloat)(density * 20.0f * octree->volume());
 	
-	DESTROY(default_laser_color);
-	default_laser_color = [[::OOColor cxx_brightColorWithDescription:ValueForKey(shipDict, "laser_color")] retain];
+	default_laser_color = OOColor::brightColorWithDescription(ValueForKey(shipDict, "laser_color"));
 	
 	if (default_laser_color == nil) 
 	{
-		[self setLaserColor:[::OOColor redColor]];
+		[self setLaserColor:OOColor::redColor().get()];
 	}
 	else
 	{
-		[self setLaserColor:default_laser_color];
+		[self setLaserColor:default_laser_color.get()];
 	}
 	// exhaust emissive color
 	OORGBAComponents defaultExhaustEmissiveColorComponents; // pale blue is exhaust default color
@@ -788,9 +787,9 @@ bool ShipEntity::setUpFromDictionary(const oo::PList &inShipDict)
 	defaultExhaustEmissiveColorComponents.g = 0.9f;
 	defaultExhaustEmissiveColorComponents.b = 1.0f;
 	defaultExhaustEmissiveColorComponents.a = 0.9f;
-	::OOColor *color = [::OOColor cxx_brightColorWithDescription:ValueForKey(shipDict, "exhaust_emissive_color")];
-	if (color == nil)  color = [::OOColor colorWithRGBAComponents:defaultExhaustEmissiveColorComponents];
-	[self setExhaustEmissiveColor:color];
+	oo::Ref<OOColor>	color = OOColor::brightColorWithDescription(ValueForKey(shipDict, "exhaust_emissive_color"));
+	if (color == nil)  color = OOColor::colorWithRGBAComponents(defaultExhaustEmissiveColorComponents);
+	[self setExhaustEmissiveColor:color.get()];
 	
 	[self clearSubEntities];
 	[self setUpSubEntities];
@@ -6966,7 +6965,7 @@ void ShipEntity::drawImmediate(bool immediate, bool translucent)
 	else if (gDebugFlags & DEBUG_BOUNDING_BOXES && ![self isSubEntity])
 	{
 		OODebugDrawBoundingBox([self boundingBox]);
-		OODebugDrawColoredBoundingBox(totalBoundingBox, [::OOColor purpleColor]);
+		OODebugDrawColoredBoundingBox(totalBoundingBox, OOColor::purpleColor().get());
 	}
 #endif
 	
@@ -6997,26 +6996,26 @@ void ShipEntity::drawDebugStuff()
 	// HPVect: imprecise here - needs camera relative
 	if (0 && reportAIMessages)
 	{
-		OODebugDrawPoint(HPVectorToVector(_destination), [::OOColor blueColor]);
-		OODebugDrawColoredLine(HPVectorToVector([self position]), HPVectorToVector(_destination), [::OOColor colorWithWhite:0.15 alpha:1.0]);
+		OODebugDrawPoint(HPVectorToVector(_destination), OOColor::blueColor().get());
+		OODebugDrawColoredLine(HPVectorToVector([self position]), HPVectorToVector(_destination), OOColor::colorWithWhite(0.15, 1.0).get());
 		
 		::Entity *pTarget = [self primaryTarget];
 		if (pTarget != nil)
 		{
-			OODebugDrawPoint(HPVectorToVector([pTarget position]), [::OOColor redColor]);
-			OODebugDrawColoredLine(HPVectorToVector([self position]), HPVectorToVector([pTarget position]), [::OOColor colorWithRed:0.2 green:0.0 blue:0.0 alpha:1.0]);
+			OODebugDrawPoint(HPVectorToVector([pTarget position]), OOColor::redColor().get());
+			OODebugDrawColoredLine(HPVectorToVector([self position]), HPVectorToVector([pTarget position]), OOColor::colorWithRed(0.2, 0.0, 0.0, 1.0).get());
 		}
 		
 		::Entity *sTarget = [self targetStation];
 		if (sTarget != pTarget && [sTarget isStation])
 		{
-			OODebugDrawPoint(HPVectorToVector([sTarget position]), [::OOColor cyanColor]);
+			OODebugDrawPoint(HPVectorToVector([sTarget position]), OOColor::cyanColor().get());
 		}
 		
 		::Entity *fTarget = [self foundTarget];
 		if (fTarget != nil && fTarget != pTarget && fTarget != sTarget)
 		{
-			OODebugDrawPoint(HPVectorToVector([fTarget position]), [::OOColor magentaColor]);
+			OODebugDrawPoint(HPVectorToVector([fTarget position]), OOColor::magentaColor().get());
 		}
 	}
 }
@@ -7066,20 +7065,20 @@ GLfloat *ShipEntity::scannerDisplayColorForShip(::ShipEntity *otherShip, bool is
 		{
 			if (scannerDisplayColorH1 && !scannerDisplayColorH2)
 			{
-				[scannerDisplayColorH1 getRed:&scripted_color[0] green:&scripted_color[1] blue:&scripted_color[2] alpha:&scripted_color[3]];
+				scannerDisplayColorH1->getRed(&scripted_color[0], &scripted_color[1], &scripted_color[2], &scripted_color[3]);
 			}
 		
 			if (!scannerDisplayColorH1 && scannerDisplayColorH2)
 			{
-				[scannerDisplayColorH2 getRed:&scripted_color[0] green:&scripted_color[1] blue:&scripted_color[2] alpha:&scripted_color[3]];
+				scannerDisplayColorH2->getRed(&scripted_color[0], &scripted_color[1], &scripted_color[2], &scripted_color[3]);
 			}
 		
 			if (scannerDisplayColorH1 && scannerDisplayColorH2)
 			{
 				if (flash)
-					[scannerDisplayColorH1 getRed:&scripted_color[0] green:&scripted_color[1] blue:&scripted_color[2] alpha:&scripted_color[3]];
+					scannerDisplayColorH1->getRed(&scripted_color[0], &scripted_color[1], &scripted_color[2], &scripted_color[3]);
 				else
-					[scannerDisplayColorH2 getRed:&scripted_color[0] green:&scripted_color[1] blue:&scripted_color[2] alpha:&scripted_color[3]];
+					scannerDisplayColorH2->getRed(&scripted_color[0], &scripted_color[1], &scripted_color[2], &scripted_color[3]);
 			}
 		
 			return scripted_color;
@@ -7091,20 +7090,20 @@ GLfloat *ShipEntity::scannerDisplayColorForShip(::ShipEntity *otherShip, bool is
 	{
 		if (scannerDisplayColor1 && !scannerDisplayColor2)
 		{
-			[scannerDisplayColor1 getRed:&scripted_color[0] green:&scripted_color[1] blue:&scripted_color[2] alpha:&scripted_color[3]];
+			scannerDisplayColor1->getRed(&scripted_color[0], &scripted_color[1], &scripted_color[2], &scripted_color[3]);
 		}
 		
 		if (!scannerDisplayColor1 && scannerDisplayColor2)
 		{
-			[scannerDisplayColor2 getRed:&scripted_color[0] green:&scripted_color[1] blue:&scripted_color[2] alpha:&scripted_color[3]];
+			scannerDisplayColor2->getRed(&scripted_color[0], &scripted_color[1], &scripted_color[2], &scripted_color[3]);
 		}
 		
 		if (scannerDisplayColor1 && scannerDisplayColor2)
 		{
 			if (flash)
-				[scannerDisplayColor1 getRed:&scripted_color[0] green:&scripted_color[1] blue:&scripted_color[2] alpha:&scripted_color[3]];
+				scannerDisplayColor1->getRed(&scripted_color[0], &scripted_color[1], &scripted_color[2], &scripted_color[3]);
 			else
-				[scannerDisplayColor2 getRed:&scripted_color[0] green:&scripted_color[1] blue:&scripted_color[2] alpha:&scripted_color[3]];
+				scannerDisplayColor2->getRed(&scripted_color[0], &scripted_color[1], &scripted_color[2], &scripted_color[3]);
 		}
 		
 		return scripted_color;
@@ -7169,61 +7168,53 @@ GLfloat *ShipEntity::scannerDisplayColorForShip(::ShipEntity *otherShip, bool is
 
 void ShipEntity::setScannerDisplayColor1(::OOColor *color)
 {
-	DESTROY(scanner_display_color1);
-	
-	if (color == nil)  color = [::OOColor cxx_colorWithDescription:ValueForKey(shipinfoDictionary, "scanner_display_color1")];
-	scanner_display_color1 = [color retain];
+	if (color == nullptr)  scanner_display_color1 = OOColor::colorWithDescription(ValueForKey(shipinfoDictionary, "scanner_display_color1"));
+	else  scanner_display_color1 = oo::Ref<OOColor>(color);
 }
 
 
 void ShipEntity::setScannerDisplayColor2(::OOColor *color)
 {
-	DESTROY(scanner_display_color2);
-	
-	if (color == nil)  color = [::OOColor cxx_colorWithDescription:ValueForKey(shipinfoDictionary, "scanner_display_color2")];
-	scanner_display_color2 = [color retain];
+	if (color == nullptr)  scanner_display_color2 = OOColor::colorWithDescription(ValueForKey(shipinfoDictionary, "scanner_display_color2"));
+	else  scanner_display_color2 = oo::Ref<OOColor>(color);
 }
 
 
 ::OOColor *ShipEntity::scannerDisplayColor1()
 {
-	return [[scanner_display_color1 retain] autorelease];
+	return scanner_display_color1.get();
 }
 
 
 ::OOColor *ShipEntity::scannerDisplayColor2()
 {
-	return [[scanner_display_color2 retain] autorelease];
+	return scanner_display_color2.get();
 }
 
 
 void ShipEntity::setScannerDisplayColorHostile1(::OOColor *color)
 {
-	DESTROY(scanner_display_color_hostile1);
-	
-	if (color == nil)  color = [::OOColor cxx_colorWithDescription:ValueForKey(shipinfoDictionary, "scanner_hostile_display_color1")];
-	scanner_display_color_hostile1 = [color retain];
+	if (color == nullptr)  scanner_display_color_hostile1 = OOColor::colorWithDescription(ValueForKey(shipinfoDictionary, "scanner_hostile_display_color1"));
+	else  scanner_display_color_hostile1 = oo::Ref<OOColor>(color);
 }
 
 
 void ShipEntity::setScannerDisplayColorHostile2(::OOColor *color)
 {
-	DESTROY(scanner_display_color_hostile2);
-	
-	if (color == nil)  color = [::OOColor cxx_colorWithDescription:ValueForKey(shipinfoDictionary, "scanner_hostile_display_color2")];
-	scanner_display_color_hostile2 = [color retain];
+	if (color == nullptr)  scanner_display_color_hostile2 = OOColor::colorWithDescription(ValueForKey(shipinfoDictionary, "scanner_hostile_display_color2"));
+	else  scanner_display_color_hostile2 = oo::Ref<OOColor>(color);
 }
 
 
 ::OOColor *ShipEntity::scannerDisplayColorHostile1()
 {
-	return [[scanner_display_color_hostile1 retain] autorelease];
+	return scanner_display_color_hostile1.get();
 }
 
 
 ::OOColor *ShipEntity::scannerDisplayColorHostile2()
 {
-	return [[scanner_display_color_hostile2 retain] autorelease];
+	return scanner_display_color_hostile2.get();
 }
 
 
@@ -8126,10 +8117,10 @@ void ShipEntity::setWeaponDataFromType(OOWeaponType weapon_type)
 
 	if (default_laser_color == nil)
 	{
-		::OOColor *wcol = [weapon_type weaponColor];
+		oo::Ref<OOColor>	wcol = [weapon_type weaponColor];
 		if (wcol != nil)
 		{
-			[self setLaserColor:wcol];
+			[self setLaserColor:wcol.get()];
 		}
 	}
 
@@ -12410,7 +12401,7 @@ bool ShipEntity::fireTurretCannon(double range)
 																			vel,
 																			weapon_damage,
 																			weaponRange/TURRET_SHOT_SPEED,
-																			oo::ToCxx(laser_color)));
+																			laser_color.get()));
 	
 	[UNIVERSE addEntity:shot];
 	[shot setOwner:[self rootShipEntity]];	// has to be done AFTER adding shot to the UNIVERSE
@@ -12424,8 +12415,7 @@ void ShipEntity::setLaserColor(::OOColor *color)
 {
 	if (color)
 	{
-		[laser_color release];
-		laser_color = [color retain];
+		laser_color = oo::Ref<OOColor>(color);
 	}
 }
 
@@ -12434,21 +12424,20 @@ void ShipEntity::setExhaustEmissiveColor(::OOColor *color)
 {
 	if (color)
 	{
-		[exhaust_emissive_color release];
-		exhaust_emissive_color = [color retain];
+		exhaust_emissive_color = oo::Ref<OOColor>(color);
 	}
 }
 
 
 ::OOColor *ShipEntity::laserColor()
 {
-	return [[laser_color retain] autorelease];
+	return laser_color.get();
 }
 
 
 ::OOColor *ShipEntity::exhaustEmissiveColor()
 {
-	return [[exhaust_emissive_color retain] autorelease];
+	return exhaust_emissive_color.get();
 }
 
 
@@ -12488,7 +12477,7 @@ bool ShipEntity::fireSubentityLaserShot(double range)
 	
 	const oo::Ref<OOLaserShotEntity> shot = OOLaserShotEntity::laserFromShip(self, direction, kZeroVector);
 	::Entity *shotObjC = oo::NewEntityFacade(shot);
-	shot->setColor(oo::ToCxx(laser_color));
+	shot->setColor(laser_color.get());
 	shot->setScanClass(CLASS_NO_DRAW);
 	
 	if (victim != nil)
@@ -12515,7 +12504,7 @@ bool ShipEntity::fireSubentityLaserShot(double range)
 			shot->setRange(hitAtRange);
 			Vector vd = vector_forward_from_quaternion(shot->getOrientation());
 			HPVector flash_pos = HPvector_add(shot->getPosition(), vectorToHPVector(vector_multiply_scalar(vd, hitAtRange)));
-			[UNIVERSE addLaserHitEffectsAt:flash_pos against:victim damage:weapon_damage color:laser_color];
+			[UNIVERSE addLaserHitEffectsAt:flash_pos against:victim damage:weapon_damage color:laser_color.get()];
 		}
 	}
 	else
@@ -12620,7 +12609,7 @@ bool ShipEntity::fireDirectLaserShotAt(::Entity *my_target)
 	// do special effects laser line
 	const oo::Ref<OOLaserShotEntity> shot = OOLaserShotEntity::laserFromShip(self, WEAPON_FACING_FORWARD, kZeroVector);
 	::Entity *shotObjC = oo::NewEntityFacade(shot);
-	shot->setColor(oo::ToCxx(laser_color));
+	shot->setColor(laser_color.get());
 	shot->setScanClass(CLASS_NO_DRAW);
 	shot->setPosition(position);
 	shot->setOrientation(q_laser);
@@ -12643,7 +12632,7 @@ bool ShipEntity::fireDirectLaserShotAt(::Entity *my_target)
 			shot->setRange(hit_at_range);
 			Vector vd = vector_forward_from_quaternion(shot->getOrientation());
 			HPVector flash_pos = HPvector_add(shot->getPosition(), vectorToHPVector(vector_multiply_scalar(vd, hit_at_range)));
-			[UNIVERSE addLaserHitEffectsAt:flash_pos against:victim damage:weapon_damage color:laser_color];
+			[UNIVERSE addLaserHitEffectsAt:flash_pos against:victim damage:weapon_damage color:laser_color.get()];
 		}
 	}
 	
@@ -12719,7 +12708,7 @@ bool ShipEntity::fireLaserShotInDirection(OOWeaponFacing direction, const std::s
 			shotEntities.emplace_back(shot);
 		}
 	
-		shot->setColor(oo::ToCxx(laser_color));
+		shot->setColor(laser_color.get());
 		shot->setScanClass(CLASS_NO_DRAW);
 		shot->setVelocity(vel);
 	
@@ -12754,7 +12743,7 @@ bool ShipEntity::fireLaserShotInDirection(OOWeaponFacing direction, const std::s
 				shot->setRange(hit_at_range);
 				Vector vd = vector_forward_from_quaternion(shot->getOrientation());
 				HPVector flash_pos = HPvector_add(shot->getPosition(), vectorToHPVector(vector_multiply_scalar(vd, hit_at_range)));
-				[UNIVERSE addLaserHitEffectsAt:flash_pos against:victim damage:effective_damage color:laser_color];
+				[UNIVERSE addLaserHitEffectsAt:flash_pos against:victim damage:effective_damage color:laser_color.get()];
 			}
 		}
 		else
@@ -12859,13 +12848,13 @@ void ShipEntity::throwSparks()
 	
 	Vector vel = vector_multiply_scalar(HPVectorToVector(HPvector_subtract(origin, position)), 2.0);
 	
-	::OOColor *color = [::OOColor colorWithHue:0.08 + 0.17 * randf() saturation:1.0 brightness:1.0 alpha:1.0];
+	oo::Ref<OOColor>	color = OOColor::colorWithHue(0.08 + 0.17 * randf(), 1.0, 1.0, 1.0);
 	
 	::Entity *spark = oo::NewEntityFacade(OOSparkEntity::sparkWithPosition(origin,
 																		 vel,
 																		 2.0 + 3.0 * randf(),
 																		 sz,
-																		 oo::ToCxx(color)));
+																		 color.get()));
 	
 	[spark setOwner:self];
 	[UNIVERSE addEntity:spark];
@@ -15038,11 +15027,11 @@ void ShipEntity::broadcastMessage(const std::string &message_text, bool unpilote
 void ShipEntity::setCommsMessageColor()
 {
 	float hue = 0.0625f * (universalID & 15);
-	[[UNIVERSE commLogGUI] setTextColor:[::OOColor colorWithHue:hue saturation:0.375f brightness:1.0f alpha:1.0f]];
+	[UNIVERSE commLogGUI]->setTextColor(OOColor::colorWithHue(hue, 0.375f, 1.0f, 1.0f).get());
 	if (scanClass == CLASS_THARGOID)
-		[[UNIVERSE commLogGUI] setTextColor:[::OOColor greenColor]];
+		[UNIVERSE commLogGUI]->setTextColor(OOColor::greenColor().get());
 	if (scanClass == CLASS_POLICE)
-		[[UNIVERSE commLogGUI] setTextColor:[::OOColor cyanColor]];
+		[UNIVERSE commLogGUI]->setTextColor(OOColor::cyanColor().get());
 }
 
 

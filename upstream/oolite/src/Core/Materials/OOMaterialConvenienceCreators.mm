@@ -471,7 +471,7 @@ void AddColorIfAppropriate(OOMaterialSynthContext *context, OOColor *color, cons
 	if (color != nil)
 	{
 		oo::PList::Array components;
-		for (float component : [color cxx_normalizedArray])
+		for (float component : color->normalizedArray())
 		{
 			components.push_back(oo::PList::singleReal(component));
 		}
@@ -486,10 +486,10 @@ void AddMacroColorIfAppropriate(OOMaterialSynthContext *context, OOColor *color,
 	if (color != nil)
 	{
 		std::string macroText = oo::str::format("vec4(%g, %g, %g, %g)",
-							   [color redComponent],
-							   [color greenComponent],
-							   [color blueComponent],
-							   [color alphaComponent]);
+							   color->redComponent(),
+							   color->greenComponent(),
+							   color->blueComponent(),
+							   color->alphaComponent());
 		context->macros[macroName] = oo::PList(std::move(macroText));
 	}
 }
@@ -515,7 +515,7 @@ void SynthDiffuse(OOMaterialSynthContext *context, const std::optional<std::stri
 	}
 	
 	// Set up diffuse colour if any.
-	AddColorIfAppropriate(context, cxx_OOMaterialDiffuseColor(context->inConfig), cxx_kOOMaterialDiffuseColorName, nullptr);
+	AddColorIfAppropriate(context, cxx_OOMaterialDiffuseColor(context->inConfig).get(), cxx_kOOMaterialDiffuseColorName, nullptr);
 }
 
 
@@ -548,14 +548,14 @@ void SynthEmissionAndIllumination(OOMaterialSynthContext *context)
 			This is because the emission colour value is sent through the
 			standard OpenGL emission colour attribute by OOBasicMaterial.
 		*/
-		AddColorIfAppropriate(context, cxx_OOMaterialEmissionModulateColor(context->inConfig), cxx_kOOMaterialEmissionColorName, "OOSTD_EMISSION");
+		AddColorIfAppropriate(context, cxx_OOMaterialEmissionModulateColor(context->inConfig).get(), cxx_kOOMaterialEmissionColorName, "OOSTD_EMISSION");
 		
 		haveIlluminationMap = isCombinedSpec;
 	}
 	else
 	{
 		//	No emission map, use overall emission colour if specified.
-		AddColorIfAppropriate(context, cxx_OOMaterialEmissionColor(context->inConfig), cxx_kOOMaterialEmissionColorName, "OOSTD_EMISSION");
+		AddColorIfAppropriate(context, cxx_OOMaterialEmissionColor(context->inConfig).get(), cxx_kOOMaterialEmissionColorName, "OOSTD_EMISSION");
 	}
 	
 	if (!illuminationMapSpec.isNull() && context->texturesUsed < context->maxTextures)
@@ -566,7 +566,7 @@ void SynthEmissionAndIllumination(OOMaterialSynthContext *context)
 	
 	if (haveIlluminationMap)
 	{
-		AddMacroColorIfAppropriate(context, cxx_OOMaterialIlluminationModulateColor(context->inConfig), "OOSTD_ILLUMINATION_COLOR");
+		AddMacroColorIfAppropriate(context, cxx_OOMaterialIlluminationModulateColor(context->inConfig).get(), "OOSTD_ILLUMINATION_COLOR");
 	}
 }
 
@@ -609,7 +609,7 @@ void SynthSpecular(OOMaterialSynthContext *context)
 	BOOL gammaCorrect = cxx_OOMaterialGammaCorrect(context->inConfig) ? YES : NO;
 	
 	oo::PList specularMapSpec;
-	OOColor *specularColor = nil;
+	oo::Ref<OOColor>	specularColor;
 	
 	if (context->texturesUsed < context->maxTextures)
 	{
@@ -618,7 +618,7 @@ void SynthSpecular(OOMaterialSynthContext *context)
 	
 	if (!specularMapSpec.isNull())  specularColor = cxx_OOMaterialSpecularModulateColor(context->inConfig);
 	else  specularColor = cxx_OOMaterialSpecularColor(context->inConfig);
-	if ([specularColor isBlack])  return;
+	if (specularColor->isBlack())  return;
 	
 	SetUniformFloat(context, "uGloss", gloss);
 	
@@ -636,7 +636,7 @@ void SynthSpecular(OOMaterialSynthContext *context)
 		 material specular colour property set by OOBasicMaterial.
 		 */
 		oo::PList::Array components;
-		for (float component : [specularColor cxx_normalizedArray])
+		for (float component : specularColor->normalizedArray())
 		{
 			components.push_back(oo::PList::singleReal(component));
 		}

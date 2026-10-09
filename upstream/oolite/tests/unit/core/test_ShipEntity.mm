@@ -1442,22 +1442,22 @@ OO_TEST(scannerColours)
 	{
 		SetUp();
 		TestShip *ship = FlyingShip("coloured");
-		OOColor *red = [OOColor colorWithRed:1 green:0 blue:0 alpha:1];
-		OOColor *blue = [OOColor colorWithRed:0 green:0 blue:1 alpha:1];
+		oo::Ref<OOColor>	red = OOColor::colorWithRed(1, 0, 0, 1);
+		oo::Ref<OOColor>	blue = OOColor::colorWithRed(0, 0, 1, 1);
 		OO_CHECK([ship scannerDisplayColor1] == nil && [ship scannerDisplayColorHostile2] == nil);
-		[ship setScannerDisplayColor1:red];
-		[ship setScannerDisplayColor2:blue];
-		[ship setScannerDisplayColorHostile1:blue];
-		[ship setScannerDisplayColorHostile2:red];
+		[ship setScannerDisplayColor1:red.get()];
+		[ship setScannerDisplayColor2:blue.get()];
+		[ship setScannerDisplayColorHostile1:blue.get()];
+		[ship setScannerDisplayColorHostile2:red.get()];
 		OO_CHECK([ship scannerDisplayColor1] == red && [ship scannerDisplayColor2] == blue);
 		OO_CHECK([ship scannerDisplayColorHostile1] == blue && [ship scannerDisplayColorHostile2] == red);
 		[ship setScannerDisplayColor2:nil];		// nil: the ship's definition's, which has none
 		OO_CHECK([ship scannerDisplayColor2] == nil);
 
 		TestShip *other = FlyingShip("viewer");
-		GLfloat *c = [ship scannerDisplayColorForShip:other :NO :YES :red :nil :nil :nil];
+		GLfloat *c = [ship scannerDisplayColorForShip:other :NO :YES :red.get() :nil :nil :nil];
 		OO_CHECK(c[0] == 1 && c[1] == 0 && c[2] == 0 && c[3] == 1);
-		c = [ship scannerDisplayColorForShip:other :YES :NO :red :nil :red :blue];	// hostile, not flashing: the second
+		c = [ship scannerDisplayColorForShip:other :YES :NO :red.get() :nil :red.get() :blue.get()];	// hostile, not flashing: the second
 		OO_CHECK(c[0] == 0 && c[2] == 1);
 		[ship setScanClass:CLASS_CARGO];
 		c = [ship scannerDisplayColorForShip:other :NO :NO :nil :nil :nil :nil];
@@ -2671,10 +2671,10 @@ OO_TEST(slice27Colours)
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("painted");
-		OOColor *red = [OOColor redColor];
-		OOColor *blue = [OOColor blueColor];
-		[ship setLaserColor:red];
-		[ship setExhaustEmissiveColor:blue];
+		oo::Ref<OOColor>	red = OOColor::redColor();
+		oo::Ref<OOColor>	blue = OOColor::blueColor();
+		[ship setLaserColor:red.get()];
+		[ship setExhaustEmissiveColor:blue.get()];
 		OO_CHECK([ship laserColor] == red && [ship exhaustEmissiveColor] == blue);
 		// nil is ignored.
 		[ship setLaserColor:nil];

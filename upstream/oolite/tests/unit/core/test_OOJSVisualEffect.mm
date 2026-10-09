@@ -87,8 +87,8 @@
 	std::optional<std::string> _effectKey;
 	BOOL _isBreakPattern;
 	float _scaleX, _scaleY, _scaleZ;
-	OOColor *_color1;
-	OOColor *_color2;
+	oo::Ref<OOColor> _color1;
+	oo::Ref<OOColor> _color2;
 	float _hullHeatLevel;
 	float _shaderFloat1, _shaderFloat2;
 	int _shaderInt1, _shaderInt2;
@@ -269,10 +269,10 @@ int sMeshesMade = 0;
 - (void) setScaleY:(float)factor  { _scaleY = factor; }
 - (float) scaleZ  { return _scaleZ; }
 - (void) setScaleZ:(float)factor  { _scaleZ = factor; }
-- (OOColor *) scannerDisplayColor1  { return _color1; }
-- (OOColor *) scannerDisplayColor2  { return _color2; }
-- (void) setScannerDisplayColor1:(OOColor *)color  { [_color1 release]; _color1 = [color retain]; }
-- (void) setScannerDisplayColor2:(OOColor *)color  { [_color2 release]; _color2 = [color retain]; }
+- (OOColor *) scannerDisplayColor1  { return _color1.get(); }
+- (OOColor *) scannerDisplayColor2  { return _color2.get(); }
+- (void) setScannerDisplayColor1:(OOColor *)color  { _color1 = oo::Ref<OOColor>(color); }
+- (void) setScannerDisplayColor2:(OOColor *)color  { _color2 = oo::Ref<OOColor>(color); }
 - (void) setHullHeatLevel:(float)value  { _hullHeatLevel = value; }
 - (float) shaderFloat1  { return _shaderFloat1; }
 - (void) setShaderFloat1:(float)value  { _shaderFloat1 = value; }
@@ -661,7 +661,7 @@ void SetUpContext()
 	sEffect->_scaleX = 1;
 	sEffect->_scaleY = 2;
 	sEffect->_scaleZ = 4;
-	sEffect->_color1 = [[OOColor colorWithRed:1 green:0.5f blue:0.25f alpha:1] retain];
+	sEffect->_color1 = OOColor::colorWithRed(1, 0.5f, 0.25f, 1);
 	sEffect->_hullHeatLevel = 0.5f;
 	sEffect->_shaderFloat1 = 1.5f;
 	sEffect->_shaderInt2 = -3;

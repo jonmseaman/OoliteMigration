@@ -149,7 +149,7 @@ OOSunEntity *Sun(OOColor *color, double radius)
 
 OOSunEntity *RedSun()
 {
-	return Sun([OOColor colorWithRed:1.0f green:0.0f blue:0.0f alpha:1.0f], 1000.0);
+	return Sun(OOColor::colorWithRed(1.0f, 0.0f, 0.0f, 1.0f).get(), 1000.0);
 }
 
 }	// namespace
@@ -186,7 +186,7 @@ OO_TEST(lightColours)
 		OO_CHECK(Near(specular[0], 1.0) && Near(specular[1], 0.3) && Near(specular[2], 0.3) && specular[3] == 1.0f);
 		OO_CHECK(Near(diffuse[0], 1.0) && Near(diffuse[1], 0.65) && Near(diffuse[2], 0.65) && diffuse[3] == 1.0f);
 
-		OO_CHECK([sun setSunColor:[OOColor blueColor]]);
+		OO_CHECK([sun setSunColor:OOColor::blueColor().get()]);
 		[sun getSpecularComponents:specular];
 		OO_CHECK(Near(specular[0], 0.3) && Near(specular[1], 0.3) && Near(specular[2], 1.0));
 		OO_CHECK(![sun setSunColor:nil]);

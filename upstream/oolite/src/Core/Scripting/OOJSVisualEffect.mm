@@ -49,7 +49,7 @@ MA 02110-1301, USA.
 	file of the binding (amendment oo-ykoy), then onto the OOVisualEffectEntity facade in
 	OOVisualEffectEntity+ObjCBridge.mm (bead oo-9ht.93, amendment oo-6ia4 item 3);
 	restoreSubEntities() calls the function that holds -subEntitiesForScript's body. OOColor, which is C++ since bead oo-11m, is reached as
-	cxx::OOColor through oo::ToCxx/oo::ToObjC (amendment oo-ppc, item 4). Messages to classes that
+	OOColor through oo::ToCxx/oo::ToObjC (amendment oo-ppc, item 4). Messages to classes that
 	are still Objective-C (OOVisualEffectEntity, OOMesh, ResourceManager, Universe, PlayerEntity)
 	stay as they are, which is why the file is still .mm until Phase 4.
 */
@@ -83,7 +83,7 @@ namespace {
 namespace {
 
 // A colour's components as its -normalizedArray gave them to JavaScript: floats, null for no colour.
-oo::PList NormalizedColorComponents(cxx::OOColor *color)
+oo::PList NormalizedColorComponents(OOColor *color)
 {
 	if (color == nullptr)  return oo::PList();
 	oo::PList::Array components;
@@ -379,11 +379,11 @@ static bool VisualEffectGetProperty(Context cx, Object obj, PropertyId propID, V
 			return ooscript::newNumberValue(cx, [entity scaleZ], value);
 
 		case kVisualEffect_scannerDisplayColor1:
-			result = NormalizedColorComponents(oo::ToCxx([entity scannerDisplayColor1]));
+			result = NormalizedColorComponents([entity scannerDisplayColor1]);
 			break;
 			
 		case kVisualEffect_scannerDisplayColor2:
-			result = NormalizedColorComponents(oo::ToCxx([entity scannerDisplayColor2]));
+			result = NormalizedColorComponents([entity scannerDisplayColor2]);
 			break;
 
 		case kVisualEffect_hullHeatLevel:
@@ -452,7 +452,7 @@ static bool VisualEffectSetProperty(Context cx, Object obj, PropertyId propID, b
 	
 	OOVisualEffectEntity				*entity = nil;
 	bool						bValue;
-	oo::Ref<cxx::OOColor>	colorForScript;
+	oo::Ref<OOColor>	colorForScript;
 	std::int32_t						iValue;
 	double        fValue;
 	Vector          vValue;
@@ -510,19 +510,19 @@ static bool VisualEffectSetProperty(Context cx, Object obj, PropertyId propID, b
 			break;
 
 		case kVisualEffect_scannerDisplayColor1:
-			colorForScript = cxx::OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value_raw));
+			colorForScript = OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value_raw));
 			if (colorForScript != nullptr || ooscript::isNull(*value_raw))
 			{
-				[entity setScannerDisplayColor1:oo::ToObjC(colorForScript.get())];
+				[entity setScannerDisplayColor1:colorForScript.get()];
 				return true;
 			}
 			break;
 			
 		case kVisualEffect_scannerDisplayColor2:
-			colorForScript = cxx::OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value_raw));
+			colorForScript = OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value_raw));
 			if (colorForScript != nullptr || ooscript::isNull(*value_raw))
 			{
-				[entity setScannerDisplayColor2:oo::ToObjC(colorForScript.get())];
+				[entity setScannerDisplayColor2:colorForScript.get()];
 				return true;
 			}
 			break;

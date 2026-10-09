@@ -71,8 +71,8 @@ public:
 
 - (float) diameter								{ return oo::ToCxx(self)->diameter(); }
 - (void) setDiameter:(float)diameter			{ oo::ToCxx(self)->setDiameter(diameter); }
-- (void) setColor:(OOColor *)color				{ oo::ToCxx(self)->setColor(oo::ToCxx(color)); }
-- (void) setColor:(OOColor *)color alpha:(GLfloat)alpha	{ oo::ToCxx(self)->setColor(oo::ToCxx(color), alpha); }
+- (void) setColor:(OOColor *)color				{ oo::ToCxx(self)->setColor(color); }
+- (void) setColor:(OOColor *)color alpha:(GLfloat)alpha	{ oo::ToCxx(self)->setColor(color, alpha); }
 
 
 - (OOTexture *) texture

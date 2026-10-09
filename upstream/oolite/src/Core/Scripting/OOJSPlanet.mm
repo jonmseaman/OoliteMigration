@@ -49,7 +49,7 @@ MA 02110-1301, USA.
 	(OOJSEngineNativeWrappers.h); BOOL/YES/NO are bool/true/false. The category on OOPlanetEntity
 	became three free functions, and its methods moved to a bridge file of the binding (amendment
 	oo-ykoy), then onto the OOPlanetEntity facade in OOPlanetEntity+ObjCBridge.mm (bead oo-9ht.92,
-	amendment oo-6ia4 item 3). OOColor, which is C++ since bead oo-11m, is reached as cxx::OOColor
+	amendment oo-6ia4 item 3). OOColor, which is C++ since bead oo-11m, is reached as OOColor
 	through oo::ToCxx/oo::ToObjC (amendment oo-ppc, item 4). Messages to classes that are still
 	Objective-C (OOPlanetEntity, Universe) stay as they are, which is why the file is still .mm
 	until Phase 4.
@@ -79,7 +79,7 @@ namespace {
 namespace {
 
 // A colour's components as its -normalizedArray gave them to JavaScript: floats, null for no colour.
-oo::PList NormalizedColorComponents(cxx::OOColor *color)
+oo::PList NormalizedColorComponents(OOColor *color)
 {
 	if (color == nullptr)  return oo::PList();
 	oo::PList::Array components;
@@ -241,7 +241,7 @@ static bool PlanetGetProperty(Context cx, Object obj, PropertyId propID, Value *
 	switch (ooscript::idToInt32(propID))
 	{
 		case kPlanet_airColor:
-			*value_raw = OOJSValueFromPList(context, NormalizedColorComponents(oo::ToCxx([planet airColor])));
+			*value_raw = OOJSValueFromPList(context, NormalizedColorComponents([planet airColor]));
 			return true;
 			
 		case kPlanet_airColorMixRatio:
@@ -251,7 +251,7 @@ static bool PlanetGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			return ooscript::newNumberValue(cx, [planet airDensity], value);
 			
 		case kPlanet_illuminationColor:
-			*value_raw = OOJSValueFromPList(context, NormalizedColorComponents(oo::ToCxx([planet illuminationColor])));
+			*value_raw = OOJSValueFromPList(context, NormalizedColorComponents([planet illuminationColor]));
 			return true;
 
 		case kPlanet_isMainPlanet:
@@ -308,17 +308,17 @@ static bool PlanetSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 	Quaternion				qValue;
 	Vector					vValue;
 	double				dValue;
-	oo::Ref<cxx::OOColor>	colorForScript;
+	oo::Ref<OOColor>	colorForScript;
 	
 	if (!JSPlanetGetPlanetEntity(context, thisObj, &planet))  return false;
 	
 	switch (ooscript::idToInt32(propID))
 	{
 		case kPlanet_airColor:
-			colorForScript = cxx::OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value_raw));
+			colorForScript = OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value_raw));
 			if (colorForScript != nullptr || ooscript::isNull(*value_raw))
 			{
-				[planet setAirColor:oo::ToObjC(colorForScript.get())];
+				[planet setAirColor:colorForScript.get()];
 				return true;
 			}
 			break;
@@ -340,10 +340,10 @@ static bool PlanetSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			break;
 			
 		case kPlanet_illuminationColor:
-			colorForScript = cxx::OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value_raw));
+			colorForScript = OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value_raw));
 			if (colorForScript != nullptr || ooscript::isNull(*value_raw))
 			{
-				[planet setIlluminationColor:oo::ToObjC(colorForScript.get())];
+				[planet setIlluminationColor:colorForScript.get()];
 				return true;
 			}
 			break;

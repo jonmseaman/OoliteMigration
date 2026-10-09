@@ -85,7 +85,7 @@ SOFTWARE.
 - (BOOL) canBeDamaged;
 - (BOOL) isVisible;				// Visible in UI?
 - (BOOL) hideValues;
-- (OOColor *) displayColor;
+- (OOColor *) displayColor;	// borrowed (the C++ colour since bead oo-9ht.1)
 - (void) setDisplayColor:(OOColor *)newColor;
 
 - (BOOL) isAvailableToPlayer;
@@ -127,7 +127,7 @@ SOFTWARE.
 - (GLfloat) weaponRechargeRate;
 - (GLfloat) weaponShotTemperature;
 - (GLfloat) weaponThreatAssessment;
-- (OOColor *) weaponColor;
+- (oo::Ref<OOColor>) weaponColor;	// a new colour (the C++ colour since bead oo-9ht.1)
 - (std::optional<std::string>) cxx_fxShotMissName;
 - (std::optional<std::string>) cxx_fxShotHitName;
 - (std::optional<std::string>) cxx_fxShieldHitName;

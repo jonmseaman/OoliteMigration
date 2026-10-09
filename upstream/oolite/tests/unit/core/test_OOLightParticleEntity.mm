@@ -162,9 +162,9 @@ OO_TEST(colorAndDiameter)
 	{
 		SetUp();
 		OOLightParticleEntity *particle = [[[OOLightParticleEntity alloc] initWithDiameter:1.0f] autorelease];
-		[particle setColor:[OOColor colorWithRed:0.25f green:0.5f blue:0.75f alpha:0.5f]];
+		[particle setColor:OOColor::colorWithRed(0.25f, 0.5f, 0.75f, 0.5f).get()];
 		OO_CHECK(ComponentsAre(particle, 0.25f, 0.5f, 0.75f, 0.5f));
-		[particle setColor:[OOColor colorWithRed:1.0f green:0.0f blue:0.5f alpha:1.0f] alpha:0.125f];
+		[particle setColor:OOColor::colorWithRed(1.0f, 0.0f, 0.5f, 1.0f).get() alpha:0.125f];
 		OO_CHECK(ComponentsAre(particle, 1.0f, 0.0f, 0.5f, 0.125f));
 
 		// nil changes nothing (a message to nil did nothing), except the alpha it is given.
@@ -281,7 +281,7 @@ OO_TEST(cxxSubclassFacade)
 		OOLightParticleEntity *light = (OOLightParticleEntity *)facade;
 		OO_CHECK(oo::ToCxx(light) == particle.get() && oo::ToObjC(particle.get()) == light);
 		OO_CHECK([light diameter] == 6.0f && [facade isEffect] && ![facade canCollide] && [facade status] == STATUS_EFFECT);
-		[light setColor:[OOColor colorWithRed:0.5f green:0.25f blue:0.0f alpha:1.0f] alpha:0.5f];
+		[light setColor:OOColor::colorWithRed(0.5f, 0.25f, 0.0f, 1.0f).get() alpha:0.5f];
 		OO_CHECK(ComponentsAre(light, 0.5f, 0.25f, 0.0f, 0.5f));
 		OO_CHECK(oo::DescriptionOf(facade).starts_with("<TestCxxParticle 0x"));
 	}

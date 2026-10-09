@@ -436,13 +436,13 @@ void WriteZip(const stdfs::path &path, const std::vector<std::pair<std::string, 
 const char *kGammaManifest = "{ identifier = \"oolite.oxp.test.gamma\"; title = Gamma; version = \"1.0\"; category = Ships; }";
 
 
-std::string ColorName(cxx::OOColor *c)
+std::string ColorName(OOColor *c)
 {
 	if (c == nullptr)  return "nil";
-	const std::pair<const char *, oo::Ref<cxx::OOColor>> named[] = {
-		{ "yellow", cxx::OOColor::yellowColor() }, { "cyan", cxx::OOColor::cyanColor() }, { "orange", cxx::OOColor::orangeColor() },
-		{ "brown", cxx::OOColor::brownColor() }, { "white", cxx::OOColor::whiteColor() }, { "red", cxx::OOColor::redColor() },
-		{ "gray", cxx::OOColor::grayColor() }, { "blue", cxx::OOColor::blueColor() } };
+	const std::pair<const char *, oo::Ref<OOColor>> named[] = {
+		{ "yellow", OOColor::yellowColor() }, { "cyan", OOColor::cyanColor() }, { "orange", OOColor::orangeColor() },
+		{ "brown", OOColor::brownColor() }, { "white", OOColor::whiteColor() }, { "red", OOColor::redColor() },
+		{ "gray", OOColor::grayColor() }, { "blue", OOColor::blueColor() } };
 	for (const auto &[name, n] : named)
 	{
 		if (n->redComponent() == c->redComponent() && n->greenComponent() == c->greenComponent() && n->blueComponent() == c->blueComponent())  return name;
@@ -602,44 +602,45 @@ enum
 };
 
 
-@interface TestGui: OOObject
+// The GUI is C++ since bead oo-9ht.143 deleted its facade: the recording screen overrides the
+// members it answered (proposed ADR-0056 amendment oo-9ht.1), recording the same lines.
+class TestGui : public GuiDisplayGen
 {
-@public
-	std::vector<std::string>	log;
-	OOGUIRow					selected;
-}
-@end
+public:
+	TestGui() : GuiDisplayGen(NSMakeSize(480, 480), GUI_DEFAULT_COLUMNS, GUI_DEFAULT_ROWS, 16, 40, std::nullopt) {}
 
-@implementation TestGui
-- (void) clearAndKeepBackground:(BOOL)keepBackground	{ log.push_back(keepBackground ? "clear keep" : "clear"); }
-- (void) cxx_setTitle:(const std::optional<std::string> &)str	{ log.push_back("title " + str.value_or("(nil)")); }
-- (void) cxx_setText:(const std::optional<std::string> &)str forRow:(OOGUIRow)row align:(OOGUIAlignment)alignment
-{
-	log.push_back("text " + std::to_string(row) + " " + std::to_string(static_cast<int>(alignment)) + " " + str.value_or("(nil)"));
-}
-- (void) cxx_setText:(const std::string &)str forRow:(OOGUIRow)row	{ log.push_back("text " + std::to_string(row) + " " + str); }
-- (OOGUIRow) cxx_addLongText:(const std::optional<std::string> &)str startingAtRow:(OOGUIRow)row align:(OOGUIAlignment)alignment
-{
-	log.push_back("long " + std::to_string(row) + " " + std::to_string(static_cast<int>(alignment)) + " " + str.value_or("(nil)"));
-	return row + 1;
-}
-- (void) cxx_setKey:(const std::string &)str forRow:(OOGUIRow)row	{ log.push_back("key " + std::to_string(row) + " " + str); }
-- (void) cxx_setArray:(const std::vector<std::string> &)arr forRow:(OOGUIRow)row
-{
-	std::string line = "array " + std::to_string(row);
-	for (const std::string &column : arr)  line += " |" + column;
-	log.push_back(line);
-}
-- (void) setColor:(OOColor *)color forRow:(OOGUIRow)row
-{
-	cxx::OOColor *c = oo::ToCxx(color);
-	log.push_back("color " + std::to_string(row) + " " + (c != nullptr ? std::to_string(static_cast<int>(c->redComponent() * 100)) + "," + std::to_string(static_cast<int>(c->greenComponent() * 100)) + "," + std::to_string(static_cast<int>(c->blueComponent() * 100)) : std::string("nil")));
-}
-- (OOGUIRow) selectedRow	{ return selected; }
-- (BOOL) setSelectedRow:(OOGUIRow)row	{ log.push_back("select " + std::to_string(row)); selected = row; return YES; }
-- (void) setSelectableRange:(NSRange)range	{ log.push_back("range " + std::to_string(range.location) + "+" + std::to_string(range.length)); }
-- (void) setTabStops:(OOGUITabSettings)stops	{ log.push_back("tabs " + std::to_string(stops[1]) + "," + std::to_string(stops[2])); }
-@end
+	std::vector<std::string>	log;
+	OOGUIRow					selected = 0;
+
+	void clearAndKeepBackground(bool keepBackground) override	{ log.push_back(keepBackground ? "clear keep" : "clear"); }
+	void setTitle(const std::optional<std::string> &str) override	{ log.push_back("title " + str.value_or("(nil)")); }
+	void setText(const std::optional<std::string> &str, OOGUIRow row, OOGUIAlignment alignment) override
+	{
+		log.push_back("text " + std::to_string(row) + " " + std::to_string(static_cast<int>(alignment)) + " " + str.value_or("(nil)"));
+	}
+	void setText(const std::string &str, OOGUIRow row) override	{ log.push_back("text " + std::to_string(row) + " " + str); }
+	OOGUIRow addLongText(const std::optional<std::string> &str, OOGUIRow row, OOGUIAlignment alignment) override
+	{
+		log.push_back("long " + std::to_string(row) + " " + std::to_string(static_cast<int>(alignment)) + " " + str.value_or("(nil)"));
+		return row + 1;
+	}
+	void setKey(const std::string &str, OOGUIRow row) override	{ log.push_back("key " + std::to_string(row) + " " + str); }
+	void setArray(const std::vector<std::string> &arr, OOGUIRow row) override
+	{
+		std::string line = "array " + std::to_string(row);
+		for (const std::string &column : arr)  line += " |" + column;
+		log.push_back(line);
+	}
+	void setColor(OOColor *color, OOGUIRow row) override
+	{
+		OOColor *c = color;
+		log.push_back("color " + std::to_string(row) + " " + (c != nullptr ? std::to_string(static_cast<int>(c->redComponent() * 100)) + "," + std::to_string(static_cast<int>(c->greenComponent() * 100)) + "," + std::to_string(static_cast<int>(c->blueComponent() * 100)) : std::string("nil")));
+	}
+	OOGUIRow getSelectedRow() override	{ return selected; }
+	bool setSelectedRow(OOGUIRow row) override	{ log.push_back("select " + std::to_string(row)); selected = row; return true; }
+	void setSelectableRange(NSRange range) override	{ log.push_back("range " + std::to_string(range.location) + "+" + std::to_string(range.length)); }
+	void setTabStops(OOGUITabSettings stops) override	{ log.push_back("tabs " + std::to_string(stops[1]) + "," + std::to_string(stops[2])); }
+};
 
 
 @interface TestGameView: OOObject
@@ -659,7 +660,7 @@ enum
 @interface TestUniverse: OOObject
 {
 @public
-	TestGui			*gui;
+	oo::Ref<TestGui>	gui;
 	TestGameView	*gameView;
 	oo::PList		descriptions;
 }
@@ -670,14 +671,14 @@ enum
 {
 	if ((self = [super init]))
 	{
-		gui = [[TestGui alloc] init];
+		gui = oo::makeRef<TestGui>();
 		gameView = [[TestGameView alloc] init];
 		descriptions = oo::PList(oo::PList::Dict());
 	}
 	return self;
 }
-- (void) dealloc	{ [gui release]; [gameView release]; [super dealloc]; }
-- (id) gui	{ return gui; }
+- (void) dealloc	{ [gameView release]; [super dealloc]; }
+- (GuiDisplayGen *) gui	{ return gui.get(); }
 - (id) gameView	{ return gameView; }
 - (std::optional<std::string>) cxx_descriptionForKey:(const std::string &)key	{ (void)key; return std::nullopt; }
 - (const oo::PList *) cxx_descriptions	{ return &descriptions; }
@@ -1150,7 +1151,7 @@ OO_TEST(guiInput)
 	{
 		StandInUniverse standIn;
 		OOOXZManager *m = Manager();
-		TestGui *gui = standIn.universe->gui;
+		TestGui *gui = standIn.universe->gui.get();
 
 		// The filter: the key, typed text, its prompt.
 		m->_interfaceState = OXZ_STATE_NODATA;
@@ -1513,7 +1514,7 @@ OO_TEST(optionPages)
 	{
 		StandInUniverse standIn;
 		OOOXZManager *m = Manager();
-		TestGui *gui = standIn.universe->gui;
+		TestGui *gui = standIn.universe->gui.get();
 		const oo::PList savedList = m->manifests();
 
 		// Thirteen entries: two pages of ten.

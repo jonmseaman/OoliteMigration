@@ -804,7 +804,7 @@ oo::PList OODebugMonitor::normalizeConfigDictionary(const oo::PList &dictionary)
 
 oo::PList OODebugMonitor::normalizeConfigValue(const oo::PList &value, const std::string &key)
 {
-	::OOColor				*color = nil;
+	oo::Ref<OOColor>	color;
 	BOOL					boolValue;
 
 	if (value)
@@ -812,10 +812,10 @@ oo::PList OODebugMonitor::normalizeConfigValue(const oo::PList &value, const std
 		if (oo::str::hasSuffix(key, "-color") || oo::str::hasSuffix(key, "-colour"))
 		{
 			// OOColor reads the same object; the normalized array holds +numberWithFloat: values.
-			color = [::OOColor cxx_colorWithDescription:value];
+			color = OOColor::colorWithDescription(value);
 			if (color == nil)  return oo::PList();
 			oo::PList::Array components;
-			for (float component : [color cxx_normalizedArray])  components.push_back(oo::PList::singleReal(component));
+			for (float component : color->normalizedArray())  components.push_back(oo::PList::singleReal(component));
 			return oo::PList(std::move(components));
 		}
 		else if (oo::str::hasPrefix(key, "show-console"))

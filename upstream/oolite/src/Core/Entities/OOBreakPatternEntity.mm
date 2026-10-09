@@ -77,7 +77,7 @@ oo::Ref<OOBreakPatternEntity> OOBreakPatternEntity::breakPatternWithPolygonSides
 }
 
 
-void OOBreakPatternEntity::setInnerColor(cxx::OOColor *color1, cxx::OOColor *color2)
+void OOBreakPatternEntity::setInnerColor(OOColor *color1, OOColor *color2)
 {
 	// Messages to a nil colour did nothing: those components stay uninitialised, as they did.
 	GLfloat inner[4], outer[4];

@@ -84,7 +84,7 @@ oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &unifor
 }
 
 
-oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &uniformName, OOShaderProgram *shaderProgram, cxx::OOColor *constValue)
+oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &uniformName, OOShaderProgram *shaderProgram, OOColor *constValue)
 {
 	if (EXPECT_NOT(constValue == nullptr))
 	{
@@ -275,6 +275,7 @@ std::optional<std::string> OOShaderUniform::description()
 			valueType = "vec2";
 			break;
 
+		case kOOShaderUniformTypeColor:	// what the colour bindings printed while they were objects
 		case kOOShaderUniformTypeObject:
 			valueType = "object-binding";
 			break;
@@ -451,7 +452,6 @@ void OOShaderUniform::applyBinding()
 	Quaternion					qVal;
 	NSPoint						pVal = {0};
 	BOOL						isInt = NO, isFloat = NO, isVector = NO, isMatrix = NO, isPoint = NO;
-	id							objVal = nil;
 
 	/*	Design note: if the object has been dealloced, or an exception occurs,
 		do nothing. Shaders can specify a default value for uniforms, which
@@ -532,16 +532,19 @@ void OOShaderUniform::applyBinding()
 			break;
 
 		case kOOShaderUniformTypeObject:
-			objVal = ((ObjectReturnMsgSend)value.binding.method)(object, value.binding.selector);
-			// A colour. (The number-object case went with Foundation: no bindable method returns
-			// one - the whitelisted object-valued bindings, laserColor and fogUniform, are OOColors.)
-			if ([objVal isKindOfClass:[::OOColor class]])
+			// An object that is not a colour: nothing set. (The number-object case went with
+			// Foundation: no bindable method returns one; the whitelisted object-valued bindings,
+			// laserColor and fogUniform, answer the C++ colour since bead oo-9ht.1: the case below.)
+			(void)((ObjectReturnMsgSend)value.binding.method)(object, value.binding.selector);
+			break;
+
+		case kOOShaderUniformTypeColor:
+			if (::OOColor *color = ((ColorReturnMsgSend)value.binding.method)(object, value.binding.selector))
 			{
-				::OOColor *color = objVal;
-				expVVal[0] = [color redComponent];
-				expVVal[1] = [color greenComponent];
-				expVVal[2] = [color blueComponent];
-				expVVal[3] = [color alphaComponent];
+				expVVal[0] = color->redComponent();
+				expVVal[1] = color->greenComponent();
+				expVVal[2] = color->blueComponent();
+				expVVal[3] = color->alphaComponent();
 				isVector = YES;
 			}
 			break;

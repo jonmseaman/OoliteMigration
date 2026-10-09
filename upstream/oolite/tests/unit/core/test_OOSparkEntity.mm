@@ -65,7 +65,7 @@ namespace {
 
 OOLightParticleEntity *MakeSpark(HPVector position, Vector velocity, OOTimeDelta duration, float size, OOColor *color)
 {
-	return (OOLightParticleEntity *)oo::NewEntityFacade(OOSparkEntity::sparkWithPosition(position, velocity, duration, size, oo::ToCxx(color)));
+	return (OOLightParticleEntity *)oo::NewEntityFacade(OOSparkEntity::sparkWithPosition(position, velocity, duration, size, color));
 }
 
 const GLfloat *ColorComponents(OOLightParticleEntity *e)	{ return oo::ToCxx(e)->_colorComponents; }
@@ -106,8 +106,8 @@ OO_TEST(initWithPosition)
 	@autoreleasepool
 	{
 		SetUp();
-		OOColor *color = [OOColor colorWithRed:0.2f green:0.4f blue:0.6f alpha:0.8f];
-		OOLightParticleEntity *spark = MakeSpark(make_HPvector(1, 2, 3), make_vector(10, 0, 0), 2.0, 4.0f, color);
+		oo::Ref<OOColor>	color = OOColor::colorWithRed(0.2f, 0.4f, 0.6f, 0.8f);
+		OOLightParticleEntity *spark = MakeSpark(make_HPvector(1, 2, 3), make_vector(10, 0, 0), 2.0, 4.0f, color.get());
 		OO_CHECK(spark != nil);
 		OO_CHECK(HPvector_equal([spark position], make_HPvector(1, 2, 3)));
 		OO_CHECK(vector_equal([spark velocity], make_vector(10, 0, 0)));
@@ -125,8 +125,8 @@ OO_TEST(fadesTowardsRedAndIsRemoved)
 	@autoreleasepool
 	{
 		SetUp();
-		OOColor *color = [OOColor colorWithRed:0.2f green:0.4f blue:0.6f alpha:0.8f];
-		OOLightParticleEntity *spark = MakeSpark(make_HPvector(1, 2, 3), make_vector(10, 0, 0), 2.0, 4.0f, color);
+		oo::Ref<OOColor>	color = OOColor::colorWithRed(0.2f, 0.4f, 0.6f, 0.8f);
+		OOLightParticleEntity *spark = MakeSpark(make_HPvector(1, 2, 3), make_vector(10, 0, 0), 2.0, 4.0f, color.get());
 
 		// Half way: half the base colour, plus half red; moved by its velocity.
 		[spark update:1.0];

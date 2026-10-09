@@ -89,7 +89,7 @@ extern Universe *gSharedUniverse;
 
 - (BOOL) isVisible							{ return _visible; }
 - (BOOL) suppressFlightNotifications		{ return NO; }
-- (OOColor *) exhaustEmissiveColor			{ return [OOColor colorWithRed:0.7f green:0.9f blue:1.0f alpha:0.9f]; }
+- (OOColor *) exhaustEmissiveColor			{ static oo::Ref<OOColor> color = OOColor::colorWithRed(0.7f, 0.9f, 1.0f, 0.9f); return color.get(); }	// borrowed, as the ship answers it
 - (Vector) forwardVector					{ return make_vector(0, 0, 1); }
 - (Vector) rightVector						{ return make_vector(1, 0, 0); }
 - (Vector) upVector							{ return make_vector(0, 1, 0); }

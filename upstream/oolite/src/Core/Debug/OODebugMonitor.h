@@ -59,7 +59,8 @@ SOFTWARE.
 #include <string>
 #include <vector>
 
-@class OOJSScript, OOColor, OOJavaScriptEngine;
+@class OOJSScript, OOJavaScriptEngine;
+#import "OOColor.h"	// the colour maps hold oo::Ref<OOColor>
 
 
 namespace cxx {
@@ -169,7 +170,7 @@ private:
 	oo::PList							_configOverrides;	// Settings from preferences, modifiable through JS (a Dict; values may be Object nodes).
 
 	// Caches
-	std::map<std::string, oo::ObjCRef<OOColor *>, std::less<>>		_fgColors,
+	std::map<std::string, oo::Ref<OOColor>, std::less<>>		_fgColors,
 																	_bgColors;
 	std::map<std::string, std::vector<std::string>, std::less<>>	_sourceFiles;	// lines of each source file shown so far
 	// TCP options

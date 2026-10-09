@@ -36,7 +36,8 @@
 #include "oofnd/PList.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 
-@class	OOColor, OOMesh, OOScript, OOJSScript;
+@class OOMesh, OOScript, OOJSScript;
+class OOColor;
 class OOFlasherEntity;	// C++ only since bead oo-9ht.107
 
 
@@ -129,11 +130,11 @@ public:
 	void drawImmediate(bool immediate, bool translucent) override;
 	void update(OOTimeDelta delta_t) override;
 
-	cxx::OOColor *scannerDisplayColor1();
-	cxx::OOColor *scannerDisplayColor2();
-	void setScannerDisplayColor1(cxx::OOColor *color);
-	void setScannerDisplayColor2(cxx::OOColor *color);
-	GLfloat *scannerDisplayColorForShip(bool flash, cxx::OOColor *scannerDisplayColor1, cxx::OOColor *scannerDisplayColor2);
+	OOColor *scannerDisplayColor1();
+	OOColor *scannerDisplayColor2();
+	void setScannerDisplayColor1(OOColor *color);
+	void setScannerDisplayColor2(OOColor *color);
+	GLfloat *scannerDisplayColorForShip(bool flash, OOColor *scannerDisplayColor1, OOColor *scannerDisplayColor2);
 
 	void setScript(const std::optional<std::string> &script_name);
 	::OOJSScript *script();
@@ -179,8 +180,8 @@ public:
 
 	GLfloat					_profileRadius = {}; // for frustum culling
 
-	oo::Ref<cxx::OOColor>	scanner_display_color1;
-	oo::Ref<cxx::OOColor>	scanner_display_color2;
+	oo::Ref<OOColor>	scanner_display_color1;
+	oo::Ref<OOColor>	scanner_display_color2;
 
 	GLfloat         _hullHeatLevel = {};
 	GLfloat         _shaderFloat1 = {};

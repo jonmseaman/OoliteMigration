@@ -90,11 +90,11 @@ MA 02110-1301, USA.
 - (OOMaterial *) atmosphereShaderMaterial										{ return oo::ToCxx(self)->atmosphereShaderMaterial(); }
 - (BOOL) isFinishedLoading														{ return oo::ToCxx(self)->isFinishedLoading(); }
 - (Vector) airColorAsVector														{ return oo::ToCxx(self)->airColorAsVector(); }
-- (OOColor *) airColor															{ return oo::ToObjC(oo::ToCxx(self)->airColor()); }
-- (void) setAirColor:(OOColor *)newColor										{ oo::ToCxx(self)->setAirColor(oo::ToCxx(newColor)); }
+- (OOColor *) airColor															{ return oo::ToCxx(self)->airColor(); }
+- (void) setAirColor:(OOColor *)newColor										{ oo::ToCxx(self)->setAirColor(newColor); }
 - (Vector) illuminationColorAsVector											{ return oo::ToCxx(self)->illuminationColorAsVector(); }
-- (OOColor *) illuminationColor													{ return oo::ToObjC(oo::ToCxx(self)->illuminationColor()); }
-- (void) setIlluminationColor:(OOColor *)newColor								{ oo::ToCxx(self)->setIlluminationColor(oo::ToCxx(newColor)); }
+- (OOColor *) illuminationColor													{ return oo::ToCxx(self)->illuminationColor(); }
+- (void) setIlluminationColor:(OOColor *)newColor								{ oo::ToCxx(self)->setIlluminationColor(newColor); }
 - (float) airColorMixRatio														{ return oo::ToCxx(self)->airColorMixRatio(); }
 - (void) setAirColorMixRatio:(float)newRatio									{ oo::ToCxx(self)->setAirColorMixRatio(newRatio); }
 - (float) airDensity															{ return oo::ToCxx(self)->airDensity(); }

@@ -116,7 +116,7 @@ void OOECMBlastEntity::update(OOTimeDelta delta_t)
 void OOECMBlastEntity::drawImmediate(bool /*immediate*/, bool /*translucent*/)
 {
 #if ECM_DEBUG_DRAW && OO_DEBUG
-	OODebugDrawPoint(kZeroVector, [OOColor cyanColor]);
+	OODebugDrawPoint(kZeroVector, OOColor::cyanColor().get());
 #endif
 	// Else do nothing, we're invisible!
 }

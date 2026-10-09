@@ -100,7 +100,7 @@ namespace {
 namespace {
 
 // A colour's components as its -normalizedArray gave them to JavaScript: floats, null for no colour.
-oo::PList NormalizedColorComponents(cxx::OOColor *color)
+oo::PList NormalizedColorComponents(OOColor *color)
 {
 	if (color == nullptr)  return oo::PList();
 	oo::PList::Array components;
@@ -109,28 +109,28 @@ oo::PList NormalizedColorComponents(cxx::OOColor *color)
 }
 
 
-/*	The player's HUD is converted (cxx::HeadUpDisplay), and the player answers its facade. A
+/*	The player's HUD is converted (HeadUpDisplay), and the player answers its facade. A
 	player with no HUD answered zero, false, nil or none to every message the getter sent the HUD;
 	so does a null HUD here (ADR-0056 amendments oo-6ia4 item 2, oo-nge8 item 6).
 */
 template <typename R>
-R AskHud(PlayerEntity *player, R (cxx::HeadUpDisplay::*member)())
+R AskHud(PlayerEntity *player, R (HeadUpDisplay::*member)())
 {
-	cxx::HeadUpDisplay *hud = oo::ToCxx(OOJSPlayerShipPlayerHud(player));
+	HeadUpDisplay *hud = OOJSPlayerShipPlayerHud(player);
 	return (hud != nullptr) ? (hud->*member)() : R();
 }
 
 
-cxx::HeadUpDisplay *HudOf(PlayerEntity *player)
+HeadUpDisplay *HudOf(PlayerEntity *player)
 {
-	return oo::ToCxx(OOJSPlayerShipPlayerHud(player));
+	return OOJSPlayerShipPlayerHud(player);
 }
 
 
-oo::Ref<cxx::OOColor> HudReticleColor(PlayerEntity *player, NSUInteger idx)
+oo::Ref<OOColor> HudReticleColor(PlayerEntity *player, NSUInteger idx)
 {
-	cxx::HeadUpDisplay *hud = oo::ToCxx(OOJSPlayerShipPlayerHud(player));
-	return (hud != nullptr) ? hud->reticleColorForIndex(idx) : oo::Ref<cxx::OOColor>();
+	HeadUpDisplay *hud = OOJSPlayerShipPlayerHud(player);
+	return (hud != nullptr) ? hud->reticleColorForIndex(idx) : oo::Ref<OOColor>();
 }
 
 // A string, or null for none (what an NSString or nil gave JavaScript).
@@ -636,7 +636,7 @@ static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Val
 			break;
 			
 		case kPlayerShip_reticleTargetSensitive:
-			*value_raw = OOJSValueFromBOOL(AskHud(player, &cxx::HeadUpDisplay::getReticleTargetSensitive));
+			*value_raw = OOJSValueFromBOOL(AskHud(player, &HeadUpDisplay::getReticleTargetSensitive));
 			return true;
 			
 		case kPlayerShip_galacticHyperspaceBehaviour:
@@ -682,7 +682,7 @@ static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Val
 			return ooscript::newNumberValue(cx, OOJSPlayerShipPlayerAftShieldRechargeRate(player), value);
 			
 		case kPlayerShip_multiFunctionDisplays:
-			return ooscript::newNumberValue(cx, AskHud(player, &cxx::HeadUpDisplay::mfdCount), value);
+			return ooscript::newNumberValue(cx, AskHud(player, &HeadUpDisplay::mfdCount), value);
 
 		case kPlayerShip_multiFunctionDisplayList:
 			{
@@ -750,15 +750,15 @@ static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Val
 		}
 		
 		case kPlayerShip_scannerMinimalistic:
-			*value_raw = OOJSValueFromBOOL(AskHud(player, &cxx::HeadUpDisplay::minimalisticScanner));
+			*value_raw = OOJSValueFromBOOL(AskHud(player, &HeadUpDisplay::minimalisticScanner));
 			return true;
 			
 		case kPlayerShip_scannerNonLinear:
-			*value_raw = OOJSValueFromBOOL(AskHud(player, &cxx::HeadUpDisplay::nonlinearScanner));
+			*value_raw = OOJSValueFromBOOL(AskHud(player, &HeadUpDisplay::nonlinearScanner));
 			return true;
 			
 		case kPlayerShip_scannerUltraZoom:
-			*value_raw = OOJSValueFromBOOL(AskHud(player, &cxx::HeadUpDisplay::scannerUltraZoom));
+			*value_raw = OOJSValueFromBOOL(AskHud(player, &HeadUpDisplay::scannerUltraZoom));
 			return true;
 			
 		case kPlayerShip_scoopOverride:
@@ -791,19 +791,19 @@ static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Val
 			return true;
 			
 		case kPlayerShip_hud:
-			result = StringOrNull(AskHud(player, &cxx::HeadUpDisplay::getHudName));
+			result = StringOrNull(AskHud(player, &HeadUpDisplay::getHudName));
 			break;
 
 		case kPlayerShip_crosshairs:
-			result = StringOrNull(AskHud(player, &cxx::HeadUpDisplay::getCrosshairDefinition));
+			result = StringOrNull(AskHud(player, &HeadUpDisplay::getCrosshairDefinition));
 			break;
 
 		case kPlayerShip_hudAllowsBigGui:
-			*value_raw = OOJSValueFromBOOL(AskHud(player, &cxx::HeadUpDisplay::getAllowBigGui));
+			*value_raw = OOJSValueFromBOOL(AskHud(player, &HeadUpDisplay::getAllowBigGui));
 			return true;
 
 		case kPlayerShip_hudHidden:
-			*value_raw = OOJSValueFromBOOL(AskHud(player, &cxx::HeadUpDisplay::isHidden));
+			*value_raw = OOJSValueFromBOOL(AskHud(player, &HeadUpDisplay::isHidden));
 			return true;
 			
 		case kPlayerShip_weaponsOnline:
@@ -855,11 +855,11 @@ static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Val
 			return ooscript::newNumberValue(cx, -OOJSPlayerShipPlayerFlightYaw(player), value);
 			
 		case kPlayerShip_messageGuiTextColor:
-			result = NormalizedColorComponents(oo::ToCxx(OOJSPlayerShipUniverseMessageGUITextColor()));
+			result = NormalizedColorComponents(OOJSPlayerShipUniverseMessageGUITextColor());
 			break;
 			
 		case kPlayerShip_messageGuiTextCommsColor:
-			result = NormalizedColorComponents(oo::ToCxx(OOJSPlayerShipUniverseMessageGUITextCommsColor()));
+			result = NormalizedColorComponents(OOJSPlayerShipUniverseMessageGUITextCommsColor());
 			break;
 			
 		default:
@@ -894,7 +894,7 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 	std::optional<std::string>					sValue;
 	OOGalacticHyperspaceBehaviour ghBehaviour;
 	Vector						vValue;
-	oo::Ref<cxx::OOColor>		colorForScript;	// the colours are converted (cxx::OOColor)
+	oo::Ref<OOColor>		colorForScript;	// the colours are converted (OOColor)
 	Entity						*eValue = nil;
 
 	switch (ooscript::idToInt32(propID))
@@ -918,7 +918,7 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 		case kPlayerShip_reticleTargetSensitive:
 			if (ooscript::valueToBoolean(cx, *value, &bValue))
 			{
-				if (cxx::HeadUpDisplay *hud = HudOf(player))  hud->setReticleTargetSensitive(bValue);
+				if (HeadUpDisplay *hud = HudOf(player))  hud->setReticleTargetSensitive(bValue);
 				return true;
 			}
 			break;
@@ -1143,7 +1143,7 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 		case kPlayerShip_scannerMinimalistic:
 			if (ooscript::valueToBoolean(cx, *value, &bValue))
 			{
-				if (cxx::HeadUpDisplay *hud = HudOf(player))  hud->setMinimalisticScanner(bValue);
+				if (HeadUpDisplay *hud = HudOf(player))  hud->setMinimalisticScanner(bValue);
 				return true;
 			}
 			break;
@@ -1151,7 +1151,7 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 		case kPlayerShip_scannerNonLinear:
 			if (ooscript::valueToBoolean(cx, *value, &bValue))
 			{
-				if (cxx::HeadUpDisplay *hud = HudOf(player))  hud->setNonlinearScanner(bValue);
+				if (HeadUpDisplay *hud = HudOf(player))  hud->setNonlinearScanner(bValue);
 				return true;
 			}
 			break;
@@ -1159,7 +1159,7 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 		case kPlayerShip_scannerUltraZoom:
 			if (ooscript::valueToBoolean(cx, *value, &bValue))
 			{
-				if (cxx::HeadUpDisplay *hud = HudOf(player))  hud->setScannerUltraZoom(bValue);
+				if (HeadUpDisplay *hud = HudOf(player))  hud->setScannerUltraZoom(bValue);
 				return true;
 			}
 			break;
@@ -1191,7 +1191,7 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 			if (!sValue.has_value())
 			{
 				// reset HUD back to its plist settings
-				std::optional<std::string> hud = AskHud(player, &cxx::HeadUpDisplay::getHudName);	// a copy, as the retain kept it
+				std::optional<std::string> hud = AskHud(player, &HeadUpDisplay::getHudName);	// a copy, as the retain kept it
 				if (hud.has_value())  OOJSPlayerShipPlayerSwitchHudTo(player, *hud);
 				return true;
 			}
@@ -1208,7 +1208,7 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 		case kPlayerShip_hudHidden:
 			if (ooscript::valueToBoolean(cx, *value, &bValue))
 			{
-				if (cxx::HeadUpDisplay *hud = HudOf(player))  hud->setHidden(bValue);
+				if (HeadUpDisplay *hud = HudOf(player))  hud->setHidden(bValue);
 				return true;
 			}
 			break;
@@ -1286,25 +1286,25 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 			break;
 			
 		case kPlayerShip_messageGuiTextColor:
-			colorForScript = cxx::OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value_raw));
+			colorForScript = OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value_raw));
 			if (colorForScript != nullptr || ooscript::isNull(*value_raw))
 			{
-				OOJSPlayerShipUniverseMessageGUISetTextColor(oo::ToObjC(colorForScript));
+				OOJSPlayerShipUniverseMessageGUISetTextColor(colorForScript.get());
 				return true;
 			}
 			break;
 			
 		case kPlayerShip_messageGuiTextCommsColor:
-			colorForScript = cxx::OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value_raw));
+			colorForScript = OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value_raw));
 			if (colorForScript != nullptr || ooscript::isNull(*value_raw))
 			{
-				OOJSPlayerShipUniverseMessageGUISetTextCommsColor(oo::ToObjC(colorForScript));
+				OOJSPlayerShipUniverseMessageGUISetTextCommsColor(colorForScript.get());
 				return true;
 			}
 			break;
 			
 		case kPlayerShip_reticleColorTarget:
-			colorForScript = cxx::OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value_raw));
+			colorForScript = OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value_raw));
 			if (colorForScript != nullptr || ooscript::isNull(*value_raw))
 			{
 				return HudOf(player) != nullptr && HudOf(player)->setReticleColorForIndex(OO_RETICLE_COLOR_TARGET, colorForScript.get());
@@ -1312,7 +1312,7 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 			break;
 			
 		case kPlayerShip_reticleColorTargetSensitive:
-			colorForScript = cxx::OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value_raw));
+			colorForScript = OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value_raw));
 			if (colorForScript != nullptr || ooscript::isNull(*value_raw))
 			{
 				return HudOf(player) != nullptr && HudOf(player)->setReticleColorForIndex(OO_RETICLE_COLOR_TARGET_SENSITIVE, colorForScript.get());
@@ -1320,7 +1320,7 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 			break;
 			
 		case kPlayerShip_reticleColorWormhole:
-			colorForScript = cxx::OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value_raw));
+			colorForScript = OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value_raw));
 			if (colorForScript != nullptr || ooscript::isNull(*value_raw))
 			{
 				return HudOf(player) != nullptr && HudOf(player)->setReticleColorForIndex(OO_RETICLE_COLOR_WORMHOLE, colorForScript.get());
@@ -2154,7 +2154,7 @@ static bool PlayerShipHideHUDSelector(ooscript::Context context, ooscript::CallA
 		cxx_OOJSReportBadArguments(context, "PlayerShip", "hideHUDSelector", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "string (selector)");
 		return false;
 	}
-	if (cxx::HeadUpDisplay *hud = HudOf(player))  hud->setHiddenSelector(key.value_or(""), true);
+	if (HeadUpDisplay *hud = HudOf(player))  hud->setHiddenSelector(key.value_or(""), true);
 	
 	OOJS_RETURN_VOID;
 
@@ -2181,7 +2181,7 @@ static bool PlayerShipShowHUDSelector(ooscript::Context context, ooscript::CallA
 		cxx_OOJSReportBadArguments(context, "PlayerShip", "hideHUDSelector", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "string (selector)");
 		return false;
 	}
-	if (cxx::HeadUpDisplay *hud = HudOf(player))  hud->setHiddenSelector(key.value_or(""), false);
+	if (HeadUpDisplay *hud = HudOf(player))  hud->setHiddenSelector(key.value_or(""), false);
 	
 	OOJS_RETURN_VOID;
 

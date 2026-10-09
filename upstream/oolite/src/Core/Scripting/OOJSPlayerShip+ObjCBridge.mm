@@ -121,8 +121,8 @@ GLfloat OOJSPlayerShipPlayerFlightYaw(PlayerEntity *player)	{ return [player fli
 // The universe and its message GUI, as PlayerShipGetProperty() reads them.
 OOViewID OOJSPlayerShipUniverseViewDirection()	{ return [UNIVERSE viewDirection]; }
 OOCreditsQuantity OOJSPlayerShipUniverseTradeInValueForCommanderDictionary(const oo::PList &cmdrDict)	{ return [UNIVERSE cxx_tradeInValueForCommanderDictionary:cmdrDict]; }
-OOColor *OOJSPlayerShipUniverseMessageGUITextColor()	{ return [[UNIVERSE messageGUI] textColor]; }
-OOColor *OOJSPlayerShipUniverseMessageGUITextCommsColor()	{ return [[UNIVERSE messageGUI] textCommsColor]; }
+OOColor *OOJSPlayerShipUniverseMessageGUITextColor()	{ return [UNIVERSE messageGUI]->getTextColor(); }
+OOColor *OOJSPlayerShipUniverseMessageGUITextCommsColor()	{ return [UNIVERSE messageGUI]->getTextCommsColor(); }
 
 // The player's passengers, parcels and contracts (the contract methods and ValidateContracts()).
 NSUInteger OOJSPlayerShipPlayerPassengerCount(PlayerEntity *player)	{ return [player passengerCount]; }
@@ -168,8 +168,8 @@ bool OOJSPlayerShipPlayerSetWeaponMount(PlayerEntity *player, OOWeaponFacing fac
 OOEntityStatus OOJSPlayerShipPlayerStatus(PlayerEntity *player)	{ return [player status]; }
 void OOJSPlayerShipPlayerSetTargetSystemID(PlayerEntity *player, OOSystemID sid)	{ [player setTargetSystemID:sid]; }
 void OOJSPlayerShipPlayerSetInfoSystemID(PlayerEntity *player, OOSystemID sid, bool moveChart)	{ [player setInfoSystemID:sid moveChart:moveChart]; }
-void OOJSPlayerShipUniverseMessageGUISetTextColor(OOColor *color)	{ [[UNIVERSE messageGUI] setTextColor:color]; }
-void OOJSPlayerShipUniverseMessageGUISetTextCommsColor(OOColor *color)	{ [[UNIVERSE messageGUI] setTextCommsColor:color]; }
+void OOJSPlayerShipUniverseMessageGUISetTextColor(OOColor *color)	{ [UNIVERSE messageGUI]->setTextColor(color); }
+void OOJSPlayerShipUniverseMessageGUISetTextCommsColor(OOColor *color)	{ [UNIVERSE messageGUI]->setTextCommsColor(color); }
 void OOJSPlayerShipPlayerLaunchFromStation(PlayerEntity *player)	{ [player launchFromStation]; }
 void OOJSPlayerShipPlayerRemoveAllCargo(PlayerEntity *player)	{ [player removeAllCargo]; }
 void OOJSPlayerShipPlayerUseSpecialCargo(PlayerEntity *player, const std::string &descriptionString)	{ [player useSpecialCargo:descriptionString]; }
@@ -200,4 +200,4 @@ void OOJSPlayerShipPlayerSetMultiFunctionText(PlayerEntity *player, const std::o
 void OOJSPlayerShipPlayerSetDialCustom(PlayerEntity *player, const oo::PList &value, const std::string &dialKey)	{ [player cxx_setDialCustom:value forKey:dialKey]; }
 void OOJSPlayerShipUniverseAddMessage(const std::optional<std::string> &text, OOTimeDelta count)	{ [UNIVERSE cxx_addMessage:text forCount:count]; }
 GuiDisplayGen *OOJSPlayerShipUniverseGui()	{ return [UNIVERSE gui]; }
-std::optional<std::string> OOJSPlayerShipGuiReflowTextForMFD(GuiDisplayGen *gui, const std::optional<std::string> &input)	{ return [gui cxx_reflowTextForMFD:input]; }
+std::optional<std::string> OOJSPlayerShipGuiReflowTextForMFD(GuiDisplayGen *gui, const std::optional<std::string> &input)	{ return gui->reflowTextForMFD(input); }

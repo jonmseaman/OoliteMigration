@@ -196,7 +196,7 @@ OO_TEST(laserFlash)
 		SetUp(1.0);
 		OOFlashEffectEntity *flash = [OOFlashEffectEntity laserFlashWithPosition:make_HPvector(-1, -2, -3)
 																		velocity:make_vector(4, 5, 6)
-																		   color:[OOColor colorWithRed:1.0f green:0.5f blue:0.25f alpha:0.125f]];
+																		   color:OOColor::colorWithRed(1.0f, 0.5f, 0.25f, 0.125f).get()];
 		OO_CHECK(flash != nil && [flash isKindOfClass:[OOFlashEffectEntity class]]);
 		OO_CHECK(HPvector_equal([flash position], make_HPvector(-1, -2, -3)));
 		Vector v = [flash velocity];
