@@ -9,7 +9,6 @@ oolite_sources += files(
     'EntityShaderBindings.mm',
     'EntityShaderBindings+ObjCBridge.mm',
     'OOBreakPatternEntity.mm',
-    'OOBreakPatternEntity+ObjCBridge.mm',
     'OOECMBlastEntity.mm',
     'OOEntityWithDrawable.mm',
     'OOEntityWithDrawable+ObjCBridge.mm',
