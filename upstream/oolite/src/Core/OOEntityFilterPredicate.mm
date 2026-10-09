@@ -134,7 +134,7 @@ BOOL IsStationPredicate(Entity *entity, void *parameter)
 BOOL IsPlanetPredicate(Entity *entity, void *parameter)
 {
 	if (![entity isPlanet])  return NO;
-	OOStellarBodyType type = [(OOPlanetEntity *)entity planetType];
+	OOStellarBodyType type = OOStellarBodyPlanetType(entity);	// the planet is C++ since bead oo-9ht.129
 	return (type == STELLAR_TYPE_NORMAL_PLANET || type == STELLAR_TYPE_MOON);
 }
 

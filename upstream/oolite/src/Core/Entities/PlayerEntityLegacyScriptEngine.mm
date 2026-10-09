@@ -44,7 +44,7 @@ MA 02110-1301, USA.
 #import "OOSound.h"
 #import "OOSunEntity.h"
 #import "OOPlanetEntity.h"
-#import "OOPlanetEntity.h"
+#import "OOPlanetDrawable.h"	// oo::makeRef<OOPlanetEntity>() destroys its drawables (bead oo-9ht.129)
 #import "StationEntity.h"
 #import "OOLegacyScriptWhitelist.h"
 #import "OOJavaScriptEngine.h"
@@ -2448,13 +2448,21 @@ void cxx::PlayerEntity::addPlanet(const std::string &planetKey)	// called by nam
 	/*- add planet -*/
 	// ("%@" of the dictionary: the round trip prints the same description)
 	OO_LOG(kOOLogDebugAddPlanet, "DEBUG: initPlanetFromDictionary: {}", oo::DescriptionOf(dict));
-	::OOPlanetEntity *planet = [[[::OOPlanetEntity alloc] initFromDictionary:dict withAtmosphere:YES andSeed:([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getRandomSeedForCurrentSystem() : Random_Seed()) forSystem:system_id] autorelease];
+	::OOPlanetEntity *planet = nullptr;
+	{
+		// [[[OOPlanetEntity alloc] initFromDictionary:...] autorelease]: a new C++ planet, kept by its
+		// autoreleased Objective-C object (the facade went with bead oo-9ht.129).
+		oo::Ref<::OOPlanetEntity> planetRef = oo::makeRef<::OOPlanetEntity>();
+		oo::NewEntityFacade(planetRef);
+		planetRef->initFromDictionary(dict, true, ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getRandomSeedForCurrentSystem() : Random_Seed()), system_id);
+		planet = planetRef.get();
+	}
 
 	Quaternion planetOrientation;
 	const oo::PList *orientationValue = dict.find("orientation");
 	if (cxx_ScanQuaternionFromString((orientationValue != nullptr && orientationValue->isString()) ? std::optional<std::string>(*orientationValue->getIf<std::string>()) : std::nullopt, &planetOrientation))
 	{
-		[planet setOrientation:planetOrientation];
+		if (planet != nullptr)  planet->setOrientation(planetOrientation);
 	}
 
 	const oo::PList *positionValue = dict.find("position");
@@ -2480,9 +2488,9 @@ void cxx::PlayerEntity::addPlanet(const std::string &planetKey)	// called by nam
 		cxx_ScanHPVectorFromString(positionString, &posn);
 		OO_LOG(kOOLogDebugAddPlanet, "planet position ({:.2f} {:.2f} {:.2f}) derived from {}", posn.x, posn.y, posn.z, positionString);
 	}
-	[planet setPosition: posn];
+	if (planet != nullptr)  planet->setPosition(posn);
 
-	[UNIVERSE addEntity:planet];
+	[UNIVERSE addEntity:oo::ToObjC(planet)];
 	return planet;
 }
 
@@ -2511,13 +2519,21 @@ void cxx::PlayerEntity::addMoon(const std::string &moonKey)	// called by name (A
 	/*- add planet -*/
 	// ("%@" of the dictionary: the round trip prints the same description)
 	OO_LOG(kOOLogDebugAddPlanet, "DEBUG: initMoonFromDictionary: {}", oo::DescriptionOf(dict));
-	::OOPlanetEntity *planet = [[[::OOPlanetEntity alloc] initFromDictionary:dict withAtmosphere:NO andSeed:([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getRandomSeedForCurrentSystem() : Random_Seed()) forSystem:system_id] autorelease];
+	::OOPlanetEntity *planet = nullptr;
+	{
+		// [[[OOPlanetEntity alloc] initFromDictionary:...] autorelease]: a new C++ planet, kept by its
+		// autoreleased Objective-C object (the facade went with bead oo-9ht.129).
+		oo::Ref<::OOPlanetEntity> planetRef = oo::makeRef<::OOPlanetEntity>();
+		oo::NewEntityFacade(planetRef);
+		planetRef->initFromDictionary(dict, false, ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getRandomSeedForCurrentSystem() : Random_Seed()), system_id);
+		planet = planetRef.get();
+	}
 
 	Quaternion planetOrientation;
 	const oo::PList *orientationValue = dict.find("orientation");
 	if (cxx_ScanQuaternionFromString((orientationValue != nullptr && orientationValue->isString()) ? std::optional<std::string>(*orientationValue->getIf<std::string>()) : std::nullopt, &planetOrientation))
 	{
-		[planet setOrientation:planetOrientation];
+		if (planet != nullptr)  planet->setOrientation(planetOrientation);
 	}
 
 	const oo::PList *positionValue = dict.find("position");
@@ -2543,9 +2559,9 @@ void cxx::PlayerEntity::addMoon(const std::string &moonKey)	// called by name (A
 		cxx_ScanHPVectorFromString(positionString, &posn);
 		OO_LOG(kOOLogDebugAddPlanet, "moon position ({:.2f} {:.2f} {:.2f}) derived from {}", posn.x, posn.y, posn.z, positionString);
 	}
-	[planet setPosition: posn];
+	if (planet != nullptr)  planet->setPosition(posn);
 
-	[UNIVERSE addEntity:planet];
+	[UNIVERSE addEntity:oo::ToObjC(planet)];
 	return planet;
 }
 
@@ -2946,16 +2962,28 @@ bool cxx::PlayerEntity::processSceneString(const std::string &item, Vector off)
 		}
 		else
 		{
-			originalPlanet = [[[::OOPlanetEntity alloc] initAsMainPlanetForSystem:info_system_id] autorelease];
+			// [[[OOPlanetEntity alloc] initAsMainPlanetForSystem:] autorelease]: a new C++ planet, kept by
+			// its autoreleased Objective-C object (the facade went with bead oo-9ht.129).
+			oo::Ref<::OOPlanetEntity> planetRef = oo::makeRef<::OOPlanetEntity>();
+			oo::NewEntityFacade(planetRef);
+			planetRef->initAsMainPlanetForSystem(info_system_id);
+			originalPlanet = planetRef.get();
 		}
-		::OOPlanetEntity *doppelganger = [originalPlanet miniatureVersion];
+		// -miniatureVersion: a new C++ planet and its autoreleased Objective-C object; nil for nil.
+		::OOPlanetEntity *doppelganger = nullptr;
+		if (originalPlanet != nullptr)
+		{
+			oo::Ref<::OOPlanetEntity> miniature = originalPlanet->miniatureVersion();
+			oo::NewEntityFacade(miniature);
+			doppelganger = miniature.get();
+		}
 		if (doppelganger == nil)  return NO;
 
 
 		cxx_ScanVectorFromString(joined(1, 3), &model_p0);
 
 		// miniature radii are roughly between 60 and 120. Place miniatures with a radius bigger than 60 a bit futher away.
-		model_p0 = vector_multiply_scalar(model_p0, 1 - 0.5 * ((60 - [doppelganger radius]) / 60));
+		model_p0 = vector_multiply_scalar(model_p0, 1 - 0.5 * ((60 - (doppelganger != nullptr ? doppelganger->radius() : 0.0)) / 60));
 
 		model_p0 = vector_add(model_p0, off);
 
@@ -2963,15 +2991,15 @@ bool cxx::PlayerEntity::processSceneString(const std::string &item, Vector off)
 		//Quaternion model_q = { 0.83, 0.365148, 0.182574, 0.0 }; // shows new planets' north pole.
 		//Quaternion model_q = { 0.83, -0.365148, 0.182574, 0.0 }; // shows new planets' south pole.
 		Quaternion model_q = { 0.83, 0.12, 0.44, 0.0 };	// new planets - default orientation.
-		OO_LOG(kOOLogDebugProcessSceneStringAddMiniPlanet, "::::: adding {} to scene:'{}'", i_key, oo::DescriptionOf(doppelganger));
-		[doppelganger setOrientation: model_q];
+		OO_LOG(kOOLogDebugProcessSceneStringAddMiniPlanet, "::::: adding {} to scene:'{}'", i_key, oo::DescriptionOf(oo::ToObjC(doppelganger)));
+		if (doppelganger != nullptr)  doppelganger->setOrientation(model_q);
 		// HPVect: mission screen coordinates are small enough that we don't need high-precision for calculations
-		[doppelganger setPosition: vectorToHPVector(model_p0)];
+		if (doppelganger != nullptr)  doppelganger->setPosition(vectorToHPVector(model_p0));
 		/* MKW - add rotation based on current time
 		 *     - necessary to duplicate the rotation already performed in PlanetEntity.m since we reset the orientation above. */
 		int		deltaT = floor(fmod([self clockTimeAdjusted], 86400));
-		[doppelganger update: deltaT];
-		[UNIVERSE addEntity:doppelganger];
+		if (doppelganger != nullptr)  doppelganger->update(deltaT);
+		[UNIVERSE addEntity:oo::ToObjC(doppelganger)];
 
 		return YES;
 	}

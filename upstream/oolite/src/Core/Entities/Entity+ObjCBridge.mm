@@ -86,7 +86,6 @@ oo::ObjCPeers &Peers()
 	if (dynamic_cast<cxx::SkyEntity *>(entity.get()) != nullptr)  facadeClass = [::SkyEntity class];
 	if (dynamic_cast<cxx::OOWaypointEntity *>(entity.get()) != nullptr)  facadeClass = [::OOWaypointEntity class];
 	if (dynamic_cast<cxx::OOFlashEffectEntity *>(entity.get()) != nullptr)  facadeClass = [::OOFlashEffectEntity class];
-	if (dynamic_cast<cxx::OOPlanetEntity *>(entity.get()) != nullptr)  facadeClass = [::OOPlanetEntity class];
 	if (dynamic_cast<cxx::OOVisualEffectEntity *>(entity.get()) != nullptr)  facadeClass = [::OOVisualEffectEntity class];
 	if (dynamic_cast<cxx::ShipEntity *>(entity.get()) != nullptr)  facadeClass = [::ShipEntity class];
 	if (dynamic_cast<cxx::StationEntity *>(entity.get()) != nullptr)  facadeClass = [::StationEntity class];
@@ -371,6 +370,20 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 - (Vector) relativePosition								{ return _cxxEntity->relativePosition(); }
 
 
+// The planet's shader binding selectors (Entity (OOPlanetShaderBindings), below) are answered for a
+// planet's C++ part only (bead oo-9ht.129): the shader uniforms ask this before they bind.
+- (BOOL) respondsToSelector:(SEL)selector
+{
+	if (selector == @selector(airColorAsVector) || selector == @selector(illuminationColorAsVector) ||
+		selector == @selector(airColorMixRatio) || selector == @selector(airDensity) ||
+		selector == @selector(terminatorThresholdVector))
+	{
+		return dynamic_cast<OOPlanetEntity *>(_cxxEntity.get()) != nullptr;
+	}
+	return [super respondsToSelector:selector];
+}
+
+
 - (void) updateCameraRelativePosition
 {
 	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  link->superUpdateCameraRelativePosition();
@@ -624,5 +637,51 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 	return _cxxEntity->allTextures();
 }
 #endif
+
+@end
+
+
+/*	The planet's shader binding selectors (bead oo-9ht.129, ADR-0056 amendment oo-9ht.129). The
+	planet's materials bind uniforms to its Objective-C object by selector (material-defaults.plist
+	planet-material and atmosphere: airColorAsVector, illuminationColorAsVector, airColorMixRatio,
+	airDensity, terminatorThresholdVector), and since its facade was deleted that object is the
+	root's facade. These answer the C++ planet's members; -[Entity respondsToSelector:] answers them
+	for a planet's C++ part only, so a ship or any other entity still fails to bind them, as before.
+*/
+@implementation Entity (OOPlanetShaderBindings)
+
+- (Vector) airColorAsVector
+{
+	OOPlanetEntity *planet = dynamic_cast<OOPlanetEntity *>(_cxxEntity.get());
+	return planet != nullptr ? planet->airColorAsVector() : kZeroVector;
+}
+
+
+- (Vector) illuminationColorAsVector
+{
+	OOPlanetEntity *planet = dynamic_cast<OOPlanetEntity *>(_cxxEntity.get());
+	return planet != nullptr ? planet->illuminationColorAsVector() : kZeroVector;
+}
+
+
+- (float) airColorMixRatio
+{
+	OOPlanetEntity *planet = dynamic_cast<OOPlanetEntity *>(_cxxEntity.get());
+	return planet != nullptr ? planet->airColorMixRatio() : 0.0f;
+}
+
+
+- (float) airDensity
+{
+	OOPlanetEntity *planet = dynamic_cast<OOPlanetEntity *>(_cxxEntity.get());
+	return planet != nullptr ? planet->airDensity() : 0.0f;
+}
+
+
+- (Vector) terminatorThresholdVector
+{
+	OOPlanetEntity *planet = dynamic_cast<OOPlanetEntity *>(_cxxEntity.get());
+	return planet != nullptr ? planet->terminatorThresholdVector() : kZeroVector;
+}
 
 @end

@@ -127,17 +127,14 @@ std::string Describe(Entity *entity)
 
 - (BOOL) inInterstellarSpace  { return _interstellar; }
 - (StationEntity *) station  { return (StationEntity *)_station; }
-- (OOPlanetEntity *) planet  { return (OOPlanetEntity *)_planet; }
+// The planet is C++ since bead oo-9ht.129, as the sun since oo-9ht.111: the stand-in's entity's C++
+// part, which only crosses back to its Objective-C object (oo::ToObjC) in the code the test runs.
+- (OOPlanetEntity *) planet  { return static_cast<OOPlanetEntity *>(oo::ToCxx(_planet)); }
 // The sun is C++ since bead oo-9ht.111: the stand-in's entity's C++ part, which only crosses back
 // to its Objective-C object (oo::ToObjC) in the code the test runs.
 - (OOSunEntity *) sun  { return static_cast<OOSunEntity *>(oo::ToCxx(_sun)); }
 
-- (std::vector<oo::ObjCRef<OOPlanetEntity *>>) cxx_planets
-{
-	std::vector<oo::ObjCRef<OOPlanetEntity *>> result;
-	for (const auto &e : _planets)  result.push_back(oo::ObjCRef<OOPlanetEntity *>((OOPlanetEntity *)e.get()));
-	return result;
-}
+- (std::vector<oo::ObjCRef<Entity *>>) cxx_planets  { return _planets; }	// the planets' Objective-C objects
 
 - (std::vector<oo::ObjCRef<StationEntity *>>) cxx_stations
 {
@@ -239,7 +236,7 @@ std::string Describe(Entity *entity)
 
 - (HPVector) cxx_locationByCode:(const std::string &)code withSun:(OOSunEntity *)sun andPlanet:(OOPlanetEntity *)planet
 {
-	_log.push_back(oo::str::format("location %s %s %s", code.c_str(), Describe(oo::ToObjC(sun)).c_str(), Describe((Entity *)planet).c_str()));
+	_log.push_back(oo::str::format("location %s %s %s", code.c_str(), Describe(oo::ToObjC(sun)).c_str(), Describe(oo::ToObjC(planet)).c_str()));
 	return make_HPvector(1, 2, 3);
 }
 
@@ -315,13 +312,13 @@ std::string Describe(Entity *entity)
 - (OOPlanetEntity *) cxx_addPlanet:(const std::string &)planetKey
 {
 	_log.push_back("addPlanet " + planetKey);
-	return (OOPlanetEntity *)_planetToAdd;
+	return static_cast<OOPlanetEntity *>(oo::ToCxx(_planetToAdd));	// the C++ planet since bead oo-9ht.129
 }
 
 - (OOPlanetEntity *) cxx_addMoon:(const std::string &)moonKey
 {
 	_log.push_back("addMoon " + moonKey);
-	return (OOPlanetEntity *)_planetToAdd;
+	return static_cast<OOPlanetEntity *>(oo::ToCxx(_planetToAdd));	// the C++ planet since bead oo-9ht.129
 }
 
 @end

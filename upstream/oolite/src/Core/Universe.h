@@ -54,9 +54,10 @@ MA 02110-1301, USA.
 #include <string_view>
 #endif
 
-@class GameController, MyOpenGLView, Entity, ShipEntity, StationEntity, OOPlanetEntity, OOVisualEffectEntity, PlayerEntity, DockEntity, OOJSScript, OOWaypointEntity, OOException;
+@class GameController, MyOpenGLView, Entity, ShipEntity, StationEntity, OOVisualEffectEntity, PlayerEntity, DockEntity, OOJSScript, OOWaypointEntity, OOException;
 class WormholeEntity;	// C++ since bead oo-9ht.112
 class OOSunEntity;	// C++ since bead oo-9ht.111
+class OOPlanetEntity;	// C++ since bead oo-9ht.129
 #import "GuiDisplayGen.h"	// C++ since bead oo-9ht.143: the universe keeps its GUIs (oo::Ref)
 class CollisionRegion;
 
@@ -380,7 +381,7 @@ public:
 	::StationEntity			*cachedStation = nil;
 	::OOPlanetEntity		*cachedPlanet = nil;
 	::OOSunEntity			*cachedSun = nil;
-	std::vector<oo::ObjCRef<::OOPlanetEntity *>>	allPlanets;
+	std::vector<oo::ObjCRef<::Entity *>>	allPlanets;	// the planets' Objective-C objects (C++ since bead oo-9ht.129)
 	std::vector<oo::ObjCRef<::StationEntity *>>	allStations;	// each once, in the order added
 
 	float					ambientLightLevel = 0;
@@ -535,7 +536,7 @@ public:
 	::StationEntity *stationFriendlyTo(::ShipEntity *ship);
 	::OOPlanetEntity *planet();
 	::OOSunEntity *sun();
-	std::vector<oo::ObjCRef<::OOPlanetEntity *>> planets();
+	std::vector<oo::ObjCRef<::Entity *>> planets();	// the planets' Objective-C objects
 	std::vector<oo::ObjCRef<::StationEntity *>> stations();
 
 	// Slice 9: wormholes, the main station, beacons, waypoints, sky colour, the break pattern, making ships by role and name, default AIs, cargo capacity.

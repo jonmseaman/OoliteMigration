@@ -447,7 +447,7 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			break;
 			
 		case kSystem_mainPlanet:
-			result = oo::PListObject(OOJSSystemUniversePlanet());
+			result = oo::PListObject(oo::ToObjC(OOJSSystemUniversePlanet()));	// the planet is C++ since bead oo-9ht.129
 			handled = true;
 			break;
 			
@@ -458,7 +458,7 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			
 		case kSystem_planets:
 		{
-			std::vector<oo::ObjCRef<OOPlanetEntity *>> visible;
+			std::vector<oo::ObjCRef<Entity *>> visible;	// the planets' Objective-C objects
 			for (const auto &r : OOJSSystemUniversePlanets()) {
 				if (!OOJSSystemEntityIsVisibleToScripts(r.get()))  continue;
 				visible.push_back(r);
@@ -840,7 +840,7 @@ static bool SystemAddPlanet(ooscript::Context context, ooscript::CallArgs &oojsA
 	planet = OOJSSystemPlayerAddPlanet(player, *key);
 	OOJS_END_FULL_NATIVE
 	
-	OOJS_RETURN_OBJECT(planet);
+	OOJS_RETURN_OBJECT(oo::ToObjC(planet));
 	
 	OOJS_NATIVE_EXIT
 }
@@ -869,7 +869,7 @@ static bool SystemAddMoon(ooscript::Context context, ooscript::CallArgs &oojsArg
 	planet = OOJSSystemPlayerAddMoon(player, *key);
 	OOJS_END_FULL_NATIVE
 	
-	OOJS_RETURN_OBJECT(planet);
+	OOJS_RETURN_OBJECT(oo::ToObjC(planet));
 	
 	OOJS_NATIVE_EXIT
 }

@@ -2055,7 +2055,7 @@ BOOL JSEntityIsJavaScriptSearchablePredicate(Entity *entity, void * /*parameter*
 	}
 	else if (OOJavaScriptEngineIsPlanet(entity))
 	{
-		switch (oo::ToCxx((OOPlanetEntity *)entity)->planetType())	// a planet: not nil
+		switch (static_cast<OOPlanetEntity *>(oo::ToCxx(entity))->planetType())	// a planet: not nil (C++ since bead oo-9ht.129)
 		{
 			case STELLAR_TYPE_MOON:
 			case STELLAR_TYPE_NORMAL_PLANET:

@@ -20,13 +20,14 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 MA 02110-1301, USA.
 
-C++20 since bead oo-mp0d (proposed ADR-0056, amendments oo-bj8 item 12, oo-0mxi and oo-ubjo): the
-class is cxx::OOPlanetEntity, a leaf of cxx::Entity; OOPlanetEntity+ObjCBridge.h/.mm keep the
-Objective-C OOPlanetEntity for the code that makes and messages planets.
+C++20 since bead oo-mp0d (proposed ADR-0056, amendments oo-bj8 item 12, oo-0mxi and oo-ubjo), a
+leaf of cxx::Entity. Its Objective-C facade was deleted by bead oo-9ht.129 (amendments oo-9ht.12,
+oo-9ht.107, oo-9ht.23 and oo-9ht.129): the class is global and its object is the root's facade.
 
 */
 
 #import "OOPlanetEntity.h"
+#import "OOJSPlanet.h"
 #import "OOObjCPList.h"
 
 
@@ -165,8 +166,6 @@ oo::PList MaterialConfigWithTextures(const oo::PList &configuration, std::initia
 
 }	// namespace
 
-
-namespace cxx {
 
 // this is exclusively called to initialise the main planet.
 void OOPlanetEntity::initAsMainPlanetForSystem(OOSystemID s)
@@ -703,7 +702,7 @@ void OOPlanetEntity::update(OOTimeDelta delta_t)
 				if (_atmosphereDrawable)  _atmosphereDrawable->setRadius(collision_radius);
 				if (_cloudsShaderDrawable) _cloudsShaderDrawable->setRadius(collision_radius);
 			}
-			if ([PLAYER findNearestPlanet] == oo::ToObjC(this)) // ensure no problems in case of more than one planets
+			if ([PLAYER findNearestPlanet] == this) // ensure no problems in case of more than one planets
 			{
 				[UNIVERSE setAirResistanceFactor:0.0f];	// out of atmosphere - no air friction
 			}
@@ -726,7 +725,7 @@ void OOPlanetEntity::update(OOTimeDelta delta_t)
 
 bool OOPlanetEntity::isFinishedLoading()
 {
-	OOMaterial *material = oo::ToCxx(this->material());
+	cxx::OOMaterial *material = oo::ToCxx(this->material());
 	if (material != nullptr && !material->isFinishedLoading())  return false;
 	material = oo::ToCxx(atmosphereMaterial());
 	if (material != nullptr && !material->isFinishedLoading())  return false;
@@ -867,7 +866,7 @@ void OOPlanetEntity::launchShuttle()
 		// don't launch if game not started
 		return;
 	}
-	if (oo::ToObjC(this) != [UNIVERSE planet] && !planetHasStation())
+	if (this != [UNIVERSE planet] && !planetHasStation())
 	{
 		// don't launch shuttles when no station is nearby.
 		_shuttlesOnGround = 0;
@@ -1174,7 +1173,7 @@ void OOPlanetEntity::setTextureFileName(const std::optional<std::string> &textur
 		// [dynamicMaterial release]: the reference's.
 	}
 
-	oo::Ref<OOMaterial> material;
+	oo::Ref<cxx::OOMaterial> material;
 	
 #if OO_SHADERS
 	if (shadersOn)
@@ -1232,5 +1231,21 @@ void OOPlanetEntity::setName(const std::optional<std::string> &name)
 	_name = name;
 }
 
-}	// namespace cxx
 
+// The binding's bodies (OOJSPlanet.mm), which the facade forwarded to until bead oo-9ht.129.
+void OOPlanetEntity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)
+{
+	::OOJSPlanetGetJSClass(outClass, outPrototype);
+}
+
+
+std::optional<std::string> OOPlanetEntity::jsClassName()
+{
+	return ::OOJSPlanetJSClassName(this);
+}
+
+
+bool OOPlanetEntity::isVisibleToScripts()
+{
+	return ::OOJSPlanetIsVisibleToScripts(this);
+}
