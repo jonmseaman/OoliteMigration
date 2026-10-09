@@ -39,9 +39,8 @@ void InitOOJSDock(ooscript::Context context, ooscript::Object global);
 #endif
 
 
-/*	The bodies of DockEntity (OOJavaScriptExtensions), which the engine reaches by selector. Its
-	methods are one-line forwarders to these in OOJSDock+ObjCBridge.mm until DockEntity converts
-	(proposed ADR-0056 amendments oo-ppc and oo-ykoy).
+/*	The bodies of Entity (OOJavaScriptExtensions)'s class questions for a dock, which the C++
+	DockEntity's overrides call (bead oo-9ht.47; proposed ADR-0056 amendments oo-ppc and oo-ykoy).
 */
 void OOJSDockGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
 std::optional<std::string> OOJSDockJSClassName(void);

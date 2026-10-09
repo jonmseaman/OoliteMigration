@@ -164,8 +164,8 @@ DESTROY(_cxxShip->laser_color);
 	DESTROY(_cxxShip->script);
 	DESTROY(_cxxShip->aiScript);
 	_cxxShip->octree = nullptr;
-	DESTROY(_cxxShip->_defenseTargets);
-	DESTROY(_cxxShip->_collisionExceptions);
+	_cxxShip->_defenseTargets = nullptr;
+	_cxxShip->_collisionExceptions = nullptr;
 
 	[self setSubEntityTakingDamage:nil];
 	[self removeAllEquipment];

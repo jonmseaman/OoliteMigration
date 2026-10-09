@@ -89,6 +89,20 @@ MA 02110-1301, USA.
 	[super dealloc];
 }
 
+
+// The JS side, which the engine asks for by selector (Entity (OOJavaScriptExtensions)): the
+// ShipEntity category answers for ships, so the dock's own answers come from its C++ part.
+- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype
+{
+	_cxxDock->getJSClass(outClass, outPrototype);
+}
+
+
+- (std::optional<std::string>) cxx_oo_jsClassName
+{
+	return _cxxDock->jsClassName();
+}
+
 @end
 
 

@@ -39,12 +39,13 @@
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
+#import "OOWeakSet.h"
 #include "oofnd/objc/OOObjCRef.h"
 #include "Octree.h"
 #include <string_view>
 
 @class	OOColor, StationEntity, WormholeEntity, AI, OOMesh, OOScript, OOCharacter,
-	OOJSScript, OORoleSet, OOShipGroup, OOEquipmentType, OOWeakSet;
+	OOJSScript, OORoleSet, OOShipGroup, OOEquipmentType;
 class OOFlasherEntity;	// C++ only since bead oo-9ht.107
 class OOExhaustPlumeEntity;	// C++ only since bead oo-9ht.110
 
@@ -1390,10 +1391,10 @@ public:
 	Vector					_escortPositions[MAX_ESCORTS] = {};
 	BOOL					_escortPositionsValid = {};
 	
-	::OOWeakSet				*_defenseTargets = {};			 // defense targets
+	oo::Ref<::OOWeakSet>		_defenseTargets = {};			 // defense targets
 	
 	// ships in this set can't be collided with
-	::OOWeakSet				*_collisionExceptions = {};
+	oo::Ref<::OOWeakSet>		_collisionExceptions = {};
 
 	GLfloat					_profileRadius = {};
 	

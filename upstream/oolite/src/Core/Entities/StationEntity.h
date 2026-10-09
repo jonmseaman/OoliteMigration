@@ -40,7 +40,7 @@ MA 02110-1301, USA.
 #include "oofnd/PList.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 
-@class OOWeakSet, StationEntity;
+@class StationEntity;
 
 
 typedef enum
@@ -197,7 +197,7 @@ public:
 
 	// @private in Objective-C: private once StationEntity is converted; public while the facade's
 	// unconverted methods read them, since an Objective-C class cannot be a C++ friend
-	::OOWeakSet				*_shipsOnHold = {};
+	oo::Ref<::OOWeakSet>		_shipsOnHold = {};
 	::DockEntity				*player_reserved_dock = {};
 	double					last_launch_time = {};
 	double					approach_spacing = {};
