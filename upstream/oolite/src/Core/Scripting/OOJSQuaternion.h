@@ -84,8 +84,8 @@ bool QuaternionFromArgumentListNoError(ooscript::Context context, unsigned argc,
 #include "oofnd/PList.hpp"
 
 /*	The quaternion-conversion statistics the debug console reads with
-	PS.callObjC("reportJSQuaternionStatistics"). PlayerEntity (JSQuaternionStatistics), in
-	OOJSQuaternion+ObjCBridge.mm, forwards its two methods here until PlayerEntity converts.
+	PS.callObjC("reportJSQuaternionStatistics"): the C++ PlayerEntity's static members of the same
+	names forward here, reached by callObjC's name table (bead oo-9ht.15).
 */
 oo::PList reportJSQuaternionStatistics(void);
 void clearJSQuaternionStatistics(void);

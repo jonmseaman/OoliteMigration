@@ -61,7 +61,7 @@ MA 02110-1301, USA.
 	Phase 1, so the conversion is what is left of Objective-C. OOJS_NATIVE_ENTER/EXIT and
 	OOJS_PROFILE_ENTER/EXIT are C++ try/catch and scope guards (OOJSEngineNativeWrappers.h);
 	BOOL/YES/NO are bool/true/false; the category on PlayerEntity became two free functions, and
-	its methods moved to OOJSVector+ObjCBridge.mm. Messages to classes that are still
+	the C++ PlayerEntity's members call them (oo-9ht.15). Messages to classes that are still
 	Objective-C (Entity, Universe) stay as they are, which is why the file is still .mm until
 	Phase 4.
 */
@@ -396,8 +396,8 @@ static VectorStatistics sVectorConversionStats;
 } // namespace
 
 
-// The bodies of PlayerEntity (JSVectorStatistics), whose methods are in OOJSVector+ObjCBridge.mm
-// until PlayerEntity converts (proposed ADR-0056 amendment oo-ppc).
+// The bodies of the C++ PlayerEntity's statistics members, which were the category PlayerEntity
+// (JSVectorStatistics) until bead oo-9ht.15 (proposed ADR-0056 amendments oo-ppc, oo-9ht.15).
 oo::PList reportJSVectorStatistics(void)
 {
 	VectorStatistics *stats = &sVectorConversionStats;

@@ -12,7 +12,8 @@ timer will remain if the player dies and respawns; non-persistent timers will
 be removed.
 
 C++20 since bead oo-kdyh (proposed ADR-0056, the OOColor house style), converted with its one
-subclass, OOJSTimer (OOJSTimer.h). The class is cxx::OOScriptTimer while
+subclass, OOJSTimer (OOJSTimer.h), whose facade bead oo-9ht.37 deleted: a JS timer's facade is an
+OOScriptTimer that answers the JS glue for it. The class is cxx::OOScriptTimer while
 OOScriptTimer+ObjCBridge.h, imported at the end of this header, keeps the Objective-C
 OOScriptTimer that PlayerEntity messages (+updateTimers, +noteGameReset) and that the timer
 queue holds: OOPriorityQueue (bead oo-3lj8) keeps Objective-C elements ordered by a selector, so
@@ -66,6 +67,14 @@ public:
 	~OOScriptTimer() override;
 
 	virtual std::optional<std::string> descriptionComponents() const;
+
+	// The class name the facade's description shows: what its class was named, "OOScriptTimer",
+	// or "OOJSTimer" for a JS timer, whose facade was an OOJSTimer until bead oo-9ht.37.
+	virtual std::string className() const	{ return "OOScriptTimer"; }
+
+	// What the facade answers to -cxx_oo_jsClassName for a timer with JS glue (OOJSPrivateObject.h),
+	// which the deleted OOJSTimer facade answered (bead oo-9ht.37); not asked of any other timer.
+	virtual std::optional<std::string> oo_jsClassName()	{ return std::nullopt; }
 
 	OOTimeAbsolute nextTime();
 	bool setNextTime(OOTimeAbsolute nextTime);	// Only works when timer is not scheduled.

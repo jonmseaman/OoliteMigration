@@ -73,6 +73,8 @@ MA 02110-1301, USA.
 #import "CollisionRegion.h"
 
 #import "OOJSScript.h"
+#import "OOJSVector.h"
+#import "OOJSQuaternion.h"
 #import "OOScriptTimer.h"
 #import "OOJSEngineTimeManagement.h"
 #import "OOJSInterfaceDefinition.h"
@@ -13955,6 +13957,16 @@ void PlayerEntity::dumpSelfState()
 	if (flags.empty())  flagsString = "none";
 	OO_LOG("dumpState.playerEntity", "Flags: {}", flagsString);
 }
+#endif
+
+
+#if OO_DEBUG
+// What the deleted categories PlayerEntity (JSVectorStatistics) / (JSQuaternionStatistics) answered
+// (bead oo-9ht.15): one-line forwarders to the functions that hold their bodies.
+oo::PList PlayerEntity::reportJSVectorStatistics()		{ return ::reportJSVectorStatistics(); }
+void PlayerEntity::clearJSVectorStatistics()			{ ::clearJSVectorStatistics(); }
+oo::PList PlayerEntity::reportJSQuaternionStatistics()	{ return ::reportJSQuaternionStatistics(); }
+void PlayerEntity::clearJSQuaternionStatistics()		{ ::clearJSQuaternionStatistics(); }
 #endif
 
 }	// namespace cxx

@@ -17,11 +17,12 @@ OOScriptTimer.h; do not import it directly.
 	  handing a timer to Objective-C                                        oo::ToObjC(timer)
 	  taking one from Objective-C                                           oo::ToCxx(objcTimer)
 
-oo::ToObjC gives a timer's one live facade (oo::ObjCPeers), of the facade class named like its
-C++ class (cxx::OOJSTimer's is OOJSTimer, OOJSTimer+ObjCBridge.h), so identity survives and the
-queue finds the facade it holds. No Objective-C subclass of OOScriptTimer is left (OOJSTimer
-converted in the same bead); a new one would need the adapter of ADR-0056 amendment 1. Never add
-to this file; converted code does not message the facade. Deleted by its deletion bead once
+oo::ToObjC gives a timer's one live facade (oo::ObjCPeers), always an OOScriptTimer, so identity
+survives and the queue finds the facade it holds. No Objective-C subclass of OOScriptTimer is left:
+the OOJSTimer facade's JS glue (-oo_jsValueInContext:, -cxx_oo_jsClassName) is answered here for a
+timer whose C++ part has it, and the description names the C++ class (className()), as the
+subclass's facade printed (ADR-0056 amendment oo-9ht.37). A new subclass would need the adapter of
+ADR-0056 amendment 1. Never add to this file; converted code does not message the facade. Deleted by its deletion bead once
 PlayerEntity is converted and the timer queue holds C++ timers.
 
 
@@ -90,8 +91,7 @@ MA 02110-1301, USA.
 
 namespace oo {
 
-// A timer's Objective-C facade, of the class named like its C++ class: its live one, else a new
-// one; autoreleased. nil for null.
+// A timer's Objective-C facade: its live one, else a new one; autoreleased. nil for null.
 ::OOScriptTimer *ToObjC(cxx::OOScriptTimer *timer);
 inline ::OOScriptTimer *ToObjC(const Ref<cxx::OOScriptTimer> &timer)  { return ToObjC(timer.get()); }
 
@@ -101,6 +101,10 @@ inline ::OOScriptTimer *ToObjC(const Ref<cxx::OOScriptTimer> &timer)  { return T
 
 // The C++ timer behind a facade, borrowed (the facade retains it); null for nil.
 cxx::OOScriptTimer *ToCxx(::OOScriptTimer *timer);
+
+// oo::DescriptionWithComponents() of a timer's facade (nil as there), named by its C++ timer's
+// className(): "<OOJSTimer 0x...>" for a JS timer, as when its facade was an OOJSTimer.
+std::string TimerDescriptionWithComponents(::OOScriptTimer *facade, const std::optional<std::string> &components);
 
 }	// namespace oo
 

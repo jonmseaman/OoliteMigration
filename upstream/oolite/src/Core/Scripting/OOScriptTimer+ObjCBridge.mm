@@ -31,9 +31,11 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOObjCPeer.h"
 #include "oofnd/objc/OORuntime.h"
 
-#include <cstdlib>
-#include <cxxabi.h>
-#include <typeinfo>
+#import "OOJavaScriptEngine.h"	// OOObject (OOJavaScript), the glue's defaults
+#include "OOJSPrivateObject.h"
+#import "OODescription.h"
+
+#include <cstring>
 
 
 namespace {
@@ -43,25 +45,6 @@ oo::ObjCPeers &Peers()
 {
 	static oo::ObjCPeers *peers = new oo::ObjCPeers;
 	return *peers;
-}
-
-
-/*	The class of a timer's facade: the Objective-C class named like its C++ class, when that is a
-	subclass of this one (cxx::OOJSTimer's is OOJSTimer, which answers the JavaScript glue), else
-	OOScriptTimer (ADR-0056 amendment oo-up4b item 3).
-*/
-Class FacadeClass(cxx::OOScriptTimer &timer)
-{
-	int status = 0;
-	char *demangled = abi::__cxa_demangle(typeid(timer).name(), nullptr, nullptr, &status);
-	const std::string name = (status == 0 && demangled != nullptr) ? demangled : typeid(timer).name();
-	std::free(demangled);
-	if (name.starts_with("cxx::"))
-	{
-		Class facade = OOClassFromName(std::string_view(name).substr(5));
-		if (facade != Nil && [facade isSubclassOfClass:[OOScriptTimer class]])  return facade;
-	}
-	return [OOScriptTimer class];
 }
 
 }	// namespace
@@ -85,8 +68,7 @@ Class FacadeClass(cxx::OOScriptTimer &timer)
 ::OOScriptTimer *oo::ToObjC(cxx::OOScriptTimer *timer)
 {
 	if (timer == nullptr)  return nil;
-	Class facadeClass = FacadeClass(*timer);
-	return Peers().peerFor(timer, [timer, facadeClass] { return [[facadeClass alloc] initWithCxxTimer:timer]; });
+	return Peers().peerFor(timer, [timer] { return [[OOScriptTimer alloc] initWithCxxTimer:timer]; });
 }
 
 
@@ -165,4 +147,32 @@ cxx::OOScriptTimer *oo::ToCxx(::OOScriptTimer *timer)
 - (BOOL) isValidForScheduling								{ return _cxxTimer->isValidForScheduling(); }
 - (OOComparisonResult) compareByNextFireTime:(OOScriptTimer *)other	{ return _cxxTimer->compareByNextFireTime(oo::ToCxx(other)); }
 
+
+// What the deleted OOJSTimer facade answered, for a timer whose C++ part has JS glue (a JS timer),
+// and its class name in the description (ADR-0056 amendment oo-9ht.37); the defaults otherwise.
+- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
+{
+	if (::OOJSPrivateObject *glue = dynamic_cast<::OOJSPrivateObject *>(_cxxTimer.get()))  return glue->jsValueInContext(context);
+	return [super oo_jsValueInContext:context];
+}
+
+
+- (std::optional<std::string>) cxx_oo_jsClassName
+{
+	if (dynamic_cast<::OOJSPrivateObject *>(_cxxTimer.get()) != nullptr)  return _cxxTimer->oo_jsClassName();
+	return [super cxx_oo_jsClassName];
+}
+
+
+- (std::optional<std::string>) cxx_description			{ return oo::TimerDescriptionWithComponents(self, [self cxx_descriptionComponents]); }
+- (std::optional<std::string>) cxx_shortDescription		{ return oo::TimerDescriptionWithComponents(self, [self cxx_shortDescriptionComponents]); }
+
 @end
+
+
+std::string oo::TimerDescriptionWithComponents(::OOScriptTimer *facade, const std::optional<std::string> &components)
+{
+	std::string result = oo::DescriptionWithComponents(facade, components);	// "<OOScriptTimer 0x...>{...}"
+	if (facade != nil)  result.replace(1, std::strlen(class_getName([facade class])), oo::ToCxx(facade)->className());
+	return result;
+}
