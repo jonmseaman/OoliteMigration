@@ -12,13 +12,15 @@
 	cases after "The crossing" pin the C++ part once it exists. Since bead oo-9ht.183 deleted the
 	Objective-C facade (ADR-0056 amendment oo-9ht.183) the proxy is made by newProxyObject(), its
 	object is the ship's facade, the class's selectors are member calls with every expected value
-	kept, and the last case pins the dials the ship's facade answers by name for a proxy.
+	kept, and the dials case pins the dials the ship's facade answers by name for a proxy. The last
+	case pins that the proxy and the player are visible to scripts (bead oo-ak1km).
 	Run: bash tools/check-core-tests.sh test_ProxyPlayerEntity
 */
 
 #import "ProxyPlayerEntity.h"
 #import "Universe.h"
 #import "PlayerEntity.h"
+#import "EntityOOJavaScriptExtensions.h"
 
 #include "oo_test.hpp"
 
@@ -261,6 +263,29 @@ OO_TEST(dialsAnsweredByNameForAProxy)
 
 		ShipEntity *ship = [[[ShipEntity alloc] cxx_initWithKey:"ship" definition:oo::PList(oo::PList::Dict{ { "unpiloted", oo::PList(true) } })] autorelease];
 		OO_CHECK(ship != nil && ![ship respondsToSelector:@selector(dialForwardShield)]);
+	}
+}
+
+// Visible to scripts (bead oo-ak1km): the player and the proxy are ships made in C++ under the
+// ship's facade, which asks their C++ parts; they answer YES, as their deleted facades did (the
+// Objective-C PlayerEntity and ProxyPlayerEntity inherited ShipEntity's answer), and so does a
+// plain Objective-C ship.
+OO_TEST(playerAndProxyAreVisibleToScripts)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		ShipEntity *object = nil;
+		ProxyPlayerEntity *proxy = MakeProxy(&object);
+		OO_CHECK(proxy->isVisibleToScripts());
+		OO_CHECK([object isVisibleToScripts]);
+
+		cxx::ShipEntity *player = gOOPlayer;
+		OO_CHECK(player->isVisibleToScripts());
+		OO_CHECK([oo::ToObjC(player) isVisibleToScripts]);
+
+		ShipEntity *ship = [[[ShipEntity alloc] cxx_initWithKey:"ship" definition:oo::PList(oo::PList::Dict{ { "unpiloted", oo::PList(true) } })] autorelease];
+		OO_CHECK([ship isVisibleToScripts]);
 	}
 }
 

@@ -8044,6 +8044,14 @@ std::optional<std::string> ShipEntity::jsClassName()
 }
 
 
+// A ship made in C++ (the player, the proxy) is visible to scripts, as its deleted facade was: the
+// Objective-C PlayerEntity and ProxyPlayerEntity inherited ShipEntity's answer (bead oo-ak1km).
+bool ShipEntity::isVisibleToScripts()
+{
+	return ::ShipEntityJSIsVisibleToScripts();
+}
+
+
 bool ShipEntity::isUnpiloted()
 {
 	::ShipEntity *self = oo::ToObjC(this);
