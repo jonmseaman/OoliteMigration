@@ -60,6 +60,12 @@ MonitorRecord sMonitor;
 
 
 // The C++ monitor's members that the client calls.
+// The engine-monitor members, which give the C++ monitor its vtable (they are virtual since bead
+// oo-9ht.74.1); never reached here.
+void cxx::OODebugMonitor::jsEngine(::OOJavaScriptEngine *, ooscript::Context, ooscript::ErrorReport *, unsigned, bool, const std::string &)	{}
+void cxx::OODebugMonitor::jsEngine(::OOJavaScriptEngine *, ooscript::Context, const std::string &, const std::optional<std::string> &)	{}
+
+
 cxx::OODebugMonitor *cxx::OODebugMonitor::sharedDebugMonitor()
 {
 	static cxx::OODebugMonitor *monitor = nullptr;

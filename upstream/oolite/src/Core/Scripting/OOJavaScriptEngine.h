@@ -47,7 +47,9 @@ MA 02110-1301, USA.
 
 
 
-@protocol OOJavaScriptEngineMonitor;
+#if OOJSENGINE_MONITOR_SUPPORT
+#include "OOJavaScriptEngineMonitor.h"	// a C++ interface since bead oo-9ht.74.1
+#endif
 
 
 namespace cxx {
@@ -104,7 +106,7 @@ public:
 
 #if OOJSENGINE_MONITOR_SUPPORT
 	// (OOMonitorSupport)
-	void setMonitor(id<OOJavaScriptEngineMonitor> monitor);
+	void setMonitor(OOJavaScriptEngineMonitor *monitor);	// borrowed (bead oo-9ht.74.1)
 
 	// (OOMonitorSupportInternal)
 	void sendMonitorError(ooscript::ErrorReport *errorReport, const std::string &message, ooscript::Context context);
@@ -136,7 +138,7 @@ private:
 	bool							_dumpStackForWarnings = {};
 #endif
 #if OOJSENGINE_MONITOR_SUPPORT
-	oo::ObjCRef<id<OOJavaScriptEngineMonitor>>	_monitor;
+	OOJavaScriptEngineMonitor		*_monitor = nullptr;	// borrowed: the debug monitor lives as long as the process
 #endif
 };
 
@@ -252,8 +254,7 @@ OOJS_EXTERN_C BOOL OOJSObjectGetterImplPRIVATE(ooscript::Context context, ooscri
 
 
 
-// Transitional: the Objective-C OOJavaScriptEngine (with its OOJavaScriptEngineMonitor protocol and
-// OOMonitorSupport category), for code not yet converted. Deleted, with namespace cxx above, by
+// Transitional: the Objective-C OOJavaScriptEngine (with its OOMonitorSupport category), for code not yet converted. Deleted, with namespace cxx above, by
 // the bridge's deletion bead.
 #import "OOJavaScriptEngine+ObjCBridge.h"
 

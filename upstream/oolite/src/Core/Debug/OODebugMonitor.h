@@ -47,6 +47,7 @@ SOFTWARE.
 #include "ooscript/JSEngine.hpp"
 #import "OOWeakReference.h"
 #import "OODebuggerInterface.h"
+#include "OOJavaScriptEngineMonitor.h"	// the engine's monitor, a C++ interface since bead oo-9ht.74.1
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
@@ -67,12 +68,11 @@ SOFTWARE.
 namespace cxx {
 
 /*	The one debug monitor (sharedDebugMonitor()). The debugger reaches it through the
-	OODebugMonitorInterface protocol, and the JavaScript engine as its monitor
-	(OOJavaScriptEngineMonitor); both are adopted by the Objective-C facade
-	(OODebugMonitor+ObjCBridge.h), which is what the debugger, the engine and the console script
-	are handed.
+	OODebugMonitorInterface protocol, adopted by the Objective-C facade (OODebugMonitor+ObjCBridge.h),
+	which is what the console script is handed; the JavaScript engine reaches it as its monitor
+	(the C++ OOJavaScriptEngineMonitor, bead oo-9ht.74.1), the debugger as itself (bead oo-9ht.81).
 */
-class OODebugMonitor : public oo::RefCounted
+class OODebugMonitor : public oo::RefCounted, public ::OOJavaScriptEngineMonitor
 {
 public:
 	static OODebugMonitor *sharedDebugMonitor();
@@ -127,11 +127,11 @@ public:
 				  ooscript::ErrorReport *errorReport,
 				  unsigned stackSkip,
 				  bool showLocation,
-				  const std::string &message);
+				  const std::string &message) override;
 	void jsEngine(::OOJavaScriptEngine *engine,
 				  ooscript::Context context,
 				  const std::string &message,
-				  const std::optional<std::string> &messageClass);
+				  const std::optional<std::string> &messageClass) override;
 
 	// The console's JavaScript object (the engine sends the facade -oo_jsValueInContext:).
 	ooscript::Value oo_jsValueInContext(ooscript::Context context);

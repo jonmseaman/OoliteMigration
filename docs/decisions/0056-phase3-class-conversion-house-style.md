@@ -6516,3 +6516,37 @@ crossed the monitor back with `oo::ToCxx`.
 oo-9ht.74: the engine's monitor protocol (`OOJavaScriptEngineMonitor`, adopted by the monitor's
 facade), the console's JS objects (`console`, `console.settings`), which hold the facade's weak
 reference and `callObjC()` it (oo-9ht.44), `OODebugMonitorInterface`, and the facade itself.
+
+## Amendment (bead oo-9ht.74.1): the JavaScript engine's monitor is a C++ interface (oo-9ht.74 step 2)
+
+- Date: 2026-10-10. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch S.
+  Exemplar: `src/Core/Scripting/OOJavaScriptEngineMonitor.h`, `OOJavaScriptEngine.mm`
+  (`setMonitor()`, the two sends), `src/Core/Debug/OODebugMonitor.h`.
+
+**Context.** The engine kept its monitor as `id<OOJavaScriptEngineMonitor>` (retained) and sent it
+errors and log messages after `-respondsToSelector:`; the only monitor in the game is the debug
+monitor, whose facade adopted the protocol in a category and forwarded to the C++ members.
+
+**Decision (recommended defaults).**
+
+1. **`OOJavaScriptEngineMonitor` is a C++ interface** in its own header (so the debug monitor
+   does not import the engine's): the protocol's two messages as pure virtual members of the same
+   names and parameters (the engine is still handed as its Objective-C object). The protocol and
+   the facade's category are deleted.
+2. **The engine borrows its monitor** (`OOJavaScriptEngineMonitor *`), where it retained the
+   object: the debug monitor lives as long as the process (its facade never died), and a test
+   keeps its monitor alive while it is set. The delayed release (`-autorelease` of the old
+   monitor) goes with the retain.
+3. **The sends need no `-respondsToSelector:`**: an interface implements both members, as the
+   only monitor answered both. A null monitor sends nothing, as nil did.
+4. **`cxx::OODebugMonitor` implements the interface** (its `jsEngine()` members are the
+   overrides) and hands the engine `this`, not its facade.
+5. **Tests** (standing approval oo-9n5p9, lines on main first): `test_OOJavaScriptEngine`'s
+   `TestMonitor` is a C++ implementation with the same records; `test_OODebugMonitor`'s engine
+   stand-in holds the interface, its engine-monitor check compares with the C++ monitor, and its
+   two kinds of monitor sends call the members. No expected value changes.
+
+**Consequences.** What keeps the debug monitor's facade (oo-9ht.74): the console's JS objects
+(`console`, `console.settings`), which hold the facade's weak reference and are the `this` of
+`callObjC()` (oo-9ht.44), the console script's `console` property (an Object node of the facade),
+`OODebugMonitorInterface`, and the tests that drive the monitor through the facade.

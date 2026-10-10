@@ -721,27 +721,26 @@ void OOJavaScriptEngine::enableDebuggerStatement()
 
 namespace cxx {
 
-void OOJavaScriptEngine::setMonitor(id<OOJavaScriptEngineMonitor> inMonitor)
+void OOJavaScriptEngine::setMonitor(OOJavaScriptEngineMonitor *inMonitor)
 {
-	[_monitor.leakRef() autorelease];
-	_monitor = oo::ObjCRef<id<OOJavaScriptEngineMonitor>>(inMonitor);
+	_monitor = inMonitor;
 }
 
 
 void OOJavaScriptEngine::sendMonitorError(ooscript::ErrorReport *errorReport, const std::string &message, ooscript::Context theContext)
 {
-	if ([_monitor.get() respondsToSelector:OOSelectorFromName("jsEngine:context:error:stackSkip:showingLocation:withMessage:")])
+	if (_monitor != nullptr)
 	{
-		[_monitor.get() jsEngine:oo::ToObjC(this) context:theContext error:errorReport stackSkip:sErrorHandlerStackSkip showingLocation:showErrorLocations() withMessage:message];
+		_monitor->jsEngine(oo::ToObjC(this), theContext, errorReport, sErrorHandlerStackSkip, showErrorLocations(), message);
 	}
 }
 
 
 void OOJavaScriptEngine::sendMonitorLogMessage(const std::optional<std::string> &message, const std::optional<std::string> &messageClass, ooscript::Context theContext)
 {
-	if ([_monitor.get() respondsToSelector:OOSelectorFromName("jsEngine:context:logMessage:ofClass:")])
+	if (_monitor != nullptr)
 	{
-		[_monitor.get() jsEngine:oo::ToObjC(this) context:theContext logMessage:message.value_or("") ofClass:messageClass];
+		_monitor->jsEngine(oo::ToObjC(this), theContext, message.value_or(""), messageClass);
 	}
 }
 

@@ -12,9 +12,9 @@ behave unchanged. Imported as the last line of OODebugMonitor.h; do not import i
 
 The monitor is a singleton, and so is its facade: it is made on the first crossing
 (oo::ToObjC), keeps the canonical singleton boilerplate (no second instance; -retain and
--release do nothing), and so lives as long as the process. It is the object the debugger, the
-JavaScript engine (whose monitor it is: OOJavaScriptEngineMonitor, adopted in
-OODebugMonitor+ObjCBridge.mm) and the console's JavaScript object are handed, and its superclass
+-release do nothing), and so lives as long as the process. It is the object the console's
+JavaScript object is handed (the debugger is handed the C++ monitor since bead oo-9ht.81, the
+JavaScript engine its C++ monitor interface since bead oo-9ht.74.1), and its superclass
 OOWeakRefObject keeps its weak reference.
 
 Never add to this file; converted code does not message the facade. Deleted by its deletion bead

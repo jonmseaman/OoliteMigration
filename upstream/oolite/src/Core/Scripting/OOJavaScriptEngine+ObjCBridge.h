@@ -186,33 +186,12 @@ MA 02110-1301, USA.
 
 #if OOJSENGINE_MONITOR_SUPPORT
 
-/*	Protocol for debugging "monitor" object.
-	The monitor is an object -- in Oolite, or via Distributed Objects -- which
-	is provided with debugging information by the OOJavaScriptEngine.
-*/
-
-@protocol OOJavaScriptEngineMonitor <OOObject>
-
-// Sent for JS errors or warnings.
-- (void)jsEngine:(OOJavaScriptEngine *)engine
-		 context:(ooscript::Context)context
-		   error:(ooscript::ErrorReport *)errorReport
-	   stackSkip:(unsigned)stackSkip
- showingLocation:(BOOL)showLocation
-	 withMessage:(const std::string &)message;
-
-// Sent for JS log messages. Note: messageClass is nullopt if Log() is used rather than LogWithClass().
-- (void)jsEngine:(OOJavaScriptEngine *)engine
-		 context:(ooscript::Context)context
-	  logMessage:(const std::string &)message
-		 ofClass:(const std::optional<std::string> &)messageClass;
-
-@end
-
+// The engine's monitor is the C++ interface OOJavaScriptEngineMonitor (OOJavaScriptEngineMonitor.h)
+// since bead oo-9ht.74.1; it was an Objective-C protocol declared here.
 
 @interface OOJavaScriptEngine (OOMonitorSupport)
 
-- (void)setMonitor:(id<OOJavaScriptEngineMonitor>)monitor;
+- (void)setMonitor:(OOJavaScriptEngineMonitor *)monitor;
 
 @end
 

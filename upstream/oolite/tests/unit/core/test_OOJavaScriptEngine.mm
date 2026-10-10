@@ -102,47 +102,52 @@ static int sNativeDeallocs = 0;
 
 
 #if OOJSENGINE_MONITOR_SUPPORT
-// A debug monitor that records what the engine sends it.
-@interface TestMonitor: OOObject <OOJavaScriptEngineMonitor>
+// A debug monitor that records what the engine sends it. A C++ OOJavaScriptEngineMonitor since bead
+// oo-9ht.74.1 (it was an Objective-C object adopting the protocol); the same records.
+namespace {
+
+// The records (the Objective-C class's @public ivars).
+struct TestMonitorRecord
 {
-@public
-	int							_errors;
-	int							_logs;
-	id							_engine;
-	BOOL						_showLocation;
+	int							_errors = 0;
+	int							_logs = 0;
+	id							_engine = nil;
+	BOOL						_showLocation = NO;
 	std::string					_message;
 	std::optional<std::string>	_messageClass;
-}
-@end
+};
 
-@implementation TestMonitor
 
-- (void)jsEngine:(OOJavaScriptEngine *)engine
-		 context:(ooscript::Context)context
-		   error:(ooscript::ErrorReport *)errorReport
-	   stackSkip:(unsigned)stackSkip
- showingLocation:(BOOL)showLocation
-	 withMessage:(const std::string &)message
+class TestMonitor : public OOJavaScriptEngineMonitor, public TestMonitorRecord
 {
-	_errors++;
-	_engine = engine;
-	_showLocation = showLocation;
-	_message = message;
-}
+public:
+	void jsEngine(OOJavaScriptEngine *engine,
+				  ooscript::Context /*context*/,
+				  ooscript::ErrorReport * /*errorReport*/,
+				  unsigned /*stackSkip*/,
+				  bool showLocation,
+				  const std::string &message) override
+	{
+		_errors++;
+		_engine = engine;
+		_showLocation = showLocation;
+		_message = message;
+	}
 
 
-- (void)jsEngine:(OOJavaScriptEngine *)engine
-		 context:(ooscript::Context)context
-	  logMessage:(const std::string &)message
-		 ofClass:(const std::optional<std::string> &)messageClass
-{
-	_logs++;
-	_engine = engine;
-	_message = message;
-	_messageClass = messageClass;
-}
+	void jsEngine(OOJavaScriptEngine *engine,
+				  ooscript::Context /*context*/,
+				  const std::string &message,
+				  const std::optional<std::string> &messageClass) override
+	{
+		_logs++;
+		_engine = engine;
+		_message = message;
+		_messageClass = messageClass;
+	}
+};
 
-@end
+}	// namespace
 #endif
 
 
@@ -393,7 +398,8 @@ OO_TEST(errorReporting)
 		OOJavaScriptEngine *engine = [OOJavaScriptEngine sharedEngine];
 		const BOOL show = [engine showErrorLocations];
 #if OOJSENGINE_MONITOR_SUPPORT
-		TestMonitor *monitor = [[[TestMonitor alloc] init] autorelease];
+		TestMonitor monitorObject;	// set while the test runs, then cleared (the engine borrows it)
+		TestMonitor *monitor = &monitorObject;
 		[engine setMonitor:monitor];
 #endif
 

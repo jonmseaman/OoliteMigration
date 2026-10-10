@@ -87,8 +87,7 @@ void OODebugMonitor::init()
 
 		::OOJavaScriptEngine *jsEng = [::OOJavaScriptEngine sharedEngine];
 #if OOJSENGINE_MONITOR_SUPPORT
-		id monitor = oo::ToObjC(this);	// the facade adopts OOJavaScriptEngineMonitor (OODebugMonitor+ObjCBridge.mm)
-		[jsEng setMonitor:monitor];
+		[jsEng setMonitor:this];	// the C++ monitor interface (bead oo-9ht.74.1); the engine borrows it
 #endif
 
 		setUpDebugConsoleScript();
