@@ -2668,12 +2668,12 @@ bool ShipEntity::checkCloseCollisionWith(cxx::Entity *otherPart)
 	if (otherShip != nil)
 	{
 		// check hull octree versus other hull octree
-		collider = oo::ToObjC(doOctreesCollide(this, otherShip));
+		collider = doOctreesCollide(this, otherShip);	// the C++ part (bead oo-9ht.39.4)
 		return (collider != nil);
 	}
 	
 	// default at this stage is to say YES they've collided!
-	collider = other;
+	collider = otherPart;
 	return YES;
 }
 
@@ -10230,33 +10230,33 @@ void ShipEntity::resetExhaustPlumes()
 
 void ShipEntity::checkScanner()
 {
-	::Entity* scan;
+	cxx::Entity* scan;	// the C++ part (bead oo-9ht.39.4)
 	n_scanned_ships = 0;
 	//
-	scan = z_previous;	while ((scan)&&(scan->_cxxEntity->isShip == NO))	scan = scan->_cxxEntity->z_previous;	// skip non-ships
+	scan = z_previous;	while ((scan)&&(scan->isShip == NO))	scan = scan->z_previous;	// skip non-ships
 	GLfloat scannerRange2 = scannerRange * scannerRange;
-	while ((scan)&&(scan->_cxxEntity->position.z > position.z - scannerRange)&&(n_scanned_ships < MAX_SCAN_NUMBER))
+	while ((scan)&&(scan->position.z > position.z - scannerRange)&&(n_scanned_ships < MAX_SCAN_NUMBER))
 	{
 		// can't scan cloaked ships
-		if (scan->_cxxEntity->isShip && !(oo::ToShip(scan) != nullptr ? oo::ToShip(scan)->isCloaked() : false) && isValidTarget(scan))
+		if (scan->isShip && !(oo::ToShip(scan) != nullptr ? oo::ToShip(scan)->isCloaked() : false) && isValidTarget(oo::ToObjC(scan)))
 		{
-			distance2_scanned_ships[n_scanned_ships] = HPdistance2(position, scan->_cxxEntity->position);
+			distance2_scanned_ships[n_scanned_ships] = HPdistance2(position, scan->position);
 			if (distance2_scanned_ships[n_scanned_ships] < scannerRange2)
 				scanned_ships[n_scanned_ships++] = oo::ToShip(scan);
 		}
-		scan = scan->_cxxEntity->z_previous;	while ((scan)&&(scan->_cxxEntity->isShip == NO))	scan = scan->_cxxEntity->z_previous;
+		scan = scan->z_previous;	while ((scan)&&(scan->isShip == NO))	scan = scan->z_previous;
 	}
 	//
-	scan = z_next;	while ((scan)&&(scan->_cxxEntity->isShip == NO))	scan = scan->_cxxEntity->z_next;	// skip non-ships
-	while ((scan)&&(scan->_cxxEntity->position.z < position.z + scannerRange)&&(n_scanned_ships < MAX_SCAN_NUMBER))
+	scan = z_next;	while ((scan)&&(scan->isShip == NO))	scan = scan->z_next;	// skip non-ships
+	while ((scan)&&(scan->position.z < position.z + scannerRange)&&(n_scanned_ships < MAX_SCAN_NUMBER))
 	{
-		if (scan->_cxxEntity->isShip && !(oo::ToShip(scan) != nullptr ? oo::ToShip(scan)->isCloaked() : false) && isValidTarget(scan))
+		if (scan->isShip && !(oo::ToShip(scan) != nullptr ? oo::ToShip(scan)->isCloaked() : false) && isValidTarget(oo::ToObjC(scan)))
 		{
-			distance2_scanned_ships[n_scanned_ships] = HPdistance2(position, scan->_cxxEntity->position);
+			distance2_scanned_ships[n_scanned_ships] = HPdistance2(position, scan->position);
 			if (distance2_scanned_ships[n_scanned_ships] < scannerRange2)
 				scanned_ships[n_scanned_ships++] = oo::ToShip(scan);
 		}
-		scan = scan->_cxxEntity->z_next;	while ((scan)&&(scan->_cxxEntity->isShip == NO))	scan = scan->_cxxEntity->z_next;	// skip non-ships
+		scan = scan->z_next;	while ((scan)&&(scan->isShip == NO))	scan = scan->z_next;	// skip non-ships
 	}
 	//
 	scanned_ships[n_scanned_ships] = nil;	// terminate array
@@ -10265,48 +10265,48 @@ void ShipEntity::checkScanner()
 
 void ShipEntity::checkScannerIgnoringUnpowered()
 {
-	::Entity* scan;
+	cxx::Entity* scan;	// the C++ part (bead oo-9ht.39.4)
 	n_scanned_ships = 0;
 	//
 	GLfloat scannerRange2 = scannerRange * scannerRange;
 	scan = z_previous;	
-	while ((scan)&&((scan->_cxxEntity->isShip == NO)||(scan->_cxxEntity->scanClass==CLASS_ROCK)||(scan->_cxxEntity->scanClass==CLASS_CARGO)))	
+	while ((scan)&&((scan->isShip == NO)||(scan->scanClass==CLASS_ROCK)||(scan->scanClass==CLASS_CARGO)))	
 	{
-		scan = scan->_cxxEntity->z_previous;	// skip non-ships
+		scan = scan->z_previous;	// skip non-ships
 	}
-	while ((scan)&&(scan->_cxxEntity->position.z > position.z - scannerRange)&&(n_scanned_ships < MAX_SCAN_NUMBER))
+	while ((scan)&&(scan->position.z > position.z - scannerRange)&&(n_scanned_ships < MAX_SCAN_NUMBER))
 	{
-		if (scan->_cxxEntity->isShip && !(oo::ToShip(scan) != nullptr ? oo::ToShip(scan)->isCloaked() : false))
+		if (scan->isShip && !(oo::ToShip(scan) != nullptr ? oo::ToShip(scan)->isCloaked() : false))
 		{
-			distance2_scanned_ships[n_scanned_ships] = HPdistance2(position, scan->_cxxEntity->position);
+			distance2_scanned_ships[n_scanned_ships] = HPdistance2(position, scan->position);
 			if (distance2_scanned_ships[n_scanned_ships] < scannerRange2)
 				scanned_ships[n_scanned_ships++] = oo::ToShip(scan);
 		}
-		scan = scan->_cxxEntity->z_previous;
-		while ((scan)&&((scan->_cxxEntity->isShip == NO)||(scan->_cxxEntity->scanClass==CLASS_ROCK)||(scan->_cxxEntity->scanClass==CLASS_CARGO)))	
+		scan = scan->z_previous;
+		while ((scan)&&((scan->isShip == NO)||(scan->scanClass==CLASS_ROCK)||(scan->scanClass==CLASS_CARGO)))	
 		{
-			scan = scan->_cxxEntity->z_previous;	// skip non-ships
+			scan = scan->z_previous;	// skip non-ships
 		}
 	}
 	//
 	scan = z_next;	
-	while ((scan)&&((scan->_cxxEntity->isShip == NO)||(scan->_cxxEntity->scanClass==CLASS_ROCK)||(scan->_cxxEntity->scanClass==CLASS_CARGO)))	
+	while ((scan)&&((scan->isShip == NO)||(scan->scanClass==CLASS_ROCK)||(scan->scanClass==CLASS_CARGO)))	
 	{
-		scan = scan->_cxxEntity->z_next;	// skip non-ships
+		scan = scan->z_next;	// skip non-ships
 	}
 
-	while ((scan)&&(scan->_cxxEntity->position.z < position.z + scannerRange)&&(n_scanned_ships < MAX_SCAN_NUMBER))
+	while ((scan)&&(scan->position.z < position.z + scannerRange)&&(n_scanned_ships < MAX_SCAN_NUMBER))
 	{
-		if (scan->_cxxEntity->isShip && !(oo::ToShip(scan) != nullptr ? oo::ToShip(scan)->isCloaked() : false))
+		if (scan->isShip && !(oo::ToShip(scan) != nullptr ? oo::ToShip(scan)->isCloaked() : false))
 		{
-			distance2_scanned_ships[n_scanned_ships] = HPdistance2(position, scan->_cxxEntity->position);
+			distance2_scanned_ships[n_scanned_ships] = HPdistance2(position, scan->position);
 			if (distance2_scanned_ships[n_scanned_ships] < scannerRange2)
 				scanned_ships[n_scanned_ships++] = oo::ToShip(scan);
 		}
-		scan = scan->_cxxEntity->z_next;
-		while ((scan)&&((scan->_cxxEntity->isShip == NO)||(scan->_cxxEntity->scanClass==CLASS_ROCK)||(scan->_cxxEntity->scanClass==CLASS_CARGO)))	
+		scan = scan->z_next;
+		while ((scan)&&((scan->isShip == NO)||(scan->scanClass==CLASS_ROCK)||(scan->scanClass==CLASS_CARGO)))	
 		{
-			scan = scan->_cxxEntity->z_next;	// skip non-ships
+			scan = scan->z_next;	// skip non-ships
 		}
 	}
 	//
@@ -14400,13 +14400,13 @@ void ShipEntity::setTargetToNearestStationIncludingHostiles(bool includeHostiles
 	if (!UNIVERSE)
 		return;
 	int			ent_count = UNIVERSE->_cxxUniverse->n_entities;
-	::Entity		**uni_entities = UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
+	cxx::Entity		**uni_entities = UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
 	::Entity		*my_entities[ent_count];
 	int i;
 	int station_count = 0;
 	for (i = 0; i < ent_count; i++)
-		if (uni_entities[i]->_cxxEntity->isStation)
-			my_entities[station_count++] = [uni_entities[i] retain];		//	retained
+		if (uni_entities[i]->isStation)
+			my_entities[station_count++] = [oo::ToObjC(uni_entities[i]) retain];		//	retained
 	//
 	::StationEntity *thing = nil, *station = nil;
 	double range2, nearest2 = SCANNER_MAX_RANGE2 * 1000000.0; // 1000x typical scanner range (25600 km), squared.
@@ -14801,14 +14801,14 @@ int ShipEntity::checkShipsInVicinityForWitchJumpExit()
 	GLfloat k = 0.1;
 
 	int			ent_count =		UNIVERSE->_cxxUniverse->n_entities;
-	::Entity**	uni_entities =	UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
+	cxx::Entity**	uni_entities =	UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
 	::ShipEntity*	my_entities[ent_count];
 	int i;
 
 	int ship_count = 0;
 	for (i = 0; i < ent_count; i++)
-		if ((uni_entities[i]->_cxxEntity->isShip)&&(uni_entities[i] != oo::ToObjC(this)))
-			my_entities[ship_count++] = oo::ToShip([uni_entities[i] retain]);		//	retained
+		if ((uni_entities[i]->isShip)&&(uni_entities[i] != this))
+			my_entities[ship_count++] = oo::ToShip([oo::ToObjC(uni_entities[i]) retain]);		//	retained
 	//
 	for (i = 0; (i < ship_count)&&(result == NO_TARGET) ; i++)
 	{

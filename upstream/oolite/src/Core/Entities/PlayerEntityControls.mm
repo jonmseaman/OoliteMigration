@@ -5464,17 +5464,17 @@ void PlayerEntity::handleAutopilotOn(bool fastDocking)
 	if (![target isStation])
 	{
 		::Universe  *uni        = UNIVERSE;
-		::Entity    **entities  = uni->_cxxUniverse->sortedEntities;	// grab the public sorted list
+		cxx::Entity    **entities  = uni->_cxxUniverse->sortedEntities;	// grab the public sorted list
 		int       nStations   = 0;
 		unsigned  i;
 		
 		for (i = 0; i < uni->_cxxUniverse->n_entities && nStations < 2; i++)
 		{
-			if (entities[i]->_cxxEntity->isStation && oo::ToStation(entities[i]) != nullptr &&
-				entities[i]->_cxxEntity->zero_distance <= SCANNER_MAX_RANGE2)
+			if (entities[i]->isStation && oo::ToStation(entities[i]) != nullptr &&
+				entities[i]->zero_distance <= SCANNER_MAX_RANGE2)
 			{
 				nStations++;
-				target = entities[i];
+				target = oo::ToObjC(entities[i]);
 			}
 		}
 		// If inside the Aegis, dock with the main station.

@@ -508,13 +508,13 @@ void ShipEntity::enterTargetWormhole()
 	{
 		// locate nearest wormhole
 		int				ent_count =		UNIVERSE->_cxxUniverse->n_entities;
-		::Entity**		uni_entities =	UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
+		cxx::Entity**		uni_entities =	UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
 		std::vector<::Entity *>	wormholes(ent_count);	// their Objective-C objects (bead oo-9ht.112)
 		int i;
 		int wh_count = 0;
 		for (i = 0; i < ent_count; i++)
-			if (uni_entities[i]->_cxxEntity->isWormhole)
-				wormholes[wh_count++] = [uni_entities[i] retain];
+			if (uni_entities[i]->isWormhole)
+				wormholes[wh_count++] = [oo::ToObjC(uni_entities[i]) retain];
 		//
 		//double found_d2 = scannerRange * scannerRange;
 		for (i = 0; i < wh_count ; i++)
@@ -1815,9 +1815,9 @@ void ShipEntity::thargonCheckMother()
 void ShipEntity::becomeUncontrolledThargon()
 {
 	int			ent_count =		UNIVERSE->_cxxUniverse->n_entities;
-	::Entity**	uni_entities =	UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
+	cxx::Entity**	uni_entities =	UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
 	int i;
-	for (i = 0; i < ent_count; i++) if (uni_entities[i]->_cxxEntity->isShip)
+	for (i = 0; i < ent_count; i++) if (uni_entities[i]->isShip)
 	{
 		::ShipEntity *other = oo::ToShip(uni_entities[i]);
 		if ((other != nullptr ? other->primaryTarget() : id{}) == oo::ToObjC(this))
@@ -2557,7 +2557,7 @@ void ShipEntity::setTargetToRandomStation()
 {
 	/*- selects the nearest station it can find -*/
 	int				ent_count = UNIVERSE->_cxxUniverse->n_entities;
-	::Entity			**uni_entities = UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
+	cxx::Entity			**uni_entities = UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
 	std::vector<::Entity *>	my_entities(ent_count);
 	::StationEntity	*station = nil, *my_station = nil;
 	double			maxRange2 = desired_range * desired_range;
@@ -2567,12 +2567,12 @@ void ShipEntity::setTargetToRandomStation()
 	for (i = 0; i < ent_count; i++)
 	{
 		// find stations within range but exclude carriers.
-		if (uni_entities[i]->_cxxEntity->isStation)
+		if (uni_entities[i]->isStation)
 		{
 			my_station = oo::ToStation(uni_entities[i]);
 			if ((my_station != nullptr ? my_station->getMaxFlightSpeed() : 0.0f) == 0 && (my_station != nullptr ? my_station->getHasNPCTraffic() : false) && HPdistance2(position, (my_station != nullptr ? my_station->getPosition() : HPVector{})) < maxRange2)
 			{
-				my_entities[station_count++] = [uni_entities[i] retain];		//	retained
+				my_entities[station_count++] = [oo::ToObjC(uni_entities[i]) retain];		//	retained
 			}
 		}
 	}

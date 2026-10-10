@@ -774,7 +774,7 @@ OO_TEST(closeCollisionAndFrame)
 		TestShip *other = MakeShip<TestShip>("other", Definition());
 		Entity *plain = [[[Entity alloc] init] autorelease];
 		OO_CHECK(!(ship != nullptr ? ship->checkCloseCollisionWith(nullptr) : false));
-		OO_CHECK((ship != nullptr ? ship->checkCloseCollisionWith(oo::ToCxx(plain)) : false) && Part(ship)->collider == plain);
+		OO_CHECK((ship != nullptr ? ship->checkCloseCollisionWith(oo::ToCxx(plain)) : false) && Part(ship)->collider == oo::ToCxx(plain));
 		MutablePart(ship)->collider = nil;
 		OO_CHECK(!(ship != nullptr ? ship->checkCloseCollisionWith(other) : false) && Part(ship)->collider == nil);
 

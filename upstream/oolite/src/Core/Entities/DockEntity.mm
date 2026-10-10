@@ -1231,7 +1231,7 @@ bool DockEntity::dockingCorridorIsEmpty()
 	// check against all ships
 	BOOL			isEmpty = YES;
 	int				ent_count =		UNIVERSE->_cxxUniverse->n_entities;
-	::Entity			**uni_entities =	UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
+	cxx::Entity			**uni_entities =	UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
 	std::vector<::Entity *>	my_entities(ent_count);
 	int i;
 	int ship_count = 0;
@@ -1239,9 +1239,9 @@ bool DockEntity::dockingCorridorIsEmpty()
 	for (i = 0; i < ent_count; i++)
 	{
 		//on red alert, launch even if the player is trying block the corridor. Ignore cargopods or other small debris.
-		if ([uni_entities[i] isShip] && ((station == nullptr || station->getAlertLevel() < STATION_ALERT_LEVEL_RED) || ![uni_entities[i] isPlayer]) && [uni_entities[i] mass] > 1000)
+		if ([oo::ToObjC(uni_entities[i]) isShip] && ((station == nullptr || station->getAlertLevel() < STATION_ALERT_LEVEL_RED) || ![oo::ToObjC(uni_entities[i]) isPlayer]) && [oo::ToObjC(uni_entities[i]) mass] > 1000)
 		{
-			my_entities[ship_count++] = [uni_entities[i] retain];		//	retained
+			my_entities[ship_count++] = [oo::ToObjC(uni_entities[i]) retain];		//	retained
 		}
 	}
 
@@ -1292,16 +1292,16 @@ void DockEntity::clearDockingCorridor()
 	::StationEntity	*station = oo::ToStation(parentEntity());
 	BOOL			isClear = YES;
 	int				ent_count =			UNIVERSE->_cxxUniverse->n_entities;
-	::Entity			**uni_entities =	UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
+	cxx::Entity			**uni_entities =	UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
 	std::vector<::Entity *>	my_entities(ent_count);
 	int i;
 	int ship_count = 0;
 	
 	for (i = 0; i < ent_count; i++)
 	{
-		if (uni_entities[i]->_cxxEntity->isShip)
+		if (uni_entities[i]->isShip)
 		{
-			my_entities[ship_count++] = [uni_entities[i] retain];		//	retained
+			my_entities[ship_count++] = [oo::ToObjC(uni_entities[i]) retain];		//	retained
 		}
 	}
 

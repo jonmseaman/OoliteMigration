@@ -6413,3 +6413,48 @@ holds and answers it.
 C++ entities. The root facade's JS selectors are forwarders kept for the engine's generic paths,
 which go with the entity lists (oo-9ht.39 step 3); the bindings' remaining sends to an entity's
 object go with step 4.
+
+## Amendment (bead oo-9ht.39.4): the universe's and the collision regions' borrowed entity lists hold C++ entities (oo-9ht.39 step 3a)
+
+- Date: 2026-10-10. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch S
+  (one branch). Exemplar: `src/Core/Entities/Entity.mm` (the linked lists), `src/Core/CollisionRegion.h/.mm`,
+  `Universe::filterSortedLists()`. Step (3) of the oo-9ht.39 plan, split: (3a) the lists, here;
+  (3b) the engine's generic paths (oo-9ht.39.5).
+
+**Context.** The universe kept its sorted list (`sortedEntities`), the axis lists' heads
+(`x/y/z_list_start`) and its id table (`entity_for_uid`) as raw pointers to the entities' Objective-C
+objects; every entity linked its neighbours (`x/y/z_previous/next`), its collision chain and its
+collider the same way; a collision region listed objects (`entity_array`). Every reader took
+`->_cxxEntity->` to reach the state. The facade cannot go while the lists hold it.
+
+**Decision (recommended defaults).**
+
+1. **The borrowed lists hold C++ entities**, raw `cxx::Entity *` where they held a raw `::Entity *`:
+   `Universe::sortedEntities`, `x/y/z_list_start`, `entity_for_uid`; `cxx::Entity`'s
+   `x/y/z_previous/next`, `collision_chain` and `collider`; `CollisionRegion::entity_array`, with
+   `addEntity()`, `checkEntity()` and `shadowAtPointOcclusionToValue()` taking `cxx::Entity *`. They
+   never owned (no retain), and still do not.
+2. **The owning lists keep the objects** (`oo::ObjCRef<::Entity *>`): `entities`, `allPlanets`,
+   `allStations`, `activeWormholes`, `entitiesDeadThisUpdate`, `waypoints`, `cargoPods`, and an
+   entity's `collidingEntities`. The Objective-C object owns its C++ part (amendment oo-bj8), so a
+   list of `oo::Ref<cxx::Entity>` would keep the part but let the object die under its peer map and
+   its callers; ownership turns round with the facade's deletion (oo-9ht.39 step 4). The borrowed
+   lists' entries are therefore alive exactly as long as before.
+3. **Readers take the part directly or cross by `oo::ToObjC()`.** State reads drop `->_cxxEntity->`
+   (the same member). A message to a listed entity becomes a message to `oo::ToObjC(part)`, the same
+   object (an Objective-C entity's adapter answers its owner), so an Objective-C subclass's override
+   still answers first; a local that is handed on as an object (the draw list, retained copies,
+   `entityForUniversalID:`'s answer, the removal checks) is `oo::ToObjC()` of the entry, and a store
+   is `oo::ToCxx()` of the object. `oo::ToShip()`/`oo::ToStation()` take the part (their
+   `cxx::Entity *` overloads, the same `dynamic_cast`). Debug log descriptions describe
+   `oo::ToObjC()` of the entry, the same text.
+4. **Behaviour identical, by construction**: every pointer stored is the part of the object that was
+   stored, and `oo::ToObjC(oo::ToCxx(o)) == o`; no entity's lifetime changes (item 2).
+5. **Tests** (standing approval oo-9n5p9, lines on main first): `test_Entity`, `test_Universe`,
+   `test_CollisionRegion` and `test_ShipEntity` cross at the list members (`oo::ToObjC()` of a read
+   entry, `oo::ToCxx()` of a stored object); every OO_TEST case and expected value is kept.
+
+**Consequences.** No universe or region list borrows an Objective-C entity. Left for oo-9ht.39.5:
+`OOJSValueFromNativeObject()`, property-list Object nodes of entities, `OOWeakReference` of
+entities, `OOJSSystem`'s visibility filter, the console's `callObjC()`/`-inspect` and the entity
+converter; for step 4: the owning lists (item 2) and the remaining `oo::ToObjC()` crossings.

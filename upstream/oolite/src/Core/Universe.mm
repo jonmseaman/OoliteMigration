@@ -636,7 +636,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 	if (uni->_cxxUniverse->n_entities > 0)
 	{
 		int n;
-		Entity	*checkEnt, *last;
+		cxx::Entity	*checkEnt, *last;	// C++ parts (bead oo-9ht.39.4)
 		
 		last = nil;
 		
@@ -645,23 +645,23 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		while ((n--)&&(checkEnt))
 		{
 			last = checkEnt;
-			checkEnt = checkEnt->_cxxEntity->x_next;
+			checkEnt = checkEnt->x_next;
 		}
 		if ((checkEnt)||(n > 0))
 		{
 #ifndef NDEBUG
-			OO_LOG(kOOLogEntityVerificationError, "Broken x_next {} list ({}) ***", oo::DescriptionOf(uni->_cxxUniverse->x_list_start), n);
+			OO_LOG(kOOLogEntityVerificationError, "Broken x_next {} list ({}) ***", oo::DescriptionOf(oo::ToObjC(uni->_cxxUniverse->x_list_start)), n);
 #endif
 			result = NO;
 		}
 		
 		n = uni->_cxxUniverse->n_entities;
 		checkEnt = last;
-		while ((n--)&&(checkEnt))	checkEnt = checkEnt->_cxxEntity->x_previous;
+		while ((n--)&&(checkEnt))	checkEnt = checkEnt->x_previous;
 		if ((checkEnt)||(n > 0))
 		{
 #ifndef NDEBUG
-			OO_LOG(kOOLogEntityVerificationError, "Broken x_previous {} list ({}) ***", oo::DescriptionOf(uni->_cxxUniverse->x_list_start), n);
+			OO_LOG(kOOLogEntityVerificationError, "Broken x_previous {} list ({}) ***", oo::DescriptionOf(oo::ToObjC(uni->_cxxUniverse->x_list_start)), n);
 #endif
 			if (result)
 			{
@@ -669,12 +669,12 @@ static BOOL MaintainLinkedLists(Universe *uni)
 				OO_LOG(kOOLogEntityVerificationRebuild, "{}", "REBUILDING x_previous list from x_next list");
 #endif
 				checkEnt = uni->_cxxUniverse->x_list_start;
-				checkEnt->_cxxEntity->x_previous = nil;
-				while (checkEnt->_cxxEntity->x_next)
+				checkEnt->x_previous = nil;
+				while (checkEnt->x_next)
 				{
 					last = checkEnt;
-					checkEnt = checkEnt->_cxxEntity->x_next;
-					checkEnt->_cxxEntity->x_previous = last;
+					checkEnt = checkEnt->x_next;
+					checkEnt->x_previous = last;
 				}
 			}
 		}
@@ -684,23 +684,23 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		while ((n--)&&(checkEnt))
 		{
 			last = checkEnt;
-			checkEnt = checkEnt->_cxxEntity->y_next;
+			checkEnt = checkEnt->y_next;
 		}
 		if ((checkEnt)||(n > 0))
 		{
 #ifndef NDEBUG
-			OO_LOG(kOOLogEntityVerificationError, "Broken *** broken y_next {} list ({}) ***", oo::DescriptionOf(uni->_cxxUniverse->y_list_start), n);
+			OO_LOG(kOOLogEntityVerificationError, "Broken *** broken y_next {} list ({}) ***", oo::DescriptionOf(oo::ToObjC(uni->_cxxUniverse->y_list_start)), n);
 #endif
 			result = NO;
 		}
 		
 		n = uni->_cxxUniverse->n_entities;
 		checkEnt = last;
-		while ((n--)&&(checkEnt))	checkEnt = checkEnt->_cxxEntity->y_previous;
+		while ((n--)&&(checkEnt))	checkEnt = checkEnt->y_previous;
 		if ((checkEnt)||(n > 0))
 		{
 #ifndef NDEBUG
-			OO_LOG(kOOLogEntityVerificationError, "Broken y_previous {} list ({}) ***", oo::DescriptionOf(uni->_cxxUniverse->y_list_start), n);
+			OO_LOG(kOOLogEntityVerificationError, "Broken y_previous {} list ({}) ***", oo::DescriptionOf(oo::ToObjC(uni->_cxxUniverse->y_list_start)), n);
 #endif
 			if (result)
 			{
@@ -708,12 +708,12 @@ static BOOL MaintainLinkedLists(Universe *uni)
 				OO_LOG(kOOLogEntityVerificationRebuild, "{}", "REBUILDING y_previous list from y_next list");
 #endif
 				checkEnt = uni->_cxxUniverse->y_list_start;
-				checkEnt->_cxxEntity->y_previous = nil;
-				while (checkEnt->_cxxEntity->y_next)
+				checkEnt->y_previous = nil;
+				while (checkEnt->y_next)
 				{
 					last = checkEnt;
-					checkEnt = checkEnt->_cxxEntity->y_next;
-					checkEnt->_cxxEntity->y_previous = last;
+					checkEnt = checkEnt->y_next;
+					checkEnt->y_previous = last;
 				}
 			}
 		}
@@ -723,23 +723,23 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		while ((n--)&&(checkEnt))
 		{
 			last = checkEnt;
-			checkEnt = checkEnt->_cxxEntity->z_next;
+			checkEnt = checkEnt->z_next;
 		}
 		if ((checkEnt)||(n > 0))
 		{
 #ifndef NDEBUG
-			OO_LOG(kOOLogEntityVerificationError, "Broken z_next {} list ({}) ***", oo::DescriptionOf(uni->_cxxUniverse->z_list_start), n);
+			OO_LOG(kOOLogEntityVerificationError, "Broken z_next {} list ({}) ***", oo::DescriptionOf(oo::ToObjC(uni->_cxxUniverse->z_list_start)), n);
 #endif
 			result = NO;
 		}
 		
 		n = uni->_cxxUniverse->n_entities;
 		checkEnt = last;
-		while ((n--)&&(checkEnt))	checkEnt = checkEnt->_cxxEntity->z_previous;
+		while ((n--)&&(checkEnt))	checkEnt = checkEnt->z_previous;
 		if ((checkEnt)||(n > 0))
 		{
 #ifndef NDEBUG
-			OO_LOG(kOOLogEntityVerificationError, "Broken z_previous {} list ({}) ***", oo::DescriptionOf(uni->_cxxUniverse->z_list_start), n);
+			OO_LOG(kOOLogEntityVerificationError, "Broken z_previous {} list ({}) ***", oo::DescriptionOf(oo::ToObjC(uni->_cxxUniverse->z_list_start)), n);
 #endif
 			if (result)
 			{
@@ -748,12 +748,12 @@ static BOOL MaintainLinkedLists(Universe *uni)
 #endif
 				checkEnt = uni->_cxxUniverse->z_list_start;
 				OOCAssert(checkEnt != nil, "Expected z-list to be non-empty.");	// Previously an implicit assumption. -- Ahruman 2011-01-25
-				checkEnt->_cxxEntity->z_previous = nil;
-				while (checkEnt->_cxxEntity->z_next)
+				checkEnt->z_previous = nil;
+				while (checkEnt->z_next)
 				{
 					last = checkEnt;
-					checkEnt = checkEnt->_cxxEntity->z_next;
-					checkEnt->_cxxEntity->z_previous = last;
+					checkEnt = checkEnt->z_next;
+					checkEnt->z_previous = last;
 				}
 			}
 		}
@@ -2414,7 +2414,7 @@ void Universe::setLighting()
 	// The sky is C++ since bead oo-9ht.109: found by its C++ part (it was -isKindOfClass:).
 	for (i = n_entities - 1; i > 0; i--)
 		if (sortedEntities[i] != nil)
-			if (::SkyEntity *sky = dynamic_cast<::SkyEntity *>(oo::ToCxx(sortedEntities[i])))
+			if (::SkyEntity *sky = dynamic_cast<::SkyEntity *>(sortedEntities[i]))
 				the_sky = sky;
 	
 	if (the_sun)
@@ -3429,7 +3429,7 @@ void Universe::forceWitchspaceEntries()
 	unsigned i;
 	for (i = 0; i < n_entities; i++)
 	{
-		if (sortedEntities[i]->_cxxEntity->isShip)
+		if (sortedEntities[i]->isShip)
 		{
 			::ShipEntity *my_ship = oo::ToShip(sortedEntities[i]);
 			::Entity* my_target = (my_ship != nullptr ? my_ship->primaryTarget() : id{});
@@ -3462,7 +3462,7 @@ GLfloat Universe::safeWitchspaceExitDistance()
 {
 	for (unsigned i = 0; i < n_entities; i++)
 	{
-		::Entity *e2 = sortedEntities[i];
+		::Entity *e2 = oo::ToObjC(sortedEntities[i]);
 		if ([e2 isShip] && (oo::ToShip(e2) != nullptr ? oo::ToShip(e2)->hasPrimaryRole("buoy-witchpoint") : false))
 		{
 			return (oo::ToShip(e2) != nullptr ? oo::ToShip(e2)->collisionRadius() : 0.0f) + MIN_DISTANCE_TO_BUOY;
@@ -5327,7 +5327,7 @@ void Universe::drawUniverse()
 				 * on/near the player. So long as everything uses
 				 * depth tests, we'll get away with it; it'll just
 				 * occasionally be inefficient. - CIM */
-				::Entity *e = sortedEntities[i]; // ordered NEAREST -> FURTHEST AWAY
+				::Entity *e = oo::ToObjC(sortedEntities[i]); // ordered NEAREST -> FURTHEST AWAY
 				if ([e isVisible])
 				{
 					my_entities[draw_count++] = [[e retain] autorelease];
@@ -5853,7 +5853,7 @@ id Universe::entityForUniversalID(OOUniversalID u_id)
 	if ((u_id == NO_TARGET)||(!entity_for_uid[u_id]))
 		return nil;
 	
-	::Entity *ent = entity_for_uid[u_id];
+	::Entity *ent = oo::ToObjC(entity_for_uid[u_id]);
 	if ([ent isEffect])	// effects SHOULD NOT HAVE U_IDs!
 	{
 		return nil;
@@ -5911,7 +5911,7 @@ bool Universe::addEntity(::Entity *entity)
 				}
 			}
 			[entity setUniversalID:next_universal_id];
-			entity_for_uid[next_universal_id] = entity;
+			entity_for_uid[next_universal_id] = oo::ToCxx(entity);
 			if ([entity isShip])
 			{
 				se = oo::ToShip(entity);
@@ -5989,14 +5989,14 @@ bool Universe::addEntity(::Entity *entity)
 		double z_distance = HPmagnitude2(delta);
 		entity->_cxxEntity->zero_distance = z_distance;
 		unsigned index = n_entities;
-		sortedEntities[index] = entity;
+		sortedEntities[index] = oo::ToCxx(entity);
 		entity->_cxxEntity->zero_index = index;
-		while ((index > 0)&&(z_distance < sortedEntities[index - 1]->_cxxEntity->zero_distance))	// bubble into place
+		while ((index > 0)&&(z_distance < sortedEntities[index - 1]->zero_distance))	// bubble into place
 		{
 			sortedEntities[index] = sortedEntities[index - 1];
-			sortedEntities[index]->_cxxEntity->zero_index = index;
+			sortedEntities[index]->zero_index = index;
 			index--;
-			sortedEntities[index] = entity;
+			sortedEntities[index] = oo::ToCxx(entity);
 			entity->_cxxEntity->zero_index = index;
 		}
 		
@@ -6130,7 +6130,7 @@ void Universe::removeDemoShips()
 		::Entity* ent;
 		for (i = 0; i < ent_count; i++)
 		{
-			ent = sortedEntities[i];
+			ent = oo::ToObjC(sortedEntities[i]);
 			if ([ent status] == STATUS_COCKPIT_DISPLAY && ![ent isPlayer])
 			{
 				[self removeEntity:ent];
@@ -6210,7 +6210,7 @@ bool Universe::isVectorClearFromEntity(::Entity *e1, double dist, HPVector p2)
 	int ent_count = n_entities;
 	::Entity* my_entities[ent_count];
 	for (i = 0; i < ent_count; i++)
-		my_entities[i] = [sortedEntities[i] retain]; //	retained
+		my_entities[i] = [oo::ToObjC(sortedEntities[i]) retain]; //	retained
 	
 	if (v1.x || v1.y || v1.z)
 		f1 = HPvector_normal(v1);   // unit vector in direction of p2 from p1
@@ -6272,7 +6272,7 @@ bool Universe::isVectorClearFromEntity(::Entity *e1, double dist, HPVector p2)
 	int ent_count = n_entities;
 	::Entity* my_entities[ent_count];
 	for (i = 0; i < ent_count; i++)
-		my_entities[i] = [sortedEntities[i] retain]; //	retained
+		my_entities[i] = [oo::ToObjC(sortedEntities[i]) retain]; //	retained
 	
 	if (v1.x || v1.y || v1.z)
 		f1 = HPvector_normal(v1);   // unit vector in direction of p2 from p1
@@ -6326,7 +6326,7 @@ HPVector Universe::getSafeVectorFromEntity(::Entity *e1, double dist, HPVector p
 	int ent_count = n_entities;
 	::Entity* my_entities[ent_count];
 	for (i = 0; i < ent_count; i++)
-		my_entities[i] = [sortedEntities[i] retain];	// retained
+		my_entities[i] = [oo::ToObjC(sortedEntities[i]) retain];	// retained
 	HPVector p1 = e1->_cxxEntity->position;
 	HPVector v1 = p2;
 	v1.x -= p1.x;   v1.y -= p1.y;   v1.z -= p1.z;   // vector from entity to p2
@@ -6510,7 +6510,7 @@ void Universe::addLaserHitEffectsAt(HPVector pos, ::ShipEntity *target, float da
 	
 	for (i = 0; i < ent_count; i++)
 	{
-		::Entity* ent = sortedEntities[i];
+		::Entity* ent = oo::ToObjC(sortedEntities[i]);
 		if (ent != oo::ToObjC(srcEntity) && ent != oo::ToObjC(parent) && [ent isShip] && [ent canCollide])
 		{
 			my_entities[ship_count++] = (oo::ToShip(ent) != nullptr ? oo::ToShip([oo::ToObjC(oo::ToShip(ent)) retain]) : (::ShipEntity *)nil);
@@ -6610,9 +6610,9 @@ namespace cxx {
 	
 	for (i = 0; i < ent_count; i++)
 	{
-		if (([sortedEntities[i] isShip] && ![sortedEntities[i] isPlayer]) || [sortedEntities[i] isWormhole])
+		if (([oo::ToObjC(sortedEntities[i]) isShip] && ![oo::ToObjC(sortedEntities[i]) isPlayer]) || [oo::ToObjC(sortedEntities[i]) isWormhole])
 		{
-			my_entities[ship_count++] = [sortedEntities[i] retain];
+			my_entities[ship_count++] = [oo::ToObjC(sortedEntities[i]) retain];
 		}
 	}
 	
@@ -6804,7 +6804,7 @@ unsigned Universe::countEntitiesMatchingPredicate(EntityFilterPredicate predicat
 	
 	for (i = 0; i < n_entities; i++)
 	{
-		::Entity *e2 = sortedEntities[i];
+		::Entity *e2 = oo::ToObjC(sortedEntities[i]);
 		if (e2 != e1 && predicate(e2, parameter))
 		{
 			if (range < 0)  distance = -1;	// Negative range means infinity
@@ -6872,7 +6872,7 @@ std::vector<oo::ObjCRef<::Entity *>> Universe::findEntitiesMatchingPredicate(Ent
 	
 	for (i = 0; i < n_entities; i++)
 	{
-		::Entity *e2 = sortedEntities[i];
+		::Entity *e2 = oo::ToObjC(sortedEntities[i]);
 		
 		if (e1 != e2 &&
 			EntityInRange(p1, e2, range) &&
@@ -6901,7 +6901,7 @@ id Universe::findOneEntityMatchingPredicate(EntityFilterPredicate predicate, voi
 	
 	for (i = 0; i < n_entities; i++)
 	{
-		candidate = sortedEntities[i];
+		candidate = oo::ToObjC(sortedEntities[i]);
 		if (predicate(candidate, parameter))  return candidate;
 	}
 	
@@ -6979,7 +6979,7 @@ id Universe::nearestEntityMatchingPredicate(EntityFilterPredicate predicate, voi
 	
 	for (i = 0; i < n_entities; i++)
 	{
-		::Entity *e2 = sortedEntities[i];
+		::Entity *e2 = oo::ToObjC(sortedEntities[i]);
 		float distanceToReferenceEntitySquared = (float)HPdistance2(p1, [e2 position]);
 		
 		if (entity != e2 &&
@@ -7547,7 +7547,7 @@ void Universe::update(OOTimeDelta inDeltaT)
 		// use a retained copy so this can't be changed under us.
 		for (i = 0; i < ent_count; i++)
 		{
-			my_entities[i] = [sortedEntities[i] retain];	// explicitly retain each one
+			my_entities[i] = [oo::ToObjC(sortedEntities[i]) retain];	// explicitly retain each one
 		}
 		
 		const char * volatile update_stage = "initialisation";
@@ -7677,12 +7677,12 @@ void Universe::update(OOTimeDelta inDeltaT)
 				GLfloat z_distance = thing->_cxxEntity->zero_distance;
 				
 				int index = thing->_cxxEntity->zero_index;
-				while (index > 0 && z_distance < sortedEntities[index - 1]->_cxxEntity->zero_distance)
+				while (index > 0 && z_distance < sortedEntities[index - 1]->zero_distance)
 				{
 					sortedEntities[index] = sortedEntities[index - 1];	// bubble up the list, usually by just one position
-					sortedEntities[index - 1] = thing;
+					sortedEntities[index - 1] = oo::ToCxx(thing);
 					thing->_cxxEntity->zero_index = index - 1;
-					sortedEntities[index]->_cxxEntity->zero_index = index;
+					sortedEntities[index]->zero_index = index;
 					index--;
 				}
 				
@@ -7868,16 +7868,16 @@ void Universe::filterSortedLists()
 	becomes significant larger. However, almost all of these extra pairs are dealt with by a simple distance check.
 	I currently see no noticeable negative effect while playing, but this change might still give some trouble I missed.
 	*/
-	::Entity	*e0, *next, *prev;
+	cxx::Entity	*e0, *next, *prev;	// C++ parts (bead oo-9ht.39.4)
 	OOHPScalar start, finish, next_start, next_finish, prev_start, prev_finish;
 	
 	// using the z_list - set or clear collisionTestFilter and clear collision_chain
 	e0 = z_list_start;
 	while (e0)
 	{
-		e0->_cxxEntity->collisionTestFilter = [e0 canCollide]?0:3;
-		e0->_cxxEntity->collision_chain = nil;
-		e0 = e0->_cxxEntity->z_next;
+		e0->collisionTestFilter = [oo::ToObjC(e0) canCollide]?0:3;
+		e0->collision_chain = nil;
+		e0 = e0->z_next;
 	}
 	// done.
 	
@@ -7892,42 +7892,42 @@ void Universe::filterSortedLists()
 	while (e0)
 	{
 		// here we are either at the start of the list or just past a gap
-		start = e0->_cxxEntity->position.z - 2.0f * e0->_cxxEntity->collision_radius;
-		finish = start + 4.0f * e0->_cxxEntity->collision_radius;
-		next = e0->_cxxEntity->z_next;
-		while ((next)&&(next->_cxxEntity->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
-			next = next->_cxxEntity->z_next;
+		start = e0->position.z - 2.0f * e0->collision_radius;
+		finish = start + 4.0f * e0->collision_radius;
+		next = e0->z_next;
+		while ((next)&&(next->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
+			next = next->z_next;
 		if (next)
 		{
-			next_start = next->_cxxEntity->position.z - 2.0f * next->_cxxEntity->collision_radius;
+			next_start = next->position.z - 2.0f * next->collision_radius;
 			if (next_start < finish)
 			{
 				// e0 and next overlap
 				while ((next)&&(next_start < finish))
 				{
 					// skip forward to the next gap or the end of the list
-					next_finish = next_start + 4.0f * next->_cxxEntity->collision_radius;
+					next_finish = next_start + 4.0f * next->collision_radius;
 					if (next_finish > finish)
 						finish = next_finish;
 					e0 = next;
-					next = e0->_cxxEntity->z_next;
-					while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
-						next = next->_cxxEntity->z_next;
+					next = e0->z_next;
+					while ((next)&&(next->collisionTestFilter==3))	// next has been eliminated - so skip it
+						next = next->z_next;
 					if (next)
-						next_start = next->_cxxEntity->position.z - 2.0f * next->_cxxEntity->collision_radius;
+						next_start = next->position.z - 2.0f * next->collision_radius;
 				}
 				// now either (next == nil) or (next_start >= finish)-which would imply a gap!
 			}
 			else
 			{
 				// e0 is a singleton
-				e0->_cxxEntity->collisionTestFilter = 1;
+				e0->collisionTestFilter = 1;
 			}
 		}
 		else // (next == nil)
 		{
 			// at the end of the list so e0 is a singleton
-			e0->_cxxEntity->collisionTestFilter = 1;
+			e0->collisionTestFilter = 1;
 		}
 		e0 = next;
 	}
@@ -7936,42 +7936,42 @@ void Universe::filterSortedLists()
 	while (e0)
 	{
 		// here we are either at the start of the list or just past a gap
-		start = e0->_cxxEntity->position.z + 2.0f * e0->_cxxEntity->collision_radius;
-		finish = start - 4.0f * e0->_cxxEntity->collision_radius;
-		prev = e0->_cxxEntity->z_previous;
-		while ((prev)&&(prev->_cxxEntity->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
-			prev = prev->_cxxEntity->z_previous;
+		start = e0->position.z + 2.0f * e0->collision_radius;
+		finish = start - 4.0f * e0->collision_radius;
+		prev = e0->z_previous;
+		while ((prev)&&(prev->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
+			prev = prev->z_previous;
 		if (prev)
 		{
-			prev_start = prev->_cxxEntity->position.z + 2.0f * prev->_cxxEntity->collision_radius;
+			prev_start = prev->position.z + 2.0f * prev->collision_radius;
 			if (prev_start > finish)
 			{
 				// e0 and next overlap
 				while ((prev)&&(prev_start > finish))
 				{
 					// skip forward to the next gap or the end of the list
-					prev_finish = prev_start - 4.0f * prev->_cxxEntity->collision_radius;
+					prev_finish = prev_start - 4.0f * prev->collision_radius;
 					if (prev_finish < finish)
 						finish = prev_finish;
 					e0 = prev;
-					prev = e0->_cxxEntity->z_previous;
-					while ((prev)&&(prev->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
-						prev = prev->_cxxEntity->z_previous;
+					prev = e0->z_previous;
+					while ((prev)&&(prev->collisionTestFilter==3))	// next has been eliminated - so skip it
+						prev = prev->z_previous;
 					if (prev)
-						prev_start = prev->_cxxEntity->position.z + 2.0f * prev->_cxxEntity->collision_radius;
+						prev_start = prev->position.z + 2.0f * prev->collision_radius;
 				}
 				// now either (prev == nil) or (prev_start <= finish)-which would imply a gap!
 			}
 			else
 			{
 				// e0 is a singleton
-				e0->_cxxEntity->collisionTestFilter |= 2;
+				e0->collisionTestFilter |= 2;
 			}
 		}
 		else // (prev == nil)
 		{
 			// at the end of the list so e0 is a singleton
-			e0->_cxxEntity->collisionTestFilter |= 2;
+			e0->collisionTestFilter |= 2;
 		}
 		e0 = prev;
 	}
@@ -7982,43 +7982,43 @@ void Universe::filterSortedLists()
 	while (e0)
 	{
 		// here we are either at the start of the list or just past a gap
-		start = e0->_cxxEntity->position.y - 2.0f * e0->_cxxEntity->collision_radius;
-		finish = start + 4.0f * e0->_cxxEntity->collision_radius;
-		next = e0->_cxxEntity->y_next;
-		while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated from the list of possible colliders - so skip it
-			next = next->_cxxEntity->y_next;
+		start = e0->position.y - 2.0f * e0->collision_radius;
+		finish = start + 4.0f * e0->collision_radius;
+		next = e0->y_next;
+		while ((next)&&(next->collisionTestFilter==3))	// next has been eliminated from the list of possible colliders - so skip it
+			next = next->y_next;
 		if (next)
 		{
 			
-			next_start = next->_cxxEntity->position.y - 2.0f * next->_cxxEntity->collision_radius;
+			next_start = next->position.y - 2.0f * next->collision_radius;
 			if (next_start < finish)
 			{
 				// e0 and next overlap
 				while ((next)&&(next_start < finish))
 				{
 					// skip forward to the next gap or the end of the list
-					next_finish = next_start + 4.0f * next->_cxxEntity->collision_radius;
+					next_finish = next_start + 4.0f * next->collision_radius;
 					if (next_finish > finish)
 						finish = next_finish;
 					e0 = next;
-					next = e0->_cxxEntity->y_next;
-					while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
-						next = next->_cxxEntity->y_next;
+					next = e0->y_next;
+					while ((next)&&(next->collisionTestFilter==3))	// next has been eliminated - so skip it
+						next = next->y_next;
 					if (next)
-						next_start = next->_cxxEntity->position.y - 2.0f * next->_cxxEntity->collision_radius;
+						next_start = next->position.y - 2.0f * next->collision_radius;
 				}
 				// now either (next == nil) or (next_start >= finish)-which would imply a gap!
 			}
 			else
 			{
 				// e0 is a singleton
-				e0->_cxxEntity->collisionTestFilter = 1;
+				e0->collisionTestFilter = 1;
 			}
 		}
 		else // (next == nil)
 		{
 			// at the end of the list so e0 is a singleton
-			e0->_cxxEntity->collisionTestFilter = 1;
+			e0->collisionTestFilter = 1;
 		}
 		e0 = next;
 	}
@@ -8027,42 +8027,42 @@ void Universe::filterSortedLists()
 	while (e0)
 	{
 		// here we are either at the start of the list or just past a gap
-		start = e0->_cxxEntity->position.y + 2.0f * e0->_cxxEntity->collision_radius;
-		finish = start - 4.0f * e0->_cxxEntity->collision_radius;
-		prev = e0->_cxxEntity->y_previous;
-		while ((prev)&&(prev->_cxxEntity->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
-			prev = prev->_cxxEntity->y_previous;
+		start = e0->position.y + 2.0f * e0->collision_radius;
+		finish = start - 4.0f * e0->collision_radius;
+		prev = e0->y_previous;
+		while ((prev)&&(prev->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
+			prev = prev->y_previous;
 		if (prev)
 		{
-			prev_start = prev->_cxxEntity->position.y + 2.0f * prev->_cxxEntity->collision_radius;
+			prev_start = prev->position.y + 2.0f * prev->collision_radius;
 			if (prev_start > finish)
 			{
 				// e0 and next overlap
 				while ((prev)&&(prev_start > finish))
 				{
 					// skip forward to the next gap or the end of the list
-					prev_finish = prev_start - 4.0f * prev->_cxxEntity->collision_radius;
+					prev_finish = prev_start - 4.0f * prev->collision_radius;
 					if (prev_finish < finish)
 						finish = prev_finish;
 					e0 = prev;
-					prev = e0->_cxxEntity->y_previous;
-					while ((prev)&&(prev->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
-						prev = prev->_cxxEntity->y_previous;
+					prev = e0->y_previous;
+					while ((prev)&&(prev->collisionTestFilter==3))	// next has been eliminated - so skip it
+						prev = prev->y_previous;
 					if (prev)
-						prev_start = prev->_cxxEntity->position.y + 2.0f * prev->_cxxEntity->collision_radius;
+						prev_start = prev->position.y + 2.0f * prev->collision_radius;
 				}
 				// now either (prev == nil) or (prev_start <= finish)-which would imply a gap!
 			}
 			else
 			{
 				// e0 is a singleton
-				e0->_cxxEntity->collisionTestFilter |= 2;
+				e0->collisionTestFilter |= 2;
 			}
 		}
 		else // (prev == nil)
 		{
 			// at the end of the list so e0 is a singleton
-			e0->_cxxEntity->collisionTestFilter |= 2;
+			e0->collisionTestFilter |= 2;
 		}
 		e0 = prev;
 	}
@@ -8073,42 +8073,42 @@ void Universe::filterSortedLists()
 	while (e0)
 	{
 		// here we are either at the start of the list or just past a gap
-		start = e0->_cxxEntity->position.x - 2.0f * e0->_cxxEntity->collision_radius;
-		finish = start + 4.0f * e0->_cxxEntity->collision_radius;
-		next = e0->_cxxEntity->x_next;
-		while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated from the list of possible colliders - so skip it
-			next = next->_cxxEntity->x_next;
+		start = e0->position.x - 2.0f * e0->collision_radius;
+		finish = start + 4.0f * e0->collision_radius;
+		next = e0->x_next;
+		while ((next)&&(next->collisionTestFilter==3))	// next has been eliminated from the list of possible colliders - so skip it
+			next = next->x_next;
 		if (next)
 		{
-			next_start = next->_cxxEntity->position.x - 2.0f * next->_cxxEntity->collision_radius;
+			next_start = next->position.x - 2.0f * next->collision_radius;
 			if (next_start < finish)
 			{
 				// e0 and next overlap
 				while ((next)&&(next_start < finish))
 				{
 					// skip forward to the next gap or the end of the list
-					next_finish = next_start + 4.0f * next->_cxxEntity->collision_radius;
+					next_finish = next_start + 4.0f * next->collision_radius;
 					if (next_finish > finish)
 						finish = next_finish;
 					e0 = next;
-					next = e0->_cxxEntity->x_next;
-					while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
-						next = next->_cxxEntity->x_next;
+					next = e0->x_next;
+					while ((next)&&(next->collisionTestFilter==3))	// next has been eliminated - so skip it
+						next = next->x_next;
 					if (next)
-						next_start = next->_cxxEntity->position.x - 2.0f * next->_cxxEntity->collision_radius;
+						next_start = next->position.x - 2.0f * next->collision_radius;
 				}
 				// now either (next == nil) or (next_start >= finish)-which would imply a gap!
 			}
 			else
 			{
 				// e0 is a singleton
-				e0->_cxxEntity->collisionTestFilter = 1;
+				e0->collisionTestFilter = 1;
 			}
 		}
 		else // (next == nil)
 		{
 			// at the end of the list so e0 is a singleton
-			e0->_cxxEntity->collisionTestFilter = 1;
+			e0->collisionTestFilter = 1;
 		}
 		e0 = next;
 	}
@@ -8117,42 +8117,42 @@ void Universe::filterSortedLists()
 	while (e0)
 	{
 		// here we are either at the start of the list or just past a gap
-		start = e0->_cxxEntity->position.x + 2.0f * e0->_cxxEntity->collision_radius;
-		finish = start - 4.0f * e0->_cxxEntity->collision_radius;
-		prev = e0->_cxxEntity->x_previous;
-		while ((prev)&&(prev->_cxxEntity->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
-			prev = prev->_cxxEntity->x_previous;
+		start = e0->position.x + 2.0f * e0->collision_radius;
+		finish = start - 4.0f * e0->collision_radius;
+		prev = e0->x_previous;
+		while ((prev)&&(prev->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
+			prev = prev->x_previous;
 		if (prev)
 		{
-			prev_start = prev->_cxxEntity->position.x + 2.0f * prev->_cxxEntity->collision_radius;
+			prev_start = prev->position.x + 2.0f * prev->collision_radius;
 			if (prev_start > finish)
 			{
 				// e0 and next overlap
 				while ((prev)&&(prev_start > finish))
 				{
 					// skip forward to the next gap or the end of the list
-					prev_finish = prev_start - 4.0f * prev->_cxxEntity->collision_radius;
+					prev_finish = prev_start - 4.0f * prev->collision_radius;
 					if (prev_finish < finish)
 						finish = prev_finish;
 					e0 = prev;
-					prev = e0->_cxxEntity->x_previous;
-					while ((prev)&&(prev->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
-						prev = prev->_cxxEntity->x_previous;
+					prev = e0->x_previous;
+					while ((prev)&&(prev->collisionTestFilter==3))	// next has been eliminated - so skip it
+						prev = prev->x_previous;
 					if (prev)
-						prev_start = prev->_cxxEntity->position.x + 2.0f * prev->_cxxEntity->collision_radius;
+						prev_start = prev->position.x + 2.0f * prev->collision_radius;
 				}
 				// now either (prev == nil) or (prev_start <= finish)-which would imply a gap!
 			}
 			else
 			{
 				// e0 is a singleton
-				e0->_cxxEntity->collisionTestFilter |= 2;
+				e0->collisionTestFilter |= 2;
 			}
 		}
 		else // (prev == nil)
 		{
 			// at the end of the list so e0 is a singleton
-			e0->_cxxEntity->collisionTestFilter |= 2;
+			e0->collisionTestFilter |= 2;
 		}
 		e0 = prev;
 	}
@@ -8163,42 +8163,42 @@ void Universe::filterSortedLists()
 	while (e0)
 	{
 		// here we are either at the start of the list or just past a gap
-		start = e0->_cxxEntity->position.y - 2.0f * e0->_cxxEntity->collision_radius;
-		finish = start + 4.0f * e0->_cxxEntity->collision_radius;
-		next = e0->_cxxEntity->y_next;
-		while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated from the list of possible colliders - so skip it
-			next = next->_cxxEntity->y_next;
+		start = e0->position.y - 2.0f * e0->collision_radius;
+		finish = start + 4.0f * e0->collision_radius;
+		next = e0->y_next;
+		while ((next)&&(next->collisionTestFilter==3))	// next has been eliminated from the list of possible colliders - so skip it
+			next = next->y_next;
 		if (next)
 		{
-			next_start = next->_cxxEntity->position.y - 2.0f * next->_cxxEntity->collision_radius;
+			next_start = next->position.y - 2.0f * next->collision_radius;
 			if (next_start < finish)
 			{
 				// e0 and next overlap
 				while ((next)&&(next_start < finish))
 				{
 					// skip forward to the next gap or the end of the list
-					next_finish = next_start + 4.0f * next->_cxxEntity->collision_radius;
+					next_finish = next_start + 4.0f * next->collision_radius;
 					if (next_finish > finish)
 						finish = next_finish;
 					e0 = next;
-					next = e0->_cxxEntity->y_next;
-					while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
-						next = next->_cxxEntity->y_next;
+					next = e0->y_next;
+					while ((next)&&(next->collisionTestFilter==3))	// next has been eliminated - so skip it
+						next = next->y_next;
 					if (next)
-						next_start = next->_cxxEntity->position.y - 2.0f * next->_cxxEntity->collision_radius;
+						next_start = next->position.y - 2.0f * next->collision_radius;
 				}
 				// now either (next == nil) or (next_start >= finish)-which would imply a gap!
 			}
 			else
 			{
 				// e0 is a singleton
-				e0->_cxxEntity->collisionTestFilter = 1;
+				e0->collisionTestFilter = 1;
 			}
 		}
 		else // (next == nil)
 		{
 			// at the end of the list so e0 is a singleton
-			e0->_cxxEntity->collisionTestFilter = 1;
+			e0->collisionTestFilter = 1;
 		}
 		e0 = next;
 	}
@@ -8206,42 +8206,42 @@ void Universe::filterSortedLists()
 	while (e0)
 	{
 		// here we are either at the start of the list or just past a gap
-		start = e0->_cxxEntity->position.y + 2.0f * e0->_cxxEntity->collision_radius;
-		finish = start - 4.0f * e0->_cxxEntity->collision_radius;
-		prev = e0->_cxxEntity->y_previous;
-		while ((prev)&&(prev->_cxxEntity->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
-			prev = prev->_cxxEntity->y_previous;
+		start = e0->position.y + 2.0f * e0->collision_radius;
+		finish = start - 4.0f * e0->collision_radius;
+		prev = e0->y_previous;
+		while ((prev)&&(prev->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
+			prev = prev->y_previous;
 		if (prev)
 		{
-			prev_start = prev->_cxxEntity->position.y + 2.0f * prev->_cxxEntity->collision_radius;
+			prev_start = prev->position.y + 2.0f * prev->collision_radius;
 			if (prev_start > finish)
 			{
 				// e0 and next overlap
 				while ((prev)&&(prev_start > finish))
 				{
 					// skip forward to the next gap or the end of the list
-					prev_finish = prev_start - 4.0f * prev->_cxxEntity->collision_radius;
+					prev_finish = prev_start - 4.0f * prev->collision_radius;
 					if (prev_finish < finish)
 						finish = prev_finish;
 					e0 = prev;
-					prev = e0->_cxxEntity->y_previous;
-					while ((prev)&&(prev->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
-						prev = prev->_cxxEntity->y_previous;
+					prev = e0->y_previous;
+					while ((prev)&&(prev->collisionTestFilter==3))	// next has been eliminated - so skip it
+						prev = prev->y_previous;
 					if (prev)
-						prev_start = prev->_cxxEntity->position.y + 2.0f * prev->_cxxEntity->collision_radius;
+						prev_start = prev->position.y + 2.0f * prev->collision_radius;
 				}
 				// now either (prev == nil) or (prev_start <= finish)-which would imply a gap!
 			}
 			else
 			{
 				// e0 is a singleton
-				e0->_cxxEntity->collisionTestFilter |= 2;
+				e0->collisionTestFilter |= 2;
 			}
 		}
 		else // (prev == nil)
 		{
 			// at the end of the list so e0 is a singleton
-			e0->_cxxEntity->collisionTestFilter |= 2;
+			e0->collisionTestFilter |= 2;
 		}
 		e0 = prev;
 	}
@@ -8252,45 +8252,45 @@ void Universe::filterSortedLists()
 	while (e0)
 	{
 		// here we are either at the start of the list or just past a gap
-		start = e0->_cxxEntity->position.z - 2.0f * e0->_cxxEntity->collision_radius;
-		finish = start + 4.0f * e0->_cxxEntity->collision_radius;
-		next = e0->_cxxEntity->z_next;
-		while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated from the list of possible colliders - so skip it
-			next = next->_cxxEntity->z_next;
+		start = e0->position.z - 2.0f * e0->collision_radius;
+		finish = start + 4.0f * e0->collision_radius;
+		next = e0->z_next;
+		while ((next)&&(next->collisionTestFilter==3))	// next has been eliminated from the list of possible colliders - so skip it
+			next = next->z_next;
 		if (next)
 		{
-			next_start = next->_cxxEntity->position.z - 2.0f * next->_cxxEntity->collision_radius;
+			next_start = next->position.z - 2.0f * next->collision_radius;
 			if (next_start < finish)
 			{
 				// e0 and next overlap
 				while ((next)&&(next_start < finish))
 				{
 					// chain e0 to next in collision
-					e0->_cxxEntity->collision_chain = next;
+					e0->collision_chain = next;
 					// skip forward to the next gap or the end of the list
-					next_finish = next_start + 4.0f * next->_cxxEntity->collision_radius;
+					next_finish = next_start + 4.0f * next->collision_radius;
 					if (next_finish > finish)
 						finish = next_finish;
 					e0 = next;
-					next = e0->_cxxEntity->z_next;
-					while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
-						next = next->_cxxEntity->z_next;
+					next = e0->z_next;
+					while ((next)&&(next->collisionTestFilter==3))	// next has been eliminated - so skip it
+						next = next->z_next;
 					if (next)
-						next_start = next->_cxxEntity->position.z - 2.0f * next->_cxxEntity->collision_radius;
+						next_start = next->position.z - 2.0f * next->collision_radius;
 				}
 				// now either (next == nil) or (next_start >= finish)-which would imply a gap!
-				e0->_cxxEntity->collision_chain = nil;	// end the collision chain
+				e0->collision_chain = nil;	// end the collision chain
 			}
 			else
 			{
 				// e0 is a singleton
-				e0->_cxxEntity->collisionTestFilter = 1;
+				e0->collisionTestFilter = 1;
 			}
 		}
 		else // (next == nil)
 		{
 			// at the end of the list so e0 is a singleton
-			e0->_cxxEntity->collisionTestFilter = 1;
+			e0->collisionTestFilter = 1;
 		}
 		e0 = next;
 	}
@@ -8298,14 +8298,14 @@ void Universe::filterSortedLists()
 	while (e0)
 	{
 		// here we are either at the start of the list or just past a gap
-		start = e0->_cxxEntity->position.z + 2.0f * e0->_cxxEntity->collision_radius;
-		finish = start - 4.0f * e0->_cxxEntity->collision_radius;
-		prev = e0->_cxxEntity->z_previous;
-		while ((prev)&&(prev->_cxxEntity->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
-			prev = prev->_cxxEntity->z_previous;
+		start = e0->position.z + 2.0f * e0->collision_radius;
+		finish = start - 4.0f * e0->collision_radius;
+		prev = e0->z_previous;
+		while ((prev)&&(prev->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
+			prev = prev->z_previous;
 		if (prev)
 		{
-			prev_start = prev->_cxxEntity->position.z + 2.0f * prev->_cxxEntity->collision_radius;
+			prev_start = prev->position.z + 2.0f * prev->collision_radius;
 			if (prev_start > finish)
 			{
 				// e0 and next overlap
@@ -8313,41 +8313,41 @@ void Universe::filterSortedLists()
 				{
 					// e0 probably already in collision chain at this point, but if it
 					// isn't we have to insert it
-					if (prev->_cxxEntity->collision_chain != e0)
+					if (prev->collision_chain != e0)
 					{
-						if (prev->_cxxEntity->collision_chain == nil)
+						if (prev->collision_chain == nil)
 						{
 							// easy, just add it onto the start of the chain
-							prev->_cxxEntity->collision_chain = e0;
+							prev->collision_chain = e0;
 						}
 						else
 						{
 							/* not nil and not e0 shouldn't be possible, I think.
 							 * if it is, that implies that e0->collision_chain is nil, though
 							 * so: */
-							if (e0->_cxxEntity->collision_chain == nil)
+							if (e0->collision_chain == nil)
 							{
-								e0->_cxxEntity->collision_chain = prev->_cxxEntity->collision_chain;
-								prev->_cxxEntity->collision_chain = e0;
+								e0->collision_chain = prev->collision_chain;
+								prev->collision_chain = e0;
 							}
 							else
 							{
 								/* This shouldn't happen... If it does, we accept
 								 * missing collision checks and move on */
-								OO_LOG("general.error.inconsistentState", "Unexpected state in collision chain builder prev={}, prev->c={}, e0={}, e0->c={}", oo::DescriptionOf(prev), oo::DescriptionOf(prev->_cxxEntity->collision_chain), oo::DescriptionOf(e0), oo::DescriptionOf(e0->_cxxEntity->collision_chain));
+								OO_LOG("general.error.inconsistentState", "Unexpected state in collision chain builder prev={}, prev->c={}, e0={}, e0->c={}", oo::DescriptionOf(oo::ToObjC(prev)), oo::DescriptionOf(oo::ToObjC(prev->collision_chain)), oo::DescriptionOf(oo::ToObjC(e0)), oo::DescriptionOf(oo::ToObjC(e0->collision_chain)));
 							}
 						}
 					}
 					// skip forward to the next gap or the end of the list
-					prev_finish = prev_start - 4.0f * prev->_cxxEntity->collision_radius;
+					prev_finish = prev_start - 4.0f * prev->collision_radius;
 					if (prev_finish < finish)
 						finish = prev_finish;
 					e0 = prev;
-					prev = e0->_cxxEntity->z_previous;
-					while ((prev)&&(prev->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
-						prev = prev->_cxxEntity->z_previous;
+					prev = e0->z_previous;
+					while ((prev)&&(prev->collisionTestFilter==3))	// next has been eliminated - so skip it
+						prev = prev->z_previous;
 					if (prev)
-						prev_start = prev->_cxxEntity->position.z + 2.0f * prev->_cxxEntity->collision_radius;
+						prev_start = prev->position.z + 2.0f * prev->collision_radius;
 				}
 				// now either (prev == nil) or (prev_start <= finish)-which would imply a gap!
 
@@ -8357,13 +8357,13 @@ void Universe::filterSortedLists()
 			else
 			{
 				// e0 is a singleton
-				e0->_cxxEntity->collisionTestFilter |= 2;
+				e0->collisionTestFilter |= 2;
 			}
 		}
 		else // (prev == nil)
 		{
 			// at the end of the list so e0 is a singleton
-			e0->_cxxEntity->collisionTestFilter |= 2;
+			e0->collisionTestFilter |= 2;
 		}
 		e0 = prev;
 	}
@@ -8745,7 +8745,7 @@ void Universe::setSystemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum, const st
 			// The sky is C++ since bead oo-9ht.109: found by its C++ part (it was -isKindOfClass:).
 			for (i = n_entities - 1; i > 0; i--)
 				if (sortedEntities[i] != nil)
-					if (::SkyEntity *sky = dynamic_cast<::SkyEntity *>(oo::ToCxx(sortedEntities[i])))
+					if (::SkyEntity *sky = dynamic_cast<::SkyEntity *>(sortedEntities[i]))
 						the_sky = sky;
 			
 			if (the_sky != nullptr)
@@ -8763,7 +8763,7 @@ void Universe::setSystemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum, const st
 					}
 					for (i = n_entities - 1; i > 0; i--)
 						if (sortedEntities[i])
-							if (DustEntity *dust = dynamic_cast<DustEntity *>(oo::ToCxx(sortedEntities[i])))
+							if (DustEntity *dust = dynamic_cast<DustEntity *>(sortedEntities[i]))
 								dust->setDustColor((color != nullptr) ? color->blendedColorWithFraction(0.5, OOColor::whiteColor().get()).get() : nullptr);
 				}
 			}
@@ -10452,9 +10452,9 @@ void Universe::allShipsDoScriptEvent(ooscript::PropertyId event, const std::opti
 	::ShipEntity* my_ships[ent_count];
 	for (i = 0; i < ent_count; i++)
 	{
-		if (sortedEntities[i]->_cxxEntity->isShip)
+		if (sortedEntities[i]->isShip)
 		{
-			my_ships[ship_count++] = oo::ToShip([sortedEntities[i] retain]);	// retained (its object)
+			my_ships[ship_count++] = oo::ToShip([oo::ToObjC(sortedEntities[i]) retain]);	// retained (its object)
 		}
 	}
 	
@@ -10943,7 +10943,7 @@ void Universe::verifyEntitySessionIDs()
 	unsigned i;
 	for (i = 0; i < n_entities; i++)
 	{
-		entity = sortedEntities[i];
+		entity = oo::ToObjC(sortedEntities[i]);
 		if ([entity sessionID] != _sessionID)
 		{
 			OO_LOG_ERR("universe.sessionIDs.verify.failed", "Invalid entity {} (came from session {}, current session is {}).", oo::ShortDescriptionOf(entity), static_cast<size_t>([entity sessionID]), static_cast<size_t>(_sessionID));
@@ -11177,13 +11177,13 @@ bool Universe::doRemoveEntity(::Entity *entity)
 	int n = 1;
 	if (index >= 0)
 	{
-		if (sortedEntities[index] != entity)
+		if (sortedEntities[index] != oo::ToCxx(entity))
 		{
 			OO_LOG(cxx_kOOLogInconsistentState, "DEBUG: Universe removeEntity:{} ENTITY IS NOT IN THE RIGHT PLACE IN THE ZERO_DISTANCE SORTED LIST -- FIXING...", oo::DescriptionOf(entity));
 			unsigned i;
 			index = -1;
 			for (i = 0; (i < n_entities)&&(index == -1); i++)
-				if (sortedEntities[i] == entity)
+				if (sortedEntities[i] == oo::ToCxx(entity))
 					index = i;
 			if (index == -1)
 				 OO_LOG(cxx_kOOLogInconsistentState, "DEBUG: Universe removeEntity:{} ENTITY IS NOT IN THE ZERO_DISTANCE SORTED LIST -- CONTINUING...", oo::DescriptionOf(entity));
@@ -11192,7 +11192,7 @@ bool Universe::doRemoveEntity(::Entity *entity)
 		{
 			while ((unsigned)index < n_entities)
 			{
-				while (((unsigned)index + n < n_entities)&&(sortedEntities[index + n] == entity))
+				while (((unsigned)index + n < n_entities)&&(sortedEntities[index + n] == oo::ToCxx(entity)))
 				{
 					n++;	// ie there's a duplicate entry for this entity
 				}
@@ -11214,7 +11214,7 @@ bool Universe::doRemoveEntity(::Entity *entity)
 				sortedEntities[index] = sortedEntities[index + n];	// copy entity[index + n] -> entity[index] (preserves sort order)
 				if (sortedEntities[index])
 				{
-					sortedEntities[index]->_cxxEntity->zero_index = index;				// give it its correct position
+					sortedEntities[index]->zero_index = index;				// give it its correct position
 				}
 				index++;
 			}
@@ -12091,7 +12091,7 @@ void Universe::debugDumpEntities()
 	OOLogIndent();
 	for (i = 0; i < show_count; i++)
 	{
-		OO_LOG("universe.objectDump", "Ent:{:4}  {}", static_cast<unsigned>(i), [sortedEntities[i] descriptionForObjDump].value_or("(null)"));
+		OO_LOG("universe.objectDump", "Ent:{:4}  {}", static_cast<unsigned>(i), [oo::ToObjC(sortedEntities[i]) descriptionForObjDump].value_or("(null)"));
 	}
 	OOLogOutdent();
 	

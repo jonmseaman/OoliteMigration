@@ -127,10 +127,10 @@ namespace {
 
 // --- Ivars the game reads directly (ent->x_next, ent->hasMoved), and nothing else -----------------
 
-Entity *XPrevious(Entity *e)	{ return e->_cxxEntity->x_previous; }
-Entity *XNext(Entity *e)		{ return e->_cxxEntity->x_next; }
-Entity *YNext(Entity *e)		{ return e->_cxxEntity->y_next; }
-Entity *ZNext(Entity *e)		{ return e->_cxxEntity->z_next; }
+Entity *XPrevious(Entity *e)	{ return oo::ToObjC(e->_cxxEntity->x_previous); }
+Entity *XNext(Entity *e)		{ return oo::ToObjC(e->_cxxEntity->x_next); }
+Entity *YNext(Entity *e)		{ return oo::ToObjC(e->_cxxEntity->y_next); }
+Entity *ZNext(Entity *e)		{ return oo::ToObjC(e->_cxxEntity->z_next); }
 bool HasMoved(Entity *e)		{ return e->_cxxEntity->hasMoved; }
 bool HasRotated(Entity *e)		{ return e->_cxxEntity->hasRotated; }
 void SetSubEntity(Entity *e, bool value)	{ e->_cxxEntity->isSubEntity = value; }
@@ -492,10 +492,10 @@ OO_TEST(linkedLists)
 		[b addToLinkedLists];
 		[c addToLinkedLists];
 		sUniverse->_cxxUniverse->n_entities = 3;
-		OO_CHECK(sUniverse->_cxxUniverse->x_list_start == a && XNext(a) == b && XNext(b) == c && XNext(c) == nil);
+		OO_CHECK(oo::ToObjC(sUniverse->_cxxUniverse->x_list_start) == a && XNext(a) == b && XNext(b) == c && XNext(c) == nil);
 		OO_CHECK(XPrevious(a) == nil && XPrevious(b) == a && XPrevious(c) == b);
-		OO_CHECK(sUniverse->_cxxUniverse->y_list_start == b && YNext(b) == c && YNext(c) == a && YNext(a) == nil);
-		OO_CHECK(sUniverse->_cxxUniverse->z_list_start == c && ZNext(c) == a && ZNext(a) == b && ZNext(b) == nil);
+		OO_CHECK(oo::ToObjC(sUniverse->_cxxUniverse->y_list_start) == b && YNext(b) == c && YNext(c) == a && YNext(a) == nil);
+		OO_CHECK(oo::ToObjC(sUniverse->_cxxUniverse->z_list_start) == c && ZNext(c) == a && ZNext(a) == b && ZNext(b) == nil);
 
 		// Moving b to the far end of x re-sorts it, and the lists still check.
 #ifndef NDEBUG
@@ -504,14 +504,14 @@ OO_TEST(linkedLists)
 #endif
 		[b setPosition:make_HPvector(40, 10, 30)];
 		[b updateLinkedLists];
-		OO_CHECK(sUniverse->_cxxUniverse->x_list_start == a && XNext(a) == c && XNext(c) == b && XNext(b) == nil);
+		OO_CHECK(oo::ToObjC(sUniverse->_cxxUniverse->x_list_start) == a && XNext(a) == c && XNext(c) == b && XNext(b) == nil);
 		OO_CHECK(XPrevious(b) == c && XPrevious(c) == a);
-		OO_CHECK(sUniverse->_cxxUniverse->y_list_start == b && YNext(b) == c);
+		OO_CHECK(oo::ToObjC(sUniverse->_cxxUniverse->y_list_start) == b && YNext(b) == c);
 
 		[c removeFromLinkedLists];
 		sUniverse->_cxxUniverse->n_entities = 2;
-		OO_CHECK(sUniverse->_cxxUniverse->x_list_start == a && XNext(a) == b && XPrevious(b) == a);
-		OO_CHECK(sUniverse->_cxxUniverse->z_list_start == a && ZNext(a) == b);
+		OO_CHECK(oo::ToObjC(sUniverse->_cxxUniverse->x_list_start) == a && XNext(a) == b && XPrevious(b) == a);
+		OO_CHECK(oo::ToObjC(sUniverse->_cxxUniverse->z_list_start) == a && ZNext(a) == b);
 		OO_CHECK(XNext(c) == nil && XPrevious(c) == nil);
 		[c removeFromLinkedLists];	// removed already: nothing happens
 #ifndef NDEBUG
@@ -524,7 +524,7 @@ OO_TEST(linkedLists)
 		// universe's own check rebuilds it): pinned as it is.
 		[a setPosition:make_HPvector(50, 30, 20)];
 		[a updateLinkedLists];
-		OO_CHECK(sUniverse->_cxxUniverse->x_list_start == a && XNext(b) == a && XPrevious(a) == b && XPrevious(b) == nil);
+		OO_CHECK(oo::ToObjC(sUniverse->_cxxUniverse->x_list_start) == a && XNext(b) == a && XPrevious(a) == b && XPrevious(b) == nil);
 
 		[a removeFromLinkedLists];
 		[b removeFromLinkedLists];
@@ -720,7 +720,7 @@ OO_TEST(cxxEntityBehindItsFacade)
 		[facade addToLinkedLists];
 		[other addToLinkedLists];
 		sUniverse->_cxxUniverse->n_entities = 2;
-		OO_CHECK(sUniverse->_cxxUniverse->x_list_start == facade && XNext(facade) == other && XPrevious(other) == facade);
+		OO_CHECK(oo::ToObjC(sUniverse->_cxxUniverse->x_list_start) == facade && XNext(facade) == other && XPrevious(other) == facade);
 		[facade removeFromLinkedLists];
 		[other removeFromLinkedLists];
 		sUniverse->_cxxUniverse->n_entities = 0;
