@@ -49,13 +49,11 @@ namespace {
 class FlashTextureResetClient : public OOGraphicsResetClient
 {
 public:
-	void resetGraphicsState() override  { cxx::OOFlashEffectEntity::resetGraphicsState(); }
+	void resetGraphicsState() override  { OOFlashEffectEntity::resetGraphicsState(); }
 };
 
 }	// namespace
 
-
-namespace cxx {
 
 void OOFlashEffectEntity::initExplosionFlashWithPosition(HPVector pos, Vector vel, float size)
 {
@@ -157,4 +155,3 @@ void OOFlashEffectEntity::resetGraphicsState()
 	sFlashTexture = nil;
 }
 
-}	// namespace cxx

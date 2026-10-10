@@ -221,7 +221,7 @@ MA 02110-1301, USA.
 - (void) setLastBeacon:(Entity <OOBeaconEntity> *)beacon;
 - (void) setNextBeacon:(Entity <OOBeaconEntity> *) beaconShip;
 - (void) clearBeacon:(Entity <OOBeaconEntity> *) beaconShip;
-- (std::map<std::string, oo::ObjCRef<OOWaypointEntity *>, std::less<>>) cxx_currentWaypoints;
+- (std::map<std::string, oo::ObjCRef<Entity *>, std::less<>>) cxx_currentWaypoints;	// the waypoints' objects (the root's facade since bead oo-9ht.108)
 - (void) cxx_defineWaypoint:(const oo::PList &)definition forKey:(const std::string &)key;	// a null definition removes
 - (GLfloat *) skyClearColor;
 // Note: the alpha value is also air resistance!

@@ -75,12 +75,14 @@ namespace {
 
 // --- How a burst is made, and its colour (a @protected ivar), and nothing else -------------------
 
-OOLightParticleEntity *MakeBurst(HPVector position)
+Entity *MakeBurst(HPVector position)
 {
-	return (OOLightParticleEntity *)oo::NewEntityFacade(OOPlasmaBurstEntity::burstWithPosition(position));
+	return oo::NewEntityFacade(OOPlasmaBurstEntity::burstWithPosition(position));
 }
 
-const GLfloat *ColorComponents(OOLightParticleEntity *e)	{ return oo::ToCxx(e)->_colorComponents; }
+// The object is the root Entity's facade since bead oo-9ht.76; its C++ part is the particle.
+OOLightParticleEntity *Particle(Entity *e)				{ return static_cast<OOLightParticleEntity *>(oo::ToCxx(e)); }
+const GLfloat *ColorComponents(Entity *e)				{ return Particle(e)->_colorComponents; }
 
 // --------------------------------------------------------------------------------------------------
 
@@ -102,7 +104,7 @@ void SetUp()
 }
 
 
-bool ComponentsAre(OOLightParticleEntity *e, GLfloat r, GLfloat g, GLfloat b, GLfloat a)
+bool ComponentsAre(Entity *e, GLfloat r, GLfloat g, GLfloat b, GLfloat a)
 {
 	const GLfloat *c = ColorComponents(e);
 	return c[0] == r && c[1] == g && c[2] == b && c[3] == a;
@@ -116,10 +118,10 @@ OO_TEST(initWithPosition)
 	@autoreleasepool
 	{
 		SetUp();
-		OOLightParticleEntity *burst = MakeBurst(make_HPvector(4, 5, 6));
+		Entity *burst = MakeBurst(make_HPvector(4, 5, 6));
 		OO_CHECK(burst != nil);
 		OO_CHECK(HPvector_equal([burst position], make_HPvector(4, 5, 6)));
-		OO_CHECK([burst diameter] == 64.0f && [burst collisionRadius] == 2.0f);
+		OO_CHECK(Particle(burst)->diameter() == 64.0f && [burst collisionRadius] == 2.0f);
 		OO_CHECK([burst status] == STATUS_EFFECT && [burst scanClass] == CLASS_NO_DRAW && [burst isEffect]);
 		OO_CHECK(ComponentsAre(burst, 1.0f, 0.0f, 0.0f, 1.0f));
 		OO_CHECK(oo::DescriptionOf(burst).starts_with("<OOPlasmaBurstEntity 0x"));
@@ -132,17 +134,17 @@ OO_TEST(growsFadesAndIsRemoved)
 	@autoreleasepool
 	{
 		SetUp();
-		OOLightParticleEntity *burst = MakeBurst(make_HPvector(4, 5, 6));
+		Entity *burst = MakeBurst(make_HPvector(4, 5, 6));
 
 		sTime = 1.0;
 		[burst update:0.1];
-		OO_CHECK([burst diameter] == 128.0f);
+		OO_CHECK(Particle(burst)->diameter() == 128.0f);
 		OO_CHECK(ComponentsAre(burst, 1.0f, 0.0f, 0.0f, 0.5f));
 		OO_CHECK(sRemoved == nil);
 
 		sTime = 2.5;
 		[burst update:0.1];
-		OO_CHECK([burst diameter] == 64.0f + 2.5f * 64.0f);
+		OO_CHECK(Particle(burst)->diameter() == 64.0f + 2.5f * 64.0f);
 		OO_CHECK(ComponentsAre(burst, 1.0f, 0.0f, 0.0f, 0.0f));
 		OO_CHECK(sRemoved == burst);
 	}

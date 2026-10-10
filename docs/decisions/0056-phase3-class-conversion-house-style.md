@@ -5747,3 +5747,64 @@ members test_PlayerEntity reads and sets.
    reads as its value and assigns through. No expectation changes.
 3. Game code outside the class's own members reads none of them (checked by a survey and the
    compiler); a test's C++ subclass that declares a member of the same name keeps its own.
+
+
+## Amendment (beads oo-9ht.106, oo-9ht.76, oo-9ht.109, oo-9ht.108): the entity leaves' last facades, and a protocol the root's facade answers for one leaf
+
+- Date: 2026-10-09. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch M
+  (one branch). Exemplar: `src/Core/Entities/OOLightParticleEntity.h/.mm`,
+  `OOFlashEffectEntity.h/.mm`, `SkyEntity.h/.mm`, `OOWaypointEntity.h/.mm`,
+  `Entities/Entity+ObjCBridge.mm` (the category `Entity (OOWaypointBeacon)`),
+  `Scripting/OOJSWaypoint.h/.mm`, `Universe.h/.mm`, `HeadUpDisplay.mm`,
+  `tests/unit/core/test_OOLightParticleEntity.mm`, `test_OOWaypointEntity.mm`,
+  `test_OOJSWaypoint.mm`. Applies amendments oo-9ht.107, oo-9ht.23 and oo-9ht.129 to the last
+  facades over entity leaves that are not ships or visual effects.
+
+**Context.** Four facades over converted entity leaves remained: `OOLightParticleEntity` (an
+intermediate facade, the object of every particle, and the adapter of Objective-C subclasses, of
+which none was left in the game), `OOFlashEffectEntity` (whose class methods the ship and the
+universe sent), `SkyEntity` (made with `+alloc`/`-initWithColors::andSystemInfo:` and found by
+`-isKindOfClass:`) and `OOWaypointEntity`, which is also a beacon: the universe's beacon list holds
+ships, visual effects and waypoints as `Entity <OOBeaconEntity> *` and messages them by the protocol.
+
+**Decision (recommended defaults).**
+
+1. **Deleted together, in the established way** (amendments oo-9ht.107 items 1-6, oo-9ht.23 item 3):
+   the classes are global C++ (`class OOLightParticleEntity : public cxx::Entity`,
+   `class SkyEntity : public cxx::OOEntityWithDrawable`, ...); makers are the C++ factory or
+   `oo::makeRef` + `oo::NewEntityFacade` (retained where `+alloc` gave +1) + the initialiser's body;
+   a class send (`+setUpTexture`, `+defaultParticleTexture`) is the static member; a send of a
+   deleted facade's selector is a member call on `dynamic_cast` of the object's C++ part (the sky
+   is found that way where `-isKindOfClass:` found it); the light particle's Objective-C-subclass
+   adapter goes with its facade (no game subclass was left). The objects are the nearest facade
+   left: the root `Entity`'s for particles, flashes and waypoints, `OOEntityWithDrawable`'s for the
+   sky. Their descriptions are unchanged (the root's names the C++ class).
+2. **A protocol whose adopters are mixed answers for the deleted leaf on the root's facade.** The
+   `OOBeaconEntity` selectors (the beacon list's links, codes, labels, icon and jamming) are a
+   category `Entity (OOWaypointBeacon)` on the root's facade whose methods ask a waypoint's C++
+   part and answer zero (a message to nil's answer) for any other entity's; the ship's and the
+   visual effect's facades implement them themselves, so their objects never reach the category.
+   `-[Entity respondsToSelector:]` answers a protocol selector for a waypoint's part, and for any
+   other object only when its class implements it itself (not the root's category), so every
+   answer is as before. The beacon list, the player's compass and the HUD keep their sends; the
+   universe's waypoint map and the binding's object are typed `Entity *` / `OOBeaconEntityObject *`.
+   This is amendment oo-9ht.129 item 1 applied to a protocol; the protocol and the category go with
+   the ship's and the visual effect's facades (oo-9ht.144, oo-9ht.165), when the beacon list
+   becomes C++.
+3. **A binding's getter answers the C++ part and the object** (`JSWaypointGetWaypointEntity`, as
+   `OOJSFlasher`'s): the leaf's own members (`getOriented()`, `size()`, `setSize()`) are member
+   calls, and the root's and the protocol's selectors are still sent to the object. A nil or
+   non-waypoint object still fails the getter, as `-isKindOfClass:` did.
+4. **Tests** (standing approval oo-9n5p9, lines on main first): the facade-class checks and the
+   Objective-C-subclass adapter case go; an Objective-C test subclass is a C++ subclass with the
+   same answers; the cases call the factories and members, send the root's selectors to the
+   object, and keep every expected value. Narrow tests that stood in for a deleted class stand in
+   for the C++ class (amendment oo-9ht.107 item 6), with the stand-in root object holding the C++
+   part. A new case pins item 2.
+
+**Consequences.** The facades still standing over entities are the root's, `OOEntityWithDrawable`,
+the ship family's (ship, station, dock, proxy player), the visual effect's and the quirium
+cascade's category; `oo::NewEntityFacade`'s chain names only those. The root's facade now carries
+two leaf categories (the planet's shader bindings, the waypoint's beacon selectors) that its own
+deletion (oo-9ht.39) turns into C++ (oo-9ht.158 for the shader bindings, a C++ beacon interface for
+the list).

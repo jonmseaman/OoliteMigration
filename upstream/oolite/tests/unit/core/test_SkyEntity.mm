@@ -16,10 +16,11 @@
 	come from "sky_rgb_colors" (six numbers) or "sky_color_1"/"sky_color_2" (premultiplied); the
 	star count, the drawable, the status and the flags; -update: puts it at the viewpoint with the
 	clear depth as its distance; and -changeProperty:withDictionary: takes a new sun colour (and
-	relights) and refuses anything else. The distances are read through the one helper below. The
-	callers make it with alloc/initWithColors::andSystemInfo:, which the conversion kept on the
-	facade: the last test pins that its object is a C++ entity whose Objective-C object is the
-	SkyEntity facade.
+	relights) and refuses anything else. The distances are read through the one helper below. Since
+	bead oo-9ht.109 deleted the class's Objective-C facade (ADR-0056 amendment oo-9ht.106) the sky
+	is made as the universe makes it, in C++ with its object (the OOEntityWithDrawable facade) made
+	by oo::NewEntityFacade: the class's own selectors are member calls, the root's are still sent
+	to the object, and the last test pins that the object is a C++ entity's.
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -161,10 +162,17 @@ bool ColorIs(OOColor *color, float r, float g, float b, float a)
 }
 
 
-SkyEntity *Sky(const oo::PList &info)
+// [[[SkyEntity alloc] initWithColors:...] autorelease] until bead oo-9ht.109: the object first, then
+// the initialiser's body, as the universe makes the sky.
+OOEntityWithDrawable *Sky(const oo::PList &info)
 {
-	return [[[SkyEntity alloc] initWithColors:OOColor::redColor().get() :OOColor::blueColor().get() andSystemInfo:info] autorelease];
+	const oo::Ref<SkyEntity> sky = oo::makeRef<SkyEntity>();
+	OOEntityWithDrawable *object = (OOEntityWithDrawable *)oo::NewEntityFacade(sky);
+	sky->initWithColors(OOColor::redColor().get(), OOColor::blueColor().get(), info);
+	return object;
 }
+
+SkyEntity *SkyPart(Entity *object)	{ return dynamic_cast<SkyEntity *>(oo::ToCxx(object)); }
 
 }	// namespace
 
@@ -174,14 +182,14 @@ OO_TEST(made)
 	@autoreleasepool
 	{
 		SetUp();
-		SkyEntity *sky = Sky(Dict({ { "sky_n_stars", oo::PList(7) } }));
-		OO_CHECK(sky != nil && [sky isKindOfClass:[SkyEntity class]] && [sky isKindOfClass:[OOEntityWithDrawable class]]);
+		OOEntityWithDrawable *sky = Sky(Dict({ { "sky_n_stars", oo::PList(7) } }));
+		OO_CHECK(sky != nil && SkyPart(sky) != nullptr && [sky isKindOfClass:[OOEntityWithDrawable class]]);
 		OO_CHECK(dynamic_cast<OOSkyDrawable *>([sky drawable]) != nullptr);
 		OO_CHECK([sky status] == STATUS_EFFECT);
 		OO_CHECK([sky isSky] && [sky isVisible] && ![sky canCollide]);
 		OO_CHECK([sky cameraRangeFront] == (GLfloat)MAX_CLEAR_DEPTH && [sky cameraRangeBack] == (GLfloat)MAX_CLEAR_DEPTH);
 		// No sun colour: the blend of the two.
-		OO_CHECK(ColorIs([sky skyColor], 0.5f, 0.0f, 0.5f, 1.0f));
+		OO_CHECK(ColorIs(SkyPart(sky)->getSkyColor(), 0.5f, 0.0f, 0.5f, 1.0f));
 		// The stars' colours are the ones given.
 		OO_CHECK(ColorIs(sStarColor1.get(), 1, 0, 0, 1) && ColorIs(sStarColor2.get(), 0, 0, 1, 1));
 	}
@@ -193,8 +201,8 @@ OO_TEST(sunColour)
 	@autoreleasepool
 	{
 		SetUp();
-		SkyEntity *sky = Sky(Dict({ { "sun_color", oo::PList("greenColor") }, { "sky_n_stars", oo::PList(0) } }));
-		OO_CHECK(ColorIs([sky skyColor], 0, 1, 0, 1));
+		OOEntityWithDrawable *sky = Sky(Dict({ { "sun_color", oo::PList("greenColor") }, { "sky_n_stars", oo::PList(0) } }));
+		OO_CHECK(ColorIs(SkyPart(sky)->getSkyColor(), 0, 1, 0, 1));
 	}
 }
 
@@ -237,7 +245,7 @@ OO_TEST(update)
 	@autoreleasepool
 	{
 		SetUp();
-		SkyEntity *sky = Sky(Dict({ { "sky_n_stars", oo::PList(0) } }));
+		OOEntityWithDrawable *sky = Sky(Dict({ { "sky_n_stars", oo::PList(0) } }));
 		sPlayer->_viewpoint = make_HPvector(5, 6, 7);
 		[sky update:0.1];
 		OO_CHECK(HPvector_equal([sky position], make_HPvector(5, 6, 7)));
@@ -259,17 +267,17 @@ OO_TEST(changeProperty)
 	@autoreleasepool
 	{
 		SetUp();
-		SkyEntity *sky = Sky(Dict({ { "sky_n_stars", oo::PList(0) } }));
-		OO_CHECK([sky changeProperty:"sun_color" withDictionary:Dict({ { "sun_color", oo::PList("yellowColor") } })]);
-		OO_CHECK(ColorIs([sky skyColor], 1, 1, 0, 1));
+		OOEntityWithDrawable *sky = Sky(Dict({ { "sky_n_stars", oo::PList(0) } }));
+		OO_CHECK(SkyPart(sky)->changeProperty("sun_color", Dict({ { "sun_color", oo::PList("yellowColor") } })));
+		OO_CHECK(ColorIs(SkyPart(sky)->getSkyColor(), 1, 1, 0, 1));
 		OO_CHECK(sUniverse->_lightings == 1);
 
 		// Not a colour: kept, no relighting, but answered YES.
-		OO_CHECK([sky changeProperty:"sun_color" withDictionary:Dict({})]);
-		OO_CHECK(ColorIs([sky skyColor], 1, 1, 0, 1));
+		OO_CHECK(SkyPart(sky)->changeProperty("sun_color", Dict({})));
+		OO_CHECK(ColorIs(SkyPart(sky)->getSkyColor(), 1, 1, 0, 1));
 		OO_CHECK(sUniverse->_lightings == 1);
 
-		OO_CHECK(![sky changeProperty:"sky_n_stars" withDictionary:Dict({ { "sky_n_stars", oo::PList(3) } })]);
+		OO_CHECK(!SkyPart(sky)->changeProperty("sky_n_stars", Dict({ { "sky_n_stars", oo::PList(3) } })));
 	}
 }
 
@@ -279,10 +287,9 @@ OO_TEST(facade)
 	@autoreleasepool
 	{
 		SetUp();
-		SkyEntity *sky = Sky(Dict({ { "sky_n_stars", oo::PList(0) } }));
-		OO_CHECK([sky class] == [SkyEntity class]);
+		OOEntityWithDrawable *sky = Sky(Dict({ { "sky_n_stars", oo::PList(0) } }));
 		// A C++ entity (amendment oo-0mxi), not an Objective-C entity's adapter.
-		OO_CHECK(dynamic_cast<cxx::SkyEntity *>(oo::ToCxx(sky)) != nullptr);
+		OO_CHECK(dynamic_cast<SkyEntity *>(oo::ToCxx(sky)) != nullptr);
 		OO_CHECK(oo::AsObjCEntity(oo::ToCxx(sky)) == nullptr);
 		OO_CHECK(oo::ToObjC(oo::ToCxx(sky)) == sky);
 	}

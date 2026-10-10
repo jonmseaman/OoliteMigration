@@ -43,7 +43,7 @@ MA 02110-1301, USA.
 	and an owner's -rescaleBy: through cxx::OOSubEntityInterface.
 */
 
-class OOFlasherEntity : public cxx::OOLightParticleEntity, public cxx::OOSubEntityInterface
+class OOFlasherEntity : public OOLightParticleEntity, public cxx::OOSubEntityInterface
 {
 public:
 	// A new flasher, initialised; oo::NewEntityFacade hands it to Objective-C.

@@ -9888,7 +9888,7 @@ void ShipEntity::becomeExplosion()
 					// 2. slow clouds
 					[UNIVERSE addEntity:oo::NewEntityFacade(OOBigFragmentBurstEntity::fragmentBurstFromEntity(self))];
 					// 3. flash
-					[UNIVERSE addEntity:[::OOFlashEffectEntity explosionFlashFromEntity:self]];
+					[UNIVERSE addEntity:oo::NewEntityFacade(::OOFlashEffectEntity::explosionFlashFromEntity(self))];
 					/* This mode used to be the default for
 					 * cargo/munitions but this now must be explicitly
 					 * specified. */
@@ -9899,7 +9899,7 @@ void ShipEntity::becomeExplosion()
 					{
 						[UNIVERSE addEntity:oo::NewEntityFacade(OOExplosionCloudEntity::explosionCloudFromEntity(self, [UNIVERSE cxx_explosionSetting:"oolite-default-ship-explosion"]))];
 						// 3. flash
-						[UNIVERSE addEntity:[::OOFlashEffectEntity explosionFlashFromEntity:self]];
+						[UNIVERSE addEntity:oo::NewEntityFacade(::OOFlashEffectEntity::explosionFlashFromEntity(self))];
 					}
 					for (NSUInteger i=0;i<explosionType.count();i++)
 					{
@@ -9911,7 +9911,7 @@ void ShipEntity::becomeExplosion()
 							// three special-case builtins
 							if (explosionKey == "oolite-builtin-flash")
 							{
-								[UNIVERSE addEntity:[::OOFlashEffectEntity explosionFlashFromEntity:self]];
+								[UNIVERSE addEntity:oo::NewEntityFacade(::OOFlashEffectEntity::explosionFlashFromEntity(self))];
 							}
 							else if (explosionKey == "oolite-builtin-slowcloud")
 							{
