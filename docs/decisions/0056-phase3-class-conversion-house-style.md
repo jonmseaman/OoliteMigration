@@ -6774,3 +6774,64 @@ which owns the part (amendment oo-9ht.39.4 item 2).
 **Consequences.** No code makes an Object node of an entity's object but the weak-reference nodes of
 item 5; every entity node answers its C++ entity. oo-9ht.44 can dispatch `callObjC()` on the C++
 entity. Left for step 4: the node's JS value still comes through the object (item 1).
+
+## Amendment (bead oo-9ht.44): callObjC() on an entity is a generated name table; OOJSCall+ObjCBridge is deleted
+
+- Date: 2026-10-10. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch V.
+  Exemplar: `kMonitorMethods` (`src/Core/Debug/OOJSConsole.mm`, amendment oo-9ht.74 item 4);
+  `tools/gen-callobjc-entity-table.py`, `src/Core/Scripting/OOJSCallEntityMethods.h` (generated),
+  `src/Core/Scripting/OOJSCall.mm` (`OOJSCallEntityMethod`), `tests/unit/core/test_OOJSCallEntityMethods.mm`.
+
+**Context.** The debug-only `callObjC()` called any selector of its `this` object whose runtime
+signature matched one of four templates (the methods of `OOJSCallMethodSignatureTemplateClass` in
+`OOJSCall+ObjCBridge`) or whose return type was a shader uniform type. Since oo-9ht.39.5.3 an
+entity's `this` is its C++ entity (the console objects' is the monitor, amendment oo-9ht.74). The
+matcher's reach on an entity's object was every such selector of the root facade, its categories
+and its superclasses: also the lifetime and NSObject-protocol selectors (`retain`, `dealloc`,
+`copy`, `self`, `hash`, ...) and every scalar- or object-returning selector with arguments, which
+it called with the arguments missing (undefined behaviour).
+
+**Decision (recommended defaults, batches R/S).**
+
+1. **A generated table.** `tools/gen-callobjc-entity-table.py` reads the root facade's
+   `@implementation Entity` blocks (the forwarders and every category: the planet shader, beacon,
+   subentity, by-name ship/player/station/dock/effect, JS and cascade categories) and writes
+   `kOOJSCallEntityMethods`: each instance method with no argument (a void, `oo::PList` or typed
+   result; a typed row keeps `@encode()` of the declared return type, read through
+   `OOShaderUniformTypeFromEncoding()` as the matcher read the method's return type) or with one
+   `const std::string &` argument and a void or `oo::PList` result, under the method's own `#if`
+   conditions; lifetime and NSObject-protocol names are left out. `--check` fails on a stale header
+   (the nightly line runs it). 1,008 rows today.
+2. **The call** (`OOJSCallEntityMethod`, used by the console's `callObjC()` for an entity): the
+   statistics names of `kPlayerMethods` first, as before; then a name the table lists **and** the
+   entity's object answers (`-respondsToSelector:`, which answers each category per C++ part as
+   before) is called with the table's signature, through the object as before (the facade
+   forwards to the part); any other name "does not respond". The script-target side effect, the
+   parameter joining, the result conversions and every error text are the matcher's.
+3. **BEHAVIOUR CHANGE (debug builds only, `callObjC()` on an entity):** names outside the table now
+   answer "<entity> does not respond to method X." where they were called before: the root
+   classes' selectors (`OOWeakRefObject`, `OOObject` and their categories: `retain`, `release`,
+   `autorelease`, `copy`, `self`, `hash`, `weakRetain`, `oo_jsValueInContext:`, ...), the facade's
+   lifetime selectors (`init`, `dealloc`), every selector with an argument other than the two
+   string templates (the scalar/object ones were undefined behaviour; the void ones answered
+   "cannot be called from JavaScript"), and selectors an Objective-C test subclass adds. Every name
+   in the table behaves exactly as before. Nothing in the game, the harness or the goldens calls
+   `callObjC()` (it is a console debugging aid).
+4. **The bridge is deleted.** The matcher's four templates are `@encode()` strings of the same
+   types (`void`, `oo::PList`, `const std::string &`: the encodings the template methods had,
+   checked against the compiler's method encodings), and a `_bool` method's object result is asked
+   `-boolValue`/`-intValue` through `-methodForSelector:` (what the `OOJSCallScalarValues` protocol
+   declared). `OOJSCallObjCObjectMethod()` keeps the matcher for an object that is not an entity
+   (no class the game reaches; `test_OOJSCall`'s objects keep every case). It goes with the root
+   facade (oo-9ht.39 step 4), when the table's rows call the C++ part's members directly.
+5. **Tests**: `test_OOJSCallEntityMethods` (whole game) checks the table against the old matcher
+   as oracle on the real facade: the set of the class's own selectors the matcher classified with
+   no argument or a string template, less the excluded names and `.cxx_construct/.cxx_destruct`,
+   equals the table's names, and each row classifies as the matcher did; and that the unsafe names
+   are out. `test_OOJSCall` adds `entityMethodsByTable` (a listed name is called as the matcher
+   called it; `retain`, `hash` and an unknown name do not respond) and gives its stand-in player
+   object `-isPlayer`; every existing case is kept. The table and `OOJSCallEntityMethod()` are not
+   behind `OO_DEBUG` (only the console's `callObjC()` is), so the test flavour runs them.
+
+**Consequences.** No Objective-C class or protocol is left in `OOJSCall`; callObjC()'s entity names
+are an explicit list. Left for step 4: the rows call through the facade's selectors.

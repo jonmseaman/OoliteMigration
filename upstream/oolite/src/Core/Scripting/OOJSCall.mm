@@ -40,6 +40,7 @@ MA 02110-1301, USA.
 #import "OOShaderUniformMethodType.h"
 #import "OOJSVector.h"
 #import "OOJSQuaternion.h"
+#import "OOJSCallEntityMethods.h"	// callObjC()'s names for an entity (generated; bead oo-9ht.44)
 #include "oofnd/PListGet.hpp"
 #include "oofnd/String.hpp"
 
@@ -114,7 +115,50 @@ const CxxMethod *CxxMethodNamed(id object, const std::optional<std::string> &nam
 } // namespace
 
 
-bool OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::string &oo_jsClassName, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult)
+namespace {
+// The table's row for name (bead oo-9ht.44); null for a name it does not list.
+const OOJSCallEntityMethodRow *EntityMethodNamed(const std::optional<std::string> &name)
+{
+	if (!name.has_value())  return nullptr;
+	for (const OOJSCallEntityMethodRow &row : kOOJSCallEntityMethods)
+	{
+		if (*name == row.name)  return &row;
+	}
+	return nullptr;
+}
+
+
+// The row's signature, as GetMethodType() classified the method it was generated from.
+MethodType MethodTypeOfRow(const OOJSCallEntityMethodRow &row)
+{
+	switch (row.form)
+	{
+		case OOJSCallEntityMethodForm::VoidVoid:	return kMethodTypeVoidVoid;
+		case OOJSCallEntityMethodForm::VoidString:	return kMethodTypeVoidObject;
+		case OOJSCallEntityMethodForm::PListString:	return kMethodTypeObjectObject;
+		case OOJSCallEntityMethodForm::PListVoid:	return kMethodTypePListVoid;
+		case OOJSCallEntityMethodForm::Typed:		return (MethodType)OOShaderUniformTypeFromEncoding(row.encoding);
+	}
+	return kMethodTypeInvalid;
+}
+
+
+// -boolValue, else -intValue, of a "_bool" method's object result, if it answers one (what the
+// scalar-value protocol of the deleted bridge declared); false if it answers neither.
+bool ScalarBoolValue(id object)
+{
+	SEL boolValue = OOSelectorFromName("boolValue"), intValue = OOSelectorFromName("intValue");
+	if ([object respondsToSelector:boolValue])  return ((BOOL (*)(id, SEL))[object methodForSelector:boolValue])(object, boolValue);
+	if ([object respondsToSelector:intValue])  return ((int (*)(id, SEL))[object methodForSelector:intValue])(object, intValue) != 0;
+	return false;
+}
+
+
+/*	The call: of any object by its method's signature (OOJSCallObjCObjectMethod), or of an entity's
+	object by the entity table (entityTable): a name the table does not list does not respond, and
+	a listed one is called with the table's signature.
+*/
+bool CallMethod(ooscript::Context context, id object, const std::string &oo_jsClassName, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult, bool entityTable)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -166,10 +210,10 @@ bool OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::s
 	}
 	else
 #endif
-	if ([object respondsToSelector:selector])
+	if (const OOJSCallEntityMethodRow *row = entityTable ? EntityMethodNamed(selectorString) : nullptr; (!entityTable || row != nullptr) && [object respondsToSelector:selector])
 	{
-		// Validate signature.
-		type = GetMethodType(object, selector);
+		// Validate signature: the table's for an entity (bead oo-9ht.44), else the method's.
+		type = (row != nullptr) ? MethodTypeOfRow(*row) : GetMethodType(object, selector);
 		
 		if (MethodExpectsParameter(type) && !haveParameter)
 		{
@@ -206,8 +250,7 @@ bool OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::s
 						id resultObject = oo::ObjectIn(result);
 						bool boolResult = false;
 						if (result.type() != oo::PList::Type::Object)  boolResult = oo::plist_get::boolFrom(!result.isNull() ? &result : nullptr, false);
-						else if ([resultObject respondsToSelector:OOSelectorFromName("boolValue")])  boolResult = [(id<OOJSCallScalarValues>)resultObject boolValue];
-						else if ([resultObject respondsToSelector:OOSelectorFromName("intValue")])  boolResult = [(id<OOJSCallScalarValues>)resultObject intValue] != 0;
+						else  boolResult = ScalarBoolValue(resultObject);
 						result = oo::PList(boolResult);
 					}
 					break;
@@ -272,38 +315,48 @@ bool OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::s
 	
 	OOJS_PROFILE_EXIT
 }
-
-
-
-
-namespace {
-static bool SameTypeEncoding(char *a, char *b)
-{
-	bool result = (a != NULL && b != NULL && strcmp(a, b) == 0);
-	free(a);
-	free(b);
-	return result;
-}
 } // namespace
 
 
-/*	Whether method has the same signature as the template's method for selector: the same
-	return type and the same argument types, as the method signature objects' -isEqual:
-	compared them (bead oo-3rb.15; offsets and frame size are not compared).
+bool OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::string &oo_jsClassName, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult)
+{
+	return CallMethod(context, object, oo_jsClassName, argc, argv, outResult, false);
+}
+
+
+bool OOJSCallEntityMethod(ooscript::Context context, cxx::Entity *entity, const std::string &oo_jsClassName, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult)
+{
+	return CallMethod(context, oo::ToObjC(entity), oo_jsClassName, argc, argv, outResult, true);
+}
+
+
+
+
+/*	Whether method has the signature returnType (self, _cmd[, argument]): the same return type and
+	the same argument types, as the method signature objects' -isEqual: compared them (bead
+	oo-3rb.15; offsets and frame size are not compared). The template class whose methods gave
+	these encodings went with the bridge (bead oo-9ht.44): they are @encode() of the same types.
 */
 namespace {
-static bool SignatureMatch(Method method, SEL selector)
+static bool SameTypeEncoding(char *copied, const char *expected)
 {
-	Method methodTemplate = class_getInstanceMethod([OOJSCallMethodSignatureTemplateClass class], selector);
+	bool result = (copied != NULL && expected != NULL && strcmp(copied, expected) == 0);
+	free(copied);
+	return result;
+}
 
-	if (method == NULL || methodTemplate == NULL)  return false;
 
+static bool SignatureMatch(Method method, const char *returnType, const char *argument)
+{
+	if (method == NULL)  return false;
+
+	const char *arguments[] = { @encode(id), @encode(SEL), argument };
 	unsigned argCount = method_getNumberOfArguments(method);
-	if (argCount != method_getNumberOfArguments(methodTemplate))  return false;
-	if (!SameTypeEncoding(method_copyReturnType(method), method_copyReturnType(methodTemplate)))  return false;
+	if (argCount != (argument != NULL ? 3u : 2u))  return false;
+	if (!SameTypeEncoding(method_copyReturnType(method), returnType))  return false;
 	for (unsigned i = 0; i < argCount; i++)
 	{
-		if (!SameTypeEncoding(method_copyArgumentType(method, i), method_copyArgumentType(methodTemplate, i)))  return false;
+		if (!SameTypeEncoding(method_copyArgumentType(method, i), arguments[i]))  return false;
 	}
 	return true;
 }
@@ -314,13 +367,13 @@ static MethodType GetMethodType(id object, SEL selector)
 {
 	Method method = class_getInstanceMethod(object_getClass(object), selector);
 
-	if (SignatureMatch(method, OOSelectorFromName("voidVoidMethod")))  return kMethodTypeVoidVoid;
+	if (SignatureMatch(method, @encode(void), NULL))  return kMethodTypeVoidVoid;
 	// The C++ signatures of a selector called by name (ADR-0055 item 5), which OOCallByName calls:
 	// the joined string argument, a PList result. oo-qps.72 deleted the id-parameter forms
 	// (-voidObjectMethod:, -objectObjectMethod:): OOCallByName no longer passes an object.
-	if (SignatureMatch(method, OOSelectorFromName("voidStringMethod:")))  return kMethodTypeVoidObject;
-	if (SignatureMatch(method, OOSelectorFromName("pListStringMethod:")))  return kMethodTypeObjectObject;
-	if (SignatureMatch(method, OOSelectorFromName("pListVoidMethod")))  return kMethodTypePListVoid;
+	if (SignatureMatch(method, @encode(void), @encode(const std::string &)))  return kMethodTypeVoidObject;
+	if (SignatureMatch(method, @encode(oo::PList), @encode(const std::string &)))  return kMethodTypeObjectObject;
+	if (SignatureMatch(method, @encode(oo::PList), NULL))  return kMethodTypePListVoid;
 
 	MethodType type = (MethodType)OOShaderUniformTypeFromMethod(method);
 	if (type != kMethodTypeInvalid)  return type;
