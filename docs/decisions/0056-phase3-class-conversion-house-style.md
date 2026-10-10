@@ -6546,6 +6546,10 @@ monitor, whose facade adopted the protocol in a category and forwarded to the C+
    stand-in holds the interface, its engine-monitor check compares with the C++ monitor, and its
    two kinds of monitor sends call the members. No expected value changes.
 
+**Record.** Verified with oo-9ht.91 and oo-9ht.81 as one stack (eaf5948da: build, core tests,
+goldens, js-api-contract, guardrails); its commit reached main inside oo-9ht.81's merge (f13a39e89),
+because the accept pre-merge ran in the shared worktree on this bead's branch.
+
 **Consequences.** What keeps the debug monitor's facade (oo-9ht.74): the console's JS objects
 (`console`, `console.settings`), which hold the facade's weak reference and are the `this` of
 `callObjC()` (oo-9ht.44), the console script's `console` property (an Object node of the facade),
