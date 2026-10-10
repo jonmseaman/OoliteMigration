@@ -28,8 +28,8 @@ SOFTWARE.
 
 */
 
-#import "OOMaths.h"
-#import "OOColor.h"
+#include "OOMaths.h"
+#include "OOColor.h"
 
 
 #if !defined(OODEBUGLDRAWING_DISABLE) && defined(NDEBUG)
@@ -47,7 +47,7 @@ typedef struct
 } OODebugWFState;
 
 
-OODebugWFState OODebugBeginWireframe(BOOL ignoreZ);
+OODebugWFState OODebugBeginWireframe(bool ignoreZ);	// bool, not BOOL: the .cpp's BOOL is windows.h's int (bead oo-9ht.185)
 void OODebugEndWireframe(OODebugWFState state);
 
 OOINLINE void OODebugDrawBoundingBox(BoundingBox box);
