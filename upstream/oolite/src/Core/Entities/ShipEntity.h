@@ -563,6 +563,7 @@ public:
 	virtual bool isUnpiloted();	// StationEntity overrides
 	void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype) override;	// StationEntity overrides
 	std::optional<std::string> jsClassName() override;	// StationEntity overrides
+	bool isVisibleToScripts() override;	// YES, as the Objective-C ShipEntity answered (bead oo-ak1km); StationEntity and DockEntity override with the same answer
 	virtual bool hasHostileTarget();	// PlayerEntity and StationEntity override
 	bool isHostileTo(::Entity *entity);
 	GLfloat getWeaponRange();
