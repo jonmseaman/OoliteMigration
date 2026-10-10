@@ -2,7 +2,6 @@
 
 oolite_sources += files(
     'DockEntity.mm',
-    'DockEntity+ObjCBridge.mm',
     'DustEntity.mm',
     'Entity.mm',
     'Entity+ObjCBridge.mm',

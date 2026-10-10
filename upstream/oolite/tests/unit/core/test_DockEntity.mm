@@ -1,8 +1,10 @@
 /*	test_DockEntity.mm
 	Unit tests for DockEntity (src/Core/Entities/DockEntity.h), a station's dock: slice 1 of its
-	slice plan (docs/phases/3-slices/DockEntity.md, bead oo-ao2d), the class shell, which moves the
-	dock's state and its flags, geometry and lifecycle into cxx::DockEntity and keeps the
-	Objective-C DockEntity as its facade (proposed ADR-0056, amendments oo-60fwo and oo-64ako).
+	slice plan (docs/phases/3-slices/DockEntity.md, bead oo-ao2d), the class shell, which moved the
+	dock's state and its flags, geometry and lifecycle into C++ (proposed ADR-0056, amendments
+	oo-60fwo and oo-64ako). Bead oo-9ht.180 deleted the Objective-C facade (amendment oo-9ht.180):
+	the dock is made in C++ (its object is the ship's facade) and the cases call its members with
+	every expected value kept.
 
 	As test_StationEntity's, the dock's object needs the game graph, so the test links the whole
 	game but main (['*']) and uses a Universe that was never initialised and a plain entity as
@@ -94,9 +96,12 @@ oo::PList Definition()
 }
 
 
+// [[[DockEntity alloc] cxx_initWithKey:definition:] autorelease] until bead oo-9ht.180: the dock
+// DockEntity::newDockObject() makes, its object (the ship's facade) autoreleased.
 DockEntity *MakeDock(const std::string &key)
 {
-	return [[[DockEntity alloc] cxx_initWithKey:key definition:Definition()] autorelease];
+	::ShipEntity *object = [DockEntity::newDockObject(key, Definition()) autorelease];
+	return object != nil ? static_cast<DockEntity *>(oo::ToCxx(object)) : nullptr;
 }
 
 
@@ -109,7 +114,7 @@ DockEntity *MakeDockOfStation(TestDockStation **outStation)
 	TestDockStation *station = static_cast<TestDockStation *>(oo::ToCxx(object));
 	station->initStationDefaults();
 	DockEntity *dock = MakeDock("dock");
-	[object addSubEntity:dock];
+	[object addSubEntity:oo::ToObjC(dock)];
 	*outStation = station;
 	return dock;
 }
@@ -140,11 +145,11 @@ OO_TEST(initAndSetUp)
 		SetUp();
 		DockEntity *dock = MakeDock("dock");
 		OO_CHECK(dock != nil);
-		OO_CHECK([dock isDock] && [dock isShip] && ![dock isStation] && ![dock isPlayer]);
-		OO_CHECK([dock cxx_shipDataKey] == std::optional<std::string>("dock"));
-		OO_CHECK([dock allowsDocking] && [dock allowsLaunching] && ![dock disallowedDockingCollides]);
-		OO_CHECK([dock countOfShipsInDockingQueue] == 0 && [dock countOfShipsInLaunchQueue] == 0);
-		OO_CHECK([dock parentEntity] == nil);
+		OO_CHECK((dock != nullptr ? dock->isDock() : false) && (dock != nullptr ? dock->getIsShip() : false) && !(dock != nullptr ? dock->getIsStation() : false) && !(dock != nullptr ? dock->getIsPlayer() : false));
+		OO_CHECK((dock != nullptr ? dock->shipDataKey() : std::optional<std::string>()) == std::optional<std::string>("dock"));
+		OO_CHECK((dock != nullptr ? dock->allowsDocking() : false) && (dock != nullptr ? dock->allowsLaunching() : false) && !(dock != nullptr ? dock->disallowedDockingCollides() : false));
+		OO_CHECK((dock != nullptr ? dock->countOfShipsInDockingQueue() : 0) == 0 && (dock != nullptr ? dock->countOfShipsInLaunchQueue() : 0) == 0);
+		OO_CHECK((dock != nullptr ? dock->parentEntity() : (::ShipEntity *)nil) == nil);
 	}
 }
 
@@ -156,18 +161,18 @@ OO_TEST(flags)
 	{
 		SetUp();
 		DockEntity *dock = MakeDock("flags");
-		[dock setAllowsDocking:NO];
-		OO_CHECK(![dock allowsDocking]);
-		[dock setAllowsDocking:YES];
-		OO_CHECK([dock allowsDocking]);
-		[dock setAllowsLaunching:NO];
-		OO_CHECK(![dock allowsLaunching]);
-		[dock setAllowsLaunching:YES];
-		OO_CHECK([dock allowsLaunching]);
-		[dock setDisallowedDockingCollides:YES];
-		OO_CHECK([dock disallowedDockingCollides]);
-		[dock clear];
-		OO_CHECK([dock countOfShipsInDockingQueue] == 0 && [dock countOfShipsInLaunchQueue] == 0);
+		if (dock != nullptr)  dock->setAllowsDocking(NO);
+		OO_CHECK(!(dock != nullptr ? dock->allowsDocking() : false));
+		if (dock != nullptr)  dock->setAllowsDocking(YES);
+		OO_CHECK((dock != nullptr ? dock->allowsDocking() : false));
+		if (dock != nullptr)  dock->setAllowsLaunching(NO);
+		OO_CHECK(!(dock != nullptr ? dock->allowsLaunching() : false));
+		if (dock != nullptr)  dock->setAllowsLaunching(YES);
+		OO_CHECK((dock != nullptr ? dock->allowsLaunching() : false));
+		if (dock != nullptr)  dock->setDisallowedDockingCollides(YES);
+		OO_CHECK((dock != nullptr ? dock->disallowedDockingCollides() : false));
+		if (dock != nullptr)  dock->clear();
+		OO_CHECK((dock != nullptr ? dock->countOfShipsInDockingQueue() : 0) == 0 && (dock != nullptr ? dock->countOfShipsInLaunchQueue() : 0) == 0);
 	}
 }
 
@@ -179,16 +184,16 @@ OO_TEST(isOffCentre)
 	{
 		SetUp();
 		DockEntity *dock = MakeDock("centre");
-		OO_CHECK(![dock isOffCentre]);
-		[dock setPosition:make_HPvector(0, 0, 500)];
-		OO_CHECK(![dock isOffCentre]);
-		[dock setPosition:make_HPvector(3, 3, 0)];
-		OO_CHECK([dock isOffCentre]);
-		[dock setPosition:kZeroHPVector];
+		OO_CHECK(!(dock != nullptr ? dock->isOffCentre() : false));
+		if (dock != nullptr)  dock->setPosition(make_HPvector(0, 0, 500));
+		OO_CHECK(!(dock != nullptr ? dock->isOffCentre() : false));
+		if (dock != nullptr)  dock->setPosition(make_HPvector(3, 3, 0));
+		OO_CHECK((dock != nullptr ? dock->isOffCentre() : false));
+		if (dock != nullptr)  dock->setPosition(kZeroHPVector);
 		Quaternion q = kIdentityQuaternion;
 		quaternion_rotate_about_y(&q, M_PI_2);
-		[dock setOrientation:q];
-		OO_CHECK([dock isOffCentre]);
+		if (dock != nullptr)  dock->setOrientation(q);
+		OO_CHECK((dock != nullptr ? dock->isOffCentre() : false));
 	}
 }
 
@@ -202,18 +207,18 @@ OO_TEST(dimensionsAndPortUpVector)
 		SetUp();
 		TestDockStation *station = nullptr;
 		DockEntity *dock = MakeDockOfStation(&station);
-		OO_CHECK([dock parentEntity] == oo::ToObjC(station));
+		OO_CHECK((dock != nullptr ? dock->parentEntity() : (::ShipEntity *)nil) == oo::ToObjC(station));
 
-		[dock setVirtual];
-		[dock setDimensionsAndCorridor:NO :YES :NO];
-		OO_CHECK(![dock allowsDocking] && [dock disallowedDockingCollides] && ![dock allowsLaunching]);
+		if (dock != nullptr)  dock->setVirtual();
+		if (dock != nullptr)  dock->setDimensionsAndCorridor(NO, YES, NO);
+		OO_CHECK(!(dock != nullptr ? dock->allowsDocking() : false) && (dock != nullptr ? dock->disallowedDockingCollides() : false) && !(dock != nullptr ? dock->allowsLaunching() : false));
 
 		// The virtual port is 69 x 69: square, so only the ship's box decides.
-		OO_CHECK(Near([dock portUpVectorForShipsBoundingBox:Box(20, 10)], make_vector(0, 1, 0)));
-		OO_CHECK(Near([dock portUpVectorForShipsBoundingBox:Box(10, 20)], make_vector(1, 0, 0)));
+		OO_CHECK(Near((dock != nullptr ? dock->portUpVectorForShipsBoundingBox(Box(20, 10)) : Vector{}), make_vector(0, 1, 0)));
+		OO_CHECK(Near((dock != nullptr ? dock->portUpVectorForShipsBoundingBox(Box(10, 20)) : Vector{}), make_vector(1, 0, 0)));
 
-		[dock setDimensionsAndCorridor:YES :NO :YES];
-		OO_CHECK([dock allowsDocking] && ![dock disallowedDockingCollides] && [dock allowsLaunching]);
+		if (dock != nullptr)  dock->setDimensionsAndCorridor(YES, NO, YES);
+		OO_CHECK((dock != nullptr ? dock->allowsDocking() : false) && !(dock != nullptr ? dock->disallowedDockingCollides() : false) && (dock != nullptr ? dock->allowsLaunching() : false));
 	}
 }
 
@@ -225,27 +230,13 @@ OO_TEST(virtualDockTakesNoDamage)
 	{
 		SetUp();
 		DockEntity *dock = MakeDock("virtual");
-		[dock setVirtual];
-		const double energy = [dock energy];
-		[dock takeEnergyDamage:50.0 from:nil becauseOf:nil weaponIdentifier:""];
-		OO_CHECK([dock energy] == energy);
-		[dock noteTakingDamage:50.0 from:nil type:kOODamageTypeEnergy];
-		OO_CHECK([dock energy] == energy);
-		[dock drawImmediate:false translucent:false];	// not drawn: nothing to check but that it returns
-	}
-}
-
-
-// A failing initialiser that releases the dock before [super init]: -dealloc runs without the
-// ship's set-up.
-OO_TEST(dockReleasedBeforeInit)
-{
-	@autoreleasepool
-	{
-		SetUp();
-		DockEntity *dock = [DockEntity alloc];
-		[dock release];
-		OO_CHECK(true);
+		if (dock != nullptr)  dock->setVirtual();
+		const double energy = (dock != nullptr ? dock->getEnergy() : 0.0f);
+		if (dock != nullptr)  dock->takeEnergyDamage(50.0, nullptr, nullptr, "");
+		OO_CHECK((dock != nullptr ? dock->getEnergy() : 0.0f) == energy);
+		if (dock != nullptr)  dock->noteTakingDamage(50.0, nullptr, kOODamageTypeEnergy);
+		OO_CHECK((dock != nullptr ? dock->getEnergy() : 0.0f) == energy);
+		if (dock != nullptr)  dock->drawImmediate(false, false);	// not drawn: nothing to check but that it returns
 	}
 }
 
@@ -276,9 +267,9 @@ OO_TEST(canAcceptShipForDocking)
 		SetUp();
 		DockEntity *dock = MakeDock("accept");
 		ShipEntity *ship = MakeQueuedShip(11);
-		[dock setAllowsDocking:NO];
-		OO_CHECK([dock canAcceptShipForDocking:ship] == std::optional<std::string>("DOCK_CLOSED"));
-		OO_CHECK(oo::ToCxx(dock)->canAcceptShipForDocking(ship) == std::optional<std::string>("DOCK_CLOSED"));
+		if (dock != nullptr)  dock->setAllowsDocking(NO);
+		OO_CHECK((dock != nullptr ? dock->canAcceptShipForDocking(ship) : std::optional<std::string>()) == std::optional<std::string>("DOCK_CLOSED"));
+		OO_CHECK(dock->canAcceptShipForDocking(ship) == std::optional<std::string>("DOCK_CLOSED"));
 	}
 }
 
@@ -291,13 +282,13 @@ OO_TEST(approachQueue)
 		SetUp();
 		DockEntity *dock = MakeDock("queue");
 		ShipEntity *ship = MakeQueuedShip(12);
-		OO_CHECK(![dock shipIsInDockingQueue:nil] && ![dock shipIsInDockingQueue:ship]);
-		dock->_cxxDock->shipsOnApproach[12] = std::vector<oo::PList>();
-		OO_CHECK([dock shipIsInDockingQueue:ship]);
-		OO_CHECK([dock countOfShipsInDockingQueue] == 1);
-		[dock abortDockingForShip:ship];
-		OO_CHECK(![dock shipIsInDockingQueue:ship]);
-		OO_CHECK([dock countOfShipsInDockingQueue] == 0);
+		OO_CHECK(!(dock != nullptr ? dock->shipIsInDockingQueue(nullptr) : false) && !(dock != nullptr ? dock->shipIsInDockingQueue(ship) : false));
+		dock->shipsOnApproach[12] = std::vector<oo::PList>();
+		OO_CHECK((dock != nullptr ? dock->shipIsInDockingQueue(ship) : false));
+		OO_CHECK((dock != nullptr ? dock->countOfShipsInDockingQueue() : 0) == 1);
+		if (dock != nullptr)  dock->abortDockingForShip(ship);
+		OO_CHECK(!(dock != nullptr ? dock->shipIsInDockingQueue(ship) : false));
+		OO_CHECK((dock != nullptr ? dock->countOfShipsInDockingQueue() : 0) == 0);
 	}
 }
 
@@ -309,7 +300,7 @@ OO_TEST(dockingInstructionsForNoShip)
 	{
 		SetUp();
 		DockEntity *dock = MakeDock("instructions");
-		OO_CHECK([dock dockingInstructionsForShip:nil].isNull());
+		OO_CHECK((dock != nullptr ? dock->dockingInstructionsForShip(nullptr) : oo::PList()).isNull());
 	}
 }
 
@@ -321,9 +312,9 @@ OO_TEST(autoDockEmptyQueue)
 	{
 		SetUp();
 		DockEntity *dock = MakeDock("autodock");
-		[dock autoDockShipsOnApproach];
-		OO_CHECK([dock countOfShipsInDockingQueue] == 0);
-		cxx::DockEntity *part = oo::ToCxx(dock);
+		if (dock != nullptr)  dock->autoDockShipsOnApproach();
+		OO_CHECK((dock != nullptr ? dock->countOfShipsInDockingQueue() : 0) == 0);
+		DockEntity *part = dock;
 		part->shipsOnApproach[13] = std::vector<oo::PList>();
 		part->autoDockShipsOnApproach();	// no ship has ID 13 in the (never initialised) universe's lookup: dropped
 		OO_CHECK(part->countOfShipsInDockingQueue() == 0);
@@ -342,10 +333,10 @@ OO_TEST(corridorAndLaunchRefuseNoShip)
 	{
 		SetUp();
 		DockEntity *dock = MakeDock("refuse");
-		OO_CHECK(![dock shipIsInDockingCorridor:nil]);
-		OO_CHECK(![dock allowsLaunchingOf:nil]);
-		OO_CHECK(!oo::ToCxx(dock)->shipIsInDockingCorridor(nil));
-		OO_CHECK(!oo::ToCxx(dock)->allowsLaunchingOf(nil));
+		OO_CHECK(!(dock != nullptr ? dock->shipIsInDockingCorridor(nullptr) : false));
+		OO_CHECK(!(dock != nullptr ? dock->allowsLaunchingOf(nullptr) : false));
+		OO_CHECK(!dock->shipIsInDockingCorridor(nil));
+		OO_CHECK(!dock->allowsLaunchingOf(nil));
 	}
 }
 
@@ -360,62 +351,49 @@ OO_TEST(launchQueue)
 		DockEntity *dock = MakeDock("launchqueue");
 		ShipEntity *first = MakeQueuedShip(21);
 		ShipEntity *second = MakeQueuedShip(22);
-		[dock addShipToLaunchQueue:nil withPriority:NO];
-		OO_CHECK([dock countOfShipsInLaunchQueue] == 0);
-		[dock addShipToLaunchQueue:first withPriority:NO];
-		oo::ToCxx(dock)->addShipToLaunchQueue(second, true);
-		OO_CHECK([dock countOfShipsInLaunchQueue] == 2);
-		cxx::DockEntity *part = oo::ToCxx(dock);
+		if (dock != nullptr)  dock->addShipToLaunchQueue(nullptr, NO);
+		OO_CHECK((dock != nullptr ? dock->countOfShipsInLaunchQueue() : 0) == 0);
+		if (dock != nullptr)  dock->addShipToLaunchQueue(first, NO);
+		dock->addShipToLaunchQueue(second, true);
+		OO_CHECK((dock != nullptr ? dock->countOfShipsInLaunchQueue() : 0) == 2);
+		DockEntity *part = dock;
 		OO_CHECK(part->launchQueue[0].get() == second && part->launchQueue[1].get() == first);
 		OO_CHECK([first status] == STATUS_DOCKED && [second status] == STATUS_DOCKED);
-		OO_CHECK([dock countOfShipsInLaunchQueueWithPrimaryRole:"no-such-role"] == 0);
+		OO_CHECK((dock != nullptr ? dock->countOfShipsInLaunchQueueWithPrimaryRole("no-such-role") : 0) == 0);
 		part->no_docking_while_launching = YES;
-		[dock abortAllLaunches];
-		OO_CHECK([dock countOfShipsInLaunchQueue] == 0 && !part->no_docking_while_launching);
+		if (dock != nullptr)  dock->abortAllLaunches();
+		OO_CHECK((dock != nullptr ? dock->countOfShipsInLaunchQueue() : 0) == 0 && !part->no_docking_while_launching);
 	}
 }
 
 
 // --- The crossing (after the conversion) ---------------------------------------------------------
 
-// A dock's C++ part is a cxx::DockEntity, the facade's typed alias is that part, and from C++ the
-// entity's virtual members reach the dock's.
+// A dock's object holds its C++ part, a DockEntity, and from C++ the entity's virtual members reach
+// the dock's.
 OO_TEST(objCDockPartIsADock)
 {
 	@autoreleasepool
 	{
 		SetUp();
 		DockEntity *dock = MakeDock("crossing");
-		cxx::DockEntity *part = oo::ToCxx(dock);
-		OO_CHECK(part != nullptr && part == dock->_cxxDock);
-		OO_CHECK(static_cast<cxx::ShipEntity *>(part) == dock->_cxxShip);
-		OO_CHECK(oo::ToObjC(part) == dock);
+		DockEntity *part = dock;
+		OO_CHECK(part != nullptr);
+		OO_CHECK(static_cast<cxx::ShipEntity *>(part) == oo::ToObjC(part)->_cxxShip);
+		OO_CHECK(oo::ToDock(oo::ToObjC(part)) == part);
 
 		cxx::Entity *asEntity = part;
 		OO_CHECK(asEntity->isDock());
 		OO_CHECK(part->allowsDocking() && part->allowsLaunching() && !part->disallowedDockingCollides());
 		part->setAllowsDocking(false);
-		OO_CHECK(![dock allowsDocking]);
+		OO_CHECK(!(dock != nullptr ? dock->allowsDocking() : false));
 		OO_CHECK(part->countOfShipsInDockingQueue() == 0 && part->countOfShipsInLaunchQueue() == 0);
 
 		part->setVirtual();
 		OO_CHECK(part->virtual_dock);
-		const double energy = [dock energy];
+		const double energy = (dock != nullptr ? dock->getEnergy() : 0.0f);
 		asEntity->takeEnergyDamage(10.0, nullptr, nullptr, "");
-		OO_CHECK([dock energy] == energy);
-	}
-}
-
-
-// A dock released before its initialiser: the facade's -dealloc runs without a C++ part.
-OO_TEST(dockWithoutPart)
-{
-	@autoreleasepool
-	{
-		SetUp();
-		DockEntity *dock = [DockEntity alloc];
-		OO_CHECK(dock->_cxxDock == nullptr);
-		[dock release];
+		OO_CHECK((dock != nullptr ? dock->getEnergy() : 0.0f) == energy);
 	}
 }
 

@@ -116,7 +116,7 @@ public:
 	unsigned countOfDockedContractors();
 	unsigned countOfDockedPolice();
 	unsigned countOfDockedDefenders();
-	std::vector<oo::ObjCRef<::DockEntity *>> dockSubEntities();
+	std::vector<oo::ObjCRef<::ShipEntity *>> dockSubEntities();
 	bool setUpShipFromDictionary(const oo::PList &dict) override;
 	bool setUpSubEntities() override;
 	bool getInterstellarUndockingAllowed();

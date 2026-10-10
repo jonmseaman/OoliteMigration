@@ -11,9 +11,9 @@ it beside -init and -dealloc. Its methods keep their Objective-C bodies until th
 to cxx::ShipEntity and leaves a forwarder here. It has one ivar, _cxxShip: the root's _cxxEntity,
 typed, borrowed (the root owns the part), set by the initialiser; unconverted code reads the ship's
 members through it by their old names (_cxxShip->fuel, ship->_cxxShip->fuel). Its initialisers make
-an Objective-C ship's adapter over cxx::ShipEntity (ObjCShipEntity in the .mm), so DockEntity
-reaches the ship's members through it; the player, the proxy and the station are C++ with this
-facade as their object (beads oo-9ht.177, oo-9ht.183, oo-9ht.175).
+an Objective-C ship's adapter over cxx::ShipEntity (ObjCShipEntity in the .mm); the player, the
+proxy, the station and the dock are C++ with this facade as their object (beads oo-9ht.177,
+oo-9ht.183, oo-9ht.175, oo-9ht.180).
 Imported as the last line of ShipEntity.h; do not import it directly. Never add to this file.
 Deleted by its deletion bead once every slice, the categories and the subclasses are C++.
 

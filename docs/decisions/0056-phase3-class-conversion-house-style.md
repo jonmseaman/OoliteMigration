@@ -5941,3 +5941,46 @@ which the game sends by name.
 **Consequences.** No Objective-C subclass of the ship's facade but the dock's remains; the ship's
 facade carries the station's by-name selectors until it is deleted (oo-9ht.144), when they join
 the C++ name tables. The dock's facade (oo-9ht.180) can use `oo::NewShipObject` the same way.
+
+
+## Amendment (bead oo-9ht.180): the dock's facade, the last subclass of the ship's
+
+- Date: 2026-10-10. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch N
+  (a second one-commit branch, after the station). Exemplar: `src/Core/Entities/DockEntity.h/.mm`
+  (`newDockObject()`, `initDockDefaults()`, `willDealloc()`, `oo::ToDock()`),
+  `Entities/ShipEntity+ObjCBridge.mm` (`DockPart()`, `ShipEntity (OODockSelectorsCalledByName)`),
+  `Universe.mm` (`newDockWithName()`), `Scripting/OOJSDock.mm`, `tests/unit/core/test_DockEntity.mm`,
+  `test_OOJSDock.mm`. Applies amendment oo-9ht.175 to the dock.
+
+**Context.** The Objective-C `DockEntity` was the last subclass of the ship's facade: every method
+forwarded to `cxx::DockEntity` (46 forwarders after slices 1-3), the universe's
+`newDockWithName()` made it with `+alloc`, and the station's dock lists held its objects.
+
+**Decision (recommended defaults).** As for the station (amendment oo-9ht.175 items 1-5):
+
+1. `class DockEntity : public cxx::ShipEntity` is global; `DockEntity::newDockObject(key, dict)` is
+   `oo::NewShipObject(oo::makeRef<DockEntity>(), key, dict)` and the facade's initialiser body
+   (`initDockDefaults()`), +1; `Universe::newDockWithName()` (and its `cxx_` selector) answers that
+   object, `::ShipEntity *`, as the ship set-up that adds it as a subentity holds it. The facade's
+   `-dealloc` body (`clearIdLocks(nil)`) is `willDealloc()`, called first by `-[ShipEntity dealloc]`.
+   `isVisibleToScripts()` answers the ship's answer, which the facade inherited.
+2. `DockEntity *` names the C++ class; an object is a dock's by `oo::ToDock(entity)`; the station's
+   dock lists keep the objects (`std::vector<oo::ObjCRef<::ShipEntity *>>`). The ship's adapter has
+   no other `Base` left than `cxx::ShipEntity`.
+3. Sends become member calls by the converter (the dock's, the ship's and the root's forwarders).
+4. **By name:** `ShipEntity (OODockSelectorsCalledByName)` answers the ten selectors only the dock's
+   facade answered whose signature a by-name dispatcher can call, for a dock's part only; the five
+   both the station's and the dock's facades answered (`clear`, `autoDockShipsOnApproach`,
+   `dockingCorridorIsEmpty`, `clearDockingCorridor`, `countOfShipsInLaunchQueueWithPrimaryRole:`)
+   and `abortAllDockings` ask a dock's part after a station's, and `-respondsToSelector:` answers
+   each for the part whose facade answered it. The two station selectors answering a dock
+   (`playerReservedDock`, `selectDockForDocking`) answer the dock's object, as they did. A docked
+   escort's `addShipToLaunchQueue:` goes to its owner's station or dock part (no other owner
+   answered the selector).
+5. **Tests** (oo-9n5p9, lines on main first): the facade's own cases (`dockReleasedBeforeInit`,
+   `dockWithoutPart`, the alias checks of `objCDockPartIsADock`) go; the narrow binding test stands
+   in for the C++ dock; every other case calls the members with every expected value kept.
+
+**Consequences.** No Objective-C subclass of the ship's facade is left; its deletion (oo-9ht.144)
+turns the player's, the proxy's, the station's and the dock's by-name categories into C++ name
+tables and `oo::NewShipObject` into a plain C++ factory.

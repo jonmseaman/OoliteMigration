@@ -54,7 +54,8 @@ MA 02110-1301, USA.
 #include <string_view>
 #endif
 
-@class GameController, MyOpenGLView, Entity, ShipEntity, OOVisualEffectEntity, DockEntity, OOException;
+@class GameController, MyOpenGLView, Entity, ShipEntity, OOVisualEffectEntity, OOException;
+class DockEntity;
 class StationEntity;
 class OOWaypointEntity;
 class PlayerEntity;
@@ -567,7 +568,7 @@ public:
 	::ShipEntity *newShipWithName(const std::string &shipKey, bool usePlayerProxy);
 	::ShipEntity *newShipWithName(const std::string &shipKey, bool usePlayerProxy, bool isSubentity);
 	::ShipEntity *newShipWithName(const std::string &shipKey, bool usePlayerProxy, bool isSubentity, float scale) OO_RETURNS_RETAINED;	// +1, as -newShipWithName:... was (the proxy is made in C++ since bead oo-9ht.183)
-	::DockEntity *newDockWithName(const std::string &shipDataKey, float scale);
+	::ShipEntity *newDockWithName(const std::string &shipDataKey, float scale) OO_RETURNS_RETAINED;	// the dock's object (the ship's facade since bead oo-9ht.180), +1
 	::ShipEntity *newShipWithName(const std::string &shipKey);
 	bool isStationShipDictionary(const oo::PList &dict);	// -shipClassForShipDictionary: picked StationEntity until bead oo-9ht.175
 	std::optional<std::string> defaultAIForRole(const std::string &role);

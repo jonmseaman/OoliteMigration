@@ -209,7 +209,7 @@ OO_TEST(initAndSetUpFromDictionary)
 		OO_CHECK(sVirtualDockDict.get<std::string>("dock_label", "") == "the docking bay");
 		const oo::PList *position = sVirtualDockDict.find("position");
 		OO_CHECK(position != nullptr && position->get<double>("z", 0) == 750.0 && position->get<double>("x", 1) == 0.0);
-		OO_CHECK((station != nullptr ? station->dockSubEntities() : std::vector<oo::ObjCRef<DockEntity *>>()).empty());
+		OO_CHECK((station != nullptr ? station->dockSubEntities() : std::vector<oo::ObjCRef<::ShipEntity *>>()).empty());
 	}
 }
 
@@ -455,7 +455,7 @@ OO_TEST(slice2NoDocks)
 		SetUp();
 		TestStation *station = MakeStation("dockless2");
 		TestVisitor *ship = MakeVisitor("visitor");
-		OO_CHECK((station != nullptr ? station->dockSubEntities() : std::vector<oo::ObjCRef<DockEntity *>>()).empty());
+		OO_CHECK((station != nullptr ? station->dockSubEntities() : std::vector<oo::ObjCRef<::ShipEntity *>>()).empty());
 		OO_CHECK(!(station != nullptr ? station->hasMultipleDocks() : false) && !(station != nullptr ? station->hasClearDock() : false) && !(station != nullptr ? station->hasLaunchDock() : false) && !(station != nullptr ? station->hasEligibleDock() : false));
 		OO_CHECK((station != nullptr ? station->selectDockForDocking() : (DockEntity *)nullptr) == nil);
 		OO_CHECK(!(station != nullptr ? station->dockingCorridorIsEmpty() : false));

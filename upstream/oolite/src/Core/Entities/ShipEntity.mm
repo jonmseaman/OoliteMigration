@@ -1367,10 +1367,10 @@ bool ShipEntity::setUpOneStandardSubentity(const oo::PList &subentDict, bool asT
 		BOOL virtual_dock = subentDict.get<bool>("_is_virtual_dock", false);
 		if (virtual_dock)
 		{
-			[(::DockEntity *)subentity setVirtual];
+			if (oo::ToDock(subentity) != nullptr)  oo::ToDock(subentity)->setVirtual();
 		}
 		
-		[(::DockEntity *)subentity setDimensionsAndCorridor:allow_docking:ddc:allow_launching];
+		if (oo::ToDock(subentity) != nullptr)  oo::ToDock(subentity)->setDimensionsAndCorridor(allow_docking, ddc, allow_launching);
 		[subentity cxx_setDisplayName:subentDict.get<std::string>("dock_label", "the docking bay")];
 	}
 
@@ -2364,9 +2364,10 @@ void ShipEntity::setUpOneEscort(::ShipEntity *escorter, ::OOShipGroup *escortGro
 	
 	if ([self status] == STATUS_DOCKED)
 	{
-		// A station's object is the ship's facade since bead oo-9ht.175: its C++ part answers.
+		// A station's object is the ship's facade since bead oo-9ht.175, and a dock's since bead
+		// oo-9ht.180: their C++ parts answer (no other owner answered the selector).
 		if (::StationEntity *station = oo::ToStation([self owner]))  station->addShipToLaunchQueue(escorter, NO);
-		else  [[self owner] addShipToLaunchQueue:escorter withPriority:NO];
+		else if (::DockEntity *dock = oo::ToDock([self owner]))  dock->addShipToLaunchQueue(escorter, NO);
 	}
 	else
 	{
