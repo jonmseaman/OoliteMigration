@@ -1206,6 +1206,27 @@ unset BEADS_WORKER_BASE_BRANCH
 expect_fail "no base branch named: the guard falls back to main and sees the phase branch's deletion" "is deleted (CLAUDE.md rule 2"
 
 echo
+echo "=== castscan: a change to the cast scanner must leave its selftest passing (bead oo-tzd3n) ==="
+# The shipping scanner, matcher and selftest are copied in, with a stand-in tier-a.sh that runs it.
+install_castscan() {
+  cp "$REPO/tools/objc-cast-scan.sh" "$REPO/tools/objc-cast-scan.query" "$REPO/tools/objc-cast-scan-selftest" tools/
+  printf 'OOLITE_CASTSCAN_SOURCE_ONLY=1 . tools/objc-cast-scan.sh\ncastscan_tu "$B" "$S" "$@"\n' > tools/tier-a.sh
+  git_c add -A; git_c commit -qm "the cast scanner"
+}
+fixture castscan_neutered || exit 1
+install_castscan
+sed -i 's/^match explicitCastExpr(/match explicitCastExpr(unless(anything()), /' tools/objc-cast-scan.query
+expect_fail "a matcher edited to match nothing fails the guard" "castscan:"
+fixture castscan_untouched || exit 1
+install_castscan
+echo "an ordinary note" > notes.txt
+expect_pass "a change that does not touch the scanner passes (and skips its selftest)"
+fixture castscan_orphaned || exit 1
+install_castscan
+git rm -q tools/objc-cast-scan-selftest
+expect_fail "tier-a still runs the scanner but its selftest is deleted" "castscan:"
+
+echo
 cd "$REPO" || exit 1
 printf 'guardrails-selftest: %d cases\n' "$cases"
 if [ "$fail" -eq 0 ]; then

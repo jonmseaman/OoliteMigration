@@ -1,0 +1,128 @@
+#!/usr/bin/env bash
+#
+# Proof that tools/objc-cast-scan.sh FAILS on a planted C++ <-> Objective-C pointer cast and
+# passes on the legitimate look-alikes (bead oo-tzd3n), as tools/guardrails-selftest does for
+# the guardrails. It SOURCES the shipping scanner (castscan_tu) and runs the shipping matcher
+# (tools/objc-cast-scan.query), so nothing here is a paraphrase of the gate.
+#
+#     tools/objc-cast-scan-selftest      # ~2 s, offline, no build directory needed
+#
+# The fixtures are self-contained Objective-C++ (no Foundation), written to a private
+# mktemp -d removed by an EXIT trap.
+set -u
+
+if [ "${MSYSTEM:-}" != UCRT64 ] && [ -z "${OOLITE_CASTSCAN_REEXEC:-}" ]; then
+  for root in "${MSYS2_ROOT:-}" /c/msys64 /c/tools/msys64 "${HOME:-/nonexistent}/scoop/apps/msys2/current"; do
+    [ -n "$root" ] && [ -x "$root/usr/bin/bash.exe" ] && [ -d "$root/ucrt64/bin" ] || continue
+    export OOLITE_CASTSCAN_REEXEC=1
+    exec env MSYSTEM=UCRT64 CHERE_INVOKING=1 "$root/usr/bin/bash.exe" -lc \
+      "$(printf '%q ' "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")" "$@")"
+  done
+  echo "objc-cast-scan-selftest: not in MSYS2 UCRT64 and no MSYS2 installation found" >&2; exit 2
+fi
+export PATH="/ucrt64/bin:$PATH"
+
+REPO="$(cd "$(dirname "$0")/.." && pwd)"
+OOLITE_CASTSCAN_SOURCE_ONLY=1 . "$REPO/tools/objc-cast-scan.sh"
+
+TMPROOT="${TMPDIR:-${TEMP:-/tmp}}"
+SCRATCH="$(mktemp -d "$TMPROOT/oolite-castscan-selftest.XXXXXX")" || exit 2
+trap '[ -n "${SELFTEST_KEEP:-}" ] || rm -rf "$SCRATCH"' EXIT
+# Laid out as the repo is, so findings print as upstream/oolite/<path> exactly as in the tree.
+T="$SCRATCH/upstream/oolite"
+mkdir -p "$T/src/Core" "$SCRATCH/sys"
+
+fail=0; cases=0
+ok() { cases=$((cases+1)); printf 'PASS: %s\n' "$1"; }
+no() { cases=$((cases+1)); printf 'FAIL: %s\n' "$1"; fail=1; }
+ARGS=(-x objective-c++ -std=c++20 -fsyntax-only -I"$(cygpath -m "$T/src/Core")" -I"$(cygpath -m "$SCRATCH/sys")")
+scan() { OUT="$(castscan_tu "$T" "$(cygpath -m "$T/$1")" "${ARGS[@]}" 2>&1)"; RC=$?; }
+
+cat >"$T/src/Core/decls.h" <<'EOF'
+@interface Entity
+@end
+@protocol OOThing
+@end
+struct __CFString;
+struct objc_object;
+namespace cxx { class Entity { public: int x; }; }
+class ShipEntity { public: int y; };
+EOF
+
+# Every line marked HIT must be found, and nothing else.
+cat >"$T/src/Core/planted.mm" <<'EOF'
+#import "decls.h"
+static void f(Entity *o, ShipEntity *s, id i, cxx::Entity *c, id<OOThing> p, Class k)
+{
+	ShipEntity *a = (ShipEntity *)o;                      // HIT objc -> C++ (C-style)
+	Entity *b = (Entity *)s;                              // HIT C++ -> objc
+	ShipEntity *d = (ShipEntity *)i;                      // HIT id -> C++
+	id e = (id)c;                                         // HIT C++ -> id
+	cxx::Entity *g = reinterpret_cast<cxx::Entity *>(o);  // HIT reinterpret_cast
+	ShipEntity *h = (ShipEntity *)p;                      // HIT id<protocol> -> C++
+	cxx::Entity *j = (cxx::Entity *)k;                    // HIT Class -> C++
+	(void)a; (void)b; (void)d; (void)e; (void)g; (void)h; (void)j;
+}
+EOF
+scan src/Core/planted.mm
+want="$(grep -n '// HIT' "$T/src/Core/planted.mm" | cut -d: -f1 | sort -n | tr '\n' ' ')"
+got="$(printf '%s\n' "$OUT" | sed -n 's#^upstream/oolite/src/Core/planted.mm:\([0-9]*\):.*#\1#p' | sort -n | tr '\n' ' ')"
+[ "$RC" = 1 ] && [ "$got" = "$want" ] && [ -n "$want" ] \
+  && ok "every planted C++/Objective-C cast is a finding (lines $got)" \
+  || no "planted casts: rc=$RC, wanted lines [$want], got [$got]: $OUT"
+
+# The look-alikes: void * / char * round trips, Core Foundation bridging, objc_object,
+# Objective-C to Objective-C, C++ to C++, and a cast to void.
+cat >"$T/src/Core/clean.mm" <<'EOF'
+#import "decls.h"
+static void f(Entity *o, ShipEntity *s, id i, cxx::Entity *c, void *v, char *ch,
+              const struct __CFString *cf, struct objc_object *oo)
+{
+	Entity *a = (Entity *)v;
+	ShipEntity *b = (ShipEntity *)v;
+	Entity *d = (Entity *)(void *)s;
+	Entity *e = (Entity *)ch;
+	Entity *g = (Entity *)cf;
+	Entity *h = (Entity *)oo;
+	Entity *j = (Entity *)i;
+	id k = (id)o;
+	cxx::Entity *l = reinterpret_cast<cxx::Entity *>(s);
+	void *m = (void *)c;
+	(void)a; (void)b; (void)d; (void)e; (void)g; (void)h; (void)j; (void)k; (void)l; (void)m;
+}
+EOF
+scan src/Core/clean.mm
+[ "$RC" = 0 ] && [ -z "$OUT" ] && ok "void */char * round trips, CF bridging, objc_object and same-world casts pass" \
+  || no "look-alikes: rc=$RC: $OUT"
+
+# A cast in an inline function of a PROJECT header (under src/) is reported at the header;
+# the same cast in a header outside src/ and tests/ (a system header) is not ours.
+cat >"$T/src/Core/inl.h" <<'EOF'
+#import "decls.h"
+static inline ShipEntity *ProjectHeaderCast(Entity *o) { return (ShipEntity *)o; }
+EOF
+cp "$T/src/Core/inl.h" "$SCRATCH/sys/sysinl.h"
+sed -i 's/ProjectHeaderCast/SystemHeaderCast/' "$SCRATCH/sys/sysinl.h"
+printf '#import "inl.h"\n#import "sysinl.h"\nvoid use(Entity *o) { (void)ProjectHeaderCast(o); (void)SystemHeaderCast(o); }\n' \
+  >"$T/src/Core/viaheader.mm"
+scan src/Core/viaheader.mm
+[ "$RC" = 1 ] && printf '%s\n' "$OUT" | grep -q '^upstream/oolite/src/Core/inl.h:2:' \
+  && ! printf '%s\n' "$OUT" | grep -q 'sysinl' \
+  && ok "a cast in a project header is reported at the header; a system header's is not" \
+  || no "header case: rc=$RC: $OUT"
+
+# A TU that does not parse is a FAILED scan (2), never a pass.
+printf 'this is not objective-c++ at all {\n' >"$T/src/Core/broken.mm"
+scan src/Core/broken.mm
+[ "$RC" = 2 ] && ok "a TU clang cannot parse fails the scan (exit 2), not a pass" \
+  || no "broken TU: rc=$RC (want 2): $OUT"
+
+# tier-a runs this gate (step 4), through the same function.
+grep -q 'objc-cast-scan.sh' "$REPO/tools/tier-a.sh" && grep -q 'castscan_tu ' "$REPO/tools/tier-a.sh" \
+  && ok "tools/tier-a.sh sources the scanner and runs castscan_tu" \
+  || no "tools/tier-a.sh does not run the cast scan"
+
+printf 'objc-cast-scan-selftest: %d cases\n' "$cases"
+[ "$fail" = 0 ] && echo "objc-cast-scan-selftest: ALL CASES BEHAVED" \
+  || echo "objc-cast-scan-selftest: FAILURES ABOVE (SELFTEST_KEEP=1 keeps $SCRATCH)" >&2
+exit "$fail"

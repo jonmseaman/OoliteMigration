@@ -1,0 +1,19 @@
+# clang-query matcher for tools/objc-cast-scan.sh (bead oo-tzd3n). One command per line.
+#
+# Finds an EXPLICIT cast (C-style, static_cast, reinterpret_cast, functional) whose two sides
+# are a C++ record pointer and an Objective-C object pointer, either way round. Clang accepts
+# such a cast silently (kind BitCast / CPointerToObjCPointerCast) and reinterprets the pointer:
+# a C++ cxx::Entity * cast to an Objective-C Entity * is a facade that is not there. Batch O
+# (oo-9ht.144) found three wormhole bugs of exactly this shape on main.
+#
+# Not matched, on purpose: void * and char * on either side (the deliberate, spelled-out
+# opaque round trip), Core Foundation toll-free bridging (struct __CF* / __CG*), and the
+# runtime's own struct objc_object / objc_class. Matched in the main file and in any header
+# under src/ or tests/ (a cast in an inline function of a project header is a hit in every TU
+# that includes it; the scanner reports it once per path:line:col).
+set traversal AsIs
+set output diag
+let cxxptr hasCanonicalType(pointerType(pointee(recordType(unless(hasDeclaration(namedDecl(matchesName("^::(__CF|__CG|objc_)"))))))))
+let objcptr hasCanonicalType(objcObjectPointerType())
+let ours anyOf(isExpansionInMainFile(), isExpansionInFileMatching("(^|[/\\\\])(src|tests)[/\\\\]"))
+match explicitCastExpr(ours, anyOf(allOf(hasDestinationType(objcptr), hasSourceExpression(hasType(cxxptr))), allOf(hasDestinationType(cxxptr), hasSourceExpression(hasType(objcptr)))))
