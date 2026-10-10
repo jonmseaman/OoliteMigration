@@ -12,9 +12,11 @@
 	distance and bounding box and makes the entity its binding target; -findCollisionRadius and the
 	debug texture list ask the drawable; -drawImmediate:translucent: skips an entity beyond its draw
 	distance and draws the right parts otherwise. The tests after those pin the intermediate
-	class's crossing (amendment oo-up4b item 2): an Objective-C subclass's C++ part is over
-	cxx::OOEntityWithDrawable and its [super ...] reaches that class's members; a C++ subclass's
-	facade is an OOEntityWithDrawable. Run: bash tools/check-core-tests.sh
+	class's crossing (amendment oo-up4b item 2): a C++ subclass's object holds it. Since bead
+	oo-9ht.40 deleted the class's Objective-C facade (ADR-0056 amendment oo-9ht.40) the entities are
+	C++ under the root's facade (oo::NewEntityFacade): the class's own selectors (-drawable,
+	-setDrawable:) are member calls and the root's are still sent to the object; the Objective-C
+	subclasses and their crossing case went with the facade. Run: bash tools/check-core-tests.sh
 */
 
 #import "OOEntityWithDrawable.h"
@@ -77,37 +79,8 @@ public:
 };
 
 
-// An unconverted subclass, as ShipEntity is.
-@interface TestObjCEntityWithDrawable: OOEntityWithDrawable
-@end
-
-
-@implementation TestObjCEntityWithDrawable
-@end
-
-
-// An unconverted subclass that overrides a member of the intermediate class and calls super.
-@interface TestOverridingEntity: OOEntityWithDrawable
-{
-@public
-	int		_draws;
-}
-@end
-
-
-@implementation TestOverridingEntity
-
-- (void) drawImmediate:(bool)immediate translucent:(bool)translucent
-{
-	_draws++;
-	[super drawImmediate:immediate translucent:translucent];
-}
-
-@end
-
-
 // A converted subclass.
-class TestCxxEntityWithDrawable : public cxx::OOEntityWithDrawable
+class TestCxxEntityWithDrawable : public OOEntityWithDrawable
 {
 };
 
@@ -120,6 +93,16 @@ GLfloat NoDrawDistance(Entity *e)					{ return e->_cxxEntity->no_draw_distance; 
 BoundingBox EntityBoundingBox(Entity *e)			{ return [e boundingBox]; }
 void SetSubEntity(Entity *e, bool value)			{ e->_cxxEntity->isSubEntity = value; }
 void SetCamZeroDistance(Entity *e, GLfloat value)	{ e->_cxxEntity->cam_zero_distance = value; }
+
+// An entity with a drawable and its object, as the game makes a C++ one ([[OOEntityWithDrawable
+// alloc] init] until bead oo-9ht.40 deleted that facade): the root's facade, autoreleased.
+template <class T = OOEntityWithDrawable>
+T *NewWithDrawable(Entity **outObject)
+{
+	const oo::Ref<T> part = oo::makeRef<T>();
+	*outObject = oo::NewEntityFacade(part);
+	return part.get();
+}
 
 // --------------------------------------------------------------------------------------------------
 
@@ -146,8 +129,9 @@ OO_TEST(setDrawable)
 	@autoreleasepool
 	{
 		SetUp();
-		OOEntityWithDrawable *entity = [[[OOEntityWithDrawable alloc] init] autorelease];
-		OO_CHECK([entity drawable] == nullptr);
+		Entity *entity = nil;
+		OOEntityWithDrawable *part = NewWithDrawable(&entity);
+		OO_CHECK(part->getDrawable() == nullptr);
 		OO_CHECK([entity findCollisionRadius] == 0);
 #ifndef NDEBUG
 		OO_CHECK([entity cxx_allTextures].empty());
@@ -155,8 +139,8 @@ OO_TEST(setDrawable)
 
 		const oo::Ref<TestDrawable> drawable = oo::makeRef<TestDrawable>();
 		drawable->_maxDrawDistance = 1000.0f;
-		[entity setDrawable:drawable.get()];
-		OO_CHECK([entity drawable] == drawable.get());
+		part->setDrawable(drawable.get());
+		OO_CHECK(part->getDrawable() == drawable.get());
 		OO_CHECK(drawable->_bindingTarget == entity);
 		OO_CHECK([entity collisionRadius] == 5.0f && [entity findCollisionRadius] == 5.0);
 		OO_CHECK(NoDrawDistance(entity) == 1000.0f);
@@ -165,11 +149,11 @@ OO_TEST(setDrawable)
 
 		// Setting the same drawable again changes nothing.
 		[entity setCollisionRadius:1.0f];
-		[entity setDrawable:drawable.get()];
+		part->setDrawable(drawable.get());
 		OO_CHECK([entity collisionRadius] == 1.0f);
 
-		[entity setDrawable:nullptr];
-		OO_CHECK([entity drawable] == nullptr && [entity collisionRadius] == 0 && NoDrawDistance(entity) == 0);
+		part->setDrawable(nullptr);
+		OO_CHECK(part->getDrawable() == nullptr && [entity collisionRadius] == 0 && NoDrawDistance(entity) == 0);
 	}
 }
 
@@ -179,10 +163,11 @@ OO_TEST(drawImmediate)
 	@autoreleasepool
 	{
 		SetUp();
-		TestObjCEntityWithDrawable *entity = [[[TestObjCEntityWithDrawable alloc] init] autorelease];
+		Entity *entity = nil;
+		TestCxxEntityWithDrawable *part = NewWithDrawable<TestCxxEntityWithDrawable>(&entity);	// a subclass, as a ship is
 		const oo::Ref<TestDrawable> drawable = oo::makeRef<TestDrawable>();
 		drawable->_maxDrawDistance = 1.0e9f;
-		[entity setDrawable:drawable.get()];
+		part->setDrawable(drawable.get());
 		[entity setPosition:make_HPvector(0, 0, 100)];
 
 		// Near: drawn with no frustum test. (cam_zero_distance is a squared distance, compared with
@@ -216,7 +201,8 @@ OO_TEST(description)
 	@autoreleasepool
 	{
 		SetUp();
-		OOEntityWithDrawable *entity = [[[OOEntityWithDrawable alloc] init] autorelease];
+		Entity *entity = nil;
+		(void)NewWithDrawable(&entity);
 		OO_CHECK(oo::DescriptionOf(entity).starts_with("<OOEntityWithDrawable 0x"));
 		OO_CHECK(oo::DescriptionOf(entity).ends_with("{position: (0, 0, 0) scanClass: CLASS_NOT_SET status: STATUS_COCKPIT_DISPLAY}"));
 	}
@@ -225,30 +211,6 @@ OO_TEST(description)
 
 // --- The crossing (after the conversion) ---------------------------------------------------------
 
-OO_TEST(objCSubclassPartIsTheIntermediateClass)
-{
-	@autoreleasepool
-	{
-		SetUp();
-		TestOverridingEntity *entity = [[[TestOverridingEntity alloc] init] autorelease];
-		const oo::Ref<TestDrawable> drawable = oo::makeRef<TestDrawable>();
-		drawable->_maxDrawDistance = 1.0e9f;
-		[entity setDrawable:drawable.get()];
-
-		cxx::OOEntityWithDrawable *part = oo::ToCxx(entity);
-		OO_CHECK(part != nullptr && dynamic_cast<cxx::OOEntityWithDrawable *>(oo::ToCxx(static_cast<Entity *>(entity))) == part);
-		OO_CHECK(part->getDrawable() == drawable.get() && oo::ToObjC(part) == entity);
-
-		// From C++, the Objective-C override runs, and its [super ...] reaches the C++ member.
-		part->drawImmediate(false, false);
-		OO_CHECK(entity->_draws == 1 && drawable->_opaqueRenders == 1);
-		[entity drawImmediate:false translucent:true];
-		OO_CHECK(entity->_draws == 2 && drawable->_translucentRenders == 1);
-		OO_CHECK(part->findCollisionRadius() == 5.0);
-	}
-}
-
-
 OO_TEST(cxxSubclassFacade)
 {
 	@autoreleasepool
@@ -256,14 +218,13 @@ OO_TEST(cxxSubclassFacade)
 		SetUp();
 		const oo::Ref<TestCxxEntityWithDrawable> entity = oo::makeRef<TestCxxEntityWithDrawable>();
 		Entity *facade = oo::NewEntityFacade(entity);
-		OO_CHECK(facade != nil && [facade class] == [OOEntityWithDrawable class]);
-		OOEntityWithDrawable *withDrawable = (OOEntityWithDrawable *)facade;
-		OO_CHECK(oo::ToCxx(withDrawable) == entity.get() && oo::ToObjC(entity.get()) == withDrawable);
+		OO_CHECK(facade != nil);
+		OO_CHECK(oo::ToCxx(facade) == entity.get() && oo::ToObjC(entity.get()) == facade);
 
 		const oo::Ref<TestDrawable> drawable = oo::makeRef<TestDrawable>();
 		drawable->_maxDrawDistance = 1.0e9f;
-		[withDrawable setDrawable:drawable.get()];
-		OO_CHECK([withDrawable drawable] == drawable.get() && drawable->_bindingTarget == facade);
+		entity->setDrawable(drawable.get());
+		OO_CHECK(entity->getDrawable() == drawable.get() && drawable->_bindingTarget == facade);
 		OO_CHECK([facade findCollisionRadius] == 5.0 && [facade collisionRadius] == 5.0f);
 		[facade drawImmediate:false translucent:false];
 		OO_CHECK(drawable->_opaqueRenders == 1);

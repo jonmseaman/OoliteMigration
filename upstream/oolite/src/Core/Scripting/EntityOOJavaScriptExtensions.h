@@ -7,11 +7,10 @@ JavaScript support methods for entities.
 C++20 since bead oo-g223 (proposed ADR-0056, amendments oo-ppc and oo-ykoy): the bodies of the
 categories Entity (OOJavaScriptExtensions) and ShipEntity (OOJavaScriptExtensions), which the
 engine and the bindings reach by selector, are the free functions below, one per method, named
-after the class the category extends and the selector's first keyword. The categories'
-interface declarations, with PlayerEntity's (implemented in PlayerEntity.mm), are in
-EntityOOJavaScriptExtensions+ObjCBridge.h, imported at the end of this header, and their methods
-are one-line forwarders in EntityOOJavaScriptExtensions+ObjCBridge.mm until Entity and ShipEntity
-lose their facades.
+after the class the category extends and the selector's first keyword. Since bead oo-9ht.128 the
+category Entity (OOJavaScriptExtensions) is the root's facade's (Entity+ObjCBridge.h/.mm, moved
+unchanged from EntityOOJavaScriptExtensions+ObjCBridge.h/.mm, which it deleted); ShipEntity's
+went with the ship's facade (bead oo-9ht.144) and PlayerEntity's with the player's (oo-9ht.177).
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -54,7 +53,3 @@ std::optional<std::string> ShipEntityJSClassName(void);
 std::vector<oo::ObjCRef<Entity *>> ShipEntityJSSubEntitiesForScript(ShipEntity *ship);
 void ShipEntityJSSetTargetForScript(ShipEntity *ship, ShipEntity *target);
 
-
-// Transitional: the categories' interface declarations, for the engine, the bindings and the entities that
-// send their selectors. Deleted by the bridge's deletion bead.
-#import "EntityOOJavaScriptExtensions+ObjCBridge.h"

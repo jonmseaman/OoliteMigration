@@ -312,7 +312,7 @@ NSUInteger ShipGroupCursorBatch(OOShipGroupCursor &cursor, ShipEntity **batch)
 
 
 /*	A ship made in C++ (oo::NewShipObject, beads oo-9ht.183, oo-9ht.144): the object holding ship,
-	OOEntityWithDrawable's facade (the root's -initWithCxxEntity: stores the part once, so the root's
+	the root's facade (OOEntityWithDrawable's until bead oo-9ht.40) (the root's -initWithCxxEntity: stores the part once, so the root's
 	-init body runs once, as [super init] did), then the set-up from the definition. The failing
 	set-up released the object, as the initialiser did.
 */
@@ -320,7 +320,7 @@ NSUInteger ShipGroupCursorBatch(OOShipGroupCursor &cursor, ShipEntity **batch)
 {
 	if (ship == nullptr)  return nil;
 	OOCParameterAssert(AsObjCEntity(ship.get()) == nullptr);
-	::Entity *object = [[::OOEntityWithDrawable alloc] initWithCxxEntity:ship.get()];	// +1, as +alloc gave
+	::Entity *object = [[::Entity alloc] initWithCxxEntity:ship.get()];	// +1, as +alloc gave (the root's facade since bead oo-9ht.40)
 	if (object == nil)  return nil;
 	if (!ship->initShipSetUp(key, dict))
 	{
@@ -1736,7 +1736,7 @@ std::optional<std::string> ShipEntity::descriptionComponents() const
 	if (!self->getIsSubEntity())
 	{
 		// [super cxx_descriptionComponents]: the entity's own components.
-		return oo::str::format("\"%s\" %s", self->getName().value_or("(null)").c_str(), cxx::OOEntityWithDrawable::descriptionComponents().value_or("(null)").c_str());
+		return oo::str::format("\"%s\" %s", self->getName().value_or("(null)").c_str(), OOEntityWithDrawable::descriptionComponents().value_or("(null)").c_str());
 	}
 	else
 	{
@@ -1840,7 +1840,7 @@ GLfloat ShipEntity::doesHitLine(HPVector v0, HPVector v1, HPVector o, Vector i, 
 
 void ShipEntity::wasAddedToUniverse()
 {
-	cxx::OOEntityWithDrawable::wasAddedToUniverse();	// [super wasAddedToUniverse]
+	OOEntityWithDrawable::wasAddedToUniverse();	// [super wasAddedToUniverse]
 	
 	// if we have a universal id then we can proceed to set up any
 	// stuff that happens when we get added to the UNIVERSE
@@ -2613,7 +2613,7 @@ bool ShipEntity::validForAddToUniverse()
 		OO_LOG("shipEntity.notDict", "Ship {} was not set up from dictionary.", oo::DescriptionOf(oo::ToObjC(this)));
 		return NO;
 	}
-	return cxx::OOEntityWithDrawable::validForAddToUniverse();	// [super validForAddToUniverse]
+	return OOEntityWithDrawable::validForAddToUniverse();	// [super validForAddToUniverse]
 }
 
 
@@ -2713,7 +2713,7 @@ void ShipEntity::update(OOTimeDelta delta_t)
 			setOrientation(quaternion_multiply(q2, quaternion_multiply(q1, demoStartOrientation)));
 		}
 
-		cxx::OOEntityWithDrawable::update(delta_t);	// [super update:delta_t]
+		OOEntityWithDrawable::update(delta_t);	// [super update:delta_t]
 		if (subEntityCount() > 0)
 		{
 			// only copy the subent array if there are subentities
@@ -2961,7 +2961,7 @@ void ShipEntity::update(OOTimeDelta delta_t)
 
 		 * if have non-zero inertial velocity, need to check every frame,
 		 * as distanceTravelled does not include this component - CIM */
-		if (_nextAegisCheck < distanceTravelled || !vector_equal(cxx::OOEntityWithDrawable::getVelocity(),kZeroVector))
+		if (_nextAegisCheck < distanceTravelled || !vector_equal(OOEntityWithDrawable::getVelocity(),kZeroVector))
 		{
 			aegis_status = checkForAegis();   // is a station or something nearby??
 			if (aegis_status == AEGIS_NONE)
@@ -3043,7 +3043,7 @@ void ShipEntity::update(OOTimeDelta delta_t)
 				}
 			}
 			// super update
-			cxx::OOEntityWithDrawable::update(delta_t);	// [super update:delta_t]
+			OOEntityWithDrawable::update(delta_t);	// [super update:delta_t]
 
 			return;
 		}
@@ -3128,7 +3128,7 @@ void ShipEntity::update(OOTimeDelta delta_t)
 	totalBoundingBox = boundingBox;
 	
 	// super update
-	cxx::OOEntityWithDrawable::update(delta_t);	// [super update:delta_t]
+	OOEntityWithDrawable::update(delta_t);	// [super update:delta_t]
 
 	// update subentities
 
@@ -6843,7 +6843,7 @@ void ShipEntity::drawImmediate(bool immediate, bool translucent)
 	}
 	
 	// Draw self.
-	cxx::OOEntityWithDrawable::drawImmediate(immediate, translucent);
+	OOEntityWithDrawable::drawImmediate(immediate, translucent);
 	
 #ifndef NDEBUG
 	// Draw bounding boxes if we have to before going for the subentities.
@@ -7158,7 +7158,7 @@ void ShipEntity::addSubEntity(::Entity *sub)
 void ShipEntity::setOwner(cxx::Entity *who_owns_entity)
 {
 
-	cxx::OOEntityWithDrawable::setOwner(who_owns_entity);
+	OOEntityWithDrawable::setOwner(who_owns_entity);
 	
 	/*	Reset shader binding target so that bind-to-super works.
 		This is necessary since we don't know about the owner in
@@ -7225,7 +7225,7 @@ void ShipEntity::applyThrust(double delta_t)
 
 void ShipEntity::orientationChanged()
 {
-	cxx::OOEntityWithDrawable::orientationChanged();
+	OOEntityWithDrawable::orientationChanged();
 	
 	v_forward   = vector_forward_from_quaternion(orientation);
 	v_up		= vector_up_from_quaternion(orientation);
@@ -8376,7 +8376,7 @@ void ShipEntity::setDestinationSystem(OOSystemID s)
 void ShipEntity::setStatus(OOEntityStatus stat)
 {
 	if (status() == stat) return;
-	cxx::OOEntityWithDrawable::setStatus(stat);	// [super setStatus:stat]
+	OOEntityWithDrawable::setStatus(stat);	// [super setStatus:stat]
 	if (stat == STATUS_LAUNCHING)
 	{
 		launch_time = [UNIVERSE getTime];
@@ -13296,7 +13296,7 @@ Vector ShipEntity::thrustVector()
 
 Vector ShipEntity::getVelocity()
 {
-	return vector_add(cxx::OOEntityWithDrawable::getVelocity(), thrustVector());	// [super velocity]
+	return vector_add(OOEntityWithDrawable::getVelocity(), thrustVector());	// [super velocity]
 }
 
 
@@ -14965,7 +14965,7 @@ void ShipEntity::dumpSelfState()
 	std::vector<std::string>	flags;
 	std::string				flagsString;
 
-	cxx::OOEntityWithDrawable::dumpSelfState();	// [super dumpSelfState]
+	OOEntityWithDrawable::dumpSelfState();	// [super dumpSelfState]
 	
 	OO_LOG("dumpState.shipEntity", "Type: {}", shipDataKey().value_or("(null)"));
 	OO_LOG("dumpState.shipEntity", "Name: {}", name.value_or("(null)"));
@@ -15320,7 +15320,7 @@ void ShipEntity::doNothing()
 std::optional<std::string> ShipEntity::descriptionForObjDump()
 {
 	// DescriptionOf(nil) was "(null)"; preserve that for a disengaged super result.
-	std::string desc = oo::str::format("%s mass %g", cxx::OOEntityWithDrawable::descriptionForObjDump().value_or("(null)").c_str(), getMass());
+	std::string desc = oo::str::format("%s mass %g", OOEntityWithDrawable::descriptionForObjDump().value_or("(null)").c_str(), getMass());
 	if (!getIsPlayer())
 	{
 		desc = oo::str::format("%s AI: %s", desc.c_str(), [getAI() cxx_shortDescriptionComponents].value_or("(null)").c_str());

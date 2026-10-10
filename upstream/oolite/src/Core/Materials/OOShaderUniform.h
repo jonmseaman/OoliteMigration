@@ -48,6 +48,8 @@ SOFTWARE.
 @class OOWeakReference;
 
 
+struct OOShaderBindingValue;	// OOShaderUniformMethodType.h (bead oo-9ht.158)
+
 class OOShaderUniform : public oo::RefCounted
 {
 public:
@@ -112,6 +114,9 @@ private:
 			::OOWeakReference			*object;
 			SEL							selector;
 			IMP							method;
+			// A member of the target found in its class's member table (bead oo-9ht.158), or
+			// NULL where the binding calls method (the selector path).
+			void						(*memberGet)(id object, struct OOShaderBindingValue &outValue);
 		}							binding;
 	}							value = {};
 };

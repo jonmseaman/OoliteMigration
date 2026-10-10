@@ -5,10 +5,9 @@ OOEntityWithDrawable.h
 Abstract intermediate class for entities which use an OODrawable to render.
 
 C++20 since bead oo-bj8, with Entity the Entities pattern seam (proposed ADR-0056, amendment
-oo-bj8). The class is cxx::OOEntityWithDrawable while OOEntityWithDrawable+ObjCBridge.h, imported
-at the end of this header, keeps the Objective-C OOEntityWithDrawable that its unconverted
-subclasses (ShipEntity, SkyEntity, OOVisualEffectEntity) derive from; the bridge's deletion bead
-moves it out of namespace cxx.
+oo-bj8). The global C++ class since bead oo-9ht.40 deleted its Objective-C facade
+(OOEntityWithDrawable+ObjCBridge): the object of a ship, a sky or a visual effect is the root's
+facade (ADR-0056 amendment oo-9ht.40).
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -35,9 +34,7 @@ MA 02110-1301, USA.
 #import "OODrawable.h"	// the drawable is held by oo::Ref (a complete type wherever the entity is destroyed)
 
 
-namespace cxx {
-
-class OOEntityWithDrawable : public Entity
+class OOEntityWithDrawable : public cxx::Entity
 {
 public:
 	OODrawable *getDrawable();	// borrowed
@@ -54,10 +51,3 @@ private:
 	// The drawable, held (an Objective-C object until bead oo-hahfg: every drawable is C++).
 	oo::Ref<OODrawable>			drawable;
 };
-
-}	// namespace cxx
-
-
-// Transitional: the Objective-C OOEntityWithDrawable, for subclasses not yet converted. Deleted,
-// with namespace cxx above, by the bridge's deletion bead.
-#import "OOEntityWithDrawable+ObjCBridge.h"

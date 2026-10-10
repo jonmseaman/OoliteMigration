@@ -511,7 +511,7 @@ void OOHUDResetTextEngine(void);
 
 
 #import "WormholeEntity.h"	// WORMHOLE_SCANINFO (a send below)
-@class OOVisualEffectEntity;
+class OOVisualEffectEntity;	// C++ since bead oo-9ht.165
 
 /*	Sends of converted free functions to classes that are still Objective-C (ADR-0056 amendment
 	oo-9ht.139), one function per send, the body the send verbatim (in HeadUpDisplay.mm since bead

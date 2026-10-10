@@ -6115,3 +6115,155 @@ found them with a throwaway AST scanner; nothing stopped the next one.
    planted casts found, ten look-alikes passed, a project header's cast reported at the header, an
    unparsable TU a failed scan rather than a pass). `tools/guardrails-selftest` proves that check
    fails on a neutered matcher and on a deleted selftest.
+
+## Amendment (bead oo-9ht.165): the visual effect's facade, the last subclass of the drawable's
+
+- Date: 2026-10-10. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch P
+  (one branch). Exemplar: `src/Core/Entities/OOVisualEffectEntity.h/.mm`
+  (`oo::NewVisualEffectObject()`, `oo::ToEffect()`, the JS overrides), `Entities/Entity+ObjCBridge.mm`
+  (`EffectPart()`, `Entity (OOVisualEffectSelectorsCalledByName)`, the effect branches of
+  `(OOWaypointBeacon)`, `(SubEntityRelationship)` and the ship category's shared selectors,
+  `-respondsToSelector:`), `Universe.mm`, `HeadUpDisplay.mm`, `Scripting/OOJSVisualEffect.mm`,
+  `tests/unit/core/test_OOVisualEffectEntity.mm`, `test_OOJSVisualEffect.mm`. Applies amendment
+  oo-9ht.144 to the effect.
+
+**Context.** `cxx::OOVisualEffectEntity` (slices oo-ukxy8, oo-xkf6c) sat behind an Objective-C
+`OOVisualEffectEntity : OOEntityWithDrawable` facade that the universe allocated, that answered the
+beacon and subentity protocols, the shader bindings' selectors and the binding's JS category, and
+that the universe, the HUD and the bindings messaged. It was the last Objective-C subclass of the
+drawable's facade.
+
+**Decision (recommended defaults).**
+
+1. **The effect is the global C++ class**, `class OOVisualEffectEntity : public
+   cxx::OOEntityWithDrawable, public cxx::OOSubEntityInterface` (owners reach an effect
+   subentity's `rescaleBy()` / `drawSubEntityImmediate()` through the interface, as a ship's).
+   `oo::NewVisualEffectObject(key, dict)` replaces `[[OOVisualEffectEntity alloc]
+   cxx_initWithKey:definition:]`: the drawable's facade holding a new effect (+1, as `+alloc`
+   gave), then `initWithKey()`, releasing the object when it fails. An effect's object is therefore
+   `::Entity *` where it is typed (the universe's `newVisualEffectWithName()` /
+   `addVisualEffectAt()` and their bridge selectors, `system.addVisualEffect()`); lists of effect
+   subentities keep the objects (`std::vector<oo::ObjCRef<::Entity *>>`). `oo::ToEffect(object)` is
+   the cast that `(OOVisualEffectEntity *)object` and `-isKindOfClass:[OOVisualEffectEntity class]`
+   were (nullptr for nil or another entity). The facade line of `oo::NewEntityFacade()` goes (the
+   drawable's facade is the effect's).
+2. **Sends become member calls** (the batch O converter with nil guards); where an object is
+   wanted (the beacon list, the mesh's owner, a subentity's owner) it is `oo::ToObjC(effect)`.
+3. **Selectors found by name on an effect: the root's facade answers them for an effect's part**
+   (amendment oo-9ht.144 item 5). `Entity (OOVisualEffectSelectorsCalledByName)` holds exactly the
+   selectors the effect's facade answered and the root's and the drawable's facades (with the
+   ship's category) did not, whose signature a by-name dispatcher can call (15: the scales, the
+   break-pattern flag, the shader uniforms, `effectInfoDictionary`, `remove`, ...); the ship's
+   category answers the eight it shares with the effect (`clearSubEntities`, `setUpSubEntities`,
+   `subEntityCount`, the orientation vectors, `scriptInfo`, `hullHeatLevel`) for an effect's part
+   too; `Entity (OOWaypointBeacon)` and `Entity (SubEntityRelationship)` ask an effect's part as well
+   as a ship's and a waypoint's. `-[Entity respondsToSelector:]` answers each for an effect's part,
+   so every answer is as before (the shader uniforms ask it before they bind). The JS questions are
+   the C++ effect's `getJSClass()` / `jsClassName()` / `isVisibleToScripts()` overrides (the
+   binding's functions), which the root's category asks; `-subEntitiesForScript` goes (nothing sent
+   it; its body `OOJSVisualEffectSubEntitiesForScript()` stays).
+4. **Tests** (standing approval oo-9n5p9, lines on main first): `test_OOVisualEffectEntity` makes
+   effects with `oo::NewVisualEffectObject()` and calls their members, its `facadeContract` case
+   losing only the facade-class check and asking `oo::ToEffect()`/`oo::ToObjC()` for the crossings;
+   the binding tests (`test_OOJSVisualEffect`, `test_OOJSFlasher`) stand in for the C++ class under a
+   stand-in root object, as for the ship; every expected value kept.
+
+**Consequences.** No Objective-C subclass of `OOEntityWithDrawable` is left: the drawable's facade
+(oo-9ht.40) is the object of every ship and effect, and goes with them into the root's when it is
+deleted. The effect's by-name category joins the ship family's on the root's facade until
+oo-9ht.39.
+
+## Amendment (bead oo-9ht.40): the drawable's facade
+
+- Date: 2026-10-10. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch P.
+  Exemplar: `src/Core/Entities/OOEntityWithDrawable.h/.mm`, `Entity+ObjCBridge.h` (the
+  `OOSubEntity` protocol), `Debug/OODebugMonitor.mm`, `tests/unit/core/test_OOEntityWithDrawable.mm`.
+
+**Context.** After oo-9ht.165 no Objective-C class derived from `OOEntityWithDrawable`'s facade:
+it was only the object of every ship, sky and visual effect, answering `-drawable`/`-setDrawable:`
+and declaring the `OOSubEntity` protocol.
+
+**Decision (recommended defaults).**
+
+1. **The class is global** (`class OOEntityWithDrawable : public cxx::Entity`; every
+   `cxx::OOEntityWithDrawable` is now `OOEntityWithDrawable`), and the facade, its file pair, its
+   meson line and its `oo::NewEntityFacade()` line go: a ship's, a sky's or an effect's object is
+   the root's facade (`oo::NewShipObject()` and `oo::NewVisualEffectObject()` allocate `::Entity`).
+   The drawable member was already `oo::Ref<OODrawable>` (oo-hahfg).
+2. **`-drawable` / `-setDrawable:`** are the members `getDrawable()` / `setDrawable()`; the debug
+   monitor's `-isKindOfClass:[OOEntityWithDrawable class]` is a `dynamic_cast` of the C++ part of an
+   object that is an entity.
+3. **The `OOSubEntity` protocol** moves to `Entity+ObjCBridge.h` unchanged: no Objective-C class
+   adopts it (its adopters answer through `cxx::OOSubEntityInterface`), but `Entity<OOSubEntity> *`
+   stays a type until the root's facade goes (oo-9ht.39).
+4. **Tests** (standing approval oo-9n5p9, lines on main first): the Objective-C subclasses of the
+   facade and `objCSubclassPartIsTheIntermediateClass` go, as does `cxxSubclassFacade`'s
+   facade-class check; the other cases make C++ entities under the root's facade and call the
+   drawable members, every expected value kept. `test_SkyEntity` holds the sky's object as
+   `Entity *` and asks `-isKindOfClass:[OOEntityWithDrawable class]` as a `dynamic_cast`.
+
+**Consequences.** Only the root's facade is left of the entity classes' Objective-C side (oo-9ht.39).
+
+## Amendment (beads oo-9ht.158, oo-9ht.127): shader uniforms bound to C++ members, and the shader bindings' forwarders
+
+- Date: 2026-10-10. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10; oo-9ht.158's
+  own recommended default, taken as written). Batch P. Exemplar:
+  `src/Core/Materials/OOShaderUniformMethodType.h/.mm` (`OOShaderMemberBinding`,
+  `OOShaderUniformTypeFromEncoding()`, `OOShaderUniformBindMethod()`), `OOShaderUniform.mm`
+  (`setBindingTarget()`, `applyBinding()`), `Entities/Entity+ObjCBridge.mm`
+  (`kEntityShaderBindings`), `tests/unit/core/test_EntityShaderBindings.mm`.
+
+**Context.** A shader uniform bound to a property name found the method on its target by selector
+(`class_getInstanceMethod`, the IMP, the return type's encoding). Every entity name in
+`shader-uniform-bindings.plist` is answered by the root's facade (its own methods and the ship
+family's by-name categories) and `EntityShaderBindings+ObjCBridge.mm` (the clock, the flavour
+numbers and the system attributes) existed only to answer seven of them. A material may bind a
+uniform to any method without arguments, not only the listed names (oo-9ht.158's notes).
+
+**Decision (recommended defaults).**
+
+1. **A member table for the listed names, the selector path kept as the fallback.** The entities'
+   table (`kEntityShaderBindings`, in the root's bridge beside the parts it asks) has one row per
+   plist name an entity answered (64; `laserColor` has no method today and stays unbound): the
+   name, `@encode()` of the replaced method's return type, whether the row applies to this
+   entity (the predicate `-respondsToSelector:` used for it: any entity, a ship's / an effect's /
+   a waypoint's part, a player's or a proxy's), and the getter (the method's body, the receiver
+   the C++ part). `OOShaderUniform::setBindingTarget()` asks the registered lookup first
+   (`OOShaderMemberBindingFor`); the entities register theirs from `Entity+ObjCBridge.mm`, so the
+   uniform still links alone (`test_OOShaderUniform`). A row is used only for an object of the root
+   facade's own class (a subclass's object may override the method), and only where it applies and
+   its type is bindable; otherwise the uniform binds by selector exactly as before
+   (`OOShaderUniformBindMethod()`, the old body moved to `OOShaderUniformMethodType.mm`), so a name
+   that failed still fails with the same log line. The uniform type is
+   `OOShaderUniformTypeFromEncoding()` of the row's encoding: the type the selector path read
+   (including the `NSUInteger` names, whose `Q` encoding has no template and stays unbound).
+2. **`applyBinding()` reads a member binding once** into `OOShaderBindingValue` (integers, booleans
+   and enums widened to `long long`, floats to `double`, as `OOCallIntegerMethod` /
+   `OOCallFloatMethod` widened them), then converts and uploads exactly as before.
+3. **oo-9ht.127: `EntityShaderBindings+ObjCBridge.mm` goes** (and its meson line); its seven names
+   are rows. `test_EntityShaderBindings` asks the binding a uniform makes for each name and pins the
+   row's uniform type (`'f'` is `kOOShaderUniformTypeFloat`, `'I'` `kOOShaderUniformTypeUnsignedInt`)
+   with every expected value kept (standing approval oo-9n5p9, line on main first).
+4. **Not decided here:** restricting bindings to the listed names (the fallback goes when a proposed
+   ADR restricts the set or the last target is C++), and the planet's five names (`Entity
+   (OOPlanetShaderBindings)`, not in the plist): they stay on the selector path until oo-9ht.39
+   gives the planet its own table.
+
+## Amendment (bead oo-9ht.128): the root's JS category moves to the root's facade
+
+- Date: 2026-10-10. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch P.
+
+**Context.** `EntityOOJavaScriptExtensions+ObjCBridge.h/.mm` held only `Entity
+(OOJavaScriptExtensions)` (ShipEntity's went with oo-9ht.144, PlayerEntity's with oo-9ht.177):
+`-isVisibleToScripts`, `-cxx_oo_jsClassName`, `-getJSClass:andPrototype:` and `-deleteJSSelf`
+asking the C++ part or the function holding the body, and the `-oo_jsValueInContext:` override by
+which the engine wraps any object. Since oo-9ht.165 and oo-9ht.40 every entity's object is the
+root's facade, and the engine still wraps objects by selector until that facade goes.
+
+**Decision (recommended default).** The category moves unchanged to the root's facade
+(`Entity+ObjCBridge.h/.mm`, as amendment oo-9ht.144 item 5 moved the ship family's by-name
+categories), and the bridge pair and its meson line go. The C++ side was already the classes'
+virtual members (`getJSClass()`, `jsClassName()`, `isVisibleToScripts()`, overridden by every
+leaf); the selectors are what the engine and the bindings send to objects, so they stay where the
+objects are until oo-9ht.39 makes the engine take C++ entities (amendment oo-ppc item 5).
+`test_EntityOOJavaScriptExtensions` still sends them to entities' objects and is unchanged.

@@ -1560,7 +1560,7 @@ static bool SystemAddVisualEffect(ooscript::Context context, ooscript::CallArgs 
 		return false;
 	}
 
-	OOVisualEffectEntity *result = nil;
+	Entity *result = nil;	// the effect's object (bead oo-9ht.165)
 
 	OOJS_BEGIN_FULL_NATIVE(context)
 

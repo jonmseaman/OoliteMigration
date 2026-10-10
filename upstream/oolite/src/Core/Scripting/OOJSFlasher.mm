@@ -405,7 +405,7 @@ static bool FlasherRemove(ooscript::Context context, ooscript::CallArgs &oojsArg
 	}
 	else
 	{
-		[(OOVisualEffectEntity *)parent removeSubEntity:(Entity<OOSubEntity> *)thisObject];
+		if (OOVisualEffectEntity *effect = oo::ToEffect(parent))  effect->removeSubEntity((Entity<OOSubEntity> *)thisObject);	// C++ since bead oo-9ht.165
 	}
 
 	OOJS_RETURN_VOID;

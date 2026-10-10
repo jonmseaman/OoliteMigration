@@ -52,6 +52,7 @@ MA 02110-1301, USA.
 #import "Universe.h"
 #import "NSObjectOOExtensions.h"
 #import "OODescription.h"
+#import "OOShaderUniformMethodType.h"	// the shader binding member table (bead oo-9ht.158)
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOAssert.h"
 #include "oofnd/objc/OOObjCPeer.h"
@@ -61,6 +62,10 @@ MA 02110-1301, USA.
 #include <cxxabi.h>
 #include <typeinfo>
 #include <unordered_set>
+#include <unordered_map>
+#include <array>
+#include <utility>
+#include <type_traits>
 #include <objc/runtime.h>
 
 
@@ -86,6 +91,34 @@ bool IsProxySelectorCalledByName(SEL selector);
 bool IsStationSelectorCalledByName(SEL selector);
 bool IsDockSelectorCalledByName(SEL selector);
 
+
+// A visual effect's part (bead oo-9ht.165): the effect's facade, a subclass of the drawable's,
+// answered the selectors Entity (OOVisualEffectSelectorsCalledByName), the beacon and subentity
+// categories and the ship category's overlapping ones answer for it; nullptr for any other entity.
+OOVisualEffectEntity *EffectPart(cxx::Entity *entity)
+{
+	return dynamic_cast<OOVisualEffectEntity *>(entity);
+}
+
+
+// The selectors found by name that the effect's facade answered itself and the root's and the
+// drawable's facades did not (the batch O rule, amendment oo-9ht.144 item 5): Entity
+// (OOVisualEffectSelectorsCalledByName) below, and those of them the ship's category already holds.
+bool IsEffectSelectorCalledByName(SEL selector)
+{
+	static const std::unordered_set<std::string> names =
+	{
+		// Entity (OOVisualEffectSelectorsCalledByName)
+		"setUpVisualEffectFromDictionary:", "setNoDrawDistance", "scaleMax", "scaleX", "scaleY", "scaleZ",
+		"isBreakPattern", "effectInfoDictionary", "remove", "shaderFloat1", "shaderFloat2", "shaderInt1",
+		"shaderInt2", "shaderVector1", "shaderVector2",
+		// Entity (OOShipSelectorsCalledByName), which answers these for an effect's part too
+		"clearSubEntities", "setUpSubEntities", "subEntityCount", "forwardVector", "rightVector", "upVector",
+		"scriptInfo", "hullHeatLevel",
+	};
+	return names.contains(sel_getName(selector));
+}
+
 }	// namespace
 
 
@@ -103,8 +136,6 @@ bool IsDockSelectorCalledByName(SEL selector);
 	if (entity == nullptr)  return nil;
 	OOCParameterAssert(AsObjCEntity(entity.get()) == nullptr);
 	Class facadeClass = [::Entity class];
-	if (dynamic_cast<cxx::OOEntityWithDrawable *>(entity.get()) != nullptr)  facadeClass = [::OOEntityWithDrawable class];
-	if (dynamic_cast<cxx::OOVisualEffectEntity *>(entity.get()) != nullptr)  facadeClass = [::OOVisualEffectEntity class];
 	return [[(::Entity *)[facadeClass alloc] initWithCxxEntity:entity.get()] autorelease];
 }
 
@@ -403,13 +434,11 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 // The planet's shader binding selectors (Entity (OOPlanetShaderBindings), below) are answered for a
 // planet's C++ part only (bead oo-9ht.129): the shader uniforms ask this before they bind.
-// The beacon selectors (Entity (OOWaypointBeacon), below) are answered for a waypoint's and a
-// ship's C++ part and by a subclass facade that implements them itself (the visual effect's), as
-// before (beads oo-9ht.108, oo-9ht.144).
-// The ship family's selectors found by name (the categories at the end of this file) are answered
-// for the C++ part of the class whose facade answered them, and by a subclass facade that
-// implements one itself (the visual effect's), as before (bead oo-9ht.144; they were the ship's
-// facade's until then).
+// The beacon selectors (Entity (OOWaypointBeacon), below) are answered for a waypoint's, a ship's
+// and a visual effect's C++ part, as before (beads oo-9ht.108, oo-9ht.144, oo-9ht.165).
+// The ship family's and the visual effect's selectors found by name (the categories at the end of
+// this file) are answered for the C++ part of the class whose facade answered them, as before
+// (beads oo-9ht.144, oo-9ht.165; they were those facades' until then).
 - (BOOL) respondsToSelector:(SEL)selector
 {
 	if (selector == @selector(airColorAsVector) || selector == @selector(illuminationColorAsVector) ||
@@ -421,8 +450,11 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 	if (protocol_getMethodDescription(@protocol(OOBeaconEntity), selector, YES, YES).name != NULL)
 	{
 		if (dynamic_cast<OOWaypointEntity *>(_cxxEntity.get()) != nullptr || ShipPart(_cxxEntity.get()) != nullptr)  return YES;
+		if (EffectPart(_cxxEntity.get()) != nullptr)  return YES;	// its facade answered them until bead oo-9ht.165
 		return class_getInstanceMethod(object_getClass(self), selector) != class_getInstanceMethod([::Entity class], selector);
 	}
+	// a visual effect's part answers the selectors its facade answered (bead oo-9ht.165)
+	if (IsEffectSelectorCalledByName(selector) && EffectPart(_cxxEntity.get()) != nullptr)  return YES;
 	const bool byShip = IsShipSelectorCalledByName(selector), byPlayer = IsPlayerSelectorCalledByName(selector);
 	const bool byStation = IsStationSelectorCalledByName(selector), byDock = IsDockSelectorCalledByName(selector);
 	if (byShip || byPlayer || byStation || byDock)
@@ -751,13 +783,16 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 - (BOOL) isShipWithSubEntityShip:(Entity *)other
 {
 	ShipEntity *ship = ShipPart(_cxxEntity.get());
-	return ship != nullptr ? ship->isShipWithSubEntityShip(other) : NO;
+	if (ship != nullptr)  return ship->isShipWithSubEntityShip(other);
+	OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get());	// its facade answered it until bead oo-9ht.165
+	return effect != nullptr ? effect->isShipWithSubEntityShip(other) : NO;
 }
 
 
 - (void) drawSubEntityImmediate:(bool)immediate translucent:(bool)translucent
 {
 	if (ShipEntity *ship = ShipPart(_cxxEntity.get()))  ship->drawSubEntityImmediate(immediate, translucent);
+	else if (OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()))  effect->drawSubEntityImmediate(immediate, translucent);	// bead oo-9ht.165
 	// Otherwise do nothing.
 }
 
@@ -768,16 +803,17 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 	amendments oo-9ht.106, oo-9ht.144). A waypoint or a ship is a beacon in the universe's beacon
 	list, which holds and messages the beacons' Objective-C objects (ships, visual effects,
 	waypoints) by the protocol, and since their facades were deleted their objects are the root's
-	and the drawable's facades. These answer the C++ ship's or waypoint's members, as the ship's
-	facade and the waypoint's did, and zero (a message to nil's answer) for any other entity's part;
-	the visual effect's facade implements them itself, so its objects never reach these. -[Entity
-	respondsToSelector:] answers them as before.
+	and the drawable's facades. These answer the C++ ship's, visual effect's (since bead oo-9ht.165,
+	whose facade implemented them itself until then) or waypoint's members, as those facades did,
+	and zero (a message to nil's answer) for any other entity's part. -[Entity respondsToSelector:]
+	answers them as before.
 */
 @implementation Entity (OOWaypointBeacon)
 
 - (OOComparisonResult) compareBeaconCodeWith:(Entity<OOBeaconEntity> *)other
 {
 	if (ShipEntity *ship = ShipPart(_cxxEntity.get()))  return ship->compareBeaconCodeWith(other);
+	if (OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()))  return effect->compareBeaconCodeWith(other);
 	OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(_cxxEntity.get());
 	return waypoint != nullptr ? waypoint->compareBeaconCodeWith(other) : (OOComparisonResult)0;
 }
@@ -786,6 +822,7 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 - (std::optional<std::string>) beaconCode
 {
 	if (ShipEntity *ship = ShipPart(_cxxEntity.get()))  return ship->beaconCode();
+	if (OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()))  return effect->beaconCode();
 	OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(_cxxEntity.get());
 	return waypoint != nullptr ? waypoint->beaconCode() : std::nullopt;
 }
@@ -794,6 +831,7 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 - (void) setBeaconCode:(const std::optional<std::string> &)bcode
 {
 	if (ShipEntity *ship = ShipPart(_cxxEntity.get()))  ship->setBeaconCode(bcode);
+	else if (OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()))  effect->setBeaconCode(bcode);
 	else if (OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(_cxxEntity.get()))  waypoint->setBeaconCode(bcode);
 }
 
@@ -801,6 +839,7 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 - (std::optional<std::string>) beaconLabel
 {
 	if (ShipEntity *ship = ShipPart(_cxxEntity.get()))  return ship->beaconLabel();
+	if (OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()))  return effect->beaconLabel();
 	OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(_cxxEntity.get());
 	return waypoint != nullptr ? waypoint->beaconLabel() : std::nullopt;
 }
@@ -809,6 +848,7 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 - (void) setBeaconLabel:(const std::optional<std::string> &)blabel
 {
 	if (ShipEntity *ship = ShipPart(_cxxEntity.get()))  ship->setBeaconLabel(blabel);
+	else if (OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()))  effect->setBeaconLabel(blabel);
 	else if (OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(_cxxEntity.get()))  waypoint->setBeaconLabel(blabel);
 }
 
@@ -816,6 +856,7 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 - (BOOL) isBeacon
 {
 	if (ShipEntity *ship = ShipPart(_cxxEntity.get()))  return ship->isBeacon();
+	if (OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()))  return effect->isBeacon();
 	OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(_cxxEntity.get());
 	return waypoint != nullptr ? waypoint->isBeacon() : NO;
 }
@@ -824,6 +865,7 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 - (OOHUDBeaconIcon *) beaconDrawable
 {
 	if (ShipEntity *ship = ShipPart(_cxxEntity.get()))  return ship->beaconDrawable();
+	if (OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()))  return effect->beaconDrawable();
 	OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(_cxxEntity.get());
 	return waypoint != nullptr ? waypoint->beaconDrawable() : nullptr;
 }
@@ -832,6 +874,7 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 - (Entity <OOBeaconEntity> *) prevBeacon
 {
 	if (ShipEntity *ship = ShipPart(_cxxEntity.get()))  return (Entity <OOBeaconEntity> *)ship->prevBeacon();
+	if (OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()))  return effect->prevBeacon();
 	OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(_cxxEntity.get());
 	return waypoint != nullptr ? waypoint->prevBeacon() : nil;
 }
@@ -840,6 +883,7 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 - (Entity <OOBeaconEntity> *) nextBeacon
 {
 	if (ShipEntity *ship = ShipPart(_cxxEntity.get()))  return (Entity <OOBeaconEntity> *)ship->nextBeacon();
+	if (OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()))  return effect->nextBeacon();
 	OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(_cxxEntity.get());
 	return waypoint != nullptr ? waypoint->nextBeacon() : nil;
 }
@@ -848,6 +892,7 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 - (void) setPrevBeacon:(Entity <OOBeaconEntity> *)beaconShip
 {
 	if (ShipEntity *ship = ShipPart(_cxxEntity.get()))  ship->setPrevBeacon(beaconShip);
+	else if (OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()))  effect->setPrevBeacon(beaconShip);
 	else if (OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(_cxxEntity.get()))  waypoint->setPrevBeacon(beaconShip);
 }
 
@@ -855,6 +900,7 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 - (void) setNextBeacon:(Entity <OOBeaconEntity> *)beaconShip
 {
 	if (ShipEntity *ship = ShipPart(_cxxEntity.get()))  ship->setNextBeacon(beaconShip);
+	else if (OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()))  effect->setNextBeacon(beaconShip);
 	else if (OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(_cxxEntity.get()))  waypoint->setNextBeacon(beaconShip);
 }
 
@@ -862,6 +908,7 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 - (BOOL) isJammingScanning
 {
 	if (ShipEntity *ship = ShipPart(_cxxEntity.get()))  return ship->isJammingScanning();
+	if (OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()))  return effect->isJammingScanning();
 	OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(_cxxEntity.get());
 	return waypoint != nullptr ? waypoint->isJammingScanning() : NO;
 }
@@ -2000,22 +2047,22 @@ bool IsPlayerSelectorCalledByName(SEL selector)
 - (NSUInteger) subIdx	{ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->subIdx() : NSUInteger{}; }
 - (NSUInteger) maxShipSubEntities	{ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->maxShipSubEntities() : NSUInteger{}; }
 - (void) cxx_deserializeShipSubEntitiesFrom:(const std::string &)string	{ if (ShipEntity *ship = ShipPart(_cxxEntity.get()))  ship->deserializeShipSubEntitiesFrom(string); }
-- (BOOL) setUpSubEntities	{ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->setUpSubEntities() : NO; }
+- (BOOL) setUpSubEntities	{ if (OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()))  return effect->setUpSubEntities();	/* bead oo-9ht.165 */ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->setUpSubEntities() : NO; }
 - (BOOL) setUpOneSubentity:(const oo::PList &)subentDict	{ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->setUpOneSubentity(subentDict) : NO; }
 - (BOOL) setUpOneFlasher:(const oo::PList &)subentDict	{ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->setUpOneFlasher(subentDict) : NO; }
 - (BOOL) isTemplateCargoPod	{ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->isTemplateCargoPod() : NO; }
 - (void) setUpCargoType:(const std::string &)cargoString	{ if (ShipEntity *ship = ShipPart(_cxxEntity.get()))  ship->setUpCargoType(cargoString); }
 - (void) removeScript	{ if (ShipEntity *ship = ShipPart(_cxxEntity.get()))  ship->removeScript(); }
-- (void) clearSubEntities	{ if (ShipEntity *ship = ShipPart(_cxxEntity.get()))  ship->clearSubEntities(); }
+- (void) clearSubEntities	{ if (ShipEntity *ship = ShipPart(_cxxEntity.get()))  ship->clearSubEntities(); else if (OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()))  effect->clearSubEntities();	/* bead oo-9ht.165 */ }
 - (Quaternion) subEntityRotationalVelocity	{ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->subEntityRotationalVelocity() : kIdentityQuaternion; }
 - (GLfloat) sunGlareFilter	{ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->getSunGlareFilter() : GLfloat{}; }
 - (GLfloat) accuracy	{ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->getAccuracy() : GLfloat{}; }
-- (Vector) forwardVector	{ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->forwardVector() : kZeroVector; }
-- (Vector) upVector	{ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->upVector() : kZeroVector; }
-- (Vector) rightVector	{ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->rightVector() : kZeroVector; }
+- (Vector) forwardVector	{ if (OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()))  return effect->forwardVector();	/* bead oo-9ht.165 */ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->forwardVector() : kZeroVector; }
+- (Vector) upVector	{ if (OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()))  return effect->upVector();	/* bead oo-9ht.165 */ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->upVector() : kZeroVector; }
+- (Vector) rightVector	{ if (OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()))  return effect->rightVector();	/* bead oo-9ht.165 */ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->rightVector() : kZeroVector; }
 - (BOOL) scriptedMisjump	{ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->scriptedMisjump() : NO; }
 - (GLfloat) scriptedMisjumpRange	{ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->scriptedMisjumpRange() : GLfloat{}; }
-- (NSUInteger) subEntityCount	{ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->subEntityCount() : NSUInteger{}; }
+- (NSUInteger) subEntityCount	{ if (OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()))  return effect->subEntityCount();	/* bead oo-9ht.165 */ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->subEntityCount() : NSUInteger{}; }
 - (Entity *) subEntityTakingDamage	{ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? oo::ToObjC(ship->subEntityTakingDamage()) : nil; }
 - (OOTimeAbsolute) shipAIScriptWakeTime	{ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->shipAIScriptWakeTime() : OOTimeAbsolute{}; }
 - (float) volume	{ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->volume() : float{}; }
@@ -2175,7 +2222,7 @@ bool IsPlayerSelectorCalledByName(SEL selector)
 - (GLfloat) laserHeatLevelForward	{ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->laserHeatLevelForward() : GLfloat{}; }
 - (GLfloat) laserHeatLevelPort	{ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->laserHeatLevelPort() : GLfloat{}; }
 - (GLfloat) laserHeatLevelStarboard	{ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->laserHeatLevelStarboard() : GLfloat{}; }
-- (GLfloat) hullHeatLevel	{ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->hullHeatLevel() : GLfloat{}; }
+- (GLfloat) hullHeatLevel	{ if (OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()))  return effect->hullHeatLevel();	/* bead oo-9ht.165 */ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->hullHeatLevel() : GLfloat{}; }
 - (GLfloat) entityPersonality	{ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->entityPersonality() : GLfloat{}; }
 - (GLint) entityPersonalityInt	{ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->entityPersonalityInt() : GLint{}; }
 - (uint32_t) randomSeedForShaders	{ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->randomSeedForShaders() : uint32_t{}; }
@@ -2254,7 +2301,7 @@ bool IsPlayerSelectorCalledByName(SEL selector)
 #if OO_SALVAGE_SUPPORT
 - (void) pilotArrived	{ if (ShipEntity *ship = ShipPart(_cxxEntity.get()))  ship->pilotArrived(); }
 #endif
-- (oo::PList) scriptInfo	{ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->getScriptInfo() : oo::PList(); }
+- (oo::PList) scriptInfo	{ if (OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()))  return effect->scriptInfo();	/* bead oo-9ht.165 */ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->getScriptInfo() : oo::PList(); }
 - (void) overrideScriptInfo:(const oo::PList &)override	{ if (ShipEntity *ship = ShipPart(_cxxEntity.get()))  ship->overrideScriptInfo(override); }
 - (Entity *) entityForShaderProperties	{ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->entityForShaderProperties() : nil; }
 - (BOOL) isDemoShip	{ ShipEntity *ship = ShipPart(_cxxEntity.get()); return ship != nullptr ? ship->getIsDemoShip() : NO; }
@@ -3103,3 +3150,274 @@ bool IsPlayerSelectorCalledByName(SEL selector)
 - (void) abortAllLaunches	{ if (DockEntity *dock = DockPart(_cxxEntity.get()))  dock->abortAllLaunches(); }
 
 @end
+
+
+/*	The visual effect's own selectors found by name (bead oo-9ht.165, ADR-0056 amendment
+	oo-9ht.165): exactly those the effect's facade answered, and the root's and the drawable's
+	facades (with the ship's category) do not, whose signature a by-name dispatcher can call (the
+	batch O rule, amendment oo-9ht.144 item 5): the shader bindings bind a material's uniforms to
+	them by name. Since the facade was deleted an effect's Objective-C object is the drawable's
+	facade. Each answers the effect's C++ member, as the facade's forwarder did, and nothing (zero)
+	for any other entity; -respondsToSelector: (above) answers them for an effect's part only. The
+	ship's category answers the eight selectors both facades answered (clearSubEntities,
+	setUpSubEntities, subEntityCount, the three orientation vectors, scriptInfo, hullHeatLevel) for
+	an effect's part too. They go with the root's facade (oo-9ht.39).
+*/
+@implementation Entity (OOVisualEffectSelectorsCalledByName)
+
+- (BOOL) setUpVisualEffectFromDictionary:(const oo::PList &)effectDict	{ OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()); return effect != nullptr ? effect->setUpVisualEffectFromDictionary(effectDict) : NO; }
+- (void) setNoDrawDistance	{ if (OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()))  effect->setNoDrawDistance(); }
+- (GLfloat) scaleMax	{ OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()); return effect != nullptr ? effect->scaleMax() : GLfloat{}; }
+- (GLfloat) scaleX	{ OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()); return effect != nullptr ? effect->scaleX() : GLfloat{}; }
+- (GLfloat) scaleY	{ OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()); return effect != nullptr ? effect->scaleY() : GLfloat{}; }
+- (GLfloat) scaleZ	{ OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()); return effect != nullptr ? effect->scaleZ() : GLfloat{}; }
+- (BOOL) isBreakPattern	{ OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()); return effect != nullptr ? effect->isBreakPattern() : NO; }
+- (oo::PList) effectInfoDictionary	{ OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()); return effect != nullptr ? effect->effectInfoDictionary() : oo::PList(); }
+- (void) remove	{ if (OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()))  effect->remove(); }
+- (GLfloat) shaderFloat1	{ OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()); return effect != nullptr ? effect->shaderFloat1() : GLfloat{}; }
+- (GLfloat) shaderFloat2	{ OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()); return effect != nullptr ? effect->shaderFloat2() : GLfloat{}; }
+- (int) shaderInt1	{ OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()); return effect != nullptr ? effect->shaderInt1() : 0; }
+- (int) shaderInt2	{ OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()); return effect != nullptr ? effect->shaderInt2() : 0; }
+- (Vector) shaderVector1	{ OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()); return effect != nullptr ? effect->shaderVector1() : kZeroVector; }
+- (Vector) shaderVector2	{ OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()); return effect != nullptr ? effect->shaderVector2() : kZeroVector; }
+
+@end
+
+
+/*	The category Entity (OOJavaScriptExtensions) (bead oo-9ht.128): moved unchanged from
+	EntityOOJavaScriptExtensions+ObjCBridge.mm, which it deleted. The class questions go to the C++
+	part, whose defaults are these bodies and which a C++ subclass overrides (ADR-0056 amendment
+	oo-9ht.107).
+*/
+@implementation Entity (OOJavaScriptExtensions)
+
+- (BOOL) isVisibleToScripts													{ return _cxxEntity->isVisibleToScripts(); }
+- (std::optional<std::string>) cxx_oo_jsClassName							{ return _cxxEntity->jsClassName(); }
+- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context			{ return EntityJSValueInContext(self, context); }
+
+- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype
+{
+	_cxxEntity->getJSClass(outClass, outPrototype);
+}
+
+- (void) deleteJSSelf														{ EntityJSDeleteJSSelf(self); }
+
+@end
+
+#if OO_SHADERS || !defined(NDEBUG)
+
+/*	The entities' shader binding member table (bead oo-9ht.158, ADR-0056 amendment oo-9ht.158; the
+	bead's recommended default): one row per name in shader-uniform-bindings.plist that an entity
+	answered, each with its uniform type (the type encoding of the method it replaces, so the
+	uniform's type is the one the selector path read), whether it applies to this entity (what
+	-respondsToSelector: answers for it, above) and its getter (the method's body, unchanged but
+	for the receiver). A uniform bound to one of these names on an entity's object (the root's
+	facade) reads the member through the row; any other name, or an object of a subclass (which may
+	override the method), binds by selector as before. When the root's facade goes (oo-9ht.39) the
+	rows move to the C++ classes.
+*/
+namespace {
+
+template <typename R>
+void StoreShaderBindingValue(OOShaderBindingValue &out, R value)
+{
+	if constexpr (std::is_same_v<R, Vector>)  out.v = value;
+	else if constexpr (std::is_same_v<R, HPVector>)  out.hpv = value;
+	else if constexpr (std::is_same_v<R, Quaternion>)  out.q = value;
+	else if constexpr (std::is_same_v<R, OOMatrix>)  out.m = value;
+	else if constexpr (std::is_same_v<R, NSPoint>)  out.p = value;
+	else if constexpr (std::is_floating_point_v<R>)  out.f = value;
+	// BOOL (signed char): sign-extended, as the selector path's call returning signed char was.
+	else if constexpr (std::is_same_v<R, signed char>)  out.i = value < 0 ? static_cast<long long>(static_cast<unsigned char>(value)) - 256 : static_cast<long long>(static_cast<unsigned char>(value));
+	else  out.i = static_cast<long long>(value);	// integers and enums
+}
+
+
+struct EntityShaderBindingRow
+{
+	const char		*name;
+	const char		*encoding;	// @encode() of the method's return type
+	bool			(*answers)(cxx::Entity *part);
+	void			(*get)(cxx::Entity *part, OOShaderBindingValue &out);
+};
+
+
+constexpr EntityShaderBindingRow kEntityShaderBindings[] =
+{
+	{ "position", @encode(HPVector), [](cxx::Entity *) -> bool { return true; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> HPVector { return part->getPosition(); }()); } },
+	{ "orientation", @encode(Quaternion), [](cxx::Entity *) -> bool { return true; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> Quaternion { return part->getOrientation(); }()); } },
+	{ "relativePosition", @encode(Vector), [](cxx::Entity *) -> bool { return true; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> Vector { return part->relativePosition(); }()); } },
+	{ "viewpointOffset", @encode(Vector), [](cxx::Entity *part) -> bool { return PlayerEntityPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> Vector { PlayerEntity *player = PlayerEntityPart(part); return player != nullptr ? player->viewpointOffset() : kZeroVector; }()); } },
+	{ "collisionRadius", @encode(GLfloat), [](cxx::Entity *) -> bool { return true; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> GLfloat { if (oo::ObjCEntityLink *link = oo::AsObjCEntity(part)) return link->superCollisionRadius(); return part->collisionRadius(); }()); } },
+	{ "mass", @encode(GLfloat), [](cxx::Entity *) -> bool { return true; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> GLfloat { return part->getMass(); }()); } },
+	{ "energy", @encode(GLfloat), [](cxx::Entity *) -> bool { return true; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> GLfloat { return part->getEnergy(); }()); } },
+	{ "maxEnergy", @encode(GLfloat), [](cxx::Entity *) -> bool { return true; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> GLfloat { return part->getMaxEnergy(); }()); } },
+	{ "universalTime", @encode(GLfloat), [](cxx::Entity *) -> bool { return true; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> GLfloat { return part->universalTime(); }()); } },
+	{ "spawnTime", @encode(GLfloat), [](cxx::Entity *) -> bool { return true; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> GLfloat { return part->getSpawnTime(); }()); } },
+	{ "timeElapsedSinceSpawn", @encode(GLfloat), [](cxx::Entity *) -> bool { return true; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> GLfloat { return part->timeElapsedSinceSpawn(); }()); } },
+	{ "throwingSparks", @encode(BOOL), [](cxx::Entity *) -> bool { return true; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> BOOL { return part->throwingSparks(); }()); } },
+	{ "clock", @encode(GLfloat), [](cxx::Entity *) -> bool { return true; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> GLfloat { return part->clock(); }()); } },
+	{ "pseudoFixedD100", @encode(unsigned), [](cxx::Entity *) -> bool { return true; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> unsigned { return part->pseudoFixedD100(); }()); } },
+	{ "pseudoFixedD256", @encode(unsigned), [](cxx::Entity *) -> bool { return true; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> unsigned { return part->pseudoFixedD256(); }()); } },
+	{ "systemGovernment", @encode(unsigned), [](cxx::Entity *) -> bool { return true; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> unsigned { return part->systemGovernment(); }()); } },
+	{ "systemEconomy", @encode(unsigned), [](cxx::Entity *) -> bool { return true; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> unsigned { return part->systemEconomy(); }()); } },
+	{ "systemTechLevel", @encode(unsigned), [](cxx::Entity *) -> bool { return true; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> unsigned { return part->systemTechLevel(); }()); } },
+	{ "systemPopulation", @encode(unsigned), [](cxx::Entity *) -> bool { return true; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> unsigned { return part->systemPopulation(); }()); } },
+	{ "systemProductivity", @encode(unsigned), [](cxx::Entity *) -> bool { return true; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> unsigned { return part->systemProductivity(); }()); } },
+	{ "isBeacon", @encode(BOOL), [](cxx::Entity *part) -> bool { return dynamic_cast<OOWaypointEntity *>(part) != nullptr || ShipPart(part) != nullptr || EffectPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> BOOL { if (ShipEntity *ship = ShipPart(part)) return ship->isBeacon(); if (OOVisualEffectEntity *effect = EffectPart(part)) return effect->isBeacon(); OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(part); return waypoint != nullptr ? waypoint->isBeacon() : NO; }()); } },
+	{ "isFrangible", @encode(BOOL), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> BOOL { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->getIsFrangible() : NO; }()); } },
+	{ "isCloaked", @encode(BOOL), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> BOOL { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->isCloaked() : NO; }()); } },
+	{ "isJammingScanning", @encode(BOOL), [](cxx::Entity *part) -> bool { return dynamic_cast<OOWaypointEntity *>(part) != nullptr || ShipPart(part) != nullptr || EffectPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> BOOL { if (ShipEntity *ship = ShipPart(part)) return ship->isJammingScanning(); if (OOVisualEffectEntity *effect = EffectPart(part)) return effect->isJammingScanning(); OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(part); return waypoint != nullptr ? waypoint->isJammingScanning() : NO; }()); } },
+	{ "hasMilitaryScannerFilter", @encode(BOOL), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> BOOL { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->hasMilitaryScannerFilter() : NO; }()); } },
+	{ "messageTime", @encode(double), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> double { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->getMessageTime() : double{}; }()); } },
+	{ "escortCount", @encode(uint8_t), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> uint8_t { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->escortCount() : uint8_t{}; }()); } },
+	{ "hasHostileTarget", @encode(BOOL), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> BOOL { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->hasHostileTarget() : NO; }()); } },
+	{ "weaponRange", @encode(GLfloat), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> GLfloat { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->getWeaponRange() : GLfloat{}; }()); } },
+	{ "scannerRange", @encode(GLfloat), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> GLfloat { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->getScannerRange() : GLfloat{}; }()); } },
+	{ "withinStationAegis", @encode(BOOL), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> BOOL { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->withinStationAegis() : NO; }()); } },
+	{ "fuel", @encode(OOFuelQuantity), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> OOFuelQuantity { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->getFuel() : OOFuelQuantity{}; }()); } },
+	{ "flightPitch", @encode(GLfloat), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> GLfloat { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->getFlightPitch() : GLfloat{}; }()); } },
+	{ "flightRoll", @encode(GLfloat), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> GLfloat { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->getFlightRoll() : GLfloat{}; }()); } },
+	{ "flightYaw", @encode(GLfloat), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> GLfloat { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->getFlightYaw() : GLfloat{}; }()); } },
+	{ "flightSpeed", @encode(GLfloat), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> GLfloat { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->getFlightSpeed() : GLfloat{}; }()); } },
+	{ "maxFlightSpeed", @encode(GLfloat), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> GLfloat { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->getMaxFlightSpeed() : GLfloat{}; }()); } },
+	{ "speedFactor", @encode(GLfloat), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> GLfloat { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->speedFactor() : GLfloat{}; }()); } },
+	{ "damage", @encode(int), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> int { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->damage() : int{}; }()); } },
+	{ "laserHeatLevel", @encode(GLfloat), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> GLfloat { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->laserHeatLevel() : GLfloat{}; }()); } },
+	{ "hullHeatLevel", @encode(GLfloat), [](cxx::Entity *part) -> bool { return EffectPart(part) != nullptr || ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> GLfloat { if (OOVisualEffectEntity *effect = EffectPart(part)) return effect->hullHeatLevel(); /* bead oo-9ht.165 */ ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->hullHeatLevel() : GLfloat{}; }()); } },
+	{ "entityPersonality", @encode(GLfloat), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> GLfloat { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->entityPersonality() : GLfloat{}; }()); } },
+	{ "entityPersonalityInt", @encode(GLint), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> GLint { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->entityPersonalityInt() : GLint{}; }()); } },
+	{ "numberOfScannedShips", @encode(int), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> int { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->numberOfScannedShips() : int{}; }()); } },
+	{ "destination", @encode(HPVector), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> HPVector { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->destination() : kZeroHPVector; }()); } },
+	{ "rangeToDestination", @encode(GLfloat), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> GLfloat { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->rangeToDestination() : GLfloat{}; }()); } },
+	{ "rangeToPrimaryTarget", @encode(double), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> double { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->rangeToPrimaryTarget() : double{}; }()); } },
+	{ "isHulk", @encode(BOOL), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> BOOL { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->getIsHulk() : NO; }()); } },
+	{ "lightsActive", @encode(BOOL), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> BOOL { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->lightsActive() : NO; }()); } },
+	{ "legalStatus", @encode(int), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> int { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->legalStatus() : int{}; }()); } },
+	{ "velocity", @encode(Vector), [](cxx::Entity *) -> bool { return true; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> Vector { if (oo::ObjCEntityLink *link = oo::AsObjCEntity(part)) return link->superGetVelocity(); return part->getVelocity(); }()); } },
+	{ "missileCapacity", @encode(NSUInteger), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> NSUInteger { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->missileCapacity() : NSUInteger{}; }()); } },
+	{ "missileCount", @encode(NSUInteger), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> NSUInteger { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->missileCount() : NSUInteger{}; }()); } },
+	{ "fuelLeakRate", @encode(float), [](cxx::Entity *part) -> bool { return ProxyPart(part) != nullptr || PlayerEntityPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> float { if (ProxyPlayerEntity *proxy = ProxyPart(part)) return proxy->fuelLeakRate(); PlayerEntity *player = PlayerEntityPart(part); return player != nullptr ? player->fuelLeakRate() : float{}; }()); } },
+	{ "massLocked", @encode(BOOL), [](cxx::Entity *part) -> bool { return ProxyPart(part) != nullptr || PlayerEntityPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> BOOL { if (ProxyPlayerEntity *proxy = ProxyPart(part)) return proxy->massLocked(); PlayerEntity *player = PlayerEntityPart(part); return player != nullptr ? player->massLocked() : NO; }()); } },
+	{ "atHyperspeed", @encode(BOOL), [](cxx::Entity *part) -> bool { return ProxyPart(part) != nullptr || PlayerEntityPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> BOOL { if (ProxyPlayerEntity *proxy = ProxyPart(part)) return proxy->atHyperspeed(); PlayerEntity *player = PlayerEntityPart(part); return player != nullptr ? player->atHyperspeed() : NO; }()); } },
+	{ "dialForwardShield", @encode(GLfloat), [](cxx::Entity *part) -> bool { return ProxyPart(part) != nullptr || PlayerEntityPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> GLfloat { if (ProxyPlayerEntity *proxy = ProxyPart(part)) return proxy->dialForwardShield(); PlayerEntity *player = PlayerEntityPart(part); return player != nullptr ? player->dialForwardShield() : GLfloat{}; }()); } },
+	{ "dialAftShield", @encode(GLfloat), [](cxx::Entity *part) -> bool { return ProxyPart(part) != nullptr || PlayerEntityPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> GLfloat { if (ProxyPlayerEntity *proxy = ProxyPart(part)) return proxy->dialAftShield(); PlayerEntity *player = PlayerEntityPart(part); return player != nullptr ? player->dialAftShield() : GLfloat{}; }()); } },
+	{ "dialMissileStatus", @encode(OOMissileStatus), [](cxx::Entity *part) -> bool { return ProxyPart(part) != nullptr || PlayerEntityPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> OOMissileStatus { if (ProxyPlayerEntity *proxy = ProxyPart(part)) return proxy->dialMissileStatus(); PlayerEntity *player = PlayerEntityPart(part); return player != nullptr ? player->dialMissileStatus() : OOMissileStatus{}; }()); } },
+	{ "dialFuelScoopStatus", @encode(OOFuelScoopStatus), [](cxx::Entity *part) -> bool { return ProxyPart(part) != nullptr || PlayerEntityPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> OOFuelScoopStatus { if (ProxyPlayerEntity *proxy = ProxyPart(part)) return proxy->dialFuelScoopStatus(); PlayerEntity *player = PlayerEntityPart(part); return player != nullptr ? player->dialFuelScoopStatus() : OOFuelScoopStatus{}; }()); } },
+	{ "compassMode", @encode(OOCompassMode), [](cxx::Entity *part) -> bool { return ProxyPart(part) != nullptr || PlayerEntityPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> OOCompassMode { if (ProxyPlayerEntity *proxy = ProxyPart(part)) return proxy->compassMode(); PlayerEntity *player = PlayerEntityPart(part); return player != nullptr ? player->getCompassMode() : OOCompassMode{}; }()); } },
+	{ "dialIdentEngaged", @encode(BOOL), [](cxx::Entity *part) -> bool { return ProxyPart(part) != nullptr || PlayerEntityPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> BOOL { if (ProxyPlayerEntity *proxy = ProxyPart(part)) return proxy->dialIdentEngaged(); PlayerEntity *player = PlayerEntityPart(part); return player != nullptr ? player->dialIdentEngaged() : NO; }()); } },
+	{ "alertCondition", @encode(OOAlertCondition), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> OOAlertCondition { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->alertCondition() : OOAlertCondition{}; }()); } },
+	{ "trumbleCount", @encode(NSUInteger), [](cxx::Entity *part) -> bool { return ProxyPart(part) != nullptr || PlayerEntityPart(part) != nullptr; },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> NSUInteger { if (ProxyPlayerEntity *proxy = ProxyPart(part)) return proxy->trumbleCount(); PlayerEntity *player = PlayerEntityPart(part); return player != nullptr ? player->getTrumbleCount() : NSUInteger{}; }()); } },
+};
+
+
+// The row's getter, given the uniform's object (an entity's object: the lookup checked).
+template <size_t I>
+void GetShaderBinding(id object, OOShaderBindingValue &out)
+{
+	kEntityShaderBindings[I].get(oo::ToCxx((::Entity *)object), out);
+}
+
+
+template <size_t... I>
+std::array<OOShaderBindingGetter, sizeof...(I)> ShaderBindingGetters(std::index_sequence<I...>)
+{
+	return { &GetShaderBinding<I>... };
+}
+
+
+bool EntityShaderMemberBinding(id target, SEL selector, OOShaderMemberBinding *outBinding)
+{
+	// The root's facade only: a subclass's object may override the method, which the selector path asks.
+	if (![target isMemberOfClass:[::Entity class]])  return false;
+	cxx::Entity *part = oo::ToCxx((::Entity *)target);
+	if (part == nullptr)  return false;
+
+	static const std::unordered_map<std::string, size_t> rows = []
+	{
+		std::unordered_map<std::string, size_t> result;
+		for (size_t i = 0; i != std::size(kEntityShaderBindings); ++i)  result.emplace(kEntityShaderBindings[i].name, i);
+		return result;
+	}();
+	static const std::array<OOShaderBindingGetter, std::size(kEntityShaderBindings)> getters = ShaderBindingGetters(std::make_index_sequence<std::size(kEntityShaderBindings)>());
+
+	const auto found = rows.find(sel_getName(selector));
+	if (found == rows.end())  return false;
+	const EntityShaderBindingRow &row = kEntityShaderBindings[found->second];
+	if (!row.answers(part))  return false;	// the selector path fails as it did
+	const OOShaderUniformType type = OOShaderUniformTypeFromEncoding(row.encoding);
+	if (type == kOOShaderUniformTypeInvalid)  return false;	// likewise ("unsupported type")
+	*outBinding = { type, getters[found->second] };
+	return true;
+}
+
+
+const bool sEntityShaderBindingsRegistered = (OOSetShaderMemberBindingLookup(&EntityShaderMemberBinding), true);
+
+}	// namespace
+
+#endif	// OO_SHADERS || !defined(NDEBUG)

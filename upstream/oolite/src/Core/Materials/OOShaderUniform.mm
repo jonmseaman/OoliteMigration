@@ -308,10 +308,10 @@ void OOShaderUniform::apply()
 void OOShaderUniform::setBindingTarget(id<OOWeakReferenceSupport> target)
 {
 	BOOL					OK = YES;
-	Method					method = NULL;
-	NSUInteger				argCount;
 	std::string				methodProblem;
 	id<OOWeakReferenceSupport> superCandidate = nil;
+	OOShaderMemberBinding	memberBinding = {};
+	OOShaderUniformType		boundType = kOOShaderUniformTypeInvalid;
 
 	if (!isBinding)  return;
 
@@ -337,56 +337,22 @@ void OOShaderUniform::setBindingTarget(id<OOWeakReferenceSupport> target)
 		return;
 	}
 
-	if (OK)
+	/*	A member of the target's C++ class, found in its class's member table by the property name
+		(bead oo-9ht.158); else the method found by selector, as before (OOShaderUniformBindMethod,
+		which held this function's checks until then).
+	*/
+	value.binding.memberGet = NULL;
+	value.binding.method = NULL;
+	if (OOShaderMemberBindingFor((id)target, value.binding.selector, &memberBinding))
 	{
-		if (![target respondsToSelector:value.binding.selector])
-		{
-			methodProblem = "target does not respond to selector";
-			OK = NO;
-		}
+		value.binding.memberGet = memberBinding.get;
+		boundType = memberBinding.type;
 	}
-
-	if (OK)
+	else
 	{
-		value.binding.method = [(id)target methodForSelector:value.binding.selector];
-		if (value.binding.method == NULL)
-		{
-			methodProblem = "could not retrieve method implementation";
-			OK = NO;
-		}
+		OK = OOShaderUniformBindMethod((id)target, value.binding.selector, &value.binding.method, &boundType, &methodProblem);
 	}
-
-	if (OK)
-	{
-		method = class_getInstanceMethod(object_getClass((id)target), value.binding.selector);
-		if (method == NULL)
-		{
-			methodProblem = "could not retrieve method signature";
-			OK = NO;
-		}
-	}
-
-	if (OK)
-	{
-		argCount = method_getNumberOfArguments(method);
-		if (argCount != 2)	// "no-arguments" methods actually take two arguments, self and _msg.
-		{
-			methodProblem = "only methods which do not require arguments may be bound to";
-			OK = NO;
-		}
-	}
-
-	if (OK)
-	{
-		type = OOShaderUniformTypeFromMethod(method);
-		if (type == kOOShaderUniformTypeInvalid)
-		{
-			OK = NO;
-			char *returnType = method_copyReturnType(method);
-			methodProblem = oo::str::format("unsupported type \"%s\"", returnType);
-			free(returnType);
-		}
-	}
+	if (OK)  type = boundType;
 
 	isActiveBinding = OK;
 	if (!OK)  OO_LOG("shader.uniform.bind.failed", "Shader could not bind uniform \"{}\" to -[{} {}] ({}).", name, oo::DescriptionOf([target class]), OOSelectorName(value.binding.selector), methodProblem);
@@ -464,6 +430,11 @@ void OOShaderUniform::applyBinding()
 	object = [value.binding.object weakRefUnderlyingObject];
 	if (object == nil)  return;
 
+	// A member binding (bead oo-9ht.158) reads its value once, into the field its type uses.
+	OOShaderBindingValue		member = {};
+	const bool					isMember = value.binding.memberGet != NULL;
+	if (isMember)  value.binding.memberGet(object, member);
+
 	switch (type)
 	{
 		case kOOShaderUniformTypeChar:
@@ -474,18 +445,18 @@ void OOShaderUniform::applyBinding()
 		case kOOShaderUniformTypeUnsignedInt:
 		case kOOShaderUniformTypeLong:
 		case kOOShaderUniformTypeUnsignedLong:
-			iVal = (GLint)OOCallIntegerMethod(object, value.binding.selector, value.binding.method, (OOShaderUniformType)type);
+			iVal = (GLint)(isMember ? member.i : OOCallIntegerMethod(object, value.binding.selector, value.binding.method, (OOShaderUniformType)type));
 			isInt = YES;
 			break;
 
 		case kOOShaderUniformTypeFloat:
 		case kOOShaderUniformTypeDouble:
-			fVal = OOCallFloatMethod(object, value.binding.selector, value.binding.method, (OOShaderUniformType)type);
+			fVal = isMember ? member.f : OOCallFloatMethod(object, value.binding.selector, value.binding.method, (OOShaderUniformType)type);
 			isFloat = YES;
 			break;
 
 		case kOOShaderUniformTypeVector:
-			vVal = ((VectorReturnMsgSend)value.binding.method)(object, value.binding.selector);
+			vVal = isMember ? member.v : ((VectorReturnMsgSend)value.binding.method)(object, value.binding.selector);
 			if (convertNormalize)  vVal = vector_normal(vVal);
 			expVVal[0] = vVal.x;
 			expVVal[1] = vVal.y;
@@ -495,7 +466,7 @@ void OOShaderUniform::applyBinding()
 			break;
 
 		case kOOShaderUniformTypeHPVector:
-			hpvVal = ((HPVectorReturnMsgSend)value.binding.method)(object, value.binding.selector);
+			hpvVal = isMember ? member.hpv : ((HPVectorReturnMsgSend)value.binding.method)(object, value.binding.selector);
 			if (convertNormalize)  hpvVal = HPvector_normal(hpvVal);
 			expVVal[0] = (GLfloat)hpvVal.x;
 			expVVal[1] = (GLfloat)hpvVal.y;
@@ -505,7 +476,7 @@ void OOShaderUniform::applyBinding()
 			break;
 
 		case kOOShaderUniformTypeQuaternion:
-			qVal = ((QuaternionReturnMsgSend)value.binding.method)(object, value.binding.selector);
+			qVal = isMember ? member.q : ((QuaternionReturnMsgSend)value.binding.method)(object, value.binding.selector);
 			if (convertToMatrix)
 			{
 				mVal = OOMatrixForQuaternionRotation(qVal);
@@ -522,12 +493,12 @@ void OOShaderUniform::applyBinding()
 			break;
 
 		case kOOShaderUniformTypeMatrix:
-			mVal = ((MatrixReturnMsgSend)value.binding.method)(object, value.binding.selector);
+			mVal = isMember ? member.m : ((MatrixReturnMsgSend)value.binding.method)(object, value.binding.selector);
 			isMatrix = YES;
 			break;
 
 		case kOOShaderUniformTypePoint:
-			pVal = ((PointReturnMsgSend)value.binding.method)(object, value.binding.selector);
+			pVal = isMember ? member.p : ((PointReturnMsgSend)value.binding.method)(object, value.binding.selector);
 			isPoint = YES;
 			break;
 
@@ -535,11 +506,11 @@ void OOShaderUniform::applyBinding()
 			// An object that is not a colour: nothing set. (The number-object case went with
 			// Foundation: no bindable method returns one; the whitelisted object-valued bindings,
 			// laserColor and fogUniform, answer the C++ colour since bead oo-9ht.1: the case below.)
-			(void)((ObjectReturnMsgSend)value.binding.method)(object, value.binding.selector);
+			if (!isMember)  (void)((ObjectReturnMsgSend)value.binding.method)(object, value.binding.selector);
 			break;
 
 		case kOOShaderUniformTypeColor:
-			if (::OOColor *color = ((ColorReturnMsgSend)value.binding.method)(object, value.binding.selector))
+			if (::OOColor *color = isMember ? member.color : ((ColorReturnMsgSend)value.binding.method)(object, value.binding.selector))
 			{
 				expVVal[0] = color->redComponent();
 				expVVal[1] = color->greenComponent();

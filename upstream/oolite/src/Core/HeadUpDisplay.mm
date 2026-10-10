@@ -1611,8 +1611,8 @@ void HeadUpDisplay::drawScanner(const oo::PList &info)
 				}
 				else if ([scannedEntity isVisualEffect])
 				{
-					::OOVisualEffectEntity *vis = (::OOVisualEffectEntity *)scannedEntity;
-					GLfloat* base_col = [vis scannerDisplayColorForShip:flash :[vis scannerDisplayColor1] :[vis scannerDisplayColor2]];
+					OOVisualEffectEntity *vis = oo::ToEffect(scannedEntity);	// C++ since bead oo-9ht.165
+					GLfloat* base_col = (vis != nullptr ? vis->scannerDisplayColorForShip(flash, vis->scannerDisplayColor1(), vis->scannerDisplayColor2()) : (GLfloat *)nullptr);
 					col[0] = base_col[0];	col[1] = base_col[1];	col[2] = base_col[2];	col[3] = alpha * base_col[3];
 				}
 
@@ -3743,7 +3743,7 @@ static void hudDrawReticleOnTarget(Entity *target, PlayerEntity *player1, GLfloa
 			}
 			else if (HeadUpDisplayEntityIsVisualEffect(target))
 			{
-				OOVisualEffectEntity *vis = (OOVisualEffectEntity *)target;
+				OOVisualEffectEntity *vis = oo::ToEffect(target);	// C++ since bead oo-9ht.165
 				GLColorWithOverallAlpha(HeadUpDisplayVisualEffectScannerDisplayColor(vis, flash),alpha);
 			}
 			else
@@ -4658,7 +4658,7 @@ std::optional<std::string> HeadUpDisplayShipScanDescription(ShipEntity *ship)	{ 
 bool HeadUpDisplayShipIsCloaked(ShipEntity *ship)	{ return (ship != nullptr ? ship->isCloaked() : false); }
 bool HeadUpDisplayShipIsHostileToPlayer(ShipEntity *ship)	{ return (((ship != nullptr ? ship->hasHostileTarget() : false))&&((ship != nullptr ? ship->primaryTarget() : id{}) == oo::ToObjC(PLAYER))); }
 GLfloat *HeadUpDisplayShipScannerDisplayColor(ShipEntity *ship, BOOL isHostile, BOOL flash)	{ return (ship != nullptr ? ship->scannerDisplayColorForShip(PLAYER, isHostile, flash, (ship != nullptr ? ship->scannerDisplayColor1() : (OOColor *)nullptr), (ship != nullptr ? ship->scannerDisplayColor2() : (OOColor *)nullptr), (ship != nullptr ? ship->scannerDisplayColorHostile1() : (OOColor *)nullptr), (ship != nullptr ? ship->scannerDisplayColorHostile2() : (OOColor *)nullptr)) : (GLfloat *)nullptr); }
-GLfloat *HeadUpDisplayVisualEffectScannerDisplayColor(OOVisualEffectEntity *vis, BOOL flash)	{ return [vis scannerDisplayColorForShip:flash :[vis scannerDisplayColor1] :[vis scannerDisplayColor2]]; }
+GLfloat *HeadUpDisplayVisualEffectScannerDisplayColor(OOVisualEffectEntity *vis, BOOL flash)	{ return (vis != nullptr ? vis->scannerDisplayColorForShip(flash, vis->scannerDisplayColor1(), vis->scannerDisplayColor2()) : (GLfloat *)nullptr); }
 WORMHOLE_SCANINFO HeadUpDisplayWormholeScanInfo(WormholeEntity *wormhole)	{ return (wormhole != nullptr ? wormhole->scanInfo() : WORMHOLE_SCANINFO{}); }
 double HeadUpDisplayWormholeEstimatedArrivalTime(WormholeEntity *wormhole)	{ return (wormhole != nullptr ? wormhole->estimatedArrivalTime() : 0.0); }
 double HeadUpDisplayWormholeExpiryTime(WormholeEntity *wormhole)	{ return (wormhole != nullptr ? wormhole->expiryTime() : 0.0); }

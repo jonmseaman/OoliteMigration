@@ -154,7 +154,7 @@ MA 02110-1301, USA.
 - (BOOL) cxx_spawnShip:(const std::string &) shipdesc;	// the legacy spawnShip: action's ship key
 - (void) cxx_witchspaceShipWithPrimaryRole:(const std::string &)role;
 - (ShipEntity *) cxx_spawnShipWithRole:(const std::string &) desc near:(Entity *) entity;
-- (OOVisualEffectEntity *) cxx_addVisualEffectAt:(HPVector)pos withKey:(const std::string &)key;
+- (Entity *) cxx_addVisualEffectAt:(HPVector)pos withKey:(const std::string &)key;
 
 @end
 
@@ -231,7 +231,7 @@ MA 02110-1301, USA.
 - (BOOL) canInstantiateShip:(const std::string &)shipKey;
 - (std::optional<std::string>) cxx_randomShipKeyForRoleRespectingConditions:(const std::string &)role;	// nullopt: none
 - (ShipEntity *) cxx_newShipWithRole:(const std::string &)role;		// its object +1 (a C++ ship since bead oo-9ht.144). Selects ship using role weights, applies auto_ai, respects conditions
-- (OOVisualEffectEntity *) cxx_newVisualEffectWithName:(const std::string &)effectKey OO_RETURNS_RETAINED;
+- (Entity *) cxx_newVisualEffectWithName:(const std::string &)effectKey OO_RETURNS_RETAINED;
 - (ShipEntity *) cxx_newSubentityWithName:(const std::string &)shipKey andScaleFactor:(float)scale;	// its object +1 (a C++ ship since bead oo-9ht.144). Does not apply auto_ai or respect conditions
 - (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy;	// its object +1 (a C++ ship since bead oo-9ht.144). If usePlayerProxy, non-carriers are instantiated as ProxyPlayerEntity (made in C++ since bead oo-9ht.183).
 - (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity;	// its object +1 (a C++ ship since bead oo-9ht.144)

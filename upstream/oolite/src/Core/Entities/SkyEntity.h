@@ -32,9 +32,9 @@ MA 02110-1301, USA.
 
 /*	C++ only since bead oo-9ht.109 deleted its Objective-C facade (ADR-0056 amendments oo-9ht.23 and
 	oo-9ht.106): the universe makes it with oo::makeRef<SkyEntity>(), hands it to Objective-C with
-	oo::NewEntityFacade (its object is the OOEntityWithDrawable facade) and finds it by dynamic_cast.
+	oo::NewEntityFacade (its object is the root's facade, OOEntityWithDrawable's until bead oo-9ht.40) and finds it by dynamic_cast.
 */
-class SkyEntity : public cxx::OOEntityWithDrawable
+class SkyEntity : public OOEntityWithDrawable
 {
 public:
 	/*	-initWithColors::andSystemInfo:'s body after [super init] (the constructor ran Entity's), run

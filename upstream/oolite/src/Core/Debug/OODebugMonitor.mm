@@ -413,9 +413,11 @@ void OODebugMonitor::dumpEntity(id entity, EntityDumpState *state, bool parentVi
 
 	size_t entitySize = [entity oo_objectSize];
 	size_t drawableSize = 0;
-	if ([entity isKindOfClass:[::OOEntityWithDrawable class]])
+	// -isKindOfClass:[OOEntityWithDrawable class] and -drawable until bead oo-9ht.40 deleted that facade
+	OOEntityWithDrawable *withDrawable = [entity isKindOfClass:[::Entity class]] ? dynamic_cast<OOEntityWithDrawable *>(oo::ToCxx((::Entity *)entity)) : nullptr;
+	if (withDrawable != nullptr)
 	{
-		OODrawable *drawable = [entity drawable];	// C++ since bead oo-hahfg
+		OODrawable *drawable = withDrawable->getDrawable();	// C++ since bead oo-hahfg
 		drawableSize = (drawable != nullptr) ? drawable->totalSize() : 0;
 	}
 

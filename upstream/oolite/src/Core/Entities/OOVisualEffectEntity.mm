@@ -48,6 +48,7 @@ MA 02110-1301, USA.
 #import "OODebugFlags.h"
 
 #import "OOJSScript.h"
+#import "OOJSVisualEffect.h"
 
 
 #import "MyOpenGLView.h"
@@ -94,13 +95,13 @@ OOVisualEffectSubEntities SubEntitiesOf(const std::optional<OOVisualEffectSubEnt
 
 
 // The subentities that answer YES to -isVisualEffect.
-std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualEffectSubEntities &subEntities)
+std::vector<oo::ObjCRef<::Entity *>> VisualEffectsIn(const OOVisualEffectSubEntities &subEntities)
 {
-	std::vector<oo::ObjCRef<OOVisualEffectEntity *>> result;
+	std::vector<oo::ObjCRef<::Entity *>> result;
 	for (const auto &sub : subEntities)
 	{
 		if (!oo::ToCxx((::Entity *)sub.get())->getIsVisualEffect())  continue;	// -isVisualEffect, through the converted root
-		result.emplace_back((OOVisualEffectEntity *)sub.get());
+		result.emplace_back((::Entity *)sub.get());
 	}
 	return result;
 }
@@ -108,11 +109,26 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 }	// namespace
 
 
-namespace cxx {
+// [[OOVisualEffectEntity alloc] cxx_initWithKey:definition:] until bead oo-9ht.165 deleted the
+// effect's facade: the root's facade (OOEntityWithDrawable's until bead oo-9ht.40) holding a new effect (+1, as +alloc gave), then
+// the initialiser's body, which may fail, as the Objective-C one did.
+::Entity *oo::NewVisualEffectObject(const std::string &key, const oo::PList &dict)
+{
+	const Ref<OOVisualEffectEntity> effect = makeRef<OOVisualEffectEntity>();
+	::Entity *object = [[::Entity alloc] initWithCxxEntity:effect.get()];	// the root's facade since bead oo-9ht.40
+	if (object == nil)  return nil;
+	if (!effect->initWithKey(key, dict))
+	{
+		[object release];
+		return nil;
+	}
+	return object;
+}
 
-/*	-cxx_initWithKey:definition:'s body after [super init] (the constructor ran Entity's). The
-	façade runs it once it holds this object (amendment oo-0mxi item 2); false where the
-	initialiser released itself and answered nil.
+
+/*	-cxx_initWithKey:definition:'s body after [super init] (the constructor ran Entity's).
+	oo::NewVisualEffectObject() runs it once the object holds this effect (amendment oo-0mxi item 2);
+	false where the initialiser released itself and answered nil.
 */
 bool OOVisualEffectEntity::initWithKey(const std::string &key, const oo::PList &dict)
 {
@@ -330,7 +346,7 @@ bool OOVisualEffectEntity::setUpOneFlasher(const oo::PList &subentDict)
 
 bool OOVisualEffectEntity::setUpOneStandardSubentity(const oo::PList &subentDict)
 {
-	::OOVisualEffectEntity			*subentity = nil;
+	::Entity			*subentity = nil;	// the effect's object (bead oo-9ht.165)
 	std::optional<std::string>	subentKey;
 	HPVector				subPosition;
 	Quaternion			subOrientation;
@@ -353,7 +369,7 @@ bool OOVisualEffectEntity::setUpOneStandardSubentity(const oo::PList &subentDict
 	[subentity setPosition:subPosition];
 	[subentity setOrientation:subOrientation];
 
-	addSubEntity(subentity);
+	addSubEntity((OOVisualEffectSubEntity *)subentity);
 
 	[subentity release];
 
@@ -398,7 +414,7 @@ NSUInteger OOVisualEffectEntity::subEntityCount()
 }
 
 
-std::optional<std::vector<oo::ObjCRef<::OOVisualEffectEntity *>>> OOVisualEffectEntity::visualEffectSubEntityEnumerator()
+std::optional<std::vector<oo::ObjCRef<::Entity *>>> OOVisualEffectEntity::visualEffectSubEntityEnumerator()
 {
 	if (!_subEntities.has_value())  return std::nullopt;
 	return VisualEffectsIn(*_subEntities);
@@ -418,7 +434,7 @@ std::vector<oo::ObjCRef<::Entity *>> OOVisualEffectEntity::subEntityEnumerator()
 }
 
 
-std::vector<oo::ObjCRef<::OOVisualEffectEntity *>> OOVisualEffectEntity::effectSubEntityEnumerator()
+std::vector<oo::ObjCRef<::Entity *>> OOVisualEffectEntity::effectSubEntityEnumerator()
 {
 	return VisualEffectsIn(SubEntitiesOf(_subEntities));
 }
@@ -525,7 +541,7 @@ void OOVisualEffectEntity::setScaleX(GLfloat factor)
 		[se setPosition:move];
 		if ([se isVisualEffect])
 		{
-			[(::OOVisualEffectEntity*)se setScaleX:factor];
+			oo::ToEffect((::Entity *)se)->setScaleX(factor);
 		}
 		else if (OOSubEntityInterface *cxxSub = dynamic_cast<OOSubEntityInterface *>(oo::ToCxx((::Entity *)se)))
 		{
@@ -561,7 +577,7 @@ void OOVisualEffectEntity::setScaleY(GLfloat factor)
 		[se setPosition:move];
 		if ([se isVisualEffect])
 		{
-			[(::OOVisualEffectEntity*)se setScaleY:factor];
+			oo::ToEffect((::Entity *)se)->setScaleY(factor);
 		}
 		else if (OOSubEntityInterface *cxxSub = dynamic_cast<OOSubEntityInterface *>(oo::ToCxx((::Entity *)se)))
 		{
@@ -597,7 +613,7 @@ void OOVisualEffectEntity::setScaleZ(GLfloat factor)
 		[se setPosition:move];
 		if ([se isVisualEffect])
 		{
-			[(::OOVisualEffectEntity*)se setScaleZ:factor];
+			oo::ToEffect((::Entity *)se)->setScaleZ(factor);
 		}
 		else if (OOSubEntityInterface *cxxSub = dynamic_cast<OOSubEntityInterface *>(oo::ToCxx((::Entity *)se)))
 		{
@@ -727,7 +743,7 @@ bool OOVisualEffectEntity::isShipWithSubEntityShip(::Entity *other)
 
 #ifndef NDEBUG
 	// Sanity check; this should always be true.
-	if (!hasSubEntity((::OOVisualEffectEntity *)other))
+	if (!hasSubEntity((OOVisualEffectSubEntity *)other))
 	{
 		OO_LOG_ERR("visualeffect.subentity.sanityCheck.failed", "{} thinks it's a subentity of {}, but the supposed parent does not agree. {}", oo::ShortDescriptionOf(other), oo::ShortDescriptionOf(oo::ToObjC(this)), "This is an internal error, please report it.");
 		[other setOwner:nil];
@@ -1054,4 +1070,22 @@ void OOVisualEffectEntity::setShaderVector2(Vector value)
 	_shaderVector2 = value;
 }
 
-}	// namespace cxx
+
+// The JS questions, which the effect's facade answered with the binding's functions until bead
+// oo-9ht.165 (the root's facade asks these now).
+void OOVisualEffectEntity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)
+{
+	::OOJSVisualEffectGetJSClass(outClass, outPrototype);
+}
+
+
+std::optional<std::string> OOVisualEffectEntity::jsClassName()
+{
+	return ::OOJSVisualEffectJSClassName();
+}
+
+
+bool OOVisualEffectEntity::isVisibleToScripts()
+{
+	return ::OOJSVisualEffectIsVisibleToScripts();
+}
