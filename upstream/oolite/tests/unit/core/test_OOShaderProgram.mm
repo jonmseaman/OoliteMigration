@@ -102,7 +102,7 @@ IsProgramProc gIsProgram = nullptr;
 bool SetUp()
 {
 	if (!OOTestGLContext())  return false;
-	[OOOpenGLExtensionManager sharedManager];	// loads the ARB shader entry points
+	OOOpenGLExtensionManager::sharedManager();	// loads the ARB shader entry points
 	gGetAttribLocation = (GetAttribLocationProc)SDL_GL_GetProcAddress("glGetAttribLocationARB");
 	gIsProgram = (IsProgramProc)SDL_GL_GetProcAddress("glIsProgram");
 	return gGetAttribLocation != nullptr && gIsProgram != nullptr;

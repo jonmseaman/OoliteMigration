@@ -416,7 +416,7 @@ bool OOOXZManager::ensureInstallPath()
 
 std::optional<std::string> OOOXZManager::manifestPath()
 {
-	const std::optional<std::string> cacheDirectory = cxx::OOCacheManager::sharedCache()->cacheDirectoryPathCreatingIfNecessary(true);
+	const std::optional<std::string> cacheDirectory = OOCacheManager::sharedCache()->cacheDirectoryPathCreatingIfNecessary(true);
 	if (!cacheDirectory.has_value())  return std::nullopt;
 	return oo::str::appendingPathComponent(*cacheDirectory, kOOOXZManifestCache);
 }
@@ -427,7 +427,7 @@ std::optional<std::string> OOOXZManager::manifestPath()
  * off to the side a bit */
 std::optional<std::string> OOOXZManager::downloadPath()
 {
-	const std::optional<std::string> cacheDirectory = cxx::OOCacheManager::sharedCache()->cacheDirectoryPathCreatingIfNecessary(true);
+	const std::optional<std::string> cacheDirectory = OOCacheManager::sharedCache()->cacheDirectoryPathCreatingIfNecessary(true);
 	if (!cacheDirectory.has_value())  return std::nullopt;
 	if (_interfaceState == OXZ_STATE_UPDATING)
 	{

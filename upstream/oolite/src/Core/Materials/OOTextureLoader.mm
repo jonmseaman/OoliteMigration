@@ -94,7 +94,7 @@ oo::ObjCRef<::OOTextureLoader *> OOTextureLoader::loaderWithPath(const std::opti
 
 	if (result != nullptr)
 	{
-		if (!cxx::OOAsyncWorkManager::sharedAsyncWorkManager()->addTask(result.get(), kOOAsyncPriorityMedium))  result = nullptr;
+		if (!OOAsyncWorkManager::sharedAsyncWorkManager()->addTask(oo::ToCxx(result.get()), kOOAsyncPriorityMedium))  result = nullptr;
 	}
 
 	return result;
@@ -251,8 +251,8 @@ bool OOTextureLoader::getResult(OOPixMap *result,
 
 	if (!_ready)
 	{
-		// The work manager knows the task as the Objective-C object.
-		cxx::OOAsyncWorkManager::sharedAsyncWorkManager()->waitForTaskToComplete(oo::ToObjC(this));
+		// The work manager knows the task as the C++ loader (bead oo-9ht.14).
+		OOAsyncWorkManager::sharedAsyncWorkManager()->waitForTaskToComplete(this);
 	}
 	if (_data == NULL)  OK = NO;
 

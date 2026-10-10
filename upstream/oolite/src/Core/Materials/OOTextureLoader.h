@@ -66,7 +66,7 @@ typedef OOPixMapFormat OOTextureDataFormat;
 */
 namespace cxx {
 
-class OOTextureLoader : public oo::RefCounted
+class OOTextureLoader : public ::OOAsyncWorkTask
 {
 public:
 	OOTextureLoader();
@@ -130,9 +130,11 @@ public:
 	*/
 	virtual void loadTexture();
 
-	// OOAsyncWorkTask, through the facade: on a work thread, then on the main thread.
-	void performAsyncTask();
-	void completeAsyncTask();
+	// The work manager's task (bead oo-9ht.14; it was the facade): on a work thread, then on the
+	// main thread. The facade implemented -completeAsyncTask, so every loader has a completion.
+	void performAsyncTask() override;
+	bool hasCompleteAsyncTask() const override  { return true; }
+	void completeAsyncTask() override;
 
 	// The state (were the @protected ivars).
 	std::string					_path = {};

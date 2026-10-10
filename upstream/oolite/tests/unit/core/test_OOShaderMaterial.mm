@@ -275,7 +275,7 @@ namespace {
 
 GLint TextureUnits()
 {
-	return [[OOOpenGLExtensionManager sharedManager] textureImageUnitCount];
+	return OOOpenGLExtensionManager::sharedManager()->textureImageUnitCount();
 }
 
 

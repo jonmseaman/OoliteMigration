@@ -296,15 +296,15 @@ void cxx::Universe::initWithGameView(::MyOpenGLView *inGameView)
 	[::OOJoystickManager sharedStickHandler];
 
 	// init OpenGL extension manager (must be done before any other threads might use it)
-	[::OOOpenGLExtensionManager sharedManager];
-	[self setDetailLevelDirectly:OOGraphicsDetailFromNumber(prefs.object("detailLevel").isNull() ? [[::OOOpenGLExtensionManager sharedManager] defaultDetailLevel] : static_cast<unsigned int>(prefs.integerForKey("detailLevel")))];
+	OOOpenGLExtensionManager::sharedManager();
+	[self setDetailLevelDirectly:OOGraphicsDetailFromNumber(prefs.object("detailLevel").isNull() ? OOOpenGLExtensionManager::sharedManager()->defaultDetailLevel() : static_cast<unsigned int>(prefs.integerForKey("detailLevel")))];
 
 	[self initTargetFramebufferWithViewSize:[gameView backingViewSize]];
 
 	[::OOMaterial setUp];
 
 	// Preload cache
-	[::OOCacheManager sharedCache];
+	OOCacheManager::sharedCache();
 
 #if OOLITE_SPEECH_SYNTH
 	OO_LOG("speech.synthesis", "Spoken messages are {}.", (prefs.boolForKey("speech_on") ? "on" : "off"));
@@ -363,7 +363,7 @@ void cxx::Universe::initWithGameView(::MyOpenGLView *inGameView)
 	[[::GameController sharedController] cxx_logProgress:OO_DESC("loading-ships")];
 	// Load ship data
 
-	[::OOShipRegistry sharedRegistry];
+	OOShipRegistry::sharedRegistry();
 
 	entities.reserve(MAX_NUMBER_OF_ENTITIES);
 
@@ -473,7 +473,7 @@ void cxx::Universe::dealloc()
 
 	entitiesDeadThisUpdate.clear();
 
-	[[::OOCacheManager sharedCache] flush];
+	OOCacheManager::sharedCache()->flush();
 
 #if OOLITE_SPEECH_SYNTH
 	speechArray = oo::PList();
@@ -1145,7 +1145,7 @@ namespace {
 std::vector<std::string> CachedConditionScripts(const std::string &key)
 {
 	std::vector<std::string> scripts;
-	const oo::PList names = cxx::OOCacheManager::sharedCache()->pListForKey(key, "condition scripts");
+	const oo::PList names = OOCacheManager::sharedCache()->pListForKey(key, "condition scripts");
 	if (const oo::PList::Array *entries = names.getIf<oo::PList::Array>())
 	{
 		for (const oo::PList &entry : *entries)
@@ -3001,7 +3001,7 @@ bool Universe::spawnShip(const std::string &shipdesc)
 	::ShipEntity		*ship;
 	oo::PList		shipdict;
 
-	shipdict = [[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:shipdesc];
+	shipdict = OOShipRegistry::sharedRegistry()->shipInfoForKey(shipdesc);
 	if (shipdict.isNull())  return NO;
 
 	ship = [self cxx_newShipWithName:shipdesc];	// retain count is 1
@@ -3570,7 +3570,7 @@ bool Universe::dockingClearanceProtocolActive()
 
 void Universe::setDockingClearanceProtocolActive(bool newValue)
 {
-	::OOShipRegistry	*registry = [::OOShipRegistry sharedRegistry];
+	::OOShipRegistry	*registry = OOShipRegistry::sharedRegistry();
 	::StationEntity	*station = nil;
 
 	/* CIM: picking a random ship type which can take the same primary
@@ -3581,8 +3581,8 @@ void Universe::setDockingClearanceProtocolActive(bool newValue)
 	for (const oo::ObjCRef<::Entity *> &entry : allStations)
 	{
 		station = oo::ToStation(entry.get());
-		const std::optional<std::string>	stationKey = [registry cxx_randomShipKeyForRole:(station != nullptr ? station->getPrimaryRole() : std::optional<std::string>()).value_or("")];
-		const oo::PList	stationInfo = stationKey.has_value() ? [registry cxx_shipInfoForKey:*stationKey] : oo::PList();
+		const std::optional<std::string>	stationKey = registry->randomShipKeyForRole((station != nullptr ? station->getPrimaryRole() : std::optional<std::string>()).value_or(""));
+		const oo::PList	stationInfo = stationKey.has_value() ? registry->shipInfoForKey(*stationKey) : oo::PList();
 		if (stationInfo.find("requires_docking_clearance") == nullptr)
 		{
 			if (station != nullptr)  station->setRequiresDockingClearance(!!newValue);
@@ -3625,7 +3625,7 @@ void Universe::setupIntroFirstGo(bool justCobra)
 	// in status demo draw ships and display text
 	if (!justCobra)
 	{
-		demo_ships = [[::OOShipRegistry sharedRegistry] cxx_demoShipKeys];
+		demo_ships = OOShipRegistry::sharedRegistry()->demoShipKeys();
 		// always, even if it's the cobra, because it's repositioned
 		[self removeDemoShips];
 	}
@@ -4336,7 +4336,7 @@ bool Universe::canInstantiateShip(const std::string &shipKey)
 	oo::PList				shipInfo;
 	const oo::PList			*conditions = nullptr;
 	std::optional<std::string>	condition_script;
-	shipInfo = [[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:shipKey];
+	shipInfo = OOShipRegistry::sharedRegistry()->shipInfoForKey(shipKey);
 
 	condition_script = OptionalStringIn(shipInfo, "condition_script");
 	if (condition_script.has_value())
@@ -4379,7 +4379,7 @@ std::optional<std::string> Universe::randomShipKeyForRoleRespectingConditions(co
 	::Universe *self = oo::ToObjC(this);
 	OOJS_PROFILE_ENTER
 
-	::OOShipRegistry			*registry = [::OOShipRegistry sharedRegistry];
+	::OOShipRegistry			*registry = OOShipRegistry::sharedRegistry();
 	std::optional<std::string>	shipKey;
 	oo::Ref<OOMutableProbabilitySet>	pset;
 	
@@ -4389,7 +4389,7 @@ std::optional<std::string> Universe::randomShipKeyForRoleRespectingConditions(co
 #endif
 	
 	// Select a ship, check conditions and return it if possible.
-	shipKey = [registry cxx_randomShipKeyForRole:role];
+	shipKey = registry->randomShipKeyForRole(role);
 	if (!shipKey.has_value())  return std::nullopt;	// no ship has the role (a nil key passed the check and was returned)
 	if ([self canInstantiateShip:*shipKey])  return shipKey;
 	
@@ -4408,7 +4408,7 @@ std::optional<std::string> Universe::randomShipKeyForRoleRespectingConditions(co
 	}
 #endif
 	
-	if (OOProbabilitySet *set = [registry cxx_probabilitySetForRole:role])  pset = set->mutableCopy();
+	if (OOProbabilitySet *set = registry->probabilitySetForRole(role))  pset = set->mutableCopy();
 
 	while (pset != nullptr && pset->count() > 0)
 	{
@@ -4447,7 +4447,7 @@ std::optional<std::string> Universe::randomShipKeyForRoleRespectingConditions(co
 		{
 			if (ship != nullptr)  ship->setPrimaryRole(role);
 
-			shipInfo = [[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:*shipKey];
+			shipInfo = OOShipRegistry::sharedRegistry()->shipInfoForKey(*shipKey);
 			if (FuzzyBooleanIn(shipInfo, "auto_ai", YES))
 			{
 				// Set AI based on role
@@ -4484,7 +4484,7 @@ std::optional<std::string> Universe::randomShipKeyForRoleRespectingConditions(co
 	oo::PList				effectDict;
 	::Entity	*effect = nil;	// the effect's object (bead oo-9ht.165)
 
-	effectDict = [[::OOShipRegistry sharedRegistry] cxx_effectInfoForKey:effectKey];
+	effectDict = OOShipRegistry::sharedRegistry()->effectInfoForKey(effectKey);
 	if (effectDict.isNull())  return nil;
 
 	@try
@@ -4535,7 +4535,7 @@ std::optional<std::string> Universe::randomShipKeyForRoleRespectingConditions(co
 	oo::PList		shipDict;
 	::ShipEntity		*ship = nil;
 
-	shipDict = [[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:shipKey];
+	shipDict = OOShipRegistry::sharedRegistry()->shipInfoForKey(shipKey);
 	if (shipDict.isNull())  return nil;
 	
 	volatile BOOL makeStation = NO;	// a station is made in C++ since bead oo-9ht.175 (it was its class)
@@ -4595,7 +4595,7 @@ std::optional<std::string> Universe::randomShipKeyForRoleRespectingConditions(co
 	oo::PList		shipDict;
 	::ShipEntity		*dock = nil;	// its object
 
-	shipDict = [[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:shipDataKey];
+	shipDict = OOShipRegistry::sharedRegistry()->shipInfoForKey(shipDataKey);
 	if (shipDict.isNull())  return nil;
 
 	@try
@@ -4667,7 +4667,7 @@ std::optional<std::string> Universe::defaultAIForRole(const std::string &role)
 
 OOCargoQuantity Universe::maxCargoForShip(const std::string &desc)
 {
-	return [[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:desc].get<unsigned int>("max_cargo", 0);
+	return OOShipRegistry::sharedRegistry()->shipInfoForKey(desc).get<unsigned int>("max_cargo", 0);
 }
 
 
@@ -7193,7 +7193,7 @@ std::optional<std::string> Universe::soundNameForCustomSoundKey(const std::strin
 	}
 
 	// the cache holds the resolved names as strings (set below)
-	const oo::PList cachedName = [[::OOCacheManager sharedCache] cxx_pListForKey:key.value_or(std::string()) inCache:"resolved custom sounds"];
+	const oo::PList cachedName = OOCacheManager::sharedCache()->pListForKey(key.value_or(std::string()), "resolved custom sounds");
 	if (const std::string *name = cachedName.getIf<std::string>())  result = *name;
 	if (!result.has_value())
 	{
@@ -7228,7 +7228,7 @@ std::optional<std::string> Universe::soundNameForCustomSoundKey(const std::strin
 		}
 
 		if (!result.has_value())  result = std::string("__oolite-no-sound");
-		[[::OOCacheManager sharedCache] cxx_setPList:oo::PList(*result) forKey:key.value_or(std::string()) inCache:"resolved custom sounds"];
+		OOCacheManager::sharedCache()->setPList(oo::PList(*result), key.value_or(std::string()), "resolved custom sounds");
 	}
 
 	if (*result == "__oolite-no-sound")
@@ -9611,7 +9611,7 @@ oo::PList Universe::shipsForSaleForSystem(OOSystemID s, OOTechLevelID specialTL,
 	float					tech_price_boost = (ship_seed.a + ship_seed.b) / 256.0;
 	unsigned				i;
 	::PlayerEntity			*player = PLAYER;
-	::OOShipRegistry			*registry = [::OOShipRegistry sharedRegistry];
+	::OOShipRegistry			*registry = OOShipRegistry::sharedRegistry();
 	RANROTSeed				personalitySeed = RanrotSeedFromRandomSeed(ship_seed);
 
 	for (i = 0; i < 256; i++)
@@ -9626,13 +9626,13 @@ oo::PList Universe::shipsForSaleForSystem(OOSystemID s, OOTechLevelID specialTL,
 
 		double days_until_sale = (ship_sold_time - current_time) / 86400.0;
 
-		std::vector<std::string>	keysForShips = [registry cxx_playerShipKeys];
+		std::vector<std::string>	keysForShips = registry->playerShipKeys();
 		unsigned		si;
 		for (si = 0; si < keysForShips.size(); si++)
 		{
 			//eliminate any ships that fail a 'conditions test'
 			const std::string	key = keysForShips[si];
-			const oo::PList		dict = [registry cxx_shipyardInfoForKey:key];
+			const oo::PList		dict = registry->shipyardInfoForKey(key);
 			const oo::PList		*conditions = dict.get<oo::PList::Array>("conditions");
 
 			if (!(player != nullptr ? player->scriptTestConditions((conditions != nullptr) ? *conditions : oo::PList()) : false))
@@ -9683,7 +9683,7 @@ oo::PList Universe::shipsForSaleForSystem(OOSystemID s, OOTechLevelID specialTL,
 		}
 		unsigned		ship_index = (ship_seed.d * 0x100 + ship_seed.e) % keysForShips.size();
 		const std::string	ship_key = keysForShips[ship_index];
-		const oo::PList	ship_info = [registry cxx_shipyardInfoForKey:ship_key];
+		const oo::PList	ship_info = registry->shipyardInfoForKey(ship_key);
 		OOTechLevelID	ship_techlevel = ship_info.get<int>(std::string(KEY_TECHLEVEL));
 
 		double chance = 1.0 - pow(1.0 - ship_info.get<double>(std::string(KEY_CHANCE)), MAX((OOTechLevelID)1, techlevel - ship_techlevel));
@@ -9693,7 +9693,7 @@ oo::PList Universe::shipsForSaleForSystem(OOSystemID s, OOTechLevelID specialTL,
 		uint32_t superRand2 = ship_seed.b * 0x10000 + ship_seed.d * 0x100 + ship_seed.f;
 		ranrot_srand(superRand2);
 
-		const oo::PList shipBaseDict = [[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:ship_key];
+		const oo::PList shipBaseDict = OOShipRegistry::sharedRegistry()->shipInfoForKey(ship_key);
 
 		if ((days_until_sale > 0.0) && (days_until_sale < 30.0) && (ship_techlevel <= techlevel) && (randf() < chance) && !shipBaseDict.isNull())
 		{
@@ -10024,7 +10024,7 @@ OOCreditsQuantity Universe::tradeInValueForCommanderDictionary(const oo::PList &
 	// get basic information about the craft
 	OOCreditsQuantity	base_price = 0ULL;
 	std::optional<std::string>	ship_desc = OptionalStringIn(dict, "ship_desc");
-	const oo::PList		shipyard_info = ship_desc.has_value() ? [[::OOShipRegistry sharedRegistry] cxx_shipyardInfoForKey:*ship_desc] : oo::PList();
+	const oo::PList		shipyard_info = ship_desc.has_value() ? OOShipRegistry::sharedRegistry()->shipyardInfoForKey(*ship_desc) : oo::PList();
 	// This checks a rare, but possible case. If the ship for which we are trying to calculate a trade in value
 	// does not have a shipyard dictionary entry, report it and set its base price to 0 -- Nikos 20090613.
 	if (shipyard_info.isNull())
@@ -10588,7 +10588,7 @@ void Universe::setDetailLevelDirectly(OOGraphicsDetail value)
 	{
 		value = DETAIL_LEVEL_MINIMUM;
 	}
-	if (![[::OOOpenGLExtensionManager sharedManager] shadersSupported])
+	if (!OOOpenGLExtensionManager::sharedManager()->shadersSupported())
 	{
 		value = DETAIL_LEVEL_MINIMUM;
 	}
@@ -10994,7 +10994,7 @@ bool Universe::reinitAndShowDemo(bool showDemo)
 	//       reloaded. Ideally anything using the sharedCache should
 	//       be aware of cache flushes so it can automatically
 	//       reinitialize itself - mwerle 20081107.
-	[::OOShipRegistry reload];
+	OOShipRegistry::reload();
 	[[self gameController] setGamePaused:NO];
 	[[self gameController] setMouseInteractionModeForUIWithMouseInteraction:NO];
 	if (PLAYER != nullptr)  PLAYER->setSpeed(0.0);
@@ -11007,7 +11007,7 @@ bool Universe::reinitAndShowDemo(bool showDemo)
 	
 	if(showDemo)
 	{
-		demo_ships = [[::OOShipRegistry sharedRegistry] cxx_demoShipKeys];
+		demo_ships = OOShipRegistry::sharedRegistry()->demoShipKeys();
 		demo_ship_index = 0;
 		demo_ship_subindex = 0;
 	}
@@ -11102,7 +11102,7 @@ void Universe::setUpInitialUniverse()
 	OO_DEBUG_POP_PROGRESS();
 	
 	OO_DEBUG_PUSH_PROGRESS("Player init: setUpShipFromDictionary");
-	if (player != nullptr)  player->setUpShipFromDictionary([[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:(player != nullptr ? player->shipDataKey() : std::optional<std::string>()).value_or(std::string())]);	// the standard cobra at this point
+	if (player != nullptr)  player->setUpShipFromDictionary(OOShipRegistry::sharedRegistry()->shipInfoForKey((player != nullptr ? player->shipDataKey() : std::optional<std::string>()).value_or(std::string())));	// the standard cobra at this point
 	if (player != nullptr)  player->baseMass(); // bootstrap the base mass used in all fuel charge calculations.
 	OO_DEBUG_POP_PROGRESS();
 	
@@ -11537,7 +11537,7 @@ void Universe::runLocalizationTools()
 // See notes at preloadPlanetTexturesForSystem:.
 void Universe::prunePreloadingPlanetMaterials()
 {
-	[[::OOAsyncWorkManager sharedAsyncWorkManager] completePendingTasks];
+	OOAsyncWorkManager::sharedAsyncWorkManager()->completePendingTasks();
 	
 	NSUInteger i = _preloadingPlanetMaterials.size();
 	while (i--)
@@ -11803,7 +11803,7 @@ void Universe::initTargetFramebufferWithViewSize(NSSize viewSize)
 	*/
 	
 	// shader for drawing a textured quad on the passthrough framebuffer and preparing it for bloom using MRT
-	if (![[::OOOpenGLExtensionManager sharedManager] shadersForceDisabled])
+	if (!OOOpenGLExtensionManager::sharedManager()->shadersForceDisabled())
 	{
 		textureProgram = OOShaderProgram::shaderProgramWithVertexShaderName("oolite-texture.vertex",
 													"oolite-texture.fragment",

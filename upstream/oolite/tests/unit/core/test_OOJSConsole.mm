@@ -323,19 +323,19 @@ OOGraphicsDetail cxx_OOGraphicsDetailFromString(const std::string &string)
 
 
 // The OpenGL extension manager's answers: the C++ manager's members the console reads.
-cxx::OOOpenGLExtensionManager *cxx::OOOpenGLExtensionManager::sharedManager()
+OOOpenGLExtensionManager *OOOpenGLExtensionManager::sharedManager()
 {
-	static cxx::OOOpenGLExtensionManager *manager = nullptr;
-	if (manager == nullptr)  manager = new cxx::OOOpenGLExtensionManager;	// never released, as the game's
+	static OOOpenGLExtensionManager *manager = nullptr;
+	if (manager == nullptr)  manager = new OOOpenGLExtensionManager;	// never released, as the game's
 	return manager;
 }
 
-cxx::OOOpenGLExtensionManager::~OOOpenGLExtensionManager()  {}
-OOGraphicsDetail cxx::OOOpenGLExtensionManager::maximumDetailLevel()  { return DETAIL_LEVEL_MAXIMUM; }
-std::optional<std::string> cxx::OOOpenGLExtensionManager::vendorString()  { return std::string("Test Vendor"); }
-std::optional<std::string> cxx::OOOpenGLExtensionManager::rendererString()  { return std::nullopt; }
-GLint cxx::OOOpenGLExtensionManager::textureUnitCount()  { return 4; }
-GLint cxx::OOOpenGLExtensionManager::textureImageUnitCount()  { return 16; }
+OOOpenGLExtensionManager::~OOOpenGLExtensionManager()  {}
+OOGraphicsDetail OOOpenGLExtensionManager::maximumDetailLevel()  { return DETAIL_LEVEL_MAXIMUM; }
+std::optional<std::string> OOOpenGLExtensionManager::vendorString()  { return std::string("Test Vendor"); }
+std::optional<std::string> OOOpenGLExtensionManager::rendererString()  { return std::nullopt; }
+GLint OOOpenGLExtensionManager::textureUnitCount()  { return 4; }
+GLint OOOpenGLExtensionManager::textureImageUnitCount()  { return 16; }
 
 
 @interface FakeUniverse: OOObject

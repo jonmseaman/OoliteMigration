@@ -74,39 +74,27 @@ oo::PList cxx_OOPropertyListFromFile(const std::string &path)
 }
 
 
-@interface OOCacheManager: OOObject
+// The cache manager is C++ since bead oo-9ht.31 deleted its facade: a C++ stand-in with the Objective-C
+// stand-in's answers.
+static std::map<std::string, oo::PList>	gCacheEntries;	// "cache/key" -> value
+
+#import "OOCacheManager.h"
+
+OOCacheManager *OOCacheManager::sharedCache()
 {
-@public
-	std::map<std::string, oo::PList>	_entries;	// "cache/key" -> value
-}
-+ (OOCacheManager *) sharedCache;
-- (oo::PList) cxx_pListForKey:(const std::string &)key inCache:(const std::string &)cache;
-- (void) cxx_setPList:(const oo::PList &)value forKey:(const std::string &)key inCache:(const std::string &)cache;
-@end
-
-
-@implementation OOCacheManager
-
-+ (OOCacheManager *) sharedCache
-{
-	static OOCacheManager *shared = [[OOCacheManager alloc] init];
+	static OOCacheManager *shared = new OOCacheManager;
 	return shared;
 }
-
-
-- (oo::PList) cxx_pListForKey:(const std::string &)key inCache:(const std::string &)cache
+OOCacheManager::~OOCacheManager()  {}
+oo::PList OOCacheManager::pListForKey(const std::string &key, const std::string &cache)
 {
-	const auto found = _entries.find(cache + "/" + key);
-	return found != _entries.end() ? found->second : oo::PList();
+	const auto found = gCacheEntries.find(cache + "/" + key);
+	return found != gCacheEntries.end() ? found->second : oo::PList();
 }
-
-
-- (void) cxx_setPList:(const oo::PList &)value forKey:(const std::string &)key inCache:(const std::string &)cache
+void OOCacheManager::setPList(const oo::PList &value, const std::string &key, const std::string &cache)
 {
-	_entries[cache + "/" + key] = value;
+	gCacheEntries[cache + "/" + key] = value;
 }
-
-@end
 
 
 namespace {
@@ -451,7 +439,7 @@ OO_TEST(loadsAndRunsAStateMachine)
 		OO_CHECK(LogLinesContaining("Handler \"BADHANDLER\" for state \"ATTACK\"") == 1);
 
 		// The cleaned machine is cached, with its script name.
-		const oo::PList cached = [[OOCacheManager sharedCache] cxx_pListForKey:"test.plist" inCache:"AIs"];
+		const oo::PList cached = OOCacheManager::sharedCache()->pListForKey("test.plist", "AIs");
 		OO_CHECK(cached.get<std::string>("jsScript") == "test.js");
 		OO_CHECK(cached.find("BROKEN") == nullptr);
 		OO_CHECK(*cached.find("ATTACK")->find("ENTER") == Strings({ "doThing: 1  2", "doNothing", "doThing: twice" }));
@@ -482,7 +470,7 @@ OO_TEST(unknownStateMachines)
 		[ai cxx_setStateMachine:"missing.plist" withJSScript:"x.js"];
 		OO_CHECK([ai cxx_name] == std::optional<std::string>("<no AI>"));
 		OO_CHECK(LogLinesContaining("to \"missing.plist\" - could not load file") == 1);
-		OO_CHECK([[OOCacheManager sharedCache] cxx_pListForKey:"missing.plist" inCache:"AIs"] == oo::PList(std::string("nil")));
+		OO_CHECK(OOCacheManager::sharedCache()->pListForKey("missing.plist", "AIs") == oo::PList(std::string("nil")));
 
 		// Remembered as missing: no second attempt, no second log line.
 		const int lines = LogLinesContaining("missing.plist");

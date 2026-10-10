@@ -817,7 +817,7 @@ namespace {
 static Script LoadScriptWithName(ooscript::Context context, const std::optional<std::string> &path, ooscript::Object object, ooscript::Object *outScriptObject, std::optional<std::string> *outErrorMessage)
 {
 #if OO_CACHE_JS_SCRIPTS
-	OOCacheManager				*cache = nil;
+	OOCacheManager				*cache = nullptr;
 #endif
 	std::optional<std::string>	fileContents;
 	std::optional<std::u16string>	data;	// the script's UTF-16 units
@@ -828,8 +828,8 @@ static Script LoadScriptWithName(ooscript::Context context, const std::optional<
 	
 #if OO_CACHE_JS_SCRIPTS
 	// Look for cached compiled script (a nil path is the key "", as the cache read it)
-	cache = [OOCacheManager sharedCache];
-	const oo::PList cached = [cache cxx_pListForKey:path.value_or("") inCache:"compiled JavaScript scripts"];
+	cache = OOCacheManager::sharedCache();
+	const oo::PList cached = cache->pListForKey(path.value_or(""), "compiled JavaScript scripts");
 	if (const oo::Data *cachedData = cached.getIf<oo::PList::Data>())
 	{
 		script = ScriptWithCompiledData(context, *cachedData);
@@ -877,7 +877,7 @@ static Script LoadScriptWithName(ooscript::Context context, const std::optional<
 		{
 			// Write compiled script to cache
 			const std::optional<oo::Data> compiled = CompiledScriptData(context, script);
-			[cache cxx_setPList:(compiled.has_value() ? oo::PList(*compiled) : oo::PList()) forKey:path.value_or("") inCache:"compiled JavaScript scripts"];	// (null asserts, as nil did)
+			cache->setPList((compiled.has_value() ? oo::PList(*compiled) : oo::PList()), path.value_or(""), "compiled JavaScript scripts");	// (null asserts, as nil did)
 		}
 #endif
 	}

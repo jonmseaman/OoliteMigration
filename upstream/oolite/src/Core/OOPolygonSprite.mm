@@ -199,7 +199,7 @@ void OOPolygonSprite::drawWithData(GLfloat *data, size_t count, GLuint *vbo)
 	OOSetOpenGLState(OPENGL_STATE_OVERLAY);
 	
 #if OO_USE_VBO
-	BOOL useVBO = [[OOOpenGLExtensionManager sharedManager] vboSupported];
+	BOOL useVBO = OOOpenGLExtensionManager::sharedManager()->vboSupported();
 	
 	if (useVBO)
 	{

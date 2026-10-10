@@ -78,7 +78,7 @@ MA 02110-1301, USA.
 	collision exceptions, cascades, group, escort and patrol, wormholes, docking instructions,
 	distress and course. Slice 6 (bead oo-ljuy1): the perform* behaviours, the scanner, cargo
 	adjustment, damage and threat assessment, and the static methods (the ship registry is
-	cxx::OOShipRegistry). Since oo-9ht.181 the file sends the universe its messages directly, as
+	OOShipRegistry). Since oo-9ht.181 the file sends the universe its messages directly, as
 	OOJSStation.mm does, until the universe is C++ (oo-pas).
 */
 
@@ -4575,7 +4575,7 @@ static double ShipThreatAssessmentWeapon(OOWeaponType wt)
 static bool ShipStaticKeys(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context);
-	cxx::OOShipRegistry		*registry = cxx::OOShipRegistry::sharedRegistry();
+	OOShipRegistry		*registry = OOShipRegistry::sharedRegistry();
 
 	OOJS_RETURN_PLIST(StringArray(registry->shipKeys()));
 
@@ -4585,7 +4585,7 @@ static bool ShipStaticKeys(ooscript::Context context, ooscript::CallArgs &oojsAr
 static bool ShipStaticKeysForRole(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context);
-	cxx::OOShipRegistry		*registry = cxx::OOShipRegistry::sharedRegistry();
+	OOShipRegistry		*registry = OOShipRegistry::sharedRegistry();
 
 	if (oojsArgs.count() > 0)
 	{
@@ -4628,7 +4628,7 @@ static bool ShipStaticRoleIsInCategory(ooscript::Context context, ooscript::Call
 static bool ShipStaticRoles(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context);
-	cxx::OOShipRegistry		*registry = cxx::OOShipRegistry::sharedRegistry();
+	OOShipRegistry		*registry = OOShipRegistry::sharedRegistry();
 
 	OOJS_RETURN_PLIST(StringArray(registry->shipRoles()));
 
@@ -4639,7 +4639,7 @@ static bool ShipStaticRoles(ooscript::Context context, ooscript::CallArgs &oojsA
 static bool ShipStaticShipDataForKey(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context);
-	cxx::OOShipRegistry		*registry = cxx::OOShipRegistry::sharedRegistry();
+	OOShipRegistry		*registry = OOShipRegistry::sharedRegistry();
 
 	if (oojsArgs.count() > 0)
 	{
@@ -4659,7 +4659,7 @@ static bool ShipStaticShipDataForKey(ooscript::Context context, ooscript::CallAr
 static bool ShipStaticSetShipDataForKey(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context);
-	cxx::OOShipRegistry				*registry = cxx::OOShipRegistry::sharedRegistry();
+	OOShipRegistry				*registry = OOShipRegistry::sharedRegistry();
 
 	if (oojsArgs.count() >= 2)
 	{

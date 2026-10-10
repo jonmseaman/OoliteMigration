@@ -136,7 +136,7 @@ bool Matches(OOOpenGLStateID state)
 OO_TEST(fromTheInitialState)
 {
 	OO_CHECK(OOTestGLContext());
-	(void)cxx::OOOpenGLExtensionManager::sharedManager();	// loads glActiveTextureARB & co.
+	(void)OOOpenGLExtensionManager::sharedManager();	// loads glActiveTextureARB & co.
 
 	for (int s = 0; s < OPENGL_STATE_INTERNAL_USE_ONLY; s++)
 	{

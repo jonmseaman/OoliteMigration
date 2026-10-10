@@ -1629,7 +1629,7 @@ bool PlayerEntity::setCommanderDataFromDictionary(const oo::PList &dict)
 	setShipDataKey(StringForKey(dict, "ship_desc"));
 
 	const std::optional<std::string> shipDataKey = this->shipDataKey();
-	const oo::PList shipDict = shipDataKey.has_value() ? [[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:*shipDataKey] : oo::PList();
+	const oo::PList shipDict = shipDataKey.has_value() ? OOShipRegistry::sharedRegistry()->shipInfoForKey(*shipDataKey) : oo::PList();
 	if (shipDict.isNull())  return NO;
 	if (!setUpShipFromDictionary(shipDict))  return NO;
 	OO_LOG("fuelPrices", "Got \"{}\", fuel charge rate: {:.2f}", this->shipDataKey().value_or("(null)"), fuelChargeRate());
@@ -1972,7 +1972,7 @@ bool PlayerEntity::setCommanderDataFromDictionary(const oo::PList &dict)
 	fuel = dict.get<unsigned int>("fuel", fuel);
 	galaxy_number = dict.get<int>("galaxy_number");
 //
-	const oo::PList shipyard_info = shipDataKey.has_value() ? [[::OOShipRegistry sharedRegistry] cxx_shipyardInfoForKey:*shipDataKey] : oo::PList();
+	const oo::PList shipyard_info = shipDataKey.has_value() ? OOShipRegistry::sharedRegistry()->shipyardInfoForKey(*shipDataKey) : oo::PList();
 	OOWeaponFacingSet available_facings = shipyard_info.get<unsigned int>(std::string(KEY_WEAPON_FACINGS), weaponFacings());
 
 	if (available_facings & WEAPON_FACING_FORWARD)
@@ -4291,7 +4291,7 @@ void PlayerEntity::showGameOver()
 void PlayerEntity::showShipModelWithKey(const std::string &shipKey, const oo::PList &shipDataIn, uint16_t personality, GLfloat factorX, GLfloat factorY, GLfloat factorZ, const std::optional<std::string> &context)
 {
 	// (a nil key returns in the bridged -showShipModelWithKey:...)
-	const oo::PList shipData = shipDataIn.isNull() ? [[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:shipKey] : shipDataIn;
+	const oo::PList shipData = shipDataIn.isNull() ? OOShipRegistry::sharedRegistry()->shipInfoForKey(shipKey) : shipDataIn;
 	if (shipData.isNull())  return;
 	
 	Quaternion		q2 = { (GLfloat)M_SQRT1_2, (GLfloat)M_SQRT1_2, (GLfloat)0.0f, (GLfloat)0.0f };
@@ -4733,7 +4733,7 @@ void PlayerEntity::setTargetDockStationTo(::StationEntity *value)
 void PlayerEntity::resetHud()
 {
 	// set up defauld HUD for the ship
-	const oo::PList shipDict = [[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:shipDataKey().value_or("")];
+	const oo::PList shipDict = OOShipRegistry::sharedRegistry()->shipInfoForKey(shipDataKey().value_or(""));
 	const std::string hud_desc = shipDict.get<std::string>("hud", "hud.plist");
 	if (!switchHudTo(hud_desc))  switchHudTo("hud.plist");	// ensure we have a HUD to fall back to
 }
@@ -7452,7 +7452,7 @@ void PlayerEntity::docked()
 	{
 		setGuiToStatusScreen();
 	}
-	[[::OOCacheManager sharedCache] flush];
+	OOCacheManager::sharedCache()->flush();
 	[[::OOJavaScriptEngine sharedEngine] garbageCollectionOpportunity:YES];
 	
 	// When a mission screen is started, any on-screen message is removed immediately.
@@ -9320,7 +9320,7 @@ void PlayerEntity::setGuiToGameOptionsScreen()
 		OOGraphicsDetail detailLevel = [UNIVERSE detailLevel];
 		const std::string shaderEffectsOptionsString = cxx_OOExpand("gameoptions-detaillevel-[detailLevel]", detailLevel).value_or(std::string());
 		gui->setText(ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), shaderEffectsOptionsString, {}), GUI_ROW(GAME,SHADEREFFECTS), GUI_ALIGN_CENTER);
-		if (![[::OOOpenGLExtensionManager sharedManager] shadersForceDisabled])
+		if (!OOOpenGLExtensionManager::sharedManager()->shadersForceDisabled())
 		{
 			gui->setKey(std::string(GUI_KEY_OK), GUI_ROW(GAME,SHADEREFFECTS));
 		}
@@ -9511,8 +9511,8 @@ void PlayerEntity::highlightEquipShipScreenKey(const std::string &highlightKey)
 
 OOWeaponFacingSet PlayerEntity::availableFacings()
 {
-	::OOShipRegistry		*registry = [::OOShipRegistry sharedRegistry];
-	const oo::PList		shipyardInfo = [registry cxx_shipyardInfoForKey:shipDataKey().value_or("")];
+	::OOShipRegistry		*registry = OOShipRegistry::sharedRegistry();
+	const oo::PList		shipyardInfo = registry->shipyardInfoForKey(shipDataKey().value_or(""));
 	unsigned			available_facings = shipyardInfo.get<unsigned int>(std::string(KEY_WEAPON_FACINGS), weaponFacings());	// use defaults  explicitly
 	
 	return available_facings & VALID_WEAPON_FACINGS;
@@ -9562,8 +9562,8 @@ void PlayerEntity::setGuiToEquipShipScreen(int skipParam, const std::optional<st
 	std::vector<std::string>	equipmentAllowed;
 
 	// find options that agree with this ship (a set of keys: only the string elements could ever match)
-	::OOShipRegistry		*registry = [::OOShipRegistry sharedRegistry];
-	const oo::PList		shipyardInfo = [registry cxx_shipyardInfoForKey:shipDataKey().value_or("")];
+	::OOShipRegistry		*registry = OOShipRegistry::sharedRegistry();
+	const oo::PList		shipyardInfo = registry->shipyardInfoForKey(shipDataKey().value_or(""));
 	std::set<std::string>	options;
 	const auto addOptions = [&options](const oo::PList *list)
 	{
@@ -10255,7 +10255,7 @@ void PlayerEntity::setGuiToIntroFirstGo(bool justCobra)
 	if (justCobra)
 	{
 		[UNIVERSE removeDemoShips];
-		[[::OOCacheManager sharedCache] flush];	// At first startup, a lot of stuff is cached
+		OOCacheManager::sharedCache()->flush();	// At first startup, a lot of stuff is cached
 	}
 	
 	if (justCobra)
@@ -10864,7 +10864,7 @@ bool PlayerEntity::setWeaponMount(OOWeaponFacing facing, const std::string &eqKe
 bool PlayerEntity::setWeaponMount(OOWeaponFacing facing, const std::string &eqKey, const std::optional<std::string> &context)
 {
 
-	const oo::PList		shipyardInfo = [[::OOShipRegistry sharedRegistry] cxx_shipyardInfoForKey:shipDataKey().value_or("")];
+	const oo::PList		shipyardInfo = OOShipRegistry::sharedRegistry()->shipyardInfoForKey(shipDataKey().value_or(""));
 	unsigned			available_facings = shipyardInfo.get<unsigned int>(std::string(KEY_WEAPON_FACINGS), weaponFacings());	// use defaults  explicitly
 	
 	// facing exists?
@@ -12194,8 +12194,8 @@ double PlayerEntity::renovationCosts()
 
 double PlayerEntity::renovationFactor()
 {
-	::OOShipRegistry		*registry = [::OOShipRegistry sharedRegistry];
-	const oo::PList		shipyardInfo = [registry cxx_shipyardInfoForKey:shipDataKey().value_or("")];
+	::OOShipRegistry		*registry = OOShipRegistry::sharedRegistry();
+	const oo::PList		shipyardInfo = registry->shipyardInfoForKey(shipDataKey().value_or(""));
 	return shipyardInfo.get<double>(std::string(KEY_RENOVATION_MULTIPLIER), 1.0);
 }
 
@@ -12215,7 +12215,7 @@ void PlayerEntity::setDefaultViewOffsets()
 
 void PlayerEntity::setDefaultCustomViews()
 {
-	const oo::PList shipInfo = [[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:std::string(PLAYER_SHIP_DESC)];
+	const oo::PList shipInfo = OOShipRegistry::sharedRegistry()->shipInfoForKey(std::string(PLAYER_SHIP_DESC));
 	const oo::PList *customViews = shipInfo.find("custom_views");
 
 	_customViews.clear();

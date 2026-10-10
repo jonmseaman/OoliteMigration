@@ -3863,8 +3863,8 @@ bool ShipEntity::equipmentValidToAdd(const std::string &fullEquipmentKey, bool l
 		{
 			// find options that agree with this ship. Only player ships have these options.
 			// (Membership only: the string elements of the two arrays.)
-			::OOShipRegistry		*registry = [::OOShipRegistry sharedRegistry];
-			const oo::PList		shipyardInfo = [registry cxx_shipyardInfoForKey:shipDataKey().value_or("")];
+			::OOShipRegistry		*registry = OOShipRegistry::sharedRegistry();
+			const oo::PList		shipyardInfo = registry->shipyardInfoForKey(shipDataKey().value_or(""));
 			std::set<std::string>	options;
 			const oo::PList		*standardEquipment = shipyardInfo.find(std::string(KEY_STANDARD_EQUIPMENT));
 			for (const oo::PList *list : { ArrayForKey(shipyardInfo, std::string(KEY_OPTIONAL_EQUIPMENT)),

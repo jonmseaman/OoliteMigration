@@ -535,7 +535,7 @@ void OOTexture::checkExtensions()
 
 	sCheckedExtensions = YES;
 
-	cxx::OOOpenGLExtensionManager	*extMgr = cxx::OOOpenGLExtensionManager::sharedManager();
+	OOOpenGLExtensionManager	*extMgr = OOOpenGLExtensionManager::sharedManager();
 	BOOL						ver120 = extMgr->versionIsAtLeastMajor(1, 2);
 	BOOL						ver130 = extMgr->versionIsAtLeastMajor(1, 3);
 

@@ -137,7 +137,7 @@ oo::Ref<OOMesh> Mesh(const std::string &name, float scale = 1.0f, BOOL cacheWrit
 
 oo::PList CachedPList(const std::string &key, const std::string &cache)
 {
-	return [[OOCacheManager sharedCache] cxx_pListForKey:key inCache:cache];
+	return OOCacheManager::sharedCache()->pListForKey(key, cache);
 }
 
 

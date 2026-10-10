@@ -110,7 +110,8 @@ TestLoader *Loader(const char *path, uint32_t options, uint32_t width, uint32_t 
 
 bool Queue(OOTextureLoader *loader)
 {
-	return [[OOAsyncWorkManager sharedAsyncWorkManager] addTask:loader priority:kOOAsyncPriorityMedium];
+	// The work manager's task is the C++ loader since bead oo-9ht.14 (it was the Objective-C object).
+	return OOAsyncWorkManager::sharedAsyncWorkManager()->addTask(oo::ToCxx(loader), kOOAsyncPriorityMedium);
 }
 
 

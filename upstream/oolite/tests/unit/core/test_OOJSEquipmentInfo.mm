@@ -125,19 +125,17 @@ oo::PList EquipmentData()
 Universe *gSharedUniverse = nil;
 
 
-@interface OOCacheManager: OOObject
-+ (OOCacheManager *) sharedCache;
-- (void) cxx_setPList:(const oo::PList &)value forKey:(const std::string &)key inCache:(const std::string &)cache;
-@end
+#import "OOCacheManager.h"
 
-@implementation OOCacheManager
-+ (OOCacheManager *) sharedCache
+// The cache manager is C++ since bead oo-9ht.31 deleted its facade: a C++ stand-in with the Objective-C
+// stand-in's answers.
+OOCacheManager *OOCacheManager::sharedCache()
 {
-	static OOCacheManager *cache = [[OOCacheManager alloc] init];
-	return cache;
+	static OOCacheManager *shared = new OOCacheManager;
+	return shared;
 }
-- (void) cxx_setPList:(const oo::PList &)value forKey:(const std::string &)key inCache:(const std::string &)cache  { (void)value; (void)key; (void)cache; }
-@end
+OOCacheManager::~OOCacheManager()  {}
+void OOCacheManager::setPList(const oo::PList &value, const std::string &key, const std::string &cache)  { (void)value; (void)key; (void)cache; }
 
 
 #import "OOScript.h"

@@ -50,7 +50,7 @@ constexpr const char *kCacheName				= "sanitized legacy scripts";
 
 std::optional<std::vector<oo::Ref<OOScript>>> OOPListScript::scriptsInPListFile(const std::string &filePath)
 {
-	cxx::OOCacheManager *cache = cxx::OOCacheManager::sharedCache();
+	OOCacheManager *cache = OOCacheManager::sharedCache();
 	const oo::PList cachedScripts = (cache != nullptr) ? cache->pListForKey(filePath, kCacheName) : oo::PList();
 	if (cachedScripts)
 	{
@@ -153,7 +153,7 @@ std::vector<oo::Ref<OOScript>> OOPListScript::scriptsFromDictionaryOfScripts(con
 		}
 	}
 
-	if (cxx::OOCacheManager *cache = cxx::OOCacheManager::sharedCache())  cache->setPList(oo::PList(std::move(cachedScripts)), filePath, kCacheName);
+	if (OOCacheManager *cache = OOCacheManager::sharedCache())  cache->setPList(oo::PList(std::move(cachedScripts)), filePath, kCacheName);
 
 	return result;
 }

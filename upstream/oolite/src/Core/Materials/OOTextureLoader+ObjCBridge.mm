@@ -275,17 +275,4 @@ cxx::OOTextureLoader *oo::ToCxx(OOTextureLoader *loader)
 }
 
 
-// OOAsyncWorkTask: the work manager sends these to the task, the Objective-C object.
-
-- (void)performAsyncTask
-{
-	_cxxLoader->performAsyncTask();
-}
-
-
-- (void) completeAsyncTask
-{
-	_cxxLoader->completeAsyncTask();
-}
-
 @end

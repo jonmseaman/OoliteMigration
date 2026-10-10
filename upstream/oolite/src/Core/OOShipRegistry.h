@@ -39,8 +39,6 @@ class OOProbabilitySet;	// C++ since bead oo-489v
 class OOMutableProbabilitySet;
 
 
-namespace cxx {
-
 class OOShipRegistry : public oo::RefCounted
 {
 public:
@@ -107,8 +105,3 @@ private:
 
 	bool shipIsBallTurretForKey(const std::string &shipKey, const oo::PList &shipData);
 };
-
-}	// namespace cxx
-
-
-#import "OOShipRegistry+ObjCBridge.h"

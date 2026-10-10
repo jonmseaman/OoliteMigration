@@ -193,7 +193,7 @@ oo::PList ShipEntity::savedShipDictionaryWithContext(OOShipSaveContext *context)
 	::ShipEntity *ship = nil;
 
 	const std::string shipKey = dict.get<std::string>(KEY_SHIP_KEY);	// "" finds no ship, as nil did
-	const oo::PList shipData = [[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:shipKey];
+	const oo::PList shipData = OOShipRegistry::sharedRegistry()->shipInfoForKey(shipKey);
 
 	if (shipData)
 	{
@@ -296,7 +296,7 @@ void ShipEntity::simplifyShipdata(oo::PList::Dict &data, std::vector<std::string
 	deletes->clear();
 
 	// Get original ship data.
-	oo::PList::Dict referenceData = DictFrom([[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:shipDataKey().value_or(std::string())]);
+	oo::PList::Dict referenceData = DictFrom(OOShipRegistry::sharedRegistry()->shipInfoForKey(shipDataKey().value_or(std::string())));
 
 	// Discard stuff that we handle separately.
 	StripIgnoredKeys(referenceData);

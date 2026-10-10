@@ -50,8 +50,8 @@ static int gTextureApplyNones = 0;
 // Link stubs (amendment oo-zffj item 2), never reached here: OOMaterialSpecifier.mm's texture
 // specifiers, and OOOpenGL.mm's GL state dump.
 oo::PList cxx_OOTextureSpecFromObject(const oo::PList &, const std::optional<std::string> &)	{ std::abort(); }
-cxx::OOOpenGLExtensionManager *cxx::OOOpenGLExtensionManager::sharedManager()				{ std::abort(); }
-GLint cxx::OOOpenGLExtensionManager::textureUnitCount()										{ std::abort(); }
+OOOpenGLExtensionManager *OOOpenGLExtensionManager::sharedManager()				{ std::abort(); }
+GLint OOOpenGLExtensionManager::textureUnitCount()										{ std::abort(); }
 
 
 /*	UNIVERSE is gSharedUniverse. The material asks it -reducedDetail (-permitSpecular), and the

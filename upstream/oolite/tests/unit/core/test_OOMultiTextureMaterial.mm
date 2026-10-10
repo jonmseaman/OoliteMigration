@@ -154,6 +154,9 @@ std::optional<std::string> cxx::OOTextureLoader::cacheKey()  { return std::nullo
 std::optional<std::string> cxx::OOTextureLoader::descriptionComponents() const  { return std::nullopt; }
 std::optional<std::string> cxx::OOTextureLoader::shortDescriptionComponents() const  { return std::nullopt; }
 void cxx::OOTextureLoader::loadTexture()  {}
+// The loader is the work manager's task since bead oo-9ht.14 (its vtable): never reached.
+void cxx::OOTextureLoader::performAsyncTask()  { std::abort(); }
+void cxx::OOTextureLoader::completeAsyncTask()  { std::abort(); }
 uint32_t cxx::OOTextureGenerator::textureOptions()  { return 0; }
 GLfloat cxx::OOTextureGenerator::anisotropy()  { return 0; }
 GLfloat cxx::OOTextureGenerator::lodBias()  { return 0; }
@@ -227,7 +230,7 @@ namespace {
 
 bool CombinersSupported()
 {
-	return OOTestGLContext() && [[OOOpenGLExtensionManager sharedManager] textureCombinersSupported];
+	return OOTestGLContext() && OOOpenGLExtensionManager::sharedManager()->textureCombinersSupported();
 }
 
 
