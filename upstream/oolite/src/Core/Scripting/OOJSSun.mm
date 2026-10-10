@@ -86,7 +86,7 @@ static ClassDef sSunClass =
 	nullptr,				// newEnumerate
 	nullptr,				// resolve
 	nullptr,				// convert
-	OOJSObjectWrapperFinalize,	// finalize
+	OOJSCxxObjectWrapperFinalize,	// finalize
 	nullptr,				// call
 	nullptr,				// construct
 	nullptr,				// backend
@@ -129,16 +129,16 @@ static FunctionSpec sSunMethods[] =
 
 
 namespace {
-DEFINE_JS_OBJECT_GETTER(JSSunGetSunObject, &sSunClass, sSunPrototype, Entity)
-
 // The sun is C++ behind the root's facade since bead oo-9ht.111: the getter checks the JS class
 // (a Sun object's private slot holds the sun's Objective-C object, so -isKindOfClass: of the
 // facade class always held) and answers the C++ sun; null for a stale entity, as nil before.
+// Since bead oo-9ht.39.3 the slot holds the C++ entity (OOJSEntityGetEntityOfClass for the Sun
+// class, DEFINE_JS_OBJECT_GETTER(JSSunGetSunObject, &sSunClass, ...) before).
 bool JSSunGetSunEntity(ooscript::Context context, ooscript::Object inObject, OOSunEntity **outObject)
 {
-	Entity *object = nil;
-	if (!JSSunGetSunObject(context, inObject, &object))  return false;
-	*outObject = (object != nil) ? dynamic_cast<OOSunEntity *>(oo::ToCxx(object)) : nullptr;
+	cxx::Entity *entity = nullptr;
+	if (!OOJSEntityGetEntityOfClass(context, inObject, &sSunClass, &entity))  return false;
+	*outObject = dynamic_cast<OOSunEntity *>(entity);
 	return true;
 }
 }
@@ -148,7 +148,7 @@ void InitOOJSSun(ooscript::Context context, ooscript::Object global)
 {
 	Object proto = ooscript::initClass((context), (global), (JSEntityPrototype()), &sSunClass, OOJSUnconstructableConstruct, 0, sSunProperties, sSunMethods, NULL, NULL);
 	sSunPrototype = (proto);
-	OOJSRegisterObjectConverter(&sSunClass, OOJSBasicPrivateObjectConverter);
+	OOJSRegisterObjectConverter(&sSunClass, OOJSEntityObjectConverter);
 	OOJSRegisterSubclass(&sSunClass, JSEntityClass());
 }
 

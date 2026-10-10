@@ -295,15 +295,6 @@ ooscript::Value OOJSValueFromNativeObject(ooscript::Context context, id object)
 }
 
 
-// The private object of a JS object, if it is of the class.
-id OOJSNativeObjectOfClassFromJSValue(ooscript::Context context, ooscript::Value value, Class requiredClass)
-{
-	if (!ooscript::isObject(value) || ooscript::isNull(value))  return nil;
-	id object = (id)ooscript::getPrivate(context, ooscript::toObject(value));
-	return [object isKindOfClass:requiredClass] ? object : nil;
-}
-
-
 // The JS class check of the engine's C++ getter (OOJSPrivateObject.cpp, linked since bead
 // oo-6symp.1, whose slot holds the C++ group): no subclass of ShipGroup is registered.
 BOOL OOJSIsSubclass(ooscript::ClassDef *putativeSubclass, ooscript::ClassDef *superclass)
@@ -354,6 +345,19 @@ void OOJSUnreachable(const char *function, const char *, unsigned)
 #endif
 
 }	// extern "C"
+
+
+// OOJSEntity.mm's (not linked): the C++ entity of an entity's JS object, null for any other value,
+// with no error (OOJSNativeObjectOfClassFromJSValue(context, value, [Entity class]) until bead
+// oo-9ht.39.3, whose stand-in this was). The test's ships keep their object in the slot, as the
+// game's slot held the object's weak reference before.
+cxx::Entity *OOJSEntityFromJSValue(ooscript::Context context, ooscript::Value value)
+{
+	if (!ooscript::isObject(value) || ooscript::isNull(value))  return nullptr;
+	id object = (id)ooscript::getPrivate(context, ooscript::toObject(value));
+	Entity *entity = [object isKindOfClass:[Entity class]] ? object : nil;
+	return entity != nil ? entity->_cxxEntity.get() : nullptr;
+}
 
 
 oo::PList OOJSBasicPrivateObjectConverter(ooscript::Context, ooscript::Object)

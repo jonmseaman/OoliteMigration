@@ -29,6 +29,7 @@ MA 02110-1301, USA.
 #import "OOConstToJSString.h"
 #import "EntityOOJavaScriptExtensions.h"
 #import "OOJSCall.h"
+#import "OOObjCPList.h"
 
 #import "OOJSPlayer.h"
 #import "PlayerEntity.h"
@@ -105,7 +106,7 @@ static ClassDef sEntityClass =
 	nullptr,				// newEnumerate (ooscript::ClassFlag::NewEnumerate not used)
 	nullptr,				// resolve (engine default: ResolveStub)
 	nullptr,				// convert (engine default: ConvertStub)
-	OOJSObjectWrapperFinalize,			// finalize
+	OOJSCxxObjectWrapperFinalize,		// finalize (the slot holds an OOJSEntityHolder, bead oo-9ht.39.3)
 	nullptr,				// call
 	nullptr,				// construct
 	nullptr,				// backend: owned by the façade backend, must start null
@@ -188,7 +189,7 @@ namespace {
 static FunctionSpec sEntityMethods[] =
 {
 	// JS name					Function					min args
-	{ "toString",				OOJSObjectWrapperToString,				0,	0 },
+	{ "toString",				OOJSEntityToString,				0,	0 },
 #ifndef NDEBUG
 	{ "dumpState",				EntityDumpState,			0,	0 },
 #endif
@@ -203,11 +204,64 @@ void InitOOJSEntity(ooscript::Context context, ooscript::Object global)
 										OOJSUnconstructableConstruct, 0, sEntityProperties, sEntityMethods,
 										nullptr, nullptr);
 	gOOEntityJSPrototype = (proto);
-	OOJSRegisterObjectConverter(&sEntityClass, OOJSBasicPrivateObjectConverter);
+	OOJSRegisterObjectConverter(&sEntityClass, OOJSEntityObjectConverter);
 }
 
 
-bool JSValueToEntity(ooscript::Context context, ooscript::Value value, Entity **outEntity)
+// The holder's glue (OOJSEntityHolder.h): the entity's own, while it lives.
+ooscript::Value OOJSEntityHolder::jsValueInContext(ooscript::Context context)
+{
+	cxx::Entity *held = entity();
+	return (held != nullptr) ? OOJSValueFromCxxObject(context, held) : ooscript::nullValue();
+}
+
+
+// OOObject's -oo_clearJSSelf:, which the facade did not override, did nothing (cxx::Entity's
+// clearJSSelf() too): the entity's JS object is a GC root while the entity keeps it.
+void OOJSEntityHolder::clearJSSelf(ooscript::Object /*selfVal*/)
+{
+}
+
+
+std::optional<std::string> OOJSEntityHolder::jsDescription()
+{
+	cxx::Entity *held = entity();
+	return (held != nullptr) ? held->jsDescription() : std::nullopt;
+}
+
+
+bool OOJSEntityToString(ooscript::Context context, ooscript::CallArgs &oojsArgs)
+{
+	return OOJSCxxObjectWrapperToString(context, oojsArgs, &sEntityClass);
+}
+
+
+oo::PList OOJSEntityObjectConverter(ooscript::Context context, ooscript::Object object)
+{
+	OOJSEntityHolder *holder = static_cast<OOJSEntityHolder *>(static_cast<oo::RefCounted *>(ooscript::getPrivate(context, object)));
+	cxx::Entity *entity = (holder != nullptr) ? holder->entity() : nullptr;
+	return oo::PListObject(oo::ToObjC(entity));	// nil: a null PList
+}
+
+
+Entity *OOJSEntityObjectFromJSObject(ooscript::Context context, ooscript::Object object)
+{
+	OOJSEntityHolder *holder = static_cast<OOJSEntityHolder *>(static_cast<oo::RefCounted *>(ooscript::getPrivate(context, object)));
+	return oo::ToObjC((holder != nullptr) ? holder->entity() : nullptr);
+}
+
+
+cxx::Entity *OOJSEntityFromJSValue(ooscript::Context context, ooscript::Value value)
+{
+	if (!ooscript::isObject(value))  return nullptr;
+	ooscript::Object object = ooscript::toObject(value);
+	if (object == nullptr || !OOJSIsMemberOfSubclass(context, object, &sEntityClass))  return nullptr;
+	OOJSEntityHolder *holder = static_cast<OOJSEntityHolder *>(static_cast<oo::RefCounted *>(ooscript::getPrivate(context, object)));
+	return (holder != nullptr) ? holder->entity() : nullptr;
+}
+
+
+bool JSValueToEntity(ooscript::Context context, ooscript::Value value, cxx::Entity **outEntity)
 {
 	if (ooscript::isObjectOrNull(value))
 	{
@@ -218,7 +272,7 @@ bool JSValueToEntity(ooscript::Context context, ooscript::Value value, Entity **
 }
 
 
-bool EntityFromArgumentList(ooscript::Context context, const std::optional<std::string> &scriptClass, const std::optional<std::string> &function, unsigned argc, ooscript::Value *argv, Entity **outEntity, unsigned *outConsumed)
+bool EntityFromArgumentList(ooscript::Context context, const std::optional<std::string> &scriptClass, const std::optional<std::string> &function, unsigned argc, ooscript::Value *argv, cxx::Entity **outEntity, unsigned *outConsumed)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -261,17 +315,18 @@ static bool EntityGetProperty(Context cx, Object obj, PropertyId propID, Value *
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	Entity						*entity = nil;
+	cxx::Entity					*cxxEntity = nullptr;
 	id							result = nil;
 	
-	if (EXPECT_NOT(!OOJSEntityGetEntity(context, thisObj, &entity))) return false;
-	if (OOIsStaleEntity(entity))
+	if (EXPECT_NOT(!OOJSEntityGetEntity(context, thisObj, &cxxEntity))) return false;
+	if (OOIsStaleEntity(cxxEntity))
 	{ 
 		if (ooscript::idToInt32(propID) == kEntity_isValid)  *value = ooscript::falseValue();
 		else  { *value = ooscript::undefinedValue(); }
 		return true;
 	}
 	
+	Entity *entity = oo::ToObjC(cxxEntity);	// still messaged through its object (oo-9ht.39 step 4)
 	switch (ooscript::idToInt32(propID))
 	{
 		case kEntity_collisionRadius:
@@ -388,13 +443,14 @@ static bool EntitySetProperty(Context cx, Object obj, PropertyId propID, bool /*
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	Entity				*entity = nil;
+	cxx::Entity			*cxxEntity = nullptr;
 	double				fValue;
 	HPVector				hpvValue;
 	Quaternion			qValue;
 	
-	if (EXPECT_NOT(!OOJSEntityGetEntity(context, thisObj, &entity)))  return false;
-	if (OOIsStaleEntity(entity))  return true;
+	if (EXPECT_NOT(!OOJSEntityGetEntity(context, thisObj, &cxxEntity)))  return false;
+	if (OOIsStaleEntity(cxxEntity))  return true;
+	Entity *entity = oo::ToObjC(cxxEntity);	// still messaged through its object (oo-9ht.39 step 4)
 	
 	switch (ooscript::idToInt32(propID))
 	{
@@ -478,9 +534,9 @@ static bool EntityDumpState(ooscript::Context context, ooscript::CallArgs &oojsA
 {
 	OOJS_PROFILE_ENTER
 	
-	Entity *thisEnt = nil;
+	cxx::Entity *thisEnt = nullptr;
 	OOJSEntityGetEntity(context, OOJS_THIS, &thisEnt);
-	[thisEnt dumpState];
+	[oo::ToObjC(thisEnt) dumpState];
 	
 	OOJS_RETURN_VOID;
 	

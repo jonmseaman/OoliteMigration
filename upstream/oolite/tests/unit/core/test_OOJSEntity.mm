@@ -15,6 +15,11 @@
 	property both ways, the owner, a stale entity and the escape-pod player, the prototype,
 	dumpState(), a native's exception) and the C functions other bindings call
 	(JSValueToEntity(), EntityFromArgumentList()). Run: bash tools/check-core-tests.sh
+
+	Since bead oo-9ht.39.3 (ADR-0056 amendment oo-9ht.39.3) an entity's JS object holds its C++ part
+	(an OOJSEntityHolder) and the getters answer it; the binding still messages the entity's object,
+	which the test's oo::ToObjC answers. The engine's C++ slot glue (OOJSPrivateObject.h) is stood in
+	for as the Objective-C glue was (the same class check and error, the same toString()).
 */
 
 #import "OOCocoa.h"
@@ -111,6 +116,10 @@ public:
 };
 
 
+// What an entity's JS object holds since bead oo-9ht.39.3: a weak reference to the C++ entity.
+#include "OOJSEntityHolder.h"
+
+
 #include "oo_test.hpp"
 
 #include <cstdarg>
@@ -125,11 +134,11 @@ public:
 // names what it calls itself). They returned BOOL, which is returned as bool is.
 extern "C" {
 void InitOOJSEntity(ooscript::Context context, ooscript::Object global);
-bool JSValueToEntity(ooscript::Context context, ooscript::Value value, Entity **outEntity);
+bool JSValueToEntity(ooscript::Context context, ooscript::Value value, cxx::Entity **outEntity);
 ooscript::ClassDef *JSEntityClass(void);
 }
 extern ooscript::Object gOOEntityJSPrototype;
-bool EntityFromArgumentList(ooscript::Context context, const std::optional<std::string> &scriptClass, const std::optional<std::string> &function, unsigned argc, ooscript::Value *argv, Entity **outEntity, unsigned *outConsumed);
+bool EntityFromArgumentList(ooscript::Context context, const std::optional<std::string> &scriptClass, const std::optional<std::string> &function, unsigned argc, ooscript::Value *argv, cxx::Entity **outEntity, unsigned *outConsumed);
 
 
 @implementation Entity
@@ -242,6 +251,7 @@ namespace {
 std::map<ooscript::ClassDef *, ooscript::ClassDef *> sSuperclasses;
 std::map<ooscript::ClassDef *, int> sConverters;
 std::map<Entity *, ooscript::Object> sEntityObjects;
+std::map<cxx::Entity *, Entity *> sObjects;	// what oo::ToObjC answers: each wrapped entity's object
 ooscript::Context sContext;
 
 
@@ -269,15 +279,18 @@ bool JSValueToNumbers(ooscript::Context context, ooscript::Value value, double *
 }
 
 
-// An entity's JS object, as -[Entity oo_jsValueInContext:] makes it: the Entity class, and the
-// entity in the private slot. One per entity.
+// An entity's JS object, as EntityJSValueInContext() makes it: the Entity class, and a holder of the
+// entity's C++ part in the private slot (bead oo-9ht.39.3; a plain one for an entity made without).
+// One per entity.
 ooscript::Value JSValueForEntity(Entity *entity)
 {
 	ooscript::Object &object = sEntityObjects[entity];
 	if (object == nullptr)
 	{
+		if (entity->_cxxEntity == nullptr)  entity->_cxxEntity = oo::makeRef<cxx::Entity>();
+		sObjects[entity->_cxxEntity.get()] = entity;
 		object = ooscript::newObject(sContext, JSEntityClass(), gOOEntityJSPrototype, nullptr);
-		if (object == nullptr || !ooscript::setPrivate(sContext, object, entity))  return ooscript::nullValue();
+		if (object == nullptr || !OOJSSetCxxPrivate(sContext, object, oo::makeRef<OOJSEntityHolder>(entity->_cxxEntity.get()).get()))  return ooscript::nullValue();
 		ooscript::addNamedObjectRoot(sContext, &object, "test entity");	// std::map keeps the slot where it is
 	}
 	return ooscript::objectValue(object);
@@ -286,6 +299,15 @@ ooscript::Value JSValueForEntity(Entity *entity)
 } // namespace
 
 Entity *gOOJSPlayerIfStale = nil;
+
+
+// oo::ToObjC (Entity+ObjCBridge.mm): the object of a C++ part the test wrapped, nil for any other.
+namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
+::Entity *oo::ToObjC(cxx::Entity *entity)
+{
+	auto found = sObjects.find(entity);
+	return found != sObjects.end() ? found->second : nil;
+}
 
 
 extern "C" {
@@ -357,27 +379,6 @@ void OOJSRegisterObjectConverter(ooscript::ClassDef *theClass, oo::PList (*)(oos
 }
 
 
-// The engine's object getter: the JS class must be a subclass of the required one, and the
-// underlying object must be of the required Objective-C class.
-BOOL OOJSObjectGetterImplPRIVATE(ooscript::Context context, ooscript::Object object, ooscript::ClassDef *requiredJSClass, Class requiredObjCClass, const char *, id *outObject)
-{
-	ooscript::ClassDef *actualClass = const_cast<ooscript::ClassDef *>(ooscript::getObjectClass(context, object));
-	if (!OOJSIsSubclass(actualClass, requiredJSClass))
-	{
-		cxx_OOJSReportError(context, "Native method expected %s, got %s.", requiredJSClass->name, cxx_OOStringFromJSValue(context, ooscript::objectValue(object)).value_or("(null)").c_str());
-		return NO;
-	}
-	*outObject = [(id)ooscript::getPrivate(context, object) weakRefUnderlyingObject];
-	if (*outObject != nil && ![*outObject isKindOfClass:requiredObjCClass])
-	{
-		cxx_OOJSReportError(context, "Native method expected %s from %s.", class_getName(requiredObjCClass), requiredJSClass->name);
-		*outObject = nil;
-		return NO;
-	}
-	return YES;
-}
-
-
 // What the engine makes of a native object: an entity's own JS object, null for nil.
 ooscript::Value OOJSValueFromNativeObject(ooscript::Context, id object)
 {
@@ -387,23 +388,10 @@ ooscript::Value OOJSValueFromNativeObject(ooscript::Context, id object)
 }
 
 
-bool OOJSObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &args)
-{
-	ooscript::String string = ooscript::newStringCopyZ(context, "[Entity]");
-	args.setRval(ooscript::stringValue(string));
-	return true;
-}
-
-
 bool OOJSUnconstructableConstruct(ooscript::Context context, ooscript::CallArgs &)
 {
 	cxx_OOJSReportError(context, "unconstructable");
 	return false;
-}
-
-
-void OOJSObjectWrapperFinalize(ooscript::Context, ooscript::Object)
-{
 }
 
 
@@ -428,9 +416,48 @@ void OOJSUnreachable(const char *function, const char *, unsigned)
 }	// extern "C"
 
 
-oo::PList OOJSBasicPrivateObjectConverter(ooscript::Context, ooscript::Object)
+// The engine's C++ slot glue (OOJSPrivateObject.h, bead oo-9ht.39.3), as the Objective-C glue was stood
+// in for: the getter's JS class check and error, the slot's retain, a finalizer that does nothing and
+// the same toString().
+bool OOJSGetCxxPrivateImpl(ooscript::Context context, ooscript::Object object, ooscript::ClassDef *requiredJSClass, oo::RefCounted **outObject)
 {
-	return oo::PList();
+	ooscript::ClassDef *actualClass = const_cast<ooscript::ClassDef *>(ooscript::getObjectClass(context, object));
+	if (!OOJSIsSubclass(actualClass, requiredJSClass))
+	{
+		cxx_OOJSReportError(context, "Native method expected %s, got %s.", requiredJSClass->name, cxx_OOStringFromJSValue(context, ooscript::objectValue(object)).value_or("(null)").c_str());
+		return false;
+	}
+	*outObject = static_cast<oo::RefCounted *>(ooscript::getPrivate(context, object));
+	return true;
+}
+
+
+bool OOJSSetCxxPrivate(ooscript::Context context, ooscript::Object jsObject, oo::RefCounted *object)
+{
+	if (object != nullptr)  object->retain();
+	if (ooscript::setPrivate(context, jsObject, object))  return true;
+	if (object != nullptr)  object->release();
+	return false;
+}
+
+
+void OOJSCxxObjectWrapperFinalize(ooscript::Context, ooscript::Object)
+{
+}
+
+
+bool OOJSCxxObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &args, ooscript::ClassDef *)
+{
+	ooscript::String string = ooscript::newStringCopyZ(context, "[Entity]");
+	args.setRval(ooscript::stringValue(string));
+	return true;
+}
+
+
+// The holder's glue asks the entity (never reached: no case wraps a holder's value).
+ooscript::Value OOJSValueFromCxxObject(ooscript::Context, OOJSPrivateObject *)
+{
+	return ooscript::undefinedValue();
 }
 
 
@@ -651,16 +678,16 @@ OO_TEST(dumpState)
 OO_TEST(cFunctions)
 {
 	SetUpContext();
-	Entity *entity = nil;
+	cxx::Entity *entity = nullptr;
 	ooscript::Value shipValue = JSValueForEntity(sShip);
-	OO_CHECK(JSValueToEntity(sContext, shipValue, &entity) && entity == sShip);
+	OO_CHECK(JSValueToEntity(sContext, shipValue, &entity) && oo::ToObjC(entity) == sShip);
 	OO_CHECK(!JSValueToEntity(sContext, ooscript::numberValue(3), &entity));
 
 	ooscript::Value argv[2] = { shipValue, ooscript::numberValue(1) };
 	unsigned consumed = 9;
-	entity = nil;
+	entity = nullptr;
 	OO_CHECK(EntityFromArgumentList(sContext, "Ship", "test", 2, argv, &entity, &consumed));
-	OO_CHECK(entity == sShip && consumed == 1);
+	OO_CHECK(oo::ToObjC(entity) == sShip && consumed == 1);
 
 	// Not an entity: a warning when given a class and function, and false either way.
 	ooscript::Value bad[1] = { ooscript::numberValue(3) };

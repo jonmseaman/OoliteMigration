@@ -248,4 +248,10 @@ inline OOVisualEffectEntity *ToEffect(::Entity *entity)
 	return dynamic_cast<OOVisualEffectEntity *>(ToCxx(entity));
 }
 
+// The same of a C++ entity (what an entity's JS object holds since bead oo-9ht.39.3).
+inline OOVisualEffectEntity *ToEffect(cxx::Entity *entity)
+{
+	return dynamic_cast<OOVisualEffectEntity *>(entity);
+}
+
 }	// namespace oo

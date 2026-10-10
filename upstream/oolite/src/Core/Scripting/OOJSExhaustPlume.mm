@@ -107,7 +107,7 @@ static ClassDef sExhaustPlumeClass =
 	nullptr,			// newEnumerate (ooscript::ClassFlag::NewEnumerate not used)
 	nullptr,			// resolve (engine default: ResolveStub)
 	nullptr,			// convert (engine default: ConvertStub)
-	OOJSObjectWrapperFinalize,	// finalize
+	OOJSCxxObjectWrapperFinalize,	// finalize
 	nullptr,			// call
 	nullptr,			// construct
 	nullptr,			// backend: owned by the facade backend, must start null
@@ -160,7 +160,7 @@ void InitOOJSExhaustPlume(ooscript::Context context, ooscript::Object global)
 {
 	Object proto = ooscript::initClass((context), (global), (JSEntityPrototype()), &sExhaustPlumeClass, OOJSUnconstructableConstruct, 0, sExhaustPlumeProperties, sExhaustPlumeMethods, nullptr, nullptr);
 	sExhaustPlumePrototype = (proto);
-	OOJSRegisterObjectConverter(&sExhaustPlumeClass, OOJSBasicPrivateObjectConverter);
+	OOJSRegisterObjectConverter(&sExhaustPlumeClass, OOJSEntityObjectConverter);
 	OOJSRegisterSubclass(&sExhaustPlumeClass, JSEntityClass());
 }
 
@@ -171,7 +171,7 @@ static bool JSExhaustPlumeGetExhaustPlumeEntity(ooscript::Context context, ooscr
 	OOJS_PROFILE_ENTER
 
 	bool						result;
-	Entity						*entity = nil;
+	cxx::Entity					*entity = nullptr;	// the slot holds the C++ entity (bead oo-9ht.39.3)
 
 	if (outEntity == NULL)  return false;
 	*outEntity = nullptr;
@@ -180,11 +180,11 @@ static bool JSExhaustPlumeGetExhaustPlumeEntity(ooscript::Context context, ooscr
 	if (!result)  return false;
 
 	// The object is the root's façade: a plume is its C++ part.
-	OOExhaustPlumeEntity *exhaust = dynamic_cast<OOExhaustPlumeEntity *>(oo::ToCxx(entity));
+	OOExhaustPlumeEntity *exhaust = dynamic_cast<OOExhaustPlumeEntity *>(entity);
 	if (exhaust == nullptr)  return false;
 
 	*outEntity = exhaust;
-	if (outObject != NULL)  *outObject = entity;
+	if (outObject != NULL)  *outObject = oo::ToObjC(entity);	// its object, which the natives still message
 	return true;
 	
 	OOJS_PROFILE_EXIT

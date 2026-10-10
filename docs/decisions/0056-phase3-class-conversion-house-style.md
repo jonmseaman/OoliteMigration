@@ -6317,3 +6317,99 @@ with the player's facade (oo-9ht.177).
 **Consequences.** Four bridge pairs fewer; the bindings' and the console's remaining Objective-C is
 exactly their sends to the universe, the engine's facade and the root entity facade, which go with
 those classes.
+
+## Amendment (bead oo-9ht.39.3): an entity's JS object holds the C++ entity (oo-9ht.39 step 2)
+
+- Date: 2026-10-10. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch R
+  (one branch). Exemplar: `src/Core/Scripting/OOJSEntityHolder.h`, `OOJSEntity.h/.mm`,
+  `EntityOOJavaScriptExtensions.h/.mm`, `src/Core/Entities/Entity.h/.mm`, `OOJSShip.mm`,
+  `tests/unit/core/test_OOJSWormhole.mm`. Applies amendment oo-6symp to the entities; step (2) of
+  the oo-9ht.39 plan (batch P's notes on oo-9ht.39).
+
+**Context.** Every entity's JS object held, in its private slot, the root facade's weak reference
+(`-weakRetain`); the engine made it by `-oo_jsValueInContext:` on the facade, finalized it with
+`OOJSObjectWrapperFinalize` and described it with `OOJSObjectWrapperToString`, and every binding
+unwrapped it with a `DEFINE_JS_OBJECT_GETTER(..., Entity)` getter that answered the facade, then took
+its C++ part with `oo::ToCxx`/`oo::ToShip`/`oo::ToStation`. The facade cannot go while the JS side
+holds and answers it.
+
+**Decision (recommended defaults).**
+
+1. **The slot holds an `OOJSEntityHolder`** (`OOJSEntityHolder.h`): an `oo::RefCounted` and
+   `OOJSPrivateObject` holding `oo::WeakRef<cxx::Entity>`, so the JS object does not keep the entity
+   alive and reads as stale (null) once it has gone, as the facade's weak reference did (the facade
+   owns the C++ entity, so both die together). One holder per JS object, set with
+   `OOJSSetCxxPrivate`, released by `OOJSCxxObjectWrapperFinalize`; its glue (`jsValueInContext`,
+   `clearJSSelf`, `jsDescription`) is defined in `OOJSEntity.mm` and asks the entity while it lives
+   (a narrow binding test defines the three as stand-ins, amendment oo-6symp item 5).
+2. **`cxx::Entity` implements `OOJSPrivateObject`.** `jsValueInContext()` is
+   `EntityJSValueInContext()`'s body on the C++ entity (the JS class, prototype and visibility its
+   virtual members answer, the GC root, the engine-reset observer keyed by the C++ entity);
+   `clearJSSelf()` does nothing (OOObject's `-oo_clearJSSelf:`, which the facade did not override);
+   `jsDescription()` is what the facade's `-cxx_oo_jsDescription` answered (`[<jsClassName>
+   <components>]`, `[object <jsClassName>]` without components, the facade's class name "Entity"
+   with no JS class name); `deleteJSSelf()` is `-deleteJSSelf`'s body. An Objective-C entity (an
+   `oo::ObjCEntity` adapter: the tests' subclasses only) is still asked those class questions and
+   its description by selector, so its own overrides answer first as before.
+3. **The facade's JS selectors stay, as forwarders, while anything sends them.** The facade's JS
+   value selector and `-deleteJSSelf` call the C++ members; `-isVisibleToScripts`,
+   `-cxx_oo_jsClassName` and `-getJSClass:andPrototype:` stay as they were. The engine still sends
+   them to an entity's object where it holds one (`OOJSValueFromNativeObject()`, a property list's
+   Object node made by `oo::PListFromObjects`, `OOWeakReference`, the console's `callObjC()` class
+   name, `OOJSSystem`'s visibility filter); they go when the entity lists hold C++ entities
+   (oo-9ht.39 step 3), not here. Plan item 3's "Object nodes as foreign nodes" is left to that step
+   for the same reason: a node holds the object until the lists do not.
+4. **Getters answer the C++ entity.** `OOJSEntityGetEntity()` and `OOJSEntityGetEntityOfClass()`
+   (the Ship, Planet and Sun classes' getters) are `OOJSGetCxxPrivate`'s JS class check and error,
+   then the holder's entity; `JSValueToEntity()` and `EntityFromArgumentList()` take
+   `cxx::Entity **`. The bindings' own getters cast the C++ entity (`oo::ToShip`, `oo::ToStation`,
+   `oo::ToDock` and `oo::ToEffect` gained `cxx::Entity *` overloads; `dynamic_cast` for the leaves)
+   and drop their `oo::ToCxx`. The JS class fixes what the slot holds, so the debug build's
+   Objective-C class check goes. Where a binding still messages the entity's object (the Entity
+   class's property natives, the plume's, flasher's and waypoint's natives' object, the system's
+   `relativeTo`, the console's `-inspect`, the compass target, the vector and quaternion
+   conversions through `OOJSEntityObjectFromJSObject()`), it takes `oo::ToObjC()` of the C++
+   entity: the same object, until those sends become member calls with the facade's deletion
+   (oo-9ht.39 step 4). `OOIsStaleEntity()` gains a `cxx::Entity *` form (the stale player is still
+   the global object).
+5. **`OOJSNativeObjectOfClassFromJSValue(context, v, [::Entity class])` becomes
+   `OOJSEntityFromJSValue(context, v)`**, not `JSValueToEntity()` as the plan said: it answers the
+   C++ entity of an entity's JS object, else null, with no error (another value, another object, a
+   stale entity), as that answered nil; `JSValueToEntity()` reports an error for an object of
+   another class, which these callers (the player ship's autopilot and docking natives, ShipGroup)
+   never did.
+6. **The entity classes' converter is `OOJSEntityObjectConverter`**: the entity's object as an
+   Object node (null once it has gone), as `OOJSBasicPrivateObjectConverter` answered the weak
+   reference's object, so `OOJSNativeObjectFromJSValue()` callers (script arguments, timers,
+   `callObjC()`'s `this`) get what they got (amendment oo-6symp item 4). Finalize is
+   `OOJSCxxObjectWrapperFinalize` for the twelve entity classes; `toString()` is
+   `OOJSEntityToString`, `OOJSCxxObjectWrapperToString` for the Entity class and its registered
+   subclasses (the same text).
+7. **Direct wraps of a C++ entity call `OOJSValueFromCxxObject()`**: the ship itself in ShipEntity's
+   equipment-award and kill events, StationEntity's and DockEntity's dock events, `OOECMBlastEntity`
+   and the universe's equipment check. The result is the one the facade's selector gave (it now
+   forwards to the same member). Where the value is an entity's object from a list or a caller
+   (ShipEntity's damage and death events' other entity, the engine's `JSFunctionPredicate`), the
+   message stays: an Objective-C entity's own override answers first (`test_OOJavaScriptEngine`'s
+   `entityPredicates` pins it), until the lists hold C++ entities (step 3). Also left as messages:
+   `OOJSMission`'s `displayModel` and `OOCommodities`' station argument, whose narrow tests stand in
+   for the object's JS value (the same message, the same value).
+8. **callObjC() is unchanged** (plan item 4 moves to oo-9ht.44): its `this` is still the entity's
+   object (item 6), and it still dispatches by selector. See oo-9ht.44's notes for why a name
+   table covering exactly today's reachable names is more than the facade's selectors.
+9. **Tests** (standing approval oo-9n5p9, lines on main first): the narrow binding tests' stand-in
+   slot set-ups hold a holder of the entity's C++ part (a plain stand-in part for an entity made
+   without one); they link `OOJSPrivateObject.cpp` (the engine's getter, finalizer and slot) in
+   place of their Objective-C getter and finalizer stand-ins, define the holder's glue and the
+   entity converter as stand-ins, and those whose binding now asks `oo::ToObjC` answer it from the
+   parts they wrapped. `test_OOJSEntity` stands in for the C++ slot glue as it stood in for the
+   Objective-C glue (the same error, the same toString()) and its `cFunctions` checks compare the
+   object of the entity the C functions answer with the ship, as before. `test_OOJSShipGroup` and
+   `test_OOJSConsole` stand in for `OOJSEntityFromJSValue()` and the C++ `JSValueToEntity()`;
+   `test_OOJSVector` and `test_OOJSQuaternion` for `OOJSEntityObjectFromJSObject()`. Every OO_TEST
+   case and expected value is kept, and the js-api-contract reproduces exactly.
+
+**Consequences.** No entity's JS object holds or answers an Objective-C object; the bindings take
+C++ entities. The root facade's JS selectors are forwarders kept for the engine's generic paths,
+which go with the entity lists (oo-9ht.39 step 3); the bindings' remaining sends to an entity's
+object go with step 4.

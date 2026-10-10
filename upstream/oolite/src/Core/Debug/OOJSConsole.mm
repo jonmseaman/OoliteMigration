@@ -745,10 +745,11 @@ static bool ConsoleInspectEntity(ooscript::Context context, ooscript::CallArgs &
 {
 	OOJS_NATIVE_ENTER(context)
 	
-	Entity				*entity = nil;
+	cxx::Entity			*cxxEntity = nullptr;	// the C++ entity since bead oo-9ht.39.3
 	
-	if (JSValueToEntity(context, OOJS_ARGV[0], &entity))
+	if (JSValueToEntity(context, OOJS_ARGV[0], &cxxEntity))
 	{
+		Entity *entity = oo::ToObjC(cxxEntity);	// the inspector's selector is the object's
 		OOJS_BEGIN_FULL_NATIVE(context)
 		if ([entity respondsToSelector:@selector(inspect)])  [entity inspect];	// -inspect, if the entity has it (nothing for nil)
 		OOJS_END_FULL_NATIVE

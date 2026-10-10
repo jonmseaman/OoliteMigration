@@ -355,7 +355,7 @@ bool JSObjectGetQuaternion(ooscript::Context context, ooscript::Object quaternio
 	if (OOJSIsMemberOfSubclass(context, quaternionObj, JSEntityClass()))
 	{
 		COUNT(entityCount);
-		Entity *entity = [(id)ooscript::getPrivate(cx, obj) weakRefUnderlyingObject];
+		Entity *entity = OOJSEntityObjectFromJSObject(context, quaternionObj);	// the slot holds the C++ entity since bead oo-9ht.39.3
 		*outQuaternion = [entity orientation];
 		return true;
 	}

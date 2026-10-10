@@ -104,7 +104,7 @@ static ClassDef sDockClass =
 	nullptr,			// newEnumerate (ooscript::ClassFlag::NewEnumerate not used)
 	nullptr,			// resolve (engine default: ResolveStub)
 	nullptr,			// convert (engine default: ConvertStub)
-	OOJSObjectWrapperFinalize,	// finalize
+	OOJSCxxObjectWrapperFinalize,	// finalize
 	nullptr,			// call
 	nullptr,			// construct
 	nullptr,			// backend: owned by the façade backend, must start null
@@ -167,7 +167,7 @@ void InitOOJSDock(ooscript::Context context, ooscript::Object global)
 {
 	Object proto = ooscript::initClass((context), (global), (JSShipPrototype()), &sDockClass, OOJSUnconstructableConstruct, 0, sDockProperties, sDockMethods, nullptr, nullptr);
 	sDockPrototype = (proto);
-	OOJSRegisterObjectConverter(&sDockClass, OOJSBasicPrivateObjectConverter);
+	OOJSRegisterObjectConverter(&sDockClass, OOJSEntityObjectConverter);
 	OOJSRegisterSubclass(&sDockClass, JSShipClass());
 }
 
@@ -178,7 +178,7 @@ static bool JSDockGetDockEntity(ooscript::Context context, ooscript::Object dock
 	OOJS_PROFILE_ENTER
 	
 	bool						result;
-	Entity						*entity = nil;
+	cxx::Entity					*entity = nullptr;	// the slot holds the C++ entity (bead oo-9ht.39.3)
 	
 	if (outEntity == NULL)  return false;
 	*outEntity = nil;
@@ -205,7 +205,7 @@ static bool JSDockGetShipEntity(ooscript::Context context, ooscript::Object ship
 	OOJS_PROFILE_ENTER
 	
 	bool						result;
-	Entity						*entity = nil;
+	cxx::Entity					*entity = nullptr;	// the slot holds the C++ entity (bead oo-9ht.39.3)
 	
 	if (outEntity == NULL)  return false;
 	*outEntity = nil;

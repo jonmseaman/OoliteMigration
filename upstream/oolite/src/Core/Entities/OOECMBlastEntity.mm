@@ -94,7 +94,7 @@ void OOECMBlastEntity::update(OOTimeDelta delta_t)
 		{
 			ooscript::Context context = OOJSAcquireContext();
 			ooscript::Value ecmPulsesRemaining = ooscript::int32Value(_blastsRemaining);
-			ooscript::Value whomVal = OOJSValueFromNativeObject(context, oo::ToObjC(ship));
+			ooscript::Value whomVal = OOJSValueFromCxxObject(context, ship);
 			
 			for (i = 0; i < count; i++)
 			{

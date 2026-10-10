@@ -103,7 +103,7 @@ static ClassDef sWaypointClass =
 	nullptr,			// newEnumerate (ooscript::ClassFlag::NewEnumerate not used)
 	nullptr,			// resolve (engine default: ResolveStub)
 	nullptr,			// convert (engine default: ConvertStub)
-	OOJSObjectWrapperFinalize,		// finalize
+	OOJSCxxObjectWrapperFinalize,		// finalize
 	nullptr,			// call
 	nullptr,			// construct
 	nullptr,			// backend: owned by the façade backend, must start null
@@ -165,7 +165,7 @@ void InitOOJSWaypoint(ooscript::Context context, ooscript::Object global)
 {
 	Object proto = ooscript::initClass((context), (global), (JSEntityPrototype()), &sWaypointClass, OOJSUnconstructableConstruct, 0, sWaypointProperties, sWaypointMethods, nullptr, nullptr);
 	sWaypointPrototype = (proto);
-	OOJSRegisterObjectConverter(&sWaypointClass, OOJSBasicPrivateObjectConverter);
+	OOJSRegisterObjectConverter(&sWaypointClass, OOJSEntityObjectConverter);
 	OOJSRegisterSubclass(&sWaypointClass, JSEntityClass());
 }
 
@@ -176,7 +176,7 @@ static bool JSWaypointGetWaypointEntity(ooscript::Context context, ooscript::Obj
 	OOJS_PROFILE_ENTER
 	
 	bool						result;
-	Entity						*entity = nil;
+	cxx::Entity					*entity = nullptr;	// the slot holds the C++ entity (bead oo-9ht.39.3)
 	
 	if (outEntity == NULL || outObject == NULL)  return false;
 	*outEntity = nullptr;
@@ -187,11 +187,11 @@ static bool JSWaypointGetWaypointEntity(ooscript::Context context, ooscript::Obj
 	
 	// The object is the root's facade since bead oo-9ht.108: a waypoint is its C++ part (a nil or
 	// other entity is not, as -isKindOfClass: answered). The object answers the beacon selectors.
-	OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(oo::ToCxx(entity));
+	OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(entity);
 	if (waypoint == nullptr)  return false;
 	
 	*outEntity = waypoint;
-	*outObject = (OOBeaconEntityObject *)entity;
+	*outObject = (OOBeaconEntityObject *)oo::ToObjC(entity);
 	return true;
 	
 	OOJS_PROFILE_EXIT

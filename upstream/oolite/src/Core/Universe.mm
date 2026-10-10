@@ -9807,7 +9807,7 @@ oo::PList Universe::shipsForSaleForSystem(OOSystemID s, OOTechLevelID specialTL,
 							BOOL OK;
 							bool allow_addition;
 							ooscript::Value result;
-							ooscript::Value args[] = { OOJSValueFromPList(JScontext, oo::PList(*equipmentKey)) , OOJSValueFromNativeObject(JScontext, oo::ToObjC(testship)) , OOJSValueFromPList(JScontext, oo::PList("newShip"))};
+							ooscript::Value args[] = { OOJSValueFromPList(JScontext, oo::PList(*equipmentKey)) , OOJSValueFromCxxObject(JScontext, testship) , OOJSValueFromPList(JScontext, oo::PList("newShip"))};
 
 							OK = (condScript != nullptr ? condScript->callMethod(OOJSID("allowAwardEquipment"), JScontext, args, sizeof args / sizeof *args, &result) : false);
 

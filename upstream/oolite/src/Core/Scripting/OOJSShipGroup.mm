@@ -26,6 +26,7 @@ MA 02110-1301, USA.
 #import "OOShipGroup.h"
 #import "OOJSShipGroup.h"
 #import "OOJavaScriptEngine.h"
+#import "OOJSEntity.h"
 #import "OOObjCPList.h"
 #import "OOShipGroup.h"
 #import "Universe.h"
@@ -278,7 +279,7 @@ static bool ShipGroupSetProperty(Context cx, Object obj, PropertyId propID, bool
 	switch (ooscript::idToInt32(propID))
 	{
 		case kShipGroup_leader:
-			shipValue = oo::ToShip(OOJSNativeObjectOfClassFromJSValue(context, *(value), [::Entity class]));
+			shipValue = oo::ToShip(OOJSEntityFromJSValue(context, *(value)));
 			if (shipValue != nil || ooscript::isNull(*value))
 			{
 				if (cxxGroup != nullptr)  cxxGroup->setLeader(shipValue);
@@ -332,7 +333,7 @@ static bool ShipGroupConstruct(ooscript::Context context, ooscript::CallArgs &oo
 	
 	if (oojsArgs.count() >= 2)
 	{
-		leader = oo::ToShip(OOJSNativeObjectOfClassFromJSValue(context, OOJS_ARGV[1], [::Entity class]));
+		leader = oo::ToShip(OOJSEntityFromJSValue(context, OOJS_ARGV[1]));
 		if (leader == nil && !ooscript::isNull(OOJS_ARGV[1]))
 		{
 			cxx_OOJSReportBadArguments(context, std::nullopt, "ShipGroup()", 1, OOJS_ARGV + 1, "Could not create ShipGroup", "ship");
@@ -411,7 +412,7 @@ static bool ShipGroupAddShip(ooscript::Context context, ooscript::CallArgs &oojs
 	
 	if (EXPECT_NOT(!OOJSGetCxxPrivate(context, OOJS_THIS, &sShipGroupClass, &cxxGroup)))  return false;
 	
-	if (oojsArgs.count() > 0)  ship = oo::ToShip(OOJSNativeObjectOfClassFromJSValue(context, OOJS_ARGV[0], [::Entity class]));
+	if (oojsArgs.count() > 0)  ship = oo::ToShip(OOJSEntityFromJSValue(context, OOJS_ARGV[0]));
 	if (ship == nil)
 	{
 		if (oojsArgs.count() > 0 && ooscript::isNull(OOJS_ARGV[0]))  OOJS_RETURN_VOID;	// OK, do nothing for null ship.
@@ -489,7 +490,7 @@ static bool ShipGroupRemoveShip(ooscript::Context context, ooscript::CallArgs &o
 	
 	if (EXPECT_NOT(!OOJSGetCxxPrivate(context, OOJS_THIS, &sShipGroupClass, &cxxGroup)))  return false;
 	
-	if (oojsArgs.count() > 0)  ship = oo::ToShip(OOJSNativeObjectOfClassFromJSValue(context, OOJS_ARGV[0], [::Entity class]));
+	if (oojsArgs.count() > 0)  ship = oo::ToShip(OOJSEntityFromJSValue(context, OOJS_ARGV[0]));
 	if (ship == nil)
 	{
 		if (oojsArgs.count() > 0 && ooscript::isNull(OOJS_ARGV[0]))  OOJS_RETURN_VOID;	// OK, do nothing for null ship.
@@ -518,7 +519,7 @@ static bool ShipGroupContainsShip(ooscript::Context context, ooscript::CallArgs 
 	
 	if (EXPECT_NOT(!OOJSGetCxxPrivate(context, OOJS_THIS, &sShipGroupClass, &cxxGroup)))  return false;
 	
-	if (oojsArgs.count() > 0)  ship = oo::ToShip(OOJSNativeObjectOfClassFromJSValue(context, OOJS_ARGV[0], [::Entity class]));
+	if (oojsArgs.count() > 0)  ship = oo::ToShip(OOJSEntityFromJSValue(context, OOJS_ARGV[0]));
 	if (ship == nil)
 	{
 		if (oojsArgs.count() > 0 && ooscript::isNull(OOJS_ARGV[0]))  OOJS_RETURN_BOOL(false); // OK, return false for null ship.

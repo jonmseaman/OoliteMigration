@@ -86,6 +86,9 @@ public:
 	OOAlertCondition alertCondition();
 };
 
+// What an entity's JS object holds since bead oo-9ht.39.3: a weak reference to the C++ entity.
+#include "OOJSEntityHolder.h"
+
 // The object: the root's, which holds the C++ part (oo::ToCxx reads it) and asks it the JS questions.
 @interface Entity: OOWeakRefObject
 {
@@ -278,6 +281,7 @@ ooscript::ClassDef sFakeShipClass = { "Ship", ooscript::ClassFlag::HasPrivate };
 ooscript::Object sShipPrototype = nullptr;
 std::map<ooscript::ClassDef *, ooscript::ClassDef *> sSuperclasses;
 std::map<ooscript::ClassDef *, int> sConverters;
+std::map<cxx::Entity *, ::Entity *> sObjects;	// what oo::ToObjC answers: each ship's object
 }
 
 ooscript::Object gOOEntityJSPrototype = nullptr;
@@ -306,7 +310,9 @@ ooscript::Object gOOEntityJSPrototype = nullptr;
 		ooscript::Object prototype = sShipPrototype;
 		if ([self respondsToSelector:@selector(getJSClass:andPrototype:)])  [self getJSClass:&jsClass andPrototype:&prototype];
 		_jsSelf = ooscript::newObject(context, jsClass, prototype, nullptr);
-		ooscript::setPrivate(context, _jsSelf, self);
+		if (_cxxEntity == nullptr)  _cxxEntity = oo::makeRef<cxx::Entity>();	// a plain entity's C++ part
+		sObjects[_cxxEntity.get()] = self;
+		OOJSSetCxxPrivate(context, _jsSelf, oo::makeRef<OOJSEntityHolder>(_cxxEntity.get()).get());	// the slot holds the C++ entity (bead oo-9ht.39.3)
 	}
 	return ooscript::objectValue(_jsSelf);
 }
@@ -317,8 +323,6 @@ ooscript::Object gOOEntityJSPrototype = nullptr;
 namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }	// Entity+ObjCBridge.mm's, defined below
 
 namespace {
-
-std::map<cxx::Entity *, ::Entity *> sObjects;	// what oo::ToObjC answers: each ship's object
 
 // A ship's object (the root's, holding a C++ ship since bead oo-9ht.144 deleted the Objective-C
 // ship this made), kept for the life of the test.
@@ -732,24 +736,15 @@ void OOJSRegisterObjectConverter(ooscript::ClassDef *theClass, oo::PList (*)(oos
 }
 
 
-// The engine's object getter: the JS class must be a subclass of the required one, and the
-// underlying object must be of the required Objective-C class.
-BOOL OOJSObjectGetterImplPRIVATE(ooscript::Context context, ooscript::Object object, ooscript::ClassDef *requiredJSClass, Class requiredObjCClass, const char *, id *outObject)
+// The engine's object getter is OOJSPrivateObject.cpp's (linked) since bead oo-9ht.39.3: the JS
+// class must be a subclass of the required one, and the slot holds the entity's holder.
+
+// The shared toString(), which OOJSCxxObjectWrapperToString() hands a `this` of another class.
+bool OOJSObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &args)
 {
-	ooscript::ClassDef *actualClass = const_cast<ooscript::ClassDef *>(ooscript::getObjectClass(context, object));
-	if (!OOJSIsSubclass(actualClass, requiredJSClass))
-	{
-		cxx_OOJSReportError(context, "Native method expected %s, got %s.", requiredJSClass->name, cxx_OOStringFromJSValue(context, ooscript::objectValue(object)).value_or("(null)").c_str());
-		return NO;
-	}
-	*outObject = [(id)ooscript::getPrivate(context, object) weakRefUnderlyingObject];
-	if (*outObject != nil && ![*outObject isKindOfClass:requiredObjCClass])
-	{
-		cxx_OOJSReportError(context, "Native method expected %s from %s.", class_getName(requiredObjCClass), requiredJSClass->name);
-		*outObject = nil;
-		return NO;
-	}
-	return YES;
+	const std::string text = "[object]";
+	args.setRval(ooscript::stringValue(ooscript::newStringCopyN(context, text.data(), text.size())));
+	return true;
 }
 
 
@@ -767,10 +762,6 @@ bool OOJSUnconstructableConstruct(ooscript::Context context, ooscript::CallArgs 
 	return false;
 }
 
-
-void OOJSObjectWrapperFinalize(ooscript::Context, ooscript::Object)
-{
-}
 
 
 void OOJSInitJSIDCachePRIVATE(const char *, ooscript::PropertyId *)
@@ -800,10 +791,16 @@ void OOJSUnreachable(const char *function, const char *, unsigned)
 }	// extern "C"
 
 
-oo::PList OOJSBasicPrivateObjectConverter(ooscript::Context, ooscript::Object)
+oo::PList OOJSEntityObjectConverter(ooscript::Context, ooscript::Object)
 {
 	return oo::PList();
 }
+
+
+// The holder's glue is OOJSEntity.mm's, which the test does not link; the binding never asks it.
+ooscript::Value OOJSEntityHolder::jsValueInContext(ooscript::Context)  { return ooscript::undefinedValue(); }
+void OOJSEntityHolder::clearJSSelf(ooscript::Object)  {}
+std::optional<std::string> OOJSEntityHolder::jsDescription()  { return std::nullopt; }
 
 
 // MARK: The context -------------------------------------------------------------------------------

@@ -3187,20 +3187,23 @@ bool IsPlayerSelectorCalledByName(SEL selector)
 /*	The category Entity (OOJavaScriptExtensions) (bead oo-9ht.128): moved unchanged from
 	EntityOOJavaScriptExtensions+ObjCBridge.mm, which it deleted. The class questions go to the C++
 	part, whose defaults are these bodies and which a C++ subclass overrides (ADR-0056 amendment
-	oo-9ht.107).
+	oo-9ht.107). Since bead oo-9ht.39.3 the JS object is the C++ entity's (its jsValueInContext()
+	and deleteJSSelf(), ADR-0056 amendment oo-9ht.39.3): the engine still sends these selectors to
+	an entity's object where it holds one (a property list's Object node, OOJSValueFromNativeObject()),
+	so they forward until the entity lists hold C++ entities (oo-9ht.39 step 3).
 */
 @implementation Entity (OOJavaScriptExtensions)
 
 - (BOOL) isVisibleToScripts													{ return _cxxEntity->isVisibleToScripts(); }
 - (std::optional<std::string>) cxx_oo_jsClassName							{ return _cxxEntity->jsClassName(); }
-- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context			{ return EntityJSValueInContext(self, context); }
+- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context			{ return _cxxEntity->jsValueInContext(context); }	// the C++ entity's glue (bead oo-9ht.39.3)
 
 - (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype
 {
 	_cxxEntity->getJSClass(outClass, outPrototype);
 }
 
-- (void) deleteJSSelf														{ EntityJSDeleteJSSelf(self); }
+- (void) deleteJSSelf														{ _cxxEntity->deleteJSSelf(); }
 
 @end
 

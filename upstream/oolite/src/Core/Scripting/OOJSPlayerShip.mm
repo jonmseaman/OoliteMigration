@@ -250,7 +250,7 @@ static ClassDef sPlayerShipClass =
 	nullptr,				// newEnumerate (ooscript::ClassFlag::NewEnumerate not used)
 	nullptr,				// resolve (engine default: ResolveStub)
 	nullptr,				// convert (engine default: ConvertStub)
-	OOJSObjectWrapperFinalize,		// finalize
+	OOJSCxxObjectWrapperFinalize,		// finalize
 	nullptr,				// call
 	nullptr,				// construct
 	nullptr,				// backend: owned by the façade backend, must start null
@@ -520,7 +520,7 @@ void InitOOJSPlayerShip(ooscript::Context context, ooscript::Object global)
 {
 	Object proto = ooscript::initClass((context), (global), (JSShipPrototype()), &sPlayerShipClass, OOJSUnconstructableConstruct, 0, sPlayerShipProperties, sPlayerShipMethods, nullptr, nullptr);
 	sPlayerShipPrototype = (proto);
-	OOJSRegisterObjectConverter(&sPlayerShipClass, OOJSBasicPrivateObjectConverter);
+	OOJSRegisterObjectConverter(&sPlayerShipClass, OOJSEntityObjectConverter);
 	OOJSRegisterSubclass(&sPlayerShipClass, JSShipClass());
 	
 	PlayerEntity *player = PlayerEntity::sharedPlayer();	// NOTE: at time of writing, this creates the player entity. Don't use PLAYER here.
@@ -528,9 +528,10 @@ void InitOOJSPlayerShip(ooscript::Context context, ooscript::Object global)
 	// Create ship object as a property of the player object.
 	Object shipObj = ooscript::defineObject((context), (JSPlayerObject()), "ship", &sPlayerShipClass, proto, OOJS_PROP_READONLY);
 	sPlayerShipObject = (shipObj);
-	ooscript::setPrivate((context), shipObj, OOConsumeReference([oo::ToObjC(player) weakRetain]));
+	// The slot holds a weak reference to the C++ player (bead oo-9ht.39.3; the player's object's
+	// weak reference before), as every entity's JS object's does.
+	OOJSSetCxxPrivate((context), shipObj, oo::makeRef<OOJSEntityHolder>(player).get());
 	OOJSPlayerShipSetJSSelf(player, sPlayerShipObject, context);	// -setJSSelf:context:, the category in this file
-	// Analyzer: object leaked. [Expected, object is retained by JS object.]
 }
 
 
@@ -896,7 +897,7 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 	OOGalacticHyperspaceBehaviour ghBehaviour;
 	Vector						vValue;
 	oo::Ref<OOColor>		colorForScript;	// the colours are converted (OOColor)
-	Entity						*eValue = nil;
+	cxx::Entity					*eValue = nullptr;	// as JSValueToEntity() answers (the C++ entity since bead oo-9ht.39.3)
 
 	switch (ooscript::idToInt32(propID))
 	{
@@ -993,7 +994,7 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 				if (player != nullptr)  player->setNextCompassMode();
 				if (player != nullptr)  player->validateCompassTarget();
 				// cycle the targets until we either get back to the start (entity not found) or we find the one we're looking for
-				while ((player != nullptr ? player->getCompassTarget() : (::Entity *)nullptr) != current && (player != nullptr ? player->getCompassTarget() : (::Entity *)nullptr) != eValue)
+				while ((player != nullptr ? player->getCompassTarget() : (::Entity *)nullptr) != current && (player != nullptr ? player->getCompassTarget() : (::Entity *)nullptr) != oo::ToObjC(eValue))
 				{
 					if (player != nullptr)  player->setNextCompassMode();
 					if (player != nullptr)  player->validateCompassTarget();
@@ -1426,7 +1427,7 @@ static bool PlayerShipEngageAutopilotToStation(ooscript::Context context, ooscri
 	PlayerEntity			*player = OOPlayerForScripting();
 	StationEntity			*stationForDocking = nil;
 	
-	if (oojsArgs.count() > 0)  stationForDocking = oo::ToStation(OOJSNativeObjectOfClassFromJSValue(context, OOJS_ARGV[0], [::Entity class]));	// a station's object is a ship's (bead oo-9ht.175)
+	if (oojsArgs.count() > 0)  stationForDocking = oo::ToStation(OOJSEntityFromJSValue(context, OOJS_ARGV[0]));	// a station's object is a ship's (bead oo-9ht.175)
 	if (stationForDocking == nil)
 	{
 		cxx_OOJSReportBadArguments(context, "PlayerShip", "engageAutopilot", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "station");
@@ -1467,7 +1468,7 @@ static bool PlayerShipRequestDockingClearance(ooscript::Context context, ooscrip
 	PlayerEntity			*player = OOPlayerForScripting();
 	StationEntity			*stationForDocking = nil;
 	
-	if (oojsArgs.count() > 0)  stationForDocking = oo::ToStation(OOJSNativeObjectOfClassFromJSValue(context, OOJS_ARGV[0], [::Entity class]));	// a station's object is a ship's (bead oo-9ht.175)
+	if (oojsArgs.count() > 0)  stationForDocking = oo::ToStation(OOJSEntityFromJSValue(context, OOJS_ARGV[0]));	// a station's object is a ship's (bead oo-9ht.175)
 	if (stationForDocking == nil)
 	{
 		cxx_OOJSReportBadArguments(context, "PlayerShip", "requestDockingClearance", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "station");
@@ -1492,7 +1493,7 @@ static bool PlayerShipCancelDockingRequest(ooscript::Context context, ooscript::
 	PlayerEntity			*player = OOPlayerForScripting();
 	StationEntity			*stationForDocking = nil;
 	
-	if (oojsArgs.count() > 0)  stationForDocking = oo::ToStation(OOJSNativeObjectOfClassFromJSValue(context, OOJS_ARGV[0], [::Entity class]));	// a station's object is a ship's (bead oo-9ht.175)
+	if (oojsArgs.count() > 0)  stationForDocking = oo::ToStation(OOJSEntityFromJSValue(context, OOJS_ARGV[0]));	// a station's object is a ship's (bead oo-9ht.175)
 	if (stationForDocking == nil)
 	{
 		cxx_OOJSReportBadArguments(context, "PlayerShip", "cancelDockingRequest", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "station");
