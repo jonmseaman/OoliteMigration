@@ -33,7 +33,6 @@ MA 02110-1301, USA.
 
 #import "Entity.h"
 
-@class OOWeakReference;
 class ShipEntity;	// C++ since bead oo-9ht.144
 
 
@@ -53,5 +52,5 @@ private:
 
 	OOTimeDelta			_nextBlast = {};
 	uint8_t		_blastsRemaining = {};
-	OOWeakReference		*_ship = nil;	// +1 from -weakRetain, never released (as before)
+	oo::WeakRef<cxx::Entity>	_ship;	// the ship's C++ part (bead oo-9ht.39.5.2; was its object's weak reference, never released)
 };

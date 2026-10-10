@@ -301,8 +301,8 @@ public:
 
 	std::vector<oo::ObjCRef<::Entity *>>	entities;
 
-	::OOWeakReference		*_firstBeacon = nil,
-							*_lastBeacon = nil;
+	oo::WeakRef<cxx::Entity>	_firstBeacon,	// the beacons' C++ parts (bead oo-9ht.39.5.2; were their objects' weak references)
+							_lastBeacon;
 	std::map<std::string, oo::ObjCRef<::Entity *>, std::less<>>	waypoints;	// by key: the waypoints' objects (the root's facade since bead oo-9ht.108)
 
 	GLfloat					skyClearColor[4] = {};

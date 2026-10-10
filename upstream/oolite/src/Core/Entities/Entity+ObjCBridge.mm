@@ -131,6 +131,15 @@ bool IsEffectSelectorCalledByName(SEL selector)
 }
 
 
+::Entity *oo::WeakEntityObject(const WeakRef<cxx::Entity> &ref)
+{
+	cxx::Entity *entity = ref.get();
+	if (entity == nullptr)  return nil;
+	if (ObjCEntityLink *link = AsObjCEntity(entity))  return link->objcOwner();
+	return Peers().livePeer(entity);
+}
+
+
 ::Entity *oo::NewEntityFacade(const Ref<cxx::Entity> &entity)
 {
 	if (entity == nullptr)  return nil;
@@ -229,6 +238,7 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 		if (DockEntity *dock = DockPart(ship))  dock->willDealloc();
 		[weakSelf weakRefDrop];
 		weakSelf = nil;
+		_cxxEntity->dropWeakReferences();	// and the C++ part's, at the same point (bead oo-9ht.39.5.2)
 		ship->shipWillDealloc();
 	}
 
@@ -243,6 +253,11 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 	gTotalEntityMemory -= [self oo_objectSize];
 #endif
 
+	/*	The C++ part's weak references read null from here, where OOWeakRefObject's -dealloc (the
+		superclass's, below) dropped the object's: the part may outlive its object while something
+		else holds it (bead oo-9ht.39.5.2).
+	*/
+	_cxxEntity->dropWeakReferences();
 	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  link->objcOwnerDeallocated();
 	else  Peers().forget(_cxxEntity.get());
 	_cxxEntity = nullptr;	// the C++ part goes with the object, before its superclass's -dealloc

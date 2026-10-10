@@ -464,8 +464,8 @@ void cxx::Universe::dealloc()
 	replacedCharacterPool.clear();
 	universeRegion = nullptr;
 
-	DESTROY(_firstBeacon);
-	DESTROY(_lastBeacon);
+	_firstBeacon = nullptr;
+	_lastBeacon = nullptr;
 	waypoints.clear();
 
 	unsigned i;
@@ -4181,7 +4181,7 @@ void Universe::resetBeacons()
 
 OOBeaconEntityObject * Universe::firstBeacon()
 {
-	return [_firstBeacon weakRefUnderlyingObject];
+	return static_cast<OOBeaconEntityObject *>(oo::WeakEntityObject(_firstBeacon));
 }
 
 
@@ -4193,15 +4193,14 @@ void Universe::setFirstBeacon(OOBeaconEntityObject *beacon)
 		[beacon setPrevBeacon:nil];
 		[beacon setNextBeacon:[self firstBeacon]];
 		[[self firstBeacon] setPrevBeacon:beacon];
-		[_firstBeacon release];
-		_firstBeacon = [beacon weakRetain];
+		_firstBeacon = oo::WeakEntityRef(beacon);
 	}
 }
 
 
 OOBeaconEntityObject * Universe::lastBeacon()
 {
-	return [_lastBeacon weakRefUnderlyingObject];
+	return static_cast<OOBeaconEntityObject *>(oo::WeakEntityObject(_lastBeacon));
 }
 
 
@@ -4213,8 +4212,7 @@ void Universe::setLastBeacon(OOBeaconEntityObject *beacon)
 		[beacon setNextBeacon:nil];
 		[beacon setPrevBeacon:[self lastBeacon]];
 		[[self lastBeacon] setNextBeacon:beacon];
-		[_lastBeacon release];
-		_lastBeacon = [beacon weakRetain];
+		_lastBeacon = oo::WeakEntityRef(beacon);
 	}
 }
 

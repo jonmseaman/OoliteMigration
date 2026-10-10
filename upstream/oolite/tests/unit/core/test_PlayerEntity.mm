@@ -390,7 +390,7 @@ OO_TEST(membersStartZeroed)
 		SetUp();
 		TestPlayer *player = NewTestPlayer<TestPlayer>();
 		PlayerEntity *part = player;
-		OO_CHECK(PlayerEntityTestAccess::hud(part) == nil && PlayerEntityTestAccess::compassTarget(part) == nil && PlayerEntityTestAccess::wormhole(part) == nil);
+		OO_CHECK(PlayerEntityTestAccess::hud(part) == nil && PlayerEntityTestAccess::compassTarget(part).get() == nullptr && PlayerEntityTestAccess::wormhole(part) == nil);
 		OO_CHECK(PlayerEntityTestAccess::system_id(part) == 0 && PlayerEntityTestAccess::ship_clock(part) == 0 && PlayerEntityTestAccess::scoopsActive(part) == NO);
 		for (int i = 0; i < PLAYER_MAX_MISSILES; i++)  OO_CHECK(PlayerEntityTestAccess::missile_entity(part)[i] == nil);
 		OO_CHECK(!PlayerEntityTestAccess::save_path(part).has_value() && PlayerEntityTestAccess::worldScripts(part).empty());

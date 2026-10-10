@@ -6658,3 +6658,58 @@ subclass, through its `oo::ObjCEntity` adapter) overrides them.
 **Consequences.** The root facade's `-isVisibleToScripts` and `-cxx_oo_jsClassName` are sent only
 by the helpers, to Objective-C entities. Left for oo-9ht.39.5.2/.3: weak references, Object nodes,
 `OOJSValueFromNativeObject()` of an entity and the converter.
+
+## Amendment (bead oo-9ht.39.5.2): weak references of entities hold the C++ entity (oo-9ht.39 step 3b, part b)
+
+- Date: 2026-10-10. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch U.
+  Exemplar: `src/Core/Entities/ShipEntity.h/.mm` (the targets), `Entity+ObjCBridge.h`
+  (`oo::WeakEntityRef()`), `Entity+ObjCBridge.mm` (the facade's `-dealloc`), `oofnd/Ref.hpp`
+  (`RefCounted::dropWeakReferences()`), `PlayerEntity.mm` (the target memory).
+
+**Context.** C++ holders kept weak references to entities as the root facade's `OOWeakReference`
+(`-weakRetain`, read with `-weakRefUnderlyingObject`): a ship's targets, aggressor, target station,
+found/escort/thanked/remembered ships, proximity alert, damaged subentity, aegis lock, laser hit and
+beacon links; `Entity::_owner`; a dock's `id_lock`; the ECM blast's ship; the visual effects', the
+waypoints' and the universe's beacon links; the player's docked station, compass target and target
+memory. The facade drops its weak reference (`weakSelf`) at the start of a ship's `-dealloc`
+(before `shipWillDealloc()`) and at the end of any other entity's (`OOWeakRefObject`'s `-dealloc`).
+
+**Decision (recommended defaults).**
+
+1. **They are `oo::WeakRef<cxx::Entity>` of the entity's C++ part** (an Objective-C test entity's
+   adapter part). Stored with `oo::WeakEntityRef(object)` (`oo::ToCxx`, empty for nil) or from the
+   C++ entity; read with `oo::WeakEntityObject(ref)`, so every getter answers the same object (nil
+   once it has gone) and keeps its type. That reader answers the object +0, as the proxy's
+   `-weakRefUnderlyingObject` did: `oo::ToObjC()` loads the peer retained and autoreleased, which
+   would keep a released entity alive to the end of the pool and make its weak references read it
+   after its last release (`test_OOWaypointEntity`'s `neighbours` case caught exactly that). `DESTROY(x)` is `x = nullptr`; the hand `-release`s go (the
+   members release themselves; the ship's never released most of them, a leak of the proxies).
+2. **The part's weak references die with the object's, at the same points**: `RefCounted` gains
+   `dropWeakReferences()` (protected; `cxx::Entity` makes it public), which zeroes them while the
+   object lives (`oofnd` test `dropWeakReferencesZeroesThemWhileTheObjectLives`). The facade's
+   `-dealloc` calls it where it dropped `weakSelf` for a ship and, for every entity, just before it
+   lets go of the part (where `OOWeakRefObject`'s `-dealloc` dropped it), so a weak reference reads
+   null exactly when the object's did even if something else still holds the part. A weak reference
+   made afterwards is a new identity, as a `-weakRetain` after `-weakRefDrop` was a new proxy.
+   `OOJSEntityHolder` (amendment oo-9ht.39.3 item 1) shares this: an entity's JS object reads stale
+   from the same point as when its slot held the facade's weak reference.
+3. **Identity**: the target memory compared proxies (`[entity weakSelf]`) by identity; it compares
+   `WeakRef`s (`==` is the control block's identity, which survives the object's death), an empty
+   ref is an empty slot and a non-empty ref is what `-isProxy` was (the HUD's and
+   `moveTargetMemoryBy()`'s test). `targetMemory()` answers `std::vector<oo::WeakRef<cxx::Entity>>`.
+4. **`-weakSelf` was answered because these members had made it**: the proximity alert's saved
+   condition stored `[primaryTarget() weakSelf]` in an Object node; it stores the target's
+   `-weakRetain` (autoreleased; the same proxy, made if missing), and `resumePostProximityAlert()`
+   reads the node's object back as the target.
+5. **Left as they are**: Object nodes holding an entity's weak reference (the proximity condition,
+   `StationEntity`'s script accessor's `station`, `ShipEntityAI`'s reader of it) are oo-9ht.39.5.3's
+   (Object nodes of entities); the facade's own `weakSelf` stays for its other holders (ship groups,
+   AI, shader bindings, `OOWeakSet`). **oo-9ht.22 is not cleared**: materials, shaders, meshes, AI,
+   `OOWeakSet`, `OOShipGroup`, the JS definitions and `OOJSScript` still use `OOWeakReference`.
+6. **Behaviour identical**: every read answers null at exactly the point it did before (item 2), and
+   every getter the same object. Tests (standing approval oo-9n5p9, lines on main first):
+   `test_ShipEntity`, `test_ShipEntityAI`, `test_StationEntity` store `oo::WeakEntityRef()` of the
+   same entity in their target set-ups; `test_PlayerEntity` reads the empty compass target with
+   `.get() == nullptr`. No OO_TEST case or expected value changes.
+
+**Consequences.** No C++ holder in the entities or the universe keeps an entity's `OOWeakReference`.

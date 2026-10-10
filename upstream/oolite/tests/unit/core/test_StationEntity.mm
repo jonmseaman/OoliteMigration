@@ -557,8 +557,7 @@ void SetEnergy3(cxx::Entity *e, GLfloat energy)		{ e->energy = energy; e->maxEne
 GLfloat Energy3(cxx::Entity *e)						{ return e->energy; }
 void SetPrimaryTarget3(ShipEntity *s, Entity *target)
 {
-	[s->_primaryTarget release];
-	s->_primaryTarget = [target weakRetain];
+	s->_primaryTarget = oo::WeakEntityRef(target);	// the entity's C++ part (bead oo-9ht.39.5.2)
 }
 
 }	// namespace

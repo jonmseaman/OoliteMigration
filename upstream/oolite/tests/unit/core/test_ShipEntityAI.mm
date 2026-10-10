@@ -125,8 +125,7 @@ void SetAccuracy(ShipEntity *s, GLfloat a)		{ s->accuracy = a; }
 void SetNearPlanetSurface(ShipEntity *s, bool v)	{ s->isNearPlanetSurface = v; }
 void SetPrimaryTarget(ShipEntity *s, Entity *target)
 {
-	[s->_primaryTarget release];
-	s->_primaryTarget = [target weakRetain];
+	s->_primaryTarget = oo::WeakEntityRef(target);	// the entity's C++ part (bead oo-9ht.39.5.2)
 }
 
 

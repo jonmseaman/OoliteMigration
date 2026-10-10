@@ -320,6 +320,17 @@ inline ::Entity *ToObjC(const Ref<cxx::Entity> &entity)  { return ToObjC(entity.
 // The C++ entity behind an Objective-C one, borrowed; null for nil.
 inline cxx::Entity *ToCxx(::Entity *entity)  { return entity != nil ? entity->_cxxEntity.get() : nullptr; }
 
+// What -weakRetain of an entity's object made, held by a C++ holder as a weak reference to the
+// object's C++ part (bead oo-9ht.39.5.2): it reads null exactly when the object's weak reference
+// did, because the facade's -dealloc drops the part's weak references where it dropped weakSelf.
+// Empty for nil.
+inline WeakRef<cxx::Entity> WeakEntityRef(::Entity *entity)  { return WeakRef<cxx::Entity>(ToCxx(entity)); }
+
+// What -weakRefUnderlyingObject answered for such a reference: the entity's object, unretained and
+// not autoreleased (+0, as the proxy answered it; oo::ToObjC() would autorelease it and so keep it
+// alive to the end of the pool), nil once the entity has gone.
+::Entity *WeakEntityObject(const WeakRef<cxx::Entity> &ref);
+
 // The Objective-C object of an entity made in C++ (a converted subclass): a new facade that owns
 // it and is its identity from then on, autoreleased. Call it once, where the entity is made. Its
 // class is the facade of the entity's nearest converted class that has one (OOEntityWithDrawable,

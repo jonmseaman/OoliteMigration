@@ -94,6 +94,10 @@ public:
 	// entity is sent -init (PlayerEntity's deferred initialisation). Only then does it re-run.
 	void init();
 
+	// The facade's -dealloc zeroes the weak references to the C++ part where it dropped its own
+	// weak reference (bead oo-9ht.39.5.2), so oo::WeakRef<cxx::Entity> reads null when it did.
+	using oo::RefCounted::dropWeakReferences;
+
 	// The session in which the entity was created.
 	virtual NSUInteger sessionID();
 
@@ -362,7 +366,7 @@ private:
 
 	NSUInteger				_sessionID = {};
 
-	oo::ObjCRef<::OOWeakReference *>	_owner;
+	oo::WeakRef<Entity>		_owner;	// the owner's C++ part (bead oo-9ht.39.5.2; was its object's weak reference)
 	OOEntityStatus			_status = {};
 };
 

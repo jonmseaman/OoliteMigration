@@ -128,7 +128,7 @@ public:
 	double					last_launch_time = {};
 //	double					approach_spacing; // not needed now holding pattern changed
 	
-	::OOWeakReference		*id_lock[MAX_DOCKING_STAGES] = {};	// OOWeakReferences to a ship's object (typed as the ship until bead oo-9ht.144)
+	oo::WeakRef<cxx::Entity>	id_lock[MAX_DOCKING_STAGES];	// weak references to a ship (its C++ part since bead oo-9ht.39.5.2; its object's before)
 	
 	Vector  				port_dimensions = {};
 	double					port_corridor = {};				// corridor length inside station.

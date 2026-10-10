@@ -558,14 +558,13 @@ void Entity::throwSparks()
 
 void Entity::setOwner(Entity *ent)
 {
-	_owner = oo::ObjCRef<::OOWeakReference *>::adopt([oo::ToObjC(ent) weakRetain]);
+	_owner = oo::WeakEntityRef(oo::ToObjC(ent));
 }
 
 
 id Entity::owner()
 {
-	::OOWeakReference *ownerRef = _owner.get();
-	return ownerRef != nil ? oo::ToCxx(ownerRef)->weakRefUnderlyingObject() : nil;
+	return oo::WeakEntityObject(_owner);
 }
 
 

@@ -167,7 +167,7 @@ void ShipEntity::switchAITo(const std::string &aiString)	// called by name (ADR-
 void ShipEntity::scanForHostiles()
 {
 	/*-- Locates all the ships in range targeting the receiver and chooses the nearest --*/
-	DESTROY(_foundTarget);
+	_foundTarget = nullptr;
 	
 	checkScanner();
 	unsigned i;
@@ -620,7 +620,7 @@ void ShipEntity::broadcastDistressMessage()
 void ShipEntity::broadcastDistressMessageWithDumping(bool dumpCargo)
 {
 	checkScannerIgnoringUnpowered();
-	DESTROY(_foundTarget);
+	_foundTarget = nullptr;
 	
 	::ShipEntity	*aggressor_ship = oo::ToShip(primaryAggressor());
 	if (aggressor_ship == nil)  return;
@@ -661,7 +661,7 @@ void ShipEntity::broadcastDistressMessageWithDumping(bool dumpCargo)
 			}
 			
 			// reset the thanked_ship_id
-			DESTROY(_thankedShip);
+			_thankedShip = nullptr;
 		}
 		else if (getBounty() == 0 && (ship != nullptr ? ship->getCrew() : std::optional<std::vector<oo::Ref<OOCharacter>>>()).has_value()) // Only clean ships can have their distress calls accepted
 		{
@@ -801,7 +801,7 @@ void ShipEntity::scanForNearestShipWithPredicate(EntityFilterPredicate predicate
 	::ShipEntity		*candidate;
 	float			d2, found_d2 = scannerRange * scannerRange;
 	
-	DESTROY(_foundTarget);
+	_foundTarget = nullptr;
 	checkScanner();
 	
 	if (predicate == NULL)  return;
@@ -891,8 +891,8 @@ void StationEntity::acceptDistressMessageFrom(::ShipEntity *other)
 {
 	if (this != [UNIVERSE station])  return;
 
-	::OOWeakReference *old_target = _primaryTarget;
-	_primaryTarget = [[(other != nullptr ? other->primaryTarget() : id{}) weakRetain] autorelease];
+	const oo::WeakRef<cxx::Entity> old_target = _primaryTarget;
+	_primaryTarget = oo::WeakEntityRef(other != nullptr ? other->primaryTarget() : id{});
 	if (oo::ToShip((other != nullptr ? other->primaryTarget() : id{})) != nullptr)  oo::ToShip((other != nullptr ? other->primaryTarget() : id{}))->markAsOffender(8, kOOLegalStatusReasonDistressCall);	// mark their card
 	launchDefenseShip();
 	_primaryTarget = old_target;
@@ -1062,7 +1062,7 @@ void ShipEntity::scanForNearestMerchantman()
 	checkScannerIgnoringUnpowered();
 	
 	found_d2 = scannerRange * scannerRange;
-	DESTROY(_foundTarget);
+	_foundTarget = nullptr;
 	
 	for (i = 0; i < n_scanned_ships ; i++)
 	{
@@ -1095,7 +1095,7 @@ void ShipEntity::scanForRandomMerchantman()
 	std::vector<::ShipEntity *>	ids_found(n_scanned_ships);
 	
 	n_found = 0;
-	DESTROY(_foundTarget);
+	_foundTarget = nullptr;
 	for (i = 0; i < n_scanned_ships ; i++)
 	{
 		::ShipEntity *ship = scanned_ships[i];
@@ -1144,7 +1144,7 @@ void ShipEntity::scanForLoot()
 	checkScanner();
 	
 	double found_d2 = scannerRange * scannerRange;
-	DESTROY(_foundTarget);
+	_foundTarget = nullptr;
 	unsigned i;
 	for (i = 0; i < n_scanned_ships; i++)
 	{
@@ -1179,7 +1179,7 @@ void ShipEntity::scanForRandomLoot()
 	//
 	::ShipEntity* thing_uids_found[16];
 	unsigned things_found = 0;
-	DESTROY(_foundTarget);
+	_foundTarget = nullptr;
 	unsigned i;
 	for (i = 0; (i < n_scanned_ships)&&(things_found < 16) ; i++)
 	{
@@ -1634,7 +1634,7 @@ void ShipEntity::scanForOffenders()
 	if ([UNIVERSE sun] == nil)
 		gov_factor = 1.0;
 	//
-	DESTROY(_foundTarget);
+	_foundTarget = nullptr;
 	
 	// find the worst offender on the scanner
 	//
@@ -1763,7 +1763,7 @@ void ShipEntity::scanForThargoid()
 void ShipEntity::scanForNonThargoid()
 {
 	/*-- Locates all the non thargoid ships in range and chooses the nearest --*/
-	DESTROY(_foundTarget);
+	_foundTarget = nullptr;
 	
 	checkScanner();
 	unsigned i;
@@ -1833,7 +1833,7 @@ void ShipEntity::becomeUncontrolledThargon()
 	scanClass = CLASS_CARGO;
 	reportAIMessages = NO;
 	setAITo("dumbAI.plist");
-	DESTROY(_primaryTarget);
+	_primaryTarget = nullptr;
 	setSpeed(0.0);
 	setGroup(nullptr);
 }
@@ -1945,7 +1945,7 @@ void ShipEntity::checkGroupOddsVersusTarget()
 void ShipEntity::scanForFormationLeader()
 {
 	//-- Locates the nearest suitable formation leader in range --//
-	DESTROY(_foundTarget);
+	_foundTarget = nullptr;
 	checkScannerIgnoringUnpowered();
 	unsigned i;
 	GLfloat	found_d2 = scannerRange * scannerRange;
@@ -2192,7 +2192,7 @@ void ShipEntity::storeTarget()
 	}
 	else
 	{
-		DESTROY(_rememberedShip);
+		_rememberedShip = nullptr;
 	}
 	
 }
@@ -2226,7 +2226,7 @@ void ShipEntity::recallStoredTarget()
 	}
 	else
 	{
-		if (oldTarget == nil) DESTROY(_rememberedShip); // ship no longer exists
+		if (oldTarget == nil) _rememberedShip = nullptr; // ship no longer exists
 		[shipAI message:"NOTHING_FOUND"];
 	}
 	
@@ -2239,7 +2239,7 @@ void ShipEntity::scanForRocks()
 	
 	// find boulders then asteroids within range
 	//
-	DESTROY(_foundTarget);
+	_foundTarget = nullptr;
 	checkScanner();
 	unsigned i;
 	GLfloat found_d2 = scannerRange * scannerRange;
@@ -2309,7 +2309,7 @@ void ShipEntity::requestNewTarget()
 	}
 	
 	/*-- Locates all the ships in range targeting the mother ship and chooses the nearest/biggest --*/
-	DESTROY(_foundTarget);
+	_foundTarget = nullptr;
 	checkScanner();
 	unsigned i;
 	GLfloat found_d2 = scannerRange * scannerRange;
@@ -2504,7 +2504,7 @@ void ShipEntity::scanForNearestShipMatchingPredicate(const std::string &predicat
 		}
 		
 		// Select nothing
-		DESTROY(_foundTarget);
+		_foundTarget = nullptr;
 		[getAI() message:"NOTHING_FOUND"];
 	}
 	

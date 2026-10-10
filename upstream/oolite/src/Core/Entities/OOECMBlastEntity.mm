@@ -52,7 +52,7 @@ OOECMBlastEntity::OOECMBlastEntity(ShipEntity *ship)
 {
 	_blastsRemaining = ECM_PULSE_COUNT;
 	_nextBlast = ECM_PULSE_INTERVAL;
-	_ship = (ship != nullptr ? [oo::ToObjC(ship) weakRetain] : id{});
+	_ship = oo::WeakRef<cxx::Entity>(ship);
 	
 	Entity::setPosition((ship != nullptr ? ship->getPosition() : HPVector{}));
 	
@@ -75,7 +75,7 @@ void OOECMBlastEntity::update(OOTimeDelta delta_t)
 {
 	::Entity *self = oo::ToObjC(this);
 	_nextBlast -= delta_t;
-	ShipEntity		*ship = oo::ToShip([_ship weakRefUnderlyingObject]);
+	ShipEntity		*ship = oo::ToShip(_ship.get());
 	BOOL 			validShip = (ship != nil) && ((ship != nullptr ? ship->status() : OOEntityStatus{}) != STATUS_DEAD);
 	
 	if (_nextBlast <= 0.0 && validShip)
