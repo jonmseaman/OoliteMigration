@@ -119,7 +119,7 @@ public:
 @interface Entity (TestPrivate)
 - (Vector) relativePosition;
 - (id) superShaderBindingTarget;
-- (void) subEntityReallyDied:(ShipEntity *)sub;
+- (void) subEntityReallyDied:(ShipEntity *)sub;	// the C++ ship since bead oo-9ht.144
 @end
 
 
@@ -467,7 +467,7 @@ OO_TEST(ownersAndParents)
 		// swallowed, ending the dump.
 
 		SetIsShip(entity, true);
-		OO_CHECK([entity isShip] && [entity rootShipEntity] == (ShipEntity *)entity);
+		OO_CHECK([entity isShip] && [entity rootShipEntity] == entity);
 		SetIsShip(entity, false);
 	}
 }

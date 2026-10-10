@@ -81,7 +81,7 @@ void OOEntityWithDrawable::drawImmediate(bool /*immediate*/, bool translucent)
 			GLfloat clipradius = collision_radius;
 			if (getIsShip())
 			{
-				clipradius = frustumRadius();	// [(ShipEntity *)self frustumRadius]
+				clipradius = frustumRadius();	// [oo::ToShip(self) frustumRadius]
 			}
 			else if (getIsVisualEffect())
 			{

@@ -70,7 +70,7 @@ OOSystemID OOStringExpanderPlayerSystemID(void)
 
 bool OOStringExpanderPlayerRespondsToSelector(SEL selector)
 {
-	return [oo::ToObjC(PLAYER) respondsToSelector:selector];	// the ship's facade answers the player's selectors (bead oo-9ht.177)
+	return [oo::ToObjC(PLAYER) respondsToSelector:selector];	// the root's facade answers the player's selectors (beads oo-9ht.177, oo-9ht.144)
 }
 
 

@@ -446,7 +446,7 @@ void OODebugMonitor::dumpEntity(id entity, EntityDumpState *state, bool parentVi
 	oo::log::indent();
 	if ([entity isShip])
 	{
-		for (const auto &subRef : [(::ShipEntity *)entity subEntityEnumerator])
+		for (const auto &subRef : (oo::ToShip(entity) != nullptr ? oo::ToShip(entity)->subEntityEnumerator() : std::vector<oo::ObjCRef<::Entity *>>()))
 		{
 			dumpEntity(subRef.get(), state, visible);
 		}
@@ -457,7 +457,7 @@ void OODebugMonitor::dumpEntity(id entity, EntityDumpState *state, bool parentVi
 			NSUInteger i, count = player->dialMaxMissiles();
 			for (i = 0; i < count; i++)
 			{
-				id subentity = player->missileForPylon(i);
+				id subentity = oo::ToObjC(player->missileForPylon(i));
 				if (subentity != nil)  dumpEntity(subentity, state, false);
 			}
 		}
@@ -474,8 +474,8 @@ void OODebugMonitor::dumpEntity(id entity, EntityDumpState *state, bool parentVi
 			for (const oo::PList &shipInfo : *shipInfos)
 			{
 				const oo::PList *shipNode = shipInfo.find("ship");
-				::ShipEntity *ship = (shipNode != nullptr) ? oo::ObjectIn(*shipNode) : nil;
-				dumpEntity(ship, state, false);
+				::ShipEntity *ship = oo::ToShip((shipNode != nullptr) ? oo::ObjectIn(*shipNode) : nil);
+				dumpEntity(oo::ToObjC(ship), state, false);
 			}
 		}
 	}

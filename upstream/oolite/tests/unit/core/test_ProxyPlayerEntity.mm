@@ -13,7 +13,10 @@
 	Objective-C facade (ADR-0056 amendment oo-9ht.183) the proxy is made by newProxyObject(), its
 	object is the ship's facade, the class's selectors are member calls with every expected value
 	kept, and the dials case pins the dials the ship's facade answers by name for a proxy. The last
-	case pins that the proxy and the player are visible to scripts (bead oo-ak1km).
+	case pins that the proxy and the player are visible to scripts (bead oo-ak1km). Since bead
+	oo-9ht.144 deleted the ship's facade every ship is C++ and its object is the drawable's facade,
+	whose root category answers the dials by name; the check that the proxy's part was the facade's
+	_cxxShip went with it (standing approval oo-9n5p9).
 	Run: bash tools/check-core-tests.sh test_ProxyPlayerEntity
 */
 
@@ -102,12 +105,13 @@ void SetUp()
 
 // An unpiloted ship (a crewed one would ask the universe for a pilot). The proxy, held by its
 // object (the ship's facade, autoreleased as [[[ProxyPlayerEntity alloc] ...] autorelease] was).
-ProxyPlayerEntity *MakeProxy(ShipEntity **outObject = nullptr)
+ProxyPlayerEntity *MakeProxy(::Entity **outObject = nullptr)
 {
 	oo::PList::Dict dict{ { "unpiloted", oo::PList(true) } };
-	ShipEntity *object = [ProxyPlayerEntity::newProxyObject("proxy", oo::PList(std::move(dict))) autorelease];
+	::ShipEntity *ship = ProxyPlayerEntity::newProxyObject("proxy", oo::PList(std::move(dict)));
+	::Entity *object = [oo::ToObjC(ship) autorelease];
 	if (outObject != nullptr)  *outObject = object;
-	return dynamic_cast<ProxyPlayerEntity *>(oo::ToCxx(object));
+	return dynamic_cast<ProxyPlayerEntity *>(ship);
 }
 
 
@@ -222,37 +226,37 @@ OO_TEST(isPlayerLikeShip)
 
 // --- The crossing --------------------------------------------------------------------------------
 
-// A proxy's C++ part is a ProxyPlayerEntity under the ship's facade (bead oo-9ht.183), beside the
-// ship's _cxxShip; the ship's virtual alertCondition() answers the proxy's.
+// A proxy's C++ part is a ProxyPlayerEntity under its object (bead oo-9ht.183), and the ship
+// itself since bead oo-9ht.144; the ship's virtual alertCondition() answers the proxy's.
 OO_TEST(objCProxyPartIsAProxy)
 {
 	@autoreleasepool
 	{
 		SetUp();
-		ShipEntity *object = nil;
+		::Entity *object = nil;
 		ProxyPlayerEntity *part = MakeProxy(&object);
 		Entity *asEntity = object;
 		OO_CHECK(part != nullptr);
-		OO_CHECK(static_cast<cxx::ShipEntity *>(part) == object->_cxxShip);
 		OO_CHECK(dynamic_cast<ProxyPlayerEntity *>(oo::ToCxx(asEntity)) == part);
 		OO_CHECK(oo::ToObjC(part) == object);
 
 		part->setAlertCondition(ALERT_CONDITION_GREEN);
-		cxx::ShipEntity *asShip = part;
+		ShipEntity *asShip = part;
 		OO_CHECK(asShip->alertCondition() == ALERT_CONDITION_GREEN);
 		OO_CHECK(part->tradeInFactor() == 95 && part->isPlayerLikeShip());
 	}
 }
 
 
-// The proxy's dials by name (bead oo-9ht.183): the shaders bind them to the proxy's object, the
-// ship's facade, which answers them for a proxy's part (and a plain ship's object does not).
+// The proxy's dials by name (bead oo-9ht.183): the shaders bind them to the proxy's object, which
+// answers them for a proxy's part (and a plain ship's object does not); the root's facade since
+// bead oo-9ht.144.
 OO_TEST(dialsAnsweredByNameForAProxy)
 {
 	@autoreleasepool
 	{
 		SetUp();
-		ShipEntity *object = nil;
+		::Entity *object = nil;
 		ProxyPlayerEntity *proxy = MakeProxy(&object);
 		proxy->setDialForwardShield(0.5f);
 		proxy->setTradeInFactor(42);
@@ -261,31 +265,31 @@ OO_TEST(dialsAnsweredByNameForAProxy)
 		OO_CHECK(((int (*)(id, SEL))class_getMethodImplementation(object_getClass(object), @selector(tradeInFactor)))(object, @selector(tradeInFactor)) == 42);
 		OO_CHECK(((OOAlertCondition (*)(id, SEL))class_getMethodImplementation(object_getClass(object), @selector(alertCondition)))(object, @selector(alertCondition)) == ALERT_CONDITION_DOCKED);
 
-		ShipEntity *ship = [[[ShipEntity alloc] cxx_initWithKey:"ship" definition:oo::PList(oo::PList::Dict{ { "unpiloted", oo::PList(true) } })] autorelease];
-		OO_CHECK(ship != nil && ![ship respondsToSelector:@selector(dialForwardShield)]);
+		ShipEntity *ship = oo::ToShip([oo::NewShipObject(oo::makeRef<::ShipEntity>(), "ship", oo::PList(oo::PList::Dict{ { "unpiloted", oo::PList(true) } })) autorelease]);
+		OO_CHECK(ship != nil && !(ship != nullptr ? [oo::ToObjC(ship) respondsToSelector:@selector(dialForwardShield)] : false));
 	}
 }
 
-// Visible to scripts (bead oo-ak1km): the player and the proxy are ships made in C++ under the
-// ship's facade, which asks their C++ parts; they answer YES, as their deleted facades did (the
+// Visible to scripts (bead oo-ak1km): the player and the proxy are ships made in C++ under their
+// objects, which ask their C++ parts; they answer YES, as their deleted facades did (the
 // Objective-C PlayerEntity and ProxyPlayerEntity inherited ShipEntity's answer), and so does a
-// plain Objective-C ship.
+// plain ship (C++ since bead oo-9ht.144).
 OO_TEST(playerAndProxyAreVisibleToScripts)
 {
 	@autoreleasepool
 	{
 		SetUp();
-		ShipEntity *object = nil;
+		::Entity *object = nil;
 		ProxyPlayerEntity *proxy = MakeProxy(&object);
 		OO_CHECK(proxy->isVisibleToScripts());
 		OO_CHECK([object isVisibleToScripts]);
 
-		cxx::ShipEntity *player = gOOPlayer;
+		ShipEntity *player = gOOPlayer;
 		OO_CHECK(player->isVisibleToScripts());
 		OO_CHECK([oo::ToObjC(player) isVisibleToScripts]);
 
-		ShipEntity *ship = [[[ShipEntity alloc] cxx_initWithKey:"ship" definition:oo::PList(oo::PList::Dict{ { "unpiloted", oo::PList(true) } })] autorelease];
-		OO_CHECK([ship isVisibleToScripts]);
+		ShipEntity *ship = oo::ToShip([oo::NewShipObject(oo::makeRef<::ShipEntity>(), "ship", oo::PList(oo::PList::Dict{ { "unpiloted", oo::PList(true) } })) autorelease]);
+		OO_CHECK([oo::ToObjC(ship) isVisibleToScripts]);
 	}
 }
 

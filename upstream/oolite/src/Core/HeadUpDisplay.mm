@@ -949,9 +949,9 @@ void HeadUpDisplay::refreshLastTransmitter()
 	::Entity* lt = [UNIVERSE entityForUniversalID:last_transmitter];
 	if ((lt == nil)||(!(lt->_cxxEntity->isShip)))
 		return;
-	::ShipEntity* st = (::ShipEntity*)lt;
-	if ([st messageTime] <= 0.0)
-		[st setMessageTime:2.5];
+	::ShipEntity* st = oo::ToShip(lt);
+	if ((st != nullptr ? st->getMessageTime() : 0.0) <= 0.0)
+		if (st != nullptr)  st->setMessageTime(2.5);
 }
 
 
@@ -1535,7 +1535,7 @@ void HeadUpDisplay::drawScanner(const oo::PList &info)
 			drawClass = [scannedEntity scanClass];
 			
 			// cloaked ships - and your own one - don't show up on the scanner.
-			if (EXPECT_NOT(drawClass == CLASS_PLAYER || ([scannedEntity isShip] && [(::ShipEntity *)scannedEntity isCloaked])))
+			if (EXPECT_NOT(drawClass == CLASS_PLAYER || ([scannedEntity isShip] && (oo::ToShip(scannedEntity) != nullptr ? oo::ToShip(scannedEntity)->isCloaked() : false))))
 			{
 				drawClass = CLASS_NO_DRAW;
 			}
@@ -1564,7 +1564,7 @@ void HeadUpDisplay::drawScanner(const oo::PList &info)
 				// has it sent a recent message
 				//
 				if ([scannedEntity isShip]) 
-					ms_blip = 2.0 * [(::ShipEntity *)scannedEntity messageTime];
+					ms_blip = 2.0 * (oo::ToShip(scannedEntity) != nullptr ? oo::ToShip(scannedEntity)->getMessageTime() : 0.0);
 				if (ms_blip > max_blip)
 				{
 					max_blip = ms_blip;
@@ -1604,12 +1604,9 @@ void HeadUpDisplay::drawScanner(const oo::PList &info)
 				isHostile = NO;
 				if ([scannedEntity isShip])
 				{
-					::ShipEntity *ship = (::ShipEntity *)scannedEntity;
-					isHostile = (([ship hasHostileTarget])&&([ship primaryTarget] == oo::ToObjC(PLAYER)));
-					GLfloat *base_col = [ship scannerDisplayColorForShip:oo::ToObjC(PLAYER) :isHostile :flash
-																		:[ship scannerDisplayColor1] :[ship scannerDisplayColor2]
-																		:[ship scannerDisplayColorHostile1] :[ship scannerDisplayColorHostile2]
-						];
+					::ShipEntity *ship = oo::ToShip(scannedEntity);
+					isHostile = (((ship != nullptr ? ship->hasHostileTarget() : false))&&((ship != nullptr ? ship->primaryTarget() : id{}) == oo::ToObjC(PLAYER)));
+					GLfloat *base_col = (ship != nullptr ? ship->scannerDisplayColorForShip(PLAYER, isHostile, flash, (ship != nullptr ? ship->scannerDisplayColor1() : (OOColor *)nullptr), (ship != nullptr ? ship->scannerDisplayColor2() : (OOColor *)nullptr), (ship != nullptr ? ship->scannerDisplayColorHostile1() : (OOColor *)nullptr), (ship != nullptr ? ship->scannerDisplayColorHostile2() : (OOColor *)nullptr)) : (GLfloat *)nullptr);
 					col[0] = base_col[0];	col[1] = base_col[1];	col[2] = base_col[2];	col[3] = alpha * base_col[3];
 				}
 				else if ([scannedEntity isVisualEffect])
@@ -1629,18 +1626,18 @@ void HeadUpDisplay::drawScanner(const oo::PList &info)
 
 				if ([scannedEntity isShip])
 				{
-					::ShipEntity* ship = (::ShipEntity*)scannedEntity;
-					if ((!nonlinear_scanner && ship->_cxxEntity->collision_radius * upscale > 4.5) ||
+					::ShipEntity* ship = oo::ToShip(scannedEntity);
+					if ((!nonlinear_scanner && ship->collision_radius * upscale > 4.5) ||
 						(nonlinear_scanner && nonlinearScannerFunc(act_dist, zoom, siz.width) - nonlinearScannerFunc(lim_dist, zoom, siz.width) > 4.5 ))
 					{
 						Vector bounds[6];
-						BoundingBox bb = ship->_cxxShip->totalBoundingBox;
-						bounds[0] = ship->_cxxShip->v_forward;	scale_vector(&bounds[0], bb.max.z);
-						bounds[1] = ship->_cxxShip->v_forward;	scale_vector(&bounds[1], bb.min.z);
-						bounds[2] = ship->_cxxShip->v_right;		scale_vector(&bounds[2], bb.max.x);
-						bounds[3] = ship->_cxxShip->v_right;		scale_vector(&bounds[3], bb.min.x);
-						bounds[4] = ship->_cxxShip->v_up;			scale_vector(&bounds[4], bb.max.y);
-						bounds[5] = ship->_cxxShip->v_up;			scale_vector(&bounds[5], bb.min.y);
+						BoundingBox bb = ship->totalBoundingBox;
+						bounds[0] = ship->v_forward;	scale_vector(&bounds[0], bb.max.z);
+						bounds[1] = ship->v_forward;	scale_vector(&bounds[1], bb.min.z);
+						bounds[2] = ship->v_right;		scale_vector(&bounds[2], bb.max.x);
+						bounds[3] = ship->v_right;		scale_vector(&bounds[3], bb.min.x);
+						bounds[4] = ship->v_up;			scale_vector(&bounds[4], bb.max.y);
+						bounds[5] = ship->v_up;			scale_vector(&bounds[5], bb.min.y);
 						// rotate the view
 						int i;
 						for (i = 0; i < 6; i++)
@@ -1701,7 +1698,7 @@ void HeadUpDisplay::drawScanner(const oo::PList &info)
 					if ([scannedEntity isShip])
 					{
 						glColor4f(1.0, 1.0, 0.5, alpha);
-						cxx_OODrawString([(::ShipEntity *)scannedEntity displayName].value_or(""), x1 + 2, y2 + 2, z1, NSMakeSize(8, 8));
+						cxx_OODrawString([oo::ToShip(scannedEntity) displayName].value_or(""), x1 + 2, y2 + 2, z1, NSMakeSize(8, 8));
 					}
 #endif
 					glColor4fv(col);
@@ -1824,7 +1821,7 @@ void HeadUpDisplay::drawCompass(const oo::PList &info)
 	
 	if (checkPlayerInSystemFlight() && (PLAYER != nullptr ? PLAYER->status() : OOEntityStatus{}) != STATUS_LAUNCHING) // normal system
 	{
-		::Entity *reference = (PLAYER != nullptr ? PLAYER->getCompassTarget() : (Entity *)nullptr);
+		::Entity *reference = (PLAYER != nullptr ? PLAYER->getCompassTarget() : (::Entity *)nullptr);
 		
 		// translate and rotate the view
 
@@ -1961,7 +1958,7 @@ void HeadUpDisplay::drawSecondaryTargetReticle(const oo::PList &info)
 	{
 		// needs target memory to be working in addition to any other equipment
 		// this item may be bound to
-		::ShipEntity *primary = (player != nullptr ? player->primaryTarget() : id{});
+		::Entity *primary = (player != nullptr ? player->primaryTarget() : id{});	// the objects: a target may be any entity (bead oo-9ht.144)
 		for (unsigned i = 0; i < PLAYER_TARGET_MEMORY_SIZE; i++)
 		{
 			id sec_id = (player != nullptr ? player->targetMemory() : std::vector<oo::ObjCRef<OOWeakReference *>>()).at(i).get();	// an empty slot (was OONull) is nil: neither is a proxy
@@ -1972,10 +1969,10 @@ void HeadUpDisplay::drawSecondaryTargetReticle(const oo::PList &info)
 			// TODO: fix OOWeakReference so isKindOfClass works
 			if (sec_id != nil && [sec_id isProxy])
 			{
-				::ShipEntity *secondary = [(::OOWeakReference *)sec_id weakRefUnderlyingObject];
+				::Entity *secondary = [(::OOWeakReference *)sec_id weakRefUnderlyingObject];
 				if (secondary != nil && secondary != primary)
 				{
-					if ([secondary zeroDistance] <= SCANNER_MAX_RANGE2 && [secondary isInSpace])
+					if (oo::ToCxx(secondary)->zeroDistance() <= SCANNER_MAX_RANGE2 && oo::ToCxx(secondary)->isInSpace())
 					{
 						hudDrawReticleOnTarget(secondary, PLAYER, z1, alpha, NO, nullptr, YES, NO, info, _reticleColors);	
 					}			
@@ -1992,7 +1989,7 @@ void HeadUpDisplay::drawWaypoints(const oo::PList &info)
 	GLfloat scale = info.get<float>("reticle_scale", ONE_SIXTYFOURTH);
 
 	::Entity *waypoint = nil;	// the waypoint's object (the root's facade since bead oo-9ht.108)
-	::Entity *compass = (PLAYER != nullptr ? PLAYER->getCompassTarget() : (Entity *)nullptr);
+	::Entity *compass = (PLAYER != nullptr ? PLAYER->getCompassTarget() : (::Entity *)nullptr);
 	
 	for (const auto &[waypointKey, waypointRef] : [UNIVERSE cxx_currentWaypoints])
 	{
@@ -2765,7 +2762,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 
 void HeadUpDisplay::drawIconForMissile(::ShipEntity *missile, bool selected, int status, int x, int y, GLfloat width, GLfloat height, GLfloat alpha)
 {
-	OOPolygonSprite *sprite = IconForMissileRole([missile cxx_primaryRole].value_or(""));
+	OOPolygonSprite *sprite = IconForMissileRole((missile != nullptr ? missile->getPrimaryRole() : std::optional<std::string>()).value_or(""));
 	
 	if (selected)
 	{
@@ -2797,7 +2794,7 @@ void HeadUpDisplay::drawIconForMissile(::ShipEntity *missile, bool selected, int
 	}
 	else
 	{
-		if ([missile primaryTarget] == nil)  GLColorWithOverallAlpha(green_color, alpha);
+		if ((missile != nullptr ? missile->primaryTarget() : id{}) == nil)  GLColorWithOverallAlpha(green_color, alpha);
 		else  GLColorWithOverallAlpha(red_color, alpha);
 	}
 	
@@ -3644,7 +3641,7 @@ static void hudDrawReticleOnTarget(Entity *target, PlayerEntity *player1, GLfloa
 
 	if (HeadUpDisplayEntityIsShip(target))
 	{
-		target_ship = (ShipEntity *)target;
+		target_ship = oo::ToShip(target);
 		legal_desc = HeadUpDisplayShipScanDescription(target_ship);
 	}
 
@@ -3740,7 +3737,7 @@ static void hudDrawReticleOnTarget(Entity *target, PlayerEntity *player1, GLfloa
 		{
 			if (HeadUpDisplayEntityIsShip(target))
 			{
-				ShipEntity *ship = (ShipEntity *)target;
+				ShipEntity *ship = oo::ToShip(target);
 				BOOL isHostile = HeadUpDisplayShipIsHostileToPlayer(ship);
 				GLColorWithOverallAlpha(HeadUpDisplayShipScannerDisplayColor(ship, isHostile, flash),alpha);
 			}
@@ -3805,7 +3802,7 @@ static void hudDrawReticleOnTarget(Entity *target, PlayerEntity *player1, GLfloa
 		{
 			// Note: No break statements in the following switch() since every case
 			//       falls through to the next.  Cases arranged in reverse order.
-			switch(HeadUpDisplayWormholeScanInfo((WormholeEntity *)target))
+			switch(HeadUpDisplayWormholeScanInfo(static_cast<WormholeEntity *>(oo::ToCxx(target))))
 			{
 			case WH_SCANINFO_SHIP:
 				// TOOD: Render anything on the HUD for this?
@@ -3815,12 +3812,12 @@ static void hudDrawReticleOnTarget(Entity *target, PlayerEntity *player1, GLfloa
 			case WH_SCANINFO_ARRIVAL_TIME:
 			{
 				// a format read at run time (ADR-0043 item 19)
-				std::string wormholeETA = oo::str::formatRuntime(OO_DESC("wormhole-ETA-@"), { cxx_ClockToString(HeadUpDisplayWormholeEstimatedArrivalTime((WormholeEntity *)target), NO) });
+				std::string wormholeETA = oo::str::formatRuntime(OO_DESC("wormhole-ETA-@"), { cxx_ClockToString(HeadUpDisplayWormholeEstimatedArrivalTime(static_cast<WormholeEntity *>(oo::ToCxx(target))), NO) });
 				cxx_OODrawString(wormholeETA, rs0, 0.5 * rs2 - 3 * line_height, 0, textsize);
 			}
 			case WH_SCANINFO_COLLAPSE_TIME:
 			{
-				OOTimeDelta timeForCollapsing = HeadUpDisplayWormholeExpiryTime((WormholeEntity *)target) - HeadUpDisplayPlayerClockTimeAdjusted(player1);
+				OOTimeDelta timeForCollapsing = HeadUpDisplayWormholeExpiryTime(static_cast<WormholeEntity *>(oo::ToCxx(target))) - HeadUpDisplayPlayerClockTimeAdjusted(player1);
 				int minutesToCollapse = floor (timeForCollapsing / 60.0);
 				int secondsToCollapse = (int)timeForCollapsing % 60;
 				
@@ -4657,10 +4654,10 @@ bool HeadUpDisplayEntityIsVisualEffect(Entity *entity)	{ return [entity isVisual
 HPVector HeadUpDisplayEntityPosition(Entity *entity)	{ return [entity position]; }
 GLfloat HeadUpDisplayEntityCollisionRadius(Entity *entity)	{ return [entity collisionRadius]; }
 Quaternion HeadUpDisplayEntityOrientation(Entity *entity)	{ return [entity orientation]; }
-std::optional<std::string> HeadUpDisplayShipScanDescription(ShipEntity *ship)	{ return [ship cxx_scanDescription]; }
-bool HeadUpDisplayShipIsCloaked(ShipEntity *ship)	{ return [ship isCloaked]; }
-bool HeadUpDisplayShipIsHostileToPlayer(ShipEntity *ship)	{ return (([ship hasHostileTarget])&&([ship primaryTarget] == oo::ToObjC(PLAYER))); }
-GLfloat *HeadUpDisplayShipScannerDisplayColor(ShipEntity *ship, BOOL isHostile, BOOL flash)	{ return [ship scannerDisplayColorForShip:oo::ToObjC(PLAYER) :isHostile :flash :[ship scannerDisplayColor1] :[ship scannerDisplayColor2] :[ship scannerDisplayColorHostile1] :[ship scannerDisplayColorHostile2]]; }
+std::optional<std::string> HeadUpDisplayShipScanDescription(ShipEntity *ship)	{ return (ship != nullptr ? ship->scanDescription() : std::optional<std::string>()); }
+bool HeadUpDisplayShipIsCloaked(ShipEntity *ship)	{ return (ship != nullptr ? ship->isCloaked() : false); }
+bool HeadUpDisplayShipIsHostileToPlayer(ShipEntity *ship)	{ return (((ship != nullptr ? ship->hasHostileTarget() : false))&&((ship != nullptr ? ship->primaryTarget() : id{}) == oo::ToObjC(PLAYER))); }
+GLfloat *HeadUpDisplayShipScannerDisplayColor(ShipEntity *ship, BOOL isHostile, BOOL flash)	{ return (ship != nullptr ? ship->scannerDisplayColorForShip(PLAYER, isHostile, flash, (ship != nullptr ? ship->scannerDisplayColor1() : (OOColor *)nullptr), (ship != nullptr ? ship->scannerDisplayColor2() : (OOColor *)nullptr), (ship != nullptr ? ship->scannerDisplayColorHostile1() : (OOColor *)nullptr), (ship != nullptr ? ship->scannerDisplayColorHostile2() : (OOColor *)nullptr)) : (GLfloat *)nullptr); }
 GLfloat *HeadUpDisplayVisualEffectScannerDisplayColor(OOVisualEffectEntity *vis, BOOL flash)	{ return [vis scannerDisplayColorForShip:flash :[vis scannerDisplayColor1] :[vis scannerDisplayColor2]]; }
 WORMHOLE_SCANINFO HeadUpDisplayWormholeScanInfo(WormholeEntity *wormhole)	{ return (wormhole != nullptr ? wormhole->scanInfo() : WORMHOLE_SCANINFO{}); }
 double HeadUpDisplayWormholeEstimatedArrivalTime(WormholeEntity *wormhole)	{ return (wormhole != nullptr ? wormhole->estimatedArrivalTime() : 0.0); }

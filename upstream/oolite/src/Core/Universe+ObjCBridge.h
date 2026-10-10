@@ -166,8 +166,8 @@ MA 02110-1301, USA.
 
 - (ShipEntity *) addShipAt:(HPVector)pos withRole:(const std::string &)role withinRadius:(GLfloat)radius;
 // Empty where the old methods returned nil (no ship added).
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_addShipsAt:(HPVector)pos withRole:(const std::string &)role quantity:(unsigned)count withinRadius:(GLfloat)radius asGroup:(BOOL)isGroup;
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_addShipsToRoute:(const std::string &)route withRole:(const std::string &)role quantity:(unsigned)count routeFraction:(double)routeFraction asGroup:(BOOL)isGroup;
+- (std::vector<oo::ObjCRef<::Entity *>>) cxx_addShipsAt:(HPVector)pos withRole:(const std::string &)role quantity:(unsigned)count withinRadius:(GLfloat)radius asGroup:(BOOL)isGroup;
+- (std::vector<oo::ObjCRef<::Entity *>>) cxx_addShipsToRoute:(const std::string &)route withRole:(const std::string &)role quantity:(unsigned)count routeFraction:(double)routeFraction asGroup:(BOOL)isGroup;
 - (BOOL) cxx_roleIsPirateVictim:(const std::string &)role;
 - (BOOL) cxx_role:(const std::string &)role isInCategory:(const std::string &)category;
 - (void) forceWitchspaceEntries;
@@ -201,7 +201,7 @@ MA 02110-1301, USA.
 - (OOPlanetEntity *) planet;
 - (OOSunEntity *) sun;
 - (std::vector<oo::ObjCRef<Entity *>>) cxx_planets;	// Note: does not include sun.
-- (std::vector<oo::ObjCRef<::ShipEntity *>>) cxx_stations; // includes main station; in the order added
+- (std::vector<oo::ObjCRef<::Entity *>>) cxx_stations; // includes main station; in the order added
 
 @end
 
@@ -230,14 +230,14 @@ MA 02110-1301, USA.
 - (BOOL) breakPatternHide;
 - (BOOL) canInstantiateShip:(const std::string &)shipKey;
 - (std::optional<std::string>) cxx_randomShipKeyForRoleRespectingConditions:(const std::string &)role;	// nullopt: none
-- (ShipEntity *) cxx_newShipWithRole:(const std::string &)role OO_RETURNS_RETAINED;		// Selects ship using role weights, applies auto_ai, respects conditions
+- (ShipEntity *) cxx_newShipWithRole:(const std::string &)role;		// its object +1 (a C++ ship since bead oo-9ht.144). Selects ship using role weights, applies auto_ai, respects conditions
 - (OOVisualEffectEntity *) cxx_newVisualEffectWithName:(const std::string &)effectKey OO_RETURNS_RETAINED;
-- (ShipEntity *) cxx_newSubentityWithName:(const std::string &)shipKey andScaleFactor:(float)scale OO_RETURNS_RETAINED;	// Does not apply auto_ai or respect conditions
-- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy OO_RETURNS_RETAINED;	// If usePlayerProxy, non-carriers are instantiated as ProxyPlayerEntity (made in C++ since bead oo-9ht.183).
-- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity OO_RETURNS_RETAINED;
-- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity andScaleFactor:(float)scale OO_RETURNS_RETAINED;
-- (ShipEntity *) cxx_newDockWithName:(const std::string &)shipKey andScaleFactor:(float)scale OO_RETURNS_RETAINED;	// the dock's object (the ship's facade since bead oo-9ht.180). Does not apply auto_ai or respect conditions
-- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey OO_RETURNS_RETAINED;	// Does not apply auto_ai or respect conditions
+- (ShipEntity *) cxx_newSubentityWithName:(const std::string &)shipKey andScaleFactor:(float)scale;	// its object +1 (a C++ ship since bead oo-9ht.144). Does not apply auto_ai or respect conditions
+- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy;	// its object +1 (a C++ ship since bead oo-9ht.144). If usePlayerProxy, non-carriers are instantiated as ProxyPlayerEntity (made in C++ since bead oo-9ht.183).
+- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity;	// its object +1 (a C++ ship since bead oo-9ht.144)
+- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity andScaleFactor:(float)scale;	// its object +1 (a C++ ship since bead oo-9ht.144)
+- (ShipEntity *) cxx_newDockWithName:(const std::string &)shipKey andScaleFactor:(float)scale;	// its object +1 (a C++ ship since bead oo-9ht.144). The dock. Does not apply auto_ai or respect conditions
+- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey;	// its object +1 (a C++ ship since bead oo-9ht.144). Does not apply auto_ai or respect conditions
 - (BOOL) cxx_isStationShipDictionary:(const oo::PList &)dict;	// the dictionary's ship is a station (-cxx_shipClassForShipDictionary: picked StationEntity until bead oo-9ht.175); NO for a null PList
 - (std::optional<std::string>) defaultAIForRole:(const std::string &)role;		// autoAImap.plist lookup
 - (OOCargoQuantity) cxx_maxCargoForShip:(const std::string &) desc;
@@ -254,8 +254,8 @@ MA 02110-1301, USA.
 - (OOCommodities *) commodities;
 - (ShipEntity *) reifyCargoPod:(ShipEntity *)cargoObj;
 - (ShipEntity *) cargoPodFromTemplate:(ShipEntity *)cargoObj;
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_getContainersOfGoods:(OOCargoQuantity)how_many scarce:(BOOL)scarce legal:(BOOL)legal;
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_getContainersOfCommodity:(const std::string &) commodity_name :(OOCargoQuantity) how_many;
+- (std::vector<oo::ObjCRef<::Entity *>>) cxx_getContainersOfGoods:(OOCargoQuantity)how_many scarce:(BOOL)scarce legal:(BOOL)legal;
+- (std::vector<oo::ObjCRef<::Entity *>>) cxx_getContainersOfCommodity:(const std::string &) commodity_name :(OOCargoQuantity) how_many;
 - (void) fillCargopodWithRandomCargo:(ShipEntity *)cargopod;
 - (std::string) getRandomCommodity;	// a commodity key
 - (OOCargoQuantity) cxx_getRandomAmountOfCommodity:(const std::string &) co_type;

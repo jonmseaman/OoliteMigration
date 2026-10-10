@@ -312,11 +312,11 @@ bool OOJSVisualEffectIsVisibleToScripts(void)
 	return true;
 }
 
-std::vector<oo::ObjCRef<Entity *>> OOJSVisualEffectSubEntitiesForScript(OOVisualEffectEntity *effect)
+std::vector<oo::ObjCRef<::Entity *>> OOJSVisualEffectSubEntitiesForScript(OOVisualEffectEntity *effect)
 {
 	const auto subs = [effect visualEffectSubEntityEnumerator];
 	if (!subs.has_value())  return {};
-	std::vector<oo::ObjCRef<Entity *>> result;
+	std::vector<oo::ObjCRef<::Entity *>> result;
 	result.reserve(subs->size());
 	for (const auto &sub : *subs)
 	{
@@ -473,7 +473,7 @@ static bool VisualEffectSetProperty(Context cx, Object obj, PropertyId propID, b
 				if ([entity isBeacon]) 
 				{
 					[UNIVERSE clearBeacon:entity];
-					if ((PLAYER != nullptr ? (Entity <OOBeaconEntity> *)PLAYER->PlayerEntity::nextBeacon() : (Entity <OOBeaconEntity> *)nullptr) == entity)	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
+					if ((PLAYER != nullptr ? (::Entity <OOBeaconEntity> *)PLAYER->PlayerEntity::nextBeacon() : (::Entity <OOBeaconEntity> *)nullptr) == entity)	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 					{
 						if (PLAYER != nullptr)  PLAYER->PlayerEntity::setCompassMode(COMPASS_MODE_PLANET);	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 					}

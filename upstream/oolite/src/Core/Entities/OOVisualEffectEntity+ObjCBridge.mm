@@ -70,13 +70,13 @@ MA 02110-1301, USA.
 - (BOOL) setUpSubEntities													{ return oo::ToCxx(self)->setUpSubEntities(); }
 - (void) removeSubEntity:(Entity<OOSubEntity> *)sub							{ oo::ToCxx(self)->removeSubEntity(sub); }
 - (void) setNoDrawDistance													{ oo::ToCxx(self)->setNoDrawDistance(); }
-- (std::vector<oo::ObjCRef<Entity *>>)subEntities							{ return oo::ToCxx(self)->subEntities(); }
+- (std::vector<oo::ObjCRef<::Entity *>>)subEntities							{ return oo::ToCxx(self)->subEntities(); }
 - (NSUInteger) subEntityCount												{ return oo::ToCxx(self)->subEntityCount(); }
 - (std::optional<std::vector<oo::ObjCRef<OOVisualEffectEntity *>>>) visualEffectSubEntityEnumerator	{ return oo::ToCxx(self)->visualEffectSubEntityEnumerator(); }
 - (BOOL) hasSubEntity:(Entity<OOSubEntity> *)sub							{ return oo::ToCxx(self)->hasSubEntity(sub); }
-- (std::vector<oo::ObjCRef<Entity *>>)subEntityEnumerator					{ return oo::ToCxx(self)->subEntityEnumerator(); }
+- (std::vector<oo::ObjCRef<::Entity *>>)subEntityEnumerator					{ return oo::ToCxx(self)->subEntityEnumerator(); }
 - (std::vector<oo::ObjCRef<OOVisualEffectEntity *>>)effectSubEntityEnumerator	{ return oo::ToCxx(self)->effectSubEntityEnumerator(); }
-- (std::vector<oo::ObjCRef<Entity *>>)flasherEnumerator			{ return oo::ToCxx(self)->flasherEnumerator(); }
+- (std::vector<oo::ObjCRef<::Entity *>>)flasherEnumerator			{ return oo::ToCxx(self)->flasherEnumerator(); }
 - (void) orientationChanged													{ oo::ToCxx(self)->orientationChanged(); }
 - (Vector) forwardVector													{ return oo::ToCxx(self)->forwardVector(); }
 - (Vector) rightVector														{ return oo::ToCxx(self)->rightVector(); }
@@ -147,7 +147,7 @@ MA 02110-1301, USA.
 - (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype	{ ::OOJSVisualEffectGetJSClass(outClass, outPrototype); }
 - (std::optional<std::string>) cxx_oo_jsClassName							{ return ::OOJSVisualEffectJSClassName(); }
 - (BOOL) isVisibleToScripts													{ return ::OOJSVisualEffectIsVisibleToScripts(); }
-- (std::vector<oo::ObjCRef<Entity *>>) subEntitiesForScript					{ return ::OOJSVisualEffectSubEntitiesForScript(self); }	// empty before the first subentity
+- (std::vector<oo::ObjCRef<::Entity *>>) subEntitiesForScript					{ return ::OOJSVisualEffectSubEntitiesForScript(self); }	// empty before the first subentity
 
 @end
 

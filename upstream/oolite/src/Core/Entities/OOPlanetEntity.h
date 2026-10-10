@@ -41,7 +41,8 @@ MA 02110-1301, USA.
 	-name / -setName: retired with oo-qps.44); -textureFileName and -setUpPlanetFromTexture: flipped with PlanetEntity (bead oo-3rb.269.1).
 */
 
-@class ShipEntity, OOMaterial, OOTexture;
+@class OOMaterial, OOTexture;
+class ShipEntity;	// C++ since bead oo-9ht.144
 class OOPlanetDrawable;	// C++ since bead oo-mw4u (no facade: this class is its one caller)
 
 

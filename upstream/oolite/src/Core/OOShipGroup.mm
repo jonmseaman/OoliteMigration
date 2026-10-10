@@ -75,7 +75,7 @@ public:
 			Fill();
 		}
 
-		id operator*() const  { return _buffer[_position]; }
+		::ShipEntity *operator*() const  { return oo::ToShip(_buffer[_position]); }	// the member's ship (the object until bead oo-9ht.144)
 		Iterator &operator++()
 		{
 			OOCAssert(_group->updateCount() == _updateCount, "OOShipGroup was mutated while being enumerated.");
@@ -179,7 +179,7 @@ std::optional<std::string> OOShipGroup::descriptionComponents() const
 	}
 	if (mutableThis->leader() != nil)
 	{
-		desc = oo::str::format("%s, leader: %s", desc.c_str(), oo::ShortDescriptionOf(mutableThis->leader()).c_str());
+		desc = oo::str::format("%s, leader: %s", desc.c_str(), oo::ShortDescriptionOf(oo::ToObjC(mutableThis->leader())).c_str());
 	}
 	return desc;
 }
@@ -201,7 +201,7 @@ void OOShipGroup::setName(const std::optional<std::string> &name)
 
 ::ShipEntity *OOShipGroup::leader()
 {
-	::ShipEntity *result = [_leader weakRefUnderlyingObject];
+	::ShipEntity *result = oo::ToShip([_leader weakRefUnderlyingObject]);
 
 	// If reference is stale, delete weakref object.
 	if (result == nil && _leader != nil)
@@ -222,30 +222,30 @@ void OOShipGroup::setLeader(::ShipEntity *leader)
 	{
 		[_leader release];
 		addShip(leader);
-		_leader = [leader weakRetain];
+		_leader = (leader != nullptr ? [oo::ToObjC(leader) weakRetain] : id{});
 	}
 }
 
 
-std::vector<oo::ObjCRef<::ShipEntity *>> OOShipGroup::memberArray()
+std::vector<oo::ObjCRef<::Entity *>> OOShipGroup::memberArray()
 {
-	std::vector<oo::ObjCRef<::ShipEntity *>>	result;
+	std::vector<oo::ObjCRef<::Entity *>>	result;
 
 	if (_count == 0)  return result;
 
 	result.reserve(_count);
 	for (::ShipEntity *ship : OOShipGroupMembers(this))
 	{
-		result.emplace_back(ship);
+		result.emplace_back(oo::ToObjC(ship));
 	}
 
 	return result;
 }
 
 
-std::vector<oo::ObjCRef<::ShipEntity *>> OOShipGroup::memberArrayExcludingLeader()
+std::vector<oo::ObjCRef<::Entity *>> OOShipGroup::memberArrayExcludingLeader()
 {
-	std::vector<oo::ObjCRef<::ShipEntity *>>	result;
+	std::vector<oo::ObjCRef<::Entity *>>	result;
 	::ShipEntity				*leader = nil;
 
 	if (_count == 0)  return result;
@@ -256,7 +256,7 @@ std::vector<oo::ObjCRef<::ShipEntity *>> OOShipGroup::memberArrayExcludingLeader
 	{
 		if (ship != leader)
 		{
-			result.emplace_back(ship);
+			result.emplace_back(oo::ToObjC(ship));
 		}
 	}
 
@@ -268,7 +268,7 @@ bool OOShipGroup::containsShip(::ShipEntity *ship)
 {
 	for (::ShipEntity *containedShip : OOShipGroupMembers(this))
 	{
-		if ([ship isEqual:containedShip])
+		if ((ship != nullptr ? [oo::ToObjC(ship) isEqual:oo::ToObjC(containedShip)] : false))
 		{
 			return true;
 		}
@@ -296,7 +296,7 @@ bool OOShipGroup::addShip(::ShipEntity *ship)
 		}
 	}
 
-	_members[_count++] = [ship weakRetain];
+	_members[_count++] = (ship != nullptr ? [oo::ToObjC(ship) weakRetain] : id{});
 	return true;
 }
 
@@ -315,15 +315,15 @@ bool OOShipGroup::removeShip(::ShipEntity *ship)
 	shipEnum.setPerformCleanup(NO);
 	while ((containedShip = shipEnum.next()))
 	{
-		if ([ship isEqual:containedShip])
+		if ((ship != nullptr ? [oo::ToObjC(ship) isEqual:oo::ToObjC(containedShip)] : false))
 		{
 			index = shipEnum.index() - 1;
 			_members[index] = _members[--_count];
 			foundIt = true;
 
 			// Clean up
-			[ship setGroup:nil];
-			[ship setOwner:ship];
+			if (ship != nullptr)  ship->setGroup(nullptr);
+			if (ship != nullptr)  ship->ShipEntity::setOwner(ship);	// qualified: the final overrider (bead oo-9ht.144), so the group's test stands in for it
 			cleanUp();
 			break;
 		}
@@ -422,7 +422,7 @@ NSUInteger OOShipGroup::updateCount()
 
 	while (enumerator->_index < group->_count)
 	{
-		result = [group->_members[enumerator->_index] weakRefUnderlyingObject];
+		result = oo::ToShip([group->_members[enumerator->_index] weakRefUnderlyingObject]);
 		if (result != nil)
 		{
 			enumerator->_index++;
@@ -459,10 +459,10 @@ NSUInteger OOShipGroupMembers::FillBatch(OOShipGroup *group, NSUInteger *ioIndex
 	srcIndex = *ioIndex;
 	while (srcIndex < group->_count && dstIndex < length)
 	{
-		item = [group->_members[srcIndex] weakRefUnderlyingObject];
+		item = oo::ToShip([group->_members[srcIndex] weakRefUnderlyingObject]);
 		if (item != nil)
 		{
-			buffer[dstIndex++] = item;
+			buffer[dstIndex++] = oo::ToObjC(item);
 			srcIndex++;
 		}
 		else

@@ -160,11 +160,11 @@ void PlayerEntity::awardCommodityType(const std::string &type, OOCargoQuantity a
 							{
 								// the cargopod ship is just being set up. If ejected,  will call UNIVERSE addEntity
 								// [container wasAddedToUniverse]; // seems to be not needed anymore for pods
-								[container setScanClass: CLASS_CARGO];
-								[container setStatus:STATUS_IN_HOLD];
-								[container cxx_setCommodity:type andAmount:smaller_quantity];
-								cargo.emplace_back(container);
-								[container release];
+								if (container != nullptr)  container->setScanClass(CLASS_CARGO);
+								if (container != nullptr)  container->setStatus(STATUS_IN_HOLD);
+								if (container != nullptr)  container->setCommodity(type, smaller_quantity);
+								cargo.emplace_back(oo::ToObjC(container));
+								if (container != nullptr)  [oo::ToObjC(container) release];
 							}
 						}
 						amount -= smaller_quantity;
@@ -184,11 +184,11 @@ void PlayerEntity::awardCommodityType(const std::string &type, OOCargoQuantity a
 						{
 							// the cargopod ship is just being set up. If ejected, will call UNIVERSE addEntity
 							// [container wasAddedToUniverse]; // seems to be not needed anymore for pods
-							[container setScanClass: CLASS_CARGO];
-							[container setStatus:STATUS_IN_HOLD];
-							[container cxx_setCommodity:type andAmount:1];
-							cargo.emplace_back(container);
-							[container release];
+							if (container != nullptr)  container->setScanClass(CLASS_CARGO);
+							if (container != nullptr)  container->setStatus(STATUS_IN_HOLD);
+							if (container != nullptr)  container->setCommodity(type, 1);
+							cargo.emplace_back(oo::ToObjC(container));
+							if (container != nullptr)  [oo::ToObjC(container) release];
 						}
 					}
 					amount--;

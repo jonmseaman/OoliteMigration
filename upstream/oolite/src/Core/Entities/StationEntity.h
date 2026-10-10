@@ -6,10 +6,10 @@ ShipEntity subclass representing a space station or dockable ship.
 
 C++ since its slice plan (docs/phases/3-slices/StationEntity.md; proposed ADR-0056, amendments
 oo-60fwo and oo-64ako). Bead oo-9ht.175 deleted its Objective-C facade (amendment oo-9ht.175): a
-station is made in C++ by StationEntity::newStationObject() and its Objective-C object is the
-ship's facade (ShipEntity+ObjCBridge.h), which answers the selectors the game still finds by name
-on a station (AI actions, legacy-script and callObjC() calls, shader bindings) for a station's
-C++ part only.
+station is made in C++ by StationEntity::newStationObject() and its Objective-C object is a ship's
+(the root's facade answers the selectors the game still finds by name on a station, AI actions,
+legacy-script and callObjC() calls, shader bindings, for a station's C++ part only; the ship's
+facade did until bead oo-9ht.144).
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -65,29 +65,29 @@ typedef enum
 	retained by hand where they were (amendment oo-bj8 item 4). C++ only since bead oo-9ht.175
 	deleted its Objective-C facade (ADR-0056 amendment oo-9ht.175).
 */
-class StationEntity : public cxx::ShipEntity
+class StationEntity : public ShipEntity
 {
 public:
 	/*	[[StationEntity alloc] cxx_initWithKey:definition:] until bead oo-9ht.175: a new station, set
 		up from its definition as a ship (oo::NewShipObject), then given the station's defaults.
-		Answers its object (the ship's facade) retained (+1), as +alloc/-init's was, or nil when the
-		set-up fails.
+		Answers the station, its object retained (+1) as +alloc/-init's was, or nullptr when the
+		set-up fails (bead oo-9ht.144: the object until then).
 	*/
-	static ::ShipEntity *newStationObject(const std::string &key, const oo::PList &dict) OO_RETURNS_RETAINED;
+	static ::ShipEntity *newStationObject(const std::string &key, const oo::PList &dict);
 
 	// -cxx_initWithKey:definition:'s body after [super cxx_initWithKey:definition:].
 	void initStationDefaults();
 
-	// The facade's -dealloc body, which -[ShipEntity dealloc] calls first for a station's part, as the
-	// subclass's -dealloc ran before its superclass's (bead oo-9ht.175).
+	// The facade's -dealloc body, which the root's -dealloc calls first for a station's part (the
+	// ship's did until bead oo-9ht.144), as the subclass's -dealloc ran before its superclass's
+	// (bead oo-9ht.175).
 	void willDealloc();
 
 	// Slice 1: class shell, market and shipyard, flags and accessors.
 	bool isUnpiloted() override;
 	void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype) override;
 	std::optional<std::string> jsClassName() override;
-	// The ship's answer (ShipEntity (OOJavaScriptExtensions)), which the facade inherited; a C++ part
-	// is asked since bead oo-9ht.175.
+	// The ship's answer, which the facade inherited; a C++ part is asked since bead oo-9ht.175.
 	bool isVisibleToScripts() override;
 	OOTechLevelID getEquivalentTechLevel();
 	void setEquivalentTechLevel(OOTechLevelID value);
@@ -116,7 +116,7 @@ public:
 	unsigned countOfDockedContractors();
 	unsigned countOfDockedPolice();
 	unsigned countOfDockedDefenders();
-	std::vector<oo::ObjCRef<::ShipEntity *>> dockSubEntities();
+	std::vector<oo::ObjCRef<::Entity *>> dockSubEntities();
 	bool setUpShipFromDictionary(const oo::PList &dict) override;
 	bool setUpSubEntities() override;
 	bool getInterstellarUndockingAllowed();
@@ -193,8 +193,9 @@ public:
 	unsigned currentlyInDockingQueues();
 	unsigned currentlyInLaunchingQueues();
 
-	// Slice 4: NPC launchers. Not overrides: cxx::ShipEntity's same-named members are not virtual (the
-	// ship's answer "not a station"); the ship's facade asks a station's part first (bead oo-9ht.175).
+	// Slice 4: NPC launchers. Not overrides: ShipEntity's same-named members are not virtual (the
+	// ship's answer "not a station"); the root's facade asks a station's part first (beads oo-9ht.175,
+	// oo-9ht.144).
 	oo::PList launchIndependentShip(const std::string &role);	// the ship launched, as an Object node (null: none)
 	oo::PList launchPolice();	// the ships launched, as Object nodes
 	::ShipEntity *launchDefenseShip();
@@ -268,11 +269,17 @@ public:
 
 namespace oo {
 
-// The station whose Objective-C object is <entity> (a station's object is the ship's facade since bead
+// The station whose Objective-C object is <entity> (a station's object is a ship's since bead
 // oo-9ht.175): nullptr for nil or any other entity, where -isKindOfClass:[StationEntity class] was NO.
 inline ::StationEntity *ToStation(::Entity *entity)
 {
 	return dynamic_cast<::StationEntity *>(ToCxx(entity));
+}
+
+// The same question of a C++ ship (a ship is C++ since bead oo-9ht.144): nullptr for null or another ship.
+inline ::StationEntity *ToStation(::ShipEntity *ship)
+{
+	return dynamic_cast<::StationEntity *>(ship);
 }
 
 }	// namespace oo

@@ -6,7 +6,8 @@
 	The entity reads Universe and PLAYER, so the test links the whole game but main (['*']) and
 	uses a Universe that was never initialised, subclassed to answer the time the test sets and to
 	record -addEntity: and -removeEntity:, and a plain entity as PLAYER. The ship that fired is a
-	plain entity marked as a ship (so it is its own root ship entity), and the entity hit is an
+	plain entity marked as a ship (so it is its own root ship entity; a C++ ship under its object,
+	never set up, since bead oo-9ht.144), and the entity hit is an
 	entity subclass that records the damage. The expectations were written against the Objective-C
 	API and run on the unconverted class first: a shot is a no-draw effect of diameter 12 and
 	collision radius 2 with the given position, velocity, energy and colour (always opaque); it
@@ -133,6 +134,9 @@ T *NewTestPlayer()
 @end
 
 
+extern ooscript::Context gOOJSMainThreadContext;	// the engine's (OOJavaScriptEngine.mm)
+
+
 namespace {
 
 TestUniverse *sUniverse = nil;
@@ -153,6 +157,10 @@ void SetUp(OOTimeAbsolute time)
 	static TestPlayer *player = nullptr;
 	if (player == nullptr)  player = NewTestPlayer<TestPlayer>();
 	gOOPlayer = player;
+	// The ship's -dealloc sends its (absent) scripts entityDestroyed in a request on the main
+	// thread's context, so there is one, with nothing in it (the ship stand-in is C++ since bead
+	// oo-9ht.144, as test_StationEntity's ships are).
+	if (gOOJSMainThreadContext == nullptr)  gOOJSMainThreadContext = ooscript::newContext(ooscript::newRuntime(8u * 1024u * 1024u), 8192);
 }
 
 
@@ -177,9 +185,11 @@ Entity *RedShot()
 }
 
 
+// A ship: C++ since bead oo-9ht.144 (its root ship entity is the C++ ship), under its object
+// (oo::NewEntityFacade, autoreleased as the plain entity was), never set up, marked as a ship.
 Entity *Ship()
 {
-	Entity *ship = [[[Entity alloc] init] autorelease];
+	Entity *ship = oo::NewEntityFacade(oo::makeRef<::ShipEntity>());
 	SetIsShip(ship);
 	return ship;
 }

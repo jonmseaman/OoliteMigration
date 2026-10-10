@@ -137,7 +137,7 @@ extern Universe *gSharedUniverse;
 - (NSUInteger) entityCount	{ return _cxxUniverse->entityCount(); }
 #ifndef NDEBUG
 - (void) debugDumpEntities	{ _cxxUniverse->debugDumpEntities(); }
-- (std::vector<oo::ObjCRef<Entity *>>) cxx_entityList	{ return _cxxUniverse->entityList(); }
+- (std::vector<oo::ObjCRef<::Entity *>>) cxx_entityList	{ return _cxxUniverse->entityList(); }
 #endif
 
 @end
@@ -207,8 +207,8 @@ extern Universe *gSharedUniverse;
 @implementation Universe (OOSlice7)
 
 - (ShipEntity *) addShipAt:(HPVector)pos withRole:(const std::string &)role withinRadius:(GLfloat)radius	{ return _cxxUniverse->addShipAt(pos, role, radius); }
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_addShipsAt:(HPVector)pos withRole:(const std::string &)role quantity:(unsigned)count withinRadius:(GLfloat)radius asGroup:(BOOL)isGroup	{ return _cxxUniverse->addShipsAt(pos, role, count, radius, isGroup); }
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_addShipsToRoute:(const std::string &)route withRole:(const std::string &)role quantity:(unsigned)count routeFraction:(double)routeFraction asGroup:(BOOL)isGroup	{ return _cxxUniverse->addShipsToRoute(route, role, count, routeFraction, isGroup); }
+- (std::vector<oo::ObjCRef<::Entity *>>) cxx_addShipsAt:(HPVector)pos withRole:(const std::string &)role quantity:(unsigned)count withinRadius:(GLfloat)radius asGroup:(BOOL)isGroup	{ return _cxxUniverse->addShipsAt(pos, role, count, radius, isGroup); }
+- (std::vector<oo::ObjCRef<::Entity *>>) cxx_addShipsToRoute:(const std::string &)route withRole:(const std::string &)role quantity:(unsigned)count routeFraction:(double)routeFraction asGroup:(BOOL)isGroup	{ return _cxxUniverse->addShipsToRoute(route, role, count, routeFraction, isGroup); }
 - (BOOL) cxx_roleIsPirateVictim:(const std::string &)role	{ return _cxxUniverse->roleIsPirateVictim(role); }
 - (BOOL) cxx_role:(const std::string &)role isInCategory:(const std::string &)category	{ return _cxxUniverse->role(role, category); }
 - (void) forceWitchspaceEntries	{ _cxxUniverse->forceWitchspaceEntries(); }
@@ -238,8 +238,8 @@ extern Universe *gSharedUniverse;
 - (StationEntity *) stationFriendlyTo:(ShipEntity *)ship	{ return _cxxUniverse->stationFriendlyTo(ship); }
 - (OOPlanetEntity *) planet	{ return _cxxUniverse->planet(); }
 - (OOSunEntity *) sun	{ return _cxxUniverse->sun(); }
-- (std::vector<oo::ObjCRef<Entity *>>) cxx_planets	{ return _cxxUniverse->planets(); }
-- (std::vector<oo::ObjCRef<::ShipEntity *>>) cxx_stations	{ return _cxxUniverse->stations(); }
+- (std::vector<oo::ObjCRef<::Entity *>>) cxx_planets	{ return _cxxUniverse->planets(); }
+- (std::vector<oo::ObjCRef<::Entity *>>) cxx_stations	{ return _cxxUniverse->stations(); }
 
 @end
 
@@ -255,7 +255,7 @@ extern Universe *gSharedUniverse;
 - (void) setLastBeacon:(Entity <OOBeaconEntity> *)beacon	{ _cxxUniverse->setLastBeacon(beacon); }
 - (void) setNextBeacon:(Entity <OOBeaconEntity> *)beaconShip	{ _cxxUniverse->setNextBeacon(beaconShip); }
 - (void) clearBeacon:(Entity <OOBeaconEntity> *)beaconShip	{ _cxxUniverse->clearBeacon(beaconShip); }
-- (std::map<std::string, oo::ObjCRef<Entity *>, std::less<>>) cxx_currentWaypoints	{ return _cxxUniverse->currentWaypoints(); }
+- (std::map<std::string, oo::ObjCRef<::Entity *>, std::less<>>) cxx_currentWaypoints	{ return _cxxUniverse->currentWaypoints(); }
 - (void) cxx_defineWaypoint:(const oo::PList &)definition forKey:(const std::string &)key	{ _cxxUniverse->defineWaypoint(definition, key); }
 - (GLfloat *) skyClearColor	{ return _cxxUniverse->getSkyClearColor(); }
 - (void) setSkyColorRed:(GLfloat)red green:(GLfloat)green blue:(GLfloat)blue alpha:(GLfloat)alpha	{ _cxxUniverse->setSkyColorRed(red, green, blue, alpha); }
@@ -284,8 +284,8 @@ extern Universe *gSharedUniverse;
 - (OOCommodities *) commodities	{ return _cxxUniverse->getCommodities(); }
 - (ShipEntity *) reifyCargoPod:(ShipEntity *)cargoObj	{ return _cxxUniverse->reifyCargoPod(cargoObj); }
 - (ShipEntity *) cargoPodFromTemplate:(ShipEntity *)cargoObj	{ return _cxxUniverse->cargoPodFromTemplate(cargoObj); }
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_getContainersOfGoods:(OOCargoQuantity)how_many scarce:(BOOL)scarce legal:(BOOL)legal	{ return _cxxUniverse->getContainersOfGoods(how_many, scarce, legal); }
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_getContainersOfCommodity:(const std::string &)commodity_name :(OOCargoQuantity)how_much	{ return _cxxUniverse->getContainersOfCommodity(commodity_name, how_much); }
+- (std::vector<oo::ObjCRef<::Entity *>>) cxx_getContainersOfGoods:(OOCargoQuantity)how_many scarce:(BOOL)scarce legal:(BOOL)legal	{ return _cxxUniverse->getContainersOfGoods(how_many, scarce, legal); }
+- (std::vector<oo::ObjCRef<::Entity *>>) cxx_getContainersOfCommodity:(const std::string &)commodity_name :(OOCargoQuantity)how_much	{ return _cxxUniverse->getContainersOfCommodity(commodity_name, how_much); }
 - (void) fillCargopodWithRandomCargo:(ShipEntity *)cargopod	{ _cxxUniverse->fillCargopodWithRandomCargo(cargopod); }
 - (std::string) getRandomCommodity	{ return _cxxUniverse->getRandomCommodity(); }
 - (OOCargoQuantity) cxx_getRandomAmountOfCommodity:(const std::string &)co_type	{ return _cxxUniverse->getRandomAmountOfCommodity(co_type); }
@@ -354,7 +354,7 @@ extern Universe *gSharedUniverse;
 
 - (Entity *) firstEntityTargetedByPlayer	{ return _cxxUniverse->firstEntityTargetedByPlayer(); }
 - (Entity *) firstEntityTargetedByPlayerPrecisely	{ return _cxxUniverse->firstEntityTargetedByPlayerPrecisely(); }
-- (std::vector<oo::ObjCRef<Entity *>>) cxx_entitiesWithinRange:(double)range ofEntity:(Entity *)entity	{ return _cxxUniverse->entitiesWithinRange(range, entity); }
+- (std::vector<oo::ObjCRef<::Entity *>>) cxx_entitiesWithinRange:(double)range ofEntity:(Entity *)entity	{ return _cxxUniverse->entitiesWithinRange(range, entity); }
 - (unsigned) cxx_countShipsWithRole:(const std::string &)role inRange:(double)range ofEntity:(Entity *)entity	{ return _cxxUniverse->countShipsWithRole(role, range, entity); }
 - (unsigned) cxx_countShipsWithRole:(const std::string &)role	{ return _cxxUniverse->countShipsWithRole(role); }
 - (unsigned) cxx_countShipsWithPrimaryRole:(const std::string &)role inRange:(double)range ofEntity:(Entity *)entity	{ return _cxxUniverse->countShipsWithPrimaryRole(role, range, entity); }
@@ -362,10 +362,10 @@ extern Universe *gSharedUniverse;
 - (unsigned) cxx_countShipsWithPrimaryRole:(const std::string &)role	{ return _cxxUniverse->countShipsWithPrimaryRole(role); }
 - (unsigned) countEntitiesMatchingPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter inRange:(double)range ofEntity:(Entity *)e1	{ return _cxxUniverse->countEntitiesMatchingPredicate(predicate, parameter, range, e1); }
 - (unsigned) countShipsMatchingPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter inRange:(double)range ofEntity:(Entity *)entity	{ return _cxxUniverse->countShipsMatchingPredicate(predicate, parameter, range, entity); }
-- (std::vector<oo::ObjCRef<Entity *>>) cxx_findEntitiesMatchingPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter inRange:(double)range ofEntity:(Entity *)e1	{ return _cxxUniverse->findEntitiesMatchingPredicate(predicate, parameter, range, e1); }
+- (std::vector<oo::ObjCRef<::Entity *>>) cxx_findEntitiesMatchingPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter inRange:(double)range ofEntity:(Entity *)e1	{ return _cxxUniverse->findEntitiesMatchingPredicate(predicate, parameter, range, e1); }
 - (id) findOneEntityMatchingPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter	{ return _cxxUniverse->findOneEntityMatchingPredicate(predicate, parameter); }
-- (std::vector<oo::ObjCRef<Entity *>>) cxx_findShipsMatchingPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter inRange:(double)range ofEntity:(Entity *)entity	{ return _cxxUniverse->findShipsMatchingPredicate(predicate, parameter, range, entity); }
-- (std::vector<oo::ObjCRef<Entity *>>) cxx_findVisualEffectsMatchingPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter inRange:(double)range ofEntity:(Entity *)entity	{ return _cxxUniverse->findVisualEffectsMatchingPredicate(predicate, parameter, range, entity); }
+- (std::vector<oo::ObjCRef<::Entity *>>) cxx_findShipsMatchingPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter inRange:(double)range ofEntity:(Entity *)entity	{ return _cxxUniverse->findShipsMatchingPredicate(predicate, parameter, range, entity); }
+- (std::vector<oo::ObjCRef<::Entity *>>) cxx_findVisualEffectsMatchingPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter inRange:(double)range ofEntity:(Entity *)entity	{ return _cxxUniverse->findVisualEffectsMatchingPredicate(predicate, parameter, range, entity); }
 - (id) nearestEntityMatchingPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter relativeToEntity:(Entity *)entity	{ return _cxxUniverse->nearestEntityMatchingPredicate(predicate, parameter, entity); }
 - (id) nearestShipMatchingPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter relativeToEntity:(Entity *)entity	{ return _cxxUniverse->nearestShipMatchingPredicate(predicate, parameter, entity); }
 - (OOTimeAbsolute) getTime	{ return _cxxUniverse->getTime(); }

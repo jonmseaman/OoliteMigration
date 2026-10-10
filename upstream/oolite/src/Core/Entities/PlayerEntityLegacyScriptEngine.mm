@@ -333,7 +333,7 @@ void PerformActionStatment(const oo::PList &statement, Entity *target)
 
 	selector = OOSelectorFromName(selectorString.c_str());
 
-	// -respondsToSelector:, which the ship's facade answers for the player's selectors called by name
+	// -respondsToSelector:, which the root's facade answers for the player's selectors called by name
 	// for the player only (bead oo-9ht.177); the planet's shader bindings are never actions
 	if (target == nil || ![target respondsToSelector:selector])
 	{
@@ -384,7 +384,7 @@ void PlayerEntity::setScriptTarget(::ShipEntity *ship)
 
 void PlayerEntity::setScriptTargetToSelf()
 {
-	setScriptTarget(oo::ToObjC(this));
+	setScriptTarget(this);
 }
 
 
@@ -447,7 +447,7 @@ void PlayerEntity::checkScript()
 		return;
 	}
 	
-	setScriptTarget(oo::ToObjC(this));
+	setScriptTarget(this);
 	
 	/*	World scripts can potentially be invoked recursively, through
 		scriptActionOnTarget: and possibly other mechanisms. This is bad, but
@@ -510,7 +510,7 @@ void PlayerEntity::runScriptActions(const oo::PList &actions, const std::optiona
 
 		@try
 		{
-			PerformScriptActions(actions, target);
+			PerformScriptActions(actions, oo::ToObjC(target));
 		}
 		@catch (::OOException *exception)
 		{
@@ -518,7 +518,7 @@ void PlayerEntity::runScriptActions(const oo::PList &actions, const std::optiona
 				  "***** EXCEPTION {}: {} while handling legacy script actions for {}",
 				  [exception name],
 				  [exception reason],
-				  (contextName.has_value() && oo::str::hasPrefix(*contextName, kActionTempPrefix)) ? oo::ShortDescriptionOf(target) : contextName.value_or("(null)"));
+				  (contextName.has_value() && oo::str::hasPrefix(*contextName, kActionTempPrefix)) ? oo::ShortDescriptionOf(oo::ToObjC(target)) : contextName.value_or("(null)"));
 			// Suppress exception
 		}
 
@@ -1330,7 +1330,7 @@ void PlayerEntity::consoleMessage6s(const std::string &valueString)	// called by
 
 void PlayerEntity::awardCredits(const std::string &valueString)	// called by name (ADR-0043 item 21)
 {
-	if (::scriptTarget != oo::ToObjC(this))  return;
+	if (::scriptTarget != this)  return;
 
 	/*	We can't use -longLongValue here for Mac OS X 10.4 compatibility, but
 		we don't need to since larger values have never been supported for
@@ -1345,7 +1345,7 @@ void PlayerEntity::awardCredits(const std::string &valueString)	// called by nam
 
 void PlayerEntity::awardShipKills(const std::string &valueString)	// called by name (ADR-0043 item 21)
 {
-	if (::scriptTarget != oo::ToObjC(this))  return;
+	if (::scriptTarget != this)  return;
 
 	int value = oo::str::intValue(valueString);
 	if (0 < value)  ship_kills += value;
@@ -1354,7 +1354,7 @@ void PlayerEntity::awardShipKills(const std::string &valueString)	// called by n
 
 void PlayerEntity::awardEquipment(const std::string &equipString)	// called by name (ADR-0043 item 21); eg. EQ_NAVAL_ENERGY_UNIT
 {
-	if (::scriptTarget != oo::ToObjC(this))  return;
+	if (::scriptTarget != this)  return;
 
 	const std::string equipKey = equipString;
 	if (equipKey == "EQ_FUEL")
@@ -1386,7 +1386,7 @@ void PlayerEntity::awardEquipment(const std::string &equipString)	// called by n
 
 void PlayerEntity::removeEquipment(const std::string &equipString)	// called by name (ADR-0043 item 21); eg. EQ_NAVAL_ENERGY_UNIT
 {
-	if (::scriptTarget != oo::ToObjC(this))  return;
+	if (::scriptTarget != this)  return;
 
 	const std::string equipKey = equipString;
 	if (equipKey == "EQ_FUEL")
@@ -1455,7 +1455,7 @@ void PlayerEntity::setSpecificPlanetInfo(const std::string &key_valueString)	// 
 
 void PlayerEntity::awardCargo(const std::string &amount_typeString)	// called by name (ADR-0043 item 21)
 {
-	if (::scriptTarget != oo::ToObjC(this))  return;
+	if (::scriptTarget != this)  return;
 
 	const std::string		argument = amount_typeString;
 	const std::vector<std::string>	tokens = oo::str::tokens(argument);
@@ -1502,7 +1502,7 @@ void PlayerEntity::removeAllCargo()
 void PlayerEntity::removeAllCargo(bool forceRemoval)
 {
 	// Misnamed method. It only removes cargo measured in TONS, g & Kg items are not removed. --Kaks 20091004
-	if (::scriptTarget != oo::ToObjC(this))  return;
+	if (::scriptTarget != this)  return;
 
 	if (status() != STATUS_DOCKED && !forceRemoval)
 	{
@@ -1526,7 +1526,7 @@ void PlayerEntity::removeAllCargo(bool forceRemoval)
 		NSInteger i;
 		for (i = cargo.size() - 1; i >= 0; i--)
 		{
-			::ShipEntity* canister = cargo[i].get();
+			::ShipEntity* canister = oo::ToShip(cargo[i].get());
 			if (!canister)  break;
 			// Since we are forcing cargo removal, we don't really care about the unit of measurement. Any
 			// commodity at more than 1000kg or 1000000gr will be inside cargopods, so remove those too.
@@ -1542,7 +1542,7 @@ void PlayerEntity::removeAllCargo(bool forceRemoval)
 
 void PlayerEntity::useSpecialCargo(const std::string &descriptionString)	// called by name (ADR-0043 item 21)
 {
-	if (::scriptTarget != oo::ToObjC(this))  return;
+	if (::scriptTarget != this)  return;
 
 	const std::string description = descriptionString;
 	removeAllCargo(YES);
@@ -1560,12 +1560,12 @@ void PlayerEntity::testForEquipment(const std::string &equipString)	// called by
 void PlayerEntity::awardFuel(const std::string &valueString)	// called by name (ADR-0043 item 21); add to fuel up to 7.0 LY
 {
 	int delta  = 10 * (float)oo::str::doubleValue(valueString);
-	OOFuelQuantity scriptTargetFuelBeforeAward = [::scriptTarget fuel];
+	OOFuelQuantity scriptTargetFuelBeforeAward = (::scriptTarget != nullptr ? ::scriptTarget->getFuel() : OOFuelQuantity{});
 
-	if (delta < 0 && scriptTargetFuelBeforeAward < (unsigned)-delta)  [::scriptTarget setFuel:0];
+	if (delta < 0 && scriptTargetFuelBeforeAward < (unsigned)-delta)  { if (::scriptTarget != nullptr)  ::scriptTarget->setFuel(0); }
 	else
 	{
-		[::scriptTarget setFuel:(scriptTargetFuelBeforeAward + delta)];
+		if (::scriptTarget != nullptr)  ::scriptTarget->setFuel((scriptTargetFuelBeforeAward + delta));
 	}
 }
 
@@ -1589,15 +1589,15 @@ void PlayerEntity::messageShipAIs(const std::string &roles_message)	// called by
 																inRange:-1
 															   ofEntity:nil])
 	{
-		[[(::ShipEntity *)target.get() getAI] cxx_reactToMessage:messageString context:std::string("messageShipAIs:")];
+		[(oo::ToShip(target.get()) != nullptr ? oo::ToShip(target.get())->getAI() : (::AI *)nullptr) cxx_reactToMessage:messageString context:std::string("messageShipAIs:")];
 	}
 }
 
 
 void PlayerEntity::ejectItem(const std::string &itemKey)	// called by name (ADR-0043 item 21)
 {
-	if (::scriptTarget == nil)  ::scriptTarget = oo::ToObjC(this);
-	[::scriptTarget ejectShipOfType:itemKey];
+	if (::scriptTarget == nil)  ::scriptTarget = oo::ToShip(oo::ToObjC(this));
+	if (::scriptTarget != nullptr)  ::scriptTarget->ejectShipOfType(itemKey);
 }
 
 
@@ -2216,7 +2216,7 @@ void PlayerEntity::showShipModel(const std::string &role)	// called by name (ADR
 	}
 
 	::ShipEntity *ship = [UNIVERSE cxx_makeDemoShipWithRole:roleString spinning:YES];
-	OO_LOG(kOOLogNoteShowShipModel, "::::: showShipModel:'{}' ({}) ({})", roleString, oo::DescriptionOf(ship), [ship cxx_name].value_or("(null)"));
+	OO_LOG(kOOLogNoteShowShipModel, "::::: showShipModel:'{}' ({}) ({})", roleString, oo::DescriptionOf(oo::ToObjC(ship)), (ship != nullptr ? ship->getName() : std::optional<std::string>()).value_or("(null)"));
 }
 
 
@@ -2273,9 +2273,9 @@ void PlayerEntity::setMissionBackground(const std::string &value)
 
 void PlayerEntity::setFuelLeak(const std::string &value)	// called by name (ADR-0043 item 21)
 {
-	if (::scriptTarget != oo::ToObjC(this))
+	if (::scriptTarget != this)
 	{
-		[::scriptTarget setFuel:0];
+		if (::scriptTarget != nullptr)  ::scriptTarget->setFuel(0);
 		return;
 	}
 	
@@ -2340,19 +2340,19 @@ void PlayerEntity::sendAllShipsAway()
 		::Entity* e1 = my_entities[i];
 		if ([e1 isShip])
 		{
-			::ShipEntity* se1 = (::ShipEntity*)e1;
+			::ShipEntity* se1 = oo::ToShip(e1);
 			int e_class = [e1 scanClass];
 			if (((e_class == CLASS_NEUTRAL)||(e_class == CLASS_POLICE)||(e_class == CLASS_MILITARY)||(e_class == CLASS_THARGOID)) &&
-											! ([se1 isStation] && [se1 maxFlightSpeed] == 0) &&  // exclude only stations, not carriers.
-											[se1 hasHyperspaceMotor]) // exclude non jumping ships. Escorts will still be able to follow a mother.
+											! ((se1 != nullptr ? se1->getIsStation() : false) && (se1 != nullptr ? se1->getMaxFlightSpeed() : 0.0f) == 0) &&  // exclude only stations, not carriers.
+											(se1 != nullptr ? se1->hasHyperspaceMotor() : false)) // exclude non jumping ships. Escorts will still be able to follow a mother.
 			{
-				::AI*	se1AI = [se1 getAI];
-				[se1 setFuel:MAX(PLAYER_MAX_FUEL, [se1 fuelCapacity])];
-				[se1 setAITo:"exitingTraderAI.plist"];	// lets them return to their previous state after the jump
+				::AI*	se1AI = (se1 != nullptr ? se1->getAI() : (::AI *)nullptr);
+				if (se1 != nullptr)  se1->setFuel(MAX(PLAYER_MAX_FUEL, (se1 != nullptr ? se1->fuelCapacity() : OOFuelQuantity{})));
+				if (se1 != nullptr)  se1->setAITo("exitingTraderAI.plist");	// lets them return to their previous state after the jump
 				[se1AI cxx_setState:"EXIT_SYSTEM"];
 				// The following should prevent all ships leaving at once (freezes oolite on slower machines)
 				[se1AI setNextThinkTime:[UNIVERSE getTime] + 3 + (ranrot_rand() & 15)];
-				[se1 setPrimaryRole:"oolite-none"];	// prevents new ship from appearing at witchpoint when this one leaves!
+				if (se1 != nullptr)  se1->setPrimaryRole("oolite-none");	// prevents new ship from appearing at witchpoint when this one leaves!
 			}
 		}
 	}
@@ -2814,20 +2814,20 @@ bool PlayerEntity::processSceneString(const std::string &item, Vector off)
 		Vector	model_offset = cxx_positionOffsetForShipInRotationToAlignment(ship, model_q, i_info[9]);
 		model_p0 = vector_add(model_p0, vector_subtract(off, model_offset));
 
-		OO_LOG(kOOLogDebugProcessSceneStringAddModel, "::::: adding model to scene:'{}'", oo::DescriptionOf(ship));
-		[ship setOrientation: model_q];
-		[ship setPosition: vectorToHPVector(model_p0)];
+		OO_LOG(kOOLogDebugProcessSceneStringAddModel, "::::: adding model to scene:'{}'", oo::DescriptionOf(oo::ToObjC(ship)));
+		if (ship != nullptr)  ship->setOrientation(model_q);
+		if (ship != nullptr)  ship->setPosition(vectorToHPVector(model_p0));
 		[UNIVERSE setMainLightPosition:(Vector){ DEMO_LIGHT_POSITION }]; // set light origin
-		[ship setScanClass: CLASS_NO_DRAW];
-		[ship switchAITo: "nullAI.plist"];
-		[UNIVERSE addEntity: ship];	// STATUS_IN_FLIGHT, AI state GLOBAL
-		[ship setStatus: STATUS_COCKPIT_DISPLAY];
-		[ship setRoll: 0.0];
-		[ship setPitch: 0.0];
-		[ship setVelocity: kZeroVector];
-		[ship setBehaviour: BEHAVIOUR_STOP_STILL];
+		if (ship != nullptr)  ship->setScanClass(CLASS_NO_DRAW);
+		if (ship != nullptr)  ship->switchAITo("nullAI.plist");
+		[UNIVERSE addEntity: oo::ToObjC(ship)];	// STATUS_IN_FLIGHT, AI state GLOBAL
+		if (ship != nullptr)  ship->setStatus(STATUS_COCKPIT_DISPLAY);
+		if (ship != nullptr)  ship->setRoll(0.0);
+		if (ship != nullptr)  ship->setPitch(0.0);
+		if (ship != nullptr)  ship->setVelocity(kZeroVector);
+		if (ship != nullptr)  ship->setBehaviour(BEHAVIOUR_STOP_STILL);
 
-		[ship release];
+		if (ship != nullptr)  [oo::ToObjC(ship) release];
 		return YES;
 	}
 	//
@@ -2849,20 +2849,20 @@ bool PlayerEntity::processSceneString(const std::string &item, Vector off)
 		model_p0.y += off.y - model_offset.y;
 		model_p0.z += off.z - model_offset.z;
 
-		OO_LOG(kOOLogDebugProcessSceneStringAddModel, "::::: adding model to scene:'{}'", oo::DescriptionOf(doppelganger));
-		[doppelganger setOrientation: model_q];
-		[doppelganger setPosition: vectorToHPVector(model_p0)];
+		OO_LOG(kOOLogDebugProcessSceneStringAddModel, "::::: adding model to scene:'{}'", oo::DescriptionOf(oo::ToObjC(doppelganger)));
+		if (doppelganger != nullptr)  doppelganger->setOrientation(model_q);
+		if (doppelganger != nullptr)  doppelganger->setPosition(vectorToHPVector(model_p0));
 		[UNIVERSE setMainLightPosition:(Vector){ DEMO_LIGHT_POSITION }]; // set light origin
-		[doppelganger setScanClass: CLASS_NO_DRAW];
-		[doppelganger switchAITo: "nullAI.plist"];
-		[UNIVERSE addEntity: doppelganger];
-		[doppelganger setStatus: STATUS_COCKPIT_DISPLAY];
-		[doppelganger setRoll: 0.0];
-		[doppelganger setPitch: 0.0];
-		[doppelganger setVelocity: kZeroVector];
-		[doppelganger setBehaviour: BEHAVIOUR_STOP_STILL];
+		if (doppelganger != nullptr)  doppelganger->setScanClass(CLASS_NO_DRAW);
+		if (doppelganger != nullptr)  doppelganger->switchAITo("nullAI.plist");
+		[UNIVERSE addEntity: oo::ToObjC(doppelganger)];
+		if (doppelganger != nullptr)  doppelganger->setStatus(STATUS_COCKPIT_DISPLAY);
+		if (doppelganger != nullptr)  doppelganger->setRoll(0.0);
+		if (doppelganger != nullptr)  doppelganger->setPitch(0.0);
+		if (doppelganger != nullptr)  doppelganger->setVelocity(kZeroVector);
+		if (doppelganger != nullptr)  doppelganger->setBehaviour(BEHAVIOUR_STOP_STILL);
 
-		[doppelganger release];
+		if (doppelganger != nullptr)  [oo::ToObjC(doppelganger) release];
 		return YES;
 	}
 	//

@@ -304,7 +304,7 @@ static bool WaypointSetProperty(Context cx, Object obj, PropertyId propID, bool 
 				if ([entity isBeacon]) 
 				{
 					[UNIVERSE clearBeacon:entity];
-					if ((PLAYER != nullptr ? (Entity <OOBeaconEntity> *)PLAYER->PlayerEntity::nextBeacon() : (Entity <OOBeaconEntity> *)nullptr) == entity)	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
+					if ((PLAYER != nullptr ? (::Entity <OOBeaconEntity> *)PLAYER->PlayerEntity::nextBeacon() : (::Entity <OOBeaconEntity> *)nullptr) == entity)	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 					{
 						if (PLAYER != nullptr)  PLAYER->PlayerEntity::setCompassMode(COMPASS_MODE_PLANET);	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 					}

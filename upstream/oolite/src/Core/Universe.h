@@ -54,7 +54,8 @@ MA 02110-1301, USA.
 #include <string_view>
 #endif
 
-@class GameController, MyOpenGLView, Entity, ShipEntity, OOVisualEffectEntity, OOException;
+@class GameController, MyOpenGLView, Entity, OOVisualEffectEntity, OOException;
+class ShipEntity;	// C++ since bead oo-9ht.144
 class DockEntity;
 class StationEntity;
 class OOWaypointEntity;
@@ -370,7 +371,7 @@ public:
 	oo::PList				screenBackgrounds;		// holds filenames for various screens backgrounds, loaded at initialisation
 	oo::PList				explosionSettings;		// explosion settings from explosions.plist
 
-	std::map<std::string, oo::ObjCRef<::ShipEntity *>, std::less<>>	cargoPods; // template cargo pods, by commodity key
+	std::map<std::string, oo::ObjCRef<::Entity *>, std::less<>>	cargoPods; // template cargo pods, by commodity key
 
 	OOGalaxyID				galaxyID = 0;
 	OOSystemID				systemID = 0;
@@ -387,7 +388,7 @@ public:
 	::OOPlanetEntity		*cachedPlanet = nil;
 	::OOSunEntity			*cachedSun = nil;
 	std::vector<oo::ObjCRef<::Entity *>>	allPlanets;	// the planets' Objective-C objects (C++ since bead oo-9ht.129)
-	std::vector<oo::ObjCRef<::ShipEntity *>>	allStations;	// the stations' objects (the ship's facade since bead oo-9ht.175), each once, in the order added
+	std::vector<oo::ObjCRef<::Entity *>>	allStations;	// the stations' objects (the ship's facade since bead oo-9ht.175), each once, in the order added
 
 	float					ambientLightLevel = 0;
 
@@ -514,8 +515,8 @@ public:
 
 	// Slice 7: adding ships within a radius and on routes, role categories, witchspace entries and effects, break patterns, the docking clearance protocol, game over.
 	::ShipEntity *addShipAt(HPVector pos, const std::string &role, GLfloat radius);
-	std::vector<oo::ObjCRef<::ShipEntity *>> addShipsAt(HPVector pos, const std::string &role, unsigned count, GLfloat radius, bool isGroup);
-	std::vector<oo::ObjCRef<::ShipEntity *>> addShipsToRoute(const std::string &route, const std::string &role, unsigned count, double routeFraction, bool isGroup);
+	std::vector<oo::ObjCRef<::Entity *>> addShipsAt(HPVector pos, const std::string &role, unsigned count, GLfloat radius, bool isGroup);
+	std::vector<oo::ObjCRef<::Entity *>> addShipsToRoute(const std::string &route, const std::string &role, unsigned count, double routeFraction, bool isGroup);
 	bool roleIsPirateVictim(const std::string &role);
 	bool role(const std::string &role, const std::string &category);
 	void forceWitchspaceEntries();
@@ -542,7 +543,7 @@ public:
 	::OOPlanetEntity *planet();
 	::OOSunEntity *sun();
 	std::vector<oo::ObjCRef<::Entity *>> planets();	// the planets' Objective-C objects
-	std::vector<oo::ObjCRef<::ShipEntity *>> stations();
+	std::vector<oo::ObjCRef<::Entity *>> stations();
 
 	// Slice 9: wormholes, the main station, beacons, waypoints, sky colour, the break pattern, making ships by role and name, default AIs, cargo capacity.
 	std::vector<oo::ObjCRef<::Entity *>> wormholes();
@@ -567,8 +568,8 @@ public:
 	::ShipEntity *newSubentityWithName(const std::string &shipKey, float scale);
 	::ShipEntity *newShipWithName(const std::string &shipKey, bool usePlayerProxy);
 	::ShipEntity *newShipWithName(const std::string &shipKey, bool usePlayerProxy, bool isSubentity);
-	::ShipEntity *newShipWithName(const std::string &shipKey, bool usePlayerProxy, bool isSubentity, float scale) OO_RETURNS_RETAINED;	// +1, as -newShipWithName:... was (the proxy is made in C++ since bead oo-9ht.183)
-	::ShipEntity *newDockWithName(const std::string &shipDataKey, float scale) OO_RETURNS_RETAINED;	// the dock's object (the ship's facade since bead oo-9ht.180), +1
+	::ShipEntity *newShipWithName(const std::string &shipKey, bool usePlayerProxy, bool isSubentity, float scale);	// its object +1 (a C++ ship since bead oo-9ht.144), as -newShipWithName:... was (the proxy is made in C++ since bead oo-9ht.183)
+	::ShipEntity *newDockWithName(const std::string &shipDataKey, float scale);	// the dock, its object +1 (a C++ ship since bead oo-9ht.144)
 	::ShipEntity *newShipWithName(const std::string &shipKey);
 	bool isStationShipDictionary(const oo::PList &dict);	// -shipClassForShipDictionary: picked StationEntity until bead oo-9ht.175
 	std::optional<std::string> defaultAIForRole(const std::string &role);
@@ -579,8 +580,8 @@ public:
 	::OOCommodities *getCommodities();
 	::ShipEntity *reifyCargoPod(::ShipEntity *cargoObj);
 	::ShipEntity *cargoPodFromTemplate(::ShipEntity *cargoObj);
-	std::vector<oo::ObjCRef<::ShipEntity *>> getContainersOfGoods(OOCargoQuantity how_many, bool scarce, bool legal);
-	std::vector<oo::ObjCRef<::ShipEntity *>> getContainersOfCommodity(const std::string &commodity_name, OOCargoQuantity how_much);
+	std::vector<oo::ObjCRef<::Entity *>> getContainersOfGoods(OOCargoQuantity how_many, bool scarce, bool legal);
+	std::vector<oo::ObjCRef<::Entity *>> getContainersOfCommodity(const std::string &commodity_name, OOCargoQuantity how_much);
 	void fillCargopodWithRandomCargo(::ShipEntity *cargopod);
 	std::string getRandomCommodity();
 	OOCargoQuantity getRandomAmountOfCommodity(const std::string &co_type);

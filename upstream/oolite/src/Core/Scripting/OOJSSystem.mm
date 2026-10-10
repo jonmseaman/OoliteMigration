@@ -96,10 +96,10 @@ namespace {
 static BOOL GetRelativeToAndRange(ooscript::Context context, const std::string &methodName, unsigned *ioArgc, ooscript::Value **ioArgv, Entity **outRelativeTo, double *outRange);
 } // namespace
 namespace {
-static std::vector<oo::ObjCRef<Entity *>> FindJSVisibleEntities(EntityFilterPredicate predicate, void *parameter, Entity *relativeTo, double range);
+static std::vector<oo::ObjCRef<::Entity *>> FindJSVisibleEntities(EntityFilterPredicate predicate, void *parameter, Entity *relativeTo, double range);
 } // namespace
 namespace {
-static std::vector<oo::ObjCRef<Entity *>> FindShips(EntityFilterPredicate predicate, void *parameter, Entity *relativeTo, double range);
+static std::vector<oo::ObjCRef<::Entity *>> FindShips(EntityFilterPredicate predicate, void *parameter, Entity *relativeTo, double range);
 } // namespace
 namespace {
 static OOComparisonResult CompareEntitiesByDistance(id a, id b, void *relativeTo);
@@ -458,7 +458,7 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			
 		case kSystem_planets:
 		{
-			std::vector<oo::ObjCRef<Entity *>> visible;	// the planets' Objective-C objects
+			std::vector<oo::ObjCRef<::Entity *>> visible;	// the planets' Objective-C objects
 			for (const auto &r : OOJSSystemUniversePlanets()) {
 				if (!OOJSSystemEntityIsVisibleToScripts(r.get()))  continue;
 				visible.push_back(r);
@@ -974,7 +974,7 @@ static bool SystemShipsWithPrimaryRole(ooscript::Context context, ooscript::Call
 	std::optional<std::string>			role;
 	Entity				*relativeTo = nil;
 	double				range = -1;
-	std::vector<oo::ObjCRef<Entity *>>	result;
+	std::vector<oo::ObjCRef<::Entity *>>	result;
 	
 	if (oojsArgs.count() > 0)  role = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(!role.has_value()))
@@ -1010,7 +1010,7 @@ static bool SystemShipsWithRole(ooscript::Context context, ooscript::CallArgs &o
 	std::optional<std::string>			role;
 	Entity				*relativeTo = nil;
 	double				range = -1;
-	std::vector<oo::ObjCRef<Entity *>>	result;
+	std::vector<oo::ObjCRef<::Entity *>>	result;
 	
 	if (oojsArgs.count() > 0)  role = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(!role.has_value()))
@@ -1081,7 +1081,7 @@ static bool SystemEntitiesWithScanClass(ooscript::Context context, ooscript::Cal
 	OOScanClass			scanClass = CLASS_NOT_SET;
 	Entity				*relativeTo = nil;
 	double				range = -1;
-	std::vector<oo::ObjCRef<Entity *>>	result;
+	std::vector<oo::ObjCRef<::Entity *>>	result;
 	
 	if (oojsArgs.count() > 0)  scanClass = OOScanClassFromJSValue(context, OOJS_ARGV[0]);
 	if (scanClass == CLASS_NOT_SET)
@@ -1118,7 +1118,7 @@ static bool SystemFilteredEntities(ooscript::Context context, ooscript::CallArgs
 	ooscript::Value				predicate;
 	Entity				*relativeTo = nil;
 	double				range = -1;
-	std::vector<oo::ObjCRef<Entity *>>	result;
+	std::vector<oo::ObjCRef<::Entity *>>	result;
 	
 	// Get this and predicate arguments
 	if (oojsArgs.count() < 2 || !OOJSValueIsFunction(context, OOJS_ARGV[1]) || !ooscript::valueToObject(context, (OOJS_ARGV[0]), OOJSFOBJP(&jsThis)))
@@ -1765,13 +1765,13 @@ static bool SystemAddShipsOrGroup(Context cx, CallArgs &oojsArgs, bool isGroup)
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
 	// Note: the use of witchspace-in effects (as in legacy_addShips) depends on proximity to the witchpoint.
-	const std::vector<oo::ObjCRef<ShipEntity *>> added = OOJSSystemUniverseAddShipsAt(where, *role, count, radius, isGroup);
+	const std::vector<oo::ObjCRef<::Entity *>> added = OOJSSystemUniverseAddShipsAt(where, *role, count, radius, isGroup);
 	if (!added.empty())  result = oo::PListFromObjects(added);	// null where no ship was added, as before
 	
 	if (isGroup)
 	{
-		const std::vector<oo::ObjCRef<ShipEntity *>> ships = oo::ObjCRefsIn<ShipEntity *>(result);
-		if (ships.size() > 0)  result = OOShipGroupObjectNode(OOJSSystemShipGroup(ships[0].get()));
+		const std::vector<oo::ObjCRef<::Entity *>> ships = oo::ObjCRefsIn<::Entity *>(result);
+		if (ships.size() > 0)  result = OOShipGroupObjectNode(OOJSSystemShipGroup(oo::ToShip(ships[0].get())));
 		else  result = oo::PList();
 	}
 	OOJS_END_FULL_NATIVE
@@ -1835,13 +1835,13 @@ static bool SystemAddShipsOrGroupToRoute(Context cx, CallArgs &oojsArgs, bool is
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
 	// Note: the use of witchspace-in effects (as in legacy_addShips) depends on proximity to the witchpoint.	
-	const std::vector<oo::ObjCRef<ShipEntity *>> added = OOJSSystemUniverseAddShipsToRoute(*route, *role, count, where, isGroup);
+	const std::vector<oo::ObjCRef<::Entity *>> added = OOJSSystemUniverseAddShipsToRoute(*route, *role, count, where, isGroup);
 	if (!added.empty())  result = oo::PListFromObjects(added);	// null where no ship was added, as before
 	
 	if (isGroup)
 	{
-		const std::vector<oo::ObjCRef<ShipEntity *>> ships = oo::ObjCRefsIn<ShipEntity *>(result);
-		if (ships.size() > 0)  result = OOShipGroupObjectNode(OOJSSystemShipGroup(ships[0].get()));
+		const std::vector<oo::ObjCRef<::Entity *>> ships = oo::ObjCRefsIn<::Entity *>(result);
+		if (ships.size() > 0)  result = OOShipGroupObjectNode(OOJSSystemShipGroup(oo::ToShip(ships[0].get())));
 		else  result = oo::PList();
 	}
 	OOJS_END_FULL_NATIVE
@@ -1891,11 +1891,11 @@ static BOOL GetRelativeToAndRange(ooscript::Context context, const std::string &
 
 
 namespace {
-static std::vector<oo::ObjCRef<Entity *>> FindJSVisibleEntities(EntityFilterPredicate predicate, void *parameter, Entity *relativeTo, double range)
+static std::vector<oo::ObjCRef<::Entity *>> FindJSVisibleEntities(EntityFilterPredicate predicate, void *parameter, Entity *relativeTo, double range)
 {
 	OOJS_PROFILE_ENTER
 	
-	std::vector<oo::ObjCRef<Entity *>>	result;
+	std::vector<oo::ObjCRef<::Entity *>>	result;
 	BinaryOperationPredicateParameter	param =
 	{
 		JSEntityIsJavaScriptSearchablePredicate, NULL,
@@ -1907,20 +1907,20 @@ static std::vector<oo::ObjCRef<Entity *>> FindJSVisibleEntities(EntityFilterPred
 	if (relativeTo != nil && !oo::ToCxx(relativeTo)->getIsPlayer())
 	{
 		// -sortUsingFunction:context: with the same comparison (a stable sort: GNUstep's is timsort).
-		std::stable_sort(result.begin(), result.end(), [relativeTo](const oo::ObjCRef<Entity *> &a, const oo::ObjCRef<Entity *> &b)
+		std::stable_sort(result.begin(), result.end(), [relativeTo](const oo::ObjCRef<::Entity *> &a, const oo::ObjCRef<::Entity *> &b)
 		{
 			return CompareEntitiesByDistance(a.get(), b.get(), relativeTo) == OOOrderedAscending;
 		});
 	}
 	return result;	// empty for no matches, as the empty array was
 	
-	OOJS_PROFILE_EXIT_VAL(std::vector<oo::ObjCRef<Entity *>>())
+	OOJS_PROFILE_EXIT_VAL(std::vector<oo::ObjCRef<::Entity *>>())
 }
 } // namespace
 
 
 namespace {
-static std::vector<oo::ObjCRef<Entity *>> FindShips(EntityFilterPredicate predicate, void *parameter, Entity *relativeTo, double range)
+static std::vector<oo::ObjCRef<::Entity *>> FindShips(EntityFilterPredicate predicate, void *parameter, Entity *relativeTo, double range)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -1931,7 +1931,7 @@ static std::vector<oo::ObjCRef<Entity *>> FindShips(EntityFilterPredicate predic
 	};
 	return FindJSVisibleEntities(ANDPredicate, &param, relativeTo, range);
 	
-	OOJS_PROFILE_EXIT_VAL(std::vector<oo::ObjCRef<Entity *>>())
+	OOJS_PROFILE_EXIT_VAL(std::vector<oo::ObjCRef<::Entity *>>())
 }
 } // namespace
 

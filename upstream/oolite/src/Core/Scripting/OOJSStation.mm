@@ -71,8 +71,8 @@ MA 02110-1301, USA.
 	oo::ToCxx (amendment oo-ppc, item 4), null-guarded where a message to nil answered; an interface
 	definition is C++ since bead oo-9ht.61 deleted its façade, and the station keeps it as oo::Ref.
 	The station is C++ since bead oo-9ht.175 deleted its facade: its members are called (its object,
-	the ship's facade, is the JS object's). Messages to classes that are still Objective-C
-	(ShipEntity, Universe, GameController, OOShipRegistry) stay as they are, which is why the file is
+	a ship's, is the JS object's; the ship is C++ since bead oo-9ht.144). Messages to classes that
+	are still Objective-C (Universe, GameController, OOShipRegistry) stay as they are, which is why the file is
 	still .mm until Phase 4.
 */
 
@@ -363,7 +363,7 @@ static bool JSStationGetStationEntity(ooscript::Context context, ooscript::Objec
 	result = OOJSEntityGetEntity(context, stationObj, &entity);
 	if (!result)  return false;
 	
-	// A station's object is the ship's facade since bead oo-9ht.175: its C++ part says it is a station,
+	// A station's object is a ship's since bead oo-9ht.175: its C++ part says it is a station,
 	// where -isKindOfClass:[StationEntity class] did.
 	StationEntity *station = oo::ToStation(entity);
 	if (station == nullptr)  return false;
@@ -389,9 +389,9 @@ static bool JSStationGetShipEntity(ooscript::Context context, ooscript::Object s
 	result = OOJSEntityGetEntity(context, shipObj, &entity);
 	if (!result)  return false;
 	
-	if (![entity isKindOfClass:[ShipEntity class]])  return false;
+	if (!(oo::ToShip(entity) != nullptr))  return false;
 	
-	*outEntity = (ShipEntity *)entity;
+	*outEntity = oo::ToShip(entity);
 	return true;
 	
 	OOJS_PROFILE_EXIT
@@ -460,7 +460,7 @@ static bool StationGetProperty(Context cx, Object obj, PropertyId propID, Value 
 			
 		case kStation_roll:
 			// same as in ship definition, but this time read/write below
-			return ooscript::newNumberValue(cx, (entity != nullptr ? entity->cxx::ShipEntity::getFlightRoll() : 0.0f), value);	// qualified: the final overrider (bead oo-9ht.175), so the binding test stands in for it
+			return ooscript::newNumberValue(cx, (entity != nullptr ? entity->ShipEntity::getFlightRoll() : 0.0f), value);	// qualified: the final overrider (bead oo-9ht.175), so the binding test stands in for it
 			
 		case kStation_allowsFastDocking:
 			*value_raw = OOJSValueFromBOOL((entity != nullptr ? entity->getAllowsFastDocking() : false));
@@ -774,7 +774,7 @@ static bool StationIncreaseAlertLevel(ooscript::Context context, ooscript::CallA
 	if (!JSStationGetStationEntity(context, OOJS_THIS, &station))  OOJS_RETURN_VOID; // stale reference, no-op
 
 	OOJS_BEGIN_FULL_NATIVE(context)
-	if ((station != nullptr ? station->cxx::ShipEntity::alertCondition() : OOAlertCondition{}) < 3)	// qualified: the final overrider (bead oo-9ht.175), so the binding test stands in for it
+	if ((station != nullptr ? station->ShipEntity::alertCondition() : OOAlertCondition{}) < 3)	// qualified: the final overrider (bead oo-9ht.175), so the binding test stands in for it
 	{
 		if (station != nullptr)  station->increaseAlertLevel();
 	}
@@ -793,7 +793,7 @@ static bool StationDecreaseAlertLevel(ooscript::Context context, ooscript::CallA
 	if (!JSStationGetStationEntity(context, OOJS_THIS, &station))  OOJS_RETURN_VOID; // stale reference, no-op
 
 	OOJS_BEGIN_FULL_NATIVE(context)
-	if ((station != nullptr ? station->cxx::ShipEntity::alertCondition() : OOAlertCondition{}) > 1)	// qualified: the final overrider (bead oo-9ht.175), so the binding test stands in for it
+	if ((station != nullptr ? station->ShipEntity::alertCondition() : OOAlertCondition{}) > 1)	// qualified: the final overrider (bead oo-9ht.175), so the binding test stands in for it
 	{
 		if (station != nullptr)  station->decreaseAlertLevel();
 	}
@@ -826,11 +826,11 @@ static bool StationLaunchShipWithRole(ooscript::Context context, ooscript::CallA
 	if (oojsArgs.count() > 1)  ooscript::valueToBoolean((context), (OOJS_ARGV[1]), &abortAllDockings);
 
 	OOJS_BEGIN_FULL_NATIVE(context)
-	result = oo::ObjectIn((station != nullptr ? station->launchIndependentShip(*shipRole) : oo::PList()));
+	result = oo::ToShip(oo::ObjectIn((station != nullptr ? station->launchIndependentShip(*shipRole) : oo::PList())));
 	if (abortAllDockings) { if (station != nullptr)  station->abortAllDockings(); }
 	OOJS_END_FULL_NATIVE
 
-	OOJS_RETURN_OBJECT(result);
+	OOJS_RETURN_OBJECT(oo::ToObjC(result));
 	OOJS_NATIVE_EXIT
 }
 } // namespace
@@ -848,7 +848,7 @@ static bool StationLaunchDefenseShip(ooscript::Context context, ooscript::CallAr
 	OOJS_BEGIN_FULL_NATIVE(context)
 	launched = (station != nullptr ? station->launchDefenseShip() : (::ShipEntity *)nil);
 	OOJS_END_FULL_NATIVE
-	OOJS_RETURN_OBJECT(launched);
+	OOJS_RETURN_OBJECT(oo::ToObjC(launched));
 
 	OOJS_NATIVE_EXIT
 }
@@ -867,7 +867,7 @@ static bool StationLaunchEscort(ooscript::Context context, ooscript::CallArgs &o
 	OOJS_BEGIN_FULL_NATIVE(context)
 	launched = (station != nullptr ? station->launchEscort() : (::ShipEntity *)nil);
 	OOJS_END_FULL_NATIVE
-	OOJS_RETURN_OBJECT(launched);
+	OOJS_RETURN_OBJECT(oo::ToObjC(launched));
 
 	OOJS_NATIVE_EXIT
 }
@@ -886,7 +886,7 @@ static bool StationLaunchScavenger(ooscript::Context context, ooscript::CallArgs
 	OOJS_BEGIN_FULL_NATIVE(context)
 	launched = (station != nullptr ? station->launchScavenger() : (::ShipEntity *)nil);
 	OOJS_END_FULL_NATIVE
-	OOJS_RETURN_OBJECT(launched);
+	OOJS_RETURN_OBJECT(oo::ToObjC(launched));
 
 	OOJS_NATIVE_EXIT
 }
@@ -905,7 +905,7 @@ static bool StationLaunchMiner(ooscript::Context context, ooscript::CallArgs &oo
 	OOJS_BEGIN_FULL_NATIVE(context)
 	launched = (station != nullptr ? station->launchMiner() : (::ShipEntity *)nil);
 	OOJS_END_FULL_NATIVE
-	OOJS_RETURN_OBJECT(launched);
+	OOJS_RETURN_OBJECT(oo::ToObjC(launched));
 	OOJS_NATIVE_EXIT
 }
 } // namespace
@@ -923,7 +923,7 @@ static bool StationLaunchPirateShip(ooscript::Context context, ooscript::CallArg
 	OOJS_BEGIN_FULL_NATIVE(context)
 	launched = (station != nullptr ? station->launchPirateShip() : (::ShipEntity *)nil);
 	OOJS_END_FULL_NATIVE
-	OOJS_RETURN_OBJECT(launched);
+	OOJS_RETURN_OBJECT(oo::ToObjC(launched));
 
 	OOJS_NATIVE_EXIT
 }
@@ -942,7 +942,7 @@ static bool StationLaunchShuttle(ooscript::Context context, ooscript::CallArgs &
 	OOJS_BEGIN_FULL_NATIVE(context)
 	launched = (station != nullptr ? station->launchShuttle() : (::ShipEntity *)nil);
 	OOJS_END_FULL_NATIVE
-	OOJS_RETURN_OBJECT(launched);
+	OOJS_RETURN_OBJECT(oo::ToObjC(launched));
 	OOJS_NATIVE_EXIT
 }
 } // namespace
@@ -960,7 +960,7 @@ static bool StationLaunchPatrol(ooscript::Context context, ooscript::CallArgs &o
 	OOJS_BEGIN_FULL_NATIVE(context)
 	launched = (station != nullptr ? station->launchPatrol() : (::ShipEntity *)nil);
 	OOJS_END_FULL_NATIVE
-	OOJS_RETURN_OBJECT(launched);
+	OOJS_RETURN_OBJECT(oo::ToObjC(launched));
 	OOJS_NATIVE_EXIT
 }
 } // namespace
@@ -974,9 +974,9 @@ static bool StationLaunchPolice(ooscript::Context context, ooscript::CallArgs &o
 	StationEntity *station = nil;
 	if (!JSStationGetStationEntity(context, OOJS_THIS, &station))  OOJS_RETURN_VOID; // stale reference, no-op
 	
-	std::vector<oo::ObjCRef<ShipEntity *>> launched;
+	std::vector<oo::ObjCRef<::Entity *>> launched;
 	OOJS_BEGIN_FULL_NATIVE(context)
-	launched = oo::ObjCRefsIn<ShipEntity *>((station != nullptr ? station->launchPolice() : oo::PList()));
+	launched = oo::ObjCRefsIn<::Entity *>((station != nullptr ? station->launchPolice() : oo::PList()));
 	OOJS_END_FULL_NATIVE
 	OOJS_RETURN_PLIST(oo::PListFromObjects(launched));
 	OOJS_NATIVE_EXIT

@@ -52,9 +52,9 @@ OOECMBlastEntity::OOECMBlastEntity(ShipEntity *ship)
 {
 	_blastsRemaining = ECM_PULSE_COUNT;
 	_nextBlast = ECM_PULSE_INTERVAL;
-	_ship = [ship weakRetain];
+	_ship = (ship != nullptr ? [oo::ToObjC(ship) weakRetain] : id{});
 	
-	Entity::setPosition([ship position]);
+	Entity::setPosition((ship != nullptr ? ship->getPosition() : HPVector{}));
 	
 	Entity::setStatus(STATUS_EFFECT);
 	setScanClass(CLASS_NO_DRAW);
@@ -75,8 +75,8 @@ void OOECMBlastEntity::update(OOTimeDelta delta_t)
 {
 	::Entity *self = oo::ToObjC(this);
 	_nextBlast -= delta_t;
-	ShipEntity		*ship = [_ship weakRefUnderlyingObject];
-	BOOL 			validShip = (ship != nil) && ([ship status] != STATUS_DEAD);
+	ShipEntity		*ship = oo::ToShip([_ship weakRefUnderlyingObject]);
+	BOOL 			validShip = (ship != nil) && ((ship != nullptr ? ship->status() : OOEntityStatus{}) != STATUS_DEAD);
 	
 	if (_nextBlast <= 0.0 && validShip)
 	{
@@ -94,14 +94,14 @@ void OOECMBlastEntity::update(OOTimeDelta delta_t)
 		{
 			ooscript::Context context = OOJSAcquireContext();
 			ooscript::Value ecmPulsesRemaining = ooscript::int32Value(_blastsRemaining);
-			ooscript::Value whomVal = OOJSValueFromNativeObject(context, ship);
+			ooscript::Value whomVal = OOJSValueFromNativeObject(context, oo::ToObjC(ship));
 			
 			for (i = 0; i < count; i++)
 			{
-				ShipEntity *target = (ShipEntity *)targets[i].get();
+				ShipEntity *target = oo::ToShip(targets[i].get());
 				ShipScriptEvent(context, target, "shipHitByECM", ecmPulsesRemaining, whomVal);
-				[target cxx_reactToAIMessage:"ECM" context:std::nullopt];
-				[target noticeECM];
+				if (target != nullptr)  target->reactToAIMessage("ECM", std::nullopt);
+				if (target != nullptr)  target->noticeECM();
 			}
 			
 			OOJSRelinquishContext(context);

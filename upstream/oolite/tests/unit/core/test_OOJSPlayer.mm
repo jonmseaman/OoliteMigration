@@ -6,7 +6,8 @@
 	the game's own façade backend (ooscript/JSEngine_quickjs.cpp), and links the game's own objects
 	for the binding, the engine's exception translator (OOJSEngineNativeWrappers.mm) and the random
 	numbers it draws (legacy_random.c). It stands in for the player and a station (PlayerEntity and
-	ShipEntity answer only the selectors the binding sends, and record what they are told), the
+	ShipEntity answer only the selectors the binding sends, and record what they are told; the ship
+	is C++ since bead oo-9ht.144, its stations' objects the root's), the
 	universe (messages, speech, nearby systems), the display strings, the script event names and
 	the engine functions the binding links against, with the engine headers' linkage. The
 	expectations were written against the Objective-C file and run on it first; they pin the
@@ -59,9 +60,14 @@ enum
 };
 
 
-@interface ShipEntity: OOObject
+namespace cxx { class Entity; }
+
+// A ship's object: the root's, which holds the C++ part (oo::ToCxx reads it); a station's and the
+// player's were the Objective-C ship's until bead oo-9ht.144 deleted it.
+@interface Entity: OOObject
 {
 @public
+	oo::Ref<cxx::Entity> _cxxEntity;
 	BOOL _isStation;
 	OOEntityStatus _status;
 }
@@ -77,22 +83,24 @@ enum
 // the code under test calls, declared as the game headers declare them (the test imports none
 // that defines the classes), with the stand-in's answers.
 namespace cxx {
-class Entity
+class Entity : public oo::RefCounted
 {
 public:
+	virtual ~Entity();
 	OOEntityStatus status();
 };
+}	// namespace cxx
 
-class ShipEntity : public Entity
+// The ship: C++ since bead oo-9ht.144 (a station's part is a plain one).
+class ShipEntity : public cxx::Entity
 {
 public:
 	void doScriptEvent(ooscript::PropertyId message, const std::vector<oo::PList> &arguments);
 	void doScriptEvent(ooscript::PropertyId message, id argument);
 	void setEntityPersonalityInt(uint16_t value);
 };
-}	// namespace cxx
 
-class PlayerEntity : public cxx::ShipEntity
+class PlayerEntity : public ShipEntity
 {
 public:
 	void setScriptTargetToSelf();
@@ -227,7 +235,7 @@ oo::PList Dict(std::initializer_list<std::pair<const char *, oo::PList>> entries
 }	// namespace
 
 
-@implementation ShipEntity
+@implementation Entity
 
 - (BOOL) isStation  { return _isStation; }
 - (OOEntityStatus) status  { return _status; }
@@ -238,23 +246,24 @@ oo::PList Dict(std::initializer_list<std::pair<const char *, oo::PList>> entries
 // The player's Objective-C object (in the game the ship's facade over the C++ player), which
 // oo::ToObjC answers: a ship whose class is named PlayerEntity, as the game's player object was
 // before bead oo-9ht.177, so the events name it as they did.
-::ShipEntity *sPlayerObject = nil;
+::Entity *sPlayerObject = nil;
 
-::ShipEntity *NewPlayerObject()
+::Entity *NewPlayerObject()
 {
 	Class playerClass = objc_getClass("PlayerEntity");
 	if (playerClass == Nil)
 	{
-		playerClass = objc_allocateClassPair([ShipEntity class], "PlayerEntity", 0);
+		playerClass = objc_allocateClassPair([Entity class], "PlayerEntity", 0);
 		objc_registerClassPair(playerClass);
 	}
 	return [[playerClass alloc] init];
 }
 
 namespace oo {
-::Entity *ToObjC(cxx::Entity *entity)  { return entity != nullptr ? (::Entity *)sPlayerObject : nil; }	// only the player crosses
+::Entity *ToObjC(cxx::Entity *entity)  { return entity != nullptr ? sPlayerObject : nil; }	// only the player crosses
 }
 
+cxx::Entity::~Entity() = default;
 OOEntityStatus cxx::Entity::status()  { return static_cast<PlayerEntity *>(this)->_status; }
 void PlayerEntity::setScriptTargetToSelf()  { _scriptTargetSets++; }
 std::optional<std::string> PlayerEntity::commanderName()  { return _commanderName; }
@@ -289,13 +298,13 @@ void PlayerEntity::increaseParcelReputation(unsigned amount)  { _parcelReputatio
 void PlayerEntity::decreaseParcelReputation(unsigned amount)  { _parcelReputation -= static_cast<int>(amount); }
 OODockingClearanceStatus PlayerEntity::getDockingClearanceStatus()  { return _dockingClearanceStatus; }
 std::vector<std::string> PlayerEntity::getRoleWeights()  { return _roleWeights; }
-void cxx::ShipEntity::doScriptEvent(ooscript::PropertyId message, const std::vector<oo::PList> &arguments)
+void ShipEntity::doScriptEvent(ooscript::PropertyId message, const std::vector<oo::PList> &arguments)
 {
 	std::string event = EventName(message) + "(";
 	for (std::size_t i = 0; i < arguments.size(); i++)  event += (i != 0 ? ", " : "") + Describe(arguments[i]);
 	static_cast<PlayerEntity *>(this)->_events.push_back(event + ")");
 }
-void cxx::ShipEntity::doScriptEvent(ooscript::PropertyId message, id argument)
+void ShipEntity::doScriptEvent(ooscript::PropertyId message, id argument)
 {
 	static_cast<PlayerEntity *>(this)->_events.push_back(EventName(message) + "(" + Describe(oo::PListObject(argument)) + ")");
 }
@@ -311,7 +320,7 @@ bool PlayerEntity::replaceShipWithNamedShip(const std::string &shipName)
 	_replacedWith = shipName;
 	return shipName != "no-such-ship";
 }
-void cxx::ShipEntity::setEntityPersonalityInt(uint16_t value)  { static_cast<PlayerEntity *>(this)->_personality = value; }
+void ShipEntity::setEntityPersonalityInt(uint16_t value)  { static_cast<PlayerEntity *>(this)->_personality = value; }
 void PlayerEntity::setDockTarget(::ShipEntity *entity)  { _dockTarget = entity; _dockTargetSet = YES; }
 void PlayerEntity::addToAdjustTime(double seconds)  { _adjustTime += seconds; }
 void PlayerEntity::setTargetSystemID(OOSystemID sid)  { _targetSystem = sid; }
@@ -519,8 +528,9 @@ ooscript::Context sContext;
 ooscript::Object sGlobal;
 PlayerEntity *sPlayer = nullptr;
 Universe *sUniverse = nil;
-ShipEntity *sStation = nil;
-ShipEntity *sNonStation = nil;
+::Entity *sStation = nil;	// a station's object and a ship's that is not one (C++ ships since bead oo-9ht.144)
+::Entity *sNonStation = nil;
+ShipEntity *sStationShip = nullptr;
 
 
 void Define(const char *name, ooscript::ClassDef *jsClass, id object)
@@ -562,9 +572,12 @@ void SetUpContext()
 	sPlayer->_roleWeights = { "trader", "pirate", "trader" };
 	sPlayer->_status = STATUS_DOCKED;
 	sPlayer->_targetSystem = -1;
-	sStation = [[ShipEntity alloc] init];
+	sStation = [[Entity alloc] init];
+	sStation->_cxxEntity = oo::makeRef<ShipEntity>();
+	sStationShip = static_cast<ShipEntity *>(sStation->_cxxEntity.get());
 	sStation->_isStation = YES;
-	sNonStation = [[ShipEntity alloc] init];
+	sNonStation = [[Entity alloc] init];
+	sNonStation->_cxxEntity = oo::makeRef<ShipEntity>();
 
 	InitOOJSPlayer(sContext, sGlobal);
 	Define("station", &sFakeStationClass, sStation);
@@ -789,14 +802,14 @@ OO_TEST(escapePodDestination)
 	SetUpContext();
 	// Only while the escape pod is in flight (the player is stale).
 	OO_CHECK_EVAL("player.setEscapePodDestination(null)", "threw: Player.setEscapePodDestination() only works while the escape pod is in flight.");
-	gOOJSPlayerIfStale = (Entity *)sPlayerObject;
+	gOOJSPlayerIfStale = sPlayerObject;
 
 	sPlayer->_dockTargetSet = NO;
 	OO_CHECK_EVAL("(player.setEscapePodDestination(station), 'called')", "called");
-	OO_CHECK(sPlayer->_dockTargetSet && sPlayer->_dockTarget == sStation);
+	OO_CHECK(sPlayer->_dockTargetSet && sPlayer->_dockTarget == sStationShip);
 	OO_CHECK_EVAL("(player.setEscapePodDestination(null), 'called')", "called");
 	OO_CHECK(sPlayer->_dockTarget == nil);
-	sPlayer->_dockTarget = sStation;
+	sPlayer->_dockTarget = sStationShip;
 	OO_CHECK_EVAL("(player.setEscapePodDestination(false), 'called')", "called");
 	OO_CHECK(sPlayer->_dockTarget == nil);
 
@@ -807,7 +820,7 @@ OO_TEST(escapePodDestination)
 	OO_CHECK_EVAL("player.setEscapePodDestination(null, 1)", "threw: bad arguments: Player.setEscapePodDestination(2) - / a valid station, null, or 'NEARBY_SYSTEM'");
 
 	// A nearby system: none in range leaves the target and the time alone.
-	sPlayer->_dockTarget = sStation;
+	sPlayer->_dockTarget = sStationShip;
 	sPlayer->_adjustTime = 0;
 	sUniverse->_destinations = oo::PList(oo::PList::Array{});
 	OO_CHECK_EVAL("(player.setEscapePodDestination('NEARBY_SYSTEM'), 'called')", "called");

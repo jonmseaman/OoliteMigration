@@ -41,7 +41,8 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOObjCRef.h"
 #include "OOJSPrivateObject.h"
 
-@class ShipEntity;
+class ShipEntity;	// C++ since bead oo-9ht.144
+@class Entity;	// the members' objects (a ship's object is the drawable's facade since bead oo-9ht.144)
 
 class OOShipGroupCursor;
 class OOShipGroupMembers;	// OOShipGroup.mm's range-for over the members
@@ -63,8 +64,8 @@ public:
 	void setLeader(::ShipEntity *leader);
 
 	// The members at the time this is called, even if the group is mutated later.
-	std::vector<oo::ObjCRef<::ShipEntity *>> memberArray();	// arbitrary order
-	std::vector<oo::ObjCRef<::ShipEntity *>> memberArrayExcludingLeader();	// arbitrary order
+	std::vector<oo::ObjCRef<::Entity *>> memberArray();	// arbitrary order
+	std::vector<oo::ObjCRef<::Entity *>> memberArrayExcludingLeader();	// arbitrary order
 
 	bool containsShip(::ShipEntity *ship);
 	bool addShip(::ShipEntity *ship);

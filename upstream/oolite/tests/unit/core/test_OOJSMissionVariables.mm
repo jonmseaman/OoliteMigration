@@ -33,7 +33,7 @@
 // PLAYER: C++ since bead oo-9ht.177 deleted the Objective-C player this stood in for: the members
 // the code under test calls, declared as the game headers declare them (the test imports none
 // that defines the classes), with the stand-in's answers.
-@class ShipEntity;
+class ShipEntity;	// C++ since bead oo-9ht.144
 class PlayerEntity
 {
 public:

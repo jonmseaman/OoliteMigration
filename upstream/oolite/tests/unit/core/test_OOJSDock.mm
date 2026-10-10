@@ -36,11 +36,13 @@ public:
 	virtual std::optional<std::string> jsClassName();
 };
 
-class ShipEntity : public Entity
+}	// namespace cxx
+
+// The ship: C++ since bead oo-9ht.144 deleted the Objective-C ship this stood in for (a ship's part
+// is a plain one, held by its object as a dock's is).
+class ShipEntity : public cxx::Entity
 {
 };
-
-}	// namespace cxx
 
 // The object: the root's, which holds the C++ part (oo::ToCxx reads it) and asks it the JS questions.
 @interface Entity: OOObject
@@ -51,16 +53,13 @@ class ShipEntity : public Entity
 - (id) weakRefUnderlyingObject;
 @end
 
-@interface ShipEntity: Entity
-@end
-
 /*	A dock: C++ since bead oo-9ht.180 deleted the Objective-C dock this stood in for (its object is the
 	ship's facade); the members the binding calls, declared as DockEntity.h declares them (the test
 	imports no game header that defines the class), with the stand-in's answers. A dock whose
 	docking queue holds 99 ships raises from countOfShipsInDockingQueue(), one whose queue holds 98
 	throws a C++ exception, so the test sees what an exception under a native becomes.
 */
-class DockEntity : public cxx::ShipEntity
+class DockEntity : public ShipEntity
 {
 public:
 	void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype) override;
@@ -80,7 +79,7 @@ public:
 	BOOL _allowsLaunching = NO;
 	NSUInteger _dockingQueue = 0;
 	NSUInteger _launchQueue = 0;
-	::ShipEntity *_queued = nil;
+	::ShipEntity *_queued = nullptr;
 };
 
 @interface Entity (OOJavaScriptExtensions)
@@ -116,10 +115,6 @@ std::optional<std::string> cxx::Entity::jsClassName()  { return std::nullopt; }
 - (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype  { _cxxEntity->getJSClass(outClass, outPrototype); }
 - (std::optional<std::string>) cxx_oo_jsClassName  { return _cxxEntity->jsClassName(); }
 
-@end
-
-
-@implementation ShipEntity
 @end
 
 
@@ -323,8 +318,18 @@ ooscript::Runtime sRuntime;
 ooscript::Context sContext;
 ooscript::Object sGlobal;
 DockEntity *sDock = nullptr;	// the C++ dock (its object: sDockObject)
-ShipEntity *sDockObject = nil;
-ShipEntity *sShip = nil;
+Entity *sDockObject = nil;
+Entity *sShip = nil;	// a ship's object and its C++ part (the Objective-C ship until bead oo-9ht.144)
+ShipEntity *sShipPart = nullptr;
+
+
+// A ship's object holding its C++ part, kept for the life of the test.
+Entity *NewShipObject(oo::Ref<cxx::Entity> part)
+{
+	Entity *object = [[Entity alloc] init];
+	object->_cxxEntity = part;
+	return object;
+}
 
 
 ooscript::Value JSValueForObject(ooscript::ClassDef *jsClass, ooscript::Object prototype, Entity *entity)
@@ -365,18 +370,18 @@ void SetUpContext()
 	OOJSRegisterSubclass(&sFakeShipClass, &sFakeEntityClass);
 	InitOOJSDock(sContext, sGlobal);
 
-	sDockObject = [[ShipEntity alloc] init];	// kept for the life of the test; the ship's facade is a dock's object since bead oo-9ht.180
-	sDockObject->_cxxEntity = oo::makeRef<DockEntity>();
+	sDockObject = NewShipObject(oo::makeRef<DockEntity>());	// a dock's object is a ship's since bead oo-9ht.180
 	sDock = static_cast<DockEntity *>(sDockObject->_cxxEntity.get());
 	sDock->_allowsDocking = YES;
 	sDock->_disallowedDockingCollides = NO;
 	sDock->_allowsLaunching = YES;
 	sDock->_dockingQueue = 3;
 	sDock->_launchQueue = 2;
-	sShip = [[ShipEntity alloc] init];
+	sShip = NewShipObject(oo::makeRef<ShipEntity>());
+	sShipPart = static_cast<ShipEntity *>(sShip->_cxxEntity.get());
 	Define("dock", JSValueForEntity(sDockObject));
 	Define("ship", JSValueForObject(&sFakeShipClass, sShipPrototype, sShip));
-	Define("otherShip", JSValueForObject(&sFakeShipClass, sShipPrototype, [[ShipEntity alloc] init]));
+	Define("otherShip", JSValueForObject(&sFakeShipClass, sShipPrototype, NewShipObject(oo::makeRef<ShipEntity>())));
 	Define("plainEntity", JSValueForObject(&sFakeEntityClass, gOOEntityJSPrototype, [[Entity alloc] init]));
 }
 
@@ -450,11 +455,11 @@ OO_TEST(properties)
 OO_TEST(isQueued)
 {
 	SetUpContext();
-	sDock->_queued = sShip;
+	sDock->_queued = sShipPart;
 	OO_CHECK_EVAL("dock.isQueued(ship)", "true");
 	OO_CHECK_EVAL("dock.isQueued(otherShip)", "false");
 	OO_CHECK_EVAL("dock.isQueued()", "threw: bad arguments: Dock.isQueued (0): ; expected ship");
-	sDock->_queued = nil;
+	sDock->_queued = nullptr;
 	OO_CHECK_EVAL("dock.isQueued(ship)", "false");
 }
 

@@ -100,7 +100,7 @@ const CxxMethod kPlayerMethods[] =
 
 
 // The table's entry for name when object is the player (it answered the categories), else null.
-// The player is C++ since bead oo-9ht.177; object is its Objective-C object (the ship's facade).
+// The player is C++ since bead oo-9ht.177; object is its Objective-C object (a ship's).
 const CxxMethod *CxxMethodNamed(id object, const std::optional<std::string> &name)
 {
 	if (!name.has_value() || PLAYER == nullptr || object != oo::ToObjC(PLAYER))  return nullptr;
@@ -132,9 +132,9 @@ bool OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::s
 		return false;
 	}
 	
-	if ([object isKindOfClass:[ShipEntity class]])
+	if ((oo::ToShip(object) != nullptr))
 	{
-		if (PLAYER != nullptr)  PLAYER->PlayerEntity::setScriptTarget(object);	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
+		if (PLAYER != nullptr)  PLAYER->PlayerEntity::setScriptTarget(oo::ToShip(object));	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 	}
 	
 	selectorString = cxx_OOStringFromJSValue(context, argv[0]);

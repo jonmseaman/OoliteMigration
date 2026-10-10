@@ -6,7 +6,8 @@
 	Universe that was never initialised, of a test subclass that records what is removed, and a plain
 	entity as PLAYER. The ship that fires is an entity of the test's own that answers the selectors
 	the class sends a ship (its root ship, speed and weapon range); the class asserts that it is a
-	ship, so the test sets that flag. The expectations were written against the Objective-C API and
+	ship, so the test sets that flag. Since bead oo-9ht.144 it is a C++ ship whose fields give the
+	same answers. The expectations were written against the Objective-C API and
 	run on the unconverted class first (bead oo-9ht.78 then deleted the Objective-C facade, ADR-0049
 	and the standing approval oo-9n5p9: the cases ask the C++ class what they asked the facade, with
 	every expectation kept except the facade's own class check, [shot class] == [OOLaserShotEntity
@@ -75,18 +76,6 @@ static Entity *sRemoved = nil;
 @end
 
 
-// The ship that fires: what OOLaserShotEntity asks of a ShipEntity.
-@interface TestShip: Entity
-@end
-
-
-@implementation TestShip
-
-- (ShipEntity *) rootShipEntity	{ return (ShipEntity *)self; }
-- (GLfloat) flightSpeed			{ return 50.0f; }
-- (GLfloat) weaponRange			{ return 1000.0f; }
-
-@end
 
 
 // --- The private colour, and nothing else ---------------------------------------------------------
@@ -97,6 +86,9 @@ struct OOLaserShotEntityTestAccess
 };
 
 // --------------------------------------------------------------------------------------------------
+
+
+extern ooscript::Context gOOJSMainThreadContext;	// the engine's (OOJavaScriptEngine.mm)
 
 
 namespace {
@@ -113,14 +105,25 @@ void SetUp()
 	static TestPlayer *player = nullptr;
 	if (player == nullptr)  player = NewTestPlayer<TestPlayer>();
 	gOOPlayer = player;
+	// The ship's -dealloc sends its (absent) scripts entityDestroyed in a request on the main
+	// thread's context, so there is one, with nothing in it (the ship stand-in is C++ since bead
+	// oo-9ht.144, as test_StationEntity's ships are).
+	if (gOOJSMainThreadContext == nullptr)  gOOJSMainThreadContext = ooscript::newContext(ooscript::newRuntime(8u * 1024u * 1024u), 8192);
 	sRemoved = nil;
 }
 
 
-TestShip *MakeShip()
+// The ship that fires: what OOLaserShotEntity asks of a ShipEntity (its root ship, itself; its speed
+// and weapon range). C++ since bead oo-9ht.144 deleted the Objective-C ship: the class calls the
+// ship's members, so it is a C++ ship (never set up) under its object (oo::NewEntityFacade,
+// autoreleased as the test's entity was) whose fields give those answers.
+Entity *MakeShip()
 {
-	TestShip *ship = [[[TestShip alloc] init] autorelease];
-	ship->_cxxEntity->isShip = YES;
+	oo::Ref<::ShipEntity> part = oo::makeRef<::ShipEntity>();
+	Entity *ship = oo::NewEntityFacade(part);
+	part->isShip = YES;
+	part->flightSpeed = 50.0f;
+	part->weaponRange = 1000.0f;
 	[ship setPosition:make_HPvector(100, 0, 0)];
 	return ship;
 }
@@ -130,7 +133,7 @@ TestShip *MakeShip()
 // holds it.
 oo::Ref<OOLaserShotEntity> Shot(Entity *ship, OOWeaponFacing direction, Vector offset)
 {
-	oo::Ref<OOLaserShotEntity> shot = OOLaserShotEntity::laserFromShip((ShipEntity *)ship, direction, offset);
+	oo::Ref<OOLaserShotEntity> shot = OOLaserShotEntity::laserFromShip(oo::ToShip(ship), direction, offset);
 	oo::NewEntityFacade(shot);
 	return shot;
 }
@@ -153,7 +156,7 @@ OO_TEST(laserFromShip)
 	@autoreleasepool
 	{
 		SetUp();
-		TestShip *ship = MakeShip();
+		Entity *ship = MakeShip();
 		oo::Ref<OOLaserShotEntity> shot = Shot(ship, WEAPON_FACING_FORWARD, make_vector(0, 0, 10));
 		OO_CHECK(shot != nullptr);
 		OO_CHECK(HPvector_equal(shot->getPosition(), make_HPvector(100, 0, 10)));
@@ -205,7 +208,7 @@ OO_TEST(update)
 	@autoreleasepool
 	{
 		SetUp();
-		TestShip *ship = MakeShip();
+		Entity *ship = MakeShip();
 		oo::Ref<OOLaserShotEntity> shot = Shot(ship, WEAPON_FACING_FORWARD, make_vector(0, 0, 10));
 
 		// An NPC's shot moves by its velocity.

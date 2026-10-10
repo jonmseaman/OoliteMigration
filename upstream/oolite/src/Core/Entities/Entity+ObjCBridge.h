@@ -104,8 +104,8 @@ MA 02110-1301, USA.
 
 - (void) setOwner:(Entity *)ent;
 - (id) owner;
-- (ShipEntity *) parentEntity;		// owner if self is subentity of owner, otherwise nil.
-- (ShipEntity *) rootShipEntity;	// like parentEntity, but recursive.
+- (Entity *) parentEntity;		// owner if self is subentity of owner, otherwise nil.
+- (Entity *) rootShipEntity;	// like parentEntity, but recursive.
 
 - (void) setPosition:(HPVector)posn;
 - (void) setPositionX:(OOHPScalar)x y:(OOHPScalar)y z:(OOHPScalar)z;
@@ -238,6 +238,17 @@ class OOHUDBeaconIcon;	// OOPolygonSprite.h (the protocol until bead oo-7ae4p)
 
 // Not declared by the header before: ShipEntity overrides it, and the adapter sends it.
 - (void) subEntityReallyDied:(ShipEntity *)sub;
+
+@end
+
+
+// Declared by ShipEntity+ObjCBridge.h until bead oo-9ht.144, which deleted it.
+@interface Entity (SubEntityRelationship)
+
+/*	For the common case of testing whether foo is a ship, bar is a ship, bar
+	is a subentity of foo and this relationship is represented sanely.
+*/
+- (BOOL) isShipWithSubEntityShip:(Entity *)other;
 
 @end
 

@@ -63,7 +63,7 @@ MA 02110-1301, USA.
 	Converted slice by slice to C++20 (docs/phases/3-slices/OOJSShip.md; proposed ADR-0056,
 	amendments oo-ppc, oo-luhd, oo-ft5n and oo-9ht.139). A converted native or helper has no
 	Objective-C: BOOL/YES/NO/nil are bool/true/false/nullptr; the ship it wraps is reached as
-	cxx::ShipEntity through oo::ToCxx (its members an Objective-C subclass overrides are virtual,
+	ShipEntity through oo::ToCxx (its members an Objective-C subclass overrides are virtual,
 	so dispatch is as before), the converted classes the ship hands out (AI, OORoleSet,
 	OOShipGroup, OOColor, OONativeVector) as cxx:: classes, null-guarded where a message to nil
 	answered; and a send to a class that is still Objective-C (the player, the universe) is a
@@ -632,7 +632,23 @@ static ooscript::FunctionSpec sShipStaticMethods[] =
 };
 
 
-DEFINE_JS_OBJECT_GETTER(JSShipGetShipEntity, &sShipClass, sShipPrototype, ShipEntity)
+namespace {
+DEFINE_JS_OBJECT_GETTER(JSShipGetShipObject, &sShipClass, sShipPrototype, Entity)
+
+
+/*	The ship a JS Ship object holds. DEFINE_JS_OBJECT_GETTER's getter answered the ship's object until
+	bead oo-9ht.144 deleted the ship's facade (the object is now the drawable's facade, so the getter
+	checks the root's class); this answers its C++ ship, null where the object was nil.
+*/
+BOOL JSShipGetShipEntity(ooscript::Context context, ooscript::Object inObject, ShipEntity **outShip)
+{
+	OOCParameterAssert(outShip != NULL);
+	Entity *object = nil;
+	if (EXPECT_NOT(!JSShipGetShipObject(context, inObject, &object)))  return NO;
+	*outShip = oo::ToShip(object);
+	return YES;
+}
+} // namespace
 
 
 void InitOOJSShip(ooscript::Context context, ooscript::Object global)
@@ -670,41 +686,41 @@ oo::PList NormalizedColorComponents(OOColor *color)
 	answered none or false to what the getter sent the AI; so does a null AI here (ADR-0056
 	amendment oo-6ia4 item 2).
 */
-std::optional<std::string> AIName(cxx::ShipEntity *ship)
+std::optional<std::string> AIName(ShipEntity *ship)
 {
 	cxx::AI *ai = oo::ToCxx(ship->getAI());
 	return (ai != nullptr) ? ai->name() : std::nullopt;
 }
 
-std::optional<std::string> AIState(cxx::ShipEntity *ship)
+std::optional<std::string> AIState(ShipEntity *ship)
 {
 	cxx::AI *ai = oo::ToCxx(ship->getAI());
 	return (ai != nullptr) ? ai->state() : std::nullopt;
 }
 
-bool AIHasSuspendedStateMachines(cxx::ShipEntity *ship)
+bool AIHasSuspendedStateMachines(ShipEntity *ship)
 {
 	cxx::AI *ai = oo::ToCxx(ship->getAI());
 	return ai != nullptr && ai->hasSuspendedStateMachines();
 }
 
 // Whether an entity is a ship, as -isKindOfClass:[ShipEntity class] answered: a ship's C++ part is a
-// cxx::ShipEntity (Entity+ObjCBridge.mm picks the facade class from it). False for none.
+// ShipEntity (Entity+ObjCBridge.mm picks the facade class from it). False for none.
 bool IsShip(Entity *entity)
 {
-	return dynamic_cast<cxx::ShipEntity *>(oo::ToCxx(entity)) != nullptr;
+	return dynamic_cast<ShipEntity *>(oo::ToCxx(entity)) != nullptr;
 }
 
 /*	The ship's mesh is C++ (OOMesh, global since bead oo-9ht.132). A ship with no mesh answered
 	null to -materials and -shaders; so does a null mesh here.
 */
-oo::PList MeshMaterials(cxx::ShipEntity *ship)
+oo::PList MeshMaterials(ShipEntity *ship)
 {
 	OOMesh *mesh = ship->mesh();
 	return (mesh != nullptr) ? mesh->getMaterials() : oo::PList();
 }
 
-oo::PList MeshShaders(cxx::ShipEntity *ship)
+oo::PList MeshShaders(ShipEntity *ship)
 {
 	OOMesh *mesh = ship->mesh();
 	return (mesh != nullptr) ? mesh->shaders() : oo::PList();
@@ -735,8 +751,8 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 	oo::PList					result;	// null maps to null
 	
 	if (EXPECT_NOT(!JSShipGetShipEntity(context, thisObject, &entity)))  return false;
-	if (OOIsStaleEntity(entity)) { *value = ooscript::undefinedValue(); return true; }
-	cxx::ShipEntity				*ship = oo::ToCxx(entity);	// not null: entity is not
+	if (OOIsStaleEntity(oo::ToObjC(entity))) { *value = ooscript::undefinedValue(); return true; }
+	ShipEntity				*ship = entity;	// not null: entity is not
 	
 	switch (ooscript::idToInt32(propID))
 	{
@@ -859,7 +875,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 		case kShip_defenseTargets:
 		{
 			ship->validateDefenseTargets();
-			std::vector<oo::ObjCRef<Entity *>> targets;
+			std::vector<oo::ObjCRef<::Entity *>> targets;
 			targets.reserve(ship->defenseTargetCount());
 			for (const auto &candidate : ship->defenseTargets())
 			{
@@ -961,7 +977,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 		case kShip_weaponFacings:
 			if (ship->getIsPlayer())
 			{
-				PlayerEntity *pent = static_cast<PlayerEntity *>(oo::ToCxx(entity));
+				PlayerEntity *pent = static_cast<PlayerEntity *>(entity);
 				return ooscript::newNumberValue(context, OOJSShipPlayerAvailableFacings(pent), value);
 			}
 			return ooscript::newNumberValue(context, ship->weaponFacings(), value);
@@ -1148,7 +1164,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 		case kShip_isFleeing:
 			if (ship->getIsPlayer())
 			{
-				*value = OOJSValueFromBOOL(OOJSShipPlayerFleeingStatus(static_cast<PlayerEntity *>(oo::ToCxx(entity))) >= PLAYER_FLEEING_CARGO);
+				*value = OOJSValueFromBOOL(OOJSShipPlayerFleeingStatus(static_cast<PlayerEntity *>(entity)) >= PLAYER_FLEEING_CARGO);
 			}
 			else
 			{
@@ -1353,7 +1369,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity					*entity = nullptr;
-	ShipEntity					*target = nullptr;
+	Entity						*target = nil;	// an object, as JSValueToEntity() answers (a ship's since bead oo-9ht.144 is the drawable's facade)
 	std::optional<std::string>	sValue;
 	double					fValue;
 	int32_t						iValue;
@@ -1366,8 +1382,8 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 	BOOL exists;	// JSValueToEquipmentKeyRelaxed()'s out parameter
 	
 	if (EXPECT_NOT(!JSShipGetShipEntity(context, thisObject, &entity)))  return false;
-	if (OOIsStaleEntity(entity))  return true;
-	cxx::ShipEntity				*ship = oo::ToCxx(entity);	// not null: entity is not
+	if (OOIsStaleEntity(oo::ToObjC(entity)))  return true;
+	ShipEntity				*ship = entity;	// not null: entity is not
 
 	OOCAssert(!ship->isTemplateCargoPod(), "-OOJSShip: a template cargo pod has become accessible to Javascript");
 	
@@ -1451,7 +1467,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 				if (ship->isBeacon()) 
 				{
 					OOJSShipUniverseClearBeacon(entity);
-					if (OOJSShipPlayerNextBeacon() == entity)
+					if (OOJSShipPlayerNextBeacon() == oo::ToObjC(entity))
 					{
 						OOJSShipPlayerSetCompassMode(COMPASS_MODE_PLANET);
 					}
@@ -1576,7 +1592,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			}
 			else if (JSValueToEntity(context, *value, &target) && IsShip(target))
 			{
-				ShipEntityJSSetTargetForScript(entity, target);
+				ShipEntityJSSetTargetForScript(entity, oo::ToShip(target));
 				return true;
 			}
 			break;
@@ -2059,7 +2075,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			}
 			if (ship->getIsPlayer())
 			{
-				PlayerEntity *pent = static_cast<PlayerEntity *>(oo::ToCxx(entity));
+				PlayerEntity *pent = static_cast<PlayerEntity *>(entity);
 				OOJSShipPlayerSetWeaponMount(pent, facing, weaponKey, "scripted");
 			}
 			else
@@ -2119,7 +2135,7 @@ npcReadOnly:
 
 #define GET_THIS_SHIP(THISENT) do { \
 	if (EXPECT_NOT(!JSShipGetShipEntity(context, OOJS_THIS, &THISENT)))  return NO; /* Exception */ \
-	if (OOIsStaleEntity(THISENT))  OOJS_RETURN_VOID; \
+	if (OOIsStaleEntity(oo::ToObjC(THISENT)))  OOJS_RETURN_VOID; \
 } while (0)
 
 
@@ -2132,7 +2148,7 @@ static bool ShipSetScript(ooscript::Context context, ooscript::CallArgs &oojsArg
 	std::optional<std::string>	name;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	if (oojsArgs.count() > 0)  name = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(!name.has_value()))
 	{
@@ -2161,7 +2177,7 @@ static bool ShipSetAI(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	std::optional<std::string>	name;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	if (oojsArgs.count() > 0)  name = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(!name.has_value()))
 	{
@@ -2190,7 +2206,7 @@ static bool ShipSwitchAI(ooscript::Context context, ooscript::CallArgs &oojsArgs
 	std::optional<std::string>	name;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	if (oojsArgs.count() > 0)  name = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(!name.has_value()))
 	{
@@ -2220,7 +2236,7 @@ static bool ShipExitAI(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	std::optional<std::string>	message;	// nullopt: the AI defaults to RESTARTED
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	if (EXPECT_NOT(ship->getIsPlayer()))
 	{
 		cxx_OOJSReportErrorForCaller(context, "Ship", "exitAI", "Not valid for player ship.");
@@ -2257,7 +2273,7 @@ static bool ShipReactToAIMessage(ooscript::Context context, ooscript::CallArgs &
 	std::optional<std::string>	message;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	if (oojsArgs.count() > 0)  message = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(!message.has_value()))
 	{
@@ -2286,7 +2302,7 @@ static bool ShipSendAIMessage(ooscript::Context context, ooscript::CallArgs &ooj
 	std::optional<std::string>	message;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	if (oojsArgs.count() > 0)  message = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(!message.has_value()))
 	{
@@ -2314,7 +2330,7 @@ static bool ShipDeployEscorts(ooscript::Context context, ooscript::CallArgs &ooj
 	ShipEntity				*thisEnt = nullptr;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
 	ship->deployEscorts();
 	OOJS_RETURN_VOID;
@@ -2331,7 +2347,7 @@ static bool ShipDockEscorts(ooscript::Context context, ooscript::CallArgs &oojsA
 	ShipEntity				*thisEnt = nullptr;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
 	ship->dockEscorts();
 	OOJS_RETURN_VOID;
@@ -2349,7 +2365,7 @@ static bool ShipHasEquipmentProviding(ooscript::Context context, ooscript::CallA
 	std::optional<std::string>	equipment;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
 	if (oojsArgs.count() > 0)  equipment = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(!equipment.has_value()))
@@ -2373,7 +2389,7 @@ static bool ShipHasRole(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	std::optional<std::string>	role;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
 	if (oojsArgs.count() > 0)  role = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(!role.has_value()))
@@ -2397,7 +2413,7 @@ static bool ShipEjectItem(ooscript::Context context, ooscript::CallArgs &oojsArg
 	std::optional<std::string>	role;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
 	if (oojsArgs.count() > 0)  role = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(!role.has_value()))
@@ -2406,7 +2422,7 @@ static bool ShipEjectItem(ooscript::Context context, ooscript::CallArgs &oojsArg
 		return false;
 	}
 	
-	OOJS_RETURN_OBJECT(ship->ejectShipOfRole(role));
+	OOJS_RETURN_OBJECT(oo::ToObjC(ship->ejectShipOfRole(role)));
 	
 	OOJS_NATIVE_EXIT
 }
@@ -2422,9 +2438,9 @@ static bool ShipAddCargoEntity(ooscript::Context context, ooscript::CallArgs &oo
 	bool					procMessages = false;
 
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 
-	if (EXPECT_NOT(ship->getIsPlayer() && OOJSShipPlayerIsDocked(static_cast<PlayerEntity *>(oo::ToCxx(thisEnt)))))
+	if (EXPECT_NOT(ship->getIsPlayer() && OOJSShipPlayerIsDocked(static_cast<PlayerEntity *>(thisEnt))))
 	{
 		cxx_OOJSReportWarningForCaller(context, "PlayerShip", "addCargoEntity", "Can't add cargo entity while docked, ignoring.");
 		return false;
@@ -2437,12 +2453,12 @@ static bool ShipAddCargoEntity(ooscript::Context context, ooscript::CallArgs &oo
 		cxx_OOJSReportBadArguments(context, "PlayerShip", "addCargoEntity", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "scoopable entity.");
 		return false;
 	}
-	if (target == nullptr || oo::ToCxx(target)->getScanClass() != CLASS_CARGO)	// none: CLASS_NO_DRAW, as a message to nil
+	if (target == nullptr || target->getScanClass() != CLASS_CARGO)	// none: CLASS_NO_DRAW, as a message to nil
 	{
 		cxx_OOJSReportWarningForCaller(context, "PlayerShip", "addCargoEntity", "Scoopable entity not cargo.");
 		return false;
 	}
-	if (oo::ToCxx(target)->status() != STATUS_IN_FLIGHT) 
+	if (target->status() != STATUS_IN_FLIGHT) 
 	{
 		cxx_OOJSReportWarningForCaller(context, "PlayerShip", "addCargoEntity", "Scoopable entity not in flight.");
 		return false;
@@ -2463,7 +2479,7 @@ static bool ShipAddCargoEntity(ooscript::Context context, ooscript::CallArgs &oo
 	ship->scoopUpProcess(target, procEvents, procMessages);
 	OOJS_END_FULL_NATIVE
 
-	OOJS_RETURN_BOOL(oo::ToCxx(target)->status() == STATUS_IN_HOLD);
+	OOJS_RETURN_BOOL(target->status() == STATUS_IN_HOLD);
 
 	OOJS_NATIVE_EXIT
 }
@@ -2478,7 +2494,7 @@ static bool ShipEjectSpecificItem(ooscript::Context context, ooscript::CallArgs 
 	std::optional<std::string>	itemKey;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
 	if (oojsArgs.count() > 0)  itemKey = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(!itemKey.has_value()))
@@ -2487,7 +2503,7 @@ static bool ShipEjectSpecificItem(ooscript::Context context, ooscript::CallArgs 
 		return false;
 	}
 	
-	OOJS_RETURN_OBJECT(ship->ejectShipOfType(itemKey));
+	OOJS_RETURN_OBJECT(oo::ToObjC(ship->ejectShipOfType(itemKey)));
 	
 	OOJS_NATIVE_EXIT
 }
@@ -2502,9 +2518,9 @@ static bool ShipDumpCargo(ooscript::Context context, ooscript::CallArgs &oojsArg
 	std::optional<std::string>	pref;	// nullopt: no preference
 
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
-	if (EXPECT_NOT(ship->getIsPlayer() && OOJSShipPlayerIsDocked(static_cast<PlayerEntity *>(oo::ToCxx(thisEnt)))))
+	if (EXPECT_NOT(ship->getIsPlayer() && OOJSShipPlayerIsDocked(static_cast<PlayerEntity *>(thisEnt))))
 	{
 		cxx_OOJSReportWarningForCaller(context, "PlayerShip", "dumpCargo", "Can't dump cargo while docked, ignoring.");
 		OOJS_RETURN_NULL;
@@ -2533,7 +2549,7 @@ static bool ShipDumpCargo(ooscript::Context context, ooscript::CallArgs &oojsArg
 		}
 	}
 
-	OOJS_RETURN_OBJECT(ship->dumpCargoItem(pref));
+	OOJS_RETURN_OBJECT(oo::ToObjC(ship->dumpCargoItem(pref)));
 	
 	OOJS_NATIVE_EXIT
 }
@@ -2548,10 +2564,10 @@ static bool ShipSpawn(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	std::optional<std::string>	role;
 	int32_t					count = 1;
 	bool					gotCount = true;
-	std::vector<oo::ObjCRef<ShipEntity *>>	result;
+	std::vector<oo::ObjCRef<::Entity *>>	result;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
 	if (oojsArgs.count() > 0)  role = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (oojsArgs.count() > 1)  gotCount = ooscript::valueToInt32(context, OOJS_ARGV[1], &count);
@@ -2584,7 +2600,7 @@ static bool ShipDealEnergyDamage(ooscript::Context context, ooscript::CallArgs &
 	bool gotRange;
 	bool gotVBias;
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 
 	if (oojsArgs.count() < 2)
 	{
@@ -2642,7 +2658,7 @@ static bool ShipRemove(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	bool					suppressDeathEvent = false;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
 	if (ship->getIsPlayer())
 	{
@@ -2680,7 +2696,7 @@ static bool ShipRunLegacyScriptActions(ooscript::Context context, ooscript::Call
 	
 	player = OOPlayerForScripting();
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
 	if (oojsArgs.count() > 1)  actions = cxx_OOJSPListFromJSValue(context, OOJS_ARGV[1]);
 	if (EXPECT_NOT(oojsArgs.count() != 2 ||
@@ -2714,7 +2730,7 @@ static bool ShipCommsMessage(ooscript::Context context, ooscript::CallArgs &oojs
 	ShipEntity				*target = nullptr;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
 	if (oojsArgs.count() > 0)  message = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(!message.has_value() || (oojsArgs.count() > 1 && (ooscript::isNull(OOJS_ARGV[1]) || !ooscript::isObjectOrNull(OOJS_ARGV[1]) || !JSShipGetShipEntity(context, ooscript::toObject(OOJS_ARGV[1]), &target)))))
@@ -2746,12 +2762,12 @@ static bool ShipFireECM(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	bool					OK;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
 	OK = ship->fireECM();
 	if (!OK)
 	{
-		cxx_OOJSReportWarning(context, "Ship %s was requested to fire ECM burst but does not carry ECM equipment.", OOObjectJSDescription(thisEnt).value_or("(null)").c_str());
+		cxx_OOJSReportWarning(context, "Ship %s was requested to fire ECM burst but does not carry ECM equipment.", OOObjectJSDescription(oo::ToObjC(thisEnt)).value_or("(null)").c_str());
 	}
 	
 	OOJS_RETURN_BOOL(OK);
@@ -2768,7 +2784,7 @@ static bool ShipAbandonShip(ooscript::Context context, ooscript::CallArgs &oojsA
 	ShipEntity				*thisEnt = nullptr;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	OOJS_RETURN_BOOL(ship->hasEscapePod() && ship->abandonShip());
 	
 	OOJS_NATIVE_EXIT
@@ -2787,7 +2803,7 @@ static bool ShipCanAwardEquipment(ooscript::Context context, ooscript::CallArgs 
 	BOOL						exists;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
 	if (oojsArgs.count() > 0)  key = JSValueToEquipmentKeyRelaxed(context, OOJS_ARGV[0], &exists);
 	if (EXPECT_NOT(!key.has_value()))
@@ -2839,7 +2855,7 @@ static bool ShipAwardEquipment(ooscript::Context context, ooscript::CallArgs &oo
 	bool            isRepair = false;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
 	if (oojsArgs.count() > 0)  eqType = JSValueToEquipmentType(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(eqType == nullptr))
@@ -2869,7 +2885,7 @@ static bool ShipAwardEquipment(ooscript::Context context, ooscript::CallArgs &oo
 	{
 		if (ship->getIsPlayer())
 		{
-			PlayerEntity *player = static_cast<PlayerEntity *>(oo::ToCxx(thisEnt));
+			PlayerEntity *player = static_cast<PlayerEntity *>(thisEnt);
 			
 			if (identifier == "EQ_MISSILE_REMOVAL")
 			{
@@ -2931,7 +2947,7 @@ static bool ShipRemoveEquipment(ooscript::Context context, ooscript::CallArgs &o
 	bool						OK = true;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
 	if (oojsArgs.count() > 0)  key = JSValueToEquipmentKey(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(!key.has_value()))
@@ -2957,7 +2973,7 @@ static bool ShipRemoveEquipment(ooscript::Context context, ooscript::CallArgs &o
 				if (ship->passengerCapacity() > ship->passengerCount())
 				{
 					// must be the player's ship!
-					if (ship->getIsPlayer()) OOJSShipPlayerChangePassengerBerths(static_cast<PlayerEntity *>(oo::ToCxx(thisEnt)), -1);
+					if (ship->getIsPlayer()) OOJSShipPlayerChangePassengerBerths(static_cast<PlayerEntity *>(thisEnt), -1);
 				}
 				else OK = false;
 			}
@@ -2990,7 +3006,7 @@ static bool ShipRestoreSubEntities(ooscript::Context context, ooscript::CallArgs
 	NSUInteger				numSubEntitiesRestored = 0U;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
 	NSUInteger subCount = ShipEntityJSSubEntitiesForScript(thisEnt).size();	// -subEntitiesForScript
 	
@@ -3003,7 +3019,7 @@ static bool ShipRestoreSubEntities(ooscript::Context context, ooscript::CallArgs
 	if (ship->getIsPlayer())
 	{
 		int tradeInFactorChange = (int)MAX(PLAYER_SHIP_SUBENTITY_TRADE_IN_VALUE * numSubEntitiesRestored, 25U);
-		OOJSShipPlayerAdjustTradeInFactorBy(static_cast<PlayerEntity *>(oo::ToCxx(thisEnt)), tradeInFactorChange);
+		OOJSShipPlayerAdjustTradeInFactorBy(static_cast<PlayerEntity *>(thisEnt), tradeInFactorChange);
 	}
 	
 	OOJS_RETURN_BOOL(numSubEntitiesRestored > 0);
@@ -3028,7 +3044,7 @@ static bool ShipSetEquipmentStatus(ooscript::Context context, ooscript::CallArgs
 	bool					hasOK = false, hasDamaged = false;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
 	if (oojsArgs.count() < 2)
 	{
@@ -3136,7 +3152,7 @@ static bool ShipEquipmentStatus(ooscript::Context context, ooscript::CallArgs &o
 	bool					asDict = false;
 
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
 	if (oojsArgs.count() > 0)  key = JSValueToEquipmentKey(context, OOJS_ARGV[0]);
 	if (oojsArgs.count() > 1)  ooscript::valueToBoolean(context, OOJS_ARGV[1], &asDict);
@@ -3185,7 +3201,7 @@ static bool ShipSelectNewMissile(ooscript::Context context, ooscript::CallArgs &
 	ShipEntity				*thisEnt = nullptr;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
 	// if there's a badly defined missile, selectMissile may return nil
 	OOEquipmentType *missile = ship->selectMissile();
@@ -3206,10 +3222,10 @@ static bool ShipFireMissile(ooscript::Context context, ooscript::CallArgs &oojsA
 	id					result = nullptr;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
-	if (oojsArgs.count() > 0)  result = ship->fireMissileWithIdentifier(cxx_OOStringFromJSValue(context, OOJS_ARGV[0]), ship->primaryTarget());
-	else  result = ship->fireMissile();
+	if (oojsArgs.count() > 0)  result = oo::ToObjC(ship->fireMissileWithIdentifier(cxx_OOStringFromJSValue(context, OOJS_ARGV[0]), ship->primaryTarget()));
+	else  result = oo::ToObjC(ship->fireMissile());
 	
 	OOJS_RETURN_OBJECT(result);
 	
@@ -3223,18 +3239,18 @@ static bool ShipFindNearestStation(ooscript::Context context, ooscript::CallArgs
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity			*thisEnt = nullptr;
-	ShipEntity			*result = nullptr;	// a station's object (the ship's facade since bead oo-9ht.175)
+	ShipEntity			*result = nullptr;	// a station (its object until bead oo-9ht.144)
 
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 
 	double				sdist, distance = 1E32;
 	
 	ShipEntity			*se = nullptr;
 	for (const auto &stationRef : OOJSShipUniverseStations())
 	{
-		se = stationRef.get();
-		sdist = HPdistance2(ship->getPosition(), oo::ToCxx(se)->getPosition());
+		se = oo::ToShip(stationRef.get());
+		sdist = HPdistance2(ship->getPosition(), (se != nullptr ? se->getPosition() : kZeroHPVector));	// (a message to nil answered zero)
 
 		if (sdist < distance)
 		{
@@ -3243,7 +3259,7 @@ static bool ShipFindNearestStation(ooscript::Context context, ooscript::CallArgs
 		}
 	}
 	
-	OOJS_RETURN_OBJECT(result);
+	OOJS_RETURN_OBJECT(oo::ToObjC(result));
 	
 	OOJS_NATIVE_EXIT
 }
@@ -3260,7 +3276,7 @@ static bool ShipSetBounty(ooscript::Context context, ooscript::CallArgs &oojsArg
 	bool					gotBounty = true;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
 	if (oojsArgs.count() > 0)  gotBounty = ooscript::valueToInt32(context, OOJS_ARGV[0], &newbounty);
 	if (oojsArgs.count() > 1)  reason = cxx_OOStringFromJSValue(context, OOJS_ARGV[1]);
@@ -3289,7 +3305,7 @@ static bool ShipSetCargo(ooscript::Context context, ooscript::CallArgs &oojsArgs
 	bool					gotCount = true;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
 	if (oojsArgs.count() > 0)  commodity = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (oojsArgs.count() > 1)  gotCount = ooscript::valueToInt32(context, OOJS_ARGV[1], &count);
@@ -3322,7 +3338,7 @@ static bool ShipSetCrew(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	ooscript::Object params = NULL;
 
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
 	if (oojsArgs.count() < 1 || (!ooscript::isNull(OOJS_ARGV[0]) && !ooscript::valueToObject(context, OOJS_ARGV[0], &params)))
 	{
@@ -3365,7 +3381,7 @@ static bool ShipSetCargoType(ooscript::Context context, ooscript::CallArgs &oojs
 	std::optional<std::string>	cargoType;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
 	if (oojsArgs.count() > 0)  cargoType = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(!cargoType.has_value()))
@@ -3470,7 +3486,7 @@ bool ShipSetMaterialsInternal(ooscript::Context context, ooscript::CallArgs &ooj
 	bool					success = false;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
 	if (ooscript::isNull(OOJS_ARGV[0]) || (!ooscript::isNull(OOJS_ARGV[0]) && !ooscript::isObjectOrNull(OOJS_ARGV[0])))
 	{
@@ -3522,7 +3538,7 @@ bool ShipSetMaterialsInternal(ooscript::Context context, ooscript::CallArgs &ooj
 					  shaders,
 								 shipDict.get<bool>("smooth", false),
 						   (prefixMacros != nullptr && prefixMacros->isDict()) ? *prefixMacros : oo::PList(),
-					thisEnt);
+					oo::ToObjC(thisEnt));
 	
 	if (mesh != nullptr)
 	{
@@ -3548,7 +3564,7 @@ static bool ShipExitSystem(ooscript::Context context, ooscript::CallArgs &oojsAr
 	bool				OK = false;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	if (EXPECT_NOT(ship->getIsPlayer()))
 	{
 		cxx_OOJSReportErrorForCaller(context, "Ship", "exitSystem", "Not valid for player ship.");
@@ -3578,7 +3594,7 @@ static bool ShipUpdateEscortFormation(ooscript::Context context, ooscript::CallA
 	
 	ShipEntity *thisEnt = nullptr;
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	ship->updateEscortFormation();
 	
 	OOJS_RETURN_VOID;
@@ -3594,12 +3610,12 @@ bool RemoveOrExplodeShip(ooscript::Context context, ooscript::CallArgs &oojsArgs
 	ShipEntity				*thisEnt = nullptr;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
 	if (EXPECT_NOT(ship->getIsPlayer()))
 	{
 		OOCAssert(explode, "RemoveOrExplodeShip(): shouldn't be called for player with !explode.");	// player.ship.remove() is blocked by caller.
-		PlayerEntity *player = static_cast<PlayerEntity *>(oo::ToCxx(thisEnt));
+		PlayerEntity *player = static_cast<PlayerEntity *>(thisEnt);
 		
 		if (OOJSShipPlayerIsDocked(player))
 		{
@@ -3608,7 +3624,7 @@ bool RemoveOrExplodeShip(ooscript::Context context, ooscript::CallArgs &oojsArgs
 		}
 	}
 	
-	if (thisEnt == (ShipEntity *)OOJSShipUniverseStation())
+	if (thisEnt == OOJSShipUniverseStation())
 	{
 		// Allow exploding of main station (e.g. nova mission)
 		OOJSShipUniverseUnMagicMainStation();
@@ -3644,7 +3660,7 @@ static bool ShipClearDefenseTargets(ooscript::Context context, ooscript::CallArg
 	
 	ShipEntity *thisEnt = nullptr;
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	ship->removeAllDefenseTargets();
 	
 	OOJS_RETURN_VOID;
@@ -3661,14 +3677,14 @@ static bool ShipAddDefenseTarget(ooscript::Context context, ooscript::CallArgs &
 	ShipEntity				*target = nullptr;
 
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	if (EXPECT_NOT(oojsArgs.count() == 0 || (oojsArgs.count() > 0 && (ooscript::isNull(OOJS_ARGV[0]) || !ooscript::isObjectOrNull(OOJS_ARGV[0]) || !JSShipGetShipEntity(context, ooscript::toObject(OOJS_ARGV[0]), &target)))))
 	{
 		cxx_OOJSReportBadArguments(context, "Ship", "addDefenseTarget", 1U, OOJS_ARGV, std::nullopt, "target");
 		return false;
 	}
 	
-	ship->addDefenseTarget(target);
+	ship->addDefenseTarget(oo::ToObjC(target));
 
 	OOJS_RETURN_VOID;
 	
@@ -3684,14 +3700,14 @@ static bool ShipRemoveDefenseTarget(ooscript::Context context, ooscript::CallArg
 	ShipEntity				*target = nullptr;
 
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	if (EXPECT_NOT(oojsArgs.count() == 0 || (oojsArgs.count() > 0 && (ooscript::isNull(OOJS_ARGV[0]) || !ooscript::isObjectOrNull(OOJS_ARGV[0]) || !JSShipGetShipEntity(context, ooscript::toObject(OOJS_ARGV[0]), &target)))))
 	{
 		cxx_OOJSReportBadArguments(context, "Ship", "removeDefenseTarget", 1U, OOJS_ARGV, std::nullopt, "target");
 		return false;
 	}
 	
-	ship->removeDefenseTarget(target);
+	ship->removeDefenseTarget(oo::ToObjC(target));
 
 	OOJS_RETURN_VOID;
 	
@@ -3707,7 +3723,7 @@ static bool ShipAddCollisionException(ooscript::Context context, ooscript::CallA
 	ShipEntity				*target = nullptr;
 
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	if (EXPECT_NOT(oojsArgs.count() == 0 || (oojsArgs.count() > 0 && (ooscript::isNull(OOJS_ARGV[0]) || !ooscript::isObjectOrNull(OOJS_ARGV[0]) || !JSShipGetShipEntity(context, ooscript::toObject(OOJS_ARGV[0]), &target)))))
 	{
 		cxx_OOJSReportBadArguments(context, "Ship", "addCollisionException", 1U, OOJS_ARGV, std::nullopt, "other ship");
@@ -3718,7 +3734,7 @@ static bool ShipAddCollisionException(ooscript::Context context, ooscript::CallA
 	// the collisions get tested in. More efficient to add both ways
     // than to test both ways
 	ship->addCollisionException(target);
-	if (target != nullptr)  oo::ToCxx(target)->addCollisionException(thisEnt);	// none: nothing, as a message to nil
+	if (target != nullptr)  target->addCollisionException(thisEnt);	// none: nothing, as a message to nil
 
 	OOJS_RETURN_VOID;
 	
@@ -3734,7 +3750,7 @@ static bool ShipRemoveCollisionException(ooscript::Context context, ooscript::Ca
 	ShipEntity				*target = nullptr;
 
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	if (EXPECT_NOT(oojsArgs.count() == 0 || (oojsArgs.count() > 0 && (ooscript::isNull(OOJS_ARGV[0]) || !ooscript::isObjectOrNull(OOJS_ARGV[0]) || !JSShipGetShipEntity(context, ooscript::toObject(OOJS_ARGV[0]), &target)))))
 	{
 		cxx_OOJSReportBadArguments(context, "Ship", "removeCollisionException", 1U, OOJS_ARGV, std::nullopt, "other ship");
@@ -3743,7 +3759,7 @@ static bool ShipRemoveCollisionException(ooscript::Context context, ooscript::Ca
 	
 	// doesn't need a check to see if it was already gone
 	ship->removeCollisionException(target);
-	if (target != nullptr)  oo::ToCxx(target)->removeCollisionException(thisEnt);	// none: nothing, as a message to nil
+	if (target != nullptr)  target->removeCollisionException(thisEnt);	// none: nothing, as a message to nil
 
 	OOJS_RETURN_VOID;
 	
@@ -3759,7 +3775,7 @@ static bool ShipGetMaterials(ooscript::Context context, ooscript::CallArgs &oojs
 	ShipEntity		*thisEnt = nullptr;
 
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 
 	oo::PList result = MeshMaterials(ship);
 	if (result.isNull())  result = oo::PList(oo::PList::Dict{});	// empty rather than null
@@ -3776,7 +3792,7 @@ static bool ShipGetShaders(ooscript::Context context, ooscript::CallArgs &oojsAr
 	ShipEntity		*thisEnt = nullptr;
 
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 
 	oo::PList result = MeshShaders(ship);
 	if (result.isNull())  result = oo::PList(oo::PList::Dict{});	// empty rather than null
@@ -3791,7 +3807,7 @@ static bool ShipBroadcastCascadeImminent(ooscript::Context context, ooscript::Ca
 	
 	ShipEntity *thisEnt = nullptr;
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	ship->broadcastEnergyBlastImminent();
 	
 	OOJS_RETURN_VOID;
@@ -3805,7 +3821,7 @@ static bool ShipBecomeCascadeExplosion(ooscript::Context context, ooscript::Call
 	
 	ShipEntity *thisEnt = nullptr;
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	ship->becomeEnergyBlast();
 	
 	OOJS_RETURN_VOID;
@@ -3822,7 +3838,7 @@ static bool ShipOfferToEscort(ooscript::Context context, ooscript::CallArgs &ooj
 	ShipEntity				*mother = nullptr;
 
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	if (EXPECT_NOT(oojsArgs.count() == 0 || (oojsArgs.count() > 0 && (ooscript::isNull(OOJS_ARGV[0]) || !ooscript::isObjectOrNull(OOJS_ARGV[0]) || !JSShipGetShipEntity(context, ooscript::toObject(OOJS_ARGV[0]), &mother)))))
 	{
 		cxx_OOJSReportBadArguments(context, "Ship", "offerToEscort", 1U, OOJS_ARGV, std::nullopt, "target");
@@ -3844,7 +3860,7 @@ static bool ShipRequestHelpFromGroup(ooscript::Context context, ooscript::CallAr
 	ShipEntity *thisEnt = nullptr;
 
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
 	ship->groupAttackTarget();
 
@@ -3867,9 +3883,9 @@ static bool ShipPatrolReportIn(ooscript::Context context, ooscript::CallArgs &oo
 		cxx_OOJSReportBadArguments(context, "Ship", "addDefenseTarget", 1U, OOJS_ARGV, std::nullopt, "target");
 		return false;
 	}
-	if (target != nullptr && oo::ToCxx(target)->getIsStation())	// none: not a station, as a message to nil
+	if (target != nullptr && target->getIsStation())	// none: not a station, as a message to nil
 	{
-		StationEntity *station = oo::ToStation(target);
+		StationEntity *station = oo::ToStation(oo::ToObjC(target));
 		station->acceptPatrolReportFrom(thisEnt);
 	}
 
@@ -3887,11 +3903,11 @@ static bool ShipMarkTargetForFines(ooscript::Context context, ooscript::CallArgs
 
 	GET_THIS_SHIP(thisEnt);
 
-	ShipEntity *ship = oo::ToCxx(thisEnt)->primaryTarget();
+	ShipEntity *ship = oo::ToShip(thisEnt->primaryTarget());
 	bool ok = false;
-	if ((ship != nullptr) && (oo::ToCxx(ship)->status() != STATUS_DEAD) && (oo::ToCxx(ship)->status() != STATUS_DOCKED))
+	if ((ship != nullptr) && (ship->status() != STATUS_DEAD) && (ship->status() != STATUS_DOCKED))
 	{
-		ok = oo::ToCxx(ship)->markForFines();
+		ok = ship->markForFines();
 	}
 
 	OOJS_RETURN_BOOL(ok);
@@ -3914,7 +3930,7 @@ static bool ShipEnterWormhole(ooscript::Context context, ooscript::CallArgs &ooj
 	}
 
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	if (EXPECT_NOT(oojsArgs.count() == 0 || (oojsArgs.count() > 0 && !ooscript::isNull(OOJS_ARGV[0]) && (!ooscript::isObjectOrNull(OOJS_ARGV[0]) || !OOJSEntityGetEntity(context, ooscript::toObject(OOJS_ARGV[0]), &hole)))))
 	{
 		ship->enterPlayerWormhole();
@@ -3927,7 +3943,7 @@ static bool ShipEnterWormhole(ooscript::Context context, ooscript::CallArgs &ooj
 			return false;
 		}
 
-		ship->enterWormhole((WormholeEntity*)hole);
+		ship->enterWormhole(static_cast<WormholeEntity *>(oo::ToCxx(hole)));	// the C++ wormhole (a C-style cast of its object until bead oo-9ht.144)
 	}
 
 	OOJS_RETURN_VOID;
@@ -3942,7 +3958,7 @@ static bool ShipNotifyGroupOfWormhole(ooscript::Context context, ooscript::CallA
 	
 	ShipEntity *thisEnt = nullptr;
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 
 	ship->wormholeEntireGroup();
 
@@ -3958,7 +3974,7 @@ static bool ShipThrowSpark(ooscript::Context context, ooscript::CallArgs &oojsAr
 	
 	ShipEntity *thisEnt = nullptr;
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	ship->setThrowSparks(true);
 	
 	OOJS_RETURN_VOID;
@@ -3974,7 +3990,7 @@ static bool ShipPerformAttack(ooscript::Context context, ooscript::CallArgs &ooj
 	
 	ShipEntity *thisEnt = nullptr;
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	ship->performAttack();
 	
 	OOJS_RETURN_VOID;
@@ -3989,7 +4005,7 @@ static bool ShipPerformCollect(ooscript::Context context, ooscript::CallArgs &oo
 	
 	ShipEntity *thisEnt = nullptr;
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	ship->performCollect();
 	
 	OOJS_RETURN_VOID;
@@ -4004,7 +4020,7 @@ static bool ShipPerformEscort(ooscript::Context context, ooscript::CallArgs &ooj
 	
 	ShipEntity *thisEnt = nullptr;
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	ship->performEscort();
 	
 	OOJS_RETURN_VOID;
@@ -4019,7 +4035,7 @@ static bool ShipPerformFaceDestination(ooscript::Context context, ooscript::Call
 	
 	ShipEntity *thisEnt = nullptr;
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	ship->performFaceDestination();
 	
 	OOJS_RETURN_VOID;
@@ -4034,7 +4050,7 @@ static bool ShipPerformFlee(ooscript::Context context, ooscript::CallArgs &oojsA
 	
 	ShipEntity *thisEnt = nullptr;
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	ship->performFlee();
 	
 	OOJS_RETURN_VOID;
@@ -4049,7 +4065,7 @@ static bool ShipPerformFlyToRangeFromDestination(ooscript::Context context, oosc
 	
 	ShipEntity *thisEnt = nullptr;
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	ship->performFlyToRangeFromDestination();
 	
 	OOJS_RETURN_VOID;
@@ -4064,7 +4080,7 @@ static bool ShipPerformHold(ooscript::Context context, ooscript::CallArgs &oojsA
 	
 	ShipEntity *thisEnt = nullptr;
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	ship->performHold();
 	
 	OOJS_RETURN_VOID;
@@ -4079,7 +4095,7 @@ static bool ShipPerformIdle(ooscript::Context context, ooscript::CallArgs &oojsA
 	
 	ShipEntity *thisEnt = nullptr;
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	ship->performIdle();
 	
 	OOJS_RETURN_VOID;
@@ -4094,7 +4110,7 @@ static bool ShipPerformIntercept(ooscript::Context context, ooscript::CallArgs &
 	
 	ShipEntity *thisEnt = nullptr;
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	ship->performIntercept();
 	
 	OOJS_RETURN_VOID;
@@ -4109,7 +4125,7 @@ static bool ShipPerformLandOnPlanet(ooscript::Context context, ooscript::CallArg
 	
 	ShipEntity *thisEnt = nullptr;
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	ship->performLandOnPlanet();
 	
 	OOJS_RETURN_VOID;
@@ -4124,7 +4140,7 @@ static bool ShipPerformMining(ooscript::Context context, ooscript::CallArgs &ooj
 	
 	ShipEntity *thisEnt = nullptr;
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	ship->performMining();
 	
 	OOJS_RETURN_VOID;
@@ -4139,7 +4155,7 @@ static bool ShipPerformScriptedAI(ooscript::Context context, ooscript::CallArgs 
 	
 	ShipEntity *thisEnt = nullptr;
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	ship->performScriptedAI();
 	
 	OOJS_RETURN_VOID;
@@ -4154,7 +4170,7 @@ static bool ShipPerformScriptedAttackAI(ooscript::Context context, ooscript::Cal
 	
 	ShipEntity *thisEnt = nullptr;
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	ship->performScriptedAttackAI();
 	
 	OOJS_RETURN_VOID;
@@ -4169,7 +4185,7 @@ static bool ShipPerformStop(ooscript::Context context, ooscript::CallArgs &oojsA
 	
 	ShipEntity *thisEnt = nullptr;
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	ship->performStop();
 	
 	OOJS_RETURN_VOID;
@@ -4184,7 +4200,7 @@ static bool ShipPerformTumble(ooscript::Context context, ooscript::CallArgs &ooj
 	
 	ShipEntity *thisEnt = nullptr;
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	ship->performTumble();
 	
 	OOJS_RETURN_VOID;
@@ -4199,7 +4215,7 @@ static bool ShipRequestDockingInstructions(ooscript::Context context, ooscript::
 	
 	ShipEntity *thisEnt = nullptr;
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	ship->requestDockingCoordinates();
 	
 	OOJS_RETURN_PLIST(ship->getDockingInstructions());	// nil maps to null
@@ -4214,7 +4230,7 @@ static bool ShipRecallDockingInstructions(ooscript::Context context, ooscript::C
 	
 	ShipEntity *thisEnt = nullptr;
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	ship->recallDockingInstructions();
 	
 	OOJS_RETURN_PLIST(ship->getDockingInstructions());	// nil maps to null
@@ -4229,7 +4245,7 @@ static bool ShipBroadcastDistressMessage(ooscript::Context context, ooscript::Ca
 	
 	ShipEntity *thisEnt = nullptr;
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	ship->broadcastDistressMessageWithDumping(false);
 	
 	OOJS_RETURN_VOID;
@@ -4244,9 +4260,9 @@ static bool ShipCheckCourseToDestination(ooscript::Context context, ooscript::Ca
 	
 	ShipEntity *thisEnt = nullptr;
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 
-	Entity *hazard = OOJSShipUniverseHazardOnRoute(thisEnt, ship->desiredRange(), ship->destination());
+	Entity *hazard = OOJSShipUniverseHazardOnRoute(oo::ToObjC(thisEnt), ship->desiredRange(), ship->destination());
 
 	OOJS_RETURN_OBJECT(hazard);
 
@@ -4260,9 +4276,9 @@ static bool ShipGetSafeCourseToDestination(ooscript::Context context, ooscript::
 	
 	ShipEntity *thisEnt = nullptr;
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 
-	HPVector waypoint = OOJSShipUniverseSafeVector(thisEnt, ship->desiredRange(), ship->destination());
+	HPVector waypoint = OOJSShipUniverseSafeVector(oo::ToObjC(thisEnt), ship->desiredRange(), ship->destination());
 
 	OOJS_RETURN_HPVECTOR(waypoint);
 
@@ -4279,7 +4295,7 @@ static bool ShipCheckScanner(ooscript::Context context, ooscript::CallArgs &oojs
 	bool	onlyCheckPowered = false;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
 	if (oojsArgs.count() > 0 && EXPECT_NOT(!ooscript::valueToBoolean(context, OOJS_ARGV[0], &onlyCheckPowered)))
 	{
@@ -4300,7 +4316,7 @@ static bool ShipCheckScanner(ooscript::Context context, ooscript::CallArgs &oojs
 	oo::PList::Array scanResult;
 	for (unsigned i = 0; i < num; i++)
 	{
-		if (scannedShips[i] != nullptr)  scanResult.push_back(oo::PListObject(scannedShips[i]));	// nil skipped, as a Foundation array skipped it
+		if (scannedShips[i] != nullptr)  scanResult.push_back(oo::PListObject(oo::ToObjC(scannedShips[i])));	// nil skipped, as a Foundation array skipped it
 	}
 	OOJS_RETURN_PLIST(oo::PList(std::move(scanResult)));
 
@@ -4317,7 +4333,7 @@ static bool ShipAdjustCargo(ooscript::Context context, ooscript::CallArgs &oojsA
 	int32_t adjustment = 0;
 
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
 	if (oojsArgs.count() < 2)
 	{
@@ -4366,7 +4382,7 @@ static bool ShipDamageAssessment(ooscript::Context context, ooscript::CallArgs &
 	int			assessment = 0;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
 	// if could have missiles but doesn't, consumables low
 	if (ship->missileCapacity() > 0 && ship->missilesList().empty())
@@ -4398,7 +4414,7 @@ static bool ShipThreatAssessment(ooscript::Context context, ooscript::CallArgs &
 	bool	fullCheck = false;
 	
 	GET_THIS_SHIP(thisEnt);
-	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
+	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
 	if (oojsArgs.count() > 0 && EXPECT_NOT(!ooscript::valueToBoolean(context, OOJS_ARGV[0], &fullCheck)))
 	{
@@ -4525,7 +4541,7 @@ static bool ShipThreatAssessment(ooscript::Context context, ooscript::CallArgs &
 	{
 		assessment *= 0.2;
 	}
-	else if (ship->getIsPlayer() && OOJSShipPlayerFleeingStatus(static_cast<PlayerEntity *>(oo::ToCxx(thisEnt))) >= PLAYER_FLEEING_CARGO)
+	else if (ship->getIsPlayer() && OOJSShipPlayerFleeingStatus(static_cast<PlayerEntity *>(thisEnt)) >= PLAYER_FLEEING_CARGO)
 	{
 		assessment *= 0.2;
 	}

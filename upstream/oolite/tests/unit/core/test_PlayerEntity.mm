@@ -192,15 +192,11 @@ public:
 
 
 // A ship that stands in for a missile on a pylon.
-@interface TestMissile: ShipEntity
-@end
-
-
-@implementation TestMissile
-
-- (BOOL) setUpShipFromDictionary:(const oo::PList &)dict	{ return YES; }
-
-@end
+class TestMissile : public ShipEntity	// C++ since bead oo-9ht.144 deleted the Objective-C ship
+{
+public:
+	bool setUpShipFromDictionary(const oo::PList &dict) override	{ (void)dict; return YES; }
+};
 
 
 namespace {
@@ -342,11 +338,13 @@ OO_TEST(deferredInit)
 // -dealloc runs after it.
 OO_TEST(deallocReleasesWhatThePlayerHeld)
 {
-	TestMissile *missile = nil;
+	// The missile's object (+1, as +alloc/-init's was): oo::ToObjC() would autorelease it again
+	// (bead oo-9ht.144, where the missile became a C++ ship).
+	::Entity *missile = nil;
 	@autoreleasepool
 	{
 		SetUp();
-		missile = [[TestMissile alloc] cxx_initWithKey:"missile" definition:oo::PList()];
+		missile = oo::NewShipObject(oo::makeRef<TestMissile>(), "missile", oo::PList());
 		TestPlayer *player = NewTestPlayer<TestPlayer>();
 		PlayerEntityTestAccess::missile_entity(player)[2] = oo::adoptObjC([missile retain]);	// held by oo::ObjCRef since bead oo-5q11i
 		OO_CHECK([missile retainCount] == 2);
@@ -367,18 +365,18 @@ OO_TEST(playerObjectIsAShipWhosePartIsThePlayer)
 	{
 		SetUp();
 		TestPlayer *player = NewTestPlayer<TestPlayer>();
-		::ShipEntity *object = (::ShipEntity *)oo::ToObjC(player);
-		OO_CHECK(object != nil && [object isKindOfClass:[ShipEntity class]]);
+		::Entity *object = oo::ToObjC(player);	// the drawable's facade since bead oo-9ht.144 (the ship's until then)
+		OO_CHECK(object != nil && oo::ToShip(object) != nullptr);	// a ship's object (-isKindOfClass:[ShipEntity class] until bead oo-9ht.144)
 		OO_CHECK(oo::ToCxx(object) == player);
-		OO_CHECK(dynamic_cast<PlayerEntity *>(oo::ToCxx((::Entity *)object)) == player);
+		OO_CHECK(dynamic_cast<PlayerEntity *>(oo::ToCxx(object)) == player);
 		OO_CHECK(oo::AsObjCEntity(player) == nullptr);	// a C++ player, not an adapter
 		OO_CHECK([object respondsToSelector:@selector(commanderName_string)]);
 		OO_CHECK([object respondsToSelector:@selector(credits_number)]);
 		OO_CHECK(![object respondsToSelector:@selector(noSuchPlayerSelector)]);
 
-		::ShipEntity *ship = [[TestMissile alloc] cxx_initWithKey:"missile" definition:oo::PList()];
-		OO_CHECK(ship != nil && ![ship respondsToSelector:@selector(commanderName_string)]);
-		[ship release];
+		::ShipEntity *ship = static_cast<TestMissile *>(oo::ToShip(oo::NewShipObject(oo::makeRef<TestMissile>(), "missile", oo::PList())));
+		OO_CHECK(ship != nil && ![oo::ToObjC(ship) respondsToSelector:@selector(commanderName_string)]);
+		[oo::ToObjC(ship) release];
 		Release(player);
 	}
 }
@@ -787,17 +785,17 @@ OO_TEST(slice11CountMissiles)
 	@autoreleasepool
 	{
 		SetUp();
-		missile = [[TestMissile alloc] cxx_initWithKey:"missile" definition:oo::PList()];
+		missile = static_cast<TestMissile *>(oo::ToShip(oo::NewShipObject(oo::makeRef<TestMissile>(), "missile", oo::PList())));
 		TestPlayer *player = MakePlayer();
 		player->max_missiles = 4;
 		OO_CHECK(player->countMissiles() == 0);
-		PlayerEntityTestAccess::missile_entity(player)[1] = oo::adoptObjC([missile retain]);	// held by oo::ObjCRef since bead oo-5q11i
-		PlayerEntityTestAccess::missile_entity(player)[3] = oo::adoptObjC([missile retain]);	// held by oo::ObjCRef since bead oo-5q11i
+		PlayerEntityTestAccess::missile_entity(player)[1] = oo::adoptObjC([oo::ToObjC(missile) retain]);	// held by oo::ObjCRef since bead oo-5q11i
+		PlayerEntityTestAccess::missile_entity(player)[3] = oo::adoptObjC([oo::ToObjC(missile) retain]);	// held by oo::ObjCRef since bead oo-5q11i
 		OO_CHECK(player->countMissiles() == 2);
 		player->max_missiles = 2;
 		OO_CHECK(player->countMissiles() == 1);
 	}
-	[missile release];
+	if (missile != nullptr)  [oo::ToObjC(missile) release];
 }
 
 // --- Slice 12: compass mode, missiles and pylons, special cargo, the multi-function displays, alert
