@@ -361,11 +361,17 @@ std::optional<oo::Data> OODataFromOXZFile(const std::string &path)
 @end
 
 
-@interface OOEntityWithDrawable: OOObject
-@end
+// An entity with a drawable: C++ since bead oo-9ht.40 deleted its Objective-C facade, the member
+// the monitor's entity dump calls (declared as OOEntityWithDrawable.h declares it). The test dumps
+// no entity, so none is reached.
+class OODrawable;
+class OOEntityWithDrawable : public cxx::Entity
+{
+public:
+	OODrawable *getDrawable();
+};
 
-@implementation OOEntityWithDrawable
-@end
+OODrawable *OOEntityWithDrawable::getDrawable()  { std::abort(); }
 
 
 // MARK: The debugger -------------------------------------------------------------------------------

@@ -38,7 +38,7 @@ MA 02110-1301, USA.
 #import "Universe.h"
 #import "PlayerEntityScriptMethods.h"
 
-@class OOVisualEffectEntity;
+class OOVisualEffectEntity;	// C++ since bead oo-9ht.165
 class OOShipGroup;	// C++ since bead oo-9ht.19 (OOShipGroup.h)
 
 
@@ -87,7 +87,7 @@ void OOJSSystemUniverseAddShipWithRoleNearRouteOneAt(const std::string &desc, do
 bool OOJSSystemUniverseSpawnShip(const std::string &shipdesc);
 std::optional<std::string> OOJSSystemUniverseGetSystemName(OOSystemID sys);
 OOSystemID OOJSSystemUniverseFindSystemFromName(const std::string &sysName);
-OOVisualEffectEntity *OOJSSystemUniverseAddVisualEffectAt(HPVector pos, const std::string &key);
+Entity *OOJSSystemUniverseAddVisualEffectAt(HPVector pos, const std::string &key);	// the effect's object (bead oo-9ht.165)
 void OOJSSystemUniverseSetPopulatorSetting(const std::string &key, const oo::PList &setting);
 void OOJSSystemUniverseDefineWaypoint(const oo::PList &definition, const std::string &key);
 HPVector OOJSSystemUniverseGetWitchspaceExitPosition();

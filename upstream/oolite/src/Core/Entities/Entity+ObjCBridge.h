@@ -209,6 +209,21 @@ MA 02110-1301, USA.
 class OOHUDBeaconIcon;	// OOPolygonSprite.h (the protocol until bead oo-7ae4p)
 
 // Methods that must be supported by entities with beacons, regardless of type.
+// Methods that must be supported by subentities, regardless of type (moved here from the deleted
+// OOEntityWithDrawable+ObjCBridge.h, bead oo-9ht.40). Every adopter is C++ and answers them through
+// cxx::OOSubEntityInterface; the protocol stays a type qualifier (Entity<OOSubEntity> *) until the
+// root's facade goes (oo-9ht.39).
+@protocol OOSubEntity
+
+- (void) rescaleBy:(GLfloat)factor;
+- (void) rescaleBy:(GLfloat)factor writeToCache:(BOOL)writeToCache;
+
+// Separate drawing path for subentities of ships.
+- (void) drawSubEntityImmediate:(bool)immediate translucent:(bool)translucent;
+
+@end
+
+
 @protocol OOBeaconEntity
 
 - (OOComparisonResult) compareBeaconCodeWith:(Entity <OOBeaconEntity>*) other;
@@ -275,6 +290,25 @@ class OOHUDBeaconIcon;	// OOPolygonSprite.h (the protocol until bead oo-7ae4p)
 @end
 
 
+/*	The category Entity (OOJavaScriptExtensions) (bead oo-9ht.128): the engine wraps an entity's
+	object by -oo_jsValueInContext: and the bindings ask it these, so the category moved, unchanged,
+	from EntityOOJavaScriptExtensions+ObjCBridge.h/.mm to the root's facade, which answers each by
+	asking the C++ part (its virtual members, which a subclass overrides) or the function that holds
+	the body (EntityOOJavaScriptExtensions.h). It goes with the root's facade (oo-9ht.39).
+*/
+@interface Entity (OOJavaScriptExtensions)
+
+- (BOOL) isVisibleToScripts;
+
+- (std::optional<std::string>) cxx_oo_jsClassName;
+
+// Internal:
+- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
+- (void) deleteJSSelf;
+
+@end
+
+
 namespace oo {
 
 // The entity's Objective-C object: an Objective-C entity itself, else a C++ entity's facade.
@@ -299,7 +333,7 @@ std::string EntityClassName(cxx::Entity *entity);
 
 /*	The C++ part of an Objective-C entity, in two halves. ObjCEntity<Base> derives from Base, the
 	C++ class of the Objective-C class's nearest converted superclass (cxx::Entity, or
-	cxx::OOEntityWithDrawable: amendment oo-up4b item 1), and each of its virtual members messages
+	OOEntityWithDrawable: amendment oo-up4b item 1), and each of its virtual members messages
 	the Objective-C object, so the subclass's override runs, as it did when the base class was
 	Objective-C. ObjCEntityLink is its non-template half: the object, and a super...() member per
 	virtual member that is Base's own, which is what [super ...] (or a subclass that does not

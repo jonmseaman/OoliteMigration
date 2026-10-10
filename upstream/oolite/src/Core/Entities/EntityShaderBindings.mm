@@ -5,9 +5,9 @@ EntityShaderBindings.m
 Extra methods exposed for shader bindings.
 
 C++20 since bead oo-aeev (proposed ADR-0056, amendment oo-9fwb): the category Entity
-(ShaderBindings) is members of cxx::Entity (Entity.h), defined here. The shader uniforms find the
-methods by selector on the entity's Objective-C object, so the category's forwarders stay in
-EntityShaderBindings+ObjCBridge.mm until the uniforms bind C++ members.
+(ShaderBindings) is members of cxx::Entity (Entity.h), defined here. The shader uniforms bind them
+through the entities' member table (bead oo-9ht.158); the category's forwarders
+(EntityShaderBindings+ObjCBridge.mm) went with bead oo-9ht.127.
 
 
 Oolite

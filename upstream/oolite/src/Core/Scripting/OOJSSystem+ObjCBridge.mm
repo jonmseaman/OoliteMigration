@@ -105,7 +105,7 @@ void OOJSSystemUniverseAddShipWithRoleNearRouteOneAt(const std::string &desc, do
 bool OOJSSystemUniverseSpawnShip(const std::string &shipdesc)	{ return [UNIVERSE cxx_spawnShip:shipdesc]; }
 std::optional<std::string> OOJSSystemUniverseGetSystemName(OOSystemID sys)	{ return [UNIVERSE cxx_getSystemName:sys]; }
 OOSystemID OOJSSystemUniverseFindSystemFromName(const std::string &sysName)	{ return [UNIVERSE cxx_findSystemFromName:sysName]; }
-OOVisualEffectEntity *OOJSSystemUniverseAddVisualEffectAt(HPVector pos, const std::string &key)	{ return [UNIVERSE cxx_addVisualEffectAt:pos withKey:key]; }
+Entity *OOJSSystemUniverseAddVisualEffectAt(HPVector pos, const std::string &key)	{ return [UNIVERSE cxx_addVisualEffectAt:pos withKey:key]; }
 void OOJSSystemUniverseSetPopulatorSetting(const std::string &key, const oo::PList &setting)	{ [UNIVERSE cxx_setPopulatorSetting:key to:setting]; }
 void OOJSSystemUniverseDefineWaypoint(const oo::PList &definition, const std::string &key)	{ [UNIVERSE cxx_defineWaypoint:definition forKey:key]; }
 HPVector OOJSSystemUniverseGetWitchspaceExitPosition()	{ return [UNIVERSE getWitchspaceExitPosition]; }

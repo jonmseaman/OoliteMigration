@@ -18,7 +18,8 @@
 	clear depth as its distance; and -changeProperty:withDictionary: takes a new sun colour (and
 	relights) and refuses anything else. The distances are read through the one helper below. Since
 	bead oo-9ht.109 deleted the class's Objective-C facade (ADR-0056 amendment oo-9ht.106) the sky
-	is made as the universe makes it, in C++ with its object (the OOEntityWithDrawable facade) made
+	is made as the universe makes it, in C++ with its object (the OOEntityWithDrawable facade, the
+	root's since bead oo-9ht.40) made
 	by oo::NewEntityFacade: the class's own selectors are member calls, the root's are still sent
 	to the object, and the last test pins that the object is a C++ entity's.
 	Run: bash tools/check-core-tests.sh
@@ -164,10 +165,10 @@ bool ColorIs(OOColor *color, float r, float g, float b, float a)
 
 // [[[SkyEntity alloc] initWithColors:...] autorelease] until bead oo-9ht.109: the object first, then
 // the initialiser's body, as the universe makes the sky.
-OOEntityWithDrawable *Sky(const oo::PList &info)
+Entity *Sky(const oo::PList &info)	// the root's facade since bead oo-9ht.40 deleted the drawable's
 {
 	const oo::Ref<SkyEntity> sky = oo::makeRef<SkyEntity>();
-	OOEntityWithDrawable *object = (OOEntityWithDrawable *)oo::NewEntityFacade(sky);
+	Entity *object = oo::NewEntityFacade(sky);
 	sky->initWithColors(OOColor::redColor().get(), OOColor::blueColor().get(), info);
 	return object;
 }
@@ -182,9 +183,9 @@ OO_TEST(made)
 	@autoreleasepool
 	{
 		SetUp();
-		OOEntityWithDrawable *sky = Sky(Dict({ { "sky_n_stars", oo::PList(7) } }));
-		OO_CHECK(sky != nil && SkyPart(sky) != nullptr && [sky isKindOfClass:[OOEntityWithDrawable class]]);
-		OO_CHECK(dynamic_cast<OOSkyDrawable *>([sky drawable]) != nullptr);
+		Entity *sky = Sky(Dict({ { "sky_n_stars", oo::PList(7) } }));
+		OO_CHECK(sky != nil && SkyPart(sky) != nullptr && dynamic_cast<OOEntityWithDrawable *>(oo::ToCxx(sky)) != nullptr);	// -isKindOfClass:[OOEntityWithDrawable class] until bead oo-9ht.40
+		OO_CHECK(dynamic_cast<OOSkyDrawable *>(SkyPart(sky)->getDrawable()) != nullptr);	// -drawable until bead oo-9ht.40
 		OO_CHECK([sky status] == STATUS_EFFECT);
 		OO_CHECK([sky isSky] && [sky isVisible] && ![sky canCollide]);
 		OO_CHECK([sky cameraRangeFront] == (GLfloat)MAX_CLEAR_DEPTH && [sky cameraRangeBack] == (GLfloat)MAX_CLEAR_DEPTH);
@@ -201,7 +202,7 @@ OO_TEST(sunColour)
 	@autoreleasepool
 	{
 		SetUp();
-		OOEntityWithDrawable *sky = Sky(Dict({ { "sun_color", oo::PList("greenColor") }, { "sky_n_stars", oo::PList(0) } }));
+		Entity *sky = Sky(Dict({ { "sun_color", oo::PList("greenColor") }, { "sky_n_stars", oo::PList(0) } }));
 		OO_CHECK(ColorIs(SkyPart(sky)->getSkyColor(), 0, 1, 0, 1));
 	}
 }
@@ -245,7 +246,7 @@ OO_TEST(update)
 	@autoreleasepool
 	{
 		SetUp();
-		OOEntityWithDrawable *sky = Sky(Dict({ { "sky_n_stars", oo::PList(0) } }));
+		Entity *sky = Sky(Dict({ { "sky_n_stars", oo::PList(0) } }));
 		sPlayer->_viewpoint = make_HPvector(5, 6, 7);
 		[sky update:0.1];
 		OO_CHECK(HPvector_equal([sky position], make_HPvector(5, 6, 7)));
@@ -267,7 +268,7 @@ OO_TEST(changeProperty)
 	@autoreleasepool
 	{
 		SetUp();
-		OOEntityWithDrawable *sky = Sky(Dict({ { "sky_n_stars", oo::PList(0) } }));
+		Entity *sky = Sky(Dict({ { "sky_n_stars", oo::PList(0) } }));
 		OO_CHECK(SkyPart(sky)->changeProperty("sun_color", Dict({ { "sun_color", oo::PList("yellowColor") } })));
 		OO_CHECK(ColorIs(SkyPart(sky)->getSkyColor(), 1, 1, 0, 1));
 		OO_CHECK(sUniverse->_lightings == 1);
@@ -287,7 +288,7 @@ OO_TEST(facade)
 	@autoreleasepool
 	{
 		SetUp();
-		OOEntityWithDrawable *sky = Sky(Dict({ { "sky_n_stars", oo::PList(0) } }));
+		Entity *sky = Sky(Dict({ { "sky_n_stars", oo::PList(0) } }));
 		// A C++ entity (amendment oo-0mxi), not an Objective-C entity's adapter.
 		OO_CHECK(dynamic_cast<SkyEntity *>(oo::ToCxx(sky)) != nullptr);
 		OO_CHECK(oo::AsObjCEntity(oo::ToCxx(sky)) == nullptr);

@@ -9,8 +9,8 @@
 	context on the game's own façade backend (ooscript/JSEngine_quickjs.cpp), links the game's own
 	objects for the binding, the engine's exception translator
 	(OOJSEngineNativeWrappers.mm) and OOColor (a converted class, reached through its façade), and
-	stands in for the entity classes (Entity, ShipEntity and OOVisualEffectEntity answer only the
-	selectors the binding sends) and for the engine functions the binding links against, with the
+	stands in for the entity classes (Entity answers only the selectors the binding sends; ShipEntity
+	and, since bead oo-9ht.165, OOVisualEffectEntity are C++ parts with only the members it calls) and for the engine functions the binding links against, with the
 	engine headers' linkage. Since bead oo-9ht.107 the flasher is the C++ OOFlasherEntity, which
 	the binding finds through its object's C++ part: the stand-in is that C++ class, declared with
 	the game header's names and signatures but not its class (OOFlasherEntity.h pulls in the game's
@@ -113,9 +113,20 @@ public:
 	OOFlasherEntity *_removedFlasher = nullptr;
 };
 
-@interface OOVisualEffectEntity: Entity
-- (void) removeSubEntity:(Entity *)sub;
+// A visual effect: C++ since bead oo-9ht.165 deleted the Objective-C effect this stood in for, the
+// C++ part of its object, with the one member the binding calls (declared as OOVisualEffectEntity.h
+// declares it).
+@protocol OOSubEntity
 @end
+typedef Entity<OOSubEntity> OOVisualEffectSubEntity;	// as OOVisualEffectEntity.h names it
+
+class OOVisualEffectEntity : public cxx::Entity
+{
+public:
+	void removeSubEntity(OOVisualEffectSubEntity *sub);
+
+	id _removed = nil;
+};
 
 @interface Entity (OOJavaScriptExtensions)
 - (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
@@ -153,11 +164,7 @@ bool OOJSFlasherIsVisibleToScripts(void);
 void ShipEntity::removeFlasher(OOFlasherEntity *flasher)  { _removedFlasher = flasher; }
 
 
-@implementation OOVisualEffectEntity
-
-- (void) removeSubEntity:(Entity *)sub  { _removed = sub; }
-
-@end
+void OOVisualEffectEntity::removeSubEntity(OOVisualEffectSubEntity *sub)  { _removed = sub; }
 
 
 // The root's JS category, as the game's asks the C++ part (EntityOOJavaScriptExtensions+ObjCBridge.mm,
@@ -407,7 +414,8 @@ Entity *sFlasher = nil;					// the flasher's object
 OOFlasherEntity *sFlasherPart = nullptr;	// its C++ part
 Entity *sShip = nil;	// a ship's object and its C++ part (the Objective-C ship until bead oo-9ht.144)
 ShipEntity *sShipPart = nullptr;
-OOVisualEffectEntity *sEffect = nil;
+Entity *sEffect = nil;	// an effect's object and its C++ part (the Objective-C effect until bead oo-9ht.165)
+OOVisualEffectEntity *sEffectPart = nullptr;
 
 
 ooscript::Value JSValueForObject(ooscript::ClassDef *jsClass, ooscript::Object prototype, Entity *entity)
@@ -450,7 +458,9 @@ void SetUpContext()
 	sShip->_cxxEntity = oo::makeRef<ShipEntity>();
 	sShipPart = static_cast<ShipEntity *>(sShip->_cxxEntity.get());
 	sShip->_isShip = YES;
-	sEffect = [[OOVisualEffectEntity alloc] init];
+	sEffect = [[Entity alloc] init];
+	sEffect->_cxxEntity = oo::makeRef<OOVisualEffectEntity>();
+	sEffectPart = static_cast<OOVisualEffectEntity *>(sEffect->_cxxEntity.get());
 	sFlasher = [[Entity alloc] init];
 	const oo::Ref<OOFlasherEntity> part = oo::makeRef<OOFlasherEntity>();
 	sFlasher->_cxxEntity = part;
@@ -566,7 +576,7 @@ OO_TEST(remove)
 	OO_CHECK(sShipPart->_removedFlasher == sFlasherPart);
 	sFlasher->_owner = sEffect;
 	OO_CHECK_EVAL("flasher.remove()", "undefined");
-	OO_CHECK(sEffect->_removed == sFlasher);
+	OO_CHECK(sEffectPart->_removed == sFlasher);
 	sFlasher->_owner = sShip;
 	// The prototype has no entity: the binding's getter fails without reporting an error, which
 	// ends the script uncatchably, and nothing is removed.

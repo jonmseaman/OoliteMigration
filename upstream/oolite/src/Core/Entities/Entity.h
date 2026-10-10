@@ -46,7 +46,8 @@ MA 02110-1301, USA.
 #include "oofnd/Ref.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 
-@class Universe, OOVisualEffectEntity, OOTexture, Entity;
+@class Universe, OOTexture, Entity;
+class OOVisualEffectEntity;	// C++ since bead oo-9ht.165
 class ShipEntity;	// C++ since bead oo-9ht.144
 
 
@@ -235,7 +236,8 @@ public:
 	oo::Ref<OOColor> fogUniform();
 
 	// The category ShaderBindings (EntityShaderBindings.mm, bead oo-aeev; amendment oo-9fwb): more
-	// values the shader uniforms bind to by name. The facade's category answers the selectors.
+	// values the shader uniforms bind to by name, through the entities' shader binding member table
+	// (Entity+ObjCBridge.mm, bead oo-9ht.158) since bead oo-9ht.127 deleted the category's forwarders.
 	GLfloat clock();
 	unsigned pseudoFixedD100();
 	unsigned pseudoFixedD256();

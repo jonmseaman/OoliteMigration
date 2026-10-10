@@ -3150,14 +3150,14 @@ void Universe::witchspaceShipWithPrimaryRole(const std::string &role)
 }
 
 
-::OOVisualEffectEntity * Universe::addVisualEffectAt(HPVector pos, const std::string &key)
+::Entity * Universe::addVisualEffectAt(HPVector pos, const std::string &key)
 {
 	::Universe *self = oo::ToObjC(this);
 	OOJS_PROFILE_ENTER
 
 	// minimise the time between creating ship & assigning position.
 
-	::OOVisualEffectEntity  		*vis = [self cxx_newVisualEffectWithName:key]; // is retained
+	::Entity  		*vis = [self cxx_newVisualEffectWithName:key]; // is retained (the effect's object, bead oo-9ht.165)
 	BOOL				success = NO;
 	if (vis != nil)
 	{
@@ -3168,7 +3168,7 @@ void Universe::witchspaceShipWithPrimaryRole(const std::string &role)
 		
 		[vis release];
 	}
-	return success ? vis : (::OOVisualEffectEntity *)nil;
+	return success ? vis : (::Entity *)nil;
 	
 	OOJS_PROFILE_EXIT
 }
@@ -4479,19 +4479,19 @@ std::optional<std::string> Universe::randomShipKeyForRoleRespectingConditions(co
 }
 
 
-::OOVisualEffectEntity * Universe::newVisualEffectWithName(const std::string &effectKey)
+::Entity * Universe::newVisualEffectWithName(const std::string &effectKey)
 {
 	OOJS_PROFILE_ENTER
 
 	oo::PList				effectDict;
-	::OOVisualEffectEntity	*effect = nil;
+	::Entity	*effect = nil;	// the effect's object (bead oo-9ht.165)
 
 	effectDict = [[::OOShipRegistry sharedRegistry] cxx_effectInfoForKey:effectKey];
 	if (effectDict.isNull())  return nil;
 
 	@try
 	{
-		effect = [[::OOVisualEffectEntity alloc] cxx_initWithKey:effectKey definition:effectDict];
+		effect = oo::NewVisualEffectObject(effectKey, effectDict);
 	}
 	@catch (::OOException *exception)
 	{
@@ -5874,7 +5874,7 @@ bool Universe::addEntity(::Entity *entity)
 	if (entity)
 	{
 		::ShipEntity *se = nil;
-		::OOVisualEffectEntity *ve = nil;
+		::OOBeaconEntityObject *ve = nil;	// an effect's object, the root's facade (OOEntityWithDrawable's until bead oo-9ht.40) since bead oo-9ht.165
 		::OOBeaconEntityObject *wp = nil;	// a waypoint's object, the root's facade since bead oo-9ht.108
 		
 		if (![entity validForAddToUniverse])  return NO;
@@ -5959,7 +5959,7 @@ bool Universe::addEntity(::Entity *entity)
 			[entity setUniversalID:NO_TARGET];
 			if ([entity isVisualEffect])
 			{
-				ve = (::OOVisualEffectEntity *)entity;
+				ve = (::OOBeaconEntityObject *)entity;
 				if ([ve isBeacon])
 				{
 					[self setNextBeacon:ve];
@@ -6099,7 +6099,7 @@ void Universe::removeAllEntitiesExceptPlayer()
 		else
 		{
 			// this will ensure the effectRemoved script event will run
-			[(::OOVisualEffectEntity *)ent remove];
+			oo::ToEffect(ent)->remove();
 		}
 	}
 	
@@ -11250,7 +11250,7 @@ bool Universe::doRemoveEntity(::Entity *entity)
 		}
 		if ([entity isVisualEffect])
 		{
-			::OOVisualEffectEntity *ve = (::OOVisualEffectEntity*)entity;
+			::OOBeaconEntityObject *ve = (::OOBeaconEntityObject *)entity;	// an effect's object (bead oo-9ht.165)
 			[self clearBeacon:ve];
 		}
 		

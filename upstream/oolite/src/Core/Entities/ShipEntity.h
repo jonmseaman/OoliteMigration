@@ -7,7 +7,7 @@
  
  The class is C++ (docs/phases/3-slices/ShipEntity.md, umbrella bead oo-k8a; proposed ADR-0056,
  amendments oo-bj8, oo-60fwo and oo-9ht.144). Since bead oo-9ht.144 deleted the Objective-C
- facade a ship's Objective-C object is OOEntityWithDrawable's facade, made by oo::NewShipObject();
+ facade a ship's Objective-C object is the root's facade (OOEntityWithDrawable's until bead oo-9ht.40), made by oo::NewShipObject();
  the selectors the game still finds on a ship by name are the root facade's category
  Entity (OOShipSelectorsCalledByName) (Entity+ObjCBridge.mm).
  
@@ -220,7 +220,7 @@ struct OOShipSaveContext;	// ShipEntityLoadRestore.h
 	what they were, retained by hand where they were (amendment oo-bj8 item 4; follow-up of bead
 	oo-9ht.144, as for the player, amendment oo-9ht.177 item 6).
 */
-class ShipEntity : public cxx::OOEntityWithDrawable, public cxx::OOSubEntityInterface	// <OOSubEntity> (amendment oo-9ht.107 item 3; bead oo-9ht.144)
+class ShipEntity : public OOEntityWithDrawable, public cxx::OOSubEntityInterface	// <OOSubEntity> (amendment oo-9ht.107 item 3; bead oo-9ht.144)
 {
 public:
 	/*	-cxx_initWithKey:definition:'s body between [super init] and the set-up from the
@@ -1449,7 +1449,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity *ship, Quaterni
 namespace oo {
 
 /*	A ship made in C++ (beads oo-9ht.183, oo-9ht.144; ADR-0056 amendments oo-9ht.183 and
-	oo-9ht.144): its object, OOEntityWithDrawable's facade (oo::NewEntityFacade), holding ship, set
+	oo-9ht.144): its object, the root's facade (OOEntityWithDrawable's until bead oo-9ht.40) (oo::NewEntityFacade), holding ship, set
 	up from the definition as -cxx_initWithKey:definition: set up a ship; retained (+1), as
 	+alloc/-init's object was, or nil when the set-up fails (the failing initialiser released it).
 */

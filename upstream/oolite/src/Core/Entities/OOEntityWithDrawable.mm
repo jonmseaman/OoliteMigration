@@ -29,7 +29,6 @@ MA 02110-1301, USA.
 #import "OOVisualEffectEntity.h"
 
 
-namespace cxx {
 
 // -dealloc released the drawable; the member does, when the Objective-C object releases its C++
 // part at the end of its -dealloc.
@@ -134,4 +133,3 @@ std::vector<oo::ObjCRef<::OOTexture *>> OOEntityWithDrawable::allTextures()
 }
 #endif
 
-}	// namespace cxx

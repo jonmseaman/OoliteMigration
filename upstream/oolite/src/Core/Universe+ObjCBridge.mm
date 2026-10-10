@@ -199,7 +199,7 @@ extern Universe *gSharedUniverse;
 - (BOOL) cxx_spawnShip:(const std::string &)shipdesc	{ return _cxxUniverse->spawnShip(shipdesc); }
 - (void) cxx_witchspaceShipWithPrimaryRole:(const std::string &)role	{ _cxxUniverse->witchspaceShipWithPrimaryRole(role); }
 - (ShipEntity *) cxx_spawnShipWithRole:(const std::string &)desc near:(Entity *)entity	{ return _cxxUniverse->spawnShipWithRole(desc, entity); }
-- (OOVisualEffectEntity *) cxx_addVisualEffectAt:(HPVector)pos withKey:(const std::string &)key	{ return _cxxUniverse->addVisualEffectAt(pos, key); }
+- (Entity *) cxx_addVisualEffectAt:(HPVector)pos withKey:(const std::string &)key	{ return _cxxUniverse->addVisualEffectAt(pos, key); }
 
 @end
 
@@ -264,7 +264,7 @@ extern Universe *gSharedUniverse;
 - (BOOL) canInstantiateShip:(const std::string &)shipKey	{ return _cxxUniverse->canInstantiateShip(shipKey); }
 - (std::optional<std::string>) cxx_randomShipKeyForRoleRespectingConditions:(const std::string &)role	{ return _cxxUniverse->randomShipKeyForRoleRespectingConditions(role); }
 - (ShipEntity *) cxx_newShipWithRole:(const std::string &)role	{ return _cxxUniverse->newShipWithRole(role); }
-- (OOVisualEffectEntity *) cxx_newVisualEffectWithName:(const std::string &)effectKey	{ return _cxxUniverse->newVisualEffectWithName(effectKey); }
+- (Entity *) cxx_newVisualEffectWithName:(const std::string &)effectKey	{ return _cxxUniverse->newVisualEffectWithName(effectKey); }
 - (ShipEntity *) cxx_newSubentityWithName:(const std::string &)shipKey andScaleFactor:(float)scale	{ return _cxxUniverse->newSubentityWithName(shipKey, scale); }
 - (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy	{ return _cxxUniverse->newShipWithName(shipKey, usePlayerProxy); }
 - (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity	{ return _cxxUniverse->newShipWithName(shipKey, usePlayerProxy, isSubentity); }

@@ -54,7 +54,8 @@ MA 02110-1301, USA.
 #include <string_view>
 #endif
 
-@class GameController, MyOpenGLView, Entity, OOVisualEffectEntity, OOException;
+@class GameController, MyOpenGLView, Entity, OOException;
+class OOVisualEffectEntity;	// C++ since bead oo-9ht.165
 class ShipEntity;	// C++ since bead oo-9ht.144
 class DockEntity;
 class StationEntity;
@@ -511,7 +512,7 @@ public:
 	bool spawnShip(const std::string &shipdesc);
 	void witchspaceShipWithPrimaryRole(const std::string &role);
 	::ShipEntity *spawnShipWithRole(const std::string &desc, ::Entity *entity);
-	::OOVisualEffectEntity *addVisualEffectAt(HPVector pos, const std::string &key);
+	::Entity *addVisualEffectAt(HPVector pos, const std::string &key);	// the effect's object (bead oo-9ht.165)
 
 	// Slice 7: adding ships within a radius and on routes, role categories, witchspace entries and effects, break patterns, the docking clearance protocol, game over.
 	::ShipEntity *addShipAt(HPVector pos, const std::string &role, GLfloat radius);
@@ -564,7 +565,7 @@ public:
 	bool canInstantiateShip(const std::string &shipKey);
 	std::optional<std::string> randomShipKeyForRoleRespectingConditions(const std::string &role);
 	::ShipEntity *newShipWithRole(const std::string &role);
-	::OOVisualEffectEntity *newVisualEffectWithName(const std::string &effectKey);
+	::Entity *newVisualEffectWithName(const std::string &effectKey);	// the effect's object, +1 (bead oo-9ht.165)
 	::ShipEntity *newSubentityWithName(const std::string &shipKey, float scale);
 	::ShipEntity *newShipWithName(const std::string &shipKey, bool usePlayerProxy);
 	::ShipEntity *newShipWithName(const std::string &shipKey, bool usePlayerProxy, bool isSubentity);
