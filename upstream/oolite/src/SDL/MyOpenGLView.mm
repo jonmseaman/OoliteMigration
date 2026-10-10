@@ -414,7 +414,7 @@ bool cxx::MyOpenGLView::init()
 #if OOLITE_ESPEAK
 	if (!SDL_getenv("ESPEAK_DATA_PATH"))
 	{
-		espeak_Initialize(AUDIO_OUTPUT_PLAYBACK, 100, [::ResourceManager cxx_builtInPath].value_or(std::string()).c_str(), 0);
+		espeak_Initialize(AUDIO_OUTPUT_PLAYBACK, 100, ResourceManager::builtInPath().value_or(std::string()).c_str(), 0);
 	}
 	else
 	{
@@ -691,7 +691,7 @@ void cxx::MyOpenGLView::initSplashScreen()
 	SDL_Surface     	*image=NULL;
 	SDL_Rect			dest;
 
-	const std::string	imagesDir = oo::str::appendingPathComponent([::ResourceManager cxx_builtInPath].value_or(std::string()), "Images");
+	const std::string	imagesDir = oo::str::appendingPathComponent(ResourceManager::builtInPath().value_or(std::string()), "Images");
 
 	image = SDL_LoadBMP(oo::str::appendingPathComponent(imagesDir, "splash.bmp").c_str());
 

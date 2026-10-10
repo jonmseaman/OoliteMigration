@@ -216,7 +216,7 @@ cxx::OOJavaScriptEngine	*jsEng = cxx::OOJavaScriptEngine::sharedEngine();
 	while (oo::str::hasSuffix(lineBuf, "\n") || oo::str::hasSuffix(lineBuf, "\r"))  lineBuf.pop_back();
 
 	// Get string for error number, for useful log message classes
-	const oo::PList errorNames = OOJavaScriptEngineDictionaryFromFilesNamed("javascript-errors.plist", "Config", true);	// ResourceManager, still Objective-C
+	const oo::PList errorNames = ResourceManager::dictionaryFromFilesNamed("javascript-errors.plist", "Config", true);
 	const std::string errorNumberStr = oo::str::format("%u", report->errorNumber);
 	const std::string errorName = errorNames.get<std::string>(errorNumberStr, errorNumberStr);
 

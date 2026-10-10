@@ -847,7 +847,7 @@ static bool VisualEffectSetMaterialsInternal(ooscript::Context context, ooscript
 	std::optional<std::string>	modelName;
 	if (model != nullptr && (model->isString() || model->isNumber()))  modelName = effectDict.get<std::string>("model");
 	// The ship-prefix-macros default as the mesh call read it: a dictionary, else nothing.
-	const oo::PList		materialDefaults = [ResourceManager cxx_materialDefaults];
+	const oo::PList		materialDefaults = ResourceManager::materialDefaults();
 	const oo::PList		*macros = materialDefaults.get<oo::PList::Dict>("ship-prefix-macros");
 	const oo::PList		shaderMacros = (macros != nullptr) ? *macros : oo::PList();
 	

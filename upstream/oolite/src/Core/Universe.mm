@@ -311,7 +311,7 @@ void cxx::Universe::initWithGameView(::MyOpenGLView *inGameView)
 #endif
 
 	// init the Resource Manager
-	[::ResourceManager cxx_setUseAddOns:useAddOns];	// also logs the paths if changed
+	ResourceManager::setUseAddOns(useAddOns);	// also logs the paths if changed
 
 	// Set up the internal game strings
 	[self loadDescriptions];
@@ -373,7 +373,7 @@ void cxx::Universe::initWithGameView(::MyOpenGLView *inGameView)
 	gui = oo::makeRef<GuiDisplayGen>();
 	comm_log_gui = oo::makeRef<GuiDisplayGen>();
 
-	missiontext = [::ResourceManager cxx_dictionaryFromFilesNamed:"missiontext.plist" inFolder:std::string("Config") andMerge:YES];
+	missiontext = ResourceManager::dictionaryFromFilesNamed("missiontext.plist", std::string("Config"), YES);
 
 	waypoints.clear();
 
@@ -1112,7 +1112,7 @@ static void PreloadOneSound(const std::string &soundName)
 {
 	if (!oo::str::hasPrefix(soundName, "[") && !oo::str::hasSuffix(soundName, "]"))
 	{
-		cxx::ResourceManager::ooSoundNamed(soundName, std::string("Sounds"));
+		ResourceManager::ooSoundNamed(soundName, std::string("Sounds"));
 	}
 }
 
@@ -1172,7 +1172,7 @@ std::vector<std::string> CachedConditionScripts(const std::string &key)
 {
 	const std::optional<std::string> fileName = OOUniverseSoundNameForCustomSoundKey(key);
 	if (!fileName.has_value())  return nil;
-	return cxx::ResourceManager::ooSoundNamed(*fileName, std::string("Sounds"));
+	return ResourceManager::ooSoundNamed(*fileName, std::string("Sounds"));
 }
 
 
@@ -8440,7 +8440,7 @@ const oo::PList *Universe::descriptions()
 	{
 		// Load internal descriptions.plist for use in early init, OXP verifier etc.
 		// It will be replaced by merged version later if running the game normally.
-		_descriptions = DictionaryWithContentsOfFile(oo::str::appendingPathComponent(oo::str::appendingPathComponent(*[::ResourceManager cxx_builtInPath], "Config"), "descriptions.plist"));
+		_descriptions = DictionaryWithContentsOfFile(oo::str::appendingPathComponent(oo::str::appendingPathComponent(*ResourceManager::builtInPath(), "Config"), "descriptions.plist"));
 		_descriptionsGeneration = ++sDescriptionsGeneration;
 
 		[self verifyDescriptions];
@@ -8487,7 +8487,7 @@ void Universe::loadDescriptions()
 {
 	::Universe *self = oo::ToObjC(this);
 
-	_descriptions = [::ResourceManager cxx_dictionaryFromFilesNamed:"descriptions.plist" inFolder:std::string("Config") andMerge:YES];
+	_descriptions = ResourceManager::dictionaryFromFilesNamed("descriptions.plist", std::string("Config"), YES);
 	_descriptionsGeneration = ++sDescriptionsGeneration;
 	[self verifyDescriptions];
 }
@@ -8508,7 +8508,7 @@ oo::PList Universe::scenarios()
 
 void Universe::loadScenarios()
 {
-	_scenarios = [::ResourceManager cxx_arrayFromFilesNamed:"scenarios.plist" inFolder:std::string("Config") andMerge:YES];
+	_scenarios = ResourceManager::arrayFromFilesNamed("scenarios.plist", std::string("Config"), YES);
 }
 
 
@@ -10872,7 +10872,7 @@ void Universe::setUpSettings()
 	countdown_messageRepeatTime = 0.0;
 	
 #if OOLITE_SPEECH_SYNTH
-	speechArray = [::ResourceManager cxx_arrayFromFilesNamed:"speech_pronunciation_guide.plist" inFolder:std::string("Config") andMerge:YES];
+	speechArray = ResourceManager::arrayFromFilesNamed("speech_pronunciation_guide.plist", std::string("Config"), YES);
 #endif
 	
 	replacedCommodities = std::move(commodities);	// [commodities autorelease]
@@ -10881,25 +10881,25 @@ void Universe::setUpSettings()
 	
 	[self loadDescriptions];
 	
-	characters = [::ResourceManager cxx_dictionaryFromFilesNamed:"characters.plist" inFolder:std::string("Config") andMerge:YES];
+	characters = ResourceManager::dictionaryFromFilesNamed("characters.plist", std::string("Config"), YES);
 	
-	customSounds = [::ResourceManager cxx_dictionaryFromFilesNamed:"customsounds.plist" inFolder:std::string("Config") andMerge:YES];
+	customSounds = ResourceManager::dictionaryFromFilesNamed("customsounds.plist", std::string("Config"), YES);
 	
-	globalSettings = [::ResourceManager cxx_dictionaryFromFilesNamed:"global-settings.plist" inFolder:std::string("Config") mergeMode:MERGE_SMART cache:YES];
+	globalSettings = ResourceManager::dictionaryFromFilesNamed("global-settings.plist", std::string("Config"), MERGE_SMART, YES);
 
 	
 	replacedSystemManager = std::move(systemManager);	// [systemManager autorelease]
-	systemManager = [::ResourceManager systemDescriptionManager];
+	systemManager = ResourceManager::systemDescriptionManager();
 
-	screenBackgrounds = [::ResourceManager cxx_dictionaryFromFilesNamed:"screenbackgrounds.plist" inFolder:std::string("Config") andMerge:YES];
+	screenBackgrounds = ResourceManager::dictionaryFromFilesNamed("screenbackgrounds.plist", std::string("Config"), YES);
 
 	// role-categories.plist and pirate-victim-roles.plist
-	roleCategories = [::ResourceManager cxx_roleCategoriesDictionary];
+	roleCategories = ResourceManager::roleCategoriesDictionary();
 	
-	autoAIMap = [::ResourceManager cxx_dictionaryFromFilesNamed:"autoAImap.plist" inFolder:std::string("Config") andMerge:YES];
+	autoAIMap = ResourceManager::dictionaryFromFilesNamed("autoAImap.plist", std::string("Config"), YES);
 	
 	// ORDER-SENSITIVE: std::stable_sort, so entries that compare equal keep their file order.
-	const oo::PList equipmentTemp = [::ResourceManager cxx_arrayFromFilesNamed:"equipment.plist" inFolder:std::string("Config") andMerge:YES];
+	const oo::PList equipmentTemp = ResourceManager::arrayFromFilesNamed("equipment.plist", std::string("Config"), YES);
 	oo::PList::Array sortedEquipment;
 	if (const oo::PList::Array *items = equipmentTemp.getIf<oo::PList::Array>())  sortedEquipment = *items;
 	oo::PList::Array sortedOutfitting = sortedEquipment;
@@ -10910,7 +10910,7 @@ void Universe::setUpSettings()
 	
 	OOEquipmentType::loadEquipment();
 
-	explosionSettings = [::ResourceManager cxx_dictionaryFromFilesNamed:"explosions.plist" inFolder:std::string("Config") andMerge:YES];
+	explosionSettings = ResourceManager::dictionaryFromFilesNamed("explosions.plist", std::string("Config"), YES);
 
 }
 
@@ -10987,8 +10987,8 @@ bool Universe::reinitAndShowDemo(bool showDemo)
 	
 	_sessionID++;	// Must be after removing old entities and before adding new ones.
 	
-	[::ResourceManager cxx_setUseAddOns:useAddOns];	// also logs the paths
-	//[ResourceManager loadScripts]; // initialised inside [player setUp]!
+	ResourceManager::setUseAddOns(useAddOns);	// also logs the paths
+	//ResourceManager::loadScripts(); // initialised inside [player setUp]!
 	
 	// NOTE: Anything in the sharedCache is now trashed and must be
 	//       reloaded. Ideally anything using the sharedCache should
@@ -11002,7 +11002,7 @@ bool Universe::reinitAndShowDemo(bool showDemo)
 	[self loadDescriptions];
 	[self loadScenarios];
 	
-	missiontext = [::ResourceManager cxx_dictionaryFromFilesNamed:"missiontext.plist" inFolder:std::string("Config") andMerge:YES];
+	missiontext = ResourceManager::dictionaryFromFilesNamed("missiontext.plist", std::string("Config"), YES);
 	
 	
 	if(showDemo)
@@ -11362,9 +11362,7 @@ void Universe::dumpSystemDescriptionGraphViz()
 	std::string					label;
 	oo::PList					keyMap;
 
-	keyMap = [::ResourceManager cxx_dictionaryFromFilesNamed:"sysdesc_key_table.plist"
-											  inFolder:std::string("Config")
-											  andMerge:NO];
+	keyMap = ResourceManager::dictionaryFromFilesNamed("sysdesc_key_table.plist", std::string("Config"), NO);
 
 	graphViz = "// System description grammar:\n\n"
 				"digraph system_descriptions\n"
@@ -11450,7 +11448,7 @@ void Universe::dumpSystemDescriptionGraphViz()
 
 	// Write file
 	graphViz += "\t}\n";
-	[::ResourceManager cxx_writeDiagnosticData:oo::Data(graphViz.data(), graphViz.size()) toFileNamed:"SystemDescription.dot"];
+	ResourceManager::writeDiagnosticData(oo::Data(graphViz.data(), graphViz.size()), "SystemDescription.dot");
 }
 #endif
 

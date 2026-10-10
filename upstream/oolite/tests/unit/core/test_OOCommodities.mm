@@ -79,17 +79,16 @@ oo::PList TradeGoods()
 }	// namespace
 
 
-@interface ResourceManager: OOObject
-+ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName mergeMode:(int)mergeMode cache:(BOOL)useCache;
-@end
+#import "ResourceManager.h"
 
-@implementation ResourceManager
-+ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName mergeMode:(int)mergeMode cache:(BOOL)useCache
+// ResourceManager is C++ since bead oo-9ht.150 deleted its Objective-C facade: C++ definitions of the
+// statics the code under test calls, with the Objective-C stand-in's answers.
+oo::PList ResourceManager::dictionaryFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, OOResourceMergeMode mergeMode, bool useCache)
 {
 	gLog.push_back("resources " + fileName + " in " + folderName.value_or("-") + " merge " + std::to_string(mergeMode) + " cache " + std::to_string((int)useCache));
 	return TradeGoods();
 }
-@end
+
 
 
 // PLAYER: C++ since bead oo-9ht.177 deleted the Objective-C player this stood in for; the member

@@ -222,8 +222,6 @@ cxx::OONull *ToCxx(OONull *null);
 	is the one message it is named after, verbatim, to a class that is still Objective-C. Each goes
 	with the conversion of the class it messages.
 */
-// +[ResourceManager cxx_dictionaryFromFilesNamed:inFolder:andMerge:]
-oo::PList OOJavaScriptEngineDictionaryFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool mergeFiles);
 // -weakRefUnderlyingObject (OOWeakReferenceSupport): the object itself for a non-weakref, nil for nil.
 id OOJavaScriptEngineWeakRefUnderlyingObject(id object);
 // The JS glue of any object (OOObject (OOJavaScript)), as the object's class answers it.

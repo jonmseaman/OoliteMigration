@@ -206,10 +206,7 @@ static oo::PList QueryIMP(id self, SEL _cmd)
 static PlayerEntity *sPlayer;
 PlayerEntity *OOGetPlayer(void) { return sPlayer; }
 
-@implementation ResourceManager
-+ (NSDictionary *) whitelistDictionary { return sWhitelist; }
-+ (oo::PList) cxx_whitelistDictionary { return oo::PListFrom(sWhitelist); }
-@end
+oo::PList ResourceManager::whitelistDictionary() { return oo::PListFrom(sWhitelist); }	// C++ since bead oo-9ht.150
 
 // --- recording -----------------------------------------------------------------------------
 

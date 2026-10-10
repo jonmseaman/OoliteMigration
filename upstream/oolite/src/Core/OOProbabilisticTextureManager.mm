@@ -90,7 +90,7 @@ bool OOProbabilisticTextureManager::initWithPListName(const std::string &plistNa
 
 	if (OK)
 	{
-		config = [ResourceManager cxx_arrayFromFilesNamed:plistName inFolder:"Config" andMerge:YES];
+		config = ResourceManager::arrayFromFilesNamed(plistName, "Config", YES);
 		if (!config)  OK = false;
 	}
 	

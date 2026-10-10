@@ -68,7 +68,7 @@ std::optional<std::string> OOStringExpanderPlayerKeyBindingDescription2(const st
 // [PLAYER cxx_missionVariableForKey:key]
 oo::PList OOStringExpanderPlayerMissionVariableForKey(const std::string &key);
 
-// [ResourceManager cxx_whitelistDictionary]
+// ResourceManager::whitelistDictionary()
 oo::PList OOStringExpanderResourceManagerWhitelistDictionary(void);
 
 #endif	// OOSTRINGEXPANDER_OBJCBRIDGE_H

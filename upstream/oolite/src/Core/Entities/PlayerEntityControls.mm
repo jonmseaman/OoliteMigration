@@ -278,7 +278,7 @@ void PlayerEntity::initControls()
 
 void PlayerEntity::initKeyConfigSettings()
 {
-	const oo::PList kdicmaster = [::ResourceManager cxx_dictionaryFromFilesNamed:"keyconfig2.plist" inFolder:"Config" mergeMode:MERGE_BASIC cache:NO];
+	const oo::PList kdicmaster = ResourceManager::dictionaryFromFilesNamed("keyconfig2.plist", "Config", MERGE_BASIC, NO);
 	oo::Defaults &defaults = oo::Defaults::standard();
 	// the stored keyboard code (oo_stringForKey:defaultValue: over the value)
 	const oo::PList kbdValue = defaults.object("keyboard-code");

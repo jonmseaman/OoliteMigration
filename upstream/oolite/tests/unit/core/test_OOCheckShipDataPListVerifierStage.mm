@@ -60,25 +60,19 @@ oo::PList cxx_OOPropertyListFromFile(const std::string &path)
 #include "OOOXPVerifierTestDouble.h"
 
 
-@interface ResourceManager: OOObject
-
-+ (std::optional<std::string>) cxx_pathForFileNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName;
-+ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName andMerge:(BOOL)mergeFiles;
-+ (oo::PList) cxx_whitelistDictionary;
-
-@end
+#import "ResourceManager.h"
 
 
-@implementation ResourceManager
-
-+ (std::optional<std::string>) cxx_pathForFileNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName
+// ResourceManager is C++ since bead oo-9ht.150 deleted its Objective-C facade: C++ definitions of the
+// statics the code under test calls, with the Objective-C stand-in's answers.
+std::optional<std::string> ResourceManager::pathForFileNamed(const std::string &fileName, const std::optional<std::string> &folderName)
 {
 	if (fileName != "builtin.dat")  return std::nullopt;
 	return "builtin/" + folderName.value_or("") + "/" + fileName;
 }
 
 
-+ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName andMerge:(BOOL)mergeFiles
+oo::PList ResourceManager::dictionaryFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool mergeFiles)
 {
 	(void)folderName;
 	(void)mergeFiles;
@@ -87,12 +81,11 @@ oo::PList cxx_OOPropertyListFromFile(const std::string &path)
 }
 
 
-+ (oo::PList) cxx_whitelistDictionary
+oo::PList ResourceManager::whitelistDictionary()
 {
 	return oo::PList();
 }
 
-@end
 
 
 // The texture stage (linked for the intermediate class) loads through these; no ship here names a texture.

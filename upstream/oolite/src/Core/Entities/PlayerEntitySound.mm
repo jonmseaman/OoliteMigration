@@ -144,7 +144,7 @@ void PlayerEntity::setUpSound()
 	sMiscSoundPool = OOSoundSourcePool::poolWithCount(kMiscPoolSize, 0.0).leakRef();
 	
 	// Two sources with the same sound are used to simulate looping.
-	::OOSound *afterburnerSound = cxx::ResourceManager::ooSoundNamed("afterburner1.ogg", std::string("Sounds"));
+	::OOSound *afterburnerSound = ResourceManager::ooSoundNamed("afterburner1.ogg", std::string("Sounds"));
 	sAfterburnerSources[0] = NewSource(afterburnerSound);
 	sAfterburnerSources[0]->setPosition(kAfterburner1Position);
 	sAfterburnerSources[1] = NewSource(afterburnerSound);

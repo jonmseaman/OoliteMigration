@@ -271,7 +271,7 @@ static bool OoliteGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			// user name in displayed paths masked for privacy - remember that the console can be run remotely too
 		{
 			oo::PList::Array paths;
-			for (const std::string &path : [ResourceManager cxx_maskUserNameInPathArray:[ResourceManager cxx_paths]])  paths.push_back(oo::PList(path));
+			for (const std::string &path : ResourceManager::maskUserNameInPathArray(ResourceManager::paths()))  paths.push_back(oo::PList(path));
 			result = oo::PList(std::move(paths));
 			break;
 		}

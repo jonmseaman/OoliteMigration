@@ -226,7 +226,7 @@ GuiDisplayGen::GuiDisplayGen()
 
 	backgroundSpecial = GUI_BACKGROUND_SPECIAL_NONE;
 
-	guiUserSettings = [::ResourceManager cxx_dictionaryFromFilesNamed:"gui-settings.plist" inFolder:"Config" andMerge:YES];
+	guiUserSettings = ResourceManager::dictionaryFromFilesNamed("gui-settings.plist", "Config", YES);
 }
 
 

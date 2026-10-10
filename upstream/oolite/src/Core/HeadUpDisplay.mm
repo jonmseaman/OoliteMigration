@@ -821,7 +821,7 @@ void HeadUpDisplay::addDial(const oo::PList &info)
 	static bool allowedSelectorsLoaded = false;
 	if (!allowedSelectorsLoaded)
 	{
-		const oo::PList whitelist = [::ResourceManager cxx_whitelistDictionary];
+		const oo::PList whitelist = ResourceManager::whitelistDictionary();
 		const oo::PList *dialMethods = whitelist.get<oo::PList::Array>("hud_dial_methods");
 		// the set held what the array held; only strings can match a selector name
 		for (std::size_t j = 0; dialMethods != nullptr && j < dialMethods->count(); j++)
@@ -1121,14 +1121,10 @@ bool HeadUpDisplay::setCrosshairDefinition(const std::string &newDefinition)
 	// force crosshair redraw
 	_crosshairs = nullptr;
 
-	_crosshairOverrides = [::ResourceManager cxx_dictionaryFromFilesNamed:newDefinition
-															   inFolder:std::string("Config")
-															   andMerge:YES];
+	_crosshairOverrides = ResourceManager::dictionaryFromFilesNamed(newDefinition, std::string("Config"), YES);
 	if (_crosshairOverrides.count() == 0)
 	{ // invalid file (none found, or empty)
-		_crosshairOverrides = [::ResourceManager cxx_dictionaryFromFilesNamed:"crosshairs.plist"
-																   inFolder:std::string("Config")
-																   andMerge:YES];
+		_crosshairOverrides = ResourceManager::dictionaryFromFilesNamed("crosshairs.plist", std::string("Config"), YES);
 		crosshairDefinition = "crosshairs.plist";
 		return NO;
 	}
@@ -1163,9 +1159,7 @@ oo::PList HeadUpDisplay::crosshairDefinitionForWeaponType(OOWeaponType weapon)
 	{
 		if (crosshairDefs.isNull())
 		{
-			crosshairDefs = [::ResourceManager cxx_dictionaryFromFilesNamed:"crosshairs.plist"
-																 inFolder:std::string("Config")
-																 andMerge:YES];
+			crosshairDefs = ResourceManager::dictionaryFromFilesNamed("crosshairs.plist", std::string("Config"), YES);
 		}
 
 		result = crosshairDefs.get<oo::PList::Array>(weaponName);
@@ -3973,7 +3967,7 @@ static void InitTextEngine(void)
 	std::string				texName;
 	NSUInteger				i, count;
 
-	fontSpec = HeadUpDisplayDictionaryFromFilesNamed("oolite-font.plist", std::string("Config"), NO);
+	fontSpec = ResourceManager::dictionaryFromFilesNamed("oolite-font.plist", std::string("Config"), NO);
 
 	texName = fontSpec.get<std::string>("texture", "oolite-font.png");
 	sFontTexture = cxx::OOTexture::textureWithName(texName,
@@ -4606,12 +4600,6 @@ void GetRGBAArrayFromInfo(const oo::PList &info, GLfloat ioColor[4])
 
 // --- One-line sends to classes still behind facades (amendment oo-9ht.139), moved from the HUD's
 // deleted facade (bead oo-mwd58).
-
-oo::PList HeadUpDisplayDictionaryFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool mergeFiles)
-{
-	return [ResourceManager cxx_dictionaryFromFilesNamed:fileName inFolder:folderName andMerge:mergeFiles];
-}
-
 
 void HeadUpDisplayUniverseGUISetGLColorFromSetting(const std::optional<std::string> &setting, OOColor *defaultValue, GLfloat alpha)
 {

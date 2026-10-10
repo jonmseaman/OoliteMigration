@@ -313,12 +313,6 @@ cxx::OONull *oo::ToCxx(OONull *null)
 @end
 
 
-oo::PList OOJavaScriptEngineDictionaryFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool mergeFiles)
-{
-	return [ResourceManager cxx_dictionaryFromFilesNamed:fileName inFolder:folderName andMerge:mergeFiles];
-}
-
-
 id OOJavaScriptEngineWeakRefUnderlyingObject(id object)
 {
 	return [object weakRefUnderlyingObject];

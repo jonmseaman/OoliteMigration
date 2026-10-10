@@ -98,9 +98,7 @@ public:
 	oo::PList _shaders;
 };
 
-@interface ResourceManager: OOObject
-+ (oo::PList) cxx_materialDefaults;
-@end
+#import "ResourceManager.h"
 
 /*	An effect whose hull heat level is 99 raises from hullHeatLevel(), one whose level is 98 throws
 	a C++ exception, so the test sees what an exception under a native becomes. C++ since bead
@@ -341,9 +339,9 @@ oo::PList OOMesh::getMaterials()  { return _materials; }
 oo::PList OOMesh::shaders()  { return _shaders; }
 
 
-@implementation ResourceManager
-
-+ (oo::PList) cxx_materialDefaults
+// ResourceManager is C++ since bead oo-9ht.150 deleted its Objective-C facade: C++ definitions of the
+// statics the code under test calls, with the Objective-C stand-in's answers.
+oo::PList ResourceManager::materialDefaults()
 {
 	oo::PList::Dict macros;
 	macros["OO_TEST"] = oo::PList(1.0);
@@ -352,7 +350,6 @@ oo::PList OOMesh::shaders()  { return _shaders; }
 	return oo::PList(std::move(defaults));
 }
 
-@end
 
 
 std::optional<std::string> OOVisualEffectEntity::effectKey()  { return _effectKey; }

@@ -224,7 +224,7 @@ void SetUp()
 	stdfs::current_path(sRoot);
 	const std::string info = "{ CFBundleVersion = \"9.9.9-test\"; }";
 	OO_CHECK(oo::fs::writeFile(sRoot / "Resources" / "Info-gnustep.plist", oo::Data(info.data(), info.size()), oo::fs::WriteMode::direct).has_value());
-	[ResourceManager cxx_setUseAddOns:std::string(SCENARIO_OXP_DEFINITION_NONE)];	// strict: the built-in Resources alone
+	ResourceManager::setUseAddOns(std::string(SCENARIO_OXP_DEFINITION_NONE));	// strict: the built-in Resources alone
 	// The engine's player is a TestPlayerShip: made first, so InitOOJSPlayerShip()'s
 	// PlayerEntity::sharedPlayer() answers it (the C++ player cannot change class, as
 	// object_setClass() made the Objective-C one a TestPlayerShip; bead oo-9ht.177).

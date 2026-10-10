@@ -88,10 +88,7 @@ typedef enum
 @end
 
 
-@interface ResourceManager: OOObject
-+ (std::vector<std::string>) cxx_paths;
-+ (std::vector<std::string>) cxx_maskUserNameInPathArray:(const std::vector<std::string> &)inputPathArray;
-@end
+#import "ResourceManager.h"
 
 
 #import "OOJSOolite.h"
@@ -152,14 +149,14 @@ oo::PList Dict(std::initializer_list<std::pair<const char *, oo::PList>> entries
 @end
 
 
-@implementation ResourceManager
-
-+ (std::vector<std::string>) cxx_paths
+// ResourceManager is C++ since bead oo-9ht.150 deleted its Objective-C facade: C++ definitions of the
+// statics the code under test calls, with the Objective-C stand-in's answers.
+std::vector<std::string> ResourceManager::paths()
 {
 	return { "C:/Users/jameson/Oolite/Resources", "C:/Users/jameson/AddOns/one.oxp" };
 }
 
-+ (std::vector<std::string>) cxx_maskUserNameInPathArray:(const std::vector<std::string> &)inputPathArray
+std::vector<std::string> ResourceManager::maskUserNameInPathArray(const std::vector<std::string> &inputPathArray)
 {
 	std::vector<std::string> result;
 	for (std::string path : inputPathArray)
@@ -171,7 +168,6 @@ oo::PList Dict(std::initializer_list<std::pair<const char *, oo::PList>> entries
 	return result;
 }
 
-@end
 
 
 // The tone mappers' names, as OOConstToString.mm gives them, for the ones the test uses.

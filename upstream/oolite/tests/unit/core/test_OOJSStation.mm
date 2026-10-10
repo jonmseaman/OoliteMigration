@@ -241,9 +241,7 @@ public:
 - (OOSystemID) currentSystemID;
 @end
 
-@interface ResourceManager: OOObject
-+ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName mergeMode:(int)mergeMode cache:(BOOL)useCache;
-@end
+#import "ResourceManager.h"
 
 @interface OOJavaScriptEngine: OOObject
 + (OOJavaScriptEngine *) sharedEngine;
@@ -481,10 +479,10 @@ oo::PList OOShipRegistry::shipInfoForKey(const std::string &key)  { (void)key; r
 oo::PList OOShipRegistry::shipyardInfoForKey(const std::string &key)  { (void)key; return oo::PList(); }
 
 
-@implementation ResourceManager
-
+// ResourceManager is C++ since bead oo-9ht.150 deleted its Objective-C facade: C++ definitions of the
+// statics the code under test calls, with the Objective-C stand-in's answers.
 // trade-goods.plist: food and gems.
-+ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName mergeMode:(int)mergeMode cache:(BOOL)useCache
+oo::PList ResourceManager::dictionaryFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, OOResourceMergeMode mergeMode, bool useCache)
 {
 	(void)fileName; (void)folderName; (void)mergeMode; (void)useCache;
 	return oo::PList(oo::PList::Dict{
@@ -493,7 +491,6 @@ oo::PList OOShipRegistry::shipyardInfoForKey(const std::string &key)  { (void)ke
 	});
 }
 
-@end
 
 
 @implementation OOJavaScriptEngine

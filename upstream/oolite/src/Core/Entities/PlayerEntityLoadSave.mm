@@ -385,7 +385,7 @@ bool PlayerEntity::startScenario()
 		OO_LOG("scenario.init.error", "{}", "No file entry found for scenario");
 		return NO;
 	}
-	const std::optional<std::string> path = [::ResourceManager cxx_pathForFileNamed:*file inFolder:"Scenarios"];
+	const std::optional<std::string> path = ResourceManager::pathForFileNamed(*file, "Scenarios");
 	if (!path)
 	{
 		OO_LOG("scenario.init.error", "Game file not found for scenario {}",*file);

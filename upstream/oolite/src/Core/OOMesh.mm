@@ -234,7 +234,7 @@ oo::Ref<cxx::OOMaterial> OOMesh::placeholderMaterial()
 	if (placeholderMaterial == nullptr)
 	{
 		// +cxx_materialDefaults answers a copy: keep it alive while noTextures points into it (bead oo-f4241).
-		const oo::PList materialDefaults = [::ResourceManager cxx_materialDefaults];
+		const oo::PList materialDefaults = ResourceManager::materialDefaults();
 		const oo::PList *noTextures = materialDefaults.find("no-textures-material");
 		placeholderMaterial = OOBasicMaterial::materialWithName(std::string("/placeholder/"), (noTextures != nullptr ? *noTextures : oo::PList())).leakRef();
 	}
@@ -1091,7 +1091,7 @@ bool OOMesh::loadData(const std::string &filename, float scale)
 		
 		{
 			void *pool = objc_autoreleasePoolPush();
-			const std::optional<std::string> dataOpt = [::ResourceManager cxx_stringFromFilesNamed:filename inFolder:"Models" cache:NO];
+			const std::optional<std::string> dataOpt = ResourceManager::stringFromFilesNamed(filename, "Models", NO);
 			if (!dataOpt)
 			{
 				// Model not found

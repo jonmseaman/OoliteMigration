@@ -88,5 +88,5 @@ oo::PList OOStringExpanderPlayerMissionVariableForKey(const std::string &key)
 
 oo::PList OOStringExpanderResourceManagerWhitelistDictionary(void)
 {
-	return [ResourceManager cxx_whitelistDictionary];
+	return ResourceManager::whitelistDictionary();
 }

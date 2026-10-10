@@ -61,17 +61,16 @@ PlayerEntity *gOOPlayer = nullptr;
 
 
 // ResourceManager: one installed OXP, org.test.installed.
-@interface ResourceManager: OOObject
-+ (oo::PList) cxx_manifestForIdentifier:(const std::string &)identifier;
-@end
+#import "ResourceManager.h"
 
-@implementation ResourceManager
-+ (oo::PList) cxx_manifestForIdentifier:(const std::string &)identifier
+// ResourceManager is C++ since bead oo-9ht.150 deleted its Objective-C facade: C++ definitions of the
+// statics the code under test calls, with the Objective-C stand-in's answers.
+oo::PList ResourceManager::manifestForIdentifier(const std::string &identifier)
 {
 	if (identifier != "org.test.installed")  return oo::PList();
 	return oo::PList(oo::PList::Dict{ { "identifier", oo::PList(identifier) } });
 }
-@end
+
 
 
 /*	OOStringParsing.mm reaches the JavaScript engine, so it is not linked. Its two parsers are

@@ -152,7 +152,7 @@ std::optional<std::vector<oo::Ref<OOScript>>> OOScript::worldScriptsAtPath(const
 std::optional<std::vector<oo::Ref<OOScript>>> OOScript::scriptsFromFileNamed(const std::string &fileName)
 {
 	std::optional<std::vector<oo::Ref<OOScript>>> result;
-	std::optional<std::string> path = [::ResourceManager cxx_pathForFileNamed:fileName inFolder:"Scripts"];
+	std::optional<std::string> path = ResourceManager::pathForFileNamed(fileName, "Scripts");
 	if (path.has_value())
 	{
 		result = scriptsFromFileAtPath(*path);
@@ -222,7 +222,7 @@ oo::Ref<OOScript> OOScript::jsScriptFromFileNamed(const std::string &fileName, c
 	extension = oo::str::lowercase(oo::str::pathExtension(fileName));
 	if (extension == "js" || extension == "es")
 	{
-		path = [::ResourceManager cxx_pathForFileNamed:fileName inFolder:"Scripts"];
+		path = ResourceManager::pathForFileNamed(fileName, "Scripts");
 		if (!path.has_value())
 		{
 			OO_LOG_ERR("script.load.notFound", "Could not find script file {}.", fileName);
@@ -251,7 +251,7 @@ oo::Ref<OOScript> OOScript::jsAIScriptFromFileNamed(const std::string &fileName,
 	extension = oo::str::lowercase(oo::str::pathExtension(fileName));
 	if (extension == "js" || extension == "es")
 	{
-		path = [::ResourceManager cxx_pathForFileNamed:fileName inFolder:"AIs"];
+		path = ResourceManager::pathForFileNamed(fileName, "AIs");
 		if (!path.has_value())
 		{
 			OO_LOG_ERR("script.load.notFound", "Could not find script file {}.", fileName);

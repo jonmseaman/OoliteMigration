@@ -306,7 +306,7 @@ static void LoadExplicitSettings(void)
 		loading the full settings.
 	*/
 	// (no built-in path: no path, so no settings, as messaging nil gave)
-	const std::optional<std::string> builtInPath = [ResourceManager cxx_builtInPath];
+	const std::optional<std::string> builtInPath = ResourceManager::builtInPath();
 	oo::PList builtInSettings;
 	if (builtInPath.has_value())
 	{
@@ -317,5 +317,5 @@ static void LoadExplicitSettings(void)
 	oo::log::logger().replaceSettings(SettingsFromDictionary(builtInSettings), false);
 
 	// Load new settings; take out _default and _override, and invalidate the cache.
-	oo::log::logger().replaceSettings(SettingsFromDictionary([ResourceManager cxx_logControlDictionary]), true);
+	oo::log::logger().replaceSettings(SettingsFromDictionary(ResourceManager::logControlDictionary()), true);
 }

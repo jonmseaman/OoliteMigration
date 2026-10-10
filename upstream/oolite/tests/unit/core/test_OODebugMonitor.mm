@@ -142,31 +142,23 @@ const char * const kOOJavaScriptEngineWillResetNotificationName = "org.aegidian.
 const char * const kOOJavaScriptEngineDidResetNotificationName = "org.aegidian.oolite OOJavaScriptEngine did reset";
 
 
-@interface ResourceManager: OOObject
-+ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName
-								  inFolder:(const std::optional<std::string> &)folderName
-								  andMerge:(BOOL)mergeFiles;
-+ (std::optional<std::string>) cxx_pathForFileNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName;
-@end
+#import "ResourceManager.h"
 
-@implementation ResourceManager
-
-+ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName
-								  inFolder:(const std::optional<std::string> &)folderName
-								  andMerge:(BOOL)mergeFiles
+// ResourceManager is C++ since bead oo-9ht.150 deleted its Objective-C facade: C++ definitions of the
+// statics the code under test calls, with the Objective-C stand-in's answers.
+oo::PList ResourceManager::dictionaryFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool mergeFiles)
 {
 	if (fileName == "debugConfig.plist" && folderName == "Config" && mergeFiles)  return sOXPConfig;
 	return oo::PList();
 }
 
 
-+ (std::optional<std::string>) cxx_pathForFileNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName
+std::optional<std::string> ResourceManager::pathForFileNamed(const std::string &fileName, const std::optional<std::string> &folderName)
 {
 	if (fileName == "oolite-debug-console.js" && folderName == "Scripts")  return sConsoleScriptPath;
 	return std::nullopt;
 }
 
-@end
 
 
 // The engine's monitor interface is C++ (OOJavaScriptEngineMonitor.h, from OODebugMonitor.h) since

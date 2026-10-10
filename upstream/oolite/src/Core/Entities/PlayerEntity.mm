@@ -2274,7 +2274,7 @@ bool PlayerEntity::setUpAndConfirmOK(bool stopOnError, bool saveGame)
 	{
 		[UNIVERSE preloadSounds];
 		setUpSound();
-		worldScripts = [::ResourceManager cxx_loadScripts];
+		worldScripts = ResourceManager::loadScripts();
 		[UNIVERSE loadConditionScripts];
 	}
 #else
@@ -2284,7 +2284,7 @@ bool PlayerEntity::setUpAndConfirmOK(bool stopOnError, bool saveGame)
 	[oo::ToObjC(this) setUpSound];
 	if (saveGame)
 	{
-		worldScripts = [::ResourceManager cxx_loadScripts];
+		worldScripts = ResourceManager::loadScripts();
 		[UNIVERSE loadConditionScripts];
 	}
 #endif
@@ -4755,7 +4755,7 @@ bool PlayerEntity::switchHudTo(const std::string &hudFileName)
 		return NO;
 	}
 	
-	const oo::PList hudDict = [::ResourceManager cxx_dictionaryFromFilesNamed:hudFileName inFolder:std::string("Config") andMerge:YES];
+	const oo::PList hudDict = ResourceManager::dictionaryFromFilesNamed(hudFileName, std::string("Config"), YES);
 	// hud defined, but buggy?
 	if (hudDict.isNull())
 	{
@@ -10263,8 +10263,8 @@ void PlayerEntity::setGuiToIntroFirstGo(bool justCobra)
 		setupStartScreenGui();
 		
 		// check for error messages from Resource Manager
-		//[ResourceManager paths]; done in Universe already
-		const std::optional<std::string> errors = [::ResourceManager cxx_errors];
+		//ResourceManager::paths(); done in Universe already
+		const std::optional<std::string> errors = ResourceManager::errors();
 		if (errors.has_value())
 		{
 			OOGUIRow ms_start = msgLine;
@@ -10274,7 +10274,7 @@ void PlayerEntity::setGuiToIntroFirstGo(bool justCobra)
 		}
 		
 		// check for messages from OXPs
-		const std::vector<std::string> OXPsWithMessages = [::ResourceManager cxx_OXPsWithMessagesFound];
+		const std::vector<std::string> OXPsWithMessages = ResourceManager::OXPsWithMessagesFound();
 		if (OXPsWithMessages.size() > 0)
 		{
 			std::optional<std::string> messageToDisplay = std::string();

@@ -2344,7 +2344,7 @@ void ShipEntity::setUpOneEscort(::ShipEntity *escorter, ::OOShipGroup *escortGro
 	if (getBounty() == 0)  { if (escorter != nullptr)  escorter->setBounty(0, kOOLegalStatusReasonSetup); }	// Avoid dirty escorts for clean mothers
 		
 	// find the right autoAI.
-	const oo::PList autoAIMap = [::ResourceManager cxx_dictionaryFromFilesNamed:"autoAImap.plist" inFolder:"Config" andMerge:YES];
+	const oo::PList autoAIMap = ResourceManager::dictionaryFromFilesNamed("autoAImap.plist", "Config", YES);
 	const std::optional<std::string> mappedAI = StringForKey(autoAIMap, defaultRole);
 	if (mappedAI.has_value())  autoAI = *mappedAI;
 	else // no 'wingman' defined in autoAImap?
@@ -15329,7 +15329,7 @@ oo::PList OODefaultShipShaderMacros(void)
 	// "ship-prefix-macros" of the material defaults, read once; an empty dictionary if it is not one.
 	static const oo::PList macros = []
 	{
-		const oo::PList materialDefaults = cxx::ResourceManager::materialDefaults();
+		const oo::PList materialDefaults = ResourceManager::materialDefaults();
 		const oo::PList *prefixMacros = materialDefaults.get<oo::PList::Dict>("ship-prefix-macros");
 		return prefixMacros != nullptr ? *prefixMacros : oo::PList(oo::PList::Dict{});
 	}();
@@ -15358,7 +15358,7 @@ bool IsKindOfClassNamed(id object, const char *className)
 BOOL OOUniformBindingPermitted(const std::string &propertyName, id bindingTarget)
 {
 	// the whitelists, read once (membership only)
-	static const oo::PList					wlDict = cxx::ResourceManager::whitelistDictionary();
+	static const oo::PList					wlDict = ResourceManager::whitelistDictionary();
 	static const std::set<std::string>		entityWhitelist = NamesInArrayForKey(wlDict, "shader_entity_binding_methods");
 	static const std::set<std::string>		shipWhitelist = NamesInArrayForKey(wlDict, "shader_ship_binding_methods");
 	static const std::set<std::string>		playerShipWhitelist = NamesInArrayForKey(wlDict, "shader_player_ship_binding_methods");

@@ -366,10 +366,7 @@ void OOShipRegistry::loadShipData()
 	_playerShips.clear();
 
 	// Load shipdata.plist.
-	oo::PList result = [::ResourceManager cxx_dictionaryFromFilesNamed:"shipdata.plist"
-															inFolder:"Config"
-														   mergeMode:MERGE_BASIC
-															   cache:NO];
+	oo::PList result = ResourceManager::dictionaryFromFilesNamed("shipdata.plist", "Config", MERGE_BASIC, NO);
 	if (result.isNull())  return;
 
 	DumpStringAddrs(result, "shipdata.plist");
@@ -419,10 +416,7 @@ void OOShipRegistry::loadShipData()
 
 	_effectData = oo::PList();
 
-	result = [::ResourceManager cxx_dictionaryFromFilesNamed:"effectdata.plist"
-												  inFolder:"Config"
-												 mergeMode:MERGE_BASIC
-													 cache:NO];
+	result = ResourceManager::dictionaryFromFilesNamed("effectdata.plist", "Config", MERGE_BASIC, NO);
 	if (result.isNull())  return;
 
 	// Make each entry mutable to simplify later stages. Also removes any entries that aren't dictionaries.
@@ -457,10 +451,7 @@ void OOShipRegistry::loadDemoShipConditions()
 	std::vector<std::string>	conditionScripts;
 
 	// OOCacheManager is an unmigrated callee: convert at the call.
-	const oo::PList initialDemoShips = [::ResourceManager cxx_arrayFromFilesNamed:"shiplibrary.plist"
-																	   inFolder:"Config"
-																	   andMerge:YES
-																		  cache:NO];
+	const oo::PList initialDemoShips = ResourceManager::arrayFromFilesNamed("shiplibrary.plist", "Config", YES, NO);
 
 	if (const oo::PList::Array *entries = initialDemoShips.getIf<oo::PList::Array>())
 	{
@@ -490,10 +481,7 @@ void OOShipRegistry::loadDemoShips()
 {
 	_demoShips = oo::PList();
 
-	const oo::PList initialDemoShips = [::ResourceManager cxx_arrayFromFilesNamed:"shiplibrary.plist"
-																	   inFolder:"Config"
-																	   andMerge:YES
-																		  cache:NO];
+	const oo::PList initialDemoShips = ResourceManager::arrayFromFilesNamed("shiplibrary.plist", "Config", YES, NO);
 	const oo::PList::Array noShips;
 	const oo::PList::Array *initialArray = initialDemoShips.getIf<oo::PList::Array>();	// null unless isArray()
 	const oo::PList::Array &initialEntries = initialArray != nullptr ? *initialArray : noShips;
@@ -830,10 +818,7 @@ bool OOShipRegistry::makeShipEntriesMutable(oo::PList &ioData)
 bool OOShipRegistry::loadAndApplyShipDataOverrides(oo::PList &ioData)
 {
 	oo::PList::Dict &ships = Entries(ioData);
-	const oo::PList overrides = [::ResourceManager cxx_dictionaryFromFilesNamed:"shipdata-overrides.plist"
-																	 inFolder:"Config"
-																	mergeMode:MERGE_SMART
-																		cache:NO];
+	const oo::PList overrides = ResourceManager::dictionaryFromFilesNamed("shipdata-overrides.plist", "Config", MERGE_SMART, NO);
 
 	if (const oo::PList::Dict *overrideEntries = overrides.getIf<oo::PList::Dict>())
 	{
@@ -890,14 +875,8 @@ bool OOShipRegistry::loadAndMergeShipyard(oo::PList &ioData)
 		Entries(ship.second).erase("_oo_shipyard");
 	}
 
-	const oo::PList shipyard = [::ResourceManager cxx_dictionaryFromFilesNamed:"shipyard.plist"
-																	inFolder:"Config"
-																   mergeMode:MERGE_BASIC
-																	   cache:NO];
-	const oo::PList shipyardOverrides = [::ResourceManager cxx_dictionaryFromFilesNamed:"shipyard-overrides.plist"
-																			 inFolder:"Config"
-																			mergeMode:MERGE_SMART
-																				cache:NO];
+	const oo::PList shipyard = ResourceManager::dictionaryFromFilesNamed("shipyard.plist", "Config", MERGE_BASIC, NO);
+	const oo::PList shipyardOverrides = ResourceManager::dictionaryFromFilesNamed("shipyard-overrides.plist", "Config", MERGE_SMART, NO);
 
 	playerShips.reserve(shipyard.count());
 
@@ -965,7 +944,7 @@ bool OOShipRegistry::removeUnusableEntries(oo::PList &ioData, bool shipMode)
 				cxx_OOStandardsError("Error in shipdata.plist");
 				remove = YES;
 			}
-			else if (!modelName.empty() && ![::ResourceManager cxx_pathForFileNamed:modelName inFolder:"Models"].has_value())
+			else if (!modelName.empty() && !ResourceManager::pathForFileNamed(modelName, "Models").has_value())
 			{
 				OO_LOG_ERR("shipData.load.error", "the shipdata.plist entry \"{}\" specifies non-existent model \"{}\".", shipKey, modelName);
 				cxx_OOStandardsError("Error in shipdata.plist");

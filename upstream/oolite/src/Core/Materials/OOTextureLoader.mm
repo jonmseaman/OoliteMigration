@@ -109,7 +109,7 @@ oo::ObjCRef<::OOTextureLoader *> OOTextureLoader::loaderWithTextureSpecifier(con
 
 	if (!cxx_OOInterpretTextureSpecifier(specifier, &name, &options, NULL, NULL, NO))  return nullptr;
 	options |= extraOptions;
-	path = [::ResourceManager cxx_pathForFileNamed:name inFolder:folder];
+	path = ResourceManager::pathForFileNamed(name, folder);
 	if (!path.has_value())
 	{
 		if (!(options & kOOTextureNoFNFMessage))
