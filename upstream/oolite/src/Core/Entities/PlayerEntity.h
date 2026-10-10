@@ -49,7 +49,7 @@ MA 02110-1301, USA.
 #include "oofnd/Ref.hpp"
 #include "oofnd/objc/OOAssert.h"
 
-@class MyOpenGLView, ShipEntity, ProxyPlayerEntity;
+@class MyOpenGLView, ShipEntity;
 class GuiDisplayGen;
 #import "HeadUpDisplay.h"	// C++ since bead oo-mwd58: the player keeps its HUD (oo::Ref)
 class OOSound;			// C++ since bead oo-9ht.68 deleted its facade
@@ -672,7 +672,7 @@ public:
 	void takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::Entity *otherPart, const std::string &weaponIdentifier) override;
 	void takeScrapeDamage(double amount, ::Entity *ent) override;
 	void takeHeatDamage(double amount) override;
-	::ProxyPlayerEntity *createDoppelganger();
+	::ShipEntity *createDoppelganger();	// the proxy's object (the ship's facade since bead oo-9ht.183)
 	::ShipEntity *launchEscapeCapsule() override;
 	void dumpCargo() override;
 	void rotateCargo();

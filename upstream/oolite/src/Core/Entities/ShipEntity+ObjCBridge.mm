@@ -34,6 +34,7 @@ MA 02110-1301, USA.
 #import "ShipEntityScriptMethods.h"
 #import "AI.h"
 #import "PlayerEntity.h"
+#import "ProxyPlayerEntity.h"
 #import "GameController.h"	// OOScheduleDeferredCall (the player's selectors called by name)
 #import "OORoleSet.h"
 #import "OOShipGroup.h"
@@ -64,6 +65,22 @@ MA 02110-1301, USA.
 #define SHIP_PART(call)	(oo::AsObjCEntity(_cxxEntity.get()) != nullptr ? _cxxShip->cxx::ShipEntity::call : _cxxShip->call)
 
 
+@interface ShipEntity (OOShipMadeInCxx)
+
+- (id) cxx_initWithShipPart:(cxx::ShipEntity *)ship key:(const std::string &)key definition:(const oo::PList &)dict OO_RETURNS_RETAINED;
+- (id) initShipSetUpWithKey:(const std::string &)key definition:(const oo::PList &)dict;
+
+@end
+
+
+::ShipEntity *oo::NewShipObject(const Ref<cxx::ShipEntity> &ship, const std::string &key, const oo::PList &dict)
+{
+	if (ship == nullptr)  return nil;
+	OOCParameterAssert(AsObjCEntity(ship.get()) == nullptr);
+	return [[::ShipEntity alloc] cxx_initWithShipPart:ship.get() key:key definition:dict];
+}
+
+
 @implementation ShipEntity
 @end
 
@@ -89,9 +106,23 @@ MA 02110-1301, USA.
 
 - (id)cxx_initWithKey:(const std::string &)key definition:(const oo::PList &)dict
 {
+	return [[self initShipPart] initShipSetUpWithKey:key definition:dict];	// [super init], then the body
+}
+
+
+// -cxx_initWithKey:definition: of a ship made in C++ (oo::NewShipObject, bead oo-9ht.183): the part
+// it was made with, stored once, then the same body.
+- (id) cxx_initWithShipPart:(cxx::ShipEntity *)ship key:(const std::string &)key definition:(const oo::PList &)dict
+{
+	return [[self initWithCxxEntity:ship] initShipSetUpWithKey:key definition:dict];
+}
+
+
+// -cxx_initWithKey:definition:'s body after [super init] (moved here by bead oo-9ht.183, unchanged).
+- (id) initShipSetUpWithKey:(const std::string &)key definition:(const oo::PList &)dict
+{
 	OOJS_PROFILE_ENTER
 
-	self = [self initShipPart];	// [super init]
 	if (self == nil)  return nil;
 
 	_cxxShip->initWithKey(key);
@@ -1303,6 +1334,28 @@ PlayerEntity *PlayerEntityPart(cxx::ShipEntity *ship)
 }
 
 
+/*	The proxy's dials (bead oo-9ht.183): its facade, a subclass of this one, answered these itself
+	(the shaders of the shipyard's and the doppelganger's ships bind them by name), so for a proxy's
+	part these answer the proxy's members, and -respondsToSelector: answers them.
+*/
+ProxyPlayerEntity *ProxyPart(cxx::ShipEntity *ship)
+{
+	return dynamic_cast<ProxyPlayerEntity *>(ship);
+}
+
+
+bool IsProxySelectorCalledByName(SEL selector)
+{
+	static const std::unordered_set<std::string> names =
+	{
+		"fuelLeakRate", "massLocked", "atHyperspeed", "dialForwardShield", "dialAftShield",
+		"dialMissileStatus", "dialFuelScoopStatus", "compassMode", "dialIdentEngaged",
+		"trumbleCount", "tradeInFactor",
+	};
+	return names.contains(sel_getName(selector));
+}
+
+
 bool IsPlayerSelectorCalledByName(SEL selector)
 {
 	static const std::unordered_set<std::string> names =
@@ -1834,9 +1887,11 @@ bool IsPlayerSelectorCalledByName(SEL selector)
 
 - (BOOL) respondsToSelector:(SEL)selector
 {
-	// A subclass facade that answers the selector itself (ProxyPlayerEntity's dials) still does.
+	// A subclass facade that answers the selector itself still does; a proxy's part answers its dials
+	// (its facade answered them until bead oo-9ht.183).
 	if (IsPlayerSelectorCalledByName(selector) && class_getMethodImplementation(object_getClass(self), selector) == class_getMethodImplementation([ShipEntity class], selector))
 	{
+		if (IsProxySelectorCalledByName(selector) && ProxyPart(_cxxShip) != nullptr)  return YES;
 		return PlayerEntityPart(_cxxShip) != nullptr;
 	}
 	return [super respondsToSelector:selector];
@@ -1893,8 +1948,8 @@ bool IsPlayerSelectorCalledByName(SEL selector)
 - (Vector) viewpointOffsetStarboard	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->viewpointOffsetStarboard() : kZeroVector; }
 - (HPVector) viewpointPosition	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->viewpointPosition() : kZeroHPVector; }
 - (BOOL) massLockable	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->getMassLockable() : NO; }
-- (BOOL) massLocked	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->massLocked() : NO; }
-- (BOOL) atHyperspeed	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->atHyperspeed() : NO; }
+- (BOOL) massLocked	{ if (ProxyPlayerEntity *proxy = ProxyPart(_cxxShip))  return proxy->massLocked(); PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->massLocked() : NO; }
+- (BOOL) atHyperspeed	{ if (ProxyPlayerEntity *proxy = ProxyPart(_cxxShip))  return proxy->atHyperspeed(); PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->atHyperspeed() : NO; }
 - (float) occlusionLevel	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->occlusionLevel() : float{}; }
 - (void) setDockedAtMainStation	{ if (PlayerEntity *player = PlayerEntityPart(_cxxShip))  player->setDockedAtMainStation(); }
 - (StationEntity *) dockedStation	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->dockedStation() : nil; }
@@ -1914,8 +1969,8 @@ bool IsPlayerSelectorCalledByName(SEL selector)
 - (GLfloat) dialYaw	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->dialYaw() : GLfloat{}; }
 - (GLfloat) dialSpeed	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->dialSpeed() : GLfloat{}; }
 - (GLfloat) dialHyperSpeed	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->dialHyperSpeed() : GLfloat{}; }
-- (GLfloat) dialForwardShield	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->dialForwardShield() : GLfloat{}; }
-- (GLfloat) dialAftShield	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->dialAftShield() : GLfloat{}; }
+- (GLfloat) dialForwardShield	{ if (ProxyPlayerEntity *proxy = ProxyPart(_cxxShip))  return proxy->dialForwardShield(); PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->dialForwardShield() : GLfloat{}; }
+- (GLfloat) dialAftShield	{ if (ProxyPlayerEntity *proxy = ProxyPart(_cxxShip))  return proxy->dialAftShield(); PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->dialAftShield() : GLfloat{}; }
 - (GLfloat) dialEnergy	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->dialEnergy() : GLfloat{}; }
 - (GLfloat) dialMaxEnergy	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->dialMaxEnergy() : GLfloat{}; }
 - (GLfloat) dialFuel	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->dialFuel() : GLfloat{}; }
@@ -1926,21 +1981,21 @@ bool IsPlayerSelectorCalledByName(SEL selector)
 - (BOOL) clockAdjusting	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->clockAdjusting() : NO; }
 - (double) escapePodRescueTime	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->escapePodRescueTime() : double{}; }
 - (unsigned) countMissiles	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->countMissiles() : unsigned{}; }
-- (OOMissileStatus) dialMissileStatus	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->dialMissileStatus() : OOMissileStatus{}; }
-- (OOFuelScoopStatus) dialFuelScoopStatus	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->dialFuelScoopStatus() : OOFuelScoopStatus{}; }
-- (float) fuelLeakRate	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->fuelLeakRate() : float{}; }
+- (OOMissileStatus) dialMissileStatus	{ if (ProxyPlayerEntity *proxy = ProxyPart(_cxxShip))  return proxy->dialMissileStatus(); PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->dialMissileStatus() : OOMissileStatus{}; }
+- (OOFuelScoopStatus) dialFuelScoopStatus	{ if (ProxyPlayerEntity *proxy = ProxyPart(_cxxShip))  return proxy->dialFuelScoopStatus(); PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->dialFuelScoopStatus() : OOFuelScoopStatus{}; }
+- (float) fuelLeakRate	{ if (ProxyPlayerEntity *proxy = ProxyPart(_cxxShip))  return proxy->fuelLeakRate(); PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->fuelLeakRate() : float{}; }
 - (void) addRoleForMining	{ if (PlayerEntity *player = PlayerEntityPart(_cxxShip))  player->addRoleForMining(); }
 - (void) cxx_addRoleToPlayer:(const std::string &)role	{ if (PlayerEntity *player = PlayerEntityPart(_cxxShip))  player->addRoleToPlayer(role); }
 - (NSUInteger) maxPlayerRoles	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->maxPlayerRoles() : NSUInteger{}; }
 - (void) updateSystemMemory	{ if (PlayerEntity *player = PlayerEntityPart(_cxxShip))  player->updateSystemMemory(); }
 - (Entity *) compassTarget	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->getCompassTarget() : nil; }
 - (void) validateCompassTarget	{ if (PlayerEntity *player = PlayerEntityPart(_cxxShip))  player->validateCompassTarget(); }
-- (OOCompassMode) compassMode	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->getCompassMode() : OOCompassMode{}; }
+- (OOCompassMode) compassMode	{ if (ProxyPlayerEntity *proxy = ProxyPart(_cxxShip))  return proxy->compassMode(); PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->getCompassMode() : OOCompassMode{}; }
 - (void) setPrevCompassMode	{ if (PlayerEntity *player = PlayerEntityPart(_cxxShip))  player->setPrevCompassMode(); }
 - (void) setNextCompassMode	{ if (PlayerEntity *player = PlayerEntityPart(_cxxShip))  player->setNextCompassMode(); }
 - (NSUInteger) activeMissile	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->getActiveMissile() : NSUInteger{}; }
 - (NSUInteger) dialMaxMissiles	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->dialMaxMissiles() : NSUInteger{}; }
-- (BOOL) dialIdentEngaged	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->dialIdentEngaged() : NO; }
+- (BOOL) dialIdentEngaged	{ if (ProxyPlayerEntity *proxy = ProxyPart(_cxxShip))  return proxy->dialIdentEngaged(); PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->dialIdentEngaged() : NO; }
 - (void) selectNextMultiFunctionDisplay	{ if (PlayerEntity *player = PlayerEntityPart(_cxxShip))  player->selectNextMultiFunctionDisplay(); }
 - (void) selectPreviousMultiFunctionDisplay	{ if (PlayerEntity *player = PlayerEntityPart(_cxxShip))  player->selectPreviousMultiFunctionDisplay(); }
 - (NSUInteger) activeMFD	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->getActiveMFD() : NSUInteger{}; }
@@ -1958,7 +2013,7 @@ bool IsPlayerSelectorCalledByName(SEL selector)
 - (void) currentWeaponStats	{ if (PlayerEntity *player = PlayerEntityPart(_cxxShip))  player->currentWeaponStats(); }
 - (BOOL) weaponsOnline	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->weaponsOnline() : NO; }
 - (BOOL) fireMainWeapon	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->fireMainWeapon() : NO; }
-- (ProxyPlayerEntity *) createDoppelganger	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->createDoppelganger() : nil; }
+- (ShipEntity *) createDoppelganger	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->createDoppelganger() : nil; }
 - (void) rotateCargo	{ if (PlayerEntity *player = PlayerEntityPart(_cxxShip))  player->rotateCargo(); }
 - (BOOL) takeInternalDamage	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->takeInternalDamage() : NO; }
 - (void) loseTargetStatus	{ if (PlayerEntity *player = PlayerEntityPart(_cxxShip))  player->loseTargetStatus(); }
@@ -2000,14 +2055,14 @@ bool IsPlayerSelectorCalledByName(SEL selector)
 - (void) validateCustomEquipActivationArray	{ if (PlayerEntity *player = PlayerEntityPart(_cxxShip))  player->validateCustomEquipActivationArray(); }
 - (void) addEquipmentFromCollection:(const oo::PList &)equipment	{ if (PlayerEntity *player = PlayerEntityPart(_cxxShip))  player->addEquipmentFromCollection(equipment); }
 - (void) getFined	{ if (PlayerEntity *player = PlayerEntityPart(_cxxShip))  player->getFined(); }
-- (int) tradeInFactor	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->tradeInFactor() : int{}; }
+- (int) tradeInFactor	{ if (ProxyPlayerEntity *proxy = ProxyPart(_cxxShip))  return proxy->tradeInFactor(); PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->tradeInFactor() : int{}; }
 - (double) renovationCosts	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->renovationCosts() : double{}; }
 - (double) renovationFactor	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->renovationFactor() : double{}; }
 - (void) setDefaultViewOffsets	{ if (PlayerEntity *player = PlayerEntityPart(_cxxShip))  player->setDefaultViewOffsets(); }
 - (void) setDefaultCustomViews	{ if (PlayerEntity *player = PlayerEntityPart(_cxxShip))  player->setDefaultCustomViews(); }
 - (Vector) weaponViewOffset	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->weaponViewOffset() : kZeroVector; }
 - (void) setUpTrumbles	{ if (PlayerEntity *player = PlayerEntityPart(_cxxShip))  player->setUpTrumbles(); }
-- (NSUInteger) trumbleCount	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->getTrumbleCount() : NSUInteger{}; }
+- (NSUInteger) trumbleCount	{ if (ProxyPlayerEntity *proxy = ProxyPart(_cxxShip))  return proxy->trumbleCount(); PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->getTrumbleCount() : NSUInteger{}; }
 - (oo::PList)trumbleValue	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->trumbleValue() : oo::PList(); }
 - (void) setTrumbleValueFrom:(const oo::PList &) trumbleValue	{ if (PlayerEntity *player = PlayerEntityPart(_cxxShip))  player->setTrumbleValueFrom(trumbleValue); }
 - (float) trumbleAppetiteAccumulator	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->trumbleAppetiteAccumulator() : float{}; }

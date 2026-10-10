@@ -1571,6 +1571,13 @@ GLfloat ShipEntityPlayerBaseMass(void);	// [PLAYER baseMass]
 
 namespace oo {
 
+/*	A ship made in C++ (bead oo-9ht.183, ADR-0056 amendment oo-9ht.183): its object, the ship's
+	facade, holding ship, set up from the definition as -cxx_initWithKey:definition: sets up an
+	Objective-C ship; retained (+1), as +alloc/-init's object was, or nil when the set-up fails
+	(the failing initialiser released it). The proxy is made this way.
+*/
+::ShipEntity *NewShipObject(const Ref<cxx::ShipEntity> &ship, const std::string &key, const oo::PList &dict) OO_RETURNS_RETAINED;
+
 // The root's crossings, typed (amendment oo-up4b item 3).
 inline cxx::ShipEntity *ToCxx(::ShipEntity *entity)
 {
