@@ -6267,3 +6267,53 @@ virtual members (`getJSClass()`, `jsClassName()`, `isVisibleToScripts()`, overri
 leaf); the selectors are what the engine and the bindings send to objects, so they stay where the
 objects are until oo-9ht.39 makes the engine take C++ entities (amendment oo-ppc item 5).
 `test_EntityOOJavaScriptExtensions` still sends them to entities' objects and is unchanged.
+
+## Amendment (beads oo-9ht.181, oo-9ht.169, oo-9ht.170, oo-9ht.96): a binding's send functions inlined while the universe and the root entity facade are still Objective-C
+
+- Date: 2026-10-10. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch Q
+  (one branch). Exemplar: `src/Core/Scripting/OOJSShip.mm`, `OOJSSystem.mm`, `OOJSPlayerShip.mm`,
+  `src/Core/Debug/OOJSConsole.mm`.
+  Follows amendments oo-luhd, oo-ft5n and oo-18mg2, and the precedent of `OOJSStation.mm`
+  (oo-qps.62, oo-9ht.97).
+
+**Context.** `OOJSShip+ObjCBridge`, `OOJSSystem+ObjCBridge` and `OOJSPlayerShip+ObjCBridge` held
+one-line functions for the bindings' sends to classes that were Objective-C when the slices ran.
+Since then the player (oo-a70, oo-9ht.177), the ship family (oo-9ht.144) and the GUI (oo-9ht.143)
+are C++, so most bodies were already nil-guarded member calls; the rest message the universe
+(`UNIVERSE`, still the facade over `cxx::Universe`, oo-pas), the engine's facade
+(`+sharedEngine`), `OONull`, a weak reference, a deferred call by selector (`-dumpCargo`) and an
+entity's `-isVisibleToScripts`. The PlayerEntity JS category the PlayerShip bridge once held went
+with the player's facade (oo-9ht.177).
+
+**Decision (recommended defaults).**
+
+1. **Each function is inlined at its call and the bridge pair, its meson line and its import go**
+   (generated, `.agent-tmp/cc/batchQ/inline.py`, then read): a body `return E;` becomes `E`
+   (parenthesised where an operator needs it), a void body `if (p != nullptr)  p->m(...);` stays a
+   statement, the parameters replaced by the arguments. The nil guard is kept wherever the
+   function had one, so a null player answers the same value-initialised result. Where an
+   argument with an effect would have been evaluated twice (`OOPlayerForScripting()`,
+   `oo::ToShip(ships[0].get())`) it is a local first.
+2. **A send to a class that is still Objective-C stays a message, written in the binding**, as
+   `OOJSStation.mm` and every converted entity class already send `[UNIVERSE ...]`: it is the same
+   message the bridge sent, so each binding test's `FakeUniverse` and the engine's stand-ins answer
+   unchanged. It becomes a member call with the universe's conversion (oo-pas) or with the root
+   entity facade's deletion (oo-9ht.39: `-isVisibleToScripts`, `-dumpCargo` by selector), not
+   here. The bindings therefore contain Objective-C message syntax again; their files' notes say
+   so.
+3. **oo-9ht.96: the console's `-inspect` the same way.** `OOJSConsole+ObjCBridge` held only
+   `OOJSConsoleInspect()`: `-inspect` (added to `Entity` by the Mac debug OXP's inspector, never
+   built today) sent to an entity that answers it. Its bead waited for the root facade's deletion or
+   for the inspector to be dropped; dropping it would change `test_OOJSConsole`'s `inspectEntity`
+   expectation (an entity that answers `-inspect` is asked once), so instead the category
+   declaration and the `-respondsToSelector:` test move into `OOJSConsole.mm` unchanged (it already
+   messages objects: `-cxx_oo_jsClassName` for `callObjC()`), and the bridge pair, its meson line
+   and its `test_OOJSConsole` link entry go. When the root facade goes (oo-9ht.39) the send becomes
+   the C++ entity's inspector hook, or nothing, with that bead's note.
+4. **No test expectation changes.** The binding tests link the whole game and never named the bridge
+   functions (`test_OOJSConsole`'s meson entry only stops linking the deleted file); no test file
+   changes, and every expectation and the js-api-contract are unchanged.
+
+**Consequences.** Four bridge pairs fewer; the bindings' and the console's remaining Objective-C is
+exactly their sends to the universe, the engine's facade and the root entity facade, which go with
+those classes.

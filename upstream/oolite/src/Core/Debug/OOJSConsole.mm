@@ -46,11 +46,23 @@ SOFTWARE.
 #import "ResourceManager.h"
 #import "OOObjCPList.h"
 #import "OOLogHeader.h"	// OOPlatformDescription()
-#import "OOJSConsole+ObjCBridge.h"	// an entity's -inspect
+#import "Entity.h"	// an entity's -inspect
 
 #include "oofnd/String.hpp"
 
 
+
+
+// The Mac debug OXP's inspector adds -inspect to entities (a category on Entity); inspectEntity()
+// sends it to an entity that answers it. OOJSConsole+ObjCBridge.mm held the send until bead
+// oo-9ht.96 (ADR-0056 amendment oo-9ht.181): it is a message while the entity's object is the
+// root's facade (oo-9ht.39).
+@interface Entity (OODebugInspector)
+
+// Method added by inspector in Debug OXP under OS X only.
+- (void) inspect;
+
+@end
 
 
 static ooscript::Object sConsolePrototype = NULL;
@@ -738,7 +750,7 @@ static bool ConsoleInspectEntity(ooscript::Context context, ooscript::CallArgs &
 	if (JSValueToEntity(context, OOJS_ARGV[0], &entity))
 	{
 		OOJS_BEGIN_FULL_NATIVE(context)
-		OOJSConsoleInspect(entity);	// -inspect, if the entity has it
+		if ([entity respondsToSelector:@selector(inspect)])  [entity inspect];	// -inspect, if the entity has it (nothing for nil)
 		OOJS_END_FULL_NATIVE
 	}
 	
