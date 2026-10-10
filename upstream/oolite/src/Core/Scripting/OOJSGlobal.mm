@@ -1063,7 +1063,7 @@ static bool GlobalAutoAIForRole(ooscript::Context context, ooscript::CallArgs &o
 		return false;
 	}
 
-	const oo::PList autoAIMap = [ResourceManager cxx_dictionaryFromFilesNamed:"autoAImap.plist" inFolder:"Config" andMerge:true];
+	const oo::PList autoAIMap = ResourceManager::dictionaryFromFilesNamed("autoAImap.plist", "Config", true);
 	std::optional<std::string> autoAI = StringFromPList(autoAIMap.find(*string));
 
 	OOJS_RETURN_STRING_OR_NULL(autoAI);

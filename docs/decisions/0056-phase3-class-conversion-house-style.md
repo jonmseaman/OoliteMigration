@@ -6890,3 +6890,44 @@ compiler; the classes left namespace `cxx`.
 **Consequences.** No Objective-C `OOShipRegistry`, `OOOpenGLExtensionManager`, `OOAsyncWorkManager`,
 `OOCacheManager` or `OOAsyncWorkTask` is left. `OOTextureLoader`'s facade (oo-9ht.114) no longer
 depends on the work manager's.
+
+
+## Amendment (bead oo-9ht.150 (ResourceManager)): the resource manager's facade is deleted; the class is the global C++ ResourceManager
+
+- Date: 2026-10-10. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch X
+  (one branch, as batches B-W): bead oo-9ht.150. Exemplar: `src/Core/ResourceManager.h/.mm`,
+  `tests/unit/core/test_ResourceManager.mm`, `tests/unit/core/test_AI.mm` (a stand-in of the statics).
+
+**Context.** All four slices of `ResourceManager.mm` were static members of `cxx::ResourceManager`
+(oo-jfno, oo-he11, oo-elve, oo-5dzou); `ResourceManager+ObjCBridge` was an Objective-C class whose
+class methods only forwarded to them, and every remaining sender (the universe, the player, the
+HUD, the OXZ manager, the ship registry, the verifier stages, the bindings, the material code, the
+SDL view; 220 sends in 54 files including tests) was C++ code sending `[(::)ResourceManager cxx_y:...]`.
+
+**Decision (recommended defaults).**
+
+1. **A class method's send is a call of the static member it forwarded to**
+   (`[ResourceManager cxx_pathForFileNamed:f inFolder:d]` -> `ResourceManager::pathForFileNamed(f, d)`;
+   the `cxx_` prefix goes, the first selector part names the member, `YES`/`NO` arguments stay). The
+   class is never made, so there is no receiver to guard. Rewritten by batch W's balanced-bracket
+   codemod (`sends.py`, with a static-call rule) and checked by the compiler.
+2. **The class leaves namespace `cxx`**: `cxx::ResourceManager` is the global `ResourceManager` and
+   the transitional import of the facade header at the end of `ResourceManager.h` goes. Both
+   bridge files and their `src/Core/meson.build` entry are deleted.
+3. **One-send wrappers of the facade in other bridges go with it** (amendment oo-9ht.139 items 3-4:
+   "each goes with its class's conversion"): `HeadUpDisplayDictionaryFromFilesNamed()` and
+   `OOJavaScriptEngineDictionaryFromFilesNamed()` are replaced at their one call site each by
+   `ResourceManager::dictionaryFromFilesNamed()`. `OOStringExpanderResourceManagerWhitelistDictionary()`
+   stays with the rest of the expander's bridge (bead oo-9ht.159, which also waits on Universe);
+   its body is the static call.
+4. **Tests** (standing approval oo-9n5p9; one approval line per file): the Objective-C
+   `@interface/@implementation ResourceManager` stand-ins (35 core tests) become C++ definitions of
+   the statics they stood in for, with the stand-ins' bodies and answers and the header's parameter
+   types (where a stand-in declared the folder as `std::string`, it is the header's
+   `std::optional<std::string>`, read with `value_or("")`; an unused parameter is left unnamed); the
+   expander and sysdesc harness stubs declare a C++ class with the statics they define;
+   `test_ResourceManager`'s sends call the same members with every expectation kept. No test case
+   is retired.
+
+**Consequences.** No Objective-C `ResourceManager` is left in the game or the tests. The expander's
+bridge (oo-9ht.159) now waits only on Universe (oo-pas).

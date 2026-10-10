@@ -38,9 +38,9 @@ void cxx::MyOpenGLView::initKeyMappingData()
 {
 	// load in our keyboard scancode mappings
 #if OOLITE_WINDOWS	
-	const oo::PList kmap = [::ResourceManager cxx_dictionaryFromFilesNamed:"keymappings_windows.plist" inFolder:"Config" mergeMode:MERGE_BASIC cache:NO];
+	const oo::PList kmap = ResourceManager::dictionaryFromFilesNamed("keymappings_windows.plist", "Config", MERGE_BASIC, NO);
 #else
-	const oo::PList kmap = [::ResourceManager cxx_dictionaryFromFilesNamed:"keymappings_linux.plist" inFolder:"Config" mergeMode:MERGE_BASIC cache:NO];
+	const oo::PList kmap = ResourceManager::dictionaryFromFilesNamed("keymappings_linux.plist", "Config", MERGE_BASIC, NO);
 #endif
 	// get the stored keyboard code from preferences (oo_stringForKey:defaultValue: over the value)
 	const oo::PList kbdValue = oo::Defaults::standard().object("keyboard-code");

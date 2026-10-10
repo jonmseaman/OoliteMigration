@@ -88,10 +88,7 @@ public:
 	NSPoint _coordinates = {};
 };
 
-@interface ResourceManager: OOObject
-+ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName mergeMode:(int)mergeMode cache:(BOOL)useCache;
-+ (oo::PList) cxx_manifestForIdentifier:(const std::string &)identifier;
-@end
+#import "ResourceManager.h"
 
 // A station: C++ since bead oo-9ht.175 deleted the Objective-C station this stood in for; the
 // members the commodities call, declared as StationEntity.h declares them (the test imports no
@@ -243,10 +240,10 @@ oo::PList OOJSScript::propertyNamed(const std::string &name)
 }
 
 
-@implementation ResourceManager
-
+// ResourceManager is C++ since bead oo-9ht.150 deleted its Objective-C facade: C++ definitions of the
+// statics the code under test calls, with the Objective-C stand-in's answers.
 // trade-goods.plist: food, with no random spread.
-+ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName mergeMode:(int)mergeMode cache:(BOOL)useCache
+oo::PList ResourceManager::dictionaryFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, OOResourceMergeMode mergeMode, bool useCache)
 {
 	(void)fileName; (void)folderName; (void)mergeMode; (void)useCache;
 	return Dict({ { "food", Dict({ { "name", oo::PList("Food") }, { "quantity_unit", oo::PList(0) }, { "peak_export", oo::PList(7) }, { "peak_import", oo::PList(0) },
@@ -254,12 +251,11 @@ oo::PList OOJSScript::propertyNamed(const std::string &name)
 		{ "quantity_average", oo::PList(40) }, { "quantity_economic", oo::PList(0.5) }, { "quantity_random", oo::PList(0) } }) } });
 }
 
-+ (oo::PList) cxx_manifestForIdentifier:(const std::string &)identifier
+oo::PList ResourceManager::manifestForIdentifier(const std::string &identifier)
 {
 	return oo::PList(oo::PList::Dict{ { "identifier", oo::PList(identifier) } });
 }
 
-@end
 
 
 oo::PList StationEntity::getMarketDefinition()					{ std::abort(); }

@@ -100,9 +100,7 @@ public:
 - (BOOL) cxx_snapShot:(const std::optional<std::string> &)filename;
 @end
 
-@interface ResourceManager: OOObject
-+ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName andMerge:(BOOL)mergeFiles;
-@end
+#import "ResourceManager.h"
 
 // The Objective-C engine, which OOJSGuiScreenKeyDefinition.mm (linked here) still messages for its
 // reset-notification observer and its JS calls; nothing more of it is needed.
@@ -251,15 +249,14 @@ void GuiDisplayGen::setArray(const std::vector<std::string> &, OOGUIRow)  { std:
 @end
 
 
-@implementation ResourceManager
-
-+ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName andMerge:(BOOL)mergeFiles
+// ResourceManager is C++ since bead oo-9ht.150 deleted its Objective-C facade: C++ definitions of the
+// statics the code under test calls, with the Objective-C stand-in's answers.
+oo::PList ResourceManager::dictionaryFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool mergeFiles)
 {
 	if (fileName != "autoAImap.plist" || folderName != std::optional<std::string>("Config") || !mergeFiles)  return oo::PList();
 	return oo::PList(oo::PList::Dict{ { "trader", oo::PList(std::string("oolite-traderAI.js")) }, { "number", oo::PList(3.0) } });
 }
 
-@end
 
 
 /*	The engine, as far as log() sees it: the C++ engine's monitor member, declared with the

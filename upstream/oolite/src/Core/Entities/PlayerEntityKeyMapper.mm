@@ -203,7 +203,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 // sets up a copy of the raw keyconfig.plist file so we can run checks against it to tell if a key is set to default
 void PlayerEntity::initCheckingDictionary()
 {
-	const oo::PList kdicmaster = [::ResourceManager cxx_dictionaryFromFilesNamed:"keyconfig2.plist" inFolder:std::optional<std::string>("Config") mergeMode:MERGE_BASIC cache:NO];
+	const oo::PList kdicmaster = ResourceManager::dictionaryFromFilesNamed("keyconfig2.plist", std::optional<std::string>("Config"), MERGE_BASIC, NO);
 	const std::string kbd = KeyboardCode();
 	const oo::PList *kdicValue = kdicmaster.get<oo::PList::Dict>(kbd);
 	oo::PList::Dict kdic = (kdicValue != nullptr) ? *kdicValue->getIf<oo::PList::Dict>() : oo::PList::Dict();
@@ -1317,7 +1317,7 @@ void PlayerEntity::handleKeyboardLayoutEntryKeys(::GuiDisplayGen *gui, ::MyOpenG
 
 std::optional<std::string> PlayerEntity::keyboardDescription(const std::string &kbd)
 {
-	const oo::PList kmap = [::ResourceManager cxx_dictionaryFromFilesNamed:KeyMappingsFileName() inFolder:std::optional<std::string>("Config") mergeMode:MERGE_BASIC cache:NO];
+	const oo::PList kmap = ResourceManager::dictionaryFromFilesNamed(KeyMappingsFileName(), std::optional<std::string>("Config"), MERGE_BASIC, NO);
 	const oo::PList *sect = kmap.find(kbd);
 	return sect != nullptr ? OptionalStringForKey(*sect, "description") : std::nullopt;
 }
@@ -1325,7 +1325,7 @@ std::optional<std::string> PlayerEntity::keyboardDescription(const std::string &
 
 std::vector<oo::PList> PlayerEntity::keyboardLayoutList()
 {
-	const oo::PList kmap = [::ResourceManager cxx_dictionaryFromFilesNamed:KeyMappingsFileName() inFolder:std::optional<std::string>("Config") mergeMode:MERGE_BASIC cache:NO];
+	const oo::PList kmap = ResourceManager::dictionaryFromFilesNamed(KeyMappingsFileName(), std::optional<std::string>("Config"), MERGE_BASIC, NO);
 	std::vector<oo::PList> kbdList;
 	oo::PList def;
 

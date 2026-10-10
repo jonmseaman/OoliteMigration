@@ -64,22 +64,19 @@ BOOL OOUniformBindingPermitted(const std::string &propertyName, id bindingTarget
 // The resource manager: the extension manager's two class methods, and shader files from a table.
 static std::map<std::string, std::string> gShaderFiles;
 
-@interface ResourceManager: OOObject
-+ (std::vector<std::string>) cxx_paths;
-+ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName inFolder:(const std::string &)folderName andMerge:(BOOL)mergeFiles;
-+ (std::optional<std::string>) cxx_stringFromFilesNamed:(const std::string &)fileName inFolder:(const std::string &)folderName;
-@end
+#import "ResourceManager.h"
 
-@implementation ResourceManager
-+ (std::vector<std::string>) cxx_paths  { return {}; }
-+ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName inFolder:(const std::string &)folderName andMerge:(BOOL)mergeFiles  { return oo::PList(oo::PList::Dict{}); }
-+ (std::optional<std::string>) cxx_stringFromFilesNamed:(const std::string &)fileName inFolder:(const std::string &)folderName
+// ResourceManager is C++ since bead oo-9ht.150 deleted its Objective-C facade: C++ definitions of the
+// statics the code under test calls, with the Objective-C stand-in's answers.
+std::vector<std::string> ResourceManager::paths()  { return {}; }
+oo::PList ResourceManager::dictionaryFromFilesNamed(const std::string &/*fileName*/, const std::optional<std::string> &/*folderName*/, bool /*mergeFiles*/)  { return oo::PList(oo::PList::Dict{}); }
+std::optional<std::string> ResourceManager::stringFromFilesNamed(const std::string &fileName, const std::optional<std::string> &/*folderName*/)
 {
 	auto found = gShaderFiles.find(fileName);
 	if (found == gShaderFiles.end())  return std::nullopt;
 	return found->second;
 }
-@end
+
 
 
 // OORegExpMatcher is C++ since its facade was deleted (bead oo-9ht.12): the stub answers no match.

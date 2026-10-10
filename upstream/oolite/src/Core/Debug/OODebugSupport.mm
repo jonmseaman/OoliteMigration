@@ -49,13 +49,10 @@ void OOInitDebugSupport(void)
 	bool						activateDebugConsole = false;
 
 	// Load debug settings.
-	debugSettings = [ResourceManager cxx_dictionaryFromFilesNamed:"debugConfig.plist"
-																  inFolder:"Config"
-																 mergeMode:MERGE_BASIC
-																	 cache:NO];
+	debugSettings = ResourceManager::dictionaryFromFilesNamed("debugConfig.plist", "Config", MERGE_BASIC, NO);
 
 	// Check that the debug OXP is installed. If not, we don't enable debug support.
-	debugOXPPath = [ResourceManager cxx_pathForFileNamed:"DebugOXPLocatorBeacon.magic" inFolder:"nil"];
+	debugOXPPath = ResourceManager::pathForFileNamed("DebugOXPLocatorBeacon.magic", "nil");
 	if (debugOXPPath.has_value())
 	{
 		// The debug plug-in (Mac Contents/PlugIns/Debug.bundle) is never loaded on the platforms

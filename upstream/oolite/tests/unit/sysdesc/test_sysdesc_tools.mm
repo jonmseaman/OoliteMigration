@@ -93,23 +93,20 @@ void OOLogWithFunctionFileAndLine(NSString *cls, const char *fn, const char *fil
 }
 
 
-@implementation ResourceManager
-+ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName
-								  inFolder:(const std::optional<std::string> &)folderName
-								  andMerge:(BOOL)mergeFiles
+// ResourceManager is C++ since bead oo-9ht.150 deleted its Objective-C facade.
+oo::PList ResourceManager::dictionaryFromFilesNamed(const std::string &fileName, const std::optional<std::string> & /*folderName*/, bool /*mergeFiles*/)
 {
 	if (fileName == "sysdesc.plist")  return sSysdesc;
 	if (fileName == "sysdesc_key_table.plist")  return sKeyTable;
 	return oo::PList();
 }
 
-+ (BOOL) cxx_writeDiagnosticData:(const oo::Data &)data toFileNamed:(const std::string &)name
+bool ResourceManager::writeDiagnosticData(const oo::Data &data, const std::string &name)
 {
 	sWritten[name] = data;
 	sLines.push_back(oo::str::format("file %s %zu %016llx", name.c_str(), data.length(), (unsigned long long)FNV1a(data.bytes(), data.length())));
 	return YES;
 }
-@end
 
 
 @implementation Universe

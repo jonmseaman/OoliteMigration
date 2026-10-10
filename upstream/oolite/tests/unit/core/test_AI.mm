@@ -43,27 +43,23 @@ std::vector<std::string> gLog;
 }	// namespace
 
 
-@interface ResourceManager: OOObject
-+ (std::optional<std::string>) cxx_pathForFileNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName;
-+ (oo::PList) cxx_whitelistDictionary;
-@end
+#import "ResourceManager.h"
 
 
-@implementation ResourceManager
-
-+ (std::optional<std::string>) cxx_pathForFileNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName
+// ResourceManager is C++ since bead oo-9ht.150 deleted its Objective-C facade: C++ definitions of the
+// statics the code under test calls, with the Objective-C stand-in's answers.
+std::optional<std::string> ResourceManager::pathForFileNamed(const std::string &fileName, const std::optional<std::string> &folderName)
 {
 	if (gAIFiles.find(fileName) == gAIFiles.end())  return std::nullopt;
 	return folderName.value_or("") + "/" + fileName;
 }
 
 
-+ (oo::PList) cxx_whitelistDictionary
+oo::PList ResourceManager::whitelistDictionary()
 {
 	return gWhitelist;
 }
 
-@end
 
 
 oo::PList cxx_OOPropertyListFromFile(const std::string &path)

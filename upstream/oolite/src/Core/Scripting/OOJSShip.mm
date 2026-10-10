@@ -3531,7 +3531,7 @@ bool ShipSetMaterialsInternal(ooscript::Context context, ooscript::CallArgs &ooj
 	OOJS_BEGIN_FULL_NATIVE(context)
 	const oo::PList			shipDict = ship->shipInfoDictionary();
 	// "ship-prefix-macros": a dictionary, else null (as the dictionary reader gave nil).
-	const oo::PList			materialDefaults = cxx::ResourceManager::materialDefaults();
+	const oo::PList			materialDefaults = ResourceManager::materialDefaults();
 	const oo::PList			*prefixMacros = materialDefaults.find("ship-prefix-macros");
 
 	// First we test to see if we can create the mesh.

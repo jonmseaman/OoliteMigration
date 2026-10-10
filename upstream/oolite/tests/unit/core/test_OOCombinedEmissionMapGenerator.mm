@@ -88,7 +88,7 @@ void SetUp()
 		OO_CHECK(WritePNG("i.png", 8, PNG_FORMAT_GRAY, 100));
 		OO_CHECK(WritePNG("d.png", 8, PNG_FORMAT_RGB, 128));
 		OO_CHECK(WritePNG("c.png", 8, PNG_FORMAT_RGBA, 200));
-		[ResourceManager cxx_setUseAddOns:std::string(SCENARIO_OXP_DEFINITION_NONE)];	// strict: the built-in Resources alone
+		ResourceManager::setUseAddOns(std::string(SCENARIO_OXP_DEFINITION_NONE));	// strict: the built-in Resources alone
 	}
 	@autoreleasepool
 	{

@@ -74,11 +74,7 @@ OOAsyncWorkManager *OOAsyncWorkManager::sharedAsyncWorkManager()  { std::abort()
 
 
 // The stand-in ResourceManager: the files the registry reads, by name; everything else absent.
-@interface ResourceManager: OOObject
-+ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName mergeMode:(int)mergeMode cache:(BOOL)useCache;
-+ (oo::PList) cxx_arrayFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName andMerge:(BOOL)mergeFiles cache:(BOOL)useCache;
-+ (std::optional<std::string>) cxx_pathForFileNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName;
-@end
+#import "ResourceManager.h"
 
 
 namespace {
@@ -135,28 +131,27 @@ oo::PList FileNamed(const std::string &name)
 }	// namespace
 
 
-@implementation ResourceManager
-
-+ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName mergeMode:(int)mergeMode cache:(BOOL)useCache
+// ResourceManager is C++ since bead oo-9ht.150 deleted its Objective-C facade: C++ definitions of the
+// statics the code under test calls, with the Objective-C stand-in's answers.
+oo::PList ResourceManager::dictionaryFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, OOResourceMergeMode mergeMode, bool useCache)
 {
 	(void)folderName; (void)mergeMode; (void)useCache;
 	return FileNamed(fileName);
 }
 
 
-+ (oo::PList) cxx_arrayFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName andMerge:(BOOL)mergeFiles cache:(BOOL)useCache
+oo::PList ResourceManager::arrayFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool mergeFiles, bool useCache)
 {
 	(void)folderName; (void)mergeFiles; (void)useCache;
 	return FileNamed(fileName);
 }
 
 
-+ (std::optional<std::string>) cxx_pathForFileNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName
+std::optional<std::string> ResourceManager::pathForFileNamed(const std::string &fileName, const std::optional<std::string> &folderName)
 {
 	return folderName.value_or("") + "/" + fileName;
 }
 
-@end
 
 
 namespace {

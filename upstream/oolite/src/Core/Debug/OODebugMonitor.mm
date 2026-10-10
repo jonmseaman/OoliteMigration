@@ -75,9 +75,7 @@ static const char * const kOODebugMonitorApplicationWillTerminateNotificationNam
 void OODebugMonitor::init()
 {
 	{
-		_configFromOXPs = normalizeConfigDictionary([::ResourceManager cxx_dictionaryFromFilesNamed:"debugConfig.plist"
-																						  inFolder:"Config"
-																						  andMerge:YES]);
+		_configFromOXPs = normalizeConfigDictionary(ResourceManager::dictionaryFromFilesNamed("debugConfig.plist", "Config", YES));
 
 		_configOverrides = normalizeConfigDictionary(oo::Defaults::standard().dictionaryForKey("debug-settings-override"));
 
@@ -702,7 +700,7 @@ void OODebugMonitor::setUpDebugConsoleScript()
 
 	if (!path)
 	{
-		path = [::ResourceManager cxx_pathForFileNamed:"oolite-debug-console.js" inFolder:std::string("Scripts")];
+		path = ResourceManager::pathForFileNamed("oolite-debug-console.js", std::string("Scripts"));
 	}
 	if (path)
 	{

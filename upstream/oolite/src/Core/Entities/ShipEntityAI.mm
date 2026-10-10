@@ -125,7 +125,7 @@ void ShipEntity::setAITo(const std::string &aiString)	// called by name (ADR-005
 	}
 	else
 	{
-		const std::optional<std::string> path = [::ResourceManager cxx_pathForFileNamed:ai + ".js" inFolder:std::string("AIs")];
+		const std::optional<std::string> path = ResourceManager::pathForFileNamed(ai + ".js", std::string("AIs"));
 		if (!path) // no js, use plist
 		{
 			setAITo(ai + ".plist");

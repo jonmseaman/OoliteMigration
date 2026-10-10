@@ -73,9 +73,7 @@ public:
 
 class OOSoundSource;	// only handed on (OOSoundSource.h)
 
-@interface ResourceManager: OOObject
-+ (OOSound *) cxx_ooSoundNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName;
-@end
+#import "ResourceManager.h"
 
 /*	The music controller is C++ (bead oo-9ht.90 deleted its Objective-C facade): the members the
 	binding calls, declared as OOMusicController.h declares them (that header would bring the real
@@ -157,15 +155,14 @@ OOSound *OOSoundWithCustomSoundKey(const std::string &key)
 }
 
 
-@implementation ResourceManager
-
-+ (OOSound *) cxx_ooSoundNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName
+// ResourceManager is C++ since bead oo-9ht.150 deleted its Objective-C facade: C++ definitions of the
+// statics the code under test calls, with the Objective-C stand-in's answers.
+OOSound * ResourceManager::ooSoundNamed(const std::string &fileName, const std::optional<std::string> &folderName)
 {
 	if (fileName == "missing.ogg")  return nullptr;
 	return MakeSound((fileName == "raise" || fileName == "throw") ? fileName : folderName.value_or("") + "/" + fileName);
 }
 
-@end
 
 
 // The SoundSource binding's JS value for a source: a string naming the class, as the engine's

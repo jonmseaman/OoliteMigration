@@ -232,7 +232,7 @@ OO_TEST(paths)
 		OO_CHECK_EQ(DownloadPath().value_or("(none)"), oo::str::appendingPathComponent(cacheDirectory, "Oolite-download.oxz"));
 
 		// The extraction folder: the last user root, the blacklisted characters removed.
-		const std::vector<std::string> roots = [ResourceManager cxx_userRootPaths];
+		const std::vector<std::string> roots = ResourceManager::userRootPaths();
 		OO_CHECK(!roots.empty());
 		if (!roots.empty())
 		{

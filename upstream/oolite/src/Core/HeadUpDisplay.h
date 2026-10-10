@@ -518,8 +518,6 @@ class OOVisualEffectEntity;	// C++ since bead oo-9ht.165
 	oo-mwd58 deleted the HUD's facade). Members keep their sends
 	(amendment oo-ppc item 4). Each goes with its class's conversion.
 */
-// +[ResourceManager cxx_dictionaryFromFilesNamed:inFolder:andMerge:] (InitTextEngine()).
-oo::PList HeadUpDisplayDictionaryFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool mergeFiles);
 // -[[UNIVERSE gui] cxx_setGLColorFromSetting:defaultValue:alpha:] (OODrawPlanetInfo()).
 void HeadUpDisplayUniverseGUISetGLColorFromSetting(const std::optional<std::string> &setting, OOColor *defaultValue, GLfloat alpha);
 // [UNIVERSE gameView], -[MyOpenGLView fov:] and -[MyOpenGLView viewSize] (drawScannerGrid()).

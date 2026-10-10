@@ -343,7 +343,7 @@ void SetUp()
 	stdfs::current_path(sRoot);
 	const std::string info = "{ CFBundleVersion = \"9.9.9-test\"; }";
 	OO_CHECK(oo::fs::writeFile(sRoot / "Resources" / "Info-gnustep.plist", oo::Data(info.data(), info.size()), oo::fs::WriteMode::direct).has_value());
-	[ResourceManager cxx_setUseAddOns:std::string(SCENARIO_OXP_DEFINITION_NONE)];	// strict: the built-in Resources alone
+	ResourceManager::setUseAddOns(std::string(SCENARIO_OXP_DEFINITION_NONE));	// strict: the built-in Resources alone
 	(void)[OOJavaScriptEngine sharedEngine];
 
 	sRealPlayer = gOOPlayer;	// the one InitOOJSPlayerShip() made, which player.ship holds

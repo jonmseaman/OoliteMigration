@@ -66,9 +66,7 @@ public:
 - (OOSystemID) currentSystemID;
 @end
 
-@interface ResourceManager: OOObject
-+ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName mergeMode:(int)mergeMode cache:(BOOL)useCache;
-@end
+#import "ResourceManager.h"
 
 // A station: C++ since bead oo-9ht.175 deleted the Objective-C station this stood in for; the
 // members the commodities call, declared as StationEntity.h declares them (the test imports no
@@ -154,15 +152,14 @@ std::optional<std::string> PlayerEntity::getSpecialCargo()  { return _specialCar
 @end
 
 
-@implementation ResourceManager
-
-+ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName mergeMode:(int)mergeMode cache:(BOOL)useCache
+// ResourceManager is C++ since bead oo-9ht.150 deleted its Objective-C facade: C++ definitions of the
+// statics the code under test calls, with the Objective-C stand-in's answers.
+oo::PList ResourceManager::dictionaryFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, OOResourceMergeMode mergeMode, bool useCache)
 {
 	(void)fileName; (void)folderName; (void)mergeMode; (void)useCache;
 	return TradeGoods();
 }
 
-@end
 
 
 oo::PList StationEntity::getMarketDefinition()					{ std::abort(); }

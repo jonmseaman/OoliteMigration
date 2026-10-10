@@ -826,7 +826,7 @@ static void SVGDumpEnd(TessPolygonData *data)
 	if (!data->debugSVG.has_value())  return;
 
 	*data->debugSVG += "</svg>\n";
-	[::ResourceManager cxx_writeDiagnosticString:*data->debugSVG toFileNamed:oo::str::format("Polygon Sprites/%s.svg", data->name.c_str())];
+	ResourceManager::writeDiagnosticString(*data->debugSVG, oo::str::format("Polygon Sprites/%s.svg", data->name.c_str()));
 	data->debugSVG.reset();
 }
 

@@ -284,7 +284,7 @@ static OOSound *GetNamedSound(const std::string &name)
 	}
 	else
 	{
-		sound = [ResourceManager cxx_ooSoundNamed:name inFolder:"Sounds"];
+		sound = ResourceManager::ooSoundNamed(name, "Sounds");
 	}
 	
 	return sound;

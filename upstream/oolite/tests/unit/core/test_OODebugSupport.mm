@@ -56,42 +56,24 @@ const bool kTrue = (1 == 1);	// a Bool node (OOCocoa.h defines true as 1)
 }	// namespace
 
 
-typedef enum
-{
-	MERGE_NONE,
-	MERGE_BASIC,
-	MERGE_SMART
-} OOResourceMergeMode;
+#import "ResourceManager.h"	// OOResourceMergeMode, as the stand-in declared it
 
-
-@interface ResourceManager: OOObject
-+ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName
-								  inFolder:(const std::optional<std::string> &)folderName
-								 mergeMode:(OOResourceMergeMode)mergeMode
-									 cache:(BOOL)useCache;
-+ (std::optional<std::string>) cxx_pathForFileNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName;
-@end
-
-@implementation ResourceManager
-
-+ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName
-								  inFolder:(const std::optional<std::string> &)folderName
-								 mergeMode:(OOResourceMergeMode)mergeMode
-									 cache:(BOOL)useCache
+// ResourceManager is C++ since bead oo-9ht.150 deleted its Objective-C facade: C++ definitions of the
+// statics the code under test calls, with the Objective-C stand-in's answers.
+oo::PList ResourceManager::dictionaryFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, OOResourceMergeMode mergeMode, bool useCache)
 {
 	if (fileName == "debugConfig.plist" && folderName == "Config" && mergeMode == MERGE_BASIC && !useCache)  return sRecord.configuration;
 	return oo::PList();
 }
 
 
-+ (std::optional<std::string>) cxx_pathForFileNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName
+std::optional<std::string> ResourceManager::pathForFileNamed(const std::string &fileName, const std::optional<std::string> &folderName)
 {
 	// The beacon is looked for in the folder named "nil" (sic).
 	if (fileName == "DebugOXPLocatorBeacon.magic" && folderName == "nil")  return sRecord.beaconPath;
 	return std::nullopt;
 }
 
-@end
 
 
 @interface OOJavaScriptEngine: OOObject

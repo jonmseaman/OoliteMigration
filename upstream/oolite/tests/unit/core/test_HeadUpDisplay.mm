@@ -75,7 +75,7 @@ void SetUp()
 			  "{\n\thud_dial_methods = (\"drawTrumbles:\", \"drawTargetReticle:\", \"drawCompass:\", \"drawScanner:\");\n}\n");
 	WriteFile(sRoot / "Resources" / "Config" / "testcross.plist",
 			  "{\n\tWEAPON_OFFLINE = (1, 2, 3, 4, 5, 6);\n}\n");
-	[ResourceManager cxx_setUseAddOns:std::string(SCENARIO_OXP_DEFINITION_NONE)];	// strict: the built-in Resources alone
+	ResourceManager::setUseAddOns(std::string(SCENARIO_OXP_DEFINITION_NONE));	// strict: the built-in Resources alone
 }
 
 

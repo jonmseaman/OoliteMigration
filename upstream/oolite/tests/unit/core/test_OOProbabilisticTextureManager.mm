@@ -39,17 +39,16 @@ static oo::PList gConfig;
 static std::vector<std::string> gLog;
 
 
-@interface ResourceManager: OOObject
-+ (oo::PList) cxx_arrayFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName andMerge:(BOOL)mergeFiles;
-@end
+#import "ResourceManager.h"
 
-@implementation ResourceManager
-+ (oo::PList) cxx_arrayFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName andMerge:(BOOL)mergeFiles
+// ResourceManager is C++ since bead oo-9ht.150 deleted its Objective-C facade: C++ definitions of the
+// statics the code under test calls, with the Objective-C stand-in's answers.
+oo::PList ResourceManager::arrayFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool mergeFiles)
 {
 	gLog.push_back("config " + fileName + " in " + folderName.value_or("(nil)") + (mergeFiles ? " merged" : " unmerged"));
 	return gConfig;
 }
-@end
+
 
 
 // Every texture loads, but for "missing.png".

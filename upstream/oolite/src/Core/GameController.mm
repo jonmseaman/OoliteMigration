@@ -627,7 +627,7 @@ void GameController::applicationDidFinishLaunching()
 		// moved to before the Universe is created
 		for (const std::string &expansionPath : expansionPathsToInclude)
 		{
-			[::ResourceManager cxx_addExternalPath:expansionPath];
+			ResourceManager::addExternalPath(expansionPath);
 		}
 		
 		// initialise OXZ manager
@@ -1066,7 +1066,7 @@ static void RemovePreference(const std::string &key)
 
 - (IBAction) showAddOnsAction:sender
 {
-	const std::vector<std::string> paths = [ResourceManager cxx_userRootPaths];
+	const std::vector<std::string> paths = ResourceManager::userRootPaths();
 
 	// Look for an AddOns directory that actually contains some AddOns.
 	for (const std::string &path : paths) {
@@ -1137,7 +1137,7 @@ static void RemovePreference(const std::string &key)
 	if (action == @selector(showAddOnsAction:))
 	{
 		// Always enabled in unrestricted mode, to allow users to add OXPs more easily.
-		return [ResourceManager cxx_useAddOns].has_value();
+		return ResourceManager::useAddOns().has_value();
 	}
 	
 	if (action == @selector(showSnapshotsAction:))
