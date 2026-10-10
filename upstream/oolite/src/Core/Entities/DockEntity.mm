@@ -42,6 +42,7 @@ MA 02110-1301, USA.
 
 #import "OOJSScript.h"
 #import "OOJSDock.h"
+#import "EntityOOJavaScriptExtensions.h"
 #import "OODebugGLDrawing.h"
 #import "OODebugFlags.h"
 #include "oofnd/Log.hpp"
@@ -92,10 +93,36 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 
 
 // Slice 1 of docs/phases/3-slices/DockEntity.md (bead oo-ao2d): class shell, flags, geometry and
-// lifecycle. The facade forwards each selector (DockEntity (OOSlice1), DockEntity+ObjCBridge.mm);
-// its initialiser and -dealloc are the facade's.
+// lifecycle. The facade's initialiser and -dealloc are members since bead oo-9ht.180 deleted the
+// facade (ADR-0056 amendment oo-9ht.180).
 
-namespace cxx {
+
+::ShipEntity *DockEntity::newDockObject(const std::string &key, const oo::PList &dict)
+{
+	::ShipEntity *object = oo::NewShipObject(oo::makeRef<DockEntity>(), key, dict);	// [super cxx_initWithKey:key definition:dict]
+	if (object != nil)  static_cast<DockEntity *>(oo::ToCxx(object))->initDockDefaults();
+	return object;
+}
+
+
+void DockEntity::initDockDefaults()
+{
+	OOJS_PROFILE_ENTER
+
+	allow_docking = YES;
+	disallowed_docking_collides = NO;
+	allow_launching = YES;
+	virtual_dock = NO;
+
+	OOJS_PROFILE_EXIT_VOID
+}
+
+
+void DockEntity::willDealloc()
+{
+	clearIdLocks(nil);
+}
+
 
 bool DockEntity::allowsDocking()
 {
@@ -105,10 +132,9 @@ bool DockEntity::allowsDocking()
 
 void DockEntity::setAllowsDocking(bool allowed)
 {
-	::DockEntity *self = oo::ToObjC(this);
 	if (!allowed && allow_docking) 
 	{
-		[self abortAllDockings];
+		abortAllDockings();
 	}
 	allow_docking = allowed;
 }
@@ -128,10 +154,9 @@ bool DockEntity::allowsLaunching()
 
 void DockEntity::setAllowsLaunching(bool allowed)
 {
-	::DockEntity *self = oo::ToObjC(this);
 	if (!allowed && allow_launching) 
 	{
-		[self abortAllLaunches];
+		abortAllLaunches();
 	}
 	allow_launching = allowed;
 }
@@ -246,6 +271,12 @@ void DockEntity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *out
 }
 
 
+bool DockEntity::isVisibleToScripts()
+{
+	return ::ShipEntityJSIsVisibleToScripts();
+}
+
+
 std::optional<std::string> DockEntity::jsClassName()
 {
 	return ::OOJSDockJSClassName();
@@ -292,16 +323,15 @@ bool DockEntity::setUpShipFromDictionary(const oo::PList &dict)
 
 void DockEntity::update(OOTimeDelta delta_t)
 {
-	::DockEntity *self = oo::ToObjC(this);
 	ShipEntity::update(delta_t);	// [super update:delta_t]
 	
-	if ((!launchQueue.empty())&&(shipsOnApproach.empty())&&[self dockingCorridorIsEmpty])
+	if ((!launchQueue.empty())&&(shipsOnApproach.empty())&&dockingCorridorIsEmpty())
 	{
 		const oo::ObjCRef<::ShipEntity *> se = launchQueue.front();
 		// check to make sure ship has not been destroyed in queue by script
 		if ([se.get() status] == STATUS_DOCKED)
 		{
-			[self launchShip:se.get()];
+			launchShip(se.get());
 		}
 		if (!launchQueue.empty())  launchQueue.erase(launchQueue.begin());	// (-removeObjectAtIndex:0 of an emptied queue raised)
 	}
@@ -383,7 +413,6 @@ NSUInteger DockEntity::pruneAndCountShipsOnApproach()
 
 void DockEntity::abortAllDockings()
 {
-	::DockEntity *self = oo::ToObjC(this);
 	double		playerExtraTime = 0;
 	
 	no_docking_while_launching = YES;
@@ -401,7 +430,7 @@ void DockEntity::abortAllDockings()
 	
 	::PlayerEntity *player = PLAYER;
 	::StationEntity *station = oo::ToStation(parentEntity());
-	BOOL isDockingStation = (station == (player != nullptr ? player->getTargetDockStation() : (::StationEntity *)nullptr)) && ((station != nullptr ? station->playerReservedDock() : (::DockEntity *)nullptr) == self);
+	BOOL isDockingStation = (station == (player != nullptr ? player->getTargetDockStation() : (::StationEntity *)nullptr)) && ((station != nullptr ? station->playerReservedDock() : (::DockEntity *)nullptr) == this);
 	if (isDockingStation && (player != nullptr ? player->status() : OOEntityStatus{}) == STATUS_IN_FLIGHT &&
 			(player != nullptr ? player->getDockingClearanceStatus() : OODockingClearanceStatus{}) >= DOCKING_CLEARANCE_STATUS_REQUESTED)
 	{
@@ -452,7 +481,6 @@ void DockEntity::autoDockShipsOnApproach()
 
 std::optional<std::string> DockEntity::canAcceptShipForDocking(::ShipEntity *ship)
 {
-	::DockEntity *self = oo::ToObjC(this);
 	// First test permanent rejection reasons
 	if (!allow_docking)
 	{
@@ -471,7 +499,7 @@ std::optional<std::string> DockEntity::canAcceptShipForDocking(::ShipEntity *shi
 	ooscript::Value		args[] = { OOJSValueFromNativeObject(context, ship) };
 	bool accept = YES;
 	
-	BOOL OK = ([self script] != nullptr ? [self script]->callMethod(OOJSID("acceptDockingRequestFrom"), context, args, 1, &rval) : false);
+	BOOL OK = (getScript() != nullptr ? getScript()->callMethod(OOJSID("acceptDockingRequestFrom"), context, args, 1, &rval) : false);
 	if (OK)  OK = ooscript::valueToBoolean(context, rval, &accept);
 	if (!OK)  accept = YES; // default to permreject
 	OOJSRelinquishContext(context);
@@ -498,7 +526,7 @@ std::optional<std::string> DockEntity::canAcceptShipForDocking(::ShipEntity *shi
 
 oo::PList DockEntity::dockingInstructionsForShip(::ShipEntity *ship)
 {
-	::DockEntity *self = oo::ToObjC(this);
+	::ShipEntity *self = oo::ToObjC(this);
 	if (ship == nil)  return oo::PList();
 	
 	OOUniversalID	ship_id = [ship universalID];
@@ -655,7 +683,7 @@ oo::PList DockEntity::dockingInstructionsForShip(::ShipEntity *ship)
 	{
 		// COMM-CHATTER
 		[UNIVERSE clearPreviousMessage];
-		[self cxx_sendExpandedMessage: "[station-hold-position]" toShip: ship];
+		sendExpandedMessage("[station-hold-position]", ship);
 		auto stack = shipsOnApproach.find(shipID);
 		if (stack != shipsOnApproach.end() && stack->second.size() > 1)
 		{
@@ -850,7 +878,6 @@ void DockEntity::abortDockingForShip(::ShipEntity *ship)
 
 bool DockEntity::shipIsInDockingQueue(::ShipEntity *ship)
 {
-	::DockEntity *self = oo::ToObjC(this);
 	if (![ship isShip])  return NO;
 	if ([ship isPlayer] && [ship status] == STATUS_DEAD)  return NO;
 	
@@ -862,7 +889,7 @@ bool DockEntity::shipIsInDockingQueue(::ShipEntity *ship)
 		return YES;
 	}
 	// player docking manually
-	if ([ship isPlayer] && (oo::ToStation([self owner]) != nullptr ? oo::ToStation([self owner])->playerReservedDock() : (::DockEntity *)nil) == self)
+	if ([ship isPlayer] && (oo::ToStation(owner()) != nullptr ? oo::ToStation(owner())->playerReservedDock() : (::DockEntity *)nil) == this)
 	{
 		return YES;
 	}
@@ -1155,7 +1182,6 @@ NSUInteger DockEntity::countOfShipsInLaunchQueueWithPrimaryRole(const std::strin
 
 bool DockEntity::allowsLaunchingOf(::ShipEntity *ship)
 {
-	::DockEntity *self = oo::ToObjC(this);
 	if (![ship isShip])  return NO;
 	
 	BoundingBox bb = [ship totalBoundingBox];
@@ -1171,7 +1197,7 @@ bool DockEntity::allowsLaunchingOf(::ShipEntity *ship)
 	ooscript::Value		args[] = { OOJSValueFromNativeObject(context, ship) };
 	bool accept = YES;
 	
-	BOOL OK = ([self script] != nullptr ? [self script]->callMethod(OOJSID("acceptLaunchingRequestFrom"), context, args, 1, &rval) : false);
+	BOOL OK = (getScript() != nullptr ? getScript()->callMethod(OOJSID("acceptLaunchingRequestFrom"), context, args, 1, &rval) : false);
 	if (OK)  OK = ooscript::valueToBoolean(context, rval, &accept);
 	if (!OK)  accept = YES; // default to permreject
 	OOJSRelinquishContext(context);
@@ -1186,7 +1212,6 @@ bool DockEntity::allowsLaunchingOf(::ShipEntity *ship)
 
 bool DockEntity::dockingCorridorIsEmpty()
 {
-	::DockEntity *self = oo::ToObjC(this);
 	double unitime = [UNIVERSE getTime];
 	
 	if (unitime < last_launch_time + STATION_DELAY_BETWEEN_LAUNCHES)
@@ -1197,7 +1222,7 @@ bool DockEntity::dockingCorridorIsEmpty()
 	
 
 	::StationEntity	*station = oo::ToStation(parentEntity());
-	if ((station != nullptr ? station->playerReservedDock() : (::DockEntity *)nullptr) == self)
+	if ((station != nullptr ? station->playerReservedDock() : (::DockEntity *)nullptr) == this)
 	{
 		// player probably will not appreciate a ship launch right now
 		return NO;
@@ -1332,10 +1357,3 @@ void DockEntity::clearDockingCorridor()
 
 }
 
-
-}	// namespace cxx
-
-// The Objective-C facade class is still defined here (its ivar and the selector forwarders live in
-// DockEntity+ObjCBridge.*); every method body is a cxx::DockEntity member now (slices 1-3).
-@implementation DockEntity
-@end

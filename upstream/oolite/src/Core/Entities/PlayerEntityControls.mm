@@ -5522,10 +5522,10 @@ void PlayerEntity::handleAutopilotOn(bool fastDocking)
 	else if (fastDocking && (ts != nullptr ? ts->getAllowsFastDocking() : false))
 	{
 		// check whether there are docks that do not accept docking - even one such dock will result in rejection
-		for (const auto &sub : (ts != nullptr ? ts->dockSubEntities() : std::vector<oo::ObjCRef<DockEntity *>>()))
+		for (const auto &sub : (ts != nullptr ? ts->dockSubEntities() : std::vector<oo::ObjCRef<::ShipEntity *>>()))
 		{
 			// TOO_BIG_TO_DOCK issued when docks are scripted to reject docking
-			if([sub.get() canAcceptShipForDocking:oo::ToObjC(this)] == "TOO_BIG_TO_DOCK")
+			if((oo::ToDock(sub.get()) != nullptr ? oo::ToDock(sub.get())->canAcceptShipForDocking(oo::ToObjC(this)) : std::optional<std::string>()) == "TOO_BIG_TO_DOCK")	// a dock's object is the ship's facade since bead oo-9ht.180
 			{
 				message = ExpandKeyWithArguments((ts == [UNIVERSE station]) ? "autopilot-denied" : "autopilot-target-docking-instructions-denied", { { "stationName", oo::PList(stationName) } });
 				goto abort;

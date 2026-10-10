@@ -949,14 +949,14 @@ unsigned StationEntity::countOfDockedDefenders()
 }
 
 
-std::vector<oo::ObjCRef<::DockEntity *>> StationEntity::dockSubEntities()
+std::vector<oo::ObjCRef<::ShipEntity *>> StationEntity::dockSubEntities()
 {
-	std::vector<oo::ObjCRef<::DockEntity *>> result;
+	std::vector<oo::ObjCRef<::ShipEntity *>> result;
 	for (const auto &subRef : getSubEntities())
 	{
 		::Entity *sub = subRef.get();
 		if (![sub isDock])  continue;
-		result.push_back(oo::ObjCRef<::DockEntity *>((::DockEntity *)sub));
+		result.push_back(oo::ObjCRef<::ShipEntity *>((::ShipEntity *)sub));	// a dock's object (the ship's facade since bead oo-9ht.180)
 	}
 	return result;
 }
@@ -1361,10 +1361,10 @@ void StationEntity::sanityCheckShipsOnApproach()
 {
 
 	unsigned soa = 0;
-	for (const oo::ObjCRef<::DockEntity *> &dock : dockSubEntities())
+	for (const oo::ObjCRef<::ShipEntity *> &dock : dockSubEntities())
 	{
-		::DockEntity *sub = dock.get();
-		soa += [sub pruneAndCountShipsOnApproach];
+		::DockEntity *sub = oo::ToDock(dock.get());
+		soa += (sub != nullptr ? sub->pruneAndCountShipsOnApproach() : 0);
 	}
 
 	if (soa == 0)
@@ -1381,22 +1381,22 @@ void StationEntity::launchShip(::ShipEntity *ship)
 {
 	
 	// try to find an unused dock first
-	for (const oo::ObjCRef<::DockEntity *> &dock : dockSubEntities())
+	for (const oo::ObjCRef<::ShipEntity *> &dock : dockSubEntities())
 	{
-		::DockEntity *sub = dock.get();
-		if ([sub allowsLaunching] && [sub countOfShipsInLaunchQueue] == 0) 
+		::DockEntity *sub = oo::ToDock(dock.get());
+		if ((sub != nullptr ? sub->allowsLaunching() : false) && (sub != nullptr ? sub->countOfShipsInLaunchQueue() : 0) == 0) 
 		{
-			[sub launchShip:ship];
+			if (sub != nullptr)  sub->launchShip(ship);
 			return;
 		}
 	}
 	// otherwise any launchable dock will do
-	for (const oo::ObjCRef<::DockEntity *> &dock : dockSubEntities())
+	for (const oo::ObjCRef<::ShipEntity *> &dock : dockSubEntities())
 	{
-		::DockEntity *sub = dock.get();
-		if ([sub allowsLaunching]) 
+		::DockEntity *sub = oo::ToDock(dock.get());
+		if ((sub != nullptr ? sub->allowsLaunching() : false)) 
 		{
-			[sub launchShip:ship];
+			if (sub != nullptr)  sub->launchShip(ship);
 			return;
 		}
 	}
@@ -1406,7 +1406,7 @@ void StationEntity::launchShip(::ShipEntity *ship)
 	::DockEntity *sub = nil;
 	if (sub != nil)
 	{
-		[sub launchShip:ship];
+		if (sub != nullptr)  sub->launchShip(ship);
 		return;
 	}
 	// guaranteed to always be a dock as virtual dock will suffice
@@ -1416,10 +1416,10 @@ void StationEntity::launchShip(::ShipEntity *ship)
 // Exposed to AI
 void StationEntity::abortAllDockings()
 {
-	for (const oo::ObjCRef<::DockEntity *> &dock : dockSubEntities())
+	for (const oo::ObjCRef<::ShipEntity *> &dock : dockSubEntities())
 	{
-		::DockEntity *sub = dock.get();
-		[sub abortAllDockings];
+		::DockEntity *sub = oo::ToDock(dock.get());
+		if (sub != nullptr)  sub->abortAllDockings();
 	}
 	
 	// -makeObjectsPerformSelector:withObject: of the live ships on hold, in order
@@ -1463,10 +1463,10 @@ void StationEntity::autoDockShipsOnHold()
 
 void StationEntity::autoDockShipsOnApproach()
 {
-	for (const oo::ObjCRef<::DockEntity *> &dock : dockSubEntities())
+	for (const oo::ObjCRef<::ShipEntity *> &dock : dockSubEntities())
 	{
-		::DockEntity *sub = dock.get();
-		[sub autoDockShipsOnApproach];
+		::DockEntity *sub = oo::ToDock(dock.get());
+		if (sub != nullptr)  sub->autoDockShipsOnApproach();
 	}
 
 	autoDockShipsOnHold();
@@ -1479,12 +1479,12 @@ void StationEntity::autoDockShipsOnApproach()
 
 Vector StationEntity::portUpVectorForShip(::ShipEntity *ship)
 {
-	for (const oo::ObjCRef<::DockEntity *> &dock : dockSubEntities())
+	for (const oo::ObjCRef<::ShipEntity *> &dock : dockSubEntities())
 	{
-		::DockEntity *sub = dock.get();
-		if ([sub shipIsInDockingQueue:ship])
+		::DockEntity *sub = oo::ToDock(dock.get());
+		if ((sub != nullptr ? sub->shipIsInDockingQueue(ship) : false))
 		{
-			return [sub portUpVectorForShipsBoundingBox:[ship totalBoundingBox]];
+			return (sub != nullptr ? sub->portUpVectorForShipsBoundingBox([ship totalBoundingBox]) : Vector{});
 		}
 	}
 	return kZeroVector;
@@ -1526,10 +1526,10 @@ oo::PList StationEntity::dockingInstructionsForShip(::ShipEntity *ship)
 	NSUInteger		queue = 100;
 	
 	BOOL alldockstoosmall = YES;
-	for (const oo::ObjCRef<::DockEntity *> &dock : dockSubEntities())
+	for (const oo::ObjCRef<::ShipEntity *> &dock : dockSubEntities())
 	{
-		::DockEntity *sub = dock.get();
-		if ([sub shipIsInDockingQueue:ship]) 
+		::DockEntity *sub = oo::ToDock(dock.get());
+		if ((sub != nullptr ? sub->shipIsInDockingQueue(ship) : false)) 
 		{
 			// if already claimed a docking queue, use that one
 			chosenDock = sub;
@@ -1542,12 +1542,12 @@ oo::PList StationEntity::dockingInstructionsForShip(::ShipEntity *ship)
 		}
 		if (sub != player_reserved_dock || [ship isPlayer])
 		{
-			docking = [sub canAcceptShipForDocking:ship];
+			docking = (sub != nullptr ? sub->canAcceptShipForDocking(ship) : std::optional<std::string>());
 			if (docking == "DOCK_CLOSED")
 			{
 				ooscript::Context context = OOJSAcquireContext();
 				ooscript::Value		rval = ooscript::undefinedValue();
-				ooscript::Value		args[] = { OOJSValueFromNativeObject(context, sub),
+				ooscript::Value		args[] = { OOJSValueFromNativeObject(context, oo::ToObjC(sub)),
 													 OOJSValueFromNativeObject(context, ship) };
 				bool tempreject = NO;
 
@@ -1566,10 +1566,10 @@ oo::PList StationEntity::dockingInstructionsForShip(::ShipEntity *ship)
 				OOJSRelinquishContext(context);
 			}
 
-			if (docking == "DOCKING_POSSIBLE" && [sub countOfShipsInDockingQueue] < queue) {
+			if (docking == "DOCKING_POSSIBLE" && (sub != nullptr ? sub->countOfShipsInDockingQueue() : 0) < queue) {
 				// try to select the dock with the fewest ships already enqueued
 				chosenDock = sub;
-				queue = [sub countOfShipsInDockingQueue];
+				queue = (sub != nullptr ? sub->countOfShipsInDockingQueue() : 0);
 				alldockstoosmall = NO;
 			}
 			else if (!(docking == "TOO_BIG_TO_DOCK"))
@@ -1597,7 +1597,7 @@ oo::PList StationEntity::dockingInstructionsForShip(::ShipEntity *ship)
 
 
 	// rolling is okay for some
-	if	(fabs(flightRoll) > 0.01 && [chosenDock isOffCentre])
+	if	(fabs(flightRoll) > 0.01 && (chosenDock != nullptr ? chosenDock->isOffCentre() : false))
 	{
 		return holdPositionInstructionForShip(ship);
 	}
@@ -1608,7 +1608,7 @@ oo::PList StationEntity::dockingInstructionsForShip(::ShipEntity *ship)
 	[shipAI cxx_reactToMessage:"DOCKING_REQUESTED" context:"requestDockingCoordinates"];	// react to the request	
 	doScriptEvent(OOJSID("stationAcceptedDockingRequest"), ship);
 
-	return [chosenDock dockingInstructionsForShip:ship];
+	return (chosenDock != nullptr ? chosenDock->dockingInstructionsForShip(ship) : oo::PList());
 }
 
 
@@ -1631,10 +1631,10 @@ void StationEntity::abortDockingForShip(::ShipEntity *ship)
 	
 	_shipsOnHold->removeObject(ship);
 	
-	for (const oo::ObjCRef<::DockEntity *> &dock : dockSubEntities())
+	for (const oo::ObjCRef<::ShipEntity *> &dock : dockSubEntities())
 	{
-		::DockEntity *sub = dock.get();
-		[sub abortDockingForShip:ship];
+		::DockEntity *sub = oo::ToDock(dock.get());
+		if (sub != nullptr)  sub->abortDockingForShip(ship);
 	}
 	
 	if ([ship isPlayer])
@@ -1654,10 +1654,10 @@ bool StationEntity::shipIsInDockingCorridor(::ShipEntity *ship)
 	if (![ship isShip])  return NO;
 	if ([ship isPlayer] && [ship status] == STATUS_DEAD)  return NO;
 
-	for (const oo::ObjCRef<::DockEntity *> &dock : dockSubEntities())
+	for (const oo::ObjCRef<::ShipEntity *> &dock : dockSubEntities())
 	{
-		::DockEntity *sub = dock.get();
-		if ([sub shipIsInDockingCorridor:ship])
+		::DockEntity *sub = oo::ToDock(dock.get());
+		if ((sub != nullptr ? sub->shipIsInDockingCorridor(ship) : false))
 		{
 			return YES;
 		}
@@ -1677,10 +1677,10 @@ bool StationEntity::dockingCorridorIsEmpty()
 	if (!UNIVERSE)
 		return NO;
 
-	for (const oo::ObjCRef<::DockEntity *> &dock : dockSubEntities())
+	for (const oo::ObjCRef<::ShipEntity *> &dock : dockSubEntities())
 	{
-		::DockEntity *sub = dock.get();
-		if ([sub dockingCorridorIsEmpty])
+		::DockEntity *sub = oo::ToDock(dock.get());
+		if ((sub != nullptr ? sub->dockingCorridorIsEmpty() : false))
 		{
 			return YES; // if any are
 		}
@@ -1694,10 +1694,10 @@ void StationEntity::clearDockingCorridor()
 	if (!UNIVERSE)
 		return;
 
-	for (const oo::ObjCRef<::DockEntity *> &dock : dockSubEntities())
+	for (const oo::ObjCRef<::ShipEntity *> &dock : dockSubEntities())
 	{
-		::DockEntity *sub = dock.get();
-		[sub clearDockingCorridor];
+		::DockEntity *sub = oo::ToDock(dock.get());
+		if (sub != nullptr)  sub->clearDockingCorridor();
 	}		
 
 	return;
@@ -1764,7 +1764,7 @@ void StationEntity::update(OOTimeDelta delta_t)
 			last_launch_time = unitime + DOCKING_CLEARANCE_WINDOW;
 			if (hasMultipleDocks()) 
 			{
-				sendExpandedMessage(oo::str::formatRuntime(OO_DESC("station-docking-clearance-granted-in-@-until-@"), { [dock displayName].value_or("(null)"), cxx_ClockToString((player != nullptr ? player->clockTime() : 0.0) + DOCKING_CLEARANCE_WINDOW, NO) }), oo::ToObjC(player));
+				sendExpandedMessage(oo::str::formatRuntime(OO_DESC("station-docking-clearance-granted-in-@-until-@"), { (dock != nullptr ? dock->getDisplayName() : std::optional<std::string>()).value_or("(null)"), cxx_ClockToString((player != nullptr ? player->clockTime() : 0.0) + DOCKING_CLEARANCE_WINDOW, NO) }), oo::ToObjC(player));
 			}
 			else
 			{
@@ -1827,10 +1827,10 @@ void StationEntity::update(OOTimeDelta delta_t)
 
 void StationEntity::clear()
 {
-	for (const oo::ObjCRef<::DockEntity *> &dock : dockSubEntities())
+	for (const oo::ObjCRef<::ShipEntity *> &dock : dockSubEntities())
 	{
-		::DockEntity *sub = dock.get();
-		[sub clear];
+		::DockEntity *sub = oo::ToDock(dock.get());
+		if (sub != nullptr)  sub->clear();
 	}
 	
 	_shipsOnHold->removeAllObjects();
@@ -1847,12 +1847,12 @@ bool StationEntity::hasMultipleDocks()
 // not used for NPCs
 bool StationEntity::hasClearDock()
 {
-	for (const oo::ObjCRef<::DockEntity *> &dock : dockSubEntities())
+	for (const oo::ObjCRef<::ShipEntity *> &dock : dockSubEntities())
 	{
-		::DockEntity *sub = dock.get();
-		if ([sub allowsDocking] && [sub countOfShipsInLaunchQueue] == 0 && [sub countOfShipsInDockingQueue] == 0)
+		::DockEntity *sub = oo::ToDock(dock.get());
+		if ((sub != nullptr ? sub->allowsDocking() : false) && (sub != nullptr ? sub->countOfShipsInLaunchQueue() : 0) == 0 && (sub != nullptr ? sub->countOfShipsInDockingQueue() : 0) == 0)
 		{
-			if ([sub canAcceptShipForDocking:oo::ToObjC(PLAYER)] == "DOCKING_POSSIBLE")
+			if ((sub != nullptr ? sub->canAcceptShipForDocking(oo::ToObjC(PLAYER)) : std::optional<std::string>()) == "DOCKING_POSSIBLE")
 			{
 				return YES;
 			}
@@ -1864,11 +1864,11 @@ bool StationEntity::hasClearDock()
 
 bool StationEntity::hasEligibleDock()
 {
-	for (const oo::ObjCRef<::DockEntity *> &dock : dockSubEntities())
+	for (const oo::ObjCRef<::ShipEntity *> &dock : dockSubEntities())
 	{
-		::DockEntity *sub = dock.get();
+		::DockEntity *sub = oo::ToDock(dock.get());
 		// TRY_AGAIN_LATER in this context means "ships launching now"
-		if ([sub allowsDocking] && ([sub canAcceptShipForDocking:oo::ToObjC(PLAYER)] == "DOCKING_POSSIBLE" || [sub canAcceptShipForDocking:oo::ToObjC(PLAYER)] == "TRY_AGAIN_LATER"))
+		if ((sub != nullptr ? sub->allowsDocking() : false) && ((sub != nullptr ? sub->canAcceptShipForDocking(oo::ToObjC(PLAYER)) : std::optional<std::string>()) == "DOCKING_POSSIBLE" || (sub != nullptr ? sub->canAcceptShipForDocking(oo::ToObjC(PLAYER)) : std::optional<std::string>()) == "TRY_AGAIN_LATER"))
 		{
 			return YES;
 		}
@@ -1880,10 +1880,10 @@ bool StationEntity::hasEligibleDock()
 // is there any dock which may launch ships?
 bool StationEntity::hasLaunchDock()
 {
-	for (const oo::ObjCRef<::DockEntity *> &dock : dockSubEntities())
+	for (const oo::ObjCRef<::ShipEntity *> &dock : dockSubEntities())
 	{
-		::DockEntity *sub = dock.get();
-		if ([sub allowsLaunching])
+		::DockEntity *sub = oo::ToDock(dock.get());
+		if ((sub != nullptr ? sub->allowsLaunching() : false))
 		{
 			return YES;
 		}
@@ -1895,10 +1895,10 @@ bool StationEntity::hasLaunchDock()
 // only used to pick a dock for the player
 ::DockEntity * StationEntity::selectDockForDocking()
 {
-	for (const oo::ObjCRef<::DockEntity *> &dock : dockSubEntities())
+	for (const oo::ObjCRef<::ShipEntity *> &dock : dockSubEntities())
 	{
-		::DockEntity *sub = dock.get();
-		if ([sub allowsDocking] && [sub countOfShipsInLaunchQueue] == 0 && [sub countOfShipsInDockingQueue] == 0)
+		::DockEntity *sub = oo::ToDock(dock.get());
+		if ((sub != nullptr ? sub->allowsDocking() : false) && (sub != nullptr ? sub->countOfShipsInLaunchQueue() : 0) == 0 && (sub != nullptr ? sub->countOfShipsInDockingQueue() : 0) == 0)
 		{
 			return sub;
 		}
@@ -1916,18 +1916,18 @@ void StationEntity::addShipToLaunchQueue(::ShipEntity *ship, bool priority)
 	// much easier if the station has at least one launch-only dock
 	while (threshold < 16)
 	{
-		for (const oo::ObjCRef<::DockEntity *> &dock : dockSubEntities())
+		for (const oo::ObjCRef<::ShipEntity *> &dock : dockSubEntities())
 		{
-			::DockEntity *sub = dock.get();
+			::DockEntity *sub = oo::ToDock(dock.get());
 			if (sub != player_reserved_dock)
 			{
-				if ([sub countOfShipsInDockingQueue] == 0)
+				if ((sub != nullptr ? sub->countOfShipsInDockingQueue() : 0) == 0)
 				{
-					if ([sub allowsLaunching] && [sub countOfShipsInLaunchQueue] <= threshold)
+					if ((sub != nullptr ? sub->allowsLaunching() : false) && (sub != nullptr ? sub->countOfShipsInLaunchQueue() : 0) <= threshold)
 					{
-						if ([sub allowsLaunchingOf:ship])
+						if ((sub != nullptr ? sub->allowsLaunchingOf(ship) : false))
 						{
-							[sub addShipToLaunchQueue:ship withPriority:priority];
+							if (sub != nullptr)  sub->addShipToLaunchQueue(ship, priority);
 							return;
 						}
 					}
@@ -1944,19 +1944,19 @@ void StationEntity::addShipToLaunchQueue(::ShipEntity *ship, bool priority)
 	threshold = 0;
 	while (threshold < 16)
 	{
-		for (const oo::ObjCRef<::DockEntity *> &dock : dockSubEntities())
+		for (const oo::ObjCRef<::ShipEntity *> &dock : dockSubEntities())
 		{
-			::DockEntity *sub = dock.get();
+			::DockEntity *sub = oo::ToDock(dock.get());
 			/* so this time as long as it allows launching only check
 			 * the docking queue size so long as enumerator order is
 			 * deterministic, this will assign every launch this
 			 * update to the same dock (edge case where new docking
 			 * ship appears in the middle, probably not a problem) */
-			if ([sub allowsLaunching] && [sub countOfShipsInDockingQueue] <= threshold)
+			if ((sub != nullptr ? sub->allowsLaunching() : false) && (sub != nullptr ? sub->countOfShipsInDockingQueue() : 0) <= threshold)
 			{
-				if ([sub allowsLaunchingOf:ship])
+				if ((sub != nullptr ? sub->allowsLaunchingOf(ship) : false))
 				{
-					[sub addShipToLaunchQueue:ship withPriority:priority];
+					if (sub != nullptr)  sub->addShipToLaunchQueue(ship, priority);
 					return;
 				}
 			}
@@ -1973,10 +1973,10 @@ void StationEntity::addShipToLaunchQueue(::ShipEntity *ship, bool priority)
 unsigned StationEntity::countOfShipsInLaunchQueueWithPrimaryRole(const std::string &role)
 {
 	unsigned result = 0;
-	for (const oo::ObjCRef<::DockEntity *> &dock : dockSubEntities())
+	for (const oo::ObjCRef<::ShipEntity *> &dock : dockSubEntities())
 	{
-		::DockEntity *sub = dock.get();
-		result += [sub countOfShipsInLaunchQueueWithPrimaryRole:role];
+		::DockEntity *sub = oo::ToDock(dock.get());
+		result += (sub != nullptr ? sub->countOfShipsInLaunchQueueWithPrimaryRole(role) : 0);
 	}
 	return result;
 }
@@ -1993,10 +1993,10 @@ bool StationEntity::fitsInDock(::ShipEntity *ship, bool logNoFit)
 	::ShipEntity *self = oo::ToObjC(this);
 	if (![ship isShip])  return NO;
 	
-	for (const oo::ObjCRef<::DockEntity *> &dock : dockSubEntities())
+	for (const oo::ObjCRef<::ShipEntity *> &dock : dockSubEntities())
 	{
-		::DockEntity *sub = dock.get();
-		if ([sub allowsLaunchingOf:ship])
+		::DockEntity *sub = oo::ToDock(dock.get());
+		if ((sub != nullptr ? sub->allowsLaunchingOf(ship) : false))
 		{
 			return YES;
 		}
@@ -2021,10 +2021,10 @@ void StationEntity::noteDockedShip(::ShipEntity *ship)
 	}
 	addShipToStationCount(ship);
 	
-	for (const oo::ObjCRef<::DockEntity *> &dock : dockSubEntities())
+	for (const oo::ObjCRef<::ShipEntity *> &dock : dockSubEntities())
 	{
-		::DockEntity *sub = dock.get();
-		[sub noteDockingForShip:ship];
+		::DockEntity *sub = oo::ToDock(dock.get());
+		if (sub != nullptr)  sub->noteDockingForShip(ship);
 	}
 	sanityCheckShipsOnApproach();
 	
@@ -2422,15 +2422,15 @@ std::optional<std::string> StationEntity::acceptDockingClearanceRequestFrom(::Sh
 			result = "DOCKING_CLEARANCE_DENIED_NO_DOCKS";
 			// but can check to see if we'll open some for later.
 			BOOL openLater = NO;
-			for (const oo::ObjCRef<::DockEntity *> &dock : dockSubEntities())
+			for (const oo::ObjCRef<::ShipEntity *> &dock : dockSubEntities())
 			{
-				::DockEntity *sub = dock.get();
-				std::string docking = [sub canAcceptShipForDocking:other].value_or("");
+				::DockEntity *sub = oo::ToDock(dock.get());
+				std::string docking = (sub != nullptr ? sub->canAcceptShipForDocking(other) : std::optional<std::string>()).value_or("");
 				if (docking == "DOCK_CLOSED")
 				{
 					ooscript::Context context = OOJSAcquireContext();
 					ooscript::Value		rval = ooscript::undefinedValue();
-					ooscript::Value		args[] = { OOJSValueFromNativeObject(context, sub),
+					ooscript::Value		args[] = { OOJSValueFromNativeObject(context, oo::ToObjC(sub)),
 														 OOJSValueFromNativeObject(context, other) };
 					bool tempreject = NO;
 
@@ -2470,7 +2470,7 @@ std::optional<std::string> StationEntity::acceptDockingClearanceRequestFrom(::Sh
 
 		if (hasMultipleDocks() && [other isPlayer])
 		{
-			sendExpandedMessage(oo::str::formatRuntime(OO_DESC("station-docking-clearance-granted-in-@-until-@"), { [player_reserved_dock displayName].value_or("(null)"), cxx_ClockToString((player != nullptr ? player->clockTime() : 0.0) + DOCKING_CLEARANCE_WINDOW, NO) }), other);
+			sendExpandedMessage(oo::str::formatRuntime(OO_DESC("station-docking-clearance-granted-in-@-until-@"), { (player_reserved_dock != nullptr ? player_reserved_dock->getDisplayName() : std::optional<std::string>()).value_or("(null)"), cxx_ClockToString((player != nullptr ? player->clockTime() : 0.0) + DOCKING_CLEARANCE_WINDOW, NO) }), other);
 		}
 		else
 		{
@@ -2488,10 +2488,10 @@ std::optional<std::string> StationEntity::acceptDockingClearanceRequestFrom(::Sh
 unsigned StationEntity::currentlyInDockingQueues()
 {
 	unsigned soa = 0;
-	for (const oo::ObjCRef<::DockEntity *> &dock : dockSubEntities())
+	for (const oo::ObjCRef<::ShipEntity *> &dock : dockSubEntities())
 	{
-		::DockEntity *sub = dock.get();
-		soa += [sub countOfShipsInDockingQueue];
+		::DockEntity *sub = oo::ToDock(dock.get());
+		soa += (sub != nullptr ? sub->countOfShipsInDockingQueue() : 0);
 	}
 	soa += _shipsOnHold->count();
 	return soa;
@@ -2501,10 +2501,10 @@ unsigned StationEntity::currentlyInDockingQueues()
 unsigned StationEntity::currentlyInLaunchingQueues()
 {
 	unsigned soa = 0;
-	for (const oo::ObjCRef<::DockEntity *> &dock : dockSubEntities())
+	for (const oo::ObjCRef<::ShipEntity *> &dock : dockSubEntities())
 	{
-		::DockEntity *sub = dock.get();
-		soa += [sub countOfShipsInLaunchQueue];
+		::DockEntity *sub = oo::ToDock(dock.get());
+		soa += (sub != nullptr ? sub->countOfShipsInLaunchQueue() : 0);
 	}
 	return soa;
 }

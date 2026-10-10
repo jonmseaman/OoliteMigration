@@ -26,7 +26,7 @@ MA 02110-1301, USA.
 
 #import "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
-@class DockEntity;
+class DockEntity;
 
 #ifdef __cplusplus
 extern "C" {

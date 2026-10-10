@@ -236,7 +236,7 @@ MA 02110-1301, USA.
 - (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy OO_RETURNS_RETAINED;	// If usePlayerProxy, non-carriers are instantiated as ProxyPlayerEntity (made in C++ since bead oo-9ht.183).
 - (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity OO_RETURNS_RETAINED;
 - (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity andScaleFactor:(float)scale OO_RETURNS_RETAINED;
-- (DockEntity *) cxx_newDockWithName:(const std::string &)shipKey andScaleFactor:(float)scale OO_RETURNS_RETAINED;	// Does not apply auto_ai or respect conditions
+- (ShipEntity *) cxx_newDockWithName:(const std::string &)shipKey andScaleFactor:(float)scale OO_RETURNS_RETAINED;	// the dock's object (the ship's facade since bead oo-9ht.180). Does not apply auto_ai or respect conditions
 - (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey OO_RETURNS_RETAINED;	// Does not apply auto_ai or respect conditions
 - (BOOL) cxx_isStationShipDictionary:(const oo::PList &)dict;	// the dictionary's ship is a station (-cxx_shipClassForShipDictionary: picked StationEntity until bead oo-9ht.175); NO for a null PList
 - (std::optional<std::string>) defaultAIForRole:(const std::string &)role;		// autoAImap.plist lookup

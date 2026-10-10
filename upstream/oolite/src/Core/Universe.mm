@@ -4592,12 +4592,12 @@ std::optional<std::string> Universe::randomShipKeyForRoleRespectingConditions(co
 }
 
 
-::DockEntity * Universe::newDockWithName(const std::string &shipDataKey, float scale)
+::ShipEntity * Universe::newDockWithName(const std::string &shipDataKey, float scale)
 {
 	OOJS_PROFILE_ENTER
 
 	oo::PList		shipDict;
-	::DockEntity		*dock = nil;
+	::ShipEntity		*dock = nil;	// its object
 
 	shipDict = [[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:shipDataKey];
 	if (shipDict.isNull())  return nil;
@@ -4609,7 +4609,7 @@ std::optional<std::string> Universe::randomShipKeyForRoleRespectingConditions(co
 			// a copy with the scale, a float as +numberWithFloat: stored it (ADR-0043 item 15)
 			(*shipDict.getIf<oo::PList::Dict>())["model_scale_factor"] = oo::PList::singleReal(scale);
 		}
-		dock = [[::DockEntity alloc] cxx_initWithKey:shipDataKey definition:shipDict];
+		dock = ::DockEntity::newDockObject(shipDataKey, shipDict);	// [[DockEntity alloc] cxx_initWithKey:definition:] until bead oo-9ht.180
 	}
 	@catch (::OOException *exception)
 	{

@@ -269,7 +269,7 @@ extern Universe *gSharedUniverse;
 - (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy	{ return _cxxUniverse->newShipWithName(shipKey, usePlayerProxy); }
 - (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity	{ return _cxxUniverse->newShipWithName(shipKey, usePlayerProxy, isSubentity); }
 - (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity andScaleFactor:(float)scale	{ return _cxxUniverse->newShipWithName(shipKey, usePlayerProxy, isSubentity, scale); }
-- (DockEntity *) cxx_newDockWithName:(const std::string &)shipDataKey andScaleFactor:(float)scale	{ return _cxxUniverse->newDockWithName(shipDataKey, scale); }
+- (ShipEntity *) cxx_newDockWithName:(const std::string &)shipDataKey andScaleFactor:(float)scale	{ return _cxxUniverse->newDockWithName(shipDataKey, scale); }
 - (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey	{ return _cxxUniverse->newShipWithName(shipKey); }
 - (BOOL) cxx_isStationShipDictionary:(const oo::PList &)dict	{ return _cxxUniverse->isStationShipDictionary(dict); }
 - (std::optional<std::string>) defaultAIForRole:(const std::string &)role	{ return _cxxUniverse->defaultAIForRole(role); }
