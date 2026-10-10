@@ -169,28 +169,18 @@ const char * const kOOJavaScriptEngineDidResetNotificationName = "org.aegidian.o
 @end
 
 
-@protocol OOJavaScriptEngineMonitor <OOObject>
-- (void)jsEngine:(id)engine
-		 context:(ooscript::Context)context
-		   error:(ooscript::ErrorReport *)errorReport
-	   stackSkip:(unsigned)stackSkip
- showingLocation:(BOOL)showLocation
-	 withMessage:(const std::string &)message;
-- (void)jsEngine:(id)engine
-		 context:(ooscript::Context)context
-	  logMessage:(const std::string &)message
-		 ofClass:(const std::optional<std::string> &)messageClass;
-@end
+// The engine's monitor interface is C++ (OOJavaScriptEngineMonitor.h, from OODebugMonitor.h) since
+// bead oo-9ht.74.1; the stand-in protocol that was here went with the Objective-C one.
 
 
 @interface OOJavaScriptEngine: OOObject
 {
 @public
-	id					_monitor;
+	OOJavaScriptEngineMonitor	*_monitor;	// the C++ monitor interface (bead oo-9ht.74.1)
 	ooscript::Object	_global;
 }
 + (OOJavaScriptEngine *) sharedEngine;
-- (void) setMonitor:(id)monitor;
+- (void) setMonitor:(OOJavaScriptEngineMonitor *)monitor;
 - (ooscript::Object) globalObject;
 - (void) removeGCObjectRoot:(ooscript::Object *)rootPtr;
 @end
@@ -205,7 +195,7 @@ const char * const kOOJavaScriptEngineDidResetNotificationName = "org.aegidian.o
 }
 
 
-- (void) setMonitor:(id)monitor
+- (void) setMonitor:(OOJavaScriptEngineMonitor *)monitor
 {
 	_monitor = monitor;
 }
@@ -376,74 +366,83 @@ OODrawable *OOEntityWithDrawable::getDrawable()  { std::abort(); }
 
 // MARK: The debugger -------------------------------------------------------------------------------
 
-// Records what the monitor sends it. Refuses to connect, or raises, when told to.
-@interface TestDebugger: OOObject <OODebuggerInterface>
+// Records what the monitor sends it. Refuses to connect, or raises, when told to. A C++
+// OODebuggerInterface since bead oo-9ht.81 (it was an Objective-C object adopting the protocol);
+// the same members, the same records.
+namespace {
+
+// The records (the Objective-C class's @public ivars).
+struct TestDebuggerRecord : public OODebuggerInterface
 {
-@public
-	BOOL						_refuse;
-	BOOL						_raise;
-	int							_connects;
+	BOOL						_refuse = NO;
+	BOOL						_raise = NO;
+	int							_connects = 0;
 	std::vector<std::string>	_disconnects;	// the messages ("(none)" for nullopt)
 	std::vector<std::string>	_output;		// "colorKey|text|location,length"
-	int							_clears;
-	int							_shows;
+	int							_clears = 0;
+	int							_shows = 0;
 	oo::PList					_configuration;
 	std::vector<std::string>	_changes;		// "key=<description>"
-}
-@end
+};
 
-@implementation TestDebugger
 
-- (BOOL)connectDebugMonitor:(OODebugMonitor *)debugMonitor errorMessage:(std::optional<std::string> *)message
+class TestDebugger : public TestDebuggerRecord
 {
-	(void)debugMonitor;
-	_connects++;
-	if (_raise)  [OOException raise:"TestException" format:"%s", "no thanks"];
-	if (_refuse)
+public:
+	bool connectDebugMonitor(cxx::OODebugMonitor *debugMonitor, std::optional<std::string> *message) override
 	{
-		*message = "refused";
-		return NO;
+		(void)debugMonitor;
+		_connects++;
+		if (_raise)  [OOException raise:"TestException" format:"%s", "no thanks"];
+		if (_refuse)
+		{
+			*message = "refused";
+			return NO;
+		}
+		return YES;
 	}
-	return YES;
-}
 
 
-- (void)disconnectDebugMonitor:(OODebugMonitor *)debugMonitor message:(const std::optional<std::string> &)message
-{
-	(void)debugMonitor;
-	_disconnects.push_back(message.value_or("(none)"));
-}
+	void disconnectDebugMonitor(cxx::OODebugMonitor *debugMonitor, const std::optional<std::string> &message) override
+	{
+		(void)debugMonitor;
+		_disconnects.push_back(message.value_or("(none)"));
+	}
 
 
-- (void)debugMonitor:(OODebugMonitor *)debugMonitor
-	  jsConsoleOutput:(const std::string &)output
-			 colorKey:(const std::optional<std::string> &)colorKey
-		emphasisRange:(NSRange)emphasisRange
-{
-	(void)debugMonitor;
-	_output.push_back(oo::str::format("%s|%s|%lu,%lu", colorKey.value_or("(none)").c_str(), output.c_str(), (unsigned long)emphasisRange.location, (unsigned long)emphasisRange.length));
-}
+	void debugMonitor(cxx::OODebugMonitor *debugMonitor,
+					  const std::string &output,
+					  const std::optional<std::string> &colorKey,
+					  NSRange emphasisRange) override
+	{
+		(void)debugMonitor;
+		_output.push_back(oo::str::format("%s|%s|%lu,%lu", colorKey.value_or("(none)").c_str(), output.c_str(), (unsigned long)emphasisRange.location, (unsigned long)emphasisRange.length));
+	}
 
 
-- (void)debugMonitorClearConsole:(OODebugMonitor *)debugMonitor	{ (void)debugMonitor; _clears++; }
-- (void)debugMonitorShowConsole:(OODebugMonitor *)debugMonitor	{ (void)debugMonitor; _shows++; }
+	void debugMonitorClearConsole(cxx::OODebugMonitor *debugMonitor) override	{ (void)debugMonitor; _clears++; }
+	void debugMonitorShowConsole(cxx::OODebugMonitor *debugMonitor) override	{ (void)debugMonitor; _shows++; }
 
 
-- (void)debugMonitor:(OODebugMonitor *)debugMonitor noteConfiguration:(const oo::PList &)configuration
-{
-	(void)debugMonitor;
-	_configuration = configuration;
-}
+	void debugMonitor(cxx::OODebugMonitor *debugMonitor, const oo::PList &configuration) override
+	{
+		(void)debugMonitor;
+		_configuration = configuration;
+	}
 
 
-- (void)debugMonitor:(OODebugMonitor *)debugMonitor noteChangedConfigrationValue:(const oo::PList &)newValue forKey:(const std::string &)key
-{
-	(void)debugMonitor;
-	const oo::PList::Integer *integer = newValue.getIf<oo::PList::Integer>();
-	_changes.push_back(key + "=" + (newValue.isNull() ? std::string("(null)") : integer != nullptr ? std::to_string(integer->value) : std::string("(value)")));
-}
+	void debugMonitor(cxx::OODebugMonitor *debugMonitor, const oo::PList &newValue, const std::string &key) override
+	{
+		(void)debugMonitor;
+		const oo::PList::Integer *integer = newValue.getIf<oo::PList::Integer>();
+		_changes.push_back(key + "=" + (newValue.isNull() ? std::string("(null)") : integer != nullptr ? std::to_string(integer->value) : std::string("(value)")));
+	}
 
-@end
+
+	std::string description() const override	{ return oo::str::format("<TestDebugger %s>", oo::str::pointerDescription(this).c_str()); }
+};
+
+}	// namespace
 
 
 // MARK: Helpers ------------------------------------------------------------------------------------
@@ -534,7 +533,10 @@ int LogLinesContaining(std::string_view text)
 
 TestDebugger *NewDebugger()
 {
-	return [[[TestDebugger alloc] init] autorelease];
+	// Kept for the rest of the run (the Objective-C debugger lived until its test's pool drained).
+	static std::vector<oo::Ref<TestDebugger>> debuggers;
+	debuggers.push_back(oo::makeRef<TestDebugger>());
+	return debuggers.back().get();
 }
 
 }	// namespace
@@ -552,7 +554,7 @@ OO_TEST(sharedMonitorIsSetUpOnce)
 		OODebugMonitor *monitor = [OODebugMonitor sharedDebugMonitor];
 		OO_CHECK(monitor != nil);
 		OO_CHECK([OODebugMonitor sharedDebugMonitor] == monitor);
-		OO_CHECK([OOJavaScriptEngine sharedEngine]->_monitor == monitor);
+		OO_CHECK([OOJavaScriptEngine sharedEngine]->_monitor == static_cast<OOJavaScriptEngineMonitor *>(oo::ToCxx(monitor)));
 
 		OO_CHECK(sConsoleScriptsMade == 1);
 		const oo::PList *console = sConsoleScriptProperties.find("console");
@@ -728,7 +730,7 @@ OO_TEST(engineErrorsAndLogLinesReachTheConsole)
 	@autoreleasepool
 	{
 		OODebugMonitor *monitor = [OODebugMonitor sharedDebugMonitor];
-		id<OOJavaScriptEngineMonitor> engineMonitor = (id<OOJavaScriptEngineMonitor>)monitor;
+		OOJavaScriptEngineMonitor *engineMonitor = oo::ToCxx(monitor);	// the C++ monitor interface (bead oo-9ht.74.1)
 		const std::string path = WriteSource("script.js", "line one\n  line two\n");
 
 		ooscript::ErrorReport report = {};
@@ -737,29 +739,29 @@ OO_TEST(engineErrorsAndLogLinesReachTheConsole)
 		report.lineno = 2;
 
 		// No debugger: nothing at all.
-		[engineMonitor jsEngine:nil context:gOOJSMainThreadContext error:&report stackSkip:0 showingLocation:YES withMessage:"ignored"];
+		engineMonitor->jsEngine(nil, gOOJSMainThreadContext, &report, 0, YES, std::string("ignored"));
 
 		TestDebugger *debugger = NewDebugger();
 		OO_CHECK([monitor setDebugger:debugger]);
-		[engineMonitor jsEngine:nil context:gOOJSMainThreadContext error:&report stackSkip:0 showingLocation:YES withMessage:"careful"];
+		engineMonitor->jsEngine(nil, gOOJSMainThreadContext, &report, 0, YES, std::string("careful"));
 		OO_CHECK(debugger->_output.size() == 1);
 		OO_CHECK(debugger->_output.size() == 1 && debugger->_output[0] == "warning|Warning: careful\n    script.js, line 2:\n      line two|0,8");
 		OO_CHECK(debugger->_shows == 1);	// show-console-on-warning is yes
 
 		report.flags = static_cast<unsigned>(ooscript::ReportFlag::Exception) | static_cast<unsigned>(ooscript::ReportFlag::Strict);
-		[engineMonitor jsEngine:nil context:gOOJSMainThreadContext error:&report stackSkip:1 showingLocation:YES withMessage:"boom"];
+		engineMonitor->jsEngine(nil, gOOJSMainThreadContext, &report, 1, YES, std::string("boom"));
 		OO_CHECK(debugger->_output.size() == 2 && debugger->_output[1] == "exception|Exception (strict mode): boom|0,24");
 		OO_CHECK(debugger->_shows == 1);	// show-console-on-error is not set
 
 		report.flags = 0;
-		[engineMonitor jsEngine:nil context:gOOJSMainThreadContext error:&report stackSkip:0 showingLocation:NO withMessage:"bad"];
+		engineMonitor->jsEngine(nil, gOOJSMainThreadContext, &report, 0, NO, std::string("bad"));
 		OO_CHECK(debugger->_output.size() == 3 && debugger->_output[2] == "error|Error: bad|0,6");
 
-		[engineMonitor jsEngine:nil context:gOOJSMainThreadContext logMessage:"logged" ofClass:std::nullopt];
+		engineMonitor->jsEngine(nil, gOOJSMainThreadContext, std::string("logged"), std::nullopt);
 		OO_CHECK(debugger->_output.size() == 4 && debugger->_output[3] == "log|logged|0,0");
 		OO_CHECK(debugger->_shows == 1);	// show-console-on-log is no
 		[monitor setConfigurationValue:oo::PList("yes") forKey:"show-console-on-log"];
-		[engineMonitor jsEngine:nil context:gOOJSMainThreadContext logMessage:"again" ofClass:std::string("class")];
+		engineMonitor->jsEngine(nil, gOOJSMainThreadContext, std::string("again"), std::string("class"));
 		OO_CHECK(debugger->_shows == 2);
 		[monitor setConfigurationValue:oo::PList() forKey:"show-console-on-log"];
 

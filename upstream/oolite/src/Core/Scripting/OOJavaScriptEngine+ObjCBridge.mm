@@ -149,7 +149,7 @@ cxx::OOJavaScriptEngine *oo::ToCxx(OOJavaScriptEngine *engine)
 
 @implementation OOJavaScriptEngine (OOMonitorSupport)
 
-- (void) setMonitor:(id<OOJavaScriptEngineMonitor>)monitor	{ _cxxEngine->setMonitor(monitor); }
+- (void) setMonitor:(OOJavaScriptEngineMonitor *)monitor	{ _cxxEngine->setMonitor(monitor); }
 
 @end
 

@@ -3,9 +3,9 @@
 OODebugMonitor+ObjCBridge.mm
 
 TRANSITIONAL (proposed ADR-0056, amendment oo-kq7): the Objective-C OODebugMonitor facade (see
-OODebugMonitor+ObjCBridge.h). Every method forwards to its C++ member. The facade adopts the
-JavaScript engine's OOJavaScriptEngineMonitor here, so that OODebugMonitor.h does not import the
-engine's header, and keeps the canonical singleton boilerplate that was OODebugMonitor.mm's.
+OODebugMonitor+ObjCBridge.h). Every method forwards to its C++ member. It keeps the canonical
+singleton boilerplate that was OODebugMonitor.mm's. (It adopted the engine's monitor protocol
+until bead oo-9ht.74.1 made that a C++ interface the C++ monitor implements.)
 Deleted with OODebugMonitor+ObjCBridge.h.
 
 
@@ -57,11 +57,6 @@ OODebugMonitor *sSingleton = nil;
 @end
 
 
-// The JavaScript engine's monitor (was declared by the category OODebugMonitor (Private)).
-@interface OODebugMonitor (OOJavaScriptEngineMonitor) <OOJavaScriptEngineMonitor>
-@end
-
-
 @implementation OODebugMonitor
 
 /*	Inside the @implementation for the private ivar. No peer table: there is one monitor, and its
@@ -97,7 +92,7 @@ cxx::OODebugMonitor *oo::ToCxx(OODebugMonitor *monitor)
 }
 
 
-- (BOOL)setDebugger:(id<OODebuggerInterface>)newDebugger
+- (BOOL)setDebugger:(OODebuggerInterface *)newDebugger
 {
 	return _cxxMonitor->setDebugger(newDebugger);
 }
@@ -208,7 +203,7 @@ cxx::OODebugMonitor *oo::ToCxx(OODebugMonitor *monitor)
 }
 
 
-- (void)disconnectDebugger:(id<OODebuggerInterface>)debugger
+- (void)disconnectDebugger:(OODebuggerInterface *)debugger
 				   message:(const std::optional<std::string> &)message
 {
 	_cxxMonitor->disconnectDebugger(debugger, message);
@@ -226,30 +221,6 @@ cxx::OODebugMonitor *oo::ToCxx(OODebugMonitor *monitor)
 - (ooscript::Value)oo_jsValueInContext:(ooscript::Context)context
 {
 	return _cxxMonitor->oo_jsValueInContext(context);
-}
-
-@end
-
-
-@implementation OODebugMonitor (OOJavaScriptEngineMonitor)
-
-- (void)jsEngine:(OOJavaScriptEngine *)engine
-		 context:(ooscript::Context)context
-		   error:(ooscript::ErrorReport *)errorReport
-	   stackSkip:(unsigned)stackSkip
- showingLocation:(BOOL)showLocation
-	 withMessage:(const std::string &)message
-{
-	_cxxMonitor->jsEngine(engine, context, errorReport, stackSkip, showLocation, message);
-}
-
-
-- (void)jsEngine:(OOJavaScriptEngine *)engine
-		 context:(ooscript::Context)context
-	  logMessage:(const std::string &)message
-		 ofClass:(const std::optional<std::string> &)messageClass
-{
-	_cxxMonitor->jsEngine(engine, context, message, messageClass);
 }
 
 @end

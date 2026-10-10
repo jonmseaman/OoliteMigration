@@ -11,7 +11,7 @@
 	statement. These expectations were written against the Objective-C file and run on it first
 	(commit 45775d64b), against Objective-C stand-ins of the monitor and the
 	client; since the conversion the stand-ins are those classes' C++ members that the debug support
-	calls, and the client's oo::ToObjC.
+	calls (since bead oo-9ht.81 the client is the C++ debugger itself, with no facade).
 
 	What it reaches would bring the game into the link, so this file stands in for it (proposed
 	ADR-0056, amendment oo-z1s4 item 4): the resource manager (the configuration and the beacon's
@@ -43,9 +43,9 @@ struct Record
 	std::optional<std::string>					beaconPath;			// DebugOXPLocatorBeacon.magic
 	bool										clientFails = false;
 	std::vector<std::pair<std::optional<std::string>, uint16_t>>	clientsMade;
-	id											lastClient = nil;
+	const void									*lastClient = nullptr;	// the client made (bead oo-9ht.81: no facade)
 	std::vector<bool>							usingPlugInController;
-	std::vector<id>								debuggersSet;
+	std::vector<const void *>					debuggersSet;
 	int											debuggerStatementsEnabled = 0;
 };
 
@@ -117,8 +117,14 @@ typedef enum
 @end
 
 
-// The C++ monitor's and TCP client's members that the debug support calls, and the client's
-// crossing to its facade (an object of the test's standing for it).
+// The C++ monitor's and TCP client's members that the debug support calls; the client's debugger
+// interface members are never reached (the monitor is a stand-in).
+// The engine-monitor members, which give the C++ monitor its vtable (they are virtual since bead
+// oo-9ht.74.1); never reached here.
+void cxx::OODebugMonitor::jsEngine(::OOJavaScriptEngine *, ooscript::Context, ooscript::ErrorReport *, unsigned, bool, const std::string &)	{}
+void cxx::OODebugMonitor::jsEngine(::OOJavaScriptEngine *, ooscript::Context, const std::string &, const std::optional<std::string> &)	{}
+
+
 cxx::OODebugMonitor *cxx::OODebugMonitor::sharedDebugMonitor()
 {
 	static cxx::OODebugMonitor *monitor = nullptr;
@@ -127,10 +133,10 @@ cxx::OODebugMonitor *cxx::OODebugMonitor::sharedDebugMonitor()
 }
 
 
-bool cxx::OODebugMonitor::setDebugger(id<OODebuggerInterface> debugger)
+bool cxx::OODebugMonitor::setDebugger(OODebuggerInterface *debugger)
 {
 	sRecord.debuggersSet.push_back(debugger);
-	return debugger != nil;
+	return debugger != nullptr;
 }
 
 
@@ -140,25 +146,29 @@ void cxx::OODebugMonitor::setUsingPlugInController(bool flag)
 }
 
 
-oo::Ref<cxx::OODebugTCPConsoleClient> cxx::OODebugTCPConsoleClient::clientWithAddress(const std::optional<std::string> &address, uint16_t port)
+oo::Ref<OODebugTCPConsoleClient> OODebugTCPConsoleClient::clientWithAddress(const std::optional<std::string> &address, uint16_t port)
 {
 	sRecord.clientsMade.emplace_back(address, port);
-	if (sRecord.clientFails)  return oo::Ref<cxx::OODebugTCPConsoleClient>();
-	return oo::adopt(new cxx::OODebugTCPConsoleClient);
+	if (sRecord.clientFails)  return oo::Ref<OODebugTCPConsoleClient>();
+	oo::Ref<OODebugTCPConsoleClient> client = oo::adopt(new OODebugTCPConsoleClient);
+	sRecord.lastClient = client.get();
+	return client;
 }
 
 
-cxx::OODebugTCPConsoleClient::~OODebugTCPConsoleClient()
+OODebugTCPConsoleClient::~OODebugTCPConsoleClient()
 {
 }
 
 
-OODebugTCPConsoleClient *oo::ToObjC(cxx::OODebugTCPConsoleClient *client)
-{
-	if (client == nullptr)  return nil;
-	sRecord.lastClient = [[[OOObject alloc] init] autorelease];
-	return (OODebugTCPConsoleClient *)sRecord.lastClient;
-}
+bool OODebugTCPConsoleClient::connectDebugMonitor(cxx::OODebugMonitor *, std::optional<std::string> *)	{ return true; }
+void OODebugTCPConsoleClient::disconnectDebugMonitor(cxx::OODebugMonitor *, const std::optional<std::string> &)	{}
+void OODebugTCPConsoleClient::debugMonitor(cxx::OODebugMonitor *, const std::string &, const std::optional<std::string> &, NSRange)	{}
+void OODebugTCPConsoleClient::debugMonitorClearConsole(cxx::OODebugMonitor *)	{}
+void OODebugTCPConsoleClient::debugMonitorShowConsole(cxx::OODebugMonitor *)	{}
+void OODebugTCPConsoleClient::debugMonitor(cxx::OODebugMonitor *, const oo::PList &)	{}
+void OODebugTCPConsoleClient::debugMonitor(cxx::OODebugMonitor *, const oo::PList &, const std::string &)	{}
+std::string OODebugTCPConsoleClient::description() const	{ return "<OODebugTCPConsoleClient>"; }
 
 
 namespace {
