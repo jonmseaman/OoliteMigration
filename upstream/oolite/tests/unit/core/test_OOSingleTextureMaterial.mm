@@ -124,10 +124,10 @@ oo::Ref<OOSingleTextureMaterial> Make(const std::optional<std::string> &name, OO
 }
 
 
-// The material's description, as Objective-C prints it (through the root facade).
-std::string Description(cxx::OOMaterial *material)
+// The material's description, as Objective-C printed it ("(null)" for none; bead oo-9ht.8 deleted the root facade).
+std::string Description(OOMaterial *material)
 {
-	return oo::DescriptionOf(oo::ToObjC(material));
+	return material != nullptr ? material->description() : "(null)";
 }
 
 
@@ -253,9 +253,9 @@ OO_TEST(doApply)
 		OO_CHECK(Same(c, { 0.5f, 0.25f, 0.125f, 1 }));
 
 		m->apply();
-		OO_CHECK(cxx::OOMaterial::current().get() == m.get() && texture->_applies == 2);
-		cxx::OOMaterial::applyNone();
-		OO_CHECK(cxx::OOMaterial::current() == nullptr);
+		OO_CHECK(OOMaterial::current().get() == m.get() && texture->_applies == 2);
+		OOMaterial::applyNone();
+		OO_CHECK(OOMaterial::current() == nullptr);
 	}
 }
 
@@ -330,25 +330,22 @@ OO_TEST(cxxAPI)
 		{
 			const int applies = texture->_applies, applyNones = gTextureApplyNones;
 			m->apply();
-			OO_CHECK(texture->_applies == applies + 1 && cxx::OOMaterial::current().get() == m.get());
-			cxx::OOMaterial::applyNone();	// told nothing comes next: no texture, then the default material
+			OO_CHECK(texture->_applies == applies + 1 && OOMaterial::current().get() == m.get());
+			OOMaterial::applyNone();	// told nothing comes next: no texture, then the default material
 			OO_CHECK(gTextureApplyNones == applyNones + 2);
 		}
 	}
 }
 
 
-// Objective-C sees a single-texture material as an OOMaterial (beads oo-9ht.38, oo-9ht.33).
-OO_TEST(crossesAsTheBasicMaterialFacade)
+// The name and description, as the facade answered them (beads oo-9ht.38, oo-9ht.8).
+OO_TEST(nameAndDescription)
 {
 	@autoreleasepool
 	{
 		const oo::Ref<OOSingleTextureMaterial> m = OOSingleTextureMaterial::materialWithName(std::string("Cxx"), MakeTexture(), oo::PList());
-		OOMaterial *facade = oo::ToObjC(static_cast<cxx::OOMaterial *>(m.get()));
-		OO_CHECK([facade isMemberOfClass:[OOMaterial class]]);
-		OO_CHECK(oo::ToCxx(facade) == m.get() && oo::AsObjCMaterial(m.get()) == nullptr);
-		OO_CHECK([facade cxx_name] == std::optional<std::string>("Cxx"));
-		const std::string text = oo::DescriptionOf(facade);
+		OO_CHECK(m->name() == std::optional<std::string>("Cxx"));
+		const std::string text = m->description();
 		OO_CHECK(text.starts_with("<OOSingleTextureMaterial 0x") && text.ends_with(">{<TestTexture>}"));
 	}
 }

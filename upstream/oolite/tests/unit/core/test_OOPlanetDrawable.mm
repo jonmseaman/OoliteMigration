@@ -103,9 +103,13 @@ float Level(float lod)
 }
 
 
+// A material kept until the pool drains, as the facade's autoreleased object was (bead oo-9ht.8).
 OOMaterial *NamedMaterial(const char *name)
 {
-	return oo::ToObjC(static_cast<cxx::OOMaterial *>(OOBasicMaterial::materialWithName(std::string(name), oo::PList()).get()));
+	oo::Ref<OOMaterial> material = OOBasicMaterial::materialWithName(std::string(name), oo::PList());
+	OOMaterial *result = material.get();
+	OOMaterialAutorelease(std::move(material));
+	return result;
 }
 
 

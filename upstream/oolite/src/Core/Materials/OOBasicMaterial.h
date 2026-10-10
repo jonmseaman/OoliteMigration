@@ -42,7 +42,7 @@ SOFTWARE.
 #include "oofnd/StdLib.hpp"
 
 
-class OOBasicMaterial : public cxx::OOMaterial
+class OOBasicMaterial : public OOMaterial
 {
 public:
 	/*	A new material, initialised by the initialiser of the same arguments (below). They were
@@ -80,6 +80,7 @@ public:
 	std::optional<std::string> name() override;
 	bool doApply() override;
 	void unapplyWithNext(OOMaterial *next) override;
+	size_t objectSize() const override	{ return sizeof *this; }
 #ifndef NDEBUG
 	std::vector<oo::ObjCRef<::OOTexture *>> allTextures() override;
 #endif

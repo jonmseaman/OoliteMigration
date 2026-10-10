@@ -331,7 +331,7 @@ OO_TEST(texturesKeptAndAsked)
 		OO_CHECK(textures.size() == 2 && textures[0].get()->_ensures == 1 && textures[1].get()->_ensures == 1);
 		OO_CHECK(textures[0].get()->_configuration == oo::PList("d.png") && textures[1].get()->_configuration == oo::PList("e.png"));
 #endif
-		const std::string text = oo::DescriptionOf(oo::ToObjC(static_cast<cxx::OOMaterial *>(m.get())));
+		const std::string text = m->description();
 		OO_CHECK(text.starts_with("<OOMultiTextureMaterial 0x"));
 		OO_CHECK(text.ends_with(">{\"Hull\" - diffuse map: tex:d.png,emission map: tex:e.png}"));
 	}
@@ -347,7 +347,7 @@ OO_TEST(texturesKeptAndAsked)
 #ifndef NDEBUG
 		OO_CHECK(emissive->allTextures().size() == 1);
 #endif
-		OO_CHECK(oo::DescriptionOf(oo::ToObjC(static_cast<cxx::OOMaterial *>(emissive.get()))).ends_with(">{\"(null)\" - emission map: tex:e.png}"));
+		OO_CHECK(emissive->description().ends_with(">{\"(null)\" - emission map: tex:e.png}"));
 	}
 }
 
@@ -364,7 +364,7 @@ OO_TEST(applyAndUnapply)
 #endif
 
 		two->apply();
-		OO_CHECK(cxx::OOMaterial::current().get() == two.get());
+		OO_CHECK(OOMaterial::current().get() == two.get());
 #ifndef NDEBUG
 		OO_CHECK(diffuse->_applies == 1 && emission->_applies == 1);
 #endif
@@ -384,9 +384,9 @@ OO_TEST(applyAndUnapply)
 
 		// Nothing: the default material (no texture), then both units cleared.
 		applyNones = gTextureApplyNones;
-		cxx::OOMaterial::applyNone();
+		OOMaterial::applyNone();
 		OO_CHECK(gTextureApplyNones == applyNones + 3 && TexEnvMode(GL_TEXTURE0_ARB) == GL_MODULATE);
-		OO_CHECK(cxx::OOMaterial::current() == nullptr);
+		OO_CHECK(OOMaterial::current() == nullptr);
 		OO_CHECK(glGetError() == GL_NO_ERROR);
 	}
 }
@@ -408,35 +408,32 @@ OO_TEST(cxxAPI)
 		OO_CHECK(m->allTextures().size() == 2);
 #endif
 
-		// apply() is virtual: through a root pointer, and through the root facade's -apply.
-		cxx::OOMaterial *root = m.get();
+		// apply() is virtual: through a root pointer, twice (the second was the root facade's -apply).
+		OOMaterial *root = m.get();
 		root->apply();
 #ifndef NDEBUG
 		OO_CHECK(m->allTextures()[0].get()->_applies == 1 && m->allTextures()[1].get()->_applies == 1);
 #endif
-		OO_CHECK(cxx::OOMaterial::current().get() == m.get());
-		[oo::ToObjC(static_cast<cxx::OOMaterial *>(m.get())) apply];
+		OO_CHECK(OOMaterial::current().get() == m.get());
+		root->apply();
 #ifndef NDEBUG
 		OO_CHECK(m->allTextures()[0].get()->_applies == 2);
 #endif
 		const int applyNones = gTextureApplyNones;
-		cxx::OOMaterial::applyNone();
+		OOMaterial::applyNone();
 		OO_CHECK(gTextureApplyNones == applyNones + 3);
 	}
 }
 
 
-// Objective-C sees a multi-texture material as an OOMaterial (beads oo-9ht.42, oo-9ht.33).
-OO_TEST(crossesAsTheBasicMaterialFacade)
+// The description names the C++ class, as the facade's did (beads oo-9ht.42, oo-9ht.8).
+OO_TEST(descriptionNamesTheClass)
 {
 	if (!CombinersSupported())  { OO_CHECK(false); return; }
 	@autoreleasepool
 	{
 		const oo::Ref<OOMultiTextureMaterial> m = OOMultiTextureMaterial::materialWithName(std::string("Cxx"), oo::PList());
-		OOMaterial *facade = oo::ToObjC(static_cast<cxx::OOMaterial *>(m.get()));
-		OO_CHECK([facade isMemberOfClass:[OOMaterial class]] && oo::ToObjC(static_cast<cxx::OOMaterial *>(m.get())) == facade);
-		OO_CHECK(oo::ToCxx(facade) == m.get() && oo::AsObjCMaterial(m.get()) == nullptr);
-		OO_CHECK(oo::DescriptionOf(facade).starts_with("<OOMultiTextureMaterial 0x"));
+		OO_CHECK(m->description().starts_with("<OOMultiTextureMaterial 0x"));
 	}
 }
 

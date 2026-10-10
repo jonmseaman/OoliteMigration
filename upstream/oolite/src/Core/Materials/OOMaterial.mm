@@ -28,20 +28,22 @@ SOFTWARE.
 #import "OOMaterial.h"
 #import "OOFunctionAttributes.h"
 #import "OOLogging.h"
+#include "oofnd/String.hpp"
 
+#include <cstdlib>
+#include <cxxabi.h>
+#include <typeinfo>
 
-namespace cxx {
 
 namespace {
 
-/*	The current material, retained. It holds the Objective-C object (an Objective-C material
-	itself, or a C++ material's facade), because while any subclass is Objective-C that is what
-	owns the whole material: an Objective-C material's C++ part does not retain it (proposed
-	ADR-0056, amendment oo-smy). Never destroyed, as the static pointer was not.
+/*	The current material, retained (proposed ADR-0056, amendments oo-smy item 4 and oo-9ht.8: it
+	held the Objective-C object until the facade was deleted). Never destroyed, as the static
+	pointer was not.
 */
-oo::ObjCRef<::OOMaterial *> &ActiveMaterial()
+oo::Ref<OOMaterial> &ActiveMaterial()
 {
-	static auto *active = new oo::ObjCRef<::OOMaterial *>;
+	static auto *active = new oo::Ref<OOMaterial>;
 	return *active;
 }
 
@@ -61,6 +63,18 @@ std::optional<std::string> OOMaterial::descriptionComponents() const
 }
 
 
+std::string OOMaterial::description() const
+{
+	int status = 0;
+	char *demangled = abi::__cxa_demangle(typeid(*this).name(), nullptr, nullptr, &status);
+	const std::string name = (status == 0 && demangled != nullptr) ? demangled : typeid(*this).name();
+	std::free(demangled);
+	std::string result = oo::str::format("<%s %s>", name.c_str(), oo::str::pointerDescription(this).c_str());
+	if (const std::optional<std::string> components = descriptionComponents())  result += "{" + *components + "}";
+	return result;
+}
+
+
 std::optional<std::string> OOMaterial::name()
 {
 	OOLogGenericParameterError();
@@ -71,26 +85,26 @@ std::optional<std::string> OOMaterial::name()
 // Make this the current GL shader program.
 void OOMaterial::apply()
 {
-	if (OOMaterial *active = oo::ToCxx(ActiveMaterial().get()))  active->unapplyWithNext(this);
+	if (OOMaterial *active = ActiveMaterial().get())  active->unapplyWithNext(this);
 	ActiveMaterial() = nullptr;
 
 	if (doApply())
 	{
-		ActiveMaterial() = oo::ObjCRef<::OOMaterial *>(oo::ToObjC(this));
+		ActiveMaterial() = oo::Ref<OOMaterial>(this);
 	}
 }
 
 
 void OOMaterial::applyNone()
 {
-	if (OOMaterial *active = oo::ToCxx(ActiveMaterial().get()))  active->unapplyWithNext(nullptr);
+	if (OOMaterial *active = ActiveMaterial().get())  active->unapplyWithNext(nullptr);
 	ActiveMaterial() = nullptr;
 }
 
 
 oo::Ref<OOMaterial> OOMaterial::current()
 {
-	return oo::Ref<OOMaterial>(oo::ToCxx(ActiveMaterial().get()));
+	return ActiveMaterial();
 }
 
 
@@ -148,7 +162,7 @@ void OOMaterial::unapplyWithNext(OOMaterial * /*next*/)
 
 void OOMaterial::willDealloc()
 {
-	if (EXPECT_NOT(oo::ToCxx(ActiveMaterial().get()) == this))
+	if (EXPECT_NOT(ActiveMaterial().get() == this))
 	{
 		OO_LOG("shader.dealloc.imbalance", "{}", "***** Material deallocated while active, indicating a retain/release imbalance.");
 		unapplyWithNext(nullptr);
@@ -156,4 +170,36 @@ void OOMaterial::willDealloc()
 	}
 }
 
-}	// namespace cxx
+
+/*	OOMaterialAutorelease()'s keeper: an autoreleased Objective-C object that holds the material, so
+	the pool's drain releases it as it released the facade. Private to this file; nothing messages
+	it (as OODrawable.mm's keeper, amendment oo-hahfg item 1).
+*/
+@interface OOMaterialAutoreleaseKeeper: OOObject
+{
+@private
+	oo::Ref<OOMaterial>	_material;
+}
+
+- (id) initWithMaterial:(oo::Ref<OOMaterial>)material;
+
+@end
+
+
+@implementation OOMaterialAutoreleaseKeeper
+
+- (id) initWithMaterial:(oo::Ref<OOMaterial>)material
+{
+	self = [super init];
+	if (self != nil)  _material = std::move(material);
+	return self;
+}
+
+@end
+
+
+void OOMaterialAutorelease(oo::Ref<OOMaterial> material)
+{
+	if (material == nullptr)  return;
+	[[[OOMaterialAutoreleaseKeeper alloc] initWithMaterial:std::move(material)] autorelease];
+}

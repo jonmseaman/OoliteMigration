@@ -6,8 +6,9 @@ Draw a ball, such as might be used to represent a planet.
 
 C++20 since bead oo-mw4u (proposed ADR-0056, amendments oo-smy and oo-zffj): a global class
 derived from the converted drawable root OODrawable, with no Objective-C facade, because its
-one caller, OOPlanetEntity, was adapted in the same bead. It keeps its material as the
-Objective-C object, as the ivar did (amendment oo-smy item 4), and calls it through oo::ToCxx.
+one caller, OOPlanetEntity, was adapted in the same bead. It keeps its material retained, as the
+ivar did (amendment oo-smy item 4): an oo::Ref<OOMaterial> since bead oo-9ht.8 deleted the
+material's facade.
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -31,12 +32,11 @@ MA 02110-1301, USA.
 
 #import "OODrawable.h"
 #import "OOMaths.h"
+#import "OOMaterial.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 #include "oofnd/Ref.hpp"
-
-@class OOMaterial;
 
 
 class OOPlanetDrawable : public OODrawable
@@ -97,7 +97,7 @@ private:
 #endif
 	void renderCommonParts();
 
-	oo::ObjCRef<OOMaterial *>	_material;
+	oo::Ref<OOMaterial>		_material;
 	bool					_isAtmosphere = false;
 	float					_radius = {};
 	OOMatrix				_transform = {};

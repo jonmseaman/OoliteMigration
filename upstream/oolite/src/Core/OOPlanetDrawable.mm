@@ -45,16 +45,6 @@
 #define LOD_FACTOR			(1.0 / 4.0)
 
 
-namespace {
-
-// The C++ part of the drawable's material (null for none: a message to nil).
-cxx::OOMaterial *CxxMaterial(OOMaterial *material)
-{
-	return oo::ToCxx(material);
-}
-
-}	// namespace
-
 
 oo::Ref<OOPlanetDrawable> OOPlanetDrawable::planetWithTextureName(const std::string &textureName, float radius)
 {
@@ -120,14 +110,14 @@ OOMaterial *OOPlanetDrawable::material()
 
 void OOPlanetDrawable::setMaterial(OOMaterial *material)
 {
-	objc_autorelease(_material.leakRef());	// [_material autorelease]
-	_material = oo::ObjCRef<OOMaterial *>(material);
+	OOMaterialAutorelease(std::move(_material));	// [_material autorelease]
+	_material = oo::Ref<OOMaterial>(material);
 }
 
 
 std::optional<std::string> OOPlanetDrawable::textureName()
 {
-	cxx::OOMaterial *material = CxxMaterial(_material.get());
+	OOMaterial *material = _material.get();
 	return material != nullptr ? material->name() : std::nullopt;
 }
 
@@ -140,8 +130,8 @@ void OOPlanetDrawable::setTextureName(const std::string &textureName)
 		const oo::PList spec(oo::PList::Dict{
 			{ "diffuse_map", oo::PList(oo::PList::Dict{ { "repeat_s", oo::PList("yes") }, { "cube_map", oo::PList("yes") } }) } });
 		// [_material release], then [[OOSingleTextureMaterial alloc] initWithName:configuration:]:
-		// the factory's material, kept as its facade (nil for none).
-		_material = oo::ObjCRef<OOMaterial *>(oo::ToObjC(static_cast<cxx::OOMaterial *>(OOSingleTextureMaterial::materialWithName(textureName, spec).get())));
+		// the factory's material (null for none).
+		_material = OOSingleTextureMaterial::materialWithName(textureName, spec);
 	}
 }
 
@@ -235,7 +225,7 @@ void OOPlanetDrawable::renderTranslucentPartsOnOpaquePass()
 void OOPlanetDrawable::renderCommonParts()
 {
 	const OOPlanetDataLevel *data = &kPlanetData[_lod];
-	cxx::OOMaterial *material = CxxMaterial(_material.get());	// messages to nil did nothing and answered NO
+	OOMaterial *material = _material.get();	// messages to nil did nothing and answered NO
 	
 	OO_ENTER_OPENGL();
 	
@@ -310,7 +300,7 @@ void OOPlanetDrawable::renderCommonParts()
 	if (gDebugFlags & DEBUG_DRAW_NORMALS)  debugDrawNormals();
 #endif
 	
-	cxx::OOMaterial::applyNone();
+	OOMaterial::applyNone();
 	OOGL(glPopAttrib());
 	
 	OOGL(glDisableClientState(GL_TEXTURE_COORD_ARRAY));
@@ -351,7 +341,7 @@ BoundingBox OOPlanetDrawable::boundingBox()
 
 void OOPlanetDrawable::setBindingTarget(id<OOWeakReferenceSupport> target)
 {
-	if (cxx::OOMaterial *material = CxxMaterial(_material.get()))  material->setBindingTarget(target);
+	if (OOMaterial *material = _material.get())  material->setBindingTarget(target);
 }
 
 
@@ -422,7 +412,7 @@ void OOPlanetDrawable::debugDrawNormals()
 
 std::vector<oo::ObjCRef<::OOTexture *>> OOPlanetDrawable::allTextures()
 {
-	cxx::OOMaterial *material = CxxMaterial(this->material());
+	OOMaterial *material = this->material();
 	return material != nullptr ? material->allTextures() : std::vector<oo::ObjCRef<::OOTexture *>>();
 }
 

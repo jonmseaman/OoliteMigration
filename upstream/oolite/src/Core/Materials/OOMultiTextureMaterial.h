@@ -62,6 +62,7 @@ public:
 	void ensureFinishedLoading() override;
 	void apply() override;
 	void unapplyWithNext(OOMaterial *next) override;
+	size_t objectSize() const override	{ return sizeof *this; }
 #ifndef NDEBUG
 	std::vector<oo::ObjCRef<::OOTexture *>> allTextures() override;
 #endif
