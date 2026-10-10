@@ -56,7 +56,8 @@ MA 02110-1301, USA.
 #import "OOColor.h"
 #import "OOCommodities.h"
 #import "OOScript.h"
-#import "OOJSShip+ObjCBridge.h"
+#import "PlayerEntityLegacyScriptEngine.h"
+#import "Universe.h"
 #include "oofnd/String.hpp"
 
 /*
@@ -66,8 +67,10 @@ MA 02110-1301, USA.
 	ShipEntity through oo::ToCxx (its members an Objective-C subclass overrides are virtual,
 	so dispatch is as before), the converted classes the ship hands out (AI, OORoleSet,
 	OOShipGroup, OOColor, OONativeVector) as cxx:: classes, null-guarded where a message to nil
-	answered; and a send to a class that is still Objective-C (the player, the universe) is a
-	one-line function in OOJSShip+ObjCBridge.mm. Slice 1 (bead oo-18mg2): ShipGetProperty() and
+	answered; and a send to a class that was still Objective-C (the player, the universe) was a
+	one-line function in the binding's bridge file until bead oo-9ht.181 inlined each one at its
+	call (a member call on the C++ player, a message to the universe) and deleted the file.
+	Slice 1 (bead oo-18mg2): ShipGetProperty() and
 	its helpers. Slice 2 (bead oo-chjz4): ShipSetProperty(). Slice 3 (bead oo-08plt): the AI and
 	script, escort, role, cargo, spawn, damage, removal, legacy-action, comms, ECM and abandon
 	natives. Slice 4 (bead oo-hqe5l): equipment, missiles, nearest station, bounty, cargo, crew,
@@ -75,7 +78,8 @@ MA 02110-1301, USA.
 	collision exceptions, cascades, group, escort and patrol, wormholes, docking instructions,
 	distress and course. Slice 6 (bead oo-ljuy1): the perform* behaviours, the scanner, cargo
 	adjustment, damage and threat assessment, and the static methods (the ship registry is
-	cxx::OOShipRegistry). OOJSShip.mm has no Objective-C left.
+	cxx::OOShipRegistry). Since oo-9ht.181 the file sends the universe its messages directly, as
+	OOJSStation.mm does, until the universe is C++ (oo-pas).
 */
 
 
@@ -978,7 +982,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			if (ship->getIsPlayer())
 			{
 				PlayerEntity *pent = static_cast<PlayerEntity *>(entity);
-				return ooscript::newNumberValue(context, OOJSShipPlayerAvailableFacings(pent), value);
+				return ooscript::newNumberValue(context, (pent != nullptr ? pent->availableFacings() : OOWeaponFacingSet{}), value);
 			}
 			return ooscript::newNumberValue(context, ship->weaponFacings(), value);
 		
@@ -1164,7 +1168,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 		case kShip_isFleeing:
 			if (ship->getIsPlayer())
 			{
-				*value = OOJSValueFromBOOL(OOJSShipPlayerFleeingStatus(static_cast<PlayerEntity *>(entity)) >= PLAYER_FLEEING_CARGO);
+				*value = OOJSValueFromBOOL((static_cast<PlayerEntity *>(entity) != nullptr ? static_cast<PlayerEntity *>(entity)->fleeingStatus() : OOPlayerFleeingStatus{}) >= PLAYER_FLEEING_CARGO);
 			}
 			else
 			{
@@ -1466,10 +1470,10 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			{
 				if (ship->isBeacon()) 
 				{
-					OOJSShipUniverseClearBeacon(entity);
-					if (OOJSShipPlayerNextBeacon() == oo::ToObjC(entity))
+					[UNIVERSE clearBeacon:(::Entity<OOBeaconEntity> *)oo::ToObjC(entity)];
+					if ((PLAYER != nullptr ? (::Entity <OOBeaconEntity> *)PLAYER->nextBeacon() : (::Entity <OOBeaconEntity> *)nullptr) == oo::ToObjC(entity))
 					{
-						OOJSShipPlayerSetCompassMode(COMPASS_MODE_PLANET);
+						if (PLAYER != nullptr)  PLAYER->setCompassMode(COMPASS_MODE_PLANET);
 					}
 				}
 			}
@@ -1482,7 +1486,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 				else // Universe needs to update beacon lists in this case only
 				{
 					ship->setBeaconCode(sValue);
-					OOJSShipUniverseSetNextBeacon(entity);
+					[UNIVERSE setNextBeacon:(::Entity<OOBeaconEntity> *)oo::ToObjC(entity)];
 				}
 			}
 			return true;
@@ -2076,7 +2080,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			if (ship->getIsPlayer())
 			{
 				PlayerEntity *pent = static_cast<PlayerEntity *>(entity);
-				OOJSShipPlayerSetWeaponMount(pent, facing, weaponKey, "scripted");
+				if (pent != nullptr)  pent->setWeaponMount(facing, weaponKey, "scripted");
 			}
 			else
 			{
@@ -2440,7 +2444,7 @@ static bool ShipAddCargoEntity(ooscript::Context context, ooscript::CallArgs &oo
 	GET_THIS_SHIP(thisEnt);
 	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 
-	if (EXPECT_NOT(ship->getIsPlayer() && OOJSShipPlayerIsDocked(static_cast<PlayerEntity *>(thisEnt))))
+	if (EXPECT_NOT(ship->getIsPlayer() && (static_cast<PlayerEntity *>(thisEnt) != nullptr ? static_cast<PlayerEntity *>(thisEnt)->isDocked() : false)))
 	{
 		cxx_OOJSReportWarningForCaller(context, "PlayerShip", "addCargoEntity", "Can't add cargo entity while docked, ignoring.");
 		return false;
@@ -2520,7 +2524,7 @@ static bool ShipDumpCargo(ooscript::Context context, ooscript::CallArgs &oojsArg
 	GET_THIS_SHIP(thisEnt);
 	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
-	if (EXPECT_NOT(ship->getIsPlayer() && OOJSShipPlayerIsDocked(static_cast<PlayerEntity *>(thisEnt))))
+	if (EXPECT_NOT(ship->getIsPlayer() && (static_cast<PlayerEntity *>(thisEnt) != nullptr ? static_cast<PlayerEntity *>(thisEnt)->isDocked() : false)))
 	{
 		cxx_OOJSReportWarningForCaller(context, "PlayerShip", "dumpCargo", "Can't dump cargo while docked, ignoring.");
 		OOJS_RETURN_NULL;
@@ -2545,7 +2549,7 @@ static bool ShipDumpCargo(ooscript::Context context, ooscript::CallArgs &oojsArg
 
 		for (i = 1; i < count; i++)
 		{
-			OOJSShipScheduleDumpCargo(thisEnt, 0.75 * i);	// drop 3 canisters per 2 seconds
+			OOScheduleDeferredCall(oo::ToObjC(thisEnt), @selector(dumpCargo), nil, (0.75 * i));	// drop 3 canisters per 2 seconds
 		}
 	}
 
@@ -2710,8 +2714,8 @@ static bool ShipRunLegacyScriptActions(ooscript::Context context, ooscript::Call
 	
 	if (target != nullptr)	// Not stale reference
 	{
-		OOJSShipPlayerSetScriptTarget(player, thisEnt);
-		OOJSShipPlayerRunUnsanitizedScriptActions(player, actions, true, oo::str::format("<ship \"%s\" legacy actions>", ship->getName().value_or("(null)").c_str()), target);
+		if (player != nullptr)  player->setScriptTarget(thisEnt);
+		if (player != nullptr)  player->runUnsanitizedScriptActions(actions, true, oo::str::format("<ship \"%s\" legacy actions>", ship->getName().value_or("(null)").c_str()), target);
 	}
 	
 	OOJS_RETURN_VOID;
@@ -2893,15 +2897,15 @@ static bool ShipAwardEquipment(ooscript::Context context, ooscript::CallArgs &oo
 			}
 			else if (cxxEqType->isMissileOrMine())
 			{
-				OK = OOJSShipPlayerMountMissileWithRole(player, identifier);
+				OK = (player != nullptr ? player->mountMissileWithRole(identifier) : false);
 			}
 			else if (berth)
 			{
-				OK = OOJSShipPlayerChangePassengerBerths(player, +1);
+				OK = (player != nullptr ? player->changePassengerBerths(+1) : false);
 			}
 			else if (identifier == "EQ_PASSENGER_BERTH_REMOVAL")
 			{
-				OK = OOJSShipPlayerChangePassengerBerths(player, -1);
+				OK = (player != nullptr ? player->changePassengerBerths(-1) : false);
 			}
 			else
 			{
@@ -2973,7 +2977,7 @@ static bool ShipRemoveEquipment(ooscript::Context context, ooscript::CallArgs &o
 				if (ship->passengerCapacity() > ship->passengerCount())
 				{
 					// must be the player's ship!
-					if (ship->getIsPlayer()) OOJSShipPlayerChangePassengerBerths(static_cast<PlayerEntity *>(thisEnt), -1);
+					if (ship->getIsPlayer())  static_cast<PlayerEntity *>(thisEnt)->changePassengerBerths(-1);	// thisEnt is not null here
 				}
 				else OK = false;
 			}
@@ -3019,7 +3023,7 @@ static bool ShipRestoreSubEntities(ooscript::Context context, ooscript::CallArgs
 	if (ship->getIsPlayer())
 	{
 		int tradeInFactorChange = (int)MAX(PLAYER_SHIP_SUBENTITY_TRADE_IN_VALUE * numSubEntitiesRestored, 25U);
-		OOJSShipPlayerAdjustTradeInFactorBy(static_cast<PlayerEntity *>(thisEnt), tradeInFactorChange);
+		if (static_cast<PlayerEntity *>(thisEnt) != nullptr)  static_cast<PlayerEntity *>(thisEnt)->adjustTradeInFactorBy(tradeInFactorChange);
 	}
 	
 	OOJS_RETURN_BOOL(numSubEntitiesRestored > 0);
@@ -3247,7 +3251,7 @@ static bool ShipFindNearestStation(ooscript::Context context, ooscript::CallArgs
 	double				sdist, distance = 1E32;
 	
 	ShipEntity			*se = nullptr;
-	for (const auto &stationRef : OOJSShipUniverseStations())
+	for (const auto &stationRef : [UNIVERSE cxx_stations])
 	{
 		se = oo::ToShip(stationRef.get());
 		sdist = HPdistance2(ship->getPosition(), (se != nullptr ? se->getPosition() : kZeroHPVector));	// (a message to nil answered zero)
@@ -3315,7 +3319,7 @@ static bool ShipSetCargo(ooscript::Context context, ooscript::CallArgs &oojsArgs
 		return false;
 	}
 	
-	OOCommodities *commodities = OOJSShipUniverseCommodities();	// null: no good is defined, as a message to nil
+	OOCommodities *commodities = [UNIVERSE commodities];	// null: no good is defined, as a message to nil
 	if (commodities != nullptr && commodities->goodDefined(*commodity))
 	{
 		ship->setCommodityForPod(commodity, count);
@@ -3617,17 +3621,17 @@ bool RemoveOrExplodeShip(ooscript::Context context, ooscript::CallArgs &oojsArgs
 		OOCAssert(explode, "RemoveOrExplodeShip(): shouldn't be called for player with !explode.");	// player.ship.remove() is blocked by caller.
 		PlayerEntity *player = static_cast<PlayerEntity *>(thisEnt);
 		
-		if (OOJSShipPlayerIsDocked(player))
+		if ((player != nullptr ? player->isDocked() : false))
 		{
 			cxx_OOJSReportError(context, "Cannot explode() player's ship while docked.");
 			return false;
 		}
 	}
 	
-	if (thisEnt == OOJSShipUniverseStation())
+	if (thisEnt == oo::ToShip(oo::ToObjC([UNIVERSE station])))
 	{
 		// Allow exploding of main station (e.g. nova mission)
-		OOJSShipUniverseUnMagicMainStation();
+		[UNIVERSE unMagicMainStation];
 	}
 	
 	if (EXPECT_NOT(ship->status() == STATUS_DOCKED))
@@ -3923,7 +3927,7 @@ static bool ShipEnterWormhole(ooscript::Context context, ooscript::CallArgs &ooj
 	ShipEntity *thisEnt = nullptr;
 	Entity	*hole = nullptr;
 
-	if (OOJSShipPlayerStatus() != STATUS_ENTERING_WITCHSPACE)
+	if ((PLAYER != nullptr ? PLAYER->status() : OOEntityStatus{}) != STATUS_ENTERING_WITCHSPACE)
 	{
 		cxx_OOJSReportError(context, "Cannot use this function while player's ship not entering witchspace.");
 		return false;
@@ -4262,7 +4266,7 @@ static bool ShipCheckCourseToDestination(ooscript::Context context, ooscript::Ca
 	GET_THIS_SHIP(thisEnt);
 	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 
-	Entity *hazard = OOJSShipUniverseHazardOnRoute(oo::ToObjC(thisEnt), ship->desiredRange(), ship->destination());
+	Entity *hazard = [UNIVERSE hazardOnRouteFromEntity:oo::ToObjC(thisEnt) toDistance:ship->desiredRange() fromPoint:ship->destination()];
 
 	OOJS_RETURN_OBJECT(hazard);
 
@@ -4278,7 +4282,7 @@ static bool ShipGetSafeCourseToDestination(ooscript::Context context, ooscript::
 	GET_THIS_SHIP(thisEnt);
 	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 
-	HPVector waypoint = OOJSShipUniverseSafeVector(oo::ToObjC(thisEnt), ship->desiredRange(), ship->destination());
+	HPVector waypoint = [UNIVERSE getSafeVectorFromEntity:oo::ToObjC(thisEnt) toDistance:ship->desiredRange() fromPoint:ship->destination()];
 
 	OOJS_RETURN_HPVECTOR(waypoint);
 
@@ -4358,7 +4362,7 @@ static bool ShipAdjustCargo(ooscript::Context context, ooscript::CallArgs &oojsA
 
 	if (adjustment > 0)
 	{
-		ok = ship->addCargo(OOJSShipUniverseContainersOfCommodity(commodity.value_or(""), adjustment)); // non-reified templates
+		ok = ship->addCargo([UNIVERSE cxx_getContainersOfCommodity:commodity.value_or("") :adjustment]); // non-reified templates
 	}
 	else if (adjustment < 0)
 	{
@@ -4458,7 +4462,7 @@ static bool ShipThreatAssessment(ooscript::Context context, ooscript::CallArgs &
 		// consider pilot skill
 		if (ship->getIsPlayer())
 		{
-			double score = (double)OOJSShipPlayerScore();
+			double score = (double)(PLAYER != nullptr ? PLAYER->score() : unsigned{});
 			if (score > 6400) 
 			{
 				score = 6400;
@@ -4541,7 +4545,7 @@ static bool ShipThreatAssessment(ooscript::Context context, ooscript::CallArgs &
 	{
 		assessment *= 0.2;
 	}
-	else if (ship->getIsPlayer() && OOJSShipPlayerFleeingStatus(static_cast<PlayerEntity *>(thisEnt)) >= PLAYER_FLEEING_CARGO)
+	else if (ship->getIsPlayer() && (static_cast<PlayerEntity *>(thisEnt) != nullptr ? static_cast<PlayerEntity *>(thisEnt)->fleeingStatus() : OOPlayerFleeingStatus{}) >= PLAYER_FLEEING_CARGO)
 	{
 		assessment *= 0.2;
 	}
@@ -4610,7 +4614,7 @@ static bool ShipStaticRoleIsInCategory(ooscript::Context context, ooscript::Call
 		const std::optional<std::string> role = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 		const std::optional<std::string> category = cxx_OOStringFromJSValue(context, OOJS_ARGV[1]);
 
-		OOJS_RETURN_BOOL(role.has_value() && category.has_value() && OOJSShipUniverseRoleIsInCategory(*role, *category));	// a nil role or category matched nothing
+		OOJS_RETURN_BOOL(role.has_value() && category.has_value() && [UNIVERSE cxx_role:*role isInCategory:*category]);	// a nil role or category matched nothing
 	}
 	else
 	{
