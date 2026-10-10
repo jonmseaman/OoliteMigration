@@ -51,6 +51,12 @@ void EntityJSGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outProt
 void EntityJSDeleteJSSelf(cxx::Entity *entity);
 std::optional<std::string> EntityJSDescription(cxx::Entity *entity);
 
+// The entity's answers to the class questions the engine asked its object by selector: an
+// Objective-C entity's own override answers first, a C++ entity's virtual member otherwise (bead
+// oo-9ht.39.5.1).
+bool OOJSEntityIsVisibleToScripts(cxx::Entity *entity);
+std::optional<std::string> OOJSEntityJSClassName(cxx::Entity *entity);
+
 // ShipEntity (OOJavaScriptExtensions)
 bool ShipEntityJSIsVisibleToScripts(void);
 void ShipEntityJSGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);

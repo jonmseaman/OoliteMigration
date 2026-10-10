@@ -47,6 +47,7 @@ SOFTWARE.
 #import "OOObjCPList.h"
 #import "OOLogHeader.h"	// OOPlatformDescription()
 #import "Entity.h"	// an entity's -inspect
+#import "EntityOOJavaScriptExtensions.h"	// callObjC()'s class name of an entity (bead oo-9ht.39.5.1)
 #if OO_DEBUG
 #import "OOShaderUniformMethodType.h"	// callObjC()'s scalar results on the console (bead oo-9ht.74)
 #endif
@@ -987,7 +988,16 @@ static bool ConsoleCallObjCMethod(ooscript::Context context, ooscript::CallArgs 
 	
 	OOJSPauseTimeLimiter();
 	result = ooscript::undefinedValue();
-	OK = OOJSCallObjCObjectMethod(context, object, [object cxx_oo_jsClassName].value_or(std::string()), oojsArgs.count(), OOJS_ARGV, &result);
+	// The class name of the error texts: an entity's is its C++ part's (bead oo-9ht.39.5.1), the
+	// answer its object's -cxx_oo_jsClassName forwarded to; any other object's is its own.
+	std::optional<std::string> className;
+	if ([object isKindOfClass:[::Entity class]])
+	{
+		::Entity *entity = object;
+		className = OOJSEntityJSClassName(oo::ToCxx(entity));
+	}
+	else  className = [object cxx_oo_jsClassName];
+	OK = OOJSCallObjCObjectMethod(context, object, className.value_or(std::string()), oojsArgs.count(), OOJS_ARGV, &result);
 	OOJSResumeTimeLimiter();
 	
 	OOJS_SET_RVAL(result);

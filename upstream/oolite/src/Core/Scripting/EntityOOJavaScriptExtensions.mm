@@ -68,17 +68,28 @@ std::optional<std::string> EntityJSClassName(void)
 	dropped when the engine resets. The body is the one the facade's JS value selector ran, asking the
 	C++ entity what it asked the facade (whose selectors answered from the C++ part).
 */
-namespace {
-
-// The class questions the facade's JS value selector asked by selector: an Objective-C entity's
-// own override answered first (the adapter does not forward them), a C++ entity's members answered
-// through the root facade's category.
-bool IsVisibleToScripts(cxx::Entity *entity)
+/*	The class questions the facade's JS value selector asked by selector: an Objective-C entity's
+	own override answered first (the adapter does not forward them), a C++ entity's members answered
+	through the root facade's category. Exported since bead oo-9ht.39.5.1 for the engine's generic
+	paths that asked an entity's object (OOJSSystem's planets filter, callObjC()'s class name).
+*/
+bool OOJSEntityIsVisibleToScripts(cxx::Entity *entity)
 {
+	if (entity == nullptr)  return false;	// nil's answer
 	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() isVisibleToScripts];
 	return entity->isVisibleToScripts();
 }
 
+
+std::optional<std::string> OOJSEntityJSClassName(cxx::Entity *entity)
+{
+	if (entity == nullptr)  return std::nullopt;	// nil's answer
+	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() cxx_oo_jsClassName];
+	return entity->jsClassName();
+}
+
+
+namespace {
 
 void GetJSClass(cxx::Entity *entity, ooscript::ClassDef **outClass, ooscript::Object *outPrototype)
 {
@@ -95,7 +106,7 @@ ooscript::Value EntityJSValueInContext(cxx::Entity *entity, ooscript::Context co
 	ooscript::Object prototype = NULL;
 	ooscript::Value					result = ooscript::nullValue();
 	
-	if (entity->_jsSelf == NULL && IsVisibleToScripts(entity))
+	if (entity->_jsSelf == NULL && OOJSEntityIsVisibleToScripts(entity))
 	{
 		// Create JS object
 		GetJSClass(entity, &jsClass, &prototype);

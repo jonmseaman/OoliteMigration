@@ -6622,3 +6622,39 @@ player's debug-console key and the game controller's exit (facade sends), `OODeb
 **Consequences.** Nothing names an Objective-C debug monitor; the Debug module has no facade left.
 callObjC()'s other receivers (the entities' objects, through `OOJSEntityObjectConverter`) are
 oo-9ht.39.5's and oo-9ht.44's; this amendment's table is the pattern oo-9ht.44 extends.
+
+## Amendment (bead oo-9ht.39.5.1): the system's planets filter and callObjC()'s class name ask the C++ entity (oo-9ht.39 step 3b, part a)
+
+- Date: 2026-10-10. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch U.
+  Exemplar: `src/Core/Scripting/EntityOOJavaScriptExtensions.h/.mm` (`OOJSEntityIsVisibleToScripts()`,
+  `OOJSEntityJSClassName()`), `OOJSSystem.mm` (`system.planets`), `src/Core/Debug/OOJSConsole.mm`
+  (`ConsoleCallObjCMethod`). oo-9ht.39.5 is split in three (batch T's recommendation): (a) here,
+  (b) weak references of entities (oo-9ht.39.5.2), (c) Object nodes of entities and the entity
+  converter (oo-9ht.39.5.3, which blocks oo-9ht.44).
+
+**Context.** Two of the engine's generic paths asked an entity's object a class question by
+selector: `system.planets` sent `-isVisibleToScripts` to each planet's object, and the console's
+`callObjC()` sent `-cxx_oo_jsClassName` to its `this` for the class name of its error texts. The
+root facade's selectors forward to the C++ entity's virtual members; an Objective-C entity (a test
+subclass, through its `oo::ObjCEntity` adapter) overrides them.
+
+**Decision (recommended defaults).**
+
+1. **The entity's JS value's two class helpers are exported**: `OOJSEntityIsVisibleToScripts()`
+   (the anonymous helper amendment oo-9ht.39.3 made) and `OOJSEntityJSClassName()`, both taking the
+   C++ entity: an Objective-C entity's own selector answers first, a C++ entity's member otherwise,
+   as the facade's JS value selector asked.
+2. **`system.planets` filters with `OOJSEntityIsVisibleToScripts(oo::ToCxx(planet))`**; the list
+   is still of the planets' objects (the owning list, amendment oo-9ht.39.4 item 2).
+3. **`callObjC()`'s class name of an entity is `OOJSEntityJSClassName()` of its C++ part**; any
+   other object is still asked `-cxx_oo_jsClassName` (its `this` is still the converter's object,
+   amendment oo-9ht.39.3 item 8, until oo-9ht.39.5.3 and oo-9ht.44).
+4. **The console's `inspectEntity()` is left as it is**: `-inspect` is the Mac debug OXP inspector's
+   category on the Objective-C class, so only an object can answer it; it is one of the bindings'
+   sends to `oo::ToObjC()` that go with the facade's deletion (amendment oo-9ht.39.3 item 4, step 4),
+   and `test_OOJSConsole`'s `inspectEntity` case pins it.
+5. **Behaviour identical**: the same members answer, through the same overrides. No test changes.
+
+**Consequences.** The root facade's `-isVisibleToScripts` and `-cxx_oo_jsClassName` are sent only
+by the helpers, to Objective-C entities. Left for oo-9ht.39.5.2/.3: weak references, Object nodes,
+`OOJSValueFromNativeObject()` of an entity and the converter.
