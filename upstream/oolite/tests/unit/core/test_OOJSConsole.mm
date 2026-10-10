@@ -65,8 +65,8 @@ cxx::OODebugMonitor *cxx::OODebugMonitor::sharedDebugMonitor()
 	return monitor;
 }
 
-bool cxx::OODebugMonitor::setDebugger(id<OODebuggerInterface>)  { return false; }
-void cxx::OODebugMonitor::disconnectDebugger(id<OODebuggerInterface>, const std::optional<std::string> &)  {}
+bool cxx::OODebugMonitor::setDebugger(OODebuggerInterface *)  { return false; }
+void cxx::OODebugMonitor::disconnectDebugger(OODebuggerInterface *, const std::optional<std::string> &)  {}
 void cxx::OODebugMonitor::performJSConsoleCommand(const std::string &)  {}
 
 void cxx::OODebugMonitor::appendJSConsoleLine(const std::string &string, const std::optional<std::string> &colorKey, NSRange emphasisRange)

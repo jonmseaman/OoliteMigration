@@ -97,7 +97,7 @@ cxx::OODebugMonitor *oo::ToCxx(OODebugMonitor *monitor)
 }
 
 
-- (BOOL)setDebugger:(id<OODebuggerInterface>)newDebugger
+- (BOOL)setDebugger:(OODebuggerInterface *)newDebugger
 {
 	return _cxxMonitor->setDebugger(newDebugger);
 }
@@ -208,7 +208,7 @@ cxx::OODebugMonitor *oo::ToCxx(OODebugMonitor *monitor)
 }
 
 
-- (void)disconnectDebugger:(id<OODebuggerInterface>)debugger
+- (void)disconnectDebugger:(OODebuggerInterface *)debugger
 				   message:(const std::optional<std::string> &)message
 {
 	_cxxMonitor->disconnectDebugger(debugger, message);

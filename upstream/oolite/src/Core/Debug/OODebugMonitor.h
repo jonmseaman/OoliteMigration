@@ -76,10 +76,10 @@ class OODebugMonitor : public oo::RefCounted
 {
 public:
 	static OODebugMonitor *sharedDebugMonitor();
-	bool setDebugger(id<OODebuggerInterface> debugger);
+	bool setDebugger(OODebuggerInterface *debugger);
 
 	// Note: disconnectDebugger() will cause a disconnectDebugMonitor:message: message to be sent to the debugger. The debugger should not send disconnectDebugger:message: in response to disconnectDebugMonitor:message:.
-	void disconnectDebugger(id<OODebuggerInterface> debugger,
+	void disconnectDebugger(OODebuggerInterface *debugger,
 							const std::optional<std::string> &message);
 
 		// *** JavaScript console support.
@@ -161,7 +161,7 @@ private:
 
 	std::optional<std::vector<std::string>> loadSourceFile(const std::string &filePath);	// nullopt: can't be read
 
-	oo::ObjCRef<id<OODebuggerInterface>>	_debugger;
+	oo::Ref<OODebuggerInterface>		_debugger;	// a C++ interface since bead oo-9ht.81
 
 	// JavaScript console support.
 	oo::Ref<OOScript>					_script;	// the console script (an OOJSScript)

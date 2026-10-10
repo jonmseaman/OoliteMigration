@@ -6475,3 +6475,44 @@ OXP is present, and `setUsingPlugInController(false)` is still sent as before. B
 on every platform built (the Mac stub's log line goes with the Mac branch). A plug-in debugger, if
 one is ever wanted, implements the C++ debugger interface (amendment oo-9ht.81). `test_OODebugSupport`
 is unchanged but for its meson entry, which no longer links the bridge.
+
+## Amendment (bead oo-9ht.81): the debugger interface is C++; the TCP console client's facade is deleted
+
+- Date: 2026-10-10. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch S.
+  Exemplar: `src/Core/Debug/OODebuggerInterface.h`, `OODebugTCPConsoleClient.h/.mm`,
+  `OODebugMonitor.mm` (`setDebugger()` and the sends to the debugger),
+  `tests/unit/core/test_OODebugTCPConsoleClient.mm`. Step 1 of oo-9ht.74's plan (the debugger
+  half), done before the monitor's facade so the TCP client's facade could go.
+
+**Context.** The monitor held its debugger as `id<OODebuggerInterface>` (an Objective-C protocol)
+and messaged it, handing it the monitor's facade; the only debugger built is the TCP console
+client (the golden harness's), a C++ class whose Objective-C facade adopted the protocol and
+crossed the monitor back with `oo::ToCxx`.
+
+**Decision (recommended defaults).**
+
+1. **`OODebuggerInterface` is a C++ interface** (`OODebuggerInterface.h`): an `oo::RefCounted`
+   with one pure virtual member per protocol message, the same names and parameters, taking the
+   C++ monitor; plus `description()`, what the monitor's two log lines print for a debugger (the
+   facade's `%@`, `<OODebugTCPConsoleClient 0x...>`).
+2. **The monitor keeps `oo::Ref<OODebuggerInterface>`** (it retained the object) and calls the
+   members with `this`. A message to a nil debugger did nothing; each call is guarded by
+   `_debugger != nullptr`. The `@try`/`@catch` around each call stays (a debugger may raise, as the
+   test's does). The facade's `-setDebugger:` and `-disconnectDebugger:message:` (and the
+   `OODebugMonitorInterface` protocol's) take `OODebuggerInterface *`; they go with the facade
+   (oo-9ht.74).
+3. **The TCP client implements the interface and leaves namespace cxx** (`OODebugTCPConsoleClient`,
+   bead step 2); its facade (`OODebugTCPConsoleClient+ObjCBridge.h/.mm`) and both meson lines are
+   deleted. The debug support keeps the client in an `oo::Ref` (it kept the autoreleased facade):
+   the client lives while the monitor holds it, and a client that fails to connect is released at
+   the end of `OOInitDebugSupport()` rather than at the pool's drain.
+4. **Tests** (standing approval oo-9n5p9, lines on main first): `test_OODebugTCPConsoleClient`
+   drives the C++ client through the interface members as it drove the facade (every case and
+   expected value kept) and retires only `cxxClientAndItsFacade`'s facade-contract checks;
+   `test_OODebugMonitor`'s debugger is a C++ `TestDebugger` with the same records;
+   `test_OODebugSupport` and `test_OOJSConsole` adapt their stand-ins' signatures.
+
+**Consequences.** Nothing names `id<OODebuggerInterface>` or the Objective-C TCP client. Left for
+oo-9ht.74: the engine's monitor protocol (`OOJavaScriptEngineMonitor`, adopted by the monitor's
+facade), the console's JS objects (`console`, `console.settings`), which hold the facade's weak
+reference and `callObjC()` it (oo-9ht.44), `OODebugMonitorInterface`, and the facade itself.

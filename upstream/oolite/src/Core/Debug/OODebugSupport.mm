@@ -45,7 +45,7 @@ void OOInitDebugSupport(void)
 	oo::PList					debugSettings;
 	std::optional<std::string>	consoleHost;
 	unsigned short				consolePort = 0;
-	id<OODebuggerInterface>		debugger = nil;
+	oo::Ref<OODebuggerInterface>	debugger;	// a C++ interface since bead oo-9ht.81
 	bool						activateDebugConsole = false;
 
 	// Load debug settings.
@@ -72,13 +72,12 @@ void OOInitDebugSupport(void)
 
 		// Use the TCP debugger connection.
 		{
-			// The client's facade, autoreleased as before; nil when it cannot connect.
-			debugger = oo::ToObjC(cxx::OODebugTCPConsoleClient::clientWithAddress(consoleHost,
-																				  consolePort).get());
+			// The client; null when it cannot connect.
+			debugger = OODebugTCPConsoleClient::clientWithAddress(consoleHost, consolePort);
 			cxx::OODebugMonitor::sharedDebugMonitor()->setUsingPlugInController(false);
 		}
 		
-		activateDebugConsole = (debugger != nil);
+		activateDebugConsole = (debugger != nullptr);
 	}
 	
 	if (!activateDebugConsole)
@@ -90,7 +89,7 @@ void OOInitDebugSupport(void)
 	if (activateDebugConsole)
 	{
 		// Set up monitor and register debugger, if any.
-		cxx::OODebugMonitor::sharedDebugMonitor()->setDebugger(debugger);
+		cxx::OODebugMonitor::sharedDebugMonitor()->setDebugger(debugger.get());
 		[[OOJavaScriptEngine sharedEngine] enableDebuggerStatement];
 	}
 }

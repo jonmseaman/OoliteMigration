@@ -127,9 +127,8 @@ OODebugMonitor *OODebugMonitor::sharedDebugMonitor()
 }
 
 
-bool OODebugMonitor::setDebugger(id<OODebuggerInterface> newDebugger)
+bool OODebugMonitor::setDebugger(OODebuggerInterface *newDebugger)
 {
-	::OODebugMonitor			*self = oo::ToObjC(this);	// what the debugger is handed
 	std::optional<std::string>	error;	// -connectDebugMonitor:errorMessage:
 
 	if (newDebugger != _debugger.get())
@@ -149,20 +148,19 @@ bool OODebugMonitor::setDebugger(id<OODebuggerInterface> newDebugger)
 		{
 			@try
 			{
-				if ([newDebugger connectDebugMonitor:self errorMessage:&error])
+				if (newDebugger->connectDebugMonitor(this, &error))
 				{
-					[newDebugger debugMonitor:self
-							noteConfiguration:mergedConfiguration()];
-					_debugger = oo::ObjCRef<id<OODebuggerInterface>>(newDebugger);
+					newDebugger->debugMonitor(this, mergedConfiguration());
+					_debugger = oo::Ref<OODebuggerInterface>(newDebugger);
 				}
 				else
 				{
-					OO_LOG("debugMonitor.setDebugger.failed", "Could not connect to debugger {}, because an error occurred: {}", oo::DescriptionOf(newDebugger), error.value_or("(null)"));
+					OO_LOG("debugMonitor.setDebugger.failed", "Could not connect to debugger {}, because an error occurred: {}", newDebugger->description(), error.value_or("(null)"));
 				}
 			}
 			@catch (OOException *exception)
 			{
-				OO_LOG("debugMonitor.setDebugger.failed", "Could not connect to debugger {}, because an exception occurred: {} -- {}", oo::DescriptionOf(newDebugger), [exception name], [exception reason]);
+				OO_LOG("debugMonitor.setDebugger.failed", "Could not connect to debugger {}, because an exception occurred: {} -- {}", newDebugger->description(), [exception name], [exception reason]);
 			}
 		}
 	}
@@ -189,10 +187,7 @@ void OODebugMonitor::appendJSConsoleLine(const std::string &string,
 	OOJSPauseTimeLimiter();
 	@try
 	{
-		[_debugger.get() debugMonitor:oo::ToObjC(this)
-				jsConsoleOutput:string
-					   colorKey:colorKey
-				  emphasisRange:emphasisRange];
+		if (_debugger != nullptr)  _debugger->debugMonitor(this, string, colorKey, emphasisRange);
 	}
 	@catch (OOException *exception)
 	{
@@ -216,7 +211,7 @@ void OODebugMonitor::clearJSConsole()
 	OOJSPauseTimeLimiter();
 	@try
 	{
-		[_debugger.get() debugMonitorClearConsole:oo::ToObjC(this)];
+		if (_debugger != nullptr)  _debugger->debugMonitorClearConsole(this);
 	}
 	@catch (OOException *exception)
 	{
@@ -231,7 +226,7 @@ void OODebugMonitor::showJSConsole()
 	OOJSPauseTimeLimiter();
 	@try
 	{
-		[_debugger.get() debugMonitorShowConsole:oo::ToObjC(this)];
+		if (_debugger != nullptr)  _debugger->debugMonitorShowConsole(this);
 	}
 	@catch (OOException *exception)
 	{
@@ -307,9 +302,7 @@ void OODebugMonitor::setConfigurationValue(const oo::PList &value, const std::st
 	}
 	@try
 	{
-		[_debugger.get() debugMonitor:oo::ToObjC(this)
-   noteChangedConfigrationValue:notifyValue
-						 forKey:keyString];
+		if (_debugger != nullptr)  _debugger->debugMonitor(this, notifyValue, keyString);
 	}
 	@catch (OOException *exception)
 	{
@@ -338,7 +331,7 @@ std::vector<std::string> OODebugMonitor::configurationKeys()
 
 bool OODebugMonitor::debuggerConnected()
 {
-	return _debugger.get() != nil;
+	return _debugger != nullptr;
 }
 
 
@@ -666,10 +659,10 @@ std::string OODebugMonitor::sourceCodeForFile(const std::string &filePath, unsig
 }
 
 
-void OODebugMonitor::disconnectDebugger(id<OODebuggerInterface> debugger,
+void OODebugMonitor::disconnectDebugger(OODebuggerInterface *debugger,
 										const std::optional<std::string> &message)
 {
-	if (debugger == nil)  return;
+	if (debugger == nullptr)  return;
 
 	if (debugger == _debugger.get())
 	{
@@ -677,7 +670,7 @@ void OODebugMonitor::disconnectDebugger(id<OODebuggerInterface> debugger,
 	}
 	else
 	{
-		OO_LOG("debugMonitor.disconnect.ignored", "Attempt to disconnect debugger {}, which is not current debugger; ignoring.", oo::DescriptionOf(debugger));
+		OO_LOG("debugMonitor.disconnect.ignored", "Attempt to disconnect debugger {}, which is not current debugger; ignoring.", debugger->description());
 	}
 }
 
@@ -748,7 +741,7 @@ void OODebugMonitor::disconnectDebuggerWithMessage(const std::optional<std::stri
 {
 	@try
 	{
-		[_debugger.get() disconnectDebugMonitor:oo::ToObjC(this) message:message];
+		if (_debugger != nullptr)  _debugger->disconnectDebugMonitor(this, message);
 	}
 	@catch (OOException *exception)
 	{
@@ -847,7 +840,7 @@ void OODebugMonitor::jsEngine(::OOJavaScriptEngine * /*engine*/,
 	NSRange						emphasisRange;
 	const char					*showKey = nullptr;
 
-	if (_debugger.get() == nil)  return;
+	if (_debugger == nullptr)  return;
 
 	if (errorReport->flags & static_cast<unsigned>(ooscript::ReportFlag::Warning))
 	{

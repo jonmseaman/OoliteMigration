@@ -376,74 +376,83 @@ OODrawable *OOEntityWithDrawable::getDrawable()  { std::abort(); }
 
 // MARK: The debugger -------------------------------------------------------------------------------
 
-// Records what the monitor sends it. Refuses to connect, or raises, when told to.
-@interface TestDebugger: OOObject <OODebuggerInterface>
+// Records what the monitor sends it. Refuses to connect, or raises, when told to. A C++
+// OODebuggerInterface since bead oo-9ht.81 (it was an Objective-C object adopting the protocol);
+// the same members, the same records.
+namespace {
+
+// The records (the Objective-C class's @public ivars).
+struct TestDebuggerRecord : public OODebuggerInterface
 {
-@public
-	BOOL						_refuse;
-	BOOL						_raise;
-	int							_connects;
+	BOOL						_refuse = NO;
+	BOOL						_raise = NO;
+	int							_connects = 0;
 	std::vector<std::string>	_disconnects;	// the messages ("(none)" for nullopt)
 	std::vector<std::string>	_output;		// "colorKey|text|location,length"
-	int							_clears;
-	int							_shows;
+	int							_clears = 0;
+	int							_shows = 0;
 	oo::PList					_configuration;
 	std::vector<std::string>	_changes;		// "key=<description>"
-}
-@end
+};
 
-@implementation TestDebugger
 
-- (BOOL)connectDebugMonitor:(OODebugMonitor *)debugMonitor errorMessage:(std::optional<std::string> *)message
+class TestDebugger : public TestDebuggerRecord
 {
-	(void)debugMonitor;
-	_connects++;
-	if (_raise)  [OOException raise:"TestException" format:"%s", "no thanks"];
-	if (_refuse)
+public:
+	bool connectDebugMonitor(cxx::OODebugMonitor *debugMonitor, std::optional<std::string> *message) override
 	{
-		*message = "refused";
-		return NO;
+		(void)debugMonitor;
+		_connects++;
+		if (_raise)  [OOException raise:"TestException" format:"%s", "no thanks"];
+		if (_refuse)
+		{
+			*message = "refused";
+			return NO;
+		}
+		return YES;
 	}
-	return YES;
-}
 
 
-- (void)disconnectDebugMonitor:(OODebugMonitor *)debugMonitor message:(const std::optional<std::string> &)message
-{
-	(void)debugMonitor;
-	_disconnects.push_back(message.value_or("(none)"));
-}
+	void disconnectDebugMonitor(cxx::OODebugMonitor *debugMonitor, const std::optional<std::string> &message) override
+	{
+		(void)debugMonitor;
+		_disconnects.push_back(message.value_or("(none)"));
+	}
 
 
-- (void)debugMonitor:(OODebugMonitor *)debugMonitor
-	  jsConsoleOutput:(const std::string &)output
-			 colorKey:(const std::optional<std::string> &)colorKey
-		emphasisRange:(NSRange)emphasisRange
-{
-	(void)debugMonitor;
-	_output.push_back(oo::str::format("%s|%s|%lu,%lu", colorKey.value_or("(none)").c_str(), output.c_str(), (unsigned long)emphasisRange.location, (unsigned long)emphasisRange.length));
-}
+	void debugMonitor(cxx::OODebugMonitor *debugMonitor,
+					  const std::string &output,
+					  const std::optional<std::string> &colorKey,
+					  NSRange emphasisRange) override
+	{
+		(void)debugMonitor;
+		_output.push_back(oo::str::format("%s|%s|%lu,%lu", colorKey.value_or("(none)").c_str(), output.c_str(), (unsigned long)emphasisRange.location, (unsigned long)emphasisRange.length));
+	}
 
 
-- (void)debugMonitorClearConsole:(OODebugMonitor *)debugMonitor	{ (void)debugMonitor; _clears++; }
-- (void)debugMonitorShowConsole:(OODebugMonitor *)debugMonitor	{ (void)debugMonitor; _shows++; }
+	void debugMonitorClearConsole(cxx::OODebugMonitor *debugMonitor) override	{ (void)debugMonitor; _clears++; }
+	void debugMonitorShowConsole(cxx::OODebugMonitor *debugMonitor) override	{ (void)debugMonitor; _shows++; }
 
 
-- (void)debugMonitor:(OODebugMonitor *)debugMonitor noteConfiguration:(const oo::PList &)configuration
-{
-	(void)debugMonitor;
-	_configuration = configuration;
-}
+	void debugMonitor(cxx::OODebugMonitor *debugMonitor, const oo::PList &configuration) override
+	{
+		(void)debugMonitor;
+		_configuration = configuration;
+	}
 
 
-- (void)debugMonitor:(OODebugMonitor *)debugMonitor noteChangedConfigrationValue:(const oo::PList &)newValue forKey:(const std::string &)key
-{
-	(void)debugMonitor;
-	const oo::PList::Integer *integer = newValue.getIf<oo::PList::Integer>();
-	_changes.push_back(key + "=" + (newValue.isNull() ? std::string("(null)") : integer != nullptr ? std::to_string(integer->value) : std::string("(value)")));
-}
+	void debugMonitor(cxx::OODebugMonitor *debugMonitor, const oo::PList &newValue, const std::string &key) override
+	{
+		(void)debugMonitor;
+		const oo::PList::Integer *integer = newValue.getIf<oo::PList::Integer>();
+		_changes.push_back(key + "=" + (newValue.isNull() ? std::string("(null)") : integer != nullptr ? std::to_string(integer->value) : std::string("(value)")));
+	}
 
-@end
+
+	std::string description() const override	{ return oo::str::format("<TestDebugger %s>", oo::str::pointerDescription(this).c_str()); }
+};
+
+}	// namespace
 
 
 // MARK: Helpers ------------------------------------------------------------------------------------
@@ -534,7 +543,10 @@ int LogLinesContaining(std::string_view text)
 
 TestDebugger *NewDebugger()
 {
-	return [[[TestDebugger alloc] init] autorelease];
+	// Kept for the rest of the run (the Objective-C debugger lived until its test's pool drained).
+	static std::vector<oo::Ref<TestDebugger>> debuggers;
+	debuggers.push_back(oo::makeRef<TestDebugger>());
+	return debuggers.back().get();
 }
 
 }	// namespace

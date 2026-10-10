@@ -163,7 +163,7 @@ std::optional<std::string> SocketErrorDescription(int error)
 
 
 // Every client with an open socket, for the frame loop (not retained: a client removes itself when it closes).
-std::vector<cxx::OODebugTCPConsoleClient *> sLiveClients;
+std::vector<OODebugTCPConsoleClient *> sLiveClients;
 
 }
 
@@ -211,7 +211,6 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 }  // namespace
 
-namespace cxx {
 
 // -init (initWithAddress:nullopt port:0) stays in the facade.
 oo::Ref<OODebugTCPConsoleClient> OODebugTCPConsoleClient::clientWithAddress(const std::optional<std::string> &address, uint16_t port)
@@ -299,7 +298,7 @@ OODebugTCPConsoleClient::~OODebugTCPConsoleClient()
 }
 
 
-bool OODebugTCPConsoleClient::connectDebugMonitor(OODebugMonitor *debugMonitor,
+bool OODebugTCPConsoleClient::connectDebugMonitor(cxx::OODebugMonitor *debugMonitor,
 												  std::optional<std::string> *message)
 {
 	if (_status == kOOTCPClientConnectionRefused)
@@ -319,7 +318,7 @@ bool OODebugTCPConsoleClient::connectDebugMonitor(OODebugMonitor *debugMonitor,
 }
 
 
-void OODebugTCPConsoleClient::disconnectDebugMonitor(OODebugMonitor * /*debugMonitor*/,
+void OODebugTCPConsoleClient::disconnectDebugMonitor(cxx::OODebugMonitor * /*debugMonitor*/,
 													 const std::optional<std::string> &message)
 {
 	disconnectFromServerWithMessage(message);
@@ -327,7 +326,7 @@ void OODebugTCPConsoleClient::disconnectDebugMonitor(OODebugMonitor * /*debugMon
 }
 
 
-void OODebugTCPConsoleClient::debugMonitor(OODebugMonitor * /*debugMonitor*/,
+void OODebugTCPConsoleClient::debugMonitor(cxx::OODebugMonitor * /*debugMonitor*/,
 										   const std::string &output,
 										   const std::optional<std::string> &colorKey,
 										   NSRange emphasisRange)
@@ -347,21 +346,28 @@ void OODebugTCPConsoleClient::debugMonitor(OODebugMonitor * /*debugMonitor*/,
 }
 
 
-void OODebugTCPConsoleClient::debugMonitorClearConsole(OODebugMonitor * /*debugMonitor*/)
+std::string OODebugTCPConsoleClient::description() const
+{
+	// What "%@" printed for the facade (no description components).
+	return oo::str::format("<OODebugTCPConsoleClient %s>", oo::str::pointerDescription(this).c_str());
+}
+
+
+void OODebugTCPConsoleClient::debugMonitorClearConsole(cxx::OODebugMonitor * /*debugMonitor*/)
 {
 	sendPacket(ProtocolName(kOOTCPPacket_ClearConsole),
 			   oo::PList());
 }
 
 
-void OODebugTCPConsoleClient::debugMonitorShowConsole(OODebugMonitor * /*debugMonitor*/)
+void OODebugTCPConsoleClient::debugMonitorShowConsole(cxx::OODebugMonitor * /*debugMonitor*/)
 {
 	sendPacket(ProtocolName(kOOTCPPacket_ShowConsole),
 			   oo::PList());
 }
 
 
-void OODebugTCPConsoleClient::debugMonitor(OODebugMonitor * /*debugMonitor*/,
+void OODebugTCPConsoleClient::debugMonitor(cxx::OODebugMonitor * /*debugMonitor*/,
 										   const oo::PList &configuration)
 {
 	sendPacket(ProtocolName(kOOTCPPacket_NoteConfiguration),
@@ -370,7 +376,7 @@ void OODebugTCPConsoleClient::debugMonitor(OODebugMonitor * /*debugMonitor*/,
 }
 
 
-void OODebugTCPConsoleClient::debugMonitor(OODebugMonitor * /*debugMonitor*/,
+void OODebugTCPConsoleClient::debugMonitor(cxx::OODebugMonitor * /*debugMonitor*/,
 										   const oo::PList &newValue,
 										   const std::string &key)
 {
@@ -720,7 +726,7 @@ void OODebugTCPConsoleClient::sendDictionary(const oo::PList &dictionary)
 	if (!sentOK)
 	{
 		OO_LOG("debugTCP.send.error", "The following packet could not be sent: {}", oo::DescriptionOf(dictionary));
-		if(!OODebugMonitor::sharedDebugMonitor()->TCPIgnoresDroppedPackets())
+		if(!cxx::OODebugMonitor::sharedDebugMonitor()->TCPIgnoresDroppedPackets())
 		{
 			breakConnectionWithStreamError(_socket != kNoSocket ? _outError : 0);
 		}
@@ -949,7 +955,7 @@ void OODebugTCPConsoleClient::breakConnectionWithMessage(const std::string &mess
 	
 #if 0
 	// Disconnecting causes crashiness for reasons I don't understand, and isn't very important anyway.
-	_monitor->disconnectDebugger(oo::ToObjC(this), message);
+	_monitor->disconnectDebugger(this, message);
 	_monitor = nullptr;
 #endif
 }
@@ -967,12 +973,11 @@ void OODebugTCPConsoleClient::breakConnectionWithStreamError(int error)
 		errorDesc->c_str(), (size_t)_outStatus, (size_t)_inStatus));
 }
 
-}	// namespace cxx
 
 
 bool OODebugTCPConsoleIsWaitingForInput(void)
 {
-	for (cxx::OODebugTCPConsoleClient *client : sLiveClients)
+	for (OODebugTCPConsoleClient *client : sLiveClients)
 	{
 		if (client->isWaitingForInput())  return true;
 	}
@@ -987,7 +992,7 @@ void OODebugTCPConsoleServiceInput(double timeout)
 	int						highest = -1;
 
 	// An error event already raised is delivered without waiting.
-	for (cxx::OODebugTCPConsoleClient *client : std::vector<cxx::OODebugTCPConsoleClient *>(sLiveClients))
+	for (OODebugTCPConsoleClient *client : std::vector<OODebugTCPConsoleClient *>(sLiveClients))
 	{
 		if (client->hasPendingErrorEvent())
 		{
@@ -999,7 +1004,7 @@ void OODebugTCPConsoleServiceInput(double timeout)
 	FD_ZERO(&readSet);
 	FD_ZERO(&writeSet);
 	FD_ZERO(&exceptSet);
-	for (cxx::OODebugTCPConsoleClient *client : sLiveClients)
+	for (OODebugTCPConsoleClient *client : sLiveClients)
 	{
 		if (client->isWaitingForInput())
 		{
@@ -1019,7 +1024,7 @@ void OODebugTCPConsoleServiceInput(double timeout)
 	}
 	if (select(highest + 1, &readSet, &writeSet, &exceptSet, limitPtr) <= 0)  return;
 
-	for (cxx::OODebugTCPConsoleClient *client : std::vector<cxx::OODebugTCPConsoleClient *>(sLiveClients))
+	for (OODebugTCPConsoleClient *client : std::vector<OODebugTCPConsoleClient *>(sLiveClients))
 	{
 		if (client->socket() == kNoSocket)  continue;
 		OOSocket s = (OOSocket)client->socket();
@@ -1036,7 +1041,6 @@ void OODebugTCPConsoleServiceInput(double timeout)
 }
 
 
-namespace cxx {
 
 void OODebugTCPConsoleClient::DecoderPacket(void *cbInfo, OOALObjectRef packetType, OOALObjectRef packet)
 {
@@ -1055,7 +1059,6 @@ void OODebugTCPConsoleClient::DecoderError(void *cbInfo, OOALObjectRef errorDesc
 	static_cast<OODebugTCPConsoleClient *>(cbInfo)->breakConnectionWithMessage((description != nullptr) ? *description : std::string());
 }
 
-}	// namespace cxx
 
 
 #ifdef OO_LOG_DEBUG_PROTOCOL_PACKETS

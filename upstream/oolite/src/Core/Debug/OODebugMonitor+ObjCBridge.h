@@ -52,7 +52,7 @@ SOFTWARE.
 @protocol OODebugMonitorInterface
 
 // Note: disconnectDebugger:message: will cause a disconnectDebugMonitor:message: message to be sent to the debugger. The debugger should not send disconnectDebugger:message: in response to disconnectDebugMonitor:message:.
-- (void)disconnectDebugger:(id<OODebuggerInterface>)debugger
+- (void)disconnectDebugger:(OODebuggerInterface *)debugger
 				   message:(const std::optional<std::string> &)message;
 
 
@@ -76,7 +76,7 @@ SOFTWARE.
 }
 
 + (OODebugMonitor *) sharedDebugMonitor;
-- (BOOL)setDebugger:(id<OODebuggerInterface>)debugger;
+- (BOOL)setDebugger:(OODebuggerInterface *)debugger;
 
 	// *** JavaScript console support.
 - (void)appendJSConsoleLine:(const std::string &)string
