@@ -5808,3 +5808,54 @@ cascade's category; `oo::NewEntityFacade`'s chain names only those. The root's f
 two leaf categories (the planet's shader bindings, the waypoint's beacon selectors) that its own
 deletion (oo-9ht.39) turns into C++ (oo-9ht.158 for the shader bindings, a C++ beacon interface for
 the list).
+
+
+## Amendment (bead oo-9ht.183): a ship made in C++, and the proxy's facade
+
+- Date: 2026-10-09. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch M
+  (a second one-commit branch, after the leaves). Exemplar: `src/Core/Entities/ProxyPlayerEntity.h/.mm`
+  (`newProxyObject()`), `Entities/ShipEntity+ObjCBridge.h/.mm` (`oo::NewShipObject()`,
+  `-cxx_initWithShipPart:key:definition:`, the proxy's dials in
+  `ShipEntity (OOPlayerSelectorsCalledByName)`), `Universe.mm` (`-cxx_newShipWithName:...`, the
+  shipyard), `Entities/PlayerEntity.mm` (the ship-model view, `createDoppelganger()`),
+  `tests/unit/core/test_ProxyPlayerEntity.mm`. Follows amendment oo-9ht.177 (the player).
+
+**Context.** Every ship was made by its facade's `-cxx_initWithKey:definition:` (the class picked by
+`-cxx_shipClassForShipDictionary:`, or `ProxyPlayerEntity` for the shipyard's and the
+doppelganger's ships). The proxy's facade was a subclass of the ship's whose C++ part was an
+adapter, and it answered the player's dials to the shaders by name. No C++ path made a ship from a
+definition, so the proxy's facade could not go.
+
+**Decision (recommended defaults).**
+
+1. **A ship is made in C++ with `oo::NewShipObject(ship, key, dict)`**: a new ship's facade holding
+   the C++ ship, set up from the definition by the same body as `-cxx_initWithKey:definition:` (the
+   body after `[super init]` is `-initShipSetUpWithKey:definition:`; the initialiser that takes a part,
+   `-cxx_initWithShipPart:key:definition:`, stores it once, so the root's `-init` body runs once, as
+   the adapter's construction did), retained (+1) as `+alloc`/`-init`'s object was, nil when the
+   set-up fails. The player keeps its own path (it is made before ship data is loaded).
+2. **The proxy is made by `ProxyPlayerEntity::newProxyObject(key, dict)`**: `oo::NewShipObject`,
+   then the proxy's defaults, as the facade's initialiser did after `[super ...]`. The universe's
+   `-cxx_newShipWithName:usePlayerProxy:` makes it where it picked the proxy's class (a flag, not
+   a class, inside the `@try`); the shipyard and the ship-model view call it directly.
+   `createDoppelganger()` answers the object (`::ShipEntity *`) and copies the player's values into
+   the proxy's C++ part when the made ship is a proxy (a ship of another class did not answer
+   `-copyValuesFromPlayer:`).
+3. **The proxy's dials by name**: the ship's facade's category of the player's by-name selectors
+   answers the eleven the proxy's facade implemented (`fuelLeakRate`, `massLocked`,
+   `atHyperspeed`, `dialForwardShield`, `dialAftShield`, `dialMissileStatus`,
+   `dialFuelScoopStatus`, `compassMode`, `dialIdentEngaged`, `trumbleCount`, `tradeInFactor`) from a
+   proxy's part first, and `-respondsToSelector:` answers them for a proxy's part; `-alertCondition`
+   already reaches the proxy's override (`SHIP_PART`, amendment oo-9ht.177 item 2). The shader
+   whitelist's player-ship check is `dynamic_cast` for both classes. The proxy's setters and
+   `-copyValuesFromPlayer:` had no by-name callers; they are member calls.
+4. **`-isPlayerLikeShip` goes with the facade** (`Entity (ProxyPlayer)` and the proxy's): nothing
+   sends it; the proxy's member stays.
+5. **Tests** (standing approval oo-9n5p9, lines on main first): the adapter crossing checks and the
+   category's answers for the player, a plain ship and a plain entity go; the cases make the proxy
+   with `newProxyObject()` and call its members with every expected value kept; a new case pins
+   item 3.
+
+**Consequences.** No Objective-C subclass of the ship's facade but the station's and the dock's
+remains; `oo::NewShipObject` is the C++ ship-construction path their facade deletions (oo-9ht.175,
+oo-9ht.180) and the ship's (oo-9ht.144) can use for `-cxx_newShipWithName:` itself.

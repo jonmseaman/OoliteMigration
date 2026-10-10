@@ -4298,7 +4298,7 @@ void PlayerEntity::showShipModelWithKey(const std::string &shipKey, const oo::PL
 		demoShip = nullptr;
 	}
 	
-	::ShipEntity *ship = [[::ProxyPlayerEntity alloc] cxx_initWithKey:shipKey definition:shipData];
+	::ShipEntity *ship = ::ProxyPlayerEntity::newProxyObject(shipKey, shipData);	// [[ProxyPlayerEntity alloc] cxx_initWithKey:definition:] until bead oo-9ht.183
 	if (personality != ENTITY_PERSONALITY_INVALID)  [ship setEntityPersonalityInt:personality];
 	
 	[ship wasAddedToUniverse];
@@ -6782,9 +6782,9 @@ void PlayerEntity::takeHeatDamage(double amount)
 }
 
 
-::ProxyPlayerEntity *PlayerEntity::createDoppelganger()
+::ShipEntity *PlayerEntity::createDoppelganger()
 {
-	::ProxyPlayerEntity *result = (::ProxyPlayerEntity *)[[UNIVERSE cxx_newShipWithName:shipDataKey().value_or("") usePlayerProxy:YES] autorelease];
+	::ShipEntity *result = [[UNIVERSE cxx_newShipWithName:shipDataKey().value_or("") usePlayerProxy:YES] autorelease];
 	
 	if (result != nil)
 	{
@@ -6798,7 +6798,9 @@ void PlayerEntity::takeHeatDamage(double amount)
 		[result setBehaviour:BEHAVIOUR_IDLE];
 		[result switchAITo:"nullAI.plist"];  // fly straight on
 		[result setTemperature:temperature()];
-		[result copyValuesFromPlayer:this];
+		// The proxy's member since bead oo-9ht.183 (a ship of another class, which a proxy definition
+		// never makes, did not answer -copyValuesFromPlayer:).
+		if (::ProxyPlayerEntity *proxy = dynamic_cast<::ProxyPlayerEntity *>(oo::ToCxx(result)))  proxy->copyValuesFromPlayer(this);
 	}
 	
 	return result;

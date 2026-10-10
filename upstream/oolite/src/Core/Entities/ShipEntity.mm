@@ -15744,9 +15744,9 @@ BOOL OOUniformBindingPermitted(const std::string &propertyName, id bindingTarget
 		{
 			if (shipWhitelist.contains(propertyName))  return YES;
 		}
-		// -isPlayerLikeShip answers YES for these two only (ProxyPlayerEntity.mm); the player's object
-		// is the ship's facade since bead oo-9ht.177, so it is asked of the C++ part.
-		if (dynamic_cast<PlayerEntity *>(entity) != nullptr || IsKindOfClassNamed(bindingTarget, "ProxyPlayerEntity"))
+		// -isPlayerLikeShip answered YES for these two only (ProxyPlayerEntity.mm); their objects are the
+		// ship's facade since beads oo-9ht.177 and oo-9ht.183, so it is asked of the C++ part.
+		if (dynamic_cast<PlayerEntity *>(entity) != nullptr || dynamic_cast<ProxyPlayerEntity *>(entity) != nullptr)
 		{
 			if (playerShipWhitelist.contains(propertyName))  return YES;
 		}

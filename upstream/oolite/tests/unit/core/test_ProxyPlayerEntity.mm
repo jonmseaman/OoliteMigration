@@ -9,7 +9,10 @@
 	units through the Objective-C API, written against it and run on the unconverted class first:
 	the initialiser's defaults, each dial's accessors, -copyValuesFromPlayer: from a player whose
 	dials answer fixed values, and -isPlayerLikeShip for the three classes that answer it. The
-	cases after "The crossing" pin the C++ part once it exists.
+	cases after "The crossing" pin the C++ part once it exists. Since bead oo-9ht.183 deleted the
+	Objective-C facade (ADR-0056 amendment oo-9ht.183) the proxy is made by newProxyObject(), its
+	object is the ship's facade, the class's selectors are member calls with every expected value
+	kept, and the last case pins the dials the ship's facade answers by name for a proxy.
 	Run: bash tools/check-core-tests.sh test_ProxyPlayerEntity
 */
 
@@ -19,6 +22,7 @@
 
 #include "oo_test.hpp"
 
+#include <objc/runtime.h>
 #include <string>
 
 
@@ -94,11 +98,14 @@ void SetUp()
 }
 
 
-// An unpiloted ship (a crewed one would ask the universe for a pilot).
-ProxyPlayerEntity *MakeProxy()
+// An unpiloted ship (a crewed one would ask the universe for a pilot). The proxy, held by its
+// object (the ship's facade, autoreleased as [[[ProxyPlayerEntity alloc] ...] autorelease] was).
+ProxyPlayerEntity *MakeProxy(ShipEntity **outObject = nullptr)
 {
 	oo::PList::Dict dict{ { "unpiloted", oo::PList(true) } };
-	return [[[ProxyPlayerEntity alloc] cxx_initWithKey:"proxy" definition:oo::PList(std::move(dict))] autorelease];
+	ShipEntity *object = [ProxyPlayerEntity::newProxyObject("proxy", oo::PList(std::move(dict))) autorelease];
+	if (outObject != nullptr)  *outObject = object;
+	return dynamic_cast<ProxyPlayerEntity *>(oo::ToCxx(object));
 }
 
 
@@ -124,14 +131,14 @@ OO_TEST(initDefaults)
 	{
 		SetUp();
 		ProxyPlayerEntity *proxy = MakeProxy();
-		OO_CHECK(proxy != nil && [proxy isShip]);
-		OO_CHECK([proxy dialForwardShield] == 1.0f && [proxy dialAftShield] == 1.0f);
-		OO_CHECK([proxy dialFuelScoopStatus] == SCOOP_STATUS_NOT_INSTALLED);
-		OO_CHECK([proxy compassMode] == COMPASS_MODE_BASIC);
-		OO_CHECK([proxy tradeInFactor] == 95);
-		OO_CHECK([proxy fuelLeakRate] == 0 && ![proxy massLocked] && ![proxy atHyperspeed]);
-		OO_CHECK([proxy dialMissileStatus] == MISSILE_STATUS_SAFE && ![proxy dialIdentEngaged]);
-		OO_CHECK([proxy alertCondition] == ALERT_CONDITION_DOCKED && [proxy trumbleCount] == 0);
+		OO_CHECK(proxy != nullptr && proxy->getIsShip());
+		OO_CHECK(proxy->dialForwardShield() == 1.0f && proxy->dialAftShield() == 1.0f);
+		OO_CHECK(proxy->dialFuelScoopStatus() == SCOOP_STATUS_NOT_INSTALLED);
+		OO_CHECK(proxy->compassMode() == COMPASS_MODE_BASIC);
+		OO_CHECK(proxy->tradeInFactor() == 95);
+		OO_CHECK(proxy->fuelLeakRate() == 0 && !proxy->massLocked() && !proxy->atHyperspeed());
+		OO_CHECK(proxy->dialMissileStatus() == MISSILE_STATUS_SAFE && !proxy->dialIdentEngaged());
+		OO_CHECK(proxy->alertCondition() == ALERT_CONDITION_DOCKED && proxy->trumbleCount() == 0);
 	}
 }
 
@@ -143,33 +150,33 @@ OO_TEST(accessors)
 	{
 		SetUp();
 		ProxyPlayerEntity *proxy = MakeProxy();
-		[proxy setFuelLeakRate:-3.0f];
-		OO_CHECK([proxy fuelLeakRate] == 0);
-		[proxy setFuelLeakRate:1.5f];
-		OO_CHECK([proxy fuelLeakRate] == 1.5f);
-		[proxy setMassLocked:(BOOL)4];
-		OO_CHECK([proxy massLocked] == YES);
-		[proxy setMassLocked:NO];
-		OO_CHECK([proxy massLocked] == NO);
-		[proxy setAtHyperspeed:(BOOL)2];
-		OO_CHECK([proxy atHyperspeed] == YES);
-		[proxy setDialForwardShield:0.5f];
-		[proxy setDialAftShield:0.125f];
-		OO_CHECK([proxy dialForwardShield] == 0.5f && [proxy dialAftShield] == 0.125f);
-		[proxy setDialMissileStatus:MISSILE_STATUS_ARMED];
-		OO_CHECK([proxy dialMissileStatus] == MISSILE_STATUS_ARMED);
-		[proxy setDialFuelScoopStatus:SCOOP_STATUS_FULL_HOLD];
-		OO_CHECK([proxy dialFuelScoopStatus] == SCOOP_STATUS_FULL_HOLD);
-		[proxy setCompassMode:COMPASS_MODE_TARGET];
-		OO_CHECK([proxy compassMode] == COMPASS_MODE_TARGET);
-		[proxy setDialIdentEngaged:(BOOL)9];
-		OO_CHECK([proxy dialIdentEngaged] == YES);
-		[proxy setAlertCondition:ALERT_CONDITION_YELLOW];
-		OO_CHECK([proxy alertCondition] == ALERT_CONDITION_YELLOW);
-		[proxy setTrumbleCount:12];
-		OO_CHECK([proxy trumbleCount] == 12);
-		[proxy setTradeInFactor:42];
-		OO_CHECK([proxy tradeInFactor] == 42);
+		proxy->setFuelLeakRate(-3.0f);
+		OO_CHECK(proxy->fuelLeakRate() == 0);
+		proxy->setFuelLeakRate(1.5f);
+		OO_CHECK(proxy->fuelLeakRate() == 1.5f);
+		proxy->setMassLocked((BOOL)4);
+		OO_CHECK(proxy->massLocked() == YES);
+		proxy->setMassLocked(NO);
+		OO_CHECK(proxy->massLocked() == NO);
+		proxy->setAtHyperspeed((BOOL)2);
+		OO_CHECK(proxy->atHyperspeed() == YES);
+		proxy->setDialForwardShield(0.5f);
+		proxy->setDialAftShield(0.125f);
+		OO_CHECK(proxy->dialForwardShield() == 0.5f && proxy->dialAftShield() == 0.125f);
+		proxy->setDialMissileStatus(MISSILE_STATUS_ARMED);
+		OO_CHECK(proxy->dialMissileStatus() == MISSILE_STATUS_ARMED);
+		proxy->setDialFuelScoopStatus(SCOOP_STATUS_FULL_HOLD);
+		OO_CHECK(proxy->dialFuelScoopStatus() == SCOOP_STATUS_FULL_HOLD);
+		proxy->setCompassMode(COMPASS_MODE_TARGET);
+		OO_CHECK(proxy->compassMode() == COMPASS_MODE_TARGET);
+		proxy->setDialIdentEngaged((BOOL)9);
+		OO_CHECK(proxy->dialIdentEngaged() == YES);
+		proxy->setAlertCondition(ALERT_CONDITION_YELLOW);
+		OO_CHECK(proxy->alertCondition() == ALERT_CONDITION_YELLOW);
+		proxy->setTrumbleCount(12);
+		OO_CHECK(proxy->trumbleCount() == 12);
+		proxy->setTradeInFactor(42);
+		OO_CHECK(proxy->tradeInFactor() == 42);
 	}
 }
 
@@ -181,60 +188,79 @@ OO_TEST(copyValuesFromPlayer)
 	{
 		SetUp();
 		ProxyPlayerEntity *proxy = MakeProxy();
-		[proxy copyValuesFromPlayer:nil];
-		OO_CHECK([proxy tradeInFactor] == 95 && [proxy dialForwardShield] == 1.0f);
+		proxy->copyValuesFromPlayer(nullptr);
+		OO_CHECK(proxy->tradeInFactor() == 95 && proxy->dialForwardShield() == 1.0f);
 
-		[proxy copyValuesFromPlayer:MakeDialPlayer()];
-		OO_CHECK([proxy fuelLeakRate] == 2.5f);
-		OO_CHECK([proxy massLocked] && [proxy atHyperspeed]);
-		OO_CHECK([proxy dialForwardShield] == 0.25f && [proxy dialAftShield] == 0.75f);
-		OO_CHECK([proxy dialMissileStatus] == MISSILE_STATUS_TARGET_LOCKED);
-		OO_CHECK([proxy dialFuelScoopStatus] == SCOOP_STATUS_ACTIVE);
-		OO_CHECK([proxy compassMode] == COMPASS_MODE_STATION);
-		OO_CHECK([proxy dialIdentEngaged]);
-		OO_CHECK([proxy alertCondition] == ALERT_CONDITION_RED);
-		OO_CHECK([proxy trumbleCount] == 7);
-		OO_CHECK([proxy tradeInFactor] == 80);
+		proxy->copyValuesFromPlayer(MakeDialPlayer());
+		OO_CHECK(proxy->fuelLeakRate() == 2.5f);
+		OO_CHECK(proxy->massLocked() && proxy->atHyperspeed());
+		OO_CHECK(proxy->dialForwardShield() == 0.25f && proxy->dialAftShield() == 0.75f);
+		OO_CHECK(proxy->dialMissileStatus() == MISSILE_STATUS_TARGET_LOCKED);
+		OO_CHECK(proxy->dialFuelScoopStatus() == SCOOP_STATUS_ACTIVE);
+		OO_CHECK(proxy->compassMode() == COMPASS_MODE_STATION);
+		OO_CHECK(proxy->dialIdentEngaged());
+		OO_CHECK(proxy->alertCondition() == ALERT_CONDITION_RED);
+		OO_CHECK(proxy->trumbleCount() == 7);
+		OO_CHECK(proxy->tradeInFactor() == 80);
 	}
 }
 
 
-// -isPlayerLikeShip: YES for the proxy and the player, NO for any other entity.
+// -isPlayerLikeShip: YES for the proxy (the category on the other entities went with the facade,
+// bead oo-9ht.183).
 OO_TEST(isPlayerLikeShip)
 {
 	@autoreleasepool
 	{
 		SetUp();
-		OO_CHECK([MakeProxy() isPlayerLikeShip]);
-		OO_CHECK([oo::ToObjC(MakeDialPlayer()) isPlayerLikeShip]);	// the player's object (C++ player since bead oo-9ht.177)
-		ShipEntity *ship = [[[ShipEntity alloc] cxx_initWithKey:"ship" definition:oo::PList(oo::PList::Dict{ { "unpiloted", oo::PList(true) } })] autorelease];
-		OO_CHECK(ship != nil && ![ship isPlayerLikeShip]);
-		OO_CHECK(![[[[Entity alloc] init] autorelease] isPlayerLikeShip]);
+		OO_CHECK(MakeProxy()->isPlayerLikeShip());
 	}
 }
 
 
 // --- The crossing --------------------------------------------------------------------------------
 
-// An Objective-C proxy's C++ part is a cxx::ProxyPlayerEntity, the facade's _cxxProxyPlayer,
-// beside the ship's _cxxShip; the ship's virtual alertCondition() answers the proxy's.
+// A proxy's C++ part is a ProxyPlayerEntity under the ship's facade (bead oo-9ht.183), beside the
+// ship's _cxxShip; the ship's virtual alertCondition() answers the proxy's.
 OO_TEST(objCProxyPartIsAProxy)
 {
 	@autoreleasepool
 	{
 		SetUp();
-		ProxyPlayerEntity *proxy = MakeProxy();
-		Entity *asEntity = proxy;
-		cxx::ProxyPlayerEntity *part = oo::ToCxx(proxy);
-		OO_CHECK(part != nullptr && part == proxy->_cxxProxyPlayer);
-		OO_CHECK(static_cast<cxx::ShipEntity *>(part) == proxy->_cxxShip);
-		OO_CHECK(dynamic_cast<cxx::ProxyPlayerEntity *>(oo::ToCxx(asEntity)) == part);
-		OO_CHECK(oo::AsObjCEntity(part) != nullptr && oo::ToObjC(part) == proxy);
+		ShipEntity *object = nil;
+		ProxyPlayerEntity *part = MakeProxy(&object);
+		Entity *asEntity = object;
+		OO_CHECK(part != nullptr);
+		OO_CHECK(static_cast<cxx::ShipEntity *>(part) == object->_cxxShip);
+		OO_CHECK(dynamic_cast<ProxyPlayerEntity *>(oo::ToCxx(asEntity)) == part);
+		OO_CHECK(oo::ToObjC(part) == object);
 
 		part->setAlertCondition(ALERT_CONDITION_GREEN);
 		cxx::ShipEntity *asShip = part;
 		OO_CHECK(asShip->alertCondition() == ALERT_CONDITION_GREEN);
 		OO_CHECK(part->tradeInFactor() == 95 && part->isPlayerLikeShip());
+	}
+}
+
+
+// The proxy's dials by name (bead oo-9ht.183): the shaders bind them to the proxy's object, the
+// ship's facade, which answers them for a proxy's part (and a plain ship's object does not).
+OO_TEST(dialsAnsweredByNameForAProxy)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		ShipEntity *object = nil;
+		ProxyPlayerEntity *proxy = MakeProxy(&object);
+		proxy->setDialForwardShield(0.5f);
+		proxy->setTradeInFactor(42);
+		OO_CHECK([object respondsToSelector:@selector(dialForwardShield)] && [object respondsToSelector:@selector(tradeInFactor)]);
+		OO_CHECK(((GLfloat (*)(id, SEL))class_getMethodImplementation(object_getClass(object), @selector(dialForwardShield)))(object, @selector(dialForwardShield)) == 0.5f);
+		OO_CHECK(((int (*)(id, SEL))class_getMethodImplementation(object_getClass(object), @selector(tradeInFactor)))(object, @selector(tradeInFactor)) == 42);
+		OO_CHECK(((OOAlertCondition (*)(id, SEL))class_getMethodImplementation(object_getClass(object), @selector(alertCondition)))(object, @selector(alertCondition)) == ALERT_CONDITION_DOCKED);
+
+		ShipEntity *ship = [[[ShipEntity alloc] cxx_initWithKey:"ship" definition:oo::PList(oo::PList::Dict{ { "unpiloted", oo::PList(true) } })] autorelease];
+		OO_CHECK(ship != nil && ![ship respondsToSelector:@selector(dialForwardShield)]);
 	}
 }
 

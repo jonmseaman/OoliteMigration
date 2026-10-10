@@ -257,7 +257,7 @@ static void hudDrawStatusIconAt(int x, int y, int z, NSSize siz);
 static void hudDrawReticleOnTarget(Entity* target, PlayerEntity* player1, GLfloat z1,
 				GLfloat alpha, BOOL reticleTargetSensitive, oo::PList *propertiesReticleTargetSensitive,
 				BOOL colourFromScannerColour, BOOL showText, const oo::PList &info, const std::vector<oo::Ref<OOColor>> &reticleColors);
-static void hudDrawWaypoint(Entity *waypoint, PlayerEntity *player1, GLfloat z1, GLfloat alpha, BOOL selected, GLfloat scale);	// the waypoint's object (bead oo-9ht.108)
+namespace { void hudDrawWaypoint(Entity *waypoint, PlayerEntity *player1, GLfloat z1, GLfloat alpha, BOOL selected, GLfloat scale); }	// the waypoint's object (bead oo-9ht.108)
 static void hudRotateViewpointForVirtualDepth(PlayerEntity * player1, Vector p1);
 static void drawScannerGrid(GLfloat x, GLfloat y, GLfloat z, NSSize siz, int v_dir, GLfloat thickness, GLfloat zoom, BOOL nonlinear, BOOL minimalistic);
 static GLfloat nonlinearScannerFunc(GLfloat distance, GLfloat zoom, GLfloat scale);
@@ -3838,7 +3838,9 @@ static void hudDrawReticleOnTarget(Entity *target, PlayerEntity *player1, GLfloa
 }
 
 
-static void hudDrawWaypoint(Entity *waypoint, PlayerEntity *player1, GLfloat z1, GLfloat alpha, BOOL selected, GLfloat scale)
+namespace {
+
+void hudDrawWaypoint(Entity *waypoint, PlayerEntity *player1, GLfloat /*z1*/, GLfloat alpha, BOOL selected, GLfloat scale)
 {
 	if (HeadUpDisplayPlayerGuiScreen(player1) != GUI_SCREEN_MAIN)	// don't draw on text screens
 	{
@@ -3898,6 +3900,8 @@ static void hudDrawWaypoint(Entity *waypoint, PlayerEntity *player1, GLfloat z1,
 
 	OOGLPopModelView();
 }
+
+}	// namespace
 
 static void hudRotateViewpointForVirtualDepth(PlayerEntity * player1, Vector p1)
 {

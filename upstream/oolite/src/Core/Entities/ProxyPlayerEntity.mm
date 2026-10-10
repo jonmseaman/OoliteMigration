@@ -26,10 +26,18 @@ MA 02110-1301, USA.
 #import "ProxyPlayerEntity.h"
 
 
-namespace cxx {
+::ShipEntity *ProxyPlayerEntity::newProxyObject(const std::string &key, const oo::PList &dict)
+{
+	const oo::Ref<ProxyPlayerEntity> proxy = oo::makeRef<ProxyPlayerEntity>();
+	::ShipEntity *ship = oo::NewShipObject(proxy, key, dict);
+	if (ship != nil)  proxy->initProxyDefaults();
+	return ship;
+}
+
 
 /*	-cxx_initWithKey:definition:'s body after [super cxx_initWithKey:definition:], which the facade's
-	initialiser sends (the ship set-up may release the object and answer nil).
+	initialiser sent until bead oo-9ht.183, and newProxyObject() runs now (the ship set-up may
+	release the object and answer nil).
 */
 void ProxyPlayerEntity::initProxyDefaults()
 {
@@ -204,4 +212,3 @@ int ProxyPlayerEntity::tradeInFactor()
 
 // If you're here to add more properties, don't forget to update copyValuesFromPlayer().
 
-}	// namespace cxx

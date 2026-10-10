@@ -565,7 +565,7 @@ public:
 	::ShipEntity *newSubentityWithName(const std::string &shipKey, float scale);
 	::ShipEntity *newShipWithName(const std::string &shipKey, bool usePlayerProxy);
 	::ShipEntity *newShipWithName(const std::string &shipKey, bool usePlayerProxy, bool isSubentity);
-	::ShipEntity *newShipWithName(const std::string &shipKey, bool usePlayerProxy, bool isSubentity, float scale);
+	::ShipEntity *newShipWithName(const std::string &shipKey, bool usePlayerProxy, bool isSubentity, float scale) OO_RETURNS_RETAINED;	// +1, as -newShipWithName:... was (the proxy is made in C++ since bead oo-9ht.183)
 	::DockEntity *newDockWithName(const std::string &shipDataKey, float scale);
 	::ShipEntity *newShipWithName(const std::string &shipKey);
 	Class shipClassForShipDictionary(const oo::PList &dict);

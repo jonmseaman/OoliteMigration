@@ -4541,6 +4541,7 @@ std::optional<std::string> Universe::randomShipKeyForRoleRespectingConditions(co
 	if (shipDict.isNull())  return nil;
 	
 	volatile Class shipClass = nil;
+	volatile BOOL makeProxy = NO;	// a proxy is made in C++ since bead oo-9ht.183 (it was its class)
 	if (isSubentity)
 	{
 		shipClass = [::ShipEntity class];
@@ -4550,7 +4551,7 @@ std::optional<std::string> Universe::randomShipKeyForRoleRespectingConditions(co
 		shipClass = [self cxx_shipClassForShipDictionary:shipDict];
 		if (usePlayerProxy && shipClass == [::ShipEntity class])
 		{
-			shipClass = [::ProxyPlayerEntity class];
+			makeProxy = YES;
 		}
 	}
 	
@@ -4561,7 +4562,14 @@ std::optional<std::string> Universe::randomShipKeyForRoleRespectingConditions(co
 			// a copy with the scale, a float as +numberWithFloat: stored it (ADR-0043 item 15)
 			(*shipDict.getIf<oo::PList::Dict>())["model_scale_factor"] = oo::PList::singleReal(scale);
 		}
-		ship = [[shipClass alloc] cxx_initWithKey:shipKey definition:shipDict];
+		if (makeProxy)
+		{
+			ship = ::ProxyPlayerEntity::newProxyObject(shipKey, shipDict);
+		}
+		else
+		{
+			ship = [[shipClass alloc] cxx_initWithKey:shipKey definition:shipDict];
+		}
 	}
 	@catch (::OOException *exception)
 	{
@@ -9735,7 +9743,7 @@ oo::PList Universe::shipsForSaleForSystem(OOSystemID s, OOTechLevelID specialTL,
 			std::string shortExtrasKey = "shipyard-first-extra";
 
 			// for testing condition scripts
-			::ShipEntity *testship = [[::ProxyPlayerEntity alloc] cxx_initWithKey:ship_key definition:shipDict];
+			::ShipEntity *testship = ::ProxyPlayerEntity::newProxyObject(ship_key, shipDict);	// [[ProxyPlayerEntity alloc] cxx_initWithKey:definition:] until bead oo-9ht.183
 			// customise the ship (if chance = 1, then ship will get all possible add ons)
 			while ((randf() < chance) && (options.size()))
 			{

@@ -5,10 +5,10 @@ ProxyPlayerEntity.h
 Ship entity which, in some respects, emulates a PlayerShip. In particular, at
 this time it implements the extra shader bindable methods of PlayerShip.
 
-The class is C++ (bead oo-amwj; proposed ADR-0056, amendment oo-amwj): cxx::ProxyPlayerEntity holds
-the proxy's dials and their accessors. ProxyPlayerEntity+ObjCBridge.h, imported at the end of this
-header, keeps the Objective-C ProxyPlayerEntity as its facade, for the universe and the player,
-which make it, and for the shader bindings, which message its dials by selector.
+The class is C++ (bead oo-amwj; proposed ADR-0056, amendment oo-amwj): ProxyPlayerEntity holds the
+proxy's dials and their accessors. Since bead oo-9ht.183 deleted its Objective-C facade (amendment
+oo-9ht.183) the universe and the player make it with newProxyObject(), and its object is the
+ship's facade, which answers its dials to the shader bindings by selector.
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -33,20 +33,26 @@ MA 02110-1301, USA.
 #import "PlayerEntity.h"
 
 
-namespace cxx {
-
-/*	The proxy's state and methods. Its ship part is cxx::ShipEntity's; the facade's initialiser sets
-	the proxy's defaults (initProxyDefaults()) once the ship is set up from its definition.
+/*	The proxy's state and methods. Its ship part is cxx::ShipEntity's. C++ only since bead oo-9ht.183
+	deleted its Objective-C facade (ADR-0056 amendment oo-9ht.183): newProxyObject() makes it and its
+	object, the ship's facade, which answers the proxy's dials to the shaders by name.
 */
-class ProxyPlayerEntity : public ShipEntity
+class ProxyPlayerEntity : public cxx::ShipEntity
 {
 public:
+	/*	[[ProxyPlayerEntity alloc] cxx_initWithKey:definition:] until bead oo-9ht.183: a new proxy,
+		set up from its definition as a ship (oo::NewShipObject), then given the proxy's defaults.
+		Answers its object retained (+1), as +alloc/-init's was, or nil when the set-up fails.
+	*/
+	static ::ShipEntity *newProxyObject(const std::string &key, const oo::PList &dict) OO_RETURNS_RETAINED;
+
 	// -cxx_initWithKey:definition:'s body after [super cxx_initWithKey:definition:].
 	void initProxyDefaults();
 
 	void copyValuesFromPlayer(::PlayerEntity *player);
 
-	// True for PlayerEntity or ProxyPlayerEntity (the category Entity (ProxyPlayer)).
+	// True for PlayerEntity or ProxyPlayerEntity (the category Entity (ProxyPlayer), which went with
+	// the facade in bead oo-9ht.183).
 	bool isPlayerLikeShip();
 
 	// Default: 0
@@ -110,10 +116,3 @@ private:
 							_atHyperspeed: 1 = 0,
 							_dialIdentEngaged: 1 = 0;
 };
-
-}	// namespace cxx
-
-
-// Transitional: the Objective-C ProxyPlayerEntity, for its callers and the shader bindings. Deleted,
-// with namespace cxx above, by the bridge's deletion bead.
-#import "ProxyPlayerEntity+ObjCBridge.h"
