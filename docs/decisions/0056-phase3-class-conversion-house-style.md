@@ -5984,3 +5984,101 @@ forwarded to `cxx::DockEntity` (46 forwarders after slices 1-3), the universe's
 **Consequences.** No Objective-C subclass of the ship's facade is left; its deletion (oo-9ht.144)
 turns the player's, the proxy's, the station's and the dock's by-name categories into C++ name
 tables and `oo::NewShipObject` into a plain C++ factory.
+
+
+## Amendment (bead oo-9ht.144): the ship's facade, and the ship family's selectors found by name
+
+- Date: 2026-10-10. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch O
+  (one branch). Exemplar: `src/Core/Entities/ShipEntity.h/.mm` (`oo::NewShipObject()`,
+  `initShipSetUp()`, `shipWillDealloc()`, `oo::ToShip()`, the `ShipScriptEvent` macros),
+  `Entities/Entity+ObjCBridge.mm` (`-dealloc`, `-respondsToSelector:`, the categories
+  `Entity (OOShipSelectorsCalledByName)`, `(OOPlayerSelectorsCalledByName)`,
+  `(OOStationSelectorsCalledByName)`, `(OODockSelectorsCalledByName)`, `(OOWaypointBeacon)`,
+  `(SubEntityRelationship)`), `Entities/PlayerEntity.mm` (`newPlayerObject()`, `deferredInit()`),
+  `Universe.mm`, `OOShipGroup.mm`, `Scripting/OOJSShip.mm`, `tests/unit/core/test_ShipEntity.mm`,
+  `test_ShipEntityAI.mm`, `test_OOShipGroup.mm`. Applies amendments oo-9ht.107, oo-9ht.177,
+  oo-9ht.183, oo-9ht.175 and oo-9ht.180 to the ship itself.
+
+**Context.** Once the station's and the dock's facades went (oo-9ht.175, oo-9ht.180) every ship was
+C++: the player, the proxy, the station and the dock made in C++ with the ship's facade as their
+object, and every other ship an Objective-C `ShipEntity` facade over the ship's adapter
+(`oo::ObjCShipEntity`). The facade forwarded ~780 selectors to `cxx::ShipEntity`, ran the ship's
+`-dealloc` body, answered the AI's, the legacy scripts', the shaders' and `ship.call()`'s
+selectors by name, and carried the player's, the proxy's, the station's and the dock's by-name
+categories. About 2,000 sends to ships and 800 places that named the Objective-C class remained.
+
+**Decision (recommended defaults).**
+
+1. **The ship is the global C++ class and every ship is made in C++.** `class ShipEntity : public
+   cxx::OOEntityWithDrawable, public cxx::OOSubEntityInterface` (amendment oo-9ht.107 item 3: owners
+   reach a ship subentity's `rescaleBy()` / `drawSubEntityImmediate()` through the interface).
+   `oo::NewShipObject(ship, key, dict)` is the plain factory every maker uses
+   (`[[ShipEntity alloc] cxx_initWithKey:definition:]` before): OOEntityWithDrawable's facade
+   holding the ship (`-initWithCxxEntity:`, +1 as `+alloc` gave), then `initShipSetUp()` (the
+   facade's `-initShipSetUpWithKey:definition:` body), releasing the object when the set-up fails.
+   A ship's object is therefore the drawable's facade, `::Entity *` where it is typed (amendment
+   oo-9ht.107 item 4); `oo::ToShip(object)` is the cast that `(ShipEntity *)object` and
+   `-isKindOfClass:[ShipEntity class]` were (nullptr for nil or another entity); for an `id`, which
+   may be no entity at all (`callObjC()`'s target, a weak reference's object), `oo::ToShip(id)`
+   asks `-isKindOfClass:[Entity class]` first, as `-isKindOfClass:[ShipEntity class]` answered NO
+   for any other object.
+   `PlayerEntity::deferredInit()` sends the root's `-initWithCxxEntity:` again and runs
+   `initShipSetUp()`, which is what the double `-init` reached.
+2. **The facade's `-dealloc` body runs from the root's `-dealloc`, first, for a ship's part:** the
+   player's, a station's or a dock's `willDealloc()`, then the weak reference's drop (an ivar of
+   the root), then `ShipEntity::shipWillDealloc()`, the rest of the body. The order is the
+   facades' order.
+3. **`ShipEntity *` names the C++ class everywhere.** Members, selectors and bridge functions that
+   took or answered a ship keep their spelling and now pass the C++ ship; where the Objective-C
+   object is wanted it is `oo::ToObjC(ship)`. Factories named `new...` keep the +1 on the ship's
+   object (their comments say so; `OO_RETURNS_RETAINED` no longer applies to a C++ result, except
+   on the `new...Object()` makers, which answer the object). Lists of ships keep the objects
+   (`std::vector<oo::ObjCRef<::Entity *>>`), as do the weak references, the groups' members and
+   the AI's owner. A member whose `ShipEntity *` was the type and not the answer keeps answering the
+   object: `Entity::parentEntity()` (a visual effect's subentity's parent is the effect) and
+   `rootShipEntity()` (an entity marked as a ship), `::Entity *` since this bead. Where a local
+   typed `ShipEntity *` held any entity and only the root's members were asked of it (a target
+   that may be a wormhole: `enterTargetWormhole()`, the player's lost-target check, the HUD's
+   secondary reticles) it is the root (`cxx::Entity *`) or the object, not `oo::ToShip()`.
+   A C-style cast between a C++ pointer and an Objective-C pointer compiles silently (it
+   reinterprets); every one in the files this bead touches is an `oo::ToObjC()`/`oo::ToCxx()` or
+   a `static_cast` of the C++ part, including the wormhole casts left by bead oo-9ht.112
+   (`enterWormhole()`, the HUD's wormhole scan, `ship.enterWormhole()`), found from clang's AST
+   (`CPointerToObjCPointerCast` and its reverse).
+4. **Sends become member calls, converted by compiler diagnostics** (the batch F/I converter with
+   nil guards for every receiver but `self`), with the ship facade's forwarders as the map, then
+   the drawable's and the root's; NSObject's lifetime selectors go to the object. Inside the
+   ship's members `[self ...]` is a member call; `self` is `oo::ToObjC(this)` only where the object
+   is passed on.
+5. **Selectors found by name on a ship: the root's facade answers them for a ship's part**
+   (amendment oo-9ht.177 item 3, oo-9ht.106 item 2). `Entity (OOShipSelectorsCalledByName)` holds
+   exactly the selectors the ship's facade answered, and the root's and the drawable's facades do
+   not, whose signature a by-name dispatcher can call (408, generated from the forwarders, bodies
+   unchanged but for the receiver); each answers the ship's member, zero for any other entity, and
+   an object result is the object. The player's, the proxy's, the station's and the dock's
+   categories move from the ship's facade to the root's unchanged but for the receiver.
+   `-[Entity respondsToSelector:]` answers each set for its class's part only, and for an object
+   whose class implements the selector itself (the visual effect's facade), so every answer is as
+   before. The `OOBeaconEntity` selectors (`Entity (OOWaypointBeacon)`) and `Entity
+   (SubEntityRelationship)` ask a ship's part as well as a waypoint's. The JS questions
+   (`-isVisibleToScripts`, `-getJSClass:andPrototype:`, `-cxx_oo_jsClassName`) are the root's
+   category asking the C++ part, whose ship overrides answer (oo-ak1km); `ShipEntity
+   (OOJavaScriptExtensions)` goes (nothing sent its other two selectors).
+6. **Tests** (standing approval oo-9n5p9, lines on main first): the facade's own cases go (listed
+   in the approval lines); every other case makes its ships with `oo::NewShipObject()` and calls
+   their members, with every expected value kept. A whole-game test's Objective-C subclass of the
+   ship is a C++ subclass overriding the members the Objective-C one overrode. A narrow test that
+   stood in for the Objective-C ship stands in for the C++ class (amendment oo-9ht.107 item 6): a
+   global `ShipEntity` declared with the header's names and signatures under a stand-in root
+   object holding it in `_cxxEntity`, the test's own `oo::ToObjC()`, and the expectations that
+   compared a ship object compare the ship. Where the code under test calls a virtual member whose
+   final overrider is ShipEntity's on a ship that is not final, the call is qualified
+   (`ship->ShipEntity::setOwner(ship)` in `OOShipGroup::removeShip()`), as amendments oo-9ht.177
+   and oo-9ht.175 qualified the player's and the station's, so the stand-in links.
+7. **Left as they were (follow-up), as for the player and the station:** the ship's data members
+   stay public and its raw retained Objective-C pointers (`shipAI`, the weak references) stay
+   retained by hand; each is a change of its own.
+
+**Consequences.** No Objective-C class of the ship family is left. The root's facade carries the
+ship family's by-name categories until it is deleted (oo-9ht.39), when they become C++ name
+tables; the drawable's facade (oo-9ht.40) is now the object of every ship.

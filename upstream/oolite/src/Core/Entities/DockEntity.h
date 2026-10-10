@@ -6,9 +6,10 @@ ShipEntity subclass representing a dock.
 
 C++ since its slice plan (docs/phases/3-slices/DockEntity.md; proposed ADR-0056, amendments
 oo-60fwo, oo-64ako and oo-ao2d). Bead oo-9ht.180 deleted its Objective-C facade (amendment
-oo-9ht.180): a dock is made in C++ by DockEntity::newDockObject() and its Objective-C object is the
-ship's facade (ShipEntity+ObjCBridge.h), which answers the dock's selectors the game can still find
-by name for a dock's C++ part only.
+oo-9ht.180): a dock is made in C++ by DockEntity::newDockObject() and its Objective-C object was the
+ship's facade, which answered the dock's selectors the game can still find by name for a dock's
+C++ part only; since bead oo-9ht.144 (amendment oo-9ht.144) the object is OOEntityWithDrawable's
+facade and the root's facade answers them.
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -41,14 +42,15 @@ MA 02110-1301, USA.
 	retained by hand where they were (amendment oo-bj8 item 4). C++ only since bead oo-9ht.180
 	deleted its Objective-C facade (ADR-0056 amendment oo-9ht.180).
 */
-class DockEntity : public cxx::ShipEntity
+class DockEntity : public ShipEntity
 {
 public:
 	/*	[[DockEntity alloc] cxx_initWithKey:definition:] until bead oo-9ht.180: a new dock, set up from
-		its definition as a ship (oo::NewShipObject), then given the dock's defaults. Answers its
-		object (the ship's facade) retained (+1), as +alloc/-init's was, or nil when the set-up fails.
+		its definition as a ship (oo::NewShipObject), then given the dock's defaults. Answers the dock,
+		its object retained (+1) as +alloc/-init's was, or nullptr when the set-up fails (bead
+		oo-9ht.144: the object until then).
 	*/
-	static ::ShipEntity *newDockObject(const std::string &key, const oo::PList &dict) OO_RETURNS_RETAINED;
+	static ::ShipEntity *newDockObject(const std::string &key, const oo::PList &dict);
 
 	// -cxx_initWithKey:definition:'s body after [super cxx_initWithKey:definition:].
 	void initDockDefaults();
@@ -122,11 +124,11 @@ public:
 	// @private in Objective-C; still public (the tests read them), as the player's were after its
 	// facade went (ADR-0056 amendment oo-9ht.177 item 6)
 	std::map<unsigned short, std::vector<oo::PList>>	shipsOnApproach;	// coordinate stacks (Dicts) by ship ID (the old +numberWithUnsignedShort: key)
-	std::vector<oo::ObjCRef<::ShipEntity *>>	launchQueue;
+	std::vector<oo::ObjCRef<::Entity *>>	launchQueue;
 	double					last_launch_time = {};
 //	double					approach_spacing; // not needed now holding pattern changed
 	
-	::ShipEntity			*id_lock[MAX_DOCKING_STAGES] = {};	// OOWeakReferences to a ShipEntity
+	::OOWeakReference		*id_lock[MAX_DOCKING_STAGES] = {};	// OOWeakReferences to a ship's object (typed as the ship until bead oo-9ht.144)
 	
 	Vector  				port_dimensions = {};
 	double					port_corridor = {};				// corridor length inside station.
@@ -141,11 +143,17 @@ public:
 
 namespace oo {
 
-// The dock whose Objective-C object is <entity> (a dock's object is the ship's facade since bead
+// The dock whose Objective-C object is <entity> (a dock's object is a ship's since bead
 // oo-9ht.180): nullptr for nil or any other entity, where -isKindOfClass:[DockEntity class] was NO.
 inline ::DockEntity *ToDock(::Entity *entity)
 {
 	return dynamic_cast<::DockEntity *>(ToCxx(entity));
+}
+
+// The same question of a C++ ship (a ship is C++ since bead oo-9ht.144): nullptr for null or another ship.
+inline ::DockEntity *ToDock(::ShipEntity *ship)
+{
+	return dynamic_cast<::DockEntity *>(ship);
 }
 
 }	// namespace oo

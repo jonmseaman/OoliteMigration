@@ -171,23 +171,22 @@ oo::Ref<OOScript> OOScript::jsScriptFromFileNamed(const std::string &fileName, c
 */
 // PLAYER: C++ since bead oo-9ht.177 deleted the Objective-C player this stood in for: the members
 // the code under test calls, declared as the game headers declare them (the test imports none
-// that defines the classes), with the stand-in's answers.
-@class ShipEntity;
+// that defines the classes), with the stand-in's answers. The ship is C++ since bead oo-9ht.144.
 namespace cxx {
 class Entity
 {
 public:
 
 };
+}	// namespace cxx
 
-class ShipEntity : public Entity
+class ShipEntity : public cxx::Entity
 {
 public:
 	OOFuelQuantity getFuel();
 };
-}	// namespace cxx
 
-class PlayerEntity : public cxx::ShipEntity
+class PlayerEntity : public ShipEntity
 {
 public:
 	void setScriptTarget(::ShipEntity *ship);
@@ -207,7 +206,7 @@ public:
 };
 
 void PlayerEntity::setScriptTarget(::ShipEntity *target)  { (void)target; }
-OOFuelQuantity cxx::ShipEntity::getFuel()  { return static_cast<PlayerEntity *>(this)->_fuel; }
+OOFuelQuantity ShipEntity::getFuel()  { return static_cast<PlayerEntity *>(this)->_fuel; }
 GLfloat PlayerEntity::fuelChargeRate()  { return _fuelChargeRate; }
 double PlayerEntity::renovationCosts()  { return _renovationCosts; }
 OOCreditsQuantity PlayerEntity::adjustPriceByScriptForEqKey(const std::string &eqKey, OOCreditsQuantity price)

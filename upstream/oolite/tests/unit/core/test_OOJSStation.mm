@@ -74,16 +74,17 @@ public:
 	virtual std::optional<std::string> jsClassName();
 };
 
-// The ship's members the binding calls on a station, by their final overrider (bead oo-9ht.175).
-class ShipEntity : public Entity
+}	// namespace cxx
+
+// The ship's members the binding calls on a station, by their final overrider (bead oo-9ht.175);
+// the ship is C++ since bead oo-9ht.144 deleted the Objective-C ship (a ship's part is a plain one).
+class ShipEntity : public cxx::Entity
 {
 public:
 	GLfloat getFlightRoll();
 	void setRawRoll(double amount);
 	OOAlertCondition alertCondition();
 };
-
-}	// namespace cxx
 
 // The object: the root's, which holds the C++ part (oo::ToCxx reads it) and asks it the JS questions.
 @interface Entity: OOWeakRefObject
@@ -96,16 +97,13 @@ public:
 - (id) weakRefUnderlyingObject;
 @end
 
-@interface ShipEntity: Entity
-@end
-
 /*	A station: C++ since bead oo-9ht.175 deleted the Objective-C station this stood in for (its object
 	is the ship's facade); the members the binding calls, declared as StationEntity.h declares them
 	(the test imports no game header that defines the class), with the stand-in's answers. One whose
 	equivalent tech level is 99 raises from getEquivalentTechLevel(), one whose level is 98 throws a
 	C++ exception, so the test sees what an exception under a native becomes.
 */
-class StationEntity : public cxx::ShipEntity
+class StationEntity : public ShipEntity
 {
 public:
 	void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype) override;
@@ -178,7 +176,7 @@ public:
 	int _shipyardsMade = 0;
 	oo::Ref<OOCommodityMarket> _market;
 	int _abortAll = 0;
-	id _abortedShip = nil;
+	::ShipEntity *_abortedShip = nullptr;
 	BOOL _fits = NO;
 	std::map<std::string, oo::Ref<OOJSInterfaceDefinition>> _interfaces;
 	std::string _lastLaunch;
@@ -316,17 +314,21 @@ ooscript::Object gOOEntityJSPrototype = nullptr;
 @end
 
 
-@implementation ShipEntity
-@end
-
+namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }	// Entity+ObjCBridge.mm's, defined below
 
 namespace {
 
-ShipEntity *NewShip(const char *name)
+std::map<cxx::Entity *, ::Entity *> sObjects;	// what oo::ToObjC answers: each ship's object
+
+// A ship's object (the root's, holding a C++ ship since bead oo-9ht.144 deleted the Objective-C
+// ship this made), kept for the life of the test.
+::Entity *NewShipObject(const char *name, oo::Ref<cxx::Entity> ship)
 {
-	ShipEntity *ship = [[ShipEntity alloc] init];	// kept for the life of the test
-	ship->_name = name;
-	return ship;
+	::Entity *object = [[::Entity alloc] init];
+	object->_cxxEntity = ship;
+	object->_name = name;
+	sObjects[ship.get()] = object;
+	return object;
 }
 
 }	// namespace
@@ -335,9 +337,9 @@ ShipEntity *NewShip(const char *name)
 cxx::Entity::~Entity() = default;
 void cxx::Entity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)  { (void)outClass; (void)outPrototype; }
 std::optional<std::string> cxx::Entity::jsClassName()  { return std::nullopt; }
-GLfloat cxx::ShipEntity::getFlightRoll()  { return static_cast<StationEntity *>(this)->_roll; }	// the cases ask stations only
-void cxx::ShipEntity::setRawRoll(double amount)  { static_cast<StationEntity *>(this)->_roll = static_cast<float>(amount); }
-OOAlertCondition cxx::ShipEntity::alertCondition()  { return static_cast<OOAlertCondition>(static_cast<StationEntity *>(this)->_alertLevel); }
+GLfloat ShipEntity::getFlightRoll()  { return static_cast<StationEntity *>(this)->_roll; }	// the cases ask stations only
+void ShipEntity::setRawRoll(double amount)  { static_cast<StationEntity *>(this)->_roll = static_cast<float>(amount); }
+OOAlertCondition ShipEntity::alertCondition()  { return static_cast<OOAlertCondition>(static_cast<StationEntity *>(this)->_alertLevel); }
 
 // As StationEntity::getJSClass and ::jsClassName answer for the engine.
 void StationEntity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)  { OOJSStationGetJSClass(outClass, outPrototype); }
@@ -401,7 +403,7 @@ void StationEntity::generateShipyard()
 	return _launched;
 }
 
-oo::PList StationEntity::launchIndependentShip(const std::string &role)  { _lastLaunch = "role " + role; return oo::PListObject(_launched); }
+oo::PList StationEntity::launchIndependentShip(const std::string &role)  { _lastLaunch = "role " + role; return oo::PListObject(oo::ToObjC(_launched)); }
 ::ShipEntity *StationEntity::launchDefenseShip()  { return launched("defense"); }
 ::ShipEntity *StationEntity::launchEscort()  { return launched("escort"); }
 ::ShipEntity *StationEntity::launchScavenger()  { return launched("scavenger"); }
@@ -413,9 +415,9 @@ oo::PList StationEntity::launchIndependentShip(const std::string &role)  { _last
 oo::PList StationEntity::launchPolice()
 {
 	_lastLaunch = "police";
-	std::vector<oo::ObjCRef<::ShipEntity *>> ships;
-	if (_launched != nil)  ships.emplace_back(_launched);
-	ships.emplace_back(_launched);
+	std::vector<oo::ObjCRef<::Entity *>> ships;
+	if (_launched != nullptr)  ships.emplace_back(oo::ToObjC(_launched));
+	ships.emplace_back(oo::ToObjC(_launched));
 	return oo::PListFromObjects(ships);
 }
 
@@ -431,8 +433,11 @@ oo::PList StationEntity::getMarketDefinition()  { std::abort(); }
 std::optional<std::string> StationEntity::getMarketScriptName()  { std::abort(); }
 OOCargoQuantity StationEntity::getMarketCapacity()  { std::abort(); }
 bool StationEntity::getMarketMonitored()  { std::abort(); }
-namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
-::Entity *oo::ToObjC(cxx::Entity *)  { std::abort(); }
+::Entity *oo::ToObjC(cxx::Entity *entity)
+{
+	auto found = sObjects.find(entity);
+	return found != sObjects.end() ? found->second : nil;
+}
 
 
 ::StationEntity * PlayerEntity::dockedStation()  { return _dockedStation; }
@@ -809,9 +814,10 @@ ooscript::Runtime sRuntime;
 ooscript::Object sGlobal;
 StationEntity *sStation = nullptr;	// the C++ station (its object: sStationObject)
 StationEntity *sOther = nullptr;
-ShipEntity *sStationObject = nil;
-ShipEntity *sOtherObject = nil;
-ShipEntity *sShip = nil;
+::Entity *sStationObject = nil;
+::Entity *sOtherObject = nil;
+::Entity *sShip = nil;	// a ship's object and its C++ part
+::ShipEntity *sShipPart = nullptr;
 Universe *sUniverse = nil;
 
 
@@ -843,10 +849,8 @@ void SetUpContext()
 	sPlayer->_name = "player";
 	sPlayer->_screen = GUI_SCREEN_STATUS;
 	gOOPlayer = sPlayer;
-	sStationObject = [[ShipEntity alloc] init];	// kept for the life of the test; the ship's facade is a station's object since bead oo-9ht.175
-	sStationObject->_cxxEntity = oo::makeRef<StationEntity>();
+	sStationObject = NewShipObject("Coriolis", oo::makeRef<StationEntity>());	// kept for the life of the test; a station's object (the ship's facade from bead oo-9ht.175, the root's since bead oo-9ht.144)
 	sStation = static_cast<StationEntity *>(sStationObject->_cxxEntity.get());
-	sStationObject->_name = "Coriolis";
 	sStation->_name = "Coriolis";
 	sStation->_npcTraffic = YES;
 	sStation->_alertLevel = STATION_ALERT_LEVEL_GREEN;
@@ -860,12 +864,11 @@ void SetUpContext()
 	sStation->_priceFactor = 1.5f;
 	sStation->_market = sUniverse->_commodities->generateBlankMarket();
 	sUniverse->_station = sStation;
-	sOtherObject = [[ShipEntity alloc] init];
-	sOtherObject->_cxxEntity = oo::makeRef<StationEntity>();
+	sOtherObject = NewShipObject("Rock Hermit", oo::makeRef<StationEntity>());
 	sOther = static_cast<StationEntity *>(sOtherObject->_cxxEntity.get());
-	sOtherObject->_name = "Rock Hermit";
 	sOther->_name = "Rock Hermit";
-	sShip = NewShip("Cobra");
+	sShip = NewShipObject("Cobra", oo::makeRef<::ShipEntity>());
+	sShipPart = static_cast<::ShipEntity *>(sShip->_cxxEntity.get());
 	Define("station", [sStationObject oo_jsValueInContext:sContext]);
 	Define("other", [sOtherObject oo_jsValueInContext:sContext]);
 	Define("ship", [sShip oo_jsValueInContext:sContext]);
@@ -975,7 +978,7 @@ OO_TEST(docking)
 	OO_CHECK_EVAL("station.abortAllDockings()", "undefined");
 	OO_CHECK_EQ(sStation->_abortAll, 1);
 	OO_CHECK_EVAL("station.abortDockingForShip(ship)", "undefined");
-	OO_CHECK(sStation->_abortedShip == sShip);
+	OO_CHECK(sStation->_abortedShip == sShipPart);
 	OO_CHECK_EVAL("station.abortDockingForShip()", "threw: bad arguments: Station.abortDockingForShip(0) - / ship in docking queue");
 	sStation->_fits = YES;
 	OO_CHECK_EVAL("station.canDockShip(ship)", "true");
@@ -1007,7 +1010,7 @@ OO_TEST(alertLevel)
 OO_TEST(launches)
 {
 	SetUpContext();
-	sStation->_launched = sShip;
+	sStation->_launched = sShipPart;
 	OO_CHECK_EVAL("station.launchShipWithRole('trader') === ship", "true");
 	OO_CHECK_EQ(sStation->_lastLaunch, std::string("role trader"));
 	sStation->_abortAll = 0;
@@ -1022,7 +1025,7 @@ OO_TEST(launches)
 		OO_CHECK_EQ(sStation->_lastLaunch, std::string(launch[1]));
 	}
 	OO_CHECK_EVAL("station.launchPolice().length + ' ' + (station.launchPolice()[0] === ship)", "2 true");
-	sStation->_launched = nil;
+	sStation->_launched = nullptr;
 	OO_CHECK_EVAL("station.launchMiner()", "null");
 	OO_CHECK_EVAL("station.launchShipWithRole('trader')", "null");
 	OO_CHECK_EVAL("station.launchPolice().length", "0");	// no ship: none in the array

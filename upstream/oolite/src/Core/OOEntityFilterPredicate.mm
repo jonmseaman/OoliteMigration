@@ -154,7 +154,7 @@ BOOL IsVisualEffectPredicate(Entity *entity, void *parameter)
 BOOL HasRolePredicate(Entity *ship, void *parameter)
 {
 	const std::string *role = static_cast<const std::string *>(parameter);	// a role, as the callers pass it; null for none
-	return role != nullptr && [(ShipEntity *)ship hasRole:*role];
+	return role != nullptr && (oo::ToShip(ship) != nullptr ? oo::ToShip(ship)->hasRole(*role) : false);
 }
 
 
@@ -163,10 +163,10 @@ BOOL HasPrimaryRolePredicate(Entity *ship, void *parameter)
 	const std::string *role = static_cast<const std::string *>(parameter);	// a role, as the callers pass it; null for none
 	if (role == nullptr)
 	{
-		(void)[(ShipEntity *)ship cxx_primaryRole];	// still chooses a primary role if there is none, as before
+		if (ShipEntity *s = oo::ToShip(ship))  (void)s->getPrimaryRole();	// still chooses a primary role if there is none, as before
 		return NO;	// -isEqual: nil was NO
 	}
-	return [(ShipEntity *)ship cxx_hasPrimaryRole:*role];
+	return (oo::ToShip(ship) != nullptr ? oo::ToShip(ship)->hasPrimaryRole(*role) : false);
 }
 
 
@@ -174,7 +174,7 @@ BOOL HasRoleInSetPredicate(Entity *ship, void *parameter)
 {
 	// parameter: the role strings, as the callers pass them (none empty); -intersectsSet: of them
 	const std::vector<std::string> &roles = *static_cast<const std::vector<std::string> *>(parameter);
-	const oo::Ref<OORoleSet> roleSet = oo::ToCxx((ShipEntity *)ship)->getRoleSet();
+	const oo::Ref<OORoleSet> roleSet = oo::ToShip(ship)->getRoleSet();
 	if (roleSet == nullptr)  return NO;
 	return std::any_of(roles.begin(), roles.end(), [&roleSet](const std::string &role) { return roleSet->hasRole(role); });
 }
@@ -184,7 +184,7 @@ BOOL HasPrimaryRoleInSetPredicate(Entity *ship, void *parameter)
 {
 	// parameter: the role strings, as the callers pass them; membership by string value, as
 	// -containsObject: tested it. A nil primary role is in no set.
-	const std::optional<std::string> primaryRole = [(ShipEntity *)ship cxx_primaryRole];
+	const std::optional<std::string> primaryRole = (oo::ToShip(ship) != nullptr ? oo::ToShip(ship)->getPrimaryRole() : std::optional<std::string>());
 	if (!primaryRole.has_value())  return NO;
 	const std::vector<std::string> &roles = *static_cast<const std::vector<std::string> *>(parameter);
 	return std::find(roles.begin(), roles.end(), *primaryRole) != roles.end();
@@ -193,5 +193,5 @@ BOOL HasPrimaryRoleInSetPredicate(Entity *ship, void *parameter)
 
 BOOL IsHostileAgainstTargetPredicate(Entity *ship, void *parameter)
 {
-	return [(ShipEntity *)ship hasHostileTarget] && [(ShipEntity *)ship primaryTarget] == (ShipEntity *)parameter;
+	return (oo::ToShip(ship) != nullptr ? oo::ToShip(ship)->hasHostileTarget() : false) && (oo::ToShip(ship) != nullptr ? oo::ToShip(ship)->primaryTarget() : id{}) == oo::ToObjC(static_cast<::ShipEntity *>(parameter));	// the ship (its object until bead oo-9ht.144)
 }

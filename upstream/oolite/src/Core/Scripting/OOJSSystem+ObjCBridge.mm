@@ -54,25 +54,25 @@ bool OOJSSystemEntityIsVisibleToScripts(Entity *entity)	{ return [entity isVisib
 // SystemLocationFromCode(), FindJSVisibleEntities())
 
 bool OOJSSystemUniverseInInterstellarSpace()	{ return [UNIVERSE inInterstellarSpace]; }
-::ShipEntity *OOJSSystemUniverseStation()	{ return oo::ToObjC([UNIVERSE station]); }
+::Entity *OOJSSystemUniverseStation()	{ return oo::ToObjC([UNIVERSE station]); }
 OOPlanetEntity *OOJSSystemUniversePlanet()	{ return [UNIVERSE planet]; }
 OOSunEntity *OOJSSystemUniverseSun()	{ return [UNIVERSE sun]; }
-std::vector<oo::ObjCRef<Entity *>> OOJSSystemUniversePlanets()	{ return [UNIVERSE cxx_planets]; }
-std::vector<oo::ObjCRef<::ShipEntity *>> OOJSSystemUniverseStations()	{ return [UNIVERSE cxx_stations]; }
-std::map<std::string, oo::ObjCRef<Entity *>, std::less<>> OOJSSystemUniverseCurrentWaypoints()	{ return [UNIVERSE cxx_currentWaypoints]; }
+std::vector<oo::ObjCRef<::Entity *>> OOJSSystemUniversePlanets()	{ return [UNIVERSE cxx_planets]; }
+std::vector<oo::ObjCRef<::Entity *>> OOJSSystemUniverseStations()	{ return [UNIVERSE cxx_stations]; }
+std::map<std::string, oo::ObjCRef<::Entity *>, std::less<>> OOJSSystemUniverseCurrentWaypoints()	{ return [UNIVERSE cxx_currentWaypoints]; }
 std::vector<oo::ObjCRef<::Entity *>> OOJSSystemUniverseWormholes()	{ return [UNIVERSE cxx_wormholes]; }
 
-std::vector<oo::ObjCRef<Entity *>> OOJSSystemUniverseFindShipsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, Entity *entity)
+std::vector<oo::ObjCRef<::Entity *>> OOJSSystemUniverseFindShipsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, Entity *entity)
 {
 	return [UNIVERSE cxx_findShipsMatchingPredicate:predicate parameter:parameter inRange:range ofEntity:entity];
 }
 
-std::vector<oo::ObjCRef<Entity *>> OOJSSystemUniverseFindVisualEffectsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, Entity *entity)
+std::vector<oo::ObjCRef<::Entity *>> OOJSSystemUniverseFindVisualEffectsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, Entity *entity)
 {
 	return [UNIVERSE cxx_findVisualEffectsMatchingPredicate:predicate parameter:parameter inRange:range ofEntity:entity];
 }
 
-std::vector<oo::ObjCRef<Entity *>> OOJSSystemUniverseFindEntitiesMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, Entity *entity)
+std::vector<oo::ObjCRef<::Entity *>> OOJSSystemUniverseFindEntitiesMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, Entity *entity)
 {
 	return [UNIVERSE cxx_findEntitiesMatchingPredicate:predicate parameter:parameter inRange:range ofEntity:entity];
 }
@@ -110,12 +110,12 @@ void OOJSSystemUniverseSetPopulatorSetting(const std::string &key, const oo::PLi
 void OOJSSystemUniverseDefineWaypoint(const oo::PList &definition, const std::string &key)	{ [UNIVERSE cxx_defineWaypoint:definition forKey:key]; }
 HPVector OOJSSystemUniverseGetWitchspaceExitPosition()	{ return [UNIVERSE getWitchspaceExitPosition]; }
 
-std::vector<oo::ObjCRef<ShipEntity *>> OOJSSystemUniverseAddShipsAt(HPVector pos, const std::string &role, unsigned count, GLfloat radius, bool isGroup)
+std::vector<oo::ObjCRef<::Entity *>> OOJSSystemUniverseAddShipsAt(HPVector pos, const std::string &role, unsigned count, GLfloat radius, bool isGroup)
 {
 	return [UNIVERSE cxx_addShipsAt:pos withRole:role quantity:count withinRadius:radius asGroup:isGroup];
 }
 
-std::vector<oo::ObjCRef<ShipEntity *>> OOJSSystemUniverseAddShipsToRoute(const std::string &route, const std::string &role, unsigned count, double routeFraction, bool isGroup)
+std::vector<oo::ObjCRef<::Entity *>> OOJSSystemUniverseAddShipsToRoute(const std::string &route, const std::string &role, unsigned count, double routeFraction, bool isGroup)
 {
 	return [UNIVERSE cxx_addShipsToRoute:route withRole:role quantity:count routeFraction:routeFraction asGroup:isGroup];
 }
@@ -123,4 +123,4 @@ std::vector<oo::ObjCRef<ShipEntity *>> OOJSSystemUniverseAddShipsToRoute(const s
 void OOJSSystemPlayerAddShipsAt(PlayerEntity *player, const std::string &rolesNumberSystemXYZ)	{ if (player != nullptr)  player->addShipsAt(rolesNumberSystemXYZ); }
 void OOJSSystemPlayerAddShipsAtPrecisely(PlayerEntity *player, const std::string &rolesNumberSystemXYZ)	{ if (player != nullptr)  player->addShipsAtPrecisely(rolesNumberSystemXYZ); }
 void OOJSSystemPlayerAddShipsWithinRadius(PlayerEntity *player, const std::string &rolesNumberSystemXYZR)	{ if (player != nullptr)  player->addShipsWithinRadius(rolesNumberSystemXYZR); }
-OOShipGroup *OOJSSystemShipGroup(ShipEntity *ship)	{ return [ship group]; }
+OOShipGroup *OOJSSystemShipGroup(ShipEntity *ship)	{ return (ship != nullptr ? ship->group() : (OOShipGroup *)nullptr); }

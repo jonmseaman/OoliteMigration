@@ -198,7 +198,7 @@ void PlayerEntity::autosavePlayer()
 	tmp_name = lastsaveName();
 	tmp_path = save_path;
 	
-	ShipScriptEventNoCx(oo::ToObjC(this), "playerWillSaveGame", OOJSSTR("AUTO_SAVE"));
+	ShipScriptEventNoCx(this, "playerWillSaveGame", OOJSSTR("AUTO_SAVE"));
 	
 	std::string saveName = lastsaveName().value_or("");
 	const std::string autosaveSuffix = OO_DESC("autosave-commander-suffix");
@@ -242,7 +242,7 @@ void PlayerEntity::quicksavePlayer()
 					format:"ERROR no file name returned by [[gameView gameController] playerFileToLoad]"];
 	}
 	
-	ShipScriptEventNoCx(oo::ToObjC(this), "playerWillSaveGame", OOJSSTR("QUICK_SAVE"));
+	ShipScriptEventNoCx(this, "playerWillSaveGame", OOJSSTR("QUICK_SAVE"));
 
 	writePlayerToPath(*path);
 	[[UNIVERSE gameView] suppressKeysUntilKeyUp];
@@ -903,7 +903,7 @@ void PlayerEntity::savePlayerWithPanel()
 		NSString *path = url.path;
 		NSString *newName = [path.lastPathComponent stringByDeletingPathExtension];
 		
-		ShipScriptEventNoCx(oo::ToObjC(this), "playerWillSaveGame", OOJSSTR("STANDARD_SAVE"));
+		ShipScriptEventNoCx(this, "playerWillSaveGame", OOJSSTR("STANDARD_SAVE"));
 		
 		oo::ToObjC(this).lastsaveName = newName;
 		[oo::ToObjC(this) writePlayerToPath:oo::StdString(path)];
@@ -960,7 +960,7 @@ void PlayerEntity::nativeSavePlayer(const std::string &cdrName)
 	const std::string dir = [[UNIVERSE gameController] cxx_playerFileDirectory].value_or("");
 	const std::string savePath = oo::str::appendingPathComponent(dir, SaveFileName(cdrName));
 
-	ShipScriptEventNoCx(oo::ToObjC(this), "playerWillSaveGame", OOJSSTR("STANDARD_SAVE"));
+	ShipScriptEventNoCx(this, "playerWillSaveGame", OOJSSTR("STANDARD_SAVE"));
 
 	setLastsaveName(cdrName);
 	

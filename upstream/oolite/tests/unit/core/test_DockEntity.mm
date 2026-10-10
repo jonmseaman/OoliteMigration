@@ -100,8 +100,9 @@ oo::PList Definition()
 // DockEntity::newDockObject() makes, its object (the ship's facade) autoreleased.
 DockEntity *MakeDock(const std::string &key)
 {
-	::ShipEntity *object = [DockEntity::newDockObject(key, Definition()) autorelease];
-	return object != nil ? static_cast<DockEntity *>(oo::ToCxx(object)) : nullptr;
+	::ShipEntity *ship = DockEntity::newDockObject(key, Definition());
+	[oo::ToObjC(ship) autorelease];
+	return static_cast<DockEntity *>(ship);
 }
 
 
@@ -110,11 +111,11 @@ DockEntity *MakeDockOfStation(TestDockStation **outStation)
 {
 	// [[[TestDockStation alloc] cxx_initWithKey:definition:] autorelease] until bead oo-9ht.175: made as
 	// StationEntity::newStationObject() makes a station, its object (the ship's facade) autoreleased.
-	::ShipEntity *object = [oo::NewShipObject(oo::makeRef<TestDockStation>(), "dock-station", Definition()) autorelease];
-	TestDockStation *station = static_cast<TestDockStation *>(oo::ToCxx(object));
+	::ShipEntity *object = oo::ToShip([oo::NewShipObject(oo::makeRef<TestDockStation>(), "dock-station", Definition()) autorelease]);
+	TestDockStation *station = static_cast<TestDockStation *>(object);
 	station->initStationDefaults();
 	DockEntity *dock = MakeDock("dock");
-	[object addSubEntity:oo::ToObjC(dock)];
+	if (object != nullptr)  object->addSubEntity(oo::ToObjC(dock));
 	*outStation = station;
 	return dock;
 }
@@ -149,7 +150,7 @@ OO_TEST(initAndSetUp)
 		OO_CHECK((dock != nullptr ? dock->shipDataKey() : std::optional<std::string>()) == std::optional<std::string>("dock"));
 		OO_CHECK((dock != nullptr ? dock->allowsDocking() : false) && (dock != nullptr ? dock->allowsLaunching() : false) && !(dock != nullptr ? dock->disallowedDockingCollides() : false));
 		OO_CHECK((dock != nullptr ? dock->countOfShipsInDockingQueue() : 0) == 0 && (dock != nullptr ? dock->countOfShipsInLaunchQueue() : 0) == 0);
-		OO_CHECK((dock != nullptr ? dock->parentEntity() : (::ShipEntity *)nil) == nil);
+		OO_CHECK((dock != nullptr ? dock->parentEntity() : (::Entity *)nil) == nil);
 	}
 }
 
@@ -207,7 +208,7 @@ OO_TEST(dimensionsAndPortUpVector)
 		SetUp();
 		TestDockStation *station = nullptr;
 		DockEntity *dock = MakeDockOfStation(&station);
-		OO_CHECK((dock != nullptr ? dock->parentEntity() : (::ShipEntity *)nil) == oo::ToObjC(station));
+		OO_CHECK((dock != nullptr ? dock->parentEntity() : (::Entity *)nil) == oo::ToObjC(station));
 
 		if (dock != nullptr)  dock->setVirtual();
 		if (dock != nullptr)  dock->setDimensionsAndCorridor(NO, YES, NO);
@@ -250,8 +251,8 @@ namespace {
 // A ship with the universal ID the approach queue keys it by.
 ShipEntity *MakeQueuedShip(OOUniversalID shipID)
 {
-	ShipEntity *ship = [[[ShipEntity alloc] cxx_initWithKey:"queued" definition:Definition()] autorelease];
-	ship->_cxxEntity->universalID = shipID;
+	ShipEntity *ship = oo::ToShip([oo::NewShipObject(oo::makeRef<::ShipEntity>(), "queued", Definition()) autorelease]);
+	ship->universalID = shipID;
 	return ship;
 }
 
@@ -357,8 +358,8 @@ OO_TEST(launchQueue)
 		dock->addShipToLaunchQueue(second, true);
 		OO_CHECK((dock != nullptr ? dock->countOfShipsInLaunchQueue() : 0) == 2);
 		DockEntity *part = dock;
-		OO_CHECK(part->launchQueue[0].get() == second && part->launchQueue[1].get() == first);
-		OO_CHECK([first status] == STATUS_DOCKED && [second status] == STATUS_DOCKED);
+		OO_CHECK(part->launchQueue[0].get() == oo::ToObjC(second) && part->launchQueue[1].get() == oo::ToObjC(first));
+		OO_CHECK((first != nullptr ? first->status() : OOEntityStatus{}) == STATUS_DOCKED && (second != nullptr ? second->status() : OOEntityStatus{}) == STATUS_DOCKED);
 		OO_CHECK((dock != nullptr ? dock->countOfShipsInLaunchQueueWithPrimaryRole("no-such-role") : 0) == 0);
 		part->no_docking_while_launching = YES;
 		if (dock != nullptr)  dock->abortAllLaunches();
@@ -379,7 +380,6 @@ OO_TEST(objCDockPartIsADock)
 		DockEntity *dock = MakeDock("crossing");
 		DockEntity *part = dock;
 		OO_CHECK(part != nullptr);
-		OO_CHECK(static_cast<cxx::ShipEntity *>(part) == oo::ToObjC(part)->_cxxShip);
 		OO_CHECK(oo::ToDock(oo::ToObjC(part)) == part);
 
 		cxx::Entity *asEntity = part;

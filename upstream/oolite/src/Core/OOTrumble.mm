@@ -567,12 +567,12 @@ void OOTrumble::updateTrumble(double delta_t)
 		// consult menu...
 		::ShipEntity *selectedCargopod = nil;
 		float mostYummy = 0.0;
-		std::vector<oo::ObjCRef<::ShipEntity *>> *cargopods = (player != nullptr ? player->getCargo() : (std::vector<oo::ObjCRef<ShipEntity *>> *)nullptr);	// the cargo pods (live: eaten ones are removed)
+		std::vector<oo::ObjCRef<::Entity *>> *cargopods = (player != nullptr ? player->getCargo() : (std::vector<oo::ObjCRef<::Entity *>> *)nullptr);	// the cargo pods (live: eaten ones are removed)
 		NSUInteger i, n_pods = cargopods != nullptr ? cargopods->size() : 0;
 		for (i = 0 ; i < n_pods; i++)
 		{
-			::ShipEntity *cargopod = (*cargopods)[i].get();
-			const std::string cargo_type = [cargopod cxx_commodityType].value_or("");	// nil arrived as ""
+			::ShipEntity *cargopod = oo::ToShip((*cargopods)[i].get());
+			const std::string cargo_type = (cargopod != nullptr ? cargopod->commodityType() : std::optional<std::string>()).value_or("");	// nil arrived as ""
 			float yumminess = (1.0 + randf()) * ([UNIVERSE commodityMarket] != nullptr ? [UNIVERSE commodityMarket]->trumbleOpinionForGood(cargo_type) : 0.0f);
 			if (yumminess > mostYummy)
 			{
@@ -594,10 +594,10 @@ void OOTrumble::updateTrumble(double delta_t)
 			{
 				// eaten all of this cargo!
 				const std::string ms = oo::str::formatRuntime(OO_DESC("trumbles-eat-@"),
-								{ [UNIVERSE cxx_displayNameForCommodity:[selectedCargopod cxx_commodityType].value_or("")].value_or("(null)") });
+								{ [UNIVERSE cxx_displayNameForCommodity:(selectedCargopod != nullptr ? selectedCargopod->commodityType() : std::optional<std::string>()).value_or("")].value_or("(null)") });
 
 				[UNIVERSE cxx_addMessage:ms forCount: 4.5];
-				if (cargopods != nullptr)  std::erase(*cargopods, selectedCargopod);
+				if (cargopods != nullptr)  std::erase(*cargopods, oo::ToObjC(selectedCargopod));
 				trumbleAppetiteAccumulator -= 10.0;
 				
 				// consider breeding - must be full grown and happy

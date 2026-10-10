@@ -404,8 +404,8 @@ static bool EntitySetProperty(Context cx, Object obj, PropertyId propID, bool /*
 				[entity setPosition:hpvValue];
 				if ([entity isShip])
 				{
-					[(ShipEntity *)entity resetExhaustPlumes];
-					[(ShipEntity *)entity forceAegisCheck];
+					if (oo::ToShip(entity) != nullptr)  oo::ToShip(entity)->resetExhaustPlumes();
+					if (oo::ToShip(entity) != nullptr)  oo::ToShip(entity)->forceAegisCheck();
 				}
 				return true;
 			}

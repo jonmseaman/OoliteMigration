@@ -55,7 +55,7 @@ std::string OOShipLibraryCategoryPlural(const std::string &category)
 }
 
 
-std::string OOShipLibrarySpeed (cxx::ShipEntity *demo_ship)
+std::string OOShipLibrarySpeed (ShipEntity *demo_ship)
 {
 	GLfloat	param = (demo_ship ? demo_ship->maxFlightSpeed : 0);
 	std::string result;
@@ -87,7 +87,7 @@ std::string OOShipLibrarySpeed (cxx::ShipEntity *demo_ship)
 }
 
 
-std::string OOShipLibraryTurnRate (cxx::ShipEntity *demo_ship)
+std::string OOShipLibraryTurnRate (ShipEntity *demo_ship)
 {
 	GLfloat param = (demo_ship ? demo_ship->maxFlightRoll() + (2*demo_ship->maxFlightPitch()) : 0);
 	std::string result;
@@ -115,7 +115,7 @@ std::string OOShipLibraryTurnRate (cxx::ShipEntity *demo_ship)
 }
 
 
-std::string OOShipLibraryCargo (cxx::ShipEntity *demo_ship)
+std::string OOShipLibraryCargo (ShipEntity *demo_ship)
 {
 	OOCargoQuantity param = (demo_ship ? demo_ship->maxAvailableCargoSpace() : 0);
 	std::string result;
@@ -131,7 +131,7 @@ std::string OOShipLibraryCargo (cxx::ShipEntity *demo_ship)
 }
 
 
-std::string OOShipLibraryGenerator (cxx::ShipEntity *demo_ship)
+std::string OOShipLibraryGenerator (ShipEntity *demo_ship)
 {
 	float rate = (demo_ship ? demo_ship->energyRechargeRate() : 0);
 	std::string result;
@@ -151,7 +151,7 @@ std::string OOShipLibraryGenerator (cxx::ShipEntity *demo_ship)
 }
 
 
-std::string OOShipLibraryShields (cxx::ShipEntity *demo_ship)
+std::string OOShipLibraryShields (ShipEntity *demo_ship)
 {
 	// when NPCs have actual shields, add those on as well
 	float shields = (demo_ship ? demo_ship->maxEnergy : 0);
@@ -180,7 +180,7 @@ std::string OOShipLibraryShields (cxx::ShipEntity *demo_ship)
 }
 
 
-std::string OOShipLibraryWitchspace (cxx::ShipEntity *demo_ship)
+std::string OOShipLibraryWitchspace (ShipEntity *demo_ship)
 {
 	if ((demo_ship && demo_ship->hasHyperspaceMotor()))
 	{
@@ -193,7 +193,7 @@ std::string OOShipLibraryWitchspace (cxx::ShipEntity *demo_ship)
 }
 
 
-std::string OOShipLibraryWeapons (cxx::ShipEntity *demo_ship)
+std::string OOShipLibraryWeapons (ShipEntity *demo_ship)
 {
 	OOWeaponFacingSet facings = demo_ship ? demo_ship->weaponFacings() : OOWeaponFacingSet(0); 
 	NSUInteger fixed = (facings&1)+(facings&2)/2+(facings&4)/4+(facings&8)/8;
@@ -206,7 +206,7 @@ std::string OOShipLibraryWeapons (cxx::ShipEntity *demo_ship)
 }
 
 
-std::string OOShipLibraryTurrets (cxx::ShipEntity *demo_ship)
+std::string OOShipLibraryTurrets (ShipEntity *demo_ship)
 {
 	NSUInteger turretCount = (demo_ship ? demo_ship->turretCount() : 0);
 	if (turretCount > 0) 
@@ -220,7 +220,7 @@ std::string OOShipLibraryTurrets (cxx::ShipEntity *demo_ship)
 }
 
 
-std::string OOShipLibrarySize (cxx::ShipEntity *demo_ship)
+std::string OOShipLibrarySize (ShipEntity *demo_ship)
 {
 	BoundingBox bb = {};
 	if (demo_ship)	bb = demo_ship->totalBoundingBox;

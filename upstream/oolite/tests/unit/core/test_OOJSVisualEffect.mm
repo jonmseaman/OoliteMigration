@@ -174,15 +174,15 @@ namespace cxx {
 class Entity
 {
 };
+}	// namespace cxx
 
-class ShipEntity : public Entity
+class ShipEntity : public cxx::Entity	// C++ since bead oo-9ht.144
 {
 public:
 	::Entity *nextBeacon();
 };
-}	// namespace cxx
 
-class PlayerEntity : public cxx::ShipEntity
+class PlayerEntity : public ShipEntity
 {
 public:
 	void setCompassMode(OOCompassMode value);
@@ -379,7 +379,7 @@ oo::PList OOMesh::shaders()  { return _shaders; }
 
 @end
 
-::Entity *cxx::ShipEntity::nextBeacon()  { return [static_cast<PlayerEntity *>(this)->_game nextBeacon]; }
+::Entity *ShipEntity::nextBeacon()  { return [static_cast<PlayerEntity *>(this)->_game nextBeacon]; }
 void PlayerEntity::setCompassMode(OOCompassMode value)  { [static_cast<PlayerEntity *>(this)->_game setCompassMode:value]; }
 
 

@@ -9,9 +9,9 @@ ten or so different classes is a perennial to-do item.
 C++ since its slice plan (docs/phases/3-slices/PlayerEntity.md; proposed ADR-0056, amendments
 oo-jx5np, oo-zn1vy and oo-lmdi8). Bead oo-9ht.177 deleted its Objective-C facade (amendment
 oo-9ht.177): the player is made in C++ by PlayerEntity::sharedPlayer() and its Objective-C object
-is the ship's facade (ShipEntity+ObjCBridge.h), which answers the selectors the game still finds
-by name on the player (legacy-script actions and queries, callObjC(), shader bindings, deferred
-calls) for the player's C++ part only.
+is a ship's (the root's facade answers the selectors the game still finds by name on the player,
+legacy-script actions and queries, callObjC(), shader bindings, deferred calls, for the player's
+C++ part only; the ship's facade did until bead oo-9ht.144).
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -49,7 +49,8 @@ MA 02110-1301, USA.
 #include "oofnd/Ref.hpp"
 #include "oofnd/objc/OOAssert.h"
 
-@class MyOpenGLView, ShipEntity;
+@class MyOpenGLView;
+class ShipEntity;	// C++ since bead oo-9ht.144
 class GuiDisplayGen;
 #import "HeadUpDisplay.h"	// C++ since bead oo-mwd58: the player keeps its HUD (oo::Ref)
 class OOSound;			// C++ since bead oo-9ht.68 deleted its facade
@@ -376,22 +377,24 @@ inline constexpr std::string_view MISSION_DEST_LEGACY				= "__oolite_legacy_dest
 	oo-9ht.177). Pointers to other entities and to Objective-C objects keep their objects alive as
 	before: oo::ObjCRef, or retained by hand where noted.
 */
-class PlayerEntity : public cxx::ShipEntity
+class PlayerEntity : public ShipEntity
 {
 public:
 	/*	The shared player, made on first use (amendment oo-9ht.177; it was +sharedPlayer): the C++
-		player and its Objective-C object, the ship's facade, kept for the process as +alloc's was.
+		player and its Objective-C object (a ship's), kept for the process as +alloc's was.
 		Its initialiser ran nothing but the ship's part; deferredInit() sets up the ship.
 	*/
 	static PlayerEntity *sharedPlayer();
 	// Out of line, where every member's class is complete (a test makes a player).
 	PlayerEntity();
 	~PlayerEntity() override;
-	// [[PlayerEntity alloc] init]: a new player's Objective-C object, retained (+1), as the universe
-	// makes one when its entity list is empty; sharedPlayer() keeps the first one.
+	// [[PlayerEntity alloc] init]: a new player, its Objective-C object retained (+1), as the universe
+	// makes one when its entity list is empty; sharedPlayer() keeps the first one (bead oo-9ht.144:
+	// the object until then).
 	static ::ShipEntity *newPlayerObject();
 	void deferredInit();
-	// What the facade's -dealloc did first, before the ship's: the ship's facade calls it.
+	// What the facade's -dealloc did first, before the ship's: the root's facade calls it (the
+	// ship's did until bead oo-9ht.144).
 	void willDealloc();
 
 	// What the facade answered for selectors whose C++ member is named for an ivar (amendment oo-9ht.177).
@@ -672,7 +675,7 @@ public:
 	void takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::Entity *otherPart, const std::string &weaponIdentifier) override;
 	void takeScrapeDamage(double amount, ::Entity *ent) override;
 	void takeHeatDamage(double amount) override;
-	::ShipEntity *createDoppelganger();	// the proxy's object (the ship's facade since bead oo-9ht.183)
+	::ShipEntity *createDoppelganger();	// the proxy (its object until bead oo-9ht.144)
 	::ShipEntity *launchEscapeCapsule() override;
 	void dumpCargo() override;
 	void rotateCargo();
@@ -1621,7 +1624,7 @@ private:
 	
 	oo::Ref<OOCommodityMarket>	shipCommodityData;
 	
-	oo::ObjCRef<::ShipEntity *>	missile_entity[PLAYER_MAX_MISSILES];	// holds the actual missile entities or equivalents (held; bead oo-5q11i)
+	oo::ObjCRef<::Entity *>	missile_entity[PLAYER_MAX_MISSILES];	// holds the actual missile entities or equivalents (held; bead oo-5q11i)
 	OOUniversalID			_dockTarget = {};	// used by the escape pod code
 	
 	int						legalStatusValue = {};	// the ivar legalStatus; it both is and isn't an OOCreditsQuantity, because of quantum.
@@ -1904,7 +1907,7 @@ private:
 	WormholeEntity				*wormhole = {};	// C++ since bead oo-9ht.112; wormholeObject holds its Objective-C object
 	oo::ObjCRef<::Entity *>		wormholeObject;	// the wormhole's Objective-C object (the root's facade, which owns it), held (bead oo-5q11i)
 
-	oo::ObjCRef<::ShipEntity *>	demoShip; // Used while docked to maintain demo ship rotation. (held; bead oo-5q11i)
+	oo::ObjCRef<::Entity *>	demoShip; // Used while docked to maintain demo ship rotation. (held; bead oo-5q11i)
 	std::vector<oo::Ref<OOLaserShotEntity>>	lastShot; // used to correctly position laser shots on first frame of firing
 	
 	oo::Ref<::StickProfileScreen>	stickProfileScreen;

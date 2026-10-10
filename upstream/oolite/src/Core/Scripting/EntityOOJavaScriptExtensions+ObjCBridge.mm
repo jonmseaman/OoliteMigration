@@ -2,9 +2,10 @@
 
 EntityOOJavaScriptExtensions+ObjCBridge.mm
 
-TRANSITIONAL (proposed ADR-0056, amendments oo-ppc and oo-ykoy): the categories Entity
-(OOJavaScriptExtensions) and ShipEntity (OOJavaScriptExtensions), which the engine and the
-bindings reach by selector and which subclasses override. Each method forwards to the free
+TRANSITIONAL (proposed ADR-0056, amendments oo-ppc and oo-ykoy): the category Entity
+(OOJavaScriptExtensions), which the engine and the bindings reach by selector and which subclasses
+override (ShipEntity (OOJavaScriptExtensions) went with the ship's facade, bead oo-9ht.144: the
+ship's C++ members answer). Each method forwards to the free
 function that holds its body (EntityOOJavaScriptExtensions.mm). Deleted with
 EntityOOJavaScriptExtensions+ObjCBridge.h.
 
@@ -46,36 +47,5 @@ MA 02110-1301, USA.
 }
 
 - (void) deleteJSSelf														{ EntityJSDeleteJSSelf(self); }
-
-@end
-
-
-@implementation ShipEntity (OOJavaScriptExtensions)
-
-/*	ShipEntity's own answers (cxx::ShipEntity's members call the same bodies). The facades of the
-	C++ subclasses that override them (StationEntity, DockEntity) override these selectors and ask
-	their C++ part; for an Objective-C ship this facade does not reach for its C++ part, so these
-	answer for one that has none (bead oo-tt7l1). A ship made in C++ (the player, whose facade bead
-	oo-9ht.177 deleted: it answered its own class name) asks its C++ part, whose overrides answer.
-*/
-- (BOOL) isVisibleToScripts
-{
-	if (_cxxEntity != nullptr && oo::AsObjCEntity(_cxxEntity.get()) == nullptr)  return _cxxEntity->isVisibleToScripts();
-	return ShipEntityJSIsVisibleToScripts();
-}
-
-- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype
-{
-	if (_cxxEntity != nullptr && oo::AsObjCEntity(_cxxEntity.get()) == nullptr)  _cxxEntity->getJSClass(outClass, outPrototype);
-	else  ShipEntityJSGetJSClass(outClass, outPrototype);
-}
-
-- (std::optional<std::string>) cxx_oo_jsClassName
-{
-	if (_cxxEntity != nullptr && oo::AsObjCEntity(_cxxEntity.get()) == nullptr)  return _cxxEntity->jsClassName();
-	return ShipEntityJSClassName();
-}
-- (std::vector<oo::ObjCRef<Entity *>>) subEntitiesForScript				{ return ShipEntityJSSubEntitiesForScript(self); }
-- (void) setTargetForScript:(ShipEntity *)target							{ ShipEntityJSSetTargetForScript(self, target); }
 
 @end

@@ -522,7 +522,7 @@ static bool PlayerCommsMessage(ooscript::Context context, ooscript::CallArgs &oo
 	}
 	
 	[UNIVERSE cxx_addCommsMessage:*message forCount:time];
-	if (PLAYER != nullptr)  PLAYER->cxx::ShipEntity::doScriptEvent(OOJSID("commsMessageReceived"), { oo::PList(*message), oo::PList() });	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
+	if (PLAYER != nullptr)  PLAYER->ShipEntity::doScriptEvent(OOJSID("commsMessageReceived"), { oo::PList(*message), oo::PList() });	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 	OOJS_RETURN_VOID;
 	
 	OOJS_NATIVE_EXIT
@@ -759,7 +759,7 @@ static bool PlayerReplaceShip(ooscript::Context context, ooscript::CallArgs &ooj
 	{ 
 		if (player != nullptr)  player->doScriptEvent(OOJSID("playerReplacedShip"), oo::ToObjC(player));
 		// slightly misnamed world event now - to be deprecated
-		if (player != nullptr)  player->cxx::ShipEntity::doScriptEvent(OOJSID("playerBoughtNewShip"), { oo::PListObject(oo::ToObjC(player)), oo::PList::signedInteger(0) });	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
+		if (player != nullptr)  player->ShipEntity::doScriptEvent(OOJSID("playerBoughtNewShip"), { oo::PListObject(oo::ToObjC(player)), oo::PList::signedInteger(0) });	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 	}
 
 	OOJS_RETURN_BOOL(success);
@@ -796,9 +796,9 @@ static bool PlayerSetEscapePodDestination(ooscript::Context context, ooscript::C
 			if (player != nullptr)  player->setDockTarget(NULL);
 			OK = true;
 		}
-		else if ([destObject isKindOfClass:[ShipEntity class]] && [destObject isStation])
+		else if ((oo::ToShip(destObject) != nullptr) && [destObject isStation])
 		{
-			if (player != nullptr)  player->setDockTarget(destObject);
+			if (player != nullptr)  player->setDockTarget(oo::ToShip(destObject));
 			OK = true;
 		}
 		else if (const std::string *destString = destValue.getIf<std::string>())

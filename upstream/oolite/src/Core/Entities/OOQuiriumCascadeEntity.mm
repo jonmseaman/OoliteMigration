@@ -44,12 +44,12 @@ bool OOQuiriumCascadeEntity::initQuiriumCascadeFromShip(::ShipEntity *ship)
 	
 	// [super init] could not fail: the constructor ran Entity's -init body.
 	{
-		setPosition([ship position]);
+		setPosition((ship != nullptr ? ship->getPosition() : HPVector{}));
 		
 		setStatus(STATUS_EFFECT);
 		scanClass = CLASS_MINE;
 		
-		setOwner(oo::ToCxx((::Entity *)[ship owner]));
+		setOwner(oo::ToCxx((::Entity *)(ship != nullptr ? ship->owner() : id{})));
 		
 		// Red and green channels are animated.
 		_color[2] = 1.0f;

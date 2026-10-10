@@ -512,7 +512,7 @@ void PlayerEntity::updateAfterburnerSound()
 		if (sAfterburnerSources[which] != nullptr)  sAfterburnerSources[which]->play();
 		which = !which;
 		
-		OOScheduleDeferredCall(oo::ToObjC(this), @selector(updateAfterburnerSound), nil, 1.25);	// and swap sounds in 1.25s time (by name: the ship's facade answers it, bead oo-9ht.177)
+		OOScheduleDeferredCall(oo::ToObjC(this), @selector(updateAfterburnerSound), nil, 1.25);	// and swap sounds in 1.25s time (by name: the root's facade answers it, beads oo-9ht.177, oo-9ht.144)
 	}
 }
 

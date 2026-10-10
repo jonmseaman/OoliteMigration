@@ -81,8 +81,41 @@ uint32_t gLiveEntityCount = 0;
 @class Entity;
 oo::PList WormholeEntityShipsInTransit(Entity *)  { return oo::PList(); }
 
-@class Universe, ShipEntity;
+@class Universe;
 Universe *gSharedUniverse = nil;
+
+// The ship is C++ since bead oo-9ht.144 deleted the Objective-C ship: what the monitor's entity dump
+// links against (a ship's object, the root's, holds its C++ part, which oo::ToCxx reads), declared
+// as Entity.h and ShipEntity.h declare them (the test imports neither). The test dumps no entity,
+// so none is reached.
+namespace cxx {
+class Entity : public oo::RefCounted
+{
+public:
+	virtual ~Entity();
+};
+}	// namespace cxx
+
+@interface Entity: OOObject
+{
+@public
+	oo::Ref<cxx::Entity> _cxxEntity;
+}
+@end
+
+@implementation Entity
+@end
+
+class ShipEntity : public cxx::Entity
+{
+public:
+	std::vector<oo::ObjCRef<::Entity *>> subEntityEnumerator();
+};
+
+cxx::Entity::~Entity() = default;
+std::vector<oo::ObjCRef<::Entity *>> ShipEntity::subEntityEnumerator()  { std::abort(); }
+namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
+::Entity *oo::ToObjC(cxx::Entity *)  { std::abort(); }
 
 // PLAYER: C++ since bead oo-9ht.177 deleted the Objective-C player; the members the monitor calls
 // on it (declared as PlayerEntity.h declares them; the test imports no game header that defines

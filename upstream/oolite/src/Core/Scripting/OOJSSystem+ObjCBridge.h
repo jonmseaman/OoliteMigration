@@ -57,11 +57,11 @@ bool OOJSSystemEntityIsVisibleToScripts(Entity *entity);
 
 // The universe, as the property getter and setter, the counts and the searches read it.
 bool OOJSSystemUniverseInInterstellarSpace();
-::ShipEntity *OOJSSystemUniverseStation();	// the main station's object (the ship's facade since bead oo-9ht.175)
+::Entity *OOJSSystemUniverseStation();	// the main station's object (a ship's since bead oo-9ht.175)
 OOPlanetEntity *OOJSSystemUniversePlanet();
 OOSunEntity *OOJSSystemUniverseSun();
 std::vector<oo::ObjCRef<Entity *>> OOJSSystemUniversePlanets();	// the planets' Objective-C objects
-std::vector<oo::ObjCRef<::ShipEntity *>> OOJSSystemUniverseStations();
+std::vector<oo::ObjCRef<::Entity *>> OOJSSystemUniverseStations();
 std::map<std::string, oo::ObjCRef<Entity *>, std::less<>> OOJSSystemUniverseCurrentWaypoints();	// the waypoints' objects
 std::vector<oo::ObjCRef<::Entity *>> OOJSSystemUniverseWormholes();
 std::vector<oo::ObjCRef<Entity *>> OOJSSystemUniverseFindShipsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, Entity *entity);
@@ -91,8 +91,8 @@ OOVisualEffectEntity *OOJSSystemUniverseAddVisualEffectAt(HPVector pos, const st
 void OOJSSystemUniverseSetPopulatorSetting(const std::string &key, const oo::PList &setting);
 void OOJSSystemUniverseDefineWaypoint(const oo::PList &definition, const std::string &key);
 HPVector OOJSSystemUniverseGetWitchspaceExitPosition();
-std::vector<oo::ObjCRef<ShipEntity *>> OOJSSystemUniverseAddShipsAt(HPVector pos, const std::string &role, unsigned count, GLfloat radius, bool isGroup);
-std::vector<oo::ObjCRef<ShipEntity *>> OOJSSystemUniverseAddShipsToRoute(const std::string &route, const std::string &role, unsigned count, double routeFraction, bool isGroup);
+std::vector<oo::ObjCRef<::Entity *>> OOJSSystemUniverseAddShipsAt(HPVector pos, const std::string &role, unsigned count, GLfloat radius, bool isGroup);
+std::vector<oo::ObjCRef<::Entity *>> OOJSSystemUniverseAddShipsToRoute(const std::string &route, const std::string &role, unsigned count, double routeFraction, bool isGroup);
 void OOJSSystemPlayerAddShipsAt(PlayerEntity *player, const std::string &rolesNumberSystemXYZ);
 void OOJSSystemPlayerAddShipsAtPrecisely(PlayerEntity *player, const std::string &rolesNumberSystemXYZ);
 void OOJSSystemPlayerAddShipsWithinRadius(PlayerEntity *player, const std::string &rolesNumberSystemXYZR);

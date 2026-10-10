@@ -41,7 +41,6 @@ oolite_sources += files(
     'PlayerEntityStickProfile.mm',
     'ProxyPlayerEntity.mm',
     'ShipEntity.mm',
-    'ShipEntity+ObjCBridge.mm',
     'ShipEntityAI.mm',
     'ShipEntityLoadRestore.mm',
     'ShipEntityScriptMethods.mm',

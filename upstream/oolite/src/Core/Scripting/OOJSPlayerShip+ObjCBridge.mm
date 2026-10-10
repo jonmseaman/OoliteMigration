@@ -79,7 +79,7 @@ bool OOJSPlayerShipPlayerScoopOverride(PlayerEntity *player)	{ return (player !=
 bool OOJSPlayerShipPlayerInjectorsEngaged(PlayerEntity *player)	{ return (player != nullptr ? player->injectorsEngaged() : false); }
 bool OOJSPlayerShipPlayerMassLockable(PlayerEntity *player)	{ return (player != nullptr ? player->getMassLockable() : false); }
 bool OOJSPlayerShipPlayerHyperspeedEngaged(PlayerEntity *player)	{ return (player != nullptr ? player->hyperspeedEngaged() : false); }
-Entity *OOJSPlayerShipPlayerCompassTarget(PlayerEntity *player)	{ return (player != nullptr ? player->getCompassTarget() : (Entity *)nullptr); }
+Entity *OOJSPlayerShipPlayerCompassTarget(PlayerEntity *player)	{ return (player != nullptr ? player->getCompassTarget() : (::Entity *)nullptr); }
 OOCompassMode OOJSPlayerShipPlayerCompassMode(PlayerEntity *player)	{ return (player != nullptr ? player->getCompassMode() : OOCompassMode{}); }
 bool OOJSPlayerShipPlayerWeaponsOnline(PlayerEntity *player)	{ return (player != nullptr ? player->weaponsOnline() : false); }
 Vector OOJSPlayerShipPlayerViewpointOffsetAft(PlayerEntity *player)	{ return (player != nullptr ? player->viewpointOffsetAft() : Vector{}); }
@@ -151,7 +151,7 @@ void OOJSPlayerShipUniverseMessageGUISetTextCommsColor(OOColor *color)	{ [UNIVER
 void OOJSPlayerShipPlayerLaunchFromStation(PlayerEntity *player)	{ if (player != nullptr)  player->launchFromStation(); }
 void OOJSPlayerShipPlayerRemoveAllCargo(PlayerEntity *player)	{ if (player != nullptr)  player->removeAllCargo(); }
 void OOJSPlayerShipPlayerUseSpecialCargo(PlayerEntity *player, const std::string &descriptionString)	{ if (player != nullptr)  player->useSpecialCargo(descriptionString); }
-Class OOJSPlayerShipShipEntityClass()	{ return [ShipEntity class]; }
+Class OOJSPlayerShipShipEntityClass()	{ return [::Entity class]; }	// the root's: a ship's object is the drawable's facade since bead oo-9ht.144 (oo::ToStation() checks the class)
 bool OOJSPlayerShipPlayerEngageAutopilotToStation(PlayerEntity *player, StationEntity *stationForDocking)	{ return (player != nullptr ? player->engageAutopilotToStation(stationForDocking) : false); }
 void OOJSPlayerShipPlayerDisengageAutopilot(PlayerEntity *player)	{ if (player != nullptr)  player->disengageAutopilot(); }
 void OOJSPlayerShipPlayerRequestDockingClearance(PlayerEntity *player, StationEntity *stationForDocking)	{ if (player != nullptr)  player->requestDockingClearance(stationForDocking); }

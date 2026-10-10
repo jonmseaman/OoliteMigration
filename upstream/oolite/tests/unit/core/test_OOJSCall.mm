@@ -136,24 +136,44 @@ extern "C" void OOJSUnreachable(const char *function, const char *, unsigned)
 
 
 // The ship and player classes, as far as the call sees them: a ship becomes the player's script
-// target.
-@interface ShipEntity: OOObject
+// target. The ship is C++ since bead oo-9ht.144 deleted the Objective-C ship: a ship's object is the
+// root's, which holds the C++ part (oo::ToCxx reads it); declared as Entity.h and ShipEntity.h
+// declare them (the test imports neither).
+namespace cxx {
+class Entity : public oo::RefCounted
+{
+public:
+	virtual ~Entity();
+};
+}	// namespace cxx
+
+@interface Entity: OOObject
+{
+@public
+	oo::Ref<cxx::Entity> _cxxEntity;
+}
 @end
 
-@implementation ShipEntity
+@implementation Entity
 @end
+
+class ShipEntity : public cxx::Entity
+{
+};
+
+cxx::Entity::~Entity() = default;
 
 // The player is C++ since bead oo-9ht.177 deleted its Objective-C class: the C++ player as far as
 // the call sees it (declared as PlayerEntity.h declares it; the test imports no game header that
 // defines the class) and its Objective-C object, a ship (the ship's facade in the game), which
 // oo::ToObjC answers.
-@interface TestPlayerObject: ShipEntity
+@interface TestPlayerObject: Entity
 @end
 
 @implementation TestPlayerObject
 @end
 
-class PlayerEntity
+class PlayerEntity : public ShipEntity
 {
 public:
 	void setScriptTarget(::ShipEntity *target);
@@ -166,7 +186,7 @@ public:
 	static void clearJSQuaternionStatistics();
 #endif
 
-	id scriptTarget = nil;
+	::ShipEntity *scriptTarget = nullptr;
 };
 
 void PlayerEntity::setScriptTarget(::ShipEntity *target)  { scriptTarget = target; }
@@ -255,11 +275,17 @@ void PlayerEntity::clearJSQuaternionStatistics()		{ sStatisticsCalls.push_back("
 @end
 
 
-@interface TestShip: ShipEntity
+@interface TestShip: Entity
 - (int) answer;
 @end
 
 @implementation TestShip
+// Every test ship has its C++ part (the ship).
+- (id) init
+{
+	if ((self = [super init]))  _cxxEntity = oo::makeRef<ShipEntity>();
+	return self;
+}
 - (int) answer  { return 1; }
 @end
 
@@ -276,8 +302,10 @@ ooscript::Context Context()
 		sContext = ooscript::newContext(runtime, 8192);
 		ooscript::beginRequest(sContext);
 		ooscript::initStandardClasses(sContext, ooscript::getGlobalObject(sContext));
-		gOOPlayer = new PlayerEntity;	// never deleted
+		oo::Ref<PlayerEntity> player = oo::makeRef<PlayerEntity>();
+		gOOPlayer = player.get();	// never deleted: its object holds it
 		sPlayerObject = [[TestPlayerObject alloc] init];
+		sPlayerObject->_cxxEntity = player;
 	}
 	return sContext;
 }
@@ -387,12 +415,12 @@ OO_TEST(shipBecomesScriptTarget)
 	{
 		Context();
 		TestShip *ship = [[[TestShip alloc] init] autorelease];
-		gOOPlayer->scriptTarget = nil;
+		gOOPlayer->scriptTarget = nullptr;
 		OO_CHECK_EQ(Call(ship, "answer"), "1");
-		OO_CHECK(gOOPlayer->scriptTarget == ship);
+		OO_CHECK(gOOPlayer->scriptTarget == ship->_cxxEntity.get());
 		TestTarget *target = [[[TestTarget alloc] init] autorelease];
 		OO_CHECK_EQ(Call(target, "answer"), "42");
-		OO_CHECK(gOOPlayer->scriptTarget == ship);	// not a ship: unchanged
+		OO_CHECK(gOOPlayer->scriptTarget == ship->_cxxEntity.get());	// not a ship: unchanged
 	}
 }
 
@@ -419,7 +447,7 @@ OO_TEST(playerStatisticsByName)
 			OO_CHECK_EQ(sStatisticsCalls[2], "reportJSQuaternionStatistics");
 			OO_CHECK_EQ(sStatisticsCalls[3], "clearJSQuaternionStatistics");
 		}
-		OO_CHECK(gOOPlayer->scriptTarget == sPlayerObject);	// the player is a ship: its own script target
+		OO_CHECK(gOOPlayer->scriptTarget == gOOPlayer);	// the player is a ship: its own script target
 
 		TestShip *ship = [[[TestShip alloc] init] autorelease];
 		OO_CHECK(Call(ship, "reportJSVectorStatistics").find("> does not respond to method reportJSVectorStatistics.") != std::string::npos);

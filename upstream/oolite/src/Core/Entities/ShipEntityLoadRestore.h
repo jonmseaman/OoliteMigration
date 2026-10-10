@@ -47,8 +47,8 @@ struct OOShipSaveContext
 
 
 /*	Bead oo-kw44 (ADR-0056 amendments oo-o89 item 4 and oo-42dr): the category ShipEntity
-	(LoadRestore) is members of cxx::ShipEntity, declared in ShipEntity.h and defined in
-	ShipEntityLoadRestore.mm. Its Objective-C interface, for the callers that remain, is the category
-	of the same name in ShipEntity+ObjCBridge.h, which ShipEntity.h imports. This header stays for
-	the files that import it, and for OOShipSaveContext.
+	(LoadRestore) is members of ShipEntity, declared in ShipEntity.h and defined in
+	ShipEntityLoadRestore.mm. Its Objective-C interface was the category of the same name in
+	ShipEntity+ObjCBridge.h until bead oo-9ht.144 deleted the facade. This header stays for the files
+	that import it, and for OOShipSaveContext.
 */

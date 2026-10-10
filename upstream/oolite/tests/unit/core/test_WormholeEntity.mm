@@ -8,7 +8,8 @@
 	names and a real system description manager (with the coordinates of the systems the test
 	uses) and the clock format, with no sun, and to record what is removed; PLAYER is an entity that answers the galaxy, the clock,
 	its galactic coordinates and its forward vector; the ship that opens a wormhole is a plain
-	entity of the mass the test sets. The expectations were written against the Objective-C API
+	entity of the mass the test sets (a C++ ship under its object, never set up, since bead
+	oo-9ht.144). The expectations were written against the Objective-C API
 	and run on the unconverted class first: a wormhole made by a ship is a no-mass-yet effect of
 	the wormhole scan class whose size, expiry and arrival follow from the ship's mass and the
 	distance; one made from a saved dictionary reads its systems, times (crossed times fixed),
@@ -101,6 +102,9 @@ T *NewTestPlayer()
 @end
 
 
+extern ooscript::Context gOOJSMainThreadContext;	// the engine's (OOJavaScriptEngine.mm)
+
+
 namespace {
 
 OOSystemDescriptionManager *sManager = nullptr;
@@ -160,6 +164,10 @@ void SetUp()
 	sPlayer->_coordinates = NSMakePoint(10, 20);
 	gSharedUniverse = sUniverse;
 	gOOPlayer = sPlayer;
+	// The ship's -dealloc sends its (absent) scripts entityDestroyed in a request on the main
+	// thread's context, so there is one, with nothing in it (the ship stand-in is C++ since bead
+	// oo-9ht.144, as test_StationEntity's ships are).
+	if (gOOJSMainThreadContext == nullptr)  gOOJSMainThreadContext = ooscript::newContext(ooscript::newRuntime(8u * 1024u * 1024u), 8192);
 }
 
 
@@ -176,9 +184,11 @@ bool Near(double a, double b)
 }
 
 
+// A ship: C++ since bead oo-9ht.144 (the wormhole calls its members), under its object
+// (oo::NewEntityFacade, autoreleased as the plain entity was), never set up.
 Entity *Ship(GLfloat mass)
 {
-	Entity *ship = [[[Entity alloc] init] autorelease];
+	Entity *ship = oo::NewEntityFacade(oo::makeRef<::ShipEntity>());
 	SetMass(ship, mass);
 	[ship setPosition:make_HPvector(1, 2, 3)];
 	return ship;
@@ -190,7 +200,7 @@ WormholeEntity *ToNine(Entity *ship)
 {
 	oo::Ref<WormholeEntity> wh = oo::makeRef<WormholeEntity>();
 	(void)oo::NewEntityFacade(wh);
-	wh->initWormholeTo(9, (ShipEntity *)ship);
+	wh->initWormholeTo(9, oo::ToShip(ship));
 	return wh.get();
 }
 
@@ -371,12 +381,12 @@ OO_TEST(suckInRefused)
 		OO_CHECK(!wh->suckInShip(nullptr));
 		Entity *leaving = Ship(10.0f);
 		[leaving setStatus:STATUS_ENTERING_WITCHSPACE];
-		OO_CHECK(!wh->suckInShip((ShipEntity *)leaving));
+		OO_CHECK(!wh->suckInShip(oo::ToShip(leaving)));
 		sUniverse->_system = 8;
-		OO_CHECK(!wh->suckInShip((ShipEntity *)Ship(10.0f)));
+		OO_CHECK(!wh->suckInShip(oo::ToShip(Ship(10.0f))));
 		sUniverse->_system = 7;
 		sPlayer->_clock = 1000.0 + 200000.0 / WORMHOLE_SHRINK_RATE + 1.0;	// expired
-		OO_CHECK(!wh->suckInShip((ShipEntity *)Ship(10.0f)));
+		OO_CHECK(!wh->suckInShip(oo::ToShip(Ship(10.0f))));
 		OO_CHECK(wh->getShipsInTransit() == oo::PList(oo::PList::Array{}));
 	}
 }

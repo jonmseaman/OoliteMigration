@@ -96,16 +96,22 @@ public:
 	oo::Ref<cxx::Entity> _cxxEntity;	// the flasher's C++ part (oo::ToCxx reads it)
 	id _owner;
 	id _removed;
-	OOFlasherEntity *_removedFlasher;
+	BOOL _isShip;
 }
 - (id) weakRefUnderlyingObject;
 - (id) owner;
 - (BOOL) isShip;
 @end
 
-@interface ShipEntity: Entity
-- (void) removeFlasher:(OOFlasherEntity *)flasher;
-@end
+// A ship: C++ since bead oo-9ht.144 deleted the Objective-C ship this stood in for, the C++ part of
+// its object, with the one member the binding calls (declared as ShipEntity.h declares it).
+class ShipEntity : public cxx::Entity
+{
+public:
+	void removeFlasher(OOFlasherEntity *flasher);
+
+	OOFlasherEntity *_removedFlasher = nullptr;
+};
 
 @interface OOVisualEffectEntity: Entity
 - (void) removeSubEntity:(Entity *)sub;
@@ -139,17 +145,12 @@ bool OOJSFlasherIsVisibleToScripts(void);
 
 - (id) weakRefUnderlyingObject  { return self; }
 - (id) owner  { return _owner; }
-- (BOOL) isShip  { return NO; }
+- (BOOL) isShip  { return _isShip; }
 
 @end
 
 
-@implementation ShipEntity
-
-- (BOOL) isShip  { return YES; }
-- (void) removeFlasher:(OOFlasherEntity *)flasher  { _removedFlasher = flasher; }
-
-@end
+void ShipEntity::removeFlasher(OOFlasherEntity *flasher)  { _removedFlasher = flasher; }
 
 
 @implementation OOVisualEffectEntity
@@ -404,7 +405,8 @@ ooscript::Context sContext;
 ooscript::Object sGlobal;
 Entity *sFlasher = nil;					// the flasher's object
 OOFlasherEntity *sFlasherPart = nullptr;	// its C++ part
-ShipEntity *sShip = nil;
+Entity *sShip = nil;	// a ship's object and its C++ part (the Objective-C ship until bead oo-9ht.144)
+ShipEntity *sShipPart = nullptr;
 OOVisualEffectEntity *sEffect = nil;
 
 
@@ -444,7 +446,10 @@ void SetUpContext()
 	gOOEntityJSPrototype = ooscript::initClass(sContext, sGlobal, nullptr, &sFakeEntityClass, OOJSUnconstructableConstruct, 0, nullptr, nullptr, nullptr, nullptr);
 	InitOOJSFlasher(sContext, sGlobal);
 
-	sShip = [[ShipEntity alloc] init];	// kept for the life of the test
+	sShip = [[Entity alloc] init];	// kept for the life of the test
+	sShip->_cxxEntity = oo::makeRef<ShipEntity>();
+	sShipPart = static_cast<ShipEntity *>(sShip->_cxxEntity.get());
+	sShip->_isShip = YES;
 	sEffect = [[OOVisualEffectEntity alloc] init];
 	sFlasher = [[Entity alloc] init];
 	const oo::Ref<OOFlasherEntity> part = oo::makeRef<OOFlasherEntity>();
@@ -555,19 +560,19 @@ OO_TEST(color)
 OO_TEST(remove)
 {
 	SetUpContext();
-	sShip->_removedFlasher = nullptr;
+	sShipPart->_removedFlasher = nullptr;
 	sFlasher->_owner = sShip;
 	OO_CHECK_EVAL("flasher.remove()", "undefined");
-	OO_CHECK(sShip->_removedFlasher == sFlasherPart);
+	OO_CHECK(sShipPart->_removedFlasher == sFlasherPart);
 	sFlasher->_owner = sEffect;
 	OO_CHECK_EVAL("flasher.remove()", "undefined");
 	OO_CHECK(sEffect->_removed == sFlasher);
 	sFlasher->_owner = sShip;
 	// The prototype has no entity: the binding's getter fails without reporting an error, which
 	// ends the script uncatchably, and nothing is removed.
-	sShip->_removedFlasher = nullptr;
+	sShipPart->_removedFlasher = nullptr;
 	OO_CHECK_EVAL("Flasher.prototype.remove()", "<evaluation failed>");
-	OO_CHECK(sShip->_removedFlasher == nullptr);
+	OO_CHECK(sShipPart->_removedFlasher == nullptr);
 }
 
 

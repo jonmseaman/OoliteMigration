@@ -37,7 +37,7 @@ MA 02110-1301, USA.
 #include "oofnd/Ref.hpp"
 
 
-@class ShipEntity;
+class ShipEntity;	// C++ since bead oo-9ht.144
 
 
 enum

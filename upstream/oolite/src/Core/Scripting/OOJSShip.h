@@ -26,7 +26,7 @@ MA 02110-1301, USA.
 
 #import "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
-@class ShipEntity;
+class ShipEntity;	// C++ since bead oo-9ht.144
 
 
 #ifdef __cplusplus

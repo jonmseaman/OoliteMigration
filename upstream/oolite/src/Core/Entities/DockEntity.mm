@@ -99,8 +99,8 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 
 ::ShipEntity *DockEntity::newDockObject(const std::string &key, const oo::PList &dict)
 {
-	::ShipEntity *object = oo::NewShipObject(oo::makeRef<DockEntity>(), key, dict);	// [super cxx_initWithKey:key definition:dict]
-	if (object != nil)  static_cast<DockEntity *>(oo::ToCxx(object))->initDockDefaults();
+	::ShipEntity *object = oo::ToShip(oo::NewShipObject(oo::makeRef<DockEntity>(), key, dict));	// [super cxx_initWithKey:key definition:dict]
+	if (object != nil)  static_cast<DockEntity *>(object)->initDockDefaults();
 	return object;
 }
 
@@ -195,11 +195,11 @@ Vector DockEntity::portUpVectorForShipsBoundingBox(BoundingBox bb)
 
 	if (!twist)
 	{
-		return vector_up_from_quaternion(quaternion_multiply(orientation, [parentEntity() orientation]));
+		return vector_up_from_quaternion(quaternion_multiply(orientation, (parentEntity() != nullptr ? oo::ToCxx(parentEntity())->getOrientation() : Quaternion{})));
 	}
 	else
 	{
-		return vector_right_from_quaternion(quaternion_multiply(orientation, [parentEntity() orientation]));
+		return vector_right_from_quaternion(quaternion_multiply(orientation, (parentEntity() != nullptr ? oo::ToCxx(parentEntity())->getOrientation() : Quaternion{})));
 	}
 }
 
@@ -288,7 +288,7 @@ void DockEntity::clearIdLocks(::ShipEntity *ship)
 	int i;
 	for (i = 1; i < MAX_DOCKING_STAGES; i++)
 	{
-		if (ship == nil || ship == [id_lock[i] weakRefUnderlyingObject])
+		if (ship == nullptr || oo::ToObjC(ship) == [id_lock[i] weakRefUnderlyingObject])
 		{
 			DESTROY(id_lock[i]);
 		}
@@ -327,11 +327,11 @@ void DockEntity::update(OOTimeDelta delta_t)
 	
 	if ((!launchQueue.empty())&&(shipsOnApproach.empty())&&dockingCorridorIsEmpty())
 	{
-		const oo::ObjCRef<::ShipEntity *> se = launchQueue.front();
+		const oo::ObjCRef<::Entity *> se = launchQueue.front();
 		// check to make sure ship has not been destroyed in queue by script
 		if ([se.get() status] == STATUS_DOCKED)
 		{
-			launchShip(se.get());
+			launchShip(oo::ToShip(se.get()));
 		}
 		if (!launchQueue.empty())  launchQueue.erase(launchQueue.begin());	// (-removeObjectAtIndex:0 of an emptied queue raised)
 	}
@@ -384,17 +384,17 @@ NSUInteger DockEntity::pruneAndCountShipsOnApproach()
 	// Enumerate over a snapshot of the keys because we mutate the map.
 	for (unsigned short idObj : ShipIDsIn(shipsOnApproach))
 	{
-		::ShipEntity *ship = [UNIVERSE entityForUniversalID:idObj];
+		::ShipEntity *ship = oo::ToShip([UNIVERSE entityForUniversalID:idObj]);
 		/* Remove ships from the approach queue if they are dead, or
 		 * are more than 25.6km from the dock.
 		 */
-		if (ship == nil || HPmagnitude2(HPvector_subtract([ship position],absolutePositionForSubentity())) > SCANNER_MAX_RANGE2)
+		if (ship == nil || HPmagnitude2(HPvector_subtract((ship != nullptr ? ship->getPosition() : HPVector{}),absolutePositionForSubentity())) > SCANNER_MAX_RANGE2)
 		{
 			shipsOnApproach.erase(idObj);
 			if (ship != nil) {
 				// notify ship if it's alive
-				[ship sendAIMessage:"DOCKING_ABORTED"];
-				[ship doScriptEvent:OOJSID("stationWithdrewDockingClearance")];
+				if (ship != nullptr)  ship->sendAIMessage("DOCKING_ABORTED");
+				if (ship != nullptr)  ship->doScriptEvent(OOJSID("stationWithdrewDockingClearance"));
 			}
 		}
 	}
@@ -419,11 +419,11 @@ void DockEntity::abortAllDockings()
 	
 	for (unsigned short idObj : ShipIDsIn(shipsOnApproach))
 	{
-		::ShipEntity *ship = [UNIVERSE entityForUniversalID:idObj];
-		if ([ship isShip])
+		::ShipEntity *ship = oo::ToShip([UNIVERSE entityForUniversalID:idObj]);
+		if ((ship != nullptr ? ship->getIsShip() : false))
 		{
-			[ship sendAIMessage:"DOCKING_ABORTED"];
-			[ship doScriptEvent:OOJSID("stationWithdrewDockingClearance")];
+			if (ship != nullptr)  ship->sendAIMessage("DOCKING_ABORTED");
+			if (ship != nullptr)  ship->doScriptEvent(OOJSID("stationWithdrewDockingClearance"));
 		}
 	}
 	shipsOnApproach.clear();
@@ -436,7 +436,7 @@ void DockEntity::abortAllDockings()
 	{
 		if (HPmagnitude2(HPvector_subtract((player != nullptr ? player->getPosition() : HPVector{}), absolutePositionForSubentity())) > 2250000) // within 1500m of the dock
 		{
-			if (station != nullptr)  station->sendExpandedMessage("[station-docking-clearance-abort-cancelled]", oo::ToObjC(player));
+			if (station != nullptr)  station->sendExpandedMessage("[station-docking-clearance-abort-cancelled]", player);
 			if (player != nullptr)  player->setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_NONE);
 			if (player != nullptr)  player->doScriptEvent(OOJSID("stationWithdrewDockingClearance"));
 		}
@@ -445,7 +445,7 @@ void DockEntity::abortAllDockings()
 			playerExtraTime = 10; // when very close to the port, give the player a few seconds to react on the abort message.
 			int seconds = round(playerExtraTime);
 			const std::optional<std::string> message = cxx_OOExpandKey("station-docking-clearance-abort-cancelled-in-time", seconds);
-			if (message.has_value())  { if (station != nullptr)  station->sendExpandedMessage(*message, oo::ToObjC(player)); }	// nil: nothing sent, as before
+			if (message.has_value())  { if (station != nullptr)  station->sendExpandedMessage(*message, player); }	// nil: nothing sent, as before
 			if (player != nullptr)  player->setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_TIMING_OUT);
 		}
 
@@ -462,8 +462,8 @@ void DockEntity::autoDockShipsInQueue(std::map<unsigned short, std::vector<oo::P
 {	
 	for (unsigned short idObj : ShipIDsIn(queue))
 	{
-		::ShipEntity *ship = [UNIVERSE entityForUniversalID:idObj];
-		if ([ship isShip])
+		::ShipEntity *ship = oo::ToShip([UNIVERSE entityForUniversalID:idObj]);
+		if ((ship != nullptr ? ship->getIsShip() : false))
 		{
 			pullInShipIfPermitted(ship);
 		}
@@ -486,7 +486,7 @@ std::optional<std::string> DockEntity::canAcceptShipForDocking(::ShipEntity *shi
 	{
 		return "DOCK_CLOSED"; // could be temp or perm reject
 	}
-	BoundingBox bb = [ship totalBoundingBox];
+	BoundingBox bb = (ship != nullptr ? ship->getTotalBoundingBox() : BoundingBox{});
 	if ((port_dimensions.x < (bb.max.x - bb.min.x) || port_dimensions.y < (bb.max.y - bb.min.y)) && 
 		(port_dimensions.y < (bb.max.x - bb.min.x) || port_dimensions.x < (bb.max.y - bb.min.y)))
 	{
@@ -496,7 +496,7 @@ std::optional<std::string> DockEntity::canAcceptShipForDocking(::ShipEntity *shi
 	// callback to allow more complex filtering on accept/reject
 	ooscript::Context context = OOJSAcquireContext();
 	ooscript::Value		rval = ooscript::undefinedValue();
-	ooscript::Value		args[] = { OOJSValueFromNativeObject(context, ship) };
+	ooscript::Value		args[] = { OOJSValueFromNativeObject(context, oo::ToObjC(ship)) };
 	bool accept = YES;
 	
 	BOOL OK = (getScript() != nullptr ? getScript()->callMethod(OOJSID("acceptDockingRequestFrom"), context, args, 1, &rval) : false);
@@ -526,10 +526,10 @@ std::optional<std::string> DockEntity::canAcceptShipForDocking(::ShipEntity *shi
 
 oo::PList DockEntity::dockingInstructionsForShip(::ShipEntity *ship)
 {
-	::ShipEntity *self = oo::ToObjC(this);
+	ShipEntity *self = this;
 	if (ship == nil)  return oo::PList();
 	
-	OOUniversalID	ship_id = [ship universalID];
+	OOUniversalID	ship_id = (ship != nullptr ? ship->getUniversalID() : OOUniversalID{});
 	const unsigned short	shipID = (unsigned short)ship_id;	// +numberWithUnsignedShort:
 	::StationEntity *station = oo::ToStation(parentEntity());
 
@@ -544,32 +544,32 @@ oo::PList DockEntity::dockingInstructionsForShip(::ShipEntity *ship)
 	//
 	if (!shipsOnApproach.contains(shipID))
 	{
-		HPVector	delta = HPvector_subtract([ship position], absolutePositionForSubentity());
+		HPVector	delta = HPvector_subtract((ship != nullptr ? ship->getPosition() : HPVector{}), absolutePositionForSubentity());
 		float	ship_distance = HPmagnitude(delta);
 
 		if (ship_distance > SCANNER_MAX_RANGE)
 		{
 			// too far away - don't claim a docking slot by not putting on approachlist for now.
-			return DockingInstructions(station, absolutePositionForSubentity(), [ship maxFlightSpeed], 10000, "APPROACH", NO, -1);
+			return DockingInstructions(station, absolutePositionForSubentity(), (ship != nullptr ? ship->getMaxFlightSpeed() : 0.0f), 10000, "APPROACH", NO, -1);
 		}
 
 		addShipToShipsOnApproach(ship);
 		
-		if (ship_distance < 1000.0 + (station != nullptr ? station->collisionRadius() : 0.0f) + ship->_cxxEntity->collision_radius)	// too close - back off
-			return DockingInstructions(station, absolutePositionForSubentity(), [ship maxFlightSpeed], 5000, "BACK_OFF", NO, -1);
+		if (ship_distance < 1000.0 + (station != nullptr ? station->collisionRadius() : 0.0f) + ship->collision_radius)	// too close - back off
+			return DockingInstructions(station, absolutePositionForSubentity(), (ship != nullptr ? ship->getMaxFlightSpeed() : 0.0f), 5000, "BACK_OFF", NO, -1);
 		
 		float dot = HPdot_product(launchVector, delta);
 		if (dot < 0) // approaching from the wrong side of the station - construct a vector to the side of the station.
 		{
 			HPVector approachVector = HPcross_product(HPvector_normal(delta), launchVector);
 			approachVector = HPcross_product(launchVector, approachVector); // vector, 90 degr rotated from launchVector towards target.
-			return DockingInstructions(station, OOHPVectorTowards(absolutePositionForSubentity(), approachVector, (station != nullptr ? station->collisionRadius() : 0.0f) + 5000) , [ship maxFlightSpeed], 1000, "APPROACH", NO, -1);
+			return DockingInstructions(station, OOHPVectorTowards(absolutePositionForSubentity(), approachVector, (station != nullptr ? station->collisionRadius() : 0.0f) + 5000) , (ship != nullptr ? ship->getMaxFlightSpeed() : 0.0f), 1000, "APPROACH", NO, -1);
 		}
 		
 		if (ship_distance > 12500.0)
 		{
 			// long way off - approach more closely
-			return DockingInstructions(station, absolutePositionForSubentity(), [ship maxFlightSpeed], 10000, "APPROACH", NO, -1);
+			return DockingInstructions(station, absolutePositionForSubentity(), (ship != nullptr ? ship->getMaxFlightSpeed() : 0.0f), 10000, "APPROACH", NO, -1);
 		}
 	}
 	
@@ -578,9 +578,9 @@ oo::PList DockEntity::dockingInstructionsForShip(::ShipEntity *ship)
 		// some error has occurred - log it, and send the try-again message
 		oo::PList::Dict queue;
 		for (const auto &[queuedID, queuedStack] : shipsOnApproach)  queue[oo::str::format("%u", (unsigned)queuedID)] = oo::PList(oo::PList::Array(queuedStack));
-		OO_LOG_ERR("station.issueDockingInstructions.failed", "couldn't addShipToShipsOnApproach:{} in {}, retrying later -- shipsOnApproach:\n{}", oo::DescriptionOf(ship), oo::DescriptionOf(self), DescriptionForLog(oo::PList(std::move(queue))));
+		OO_LOG_ERR("station.issueDockingInstructions.failed", "couldn't addShipToShipsOnApproach:{} in {}, retrying later -- shipsOnApproach:\n{}", oo::DescriptionOf(oo::ToObjC(ship)), oo::DescriptionOf(oo::ToObjC(self)), DescriptionForLog(oo::PList(std::move(queue))));
 		
-		return DockingInstructions(station, [ship position], 200, 100, "TRY_AGAIN_LATER", NO, -1);
+		return DockingInstructions(station, (ship != nullptr ? ship->getPosition() : HPVector{}), 200, 100, "TRY_AGAIN_LATER", NO, -1);
 	}
 
 
@@ -592,7 +592,7 @@ oo::PList DockEntity::dockingInstructionsForShip(::ShipEntity *ship)
 	{
 		OO_LOG_ERR("station.issueDockingInstructions.failed", " -- coordinatesStack = {}", DescriptionForLog(oo::PList(oo::PList::Array(coordinatesStack))));
 		
-		return DockingInstructions(station, [ship position], 0, 100, "HOLD_POSITION", NO, -1);
+		return DockingInstructions(station, (ship != nullptr ? ship->getPosition() : HPVector{}), 0, 100, "HOLD_POSITION", NO, -1);
 	}
 	
 	// get the docking information from the instructions	
@@ -612,8 +612,8 @@ oo::PList DockEntity::dockingInstructionsForShip(::ShipEntity *ship)
 	coords.z += rel_coords.x * vi.z + rel_coords.y * vj.z + rel_coords.z * vk.z;
 	
 	// check if the ship is at the control point
-	double max_allowed_range = 2.0f * rangeAdvised + ship->_cxxEntity->collision_radius;	// maximum distance permitted from control point - twice advised range
-	HPVector delta = HPvector_subtract(ship->_cxxEntity->position, coords);
+	double max_allowed_range = 2.0f * rangeAdvised + ship->collision_radius;	// maximum distance permitted from control point - twice advised range
+	HPVector delta = HPvector_subtract(ship->position, coords);
 	
 	if (HPmagnitude2(delta) > max_allowed_range * max_allowed_range)	// too far from the coordinates - do not remove them from the stack!
 	{
@@ -665,7 +665,7 @@ oo::PList DockEntity::dockingInstructionsForShip(::ShipEntity *ship)
 		if (docking_stage > 1)	// don't claim first docking stage
 		{
 			[id_lock[docking_stage] release];
-			id_lock[docking_stage] = [ship weakRetain];	// otherwise - claim this docking stage
+			id_lock[docking_stage] = (ship != nullptr ? [oo::ToObjC(ship) weakRetain] : nil);	// otherwise - claim this docking stage
 		}
 		
 		//remove the previous stage from the stack
@@ -677,7 +677,7 @@ oo::PList DockEntity::dockingInstructionsForShip(::ShipEntity *ship)
 	
 	// else, approach isn't clear - hold position..
 	//
-	[[ship getAI] message:"HOLD_POSITION"];
+	[(ship != nullptr ? ship->getAI() : (::AI *)nullptr) message:"HOLD_POSITION"];
 	
 	if (next.find("hold_message_given") == nullptr)
 	{
@@ -691,7 +691,7 @@ oo::PList DockEntity::dockingInstructionsForShip(::ShipEntity *ship)
 		}
 	}
 
-	return DockingInstructions(station, ship->_cxxEntity->position, 0, 100, "HOLD_POSITION", NO, -1);
+	return DockingInstructions(station, ship->position, 0, 100, "HOLD_POSITION", NO, -1);
 }
 
 
@@ -710,7 +710,7 @@ void DockEntity::addShipToShipsOnApproach(::ShipEntity *ship)
 	int			corridor_count = 9;
 	int			corridor_final_approach = 3;
 	
-	const unsigned short	shipID = (unsigned short)[ship universalID];	// +numberWithUnsignedShort:
+	const unsigned short	shipID = (unsigned short)(ship != nullptr ? ship->getUniversalID() : OOUniversalID{});	// +numberWithUnsignedShort:
 	::StationEntity *station = oo::ToStation(parentEntity());
 	
 	HPVector launchVector = HPvector_forward_from_quaternion(quaternion_multiply(orientation, (station != nullptr ? station->getOrientation() : Quaternion{})));
@@ -720,7 +720,7 @@ void DockEntity::addShipToShipsOnApproach(::ShipEntity *ship)
 	HPVector upVector = HPcross_product(launchVector, rightVector);
 	
 	// will select a direction for offset based on the entity personality (was ship ID)
-	int offset_id = [ship entityPersonalityInt] & 0xf;	// 16  point compass
+	int offset_id = (ship != nullptr ? ship->entityPersonalityInt() : GLint{}) & 0xf;	// 16  point compass
 	double c = cos(offset_id * M_PI * ONE_EIGHTH);
 	double s = sin(offset_id * M_PI * ONE_EIGHTH);
 	
@@ -736,7 +736,7 @@ void DockEntity::addShipToShipsOnApproach(::ShipEntity *ship)
 	alt1.x -= c * upVector.x * corridor_offset[corridor_count - 1] + s * rightVector.x * corridor_offset[corridor_count - 1];
 	alt1.y -= c * upVector.y * corridor_offset[corridor_count - 1] + s * rightVector.y * corridor_offset[corridor_count - 1];
 	alt1.z -= c * upVector.z * corridor_offset[corridor_count - 1] + s * rightVector.z * corridor_offset[corridor_count - 1];
-	if (HPdistance2(alt1, ship->_cxxEntity->position) < HPdistance2(point1, ship->_cxxEntity->position))
+	if (HPdistance2(alt1, ship->position) < HPdistance2(point1, ship->position))
 	{
 		s = -s;
 		c = -c;	// turn 180 degrees
@@ -773,8 +773,8 @@ void DockEntity::addShipToShipsOnApproach(::ShipEntity *ship)
 			 * enough from the others to avoid collisions or near
 			 * misses - CIM: 27 May 2014 */
 
-			int offset_id2 = ([ship entityPersonalityInt] & 0xf0)>>4;	// 16  point compass
-			int offset_id3 = ([ship entityPersonalityInt] & 0xf00)>>8;	// 16  point step position
+			int offset_id2 = ((ship != nullptr ? ship->entityPersonalityInt() : GLint{}) & 0xf0)>>4;	// 16  point compass
+			int offset_id3 = ((ship != nullptr ? ship->entityPersonalityInt() : GLint{}) & 0xf00)>>8;	// 16  point step position
 			float c2 = cos(offset_id2 * M_PI * ONE_EIGHTH);
 			float s2 = sin(offset_id2 * M_PI * ONE_EIGHTH);
 			float ssize = MAX(port_depth,1500.0);
@@ -845,12 +845,12 @@ void DockEntity::noteDockingForShip(::ShipEntity *ship)
 
 void DockEntity::abortDockingForShip(::ShipEntity *ship)
 {
-	OOUniversalID	ship_id = [ship universalID];
+	OOUniversalID	ship_id = (ship != nullptr ? ship->getUniversalID() : OOUniversalID{});
 	const unsigned short	shipID = (unsigned short)ship_id;	// +numberWithUnsignedShort:
 	
 	shipsOnApproach.erase(shipID);
 	
-	if ([ship isPlayer])
+	if ((ship != nullptr ? ship->getIsPlayer() : false))
 	{
 		::PlayerEntity * player = PLAYER;
 		if ((player != nullptr ? player->status() : OOEntityStatus{}) == STATUS_IN_FLIGHT &&
@@ -858,14 +858,14 @@ void DockEntity::abortDockingForShip(::ShipEntity *ship)
 		{
 			if (HPmagnitude2(HPvector_subtract((player != nullptr ? player->getPosition() : HPVector{}), absolutePositionForSubentity())) > 2250000) // within 1500m of the dock
 			{
-				[parentEntity() cxx_sendExpandedMessage:"[station-docking-clearance-abort-cancelled]" toShip:oo::ToObjC(player)];
+				if (oo::ToShip(parentEntity()) != nullptr)  oo::ToShip(parentEntity())->sendExpandedMessage("[station-docking-clearance-abort-cancelled]", player);
 				if (player != nullptr)  player->setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_NONE);
 			}
 			else
 			{
 				int seconds = 10; // when very close to the port, give the player a few seconds to react on the abort message.
 				const std::optional<std::string> message = cxx_OOExpandKey("station-docking-clearance-abort-cancelled-in-time", seconds);
-				if (message.has_value())  [parentEntity() cxx_sendExpandedMessage:*message toShip:oo::ToObjC(player)];	// nil: nothing sent, as before
+				if (message.has_value())  { if (oo::ToShip(parentEntity()) != nullptr)  oo::ToShip(parentEntity())->sendExpandedMessage(*message, player); }	// nil: nothing sent, as before
 				if (player != nullptr)  player->setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_TIMING_OUT);
 			}
 		}
@@ -878,10 +878,10 @@ void DockEntity::abortDockingForShip(::ShipEntity *ship)
 
 bool DockEntity::shipIsInDockingQueue(::ShipEntity *ship)
 {
-	if (![ship isShip])  return NO;
-	if ([ship isPlayer] && [ship status] == STATUS_DEAD)  return NO;
+	if (!(ship != nullptr ? ship->getIsShip() : false))  return NO;
+	if ((ship != nullptr ? ship->getIsPlayer() : false) && (ship != nullptr ? ship->status() : OOEntityStatus{}) == STATUS_DEAD)  return NO;
 	
-	OOUniversalID	ship_id = [ship universalID];
+	OOUniversalID	ship_id = (ship != nullptr ? ship->getUniversalID() : OOUniversalID{});
 	const unsigned short	shipID = (unsigned short)ship_id;	// +numberWithUnsignedShort:
 	
 	if (shipsOnApproach.contains(shipID))
@@ -889,7 +889,7 @@ bool DockEntity::shipIsInDockingQueue(::ShipEntity *ship)
 		return YES;
 	}
 	// player docking manually
-	if ([ship isPlayer] && (oo::ToStation(owner()) != nullptr ? oo::ToStation(owner())->playerReservedDock() : (::DockEntity *)nil) == this)
+	if ((ship != nullptr ? ship->getIsPlayer() : false) && (oo::ToStation(owner()) != nullptr ? oo::ToStation(owner())->playerReservedDock() : (::DockEntity *)nil) == this)
 	{
 		return YES;
 	}
@@ -903,7 +903,7 @@ void DockEntity::pullInShipIfPermitted(::ShipEntity *ship)
 	// disallowed_docking_collides: unauthorised docking does not result in explosion
 	if (allow_docking || !disallowed_docking_collides)
 	{
-		[ship enterDock:oo::ToStation(parentEntity())];
+		if (ship != nullptr)  ship->enterDock(oo::ToStation(parentEntity()));
 	}
 }
 
@@ -919,8 +919,8 @@ void DockEntity::abortAllLaunches()
 
 bool DockEntity::shipIsInDockingCorridor(::ShipEntity *ship)
 {
-	if (![ship isShip])  return NO;
-	if ([ship isPlayer] && [ship status] == STATUS_DEAD)  return NO;
+	if (!(ship != nullptr ? ship->getIsShip() : false))  return NO;
+	if ((ship != nullptr ? ship->getIsPlayer() : false) && (ship != nullptr ? ship->status() : OOEntityStatus{}) == STATUS_DEAD)  return NO;
 
 	BOOL allow_docking_thisship = allow_docking || !disallowed_docking_collides;
 	// ships can physically dock here, and this routine is mainly for
@@ -940,8 +940,8 @@ bool DockEntity::shipIsInDockingCorridor(::ShipEntity *ship)
 	
 	HPVector port_pos = absolutePositionForSubentity();
 	
-	BoundingBox shipbb = [ship boundingBox];
-	BoundingBox arbb = [ship findBoundingBoxRelativeToPosition: port_pos InVectors: vi : vj : vk];
+	BoundingBox shipbb = (ship != nullptr ? ship->getBoundingBox() : BoundingBox{});
+	BoundingBox arbb = (ship != nullptr ? ship->findBoundingBoxRelativeToPosition(port_pos, vi, vj, vk) : BoundingBox{});
 	
 	// port dimensions..
 	GLfloat ww = port_dimensions.x;
@@ -968,7 +968,7 @@ bool DockEntity::shipIsInDockingCorridor(::ShipEntity *ship)
 	hh *= 0.5;
 
 #ifndef NDEBUG
-	if ([ship isPlayer] && (gDebugFlags & DEBUG_DOCKING))
+	if ((ship != nullptr ? ship->getIsPlayer() : false) && (gDebugFlags & DEBUG_DOCKING))
 	{
 		BOOL			inLane;
 		float			range;
@@ -991,9 +991,9 @@ bool DockEntity::shipIsInDockingCorridor(::ShipEntity *ship)
 
 	if ((arbb.max.x < ww * 3.0)&&(arbb.min.x > -ww * 3.0)&&(arbb.max.y < hh * 3.0)&&(arbb.min.y > -hh * 3.0))
 	{
-		if ((station != nullptr ? station->getRequiresDockingClearance() : false) && [ship isPlayer] && [ship status] != STATUS_LAUNCHING && [ship status] != STATUS_AUTOPILOT_ENGAGED && (PLAYER != nullptr ? PLAYER->getDockingClearanceStatus() : OODockingClearanceStatus{}) < DOCKING_CLEARANCE_STATUS_GRANTED)
+		if ((station != nullptr ? station->getRequiresDockingClearance() : false) && (ship != nullptr ? ship->getIsPlayer() : false) && (ship != nullptr ? ship->status() : OOEntityStatus{}) != STATUS_LAUNCHING && (ship != nullptr ? ship->status() : OOEntityStatus{}) != STATUS_AUTOPILOT_ENGAGED && (PLAYER != nullptr ? PLAYER->getDockingClearanceStatus() : OODockingClearanceStatus{}) < DOCKING_CLEARANCE_STATUS_GRANTED)
 		{
-			if ((0.90 * arbb.max.z + 0.10 * arbb.min.z < 3000) && (dot_product(vk,[ship forwardVector]) < -0.9))
+			if ((0.90 * arbb.max.z + 0.10 * arbb.min.z < 3000) && (dot_product(vk,(ship != nullptr ? ship->forwardVector() : Vector{})) < -0.9))
 			{
 				// player is in docking corridor and facing dock
 				// and within 3km
@@ -1009,15 +1009,15 @@ bool DockEntity::shipIsInDockingCorridor(::ShipEntity *ship)
 	
 	if ((arbb.max.x < ww)&&(arbb.min.x > -ww)&&(arbb.max.y < hh)&&(arbb.min.y > -hh))
 	{
-		if ([ship status] != STATUS_LAUNCHING && !allow_docking_thisship)
+		if ((ship != nullptr ? ship->status() : OOEntityStatus{}) != STATUS_LAUNCHING && !allow_docking_thisship)
 		{ // launch-only dock: will collide!
 			if (arbb.min.z < dd)
 			{
-				[ship takeScrapeDamage: 5 * [UNIVERSE getTimeDelta]*[ship flightSpeed] from:oo::ToObjC(station)];
+				if (ship != nullptr)  ship->takeScrapeDamage(5 * [UNIVERSE getTimeDelta]*(ship != nullptr ? ship->getFlightSpeed() : 0.0f), oo::ToObjC(station));
 				// and bounce
-				HPVector rel = HPvector_subtract([ship position],port_pos);
-				rel = HPvector_multiply_scalar(HPvector_normal(rel),[ship flightSpeed]*0.4);
-				[ship adjustVelocity:HPVectorToVector(rel)];
+				HPVector rel = HPvector_subtract((ship != nullptr ? ship->getPosition() : HPVector{}),port_pos);
+				rel = HPvector_multiply_scalar(HPvector_normal(rel),(ship != nullptr ? ship->getFlightSpeed() : 0.0f)*0.4);
+				if (ship != nullptr)  ship->adjustVelocity(HPVectorToVector(rel));
 			}
 
 			if (arbb.max.z < 0.0)
@@ -1034,7 +1034,7 @@ bool DockEntity::shipIsInDockingCorridor(::ShipEntity *ship)
 		return YES;
 	}
 	
-	if ([ship status] == STATUS_LAUNCHING)
+	if ((ship != nullptr ? ship->status() : OOEntityStatus{}) == STATUS_LAUNCHING)
 	{
 		return YES;
 	}
@@ -1059,9 +1059,9 @@ bool DockEntity::shipIsInDockingCorridor(::ShipEntity *ship)
 			GLfloat correction_factor = -arbb.min.z / (arbb.max.z - arbb.min.z);	// proportion of ship inside
 		
 			// damage the ship according to velocity - don't send collision messages to AIs to avoid problems.
-			[ship takeScrapeDamage: 5 * [UNIVERSE getTimeDelta]*[ship flightSpeed] from:oo::ToObjC(station)];
-			if (station != nullptr)  station->doScriptEvent(OOJSID("shipCollided"), ship); // no COLLISION message to station AI, carriers would move away!
-			[ship doScriptEvent:OOJSID("shipCollided") withArgument:oo::ToObjC(station)]; // no COLLISION message to ship AI, dockingAI.plist would abort.
+			if (ship != nullptr)  ship->takeScrapeDamage(5 * [UNIVERSE getTimeDelta]*(ship != nullptr ? ship->getFlightSpeed() : 0.0f), oo::ToObjC(station));
+			if (station != nullptr)  station->doScriptEvent(OOJSID("shipCollided"), oo::ToObjC(ship)); // no COLLISION message to station AI, carriers would move away!
+			if (ship != nullptr)  ship->doScriptEvent(OOJSID("shipCollided"), oo::ToObjC(station)); // no COLLISION message to ship AI, dockingAI.plist would abort.
 			
 			Vector delta;
 			delta.x = 0.5f * (arbb.max.x + arbb.min.x) * correction_factor;
@@ -1079,11 +1079,11 @@ bool DockEntity::shipIsInDockingCorridor(::ShipEntity *ship)
 			}
 				
 			// adjust the ship back to the center of the port
-			HPVector pos = [ship position];
+			HPVector pos = (ship != nullptr ? ship->getPosition() : HPVector{});
 			pos.x -= delta.y * vj.x + delta.x * vi.x;
 			pos.y -= delta.y * vj.y + delta.x * vi.y;
 			pos.z -= delta.y * vj.z + delta.x * vi.z;
-			[ship setPosition:pos];
+			if (ship != nullptr)  ship->setPosition(pos);
 		}
 		
 		// if far enough in - dock
@@ -1105,31 +1105,31 @@ void DockEntity::addShipToLaunchQueue(::ShipEntity *ship, bool priority)
 	
 	if (ship == nil)  return;
 	
-	[ship setStatus:STATUS_DOCKED];
+	if (ship != nullptr)  ship->setStatus(STATUS_DOCKED);
 	if (priority)
 	{
-		launchQueue.insert(launchQueue.begin(), oo::ObjCRef<::ShipEntity *>(ship));
+		launchQueue.insert(launchQueue.begin(), oo::ObjCRef<::Entity *>(oo::ToObjC(ship)));
 	}
 	else
 	{
-		launchQueue.push_back(oo::ObjCRef<::ShipEntity *>(ship));
+		launchQueue.push_back(oo::ObjCRef<::Entity *>(oo::ToObjC(ship)));
 	}
 }
 
 
 void DockEntity::launchShip(::ShipEntity *ship)
 {
-	if (![ship isShip])  return;
+	if (!(ship != nullptr ? ship->getIsShip() : false))  return;
 	
-	BoundingBox		bb = [ship boundingBox];
+	BoundingBox		bb = (ship != nullptr ? ship->getBoundingBox() : BoundingBox{});
 	::StationEntity	*station = oo::ToStation(parentEntity());
 	
 	HPVector launchPos = absolutePositionForSubentity();
 	Vector launchVel = (station != nullptr ? station->getVelocity() : Vector{});
-	double launchSpeed = 0.5 * [ship maxFlightSpeed];
+	double launchSpeed = 0.5 * (ship != nullptr ? ship->getMaxFlightSpeed() : 0.0f);
 	if ((station != nullptr ? station->getMaxFlightSpeed() : 0.0f) > 0 && (station != nullptr ? station->getFlightSpeed() : 0.0f) > 0) // is self a carrier in flight.
 	{
-		launchSpeed = 0.5 * [ship maxFlightSpeed] * (1.0 + (station != nullptr ? station->getFlightSpeed() : 0.0f)/(station != nullptr ? station->getMaxFlightSpeed() : 0.0f));
+		launchSpeed = 0.5 * (ship != nullptr ? ship->getMaxFlightSpeed() : 0.0f) * (1.0 + (station != nullptr ? station->getFlightSpeed() : 0.0f)/(station != nullptr ? station->getMaxFlightSpeed() : 0.0f));
 	}
 	Quaternion q1 = (station != nullptr ? station->getOrientation() : Quaternion{});
 	q1 = quaternion_multiply(orientation, q1);
@@ -1140,41 +1140,41 @@ void DockEntity::launchShip(::ShipEntity *ship)
 	{
 		quaternion_rotate_about_axis(&q1, launchVector, M_PI*0.5);  // to account for the slot being at 90 degrees to vertical
 	}
-	[ship setNormalOrientation:q1];
+	if (ship != nullptr)  ship->setNormalOrientation(q1);
 	// launch position
-	[ship setPosition:launchPos];
-	if([ship pendingEscortCount] > 0) [ship setPendingEscortCount:0]; // Make sure no extra escorts are added after launch. (e.g. for miners etc.)
-	if ([ship hasEscorts]) no_docking_while_launching = YES;
+	if (ship != nullptr)  ship->setPosition(launchPos);
+	if((ship != nullptr ? ship->pendingEscortCount() : uint8_t{}) > 0) { if (ship != nullptr)  ship->setPendingEscortCount(0); } // Make sure no extra escorts are added after launch. (e.g. for miners etc.)
+	if ((ship != nullptr ? ship->hasEscorts() : false)) no_docking_while_launching = YES;
 	// launch speed
 	launchVel = vector_add(launchVel, vector_multiply_scalar(launchVector, launchSpeed));
 	launchSpeed = magnitude(launchVel);
-	[ship setSpeed:launchSpeed];
-	[ship setVelocity:launchVel];
+	if (ship != nullptr)  ship->setSpeed(launchSpeed);
+	if (ship != nullptr)  ship->setVelocity(launchVel);
 	// launch roll/pitch
-	[ship setRoll:(station != nullptr ? station->getFlightRoll() : 0.0f)];
-	[ship setPitch:0.0];
-	[ship setYaw:0.0];
-	[UNIVERSE addEntity:ship];
-	[ship setStatus: STATUS_LAUNCHING];
-	[ship setDesiredSpeed:launchSpeed]; // must be set after initialising the AI to correct any speed set by AI
+	if (ship != nullptr)  ship->setRoll((station != nullptr ? station->getFlightRoll() : 0.0f));
+	if (ship != nullptr)  ship->setPitch(0.0);
+	if (ship != nullptr)  ship->setYaw(0.0);
+	[UNIVERSE addEntity:oo::ToObjC(ship)];
+	if (ship != nullptr)  ship->setStatus(STATUS_LAUNCHING);
+	if (ship != nullptr)  ship->setDesiredSpeed(launchSpeed); // must be set after initialising the AI to correct any speed set by AI
 	last_launch_time = [UNIVERSE getTime];
 	double delay = (port_corridor + 2 * port_dimensions.z)/launchSpeed; // pause until 2 portlengths outside of the station.
-	[ship setLaunchDelay:delay];
-	[[ship getAI] setNextThinkTime:last_launch_time + delay]; // pause while launching
+	if (ship != nullptr)  ship->setLaunchDelay(delay);
+	[(ship != nullptr ? ship->getAI() : (::AI *)nullptr) setNextThinkTime:last_launch_time + delay]; // pause while launching
 	
-	[ship resetExhaustPlumes];	// resets stuff for tracking/exhausts
+	if (ship != nullptr)  ship->resetExhaustPlumes();	// resets stuff for tracking/exhausts
 	
-	[ship doScriptEvent:OOJSID("shipWillLaunchFromStation") withArgument:oo::ToObjC(station)];
-	if (station != nullptr)  station->doScriptEvent(OOJSID("stationLaunchedShip"), ship, "STATION_LAUNCHED_SHIP");
+	if (ship != nullptr)  ship->doScriptEvent(OOJSID("shipWillLaunchFromStation"), oo::ToObjC(station));
+	if (station != nullptr)  station->doScriptEvent(OOJSID("stationLaunchedShip"), oo::ToObjC(ship), "STATION_LAUNCHED_SHIP");
 }
 
 
 NSUInteger DockEntity::countOfShipsInLaunchQueueWithPrimaryRole(const std::string &role)
 {
 	NSUInteger count = 0;
-	for (const oo::ObjCRef<::ShipEntity *> &ship : launchQueue)
+	for (const oo::ObjCRef<::Entity *> &ship : launchQueue)
 	{
-		if ([ship.get() cxx_hasPrimaryRole:role])  count++;
+		if ((oo::ToShip(ship.get()) != nullptr ? oo::ToShip(ship.get())->hasPrimaryRole(role) : false))  count++;
 	}
 	return count;
 }
@@ -1182,11 +1182,11 @@ NSUInteger DockEntity::countOfShipsInLaunchQueueWithPrimaryRole(const std::strin
 
 bool DockEntity::allowsLaunchingOf(::ShipEntity *ship)
 {
-	if (![ship isShip])  return NO;
+	if (!(ship != nullptr ? ship->getIsShip() : false))  return NO;
 	
-	BoundingBox bb = [ship totalBoundingBox];
+	BoundingBox bb = (ship != nullptr ? ship->getTotalBoundingBox() : BoundingBox{});
 	if ((port_dimensions.x < (bb.max.x - bb.min.x) || port_dimensions.y < (bb.max.y - bb.min.y)) && 
-		(port_dimensions.y < (bb.max.x - bb.min.x) || port_dimensions.x < (bb.max.y - bb.min.y)) && ![ship isPlayer])
+		(port_dimensions.y < (bb.max.x - bb.min.x) || port_dimensions.x < (bb.max.y - bb.min.y)) && !(ship != nullptr ? ship->getIsPlayer() : false))
 	{
 		return NO;
 	}
@@ -1194,7 +1194,7 @@ bool DockEntity::allowsLaunchingOf(::ShipEntity *ship)
 	// callback to allow more complex filtering on accept/reject
 	ooscript::Context context = OOJSAcquireContext();
 	ooscript::Value		rval = ooscript::undefinedValue();
-	ooscript::Value		args[] = { OOJSValueFromNativeObject(context, ship) };
+	ooscript::Value		args[] = { OOJSValueFromNativeObject(context, oo::ToObjC(ship)) };
 	bool accept = YES;
 	
 	BOOL OK = (getScript() != nullptr ? getScript()->callMethod(OOJSID("acceptLaunchingRequestFrom"), context, args, 1, &rval) : false);
@@ -1247,19 +1247,20 @@ bool DockEntity::dockingCorridorIsEmpty()
 
 	for (i = 0; (i < ship_count)&&(isEmpty); i++)
 	{
-		::ShipEntity*	ship = (::ShipEntity*)my_entities[i];
-		double		d2 = HPdistance2((station != nullptr ? station->getPosition() : HPVector{}), [ship position]);
-		if ((ship != oo::ToObjC(station)) && (d2 < 25000000)&&([ship status] != STATUS_DOCKED))	// within 5km
+		::ShipEntity*	ship = oo::ToShip(my_entities[i]);
+		if (ship == nullptr)  continue;	// (every one is a ship: the list holds the ships)
+		double		d2 = HPdistance2((station != nullptr ? station->getPosition() : HPVector{}), ship->getPosition());
+		if ((ship != station) && (d2 < 25000000)&&(ship->status() != STATUS_DOCKED))	// within 5km
 		{
 			HPVector ppos = absolutePositionForSubentity();
-			d2 = HPdistance2(ppos, ship->_cxxEntity->position);
+			d2 = HPdistance2(ppos, ship->position);
 			if (d2 < 4000000)	// within 2km of the port entrance
 			{
 				Quaternion q1 = (station != nullptr ? station->getOrientation() : Quaternion{});
 				q1 = quaternion_multiply(orientation, q1);
 				//
 				HPVector v_out = HPvector_forward_from_quaternion(q1);
-				HPVector r_pos = make_HPvector(ship->_cxxEntity->position.x - ppos.x, ship->_cxxEntity->position.y - ppos.y, ship->_cxxEntity->position.z - ppos.z);
+				HPVector r_pos = make_HPvector(ship->position.x - ppos.x, ship->position.y - ppos.y, ship->position.z - ppos.z);
 				if (r_pos.x||r_pos.y||r_pos.z)
 					r_pos = HPvector_normal(r_pos);
 				else
@@ -1306,23 +1307,24 @@ void DockEntity::clearDockingCorridor()
 
 	for (i = 0; i < ship_count; i++)
 	{
-		::ShipEntity	*ship = (::ShipEntity*)my_entities[i];
-		double		d2 = HPdistance2((station != nullptr ? station->getPosition() : HPVector{}), [ship position]);
-		if ((ship != oo::ToObjC(station))&&(d2 < 25000000)&&([ship status] != STATUS_DOCKED))	// within 5km
+		::ShipEntity	*ship = oo::ToShip(my_entities[i]);
+		if (ship == nullptr)  continue;	// (every one is a ship: the list holds the ships)
+		double		d2 = HPdistance2((station != nullptr ? station->getPosition() : HPVector{}), ship->getPosition());
+		if ((ship != station)&&(d2 < 25000000)&&(ship->status() != STATUS_DOCKED))	// within 5km
 		{
 			HPVector ppos = absolutePositionForSubentity();
 			float time_out = -15.00;	// 15 secs
 			do
 			{
 				isClear = YES;
-				d2 = HPdistance2(ppos, ship->_cxxEntity->position);
+				d2 = HPdistance2(ppos, ship->position);
 				if (d2 < 4000000)	// within 2km of the port entrance
 				{
 					Quaternion q1 = (station != nullptr ? station->getOrientation() : Quaternion{});
 					q1 = quaternion_multiply(orientation, q1);
 					//
 					Vector v_out = vector_forward_from_quaternion(q1);
-					Vector r_pos = make_vector(ship->_cxxEntity->position.x - ppos.x, ship->_cxxEntity->position.y - ppos.y, ship->_cxxEntity->position.z - ppos.z);
+					Vector r_pos = make_vector(ship->position.x - ppos.x, ship->position.y - ppos.y, ship->position.z - ppos.z);
 					if (r_pos.x||r_pos.y||r_pos.z)
 						r_pos = vector_normal(r_pos);
 					else
@@ -1335,15 +1337,15 @@ void DockEntity::clearDockingCorridor()
 						isClear = NO;
 						
 						// okay it's in the way .. give it a wee nudge (0.25s)
-						[ship update: 0.25];
+						if (ship != nullptr)  ship->update(0.25);
 						time_out += 0.25;
 					}
 					if (time_out > 0)
 					{
 						HPVector v1 = HPvector_forward_from_quaternion(orientation);
-						HPVector spos = ship->_cxxEntity->position;
+						HPVector spos = ship->position;
 						spos.x += 3000.0 * v1.x;	spos.y += 3000.0 * v1.y;	spos.z += 3000.0 * v1.z; 
-						[ship setPosition:spos]; // move 3km out of the way
+						if (ship != nullptr)  ship->setPosition(spos); // move 3km out of the way
 					}
 				}
 			} while (!isClear);

@@ -572,7 +572,7 @@ id Entity::owner()
 }
 
 
-::ShipEntity *Entity::parentEntity()
+::Entity *Entity::parentEntity()
 {
 	id owner = this->owner();
 	if ([owner isShipWithSubEntityShip:oo::ToObjC(this)])  return owner;
@@ -586,11 +586,11 @@ id<OOWeakReferenceSupport> Entity::superShaderBindingTarget()
 }
 
 
-::ShipEntity *Entity::rootShipEntity()
+::Entity *Entity::rootShipEntity()
 {
-	::ShipEntity *parent = parentEntity();
+	::Entity *parent = parentEntity();
 	if (parent != nil)  return oo::ToCxx(parent)->rootShipEntity();
-	if (getIsShip())  return (::ShipEntity *)oo::ToObjC(this);
+	if (getIsShip())  return oo::ToObjC(this);
 	return nil;
 }
 

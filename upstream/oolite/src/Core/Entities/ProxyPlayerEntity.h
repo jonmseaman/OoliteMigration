@@ -7,8 +7,9 @@ this time it implements the extra shader bindable methods of PlayerShip.
 
 The class is C++ (bead oo-amwj; proposed ADR-0056, amendment oo-amwj): ProxyPlayerEntity holds the
 proxy's dials and their accessors. Since bead oo-9ht.183 deleted its Objective-C facade (amendment
-oo-9ht.183) the universe and the player make it with newProxyObject(), and its object is the
-ship's facade, which answers its dials to the shader bindings by selector.
+oo-9ht.183) the universe and the player make it with newProxyObject(), and its object is a
+ship's, whose root facade answers its dials to the shader bindings by selector (the ship's
+facade did until bead oo-9ht.144).
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -33,18 +34,19 @@ MA 02110-1301, USA.
 #import "PlayerEntity.h"
 
 
-/*	The proxy's state and methods. Its ship part is cxx::ShipEntity's. C++ only since bead oo-9ht.183
+/*	The proxy's state and methods. Its ship part is ShipEntity's. C++ only since bead oo-9ht.183
 	deleted its Objective-C facade (ADR-0056 amendment oo-9ht.183): newProxyObject() makes it and its
-	object, the ship's facade, which answers the proxy's dials to the shaders by name.
+	object, which answers the proxy's dials to the shaders by name.
 */
-class ProxyPlayerEntity : public cxx::ShipEntity
+class ProxyPlayerEntity : public ShipEntity
 {
 public:
 	/*	[[ProxyPlayerEntity alloc] cxx_initWithKey:definition:] until bead oo-9ht.183: a new proxy,
 		set up from its definition as a ship (oo::NewShipObject), then given the proxy's defaults.
-		Answers its object retained (+1), as +alloc/-init's was, or nil when the set-up fails.
+		Answers the proxy, its object retained (+1) as +alloc/-init's was, or nullptr when the set-up
+		fails (bead oo-9ht.144: the object until then).
 	*/
-	static ::ShipEntity *newProxyObject(const std::string &key, const oo::PList &dict) OO_RETURNS_RETAINED;
+	static ::ShipEntity *newProxyObject(const std::string &key, const oo::PList &dict);
 
 	// -cxx_initWithKey:definition:'s body after [super cxx_initWithKey:definition:].
 	void initProxyDefaults();

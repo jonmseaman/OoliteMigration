@@ -186,7 +186,7 @@ static bool JSDockGetDockEntity(ooscript::Context context, ooscript::Object dock
 	result = OOJSEntityGetEntity(context, dockObj, &entity);
 	if (!result)  return false;
 	
-	// A dock's object is the ship's facade since bead oo-9ht.180: its C++ part says it is a dock,
+	// A dock's object is a ship's since bead oo-9ht.180: its C++ part says it is a dock,
 	// where -isKindOfClass:[DockEntity class] did.
 	DockEntity *dock = oo::ToDock(entity);
 	if (dock == nullptr)  return false;
@@ -213,9 +213,9 @@ static bool JSDockGetShipEntity(ooscript::Context context, ooscript::Object ship
 	result = OOJSEntityGetEntity(context, shipObj, &entity);
 	if (!result)  return false;
 	
-	if (![entity isKindOfClass:[ShipEntity class]])  return false;
+	if (!(oo::ToShip(entity) != nullptr))  return false;
 	
-	*outEntity = (ShipEntity *)entity;
+	*outEntity = oo::ToShip(entity);
 	return true;
 	
 	OOJS_PROFILE_EXIT

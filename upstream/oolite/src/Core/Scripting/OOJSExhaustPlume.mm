@@ -305,8 +305,8 @@ static bool ExhaustPlumeRemove(ooscript::Context context, ooscript::CallArgs &oo
 	Entity							*thisObject = nil;	// its façade
 	GET_THIS_EXHAUSTPLUME(thisEnt, thisObject);
 
-	ShipEntity				*parent = [thisObject owner];
-	[parent removeExhaust:thisEnt];
+	ShipEntity				*parent = oo::ToShip([thisObject owner]);
+	if (parent != nullptr)  parent->removeExhaust(thisEnt);
 
 	OOJS_RETURN_VOID;
 	

@@ -5437,7 +5437,7 @@ void PlayerEntity::switchToThisView(OOViewID viewDirection, OOViewID oldViewDire
 	if ((oldViewDirection != viewDirection || viewDirection == VIEW_CUSTOM) && ![[UNIVERSE gameController] isGamePaused])
 	{
 		ooscript::Context context = OOJSAcquireContext();
-		ShipScriptEvent(context, oo::ToObjC(this), "viewDirectionChanged", OOJSValueFromViewID(context, viewDirection), OOJSValueFromViewID(context, oldViewDirection));
+		ShipScriptEvent(context, this, "viewDirectionChanged", OOJSValueFromViewID(context, viewDirection), OOJSValueFromViewID(context, oldViewDirection));
 		OOJSRelinquishContext(context);
 	}
 }
@@ -5522,10 +5522,10 @@ void PlayerEntity::handleAutopilotOn(bool fastDocking)
 	else if (fastDocking && (ts != nullptr ? ts->getAllowsFastDocking() : false))
 	{
 		// check whether there are docks that do not accept docking - even one such dock will result in rejection
-		for (const auto &sub : (ts != nullptr ? ts->dockSubEntities() : std::vector<oo::ObjCRef<::ShipEntity *>>()))
+		for (const auto &sub : (ts != nullptr ? ts->dockSubEntities() : std::vector<oo::ObjCRef<::Entity *>>()))
 		{
 			// TOO_BIG_TO_DOCK issued when docks are scripted to reject docking
-			if((oo::ToDock(sub.get()) != nullptr ? oo::ToDock(sub.get())->canAcceptShipForDocking(oo::ToObjC(this)) : std::optional<std::string>()) == "TOO_BIG_TO_DOCK")	// a dock's object is the ship's facade since bead oo-9ht.180
+			if((oo::ToDock(sub.get()) != nullptr ? oo::ToDock(sub.get())->canAcceptShipForDocking(this) : std::optional<std::string>()) == "TOO_BIG_TO_DOCK")	// a dock's object is a ship's since bead oo-9ht.180
 			{
 				message = ExpandKeyWithArguments((ts == [UNIVERSE station]) ? "autopilot-denied" : "autopilot-target-docking-instructions-denied", { { "stationName", oo::PList(stationName) } });
 				goto abort;
@@ -5604,12 +5604,12 @@ void PlayerEntity::handleButtonTargetMissile()
 	
 	// Arm missile and check for missile lock
 	missile_status = MISSILE_STATUS_ARMED;
-	if ([missile_entity[activeMissile].get() isMissile])
+	if ((oo::ToShip(missile_entity[activeMissile].get()) != nullptr ? oo::ToShip(missile_entity[activeMissile].get())->getIsMissile() : false))
 	{
 		if ([primaryTarget() isShip])
 		{
 			missile_status = MISSILE_STATUS_TARGET_LOCKED;
-			[missile_entity[activeMissile].get() addTarget:primaryTarget()];
+			if (oo::ToShip(missile_entity[activeMissile].get()) != nullptr)  oo::ToShip(missile_entity[activeMissile].get())->addTarget(primaryTarget());
 			printIdentLockedOnForMissile(YES);
 			playMissileLockedOn();
 		}
@@ -5620,15 +5620,15 @@ void PlayerEntity::handleButtonTargetMissile()
 			{
 				noteLostTarget();
 			}
-			[missile_entity[activeMissile].get() noteLostTarget];
-			const std::string weaponName = [missile_entity[activeMissile].get() cxx_name].value_or(std::string());	// (nil raised in the expansion)
+			if (oo::ToShip(missile_entity[activeMissile].get()) != nullptr)  oo::ToShip(missile_entity[activeMissile].get())->noteLostTarget();
+			const std::string weaponName = (oo::ToShip(missile_entity[activeMissile].get()) != nullptr ? oo::ToShip(missile_entity[activeMissile].get())->getName() : std::optional<std::string>()).value_or(std::string());	// (nil raised in the expansion)
 			[UNIVERSE cxx_addMessage:ExpandKeyWithArguments("missile-armed", { { "weaponName", oo::PList(weaponName) } }) forCount:2.0];
 			playMissileArmed();
 		}
 	}
-	else if ([missile_entity[activeMissile].get() isMine])
+	else if ((oo::ToShip(missile_entity[activeMissile].get()) != nullptr ? oo::ToShip(missile_entity[activeMissile].get())->isMine() : false))
 	{
-		const std::string weaponName = [missile_entity[activeMissile].get() cxx_name].value_or(std::string());	// (nil raised in the expansion)
+		const std::string weaponName = (oo::ToShip(missile_entity[activeMissile].get()) != nullptr ? oo::ToShip(missile_entity[activeMissile].get())->getName() : std::optional<std::string>()).value_or(std::string());	// (nil raised in the expansion)
 		[UNIVERSE cxx_addMessage:ExpandKeyWithArguments("mine-armed", { { "weaponName", oo::PList(weaponName) } }) forCount:2.0];
 		playMineArmed();
 	}

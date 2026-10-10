@@ -41,13 +41,13 @@
 typedef NSInteger OOGUIRow;	// as GuiDisplayGen.h declares it
 
 
-@interface ShipEntity: OOObject
+// The demo ship's object (the root's; the Objective-C ship's until bead oo-9ht.144 deleted it), which
+// oo::ToObjC answers for the demo ship.
+@interface Entity: OOObject
 {
 @public
-	uint16_t _personality;
 	ooscript::Object _jsSelf;
 }
-- (void) setEntityPersonalityInt:(uint16_t)value;
 - (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context;
 @end
 
@@ -66,14 +66,18 @@ public:
 	OOEntityStatus status();
 };
 
-class ShipEntity : public Entity
-{
-public:
-
-};
 }	// namespace cxx
 
-class PlayerEntity : public cxx::ShipEntity
+// The ship: C++ since bead oo-9ht.144 (the demo ship is a plain one).
+class ShipEntity : public cxx::Entity
+{
+public:
+	void setEntityPersonalityInt(uint16_t value);
+
+	uint16_t _personality = {};
+};
+
+class PlayerEntity : public ShipEntity
 {
 public:
 	void setScriptTarget(::ShipEntity *ship);
@@ -243,9 +247,7 @@ void CaptureLog(std::string_view line)
 }	// namespace
 
 
-@implementation ShipEntity
-
-- (void) setEntityPersonalityInt:(uint16_t)value  { _personality = value; }
+@implementation Entity
 
 - (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
 {
@@ -263,6 +265,7 @@ void CaptureLog(std::string_view line)
 
 
 void PlayerEntity::setScriptTarget(::ShipEntity *ship)  { (void)ship; }
+void ShipEntity::setEntityPersonalityInt(uint16_t value)  { _personality = value; }
 OOEntityStatus cxx::Entity::status()  { return static_cast<PlayerEntity *>(this)->_status; }
 oo::PList PlayerEntity::getMissionDestinations()  { return oo::PList(_destinations); }
 std::optional<std::string> PlayerEntity::missionScreenID()
@@ -401,6 +404,12 @@ void GuiDisplayGen::setText(const std::optional<std::string> &, OOGUIRow, OOGUIA
 std::optional<std::string> GuiDisplayGen::reflowTextForMFD(const std::optional<std::string> &)  { std::abort(); }
 OOGUIRow GuiDisplayGen::addLongText(const std::optional<std::string> &, OOGUIRow, OOGUIAlignment)  { std::abort(); }
 void GuiDisplayGen::setArray(const std::vector<std::string> &, OOGUIRow)  { std::abort(); }
+
+
+// The demo ship's object, which oo::ToObjC answers (only the demo ship crosses).
+::Entity *sDemoShipObject = nil;
+namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
+::Entity *oo::ToObjC(cxx::Entity *entity)  { return entity != nullptr ? sDemoShipObject : nil; }
 
 
 @implementation Universe
@@ -796,7 +805,8 @@ void SetUpContext()
 	gOOPlayer = sPlayer;
 	sUniverse = [[Universe alloc] init];
 	sUniverse->_gui = oo::makeRef<GuiDisplayGen>().leakRef();	// kept for the life of the test
-	sUniverse->_demoShip = [[ShipEntity alloc] init];
+	sUniverse->_demoShip = new ShipEntity;
+	sDemoShipObject = [[Entity alloc] init];
 	gSharedUniverse = sUniverse;
 	sEngine = [[OOJavaScriptEngine alloc] init];
 	sRunningScript = oo::makeRef<OOJSScript>().leakRef();

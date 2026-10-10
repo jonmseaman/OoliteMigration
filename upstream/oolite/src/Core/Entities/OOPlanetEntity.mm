@@ -828,8 +828,8 @@ bool OOPlanetEntity::checkCloseCollisionWith(Entity *other)
 		return NO;
 	if (other->isShip)
 	{
-		::ShipEntity *ship = (::ShipEntity *)oo::ToObjC(other);
-		if ([ship behaviour] == BEHAVIOUR_LAND_ON_PLANET)
+		::ShipEntity *ship = oo::ToShip(oo::ToObjC(other));
+		if ((ship != nullptr ? ship->getBehaviour() : OOBehaviour{}) == BEHAVIOUR_LAND_ON_PLANET)
 		{
 			return NO;
 		}
@@ -843,11 +843,11 @@ bool OOPlanetEntity::planetHasStation()
 {
 	// find the nearest station...
 	::ShipEntity	*station =  nil;
-	station = [UNIVERSE nearestShipMatchingPredicate:IsStationPredicate
+	station = oo::ToShip([UNIVERSE nearestShipMatchingPredicate:IsStationPredicate
 										   parameter:nil
-									relativeToEntity:oo::ToObjC(this)];
+									relativeToEntity:oo::ToObjC(this)]);
 	
-	if (station && HPdistance([station position], position) < 4 * collision_radius) // there is a station in range.
+	if (station && HPdistance((station != nullptr ? station->getPosition() : HPVector{}), position) < 4 * collision_radius) // there is a station in range.
 	{
 		return YES;
 	}
@@ -881,22 +881,22 @@ void OOPlanetEntity::launchShuttle()
 	::ShipEntity *shuttle_ship = [UNIVERSE cxx_newShipWithRole:"shuttle"];   // retain count = 1
 	if (shuttle_ship)
 	{
-		if ([shuttle_ship cxx_crew].value_or(std::vector<oo::Ref<OOCharacter>>()).empty())
+		if ((shuttle_ship != nullptr ? shuttle_ship->getCrew() : std::optional<std::vector<oo::Ref<OOCharacter>>>()).value_or(std::vector<oo::Ref<OOCharacter>>()).empty())
 		{
-			[shuttle_ship cxx_setSingleCrewWithRole:"trader"];
+			if (shuttle_ship != nullptr)  shuttle_ship->setSingleCrewWithRole("trader");
 		}
 		
-		[shuttle_ship setPosition:launch_pos];
-		[shuttle_ship setOrientation:q1];
+		if (shuttle_ship != nullptr)  shuttle_ship->setPosition(launch_pos);
+		if (shuttle_ship != nullptr)  shuttle_ship->setOrientation(q1);
 		
-		[shuttle_ship setScanClass: CLASS_NEUTRAL];
-		[shuttle_ship setCargoFlag:CARGO_FLAG_FULL_PLENTIFUL];
-		[shuttle_ship switchAITo:"oolite-shuttleAI.js"];
-		[UNIVERSE addEntity:shuttle_ship];	// STATUS_IN_FLIGHT, AI state GLOBAL
+		if (shuttle_ship != nullptr)  shuttle_ship->setScanClass(CLASS_NEUTRAL);
+		if (shuttle_ship != nullptr)  shuttle_ship->setCargoFlag(CARGO_FLAG_FULL_PLENTIFUL);
+		if (shuttle_ship != nullptr)  shuttle_ship->switchAITo("oolite-shuttleAI.js");
+		[UNIVERSE addEntity:oo::ToObjC(shuttle_ship)];	// STATUS_IN_FLIGHT, AI state GLOBAL
 		_shuttlesOnGround--;
 		_lastLaunchTime = [UNIVERSE getTime];
 		
-		[shuttle_ship release];
+		if (shuttle_ship != nullptr)  [oo::ToObjC(shuttle_ship) release];
 	}
 }
 

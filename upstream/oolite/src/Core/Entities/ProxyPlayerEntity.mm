@@ -29,7 +29,7 @@ MA 02110-1301, USA.
 ::ShipEntity *ProxyPlayerEntity::newProxyObject(const std::string &key, const oo::PList &dict)
 {
 	const oo::Ref<ProxyPlayerEntity> proxy = oo::makeRef<ProxyPlayerEntity>();
-	::ShipEntity *ship = oo::NewShipObject(proxy, key, dict);
+	::ShipEntity *ship = oo::ToShip(oo::NewShipObject(proxy, key, dict));
 	if (ship != nil)  proxy->initProxyDefaults();
 	return ship;
 }

@@ -76,8 +76,8 @@ uint32_t gDebugFlags = 0;
 @public
 	BOOL _interstellar;
 	Entity *_station, *_planet, *_sun;
-	std::vector<oo::ObjCRef<Entity *>> _planets, _stations, _wormholes, _entities;
-	std::map<std::string, oo::ObjCRef<Entity *>, std::less<>> _waypoints;	// the waypoints' objects (bead oo-9ht.108)
+	std::vector<oo::ObjCRef<::Entity *>> _planets, _stations, _wormholes, _entities;
+	std::map<std::string, oo::ObjCRef<::Entity *>, std::less<>> _waypoints;	// the waypoints' objects (bead oo-9ht.108)
 	float _ambient;
 	int _lightings;
 	BOOL _breakPattern;
@@ -88,7 +88,7 @@ uint32_t gDebugFlags = 0;
 	double _lastRange;
 	Entity *_lastRelativeTo;
 	std::string _lastShipsPredicate;
-	std::vector<oo::ObjCRef<ShipEntity *>> _shipsToAdd;
+	std::vector<oo::ObjCRef<::Entity *>> _shipsToAdd;
 	Entity *_effectToAdd;
 	oo::PList _lastPopulator;
 }
@@ -170,26 +170,26 @@ std::string Describe(Entity *entity)
 // to its Objective-C object (oo::ToObjC) in the code the test runs.
 - (OOSunEntity *) sun  { return static_cast<OOSunEntity *>(oo::ToCxx(_sun)); }
 
-- (std::vector<oo::ObjCRef<Entity *>>) cxx_planets  { return _planets; }	// the planets' Objective-C objects
+- (std::vector<oo::ObjCRef<::Entity *>>) cxx_planets  { return _planets; }	// the planets' Objective-C objects
 
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_stations	// the stations' objects (the ship's facade since bead oo-9ht.175)
+- (std::vector<oo::ObjCRef<::Entity *>>) cxx_stations	// the stations' objects (the ship's facade since bead oo-9ht.175)
 {
-	std::vector<oo::ObjCRef<ShipEntity *>> result;
-	for (const auto &e : _stations)  result.push_back(oo::ObjCRef<ShipEntity *>((ShipEntity *)e.get()));
+	std::vector<oo::ObjCRef<::Entity *>> result;
+	for (const auto &e : _stations)  result.push_back(oo::ObjCRef<::Entity *>(e.get()));
 	return result;
 }
 
-- (std::vector<oo::ObjCRef<Entity *>>) cxx_wormholes	// the wormholes' Objective-C objects since bead oo-9ht.112
+- (std::vector<oo::ObjCRef<::Entity *>>) cxx_wormholes	// the wormholes' Objective-C objects since bead oo-9ht.112
 {
 	return _wormholes;
 }
 
-- (std::map<std::string, oo::ObjCRef<Entity *>, std::less<>>) cxx_currentWaypoints  { return _waypoints; }
+- (std::map<std::string, oo::ObjCRef<::Entity *>, std::less<>>) cxx_currentWaypoints  { return _waypoints; }
 
 
-- (std::vector<oo::ObjCRef<Entity *>>) matching:(EntityFilterPredicate)predicate parameter:(void *)parameter
+- (std::vector<oo::ObjCRef<::Entity *>>) matching:(EntityFilterPredicate)predicate parameter:(void *)parameter
 {
-	std::vector<oo::ObjCRef<Entity *>> result;
+	std::vector<oo::ObjCRef<::Entity *>> result;
 	for (const auto &e : _entities)
 	{
 		if (predicate(e.get(), parameter))  result.push_back(e);
@@ -197,7 +197,7 @@ std::string Describe(Entity *entity)
 	return result;
 }
 
-- (std::vector<oo::ObjCRef<Entity *>>) cxx_findShipsMatchingPredicate:(EntityFilterPredicate)predicate
+- (std::vector<oo::ObjCRef<::Entity *>>) cxx_findShipsMatchingPredicate:(EntityFilterPredicate)predicate
 															 parameter:(void *)parameter
 															   inRange:(double)range
 															  ofEntity:(Entity *)entity
@@ -208,7 +208,7 @@ std::string Describe(Entity *entity)
 	return [self matching:predicate parameter:parameter];
 }
 
-- (std::vector<oo::ObjCRef<Entity *>>) cxx_findVisualEffectsMatchingPredicate:(EntityFilterPredicate)predicate
+- (std::vector<oo::ObjCRef<::Entity *>>) cxx_findVisualEffectsMatchingPredicate:(EntityFilterPredicate)predicate
 																	parameter:(void *)parameter
 																	  inRange:(double)range
 																	 ofEntity:(Entity *)entity
@@ -219,7 +219,7 @@ std::string Describe(Entity *entity)
 	return [self matching:predicate parameter:parameter];
 }
 
-- (std::vector<oo::ObjCRef<Entity *>>) cxx_findEntitiesMatchingPredicate:(EntityFilterPredicate)predicate
+- (std::vector<oo::ObjCRef<::Entity *>>) cxx_findEntitiesMatchingPredicate:(EntityFilterPredicate)predicate
 															   parameter:(void *)parameter
 																 inRange:(double)range
 																ofEntity:(Entity *)entity
@@ -317,13 +317,13 @@ std::string Describe(Entity *entity)
 
 - (HPVector) getWitchspaceExitPosition  { return make_HPvector(7, 8, 9); }
 
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_addShipsAt:(HPVector)pos withRole:(const std::string &)role quantity:(unsigned)count withinRadius:(GLfloat)radius asGroup:(BOOL)isGroup
+- (std::vector<oo::ObjCRef<::Entity *>>) cxx_addShipsAt:(HPVector)pos withRole:(const std::string &)role quantity:(unsigned)count withinRadius:(GLfloat)radius asGroup:(BOOL)isGroup
 {
 	_log.push_back(oo::str::format("addShipsAt %g %g %g %s %u %g %d", pos.x, pos.y, pos.z, role.c_str(), count, radius, isGroup ? 1 : 0));
 	return _shipsToAdd;
 }
 
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_addShipsToRoute:(const std::string &)route withRole:(const std::string &)role quantity:(unsigned)count routeFraction:(double)routeFraction asGroup:(BOOL)isGroup
+- (std::vector<oo::ObjCRef<::Entity *>>) cxx_addShipsToRoute:(const std::string &)route withRole:(const std::string &)role quantity:(unsigned)count routeFraction:(double)routeFraction asGroup:(BOOL)isGroup
 {
 	_log.push_back(oo::str::format("addShipsToRoute %s %s %u %g %d", route.c_str(), role.c_str(), count, routeFraction, isGroup ? 1 : 0));
 	return _shipsToAdd;
@@ -349,6 +349,21 @@ TestEntity *MakeEntity(double x, BOOL visible)
 	[entity setPosition:make_HPvector(x, 0, 0)];
 	entity->_visible = visible;
 	return entity;
+}
+
+
+// A ship the fake universe adds (bead oo-9ht.144): the system asks the C++ ship for its group, so
+// the stand-in that answered -group is a C++ ship under its object (oo::NewEntityFacade, retained
+// and never released, as MakeEntity's), placed as the stand-in was and never set up.
+::ShipEntity *MakeShip(double x)
+{
+	oo::Ref<::ShipEntity> ship = oo::makeRef<::ShipEntity>();
+	@autoreleasepool
+	{
+		[oo::NewEntityFacade(ship) retain];
+	}
+	ship->setPosition(make_HPvector(x, 0, 0));
+	return ship.get();
 }
 
 
@@ -387,11 +402,11 @@ void SetUp()
 	sUniverse->_station = MakeEntity(10, YES);
 	sUniverse->_planet = MakeEntity(20, YES);
 	sUniverse->_sun = MakeEntity(30, YES);
-	sUniverse->_planets = { oo::ObjCRef<Entity *>(sUniverse->_planet), oo::ObjCRef<Entity *>(MakeEntity(21, NO)), oo::ObjCRef<Entity *>(MakeEntity(22, YES)) };
-	sUniverse->_stations = { oo::ObjCRef<Entity *>(sUniverse->_station), oo::ObjCRef<Entity *>(MakeEntity(1000, YES)) };
-	sUniverse->_wormholes = { oo::ObjCRef<Entity *>(MakeEntity(40, YES)) };
-	sUniverse->_waypoints["nav-a"] = oo::ObjCRef<Entity *>(MakeEntity(50, YES));
-	sUniverse->_waypoints["nav-b"] = oo::ObjCRef<Entity *>(MakeEntity(51, YES));
+	sUniverse->_planets = { oo::ObjCRef<::Entity *>(sUniverse->_planet), oo::ObjCRef<::Entity *>(MakeEntity(21, NO)), oo::ObjCRef<::Entity *>(MakeEntity(22, YES)) };
+	sUniverse->_stations = { oo::ObjCRef<::Entity *>(sUniverse->_station), oo::ObjCRef<::Entity *>(MakeEntity(1000, YES)) };
+	sUniverse->_wormholes = { oo::ObjCRef<::Entity *>(MakeEntity(40, YES)) };
+	sUniverse->_waypoints["nav-a"] = oo::ObjCRef<::Entity *>(MakeEntity(50, YES));
+	sUniverse->_waypoints["nav-b"] = oo::ObjCRef<::Entity *>(MakeEntity(51, YES));
 
 	// The searchable entities, out of distance order; one is invisible.
 	TestEntity *farthest = MakeEntity(300, YES);
@@ -402,7 +417,7 @@ void SetUp()
 	[hidden setScanClass:CLASS_NEUTRAL];
 	TestEntity *middle = MakeEntity(200, YES);
 	[middle setScanClass:CLASS_NEUTRAL];
-	sUniverse->_entities = { oo::ObjCRef<Entity *>(farthest), oo::ObjCRef<Entity *>(nearest), oo::ObjCRef<Entity *>(hidden), oo::ObjCRef<Entity *>(middle) };
+	sUniverse->_entities = { oo::ObjCRef<::Entity *>(farthest), oo::ObjCRef<::Entity *>(nearest), oo::ObjCRef<::Entity *>(hidden), oo::ObjCRef<::Entity *>(middle) };
 
 	sUniverse->_ambient = 0.5f;
 	sUniverse->_populatorSettings = Dict({ { "pirates", Dict({ { "priority", oo::PList(10) } }) } });
@@ -813,10 +828,10 @@ OO_TEST(shipCreators)
 {
 	SetUp();
 	Log(sUniverse->_log);
-	TestEntity *first = MakeEntity(60, YES);
-	TestEntity *second = MakeEntity(61, YES);
+	::ShipEntity *first = MakeShip(60);
+	::ShipEntity *second = MakeShip(61);
 	first->_group = OOShipGroup::groupWithName(std::string("convoy"));
-	sUniverse->_shipsToAdd = { oo::ObjCRef<ShipEntity *>((ShipEntity *)first), oo::ObjCRef<ShipEntity *>((ShipEntity *)second) };
+	sUniverse->_shipsToAdd = { oo::ObjCRef<::Entity *>(oo::ToObjC(first)), oo::ObjCRef<::Entity *>(oo::ToObjC(second)) };
 
 	OO_CHECK_EVAL("system.addShips('trader', 2).map(function (s) { return s.position.x; }).join()", "60,61");
 	OO_CHECK_EVAL("system.addShips('trader', 1, [1, 2, 3], 500).length", "2");
@@ -836,7 +851,7 @@ OO_TEST(shipCreators)
 	OO_CHECK(Eval("system.addShips()").rfind("threw: ", 0) == 0);
 	OO_CHECK(Eval("system.addShips('trader', 0)").rfind("threw: ", 0) == 0);
 	OO_CHECK(Eval("system.addShips('trader', 2, 'here')").rfind("threw: ", 0) == 0);
-	sUniverse->_shipsToAdd = { oo::ObjCRef<ShipEntity *>((ShipEntity *)first) };
+	sUniverse->_shipsToAdd = { oo::ObjCRef<::Entity *>(oo::ToObjC(first)) };
 	OO_CHECK_EVAL("system.addShips('trader', 2, [1, 2, 3], 'far').length", "1");	// a radius that is not a number is NaN
 	OO_CHECK_LOG(sUniverse->_log, "addShipsAt 1 2 3 trader 2 nan 0");
 	sUniverse->_shipsToAdd.clear();

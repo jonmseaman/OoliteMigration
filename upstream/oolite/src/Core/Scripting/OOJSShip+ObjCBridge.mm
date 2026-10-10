@@ -43,10 +43,10 @@ OOPlayerFleeingStatus OOJSShipPlayerFleeingStatus(PlayerEntity *player)	{ return
 // MARK: The player, the universe and the group class (slice 2, bead oo-chjz4)
 
 bool OOJSShipPlayerSetWeaponMount(PlayerEntity *player, OOWeaponFacing facing, const std::string &eqKey, const std::optional<std::string> &context)	{ return (player != nullptr ? player->setWeaponMount(facing, eqKey, context) : false); }
-Entity *OOJSShipPlayerNextBeacon()	{ return (PLAYER != nullptr ? (Entity <OOBeaconEntity> *)PLAYER->nextBeacon() : (Entity <OOBeaconEntity> *)nullptr); }
+Entity *OOJSShipPlayerNextBeacon()	{ return (PLAYER != nullptr ? (::Entity <OOBeaconEntity> *)PLAYER->nextBeacon() : (::Entity <OOBeaconEntity> *)nullptr); }
 void OOJSShipPlayerSetCompassMode(OOCompassMode mode)	{ if (PLAYER != nullptr)  PLAYER->setCompassMode(mode); }
-void OOJSShipUniverseClearBeacon(ShipEntity *beacon)	{ [UNIVERSE clearBeacon:beacon]; }
-void OOJSShipUniverseSetNextBeacon(ShipEntity *beacon)	{ [UNIVERSE setNextBeacon:beacon]; }
+void OOJSShipUniverseClearBeacon(ShipEntity *beacon)	{ [UNIVERSE clearBeacon:(::Entity<OOBeaconEntity> *)oo::ToObjC(beacon)]; }
+void OOJSShipUniverseSetNextBeacon(ShipEntity *beacon)	{ [UNIVERSE setNextBeacon:(::Entity<OOBeaconEntity> *)oo::ToObjC(beacon)]; }
 
 
 // MARK: The player, the universe and a deferred send (slice 3, bead oo-08plt)
@@ -54,9 +54,9 @@ void OOJSShipUniverseSetNextBeacon(ShipEntity *beacon)	{ [UNIVERSE setNextBeacon
 bool OOJSShipPlayerIsDocked(PlayerEntity *player)	{ return (player != nullptr ? player->isDocked() : false); }
 void OOJSShipPlayerSetScriptTarget(PlayerEntity *player, ShipEntity *ship)	{ if (player != nullptr)  player->setScriptTarget(ship); }
 void OOJSShipPlayerRunUnsanitizedScriptActions(PlayerEntity *player, const oo::PList &actions, bool allowAIMethods, const std::optional<std::string> &contextName, ShipEntity *target)	{ if (player != nullptr)  player->runUnsanitizedScriptActions(actions, allowAIMethods, contextName, target); }
-::ShipEntity *OOJSShipUniverseStation()	{ return oo::ToObjC([UNIVERSE station]); }
+::ShipEntity *OOJSShipUniverseStation()	{ return oo::ToShip(oo::ToObjC([UNIVERSE station])); }
 void OOJSShipUniverseUnMagicMainStation()	{ [UNIVERSE unMagicMainStation]; }
-void OOJSShipScheduleDumpCargo(ShipEntity *ship, OOTimeDelta delay)	{ OOScheduleDeferredCall(ship, @selector(dumpCargo), nil, delay); }
+void OOJSShipScheduleDumpCargo(ShipEntity *ship, OOTimeDelta delay)	{ OOScheduleDeferredCall(oo::ToObjC(ship), @selector(dumpCargo), nil, delay); }
 
 
 // MARK: The player and the universe (slice 4, bead oo-hqe5l)
@@ -64,7 +64,7 @@ void OOJSShipScheduleDumpCargo(ShipEntity *ship, OOTimeDelta delay)	{ OOSchedule
 bool OOJSShipPlayerMountMissileWithRole(PlayerEntity *player, const std::string &role)	{ return (player != nullptr ? player->mountMissileWithRole(role) : false); }
 bool OOJSShipPlayerChangePassengerBerths(PlayerEntity *player, int addRemove)	{ return (player != nullptr ? player->changePassengerBerths(addRemove) : false); }
 void OOJSShipPlayerAdjustTradeInFactorBy(PlayerEntity *player, int value)	{ if (player != nullptr)  player->adjustTradeInFactorBy(value); }
-std::vector<oo::ObjCRef<::ShipEntity *>> OOJSShipUniverseStations()	{ return [UNIVERSE cxx_stations]; }
+std::vector<oo::ObjCRef<::Entity *>> OOJSShipUniverseStations()	{ return [UNIVERSE cxx_stations]; }
 OOCommodities *OOJSShipUniverseCommodities()	{ return [UNIVERSE commodities]; }
 
 
@@ -78,5 +78,5 @@ HPVector OOJSShipUniverseSafeVector(Entity *entity, double distance, HPVector po
 // MARK: The player and the universe (slice 6, bead oo-ljuy1)
 
 unsigned OOJSShipPlayerScore()	{ return (PLAYER != nullptr ? PLAYER->score() : unsigned{}); }
-std::vector<oo::ObjCRef<ShipEntity *>> OOJSShipUniverseContainersOfCommodity(const std::string &commodity, OOCargoQuantity howMany)	{ return [UNIVERSE cxx_getContainersOfCommodity:commodity :howMany]; }
+std::vector<oo::ObjCRef<::Entity *>> OOJSShipUniverseContainersOfCommodity(const std::string &commodity, OOCargoQuantity howMany)	{ return [UNIVERSE cxx_getContainersOfCommodity:commodity :howMany]; }
 bool OOJSShipUniverseRoleIsInCategory(const std::string &role, const std::string &category)	{ return [UNIVERSE cxx_role:role isInCategory:category]; }

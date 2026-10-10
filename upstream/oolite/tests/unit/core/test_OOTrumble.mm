@@ -32,6 +32,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -100,17 +101,29 @@ void OOSoundSource::setPosition(Vector v)		{ (void)v; }
 void OOSoundSource::playOOSound(OOSound *s)		{ gSourceSound = s; gLog.push_back("play " + static_cast<TestSound *>(s)->key); }
 
 
-@interface ShipEntity: OOObject
+// The cargo pods: C++ ships since bead oo-9ht.144 deleted the Objective-C ship this stood in for,
+// held as their objects, the root's (which holds the C++ part, oo::ToCxx reads it, and which
+// oo::ToObjC answers for it), declared as Entity.h and ShipEntity.h declare them (the test imports
+// neither) with the stand-in's answers.
+namespace cxx {
+class Entity : public oo::RefCounted
+{
+public:
+	virtual ~Entity();
+};
+}	// namespace cxx
+
+@interface Entity: OOObject
 {
 @public
-	std::string commodity;
+	oo::Ref<cxx::Entity> _cxxEntity;
 }
-- (std::optional<std::string>) cxx_commodityType;
 @end
 
-@implementation ShipEntity
-- (std::optional<std::string>) cxx_commodityType  { return commodity; }
+@implementation Entity
 @end
+
+cxx::Entity::~Entity() = default;
 
 
 // The market: food is loved (1), furs liked (0.5), anything else refused. The C++ market's one
@@ -124,22 +137,17 @@ float OOCommodityMarket::trumbleOpinionForGood(const std::string &good)
 // PLAYER: C++ since bead oo-9ht.177 deleted the Objective-C player this stood in for: the members
 // the code under test calls, declared as the game headers declare them (the test imports none
 // that defines the classes), with the stand-in's answers.
-namespace cxx {
-class Entity
-{
-public:
-
-};
-
-class ShipEntity : public Entity
+class ShipEntity : public cxx::Entity
 {
 public:
 	GLfloat hullHeatLevel();
-	std::vector<oo::ObjCRef<::ShipEntity *>> *getCargo();
-};
-}	// namespace cxx
+	std::vector<oo::ObjCRef<::Entity *>> *getCargo();
+	std::optional<std::string> commodityType();
 
-class PlayerEntity : public cxx::ShipEntity
+	std::string commodity;	// a cargo pod's
+};
+
+class PlayerEntity : public ShipEntity
 {
 public:
 	GLfloat dialRoll();
@@ -151,14 +159,15 @@ public:
 
 	GLfloat pitch = {}, roll = {}, heat = {};
 	float appetite = {};
-	std::vector<oo::ObjCRef<::ShipEntity *>> cargo;
+	std::vector<oo::ObjCRef<::Entity *>> cargo;
 	std::vector<OOTrumble *> added, removed;
 };
 
 GLfloat PlayerEntity::dialRoll()  { return roll; }
 GLfloat PlayerEntity::dialPitch()  { return pitch; }
-GLfloat cxx::ShipEntity::hullHeatLevel()  { return static_cast<PlayerEntity *>(this)->heat; }
-std::vector<oo::ObjCRef<::ShipEntity *>> *cxx::ShipEntity::getCargo()  { return &static_cast<PlayerEntity *>(this)->cargo; }
+GLfloat ShipEntity::hullHeatLevel()  { return static_cast<PlayerEntity *>(this)->heat; }
+std::vector<oo::ObjCRef<::Entity *>> *ShipEntity::getCargo()  { return &static_cast<PlayerEntity *>(this)->cargo; }
+std::optional<std::string> ShipEntity::commodityType()  { return commodity; }
 float PlayerEntity::trumbleAppetiteAccumulator()  { return appetite; }
 void PlayerEntity::setTrumbleAppetiteAccumulator(float value)  { appetite = value; }
 void PlayerEntity::addTrumble(OOTrumble *t)  { added.push_back(t); }
@@ -250,6 +259,21 @@ struct OOTrumbleTestAccess
 
 
 namespace {
+
+// A cargo pod: a C++ ship under its object (autoreleased, as [[[ShipEntity alloc] init] autorelease]
+// was), carrying the good.
+std::map<cxx::Entity *, ::Entity *> sObjects;	// what oo::ToObjC answers
+
+::Entity *NewPod(const char *good)
+{
+	oo::Ref<ShipEntity> ship = oo::makeRef<ShipEntity>();
+	ship->commodity = good;
+	::Entity *pod = [[[::Entity alloc] init] autorelease];
+	pod->_cxxEntity = ship;
+	sObjects[ship.get()] = pod;
+	return pod;
+}
+
 
 PlayerEntity *Player()
 {
@@ -494,11 +518,9 @@ OO_TEST(feedingPopAndSpawn)
 		PlayerEntity *p = Player();
 		for (const char *good : { "gems", "furs", "food" })
 		{
-			ShipEntity *pod = [[[ShipEntity alloc] init] autorelease];
-			pod->commodity = good;
-			p->cargo.push_back(oo::ObjCRef<ShipEntity *>(pod));
+			p->cargo.push_back(oo::ObjCRef<::Entity *>(NewPod(good)));
 		}
-		ShipEntity *food = p->cargo[2].get();
+		::Entity *food = p->cargo[2].get();
 		p->appetite = 9.5f;
 		oo::Ref<OOTrumble> t = Trumble("Zq");
 		oo::PList::Dict state = *t->dictionary().getIf<oo::PList::Dict>();
@@ -555,6 +577,15 @@ OO_TEST(cxxClass)
 	oo::Ref<OOTrumble> blank = oo::makeRef<OOTrumble>();
 	OO_CHECK(blank->getSize() == 0.0f && blank->getDigram()[0] == 0);
 	OO_CHECK(blank->dictionary().count() == 9);
+}
+
+
+// The pods' objects (Entity+ObjCBridge.mm's, which the test does not link).
+namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
+::Entity *oo::ToObjC(cxx::Entity *entity)
+{
+	auto found = sObjects.find(entity);
+	return found != sObjects.end() ? found->second : nil;
 }
 
 

@@ -117,14 +117,14 @@ std::optional<std::string> PlayerEntity::processEscapePods()	// removes pods fro
 	// No enumerator because we're mutating the array -- Ahruman
 	for (i = 0; i < cargo.size(); i++)
 	{
-		::ShipEntity	*cargoItem = cargo[i].get();
+		::ShipEntity	*cargoItem = oo::ToShip(cargo[i].get());
 
-		const std::optional<std::vector<oo::Ref<OOCharacter>>> podCrew = [cargoItem cxx_crew];
+		const std::optional<std::vector<oo::Ref<OOCharacter>>> podCrew = (cargoItem != nullptr ? cargoItem->getCrew() : std::optional<std::vector<oo::Ref<OOCharacter>>>());
 		if (podCrew.has_value())
 		{
 			// Has crew -> is escape pod.
 			rescuees.insert(rescuees.end(), podCrew->begin(), podCrew->end());
-			[cargoItem cxx_setCrew:std::nullopt];
+			if (cargoItem != nullptr)  cargoItem->setCrew(std::nullopt);
 			cargo.erase(cargo.begin() + i);
 			i--;
 		}

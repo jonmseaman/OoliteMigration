@@ -6,7 +6,7 @@ TRANSITIONAL (proposed ADR-0056, amendments oo-ppc, oo-luhd and oo-9ht.139; bead
 the later slices of docs/phases/3-slices/OOJSShip.md): the sends of the Ship binding's converted
 natives to classes that are still Objective-C (the player, the universe, ...), one function per
 send, named after the file and the selector, the body the send verbatim. The ship itself is
-reached as cxx::ShipEntity, and the converted classes it hands out (AI, OORoleSet, OOShipGroup,
+reached as ShipEntity, and the converted classes it hands out (AI, OORoleSet, OOShipGroup,
 OOColor, OONativeVector) through oo::ToCxx/oo::ToObjC. OOJSShip.mm has no class of its own and
 the ship's JavaScript glue is EntityOOJavaScriptExtensions.mm's, so there is no facade here.
 Imported by OOJSShip.mm only.
@@ -62,7 +62,7 @@ void OOJSShipPlayerSetScriptTarget(PlayerEntity *player, ShipEntity *ship);
 void OOJSShipPlayerRunUnsanitizedScriptActions(PlayerEntity *player, const oo::PList &actions, bool allowAIMethods, const std::optional<std::string> &contextName, ShipEntity *target);
 
 // The universe's main station, as RemoveOrExplodeShip() checks for it (UNIVERSE).
-::ShipEntity *OOJSShipUniverseStation();	// the main station's object (the ship's facade since bead oo-9ht.175)
+::ShipEntity *OOJSShipUniverseStation();	// the main station (its object until bead oo-9ht.144)
 void OOJSShipUniverseUnMagicMainStation();
 
 // The ship's -dumpCargo, sent after delay (ShipDumpCargo(): an NPC's queued canisters).
@@ -74,7 +74,7 @@ bool OOJSShipPlayerChangePassengerBerths(PlayerEntity *player, int addRemove);
 void OOJSShipPlayerAdjustTradeInFactorBy(PlayerEntity *player, int value);
 
 // The universe's stations and commodities (ShipFindNearestStation(), ShipSetCargo()).
-std::vector<oo::ObjCRef<::ShipEntity *>> OOJSShipUniverseStations();
+std::vector<oo::ObjCRef<::Entity *>> OOJSShipUniverseStations();
 OOCommodities *OOJSShipUniverseCommodities();
 
 // The player's status (ShipEnterWormhole(): only while it enters witchspace) (PLAYER).
@@ -88,7 +88,7 @@ HPVector OOJSShipUniverseSafeVector(Entity *entity, double distance, HPVector po
 unsigned OOJSShipPlayerScore();
 
 // The universe's cargo templates and role categories (ShipAdjustCargo(), Ship.roleIsInCategory()).
-std::vector<oo::ObjCRef<ShipEntity *>> OOJSShipUniverseContainersOfCommodity(const std::string &commodity, OOCargoQuantity howMany);
+std::vector<oo::ObjCRef<::Entity *>> OOJSShipUniverseContainersOfCommodity(const std::string &commodity, OOCargoQuantity howMany);
 bool OOJSShipUniverseRoleIsInCategory(const std::string &role, const std::string &category);
 
 #endif	// OOJSSHIP_OBJCBRIDGE_H

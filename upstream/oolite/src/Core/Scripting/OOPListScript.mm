@@ -104,7 +104,7 @@ bool OOPListScript::requiresTickle()
 
 void OOPListScript::runWithTarget(::Entity *target)
 {
-	if (target != nil && ![target isKindOfClass:[::ShipEntity class]])
+	if (target != nil && !(oo::ToShip(target) != nullptr))
 	{
 		OO_LOG("script.legacy.run.badTarget", "Expected ShipEntity or nil for target, got {}.", oo::DescriptionOf([target class]));
 		return;
@@ -113,7 +113,7 @@ void OOPListScript::runWithTarget(::Entity *target)
 	OO_LOG("script.legacy.run", "Running script {}", displayName().value_or("(null)"));
 	oo::log::indentIf("script.legacy.run");
 
-	if (PLAYER != nullptr)  PLAYER->runScriptActions(_script, name(), (::ShipEntity *)target);
+	if (PLAYER != nullptr)  PLAYER->runScriptActions(_script, name(), oo::ToShip(target));
 
 	oo::log::outdentIf("script.legacy.run");
 }

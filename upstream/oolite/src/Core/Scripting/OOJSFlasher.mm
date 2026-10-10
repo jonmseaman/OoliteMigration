@@ -401,7 +401,7 @@ static bool FlasherRemove(ooscript::Context context, ooscript::CallArgs &oojsArg
 	Entity				*parent = [thisObject owner];
 	if ([parent isShip])
 	{
-		[(ShipEntity *)parent removeFlasher:thisEnt];
+		if (oo::ToShip(parent) != nullptr)  oo::ToShip(parent)->removeFlasher(thisEnt);
 	}
 	else
 	{

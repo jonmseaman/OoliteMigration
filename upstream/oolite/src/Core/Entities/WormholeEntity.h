@@ -35,7 +35,8 @@ MA 02110-1301, USA.
 #define WORMHOLE_SHRINK_RATE			4000.0
 #define WORMHOLE_LEADER_SPEED_FACTOR 0.25
 
-@class ShipEntity, Universe;
+@class Universe;
+class ShipEntity;	// C++ since bead oo-9ht.144
 
 typedef enum
 {
@@ -51,7 +52,7 @@ typedef enum
 // A ship in transit (the old entry dictionary's "ship", "time" and "shipBeacon").
 struct OOWormholeTransit
 {
-	oo::ObjCRef<::ShipEntity *>	ship;
+	oo::ObjCRef<::Entity *>	ship;
 	double						time;		// arrival relative to the wormhole's arrival_time
 	std::optional<std::string>	beacon;		// the ship's beacon code when it entered, if any
 };

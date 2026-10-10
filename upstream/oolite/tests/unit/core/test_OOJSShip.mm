@@ -69,9 +69,9 @@ public:
 	HPVector viewpointPosition() override	{ return kZeroHPVector; }
 	::Entity *nextBeacon() override	{ return sNextBeacon; }
 	void setCompassMode(OOCompassMode value) override	{ sLog.push_back(oo::str::format("setCompassMode %d", static_cast<int>(value))); }
-	void setScriptTarget(::ShipEntity * ship) override	{ sLog.push_back("setScriptTarget " + [ship cxx_name].value_or("(nil)")); }
+	void setScriptTarget(::ShipEntity * ship) override	{ sLog.push_back("setScriptTarget " + (ship != nullptr ? ship->getName() : std::optional<std::string>()).value_or("(nil)")); }
 	unsigned score() override	{ return 1000; }
-	void runUnsanitizedScriptActions(const oo::PList & unsanitizedActions, bool allowAIMethods, const std::optional<std::string> & contextName, ::ShipEntity * target) override	{ sLog.push_back(oo::str::format("runUnsanitizedScriptActions %s %d %s %s", oo::DescriptionOf(unsanitizedActions).c_str(), allowAIMethods ? 1 : 0, contextName.value_or("(nil)").c_str(), [target cxx_name].value_or("(nil)").c_str())); }
+	void runUnsanitizedScriptActions(const oo::PList & unsanitizedActions, bool allowAIMethods, const std::optional<std::string> & contextName, ::ShipEntity * target) override	{ sLog.push_back(oo::str::format("runUnsanitizedScriptActions %s %d %s %s", oo::DescriptionOf(unsanitizedActions).c_str(), allowAIMethods ? 1 : 0, contextName.value_or("(nil)").c_str(), (target != nullptr ? target->getName() : std::optional<std::string>()).value_or("(nil)").c_str())); }
 };
 
 
@@ -88,7 +88,7 @@ public:
 - (void) clearBeacon:(Entity <OOBeaconEntity> *)beaconShip  { sLog.push_back("clearBeacon"); }
 - (StationEntity *) station  { return nil; }
 - (void) unMagicMainStation  { sLog.push_back("unMagicMainStation"); }
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_stations  { return {}; }	// the stations' objects (the ship's facade since bead oo-9ht.175)
+- (std::vector<oo::ObjCRef<::Entity *>>) cxx_stations  { return {}; }	// the stations' objects (the ship's facade since bead oo-9ht.175)
 - (OOCommodities *) commodities  { return nil; }
 - (Entity *) hazardOnRouteFromEntity:(Entity *)e1 toDistance:(double)dist fromPoint:(HPVector)p2
 {
@@ -100,7 +100,7 @@ public:
 	sLog.push_back("role " + role + " isInCategory " + category);
 	return role == "trader";
 }
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_getContainersOfCommodity:(const std::string &)commodity_name :(OOCargoQuantity)how_many
+- (std::vector<oo::ObjCRef<::Entity *>>) cxx_getContainersOfCommodity:(const std::string &)commodity_name :(OOCargoQuantity)how_many
 {
 	sLog.push_back(oo::str::format("getContainersOfCommodity %s %u", commodity_name.c_str(), static_cast<unsigned>(how_many)));
 	return {};
@@ -115,12 +115,9 @@ public:
 
 
 // A ship that keeps ShipEntity's own set-up (test_ShipEntity.mm's).
-@interface PlainShip: ShipEntity
-@end
-
-
-@implementation PlainShip
-@end
+class PlainShip : public ShipEntity	// C++ since bead oo-9ht.144 deleted the Objective-C ship
+{
+};
 
 
 namespace {
@@ -242,23 +239,23 @@ void SetUp()
 	gSharedUniverse = universe;
 	gOOPlayer = NewTestPlayer<TestPlayer>();
 
-	sShip = [[PlainShip alloc] cxx_initWithKey:"jsship" definition:ShipDefinition()];
+	sShip = static_cast<PlainShip *>(oo::ToShip(oo::NewShipObject(oo::makeRef<PlainShip>(), "jsship", ShipDefinition())));
 	OO_CHECK(sShip != nil);
-	[sShip setTemperature:64.0f];
-	[sShip setDestination:make_HPvector(1, 2, 3)];
-	[sShip setDesiredSpeed:100];
-	[sShip setDesiredRange:500];
-	[sShip setVelocity:make_vector(4, 5, 6)];
-	[sShip setHomeSystem:7];
-	[sShip setDestinationSystem:9];
-	[sShip setScriptedMisjump:YES];
-	[sShip setScriptedMisjumpRange:0.75f];
-	[sShip setSpeed:50];
-	[sShip setReportAIMessages:YES];
-	[sShip setTrackCloseContacts:YES];
-	[sShip setAIScriptWakeTime:12.5];
-	[sShip setBounty:25 withReason:kOOLegalStatusReasonSetup];
-	sOther = [[PlainShip alloc] cxx_initWithKey:"other" definition:oo::PList(oo::PList::Dict{ { "name", oo::PList(std::string("Other")) } })];
+	if (sShip != nullptr)  sShip->setTemperature(64.0f);
+	if (sShip != nullptr)  sShip->setDestination(make_HPvector(1, 2, 3));
+	if (sShip != nullptr)  sShip->setDesiredSpeed(100);
+	if (sShip != nullptr)  sShip->setDesiredRange(500);
+	if (sShip != nullptr)  sShip->setVelocity(make_vector(4, 5, 6));
+	if (sShip != nullptr)  sShip->setHomeSystem(7);
+	if (sShip != nullptr)  sShip->setDestinationSystem(9);
+	if (sShip != nullptr)  sShip->setScriptedMisjump(YES);
+	if (sShip != nullptr)  sShip->setScriptedMisjumpRange(0.75f);
+	if (sShip != nullptr)  sShip->setSpeed(50);
+	if (sShip != nullptr)  sShip->setReportAIMessages(YES);
+	if (sShip != nullptr)  sShip->setTrackCloseContacts(YES);
+	if (sShip != nullptr)  sShip->setAIScriptWakeTime(12.5);
+	if (sShip != nullptr)  sShip->setBounty(25, kOOLegalStatusReasonSetup);
+	sOther = static_cast<PlainShip *>(oo::ToShip(oo::NewShipObject(oo::makeRef<PlainShip>(), "other", oo::PList(oo::PList::Dict{ { "name", oo::PList(std::string("Other")) } }))));
 	OO_CHECK(sOther != nil);
 }
 
@@ -270,9 +267,9 @@ std::string Eval(const std::string &src)
 	SetUp();
 	ooscript::Context context = OOJSAcquireContext();
 	ooscript::Object global = [[OOJavaScriptEngine sharedEngine] globalObject];
-	ooscript::Value shipValue = OOJSValueFromNativeObject(context, sShip);
+	ooscript::Value shipValue = OOJSValueFromNativeObject(context, oo::ToObjC(sShip));
 	ooscript::setProperty(context, global, "ship", &shipValue);
-	ooscript::Value otherValue = OOJSValueFromNativeObject(context, sOther);
+	ooscript::Value otherValue = OOJSValueFromNativeObject(context, oo::ToObjC(sOther));
 	ooscript::setProperty(context, global, "other", &otherValue);
 	std::string wrapped = "(function () { try { return String(" + src + "); } catch (e) { return 'threw: ' + (e && e.message !== undefined ? e.message : e); } })()";
 	ooscript::Value result = ooscript::undefinedValue();
@@ -578,7 +575,7 @@ OO_TEST(setterBeaconCode)
 	Log();
 	OO_CHECK_EVAL(SET("beaconCode", "'C'"), "C");	// already a beacon: only the code changes
 	OO_CHECK_LOG("");
-	sNextBeacon = sShip;	// the compass is on this beacon
+	sNextBeacon = oo::ToObjC(sShip);	// the compass is on this beacon
 	OO_CHECK_EVAL(SET("beaconCode", "''"), "C");	// cleared from the universe's list, code kept
 	OO_CHECK_LOG("clearBeacon; setCompassMode " + std::to_string(static_cast<int>(COMPASS_MODE_PLANET)));
 	sNextBeacon = nil;
@@ -812,7 +809,7 @@ OO_TEST(methodsCommsAndLegacyActions)
 	OO_CHECK(Threw("ship.__runLegacyScriptActions(other, 'not an array')"));
 	Log();
 	OO_CHECK_EVAL("ship.__runLegacyScriptActions(other, ['doNothing'])", "undefined");
-	OO_CHECK_LOG("setScriptTarget (nil); setScriptTarget " + [sShip cxx_name].value_or("(nil)") + "; runUnsanitizedScriptActions (doNothing) 1 <ship \"" + [sShip cxx_name].value_or("(null)") + "\" legacy actions> Other");
+	OO_CHECK_LOG("setScriptTarget (nil); setScriptTarget " + (sShip != nullptr ? sShip->getName() : std::optional<std::string>()).value_or("(nil)") + "; runUnsanitizedScriptActions (doNothing) 1 <ship \"" + (sShip != nullptr ? sShip->getName() : std::optional<std::string>()).value_or("(null)") + "\" legacy actions> Other");
 }
 
 
@@ -825,18 +822,18 @@ OO_TEST(methodsRemoveAndExplode)
 	sPlayerDocked = NO;
 
 	// A ship still in a launch queue (docked) is only marked dead.
-	PlainShip *queued = [[PlainShip alloc] cxx_initWithKey:"queued" definition:oo::PList(oo::PList::Dict{ { "name", oo::PList(std::string("Queued")) } })];
-	[queued setStatus:STATUS_DOCKED];
+	PlainShip *queued = static_cast<PlainShip *>(oo::ToShip(oo::NewShipObject(oo::makeRef<PlainShip>(), "queued", oo::PList(oo::PList::Dict{ { "name", oo::PList(std::string("Queued")) } }))));
+	if (queued != nullptr)  queued->setStatus(STATUS_DOCKED);
 	ooscript::Context context = OOJSAcquireContext();
-	ooscript::Value queuedValue = OOJSValueFromNativeObject(context, queued);
+	ooscript::Value queuedValue = OOJSValueFromNativeObject(context, oo::ToObjC(queued));
 	ooscript::setProperty(context, [[OOJavaScriptEngine sharedEngine] globalObject], "queued", &queuedValue);
 	OOJSRelinquishContext(context);
 	Log();
 	OO_CHECK_EVAL("queued.remove(true)", "undefined");
-	OO_CHECK([queued status] == STATUS_DEAD);
-	OO_CHECK([queued shipScript] == nil);	// suppressing the death event drops the script
+	OO_CHECK((queued != nullptr ? queued->status() : OOEntityStatus{}) == STATUS_DEAD);
+	OO_CHECK((queued != nullptr ? queued->shipScript() : (OOScript *)nullptr) == nil);	// suppressing the death event drops the script
 	OO_CHECK_LOG("");
-	[queued release];
+	if (queued != nullptr)  [oo::ToObjC(queued) release];
 }
 
 

@@ -135,10 +135,10 @@ std::optional<std::string> ShipEntityJSClassName(void)
 }
 
 
-std::vector<oo::ObjCRef<Entity *>> ShipEntityJSSubEntitiesForScript(ShipEntity *ship)
+std::vector<oo::ObjCRef<::Entity *>> ShipEntityJSSubEntitiesForScript(ShipEntity *ship)
 {
-	std::vector<oo::ObjCRef<Entity *>> result;
-	for (const auto &sub : [ship cxx_shipSubEntities])
+	std::vector<oo::ObjCRef<::Entity *>> result;
+	for (const auto &sub : (ship != nullptr ? ship->shipSubEntities() : std::vector<oo::ObjCRef<::Entity *>>()))
 	{
 		result.emplace_back(sub.get());
 	}
@@ -151,20 +151,20 @@ void ShipEntityJSSetTargetForScript(ShipEntity *ship, ShipEntity *target)
 	ShipEntity *me = ship;
 	
 	// Ensure coherence by not fiddling with subentities.
-	while ([me isSubEntity])
+	while ((me != nullptr ? me->getIsSubEntity() : false))
 	{
-		if (me == [me owner] || [me owner] == nil)  break;
-		me = (ShipEntity *)[me owner];
+		if (oo::ToObjC(me) == (me != nullptr ? me->owner() : id{}) || (me != nullptr ? me->owner() : id{}) == nil)  break;
+		me = oo::ToShip((me != nullptr ? me->owner() : id{}));
 	}
-	while ([target isSubEntity])
+	while ((target != nullptr ? target->getIsSubEntity() : false))
 	{
-		if (target == [target owner] || [target owner] == nil)  break;
-		target = (ShipEntity *)[target owner];
+		if (oo::ToObjC(target) == (target != nullptr ? target->owner() : id{}) || (target != nullptr ? target->owner() : id{}) == nil)  break;
+		target = oo::ToShip((target != nullptr ? target->owner() : id{}));
 	}
-	if (![me isKindOfClass:[ShipEntity class]])  return;
+	if (!(oo::ToShip(oo::ToObjC(me)) != nullptr))  return;
 	if (target != nil)
 	{
-		[me addTarget:target];
+		if (me != nullptr)  me->addTarget(oo::ToObjC(target));
 	}
-	else  [me removeTarget:[me primaryTarget]];
+	else  { if (me != nullptr)  me->removeTarget((me != nullptr ? me->primaryTarget() : id{})); }
 }

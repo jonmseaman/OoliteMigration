@@ -105,15 +105,13 @@ public:
 // PLAYER: C++ since bead oo-9ht.177 deleted the Objective-C player the fake game stood in for: the
 // compass members the binding calls (declared as the game headers declare them; the test imports
 // none that defines the classes), which ask the fake game as the binding asked it.
-namespace cxx {
-class ShipEntity : public Entity
+class ShipEntity : public cxx::Entity	// C++ since bead oo-9ht.144
 {
 public:
 	::Entity *nextBeacon();
 };
-}	// namespace cxx
 
-class PlayerEntity : public cxx::ShipEntity
+class PlayerEntity : public ShipEntity
 {
 public:
 	void setCompassMode(OOCompassMode value);
@@ -194,7 +192,7 @@ OOScalar OOWaypointEntity::size()
 
 @end
 
-::Entity *cxx::ShipEntity::nextBeacon()  { return [static_cast<PlayerEntity *>(this)->_game nextBeacon]; }
+::Entity *ShipEntity::nextBeacon()  { return [static_cast<PlayerEntity *>(this)->_game nextBeacon]; }
 void PlayerEntity::setCompassMode(OOCompassMode value)  { [static_cast<PlayerEntity *>(this)->_game setCompassMode:value]; }
 
 

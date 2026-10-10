@@ -46,7 +46,8 @@ MA 02110-1301, USA.
 #include "oofnd/Ref.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 
-@class Universe, ShipEntity, OOVisualEffectEntity, OOTexture, Entity;
+@class Universe, OOVisualEffectEntity, OOTexture, Entity;
+class ShipEntity;	// C++ since bead oo-9ht.144
 
 
 #ifndef NDEBUG
@@ -132,8 +133,10 @@ public:
 
 	virtual void setOwner(Entity *ent);
 	id owner();
-	::ShipEntity *parentEntity();		// owner if self is subentity of owner, otherwise nil.
-	::ShipEntity *rootShipEntity();	// like parentEntity, but recursive.
+	// The objects (a ship's, or a visual effect's for its subentities: the Objective-C ShipEntity the
+	// declarations named was the type, not the answer; bead oo-9ht.144).
+	::Entity *parentEntity();		// owner if self is subentity of owner, otherwise nil.
+	::Entity *rootShipEntity();	// like parentEntity, but recursive.
 	id<OOWeakReferenceSupport> superShaderBindingTarget();
 
 	virtual void setPosition(HPVector posn);
