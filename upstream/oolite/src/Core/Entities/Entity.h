@@ -321,16 +321,16 @@ public:
 	int						zero_index = {};
 
 	// Linked lists of entites, sorted by position on each (world) axis. Pointers to other entities
-	// are their Objective-C objects, the entities' identity while any entity class is Objective-C.
-	::Entity				*x_previous = {}, *x_next = {};
-	::Entity				*y_previous = {}, *y_next = {};
-	::Entity				*z_previous = {}, *z_next = {};
+	// are their C++ parts, borrowed as the objects were (bead oo-9ht.39.4).
+	Entity					*x_previous = {}, *x_next = {};
+	Entity					*y_previous = {}, *y_next = {};
+	Entity					*z_previous = {}, *z_next = {};
 
-	::Entity				*collision_chain = {};
+	Entity					*collision_chain = {};
 
 	OOUniversalID			shadingEntityID = {};
 
-	::Entity				*collider = {};
+	Entity					*collider = {};
 
 	oo::Ref<CollisionRegion>	collisionRegion;		// initially nil - then maintained
 

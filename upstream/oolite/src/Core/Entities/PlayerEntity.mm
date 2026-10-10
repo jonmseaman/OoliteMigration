@@ -2742,17 +2742,17 @@ GLfloat PlayerEntity::lookingAtSunWithThresholdAngleCos(GLfloat thresholdAngleCo
 	OOViewID vdir = [UNIVERSE viewDirection];
 	unsigned i;
 	unsigned	ent_count =	UNIVERSE->_cxxUniverse->n_entities;
-	::Entity		**uni_entities = UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
+	cxx::Entity		**uni_entities = UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
 	for (i = 0; i < ent_count; i++)
 	{
-		if (uni_entities[i]->_cxxEntity->isSunlit)
+		if (uni_entities[i]->isSunlit)
 		{
-			if ([uni_entities[i] isPlanet] || 
-				([uni_entities[i] isShip] &&
-				 [uni_entities[i] isVisible]))
+			if ([oo::ToObjC(uni_entities[i]) isPlanet] || 
+				([oo::ToObjC(uni_entities[i]) isShip] &&
+				 [oo::ToObjC(uni_entities[i]) isVisible]))
 			{
 				// the player ship can't shadow internal views
-				if (EXPECT(vdir > VIEW_STARBOARD || ![uni_entities[i] isPlayer]))
+				if (EXPECT(vdir > VIEW_STARBOARD || ![oo::ToObjC(uni_entities[i]) isPlayer]))
 				{
 					float shadow = 1.5f;
 					shadowAtPointOcclusionToValue(viewpointPosition(),1.0f,uni_entities[i],sun,&shadow);
@@ -3436,12 +3436,12 @@ void PlayerEntity::updateAlertConditionForNearbyEntities()
 	}
 
 	int				i, ent_count	= UNIVERSE->_cxxUniverse->n_entities;
-	::Entity			**uni_entities	= UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
+	cxx::Entity			**uni_entities	= UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
 	::Entity			*my_entities[ent_count];
 	::Entity			*scannedEntity = nil;
 	for (i = 0; i < ent_count; i++)
 	{
-		my_entities[i] = [uni_entities[i] retain];	// retained
+		my_entities[i] = [oo::ToObjC(uni_entities[i]) retain];	// retained
 	}
 	BOOL massLocked = NO;
 	BOOL foundHostiles = NO;
@@ -7285,11 +7285,11 @@ void PlayerEntity::loseTargetStatus()
 	if (!UNIVERSE)
 		return;
 	int			ent_count =		UNIVERSE->_cxxUniverse->n_entities;
-	::Entity**	uni_entities =	UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
+	cxx::Entity**	uni_entities =	UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
 	::Entity*		my_entities[ent_count];
 	int i;
 	for (i = 0; i < ent_count; i++)
-		my_entities[i] = [uni_entities[i] retain];		//	retained
+		my_entities[i] = [oo::ToObjC(uni_entities[i]) retain];		//	retained
 	for (i = 0; i < ent_count ; i++)
 	{
 		::Entity* thing = my_entities[i];

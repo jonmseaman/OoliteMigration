@@ -113,9 +113,9 @@ OO_TEST(entitiesAreFiled)
 		Entity *distant = MakeEntity(make_HPvector(1.0e7, 0, 0), 5);
 
 		universe->clearEntityList();
-		OO_CHECK(universe->checkEntity(inner));
-		OO_CHECK(universe->checkEntity(second));
-		OO_CHECK(universe->checkEntity(distant));
+		OO_CHECK(universe->checkEntity(oo::ToCxx(inner)));
+		OO_CHECK(universe->checkEntity(oo::ToCxx(second)));
+		OO_CHECK(universe->checkEntity(oo::ToCxx(distant)));
 
 		// inner lies within the borders (radius + 32 km) of the first region's nested one, and so
 		// does second (4 km away); distant is filed in the universe itself.
@@ -128,7 +128,7 @@ OO_TEST(entitiesAreFiled)
 		OO_CHECK(EndsWith(universe->descriptionComponents().value_or(""), ", 2 subregions, 1 ents"));
 
 		// A region that is not the universe refuses an entity outside its borders.
-		OO_CHECK(!RegionOf(inner)->checkEntity(distant));
+		OO_CHECK(!RegionOf(inner)->checkEntity(oo::ToCxx(distant)));
 
 		// No collision chain (Universe builds it): nothing is checked.
 		universe->findCollisions();
@@ -148,7 +148,7 @@ OO_TEST(entityListGrows)
 		oo::Ref<CollisionRegion> universe = MakeUniverse();
 		for (unsigned i = 0; i < COLLISION_MAX_ENTITIES * 3; i++)
 		{
-			universe->addEntity(MakeEntity(make_HPvector(i, 0, 0), 1));
+			universe->addEntity(oo::ToCxx(MakeEntity(make_HPvector(i, 0, 0), 1)));
 		}
 		OO_CHECK(universe->debugOut() == std::optional<std::string>(std::to_string(COLLISION_MAX_ENTITIES * 3) + ":"));
 	}
@@ -170,15 +170,15 @@ OO_TEST(shadowGeometry)
 		Entity *small = MakeEntity(make_HPvector(0, 0, 100), 0.5f);
 		float value = 0;
 
-		OO_CHECK(shadowAtPointOcclusionToValue(kZeroHPVector, 1, between, sun, &value));
+		OO_CHECK(shadowAtPointOcclusionToValue(kZeroHPVector, 1, oo::ToCxx(between), sun, &value));
 		OO_CHECK(value == 0.0f);
 
 		value = 0;
-		OO_CHECK(!shadowAtPointOcclusionToValue(kZeroHPVector, 1, behind, sun, &value));
+		OO_CHECK(!shadowAtPointOcclusionToValue(kZeroHPVector, 1, oo::ToCxx(behind), sun, &value));
 		OO_CHECK(value == 1.5f);
 
 		value = 0;
-		OO_CHECK(!shadowAtPointOcclusionToValue(kZeroHPVector, 1, small, sun, &value));	// smaller can't shade bigger
+		OO_CHECK(!shadowAtPointOcclusionToValue(kZeroHPVector, 1, oo::ToCxx(small), sun, &value));	// smaller can't shade bigger
 		OO_CHECK(value == 1.5f);
 	}
 }
@@ -195,7 +195,7 @@ OO_TEST(cxxRegion)
 		OO_CHECK(EndsWith(*universe->descriptionComponents(), ", 2 subregions, 0 ents"));
 
 		Entity *entity = MakeEntity(make_HPvector(1.0e7, 0, 0), 5);
-		OO_CHECK(universe->checkEntity(entity));
+		OO_CHECK(universe->checkEntity(oo::ToCxx(entity)));
 		OO_CHECK(RegionOf(entity) == universe.get());
 		OO_CHECK(universe->collisionDescription() == "p0 - c0");
 	}

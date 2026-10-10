@@ -269,13 +269,13 @@ public:
 
 	// Formerly @public.
 	// use a sorted list for drawing and other activities
-	::Entity				*sortedEntities[UNIVERSE_MAX_ENTITIES + 1] = {};	// One extra for padding; see -doRemoveEntity:.
+	cxx::Entity				*sortedEntities[UNIVERSE_MAX_ENTITIES + 1] = {};	// One extra for padding; see -doRemoveEntity:. The C++ parts, borrowed (bead oo-9ht.39.4): entities owns their objects.
 	unsigned				n_entities = 0;
 
 	int						cursor_row = 0;
 
 	// collision optimisation sorted lists
-	::Entity				*x_list_start = nil, *y_list_start = nil, *z_list_start = nil;
+	cxx::Entity				*x_list_start = nullptr, *y_list_start = nullptr, *z_list_start = nullptr;	// C++ parts, borrowed (bead oo-9ht.39.4)
 
 	GLfloat					stars_ambient[4] = {};
 
@@ -297,7 +297,7 @@ public:
 	::MyOpenGLView			*gameView = nil;
 
 	int						next_universal_id = 0;
-	::Entity				*entity_for_uid[MAX_ENTITY_UID] = {};
+	cxx::Entity				*entity_for_uid[MAX_ENTITY_UID] = {};	// C++ parts, borrowed (bead oo-9ht.39.4)
 
 	std::vector<oo::ObjCRef<::Entity *>>	entities;
 

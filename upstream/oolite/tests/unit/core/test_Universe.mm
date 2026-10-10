@@ -51,7 +51,7 @@ Universe *NewUniverse()
 // The members other classes read directly: since the conversion, through the facade's _cxxUniverse
 // (ADR-0056 amendment oo-riqmz).
 unsigned EntityListCount(Universe *u)		{ return u->_cxxUniverse->n_entities; }
-Entity *SortedEntity(Universe *u, unsigned i)	{ return u->_cxxUniverse->sortedEntities[i]; }
+Entity *SortedEntity(Universe *u, unsigned i)	{ return oo::ToObjC(u->_cxxUniverse->sortedEntities[i]); }
 int CursorRow(Universe *u)					{ return u->_cxxUniverse->cursor_row; }
 GLfloat StarsAmbient(Universe *u, int i)	{ return u->_cxxUniverse->stars_ambient[i]; }
 bool ListHeadsEmpty(Universe *u)			{ return u->_cxxUniverse->x_list_start == nil && u->_cxxUniverse->y_list_start == nil && u->_cxxUniverse->z_list_start == nil; }
@@ -560,7 +560,7 @@ void SetUpTestPlayer()
 void SetSortedEntities(Universe *u, std::initializer_list<Entity *> list)
 {
 	unsigned n = 0;
-	for (Entity *e : list)  u->_cxxUniverse->sortedEntities[n++] = e;
+	for (Entity *e : list)  u->_cxxUniverse->sortedEntities[n++] = oo::ToCxx(e);
 	u->_cxxUniverse->sortedEntities[n] = nil;
 	u->_cxxUniverse->n_entities = n;
 }
@@ -952,13 +952,13 @@ void LinkLists(Universe *u, std::initializer_list<Entity *> list)
 	for (Entity *e : list)
 	{
 		cxx::Entity *part = e->_cxxEntity.get();
-		part->x_previous = part->y_previous = part->z_previous = previous;
+		part->x_previous = part->y_previous = part->z_previous = oo::ToCxx(previous);
 		part->x_next = part->y_next = part->z_next = nil;
-		if (previous != nil)  previous->_cxxEntity->x_next = previous->_cxxEntity->y_next = previous->_cxxEntity->z_next = e;
+		if (previous != nil)  previous->_cxxEntity->x_next = previous->_cxxEntity->y_next = previous->_cxxEntity->z_next = part;
 		previous = e;
 	}
 	Entity *first = list.size() > 0 ? *list.begin() : nil;
-	u->_cxxUniverse->x_list_start = u->_cxxUniverse->y_list_start = u->_cxxUniverse->z_list_start = first;
+	u->_cxxUniverse->x_list_start = u->_cxxUniverse->y_list_start = u->_cxxUniverse->z_list_start = oo::ToCxx(first);
 }
 
 }	// namespace
@@ -975,14 +975,14 @@ OO_TEST(slice18FilterSortedLists)
 		[ghost setCollisionRadius:10];
 		Entity *b = MakeEntity(make_HPvector(0, 0, 15), 10);
 		Entity *c = MakeEntity(make_HPvector(0, 0, 1000), 10);
-		a->_cxxEntity->collision_chain = c;	// stale chains are cleared
-		c->_cxxEntity->collision_chain = a;
+		a->_cxxEntity->collision_chain = oo::ToCxx(c);	// stale chains are cleared
+		c->_cxxEntity->collision_chain = oo::ToCxx(a);
 		LinkLists(u, { a, ghost, b, c });
 
 		[u filterSortedLists];
 
 		// a and b overlap on z: chained, past the entity that cannot collide; c is alone.
-		OO_CHECK(a->_cxxEntity->collision_chain == b);
+		OO_CHECK(a->_cxxEntity->collision_chain == oo::ToCxx(b));
 		OO_CHECK(b->_cxxEntity->collision_chain == nil);
 		OO_CHECK(c->_cxxEntity->collision_chain == nil && ghost->_cxxEntity->collision_chain == nil);
 		OO_CHECK(a->_cxxEntity->collisionTestFilter == 0 && b->_cxxEntity->collisionTestFilter == 0);
