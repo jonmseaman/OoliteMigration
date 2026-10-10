@@ -52,7 +52,7 @@ SOFTWARE.
 #if OO_SHADERS
 
 
-@class OOTexture;
+class OOTexture;
 class OOShaderUniform;
 
 
@@ -179,21 +179,21 @@ public:
 	void setBindingTarget(id<OOWeakReferenceSupport> target) override;
 	bool permitSpecular() override;
 #ifndef NDEBUG
-	std::vector<oo::ObjCRef<::OOTexture *>> allTextures() override;
+	std::vector<oo::Ref<OOTexture>> allTextures() override;
 #endif
 
 private:
 	// Convert a "textures" array (texture specifiers) to texture objects.
-	std::vector<oo::ObjCRef<::OOTexture *>> loadTexturesFromArray(const oo::PList &textureSpecs, GLuint max);
+	std::vector<oo::Ref<OOTexture>> loadTexturesFromArray(const oo::PList &textureSpecs, GLuint max);
 
 	// Load up an array of texture objects.
-	void addTexturesFromArray(const std::vector<oo::ObjCRef<::OOTexture *>> &textureObjects, GLuint max);
+	void addTexturesFromArray(const std::vector<oo::Ref<OOTexture>> &textureObjects, GLuint max);
 
 	oo::Ref<OOShaderProgram>	shaderProgram = {};
 	std::map<std::string, oo::Ref<OOShaderUniform>, std::less<>>	uniforms = {};	// by uniform name (C++ since bead oo-9ht.55 deleted OOShaderUniform's facade)
 
 	uint32_t						texCount = {};
-	::OOTexture						**textures = {};
+	OOTexture						**textures = {};
 
 	oo::ObjCRef<::OOWeakReference *>	bindingTarget = {};
 };

@@ -1104,7 +1104,7 @@ std::optional<std::string> Entity::descriptionForObjDump()
 }
 
 
-std::vector<oo::ObjCRef<::OOTexture *>> Entity::allTextures()
+std::vector<oo::Ref<OOTexture>> Entity::allTextures()
 {
 	return {};
 }

@@ -28,6 +28,7 @@
 #import "OOPlanetDrawable.h"
 #import "OOPlanetData.h"
 #import "OOSingleTextureMaterial.h"
+#import "OOTexture.h"	// allTextures() destroys oo::Ref<OOTexture>s (bead oo-9ht.99)
 #import "OOOpenGL.h"
 #import "OOMacroOpenGL.h"
 #import "Universe.h"
@@ -410,10 +411,10 @@ void OOPlanetDrawable::debugDrawNormals()
 }
 
 
-std::vector<oo::ObjCRef<::OOTexture *>> OOPlanetDrawable::allTextures()
+std::vector<oo::Ref<OOTexture>> OOPlanetDrawable::allTextures()
 {
 	OOMaterial *material = this->material();
-	return material != nullptr ? material->allTextures() : std::vector<oo::ObjCRef<::OOTexture *>>();
+	return material != nullptr ? material->allTextures() : std::vector<oo::Ref<OOTexture>>();
 }
 
 #endif

@@ -732,7 +732,7 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 }
 
 
-- (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures
+- (std::vector<oo::Ref<OOTexture>>) cxx_allTextures
 {
 	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  return link->superAllTextures();
 	return _cxxEntity->allTextures();

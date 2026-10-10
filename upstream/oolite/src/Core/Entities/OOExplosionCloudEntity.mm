@@ -87,11 +87,7 @@ bool OOExplosionCloudEntity::initExplosionCloudWithEntity(::Entity *entity, floa
 
 	std::string textureFile = _settings.get<std::string>(kExplosionTexture, "oolite-particle-cloud2.png");
 	
-	_texture = oo::ObjCRef<OOTexture *>([OOTexture cxx_textureWithName:textureFile
-								  inFolder:std::string("Textures")
-								   options:kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureAlphaMask
-								anisotropy:kOOTextureDefaultAnisotropy
-								   lodBias:0.0]);
+	_texture = oo::Ref<OOTexture>(OOTexture::textureWithName(textureFile, std::string("Textures"), kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureAlphaMask, kOOTextureDefaultAnisotropy, 0.0));
 	if (_texture == nullptr)
 	{
 		return false;

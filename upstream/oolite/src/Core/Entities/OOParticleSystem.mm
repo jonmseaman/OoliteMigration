@@ -149,7 +149,7 @@ void OOParticleSystem::drawImmediate(bool /*immediate*/, bool translucent)
 	OOGL(glEnable(GL_TEXTURE_2D));
 	OOGL(glEnable(GL_BLEND));
 	OOGL(glBlendFunc(GL_SRC_ALPHA, GL_ONE));
-	[texture() apply];
+	if (OOTexture *particle = texture())  particle->apply();	// a message to nil did nothing
 	
 	HPVector		viewPosition = (PLAYER != nullptr ? PLAYER->viewpointPosition() : HPVector{});
 	HPVector		selfPosition = getPosition();
@@ -247,9 +247,9 @@ OOTexture *OOParticleSystem::texture()
 }
 
 #ifndef NDEBUG
-std::vector<oo::ObjCRef<OOTexture *>> OOParticleSystem::allTextures()
+std::vector<oo::Ref<OOTexture>> OOParticleSystem::allTextures()
 {
-	std::vector<oo::ObjCRef<OOTexture *>> result;
+	std::vector<oo::Ref<OOTexture>> result;
 	result.emplace_back(::OOLightParticleEntity::defaultParticleTexture());
 	return result;
 }

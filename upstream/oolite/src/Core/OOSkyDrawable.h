@@ -64,7 +64,7 @@ public:
 	bool hasOpaqueParts() override;
 	GLfloat maxDrawDistance() override;
 #ifndef NDEBUG
-	std::vector<oo::ObjCRef<::OOTexture *>> allTextures() override;
+	std::vector<oo::Ref<OOTexture>> allTextures() override;
 	size_t totalSize() override;
 	size_t objectSize() const override	{ return sizeof *this; }
 #endif

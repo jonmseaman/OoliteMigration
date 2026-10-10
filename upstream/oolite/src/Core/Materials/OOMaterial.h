@@ -53,7 +53,7 @@ SOFTWARE.
 #include "oofnd/Ref.hpp"
 #include "oofnd/PList.hpp"
 
-@class OOTexture;
+#include "OOTexture.h"	// allTextures() answers oo::Ref<OOTexture>, which needs the class (bead oo-9ht.99)
 
 
 class OOMaterial : public oo::RefCounted
@@ -104,7 +104,7 @@ public:
 #endif
 
 #ifndef NDEBUG
-	virtual std::vector<oo::ObjCRef<::OOTexture *>> allTextures();
+	virtual std::vector<oo::Ref<OOTexture>> allTextures();
 #endif
 
 	// Subclass interface (was the OOSubclassInterface category).

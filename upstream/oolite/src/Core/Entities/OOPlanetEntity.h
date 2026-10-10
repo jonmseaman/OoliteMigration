@@ -42,7 +42,7 @@ MA 02110-1301, USA.
 */
 
 class OOMaterial;
-@class OOTexture;
+class OOTexture;
 class ShipEntity;	// C++ since bead oo-9ht.144
 class OOPlanetDrawable;	// C++ since bead oo-mw4u (no facade: this class is its one caller)
 

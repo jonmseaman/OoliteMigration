@@ -25,6 +25,8 @@
 #import "OOShaderMaterial.h"
 #import "OOOpenGLExtensionManager.h"
 #import "OODescription.h"
+#import "OOTexture.h"
+#include "oofnd/String.hpp"
 #import "MyOpenGLView.h"
 
 #include "oo_gl_test_context.hpp"
@@ -118,48 +120,61 @@ void OOCacheManager::setPList(const oo::PList &value, const std::string &key, co
 
 
 // The textures: any configuration but "missing" loads; a name with no configuration loads unless "missing".
-@interface OOTexture: OOObject
+// Since bead oo-9ht.99 deleted the Objective-C facade, the stand-in is C++: the root's static
+// members the creators call, TestTexture (what they answer), and the root's own members.
+class TestTexture final : public OOTexture
 {
-@public
+public:
 	oo::PList	_configuration;
-}
-+ (void) applyNone;
-+ (id) cxx_textureWithConfiguration:(const oo::PList &)configuration;
-+ (id) cxx_textureWithConfiguration:(const oo::PList &)configuration extraOptions:(uint32_t)extraOptions;
-+ (id) cxx_textureWithName:(const std::optional<std::string> &)name inFolder:(const std::optional<std::string> &)directory;
-+ (id) textureWithGenerator:(id)generator;
-+ (id) nullTexture;
-- (void) apply;
-- (void) ensureFinishedLoading;
-- (BOOL) isFinishedLoading;
-- (BOOL) isCubeMap;
-@end
+};
 
-@implementation OOTexture
-+ (void) applyNone	{}
-+ (id) cxx_textureWithConfiguration:(const oo::PList &)configuration
+void OOTexture::applyNone()	{}
+
+oo::Ref<OOTexture> OOTexture::textureWithConfiguration(const oo::PList &configuration)
 {
-	return [self cxx_textureWithConfiguration:configuration extraOptions:0];
+	return textureWithConfiguration(configuration, 0);
 }
-+ (id) cxx_textureWithConfiguration:(const oo::PList &)configuration extraOptions:(uint32_t)extraOptions
+
+oo::Ref<OOTexture> OOTexture::textureWithConfiguration(const oo::PList &configuration, OOTextureFlags)
 {
-	if (configuration.isNull() || configuration == oo::PList("missing"))  return nil;
-	OOTexture *texture = [[[OOTexture alloc] init] autorelease];
+	if (configuration.isNull() || configuration == oo::PList("missing"))  return nullptr;
+	oo::Ref<TestTexture> texture = oo::makeRef<TestTexture>();
 	texture->_configuration = configuration;
 	return texture;
 }
-+ (id) cxx_textureWithName:(const std::optional<std::string> &)name inFolder:(const std::optional<std::string> &)directory
+
+oo::Ref<OOTexture> OOTexture::textureWithName(const std::optional<std::string> &name, const std::optional<std::string> &)
 {
-	if (!name.has_value() || *name == "missing")  return nil;
-	return [self cxx_textureWithConfiguration:oo::PList(*name)];
+	if (!name.has_value() || *name == "missing")  return nullptr;
+	return textureWithConfiguration(oo::PList(*name));
 }
-+ (id) textureWithGenerator:(id)generator	{ return generator != nil ? [self cxx_textureWithConfiguration:oo::PList("generated")] : nil; }
-+ (id) nullTexture							{ return [self cxx_textureWithConfiguration:oo::PList("null")]; }
-- (void) apply								{}
-- (void) ensureFinishedLoading				{}
-- (BOOL) isFinishedLoading					{ return YES; }
-- (BOOL) isCubeMap							{ return NO; }
-@end
+
+oo::Ref<OOTexture> OOTexture::textureWithGenerator(::OOTextureGenerator *generator)	{ return generator != nullptr ? textureWithConfiguration(oo::PList("generated")) : nullptr; }
+oo::Ref<OOTexture> OOTexture::nullTexture()										{ return textureWithConfiguration(oo::PList("null")); }
+
+OOTexture::OOTexture()	{}
+OOTexture::~OOTexture()	{}
+void OOTexture::apply()	{}
+void OOTexture::ensureFinishedLoading()	{}
+bool OOTexture::isFinishedLoading()	{ return true; }
+std::optional<std::string> OOTexture::cacheKey()	{ return std::nullopt; }
+NSSize OOTexture::dimensions()	{ return NSSize{}; }
+NSSize OOTexture::originalDimensions()	{ return dimensions(); }
+bool OOTexture::isMipMapped()	{ return false; }
+OOPixMap OOTexture::copyPixMapRepresentation()	{ return OOPixMap{}; }
+bool OOTexture::isRectangleTexture()	{ return false; }
+bool OOTexture::isCubeMap()	{ return false; }
+NSSize OOTexture::texCoordsScale()	{ return NSSize{1.0, 1.0}; }
+GLint OOTexture::glTextureName()	{ return 0; }
+#ifndef NDEBUG
+std::optional<std::string> OOTexture::name()	{ return std::nullopt; }
+#endif
+std::optional<std::string> OOTexture::descriptionComponents() const	{ return std::nullopt; }
+std::optional<std::string> OOTexture::shortDescriptionComponents() const	{ return std::nullopt; }
+std::string OOTexture::description() const	{ return oo::str::format("<OOTexture %s>", oo::str::pointerDescription(this).c_str()); }
+std::string OOTexture::shortDescription() const	{ return description(); }
+std::string OOTexture::className() const	{ return "OOTexture"; }
+void OOTexture::forceRebind()	{}
 
 
 /*	The emission-map generator: C++ since bead oo-9ht.135 deleted its Objective-C facade. The

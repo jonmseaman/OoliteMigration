@@ -34,7 +34,7 @@ MA 02110-1301, USA.
 #import "OOTypes.h"
 #import "OOMaths.h"
 
-@class OOTexture;
+class OOTexture;
 class OOColor;
 
 enum
@@ -57,7 +57,7 @@ public:
 	virtual OOTexture *texture();
 
 #ifndef NDEBUG
-	std::vector<oo::ObjCRef<OOTexture *>> allTextures() override;
+	std::vector<oo::Ref<OOTexture>> allTextures() override;
 #endif
 
 protected:

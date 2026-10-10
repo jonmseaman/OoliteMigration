@@ -79,8 +79,8 @@ public:
 
 	// Were +planetTextureWithInfo:seed: and +generateAtmosphereTexture:withInfo:seed:; the texture
 	// is answered retained (amendment oo-2en item 2).
-	static oo::ObjCRef<::OOTexture *> planetTextureWithInfo(const oo::PList &planetInfo, RANROTSeed seed);
-	static bool generateAtmosphereTexture(oo::ObjCRef<::OOTexture *> *texture, const oo::PList &planetInfo, RANROTSeed seed);
+	static oo::Ref<OOTexture> planetTextureWithInfo(const oo::PList &planetInfo, RANROTSeed seed);
+	static bool generateAtmosphereTexture(oo::Ref<OOTexture> *texture, const oo::PList &planetInfo, RANROTSeed seed);
 
 	std::optional<std::string> descriptionComponents() const override;
 	uint32_t textureOptions() override;

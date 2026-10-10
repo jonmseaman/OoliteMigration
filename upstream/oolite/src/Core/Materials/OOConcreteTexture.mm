@@ -438,7 +438,7 @@ void OOConcreteTexture::setUpTexture()
 		{
 			static unsigned dumpID = 0;
 			const std::string name = oo::str::format("tex dump %u \"", ++dumpID) + this->name().value_or("(null)") + "\"";
-			OO_LOG("texture.trace.dump", "Dumped traced texture {} to '{}.png'", oo::DescriptionOf(oo::ToObjC(this)), name);
+			OO_LOG("texture.trace.dump", "Dumped traced texture {} to '{}.png'", description(), name);
 			OODumpPixMap(pm, name);
 		}
 #endif
@@ -636,7 +636,7 @@ void OOConcreteTexture::forceRebind()
 #if OOTEXTURE_RELOADABLE
 		if (isReloadable())
 		{
-			OO_LOG("texture.reload", "Reloading texture {}", oo::DescriptionOf(oo::ToObjC(this)));
+			OO_LOG("texture.reload", "Reloading texture {}", description());
 
 			free(_bytes);
 			_bytes = NULL;

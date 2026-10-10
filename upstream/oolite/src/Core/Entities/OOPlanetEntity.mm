@@ -158,7 +158,7 @@ oo::PList MaterialConfigWithTextures(const oo::PList &configuration, std::initia
 	for (OOTexture *texture : textures)
 	{
 		if (texture == nil)  break;
-		textureObjects.push_back(oo::PListObject(texture));
+		textureObjects.push_back(OOTextureObjectNode(texture));
 	}
 	(*result.getIf<oo::PList::Dict>())["_oo_texture_objects"] = oo::PList(std::move(textureObjects));
 	return result;
@@ -1048,9 +1048,9 @@ void OOPlanetEntity::setTextureFileName(const std::optional<std::string> &textur
 	BOOL isMoon = _atmosphereDrawable == nullptr;
 
 	std::optional<std::string> textureName = textureFileName;
-	::OOTexture *diffuseMap = nil;
-	::OOTexture *normalMap = nil;
-	oo::ObjCRef<::OOTexture *> generatedDiffuseMap, generatedNormalMap;	// the C++ generator answers them retained (bead oo-kyje)
+	oo::Ref<OOTexture> diffuseMap;	// held: the factories answer the texture retained (bead oo-9ht.99)
+	oo::Ref<OOTexture> normalMap;
+	oo::Ref<OOTexture> generatedDiffuseMap, generatedNormalMap;	// the C++ generator answers them retained (bead oo-kyje)
 	oo::PList macros;	// null: nil
 	const oo::PList materialDefaults = ResourceManager::materialDefaults();
 	
@@ -1063,12 +1063,12 @@ void OOPlanetEntity::setTextureFileName(const std::optional<std::string> &textur
 	
 	if (textureName.has_value())
 	{
-		diffuseMap = [::OOTexture cxx_textureWithConfiguration:CubeMapTextureSpec(*textureName)];
-		if (diffuseMap == nil)  return;		// OOTexture will have logged a file-not-found warning.
+		diffuseMap = OOTexture::textureWithConfiguration(CubeMapTextureSpec(*textureName));
+		if (diffuseMap == nullptr)  return;		// OOTexture will have logged a file-not-found warning.
 		if (shadersOn)  
 		{
-			oo::ToCxx(diffuseMap)->ensureFinishedLoading(); // only know if it is a cube map if it's loaded
-			if (oo::ToCxx(diffuseMap)->isCubeMap())
+			diffuseMap->ensureFinishedLoading(); // only know if it is a cube map if it's loaded
+			if (diffuseMap->isCubeMap())
 			{
 				macros = DictionaryForKey(materialDefaults, isMoon ? "moon-customized-cubemap-macros" : "planet-customized-cubemap-macros");
 			}
@@ -1082,13 +1082,13 @@ void OOPlanetEntity::setTextureFileName(const std::optional<std::string> &textur
 		 // let's try giving some love to normalMap too
 		if (_normSpecMapName.has_value())
 		{
-			normalMap = [::OOTexture cxx_textureWithConfiguration:CubeMapTextureSpec(*_normSpecMapName)];
-			if (normalMap != nil) // OOTexture will have logged a file-not-found warning.
+			normalMap = OOTexture::textureWithConfiguration(CubeMapTextureSpec(*_normSpecMapName));
+			if (normalMap != nullptr) // OOTexture will have logged a file-not-found warning.
 			{
 				if (shadersOn)  
 				{
-					oo::ToCxx(normalMap)->ensureFinishedLoading(); // only know if it is a cube map if it's loaded
-					if (oo::ToCxx(normalMap)->isCubeMap())
+					normalMap->ensureFinishedLoading(); // only know if it is a cube map if it's loaded
+					if (normalMap->isCubeMap())
 					{
 						macros = DictionaryForKey(materialDefaults, isMoon ? "moon-customized-cubemap-normspec-macros" : "planet-customized-cubemap-normspec-macros");
 					}
@@ -1106,8 +1106,8 @@ void OOPlanetEntity::setTextureFileName(const std::optional<std::string> &textur
 														(detailLevel >= DETAIL_LEVEL_SHADERS) ? &generatedNormalMap : NULL,
 														_materialParameters,
 														_noiseMapSeed);
-		diffuseMap = generatedDiffuseMap.get();
-		normalMap = generatedNormalMap.get();
+		diffuseMap = generatedDiffuseMap;
+		normalMap = generatedNormalMap;
 
 		if (shadersOn)
 		{
@@ -1122,20 +1122,20 @@ void OOPlanetEntity::setTextureFileName(const std::optional<std::string> &textur
 		OO_LOG("texture.planet.generate", "Preparing atmosphere for planet {}", oo::DescriptionOf(oo::ToObjC(this)));
 		/* Generate a standalone atmosphere texture */
 		// (the C++ generator answers it retained: bead oo-y3dd)
-		oo::ObjCRef<::OOTexture *> generatedAtmosphere;
+		oo::Ref<OOTexture> generatedAtmosphere;
 		OOStandaloneAtmosphereGenerator::generateAtmosphereTexture(&generatedAtmosphere,
 																   _materialParameters,
 																   _noiseMapSeed);
-		::OOTexture *atmosphere = generatedAtmosphere.get();
+		OOTexture *atmosphere = generatedAtmosphere.get();
 		
-		OO_LOG("texture.planet.generate", "Planet {} has atmosphere {}", oo::DescriptionOf(oo::ToObjC(this)), oo::DescriptionOf(atmosphere));
+		OO_LOG("texture.planet.generate", "Planet {} has atmosphere {}", oo::DescriptionOf(oo::ToObjC(this)), (atmosphere != nullptr) ? atmosphere->description() : std::string("(null)"));
 		
 		oo::Ref<OOSingleTextureMaterial> dynamicMaterial = OOSingleTextureMaterial::materialWithName("dynamic", atmosphere, oo::PList());
 		_atmosphereDrawable->setMaterial(dynamicMaterial.get());
 
 		if (shadersOn)
 		{
-			const oo::PList aConfig = MaterialConfigWithTextures(DictionaryForKey(materialDefaults, "atmosphere-material"), { diffuseMap, normalMap });
+			const oo::PList aConfig = MaterialConfigWithTextures(DictionaryForKey(materialDefaults, "atmosphere-material"), { diffuseMap.get(), normalMap.get() });
 
 			const oo::PList amacros = DictionaryForKey(materialDefaults, "atmosphere-dynamic-macros");
 
@@ -1178,7 +1178,7 @@ void OOPlanetEntity::setTextureFileName(const std::optional<std::string> &textur
 #if OO_SHADERS
 	if (shadersOn)
 	{
-		const oo::PList config = MaterialConfigWithTextures(DictionaryForKey(materialDefaults, "planet-material"), { diffuseMap, normalMap });
+		const oo::PList config = MaterialConfigWithTextures(DictionaryForKey(materialDefaults, "planet-material"), { diffuseMap.get(), normalMap.get() });
 
 		material = OOShaderMaterial::shaderMaterialWithName(textureName,
 											  config,
@@ -1188,7 +1188,7 @@ void OOPlanetEntity::setTextureFileName(const std::optional<std::string> &textur
 #endif
 	if (material == nullptr)
 	{
-		material = OOSingleTextureMaterial::materialWithName(textureName, diffuseMap, oo::PList());
+		material = OOSingleTextureMaterial::materialWithName(textureName, diffuseMap.get(), oo::PList());
 	}
 	_planetDrawable->setMaterial(material.get());
 }

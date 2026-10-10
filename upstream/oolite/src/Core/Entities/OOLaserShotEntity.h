@@ -52,12 +52,12 @@ public:
 	bool isEffect() override;
 	bool canCollide() override;
 
-	::OOTexture *texture1();
-	::OOTexture *texture2();
+	OOTexture *texture1();
+	OOTexture *texture2();
 
 	static void setUpTexture();
-	static ::OOTexture *innerTexture();
-	static ::OOTexture *outerTexture();
+	static OOTexture *innerTexture();
+	static OOTexture *outerTexture();
 	// The graphics reset client is a file-local C++ one (OOLaserShotEntity.mm).
 	static void resetGraphicsState();
 

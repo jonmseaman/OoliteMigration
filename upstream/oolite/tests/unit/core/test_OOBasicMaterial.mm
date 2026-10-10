@@ -15,6 +15,7 @@
 
 #import "OOBasicMaterial.h"
 #import "OODescription.h"
+#import "OOTexture.h"
 
 #include "oo_gl_test_context.hpp"
 #include "oo_test.hpp"
@@ -38,13 +39,8 @@ void OOLogOutdent(void)  {}
 */
 static int gTextureApplyNones = 0;
 
-@interface OOTexture: OOObject
-+ (void) applyNone;
-@end
-
-@implementation OOTexture
-+ (void) applyNone	{ gTextureApplyNones++; }
-@end
+// The C++ OOTexture's static member (bead oo-9ht.99 deleted the Objective-C facade it was a stand-in of).
+void OOTexture::applyNone()	{ gTextureApplyNones++; }
 
 
 // Link stubs (amendment oo-zffj item 2), never reached here: OOMaterialSpecifier.mm's texture

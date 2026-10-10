@@ -38,7 +38,8 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOObjCRef.h"
 
 
-@class AI, OOTexture;
+@class AI;
+class OOTexture;
 class PlayerEntity;
 class OOSound;	// C++ since bead oo-9ht.68 deleted its facade
 
@@ -174,7 +175,7 @@ private:
 	enum trumble_mouth		mouthFrame = {};	// which mouth position - determines what part of the texture to display
 	enum trumble_eyes		eyeFrame = {};	// which eye position - determines what part of the texture to display
 	//
-	oo::ObjCRef<::OOTexture *>	texture;
+	oo::Ref<OOTexture>	texture;
 	//
 	GLfloat					saved_float1 = {}, saved_float2 = {};
 	//

@@ -43,7 +43,7 @@ SOFTWARE.
 #include "oofnd/Ref.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 
-@class OOTexture;
+class OOTexture;
 
 /*	As OOTexture.h declares them. The loaders do not import OOTexture.h, so a test that stands in
 	for the Objective-C OOTexture can still see a C++ generator (bead oo-9ht.135); a file that

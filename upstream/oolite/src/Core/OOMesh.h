@@ -149,7 +149,7 @@ public:
 	std::optional<std::string> descriptionComponents() const override;
 #ifndef NDEBUG
 	void dumpSelfState() override;
-	std::vector<oo::ObjCRef<::OOTexture *>> allTextures() override;
+	std::vector<oo::Ref<OOTexture>> allTextures() override;
 	size_t totalSize() override;
 	size_t objectSize() const override	{ return sizeof *this; }
 #endif

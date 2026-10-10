@@ -163,7 +163,7 @@ inline constexpr const char *cxx_kGuiDockingContinueColor	= "docking_continue_co
 
 
 
-@class OOTexture;
+class OOTexture;
 class OOColor;
 class HeadUpDisplay;
 class OOSound;	// C++ since bead oo-9ht.68 deleted its facade

@@ -211,20 +211,20 @@ bool OOPlanetTextureGenerator::initWithPlanetInfo(const oo::PList &planetInfo, R
 }
 
 
-oo::ObjCRef<::OOTexture *> OOPlanetTextureGenerator::planetTextureWithInfo(const oo::PList &planetInfo, RANROTSeed seed)
+oo::Ref<OOTexture> OOPlanetTextureGenerator::planetTextureWithInfo(const oo::PList &planetInfo, RANROTSeed seed)
 {
-	oo::ObjCRef<::OOTexture *> result;
+	oo::Ref<OOTexture> result;
 	const oo::Ref<OOPlanetTextureGenerator> generator = generatorWithPlanetInfo(planetInfo, seed);
 	if (generator)
 	{
-		result = cxx::OOTexture::textureWithGenerator(generator.get());
+		result = OOTexture::textureWithGenerator(generator.get());
 	}
 
 	return result;
 }
 
 
-bool OOPlanetTextureGenerator::generatePlanetTextureAndAtmosphere(oo::ObjCRef<::OOTexture *> *texture, oo::ObjCRef<::OOTexture *> *atmosphere, const oo::PList &planetInfo, RANROTSeed seed)
+bool OOPlanetTextureGenerator::generatePlanetTextureAndAtmosphere(oo::Ref<OOTexture> *texture, oo::Ref<OOTexture> *atmosphere, const oo::PList &planetInfo, RANROTSeed seed)
 {
 	OOCParameterAssert(texture != NULL);
 
@@ -234,16 +234,16 @@ bool OOPlanetTextureGenerator::generatePlanetTextureAndAtmosphere(oo::ObjCRef<::
 	OOPlanetAtmosphereGenerator *atmoGen = diffuseGen->atmosphereGenerator();
 	if (atmoGen == nullptr)  return false;
 
-	*atmosphere = cxx::OOTexture::textureWithGenerator(atmoGen);
+	*atmosphere = OOTexture::textureWithGenerator(atmoGen);
 	if (atmosphere->get() == nil)  return false;
 
-	*texture = cxx::OOTexture::textureWithGenerator(diffuseGen.get(), atmoGen->enqueued());
+	*texture = OOTexture::textureWithGenerator(diffuseGen.get(), atmoGen->enqueued());
 
 	return texture->get() != nil;
 }
 
 
-bool OOPlanetTextureGenerator::generatePlanetTexture(oo::ObjCRef<::OOTexture *> *texture, oo::ObjCRef<::OOTexture *> *secondaryTexture, const oo::PList &planetInfo, RANROTSeed seed)
+bool OOPlanetTextureGenerator::generatePlanetTexture(oo::Ref<OOTexture> *texture, oo::Ref<OOTexture> *secondaryTexture, const oo::PList &planetInfo, RANROTSeed seed)
 {
 	OOCParameterAssert(texture != NULL);
 
@@ -257,18 +257,18 @@ bool OOPlanetTextureGenerator::generatePlanetTexture(oo::ObjCRef<::OOTexture *> 
 		OOPlanetNormalMapGenerator *normalGen = diffuseGen->normalMapGenerator();
 		if (normalGen == nullptr)  return false;
 
-		*secondaryTexture = cxx::OOTexture::textureWithGenerator(normalGen);
+		*secondaryTexture = OOTexture::textureWithGenerator(normalGen);
 		if (secondaryTexture->get() == nil)  return false;
 		enqueue = normalGen->enqueued();
 	}
 
-	*texture = cxx::OOTexture::textureWithGenerator(diffuseGen.get(), enqueue);
+	*texture = OOTexture::textureWithGenerator(diffuseGen.get(), enqueue);
 
 	return texture->get() != nil;
 }
 
 
-bool OOPlanetTextureGenerator::generatePlanetTexture(oo::ObjCRef<::OOTexture *> *texture, oo::ObjCRef<::OOTexture *> *secondaryTexture, oo::ObjCRef<::OOTexture *> *atmosphere, const oo::PList &planetInfo, RANROTSeed seed)
+bool OOPlanetTextureGenerator::generatePlanetTexture(oo::Ref<OOTexture> *texture, oo::Ref<OOTexture> *secondaryTexture, oo::Ref<OOTexture> *atmosphere, const oo::PList &planetInfo, RANROTSeed seed)
 {
 	OOCParameterAssert(texture != NULL);
 
@@ -282,7 +282,7 @@ bool OOPlanetTextureGenerator::generatePlanetTexture(oo::ObjCRef<::OOTexture *> 
 		OOPlanetNormalMapGenerator *normalGen = diffuseGen->normalMapGenerator();
 		if (normalGen == nullptr)  return false;
 
-		*secondaryTexture = cxx::OOTexture::textureWithGenerator(normalGen);
+		*secondaryTexture = OOTexture::textureWithGenerator(normalGen);
 		if (secondaryTexture->get() == nil)  return false;
 		enqueue = normalGen->enqueued();
 	}
@@ -290,7 +290,7 @@ bool OOPlanetTextureGenerator::generatePlanetTexture(oo::ObjCRef<::OOTexture *> 
 	OOPlanetAtmosphereGenerator *atmoGen = diffuseGen->atmosphereGenerator();
 	if (atmoGen == nullptr)  return false;
 
-	*atmosphere = cxx::OOTexture::textureWithGenerator(atmoGen);
+	*atmosphere = OOTexture::textureWithGenerator(atmoGen);
 	if (atmosphere->get() == nil)
 	{
 		if (secondaryTexture != NULL) {
@@ -300,9 +300,9 @@ bool OOPlanetTextureGenerator::generatePlanetTexture(oo::ObjCRef<::OOTexture *> 
 	}
 	enqueue = enqueue || atmoGen->enqueued();
 
-	OO_LOG("texture.planet.generate", "Generator {} has atmosphere {}", diffuseGen.get()->description(), oo::DescriptionOf(atmosphere->get()));
+	OO_LOG("texture.planet.generate", "Generator {} has atmosphere {}", diffuseGen.get()->description(), (*atmosphere != nullptr) ? (*atmosphere)->description() : std::string("(null)"));
 
-	*texture = cxx::OOTexture::textureWithGenerator(diffuseGen.get(), enqueue);
+	*texture = OOTexture::textureWithGenerator(diffuseGen.get(), enqueue);
 	return texture->get() != nil;
 }
 

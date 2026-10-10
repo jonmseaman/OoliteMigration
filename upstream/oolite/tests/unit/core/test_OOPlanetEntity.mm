@@ -108,11 +108,12 @@ TestPlayer *sPlayer = nullptr;
 std::vector<std::string> sTexturesAsked;
 
 
-// +[OOTexture cxx_textureWithConfiguration:]: records the name, finds nothing.
-id NoTexture(id, SEL, const oo::PList &configuration)
+// OOTexture::configurationFactory, the test-only loader hook (bead oo-9ht.99), where +[OOTexture
+// cxx_textureWithConfiguration:] was replaced: records the name, finds nothing.
+oo::Ref<OOTexture> NoTexture(const oo::PList &configuration)
 {
 	sTexturesAsked.push_back(configuration.get<std::string>("name", "?"));
-	return nil;
+	return nullptr;
 }
 
 
@@ -124,8 +125,7 @@ void SetUp()
 		sUniverse->_cxxUniverse = oo::makeRef<cxx::Universe>(sUniverse);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
 		new (&sUniverse->_systemData) oo::PList();
 		sPlayer = NewTestPlayer<TestPlayer>();
-		Method load = class_getClassMethod([OOTexture class], sel_registerName("cxx_textureWithConfiguration:"));
-		method_setImplementation(load, (IMP)NoTexture);
+		OOTexture::configurationFactory = &NoTexture;
 	}
 	sUniverse->_systemData = oo::PList(oo::PList::Dict{ { "air_density", oo::PList(0.4) }, { "planet_name", oo::PList("Lave") } });
 	sUniverse->_time = 0;

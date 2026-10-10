@@ -43,12 +43,12 @@ SOFTWARE.
 /*	Foundation sweep (proposed ADR-0043, bead oo-pa9j): the path, cache key and debug name are
 	nil-able strings (a generated texture has no path, and a generator may have no cache key).
 
-	Phase 3 (bead oo-qa7c, proposed ADR-0056 amendment oo-whzh): a C++ leaf of cxx::OOTexture. Its
+	Phase 3 (bead oo-qa7c, proposed ADR-0056 amendment oo-whzh): a C++ leaf of OOTexture. Its
 	loader is the C++ OOTextureLoader, held as oo::Ref since bead oo-9ht.114. Its Objective-C facade was
-	deleted by bead oo-9ht.105 (ADR-0056 amendment "deleting a facade"): the class is global, and
-	Objective-C sees a concrete texture as the root's facade, an OOTexture.
+	deleted by bead oo-9ht.105 (ADR-0056 amendment "deleting a facade"): the class is global; the
+	root's facade went with bead oo-9ht.99, so callers hold it as an oo::Ref<OOTexture>.
 */
-class OOConcreteTexture : public cxx::OOTexture
+class OOConcreteTexture : public OOTexture
 {
 public:
 	/*	Were -initWithLoader:key:options:anisotropy:lodBias: and -initWithPath:..., which answered

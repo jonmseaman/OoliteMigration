@@ -29,6 +29,8 @@
 #import "OORegExpMatcher.h"
 #import "OOOpenGLExtensionManager.h"
 #import "OODescription.h"
+#import "OOTexture.h"
+#include "oofnd/String.hpp"
 
 #include "oo_gl_test_context.hpp"
 #include "oo_test.hpp"
@@ -80,60 +82,77 @@ static std::string Str(const oo::PList &plist)
 /*	OOTexture: a stand-in recording what the material asks (proposed ADR-0056, amendment oo-z1s4
 	item 4). A texture's configuration is the specifier it was made from, or "generated".
 */
-// kOOTextureExtraShrink: OOTexture.h is not imported, because the test defines OOTexture.
+// kOOTextureExtraShrink, spelled out as before.
 static const uint32_t kExtraShrink = 0x000020UL;
 
 static int gTextureApplyNones = 0;
 static int gTexturesDeallocated = 0;
 static std::vector<std::pair<oo::PList, uint32_t>> gTextureConfigurations;	// (specifier, extra options)
 
-@interface OOTexture: OOObject
+// Since bead oo-9ht.99 deleted the Objective-C facade, the stand-in is C++: the root's static
+// members the material calls, TestTexture (what they answer), and the root's own members; the
+// short description is every texture's here (they are all TestTextures).
+class TestTexture final : public OOTexture
 {
-@public
+public:
+	~TestTexture() override					{ gTexturesDeallocated++; }
+	void apply() override					{ _applies++; }
+	void ensureFinishedLoading() override	{ _ensures++; }
+
 	oo::PList	_configuration;
-	int			_applies;
-	int			_ensures;
-}
-+ (void) applyNone;
-+ (id) cxx_textureWithConfiguration:(const oo::PList &)configuration;
-+ (id) cxx_textureWithConfiguration:(const oo::PList &)configuration extraOptions:(uint32_t)extraOptions;
-+ (id) textureWithGenerator:(id)generator;
-- (void) apply;
-- (void) ensureFinishedLoading;
-@end
+	int			_applies = 0;
+	int			_ensures = 0;
+};
 
-@implementation OOTexture
+static TestTexture *AsTest(const oo::Ref<OOTexture> &texture)  { return static_cast<TestTexture *>(texture.get()); }
 
-+ (void) applyNone	{ gTextureApplyNones++; }
+void OOTexture::applyNone()	{ gTextureApplyNones++; }
 
-+ (id) cxx_textureWithConfiguration:(const oo::PList &)configuration
+oo::Ref<OOTexture> OOTexture::textureWithConfiguration(const oo::PList &configuration)
 {
-	return [self cxx_textureWithConfiguration:configuration extraOptions:0];
+	return textureWithConfiguration(configuration, 0);
 }
 
-+ (id) cxx_textureWithConfiguration:(const oo::PList &)configuration extraOptions:(uint32_t)extraOptions
+oo::Ref<OOTexture> OOTexture::textureWithConfiguration(const oo::PList &configuration, OOTextureFlags extraOptions)
 {
 	gTextureConfigurations.emplace_back(configuration, extraOptions);
-	if (configuration.isNull())  return nil;
-	OOTexture *texture = [[[OOTexture alloc] init] autorelease];
+	if (configuration.isNull())  return nullptr;
+	oo::Ref<TestTexture> texture = oo::makeRef<TestTexture>();
 	texture->_configuration = configuration;
 	return texture;
 }
 
-+ (id) textureWithGenerator:(id)generator
+oo::Ref<OOTexture> OOTexture::textureWithGenerator(::OOTextureGenerator *generator)
 {
-	if (generator == nil)  return nil;
-	OOTexture *texture = [[[OOTexture alloc] init] autorelease];
+	if (generator == nullptr)  return nullptr;
+	oo::Ref<TestTexture> texture = oo::makeRef<TestTexture>();
 	texture->_configuration = oo::PList("generated");
 	return texture;
 }
 
-- (void) dealloc						{ gTexturesDeallocated++; [super dealloc]; }
-- (void) apply							{ _applies++; }
-- (void) ensureFinishedLoading			{ _ensures++; }
-- (std::optional<std::string>) cxx_shortDescription	{ return "tex:" + Str(_configuration); }
-
-@end
+OOTexture::OOTexture()	{}
+OOTexture::~OOTexture()	{}
+void OOTexture::apply()	{}
+void OOTexture::ensureFinishedLoading()	{}
+bool OOTexture::isFinishedLoading()	{ return true; }
+std::optional<std::string> OOTexture::cacheKey()	{ return std::nullopt; }
+NSSize OOTexture::dimensions()	{ return NSSize{}; }
+NSSize OOTexture::originalDimensions()	{ return dimensions(); }
+bool OOTexture::isMipMapped()	{ return false; }
+OOPixMap OOTexture::copyPixMapRepresentation()	{ return OOPixMap{}; }
+bool OOTexture::isRectangleTexture()	{ return false; }
+bool OOTexture::isCubeMap()	{ return false; }
+NSSize OOTexture::texCoordsScale()	{ return NSSize{1.0, 1.0}; }
+GLint OOTexture::glTextureName()	{ return 0; }
+#ifndef NDEBUG
+std::optional<std::string> OOTexture::name()	{ return std::nullopt; }
+#endif
+std::optional<std::string> OOTexture::descriptionComponents() const	{ return std::nullopt; }
+std::optional<std::string> OOTexture::shortDescriptionComponents() const	{ return std::nullopt; }
+std::string OOTexture::description() const	{ return oo::str::format("<OOTexture %s>", oo::str::pointerDescription(this).c_str()); }
+std::string OOTexture::className() const	{ return "OOTexture"; }
+void OOTexture::forceRebind()	{}
+std::string OOTexture::shortDescription() const	{ return "tex:" + Str(static_cast<const TestTexture *>(this)->_configuration); }
 
 
 /*	OOCombinedEmissionMapGenerator: records which factory was called and with what. It answers
@@ -320,9 +339,9 @@ OO_TEST(texturesKeptAndAsked)
 	{
 		m->ensureFinishedLoading();
 #ifndef NDEBUG
-		const std::vector<oo::ObjCRef<OOTexture *>> textures = m->allTextures();
-		OO_CHECK(textures.size() == 2 && textures[0].get()->_ensures == 1 && textures[1].get()->_ensures == 1);
-		OO_CHECK(textures[0].get()->_configuration == oo::PList("d.png") && textures[1].get()->_configuration == oo::PList("e.png"));
+		const std::vector<oo::Ref<OOTexture>> textures = m->allTextures();
+		OO_CHECK(textures.size() == 2 && AsTest(textures[0])->_ensures == 1 && AsTest(textures[1])->_ensures == 1);
+		OO_CHECK(AsTest(textures[0])->_configuration == oo::PList("d.png") && AsTest(textures[1])->_configuration == oo::PList("e.png"));
 #endif
 		const std::string text = m->description();
 		OO_CHECK(text.starts_with("<OOMultiTextureMaterial 0x"));
@@ -353,7 +372,7 @@ OO_TEST(applyAndUnapply)
 		const oo::Ref<OOMultiTextureMaterial> two = Make("Two", { { "diffuse_map", oo::PList("d.png") }, { "emission_map", oo::PList("e.png") } });
 		const oo::Ref<OOMultiTextureMaterial> one = Make("one.png", {});
 #ifndef NDEBUG
-		OOTexture *diffuse = two->allTextures()[0].get(), *emission = two->allTextures()[1].get();
+		TestTexture *diffuse = AsTest(two->allTextures()[0]), *emission = AsTest(two->allTextures()[1]);
 #endif
 
 		two->apply();
@@ -405,12 +424,12 @@ OO_TEST(cxxAPI)
 		OOMaterial *root = m.get();
 		root->apply();
 #ifndef NDEBUG
-		OO_CHECK(m->allTextures()[0].get()->_applies == 1 && m->allTextures()[1].get()->_applies == 1);
+		OO_CHECK(AsTest(m->allTextures()[0])->_applies == 1 && AsTest(m->allTextures()[1])->_applies == 1);
 #endif
 		OO_CHECK(OOMaterial::current().get() == m.get());
 		root->apply();
 #ifndef NDEBUG
-		OO_CHECK(m->allTextures()[0].get()->_applies == 2);
+		OO_CHECK(AsTest(m->allTextures()[0])->_applies == 2);
 #endif
 		const int applyNones = gTextureApplyNones;
 		OOMaterial::applyNone();

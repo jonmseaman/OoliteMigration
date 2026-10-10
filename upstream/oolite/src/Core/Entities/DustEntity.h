@@ -88,7 +88,7 @@ private:
 	Vector				vertices[DUST_N_PARTICLES * 2] = {};
 	GLushort			indices[DUST_N_PARTICLES * 2] = {};
 	GLfloat				color_fv[4] = {};
-	oo::ObjCRef<::OOTexture *>	texture;
+	oo::Ref<OOTexture>	texture;
 	bool				hasPointSprites = {};
 	bool				drawDust = {};
 	

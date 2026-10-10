@@ -116,7 +116,7 @@ inline const OOJSCallEntityMethodRow kOOJSCallEntityMethods[] =
 #ifndef NDEBUG
 	{ "descriptionForObjDumpBasic",	OOJSCallEntityMethodForm::Typed,	@encode(std::optional<std::string>) },
 	{ "descriptionForObjDump",	OOJSCallEntityMethodForm::Typed,	@encode(std::optional<std::string>) },
-	{ "cxx_allTextures",	OOJSCallEntityMethodForm::Typed,	@encode(std::vector<oo::ObjCRef<OOTexture *>>) },
+	{ "cxx_allTextures",	OOJSCallEntityMethodForm::Typed,	@encode(std::vector<oo::Ref<OOTexture>>) },
 #endif
 	{ "airColorAsVector",	OOJSCallEntityMethodForm::Typed,	@encode(Vector) },
 	{ "illuminationColorAsVector",	OOJSCallEntityMethodForm::Typed,	@encode(Vector) },

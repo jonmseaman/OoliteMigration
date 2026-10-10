@@ -24,6 +24,7 @@ MA 02110-1301, USA.
 
 #import "OOEntityWithDrawable.h"
 #import "OODrawable.h"
+#import "OOTexture.h"	// allTextures() destroys oo::Ref<OOTexture>s (bead oo-9ht.99)
 #import "Universe.h"
 #import "ShipEntity.h"
 #import "OOVisualEffectEntity.h"
@@ -126,10 +127,10 @@ void OOEntityWithDrawable::drawImmediate(bool /*immediate*/, bool translucent)
 
 
 #ifndef NDEBUG
-std::vector<oo::ObjCRef<::OOTexture *>> OOEntityWithDrawable::allTextures()
+std::vector<oo::Ref<OOTexture>> OOEntityWithDrawable::allTextures()
 {
 	OODrawable *cxxDrawable = getDrawable();
-	return cxxDrawable != nullptr ? cxxDrawable->allTextures() : std::vector<oo::ObjCRef<::OOTexture *>>();
+	return cxxDrawable != nullptr ? cxxDrawable->allTextures() : std::vector<oo::Ref<OOTexture>>();
 }
 #endif
 

@@ -28,14 +28,14 @@ MA 02110-1301, USA.
 #import "OOMacroOpenGL.h"
 
 
-oo::Ref<OOTextureSprite> OOTextureSprite::initWithTexture(::OOTexture *inTexture)
+oo::Ref<OOTextureSprite> OOTextureSprite::initWithTexture(OOTexture *inTexture)
 {
-	return initWithTexture(inTexture, [inTexture originalDimensions]);
+	return initWithTexture(inTexture, (inTexture != nullptr) ? inTexture->originalDimensions() : NSSize{});	// a message to nil answered a zero size
 }
 
 
 // -initWithTexture:size:'s failure test, then the object (amendment oo-novu item 1).
-oo::Ref<OOTextureSprite> OOTextureSprite::initWithTexture(::OOTexture *inTexture, NSSize spriteSize)
+oo::Ref<OOTextureSprite> OOTextureSprite::initWithTexture(OOTexture *inTexture, NSSize spriteSize)
 {
 	if (inTexture == nil)
 	{
@@ -46,9 +46,9 @@ oo::Ref<OOTextureSprite> OOTextureSprite::initWithTexture(::OOTexture *inTexture
 }
 
 
-OOTextureSprite::OOTextureSprite(::OOTexture *inTexture, NSSize spriteSize)
+OOTextureSprite::OOTextureSprite(OOTexture *inTexture, NSSize spriteSize)
 {
-	texture = oo::ObjCRef<::OOTexture *>(inTexture);
+	texture = oo::Ref<OOTexture>(inTexture);
 	size = spriteSize;
 }
 
@@ -70,7 +70,7 @@ void OOTextureSprite::blitToX(float x, float y, float z, float a)
 
 	// Note that the textured Quad is drawn ACW from the top left.
 
-	[texture.get() apply];
+	if (texture != nullptr)  texture->apply();	// a message to nil did nothing
 	OOGLBEGIN(GL_QUADS);
 		glTexCoord2f(0.0, 0.0);
 		glVertex3f(x, y+size.height, z);

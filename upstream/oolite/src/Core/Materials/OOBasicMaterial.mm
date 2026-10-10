@@ -123,7 +123,7 @@ bool OOBasicMaterial::doApply()
 	// -isMemberOfClass: (an Objective-C subclass's C++ part is its adapter, another class)
 	if (typeid(*this) == typeid(OOBasicMaterial))
 	{
-		[::OOTexture applyNone];
+		OOTexture::applyNone();
 	}
 
 	return true;
@@ -350,7 +350,7 @@ bool OOBasicMaterial::permitSpecular()
 
 
 #ifndef NDEBUG
-std::vector<oo::ObjCRef<::OOTexture *>> OOBasicMaterial::allTextures()
+std::vector<oo::Ref<OOTexture>> OOBasicMaterial::allTextures()
 {
 	return {};
 }

@@ -65,10 +65,10 @@ public:
 	Vector scale();
 	void setScale(Vector scale);
 
-	::OOTexture *texture();
+	OOTexture *texture();
 
 	static void setUpTexture();
-	static ::OOTexture *plumeTexture();
+	static OOTexture *plumeTexture();
 	// What the graphics reset client (OOExhaustPlumeEntity.mm) runs.
 	static void resetGraphicsState();
 

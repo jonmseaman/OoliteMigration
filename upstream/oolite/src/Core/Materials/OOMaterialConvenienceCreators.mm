@@ -403,9 +403,8 @@ oo::Ref<OOMaterial> OOMaterial::materialWithName(const std::optional<std::string
 	{
 		// Use fallback material for non-existent simple texture.
 		// Texture caching means this won't be wasted in the general case.
-		::OOTexture *texture = [::OOTexture cxx_textureWithName:name
-													   inFolder:std::optional<std::string>("Textures")];
-		if (texture == nil)  return nullptr;
+		oo::Ref<OOTexture> texture = OOTexture::textureWithName(name, std::optional<std::string>("Textures"));
+		if (texture == nullptr)  return nullptr;
 		
 		configuration = oo::PList(oo::PList::Dict{});
 	}

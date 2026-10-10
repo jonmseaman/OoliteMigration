@@ -84,7 +84,7 @@ public:
 		_draws++;
 	}
 
-	::OOTexture *texture() override
+	OOTexture *texture() override
 	{
 		return _texture;
 	}
@@ -244,9 +244,10 @@ OO_TEST(texturesListTheSubclassTexture)
 		SetUp();
 		Entity *object = nil;
 		TestParticle *particle = NewParticle<TestParticle>(1.0f, &object);
-		OOTexture *texture = (OOTexture *)[[[OOObject alloc] init] autorelease];	// only retained and compared
+		const oo::Ref<OOTexture> kept = oo::makeRef<OOTexture>();	// a C++ texture since bead oo-9ht.99; only retained and compared
+		OOTexture *texture = kept.get();
 		particle->_texture = texture;
-		const std::vector<oo::ObjCRef<OOTexture *>> textures = [object cxx_allTextures];
+		const std::vector<oo::Ref<OOTexture>> textures = [object cxx_allTextures];
 		OO_CHECK(textures.size() == 1 && textures[0].get() == texture);
 	}
 }

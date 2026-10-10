@@ -39,6 +39,28 @@ uint32_t gDebugFlags = 0;
 #endif
 
 
+
+// What an autoreleased Objective-C texture was (bead oo-9ht.99 deleted the facade): the C++
+// texture, kept until the current autorelease pool drains.
+@interface TestTextureKeeper: OOObject
+{
+@public
+	oo::Ref<OOTexture>	_texture;
+}
+@end
+
+@implementation TestTextureKeeper
+@end
+
+static OOTexture *Autoreleased(const oo::Ref<OOTexture> &texture)
+{
+	if (texture == nullptr)  return nullptr;
+	TestTextureKeeper *keeper = [[[TestTextureKeeper alloc] init] autorelease];
+	keeper->_texture = texture;
+	return texture.get();
+}
+
+
 namespace {
 
 // The loaders' sizes come from their one-time set-up, which a path with no known extension runs
@@ -94,15 +116,10 @@ OOTextureGenerator *NewGenerator(const oo::PList &info, RANROTSeed seed)
 // Was +planetTextureWithInfo:seed: (autoreleased).
 OOTexture *PlanetTexture(const oo::PList &info, RANROTSeed seed)
 {
-	return [[OOPlanetTextureGenerator::planetTextureWithInfo(info, seed).get() retain] autorelease];
+	return Autoreleased(OOPlanetTextureGenerator::planetTextureWithInfo(info, seed));
 }
 
 
-// The textures the C++ class methods answer retained, autoreleased as the old ones were.
-OOTexture *Autoreleased(const oo::ObjCRef<OOTexture *> &texture)
-{
-	return [[texture.get() retain] autorelease];
-}
 
 
 // The three +generatePlanetTexture:... methods: what they answered, and the textures they wrote.
@@ -116,7 +133,7 @@ struct Textures
 Textures GenerateWithAtmosphere(const oo::PList &info, RANROTSeed seed)
 {
 	Textures t;
-	oo::ObjCRef<OOTexture *> texture, atmosphere;
+	oo::Ref<OOTexture> texture, atmosphere;
 	t.ok = OOPlanetTextureGenerator::generatePlanetTextureAndAtmosphere(&texture, &atmosphere, info, seed);
 	t.texture = Autoreleased(texture);
 	t.atmosphere = Autoreleased(atmosphere);
@@ -127,7 +144,7 @@ Textures GenerateWithAtmosphere(const oo::PList &info, RANROTSeed seed)
 Textures GenerateWithSecondary(const oo::PList &info, RANROTSeed seed, bool secondary)
 {
 	Textures t;
-	oo::ObjCRef<OOTexture *> texture, secondaryTexture;
+	oo::Ref<OOTexture> texture, secondaryTexture;
 	t.ok = OOPlanetTextureGenerator::generatePlanetTexture(&texture, secondary ? &secondaryTexture : NULL, info, seed);
 	t.texture = Autoreleased(texture);
 	t.secondary = Autoreleased(secondaryTexture);
@@ -138,7 +155,7 @@ Textures GenerateWithSecondary(const oo::PList &info, RANROTSeed seed, bool seco
 Textures GenerateAll(const oo::PList &info, RANROTSeed seed, bool secondary)
 {
 	Textures t;
-	oo::ObjCRef<OOTexture *> texture, secondaryTexture, atmosphere;
+	oo::Ref<OOTexture> texture, secondaryTexture, atmosphere;
 	t.ok = OOPlanetTextureGenerator::generatePlanetTexture(&texture, secondary ? &secondaryTexture : NULL, &atmosphere, info, seed);
 	t.texture = Autoreleased(texture);
 	t.secondary = Autoreleased(secondaryTexture);
@@ -172,10 +189,10 @@ void Generate(OOTextureGenerator *generator, Generated &generated)
 // A texture loaded: its key starts with the prefix, and it has the size.
 bool Loaded(OOTexture *texture, const std::string &keyPrefix, unsigned width, unsigned height)
 {
-	if (!(dynamic_cast<OOConcreteTexture *>(oo::ToCxx(texture)) != nullptr))  return false;
-	[texture ensureFinishedLoading];
-	return [texture isFinishedLoading] && [texture cxx_cacheKey].value_or("").starts_with(keyPrefix)
-		&& [texture dimensions].width == width && [texture dimensions].height == height;
+	if (!(dynamic_cast<OOConcreteTexture *>(texture) != nullptr))  return false;
+	texture->ensureFinishedLoading();
+	return texture->isFinishedLoading() && texture->cacheKey().value_or("").starts_with(keyPrefix)
+		&& texture->dimensions().width == width && texture->dimensions().height == height;
 }
 
 
@@ -184,7 +201,7 @@ void ClearCache()
 	@autoreleasepool
 	{
 		oo::AutoreleaseScope scope;
-		[OOTexture clearCache];
+		OOTexture::clearCache();
 	}
 }
 

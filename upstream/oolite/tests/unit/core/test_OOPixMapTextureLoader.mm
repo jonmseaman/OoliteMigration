@@ -31,6 +31,28 @@ uint32_t gDebugFlags = 0;
 #endif
 
 
+
+// What an autoreleased Objective-C texture was (bead oo-9ht.99 deleted the facade): the C++
+// texture, kept until the current autorelease pool drains.
+@interface TestTextureKeeper: OOObject
+{
+@public
+	oo::Ref<OOTexture>	_texture;
+}
+@end
+
+@implementation TestTextureKeeper
+@end
+
+static OOTexture *Autoreleased(const oo::Ref<OOTexture> &texture)
+{
+	if (texture == nullptr)  return nullptr;
+	TestTextureKeeper *keeper = [[[TestTextureKeeper alloc] init] autorelease];
+	keeper->_texture = texture;
+	return texture.get();
+}
+
+
 namespace {
 
 // The loaders' sizes come from their one-time set-up, which a path with no known extension runs
@@ -77,7 +99,7 @@ void ClearCache()
 	@autoreleasepool
 	{
 		oo::AutoreleaseScope scope;
-		[OOTexture clearCache];
+		OOTexture::clearCache();
 	}
 }
 
@@ -154,11 +176,11 @@ OO_TEST(aTextureOfTheGenerator)
 	@autoreleasepool
 	{
 		OOTextureGenerator *loader = NewLoader(TestPixMap(), kOOTextureDefaultOptions | kOOTextureRepeatS, YES);
-		OOTexture *texture = [OOTexture textureWithGenerator:loader];
-		OO_CHECK((dynamic_cast<OOConcreteTexture *>(oo::ToCxx(texture)) != nullptr));
-		[texture ensureFinishedLoading];
-		OO_CHECK([texture dimensions].width == 8 && [texture dimensions].height == 8);
-		OO_CHECK([texture isFinishedLoading]);
+		OOTexture *texture = Autoreleased(OOTexture::textureWithGenerator(loader));
+		OO_CHECK((dynamic_cast<OOConcreteTexture *>(texture) != nullptr));
+		texture->ensureFinishedLoading();
+		OO_CHECK(texture->dimensions().width == 8 && texture->dimensions().height == 8);
+		OO_CHECK(texture->isFinishedLoading());
 	}
 	ClearCache();
 }

@@ -36,6 +36,7 @@ static std::vector<int> sOrder;	// client tags, in the order they were told, tex
 
 
 #import "ResourceManager.h"
+#import "OOTexture.h"
 
 // ResourceManager is C++ since bead oo-9ht.150 deleted its Objective-C facade: C++ definitions of the
 // statics the code under test calls, with the Objective-C stand-in's answers.
@@ -61,17 +62,12 @@ extern const char *const cxx_kOOLogException;
 const char *const cxx_kOOLogException = "exception";
 
 
-@interface OOTexture: OOObject
-+ (void) rebindAllTextures;
-@end
-
-@implementation OOTexture
-+ (void) rebindAllTextures
+// The C++ OOTexture's static member (bead oo-9ht.99 deleted the Objective-C facade it was a stand-in of).
+void OOTexture::rebindAllTextures()
 {
 	sRebinds++;
 	sOrder.push_back(0);
 }
-@end
 
 
 // A client: counts its resets; may unregister another client, or raise, when told. Reference

@@ -57,13 +57,13 @@ public:
 	*/
 	static oo::Ref<OOCombinedEmissionMapGenerator> generatorWithEmissionMapSpec(const oo::PList &emissionMapSpec,
 																			  OOColor *emissionColor,
-																			  ::OOTexture *diffuseMap,
+																			  OOTexture *diffuseMap,
 																			  OOColor *diffuseColor,
 																			  const oo::PList &illuminationMapSpec,
 																			  OOColor *illuminationColor,
 																			  const oo::PList &spec);
 	static oo::Ref<OOCombinedEmissionMapGenerator> generatorWithEmissionAndIlluminationMapSpec(const oo::PList &emissionAndIlluminationMapSpec,
-																							::OOTexture *diffuseMap,
+																							OOTexture *diffuseMap,
 																							OOColor *diffuseColor,
 																							OOColor *emissionColor,
 																							OOColor *illuminationColor,
@@ -83,7 +83,7 @@ public:
 private:
 	bool initWithEmissionMapSpec(const oo::PList &emissionMapSpec,
 								 OOColor *emissionColor,
-								 ::OOTexture *diffuseMap,
+								 OOTexture *diffuseMap,
 								 OOColor *diffuseColor,
 								 const oo::PList &illuminationMapSpec,
 								 OOColor *illuminationColor,
@@ -96,7 +96,7 @@ private:
 	
 	oo::PList					_emissionSpec;
 	oo::PList					_illuminationSpec;
-	oo::ObjCRef<::OOTexture *>	_diffuseMap;
+	oo::Ref<OOTexture>	_diffuseMap;
 	
 	OOPixMap					_emissionPx = {};
 	OOPixMap					_diffusePx = {};

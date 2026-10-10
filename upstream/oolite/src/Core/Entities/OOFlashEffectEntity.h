@@ -45,7 +45,7 @@ public:
 	static void resetGraphicsState();
 
 	void update(OOTimeDelta delta_t) override;
-	::OOTexture *texture() override;
+	OOTexture *texture() override;
 
 private:
 	// The initialisers' bodies, run once right after construction (amendment oo-vl43 item 2).
