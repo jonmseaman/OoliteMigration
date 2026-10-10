@@ -43,7 +43,7 @@
 
 // MARK: The classes, as far as the binding and the converted classes see them --------------------
 
-@class StationEntity;
+class StationEntity;
 
 /*	The universe: system data by "galaxy system" and key, the current system's data in interstellar
 	space, a system's coordinates (system 99's raise from -coordinatesForSystem:, system 98's throw
@@ -93,8 +93,17 @@ public:
 + (oo::PList) cxx_manifestForIdentifier:(const std::string &)identifier;
 @end
 
-@interface StationEntity: OOObject
-@end
+// A station: C++ since bead oo-9ht.175 deleted the Objective-C station this stood in for; the
+// members the commodities call, declared as StationEntity.h declares them (the test imports no
+// game header that defines the class). No case makes a station: link stubs.
+class StationEntity
+{
+public:
+	oo::PList getMarketDefinition();
+	std::optional<std::string> getMarketScriptName();
+	OOCargoQuantity getMarketCapacity();
+	bool getMarketMonitored();
+};
 
 @interface OOObject (OOJSTestGlue)
 - (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context;
@@ -253,8 +262,16 @@ oo::PList OOJSScript::propertyNamed(const std::string &name)
 @end
 
 
-@implementation StationEntity
-@end
+oo::PList StationEntity::getMarketDefinition()					{ std::abort(); }
+std::optional<std::string> StationEntity::getMarketScriptName()	{ std::abort(); }
+OOCargoQuantity StationEntity::getMarketCapacity()				{ std::abort(); }
+bool StationEntity::getMarketMonitored()						{ std::abort(); }
+
+// Link stub: a station's Objective-C object, which only a commodity script for a station is given.
+@class Entity;
+namespace cxx { class Entity; }
+namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
+::Entity *oo::ToObjC(cxx::Entity *)	{ std::abort(); }
 
 
 // The expander: "<string>".

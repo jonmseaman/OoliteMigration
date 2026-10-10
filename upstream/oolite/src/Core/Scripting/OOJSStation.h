@@ -26,7 +26,7 @@ MA 02110-1301, USA.
 
 #import "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
-@class StationEntity;
+class StationEntity;
 
 
 #ifdef __cplusplus
@@ -41,7 +41,7 @@ void InitOOJSStation(ooscript::Context context, ooscript::Object global);
 
 
 /*	The bodies of StationEntity (OOJavaScriptExtensions), which the engine reaches by selector.
-	cxx::StationEntity::getJSClass and ::jsClassName call these
+	StationEntity::getJSClass and ::jsClassName call these
 	(proposed ADR-0056 amendments oo-ppc and oo-ykoy).
 */
 void OOJSStationGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);

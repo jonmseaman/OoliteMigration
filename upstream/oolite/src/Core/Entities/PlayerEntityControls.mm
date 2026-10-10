@@ -1654,7 +1654,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 					if (!docking_clearance_request_key_pressed)
 					{
 						::Entity *primeTarget = primaryTarget();
-						performDockingRequest((::StationEntity*)primeTarget);
+						performDockingRequest(oo::ToStation(primeTarget));
 					}
 					docking_clearance_request_key_pressed = YES;
 				}
@@ -4624,7 +4624,7 @@ void PlayerEntity::pollGuiScreenControlsWithFKeyAlias(bool fKeyAlias)
 				if (dockedStation() == nil)  setDockedAtMainStation();
 				OOGUIScreenID oldScreen = gui_screen;
 				
-				if ((gui_screen == GUI_SCREEN_EQUIP_SHIP) && [dockedStation() hasShipyard])
+				if ((gui_screen == GUI_SCREEN_EQUIP_SHIP) && (dockedStation() != nullptr ? dockedStation()->hasShipyard() : false))
 				{
 					[gameView clearKeys];
 					noteGUIWillChangeTo(GUI_SCREEN_SHIPYARD);
@@ -5339,7 +5339,7 @@ void PlayerEntity::setGuiToMissionEndScreen()
 		setGuiToEquipShipScreen(0);
 		break;
 	case GUI_SCREEN_SHIPYARD:
-		if ([dockedStation() hasShipyard])
+		if ((dockedStation() != nullptr ? dockedStation()->hasShipyard() : false))
 		{
 			noteGUIWillChangeTo(GUI_SCREEN_SHIPYARD);
 			setGuiToShipyardScreen(0);
@@ -5470,7 +5470,7 @@ void PlayerEntity::handleAutopilotOn(bool fastDocking)
 		
 		for (i = 0; i < uni->_cxxUniverse->n_entities && nStations < 2; i++)
 		{
-			if (entities[i]->_cxxEntity->isStation && [entities[i] isKindOfClass:[::StationEntity class]] &&
+			if (entities[i]->_cxxEntity->isStation && oo::ToStation(entities[i]) != nullptr &&
 				entities[i]->_cxxEntity->zero_distance <= SCANNER_MAX_RANGE2)
 			{
 				nStations++;
@@ -5483,7 +5483,7 @@ void PlayerEntity::handleAutopilotOn(bool fastDocking)
 		
 		if (withinStationAegis() && legalStatusValue <= 50)
 		{
-			target = [UNIVERSE station];
+			target = oo::ToObjC([UNIVERSE station]);
 		}
 		else if (nStations != 1)
 		{
@@ -5503,26 +5503,26 @@ void PlayerEntity::handleAutopilotOn(bool fastDocking)
 	
 	// We found a dockable, check whether we can dock with it
 	// OOAssert([target isKindOfClass:[StationEntity class]], "Expected entity with isStation flag set to be a station.");		// no need for asserts. Tested enough already.
-	::StationEntity *ts; ts = (::StationEntity *)target;
-	stationName = [ts displayName].value_or("");	// (nil raised in the expansion)
+	::StationEntity *ts; ts = oo::ToStation(target);
+	stationName = (ts != nullptr ? ts->getDisplayName() : std::optional<std::string>()).value_or("");	// (nil raised in the expansion)
 	
 	// If station is not transmitting docking instructions, we cannot use autopilot.
-	if (![ts allowsAutoDocking])
+	if (!(ts != nullptr ? ts->getAllowsAutoDocking() : false))
 	{
 		playAutopilotCannotDockWithTarget();
 		message = ExpandKeyWithArguments("autopilot-station-does-not-allow-autodocking", { { "stationName", oo::PList(stationName) } });
 	}
 	// Deny if station is hostile or player is a fugitive trying to dock at the main station.
-	else if ((legalStatusValue > 50 && ts == [UNIVERSE station]) || [ts isHostileTo:oo::ToObjC(this)])
+	else if ((legalStatusValue > 50 && ts == [UNIVERSE station]) || (ts != nullptr ? ts->isHostileTo(oo::ToObjC(this)) : false))
 	{
 		playAutopilotCannotDockWithTarget();
 		message = ExpandKeyWithArguments((ts == [UNIVERSE station]) ? "autopilot-denied" : "autopilot-target-docking-instructions-denied", { { "stationName", oo::PList(stationName) } });
 	}
 	// If we're fast-docking, perform the docking logic
-	else if (fastDocking && [ts allowsFastDocking])
+	else if (fastDocking && (ts != nullptr ? ts->getAllowsFastDocking() : false))
 	{
 		// check whether there are docks that do not accept docking - even one such dock will result in rejection
-		for (const auto &sub : [ts cxx_dockSubEntities])
+		for (const auto &sub : (ts != nullptr ? ts->dockSubEntities() : std::vector<oo::ObjCRef<DockEntity *>>()))
 		{
 			// TOO_BIG_TO_DOCK issued when docks are scripted to reject docking
 			if([sub.get() canAcceptShipForDocking:oo::ToObjC(this)] == "TOO_BIG_TO_DOCK")

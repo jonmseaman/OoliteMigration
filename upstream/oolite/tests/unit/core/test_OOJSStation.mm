@@ -1,6 +1,6 @@
 /*	test_OOJSStation.mm
 	Unit tests for the Station JS binding (src/Core/Scripting/OOJSStation.h/.mm) and its
-	StationEntity answers for the class (cxx::StationEntity::getJSClass): bead oo-3oxq, converted the way bead oo-ppc
+	StationEntity answers for the class (StationEntity::getJSClass): bead oo-3oxq, converted the way bead oo-ppc
 	converted OOJSVector (proposed ADR-0056 amendments oo-ppc, oo-ykoy and oo-6ia4).
 
 	As test_OOJSWormhole.mm does (amendment oo-ykoy, item 4), it runs the JS class in a real
@@ -42,7 +42,8 @@
 
 // MARK: The classes, as far as the binding sees them ----------------------------------------------
 
-@class StationEntity, GameController;
+class StationEntity;
+@class GameController;
 
 // As ShipEntity.h and StationEntity.h declare them (the test imports neither).
 typedef enum
@@ -62,9 +63,33 @@ typedef enum
 
 typedef OOEquipmentType* OOWeaponType;
 
+namespace cxx {
+
+// The C++ root, as far as the binding and the root's JS category reach it.
+class Entity : public oo::RefCounted
+{
+public:
+	virtual ~Entity();
+	virtual void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
+	virtual std::optional<std::string> jsClassName();
+};
+
+// The ship's members the binding calls on a station, by their final overrider (bead oo-9ht.175).
+class ShipEntity : public Entity
+{
+public:
+	GLfloat getFlightRoll();
+	void setRawRoll(double amount);
+	OOAlertCondition alertCondition();
+};
+
+}	// namespace cxx
+
+// The object: the root's, which holds the C++ part (oo::ToCxx reads it) and asks it the JS questions.
 @interface Entity: OOWeakRefObject
 {
 @public
+	oo::Ref<cxx::Entity> _cxxEntity;
 	std::string _name;
 	ooscript::Object _jsSelf;
 }
@@ -74,82 +99,91 @@ typedef OOEquipmentType* OOWeaponType;
 @interface ShipEntity: Entity
 @end
 
-/*	A station. One whose equivalent tech level is 99 raises from -equivalentTechLevel, one whose
-	level is 98 throws a C++ exception, so the test sees what an exception under a native becomes.
+/*	A station: C++ since bead oo-9ht.175 deleted the Objective-C station this stood in for (its object
+	is the ship's facade); the members the binding calls, declared as StationEntity.h declares them
+	(the test imports no game header that defines the class), with the stand-in's answers. One whose
+	equivalent tech level is 99 raises from getEquivalentTechLevel(), one whose level is 98 throws a
+	C++ exception, so the test sees what an exception under a native becomes.
 */
-@interface StationEntity: ShipEntity
+class StationEntity : public cxx::ShipEntity
 {
-@public
-	BOOL _npcTraffic;
-	BOOL _hasShipyard;
-	OOStationAlertLevel _alertLevel;
+public:
+	void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype) override;
+	std::optional<std::string> jsClassName() override;
+	bool getHasNPCTraffic();
+	void setHasNPCTraffic(bool flag);
+	bool hasShipyard();
+	OOStationAlertLevel getAlertLevel();
+	void setAlertLevel(OOStationAlertLevel level, bool signallingScript);
+	void increaseAlertLevel();
+	void decreaseAlertLevel();
+	std::optional<std::string> getAllegiance();
+	void setAllegiance(const std::optional<std::string> &newAllegiance);
+	bool getRequiresDockingClearance();
+	void setRequiresDockingClearance(bool newValue);
+	bool getAllowsFastDocking();
+	void setAllowsFastDocking(bool newValue);
+	bool getAllowsAutoDocking();
+	void setAllowsAutoDocking(bool newValue);
+	unsigned countOfDockedContractors();
+	unsigned countOfDockedPolice();
+	unsigned countOfDockedDefenders();
+	OOTechLevelID getEquivalentTechLevel();
+	float getEquipmentPriceFactor();
+	bool suppressArrivalReports();
+	void setSuppressArrivalReports(bool newValue);
+	bool getHasBreakPattern();
+	void setHasBreakPattern(bool newValue);
+	std::vector<oo::PList> *getLocalShipyard();
+	void generateShipyard();
+	oo::PList localMarketForScripting();
+	::OOCommodityMarket *getLocalMarket();
+	void setPrice(OOCreditsQuantity price, const std::string &commodity);
+	void setQuantity(OOCargoQuantity quantity, const std::string &commodity);
+	void abortAllDockings();
+	void abortDockingForShip(::ShipEntity *ship);
+	bool fitsInDock(::ShipEntity *ship, bool logNoFit);
+	oo::PList launchIndependentShip(const std::string &role);
+	::ShipEntity *launchDefenseShip();
+	::ShipEntity *launchEscort();
+	::ShipEntity *launchScavenger();
+	::ShipEntity *launchMiner();
+	::ShipEntity *launchPirateShip();
+	::ShipEntity *launchShuttle();
+	::ShipEntity *launchPatrol();
+	oo::PList launchPolice();
+	void setInterfaceDefinition(::OOJSInterfaceDefinition *definition, const std::string &key);
+	oo::PList getMarketDefinition();
+	std::optional<std::string> getMarketScriptName();
+	OOCargoQuantity getMarketCapacity();
+	bool getMarketMonitored();
+
+	::ShipEntity *launched(const char *what);
+
+	std::string _name;
+	BOOL _npcTraffic = NO;
+	BOOL _hasShipyard = NO;
+	OOStationAlertLevel _alertLevel = {};
 	std::optional<std::string> _allegiance;
-	BOOL _requiresClearance;
-	float _roll;
-	BOOL _fastDocking;
-	BOOL _autoDocking;
-	unsigned _contractors, _police, _defenders;
-	OOTechLevelID _techLevel;
-	float _priceFactor;
-	BOOL _suppressReports;
-	BOOL _breakPattern;
-	std::vector<oo::PList> *_shipyard;
-	int _shipyardsMade;
+	BOOL _requiresClearance = NO;
+	float _roll = 0;
+	BOOL _fastDocking = NO;
+	BOOL _autoDocking = NO;
+	unsigned _contractors = 0, _police = 0, _defenders = 0;
+	OOTechLevelID _techLevel = 0;
+	float _priceFactor = 0;
+	BOOL _suppressReports = NO;
+	BOOL _breakPattern = NO;
+	std::vector<oo::PList> *_shipyard = nullptr;
+	int _shipyardsMade = 0;
 	oo::Ref<OOCommodityMarket> _market;
-	int _abortAll;
-	id _abortedShip;
-	BOOL _fits;
+	int _abortAll = 0;
+	id _abortedShip = nil;
+	BOOL _fits = NO;
 	std::map<std::string, oo::Ref<OOJSInterfaceDefinition>> _interfaces;
 	std::string _lastLaunch;
-	ShipEntity *_launched;
-}
-- (BOOL) hasNPCTraffic;
-- (void) setHasNPCTraffic:(BOOL)flag;
-- (BOOL) hasShipyard;
-- (OOStationAlertLevel) alertLevel;
-- (void) setAlertLevel:(OOStationAlertLevel)level signallingScript:(BOOL)signallingScript;
-- (OOAlertCondition) alertCondition;
-- (void) increaseAlertLevel;
-- (void) decreaseAlertLevel;
-- (std::optional<std::string>) cxx_allegiance;
-- (void) cxx_setAllegiance:(const std::optional<std::string> &)newAllegiance;
-- (BOOL) requiresDockingClearance;
-- (void) setRequiresDockingClearance:(BOOL)newValue;
-- (GLfloat) flightRoll;
-- (void) setRawRoll:(double)amount;
-- (BOOL) allowsFastDocking;
-- (void) setAllowsFastDocking:(BOOL)newValue;
-- (BOOL) allowsAutoDocking;
-- (void) setAllowsAutoDocking:(BOOL)newValue;
-- (unsigned) countOfDockedContractors;
-- (unsigned) countOfDockedPolice;
-- (unsigned) countOfDockedDefenders;
-- (OOTechLevelID) equivalentTechLevel;
-- (float) equipmentPriceFactor;
-- (BOOL) suppressArrivalReports;
-- (void) setSuppressArrivalReports:(BOOL)newValue;
-- (BOOL) hasBreakPattern;
-- (void) setHasBreakPattern:(BOOL)newValue;
-- (std::vector<oo::PList> *) cxx_localShipyard;
-- (void) generateShipyard;
-- (oo::PList) cxx_localMarketForScripting;
-- (OOCommodityMarket *) localMarket;
-- (void) cxx_setPrice:(OOCreditsQuantity)price forCommodity:(const std::string &)commodity;
-- (void) cxx_setQuantity:(OOCargoQuantity)quantity forCommodity:(const std::string &)commodity;
-- (void) abortAllDockings;
-- (void) abortDockingForShip:(ShipEntity *)ship;
-- (BOOL) fitsInDock:(ShipEntity *)ship andLogNoFit:(BOOL)logNoFit;
-- (oo::PList) launchIndependentShip:(const std::string &)role;
-- (ShipEntity *) launchDefenseShip;
-- (ShipEntity *) launchEscort;
-- (ShipEntity *) launchScavenger;
-- (ShipEntity *) launchMiner;
-- (ShipEntity *) launchPirateShip;
-- (ShipEntity *) launchShuttle;
-- (ShipEntity *) launchPatrol;
-- (oo::PList) launchPolice;
-- (void) cxx_setInterfaceDefinition:(OOJSInterfaceDefinition *)definition forKey:(const std::string &)key;
-@end
+	::ShipEntity *_launched = nil;
+};
 
 // PLAYER: C++ since bead oo-9ht.177 deleted the Objective-C player this stood in for: the members
 // the code under test calls, declared as the game headers declare them (the test imports none
@@ -256,6 +290,15 @@ ooscript::Object gOOEntityJSPrototype = nullptr;
 - (id) weakRefUnderlyingObject  { return self; }
 - (std::optional<std::string>) cxx_descriptionComponents  { return _name; }
 
+// As the game's Entity (OOJavaScriptExtensions) answers for an entity made in C++: its C++ part's.
+- (BOOL) respondsToSelector:(SEL)selector
+{
+	if (selector == @selector(getJSClass:andPrototype:) || selector == @selector(cxx_oo_jsClassName))  return _cxxEntity != nullptr;
+	return [super respondsToSelector:selector];
+}
+- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype  { _cxxEntity->getJSClass(outClass, outPrototype); }
+- (std::optional<std::string>) cxx_oo_jsClassName  { return _cxxEntity->jsClassName(); }
+
 // As -[Entity oo_jsValueInContext:] makes one: the class and prototype the entity's category names.
 - (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
 {
@@ -289,46 +332,48 @@ ShipEntity *NewShip(const char *name)
 }	// namespace
 
 
-@implementation StationEntity
+cxx::Entity::~Entity() = default;
+void cxx::Entity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)  { (void)outClass; (void)outPrototype; }
+std::optional<std::string> cxx::Entity::jsClassName()  { return std::nullopt; }
+GLfloat cxx::ShipEntity::getFlightRoll()  { return static_cast<StationEntity *>(this)->_roll; }	// the cases ask stations only
+void cxx::ShipEntity::setRawRoll(double amount)  { static_cast<StationEntity *>(this)->_roll = static_cast<float>(amount); }
+OOAlertCondition cxx::ShipEntity::alertCondition()  { return static_cast<OOAlertCondition>(static_cast<StationEntity *>(this)->_alertLevel); }
 
-// As cxx::StationEntity::getJSClass and ::jsClassName answer for the engine.
-- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype  { OOJSStationGetJSClass(outClass, outPrototype); }
-- (std::optional<std::string>) cxx_oo_jsClassName  { return OOJSStationJSClassName(); }
-- (BOOL) hasNPCTraffic  { return _npcTraffic; }
-- (void) setHasNPCTraffic:(BOOL)flag  { _npcTraffic = flag; }
-- (BOOL) hasShipyard  { return _hasShipyard; }
-- (OOStationAlertLevel) alertLevel  { return _alertLevel; }
-- (OOAlertCondition) alertCondition  { return static_cast<OOAlertCondition>(_alertLevel); }
-- (void) increaseAlertLevel  { _alertLevel = static_cast<OOStationAlertLevel>(_alertLevel + 1); }
-- (void) decreaseAlertLevel  { _alertLevel = static_cast<OOStationAlertLevel>(_alertLevel - 1); }
-- (std::optional<std::string>) cxx_allegiance  { return _allegiance; }
-- (void) cxx_setAllegiance:(const std::optional<std::string> &)newAllegiance  { _allegiance = newAllegiance; }
-- (BOOL) requiresDockingClearance  { return _requiresClearance; }
-- (void) setRequiresDockingClearance:(BOOL)newValue  { _requiresClearance = newValue; }
-- (GLfloat) flightRoll  { return _roll; }
-- (void) setRawRoll:(double)amount  { _roll = static_cast<float>(amount); }
-- (BOOL) allowsFastDocking  { return _fastDocking; }
-- (void) setAllowsFastDocking:(BOOL)newValue  { _fastDocking = newValue; }
-- (BOOL) allowsAutoDocking  { return _autoDocking; }
-- (void) setAllowsAutoDocking:(BOOL)newValue  { _autoDocking = newValue; }
-- (unsigned) countOfDockedContractors  { return _contractors; }
-- (unsigned) countOfDockedPolice  { return _police; }
-- (unsigned) countOfDockedDefenders  { return _defenders; }
-- (float) equipmentPriceFactor  { return _priceFactor; }
-- (BOOL) suppressArrivalReports  { return _suppressReports; }
-- (void) setSuppressArrivalReports:(BOOL)newValue  { _suppressReports = newValue; }
-- (BOOL) hasBreakPattern  { return _breakPattern; }
-- (void) setHasBreakPattern:(BOOL)newValue  { _breakPattern = newValue; }
-- (std::vector<oo::PList> *) cxx_localShipyard  { return _shipyard; }
-- (OOCommodityMarket *) localMarket  { return _market.get(); }
-- (oo::PList) cxx_localMarketForScripting  { return _market->dictionaryForScripting(); }
-- (void) cxx_setPrice:(OOCreditsQuantity)price forCommodity:(const std::string &)commodity  { _market->setPrice(price, commodity); }
-- (void) cxx_setQuantity:(OOCargoQuantity)quantity forCommodity:(const std::string &)commodity  { _market->setQuantity(quantity, commodity); }
-- (void) abortAllDockings  { _abortAll++; }
-- (void) abortDockingForShip:(ShipEntity *)ship  { _abortedShip = ship; }
-- (BOOL) fitsInDock:(ShipEntity *)ship andLogNoFit:(BOOL)logNoFit  { (void)ship; (void)logNoFit; return _fits; }
+// As StationEntity::getJSClass and ::jsClassName answer for the engine.
+void StationEntity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)  { OOJSStationGetJSClass(outClass, outPrototype); }
+std::optional<std::string> StationEntity::jsClassName()  { return OOJSStationJSClassName(); }
+bool StationEntity::getHasNPCTraffic()  { return _npcTraffic; }
+void StationEntity::setHasNPCTraffic(bool flag)  { _npcTraffic = flag; }
+bool StationEntity::hasShipyard()  { return _hasShipyard; }
+OOStationAlertLevel StationEntity::getAlertLevel()  { return _alertLevel; }
+void StationEntity::increaseAlertLevel()  { _alertLevel = static_cast<OOStationAlertLevel>(_alertLevel + 1); }
+void StationEntity::decreaseAlertLevel()  { _alertLevel = static_cast<OOStationAlertLevel>(_alertLevel - 1); }
+std::optional<std::string> StationEntity::getAllegiance()  { return _allegiance; }
+void StationEntity::setAllegiance(const std::optional<std::string> &newAllegiance)  { _allegiance = newAllegiance; }
+bool StationEntity::getRequiresDockingClearance()  { return _requiresClearance; }
+void StationEntity::setRequiresDockingClearance(bool newValue)  { _requiresClearance = newValue; }
+bool StationEntity::getAllowsFastDocking()  { return _fastDocking; }
+void StationEntity::setAllowsFastDocking(bool newValue)  { _fastDocking = newValue; }
+bool StationEntity::getAllowsAutoDocking()  { return _autoDocking; }
+void StationEntity::setAllowsAutoDocking(bool newValue)  { _autoDocking = newValue; }
+unsigned StationEntity::countOfDockedContractors()  { return _contractors; }
+unsigned StationEntity::countOfDockedPolice()  { return _police; }
+unsigned StationEntity::countOfDockedDefenders()  { return _defenders; }
+float StationEntity::getEquipmentPriceFactor()  { return _priceFactor; }
+bool StationEntity::suppressArrivalReports()  { return _suppressReports; }
+void StationEntity::setSuppressArrivalReports(bool newValue)  { _suppressReports = newValue; }
+bool StationEntity::getHasBreakPattern()  { return _breakPattern; }
+void StationEntity::setHasBreakPattern(bool newValue)  { _breakPattern = newValue; }
+std::vector<oo::PList> *StationEntity::getLocalShipyard()  { return _shipyard; }
+::OOCommodityMarket *StationEntity::getLocalMarket()  { return _market.get(); }
+oo::PList StationEntity::localMarketForScripting()  { return _market->dictionaryForScripting(); }
+void StationEntity::setPrice(OOCreditsQuantity price, const std::string &commodity)  { _market->setPrice(price, commodity); }
+void StationEntity::setQuantity(OOCargoQuantity quantity, const std::string &commodity)  { _market->setQuantity(quantity, commodity); }
+void StationEntity::abortAllDockings()  { _abortAll++; }
+void StationEntity::abortDockingForShip(::ShipEntity *ship)  { _abortedShip = ship; }
+bool StationEntity::fitsInDock(::ShipEntity *ship, bool logNoFit)  { (void)ship; (void)logNoFit; return _fits; }
 
-- (void) setAlertLevel:(OOStationAlertLevel)level signallingScript:(BOOL)signallingScript
+void StationEntity::setAlertLevel(OOStationAlertLevel level, bool signallingScript)
 {
 	(void)signallingScript;
 	if (level < STATION_ALERT_LEVEL_GREEN)  level = STATION_ALERT_LEVEL_GREEN;
@@ -336,51 +381,58 @@ ShipEntity *NewShip(const char *name)
 	_alertLevel = level;
 }
 
-- (OOTechLevelID) equivalentTechLevel
+OOTechLevelID StationEntity::getEquivalentTechLevel()
 {
 	if (_techLevel == 99)  [OOException raise:OOInvalidArgumentException format:"techlevel %s", "boom"];
 	if (_techLevel == 98)  throw std::runtime_error("cxx boom");
 	return _techLevel;
 }
 
-- (void) generateShipyard
+void StationEntity::generateShipyard()
 {
 	_shipyardsMade++;
 	if (_shipyard == nullptr)  _shipyard = new std::vector<oo::PList>;
 	_shipyard->push_back(oo::PList(oo::PList::Dict{ { "short_description", oo::PList(std::string("Cobra")) } }));
 }
 
-- (ShipEntity *) launched:(const char *)what
+::ShipEntity *StationEntity::launched(const char *what)
 {
 	_lastLaunch = what;
 	return _launched;
 }
 
-- (oo::PList) launchIndependentShip:(const std::string &)role  { _lastLaunch = "role " + role; return oo::PListObject(_launched); }
-- (ShipEntity *) launchDefenseShip  { return [self launched:"defense"]; }
-- (ShipEntity *) launchEscort  { return [self launched:"escort"]; }
-- (ShipEntity *) launchScavenger  { return [self launched:"scavenger"]; }
-- (ShipEntity *) launchMiner  { return [self launched:"miner"]; }
-- (ShipEntity *) launchPirateShip  { return [self launched:"pirate"]; }
-- (ShipEntity *) launchShuttle  { return [self launched:"shuttle"]; }
-- (ShipEntity *) launchPatrol  { return [self launched:"patrol"]; }
+oo::PList StationEntity::launchIndependentShip(const std::string &role)  { _lastLaunch = "role " + role; return oo::PListObject(_launched); }
+::ShipEntity *StationEntity::launchDefenseShip()  { return launched("defense"); }
+::ShipEntity *StationEntity::launchEscort()  { return launched("escort"); }
+::ShipEntity *StationEntity::launchScavenger()  { return launched("scavenger"); }
+::ShipEntity *StationEntity::launchMiner()  { return launched("miner"); }
+::ShipEntity *StationEntity::launchPirateShip()  { return launched("pirate"); }
+::ShipEntity *StationEntity::launchShuttle()  { return launched("shuttle"); }
+::ShipEntity *StationEntity::launchPatrol()  { return launched("patrol"); }
 
-- (oo::PList) launchPolice
+oo::PList StationEntity::launchPolice()
 {
 	_lastLaunch = "police";
-	std::vector<oo::ObjCRef<ShipEntity *>> ships;
+	std::vector<oo::ObjCRef<::ShipEntity *>> ships;
 	if (_launched != nil)  ships.emplace_back(_launched);
 	ships.emplace_back(_launched);
 	return oo::PListFromObjects(ships);
 }
 
-- (void) cxx_setInterfaceDefinition:(OOJSInterfaceDefinition *)definition forKey:(const std::string &)key
+void StationEntity::setInterfaceDefinition(::OOJSInterfaceDefinition *definition, const std::string &key)
 {
 	if (definition == nullptr)  _interfaces.erase(key);
 	else  _interfaces[key] = oo::Ref<OOJSInterfaceDefinition>(definition);
 }
 
-@end
+// Link stubs: what the linked commodities ask a station for its market, and a station's object for
+// a commodity script, which no case reaches (the stations' markets are made blank).
+oo::PList StationEntity::getMarketDefinition()  { std::abort(); }
+std::optional<std::string> StationEntity::getMarketScriptName()  { std::abort(); }
+OOCargoQuantity StationEntity::getMarketCapacity()  { std::abort(); }
+bool StationEntity::getMarketMonitored()  { std::abort(); }
+namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
+::Entity *oo::ToObjC(cxx::Entity *)  { std::abort(); }
 
 
 ::StationEntity * PlayerEntity::dockedStation()  { return _dockedStation; }
@@ -755,8 +807,10 @@ namespace {
 
 ooscript::Runtime sRuntime;
 ooscript::Object sGlobal;
-StationEntity *sStation = nil;
-StationEntity *sOther = nil;
+StationEntity *sStation = nullptr;	// the C++ station (its object: sStationObject)
+StationEntity *sOther = nullptr;
+ShipEntity *sStationObject = nil;
+ShipEntity *sOtherObject = nil;
 ShipEntity *sShip = nil;
 Universe *sUniverse = nil;
 
@@ -789,7 +843,10 @@ void SetUpContext()
 	sPlayer->_name = "player";
 	sPlayer->_screen = GUI_SCREEN_STATUS;
 	gOOPlayer = sPlayer;
-	sStation = [[StationEntity alloc] init];
+	sStationObject = [[ShipEntity alloc] init];	// kept for the life of the test; the ship's facade is a station's object since bead oo-9ht.175
+	sStationObject->_cxxEntity = oo::makeRef<StationEntity>();
+	sStation = static_cast<StationEntity *>(sStationObject->_cxxEntity.get());
+	sStationObject->_name = "Coriolis";
 	sStation->_name = "Coriolis";
 	sStation->_npcTraffic = YES;
 	sStation->_alertLevel = STATION_ALERT_LEVEL_GREEN;
@@ -803,11 +860,14 @@ void SetUpContext()
 	sStation->_priceFactor = 1.5f;
 	sStation->_market = sUniverse->_commodities->generateBlankMarket();
 	sUniverse->_station = sStation;
-	sOther = [[StationEntity alloc] init];
+	sOtherObject = [[ShipEntity alloc] init];
+	sOtherObject->_cxxEntity = oo::makeRef<StationEntity>();
+	sOther = static_cast<StationEntity *>(sOtherObject->_cxxEntity.get());
+	sOtherObject->_name = "Rock Hermit";
 	sOther->_name = "Rock Hermit";
 	sShip = NewShip("Cobra");
-	Define("station", [sStation oo_jsValueInContext:sContext]);
-	Define("other", [sOther oo_jsValueInContext:sContext]);
+	Define("station", [sStationObject oo_jsValueInContext:sContext]);
+	Define("other", [sOtherObject oo_jsValueInContext:sContext]);
 	Define("ship", [sShip oo_jsValueInContext:sContext]);
 }
 
@@ -846,12 +906,12 @@ OO_TEST(registration)
 	SetUpContext();
 	ooscript::ClassDef *stationClass = nullptr;
 	ooscript::Object prototype = nullptr;
-	[sStation getJSClass:&stationClass andPrototype:&prototype];
+	[sStationObject getJSClass:&stationClass andPrototype:&prototype];
 	OO_CHECK(stationClass != nullptr && std::strcmp(stationClass->name, "Station") == 0);
 	OO_CHECK(prototype != nullptr);
 	OO_CHECK(OOJSIsSubclass(stationClass, &sFakeShipClass));
 	OO_CHECK_EQ(sConverters[stationClass], 1);
-	OO_CHECK([sStation cxx_oo_jsClassName] == std::optional<std::string>("Station"));
+	OO_CHECK([sStationObject cxx_oo_jsClassName] == std::optional<std::string>("Station"));
 	OO_CHECK_EVAL("typeof Station", "function");
 	OO_CHECK_EVAL("new Station()", "threw: unconstructable");
 	OO_CHECK_EVAL("Object.getPrototypeOf(Station.prototype) === Ship.prototype", "true");
@@ -985,7 +1045,7 @@ OO_TEST(interfaces)
 	}
 	OO_CHECK_EVAL("station.setInterface('k2', {title: 'T', summary: 'S', callback: function () {}, cbThis: station})", "undefined");
 	OO_CHECK(sStation->_interfaces.count("k2") == 1 && sStation->_interfaces["k2"]->category() == std::optional<std::string>("desc(interfaces-category-uncategorised)"));
-	OO_CHECK(sStation->_interfaces.count("k2") == 1 && sStation->_interfaces["k2"]->callbackThis() == sStation->_jsSelf);
+	OO_CHECK(sStation->_interfaces.count("k2") == 1 && sStation->_interfaces["k2"]->callbackThis() == sStationObject->_jsSelf);
 	OO_CHECK_EVAL("station.setInterface('k2', {title: 'T', summary: 'S', category: '', callback: function () {}})", "undefined");
 	OO_CHECK(sStation->_interfaces.count("k2") == 1 && sStation->_interfaces["k2"]->category() == std::optional<std::string>("desc(interfaces-category-uncategorised)"));
 	OO_CHECK_EVAL("station.setInterface('k')", "undefined");

@@ -26,6 +26,7 @@ MA 02110-1301, USA.
 #import "OOJSWormhole.h"
 
 #import "ShipEntity.h"
+#import "StationEntity.h"
 #import "OOSunEntity.h"
 #import "OOPlanetEntity.h"
 #import "PlayerEntity.h"
@@ -331,11 +332,11 @@ bool WormholeEntity::suckInShip(::ShipEntity *ship)
 
 	if ([ship isStation])
 	{
-		if ((PLAYER != nullptr ? PLAYER->dockedStation() : (StationEntity *)nullptr) == (::StationEntity*)ship)
+		if ((PLAYER != nullptr ? PLAYER->dockedStation() : (StationEntity *)nullptr) == oo::ToStation(ship))
 		{
 			// the carrier has jumped while the player is docked
 			[ship retain];
-			[UNIVERSE carryPlayerOn:(::StationEntity*)ship inWormhole:this];
+			[UNIVERSE carryPlayerOn:oo::ToStation(ship) inWormhole:this];
 			[ship release];
 		}
 	}		

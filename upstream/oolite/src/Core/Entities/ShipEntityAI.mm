@@ -414,16 +414,16 @@ void ShipEntity::requestDockingCoordinates()
 	targStation = [self targetStation];
 	if ([targStation isStation])
 	{
-		station = (::StationEntity*)targStation;
+		station = oo::ToStation(targStation);
 	}
 	else
 	{
-		station = [UNIVERSE nearestShipMatchingPredicate:IsStationPredicate
+		station = oo::ToStation([UNIVERSE nearestShipMatchingPredicate:IsStationPredicate
 											   parameter:nil
-										relativeToEntity:self];
+										relativeToEntity:self]);
 	}
 	
-	distanceToStation2 = HPdistance2([station position], [self position]);
+	distanceToStation2 = HPdistance2((station != nullptr ? station->getPosition() : HPVector{}), [self position]);
 	
 	// Player check for being inside the aegis already exists in PlayerEntityControls. We just
 	// check here that distance to station is less than 2.5 times scanner range to avoid problems with
@@ -433,7 +433,7 @@ void ShipEntity::requestDockingCoordinates()
 	if (station != nil && (distanceToStation2 < SCANNER_MAX_RANGE2 * 6.25 || !dockingInstructions.isNull()))
 	{
 		// remember the instructions (the station's weak reference is kept as an Object node)
-		dockingInstructions = [station dockingInstructionsForShip:self];
+		dockingInstructions = (station != nullptr ? station->dockingInstructionsForShip(self) : oo::PList());
 		if (!dockingInstructions.isNull())
 		{
 			[self recallDockingInstructions];
@@ -442,7 +442,7 @@ void ShipEntity::requestDockingCoordinates()
 			const oo::PList *aiMessage = dockingInstructions.find("ai_message");
 			if (aiMessage != nullptr && aiMessage->isString())  [shipAI message:*aiMessage->getIf<std::string>()];
 			const oo::PList *commsMessage = dockingInstructions.find("comms_message");
-			if (commsMessage != nullptr && commsMessage->isString())  [station cxx_sendExpandedMessage:*commsMessage->getIf<std::string>() toShip:self];
+			if (commsMessage != nullptr && commsMessage->isString())  { if (station != nullptr)  station->sendExpandedMessage(*commsMessage->getIf<std::string>(), self); }
 		}
 	}
 	else
@@ -468,11 +468,11 @@ void ShipEntity::recallDockingInstructions()
 		desired_range = dockingInstructions.get<float>("range");
 		if (const oo::PList *stationRef = dockingInstructions.find("station"))
 		{
-			::StationEntity *targetStation = [oo::ObjectIn(*stationRef) weakRefUnderlyingObject];
+			::StationEntity *targetStation = oo::ToStation([oo::ObjectIn(*stationRef) weakRefUnderlyingObject]);
 			if (targetStation != nil)
 			{
-				[self addTarget:targetStation];
-				[self setTargetStation:targetStation];
+				[self addTarget:oo::ToObjC(targetStation)];
+				[self setTargetStation:oo::ToObjC(targetStation)];
 			}
 			else 
 			{
@@ -912,22 +912,21 @@ bool ShipEntity::launchPatrol()
 void ShipEntity::launchShipWithRole(const std::string & /* param */)	{ LogNotAStation(this, "launchShipWithRole:"); }	// called by name (ADR-0055 item 5)
 void ShipEntity::abortAllDockings()	{ LogNotAStation(this, "abortAllDockings"); }
 
+}	// namespace cxx
+
 
 // The station's unit of the category StationEntity (OOAIPrivate), overriding the ship's.
 void StationEntity::acceptDistressMessageFrom(::ShipEntity *other)
 {
-	::StationEntity *self = oo::ToObjC(this);
-	if (self != [UNIVERSE station])  return;
+	if (this != [UNIVERSE station])  return;
 
 	::OOWeakReference *old_target = _primaryTarget;
 	_primaryTarget = [[[other primaryTarget] weakRetain] autorelease];
 	[(::ShipEntity *)[other primaryTarget] markAsOffender:8 withReason:kOOLegalStatusReasonDistressCall];	// mark their card
-	[self launchDefenseShip];
+	launchDefenseShip();
 	_primaryTarget = old_target;
 
 }
-
-}	// namespace cxx
 
 
 // Slice 2 of docs/phases/3-slices/ShipEntityAI.md (bead oo-xurzn): PureAI part 1: state, speed,
@@ -1302,14 +1301,14 @@ void ShipEntity::getWitchspaceEntryCoordinates()
 	// we don't use "checkScanner" because we must rely on finding a present station.
 	//
 	::StationEntity	*station =  nil;
-	station = [UNIVERSE nearestShipMatchingPredicate:IsStationPredicate
+	station = oo::ToStation([UNIVERSE nearestShipMatchingPredicate:IsStationPredicate
 										   parameter:nil
-									relativeToEntity:self];
+									relativeToEntity:self]);
 	
-	if (station && HPdistance2([station position], position) < SCANNER_MAX_RANGE2) // there is a station in range.
+	if (station && HPdistance2((station != nullptr ? station->getPosition() : HPVector{}), position) < SCANNER_MAX_RANGE2) // there is a station in range.
 	{
-		Vector  vr = vector_multiply_scalar([station rightVector], 10000);  // 10km from station
-		coordinates = HPvector_add([station position], vectorToHPVector(vr));
+		Vector  vr = vector_multiply_scalar((station != nullptr ? station->rightVector() : Vector{}), 10000);  // 10km from station
+		coordinates = HPvector_add((station != nullptr ? station->getPosition() : HPVector{}), vectorToHPVector(vr));
 	}
 	else
 	{
@@ -1746,7 +1745,7 @@ void ShipEntity::setDestinationToStationBeacon()
 {
 	if ([UNIVERSE station])
 	{
-		_destination = [[UNIVERSE station] beaconPosition];
+		_destination = ([UNIVERSE station] != nullptr ? [UNIVERSE station]->beaconPosition() : HPVector{});
 	}
 }
 
@@ -2078,7 +2077,7 @@ void ShipEntity::setPlanetPatrolCoordinates()
 	{
 		::Entity *the_sun = oo::ToObjC([UNIVERSE sun]);	// its Objective-C object (C++ since bead oo-9ht.111)
 		::ShipEntity *the_station = ([self group] != nullptr ? [self group]->leader() : (::ShipEntity *)nil);
-		if(!the_station || ![the_station isStation]) the_station = [UNIVERSE station];
+		if(!the_station || ![the_station isStation]) the_station = oo::ToObjC([UNIVERSE station]);
 		if ((!the_sun)||(!the_station))
 			return;
 		HPVector sun_pos = the_sun->_cxxEntity->position;
@@ -2198,8 +2197,8 @@ void ShipEntity::patrolReportIn()
 	::ShipEntity *self = oo::ToObjC(this);
 	// Set a report time in the patrolled station to delay a new launch.
 	::ShipEntity *the_station = ([self group] != nullptr ? [self group]->leader() : (::ShipEntity *)nil);
-	if(!the_station || ![the_station isStation]) the_station = [UNIVERSE station];
-	[(::StationEntity*)the_station acceptPatrolReportFrom:self];
+	if(!the_station || ![the_station isStation]) the_station = oo::ToObjC([UNIVERSE station]);
+	if (oo::ToStation(the_station) != nullptr)  oo::ToStation(the_station)->acceptPatrolReportFrom(self);
 }
 
 
@@ -2374,7 +2373,7 @@ void ShipEntity::setDestinationToDockingAbort()
 	if (!the_target) {
 		/* Probably the player trying to dock with docking computer
 		 * from out of scanner range */
-		the_target = [UNIVERSE station];
+		the_target = oo::ToObjC([UNIVERSE station]);
 	}
 	double bo_distance = 8000; //	8km back off
 	HPVector v0 = position;
@@ -2673,8 +2672,8 @@ void ShipEntity::setTargetToRandomStation()
 		// find stations within range but exclude carriers.
 		if (uni_entities[i]->_cxxEntity->isStation)
 		{
-			my_station = (::StationEntity*)uni_entities[i];
-			if ([my_station maxFlightSpeed] == 0 && [my_station hasNPCTraffic] && HPdistance2(position, [my_station position]) < maxRange2)
+			my_station = oo::ToStation(uni_entities[i]);
+			if ((my_station != nullptr ? my_station->getMaxFlightSpeed() : 0.0f) == 0 && (my_station != nullptr ? my_station->getHasNPCTraffic() : false) && HPdistance2(position, (my_station != nullptr ? my_station->getPosition() : HPVector{})) < maxRange2)
 			{
 				my_entities[station_count++] = [uni_entities[i] retain];		//	retained
 			}
@@ -2684,13 +2683,13 @@ void ShipEntity::setTargetToRandomStation()
 	if (station_count != 0)
 	{
 		// select a random station
-		station = (::StationEntity *)my_entities[ranrot_rand() % station_count];
+		station = oo::ToStation(my_entities[ranrot_rand() % station_count]);
 		// if more than one candidate do not select main station
 		if (station == [UNIVERSE station] && station_count > 1)
 		{
 			while (station == [UNIVERSE station])
 			{
-				station = (::StationEntity *)my_entities[ranrot_rand() % station_count];
+				station = oo::ToStation(my_entities[ranrot_rand() % station_count]);
 			}
 		}
 	}
@@ -2700,8 +2699,8 @@ void ShipEntity::setTargetToRandomStation()
 	//
 	if (station)
 	{
-		[self addTarget:station];
-		[self setTargetStation:station];
+		[self addTarget:oo::ToObjC(station)];
+		[self setTargetStation:oo::ToObjC(station)];
 		[shipAI message:"STATION_FOUND"];
 	}
 	else

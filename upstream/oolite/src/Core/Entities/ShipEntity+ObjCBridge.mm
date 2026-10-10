@@ -35,6 +35,7 @@ MA 02110-1301, USA.
 #import "AI.h"
 #import "PlayerEntity.h"
 #import "ProxyPlayerEntity.h"
+#import "StationEntity.h"
 #import "GameController.h"	// OOScheduleDeferredCall (the player's selectors called by name)
 #import "OORoleSet.h"
 #import "OOShipGroup.h"
@@ -63,6 +64,71 @@ MA 02110-1301, USA.
 	whose own override is what the deleted subclass facade answered: the call is virtual.
 */
 #define SHIP_PART(call)	(oo::AsObjCEntity(_cxxEntity.get()) != nullptr ? _cxxShip->cxx::ShipEntity::call : _cxxShip->call)
+
+
+namespace {
+
+// A station's part (bead oo-9ht.175): its facade, a subclass of this one, answered the selectors the
+// categories below answer for a station; nullptr for any other ship. The categories that otherwise
+// call the ship's member pass the root's _cxxEntity, so the analyser does not read a null answer as
+// a null _cxxShip.
+StationEntity *StationPart(cxx::Entity *entity)
+{
+	return dynamic_cast<StationEntity *>(entity);
+}
+
+
+// The selectors of the category ShipEntity (OOStationSelectorsCalledByName) below.
+bool IsStationSelectorCalledByName(SEL selector)
+{
+	static const std::unordered_set<std::string> names =
+	{
+		"equivalentTechLevel",
+		"virtualPortDimensions",
+		"playerReservedDock",
+		"beaconPosition",
+		"equipmentPriceFactor",
+		"marketCapacity",
+		"cxx_marketDefinition",
+		"marketMonitored",
+		"marketBroadcast",
+		"cxx_setLocalMarket:",
+		"cxx_localMarketForScripting",
+		"countOfDockedContractors",
+		"countOfDockedPolice",
+		"countOfDockedDefenders",
+		"interstellarUndockingAllowed",
+		"hasNPCTraffic",
+		"requiresDockingClearance",
+		"allowsFastDocking",
+		"allowsAutoDocking",
+		"allowsSaving",
+		"isRotatingStation",
+		"hasShipyard",
+		"generateShipyard",
+		"suppressArrivalReports",
+		"hasBreakPattern",
+		"sanityCheckShipsOnApproach",
+		"autoDockShipsOnHold",
+		"autoDockShipsOnApproach",
+		"dockingCorridorIsEmpty",
+		"clearDockingCorridor",
+		"clear",
+		"hasMultipleDocks",
+		"hasClearDock",
+		"hasEligibleDock",
+		"hasLaunchDock",
+		"selectDockForDocking",
+		"countOfShipsInLaunchQueueWithPrimaryRole:",
+		"alertLevel",
+		"currentlyInDockingQueues",
+		"currentlyInLaunchingQueues",
+		"launchIndependentShip:",
+	};
+	return names.contains(sel_getName(selector));
+}
+
+}	// namespace
 
 
 @interface ShipEntity (OOShipMadeInCxx)
@@ -180,8 +246,10 @@ MA 02110-1301, USA.
 		return;
 	}
 
-	// The player's -dealloc ran first (its facade was a subclass of this one; bead oo-9ht.177).
+	// The player's -dealloc ran first (its facade was a subclass of this one; bead oo-9ht.177), and
+	// so did a station's (bead oo-9ht.175).
 	if (PlayerEntity *player = dynamic_cast<PlayerEntity *>(_cxxShip))  player->willDealloc();
+	if (StationEntity *station = StationPart(_cxxShip))  station->willDealloc();
 
 	/*	NOTE: we guarantee that entityDestroyed is sent immediately after the
 		JS ship becomes invalid (as a result of dropping the weakref), i.e.
@@ -846,7 +914,7 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return PLAYER != nullptr ? PLAYER->base
 - (void) setThankedShip:(Entity *)targetEntity	{ _cxxShip->setThankedShip(targetEntity); }
 - (Entity *) rememberedShip	{ return _cxxShip->rememberedShip(); }
 - (void) setRememberedShip:(Entity *)targetEntity	{ _cxxShip->setRememberedShip(targetEntity); }
-- (StationEntity *) targetStation	{ return _cxxShip->targetStation(); }
+- (Entity *) targetStation	{ return _cxxShip->targetStation(); }
 - (void) setTargetStation:(Entity *)targetEntity	{ _cxxShip->setTargetStation(targetEntity); }
 - (BOOL) isValidTarget:(Entity *)target	{ return SHIP_PART(isValidTarget(target)); }
 - (void) addTarget:(Entity *)targetEntity	{ SHIP_PART(addTarget(targetEntity)); }
@@ -1170,22 +1238,24 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return PLAYER != nullptr ? PLAYER->base
 
 
 // ShipEntityAI.mm slice 1 (bead oo-iebuz): the category ShipEntity (OOAIStationStubs), which no
-// header declares (StationEntity declares the selectors it answers for a station).
+// header declares. The station's facade answered these selectors itself until bead oo-9ht.175
+// (ADR-0056 amendment oo-9ht.175): a station's part answers them, with the station's signatures
+// (a launcher answers the ship launched); any other ship's logs, as before, and answers nil.
 @implementation ShipEntity (OOAIStationStubs)
 
-- (void) increaseAlertLevel	{ _cxxShip->increaseAlertLevel(); }
-- (void) decreaseAlertLevel	{ _cxxShip->decreaseAlertLevel(); }
-- (oo::PList) launchPolice	{ return _cxxShip->launchPolice(); }
-- (void) launchDefenseShip	{ _cxxShip->launchDefenseShip(); }
-- (void) launchScavenger	{ _cxxShip->launchScavenger(); }
-- (void) launchMiner	{ _cxxShip->launchMiner(); }
-- (void) launchPirateShip	{ _cxxShip->launchPirateShip(); }
-- (void) launchShuttle	{ _cxxShip->launchShuttle(); }
+- (void) increaseAlertLevel	{ if (StationEntity *station = StationPart(_cxxEntity.get()))  station->increaseAlertLevel(); else  _cxxShip->increaseAlertLevel(); }
+- (void) decreaseAlertLevel	{ if (StationEntity *station = StationPart(_cxxEntity.get()))  station->decreaseAlertLevel(); else  _cxxShip->decreaseAlertLevel(); }
+- (oo::PList) launchPolice	{ if (StationEntity *station = StationPart(_cxxEntity.get()))  return station->launchPolice(); return _cxxShip->launchPolice(); }
+- (ShipEntity *) launchDefenseShip	{ if (StationEntity *station = StationPart(_cxxEntity.get()))  return station->launchDefenseShip(); _cxxShip->launchDefenseShip(); return nil; }
+- (ShipEntity *) launchScavenger	{ if (StationEntity *station = StationPart(_cxxEntity.get()))  return station->launchScavenger(); _cxxShip->launchScavenger(); return nil; }
+- (ShipEntity *) launchMiner	{ if (StationEntity *station = StationPart(_cxxEntity.get()))  return station->launchMiner(); _cxxShip->launchMiner(); return nil; }
+- (ShipEntity *) launchPirateShip	{ if (StationEntity *station = StationPart(_cxxEntity.get()))  return station->launchPirateShip(); _cxxShip->launchPirateShip(); return nil; }
+- (ShipEntity *) launchShuttle	{ if (StationEntity *station = StationPart(_cxxEntity.get()))  return station->launchShuttle(); _cxxShip->launchShuttle(); return nil; }
 - (void) launchTrader	{ _cxxShip->launchTrader(); }
-- (void) launchEscort	{ _cxxShip->launchEscort(); }
-- (BOOL) launchPatrol	{ return _cxxShip->launchPatrol(); }
-- (void) launchShipWithRole:(const std::string &)param	{ _cxxShip->launchShipWithRole(param); }
-- (void) abortAllDockings	{ _cxxShip->abortAllDockings(); }
+- (ShipEntity *) launchEscort	{ if (StationEntity *station = StationPart(_cxxEntity.get()))  return station->launchEscort(); _cxxShip->launchEscort(); return nil; }
+- (ShipEntity *) launchPatrol	{ if (StationEntity *station = StationPart(_cxxEntity.get()))  return station->launchPatrol(); (void)_cxxShip->launchPatrol(); return nil; }
+- (void) launchShipWithRole:(const std::string &)param	{ if (StationEntity *station = StationPart(_cxxEntity.get()))  station->launchShipWithRole(param); else  _cxxShip->launchShipWithRole(param); }
+- (void) abortAllDockings	{ if (StationEntity *station = StationPart(_cxxEntity.get()))  station->abortAllDockings(); else  _cxxShip->abortAllDockings(); }
 
 @end
 
@@ -1894,6 +1964,11 @@ bool IsPlayerSelectorCalledByName(SEL selector)
 		if (IsProxySelectorCalledByName(selector) && ProxyPart(_cxxShip) != nullptr)  return YES;
 		return PlayerEntityPart(_cxxShip) != nullptr;
 	}
+	// A station's part answers the station's (bead oo-9ht.175), as its facade did.
+	if (IsStationSelectorCalledByName(selector) && class_getMethodImplementation(object_getClass(self), selector) == class_getMethodImplementation([ShipEntity class], selector))
+	{
+		return StationPart(_cxxShip) != nullptr;
+	}
 	return [super respondsToSelector:selector];
 }
 
@@ -1952,8 +2027,8 @@ bool IsPlayerSelectorCalledByName(SEL selector)
 - (BOOL) atHyperspeed	{ if (ProxyPlayerEntity *proxy = ProxyPart(_cxxShip))  return proxy->atHyperspeed(); PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->atHyperspeed() : NO; }
 - (float) occlusionLevel	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->occlusionLevel() : float{}; }
 - (void) setDockedAtMainStation	{ if (PlayerEntity *player = PlayerEntityPart(_cxxShip))  player->setDockedAtMainStation(); }
-- (StationEntity *) dockedStation	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->dockedStation() : nil; }
-- (StationEntity *) getTargetDockStation	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->getTargetDockStation() : nil; }
+- (ShipEntity *) dockedStation	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? oo::ToObjC(player->dockedStation()) : nil; }	// the station's object (bead oo-9ht.175), as the facade answered it
+- (ShipEntity *) getTargetDockStation	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? oo::ToObjC(player->getTargetDockStation()) : nil; }	// the station's object (bead oo-9ht.175), as the facade answered it
 - (void) resetHud	{ if (PlayerEntity *player = PlayerEntityPart(_cxxShip))  player->resetHud(); }
 - (BOOL) cxx_switchHudTo:(const std::string &)hudFileName	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->switchHudTo(hudFileName) : NO; }
 - (float) cxx_dialCustomFloat:(const std::string &)dialKey	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->dialCustomFloat(dialKey) : float{}; }
@@ -2434,5 +2509,60 @@ bool IsPlayerSelectorCalledByName(SEL selector)
 #if OO_USE_CUSTOM_LOAD_SAVE
 - (int) findIndexOfCommander: (const std::string &)cdrName	{ PlayerEntity *player = PlayerEntityPart(_cxxShip); return player != nullptr ? player->findIndexOfCommander(cdrName) : int{}; }
 #endif
+
+@end
+
+
+/*	The selectors the game finds by name on a station (bead oo-9ht.175, ADR-0056 amendment
+	oo-9ht.175): AI actions, legacy-script and callObjC() calls, shader bindings. The station's
+	facade, a subclass of this one, answered them until then. These are exactly the selectors only
+	the station's facade answered whose signature a by-name dispatcher can call (as the player's
+	above): each answers the station's C++ member, and nothing (zero) for any other ship;
+	-respondsToSelector: (above) answers them for a station's C++ part only. Not declared in a
+	header: converted code calls the C++ members. They go with this facade.
+*/
+@implementation ShipEntity (OOStationSelectorsCalledByName)
+
+- (OOTechLevelID) equivalentTechLevel	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->getEquivalentTechLevel() : OOTechLevelID{}; }
+- (Vector) virtualPortDimensions	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->virtualPortDimensions() : kZeroVector; }
+- (DockEntity *) playerReservedDock	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->playerReservedDock() : nil; }
+- (HPVector) beaconPosition	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->beaconPosition() : kZeroHPVector; }
+- (float) equipmentPriceFactor	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->getEquipmentPriceFactor() : float{}; }
+- (OOCargoQuantity) marketCapacity	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->getMarketCapacity() : OOCargoQuantity{}; }
+- (oo::PList) cxx_marketDefinition	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->getMarketDefinition() : oo::PList(); }
+- (BOOL) marketMonitored	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->getMarketMonitored() : NO; }
+- (BOOL) marketBroadcast	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->getMarketBroadcast() : NO; }
+- (void) cxx_setLocalMarket:(const oo::PList &)market	{ if (StationEntity *station = StationPart(_cxxShip))  station->setLocalMarket(market); }
+- (oo::PList) cxx_localMarketForScripting	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->localMarketForScripting() : oo::PList(); }
+- (unsigned) countOfDockedContractors	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->countOfDockedContractors() : unsigned{}; }
+- (unsigned) countOfDockedPolice	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->countOfDockedPolice() : unsigned{}; }
+- (unsigned) countOfDockedDefenders	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->countOfDockedDefenders() : unsigned{}; }
+- (BOOL) interstellarUndockingAllowed	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->getInterstellarUndockingAllowed() : NO; }
+- (BOOL) hasNPCTraffic	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->getHasNPCTraffic() : NO; }
+- (BOOL) requiresDockingClearance	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->getRequiresDockingClearance() : NO; }
+- (BOOL) allowsFastDocking	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->getAllowsFastDocking() : NO; }
+- (BOOL) allowsAutoDocking	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->getAllowsAutoDocking() : NO; }
+- (BOOL) allowsSaving	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->getAllowsSaving() : NO; }
+- (BOOL) isRotatingStation	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->isRotatingStation() : NO; }
+- (BOOL) hasShipyard	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->hasShipyard() : NO; }
+- (void) generateShipyard	{ if (StationEntity *station = StationPart(_cxxShip))  station->generateShipyard(); }
+- (BOOL) suppressArrivalReports	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->suppressArrivalReports() : NO; }
+- (BOOL) hasBreakPattern	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->getHasBreakPattern() : NO; }
+- (void) sanityCheckShipsOnApproach	{ if (StationEntity *station = StationPart(_cxxShip))  station->sanityCheckShipsOnApproach(); }
+- (void) autoDockShipsOnHold	{ if (StationEntity *station = StationPart(_cxxShip))  station->autoDockShipsOnHold(); }
+- (void) autoDockShipsOnApproach	{ if (StationEntity *station = StationPart(_cxxShip))  station->autoDockShipsOnApproach(); }
+- (BOOL) dockingCorridorIsEmpty	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->dockingCorridorIsEmpty() : NO; }
+- (void) clearDockingCorridor	{ if (StationEntity *station = StationPart(_cxxShip))  station->clearDockingCorridor(); }
+- (void) clear	{ if (StationEntity *station = StationPart(_cxxShip))  station->clear(); }
+- (BOOL) hasMultipleDocks	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->hasMultipleDocks() : NO; }
+- (BOOL) hasClearDock	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->hasClearDock() : NO; }
+- (BOOL) hasEligibleDock	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->hasEligibleDock() : NO; }
+- (BOOL) hasLaunchDock	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->hasLaunchDock() : NO; }
+- (DockEntity *) selectDockForDocking	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->selectDockForDocking() : nil; }
+- (unsigned) countOfShipsInLaunchQueueWithPrimaryRole:(const std::string &)role	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->countOfShipsInLaunchQueueWithPrimaryRole(role) : unsigned{}; }
+- (OOStationAlertLevel) alertLevel	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->getAlertLevel() : STATION_ALERT_LEVEL_GREEN; }	// green for any other ship, which does not respond (the enum has no zero)
+- (unsigned) currentlyInDockingQueues	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->currentlyInDockingQueues() : unsigned{}; }
+- (unsigned) currentlyInLaunchingQueues	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->currentlyInLaunchingQueues() : unsigned{}; }
+- (oo::PList) launchIndependentShip:(const std::string &)role	{ StationEntity *station = StationPart(_cxxShip); return station != nullptr ? station->launchIndependentShip(role) : oo::PList(); }
 
 @end

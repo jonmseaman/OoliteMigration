@@ -256,7 +256,7 @@ std::vector<oo::PList> CustomViewsFrom(const oo::PList &value)
 
 // The docked station's interface for <key>, or nil (objectForKey: on a nil dictionary or key). Reads
 // the station's C++ part (slice 21, bead oo-a602n); a null station has none.
-OOJSInterfaceDefinition *InterfaceForKey(cxx::StationEntity *station, const std::optional<std::string> &key)
+OOJSInterfaceDefinition *InterfaceForKey(StationEntity *station, const std::optional<std::string> &key)
 {
 	if (station == nullptr || !key.has_value())  return nullptr;
 	const auto it = station->localInterfaces.find(*key);
@@ -1506,7 +1506,9 @@ oo::PList PlayerEntity::commanderDataDictionary()
 	result["escape_pod_rescue_time"] = oo::PList((double)escapePodRescueTime());	// oo_setFloat:
 
 	//local market for main station
-	if ([[UNIVERSE station] localMarket])  result["localMarket"] = [[UNIVERSE station] localMarket]->saveStationAmounts();
+	::StationEntity *mainStation = [UNIVERSE station];
+	OOCommodityMarket *mainStationMarket = (mainStation != nullptr ? mainStation->getLocalMarket() : (OOCommodityMarket *)nullptr);
+	if (mainStationMarket)  result["localMarket"] = mainStationMarket->saveStationAmounts();
 
 	// Scenario restriction on OXZs
 	if (const std::optional<std::string> value = [UNIVERSE cxx_useAddOns])  result["scenario_restriction"] = oo::PList(*value);
@@ -1528,10 +1530,10 @@ oo::PList PlayerEntity::commanderDataDictionary()
 
 	// docked station
 	::StationEntity *dockedStation = this->dockedStation();
-	result["docked_station_role"] = oo::PList(dockedStation != nil ? [dockedStation cxx_primaryRole].value_or(std::string()) : std::string());
+	result["docked_station_role"] = oo::PList(dockedStation != nil ? (dockedStation != nullptr ? dockedStation->getPrimaryRole() : std::optional<std::string>()).value_or(std::string()) : std::string());
 	if (dockedStation)
 	{
-		HPVector dpos = [dockedStation position];
+		HPVector dpos = (dockedStation != nullptr ? dockedStation->getPosition() : HPVector{});
 		{
 			oo::PList::Array coords;
 			for (double component : cxx_ArrayFromHPVector(dpos))  coords.push_back(oo::PList(component));
@@ -3197,7 +3199,7 @@ void PlayerEntity::doBookkeeping(double delta_t)
 			// run initial system population
 			[UNIVERSE populateNormalSpace];
 
-			setDockTarget([UNIVERSE station]);
+			setDockTarget(oo::ToObjC([UNIVERSE station]));
 			// send world script events to let oxps know we're in a new system.
 			// all player.ship properties are still disabled at this stage.
 			[UNIVERSE setWitchspaceBreakPattern:YES];
@@ -3205,7 +3207,7 @@ void PlayerEntity::doBookkeeping(double delta_t)
 			doScriptEvent(OOJSID("shipExitedWitchspace"));
 			
 			if ([UNIVERSE planet] != nullptr)  [UNIVERSE planet]->update(2.34375 * market_rnd);	// from 0..10 minutes
-			[[UNIVERSE station] update: 2.34375 * market_rnd];	// from 0..10 minutes
+			if ([UNIVERSE station] != nullptr)  [UNIVERSE station]->update(2.34375 * market_rnd);	// from 0..10 minutes
 		}
 		
 		::Entity	*dockTargetEntity = [UNIVERSE entityForUniversalID:_dockTarget];	// main station in the original system, unless overridden.
@@ -3222,7 +3224,7 @@ void PlayerEntity::doBookkeeping(double delta_t)
 			}
 			[UNIVERSE setViewDirection:VIEW_FORWARD];
 			[UNIVERSE setBlockJSPlayerShipProps:NO];	// re-enable player.ship!
-			enterDock((::StationEntity *)dockTargetEntity);
+			enterDock(oo::ToStation(dockTargetEntity));
 		}
 		else	// no dock target? dock target is not a station? game over!
 		{
@@ -3829,14 +3831,14 @@ void PlayerEntity::performAutopilotUpdates(OOTimeDelta delta_t)
 void PlayerEntity::performDockingRequest(::StationEntity *stationForDocking)
 {
 	if (stationForDocking == nil) return;
-	if (![stationForDocking isStation] || ![stationForDocking isKindOfClass:[::StationEntity class]]) return;
+	if (!(stationForDocking != nullptr ? stationForDocking->getIsStation() : false)) return;	// a StationEntity (-isKindOfClass:) by its type since bead oo-9ht.175
 	if (isDocked())  return;
-	if (autopilot_engaged && targetStation() == stationForDocking)	return;
-	if (autopilot_engaged && targetStation() != stationForDocking)
+	if (autopilot_engaged && targetStation() == oo::ToObjC(stationForDocking))	return;
+	if (autopilot_engaged && targetStation() != oo::ToObjC(stationForDocking))
 	{
 		disengageAutopilot();
 	}
-	const std::optional<std::string> stationDockingClearanceStatus = [stationForDocking cxx_acceptDockingClearanceRequestFrom:oo::ToObjC(this)];
+	const std::optional<std::string> stationDockingClearanceStatus = (stationForDocking != nullptr ? stationForDocking->acceptDockingClearanceRequestFrom(oo::ToObjC(this)) : std::optional<std::string>());
 	if (stationDockingClearanceStatus.has_value())
 	{
 		doScriptEvent(OOJSID("playerRequestedDockingClearance"), { oo::PList(*stationDockingClearanceStatus) });
@@ -3860,16 +3862,16 @@ void PlayerEntity::requestDockingClearance(::StationEntity *stationForDocking)
 void PlayerEntity::cancelDockingRequest(::StationEntity *stationForDocking)
 {
 	if (stationForDocking == nil) return;
-	if (![stationForDocking isStation] || ![stationForDocking isKindOfClass:[::StationEntity class]]) return;
+	if (!(stationForDocking != nullptr ? stationForDocking->getIsStation() : false)) return;	// a StationEntity (-isKindOfClass:) by its type since bead oo-9ht.175
 	if (isDocked())  return;
-	if (autopilot_engaged && targetStation() == stationForDocking)	return;
-	if (autopilot_engaged && targetStation() != stationForDocking)
+	if (autopilot_engaged && targetStation() == oo::ToObjC(stationForDocking))	return;
+	if (autopilot_engaged && targetStation() != oo::ToObjC(stationForDocking))
 	{
 		disengageAutopilot();
 	}
 	if (dockingClearanceStatus == DOCKING_CLEARANCE_STATUS_GRANTED || dockingClearanceStatus == DOCKING_CLEARANCE_STATUS_REQUESTED)
 	{
-		const std::optional<std::string> stationDockingClearanceStatus = [stationForDocking cxx_acceptDockingClearanceRequestFrom:oo::ToObjC(this)];
+		const std::optional<std::string> stationDockingClearanceStatus = (stationForDocking != nullptr ? stationForDocking->acceptDockingClearanceRequestFrom(oo::ToObjC(this)) : std::optional<std::string>());
 		if (stationDockingClearanceStatus == "DOCKING_CLEARANCE_CANCELLED")
 		{
 			doScriptEvent(OOJSID("playerDockingClearanceCancelled"));
@@ -3883,12 +3885,12 @@ bool PlayerEntity::engageAutopilotToStation(::StationEntity *stationForDocking)
 	if (stationForDocking == nil)   return NO;
 	if (isDocked())  return NO;
 	
-	if (autopilot_engaged && targetStation() == stationForDocking)
+	if (autopilot_engaged && targetStation() == oo::ToObjC(stationForDocking))
 	{	
 		return YES;
 	}
 		
-	setTargetStation(stationForDocking);
+	setTargetStation(oo::ToObjC(stationForDocking));
 	DESTROY(_primaryTarget);
 	autopilot_engaged = YES;
 	ident_engaged = NO;
@@ -3900,7 +3902,7 @@ bool PlayerEntity::engageAutopilotToStation(::StationEntity *stationForDocking)
 	[shipAI cxx_setState:"BEGIN_DOCKING"];	// reboot the AI
 	playAutopilotOn();
 	OOMusicController::sharedController()->playDockingMusic();
-	doScriptEvent(OOJSID("playerStartedAutoPilot"), stationForDocking);
+	doScriptEvent(OOJSID("playerStartedAutoPilot"), oo::ToObjC(stationForDocking));
 	setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_GRANTED);
 		
 	if (afterburner_engaged)
@@ -4159,8 +4161,8 @@ void PlayerEntity::performLaunchingUpdates(OOTimeDelta delta_t)
 		setStatus(STATUS_IN_FLIGHT);
 
 		setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_NONE);
-		::StationEntity *stationLaunchedFrom = [UNIVERSE nearestEntityMatchingPredicate:IsStationPredicate parameter:NULL relativeToEntity:oo::ToObjC(this)];
-		doScriptEvent(OOJSID("shipLaunchedFromStation"), stationLaunchedFrom);
+		::StationEntity *stationLaunchedFrom = oo::ToStation([UNIVERSE nearestEntityMatchingPredicate:IsStationPredicate parameter:NULL relativeToEntity:oo::ToObjC(this)]);
+		doScriptEvent(OOJSID("shipLaunchedFromStation"), oo::ToObjC(stationLaunchedFrom));
 	}
 }
 
@@ -4698,13 +4700,13 @@ void PlayerEntity::setDockedAtMainStation()
 
 ::StationEntity *PlayerEntity::dockedStation()
 {
-	return [_dockedStation.get() weakRefUnderlyingObject];
+	return oo::ToStation([_dockedStation.get() weakRefUnderlyingObject]);
 }
 
 
 void PlayerEntity::setDockedStation(::StationEntity *station)
 {
-	_dockedStation = oo::adoptObjC([station weakRetain]);
+	_dockedStation = oo::adoptObjC([oo::ToObjC(station) weakRetain]);
 }
 
 
@@ -5424,7 +5426,7 @@ void PlayerEntity::validateCompassTarget()
 			case COMPASS_MODE_BASIC:
 				if ((aegis == AEGIS_CLOSE_TO_MAIN_PLANET || aegis == AEGIS_IN_DOCKING_RANGE) && the_station)
 				{
-					new_target = the_station;
+					new_target = oo::ToObjC(the_station);
 				}
 				else
 				{
@@ -5437,7 +5439,7 @@ void PlayerEntity::validateCompassTarget()
 				break;
 				
 			case COMPASS_MODE_STATION:
-				new_target = the_station;
+				new_target = oo::ToObjC(the_station);
 				break;
 				
 			case COMPASS_MODE_SUN:
@@ -5494,7 +5496,7 @@ std::optional<std::string> PlayerEntity::compassTargetLabel()
 	case COMPASS_MODE_SUN:
 		return ([UNIVERSE sun] != nullptr ? [UNIVERSE sun]->name() : std::optional<std::string>());
 	case COMPASS_MODE_STATION:
-		return [[UNIVERSE station] displayName];
+		return ([UNIVERSE station] != nullptr ? [UNIVERSE station]->getDisplayName() : std::optional<std::string>());
 	case COMPASS_MODE_TARGET:
 		return OO_DESC("oolite-beacon-label-target");
 	}
@@ -6897,7 +6899,7 @@ void PlayerEntity::takeHeatDamage(double amount)
 	// set up the standard location where the escape pod will dock.
 	target_system_id = system_id;			// we're staying in this system
 	info_system_id = system_id;
-	setDockTarget([UNIVERSE station]);	// we're docking at the main station, if there is one
+	setDockTarget(oo::ToObjC([UNIVERSE station]));	// we're docking at the main station, if there is one
 	
 	doScriptEvent(OOJSID("shipLaunchedEscapePod"), escapePod);	// no player.ship properties should be available to script
 
@@ -7085,7 +7087,7 @@ void PlayerEntity::collectBountyFor(::ShipEntity *other)
 	
 	if (other == nil || [other isSubEntity])  return;
 	
-	if (other == [UNIVERSE station])
+	if (other == oo::ToObjC([UNIVERSE station]))
 	{
 		// there is no way the player can destroy the main station
 		// and so the explosion will be cancelled, so there shouldn't
@@ -7322,7 +7324,7 @@ void PlayerEntity::enterDock(::StationEntity *station)
 	
 	setStatus(STATUS_DOCKING);
 	setDockedStation(station);
-	doScriptEvent(OOJSID("shipWillDockWithStation"), station);
+	doScriptEvent(OOJSID("shipWillDockWithStation"), oo::ToObjC(station));
 
 	if (hud != nullptr && !hud->nonlinearScanner())	// (a message to nil did nothing)
 	{
@@ -7348,7 +7350,7 @@ void PlayerEntity::enterDock(::StationEntity *station)
 	setOrientation(kIdentityQuaternion);	// reset orientation to dock
 	[UNIVERSE setUpBreakPattern:breakPatternPosition() orientation:orientation forDocking:YES];
 	playDockWithStation();
-	[station noteDockedShip:oo::ToObjC(this)];
+	if (station != nullptr)  station->noteDockedShip(oo::ToObjC(this));
 	
 	[[UNIVERSE gameView] clearKeys];	// try to stop key bounces
 }
@@ -7368,7 +7370,7 @@ void PlayerEntity::docked()
 	
 	loseTargetStatus();
 	
-	setPosition([dockedStation position]);
+	setPosition((dockedStation != nullptr ? dockedStation->getPosition() : HPVector{}));
 	setOrientation(kIdentityQuaternion);	// reset orientation to dock
 	
 	flightRoll = 0.0f;
@@ -7387,9 +7389,9 @@ void PlayerEntity::docked()
 
 	setAlertFlag(ALERT_FLAG_DOCKED, YES);
 
-	if ([dockedStation localMarket] == nil)
+	if ((dockedStation != nullptr ? dockedStation->getLocalMarket() : (OOCommodityMarket *)nullptr) == nil)
 	{
-		[dockedStation initialiseLocalMarket];
+		if (dockedStation != nullptr)  dockedStation->initialiseLocalMarket();
 	}
 
 	const std::optional<std::string> escapepodReport = processEscapePods();
@@ -7399,10 +7401,10 @@ void PlayerEntity::docked()
 
 	// check import status of station
 	// escape pods must be cleared before this happens
-	if ([dockedStation marketMonitored])
+	if ((dockedStation != nullptr ? dockedStation->getMarketMonitored() : false))
 	{
 		OOCreditsQuantity oldbounty = getBounty();
-		markAsOffender([dockedStation legalStatusOfManifest:shipCommodityData.get() export:NO], kOOLegalStatusReasonIllegalImports);
+		markAsOffender((dockedStation != nullptr ? dockedStation->legalStatusOfManifest(shipCommodityData.get(), NO) : 0), kOOLegalStatusReasonIllegalImports);
 		if (getBounty() > oldbounty)
 		{
 			addRoleToPlayer("trader-smuggler");
@@ -7420,7 +7422,7 @@ void PlayerEntity::docked()
 	
 	// Did we fail to observe traffic control regulations? However, due to the state of emergency,
 	// apply no unauthorized docking penalties if a nova is ongoing.
-	if ([dockedStation requiresDockingClearance] &&
+	if ((dockedStation != nullptr ? dockedStation->getRequiresDockingClearance() : false) &&
 			!clearedToDock() && !([UNIVERSE sun] != nullptr ? [UNIVERSE sun]->willGoNova() : false))
 	{
 		penaltyForUnauthorizedDocking();
@@ -7431,14 +7433,14 @@ void PlayerEntity::docked()
 	{
 		// TODO: A proper system to allow some OXP stations to have a
 		// galcop presence for fines. - CIM 18/11/2012
-		if (being_fined && !([UNIVERSE sun] != nullptr ? [UNIVERSE sun]->willGoNova() : false) && ![dockedStation suppressArrivalReports]) getFined();
+		if (being_fined && !([UNIVERSE sun] != nullptr ? [UNIVERSE sun]->willGoNova() : false) && !(dockedStation != nullptr ? dockedStation->suppressArrivalReports() : false)) getFined();
 	}
 
 	// it's time to check the script - can trigger legacy missions
 	if (gui_screen != GUI_SCREEN_MISSION)  checkScript(); // a scripted pilot could have created a mission screen.
 	
 	OOJSStartTimeLimiterWithTimeLimit(kOOJSLongTimeLimit);
-	doScriptEvent(OOJSID("shipDockedWithStation"), dockedStation);
+	doScriptEvent(OOJSID("shipDockedWithStation"), oo::ToObjC(dockedStation));
 	OOJSStopTimeLimiter();
 	if (status() == STATUS_LAUNCHING) return;
 
@@ -7474,11 +7476,11 @@ void PlayerEntity::leaveDock(::StationEntity *station)
 		doWorldEventUntilMissionScreen(OOJSID("missionScreenEnded"));
 	}
 	
-	if ([station marketMonitored])
+	if ((station != nullptr ? station->getMarketMonitored() : false))
 	{
 		// 'leaving with those guns were you sir?'
 		OOCreditsQuantity oldbounty = getBounty();
-		markAsOffender([station legalStatusOfManifest:shipCommodityData.get() export:YES], kOOLegalStatusReasonIllegalExports);
+		markAsOffender((station != nullptr ? station->legalStatusOfManifest(shipCommodityData.get(), YES) : 0), kOOLegalStatusReasonIllegalExports);
 		if (getBounty() > oldbounty)
 		{
 			addRoleToPlayer("trader-smuggler");
@@ -7498,8 +7500,8 @@ void PlayerEntity::leaveDock(::StationEntity *station)
 	// CIM - 3.2.2012
 	
 	// clear the way
-	[station autoDockShipsOnApproach];
-	[station clearDockingCorridor];
+	if (station != nullptr)  station->autoDockShipsOnApproach();
+	if (station != nullptr)  station->clearDockingCorridor();
 
 //	[self setAlertFlag:ALERT_FLAG_DOCKED to:NO];
 	clearAlertFlags();
@@ -7535,7 +7537,7 @@ void PlayerEntity::leaveDock(::StationEntity *station)
 	ship_clock_adjust += 600.0;			// 10 minutes to leave dock
 	velocity = kZeroVector; // just in case
 
-	[station launchShip:oo::ToObjC(this)];
+	if (station != nullptr)  station->launchShip(oo::ToObjC(this));
 
 	launchRoll = -flightRoll; // save the station's spin. (inverted for player)
 	flightRoll = 0; // don't spin when showing the break pattern.
@@ -7612,7 +7614,7 @@ void PlayerEntity::witchEnd()
 
 	[UNIVERSE setUpUniverseFromWitchspace];
 	if ([UNIVERSE planet] != nullptr)  [UNIVERSE planet]->update(2.34375 * market_rnd);	// from 0..10 minutes
-	[[UNIVERSE station] update: 2.34375 * market_rnd];	// from 0..10 minutes
+	if ([UNIVERSE station] != nullptr)  [UNIVERSE station]->update(2.34375 * market_rnd);	// from 0..10 minutes
 	
 	chart_centre_coordinates = galaxy_coordinates;
 	target_chart_centre = chart_centre_coordinates;
@@ -8177,7 +8179,7 @@ void PlayerEntity::setGuiToStatusScreen()
 	systemName = [UNIVERSE inInterstellarSpace] ? OO_DESC("interstellar-space") : [UNIVERSE cxx_getSystemName:system_id];
 	if (isDocked() && dockedStation() != [UNIVERSE station])
 	{
-		systemName = oo::str::format("%s : %s", systemName.value_or("(null)").c_str(), [dockedStation() displayName].value_or("(null)").c_str());
+		systemName = oo::str::format("%s : %s", systemName.value_or("(null)").c_str(), (dockedStation() != nullptr ? dockedStation()->getDisplayName() : std::optional<std::string>()).value_or("(null)").c_str());
 	}
 
 	targetSystemName =	[UNIVERSE cxx_getSystemName:target_system_id];
@@ -9368,7 +9370,7 @@ void PlayerEntity::setGuiToLoadSaveScreen()
 	if (status() == STATUS_DOCKED)
 	{
 		if (dockedStation() == nil)  setDockedAtMainStation();
-		canLoadOrSave = ((dockedStation() == [UNIVERSE station] || [dockedStation() allowsSaving]) && !(([UNIVERSE sun] != nullptr ? [UNIVERSE sun]->goneNova() : false) || ([UNIVERSE sun] != nullptr ? [UNIVERSE sun]->willGoNova() : false)));
+		canLoadOrSave = ((dockedStation() == [UNIVERSE station] || (dockedStation() != nullptr ? dockedStation()->getAllowsSaving() : false)) && !(([UNIVERSE sun] != nullptr ? [UNIVERSE sun]->goneNova() : false) || ([UNIVERSE sun] != nullptr ? [UNIVERSE sun]->willGoNova() : false)));
 	}
 	
 	BOOL canQuickSave = (canLoadOrSave && [[gameView gameController] cxx_playerFileToLoad].has_value());
@@ -9548,9 +9550,9 @@ void PlayerEntity::setGuiToEquipShipScreen(int skipParam, const std::optional<st
 	::StationEntity *dockedStation = this->dockedStation();
 	if (dockedStation)
 	{
-		priceFactor = [dockedStation equipmentPriceFactor];
-		if ([dockedStation equivalentTechLevel] != NSNotFound)
-			techlevel = [dockedStation equivalentTechLevel];
+		priceFactor = (dockedStation != nullptr ? dockedStation->getEquipmentPriceFactor() : 0.0f);
+		if ((dockedStation != nullptr ? dockedStation->getEquivalentTechLevel() : 0) != NSNotFound)
+			techlevel = (dockedStation != nullptr ? dockedStation->getEquivalentTechLevel() : 0);
 	}
 
 	// build an array of all equipment - and take away that which has been bought (or is not permitted)
@@ -9971,7 +9973,7 @@ void PlayerEntity::setGuiToInterfacesScreen(int skip)
 	}
 	
 	// build an array of available interfaces
-	const auto *interfaces = [dockedStation() cxx_localInterfaces];
+	const auto *interfaces = (dockedStation() != nullptr ? dockedStation()->getLocalInterfaces() : (std::map<std::string, oo::Ref<OOJSInterfaceDefinition>, std::less<>> *)nullptr);
 	std::vector<std::string> interfaceKeys;
 	if (interfaces != nullptr)
 	{
@@ -10083,7 +10085,7 @@ void PlayerEntity::setGuiToInterfacesScreen(int skip)
 		gui->setShowTextCursor(NO);
 
 		const std::string desc = oo::str::formatRuntime(OO_DESC("interfaces-for-ship-@-and-station-@"),
-			{ getDisplayName().value_or("(null)"), [dockedStation() displayName].value_or("(null)") });
+			{ getDisplayName().value_or("(null)"), (dockedStation() != nullptr ? dockedStation()->getDisplayName() : std::optional<std::string>()).value_or("(null)") });
 		gui->setColor(gui->colorFromSetting(cxx_kGuiInterfaceHeadingColor, nil).get(), GUI_ROW_INTERFACES_HEADING);
 		gui->setText(desc, GUI_ROW_INTERFACES_HEADING);
 
@@ -10120,7 +10122,7 @@ void PlayerEntity::showInformationForSelectedInterface()
 	
 	if (interfaceKey.has_value() && !oo::str::hasPrefix(*interfaceKey, "More:"))
 	{
-		::OOJSInterfaceDefinition *definition = InterfaceForKey(oo::ToCxx(dockedStation()), interfaceKey);
+		::OOJSInterfaceDefinition *definition = InterfaceForKey(dockedStation(), interfaceKey);
 		if (definition)
 		{
 			gui->addLongText(definition->summary(), GUI_ROW_INTERFACES_DETAIL, GUI_ALIGN_LEFT);
@@ -10149,7 +10151,7 @@ void PlayerEntity::activateSelectedInterface()
 		return;
 	}
 
-	::OOJSInterfaceDefinition *definition = InterfaceForKey(oo::ToCxx(dockedStation()), key);
+	::OOJSInterfaceDefinition *definition = InterfaceForKey(dockedStation(), key);
 	if (definition)
 	{
 		[[UNIVERSE gameView] clearKeys];
@@ -10611,7 +10613,7 @@ bool PlayerEntity::tryBuyingItem(const std::string &eqKey)
 	::StationEntity *dockedStation = this->dockedStation();
 	if (dockedStation)
 	{
-		priceFactor = [dockedStation equipmentPriceFactor];
+		priceFactor = (dockedStation != nullptr ? dockedStation->getEquipmentPriceFactor() : 0.0f);
 	}
 	
 	price *= priceFactor;  // increased prices at some stations
@@ -10783,7 +10785,7 @@ bool PlayerEntity::tryBuyingItem(const std::string &eqKey)
 	if ((eqKey == "EQ_RENOVATION"))
 	{
 		OOTechLevelID techLevel = NSNotFound;
-		if (dockedStation != nil)  techLevel = [dockedStation equivalentTechLevel];
+		if (dockedStation != nil)  techLevel = (dockedStation != nullptr ? dockedStation->getEquivalentTechLevel() : 0);
 		if (techLevel == NSNotFound)  techLevel = [UNIVERSE cxx_currentSystemData].get<unsigned int>(std::string(KEY_TECHLEVEL));
 		
 		credits -= price;
@@ -11080,9 +11082,9 @@ OOCargoQuantity PlayerEntity::cargoQuantityOnBoard()
 	::StationEntity *station = dockedStation();
 	if (station == nil)  
 	{
-		if ([primaryTarget() isStation] && [(::StationEntity *)primaryTarget() marketBroadcast])
+		if ([primaryTarget() isStation] && (oo::ToStation(primaryTarget()) != nullptr ? oo::ToStation(primaryTarget())->getMarketBroadcast() : false))
 		{
-			station = primaryTarget();
+			station = oo::ToStation(primaryTarget());
 		}
 		else
 		{
@@ -11094,10 +11096,10 @@ OOCargoQuantity PlayerEntity::cargoQuantityOnBoard()
 			return nil;
 		}
 	}
-	::OOCommodityMarket *localMarket = [station localMarket];
+	::OOCommodityMarket *localMarket = (station != nullptr ? station->getLocalMarket() : (OOCommodityMarket *)nullptr);
 	if (localMarket == nil)
 	{
-		localMarket = [station initialiseLocalMarket];
+		localMarket = (station != nullptr ? station->initialiseLocalMarket() : (OOCommodityMarket *)nullptr);
 	}
 	
 	return localMarket;
@@ -11268,9 +11270,9 @@ std::optional<std::string> PlayerEntity::marketScreenTitle()
 	/* Override normal behaviour if station broadcasts market */
 	if (dockedStation == nil)  
 	{
-		if ([primaryTarget() isStation] && [(::StationEntity *)primaryTarget() marketBroadcast])
+		if ([primaryTarget() isStation] && (oo::ToStation(primaryTarget()) != nullptr ? oo::ToStation(primaryTarget())->getMarketBroadcast() : false))
 		{
-			dockedStation = primaryTarget();
+			dockedStation = oo::ToStation(primaryTarget());
 		}
 	}
 
@@ -11291,7 +11293,7 @@ std::optional<std::string> PlayerEntity::marketScreenTitle()
 	}
 	else
 	{
-		const std::string station = [dockedStation displayName].value_or("");
+		const std::string station = (dockedStation != nullptr ? dockedStation->getDisplayName() : std::optional<std::string>()).value_or("");
 		return ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "station-commodity-market", { { "station", oo::PList(station) } });
 	}
 }
@@ -13198,7 +13200,7 @@ bool PlayerEntity::doWorldEventUntilMissionScreen(ooscript::PropertyId message)
 	auto			scriptEntry = scripts.begin();
 
 	// Check for the presence of report messages first.
-	if (gui_screen != GUI_SCREEN_MISSION && !dockingReport.empty() && isDocked() && ![dockedStation() suppressArrivalReports])
+	if (gui_screen != GUI_SCREEN_MISSION && !dockingReport.empty() && isDocked() && !(dockedStation() != nullptr ? dockedStation()->suppressArrivalReports() : false))
 	{
 		setGuiToDockingReportScreen();	// go here instead!
 		[UNIVERSE messageGUI]->clear();
@@ -13455,7 +13457,7 @@ void PlayerEntity::setDockingClearanceStatus(OODockingClearanceStatus newValue)
 	{
 		if ([primaryTarget() isStation])
 		{
-			targetDockStation = primaryTarget();
+			targetDockStation = oo::ToStation(primaryTarget());
 		}
 		else
 		{

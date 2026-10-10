@@ -1418,7 +1418,7 @@ void Universe::setUpUniverseFromStation()
 		NSPoint			coords = (player != nullptr ? player->getGalaxy_coordinates() : NSPoint{});
 		// check the nearest system
 		OOSystemID sys = [self findSystemNumberAtCoords:coords withGalaxy:(player != nullptr ? player->galaxyNumber() : OOGalaxyID{}) includingHidden:YES];
-		BOOL interstel =[dockedStation interstellarUndockingAllowed];// && (s_seed.d != coords.x || s_seed.b != coords.y); - Nikos 20110623: Do we really need the commented out check?
+		BOOL interstel =(dockedStation != nullptr ? dockedStation->getInterstellarUndockingAllowed() : false);// && (s_seed.d != coords.x || s_seed.b != coords.y); - Nikos 20110623: Do we really need the commented out check?
 		if (player != nullptr)  player->setPreviousSystemID((player != nullptr ? player->currentSystemID() : 0));
 
 		// remove everything except the player and the docked station
@@ -1431,10 +1431,10 @@ void Universe::setUpUniverseFromStation()
 			while (entities.size() > 2)
 			{
 				::Entity *ent = entities[index].get();
-				if ((ent != oo::ToObjC(player))&&(ent != dockedStation))
+				if ((ent != oo::ToObjC(player))&&(ent != oo::ToObjC(dockedStation)))
 				{
 					if (ent->_cxxEntity->isStation)  // clear out queues
-						[(::StationEntity *)ent clear];
+						if (oo::ToStation(ent) != nullptr)  oo::ToStation(ent)->clear();
 					[self removeEntity:ent];
 				}
 				else
@@ -1454,7 +1454,7 @@ void Universe::setUpUniverseFromStation()
 			[self populateNormalSpace];
 			if (dockedStation)
 			{
-				if ([dockedStation maxFlightSpeed] > 0) // we are a carrier: exit near the WitchspaceExitPosition
+				if ((dockedStation != nullptr ? dockedStation->getMaxFlightSpeed() : 0.0f) > 0) // we are a carrier: exit near the WitchspaceExitPosition
 				{
 					float		d1 = [self randomDistanceWithinScanner];
 					HPVector		pos = [UNIVERSE getWitchspaceExitPosition];		// no need to reset the PRNG
@@ -1470,7 +1470,7 @@ void Universe::setUpUniverseFromStation()
 					pos.y += v1.y * d1;
 					pos.z += v1.z * d1;
 					
-					[dockedStation setPosition: pos];
+					if (dockedStation != nullptr)  dockedStation->setPosition(pos);
 				}
 				[self setWitchspaceBreakPattern:YES];
 				if (player != nullptr)  player->setJumpCause("carried");
@@ -1712,6 +1712,7 @@ void Universe::setUpSpace()
 	::Universe *self = oo::ToObjC(this);
 	::Entity				*thing;
 //	ShipEntity			*nav_buoy;
+	::ShipEntity			*stationObject;	// the station's object (the ship's facade since bead oo-9ht.175), retained
 	::StationEntity		*a_station;
 	::OOSunEntity			*a_sun;
 	::OOPlanetEntity		*a_planet;
@@ -1962,7 +1963,7 @@ void Universe::setUpSpace()
 #endif
 
 	// a missing role (the unset default) gives no ship, as a nil role did
-	a_station = stationDesc.has_value() ? (::StationEntity *)[self cxx_newShipWithRole:*stationDesc] : nil;			// retain count = 1
+	stationObject = stationDesc.has_value() ? [self cxx_newShipWithRole:*stationDesc] : nil;			// retain count = 1
 	
 	/*	Sanity check: ensure that only stations are generated here. This is an
 		attempt to fix exceptions of the form:
@@ -1974,54 +1975,55 @@ void Universe::setUpSpace()
 		OXP sets a system's station role to a role used by non-stations.
 		-- Ahruman 20080303
 	*/
-	if (![a_station isStation] || ![a_station validForAddToUniverse])
+	if (![stationObject isStation] || ![stationObject validForAddToUniverse])
 	{
-		if (a_station == nil)
+		if (stationObject == nil)
 		{
 			// Should have had a more specific error already, just specify context
 			OO_LOG("universe.setup.badStation", "Failed to set up a ship for role \"{}\" as system station, trying again with \"{}\".", stationDesc.value_or("(null)"), defaultStationDesc.value_or("(null)"));
 		}
 		else
 		{
-			OO_LOG("universe.setup.badStation", "***** ERROR: Attempt to use non-station ship of type \"{}\" for role \"{}\" as system station, trying again with \"{}\".", [a_station cxx_name].value_or("(null)"), stationDesc.value_or("(null)"), defaultStationDesc.value_or("(null)"));
+			OO_LOG("universe.setup.badStation", "***** ERROR: Attempt to use non-station ship of type \"{}\" for role \"{}\" as system station, trying again with \"{}\".", [stationObject cxx_name].value_or("(null)"), stationDesc.value_or("(null)"), defaultStationDesc.value_or("(null)"));
 		}
-		[a_station release];
+		[stationObject release];
 		stationDesc = defaultStationDesc;
-		a_station = stationDesc.has_value() ? (::StationEntity *)[self cxx_newShipWithRole:*stationDesc] : nil;		 // retain count = 1
+		stationObject = stationDesc.has_value() ? [self cxx_newShipWithRole:*stationDesc] : nil;		 // retain count = 1
 		
-		if (![a_station isStation] || ![a_station validForAddToUniverse])
+		if (![stationObject isStation] || ![stationObject validForAddToUniverse])
 		{
-			if (a_station == nil)
+			if (stationObject == nil)
 			{
 				OO_LOG("universe.setup.badStation", "On retry, failed to set up a ship for role \"{}\" as system station. Trying to fall back to built-in Coriolis station.", stationDesc.value_or("(null)"));
 			}
 			else
 			{
-				OO_LOG("universe.setup.badStation", "***** ERROR: On retry, rolled non-station ship of type \"{}\" for role \"{}\". Non-station ships should not have this role! Trying to fall back to built-in Coriolis station.", [a_station cxx_name].value_or("(null)"), stationDesc.value_or("(null)"));
+				OO_LOG("universe.setup.badStation", "***** ERROR: On retry, rolled non-station ship of type \"{}\" for role \"{}\". Non-station ships should not have this role! Trying to fall back to built-in Coriolis station.", [stationObject cxx_name].value_or("(null)"), stationDesc.value_or("(null)"));
 			}
-			[a_station release];
+			[stationObject release];
 
-			a_station = (::StationEntity *)[self cxx_newShipWithName:"coriolis-station"];
-			if (![a_station isStation] || ![a_station validForAddToUniverse])
+			stationObject = [self cxx_newShipWithName:"coriolis-station"];
+			if (![stationObject isStation] || ![stationObject validForAddToUniverse])
 			{
 				OO_LOG("universe.setup.badStation", "{}", "Could not create built-in Coriolis station! Generating a stationless system.");
-				DESTROY(a_station);
+				DESTROY(stationObject);
 			}
 		}
 	}
+	a_station = oo::ToStation(stationObject);
 	
 	if (a_station != nil)
 	{
-		[a_station setOrientation:quaternion_rotation_between(vf,make_vector(0.0,0.0,1.0))];
-		[a_station setPosition: stationPos];
-		[a_station setPitch: 0.0];
-		[a_station setScanClass: CLASS_STATION];
+		if (a_station != nullptr)  a_station->setOrientation(quaternion_rotation_between(vf,make_vector(0.0,0.0,1.0)));
+		if (a_station != nullptr)  a_station->setPosition(stationPos);
+		if (a_station != nullptr)  a_station->setPitch(0.0);
+		if (a_station != nullptr)  a_station->setScanClass(CLASS_STATION);
 		//[a_station setPlanet:[self planet]];	// done inside addEntity.
-		[a_station setEquivalentTechLevel:techlevel];
-		[self addEntity:a_station];		// STATUS_IN_FLIGHT, AI state GLOBAL
-		[a_station setStatus:STATUS_ACTIVE];	// For backward compatibility. Might not be needed.
-		[a_station setAllowsFastDocking:true];	// Main stations always allow fast docking.
-		[a_station cxx_setAllegiance:"galcop"]; // Main station is galcop controlled
+		if (a_station != nullptr)  a_station->setEquivalentTechLevel(techlevel);
+		[self addEntity:stationObject];		// STATUS_IN_FLIGHT, AI state GLOBAL
+		if (a_station != nullptr)  a_station->setStatus(STATUS_ACTIVE);	// For backward compatibility. Might not be needed.
+		if (a_station != nullptr)  a_station->setAllowsFastDocking(true);	// Main stations always allow fast docking.
+		if (a_station != nullptr)  a_station->setAllegiance("galcop"); // Main station is galcop controlled
 	}
 	OO_DEBUG_POP_PROGRESS();
 	
@@ -2037,7 +2039,7 @@ void Universe::setUpSpace()
 	OO_DEBUG_POP_PROGRESS();
 
 	[oo::ToObjC(a_sun) release];
-	[a_station release];
+	[stationObject release];
 }
 
 
@@ -2066,7 +2068,7 @@ void Universe::populateNormalSpace()
 		
 	 	[self removeEntity:oo::ToObjC(cachedPlanet)];	// and Poof! it's gone
 	 	cachedPlanet = nil;	
-	 	[self removeEntity:cachedStation];	// also remove main station
+	 	[self removeEntity:oo::ToObjC(cachedStation)];	// also remove main station
 	 	cachedStation = nil;	
 	}
 
@@ -2289,7 +2291,7 @@ HPVector Universe::locationByCode(const std::string &code, ::OOSunEntity *sun, :
 		{
 			do 
 			{
-				result = OORandomPositionInShell([[self station] position],[[self station] collisionRadius]*1.2,SCANNER_MAX_RANGE*2.0);
+				result = OORandomPositionInShell(([self station] != nullptr ? [self station]->getPosition() : HPVector{}),([self station] != nullptr ? [self station]->collisionRadius() : 0.0f)*1.2,SCANNER_MAX_RANGE*2.0);
 			} while(HPdistance2(result,(planet != nullptr ? planet->getPosition() : HPVector{}))<(planet != nullptr ? planet->radius() : 0.0)*(planet != nullptr ? planet->radius() : 0.0)*1.5);
 			// loop to make sure not generated too close to the planet's surface
 		}
@@ -2521,7 +2523,7 @@ void Universe::addShipWithRole(const std::string &desc, double route_fraction)
 	::Universe *self = oo::ToObjC(this);
 	// adds a ship within scanner range of a point on route 1
 	
-	::Entity	*theStation = [self station];
+	::Entity	*theStation = oo::ToObjC([self station]);
 	if (!theStation)
 	{
 		return;
@@ -3373,8 +3375,8 @@ std::vector<oo::ObjCRef<::ShipEntity *>> Universe::addShipsToRoute(const std::st
 	{
 		point0 = [self getWitchspaceExitPosition];
 		if ([self station] == nil)  return {};
-		point1 = [[self station] position];
-		radius = [[self station] collisionRadius];
+		point1 = ([self station] != nullptr ? [self station]->getPosition() : HPVector{});
+		radius = ([self station] != nullptr ? [self station]->collisionRadius() : 0.0f);
 	}
 	else return {};	// no route specifier? We shouldn't be here!
 	
@@ -3514,7 +3516,7 @@ void Universe::setUpBreakPattern(HPVector pos, Quaternion q, bool forDocking)
 	
 	if (forDocking)
 	{
-		const oo::PList info = [(PLAYER != nullptr ? PLAYER->dockedStation() : (::StationEntity *)nullptr) cxx_shipInfoDictionary];
+		const oo::PList info = ((PLAYER != nullptr ? PLAYER->dockedStation() : (::StationEntity *)nullptr) != nullptr ? (PLAYER != nullptr ? PLAYER->dockedStation() : (::StationEntity *)nullptr)->shipInfoDictionary() : oo::PList());
 		sides = info.get<unsigned int>("tunnel_corners", 4);
 		startAngle = info.get<float>("tunnel_start_angle", 45.0f);
 		aspectRatio = info.get<float>("tunnel_aspect_ratio", 2.67f);
@@ -3536,7 +3538,7 @@ void Universe::setUpBreakPattern(HPVector pos, Quaternion q, bool forDocking)
 		
 		// FIXME: better would be to have break pattern timing not depend on
 		// these ring objects existing in the first place. - CIM
-		if (forDocking && ![(PLAYER != nullptr ? PLAYER->dockedStation() : (::StationEntity *)nullptr) hasBreakPattern])
+		if (forDocking && !((PLAYER != nullptr ? PLAYER->dockedStation() : (::StationEntity *)nullptr) != nullptr ? (PLAYER != nullptr ? PLAYER->dockedStation() : (::StationEntity *)nullptr)->getHasBreakPattern() : false))
 		{
 			ring->isImmuneToBreakPatternHide = NO;
 		}
@@ -3578,14 +3580,14 @@ void Universe::setDockingClearanceProtocolActive(bool newValue)
 	 * clearance requirements seems unlikely to work entirely
 	 * correctly. To be fixed. */
 						   
-	for (const oo::ObjCRef<::StationEntity *> &entry : allStations)
+	for (const oo::ObjCRef<::ShipEntity *> &entry : allStations)
 	{
-		station = entry.get();
-		const std::optional<std::string>	stationKey = [registry cxx_randomShipKeyForRole:[station cxx_primaryRole].value_or("")];
+		station = oo::ToStation(entry.get());
+		const std::optional<std::string>	stationKey = [registry cxx_randomShipKeyForRole:(station != nullptr ? station->getPrimaryRole() : std::optional<std::string>()).value_or("")];
 		const oo::PList	stationInfo = stationKey.has_value() ? [registry cxx_shipInfoForKey:*stationKey] : oo::PList();
 		if (stationInfo.find("requires_docking_clearance") == nullptr)
 		{
-			[station setRequiresDockingClearance:!!newValue];
+			if (station != nullptr)  station->setRequiresDockingClearance(!!newValue);
 		}
 	}
 	
@@ -4050,8 +4052,8 @@ void Universe::selectIntro2Next()
 	::Universe *self = oo::ToObjC(this);
 	if (cachedSun != nil && cachedStation == nil)
 	{
-		cachedStation = [self findOneEntityMatchingPredicate:IsCandidateMainStationPredicate
-												   parameter:nil];
+		cachedStation = oo::ToStation([self findOneEntityMatchingPredicate:IsCandidateMainStationPredicate
+												   parameter:nil]);
 	}
 	return cachedStation;
 }
@@ -4067,14 +4069,14 @@ void Universe::selectIntro2Next()
 
 	float range = 1000000; // allow a little variation in position
 
-	const std::vector<oo::ObjCRef<::StationEntity *>> stations = [self cxx_stations];
+	const std::vector<oo::ObjCRef<::ShipEntity *>> stations = [self cxx_stations];
 	::StationEntity *station = nil;
-	for (const oo::ObjCRef<::StationEntity *> &entry : stations)
+	for (const oo::ObjCRef<::ShipEntity *> &entry : stations)
 	{
-		station = entry.get();
-		if (HPdistance2(position,[station position]) < range)
+		station = oo::ToStation(entry.get());
+		if (HPdistance2(position,(station != nullptr ? station->getPosition() : HPVector{})) < range)
 		{
-			if ([station cxx_primaryRole].value_or("") == role)
+			if ((station != nullptr ? station->getPrimaryRole() : std::optional<std::string>()).value_or("") == role)
 			{
 				return station;
 			}
@@ -4089,7 +4091,7 @@ void Universe::selectIntro2Next()
 	::Universe *self = oo::ToObjC(this);
 	// In interstellar space we select a random friendly carrier as mainStation.
 	// No caching: friendly status can change!
-	return [self findOneEntityMatchingPredicate:IsFriendlyStationPredicate parameter:ship];
+	return oo::ToStation([self findOneEntityMatchingPredicate:IsFriendlyStationPredicate parameter:ship]);
 }
 
 
@@ -4120,7 +4122,7 @@ std::vector<oo::ObjCRef<::Entity *>> Universe::planets()
 }
 
 
-std::vector<oo::ObjCRef<::StationEntity *>> Universe::stations()
+std::vector<oo::ObjCRef<::ShipEntity *>> Universe::stations()
 {
 	return allStations;
 }
@@ -4157,7 +4159,7 @@ void Universe::unMagicMainStation()
 	if (playerStatus == STATUS_START_GAME)  return;
 	
 	::StationEntity *theStation = [self station];
-	if (theStation != nil)  theStation->_cxxEntity->isExplicitlyNotMainStation = YES;
+	if (theStation != nil)  theStation->isExplicitlyNotMainStation = YES;
 	cachedStation = nil;
 }
 
@@ -4540,16 +4542,12 @@ std::optional<std::string> Universe::randomShipKeyForRoleRespectingConditions(co
 	shipDict = [[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:shipKey];
 	if (shipDict.isNull())  return nil;
 	
-	volatile Class shipClass = nil;
+	volatile BOOL makeStation = NO;	// a station is made in C++ since bead oo-9ht.175 (it was its class)
 	volatile BOOL makeProxy = NO;	// a proxy is made in C++ since bead oo-9ht.183 (it was its class)
-	if (isSubentity)
+	if (!isSubentity)
 	{
-		shipClass = [::ShipEntity class];
-	}
-	else
-	{
-		shipClass = [self cxx_shipClassForShipDictionary:shipDict];
-		if (usePlayerProxy && shipClass == [::ShipEntity class])
+		makeStation = [self cxx_isStationShipDictionary:shipDict];
+		if (usePlayerProxy && !makeStation)
 		{
 			makeProxy = YES;
 		}
@@ -4566,9 +4564,13 @@ std::optional<std::string> Universe::randomShipKeyForRoleRespectingConditions(co
 		{
 			ship = ::ProxyPlayerEntity::newProxyObject(shipKey, shipDict);
 		}
+		else if (makeStation)
+		{
+			ship = ::StationEntity::newStationObject(shipKey, shipDict);
+		}
 		else
 		{
-			ship = [[shipClass alloc] cxx_initWithKey:shipKey definition:shipDict];
+			ship = [[::ShipEntity alloc] cxx_initWithKey:shipKey definition:shipDict];
 		}
 	}
 	@catch (::OOException *exception)
@@ -4635,11 +4637,11 @@ std::optional<std::string> Universe::randomShipKeyForRoleRespectingConditions(co
 }
 
 
-Class Universe::shipClassForShipDictionary(const oo::PList &dict)
+bool Universe::isStationShipDictionary(const oo::PList &dict)
 {
 	OOJS_PROFILE_ENTER
 
-	if (dict.isNull())  return Nil;
+	if (dict.isNull())  return NO;
 
 	BOOL		isStation = NO;
 	std::optional<std::string>	shipRoles = OptionalStringIn(dict, "roles");
@@ -4655,8 +4657,7 @@ Class Universe::shipClassForShipDictionary(const oo::PList &dict)
 	isStation = dict.get<bool>("is_carrier", isStation);
 
 
-	if (isStation)  return [::StationEntity class];
-	return [::ShipEntity class];
+	return isStation;
 
 	OOJS_PROFILE_EXIT
 }
@@ -5923,7 +5924,7 @@ bool Universe::addEntity(::Entity *entity)
 				if ([se isStation])
 				{
 					// check if it is a proper rotating station (ie. roles contains the word "station")
-					if ([(::StationEntity*)se isRotatingStation])
+					if ((oo::ToStation(se) != nullptr ? oo::ToStation(se)->isRotatingStation() : false))
 					{
 						double stationRoll = 0.0;
 						// check for station_roll override
@@ -5945,7 +5946,7 @@ bool Universe::addEntity(::Entity *entity)
 					{
 						[se setRoll: 0.0];
 					}
-					[(::StationEntity *)se setPlanet:[self planet]];
+					if (oo::ToStation(se) != nullptr)  oo::ToStation(se)->setPlanet([self planet]);
 					if ([se maxFlightSpeed] > 0) se->_cxxEntity->isExplicitlyNotMainStation = YES; // we never want carriers to become main stations.
 				}
 				// stations used to have STATUS_ACTIVE, they're all STATUS_IN_FLIGHT now.
@@ -6025,7 +6026,7 @@ bool Universe::addEntity(::Entity *entity)
 			[[se getAI] cxx_setState:"GLOBAL"];
 			if ([entity isStation])
 			{
-				AddIfAbsent(allStations, (::StationEntity *)entity);
+				AddIfAbsent(allStations, (::ShipEntity *)entity);
 			}
 		}
 		
@@ -6048,7 +6049,7 @@ bool Universe::removeEntity(::Entity *entity)
 		if ([entity isStation])
 		{
 			std::erase(allStations, entity);
-			if ((PLAYER != nullptr ? PLAYER->getTargetDockStation() : (::StationEntity *)nullptr) == entity)
+			if (oo::ToObjC((PLAYER != nullptr ? PLAYER->getTargetDockStation() : (::StationEntity *)nullptr)) == entity)
 			{
 				if (PLAYER != nullptr)  PLAYER->setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_NONE);
 			}
@@ -6092,7 +6093,7 @@ void Universe::removeAllEntitiesExceptPlayer()
 	{
 		::Entity* ent = entities[1].get();
 		if (ent->_cxxEntity->isStation)  // clear out queues
-			[(::StationEntity *)ent clear];
+			if (oo::ToStation(ent) != nullptr)  oo::ToStation(ent)->clear();
 		if (EXPECT(![ent isVisualEffect]))
 		{
 			[self removeEntity:ent];
@@ -8729,11 +8730,11 @@ void Universe::setSystemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum, const st
 		if (key == std::string(KEY_TECHLEVEL))
 		{	
 			if([self station]){
-				[[self station] setEquivalentTechLevel:ScriptValueInt(object)];
+				if ([self station] != nullptr)  [self station]->setEquivalentTechLevel(ScriptValueInt(object));
 				const oo::PList shipyard = [self cxx_shipsForSaleForSystem:systemID
 								withTL:ScriptValueInt(object) atTime:(PLAYER != nullptr ? PLAYER->clockTime() : 0.0)];
 				const oo::PList::Array *entries = shipyard.getIf<oo::PList::Array>();
-				[[self station] cxx_setLocalShipyard:entries != nullptr ? *entries : oo::PList::Array()];
+				if ([self station] != nullptr)  [self station]->setLocalShipyard(entries != nullptr ? *entries : oo::PList::Array());
 			}
 		}
 		else if (key == "sun_color" || key == "star_count_multiplier" ||
@@ -9543,17 +9544,17 @@ void Universe::loadStationMarkets(const oo::PList &marketData)
 	for (const oo::PList &savedMarket : *savedMarkets)
 	{
 		HPVector pos = HPVectorIn(savedMarket, "position", kZeroHPVector);
-		for (const oo::ObjCRef<::StationEntity *> &entry : [self cxx_stations])	// a snapshot
+		for (const oo::ObjCRef<::ShipEntity *> &entry : [self cxx_stations])	// a snapshot
 		{
-			::StationEntity *station = entry.get();
+			::StationEntity *station = oo::ToStation(entry.get());
 			// must be deterministic and secondary
-			if ([station allowsSaving] && station != [UNIVERSE station])
+			if ((station != nullptr ? station->getAllowsSaving() : false) && station != [UNIVERSE station])
 			{
 				// allow a km of drift just in case
-				if (HPdistance2(pos,[station position]) < 1000000)
+				if (HPdistance2(pos,(station != nullptr ? station->getPosition() : HPVector{})) < 1000000)
 				{
 					const oo::PList *market = savedMarket.get<oo::PList::Array>("market");
-					[station cxx_setLocalMarket:(market != nullptr) ? *market : oo::PList()];
+					if (station != nullptr)  station->setLocalMarket((market != nullptr) ? *market : oo::PList());
 					break;
 				}
 			}
@@ -9573,16 +9574,16 @@ oo::PList Universe::getStationMarkets()
 
 	::OOCommodityMarket *stationMarket = nil;
 
-	for (const oo::ObjCRef<::StationEntity *> &entry : [self cxx_stations])	// a snapshot
+	for (const oo::ObjCRef<::ShipEntity *> &entry : [self cxx_stations])	// a snapshot
 	{
-		::StationEntity *station = entry.get();
+		::StationEntity *station = oo::ToStation(entry.get());
 		// must be deterministic and secondary
-		if ([station allowsSaving] && station != [UNIVERSE station])
+		if ((station != nullptr ? station->getAllowsSaving() : false) && station != [UNIVERSE station])
 		{
-			stationMarket = [station localMarket];
+			stationMarket = (station != nullptr ? station->getLocalMarket() : (OOCommodityMarket *)nullptr);
 			if (stationMarket != nil)
 			{
-				const HPVector position = [station position];
+				const HPVector position = (station != nullptr ? station->getPosition() : HPVector{});
 				markets.push_back(oo::PList(oo::PList::Dict{
 					{ "market", stationMarket->saveStationAmounts() },
 					{ "position", oo::PList(oo::PList::Array{ oo::PList((double)position.x), oo::PList((double)position.y), oo::PList((double)position.z) }) } }));
@@ -11043,7 +11044,7 @@ bool Universe::reinitAndShowDemo(bool showDemo)
 	[self setUpInitialUniverse];
 	autoSaveNow = NO;	// don't autosave immediately after restarting a game
 	
-	[[self station] initialiseLocalMarket];
+	if ([self station] != nullptr)  [self station]->initialiseLocalMarket();
 	
 	if(showDemo)
 	{
@@ -11115,7 +11116,7 @@ void Universe::setUpInitialUniverse()
 			  [self cxx_currentSystemData].get<bool>("stations_require_docking_clearance", YES)];
 
 	[self enterGUIViewModeWithMouseInteraction:NO];
-	if (player != nullptr)  player->setPosition([[self station] position]);
+	if (player != nullptr)  player->setPosition(([self station] != nullptr ? [self station]->getPosition() : HPVector{}));
 	if (player != nullptr)  player->setOrientation(kIdentityQuaternion);
 }
 

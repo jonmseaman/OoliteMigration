@@ -154,7 +154,7 @@ void OOJSPlayerShipUniverseMessageGUISetTextCommsColor(OOColor *color);
 void OOJSPlayerShipPlayerLaunchFromStation(PlayerEntity *player);
 void OOJSPlayerShipPlayerRemoveAllCargo(PlayerEntity *player);
 void OOJSPlayerShipPlayerUseSpecialCargo(PlayerEntity *player, const std::string &descriptionString);
-Class OOJSPlayerShipStationEntityClass();
+Class OOJSPlayerShipShipEntityClass();	// a station's object's class (the ship's facade since bead oo-9ht.175)
 bool OOJSPlayerShipPlayerEngageAutopilotToStation(PlayerEntity *player, StationEntity *stationForDocking);
 void OOJSPlayerShipPlayerDisengageAutopilot(PlayerEntity *player);
 void OOJSPlayerShipPlayerRequestDockingClearance(PlayerEntity *player, StationEntity *stationForDocking);

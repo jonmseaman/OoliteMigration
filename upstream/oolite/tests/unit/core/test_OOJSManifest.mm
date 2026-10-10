@@ -29,7 +29,7 @@
 
 // MARK: The classes, as far as the binding and the commodities see them ---------------------------
 
-@class StationEntity;
+class StationEntity;
 
 /*	The player: its cargo by good, its special cargo, its list for scripts and its manifest market.
 	Asking for the quantity of "furs" raises, and of "gems" while _throwCxx is set throws a C++
@@ -70,8 +70,17 @@ public:
 + (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName mergeMode:(int)mergeMode cache:(BOOL)useCache;
 @end
 
-@interface StationEntity: OOObject
-@end
+// A station: C++ since bead oo-9ht.175 deleted the Objective-C station this stood in for; the
+// members the commodities call, declared as StationEntity.h declares them (the test imports no
+// game header that defines the class). No case makes a station: link stubs.
+class StationEntity
+{
+public:
+	oo::PList getMarketDefinition();
+	std::optional<std::string> getMarketScriptName();
+	OOCargoQuantity getMarketCapacity();
+	bool getMarketMonitored();
+};
 
 
 #import "OOJSManifest.h"
@@ -156,8 +165,16 @@ std::optional<std::string> PlayerEntity::getSpecialCargo()  { return _specialCar
 @end
 
 
-@implementation StationEntity
-@end
+oo::PList StationEntity::getMarketDefinition()					{ std::abort(); }
+std::optional<std::string> StationEntity::getMarketScriptName()	{ std::abort(); }
+OOCargoQuantity StationEntity::getMarketCapacity()				{ std::abort(); }
+bool StationEntity::getMarketMonitored()						{ std::abort(); }
+
+// Link stub: a station's Objective-C object, which only a commodity script for a station is given.
+@class Entity;
+namespace cxx { class Entity; }
+namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
+::Entity *oo::ToObjC(cxx::Entity *)	{ std::abort(); }
 
 
 // The expander: "<string>".

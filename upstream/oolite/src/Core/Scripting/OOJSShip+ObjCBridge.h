@@ -62,7 +62,7 @@ void OOJSShipPlayerSetScriptTarget(PlayerEntity *player, ShipEntity *ship);
 void OOJSShipPlayerRunUnsanitizedScriptActions(PlayerEntity *player, const oo::PList &actions, bool allowAIMethods, const std::optional<std::string> &contextName, ShipEntity *target);
 
 // The universe's main station, as RemoveOrExplodeShip() checks for it (UNIVERSE).
-StationEntity *OOJSShipUniverseStation();
+::ShipEntity *OOJSShipUniverseStation();	// the main station's object (the ship's facade since bead oo-9ht.175)
 void OOJSShipUniverseUnMagicMainStation();
 
 // The ship's -dumpCargo, sent after delay (ShipDumpCargo(): an NPC's queued canisters).
@@ -74,7 +74,7 @@ bool OOJSShipPlayerChangePassengerBerths(PlayerEntity *player, int addRemove);
 void OOJSShipPlayerAdjustTradeInFactorBy(PlayerEntity *player, int value);
 
 // The universe's stations and commodities (ShipFindNearestStation(), ShipSetCargo()).
-std::vector<oo::ObjCRef<StationEntity *>> OOJSShipUniverseStations();
+std::vector<oo::ObjCRef<::ShipEntity *>> OOJSShipUniverseStations();
 OOCommodities *OOJSShipUniverseCommodities();
 
 // The player's status (ShipEnterWormhole(): only while it enters witchspace) (PLAYER).
