@@ -260,7 +260,7 @@ void cxx::MyOpenGLView::pollControls()
 			case SDL_EVENT_GAMEPAD_BUTTON_UP:
 			case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
 			case SDL_EVENT_JOYSTICK_HAT_MOTION:
-				[(::OOSDLJoystickManager*)[::OOJoystickManager sharedStickHandler] handleSDLEvent: &event];
+				static_cast<OOSDLJoystickManager *>(OOJoystickManager::sharedStickHandler())->handleSDLEvent(&event);	// the registered SDL handler (was a C cast)
 				break;
 
 			case SDL_EVENT_MOUSE_BUTTON_DOWN:

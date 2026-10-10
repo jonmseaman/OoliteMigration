@@ -3323,10 +3323,10 @@ void HeadUpDisplay::drawStickSensitivityIndicator(const oo::PList & /*info*/)
 	NSSize				siz;
 	GLfloat				alpha = overallAlpha;
 	BOOL				mouse = (PLAYER != nullptr ? PLAYER->isMouseControlOn() : false);
-	::OOJoystickManager	*stickHandler = [::OOJoystickManager sharedStickHandler];	// the facade makes the platform's handler (amendment oo-6bux)
+	OOJoystickManager	*stickHandler = OOJoystickManager::sharedStickHandler();	// made by the platform's registered factory (amendment oo-6bux; bead oo-9ht.69)
 	struct CachedInfo	cached;
 	
-	if (stickHandler == nil || !oo::ToCxx(stickHandler)->joystickCount())	// a message to nil answered 0
+	if (stickHandler == nullptr || !stickHandler->joystickCount())	// a message to nil answered 0
 	{
 		return; // no need to draw if no joystick fitted
 	}
@@ -3339,7 +3339,7 @@ void HeadUpDisplay::drawStickSensitivityIndicator(const oo::PList & /*info*/)
 	siz.height = useDefined(cached.height, STATUS_LIGHT_HEIGHT);
 	alpha *= cached.alpha;
 	
-	GLfloat div = oo::ToCxx(stickHandler)->getSensitivity();
+	GLfloat div = stickHandler->getSensitivity();
 	
 	GLColorWithOverallAlpha(black_color, alpha / 4);
 	GLDrawFilledOval(x, y, z1, siz, 10);

@@ -27,17 +27,42 @@ MA 02110-1301, USA.
 #import "OOJoystickManager.h"
 #include "oofnd/Log.hpp"
 #include "oofnd/Defaults.hpp"
-#import "OOCallByName.h"
 
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOAssert.h"
 
 
-// sStickHandlerClass, sSharedStickHandler, +sharedStickHandler and +setStickHandlerClass: are the
-// facade's (OOJoystickManager+ObjCBridge.mm): the shared handler is made from an Objective-C class.
+namespace {
+
+OOJoystickManager::StickHandlerFactory sStickHandlerFactory = nullptr;
+OOJoystickManager *sSharedStickHandler = nullptr;	// never released, as before
+
+}	// namespace
 
 
-namespace cxx {
+// +sharedStickHandler and +setStickHandlerClass: (moved from the deleted facade, bead oo-9ht.69):
+// the class registered is a function that makes the manager; -init's body, init(), runs on the
+// new manager as [[class alloc] init] ran it.
+OOJoystickManager *OOJoystickManager::sharedStickHandler()
+{
+	if (sSharedStickHandler == nullptr)
+	{
+		oo::Ref<OOJoystickManager> handler = (sStickHandlerFactory != nullptr) ? sStickHandlerFactory() : oo::makeRef<OOJoystickManager>();
+		handler->init();
+		sSharedStickHandler = handler.leakRef();
+	}
+	return sSharedStickHandler;
+}
+
+
+bool OOJoystickManager::setStickHandlerFactory(StickHandlerFactory factory)
+{
+	OOCAssert(sStickHandlerFactory == nullptr && sSharedStickHandler == nullptr, "Can't set joystick handler class after joystick handler is initialized.");
+
+	sStickHandlerFactory = factory;
+	return true;
+}
+
 
 void OOJoystickManager::init()
 {
@@ -498,19 +523,17 @@ void OOJoystickManager::clearStickButtonState(int stickButton)
 }
 
 
-void OOJoystickManager::setCallback(SEL selector,
-             id obj,
+void OOJoystickManager::setCallback(StickCallback callback,
            char hwflags)
 {
-	cbObject = obj;
-	cbSelector = selector;
+	cbCallback = std::move(callback);
 	cbHardware = hwflags;
 }
 
 
 void OOJoystickManager::clearCallback()
 {
-	cbObject = nullptr;
+	cbCallback = nullptr;
 	cbHardware = 0;
 }
 
@@ -522,7 +545,7 @@ void OOJoystickManager::decodeAxisEvent(JoyAxisEvent *evt)
 	double axisvalue = (double)evt->value;
 	
 	// First check if there is a callback and...
-	if(cbObject && (cbHardware & HW_AXIS)) 
+	if(cbCallback && (cbHardware & HW_AXIS)) 
 	{
 		// ...then check if axis moved more than AXCBTHRESH - (fix for BUG #17482)
 		if(axisvalue > AXCBTHRESH)
@@ -532,8 +555,9 @@ void OOJoystickManager::decodeAxisEvent(JoyAxisEvent *evt)
 			fnDict[std::string(STICK_NUMBER)] = oo::PList(static_cast<int>(evt->which));
 			fnDict[std::string(STICK_AXBUT)] = oo::PList(static_cast<int>(evt->axis));
 			cbHardware = 0;
-			OOCallByName(cbObject, cbSelector, oo::PList(std::move(fnDict)));	// called by name (ADR-0055 item 5)
-			cbObject = nullptr;
+			const StickCallback callback = cbCallback;	// a copy: the callback may set another
+			callback(oo::PList(std::move(fnDict)));
+			cbCallback = nullptr;
 		}
 		
 		// we are done.
@@ -587,15 +611,16 @@ void OOJoystickManager::decodeButtonEvent(JoyButtonEvent *evt)
 	bool bs = false;
 	
 	// Is there a callback we need to make?
-	if(cbObject && (cbHardware & HW_BUTTON))
+	if(cbCallback && (cbHardware & HW_BUTTON))
 	{
 		oo::PList::Dict fnDict;
 		fnDict[std::string(STICK_ISAXIS)] = oo::PList(static_cast<bool>(false));
 		fnDict[std::string(STICK_NUMBER)] = oo::PList(static_cast<int>(evt->which));
 		fnDict[std::string(STICK_AXBUT)] = oo::PList(static_cast<int>(evt->button));
 		cbHardware = 0;
-		OOCallByName(cbObject, cbSelector, oo::PList(std::move(fnDict)));	// called by name (ADR-0055 item 5)
-		cbObject = nullptr;
+		const StickCallback callback = cbCallback;	// a copy: the callback may set another
+		callback(oo::PList(std::move(fnDict)));
+		cbCallback = nullptr;
 		
 		// we are done.
 		return;
@@ -721,4 +746,3 @@ int16_t OOJoystickManager::getAxisWithStick(NSUInteger /*stickNum*/, NSUInteger 
 	return 0;
 }
 
-}	// namespace cxx

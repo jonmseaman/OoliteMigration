@@ -239,7 +239,7 @@ void PlayerEntity::stickProfileGraphAxisProfile(GLfloat alpha, Vector screenAt, 
 */
 StickProfileScreen::StickProfileScreen()
 {
-	stickHandler = oo::ToCxx(static_cast<OOJoystickManager *>([OOJoystickManager sharedStickHandler]));	// +sharedStickHandler answers id
+	stickHandler = OOJoystickManager::sharedStickHandler();
 	current_axis = AXIS_ROLL;
 	// profiles[][] start null (they were set to nil here).
 }

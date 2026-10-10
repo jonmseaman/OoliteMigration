@@ -293,7 +293,7 @@ void cxx::Universe::initWithGameView(::MyOpenGLView *inGameView)
 	allStations.clear();
 
 	OOCPUInfoInit();
-	[::OOJoystickManager sharedStickHandler];
+	OOJoystickManager::sharedStickHandler();
 
 	// init OpenGL extension manager (must be done before any other threads might use it)
 	OOOpenGLExtensionManager::sharedManager();

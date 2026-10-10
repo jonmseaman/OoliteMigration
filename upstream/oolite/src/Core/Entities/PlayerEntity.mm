@@ -9286,7 +9286,7 @@ void PlayerEntity::setGuiToGameOptionsScreen()
 #endif
 		
 		gui->setText(OO_DESC("gameoptions-joystick-configuration"), GUI_ROW(GAME,STICKMAPPER), GUI_ALIGN_CENTER);
-		OO_SETACCESSCONDITIONFORROW([[::OOJoystickManager sharedStickHandler] joystickCount], GUI_ROW(GAME,STICKMAPPER));
+		OO_SETACCESSCONDITIONFORROW(OOJoystickManager::sharedStickHandler()->joystickCount(), GUI_ROW(GAME,STICKMAPPER));
 
 		gui->setText(OO_DESC("gameoptions-keyboard-configuration"), GUI_ROW(GAME,KEYMAPPER), GUI_ALIGN_CENTER);
 		gui->setKey(std::string(GUI_KEY_OK), GUI_ROW(GAME,KEYMAPPER));

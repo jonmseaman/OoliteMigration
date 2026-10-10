@@ -28,8 +28,6 @@ MA 02110-1301, USA.
 #include "oofnd/String.hpp"
 
 
-namespace cxx {
-
 OOSDLJoystickManager::OOSDLJoystickManager()
 {
 	int i;
@@ -126,7 +124,7 @@ bool OOSDLJoystickManager::handleSDLEvent(SDL_Event *evt)
 			// SDL_JoystickID, which passed a `which >= 0` test (bead oo-9ht.3).
 			if (getJoystickIndexFromId(((SDL_JoyAxisEvent*)evt)->which) >= 0)
 			{
-				[oo::ToObjC(this) decodeAxisEvent: &joyEvt];	// OOJoystickManager's, on the facade
+				decodeAxisEvent(&joyEvt);	// OOJoystickManager's
 				rc=true;
 			}
 			break;
@@ -140,7 +138,7 @@ bool OOSDLJoystickManager::handleSDLEvent(SDL_Event *evt)
 			JoyButtonEvent joyEvt = makeJoyButtonEvent((SDL_JoyButtonEvent*)evt);
 			if (getJoystickIndexFromId(((SDL_JoyButtonEvent*)evt)->which) >= 0)
 			{
-				[oo::ToObjC(this) decodeButtonEvent: &joyEvt];	// OOJoystickManager's, on the facade
+				decodeButtonEvent(&joyEvt);	// OOJoystickManager's
 				rc=true;
 			}
 			break;
@@ -151,7 +149,7 @@ bool OOSDLJoystickManager::handleSDLEvent(SDL_Event *evt)
 			JoyHatEvent joyEvt = makeJoyHatEvent((SDL_JoyHatEvent*)evt);
 			if (getJoystickIndexFromId(((SDL_JoyHatEvent*)evt)->which) >= 0)
 			{
-				[oo::ToObjC(this) decodeHatEvent: &joyEvt];	// OOJoystickManager's, on the facade
+				decodeHatEvent(&joyEvt);	// OOJoystickManager's
 				rc=true;
 			}
 			break;
@@ -186,4 +184,3 @@ int16_t OOSDLJoystickManager::getAxisWithStick(NSUInteger stickNum, NSUInteger a
 	return SDL_GetJoystickAxis(stick[stickNum], axisNum);
 }
 
-}	// namespace cxx
