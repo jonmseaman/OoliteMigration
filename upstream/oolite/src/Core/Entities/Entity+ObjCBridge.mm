@@ -40,7 +40,6 @@ MA 02110-1301, USA.
 #import "OOPlanetEntity.h"
 #import "OOVisualEffectEntity.h"
 #import "ShipEntity.h"
-#import "StationEntity.h"
 #import "EntityOOJavaScriptExtensions.h"
 #import "Universe.h"
 #import "NSObjectOOExtensions.h"
@@ -84,7 +83,6 @@ oo::ObjCPeers &Peers()
 	if (dynamic_cast<cxx::OOEntityWithDrawable *>(entity.get()) != nullptr)  facadeClass = [::OOEntityWithDrawable class];
 	if (dynamic_cast<cxx::OOVisualEffectEntity *>(entity.get()) != nullptr)  facadeClass = [::OOVisualEffectEntity class];
 	if (dynamic_cast<cxx::ShipEntity *>(entity.get()) != nullptr)  facadeClass = [::ShipEntity class];
-	if (dynamic_cast<cxx::StationEntity *>(entity.get()) != nullptr)  facadeClass = [::StationEntity class];
 	return [[(::Entity *)[facadeClass alloc] initWithCxxEntity:entity.get()] autorelease];
 }
 

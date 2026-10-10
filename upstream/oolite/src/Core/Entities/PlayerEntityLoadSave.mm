@@ -781,7 +781,7 @@ bool PlayerEntity::loadPlayerFromFile(const std::string &fileToOpen, bool asNew)
 	
 	if (dockedStation)
 	{
-		position = [dockedStation position];
+		position = (dockedStation != nullptr ? dockedStation->getPosition() : HPVector{});
 		setOrientation(kIdentityQuaternion);
 		v_forward = vector_forward_from_quaternion(orientation);
 		v_right = vector_right_from_quaternion(orientation);
@@ -801,11 +801,11 @@ bool PlayerEntity::loadPlayerFromFile(const std::string &fileToOpen, bool asNew)
 	const oo::PList *market = fileDic.get<oo::PList::Array>("localMarket");
 	if (market != nullptr)
 	{
-		[dockedStation cxx_setLocalMarket:*market];
+		if (dockedStation != nullptr)  dockedStation->setLocalMarket(*market);
 	}
 	else
 	{
-		[dockedStation initialiseLocalMarket];
+		if (dockedStation != nullptr)  dockedStation->initialiseLocalMarket();
 	}
 
 	calculateCurrentCargo();
@@ -836,10 +836,10 @@ bool PlayerEntity::loadPlayerFromFile(const std::string &fileToOpen, bool asNew)
 	HPVector dockedPos = OOHPVectorFromPList(dockedPosNode, kZeroHPVector);
 	const std::string dockedRole = OptionalStringValue(fileDic.find("docked_station_role")).value_or("");
 	::StationEntity *saveStation = [UNIVERSE cxx_stationWithRole:dockedRole andPosition:dockedPos];
-	if (saveStation != nil && [saveStation allowsSaving])
+	if (saveStation != nil && (saveStation != nullptr ? saveStation->getAllowsSaving() : false))
 	{
 		setDockedStation(saveStation);
-		position = [saveStation position];
+		position = (saveStation != nullptr ? saveStation->getPosition() : HPVector{});
 	}
 	// and initialise markets for the secondary stations
 	const oo::PList *stationMarkets = fileDic.get<oo::PList::Array>("station_markets");

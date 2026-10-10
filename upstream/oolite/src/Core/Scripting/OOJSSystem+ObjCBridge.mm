@@ -29,6 +29,7 @@ MA 02110-1301, USA.
 #import "PlayerEntityLegacyScriptEngine.h"
 #import "EntityOOJavaScriptExtensions.h"
 #import "ShipEntity.h"
+#import "StationEntity.h"
 
 
 // --- The player (SystemGetProperty(), SystemSetProperty(), SystemToString(), SystemAddPlanet(),
@@ -53,11 +54,11 @@ bool OOJSSystemEntityIsVisibleToScripts(Entity *entity)	{ return [entity isVisib
 // SystemLocationFromCode(), FindJSVisibleEntities())
 
 bool OOJSSystemUniverseInInterstellarSpace()	{ return [UNIVERSE inInterstellarSpace]; }
-StationEntity *OOJSSystemUniverseStation()	{ return [UNIVERSE station]; }
+::ShipEntity *OOJSSystemUniverseStation()	{ return oo::ToObjC([UNIVERSE station]); }
 OOPlanetEntity *OOJSSystemUniversePlanet()	{ return [UNIVERSE planet]; }
 OOSunEntity *OOJSSystemUniverseSun()	{ return [UNIVERSE sun]; }
 std::vector<oo::ObjCRef<Entity *>> OOJSSystemUniversePlanets()	{ return [UNIVERSE cxx_planets]; }
-std::vector<oo::ObjCRef<StationEntity *>> OOJSSystemUniverseStations()	{ return [UNIVERSE cxx_stations]; }
+std::vector<oo::ObjCRef<::ShipEntity *>> OOJSSystemUniverseStations()	{ return [UNIVERSE cxx_stations]; }
 std::map<std::string, oo::ObjCRef<Entity *>, std::less<>> OOJSSystemUniverseCurrentWaypoints()	{ return [UNIVERSE cxx_currentWaypoints]; }
 std::vector<oo::ObjCRef<::Entity *>> OOJSSystemUniverseWormholes()	{ return [UNIVERSE cxx_wormholes]; }
 

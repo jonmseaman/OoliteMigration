@@ -616,7 +616,7 @@ static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Val
 			return true;
 			
 		case kPlayerShip_dockedStation:
-			result = oo::PListObject(OOJSPlayerShipPlayerDockedStation(player));
+			result = oo::PListObject(oo::ToObjC(OOJSPlayerShipPlayerDockedStation(player)));
 			break;
 			
 		case kPlayerShip_specialCargo:
@@ -1425,7 +1425,7 @@ static bool PlayerShipEngageAutopilotToStation(ooscript::Context context, ooscri
 	PlayerEntity			*player = OOPlayerForScripting();
 	StationEntity			*stationForDocking = nil;
 	
-	if (oojsArgs.count() > 0)  stationForDocking = OOJSNativeObjectOfClassFromJSValue(context, OOJS_ARGV[0], OOJSPlayerShipStationEntityClass());
+	if (oojsArgs.count() > 0)  stationForDocking = oo::ToStation(OOJSNativeObjectOfClassFromJSValue(context, OOJS_ARGV[0], OOJSPlayerShipShipEntityClass()));	// a station's object is the ship's facade (bead oo-9ht.175)
 	if (stationForDocking == nil)
 	{
 		cxx_OOJSReportBadArguments(context, "PlayerShip", "engageAutopilot", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "station");
@@ -1466,7 +1466,7 @@ static bool PlayerShipRequestDockingClearance(ooscript::Context context, ooscrip
 	PlayerEntity			*player = OOPlayerForScripting();
 	StationEntity			*stationForDocking = nil;
 	
-	if (oojsArgs.count() > 0)  stationForDocking = OOJSNativeObjectOfClassFromJSValue(context, OOJS_ARGV[0], OOJSPlayerShipStationEntityClass());
+	if (oojsArgs.count() > 0)  stationForDocking = oo::ToStation(OOJSNativeObjectOfClassFromJSValue(context, OOJS_ARGV[0], OOJSPlayerShipShipEntityClass()));	// a station's object is the ship's facade (bead oo-9ht.175)
 	if (stationForDocking == nil)
 	{
 		cxx_OOJSReportBadArguments(context, "PlayerShip", "requestDockingClearance", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "station");
@@ -1491,7 +1491,7 @@ static bool PlayerShipCancelDockingRequest(ooscript::Context context, ooscript::
 	PlayerEntity			*player = OOPlayerForScripting();
 	StationEntity			*stationForDocking = nil;
 	
-	if (oojsArgs.count() > 0)  stationForDocking = OOJSNativeObjectOfClassFromJSValue(context, OOJS_ARGV[0], OOJSPlayerShipStationEntityClass());
+	if (oojsArgs.count() > 0)  stationForDocking = oo::ToStation(OOJSNativeObjectOfClassFromJSValue(context, OOJS_ARGV[0], OOJSPlayerShipShipEntityClass()));	// a station's object is the ship's facade (bead oo-9ht.175)
 	if (stationForDocking == nil)
 	{
 		cxx_OOJSReportBadArguments(context, "PlayerShip", "cancelDockingRequest", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "station");

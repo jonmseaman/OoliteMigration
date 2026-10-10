@@ -25,6 +25,7 @@ MA 02110-1301, USA.
 
 #import "ShipEntityLoadRestore.h"
 #import "Universe.h"
+#import "StationEntity.h"
 
 #import "OOShipRegistry.h"
 #import "OORoleSet.h"
@@ -215,8 +216,9 @@ oo::PList ShipEntity::savedShipDictionaryWithContext(OOShipSaveContext *context)
 		mergedData["escorts"] = oo::PList::unsignedInteger(0);
 
 		const oo::PList mergedPlist(std::move(mergedData));
-		Class shipClass = [UNIVERSE cxx_shipClassForShipDictionary:mergedPlist];
-		ship = [[[shipClass alloc] cxx_initWithKey:shipKey definition:mergedPlist] autorelease];
+		// A station is made in C++ since bead oo-9ht.175 (the universe picked its class).
+		if ([UNIVERSE cxx_isStationShipDictionary:mergedPlist])  ship = [StationEntity::newStationObject(shipKey, mergedPlist) autorelease];
+		else  ship = [[[::ShipEntity alloc] cxx_initWithKey:shipKey definition:mergedPlist] autorelease];
 
 		// FIXME: restore AI.
 		[ship setAITo:dict.get<std::string>(KEY_AI, "nullAI.plist")];

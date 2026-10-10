@@ -4,9 +4,10 @@ ShipEntity+ObjCAdapter.h
 
 TRANSITIONAL (proposed ADR-0056, amendments oo-mvzmb and oo-64ako): the C++ part of an
 Objective-C ship, oo::ObjCShipEntity<Base>, and the facade's private initialiser that makes it,
-shared by ShipEntity+ObjCBridge.mm (Base cxx::ShipEntity), StationEntity+ObjCBridge.mm (Base
-cxx::StationEntity) and DockEntity+ObjCBridge.mm (Base cxx::DockEntity, bead oo-ao2d), whose facades
-override -initShipPart (the player's, Base PlayerEntity, went with its facade, bead oo-9ht.177). Private to those files; deleted with ShipEntity+ObjCBridge.h.
+shared by ShipEntity+ObjCBridge.mm (Base cxx::ShipEntity) and DockEntity+ObjCBridge.mm (Base
+cxx::DockEntity, bead oo-ao2d), whose facades override -initShipPart (the player's, Base
+PlayerEntity, went with its facade, bead oo-9ht.177; the station's, Base StationEntity, with
+its facade, bead oo-9ht.175). Private to those files; deleted with ShipEntity+ObjCBridge.h.
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -36,8 +37,8 @@ MA 02110-1301, USA.
 
 namespace oo {
 
-/*	The C++ part of an Objective-C ship (ShipEntity, StationEntity, DockEntity, PlayerEntity, ...):
-	the root's adapter over Base (cxx::ShipEntity, or a converted subclass of it: cxx::StationEntity),
+/*	The C++ part of an Objective-C ship (ShipEntity, DockEntity, ...):
+	the root's adapter over Base (cxx::ShipEntity, or a converted subclass of it: cxx::DockEntity),
 	plus the members cxx::ShipEntity added that the Objective-C subclasses override, which message
 	the Objective-C object (ADR-0056 amendments oo-vl43 item 1, oo-mvzmb and oo-64ako). Each slice
 	that makes such a member virtual adds its line (docs/phases/3-slices/ShipEntity.md); the

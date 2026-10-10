@@ -58,16 +58,13 @@ T *NewTestPlayer()
 }
 
 
-// A station whose virtual dock is not made (the dock is a shipdata entry).
-@interface TestDockStation: StationEntity
-@end
-
-
-@implementation TestDockStation
-
-- (BOOL) cxx_setUpOneStandardSubentity:(const oo::PList &)subentDict asTurret:(BOOL)asTurret	{ return YES; }
-
-@end
+// A station whose virtual dock is not made (the dock is a shipdata entry). A C++ subclass since bead
+// oo-9ht.175 deleted the Objective-C station (amendment oo-9ht.177 item 5).
+class TestDockStation : public StationEntity
+{
+public:
+	bool setUpOneStandardSubentity(const oo::PList &subentDict, bool asTurret) override	{ return YES; }
+};
 
 
 namespace {
@@ -106,9 +103,13 @@ DockEntity *MakeDock(const std::string &key)
 // A dock that is a subentity of a station, so its parent is the station.
 DockEntity *MakeDockOfStation(TestDockStation **outStation)
 {
-	TestDockStation *station = [[[TestDockStation alloc] cxx_initWithKey:"dock-station" definition:Definition()] autorelease];
+	// [[[TestDockStation alloc] cxx_initWithKey:definition:] autorelease] until bead oo-9ht.175: made as
+	// StationEntity::newStationObject() makes a station, its object (the ship's facade) autoreleased.
+	::ShipEntity *object = [oo::NewShipObject(oo::makeRef<TestDockStation>(), "dock-station", Definition()) autorelease];
+	TestDockStation *station = static_cast<TestDockStation *>(oo::ToCxx(object));
+	station->initStationDefaults();
 	DockEntity *dock = MakeDock("dock");
-	[station addSubEntity:dock];
+	[object addSubEntity:dock];
 	*outStation = station;
 	return dock;
 }
@@ -199,9 +200,9 @@ OO_TEST(dimensionsAndPortUpVector)
 	@autoreleasepool
 	{
 		SetUp();
-		TestDockStation *station = nil;
+		TestDockStation *station = nullptr;
 		DockEntity *dock = MakeDockOfStation(&station);
-		OO_CHECK([dock parentEntity] == station);
+		OO_CHECK([dock parentEntity] == oo::ToObjC(station));
 
 		[dock setVirtual];
 		[dock setDimensionsAndCorridor:NO :YES :NO];

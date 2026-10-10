@@ -239,7 +239,7 @@ extern Universe *gSharedUniverse;
 - (OOPlanetEntity *) planet	{ return _cxxUniverse->planet(); }
 - (OOSunEntity *) sun	{ return _cxxUniverse->sun(); }
 - (std::vector<oo::ObjCRef<Entity *>>) cxx_planets	{ return _cxxUniverse->planets(); }
-- (std::vector<oo::ObjCRef<StationEntity *>>) cxx_stations	{ return _cxxUniverse->stations(); }
+- (std::vector<oo::ObjCRef<::ShipEntity *>>) cxx_stations	{ return _cxxUniverse->stations(); }
 
 @end
 
@@ -271,7 +271,7 @@ extern Universe *gSharedUniverse;
 - (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity andScaleFactor:(float)scale	{ return _cxxUniverse->newShipWithName(shipKey, usePlayerProxy, isSubentity, scale); }
 - (DockEntity *) cxx_newDockWithName:(const std::string &)shipDataKey andScaleFactor:(float)scale	{ return _cxxUniverse->newDockWithName(shipDataKey, scale); }
 - (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey	{ return _cxxUniverse->newShipWithName(shipKey); }
-- (Class) cxx_shipClassForShipDictionary:(const oo::PList &)dict	{ return _cxxUniverse->shipClassForShipDictionary(dict); }
+- (BOOL) cxx_isStationShipDictionary:(const oo::PList &)dict	{ return _cxxUniverse->isStationShipDictionary(dict); }
 - (std::optional<std::string>) defaultAIForRole:(const std::string &)role	{ return _cxxUniverse->defaultAIForRole(role); }
 - (OOCargoQuantity) cxx_maxCargoForShip:(const std::string &)desc	{ return _cxxUniverse->maxCargoForShip(desc); }
 

@@ -201,7 +201,7 @@ MA 02110-1301, USA.
 - (OOPlanetEntity *) planet;
 - (OOSunEntity *) sun;
 - (std::vector<oo::ObjCRef<Entity *>>) cxx_planets;	// Note: does not include sun.
-- (std::vector<oo::ObjCRef<StationEntity *>>) cxx_stations; // includes main station; in the order added
+- (std::vector<oo::ObjCRef<::ShipEntity *>>) cxx_stations; // includes main station; in the order added
 
 @end
 
@@ -238,7 +238,7 @@ MA 02110-1301, USA.
 - (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity andScaleFactor:(float)scale OO_RETURNS_RETAINED;
 - (DockEntity *) cxx_newDockWithName:(const std::string &)shipKey andScaleFactor:(float)scale OO_RETURNS_RETAINED;	// Does not apply auto_ai or respect conditions
 - (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey OO_RETURNS_RETAINED;	// Does not apply auto_ai or respect conditions
-- (Class) cxx_shipClassForShipDictionary:(const oo::PList &)dict;	// Nil for a null PList
+- (BOOL) cxx_isStationShipDictionary:(const oo::PList &)dict;	// the dictionary's ship is a station (-cxx_shipClassForShipDictionary: picked StationEntity until bead oo-9ht.175); NO for a null PList
 - (std::optional<std::string>) defaultAIForRole:(const std::string &)role;		// autoAImap.plist lookup
 - (OOCargoQuantity) cxx_maxCargoForShip:(const std::string &) desc;
 

@@ -57,11 +57,11 @@ bool OOJSSystemEntityIsVisibleToScripts(Entity *entity);
 
 // The universe, as the property getter and setter, the counts and the searches read it.
 bool OOJSSystemUniverseInInterstellarSpace();
-StationEntity *OOJSSystemUniverseStation();
+::ShipEntity *OOJSSystemUniverseStation();	// the main station's object (the ship's facade since bead oo-9ht.175)
 OOPlanetEntity *OOJSSystemUniversePlanet();
 OOSunEntity *OOJSSystemUniverseSun();
 std::vector<oo::ObjCRef<Entity *>> OOJSSystemUniversePlanets();	// the planets' Objective-C objects
-std::vector<oo::ObjCRef<StationEntity *>> OOJSSystemUniverseStations();
+std::vector<oo::ObjCRef<::ShipEntity *>> OOJSSystemUniverseStations();
 std::map<std::string, oo::ObjCRef<Entity *>, std::less<>> OOJSSystemUniverseCurrentWaypoints();	// the waypoints' objects
 std::vector<oo::ObjCRef<::Entity *>> OOJSSystemUniverseWormholes();
 std::vector<oo::ObjCRef<Entity *>> OOJSSystemUniverseFindShipsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, Entity *entity);

@@ -54,7 +54,8 @@ MA 02110-1301, USA.
 #include <string_view>
 #endif
 
-@class GameController, MyOpenGLView, Entity, ShipEntity, StationEntity, OOVisualEffectEntity, DockEntity, OOException;
+@class GameController, MyOpenGLView, Entity, ShipEntity, OOVisualEffectEntity, DockEntity, OOException;
+class StationEntity;
 class OOWaypointEntity;
 class PlayerEntity;
 #include "OOScript.h"	// oo::Ref<OOScript> members and results (bead oo-9ht.133)
@@ -385,7 +386,7 @@ public:
 	::OOPlanetEntity		*cachedPlanet = nil;
 	::OOSunEntity			*cachedSun = nil;
 	std::vector<oo::ObjCRef<::Entity *>>	allPlanets;	// the planets' Objective-C objects (C++ since bead oo-9ht.129)
-	std::vector<oo::ObjCRef<::StationEntity *>>	allStations;	// each once, in the order added
+	std::vector<oo::ObjCRef<::ShipEntity *>>	allStations;	// the stations' objects (the ship's facade since bead oo-9ht.175), each once, in the order added
 
 	float					ambientLightLevel = 0;
 
@@ -540,7 +541,7 @@ public:
 	::OOPlanetEntity *planet();
 	::OOSunEntity *sun();
 	std::vector<oo::ObjCRef<::Entity *>> planets();	// the planets' Objective-C objects
-	std::vector<oo::ObjCRef<::StationEntity *>> stations();
+	std::vector<oo::ObjCRef<::ShipEntity *>> stations();
 
 	// Slice 9: wormholes, the main station, beacons, waypoints, sky colour, the break pattern, making ships by role and name, default AIs, cargo capacity.
 	std::vector<oo::ObjCRef<::Entity *>> wormholes();
@@ -568,7 +569,7 @@ public:
 	::ShipEntity *newShipWithName(const std::string &shipKey, bool usePlayerProxy, bool isSubentity, float scale) OO_RETURNS_RETAINED;	// +1, as -newShipWithName:... was (the proxy is made in C++ since bead oo-9ht.183)
 	::DockEntity *newDockWithName(const std::string &shipDataKey, float scale);
 	::ShipEntity *newShipWithName(const std::string &shipKey);
-	Class shipClassForShipDictionary(const oo::PList &dict);
+	bool isStationShipDictionary(const oo::PList &dict);	// -shipClassForShipDictionary: picked StationEntity until bead oo-9ht.175
 	std::optional<std::string> defaultAIForRole(const std::string &role);
 	OOCargoQuantity maxCargoForShip(const std::string &desc);
 

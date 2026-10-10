@@ -1206,7 +1206,7 @@ oo::PList PlayerEntity::dockedTechLevel_number()	// called by name (ADR-0043 ite
 	{
 		return systemTechLevel_number();
 	}
-	return oo::PList::unsignedInteger([dockedStation equivalentTechLevel]);
+	return oo::PList::unsignedInteger((dockedStation != nullptr ? dockedStation->getEquivalentTechLevel() : 0));
 }
 
 oo::PList PlayerEntity::dockedStationName_string()	// called by name (ADR-0043 item 21); returns 'NONE' if the player isn't docked, [station name] if it is, 'UNKNOWN' otherwise (?)
@@ -2319,7 +2319,7 @@ void PlayerEntity::blowUpStation()
 	if (mainStation != nil)
 	{
 		[UNIVERSE unMagicMainStation];
-		[mainStation takeEnergyDamage:500000000.0 from:nil becauseOf:nil weaponIdentifier:std::string()];	// 500 million should do it!
+		if (mainStation != nullptr)  mainStation->takeEnergyDamage(500000000.0, nullptr, nullptr, std::string());	// 500 million should do it!
 	}
 }
 

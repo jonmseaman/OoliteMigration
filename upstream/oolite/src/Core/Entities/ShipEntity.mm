@@ -2364,7 +2364,9 @@ void ShipEntity::setUpOneEscort(::ShipEntity *escorter, ::OOShipGroup *escortGro
 	
 	if ([self status] == STATUS_DOCKED)
 	{
-		[[self owner] addShipToLaunchQueue:escorter withPriority:NO];
+		// A station's object is the ship's facade since bead oo-9ht.175: its C++ part answers.
+		if (::StationEntity *station = oo::ToStation([self owner]))  station->addShipToLaunchQueue(escorter, NO);
+		else  [[self owner] addShipToLaunchQueue:escorter withPriority:NO];
 	}
 	else
 	{
@@ -2985,7 +2987,7 @@ void ShipEntity::update(OOTimeDelta delta_t)
 		if (script != nullptr && (status == STATUS_IN_FLIGHT ||
 							  status == STATUS_LAUNCHING ||
 							  status == STATUS_BEING_SCOOPED ||
-							  (status == STATUS_ACTIVE && self == [UNIVERSE station])
+							  (status == STATUS_ACTIVE && self == oo::ToObjC([UNIVERSE station]))
 							  ))
 		{
 			if (PLAYER != nullptr)  PLAYER->setScriptTarget(self);
@@ -3007,12 +3009,12 @@ void ShipEntity::update(OOTimeDelta delta_t)
 	{
 		if ([UNIVERSE getTime] > launch_time + launch_delay)		// move for while before thinking
 		{
-			::StationEntity *stationLaunchedFrom = [UNIVERSE nearestEntityMatchingPredicate:IsStationPredicate parameter:NULL relativeToEntity:self];
+			::StationEntity *stationLaunchedFrom = oo::ToStation([UNIVERSE nearestEntityMatchingPredicate:IsStationPredicate parameter:NULL relativeToEntity:self]);
 			[self setStatus:STATUS_IN_FLIGHT];
 			// awaken JS-based AIs
 			haveStartedJSAI = YES;
 			[self doScriptEvent:OOJSID("aiStarted")];
-			[self doScriptEvent:OOJSID("shipLaunchedFromStation") withArgument:stationLaunchedFrom];
+			[self doScriptEvent:OOJSID("shipLaunchedFromStation") withArgument:oo::ToObjC(stationLaunchedFrom)];
 			[shipAI cxx_reactToMessage:"LAUNCHED OKAY" context:"launched"];
 		}
 		else
@@ -6438,11 +6440,11 @@ void ShipEntity::behaviour_fly_to_destination(double delta_t)
 		if (docking_match_rotation && confidenceFactor >= MAX_COS && !dockingInstructions.isNull() && dockingInstructions.get<int>("docking_stage") >= 7)
 		{
 			// then at this point should be rotating to match the station
-			::StationEntity* station_for_docking = (::StationEntity*)[self targetStation];
+			::StationEntity* station_for_docking = oo::ToStation([self targetStation]);
 
-			if ((station_for_docking)&&(station_for_docking->_cxxEntity->isStation))
+			if ((station_for_docking)&&(station_for_docking->isStation))
 			{
-				float rollMatch = dot_product([station_for_docking portUpVectorForShip:self],[self upVector]);
+				float rollMatch = dot_product((station_for_docking != nullptr ? station_for_docking->portUpVectorForShip(self) : Vector{}),[self upVector]);
 				if (rollMatch < MAX_COS && rollMatch > -MAX_COS)
 				{
 					// not matching rotating - stop until corrected
@@ -8351,7 +8353,7 @@ OOAegisStatus ShipEntity::checkForAegis()
 	::StationEntity	*the_station = [UNIVERSE station];
 	if (the_station)
 	{
-		sd2 = HPmagnitude2(HPvector_subtract([the_station position], [self position]));
+		sd2 = HPmagnitude2(HPvector_subtract((the_station != nullptr ? the_station->getPosition() : HPVector{}), [self position]));
 	}
 	// again, notional scanner range is intentional
 	if (sd2 < SCANNER_MAX_RANGE2 * 4.0f) // double scanner range
@@ -8397,13 +8399,13 @@ OOAegisStatus ShipEntity::checkForAegis()
 		// script/AI messages on change in status
 		if (EXPECT_NOT(aegis_status == AEGIS_IN_DOCKING_RANGE && result != aegis_status))
 		{
-			[self doScriptEvent:OOJSID("shipExitedStationAegis") withArgument:the_station];
+			[self doScriptEvent:OOJSID("shipExitedStationAegis") withArgument:oo::ToObjC(the_station)];
 			[shipAI message:"AEGIS_LEAVING_DOCKING_RANGE"];
 		}
 		
 		if (EXPECT_NOT(result == AEGIS_IN_DOCKING_RANGE && aegis_status != result))
 		{
-			[self doScriptEvent:OOJSID("shipEnteredStationAegis") withArgument:the_station];
+			[self doScriptEvent:OOJSID("shipEnteredStationAegis") withArgument:oo::ToObjC(the_station)];
 			[shipAI message:"AEGIS_IN_DOCKING_RANGE"];
 			
 			if([self lastAegisLock] == nil && !sunGoneNova) // With small main planets the station aegis can come before planet aegis
@@ -10643,10 +10645,10 @@ void ShipEntity::setRememberedShip(::Entity *targetEntity)
 }
 
 
-::StationEntity *ShipEntity::targetStation()
+::Entity *ShipEntity::targetStation()
 {
 	::ShipEntity *self = oo::ToObjC(this);
-	::StationEntity *result = [_targetStation weakRefUnderlyingObject];
+	::Entity *result = [_targetStation weakRefUnderlyingObject];
 	if (result == nil || ![self isValidTarget:result])
 	{
 		DESTROY(_targetStation);
@@ -11726,11 +11728,11 @@ double ShipEntity::trackDestination(double delta_t, bool retreat)
 	if (we_are_docking && docking_match_rotation && (d_forward > max_cos))
 	{
 		/* we are docking and need to consider the rotation/orientation of the docking port */
-		::StationEntity* station_for_docking = (::StationEntity*)[self targetStation];
+		::StationEntity* station_for_docking = oo::ToStation([self targetStation]);
 
-		if ((station_for_docking)&&(station_for_docking->_cxxEntity->isStation))
+		if ((station_for_docking)&&(station_for_docking->isStation))
 		{
-			stick_roll = [self rollToMatchUp:[station_for_docking portUpVectorForShip:self] rotating:[station_for_docking flightRoll]];
+			stick_roll = [self rollToMatchUp:(station_for_docking != nullptr ? station_for_docking->portUpVectorForShip(self) : Vector{}) rotating:(station_for_docking != nullptr ? station_for_docking->getFlightRoll() : 0.0f)];
 		}
 	}
 
@@ -13427,7 +13429,7 @@ bool ShipEntity::collideWithShip(::ShipEntity *other)
 		return NO;
 	
 	::ShipEntity* otherParent = [other parentEntity];
-	BOOL otherIsStation = other == [UNIVERSE station];
+	BOOL otherIsStation = other == oo::ToObjC([UNIVERSE station]);
 	// calculate line of centers using centres
 	hploc = HPvector_normal_or_zbasis(HPvector_subtract([other absolutePositionForSubentity], position));
 	loc = HPVectorToVector(hploc);
@@ -14045,7 +14047,7 @@ void ShipEntity::takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::Enti
 	if (energy <= 0.0)
 	{
 		// backup check just in case scripts have reduced energy
-		if (self != [UNIVERSE station]) 
+		if (self != oo::ToObjC([UNIVERSE station])) 
 		{
 			if (hunter != nil)  [hunter noteTargetDestroyed:self];
 			[self getDestroyedBy:other damageType:damageType];
@@ -14223,10 +14225,10 @@ void ShipEntity::enterDock(::StationEntity *station)
 	// throw these away now we're docked...
 	dockingInstructions = oo::PList();
 	
-	[self doScriptEvent:OOJSID("shipWillDockWithStation") withArgument:station];
-	[self doScriptEvent:OOJSID("shipDockedWithStation") withArgument:station];
+	[self doScriptEvent:OOJSID("shipWillDockWithStation") withArgument:oo::ToObjC(station)];
+	[self doScriptEvent:OOJSID("shipDockedWithStation") withArgument:oo::ToObjC(station)];
 	[shipAI message:"DOCKED"];
-	[station noteDockedShip:self];
+	if (station != nullptr)  station->noteDockedShip(self);
 	[UNIVERSE removeEntity:self];
 }
 
@@ -14237,7 +14239,7 @@ void ShipEntity::leaveDock(::StationEntity *station)
 	// This code is never used. Currently npc ships are only launched from the stations launch queue.
 	if (station == nil)  return;
 	
-	[station launchShip:self];
+	if (station != nullptr)  station->launchShip(self);
 
 }
 
@@ -14372,7 +14374,7 @@ void ShipEntity::markAsOffender(int offence_value)
 void ShipEntity::markAsOffender(int offence_value, OOLegalStatusReason reason)
 {
 	::ShipEntity *self = oo::ToObjC(this);
-	if (![self isPolice] && ![self isCloaked] && self != [UNIVERSE station])
+	if (![self isPolice] && ![self isCloaked] && self != oo::ToObjC([UNIVERSE station]))
 	{
 		if ([self isSubEntity]) 
 		{
@@ -14731,9 +14733,9 @@ void ShipEntity::setTargetToNearestStationIncludingHostiles(bool includeHostiles
 	double range2, nearest2 = SCANNER_MAX_RANGE2 * 1000000.0; // 1000x typical scanner range (25600 km), squared.
 	for (i = 0; i < station_count; i++)
 	{
-		thing = (::StationEntity *)my_entities[i];
-		range2 = HPdistance2(position, thing->_cxxEntity->position);
-		if (range2 < nearest2 && (includeHostiles || ![thing isHostileTo:self]))
+		thing = oo::ToStation(my_entities[i]);
+		range2 = HPdistance2(position, thing->position);
+		if (range2 < nearest2 && (includeHostiles || !(thing != nullptr ? thing->isHostileTo(self) : false)))
 		{
 			station = thing;
 			nearest2 = range2;
@@ -14744,8 +14746,8 @@ void ShipEntity::setTargetToNearestStationIncludingHostiles(bool includeHostiles
 	//
 	if (station)
 	{
-		[self addTarget:station];
-		[self setTargetStation:station];
+		[self addTarget:oo::ToObjC(station)];
+		[self setTargetStation:oo::ToObjC(station)];
 	}
 	else
 	{
@@ -14785,7 +14787,7 @@ void ShipEntity::setTargetToSystemStation()
 		return;
 	}
 	
-	if (!system_station->_cxxEntity->isStation)
+	if (!system_station->isStation)
 	{
 		[shipAI message:"NOTHING_FOUND"];
 		[shipAI message:"NO_STATION_FOUND"];
@@ -14794,8 +14796,8 @@ void ShipEntity::setTargetToSystemStation()
 		return;
 	}
 	
-	[self addTarget:system_station];
-	[self setTargetStation:system_station];
+	[self addTarget:oo::ToObjC(system_station)];
+	[self setTargetStation:oo::ToObjC(system_station)];
 	return;
 }
 
@@ -14839,7 +14841,7 @@ void ShipEntity::abortDocking()
 									 inRange:-1
 									ofEntity:nil])
 	{
-		[(::StationEntity *)station.get() abortDockingForShip:self];
+		if (oo::ToStation(station.get()) != nullptr)  oo::ToStation(station.get())->abortDockingForShip(self);
 	}
 }
 
@@ -14880,7 +14882,7 @@ void ShipEntity::broadcastHitByLaserFrom(::ShipEntity *aggressor_ship)
 			(scanClass == CLASS_MILITARY)||
 			(scanClass == CLASS_PLAYER))	// only for active ships...
 	{
-		AuthorityPredicateParameter param = { this, [UNIVERSE station], (bool)[self withinStationAegis] };
+		AuthorityPredicateParameter param = { this, oo::ToObjC([UNIVERSE station]), (bool)[self withinStationAegis] };
 		const std::vector<oo::ObjCRef<::Entity *>> authorities = [UNIVERSE cxx_findShipsMatchingPredicate:AuthorityPredicate
 												 parameter:&param
 												   inRange:-1
@@ -15225,7 +15227,7 @@ void ShipEntity::claimAsSalvage()
 	}
 
 	// Get the station to launch a pilot boat to bring a pilot out to the hulk (use a viper for now)
-	::StationEntity *station = (::StationEntity *)[self primaryTarget];
+	::StationEntity *station = oo::ToStation([self primaryTarget]);
 	OO_LOG("claimAsSalvage.requestingPilot", "{}", "claimAsSalvage asking station to launch a pilot boat");
 	[station launchShipWithRole:"pilot"];
 	[self setReportAIMessages:YES];

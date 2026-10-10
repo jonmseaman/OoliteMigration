@@ -5859,3 +5859,85 @@ definition, so the proxy's facade could not go.
 **Consequences.** No Objective-C subclass of the ship's facade but the station's and the dock's
 remains; `oo::NewShipObject` is the C++ ship-construction path their facade deletions (oo-9ht.175,
 oo-9ht.180) and the ship's (oo-9ht.144) can use for `-cxx_newShipWithName:` itself.
+
+
+## Amendment (bead oo-9ht.175): the station's facade, the last giant subclass of the ship's
+
+- Date: 2026-10-10. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch N
+  (one branch). Exemplar: `src/Core/Entities/StationEntity.h/.mm` (`newStationObject()`,
+  `initStationDefaults()`, `willDealloc()`, `oo::ToStation()`), `Entities/ShipEntity+ObjCBridge.mm`
+  (`StationPart()`, the categories `ShipEntity (OOAIStationStubs)` and
+  `ShipEntity (OOStationSelectorsCalledByName)`), `Universe.mm` (`-cxx_newShipWithName:...`,
+  `isStationShipDictionary()`, `setUpSpace()`), `Entities/ShipEntityLoadRestore.mm`,
+  `Scripting/OOJSStation.mm`, `tests/unit/core/test_StationEntity.mm`, `test_OOJSStation.mm`.
+  Applies amendments oo-9ht.177 (the player) and oo-9ht.183 (a ship made in C++) to the station.
+
+**Context.** The Objective-C `StationEntity` was a subclass of the ship's facade whose every method
+forwarded to `cxx::StationEntity` (114 forwarders after slices 1-4). It was the class
+`-cxx_shipClassForShipDictionary:` picked for a station or carrier, the object of every station
+(the universe's station list, the player's docked and target stations, a ship's target station),
+and the receiver of the station's AI actions (`launchDefenseShip`, `increaseAlertLevel`, ...),
+which the game sends by name.
+
+**Decision (recommended defaults).**
+
+1. **The station is made in C++ and its object is the ship's facade.** `class StationEntity :
+   public cxx::ShipEntity` is global; `StationEntity::newStationObject(key, dict)` is
+   `oo::NewShipObject(oo::makeRef<StationEntity>(), key, dict)` followed by the facade's initialiser
+   body after `[super ...]` (`initStationDefaults()`), +1 as `+alloc` gave. The universe's
+   `-cxx_newShipWithName:...` and the ship loader make a station where the class was picked:
+   `Universe::shipClassForShipDictionary()` (and its `cxx_` selector) became
+   `isStationShipDictionary()`, which answers the same test. The facade's `-dealloc` body is
+   `willDealloc()`, which `-[ShipEntity dealloc]` calls first for a station's part, as the
+   player's (amendment oo-9ht.177 item 1). `oo::NewEntityFacade`'s chain loses its station line.
+   **`isVisibleToScripts()` is overridden** to answer the ship's answer: the ship's JS category asks
+   a C++ part, and a ship made in C++ that does not override it answers the root's NO, which would
+   hide the station from scripts (`system.mainStation` null); the facade inherited the ship's YES.
+2. **`StationEntity *` names the C++ class.** Members, selectors and bridge functions that took or
+   answered a station keep their spelling and now pass the C++ station; where the Objective-C
+   object is wanted it is `oo::ToObjC(station)` (the ship's facade), and an object is a station's
+   by `oo::ToStation(entity)` (`dynamic_cast` of its C++ part; nullptr for nil or another entity),
+   which replaces every cast `(StationEntity *)object` and `-isKindOfClass:[StationEntity class]`.
+   Lists of stations keep the objects (`std::vector<oo::ObjCRef<::ShipEntity *>>`: the universe's
+   station list and its snapshots, the JS bindings' bridge functions; amendment oo-9ht.107 item 4).
+   Three answers keep the object rather than the station because they held other entities too:
+   the main station's object for the JS bindings' bridges, `setUpSpace()`'s candidate (a rolled
+   non-station is logged and released as before), and **`ShipEntity::targetStation()`**, which
+   answers `::Entity *`: an escort's target station is its mother, which need not be a station.
+3. **Sends become member calls, converted by compiler diagnostics** (the batch F/I converter, nil
+   guards for every receiver but `self`), with the facades' forwarders as the map: the station's,
+   then the ship's and the root's. Inside the station's members `[self ...]` is a member call and
+   `self` is `oo::ToObjC(this)` only where the object is passed on.
+4. **Selectors found by name on a station: the ship's facade answers them for a station's part**
+   (amendment oo-9ht.177 item 3). `ShipEntity (OOStationSelectorsCalledByName)` holds exactly the
+   41 selectors only the station's facade answered whose signature a by-name dispatcher can call;
+   each answers the station's member, zero for any other ship (`alertLevel` green: its enum has no
+   zero), and `-respondsToSelector:` answers them for a station's part only, so the dispatchers
+   never ask another ship. The selectors both facades answered: those the ship's facade
+   forwarded through `SHIP_PART` already reach the station's override; the AI stubs
+   `ShipEntity (OOAIStationStubs)` (`increaseAlertLevel`, `decreaseAlertLevel`, `abortAllDockings`,
+   `launchShipWithRole:`, `launchPolice` and the seven `launch...` launchers) ask a station's part
+   first, with the station's signatures (a launcher answers the ship launched, nil for a ship
+   that is not a station, which still logs). For `callObjC("launchPatrol")` on a ship that is not
+   a station that is null where it was `false`; nothing else that is observable changes. The
+   player's by-name `dockedStation` and `getTargetDockStation` keep answering the station's object
+   (a C++ result could not be called by name). A send of
+   a station-only selector to an object typed as another class (`[[self owner]
+   addShipToLaunchQueue:...]` for a docked escort) asks `oo::ToStation()` first and sends as
+   before otherwise (a dock answers it itself).
+5. **Tests** (standing approval oo-9n5p9, lines on main first): the facade's own cases go (listed
+   in the approval lines); every other case asks the C++ class with its expectations kept. A
+   whole-game test's Objective-C subclass of the station is a C++ subclass made as
+   `newStationObject()` makes a station; `cxx::ShipEntity::setUpOneStandardSubentity()`, which they
+   override, is virtual (the test seam amendment oo-9ht.107 item 6 allows). A
+   narrow test that stood in for the Objective-C station (an `@interface StationEntity`) stands in
+   for the C++ class with the header's member signatures and the same answers (amendment
+   oo-9ht.107 item 6); the binding calls the station's virtual members it shares with the ship by
+   their final overrider (`station->cxx::ShipEntity::alertCondition()`), which is the call the
+   send made for the one station class the game has (amendment oo-9ht.177 item 5).
+6. **Left as they were (follow-up), as for the player:** the station's data members stay public
+   and its raw retained Objective-C pointers (`player_reserved_dock`, ...) stay as they were.
+
+**Consequences.** No Objective-C subclass of the ship's facade but the dock's remains; the ship's
+facade carries the station's by-name selectors until it is deleted (oo-9ht.144), when they join
+the C++ name tables. The dock's facade (oo-9ht.180) can use `oo::NewShipObject` the same way.

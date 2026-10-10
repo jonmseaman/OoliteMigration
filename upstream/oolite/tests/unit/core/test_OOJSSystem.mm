@@ -23,6 +23,7 @@
 #import "Universe.h"
 #import "PlayerEntity.h"
 #import "OOSunEntity.h"
+#import "StationEntity.h"
 #import "OOJSPropID.h"
 #import "OOJSPopulatorDefinition.h"
 #import "OOShipGroup.h"
@@ -159,7 +160,9 @@ std::string Describe(Entity *entity)
 @implementation FakeUniverse
 
 - (BOOL) inInterstellarSpace  { return _interstellar; }
-- (StationEntity *) station  { return (StationEntity *)_station; }
+// The station is C++ since bead oo-9ht.175: the stand-in's entity's C++ part, as the planet's below,
+// which only crosses back to its Objective-C object (oo::ToObjC) in the code the test runs.
+- (StationEntity *) station  { return static_cast<StationEntity *>(oo::ToCxx(_station)); }
 // The planet is C++ since bead oo-9ht.129, as the sun since oo-9ht.111: the stand-in's entity's C++
 // part, which only crosses back to its Objective-C object (oo::ToObjC) in the code the test runs.
 - (OOPlanetEntity *) planet  { return static_cast<OOPlanetEntity *>(oo::ToCxx(_planet)); }
@@ -169,10 +172,10 @@ std::string Describe(Entity *entity)
 
 - (std::vector<oo::ObjCRef<Entity *>>) cxx_planets  { return _planets; }	// the planets' Objective-C objects
 
-- (std::vector<oo::ObjCRef<StationEntity *>>) cxx_stations
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_stations	// the stations' objects (the ship's facade since bead oo-9ht.175)
 {
-	std::vector<oo::ObjCRef<StationEntity *>> result;
-	for (const auto &e : _stations)  result.push_back(oo::ObjCRef<StationEntity *>((StationEntity *)e.get()));
+	std::vector<oo::ObjCRef<ShipEntity *>> result;
+	for (const auto &e : _stations)  result.push_back(oo::ObjCRef<ShipEntity *>((ShipEntity *)e.get()));
 	return result;
 }
 

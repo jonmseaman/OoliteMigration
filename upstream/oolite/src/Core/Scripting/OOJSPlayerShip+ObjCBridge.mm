@@ -151,7 +151,7 @@ void OOJSPlayerShipUniverseMessageGUISetTextCommsColor(OOColor *color)	{ [UNIVER
 void OOJSPlayerShipPlayerLaunchFromStation(PlayerEntity *player)	{ if (player != nullptr)  player->launchFromStation(); }
 void OOJSPlayerShipPlayerRemoveAllCargo(PlayerEntity *player)	{ if (player != nullptr)  player->removeAllCargo(); }
 void OOJSPlayerShipPlayerUseSpecialCargo(PlayerEntity *player, const std::string &descriptionString)	{ if (player != nullptr)  player->useSpecialCargo(descriptionString); }
-Class OOJSPlayerShipStationEntityClass()	{ return [StationEntity class]; }
+Class OOJSPlayerShipShipEntityClass()	{ return [ShipEntity class]; }
 bool OOJSPlayerShipPlayerEngageAutopilotToStation(PlayerEntity *player, StationEntity *stationForDocking)	{ return (player != nullptr ? player->engageAutopilotToStation(stationForDocking) : false); }
 void OOJSPlayerShipPlayerDisengageAutopilot(PlayerEntity *player)	{ if (player != nullptr)  player->disengageAutopilot(); }
 void OOJSPlayerShipPlayerRequestDockingClearance(PlayerEntity *player, StationEntity *stationForDocking)	{ if (player != nullptr)  player->requestDockingClearance(stationForDocking); }

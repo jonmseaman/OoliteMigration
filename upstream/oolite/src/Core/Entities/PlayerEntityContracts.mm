@@ -1576,19 +1576,19 @@ void PlayerEntity::setGuiToShipyardScreen(NSUInteger skip)
 	
 	if (station != nil)
 	{
-		stationTechLevel = [station equivalentTechLevel];
+		stationTechLevel = (station != nullptr ? station->getEquivalentTechLevel() : 0);
 	}
 	else
 	{
 		station  = [UNIVERSE station];
 		stationTechLevel = NSNotFound;
 	}
-	if ([station cxx_localShipyard] == nullptr)
+	if ((station != nullptr ? station->getLocalShipyard() : (std::vector<oo::PList> *)nullptr) == nullptr)
 	{
-		[station generateShipyard:stationTechLevel];
+		if (station != nullptr)  station->generateShipyard(stationTechLevel);
 	}
 		
-	std::vector<oo::PList> *stationShipyard = [station cxx_localShipyard];
+	std::vector<oo::PList> *stationShipyard = (station != nullptr ? station->getLocalShipyard() : (std::vector<oo::PList> *)nullptr);
 	const std::vector<oo::PList> shipyard = stationShipyard != nullptr ? *stationShipyard : std::vector<oo::PList>();	// read only here
 		
 	currentShipyard.clear();
@@ -1879,7 +1879,7 @@ bool PlayerEntity::buySelectedShip()
 	
 	// from this point, the player is committed to buying - raise a pre-buy script event
 	const std::optional<std::string> shipDataKey = OptionalStringForKey(shipInfo, "shipdata_key");	// SHIPYARD_KEY_SHIPDATA_KEY
-	std::vector<oo::PList> *dockedShipyard = [dockedStation() cxx_localShipyard];
+	std::vector<oo::PList> *dockedShipyard = (dockedStation() != nullptr ? dockedStation()->getLocalShipyard() : (std::vector<oo::PList> *)nullptr);
 	const NSUInteger boughtIndex = selectedRow - GUI_ROW_SHIPYARD_START;
 	oo::PList::Array buyArguments;
 	for (const oo::PList &argument : { shipDataKey ? oo::PList(*shipDataKey) : oo::PList(),
@@ -1934,7 +1934,7 @@ bool PlayerEntity::buySelectedShip()
 	}
 	
 	// remove the ship from the localShipyard
-	dockedShipyard = [dockedStation() cxx_localShipyard];
+	dockedShipyard = (dockedStation() != nullptr ? dockedStation()->getLocalShipyard() : (std::vector<oo::PList> *)nullptr);
 	if (dockedShipyard != nullptr)  dockedShipyard->erase(dockedShipyard->begin() + (selectedRow - GUI_ROW_SHIPYARD_START));
 	
 	// perform the transformation

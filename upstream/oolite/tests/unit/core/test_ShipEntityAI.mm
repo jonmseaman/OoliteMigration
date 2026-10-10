@@ -82,16 +82,38 @@ T *NewTestPlayer()
 @end
 
 
-// A station whose virtual dock is not made (the dock is a shipdata entry), invisible to scripts.
-@interface TestAIStation: StationEntity
-@end
+// A station whose virtual dock is not made (the dock is a shipdata entry), invisible to scripts. A
+// C++ subclass since bead oo-9ht.175 deleted the Objective-C station (amendment oo-9ht.177 item 5).
+class TestAIStation : public StationEntity
+{
+public:
+	bool setUpOneStandardSubentity(const oo::PList &subentDict, bool asTurret) override	{ return YES; }
+	bool isVisibleToScripts() override	{ return NO; }
+};
 
 
-@implementation TestAIStation
+// [[[TestAIStation alloc] cxx_initWithKey:definition:] autorelease] until bead oo-9ht.175: made as
+// StationEntity::newStationObject() makes a station; answers its object (the ship's facade).
+namespace {
 
-- (BOOL) cxx_setUpOneStandardSubentity:(const oo::PList &)subentDict asTurret:(BOOL)asTurret	{ return YES; }
-- (BOOL) isVisibleToScripts	{ return NO; }
+ShipEntity *NewTestAIStation(const std::string &key, const oo::PList &dict)
+{
+	ShipEntity *object = oo::NewShipObject(oo::makeRef<TestAIStation>(), key, dict);
+	if (object != nil)  static_cast<StationEntity *>(oo::ToCxx(object))->initStationDefaults();
+	return [object autorelease];
+}
 
+}	// namespace
+
+
+// The category ShipEntity (OOAIStationStubs), which no game header declares (the Objective-C
+// station's interface declared its selectors until bead oo-9ht.175).
+@interface ShipEntity (OOAIStationStubs)
+- (void) increaseAlertLevel;
+- (void) decreaseAlertLevel;
+- (void) abortAllDockings;
+- (void) launchShipWithRole:(const std::string &)param;
+- (oo::PList) launchPolice;
 @end
 
 
@@ -350,7 +372,7 @@ OO_TEST(slice1AcceptDistressMessage)
 		[ship acceptDistressMessageFrom:caller];
 		OO_CHECK([ship foundTarget] == attacker);
 
-		TestAIStation *station = [[[TestAIStation alloc] cxx_initWithKey:"station" definition:oo::PList(oo::PList::Dict{ { "unpiloted", oo::PList(true) } })] autorelease];
+		ShipEntity *station = NewTestAIStation("station", oo::PList(oo::PList::Dict{ { "unpiloted", oo::PList(true) } }));
 		OO_CHECK(station != nil);
 		[station acceptDistressMessageFrom:caller];
 		OO_CHECK([station foundTarget] == nil);
@@ -393,7 +415,7 @@ OO_TEST(slice1MembersFromCxx)
 		part->acceptDistressMessageFrom(caller);
 		OO_CHECK([ship foundTarget] == attacker);
 
-		TestAIStation *station = [[[TestAIStation alloc] cxx_initWithKey:"station" definition:oo::PList(oo::PList::Dict{ { "unpiloted", oo::PList(true) } })] autorelease];
+		ShipEntity *station = NewTestAIStation("station", oo::PList(oo::PList::Dict{ { "unpiloted", oo::PList(true) } }));
 		cxx::ShipEntity *stationAsShip = station->_cxxShip;
 		stationAsShip->acceptDistressMessageFrom(caller);		// the station's: not the main station, so nothing
 		OO_CHECK([station foundTarget] == nil);

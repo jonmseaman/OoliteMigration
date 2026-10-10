@@ -227,7 +227,7 @@ oo::PList OOCommodities::createDefinitionFrom(const oo::PList & good, OOCreditsQ
 	}
 
 	Set(definition, kOOCommodityKey, oo::PList(key));
-	if (station != nil && ![station marketMonitored])
+	if (station != nil && !(station != nullptr ? station->getMarketMonitored() : false))
 	{
 		// clear legal status indicators if the market is not monitored
 		SetUnsigned(definition, kOOCommodityLegalityExport, 0);
@@ -256,7 +256,7 @@ oo::PList OOCommodities::modifyGood(const oo::PList &good, ::OOScript *script, :
 	// accepted result comes back through oo::PListFrom (an exact round trip, Amendment 2 item 11).
 	ooscript::Value				args[] = {
 		OOJSValueFromPList(context, good),
-		OOJSValueFromNativeObject(context, station),
+		OOJSValueFromNativeObject(context, oo::ToObjC(station)),
 		ooscript::int32Value(system)
 	};
 	BOOL				OK = YES;
@@ -330,8 +330,8 @@ oo::Ref<OOCommodityMarket> OOCommodities::generateMarketForSystemWithEconomy(OOE
 
 oo::Ref<OOCommodityMarket> OOCommodities::generateMarketForStation(::StationEntity *station)
 {
-	const oo::PList marketDefinition = [station cxx_marketDefinition];
-	::OOScript *marketScript = (PLAYER != nullptr ? PLAYER->commodityScriptNamed([station cxx_marketScriptName]) : (OOScript *)nullptr);
+	const oo::PList marketDefinition = (station != nullptr ? station->getMarketDefinition() : oo::PList());
+	::OOScript *marketScript = (PLAYER != nullptr ? PLAYER->commodityScriptNamed((station != nullptr ? station->getMarketScriptName() : std::optional<std::string>())) : (OOScript *)nullptr);
 	if (!marketDefinition && marketScript == nil)
 	{
 		oo::Ref<OOCommodityMarket> market = generateBlankMarket();
@@ -339,7 +339,7 @@ oo::Ref<OOCommodityMarket> OOCommodities::generateMarketForStation(::StationEnti
 	}
 
 	oo::Ref<OOCommodityMarket> market = oo::makeRef<OOCommodityMarket>();
-	OOCargoQuantity capacity = [station marketCapacity];
+	OOCargoQuantity capacity = (station != nullptr ? station->getMarketCapacity() : 0);
 	OOCommodityMarket *mainMarket = [UNIVERSE commodityMarket];
 
 	for (const auto &[commodity, info] : _commodityLists)	// key order (bead oo-3rb.154)

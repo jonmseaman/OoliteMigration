@@ -29,6 +29,7 @@
 #import "OOColor.h"
 #import "ResourceManager.h"
 #import "EntityOOJavaScriptExtensions.h"
+#import "StationEntity.h"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/Notification.hpp"
 #include "oofnd/String.hpp"
@@ -138,7 +139,9 @@ public:
 	NSUInteger getActiveMissile() override	{ return 2; }
 	float fuelLeakRate() override	{ return 0.5f; }
 	bool isDocked() override	{ return _docked; }
-	::StationEntity * dockedStation() override	{ return (::StationEntity *)_dockedStation; }
+	// The station is C++ since bead oo-9ht.175: the stand-in entity's C++ part, which only crosses back to
+	// its Objective-C object (oo::ToObjC) in the code the test runs, as the stub universe's planet does.
+	::StationEntity * dockedStation() override	{ return static_cast<::StationEntity *>(oo::ToCxx(_dockedStation)); }
 	std::optional<std::string> getSpecialCargo() override	{ return _specialCargo; }
 	::HeadUpDisplay * getHud() override	{ return _hud.get(); }
 	OOGalacticHyperspaceBehaviour getGalacticHyperspaceBehaviour() override	{ return GALACTIC_HYPERSPACE_BEHAVIOUR_FIXED_COORDINATES; }

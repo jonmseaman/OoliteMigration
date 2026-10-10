@@ -28,6 +28,7 @@ MA 02110-1301, USA.
 
 #import "OOJSShip+ObjCBridge.h"
 #import "OOShipGroup.h"
+#import "StationEntity.h"
 #import "PlayerEntityLegacyScriptEngine.h"
 #import "GameController.h"
 #import "PlayerEntityScriptMethods.h"
@@ -53,7 +54,7 @@ void OOJSShipUniverseSetNextBeacon(ShipEntity *beacon)	{ [UNIVERSE setNextBeacon
 bool OOJSShipPlayerIsDocked(PlayerEntity *player)	{ return (player != nullptr ? player->isDocked() : false); }
 void OOJSShipPlayerSetScriptTarget(PlayerEntity *player, ShipEntity *ship)	{ if (player != nullptr)  player->setScriptTarget(ship); }
 void OOJSShipPlayerRunUnsanitizedScriptActions(PlayerEntity *player, const oo::PList &actions, bool allowAIMethods, const std::optional<std::string> &contextName, ShipEntity *target)	{ if (player != nullptr)  player->runUnsanitizedScriptActions(actions, allowAIMethods, contextName, target); }
-StationEntity *OOJSShipUniverseStation()	{ return [UNIVERSE station]; }
+::ShipEntity *OOJSShipUniverseStation()	{ return oo::ToObjC([UNIVERSE station]); }
 void OOJSShipUniverseUnMagicMainStation()	{ [UNIVERSE unMagicMainStation]; }
 void OOJSShipScheduleDumpCargo(ShipEntity *ship, OOTimeDelta delay)	{ OOScheduleDeferredCall(ship, @selector(dumpCargo), nil, delay); }
 
@@ -63,7 +64,7 @@ void OOJSShipScheduleDumpCargo(ShipEntity *ship, OOTimeDelta delay)	{ OOSchedule
 bool OOJSShipPlayerMountMissileWithRole(PlayerEntity *player, const std::string &role)	{ return (player != nullptr ? player->mountMissileWithRole(role) : false); }
 bool OOJSShipPlayerChangePassengerBerths(PlayerEntity *player, int addRemove)	{ return (player != nullptr ? player->changePassengerBerths(addRemove) : false); }
 void OOJSShipPlayerAdjustTradeInFactorBy(PlayerEntity *player, int value)	{ if (player != nullptr)  player->adjustTradeInFactorBy(value); }
-std::vector<oo::ObjCRef<StationEntity *>> OOJSShipUniverseStations()	{ return [UNIVERSE cxx_stations]; }
+std::vector<oo::ObjCRef<::ShipEntity *>> OOJSShipUniverseStations()	{ return [UNIVERSE cxx_stations]; }
 OOCommodities *OOJSShipUniverseCommodities()	{ return [UNIVERSE commodities]; }
 
 

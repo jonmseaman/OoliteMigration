@@ -106,13 +106,13 @@ void PlayerEntity::setCreditBalance(double value)
 
 std::optional<std::string> PlayerEntity::dockedStationName()
 {
-	return [dockedStation() cxx_name];
+	return (dockedStation() != nullptr ? dockedStation()->getName() : std::optional<std::string>());
 }
 
 
 std::optional<std::string> PlayerEntity::dockedStationDisplayName()
 {
-	return [dockedStation() displayName];
+	return (dockedStation() != nullptr ? dockedStation()->getDisplayName() : std::optional<std::string>());
 }
 
 

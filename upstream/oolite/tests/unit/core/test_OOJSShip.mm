@@ -88,7 +88,7 @@ public:
 - (void) clearBeacon:(Entity <OOBeaconEntity> *)beaconShip  { sLog.push_back("clearBeacon"); }
 - (StationEntity *) station  { return nil; }
 - (void) unMagicMainStation  { sLog.push_back("unMagicMainStation"); }
-- (std::vector<oo::ObjCRef<StationEntity *>>) cxx_stations  { return {}; }
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_stations  { return {}; }	// the stations' objects (the ship's facade since bead oo-9ht.175)
 - (OOCommodities *) commodities  { return nil; }
 - (Entity *) hazardOnRouteFromEntity:(Entity *)e1 toDistance:(double)dist fromPoint:(HPVector)p2
 {

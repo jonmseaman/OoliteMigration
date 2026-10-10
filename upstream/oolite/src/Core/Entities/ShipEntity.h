@@ -45,7 +45,8 @@
 #import "OORoleSet.h"
 #include <string_view>
 
-@class StationEntity, AI;
+class StationEntity;
+@class AI;
 class OOMesh;	// C++ since bead oo-9ht.132
 #include "OOScript.h"	// oo::Ref<OOScript> members and results (bead oo-9ht.133)
 class WormholeEntity;	// C++ since bead oo-9ht.112
@@ -254,7 +255,7 @@ public:
 	bool setUpOneFlasher(const oo::PList &subentDict);
 
 	// Slice 4: standard subentities and cargo pods; descriptions, mesh, vectors, misjump, subentity lists, AI scripts.
-	bool setUpOneStandardSubentity(const oo::PList &subentDict, bool asTurret);
+	virtual bool setUpOneStandardSubentity(const oo::PList &subentDict, bool asTurret);	// virtual: a test seam (amendment oo-9ht.107 item 6; test_StationEntity's station overrides it since bead oo-9ht.175)
 	bool isTemplateCargoPod();
 	void setUpCargoType(const std::string &cargoString);
 	void removeScript();
@@ -737,7 +738,7 @@ public:
 	void setThankedShip(::Entity *targetEntity);
 	::Entity *rememberedShip();
 	void setRememberedShip(::Entity *targetEntity);
-	::StationEntity *targetStation();
+	::Entity *targetStation();	// the object of the target station (or of the mother an escort docks with): ::StationEntity * until bead oo-9ht.175, which typed it as what it holds
 	void setTargetStation(::Entity *targetEntity);
 	virtual bool isValidTarget(::Entity *target);
 	virtual void addTarget(::Entity *targetEntity);

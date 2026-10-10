@@ -3223,14 +3223,14 @@ static bool ShipFindNearestStation(ooscript::Context context, ooscript::CallArgs
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity			*thisEnt = nullptr;
-	StationEntity		*result = nullptr;
+	ShipEntity			*result = nullptr;	// a station's object (the ship's facade since bead oo-9ht.175)
 
 	GET_THIS_SHIP(thisEnt);
 	cxx::ShipEntity			*ship = oo::ToCxx(thisEnt);	// not null: thisEnt is not
 
 	double				sdist, distance = 1E32;
 	
-	StationEntity		*se = nullptr;
+	ShipEntity			*se = nullptr;
 	for (const auto &stationRef : OOJSShipUniverseStations())
 	{
 		se = stationRef.get();
@@ -3869,8 +3869,8 @@ static bool ShipPatrolReportIn(ooscript::Context context, ooscript::CallArgs &oo
 	}
 	if (target != nullptr && oo::ToCxx(target)->getIsStation())	// none: not a station, as a message to nil
 	{
-		StationEntity *station = (StationEntity*)target;
-		oo::ToCxx(station)->acceptPatrolReportFrom(thisEnt);
+		StationEntity *station = oo::ToStation(target);
+		station->acceptPatrolReportFrom(thisEnt);
 	}
 
 	OOJS_RETURN_VOID;

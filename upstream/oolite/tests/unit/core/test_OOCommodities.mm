@@ -27,6 +27,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <deque>
 #include <string>
 #include <vector>
 
@@ -127,26 +128,33 @@ PlayerEntity *gOOPlayer = nullptr;
 Universe *gSharedUniverse = nil;
 
 
-@interface StationEntity: OOObject
+// A station: C++ since bead oo-9ht.175 deleted the Objective-C station this stood in for; the
+// members OOCommodities.mm calls, declared as StationEntity.h declares them (the test imports no
+// game header that defines the class), with the same answers.
+class StationEntity
 {
-@public
+public:
+	oo::PList getMarketDefinition();
+	std::optional<std::string> getMarketScriptName();
+	OOCargoQuantity getMarketCapacity();
+	bool getMarketMonitored();
+
 	oo::PList definition;
 	std::optional<std::string> scriptName;
-	OOCargoQuantity capacity;
-	BOOL monitored;
-}
-- (oo::PList) cxx_marketDefinition;
-- (std::optional<std::string>) cxx_marketScriptName;
-- (OOCargoQuantity) marketCapacity;
-- (BOOL) marketMonitored;
-@end
+	OOCargoQuantity capacity = 0;
+	BOOL monitored = NO;
+};
 
-@implementation StationEntity
-- (oo::PList) cxx_marketDefinition					{ return definition; }
-- (std::optional<std::string>) cxx_marketScriptName	{ return scriptName; }
-- (OOCargoQuantity) marketCapacity					{ return capacity; }
-- (BOOL) marketMonitored							{ return monitored; }
-@end
+oo::PList StationEntity::getMarketDefinition()					{ return definition; }
+std::optional<std::string> StationEntity::getMarketScriptName()	{ return scriptName; }
+OOCargoQuantity StationEntity::getMarketCapacity()				{ return capacity; }
+bool StationEntity::getMarketMonitored()						{ return monitored; }
+
+// Link stub: the station's Objective-C object, which only a commodity script (never run here) is given.
+@class Entity;
+namespace cxx { class Entity; }
+namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
+::Entity *oo::ToObjC(cxx::Entity *)	{ std::abort(); }
 
 
 // The expander: "<string>".
@@ -245,7 +253,8 @@ std::string Log()
 
 StationEntity *Station(oo::PList definition, OOCargoQuantity capacity, BOOL monitored)
 {
-	StationEntity *station = [[[StationEntity alloc] init] autorelease];
+	static std::deque<StationEntity> stations;	// each lives for the test run, as an autoreleased one outlived its case
+	StationEntity *station = &stations.emplace_back();
 	station->definition = std::move(definition);
 	station->capacity = capacity;
 	station->monitored = monitored;
