@@ -269,7 +269,7 @@ should land **before** the golden harness runner, which can then reuse its conso
 Tier A only; B and C are still to come (0.9).
 
 ```
-tools/tier-a.sh <file>          # single-TU compile + clang-tidy + deny-list, < 30 s, offline
+tools/tier-a.sh <file>          # single-TU compile + clang-tidy + deny-list + C++/ObjC cast scan (oo-tzd3n), < 30 s, offline
 ```
 
 Measured 2026-09-17 on the fleet Windows machine (16C/24T, 64 GiB) with five worker agents

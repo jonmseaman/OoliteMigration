@@ -6082,3 +6082,36 @@ categories. About 2,000 sends to ships and 800 places that named the Objective-C
 **Consequences.** No Objective-C class of the ship family is left. The root's facade carries the
 ship family's by-name categories until it is deleted (oo-9ht.39), when they become C++ name
 tables; the drawable's facade (oo-9ht.40) is now the object of every ship.
+
+## Amendment (bead oo-tzd3n): a C-style cast between a C++ and an Objective-C pointer is a gate failure
+
+- Date: 2026-10-10. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch P.
+  Files: `tools/objc-cast-scan.sh`, `tools/objc-cast-scan.query`, `tools/objc-cast-scan-selftest`,
+  `tools/tier-a.sh` (step 4), `tools/guardrails.sh` (`check_castscan`), `tests/nightly/checks.txt`.
+
+**Context.** Amendment oo-9ht.144 item 3 recorded that an explicit cast between a C++ record
+pointer and an Objective-C object pointer compiles without a diagnostic and reinterprets the
+pointer, and that three such casts (bead oo-9ht.112's wormhole casts) had already shipped. Batch O
+found them with a throwaway AST scanner; nothing stopped the next one.
+
+**Decision (recommended defaults).**
+
+1. **The gate is clang's AST, not a grep.** `tools/objc-cast-scan.query` is a clang-query matcher:
+   an explicit cast (C-style, `static_cast`, `reinterpret_cast`, functional) whose destination is
+   an Objective-C object pointer (`id`, `Class`, `id<P>`, `Foo *`) and whose operand is a pointer
+   to a record, or the reverse. It runs with each TU's own compile command, so a name's world
+   (`cxx::Entity` or `::Entity`, a global C++ `ShipEntity`) is the compiler's answer, not a list.
+   A finding in the TU or in a project header (`src/`, `tests/`) fails.
+2. **Absolute, no baseline, no suppression comment.** The tree has no such cast (scanned whole on
+   adoption), so any finding is new. A cast that really must cross says so through `void *`
+   (`(Foo *)(void *)p`), which the matcher leaves alone, as it leaves Core Foundation bridging
+   (`struct __CF*`/`__CG*`) and the runtime's `objc_object`/`objc_class`. The right conversion is
+   `oo::ToCxx()` / `oo::ToObjC()` / `oo::ToShip()` or a `static_cast` of the C++ part.
+3. **Where it runs.** Per file in `tools/tier-a.sh` as step 4 (~3 s on `ShipEntity.mm`, inside the
+   30 s budget); the whole tree nightly (`tools/objc-cast-scan.sh --all`, two TUs at a time).
+   Not in `tools/guardrails.sh`, which is offline in < 5 s and has no compile database: the guard
+   there is on the scanner itself (`check_castscan`): a change that touches the matcher, the
+   script, its selftest or `tier-a.sh` must leave `tools/objc-cast-scan-selftest` passing (seven
+   planted casts found, ten look-alikes passed, a project header's cast reported at the header, an
+   unparsable TU a failed scan rather than a pass). `tools/guardrails-selftest` proves that check
+   fails on a neutered matcher and on a deleted selftest.

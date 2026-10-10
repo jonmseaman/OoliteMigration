@@ -1247,6 +1247,29 @@ check_conflict_markers() {
   fi
 }
 
+# --- the C++ <-> Objective-C cast scanner keeps its teeth (bead oo-tzd3n) ----------------------
+#
+# Not one of the four rules: the cast scan itself needs a build's compile database and ~3 s per
+# TU, so it runs in tier-a (step 4) and nightly over the whole tree, not here. What this guards
+# is the scanner: a change that touches it (the matcher, the script, its selftest, or tier-a,
+# which runs it) must leave tools/objc-cast-scan-selftest passing, i.e. still failing on planted
+# casts and passing on the look-alikes. ~2 s, offline, and only when such a file is touched. A
+# tree without the scanner (the guardrails selftest's fixtures) has nothing to check; a tree whose
+# tier-a still names the scanner but has lost its selftest fails.
+check_castscan() {
+  local out
+  if [ ! -f tools/objc-cast-scan-selftest ]; then
+    ! grep -qs 'objc-cast-scan' tools/tier-a.sh \
+      || bad "castscan: tools/tier-a.sh runs tools/objc-cast-scan.sh but tools/objc-cast-scan-selftest is gone"
+    return 0
+  fi
+  printf '%s\n' "$CHANGE" | grep -qE '(^|[[:space:]])tools/(objc-cast-scan[^[:space:]]*|tier-a\.sh)$' || return 0
+  if ! out=$(bash tools/objc-cast-scan-selftest 2>&1); then
+    bad "castscan: the change touches the cast scanner and tools/objc-cast-scan-selftest fails:"
+    printf '%s\n' "$out" | grep -v '^PASS' | sed 's/^/    /' >&2
+  fi
+}
+
 prime_is_code
 check_goldens
 check_conflict_markers
@@ -1254,10 +1277,11 @@ check_suppression
 check_tests
 check_denylist
 check_upstream_delta
+check_castscan
 
 if [ "$fail" -ne 0 ]; then
   note "FAIL"
   exit 1
 fi
-note "OK (goldens, suppression, tests, deny-list, upstream-delta, markers) against $BASE_SHA"
+note "OK (goldens, suppression, tests, deny-list, upstream-delta, markers, castscan) against $BASE_SHA"
 exit 0

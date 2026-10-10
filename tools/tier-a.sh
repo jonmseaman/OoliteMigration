@@ -5,7 +5,7 @@
 #
 #     tools/tier-a.sh upstream/oolite/src/Core/OOColor.m
 #
-# Three steps against ONE translation unit, offline, in under 30 seconds:
+# Four steps against ONE translation unit, offline, in under 30 seconds:
 #
 #   1. compile   the single TU, via its ninja object target (so it is byte-for-byte the
 #                command the real build uses, and it hits the shared ccache)
@@ -13,8 +13,10 @@
 #                (findings on lines unchanged since the merge base are baseline debt, bead oo-utqt)
 #   3. deny-list grep for reintroduced JS_* / libgnustep-base symbols, counted against
 #                the merge base so pre-existing sites do not fail every run
+#   4. casts     tools/objc-cast-scan.sh: no explicit cast between a C++ pointer and an
+#                Objective-C pointer, which clang accepts silently (bead oo-tzd3n)
 #
-# Exits 0 only if all three pass; the first failing step is named on the last line.
+# Exits 0 only if all four pass; the first failing step is named on the last line.
 # Nothing here touches the network: it reuses an existing meson build directory and
 # configures one only if none exists (which is the one slow path, and it says so).
 #
@@ -58,7 +60,7 @@ BUDGET_SECONDS="${OOLITE_TIER_A_BUDGET:-30}"
 # EXECUTED tier-A run. An executed script has $0 == ${BASH_SOURCE[0]}; a sourced one does not,
 # because $0 still belongs to the calling shell. Both conditions, or no seam -- which is why
 # `OOLITE_TIER_A_SOURCE_ONLY=1 bash tools/tier-a.sh <file>` still re-execs, still asserts
-# UCRT64 and still runs all three steps (bead oo-wfvu's guard stays intact).
+# UCRT64 and still runs all four steps (bead oo-wfvu's guard stays intact).
 OOLITE_TIER_A_SOURCE_SEAM=0
 if [ "${OOLITE_TIER_A_SOURCE_ONLY:-0}" = 1 ] && [ "${BASH_SOURCE[0]}" != "$0" ]; then
   OOLITE_TIER_A_SOURCE_SEAM=1
@@ -151,6 +153,9 @@ BUILD_DIR="$OOLITE/build/meson_$BUILD_FLAVOUR"
 NATIVE_FILE="$REPO_ROOT/tools/meson/ccache-clang.ini"
 DENY_LIST="$REPO_ROOT/tools/deny-list.txt"
 COMPDB_READER="$REPO_ROOT/tools/tier-a-compdb.py"
+# Step 4's gate, castscan_tu (bead oo-tzd3n), sourced so tier-a and the nightly whole-tree scan
+# run the same function and the same matcher (tools/objc-cast-scan.query).
+OOLITE_CASTSCAN_SOURCE_ONLY=1 . "$REPO_ROOT/tools/objc-cast-scan.sh"
 TIDY_BASELINE="$REPO_ROOT/tools/tier-a-tidy-baseline.py"
 
 STARTED_AT=$SECONDS
@@ -163,7 +168,7 @@ fail() {
   exit 1
 }
 
-usage() { sed -n '2,24p' "${BASH_SOURCE[0]}"; }
+usage() { sed -n '2,26p' "${BASH_SOURCE[0]}"; }
 
 # --- the deny-list gate (step 3), defined here so a probe can source the REAL code -----------
 #
@@ -559,7 +564,7 @@ tidy_cached() {
 
 # End of the sourced surface: a probe that sourced this file has what it came for. Keyed on
 # the seam, not on the bare variable, so an EXECUTED run with OOLITE_TIER_A_SOURCE_ONLY=1 in
-# its environment falls through here and runs the full three-step gate instead of exiting 0.
+# its environment falls through here and runs the full four-step gate instead of exiting 0.
 if [ "$OOLITE_TIER_A_SOURCE_SEAM" = 1 ]; then
   return 0
 fi
@@ -581,7 +586,7 @@ SOURCE_NATIVE="$(cygpath -m "$SOURCE_ABS")"
 SOURCE_REL="${SOURCE_ABS#"$REPO_ROOT"/}"
 [ "$SOURCE_REL" != "$SOURCE_ABS" ] || die "$SOURCE is outside the repository at $REPO_ROOT"
 
-for c in clang clang-tidy ninja meson python cygpath; do
+for c in clang clang-tidy clang-query ninja meson python cygpath; do
   command -v "$c" >/dev/null 2>&1 \
     || die "missing '$c' on PATH; run tools/setup-windows.sh (Phase 0 item 0.2)"
 done
@@ -590,7 +595,7 @@ done
 # MSYSTEM right but PATH wrong (a mingw64 shell's leftovers, a native LLVM in Program Files)
 # the tier-A verdict would be produced by an unknown toolchain and reported as authoritative.
 # cygpath is an /usr/bin tool in every MSYSTEM, so it is exempt from the prefix check.
-for c in clang clang-tidy ninja meson python; do
+for c in clang clang-tidy clang-query ninja meson python; do
   OOLITE_TOOL_PATH="$(command -v "$c")"
   case "$OOLITE_TOOL_PATH" in
     "$OOLITE_UCRT_PREFIX"/*) ;;
@@ -712,7 +717,7 @@ CLANG_ARGS=("${COMPDB_FIELDS[@]:1}")
 # Via ninja rather than a hand-rolled clang line: ninja also brings up whatever generated
 # header or PCH the TU depends on, and it is the same command the full build runs.
 
-step "1/3 compile  $OBJECT_TARGET"
+step "1/4 compile  $OBJECT_TARGET"
 T0=$SECONDS
 ( cd "$BUILD_DIR" && ninja "$OBJECT_TARGET" ) || fail "compile"
 detail "$(( SECONDS - T0 ))s"
@@ -724,7 +729,7 @@ detail "$(( SECONDS - T0 ))s"
 # set itself lives in .clang-tidy at the repo root, found by clang-tidy walking up from the
 # source file.
 
-step "2/3 tidy     clang-tidy"
+step "2/4 tidy     clang-tidy"
 T0=$SECONDS
 TIDY_OUT="$(mktemp)"
 trap 'rm -f "$COMPDB_OUT" "$TIDY_OUT"' EXIT
@@ -754,7 +759,7 @@ detail "$(( SECONDS - T0 ))s"
 # passes. See tools/deny-list.txt for why absolute would fail on every file today.
 # A file with no committed baseline (newly added) is compared against zero.
 
-step "3/3 deny     tools/deny-list.txt"
+step "3/4 deny     tools/deny-list.txt"
 T0=$SECONDS
 
 BASE_REF="$(resolve_base_ref "$REPO_ROOT")" \
@@ -767,6 +772,22 @@ case "$DENY_RC" in
   0) ;;
   1) fail "deny-list" ;;
   *) die "the deny-list gate could not be evaluated for $SOURCE_REL (exit $DENY_RC); refusing to report PASS" ;;
+esac
+detail "$(( SECONDS - T0 ))s"
+
+# --- 4. C++ <-> Objective-C pointer casts ---------------------------------------------------
+#
+# Absolute, not baseline-relative: the tree has no such cast, so any finding is new. The
+# TU's own compile arguments, so the matcher sees exactly the AST the build compiles.
+
+step "4/4 casts    tools/objc-cast-scan.query"
+T0=$SECONDS
+CAST_RC=0
+castscan_tu "$BUILD_DIR" "$SOURCE_NATIVE" "${CLANG_ARGS[@]}" || CAST_RC=$?
+case "$CAST_RC" in
+  0) ;;
+  1) fail "objc-cast-scan" ;;
+  *) die "the cast scan could not be run on $SOURCE_REL (exit $CAST_RC); refusing to report PASS" ;;
 esac
 detail "$(( SECONDS - T0 ))s"
 
