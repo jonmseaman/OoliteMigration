@@ -5,8 +5,9 @@ OOJSCall.h
 Basic JavaScript-to-ObjC bridge implementation.
 
 Converted in bead oo-81hy (proposed ADR-0056 amendment oo-ppc; no class of its own): bool for BOOL.
-The Objective-C it needs to read method signatures (the template class and the scalar-value
-protocol) is in OOJSCall+ObjCBridge.h/.mm, imported at the end of this header.
+Since bead oo-9ht.44 an entity is called through its generated name table (OOJSCallEntityMethods.h)
+and the signature templates of any other object are @encode() strings: no Objective-C class or
+protocol of its own is left (the bridge files are deleted).
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -33,6 +34,7 @@ MA 02110-1301, USA.
 #import "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/StdLib.hpp"
+#include <string>
 /*	OOJSCallObjCObjectMethod()
 	
 	Function for implementing JavaScript call() methods.
@@ -52,7 +54,14 @@ MA 02110-1301, USA.
 bool OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::string &oo_jsClassName, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult);
 
 
-// Transitional: the Objective-C helpers of the call. Deleted by the bridge's deletion bead.
-#import "OOJSCall+ObjCBridge.h"
+/*	OOJSCallEntityMethod()
+
+	The same for an entity (callObjC()'s `this` is the C++ entity since bead oo-9ht.39.5.3), by
+	name table (bead oo-9ht.44): only a name of kOOJSCallEntityMethods that the entity answers
+	(its object's per-part -respondsToSelector:) is called, with the table's signature; any other
+	name (a root-class or lifetime selector, one with other arguments) does not respond.
+*/
+namespace cxx { class Entity; }
+bool OOJSCallEntityMethod(ooscript::Context context, cxx::Entity *entity, const std::string &oo_jsClassName, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult);
 
 #endif

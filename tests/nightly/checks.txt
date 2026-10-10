@@ -591,3 +591,4 @@
 [oo-9ht.39.5.1] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/js-api-contract.sh && bash tools/tier-c.sh --only goldens
 [oo-9ht.39.5.2] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/tier-c.sh --only goldens
 [oo-9ht.39.5.3] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/js-api-contract.sh && bash tools/tier-c.sh --only goldens
+[oo-9ht.44] export PATH="/ucrt64/bin:$PATH"; python3 tools/gen-callobjc-entity-table.py --check && tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/js-api-contract.sh && bash tools/tier-c.sh --only goldens

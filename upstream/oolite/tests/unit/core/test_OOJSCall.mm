@@ -171,6 +171,7 @@ cxx::Entity::~Entity() = default;
 @end
 
 @implementation TestPlayerObject
+- (BOOL) isPlayer  { return YES; }	// a name of callObjC()'s entity table (bead oo-9ht.44)
 @end
 
 class PlayerEntity : public ShipEntity
@@ -334,6 +335,23 @@ std::string Call(id object, const char *selector)
 	return Call(object, std::vector<ooscript::Value>{ StringValue(selector) });
 }
 
+
+// The same for an entity, by callObjC()'s entity name table (bead oo-9ht.44).
+std::string CallEntity(cxx::Entity *entity, std::vector<ooscript::Value> argv)
+{
+	sLastError.clear();
+	ooscript::Value result = StringValue("<unchanged>");
+	bool OK = OOJSCallEntityMethod(Context(), entity, "Test", static_cast<unsigned>(argv.size()), argv.data(), &result);
+	if (!OK)  return "error: " + sLastError;
+	return cxx_OOStringFromJSValueEvenIfNull(Context(), result).value_or("<none>");
+}
+
+
+std::string CallEntity(cxx::Entity *entity, const char *selector)
+{
+	return CallEntity(entity, std::vector<ooscript::Value>{ StringValue(selector) });
+}
+
 }	// namespace
 
 
@@ -421,6 +439,26 @@ OO_TEST(shipBecomesScriptTarget)
 		TestTarget *target = [[[TestTarget alloc] init] autorelease];
 		OO_CHECK_EQ(Call(target, "answer"), "42");
 		OO_CHECK(gOOPlayer->scriptTarget == ship->_cxxEntity.get());	// not a ship: unchanged
+	}
+}
+
+
+// callObjC() on an entity by its name table (bead oo-9ht.44): a name of the table that the entity's
+// object answers is called with the table's signature; any other name does not respond, even one
+// the object answers (a root-class or lifetime selector, or one the facade does not define).
+OO_TEST(entityMethodsByTable)
+{
+	@autoreleasepool
+	{
+		Context();
+		gOOPlayer->scriptTarget = nullptr;
+		OO_CHECK_EQ(CallEntity(gOOPlayer, "isPlayer"), "1");
+		OO_CHECK_EQ(Call(sPlayerObject, "isPlayer"), "1");	// what the object's signature gave
+		OO_CHECK(gOOPlayer->scriptTarget == gOOPlayer);	// the player is a ship: its own script target
+		OO_CHECK(CallEntity(gOOPlayer, "retain").find("> does not respond to method retain.") != std::string::npos);
+		OO_CHECK(CallEntity(gOOPlayer, "hash").find("> does not respond to method hash.") != std::string::npos);
+		OO_CHECK(CallEntity(gOOPlayer, "noSuchMethod").find("> does not respond to method noSuchMethod.") != std::string::npos);
+		OO_CHECK_EQ(CallEntity(gOOPlayer, std::vector<ooscript::Value>{}), "error: Test.callObjC(): no selector specified.");
 	}
 }
 

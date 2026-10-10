@@ -980,7 +980,7 @@ static bool ConsoleCallObjCMethod(ooscript::Context context, ooscript::CallArgs 
 	}
 	
 	// An entity's `this` converts to its entity node, whose C++ entity this takes (bead
-	// oo-9ht.39.5.3); the call still reaches it through its object until oo-9ht.44.
+	// oo-9ht.39.5.3) and calls by its name table (bead oo-9ht.44).
 	const oo::PList thisNode = cxx_OOJSPListFromJSObject(context, OOJS_THIS);
 	cxx::Entity *entity = oo::EntityIn(thisNode);
 	object = (entity != nullptr) ? oo::ToObjC(entity) : oo::ObjectIn(thisNode);
@@ -997,7 +997,8 @@ static bool ConsoleCallObjCMethod(ooscript::Context context, ooscript::CallArgs 
 	std::optional<std::string> className;
 	if (entity != nullptr)  className = OOJSEntityJSClassName(entity);
 	else  className = [object cxx_oo_jsClassName];
-	OK = OOJSCallObjCObjectMethod(context, object, className.value_or(std::string()), oojsArgs.count(), OOJS_ARGV, &result);
+	if (entity != nullptr)  OK = OOJSCallEntityMethod(context, entity, className.value_or(std::string()), oojsArgs.count(), OOJS_ARGV, &result);
+	else  OK = OOJSCallObjCObjectMethod(context, object, className.value_or(std::string()), oojsArgs.count(), OOJS_ARGV, &result);
 	OOJSResumeTimeLimiter();
 	
 	OOJS_SET_RVAL(result);
