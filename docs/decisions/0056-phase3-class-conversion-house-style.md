@@ -6458,3 +6458,20 @@ collider the same way; a collision region listed objects (`entity_array`). Every
 `OOJSValueFromNativeObject()`, property-list Object nodes of entities, `OOWeakReference` of
 entities, `OOJSSystem`'s visibility filter, the console's `callObjC()`/`-inspect` and the entity
 converter; for step 4: the owning lists (item 2) and the remaining `oo::ToObjC()` crossings.
+## Amendment (bead oo-9ht.91): the debug plug-in controller's branch is dropped
+
+- Date: 2026-10-10. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch S.
+  Exemplar: `src/Core/Debug/OODebugSupport.mm`.
+
+**Context.** `OOInitDebugSupport()` loaded the Mac debug plug-in (`LoadDebugPlugIn()`) and, when it
+answered `-setUpDebugger`, used its debugger instead of the TCP client; `OODebugSupport+ObjCBridge`
+hid that selector (amendment oo-vnts item 2). `LoadDebugPlugIn()` answers nil on every platform
+(a macro on the platforms built; on the Mac a stub that logs and answers nil since ADR-0017), so the
+controller is always nil and the branch never runs.
+
+**Decision (recommended default).** The plug-in branch, `LoadDebugPlugIn()`, the controller static
+and `OODebugSupport+ObjCBridge.h/.mm` are deleted; the TCP client is the debugger whenever the debug
+OXP is present, and `setUsingPlugInController(false)` is still sent as before. Behaviour identical
+on every platform built (the Mac stub's log line goes with the Mac branch). A plug-in debugger, if
+one is ever wanted, implements the C++ debugger interface (amendment oo-9ht.81). `test_OODebugSupport`
+is unchanged but for its meson entry, which no longer links the bridge.

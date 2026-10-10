@@ -34,20 +34,9 @@ SOFTWARE.
 #import "OODebugTCPConsoleClient.h"
 #import "GameController.h"
 #import "OOJavaScriptEngine.h"
-#import "OODebugSupport+ObjCBridge.h"	// the plug-in controller's -setUpDebugger
 
 #include "oofnd/Log.hpp"
 #include "oofnd/PListGet.hpp"
-
-
-#if OOLITE_MAC_OS_X
-static id LoadDebugPlugIn(void);
-#else
-#define LoadDebugPlugIn() nil
-#endif
-
-
-static id sDebugPlugInController;
 
 
 void OOInitDebugSupport(void)
@@ -69,8 +58,9 @@ void OOInitDebugSupport(void)
 	debugOXPPath = [ResourceManager cxx_pathForFileNamed:"DebugOXPLocatorBeacon.magic" inFolder:"nil"];
 	if (debugOXPPath.has_value())
 	{
-		// Load plug-in debugging code on platforms where this is supported.
-		sDebugPlugInController = [(id)LoadDebugPlugIn() retain];
+		// The debug plug-in (Mac Contents/PlugIns/Debug.bundle) is never loaded on the platforms
+		// built (the loader answered nil everywhere), so its controller's debugger branch is gone
+		// (ADR-0056 amendment oo-9ht.91).
 
 		// oo_stringForKey: a string, or a number's string value; nil for anything else.
 		const oo::PList *consoleHostValue = debugSettings.get<oo::PList>("console-host");
@@ -80,15 +70,7 @@ void OOInitDebugSupport(void)
 		}
 		consolePort = debugSettings.get<unsigned short>("console-port");
 
-		// If consoleHost is nil, and the debug plug-in can set up a debugger, use that.
-		if (!consoleHost.has_value() && OODebugPlugInControllerCanSetUpDebugger(sDebugPlugInController))
-		{
-			debugger = OODebugPlugInControllerSetUpDebugger(sDebugPlugInController);
-			cxx::OODebugMonitor::sharedDebugMonitor()->setUsingPlugInController(true);
-		}
-		
-		// Otherwise, use TCP debugger connection.
-		if (debugger == nil)
+		// Use the TCP debugger connection.
 		{
 			// The client's facade, autoreleased as before; nil when it cannot connect.
 			debugger = oo::ToObjC(cxx::OODebugTCPConsoleClient::clientWithAddress(consoleHost,
@@ -113,17 +95,5 @@ void OOInitDebugSupport(void)
 	}
 }
 
-
-#if OOLITE_MAC_OS_X
-
-static id LoadDebugPlugIn()
-{
-	// Mac Contents/PlugIns/Debug.bundle load used the application bundle APIs; ResourcePaths
-	// (ADR-0017) covers the SDL layout only. Until a PlugIns root exists there, skip the load.
-	OO_LOG("debugSupport.load.failed", "{}", "Debug plug-in load is unavailable on this platform layout.");
-	return nil;
-}
-
-#endif
 
 #endif	/* NDEBUG */
