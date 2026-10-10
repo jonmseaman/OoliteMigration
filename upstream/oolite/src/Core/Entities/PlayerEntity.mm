@@ -680,7 +680,7 @@ void PlayerEntity::unloadCargoPods()
 #ifndef NDEBUG
 	if (cargo.size() > 0)
 	{
-		OO_LOG("player.unloadCargo", "Cargo remains in pods after unloading - {}", oo::DescriptionOf(oo::PListFromObjects(cargo)));
+		OO_LOG("player.unloadCargo", "Cargo remains in pods after unloading - {}", oo::DescriptionOf(oo::EntityNodesFrom(cargo)));
 	}
 #endif
 
@@ -2670,7 +2670,7 @@ bool PlayerEntity::setUpShipFromDictionary(const oo::PList &shipDict)
 	
 	// Load js script
 	OOScriptAutorelease(std::move(script));	// [script autorelease]
-	const oo::PList scriptProperties(oo::PList::Dict{ { "ship", oo::PListObject(oo::ToObjC(this)) } });
+	const oo::PList scriptProperties(oo::PList::Dict{ { "ship", oo::EntityObjectNode(this) } });
 	script = OOScript::jsScriptFromFileNamed(StringForKey(shipDict, "script").value_or(std::string()),	// (nil loaded nothing)
 											 scriptProperties);
 	if (script == nullptr)
@@ -5468,7 +5468,7 @@ void PlayerEntity::validateCompassTarget()
 			setCompassTarget(new_target);
 			// a nil target was left out of the Objective-C argument array, as before
 			std::vector<oo::PList> compassArguments;
-			if (new_target != nil)  compassArguments.push_back(oo::PListObject(new_target));
+			if (new_target != nil)  compassArguments.push_back(oo::EntityObjectNode(new_target));
 			compassArguments.emplace_back(cxx_OOStringFromCompassMode(getCompassMode()));
 			doScriptEvent(OOJSID("compassTargetChanged"), compassArguments);
 		}

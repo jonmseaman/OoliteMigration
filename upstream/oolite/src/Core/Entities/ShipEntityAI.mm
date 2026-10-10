@@ -140,7 +140,7 @@ void ShipEntity::setAITo(const std::string &aiString)	// called by name (ADR-005
 
 void ShipEntity::setAIScript(const std::string &aiString)
 {
-	const oo::PList properties(oo::PList::Dict{ { "ship", oo::PListObject(oo::ToObjC(this)) } });
+	const oo::PList properties(oo::PList::Dict{ { "ship", oo::EntityObjectNode(this) } });
 	
 	OOScriptAutorelease(std::move(aiScript));	// [aiScript autorelease]
 	aiScript = OOScript::jsAIScriptFromFileNamed(aiString, properties);

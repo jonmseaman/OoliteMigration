@@ -594,7 +594,7 @@ oo::PList WormholeEntity::getShipsInTransit()
 	for (const OOWormholeTransit &transit : shipsInTransit)
 	{
 		oo::PList::Dict entry{
-			{ "ship", oo::PListObject(transit.ship.get()) },
+			{ "ship", oo::EntityObjectNode(transit.ship.get()) },
 			{ "time", oo::PList(transit.time) } };
 		if (transit.beacon)  entry["shipBeacon"] = oo::PList(*transit.beacon);
 		result.push_back(oo::PList(std::move(entry)));

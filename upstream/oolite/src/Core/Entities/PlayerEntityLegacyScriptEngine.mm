@@ -2951,7 +2951,7 @@ bool PlayerEntity::addEqScriptForKey(const std::string &eq_key)
 
 	// the script's properties: a mixed configuration (Amendment 2)
 	oo::PList::Dict properties;
-	properties["ship"] = oo::PListObject(oo::ToObjC(this));
+	properties["ship"] = oo::EntityObjectNode(this);
 	properties["equipmentKey"] = oo::PList(eq_key);
 	oo::Ref<OOScript> s = OOScript::jsScriptFromFileNamed(*scriptName, oo::PList(std::move(properties)));
 	if (s == nullptr) return NO;

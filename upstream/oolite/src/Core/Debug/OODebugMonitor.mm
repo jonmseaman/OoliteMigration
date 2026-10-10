@@ -466,7 +466,7 @@ void OODebugMonitor::dumpEntity(id entity, EntityDumpState *state, bool parentVi
 			for (const oo::PList &shipInfo : *shipInfos)
 			{
 				const oo::PList *shipNode = shipInfo.find("ship");
-				::ShipEntity *ship = oo::ToShip((shipNode != nullptr) ? oo::ObjectIn(*shipNode) : nil);
+				::ShipEntity *ship = oo::ToShip((shipNode != nullptr) ? oo::EntityIn(*shipNode) : nullptr);	// the ship's entity node (bead oo-9ht.39.5.3)
 				dumpEntity(oo::ToObjC(ship), state, false);
 			}
 		}

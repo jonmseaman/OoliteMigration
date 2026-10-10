@@ -2455,7 +2455,11 @@ static oo::PList PListFromJSArray(ooscript::Context context, ooscript::Object ar
 		if (!ooscript::getElement((context), (array), i, (&value)))  value = ooscript::undefinedValue();
 
 		oo::PList element = cxx_OOJSPListFromJSValue(context, value);
-		if (element.isNull())  element = oo::PListObject(oo::ToObjC(cxx::OONull::null()));	// [OONull null]
+		if (element.isNull())
+		{
+			::OONull *null = oo::ToObjC(cxx::OONull::null());	// [OONull null]
+			element = oo::PListObject(null);
+		}
 		values.push_back(std::move(element));
 	}
 

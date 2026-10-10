@@ -230,11 +230,11 @@ static bool ShipGroupGetProperty(Context cx, Object obj, PropertyId propID, Valu
 	switch (ooscript::idToInt32(propID))
 	{
 		case kShipGroup_ships:
-			result = oo::PListFromObjects((cxxGroup != nullptr) ? cxxGroup->memberArray() : std::vector<oo::ObjCRef<::Entity *>>());	// (no C++ value from a message to nil; an empty array)
+			result = oo::EntityNodesFrom((cxxGroup != nullptr) ? cxxGroup->memberArray() : std::vector<oo::ObjCRef<::Entity *>>());	// (no C++ value from a message to nil; an empty array)
 			break;
 			
 		case kShipGroup_leader:
-			result = oo::PListObject(oo::ToObjC((cxxGroup != nullptr) ? cxxGroup->leader() : nullptr));
+			result = oo::EntityObjectNode((cxxGroup != nullptr) ? cxxGroup->leader() : nullptr);
 			break;
 			
 		case kShipGroup_name:

@@ -815,11 +815,11 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			break;
 		
 		case kShip_AIFoundTarget:
-			result = oo::PListObject(ship->foundTarget());
+			result = oo::EntityObjectNode(ship->foundTarget());
 			break;
 		
 		case kShip_AIPrimaryAggressor:
-			result = oo::PListObject(ship->primaryAggressor());
+			result = oo::EntityObjectNode(ship->primaryAggressor());
 			break;
 		
 		case kShip_alertCondition:
@@ -849,15 +849,15 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 		case kShip_subEntities:
 			// What -subEntitiesForScript answered: ShipEntity's (OOJavaScriptExtensions) method, which no
 			// subclass overrides, forwards to this function.
-			result = oo::PListFromObjects(ShipEntityJSSubEntitiesForScript(entity));
+			result = oo::EntityNodesFrom(ShipEntityJSSubEntitiesForScript(entity));
 			break;
 
 		case kShip_exhausts:
-			result = oo::PListFromObjects(ship->exhausts());
+			result = oo::EntityNodesFrom(ship->exhausts());
 			break;
 
 		case kShip_flashers:
-			result = oo::PListFromObjects(ship->flasherEnumerator());
+			result = oo::EntityNodesFrom(ship->flasherEnumerator());
 			break;
 			
 		case kShip_subEntityCapacity:
@@ -872,7 +872,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			return true;
 			
 		case kShip_target:
-			result = oo::PListObject(ship->primaryTarget());
+			result = oo::EntityObjectNode(static_cast<::Entity *>(ship->primaryTarget()));	// an entity's object or nil (bead oo-9ht.39.5.2)
 			break;
 		
 		case kShip_defenseTargets:
@@ -888,7 +888,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 				if (target == nullptr)  break;	// the old loop stopped at the first zeroed reference
 				targets.emplace_back(target);
 			}
-			result = oo::PListFromObjects(targets);
+			result = oo::EntityNodesFrom(targets);
 			break;
 		}		
 
@@ -903,7 +903,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 		case kShip_escorts:
 			{
 				OOShipGroup *escortGroup = ship->escortGroup();
-				result = (escortGroup != nullptr) ? oo::PListFromObjects(escortGroup->memberArrayExcludingLeader()) : oo::PList();
+				result = (escortGroup != nullptr) ? oo::EntityNodesFrom(escortGroup->memberArrayExcludingLeader()) : oo::PList();
 			}
 			break;
 			
@@ -960,7 +960,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			return true;
 		
 		case kShip_potentialCollider:
-			result = oo::PListObject(ship->proximityAlert());
+			result = oo::EntityObjectNode(ship->proximityAlert());
 			break;
 		
 		case kShip_hasHostileTarget:
@@ -1048,7 +1048,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			return true;
 
 	  case kShip_collisionExceptions:
-			result = oo::PListFromObjects(ship->collisionExceptions());
+			result = oo::EntityNodesFrom(ship->collisionExceptions());
 			break;
 
 			
@@ -2584,7 +2584,7 @@ static bool ShipSpawn(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	result = ship->spawnShipsWithRole(*role, count);
 	OOJS_END_FULL_NATIVE
 
-	OOJS_RETURN_PLIST(oo::PListFromObjects(result));
+	OOJS_RETURN_PLIST(oo::EntityNodesFrom(result));
 	
 	OOJS_NATIVE_EXIT
 }
@@ -4319,7 +4319,7 @@ static bool ShipCheckScanner(ooscript::Context context, ooscript::CallArgs &oojs
 	oo::PList::Array scanResult;
 	for (unsigned i = 0; i < num; i++)
 	{
-		if (scannedShips[i] != nullptr)  scanResult.push_back(oo::PListObject(oo::ToObjC(scannedShips[i])));	// nil skipped, as a Foundation array skipped it
+		if (scannedShips[i] != nullptr)  scanResult.push_back(oo::EntityObjectNode(scannedShips[i]));	// nil skipped, as a Foundation array skipped it
 	}
 	OOJS_RETURN_PLIST(oo::PList(std::move(scanResult)));
 

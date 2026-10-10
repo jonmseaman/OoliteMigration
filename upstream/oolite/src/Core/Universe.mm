@@ -12095,7 +12095,7 @@ void Universe::debugDumpEntities()
 	
 	if (entities.size() != n_entities)
 	{
-		OO_LOG("universe.objectDump", "entities = {}", oo::DescriptionOf(oo::PListFromObjects(entities)));
+		OO_LOG("universe.objectDump", "entities = {}", oo::DescriptionOf(oo::EntityNodesFrom(entities)));
 	}
 }
 

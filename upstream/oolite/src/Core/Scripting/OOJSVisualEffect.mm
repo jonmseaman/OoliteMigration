@@ -416,7 +416,7 @@ static bool VisualEffectGetProperty(Context cx, Object obj, PropertyId propID, V
 			{
 				// nil before the first subentity (was [subEntitiesForScript] == nil)
 				const auto subs = (entity != nullptr ? entity->visualEffectSubEntityEnumerator() : std::optional<std::vector<oo::ObjCRef<::Entity *>>>());
-				if (subs.has_value())  result = oo::PListFromObjects(*subs);
+				if (subs.has_value())  result = oo::EntityNodesFrom(*subs);
 			}
 			break;
 			

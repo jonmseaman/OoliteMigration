@@ -826,7 +826,7 @@ static bool StationLaunchShipWithRole(ooscript::Context context, ooscript::CallA
 	if (oojsArgs.count() > 1)  ooscript::valueToBoolean((context), (OOJS_ARGV[1]), &abortAllDockings);
 
 	OOJS_BEGIN_FULL_NATIVE(context)
-	result = oo::ToShip(oo::ObjectIn((station != nullptr ? station->launchIndependentShip(*shipRole) : oo::PList())));
+	result = oo::ToShip(oo::EntityIn((station != nullptr ? station->launchIndependentShip(*shipRole) : oo::PList())));	// the ship's entity node (bead oo-9ht.39.5.3)
 	if (abortAllDockings) { if (station != nullptr)  station->abortAllDockings(); }
 	OOJS_END_FULL_NATIVE
 
@@ -974,11 +974,12 @@ static bool StationLaunchPolice(ooscript::Context context, ooscript::CallArgs &o
 	StationEntity *station = nil;
 	if (!JSStationGetStationEntity(context, OOJS_THIS, &station))  OOJS_RETURN_VOID; // stale reference, no-op
 	
-	std::vector<oo::ObjCRef<::Entity *>> launched;
+	oo::PList::Array launched;	// the launched ships' entity nodes, in order (bead oo-9ht.39.5.3)
 	OOJS_BEGIN_FULL_NATIVE(context)
-	launched = oo::ObjCRefsIn<::Entity *>((station != nullptr ? station->launchPolice() : oo::PList()));
+	const oo::PList police = (station != nullptr ? station->launchPolice() : oo::PList());
+	for (cxx::Entity *ship : oo::EntitiesIn(police))  launched.push_back(oo::EntityObjectNode(ship));
 	OOJS_END_FULL_NATIVE
-	OOJS_RETURN_PLIST(oo::PListFromObjects(launched));
+	OOJS_RETURN_PLIST(oo::PList(std::move(launched)));
 	OOJS_NATIVE_EXIT
 }
 } // namespace

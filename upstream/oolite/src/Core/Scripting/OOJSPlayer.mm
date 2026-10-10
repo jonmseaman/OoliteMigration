@@ -759,7 +759,7 @@ static bool PlayerReplaceShip(ooscript::Context context, ooscript::CallArgs &ooj
 	{ 
 		if (player != nullptr)  player->doScriptEvent(OOJSID("playerReplacedShip"), oo::ToObjC(player));
 		// slightly misnamed world event now - to be deprecated
-		if (player != nullptr)  player->ShipEntity::doScriptEvent(OOJSID("playerBoughtNewShip"), { oo::PListObject(oo::ToObjC(player)), oo::PList::signedInteger(0) });	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
+		if (player != nullptr)  player->ShipEntity::doScriptEvent(OOJSID("playerBoughtNewShip"), { oo::EntityObjectNode(player), oo::PList::signedInteger(0) });	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 	}
 
 	OOJS_RETURN_BOOL(success);
