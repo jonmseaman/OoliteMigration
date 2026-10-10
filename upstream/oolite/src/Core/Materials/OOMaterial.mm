@@ -26,6 +26,7 @@ SOFTWARE.
 */
 
 #import "OOMaterial.h"
+#include "OOMaterialState.h"
 #import "OOFunctionAttributes.h"
 #import "OOLogging.h"
 #include "oofnd/String.hpp"
@@ -105,6 +106,26 @@ void OOMaterial::applyNone()
 oo::Ref<OOMaterial> OOMaterial::current()
 {
 	return ActiveMaterial();
+}
+
+
+// OOMaterialState.h: the slot for plain C++ translation units (bead oo-9ht.185).
+OOMaterial *OOMaterialRetainCurrent()
+{
+	return OOMaterial::current().leakRef();
+}
+
+
+void OOMaterialApplyNone()
+{
+	OOMaterial::applyNone();
+}
+
+
+void OOMaterialApplyAndRelease(OOMaterial *material)
+{
+	if (material != nullptr)  material->apply();	// a message to nil did nothing
+	oo::release(material);
 }
 
 

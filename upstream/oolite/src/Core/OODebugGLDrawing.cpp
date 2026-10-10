@@ -25,9 +25,10 @@ SOFTWARE.
 
 */
 
-#import "OODebugGLDrawing.h"
-#import "OOMacroOpenGL.h"
-#import "OOMaterial.h"
+#include "OODebugGLDrawing.h"
+#include "OOMacroOpenGL.h"
+#include "OOOpenGL.h"
+#include "OOMaterialState.h"
 
 
 #ifndef OODEBUGLDRAWING_DISABLE
@@ -47,7 +48,7 @@ OOINLINE void ApplyColor(OOColor *color)
 
 void OODebugDrawColoredBoundingBoxBetween(Vector min, Vector max, OOColor *color)
 {
-	OODebugWFState state = OODebugBeginWireframe(YES);
+	OODebugWFState state = OODebugBeginWireframe(true);
 	OO_ENTER_OPENGL();
 	
 	ApplyColor(color);
@@ -78,7 +79,7 @@ void OODebugDrawColoredBoundingBoxBetween(Vector min, Vector max, OOColor *color
 
 void OODebugDrawColoredLine(Vector start, Vector end, OOColor *color)
 {	
-	OODebugWFState state = OODebugBeginWireframe(YES);
+	OODebugWFState state = OODebugBeginWireframe(true);
 	OO_ENTER_OPENGL();
 	
 	ApplyColor(color);
@@ -94,7 +95,7 @@ void OODebugDrawColoredLine(Vector start, Vector end, OOColor *color)
 
 void OODebugDrawBasis(Vector position, GLfloat scale)
 {
-	OODebugWFState state = OODebugBeginWireframe(YES);
+	OODebugWFState state = OODebugBeginWireframe(true);
 	OO_ENTER_OPENGL();
 	
 	OOGLBEGIN(GL_LINES);
@@ -117,7 +118,7 @@ void OODebugDrawBasis(Vector position, GLfloat scale)
 
 void OODebugDrawPoint(Vector position, OOColor *color)
 {
-	OODebugWFState state = OODebugBeginWireframe(YES);
+	OODebugWFState state = OODebugBeginWireframe(true);
 	OO_ENTER_OPENGL();
 	
 	ApplyColor(color);
@@ -131,13 +132,13 @@ void OODebugDrawPoint(Vector position, OOColor *color)
 }
 
 
-OODebugWFState OODebugBeginWireframe(BOOL ignoreZ)
+OODebugWFState OODebugBeginWireframe(bool ignoreZ)
 {
 	OO_ENTER_OPENGL();
 	
 	// The current material, held until OODebugEndWireframe() (it was the facade's autoreleased object).
-	OODebugWFState state = { .material = OOMaterial::current().leakRef() };
-	OOMaterial::applyNone();
+	OODebugWFState state = { .material = OOMaterialRetainCurrent() };
+	OOMaterialApplyNone();
 	
 	OOGL(glPushAttrib(GL_ENABLE_BIT | GL_DEPTH_BUFFER_BIT | GL_LINE_BIT | GL_POINT_BIT | GL_CURRENT_BIT));
 	
@@ -165,8 +166,7 @@ void OODebugEndWireframe(OODebugWFState state)
 {
 	OO_ENTER_OPENGL();
 	OOGL(glPopAttrib());
-	if (state.material != nullptr)  state.material->apply();	// a message to nil did nothing
-	oo::release(state.material);
+	OOMaterialApplyAndRelease(state.material);
 }
 
 #endif

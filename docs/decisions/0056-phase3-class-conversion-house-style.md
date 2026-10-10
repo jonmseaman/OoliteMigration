@@ -7081,3 +7081,35 @@ took the generator's facade. The texture's own facade (oo-9ht.99) is NOT deleted
 
 **Consequences.** No Objective-C texture loader or generator is left. The texture's facade
 (oo-9ht.99) remains: its callers still hold `oo::ObjCRef<::OOTexture *>`.
+
+
+## Amendment (beads oo-9ht.185 and oo-hrcs (OODebugGLDrawing)): a plain C++ include path for the debug wireframes; OODebugGLDrawing.mm becomes .cpp
+
+- **Status:** proposed (batch Z, Migration Completion session, 2026-10-10; recommended defaults per
+  CLAUDE.md rule 10). Beads: oo-9ht.185 (the include path), oo-hrcs (the rename). Exemplar:
+  `src/Core/OODebugGLDrawing.cpp`, `src/Core/Materials/OOMaterialState.h`.
+
+**Context.** Since oo-9ht.8 OODebugGLDrawing sends no Objective-C message and declares no class,
+but its byte-identical `.mm -> .cpp` rename did not compile: `OOMaterial.h` is Objective-C++
+(`id<OOWeakReferenceSupport>` binding targets, `OOCocoa.h`), and `OOOpenGL.h`, which supplies
+`GLScaledLineWidth()`/`GLScaledPointSize()`, imported `OOCocoa.h`.
+
+**Decision (recommended defaults).**
+
+1. **A C++-only declaration header for the material root's current-material slot**,
+   `Materials/OOMaterialState.h`: `OOMaterialRetainCurrent()` (`OOMaterial::current().leakRef()`),
+   `OOMaterialApplyNone()` and `OOMaterialApplyAndRelease()` (apply if non-null, then release),
+   defined in `OOMaterial.mm`. OOMaterial's own API is unchanged; its binding target stays
+   Objective-C until the entity facades go (oo-6symp).
+2. **`OOOpenGL.h` is includable from plain C++**: `OOCocoa.h` is imported only under `__OBJC__`,
+   and the two `NSSize`-taking declarations (`GLDrawOval()`, `GLDrawFilledOval()`) are declared
+   only there. Every Objective-C++ includer sees exactly what it saw.
+3. **`OODebugBeginWireframe()` takes `bool`** where it took `BOOL`: in a plain C++ unit `BOOL` is
+   windows.h's `int`, not the Objective-C runtime's `signed char`, so the declaration would mangle
+   differently on the two sides. Callers' `YES`/`NO` convert unchanged; the `.cpp` passes `true`.
+4. **oo-hrcs renames `OODebugGLDrawing.mm` to `.cpp`** (not `.c` as its generated story said: the
+   API takes the C++ `OOColor` and holds an `OOMaterial *`, so the file is C++; ADR-0012's C stays
+   C does not apply). Its acceptance is retargeted to the `.cpp`.
+
+**Consequences.** No behaviour change. OODebugGLDrawing is the first Core rendering file compiled as
+plain C++; `OOMaterialState.h` is the pattern for another `.cpp` that needs only the slot.
