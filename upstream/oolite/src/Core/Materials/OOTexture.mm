@@ -213,8 +213,8 @@ oo::ObjCRef<::OOTexture *> OOTexture::textureWithGenerator(::OOTextureGenerator 
 
 oo::ObjCRef<::OOTexture *> OOTexture::textureWithGenerator(::OOTextureGenerator *generator, bool enqueue)
 {
-	if (generator == nil)  return nullptr;
-	cxx::OOTextureGenerator *cxxGenerator = oo::ToCxx(generator);	// the generator's C++ part (bead oo-rr2x)
+	if (generator == nullptr)  return nullptr;
+	::OOTextureGenerator *cxxGenerator = generator;	// C++ since bead oo-9ht.118 deleted the generator's facade
 
 #ifndef OOTEXTURE_NO_CACHE
 	::OOTexture *existing = oo::ToObjC(existingTextureForKey(cxxGenerator->cacheKey()));
@@ -223,10 +223,10 @@ oo::ObjCRef<::OOTexture *> OOTexture::textureWithGenerator(::OOTextureGenerator 
 
 	if (!cxxGenerator->enqueue())
 	{
-		OO_LOG_ERR("texture.generator.queue.failed", "Failed to queue generator {}", oo::DescriptionOf(generator));
+		OO_LOG_ERR("texture.generator.queue.failed", "Failed to queue generator {}", generator->description());
 		return nullptr;
 	}
-	OO_LOG("texture.generator.queue", "Queued texture generator {}", oo::DescriptionOf(generator));
+	OO_LOG("texture.generator.queue", "Queued texture generator {}", generator->description());
 
 	oo::ObjCRef<::OOTexture *> result = oo::ObjCRef<::OOTexture *>(oo::ToObjC(static_cast<cxx::OOTexture *>(::OOConcreteTexture::initWithLoader(generator,
 																												 cxxGenerator->cacheKey(),

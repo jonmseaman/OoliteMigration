@@ -208,22 +208,22 @@ bool OOCombinedEmissionMapGenerator::initWithEmissionMapSpec(const oo::PList &em
 			OOTextureDataFormat format;
 			if (!_emissionSpec.isNull())
 			{
-				const oo::ObjCRef<::OOTextureLoader *> emissionMapLoader = cxx::OOTextureLoader::loaderWithTextureSpecifier(_emissionSpec,
+				const oo::Ref<OOTextureLoader> emissionMapLoader = OOTextureLoader::loaderWithTextureSpecifier(_emissionSpec,
 																															0,
 																															std::string("Textures"));
-				if (emissionMapLoader)  oo::ToCxx(emissionMapLoader.get())->getResult(&_emissionPx, &format, NULL, NULL);
+				if (emissionMapLoader)  emissionMapLoader->getResult(&_emissionPx, &format, NULL, NULL);
 #ifndef NDEBUG
-				_emissionDesc = (emissionMapLoader ? oo::ShortDescriptionOf(emissionMapLoader.get()) : std::string());
+				_emissionDesc = (emissionMapLoader ? emissionMapLoader->shortDescription() : std::string());
 #endif
 			}
 			if (!_illuminationSpec.isNull())
 			{
-				const oo::ObjCRef<::OOTextureLoader *> illuminationMapLoader = cxx::OOTextureLoader::loaderWithTextureSpecifier(_illuminationSpec,
+				const oo::Ref<OOTextureLoader> illuminationMapLoader = OOTextureLoader::loaderWithTextureSpecifier(_illuminationSpec,
 																																0,
 																																std::string("Textures"));
-				if (illuminationMapLoader)  oo::ToCxx(illuminationMapLoader.get())->getResult(&_illuminationPx, &format, NULL, NULL);
+				if (illuminationMapLoader)  illuminationMapLoader->getResult(&_illuminationPx, &format, NULL, NULL);
 #ifndef NDEBUG
-				_illuminationDesc = (illuminationMapLoader ? oo::ShortDescriptionOf(illuminationMapLoader.get()) : std::string());
+				_illuminationDesc = (illuminationMapLoader ? illuminationMapLoader->shortDescription() : std::string());
 #endif
 			}
 		}
@@ -467,6 +467,6 @@ void OOCombinedEmissionMapGenerator::loadTexture()
 	}
 	if (_data == NULL)
 	{
-		OO_LOG_ERR("texture.combinedEmissionMap.error", "Unknown error loading {}", oo::DescriptionOf(oo::ToObjC(this)));
+		OO_LOG_ERR("texture.combinedEmissionMap.error", "Unknown error loading {}", description());
 	}
 }

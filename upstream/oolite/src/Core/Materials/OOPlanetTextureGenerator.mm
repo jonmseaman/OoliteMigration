@@ -71,7 +71,7 @@ enum
 	one texture per loader. Rather than complicate that, we use a mock
 	generator for the normal/light map.
 */
-class OOPlanetNormalMapGenerator : public cxx::OOTextureGenerator
+class OOPlanetNormalMapGenerator : public OOTextureGenerator
 {
 public:
 	bool initWithCacheKey(const std::string &cacheKey, RANROTSeed seed);	// was -initWithCacheKey:seed:
@@ -93,7 +93,7 @@ private:
 
 
 //	Doing the same as above for the atmosphere.
-class OOPlanetAtmosphereGenerator : public cxx::OOTextureGenerator
+class OOPlanetAtmosphereGenerator : public OOTextureGenerator
 {
 public:
 	bool initWithCacheKey(const std::string &cacheKey, RANROTSeed seed, OOPlanetTextureGenerator *parent);	// was -initWithCacheKey:seed:andParent:
@@ -164,7 +164,7 @@ bool OOPlanetTextureGenerator::initWithPlanetInfo(const oo::PList &planetInfo, R
 	// AllowCubeMap not used yet but might be in future
 	if (initWithPath(oo::str::format("OOPlanetTexture@%s", oo::str::pointerDescription(this).c_str()), kOOTextureAllowCubeMap))
 	{
-		OO_LOG("texture.planet.generate", "Extracting parameters for generator {}", oo::DescriptionOf(oo::ToObjC(this)));
+		OO_LOG("texture.planet.generate", "Extracting parameters for generator {}", description());
 
 		_info.landFraction = OOClamp_0_1_f(planetInfo.get<float>("land_fraction", 0.3));
 		_info.polarFraction = OOClamp_0_1_f(planetInfo.get<float>("polar_fraction", 0.05));
@@ -217,7 +217,7 @@ oo::ObjCRef<::OOTexture *> OOPlanetTextureGenerator::planetTextureWithInfo(const
 	const oo::Ref<OOPlanetTextureGenerator> generator = generatorWithPlanetInfo(planetInfo, seed);
 	if (generator)
 	{
-		result = cxx::OOTexture::textureWithGenerator(oo::ToObjC(generator.get()));
+		result = cxx::OOTexture::textureWithGenerator(generator.get());
 	}
 
 	return result;
@@ -234,10 +234,10 @@ bool OOPlanetTextureGenerator::generatePlanetTextureAndAtmosphere(oo::ObjCRef<::
 	OOPlanetAtmosphereGenerator *atmoGen = diffuseGen->atmosphereGenerator();
 	if (atmoGen == nullptr)  return false;
 
-	*atmosphere = cxx::OOTexture::textureWithGenerator(oo::ToObjC(atmoGen));
+	*atmosphere = cxx::OOTexture::textureWithGenerator(atmoGen);
 	if (atmosphere->get() == nil)  return false;
 
-	*texture = cxx::OOTexture::textureWithGenerator(oo::ToObjC(diffuseGen.get()), atmoGen->enqueued());
+	*texture = cxx::OOTexture::textureWithGenerator(diffuseGen.get(), atmoGen->enqueued());
 
 	return texture->get() != nil;
 }
@@ -257,12 +257,12 @@ bool OOPlanetTextureGenerator::generatePlanetTexture(oo::ObjCRef<::OOTexture *> 
 		OOPlanetNormalMapGenerator *normalGen = diffuseGen->normalMapGenerator();
 		if (normalGen == nullptr)  return false;
 
-		*secondaryTexture = cxx::OOTexture::textureWithGenerator(oo::ToObjC(normalGen));
+		*secondaryTexture = cxx::OOTexture::textureWithGenerator(normalGen);
 		if (secondaryTexture->get() == nil)  return false;
 		enqueue = normalGen->enqueued();
 	}
 
-	*texture = cxx::OOTexture::textureWithGenerator(oo::ToObjC(diffuseGen.get()), enqueue);
+	*texture = cxx::OOTexture::textureWithGenerator(diffuseGen.get(), enqueue);
 
 	return texture->get() != nil;
 }
@@ -282,7 +282,7 @@ bool OOPlanetTextureGenerator::generatePlanetTexture(oo::ObjCRef<::OOTexture *> 
 		OOPlanetNormalMapGenerator *normalGen = diffuseGen->normalMapGenerator();
 		if (normalGen == nullptr)  return false;
 
-		*secondaryTexture = cxx::OOTexture::textureWithGenerator(oo::ToObjC(normalGen));
+		*secondaryTexture = cxx::OOTexture::textureWithGenerator(normalGen);
 		if (secondaryTexture->get() == nil)  return false;
 		enqueue = normalGen->enqueued();
 	}
@@ -290,7 +290,7 @@ bool OOPlanetTextureGenerator::generatePlanetTexture(oo::ObjCRef<::OOTexture *> 
 	OOPlanetAtmosphereGenerator *atmoGen = diffuseGen->atmosphereGenerator();
 	if (atmoGen == nullptr)  return false;
 
-	*atmosphere = cxx::OOTexture::textureWithGenerator(oo::ToObjC(atmoGen));
+	*atmosphere = cxx::OOTexture::textureWithGenerator(atmoGen);
 	if (atmosphere->get() == nil)
 	{
 		if (secondaryTexture != NULL) {
@@ -300,9 +300,9 @@ bool OOPlanetTextureGenerator::generatePlanetTexture(oo::ObjCRef<::OOTexture *> 
 	}
 	enqueue = enqueue || atmoGen->enqueued();
 
-	OO_LOG("texture.planet.generate", "Generator {} has atmosphere {}", oo::DescriptionOf(oo::ToObjC(diffuseGen.get())), oo::DescriptionOf(atmosphere->get()));
+	OO_LOG("texture.planet.generate", "Generator {} has atmosphere {}", diffuseGen.get()->description(), oo::DescriptionOf(atmosphere->get()));
 
-	*texture = cxx::OOTexture::textureWithGenerator(oo::ToObjC(diffuseGen.get()), enqueue);
+	*texture = cxx::OOTexture::textureWithGenerator(diffuseGen.get(), enqueue);
 	return texture->get() != nil;
 }
 
@@ -374,18 +374,18 @@ bool OOPlanetTextureGenerator::getResultFormatWidthHeight(OOPixMap *outData, OOT
 	if (!isReady())
 	{
 		waiting = true;
-		OO_LOG("texture.planet.generate.wait", "{} generator {}", "Waiting for", oo::DescriptionOf(oo::ToObjC(this)));
+		OO_LOG("texture.planet.generate.wait", "{} generator {}", "Waiting for", description());
 	}
 
-	BOOL result = cxx::OOTextureGenerator::getResult(outData, outFormat, outWidth, outHeight);
+	BOOL result = OOTextureGenerator::getResult(outData, outFormat, outWidth, outHeight);
 
 	if (waiting)
 	{
-		OO_LOG("texture.planet.generate.dequeue", "{} generator {}", result ? "Dequeued" : "Failed to dequeue", oo::DescriptionOf(oo::ToObjC(this)));
+		OO_LOG("texture.planet.generate.dequeue", "{} generator {}", result ? "Dequeued" : "Failed to dequeue", description());
 	}
 	else
 	{
-		OO_LOG("texture.planet.generate.dequeue", "{} generator {} without waiting.", result ? "Dequeued" : "Failed to dequeue", oo::DescriptionOf(oo::ToObjC(this)));
+		OO_LOG("texture.planet.generate.dequeue", "{} generator {} without waiting.", result ? "Dequeued" : "Failed to dequeue", description());
 	}
 
 	return result;
@@ -394,7 +394,7 @@ bool OOPlanetTextureGenerator::getResultFormatWidthHeight(OOPixMap *outData, OOT
 
 void OOPlanetTextureGenerator::loadTexture()
 {
-	OO_LOG("texture.planet.generate.begin", "Started generator {}", oo::DescriptionOf(oo::ToObjC(this)));
+	OO_LOG("texture.planet.generate.begin", "Started generator {}", description());
 
 	BOOL success = NO;
 	BOOL generateNormalMap = (bool)_nMapGenerator;
@@ -567,7 +567,7 @@ END:
 	_nMapGenerator = nullptr;
 	_atmoGenerator = nullptr;
 
-	OO_LOG("texture.planet.generate.complete", "Completed generator {} {}successfully", oo::DescriptionOf(oo::ToObjC(this)), success ? "" : "un");
+	OO_LOG("texture.planet.generate.complete", "Completed generator {} {}successfully", description(), success ? "" : "un");
 	
 #if DEBUG_DUMP
 	if (success)
@@ -1257,7 +1257,7 @@ void OOPlanetNormalMapGenerator::completeWithData(void *data_, unsigned width_, 
 	_format = (OOTextureDataFormat)kOOTextureDataRGBA;
 
 	// Enqueue so superclass can apply texture options and so forth.
-	cxx::OOTextureGenerator::enqueue();
+	OOTextureGenerator::enqueue();
 	
 #if DEBUG_DUMP
 	const std::string normalName = oo::str::format("planet-%u-%u-normal-new", _seed.high, _seed.low);
@@ -1337,7 +1337,7 @@ bool OOPlanetAtmosphereGenerator::getResult(OOPixMap *result, OOTextureDataForma
 		OOAsyncWorkManager::sharedAsyncWorkManager()->waitForTaskToComplete(_parent.get());
 	}
 
-	return cxx::OOTextureGenerator::getResult(result,
+	return OOTextureGenerator::getResult(result,
 											  outFormat,
 											  outWidth,
 											  outHeight);
@@ -1354,7 +1354,7 @@ void OOPlanetAtmosphereGenerator::completeWithData(void *data_, unsigned width_,
 	_format = (OOTextureDataFormat)kOOTextureDataRGBA;
 
 	// Enqueue so superclass can apply texture options and so forth.
-	cxx::OOTextureGenerator::enqueue();
+	OOTextureGenerator::enqueue();
 	
 #if DEBUG_DUMP
 	const std::string rgbName = oo::str::format("planet-%u-%u-atmosphere-rgb-new", _seed.high, _seed.low);

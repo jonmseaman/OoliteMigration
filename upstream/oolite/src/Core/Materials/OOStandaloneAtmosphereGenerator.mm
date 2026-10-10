@@ -104,7 +104,7 @@ bool OOStandaloneAtmosphereGenerator::initWithPlanetInfo(const oo::PList &planet
 	// AllowCubeMap not used yet but might be in future
 	if (initWithPath(oo::str::format("OOStandaloneAtmosphereTexture@%s", oo::str::pointerDescription(this).c_str()), kOOTextureAllowCubeMap))
 	{
-		OO_LOG("texture.planet.generate", "Extracting parameters for generator {}", oo::DescriptionOf(oo::ToObjC(this)));
+		OO_LOG("texture.planet.generate", "Extracting parameters for generator {}", description());
 		_info.seed = seed;	// was a value box under "noise_map_seed" in planetInfo (bead oo-3rb.48)
 		OO_LOG("texture.planet.generate", "{}", "Extracting atmosphere parameters");
 		// we are an atmosphere:
@@ -143,7 +143,7 @@ oo::ObjCRef<::OOTexture *> OOStandaloneAtmosphereGenerator::planetTextureWithInf
 	const oo::Ref<OOStandaloneAtmosphereGenerator> generator = generatorWithPlanetInfo(planetInfo, seed);
 	if (generator)
 	{
-		result = cxx::OOTexture::textureWithGenerator(oo::ToObjC(generator.get()));
+		result = cxx::OOTexture::textureWithGenerator(generator.get());
 	}
 
 	return result;
@@ -157,7 +157,7 @@ bool OOStandaloneAtmosphereGenerator::generateAtmosphereTexture(oo::ObjCRef<::OO
 	const oo::Ref<OOStandaloneAtmosphereGenerator> atmoGen = generatorWithPlanetInfo(planetInfo, seed);
 	if (!atmoGen)  return false;
 
-	*texture = cxx::OOTexture::textureWithGenerator(oo::ToObjC(atmoGen.get()));
+	*texture = cxx::OOTexture::textureWithGenerator(atmoGen.get());
 
 	return texture->get() != nil;
 }
@@ -196,18 +196,18 @@ bool OOStandaloneAtmosphereGenerator::getResultFormatWidthHeight(OOPixMap *outDa
 	if (!isReady())
 	{
 		waiting = true;
-		OO_LOG("texture.planet.generate.wait", "{} generator {}", "Waiting for", oo::DescriptionOf(oo::ToObjC(this)));
+		OO_LOG("texture.planet.generate.wait", "{} generator {}", "Waiting for", description());
 	}
 
-	BOOL result = cxx::OOTextureGenerator::getResult(outData, outFormat, outWidth, outHeight);
+	BOOL result = OOTextureGenerator::getResult(outData, outFormat, outWidth, outHeight);
 
 	if (waiting)
 	{
-		OO_LOG("texture.planet.generate.dequeue", "{} generator {}", result ? "Dequeued" : "Failed to dequeue", oo::DescriptionOf(oo::ToObjC(this)));
+		OO_LOG("texture.planet.generate.dequeue", "{} generator {}", result ? "Dequeued" : "Failed to dequeue", description());
 	}
 	else
 	{
-		OO_LOG("texture.planet.generate.dequeue", "{} generator {} without waiting.", result ? "Dequeued" : "Failed to dequeue", oo::DescriptionOf(oo::ToObjC(this)));
+		OO_LOG("texture.planet.generate.dequeue", "{} generator {} without waiting.", result ? "Dequeued" : "Failed to dequeue", description());
 	}
 	
 	return result;
@@ -217,7 +217,7 @@ bool OOStandaloneAtmosphereGenerator::getResultFormatWidthHeight(OOPixMap *outDa
  * various noise, interpolation, etc. functions */
 void OOStandaloneAtmosphereGenerator::loadTexture()
 {
-	OO_LOG("texture.planet.generate.begin", "Started generator {}", oo::DescriptionOf(oo::ToObjC(this)));
+	OO_LOG("texture.planet.generate.begin", "Started generator {}", description());
 	
 	BOOL success = NO;
 	
@@ -282,7 +282,7 @@ END:
 		FREE(aBuffer);
 	}
 	
-	OO_LOG("texture.planet.generate.complete", "Completed generator {} {}successfully", oo::DescriptionOf(oo::ToObjC(this)), success ? "" : "un");
+	OO_LOG("texture.planet.generate.complete", "Completed generator {} {}successfully", description(), success ? "" : "un");
 	
 #if DEBUG_DUMP
 	if (success)

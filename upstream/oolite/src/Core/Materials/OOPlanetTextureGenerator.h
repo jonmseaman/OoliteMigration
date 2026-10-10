@@ -82,11 +82,11 @@ typedef struct OOPlanetTextureGeneratorInfo
 
 /*	Phase 3 (bead oo-kyje, proposed ADR-0056 amendments oo-bj8 item 12, oo-fn2f, oo-novu, oo-rr2x
 	item 3, oo-kvqq and oo-y3dd): a converted leaf of the texture generators, global, over
-	cxx::OOTextureGenerator, with no facade of its own; so are the two helper generators private to
-	its file. Its one caller (OOPlanetEntity) calls the static members; a texture takes a
-	generator's facade, oo::ToObjC(generator), an OOTextureGenerator.
+	OOTextureGenerator, with no facade of its own; so are the two helper generators private to
+	its file. Its one caller (OOPlanetEntity) calls the static members; a texture takes the C++
+	generator (it took the generators' facade until bead oo-9ht.118 deleted it).
 */
-class OOPlanetTextureGenerator : public cxx::OOTextureGenerator
+class OOPlanetTextureGenerator : public OOTextureGenerator
 {
 public:
 	~OOPlanetTextureGenerator() override;	// was -dealloc

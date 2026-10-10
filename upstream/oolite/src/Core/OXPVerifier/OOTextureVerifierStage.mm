@@ -95,7 +95,7 @@ void OOTextureVerifierStage::textureNamed(const std::string &name, const std::st
 
 void OOTextureVerifierStage::checkTextureNamed(const std::string &name, const std::string &folder)
 {
-	OOTextureLoader				*loader = nil;
+	oo::Ref<OOTextureLoader>	loader;
 	std::optional<std::string>	path;
 	OOFileScannerVerifierStage	*fileScanner = nullptr;
 	std::optional<std::string>	displayName;
@@ -109,21 +109,21 @@ void OOTextureVerifierStage::checkTextureNamed(const std::string &name, const st
 	
 	if (!path.has_value())  return;
 	
-	loader = [OOTextureLoader cxx_loaderWithPath:path
-									 options:kOOTextureMinFilterNearest |
+	loader = OOTextureLoader::loaderWithPath(path,
+									 kOOTextureMinFilterNearest |
 											 kOOTextureMinFilterNearest |
 											 kOOTextureNoShrink |
 											 kOOTextureNoFNFMessage |
-											 kOOTextureNeverScale];
+											 kOOTextureNeverScale);
 	
 	displayName = fileScanner->displayNameForFile(name, folder);
-	if (loader == nil)
+	if (loader == nullptr)
 	{
 		OO_LOG("verifyOXP.texture.failed", "***** ERROR: image {} could not be read.", displayName.value_or("(null)"));
 	}
 	else
 	{
-		success = [loader getResult:&pixmap format:&format originalWidth:NULL originalHeight:NULL];
+		success = loader->getResult(&pixmap, &format, NULL, NULL);
 		
 		if (success)
 		{

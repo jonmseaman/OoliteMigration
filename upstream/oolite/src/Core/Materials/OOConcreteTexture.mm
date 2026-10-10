@@ -28,6 +28,7 @@
 #import "OOConcreteTexture.h"
 
 #import "OOTextureLoader.h"
+#import "OOTextureGenerator.h"
 
 #import "Universe.h"
 #import "ResourceManager.h"
@@ -58,13 +59,13 @@
 static BOOL DecodeFormat(OOTextureDataFormat format, uint32_t options, GLenum *outFormat, GLenum *outInternalFormat, GLenum *outType);
 
 
-OOConcreteTexture::OOConcreteTexture(::OOTextureLoader *loader,
+OOConcreteTexture::OOConcreteTexture(OOTextureLoader *loader,
 									 const std::optional<std::string> &key,
 									 uint32_t options,
 									 GLfloat anisotropy,
 									 GLfloat lodBias)
 {
-	_loader = oo::ObjCRef<::OOTextureLoader *>(loader);
+	_loader = oo::Ref<OOTextureLoader>(loader);
 	_options = options;
 
 #if GL_EXT_texture_filter_anisotropic
@@ -75,9 +76,11 @@ OOConcreteTexture::OOConcreteTexture(::OOTextureLoader *loader,
 #endif
 
 #ifndef NDEBUG
-	if ([loader isKindOfClass:[::OOTextureGenerator class]])
+	// "<" + [loader class] + ">" of a generator: the C++ class's name since bead oo-9ht.118 deleted
+	// the generator's facade (ADR-0056 amendment oo-9ht.114 item 4).
+	if (dynamic_cast<OOTextureGenerator *>(loader) != nullptr)
 	{
-		_name = "<" + oo::DescriptionOf([loader class]) + ">";
+		_name = "<" + loader->className() + ">";
 	}
 #endif
 
@@ -85,13 +88,13 @@ OOConcreteTexture::OOConcreteTexture(::OOTextureLoader *loader,
 }
 
 
-oo::Ref<OOConcreteTexture> OOConcreteTexture::initWithLoader(::OOTextureLoader *loader,
+oo::Ref<OOConcreteTexture> OOConcreteTexture::initWithLoader(OOTextureLoader *loader,
 															 const std::optional<std::string> &key,
 															 uint32_t options,
 															 GLfloat anisotropy,
 															 GLfloat lodBias)
 {
-	if (loader == nil)
+	if (loader == nullptr)
 	{
 		return nullptr;
 	}
@@ -110,13 +113,13 @@ oo::Ref<OOConcreteTexture> OOConcreteTexture::initWithPath(const std::string &pa
 														   float anisotropy,
 														   GLfloat lodBias)
 {
-	::OOTextureLoader *loader = [::OOTextureLoader cxx_loaderWithPath:path options:options];
-	if (loader == nil)
+	const oo::Ref<OOTextureLoader> loader = OOTextureLoader::loaderWithPath(path, options);
+	if (loader == nullptr)
 	{
 		return nullptr;
 	}
 
-	oo::Ref<OOConcreteTexture> self = initWithLoader(loader, key, options, anisotropy, lodBias);
+	oo::Ref<OOConcreteTexture> self = initWithLoader(loader.get(), key, options, anisotropy, lodBias);
 	if (self != nullptr)
 	{
 #if OOTEXTURE_RELOADABLE
@@ -260,7 +263,7 @@ void OOConcreteTexture::ensureFinishedLoading()
 
 bool OOConcreteTexture::isFinishedLoading()
 {
-	return _loaded || [_loader.get() isReady];
+	return _loaded || (_loader != nullptr && _loader->isReady());	// a message to nil answered NO
 }
 
 
@@ -417,7 +420,7 @@ void OOConcreteTexture::setUpTexture()
 	OOPixMap		pm;
 
 	// This will block until loading is completed, if necessary.
-	if ([_loader.get() getResult:&pm format:&_format originalWidth:&_originalWidth originalHeight:&_originalHeight])
+	if (_loader != nullptr && _loader->getResult(&pm, &_format, &_originalWidth, &_originalHeight))	// a message to nil answered NO
 	{
 		_bytes = pm.pixels;
 		_width = pm.width;
@@ -641,7 +644,7 @@ void OOConcreteTexture::forceRebind()
 			_uploaded = NO;
 			_valid = NO;
 
-			_loader = oo::ObjCRef<::OOTextureLoader *>([::OOTextureLoader cxx_loaderWithPath:_path options:_options]);
+			_loader = OOTextureLoader::loaderWithPath(_path, _options);
 		}
 #endif
 	}
