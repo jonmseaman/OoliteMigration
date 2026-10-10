@@ -155,7 +155,7 @@ constexpr const char *kOOLogOpenGLShaderSupport		= "rendering.opengl.shader.supp
 
 namespace {
 
-cxx::OOOpenGLExtensionManager *sSingleton = nullptr;	// +1, never released (the retained singleton)
+OOOpenGLExtensionManager *sSingleton = nullptr;	// +1, never released (the retained singleton)
 
 }	// namespace
 
@@ -187,8 +187,6 @@ std::optional<std::string> OptionalGLString(const GLubyte *string)
 
 }	// namespace
 
-
-namespace cxx {
 
 void OOOpenGLExtensionManager::reset()
 {
@@ -512,8 +510,6 @@ bool OOOpenGLExtensionManager::useDustShader()
 	return useDustShader_;
 }
 
-}	// namespace cxx
-
 
 static unsigned IntegerFromString(const GLubyte **ioString)
 {
@@ -531,8 +527,6 @@ static unsigned IntegerFromString(const GLubyte **ioString)
 	return result;
 }
 
-
-namespace cxx {
 
 
 #if OO_SHADERS
@@ -825,8 +819,6 @@ oo::PList OOOpenGLExtensionManager::lookUpPerGPUSettingsWithVersionString(const 
 
 	return oo::PList(oo::PList::Dict{});
 }
-
-}	// namespace cxx
 
 // The singleton category (+allocWithZone:, and -retain/-release/-autorelease doing nothing) is
 // not translated: the one instance is made only by sharedManager() and never released (proposed

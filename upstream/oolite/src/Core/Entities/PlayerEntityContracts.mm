@@ -1957,9 +1957,9 @@ bool PlayerEntity::buySelectedShip()
 bool PlayerEntity::replaceShipWithNamedShip(const std::string &shipKey)
 {
 
-	const oo::PList ship_info = [[::OOShipRegistry sharedRegistry] cxx_shipyardInfoForKey:shipKey];
+	const oo::PList ship_info = OOShipRegistry::sharedRegistry()->shipyardInfoForKey(shipKey);
 	
-	const oo::PList ship_base_dict = [[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:shipKey];
+	const oo::PList ship_base_dict = OOShipRegistry::sharedRegistry()->shipInfoForKey(shipKey);
 
 	if (ship_info.isNull() || ship_base_dict.isNull()) {
 		return NO;

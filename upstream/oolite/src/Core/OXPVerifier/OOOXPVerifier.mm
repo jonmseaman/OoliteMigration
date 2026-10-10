@@ -378,8 +378,8 @@ void OOOXPVerifier::run()
 	/*	We need to be able to look up internal files, but not other OXP files.
 		To do this without clobbering the disk cache, we disable cache writes.
 	*/
-	cxx::OOCacheManager::sharedCache()->flush();
-	cxx::OOCacheManager::sharedCache()->setAllowCacheWrites(false);
+	OOCacheManager::sharedCache()->flush();
+	OOCacheManager::sharedCache()->setAllowCacheWrites(false);
 	/* FIXME: the OXP verifier should load files from OXPs which have
 	 * been explicitly listed as required_oxps in the
 	 * manifest. Reading the manifest from the OXP being verified and

@@ -1334,7 +1334,7 @@ bool OOPlanetAtmosphereGenerator::getResult(OOPixMap *result, OOTextureDataForma
 {
 	if (!_ready)
 	{
-		cxx::OOAsyncWorkManager::sharedAsyncWorkManager()->waitForTaskToComplete(oo::ToObjC(_parent.get()));
+		OOAsyncWorkManager::sharedAsyncWorkManager()->waitForTaskToComplete(_parent.get());
 	}
 
 	return cxx::OOTextureGenerator::getResult(result,

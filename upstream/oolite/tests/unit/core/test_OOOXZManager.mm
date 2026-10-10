@@ -227,7 +227,7 @@ OO_TEST(paths)
 			OO_CHECK_EQ(additional[2], Generic(sRoot / "More2"));
 		}
 
-		const std::string cacheDirectory = cxx::OOCacheManager::sharedCache()->cacheDirectoryPathCreatingIfNecessary(true).value_or("(none)");
+		const std::string cacheDirectory = OOCacheManager::sharedCache()->cacheDirectoryPathCreatingIfNecessary(true).value_or("(none)");
 		OO_CHECK_EQ(ManifestPath().value_or("(none)"), oo::str::appendingPathComponent(cacheDirectory, "Oolite-manifests.plist"));
 		OO_CHECK_EQ(DownloadPath().value_or("(none)"), oo::str::appendingPathComponent(cacheDirectory, "Oolite-download.oxz"));
 
@@ -355,7 +355,7 @@ OO_TEST(manifestDownload)
 		oo::Defaults::standard().setObject("oxz-index-url", oo::PList(url));
 		OO_CHECK_EQ(DataURL().value_or("(none)"), url);
 
-		const std::string cacheDirectory = cxx::OOCacheManager::sharedCache()->cacheDirectoryPathCreatingIfNecessary(true).value_or("(none)");
+		const std::string cacheDirectory = OOCacheManager::sharedCache()->cacheDirectoryPathCreatingIfNecessary(true).value_or("(none)");
 		OO_CHECK(manager->updateManifests());
 		OO_CHECK_EQ(DownloadPath().value_or("(none)"), oo::str::appendingPathComponent(cacheDirectory, "Oolite-download.plist"));
 		// A second request while one is under way is refused.

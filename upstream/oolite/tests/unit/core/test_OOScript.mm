@@ -111,7 +111,7 @@ void CacheLegacyScript(const std::string &path, const char *scriptName)
 	entry["script"] = oo::PList(oo::PList::Array{});
 	oo::PList::Dict scripts;
 	scripts[scriptName] = oo::PList(std::move(entry));
-	[[OOCacheManager sharedCache] cxx_setPList:oo::PList(std::move(scripts)) forKey:path inCache:kCacheName];
+	OOCacheManager::sharedCache()->setPList(oo::PList(std::move(scripts)), path, kCacheName);
 }
 
 

@@ -130,7 +130,7 @@ void DustEntity::init()
 	dust_color = OOColor::colorWithRed(0.5, 1.0, 1.0, 1.0);
 	setStatus(STATUS_ACTIVE);
 
-	hasPointSprites = cxx::OOOpenGLExtensionManager::sharedManager()->haveExtension("GL_ARB_point_sprite");
+	hasPointSprites = OOOpenGLExtensionManager::sharedManager()->haveExtension("GL_ARB_point_sprite");
 	
 	if (hasPointSprites)
 	{
@@ -275,7 +275,7 @@ void DustEntity::checkShaderMode()
 	shaderMode = kShaderModeOff;
 	if ([UNIVERSE detailLevel] >= DETAIL_LEVEL_SHADERS)
 	{
-		if (cxx::OOOpenGLExtensionManager::sharedManager()->useDustShader())
+		if (OOOpenGLExtensionManager::sharedManager()->useDustShader())
 		{
 			shaderMode = kShaderModeOn;
 		}

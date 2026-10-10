@@ -45,7 +45,7 @@ SOFTWARE.
 #define OOTEXTURELOADER_OBJCBRIDGE_H
 
 
-@interface OOTextureLoader: OOObject <OOAsyncWorkTask>
+@interface OOTextureLoader: OOObject
 {
 @protected
 	// The C++ loader: an Objective-C subclass's adapter, or a C++ loader. The subclasses read the

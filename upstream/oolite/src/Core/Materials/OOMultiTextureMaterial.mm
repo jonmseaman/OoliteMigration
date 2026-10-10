@@ -47,7 +47,7 @@ oo::Ref<OOMultiTextureMaterial> OOMultiTextureMaterial::materialWithName(const s
 
 bool OOMultiTextureMaterial::initWithName(const std::optional<std::string> &name, const oo::PList &configuration)
 {
-	if (!cxx::OOOpenGLExtensionManager::sharedManager()->textureCombinersSupported())
+	if (!OOOpenGLExtensionManager::sharedManager()->textureCombinersSupported())
 	{
 		return false;	// [self release]; return nil: the factory drops the object
 	}

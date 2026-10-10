@@ -29,6 +29,7 @@
 #import "OOJSInterfaceDefinition.h"
 #import "OOEquipmentType.h"
 #import "OOStringExpander.h"
+#import "OOShipRegistry.h"
 #include <objc/runtime.h>
 #include "OOTypes.h"
 #include "OOEntityEnums.h"
@@ -238,12 +239,6 @@ public:
 - (void) setViewDirection:(OOViewID)vd;
 - (Random_Seed) marketSeed;
 - (OOSystemID) currentSystemID;
-@end
-
-@interface OOShipRegistry: OOObject
-+ (OOShipRegistry *) sharedRegistry;
-- (oo::PList) cxx_shipInfoForKey:(const std::string &)key;
-- (oo::PList) cxx_shipyardInfoForKey:(const std::string &)key;
 @end
 
 @interface ResourceManager: OOObject
@@ -480,11 +475,10 @@ oo::PList PlayerEntity::missionVariableForKey(const std::string &key)  { std::ab
 @end
 
 
-@implementation OOShipRegistry
-+ (OOShipRegistry *) sharedRegistry  { return nil; }	// the test adds no ship to a shipyard
-- (oo::PList) cxx_shipInfoForKey:(const std::string &)key  { (void)key; return oo::PList(); }
-- (oo::PList) cxx_shipyardInfoForKey:(const std::string &)key  { (void)key; return oo::PList(); }
-@end
+// The ship registry is C++ (bead oo-9ht.122): a C++ stand-in with the facade stand-in's answers.
+OOShipRegistry *OOShipRegistry::sharedRegistry()  { return nullptr; }	// the test adds no ship to a shipyard
+oo::PList OOShipRegistry::shipInfoForKey(const std::string &key)  { (void)key; return oo::PList(); }
+oo::PList OOShipRegistry::shipyardInfoForKey(const std::string &key)  { (void)key; return oo::PList(); }
 
 
 @implementation ResourceManager
@@ -549,13 +543,13 @@ std::string cxx_OOLookUpDescriptionPRIV(const std::string &key)
 	return "desc(" + key + ")";
 }
 
+#import "OOCacheManager.h"
+
 // Link stubs (amendment oo-zffj item 2): what OOEquipmentType reaches to load equipment, which the
 // test never does (no equipment type is made), and the weapon lookups of addShipToShipyard(), which
 // the test's shipyard items never reach.
-@interface OOCacheManager: OOObject
-@end
-@implementation OOCacheManager
-@end
+OOCacheManager *OOCacheManager::sharedCache()  { std::abort(); }	// C++ since bead oo-9ht.31 (was an empty Objective-C class)
+void OOCacheManager::setPList(const oo::PList &, const std::string &, const std::string &)  { std::abort(); }
 
 oo::Ref<OOScript> OOScript::jsScriptFromFileNamed(const std::string &, const oo::PList &)  { std::abort(); }
 void OOScriptAutorelease(oo::Ref<OOScript>)  { std::abort(); }

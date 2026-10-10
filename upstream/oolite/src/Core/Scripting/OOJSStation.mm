@@ -72,7 +72,8 @@ MA 02110-1301, USA.
 	definition is C++ since bead oo-9ht.61 deleted its façade, and the station keeps it as oo::Ref.
 	The station is C++ since bead oo-9ht.175 deleted its facade: its members are called (its object,
 	a ship's, is the JS object's; the ship is C++ since bead oo-9ht.144). Messages to classes that
-	are still Objective-C (Universe, GameController, OOShipRegistry) stay as they are, which is why the file is
+	are still Objective-C (Universe, GameController) stay as they are (the ship registry is C++ since bead
+	oo-9ht.122), which is why the file is
 	still .mm until Phase 4.
 */
 
@@ -1253,13 +1254,13 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 	}
 	// get the shipInfo and shipyardInfo for this key
 	const std::optional<std::string>	shipKey = StringForKey(shipyardDefinition, std::string(SHIPYARD_KEY_SHIPDATA_KEY));
-	OOShipRegistry		*registry = [OOShipRegistry sharedRegistry];
+	OOShipRegistry		*registry = OOShipRegistry::sharedRegistry();
 	// A copy of the registry's entry: -dictionaryWithDictionary: made an empty one for an unknown
 	// key, never nil, so an unknown key goes on to the tests below (its "Invalid shipdata_key" test
 	// could not fire and is gone).
-	oo::PList			shipInfo = (shipKey.has_value() ? [registry cxx_shipInfoForKey:*shipKey] : oo::PList());
+	oo::PList			shipInfo = (shipKey.has_value() ? registry->shipInfoForKey(*shipKey) : oo::PList());
 	if (!shipInfo.isDict())  shipInfo = oo::PList(oo::PList::Dict());
-	const oo::PList		shipyardInfo = (shipKey.has_value() ? [registry cxx_shipyardInfoForKey:*shipKey] : oo::PList());
+	const oo::PList		shipyardInfo = (shipKey.has_value() ? registry->shipyardInfoForKey(*shipKey) : oo::PList());
 	// make sure the ship is a player ship (no roles string searched as a nil receiver: found at 0)
 	const std::optional<std::string> roles = StringForKey(shipInfo, "roles");
 	if (roles.has_value() && roles->find("player") == std::string::npos)

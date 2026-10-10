@@ -75,7 +75,7 @@ enum
 
 
 namespace {
-cxx::OOCacheManager *sSingleton = nullptr;	// +1, never released (the retained singleton)
+OOCacheManager *sSingleton = nullptr;	// +1, never released (the retained singleton)
 
 using CacheEntries = std::map<std::string, oo::PList, std::less<>>;
 
@@ -109,8 +109,6 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 }
 
 }  // namespace
-
-namespace cxx {
 
 void OOCacheManager::init()
 {
@@ -259,7 +257,7 @@ void OOCacheManager::reloadAllCaches()
 
 void OOCacheManager::flush()
 {
-	if (_permitWrites && dirty() && _scheduledWrite == nil)
+	if (_permitWrites && dirty() && _scheduledWrite == nullptr)
 	{
 		write();
 		markClean();
@@ -270,7 +268,7 @@ void OOCacheManager::flush()
 void OOCacheManager::finishOngoingFlush()
 {
 #if WRITE_ASYNC
-	[[::OOAsyncWorkManager sharedAsyncWorkManager] waitForTaskToComplete:_scheduledWrite];
+	OOAsyncWorkManager::sharedAsyncWorkManager()->waitForTaskToComplete(_scheduledWrite.get());
 #endif
 }
 
@@ -382,7 +380,7 @@ void OOCacheManager::write()
 	uint64_t				endianTagValue = kEndianTagValue;
 	
 	if (!_caches.has_value()) return;
-	if (_scheduledWrite != nil)  return;
+	if (_scheduledWrite != nullptr)  return;
 	
 #if PROFILE_WRITES
 	oo::Ref<OOProfilingStopwatch> stopwatch = OOProfilingStopwatch::stopwatch();
@@ -414,14 +412,14 @@ void OOCacheManager::write()
 #endif
 	
 #if WRITE_ASYNC
-	_scheduledWrite = [[OOAsyncCacheWriter alloc] initWithCacheContents:oo::PList(std::move(newCache))];
+	_scheduledWrite = OOAsyncCacheWriter::writerWithCacheContents(oo::PList(std::move(newCache)));
 	
 #if PROFILE_WRITES
 	OOTimeDelta endT = stopwatch->reset();
 	OO_LOG("dataCache.profile", "Time to prepare cache data: {:g} seconds.", endT);
 #endif
 	
-	[[::OOAsyncWorkManager sharedAsyncWorkManager] addTask:_scheduledWrite priority:kOOAsyncPriorityLow];
+	OOAsyncWorkManager::sharedAsyncWorkManager()->addTask(_scheduledWrite.get(), kOOAsyncPriorityLow);
 #else
 #if PROFILE_WRITES
 	OO_LOG("dataCache.profile", "Time to prepare cache data: {:g} seconds.", prepareT);
@@ -507,7 +505,7 @@ bool OOCacheManager::writeDict(const oo::PList &inDict)
 #endif
 	
 #if WRITE_ASYNC
-	DESTROY(_scheduledWrite);
+	_scheduledWrite = nullptr;
 #endif
 	return result;
 }
@@ -594,4 +592,29 @@ std::optional<std::string> OOCacheManager::cachePathCreatingIfNecessary(bool cre
 
 #endif
 
-}	// namespace cxx
+
+oo::Ref<OOAsyncCacheWriter> OOAsyncCacheWriter::writerWithCacheContents(const oo::PList &cacheContents)
+{
+	if (cacheContents.isNull())  return nullptr;
+	return oo::adopt(new OOAsyncCacheWriter(cacheContents));
+}
+
+
+void OOAsyncCacheWriter::performAsyncTask()
+{
+	if (OOCacheManager::sharedCache()->writeDict(_cacheContents))
+	{
+		OO_LOG("dataCache.write.success", "{}", "Wrote data cache.");
+	}
+	else
+	{
+		OO_LOG("dataCache.write.failed", "{}", "Failed to write data cache.");
+	}
+	_cacheContents = oo::PList();
+}
+
+
+void OOAsyncCacheWriter::completeAsyncTask()
+{
+	// Don't need to do anything, but this needs to be here so we can wait on it.
+}

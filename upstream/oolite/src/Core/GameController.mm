@@ -1234,7 +1234,7 @@ static void RemovePreference(const std::string &key)
 
 - (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender
 {
-	[[OOCacheManager sharedCache] finishOngoingFlush];
+	OOCacheManager::sharedCache()->finishOngoingFlush();
 	OOLoggingTerminate();
 	return NSTerminateNow;
 }

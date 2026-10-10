@@ -50,7 +50,7 @@ SOFTWARE.
 
 namespace {
 
-cxx::OOShipRegistry	*sSingleton = nullptr;	// the one +1 is never released (amendment oo-r7m0 item 1)
+OOShipRegistry	*sSingleton = nullptr;	// the one +1 is never released (amendment oo-r7m0 item 1)
 
 
 constexpr const char *kRoleWeightsCacheKey			= "role weights";
@@ -170,8 +170,6 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 
 }	// namespace
 
-
-namespace cxx {
 
 OOShipRegistry *OOShipRegistry::sharedRegistry()
 {
@@ -351,10 +349,6 @@ std::optional<std::string> OOShipRegistry::randomShipKeyForRole(const std::strin
 	return std::nullopt;
 }
 
-}	// namespace cxx
-
-
-namespace cxx {
 
 /*	-loadShipData
 	
@@ -1111,10 +1105,6 @@ bool OOShipRegistry::sanitizeConditions(oo::PList &ioData)
 	return true;
 }
 
-}	// namespace cxx
-
-
-namespace cxx {
 
 bool OOShipRegistry::canonicalizeAndTagSubentities(oo::PList &ioData)
 {
@@ -1682,8 +1672,6 @@ bool OOShipRegistry::shipIsBallTurretForKey(const std::string &shipKey, const oo
 
 	return false;
 }
-
-}	// namespace cxx
 
 
 namespace {

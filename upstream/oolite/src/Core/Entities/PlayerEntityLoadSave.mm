@@ -711,7 +711,7 @@ bool PlayerEntity::loadPlayerFromFile(const std::string &fileToOpen, bool asNew)
 		const std::optional<std::string>	shipKey = OptionalStringValue(fileDic.find("ship_desc"));
 		oo::PList							shipDict;
 		
-		if (shipKey)  shipDict = [[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:*shipKey];
+		if (shipKey)  shipDict = OOShipRegistry::sharedRegistry()->shipInfoForKey(*shipKey);
 		
 		if (shipDict.isNull())
 		{
@@ -1291,7 +1291,7 @@ void PlayerEntity::showCommanderShip(int cdrArrayIndex)
 	std::string							rating;
 	uint16_t							personality = PersonalityForCommanderDict(cdr);
 	
-	if (shipDesc)  shipDict = [[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:*shipDesc];
+	if (shipDesc)  shipDict = OOShipRegistry::sharedRegistry()->shipInfoForKey(*shipDesc);
 	if(!shipDict.isNull())
 	{
 		oo::PList dict = shipDict;

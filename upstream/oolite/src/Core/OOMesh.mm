@@ -353,7 +353,7 @@ void OOMesh::renderOpaqueParts()
 	}
 	
 #if OO_SHADERS
-	if (cxx::OOOpenGLExtensionManager::sharedManager()->shadersSupported())
+	if (OOOpenGLExtensionManager::sharedManager()->shadersSupported())
 	{
 		OOGL(glEnableVertexAttribArrayARB(kTangentAttributeIndex));
 		OOGL(glVertexAttribPointerARB(kTangentAttributeIndex, 3, GL_FLOAT, GL_FALSE, 0, _displayLists.tangentArray));
@@ -391,7 +391,7 @@ void OOMesh::renderOpaqueParts()
 		/*	It should not be possible to have multiple texture units if
 			texture combiners are not available.
 		*/
-		OOCAssert(cxx::OOOpenGLExtensionManager::sharedManager()->textureCombinersSupported(), "Mesh %s uses %zu texture units, but multitexturing is not available.", oo::str::format("<OOMesh %s>", oo::str::pointerDescription(this).c_str()).c_str(), _textureUnitCount);
+		OOCAssert(OOOpenGLExtensionManager::sharedManager()->textureCombinersSupported(), "Mesh %s uses %zu texture units, but multitexturing is not available.", oo::str::format("<OOMesh %s>", oo::str::pointerDescription(this).c_str()).c_str(), _textureUnitCount);
 		
 		for (unit = 0; unit < _textureUnitCount; unit++)
 		{
@@ -473,7 +473,7 @@ void OOMesh::renderOpaqueParts()
 	}
 	
 #if OO_SHADERS
-	if (cxx::OOOpenGLExtensionManager::sharedManager()->shadersSupported())
+	if (OOOpenGLExtensionManager::sharedManager()->shadersSupported())
 	{
 		OOGL(glDisableVertexAttribArrayARB(kTangentAttributeIndex));
 	}
@@ -2123,7 +2123,7 @@ namespace {
 
 oo::PList OOCacheManagerMeshDataForName(const std::string &inShipName)
 {
-	return cxx::OOCacheManager::sharedCache()->pListForKey(inShipName, kOOCacheMeshes);
+	return OOCacheManager::sharedCache()->pListForKey(inShipName, kOOCacheMeshes);
 }
 
 
@@ -2131,7 +2131,7 @@ void OOCacheManagerSetMeshData(const oo::PList &inData, const std::string &inShi
 {
 	if (inData)
 	{
-		cxx::OOCacheManager::sharedCache()->setPList(inData, inShipName, kOOCacheMeshes);
+		OOCacheManager::sharedCache()->setPList(inData, inShipName, kOOCacheMeshes);
 	}
 }
 
@@ -2145,7 +2145,7 @@ static const char * const kOOCacheOctrees = "octrees";
 oo::Ref<Octree> OOCacheManagerOctreeForModel(const std::string &inKey)
 {
 	oo::Ref<Octree>	result;
-	cxx::OOCacheManager		*cache = cxx::OOCacheManager::sharedCache();
+	OOCacheManager		*cache = OOCacheManager::sharedCache();
 
 	const oo::PList data = cache->pListForKey(inKey, kOOCacheOctrees);	// null: absent
 	if (data)
@@ -2161,7 +2161,7 @@ void OOCacheManagerSetOctree(Octree *inOctree, const std::string &inKey)
 {
 	if (inOctree != nullptr)
 	{
-		cxx::OOCacheManager::sharedCache()->setPList(inOctree->dictionaryRepresentation(), inKey, kOOCacheOctrees);
+		OOCacheManager::sharedCache()->setPList(inOctree->dictionaryRepresentation(), inKey, kOOCacheOctrees);
 	}
 }
 

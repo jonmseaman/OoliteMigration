@@ -262,11 +262,12 @@ OO_TEST(cxxApi)
 		OO_CHECK(loader->initWithPath(path, kOOTextureMinFilterLinear));
 		OO_CHECK(loader->path() == std::optional<std::string>(path) && loader->cacheKey() == std::optional<std::string>("cxx.png:0x0002"));
 
-		// Its facade is an OOTextureLoader (it has none of its own), and the work manager takes it.
+		// Its facade is an OOTextureLoader (it has none of its own), and the work manager takes the
+		// C++ loader behind it (the facade itself until bead oo-9ht.14 made the task C++).
 		OOTextureLoader *facade = oo::ToObjC(loader.get());
 		OO_CHECK([facade class] == [OOTextureLoader class] && oo::ToCxx(facade) == loader.get());
 		OO_CHECK(oo::DescriptionOf(facade).starts_with("<OOPNGTextureLoader 0x"));
-		OO_CHECK([[OOAsyncWorkManager sharedAsyncWorkManager] addTask:facade priority:kOOAsyncPriorityMedium]);
+		OO_CHECK(OOAsyncWorkManager::sharedAsyncWorkManager()->addTask(oo::ToCxx(facade), kOOAsyncPriorityMedium));
 		OOPixMap pixMap = kOONullPixMap;
 		OOTextureDataFormat format = kOOPixMapInvalidFormat;
 		OO_CHECK(loader->getResult(&pixMap, &format, nullptr, nullptr) && loader->isReady());

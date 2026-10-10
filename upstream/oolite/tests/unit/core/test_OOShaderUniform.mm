@@ -136,7 +136,7 @@ bool SetUpProgram()
 {
 	if (gProgram != 0)  return true;
 	if (!OOTestGLContext())  return false;
-	[OOOpenGLExtensionManager sharedManager];	// loads the ARB shader entry points
+	OOOpenGLExtensionManager::sharedManager();	// loads the ARB shader entry points
 	gGetUniformfv = (GetUniformfv)SDL_GL_GetProcAddress("glGetUniformfvARB");
 	gGetUniformiv = (GetUniformiv)SDL_GL_GetProcAddress("glGetUniformivARB");
 	if (gGetUniformfv == nullptr || gGetUniformiv == nullptr)  return false;

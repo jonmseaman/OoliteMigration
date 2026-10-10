@@ -394,7 +394,7 @@ static bool ConsoleGetProperty(ooscript::Context context, ooscript::Object thisO
 			break;
 			
 		case kConsole_maximumDetailLevel:
-			*value = OOJSValueFromPList(context, oo::PList(cxx_OOStringFromGraphicsDetail(cxx::OOOpenGLExtensionManager::sharedManager()->maximumDetailLevel())));
+			*value = OOJSValueFromPList(context, oo::PList(cxx_OOStringFromGraphicsDetail(OOOpenGLExtensionManager::sharedManager()->maximumDetailLevel())));
 			break;
 			
 		case kConsole_displayFPS:
@@ -429,19 +429,19 @@ static bool ConsoleGetProperty(ooscript::Context context, ooscript::Object thisO
 			break;
 			
 		case kConsole_glVendorString:
-			{ const std::optional<std::string> vendor = cxx::OOOpenGLExtensionManager::sharedManager()->vendorString(); *value = OOJSValueFromPList(context, vendor.has_value() ? oo::PList(*vendor) : oo::PList()); }
+			{ const std::optional<std::string> vendor = OOOpenGLExtensionManager::sharedManager()->vendorString(); *value = OOJSValueFromPList(context, vendor.has_value() ? oo::PList(*vendor) : oo::PList()); }
 			break;
 			
 		case kConsole_glRendererString:
-			{ const std::optional<std::string> renderer = cxx::OOOpenGLExtensionManager::sharedManager()->rendererString(); *value = OOJSValueFromPList(context, renderer.has_value() ? oo::PList(*renderer) : oo::PList()); }
+			{ const std::optional<std::string> renderer = OOOpenGLExtensionManager::sharedManager()->rendererString(); *value = OOJSValueFromPList(context, renderer.has_value() ? oo::PList(*renderer) : oo::PList()); }
 			break;
 			
 		case kConsole_glFixedFunctionTextureUnitCount:
-			*value = ooscript::int32Value(cxx::OOOpenGLExtensionManager::sharedManager()->textureUnitCount());
+			*value = ooscript::int32Value(OOOpenGLExtensionManager::sharedManager()->textureUnitCount());
 			break;
 			
 		case kConsole_glFragmentShaderTextureUnitCount:
-			*value = ooscript::int32Value(cxx::OOOpenGLExtensionManager::sharedManager()->textureImageUnitCount());
+			*value = ooscript::int32Value(OOOpenGLExtensionManager::sharedManager()->textureImageUnitCount());
 			break;
 			
 #define DEBUG_FLAG_CASE(x) case kConsole_##x: *value = ooscript::int32Value(x); break;

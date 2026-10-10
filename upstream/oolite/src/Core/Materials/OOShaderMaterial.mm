@@ -107,7 +107,7 @@ bool OOShaderMaterial::initWithName(const std::optional<std::string> &name,
 	std::optional<std::string>	macroString;
 	std::optional<std::string>	vertexShader;
 	std::optional<std::string>	fragmentShader;
-	GLint					textureUnits = cxx::OOOpenGLExtensionManager::sharedManager()->textureImageUnitCount();
+	GLint					textureUnits = OOOpenGLExtensionManager::sharedManager()->textureImageUnitCount();
 	oo::PList				modifiedMacros;
 	std::optional<std::string>	vsName = "<synthesized>";
 	std::optional<std::string>	fsName = "<synthesized>";

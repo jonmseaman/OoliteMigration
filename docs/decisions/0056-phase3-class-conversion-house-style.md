@@ -6835,3 +6835,58 @@ it called with the arguments missing (undefined behaviour).
 
 **Consequences.** No Objective-C class or protocol is left in `OOJSCall`; callObjC()'s entity names
 are an explicit list. Left for step 4: the rows call through the facade's selectors.
+
+## Amendment (beads oo-9ht.122, oo-9ht.13, oo-9ht.14, oo-9ht.31): the ship registry, the extension, work and cache managers' facades in one change
+
+- Date: 2026-10-10. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch W
+  (one branch, as batches B-V): beads oo-9ht.122 (OOShipRegistry), oo-9ht.13
+  (OOOpenGLExtensionManager), oo-9ht.14 (OOAsyncWorkManager and the OOAsyncWorkTask protocol),
+  oo-9ht.31 (OOCacheManager). Exemplar: `src/Core/OOAsyncWorkManager.h/.mm`,
+  `OOCacheManager.h/.mm`, `Materials/OOTextureLoader.h/.mm`, `tests/unit/core/test_OOAsyncWorkManager.mm`,
+  `test_OOCacheManager.mm`.
+
+**Context.** The four were singletons whose facades only forwarded: every remaining sender (the
+universe, the player, the ship, the bindings, the material creators, AI, the game controller) was
+already C++ code sending `[[::X sharedX] cxx_y:...]`. The sends were rewritten by a balanced-bracket
+codemod (receiver `[::X sharedX]` or a local holding it) into member calls and checked by the
+compiler; the classes left namespace `cxx`.
+
+**Decision (recommended defaults).**
+
+1. **A singleton facade's send is a member call on the shared instance, unguarded.** The shared
+   registry and managers are made on first use and never answer null in the game, so no nil guard
+   is added (amendment oo-9ht.19 item 3 guards receivers that may be null; these cannot). A local
+   that the old code left nil on one path (`OOMaterialConvenienceCreators`, `OOJSScript`: the cache
+   is fetched only when a key is given) is `nullptr` there and is used on the same path only, as
+   before.
+2. **`OOAsyncWorkTask` is a C++ interface** (`OOAsyncWorkManager.h`): `oo::RefCounted` with
+   `performAsyncTask()` (pure), `hasCompleteAsyncTask()` (false by default: the protocol's
+   `-completeAsyncTask` was optional and the manager asked `-respondsToSelector:`) and
+   `completeAsyncTask()`. The manager takes `OOAsyncWorkTask *` and retains a task while it is
+   queued or pending, as it retained the object; its two `OOAsyncQueue`s become a private
+   `TaskQueue` (FIFO, blocking `dequeue()`, `tryDequeue()` null when empty: the part of
+   `OOAsyncQueue` it used), because `OOAsyncQueue` holds Objective-C objects and its own test pins
+   that. `OOAsyncQueue` is unchanged and no longer used by the game. Exceptions thrown by a task are
+   still swallowed with `@catch (id)`.
+3. **The texture loader is the task, not its facade.** `OOTextureLoader` derives from
+   `OOAsyncWorkTask` (`hasCompleteAsyncTask()` true: the facade implemented it); the loader factory
+   adds the facade's C++ part, the generators add `this`, and waits name the C++ object. The facade
+   no longer adopts the protocol and its two forwarders go. **Difference (tests only):** a loader
+   that is an Objective-C test subclass's C++ adapter is queued as the adapter, which does not retain
+   its owner (it never did); the queue retained the owner before. The game has no Objective-C loader
+   subclass, and the tests keep their loaders alive until they have their results.
+4. **The cache's write task is a C++ task** (`OOAsyncCacheWriter` in `OOCacheManager.h/.mm`, held as
+   `oo::Ref` in `_scheduledWrite`; `writerWithCacheContents()` answers null for null contents as
+   `-initWithCacheContents:` answered nil). `writeDict()` is private again, with the writer a friend.
+   `writeDict()` still drops `_scheduledWrite` on the work thread, as `DESTROY` did.
+5. **Tests** (standing approval oo-9n5p9; one approval line per file): the facades' contract cases
+   go (`facadeContract` x3, `facadeIsTheSharedManager`, `facadeNilStaysNil`, `facadeForwards`); the
+   other cases' sends call the same members with every expectation kept; Objective-C stand-ins of a
+   facade in tests that do not link the class (the cache manager in six, the registry in
+   `test_OOJSStation`, the work manager in `test_OOCacheManager`/`test_OOShipRegistry`) are C++
+   definitions of the class's members with the same answers; the work manager's Objective-C test
+   tasks are C++ tasks.
+
+**Consequences.** No Objective-C `OOShipRegistry`, `OOOpenGLExtensionManager`, `OOAsyncWorkManager`,
+`OOCacheManager` or `OOAsyncWorkTask` is left. `OOTextureLoader`'s facade (oo-9ht.114) no longer
+depends on the work manager's.

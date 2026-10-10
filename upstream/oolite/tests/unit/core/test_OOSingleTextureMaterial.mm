@@ -101,8 +101,8 @@ oo::PList cxx_OOTextureSpecFromObject(const oo::PList &object, const std::option
 
 
 // Link stubs (amendment oo-zffj item 2), never reached here: OOOpenGL.mm's GL state dump.
-cxx::OOOpenGLExtensionManager *cxx::OOOpenGLExtensionManager::sharedManager()	{ std::abort(); }
-GLint cxx::OOOpenGLExtensionManager::textureUnitCount()							{ std::abort(); }
+OOOpenGLExtensionManager *OOOpenGLExtensionManager::sharedManager()	{ std::abort(); }
+GLint OOOpenGLExtensionManager::textureUnitCount()							{ std::abort(); }
 
 
 // UNIVERSE is gSharedUniverse: nil, so not reduced detail and no shaders.

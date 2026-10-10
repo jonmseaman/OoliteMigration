@@ -98,30 +98,26 @@ OOShaderSetting cxx_OOShaderSettingFromString(const std::string &string)
 static std::map<std::string, oo::PList> gCache;
 static std::vector<std::string> gCacheWrites;
 
-@interface OOCacheManager: OOObject
-+ (OOCacheManager *) sharedCache;
-- (oo::PList)cxx_pListForKey:(const std::string &)key inCache:(const std::string &)cache;
-- (void)cxx_setPList:(const oo::PList &)value forKey:(const std::string &)key inCache:(const std::string &)cache;
-@end
+#import "OOCacheManager.h"
 
-@implementation OOCacheManager
-+ (OOCacheManager *) sharedCache
+// The cache manager is C++ since bead oo-9ht.31 deleted its facade: a C++ stand-in with the Objective-C
+// stand-in's answers.
+OOCacheManager *OOCacheManager::sharedCache()
 {
-	static OOCacheManager *shared = nil;
-	if (shared == nil)  shared = [[OOCacheManager alloc] init];
+	static OOCacheManager *shared = new OOCacheManager;
 	return shared;
 }
-- (oo::PList)cxx_pListForKey:(const std::string &)key inCache:(const std::string &)cache
+OOCacheManager::~OOCacheManager()  {}
+oo::PList OOCacheManager::pListForKey(const std::string &key, const std::string &cache)
 {
 	auto found = gCache.find(cache + "|" + key);
 	return found != gCache.end() ? found->second : oo::PList();
 }
-- (void)cxx_setPList:(const oo::PList &)value forKey:(const std::string &)key inCache:(const std::string &)cache
+void OOCacheManager::setPList(const oo::PList &value, const std::string &key, const std::string &cache)
 {
 	gCacheWrites.push_back(cache + "|" + key);
 	gCache[cache + "|" + key] = value;
 }
-@end
 
 
 // The textures: any configuration but "missing" loads; a name with no configuration loads unless "missing".
@@ -181,6 +177,9 @@ std::optional<std::string> cxx::OOTextureLoader::cacheKey()  { return std::nullo
 std::optional<std::string> cxx::OOTextureLoader::descriptionComponents() const  { return std::nullopt; }
 std::optional<std::string> cxx::OOTextureLoader::shortDescriptionComponents() const  { return std::nullopt; }
 void cxx::OOTextureLoader::loadTexture()  {}
+// The loader is the work manager's task since bead oo-9ht.14 (its vtable): never reached.
+void cxx::OOTextureLoader::performAsyncTask()  { std::abort(); }
+void cxx::OOTextureLoader::completeAsyncTask()  { std::abort(); }
 uint32_t cxx::OOTextureGenerator::textureOptions()  { return 0; }
 GLfloat cxx::OOTextureGenerator::anisotropy()  { return 0; }
 GLfloat cxx::OOTextureGenerator::lodBias()  { return 0; }
@@ -259,7 +258,7 @@ const char *kFragment = "uniform sampler2D uDiffuseMap;\nvoid main() { gl_FragCo
 bool SetUp(BOOL useShaders, OOGraphicsDetail detail = DETAIL_LEVEL_MINIMUM)
 {
 	if (!OOTestGLContext())  return false;
-	[OOOpenGLExtensionManager sharedManager];
+	OOOpenGLExtensionManager::sharedManager();
 	if (gUniverse == nil)  gUniverse = [[TestUniverse alloc] init];
 	gUniverse->_useShaders = useShaders;
 	gUniverse->_detailLevel = detail;

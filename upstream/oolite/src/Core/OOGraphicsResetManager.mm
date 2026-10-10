@@ -74,7 +74,7 @@ void OOGraphicsResetManager::resetGraphicsState()
 	OO_LOG("rendering.reset.start", "{}", "Resetting graphics state.");
 	oo::log::indentIf("rendering.reset.start");
 	
-	cxx::OOOpenGLExtensionManager::sharedManager()->reset();
+	OOOpenGLExtensionManager::sharedManager()->reset();
 	[::OOTexture rebindAllTextures];
 	
 	// A copy, so a client may register or unregister during the reset (one unregistered by an

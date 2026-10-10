@@ -408,7 +408,7 @@ static void GLDumpMaterialState(void)
 	OO_LOG(kOOLogOpenGLStateDump, "Texture env mode: {}", OOGLEnumToString(texMode));
 	
 #if OO_MULTITEXTURE
-	if (cxx::OOOpenGLExtensionManager::sharedManager()->textureUnitCount() > 1)
+	if (OOOpenGLExtensionManager::sharedManager()->textureUnitCount() > 1)
 	{
 		GLint textureUnit;
 		OOGL(glGetIntegerv(GL_ACTIVE_TEXTURE_ARB, &textureUnit));

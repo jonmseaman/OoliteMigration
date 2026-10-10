@@ -122,7 +122,7 @@ OO_TEST(resetTellsEachClientOnce)
 		OO_CHECK(manager != nullptr);
 		OO_CHECK(OOGraphicsResetManager::sharedManager() == manager);
 
-		(void)cxx::OOOpenGLExtensionManager::sharedManager();
+		(void)OOOpenGLExtensionManager::sharedManager();
 		const unsigned pathsBefore = sPathsCalls;
 
 		OOTestResetClient *a = Client(1), *b = Client(2), *c = Client(3);

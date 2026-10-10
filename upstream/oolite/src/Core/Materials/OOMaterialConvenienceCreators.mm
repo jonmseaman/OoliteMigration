@@ -163,7 +163,7 @@ oo::Ref<OOMaterial> OOMaterial::defaultShaderMaterialWithName(const std::optiona
 															  id<OOWeakReferenceSupport> target)
 {
 	// The cache manager's facade, still messaged (proposed ADR-0056 amendment oo-rmd7 item 3).
-	::OOCacheManager		*cache = nil;
+	::OOCacheManager		*cache = nullptr;
 	oo::PList				synthesizedConfig;
 	oo::Ref<OOMaterial>		result;
 
@@ -178,14 +178,14 @@ oo::Ref<OOMaterial> OOMaterial::defaultShaderMaterialWithName(const std::optiona
 	std::string cacheKeyStr;
 	if (cacheKey.has_value())
 	{
-		cache = [::OOCacheManager sharedCache];
+		cache = OOCacheManager::sharedCache();
 		// configuration must be in cache key, as otherwise changes in
 		// non-diffuse map can end up miscached
 		cacheKeyStr = oo::str::format("%s/%s/%s",
 									  cacheKey->c_str(),
 									  name.value_or("").c_str(),
 									  oo::DescriptionOf(configuration).c_str());
-		synthesizedConfig = [cache cxx_pListForKey:cacheKeyStr inCache:"synthesized shader materials"];
+		synthesizedConfig = cache->pListForKey(cacheKeyStr, "synthesized shader materials");
 	}
 	
 	if (synthesizedConfig.isNull())
@@ -195,9 +195,7 @@ oo::Ref<OOMaterial> OOMaterial::defaultShaderMaterialWithName(const std::optiona
 																 macros);
 		if (!synthesizedConfig.isNull() && cacheKey.has_value())
 		{
-			[cache cxx_setPList:synthesizedConfig
-						 forKey:cacheKeyStr
-						inCache:"synthesized shader materials"];
+			cache->setPList(synthesizedConfig, cacheKeyStr, "synthesized shader materials");
 		}
 	}
 	

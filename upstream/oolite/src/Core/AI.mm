@@ -781,13 +781,13 @@ void AI::directSetState(const std::optional<std::string> &state)
 oo::PList AI::loadStateMachine(const std::string &smName, const std::string &script)
 {
 	oo::PList				newSM;
-	::OOCacheManager			*cacheMgr = [::OOCacheManager sharedCache];
+	::OOCacheManager			*cacheMgr = OOCacheManager::sharedCache();
 	void					*pool = NULL;
 
 	if (smName != "nullAI.plist")
 	{
 		// don't cache nullAI since they're different depending on associated JS AI
-		oo::PList cached = [cacheMgr cxx_pListForKey:smName inCache:"AIs"];
+		oo::PList cached = cacheMgr->pListForKey(smName, "AIs");
 		if (!cached.isNull() && !cached.isDict())  return oo::PList();	// catches use of @"nil" to indicate no AI found.
 		newSM = std::move(cached);
 	}
@@ -809,7 +809,7 @@ oo::PList AI::loadStateMachine(const std::string &smName, const std::string &scr
 			}
 			if (newSM.isNull())
 			{
-				[cacheMgr cxx_setPList:oo::PList("nil") forKey:smName inCache:"AIs"];
+				cacheMgr->setPList(oo::PList("nil"), smName, "AIs");
 				std::string fromString;
 				const std::optional<std::string> state = this->state();
 				if (state.has_value())
@@ -846,7 +846,7 @@ oo::PList AI::loadStateMachine(const std::string &smName, const std::string &scr
 #endif
 
 			// Cache.
-			[cacheMgr cxx_setPList:newSM forKey:smName inCache:"AIs"];
+			cacheMgr->setPList(newSM, smName, "AIs");
 		}
 		@finally
 		{

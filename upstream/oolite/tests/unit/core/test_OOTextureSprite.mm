@@ -199,7 +199,7 @@ bool IsQuad(const std::vector<Vertex> &vertices, double x, double y, double z, d
 bool GLReady()
 {
 	if (!OOTestGLContext())  return false;
-	(void)[OOOpenGLExtensionManager sharedManager];	// loads glActiveTextureARB & co. for the state manager
+	(void)OOOpenGLExtensionManager::sharedManager();	// loads glActiveTextureARB & co. for the state manager
 	return true;
 }
 

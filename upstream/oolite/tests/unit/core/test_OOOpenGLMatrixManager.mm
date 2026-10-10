@@ -328,7 +328,7 @@ OO_TEST(syncLoadsOpenGL)
 OO_TEST(standardUniformLocations)
 {
 	OO_CHECK(OOTestGLContext());
-	OO_CHECK(cxx::OOOpenGLExtensionManager::sharedManager()->shadersSupported());	// loads the ARB entry points
+	OO_CHECK(OOOpenGLExtensionManager::sharedManager()->shadersSupported());	// loads the ARB entry points
 	@autoreleasepool
 	{
 		oo::Ref<OOOpenGLMatrixManager> m = oo::makeRef<OOOpenGLMatrixManager>();
