@@ -218,7 +218,7 @@ static ooscript::ClassDef sShipClass =
 	nullptr,		// newEnumerate
 	nullptr,			// resolve
 	nullptr,			// convert
-	OOJSObjectWrapperFinalize,// finalize
+	OOJSCxxObjectWrapperFinalize,// finalize (the slot holds an OOJSEntityHolder, bead oo-9ht.39.3)
 	nullptr,		// call
 	nullptr,		// construct
 	nullptr,		// backend
@@ -637,19 +637,18 @@ static ooscript::FunctionSpec sShipStaticMethods[] =
 
 
 namespace {
-DEFINE_JS_OBJECT_GETTER(JSShipGetShipObject, &sShipClass, sShipPrototype, Entity)
-
 
 /*	The ship a JS Ship object holds. DEFINE_JS_OBJECT_GETTER's getter answered the ship's object until
 	bead oo-9ht.144 deleted the ship's facade (the object is now the drawable's facade, so the getter
-	checks the root's class); this answers its C++ ship, null where the object was nil.
+	checks the root's class); this answers its C++ ship, null where the object was nil. Since bead
+	oo-9ht.39.3 the slot holds the C++ entity (OOJSEntityGetEntityOfClass, the same JS class check).
 */
 BOOL JSShipGetShipEntity(ooscript::Context context, ooscript::Object inObject, ShipEntity **outShip)
 {
 	OOCParameterAssert(outShip != NULL);
-	Entity *object = nil;
-	if (EXPECT_NOT(!JSShipGetShipObject(context, inObject, &object)))  return NO;
-	*outShip = oo::ToShip(object);
+	cxx::Entity *entity = nullptr;
+	if (EXPECT_NOT(!OOJSEntityGetEntityOfClass(context, inObject, &sShipClass, &entity)))  return NO;
+	*outShip = oo::ToShip(entity);
 	return YES;
 }
 } // namespace
@@ -658,7 +657,7 @@ BOOL JSShipGetShipEntity(ooscript::Context context, ooscript::Object inObject, S
 void InitOOJSShip(ooscript::Context context, ooscript::Object global)
 {
 	sShipPrototype = ooscript::initClass(context, global, JSEntityPrototype(), &sShipClass, OOJSUnconstructableConstruct, 0, sShipProperties, sShipMethods, NULL, sShipStaticMethods);
-	OOJSRegisterObjectConverter(&sShipClass, OOJSBasicPrivateObjectConverter);
+	OOJSRegisterObjectConverter(&sShipClass, OOJSEntityObjectConverter);
 	OOJSRegisterSubclass(&sShipClass, JSEntityClass());
 }
 
@@ -710,9 +709,9 @@ bool AIHasSuspendedStateMachines(ShipEntity *ship)
 
 // Whether an entity is a ship, as -isKindOfClass:[ShipEntity class] answered: a ship's C++ part is a
 // ShipEntity (Entity+ObjCBridge.mm picks the facade class from it). False for none.
-bool IsShip(Entity *entity)
+bool IsShip(cxx::Entity *entity)
 {
-	return dynamic_cast<ShipEntity *>(oo::ToCxx(entity)) != nullptr;
+	return dynamic_cast<ShipEntity *>(entity) != nullptr;
 }
 
 /*	The ship's mesh is C++ (OOMesh, global since bead oo-9ht.132). A ship with no mesh answered
@@ -755,7 +754,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 	oo::PList					result;	// null maps to null
 	
 	if (EXPECT_NOT(!JSShipGetShipEntity(context, thisObject, &entity)))  return false;
-	if (OOIsStaleEntity(oo::ToObjC(entity))) { *value = ooscript::undefinedValue(); return true; }
+	if (OOIsStaleEntity(entity)) { *value = ooscript::undefinedValue(); return true; }
 	ShipEntity				*ship = entity;	// not null: entity is not
 	
 	switch (ooscript::idToInt32(propID))
@@ -1373,7 +1372,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity					*entity = nullptr;
-	Entity						*target = nil;	// an object, as JSValueToEntity() answers (a ship's since bead oo-9ht.144 is the drawable's facade)
+	cxx::Entity					*target = nullptr;	// as JSValueToEntity() answers (the C++ entity since bead oo-9ht.39.3)
 	std::optional<std::string>	sValue;
 	double					fValue;
 	int32_t						iValue;
@@ -1386,7 +1385,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 	BOOL exists;	// JSValueToEquipmentKeyRelaxed()'s out parameter
 	
 	if (EXPECT_NOT(!JSShipGetShipEntity(context, thisObject, &entity)))  return false;
-	if (OOIsStaleEntity(oo::ToObjC(entity)))  return true;
+	if (OOIsStaleEntity(entity))  return true;
 	ShipEntity				*ship = entity;	// not null: entity is not
 
 	OOCAssert(!ship->isTemplateCargoPod(), "-OOJSShip: a template cargo pod has become accessible to Javascript");
@@ -1611,7 +1610,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			}
 			else if (JSValueToEntity(context, *value, &target) && IsShip(target))
 			{
-				ship->setFoundTarget(target);
+				ship->setFoundTarget(oo::ToObjC(target));
 				return true;
 			}
 			break;
@@ -1626,7 +1625,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			}
 			else if (JSValueToEntity(context, *value, &target) && IsShip(target))
 			{
-				ship->setPrimaryAggressor(target);
+				ship->setPrimaryAggressor(oo::ToObjC(target));
 				return true;
 			}
 			break;
@@ -2139,7 +2138,7 @@ npcReadOnly:
 
 #define GET_THIS_SHIP(THISENT) do { \
 	if (EXPECT_NOT(!JSShipGetShipEntity(context, OOJS_THIS, &THISENT)))  return NO; /* Exception */ \
-	if (OOIsStaleEntity(oo::ToObjC(THISENT)))  OOJS_RETURN_VOID; \
+	if (OOIsStaleEntity(THISENT))  OOJS_RETURN_VOID; \
 } while (0)
 
 
@@ -3925,7 +3924,7 @@ static bool ShipEnterWormhole(ooscript::Context context, ooscript::CallArgs &ooj
 	OOJS_PROFILE_ENTER
 	
 	ShipEntity *thisEnt = nullptr;
-	Entity	*hole = nullptr;
+	cxx::Entity	*hole = nullptr;
 
 	if ((PLAYER != nullptr ? PLAYER->status() : OOEntityStatus{}) != STATUS_ENTERING_WITCHSPACE)
 	{
@@ -3941,13 +3940,13 @@ static bool ShipEnterWormhole(ooscript::Context context, ooscript::CallArgs &ooj
 	}
 	else 
 	{
-		if (hole == nullptr || !oo::ToCxx(hole)->getIsWormhole())	// none: not a wormhole, as a message to nil
+		if (hole == nullptr || !hole->getIsWormhole())	// none: not a wormhole, as a message to nil
 		{
 			cxx_OOJSReportBadArguments(context, "Ship", "enterWormhole", 1U, OOJS_ARGV, std::nullopt, "[wormhole]");
 			return false;
 		}
 
-		ship->enterWormhole(static_cast<WormholeEntity *>(oo::ToCxx(hole)));	// the C++ wormhole (a C-style cast of its object until bead oo-9ht.144)
+		ship->enterWormhole(static_cast<WormholeEntity *>(hole));	// the C++ wormhole (a C-style cast of its object until bead oo-9ht.144)
 	}
 
 	OOJS_RETURN_VOID;

@@ -282,6 +282,12 @@ inline ::StationEntity *ToStation(::ShipEntity *ship)
 	return dynamic_cast<::StationEntity *>(ship);
 }
 
+// The same of a C++ entity (what an entity's JS object holds since bead oo-9ht.39.3).
+inline ::StationEntity *ToStation(cxx::Entity *entity)
+{
+	return dynamic_cast<::StationEntity *>(entity);
+}
+
 }	// namespace oo
 
 

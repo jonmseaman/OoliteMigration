@@ -118,7 +118,7 @@ static ClassDef sFlasherClass =
 	nullptr,			// newEnumerate (ooscript::ClassFlag::NewEnumerate not used)
 	nullptr,			// resolve
 	nullptr,			// convert
-	OOJSObjectWrapperFinalize,// finalize
+	OOJSCxxObjectWrapperFinalize,// finalize
 	nullptr,			// call
 	nullptr,			// construct
 	nullptr,			// backend: owned by the facade backend, must start null
@@ -185,7 +185,7 @@ void InitOOJSFlasher(ooscript::Context context, ooscript::Object global)
 {
 	Object proto = ooscript::initClass((context), (global), (JSEntityPrototype()), &sFlasherClass, OOJSUnconstructableConstruct, 0, sFlasherProperties, sFlasherMethods, NULL, NULL);
 	sFlasherPrototype = (proto);
-	OOJSRegisterObjectConverter(&sFlasherClass, OOJSBasicPrivateObjectConverter);
+	OOJSRegisterObjectConverter(&sFlasherClass, OOJSEntityObjectConverter);
 	OOJSRegisterSubclass(&sFlasherClass, JSEntityClass());
 }
 
@@ -196,7 +196,7 @@ static bool JSFlasherGetFlasherEntity(ooscript::Context context, ooscript::Objec
 	OOJS_PROFILE_ENTER
 
 	bool						result;
-	Entity						*entity = nil;
+	cxx::Entity					*entity = nullptr;	// the slot holds the C++ entity (bead oo-9ht.39.3)
 
 	if (outEntity == NULL)  return false;
 	*outEntity = nullptr;
@@ -205,11 +205,11 @@ static bool JSFlasherGetFlasherEntity(ooscript::Context context, ooscript::Objec
 	if (!result)  return false;
 
 	// The object is the nearest façade left (OOLightParticleEntity's): a flasher is its C++ part.
-	OOFlasherEntity *flasher = dynamic_cast<OOFlasherEntity *>(oo::ToCxx(entity));
+	OOFlasherEntity *flasher = dynamic_cast<OOFlasherEntity *>(entity);
 	if (flasher == nullptr)  return false;
 
 	*outEntity = flasher;
-	if (outObject != NULL)  *outObject = entity;
+	if (outObject != NULL)  *outObject = oo::ToObjC(entity);	// its object, which the natives still message
 	return true;
 	
 	OOJS_PROFILE_EXIT

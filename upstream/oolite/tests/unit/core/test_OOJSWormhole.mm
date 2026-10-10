@@ -69,6 +69,10 @@ public:
 };
 
 
+// What an entity's JS object holds since bead oo-9ht.39.3: a weak reference to the C++ entity.
+#include "OOJSEntityHolder.h"
+
+
 @interface Entity: OOObject
 {
 @public
@@ -174,7 +178,6 @@ namespace {
 ooscript::ClassDef sFakeEntityClass = { "Entity", ooscript::ClassFlag::HasPrivate };
 std::map<ooscript::ClassDef *, ooscript::ClassDef *> sSuperclasses;
 std::map<ooscript::ClassDef *, int> sConverters;
-int sFinalized = 0;
 } // namespace
 
 ooscript::Object gOOEntityJSPrototype = nullptr;
@@ -216,24 +219,15 @@ void OOJSRegisterObjectConverter(ooscript::ClassDef *theClass, oo::PList (*)(oos
 }
 
 
-// The engine's object getter: the JS class must be a subclass of the required one, and the
-// underlying object must be of the required Objective-C class.
-BOOL OOJSObjectGetterImplPRIVATE(ooscript::Context context, ooscript::Object object, ooscript::ClassDef *requiredJSClass, Class requiredObjCClass, const char *, id *outObject)
+// The engine's object getter is OOJSPrivateObject.cpp's (linked) since bead oo-9ht.39.3: the JS
+// class must be a subclass of the required one, and the slot holds the entity's holder.
+
+// The shared toString(), which OOJSCxxObjectWrapperToString() hands a `this` of another class.
+bool OOJSObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &args)
 {
-	ooscript::ClassDef *actualClass = const_cast<ooscript::ClassDef *>(ooscript::getObjectClass(context, object));
-	if (!OOJSIsSubclass(actualClass, requiredJSClass))
-	{
-		cxx_OOJSReportError(context, "Native method expected %s, got %s.", requiredJSClass->name, cxx_OOStringFromJSValue(context, ooscript::objectValue(object)).value_or("(null)").c_str());
-		return NO;
-	}
-	*outObject = [(id)ooscript::getPrivate(context, object) weakRefUnderlyingObject];
-	if (*outObject != nil && ![*outObject isKindOfClass:requiredObjCClass])
-	{
-		cxx_OOJSReportError(context, "Native method expected %s from %s.", class_getName(requiredObjCClass), requiredJSClass->name);
-		*outObject = nil;
-		return NO;
-	}
-	return YES;
+	const std::string text = "[object]";
+	args.setRval(ooscript::stringValue(ooscript::newStringCopyN(context, text.data(), text.size())));
+	return true;
 }
 
 
@@ -247,12 +241,6 @@ bool OOJSUnconstructableConstruct(ooscript::Context context, ooscript::CallArgs 
 {
 	cxx_OOJSReportError(context, "unconstructable");
 	return false;
-}
-
-
-void OOJSObjectWrapperFinalize(ooscript::Context, ooscript::Object)
-{
-	sFinalized++;
 }
 
 
@@ -277,10 +265,16 @@ void OOJSUnreachable(const char *function, const char *, unsigned)
 }	// extern "C"
 
 
-oo::PList OOJSBasicPrivateObjectConverter(ooscript::Context, ooscript::Object)
+oo::PList OOJSEntityObjectConverter(ooscript::Context, ooscript::Object)
 {
 	return oo::PList();
 }
+
+
+// The holder's glue is OOJSEntity.mm's, which the test does not link; the binding never asks it.
+ooscript::Value OOJSEntityHolder::jsValueInContext(ooscript::Context)  { return ooscript::undefinedValue(); }
+void OOJSEntityHolder::clearJSSelf(ooscript::Object)  {}
+std::optional<std::string> OOJSEntityHolder::jsDescription()  { return std::nullopt; }
 
 
 // MARK: The context -------------------------------------------------------------------------------
@@ -294,15 +288,15 @@ Entity *sWormhole = nil;				// the wormhole's Objective-C object, which the JS o
 WormholeEntity *sWormholePart = nullptr;	// its C++ part
 
 
-// A JS object for an entity, as -[Entity oo_jsValueInContext:] makes it: the class and prototype
-// the entity's category names, and the entity in the private slot.
+// A JS object for an entity, as EntityJSValueInContext() makes it: the class and prototype the
+// entity's category names, and a holder of its C++ part in the private slot (bead oo-9ht.39.3).
 ooscript::Value JSValueForEntity(Entity *entity)
 {
 	ooscript::ClassDef *jsClass = nullptr;
 	ooscript::Object prototype = nullptr;
 	[entity getJSClass:&jsClass andPrototype:&prototype];
 	ooscript::Object object = ooscript::newObject(sContext, jsClass, prototype, nullptr);
-	if (object == nullptr || !ooscript::setPrivate(sContext, object, entity))  return ooscript::nullValue();
+	if (object == nullptr || !OOJSSetCxxPrivate(sContext, object, oo::makeRef<OOJSEntityHolder>(entity->_cxxEntity.get()).get()))  return ooscript::nullValue();
 	return ooscript::objectValue(object);
 }
 
@@ -329,7 +323,9 @@ void SetUpContext()
 	ooscript::setProperty(sContext, sGlobal, "wormhole", &wormhole);
 	ooscript::Value entity = ooscript::nullValue();
 	ooscript::Object plain = ooscript::newObject(sContext, &sFakeEntityClass, gOOEntityJSPrototype, nullptr);
-	if (plain != nullptr && ooscript::setPrivate(sContext, plain, [[Entity alloc] init]))  entity = ooscript::objectValue(plain);
+	Entity *plainEntity = [[Entity alloc] init];	// kept for the life of the test
+	plainEntity->_cxxEntity = oo::makeRef<cxx::Entity>();	// an entity that is not a wormhole
+	if (plain != nullptr && OOJSSetCxxPrivate(sContext, plain, oo::makeRef<OOJSEntityHolder>(plainEntity->_cxxEntity.get()).get()))  entity = ooscript::objectValue(plain);
 	ooscript::setProperty(sContext, sGlobal, "plainEntity", &entity);
 }
 

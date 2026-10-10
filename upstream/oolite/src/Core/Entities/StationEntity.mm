@@ -1548,8 +1548,8 @@ oo::PList StationEntity::dockingInstructionsForShip(::ShipEntity *ship)
 			{
 				ooscript::Context context = OOJSAcquireContext();
 				ooscript::Value		rval = ooscript::undefinedValue();
-				ooscript::Value		args[] = { OOJSValueFromNativeObject(context, oo::ToObjC(sub)),
-													 OOJSValueFromNativeObject(context, oo::ToObjC(ship)) };
+				ooscript::Value		args[] = { OOJSValueFromCxxObject(context, sub),
+													 OOJSValueFromCxxObject(context, ship) };
 				bool tempreject = NO;
 
 				BOOL OK = (getScript() != nullptr ? getScript()->callMethod(OOJSID("willOpenDockingPortFor"), context, args, 2, &rval) : false);
@@ -2431,8 +2431,8 @@ std::optional<std::string> StationEntity::acceptDockingClearanceRequestFrom(::Sh
 				{
 					ooscript::Context context = OOJSAcquireContext();
 					ooscript::Value		rval = ooscript::undefinedValue();
-					ooscript::Value		args[] = { OOJSValueFromNativeObject(context, oo::ToObjC(sub)),
-														 OOJSValueFromNativeObject(context, oo::ToObjC(other)) };
+					ooscript::Value		args[] = { OOJSValueFromCxxObject(context, sub),
+														 OOJSValueFromCxxObject(context, other) };
 					bool tempreject = NO;
 
 					BOOL OK = (getScript() != nullptr ? getScript()->callMethod(OOJSID("willOpenDockingPortFor"), context, args, 2, &rval) : false);

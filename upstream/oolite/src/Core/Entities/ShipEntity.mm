@@ -3840,7 +3840,7 @@ bool ShipEntity::equipmentValidToAdd(const std::string &fullEquipmentKey, bool l
 				BOOL OK;
 				bool allow_addition = false;
 				ooscript::Value result;
-				ooscript::Value args[] = { OOJSValueFromPList(JScontext, oo::PList(equipmentKey)) , OOJSValueFromNativeObject(JScontext, oo::ToObjC(this)) , OOJSValueFromPList(JScontext, oo::PList(context))};
+				ooscript::Value args[] = { OOJSValueFromPList(JScontext, oo::PList(equipmentKey)) , OOJSValueFromCxxObject(JScontext, this) , OOJSValueFromPList(JScontext, oo::PList(context))};
 				
 				OK = (condScript != nullptr ? condScript->callMethod(OOJSID("allowAwardEquipment"), JScontext, args, sizeof args / sizeof *args, &result) : false);
 
@@ -9474,7 +9474,7 @@ void ShipEntity::noteKilledBy(::Entity *whom, OOShipDamageType type)
 	ShipScriptEvent(context, this, "shipDied", whomVal, typeVal);
 	if ([whom isShip])
 	{
-		ooscript::Value selfVal = OOJSValueFromNativeObject(context, oo::ToObjC(this));
+		ooscript::Value selfVal = OOJSValueFromCxxObject(context, this);
 		ShipScriptEvent(context, oo::ToShip(whom), "shipKilledOther", selfVal, typeVal);
 	}
 	

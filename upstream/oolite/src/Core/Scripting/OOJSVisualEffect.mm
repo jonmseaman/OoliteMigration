@@ -143,7 +143,7 @@ static ClassDef sVisualEffectClass =
 	nullptr,			// newEnumerate (ooscript::ClassFlag::NewEnumerate not used)
 	nullptr,			// resolve (engine default: ResolveStub)
 	nullptr,			// convert (engine default: ConvertStub)
-	OOJSObjectWrapperFinalize,// finalize
+	OOJSCxxObjectWrapperFinalize,// finalize
 	nullptr,			// call
 	nullptr,			// construct
 	nullptr,			// backend: owned by the facade backend, must start null
@@ -264,7 +264,7 @@ void InitOOJSVisualEffect(ooscript::Context context, ooscript::Object global)
 {
 	Object proto = ooscript::initClass((context), (global), (JSEntityPrototype()), &sVisualEffectClass, OOJSUnconstructableConstruct, 0, sVisualEffectProperties, sVisualEffectMethods, nullptr, nullptr);
 	sVisualEffectPrototype = (proto);
-	OOJSRegisterObjectConverter(&sVisualEffectClass, OOJSBasicPrivateObjectConverter);
+	OOJSRegisterObjectConverter(&sVisualEffectClass, OOJSEntityObjectConverter);
 	OOJSRegisterSubclass(&sVisualEffectClass, JSEntityClass());
 }
 
@@ -275,7 +275,7 @@ static bool JSVisualEffectGetVisualEffectEntity(ooscript::Context context, ooscr
 	OOJS_PROFILE_ENTER
 	
 	bool						result;
-	Entity						*entity = nil;
+	cxx::Entity					*entity = nullptr;	// the slot holds the C++ entity (bead oo-9ht.39.3)
 	
 	if (outEntity == NULL)  return false;
 	*outEntity = nil;

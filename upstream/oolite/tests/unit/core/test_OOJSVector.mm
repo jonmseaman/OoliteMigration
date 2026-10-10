@@ -122,6 +122,15 @@ ooscript::ClassDef *JSEntityClass(void)
 }
 
 
+// OOJSEntity.mm's (not linked): the object of the entity an Entity JS object holds. Since bead
+// oo-9ht.39.3 the game's slot holds the C++ entity and this answers its object; the test's fake
+// entities are put in the slot themselves, as the slot held the object's weak reference before.
+Entity *OOJSEntityObjectFromJSObject(ooscript::Context context, ooscript::Object object)
+{
+	return [(id)ooscript::getPrivate(context, object) weakRefUnderlyingObject];
+}
+
+
 // A quaternion is the array [w, x, y, z] here: enough to see what OOJSVector hands over. (bool since
 // OOJSQuaternion.h is, bead oo-hwae: a stand-in has the signature of what it stands in for.)
 bool QuaternionToJSValue(ooscript::Context context, Quaternion quaternion, ooscript::Value *outValue)

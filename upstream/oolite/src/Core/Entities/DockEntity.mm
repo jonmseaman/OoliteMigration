@@ -496,7 +496,7 @@ std::optional<std::string> DockEntity::canAcceptShipForDocking(::ShipEntity *shi
 	// callback to allow more complex filtering on accept/reject
 	ooscript::Context context = OOJSAcquireContext();
 	ooscript::Value		rval = ooscript::undefinedValue();
-	ooscript::Value		args[] = { OOJSValueFromNativeObject(context, oo::ToObjC(ship)) };
+	ooscript::Value		args[] = { OOJSValueFromCxxObject(context, ship) };
 	bool accept = YES;
 	
 	BOOL OK = (getScript() != nullptr ? getScript()->callMethod(OOJSID("acceptDockingRequestFrom"), context, args, 1, &rval) : false);
@@ -1194,7 +1194,7 @@ bool DockEntity::allowsLaunchingOf(::ShipEntity *ship)
 	// callback to allow more complex filtering on accept/reject
 	ooscript::Context context = OOJSAcquireContext();
 	ooscript::Value		rval = ooscript::undefinedValue();
-	ooscript::Value		args[] = { OOJSValueFromNativeObject(context, oo::ToObjC(ship)) };
+	ooscript::Value		args[] = { OOJSValueFromCxxObject(context, ship) };
 	bool accept = YES;
 	
 	BOOL OK = (getScript() != nullptr ? getScript()->callMethod(OOJSID("acceptLaunchingRequestFrom"), context, args, 1, &rval) : false);

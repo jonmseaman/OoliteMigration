@@ -221,7 +221,7 @@ static ClassDef sStationClass =
 	nullptr,				// newEnumerate (ooscript::ClassFlag::NewEnumerate not used)
 	nullptr,				// resolve (engine default: ResolveStub)
 	nullptr,				// convert (engine default: ConvertStub)
-	OOJSObjectWrapperFinalize,		// finalize
+	OOJSCxxObjectWrapperFinalize,		// finalize
 	nullptr,				// call
 	nullptr,				// construct
 	nullptr,				// backend: owned by the façade backend, must start null
@@ -344,7 +344,7 @@ void InitOOJSStation(ooscript::Context context, ooscript::Object global)
 {
 	Object proto = ooscript::initClass((context), (global), (JSShipPrototype()), &sStationClass, OOJSUnconstructableConstruct, 0, sStationProperties, sStationMethods, NULL, NULL);
 	sStationPrototype = (proto);
-	OOJSRegisterObjectConverter(&sStationClass, OOJSBasicPrivateObjectConverter);
+	OOJSRegisterObjectConverter(&sStationClass, OOJSEntityObjectConverter);
 	OOJSRegisterSubclass(&sStationClass, JSShipClass());
 }
 
@@ -355,7 +355,7 @@ static bool JSStationGetStationEntity(ooscript::Context context, ooscript::Objec
 	OOJS_PROFILE_ENTER
 	
 	bool						result;
-	Entity						*entity = nil;
+	cxx::Entity					*entity = nullptr;	// the slot holds the C++ entity (bead oo-9ht.39.3)
 	
 	if (outEntity == NULL)  return false;
 	*outEntity = nil;
@@ -381,7 +381,7 @@ static bool JSStationGetShipEntity(ooscript::Context context, ooscript::Object s
 	OOJS_PROFILE_ENTER
 	
 	bool						result;
-	Entity						*entity = nil;
+	cxx::Entity					*entity = nullptr;	// the slot holds the C++ entity (bead oo-9ht.39.3)
 	
 	if (outEntity == NULL)  return false;
 	*outEntity = nil;

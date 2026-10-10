@@ -112,7 +112,7 @@ static ClassDef sPlanetClass =
 	nullptr,			// newEnumerate (ooscript::ClassFlag::NewEnumerate not used)
 	nullptr,			// resolve
 	nullptr,			// convert
-	OOJSObjectWrapperFinalize,		// finalize
+	OOJSCxxObjectWrapperFinalize,		// finalize
 	nullptr,			// call
 	nullptr,			// construct
 	nullptr,			// backend: owned by the facade backend, must start null
@@ -183,16 +183,16 @@ static ooscript::PropertySpec sPlanetPropertiesRaw[] =
 
 
 namespace {
-DEFINE_JS_OBJECT_GETTER(JSPlanetGetPlanetObject, &sPlanetClass, sPlanetPrototype, Entity)
-
 // The planet is C++ behind the root's facade since bead oo-9ht.129: the getter checks the JS class
 // (a Planet object's private slot holds the planet's Objective-C object, so -isKindOfClass: of the
 // facade class always held) and answers the C++ planet; null for a stale entity, as nil before.
+// Since bead oo-9ht.39.3 the slot holds the C++ entity (OOJSEntityGetEntityOfClass for the Planet
+// class, DEFINE_JS_OBJECT_GETTER(JSPlanetGetPlanetObject, &sPlanetClass, ...) before).
 bool JSPlanetGetPlanetEntity(ooscript::Context context, ooscript::Object inObject, OOPlanetEntity **outObject)
 {
-	Entity *object = nil;
-	if (!JSPlanetGetPlanetObject(context, inObject, &object))  return false;
-	*outObject = (object != nil) ? dynamic_cast<OOPlanetEntity *>(oo::ToCxx(object)) : nullptr;
+	cxx::Entity *entity = nullptr;
+	if (!OOJSEntityGetEntityOfClass(context, inObject, &sPlanetClass, &entity))  return false;
+	*outObject = dynamic_cast<OOPlanetEntity *>(entity);
 	return true;
 }
 } // namespace
@@ -202,7 +202,7 @@ void InitOOJSPlanet(ooscript::Context context, ooscript::Object global)
 {
 	Object proto = ooscript::initClass((context), (global), (JSEntityPrototype()), &sPlanetClass, OOJSUnconstructableConstruct, 0, sPlanetProperties, nullptr, nullptr, nullptr);
 	sPlanetPrototype = (proto);
-	OOJSRegisterObjectConverter(&sPlanetClass, OOJSBasicPrivateObjectConverter);
+	OOJSRegisterObjectConverter(&sPlanetClass, OOJSEntityObjectConverter);
 	OOJSRegisterSubclass(&sPlanetClass, JSEntityClass());
 }
 

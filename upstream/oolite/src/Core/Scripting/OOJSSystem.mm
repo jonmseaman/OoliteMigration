@@ -1868,11 +1868,13 @@ static BOOL GetRelativeToAndRange(ooscript::Context context, const std::string &
 	// Get optional argument relativeTo : Entity
 	if (*ioArgc != 0)
 	{
-		if (EXPECT_NOT(ooscript::isNull(**ioArgv) || !JSValueToEntity(context, **ioArgv, outRelativeTo)))
+		cxx::Entity *relativeTo = nullptr;	// the C++ entity since bead oo-9ht.39.3; its object goes out
+		if (EXPECT_NOT(ooscript::isNull(**ioArgv) || !JSValueToEntity(context, **ioArgv, &relativeTo)))
 		{
 			cxx_OOJSReportBadArguments(context, "System", methodName, 1, *ioArgv, std::nullopt, "entity");
 			return NO;
 		}
+		*outRelativeTo = oo::ToObjC(relativeTo);
 		(*ioArgv)++; (*ioArgc)--;
 	}
 	

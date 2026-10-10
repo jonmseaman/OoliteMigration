@@ -11,6 +11,9 @@ after the class the category extends and the selector's first keyword. Since bea
 category Entity (OOJavaScriptExtensions) is the root's facade's (Entity+ObjCBridge.h/.mm, moved
 unchanged from EntityOOJavaScriptExtensions+ObjCBridge.h/.mm, which it deleted); ShipEntity's
 went with the ship's facade (bead oo-9ht.144) and PlayerEntity's with the player's (oo-9ht.177).
+Since bead oo-9ht.39.3 (ADR-0056 amendment oo-9ht.39.3) an entity's JS object holds the C++ entity
+(an OOJSEntityHolder, OOJSEntity.h, in its private slot), and the functions that made and dropped
+it take the C++ entity.
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -39,12 +42,14 @@ MA 02110-1301, USA.
 class ShipEntity;	// C++ since bead oo-9ht.144
 
 
-// Entity (OOJavaScriptExtensions)
+// Entity (OOJavaScriptExtensions). Since bead oo-9ht.39.3 the JS object's functions take the C++
+// entity (cxx::Entity's JS glue members call them; the root facade's selectors forward to those).
 bool EntityJSIsVisibleToScripts(void);
 std::optional<std::string> EntityJSClassName(void);
-ooscript::Value EntityJSValueInContext(Entity *entity, ooscript::Context context);
+ooscript::Value EntityJSValueInContext(cxx::Entity *entity, ooscript::Context context);
 void EntityJSGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
-void EntityJSDeleteJSSelf(Entity *entity);
+void EntityJSDeleteJSSelf(cxx::Entity *entity);
+std::optional<std::string> EntityJSDescription(cxx::Entity *entity);
 
 // ShipEntity (OOJavaScriptExtensions)
 bool ShipEntityJSIsVisibleToScripts(void);

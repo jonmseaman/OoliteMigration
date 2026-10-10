@@ -150,6 +150,12 @@ inline ::DockEntity *ToDock(::Entity *entity)
 	return dynamic_cast<::DockEntity *>(ToCxx(entity));
 }
 
+// The same of a C++ entity (what an entity's JS object holds since bead oo-9ht.39.3).
+inline ::DockEntity *ToDock(cxx::Entity *entity)
+{
+	return dynamic_cast<::DockEntity *>(entity);
+}
+
 // The same question of a C++ ship (a ship is C++ since bead oo-9ht.144): nullptr for null or another ship.
 inline ::DockEntity *ToDock(::ShipEntity *ship)
 {

@@ -1165,4 +1165,31 @@ bool Entity::isVisibleToScripts()
 	return ::EntityJSIsVisibleToScripts();
 }
 
+
+// The JS glue (bead oo-9ht.39.3): the bodies are EntityOOJavaScriptExtensions.mm's, as they were
+// when the root facade answered the selectors.
+ooscript::Value Entity::jsValueInContext(ooscript::Context context)
+{
+	return ::EntityJSValueInContext(this, context);
+}
+
+
+// OOObject's -oo_clearJSSelf:, which the facade did not override: nothing (the JS object is a GC
+// root of the entity's, so it is finalized only after deleteJSSelf() has let go of it).
+void Entity::clearJSSelf(ooscript::Object /*selfVal*/)
+{
+}
+
+
+std::optional<std::string> Entity::jsDescription()
+{
+	return ::EntityJSDescription(this);
+}
+
+
+void Entity::deleteJSSelf()
+{
+	::EntityJSDeleteJSSelf(this);
+}
+
 }	// namespace cxx

@@ -379,14 +379,46 @@ Entity *sInspectableEntity = nil;
 }	// namespace
 
 
+// Each entity's C++ part (bead oo-9ht.39.3: an entity's JS object holds it, JSValueToEntity() answers
+// it and oo::ToObjC its object, which the console asks to -inspect). Kept for the life of the test.
+namespace cxx {
+class Entity : public oo::RefCounted
+{
+};
+}	// namespace cxx
+
+namespace {
+cxx::Entity *PlainPart()
+{
+	static const oo::Ref<cxx::Entity> part = oo::makeRef<cxx::Entity>();
+	return part.get();
+}
+cxx::Entity *InspectablePart()
+{
+	static const oo::Ref<cxx::Entity> part = oo::makeRef<cxx::Entity>();
+	return part.get();
+}
+}	// namespace
+
+
 // inspectEntity(true) is the inspectable entity, inspectEntity(false) the other; anything else none.
 // (OOJSEntity.h declares it with C linkage.)
-extern "C" BOOL JSValueToEntity(ooscript::Context, ooscript::Value value, Entity **outEntity);
-BOOL JSValueToEntity(ooscript::Context, ooscript::Value value, Entity **outEntity)
+extern "C" BOOL JSValueToEntity(ooscript::Context, ooscript::Value value, cxx::Entity **outEntity);
+BOOL JSValueToEntity(ooscript::Context, ooscript::Value value, cxx::Entity **outEntity)
 {
 	if (!ooscript::isBoolean(value))  return NO;
-	*outEntity = ooscript::toBoolean(value) ? sInspectableEntity : sPlainEntity;
+	*outEntity = ooscript::toBoolean(value) ? InspectablePart() : PlainPart();
 	return YES;
+}
+
+
+// oo::ToObjC (Entity+ObjCBridge.mm): each C++ part's entity, nil for any other.
+namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
+::Entity *oo::ToObjC(cxx::Entity *entity)
+{
+	if (entity == InspectablePart())  return sInspectableEntity;
+	if (entity == PlainPart())  return sPlainEntity;
+	return nil;
 }
 
 

@@ -43,6 +43,8 @@ MA 02110-1301, USA.
 #import "WormholeEntity.h"
 #import "OOJSWormhole.h"
 #include "oofnd/Notification.hpp"
+#include "oofnd/String.hpp"
+#include "OOJSPrivateObject.h"
 
 
 // MARK: Entity (OOJavaScriptExtensions)
@@ -59,36 +61,64 @@ std::optional<std::string> EntityJSClassName(void)
 }
 
 
-ooscript::Value EntityJSValueInContext(Entity *entity, ooscript::Context context)
+/*	The entity's JS object (bead oo-9ht.39.3, ADR-0056 amendment oo-9ht.39.3): made on first use
+	for an entity that scripts can see, of the class and prototype the entity names, its private
+	slot an OOJSEntityHolder (a weak reference to the entity, as the slot held the facade's weak
+	reference: the JS object does not keep the entity alive), rooted while the entity lives and
+	dropped when the engine resets. The body is the one the facade's JS value selector ran, asking the
+	C++ entity what it asked the facade (whose selectors answered from the C++ part).
+*/
+namespace {
+
+// The class questions the facade's JS value selector asked by selector: an Objective-C entity's
+// own override answered first (the adapter does not forward them), a C++ entity's members answered
+// through the root facade's category.
+bool IsVisibleToScripts(cxx::Entity *entity)
+{
+	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() isVisibleToScripts];
+	return entity->isVisibleToScripts();
+}
+
+
+void GetJSClass(cxx::Entity *entity, ooscript::ClassDef **outClass, ooscript::Object *outPrototype)
+{
+	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  [link->objcOwner() getJSClass:outClass andPrototype:outPrototype];
+	else  entity->getJSClass(outClass, outPrototype);
+}
+
+}	// namespace
+
+
+ooscript::Value EntityJSValueInContext(cxx::Entity *entity, ooscript::Context context)
 {
 	ooscript::ClassDef					*jsClass = NULL;
 	ooscript::Object prototype = NULL;
 	ooscript::Value					result = ooscript::nullValue();
 	
-	if (entity->_cxxEntity->_jsSelf == NULL && [entity isVisibleToScripts])
+	if (entity->_jsSelf == NULL && IsVisibleToScripts(entity))
 	{
 		// Create JS object
-		[entity getJSClass:&jsClass andPrototype:&prototype];
+		GetJSClass(entity, &jsClass, &prototype);
 		
-		entity->_cxxEntity->_jsSelf = ooscript::newObject(context, jsClass, prototype, NULL);
-		if (entity->_cxxEntity->_jsSelf != NULL)
+		entity->_jsSelf = ooscript::newObject(context, jsClass, prototype, NULL);
+		if (entity->_jsSelf != NULL)
 		{
-			if (!ooscript::setPrivate(context, entity->_cxxEntity->_jsSelf, OOConsumeReference([entity weakRetain])))  entity->_cxxEntity->_jsSelf = NULL;
+			const oo::Ref<OOJSEntityHolder> holder = oo::makeRef<OOJSEntityHolder>(entity);
+			if (!OOJSSetCxxPrivate(context, entity->_jsSelf, holder.get()))  entity->_jsSelf = NULL;
 		}
 		
-		if (entity->_cxxEntity->_jsSelf != NULL)
+		if (entity->_jsSelf != NULL)
 		{
-			OOJSAddGCObjectRoot(context, &entity->_cxxEntity->_jsSelf, "Entity jsSelf");
+			OOJSAddGCObjectRoot(context, &entity->_jsSelf, "Entity jsSelf");
 			oo::NotificationCenter::defaultCenter().addObserver(entity, kOOJavaScriptEngineWillResetNotificationName,
 																[OOJavaScriptEngine sharedEngine],
-																[entity](const oo::Notification &) { [entity deleteJSSelf]; });
+																[entity](const oo::Notification &) { entity->deleteJSSelf(); });
 		}
 	}
 	
-	if (entity->_cxxEntity->_jsSelf != NULL)  result = ooscript::objectValue(entity->_cxxEntity->_jsSelf);
+	if (entity->_jsSelf != NULL)  result = ooscript::objectValue(entity->_jsSelf);
 	
 	return result;
-	// Analyzer: object leaked. [Expected, object is retained by JS object.]
 }
 
 
@@ -99,18 +129,38 @@ void EntityJSGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outProt
 }
 
 
-void EntityJSDeleteJSSelf(Entity *entity)
+void EntityJSDeleteJSSelf(cxx::Entity *entity)
 {
-	if (entity->_cxxEntity->_jsSelf != NULL)
+	if (entity->_jsSelf != NULL)
 	{
-		entity->_cxxEntity->_jsSelf = NULL;
+		entity->_jsSelf = NULL;
 		ooscript::Context context = OOJSAcquireContext();
-		ooscript::removeObjectRoot(context, &entity->_cxxEntity->_jsSelf);
+		ooscript::removeObjectRoot(context, &entity->_jsSelf);
 		OOJSRelinquishContext(context);
 		
 		oo::NotificationCenter::defaultCenter().removeObserver(entity, kOOJavaScriptEngineWillResetNotificationName,
 																[OOJavaScriptEngine sharedEngine]);
 	}
+}
+
+
+/*	What the facade's -cxx_oo_jsDescription answered (OOObject (OOJavaScriptConversion)'s
+	OOObjectJSDescription): "[<JS class name> <components>]", or "[object <JS class name>]" with no
+	components; the JS class name is -cxx_oo_jsClassName's (the C++ entity's jsClassName()), else
+	the Objective-C class's name, the root facade's ("Entity") for a C++ entity. An Objective-C
+	entity is still asked by selector.
+*/
+std::optional<std::string> EntityJSDescription(cxx::Entity *entity)
+{
+	if (entity == nullptr)  return std::nullopt;	// (the holder asks only a live entity)
+	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return OOJavaScriptEngineJSDescription(link->objcOwner());	// its own selectors, as before
+	std::optional<std::string> name = entity->jsClassName();
+	if (!name.has_value())  name = std::string("Entity");	// the root facade's class
+	if (const std::optional<std::string> components = entity->descriptionComponents())
+	{
+		return oo::str::format("[%s %s]", name->c_str(), components->c_str());
+	}
+	return oo::str::format("[object %s]", name->c_str());
 }
 
 

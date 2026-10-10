@@ -495,7 +495,7 @@ bool JSObjectGetVector(ooscript::Context context, ooscript::Object vectorObj, HP
 	if (OOJSIsMemberOfSubclass(context, vectorObj, JSEntityClass()))
 	{
 		COUNT(entityCount);
-		Entity *entity = [(id)ooscript::getPrivate(cx, obj) weakRefUnderlyingObject];
+		Entity *entity = OOJSEntityObjectFromJSObject(context, vectorObj);	// the slot holds the C++ entity since bead oo-9ht.39.3
 		*outVector = [entity position];
 		return true;
 	}

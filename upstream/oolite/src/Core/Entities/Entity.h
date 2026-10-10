@@ -45,6 +45,7 @@ MA 02110-1301, USA.
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"
 #include "oofnd/objc/OOObjCRef.h"
+#include "OOJSPrivateObject.h"
 
 @class Universe, OOTexture, Entity;
 class OOVisualEffectEntity;	// C++ since bead oo-9ht.165
@@ -84,7 +85,7 @@ namespace cxx {
 	amendment oo-862e), so the bodies, and the subclasses' reads, keep the names. The members
 	that subclasses override are virtual (amendment oo-cwz item 2).
 */
-class Entity : public oo::RefCounted
+class Entity : public oo::RefCounted, public ::OOJSPrivateObject
 {
 public:
 	Entity();
@@ -261,6 +262,18 @@ public:
 	virtual void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
 	virtual std::optional<std::string> jsClassName();
 	virtual bool isVisibleToScripts();
+
+	/*	The entity's JS glue (OOJSPrivateObject, bead oo-9ht.39.3; ADR-0056 amendment oo-9ht.39.3):
+		what the root facade's -oo_jsValueInContext:, -oo_clearJSSelf: and -cxx_oo_jsDescription
+		answered, so the engine wraps a C++ entity with OOJSValueFromCxxObject(). Its JS object's
+		private slot holds an OOJSEntityHolder (OOJSEntity.h), a weak reference to the entity, as
+		the slot held the facade's weak reference. The bodies are EntityOOJavaScriptExtensions.mm's.
+		deleteJSSelf() is the facade's -deleteJSSelf (the engine's reset, and -dealloc).
+	*/
+	ooscript::Value jsValueInContext(ooscript::Context context) override;
+	void clearJSSelf(ooscript::Object selfVal) override;
+	std::optional<std::string> jsDescription() override;
+	void deleteJSSelf();
 
 #ifndef NDEBUG
 	std::optional<std::string> descriptionForObjDumpBasic();

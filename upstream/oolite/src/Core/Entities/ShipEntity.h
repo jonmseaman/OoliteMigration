@@ -1462,6 +1462,12 @@ inline ShipEntity *ToShip(::Entity *entity)
 	return dynamic_cast<ShipEntity *>(ToCxx(entity));
 }
 
+// The same of a C++ entity (what an entity's JS object holds since bead oo-9ht.39.3).
+inline ShipEntity *ToShip(cxx::Entity *entity)
+{
+	return dynamic_cast<ShipEntity *>(entity);
+}
+
 // The same of any object (an id): nullptr for one that is not an entity, as -isKindOfClass:
 // [ShipEntity class] answered for it.
 inline ShipEntity *ToShip(id object)
