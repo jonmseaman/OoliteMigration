@@ -76,8 +76,6 @@ oo::Ref<OOColor> PremultipliedColorWithDescription(const oo::PList &description)
 }	// namespace
 
 
-namespace cxx {
-
 void SkyEntity::initWithColors(OOColor *col1In, OOColor *col2In, const oo::PList &systemInfo)
 {
 	oo::Ref<OOSkyDrawable>	skyDrawable;
@@ -356,4 +354,3 @@ bool SkyEntity::readColor1(oo::Ref<OOColor> *ioColor1, oo::Ref<OOColor> *ioColor
 	return nebulaSet;
 }
 
-}	// namespace cxx

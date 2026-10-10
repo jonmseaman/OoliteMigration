@@ -76,7 +76,7 @@ uint32_t gDebugFlags = 0;
 	BOOL _interstellar;
 	Entity *_station, *_planet, *_sun;
 	std::vector<oo::ObjCRef<Entity *>> _planets, _stations, _wormholes, _entities;
-	std::map<std::string, oo::ObjCRef<OOWaypointEntity *>, std::less<>> _waypoints;
+	std::map<std::string, oo::ObjCRef<Entity *>, std::less<>> _waypoints;	// the waypoints' objects (bead oo-9ht.108)
 	float _ambient;
 	int _lightings;
 	BOOL _breakPattern;
@@ -181,7 +181,7 @@ std::string Describe(Entity *entity)
 	return _wormholes;
 }
 
-- (std::map<std::string, oo::ObjCRef<OOWaypointEntity *>, std::less<>>) cxx_currentWaypoints  { return _waypoints; }
+- (std::map<std::string, oo::ObjCRef<Entity *>, std::less<>>) cxx_currentWaypoints  { return _waypoints; }
 
 
 - (std::vector<oo::ObjCRef<Entity *>>) matching:(EntityFilterPredicate)predicate parameter:(void *)parameter
@@ -387,8 +387,8 @@ void SetUp()
 	sUniverse->_planets = { oo::ObjCRef<Entity *>(sUniverse->_planet), oo::ObjCRef<Entity *>(MakeEntity(21, NO)), oo::ObjCRef<Entity *>(MakeEntity(22, YES)) };
 	sUniverse->_stations = { oo::ObjCRef<Entity *>(sUniverse->_station), oo::ObjCRef<Entity *>(MakeEntity(1000, YES)) };
 	sUniverse->_wormholes = { oo::ObjCRef<Entity *>(MakeEntity(40, YES)) };
-	sUniverse->_waypoints["nav-a"] = oo::ObjCRef<OOWaypointEntity *>((OOWaypointEntity *)MakeEntity(50, YES));
-	sUniverse->_waypoints["nav-b"] = oo::ObjCRef<OOWaypointEntity *>((OOWaypointEntity *)MakeEntity(51, YES));
+	sUniverse->_waypoints["nav-a"] = oo::ObjCRef<Entity *>(MakeEntity(50, YES));
+	sUniverse->_waypoints["nav-b"] = oo::ObjCRef<Entity *>(MakeEntity(51, YES));
 
 	// The searchable entities, out of distance order; one is invisible.
 	TestEntity *farthest = MakeEntity(300, YES);

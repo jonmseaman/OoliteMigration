@@ -150,7 +150,7 @@ OO_TEST(defaults)
 		SetUp();
 		OOFlasherEntity *flasher = Flasher(Dict({}));
 		OO_CHECK(flasher != nullptr);
-		OO_CHECK([oo::ToObjC(flasher) isKindOfClass:[OOLightParticleEntity class]]);
+		OO_CHECK(dynamic_cast<OOLightParticleEntity *>(oo::ToCxx(oo::ToObjC(flasher))) != nullptr);
 		OO_CHECK(flasher->diameter() == 1.0f);
 		OO_CHECK(flasher->frequency() == 2.0f && flasher->phase() == 0.0f && flasher->fraction() == 0.5f);
 		OO_CHECK(flasher->isActive());
@@ -318,7 +318,9 @@ OO_TEST(isFlasher)
 		// The category -isFlasher went with the facade (bead oo-9ht.107): callers ask the C++ part.
 		Entity *plain = [[[Entity alloc] init] autorelease];
 		OO_CHECK(dynamic_cast<OOFlasherEntity *>(oo::ToCxx(plain)) == nullptr);
-		OOLightParticleEntity *particle = [[[OOLightParticleEntity alloc] initWithDiameter:1.0f] autorelease];
+		const oo::Ref<OOLightParticleEntity> lightParticle = oo::makeRef<OOLightParticleEntity>();	// C++ since bead oo-9ht.76
+		Entity *particle = oo::NewEntityFacade(lightParticle);
+		lightParticle->initWithDiameter(1.0f);
 		OO_CHECK(dynamic_cast<OOFlasherEntity *>(oo::ToCxx(particle)) == nullptr);
 		OOFlasherEntity *flasher = Flasher(Dict({}));
 		OO_CHECK(flasher->isFlasher() && dynamic_cast<OOFlasherEntity *>(oo::ToCxx(oo::ToObjC(flasher))) == flasher);
@@ -331,10 +333,10 @@ OO_TEST(facade)
 	@autoreleasepool
 	{
 		SetUp();
-		// The object is the nearest façade left (amendment oo-9ht.12 item 6), whose C++ part is the
-		// flasher: a C++ entity (amendment oo-0mxi), not an Objective-C entity's adapter.
+		// The object is the nearest façade left (amendment oo-9ht.12 item 6; the root's since bead
+		// oo-9ht.76), whose C++ part is the flasher: a C++ entity (amendment oo-0mxi), not an
+		// Objective-C entity's adapter.
 		Entity *object = oo::NewEntityFacade(OOFlasherEntity::flasherWithDictionary(WhiteBlack(1, 0.5)));
-		OO_CHECK([object class] == [OOLightParticleEntity class]);
 		OO_CHECK(dynamic_cast<OOFlasherEntity *>(oo::ToCxx(object)) != nullptr);
 		OO_CHECK(oo::AsObjCEntity(oo::ToCxx(object)) == nullptr);
 		OO_CHECK(oo::ToObjC(oo::ToCxx(object)) == object);

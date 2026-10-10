@@ -30,14 +30,15 @@ MA 02110-1301, USA.
 #include "oofnd/PList.hpp"
 
 
-namespace cxx {
-
-class SkyEntity : public OOEntityWithDrawable
+/*	C++ only since bead oo-9ht.109 deleted its Objective-C facade (ADR-0056 amendments oo-9ht.23 and
+	oo-9ht.106): the universe makes it with oo::makeRef<SkyEntity>(), hands it to Objective-C with
+	oo::NewEntityFacade (its object is the OOEntityWithDrawable facade) and finds it by dynamic_cast.
+*/
+class SkyEntity : public cxx::OOEntityWithDrawable
 {
 public:
-	/*	-initWithColors::andSystemInfo:'s body after [super init] (the constructor ran Entity's). The
-		facade runs it once it holds this object (amendment oo-0mxi item 2), because the universe
-		allocates the sky.
+	/*	-initWithColors::andSystemInfo:'s body after [super init] (the constructor ran Entity's), run
+		on a new sky once its object is made (the facade ran it until bead oo-9ht.109).
 	*/
 	void initWithColors(OOColor *col1, OOColor *col2, const oo::PList &systemInfo);
 	bool changeProperty(const std::string &key, const oo::PList &dict);
@@ -61,10 +62,3 @@ private:
 
 	oo::Ref<OOColor>		skyColor;
 };
-
-}	// namespace cxx
-
-
-// Transitional: the Objective-C SkyEntity, for the universe, which makes it, finds it by its class
-// and messages it. Deleted, with namespace cxx above, by the bridge's deletion bead.
-#import "SkyEntity+ObjCBridge.h"

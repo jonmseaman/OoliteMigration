@@ -82,10 +82,6 @@ oo::ObjCPeers &Peers()
 	OOCParameterAssert(AsObjCEntity(entity.get()) == nullptr);
 	Class facadeClass = [::Entity class];
 	if (dynamic_cast<cxx::OOEntityWithDrawable *>(entity.get()) != nullptr)  facadeClass = [::OOEntityWithDrawable class];
-	if (dynamic_cast<cxx::OOLightParticleEntity *>(entity.get()) != nullptr)  facadeClass = [::OOLightParticleEntity class];
-	if (dynamic_cast<cxx::SkyEntity *>(entity.get()) != nullptr)  facadeClass = [::SkyEntity class];
-	if (dynamic_cast<cxx::OOWaypointEntity *>(entity.get()) != nullptr)  facadeClass = [::OOWaypointEntity class];
-	if (dynamic_cast<cxx::OOFlashEffectEntity *>(entity.get()) != nullptr)  facadeClass = [::OOFlashEffectEntity class];
 	if (dynamic_cast<cxx::OOVisualEffectEntity *>(entity.get()) != nullptr)  facadeClass = [::OOVisualEffectEntity class];
 	if (dynamic_cast<cxx::ShipEntity *>(entity.get()) != nullptr)  facadeClass = [::ShipEntity class];
 	if (dynamic_cast<cxx::StationEntity *>(entity.get()) != nullptr)  facadeClass = [::StationEntity class];
@@ -372,6 +368,9 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 // The planet's shader binding selectors (Entity (OOPlanetShaderBindings), below) are answered for a
 // planet's C++ part only (bead oo-9ht.129): the shader uniforms ask this before they bind.
+// The beacon selectors (Entity (OOWaypointBeacon), below) are answered for a waypoint's C++ part
+// and by a subclass facade that implements them itself (the ship's, the visual effect's), as
+// before (bead oo-9ht.108).
 - (BOOL) respondsToSelector:(SEL)selector
 {
 	if (selector == @selector(airColorAsVector) || selector == @selector(illuminationColorAsVector) ||
@@ -379,6 +378,11 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 		selector == @selector(terminatorThresholdVector))
 	{
 		return dynamic_cast<OOPlanetEntity *>(_cxxEntity.get()) != nullptr;
+	}
+	if (protocol_getMethodDescription(@protocol(OOBeaconEntity), selector, YES, YES).name != NULL)
+	{
+		if (dynamic_cast<OOWaypointEntity *>(_cxxEntity.get()) != nullptr)  return YES;
+		return class_getInstanceMethod(object_getClass(self), selector) != class_getInstanceMethod([::Entity class], selector);
 	}
 	return [super respondsToSelector:selector];
 }
@@ -682,6 +686,98 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 {
 	OOPlanetEntity *planet = dynamic_cast<OOPlanetEntity *>(_cxxEntity.get());
 	return planet != nullptr ? planet->terminatorThresholdVector() : kZeroVector;
+}
+
+@end
+
+
+/*	The waypoint's OOBeaconEntity selectors (bead oo-9ht.108, ADR-0056 amendment oo-9ht.106). A
+	waypoint is a beacon in the universe's beacon list, which holds and messages the beacons'
+	Objective-C objects (ships, visual effects, waypoints) by the protocol, and since its facade was
+	deleted a waypoint's object is the root's facade. These answer the C++ waypoint's members and
+	zero (a message to nil's answer) for any other entity's part; the ship's and the visual effect's
+	facades implement them themselves, so their objects never reach these. -[Entity
+	respondsToSelector:] answers them as before.
+*/
+@implementation Entity (OOWaypointBeacon)
+
+- (OOComparisonResult) compareBeaconCodeWith:(Entity<OOBeaconEntity> *)other
+{
+	OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(_cxxEntity.get());
+	return waypoint != nullptr ? waypoint->compareBeaconCodeWith(other) : (OOComparisonResult)0;
+}
+
+
+- (std::optional<std::string>) beaconCode
+{
+	OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(_cxxEntity.get());
+	return waypoint != nullptr ? waypoint->beaconCode() : std::nullopt;
+}
+
+
+- (void) setBeaconCode:(const std::optional<std::string> &)bcode
+{
+	if (OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(_cxxEntity.get()))  waypoint->setBeaconCode(bcode);
+}
+
+
+- (std::optional<std::string>) beaconLabel
+{
+	OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(_cxxEntity.get());
+	return waypoint != nullptr ? waypoint->beaconLabel() : std::nullopt;
+}
+
+
+- (void) setBeaconLabel:(const std::optional<std::string> &)blabel
+{
+	if (OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(_cxxEntity.get()))  waypoint->setBeaconLabel(blabel);
+}
+
+
+- (BOOL) isBeacon
+{
+	OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(_cxxEntity.get());
+	return waypoint != nullptr ? waypoint->isBeacon() : NO;
+}
+
+
+- (OOHUDBeaconIcon *) beaconDrawable
+{
+	OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(_cxxEntity.get());
+	return waypoint != nullptr ? waypoint->beaconDrawable() : nullptr;
+}
+
+
+- (Entity <OOBeaconEntity> *) prevBeacon
+{
+	OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(_cxxEntity.get());
+	return waypoint != nullptr ? waypoint->prevBeacon() : nil;
+}
+
+
+- (Entity <OOBeaconEntity> *) nextBeacon
+{
+	OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(_cxxEntity.get());
+	return waypoint != nullptr ? waypoint->nextBeacon() : nil;
+}
+
+
+- (void) setPrevBeacon:(Entity <OOBeaconEntity> *)beaconShip
+{
+	if (OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(_cxxEntity.get()))  waypoint->setPrevBeacon(beaconShip);
+}
+
+
+- (void) setNextBeacon:(Entity <OOBeaconEntity> *)beaconShip
+{
+	if (OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(_cxxEntity.get()))  waypoint->setNextBeacon(beaconShip);
+}
+
+
+- (BOOL) isJammingScanning
+{
+	OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(_cxxEntity.get());
+	return waypoint != nullptr ? waypoint->isJammingScanning() : NO;
 }
 
 @end

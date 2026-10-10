@@ -49,13 +49,11 @@ namespace {
 class BlobTextureResetClient : public OOGraphicsResetClient
 {
 public:
-	void resetGraphicsState() override  { cxx::OOLightParticleEntity::resetGraphicsState(); }
+	void resetGraphicsState() override  { OOLightParticleEntity::resetGraphicsState(); }
 };
 
 }	// namespace
 
-
-namespace cxx {
 
 void OOLightParticleEntity::initWithDiameter(float diameter)
 {
@@ -343,4 +341,3 @@ std::vector<oo::ObjCRef<::OOTexture *>> OOLightParticleEntity::allTextures()
 }
 #endif
 
-}	// namespace cxx

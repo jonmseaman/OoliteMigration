@@ -255,7 +255,7 @@ extern Universe *gSharedUniverse;
 - (void) setLastBeacon:(Entity <OOBeaconEntity> *)beacon	{ _cxxUniverse->setLastBeacon(beacon); }
 - (void) setNextBeacon:(Entity <OOBeaconEntity> *)beaconShip	{ _cxxUniverse->setNextBeacon(beaconShip); }
 - (void) clearBeacon:(Entity <OOBeaconEntity> *)beaconShip	{ _cxxUniverse->clearBeacon(beaconShip); }
-- (std::map<std::string, oo::ObjCRef<OOWaypointEntity *>, std::less<>>) cxx_currentWaypoints	{ return _cxxUniverse->currentWaypoints(); }
+- (std::map<std::string, oo::ObjCRef<Entity *>, std::less<>>) cxx_currentWaypoints	{ return _cxxUniverse->currentWaypoints(); }
 - (void) cxx_defineWaypoint:(const oo::PList &)definition forKey:(const std::string &)key	{ _cxxUniverse->defineWaypoint(definition, key); }
 - (GLfloat *) skyClearColor	{ return _cxxUniverse->getSkyClearColor(); }
 - (void) setSkyColorRed:(GLfloat)red green:(GLfloat)green blue:(GLfloat)blue alpha:(GLfloat)alpha	{ _cxxUniverse->setSkyColorRed(red, green, blue, alpha); }

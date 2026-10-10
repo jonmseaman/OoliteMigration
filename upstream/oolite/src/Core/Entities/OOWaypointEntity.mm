@@ -32,6 +32,7 @@ MA 02110-1301, USA.
 #import "OOOpenGL.h"
 #import "OOMacroOpenGL.h"
 #import "OOPListGameTypes.h"
+#import "OOJSWaypoint.h"
 
 #include "oofnd/PListGet.hpp"
 #include "oofnd/String.hpp"
@@ -42,8 +43,6 @@ MA 02110-1301, USA.
 #define OOWAYPOINT_KEY_CODE			"beaconCode"
 #define OOWAYPOINT_KEY_LABEL		"beaconLabel"
 
-
-namespace cxx {
 
 oo::Ref<OOWaypointEntity> OOWaypointEntity::waypointWithDictionary(const oo::PList &info)
 {
@@ -310,4 +309,7 @@ bool OOWaypointEntity::isJammingScanning()
 	return NO;
 }
 
-}	// namespace cxx
+// The binding's category, which the facade forwarded (bead oo-9ht.50) until bead oo-9ht.108.
+void OOWaypointEntity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)	{ ::OOJSWaypointGetJSClass(outClass, outPrototype); }
+std::optional<std::string> OOWaypointEntity::jsClassName()										{ return ::OOJSWaypointJSClassName(); }
+bool OOWaypointEntity::isVisibleToScripts()														{ return ::OOJSWaypointIsVisibleToScripts(); }

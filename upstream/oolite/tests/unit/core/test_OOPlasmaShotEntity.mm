@@ -163,7 +163,8 @@ Entity *Shot(HPVector position, Vector velocity, float energy, OOTimeDelta durat
 	return oo::NewEntityFacade(OOPlasmaShotEntity::shotWithPosition(position, velocity, energy, duration, color));
 }
 
-const GLfloat *ColorComponents(Entity *shot)	{ return oo::ToCxx((OOLightParticleEntity *)shot)->_colorComponents; }
+OOLightParticleEntity *Particle(Entity *shot)	{ return static_cast<OOLightParticleEntity *>(oo::ToCxx(shot)); }	// the root's facade since bead oo-9ht.76
+const GLfloat *ColorComponents(Entity *shot)	{ return Particle(shot)->_colorComponents; }
 void SetColliding(Entity *shot, Entity *other)	{ shot->_cxxEntity->collidingEntities.emplace_back(other); }
 void SetIsShip(Entity *e)						{ e->_cxxEntity->isShip = true; }
 
@@ -192,12 +193,12 @@ OO_TEST(shotIsMade)
 	{
 		SetUp(10.0);
 		Entity *shot = RedShot();
-		OO_CHECK(shot != nil && [shot isKindOfClass:[OOLightParticleEntity class]]);
+		OO_CHECK(shot != nil && dynamic_cast<OOLightParticleEntity *>(oo::ToCxx(shot)) != nullptr);
 		OO_CHECK(HPvector_equal([shot position], make_HPvector(1, 2, 3)));
 		Vector v = [shot velocity];
 		OO_CHECK(v.x == 4 && v.y == 5 && v.z == 6);
 		OO_CHECK([shot energy] == 7.0f && [shot collisionRadius] == 2.0f);
-		OO_CHECK([(OOLightParticleEntity *)shot diameter] == 12.0f);
+		OO_CHECK(Particle(shot)->diameter() == 12.0f);
 		OO_CHECK([shot status] == STATUS_EFFECT && [shot scanClass] == CLASS_NO_DRAW && [shot isEffect]);
 		OO_CHECK([shot spawnTime] == 10.0f);
 		const GLfloat *c = ColorComponents(shot);

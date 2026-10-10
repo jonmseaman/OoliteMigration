@@ -47,7 +47,11 @@ public:
 	virtual bool isVisibleToScripts();
 };
 
-class OOLightParticleEntity : public Entity
+}	// namespace cxx
+
+
+// Global since bead oo-9ht.76 deleted its Objective-C facade, as the game's.
+class OOLightParticleEntity : public cxx::Entity
 {
 public:
 	float diameter();
@@ -58,13 +62,11 @@ public:
 	oo::Ref<OOColor> _color;
 };
 
-}	// namespace cxx
-
 
 /*	A flasher whose frequency is 99 raises from frequency(), one whose frequency is 98 throws a C++
 	exception, so the test sees what an exception under a native becomes.
 */
-class OOFlasherEntity : public cxx::OOLightParticleEntity
+class OOFlasherEntity : public OOLightParticleEntity
 {
 public:
 	bool isActive();
@@ -173,9 +175,9 @@ void cxx::Entity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *ou
 std::optional<std::string> cxx::Entity::jsClassName()  { return std::string("Entity"); }
 bool cxx::Entity::isVisibleToScripts()  { return false; }
 
-float cxx::OOLightParticleEntity::diameter()  { return _diameter; }
-void cxx::OOLightParticleEntity::setDiameter(float diameter)  { _diameter = diameter; }
-void cxx::OOLightParticleEntity::setColor(OOColor *color)  { _color = oo::Ref<OOColor>(color); }
+float OOLightParticleEntity::diameter()  { return _diameter; }
+void OOLightParticleEntity::setDiameter(float diameter)  { _diameter = diameter; }
+void OOLightParticleEntity::setColor(OOColor *color)  { _color = oo::Ref<OOColor>(color); }
 
 bool OOFlasherEntity::isActive()  { return _active; }
 void OOFlasherEntity::setActive(bool active)  { _active = active; }

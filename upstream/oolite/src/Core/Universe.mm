@@ -383,8 +383,8 @@ void cxx::Universe::initWithGameView(::MyOpenGLView *inGameView)
 	// [self preloadSounds];	// Must be after setUpSettings.
 
 	// Preload particle effect textures:
-	[::OOLightParticleEntity setUpTexture];
-	[::OOFlashEffectEntity setUpTexture];
+	::OOLightParticleEntity::setUpTexture();
+	::OOFlashEffectEntity::setUpTexture();
 
 
 	// set up cargopod templates
@@ -1598,7 +1598,12 @@ void Universe::setUpWitchspaceBetweenSystem(OOSystemID s1, OOSystemID s2)
 	/*- the sky backdrop -*/
 	oo::Ref<OOColor>	col1 = OOColor::colorWithRed(0.0, 1.0, 0.5, 1.0);
 	oo::Ref<OOColor>	col2 = OOColor::colorWithRed(0.0, 1.0, 0.0, 1.0);
-	thing = [[::SkyEntity alloc] initWithColors:col1.get():col2.get() andSystemInfo: systeminfo];	// alloc retains!
+	{
+		// The sky is C++ (bead oo-9ht.109): its object first, retained as +alloc's was, then the body.
+		oo::Ref<::SkyEntity> skyRef = oo::makeRef<::SkyEntity>();
+		thing = [oo::NewEntityFacade(skyRef) retain];	// alloc retains!
+		skyRef->initWithColors(col1.get(), col2.get(), systeminfo);
+	}
 	[thing setScanClass: CLASS_NO_DRAW];
 	quaternion_set_random(&randomQ);
 	[thing setOrientation:randomQ];
@@ -1769,7 +1774,12 @@ void Universe::setUpSpace()
 	oo::Ref<OOColor>	col1 = OOColor::colorWithHue(h1, randf(), 0.5 + randf()/2.0, 1.0);
 	oo::Ref<OOColor>	col2 = OOColor::colorWithHue(h2, 0.5 + randf()/2.0, 0.5 + randf()/2.0, 1.0);
 	
-	thing = [[::SkyEntity alloc] initWithColors:col1.get():col2.get() andSystemInfo: systeminfo];	// alloc retains!
+	{
+		// The sky is C++ (bead oo-9ht.109): its object first, retained as +alloc's was, then the body.
+		oo::Ref<::SkyEntity> skyRef = oo::makeRef<::SkyEntity>();
+		thing = [oo::NewEntityFacade(skyRef) retain];	// alloc retains!
+		skyRef->initWithColors(col1.get(), col2.get(), systeminfo);
+	}
 	[thing setScanClass: CLASS_NO_DRAW];
 	[self addEntity:thing];
 //	bgcolor = [(SkyEntity *)thing skyColor];
@@ -2393,14 +2403,16 @@ void Universe::setLighting()
 	*/
 	
 	::OOSunEntity		*the_sun = [self sun];
-	::SkyEntity		*the_sky = nil;
+	::SkyEntity		*the_sky = nullptr;
 	GLfloat			sun_pos[] = {0.0, 0.0, 0.0, 1.0};	// equivalent to kZeroVector - for interstellar space.
 	GLfloat			sun_ambient[] = {0.0, 0.0, 0.0, 1.0};	// overridden later in code
 	int i;
 	
+	// The sky is C++ since bead oo-9ht.109: found by its C++ part (it was -isKindOfClass:).
 	for (i = n_entities - 1; i > 0; i--)
-		if ((sortedEntities[i]) && ([sortedEntities[i] isKindOfClass:[::SkyEntity class]]))
-			the_sky = (::SkyEntity*)sortedEntities[i];
+		if (sortedEntities[i] != nil)
+			if (::SkyEntity *sky = dynamic_cast<::SkyEntity *>(oo::ToCxx(sortedEntities[i])))
+				the_sky = sky;
 	
 	if (the_sun)
 	{
@@ -2430,7 +2442,7 @@ void Universe::setLighting()
 	{
 		// ambient lighting!
 		GLfloat r,g,b,a;
-		if (::OOColor *skyColor = [the_sky skyColor])  skyColor->getRed(&r, &g, &b, &a);
+		if (::OOColor *skyColor = the_sky->getSkyColor())  skyColor->getRed(&r, &g, &b, &a);
 		else  r = g = b = a = 0.0f;	// a nil colour wrote nothing; zero, as a message to nil answers
 		r = r * (1.0 - SUN_AMBIENT_INFLUENCE) + sun_diffuse[0] * SUN_AMBIENT_INFLUENCE;
 		g = g * (1.0 - SUN_AMBIENT_INFLUENCE) + sun_diffuse[1] * SUN_AMBIENT_INFLUENCE;
@@ -4251,7 +4263,7 @@ void Universe::clearBeacon(OOBeaconEntityObject *beaconShip)
 }
 
 
-std::map<std::string, oo::ObjCRef<::OOWaypointEntity *>, std::less<>> Universe::currentWaypoints()
+std::map<std::string, oo::ObjCRef<::Entity *>, std::less<>> Universe::currentWaypoints()
 {
 	return waypoints;
 }
@@ -4260,7 +4272,7 @@ std::map<std::string, oo::ObjCRef<::OOWaypointEntity *>, std::less<>> Universe::
 void Universe::defineWaypoint(const oo::PList &definition, const std::string &key)
 {
 	::Universe *self = oo::ToObjC(this);
-	::OOWaypointEntity *waypoint = nil;
+	::Entity *waypoint = nil;	// the waypoint's object (the root's facade since bead oo-9ht.108)
 	BOOL preserveCompass = NO;
 	const auto existing = waypoints.find(key);
 	if (existing != waypoints.end())  waypoint = existing->second.get();
@@ -4275,11 +4287,11 @@ void Universe::defineWaypoint(const oo::PList &definition, const std::string &ke
 	}
 	if (!definition.isNull())
 	{
-		waypoint = [::OOWaypointEntity waypointWithDictionary:definition];
+		waypoint = oo::NewEntityFacade(::OOWaypointEntity::waypointWithDictionary(definition));
 		if (waypoint != nil)
 		{
 			[self addEntity:waypoint];
-			waypoints[key] = oo::ObjCRef<::OOWaypointEntity *>(waypoint);
+			waypoints[key] = oo::ObjCRef<::Entity *>(waypoint);
 			if (preserveCompass)
 			{
 				if (PLAYER != nullptr)  PLAYER->setCompassTarget(waypoint);
@@ -5856,7 +5868,7 @@ bool Universe::addEntity(::Entity *entity)
 	{
 		::ShipEntity *se = nil;
 		::OOVisualEffectEntity *ve = nil;
-		::OOWaypointEntity *wp = nil;
+		::OOBeaconEntityObject *wp = nil;	// a waypoint's object, the root's facade since bead oo-9ht.108
 		
 		if (![entity validForAddToUniverse])  return NO;
 		
@@ -5948,7 +5960,7 @@ bool Universe::addEntity(::Entity *entity)
 			}
 			else if ([entity isWaypoint])
 			{
-				wp = (::OOWaypointEntity *)entity;
+				wp = (::OOBeaconEntityObject *)entity;
 				if ([wp isBeacon])
 				{
 					[self setNextBeacon:wp];
@@ -6458,7 +6470,7 @@ void Universe::addLaserHitEffectsAt(HPVector pos, ::ShipEntity *target, float da
 	}
 	else
 	{
-		[self addEntity:[::OOFlashEffectEntity laserFlashWithPosition:pos velocity:[target velocity] color:color]];
+		[self addEntity:oo::NewEntityFacade(::OOFlashEffectEntity::laserFlashWithPosition(pos, [target velocity], color))];
 	}
 }
 
@@ -8719,20 +8731,22 @@ void Universe::setSystemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum, const st
 		else if (key == "sun_color" || key == "star_count_multiplier" ||
 				key == "nebula_count_multiplier" || oo::str::hasPrefix(key, "sky_"))
 		{
-			::SkyEntity	*the_sky = nil;
+			::SkyEntity	*the_sky = nullptr;
 			int i;
 			
+			// The sky is C++ since bead oo-9ht.109: found by its C++ part (it was -isKindOfClass:).
 			for (i = n_entities - 1; i > 0; i--)
-				if ((sortedEntities[i]) && ([sortedEntities[i] isKindOfClass:[::SkyEntity class]]))
-					the_sky = (::SkyEntity*)sortedEntities[i];
+				if (sortedEntities[i] != nil)
+					if (::SkyEntity *sky = dynamic_cast<::SkyEntity *>(oo::ToCxx(sortedEntities[i])))
+						the_sky = sky;
 			
-			if (the_sky != nil)
+			if (the_sky != nullptr)
 			{
-				[the_sky changeProperty:key withDictionary:sysInfo];
+				the_sky->changeProperty(key, sysInfo);
 
 				if (key == "sun_color")
 				{
-					::OOColor *color = [the_sky skyColor];
+					::OOColor *color = the_sky->getSkyColor();
 					if (the_sun != nil)
 					{
 						if (the_sun != nullptr)  the_sun->setSunColor(color);
@@ -11223,7 +11237,7 @@ bool Universe::doRemoveEntity(::Entity *entity)
 		}
 		if ([entity isWaypoint])
 		{
-			::OOWaypointEntity *wp = (::OOWaypointEntity*)entity;
+			::OOBeaconEntityObject *wp = (::OOBeaconEntityObject *)entity;	// the root's facade since bead oo-9ht.108
 			[self clearBeacon:wp];
 		}
 		if ([entity isVisualEffect])

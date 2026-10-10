@@ -54,7 +54,8 @@ MA 02110-1301, USA.
 #include <string_view>
 #endif
 
-@class GameController, MyOpenGLView, Entity, ShipEntity, StationEntity, OOVisualEffectEntity, DockEntity, OOWaypointEntity, OOException;
+@class GameController, MyOpenGLView, Entity, ShipEntity, StationEntity, OOVisualEffectEntity, DockEntity, OOException;
+class OOWaypointEntity;
 class PlayerEntity;
 #include "OOScript.h"	// oo::Ref<OOScript> members and results (bead oo-9ht.133)
 class WormholeEntity;	// C++ since bead oo-9ht.112
@@ -298,7 +299,7 @@ public:
 
 	::OOWeakReference		*_firstBeacon = nil,
 							*_lastBeacon = nil;
-	std::map<std::string, oo::ObjCRef<::OOWaypointEntity *>, std::less<>>	waypoints;	// by key
+	std::map<std::string, oo::ObjCRef<::Entity *>, std::less<>>	waypoints;	// by key: the waypoints' objects (the root's facade since bead oo-9ht.108)
 
 	GLfloat					skyClearColor[4] = {};
 
@@ -551,7 +552,7 @@ public:
 	void setLastBeacon(OOBeaconEntityObject *beacon);
 	void setNextBeacon(OOBeaconEntityObject *beaconShip);
 	void clearBeacon(OOBeaconEntityObject *beaconShip);
-	std::map<std::string, oo::ObjCRef<::OOWaypointEntity *>, std::less<>> currentWaypoints();
+	std::map<std::string, oo::ObjCRef<::Entity *>, std::less<>> currentWaypoints();
 	void defineWaypoint(const oo::PList &definition, const std::string &key);
 	GLfloat *getSkyClearColor();
 	void setSkyColorRed(GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha);

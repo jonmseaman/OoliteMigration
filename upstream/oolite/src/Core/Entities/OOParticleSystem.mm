@@ -243,14 +243,14 @@ bool OOParticleSystem::isEffect()
 
 OOTexture *OOParticleSystem::texture()
 {
-	return [OOLightParticleEntity defaultParticleTexture];
+	return ::OOLightParticleEntity::defaultParticleTexture();
 }
 
 #ifndef NDEBUG
 std::vector<oo::ObjCRef<OOTexture *>> OOParticleSystem::allTextures()
 {
 	std::vector<oo::ObjCRef<OOTexture *>> result;
-	result.emplace_back([OOLightParticleEntity defaultParticleTexture]);
+	result.emplace_back(::OOLightParticleEntity::defaultParticleTexture());
 	return result;
 }
 #endif

@@ -43,13 +43,17 @@ MA 02110-1301, USA.
 typedef Entity <OOBeaconEntity> OOBeaconEntityObject;
 
 
-namespace cxx {
-
-class OOWaypointEntity : public Entity
+/*	C++ only since bead oo-9ht.108 deleted its Objective-C facade (ADR-0056 amendments oo-9ht.23 and
+	oo-9ht.106): the universe makes it with waypointWithDictionary() and hands it to Objective-C with
+	oo::NewEntityFacade, whose object is the root Entity's facade. That object answers the
+	OOBeaconEntity selectors the beacon list sends for a waypoint's part (the root's category
+	Entity (OOWaypointBeacon), Entity+ObjCBridge.mm).
+*/
+class OOWaypointEntity : public cxx::Entity
 {
 public:
-	// +waypointWithDictionary:: a new waypoint, initialised. The facade's class method hands it to
-	// Objective-C (oo::NewEntityFacade).
+	// +waypointWithDictionary:: a new waypoint, initialised. Callers hand it to Objective-C with
+	// oo::NewEntityFacade.
 	static oo::Ref<OOWaypointEntity> waypointWithDictionary(const oo::PList &info);
 
 	// -cxx_initWithDictionary:'s body after [super init] (the constructor ran Entity's), run once
@@ -65,8 +69,13 @@ public:
 	bool isWaypoint() override;
 	void drawImmediate(bool immediate, bool translucent) override;
 
-	// OOBeaconEntity, answered by the facade. Other beacons stay their Objective-C objects
-	// (amendment oo-bj8 item 4).
+	// The binding's bodies (OOJSWaypoint.mm), which the facade forwarded to until bead oo-9ht.108.
+	void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype) override;
+	std::optional<std::string> jsClassName() override;
+	bool isVisibleToScripts() override;
+
+	// OOBeaconEntity, answered for the waypoint by the root facade's category (the facade's until
+	// bead oo-9ht.108). Other beacons stay their Objective-C objects (amendment oo-bj8 item 4).
 	OOComparisonResult compareBeaconCodeWith(OOBeaconEntityObject *other);
 	std::optional<std::string> beaconCode();
 	void setBeaconCode(const std::optional<std::string> &bcode);
@@ -90,11 +99,3 @@ private:
 	oo::Ref<OOHUDBeaconIcon>	_beaconDrawable;
 	bool					oriented = {};
 };
-
-}	// namespace cxx
-
-
-// Transitional: the Objective-C OOWaypointEntity, for the universe, the HUD and the scripting
-// binding, which make it and message it. Deleted, with namespace cxx above, by the bridge's
-// deletion bead.
-#import "OOWaypointEntity+ObjCBridge.h"

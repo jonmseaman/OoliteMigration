@@ -62,7 +62,7 @@ OOPlanetEntity *OOJSSystemUniversePlanet();
 OOSunEntity *OOJSSystemUniverseSun();
 std::vector<oo::ObjCRef<Entity *>> OOJSSystemUniversePlanets();	// the planets' Objective-C objects
 std::vector<oo::ObjCRef<StationEntity *>> OOJSSystemUniverseStations();
-std::map<std::string, oo::ObjCRef<OOWaypointEntity *>, std::less<>> OOJSSystemUniverseCurrentWaypoints();
+std::map<std::string, oo::ObjCRef<Entity *>, std::less<>> OOJSSystemUniverseCurrentWaypoints();	// the waypoints' objects
 std::vector<oo::ObjCRef<::Entity *>> OOJSSystemUniverseWormholes();
 std::vector<oo::ObjCRef<Entity *>> OOJSSystemUniverseFindShipsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, Entity *entity);
 std::vector<oo::ObjCRef<Entity *>> OOJSSystemUniverseFindVisualEffectsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, Entity *entity);

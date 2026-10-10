@@ -257,7 +257,7 @@ static void hudDrawStatusIconAt(int x, int y, int z, NSSize siz);
 static void hudDrawReticleOnTarget(Entity* target, PlayerEntity* player1, GLfloat z1,
 				GLfloat alpha, BOOL reticleTargetSensitive, oo::PList *propertiesReticleTargetSensitive,
 				BOOL colourFromScannerColour, BOOL showText, const oo::PList &info, const std::vector<oo::Ref<OOColor>> &reticleColors);
-static void hudDrawWaypoint(OOWaypointEntity *waypoint, PlayerEntity *player1, GLfloat z1, GLfloat alpha, BOOL selected, GLfloat scale);
+static void hudDrawWaypoint(Entity *waypoint, PlayerEntity *player1, GLfloat z1, GLfloat alpha, BOOL selected, GLfloat scale);	// the waypoint's object (bead oo-9ht.108)
 static void hudRotateViewpointForVirtualDepth(PlayerEntity * player1, Vector p1);
 static void drawScannerGrid(GLfloat x, GLfloat y, GLfloat z, NSSize siz, int v_dir, GLfloat thickness, GLfloat zoom, BOOL nonlinear, BOOL minimalistic);
 static GLfloat nonlinearScannerFunc(GLfloat distance, GLfloat zoom, GLfloat scale);
@@ -1991,7 +1991,7 @@ void HeadUpDisplay::drawWaypoints(const oo::PList &info)
 	GLfloat alpha = info.get<oo::NonNegative<float>>(ALPHA_KEY, 1.0f) * overallAlpha;
 	GLfloat scale = info.get<float>("reticle_scale", ONE_SIXTYFOURTH);
 
-	::OOWaypointEntity *waypoint = nil;
+	::Entity *waypoint = nil;	// the waypoint's object (the root's facade since bead oo-9ht.108)
 	::Entity *compass = (PLAYER != nullptr ? PLAYER->getCompassTarget() : (Entity *)nullptr);
 	
 	for (const auto &[waypointKey, waypointRef] : [UNIVERSE cxx_currentWaypoints])
@@ -3838,7 +3838,7 @@ static void hudDrawReticleOnTarget(Entity *target, PlayerEntity *player1, GLfloa
 }
 
 
-static void hudDrawWaypoint(OOWaypointEntity *waypoint, PlayerEntity *player1, GLfloat z1, GLfloat alpha, BOOL selected, GLfloat scale)
+static void hudDrawWaypoint(Entity *waypoint, PlayerEntity *player1, GLfloat z1, GLfloat alpha, BOOL selected, GLfloat scale)
 {
 	if (HeadUpDisplayPlayerGuiScreen(player1) != GUI_SCREEN_MAIN)	// don't draw on text screens
 	{
