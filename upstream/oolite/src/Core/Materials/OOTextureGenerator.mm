@@ -30,8 +30,6 @@ SOFTWARE.
 #import "OOAsyncWorkManager.h"
 
 
-namespace cxx {
-
 uint32_t OOTextureGenerator::textureOptions()
 {
 	return kOOTextureDefaultOptions;
@@ -61,6 +59,3 @@ bool OOTextureGenerator::enqueue()
 {
 	return OOAsyncWorkManager::sharedAsyncWorkManager()->addTask(this, kOOAsyncPriorityMedium);
 }
-
-}	// namespace cxx
-

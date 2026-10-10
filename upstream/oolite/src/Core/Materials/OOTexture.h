@@ -44,7 +44,8 @@ SOFTWARE.
 #include "oofnd/Ref.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 
-@class OOTexture, OOTextureLoader, OOTextureGenerator;
+@class OOTexture;
+class OOTextureGenerator;
 
 enum
 {

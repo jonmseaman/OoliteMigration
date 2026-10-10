@@ -196,13 +196,13 @@ cxx::OOTexture *oo::ToCxx(OOTexture *texture)
 }
 
 
-+ (id) textureWithGenerator:(OOTextureGenerator *)generator
++ (id) textureWithGenerator:(::OOTextureGenerator *)generator
 {
 	return [[cxx::OOTexture::textureWithGenerator(generator).get() retain] autorelease];
 }
 
 
-+ (id) textureWithGenerator:(OOTextureGenerator *)generator enqueue:(BOOL) enqueue
++ (id) textureWithGenerator:(::OOTextureGenerator *)generator enqueue:(BOOL) enqueue
 {
 	return [[cxx::OOTexture::textureWithGenerator(generator, enqueue).get() retain] autorelease];
 }

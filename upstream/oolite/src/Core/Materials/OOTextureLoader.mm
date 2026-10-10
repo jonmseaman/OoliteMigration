@@ -44,6 +44,11 @@ SOFTWARE.
 
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOAssert.h"
+#import "OOTextureGenerator.h"
+
+#include <cstdlib>
+#include <cxxabi.h>
+#include <typeinfo>
 
 
 #define DUMP_CONVERTED_CUBE_MAPS	0
@@ -66,12 +71,10 @@ static BOOL					sHaveNPOTTextures = NO;	// TODO: support "true" non-power-of-two
 static BOOL					sHaveSetUp = NO;
 
 
-namespace cxx {
-
-oo::ObjCRef<::OOTextureLoader *> OOTextureLoader::loaderWithPath(const std::optional<std::string> &inPath, uint32_t options)
+oo::Ref<OOTextureLoader> OOTextureLoader::loaderWithPath(const std::optional<std::string> &inPath, uint32_t options)
 {
-	std::string							extension;
-	oo::ObjCRef<::OOTextureLoader *>	result;
+	std::string					extension;
+	oo::Ref<OOTextureLoader>	result;
 
 	if (EXPECT_NOT(!inPath.has_value())) return nullptr;
 	if (EXPECT_NOT(!sHaveSetUp))  setUp();
@@ -83,9 +86,9 @@ oo::ObjCRef<::OOTextureLoader *> OOTextureLoader::loaderWithPath(const std::opti
 	extension = oo::str::lowercase(oo::str::pathExtension(*inPath));
 	if (extension == "png")
 	{
-		// A C++ loader (bead oo-z889); the work manager holds its facade, which owns it.
+		// A C++ loader (bead oo-z889); the work manager retains it while it is queued.
 		const oo::Ref<::OOPNGTextureLoader> loader = oo::makeRef<::OOPNGTextureLoader>();
-		if (loader->initWithPath(inPath, options))  result = oo::ObjCRef<::OOTextureLoader *>(oo::ToObjC(loader.get()));
+		if (loader->initWithPath(inPath, options))  result = loader;
 	}
 	else
 	{
@@ -94,14 +97,14 @@ oo::ObjCRef<::OOTextureLoader *> OOTextureLoader::loaderWithPath(const std::opti
 
 	if (result != nullptr)
 	{
-		if (!OOAsyncWorkManager::sharedAsyncWorkManager()->addTask(oo::ToCxx(result.get()), kOOAsyncPriorityMedium))  result = nullptr;
+		if (!OOAsyncWorkManager::sharedAsyncWorkManager()->addTask(result.get(), kOOAsyncPriorityMedium))  result = nullptr;
 	}
 
 	return result;
 }
 
 
-oo::ObjCRef<::OOTextureLoader *> OOTextureLoader::loaderWithTextureSpecifier(const oo::PList &specifier, uint32_t extraOptions, const std::optional<std::string> &folder)
+oo::Ref<OOTextureLoader> OOTextureLoader::loaderWithTextureSpecifier(const oo::PList &specifier, uint32_t extraOptions, const std::optional<std::string> &folder)
 {
 	std::string					name;
 	std::optional<std::string>	path;
@@ -129,8 +132,8 @@ OOTextureLoader::OOTextureLoader()
 }
 
 
-/*	The part of -cxx_initWithPath:options: after [super init]; the facade releases the receiver
-	where this answers false.
+/*	The part of -cxx_initWithPath:options: after [super init]; false where it released the receiver
+	and answered nil.
 */
 bool OOTextureLoader::initWithPath(const std::optional<std::string> &inPath, uint32_t options)
 {
@@ -225,6 +228,43 @@ std::optional<std::string> OOTextureLoader::descriptionComponents() const
 std::optional<std::string> OOTextureLoader::shortDescriptionComponents() const
 {
 	return oo::str::lastPathComponent(_path);
+}
+
+
+namespace {
+
+std::string DemangledName(const std::type_info &type)
+{
+	int status = 0;
+	char *demangled = abi::__cxa_demangle(type.name(), nullptr, nullptr, &status);
+	std::string result = (status == 0 && demangled != nullptr) ? demangled : type.name();
+	std::free(demangled);
+	return result;
+}
+
+}	// namespace
+
+
+std::string OOTextureLoader::className() const
+{
+	return DemangledName(typeid(*this));
+}
+
+
+std::string OOTextureLoader::description() const
+{
+	std::string result = oo::str::format("<%s %s>", className().c_str(), oo::str::pointerDescription(this).c_str());
+	if (const std::optional<std::string> components = descriptionComponents())  result += "{" + *components + "}";
+	return result;
+}
+
+
+std::string OOTextureLoader::shortDescription() const
+{
+	const char *facadeClass = (dynamic_cast<const OOTextureGenerator *>(this) != nullptr) ? "OOTextureGenerator" : "OOTextureLoader";
+	std::string result = oo::str::format("<%s %s>", facadeClass, oo::str::pointerDescription(this).c_str());
+	if (const std::optional<std::string> components = shortDescriptionComponents())  result += "{" + *components + "}";
+	return result;
 }
 
 
@@ -553,6 +593,3 @@ void OOTextureLoader::completeAsyncTask()
 {
 	_ready = YES;
 }
-
-}	// namespace cxx
-

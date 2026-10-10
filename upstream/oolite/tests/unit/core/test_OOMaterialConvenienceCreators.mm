@@ -164,24 +164,25 @@ void OOCacheManager::setPList(const oo::PList &value, const std::string &key, co
 
 /*	The emission-map generator: C++ since bead oo-9ht.135 deleted its Objective-C facade. The
 	factories answer null for nothing to bake, as before; its own and its bases' other members are
-	no-ops (no texture loader is linked), and its Objective-C object is a plain object, which the
-	OOTexture stand-in only asks whether it is nil.
+	no-ops (no texture loader is linked). The material hands the C++ generator to the OOTexture
+	stand-in, which only asks whether it is nil (it handed a plain Objective-C object until bead
+	oo-9ht.118 deleted the generators' facade).
 */
-cxx::OOTextureLoader::OOTextureLoader()  {}
-cxx::OOTextureLoader::~OOTextureLoader()  {}
-bool cxx::OOTextureLoader::getResult(OOPixMap *, OOTextureDataFormat *, uint32_t *, uint32_t *)  { return false; }
-std::optional<std::string> cxx::OOTextureLoader::cacheKey()  { return std::nullopt; }
-std::optional<std::string> cxx::OOTextureLoader::descriptionComponents() const  { return std::nullopt; }
-std::optional<std::string> cxx::OOTextureLoader::shortDescriptionComponents() const  { return std::nullopt; }
-void cxx::OOTextureLoader::loadTexture()  {}
+OOTextureLoader::OOTextureLoader()  {}
+OOTextureLoader::~OOTextureLoader()  {}
+bool OOTextureLoader::getResult(OOPixMap *, OOTextureDataFormat *, uint32_t *, uint32_t *)  { return false; }
+std::optional<std::string> OOTextureLoader::cacheKey()  { return std::nullopt; }
+std::optional<std::string> OOTextureLoader::descriptionComponents() const  { return std::nullopt; }
+std::optional<std::string> OOTextureLoader::shortDescriptionComponents() const  { return std::nullopt; }
+void OOTextureLoader::loadTexture()  {}
 // The loader is the work manager's task since bead oo-9ht.14 (its vtable): never reached.
-void cxx::OOTextureLoader::performAsyncTask()  { std::abort(); }
-void cxx::OOTextureLoader::completeAsyncTask()  { std::abort(); }
-uint32_t cxx::OOTextureGenerator::textureOptions()  { return 0; }
-GLfloat cxx::OOTextureGenerator::anisotropy()  { return 0; }
-GLfloat cxx::OOTextureGenerator::lodBias()  { return 0; }
-std::optional<std::string> cxx::OOTextureGenerator::cacheKey()  { return std::nullopt; }
-bool cxx::OOTextureGenerator::enqueue()  { return false; }
+void OOTextureLoader::performAsyncTask()  { std::abort(); }
+void OOTextureLoader::completeAsyncTask()  { std::abort(); }
+uint32_t OOTextureGenerator::textureOptions()  { return 0; }
+GLfloat OOTextureGenerator::anisotropy()  { return 0; }
+GLfloat OOTextureGenerator::lodBias()  { return 0; }
+std::optional<std::string> OOTextureGenerator::cacheKey()  { return std::nullopt; }
+bool OOTextureGenerator::enqueue()  { return false; }
 oo::Ref<OOCombinedEmissionMapGenerator> OOCombinedEmissionMapGenerator::generatorWithEmissionMapSpec(const oo::PList &emissionMapSpec, OOColor *, OOTexture *, OOColor *, const oo::PList &illuminationMapSpec, OOColor *, const oo::PList &)
 {
 	if (emissionMapSpec.isNull() && illuminationMapSpec.isNull())  return {};
@@ -200,13 +201,6 @@ GLfloat OOCombinedEmissionMapGenerator::anisotropy()  { return 0; }
 GLfloat OOCombinedEmissionMapGenerator::lodBias()  { return 0; }
 std::optional<std::string> OOCombinedEmissionMapGenerator::cacheKey()  { return std::nullopt; }
 void OOCombinedEmissionMapGenerator::loadTexture()  {}
-OOTextureGenerator *oo::ToObjC(cxx::OOTextureGenerator *generator)
-{
-	if (generator == nullptr)  return nil;
-	id object = [[[OOObject alloc] init] autorelease];	// not an OOTextureGenerator: nothing asks it anything
-	return object;
-}
-
 
 // OOTexture.mm's specifier of a map value: the value itself, or the default name, or none.
 oo::PList cxx_OOTextureSpecFromObject(const oo::PList &object, const std::optional<std::string> &defaultName)

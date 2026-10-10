@@ -7031,3 +7031,53 @@ kept preloading materials, and the debug wireframe saved `+current` and sent it 
 any more, but it is still not a `.cpp` rename (bead oo-hrcs): its header chain (`OOMaths.h`,
 `OOColor.h`, `OOMaterial.h`'s `id<OOWeakReferenceSupport>` binding target, `OOOpenGL.h`) imports
 Objective-C headers, so a plain C++ translation unit cannot include them.
+
+
+## Amendment (beads oo-9ht.118 and oo-9ht.114 (texture generator and loader)): the loaders' and generators' facades are deleted; a texture takes the C++ generator
+
+- Date: 2026-10-10. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch Y
+  (one branch for both beads: the generator's facade was a subclass of the loader's): oo-9ht.118
+  (OOTextureGenerator), oo-9ht.114 (OOTextureLoader). Exemplar:
+  `src/Core/Materials/OOTextureLoader.h/.mm`, `OOConcreteTexture.h/.mm`,
+  `tests/unit/core/test_OOTextureLoader.mm`, `test_OOTextureVerifierStage.mm` (a stand-in of the
+  class's members).
+
+**Context.** Every loader and generator was C++ (OOPNGTextureLoader, OOPixMapTextureLoader, the
+planet, atmosphere and emission-map generators); the facades remained for the holders: the
+concrete texture kept the loader's Objective-C object, the loader factories answered it, the
+texture verifier stage and the emission-map generator messaged it, and `textureWithGenerator`
+took the generator's facade. The texture's own facade (oo-9ht.99) is NOT deleted here.
+
+**Decision (recommended defaults).**
+
+1. **Both classes leave namespace `cxx`**; the four bridge files and their meson entries go. The
+   factories `loaderWithPath()`/`loaderWithTextureSpecifier()` answer `oo::Ref<OOTextureLoader>`
+   (already queued, null where they answered nil); the concrete texture holds `oo::Ref<OOTextureLoader>`;
+   `cxx::OOTexture::textureWithGenerator()` and the texture facade's `+textureWithGenerator:` take
+   the C++ generator. Sends to a loader that could be nil keep the answer a message to nil gave
+   (`isFinishedLoading()`, `setUpTexture()`'s `getResult`).
+2. **Descriptions are the facade's, with the C++ object's address**: `description()` is
+   `<CxxClass 0x...>{components}` (the facade's `-cxx_description` override); `shortDescription()`
+   names the facade's class as `-cxx_shortDescription` did (it was not overridden):
+   `OOTextureGenerator` for a generator, `OOTextureLoader` for any other loader, because the
+   emission-map generator puts a loader's short description into its cache key. The generators' log
+   lines print `description()` where they printed the facade.
+3. **The work manager queues the C++ loader** (amendment oo-9ht.122 item 3), which it retains while
+   queued; the factory's result is the loader itself, not its facade.
+4. **A generated texture's debug name** (`OOConcreteTexture`'s `_name`, debug builds only) is
+   `"<" + the generator's C++ class name + ">"` where it was `"<" + [loader class] + ">"`.
+   **Difference (debug builds only):** the game's generators were all seen as their nearest facade,
+   so their textures were named `<OOTextureGenerator>`; they are now named for their own class
+   (`<OOPlanetTextureGenerator>`, ...). A test generator keeps its name (`<TestGenerator>`,
+   `<ChoosyGenerator>`), which the tests pin.
+5. **Tests** (standing approval oo-9n5p9; one approval line per file): the facades' crossing cases
+   go (`objCLoaderBehindACxxPointer`, `nilAndLifetime`, `objCGeneratorBehindACxxPointer`,
+   `nilStaysNil`, and the facade lines of `cxxApi`/crossing blocks in the PNG, pixmap, planet,
+   atmosphere and emission-map tests); the Objective-C test loaders and generators are C++
+   subclasses with the same names and answers, kept for the test's life where they were
+   autoreleased in the case's pool; the Objective-C `OOTextureLoader` stand-ins of the three verifier
+   tests are C++ definitions of the class's members (the factory, and a subclass answering the
+   result); every other case's sends call the same members with every expectation kept.
+
+**Consequences.** No Objective-C texture loader or generator is left. The texture's facade
+(oo-9ht.99) remains: its callers still hold `oo::ObjCRef<::OOTexture *>`.

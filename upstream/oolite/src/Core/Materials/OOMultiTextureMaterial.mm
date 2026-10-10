@@ -116,7 +116,7 @@ bool OOMultiTextureMaterial::initWithName(const std::optional<std::string> &name
 																					   optionsSpec);
 			}
 			
-			_emissionMap = oo::ObjCRef<::OOTexture *>([::OOTexture textureWithGenerator:oo::ToObjC(generator.get())]);
+			_emissionMap = oo::ObjCRef<::OOTexture *>([::OOTexture textureWithGenerator:generator.get()]);
 			if (_emissionMap.get() != nil)  _unitsUsed++;
 		}
 	}

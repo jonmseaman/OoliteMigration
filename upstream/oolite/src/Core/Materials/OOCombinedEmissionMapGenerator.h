@@ -40,12 +40,12 @@ SOFTWARE.
 
 
 /*	Phase 3 (bead oo-e6xa, proposed ADR-0056 amendments oo-qa7c, oo-rmd7 item 3 and oo-rr2x): a
-	converted leaf of the texture generators, over cxx::OOTextureGenerator. Bead oo-9ht.135
+	converted leaf of the texture generators, over OOTextureGenerator. Bead oo-9ht.135
 	deleted its Objective-C facade: its caller (OOMultiTextureMaterial) makes it with the factories
-	below, and Objective-C sees it as the nearest facade, OOTextureGenerator's (amendment oo-vl43
-	item 4).
+	below, and hands the C++ generator to the texture (the generators' facade it was seen as went
+	with bead oo-9ht.118).
 */
-class OOCombinedEmissionMapGenerator : public cxx::OOTextureGenerator
+class OOCombinedEmissionMapGenerator : public OOTextureGenerator
 {
 public:
 	~OOCombinedEmissionMapGenerator() override;	// was -dealloc

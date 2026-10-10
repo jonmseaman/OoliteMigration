@@ -62,10 +62,10 @@ typedef struct OOStandaloneAtmosphereGeneratorInfo
 
 /*	Phase 3 (bead oo-y3dd, proposed ADR-0056 amendments oo-bj8 item 12, oo-2c6g item 2, oo-novu,
 	oo-rr2x item 3 and oo-kvqq): a converted leaf of the texture generators, global, over
-	cxx::OOTextureGenerator, with no facade of its own. Its one caller (OOPlanetEntity) calls the
-	static members; the texture takes its facade, oo::ToObjC(generator), an OOTextureGenerator.
+	OOTextureGenerator, with no facade of its own. Its one caller (OOPlanetEntity) calls the
+	static members; the texture takes the C++ generator (the generators' facade until bead oo-9ht.118).
 */
-class OOStandaloneAtmosphereGenerator : public cxx::OOTextureGenerator
+class OOStandaloneAtmosphereGenerator : public OOTextureGenerator
 {
 public:
 	/*	planetInfo is the planet's material parameters, a mixed configuration: plist values with the

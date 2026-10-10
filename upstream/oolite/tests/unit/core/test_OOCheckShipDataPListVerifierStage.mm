@@ -19,6 +19,7 @@
 	Run: bash tools/check-core-tests.sh
 */
 
+#import "OOTextureLoader.h"
 #import "OOCheckShipDataPListVerifierStage.h"
 #import "OOModelVerifierStage.h"
 #import "OOAIStateMachineVerifierStage.h"
@@ -95,19 +96,12 @@ void OOFreePixMap(OOPixMap *ioPixMap)
 }
 
 
-@interface OOTextureLoader: OOObject
-+ (id) cxx_loaderWithPath:(const std::optional<std::string> &)path options:(uint32_t)options;
-@end
-
-
-@implementation OOTextureLoader
-+ (id) cxx_loaderWithPath:(const std::optional<std::string> &)path options:(uint32_t)options
+// The loader factory, as the Objective-C stand-in answered it (nil); C++ since bead oo-9ht.114
+// deleted the loaders' facade.
+oo::Ref<OOTextureLoader> OOTextureLoader::loaderWithPath(const std::optional<std::string> & /*path*/, uint32_t /*options*/)
 {
-	(void)path;
-	(void)options;
-	return nil;
+	return nullptr;
 }
-@end
 
 
 /*	The schema verifier (OOPListSchemaVerifier.mm reaches the game's plist types): a value "BAD"

@@ -102,22 +102,18 @@ static int gTestDeallocs = 0;
 @end
 
 
-// A generator that is never queued: -enqueue answers what the test says, and counts.
-@interface TestGenerator: OOTextureGenerator
+// A generator that is never queued: enqueue() answers what the test says, and counts. (An
+// Objective-C subclass until bead oo-9ht.118 deleted the generator's facade; named as it was.)
+class TestGenerator : public OOTextureGenerator
 {
-@public
+public:
+	std::optional<std::string> cacheKey() override	{ return _key; }
+	bool enqueue() override							{ _enqueues++; return _accept; }
+
 	std::optional<std::string>	_key;
-	BOOL						_accept;
-	int							_enqueues;
-}
-@end
-
-@implementation TestGenerator
-
-- (std::optional<std::string>) cxx_cacheKey		{ return _key; }
-- (BOOL) enqueue								{ _enqueues++; return _accept; }
-
-@end
+	BOOL						_accept = NO;
+	int							_enqueues = 0;
+};
 
 
 namespace {
@@ -128,9 +124,16 @@ TestTexture *MakeTexture(const std::optional<std::string> &key)
 }
 
 
+// The generators made, kept for the test's life (each was autoreleased in its case's pool).
+std::vector<oo::Ref<TestGenerator>> gKeptGenerators;
+
+
 TestGenerator *MakeGenerator(const std::optional<std::string> &key, BOOL accept)
 {
-	TestGenerator *generator = [[[TestGenerator alloc] cxx_initWithPath:std::string("test generator") options:0] autorelease];
+	const oo::Ref<TestGenerator> made = oo::makeRef<TestGenerator>();
+	if (!made->initWithPath(std::string("test generator"), 0))  return nullptr;
+	gKeptGenerators.push_back(made);
+	TestGenerator *generator = made.get();
 	generator->_key = key;
 	generator->_accept = accept;
 	return generator;

@@ -38,28 +38,24 @@ uint32_t gDebugFlags = 0;
 #endif
 
 
-// A generator of a 4 x 2 RGBA image whose bytes count up from 1, or of nothing.
-@interface TestGenerator: OOTextureGenerator
+// A generator of a 4 x 2 RGBA image whose bytes count up from 1, or of nothing. (An Objective-C
+// subclass until bead oo-9ht.118 deleted the generator's facade; named as it was.)
+class TestGenerator : public OOTextureGenerator
 {
-@public
-	BOOL	_empty;
-}
-@end
+public:
+	void loadTexture() override
+	{
+		if (_empty)  return;
+		_width = 4;
+		_height = 2;
+		_format = kOOPixMapRGBA;
+		uint8_t *bytes = (uint8_t *)malloc(4 * 2 * 4);
+		for (unsigned i = 0; i < 4 * 2 * 4; i++)  bytes[i] = (uint8_t)(i + 1);
+		_data = bytes;
+	}
 
-@implementation TestGenerator
-
-- (void) loadTexture
-{
-	if (_empty)  return;
-	_cxxLoader->_width = 4;
-	_cxxLoader->_height = 2;
-	_cxxLoader->_format = kOOPixMapRGBA;
-	uint8_t *bytes = (uint8_t *)malloc(4 * 2 * 4);
-	for (unsigned i = 0; i < 4 * 2 * 4; i++)  bytes[i] = (uint8_t)(i + 1);
-	_cxxLoader->_data = bytes;
-}
-
-@end
+	BOOL	_empty = NO;
+};
 
 
 namespace {
@@ -84,16 +80,29 @@ void SetUpLoaders()
 {
 	@autoreleasepool
 	{
-		(void)[OOTextureLoader cxx_loaderWithPath:std::string("unknown.type") options:0];
+		(void)OOTextureLoader::loaderWithPath(std::string("unknown.type"), 0);
 	}
+}
+
+
+// The generators made, kept for the test's life (each was autoreleased in its case's pool).
+std::vector<oo::Ref<TestGenerator>> gKeptGenerators;
+
+
+TestGenerator *NewGenerator(uint32_t options)
+{
+	const oo::Ref<TestGenerator> generator = oo::makeRef<TestGenerator>();
+	if (!generator->initWithPath(std::string("test generator"), options))  return nullptr;
+	gKeptGenerators.push_back(generator);
+	return generator.get();
 }
 
 
 TestGenerator *QueuedGenerator(uint32_t options, BOOL empty)
 {
-	TestGenerator *generator = [[[TestGenerator alloc] cxx_initWithPath:std::string("test generator") options:options] autorelease];
+	TestGenerator *generator = NewGenerator(options);
 	generator->_empty = empty;
-	OO_CHECK([generator enqueue]);
+	OO_CHECK(generator->enqueue());
 	return generator;
 }
 
@@ -315,7 +324,7 @@ OO_TEST(concreteTextureCrossesAsTheRootFacade)
 		OO_CHECK([made class] == [OOTexture class]);
 
 		// The factory's textures are concrete C++ textures behind that facade.
-		TestGenerator *generator = [[[TestGenerator alloc] cxx_initWithPath:std::string("test generator") options:options] autorelease];	// the factory queues it
+		TestGenerator *generator = NewGenerator(options);	// the factory queues it
 		OOTexture *generated = [OOTexture textureWithGenerator:generator];
 		OO_CHECK(dynamic_cast<OOConcreteTexture *>(oo::ToCxx(generated)) != nullptr);
 	}
