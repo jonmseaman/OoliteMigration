@@ -47,6 +47,9 @@ SOFTWARE.
 #import "OOObjCPList.h"
 #import "OOLogHeader.h"	// OOPlatformDescription()
 #import "Entity.h"	// an entity's -inspect
+#if OO_DEBUG
+#import "OOShaderUniformMethodType.h"	// callObjC()'s scalar results on the console (bead oo-9ht.74)
+#endif
 
 #include "oofnd/String.hpp"
 
@@ -67,6 +70,11 @@ SOFTWARE.
 
 static ooscript::Object sConsolePrototype = NULL;
 static ooscript::Object sConsoleSettingsPrototype = NULL;
+
+namespace {
+oo::PList ConsoleConverter(ooscript::Context context, ooscript::Object object);
+OODebugMonitor *MonitorFromJSObject(ooscript::Context context, ooscript::Object object);
+}	// namespace
 
 
 static bool ConsoleGetProperty(ooscript::Context context, ooscript::Object thisObject, ooscript::PropertyId propID, ooscript::Value *value);
@@ -255,10 +263,10 @@ static ooscript::ClassDef sConsoleSettingsClass =
 static void InitOOJSConsole(ooscript::Context context, ooscript::Object global)
 {
 	sConsolePrototype = ooscript::initClass(context, global, NULL, &sConsoleClass, OOJSUnconstructableConstruct, 0, sConsoleProperties, sConsoleMethods, NULL, NULL);
-	OOJSRegisterObjectConverter(&sConsoleClass, OOJSBasicPrivateObjectConverter);
+	OOJSRegisterObjectConverter(&sConsoleClass, ConsoleConverter);
 	
 	sConsoleSettingsPrototype = ooscript::initClass(context, global, NULL, &sConsoleSettingsClass, OOJSUnconstructableConstruct, 0, NULL, NULL, NULL, NULL);
-	OOJSRegisterObjectConverter(&sConsoleSettingsClass, OOJSBasicPrivateObjectConverter);
+	OOJSRegisterObjectConverter(&sConsoleSettingsClass, ConsoleConverter);
 }
 
 
@@ -266,6 +274,53 @@ void OOJSConsoleDestroy(void)
 {
 	sConsolePrototype = NULL;
 }
+
+
+/*	The console objects' private slot holds the C++ monitor with one retain, released by
+	ConsoleFinalize (bead oo-9ht.74; it held the facade's weak reference). The monitor is never
+	released, as the facade never was, so the slot keeps nothing alive that would otherwise die.
+*/
+namespace {
+
+bool SetMonitorPrivate(ooscript::Context context, ooscript::Object object, OODebugMonitor *monitor)
+{
+	if (monitor != nullptr)  monitor->retain();
+	if (ooscript::setPrivate(context, object, static_cast<oo::RefCounted *>(monitor)))  return true;
+	if (monitor != nullptr)  monitor->release();
+	return false;
+}
+
+
+// The monitor of a Console or ConsoleSettings object; null for any other object (or a prototype).
+OODebugMonitor *MonitorFromJSObject(ooscript::Context context, ooscript::Object object)
+{
+	if (object == NULL)  return nullptr;
+	const ooscript::ClassDef *jsClass = ooscript::getClass(context, object);
+	if (jsClass != &sConsoleClass && jsClass != &sConsoleSettingsClass)  return nullptr;
+	return static_cast<OODebugMonitor *>(static_cast<oo::RefCounted *>(ooscript::getPrivate(context, object)));
+}
+
+
+/*	The natives' internal error for a `this` that is not a console object: the class of the object
+	the engine converts it to, as the facade's check described what it got (nil for a plain object).
+*/
+void ReportNotTheMonitor(ooscript::Context context, ooscript::Object object, const char *function)
+{
+	id native = (object != NULL) ? OOJSNativeObjectFromJSObject(context, object) : nil;
+	cxx_OOJSReportError(context, "Expected OODebugMonitor, got %s in %s. %s", oo::DescriptionOf([native class]).c_str(), function, "This is an internal error, please report it.");
+}
+
+
+// The console objects' converter: the monitor as an Object node (oo::PListForeign), whose JS value
+// is the console object, as the facade's node's was (OOJSBasicPrivateObjectConverter); null for none.
+oo::PList ConsoleConverter(ooscript::Context context, ooscript::Object object)
+{
+	OODebugMonitor *monitor = static_cast<OODebugMonitor *>(static_cast<oo::RefCounted *>(ooscript::getPrivate(context, object)));
+	if (monitor == nullptr)  return oo::PList();
+	return oo::PList(oo::PList::Object(oo::Ref<oo::PListForeign>(monitor)));
+}
+
+}	// namespace
 
 
 ooscript::Object DebugMonitorToJSConsole(ooscript::Context context, OODebugMonitor *monitor)
@@ -288,7 +343,7 @@ ooscript::Object DebugMonitorToJSConsole(ooscript::Context context, OODebugMonit
 	object = ooscript::newObject(context, &sConsoleClass, sConsolePrototype, NULL);
 	if (object != NULL)
 	{
-		if (!ooscript::setPrivate(context, object, [monitor weakRetain]))  object = NULL;
+		if (!SetMonitorPrivate(context, object, monitor))  object = NULL;
 	}
 	
 	if (object != NULL)
@@ -297,7 +352,7 @@ ooscript::Object DebugMonitorToJSConsole(ooscript::Context context, OODebugMonit
 		settingsObject = ooscript::newObject(context, &sConsoleSettingsClass, sConsoleSettingsPrototype, NULL);
 		if (settingsObject != NULL)
 		{
-			if (!ooscript::setPrivate(context, settingsObject, [monitor weakRetain]))  settingsObject = NULL;
+			if (!SetMonitorPrivate(context, settingsObject, monitor))  settingsObject = NULL;
 		}
 		if (settingsObject != NULL)
 		{
@@ -357,7 +412,7 @@ static bool ConsoleGetProperty(ooscript::Context context, ooscript::Object thisO
 			break;
 			
 		case kConsole_ignoreDroppedPackets:
-			*value = OOJSValueFromBOOL(cxx::OODebugMonitor::sharedDebugMonitor()->TCPIgnoresDroppedPackets());
+			*value = OOJSValueFromBOOL(OODebugMonitor::sharedDebugMonitor()->TCPIgnoresDroppedPackets());
 			break;
 			
 		case kConsole_showErrorLocations:
@@ -462,7 +517,7 @@ static bool ConsoleSetProperty(ooscript::Context context, ooscript::Object thisO
 		case kConsole_ignoreDroppedPackets:
 			if (ooscript::valueToBoolean(context, *value, &bValue))
 			{
-				cxx::OODebugMonitor::sharedDebugMonitor()->setTCPIgnoresDroppedPackets(bValue);
+				OODebugMonitor::sharedDebugMonitor()->setTCPIgnoresDroppedPackets(bValue);
 			}
 			break;
 			
@@ -537,8 +592,11 @@ static void ConsoleFinalize(ooscript::Context context, ooscript::Object thisObje
 {
 	OOJS_PROFILE_ENTER
 	
-	[(id)ooscript::getPrivate(context, thisObject) release];
-	ooscript::setPrivate(context, thisObject, nil);
+	// The slot's retain of the monitor (OOJSCxxObjectWrapperFinalize, whose clearJSSelf() the
+	// monitor answers by doing nothing, as OOObject's -oo_clearJSSelf: did for the facade).
+	oo::RefCounted *held = static_cast<oo::RefCounted *>(ooscript::getPrivate(context, thisObject));
+	if (held != nullptr)  held->release();
+	ooscript::setPrivate(context, thisObject, nullptr);
 	
 	OOJS_PROFILE_EXIT_VOID
 }
@@ -549,19 +607,19 @@ static bool ConsoleSettingsDeleteProperty(ooscript::Context context, ooscript::O
 	OOJS_NATIVE_ENTER(context)
 	
 	std::optional<std::string>	key;
-	OODebugMonitor		*monitor = nil;	// the facade the private slot holds
+	OODebugMonitor		*monitor = nullptr;	// the monitor the private slot holds
 
 	if (!ooscript::isStringId(propID))  return false;
 	key = cxx_OOStringFromJSString(context, ooscript::idToString(propID));
 	
-	monitor = OOJSNativeObjectFromJSObject(context, thisObject);
-	if (![monitor isKindOfClass:[OODebugMonitor class]])
+	monitor = MonitorFromJSObject(context, thisObject);
+	if (monitor == nullptr)
 	{
-		cxx_OOJSReportError(context, "Expected OODebugMonitor, got %s in %s. %s", oo::DescriptionOf([monitor class]).c_str(), __PRETTY_FUNCTION__, "This is an internal error, please report it.");
+		ReportNotTheMonitor(context, thisObject, __PRETTY_FUNCTION__);
 		return false;
 	}
 	
-	if (key.has_value())  oo::ToCxx(monitor)->setConfigurationValue(oo::PList(), *key);
+	if (key.has_value())  monitor->setConfigurationValue(oo::PList(), *key);
 	*value = ooscript::trueValue();
 	return true;
 	
@@ -576,18 +634,18 @@ static bool ConsoleSettingsGetProperty(ooscript::Context context, ooscript::Obje
 	OOJS_NATIVE_ENTER(context)
 	
 	std::optional<std::string>	key;
-	OODebugMonitor		*monitor = nil;	// the facade the private slot holds
+	OODebugMonitor		*monitor = nullptr;	// the monitor the private slot holds
 
 	key = cxx_OOStringFromJSString(context, ooscript::idToString(propID));
 
-	monitor = OOJSNativeObjectFromJSObject(context, thisObject);
-	if (![monitor isKindOfClass:[OODebugMonitor class]])
+	monitor = MonitorFromJSObject(context, thisObject);
+	if (monitor == nullptr)
 	{
-		cxx_OOJSReportError(context, "Expected OODebugMonitor, got %s in %s. %s", oo::DescriptionOf([monitor class]).c_str(), __PRETTY_FUNCTION__, "This is an internal error, please report it.");
+		ReportNotTheMonitor(context, thisObject, __PRETTY_FUNCTION__);
 		return false;
 	}
 
-	const oo::PList setting = key.has_value() ? oo::ToCxx(monitor)->configurationValueForKey(*key) : oo::PList();
+	const oo::PList setting = key.has_value() ? monitor->configurationValueForKey(*key) : oo::PList();
 	if (!setting.isNull())  *value = OOJSValueFromPList(context, setting);
 	else  *value = ooscript::undefinedValue();
 	
@@ -604,14 +662,14 @@ static bool ConsoleSettingsSetProperty(ooscript::Context context, ooscript::Obje
 	OOJS_NATIVE_ENTER(context)
 	
 	std::optional<std::string>	key;
-	OODebugMonitor		*monitor = nil;	// the facade the private slot holds
+	OODebugMonitor		*monitor = nullptr;	// the monitor the private slot holds
 
 	key = cxx_OOStringFromJSString(context, ooscript::idToString(propID));
 
-	monitor = OOJSNativeObjectFromJSObject(context, thisObject);
-	if (![monitor isKindOfClass:[OODebugMonitor class]])
+	monitor = MonitorFromJSObject(context, thisObject);
+	if (monitor == nullptr)
 	{
-		cxx_OOJSReportError(context, "Expected OODebugMonitor, got %s in %s. %s", oo::DescriptionOf([monitor class]).c_str(), __PRETTY_FUNCTION__, "This is an internal error, please report it.");
+		ReportNotTheMonitor(context, thisObject, __PRETTY_FUNCTION__);
 		return false;
 	}
 
@@ -619,14 +677,14 @@ static bool ConsoleSettingsSetProperty(ooscript::Context context, ooscript::Obje
 	OOJSPauseTimeLimiter();
 	if (ooscript::isNull(*value) || ooscript::isUndefined(*value))
 	{
-		if (key.has_value())  oo::ToCxx(monitor)->setConfigurationValue(oo::PList(), *key);
+		if (key.has_value())  monitor->setConfigurationValue(oo::PList(), *key);
 	}
 	else
 	{
 		const oo::PList settingValue = cxx_OOJSPListFromJSValue(context, *value);
 		if (!settingValue.isNull() && key.has_value())
 		{
-			oo::ToCxx(monitor)->setConfigurationValue(settingValue, *key);
+			monitor->setConfigurationValue(settingValue, *key);
 		}
 		else
 		{
@@ -650,17 +708,18 @@ static bool ConsoleConsoleMessage(ooscript::Context context, ooscript::CallArgs 
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	OODebugMonitor		*monitor = nil;	// the facade the private slot holds
+	OODebugMonitor		*monitor = nullptr;	// the monitor the private slot holds
 	std::optional<std::string>	colorKey,
 								message;
 	double			location, length;
 	
 	// Not OOJS_BEGIN_FULL_NATIVE() - we use JSAPI while paused.
 	OOJSPauseTimeLimiter();
-	monitor = OOJSNativeObjectOfClassFromJSObject(context, OOJS_THIS, [OODebugMonitor class]);
-	if (monitor == nil)
+	monitor = MonitorFromJSObject(context, OOJS_THIS);
+	if (monitor == nullptr)
 	{
-		cxx_OOJSReportError(context, "Expected OODebugMonitor, got %s in %s. %s", oo::DescriptionOf([monitor class]).c_str(), __PRETTY_FUNCTION__, "This is an internal error, please report it.");
+		// The facade's class check left nil, so this described nil whatever `this` was.
+		cxx_OOJSReportError(context, "Expected OODebugMonitor, got %s in %s. %s", "(null)", __PRETTY_FUNCTION__, "This is an internal error, please report it.");
 		OOJSResumeTimeLimiter();
 		return false;
 	}
@@ -693,7 +752,7 @@ static bool ConsoleConsoleMessage(ooscript::Context context, ooscript::CallArgs 
 	
 	if (message.has_value())
 	{
-		oo::ToCxx(monitor)->appendJSConsoleLine(*message,
+		monitor->appendJSConsoleLine(*message,
 												colorKey,
 												emphasisRange);
 	}
@@ -710,16 +769,16 @@ static bool ConsoleClearConsole(ooscript::Context context, ooscript::CallArgs &o
 {
 	OOJS_NATIVE_ENTER(context)
 	
-	OODebugMonitor		*monitor = nil;	// the facade the private slot holds
+	OODebugMonitor		*monitor = nullptr;	// the monitor the private slot holds
 	
-	monitor = OOJSNativeObjectFromJSObject(context, OOJS_THIS);
-	if (![monitor isKindOfClass:[OODebugMonitor class]])
+	monitor = MonitorFromJSObject(context, OOJS_THIS);
+	if (monitor == nullptr)
 	{
-		cxx_OOJSReportError(context, "Expected OODebugMonitor, got %s in %s. %s", oo::DescriptionOf([monitor class]).c_str(), __PRETTY_FUNCTION__, "This is an internal error, please report it.");
+		ReportNotTheMonitor(context, OOJS_THIS, __PRETTY_FUNCTION__);
 		return false;
 	}
 	
-	oo::ToCxx(monitor)->clearJSConsole();
+	monitor->clearJSConsole();
 	OOJS_RETURN_VOID;
 	
 	OOJS_NATIVE_EXIT
@@ -762,6 +821,143 @@ static bool ConsoleInspectEntity(ooscript::Context context, ooscript::CallArgs &
 
 
 #if OO_DEBUG
+namespace {
+
+/*	callObjC()'s names on the console objects (proposed ADR-0056 amendment oo-9ht.74): the debug
+	monitor's facade, which they held, answered any selector whose signature callObjC() matched.
+	Its deletion leaves this table: exactly the facade's own selectors without arguments, and the
+	two that take the joined string argument. Each row calls the C++ member the selector forwarded
+	to, with the result the selector's signature gave; a scalar row keeps the @encode() of the
+	facade's return type, so its result (or the "cannot be called" error) is the one the selector
+	path read from the same encoding, and a row whose signature matched nothing (NotCallable)
+	answers that error. Every other name answers "does not respond": the root classes' selectors
+	(OOWeakRefObject, OOObject: lifetime, weak reference, description), the scalar selectors with
+	arguments, which callObjC() called with the arguments missing, and the facade's other
+	selectors with arguments, whose signatures matched nothing ("cannot be called" until then).
+*/
+enum class MonitorMethodForm { VoidVoid, VoidString, PListString, Scalar, NotCallable };
+
+struct MonitorMethod
+{
+	const char			*name;
+	MonitorMethodForm	form;
+	void				(*voidVoid)(OODebugMonitor *);
+	void				(*voidString)(OODebugMonitor *, const std::string &);
+	oo::PList			(*pListString)(OODebugMonitor *, const std::string &);
+	long long			(*scalar)(OODebugMonitor *);
+	const char			*encoding;		// a Scalar row: @encode() of the facade's return type
+};
+
+const MonitorMethod kMonitorMethods[] =
+{
+	{ "performJSConsoleCommand:",	MonitorMethodForm::VoidString,	nullptr, [](OODebugMonitor *m, const std::string &s) { m->performJSConsoleCommand(s); }, nullptr, nullptr, nullptr },
+	{ "configurationValueForKey:",	MonitorMethodForm::PListString,	nullptr, nullptr, [](OODebugMonitor *m, const std::string &s) { return m->configurationValueForKey(s); }, nullptr, nullptr },
+	{ "clearJSConsole",				MonitorMethodForm::VoidVoid,	[](OODebugMonitor *m) { m->clearJSConsole(); }, nullptr, nullptr, nullptr, nullptr },
+	{ "showJSConsole",				MonitorMethodForm::VoidVoid,	[](OODebugMonitor *m) { m->showJSConsole(); }, nullptr, nullptr, nullptr, nullptr },
+	{ "dumpMemoryStatistics",		MonitorMethodForm::VoidVoid,	[](OODebugMonitor *m) { m->dumpMemoryStatistics(); }, nullptr, nullptr, nullptr, nullptr },
+#if OOLITE_GNUSTEP
+	{ "applicationWillTerminate",	MonitorMethodForm::VoidVoid,	[](OODebugMonitor *m) { m->applicationWillTerminate(); }, nullptr, nullptr, nullptr, nullptr },
+#endif
+	{ "debuggerConnected",			MonitorMethodForm::Scalar,		nullptr, nullptr, nullptr, [](OODebugMonitor *m) -> long long { return m->debuggerConnected(); }, @encode(BOOL) },
+	{ "TCPIgnoresDroppedPackets",	MonitorMethodForm::Scalar,		nullptr, nullptr, nullptr, [](OODebugMonitor *m) -> long long { return m->TCPIgnoresDroppedPackets(); }, @encode(BOOL) },
+	{ "usingPlugInController",		MonitorMethodForm::Scalar,		nullptr, nullptr, nullptr, [](OODebugMonitor *m) -> long long { return m->usingPlugInController(); }, @encode(BOOL) },
+	{ "configurationKeys",			MonitorMethodForm::NotCallable,	nullptr, nullptr, nullptr, nullptr, nullptr },	// a std::vector result
+	{ "dumpJSMemoryStatistics",		MonitorMethodForm::Scalar,		nullptr, nullptr, nullptr, [](OODebugMonitor *m) -> long long { return static_cast<long long>(m->dumpJSMemoryStatistics()); }, @encode(size_t) },
+};
+
+
+// OOJSCallObjCObjectMethod()'s steps for the facade's selectors, on the table above.
+bool CallMonitorMethod(ooscript::Context context, OODebugMonitor *monitor, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult)
+{
+	const std::string className;	// the facade's -cxx_oo_jsClassName (OOObject's: none)
+	if (argc == 0)
+	{
+		cxx_OOJSReportError(context, "%s.callObjC(): no selector specified.", className.c_str());
+		return false;
+	}
+
+	const std::optional<std::string> name = cxx_OOStringFromJSValue(context, argv[0]);
+	std::optional<std::string> parameter;
+	if (1 < argc && name.has_value() && oo::str::hasSuffix(*name, ":"))
+	{
+		std::string joined;
+		for (unsigned i = 1; i < argc; i++)
+		{
+			if (i > 1)  joined += " ";
+			joined += cxx_OOStringFromJSValueEvenIfNull(context, argv[i]).value_or(std::string());
+		}
+		parameter = joined;
+	}
+
+	const MonitorMethod *method = nullptr;
+	if (name.has_value())
+	{
+		for (const MonitorMethod &row : kMonitorMethods)
+		{
+			if (*name == row.name)  method = &row;
+		}
+	}
+	const char *nameString = name.has_value() ? name->c_str() : "(null)";
+	if (method == nullptr)
+	{
+		cxx_OOJSReportError(context, "%s.callObjC(): %s does not respond to method %s.", className.c_str(), monitor->description().c_str(), nameString);
+		return false;
+	}
+
+	oo::PList result;
+	switch (method->form)
+	{
+		case MonitorMethodForm::VoidString:
+		case MonitorMethodForm::PListString:
+			if (!parameter.has_value())
+			{
+				cxx_OOJSReportError(context, "%s.callObjC(): method %s requires a parameter.", className.c_str(), nameString);
+				return false;
+			}
+			if (method->form == MonitorMethodForm::VoidString)  method->voidString(monitor, *parameter);
+			else  result = method->pListString(monitor, *parameter);
+			break;
+
+		case MonitorMethodForm::VoidVoid:
+			method->voidVoid(monitor);
+			break;
+
+		case MonitorMethodForm::Scalar:
+			switch (OOShaderUniformTypeFromEncoding(method->encoding))
+			{
+				case kOOShaderUniformTypeChar:
+				case kOOShaderUniformTypeUnsignedChar:
+				case kOOShaderUniformTypeShort:
+				case kOOShaderUniformTypeUnsignedShort:
+				case kOOShaderUniformTypeInt:
+				case kOOShaderUniformTypeUnsignedInt:
+				case kOOShaderUniformTypeLong:
+					result = oo::PList::signedInteger(method->scalar(monitor));
+					break;
+
+				case kOOShaderUniformTypeUnsignedLong:
+					result = oo::PList::unsignedInteger(static_cast<unsigned long long>(method->scalar(monitor)));
+					break;
+
+				default:
+					// size_t on Windows (unsigned long long) matched no template.
+					cxx_OOJSReportError(context, "%s.callObjC(): method %s cannot be called from JavaScript.", className.c_str(), nameString);
+					return false;
+			}
+			break;
+
+		case MonitorMethodForm::NotCallable:
+			cxx_OOJSReportError(context, "%s.callObjC(): method %s cannot be called from JavaScript.", className.c_str(), nameString);
+			return false;
+	}
+
+	if (!result.isNull())  *outResult = OOJSValueFromPList(context, result);
+	return true;
+}
+
+}	// namespace
+
+
 // function callObjC(selector : String [, ...]) : Object
 static bool ConsoleCallObjCMethod(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
@@ -770,6 +966,17 @@ static bool ConsoleCallObjCMethod(ooscript::Context context, ooscript::CallArgs 
 	id						object = nil;
 	ooscript::Value					result;
 	bool					OK;
+	
+	// The console objects hold the C++ monitor (bead oo-9ht.74): its table, not a selector.
+	if (OODebugMonitor *monitor = MonitorFromJSObject(context, OOJS_THIS))
+	{
+		OOJSPauseTimeLimiter();
+		result = ooscript::undefinedValue();
+		OK = CallMonitorMethod(context, monitor, oojsArgs.count(), OOJS_ARGV, &result);
+		OOJSResumeTimeLimiter();
+		OOJS_SET_RVAL(result);
+		return OK;
+	}
 	
 	object = OOJSNativeObjectFromJSObject(context, OOJS_THIS);
 	if (object == nil)
@@ -889,7 +1096,7 @@ static bool ConsoleWriteMemoryStats(ooscript::Context context, ooscript::CallArg
 	OOJS_NATIVE_ENTER(context)
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
-	cxx::OODebugMonitor::sharedDebugMonitor()->dumpMemoryStatistics();
+	OODebugMonitor::sharedDebugMonitor()->dumpMemoryStatistics();
 	OOJS_END_FULL_NATIVE
 	
 	OOJS_RETURN_VOID;
@@ -904,7 +1111,7 @@ static bool ConsoleWriteJSMemoryStats(ooscript::Context context, ooscript::CallA
 	OOJS_NATIVE_ENTER(context)
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
-	cxx::OODebugMonitor::sharedDebugMonitor()->dumpJSMemoryStatistics();
+	OODebugMonitor::sharedDebugMonitor()->dumpJSMemoryStatistics();
 	OOJS_END_FULL_NATIVE
 	
 	OOJS_RETURN_VOID;
@@ -1115,7 +1322,7 @@ bool PerformProfiling(ooscript::Context context, const char *nominalFunction, un
 	if (argc > 1)  thisVal = argv[1];
 	else
 	{
-		ooscript::Value debugConsole = OOJSValueFromNativeObject(context, oo::ToObjC(cxx::OODebugMonitor::sharedDebugMonitor()));
+		ooscript::Value debugConsole = OODebugMonitor::sharedDebugMonitor()->jsValueInContext(context);	// the facade's -oo_jsValueInContext: until bead oo-9ht.74
 		assert(ooscript::isObjectOrNull(debugConsole) && !ooscript::isNull(debugConsole));
 		ooscript::getProperty(context, ooscript::toObject(debugConsole), "script", &thisVal);
 	}

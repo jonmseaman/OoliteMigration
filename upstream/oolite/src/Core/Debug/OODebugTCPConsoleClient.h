@@ -66,7 +66,7 @@ bool OODebugTCPConsoleIsWaitingForInput(void);
 void OODebugTCPConsoleServiceInput(double timeout);
 
 
-namespace cxx { class OODebugMonitor; }
+class OODebugMonitor;
 
 
 /*	The connection is one non-blocking TCP socket (bead oo-3rb.14, proposed ADR-0041), where it was a
@@ -88,19 +88,19 @@ public:
 	~OODebugTCPConsoleClient();
 
 	// The debugger interface (OODebuggerInterface).
-	bool connectDebugMonitor(cxx::OODebugMonitor *debugMonitor,
+	bool connectDebugMonitor(OODebugMonitor *debugMonitor,
 							 std::optional<std::string> *message) override;
-	void disconnectDebugMonitor(cxx::OODebugMonitor *debugMonitor,
+	void disconnectDebugMonitor(OODebugMonitor *debugMonitor,
 								const std::optional<std::string> &message) override;
-	void debugMonitor(cxx::OODebugMonitor *debugMonitor,
+	void debugMonitor(OODebugMonitor *debugMonitor,
 					  const std::string &output,
 					  const std::optional<std::string> &colorKey,
 					  NSRange emphasisRange) override;
-	void debugMonitorClearConsole(cxx::OODebugMonitor *debugMonitor) override;
-	void debugMonitorShowConsole(cxx::OODebugMonitor *debugMonitor) override;
-	void debugMonitor(cxx::OODebugMonitor *debugMonitor,
+	void debugMonitorClearConsole(OODebugMonitor *debugMonitor) override;
+	void debugMonitorShowConsole(OODebugMonitor *debugMonitor) override;
+	void debugMonitor(OODebugMonitor *debugMonitor,
 					  const oo::PList &configuration) override;
-	void debugMonitor(cxx::OODebugMonitor *debugMonitor,
+	void debugMonitor(OODebugMonitor *debugMonitor,
 					  const oo::PList &newValue,
 					  const std::string &key) override;
 	std::string description() const override;	// <OODebugTCPConsoleClient 0x...>, as the facade's %@ printed
@@ -166,6 +166,6 @@ private:
 	int							_pendingErrorCode = {};
 	bool						_errorEventPending = {};
 	OOTCPClientConnectionStatus	_status = {};
-	cxx::OODebugMonitor			*_monitor = {};
+	OODebugMonitor			*_monitor = {};
 	::OOTCPStreamDecoder		*_decoder = {};
 };

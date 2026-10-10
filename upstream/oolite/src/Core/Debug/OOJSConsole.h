@@ -31,7 +31,7 @@ SOFTWARE.
 
 #import "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
-@class OODebugMonitor;
+class OODebugMonitor;	// C++ since bead oo-9ht.74 deleted its Objective-C facade
 
 
 ooscript::Object DebugMonitorToJSConsole(ooscript::Context context, OODebugMonitor *monitor);

@@ -6554,3 +6554,71 @@ because the accept pre-merge ran in the shared worktree on this bead's branch.
 (`console`, `console.settings`), which hold the facade's weak reference and are the `this` of
 `callObjC()` (oo-9ht.44), the console script's `console` property (an Object node of the facade),
 `OODebugMonitorInterface`, and the tests that drive the monitor through the facade.
+
+## Amendment (bead oo-9ht.74): the debug monitor's facade is deleted; callObjC() on the console is a name table
+
+- Date: 2026-10-10. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch T.
+  Exemplar: `src/Core/Debug/OODebugMonitor.h/.mm`, `src/Core/Debug/OOJSConsole.mm` (the console
+  objects' slot, `ConsoleConverter`, `kMonitorMethods`), `tests/unit/core/test_OODebugMonitor.mm`.
+  The rest of oo-9ht.74's plan after amendments oo-9ht.81 and oo-9ht.74.1.
+
+**Context.** After oo-9ht.81 and oo-9ht.74.1 the debug monitor's facade (`OODebugMonitor+ObjCBridge`)
+was held by: the console's JS objects (`console`, `console.settings`: the facade's weak reference in
+their private slot, unwrapped by `OOJSBasicPrivateObjectConverter` and checked with
+`isKindOfClass:[OODebugMonitor class]`), the console script's `console` property (an Object node of
+the facade), the profiler's default `this` (`OOJSValueFromNativeObject()` of the facade), the
+player's debug-console key and the game controller's exit (facade sends), `OODebugMonitorInterface`
+(adopted by the facade only), and `test_OODebugMonitor`, which drove the monitor through it.
+
+**Decision (recommended defaults).**
+
+1. **The facade, `OODebugMonitorInterface` and namespace cxx go**: `OODebugMonitor` is the C++ class
+   (`cxx::OODebugMonitor` renamed everywhere, mechanically). The player's controls and the game
+   controller call the members (`::OODebugMonitor::sharedDebugMonitor()->...`).
+2. **The monitor is its own JS glue and Object node payload**: it implements `OOJSPrivateObject`
+   (`jsValueInContext()` is `-oo_jsValueInContext:`'s body; `clearJSSelf()` does nothing, as
+   OOObject's did for the facade) and `oo::PListForeign` (`className()` "OODebugMonitor",
+   `description()` `<OODebugMonitor 0x...>`, the facade's `%@`). The console script's `console`
+   property is an Object node of the monitor, whose JS value is the console object, as the facade's
+   node's was.
+3. **The console objects' slot holds the C++ monitor**, with one retain released by the console's
+   finalizer (the slot held the facade's weak reference; the monitor is never released, as the
+   facade never was, so nothing lives longer). The natives take it from the slot of a `Console` or
+   `ConsoleSettings` object (`MonitorFromJSObject`, a JS class check where the facade's was an
+   Objective-C class check); their internal error for another `this` describes what it described
+   (the class of the object the engine converts `this` to; "(null)" for a plain object). The
+   converter (`ConsoleConverter`) answers the monitor's Object node. `console.settings` and the
+   console stay one monitor's.
+4. **callObjC() on the console objects is a name table (`kMonitorMethods`, debug builds only)**,
+   applying oo-9ht.44's default to the monitor ahead of it. The facade answered any selector whose
+   signature `OOJSCallObjCObjectMethod()` matched; the table is exactly the facade's own selectors
+   without arguments (`clearJSConsole`, `showJSConsole`, `dumpMemoryStatistics`,
+   `applicationWillTerminate` on GNUstep; `debuggerConnected`, `TCPIgnoresDroppedPackets`,
+   `usingPlugInController`, `dumpJSMemoryStatistics` as scalars; `configurationKeys`, which matched
+   no signature) and the two that take the joined string (`performJSConsoleCommand:`,
+   `configurationValueForKey:`). Each row calls the member the selector forwarded to and gives the
+   result the selector path gave: a scalar row keeps `@encode()` of the facade's return type and is
+   read through `OOShaderUniformTypeFromEncoding()`, as the selector's encoding was (so
+   `dumpJSMemoryStatistics`, a `size_t` that matched no template on Windows, still answers "cannot
+   be called from JavaScript", as does `configurationKeys`); a string row without its argument is
+   "requires a parameter". **Behaviour change:** every other name on the console objects answers
+   "does not respond to method": the root classes' selectors (`weakRetain`, `retain`, `release`,
+   `autorelease`, `copy`, `init`, `dealloc`, `self`, `description`, `isKindOfClass:`,
+   `respondsToSelector:`, ...: lifetime and NSObject-protocol calls, or called with their arguments
+   missing), the scalar selectors with arguments (`setDebugger:`, which callObjC() called with its
+   argument missing: undefined behaviour), and the facade's other selectors with arguments, which
+   answered "cannot be called from JavaScript". Nothing in the game, the harness or the goldens
+   calls `callObjC()` on the console. The test flavour does not compile `callObjC()` (no `OO_DEBUG`),
+   so the table is syntax-checked with `-DOO_DEBUG` and is not run by a unit test.
+5. **Tests** (standing approval oo-9n5p9, lines on main first): `test_OODebugMonitor` calls the C++
+   members where it sent the facade's selectors, with every expected value kept; it retires only
+   `sharedMonitorIsSetUpOnce`'s singleton-boilerplate checks and `cxxMonitorAndItsFacade`'s
+   facade-contract checks (that case keeps its C++ checks and checks the monitor's description).
+   `test_OOJSConsole` stands in for the monitor's `jsValueInContext()` where it stood in for
+   `OOJSValueFromNativeObject()` of the facade (the same console object), and every case and
+   expected value is kept (the two internal-error texts included). `test_OODebugTCPConsoleClient`
+   and `test_OODebugSupport` rename the class and add no-op stand-ins for its new virtual members.
+
+**Consequences.** Nothing names an Objective-C debug monitor; the Debug module has no facade left.
+callObjC()'s other receivers (the entities' objects, through `OOJSEntityObjectConverter`) are
+oo-9ht.39.5's and oo-9ht.44's; this amendment's table is the pattern oo-9ht.44 extends.

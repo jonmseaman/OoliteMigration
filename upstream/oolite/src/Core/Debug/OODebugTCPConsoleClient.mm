@@ -298,7 +298,7 @@ OODebugTCPConsoleClient::~OODebugTCPConsoleClient()
 }
 
 
-bool OODebugTCPConsoleClient::connectDebugMonitor(cxx::OODebugMonitor *debugMonitor,
+bool OODebugTCPConsoleClient::connectDebugMonitor(OODebugMonitor *debugMonitor,
 												  std::optional<std::string> *message)
 {
 	if (_status == kOOTCPClientConnectionRefused)
@@ -318,7 +318,7 @@ bool OODebugTCPConsoleClient::connectDebugMonitor(cxx::OODebugMonitor *debugMoni
 }
 
 
-void OODebugTCPConsoleClient::disconnectDebugMonitor(cxx::OODebugMonitor * /*debugMonitor*/,
+void OODebugTCPConsoleClient::disconnectDebugMonitor(OODebugMonitor * /*debugMonitor*/,
 													 const std::optional<std::string> &message)
 {
 	disconnectFromServerWithMessage(message);
@@ -326,7 +326,7 @@ void OODebugTCPConsoleClient::disconnectDebugMonitor(cxx::OODebugMonitor * /*deb
 }
 
 
-void OODebugTCPConsoleClient::debugMonitor(cxx::OODebugMonitor * /*debugMonitor*/,
+void OODebugTCPConsoleClient::debugMonitor(OODebugMonitor * /*debugMonitor*/,
 										   const std::string &output,
 										   const std::optional<std::string> &colorKey,
 										   NSRange emphasisRange)
@@ -353,21 +353,21 @@ std::string OODebugTCPConsoleClient::description() const
 }
 
 
-void OODebugTCPConsoleClient::debugMonitorClearConsole(cxx::OODebugMonitor * /*debugMonitor*/)
+void OODebugTCPConsoleClient::debugMonitorClearConsole(OODebugMonitor * /*debugMonitor*/)
 {
 	sendPacket(ProtocolName(kOOTCPPacket_ClearConsole),
 			   oo::PList());
 }
 
 
-void OODebugTCPConsoleClient::debugMonitorShowConsole(cxx::OODebugMonitor * /*debugMonitor*/)
+void OODebugTCPConsoleClient::debugMonitorShowConsole(OODebugMonitor * /*debugMonitor*/)
 {
 	sendPacket(ProtocolName(kOOTCPPacket_ShowConsole),
 			   oo::PList());
 }
 
 
-void OODebugTCPConsoleClient::debugMonitor(cxx::OODebugMonitor * /*debugMonitor*/,
+void OODebugTCPConsoleClient::debugMonitor(OODebugMonitor * /*debugMonitor*/,
 										   const oo::PList &configuration)
 {
 	sendPacket(ProtocolName(kOOTCPPacket_NoteConfiguration),
@@ -376,7 +376,7 @@ void OODebugTCPConsoleClient::debugMonitor(cxx::OODebugMonitor * /*debugMonitor*
 }
 
 
-void OODebugTCPConsoleClient::debugMonitor(cxx::OODebugMonitor * /*debugMonitor*/,
+void OODebugTCPConsoleClient::debugMonitor(OODebugMonitor * /*debugMonitor*/,
 										   const oo::PList &newValue,
 										   const std::string &key)
 {
@@ -726,7 +726,7 @@ void OODebugTCPConsoleClient::sendDictionary(const oo::PList &dictionary)
 	if (!sentOK)
 	{
 		OO_LOG("debugTCP.send.error", "The following packet could not be sent: {}", oo::DescriptionOf(dictionary));
-		if(!cxx::OODebugMonitor::sharedDebugMonitor()->TCPIgnoresDroppedPackets())
+		if(!OODebugMonitor::sharedDebugMonitor()->TCPIgnoresDroppedPackets())
 		{
 			breakConnectionWithStreamError(_socket != kNoSocket ? _outError : 0);
 		}
