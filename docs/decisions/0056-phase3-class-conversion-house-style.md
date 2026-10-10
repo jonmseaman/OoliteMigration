@@ -6931,3 +6931,53 @@ SDL view; 220 sends in 54 files including tests) was C++ code sending `[(::)Reso
 
 **Consequences.** No Objective-C `ResourceManager` is left in the game or the tests. The expander's
 bridge (oo-9ht.159) now waits only on Universe (oo-pas).
+
+
+## Amendment (beads oo-9ht.69 and oo-9ht.2 (joystick managers)): the joystick managers' facades are deleted; registration by factory, the stick callback a C++ function
+
+- Date: 2026-10-10. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch X
+  (one branch for both beads, which depended on each other): oo-9ht.69 (OOJoystickManager),
+  oo-9ht.2 (OOSDLJoystickManager). Exemplar: `src/Core/OOJoystickManager.h/.mm`,
+  `src/SDL/OOSDLJoystickManager.h/.mm`, `tests/unit/core/test_OOJoystickManager.mm`.
+
+**Context.** `OOJoystickManager+ObjCBridge` was both the facade of the C++ manager and the
+superclass of the Objective-C `OOSDLJoystickManager` facade, whose C++ part reached the
+superclass's decoders through `oo::ToObjC(this)`; the shared handler was made from a registered
+`Class`, and the stick mapper's callback was a selector called by name on the player's root
+facade. Every remaining sender (the player's controls, stick mapper and profile screen, the HUD,
+the universe, the SDL view) was C++ code.
+
+**Decision (recommended defaults).**
+
+1. **Both classes leave namespace `cxx`; `OOSDLJoystickManager` derives from the C++
+   `OOJoystickManager`** and overrides `joystickCount()`, `nameOfJoystick()` and
+   `getAxisWithStick()`; its `handleSDLEvent()` calls the decoders on itself. The superclass's state
+   and the SDL state are one object (they were the facade's adapter and the SDL C++ part).
+2. **`+setStickHandlerClass:` is `OOJoystickManager::setStickHandlerFactory(f)`**, `f` a function
+   that makes the manager (`oo::Ref<OOJoystickManager> (*)()`); MyOpenGLView registers one that
+   makes an `OOSDLJoystickManager`. **`+sharedStickHandler` is
+   `OOJoystickManager::sharedStickHandler()`**: made on first use by the factory (else a plain
+   manager), then `init()` (the old `-init` body, which ran after the subclass's), never released,
+   never null. The assertion that a class is not registered after the handler exists is kept (it
+   now also checks the handler, which the old code did by setting the class on first use).
+   `MyOpenGLView+Input`'s C cast of the shared handler to the SDL class is a `static_cast`. The Mac
+   arm of `GameController.mm` (not compiled in this port) is left as it was.
+3. **The stick callback is a C++ function**: `setCallback(StickCallback, hwflags)` with
+   `StickCallback = std::function<void(const oo::PList &)>` (empty: none, as a nil object); the
+   mapper passes a lambda calling `PlayerEntity::updateFunction()` on itself (was
+   `@selector(updateFunction:)` on `oo::ToObjC(this)`, called by name). The callback is called
+   through a copy and then cleared, as the object was cleared after the call. The root facade's
+   `-updateFunction:` forwarder stays (Entity+ObjCBridge goes with its own bead).
+4. **Singletons unguarded**: callers hold `OOJoystickManager *` from `sharedStickHandler()` and
+   call members; the HUD keeps its null check (it cannot fire).
+5. **Tests** (standing approval oo-9n5p9; one approval line per file): `facadeContract` of
+   `test_OOJoystickManager` and `test_OOSDLJoystickManager` go (crossings, one facade per manager,
+   the adapter outliving its owner, nil); the Objective-C `TestStickManager` and
+   `StickCallbackTarget` become a C++ subclass and a C++ callback with the same answers; every other
+   case's sends call the same members with every expectation kept (`[[X alloc] init]` is
+   `makeRef` then `init()`; `-isKindOfClass:` is `dynamic_cast`); the bridges leave the tests'
+   meson source lists.
+
+**Consequences.** No Objective-C `OOJoystickManager` or `OOSDLJoystickManager` is left (outside the
+uncompiled Mac arm). The player no longer needs to answer `-updateFunction:` by name for the
+joystick.

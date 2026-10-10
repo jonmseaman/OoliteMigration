@@ -6,7 +6,6 @@ oolite_sources += files(
     'MyOpenGLView+ObjCBridge.mm',
     'MyOpenGLView+Input.mm',
     'OOSDLJoystickManager.mm',
-    'OOSDLJoystickManager+ObjCBridge.mm',
     'main.mm',
 )
 

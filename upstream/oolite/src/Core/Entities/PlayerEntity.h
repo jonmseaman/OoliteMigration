@@ -55,7 +55,7 @@ class GuiDisplayGen;
 #import "HeadUpDisplay.h"	// C++ since bead oo-mwd58: the player keeps its HUD (oo::Ref)
 class OOSound;			// C++ since bead oo-9ht.68 deleted its facade
 class OOSoundSource;	// C++ since bead oo-9ht.88 deleted its facade
-@class OOJoystickManager, OOTexture;
+@class OOTexture;
 #include "OOScript.h"	// oo::Ref<OOScript> members and results (bead oo-9ht.133)
 #import "OOJSGuiScreenKeyDefinition.h"	// C++ since bead oo-9ht.62: extraGuiScreenKeys keeps it (oo::Ref)
 class StickProfileScreen;	// C++ (PlayerEntityStickProfile.h, bead oo-movn)

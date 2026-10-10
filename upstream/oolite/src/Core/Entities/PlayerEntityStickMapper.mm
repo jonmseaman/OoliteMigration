@@ -151,8 +151,8 @@ void PlayerEntity::setGuiToStickMapperScreen(unsigned skip)
 void PlayerEntity::setGuiToStickMapperScreen(unsigned skip, bool resetCurrentRow)
 {
 	::GuiDisplayGen	*gui = [UNIVERSE gui];
-	::OOJoystickManager	*stickHandler = [::OOJoystickManager sharedStickHandler];
-	const std::vector<std::string>	stickList = [stickHandler listSticks];
+	OOJoystickManager	*stickHandler = OOJoystickManager::sharedStickHandler();
+	const std::vector<std::string>	stickList = stickHandler->listSticks();
 	unsigned		stickCount = stickList.size();
 	unsigned		i;
 	
@@ -217,7 +217,7 @@ void PlayerEntity::setGuiToStickMapperScreen(unsigned skip, bool resetCurrentRow
 
 void PlayerEntity::stickMapperInputHandler(::GuiDisplayGen *gui, ::MyOpenGLView *gameView)
 {
-	::OOJoystickManager	*stickHandler = [::OOJoystickManager sharedStickHandler];
+	OOJoystickManager	*stickHandler = OOJoystickManager::sharedStickHandler();
 
 	// Don't do anything if the user is supposed to be selecting
 	// a function - other than look for Escape.
@@ -225,7 +225,7 @@ void PlayerEntity::stickMapperInputHandler(::GuiDisplayGen *gui, ::MyOpenGLView 
 	{
 		if([gameView isDown: 27])
 		{
-			[stickHandler clearCallback];
+			stickHandler->clearCallback();
 			gui->setArray(std::vector<std::string>{ "Function setting aborted." }, GUI_ROW_INSTRUCT);
 			waitingForStickCallback=NO;
 		}
@@ -265,9 +265,7 @@ void PlayerEntity::stickMapperInputHandler(::GuiDisplayGen *gui, ::MyOpenGLView 
 		
 		const oo::PList &entry = StickFunctionAt(stickFunctions, selFunctionIdx);
 		int hw=IntValueForKey(entry, KEY_ALLOWABLE);
-		[stickHandler setCallback: @selector(updateFunction:)
-						   object: oo::ToObjC(this) 
-						 hardware: hw];
+		stickHandler->setCallback([this](const oo::PList &hwDict) { updateFunction(hwDict); }, hw);	// was -updateFunction: on the root facade, by name
 		
 		// Print instructions
 		std::string instructions;
@@ -297,7 +295,7 @@ void PlayerEntity::stickMapperInputHandler(::GuiDisplayGen *gui, ::MyOpenGLView 
 // is set. The dictionary contains the thing that was pressed/moved.
 void PlayerEntity::updateFunction(const oo::PList &hwDict)	// called by name (joystick callback, ADR-0055 item 5)
 {
-	::OOJoystickManager	*stickHandler = [::OOJoystickManager sharedStickHandler];
+	OOJoystickManager	*stickHandler = OOJoystickManager::sharedStickHandler();
 	waitingForStickCallback = NO;
 	
 	// Right time and the right place?
@@ -314,25 +312,25 @@ void PlayerEntity::updateFunction(const oo::PList &hwDict)	// called by name (jo
 		function=entry.get<int>(KEY_AXISFN);
 		if (function == AXIS_THRUST)
 		{
-			[stickHandler unsetButtonFunction:BUTTON_INCTHRUST];
-			[stickHandler unsetButtonFunction:BUTTON_DECTHRUST];
+			stickHandler->unsetButtonFunction(BUTTON_INCTHRUST);
+			stickHandler->unsetButtonFunction(BUTTON_DECTHRUST);
 		}
 #if OO_FOV_INFLIGHT_CONTROL_ENABLED
 		if (function == AXIS_FIELD_OF_VIEW)
 		{
-			[stickHandler unsetButtonFunction:BUTTON_INC_FIELD_OF_VIEW];
-			[stickHandler unsetButtonFunction:BUTTON_DEC_FIELD_OF_VIEW];
+			stickHandler->unsetButtonFunction(BUTTON_INC_FIELD_OF_VIEW);
+			stickHandler->unsetButtonFunction(BUTTON_DEC_FIELD_OF_VIEW);
 		}
 #endif
 		if (function == AXIS_VIEWX)
 		{
-			[stickHandler unsetButtonFunction:BUTTON_VIEWPORT];
-			[stickHandler unsetButtonFunction:BUTTON_VIEWSTARBOARD];
+			stickHandler->unsetButtonFunction(BUTTON_VIEWPORT);
+			stickHandler->unsetButtonFunction(BUTTON_VIEWSTARBOARD);
 		}
 		if (function == AXIS_VIEWY)
 		{
-			[stickHandler unsetButtonFunction:BUTTON_VIEWFORWARD];
-			[stickHandler unsetButtonFunction:BUTTON_VIEWAFT];
+			stickHandler->unsetButtonFunction(BUTTON_VIEWFORWARD);
+			stickHandler->unsetButtonFunction(BUTTON_VIEWAFT);
 		}
 	}
 	else
@@ -340,21 +338,21 @@ void PlayerEntity::updateFunction(const oo::PList &hwDict)	// called by name (jo
 		function = entry.get<int>(KEY_BUTTONFN);
 		if (function == BUTTON_INCTHRUST || function == BUTTON_DECTHRUST)
 		{
-			[stickHandler unsetAxisFunction:AXIS_THRUST];
+			stickHandler->unsetAxisFunction(AXIS_THRUST);
 		}
 #if OO_FOV_INFLIGHT_CONTROL_ENABLED
 		if (function == BUTTON_INC_FIELD_OF_VIEW || function == BUTTON_DEC_FIELD_OF_VIEW)
 		{
-			[stickHandler unsetAxisFunction:AXIS_FIELD_OF_VIEW];
+			stickHandler->unsetAxisFunction(AXIS_FIELD_OF_VIEW);
 		}
 #endif
 		if (function == BUTTON_VIEWPORT || function == BUTTON_VIEWSTARBOARD)
 		{
-			[stickHandler unsetAxisFunction:AXIS_VIEWX];
+			stickHandler->unsetAxisFunction(AXIS_VIEWX);
 		}
 		if (function == BUTTON_VIEWFORWARD || function == BUTTON_VIEWAFT)
 		{
-			[stickHandler unsetAxisFunction:AXIS_VIEWY];
+			stickHandler->unsetAxisFunction(AXIS_VIEWY);
 		}
 	}
 	// special case for OXP equipment buttons
@@ -374,9 +372,9 @@ void PlayerEntity::updateFunction(const oo::PList &hwDict)	// called by name (jo
 	}
 	else 
 	{
-		[stickHandler setFunction:function withDict:hwDict];
+		stickHandler->setFunction(function, hwDict);
 		checkCustomEquipButtons(hwDict, -1);
-		[stickHandler saveStickSettings];
+		stickHandler->saveStickSettings();
 	}
 	
 	// Update the GUI (this will refresh the function list).
@@ -428,7 +426,7 @@ void PlayerEntity::checkCustomEquipButtons(const oo::PList &stickFn, int idx)
 
 void PlayerEntity::removeFunction(int idx)
 {
-	::OOJoystickManager	*stickHandler = [::OOJoystickManager sharedStickHandler];
+	OOJoystickManager	*stickHandler = OOJoystickManager::sharedStickHandler();
 	const oo::PList		&entry = StickFunctionAt(stickFunctions, idx);
 	const oo::PList		*butfunc = entry.find(KEY_BUTTONFN);	// -intValue as before
 	const oo::PList		*axfunc = entry.find(KEY_AXISFN);
@@ -456,16 +454,16 @@ void PlayerEntity::removeFunction(int idx)
 		}
 		else 
 		{
-			[stickHandler unsetButtonFunction:IntValueOf(*butfunc)];
+			stickHandler->unsetButtonFunction(IntValueOf(*butfunc));
 		}
 	}
 	if(axfunc != nullptr)
 	{
-		[stickHandler unsetAxisFunction:IntValueOf(*axfunc)];
+		stickHandler->unsetAxisFunction(IntValueOf(*axfunc));
 	}
 	if (!custom) 
 	{
-		[stickHandler saveStickSettings];
+		stickHandler->saveStickSettings();
 	}
 	else 
 	{
@@ -483,7 +481,7 @@ void PlayerEntity::removeFunction(int idx)
 
 void PlayerEntity::displayFunctionList(::GuiDisplayGen *gui, NSUInteger skip)
 {
-	::OOJoystickManager	*stickHandler = [::OOJoystickManager sharedStickHandler];
+	OOJoystickManager	*stickHandler = OOJoystickManager::sharedStickHandler();
 	
 	gui->setColor(OOColor::greenColor().get(), GUI_ROW_HEADING);
 	gui->setArray(std::vector<std::string>{ "Function", "Assigned to", "Type" }, GUI_ROW_HEADING);
@@ -492,8 +490,8 @@ void PlayerEntity::displayFunctionList(::GuiDisplayGen *gui, NSUInteger skip)
 	{
 		stickFunctions = stickFunctionList();
 	}
-	const oo::PList assignedAxes = [stickHandler axisFunctions];
-	const oo::PList assignedButs = [stickHandler buttonFunctions];
+	const oo::PList assignedAxes = stickHandler->axisFunctions();
+	const oo::PList assignedButs = stickHandler->buttonFunctions();
 	
 	NSUInteger i, n_functions = stickFunctions.size();
 	NSInteger n_rows, start_row, previous = 0;

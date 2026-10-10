@@ -100,7 +100,7 @@ void SetUp()
 
 OOJoystickManager *Handler()
 {
-	return [OOJoystickManager sharedStickHandler];
+	return OOJoystickManager::sharedStickHandler();
 }
 
 
@@ -109,7 +109,7 @@ void ResetProfiles()
 {
 	for (int axis : { AXIS_ROLL, AXIS_PITCH, AXIS_YAW })
 	{
-		[Handler() setProfile:oo::makeRef<OOJoystickStandardAxisProfile>().get() forAxis:axis];
+		Handler()->setProfile(oo::makeRef<OOJoystickStandardAxisProfile>().get(), axis);
 	}
 }
 
@@ -211,8 +211,8 @@ OO_TEST(theDeadZoneStepsByATwentiethOfItsMaximumOnTheCurrentAxis)
 	@autoreleasepool
 	{
 		Started s = Start();
-		oo::Ref<OOJoystickAxisProfile> roll([Handler() getProfileForAxis:AXIS_ROLL]);
-		oo::Ref<OOJoystickAxisProfile> pitch([Handler() getProfileForAxis:AXIS_PITCH]);
+		oo::Ref<OOJoystickAxisProfile> roll(Handler()->getProfileForAxis(AXIS_ROLL));
+		oo::Ref<OOJoystickAxisProfile> pitch(Handler()->getProfileForAxis(AXIS_PITCH));
 
 		s.screen->increaseDeadzone();
 		OO_CHECK(Near(roll->deadzone(), STICK_DEADZONE + STICK_MAX_DEADZONE / 20));
@@ -238,7 +238,7 @@ OO_TEST(powerAndParameterStepTheStandardProfile)
 	@autoreleasepool
 	{
 		Started s = Start();
-		oo::Ref<OOJoystickStandardAxisProfile> roll(static_cast<OOJoystickStandardAxisProfile *>([Handler() getProfileForAxis:AXIS_ROLL]));
+		oo::Ref<OOJoystickStandardAxisProfile> roll(static_cast<OOJoystickStandardAxisProfile *>(Handler()->getProfileForAxis(AXIS_ROLL)));
 
 		s.screen->IncreasePower();
 		s.screen->IncreasePower();
@@ -263,16 +263,16 @@ OO_TEST(theProfileTypeSwitchesAndKeepsTheOtherForTheSwitchBack)
 	@autoreleasepool
 	{
 		Started s = Start();
-		oo::Ref<OOJoystickAxisProfile> standard([Handler() getProfileForAxis:AXIS_ROLL]);
+		oo::Ref<OOJoystickAxisProfile> standard(Handler()->getProfileForAxis(AXIS_ROLL));
 		s.screen->increaseDeadzone();
 		const double deadzone = standard->deadzone();
 
 		OO_CHECK(!s.screen->currentProfileIsSpline());
 		s.screen->previousProfileType();	// standard is the first
-		OO_CHECK([Handler() getProfileForAxis:AXIS_ROLL] == standard);
+		OO_CHECK(Handler()->getProfileForAxis(AXIS_ROLL) == standard);
 
 		s.screen->nextProfileType();
-		oo::Ref<OOJoystickAxisProfile> spline([Handler() getProfileForAxis:AXIS_ROLL]);
+		oo::Ref<OOJoystickAxisProfile> spline(Handler()->getProfileForAxis(AXIS_ROLL));
 		OO_CHECK(dynamic_cast<OOJoystickSplineAxisProfile *>(spline.get()) != nullptr);
 		OO_CHECK(s.screen->currentProfileIsSpline());
 		OO_CHECK(Near(spline->deadzone(), deadzone));	// the dead zone carries over
@@ -285,24 +285,24 @@ OO_TEST(theProfileTypeSwitchesAndKeepsTheOtherForTheSwitchBack)
 		// Power and parameter do nothing to a spline.
 		s.screen->IncreasePower();
 		s.screen->DecreaseParam();
-		OO_CHECK([Handler() getProfileForAxis:AXIS_ROLL] == spline);
+		OO_CHECK(Handler()->getProfileForAxis(AXIS_ROLL) == spline);
 
 		s.screen->nextProfileType();	// spline is the last
-		OO_CHECK([Handler() getProfileForAxis:AXIS_ROLL] == spline);
+		OO_CHECK(Handler()->getProfileForAxis(AXIS_ROLL) == spline);
 
 		// Back to the very standard profile it had, and forward to the very spline.
 		spline->setDeadzone(0.0);
 		s.screen->previousProfileType();
-		OO_CHECK([Handler() getProfileForAxis:AXIS_ROLL] == standard);
+		OO_CHECK(Handler()->getProfileForAxis(AXIS_ROLL) == standard);
 		OO_CHECK(standard->deadzone() == 0.0);
 		s.screen->nextProfileType();
-		OO_CHECK([Handler() getProfileForAxis:AXIS_ROLL] == spline);
+		OO_CHECK(Handler()->getProfileForAxis(AXIS_ROLL) == spline);
 
 		// Starting again forgets the kept profiles: the next switch makes a new one.
 		s.screen->startGui(s.gui.get());
 		s.screen->previousProfileType();
-		OO_CHECK([Handler() getProfileForAxis:AXIS_ROLL] != standard);
-		OO_CHECK(dynamic_cast<OOJoystickStandardAxisProfile *>([Handler() getProfileForAxis:AXIS_ROLL]) != nullptr);
+		OO_CHECK(Handler()->getProfileForAxis(AXIS_ROLL) != standard);
+		OO_CHECK(dynamic_cast<OOJoystickStandardAxisProfile *>(Handler()->getProfileForAxis(AXIS_ROLL)) != nullptr);
 	}
 }
 
@@ -320,7 +320,7 @@ OO_TEST(theMouseAddsMovesAndDeletesSplinePoints)
 		OO_CHECK(!s.screen->currentProfileIsSpline());
 
 		s.screen->nextProfileType();
-		oo::Ref<OOJoystickSplineAxisProfile> spline(static_cast<OOJoystickSplineAxisProfile *>([Handler() getProfileForAxis:AXIS_ROLL]));
+		oo::Ref<OOJoystickSplineAxisProfile> spline(static_cast<OOJoystickSplineAxisProfile *>(Handler()->getProfileForAxis(AXIS_ROLL)));
 		const int points = spline->countPoints();
 
 		// With the zero graph rectangle, (0, 0) is the spline point (0.5, 0.5).

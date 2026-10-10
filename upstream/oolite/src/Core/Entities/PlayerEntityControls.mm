@@ -944,7 +944,7 @@ void PlayerEntity::pollApplicationControls()
 		}
 		
 		// snapshot
-		const BOOL *joyButtonState = [[::OOJoystickManager sharedStickHandler] getAllButtonStates];
+		const BOOL *joyButtonState = OOJoystickManager::sharedStickHandler()->getAllButtonStates();
 
 		if ((checkKeyPress(n_key_snapshot) || joyButtonState[BUTTON_SNAPSHOT]) &&
 			([gameView allowingStringInput] <= gvStringInputAlpha) && // not while entering text on the keyboard config screens
@@ -1091,13 +1091,13 @@ void PlayerEntity::pollApplicationControls()
 void PlayerEntity::pollFlightControls(double delta_t)
 {
 	::MyOpenGLView		*gameView = [UNIVERSE gameView];
-	::OOJoystickManager	*stickHandler = [::OOJoystickManager sharedStickHandler];
+	OOJoystickManager	*stickHandler = OOJoystickManager::sharedStickHandler();
 	const char			*exceptionContext = "setup";
 
 	@try
 	{
 		exceptionContext = "joystick handling";
-		const BOOL *joyButtonState = [[::OOJoystickManager sharedStickHandler] getAllButtonStates];
+		const BOOL *joyButtonState = OOJoystickManager::sharedStickHandler()->getAllButtonStates();
 		
 		BOOL paused = [[UNIVERSE gameController] isGamePaused];
 		double speed_delta = SHIP_THRUST_FACTOR * thrust;
@@ -1110,9 +1110,9 @@ void PlayerEntity::pollFlightControls(double delta_t)
 			NSPoint			virtualView = NSZeroPoint;
 			double			view_threshold = 0.5;
 			
-			if ([stickHandler joystickCount])
+			if (stickHandler->joystickCount())
 			{
-				virtualView = [stickHandler viewAxis];
+				virtualView = stickHandler->viewAxis();
 				if (virtualView.y == STICK_AXISUNASSIGNED)
 					virtualView.y = 0.0;
 				if (virtualView.x == STICK_AXISUNASSIGNED)
@@ -1196,7 +1196,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 				
 				exceptionContext = "thrust";
 				// DJS: Thrust can be an axis or a button. Axis takes precidence.
-				double reqSpeed=[stickHandler getAxisState: AXIS_THRUST];
+				double reqSpeed=stickHandler->getAxisState(AXIS_THRUST);
 				float mouseWheelDeltaFactor = mouse_control_on ? fabs([gameView mouseWheelDelta]) : 1.0f;
 				if (mouseWheelDeltaFactor == 0.0f)  mouseWheelDeltaFactor = 1.0f;
 				// Updated DJS original code to fix BUG #17482 - (Getafix 2010/09/13)
@@ -1218,9 +1218,9 @@ void PlayerEntity::pollFlightControls(double delta_t)
 					hyperspeed_engaged = NO;
 				}
 
-				const oo::PList thrustAxes = [stickHandler axisFunctions];
+				const oo::PList thrustAxes = stickHandler->axisFunctions();
 				const oo::PList *functionForThrustAxis = thrustAxes.get<oo::PList::Dict>(std::to_string(AXIS_THRUST));	// nil: absent or not a Dict
-				if([stickHandler joystickCount] != 0 && functionForThrustAxis != nullptr)
+				if(stickHandler->joystickCount() != 0 && functionForThrustAxis != nullptr)
 				{
 					if (flightSpeed < maxFlightSpeed * reqSpeed)
 					{
@@ -1474,7 +1474,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 						const oo::PList *but_mod = item.get<oo::PList::Dict>(std::string(CUSTOMEQUIP_BUTTONMODE));
 						// if so,
 						// check to see if the key or button was pressed for activate
-						if ((key_act != nullptr && checkKeyPress(*key_act)) || (but_act != nullptr && [[::OOJoystickManager sharedStickHandler] isButtonDown:but_act->get<int>(std::string(STICK_AXBUT)) stick:but_act->get<int>(std::string(STICK_NUMBER))]))
+						if ((key_act != nullptr && checkKeyPress(*key_act)) || (but_act != nullptr && OOJoystickManager::sharedStickHandler()->isButtonDown(but_act->get<int>(std::string(STICK_AXBUT)), but_act->get<int>(std::string(STICK_NUMBER)))))
 						{
 							if (!customActivatePressed[i])
 							{
@@ -1486,7 +1486,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 						else customActivatePressed[i] = NO;
 
 						// check to see if the key or button was pressed for mode
-						if ((key_mod != nullptr && checkKeyPress(*key_mod)) || (but_mod != nullptr && [[::OOJoystickManager sharedStickHandler] isButtonDown:but_mod->get<int>(std::string(STICK_AXBUT)) stick:but_mod->get<int>(std::string(STICK_NUMBER))]))
+						if ((key_mod != nullptr && checkKeyPress(*key_mod)) || (but_mod != nullptr && OOJoystickManager::sharedStickHandler()->isButtonDown(but_mod->get<int>(std::string(STICK_AXBUT)), but_mod->get<int>(std::string(STICK_NUMBER)))))
 						{
 							if (!customModePressed[i])
 							{
@@ -1583,9 +1583,9 @@ void PlayerEntity::pollFlightControls(double delta_t)
 							escapePodKeyResetTime = oo::date::monotonicSeconds() + KEY_REPEAT_INTERVAL;
 							//[gameView clearKey:key_launch_escapepod];
 							[gameView clearKey:getFirstKeyCode(n_key_launch_escapepod)];
-							if ([stickHandler joystickCount])
+							if (stickHandler->joystickCount())
 							{
-								[stickHandler clearStickButtonState:BUTTON_ESCAPE];
+								stickHandler->clearStickButtonState(BUTTON_ESCAPE);
 							}
 						}
 						else
@@ -1753,12 +1753,12 @@ void PlayerEntity::pollFlightControls(double delta_t)
 					if (fieldOfView < MIN_FOV)  fieldOfView = MIN_FOV;
 				}
 
-				const oo::PList fovAxes = [stickHandler axisFunctions];
+				const oo::PList fovAxes = stickHandler->axisFunctions();
 				const oo::PList *functionForFovAxis = fovAxes.get<oo::PList::Dict>(std::to_string(AXIS_FIELD_OF_VIEW));	// nil: absent or not a Dict
-				if ([stickHandler joystickCount] != 0 && functionForFovAxis != nullptr)
+				if (stickHandler->joystickCount() != 0 && functionForFovAxis != nullptr)
 				{
 					// TODO think reqFov through
-					double reqFov = [stickHandler getAxisState: AXIS_FIELD_OF_VIEW];
+					double reqFov = stickHandler->getAxisState(AXIS_FIELD_OF_VIEW);
 					if (fieldOfView < maxFieldOfView * reqFov)
 					{
 						fieldOfView *= pow(fov_delta, delta_t);
@@ -3974,7 +3974,7 @@ void PlayerEntity::pollCustomViewControls()
 	static BOOL caps_on = NO;
 	static NSTimeInterval last_time = 0.0;
 	::MyOpenGLView *gameView = [UNIVERSE gameView];
-	const BOOL *joyButtonState = [[::OOJoystickManager sharedStickHandler] getAllButtonStates];
+	const BOOL *joyButtonState = OOJoystickManager::sharedStickHandler()->getAllButtonStates();
 
 	if (checkKeyPress(n_key_custom_view) || joyButtonState[BUTTON_EXTVIEWCYCLE])
 	{
@@ -4112,14 +4112,14 @@ void PlayerEntity::pollViewControls()
 		return;
 	
 	::MyOpenGLView	*gameView = [UNIVERSE gameView];
-	::OOJoystickManager *stickHandler = [::OOJoystickManager sharedStickHandler];
+	OOJoystickManager *stickHandler = OOJoystickManager::sharedStickHandler();
 	
 	NSPoint			virtualView = NSZeroPoint;
 	double			view_threshold = 0.5;
 	
-	if ([stickHandler joystickCount])
+	if (stickHandler->joystickCount())
 	{
-		virtualView = [stickHandler viewAxis];
+		virtualView = stickHandler->viewAxis();
 		if (virtualView.y == STICK_AXISUNASSIGNED)
 			virtualView.y = 0.0;
 		if (virtualView.x == STICK_AXISUNASSIGNED)
@@ -4130,7 +4130,7 @@ void PlayerEntity::pollViewControls()
 			virtualView.y = 0.0;
 	}
 	
-	const BOOL *joyButtonState = [stickHandler getAllButtonStates];
+	const BOOL *joyButtonState = stickHandler->getAllButtonStates();
 	
 	//  view keys
 	if ((checkKeyPress(n_key_view_forward)) || (virtualView.y < -view_threshold)||joyButtonState[BUTTON_VIEWFORWARD] || (((checkKeyPress(n_key_hyperspace) && gui_screen != GUI_SCREEN_LONG_RANGE_CHART) || joyButtonState[BUTTON_HYPERDRIVE]) && [UNIVERSE displayGUI]))
@@ -4266,8 +4266,8 @@ void PlayerEntity::pollViewControls()
 void PlayerEntity::pollFlightArrowKeyControls(double delta_t)
 {
 	::MyOpenGLView		*gameView = [UNIVERSE gameView];
-	::OOJoystickManager	*stickHandler = [::OOJoystickManager sharedStickHandler];
-	NSUInteger			numSticks = [stickHandler joystickCount];
+	OOJoystickManager	*stickHandler = OOJoystickManager::sharedStickHandler();
+	NSUInteger			numSticks = stickHandler->joystickCount();
 	NSPoint				virtualStick = NSZeroPoint;
 	double				reqYaw = 0.0;
 	
@@ -4285,7 +4285,7 @@ void PlayerEntity::pollFlightArrowKeyControls(double delta_t)
 	}
 	else if (numSticks > 0)
 	{
-		virtualStick = [stickHandler rollPitchAxis];
+		virtualStick = stickHandler->rollPitchAxis();
 		// handle roll separately (fix for BUG #17490)
 		if(virtualStick.x == STICK_AXISUNASSIGNED)
 		{
@@ -4309,7 +4309,7 @@ void PlayerEntity::pollFlightArrowKeyControls(double delta_t)
 			keyboardPitchOverride=NO;
 		}
 		// handle yaw separately from pitch/roll
-		reqYaw = [stickHandler getAxisState: AXIS_YAW];
+		reqYaw = stickHandler->getAxisState(AXIS_YAW);
 		if(reqYaw == STICK_AXISUNASSIGNED)
 		{
 			// Not assigned or deadzoned - set to zero.
@@ -4695,7 +4695,7 @@ void PlayerEntity::pollAutopilotControls(double delta_t)
 	// don't do anything if we're configuring the keyboard
 	if (gui_screen == GUI_SCREEN_KEYBOARD_ENTRY || gui_screen == GUI_SCREEN_KEYBOARD_CONFIG || gui_screen == GUI_SCREEN_KEYBOARD_LAYOUT || gui_screen == GUI_SCREEN_KEYBOARD || gui_screen == GUI_SCREEN_KEYBOARD_CONFIRMCLEAR) return;
 
-	const BOOL *joyButtonState = [[::OOJoystickManager sharedStickHandler] getAllButtonStates];
+	const BOOL *joyButtonState = OOJoystickManager::sharedStickHandler()->getAllButtonStates();
 
 	// controls polled while the autopilot is active
 	if (![[UNIVERSE gameController] isGamePaused])
@@ -4784,7 +4784,7 @@ void PlayerEntity::pollDockedControls(double delta_t)
 {
 	::MyOpenGLView			*gameView = [UNIVERSE gameView];
 	::GameController			*gameController = [UNIVERSE gameController];
-	const BOOL *joyButtonState = [[::OOJoystickManager sharedStickHandler] getAllButtonStates];
+	const BOOL *joyButtonState = OOJoystickManager::sharedStickHandler()->getAllButtonStates();
 	const char				*exceptionContext = "setup";
 	
 	@try

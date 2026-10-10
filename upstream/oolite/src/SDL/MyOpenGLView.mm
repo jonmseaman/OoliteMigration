@@ -446,7 +446,7 @@ bool cxx::MyOpenGLView::init()
 	firstScreen = (fullScreen) ? modeAsSize(currentSize) : currentWindowSize;
 	viewSize = firstScreen;	// viewSize must be set prior to splash screen initialization
 
-	[::OOJoystickManager setStickHandlerClass:[::OOSDLJoystickManager class]];
+	OOJoystickManager::setStickHandlerFactory([]() -> oo::Ref<OOJoystickManager> { return oo::makeRef<OOSDLJoystickManager>(); });	// was +setStickHandlerClass:
 	// end TODO
 
 	OOSound::setUp();
