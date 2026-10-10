@@ -822,7 +822,7 @@ GLfloat *OOVisualEffectEntity::scannerDisplayColorForShip(bool flash, OOColor *s
 void OOVisualEffectEntity::setScript(const std::optional<std::string> &script_name)
 {
 	oo::PList::Dict propertyList;
-	propertyList["visualEffect"] = oo::PListObject(oo::ToObjC(this));
+	propertyList["visualEffect"] = oo::EntityObjectNode(this);
 	const oo::PList properties(std::move(propertyList));
 
 	OOScriptAutorelease(std::move(_script));	// [_script autorelease]

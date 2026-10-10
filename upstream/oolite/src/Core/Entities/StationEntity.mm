@@ -179,7 +179,7 @@ oo::PList StationEntity::launchIndependentShip(const std::string &role)	// calle
 		if (ship != nullptr)  ship->setPendingEscortCount(0);
 		if (ship != nullptr)  oo::ToShip([oo::ToObjC(ship) autorelease]);
 	}
-	return oo::PListObject(oo::ToObjC(ship));
+	return oo::EntityObjectNode(ship);
 }
 
 
@@ -191,7 +191,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 	{
 		OO_LOG("station.launchShip.impossible", "Cancelled launch for a police ship, as the {} has no launch docks.",
 			  getDisplayName().value_or("(null)"));
-		return oo::PListFromObjects(result);
+		return oo::EntityNodesFrom(result);
 	}
 
 	OOUniversalID	police_target = [primaryTarget() universalID];
@@ -207,7 +207,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 		if (![UNIVERSE entityForUniversalID:police_target])
 		{
 			noteLostTarget();
-			return oo::PListFromObjects(std::vector<oo::ObjCRef<::Entity *>>());
+			return oo::EntityNodesFrom(std::vector<oo::ObjCRef<::Entity *>>());
 		}
 		/* this is more likely to give interceptors than the
 		 * equivalent populator function: save them for defense
@@ -244,7 +244,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 		if (police_ship != nullptr)  oo::ToShip([oo::ToObjC(police_ship) autorelease]);
 	}
 	abortAllDockings();
-	return oo::PListFromObjects(result);
+	return oo::EntityNodesFrom(result);
 }
 
 

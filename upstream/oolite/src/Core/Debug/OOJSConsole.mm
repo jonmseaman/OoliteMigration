@@ -979,7 +979,11 @@ static bool ConsoleCallObjCMethod(ooscript::Context context, ooscript::CallArgs 
 		return OK;
 	}
 	
-	object = OOJSNativeObjectFromJSObject(context, OOJS_THIS);
+	// An entity's `this` converts to its entity node, whose C++ entity this takes (bead
+	// oo-9ht.39.5.3); the call still reaches it through its object until oo-9ht.44.
+	const oo::PList thisNode = cxx_OOJSPListFromJSObject(context, OOJS_THIS);
+	cxx::Entity *entity = oo::EntityIn(thisNode);
+	object = (entity != nullptr) ? oo::ToObjC(entity) : oo::ObjectIn(thisNode);
 	if (object == nil)
 	{
 		cxx_OOJSReportError(context, "Attempt to call __callObjCMethod() for non-Objective-C object %s.", cxx_OOStringFromJSValueEvenIfNull(context, ooscript::objectValue(OOJS_THIS)).value_or("(null)").c_str());
@@ -991,11 +995,7 @@ static bool ConsoleCallObjCMethod(ooscript::Context context, ooscript::CallArgs 
 	// The class name of the error texts: an entity's is its C++ part's (bead oo-9ht.39.5.1), the
 	// answer its object's -cxx_oo_jsClassName forwarded to; any other object's is its own.
 	std::optional<std::string> className;
-	if ([object isKindOfClass:[::Entity class]])
-	{
-		::Entity *entity = object;
-		className = OOJSEntityJSClassName(oo::ToCxx(entity));
-	}
+	if (entity != nullptr)  className = OOJSEntityJSClassName(entity);
 	else  className = [object cxx_oo_jsClassName];
 	OK = OOJSCallObjCObjectMethod(context, object, className.value_or(std::string()), oojsArgs.count(), OOJS_ARGV, &result);
 	OOJSResumeTimeLimiter();

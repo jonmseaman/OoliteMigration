@@ -8477,7 +8477,7 @@ void ShipEntity::setShipScript(const std::optional<std::string> &script_name)
 	oo::PList::Dict			properties;
 	const oo::PList			*actions = nullptr;
 
-	properties["ship"] = oo::PListObject(oo::ToObjC(this));
+	properties["ship"] = oo::EntityObjectNode(this);
 
 	OOScriptAutorelease(std::move(script));	// [script autorelease]
 	script = OOScript::jsScriptFromFileNamed(script_name.value_or(std::string()), oo::PList(properties));	// nil as "", as the Foundation form sent it
@@ -12924,7 +12924,7 @@ bool ShipEntity::launchCascadeMine()
 	}
 
 	// the passengers' pods as an array, or null (nil) with a single pod
-	if (mainPod) doScriptEvent(OOJSID("shipLaunchedEscapePod"), { oo::PListObject(oo::ToObjC(mainPod)), passengers.has_value() ? oo::PListFromObjects(*passengers) : oo::PList() });
+	if (mainPod) doScriptEvent(OOJSID("shipLaunchedEscapePod"), { oo::EntityObjectNode(mainPod), passengers.has_value() ? oo::EntityNodesFrom(*passengers) : oo::PList() });
 	
 	return result;
 }
@@ -14673,7 +14673,7 @@ void ShipEntity::setCommsMessageColor()
 void ShipEntity::receiveCommsMessage(const std::string &message_text, ::ShipEntity *other)
 {
 	// Too complex for AI scripts to handle, JS event only.
-	doScriptEvent(OOJSID("commsMessageReceived"), { oo::PList(message_text), oo::PListObject(oo::ToObjC(other)) });
+	doScriptEvent(OOJSID("commsMessageReceived"), { oo::PList(message_text), oo::EntityObjectNode(other) });
 }
 
 

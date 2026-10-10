@@ -444,17 +444,17 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			return true;
 			
 		case kSystem_mainStation:
-			result = oo::PListObject(oo::ToObjC([UNIVERSE station]));
+			result = oo::EntityObjectNode([UNIVERSE station]);
 			handled = true;
 			break;
 			
 		case kSystem_mainPlanet:
-			result = oo::PListObject(oo::ToObjC([UNIVERSE planet]));	// the planet is C++ since bead oo-9ht.129
+			result = oo::EntityObjectNode([UNIVERSE planet]);	// the planet is C++ since bead oo-9ht.129
 			handled = true;
 			break;
 			
 		case kSystem_sun:
-			result = oo::PListObject(oo::ToObjC([UNIVERSE sun]));
+			result = oo::EntityObjectNode([UNIVERSE sun]);
 			handled = true;
 			break;
 			
@@ -465,13 +465,13 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 				if (!OOJSEntityIsVisibleToScripts(oo::ToCxx(r.get())))  continue;	// the C++ planet's answer (bead oo-9ht.39.5.1)
 				visible.push_back(r);
 			}
-			result = oo::PListFromObjects(visible);
+			result = oo::EntityNodesFrom(visible);
 			handled = true;
 			break;
 		}
 			
 		case kSystem_stations:
-			result = oo::PListFromObjects([UNIVERSE cxx_stations]);
+			result = oo::EntityNodesFrom([UNIVERSE cxx_stations]);
 			handled = true;
 			break;
 
@@ -481,7 +481,7 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			oo::PList::Dict waypoints;
 			for (const auto &[key, waypoint] : [UNIVERSE cxx_currentWaypoints])
 			{
-				if (waypoint.get() != nil)  waypoints[key] = oo::PListObject(waypoint.get());
+				if (waypoint.get() != nil)  waypoints[key] = oo::EntityObjectNode(waypoint.get());
 			}
 			result = oo::PList(std::move(waypoints));
 			handled = true;
@@ -489,20 +489,20 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 		}
 
 		case kSystem_wormholes:
-			result = oo::PListFromObjects([UNIVERSE cxx_wormholes]);
+			result = oo::EntityNodesFrom([UNIVERSE cxx_wormholes]);
 			handled = true;
 			break;
 
 		case kSystem_allShips:
 			OOJS_BEGIN_FULL_NATIVE(context)
-			result = oo::PListFromObjects([UNIVERSE cxx_findShipsMatchingPredicate:JSEntityIsJavaScriptSearchablePredicate parameter:NULL inRange:-1 ofEntity:nil]);
+			result = oo::EntityNodesFrom([UNIVERSE cxx_findShipsMatchingPredicate:JSEntityIsJavaScriptSearchablePredicate parameter:NULL inRange:-1 ofEntity:nil]);
 			OOJS_END_FULL_NATIVE
 			handled = true;
 			break;
 
 		case kSystem_allDemoShips:
 			OOJS_BEGIN_FULL_NATIVE(context)
-			result = oo::PListFromObjects([UNIVERSE cxx_findShipsMatchingPredicate:JSEntityIsDemoShipPredicate parameter:NULL inRange:-1 ofEntity:nil]);
+			result = oo::EntityNodesFrom([UNIVERSE cxx_findShipsMatchingPredicate:JSEntityIsDemoShipPredicate parameter:NULL inRange:-1 ofEntity:nil]);
 			OOJS_END_FULL_NATIVE
 			handled = true;
 			break;
@@ -510,7 +510,7 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 
 		case kSystem_allVisualEffects:
 			OOJS_BEGIN_FULL_NATIVE(context)
-			result = oo::PListFromObjects([UNIVERSE cxx_findVisualEffectsMatchingPredicate:JSEntityIsJavaScriptSearchablePredicate parameter:NULL inRange:-1 ofEntity:nil]);
+			result = oo::EntityNodesFrom([UNIVERSE cxx_findVisualEffectsMatchingPredicate:JSEntityIsJavaScriptSearchablePredicate parameter:NULL inRange:-1 ofEntity:nil]);
 			OOJS_END_FULL_NATIVE
 			handled = true;
 			break;
@@ -995,7 +995,7 @@ static bool SystemShipsWithPrimaryRole(ooscript::Context context, ooscript::Call
 	result = FindShips(HasPrimaryRolePredicate, &*role, relativeTo, range);
 	OOJS_END_FULL_NATIVE
 	
-	OOJS_RETURN_PLIST(oo::PListFromObjects(result));
+	OOJS_RETURN_PLIST(oo::EntityNodesFrom(result));
 	
 	OOJS_NATIVE_EXIT
 }
@@ -1031,7 +1031,7 @@ static bool SystemShipsWithRole(ooscript::Context context, ooscript::CallArgs &o
 	result = FindShips(HasRolePredicate, &*role, relativeTo, range);
 	OOJS_END_FULL_NATIVE
 	
-	OOJS_RETURN_PLIST(oo::PListFromObjects(result));
+	OOJS_RETURN_PLIST(oo::EntityNodesFrom(result));
 	
 	OOJS_NATIVE_EXIT
 }
@@ -1102,7 +1102,7 @@ static bool SystemEntitiesWithScanClass(ooscript::Context context, ooscript::Cal
 	result = FindJSVisibleEntities(HasScanClassPredicate, &scanClass, relativeTo, range);
 	OOJS_END_FULL_NATIVE
 	
-	OOJS_RETURN_PLIST(oo::PListFromObjects(result));
+	OOJS_RETURN_PLIST(oo::EntityNodesFrom(result));
 	
 	OOJS_NATIVE_EXIT
 }
@@ -1143,7 +1143,7 @@ static bool SystemFilteredEntities(ooscript::Context context, ooscript::CallArgs
 	
 	if (EXPECT_NOT(param.errorFlag))  return NO;
 	
-	OOJS_RETURN_PLIST(oo::PListFromObjects(result));
+	OOJS_RETURN_PLIST(oo::EntityNodesFrom(result));
 	
 	OOJS_NATIVE_EXIT
 }
@@ -1768,12 +1768,12 @@ static bool SystemAddShipsOrGroup(Context cx, CallArgs &oojsArgs, bool isGroup)
 	OOJS_BEGIN_FULL_NATIVE(context)
 	// Note: the use of witchspace-in effects (as in legacy_addShips) depends on proximity to the witchpoint.
 	const std::vector<oo::ObjCRef<::Entity *>> added = [UNIVERSE cxx_addShipsAt:where withRole:*role quantity:count withinRadius:radius asGroup:isGroup];
-	if (!added.empty())  result = oo::PListFromObjects(added);	// null where no ship was added, as before
+	if (!added.empty())  result = oo::EntityNodesFrom(added);	// null where no ship was added, as before
 	
 	if (isGroup)
 	{
-		const std::vector<oo::ObjCRef<::Entity *>> ships = oo::ObjCRefsIn<::Entity *>(result);
-		ShipEntity *first = (ships.size() > 0 ? oo::ToShip(ships[0].get()) : nullptr);
+		const std::vector<cxx::Entity *> ships = oo::EntitiesIn(result);	// borrowed: result holds them (bead oo-9ht.39.5.3)
+		ShipEntity *first = (ships.size() > 0 ? oo::ToShip(ships[0]) : nullptr);
 		if (ships.size() > 0)  result = OOShipGroupObjectNode(first != nullptr ? first->group() : nullptr);
 		else  result = oo::PList();
 	}
@@ -1839,12 +1839,12 @@ static bool SystemAddShipsOrGroupToRoute(Context cx, CallArgs &oojsArgs, bool is
 	OOJS_BEGIN_FULL_NATIVE(context)
 	// Note: the use of witchspace-in effects (as in legacy_addShips) depends on proximity to the witchpoint.	
 	const std::vector<oo::ObjCRef<::Entity *>> added = [UNIVERSE cxx_addShipsToRoute:*route withRole:*role quantity:count routeFraction:where asGroup:isGroup];
-	if (!added.empty())  result = oo::PListFromObjects(added);	// null where no ship was added, as before
+	if (!added.empty())  result = oo::EntityNodesFrom(added);	// null where no ship was added, as before
 	
 	if (isGroup)
 	{
-		const std::vector<oo::ObjCRef<::Entity *>> ships = oo::ObjCRefsIn<::Entity *>(result);
-		ShipEntity *first = (ships.size() > 0 ? oo::ToShip(ships[0].get()) : nullptr);
+		const std::vector<cxx::Entity *> ships = oo::EntitiesIn(result);	// borrowed: result holds them (bead oo-9ht.39.5.3)
+		ShipEntity *first = (ships.size() > 0 ? oo::ToShip(ships[0]) : nullptr);
 		if (ships.size() > 0)  result = OOShipGroupObjectNode(first != nullptr ? first->group() : nullptr);
 		else  result = oo::PList();
 	}

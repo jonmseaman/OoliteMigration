@@ -59,6 +59,8 @@ MA 02110-1301, USA.
 #ifndef ENTITY_OBJCBRIDGE_H
 #define ENTITY_OBJCBRIDGE_H
 
+#import "OOObjCPList.h"	// the entity's Object node (oo::EntityPListForeign)
+
 
 @interface Entity: OOWeakRefObject
 {
@@ -330,6 +332,70 @@ inline WeakRef<cxx::Entity> WeakEntityRef(::Entity *entity)  { return WeakRef<cx
 // not autoreleased (+0, as the proxy answered it; oo::ToObjC() would autorelease it and so keep it
 // alive to the end of the pool), nil once the entity has gone.
 ::Entity *WeakEntityObject(const WeakRef<cxx::Entity> &ref);
+
+/*	An entity carried through plist data as a PList::Object node (bead oo-9ht.39.5.3): the node's
+	payload holds the entity's object, retained, as oo::PListObject()'s did (the object owns the
+	part, so the node keeps the entity alive as before), and answers its C++ part. It is an
+	ObjCPListForeign, so the class name, the description ("%@" of the object), the identity,
+	oo::ObjectIn() and the JS value (the object's -oo_jsValueInContext:, which forwards to the part)
+	are what they were. With the facade's deletion (oo-9ht.39 step 4) the payload holds
+	Ref<cxx::Entity> and is the part's own JS glue (not before: the tests' stand-in parts have none).
+*/
+class EntityPListForeign final : public ObjCPListForeign
+{
+public:
+	explicit EntityPListForeign(::Entity *object) : ObjCPListForeign(object) {}
+	cxx::Entity *entity() const noexcept  { return ToCxx(static_cast<::Entity *>(object())); }
+};
+
+// The entity's Object node (what PListObject(ToObjC(entity)) made); null PList for null.
+inline PList EntityObjectNode(::Entity *object)
+{
+	if (object == nil)  return PList();
+	return PList(PList::Object(makeRef<EntityPListForeign>(object)));
+}
+inline PList EntityObjectNode(cxx::Entity *entity)  { return EntityObjectNode(ToObjC(entity)); }
+inline PList EntityObjectNode(const Ref<cxx::Entity> &entity)  { return EntityObjectNode(entity.get()); }
+
+// The C++ entity of an entity's Object node, borrowed; null for any other node. A plain Object node
+// of an entity's object (oo::PListObject(), still made by Objective-C callers and the tests'
+// stand-ins) answers the same entity until the facade goes.
+inline cxx::Entity *EntityIn(const PList &plist)
+{
+	const PList::Object *node = plist.getIf<PList::Object>();
+	if (node == nullptr)  return nullptr;
+	if (const auto *payload = dynamic_cast<const EntityPListForeign *>(node->get()))  return payload->entity();
+	id object = ObjectIn(plist);
+	return [object isKindOfClass:[::Entity class]] ? ToCxx(static_cast<::Entity *>(object)) : nullptr;
+}
+
+// An array of entities' Object nodes, one per non-nil element, in order (what PListFromObjects()
+// made of them).
+template <class T>
+PList EntityNodesFrom(const std::vector<ObjCRef<T>> &objects)
+{
+	PList::Array result;
+	result.reserve(objects.size());
+	for (const auto &object : objects)
+	{
+		if (object)  result.push_back(EntityObjectNode(static_cast<::Entity *>(object.get())));
+	}
+	return PList(std::move(result));
+}
+
+// The C++ entities of an array's entity nodes, borrowed, in order; other elements are skipped.
+inline std::vector<cxx::Entity *> EntitiesIn(const PList &plist)
+{
+	std::vector<cxx::Entity *> result;
+	if (const PList::Array *array = plist.getIf<PList::Array>())
+	{
+		for (const PList &element : *array)
+		{
+			if (cxx::Entity *entity = EntityIn(element))  result.push_back(entity);
+		}
+	}
+	return result;
+}
 
 // The Objective-C object of an entity made in C++ (a converted subclass): a new facade that owns
 // it and is its identity from then on, autoreleased. Call it once, where the entity is made. Its

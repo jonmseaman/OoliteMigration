@@ -6713,3 +6713,64 @@ memory. The facade drops its weak reference (`weakSelf`) at the start of a ship'
    `.get() == nullptr`. No OO_TEST case or expected value changes.
 
 **Consequences.** No C++ holder in the entities or the universe keeps an entity's `OOWeakReference`.
+
+## Amendment (bead oo-9ht.39.5.3): an entity's property-list Object node answers the C++ entity; the entity converter makes it (oo-9ht.39 step 3b, part c)
+
+- Date: 2026-10-10. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch V.
+  Exemplar: `src/Core/Entities/Entity+ObjCBridge.h` (`oo::EntityPListForeign`,
+  `oo::EntityObjectNode()`, `oo::EntityIn()`, `oo::EntityNodesFrom()`, `oo::EntitiesIn()`),
+  `src/Core/Scripting/OOJSEntity.mm` (`OOJSEntityObjectConverter`), `src/Core/Debug/OOJSConsole.mm`
+  (`ConsoleCallObjCMethod`).
+
+**Context.** Entities travelled through plist data (script event arguments, script properties,
+JS property and method results, the converter's result for an entity's JS object) as
+`oo::PListObject(oo::ToObjC(entity))`: an `ObjCPListForeign` holding the root facade, which the
+engine turned into JS by `-oo_jsValueInContext:`. The bead asked for `cxx::Entity` to be the node's
+payload; batch U found it cannot be (it already derives `oo::RefCounted`, so a second base through
+`PListForeign` gives two counts), and that an Object node kept the entity alive through its object,
+which owns the part (amendment oo-9ht.39.4 item 2).
+
+**Decision (recommended defaults, batch U's).**
+
+1. **A wrapper payload, `oo::EntityPListForeign`**: an `ObjCPListForeign` (no longer `final`) that
+   holds the entity's object, retained, exactly as the old node did (lifetime unchanged), and
+   answers its C++ part (`entity()`). Because it is an `ObjCPListForeign`, its class name, its
+   description ("%@" of the object), its identity, `oo::ObjectIn()` and its JS value (the object's
+   `-oo_jsValueInContext:`, which forwards to the part's glue) are what they were, so every reader
+   of the object (the tests' stand-ins of `OOJSValueFromPList()` included) is unchanged. It is
+   deliberately **not** an `OOJSPrivateObject` yet: batch V made it one first, and
+   `test_OOJSShipGroup` crashed, because the engine (and that test's stand-in of it) asks a payload
+   that is its own JS glue before the object, and the test's stand-in C++ entity has no glue (only
+   its stand-in object answers `-oo_jsValueInContext:`). With the facade's deletion (oo-9ht.39 step
+   4) the payload holds `oo::Ref<cxx::Entity>`, is the part's glue, and `oo::ObjectIn()` of it
+   answers nil; the stand-ins get the glue then.
+2. **Producers** make it: `oo::EntityObjectNode(entity)` (a C++ entity, a `Ref`, or an entity's
+   object; null for none) where they made `oo::PListObject(oo::ToObjC(...))` or `oo::PListObject()`
+   of an entity's object (the 19 sites of batch U's audit, plus the compass target and its event
+   argument, a ship's found target, aggressor, primary target and proximity alert, the wormhole's
+   ships in transit, `system.waypoints`), and `oo::EntityNodesFrom(objects)` where they made
+   `oo::PListFromObjects()` of entities (the 32 callers). The one non-entity site the acceptance grep
+   matched (`[OONull null]` for a null array element) takes the null's object into a local first.
+3. **The entity converter answers the entity node** (`OOJSEntityObjectConverter`): script arguments,
+   timers' `this`, `OOJSFunction` arguments and `callObjC()`'s `this` convert to it.
+4. **Readers that want the entity take the part**: `oo::EntityIn(node)` (and `oo::EntitiesIn(array)`)
+   answer the C++ entity of an entity node, and also of a plain Object node of an entity's object
+   (still made by Objective-C callers and the tests' stand-ins), until the facade goes. Moved:
+   `OOJSStation` (`launchShipWithRole`, `launchPolice`: the array is rebuilt from the entities, in
+   order), `OOJSSystem` (the add-ships group), `OODebugMonitor` (the wormhole dump), and
+   `callObjC()`, whose `this` is now the C++ entity (its class name `OOJSEntityJSClassName()` of it);
+   the call itself still reaches the entity through its object until oo-9ht.44.
+5. **Left as they are**: readers that take any object (`OOJSTimer`'s `this` description,
+   `OOJSPlayer`'s dock target, `callObjC()`'s object result, `OOJSObjectWrapperToString`) keep
+   `oo::ObjectIn()`, which answers the same object; the weak-reference Object nodes (the proximity
+   condition's target, `StationEntity`'s accessor `station` and `ShipEntityAI`'s reader of it) keep
+   the object's `-weakRetain`, because `test_StationEntity`'s expectation reads the node's object's
+   `-weakRefUnderlyingObject` (they go with `OOWeakReference`, oo-9ht.22, or with the facade).
+6. **Behaviour identical**: the same JS values, descriptions, class names and lifetimes. No existing
+   test or expected value changes; `test_EntityOOJavaScriptExtensions` adds
+   `entityObjectNodeHoldsTheEntity` (the node's object, part, class name, description and JS value;
+   a plain node's entity; arrays).
+
+**Consequences.** No code makes an Object node of an entity's object but the weak-reference nodes of
+item 5; every entity node answers its C++ entity. oo-9ht.44 can dispatch `callObjC()` on the C++
+entity. Left for step 4: the node's JS value still comes through the object (item 1).

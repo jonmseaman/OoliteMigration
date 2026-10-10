@@ -240,7 +240,7 @@ oo::PList OOJSEntityObjectConverter(ooscript::Context context, ooscript::Object 
 {
 	OOJSEntityHolder *holder = static_cast<OOJSEntityHolder *>(static_cast<oo::RefCounted *>(ooscript::getPrivate(context, object)));
 	cxx::Entity *entity = (holder != nullptr) ? holder->entity() : nullptr;
-	return oo::PListObject(oo::ToObjC(entity));	// nil: a null PList
+	return oo::EntityObjectNode(entity);	// nil: a null PList
 }
 
 

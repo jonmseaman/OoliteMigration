@@ -2987,7 +2987,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 							[UNIVERSE removeDemoShips];
 							setGuiToStatusScreen();
 							playBuyShip();
-							doScriptEvent(OOJSID("playerBoughtNewShip"), { oo::PListObject(oo::ToObjC(this)), oo::PList::unsignedInteger(shipprice) }); // some equipment.oxp might want to know everything has changed.
+							doScriptEvent(OOJSID("playerBoughtNewShip"), { oo::EntityObjectNode(this), oo::PList::unsignedInteger(shipprice) }); // some equipment.oxp might want to know everything has changed.
 						}
 					}
 					else

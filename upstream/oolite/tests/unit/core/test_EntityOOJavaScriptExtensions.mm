@@ -359,4 +359,43 @@ OO_TEST(cxxEntityAnswersThroughItsJSMembers)
 }
 
 
+// An entity's Object node (bead oo-9ht.39.5.3): it holds the object, as oo::PListObject()'s did,
+// answers the C++ part, and its JS value is the part's JS object (through the object, as before).
+OO_TEST(entityObjectNodeHoldsTheEntity)
+{
+	@autoreleasepool
+	{
+		SetUpContext();
+		ooscript::Object object = ooscript::newObject(sContext, nullptr, nullptr, nullptr);
+		OO_CHECK(object != nullptr);
+		Entity *entity = [[[Entity alloc] init] autorelease];
+		cxx::Entity *part = oo::ToCxx(entity);
+		part->_jsSelf = object;
+
+		const oo::PList node = oo::EntityObjectNode(part);
+		OO_CHECK(node.type() == oo::PList::Type::Object);
+		OO_CHECK(oo::ObjectIn(node) == entity);
+		OO_CHECK(oo::EntityIn(node) == part);
+		const oo::PList::Object *payload = node.getIf<oo::PList::Object>();
+		OO_CHECK(payload != nullptr && (*payload)->className() == "Entity");
+		OO_CHECK(payload != nullptr && (*payload)->description() == oo::DescriptionOf(entity));
+		ooscript::Object got = nullptr;
+		OO_CHECK(ooscript::valueToObject(sContext, OOJSValueFromPList(sContext, node), &got) && got == object);
+
+		// A plain Object node of the object answers the same entity; anything else answers none.
+		OO_CHECK(oo::EntityIn(oo::PListObject(entity)) == part);
+		OO_CHECK(oo::EntityIn(oo::PList(1)) == nullptr);
+		OO_CHECK(oo::EntityIn(oo::PList()) == nullptr);
+		OO_CHECK(oo::EntityObjectNode(static_cast<cxx::Entity *>(nullptr)).isNull());
+
+		// Arrays: one node per entity, in order.
+		const std::vector<oo::ObjCRef<Entity *>> refs{ oo::ObjCRef<Entity *>(entity), oo::ObjCRef<Entity *>(entity) };
+		const std::vector<cxx::Entity *> parts = oo::EntitiesIn(oo::EntityNodesFrom(refs));
+		OO_CHECK(parts.size() == 2 && parts[0] == part && parts[1] == part);
+
+		part->_jsSelf = nullptr;	// the test's object is not rooted
+	}
+}
+
+
 OO_TEST_MAIN()

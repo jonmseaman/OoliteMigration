@@ -618,7 +618,7 @@ static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Val
 			return true;
 			
 		case kPlayerShip_dockedStation:
-			result = oo::PListObject(oo::ToObjC(player != nullptr ? player->dockedStation() : (StationEntity *)nullptr));
+			result = oo::EntityObjectNode(player != nullptr ? player->dockedStation() : (StationEntity *)nullptr);
 			break;
 			
 		case kPlayerShip_specialCargo:
@@ -780,7 +780,7 @@ static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Val
 			return true;
 			
 		case kPlayerShip_compassTarget:
-			result = oo::PListObject(player != nullptr ? player->getCompassTarget() : (::Entity *)nullptr);
+			result = oo::EntityObjectNode(player != nullptr ? player->getCompassTarget() : (::Entity *)nil);
 			break;
 			
 		case kPlayerShip_compassType:
