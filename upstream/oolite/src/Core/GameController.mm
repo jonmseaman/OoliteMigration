@@ -797,7 +797,7 @@ void GameController::exitAppWithContext(const std::string &context)
 {
 	OO_LOG("exit.context", "Exiting: {}.", context);
 #if (OOLITE_GNUSTEP && !defined(NDEBUG))
-	[[::OODebugMonitor sharedDebugMonitor] applicationWillTerminate];
+	::OODebugMonitor::sharedDebugMonitor()->applicationWillTerminate();
 #endif
 #if OOLITE_WINDOWS
 	// This should not be required normally but we have to ensure that

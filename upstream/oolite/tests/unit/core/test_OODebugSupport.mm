@@ -121,26 +121,31 @@ typedef enum
 // interface members are never reached (the monitor is a stand-in).
 // The engine-monitor members, which give the C++ monitor its vtable (they are virtual since bead
 // oo-9ht.74.1); never reached here.
-void cxx::OODebugMonitor::jsEngine(::OOJavaScriptEngine *, ooscript::Context, ooscript::ErrorReport *, unsigned, bool, const std::string &)	{}
-void cxx::OODebugMonitor::jsEngine(::OOJavaScriptEngine *, ooscript::Context, const std::string &, const std::optional<std::string> &)	{}
+void OODebugMonitor::jsEngine(::OOJavaScriptEngine *, ooscript::Context, ooscript::ErrorReport *, unsigned, bool, const std::string &)	{}
+void OODebugMonitor::jsEngine(::OOJavaScriptEngine *, ooscript::Context, const std::string &, const std::optional<std::string> &)	{}
+// The monitor's JS glue and description, also virtual (bead oo-9ht.74); never reached here.
+ooscript::Value OODebugMonitor::jsValueInContext(ooscript::Context)	{ return ooscript::Value{}; }
+void OODebugMonitor::clearJSSelf(ooscript::Object)	{}
+std::string OODebugMonitor::className() const	{ return "OODebugMonitor"; }
+std::string OODebugMonitor::description() const	{ return "<OODebugMonitor>"; }
 
 
-cxx::OODebugMonitor *cxx::OODebugMonitor::sharedDebugMonitor()
+OODebugMonitor *OODebugMonitor::sharedDebugMonitor()
 {
-	static cxx::OODebugMonitor *monitor = nullptr;
-	if (monitor == nullptr)  monitor = oo::makeRef<cxx::OODebugMonitor>().leakRef();
+	static OODebugMonitor *monitor = nullptr;
+	if (monitor == nullptr)  monitor = oo::makeRef<OODebugMonitor>().leakRef();
 	return monitor;
 }
 
 
-bool cxx::OODebugMonitor::setDebugger(OODebuggerInterface *debugger)
+bool OODebugMonitor::setDebugger(OODebuggerInterface *debugger)
 {
 	sRecord.debuggersSet.push_back(debugger);
 	return debugger != nullptr;
 }
 
 
-void cxx::OODebugMonitor::setUsingPlugInController(bool flag)
+void OODebugMonitor::setUsingPlugInController(bool flag)
 {
 	sRecord.usingPlugInController.push_back(flag);
 }
@@ -161,13 +166,13 @@ OODebugTCPConsoleClient::~OODebugTCPConsoleClient()
 }
 
 
-bool OODebugTCPConsoleClient::connectDebugMonitor(cxx::OODebugMonitor *, std::optional<std::string> *)	{ return true; }
-void OODebugTCPConsoleClient::disconnectDebugMonitor(cxx::OODebugMonitor *, const std::optional<std::string> &)	{}
-void OODebugTCPConsoleClient::debugMonitor(cxx::OODebugMonitor *, const std::string &, const std::optional<std::string> &, NSRange)	{}
-void OODebugTCPConsoleClient::debugMonitorClearConsole(cxx::OODebugMonitor *)	{}
-void OODebugTCPConsoleClient::debugMonitorShowConsole(cxx::OODebugMonitor *)	{}
-void OODebugTCPConsoleClient::debugMonitor(cxx::OODebugMonitor *, const oo::PList &)	{}
-void OODebugTCPConsoleClient::debugMonitor(cxx::OODebugMonitor *, const oo::PList &, const std::string &)	{}
+bool OODebugTCPConsoleClient::connectDebugMonitor(OODebugMonitor *, std::optional<std::string> *)	{ return true; }
+void OODebugTCPConsoleClient::disconnectDebugMonitor(OODebugMonitor *, const std::optional<std::string> &)	{}
+void OODebugTCPConsoleClient::debugMonitor(OODebugMonitor *, const std::string &, const std::optional<std::string> &, NSRange)	{}
+void OODebugTCPConsoleClient::debugMonitorClearConsole(OODebugMonitor *)	{}
+void OODebugTCPConsoleClient::debugMonitorShowConsole(OODebugMonitor *)	{}
+void OODebugTCPConsoleClient::debugMonitor(OODebugMonitor *, const oo::PList &)	{}
+void OODebugTCPConsoleClient::debugMonitor(OODebugMonitor *, const oo::PList &, const std::string &)	{}
 std::string OODebugTCPConsoleClient::description() const	{ return "<OODebugTCPConsoleClient>"; }
 
 

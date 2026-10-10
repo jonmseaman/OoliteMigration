@@ -56,7 +56,7 @@ SOFTWARE.
 namespace {
 
 // The one monitor, never released (sharedDebugMonitor()).
-cxx::OODebugMonitor *sSingleton = nullptr;
+OODebugMonitor *sSingleton = nullptr;
 
 }	// namespace
 
@@ -70,8 +70,6 @@ cxx::OODebugMonitor *sSingleton = nullptr;
 */
 static const char * const kOODebugMonitorApplicationWillTerminateNotificationName = "ApplicationWillTerminate";
 
-
-namespace cxx {
 
 // Was -init; [super init] could not fail, so its guarded statements stand in a plain block.
 void OODebugMonitor::init()
@@ -709,8 +707,10 @@ void OODebugMonitor::setUpDebugConsoleScript()
 	if (path)
 	{
 		// Live objects as Object nodes; a nil special-functions wrapper leaves "special" out, as the nil-terminated list did.
+		// The console is the monitor itself (oo::PListForeign), whose JS value is the console object
+		// (jsValueInContext()), as the facade's node's was (bead oo-9ht.74).
 		oo::PList::Dict jsProps;
-		jsProps["console"] = oo::PListObject(oo::ToObjC(this));
+		jsProps["console"] = oo::PList(oo::PList::Object(oo::Ref<oo::PListForeign>(this)));
 		id special = JSSpecialFunctionsObjectWrapper(context);
 		if (special != nil)  jsProps["special"] = oo::PListObject(special);
 		_script = OOJSScript::scriptWithPath(path, oo::PList(std::move(jsProps)));
@@ -720,7 +720,7 @@ void OODebugMonitor::setUpDebugConsoleScript()
 	if (!_script)
 	{
 		ooscript::Object global = [[::OOJavaScriptEngine sharedEngine] globalObject];
-		ooscript::defineProperty(context, global, "debugConsole", oo_jsValueInContext(context), NULL, NULL, ooscript::PropertyFlag::Enumerate);
+		ooscript::defineProperty(context, global, "debugConsole", jsValueInContext(context), NULL, NULL, ooscript::PropertyFlag::Enumerate);
 	}
 	
 	OOJSRelinquishContext(context);
@@ -920,11 +920,11 @@ void OODebugMonitor::jsEngine(::OOJavaScriptEngine * /*engine*/,
 }
 
 
-ooscript::Value OODebugMonitor::oo_jsValueInContext(ooscript::Context context)
+ooscript::Value OODebugMonitor::jsValueInContext(ooscript::Context context)
 {
 	if (_jsSelf == NULL)
 	{
-		_jsSelf = DebugMonitorToJSConsole(context, oo::ToObjC(this));
+		_jsSelf = DebugMonitorToJSConsole(context, this);
 		if (_jsSelf != NULL)
 		{
 			if (!OOJSAddGCObjectRoot(context, &_jsSelf, "debug console"))
@@ -938,11 +938,28 @@ ooscript::Value OODebugMonitor::oo_jsValueInContext(ooscript::Context context)
 	else  return ooscript::nullValue();
 }
 
-}	// namespace cxx
+
+void OODebugMonitor::clearJSSelf(ooscript::Object /*selfVal*/)
+{
+	// OOObject's -oo_clearJSSelf:, which the facade did not override: the console object is kept
+	// (a GC root) until the engine resets.
+}
 
 
-/*	The canonical singleton boilerplate (the category OODebugMonitor (Singleton)) is the facade's:
-	it is the Objective-C object's retain and release (OODebugMonitor+ObjCBridge.mm).
+std::string OODebugMonitor::className() const
+{
+	return "OODebugMonitor";
+}
+
+
+std::string OODebugMonitor::description() const
+{
+	return oo::str::format("<OODebugMonitor %s>", oo::str::pointerDescription(this).c_str());
+}
+
+
+/*	The canonical singleton boilerplate (the category OODebugMonitor (Singleton)) was the facade's
+	(bead oo-9ht.74 deleted it): the one monitor is made by sharedDebugMonitor() and never released.
 */
 
 #endif /* NDEBUG */

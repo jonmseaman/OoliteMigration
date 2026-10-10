@@ -41,7 +41,7 @@ SOFTWARE.
 #include <optional>
 #include <string>
 
-namespace cxx { class OODebugMonitor; }
+class OODebugMonitor;
 
 // Interface for debugger. Reference counted: the monitor keeps its debugger (oo::Ref).
 
@@ -51,33 +51,33 @@ public:
 	// Configuration and console text use oo::PList / std::string (proposed ADR-0043).
 
 	// Sent to establish connection. *message: error text when the connect fails.
-	virtual bool connectDebugMonitor(cxx::OODebugMonitor *debugMonitor,
+	virtual bool connectDebugMonitor(OODebugMonitor *debugMonitor,
 									 std::optional<std::string> *message) = 0;
 
 	// Sent to close connection. message: nullopt when none.
-	virtual void disconnectDebugMonitor(cxx::OODebugMonitor *debugMonitor,
+	virtual void disconnectDebugMonitor(OODebugMonitor *debugMonitor,
 										const std::optional<std::string> &message) = 0;
 
 	// Sent to print to the JavaScript console.
 	// colorKey is intended to be used to look up a foreground/background colour pair
 	// in the configuration. EmphasisRange is to specify a bold section of text.
-	virtual void debugMonitor(cxx::OODebugMonitor *debugMonitor,
+	virtual void debugMonitor(OODebugMonitor *debugMonitor,
 							  const std::string &output,
 							  const std::optional<std::string> &colorKey,
 							  NSRange emphasisRange) = 0;
 
 	// Sent to clear the JavaScript console.
-	virtual void debugMonitorClearConsole(cxx::OODebugMonitor *debugMonitor) = 0;
+	virtual void debugMonitorClearConsole(OODebugMonitor *debugMonitor) = 0;
 
 	// Sent to show the console, for instance in response to a warning or error message.
-	virtual void debugMonitorShowConsole(cxx::OODebugMonitor *debugMonitor) = 0;
+	virtual void debugMonitorShowConsole(OODebugMonitor *debugMonitor) = 0;
 
 	// Sent once when the debugger is connected.
-	virtual void debugMonitor(cxx::OODebugMonitor *debugMonitor,
+	virtual void debugMonitor(OODebugMonitor *debugMonitor,
 							  const oo::PList &configuration) = 0;
 
 	// Sent when configuration changes. newValue null = was nil.
-	virtual void debugMonitor(cxx::OODebugMonitor *debugMonitor,
+	virtual void debugMonitor(OODebugMonitor *debugMonitor,
 							  const oo::PList &newValue,
 							  const std::string &key) = 0;
 

@@ -5,9 +5,9 @@
 
 	It runs the Console and ConsoleSettings classes in a real context on the game's own facade
 	backend (ooscript/JSEngine_quickjs.cpp) and links the game's own objects for the binding, the
-	engine's exception translator (OOJSEngineNativeWrappers.mm), the debug monitor's Objective-C
-	facade (OODebugMonitor+ObjCBridge.mm, the object the console's JS objects hold) and its weak
-	reference. What the rest of the game provides is defined below as the smallest stand-in that
+	engine's exception translator (OOJSEngineNativeWrappers.mm); the console's JS objects hold the
+	C++ debug monitor (bead oo-9ht.74 deleted its Objective-C facade, which they held through its
+	weak reference). What the rest of the game provides is defined below as the smallest stand-in that
 	does the same thing (amendments oo-z1s4 item 4, oo-ppc item 6, oo-ykoy item 4): the C++ debug
 	monitor's members (recording what they are asked), the JavaScript engine's flags, the universe's
 	detail level and FPS display, the OpenGL extension manager's answers, an entity that can be
@@ -58,58 +58,62 @@ MonitorRecord sMonitor;
 }	// namespace
 
 
-cxx::OODebugMonitor *cxx::OODebugMonitor::sharedDebugMonitor()
+OODebugMonitor *OODebugMonitor::sharedDebugMonitor()
 {
-	static cxx::OODebugMonitor *monitor = nullptr;
-	if (monitor == nullptr)  monitor = oo::makeRef<cxx::OODebugMonitor>().leakRef();
+	static OODebugMonitor *monitor = nullptr;
+	if (monitor == nullptr)  monitor = oo::makeRef<OODebugMonitor>().leakRef();
 	return monitor;
 }
 
-bool cxx::OODebugMonitor::setDebugger(OODebuggerInterface *)  { return false; }
-void cxx::OODebugMonitor::disconnectDebugger(OODebuggerInterface *, const std::optional<std::string> &)  {}
-void cxx::OODebugMonitor::performJSConsoleCommand(const std::string &)  {}
+bool OODebugMonitor::setDebugger(OODebuggerInterface *)  { return false; }
+void OODebugMonitor::disconnectDebugger(OODebuggerInterface *, const std::optional<std::string> &)  {}
+void OODebugMonitor::performJSConsoleCommand(const std::string &)  {}
 
-void cxx::OODebugMonitor::appendJSConsoleLine(const std::string &string, const std::optional<std::string> &colorKey, NSRange emphasisRange)
+void OODebugMonitor::appendJSConsoleLine(const std::string &string, const std::optional<std::string> &colorKey, NSRange emphasisRange)
 {
 	sMonitor.lines.push_back(colorKey.value_or("(none)") + "|" + string + "|" + std::to_string(emphasisRange.location) + "," + std::to_string(emphasisRange.length));
 }
 
-void cxx::OODebugMonitor::appendJSConsoleLine(const std::string &string, const std::optional<std::string> &colorKey)
+void OODebugMonitor::appendJSConsoleLine(const std::string &string, const std::optional<std::string> &colorKey)
 {
 	appendJSConsoleLine(string, colorKey, NSMakeRange(0, 0));
 }
 
-void cxx::OODebugMonitor::clearJSConsole()  { sMonitor.clears++; }
-void cxx::OODebugMonitor::showJSConsole()  {}
+void OODebugMonitor::clearJSConsole()  { sMonitor.clears++; }
+void OODebugMonitor::showJSConsole()  {}
 
-oo::PList cxx::OODebugMonitor::configurationValueForKey(const std::string &key)
+oo::PList OODebugMonitor::configurationValueForKey(const std::string &key)
 {
 	auto found = sMonitor.configuration.find(key);
 	return (found != sMonitor.configuration.end()) ? found->second : oo::PList();
 }
 
-long long cxx::OODebugMonitor::configurationIntValueForKey(const std::string &, long long value)  { return value; }
+long long OODebugMonitor::configurationIntValueForKey(const std::string &, long long value)  { return value; }
 
-void cxx::OODebugMonitor::setConfigurationValue(const oo::PList &value, const std::string &key)
+void OODebugMonitor::setConfigurationValue(const oo::PList &value, const std::string &key)
 {
 	sMonitor.configurationSets.emplace_back(key, value);
 }
 
-std::vector<std::string> cxx::OODebugMonitor::configurationKeys()  { return {}; }
-bool cxx::OODebugMonitor::debuggerConnected()  { return false; }
-void cxx::OODebugMonitor::dumpMemoryStatistics()  { sMonitor.memoryDumps++; }
-size_t cxx::OODebugMonitor::dumpJSMemoryStatistics()  { sMonitor.jsMemoryDumps++; return 0; }
-void cxx::OODebugMonitor::setTCPIgnoresDroppedPackets(bool flag)  { sMonitor.ignoresDroppedPackets = flag; }
-bool cxx::OODebugMonitor::TCPIgnoresDroppedPackets()  { return sMonitor.ignoresDroppedPackets; }
-void cxx::OODebugMonitor::setUsingPlugInController(bool)  {}
-bool cxx::OODebugMonitor::usingPlugInController()  { return false; }
-std::string cxx::OODebugMonitor::sourceCodeForFile(const std::string &, unsigned)  { return std::string(); }
+std::vector<std::string> OODebugMonitor::configurationKeys()  { return {}; }
+bool OODebugMonitor::debuggerConnected()  { return false; }
+void OODebugMonitor::dumpMemoryStatistics()  { sMonitor.memoryDumps++; }
+size_t OODebugMonitor::dumpJSMemoryStatistics()  { sMonitor.jsMemoryDumps++; return 0; }
+void OODebugMonitor::setTCPIgnoresDroppedPackets(bool flag)  { sMonitor.ignoresDroppedPackets = flag; }
+bool OODebugMonitor::TCPIgnoresDroppedPackets()  { return sMonitor.ignoresDroppedPackets; }
+void OODebugMonitor::setUsingPlugInController(bool)  {}
+bool OODebugMonitor::usingPlugInController()  { return false; }
+std::string OODebugMonitor::sourceCodeForFile(const std::string &, unsigned)  { return std::string(); }
 #if OOLITE_GNUSTEP
-void cxx::OODebugMonitor::applicationWillTerminate()  {}
+void OODebugMonitor::applicationWillTerminate()  {}
 #endif
-void cxx::OODebugMonitor::jsEngine(OOJavaScriptEngine *, ooscript::Context, ooscript::ErrorReport *, unsigned, bool, const std::string &)  {}
-void cxx::OODebugMonitor::jsEngine(OOJavaScriptEngine *, ooscript::Context, const std::string &, const std::optional<std::string> &)  {}
-ooscript::Value cxx::OODebugMonitor::oo_jsValueInContext(ooscript::Context)  { return ooscript::undefinedValue(); }
+void OODebugMonitor::jsEngine(OOJavaScriptEngine *, ooscript::Context, ooscript::ErrorReport *, unsigned, bool, const std::string &)  {}
+void OODebugMonitor::jsEngine(OOJavaScriptEngine *, ooscript::Context, const std::string &, const std::optional<std::string> &)  {}
+// The monitor's JS glue and description (bead oo-9ht.74): its JS value is defined below, with the
+// console object it answers.
+void OODebugMonitor::clearJSSelf(ooscript::Object)  {}
+std::string OODebugMonitor::className() const  { return "OODebugMonitor"; }
+std::string OODebugMonitor::description() const  { return "<OODebugMonitor>"; }
 
 
 // MARK: What the rest of the game provides ---------------------------------------------------------
@@ -223,20 +227,21 @@ ooscript::Object sConsoleObject = nullptr;
 }	// namespace
 
 
-// The monitor's facade is the console object (as the monitor's -oo_jsValueInContext: makes it);
-// anything else is undefined.
-ooscript::Value OOJSValueFromNativeObject(ooscript::Context, id object)
+// The monitor's JS value is the console object (as the monitor's jsValueInContext() makes it; the
+// stand-in was the engine's OOJSValueFromNativeObject() of the monitor's facade until bead
+// oo-9ht.74); undefined before it is made.
+ooscript::Value OODebugMonitor::jsValueInContext(ooscript::Context)
 {
-	if ([object isKindOfClass:[OODebugMonitor class]] && sConsoleObject != nullptr)  return ooscript::objectValue(sConsoleObject);
+	if (sConsoleObject != nullptr)  return ooscript::objectValue(sConsoleObject);
 	return ooscript::undefinedValue();
 }
 
 
-id OOJSNativeObjectFromJSObject(ooscript::Context context, ooscript::Object object)
+id OOJSNativeObjectFromJSObject(ooscript::Context, ooscript::Object)
 {
-	// The console objects' private slot holds the monitor's weak reference.
-	id private_ = (id)ooscript::getPrivate(context, object);
-	return [private_ weakRefUnderlyingObject];
+	// The console objects hold the C++ monitor (bead oo-9ht.74), which the console takes from
+	// their slot; no other object in the test wraps an Objective-C object.
+	return nil;
 }
 
 
@@ -467,7 +472,7 @@ void SetUpContext()
 	sPlainEntity = [[Entity alloc] init];
 	sInspectableEntity = [[InspectableEntity alloc] init];
 
-	sConsoleObject = DebugMonitorToJSConsole(sContext, oo::ToObjC(cxx::OODebugMonitor::sharedDebugMonitor()));
+	sConsoleObject = DebugMonitorToJSConsole(sContext, OODebugMonitor::sharedDebugMonitor());
 	ooscript::Value value = ooscript::objectValue(sConsoleObject);
 	ooscript::setProperty(sContext, sGlobal, "console", &value);
 }

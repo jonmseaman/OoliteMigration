@@ -74,7 +74,7 @@ void OOInitDebugSupport(void)
 		{
 			// The client; null when it cannot connect.
 			debugger = OODebugTCPConsoleClient::clientWithAddress(consoleHost, consolePort);
-			cxx::OODebugMonitor::sharedDebugMonitor()->setUsingPlugInController(false);
+			OODebugMonitor::sharedDebugMonitor()->setUsingPlugInController(false);
 		}
 		
 		activateDebugConsole = (debugger != nullptr);
@@ -89,7 +89,7 @@ void OOInitDebugSupport(void)
 	if (activateDebugConsole)
 	{
 		// Set up monitor and register debugger, if any.
-		cxx::OODebugMonitor::sharedDebugMonitor()->setDebugger(debugger.get());
+		OODebugMonitor::sharedDebugMonitor()->setDebugger(debugger.get());
 		[[OOJavaScriptEngine sharedEngine] enableDebuggerStatement];
 	}
 }

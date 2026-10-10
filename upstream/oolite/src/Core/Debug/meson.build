@@ -2,7 +2,6 @@
 
 oolite_sources += files(
     'OODebugMonitor.mm',
-    'OODebugMonitor+ObjCBridge.mm',
     'OODebugStandards.mm',
     'OODebugSupport.mm',
     'OODebugTCPConsoleClient.mm',

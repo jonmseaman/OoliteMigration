@@ -62,38 +62,43 @@ MonitorRecord sMonitor;
 // The C++ monitor's members that the client calls.
 // The engine-monitor members, which give the C++ monitor its vtable (they are virtual since bead
 // oo-9ht.74.1); never reached here.
-void cxx::OODebugMonitor::jsEngine(::OOJavaScriptEngine *, ooscript::Context, ooscript::ErrorReport *, unsigned, bool, const std::string &)	{}
-void cxx::OODebugMonitor::jsEngine(::OOJavaScriptEngine *, ooscript::Context, const std::string &, const std::optional<std::string> &)	{}
+void OODebugMonitor::jsEngine(::OOJavaScriptEngine *, ooscript::Context, ooscript::ErrorReport *, unsigned, bool, const std::string &)	{}
+void OODebugMonitor::jsEngine(::OOJavaScriptEngine *, ooscript::Context, const std::string &, const std::optional<std::string> &)	{}
+// The monitor's JS glue and description, also virtual (bead oo-9ht.74); never reached here.
+ooscript::Value OODebugMonitor::jsValueInContext(ooscript::Context)	{ return ooscript::Value{}; }
+void OODebugMonitor::clearJSSelf(ooscript::Object)	{}
+std::string OODebugMonitor::className() const	{ return "OODebugMonitor"; }
+std::string OODebugMonitor::description() const	{ return "<OODebugMonitor>"; }
 
 
-cxx::OODebugMonitor *cxx::OODebugMonitor::sharedDebugMonitor()
+OODebugMonitor *OODebugMonitor::sharedDebugMonitor()
 {
-	static cxx::OODebugMonitor *monitor = nullptr;
-	if (monitor == nullptr)  monitor = oo::makeRef<cxx::OODebugMonitor>().leakRef();
+	static OODebugMonitor *monitor = nullptr;
+	if (monitor == nullptr)  monitor = oo::makeRef<OODebugMonitor>().leakRef();
 	return monitor;
 }
 
 
-bool cxx::OODebugMonitor::TCPIgnoresDroppedPackets()
+bool OODebugMonitor::TCPIgnoresDroppedPackets()
 {
 	return false;
 }
 
 
-void cxx::OODebugMonitor::performJSConsoleCommand(const std::string &command)
+void OODebugMonitor::performJSConsoleCommand(const std::string &command)
 {
 	sMonitor.commands.push_back(command);
 }
 
 
-oo::PList cxx::OODebugMonitor::configurationValueForKey(const std::string &key)
+oo::PList OODebugMonitor::configurationValueForKey(const std::string &key)
 {
 	auto found = sMonitor.configuration.find(key);
 	return (found != sMonitor.configuration.end()) ? found->second : oo::PList();
 }
 
 
-void cxx::OODebugMonitor::setConfigurationValue(const oo::PList &value, const std::string &key)
+void OODebugMonitor::setConfigurationValue(const oo::PList &value, const std::string &key)
 {
 	sMonitor.configurationSets.emplace_back(key, value);
 }
@@ -102,9 +107,9 @@ void cxx::OODebugMonitor::setConfigurationValue(const oo::PList &value, const st
 namespace {
 
 // What the debug monitor hands its debugger: itself (the C++ monitor, since bead oo-9ht.81).
-cxx::OODebugMonitor *Monitor()
+OODebugMonitor *Monitor()
 {
-	return cxx::OODebugMonitor::sharedDebugMonitor();
+	return OODebugMonitor::sharedDebugMonitor();
 }
 
 }	// namespace
@@ -505,8 +510,8 @@ OO_TEST(cxxClientAndItsFacade)
 		OODebugTCPConsoleClient *client = session.client.get();
 		OO_CHECK(client != nullptr);
 
-		OO_CHECK(client->connectDebugMonitor(cxx::OODebugMonitor::sharedDebugMonitor(), nullptr));
-		client->debugMonitorShowConsole(cxx::OODebugMonitor::sharedDebugMonitor());
+		OO_CHECK(client->connectDebugMonitor(OODebugMonitor::sharedDebugMonitor(), nullptr));
+		client->debugMonitorShowConsole(OODebugMonitor::sharedDebugMonitor());
 		OO_CHECK(TypeOf(ReadPacket(session.console)) == "Show Console");
 	}
 

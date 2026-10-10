@@ -1859,20 +1859,20 @@ void PlayerEntity::pollFlightControls(double delta_t)
 				[UNIVERSE cxx_addMessage:"Collision debug ON" forCount:3];
 			}
 			
-			if (checkKeyPress(n_key_debug_console_connect) && ![[::OODebugMonitor sharedDebugMonitor] usingPlugInController] && ![gameView allowingStringInput]) // look for the 'c' key
+			if (checkKeyPress(n_key_debug_console_connect) && !::OODebugMonitor::sharedDebugMonitor()->usingPlugInController() && ![gameView allowingStringInput]) // look for the 'c' key
 			{
 				// This code is executed only if we're not using the integrated plugin controller
 				if (!autopilot_key_pressed)
 				{
-					if (![[::OODebugMonitor sharedDebugMonitor] debuggerConnected])
+					if (!::OODebugMonitor::sharedDebugMonitor()->debuggerConnected())
 					{
 						OOInitDebugSupport();
-						if ([[::OODebugMonitor sharedDebugMonitor] debuggerConnected])
+						if (::OODebugMonitor::sharedDebugMonitor()->debuggerConnected())
 							[UNIVERSE cxx_addMessage:"Connected to debug console." forCount:3];
 					}
 					else
 					{
-						[[::OODebugMonitor sharedDebugMonitor] setDebugger:nil];
+						::OODebugMonitor::sharedDebugMonitor()->setDebugger(nullptr);
 						[UNIVERSE cxx_addMessage:"Disconnected from debug console." forCount:3];
 					}
 				}
