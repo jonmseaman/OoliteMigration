@@ -128,7 +128,7 @@ void OOFlashEffectEntity::update(OOTimeDelta delta_t)
 }
 
 
-::OOTexture *OOFlashEffectEntity::texture()
+OOTexture *OOFlashEffectEntity::texture()
 {
 	if (sFlashTexture == nil)  OOFlashEffectEntity::setUpTexture();
 	return sFlashTexture;
@@ -139,11 +139,7 @@ void OOFlashEffectEntity::setUpTexture()
 {
 	if (sFlashTexture == nil)
 	{
-		sFlashTexture = [[::OOTexture cxx_textureWithName:"oolite-particle-flash.png"
-										   inFolder:"Textures"
-											options:kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureAlphaMask
-										 anisotropy:kOOTextureDefaultAnisotropy
-											lodBias:0.0] retain];
+		sFlashTexture = OOTexture::textureWithName("oolite-particle-flash.png", "Textures", kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureAlphaMask, kOOTextureDefaultAnisotropy, 0.0).leakRef();
 		OOGraphicsResetManager::sharedManager()->registerCxxClient(new FlashTextureResetClient);
 	}
 }
@@ -151,7 +147,7 @@ void OOFlashEffectEntity::setUpTexture()
 
 void OOFlashEffectEntity::resetGraphicsState()
 {
-	[sFlashTexture release];
-	sFlashTexture = nil;
+	oo::release(sFlashTexture);
+	sFlashTexture = nullptr;
 }
 

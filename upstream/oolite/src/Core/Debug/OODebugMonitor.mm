@@ -383,8 +383,8 @@ std::string SizeString(size_t size)
 // Sets of objects by identity (the mutable sets of textures and entities compared by identity).
 struct OODebugMonitor::EntityDumpState
 {
-	std::set<oo::ObjCRef<id>>	entityTextures;
-	std::set<oo::ObjCRef<id>>	visibleEntityTextures;
+	std::set<oo::Ref<OOTexture>>	entityTextures;
+	std::set<oo::Ref<OOTexture>>	visibleEntityTextures;
 	std::set<oo::ObjCRef<id>>	seenEntities;
 	unsigned					seenCount = 0;
 	size_t						totalEntityObjSize = 0;
@@ -411,10 +411,10 @@ void OODebugMonitor::dumpEntity(id entity, EntityDumpState *state, bool parentVi
 
 	bool visible = parentVisible && [entity isVisible];
 
-	for (const oo::ObjCRef<::OOTexture *> &texture : [entity cxx_allTextures])
+	for (const oo::Ref<OOTexture> &texture : [entity cxx_allTextures])
 	{
-		state->entityTextures.insert(oo::ObjCRef<id>(texture.get()));
-		if (visible)  state->visibleEntityTextures.insert(oo::ObjCRef<id>(texture.get()));
+		state->entityTextures.insert(texture);
+		if (visible)  state->visibleEntityTextures.insert(texture);
 	}
 
 	std::string extra;
@@ -479,13 +479,13 @@ void OODebugMonitor::dumpMemoryStatistics()
 	oo::log::indent();
 
 	//	Get texture retain counts before the entity dumper starts messing with them.
-	const std::vector<oo::ObjCRef<::OOTexture *>> allTextures = [::OOTexture cxx_allTextures];
-	std::map<::OOTexture *, NSUInteger> textureRefCounts;
+	const std::vector<oo::Ref<OOTexture>> allTextures = OOTexture::allTextures();
+	std::map<OOTexture *, NSUInteger> textureRefCounts;
 
-	for (const oo::ObjCRef<::OOTexture *> &tex : allTextures)
+	for (const oo::Ref<OOTexture> &tex : allTextures)
 	{
 		// We subtract one because allTextures retains the textures.
-		textureRefCounts[tex.get()] = [tex.get() retainCount] - 1;
+		textureRefCounts[tex.get()] = tex->retainCount() - 1;
 	}
 
 	size_t totalSize = 0;
@@ -515,9 +515,9 @@ void OODebugMonitor::dumpMemoryStatistics()
 	/*	Sort textures so that textures in the "recent cache" come first by age,
 		followed by others.
 	*/
-	std::vector<oo::ObjCRef<::OOTexture *>> textures = [::OOTexture cxx_cachedTexturesByAge];
+	std::vector<oo::Ref<OOTexture>> textures = OOTexture::cachedTexturesByAge();
 
-	for (const oo::ObjCRef<::OOTexture *> &tex : allTextures)
+	for (const oo::Ref<OOTexture> &tex : allTextures)
 	{
 		if (std::find(textures.begin(), textures.end(), tex) == textures.end())
 		{
@@ -532,11 +532,11 @@ void OODebugMonitor::dumpMemoryStatistics()
 	writeMemStat("Textures:");
 	oo::log::indent();
 
-	for (const oo::ObjCRef<::OOTexture *> &texRef : textures)
+	for (const oo::Ref<OOTexture> &texRef : textures)
 	{
-		::OOTexture *tex = texRef.get();
-		size_t objSize = [tex oo_objectSize];
-		size_t dataSize = [tex dataSize];
+		OOTexture *tex = texRef.get();
+		size_t objSize = sizeof *tex;	// the texture root's size (was its facade's instance size; bead oo-9ht.99)
+		size_t dataSize = tex->dataSize();
 
 #if OOTEXTURE_RELOADABLE
 		const char *byteCountSuffix = "";
@@ -545,12 +545,12 @@ void OODebugMonitor::dumpMemoryStatistics()
 #endif
 
 		const char *usage = "";
-		if (entityDumpState.visibleEntityTextures.count(oo::ObjCRef<id>(tex)) != 0)
+		if (entityDumpState.visibleEntityTextures.count(texRef) != 0)
 		{
 			visibleTextureDataSize += dataSize;	// NOT doubled if !OOTEXTURE_RELOADABLE, because we're interested in what the GPU sees.
 			usage = ", visible";
 		}
-		else if (entityDumpState.entityTextures.count(oo::ObjCRef<id>(tex)) != 0)
+		else if (entityDumpState.entityTextures.count(texRef) != 0)
 		{
 			usage = ", active";
 		}
@@ -559,7 +559,7 @@ void OODebugMonitor::dumpMemoryStatistics()
 		unsigned refCount = (counted != textureRefCounts.end()) ? (unsigned)counted->second : 0;
 
 		writeMemStat(oo::str::format("%s: [%u refs%s] %s%s",
-		 [tex cxx_name].value_or("(null)").c_str(),
+		 tex->name().value_or("(null)").c_str(),
 		 refCount,
 		 usage,
 		 SizeString(objSize + dataSize).c_str(),

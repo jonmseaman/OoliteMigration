@@ -134,11 +134,7 @@ void DustEntity::init()
 	
 	if (hasPointSprites)
 	{
-		texture = oo::ObjCRef<::OOTexture *>([::OOTexture cxx_textureWithName:"oolite-particle-dust.png"
-																 inFolder:"Textures"
-																	options:kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureAlphaMask
-															 anisotropy:kOOTextureDefaultAnisotropy / 2.0
-																	lodBias:0.0]);
+		texture = OOTexture::textureWithName("oolite-particle-dust.png", "Textures", kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureAlphaMask, kOOTextureDefaultAnisotropy / 2.0, 0.0);
 	}	
 
 	collision_radius = DUST_SCALE; // for draw pass calculations
@@ -415,7 +411,7 @@ void DustEntity::drawImmediate(bool /*immediate*/, bool translucent)
 					OOGL(glBlendFunc(GL_SRC_ALPHA, GL_ONE));
 				}
 				OOGL(glEnable(GL_POINT_SPRITE_ARB));
-				[texture.get() apply];
+				if (texture != nullptr)  texture->apply();	// a message to nil did nothing
 				OOGL(glVertexPointer(3, GL_FLOAT, 0, vertices));
 				OOGL(glDrawArrays(GL_POINTS, 0, DUST_N_PARTICLES));
 				OOGL(glDisable(GL_POINT_SPRITE_ARB));

@@ -203,7 +203,7 @@ MA 02110-1301, USA.
 - (std::optional<std::string>) descriptionForObjDumpBasic;
 - (std::optional<std::string>) descriptionForObjDump;	// flipped with its family (bead oo-3rb.278)
 
-- (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures;
+- (std::vector<oo::Ref<OOTexture>>) cxx_allTextures;
 #endif
 
 @end
@@ -476,7 +476,7 @@ public:
 	virtual std::optional<std::string> superDescriptionComponents() const = 0;
 #ifndef NDEBUG
 	virtual std::optional<std::string> superDescriptionForObjDump() = 0;
-	virtual std::vector<ObjCRef<OOTexture *>> superAllTextures() = 0;
+	virtual std::vector<Ref<OOTexture>> superAllTextures() = 0;
 #endif
 
 protected:
@@ -535,7 +535,7 @@ public:
 	std::optional<std::string> descriptionComponents() const override	{ return [_objcOwner cxx_descriptionComponents]; }
 #ifndef NDEBUG
 	std::optional<std::string> descriptionForObjDump() override	{ return [_objcOwner descriptionForObjDump]; }
-	std::vector<ObjCRef<OOTexture *>> allTextures() override	{ return [_objcOwner cxx_allTextures]; }
+	std::vector<Ref<OOTexture>> allTextures() override	{ return [_objcOwner cxx_allTextures]; }
 #endif
 
 	NSUInteger superSessionID() override	{ return Base::sessionID(); }
@@ -583,7 +583,7 @@ public:
 	std::optional<std::string> superDescriptionComponents() const override	{ return Base::descriptionComponents(); }
 #ifndef NDEBUG
 	std::optional<std::string> superDescriptionForObjDump() override	{ return Base::descriptionForObjDump(); }
-	std::vector<ObjCRef<OOTexture *>> superAllTextures() override	{ return Base::allTextures(); }
+	std::vector<Ref<OOTexture>> superAllTextures() override	{ return Base::allTextures(); }
 #endif
 };
 

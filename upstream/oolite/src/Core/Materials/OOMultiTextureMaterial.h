@@ -40,7 +40,7 @@ SOFTWARE.
 
 #import "OOBasicMaterial.h"
 
-@class OOTexture;
+class OOTexture;
 
 
 class OOMultiTextureMaterial : public OOBasicMaterial
@@ -64,12 +64,12 @@ public:
 	void unapplyWithNext(OOMaterial *next) override;
 	size_t objectSize() const override	{ return sizeof *this; }
 #ifndef NDEBUG
-	std::vector<oo::ObjCRef<::OOTexture *>> allTextures() override;
+	std::vector<oo::Ref<OOTexture>> allTextures() override;
 #endif
 
 private:
-	oo::ObjCRef<::OOTexture *>	_diffuseMap = {};
-	oo::ObjCRef<::OOTexture *>	_emissionMap = {};
+	oo::Ref<OOTexture>	_diffuseMap = {};
+	oo::Ref<OOTexture>	_emissionMap = {};
 
 	NSUInteger					_unitsUsed = {};
 };

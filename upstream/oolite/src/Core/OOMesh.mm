@@ -776,17 +776,17 @@ void OOMesh::dumpSelfState()
 
 
 #ifndef NDEBUG
-std::vector<oo::ObjCRef<::OOTexture *>> OOMesh::allTextures()
+std::vector<oo::Ref<OOTexture>> OOMesh::allTextures()
 {
 	// Every material's textures; id forwarder NSSetFromObjects drops duplicates as -unionSet: did.
-	std::vector<oo::ObjCRef<::OOTexture *>> result;
+	std::vector<oo::Ref<OOTexture>> result;
 	OOMeshMaterialCount i;
 	for (i = 0; i != materialCount; i++)
 	{
 		// A nil material answered no textures.
 		OOMaterial *material = materials[i];
 		if (material == nullptr)  continue;
-		for (const oo::ObjCRef<::OOTexture *> &texture : material->allTextures())  result.push_back(texture);
+		for (const oo::Ref<OOTexture> &texture : material->allTextures())  result.push_back(texture);
 	}
 
 	return result;

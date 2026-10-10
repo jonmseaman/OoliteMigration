@@ -222,7 +222,7 @@ void OOLaserShotEntity::drawImmediate(bool /*immediate*/, bool translucent)
 	OOGLPushModelView();
 	
 	OOGLScaleModelView(make_vector(kLaserHalfWidth, kLaserHalfWidth, _range));
-	[texture1() apply];
+	if (OOTexture *shot = texture1())  shot->apply();	// a message to nil did nothing
 	GLfloat s = sinf([UNIVERSE getTime]);
 	GLfloat phase = s*(_range/200.0f);
 	GLfloat phase2 = (1.0f+s)*(_range/200.0f);
@@ -251,7 +251,7 @@ void OOLaserShotEntity::drawImmediate(bool /*immediate*/, bool translucent)
 	OOGL(glColor4f(kLaserBrightness,kLaserBrightness,kLaserBrightness,0.9));
 	glDrawArrays(GL_QUADS, 0, 8);
 
-	[texture2() apply];
+	if (OOTexture *shot = texture2())  shot->apply();	// a message to nil did nothing
 	OOGLScaleModelView(make_vector(kLaserFlareWidth / kLaserCoreWidth, kLaserFlareWidth / kLaserCoreWidth, 1.0));
 	OOGL(glColor4f(_color[0],_color[1],_color[2],0.9));
 	glTexCoordPointer(2, GL_FLOAT, 0, laserTexCoords);
@@ -277,13 +277,13 @@ bool OOLaserShotEntity::canCollide()
 	return NO;
 }
 
-::OOTexture *OOLaserShotEntity::texture1()
+OOTexture *OOLaserShotEntity::texture1()
 {
 	return OOLaserShotEntity::outerTexture();
 }
 
 
-::OOTexture *OOLaserShotEntity::texture2()
+OOTexture *OOLaserShotEntity::texture2()
 {
 	return OOLaserShotEntity::innerTexture();
 }
@@ -293,30 +293,22 @@ void OOLaserShotEntity::setUpTexture()
 {
 	if (sShotTexture == nil)
 	{
-		sShotTexture = [[::OOTexture cxx_textureWithName:"oolite-laser-blur.png"
-										  inFolder:"Textures"
-										   options:kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureAlphaMask | kOOTextureRepeatT
-										anisotropy:kOOTextureDefaultAnisotropy / 2.0
-										   lodBias:0.0] retain];
+		sShotTexture = OOTexture::textureWithName("oolite-laser-blur.png", "Textures", kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureAlphaMask | kOOTextureRepeatT, kOOTextureDefaultAnisotropy / 2.0, 0.0).leakRef();
 		OOGraphicsResetManager::sharedManager()->registerCxxClient(new ShotTextureResetClient);
 
-		sShotTexture2 = [[::OOTexture cxx_textureWithName:"oolite-laser-blur2.png"
-										  inFolder:"Textures"
-										   options:kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureAlphaMask | kOOTextureRepeatT
-										anisotropy:kOOTextureDefaultAnisotropy / 2.0
-										   lodBias:0.0] retain];
+		sShotTexture2 = OOTexture::textureWithName("oolite-laser-blur2.png", "Textures", kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureAlphaMask | kOOTextureRepeatT, kOOTextureDefaultAnisotropy / 2.0, 0.0).leakRef();
 	}
 }
 
 
-::OOTexture *OOLaserShotEntity::innerTexture()
+OOTexture *OOLaserShotEntity::innerTexture()
 {
 	if (sShotTexture2 == nil)  setUpTexture();
 	return sShotTexture2;
 }
 
 
-::OOTexture *OOLaserShotEntity::outerTexture()
+OOTexture *OOLaserShotEntity::outerTexture()
 {
 	if (sShotTexture == nil)  setUpTexture();
 	return sShotTexture;
@@ -325,9 +317,9 @@ void OOLaserShotEntity::setUpTexture()
 
 void OOLaserShotEntity::resetGraphicsState()
 {
-	[sShotTexture release];
-	sShotTexture = nil;
-	[sShotTexture2 release];
-	sShotTexture2 = nil;
+	oo::release(sShotTexture);
+	sShotTexture = nullptr;
+	oo::release(sShotTexture2);
+	sShotTexture2 = nullptr;
 }
 

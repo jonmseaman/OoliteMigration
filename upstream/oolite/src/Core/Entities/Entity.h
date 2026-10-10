@@ -47,7 +47,8 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOObjCRef.h"
 #include "OOJSPrivateObject.h"
 
-@class Universe, OOTexture, Entity;
+@class Universe, Entity;
+#include "OOTexture.h"	// allTextures() answers oo::Ref<OOTexture>, which needs the class (bead oo-9ht.99)
 class OOVisualEffectEntity;	// C++ since bead oo-9ht.165
 class ShipEntity;	// C++ since bead oo-9ht.144
 
@@ -283,7 +284,7 @@ public:
 	std::optional<std::string> descriptionForObjDumpBasic();
 	virtual std::optional<std::string> descriptionForObjDump();
 
-	virtual std::vector<oo::ObjCRef<::OOTexture *>> allTextures();
+	virtual std::vector<oo::Ref<OOTexture>> allTextures();
 #endif
 
 	// the base object for ships/stations/anything actually

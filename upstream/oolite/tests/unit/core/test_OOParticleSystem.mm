@@ -108,12 +108,13 @@ TestUniverse *sUniverse = nil;
 // The texture loader's stand-in.
 std::optional<std::string> sTextureName;
 bool sTextureFound = true;
-id sTexture = nil;
+OOTexture *sTexture = nullptr;	// never released
 
-id LoadTexture(id, SEL, const std::optional<std::string> &name, const std::optional<std::string> &, OOTextureFlags, GLfloat, GLfloat)
+// OOTexture::nameFactory, the test-only loader hook (bead oo-9ht.99), where the facade's class method was replaced.
+oo::Ref<OOTexture> LoadTexture(const std::optional<std::string> &name, const std::optional<std::string> &, OOTextureFlags, GLfloat, GLfloat)
 {
 	sTextureName = name;
-	return sTextureFound ? sTexture : nil;
+	return oo::Ref<OOTexture>(sTextureFound ? sTexture : nullptr);
 }
 
 
@@ -123,9 +124,8 @@ void SetUp()
 	{
 		sUniverse = (TestUniverse *)class_createInstance([TestUniverse class], 0);	// never released
 		sUniverse->_cxxUniverse = oo::makeRef<cxx::Universe>(sUniverse);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
-		sTexture = [[OOWeakRefObject alloc] init];	// never released
-		Method loader = class_getClassMethod([OOTexture class], @selector(cxx_textureWithName:inFolder:options:anisotropy:lodBias:));
-		method_setImplementation(loader, (IMP)LoadTexture);
+		sTexture = oo::makeRef<OOTexture>().leakRef();	// never released
+		OOTexture::nameFactory = &LoadTexture;
 	}
 	sUniverse->_removed = nil;
 	gSharedUniverse = sUniverse;

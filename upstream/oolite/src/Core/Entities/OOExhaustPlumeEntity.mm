@@ -425,7 +425,7 @@ void OOExhaustPlumeEntity::drawSubEntityImmediate(bool /*immediate*/, bool trans
 	OOGL(glDepthMask(GL_FALSE));
 	OOGL(glEnableClientState(GL_TEXTURE_COORD_ARRAY));
 	OOGL(glEnable(GL_TEXTURE_2D));
-	[texture() apply];
+	if (OOTexture *plume = texture())  plume->apply();	// a message to nil did nothing
 
 //	OOGL(glDisable(GL_CULL_FACE));		// face culling
 	OOGL(glShadeModel(GL_SMOOTH));
@@ -637,7 +637,7 @@ void OOExhaustPlumeEntity::rescaleBy(GLfloat /*factor*/, bool /*writeToCache*/)
 }
 
 
-::OOTexture *OOExhaustPlumeEntity::texture()
+OOTexture *OOExhaustPlumeEntity::texture()
 {
 	return OOExhaustPlumeEntity::plumeTexture();
 }
@@ -647,18 +647,14 @@ void OOExhaustPlumeEntity::setUpTexture()
 {
 	if (sPlumeTexture == nil)
 	{
-		sPlumeTexture = [[::OOTexture cxx_textureWithName:"oolite-exhaust-blur.png"
-										  inFolder:"Textures"
-										   options:kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureAlphaMask | kOOTextureRepeatT | kOOTextureRepeatS
-										anisotropy:kOOTextureDefaultAnisotropy / 2.0
-										   lodBias:0.0] retain];
+		sPlumeTexture = OOTexture::textureWithName("oolite-exhaust-blur.png", "Textures", kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureAlphaMask | kOOTextureRepeatT | kOOTextureRepeatS, kOOTextureDefaultAnisotropy / 2.0, 0.0).leakRef();
 		OOGraphicsResetManager::sharedManager()->registerCxxClient(new PlumeTextureResetClient);
 
 	}
 }
 
 
-::OOTexture *OOExhaustPlumeEntity::plumeTexture()
+OOTexture *OOExhaustPlumeEntity::plumeTexture()
 {
 	if (sPlumeTexture == nil)  setUpTexture();
 	return sPlumeTexture;
@@ -667,8 +663,8 @@ void OOExhaustPlumeEntity::setUpTexture()
 
 void OOExhaustPlumeEntity::resetGraphicsState()
 {
-	[sPlumeTexture release];
-	sPlumeTexture = nil;
+	oo::release(sPlumeTexture);
+	sPlumeTexture = nullptr;
 }
 
 

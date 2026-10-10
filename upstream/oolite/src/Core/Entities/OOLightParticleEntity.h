@@ -27,7 +27,7 @@ MA 02110-1301, USA.
 
 #import "Entity.h"
 
-@class OOTexture;
+class OOTexture;
 
 
 /*	C++ only since bead oo-9ht.76 deleted its Objective-C facade (ADR-0056 amendments oo-9ht.107,
@@ -52,10 +52,10 @@ public:
 		OOLightParticleEntity assumes the texture is twice as big as the nominal
 		size of the particle (with a black border for anti-aliasing purposes).
 	*/
-	virtual ::OOTexture *texture();
+	virtual OOTexture *texture();
 
 	static void setUpTexture();
-	static ::OOTexture *defaultParticleTexture();
+	static OOTexture *defaultParticleTexture();
 	// Called by the texture's file-local graphics reset client.
 	static void resetGraphicsState();
 
@@ -67,7 +67,7 @@ public:
 	bool canCollide() override;
 
 #ifndef NDEBUG
-	std::vector<oo::ObjCRef<::OOTexture *>> allTextures() override;
+	std::vector<oo::Ref<OOTexture>> allTextures() override;
 #endif
 
 	// @protected in Objective-C: public, as the tests read them.

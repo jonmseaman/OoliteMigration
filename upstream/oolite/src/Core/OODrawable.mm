@@ -108,7 +108,7 @@ std::string OODrawable::description() const
 
 
 #ifndef NDEBUG
-std::vector<oo::ObjCRef<::OOTexture *>> OODrawable::allTextures()
+std::vector<oo::Ref<OOTexture>> OODrawable::allTextures()
 {
 	return {};
 }

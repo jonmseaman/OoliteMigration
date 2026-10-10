@@ -774,7 +774,7 @@ std::optional<std::string> HeadUpDisplay::getDeferredHudName()
 void HeadUpDisplay::addLegend(const oo::PList &info)
 {
 	std::optional<std::string>	imageName;
-	oo::ObjCRef<::OOTexture *>	texture;
+	oo::Ref<OOTexture>	texture;
 	NSSize				imageSize;
 	oo::Ref<OOTextureSprite>	legendSprite;
 	struct CachedInfo	cache;
@@ -785,7 +785,7 @@ void HeadUpDisplay::addLegend(const oo::PList &info)
 	imageName = OptionalStringIn(info, IMAGE_KEY);
 	if (imageName.has_value())
 	{
-		texture = cxx::OOTexture::textureWithName(imageName,
+		texture = OOTexture::textureWithName(imageName,
 											 std::string("Images"),
 											 kOOTextureDefaultOptions | kOOTextureNoShrink,
 											 kOOTextureDefaultAnisotropy,
@@ -796,7 +796,7 @@ void HeadUpDisplay::addLegend(const oo::PList &info)
 			return;
 		}
 
-		imageSize = oo::ToCxx(texture.get())->dimensions();
+		imageSize = texture->dimensions();
 		imageSize.width = info.get<float>(WIDTH_KEY, imageSize.width);
 		imageSize.height = info.get<float>(HEIGHT_KEY, imageSize.height);
 
@@ -1760,7 +1760,7 @@ void HeadUpDisplay::drawScannerZoomIndicator(const oo::PList &info)
 		zoomLevel = pow(2, zoomLevel - 1);
 	GLColorWithOverallAlpha(zoom_color, alpha);
 	OOGL(glEnable(GL_TEXTURE_2D));
-	if (sFontTexture != nil)  oo::ToCxx(sFontTexture)->apply();	// a message to nil did nothing
+	if (sFontTexture != nullptr)  sFontTexture->apply();	// a message to nil did nothing
 	
 	OOGLBEGIN(GL_QUADS);
 		if (zoomLevel / 10 > 0)
@@ -1770,7 +1770,7 @@ void HeadUpDisplay::drawScannerZoomIndicator(const oo::PList &info)
 		drawCharacterQuad(49, cx + 0.3 * siz.width, cy, z1, siz);
 	OOGLEND();
 	
-	cxx::OOTexture::applyNone();
+	OOTexture::applyNone();
 	OOGL(glDisable(GL_TEXTURE_2D));
 }
 
@@ -2155,7 +2155,7 @@ void HeadUpDisplay::drawCustomImage(const oo::PList &info)
 		return;
 	}
 
-	oo::ObjCRef<::OOTexture *> texture = cxx::OOTexture::textureWithName(textureFile,
+	oo::Ref<OOTexture> texture = OOTexture::textureWithName(textureFile,
 																std::string("Images"),
 																kOOTextureDefaultOptions | kOOTextureNoShrink,
 																kOOTextureDefaultAnisotropy,
@@ -2166,7 +2166,7 @@ void HeadUpDisplay::drawCustomImage(const oo::PList &info)
 		return;
 	}
 		
-	NSSize imageSize = oo::ToCxx(texture.get())->dimensions();
+	NSSize imageSize = texture->dimensions();
 	imageSize.width = useDefined(cached.width, imageSize.width);
 	imageSize.height = useDefined(cached.height, imageSize.height);
 
@@ -3970,7 +3970,7 @@ static void InitTextEngine(void)
 	fontSpec = ResourceManager::dictionaryFromFilesNamed("oolite-font.plist", std::string("Config"), NO);
 
 	texName = fontSpec.get<std::string>("texture", "oolite-font.png");
-	sFontTexture = cxx::OOTexture::textureWithName(texName,
+	sFontTexture = OOTexture::textureWithName(texName,
 												   std::string("Textures"),
 												   kFontTextureOptions,
 												   0.0f,
@@ -4006,7 +4006,9 @@ oo::Data ConvertedString(const std::string &text)
 
 void OOHUDResetTextEngine(void)
 {
-	DESTROY(sFontTexture);
+	OOTexture *fontTexture = sFontTexture;	// DESTROY(): cleared before the release
+	sFontTexture = nullptr;
+	oo::release(fontTexture);
 	OOEncodingConverter *encodingConverter = sEncodingCoverter;	// DESTROY(): cleared before the release
 	sEncodingCoverter = nullptr;
 	oo::release(encodingConverter);
@@ -4109,7 +4111,7 @@ void OOStartDrawingStrings() {
 	OOSetOpenGLState(OPENGL_STATE_OVERLAY);
 	
 	OOGL(glEnable(GL_TEXTURE_2D));
-	if (sFontTexture != nil)  oo::ToCxx(sFontTexture)->apply();	// a message to nil did nothing
+	if (sFontTexture != nullptr)  sFontTexture->apply();	// a message to nil did nothing
 	OOGLBEGIN(GL_QUADS);
 
 }
@@ -4139,7 +4141,7 @@ void cxx_OODrawStringQuadsAligned(const std::string &text, GLfloat x, GLfloat y,
 void OOStopDrawingStrings() {
 	OOGLEND();
 	
-	cxx::OOTexture::applyNone();
+	OOTexture::applyNone();
 	OOGL(glDisable(GL_TEXTURE_2D));
 	
 	OOVerifyOpenGLState();
@@ -4187,7 +4189,7 @@ void OODrawPlanetInfo(int gov, int eco, int tec, GLfloat x, GLfloat y, GLfloat z
 	OOSetOpenGLState(OPENGL_STATE_OVERLAY);
 	
 	OOGL(glEnable(GL_TEXTURE_2D));
-	if (sFontTexture != nil)  oo::ToCxx(sFontTexture)->apply();	// a message to nil did nothing
+	if (sFontTexture != nullptr)  sFontTexture->apply();	// a message to nil did nothing
 
 	OOGLBEGIN(GL_QUADS);
 	{
@@ -4217,7 +4219,7 @@ void OODrawPlanetInfo(int gov, int eco, int tec, GLfloat x, GLfloat y, GLfloat z
 	
 	(void)cx;	// Suppress "value not used" analyzer issue.
 	
-	cxx::OOTexture::applyNone();
+	OOTexture::applyNone();
 	OOGL(glDisable(GL_TEXTURE_2D));
 	
 	OOVerifyOpenGLState();

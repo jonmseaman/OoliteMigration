@@ -87,7 +87,7 @@ public:
 	void setBindingTarget(id<OOWeakReferenceSupport> target) override;
 	void dumpSelfState() override;
 #ifndef NDEBUG
-	std::vector<oo::ObjCRef<::OOTexture *>> allTextures() override;
+	std::vector<oo::Ref<OOTexture>> allTextures() override;
 #endif
 
 private:

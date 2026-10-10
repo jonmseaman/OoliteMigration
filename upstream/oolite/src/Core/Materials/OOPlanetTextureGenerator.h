@@ -105,10 +105,10 @@ public:
 		(+generatePlanetTexture:andAtmosphere:withInfo:seed:) has its own name: its arguments have
 		the types of the one that took a texture and a secondary texture.
 	*/
-	static oo::ObjCRef<::OOTexture *> planetTextureWithInfo(const oo::PList &planetInfo, RANROTSeed seed);
-	static bool generatePlanetTextureAndAtmosphere(oo::ObjCRef<::OOTexture *> *texture, oo::ObjCRef<::OOTexture *> *atmosphere, const oo::PList &planetInfo, RANROTSeed seed);
-	static bool generatePlanetTexture(oo::ObjCRef<::OOTexture *> *texture, oo::ObjCRef<::OOTexture *> *secondaryTexture, const oo::PList &planetInfo, RANROTSeed seed);
-	static bool generatePlanetTexture(oo::ObjCRef<::OOTexture *> *texture, oo::ObjCRef<::OOTexture *> *secondaryTexture, oo::ObjCRef<::OOTexture *> *atmosphere, const oo::PList &planetInfo, RANROTSeed seed);
+	static oo::Ref<OOTexture> planetTextureWithInfo(const oo::PList &planetInfo, RANROTSeed seed);
+	static bool generatePlanetTextureAndAtmosphere(oo::Ref<OOTexture> *texture, oo::Ref<OOTexture> *atmosphere, const oo::PList &planetInfo, RANROTSeed seed);
+	static bool generatePlanetTexture(oo::Ref<OOTexture> *texture, oo::Ref<OOTexture> *secondaryTexture, const oo::PList &planetInfo, RANROTSeed seed);
+	static bool generatePlanetTexture(oo::Ref<OOTexture> *texture, oo::Ref<OOTexture> *secondaryTexture, oo::Ref<OOTexture> *atmosphere, const oo::PList &planetInfo, RANROTSeed seed);
 
 	std::optional<std::string> descriptionComponents() const override;
 	uint32_t textureOptions() override;

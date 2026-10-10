@@ -64,6 +64,28 @@ public:
 };
 
 
+
+// What an autoreleased Objective-C texture was (bead oo-9ht.99 deleted the facade): the C++
+// texture, kept until the current autorelease pool drains.
+@interface TestTextureKeeper: OOObject
+{
+@public
+	oo::Ref<OOTexture>	_texture;
+}
+@end
+
+@implementation TestTextureKeeper
+@end
+
+static OOTexture *Autoreleased(const oo::Ref<OOTexture> &texture)
+{
+	if (texture == nullptr)  return nullptr;
+	TestTextureKeeper *keeper = [[[TestTextureKeeper alloc] init] autorelease];
+	keeper->_texture = texture;
+	return texture.get();
+}
+
+
 namespace {
 
 // The loaders' sizes come from their one-time set-up, which a path with no known extension runs
@@ -96,7 +118,7 @@ void ClearCache()
 	@autoreleasepool
 	{
 		oo::AutoreleaseScope scope;
-		[OOTexture clearCache];
+		OOTexture::clearCache();
 	}
 }
 
@@ -152,14 +174,14 @@ OO_TEST(aTextureTakesTheGeneratorsSettings)
 		OO_CHECK(generator->textureOptions() == (kOOTextureMinFilterNearest | kOOTextureMagFilterNearest));
 		OO_CHECK(generator->anisotropy() == 0.25f && generator->lodBias() == 0.5f);
 
-		OOTexture *texture = [OOTexture textureWithGenerator:generator];
-		OO_CHECK((dynamic_cast<OOConcreteTexture *>(oo::ToCxx(texture)) != nullptr));
-		OO_CHECK([texture cxx_cacheKey] == std::optional<std::string>("test:choosy"));
-		OO_CHECK([OOTexture textureWithGenerator:generator] == texture);	// cached by the generator's key
-		[texture ensureFinishedLoading];
-		OO_CHECK([texture dimensions].width == 8 && ![texture isMipMapped]);	// nearest: no mip-maps
+		OOTexture *texture = Autoreleased(OOTexture::textureWithGenerator(generator));
+		OO_CHECK((dynamic_cast<OOConcreteTexture *>(texture) != nullptr));
+		OO_CHECK(texture->cacheKey() == std::optional<std::string>("test:choosy"));
+		OO_CHECK(OOTexture::textureWithGenerator(generator).get() == texture);	// cached by the generator's key
+		texture->ensureFinishedLoading();
+		OO_CHECK(texture->dimensions().width == 8 && !texture->isMipMapped());	// nearest: no mip-maps
 #ifndef NDEBUG
-		OO_CHECK([texture cxx_name] == std::optional<std::string>("<ChoosyGenerator>"));
+		OO_CHECK(texture->name() == std::optional<std::string>("<ChoosyGenerator>"));
 #endif
 	}
 	ClearCache();
@@ -203,10 +225,10 @@ OO_TEST(cxxApi)
 		// A texture takes it (it took the generator's facade until bead oo-9ht.118).
 		OO_CHECK(generator->textureOptions() == (kOOTextureMinFilterLinear | kOOTextureMagFilterLinear));
 		OO_CHECK(generator->cacheKey() == std::optional<std::string>("test:cxxgen"));
-		OOTexture *texture = [OOTexture textureWithGenerator:generator.get()];
-		OO_CHECK([texture cxx_cacheKey] == std::optional<std::string>("test:cxxgen"));
-		[texture ensureFinishedLoading];
-		OO_CHECK(generator->loads == 1 && [texture dimensions].width == 8);
+		OOTexture *texture = Autoreleased(OOTexture::textureWithGenerator(generator.get()));
+		OO_CHECK(texture->cacheKey() == std::optional<std::string>("test:cxxgen"));
+		texture->ensureFinishedLoading();
+		OO_CHECK(generator->loads == 1 && texture->dimensions().width == 8);
 
 		// The bare class's own answers.
 		const oo::Ref<OOTextureGenerator> bare = oo::makeRef<OOTextureGenerator>();

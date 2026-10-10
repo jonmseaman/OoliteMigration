@@ -23,6 +23,8 @@
 
 #import "OOSingleTextureMaterial.h"
 #import "OODescription.h"
+#import "OOTexture.h"
+#include "oofnd/String.hpp"
 
 #include "oo_gl_test_context.hpp"
 #include "oo_test.hpp"
@@ -48,43 +50,73 @@ static int gTextureApplyNones = 0;
 static int gTexturesDeallocated = 0;
 static std::vector<oo::PList> gTextureConfigurations;
 
-@interface OOTexture: OOObject
+/*	Since bead oo-9ht.99 deleted the Objective-C facade, the stand-in is C++: the root's static
+	members the material calls, the root's own members (a texture needs them), and TestTexture, the
+	texture the factory answers, with the same answers the Objective-C stand-in gave.
+*/
+class TestTexture final : public OOTexture
 {
-@public
+public:
+	~TestTexture() override					{ gTexturesDeallocated++; }
+	void apply() override					{ _applies++; }
+	void ensureFinishedLoading() override	{ _ensures++; }
+	bool isFinishedLoading() override		{ return _finished; }
+	bool isCubeMap() override				{ return _cubeMap; }
+	std::string description() const override	{ return "<TestTexture>"; }
+
 	oo::PList	_configuration;
-	int			_applies;
-	int			_ensures;
-	BOOL		_finished;
-	BOOL		_cubeMap;
-}
-+ (void) applyNone;
-+ (id) cxx_textureWithConfiguration:(const oo::PList &)configuration;
-- (void) apply;
-- (void) ensureFinishedLoading;
-- (BOOL) isFinishedLoading;
-- (BOOL) isCubeMap;
-@end
+	int			_applies = 0;
+	int			_ensures = 0;
+	BOOL		_finished = NO;
+	BOOL		_cubeMap = NO;
+};
 
-@implementation OOTexture
+void OOTexture::applyNone()	{ gTextureApplyNones++; }
 
-+ (void) applyNone	{ gTextureApplyNones++; }
-
-+ (id) cxx_textureWithConfiguration:(const oo::PList &)configuration
+oo::Ref<OOTexture> OOTexture::textureWithConfiguration(const oo::PList &configuration)
 {
 	gTextureConfigurations.push_back(configuration);
-	if (configuration.isNull() || configuration == oo::PList("missing"))  return nil;
-	OOTexture *texture = [[[OOTexture alloc] init] autorelease];
+	if (configuration.isNull() || configuration == oo::PList("missing"))  return nullptr;
+	oo::Ref<TestTexture> texture = oo::makeRef<TestTexture>();
 	texture->_configuration = configuration;
 	return texture;
 }
 
-- (void) dealloc						{ gTexturesDeallocated++; [super dealloc]; }
-- (void) apply							{ _applies++; }
-- (void) ensureFinishedLoading			{ _ensures++; }
-- (BOOL) isFinishedLoading				{ return _finished; }
-- (BOOL) isCubeMap						{ return _cubeMap; }
-- (std::optional<std::string>) cxx_description	{ return std::string("<TestTexture>"); }
+OOTexture::OOTexture()	{}
+OOTexture::~OOTexture()	{}
+void OOTexture::apply()	{}
+void OOTexture::ensureFinishedLoading()	{}
+bool OOTexture::isFinishedLoading()	{ return true; }
+std::optional<std::string> OOTexture::cacheKey()	{ return std::nullopt; }
+NSSize OOTexture::dimensions()	{ return NSSize{}; }
+NSSize OOTexture::originalDimensions()	{ return dimensions(); }
+bool OOTexture::isMipMapped()	{ return false; }
+OOPixMap OOTexture::copyPixMapRepresentation()	{ return OOPixMap{}; }
+bool OOTexture::isRectangleTexture()	{ return false; }
+bool OOTexture::isCubeMap()	{ return false; }
+NSSize OOTexture::texCoordsScale()	{ return NSSize{1.0, 1.0}; }
+GLint OOTexture::glTextureName()	{ return 0; }
+#ifndef NDEBUG
+std::optional<std::string> OOTexture::name()	{ return std::nullopt; }
+#endif
+std::optional<std::string> OOTexture::descriptionComponents() const	{ return std::nullopt; }
+std::optional<std::string> OOTexture::shortDescriptionComponents() const	{ return std::nullopt; }
+std::string OOTexture::description() const	{ return oo::str::format("<OOTexture %s>", oo::str::pointerDescription(this).c_str()); }
+std::string OOTexture::shortDescription() const	{ return description(); }
+std::string OOTexture::className() const	{ return "OOTexture"; }
+void OOTexture::forceRebind()	{}
 
+
+// What the Objective-C factory's autoreleased result was: the texture, kept until the current
+// autorelease pool drains.
+@interface TestTextureKeeper: OOObject
+{
+@public
+	oo::Ref<OOTexture>	_texture;
+}
+@end
+
+@implementation TestTextureKeeper
 @end
 
 
@@ -112,9 +144,11 @@ Universe *gSharedUniverse = nil;
 
 namespace {
 
-OOTexture *MakeTexture()
+TestTexture *MakeTexture()
 {
-	return [OOTexture cxx_textureWithConfiguration:oo::PList("hull.png")];
+	TestTextureKeeper *keeper = [[[TestTextureKeeper alloc] init] autorelease];
+	keeper->_texture = OOTexture::textureWithConfiguration(oo::PList("hull.png"));
+	return static_cast<TestTexture *>(keeper->_texture.get());
 }
 
 
@@ -148,7 +182,7 @@ OO_TEST(initWithTexture)
 {
 	@autoreleasepool
 	{
-		OOTexture *texture = MakeTexture();
+		TestTexture *texture = MakeTexture();
 		const oo::Ref<OOSingleTextureMaterial> m = Make(std::string("Hull"), texture, oo::PList(oo::PList::Dict{ { "diffuse_color", oo::PList("redColor") } }));
 		OO_CHECK(m != nullptr && m->name() == std::optional<std::string>("Hull"));
 		GLfloat c[4] = {};
@@ -156,7 +190,7 @@ OO_TEST(initWithTexture)
 		OO_CHECK(Same(c, { 1, 0, 0, 1 }));	// the configuration reached the basic material
 		OO_CHECK(m->shininess() == 10);
 #ifndef NDEBUG
-		const std::vector<oo::ObjCRef<OOTexture *>> textures = m->allTextures();
+		const std::vector<oo::Ref<OOTexture>> textures = m->allTextures();
 		OO_CHECK(textures.size() == 1 && textures[0].get() == texture);
 #endif
 
@@ -219,7 +253,7 @@ OO_TEST(texturesQuestions)
 {
 	@autoreleasepool
 	{
-		OOTexture *texture = MakeTexture();
+		TestTexture *texture = MakeTexture();
 		const oo::Ref<OOSingleTextureMaterial> m = Make(std::string("Asks"), texture);
 		OO_CHECK(!m->isFinishedLoading() && !m->wantsNormalsAsTextureCoordinates());
 		texture->_finished = YES;
@@ -241,7 +275,7 @@ OO_TEST(doApply)
 	if (!OOTestGLContext())  { OO_CHECK(false); return; }
 	@autoreleasepool
 	{
-		OOTexture *texture = MakeTexture();
+		TestTexture *texture = MakeTexture();
 		const oo::Ref<OOSingleTextureMaterial> m = Make(std::string("Applied"), texture);
 		m->setDiffuseRed(0.5f, 0.25f, 0.125f, 1);
 		const int applyNones = gTextureApplyNones;
@@ -310,7 +344,7 @@ OO_TEST(cxxAPI)
 {
 	@autoreleasepool
 	{
-		OOTexture *texture = MakeTexture();
+		TestTexture *texture = MakeTexture();
 		const oo::Ref<OOSingleTextureMaterial> m = OOSingleTextureMaterial::materialWithName(std::string("Cxx"), texture, oo::PList());
 		OO_CHECK(m != nullptr && m->name() == std::optional<std::string>("Cxx") && m->shininess() == 10);
 		OO_CHECK(m->descriptionComponents() == std::optional<std::string>("<TestTexture>"));

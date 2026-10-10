@@ -105,7 +105,7 @@ std::optional<std::string> DescriptorName(const oo::PList &descriptor)
 }
 
 
-oo::ObjCRef<OOTexture *> TextureForGUITexture(const oo::PList &descriptor, uint32_t srgbaOption)
+oo::Ref<OOTexture> TextureForGUITexture(const oo::PList &descriptor, uint32_t srgbaOption)
 {
 	/*
 		GUI textures like backgrounds, foregrounds etc. are not processed in any way after loading. However, they are
@@ -117,7 +117,7 @@ oo::ObjCRef<OOTexture *> TextureForGUITexture(const oo::PList &descriptor, uint3
 		Also, remember that if no shaders are in use (as in lower detail levels), then we don't need to declare anything.
 	*/
 	if (!GuiDisplayGenUniverseUseShaders())  srgbaOption = 0;
-	return cxx::OOTexture::textureWithName(DescriptorName(descriptor),
+	return OOTexture::textureWithName(DescriptorName(descriptor),
 										   "Images",
 										   kOOTextureDefaultOptions | kOOTextureNoShrink | srgbaOption,
 										   kOOTextureDefaultAnisotropy,
@@ -130,7 +130,7 @@ oo::ObjCRef<OOTexture *> TextureForGUITexture(const oo::PList &descriptor, uint3
 */
 oo::Ref<OOTextureSprite> NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uint32_t srgbaOption)
 {
-	oo::ObjCRef<OOTexture *>	texture;
+	oo::Ref<OOTexture>	texture;
 	NSSize			size;
 
 	texture = TextureForGUITexture(descriptor, srgbaOption);
@@ -149,7 +149,7 @@ oo::Ref<OOTextureSprite> NewTextureSpriteWithDescriptor(const oo::PList &descrip
 	}
 	else
 	{
-		NSSize originalDimensions = oo::ToCxx(texture.get())->originalDimensions();
+		NSSize originalDimensions = texture->originalDimensions();
 
 		if (haveWidth)
 		{
@@ -1780,7 +1780,7 @@ void GuiDisplayGen::drawGLDisplay(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha
 		}
 	}
 	OOStopDrawingStrings();
-	[::OOTexture applyNone];
+	OOTexture::applyNone();
 }
 
 

@@ -137,27 +137,27 @@ bool OOStandaloneAtmosphereGenerator::initWithPlanetInfo(const oo::PList &planet
 }
 
 
-oo::ObjCRef<::OOTexture *> OOStandaloneAtmosphereGenerator::planetTextureWithInfo(const oo::PList &planetInfo, RANROTSeed seed)
+oo::Ref<OOTexture> OOStandaloneAtmosphereGenerator::planetTextureWithInfo(const oo::PList &planetInfo, RANROTSeed seed)
 {
-	oo::ObjCRef<::OOTexture *> result;
+	oo::Ref<OOTexture> result;
 	const oo::Ref<OOStandaloneAtmosphereGenerator> generator = generatorWithPlanetInfo(planetInfo, seed);
 	if (generator)
 	{
-		result = cxx::OOTexture::textureWithGenerator(generator.get());
+		result = OOTexture::textureWithGenerator(generator.get());
 	}
 
 	return result;
 }
 
 
-bool OOStandaloneAtmosphereGenerator::generateAtmosphereTexture(oo::ObjCRef<::OOTexture *> *texture, const oo::PList &planetInfo, RANROTSeed seed)
+bool OOStandaloneAtmosphereGenerator::generateAtmosphereTexture(oo::Ref<OOTexture> *texture, const oo::PList &planetInfo, RANROTSeed seed)
 {
 	OOCParameterAssert(texture != NULL);
 
 	const oo::Ref<OOStandaloneAtmosphereGenerator> atmoGen = generatorWithPlanetInfo(planetInfo, seed);
 	if (!atmoGen)  return false;
 
-	*texture = cxx::OOTexture::textureWithGenerator(atmoGen.get());
+	*texture = OOTexture::textureWithGenerator(atmoGen.get());
 
 	return texture->get() != nil;
 }

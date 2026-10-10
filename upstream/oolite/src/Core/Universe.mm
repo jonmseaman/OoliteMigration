@@ -10983,7 +10983,7 @@ bool Universe::reinitAndShowDemo(bool showDemo)
 	}
 	
 	[self removeAllEntitiesExceptPlayer];
-	[::OOTexture clearCache];
+	OOTexture::clearCache();
 	
 	_sessionID++;	// Must be after removing old entities and before adding new ones.
 	

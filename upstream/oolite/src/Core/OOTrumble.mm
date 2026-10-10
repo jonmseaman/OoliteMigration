@@ -185,11 +185,7 @@ void OOTrumble::setupForPlayer(::PlayerEntity* p1, const std::string & digramStr
 	animationTime = 0.0;
 	animationDuration = 1.5 + randf() * 3.0;	// time until next animation
 	//
-	texture = oo::ObjCRef<::OOTexture *>([::OOTexture cxx_textureWithName:"trumblekit.png"
-								inFolder:"Textures"
-								 options:kOOTextureDefaultOptions | kOOTextureNoShrink
-							  anisotropy:0.0f
-								 lodBias:kOOTextureDefaultLODBias]);
+	texture = oo::Ref<OOTexture>(OOTexture::textureWithName("trumblekit.png", "Textures", kOOTextureDefaultOptions | kOOTextureNoShrink, 0.0f, kOOTextureDefaultLODBias));
 	
 	InitTrumbleSounds();
 	
@@ -369,7 +365,7 @@ void OOTrumble::drawTrumble(double z)
 	OOGLTranslateModelView(make_vector(position.x, position.y, z));
 	OOGLMultModelView(OOMatrixForRotationZ(rotation));
 
-	[texture.get() apply];
+	if (texture != nullptr)  texture->apply();	// a message to nil did nothing
 
 	//
 	// Body..

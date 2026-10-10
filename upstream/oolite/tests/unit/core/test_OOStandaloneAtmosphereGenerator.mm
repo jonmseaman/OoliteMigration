@@ -37,6 +37,28 @@ uint32_t gDebugFlags = 0;
 #endif
 
 
+
+// What an autoreleased Objective-C texture was (bead oo-9ht.99 deleted the facade): the C++
+// texture, kept until the current autorelease pool drains.
+@interface TestTextureKeeper: OOObject
+{
+@public
+	oo::Ref<OOTexture>	_texture;
+}
+@end
+
+@implementation TestTextureKeeper
+@end
+
+static OOTexture *Autoreleased(const oo::Ref<OOTexture> &texture)
+{
+	if (texture == nullptr)  return nullptr;
+	TestTextureKeeper *keeper = [[[TestTextureKeeper alloc] init] autorelease];
+	keeper->_texture = texture;
+	return texture.get();
+}
+
+
 namespace {
 
 const RANROTSeed kSeed = { 12345, 67890 };
@@ -89,15 +111,15 @@ OOTextureGenerator *NewGenerator(const oo::PList &info, RANROTSeed seed)
 // Was +generateAtmosphereTexture:withInfo:seed:; the texture (autoreleased), or nil where it answered NO.
 OOTexture *GenerateAtmosphere(const oo::PList &info, RANROTSeed seed)
 {
-	oo::ObjCRef<OOTexture *> texture;
-	return OOStandaloneAtmosphereGenerator::generateAtmosphereTexture(&texture, info, seed) ? [[texture.get() retain] autorelease] : nil;
+	oo::Ref<OOTexture> texture;
+	return OOStandaloneAtmosphereGenerator::generateAtmosphereTexture(&texture, info, seed) ? Autoreleased(texture) : nil;
 }
 
 
 // Was +planetTextureWithInfo:seed: (autoreleased).
 OOTexture *PlanetTexture(const oo::PList &info, RANROTSeed seed)
 {
-	return [[OOStandaloneAtmosphereGenerator::planetTextureWithInfo(info, seed).get() retain] autorelease];
+	return Autoreleased(OOStandaloneAtmosphereGenerator::planetTextureWithInfo(info, seed));
 }
 
 // --------------------------------------------------------------------------------------------------
@@ -128,7 +150,7 @@ void ClearCache()
 	@autoreleasepool
 	{
 		oo::AutoreleaseScope scope;
-		[OOTexture clearCache];
+		OOTexture::clearCache();
 	}
 }
 
@@ -200,14 +222,14 @@ OO_TEST(textures)
 	@autoreleasepool
 	{
 		OOTexture *atmosphere = GenerateAtmosphere(PlanetInfo(1.0f, false), kSeed);
-		OO_CHECK((dynamic_cast<OOConcreteTexture *>(oo::ToCxx(atmosphere)) != nullptr));
-		[atmosphere ensureFinishedLoading];
-		OO_CHECK([atmosphere isFinishedLoading] && [atmosphere dimensions].width == 512 && [atmosphere dimensions].height == 512);
+		OO_CHECK((dynamic_cast<OOConcreteTexture *>(atmosphere) != nullptr));
+		atmosphere->ensureFinishedLoading();
+		OO_CHECK(atmosphere->isFinishedLoading() && atmosphere->dimensions().width == 512 && atmosphere->dimensions().height == 512);
 
 		OOTexture *texture = PlanetTexture(PlanetInfo(1.0f, true), (RANROTSeed){ 3, 4 });
-		OO_CHECK((dynamic_cast<OOConcreteTexture *>(oo::ToCxx(texture)) != nullptr));
-		[texture ensureFinishedLoading];
-		OO_CHECK([texture dimensions].width == 512 && [texture dimensions].height == 256);
+		OO_CHECK((dynamic_cast<OOConcreteTexture *>(texture) != nullptr));
+		texture->ensureFinishedLoading();
+		OO_CHECK(texture->dimensions().width == 512 && texture->dimensions().height == 256);
 	}
 	ClearCache();
 }
@@ -234,9 +256,9 @@ OO_TEST(cxxApi)
 		OO_CHECK(generator->getResultFormatWidthHeight(&pixMap, &format, nullptr, nullptr) && format == kOOPixMapRGBA && pixMap.width == 512);
 		OOFreePixMap(&pixMap);
 
-		oo::ObjCRef<OOTexture *> texture;
-		OO_CHECK(OOStandaloneAtmosphereGenerator::generateAtmosphereTexture(&texture, PlanetInfo(1.0f, false), (RANROTSeed){ 9, 9 }) && (dynamic_cast<OOConcreteTexture *>(oo::ToCxx(texture.get())) != nullptr));
-		OO_CHECK((dynamic_cast<OOConcreteTexture *>(oo::ToCxx(OOStandaloneAtmosphereGenerator::planetTextureWithInfo(PlanetInfo(1.0f, false), (RANROTSeed){ 9, 10 }).get())) != nullptr));
+		oo::Ref<OOTexture> texture;
+		OO_CHECK(OOStandaloneAtmosphereGenerator::generateAtmosphereTexture(&texture, PlanetInfo(1.0f, false), (RANROTSeed){ 9, 9 }) && (dynamic_cast<OOConcreteTexture *>(texture.get()) != nullptr));
+		OO_CHECK((dynamic_cast<OOConcreteTexture *>(OOStandaloneAtmosphereGenerator::planetTextureWithInfo(PlanetInfo(1.0f, false), (RANROTSeed){ 9, 10 }).get()) != nullptr));
 	}
 	ClearCache();
 }

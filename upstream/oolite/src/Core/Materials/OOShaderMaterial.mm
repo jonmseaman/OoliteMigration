@@ -237,12 +237,12 @@ bool OOShaderMaterial::initWithName(const std::optional<std::string> &name,
 		const oo::PList *uniformDefs = configuration.find(kOOUniformsKey);
 
 		// Texture objects from the configuration (Object nodes), else texture specifiers loaded.
-		std::vector<oo::ObjCRef<::OOTexture *>> textureObjects;
+		std::vector<oo::Ref<OOTexture>> textureObjects;
 		if (const oo::PList *textureArray = configuration.get<oo::PList::Array>(kOOTextureObjectsKey))
 		{
 			for (const oo::PList &entry : *textureArray->getIf<oo::PList::Array>())
 			{
-				textureObjects.push_back(oo::ObjCRef<::OOTexture *>(oo::ObjectIn(entry)));
+				textureObjects.push_back(oo::Ref<OOTexture>(OOTextureInObjectNode(entry)));
 			}
 		}
 		else if (const oo::PList *textureSpecs = configuration.get<oo::PList::Array>(kOOTexturesKey))
@@ -286,7 +286,7 @@ OOShaderMaterial::~OOShaderMaterial()
 	{
 		for (i = 0; i != texCount; ++i)
 		{
-			[textures[i] release];
+			oo::release(textures[i]);
 		}
 		free(textures);
 	}
@@ -640,7 +640,7 @@ bool OOShaderMaterial::doApply()
 	for (i = 0; i != texCount; ++i)
 	{
 		OOGL(glActiveTextureARB(GL_TEXTURE0_ARB + i));
-		[textures[i] apply];
+		if (textures[i] != nullptr)  textures[i]->apply();	// a message to nil did nothing
 	}
 	if (texCount > 1)  OOGL(glActiveTextureARB(GL_TEXTURE0_ARB));
 
@@ -671,7 +671,7 @@ void OOShaderMaterial::ensureFinishedLoading()
 	{
 		for (i = 0; i != texCount; ++i)
 		{
-			[textures[i] ensureFinishedLoading];
+			if (textures[i] != nullptr)  textures[i]->ensureFinishedLoading();
 		}
 	}
 }
@@ -685,7 +685,7 @@ bool OOShaderMaterial::isFinishedLoading()
 	{
 		for (i = 0; i != texCount; ++i)
 		{
-			if (![textures[i] isFinishedLoading])  return false;
+			if (textures[i] == nullptr || !textures[i]->isFinishedLoading())  return false;	// nil answered NO
 		}
 	}
 
@@ -714,7 +714,7 @@ void OOShaderMaterial::unapplyWithNext(OOMaterial *next)
 		for (i = 0; i != count; ++i)
 		{
 			OOGL(glActiveTextureARB(GL_TEXTURE0_ARB + i));
-			[::OOTexture applyNone];
+			OOTexture::applyNone();
 		}
 		if (count != 1)  OOGL(glActiveTextureARB(GL_TEXTURE0_ARB));
 	}
@@ -738,9 +738,9 @@ bool OOShaderMaterial::permitSpecular()
 
 
 #ifndef NDEBUG
-std::vector<oo::ObjCRef<::OOTexture *>> OOShaderMaterial::allTextures()
+std::vector<oo::Ref<OOTexture>> OOShaderMaterial::allTextures()
 {
-	std::vector<oo::ObjCRef<::OOTexture *>> result;
+	std::vector<oo::Ref<OOTexture>> result;
 	result.reserve(texCount);
 	for (uint32_t i = 0; i < texCount; i++)
 	{
@@ -751,30 +751,30 @@ std::vector<oo::ObjCRef<::OOTexture *>> OOShaderMaterial::allTextures()
 #endif
 
 
-std::vector<oo::ObjCRef<::OOTexture *>> OOShaderMaterial::loadTexturesFromArray(const oo::PList &textureSpecs, GLuint max)
+std::vector<oo::Ref<OOTexture>> OOShaderMaterial::loadTexturesFromArray(const oo::PList &textureSpecs, GLuint max)
 {
 	GLuint i, count = (GLuint)MIN(textureSpecs.count(), (size_t)max);
-	std::vector<oo::ObjCRef<::OOTexture *>> result;
+	std::vector<oo::Ref<OOTexture>> result;
 	result.reserve(count);
 
 	for (i = 0; i < count; i++)
 	{
-		::OOTexture *texture = [::OOTexture cxx_textureWithConfiguration:*textureSpecs.at(i)];
-		if (texture == nil)  texture = [::OOTexture nullTexture];
-		result.push_back(oo::ObjCRef<::OOTexture *>(texture));
+		oo::Ref<OOTexture> texture = OOTexture::textureWithConfiguration(*textureSpecs.at(i));
+		if (texture == nullptr)  texture = OOTexture::nullTexture();
+		result.push_back(texture);
 	}
 
 	return result;
 }
 
 
-void OOShaderMaterial::addTexturesFromArray(const std::vector<oo::ObjCRef<::OOTexture *>> &textureObjects, GLuint max)
+void OOShaderMaterial::addTexturesFromArray(const std::vector<oo::Ref<OOTexture>> &textureObjects, GLuint max)
 {
 	// Allocate space for texture object name array
 	texCount = (uint32_t)MIN(textureObjects.size(), (size_t)max);
 	if (texCount == 0)  return;
 
-	textures = (::OOTexture **)malloc(texCount * sizeof *textures);
+	textures = (OOTexture **)malloc(texCount * sizeof *textures);
 	if (textures == NULL)
 	{
 		texCount = 0;
@@ -785,8 +785,7 @@ void OOShaderMaterial::addTexturesFromArray(const std::vector<oo::ObjCRef<::OOTe
 	unsigned i;
 	for (i = 0; i != texCount; ++i)
 	{
-		textures[i] = textureObjects[i].get();
-		[textures[i] retain];
+		textures[i] = oo::Ref<OOTexture>(textureObjects[i]).leakRef();	// released in the destructor
 	}
 }
 

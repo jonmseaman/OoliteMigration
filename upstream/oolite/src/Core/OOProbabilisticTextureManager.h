@@ -47,7 +47,7 @@ SOFTWARE.
 #include <string>
 
 
-@class OOTexture;
+class OOTexture;
 
 
 class OOProbabilisticTextureManager : public oo::RefCounted

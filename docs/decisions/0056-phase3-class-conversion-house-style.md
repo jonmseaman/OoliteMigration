@@ -7113,3 +7113,58 @@ but its byte-identical `.mm -> .cpp` rename did not compile: `OOMaterial.h` is O
 
 **Consequences.** No behaviour change. OODebugGLDrawing is the first Core rendering file compiled as
 plain C++; `OOMaterialState.h` is the pattern for another `.cpp` that needs only the slot.
+
+
+## Amendment (bead oo-9ht.99 (OOTexture)): the texture root's facade is deleted; textures are held as oo::Ref and travel in plists as their own Object node
+
+- **Status:** proposed (batch Z, Migration Completion session, 2026-10-10; recommended defaults per
+  CLAUDE.md rule 10, taken by Jon's batch Z instruction). Bead: oo-9ht.99. Exemplar:
+  `src/Core/Materials/OOTexture.h/.mm`, `tests/unit/core/test_OOTexture.mm`,
+  `test_OOSingleTextureMaterial.mm` (a C++ stand-in of the class's members).
+
+**Context.** Every texture was C++ (OOConcreteTexture, OONullTexture, OOEnvironmentCubeMap) and so
+were the loaders and generators (oo-9ht.114, oo-9ht.118); the facade remained for about 250 uses
+in 70 files: holders of `oo::ObjCRef<::OOTexture *>`, sends to it, the texture lists of the
+materials, drawables and entities, the recent-textures cache (an OOCache of property lists) and the
+shader material's `_oo_texture_objects` (textures put in a material configuration by the planet).
+
+**Decision (recommended defaults).**
+
+1. **The class leaves namespace `cxx`** and the two bridge files, their meson entry and
+   OOTextureInternal.h's Objective-C categories go. The factories answer `oo::Ref<OOTexture>` (null
+   where they answered nil); `nullTexture()` answers OONullTexture's shared instance;
+   `cachedTexturesByAge()`/`allTextures()` and every `allTextures()` answer
+   `std::vector<oo::Ref<OOTexture>>`. Static textures kept by `[[... ] retain]` (laser shot, flash,
+   plume, light particle, HUD font) are `leakRef()`ed and `oo::release()`d at the graphics reset;
+   the shader material's and the probabilistic manager's malloc'ed arrays hold `leakRef()`ed
+   references. A send that could reach nil keeps the answer a message to nil gave (a null check).
+2. **A texture is an `oo::PListForeign`** (`OOTextureObjectNode()` / `OOTextureInObjectNode()`, as
+   OOColor's): the recent-textures cache and `_oo_texture_objects` hold the texture itself;
+   `className()` is `OOTexture`, the facade's class.
+3. **Descriptions are the facade's, with the texture's address**: `description()` is
+   `<CxxClass 0x...>{components}` (the facade's `-cxx_description`); `shortDescription()` names the
+   facade's class, `<OOTexture 0x...>{short components}`, because the emission-map generator puts
+   it into its cache key.
+4. **A test-only loader hook** replaces the four tests' `method_setImplementation` of the facade's
+   class methods: the five-argument `textureWithName()` and one-argument
+   `textureWithConfiguration()` answer through `OOTexture::nameFactory` /
+   `configurationFactory`, settable function pointers that default to the real loaders
+   (`loadTextureWithName()`, `loadTextureWithConfiguration()`); the other factories call the real
+   loaders directly, as only those two selectors were replaced. The game never sets them.
+5. **OODrawable.h, OOMaterial.h and Entity.h include OOTexture.h** where they declared the class:
+   destroying an `oo::Ref<OOTexture>` (their `allTextures()` results) needs the complete type,
+   which an `oo::ObjCRef` did not.
+6. **Differences (debug builds only):** the memory statistics count a texture's object size as
+   `sizeof(OOTexture)` (it was the facade's instance size); `setTrace()` logs the C++ texture's
+   address and retain count; the trace, reload and planet-atmosphere log lines print the C++
+   texture's description (its address). No game behaviour changes.
+7. **Tests** (standing approval oo-9n5p9; one approval line per file): the facade's crossing cases
+   go (`objCTextureBehindACxxPointer`, `nilAndLifetime`, `nullTextureCrossesAsTheRootFacade`,
+   `concreteTextureCrossesAsTheRootFacade`, and the facade class/superclass/identity lines); the
+   Objective-C stand-ins of tests that do not link OOTexture.mm are C++ definitions of the class's
+   members with the same answers (a `TestTexture` subclass where the stand-in had state); an
+   autoreleased texture is kept until its pool drains (`TestTextureKeeper`); every other case's
+   sends call the same members with every expectation kept.
+
+**Consequences.** No Objective-C texture or texture facade is left, and OOTexture.h no longer
+imports OOWeakReference.h; it still imports OOCocoa.h (`NSSize`).

@@ -224,6 +224,7 @@ std::optional<std::string> ResourceManager::pathForFileNamed(const std::string &
 
 
 #import "OOScript.h"
+#import "OOTexture.h"
 
 
 // OOJSScript (OOJSScript.h), which the code under test calls. Since bead oo-9ht.133 deleted the
@@ -327,15 +328,11 @@ std::optional<oo::Data> OODataFromOXZFile(const std::string &path)
 
 
 // No textures, so the memory dump lists none; and no entity class is ever an entity.
-@interface OOTexture: OOObject
-+ (std::vector<oo::ObjCRef<OOTexture *>>) cxx_cachedTexturesByAge;
-+ (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures;
-@end
-
-@implementation OOTexture
-+ (std::vector<oo::ObjCRef<OOTexture *>>) cxx_cachedTexturesByAge	{ return {}; }
-+ (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures			{ return {}; }
-@end
+// The C++ OOTexture's static members (bead oo-9ht.99 deleted the Objective-C facade they stood in for),
+// and the member the dump calls on each texture (there are none: never reached).
+std::vector<oo::Ref<OOTexture>> OOTexture::cachedTexturesByAge()	{ return {}; }
+std::vector<oo::Ref<OOTexture>> OOTexture::allTextures()			{ return {}; }
+size_t OOTexture::dataSize()	{ std::abort(); }
 
 
 // An entity with a drawable: C++ since bead oo-9ht.40 deleted its Objective-C facade, the member

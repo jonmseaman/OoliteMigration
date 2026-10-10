@@ -54,6 +54,6 @@ private:
 	OOTimeDelta			_cloudDuration = {};
 	float				_alpha = {};
 	float				_brightnessMult = {};
-	oo::ObjCRef<OOTexture *>	_texture;
+	oo::Ref<OOTexture>	_texture;
 	oo::PList			_settings;
 };

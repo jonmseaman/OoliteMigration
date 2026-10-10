@@ -47,6 +47,28 @@ uint32_t gDebugFlags = 0;
 #endif
 
 
+
+// What an autoreleased Objective-C texture was (bead oo-9ht.99 deleted the facade): the C++
+// texture, kept until the current autorelease pool drains.
+@interface TestTextureKeeper: OOObject
+{
+@public
+	oo::Ref<OOTexture>	_texture;
+}
+@end
+
+@implementation TestTextureKeeper
+@end
+
+static OOTexture *Autoreleased(const oo::Ref<OOTexture> &texture)
+{
+	if (texture == nullptr)  return nullptr;
+	TestTextureKeeper *keeper = [[[TestTextureKeeper alloc] init] autorelease];
+	keeper->_texture = texture;
+	return texture.get();
+}
+
+
 namespace {
 
 namespace stdfs = std::filesystem;
@@ -165,8 +187,8 @@ void Bake(OOTextureGenerator *generator, Baked &baked)
 // The diffuse map: d.png, loaded.
 OOTexture *DiffuseMap()
 {
-	OOTexture *texture = [OOTexture cxx_textureWithName:std::string("d.png") inFolder:std::string("Textures")];
-	[texture ensureFinishedLoading];
+	OOTexture *texture = Autoreleased(OOTexture::textureWithName(std::string("d.png"), std::string("Textures")));
+	texture->ensureFinishedLoading();
 	return texture;
 }
 
@@ -176,7 +198,7 @@ void ClearCache()
 	@autoreleasepool
 	{
 		oo::AutoreleaseScope scope;
-		[OOTexture clearCache];
+		OOTexture::clearCache();
 	}
 }
 
@@ -228,7 +250,7 @@ OO_TEST(cacheKeys)
 				 == std::optional<std::string>("emission map;emission:{" + KeyOf("e.png") + "};"));
 
 		OOTexture *diffuse = DiffuseMap();
-		const std::string diffuseKey = [diffuse cxx_cacheKey].value_or("");
+		const std::string diffuseKey = diffuse->cacheKey().value_or("");
 		OO_CHECK(!diffuseKey.empty());
 		// The illumination colour is the diffuse colour times the illumination colour.
 		OO_CHECK(NewGenerator(oo::PList(), nil, diffuse, red.get(), oo::PList("i.png"), OOColor::yellowColor().get(), oo::PList("i.png"))->cacheKey()
@@ -305,11 +327,11 @@ OO_TEST(aTextureOfTheGenerator)
 	SetUp();
 	@autoreleasepool
 	{
-		OOTexture *texture = [OOTexture textureWithGenerator:NewGenerator(oo::PList("e.png"), OOColor::redColor().get(), nil, nil, oo::PList(), nil, oo::PList("e.png"))];
-		OO_CHECK((dynamic_cast<OOConcreteTexture *>(oo::ToCxx(texture)) != nullptr));
-		[texture ensureFinishedLoading];
-		OO_CHECK([texture isFinishedLoading] && [texture dimensions].width > 0);
-		OO_CHECK([texture cxx_cacheKey] == NewGenerator(oo::PList("e.png"), OOColor::redColor().get(), nil, nil, oo::PList(), nil, oo::PList("e.png"))->cacheKey());
+		OOTexture *texture = Autoreleased(OOTexture::textureWithGenerator(NewGenerator(oo::PList("e.png"), OOColor::redColor().get(), nil, nil, oo::PList(), nil, oo::PList("e.png"))));
+		OO_CHECK((dynamic_cast<OOConcreteTexture *>(texture) != nullptr));
+		texture->ensureFinishedLoading();
+		OO_CHECK(texture->isFinishedLoading() && texture->dimensions().width > 0);
+		OO_CHECK(texture->cacheKey() == NewGenerator(oo::PList("e.png"), OOColor::redColor().get(), nil, nil, oo::PList(), nil, oo::PList("e.png"))->cacheKey());
 
 		// While that texture is cached, a generator of its key reads no map, so it bakes nothing.
 		Baked baked;

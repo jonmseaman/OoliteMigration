@@ -82,7 +82,7 @@ public:
 	void unapplyWithNext(OOMaterial *next) override;
 	size_t objectSize() const override	{ return sizeof *this; }
 #ifndef NDEBUG
-	std::vector<oo::ObjCRef<::OOTexture *>> allTextures() override;
+	std::vector<oo::Ref<OOTexture>> allTextures() override;
 #endif
 
 	oo::Ref<OOColor> diffuseColor();

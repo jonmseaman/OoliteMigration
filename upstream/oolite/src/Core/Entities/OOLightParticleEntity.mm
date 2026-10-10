@@ -176,7 +176,7 @@ void OOLightParticleEntity::drawImmediate(bool /*immediate*/, bool translucent)
 	
 	OOViewID viewDir = [UNIVERSE viewDirection];
 	if (viewDir != VIEW_GUI_DISPLAY)  OOGLMultModelView((PLAYER != nullptr ? PLAYER->drawRotationMatrix() : OOMatrix{}));
-	[texture() apply];
+	if (OOTexture *blob = texture())  blob->apply();	// a message to nil did nothing
 	
 	/*	NOTE: nominal diameter is actual radius, because of the black border
 		in the texture. However, the offset along the view axis is not
@@ -285,7 +285,7 @@ void OOLightParticleEntity::drawImmediate(bool /*immediate*/, bool translucent)
 }
 
 
-::OOTexture *OOLightParticleEntity::texture()
+OOTexture *OOLightParticleEntity::texture()
 {
 	return OOLightParticleEntity::defaultParticleTexture();
 }
@@ -295,17 +295,13 @@ void OOLightParticleEntity::setUpTexture()
 {
 	if (sBlobTexture == nil)
 	{
-		sBlobTexture = [[::OOTexture cxx_textureWithName:"oolite-particle-blur.png"
-										  inFolder:"Textures"
-										   options:kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureAlphaMask
-										anisotropy:kOOTextureDefaultAnisotropy / 2.0
-										   lodBias:0.0] retain];
+		sBlobTexture = OOTexture::textureWithName("oolite-particle-blur.png", "Textures", kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureAlphaMask, kOOTextureDefaultAnisotropy / 2.0, 0.0).leakRef();
 		OOGraphicsResetManager::sharedManager()->registerCxxClient(new BlobTextureResetClient);
 	}
 }
 
 
-::OOTexture *OOLightParticleEntity::defaultParticleTexture()
+OOTexture *OOLightParticleEntity::defaultParticleTexture()
 {
 	if (sBlobTexture == nil)  setUpTexture();
 	return sBlobTexture;
@@ -314,8 +310,8 @@ void OOLightParticleEntity::setUpTexture()
 
 void OOLightParticleEntity::resetGraphicsState()
 {
-	[sBlobTexture release];
-	sBlobTexture = nil;
+	oo::release(sBlobTexture);
+	sBlobTexture = nullptr;
 }
 
 
@@ -333,9 +329,9 @@ bool OOLightParticleEntity::canCollide()
 
 
 #ifndef NDEBUG
-std::vector<oo::ObjCRef<::OOTexture *>> OOLightParticleEntity::allTextures()
+std::vector<oo::Ref<OOTexture>> OOLightParticleEntity::allTextures()
 {
-	std::vector<oo::ObjCRef<::OOTexture *>> result;
+	std::vector<oo::Ref<OOTexture>> result;
 	result.emplace_back(texture());
 	return result;
 }

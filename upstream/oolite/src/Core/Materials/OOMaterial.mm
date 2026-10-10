@@ -162,7 +162,7 @@ NSUInteger OOMaterial::countOfTextureUnitsWithBaseCoordinates()
 
 
 #ifndef NDEBUG
-std::vector<oo::ObjCRef<::OOTexture *>> OOMaterial::allTextures()
+std::vector<oo::Ref<OOTexture>> OOMaterial::allTextures()
 {
 	return {};
 }

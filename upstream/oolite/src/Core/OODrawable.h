@@ -46,7 +46,7 @@ SOFTWARE.
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"
 
-@class OOTexture;
+#include "OOTexture.h"	// allTextures() answers oo::Ref<OOTexture>, which needs the class (bead oo-9ht.99)
 
 
 class OODrawable : public oo::RefCounted
@@ -76,7 +76,7 @@ public:
 	std::string description() const;
 
 #ifndef NDEBUG
-	virtual std::vector<oo::ObjCRef<::OOTexture *>> allTextures();
+	virtual std::vector<oo::Ref<OOTexture>> allTextures();
 	virtual size_t totalSize();	// Size including dynamic data, not counting textures.
 
 	// The object's own size, which totalSize() starts from (the facade's instance size until bead

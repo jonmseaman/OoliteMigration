@@ -30,6 +30,7 @@
 #import "OORegExpMatcher.h"
 #import "OOOpenGLExtensionManager.h"
 #import "OODescription.h"
+#import "OOTexture.h"
 #import "OOObjCPList.h"
 #import "legacy_random.h"
 
@@ -197,53 +198,70 @@ void OOShaderUniform::setBindingTarget(id<OOWeakReferenceSupport> target)	{ gUni
 static int gTextureApplyNones = 0;
 static int gTexturesDeallocated = 0;
 
-@interface OOTexture: OOObject
+// Since bead oo-9ht.99 deleted the Objective-C facade, the stand-in is C++: the root's static
+// members the material calls, TestTexture (what they answer), and the root's own members.
+class TestTexture final : public OOTexture
 {
-@public
+public:
+	~TestTexture() override					{ gTexturesDeallocated++; }
+	void apply() override					{ _applies++; }
+	void ensureFinishedLoading() override	{ _ensures++; }
+	bool isFinishedLoading() override		{ return _finished; }
+
 	std::string	_name;
-	int			_applies;
-	int			_ensures;
-	BOOL		_finished;
-}
-+ (void) applyNone;
-+ (id) cxx_textureWithConfiguration:(const oo::PList &)configuration;
-+ (id) nullTexture;
-- (void) apply;
-- (void) ensureFinishedLoading;
-- (BOOL) isFinishedLoading;
-@end
+	int			_applies = 0;
+	int			_ensures = 0;
+	BOOL		_finished = NO;
+};
 
-@implementation OOTexture
+static TestTexture *AsTest(const oo::Ref<OOTexture> &texture)  { return static_cast<TestTexture *>(texture.get()); }
 
-+ (void) applyNone	{ gTextureApplyNones++; }
+void OOTexture::applyNone()	{ gTextureApplyNones++; }
 
-+ (id) cxx_textureWithConfiguration:(const oo::PList &)configuration
+oo::Ref<OOTexture> OOTexture::textureWithConfiguration(const oo::PList &configuration)
 {
-	if (configuration == oo::PList("missing"))  return nil;
-	OOTexture *texture = [[[OOTexture alloc] init] autorelease];
+	if (configuration == oo::PList("missing"))  return nullptr;
+	oo::Ref<TestTexture> texture = oo::makeRef<TestTexture>();
 	texture->_name = Text(configuration);
 	texture->_finished = YES;
 	return texture;
 }
 
-+ (id) nullTexture
+oo::Ref<OOTexture> OOTexture::nullTexture()
 {
-	static OOTexture *null = nil;
-	if (null == nil)
+	static TestTexture *null = nullptr;	// never released
+	if (null == nullptr)
 	{
-		null = [[OOTexture alloc] init];
+		null = oo::makeRef<TestTexture>().leakRef();
 		null->_name = "null";
 		null->_finished = YES;
 	}
-	return null;
+	return oo::Ref<OOTexture>(null);
 }
 
-- (void) dealloc						{ gTexturesDeallocated++; [super dealloc]; }
-- (void) apply							{ _applies++; }
-- (void) ensureFinishedLoading			{ _ensures++; }
-- (BOOL) isFinishedLoading				{ return _finished; }
-
-@end
+OOTexture::OOTexture()	{}
+OOTexture::~OOTexture()	{}
+void OOTexture::apply()	{}
+void OOTexture::ensureFinishedLoading()	{}
+bool OOTexture::isFinishedLoading()	{ return true; }
+std::optional<std::string> OOTexture::cacheKey()	{ return std::nullopt; }
+NSSize OOTexture::dimensions()	{ return NSSize{}; }
+NSSize OOTexture::originalDimensions()	{ return dimensions(); }
+bool OOTexture::isMipMapped()	{ return false; }
+OOPixMap OOTexture::copyPixMapRepresentation()	{ return OOPixMap{}; }
+bool OOTexture::isRectangleTexture()	{ return false; }
+bool OOTexture::isCubeMap()	{ return false; }
+NSSize OOTexture::texCoordsScale()	{ return NSSize{1.0, 1.0}; }
+GLint OOTexture::glTextureName()	{ return 0; }
+#ifndef NDEBUG
+std::optional<std::string> OOTexture::name()	{ return std::nullopt; }
+#endif
+std::optional<std::string> OOTexture::descriptionComponents() const	{ return std::nullopt; }
+std::optional<std::string> OOTexture::shortDescriptionComponents() const	{ return std::nullopt; }
+std::string OOTexture::description() const	{ return oo::str::format("<OOTexture %s>", oo::str::pointerDescription(this).c_str()); }
+std::string OOTexture::shortDescription() const	{ return description(); }
+std::string OOTexture::className() const	{ return "OOTexture"; }
+void OOTexture::forceRebind()	{}
 
 
 // The binding whitelist, which the game implements elsewhere: everything but "forbidden".
@@ -490,14 +508,14 @@ OO_TEST(texturesApplyAndUnapply)
 	{
 		const oo::Ref<OOShaderMaterial> m = Make(With(kSources, { { "textures", oo::PList(oo::PList::Array{ oo::PList("a.png"), oo::PList("missing"), oo::PList("c.png") }) } }));
 #ifndef NDEBUG
-		const std::vector<oo::ObjCRef<OOTexture *>> textures = m->allTextures();
+		const std::vector<oo::Ref<OOTexture>> textures = m->allTextures();
 		OO_CHECK(textures.size() == 3);
-		OO_CHECK(textures[0].get()->_name == "a.png" && textures[1].get() == [OOTexture nullTexture] && textures[2].get()->_name == "c.png");
+		OO_CHECK(AsTest(textures[0])->_name == "a.png" && textures[1].get() == OOTexture::nullTexture().get() && AsTest(textures[2])->_name == "c.png");
 		OO_CHECK(m->isFinishedLoading());
-		textures[2].get()->_finished = NO;
+		AsTest(textures[2])->_finished = NO;
 		OO_CHECK(!m->isFinishedLoading());
 		m->ensureFinishedLoading();
-		OO_CHECK(textures[0].get()->_ensures == 1 && textures[2].get()->_ensures == 1);
+		OO_CHECK(AsTest(textures[0])->_ensures == 1 && AsTest(textures[2])->_ensures == 1);
 #endif
 
 		const int programApplies = gProgramApplies, uniformApplies = gUniformApplies, applyNones = gTextureApplyNones;
@@ -505,7 +523,7 @@ OO_TEST(texturesApplyAndUnapply)
 		OO_CHECK(gProgramApplies == programApplies + 1 && gUniformApplies == uniformApplies + 2);	// uGloss, uGammaCorrect
 		OO_CHECK(gTextureApplyNones == applyNones);	// not exactly a basic material
 #ifndef NDEBUG
-		OO_CHECK(textures[0].get()->_applies == 1 && textures[2].get()->_applies == 1);
+		OO_CHECK(AsTest(textures[0])->_applies == 1 && AsTest(textures[2])->_applies == 1);
 #endif
 		GLint active = 0;
 		glGetIntegerv(GL_ACTIVE_TEXTURE_ARB, &active);
@@ -527,9 +545,10 @@ OO_TEST(texturesApplyAndUnapply)
 		OO_CHECK(gTextureApplyNones == applyNones + 7);
 
 		// Texture objects passed in are used as they are, and win over specifiers.
-		OOTexture *given = [OOTexture cxx_textureWithConfiguration:oo::PList("given.png")];
+		const oo::Ref<OOTexture> givenRef = OOTexture::textureWithConfiguration(oo::PList("given.png"));	// was autoreleased
+		OOTexture *given = givenRef.get();
 		const oo::Ref<OOShaderMaterial> withObjects = Make(With(kSources, {
-			{ "_oo_texture_objects", oo::PList(oo::PList::Array{ oo::PListObject(given) }) },
+			{ "_oo_texture_objects", oo::PList(oo::PList::Array{ OOTextureObjectNode(given) }) },
 			{ "textures", oo::PList(oo::PList::Array{ oo::PList("a.png") }) },
 		}));
 #ifndef NDEBUG
