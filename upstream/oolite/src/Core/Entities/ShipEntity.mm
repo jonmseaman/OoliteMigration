@@ -395,7 +395,7 @@ void ShipEntity::shipWillDealloc()
 	if (_escortGroup != nullptr)  _escortGroup->removeShip(this);
 	_escortGroup = nullptr;
 
-	DESTROY(_lastAegisLock);
+	_lastAegisLock = nullptr;
 
 	_beaconDrawable = nullptr;
 }
@@ -1667,7 +1667,7 @@ std::vector<oo::ObjCRef<::Entity *>> ShipEntity::exhausts()
 
 ::ShipEntity *ShipEntity::subEntityTakingDamage()
 {
-	::ShipEntity *result = oo::ToShip([_subEntityTakingDamage weakRefUnderlyingObject]);
+	::ShipEntity *result = oo::ToShip(oo::WeakEntityObject(_subEntityTakingDamage));
 	
 #ifndef NDEBUG
 	// Sanity check - there have been problems here, see fireLaserShotInDirection:
@@ -1701,8 +1701,7 @@ void ShipEntity::setSubEntityTakingDamage(::ShipEntity *sub)
 	}
 #endif
 	
-	[_subEntityTakingDamage release];
-	_subEntityTakingDamage = (sub != nullptr ? [oo::ToObjC(sub) weakRetain] : id{});
+	_subEntityTakingDamage = oo::WeakRef<cxx::Entity>(sub);
 }
 
 
@@ -1969,13 +1968,13 @@ OOHUDBeaconIcon *ShipEntity::beaconDrawable()
 
 ::Entity *ShipEntity::prevBeacon()
 {
-	return [_prevBeacon weakRefUnderlyingObject];
+	return oo::WeakEntityObject(_prevBeacon);
 }
 
 
 ::Entity *ShipEntity::nextBeacon()
 {
-	return [_nextBeacon weakRefUnderlyingObject];
+	return oo::WeakEntityObject(_nextBeacon);
 }
 
 
@@ -1983,8 +1982,7 @@ void ShipEntity::setPrevBeacon(::Entity *beaconShip)
 {
 	if (beaconShip != (::Entity <OOBeaconEntity> *)prevBeacon())
 	{
-		[_prevBeacon release];
-		_prevBeacon = [beaconShip weakRetain];
+		_prevBeacon = oo::WeakEntityRef(beaconShip);
 	}
 }
 
@@ -1993,8 +1991,7 @@ void ShipEntity::setNextBeacon(::Entity *beaconShip)
 {
 	if (beaconShip != (::Entity <OOBeaconEntity> *)nextBeacon())
 	{
-		[_nextBeacon release];
-		_nextBeacon = [beaconShip weakRetain];
+		_nextBeacon = oo::WeakEntityRef(beaconShip);
 	}
 }
 
@@ -2646,8 +2643,8 @@ bool ShipEntity::checkCloseCollisionWith(cxx::Entity *otherPart)
 			closeContactsInfo[other_key] = oo::str::format("%f %f %f", rpos.x, rpos.y, rpos.z);
 			
 			// send AI a message about the touch
-			::OOWeakReference	*temp = _primaryTarget;
-			_primaryTarget = (otherShip != nullptr ? [oo::ToObjC(otherShip) weakRetain] : id{});
+			const oo::WeakRef<cxx::Entity>	temp = _primaryTarget;
+			_primaryTarget = oo::WeakRef<cxx::Entity>(otherShip);
 			doScriptEvent(OOJSID("shipCloseContact"), oo::ToObjC(otherShip), "CLOSE CONTACT");
 			_primaryTarget = temp;
 		}
@@ -2788,8 +2785,8 @@ void ShipEntity::update(OOTimeDelta delta_t)
 						const auto contact = closeContactsInfo.find(other_key);
 						cxx_ScanVectorFromString(contact != closeContactsInfo.end() ? std::optional<std::string>(contact->second) : std::nullopt, &pos0);
 						// send AI messages about the contact
-						::OOWeakReference *temp = _primaryTarget;
-						_primaryTarget = (other != nullptr ? [oo::ToObjC(other) weakRetain] : id{});
+						const oo::WeakRef<cxx::Entity> temp = _primaryTarget;
+						_primaryTarget = oo::WeakRef<cxx::Entity>(other);
 						if ((pos0.x < 0.0)&&(pos1.x > 0.0))
 						{
 							doScriptEvent(OOJSID("shipTraversePositiveX"), oo::ToObjC(other), "POSITIVE X TRAVERSE");
@@ -7297,7 +7294,7 @@ void ShipEntity::avoidCollision()
 		if (primaryTarget() != nil)
 		{
 			// must use the weak ref here to prevent potential over-retention
-			condition["primaryTarget"] = oo::PListObject([primaryTarget() weakSelf]);
+			condition["primaryTarget"] = oo::PListObject([[primaryTarget() weakRetain] autorelease]);	// its object's weak reference, as -weakSelf answered while _primaryTarget held it (bead oo-9ht.39.5.2)
 		}
 		condition["desired_range"] = oo::PList::singleReal(desired_range);	// floats, as oo_setFloat: stored them
 		condition["desired_speed"] = oo::PList::singleReal(desired_speed);
@@ -7321,9 +7318,8 @@ void ShipEntity::resumePostProximityAlert()
 	if (previousCondition.isNull())  return;
 
 	behaviour =		(OOBehaviour)previousCondition.get<int>("behaviour");
-	[_primaryTarget release];
 	const oo::PList *previousTarget = previousCondition.find("primaryTarget");
-	_primaryTarget =	[(previousTarget != nullptr ? oo::ObjectIn(*previousTarget) : nil) weakRetain];
+	_primaryTarget =	oo::WeakEntityRef([(previousTarget != nullptr ? oo::ObjectIn(*previousTarget) : nil) weakRefUnderlyingObject]);	// the node holds the target's weak reference (its object)
 	startTrackingCurve();
 	desired_range =	previousCondition.get<float>("desired_range");
 	desired_speed =	previousCondition.get<float>("desired_speed");
@@ -7332,7 +7328,7 @@ void ShipEntity::resumePostProximityAlert()
 	previousCondition = oo::PList();
 	frustration = 0.0;
 	
-	DESTROY(_proximityAlert);
+	_proximityAlert = nullptr;
 	
 	//[shipAI message:@"RESTART_DOCKING"];	// if docking, start over, other AIs will ignore this message
 }
@@ -7498,10 +7494,10 @@ NSUInteger ShipEntity::turretCount()
 
 ::Entity *ShipEntity::proximityAlert()
 {
-	::Entity* prox = [_proximityAlert weakRefUnderlyingObject];
+	::Entity* prox = oo::WeakEntityObject(_proximityAlert);
 	if (prox == nil)
 	{
-		DESTROY(_proximityAlert);
+		_proximityAlert = nullptr;
 	}
 	return prox;
 }
@@ -7512,7 +7508,7 @@ void ShipEntity::setProximityAlert(::ShipEntity *other)
 
 	if (!other)
 	{
-		DESTROY(_proximityAlert);
+		_proximityAlert = nullptr;
 		return;
 	}
 
@@ -7557,8 +7553,7 @@ void ShipEntity::setProximityAlert(::ShipEntity *other)
 			if (sa_prox < sa_other)  return;
 		}
 	}
-	[_proximityAlert release];
-	_proximityAlert = (other != nullptr ? [oo::ToObjC(other) weakRetain] : id{});
+	_proximityAlert = oo::WeakRef<cxx::Entity>(other);
 }
 
 
@@ -8331,11 +8326,11 @@ bool ShipEntity::withinStationAegis()
 
 ::Entity *ShipEntity::lastAegisLock()
 {
-	::Entity<OOStellarBody> *stellar = [_lastAegisLock weakRefUnderlyingObject];
+	id stellarObject = oo::WeakEntityObject(_lastAegisLock);	// a planet or sun (bead oo-9ht.39.5.2: the C++ part's object)
+	::Entity<OOStellarBody> *stellar = stellarObject;
 	if (stellar == nil)
 	{
-		[_lastAegisLock release];
-		_lastAegisLock = nil;
+		_lastAegisLock = nullptr;
 	}
 	
 	return stellar;
@@ -8344,8 +8339,7 @@ bool ShipEntity::withinStationAegis()
 
 void ShipEntity::setLastAegisLock(::Entity *lastAegisLock)
 {
-	[_lastAegisLock release];
-	_lastAegisLock = [lastAegisLock weakRetain];
+	_lastAegisLock = oo::WeakEntityRef(lastAegisLock);
 }
 
 
@@ -10329,10 +10323,10 @@ int ShipEntity::numberOfScannedShips()
 
 ::Entity *ShipEntity::foundTarget()
 {
-	::Entity *result = [_foundTarget weakRefUnderlyingObject];
+	::Entity *result = oo::WeakEntityObject(_foundTarget);
 	if (result == nil || !isValidTarget(result))
 	{
-		DESTROY(_foundTarget);
+		_foundTarget = nullptr;
 		return nil;
 	}
 	return result;
@@ -10341,17 +10335,16 @@ int ShipEntity::numberOfScannedShips()
 
 void ShipEntity::setFoundTarget(::Entity *targetEntity)
 {
-	[_foundTarget release];
-	_foundTarget = [targetEntity weakRetain];
+	_foundTarget = oo::WeakEntityRef(targetEntity);
 }
 
 
 ::Entity *ShipEntity::primaryAggressor()
 {
-	::Entity *result = [_primaryAggressor weakRefUnderlyingObject];
+	::Entity *result = oo::WeakEntityObject(_primaryAggressor);
 	if (result == nil || !isValidTarget(result))
 	{
-		DESTROY(_primaryAggressor);
+		_primaryAggressor = nullptr;
 		return nil;
 	}
 	return result;
@@ -10360,17 +10353,16 @@ void ShipEntity::setFoundTarget(::Entity *targetEntity)
 
 void ShipEntity::setPrimaryAggressor(::Entity *targetEntity)
 {
-	[_primaryAggressor release];
-	_primaryAggressor = [targetEntity weakRetain];
+	_primaryAggressor = oo::WeakEntityRef(targetEntity);
 }
 
 
 ::Entity *ShipEntity::lastEscortTarget()
 {
-	::Entity *result = [_lastEscortTarget weakRefUnderlyingObject];
+	::Entity *result = oo::WeakEntityObject(_lastEscortTarget);
 	if (result == nil || !isValidTarget(result))
 	{
-		DESTROY(_lastEscortTarget);
+		_lastEscortTarget = nullptr;
 		return nil;
 	}
 	return result;
@@ -10379,8 +10371,7 @@ void ShipEntity::setPrimaryAggressor(::Entity *targetEntity)
 
 void ShipEntity::setLastEscortTarget(::Entity *targetEntity)
 {
-	[_lastEscortTarget release];
-	_lastEscortTarget = [targetEntity weakRetain];
+	_lastEscortTarget = oo::WeakEntityRef(targetEntity);
 }
 
 
@@ -10392,10 +10383,10 @@ void ShipEntity::setLastEscortTarget(::Entity *targetEntity)
 
 ::Entity *ShipEntity::thankedShip()
 {
-	::Entity *result = [_thankedShip weakRefUnderlyingObject];
+	::Entity *result = oo::WeakEntityObject(_thankedShip);
 	if (result == nil || !isValidTarget(result))
 	{
-		DESTROY(_thankedShip);
+		_thankedShip = nullptr;
 		return nil;
 	}
 	return result;
@@ -10404,17 +10395,16 @@ void ShipEntity::setLastEscortTarget(::Entity *targetEntity)
 
 void ShipEntity::setThankedShip(::Entity *targetEntity)
 {
-	[_thankedShip release];
-	_thankedShip = [targetEntity weakRetain];
+	_thankedShip = oo::WeakEntityRef(targetEntity);
 }
 
 
 ::Entity *ShipEntity::rememberedShip()
 {
-	::Entity *result = [_rememberedShip weakRefUnderlyingObject];
+	::Entity *result = oo::WeakEntityObject(_rememberedShip);
 	if (result == nil || !isValidTarget(result))
 	{
-		DESTROY(_rememberedShip);
+		_rememberedShip = nullptr;
 		return nil;
 	}
 	return result;
@@ -10423,17 +10413,16 @@ void ShipEntity::setThankedShip(::Entity *targetEntity)
 
 void ShipEntity::setRememberedShip(::Entity *targetEntity)
 {
-	[_rememberedShip release];
-	_rememberedShip = [targetEntity weakRetain];
+	_rememberedShip = oo::WeakEntityRef(targetEntity);
 }
 
 
 ::Entity *ShipEntity::targetStation()
 {
-	::Entity *result = [_targetStation weakRefUnderlyingObject];
+	::Entity *result = oo::WeakEntityObject(_targetStation);
 	if (result == nil || !isValidTarget(result))
 	{
-		DESTROY(_targetStation);
+		_targetStation = nullptr;
 		return nil;
 	}
 	return result;
@@ -10442,8 +10431,7 @@ void ShipEntity::setRememberedShip(::Entity *targetEntity)
 
 void ShipEntity::setTargetStation(::Entity *targetEntity)
 {
-	[_targetStation release];
-	_targetStation = [targetEntity weakRetain];
+	_targetStation = oo::WeakEntityRef(targetEntity);
 }
 
 
@@ -10479,8 +10467,8 @@ void ShipEntity::addTarget(::Entity *targetEntity)
 	if (targetEntity == oo::ToObjC(this))  return;
 	if (targetEntity != nil) 
 	{
-		DESTROY(_primaryTarget);
-		_primaryTarget = [targetEntity weakRetain];
+		_primaryTarget = nullptr;
+		_primaryTarget = oo::WeakEntityRef(targetEntity);
 		startTrackingCurve();
 	}
 	
@@ -10492,7 +10480,7 @@ void ShipEntity::addTarget(::Entity *targetEntity)
 void ShipEntity::removeTarget(::Entity *targetEntity)
 {
 	if(targetEntity != nil) noteLostTarget();
-	else DESTROY(_primaryTarget);
+	else _primaryTarget = nullptr;
 	// targetEntity == nil is currently only true for mounted player missiles. 
 	// we don't want to send lostTarget messages while the missile is mounted.
 	
@@ -10539,11 +10527,11 @@ bool ShipEntity::canStillTrackPrimaryTarget()
 
 id ShipEntity::primaryTarget()
 {
-	id result = [_primaryTarget weakRefUnderlyingObject];
-	if ((result == nil && _primaryTarget != nil)
+	id result = oo::WeakEntityObject(_primaryTarget);
+	if ((result == nil && _primaryTarget != oo::WeakRef<cxx::Entity>())
 			|| !isValidTarget(result))
 	{
-		DESTROY(_primaryTarget);
+		_primaryTarget = nullptr;
 		return nil;
 	}
 	else if (EXPECT_NOT(result == oo::ToObjC(this)))
@@ -10552,7 +10540,7 @@ id ShipEntity::primaryTarget()
 			[PlayerEntity hasHostileTarget].
 			-- Ahruman 2009-12-17
 		*/
-		DESTROY(_primaryTarget);
+		_primaryTarget = nullptr;
 	}
 	return result;
 }
@@ -10562,11 +10550,11 @@ id ShipEntity::primaryTarget()
 // noteTargetLost - without invalidating the target first
 id ShipEntity::primaryTargetWithoutValidityCheck()
 {
-	id result = [_primaryTarget weakRefUnderlyingObject];
+	id result = oo::WeakEntityObject(_primaryTarget);
 	if (EXPECT_NOT(result == oo::ToObjC(this)))
 	{
 		// just in case
-		DESTROY(_primaryTarget);
+		_primaryTarget = nullptr;
 		return nil;
 	}
 	return result;
@@ -10594,7 +10582,7 @@ bool ShipEntity::isFriendlyTo(::ShipEntity *otherShip)
 
 ::ShipEntity *ShipEntity::shipHitByLaser()
 {
-	return oo::ToShip([_shipHitByLaser weakRefUnderlyingObject]);
+	return oo::ToShip(oo::WeakEntityObject(_shipHitByLaser));
 }
 
 
@@ -10602,8 +10590,7 @@ void ShipEntity::setShipHitByLaser(::ShipEntity *ship)
 {
 	if (ship != shipHitByLaser())
 	{
-		[_shipHitByLaser release];
-		_shipHitByLaser = (ship != nullptr ? [oo::ToObjC(ship) weakRetain] : id{});
+		_shipHitByLaser = oo::WeakRef<cxx::Entity>(ship);
 	}
 }
 
@@ -10624,9 +10611,9 @@ void ShipEntity::noteLostTarget()
 		target = (ship && ship->isShip && isValidTarget(oo::ToObjC(ship))) ? (id)oo::ToObjC(ship) : nil;
 		if (primaryAggressor() == oo::ToObjC(ship)) 
 		{
-			DESTROY(_primaryAggressor);
+			_primaryAggressor = nullptr;
 		}
-		DESTROY(_primaryTarget);
+		_primaryTarget = nullptr;
 	}
 	// always do target lost
 	doScriptEvent(OOJSID("shipTargetLost"), target);
@@ -13652,7 +13639,7 @@ void ShipEntity::takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::Enti
 		BOOL iAmTheLaw = isPolice();
 		BOOL uAreTheLaw = (hunter != nullptr ? hunter->isPolice() : false);
 		
-		DESTROY(_lastEscortTarget);	// we're being attacked, escorts can scramble!
+		_lastEscortTarget = nullptr;	// we're being attacked, escorts can scramble!
 		
 		setPrimaryAggressor(oo::ToObjC(hunter));
 		setFoundTarget(oo::ToObjC(hunter));
@@ -14458,7 +14445,7 @@ void ShipEntity::setTargetToSystemStation()
 	{
 		[shipAI message:"NOTHING_FOUND"];
 		[shipAI message:"NO_STATION_FOUND"];
-		DESTROY(_primaryTarget);
+		_primaryTarget = nullptr;
 		setTargetStation(nullptr);
 		return;
 	}
@@ -14467,7 +14454,7 @@ void ShipEntity::setTargetToSystemStation()
 	{
 		[shipAI message:"NOTHING_FOUND"];
 		[shipAI message:"NO_STATION_FOUND"];
-		DESTROY(_primaryTarget);
+		_primaryTarget = nullptr;
 		setTargetStation(nullptr);
 		return;
 	}

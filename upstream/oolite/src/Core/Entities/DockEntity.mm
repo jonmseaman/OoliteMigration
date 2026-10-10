@@ -288,9 +288,9 @@ void DockEntity::clearIdLocks(::ShipEntity *ship)
 	int i;
 	for (i = 1; i < MAX_DOCKING_STAGES; i++)
 	{
-		if (ship == nullptr || oo::ToObjC(ship) == [id_lock[i] weakRefUnderlyingObject])
+		if (ship == nullptr || oo::ToObjC(ship) == oo::WeakEntityObject(id_lock[i]))
 		{
-			DESTROY(id_lock[i]);
+			id_lock[i] = nullptr;
 		}
 	}
 }
@@ -301,7 +301,7 @@ void DockEntity::clearAllIdLocks()
 	int i;
 	for (i = 1; i < MAX_DOCKING_STAGES; i++)
 	{
-		DESTROY(id_lock[i]);
+		id_lock[i] = nullptr;
 	}
 }
 
@@ -652,9 +652,9 @@ oo::PList DockEntity::dockingInstructionsForShip(::ShipEntity *ship)
 	coords.y += rel_coords.x * vi.y + rel_coords.y * vj.y + rel_coords.z * vk.y;
 	coords.z += rel_coords.x * vi.z + rel_coords.y * vj.z + rel_coords.z * vk.z;
 	
-	if([id_lock[docking_stage] weakRefUnderlyingObject] == nil &&
-	   [id_lock[docking_stage + 1] weakRefUnderlyingObject] == nil &&
-	   [id_lock[docking_stage + 2] weakRefUnderlyingObject] == nil)	// check three stages ahead
+	if(oo::WeakEntityObject(id_lock[docking_stage]) == nil &&
+	   oo::WeakEntityObject(id_lock[docking_stage + 1]) == nil &&
+	   oo::WeakEntityObject(id_lock[docking_stage + 2]) == nil)	// check three stages ahead
 	{
 		// approach is clear - move to next position
 		//
@@ -664,8 +664,7 @@ oo::PList DockEntity::dockingInstructionsForShip(::ShipEntity *ship)
 				
 		if (docking_stage > 1)	// don't claim first docking stage
 		{
-			[id_lock[docking_stage] release];
-			id_lock[docking_stage] = (ship != nullptr ? [oo::ToObjC(ship) weakRetain] : nil);	// otherwise - claim this docking stage
+			id_lock[docking_stage] = oo::WeakRef<cxx::Entity>(ship);	// otherwise - claim this docking stage
 		}
 		
 		//remove the previous stage from the stack

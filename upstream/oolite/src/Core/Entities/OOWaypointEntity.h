@@ -94,8 +94,8 @@ private:
 
 	std::optional<std::string>	_beaconCode;	// nullopt: nil
 	std::optional<std::string>	_beaconLabel;
-	oo::ObjCRef<::OOWeakReference *>	_prevBeacon;
-	oo::ObjCRef<::OOWeakReference *>	_nextBeacon;
+	oo::WeakRef<cxx::Entity>	_prevBeacon;	// the beacons' C++ parts (bead oo-9ht.39.5.2; were their objects' weak references)
+	oo::WeakRef<cxx::Entity>	_nextBeacon;
 	oo::Ref<OOHUDBeaconIcon>	_beaconDrawable;
 	bool					oriented = {};
 };

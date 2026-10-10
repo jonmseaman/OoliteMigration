@@ -948,13 +948,13 @@ OOHUDBeaconIcon *OOVisualEffectEntity::beaconDrawable()
 
 OOVisualEffectBeaconEntity *OOVisualEffectEntity::prevBeacon()
 {
-	return [_prevBeacon weakRefUnderlyingObject];
+	return static_cast<OOVisualEffectBeaconEntity *>(oo::WeakEntityObject(_prevBeacon));
 }
 
 
 OOVisualEffectBeaconEntity *OOVisualEffectEntity::nextBeacon()
 {
-	return [_nextBeacon weakRefUnderlyingObject];
+	return static_cast<OOVisualEffectBeaconEntity *>(oo::WeakEntityObject(_nextBeacon));
 }
 
 
@@ -962,8 +962,7 @@ void OOVisualEffectEntity::setPrevBeacon(OOVisualEffectBeaconEntity *beaconShip)
 {
 	if (beaconShip != prevBeacon())
 	{
-		[_prevBeacon release];
-		_prevBeacon = [beaconShip weakRetain];
+		_prevBeacon = oo::WeakEntityRef(beaconShip);
 	}
 }
 
@@ -972,8 +971,7 @@ void OOVisualEffectEntity::setNextBeacon(OOVisualEffectBeaconEntity *beaconShip)
 {
 	if (beaconShip != nextBeacon())
 	{
-		[_nextBeacon release];
-		_nextBeacon = [beaconShip weakRetain];
+		_nextBeacon = oo::WeakEntityRef(beaconShip);
 	}
 }
 

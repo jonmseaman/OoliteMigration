@@ -274,15 +274,13 @@ OOHUDBeaconIcon *OOWaypointEntity::beaconDrawable()
 
 OOBeaconEntityObject *OOWaypointEntity::prevBeacon()
 {
-	::OOWeakReference *ref = _prevBeacon.get();
-	return ref != nil ? oo::ToCxx(ref)->weakRefUnderlyingObject() : nil;
+	return static_cast<OOBeaconEntityObject *>(oo::WeakEntityObject(_prevBeacon));
 }
 
 
 OOBeaconEntityObject *OOWaypointEntity::nextBeacon()
 {
-	::OOWeakReference *ref = _nextBeacon.get();
-	return ref != nil ? oo::ToCxx(ref)->weakRefUnderlyingObject() : nil;
+	return static_cast<OOBeaconEntityObject *>(oo::WeakEntityObject(_nextBeacon));
 }
 
 
@@ -290,7 +288,7 @@ void OOWaypointEntity::setPrevBeacon(OOBeaconEntityObject *beaconShip)
 {
 	if (beaconShip != prevBeacon())
 	{
-		_prevBeacon = oo::ObjCRef<::OOWeakReference *>::adopt([beaconShip weakRetain]);
+		_prevBeacon = oo::WeakEntityRef(beaconShip);
 	}
 }
 
@@ -299,7 +297,7 @@ void OOWaypointEntity::setNextBeacon(OOBeaconEntityObject *beaconShip)
 {
 	if (beaconShip != nextBeacon())
 	{
-		_nextBeacon = oo::ObjCRef<::OOWeakReference *>::adopt([beaconShip weakRetain]);
+		_nextBeacon = oo::WeakEntityRef(beaconShip);
 	}
 }
 

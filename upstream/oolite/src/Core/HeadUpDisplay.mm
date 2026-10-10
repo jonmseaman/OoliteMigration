@@ -1961,15 +1961,15 @@ void HeadUpDisplay::drawSecondaryTargetReticle(const oo::PList &info)
 		::Entity *primary = (player != nullptr ? player->primaryTarget() : id{});	// the objects: a target may be any entity (bead oo-9ht.144)
 		for (unsigned i = 0; i < PLAYER_TARGET_MEMORY_SIZE; i++)
 		{
-			id sec_id = (player != nullptr ? player->targetMemory() : std::vector<oo::ObjCRef<OOWeakReference *>>()).at(i).get();	// an empty slot (was OONull) is nil: neither is a proxy
+			const oo::WeakRef<cxx::Entity> sec_ref = (player != nullptr ? player->targetMemory() : std::vector<oo::WeakRef<cxx::Entity>>()).at(i);	// an empty slot (was OONull) is an empty ref (bead oo-9ht.39.5.2)
 			// isProxy = weakref ; not = OONull (in this case...)
 			// can't use isKindOfClass because that throws
 			// OOInvalidArgumentException when called on a weakref
 			// with a dropped object.
 			// TODO: fix OOWeakReference so isKindOfClass works
-			if (sec_id != nil && [sec_id isProxy])
+			if (sec_ref != oo::WeakRef<cxx::Entity>())	// a weak reference (-isProxy), not an empty slot
 			{
-				::Entity *secondary = [(::OOWeakReference *)sec_id weakRefUnderlyingObject];
+				::Entity *secondary = oo::WeakEntityObject(sec_ref);
 				if (secondary != nil && secondary != primary)
 				{
 					if (oo::ToCxx(secondary)->zeroDistance() <= SCANNER_MAX_RANGE2 && oo::ToCxx(secondary)->isInSpace())

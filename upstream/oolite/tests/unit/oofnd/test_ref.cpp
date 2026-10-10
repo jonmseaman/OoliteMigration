@@ -462,6 +462,35 @@ OO_TEST(weakRefOnlyComparisonCreatesNoControl)
 	OO_CHECK(oo::detail::WeakAccess::existingControl(b.get()) == nullptr);
 }
 
+// dropWeakReferences() (bead oo-9ht.39.5.2): an object whose identity dies before its count does
+// (an entity's C++ part, when its Objective-C object starts -dealloc) zeroes its weak refs early,
+// as -weakRefDrop did; the object lives on, and a WeakRef made afterwards is a new identity, as a
+// -weakRetain after -weakRefDrop was a new proxy.
+class Droppable : public Thing
+{
+public:
+	explicit Droppable(std::string name) : Thing(std::move(name)) {}
+	using oo::RefCounted::dropWeakReferences;
+};
+
+OO_TEST(dropWeakReferencesZeroesThemWhileTheObjectLives)
+{
+	oo::Ref<Droppable> a = oo::makeRef<Droppable>("a");
+	oo::WeakRef<Thing> w = a.get();
+	OO_CHECK(w.get() == a.get());
+	a->dropWeakReferences();
+	OO_CHECK(w.get() == nullptr && w.expired());
+	OO_CHECK(a->retainCount() == 1 && a->name() == "a");
+	oo::WeakRef<Thing> again = a.get();
+	OO_CHECK(again.get() == a.get());
+	OO_CHECK(!(again == w) && !(w == a.get()) && again == a.get());
+	a->dropWeakReferences();
+	a->dropWeakReferences();                       // nothing to drop: harmless
+	OO_CHECK(again.get() == nullptr);
+	a.reset();                                     // dies without weak refs (ASan: no double free)
+	OO_CHECK(w.get() == nullptr && again.get() == nullptr);
+}
+
 // --- AutoreleaseScope: the autorelease pool ----------------------------------------------------
 
 OO_TEST(autoreleaseReleasesAtScopeEnd)

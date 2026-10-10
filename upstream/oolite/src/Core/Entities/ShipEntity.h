@@ -1369,14 +1369,14 @@ public:
 	::OOEquipmentType			*missile_list[SHIPENTITY_MAX_MISSILES] = {};
 
 	// various types of target
-	::OOWeakReference			*_primaryTarget = {};			// for combat or rendezvous
-	::OOWeakReference			*_primaryAggressor = {};			// recorded after attack
-	::OOWeakReference			*_targetStation = {};			// for docking
-	::OOWeakReference			*_foundTarget = {};				// from scans
-	::OOWeakReference			*_lastEscortTarget = {};			// last target an escort was deployed after
-	::OOWeakReference			*_thankedShip = {};				// last ship thanked
-	::OOWeakReference			*_rememberedShip = {};			// ship being remembered
-	::OOWeakReference			*_proximityAlert = {};			// a ShipEntity within 2x collision_radius
+	oo::WeakRef<cxx::Entity>		_primaryTarget;			// for combat or rendezvous
+	oo::WeakRef<cxx::Entity>		_primaryAggressor;			// recorded after attack
+	oo::WeakRef<cxx::Entity>		_targetStation;			// for docking
+	oo::WeakRef<cxx::Entity>		_foundTarget;				// from scans
+	oo::WeakRef<cxx::Entity>		_lastEscortTarget;			// last target an escort was deployed after
+	oo::WeakRef<cxx::Entity>		_thankedShip;				// last ship thanked
+	oo::WeakRef<cxx::Entity>		_rememberedShip;			// ship being remembered
+	oo::WeakRef<cxx::Entity>		_proximityAlert;			// a ShipEntity within 2x collision_radius
 	
 	// Stuff for the target tracking curve.  The ship records the position of the target every reactionTime/2 seconds, then fits a curve to the
 	// last three recorded positions.  Instead of tracking the primary target's actual position it uses the curve to calculate the target's position.
@@ -1390,14 +1390,14 @@ public:
 	
 	// @private in Objective-C: private once ShipEntity is converted (oo-k8a); public while the
 	// facade's unconverted methods read them, since an Objective-C class cannot be a C++ friend
-	::OOWeakReference			*_subEntityTakingDamage = {};	//	frangible => subEntities can be damaged individually
+	oo::WeakRef<cxx::Entity>		_subEntityTakingDamage;	//	frangible => subEntities can be damaged individually
 
 	std::optional<std::string>	_shipKey;				// nullopt: nil
 	
 	std::vector<std::string>	_equipment;	// equipment keys, in order added; empty == none (was nil)
 	float					_heatInsulation = {};
 	
-	::OOWeakReference			*_lastAegisLock = {};			// remember last aegis planet/sun
+	oo::WeakRef<cxx::Entity>		_lastAegisLock;			// remember last aegis planet/sun
 	
 	oo::Ref<::OOShipGroup>		_group;			// C++ since bead oo-9ht.19
 	oo::Ref<::OOShipGroup>		_escortGroup;
@@ -1414,13 +1414,13 @@ public:
 
 	GLfloat					_profileRadius = {};
 	
-	::OOWeakReference			*_shipHitByLaser = {};			// entity hit by the last laser shot
+	oo::WeakRef<cxx::Entity>		_shipHitByLaser;			// entity hit by the last laser shot
 	
 	// beacons
 	std::optional<std::string>	_beaconCode;			// nullopt: nil (never empty)
 	std::optional<std::string>	_beaconLabel;			// nullopt: nil (never empty)
-	::OOWeakReference			*_prevBeacon = {};
-	::OOWeakReference			*_nextBeacon = {};
+	oo::WeakRef<cxx::Entity>		_prevBeacon;
+	oo::WeakRef<cxx::Entity>		_nextBeacon;
 	oo::Ref<OOHUDBeaconIcon>	_beaconDrawable;
 
 	double			_nextAegisCheck = {};

@@ -216,8 +216,8 @@ public:
 	// beacons
 	std::optional<std::string>	_beaconCode;
 	std::optional<std::string>	_beaconLabel;
-	::OOWeakReference		*_prevBeacon = {};
-	::OOWeakReference		*_nextBeacon = {};
+	oo::WeakRef<cxx::Entity>	_prevBeacon;	// the beacons' C++ parts (bead oo-9ht.39.5.2; were their objects' weak references)
+	oo::WeakRef<cxx::Entity>	_nextBeacon;
 	oo::Ref<OOHUDBeaconIcon>	_beaconDrawable;
 
 	// scaling (were scaleX, scaleY, scaleZ, named like their getters)

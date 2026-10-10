@@ -1532,7 +1532,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 					{
 						//targeting off in both cases!
 						if (primaryTarget() != nil) noteLostTarget();
-						DESTROY(_primaryTarget);
+						_primaryTarget = nullptr;
 						safeAllMissiles();
 						if (!ident_engaged && weaponsOnline())
 						{

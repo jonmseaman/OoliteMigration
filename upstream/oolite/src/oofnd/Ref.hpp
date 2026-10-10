@@ -140,6 +140,12 @@ protected:
 		dropWeakControl();
 	}
 
+	// Zeroes the object's weak references now, while it is still alive: for an object whose
+	// identity dies before its count reaches zero (an entity's C++ part, whose Objective-C object
+	// dropped its weak reference at the start of its -dealloc). A WeakRef made afterwards gets a new
+	// control block, as a -weakRetain after -weakRefDrop got a new proxy.
+	void dropWeakReferences() const noexcept { dropWeakControl(); }
+
 private:
 	friend struct detail::WeakAccess;
 

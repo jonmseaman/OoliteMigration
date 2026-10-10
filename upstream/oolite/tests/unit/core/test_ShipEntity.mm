@@ -148,14 +148,12 @@ void SetExplicitlyUnpiloted(ShipEntity *s, bool value)	{ s->_explicitlyUnpiloted
 
 void SetPrimaryTarget(ShipEntity *s, Entity *target)
 {
-	[s->_primaryTarget release];
-	s->_primaryTarget = [target weakRetain];
+	s->_primaryTarget = oo::WeakEntityRef(target);	// the entity's C++ part (bead oo-9ht.39.5.2)
 }
 
 void SetProximityAlert(ShipEntity *s, Entity *other)
 {
-	[s->_proximityAlert release];
-	s->_proximityAlert = [other weakRetain];
+	s->_proximityAlert = oo::WeakEntityRef(other);	// the entity's C++ part (bead oo-9ht.39.5.2)
 }
 
 void SetNavpoints(ShipEntity *s, std::initializer_list<HPVector> points, unsigned next)

@@ -844,7 +844,7 @@ public:
 	void setFoundTarget(::Entity *targetEntity) override;
 	void addTarget(::Entity *targetEntity) override;
 	void clearTargetMemory();
-	std::vector<oo::ObjCRef<::OOWeakReference *>> targetMemory();
+	std::vector<oo::WeakRef<cxx::Entity>> targetMemory();
 	bool moveTargetMemoryBy(NSInteger delta);
 	virtual void printIdentLockedOnForMissile(bool missile);
 	Quaternion getCustomViewQuaternion();
@@ -1558,7 +1558,7 @@ private:
 	OOMarketFilterMode		marketFilterMode = {};
 	OOMarketSorterMode		marketSorterMode = {};
 
-	oo::ObjCRef<::OOWeakReference *>	_dockedStation;	// a weak reference, held (bead oo-5q11i; was retained by hand)
+	oo::WeakRef<cxx::Entity>	_dockedStation;	// a weak reference to the station's C++ part (bead oo-9ht.39.5.2; its object's, held, before)
 	
 /* Used by the DOCKING_CLEARANCE code to implement docking at non-main
  * stations. Could possibly overload use of 'dockedStation' instead
@@ -1632,7 +1632,7 @@ private:
 	unsigned				ship_kills = {};
 	
 	OOCompassMode			compassMode = {};
-	oo::ObjCRef<::OOWeakReference *>	compassTarget;	// a weak reference, held (bead oo-5q11i)
+	oo::WeakRef<cxx::Entity>	compassTarget;	// a weak reference to the target's C++ part (bead oo-9ht.39.5.2; its object's, held, before)
 	
 	GLfloat					fuel_leak_rate = {};
 
@@ -1821,7 +1821,7 @@ private:
 	
 	// target memory
 	// TODO: this should use weakrefs
-	std::vector<oo::ObjCRef<::OOWeakReference *>>	target_memory;	// a null ref = an empty slot (was [OONull null])
+	std::vector<oo::WeakRef<cxx::Entity>>	target_memory;	// an empty ref = an empty slot (was [OONull null]); C++ parts since bead oo-9ht.39.5.2
 	NSUInteger				target_memory_index = {};
 	
 	// custom view points

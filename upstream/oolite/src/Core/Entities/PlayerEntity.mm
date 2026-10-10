@@ -2635,7 +2635,7 @@ bool PlayerEntity::setUpShipFromDictionary(const oo::PList &shipDict)
 		missile_entity[i] = oo::adoptObjC(oo::ToObjC([UNIVERSE cxx_newShipWithRole:"EQ_MISSILE"]));   // retain count = 1
 	}
 	
-	DESTROY(_primaryTarget);
+	_primaryTarget = nullptr;
 	safeAllMissiles();
 	setActiveMissile(0);
 	
@@ -3893,7 +3893,7 @@ bool PlayerEntity::engageAutopilotToStation(::StationEntity *stationForDocking)
 	}
 		
 	setTargetStation(oo::ToObjC(stationForDocking));
-	DESTROY(_primaryTarget);
+	_primaryTarget = nullptr;
 	autopilot_engaged = YES;
 	ident_engaged = NO;
 	safeAllMissiles();
@@ -3924,7 +3924,7 @@ void PlayerEntity::disengageAutopilot()
 		behaviour = BEHAVIOUR_IDLE;
 		frustration = 0.0;
 		autopilot_engaged = NO;
-		DESTROY(_primaryTarget);
+		_primaryTarget = nullptr;
 		setTargetStation(nullptr);
 		setStatus(STATUS_IN_FLIGHT);
 		playAutopilotOff();
@@ -4357,7 +4357,7 @@ void PlayerEntity::updateTargeting()
 				suppressTargetLostFlag = NO;
 			}
 
-			DESTROY(_primaryTarget);
+			_primaryTarget = nullptr;
 		}
 	}
 
@@ -4377,7 +4377,7 @@ void PlayerEntity::updateTargeting()
 				if (i == activeMissile)
 				{
 					noteLostTarget();
-					DESTROY(_primaryTarget);
+					_primaryTarget = nullptr;
 					missile_status = MISSILE_STATUS_ARMED;
 				}
 			} else if (i == activeMissile && (oo::ToShip(missile_entity[i].get()) != nullptr ? oo::ToShip(missile_entity[i].get())->primaryTarget() : id{}) == nil) {
@@ -4696,19 +4696,19 @@ void PlayerEntity::setOcclusionLevel(float level)
 void PlayerEntity::setDockedAtMainStation()
 {
 	setDockedStation([UNIVERSE station]);
-	if (_dockedStation != nil)  setStatus(STATUS_DOCKED);
+	if (_dockedStation != oo::WeakRef<cxx::Entity>())  setStatus(STATUS_DOCKED);
 }
 
 
 ::StationEntity *PlayerEntity::dockedStation()
 {
-	return oo::ToStation([_dockedStation.get() weakRefUnderlyingObject]);
+	return oo::ToStation(_dockedStation.get());
 }
 
 
 void PlayerEntity::setDockedStation(::StationEntity *station)
 {
-	_dockedStation = oo::adoptObjC([oo::ToObjC(station) weakRetain]);
+	_dockedStation = oo::WeakRef<cxx::Entity>(station);
 }
 
 
@@ -5391,7 +5391,7 @@ void PlayerEntity::updateSystemMemory()
 
 ::Entity *PlayerEntity::getCompassTarget()
 {
-	::Entity *result = [compassTarget.get() weakRefUnderlyingObject];
+	::Entity *result = oo::WeakEntityObject(compassTarget);
 	if (result == nil)
 	{
 		compassTarget = nullptr;
@@ -5403,7 +5403,7 @@ void PlayerEntity::updateSystemMemory()
 
 void PlayerEntity::setCompassTarget(::Entity *value)
 {
-	compassTarget = oo::adoptObjC([value weakRetain]);
+	compassTarget = oo::WeakEntityRef(value);
 }
 
 
@@ -5981,7 +5981,7 @@ void PlayerEntity::selectNextMissile()
 						if(hasEquipmentItemProviding("EQ_MULTI_TARGET") && !launchingMissile)
 						{
 							noteLostTarget();
-							DESTROY(_primaryTarget);
+							_primaryTarget = nullptr;
 						}
 						else
 						{
@@ -6106,7 +6106,7 @@ void PlayerEntity::interpretAIMessage(const std::string &message)
 		[UNIVERSE cxx_addMessage:OO_DESC("autopilot-denied") forCount:4.5];
 		autopilot_engaged = NO;
 		resetAutopilotAI();
-		DESTROY(_primaryTarget);
+		_primaryTarget = nullptr;
 		setStatus(STATUS_IN_FLIGHT);
 		OOMusicController::sharedController()->stopDockingMusic();
 		doScriptEvent(OOJSID("playerDockingRefused"));
@@ -7342,7 +7342,7 @@ void PlayerEntity::enterDock(::StationEntity *station)
 	hyperspeed_engaged = NO;
 	hyperspeed_locked = NO;
 	safeAllMissiles();
-	DESTROY(_primaryTarget); // must happen before showing break_pattern to suppress active reticule.
+	_primaryTarget = nullptr; // must happen before showing break_pattern to suppress active reticule.
 	clearTargetMemory();
 	
 	scanner_zoom_rate = 0.0f;
@@ -7591,7 +7591,7 @@ void PlayerEntity::witchStart()
 	if (primaryTarget() != nil)
 	{
 		noteLostTarget();	// losing target? Fire lost target event!
-		DESTROY(_primaryTarget);
+		_primaryTarget = nullptr;
 	}
 	
 	scanner_zoom_rate = 0.0f;
@@ -12525,8 +12525,7 @@ void PlayerEntity::setFoundTarget(::Entity *targetEntity)
 	{
 		return;
 	}
-	[_foundTarget release];
-	_foundTarget = [targetEntity weakRetain];
+	_foundTarget = oo::WeakEntityRef(targetEntity);
 }
 
 
@@ -12546,11 +12545,11 @@ void PlayerEntity::addTarget(::Entity *targetEntity)
 	// wormholes don't go in target memory
 	else if (hasEquipmentItemProviding("EQ_TARGET_MEMORY") && targetEntity != nil)
 	{
-		::OOWeakReference *targetRef = [targetEntity weakSelf];
-		// -indexOfObject: compared the weak references (proxies) by identity
-		const auto slotFor = [this](::OOWeakReference *ref) -> NSUInteger
+		const oo::WeakRef<cxx::Entity> targetRef = oo::WeakEntityRef(targetEntity);	// was [targetEntity weakSelf] (bead oo-9ht.39.5.2)
+		// -indexOfObject: compared the weak references (proxies) by identity; WeakRef's == compares the same identity
+		const auto slotFor = [this](const oo::WeakRef<cxx::Entity> &ref) -> NSUInteger
 		{
-			const auto found = std::find_if(target_memory.begin(), target_memory.end(), [ref](const oo::ObjCRef<::OOWeakReference *> &slot) { return slot.get() == ref; });
+			const auto found = std::find_if(target_memory.begin(), target_memory.end(), [&ref](const oo::WeakRef<cxx::Entity> &slot) { return slot == ref; });
 			return (found != target_memory.end()) ? static_cast<NSUInteger>(found - target_memory.begin()) : NSNotFound;
 		};
 		NSUInteger i = slotFor(targetRef);
@@ -12561,18 +12560,18 @@ void PlayerEntity::addTarget(::Entity *targetEntity)
 		}		
 		else
 		{
-			i = slotFor(nil);	// an empty slot
+			i = slotFor(oo::WeakRef<cxx::Entity>());	// an empty slot
 			// find and use a blank space in memory
 			if (i != NSNotFound)
 			{
-				target_memory.at(i) = oo::ObjCRef<::OOWeakReference *>(targetRef);
+				target_memory.at(i) = targetRef;
 				target_memory_index = i;
 			}
 			else
 			{
 				// use the next memory space
 				target_memory_index = (target_memory_index + 1) % PLAYER_TARGET_MEMORY_SIZE;
-				target_memory.at(target_memory_index) = oo::ObjCRef<::OOWeakReference *>(targetRef);
+				target_memory.at(target_memory_index) = targetRef;
 			}
 		}
 	}
@@ -12619,7 +12618,7 @@ void PlayerEntity::clearTargetMemory()
 }
 
 
-std::vector<oo::ObjCRef<::OOWeakReference *>> PlayerEntity::targetMemory()
+std::vector<oo::WeakRef<cxx::Entity>> PlayerEntity::targetMemory()
 {
 	return target_memory;
 }
@@ -12635,10 +12634,10 @@ bool PlayerEntity::moveTargetMemoryBy(NSInteger delta)
 		while (idx >= PLAYER_TARGET_MEMORY_SIZE) idx -= PLAYER_TARGET_MEMORY_SIZE;
 		target_memory_index = idx;
 
-		id targ_id = target_memory.at(target_memory_index).get();	// nil for an empty slot, which is not a proxy either
-		if ([targ_id isProxy])
+		const oo::WeakRef<cxx::Entity> &targ_ref = target_memory.at(target_memory_index);
+		if (targ_ref != oo::WeakRef<cxx::Entity>())	// a weak reference (-isProxy), not an empty slot
 		{
-			::ShipEntity *potential_target = oo::ToShip([(::OOWeakReference *)targ_id weakRefUnderlyingObject]);
+			::ShipEntity *potential_target = oo::ToShip(targ_ref.get());
 		
 			if ((potential_target)&&(potential_target->isShip)&&((potential_target != nullptr ? potential_target->isInSpace() : false)))
 			{
