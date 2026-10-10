@@ -462,7 +462,7 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 		{
 			std::vector<oo::ObjCRef<::Entity *>> visible;	// the planets' Objective-C objects
 			for (const auto &r : [UNIVERSE cxx_planets]) {
-				if (![r.get() isVisibleToScripts])  continue;
+				if (!OOJSEntityIsVisibleToScripts(oo::ToCxx(r.get())))  continue;	// the C++ planet's answer (bead oo-9ht.39.5.1)
 				visible.push_back(r);
 			}
 			result = oo::PListFromObjects(visible);
