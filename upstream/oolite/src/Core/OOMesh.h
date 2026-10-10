@@ -44,7 +44,7 @@ MA 02110-1301, USA.
 #include "oofnd/PList.hpp"
 #include "oofnd/Ref.hpp"
 
-@class OOMaterial;
+class OOMaterial;
 struct VertexFaceRef;	// OOMesh.mm: the faces that use one vertex, while loading
 class OOMeshBuffer;	// OOMesh.mm: one refcounted buffer (an oo::Data), shared by a mesh and its mutable copies
 
@@ -95,7 +95,6 @@ typedef struct
 
 class Octree;
 
-namespace cxx { class OOMaterial; }
 
 
 /*	C++20 since bead oo-dnbf, slice 1 of docs/phases/3-slices/OOMesh.md (proposed ADR-0056,
@@ -125,7 +124,7 @@ public:
 										float factor,
 										bool cacheWriteable);
 
-	static oo::Ref<cxx::OOMaterial> placeholderMaterial();
+	static oo::Ref<OOMaterial> placeholderMaterial();
 
 	OOMesh();
 	OOMesh(const OOMesh &) = default;	// -mutableCopyWithZone:'s copy: every member, the buffers shared
@@ -196,7 +195,7 @@ public:
 	
 	NSRange					triangle_range[kOOMeshMaxMaterials] = {};
 	std::string				materialKeys[kOOMeshMaxMaterials];
-	::OOMaterial			*materials[kOOMeshMaxMaterials] = {};	// retained
+	OOMaterial				*materials[kOOMeshMaxMaterials] = {};	// retained
 	GLuint					displayList0 = {};
 	
 	// (named like the overridden getters, which a C++ member cannot be: amendment oo-rdfh item 1)

@@ -301,7 +301,7 @@ void cxx::Universe::initWithGameView(::MyOpenGLView *inGameView)
 
 	[self initTargetFramebufferWithViewSize:[gameView backingViewSize]];
 
-	[::OOMaterial setUp];
+	::OOMaterial::setUp();
 
 	// Preload cache
 	OOCacheManager::sharedCache();
@@ -9382,12 +9382,12 @@ void Universe::preloadPlanetTexturesForSystem(OOSystemID /*s*/)
 			// if it's already loaded, no need to continue
 			if (![surface isFinishedLoading])
 			{
-				_preloadingPlanetMaterials.push_back(oo::ObjCRef<::OOMaterial *>(surface));
+				_preloadingPlanetMaterials.push_back(oo::Ref<::OOMaterial>(surface));
 		
 				// In some instances (retextured planets atm), the main planet might not have an atmosphere defined.
 				// Trying to add nil to _preloadingPlanetMaterials will prematurely terminate the calling function.(!) --Kaks 20100107
 				::OOMaterial *atmo = [planet atmosphereMaterial];
-				if (atmo != nil)  _preloadingPlanetMaterials.push_back(oo::ObjCRef<::OOMaterial *>(atmo));
+				if (atmo != nil)  _preloadingPlanetMaterials.push_back(oo::Ref<::OOMaterial>(atmo));
 			}
 		}
 		
@@ -11540,7 +11540,7 @@ void Universe::prunePreloadingPlanetMaterials()
 	NSUInteger i = _preloadingPlanetMaterials.size();
 	while (i--)
 	{
-		if ([_preloadingPlanetMaterials[i].get() isFinishedLoading])
+		if (_preloadingPlanetMaterials[i]->isFinishedLoading())
 		{
 			_preloadingPlanetMaterials.erase(_preloadingPlanetMaterials.begin() + i);
 		}

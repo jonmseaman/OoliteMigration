@@ -135,8 +135,9 @@ OODebugWFState OODebugBeginWireframe(BOOL ignoreZ)
 {
 	OO_ENTER_OPENGL();
 	
-	OODebugWFState state = { .material = [OOMaterial current] };
-	[OOMaterial applyNone];
+	// The current material, held until OODebugEndWireframe() (it was the facade's autoreleased object).
+	OODebugWFState state = { .material = OOMaterial::current().leakRef() };
+	OOMaterial::applyNone();
 	
 	OOGL(glPushAttrib(GL_ENABLE_BIT | GL_DEPTH_BUFFER_BIT | GL_LINE_BIT | GL_POINT_BIT | GL_CURRENT_BIT));
 	
@@ -164,7 +165,8 @@ void OODebugEndWireframe(OODebugWFState state)
 {
 	OO_ENTER_OPENGL();
 	OOGL(glPopAttrib());
-	[state.material apply];
+	if (state.material != nullptr)  state.material->apply();	// a message to nil did nothing
+	oo::release(state.material);
 }
 
 #endif

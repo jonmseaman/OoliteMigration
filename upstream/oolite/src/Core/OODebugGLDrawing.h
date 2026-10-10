@@ -39,11 +39,11 @@ SOFTWARE.
 
 #ifndef OODEBUGLDRAWING_DISABLE
 
-@class OOMaterial;
+class OOMaterial;
 
 typedef struct
 {
-	OOMaterial			*material;
+	OOMaterial			*material;	// retained by OODebugBeginWireframe(), released by OODebugEndWireframe() (bead oo-9ht.8)
 } OODebugWFState;
 
 

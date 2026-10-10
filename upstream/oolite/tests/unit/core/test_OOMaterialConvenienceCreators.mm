@@ -273,9 +273,9 @@ bool SetUp(BOOL useShaders, OOGraphicsDetail detail = DETAIL_LEVEL_MINIMUM)
 }
 
 
-oo::Ref<cxx::OOMaterial> Make(const char *name, oo::PList::Dict config, bool smooth = false, const std::optional<std::string> &cacheKey = std::nullopt)
+oo::Ref<OOMaterial> Make(const char *name, oo::PList::Dict config, bool smooth = false, const std::optional<std::string> &cacheKey = std::nullopt)
 {
-	return cxx::OOMaterial::materialWithName(name != nullptr ? std::optional<std::string>(name) : std::nullopt,
+	return OOMaterial::materialWithName(name != nullptr ? std::optional<std::string>(name) : std::nullopt,
 											 cacheKey, oo::PList(std::move(config)), oo::PList(), nil, smooth);
 }
 
@@ -283,7 +283,7 @@ oo::Ref<cxx::OOMaterial> Make(const char *name, oo::PList::Dict config, bool smo
 // The material's C++ class, exactly: what -isMemberOfClass: asked of a subclass with a facade of
 // its own, before the facade-deletion beads (oo-9ht.42) made Objective-C see the nearest facade.
 template <typename T>
-bool IsExactly(const oo::Ref<cxx::OOMaterial> &material)
+bool IsExactly(const oo::Ref<OOMaterial> &material)
 {
 	return material != nullptr && typeid(*material.get()) == typeid(T);
 }
@@ -321,7 +321,7 @@ OO_TEST(namedShaders)
 	if (!SetUp(YES))  { OO_CHECK(false); return; }
 	@autoreleasepool
 	{
-		oo::Ref<cxx::OOMaterial> m = Make("hull.png", { { "vertex_shader", oo::PList("named") }, { "fragment_shader", oo::PList("named") } });
+		oo::Ref<OOMaterial> m = Make("hull.png", { { "vertex_shader", oo::PList("named") }, { "fragment_shader", oo::PList("named") } });
 		OO_CHECK(IsExactly<OOShaderMaterial>(m));
 		OO_CHECK(gCacheWrites.empty());
 
@@ -339,7 +339,7 @@ OO_TEST(synthesizedShaders)
 	{
 		// Full shader detail: the configuration is synthesized into a shader material, and the
 		// synthesized configuration is cached under the cache key, the name and the configuration.
-		oo::Ref<cxx::OOMaterial> m = Make("hull.png", { { "emission_map", oo::PList("e.png") } }, false, std::string("ship"));
+		oo::Ref<OOMaterial> m = Make("hull.png", { { "emission_map", oo::PList("e.png") } }, false, std::string("ship"));
 		OO_CHECK(IsExactly<OOShaderMaterial>(m));
 		OO_CHECK(gCacheWrites.size() == 1 && gCacheWrites[0].starts_with("synthesized shader materials|ship/hull.png/"));
 
@@ -408,13 +408,13 @@ OO_TEST(fromDictionaries)
 
 		auto make = [&](const char *name, const oo::PList &m, const oo::PList &s)
 		{
-			return cxx::OOMaterial::materialWithName(std::string(name), std::nullopt, m, s, oo::PList(), nil, false);
+			return OOMaterial::materialWithName(std::string(name), std::nullopt, m, s, oo::PList(), nil, false);
 		};
 
 		// With shaders, the shaders dictionary's entry; without, the materials dictionary's.
 		OO_CHECK(IsExactly<OOShaderMaterial>(make("hull.png", materials, shaders)));
 		gUniverse->_useShaders = NO;
-		oo::Ref<cxx::OOMaterial> m = make("hull.png", materials, shaders);
+		oo::Ref<OOMaterial> m = make("hull.png", materials, shaders);
 		OO_CHECK(IsExactly<OOSingleTextureMaterial>(m));
 		// Neither: an empty configuration if the texture of that name loads, else nothing.
 		OO_CHECK(IsExactly<OOSingleTextureMaterial>(make("other.png", materials, shaders)));
@@ -446,8 +446,8 @@ OO_TEST(cxxStaticMembers)
 
 		const oo::PList materials = oo::PList(oo::PList::Dict{ { "hull.png", oo::PList(oo::PList::Dict{ { "diffuse_map", oo::PList("m.png") } }) } });
 		const oo::PList shaders = oo::PList(oo::PList::Dict{ { "hull.png", oo::PList(oo::PList::Dict{ { "vertex_shader", oo::PList("named") }, { "fragment_shader", oo::PList("named") } }) } });
-		OO_CHECK(IsExactly<OOShaderMaterial>(cxx::OOMaterial::materialWithName(std::string("hull.png"), std::nullopt, materials, shaders, oo::PList(), nil, false)));
-		OO_CHECK(cxx::OOMaterial::materialWithName(std::string("missing"), std::nullopt, oo::PList(), oo::PList(), oo::PList(), nil, false) == nullptr);
+		OO_CHECK(IsExactly<OOShaderMaterial>(OOMaterial::materialWithName(std::string("hull.png"), std::nullopt, materials, shaders, oo::PList(), nil, false)));
+		OO_CHECK(OOMaterial::materialWithName(std::string("missing"), std::nullopt, oo::PList(), oo::PList(), oo::PList(), nil, false) == nullptr);
 
 	}
 }

@@ -368,7 +368,7 @@ OO_TEST(unapplyFallsBackToTheDefaultMaterial)
 		OO_CHECK(GLShininess() == 0);
 
 		m->doApply();
-		const oo::Ref<cxx::OOMaterial> plainMaterial = oo::makeRef<cxx::OOMaterial>();
+		const oo::Ref<OOMaterial> plainMaterial = oo::makeRef<OOMaterial>();
 		m->unapplyWithNext(plainMaterial.get());
 		OO_CHECK(gTextureApplyNones == applyNones + 3);
 		OO_CHECK(Same(GLMaterial(GL_DIFFUSE).v, { 1, 1, 1, 1 }) && GLShininess() == 0);
@@ -384,11 +384,11 @@ OO_TEST(applyAndCurrent)
 		const oo::Ref<OOBasicMaterial> a = Named("A");
 		const oo::Ref<TestSubMaterial> b = NamedSub(std::string("B"));
 		a->apply();
-		OO_CHECK(cxx::OOMaterial::current().get() == a.get());
+		OO_CHECK(OOMaterial::current().get() == a.get());
 		b->apply();
-		OO_CHECK(cxx::OOMaterial::current().get() == b.get() && b->doApplies == 1);
-		cxx::OOMaterial::applyNone();
-		OO_CHECK(cxx::OOMaterial::current() == nullptr);
+		OO_CHECK(OOMaterial::current().get() == b.get() && b->doApplies == 1);
+		OOMaterial::applyNone();
+		OO_CHECK(OOMaterial::current() == nullptr);
 	}
 }
 
@@ -398,11 +398,11 @@ OO_TEST(description)
 	@autoreleasepool
 	{
 		const oo::Ref<OOBasicMaterial> m = Named("Hull");
-		const std::string text = oo::DescriptionOf(oo::ToObjC(static_cast<cxx::OOMaterial *>(m.get())));
+		const std::string text = m->description();
 		OO_CHECK(text.starts_with("<OOBasicMaterial 0x"));
 		OO_CHECK(text.ends_with(">{\"Hull\"}"));
 		const oo::Ref<TestSubMaterial> sub = NamedSub(std::string("Sub"));
-		const std::string subText = oo::DescriptionOf(oo::ToObjC(static_cast<cxx::OOMaterial *>(sub.get())));
+		const std::string subText = sub->description();
 		OO_CHECK(subText.starts_with("<TestSubMaterial 0x") && subText.ends_with(">{\"Sub\"}"));
 	}
 }
@@ -444,30 +444,14 @@ OO_TEST(cxxAPI)
 }
 
 
-// Objective-C sees a basic material, and a C++ subclass of one, as an OOMaterial (bead oo-9ht.33).
-OO_TEST(crossesAsAnOOMaterial)
+// The name, as the facade answered it (bead oo-9ht.33, oo-9ht.8).
+OO_TEST(nameOfACxxMaterial)
 {
 	@autoreleasepool
 	{
 		const oo::Ref<OOBasicMaterial> m = OOBasicMaterial::materialWithName(std::string("Cxx"));
-		OOMaterial *facade = oo::ToObjC(static_cast<cxx::OOMaterial *>(m.get()));
-		OO_CHECK([facade isMemberOfClass:[OOMaterial class]]);
-		OO_CHECK(oo::ToObjC(static_cast<cxx::OOMaterial *>(m.get())) == facade && oo::ToCxx(facade) == m.get());
-		OO_CHECK(oo::AsObjCMaterial(m.get()) == nullptr);
-		OO_CHECK([facade cxx_name] == std::optional<std::string>("Cxx"));
-
-		const oo::Ref<TestSubMaterial> sub = NamedSub(std::string("CxxSub"));
-		OOMaterial *subFacade = oo::ToObjC(static_cast<cxx::OOMaterial *>(sub.get()));
-		OO_CHECK([subFacade isMemberOfClass:[OOMaterial class]] && oo::ToCxx(subFacade) == sub.get());
+		OO_CHECK(m->name() == std::optional<std::string>("Cxx"));
 	}
-}
-
-
-OO_TEST(nilCrossesAsNull)
-{
-	OOMaterial *none = nil;
-	OO_CHECK(oo::ToCxx(none) == nullptr);
-	OO_CHECK(oo::ToObjC(static_cast<cxx::OOMaterial *>(nullptr)) == nil);
 }
 
 OO_TEST_MAIN()

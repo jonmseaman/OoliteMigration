@@ -47,7 +47,7 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOObjCRef.h"
 #include "oofnd/Ref.hpp"
 
-@class OOMaterial;
+class OOMaterial;
 
 #if OOLITE_ESPEAK
 #include <espeak-ng/speak_lib.h>
@@ -433,7 +433,7 @@ public:
 	oo::PList				speechArray;	// [original, replacement(, espeak replacement)] pairs
 #endif
 
-	std::vector<oo::ObjCRef<::OOMaterial *>>	_preloadingPlanetMaterials;
+	std::vector<oo::Ref<::OOMaterial>>		_preloadingPlanetMaterials;
 	BOOL					doProcedurallyTexturedPlanets = NO;
 
 	GLfloat					frustum[6][4] = {};

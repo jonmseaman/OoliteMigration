@@ -227,7 +227,7 @@ oo::Ref<OOMesh> OOMesh::meshWithName(const std::string &name,
 }
 
 
-oo::Ref<cxx::OOMaterial> OOMesh::placeholderMaterial()
+oo::Ref<OOMaterial> OOMesh::placeholderMaterial()
 {
 	static OOBasicMaterial	*placeholderMaterial = nullptr;	// never released, as before
 
@@ -239,7 +239,7 @@ oo::Ref<cxx::OOMaterial> OOMesh::placeholderMaterial()
 		placeholderMaterial = OOBasicMaterial::materialWithName(std::string("/placeholder/"), (noTextures != nullptr ? *noTextures : oo::PList())).leakRef();
 	}
 
-	return oo::Ref<cxx::OOMaterial>(placeholderMaterial);
+	return oo::Ref<OOMaterial>(placeholderMaterial);
 }
 
 
@@ -266,7 +266,9 @@ OOMesh::~OOMesh()
 
 	for (i = 0; i != kOOMeshMaxMaterials; ++i)
 	{
-		DESTROY(materials[i]);
+		OOMaterial *material = materials[i];	// DESTROY(): cleared before the release
+		materials[i] = nullptr;
+		oo::release(material);
 	}
 
 	OOGraphicsResetManager::sharedManager()->unregisterCxxClient(this);
@@ -376,7 +378,7 @@ void OOMesh::renderOpaqueParts()
 		_textureUnitCount = 0;
 		for (ti = 0; ti < materialCount; ti++)
 		{
-			NSUInteger count = materials[ti] != nil ? oo::ToCxx(materials[ti])->countOfTextureUnitsWithBaseCoordinates() : 0;
+			NSUInteger count = materials[ti] != nullptr ? materials[ti]->countOfTextureUnitsWithBaseCoordinates() : 0;
 			if (_textureUnitCount < count)  _textureUnitCount = count;
 		}
 	}
@@ -412,13 +414,13 @@ void OOMesh::renderOpaqueParts()
 			// Ensure all textures are loaded
 			for (ti = 0; ti < materialCount; ti++)
 			{
-				if (materials[ti] != nil)  oo::ToCxx(materials[ti])->ensureFinishedLoading();
+				if (materials[ti] != nullptr)  materials[ti]->ensureFinishedLoading();
 			}
 		}
 		
 		for (ti = 0; ti < materialCount; ti++)
 		{
-			BOOL wantsNormalsAsTextureCoordinates = materials[ti] != nil && oo::ToCxx(materials[ti])->wantsNormalsAsTextureCoordinates();
+			BOOL wantsNormalsAsTextureCoordinates = materials[ti] != nullptr && materials[ti]->wantsNormalsAsTextureCoordinates();
 			if (ti == 0 || wantsNormalsAsTextureCoordinates != usingNormalsAsTexCoords)
 			{
 					// FIXME: enabling/disabling texturing should be handled by the material.
@@ -454,7 +456,7 @@ void OOMesh::renderOpaqueParts()
 				usingNormalsAsTexCoords = wantsNormalsAsTextureCoordinates;
 			}
 			
-			if (materials[ti] != nil)  oo::ToCxx(materials[ti])->apply();
+			if (materials[ti] != nullptr)  materials[ti]->apply();
 			OOGL(glDrawArrays(GL_TRIANGLES, triangle_range[ti].location, triangle_range[ti].length));
 		}
 		
@@ -479,7 +481,7 @@ void OOMesh::renderOpaqueParts()
 	}
 #endif
 	
-	cxx::OOMaterial::applyNone();
+	OOMaterial::applyNone();
 	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "OOMesh after drawing " + description(); });
 	
 #if OO_MULTITEXTURE
@@ -517,17 +519,17 @@ void OOMesh::renderOpaqueParts()
 void OOMesh::rebindMaterials()
 {
 	OOMeshMaterialCount		i;
-	oo::Ref<cxx::OOMaterial>		material;
+	oo::Ref<OOMaterial>		material;
 
 	if (materialCount != 0)
 	{
 		for (i = 0; i != materialCount; ++i)
 		{
-			::OOMaterial *oldMaterial = materials[i];
+			OOMaterial *oldMaterial = materials[i];
 
 			if (materialKeys[i] != "_oo_placeholder_material")
 			{
-				material = cxx::OOMaterial::materialWithName(materialKeys[i],
+				material = OOMaterial::materialWithName(materialKeys[i],
 														_cacheKey,
 														_materialDict,
 														_shadersDict,
@@ -540,20 +542,20 @@ void OOMesh::rebindMaterials()
 				material = nullptr;
 			}
 
-			// The member holds the material's Objective-C object, retained, as before.
+			// The member holds the material, retained, as before.
 			if (material != nullptr)
 			{
-				materials[i] = [oo::ToObjC(material.get()) retain];
+				materials[i] = oo::retain(material.get());
 			}
 			else
 			{
-				materials[i] = [oo::ToObjC(placeholderMaterial().get()) retain];
+				materials[i] = placeholderMaterial().leakRef();
 			}
 
 			/*	Release is deferred to here to ensure we don't end up releasing
 				a texture that's not in the recent-cache and then reloading it.
 			*/
-			[oldMaterial release];
+			oo::release(oldMaterial);
 		}
 	}
 }
@@ -756,7 +758,7 @@ void OOMesh::setBindingTarget(id<OOWeakReferenceSupport> target)
 	for (i = 0; i != kOOMeshMaxMaterials; ++i)
 	{
 		// A nil material did nothing.
-		if (cxx::OOMaterial *material = oo::ToCxx(materials[i]))  material->setBindingTarget(target);
+		if (OOMaterial *material = materials[i])  material->setBindingTarget(target);
 	}
 }
 
@@ -782,7 +784,7 @@ std::vector<oo::ObjCRef<::OOTexture *>> OOMesh::allTextures()
 	for (i = 0; i != materialCount; i++)
 	{
 		// A nil material answered no textures.
-		cxx::OOMaterial *material = oo::ToCxx(materials[i]);
+		OOMaterial *material = materials[i];
 		if (material == nullptr)  continue;
 		for (const oo::ObjCRef<::OOTexture *> &texture : material->allTextures())  result.push_back(texture);
 	}
@@ -804,8 +806,8 @@ size_t OOMesh::totalSize()
 	OOMeshMaterialCount i;
 	for (i = 0; i != materialCount; i++)
 	{
-		// -oo_objectSize: its class's instance size (NSObjectOOExtensions.mm), 0 for nil.
-		result += class_getInstanceSize(object_getClass(materials[i]));
+		// -oo_objectSize: the object's own size (was its facade class's instance size), 0 for nil.
+		if (materials[i] != nullptr)  result += materials[i]->objectSize();
 	}
 
 	// A nil octree answered 0.
@@ -908,7 +910,7 @@ oo::Ref<OOMesh> OOMesh::mutableCopyWithZone(OOZone * /*zone*/)
 
 	for (i = 0; i != kOOMeshMaxMaterials; ++i)
 	{
-		[result->materials[i] retain];
+		oo::retain(result->materials[i]);
 	}
 
 	// Reset unsharable GL state

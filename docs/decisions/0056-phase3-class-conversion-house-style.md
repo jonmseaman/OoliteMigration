@@ -6981,3 +6981,53 @@ the universe, the SDL view) was C++ code.
 **Consequences.** No Objective-C `OOJoystickManager` or `OOSDLJoystickManager` is left (outside the
 uncompiled Mac arm). The player no longer needs to answer `-updateFunction:` by name for the
 joystick.
+
+
+## Amendment (bead oo-9ht.8 (OOMaterial)): the material root's facade is deleted; the current material is an oo::Ref
+
+- Date: 2026-10-10. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch Y
+  (one branch): bead oo-9ht.8. Exemplar: `src/Core/Materials/OOMaterial.h/.mm`,
+  `src/Core/OOPlanetDrawable.h/.mm`, `src/Core/OOMesh.mm`, `tests/unit/core/test_OOMaterial.mm`.
+
+**Context.** Every material class was C++ (OOBasicMaterial and the three under it, the convenience
+creators); `OOMaterial+ObjCBridge` remained for the holders: the mesh's `materials[]` array and the
+planet drawable kept the facade, the planet entity answered it, the universe called `+setUp` and
+kept preloading materials, and the debug wireframe saved `+current` and sent it `-apply`.
+
+**Decision (recommended defaults).**
+
+1. **The class leaves namespace `cxx`**; both bridge files, the import at the end of `OOMaterial.h`
+   and the meson entries (game and six tests) go. The current material (`ActiveMaterial()`) is a
+   never-destroyed `oo::Ref<OOMaterial>`: `apply()` keeps `oo::Ref<OOMaterial>(this)`, `current()`
+   answers it, and `willDealloc()`'s leak is `leakRef()` of the slot (amendment oo-smy item 4).
+2. **Holders hold the C++ material.** The mesh's `materials[]` stay raw pointers retained by hand
+   (`oo::retain`/`oo::release` where it sent `-retain`/`-release`; `DESTROY` clears before the
+   release); the planet drawable holds `oo::Ref<OOMaterial>`, and `setMaterial()`'s `[_material
+   autorelease]` is `OOMaterialAutorelease()`, a file-private keeper as `OODrawableAutorelease()`
+   (amendment oo-hahfg item 1). The planet entity's `material()` family answer the borrowed C++
+   material; the universe's preloading list is `std::vector<oo::Ref<OOMaterial>>` (its filling is
+   compiled out, `#if 0`, and only retyped). Receivers that could be nil keep a null check with the
+   answer a message to nil gave.
+3. **The debug wireframe state holds the saved current material retained**:
+   `OODebugBeginWireframe()` takes `OOMaterial::current().leakRef()` (it was the facade's
+   autoreleased object) and `OODebugEndWireframe()` applies it if non-null and releases it.
+   **Difference (debug builds only, not observable):** the saved material is released at the end of
+   the wireframe rather than when the pool drains; it is current again by then unless its
+   `doApply()` failed.
+4. **Description and size are the C++ object's**: `description()` is the facade's
+   `<Class 0x...>{components}` with the material's address (as `OODrawable::description()`); the
+   mesh's debug size adds a virtual `objectSize()` (`sizeof *this`, each material class answering its
+   own) where it added the facade's instance size (amendment oo-hahfg item 4).
+5. **Tests** (standing approval oo-9n5p9; one approval line per file): the facade's crossing cases
+   go (`objCMaterialBehindACxxPointer`, `mixedApply`, `nilAndLifetime`, `crossesAsAnOOMaterial`,
+   `nilCrossesAsNull`, the three `crossesAsTheBasicMaterialFacade`); the C++ checks inside the
+   crossing cases are kept as C++ cases (`cxxMaterial`, `currentRetainsACxxMaterial`,
+   `nameOfACxxMaterial`, `nameAndDescription`, `descriptionNamesTheClass` x2); the Objective-C test
+   materials are C++ subclasses with the same overrides, named as they were so their descriptions
+   are unchanged; every other case's sends call the same members with every expectation kept
+   (`oo::DescriptionOf(oo::ToObjC(m))` is `m->description()`).
+
+**Consequences.** No Objective-C material class is left. `OODebugGLDrawing.mm` sends no message
+any more, but it is still not a `.cpp` rename (bead oo-hrcs): its header chain (`OOMaths.h`,
+`OOColor.h`, `OOMaterial.h`'s `id<OOWeakReferenceSupport>` binding target, `OOOpenGL.h`) imports
+Objective-C headers, so a plain C++ translation unit cannot include them.

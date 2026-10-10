@@ -725,11 +725,11 @@ void OOPlanetEntity::update(OOTimeDelta delta_t)
 
 bool OOPlanetEntity::isFinishedLoading()
 {
-	cxx::OOMaterial *material = oo::ToCxx(this->material());
+	OOMaterial *material = this->material();
 	if (material != nullptr && !material->isFinishedLoading())  return false;
-	material = oo::ToCxx(atmosphereMaterial());
+	material = atmosphereMaterial();
 	if (material != nullptr && !material->isFinishedLoading())  return false;
-	material = oo::ToCxx(atmosphereShaderMaterial());
+	material = atmosphereShaderMaterial();
 	if (material != nullptr && !material->isFinishedLoading())  return false;
 	return true;
 }
@@ -1131,7 +1131,7 @@ void OOPlanetEntity::setTextureFileName(const std::optional<std::string> &textur
 		OO_LOG("texture.planet.generate", "Planet {} has atmosphere {}", oo::DescriptionOf(oo::ToObjC(this)), oo::DescriptionOf(atmosphere));
 		
 		oo::Ref<OOSingleTextureMaterial> dynamicMaterial = OOSingleTextureMaterial::materialWithName("dynamic", atmosphere, oo::PList());
-		_atmosphereDrawable->setMaterial(oo::ToObjC(dynamicMaterial.get()));
+		_atmosphereDrawable->setMaterial(dynamicMaterial.get());
 
 		if (shadersOn)
 		{
@@ -1150,7 +1150,7 @@ void OOPlanetEntity::setTextureFileName(const std::optional<std::string> &textur
 			}
 			else
 			{
-				if (_atmosphereShaderDrawable)  _atmosphereShaderDrawable->setMaterial(oo::ToObjC(dynamicShaderMaterial.get()));
+				if (_atmosphereShaderDrawable)  _atmosphereShaderDrawable->setMaterial(dynamicShaderMaterial.get());
 			}
 
 			const oo::PList cloudConfig = MaterialConfigWithTextures(DictionaryForKey(materialDefaults, "clouds-dynamic-material"), { atmosphere });
@@ -1166,14 +1166,14 @@ void OOPlanetEntity::setTextureFileName(const std::optional<std::string> &textur
 			}
 			else
 			{
-				if (_cloudsShaderDrawable)  _cloudsShaderDrawable->setMaterial(oo::ToObjC(cloudsMaterial.get()));
+				if (_cloudsShaderDrawable)  _cloudsShaderDrawable->setMaterial(cloudsMaterial.get());
 			}
 		}
 		
 		// [dynamicMaterial release]: the reference's.
 	}
 
-	oo::Ref<cxx::OOMaterial> material;
+	oo::Ref<OOMaterial> material;
 	
 #if OO_SHADERS
 	if (shadersOn)
@@ -1190,7 +1190,7 @@ void OOPlanetEntity::setTextureFileName(const std::optional<std::string> &textur
 	{
 		material = OOSingleTextureMaterial::materialWithName(textureName, diffuseMap, oo::PList());
 	}
-	_planetDrawable->setMaterial(oo::ToObjC(material.get()));
+	_planetDrawable->setMaterial(material.get());
 }
 
 
@@ -1201,19 +1201,19 @@ bool OOPlanetEntity::setUpPlanetFromTexture(const std::optional<std::string> &te
 }
 
 
-::OOMaterial *OOPlanetEntity::material()
+OOMaterial *OOPlanetEntity::material()
 {
 	return _planetDrawable->material();
 }
 
 
-::OOMaterial *OOPlanetEntity::atmosphereMaterial()
+OOMaterial *OOPlanetEntity::atmosphereMaterial()
 {
 	return _atmosphereDrawable ? _atmosphereDrawable->material() : nil;
 }
 
 
-::OOMaterial *OOPlanetEntity::atmosphereShaderMaterial()
+OOMaterial *OOPlanetEntity::atmosphereShaderMaterial()
 {
 	if(!_atmosphereShaderDrawable)  return nil;
 	return _atmosphereShaderDrawable->material();

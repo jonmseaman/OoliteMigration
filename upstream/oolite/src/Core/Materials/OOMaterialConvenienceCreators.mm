@@ -93,8 +93,6 @@ void SynthSpecular(OOMaterialSynthContext *context);
 #endif
 
 
-namespace cxx {
-
 #if !USE_NEW_SHADER_SYNTHESIZER
 
 oo::PList OOMaterial::synthesizeMaterialDictionaryWithName(const std::optional<std::string> &name,
@@ -419,8 +417,6 @@ oo::Ref<OOMaterial> OOMaterial::materialWithName(const std::optional<std::string
 							object,
 							smooth);
 }
-
-}	// namespace cxx
 
 
 #if !USE_NEW_SHADER_SYNTHESIZER

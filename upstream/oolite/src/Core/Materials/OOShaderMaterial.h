@@ -175,6 +175,7 @@ public:
 	void ensureFinishedLoading() override;
 	bool isFinishedLoading() override;
 	void unapplyWithNext(OOMaterial *next) override;
+	size_t objectSize() const override	{ return sizeof *this; }
 	void setBindingTarget(id<OOWeakReferenceSupport> target) override;
 	bool permitSpecular() override;
 #ifndef NDEBUG

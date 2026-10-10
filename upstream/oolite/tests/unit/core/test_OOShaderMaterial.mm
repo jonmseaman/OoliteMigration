@@ -552,12 +552,12 @@ OO_TEST(lifetimeAndDescription)
 	OO_CHECK(gProgramsDeallocated == programs && gTexturesDeallocated == textures);
 	@autoreleasepool
 	{
-		const std::string text = oo::DescriptionOf(oo::ToObjC(static_cast<cxx::OOMaterial *>(m.get())));
+		const std::string text = m->description();
 		OO_CHECK(text.starts_with("<OOShaderMaterial 0x") && text.ends_with(">{\"Shader\"}"));
 		OO_CHECK(m->permitSpecular());
 		m->apply();
-		OO_CHECK(cxx::OOMaterial::current().get() == m.get());
-		cxx::OOMaterial::applyNone();
+		OO_CHECK(OOMaterial::current().get() == m.get());
+		OOMaterial::applyNone();
 	}
 	m = nullptr;
 	OO_CHECK(gProgramsDeallocated == programs + 1 && gTexturesDeallocated == textures + 1);
@@ -599,25 +599,22 @@ OO_TEST(cxxAPI)
 
 		const int programApplies = gProgramApplies;
 		m->apply();
-		OO_CHECK(gProgramApplies == programApplies + 1 && cxx::OOMaterial::current().get() == m.get());
+		OO_CHECK(gProgramApplies == programApplies + 1 && OOMaterial::current().get() == m.get());
 		const int programApplyNones = gProgramApplyNones;
-		cxx::OOMaterial::applyNone();
+		OOMaterial::applyNone();
 		OO_CHECK(gProgramApplyNones == programApplyNones + 1);
 	}
 }
 
 
-// Objective-C sees a shader material as an OOMaterial (beads oo-9ht.46, oo-9ht.33).
-OO_TEST(crossesAsTheBasicMaterialFacade)
+// The description names the C++ class, as the facade's did (beads oo-9ht.46, oo-9ht.8).
+OO_TEST(descriptionNamesTheClass)
 {
 	if (!OOTestGLContext())  { OO_CHECK(false); return; }
 	@autoreleasepool
 	{
 		const oo::Ref<OOShaderMaterial> m = OOShaderMaterial::shaderMaterialWithName(std::string("Cxx"), kSources, oo::PList(), nil);
-		OOMaterial *facade = oo::ToObjC(static_cast<cxx::OOMaterial *>(m.get()));
-		OO_CHECK([facade isMemberOfClass:[OOMaterial class]]);
-		OO_CHECK(oo::ToCxx(facade) == m.get() && oo::AsObjCMaterial(m.get()) == nullptr);
-		OO_CHECK(oo::DescriptionOf(facade).starts_with("<OOShaderMaterial 0x"));
+		OO_CHECK(m->description().starts_with("<OOShaderMaterial 0x"));
 	}
 }
 
