@@ -30,7 +30,6 @@ MA 02110-1301, USA.
 #import "OOGraphicsResetManager.h"
 
 #include "oofnd/StdLib.hpp"
-#include "oofnd/objc/OOObjCRef.h"
 
 #if OO_SHADERS
 #import "OOShaderProgram.h"
@@ -43,8 +42,8 @@ MA 02110-1301, USA.
 /*	C++ only since bead oo-9ht.77 deleted its Objective-C facade (proposed ADR-0056 amendment
 	oo-0mxi): the universe makes it with oo::makeRef<DustEntity>() and init(), hands it to
 	Objective-C with oo::NewEntityFacade, and finds it with dynamic_cast. It is its own graphics
-	reset client (OOGraphicsResetClient), and the dust shader's uniforms are bound, by
-	selector, to a file-local Objective-C object in DustEntity.mm that forwards to it.
+	reset client (OOGraphicsResetClient), and the dust shader's uniforms are bound to its members
+	(bead oo-t0e2m: OOShaderUniform's C++ target binding).
 */
 class DustEntity : public cxx::Entity, public OOGraphicsResetClient
 {
@@ -66,9 +65,9 @@ public:
 
 #if OO_SHADERS
 	OOShaderProgram *getShader();
-	Vector offsetPlayerPosition();	// bound to the dust shader by selector, through the binding object
+	Vector offsetPlayerPosition();	// the dust shader's uOffsetPlayerPosition (bead oo-t0e2m)
 #endif
-	Vector warpVector();			// bound to the dust shader by selector, through the binding object
+	Vector warpVector();			// the dust shader's uWarp (bead oo-t0e2m)
 
 	void drawImmediate(bool immediate, bool translucent) override;
 
@@ -96,7 +95,6 @@ private:
 	GLfloat				warpinessAttr[DUST_N_PARTICLES * 2] = {};
 	oo::Ref<OOShaderProgram>	shader;
 	std::vector<oo::Ref<OOShaderUniform>>	uniforms;
-	oo::ObjCRef<id>		shaderBinding;	// what the uniforms are bound to (DustEntity.mm)
 	uint8_t				shaderMode = {};
 #endif
 };

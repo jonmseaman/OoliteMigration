@@ -50,6 +50,13 @@ SOFTWARE.
 
 struct OOShaderBindingValue;	// OOShaderUniformMethodType.h (bead oo-9ht.158)
 
+/*	A uniform bound to a C++ object's member (bead oo-t0e2m, ADR-0056 amendment oo-t0e2m): the
+	getter reads the member into the field its type uses (OOShaderBindingValue), as a member table's
+	row does for an Objective-C target. The target is held weakly: once it has gone, -apply sets
+	nothing, as for an Objective-C target that has gone.
+*/
+typedef void (*OOShaderCxxBindingGetter)(oo::RefCounted *target, OOShaderBindingValue &outValue);
+
 class OOShaderUniform : public oo::RefCounted
 {
 public:
@@ -76,6 +83,19 @@ public:
 												 id<OOWeakReferenceSupport> target,	// boundToObject:
 												 SEL selector,	// property:
 												 OOUniformConvertOptions options);	// convertOptions:
+
+	/*	Bound to a C++ target's member (bead oo-t0e2m): property names the member (for the
+		description and the log), type is the uniform type of its value (what the selector path read
+		from the replaced method's return type), get reads it. Null where there is no program, no
+		uniform of that name in it, no getter or an unbindable type. A null target binds nothing.
+	*/
+	static oo::Ref<OOShaderUniform> initWithName(const std::string &uniformName,
+												 OOShaderProgram *shaderProgram,
+												 oo::RefCounted *target,
+												 const std::string &property,
+												 uint8_t type,	// OOShaderUniformType (OOShaderUniformMethodType.h)
+												 OOShaderCxxBindingGetter get,
+												 OOUniformConvertOptions options);
 
 	// The whole of what -cxx_description printed (amendment oo-3lj8 item 4).
 	std::optional<std::string> description();
@@ -117,8 +137,13 @@ private:
 			// A member of the target found in its class's member table (bead oo-9ht.158), or
 			// NULL where the binding calls method (the selector path).
 			void						(*memberGet)(id object, struct OOShaderBindingValue &outValue);
+			// A C++ target's getter (bead oo-t0e2m), or NULL where the target is Objective-C
+			// (object above); the target and the property's name are cxxTarget and cxxProperty.
+			OOShaderCxxBindingGetter	cxxGet;
 		}							binding;
 	}							value = {};
+	oo::WeakRef<oo::RefCounted>	cxxTarget = {};
+	std::string					cxxProperty = {};
 };
 
 #endif // OO_SHADERS

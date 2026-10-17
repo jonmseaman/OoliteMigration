@@ -7270,3 +7270,40 @@ respondsToSelector:]`). The descriptions are `UNIVERSE->descriptions()`, unguard
 answer was dereferenced at every call, so a missing universe failed there before as well.
 `tools/check-string-expander.sh` no longer compiles or links a bridge; its stubs stand in for the
 C++ classes, and its digests are unchanged.
+
+## Amendment (bead oo-t0e2m): the dust shader's uniforms are bound to the C++ dust
+
+- Date: 2026-10-17. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch AB
+  (one branch). Exemplar: `src/Core/Materials/OOShaderUniform.h/.mm` (the C++ target factory,
+  `OOShaderCxxBindingGetter`), `src/Core/Entities/DustEntity.mm` (`getShader()`),
+  `tests/unit/core/test_OOShaderUniform.mm` (`cxxTargetBindings`). Follows amendment oo-9ht.158.
+
+**Context.** Since oo-9ht.77 deleted the dust's facade, the dust shader's `uWarp` and
+`uOffsetPlayerPosition` were bound by selector (`-warpVector`, `-offsetPlayerPosition`) to a
+file-local Objective-C object, an `OOWeakRefObject` that forwarded to the C++ dust and that the
+dust's destructor disconnected. It was one of the last `OOWeakRefObject` subclasses oo-9ht.22 waits on.
+
+**Decision (recommended defaults).**
+
+1. **A uniform can be bound to a C++ object's member.** `OOShaderUniform::initWithName(name,
+   program, target, property, type, get, options)` takes the target as `oo::RefCounted *`, held
+   with `oo::WeakRef`, a getter `void (*)(oo::RefCounted *, OOShaderBindingValue &)` that reads
+   the member into the field its type uses (as a member table's row does, amendment oo-9ht.158
+   item 2), and the uniform type, which is what the selector path read from the replaced method's
+   return type (`Vector`: `kOOShaderUniformTypeVector`). It fails (null) where the selector
+   initialiser failed: no program, no uniform of that name (the same log class; the line names the
+   property where it named `-[class selector]`), and also for no getter or an invalid type. The
+   value is converted and uploaded exactly as a member binding's (`applyBinding()`); a target that
+   has gone, or none, sets nothing, as an Objective-C target that had gone did. Such a uniform is
+   bound once: `setBindingTarget()` leaves it alone (a C++ target has no super target).
+2. **The dust binds its two uniforms to its members** `warpVector()` and `offsetPlayerPosition()`
+   through two file-local getters; the Objective-C object, the dust's `shaderBinding` member and
+   its destructor line go. The uniform's weak reference replaces the destructor's disconnection.
+
+**Differences.** None in the game: the uniforms' names, types, conversions and values are
+unchanged. A bound uniform's description names the C++ target's address and the member
+(`[<0x…> warpVector]`) where it named the Objective-C object's class and address.
+
+**Tests.** `test_OOShaderUniform cxxTargetBindings` (new) pins the C++ target binding: the failing
+cases, the value read on every apply, normalisation, the description, a target that has gone and
+none. `test_DustEntity shaderBindings` keeps pinning both members' values. No case was retired.
