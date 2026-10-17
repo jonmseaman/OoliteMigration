@@ -150,6 +150,7 @@ public:
 	::OOMesh *mesh();
 	void setMesh(::OOMesh *mesh);
 	void removeSubEntity(OOVisualEffectSubEntity *sub);
+	void removeSubEntity(cxx::Entity *sub);	// the binding's since bead oo-9ht.39.8.13
 	void remove();
 	void clearSubEntities();
 	bool setUpSubEntities();
@@ -402,6 +403,7 @@ oo::PList OOVisualEffectEntity::effectInfoDictionary()  { return _effectInfo; }
 ::OOMesh *OOVisualEffectEntity::mesh()  { return _mesh.get(); }
 void OOVisualEffectEntity::setMesh(::OOMesh *mesh)  { _mesh = oo::Ref<OOMesh>(mesh); }
 void OOVisualEffectEntity::removeSubEntity(OOVisualEffectSubEntity *sub)  { _removedSub = sub; }
+void OOVisualEffectEntity::removeSubEntity(cxx::Entity *sub)  { _removedSub = oo::ToObjC(sub); }	// its object, as the binding passed it until bead oo-9ht.39.8.13
 void OOVisualEffectEntity::remove()  { _removed++; }
 std::optional<std::string> OOVisualEffectEntity::beaconCode()  { return _beaconCode; }
 void OOVisualEffectEntity::setBeaconCode(const std::optional<std::string> &bcode)  { _beaconCode = bcode; }

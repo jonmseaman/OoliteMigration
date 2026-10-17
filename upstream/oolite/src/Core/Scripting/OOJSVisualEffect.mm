@@ -653,7 +653,7 @@ oo::PList MeshShaders(OOVisualEffectEntity *effect)
 
 #define GET_THIS_EFFECT(THISENT) do { \
 	if (EXPECT_NOT(!JSVisualEffectGetVisualEffectEntity(context, OOJS_THIS, &(THISENT))))  return false; /* Exception */ \
-	if (OOIsStaleEntity(oo::ToObjC(THISENT)))  OOJS_RETURN_VOID; \
+	if (OOIsStaleEntity(THISENT))  OOJS_RETURN_VOID;	/* the C++ effect's (bead oo-9ht.39.8.13) */ \
 } while (0)
 
 
@@ -670,7 +670,7 @@ static bool VisualEffectRemove(ooscript::Context cx, ooscript::CallArgs &oojsArg
 	if ((thisEnt != nullptr ? thisEnt->getIsSubEntity() : false))
 	{
 		OOVisualEffectEntity				*parent = oo::ToEffect(static_cast<::Entity *>(thisEnt != nullptr ? thisEnt->owner() : id{}));	// C++ since bead oo-9ht.165
-		if (parent != nullptr)  parent->removeSubEntity((OOVisualEffectSubEntity *)oo::ToObjC(thisEnt));
+		if (parent != nullptr)  parent->removeSubEntity(thisEnt);	// the C++ sub-entity (bead oo-9ht.39.8.13)
 	}
 	else
 	{
