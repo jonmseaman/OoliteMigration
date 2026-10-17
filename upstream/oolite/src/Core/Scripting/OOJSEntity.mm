@@ -244,10 +244,19 @@ oo::PList OOJSEntityObjectConverter(ooscript::Context context, ooscript::Object 
 }
 
 
-Entity *OOJSEntityObjectFromJSObject(ooscript::Context context, ooscript::Object object)
+HPVector OOJSEntityPositionOfJSObject(ooscript::Context context, ooscript::Object object)
 {
 	OOJSEntityHolder *holder = static_cast<OOJSEntityHolder *>(static_cast<oo::RefCounted *>(ooscript::getPrivate(context, object)));
-	return oo::ToObjC((holder != nullptr) ? holder->entity() : nullptr);
+	cxx::Entity *entity = (holder != nullptr) ? holder->entity() : nullptr;
+	return entity != nullptr ? entity->getPosition() : HPVector{};	// zero for none, as the message to nil
+}
+
+
+Quaternion OOJSEntityOrientationOfJSObject(ooscript::Context context, ooscript::Object object)
+{
+	OOJSEntityHolder *holder = static_cast<OOJSEntityHolder *>(static_cast<oo::RefCounted *>(ooscript::getPrivate(context, object)));
+	cxx::Entity *entity = (holder != nullptr) ? holder->entity() : nullptr;
+	return entity != nullptr ? entity->getOrientation() : Quaternion{};	// zero for none, as the message to nil
 }
 
 
