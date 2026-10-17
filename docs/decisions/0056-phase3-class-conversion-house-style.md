@@ -7888,3 +7888,20 @@ unreachable.
 **Tests (standing approval oo-9n5p9, line on main before this change).** `test_OOJSExhaustPlume`'s object
 stand-in for `-owner` becomes `cxx::Entity::owner()` over the same object field; no case or expected value
 changes.
+
+## Amendment (bead oo-9ht.39.8.20): the flasher binding asks the C++ flasher
+
+oo-9ht.39 step 4c (bead oo-9ht.39.8), family F6 part 6e for the flasher (batch AF, Migration Completion
+session, 2026-10-17), as amendment oo-9ht.39.8.19 for the exhaust plume. `OOJSFlasher`'s `remove()` asks the
+C++ flasher where it asked its object: `OOIsStaleEntity()`'s C++ overload, `cxx::Entity::owner()` (the
+facade's `-owner` answered exactly it) and, for an effect's flasher, `OOVisualEffectEntity::removeSubEntity()`
+with the C++ flasher (the overload of amendment oo-9ht.39.8.13, which crosses once to the object the effect's
+list holds). `JSFlasherGetFlasherEntity()` answers the C++ flasher only; its `oo::ToObjC` goes. The owner is
+still the owner's object (`-isShip`, `oo::ToShip`/`oo::ToEffect`): the owner API is later work.
+
+**Defaults (rule 10).** Identical behaviour; the facade-less difference of amendment oo-9ht.39.7.1 is
+unreachable.
+
+**Tests (standing approval oo-9n5p9, line on main before this change).** `test_OOJSFlasher`'s object stand-in
+for `-owner` becomes `cxx::Entity::owner()` over the same object field, and its effect stand-in gains the
+`removeSubEntity(cxx::Entity *)` overload recording the sub-entity's object; no case or expected value changes.

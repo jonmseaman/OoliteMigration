@@ -45,6 +45,7 @@ public:
 	virtual void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
 	virtual std::optional<std::string> jsClassName();
 	virtual bool isVisibleToScripts();
+	id owner();	// the binding calls it since bead oo-9ht.39.8.20 (its object's -owner did)
 };
 
 }	// namespace cxx
@@ -103,7 +104,6 @@ public:
 	BOOL _isShip;
 }
 - (id) weakRefUnderlyingObject;
-- (id) owner;
 - (BOOL) isShip;
 @end
 
@@ -128,6 +128,7 @@ class OOVisualEffectEntity : public cxx::Entity
 {
 public:
 	void removeSubEntity(OOVisualEffectSubEntity *sub);
+	void removeSubEntity(cxx::Entity *sub);	// the binding's since bead oo-9ht.39.8.20
 
 	id _removed = nil;
 };
@@ -159,7 +160,6 @@ bool OOJSFlasherIsVisibleToScripts(void);
 @implementation Entity
 
 - (id) weakRefUnderlyingObject  { return self; }
-- (id) owner  { return _owner; }
 - (BOOL) isShip  { return _isShip; }
 
 @end
@@ -169,6 +169,8 @@ void ShipEntity::removeFlasher(OOFlasherEntity *flasher)  { _removedFlasher = fl
 
 
 void OOVisualEffectEntity::removeSubEntity(OOVisualEffectSubEntity *sub)  { _removed = sub; }
+namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }	// defined below
+void OOVisualEffectEntity::removeSubEntity(cxx::Entity *sub)  { _removed = oo::ToObjC(sub); }	// its object, as the binding passed it until bead oo-9ht.39.8.20
 
 
 // The root's JS category, as the game's asks the C++ part (EntityOOJavaScriptExtensions+ObjCBridge.mm,
@@ -411,6 +413,9 @@ namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
 	auto found = sObjects.find(entity);
 	return found != sObjects.end() ? found->second : nil;
 }
+
+// The owner its object's -owner answered until bead oo-9ht.39.8.20, on the same object field.
+id cxx::Entity::owner()  { return oo::ToObjC(this)->_owner; }
 
 
 // MARK: The context -------------------------------------------------------------------------------
