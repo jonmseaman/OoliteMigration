@@ -1850,7 +1850,7 @@ void ShipEntity::fightOrFleeHostiles()
 	
 	if (hasEscorts())
 	{
-		::Entity *leTarget = lastEscortTarget();
+		::Entity *leTarget = oo::ToObjC(lastEscortTarget());
 		if (leTarget != nil)
 		{
 			setFoundTarget(leTarget);
@@ -2186,7 +2186,7 @@ void ShipEntity::storeTarget()
 	
 	if (target)
 	{
-		setRememberedShip(target);
+		setRememberedShip(oo::ToCxx(target));
 	}
 	else
 	{

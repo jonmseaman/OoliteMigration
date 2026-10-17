@@ -8099,3 +8099,24 @@ game entity has one until the facade goes).
 **Tests.** `test_OOEntityCalledByName` adds `objectNamesAreTheFacadesAnswers` and
 `objectNamesAnsweredWithoutTheObject` (a case per kind: a bad signature, a lifetime name that is not called, a
 facade row's body, a name that does not respond). No test changes or retires.
+
+## Amendment (bead oo-9ht.39.23.1): the ship's remembered, thanked and last-escort targets are C++ entities
+
+oo-9ht.39 step 5e, slice 1 (batch AI, Migration Completion session, 2026-10-17). Step 5 of the facade's deletion
+is filed as children of oo-9ht.39 (5a-5l; 5e, `ShipEntity.h`'s members and API, is the gate for the per-file
+sweeps). This slice converts one member family: `ShipEntity::lastEscortTarget()`, `thankedShip()`,
+`rememberedShip()` return `cxx::Entity *` and their setters take one (the members were already
+`oo::WeakRef<cxx::Entity>`).
+
+1. **Getters.** Each still answers null when the entity's object is gone (`oo::WeakEntityObject()`) or the
+   entity is no valid target (`isValidTarget()`, which takes the object until the targets family converts),
+   and forgets it then; otherwise the C++ entity (`oo::ToCxx()` of the object: the same entity the member
+   holds). **Setters** store the C++ entity.
+2. **Callers** convert at the edge: the escort deployment compares and stores the primary target's C++ entity,
+   the rescue check compares the rescuer's, `storeTarget()` stores the primary target's, and the flee check
+   hands the object to `setFoundTarget()`. The by-name table's three functions return the object
+   (`oo::ToObjC()`) as before; 5a (oo-9ht.39.24) removes that with the typed results.
+
+**Defaults (rule 10).** Behaviour-identical (goldens, core tests). **Tests (standing approval oo-9n5p9, lines on
+main first).** `test_ShipEntity` and `test_ShipEntityAI` compare the three getters with the C++ entity instead
+of its object and hand the setters the C++ entity; the same entities and expected values, no case removed.

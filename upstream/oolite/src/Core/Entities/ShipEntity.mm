@@ -10375,21 +10375,22 @@ bool ShipEntity::addDefenseTargetEntity(cxx::Entity *target)  { return addDefens
 void ShipEntity::removeDefenseTargetEntity(cxx::Entity *target)  { removeDefenseTarget(oo::ToObjC(target)); }
 
 
-::Entity *ShipEntity::lastEscortTarget()
+// The C++ entity (bead oo-9ht.39.23.1): null when its object is gone or it is no valid target, as before.
+cxx::Entity *ShipEntity::lastEscortTarget()
 {
 	::Entity *result = oo::WeakEntityObject(_lastEscortTarget);
 	if (result == nil || !isValidTarget(result))
 	{
 		_lastEscortTarget = nullptr;
-		return nil;
+		return nullptr;
 	}
-	return result;
+	return oo::ToCxx(result);
 }
 
 
-void ShipEntity::setLastEscortTarget(::Entity *targetEntity)
+void ShipEntity::setLastEscortTarget(cxx::Entity *targetEntity)
 {
-	_lastEscortTarget = oo::WeakEntityRef(targetEntity);
+	_lastEscortTarget = oo::WeakRef<cxx::Entity>(targetEntity);
 }
 
 
@@ -10399,39 +10400,41 @@ void ShipEntity::setLastEscortTarget(::Entity *targetEntity)
 // behaviour and destination accessors, distances, leading the target. Members of the C++ ship,
 // called directly, since bead oo-9ht.144 deleted the facade (ADR-0056 amendment oo-9ht.144).
 
-::Entity *ShipEntity::thankedShip()
+// The C++ entity (bead oo-9ht.39.23.1): null when its object is gone or it is no valid target, as before.
+cxx::Entity *ShipEntity::thankedShip()
 {
 	::Entity *result = oo::WeakEntityObject(_thankedShip);
 	if (result == nil || !isValidTarget(result))
 	{
 		_thankedShip = nullptr;
-		return nil;
+		return nullptr;
 	}
-	return result;
+	return oo::ToCxx(result);
 }
 
 
-void ShipEntity::setThankedShip(::Entity *targetEntity)
+void ShipEntity::setThankedShip(cxx::Entity *targetEntity)
 {
-	_thankedShip = oo::WeakEntityRef(targetEntity);
+	_thankedShip = oo::WeakRef<cxx::Entity>(targetEntity);
 }
 
 
-::Entity *ShipEntity::rememberedShip()
+// The C++ entity (bead oo-9ht.39.23.1): null when its object is gone or it is no valid target, as before.
+cxx::Entity *ShipEntity::rememberedShip()
 {
 	::Entity *result = oo::WeakEntityObject(_rememberedShip);
 	if (result == nil || !isValidTarget(result))
 	{
 		_rememberedShip = nullptr;
-		return nil;
+		return nullptr;
 	}
-	return result;
+	return oo::ToCxx(result);
 }
 
 
-void ShipEntity::setRememberedShip(::Entity *targetEntity)
+void ShipEntity::setRememberedShip(cxx::Entity *targetEntity)
 {
-	_rememberedShip = oo::WeakEntityRef(targetEntity);
+	_rememberedShip = oo::WeakRef<cxx::Entity>(targetEntity);
 }
 
 
@@ -14313,13 +14316,13 @@ void ShipEntity::deployEscorts()
 	
 	if (group() == nil)  setGroup(escortGroup);
 	
-	if (primaryTarget() == lastEscortTarget())
+	if (oo::ToCxx(static_cast<::Entity *>(primaryTarget())) == lastEscortTarget())
 	{
 		// already deployed escorts onto this target!
 		return;
 	}
 	
-	setLastEscortTarget(primaryTarget());
+	setLastEscortTarget(oo::ToCxx(static_cast<::Entity *>(primaryTarget())));
 	
 	// Find idle escorts
 	for (const auto &escortRef : escorts())
@@ -14734,7 +14737,7 @@ void ShipEntity::interpretAIMessage(const std::string &ms)
 		::Entity* switcher = (UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(switcher_id) : id{});
 		int rescuer_id = oo::str::intValue(tokens[2]); // New primary target of attacker.
 		::Entity* rescuer = (UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(rescuer_id) : id{});
-		if ((switcher == primaryAggressor())&&(switcher == primaryTarget())&&(switcher)&&(rescuer)&&(rescuer->_cxxEntity->isShip)&&(thankedShip() != rescuer)&&(scanClass != CLASS_THARGOID))
+		if ((switcher == primaryAggressor())&&(switcher == primaryTarget())&&(switcher)&&(rescuer)&&(rescuer->_cxxEntity->isShip)&&(thankedShip() != oo::ToCxx(rescuer))&&(scanClass != CLASS_THARGOID))
 		{
 			::ShipEntity* rescueShip = oo::ToShip(rescuer);
 //			ShipEntity* switchingShip = (ShipEntity*)switcher;
@@ -14747,7 +14750,7 @@ void ShipEntity::interpretAIMessage(const std::string &ms)
 			{
 				sendExpandedMessage("[thanks-for-assist]", rescueShip);
 			}
-			setThankedShip(rescuer);
+			setThankedShip(oo::ToCxx(rescuer));
 		}
 	}
 }

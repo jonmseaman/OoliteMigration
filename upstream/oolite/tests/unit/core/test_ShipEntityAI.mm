@@ -697,10 +697,10 @@ OO_TEST(slice3TargetsAndFighting)
 		// The target is remembered, and forgotten when there is none.
 		SetPrimaryTarget(ship, oo::ToObjC(other));
 		if (ship != nullptr)  ship->storeTarget();
-		OO_CHECK((ship != nullptr ? ship->rememberedShip() : (Entity *)nullptr) == oo::ToObjC(other));
+		OO_CHECK((ship != nullptr ? ship->rememberedShip() : (cxx::Entity *)nullptr) == other);
 		SetPrimaryTarget(ship, nil);
 		if (ship != nullptr)  ship->storeTarget();
-		OO_CHECK((ship != nullptr ? ship->rememberedShip() : (Entity *)nullptr) == nil);
+		OO_CHECK((ship != nullptr ? ship->rememberedShip() : (cxx::Entity *)nullptr) == nullptr);
 
 		// A lost target: comms and fines go nowhere.
 		if (ship != nullptr)  ship->sendTargetCommsMessage("[hello]");
@@ -727,7 +727,7 @@ OO_TEST(slice3MembersFromCxx)
 		ShipEntity *part = ship;
 		SetPrimaryTarget(ship, oo::ToObjC(other));
 		part->storeTarget();
-		OO_CHECK((ship != nullptr ? ship->rememberedShip() : (Entity *)nullptr) == oo::ToObjC(other));
+		OO_CHECK((ship != nullptr ? ship->rememberedShip() : (cxx::Entity *)nullptr) == other);
 		SetAegisStatus3(ship, 42);
 		part->checkAegis();
 		OO_CHECK(AegisStatus3(ship) == AEGIS_NONE);
@@ -764,13 +764,13 @@ OO_TEST(slice4StoredTargetsAndScans)
 		SetScannerRange(ship, 25000);
 
 		// A remembered ship in range is found again; none remembered, nothing found.
-		if (ship != nullptr)  ship->setRememberedShip(oo::ToObjC(other));
+		if (ship != nullptr)  ship->setRememberedShip(other);
 		if (ship != nullptr)  ship->recallStoredTarget();
 		OO_CHECK((ship != nullptr ? ship->foundTarget() : (Entity *)nullptr) == oo::ToObjC(other));
 		if (ship != nullptr)  ship->setRememberedShip(nullptr);
 		if (ship != nullptr)  ship->setFoundTarget(nullptr);
 		if (ship != nullptr)  ship->recallStoredTarget();
-		OO_CHECK((ship != nullptr ? ship->foundTarget() : (Entity *)nullptr) == nil && (ship != nullptr ? ship->rememberedShip() : (Entity *)nullptr) == nil);
+		OO_CHECK((ship != nullptr ? ship->foundTarget() : (Entity *)nullptr) == nil && (ship != nullptr ? ship->rememberedShip() : (cxx::Entity *)nullptr) == nullptr);
 
 		// Every scan of an empty universe forgets the found target.
 		void (*scans[])(TestAIShip *) = {

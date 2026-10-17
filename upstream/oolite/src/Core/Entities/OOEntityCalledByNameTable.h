@@ -403,11 +403,11 @@ Entity * ByName_186(cxx::Entity *entity)
 Entity * ByName_187(cxx::Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->primaryAggressor() : nil; }
 Entity * ByName_188(cxx::Entity *entity)
-{ ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->lastEscortTarget() : nil; }
+{ ShipEntity *ship = ShipPart(entity); return ship != nullptr ? oo::ToObjC(ship->lastEscortTarget()) : nil; }
 Entity * ByName_189(cxx::Entity *entity)
-{ ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->thankedShip() : nil; }
+{ ShipEntity *ship = ShipPart(entity); return ship != nullptr ? oo::ToObjC(ship->thankedShip()) : nil; }
 Entity * ByName_190(cxx::Entity *entity)
-{ ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->rememberedShip() : nil; }
+{ ShipEntity *ship = ShipPart(entity); return ship != nullptr ? oo::ToObjC(ship->rememberedShip()) : nil; }
 Entity * ByName_191(cxx::Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->targetStation() : nil; }
 BOOL ByName_192(cxx::Entity *entity)
