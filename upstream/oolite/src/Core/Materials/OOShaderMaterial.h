@@ -54,6 +54,7 @@ SOFTWARE.
 
 class OOTexture;
 class OOShaderUniform;
+namespace cxx { class Entity; }	// Entity.h: the binding target (bead oo-9ht.39.6)
 
 
 enum
@@ -105,14 +106,14 @@ public:
 	static oo::Ref<OOShaderMaterial> shaderMaterialWithName(const std::optional<std::string> &name,
 															const oo::PList &configuration,	// null = nil
 															const oo::PList &macros,	// null = nil
-															id<OOWeakReferenceSupport> target);
+															cxx::Entity *target);
 
 	// Runs once, right after construction (proposed ADR-0056, amendment oo-vl43); false where the
 	// Objective-C initialiser answered nil.
 	bool initWithName(const std::optional<std::string> &name,
 					  const oo::PList &configuration,	// null = nil
 					  const oo::PList &macros,	// null = nil
-					  id<OOWeakReferenceSupport> target);
+					  cxx::Entity *target);
 
 	/*	Bind a uniform to a property of an object.
 
@@ -138,7 +139,7 @@ public:
 		bindSafeUniform() below.
 	*/
 	bool bindUniform(const std::string &uniformName,
-					 id<OOWeakReferenceSupport> target,
+					 cxx::Entity *target,
 					 SEL selector,
 					 OOUniformConvertOptions options);
 
@@ -148,7 +149,7 @@ public:
 		that it checks against OOUniformBindingPermitted().
 	*/
 	bool bindSafeUniform(const std::string &uniformName,
-						 id<OOWeakReferenceSupport> target,
+						 cxx::Entity *target,
 						 const std::optional<std::string> &property,	// nullopt: no property (not bound)
 						 OOUniformConvertOptions options);
 
@@ -169,14 +170,14 @@ public:
 		any random bindings:
 			- (uint32_t) randomSeedForShaders;
 	*/
-	void addUniformsFromDictionary(const oo::PList &uniformDefs, id<OOWeakReferenceSupport> target);
+	void addUniformsFromDictionary(const oo::PList &uniformDefs, cxx::Entity *target);
 
 	bool doApply() override;
 	void ensureFinishedLoading() override;
 	bool isFinishedLoading() override;
 	void unapplyWithNext(OOMaterial *next) override;
 	size_t objectSize() const override	{ return sizeof *this; }
-	void setBindingTarget(id<OOWeakReferenceSupport> target) override;
+	void setBindingTarget(cxx::Entity *target) override;
 	bool permitSpecular() override;
 #ifndef NDEBUG
 	std::vector<oo::Ref<OOTexture>> allTextures() override;
@@ -194,8 +195,6 @@ private:
 
 	uint32_t						texCount = {};
 	OOTexture						**textures = {};
-
-	oo::ObjCRef<::OOWeakReference *>	bindingTarget = {};
 };
 
 
@@ -216,7 +215,7 @@ enum
 	Predicate determining whether a given property may be used as a binding.
 	Client code is responsible for implementing this.
 */
-BOOL OOUniformBindingPermitted(const std::string &propertyName, id bindingTarget);
+BOOL OOUniformBindingPermitted(const std::string &propertyName, cxx::Entity *bindingTarget);	// the entity (bead oo-9ht.39.6)
 
 
 // Material specifier dictionary keys.

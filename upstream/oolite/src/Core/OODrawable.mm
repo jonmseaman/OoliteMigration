@@ -75,7 +75,7 @@ BoundingBox OODrawable::boundingBox()
 }
 
 
-void OODrawable::setBindingTarget(id<OOWeakReferenceSupport> /*target*/)
+void OODrawable::setBindingTarget(cxx::Entity */*target*/)
 {
 	
 }

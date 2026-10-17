@@ -1137,7 +1137,7 @@ void OOPlanetEntity::setTextureFileName(const std::optional<std::string> &textur
 			oo::Ref<OOShaderMaterial> dynamicShaderMaterial = OOShaderMaterial::shaderMaterialWithName("dynamic",
 																	aConfig,
 																	amacros,
-																	oo::ToObjC(this));
+																	this);	// the C++ planet (bead oo-9ht.39.6)
 																	
 			if (dynamicShaderMaterial == nullptr)
 			{
@@ -1154,7 +1154,7 @@ void OOPlanetEntity::setTextureFileName(const std::optional<std::string> &textur
 			oo::Ref<OOShaderMaterial> cloudsMaterial = OOShaderMaterial::shaderMaterialWithName("dynamic",
 										cloudConfig,
 										cloudMacros,
-										oo::ToObjC(this));
+										this);	// the C++ planet (bead oo-9ht.39.6)
 			if (cloudsMaterial == nullptr)
 			{
 				_cloudsShaderDrawable = nullptr;
@@ -1178,7 +1178,7 @@ void OOPlanetEntity::setTextureFileName(const std::optional<std::string> &textur
 		material = OOShaderMaterial::shaderMaterialWithName(textureName,
 											  config,
 													 macros,
-											  oo::ToObjC(this));
+											  this);	// the C++ planet (bead oo-9ht.39.6)
 	}
 #endif
 	if (material == nullptr)

@@ -105,6 +105,25 @@ bool OOShaderMemberBindingFor(id target, SEL selector, OOShaderMemberBinding *ou
 }
 
 
+// The entities' hooks (bead oo-9ht.39.6): none until the entities register theirs.
+namespace {
+OOShaderEntityHooks sEntityHooks = {};
+bool sEntityHooksSet = false;
+}
+
+void OOSetShaderEntityHooks(const OOShaderEntityHooks &hooks) noexcept
+{
+	sEntityHooks = hooks;
+	sEntityHooksSet = true;
+}
+
+
+const OOShaderEntityHooks *OOShaderEntityHooksIfSet() noexcept
+{
+	return sEntityHooksSet ? &sEntityHooks : nullptr;
+}
+
+
 // The selector path: OOShaderUniform's -setBindingTarget: body until bead oo-9ht.158, unchanged.
 bool OOShaderUniformBindMethod(id target, SEL selector, IMP *outMethod, OOShaderUniformType *outType, std::string *outProblem)
 {

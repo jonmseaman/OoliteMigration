@@ -158,7 +158,7 @@ oo::Ref<OOMaterial> OOMaterial::defaultShaderMaterialWithName(const std::optiona
 															  const std::optional<std::string> &cacheKey,
 															  const oo::PList &configuration,
 															  const oo::PList &macros,
-															  id<OOWeakReferenceSupport> target)
+															  cxx::Entity *target)
 {
 	// The cache manager's facade, still messaged (proposed ADR-0056 amendment oo-rmd7 item 3).
 	::OOCacheManager		*cache = nullptr;
@@ -235,7 +235,7 @@ oo::Ref<OOMaterial> OOMaterial::defaultShaderMaterialWithName(const std::optiona
 															  const std::optional<std::string> &cacheKey,
 															  const oo::PList &configuration,
 															  const oo::PList &macros,
-															  id<OOWeakReferenceSupport> target)
+															  cxx::Entity *target)
 {
 	(void)macros;
 	std::string		vertexShaderSource, fragmentShaderSource;
@@ -298,7 +298,7 @@ oo::Ref<OOMaterial> OOMaterial::materialWithName(const std::optional<std::string
 												 const std::optional<std::string> &cacheKey,
 												 const oo::PList &configuration,
 												 const oo::PList &macros,
-												 id<OOWeakReferenceSupport> object,
+												 cxx::Entity *object,
 												 bool smooth)	// Internally, this flg really means "force use of shaders".
 {
 	oo::Ref<OOMaterial> result;
@@ -333,7 +333,7 @@ oo::Ref<OOMaterial> OOMaterial::materialWithName(const std::optional<std::string
 												   cacheKey,
 												   configuration,
 												   macros,
-												   (id<OOWeakReferenceSupport>)object);
+												   object);
 		}
 	}
 #endif
@@ -375,7 +375,7 @@ oo::Ref<OOMaterial> OOMaterial::materialWithName(const std::optional<std::string
 												 const oo::PList &materialDict,
 												 const oo::PList &shadersDict,
 												 const oo::PList &macros,
-												 id<OOWeakReferenceSupport> object,
+												 cxx::Entity *object,
 												 bool smooth)
 {
 	oo::PList				configuration;

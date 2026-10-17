@@ -46,6 +46,7 @@ SOFTWARE.
 #import "OOOpenGL.h"
 #import "OOWeakReference.h"
 #import "OOOpenGLExtensionManager.h"
+namespace cxx { class Entity; }	// Entity.h: the shader binding target (bead oo-9ht.39.6)
 
 #include <vector>
 #include "oofnd/objc/OOObjCRef.h"
@@ -93,7 +94,7 @@ public:
 	virtual bool isFinishedLoading();
 
 	// Only used by shader material, but defined for all materials for convenience.
-	virtual void setBindingTarget(id<OOWeakReferenceSupport> target);
+	virtual void setBindingTarget(cxx::Entity *target);
 
 	// True if material wants three-component cube map texture coordinates.
 	virtual bool wantsNormalsAsTextureCoordinates();
@@ -134,7 +135,7 @@ public:
 												const std::optional<std::string> &cacheKey,
 												const oo::PList &configuration,
 												const oo::PList &macros,
-												id<OOWeakReferenceSupport> object,
+												cxx::Entity *object,
 												bool smooth);
 
 	/*	Select an appropriate material description (based on availability of
@@ -146,7 +147,7 @@ public:
 												const oo::PList &materialDict,
 												const oo::PList &shadersDict,
 												const oo::PList &macros,
-												id<OOWeakReferenceSupport> object,
+												cxx::Entity *object,
 												bool smooth);
 
 private:
@@ -158,7 +159,7 @@ private:
 															 const std::optional<std::string> &cacheKey,
 															 const oo::PList &configuration,
 															 const oo::PList &macros,
-															 id<OOWeakReferenceSupport> target);
+															 cxx::Entity *target);
 };
 
 

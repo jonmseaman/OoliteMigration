@@ -60,7 +60,7 @@ BOOL cxx_ScanQuaternionFromString(const std::optional<std::string> &, Quaternion
 
 
 // The binding whitelist, which the game implements elsewhere: everything.
-BOOL OOUniformBindingPermitted(const std::string &propertyName, id bindingTarget)	{ return YES; }
+BOOL OOUniformBindingPermitted(const std::string &propertyName, cxx::Entity *bindingTarget)	{ return YES; }
 
 
 // The resource manager: the extension manager's two class methods, and shader files from a table.

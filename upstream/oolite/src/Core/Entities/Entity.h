@@ -403,6 +403,14 @@ OOEntityStatus cxx_OOEntityStatusFromString(const std::string &string);
 
 std::string cxx_OOStringFromScanClass(OOScanClass scanClass);
 OOScanClass cxx_OOScanClassFromString(const std::string &string);
+
+/*	The entities' shader binding member table (EntityShaderBindings.mm; beads oo-9ht.158 and
+	oo-9ht.39.6.1, ADR-0056 amendment oo-9ht.39.6.1): the binding a uniform bound to the property
+	name on this entity makes, reading the entity itself. False where no row has the name, the row
+	does not apply to this entity, or its type is not bindable (as the selector path failed).
+*/
+struct OOShaderMemberBinding;	// OOShaderUniformMethodType.h
+bool EntityShaderMemberBindingFor(cxx::Entity *entity, const char *property, OOShaderMemberBinding *outBinding);
 #endif
 
 

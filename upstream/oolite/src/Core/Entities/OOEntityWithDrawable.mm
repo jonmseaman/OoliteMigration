@@ -49,7 +49,7 @@ void OOEntityWithDrawable::setDrawable(OODrawable *inDrawable)
 		drawable = oo::Ref<OODrawable>(inDrawable);
 		// Messages to a nil drawable did nothing and answered 0.
 		OODrawable *cxxDrawable = drawable.get();
-		if (cxxDrawable != nullptr)  cxxDrawable->setBindingTarget(oo::ToObjC(this));
+		if (cxxDrawable != nullptr)  cxxDrawable->setBindingTarget(this);	// the C++ entity (bead oo-9ht.39.6)
 
 		collision_radius = cxxDrawable != nullptr ? cxxDrawable->collisionRadius() : 0.0f;
 		no_draw_distance = cxxDrawable != nullptr ? cxxDrawable->maxDrawDistance() : 0.0f;

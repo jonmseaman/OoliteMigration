@@ -170,7 +170,7 @@ bool OOVisualEffectEntity::setUpVisualEffectFromDictionary(const oo::PList &effe
 								   DictionaryForKey(effectDict, "shaders"),
 								   effectDict.get<bool>("smooth", false),
 								   OODefaultShipShaderMacros(),
-								   oo::ToObjC(this));
+								   this);	// the C++ effect (bead oo-9ht.39.6)
 		if (mesh == nullptr)  return false;
 		setMesh(mesh.get());
 	}

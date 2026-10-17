@@ -39,6 +39,7 @@ MA 02110-1301, USA.
 #import "OOWeakReference.h"
 #import "OOOpenGLExtensionManager.h"
 #import "OOGraphicsResetManager.h"
+namespace cxx { class Entity; }	// Entity.h: the shader binding target (bead oo-9ht.39.6)
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
@@ -112,7 +113,7 @@ public:
 										const oo::PList &shadersDict,
 										bool smooth,
 										const oo::PList &macros,
-										id<OOWeakReferenceSupport> object);
+										cxx::Entity *object);
 
 	static oo::Ref<OOMesh> meshWithName(const std::string &name,
 										const std::optional<std::string> &cacheKey,
@@ -120,7 +121,7 @@ public:
 										const oo::PList &shadersDict,
 										bool smooth,
 										const oo::PList &macros,
-										id<OOWeakReferenceSupport> object,
+										cxx::Entity *object,
 										float factor,
 										bool cacheWriteable);
 
@@ -145,7 +146,7 @@ public:
 	bool hasOpaqueParts() override;
 	GLfloat collisionRadius() override;
 	GLfloat maxDrawDistance() override;
-	void setBindingTarget(id<OOWeakReferenceSupport> target) override;
+	void setBindingTarget(cxx::Entity *target) override;
 	std::optional<std::string> descriptionComponents() const override;
 #ifndef NDEBUG
 	void dumpSelfState() override;
@@ -211,7 +212,7 @@ public:
 	oo::PList				_shadersDict;
 	std::optional<std::string>	_cacheKey;		// nil and @"" differ for OOMaterial
 	oo::PList				_shaderMacros;
-	id						_shaderBindingTarget = {};	// retained (a weak reference)
+	oo::WeakRef<cxx::Entity>	_shaderBindingTarget = {};	// the entity, held weakly as its object's weak reference was (bead oo-9ht.39.6)
 
 	Vector					_lastPosition = {};
 	OOMatrix				_lastRotMatrix = {};
@@ -259,7 +260,7 @@ private:
 					  const oo::PList &shadersDict,
 					  bool smooth,
 					  const oo::PList &macros,
-					  id<OOWeakReferenceSupport> target,
+					  cxx::Entity *target,
 					  float scale,
 					  bool cacheWriteable);
 	bool loadData(const std::string &filename, float scale);

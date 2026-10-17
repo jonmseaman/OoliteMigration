@@ -7388,3 +7388,111 @@ the facade's class is now that the target is the call's object with selector `fi
 **Consequences.** The AI no longer subclasses `OOWeakRefObject`, which leaves the Entity facade
 (oo-9ht.39) as the last subclass oo-9ht.22 waits on. A delayed `setStateMachine` has been a no-op
 since the AI's conversion; making it work is a behaviour change for its own bead.
+
+## Amendment (bead oo-9ht.39.6.1): the entities' shader binding table reads the C++ entity; every permitted name is a row
+
+- Date: 2026-10-17. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch AC
+  (one branch). Exemplar: `src/Core/Entities/EntityShaderBindings.mm` (`kEntityShaderBindings`,
+  `EntityShaderMemberBindingFor()`), `Materials/OOShaderUniformMethodType.h` (`OOShaderMemberBinding`),
+  `OOShaderUniform.mm` (`setBindingTarget()`, `applyBinding()`),
+  `tests/unit/core/test_EntityShaderBindings.mm`. Part 1 of oo-9ht.39.6 (oo-9ht.39 step 4a); follows
+  amendments oo-9ht.158 and oo-t0e2m.
+
+**Decision (recommended defaults).**
+
+1. **The table moves to the C++ side and its rows receive the C++ entity.** `kEntityShaderBindings`
+   leaves `Entity+ObjCBridge.mm` for `EntityShaderBindings.mm` (beside the clock and system members
+   it already held), with its own part casts; `EntityShaderMemberBindingFor(cxx::Entity *, name,
+   out)` (declared in Entity.h) answers a row for an entity. `OOShaderMemberBinding` carries the
+   C++ object the getter reads (`target`, the entity) and the getter takes it
+   (`OOShaderMemberGetter`, `void (*)(oo::RefCounted *, OOShaderBindingValue &)`, the same type as
+   oo-t0e2m's `OOShaderCxxBindingGetter`). The uniform holds that object with its
+   `oo::WeakRef<oo::RefCounted>` and reads it as a C++ target's (`cxxGet`); it still holds the
+   Objective-C target's weak reference (the description, and the nil check, as before), and both
+   go together because the facade's `-dealloc` drops its part's weak references (amendment
+   oo-9ht.39.5.2). A C++ target bound by its factory is now marked `cxxTargetOnly` (it was
+   recognised by `cxxGet` alone). The facade keeps only the registration: the id lookup answers a
+   row for an object of the root facade's own class (a subclass's object may override the method
+   and binds by selector, as before) by asking `EntityShaderMemberBindingFor()` of its part.
+2. **Every name whitelist.plist permits is a row where the facade answered it** (oo-9ht.39.6 items 2
+   and 3). The whitelist (`shader_entity_/ship_/player_ship_/visual_effect_binding_methods`) is the
+   only gate a material's binding passes (`OOUniformBindingPermitted()`), so the names a material can
+   bind on an entity are those 87; 64 were rows. The other 23 bound by selector on the facade; 22
+   become rows with the facade method's return type, its `-respondsToSelector:` answer and its body:
+   the planet's five (`Entity (OOPlanetShaderBindings)`: a planet's part), `cameraRelativePosition`
+   and `fogUniform` (any entity; the colour borrowed, `OOShaderBindingValue::color`), the three
+   vectors (an effect's or a ship's part), `weaponRecoveryTime` and the four directional laser heats
+   (a ship's), `tradeInFactor` (a player's or a proxy's) and the effect's six `shader*` values (any
+   entity: the facade's category answered them for every entity, 0 but for an effect's part, and
+   `-respondsToSelector:` did not restrict them). `laserColor` has no method anywhere: no row, and it fails with the same
+   `shader.uniform.bind.failed` line. A name with no row still falls back to the selector path, so
+   no name stops binding (rule 10: conservative). The facade's categories stay, because callObjC()
+   (`OOJSCallEntityMethods.h`) still dispatches those selectors on the facade (oo-9ht.39.7/.8).
+
+**Differences.** None in the game: the names, uniform types, applies-to answers and values are the
+selector path's; the uniform's description and log lines are unchanged.
+
+**Tests** (standing approval oo-9n5p9, line on main first): `test_EntityShaderBindings`'s helpers
+pass the binding's target (the entity's part) to its getter; every expected value is kept. Added:
+`everyPermittedNameBindsAsBySelector`, which for a plain entity and a player checks that every
+permitted name the facade still binds by selector binds by row, with the same uniform type, the row
+reading the object's part, and that only oo-9ht.127's eight names (whose facade methods it
+deleted) bind by row alone. No case was retired.
+
+**Left (oo-9ht.39.6 item 1).** The materials' binding target is still the entity's object
+(`id<OOWeakReferenceSupport>` through OOMaterial, the convenience creators, OOShaderMaterial,
+OOMesh, OODrawable, OOPlanetDrawable, OOEntityWithDrawable, ShipEntity, OOVisualEffectEntity,
+OOJSShip/OOJSVisualEffect's meshes, `OOUniformBindingPermitted()`, `-randomSeedForShaders`,
+`-superShaderBindingTarget`). Switching it to `cxx::Entity *` changes about twenty files and the
+narrow tests' Objective-C stand-in targets (test_OOShaderMaterial's `TestTarget`,
+test_OOMaterialConvenienceCreators), which need C++ stand-ins; with this amendment the uniform's
+entity path is then a direct call of `EntityShaderMemberBindingFor()`.
+
+## Amendment (bead oo-9ht.39.6): the materials' shader binding target is the C++ entity
+
+- Date: 2026-10-17. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch AC
+  (one branch, after oo-9ht.39.6.1). Exemplar: `src/Core/Materials/OOShaderUniform.mm`
+  (`initWithEntityTarget()`, `setEntityBindingTarget()`), `OOShaderUniformMethodType.h`
+  (`OOShaderEntityHooks`), `Entities/EntityShaderBindings.mm` (the hooks), `OOMesh.mm`,
+  `tests/unit/core/test_OOShaderMaterial.mm`. oo-9ht.39 step 4a, item 1 (amendment oo-9ht.39.6.1
+  did items 2 and 3).
+
+**Decision (recommended defaults).**
+
+1. **The binding target is `cxx::Entity *`** along the whole chain, where it was the entity's
+   object (`id<OOWeakReferenceSupport>`): `OOMaterial::setBindingTarget()` and `materialWithName()`,
+   the convenience creators, `OOShaderMaterial` (its factory, initialiser, `bindUniform()`,
+   `bindSafeUniform()`, `addUniformsFromDictionary()`, `setBindingTarget()`), `OODrawable`,
+   `OOPlanetDrawable`, `OOMesh` (`meshWithName()`, the target it keeps for rebinding its materials:
+   `oo::WeakRef<cxx::Entity>` for the `-weakRetain`ed reference, read as its object's was, and its
+   `isVisualEffect` question asked of the entity) and `OOUniformBindingPermitted()`. The callers pass
+   the C++ entity (`OOEntityWithDrawable::setDrawable()`, the ship's subentity rebinding, the ship's
+   and the effect's meshes, `ship.setMaterials()`/`setShaders()` and the effect's). The material's
+   own copy of the target, which nothing read, goes.
+2. **What the uniform and the material asked of the target's object they ask through hooks** the
+   entities register (`OOShaderEntityHooks`, so the materials still link without the entities):
+   the super target (`-superShaderBindingTarget`: the parent entity), the member table's row
+   (amendment oo-9ht.39.6.1; the root facade's own class only), `-randomSeedForShaders` (a ship's)
+   and the entity's object. An Objective-C subclass's object (a test's) is asked by message, since
+   it may override them.
+3. **`OOShaderUniform::initWithEntityTarget()` / `setEntityBindingTarget()`** walk the super
+   targets over the entities, then bind the row's member, the entity held weakly. A name no row
+   binds, or an Objective-C subclass's object, binds to the entity's object by selector exactly as
+   before (`setBindingTarget()`, continuing the walk from there): no name stops binding and every
+   failure logs the same line (rule 10: conservative). The object-target forms stay for that and
+   for the uniform's own tests.
+
+**Differences.** None in the game: the names, types, applies-to answers, seeds and values are as
+before. A member binding's description prints the entity's address where it printed its object's
+weak reference's (`[<Entity 0x…> name]`).
+
+**Tests** (standing approval oo-9n5p9, lines on main first): `test_OOShaderMaterial`'s target is a
+stand-in C++ entity whose seed the hooks' stand-in answers (12345, as its Objective-C target did),
+and the uniform stand-in records the entity binding; `test_OOEntityWithDrawable`'s and
+`test_OOJSVisualEffect`'s stand-ins take the entity and record its object, so their checks are
+unchanged; `test_OOMaterialConvenienceCreators`' whitelist stub takes the entity. No expected value
+changes and no case was retired.
+
+**Consequences.** The materials no longer hold or message an entity's object for a member binding;
+what still reaches it is the selector fallback (names no row binds: none the whitelist permits but
+`laserColor`, which fails) and the log lines' class name.

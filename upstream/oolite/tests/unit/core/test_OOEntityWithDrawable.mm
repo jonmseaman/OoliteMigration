@@ -70,7 +70,8 @@ public:
 	GLfloat collisionRadius() override								{ return 5.0f; }
 	GLfloat maxDrawDistance() override								{ return _maxDrawDistance; }
 	BoundingBox boundingBox() override								{ return (BoundingBox){ { -1, -2, -3 }, { 1, 2, 3 } }; }
-	void setBindingTarget(id<OOWeakReferenceSupport> target) override	{ _bindingTarget = target; }
+	// The target is the C++ entity since bead oo-9ht.39.6; the stand-in records its object, as it recorded the target.
+	void setBindingTarget(cxx::Entity *target) override	{ _bindingTarget = oo::ToObjC(target); }
 
 	int		_opaqueRenders = 0;
 	int		_translucentRenders = 0;
