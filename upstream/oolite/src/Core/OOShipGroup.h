@@ -33,7 +33,6 @@ MA 02110-1301, USA.
 
 #import "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
-#import "OOWeakReference.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"
@@ -41,7 +40,10 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOObjCRef.h"
 #include "OOJSPrivateObject.h"
 
+#include <vector>
+
 class ShipEntity;	// C++ since bead oo-9ht.144
+namespace cxx { class Entity; }	// the members are held as weak references to the ships' C++ parts (bead oo-9ht.22.1)
 @class Entity;	// the members' objects (a ship's object is the drawable's facade since bead oo-9ht.144)
 
 class OOShipGroupCursor;
@@ -103,8 +105,11 @@ private:
 
 	NSUInteger				_count = {}, _capacity = {};
 	unsigned long			_updateCount = {};
-	OOWeakReference			**_members = {};
-	OOWeakReference			*_leader = {};
+	// Weak references to the ships' C++ parts (bead oo-9ht.22.1; the ships' objects' weak-reference
+	// proxies before): each reads null exactly when the object's reference did, since the entity
+	// facade's -dealloc drops its part's weak references. _capacity slots, the first _count in use.
+	std::vector<oo::WeakRef<cxx::Entity>>	_members = {};
+	oo::WeakRef<cxx::Entity>	_leader = {};
 	std::optional<std::string>	_name = {};
 	ooscript::Object		_jsSelf = {};	// The JS ShipGroup object proxy for this group.
 };

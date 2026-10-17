@@ -19,7 +19,6 @@
 */
 
 #import "OOShipGroup.h"
-#import "OOWeakReference.h"
 
 #include "oo_test.hpp"
 #include "oofnd/objc/OOException.h"
@@ -68,7 +67,7 @@ public:
 	int setGroupCalls = 0;
 };
 
-@interface Entity: OOWeakRefObject
+@interface Entity: OOObject	// the group holds its ships' C++ parts weakly since bead oo-9ht.22.1
 {
 @public
 	oo::Ref<cxx::Entity> _cxxEntity;
@@ -106,17 +105,6 @@ void ShipEntity::setOwner(cxx::Entity *who_owns_entity)
 
 namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }	// Entity+ObjCBridge.mm's, which the test does not link
 ::Entity *oo::ToObjC(cxx::Entity *entity)  { return entity != nullptr ? entity->_object : nil; }
-
-
-// A ship's object that says whether a weak reference to it is still alive: OOWeakRefObject keeps
-// one (weakSelf) while any -weakRetain is unbalanced, and clears it when the reference deallocates.
-@interface WatchedShip: Entity
-- (BOOL) hasLiveWeakReference;
-@end
-
-@implementation WatchedShip
-- (BOOL) hasLiveWeakReference  { return weakSelf != nil; }
-@end
 
 
 namespace {
@@ -343,9 +331,11 @@ OO_TEST(dyingGroupReleasesLeaderReference)
 {
 	// The group weak-retains its leader (setLeader) as it does each member (addShip); its
 	// destructor must balance both, or every group that dies with a leader leaks one
-	// OOWeakReference (bead oo-9ht.24).
-	WatchedShip *leaderObject = [[WatchedShip alloc] init];
-	WatchedShip *memberObject = [[WatchedShip alloc] init];
+	// OOWeakReference (bead oo-9ht.24). Since bead oo-9ht.22.1 the references are oo::WeakRef
+	// members, released with the group; the checks of the objects' OOWeakReference (weakSelf)
+	// retired with it (ADR-0049, standing approval oo-9n5p9).
+	::Entity *leaderObject = [[::Entity alloc] init];
+	::Entity *memberObject = [[::Entity alloc] init];
 	ShipEntity *leader = Ship(leaderObject), *member = Ship(memberObject);
 	@autoreleasepool
 	{
@@ -353,10 +343,7 @@ OO_TEST(dyingGroupReleasesLeaderReference)
 		group->addShip(member);
 		group->setLeader(leader);
 		OO_CHECK(group->leader() == leader && group->count() == 2);
-		OO_CHECK([leaderObject hasLiveWeakReference] && [memberObject hasLiveWeakReference]);
 	}
-	OO_CHECK(![memberObject hasLiveWeakReference]);
-	OO_CHECK(![leaderObject hasLiveWeakReference]);
 	[leaderObject release];
 	[memberObject release];
 }
