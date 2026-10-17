@@ -48,6 +48,8 @@ class Entity : public oo::RefCounted	// the C++ root, as far as a ship's part ne
 public:
 	virtual ~Entity();
 	void dumpState();	// the binding calls it since bead oo-9ht.39.8.2 (the object's -dumpState did)
+	HPVector getPosition();	// OOJSEntityPositionOfJSObject's (bead oo-9ht.39.8.12); no case reaches it
+	Quaternion getOrientation();	// OOJSEntityOrientationOfJSObject's (bead oo-9ht.39.8.12); no case reaches it
 };
 }	// namespace cxx
 
@@ -310,6 +312,10 @@ namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
 
 // What the object's -dumpState counted until bead oo-9ht.39.8.2.
 void cxx::Entity::dumpState()  { oo::ToObjC(this)->_dumps++; }
+// What the object's -position/-orientation answered for the vector and quaternion conversions, which
+// read the C++ entity since bead oo-9ht.39.8.12 (link stand-ins: no case here converts an entity).
+HPVector cxx::Entity::getPosition()  { return oo::ToObjC(this)->_position; }
+Quaternion cxx::Entity::getOrientation()  { return oo::ToObjC(this)->_orientation; }
 
 
 extern "C" {

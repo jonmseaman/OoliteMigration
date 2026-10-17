@@ -7808,3 +7808,25 @@ oo-9ht.39 step 4c (bead oo-9ht.39.8), family F7 of its plan (batch AF, Migration
 **Tests.** None changed: `test_OOJSShip` links the game (`fireECM()` without ECM is exercised), and
 `test_OOJSPlayer`'s ship stand-in already answers the vector overload, which records the same
 `playerReplacedShip(PlayerEntity)` event.
+
+## Amendment (bead oo-9ht.39.8.12): the vector and quaternion conversions read the C++ entity
+
+oo-9ht.39 step 4c (bead oo-9ht.39.8), family F6 part 6a of its plan (batch AF, Migration Completion
+session, 2026-10-17; the rest of F6 is split in bead oo-9ht.39.8.7's notes).
+
+1. **`OOJSEntityObjectFromJSObject()` goes.** It answered the object of the C++ entity an entity's JS object
+   holds, for `OOJSVector`'s and `OOJSQuaternion`'s conversions of an entity, which sent it `-position` /
+   `-orientation`. They call **`OOJSEntityPositionOfJSObject()` / `OOJSEntityOrientationOfJSObject()`**
+   (`OOJSEntity.h`) instead, which answer the C++ entity's `getPosition()` / `getOrientation()` (the facade's
+   two methods return exactly these non-virtual members); zero for a stale entity, as the message to nil.
+   The conversions no longer see an entity at all, so their tests stub two functions, not an object.
+
+**Defaults (rule 10).** Identical values; the facade-less difference of amendment oo-9ht.39.7.1 is
+unreachable (an entity's JS object exists only for an entity with its facade while the facade exists).
+
+**Tests (standing approval oo-9n5p9, lines on main before this change).** `test_OOJSVector`'s and
+`test_OOJSQuaternion`'s stub of the deleted function becomes stubs of the new ones: the quaternion test's
+orientation stub answers its fake entity's `-orientation` (the same raise and throw cases), and the
+position stubs, which no case reaches, abort as the files' other link stubs; `test_OOJSEntity` (which links
+`OOJSEntity.mm`) gains link definitions of `getPosition()`/`getOrientation()` on its stand-in C++ entity,
+answering its object's fields; no case or expected value changes.

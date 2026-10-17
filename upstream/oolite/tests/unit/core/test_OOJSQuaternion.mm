@@ -122,13 +122,12 @@ ooscript::ClassDef *JSEntityClass(void)
 }
 
 
-// OOJSEntity.mm's (not linked): the object of the entity an Entity JS object holds. Since bead
-// oo-9ht.39.3 the game's slot holds the C++ entity and this answers its object; the test's fake
-// entities are put in the slot themselves, as the slot held the object's weak reference before.
-Entity *OOJSEntityObjectFromJSObject(ooscript::Context context, ooscript::Object object)
-{
-	return [(id)ooscript::getPrivate(context, object) weakRefUnderlyingObject];
-}
+// OOJSEntity.mm's (not linked): the position and orientation of the entity an Entity JS object
+// holds (bead oo-9ht.39.8.12; it was the object, whose -position/-orientation the conversions sent). The test's
+// fake entities are put in the slot themselves; the orientation is the fake's (below). No case converts
+// an entity to a vector here.
+HPVector OOJSEntityPositionOfJSObject(ooscript::Context, ooscript::Object)  { std::abort(); }
+Quaternion OOJSEntityOrientationOfJSObject(ooscript::Context context, ooscript::Object object);
 
 
 #if OOJS_PROFILE
@@ -186,6 +185,14 @@ void OOJSUnreachable(const char *function, const char *, unsigned)
 }
 
 @end
+
+
+// The fake entity's orientation, as the conversion asked its object (nil: zero) until bead oo-9ht.39.8.12.
+Quaternion OOJSEntityOrientationOfJSObject(ooscript::Context context, ooscript::Object object)
+{
+	FakeEntity *entity = [(id)ooscript::getPrivate(context, object) weakRefUnderlyingObject];
+	return [entity orientation];
+}
 
 Universe *gSharedUniverse = nil;	// OOJSVector.mm's coordinate-system methods read it; not called here
 

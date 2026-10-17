@@ -81,11 +81,13 @@ OOINLINE bool OOJSEntityGetEntity(ooscript::Context context, ooscript::Object in
 */
 cxx::Entity *OOJSEntityFromJSValue(ooscript::Context context, ooscript::Value value);
 
-// The object of the entity an entity's JS object (of any entity class) holds, nil for a stale one:
-// what the slot's weak reference answered until bead oo-9ht.39.3, for the conversions that take an
-// entity's position or orientation (OOJSVector, OOJSQuaternion), which still message the object.
-// The object must be of the Entity class or a subclass.
-Entity *OOJSEntityObjectFromJSObject(ooscript::Context context, ooscript::Object object);
+// The position and orientation of the C++ entity an entity's JS object (of any entity class) holds,
+// zero for a stale one, for the conversions that take them (OOJSVector, OOJSQuaternion): its
+// getPosition()/getOrientation(), which the object's -position/-orientation answered until bead oo-9ht.39.8.12
+// (the object of OOJSEntityObjectFromJSObject, nil for a stale one). The object must be of the
+// Entity class or a subclass.
+HPVector OOJSEntityPositionOfJSObject(ooscript::Context context, ooscript::Object object);
+Quaternion OOJSEntityOrientationOfJSObject(ooscript::Context context, ooscript::Object object);
 
 // OOJSBasicPrivateObjectConverter for the entity classes (each registers it): the entity's object
 // (its facade, which code converting a JS value still expects) as an Object node, a null PList
