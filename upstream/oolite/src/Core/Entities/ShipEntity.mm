@@ -8053,7 +8053,7 @@ void ShipEntity::transitionToAegisNone()
 
 	if (!suppressAegisMessages && aegis_status != AEGIS_NONE)
 	{
-		::Entity<OOStellarBody> *lastAegisLock = (::Entity<OOStellarBody> *)this->lastAegisLock();
+		::Entity<OOStellarBody> *lastAegisLock = (::Entity<OOStellarBody> *)oo::ToObjC(this->lastAegisLock());
 		if (lastAegisLock != nil)
 		{
 			doScriptEvent(OOJSID("shipExitedPlanetaryVicinity"), lastAegisLock);
@@ -8260,30 +8260,30 @@ OOAegisStatus ShipEntity::checkForAegis()
 			doScriptEvent(OOJSID("shipEnteredStationAegis"), oo::ToObjC(the_station));
 			if (shipAI != nullptr)  shipAI->message("AEGIS_IN_DOCKING_RANGE");
 			
-			if((::Entity<OOStellarBody> *)lastAegisLock() == nil && !sunGoneNova) // With small main planets the station aegis can come before planet aegis
+			if(lastAegisLock() == nullptr && !sunGoneNova) // With small main planets the station aegis can come before planet aegis
 			{
 				doScriptEvent(OOJSID("shipEnteredPlanetaryVicinity"), oo::ToObjC((UNIVERSE != nullptr ? UNIVERSE->planet() : nullptr)));	// the planet is C++ since bead oo-9ht.129
-				setLastAegisLock((::Entity<OOStellarBody> *)oo::ToObjC((UNIVERSE != nullptr ? UNIVERSE->planet() : nullptr)));
+				setLastAegisLock((UNIVERSE != nullptr ? UNIVERSE->planet() : nullptr));
 			}
 		}
 		else if (EXPECT_NOT(result == AEGIS_NONE && aegis_status != result))
 		{
-			if((::Entity<OOStellarBody> *)lastAegisLock() == nil && !sunGoneNova)
+			if(lastAegisLock() == nullptr && !sunGoneNova)
 			{
-				setLastAegisLock((::Entity<OOStellarBody> *)oo::ToObjC((UNIVERSE != nullptr ? UNIVERSE->planet() : nullptr)));  // in case of a first launch from a near-planet station.
+				setLastAegisLock((UNIVERSE != nullptr ? UNIVERSE->planet() : nullptr));  // in case of a first launch from a near-planet station.
 			}
 			transitionToAegisNone();
 		}
 		// approaching..
-		else if (EXPECT_NOT((result == AEGIS_CLOSE_TO_ANY_PLANET || result == AEGIS_CLOSE_TO_MAIN_PLANET) && (::Entity<OOStellarBody> *)lastAegisLock() != nearest))
+		else if (EXPECT_NOT((result == AEGIS_CLOSE_TO_ANY_PLANET || result == AEGIS_CLOSE_TO_MAIN_PLANET) && lastAegisLock() != oo::ToCxx(nearest)))
 		{
-			if(aegis_status != AEGIS_NONE && (::Entity<OOStellarBody> *)lastAegisLock() != nil)	// we were close to another stellar body
+			if(aegis_status != AEGIS_NONE && lastAegisLock() != nullptr)	// we were close to another stellar body
 			{
-				doScriptEvent(OOJSID("shipExitedPlanetaryVicinity"), (::Entity<OOStellarBody> *)lastAegisLock());
+				doScriptEvent(OOJSID("shipExitedPlanetaryVicinity"), (::Entity<OOStellarBody> *)oo::ToObjC(lastAegisLock()));
 				if (shipAI != nullptr)  shipAI->message("AWAY_FROM_PLANET");	// fires for suns, planets and moons.
 			}
 			doScriptEvent(OOJSID("shipEnteredPlanetaryVicinity"), nearest);
-			setLastAegisLock(nearest);
+			setLastAegisLock(oo::ToCxx(nearest));
 			
 			if (EXPECT_NOT([nearest isSun]))
 			{
@@ -8334,22 +8334,23 @@ bool ShipEntity::withinStationAegis()
 }
 
 
-::Entity *ShipEntity::lastAegisLock()
+// A planet or sun, the C++ entity (bead oo-9ht.39.23.3): null, and forgotten, when its object is gone, as before.
+cxx::Entity *ShipEntity::lastAegisLock()
 {
-	id stellarObject = oo::WeakEntityObject(_lastAegisLock);	// a planet or sun (bead oo-9ht.39.5.2: the C++ part's object)
-	::Entity<OOStellarBody> *stellar = stellarObject;
+	::Entity *stellar = oo::WeakEntityObject(_lastAegisLock);
 	if (stellar == nil)
 	{
 		_lastAegisLock = nullptr;
+		return nullptr;
 	}
 	
-	return stellar;
+	return oo::ToCxx(stellar);
 }
 
 
-void ShipEntity::setLastAegisLock(::Entity *lastAegisLock)
+void ShipEntity::setLastAegisLock(cxx::Entity *lastAegisLock)
 {
-	_lastAegisLock = oo::WeakEntityRef(lastAegisLock);
+	_lastAegisLock = oo::WeakRef<cxx::Entity>(lastAegisLock);
 }
 
 

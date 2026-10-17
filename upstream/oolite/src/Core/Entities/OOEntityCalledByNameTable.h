@@ -281,7 +281,7 @@ void ByName_125(cxx::Entity *entity)
 BOOL ByName_126(cxx::Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->withinStationAegis() : NO; }
 Entity * ByName_127(cxx::Entity *entity)
-{ ShipEntity *ship = ShipPart(entity); return ship != nullptr ? (Entity<OOStellarBody> *)ship->lastAegisLock() : nil; }
+{ ShipEntity *ship = ShipPart(entity); return ship != nullptr ? (Entity<OOStellarBody> *)oo::ToObjC(ship->lastAegisLock()) : nil; }
 OOSystemID ByName_128(cxx::Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->homeSystem() : OOSystemID{}; }
 OOSystemID ByName_129(cxx::Entity *entity)

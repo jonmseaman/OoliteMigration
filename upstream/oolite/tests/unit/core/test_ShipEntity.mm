@@ -1686,12 +1686,12 @@ OO_TEST(aegisSystemsAndStatus)
 		SetAegisStatus(ship, AEGIS_IN_DOCKING_RANGE);
 		OO_CHECK((ship != nullptr ? ship->withinStationAegis() : false));
 
-		OO_CHECK((ship != nullptr ? (Entity<OOStellarBody> *)ship->lastAegisLock() : (Entity<OOStellarBody> *)nullptr) == nil);
+		OO_CHECK((ship != nullptr ? ship->lastAegisLock() : (cxx::Entity *)nullptr) == nullptr);
 		TestShip *body = FlyingShip("stand-in for a planet");
-		if (ship != nullptr)  ship->setLastAegisLock((Entity<OOStellarBody> *)oo::ToObjC(body));
-		OO_CHECK((ship != nullptr ? (Entity<OOStellarBody> *)ship->lastAegisLock() : (Entity<OOStellarBody> *)nullptr) == (Entity<OOStellarBody> *)oo::ToObjC(body));
+		if (ship != nullptr)  ship->setLastAegisLock(body);
+		OO_CHECK((ship != nullptr ? ship->lastAegisLock() : (cxx::Entity *)nullptr) == body);
 		if (ship != nullptr)  ship->setLastAegisLock(nullptr);
-		OO_CHECK((ship != nullptr ? (Entity<OOStellarBody> *)ship->lastAegisLock() : (Entity<OOStellarBody> *)nullptr) == nil);
+		OO_CHECK((ship != nullptr ? ship->lastAegisLock() : (cxx::Entity *)nullptr) == nullptr);
 
 		if (ship != nullptr)  ship->setHomeSystem(7);
 		if (ship != nullptr)  ship->setDestinationSystem(42);

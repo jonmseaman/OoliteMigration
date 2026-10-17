@@ -2565,7 +2565,7 @@ void PlayerEntity::completeSetUpAndSetTarget(bool /*setTarget*/)
 	::OOSoundSource::stopAll();
 
 	setDockedStation((UNIVERSE != nullptr ? UNIVERSE->station() : nullptr));
-	setLastAegisLock((::Entity<OOStellarBody> *)oo::ToObjC((UNIVERSE != nullptr ? UNIVERSE->planet() : nullptr)));	// the planet is C++ since bead oo-9ht.129
+	setLastAegisLock((UNIVERSE != nullptr ? UNIVERSE->planet() : nullptr));	// the planet is C++ since bead oo-9ht.129
 	// only do this if we're not in strict mode, otherwise all previously saved OXP key/joystick defs will be wiped.
 	if ((UNIVERSE != nullptr ? UNIVERSE->getUseAddOns() : std::optional<std::string>()) != std::string(SCENARIO_OXP_DEFINITION_NONE)) 
 	{

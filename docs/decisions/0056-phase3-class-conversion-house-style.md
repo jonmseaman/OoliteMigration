@@ -8131,3 +8131,15 @@ primary target compare the target's C++ entity; `OOJSShip`'s `proximityAlert` no
 `oo::EntityObjectNode()` (the same object); the by-name table's function returns the object as before (5a,
 oo-9ht.39.24, removes that). Behaviour-identical. **Tests (oo-9n5p9, line on main first):** `test_ShipEntity`
 compares the getter with the C++ entity; same expected values.
+
+## Amendment (bead oo-9ht.39.23.3): the ship's last aegis lock is a C++ entity
+
+oo-9ht.39 step 5e, slice 3 (batch AI, Migration Completion session, 2026-10-17), as amendment oo-9ht.39.23.1:
+`ShipEntity::lastAegisLock()` returns, and `setLastAegisLock()` takes, a `cxx::Entity *` (the member was already
+`oo::WeakRef<cxx::Entity>`). The getter still answers null, and forgets the lock, when the planet's or sun's object
+is gone; otherwise its C++ entity. The aegis checks compare and store the nearest body's C++ entity and the main
+planet's C++ entity directly (the planet is C++ since oo-9ht.129; its object was converted back to it before);
+the script events `shipExitedPlanetaryVicinity` still receive the object; the player's launch stores the main
+planet; the by-name table's function returns the object as before (5a, oo-9ht.39.24, removes that).
+`findNearestStellarBody()` is unchanged (a later slice). Behaviour-identical. **Tests (oo-9n5p9, line on main
+first):** `test_ShipEntity` compares the getter with the C++ entity; same expected values.
