@@ -21,6 +21,8 @@
 #import "OOJSCall.h"
 #import "OOEntityCalledByName.h"	// oo::CallEntityByNameTyped, stood in below (bead oo-9ht.39.7.2)
 #import "OOCallByName.h"
+#import "OOShaderUniformMethodType.h"	// OOCallIntegerMethod (the typed call's stand-in)
+#include <objc/runtime.h>
 #include "oofnd/objc/OORuntime.h"
 #import "oofnd/objc/OOObject.h"
 #import "OOMaths.h"
@@ -214,7 +216,19 @@ bool oo::EntityRespondsToName(cxx::Entity *entity, const std::string &name)
 }
 oo::PList oo::CallEntityByName(cxx::Entity *entity, const std::string &name)  { return entity != nullptr ? OOCallByName(oo::ToObjC(entity), OOSelectorFromName(name.c_str())) : oo::PList(); }
 oo::PList oo::CallEntityByName(cxx::Entity *entity, const std::string &name, const std::string &argument)  { return entity != nullptr ? OOCallByName(oo::ToObjC(entity), OOSelectorFromName(name.c_str()), argument) : oo::PList(); }
-bool oo::CallEntityByNameTyped(cxx::Entity *, const std::string &, OOEntityByNameValue &)  { return false; }
+// The typed call on the C++ table (bead oo-9ht.39.7.2), which callObjC() takes for every name of an
+// entity's table since bead oo-9ht.39.8.25 (the call no longer has the entity's object): the test's
+// entities have no C++ table, so it answers what the object's method answers, as the selector path
+// read it (an integer result: the only kind the test's entity names have).
+bool oo::CallEntityByNameTyped(cxx::Entity *entity, const std::string &name, OOEntityByNameValue &value)
+{
+	::Entity *object = oo::ToObjC(entity);
+	SEL selector = OOSelectorFromName(name.c_str());
+	if (object == nil || ![object respondsToSelector:selector])  return false;
+	const OOShaderUniformType type = OOShaderUniformTypeFromMethod(class_getInstanceMethod(object_getClass(object), selector));
+	value.integer = OOCallIntegerMethod(object, selector, [object methodForSelector:selector], type);
+	return true;
+}
 
 
 #if OO_DEBUG

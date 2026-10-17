@@ -7968,3 +7968,43 @@ take it (the distance reads its `position`, the sort guard its `getIsPlayer()`).
 C++ entity and record its object (`oo::ToObjC`), as they recorded the object they were given;
 `test_Universe`'s two `findEntitiesMatchingPredicate()` calls pass `oo::ToCxx()` of the same entity. No case's
 expectation changes.
+
+## Amendment (bead oo-9ht.39.8.25): callObjC() calls an entity's C++ part for every name of its table
+
+oo-9ht.39 step 4c (bead oo-9ht.39.8), family F6 part (a) of bead oo-9ht.39.8.7 (batch AG, Migration
+Completion session, 2026-10-17). `OOJSCallEntityMethod()` handed `CallMethod()` the entity's object
+(`oo::ToObjC`), which answered `-respondsToSelector:` and gave the method's IMP for the names of
+callObjC()'s entity table (`OOJSCallEntityMethods.h`) that the by-name table (`OOEntityCalledByNameTable.h`)
+does not hold: the root facade's own methods (90 names). The entity's call now has no object.
+
+1. **The facade rows.** `OOEntityCalledByName.mm` gains a row per such name (`OOEntityFacadeRow`,
+   `oo::EntityFacadeRows()`/`oo::EntityFacadeRowNamed()`): the answer `-[Entity respondsToSelector:]` gave
+   (every entity; a planet's part for the five planet shader selectors; a ship's, an effect's or a
+   waypoint's part for the beacon protocol's) and, where callObjC() reads the result, the facade
+   method's body verbatim on the C++ entity (`_cxxEntity.get()` -> the entity, as the by-name table's
+   generator did), after a guard for no entity (zero, as a message to nil; the calls never pass one,
+   and the analyzer cannot see that), its result kept by type (`OOEntityByNameTyped`). A name whose result callObjC() cannot
+   read (a string, a vector, a matrix, a high-precision vector, a bounding box) has no body: callObjC()
+   answers "cannot be called" or nothing, as before, without calling it.
+2. **The calls.** `oo::CallEntityByNameTyped()` calls a facade row's body after the by-name rows;
+   `OOEntityByNameValue` gains a borrowed `OOColor *color` (`fogUniform`). `oo::EntityRespondsToName()`
+   answers a facade row's name from the row for a C++ entity; an Objective-C entity's object is still
+   asked (its class may define more). `CallMethod()`'s entity path reads every numeric, vector,
+   quaternion, colour and object result from the typed call; the player's statistics names compare the
+   C++ entity with the player (an object's call compares `oo::ToCxx()` of it); the ship that becomes the
+   script target is `oo::ToShip()` of the C++ entity. The void and property-list results are called by
+   name as before (`oo::CallEntityByName`, whose fallback for a name outside the by-name table still
+   sends to the object: later work with the facade's deletion, bead oo-9ht.39.8.9).
+3. **Deliberate crossing.** The "does not respond to method" error names the entity's object
+   (`oo::ShortDescriptionOf(oo::ToObjC(entity))`): the text holds the object's address, as
+   `OOJSShipGroup`'s warning does (amendment oo-9ht.39.8.8 item 3). It goes with the facade.
+
+**Defaults (rule 10).** Identical behaviour for every entity of the game (no Objective-C entity class is
+left in it). For an Objective-C entity (tests only) a facade row's body is the facade's own, so a
+subclass's override of one of the 90 selectors is not reached by callObjC(): unreachable in the game.
+
+**Tests.** `test_OOJSCallEntityMethods` gains `everyNameIsAnsweredByTheCxxEntity` (every table name is a
+by-name or a facade row, never both; each facade row is a facade method and has a body where callObjC()
+reads one). `test_OOJSCall` (standing approval oo-9n5p9, line on main before this change): its stand-in
+`oo::CallEntityByNameTyped` answers what the test entity's object's method answers (an integer), since
+the call no longer reaches the object; no case or expected value changes.
