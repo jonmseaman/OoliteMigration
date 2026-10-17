@@ -597,8 +597,8 @@ public:
 	OOAegisStatus checkForAegis();
 	void forceAegisCheck();
 	bool withinStationAegis();
-	::Entity *lastAegisLock();	// an Entity<OOStellarBody> (amendment oo-mvzmb item 5)
-	void setLastAegisLock(::Entity *lastAegisLock);
+	cxx::Entity *lastAegisLock();	// a planet or sun (amendment oo-mvzmb item 5), its C++ entity
+	void setLastAegisLock(cxx::Entity *lastAegisLock);	// C++ since bead oo-9ht.39.23.3
 	OOSystemID homeSystem();
 	OOSystemID destinationSystem();
 	void setHomeSystem(OOSystemID s);
