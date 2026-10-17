@@ -325,14 +325,34 @@ Class OOJavaScriptEngineClass(id object)
 }
 
 
+/*	An entity's object, or a weak reference to one, is not asked by selector (bead oo-9ht.39.8.9,
+	ADR-0056 amendment oo-9ht.39.8.9): its JS value and class name are its C++ entity's
+	(OOJSEntityJSValue(), OOJSEntityJSClassName()), which the root facade's -oo_jsValueInContext:
+	and -cxx_oo_jsClassName forwarded to (a weak reference's forwarded to its object's). A weak
+	reference whose object has gone is still asked: undefined and no name, as before.
+*/
+namespace {
+
+cxx::Entity *EntityOfObject(id object)
+{
+	id target = [object weakRefUnderlyingObject];	// the object itself unless a weak reference
+	if (target == nil || ![target isKindOfClass:[::Entity class]])  return nullptr;
+	return oo::ToCxx(static_cast<::Entity *>(target));
+}
+
+}	// namespace
+
+
 ooscript::Value OOJavaScriptEngineJSValueInContext(id object, ooscript::Context context)
 {
+	if (cxx::Entity *entity = EntityOfObject(object))  return OOJSEntityJSValue(entity, context);
 	return [object oo_jsValueInContext:context];
 }
 
 
 std::optional<std::string> OOJavaScriptEngineJSClassName(id object)
 {
+	if (cxx::Entity *entity = EntityOfObject(object))  return OOJSEntityJSClassName(entity);
 	return [object cxx_oo_jsClassName];
 }
 
@@ -395,7 +415,7 @@ bool OOJavaScriptEngineIsKindOfClass(id object, Class requiredClass)
 
 bool OOJavaScriptEngineIsVisibleToScripts(Entity *entity)
 {
-	return [entity isVisibleToScripts];
+	return OOJSEntityIsVisibleToScripts(oo::ToCxx(entity));	// the C++ entity's answer, which the root facade's selector forwarded to (bead oo-9ht.39.8.9)
 }
 
 

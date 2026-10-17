@@ -292,23 +292,11 @@ class OOHUDBeaconIcon;	// OOPolygonSprite.h (the protocol until bead oo-7ae4p)
 @end
 
 
-/*	The category Entity (OOJavaScriptExtensions) (bead oo-9ht.128): the engine wraps an entity's
-	object by -oo_jsValueInContext: and the bindings ask it these, so the category moved, unchanged,
-	from EntityOOJavaScriptExtensions+ObjCBridge.h/.mm to the root's facade, which answers each by
-	asking the C++ part (its virtual members, which a subclass overrides) or the function that holds
-	the body (EntityOOJavaScriptExtensions.h). It goes with the root's facade (oo-9ht.39).
+/*	The category Entity (OOJavaScriptExtensions) (bead oo-9ht.128) is deleted (bead oo-9ht.39.8.9,
+	ADR-0056 amendment oo-9ht.39.8.9): the engine asks an entity's object's C++ entity
+	(OOJSEntityJSValue(), OOJSEntityJSClassName(), OOJSEntityIsVisibleToScripts(),
+	OOJSEntityGetJSClass(): EntityOOJavaScriptExtensions.h), which its selectors forwarded to.
 */
-@interface Entity (OOJavaScriptExtensions)
-
-- (BOOL) isVisibleToScripts;
-
-- (std::optional<std::string>) cxx_oo_jsClassName;
-
-// Internal:
-- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
-- (void) deleteJSSelf;
-
-@end
 
 
 namespace oo {

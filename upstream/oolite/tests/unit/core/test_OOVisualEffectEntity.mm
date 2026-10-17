@@ -516,11 +516,11 @@ OO_TEST(jsExtensions)
 		ooscript::ClassDef *jsClass = nullptr, *expectedClass = nullptr;
 		ooscript::Object prototype = nullptr, expectedPrototype = nullptr;
 		Entity *object = oo::ToObjC(effect);	// the engine asks the object (the root's category, since bead oo-9ht.165)
-		[object getJSClass:&jsClass andPrototype:&prototype];
+		OOJSEntityGetJSClass(oo::ToCxx(object), &jsClass, &prototype);
 		OOJSVisualEffectGetJSClass(&expectedClass, &expectedPrototype);
 		OO_CHECK(jsClass != nullptr && jsClass == expectedClass && prototype == expectedPrototype);
-		OO_CHECK([object cxx_oo_jsClassName] == std::optional<std::string>("VisualEffect"));
-		OO_CHECK([object isVisibleToScripts] == YES);
+		OO_CHECK(OOJSEntityJSClassName(oo::ToCxx(object)) == std::optional<std::string>("VisualEffect"));
+		OO_CHECK(OOJSEntityIsVisibleToScripts(oo::ToCxx(object)) == YES);
 	}
 }
 

@@ -285,14 +285,14 @@ OO_TEST(playerAndProxyAreVisibleToScripts)
 		::Entity *object = nil;
 		ProxyPlayerEntity *proxy = MakeProxy(&object);
 		OO_CHECK(proxy->isVisibleToScripts());
-		OO_CHECK([object isVisibleToScripts]);
+		OO_CHECK(OOJSEntityIsVisibleToScripts(oo::ToCxx(object)));
 
 		ShipEntity *player = gOOPlayer;
 		OO_CHECK(player->isVisibleToScripts());
-		OO_CHECK([oo::ToObjC(player) isVisibleToScripts]);
+		OO_CHECK(OOJSEntityIsVisibleToScripts(player));
 
 		ShipEntity *ship = oo::ToShip([oo::NewShipObject(oo::makeRef<::ShipEntity>(), "ship", oo::PList(oo::PList::Dict{ { "unpiloted", oo::PList(true) } })) autorelease]);
-		OO_CHECK([oo::ToObjC(ship) isVisibleToScripts]);
+		OO_CHECK(OOJSEntityIsVisibleToScripts(ship));
 	}
 }
 

@@ -327,11 +327,11 @@ OO_TEST(jsExtensions)
 		Entity *plume = oo::ToObjC(Plume(Ship(), { "0", "0", "0", "1", "1", "1" }, 1.0f));
 		ooscript::ClassDef *jsClass = nullptr, *expectedClass = nullptr;
 		ooscript::Object prototype = nullptr, expectedPrototype = nullptr;
-		[plume getJSClass:&jsClass andPrototype:&prototype];
+		OOJSEntityGetJSClass(oo::ToCxx(plume), &jsClass, &prototype);
 		OOJSExhaustPlumeGetJSClass(&expectedClass, &expectedPrototype);
 		OO_CHECK(jsClass != nullptr && jsClass == expectedClass && prototype == expectedPrototype);
-		OO_CHECK([plume cxx_oo_jsClassName] == std::optional<std::string>("ExhaustPlume"));
-		OO_CHECK([plume isVisibleToScripts] == YES);
+		OO_CHECK(OOJSEntityJSClassName(oo::ToCxx(plume)) == std::optional<std::string>("ExhaustPlume"));
+		OO_CHECK(OOJSEntityIsVisibleToScripts(oo::ToCxx(plume)) == YES);
 	}
 }
 

@@ -350,11 +350,11 @@ OO_TEST(jsExtensions)
 		Entity *flasher = oo::ToObjC(Flasher(WhiteBlack(1, 0.5)));
 		ooscript::ClassDef *jsClass = nullptr, *expectedClass = nullptr;
 		ooscript::Object prototype = nullptr, expectedPrototype = nullptr;
-		[flasher getJSClass:&jsClass andPrototype:&prototype];
+		OOJSEntityGetJSClass(oo::ToCxx(flasher), &jsClass, &prototype);
 		OOJSFlasherGetJSClass(&expectedClass, &expectedPrototype);
 		OO_CHECK(jsClass != nullptr && jsClass == expectedClass && prototype == expectedPrototype);
-		OO_CHECK([flasher cxx_oo_jsClassName] == std::optional<std::string>("Flasher"));
-		OO_CHECK([flasher isVisibleToScripts] == YES);
+		OO_CHECK(OOJSEntityJSClassName(oo::ToCxx(flasher)) == std::optional<std::string>("Flasher"));
+		OO_CHECK(OOJSEntityIsVisibleToScripts(oo::ToCxx(flasher)) == YES);
 	}
 }
 

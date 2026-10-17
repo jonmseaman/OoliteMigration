@@ -45,6 +45,20 @@ MA 02110-1301, USA.
 #include "oofnd/Notification.hpp"
 #include "oofnd/String.hpp"
 #include "OOJSPrivateObject.h"
+#include <objc/runtime.h>
+
+
+/*	The JS glue selectors an Objective-C entity's class may define for itself (bead oo-9ht.39.8.9):
+	the root facade's category that answered them for every entity (forwarding to the C++ part) is
+	deleted, so these declare them only for the sends below, which go to a class that has its own.
+*/
+@interface Entity (OOJSOwnGlue)
+
+- (BOOL) isVisibleToScripts;
+- (std::optional<std::string>) cxx_oo_jsClassName;
+- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
+
+@end
 
 
 // MARK: Entity (OOJavaScriptExtensions)
@@ -73,31 +87,62 @@ std::optional<std::string> EntityJSClassName(void)
 	through the root facade's category. Exported since bead oo-9ht.39.5.1 for the engine's generic
 	paths that asked an entity's object (OOJSSystem's planets filter, callObjC()'s class name).
 */
+/*	Since bead oo-9ht.39.8.9 (ADR-0056 amendment oo-9ht.39.8.9) only a class's own method is sent:
+	the root facade's, which a class without one inherited, forwarded to the C++ part (the adapter,
+	whose members are the root's), which is what answers instead. An adapter whose object has gone
+	answers as the message to nil did.
+*/
+namespace {
+
+bool ObjCEntityGone(cxx::Entity *entity)
+{
+	oo::ObjCEntityLink *link = oo::AsObjCEntity(entity);
+	return link != nullptr && link->objcOwner() == nil;
+}
+
+::Entity *ObjCEntityOwning(cxx::Entity *entity, SEL selector)
+{
+	oo::ObjCEntityLink *link = oo::AsObjCEntity(entity);
+	if (link == nullptr)  return nil;
+	::Entity *object = link->objcOwner();
+	if (object == nil)  return nil;
+	if (class_getInstanceMethod(object_getClass(object), selector) == class_getInstanceMethod([::Entity class], selector))  return nil;
+	return object;
+}
+
+}	// namespace
+
+
 bool OOJSEntityIsVisibleToScripts(cxx::Entity *entity)
 {
-	if (entity == nullptr)  return false;	// nil's answer
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() isVisibleToScripts];
+	if (entity == nullptr || ObjCEntityGone(entity))  return false;	// nil's answer
+	if (::Entity *object = ObjCEntityOwning(entity, @selector(isVisibleToScripts)))  return [object isVisibleToScripts];
 	return entity->isVisibleToScripts();
 }
 
 
 std::optional<std::string> OOJSEntityJSClassName(cxx::Entity *entity)
 {
-	if (entity == nullptr)  return std::nullopt;	// nil's answer
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() cxx_oo_jsClassName];
+	if (entity == nullptr || ObjCEntityGone(entity))  return std::nullopt;	// nil's answer
+	if (::Entity *object = ObjCEntityOwning(entity, @selector(cxx_oo_jsClassName)))  return [object cxx_oo_jsClassName];
 	return entity->jsClassName();
 }
 
 
-namespace {
-
-void GetJSClass(cxx::Entity *entity, ooscript::ClassDef **outClass, ooscript::Object *outPrototype)
+void OOJSEntityGetJSClass(cxx::Entity *entity, ooscript::ClassDef **outClass, ooscript::Object *outPrototype)
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  [link->objcOwner() getJSClass:outClass andPrototype:outPrototype];
+	if (ObjCEntityGone(entity))  return;	// nil's answer: nothing
+	if (::Entity *object = ObjCEntityOwning(entity, @selector(getJSClass:andPrototype:)))  [object getJSClass:outClass andPrototype:outPrototype];
 	else  entity->getJSClass(outClass, outPrototype);
 }
 
-}	// namespace
+
+ooscript::Value OOJSEntityJSValue(cxx::Entity *entity, ooscript::Context context)
+{
+	if (entity == nullptr)  return ooscript::nullValue();	// OOJSValueFromNativeObject()'s for nil
+	if (::Entity *object = ObjCEntityOwning(entity, @selector(oo_jsValueInContext:)))  return [object oo_jsValueInContext:context];
+	return entity->jsValueInContext(context);
+}
 
 
 ooscript::Value EntityJSValueInContext(cxx::Entity *entity, ooscript::Context context)
@@ -109,7 +154,7 @@ ooscript::Value EntityJSValueInContext(cxx::Entity *entity, ooscript::Context co
 	if (entity->_jsSelf == NULL && OOJSEntityIsVisibleToScripts(entity))
 	{
 		// Create JS object
-		GetJSClass(entity, &jsClass, &prototype);
+		OOJSEntityGetJSClass(entity, &jsClass, &prototype);
 		
 		entity->_jsSelf = ooscript::newObject(context, jsClass, prototype, NULL);
 		if (entity->_jsSelf != NULL)

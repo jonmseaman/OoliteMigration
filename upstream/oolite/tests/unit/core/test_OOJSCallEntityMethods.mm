@@ -137,6 +137,11 @@ std::map<std::string, OracleRow> OracleSafeSet()
 		if (kExcluded.contains(bare))  continue;
 		if (std::optional<OracleRow> oracle = Oracle(row))  result[row.name] = *oracle;
 	}
+	// The root facade's JS glue category (deleted by bead oo-9ht.39.8.9): its three methods the
+	// safe set held, classified as the matcher classified them (their result encodings).
+	result["isVisibleToScripts"] = OracleRow{ OOJSCallEntityMethodForm::Typed, OOShaderUniformTypeFromEncoding(@encode(BOOL)) };
+	result["cxx_oo_jsClassName"] = OracleRow{ OOJSCallEntityMethodForm::Typed, OOShaderUniformTypeFromEncoding(@encode(std::optional<std::string>)) };
+	result["deleteJSSelf"] = OracleRow{ OOJSCallEntityMethodForm::VoidVoid, kOOShaderUniformTypeInvalid };
 	return result;
 }
 
@@ -229,7 +234,9 @@ OO_TEST(everyNameIsAnsweredByTheCxxEntity)
 		for (const OOEntityFacadeRow &facade : oo::EntityFacadeRows())
 		{
 			if (!names.contains(facade.name))  notInTable += std::string(" ") + facade.name;
-			if (class_getInstanceMethod([::Entity class], sel_registerName(facade.name)) == NULL)  notFacade += std::string(" ") + facade.name;
+			// The root facade's JS glue category is deleted (bead oo-9ht.39.8.9): its rows keep the body.
+			const bool deletedGlue = (std::strcmp(facade.name, "isVisibleToScripts") == 0 || std::strcmp(facade.name, "deleteJSSelf") == 0);
+			if (!deletedGlue && class_getInstanceMethod([::Entity class], sel_registerName(facade.name)) == NULL)  notFacade += std::string(" ") + facade.name;
 		}
 		OO_CHECK_EQ(uncovered, std::string());
 		OO_CHECK_EQ(twice, std::string());

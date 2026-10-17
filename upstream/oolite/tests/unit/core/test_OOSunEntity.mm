@@ -339,11 +339,11 @@ OO_TEST(jsExtensions)
 		ooscript::ClassDef *jsClass = nullptr, *expectedClass = nullptr;
 		ooscript::Object prototype = nullptr, expectedPrototype = nullptr;
 		::Entity *object = oo::ToObjC(sun);	// what the engine asks (the root's facade since bead oo-9ht.111)
-		[object getJSClass:&jsClass andPrototype:&prototype];
+		OOJSEntityGetJSClass(oo::ToCxx(object), &jsClass, &prototype);
 		OOJSSunGetJSClass(&expectedClass, &expectedPrototype);
 		OO_CHECK(jsClass != nullptr && jsClass == expectedClass && prototype == expectedPrototype);
-		OO_CHECK([object cxx_oo_jsClassName] == std::optional<std::string>("Sun"));
-		OO_CHECK([object isVisibleToScripts] == YES);
+		OO_CHECK(OOJSEntityJSClassName(oo::ToCxx(object)) == std::optional<std::string>("Sun"));
+		OO_CHECK(OOJSEntityIsVisibleToScripts(oo::ToCxx(object)) == YES);
 	}
 }
 
