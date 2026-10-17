@@ -740,14 +740,14 @@ public:
 	::Entity *primaryAggressor();
 	void setPrimaryAggressor(::Entity *targetEntity);
 	void setPrimaryAggressorEntity(cxx::Entity *target);	// setPrimaryAggressor() of the C++ entity's object (bead oo-9ht.39.8.11)
-	::Entity *lastEscortTarget();
-	void setLastEscortTarget(::Entity *targetEntity);
+	cxx::Entity *lastEscortTarget();	// C++ since bead oo-9ht.39.23.1
+	void setLastEscortTarget(cxx::Entity *targetEntity);
 
 	// Slice 24: target memory and validity, behaviour and destination accessors, distances, leading the target.
-	::Entity *thankedShip();
-	void setThankedShip(::Entity *targetEntity);
-	::Entity *rememberedShip();
-	void setRememberedShip(::Entity *targetEntity);
+	cxx::Entity *thankedShip();	// C++ since bead oo-9ht.39.23.1
+	void setThankedShip(cxx::Entity *targetEntity);
+	cxx::Entity *rememberedShip();
+	void setRememberedShip(cxx::Entity *targetEntity);
 	::Entity *targetStation();	// the object of the target station (or of the mother an escort docks with): ::StationEntity * until bead oo-9ht.175, which typed it as what it holds
 	void setTargetStation(::Entity *targetEntity);
 	virtual bool isValidTarget(::Entity *target);

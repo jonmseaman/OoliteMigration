@@ -1984,7 +1984,7 @@ OO_TEST(heatPersonalityAlignmentAndBeacons)
 
 		OO_CHECK((ship != nullptr ? ship->numberOfScannedShips() : int{}) == 0);
 		if (ship != nullptr)  ship->setFoundTarget(nullptr);
-		OO_CHECK((ship != nullptr ? ship->foundTarget() : (Entity *)nullptr) == nil && (ship != nullptr ? ship->primaryAggressor() : (Entity *)nullptr) == nil && (ship != nullptr ? ship->lastEscortTarget() : (Entity *)nullptr) == nil);
+		OO_CHECK((ship != nullptr ? ship->foundTarget() : (Entity *)nullptr) == nil && (ship != nullptr ? ship->primaryAggressor() : (Entity *)nullptr) == nil && (ship != nullptr ? ship->lastEscortTarget() : (cxx::Entity *)nullptr) == nullptr);
 
 		SetBoundingBox(oo::ToObjC(ship), BoundingBox{ { -1, -2, -3 }, { 3, 4, 5 } });
 		Vector offset = (ship != nullptr ? ship->positionOffsetForAlignment("MmC") : Vector{});
@@ -2050,22 +2050,22 @@ OO_TEST(slice24RememberedShips)
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("rememberer");
 		TestShip *other = MakeLateSliceShip("other");
-		OO_CHECK((ship != nullptr ? ship->thankedShip() : (Entity *)nullptr) == nil && (ship != nullptr ? ship->rememberedShip() : (Entity *)nullptr) == nil && (ship != nullptr ? ship->targetStation() : (Entity *)nullptr) == nil);
+		OO_CHECK((ship != nullptr ? ship->thankedShip() : (cxx::Entity *)nullptr) == nullptr && (ship != nullptr ? ship->rememberedShip() : (cxx::Entity *)nullptr) == nullptr && (ship != nullptr ? ship->targetStation() : (Entity *)nullptr) == nil);
 
-		if (ship != nullptr)  ship->setThankedShip(oo::ToObjC(other));
-		if (ship != nullptr)  ship->setRememberedShip(oo::ToObjC(other));
+		if (ship != nullptr)  ship->setThankedShip(other);
+		if (ship != nullptr)  ship->setRememberedShip(other);
 		if (ship != nullptr)  ship->setTargetStation(oo::ToObjC(other));
-		OO_CHECK((ship != nullptr ? ship->thankedShip() : (Entity *)nullptr) == oo::ToObjC(other) && (ship != nullptr ? ship->rememberedShip() : (Entity *)nullptr) == oo::ToObjC(other) && (id)(ship != nullptr ? ship->targetStation() : (Entity *)nullptr) == oo::ToObjC(other));
+		OO_CHECK((ship != nullptr ? ship->thankedShip() : (cxx::Entity *)nullptr) == other && (ship != nullptr ? ship->rememberedShip() : (cxx::Entity *)nullptr) == other && (id)(ship != nullptr ? ship->targetStation() : (Entity *)nullptr) == oo::ToObjC(other));
 
 		// A ship that is no longer a valid target is forgotten, and stays forgotten.
 		if (other != nullptr)  other->setStatus(STATUS_DOCKED);
-		OO_CHECK((ship != nullptr ? ship->thankedShip() : (Entity *)nullptr) == nil && (ship != nullptr ? ship->rememberedShip() : (Entity *)nullptr) == nil && (ship != nullptr ? ship->targetStation() : (Entity *)nullptr) == nil);
+		OO_CHECK((ship != nullptr ? ship->thankedShip() : (cxx::Entity *)nullptr) == nullptr && (ship != nullptr ? ship->rememberedShip() : (cxx::Entity *)nullptr) == nullptr && (ship != nullptr ? ship->targetStation() : (Entity *)nullptr) == nil);
 		if (other != nullptr)  other->setStatus(STATUS_IN_FLIGHT);
-		OO_CHECK((ship != nullptr ? ship->thankedShip() : (Entity *)nullptr) == nil && (ship != nullptr ? ship->rememberedShip() : (Entity *)nullptr) == nil && (ship != nullptr ? ship->targetStation() : (Entity *)nullptr) == nil);
+		OO_CHECK((ship != nullptr ? ship->thankedShip() : (cxx::Entity *)nullptr) == nullptr && (ship != nullptr ? ship->rememberedShip() : (cxx::Entity *)nullptr) == nullptr && (ship != nullptr ? ship->targetStation() : (Entity *)nullptr) == nil);
 
-		if (ship != nullptr)  ship->setThankedShip(oo::ToObjC(other));
+		if (ship != nullptr)  ship->setThankedShip(other);
 		if (ship != nullptr)  ship->setThankedShip(nullptr);
-		OO_CHECK((ship != nullptr ? ship->thankedShip() : (Entity *)nullptr) == nil);
+		OO_CHECK((ship != nullptr ? ship->thankedShip() : (cxx::Entity *)nullptr) == nullptr);
 
 		OO_CHECK((ship != nullptr ? ship->shipHitByLaser() : (::ShipEntity *)nil) == nil);
 		if (ship != nullptr)  ship->setShipHitByLaser(other);
