@@ -49,6 +49,7 @@ SOFTWARE.
 
 
 struct OOShaderBindingValue;	// OOShaderUniformMethodType.h (bead oo-9ht.158)
+namespace cxx { class Entity; }	// Entity.h: the materials' binding target (bead oo-9ht.39.6)
 
 /*	A uniform bound to a C++ object's member (bead oo-t0e2m, ADR-0056 amendment oo-t0e2m): the
 	getter reads the member into the field its type uses (OOShaderBindingValue), as a member table's
@@ -97,12 +98,25 @@ public:
 												 OOShaderCxxBindingGetter get,
 												 OOUniformConvertOptions options);
 
+	/*	Bound to an entity (bead oo-9ht.39.6, ADR-0056 amendment oo-9ht.39.6): the materials' binding
+		target is the C++ entity. The property is read through the entities' member table where a
+		row binds it (OOShaderEntityHooks, OOShaderUniformMethodType.h), the entity held weakly;
+		any other name, or an entity whose object is an Objective-C subclass's, binds to the
+		entity's object by selector as the initialiser above does. A null target binds nothing.
+	*/
+	static oo::Ref<OOShaderUniform> initWithEntityTarget(const std::string &uniformName,
+														 OOShaderProgram *shaderProgram,
+														 cxx::Entity *target,
+														 SEL selector,
+														 OOUniformConvertOptions options);
+
 	// The whole of what -cxx_description printed (amendment oo-3lj8 item 4).
 	std::optional<std::string> description();
 
 	void apply();
 
 	void setBindingTarget(id<OOWeakReferenceSupport> target);
+	void setEntityBindingTarget(cxx::Entity *target);	// bead oo-9ht.39.6: as initWithEntityTarget() binds
 
 private:
 	OOShaderUniform() = default;
@@ -121,7 +135,12 @@ private:
 								convertClamp: 1 = {},
 								convertNormalize: 1 = {},
 								convertToMatrix: 1 = {},
-								bindToSuper: 1 = {};
+								bindToSuper: 1 = {},
+								// bound to a C++ target by its factory, once (bead oo-t0e2m); else a member
+								// binding's C++ object is its Objective-C target's part (bead oo-9ht.39.6.1)
+								cxxTargetOnly: 1 = {},
+								// an entity's member through the table, the entity cxxTarget (bead oo-9ht.39.6)
+								entityMember: 1 = {};
 	uint8_t						type = {};
 	union
 	{
@@ -134,11 +153,10 @@ private:
 			::OOWeakReference			*object;
 			SEL							selector;
 			IMP							method;
-			// A member of the target found in its class's member table (bead oo-9ht.158), or
-			// NULL where the binding calls method (the selector path).
-			void						(*memberGet)(id object, struct OOShaderBindingValue &outValue);
-			// A C++ target's getter (bead oo-t0e2m), or NULL where the target is Objective-C
-			// (object above); the target and the property's name are cxxTarget and cxxProperty.
+			// A C++ target's getter (bead oo-t0e2m), or a member of the Objective-C target found in
+			// its class's member table (bead oo-9ht.158; since bead oo-9ht.39.6.1 the row reads the
+			// target's C++ part), or NULL where the binding calls method (the selector path). The
+			// C++ object is cxxTarget; a C++ target's property name is cxxProperty.
 			OOShaderCxxBindingGetter	cxxGet;
 		}							binding;
 	}							value = {};

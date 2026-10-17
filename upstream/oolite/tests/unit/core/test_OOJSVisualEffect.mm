@@ -90,7 +90,7 @@ public:
 										const oo::PList &shadersDict,
 										bool smooth,
 										const oo::PList &macros,
-										id<OOWeakReferenceSupport> object);
+										cxx::Entity *object);	// the C++ effect (bead oo-9ht.39.6)
 	oo::PList getMaterials();
 	oo::PList shaders();
 
@@ -330,7 +330,7 @@ oo::Ref<OOMesh> OOMesh::meshWithName(const std::string &name,
 									 const oo::PList &shadersDict,
 									 bool smooth,
 									 const oo::PList &macros,
-									 id<OOWeakReferenceSupport> object)
+									 cxx::Entity *object)
 {
 	sMeshName = name;
 	sMeshCacheKey = cacheKey;
@@ -338,7 +338,7 @@ oo::Ref<OOMesh> OOMesh::meshWithName(const std::string &name,
 	sMeshShaders = shadersDict;
 	sMeshSmooth = smooth;
 	sMeshMacros = macros;
-	sMeshTarget = object;
+	sMeshTarget = oo::ToObjC(object);	// its object, as the target was until bead oo-9ht.39.6
 	sMeshesMade++;
 	if (name == "nomesh.dat")  return nullptr;
 	oo::Ref<OOMesh> mesh = oo::makeRef<OOMesh>();

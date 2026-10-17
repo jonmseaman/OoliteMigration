@@ -27,7 +27,7 @@ SOFTWARE.
 
 
 #import "OOShaderMaterial.h"
-#import "Entity.h"	// the shader binding targets' informal protocols (-randomSeedForShaders)
+#import "OOShaderUniformMethodType.h"	// the binding target's hooks (bead oo-9ht.39.6)
 #include "oofnd/objc/OORuntime.h"
 #import "OOObjCPList.h"
 
@@ -87,10 +87,23 @@ bool OOShaderMaterial::configurationDictionarySpecifiesShaderMaterial(const oo::
 }
 
 
+// The binding target's Objective-C object, which the log lines describe as they described the
+// target (bead oo-9ht.39.6); nil for none, or where the entities have registered no hooks.
+namespace {
+
+id TargetObject(cxx::Entity *target)
+{
+	const OOShaderEntityHooks *hooks = OOShaderEntityHooksIfSet();
+	return (target != nullptr && hooks != nullptr) ? hooks->object(target) : nil;
+}
+
+}	// namespace
+
+
 oo::Ref<OOShaderMaterial> OOShaderMaterial::shaderMaterialWithName(const std::optional<std::string> &name,
 																   const oo::PList &configuration,
 																   const oo::PList &macros,
-																   id<OOWeakReferenceSupport> target)
+																   cxx::Entity *target)
 {
 	oo::Ref<OOShaderMaterial> result = oo::makeRef<OOShaderMaterial>();
 	if (!result->initWithName(name, configuration, macros, target))  return nullptr;
@@ -101,7 +114,7 @@ oo::Ref<OOShaderMaterial> OOShaderMaterial::shaderMaterialWithName(const std::op
 bool OOShaderMaterial::initWithName(const std::optional<std::string> &name,
 									const oo::PList &configuration,
 									const oo::PList &macros,
-									id<OOWeakReferenceSupport> target)
+									cxx::Entity *target)
 {
 	bool					OK = true;
 	std::optional<std::string>	macroString;
@@ -277,7 +290,8 @@ bool OOShaderMaterial::initWithName(const std::optional<std::string> &name,
 
 
 // -dealloc's body, but for its first line ([self willDealloc], the root facade's: proposed ADR-0056,
-// amendment oo-smy item 3); the shader program and the binding target are oo::ObjCRefs.
+// amendment oo-smy item 3); the shader program is an oo::Ref. (The binding target the material kept
+// and never read went with bead oo-9ht.39.6: the uniforms hold it.)
 OOShaderMaterial::~OOShaderMaterial()
 {
 	uint32_t			i;
@@ -294,13 +308,13 @@ OOShaderMaterial::~OOShaderMaterial()
 
 
 bool OOShaderMaterial::bindUniform(const std::string &uniformName,
-								   id<OOWeakReferenceSupport> source,
+								   cxx::Entity *source,
 								   SEL selector,
 								   OOUniformConvertOptions options)
 {
 	oo::Ref<OOShaderUniform>	uniform;
 
-	uniform = OOShaderUniform::initWithName(uniformName, shaderProgram.get(), source, selector, options);
+	uniform = OOShaderUniform::initWithEntityTarget(uniformName, shaderProgram.get(), source, selector, options);
 	if (uniform != nullptr)
 	{
 		OO_LOG("shader.uniform.set", "Set up uniform {}", uniform->description().value_or("(null)"));
@@ -317,7 +331,7 @@ bool OOShaderMaterial::bindUniform(const std::string &uniformName,
 
 
 bool OOShaderMaterial::bindSafeUniform(const std::string &uniformName,
-									   id<OOWeakReferenceSupport> target,
+									   cxx::Entity *target,
 									   const std::optional<std::string> &property,
 									   OOUniformConvertOptions options)
 {
@@ -334,7 +348,7 @@ bool OOShaderMaterial::bindSafeUniform(const std::string &uniformName,
 	}
 	else
 	{
-		OO_LOG("shader.uniform.unpermittedMethod", "Did not bind uniform \"{}\" to property -[{} {}] - unpermitted method.", uniformName, oo::DescriptionOf([target class]), property.value_or("(null)"));
+		OO_LOG("shader.uniform.unpermittedMethod", "Did not bind uniform \"{}\" to property -[{} {}] - unpermitted method.", uniformName, oo::DescriptionOf([TargetObject(target) class]), property.value_or("(null)"));
 	}
 
 	return false;
@@ -446,7 +460,7 @@ void OOShaderMaterial::setUniform(const std::string &uniformName, Quaternion val
 }
 
 
-void OOShaderMaterial::addUniformsFromDictionary(const oo::PList &uniformDefs, id<OOWeakReferenceSupport> target)
+void OOShaderMaterial::addUniformsFromDictionary(const oo::PList &uniformDefs, cxx::Entity *target)
 {
 	oo::PList					value;
 	std::optional<std::string>	binding;
@@ -459,9 +473,10 @@ void OOShaderMaterial::addUniformsFromDictionary(const oo::PList &uniformDefs, i
 	uint32_t					randomSeed;
 	RANROTSeed					savedSeed;
 
-	if ([target respondsToSelector:OOSelectorFromName("randomSeedForShaders")])
+	const OOShaderEntityHooks *hooks = OOShaderEntityHooksIfSet();
+	if (target != nullptr && hooks != nullptr && hooks->randomSeed(target, &randomSeed))
 	{
-		randomSeed = [(id)target randomSeedForShaders];
+		// -randomSeedForShaders, where the target's object answered it (bead oo-9ht.39.6: the hook).
 	}
 	else
 	{
@@ -596,7 +611,7 @@ void OOShaderMaterial::addUniformsFromDictionary(const oo::PList &uniformDefs, i
 					   quatAsMatrix);
 			gotValue = YES;
 		}
-		else if (target != nil && type == "binding")
+		else if (target != nullptr && type == "binding")
 		{
 			if (definition.isDict())
 			{
@@ -620,7 +635,7 @@ void OOShaderMaterial::addUniformsFromDictionary(const oo::PList &uniformDefs, i
 
 		if (!gotValue)
 		{
-			OO_LOG("shader.uniform.badDescription", "----- Warning: could not bind uniform \"{}\" for target {} -- could not interpret definition:\n{}", name, oo::DescriptionOf(target), oo::DescriptionOf(definition));
+			OO_LOG("shader.uniform.badDescription", "----- Warning: could not bind uniform \"{}\" for target {} -- could not interpret definition:\n{}", name, oo::DescriptionOf(TargetObject(target)), oo::DescriptionOf(definition));
 		}
 	}
 
@@ -721,13 +736,12 @@ void OOShaderMaterial::unapplyWithNext(OOMaterial *next)
 }
 
 
-void OOShaderMaterial::setBindingTarget(id<OOWeakReferenceSupport> target)
+void OOShaderMaterial::setBindingTarget(cxx::Entity *target)
 {
 	for (const auto &[name, uniform] : uniforms)
 	{
-		uniform->setBindingTarget(target);
+		uniform->setEntityBindingTarget(target);
 	}
-	bindingTarget = oo::ObjCRef<::OOWeakReference *>::adopt([target weakRetain]);
 }
 
 

@@ -800,7 +800,7 @@ bool ShipEntity::setUpFromDictionary(const oo::PList &inShipDict)
 						   DictionaryForKey(shipDict, "shaders"),
 						   shipDict.get<bool>("smooth", false),
 						   OODefaultShipShaderMacros(),
-						   oo::ToObjC(this),
+						   this,	// the C++ ship (bead oo-9ht.39.6)
 						   _scaleFactor,
 						   true);
 
@@ -7164,7 +7164,7 @@ void ShipEntity::setOwner(cxx::Entity *who_owns_entity)
 	*/
 	if (isSubEntity)
 	{
-		if (OODrawable *drawable = getDrawable())  drawable->setBindingTarget(oo::ToObjC(this));
+		if (OODrawable *drawable = getDrawable())  drawable->setBindingTarget(this);	// the C++ entity (bead oo-9ht.39.6)
 	}
 }
 
@@ -9512,7 +9512,7 @@ void ShipEntity::rescaleBy(GLfloat factor, bool writeToCache)
 						   DictionaryForKey(shipDict, "shaders"),
 						   shipDict.get<bool>("smooth", false),
 						   OODefaultShipShaderMacros(),
-						   oo::ToObjC(this),
+						   this,	// the C++ ship (bead oo-9ht.39.6)
 						   factor,
 						   writeToCache);
 
@@ -15329,24 +15329,9 @@ oo::PList OODefaultShipShaderMacros(void)
 }
 
 
-namespace {
-
-// [object isKindOfClass:<the class named className>], asked of the runtime; NO for nil.
-bool IsKindOfClassNamed(id object, const char *className)
-{
-	Class required = objc_getClass(className);
-	for (Class cls = object_getClass(object); cls != Nil; cls = class_getSuperclass(cls))
-	{
-		if (cls == required)  return true;
-	}
-	return false;
-}
-
-}	// namespace
-
-
 // is this the right place for this function now? - CIM
-BOOL OOUniformBindingPermitted(const std::string &propertyName, id bindingTarget)
+// The target is the C++ entity since bead oo-9ht.39.6; every entity's object was a kind of Entity.
+BOOL OOUniformBindingPermitted(const std::string &propertyName, cxx::Entity *bindingTarget)
 {
 	// the whitelists, read once (membership only)
 	static const oo::PList					wlDict = ResourceManager::whitelistDictionary();
@@ -15355,9 +15340,9 @@ BOOL OOUniformBindingPermitted(const std::string &propertyName, id bindingTarget
 	static const std::set<std::string>		playerShipWhitelist = NamesInArrayForKey(wlDict, "shader_player_ship_binding_methods");
 	static const std::set<std::string>		visualEffectWhitelist = NamesInArrayForKey(wlDict, "shader_visual_effect_binding_methods");
 
-	if (IsKindOfClassNamed(bindingTarget, "Entity"))
+	if (bindingTarget != nullptr)
 	{
-		cxx::Entity *entity = oo::ToCxx((::Entity *)bindingTarget);
+		cxx::Entity *entity = bindingTarget;
 		if (entityWhitelist.contains(propertyName))  return YES;
 		if (entity->getIsShip())
 		{

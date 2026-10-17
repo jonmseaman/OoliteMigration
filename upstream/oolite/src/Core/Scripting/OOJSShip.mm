@@ -3541,7 +3541,7 @@ bool ShipSetMaterialsInternal(ooscript::Context context, ooscript::CallArgs &ooj
 					  shaders,
 								 shipDict.get<bool>("smooth", false),
 						   (prefixMacros != nullptr && prefixMacros->isDict()) ? *prefixMacros : oo::PList(),
-					oo::ToObjC(thisEnt));
+					thisEnt);	// the C++ ship (bead oo-9ht.39.6)
 	
 	if (mesh != nullptr)
 	{

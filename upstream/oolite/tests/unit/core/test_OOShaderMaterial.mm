@@ -22,11 +22,17 @@
 	the overload its comment names); the facade's own case (facade) was retired with it (ADR-0049,
 	standing approval oo-9n5p9), and crossesAsTheBasicMaterialFacade pins what Objective-C sees now:
 	the nearest facade, OOBasicMaterial's.
+
+	Since bead oo-9ht.39.6 the binding target is the C++ entity: the target is a stand-in C++ entity
+	(the test links no entity), its seed answered by the entities' hook as -randomSeedForShaders
+	answered it, and the uniform stand-in records the entity binding where it recorded the object's;
+	every expected value is kept.
 	Run: bash tools/check-core-tests.sh
 */
 
 #import "OOShaderMaterial.h"
 #import "OOShaderUniform.h"
+#import "OOShaderUniformMethodType.h"	// the binding target's hooks (bead oo-9ht.39.6)
 #import "OORegExpMatcher.h"
 #import "OOOpenGLExtensionManager.h"
 #import "OODescription.h"
@@ -181,7 +187,7 @@ oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &unifor
 	OO_TEST_MADE_UNIFORM(uniformName, oo::str::format("quaternion %g %g %g %g %s", constValue.w, constValue.x, constValue.y, constValue.z, asMatrix ? "matrix" : "vector"));
 }
 
-oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &uniformName, OOShaderProgram *, id<OOWeakReferenceSupport>, SEL selector, OOUniformConvertOptions options)
+oo::Ref<OOShaderUniform> OOShaderUniform::initWithEntityTarget(const std::string &uniformName, OOShaderProgram *, cxx::Entity *, SEL selector, OOUniformConvertOptions options)
 {
 	OO_TEST_MADE_UNIFORM(uniformName, oo::str::format("binding %s options %u", sel_getName(selector), (unsigned)options));
 }
@@ -191,7 +197,7 @@ oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &unifor
 OOShaderUniform::~OOShaderUniform()  {}
 std::optional<std::string> OOShaderUniform::description()					{ return name; }
 void OOShaderUniform::apply()												{ gUniformApplies++; }
-void OOShaderUniform::setBindingTarget(id<OOWeakReferenceSupport> target)	{ gUniformTargets.push_back(name + (target != nil ? " target" : " nil")); }
+void OOShaderUniform::setEntityBindingTarget(cxx::Entity *target)	{ gUniformTargets.push_back(name + (target != nullptr ? " target" : " nil")); }
 
 
 // The textures: "missing" fails to load, and then the null texture stands in.
@@ -265,20 +271,30 @@ void OOTexture::forceRebind()	{}
 
 
 // The binding whitelist, which the game implements elsewhere: everything but "forbidden".
-BOOL OOUniformBindingPermitted(const std::string &propertyName, id bindingTarget)
+BOOL OOUniformBindingPermitted(const std::string &propertyName, cxx::Entity *bindingTarget)
 {
 	return propertyName != "forbidden";
 }
 
 
-// A binding target, with a seed for random uniforms.
-@interface TestTarget: OOWeakRefObject
-@end
+// A binding target, with a seed for random uniforms: a C++ entity since bead oo-9ht.39.6 (the test
+// links no entity, so the class is a stand-in), whose seed the entities' hook answers as the
+// Objective-C target's -randomSeedForShaders did. (Its -someBinding was never called: the uniforms
+// are stand-ins.)
+namespace cxx { class Entity {}; }
+class TestTarget : public cxx::Entity {};
 
-@implementation TestTarget
-- (uint32_t) randomSeedForShaders	{ return 12345; }
-- (float) someBinding				{ return 1.0f; }
-@end
+const OOShaderEntityHooks *OOShaderEntityHooksIfSet() noexcept
+{
+	static const OOShaderEntityHooks hooks =
+	{
+		[](cxx::Entity *) -> cxx::Entity * { return nullptr; },
+		[](cxx::Entity *) -> id { return nil; },
+		[](cxx::Entity *, const char *, OOShaderMemberBinding *) -> bool { return false; },
+		[](cxx::Entity *, uint32_t *outSeed) -> bool { *outSeed = 12345; return true; },
+	};
+	return &hooks;
+}
 
 
 // UNIVERSE is gSharedUniverse: nil, so not reduced detail and no shaders.
@@ -311,7 +327,7 @@ oo::PList Config(oo::PList::Dict dict)
 const oo::PList kSources = Config({ { "_oo_vertex_shader_source", oo::PList("VS") }, { "_oo_fragment_shader_source", oo::PList("FS") } });
 
 
-oo::Ref<OOShaderMaterial> Make(const oo::PList &configuration, const oo::PList &macros = oo::PList(), id<OOWeakReferenceSupport> target = nil)
+oo::Ref<OOShaderMaterial> Make(const oo::PList &configuration, const oo::PList &macros = oo::PList(), cxx::Entity *target = nullptr)
 {
 	gProgramRequests.clear();
 	gUniforms.clear();
@@ -417,7 +433,8 @@ OO_TEST(uniformsFromTheConfiguration)
 	if (!OOTestGLContext())  { OO_CHECK(false); return; }
 	@autoreleasepool
 	{
-		TestTarget *target = [[[TestTarget alloc] init] autorelease];
+		TestTarget targetEntity;
+		TestTarget *target = &targetEntity;
 		const RANROTSeed before = RANROTGetFullSeed();
 		oo::Ref<OOShaderMaterial> m = Make(With(kSources, { { "uniforms", Config({
 			{ "a", oo::PList(1.5) },
@@ -472,7 +489,8 @@ OO_TEST(settingUniforms)
 	if (!OOTestGLContext())  { OO_CHECK(false); return; }
 	@autoreleasepool
 	{
-		TestTarget *target = [[[TestTarget alloc] init] autorelease];
+		TestTarget targetEntity;
+		TestTarget *target = &targetEntity;
 		const oo::Ref<OOShaderMaterial> m = Make(kSources);
 		gUniforms.clear();
 		m->setUniform("i", 7);

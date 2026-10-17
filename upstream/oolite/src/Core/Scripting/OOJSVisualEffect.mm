@@ -858,7 +858,7 @@ static bool VisualEffectSetMaterialsInternal(ooscript::Context context, ooscript
 					  shaders,
 								 effectDict.get<bool>("smooth", false),
 						   shaderMacros,
-					oo::ToObjC(thisEnt));
+					thisEnt);	// the C++ effect (bead oo-9ht.39.6)
 	
 	if (mesh != nullptr)
 	{

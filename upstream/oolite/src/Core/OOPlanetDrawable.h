@@ -84,7 +84,7 @@ public:
 	GLfloat collisionRadius() override;
 	GLfloat maxDrawDistance() override;
 	BoundingBox boundingBox() override;
-	void setBindingTarget(id<OOWeakReferenceSupport> target) override;
+	void setBindingTarget(cxx::Entity *target) override;
 	void dumpSelfState() override;
 #ifndef NDEBUG
 	std::vector<oo::Ref<OOTexture>> allTextures() override;

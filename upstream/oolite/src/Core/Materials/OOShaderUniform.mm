@@ -221,9 +221,43 @@ oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &unifor
 	result->convertToMatrix = (options & kOOUniformConvertToMatrix) != 0;
 	result->type = boundType;
 	result->value.binding.cxxGet = get;
+	result->cxxTargetOnly = YES;
 	result->cxxProperty = property;
 	result->cxxTarget = target;
 	result->isActiveBinding = target != nullptr;
+	return result;
+}
+
+
+oo::Ref<OOShaderUniform> OOShaderUniform::initWithEntityTarget(const std::string &uniformName,
+															   OOShaderProgram *shaderProgram,
+															   cxx::Entity *target,
+															   SEL selector,
+															   OOUniformConvertOptions options)
+{
+	// The selector initialiser above, its target the entity (bead oo-9ht.39.6): the same checks and
+	// log line, which names the class of the entity's object as -[{} {}] did.
+	if (EXPECT_NOT(shaderProgram == NULL || selector == NULL))  return nullptr;
+
+	oo::Ref<OOShaderUniform> result = oo::adopt(new OOShaderUniform());
+	result->location = glGetUniformLocationARB(shaderProgram->program(), uniformName.c_str());
+	if (result->location == -1)
+	{
+		const OOShaderEntityHooks *hooks = OOShaderEntityHooksIfSet();
+		id object = (target != nullptr && hooks != nullptr) ? hooks->object(target) : nil;
+		OO_LOG("shader.uniform.bind.failed", "Could not bind uniform \"{}\" to -[{} {}] (no uniform of that name could be found).", uniformName, oo::DescriptionOf([object class]), OOSelectorName(selector));
+		return nullptr;
+	}
+
+	result->name = uniformName;
+	result->isBinding = YES;
+	result->value.binding.selector = selector;
+	result->convertClamp = (options & kOOUniformConvertClamp) != 0;
+	result->convertNormalize = (options & kOOUniformConvertNormalize) != 0;
+	result->convertToMatrix = (options & kOOUniformConvertToMatrix) != 0;
+	result->bindToSuper = (options & kOOUniformBindToSuperTarget) != 0;
+
+	if (target != nullptr)  result->setEntityBindingTarget(target);
 	return result;
 }
 
@@ -240,7 +274,15 @@ std::optional<std::string> OOShaderUniform::description()
 	const char					*valueType = nullptr;
 	id							object;
 
-	if (isBinding && value.binding.cxxGet != NULL)
+	if (isBinding && entityMember)
+	{
+		// An entity's member (bead oo-9ht.39.6): the class the selector path printed (rows bind only
+		// for the root facade's own class), the entity's address and the property.
+		oo::RefCounted *cxxObject = cxxTarget.get();
+		if (cxxObject != nullptr)  valueDesc = oo::str::format("[<%s %s> %s]", "Entity", oo::str::pointerDescription(cxxObject).c_str(), OOSelectorName(value.binding.selector));
+		else  valueDesc = "0";
+	}
+	else if (isBinding && cxxTargetOnly)
 	{
 		// A C++ target (bead oo-t0e2m): its address and the member's name.
 		oo::RefCounted *cxxObject = cxxTarget.get();
@@ -358,7 +400,8 @@ void OOShaderUniform::setBindingTarget(id<OOWeakReferenceSupport> target)
 	OOShaderUniformType		boundType = kOOShaderUniformTypeInvalid;
 
 	if (!isBinding)  return;
-	if (value.binding.cxxGet != NULL)  return;	// a C++ target's member is bound once, by its factory (bead oo-t0e2m)
+	if (cxxTargetOnly)  return;	// a C++ target's member is bound once, by its factory (bead oo-t0e2m)
+	entityMember = NO;	// an Objective-C target (bead oo-9ht.39.6)
 
 	// Resolve "supertarget" if applicable
 	if (bindToSuper)
@@ -378,19 +421,24 @@ void OOShaderUniform::setBindingTarget(id<OOWeakReferenceSupport> target)
 
 	if (target == nil)
 	{
+		value.binding.cxxGet = NULL;
+		cxxTarget = nullptr;
 		isActiveBinding = NO;
 		return;
 	}
 
 	/*	A member of the target's C++ class, found in its class's member table by the property name
-		(bead oo-9ht.158); else the method found by selector, as before (OOShaderUniformBindMethod,
-		which held this function's checks until then).
+		(bead oo-9ht.158), read from the target's C++ part (bead oo-9ht.39.6.1), held weakly as the
+		target is; else the method found by selector, as before (OOShaderUniformBindMethod, which
+		held this function's checks until then).
 	*/
-	value.binding.memberGet = NULL;
+	value.binding.cxxGet = NULL;
 	value.binding.method = NULL;
+	cxxTarget = nullptr;
 	if (OOShaderMemberBindingFor((id)target, value.binding.selector, &memberBinding))
 	{
-		value.binding.memberGet = memberBinding.get;
+		value.binding.cxxGet = memberBinding.get;
+		cxxTarget = memberBinding.target;
 		boundType = memberBinding.type;
 	}
 	else
@@ -401,6 +449,48 @@ void OOShaderUniform::setBindingTarget(id<OOWeakReferenceSupport> target)
 
 	isActiveBinding = OK;
 	if (!OK)  OO_LOG("shader.uniform.bind.failed", "Shader could not bind uniform \"{}\" to -[{} {}] ({}).", name, oo::DescriptionOf([target class]), OOSelectorName(value.binding.selector), methodProblem);
+}
+
+
+void OOShaderUniform::setEntityBindingTarget(cxx::Entity *target)
+{
+	const OOShaderEntityHooks *hooks = OOShaderEntityHooksIfSet();
+
+	if (!isBinding)  return;
+	if (cxxTargetOnly)  return;	// a C++ target's member is bound once, by its factory (bead oo-t0e2m)
+
+	/*	setBindingTarget()'s steps for the entity (bead oo-9ht.39.6): the super target followed up the
+		entities (-superShaderBindingTarget), then the member table's row for the name, read from the
+		entity. Where no row binds the name, or the entity's object is an Objective-C subclass's (its
+		methods may be overridden), the object is bound by selector exactly as before, from where the
+		walk has reached: setBindingTarget() continues it and logs any failure.
+	*/
+	entityMember = NO;
+	if (target != nullptr && hooks != nullptr && bindToSuper)
+	{
+		for (;;)
+		{
+			cxx::Entity *superCandidate = hooks->superTarget(target);
+			if (superCandidate == nullptr || superCandidate == target)  break;
+			target = superCandidate;
+		}
+	}
+
+	OOShaderMemberBinding memberBinding = {};
+	if (target != nullptr && hooks != nullptr && hooks->memberBinding(target, OOSelectorName(value.binding.selector), &memberBinding))
+	{
+		[value.binding.object release];
+		value.binding.object = nil;
+		value.binding.method = NULL;
+		value.binding.cxxGet = memberBinding.get;
+		cxxTarget = memberBinding.target;
+		type = memberBinding.type;
+		entityMember = YES;
+		isActiveBinding = YES;
+		return;
+	}
+
+	setBindingTarget((target != nullptr && hooks != nullptr) ? hooks->object(target) : nil);
 }
 
 
@@ -475,18 +565,18 @@ void OOShaderUniform::applyBinding()
 	// A member binding (bead oo-9ht.158), or a C++ target's (bead oo-t0e2m), reads its value once,
 	// into the field its type uses.
 	OOShaderBindingValue		member = {};
-	const bool					isMember = value.binding.memberGet != NULL || value.binding.cxxGet != NULL;
-	if (value.binding.cxxGet != NULL)
-	{
-		oo::RefCounted *cxxObject = cxxTarget.get();
-		if (cxxObject == nullptr)  return;
-		value.binding.cxxGet(cxxObject, member);
-	}
-	else
+	const bool					isMember = value.binding.cxxGet != NULL;
+	if (!cxxTargetOnly && !entityMember)
 	{
 		object = [value.binding.object weakRefUnderlyingObject];
 		if (object == nil)  return;
-		if (isMember)  value.binding.memberGet(object, member);
+	}
+	if (isMember)
+	{
+		// The C++ target, or the Objective-C target's part (bead oo-9ht.39.6.1), which goes with it.
+		oo::RefCounted *cxxObject = cxxTarget.get();
+		if (cxxObject == nullptr)  return;
+		value.binding.cxxGet(cxxObject, member);
 	}
 
 	switch (type)

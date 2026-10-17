@@ -141,7 +141,7 @@ bool OOMaterial::isFinishedLoading()
 }
 
 
-void OOMaterial::setBindingTarget(id<OOWeakReferenceSupport> /*target*/)
+void OOMaterial::setBindingTarget(cxx::Entity */*target*/)
 {
 
 }

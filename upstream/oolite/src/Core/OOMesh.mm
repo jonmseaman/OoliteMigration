@@ -203,7 +203,7 @@ oo::Ref<OOMesh> OOMesh::meshWithName(const std::string &name,
 									 const oo::PList &shadersDict,
 									 bool smooth,
 									 const oo::PList &macros,
-									 id<OOWeakReferenceSupport> object)
+									 cxx::Entity *object)
 {
 	// [[self alloc] initWithName:...] autoreleased: a new mesh, loaded, or null when it did not load.
 	oo::Ref<OOMesh> mesh = oo::makeRef<OOMesh>();
@@ -217,7 +217,7 @@ oo::Ref<OOMesh> OOMesh::meshWithName(const std::string &name,
 									 const oo::PList &shadersDict,
 									 bool smooth,
 									 const oo::PList &macros,
-									 id<OOWeakReferenceSupport> object,
+									 cxx::Entity *object,
 									 float scale,
 									 bool cacheWriteable)
 {
@@ -273,7 +273,6 @@ OOMesh::~OOMesh()
 
 	OOGraphicsResetManager::sharedManager()->unregisterCxxClient(this);
 
-	DESTROY(_shaderBindingTarget);
 
 #if OOMESH_PROFILE
 	_stopwatch = nullptr;
@@ -338,7 +337,8 @@ void OOMesh::renderOpaqueParts()
 {
 	OO_ENTER_OPENGL();
 	
-	BOOL meshBelongsToVisualEffect = [_shaderBindingTarget isVisualEffect];
+	cxx::Entity *bindingEntity = _shaderBindingTarget.get();	// a message to a gone target's weak reference answered NO
+	BOOL meshBelongsToVisualEffect = bindingEntity != nullptr && bindingEntity->getIsVisualEffect();
 	
 	OOSetOpenGLState(OPENGL_STATE_OPAQUE);
 	
@@ -534,7 +534,7 @@ void OOMesh::rebindMaterials()
 														_materialDict,
 														_shadersDict,
 														_shaderMacros,
-														[_shaderBindingTarget weakRefUnderlyingObject],	// Windows DEP fix.
+														_shaderBindingTarget.get(),	// Windows DEP fix.
 														IsPerVertexNormalMode((OOMeshNormalMode)_normalMode));
 			}
 			else
@@ -751,7 +751,7 @@ oo::Ref<OOMesh> OOMesh::meshRescaledBy(GLfloat scaleFactor)
 
 
 
-void OOMesh::setBindingTarget(id<OOWeakReferenceSupport> target)
+void OOMesh::setBindingTarget(cxx::Entity *target)
 {
 	unsigned				i;
 
@@ -836,7 +836,7 @@ bool OOMesh::initWithName(const std::string &name,
 						  const oo::PList &shadersDict,
 						  bool smooth,
 						  const oo::PList &macros,
-						  id<OOWeakReferenceSupport> target,
+						  cxx::Entity *target,
 						  float scale,
 						  bool cacheWriteable)
 {
@@ -870,7 +870,7 @@ bool OOMesh::initWithName(const std::string &name,
 			_shadersDict = shadersDict;
 			_cacheKey = cacheKey;
 			_shaderMacros = macros;
-			_shaderBindingTarget = [target weakRetain];
+			_shaderBindingTarget = target;
 			
 			rebindMaterials();
 			PROFILE("finished material setup");
@@ -905,8 +905,7 @@ oo::Ref<OOMesh> OOMesh::mutableCopyWithZone(OOZone * /*zone*/)
 	// unused, as on GNUstep.
 	oo::Ref<OOMesh> result = oo::makeRef<OOMesh>(*this);
 
-	// The Objective-C members, copied as pointers, get their -retain (the octree is a C++ reference, copied).
-	[result->_shaderBindingTarget retain];
+	// (The binding target is a weak reference since bead oo-9ht.39.6, copied; the octree is a C++ reference, copied.)
 
 	for (i = 0; i != kOOMeshMaxMaterials; ++i)
 	{
