@@ -7271,6 +7271,67 @@ answer was dereferenced at every call, so a missing universe failed there before
 `tools/check-string-expander.sh` no longer compiles or links a bridge; its stubs stand in for the
 C++ classes, and its digests are unchanged.
 
+## Amendment (bead oo-t0e2m): the dust shader's uniforms are bound to the C++ dust
+
+- Date: 2026-10-17. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch AB
+  (one branch). Exemplar: `src/Core/Materials/OOShaderUniform.h/.mm` (the C++ target factory,
+  `OOShaderCxxBindingGetter`), `src/Core/Entities/DustEntity.mm` (`getShader()`),
+  `tests/unit/core/test_OOShaderUniform.mm` (`cxxTargetBindings`). Follows amendment oo-9ht.158.
+
+**Context.** Since oo-9ht.77 deleted the dust's facade, the dust shader's `uWarp` and
+`uOffsetPlayerPosition` were bound by selector (`-warpVector`, `-offsetPlayerPosition`) to a
+file-local Objective-C object, an `OOWeakRefObject` that forwarded to the C++ dust and that the
+dust's destructor disconnected. It was one of the last `OOWeakRefObject` subclasses oo-9ht.22 waits on.
+
+**Decision (recommended defaults).**
+
+1. **A uniform can be bound to a C++ object's member.** `OOShaderUniform::initWithName(name,
+   program, target, property, type, get, options)` takes the target as `oo::RefCounted *`, held
+   with `oo::WeakRef`, a getter `void (*)(oo::RefCounted *, OOShaderBindingValue &)` that reads
+   the member into the field its type uses (as a member table's row does, amendment oo-9ht.158
+   item 2), and the uniform type, which is what the selector path read from the replaced method's
+   return type (`Vector`: `kOOShaderUniformTypeVector`). It fails (null) where the selector
+   initialiser failed: no program, no uniform of that name (the same log class; the line names the
+   property where it named `-[class selector]`), and also for no getter or an invalid type. The
+   value is converted and uploaded exactly as a member binding's (`applyBinding()`); a target that
+   has gone, or none, sets nothing, as an Objective-C target that had gone did. Such a uniform is
+   bound once: `setBindingTarget()` leaves it alone (a C++ target has no super target).
+2. **The dust binds its two uniforms to its members** `warpVector()` and `offsetPlayerPosition()`
+   through two file-local getters; the Objective-C object, the dust's `shaderBinding` member and
+   its destructor line go. The uniform's weak reference replaces the destructor's disconnection.
+
+**Differences.** None in the game: the uniforms' names, types, conversions and values are
+unchanged. A bound uniform's description names the C++ target's address and the member
+(`[<0x…> warpVector]`) where it named the Objective-C object's class and address.
+
+**Tests.** `test_OOShaderUniform cxxTargetBindings` (new) pins the C++ target binding: the failing
+cases, the value read on every apply, normalisation, the description, a target that has gone and
+none. `test_DustEntity shaderBindings` keeps pinning both members' values. No case was retired.
+
+## Amendment (bead oo-9ht.22.1): a ship group holds its ships as oo::WeakRef
+
+- Date: 2026-10-17. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch AB.
+  Exemplar: `src/Core/OOShipGroup.h/.mm`, `tests/unit/core/test_OOShipGroup.mm`. The first slice of
+  oo-9ht.22 that does not wait for the Entity facade; follows amendment oo-9ht.39.5.2.
+
+**Decision (recommended defaults).** `OOShipGroup`'s members and leader were `OOWeakReference`
+proxies of the ships' Objective-C objects (`-weakRetain`); they are `oo::WeakRef<cxx::Entity>` of
+the ships' C++ parts, in a `std::vector` of `_capacity` slots (the malloc'd array; `resizeTo()`
+resizes it where it reallocated, the first `_count` kept). A weak reference reads null exactly
+when the object's did, since the entity facade's `-dealloc` drops its part's weak references
+(amendment oo-9ht.39.5.2), so the members' order, the swap-remove of dead members, the update
+count, the leader's drop when it dies and the description are unchanged. The destructor's releases
+go with the vector. The group no longer imports `OOWeakReference.h`.
+
+**Differences.** None in the game. A removed or dead member's slot no longer leaks its proxy (the
+swap-remove overwrote it without a release).
+
+**Tests** (standing approval oo-9n5p9, line on main first): `test_OOShipGroup
+dyingGroupReleasesLeaderReference`'s checks of the objects' `OOWeakReference` (`weakSelf`, through
+the stand-in `WatchedShip`) retire with the group's use of it; the case keeps its group checks.
+The stand-in root is an `OOObject` and the test no longer links `OOWeakReference`. Every other
+case is unchanged.
+
 ## Amendment (bead oo-9ht.73): the AI's facade is deleted; the AI is the global C++ class
 
 - Date: 2026-10-17. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch AB

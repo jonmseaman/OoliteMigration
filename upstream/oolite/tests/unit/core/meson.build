@@ -65,7 +65,7 @@ core_tests = {
     'test_OOSoundSource': ['Core/OOSoundSource.mm', 'Core/OOVector.mm', 'Core/legacy_random.c', 'Core/OODescription.mm'],
     'test_OOSoundSourcePool': ['Core/OOSoundSourcePool.mm', 'Core/OOVector.mm', 'Core/legacy_random.c'],
     'test_OOMusicController': ['Core/OOMusicController.mm'],
-    'test_OOShipGroup': ['Core/OOShipGroup.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/OODescription.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
+    'test_OOShipGroup': ['Core/OOShipGroup.mm', 'Core/OODescription.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOGraphicsResetManager': ['Core/OOGraphicsResetManager.mm', 'Core/OOOpenGLExtensionManager.mm'],
     'test_OOOpenGLExtensionManager': ['Core/OOOpenGLExtensionManager.mm'],
     'test_OOOpenGLStateManager': ['Core/OOOpenGLStateManager.mm', 'Core/OOOpenGL.mm', 'Core/OOOpenGLExtensionManager.mm'],
