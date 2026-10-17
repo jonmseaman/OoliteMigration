@@ -6179,13 +6179,14 @@ bool Universe::isVectorClearFromEntity(::Entity *e1, double dist, HPVector p2)
 }
 
 
-::Entity *Universe::hazardOnRouteFromEntity(::Entity *e1, double dist, HPVector p2)
+// The C++ entity, and its hazard's (bead oo-9ht.39.8.6): the list is still walked on the entities' objects.
+cxx::Entity *Universe::hazardOnRouteFromEntity(cxx::Entity *e1, double dist, HPVector p2)
 {
 	if (!e1)
 		return nil;
 	
 	HPVector f1;
-	HPVector p1 = e1->_cxxEntity->position;
+	HPVector p1 = e1->position;
 	HPVector v1 = p2;
 	v1.x -= p1.x;   v1.y -= p1.y;   v1.z -= p1.z;   // vector from entity to p2
 	
@@ -6209,7 +6210,7 @@ bool Universe::isVectorClearFromEntity(::Entity *e1, double dist, HPVector p2)
 	for (i = 0; (i < ent_count) && (!result) ; i++)
 	{
 		::Entity *e2 = my_entities[i];
-		if ((e2 != e1)&&([e2 canCollide]))
+		if ((oo::ToCxx(e2) != e1)&&([e2 canCollide]))
 		{
 			HPVector epos = e2->_cxxEntity->position;
 			epos.x -= p1.x;	epos.y -= p1.y;	epos.z -= p1.z; // epos now holds vector from p1 to this entities position
@@ -6218,8 +6219,8 @@ bool Universe::isVectorClearFromEntity(::Entity *e1, double dist, HPVector p2)
 			
 			if ((d_forward > 0)&&(d_forward < nearest))
 			{
-				double cr = 1.10 * (e2->_cxxEntity->collision_radius + e1->_cxxEntity->collision_radius); //  10% safety margin
-				HPVector p0 = e1->_cxxEntity->position;
+				double cr = 1.10 * (e2->_cxxEntity->collision_radius + e1->collision_radius); //  10% safety margin
+				HPVector p0 = e1->position;
 				p0.x += d_forward * f1.x;	p0.y += d_forward * f1.y;	p0.z += d_forward * f1.z;
 				// p0 holds nearest point on current course to center of incident object
 				HPVector epos = e2->_cxxEntity->position;
@@ -6233,11 +6234,12 @@ bool Universe::isVectorClearFromEntity(::Entity *e1, double dist, HPVector p2)
 	}
 	for (i = 0; i < ent_count; i++)
 		[my_entities[i] release]; //	released
-	return result;
+	return oo::ToCxx(result);
 }
 
 
-HPVector Universe::getSafeVectorFromEntity(::Entity *e1, double dist, HPVector p2)
+// The C++ entity (bead oo-9ht.39.8.6): the list is still walked on the entities' objects.
+HPVector Universe::getSafeVectorFromEntity(cxx::Entity *e1, double dist, HPVector p2)
 {
 	// heuristic three
 	
@@ -6254,7 +6256,7 @@ HPVector Universe::getSafeVectorFromEntity(::Entity *e1, double dist, HPVector p
 	::Entity* my_entities[ent_count];
 	for (i = 0; i < ent_count; i++)
 		my_entities[i] = [oo::ToObjC(sortedEntities[i]) retain];	// retained
-	HPVector p1 = e1->_cxxEntity->position;
+	HPVector p1 = e1->position;
 	HPVector v1 = p2;
 	v1.x -= p1.x;   v1.y -= p1.y;   v1.z -= p1.z;   // vector from entity to p2
 	
@@ -6268,16 +6270,16 @@ HPVector Universe::getSafeVectorFromEntity(::Entity *e1, double dist, HPVector p
 	for (i = 0; i < ent_count; i++)
 	{
 		::Entity *e2 = my_entities[i];
-		if ((e2 != e1)&&([e2 canCollide]))
+		if ((oo::ToCxx(e2) != e1)&&([e2 canCollide]))
 		{
 			HPVector epos = e2->_cxxEntity->position;
 			epos.x -= p1.x;	epos.y -= p1.y;	epos.z -= p1.z;
 			double d_forward = HPdot_product(epos,f1);
 			if ((d_forward > 0)&&(d_forward < nearest))
 			{
-				double cr = 1.20 * (e2->_cxxEntity->collision_radius + e1->_cxxEntity->collision_radius); //  20% safety margin
+				double cr = 1.20 * (e2->_cxxEntity->collision_radius + e1->collision_radius); //  20% safety margin
 				
-				HPVector p0 = e1->_cxxEntity->position;
+				HPVector p0 = e1->position;
 				p0.x += d_forward * f1.x;	p0.y += d_forward * f1.y;	p0.z += d_forward * f1.z;
 				// p0 holds nearest point on current course to center of incident object
 				

@@ -7757,3 +7757,28 @@ facade while the facade exists), which also applies to the next-beacon compare o
 **Tests.** None changed: `test_OOJSShip` and `test_OOJSPlayerShip` link the game (their players override the
 virtual `getCompassTarget()`/`nextBeacon()`, which the new members call); js-api-contract and the goldens
 cover the values.
+
+## Amendment (bead oo-9ht.39.8.6): hazardOnRouteFromEntity and getSafeVectorFromEntity take and answer the C++ entity
+
+oo-9ht.39 step 4c (bead oo-9ht.39.8), family F5 of its plan (batch AF, Migration Completion session,
+2026-10-17). `Universe::hazardOnRouteFromEntity()` and `getSafeVectorFromEntity()` (virtual,
+`UniverseVirtualMembers.h`) took the entity's object, which their two callers, the ship's
+`checkCourseToDestination()` and the ship binding's `getSafeCourseToDestination()` /
+`checkCourseToDestination()` natives, made with `oo::ToObjC`; the hazard was answered as an object, which the
+binding returned through its `-oo_jsValueInContext:`.
+
+1. **They take the C++ entity** (`cxx::Entity *e1`), whose position and collision radius they read (they read
+   them through `e1->_cxxEntity`), and compare it with each entity of the list as `oo::ToCxx(e2) != e1`; the
+   list is still walked on the entities' objects. **The hazard is the C++ entity** (`oo::ToCxx` of the object
+   found, null for none).
+2. **Callers.** The ship passes itself; `checkCourseToDestination()` messages the hazard's object, so it crosses
+   once there (`oo::ToObjC` of the answer). The binding passes the C++ ship and returns
+   `OOJSValueFromCxxObject(context, hazard)` (amendment oo-9ht.39.8.1's equivalence; null for none).
+
+**Defaults (rule 10).** Identical behaviour: the same entities compared, the same object messaged, the same JS
+value; the facade-less difference of amendment oo-9ht.39.7.1 is unreachable here too (an entity in the list has
+its object).
+
+**Tests (standing approval oo-9n5p9, lines on main before this change).** `test_OOJSShip`'s `TestUniverse`
+overrides take the C++ entity (same log lines; nullptr for nil); `test_Universe`'s slice-14 cases pass
+`oo::ToCxx(e1)` and compare the hazard with `nullptr` / `oo::ToCxx(rock)`; same routes, same expected answers.
