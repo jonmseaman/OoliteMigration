@@ -45,6 +45,7 @@ public:
 	virtual void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
 	virtual std::optional<std::string> jsClassName();
 	virtual bool isVisibleToScripts();
+	id owner();	// the binding calls it since bead oo-9ht.39.8.19 (its object's -owner did)
 };
 
 }	// namespace cxx
@@ -78,7 +79,6 @@ public:
 	id _owner;
 }
 - (id) weakRefUnderlyingObject;
-- (id) owner;
 @end
 
 // A ship: C++ since bead oo-9ht.144 deleted the Objective-C ship this stood in for, the C++ part of
@@ -116,7 +116,6 @@ bool OOJSExhaustPlumeIsVisibleToScripts(void);
 @implementation Entity
 
 - (id) weakRefUnderlyingObject  { return self; }
-- (id) owner  { return _owner; }
 
 @end
 
@@ -334,6 +333,9 @@ namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
 	auto found = sObjects.find(entity);
 	return found != sObjects.end() ? found->second : nil;
 }
+
+// The owner its object's -owner answered until bead oo-9ht.39.8.19, on the same object field.
+id cxx::Entity::owner()  { return oo::ToObjC(this)->_owner; }
 
 
 // MARK: The context -------------------------------------------------------------------------------
