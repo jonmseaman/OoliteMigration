@@ -8053,3 +8053,49 @@ C++ entity they held) with the same expected values: `test_EntityOOJavaScriptExt
 `test_OOFlasherEntity`, `test_OOVisualEffectEntity`. `test_OOJSCallEntityMethods`'
 `everyNameIsAnsweredByTheCxxEntity` no longer requires the facade method for the two facade rows whose methods
 this deletes. No case is removed and no expected value changes.
+
+## Amendment (bead oo-9ht.39.9, proposed): the by-name calls answer names outside both tables without the entity's object
+
+oo-9ht.39 step 4d (batch AI, Migration Completion session, 2026-10-17). Status: **proposed** (rule 10: the
+default below is taken and the work proceeds on it; Jon may overrule). `oo::EntityRespondsToName()` asked a C++
+entity's Objective-C object (the root's facade, class `Entity`) `-respondsToSelector:` for a name in neither
+`OOEntityCalledByNameTable.h` nor the facade rows (amendment oo-9ht.39.8.25), and `oo::CallEntityByName()` (three
+forms) called `OOCallByName()` on it. Both now answer such a name without the object.
+
+1. **The table.** `OOEntityObjectNamesTable.h` lists every name the object answered outside the by-name table:
+   the facade's own methods, its categories' and its root classes' (`OOWeakRefObject`, `OOObject` and their
+   categories), 163 rows, measured on main 0836d09a6 by asking the facade of a ship, a station, a dock, the
+   player, a proxy, a visual effect and a waypoint each name, with `OOCallByName`'s signature rules (a planet's
+   five shader names from their declarations). Each row holds when the object answered it (every entity; the
+   planet's names for a planet's part, the beacon protocol's for a ship's, an effect's or a waypoint's part, as
+   `-[Entity respondsToSelector:]` answered them), what the call did with it, and the method's type encoding as
+   the call logged it. `test_OOEntityCalledByName`'s new `objectNamesAreTheFacadesAnswers` proves the table equal
+   to the facade while the facade is built (a facade-contract check: it goes with the facade, oo-9ht.39).
+2. **Answers.** `EntityRespondsToName()` answers a tabled name for the entities the object answered it for,
+   and no other name. A by-name row, a facade row and an Objective-C entity (tests only: its object is still
+   asked) are answered as before.
+3. **Calls.** For a C++ entity, a name outside the by-name table (or a by-name row that does not apply) is:
+   (a) a facade row's method with no argument that `OOCallByName` called (62: `isShip`, `throwSparks`, `owner`,
+   ...): the row's body, its result ignored as the call ignored it; (b) any other tabled name, with any
+   argument: the line `OOCallByName` logged, `-[Entity <name>] has no signature a by-name call can use (type
+   encoding <the method's>).`, nothing called; (c) any other name, including the JS glue the facade no longer
+   answered (`isVisibleToScripts`, `deleteJSSelf`; amendment oo-9ht.39.8.9): `Entity does not respond to
+   <name>.`. The class in both texts is the object's, `Entity` (an Objective-C entity's own class). A tabled
+   name's bad-signature line no longer asks the object for its class (the same text).
+
+**Behaviour change (flagged).** The root-class and lifetime methods the call could call with no argument (18:
+`init`, `dealloc`, `retain`, `release`, `autorelease`, `copy`, `mutableCopy`, `hash`, `self`, `retainCount`,
+`isProxy`, `oo_objectSize`, `weakRetain`, `weakSelf`, `weakRefUnderlyingObject`, `_ARCCompliantRetainRelease`,
+`.cxx_construct`, `.cxx_destruct`) are answered (`EntityRespondsToName()` still says yes) and logged with the
+bad-signature line, but **never called**. Until now an AI state machine's action or a legacy script's action
+(untrusted data: OXP AI plists and `script.plist` actions are names) could send `release` or `dealloc` to an
+entity's object. Checked: no name of the 18 occurs in the game's own `Resources/AIs` (39 plists; the JS AIs
+make no `callObjC` call), `Resources/Scripts` (no `callObjC` call; no legacy `script.plist`) or
+`Resources/Config/whitelist.plist` (its `action_methods`, `ai_methods`, `ai_and_action_methods`,
+`query_methods` lists); OXP content was not read. Every other name's answer, call and log text is unchanged.
+An entity with no Objective-C object answered nothing before; it now answers as an entity with one did (every
+game entity has one until the facade goes).
+
+**Tests.** `test_OOEntityCalledByName` adds `objectNamesAreTheFacadesAnswers` and
+`objectNamesAnsweredWithoutTheObject` (a case per kind: a bad signature, a lifetime name that is not called, a
+facade row's body, a name that does not respond). No test changes or retires.

@@ -7,8 +7,10 @@ oo-9ht.39.7.1; declared in OOCallByName.h). The facade's by-name categories are 
 table OOEntityCalledByNameTable.h (tools/gen-entity-by-name-table.py): a tabled name is answered
 for the C++ part it applies to, exactly as -[Entity respondsToSelector:] and the category method
 answered it, and called as OOCallByName called the method (the same signature rules, read from
-@encode() of the declared types instead of the method's type encoding). Any other name, and a
-tabled name that does not apply, go to the entity's Objective-C object as before. callObjC() reads
+@encode() of the declared types instead of the method's type encoding). Since bead oo-9ht.39.9 any
+other name, and a tabled name that does not apply, are answered without the entity's Objective-C
+object, as OOCallByName answered them on it (OOEntityObjectNamesTable.h); an Objective-C entity's
+(tests only) still go to its object. callObjC() reads
 a typed result through oo::CallEntityByNameTyped (bead oo-9ht.39.7.2). Since bead oo-9ht.39.7.3
 the categories are deleted (the table is the source): a tabled name that applies but whose
 signature the call cannot use is logged here, and oo::ScheduleEntityCall holds the deferred calls.
@@ -406,7 +408,28 @@ const OOEntityFacadeRow kOOEntityFacadeRows[] =
 	{ "zeroDistance",	nullptr,	&OOEntityByNameTyped<&Facade_zeroDistance> },
 };
 
+
+#include "OOEntityObjectNamesTable.h"
+
 }	// namespace
+
+
+std::span<const OOEntityObjectName> oo::EntityObjectNames()
+{
+	return kOOEntityObjectNames;
+}
+
+
+const OOEntityObjectName *oo::EntityObjectNameNamed(const std::string &name)
+{
+	static const std::unordered_map<std::string_view, const OOEntityObjectName *> names = [] {
+		std::unordered_map<std::string_view, const OOEntityObjectName *> result;
+		for (const OOEntityObjectName &row : kOOEntityObjectNames)  result.emplace(row.name, &row);
+		return result;
+	}();
+	auto found = names.find(name);
+	return found != names.end() ? found->second : nullptr;
+}
 
 
 std::span<const OOEntityFacadeRow> oo::EntityFacadeRows()
@@ -542,21 +565,29 @@ std::optional<oo::PList> CallRow(const OOEntityByNameRow &row, cxx::Entity *enti
 }
 
 
+/*	The class OOCallByName's lines named: the entity's object's. A C++ entity's object is the root's
+	facade, of class Entity (not asked since bead oo-9ht.39.9, ADR-0056 amendment oo-9ht.39.9); an
+	Objective-C entity's (tests only) is of its own class.
+*/
+const char *ObjectClassName(cxx::Entity *entity)
+{
+	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return class_getName(object_getClass(link->objcOwner()));
+	return "Entity";
+}
+
+
 /*	The line OOCallByName logged for a method whose signature the call cannot use (OOCallByName.mm
 	LogBadSignature), for a tabled name that applies: the class of the entity's object, as the
 	category method was its; the type encoding is the row's, @encode() of the result, of self and
 	_cmd and of the argument, without the frame offsets the method's encoding had (bead
-	oo-9ht.39.7.3, ADR-0056 amendment oo-9ht.39.7.3: a log-text-only change). An entity with no
-	object logs nothing, as the call to a nil target did.
+	oo-9ht.39.7.3, ADR-0056 amendment oo-9ht.39.7.3: a log-text-only change).
 */
 void LogBadSignature(cxx::Entity *entity, const OOEntityByNameRow &row)
 {
-	::Entity *object = oo::ToObjC(entity);
-	if (object == nil)  return;
 	std::string encoding = std::string(row.result) + @encode(id) + @encode(SEL);
 	if (row.argument == OOEntityByNameArgument::String)  encoding += @encode(const std::string &);
 	if (row.argument == OOEntityByNameArgument::PList)  encoding += @encode(const oo::PList &);
-	OO_LOG_ERR("callByName.badSignature", "-[{} {}] has no signature a by-name call can use (type encoding {}).", class_getName(object_getClass(object)), row.name, encoding);
+	OO_LOG_ERR("callByName.badSignature", "-[{} {}] has no signature a by-name call can use (type encoding {}).", ObjectClassName(entity), row.name, encoding);
 }
 
 
@@ -576,6 +607,44 @@ SEL SelectorNamed(const std::string &name)
 	return OOSelectorFromName(name.c_str());
 }
 
+
+// The name, if the entity's object answered it for this entity; else null.
+const OOEntityObjectName *AnsweredObjectName(cxx::Entity *entity, const std::string &name)
+{
+	const OOEntityObjectName *row = oo::EntityObjectNameNamed(name);
+	return (row != nullptr && (row->answers == nullptr || row->answers(entity))) ? row : nullptr;
+}
+
+
+/*	A C++ entity's name outside the by-name table, as OOCallByName answered it on the entity's
+	object (bead oo-9ht.39.9, ADR-0056 amendment oo-9ht.39.9), without the object: a facade row's
+	method with no argument that the call called is the row's body (its result ignored, as the call
+	ignored it); any other name the object answered is logged as the call logged it (the method's
+	type encoding), a root-class or lifetime method included, which is no longer called; any other
+	name does not respond. The texts are OOCallByName's (OOCallByName.mm LogUnknown, LogBadSignature).
+*/
+oo::PList CallObjectName(cxx::Entity *entity, const std::string &name, bool hasArgument)
+{
+	const OOEntityObjectName *row = AnsweredObjectName(entity, name);
+	if (row == nullptr)
+	{
+		OO_LOG_ERR("callByName.unknownSelector", "{} does not respond to {}.", ObjectClassName(entity), name);
+		return oo::PList();
+	}
+	if (row->kind == kOOEntityObjectCalled && !hasArgument)
+	{
+		const OOEntityFacadeRow *facade = oo::EntityFacadeRowNamed(name);
+		if (facade != nullptr && facade->typed != nullptr)
+		{
+			OOEntityByNameValue ignored;
+			facade->typed(entity, ignored);
+			return oo::PList();
+		}
+	}
+	OO_LOG_ERR("callByName.badSignature", "-[{} {}] has no signature a by-name call can use (type encoding {}).", ObjectClassName(entity), name, row->encoding);
+	return oo::PList();
+}
+
 }	// namespace
 
 
@@ -583,12 +652,16 @@ bool oo::EntityRespondsToName(cxx::Entity *entity, const std::string &name)
 {
 	if (entity == nullptr)  return false;
 	if (const OOEntityByNameRow *row = EntityByNameRowNamed(name))  return EntityByNameRowApplies(*row, entity);
-	// A facade row (bead oo-9ht.39.8.25): -[Entity respondsToSelector:]'s answer for the facade's method,
-	// for a C++ entity (an Objective-C entity's class may answer more: it is asked, as before).
-	const OOEntityFacadeRow *facade = EntityFacadeRowNamed(name);
-	if (facade != nullptr && oo::AsObjCEntity(entity) == nullptr)  return facade->answers == nullptr || facade->answers(entity);
-	::Entity *object = oo::ToObjC(entity);
-	return object != nil && [object respondsToSelector:SelectorNamed(name)];
+	// An Objective-C entity's class may answer more: it is asked, as before.
+	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))
+	{
+		::Entity *object = link->objcOwner();
+		return object != nil && [object respondsToSelector:SelectorNamed(name)];
+	}
+	// A facade row (bead oo-9ht.39.8.25): -[Entity respondsToSelector:]'s answer for the facade's method.
+	if (const OOEntityFacadeRow *facade = EntityFacadeRowNamed(name))  return facade->answers == nullptr || facade->answers(entity);
+	// Any other name the entity's object answered (bead oo-9ht.39.9): the object is not asked.
+	return AnsweredObjectName(entity, name) != nullptr;
 }
 
 
@@ -596,7 +669,8 @@ oo::PList oo::CallEntityByName(cxx::Entity *entity, const std::string &name)
 {
 	if (entity == nullptr)  return PList();
 	if (std::optional<PList> result = CallTabled(entity, name, nullptr, nullptr))  return *result;
-	return OOCallByName(oo::ToObjC(entity), SelectorNamed(name));
+	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return OOCallByName(link->objcOwner(), SelectorNamed(name));
+	return CallObjectName(entity, name, false);
 }
 
 
@@ -604,7 +678,8 @@ oo::PList oo::CallEntityByName(cxx::Entity *entity, const std::string &name, con
 {
 	if (entity == nullptr)  return PList();
 	if (std::optional<PList> result = CallTabled(entity, name, &argument, nullptr))  return *result;
-	return OOCallByName(oo::ToObjC(entity), SelectorNamed(name), argument);
+	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return OOCallByName(link->objcOwner(), SelectorNamed(name), argument);
+	return CallObjectName(entity, name, true);
 }
 
 
@@ -612,7 +687,8 @@ oo::PList oo::CallEntityByName(cxx::Entity *entity, const std::string &name, con
 {
 	if (entity == nullptr)  return PList();
 	if (std::optional<PList> result = CallTabled(entity, name, nullptr, &argument))  return *result;
-	return OOCallByName(oo::ToObjC(entity), SelectorNamed(name), argument);
+	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return OOCallByName(link->objcOwner(), SelectorNamed(name), argument);
+	return CallObjectName(entity, name, true);
 }
 
 

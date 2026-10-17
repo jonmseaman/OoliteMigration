@@ -264,13 +264,14 @@ public:
 	// What "%@" prints between the braces of <Class 0x...>{...} (OODescription.h).
 	// descriptionComponents(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 
-	/*	Entity (OOJavaScriptExtensions)'s class questions, which the engine asks by selector: the
-		root category forwards them here, so a C++ entity whose own façade is gone answers for its
-		class by overriding them (ADR-0056 amendment oo-9ht.107). The defaults are the category's
-		bodies (EntityOOJavaScriptExtensions.h). An Objective-C class, or a façade, that implements
-		the selectors still answers first. oo::ObjCEntity must not forward these: the category
-		reaches them only for an Objective-C entity with no override of its own, and a forwarding
-		adapter would send the selector back to the category, which would call the adapter again.
+	/*	The class questions the engine asked an entity's object by selector (the deleted category
+		Entity (OOJavaScriptExtensions)): a C++ entity answers for its class by overriding them
+		(ADR-0056 amendment oo-9ht.107). The defaults are the category's bodies
+		(EntityOOJavaScriptExtensions.h). Since bead oo-9ht.39.8.9 the engine asks the C++ entity
+		(OOJSEntityIsVisibleToScripts(), OOJSEntityJSClassName(), OOJSEntityGetJSClass()); an
+		Objective-C entity's class that implements the selectors still answers first.
+		oo::ObjCEntity must not forward these: those functions reach them only for an Objective-C
+		entity with no override of its own, and a forwarding adapter would send the selector back.
 	*/
 	// getJSClass(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 	// jsClassName(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
@@ -281,7 +282,8 @@ public:
 		answered, so the engine wraps a C++ entity with OOJSValueFromCxxObject(). Its JS object's
 		private slot holds an OOJSEntityHolder (OOJSEntity.h), a weak reference to the entity, as
 		the slot held the facade's weak reference. The bodies are EntityOOJavaScriptExtensions.mm's.
-		deleteJSSelf() is the facade's -deleteJSSelf (the engine's reset, and -dealloc).
+		deleteJSSelf() is what the deleted -deleteJSSelf forwarded to (the engine's reset; the
+		facade's -dealloc calls it; bead oo-9ht.39.8.9).
 	*/
 	// jsValueInContext(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 	// clearJSSelf(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
