@@ -213,8 +213,8 @@ typedef Entity <OOBeaconEntity> OOBeaconEntityObject;
 
 
 /*	Carries addDelayedMessage()'s dictionary through OOScheduleDeferredCall(), which retains it
-	until the call fires, as it did the dictionary (the AI deferred-call trampoline's holder is the
-	exemplar, AI+ObjCBridge.h). Its class is Objective-C because the deferred call retains it and
+	until the call fires, as it did the dictionary (the AI's deferred call, OOAIDeferredCall in AI.mm,
+	is the same pattern). Its class is Objective-C because the deferred call retains it and
 	performs a selector: the call's target is the holder, whose -deliverToUniverse hands it to
 	UNIVERSE (bead oo-ql9rn; the target was the universe's facade, sent -addDelayedMessage:).
 */

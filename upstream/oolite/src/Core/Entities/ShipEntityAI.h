@@ -27,7 +27,7 @@ MA 02110-1301, USA.
 
 #import "ShipEntity.h"
 
-@class AI;
+class AI;	// C++ since bead oo-9ht.73 (AI.h)
 class Universe;
 class OOPlanetEntity;	// C++ since bead oo-9ht.129
 

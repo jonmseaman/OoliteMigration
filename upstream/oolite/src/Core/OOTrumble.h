@@ -38,7 +38,7 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOObjCRef.h"
 
 
-@class AI;
+class AI;	// C++ since bead oo-9ht.73 (AI.h)
 class OOTexture;
 class PlayerEntity;
 class OOSound;	// C++ since bead oo-9ht.68 deleted its facade

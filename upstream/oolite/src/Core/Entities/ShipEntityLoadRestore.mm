@@ -169,15 +169,15 @@ oo::PList ShipEntity::savedShipDictionaryWithContext(OOShipSaveContext *context)
 	// FIXME: AI.
 	// Eric: I think storing the AI name should be enough. On entering a wormhole, the stack is cleared so there are no preserved AI states.
 	// Also the AI restarts itself with the GLOBAL state, so no need to store any old state.
-	if ([getAI() cxx_name].value_or(std::string()) == "nullAI.plist")
+	if ((getAI() != nullptr ? getAI()->name() : std::optional<std::string>()).value_or(std::string()) == "nullAI.plist")
 	{
 		// might be a JS version (with none, no key: -setObject:forKey: refused nil)
-		if (const std::optional<std::string> js = [getAI() cxx_associatedJS])  result[KEY_AI] = *js;
+		if (const std::optional<std::string> js = (getAI() != nullptr ? getAI()->associatedJS() : std::optional<std::string>()))  result[KEY_AI] = *js;
 		// if there isn't, loading nullAI.js will load nullAI.plist anyway
 	}
 	else
 	{
-		result[KEY_AI] = [getAI() cxx_name].value_or(std::string());
+		result[KEY_AI] = (getAI() != nullptr ? getAI()->name() : std::optional<std::string>()).value_or(std::string());
 	}
 
 	return oo::PList(std::move(result));

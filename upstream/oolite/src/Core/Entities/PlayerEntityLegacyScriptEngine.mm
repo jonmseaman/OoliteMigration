@@ -1586,7 +1586,7 @@ void PlayerEntity::messageShipAIs(const std::string &roles_message)	// called by
 
 	for (const auto &target : (UNIVERSE != nullptr ? UNIVERSE->findShipsMatchingPredicate(HasPrimaryRolePredicate, &roleString, -1, nullptr) : std::vector<oo::ObjCRef<::Entity *>>()))
 	{
-		[(oo::ToShip(target.get()) != nullptr ? oo::ToShip(target.get())->getAI() : (::AI *)nullptr) cxx_reactToMessage:messageString context:std::string("messageShipAIs:")];
+		if (oo::ToShip(target.get()) != nullptr && oo::ToShip(target.get())->getAI() != nullptr)  oo::ToShip(target.get())->getAI()->reactToMessage(messageString, std::string("messageShipAIs:"));
 	}
 }
 
@@ -2346,9 +2346,9 @@ void PlayerEntity::sendAllShipsAway()
 				::AI*	se1AI = (se1 != nullptr ? se1->getAI() : (::AI *)nullptr);
 				if (se1 != nullptr)  se1->setFuel(MAX(PLAYER_MAX_FUEL, (se1 != nullptr ? se1->fuelCapacity() : OOFuelQuantity{})));
 				if (se1 != nullptr)  se1->setAITo("exitingTraderAI.plist");	// lets them return to their previous state after the jump
-				[se1AI cxx_setState:"EXIT_SYSTEM"];
+				if (se1AI != nullptr)  se1AI->setState("EXIT_SYSTEM");
 				// The following should prevent all ships leaving at once (freezes oolite on slower machines)
-				[se1AI setNextThinkTime:(UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0) + 3 + (ranrot_rand() & 15)];
+				if (se1AI != nullptr)  se1AI->setNextThinkTime((UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0) + 3 + (ranrot_rand() & 15));
 				if (se1 != nullptr)  se1->setPrimaryRole("oolite-none");	// prevents new ship from appearing at witchpoint when this one leaves!
 			}
 		}

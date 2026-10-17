@@ -676,7 +676,7 @@ oo::PList DockEntity::dockingInstructionsForShip(::ShipEntity *ship)
 	
 	// else, approach isn't clear - hold position..
 	//
-	[(ship != nullptr ? ship->getAI() : (::AI *)nullptr) message:"HOLD_POSITION"];
+	if (ship != nullptr && ship->getAI() != nullptr)  ship->getAI()->message("HOLD_POSITION");
 	
 	if (next.find("hold_message_given") == nullptr)
 	{
@@ -1159,7 +1159,7 @@ void DockEntity::launchShip(::ShipEntity *ship)
 	last_launch_time = (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0);
 	double delay = (port_corridor + 2 * port_dimensions.z)/launchSpeed; // pause until 2 portlengths outside of the station.
 	if (ship != nullptr)  ship->setLaunchDelay(delay);
-	[(ship != nullptr ? ship->getAI() : (::AI *)nullptr) setNextThinkTime:last_launch_time + delay]; // pause while launching
+	if (ship != nullptr && ship->getAI() != nullptr)  ship->getAI()->setNextThinkTime(last_launch_time + delay); // pause while launching
 	
 	if (ship != nullptr)  ship->resetExhaustPlumes();	// resets stuff for tracking/exhausts
 	

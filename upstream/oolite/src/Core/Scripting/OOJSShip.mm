@@ -685,25 +685,25 @@ oo::PList NormalizedColorComponents(OOColor *color)
 	return oo::PList(std::move(components));
 }
 
-/*	The ship's AI is converted (cxx::AI), and the ship answers its facade. A ship with no AI
+/*	The ship's AI is C++ (AI, since bead oo-9ht.73 without a facade). A ship with no AI
 	answered none or false to what the getter sent the AI; so does a null AI here (ADR-0056
 	amendment oo-6ia4 item 2).
 */
 std::optional<std::string> AIName(ShipEntity *ship)
 {
-	cxx::AI *ai = oo::ToCxx(ship->getAI());
+	AI *ai = ship->getAI();
 	return (ai != nullptr) ? ai->name() : std::nullopt;
 }
 
 std::optional<std::string> AIState(ShipEntity *ship)
 {
-	cxx::AI *ai = oo::ToCxx(ship->getAI());
+	AI *ai = ship->getAI();
 	return (ai != nullptr) ? ai->state() : std::nullopt;
 }
 
 bool AIHasSuspendedStateMachines(ShipEntity *ship)
 {
-	cxx::AI *ai = oo::ToCxx(ship->getAI());
+	AI *ai = ship->getAI();
 	return ai != nullptr && ai->hasSuspendedStateMachines();
 }
 
@@ -1456,7 +1456,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			sValue = cxx_OOStringFromJSValue(context,*value);
 			if (sValue.has_value())
 			{
-				if (cxx::AI *ai = oo::ToCxx(ship->getAI()))  ai->setState(*sValue);	// no AI: nothing, as a message to nil
+				if (AI *ai = ship->getAI())  ai->setState(*sValue);	// no AI: nothing, as a message to nil
 				return true;
 			}
 			break;
@@ -2235,7 +2235,7 @@ static bool ShipExitAI(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity				*thisEnt = nullptr;
-	cxx::AI					*thisAI = nullptr;
+	AI					*thisAI = nullptr;
 	std::optional<std::string>	message;	// nullopt: the AI defaults to RESTARTED
 	
 	GET_THIS_SHIP(thisEnt);
@@ -2245,7 +2245,7 @@ static bool ShipExitAI(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 		cxx_OOJSReportErrorForCaller(context, "Ship", "exitAI", "Not valid for player ship.");
 		return false;
 	}
-	thisAI = oo::ToCxx(ship->getAI());
+	thisAI = ship->getAI();
 	
 	if (thisAI != nullptr && thisAI->hasSuspendedStateMachines())	// no AI: none, as a message to nil
 	{

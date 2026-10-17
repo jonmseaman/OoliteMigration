@@ -323,10 +323,10 @@ bool WormholeEntity::suckInShip(::ShipEntity *ship)
 	// Should probably pass the wormhole, but they have no JS representation
 	if (ship != nullptr)  ship->setStatus(STATUS_ENTERING_WITCHSPACE);
 	if (ship != nullptr)  ship->doScriptEvent(OOJSID("shipWillEnterWormhole"));
-	[(ship != nullptr ? ship->getAI() : (::AI *)nullptr) message:"ENTERED_WITCHSPACE"];
+	if (ship != nullptr && ship->getAI() != nullptr)  ship->getAI()->message("ENTERED_WITCHSPACE");
 
 	if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(oo::ToObjC(ship));
-	[(ship != nullptr ? ship->getAI() : (::AI *)nullptr) clearStack];	// get rid of any preserved states
+	if (ship != nullptr && ship->getAI() != nullptr)  ship->getAI()->clearStack();	// get rid of any preserved states
 
 	if ((ship != nullptr ? ship->getIsStation() : false))
 	{

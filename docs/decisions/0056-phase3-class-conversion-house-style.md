@@ -7270,3 +7270,60 @@ respondsToSelector:]`). The descriptions are `UNIVERSE->descriptions()`, unguard
 answer was dereferenced at every call, so a missing universe failed there before as well.
 `tools/check-string-expander.sh` no longer compiles or links a bridge; its stubs stand in for the
 C++ classes, and its digests are unchanged.
+
+## Amendment (bead oo-9ht.73): the AI's facade is deleted; the AI is the global C++ class
+
+- Date: 2026-10-17. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch AB
+  (one branch). Exemplar: `src/Core/AI.h/.mm` (`OOAIDeferredCall`, `kDeferredAIMethods`,
+  `OOAIAutorelease()`), `Entities/ShipEntity.mm` (`setAI()`), `tests/unit/core/test_AI.mm`. Follows
+  amendments oo-o89 and oo-puw9 (the conversion) and oo-ql9rn item 3 (a deferred call's holder).
+
+**Context.** The Objective-C `AI` (AI+ObjCBridge.h/.mm, an `OOWeakRefObject`) was 30 forwarders to
+`cxx::AI`, its initialisers, the deferred-call trampoline and its holder. Ships held it
+(`shipAI`), about 220 sends reached it (the ship family, Universe, the legacy script engine), the
+JS ship binding crossed to the C++ object with `oo::ToCxx`, and the AI held its owner's object by
+an `OOWeakReference`.
+
+**Decision (recommended defaults).**
+
+1. **The AI is the global C++ class** `class AI : public oo::RefCounted` (namespace cxx goes).
+   A ship owns it as `oo::Ref<AI> shipAI`; `getAI()` answers it borrowed and `setAI()` takes it.
+   `[[AI alloc] init]` is `oo::makeRef<AI>()`, `-cxx_initWithStateMachine:andState:` is
+   `AI::newWithStateMachine()`. `[shipAI autorelease]` (the ship replacing or resetting its AI,
+   which may be the one running) is `OOAIAutorelease()`: an autoreleased Objective-C keeper, as
+   `OOScriptAutorelease()` (`oo::autorelease` has no scope in the game). The description the logs
+   printed for the facade (`<AI 0x…>{components}`) is `AI::description()`, the address the C++
+   object's.
+2. **The owner is held as `oo::WeakRef<cxx::Entity>`** of the ship (an `OOWeakReference` to the
+   ship's object before): it reads null exactly when the object's weak reference did, since the
+   entity facade's `-dealloc` drops its part's weak references (amendment oo-9ht.39.5.2). The
+   stack-overflow lines describe `oo::ToObjC(owner())`, the object the weak reference described.
+3. **Sends become member calls** keeping the message to nil's answer: a statement is `if (ai !=
+   nullptr)  ai->m(...);` (braced where it is the body of an unbraced `if`/`else`), a value
+   `(ai != nullptr ? ai->m() : zero)`; `(ship != nullptr ? ship->getAI() : nil)` receivers guard both.
+4. **The deferred call** (`setState(name, delay)`, `setStateMachine(name, delay)`): its target is a
+   private Objective-C object, `OOAIDeferredCall`, which `OOScheduleDeferredCall()` retains and which
+   holds `oo::Ref<AI>` (so the call keeps the AI alive, as the trampoline's retained facade did);
+   its `-fire` calls the method its selector named, found in `kDeferredAIMethods` by the name the
+   by-name call used. The table is exactly the names the facade answered: `deferredSetState:`.
+   `setStateMachine(name, delay)` names `-setStateMachine:`, which the facade never answered, so its
+   call still logs `callByName.unknownSelector` ("AI does not respond to setStateMachine:.") and
+   does nothing (rule 10: conservative; the latent defect is unchanged, see Consequences).
+
+**Differences.** The AI's description and the deferred call's target in the "NSTimer ignoring
+exception" line print the C++ object's / the call object's address where they printed the facade's.
+A stack-overflow line for an AI whose owner has gone prints "(null)" for the owner where the dead
+proxy printed its own text. No game behaviour changes.
+
+**Tests** (standing approval oo-9n5p9, line on main first): `test_AI` calls the C++ class with every
+expected value kept (`[[[AI alloc] init] autorelease]` is an `OOAIAutorelease`d `oo::makeRef<AI>()`,
+the owner stand-in an `OOObject`); retired as facade contract: `facadeContract`'s crossings
+(`oo::ToCxx`, `oo::ToObjC` both ways and of a facade-less AI, nil's crossings and a message to a nil
+facade) and its facade-versus-C++ comparisons; the rest of it is `cxxAPI` (owner, the machine, the
+messages, the deferred call, a released handle). `deferredCalls`' check that the call's target was
+the facade's class is now that the target is the call's object with selector `fire`.
+`test_ShipEntity` makes its AI with `oo::makeRef<AI>()`.
+
+**Consequences.** The AI no longer subclasses `OOWeakRefObject`, which leaves the Entity facade
+(oo-9ht.39) as the last subclass oo-9ht.22 waits on. A delayed `setStateMachine` has been a no-op
+since the AI's conversion; making it work is a behaviour change for its own bead.

@@ -2528,8 +2528,7 @@ bool PlayerEntity::setUpAndConfirmOK(bool stopOnError, bool saveGame)
 	
 	dockingReport.clear();
 	
-	[shipAI release];
-	shipAI = [[::AI alloc] cxx_initWithStateMachine:std::string(PLAYER_DOCKING_AI_NAME) andState:"GLOBAL"];
+	shipAI = ::AI::newWithStateMachine(std::string(PLAYER_DOCKING_AI_NAME), "GLOBAL");	// [shipAI release]; [[AI alloc] cxx_initWithStateMachine:andState:]
 	resetAutopilotAI();
 	
 	lastScriptAlertCondition = getAlertCondition();
@@ -3901,7 +3900,7 @@ bool PlayerEntity::engageAutopilotToStation(::StationEntity *stationForDocking)
 	if (status() == STATUS_WITCHSPACE_COUNTDOWN) cancelWitchspaceCountdown(); // cancel witchspace countdown properly
 	setStatus(STATUS_AUTOPILOT_ENGAGED);
 	resetAutopilotAI();
-	[shipAI cxx_setState:"BEGIN_DOCKING"];	// reboot the AI
+	if (shipAI != nullptr)  shipAI->setState("BEGIN_DOCKING");	// reboot the AI
 	playAutopilotOn();
 	OOMusicController::sharedController()->playDockingMusic();
 	doScriptEvent(OOJSID("playerStartedAutoPilot"), oo::ToObjC(stationForDocking));
@@ -3945,14 +3944,14 @@ void PlayerEntity::resetAutopilotAI()
 {
 	::AI *myAI = getAI();
 	// JSAI: will need changing if oolite-dockingAI.js written
-	if ([myAI cxx_name] != std::string(PLAYER_DOCKING_AI_NAME))	// (no AI never matched)
+	if ((myAI != nullptr ? myAI->name() : std::optional<std::string>()) != std::string(PLAYER_DOCKING_AI_NAME))	// (no AI never matched)
 	{
 		setAITo(std::string(PLAYER_DOCKING_AI_NAME));
 	}
-	[myAI clearAllData];
-	[myAI cxx_setState:"GLOBAL"];
-	[myAI setNextThinkTime:(UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0) + 2];
-	[myAI setOwner:this];
+	if (myAI != nullptr)  myAI->clearAllData();
+	if (myAI != nullptr)  myAI->setState("GLOBAL");
+	if (myAI != nullptr)  myAI->setNextThinkTime((UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0) + 2);
+	if (myAI != nullptr)  myAI->setOwner(this);
 }
 
 

@@ -3419,7 +3419,7 @@ void Universe::forceWitchspaceEntries()
 			{
 				if (my_ship != nullptr)  my_ship->enterTargetWormhole();
 			}
-			else if ([(my_ship != nullptr ? my_ship->getAI() : (::AI *)nullptr) cxx_state] == "ENTER_WORMHOLE")
+			else if ((my_ship != nullptr && my_ship->getAI() != nullptr ? my_ship->getAI()->state() : std::optional<std::string>()) == "ENTER_WORMHOLE")
 			{
 				if (my_ship != nullptr)  my_ship->enterTargetWormhole();
 			}
@@ -5951,8 +5951,8 @@ bool Universe::addEntity(::Entity *entity)
 		}
 		else if ([entity isShip])
 		{
-			[(se != nullptr ? se->getAI() : (::AI *)nullptr) setOwner:se];
-			[(se != nullptr ? se->getAI() : (::AI *)nullptr) cxx_setState:"GLOBAL"];
+			if (se != nullptr && se->getAI() != nullptr)  se->getAI()->setOwner(se);
+			if (se != nullptr && se->getAI() != nullptr)  se->getAI()->setState("GLOBAL");
 			if ([entity isStation])
 			{
 				AddIfAbsent(allStations, entity);
@@ -7525,11 +7525,11 @@ void Universe::update(OOTimeDelta inDeltaT)
 					::AI* theShipsAI = (oo::ToShip(thing) != nullptr ? oo::ToShip(thing)->getAI() : (::AI *)nullptr);
 					if (theShipsAI)
 					{
-						double thinkTime = [theShipsAI nextThinkTime];
+						double thinkTime = (theShipsAI != nullptr ? theShipsAI->getNextThinkTime() : OOTimeAbsolute{});
 						if ((universal_time > thinkTime)||(thinkTime == 0.0))
 						{
-							[theShipsAI setNextThinkTime:universal_time + [theShipsAI thinkTimeInterval]];
-							[theShipsAI think];
+							if (theShipsAI != nullptr)  theShipsAI->setNextThinkTime(universal_time + (theShipsAI != nullptr ? theShipsAI->getThinkTimeInterval() : OOTimeDelta{}));
+							if (theShipsAI != nullptr)  theShipsAI->think();
 						}
 					}
 				}
@@ -10227,7 +10227,7 @@ void Universe::allShipsDoScriptEvent(ooscript::PropertyId event, const std::opti
 	{
 		::ShipEntity* se = my_ships[i];
 		if (se != nullptr)  se->doScriptEvent(event);
-		if (message.has_value())  [(se != nullptr ? se->getAI() : (::AI *)nullptr) cxx_reactToMessage:*message context:"global message"];
+		if (message.has_value())  { if (se != nullptr && se->getAI() != nullptr)  se->getAI()->reactToMessage(*message, "global message"); }
 		if (se != nullptr)  [oo::ToObjC(se) release]; //	released
 	}
 }

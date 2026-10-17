@@ -45,7 +45,6 @@
 #include <string_view>
 
 class StationEntity;
-@class AI;
 class OOMesh;	// C++ since bead oo-9ht.132
 #include "OOScript.h"	// oo::Ref<OOScript> members and results (bead oo-9ht.133)
 class WormholeEntity;	// C++ since bead oo-9ht.112
@@ -54,6 +53,7 @@ class WormholeEntity;	// C++ since bead oo-9ht.112
 #import "OOShipGroup.h"	// C++ since bead oo-9ht.19: the groups are oo::Ref
 #import "OOEquipmentType.h"	// C++ since bead oo-9ht.28: OOWeaponType is a C++ pointer
 #import "OOPolygonSprite.h"	// OOHUDBeaconIcon (bead oo-7ae4p): the beacon drawable is oo::Ref
+#import "AI.h"	// C++ since bead oo-9ht.73: shipAI is oo::Ref
 class OOFlasherEntity;	// C++ only since bead oo-9ht.107
 class OOExhaustPlumeEntity;	// C++ only since bead oo-9ht.110
 
@@ -610,7 +610,7 @@ public:
 	std::vector<oo::PList> crewForScripting();
 	void setStateMachine(const std::string &smName);
 	void setAI(::AI *ai);
-	::AI *getAI();
+	::AI *getAI();	// borrowed: the ship owns it (shipAI)
 	bool hasAutoAI();
 	bool hasNewAI();
 	bool hasAutoWeapons();
@@ -1257,7 +1257,7 @@ public:
 	OOTimeDelta				missile_load_time = {};			// minimum time interval between missile launches
 	OOTimeAbsolute			missile_launch_time = {};		// time of last missile launch
 	
-	::AI						*shipAI = {};					// ship's AI system
+	oo::Ref<::AI>				shipAI = {};					// ship's AI system
 	
 	std::optional<std::string>	name;					// descriptive name; nullopt: nil
 	std::optional<std::string>	shipUniqueName;			// uniqish name e.g. "Terror of Lave"; nullopt: nil
