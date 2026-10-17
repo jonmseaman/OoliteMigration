@@ -8154,3 +8154,59 @@ is no valid target. The seven callers that stored a C++ station's object store t
 requests compare the station itself; the by-name table's function returns the object as before (5a, oo-9ht.39.24,
 removes that). Behaviour-identical. **Tests (oo-9n5p9, lines on main first):** `test_ShipEntity` and
 `test_ShipEntityAI` compare the getter with the C++ entity; same expected values.
+
+## Amendment (bead oo-9ht.39.23): the ship's targets, damage notes and single-entity members take and return C++ entities
+
+oo-9ht.39 step 5e, the rest (batch AJ, Migration Completion session, 2026-10-17), as amendment oo-9ht.39.23.1, in one
+branch and one commit. `ShipEntity.h`'s members that take or answer one entity take and answer a `cxx::Entity *`:
+
+1. **Targets.** `isValidTarget()` (the player's override too) asks the C++ entity what the object's `-isShip`,
+   `-status`, `-isWormhole` and `-scanClass` answered (the same members). `primaryTarget()` (virtual; it answered
+   `id`), `primaryTargetWithoutValidityCheck()`, `foundTarget()`, `primaryAggressor()` answer the C++ entity and
+   each still answers null, and forgets the target, when its object is gone or it is no valid target (the object
+   is still read through `oo::WeakEntityObject()` for that, so the null cases are the old ones). `setFoundTarget()`
+   (the player's override too), `setPrimaryAggressor()`, `addTarget()` (the player's target memory too),
+   `removeTarget()`, `addDefenseTarget()`, `isDefenseTarget()`, `removeDefenseTarget()` (the weak set still holds
+   the object), `isHostileTo()`, `rangeToSecondaryTarget()`, `ballTrackLeadingTarget()`, `fireDirectLaserShotAt()`,
+   `fireMissileWithIdentifier()` take it. The bead oo-9ht.39.8.11 crossings `setFoundTargetEntity()`,
+   `setPrimaryAggressorEntity()`, `addDefenseTargetEntity()`, `removeDefenseTargetEntity()` are gone: the JS
+   bindings call the members.
+2. **Damage, sub-entities and the rest.** `noteTakingDamage()` (the dock's override too), `noteKilledBy()`,
+   `getDestroyedBy()` (the player's), `respondToAttackFrom()`, `takeScrapeDamage()` (the player's and the
+   station's), `cascadeIfAppropriateWithDamageAmount()`, `findBoundingBoxRelativeTo()`,
+   `addSubentityToCollisionRadius()`, `isShipWithSubEntityShip()`, `hasSubEntity()`, `addSubEntity()`,
+   `compareBeaconCodeWith()`, `setPrevBeacon()`, `setNextBeacon()` take the C++ entity; `prevBeacon()`,
+   `nextBeacon()` (virtual; still null once the beacon's object is gone), `findNearestStellarBody()` and
+   `entityForShaderProperties()` answer it. `Universe::spawnShipWithRole()` takes the C++ entity it spawns near.
+3. **The entity filter predicates.** `EntityFilterPredicate` (declared in `ShipEntity.h`, `Universe.h` and
+   `UniverseVirtualMembers.h`) takes `cxx::Entity *`; the predicates of `OOEntityFilterPredicate.h`, the JS
+   predicates of `OOJavaScriptEngine.h` and the universe's and the ship's own take it, and the universe's
+   searches pass the C++ entity of each object they test. Predicates that ask what only the object answers
+   (the JS value, `OOStellarBodyPlanetType()`) take `oo::ToObjC()` of it.
+4. **`SHIP_ENERGY_DAMAGE_TO_HEAT_FACTOR`** names the ship's `mass` (it named the facade's part).
+5. **Callers convert at the edge** (fx2 style, compiler-driven): a caller that held the object passes
+   `oo::ToCxx()` of it, one that passed `oo::ToObjC()` of a C++ entity passes the entity, one that messages the
+   result takes `oo::ToObjC()` of it; script events (`doScriptEvent`, `OOJSValueFromNativeObject`) and log
+   descriptions still receive the object. The by-name table's functions return the object as before (5a,
+   oo-9ht.39.24, removes that).
+
+**Defaults (rule 10).** Behaviour-identical (goldens, core tests). Lists that own their entities (`cargo`,
+`subEntities`) and the snapshots that retain them (`escorts()`, `getSubEntities()`, `shipSubEntities()`,
+`defenseTargets()`, `collisionExceptions()`, ...) keep `oo::ObjCRef<::Entity *>` until the facade is deleted, as
+amendment oo-9ht.39.4 decided for the universe's owning lists (a list of `oo::Ref<cxx::Entity>` would let an
+object die under its JS wrapper while the list holds its part). `oo::ToShip(::Entity *)`, `oo::NewShipObject()`
+go with the facade (5k, oo-9ht.39.28). `ShipEntityScriptMethods.mm`'s ejection still autoreleases the universe's
++1 ship through its object and its log line describes the object (the universe's API; 5f, oo-9ht.39.16, takes
+them). The bead's acceptance check exempts exactly those lines (narrowed with this amendment).
+
+**Found while converting (not a behaviour change).** In Objective-C++ a cast of a C++ entity pointer to an
+object type (`static_cast<::Entity *>(p)`, `(::Entity<OOStellarBody> *)p`) compiles silently (it reinterprets),
+and so does a message sent to one (`-Wreceiver-expr` is only a warning): every such site whose operand became
+C++ was rewritten to `oo::ToObjC()` or the member (audited by grep over every converted getter); the compile
+probes ran with `-Werror=receiver-expr`.
+
+**Tests (standing approval oo-9n5p9, lines on main first).** `test_ShipEntity`, `test_ShipEntityAI`, `test_PlayerEntity`,
+`test_DockEntity`, `test_EntityOOJavaScriptExtensions`, `test_OOEntityCalledByName`, `test_OOJSShip`,
+`test_OOJSSystem`, `test_Universe` and `test_OOJavaScriptEngine` hand the members the C++ entity and compare their results with it; their
+seams (`primaryTarget`, `addTarget`, `removeTarget`, `nextBeacon` overrides) and test predicates take and answer
+it. The same entities and expected values; no case removed.

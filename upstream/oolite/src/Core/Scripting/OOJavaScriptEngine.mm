@@ -1986,7 +1986,7 @@ bool OOJSObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &oo
 }
 
 
-BOOL JSFunctionPredicate(Entity *entity, void *parameter)
+BOOL JSFunctionPredicate(cxx::Entity *entity, void *parameter)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -2001,7 +2001,7 @@ BOOL JSFunctionPredicate(Entity *entity, void *parameter)
 	
 	if (EXPECT_NOT(param->errorFlag))  return NO;
 	
-	args[0] = OOJavaScriptEngineJSValueInContext(entity, param->context);	// entity is required to be non-nil (asserted above), so oo_jsValueInContext: is safe.
+	args[0] = OOJavaScriptEngineJSValueInContext(oo::ToObjC(entity), param->context);	// entity is required to be non-nil (asserted above), so oo_jsValueInContext: is safe.
 	
 	OOJSStartTimeLimiter();
 	OOJSResumeTimeLimiter();
@@ -2031,30 +2031,30 @@ BOOL JSFunctionPredicate(Entity *entity, void *parameter)
 }
 
 
-BOOL JSEntityIsJavaScriptVisiblePredicate(Entity *entity, void * /*parameter*/)
+BOOL JSEntityIsJavaScriptVisiblePredicate(cxx::Entity *entity, void * /*parameter*/)
 {
 	OOJS_PROFILE_ENTER
 	
-	return OOJavaScriptEngineIsVisibleToScripts(entity);
+	return OOJavaScriptEngineIsVisibleToScripts(oo::ToObjC(entity));
 	
 	OOJS_PROFILE_EXIT
 }
 
 
-BOOL JSEntityIsJavaScriptSearchablePredicate(Entity *entity, void * /*parameter*/)
+BOOL JSEntityIsJavaScriptSearchablePredicate(cxx::Entity *entity, void * /*parameter*/)
 {
 	OOJS_PROFILE_ENTER
 	
-	if (!OOJavaScriptEngineIsVisibleToScripts(entity))  return NO;
-	if (OOJavaScriptEngineIsShip(entity))
+	if (!OOJavaScriptEngineIsVisibleToScripts(oo::ToObjC(entity)))  return NO;
+	if (OOJavaScriptEngineIsShip(oo::ToObjC(entity)))
 	{
-		if (OOJavaScriptEngineIsSubEntity(entity))  return NO;
-		if (OOJavaScriptEngineStatus(entity) == STATUS_COCKPIT_DISPLAY)  return NO;	// Demo ship
+		if (OOJavaScriptEngineIsSubEntity(oo::ToObjC(entity)))  return NO;
+		if (OOJavaScriptEngineStatus(oo::ToObjC(entity)) == STATUS_COCKPIT_DISPLAY)  return NO;	// Demo ship
 		return YES;
 	}
-	else if (OOJavaScriptEngineIsPlanet(entity))
+	else if (OOJavaScriptEngineIsPlanet(oo::ToObjC(entity)))
 	{
-		switch (static_cast<OOPlanetEntity *>(oo::ToCxx(entity))->planetType())	// a planet: not nil (C++ since bead oo-9ht.129)
+		switch (static_cast<OOPlanetEntity *>(entity)->planetType())	// a planet: not nil (C++ since bead oo-9ht.129)
 		{
 			case STELLAR_TYPE_MOON:
 			case STELLAR_TYPE_NORMAL_PLANET:
@@ -2072,9 +2072,9 @@ BOOL JSEntityIsJavaScriptSearchablePredicate(Entity *entity, void * /*parameter*
 }
 
 
-BOOL JSEntityIsDemoShipPredicate(Entity *entity, void * /*parameter*/)
+BOOL JSEntityIsDemoShipPredicate(cxx::Entity *entity, void * /*parameter*/)
 {
-	return (OOJavaScriptEngineIsVisibleToScripts(entity) && OOJavaScriptEngineIsShip(entity) && OOJavaScriptEngineStatus(entity) == STATUS_COCKPIT_DISPLAY && !OOJavaScriptEngineIsSubEntity(entity));
+	return (OOJavaScriptEngineIsVisibleToScripts(oo::ToObjC(entity)) && OOJavaScriptEngineIsShip(oo::ToObjC(entity)) && OOJavaScriptEngineStatus(oo::ToObjC(entity)) == STATUS_COCKPIT_DISPLAY && !OOJavaScriptEngineIsSubEntity(oo::ToObjC(entity)));
 }
 
 namespace {

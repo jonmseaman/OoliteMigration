@@ -270,7 +270,7 @@ void ShipEntityJSSetTargetForScript(ShipEntity *ship, ShipEntity *target)
 	if (!(oo::ToShip(oo::ToObjC(me)) != nullptr))  return;
 	if (target != nil)
 	{
-		if (me != nullptr)  me->addTarget(oo::ToObjC(target));
+		if (me != nullptr)  me->addTarget(target);
 	}
-	else  { if (me != nullptr)  me->removeTarget((me != nullptr ? me->primaryTarget() : id{})); }
+	else  { if (me != nullptr)  me->removeTarget((me != nullptr ? me->primaryTarget() : (cxx::Entity *)nullptr)); }
 }

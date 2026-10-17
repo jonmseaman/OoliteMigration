@@ -247,7 +247,7 @@ GLfloat Facade_mass(cxx::Entity *entity)
 GLfloat Facade_maxEnergy(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getMaxEnergy(); }
 Entity <OOBeaconEntity> * Facade_nextBeacon(cxx::Entity *entity)
-{ if (entity == nullptr)  return {}; if (ShipEntity *ship = ShipPart(entity))  return (Entity <OOBeaconEntity> *)ship->nextBeacon(); if (OOVisualEffectEntity *effect = EffectPart(entity))  return effect->nextBeacon(); OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(entity); return waypoint != nullptr ? waypoint->nextBeacon() : nil; }
+{ if (entity == nullptr)  return {}; if (ShipEntity *ship = ShipPart(entity))  return (Entity <OOBeaconEntity> *)oo::ToObjC(ship->nextBeacon()); if (OOVisualEffectEntity *effect = EffectPart(entity))  return effect->nextBeacon(); OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(entity); return waypoint != nullptr ? waypoint->nextBeacon() : nil; }
 Quaternion Facade_normalOrientation(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return link->superNormalOrientation(); return entity->normalOrientation(); }
 Quaternion Facade_orientation(cxx::Entity *entity)
@@ -259,7 +259,7 @@ id Facade_owner(cxx::Entity *entity)
 Entity * Facade_parentEntity(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->parentEntity(); }
 Entity <OOBeaconEntity> * Facade_prevBeacon(cxx::Entity *entity)
-{ if (entity == nullptr)  return {}; if (ShipEntity *ship = ShipPart(entity))  return (Entity <OOBeaconEntity> *)ship->prevBeacon(); if (OOVisualEffectEntity *effect = EffectPart(entity))  return effect->prevBeacon(); OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(entity); return waypoint != nullptr ? waypoint->prevBeacon() : nil; }
+{ if (entity == nullptr)  return {}; if (ShipEntity *ship = ShipPart(entity))  return (Entity <OOBeaconEntity> *)oo::ToObjC(ship->prevBeacon()); if (OOVisualEffectEntity *effect = EffectPart(entity))  return effect->prevBeacon(); OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(entity); return waypoint != nullptr ? waypoint->prevBeacon() : nil; }
 Vector Facade_relativePosition(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->relativePosition(); }
 void Facade_removeFromLinkedLists(cxx::Entity *entity)

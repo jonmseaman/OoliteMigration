@@ -609,15 +609,15 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 }	// namespace
 
 
-static BOOL IsCandidateMainStationPredicate(Entity *entity, void *parameter)
+static BOOL IsCandidateMainStationPredicate(cxx::Entity *entity, void *parameter)
 {
-	return oo::ToCxx(entity)->getIsStation() && !oo::ToCxx(entity)->isExplicitlyNotMainStation;	// [entity isStation]
+	return entity->getIsStation() && !entity->isExplicitlyNotMainStation;	// [entity isStation]
 }
 
 
-static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
+static BOOL IsFriendlyStationPredicate(cxx::Entity *entity, void *parameter)
 {
-	return oo::ToCxx(entity)->getIsStation() && !oo::ToShip(entity)->isHostileTo((Entity *)parameter);	// [entity isStation], -isHostileTo:
+	return entity->getIsStation() && !oo::ToShip(entity)->isHostileTo(oo::ToCxx((Entity *)parameter));	// [entity isStation], -isHostileTo:
 }
 
 
@@ -3120,17 +3120,17 @@ void Universe::witchspaceShipWithPrimaryRole(const std::string &role)
 
 
 // adds a ship within the collision radius of the other entity
-::ShipEntity * Universe::spawnShipWithRole(const std::string &desc, ::Entity *entity)
+::ShipEntity * Universe::spawnShipWithRole(const std::string &desc, cxx::Entity *entity)
 {
-	if (entity == nil)  return nil;
+	if (entity == nullptr)  return nil;
 	
 	::ShipEntity  *ship = nil;
 	HPVector		spawn_pos;
 	Quaternion	spawn_q;
-	GLfloat		offset = (randf() + randf()) * entity->_cxxEntity->collision_radius;
+	GLfloat		offset = (randf() + randf()) * entity->collision_radius;
 	
 	quaternion_set_random(&spawn_q);
-	spawn_pos = HPvector_add([entity position], vectorToHPVector(vector_multiply_scalar(vector_forward_from_quaternion(spawn_q), offset)));
+	spawn_pos = HPvector_add(entity->getPosition(), vectorToHPVector(vector_multiply_scalar(vector_forward_from_quaternion(spawn_q), offset)));
 	
 	ship = addShipWithRole(desc, spawn_pos, 0.0);
 	if (ship != nullptr)  ship->setOrientation(spawn_q);
@@ -3414,7 +3414,7 @@ void Universe::forceWitchspaceEntries()
 		if (sortedEntities[i]->isShip)
 		{
 			::ShipEntity *my_ship = oo::ToShip(sortedEntities[i]);
-			::Entity* my_target = (my_ship != nullptr ? my_ship->primaryTarget() : id{});
+			::Entity* my_target = oo::ToObjC((my_ship != nullptr ? my_ship->primaryTarget() : (cxx::Entity *)nullptr));
 			if ([my_target isWormhole])
 			{
 				if (my_ship != nullptr)  my_ship->enterTargetWormhole();
@@ -4258,7 +4258,7 @@ void Universe::defineWaypoint(const oo::PList &definition, const std::string &ke
 			if (preserveCompass)
 			{
 				if (PLAYER != nullptr)  PLAYER->setCompassTarget(waypoint);
-				if (PLAYER != nullptr)  PLAYER->setNextBeacon(waypoint);
+				if (PLAYER != nullptr)  PLAYER->setNextBeacon(oo::ToCxx(waypoint));
 			}
 		}
 	}
@@ -6705,7 +6705,7 @@ unsigned Universe::countEntitiesMatchingPredicate(EntityFilterPredicate predicat
 	for (i = 0; i < n_entities; i++)
 	{
 		::Entity *e2 = oo::ToObjC(sortedEntities[i]);
-		if (e2 != e1 && predicate(e2, parameter))
+		if (e2 != e1 && predicate(oo::ToCxx(e2), parameter))
 		{
 			if (range < 0)  distance = -1;	// Negative range means infinity
 			else
@@ -6770,7 +6770,7 @@ std::vector<oo::ObjCRef<::Entity *>> Universe::findEntitiesMatchingPredicate(Ent
 		
 		if (e1 != sortedEntities[i] &&
 			EntityInRange(p1, e2, range) &&
-			predicate(e2, parameter))
+			predicate(oo::ToCxx(e2), parameter))
 		{
 			result.emplace_back(e2);
 		}
@@ -6796,7 +6796,7 @@ id Universe::findOneEntityMatchingPredicate(EntityFilterPredicate predicate, voi
 	for (i = 0; i < n_entities; i++)
 	{
 		candidate = oo::ToObjC(sortedEntities[i]);
-		if (predicate(candidate, parameter))  return candidate;
+		if (predicate(oo::ToCxx(candidate), parameter))  return candidate;
 	}
 	
 	OOJSResumeTimeLimiter();
@@ -6862,7 +6862,7 @@ id Universe::nearestEntityMatchingPredicate(EntityFilterPredicate predicate, voi
 		
 		if (entity != e2 &&
 			distanceToReferenceEntitySquared < rangeSq &&
-			predicate(e2, parameter))
+			predicate(oo::ToCxx(e2), parameter))
 		{
 			result = e2;
 			rangeSq = distanceToReferenceEntitySquared;

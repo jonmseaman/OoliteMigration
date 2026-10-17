@@ -67,7 +67,7 @@ class TestPlayer : public PlayerEntity	// C++ since bead oo-9ht.177 deleted the 
 {
 public:
 	HPVector viewpointPosition() override	{ return kZeroHPVector; }
-	::Entity *nextBeacon() override	{ return sNextBeacon; }
+	cxx::Entity *nextBeacon() override	{ return oo::ToCxx(sNextBeacon); }	// the C++ entity since bead oo-9ht.39.23
 	void setCompassMode(OOCompassMode value) override	{ sLog.push_back(oo::str::format("setCompassMode %d", static_cast<int>(value))); }
 	void setScriptTarget(::ShipEntity * ship) override	{ sLog.push_back("setScriptTarget " + (ship != nullptr ? ship->getName() : std::optional<std::string>()).value_or("(nil)")); }
 	unsigned score() override	{ return 1000; }

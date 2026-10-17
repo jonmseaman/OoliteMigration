@@ -53,7 +53,7 @@ class OOPlanetEntity;
 class OOSunEntity;
 class GuiDisplayGen;
 namespace cxx { class Entity; }
-typedef BOOL (*EntityFilterPredicate)(Entity *entity, void *parameter);
+typedef BOOL (*EntityFilterPredicate)(cxx::Entity *entity, void *parameter);	// the C++ entity since bead oo-9ht.39.23
 
 
 /*	VOID_BODY ends each member answering nothing, VALUE_BODY each member answering a value: ";"

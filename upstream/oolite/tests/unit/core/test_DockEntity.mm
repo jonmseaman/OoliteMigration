@@ -114,7 +114,7 @@ DockEntity *MakeDockOfStation(TestDockStation **outStation)
 	TestDockStation *station = static_cast<TestDockStation *>(object);
 	station->initStationDefaults();
 	DockEntity *dock = MakeDock("dock");
-	if (object != nullptr)  object->addSubEntity(oo::ToObjC(dock));
+	if (object != nullptr)  object->addSubEntity(dock);
 	*outStation = station;
 	return dock;
 }

@@ -290,17 +290,17 @@ OO_TEST(subEntityRelationship)
 		[(Entity<OOSubEntity> *)plain drawSubEntityImmediate:true translucent:false];	// does nothing
 
 		// The ship's: a ship that is its subentity, and that it agrees is.
-		OO_CHECK(!(ship != nullptr ? ship->isShipWithSubEntityShip(plain) : false));
-		OO_CHECK(!(ship != nullptr ? ship->isShipWithSubEntityShip(oo::ToObjC(sub)) : false));		// not a subentity
-		if (ship != nullptr)  ship->addSubEntity(oo::ToObjC(sub));
-		OO_CHECK((sub != nullptr ? sub->owner() : id{}) == oo::ToObjC(ship) && (ship != nullptr ? ship->hasSubEntity(oo::ToObjC(sub)) : false));
-		OO_CHECK((ship != nullptr ? ship->isShipWithSubEntityShip(oo::ToObjC(sub)) : false));
-		OO_CHECK(!(other != nullptr ? other->isShipWithSubEntityShip(oo::ToObjC(sub)) : false));		// someone else's
+		OO_CHECK(!(ship != nullptr ? ship->isShipWithSubEntityShip(oo::ToCxx(plain)) : false));
+		OO_CHECK(!(ship != nullptr ? ship->isShipWithSubEntityShip(sub) : false));		// not a subentity
+		if (ship != nullptr)  ship->addSubEntity(sub);
+		OO_CHECK((sub != nullptr ? sub->owner() : id{}) == oo::ToObjC(ship) && (ship != nullptr ? ship->hasSubEntity(sub) : false));
+		OO_CHECK((ship != nullptr ? ship->isShipWithSubEntityShip(sub) : false));
+		OO_CHECK(!(other != nullptr ? other->isShipWithSubEntityShip(sub) : false));		// someone else's
 #ifndef NDEBUG
 		// A ship that claims the parent, which does not agree: an internal error, and it is cut loose.
 		SetSubEntity(oo::ToObjC(other), true);
 		if (other != nullptr)  other->setOwner(ship);
-		OO_CHECK(!(ship != nullptr ? ship->isShipWithSubEntityShip(oo::ToObjC(other)) : false));
+		OO_CHECK(!(ship != nullptr ? ship->isShipWithSubEntityShip(other) : false));
 		OO_CHECK((other != nullptr ? other->owner() : id{}) == nil);
 		SetSubEntity(oo::ToObjC(other), false);
 #endif
@@ -496,8 +496,8 @@ OO_TEST(subIdxAndSerialisation)
 		if (a != nullptr)  a->setSubIdx(0);
 		if (b != nullptr)  b->setSubIdx(2);
 		OO_CHECK((a != nullptr ? a->subIdx() : 0) == 0 && (b != nullptr ? b->subIdx() : 0) == 2);
-		if (ship != nullptr)  ship->addSubEntity(oo::ToObjC(a));
-		if (ship != nullptr)  ship->addSubEntity(oo::ToObjC(b));
+		if (ship != nullptr)  ship->addSubEntity(a);
+		if (ship != nullptr)  ship->addSubEntity(b);
 		MutablePart(ship)->_maxShipSubIdx = 4;
 		OO_CHECK((ship != nullptr ? ship->maxShipSubEntities() : 0) == 4);
 		OO_CHECK((ship != nullptr ? ship->serializeShipSubEntities() : std::optional<std::string>()) == std::optional<std::string>("1010"));
@@ -608,8 +608,8 @@ OO_TEST(subEntityLists)
 		TestShip *ship = MakeShip<TestShip>("mother", Definition());
 		TestShip *sub = MakeShip<TestShip>("sub", Definition());
 		OO_CHECK((ship != nullptr ? ship->subEntityCount() : 0) == 0 && (ship != nullptr ? ship->getSubEntities() : std::vector<oo::ObjCRef<::Entity *>>()).empty());
-		if (ship != nullptr)  ship->addSubEntity(oo::ToObjC(sub));
-		OO_CHECK((ship != nullptr ? ship->subEntityCount() : 0) == 1 && (ship != nullptr ? ship->hasSubEntity(oo::ToObjC(sub)) : false));
+		if (ship != nullptr)  ship->addSubEntity(sub);
+		OO_CHECK((ship != nullptr ? ship->subEntityCount() : 0) == 1 && (ship != nullptr ? ship->hasSubEntity(sub) : false));
 		OO_CHECK((ship != nullptr ? ship->getSubEntities() : std::vector<oo::ObjCRef<::Entity *>>()).size() == 1 && (ship != nullptr ? ship->getSubEntities() : std::vector<oo::ObjCRef<::Entity *>>())[0].get() == oo::ToObjC(sub));
 		OO_CHECK((ship != nullptr ? ship->subEntityEnumerator() : std::vector<oo::ObjCRef<::Entity *>>()).size() == 1);
 		OO_CHECK((ship != nullptr ? ship->shipSubEntities() : std::vector<oo::ObjCRef<::Entity *>>()).size() == 1 && (ship != nullptr ? ship->shipSubEntities() : std::vector<oo::ObjCRef<::Entity *>>())[0].get() == oo::ToObjC(sub));
@@ -663,12 +663,12 @@ OO_TEST(beacons)
 		if (ship != nullptr)  ship->setBeaconCode(std::nullopt);
 		OO_CHECK(!(ship != nullptr ? ship->isBeacon() : false));
 
-		OO_CHECK((ship != nullptr ? (Entity <OOBeaconEntity> *)ship->nextBeacon() : (Entity <OOBeaconEntity> *)nullptr) == nil && (ship != nullptr ? (Entity <OOBeaconEntity> *)ship->prevBeacon() : (Entity <OOBeaconEntity> *)nullptr) == nil);
-		if (ship != nullptr)  ship->setNextBeacon(oo::ToObjC(other));
-		if (ship != nullptr)  ship->setPrevBeacon(oo::ToObjC(other));
-		OO_CHECK((ship != nullptr ? (Entity <OOBeaconEntity> *)ship->nextBeacon() : (Entity <OOBeaconEntity> *)nullptr) == (Entity <OOBeaconEntity> *)oo::ToObjC(other) && (ship != nullptr ? (Entity <OOBeaconEntity> *)ship->prevBeacon() : (Entity <OOBeaconEntity> *)nullptr) == (Entity <OOBeaconEntity> *)oo::ToObjC(other));
+		OO_CHECK((ship != nullptr ? (Entity <OOBeaconEntity> *)oo::ToObjC(ship->nextBeacon()) : (Entity <OOBeaconEntity> *)nullptr) == nil && (ship != nullptr ? (Entity <OOBeaconEntity> *)oo::ToObjC(ship->prevBeacon()) : (Entity <OOBeaconEntity> *)nullptr) == nil);
+		if (ship != nullptr)  ship->setNextBeacon(other);
+		if (ship != nullptr)  ship->setPrevBeacon(other);
+		OO_CHECK((ship != nullptr ? (Entity <OOBeaconEntity> *)oo::ToObjC(ship->nextBeacon()) : (Entity <OOBeaconEntity> *)nullptr) == (Entity <OOBeaconEntity> *)oo::ToObjC(other) && (ship != nullptr ? (Entity <OOBeaconEntity> *)oo::ToObjC(ship->prevBeacon()) : (Entity <OOBeaconEntity> *)nullptr) == (Entity <OOBeaconEntity> *)oo::ToObjC(other));
 		if (ship != nullptr)  ship->setNextBeacon(nullptr);
-		OO_CHECK((ship != nullptr ? (Entity <OOBeaconEntity> *)ship->nextBeacon() : (Entity <OOBeaconEntity> *)nullptr) == nil && (ship != nullptr ? (Entity <OOBeaconEntity> *)ship->prevBeacon() : (Entity <OOBeaconEntity> *)nullptr) == (Entity <OOBeaconEntity> *)oo::ToObjC(other));
+		OO_CHECK((ship != nullptr ? (Entity <OOBeaconEntity> *)oo::ToObjC(ship->nextBeacon()) : (Entity <OOBeaconEntity> *)nullptr) == nil && (ship != nullptr ? (Entity <OOBeaconEntity> *)oo::ToObjC(ship->prevBeacon()) : (Entity <OOBeaconEntity> *)nullptr) == (Entity <OOBeaconEntity> *)oo::ToObjC(other));
 	}
 }
 
@@ -808,7 +808,7 @@ OO_TEST(updateDemoShip)
 		TestShip *ship = MakeShip<TestShip>("demo", Definition());
 		CountingShip *sub = MakeShip<CountingShip>("sub", Definition());
 		OO_CHECK((ship != nullptr ? ship->setUpFromDictionary(oo::PList()) : false));
-		if (ship != nullptr)  ship->addSubEntity(oo::ToObjC(sub));
+		if (ship != nullptr)  ship->addSubEntity(sub);
 		MutablePart(ship)->isDemoShip = YES;
 		MutablePart(ship)->demoRate = 0;
 		if (ship != nullptr)  ship->setMaxFlightSpeed(INFINITY);
@@ -1623,7 +1623,7 @@ OO_TEST(typesAndHostility)
 		if (ship != nullptr)  ship->setBehaviour(BEHAVIOUR_ATTACK_TARGET);
 		OO_CHECK(!(ship != nullptr ? ship->hasHostileTarget() : false));		// no target
 		TestShip *target = TargetAt(ship, 1000);
-		OO_CHECK((ship != nullptr ? ship->hasHostileTarget() : false) && (ship != nullptr ? ship->isHostileTo(oo::ToObjC(target)) : false) && !(ship != nullptr ? ship->isHostileTo(oo::ToObjC(ship)) : false));
+		OO_CHECK((ship != nullptr ? ship->hasHostileTarget() : false) && (ship != nullptr ? ship->isHostileTo(target) : false) && !(ship != nullptr ? ship->isHostileTo(ship) : false));
 		if (ship != nullptr)  ship->setBehaviour(BEHAVIOUR_FLY_TO_DESTINATION);
 		OO_CHECK(!(ship != nullptr ? ship->hasHostileTarget() : false));
 		if (ship != nullptr)  ship->setBehaviour(BEHAVIOUR_AVOID_COLLISION);
@@ -1933,7 +1933,7 @@ OO_TEST(rescaleWreckageAndDebris)
 		TestShip *ship = FlyingShip("big");
 		TestShip *sub = FlyingShip("part");
 		if (sub != nullptr)  sub->setPosition(make_HPvector(1, 2, 3));
-		if (ship != nullptr)  ship->addSubEntity(oo::ToObjC(sub));
+		if (ship != nullptr)  ship->addSubEntity(sub);
 		const GLfloat scale = ScaleFactor(ship);
 		SetMass(oo::ToObjC(ship), 10);
 		if (ship != nullptr)  ship->rescaleBy(2, NO);
@@ -1984,7 +1984,7 @@ OO_TEST(heatPersonalityAlignmentAndBeacons)
 
 		OO_CHECK((ship != nullptr ? ship->numberOfScannedShips() : int{}) == 0);
 		if (ship != nullptr)  ship->setFoundTarget(nullptr);
-		OO_CHECK((ship != nullptr ? ship->foundTarget() : (Entity *)nullptr) == nil && (ship != nullptr ? ship->primaryAggressor() : (Entity *)nullptr) == nil && (ship != nullptr ? ship->lastEscortTarget() : (cxx::Entity *)nullptr) == nullptr);
+		OO_CHECK((ship != nullptr ? ship->foundTarget() : (cxx::Entity *)nullptr) == nil && (ship != nullptr ? ship->primaryAggressor() : (cxx::Entity *)nullptr) == nil && (ship != nullptr ? ship->lastEscortTarget() : (cxx::Entity *)nullptr) == nullptr);
 
 		SetBoundingBox(oo::ToObjC(ship), BoundingBox{ { -1, -2, -3 }, { 3, 4, 5 } });
 		Vector offset = (ship != nullptr ? ship->positionOffsetForAlignment("MmC") : Vector{});
@@ -1995,7 +1995,7 @@ OO_TEST(heatPersonalityAlignmentAndBeacons)
 		TestShip *other = FlyingShip("beacon");
 		if (ship != nullptr)  ship->setBeaconCode(std::string("alpha"));
 		if (other != nullptr)  other->setBeaconCode(std::string("BETA"));
-		OO_CHECK((ship != nullptr ? ship->compareBeaconCodeWith(oo::ToObjC(other)) : OOComparisonResult{}) == OOOrderedAscending && (other != nullptr ? other->compareBeaconCodeWith(oo::ToObjC(ship)) : OOComparisonResult{}) == OOOrderedDescending);
+		OO_CHECK((ship != nullptr ? ship->compareBeaconCodeWith(other) : OOComparisonResult{}) == OOOrderedAscending && (other != nullptr ? other->compareBeaconCodeWith(ship) : OOComparisonResult{}) == OOOrderedDescending);
 	}
 }
 
@@ -2085,16 +2085,16 @@ OO_TEST(slice24IsValidTarget)
 		TestShip *other = MakeLateSliceShip("target");
 		Entity *plain = [[[Entity alloc] init] autorelease];
 		OO_CHECK(!(ship != nullptr ? ship->isValidTarget(nullptr) : false));
-		OO_CHECK((ship != nullptr ? ship->isValidTarget(oo::ToObjC(other)) : false));
-		OO_CHECK(!(ship != nullptr ? ship->isValidTarget(plain) : false));		// neither a ship nor a wormhole
+		OO_CHECK((ship != nullptr ? ship->isValidTarget(other) : false));
+		OO_CHECK(!(ship != nullptr ? ship->isValidTarget(oo::ToCxx(plain)) : false));		// neither a ship nor a wormhole
 		const OOEntityStatus invalid[] = { STATUS_ENTERING_WITCHSPACE, STATUS_IN_HOLD, STATUS_DOCKED, STATUS_DEAD };
 		for (OOEntityStatus s : invalid)
 		{
 			if (other != nullptr)  other->setStatus(s);
-			OO_CHECK(!(ship != nullptr ? ship->isValidTarget(oo::ToObjC(other)) : false));
+			OO_CHECK(!(ship != nullptr ? ship->isValidTarget(other) : false));
 		}
 		if (other != nullptr)  other->setStatus(STATUS_ACTIVE);
-		OO_CHECK((ship != nullptr ? ship->isValidTarget(oo::ToObjC(other)) : false));
+		OO_CHECK((ship != nullptr ? ship->isValidTarget(other) : false));
 	}
 }
 
@@ -2106,14 +2106,14 @@ OO_TEST(slice24PrimaryTarget)
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("hunter");
 		TestShip *other = MakeLateSliceShip("prey");
-		OO_CHECK((ship != nullptr ? ship->primaryTarget() : id{}) == nil && (ship != nullptr ? ship->primaryTargetWithoutValidityCheck() : id{}) == nil);
+		OO_CHECK((ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == nil && (ship != nullptr ? ship->primaryTargetWithoutValidityCheck() : (cxx::Entity *)nullptr) == nil);
 		OO_CHECK(!(ship != nullptr ? ship->canStillTrackPrimaryTarget() : false));
 
-		if (ship != nullptr)  ship->addTarget(oo::ToObjC(ship));		// never itself
-		OO_CHECK((ship != nullptr ? ship->primaryTarget() : id{}) == nil);
+		if (ship != nullptr)  ship->addTarget(ship);		// never itself
+		OO_CHECK((ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == nil);
 
-		if (ship != nullptr)  ship->addTarget(oo::ToObjC(other));
-		OO_CHECK((ship != nullptr ? ship->primaryTarget() : id{}) == oo::ToObjC(other) && (ship != nullptr ? ship->primaryTargetWithoutValidityCheck() : id{}) == oo::ToObjC(other));
+		if (ship != nullptr)  ship->addTarget(other);
+		OO_CHECK((ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == other && (ship != nullptr ? ship->primaryTargetWithoutValidityCheck() : (cxx::Entity *)nullptr) == other);
 
 		// In range (a quarter more than the scanner's), and out of it.
 		SetScannerRange24(ship, 1000);
@@ -2126,20 +2126,20 @@ OO_TEST(slice24PrimaryTarget)
 		// An invalid target: the unchecked getter keeps it, the checked one drops it.
 		if (other != nullptr)  other->setStatus(STATUS_DEAD);
 		OO_CHECK(!(ship != nullptr ? ship->canStillTrackPrimaryTarget() : false));
-		OO_CHECK((ship != nullptr ? ship->primaryTargetWithoutValidityCheck() : id{}) == oo::ToObjC(other));
-		OO_CHECK((ship != nullptr ? ship->primaryTarget() : id{}) == nil);
-		OO_CHECK((ship != nullptr ? ship->primaryTargetWithoutValidityCheck() : id{}) == nil);
+		OO_CHECK((ship != nullptr ? ship->primaryTargetWithoutValidityCheck() : (cxx::Entity *)nullptr) == other);
+		OO_CHECK((ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == nil);
+		OO_CHECK((ship != nullptr ? ship->primaryTargetWithoutValidityCheck() : (cxx::Entity *)nullptr) == nil);
 		if (other != nullptr)  other->setStatus(STATUS_IN_FLIGHT);
 
 		// -removeTarget:nil drops the target without the lost-target events.
-		if (ship != nullptr)  ship->addTarget(oo::ToObjC(other));
+		if (ship != nullptr)  ship->addTarget(other);
 		if (ship != nullptr)  ship->removeTarget(nullptr);
-		OO_CHECK((ship != nullptr ? ship->primaryTarget() : id{}) == nil);
+		OO_CHECK((ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == nil);
 
 		// -removeTarget: with a target notes it lost.
-		if (ship != nullptr)  ship->addTarget(oo::ToObjC(other));
-		if (ship != nullptr)  ship->removeTarget(oo::ToObjC(other));
-		OO_CHECK((ship != nullptr ? ship->primaryTarget() : id{}) == nil);
+		if (ship != nullptr)  ship->addTarget(other);
+		if (ship != nullptr)  ship->removeTarget(other);
+		OO_CHECK((ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == nil);
 	}
 }
 
@@ -2151,17 +2151,17 @@ OO_TEST(slice24NoteLostTarget)
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("forgetful");
 		TestShip *other = MakeLateSliceShip("lost");
-		if (ship != nullptr)  ship->addTarget(oo::ToObjC(other));
+		if (ship != nullptr)  ship->addTarget(other);
 		if (ship != nullptr)  ship->noteLostTarget();
-		OO_CHECK((ship != nullptr ? ship->primaryTarget() : id{}) == nil);
+		OO_CHECK((ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == nil);
 		if (ship != nullptr)  ship->noteLostTarget();		// with none, still fine
-		OO_CHECK((ship != nullptr ? ship->primaryTarget() : id{}) == nil);
+		OO_CHECK((ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == nil);
 
-		if (ship != nullptr)  ship->addTarget(oo::ToObjC(other));
+		if (ship != nullptr)  ship->addTarget(other);
 		if (ship != nullptr)  ship->setBehaviour(BEHAVIOUR_ATTACK_TARGET);
 		SetFrustration24(ship, 5);
 		if (ship != nullptr)  ship->noteLostTargetAndGoIdle();
-		OO_CHECK((ship != nullptr ? ship->primaryTarget() : id{}) == nil);
+		OO_CHECK((ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == nil);
 		OO_CHECK((ship != nullptr ? ship->getBehaviour() : OOBehaviour{}) == BEHAVIOUR_IDLE && Frustration24(ship) == 0);
 	}
 }
@@ -2250,7 +2250,7 @@ OO_TEST(slice24TrackOntoTarget)
 		OO_CHECK(!FlightControlsZero24(ship));
 
 		// Already on target (the dot product is inside the target's cone): nothing changes.
-		if (ship != nullptr)  ship->addTarget(oo::ToObjC(other));
+		if (ship != nullptr)  ship->addTarget(other);
 		SetPosition24(oo::ToObjC(other), make_HPvector(1000, 0, 0));
 		SetCollisionRadius24(oo::ToObjC(other), 100);
 		if (ship != nullptr)  ship->trackOntoTarget(0.1, 1);
@@ -2276,7 +2276,7 @@ OO_TEST(slice24BallTrackLeadingTarget)
 		OO_CHECK((ship != nullptr ? ship->ballTrackLeadingTarget(0.1, nullptr) : 0.0) == -2.0);
 		SetPosition24(oo::ToObjC(other), make_HPvector(0, 0, 1000));
 		SetWeaponRange24(ship, 500);
-		OO_CHECK((ship != nullptr ? ship->ballTrackLeadingTarget(0.1, oo::ToObjC(other)) : 0.0) == -2.0);	// out of range
+		OO_CHECK((ship != nullptr ? ship->ballTrackLeadingTarget(0.1, other) : 0.0) == -2.0);	// out of range
 	}
 }
 
@@ -2355,15 +2355,15 @@ OO_TEST(slice25TargetOutOfRangeGoesIdle)
 		SetScannerRange24(ship, 100);
 		SetPosition24(oo::ToObjC(other), make_HPvector(0, 0, 1000));
 
-		if (ship != nullptr)  ship->addTarget(oo::ToObjC(other));
+		if (ship != nullptr)  ship->addTarget(other);
 		if (ship != nullptr)  ship->setBehaviour(BEHAVIOUR_ATTACK_TARGET);
 		OO_CHECK((ship != nullptr ? ship->trackPrimaryTarget(0.1, NO) : 0.0) == 0.0);
-		OO_CHECK((ship != nullptr ? ship->getBehaviour() : OOBehaviour{}) == BEHAVIOUR_IDLE && (ship != nullptr ? ship->primaryTarget() : id{}) == nil);
+		OO_CHECK((ship != nullptr ? ship->getBehaviour() : OOBehaviour{}) == BEHAVIOUR_IDLE && (ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == nil);
 
-		if (ship != nullptr)  ship->addTarget(oo::ToObjC(other));
+		if (ship != nullptr)  ship->addTarget(other);
 		if (ship != nullptr)  ship->setBehaviour(BEHAVIOUR_ATTACK_TARGET);
 		OO_CHECK((ship != nullptr ? ship->trackSideTarget(0.1, NO) : 0.0) == 0.0);
-		OO_CHECK((ship != nullptr ? ship->getBehaviour() : OOBehaviour{}) == BEHAVIOUR_IDLE && (ship != nullptr ? ship->primaryTarget() : id{}) == nil);
+		OO_CHECK((ship != nullptr ? ship->getBehaviour() : OOBehaviour{}) == BEHAVIOUR_IDLE && (ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == nil);
 	}
 }
 
@@ -2419,8 +2419,8 @@ OO_TEST(slice26Ranges)
 		SetPosition24(oo::ToObjC(other), make_HPvector(0, 0, 100));
 		SetCollisionRadius26(oo::ToObjC(ship), 10);
 		SetCollisionRadius26(oo::ToObjC(other), 15);
-		OO_CHECK(fabs((ship != nullptr ? ship->rangeToSecondaryTarget(oo::ToObjC(other)) : 0.0) - 75.0) < 1e-6);
-		if (ship != nullptr)  ship->addTarget(oo::ToObjC(other));
+		OO_CHECK(fabs((ship != nullptr ? ship->rangeToSecondaryTarget(other) : 0.0) - 75.0) < 1e-6);
+		if (ship != nullptr)  ship->addTarget(other);
 		OO_CHECK(fabs((ship != nullptr ? ship->rangeToPrimaryTarget() : 0.0) - 75.0) < 1e-6);
 
 		// Approach aspect: the target's forward vector against the direction from it to us.
@@ -2472,19 +2472,19 @@ OO_TEST(slice26DefenseTargets)
 		if (ship != nullptr)  ship->validateDefenseTargets();		// none yet: fine
 
 		OO_CHECK(!(ship != nullptr ? ship->addDefenseTarget(nullptr) : false));
-		OO_CHECK(!(ship != nullptr ? ship->addDefenseTarget(plain) : false));		// not a ship
-		OO_CHECK((ship != nullptr ? ship->addDefenseTarget(oo::ToObjC(a)) : false));
-		OO_CHECK(!(ship != nullptr ? ship->addDefenseTarget(oo::ToObjC(a)) : false));		// already one
-		OO_CHECK((ship != nullptr ? ship->addDefenseTarget(oo::ToObjC(b)) : false));
-		OO_CHECK((ship != nullptr ? ship->defenseTargetCount() : 0) == 2 && (ship != nullptr ? ship->isDefenseTarget(oo::ToObjC(a)) : false) && (ship != nullptr ? ship->isDefenseTarget(oo::ToObjC(b)) : false));
+		OO_CHECK(!(ship != nullptr ? ship->addDefenseTarget(oo::ToCxx(plain)) : false));		// not a ship
+		OO_CHECK((ship != nullptr ? ship->addDefenseTarget(a) : false));
+		OO_CHECK(!(ship != nullptr ? ship->addDefenseTarget(a) : false));		// already one
+		OO_CHECK((ship != nullptr ? ship->addDefenseTarget(b) : false));
+		OO_CHECK((ship != nullptr ? ship->defenseTargetCount() : 0) == 2 && (ship != nullptr ? ship->isDefenseTarget(a) : false) && (ship != nullptr ? ship->isDefenseTarget(b) : false));
 		OO_CHECK((ship != nullptr ? ship->allDefenseTargets() : std::vector<oo::ObjCRef<::Entity *>>()).size() == 2 && (ship != nullptr ? ship->defenseTargets() : std::vector<oo::ObjCRef<::Entity *>>()).size() == 2);
 
 		// A dead one is dropped by the validation.
 		if (a != nullptr)  a->setStatus(STATUS_DEAD);
 		if (ship != nullptr)  ship->validateDefenseTargets();
-		OO_CHECK(!(ship != nullptr ? ship->isDefenseTarget(oo::ToObjC(a)) : false) && (ship != nullptr ? ship->isDefenseTarget(oo::ToObjC(b)) : false) && (ship != nullptr ? ship->defenseTargetCount() : 0) == 1);
+		OO_CHECK(!(ship != nullptr ? ship->isDefenseTarget(a) : false) && (ship != nullptr ? ship->isDefenseTarget(b) : false) && (ship != nullptr ? ship->defenseTargetCount() : 0) == 1);
 
-		if (ship != nullptr)  ship->removeDefenseTarget(oo::ToObjC(b));
+		if (ship != nullptr)  ship->removeDefenseTarget(b);
 		OO_CHECK((ship != nullptr ? ship->defenseTargetCount() : 0) == 0);
 
 		// At most MAX_TARGETS.
@@ -2492,9 +2492,9 @@ OO_TEST(slice26DefenseTargets)
 		for (unsigned i = 0; i < MAX_TARGETS; i++)
 		{
 			many.push_back(MakeLateSliceShip("many"));
-			OO_CHECK((ship != nullptr ? ship->addDefenseTarget(oo::ToObjC(many.back())) : false));
+			OO_CHECK((ship != nullptr ? ship->addDefenseTarget(many.back()) : false));
 		}
-		OO_CHECK(!(ship != nullptr ? ship->addDefenseTarget(oo::ToObjC(b)) : false));
+		OO_CHECK(!(ship != nullptr ? ship->addDefenseTarget(b) : false));
 		if (ship != nullptr)  ship->removeAllDefenseTargets();
 		OO_CHECK((ship != nullptr ? ship->defenseTargetCount() : 0) == 0);
 	}
@@ -2623,7 +2623,7 @@ OO_TEST(slice28MissedShots)
 		OO_CHECK((ship != nullptr ? ship->missedShots() : int{}) == 0);
 
 		// A subentity's count is its owner's.
-		if (ship != nullptr)  ship->addSubEntity(oo::ToObjC(sub));
+		if (ship != nullptr)  ship->addSubEntity(sub);
 		if (sub != nullptr)  sub->adjustMissedShots(2);
 		OO_CHECK((ship != nullptr ? ship->missedShots() : int{}) == 2 && (sub != nullptr ? sub->missedShots() : int{}) == 2);
 		if (ship != nullptr)  ship->clearSubEntities();
@@ -2821,13 +2821,13 @@ OO_TEST(slice31DamageThatDoesNothing)
 
 		// No scrapes while launching.
 		if (other != nullptr)  other->setStatus(STATUS_LAUNCHING);
-		if (ship != nullptr)  ship->takeScrapeDamage(10, oo::ToObjC(other));
+		if (ship != nullptr)  ship->takeScrapeDamage(10, other);
 		OO_CHECK(Energy31(oo::ToObjC(ship)) == 100);
 
 		// The dead take nothing.
 		if (ship != nullptr)  ship->setStatus(STATUS_DEAD);
 		if (ship != nullptr)  ship->takeEnergyDamage(10, other, other, "");
-		if (ship != nullptr)  ship->takeScrapeDamage(10, oo::ToObjC(other));
+		if (ship != nullptr)  ship->takeScrapeDamage(10, other);
 		if (ship != nullptr)  ship->takeHeatDamage(10);
 		OO_CHECK(Energy31(oo::ToObjC(ship)) == 100);
 	}
@@ -2843,7 +2843,7 @@ OO_TEST(slice31HeatDamageToAFixedSubentity)
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("fixed-mount");
 		TestShip *sub = MakeLateSliceShip("fixed-turret");
-		if (ship != nullptr)  ship->addSubEntity(oo::ToObjC(sub));
+		if (ship != nullptr)  ship->addSubEntity(sub);
 		SetEnergy31(oo::ToObjC(sub), 100, 100);
 		OO_CHECK(!(ship != nullptr ? ship->getIsFrangible() : false));
 		if (sub != nullptr)  sub->takeHeatDamage(10);
@@ -2888,7 +2888,7 @@ OO_TEST(slice32Lights)
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("lit");
 		TestShip *sub = MakeLateSliceShip("lit-turret");
-		if (ship != nullptr)  ship->addSubEntity(oo::ToObjC(sub));
+		if (ship != nullptr)  ship->addSubEntity(sub);
 		if (ship != nullptr)  ship->switchLightsOn();
 		OO_CHECK((ship != nullptr ? ship->lightsActive() : false) && (sub != nullptr ? sub->lightsActive() : false));
 		if (ship != nullptr)  ship->switchLightsOff();
@@ -3015,7 +3015,7 @@ OO_TEST(slice33FindBoundingBoxRelativeTo)
 		TestShip *other = MakeLateSliceShip("reference");
 		SetPosition24(oo::ToObjC(other), make_HPvector(100, 0, 0));
 		// Relative to another entity is relative to its position; to nil, to our own.
-		BoundingBox a = (ship != nullptr ? ship->findBoundingBoxRelativeTo(oo::ToObjC(other), kBasisXVector, kBasisYVector, kBasisZVector) : BoundingBox{});
+		BoundingBox a = (ship != nullptr ? ship->findBoundingBoxRelativeTo(other, kBasisXVector, kBasisYVector, kBasisZVector) : BoundingBox{});
 		BoundingBox b = (ship != nullptr ? ship->findBoundingBoxRelativeToPosition(make_HPvector(100, 0, 0), kBasisXVector, kBasisYVector, kBasisZVector) : BoundingBox{});
 		OO_CHECK(vector_equal(a.min, b.min) && vector_equal(a.max, b.max));
 		BoundingBox c = (ship != nullptr ? ship->findBoundingBoxRelativeTo(nullptr, kBasisXVector, kBasisYVector, kBasisZVector) : BoundingBox{});
@@ -3098,7 +3098,7 @@ OO_TEST(slice34AlertConditionAndEvents)
 		if (ship != nullptr)  ship->setStatus(STATUS_IN_FLIGHT);
 
 		// The ship is its own shader entity when it is not a subentity.
-		OO_CHECK((ship != nullptr ? ship->entityForShaderProperties() : (Entity *)nullptr) == oo::ToObjC(ship));
+		OO_CHECK((ship != nullptr ? ship->entityForShaderProperties() : (cxx::Entity *)nullptr) == ship);
 
 		// No scripts, no AI: the events and messages go nowhere, harmlessly.
 		if (ship != nullptr)  ship->doScriptEvent(OOJSID("shipSpawned"));

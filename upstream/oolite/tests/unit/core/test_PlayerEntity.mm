@@ -1356,7 +1356,7 @@ public:
 
 	// The target the ident button finds: the unit test's universe has no descriptions to expand the
 	// "ident-on" message with (expanding one exits), so the case keeps a target.
-	id primaryTarget() override	{ return sCategoryTarget; }
+	cxx::Entity *primaryTarget() override	{ return oo::ToCxx(sCategoryTarget); }	// the C++ entity since bead oo-9ht.39.23
 };
 
 

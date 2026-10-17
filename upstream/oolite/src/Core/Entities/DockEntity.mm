@@ -344,7 +344,7 @@ void DockEntity::update(OOTimeDelta delta_t)
 
 
 // avoid possibility of shooting the virtual dock damaging the station
-void DockEntity::noteTakingDamage(double amount, ::Entity *entity, OOShipDamageType type)
+void DockEntity::noteTakingDamage(double amount, cxx::Entity *entity, OOShipDamageType type)
 {
 	if (virtual_dock) // can't be damaged
 	{
@@ -1012,7 +1012,7 @@ bool DockEntity::shipIsInDockingCorridor(::ShipEntity *ship)
 		{ // launch-only dock: will collide!
 			if (arbb.min.z < dd)
 			{
-				if (ship != nullptr)  ship->takeScrapeDamage(5 * (UNIVERSE != nullptr ? UNIVERSE->getTimeDelta() : 0.0)*(ship != nullptr ? ship->getFlightSpeed() : 0.0f), oo::ToObjC(station));
+				if (ship != nullptr)  ship->takeScrapeDamage(5 * (UNIVERSE != nullptr ? UNIVERSE->getTimeDelta() : 0.0)*(ship != nullptr ? ship->getFlightSpeed() : 0.0f), station);
 				// and bounce
 				HPVector rel = HPvector_subtract((ship != nullptr ? ship->getPosition() : HPVector{}),port_pos);
 				rel = HPvector_multiply_scalar(HPvector_normal(rel),(ship != nullptr ? ship->getFlightSpeed() : 0.0f)*0.4);
@@ -1058,7 +1058,7 @@ bool DockEntity::shipIsInDockingCorridor(::ShipEntity *ship)
 			GLfloat correction_factor = -arbb.min.z / (arbb.max.z - arbb.min.z);	// proportion of ship inside
 		
 			// damage the ship according to velocity - don't send collision messages to AIs to avoid problems.
-			if (ship != nullptr)  ship->takeScrapeDamage(5 * (UNIVERSE != nullptr ? UNIVERSE->getTimeDelta() : 0.0)*(ship != nullptr ? ship->getFlightSpeed() : 0.0f), oo::ToObjC(station));
+			if (ship != nullptr)  ship->takeScrapeDamage(5 * (UNIVERSE != nullptr ? UNIVERSE->getTimeDelta() : 0.0)*(ship != nullptr ? ship->getFlightSpeed() : 0.0f), station);
 			if (station != nullptr)  station->doScriptEvent(OOJSID("shipCollided"), oo::ToObjC(ship)); // no COLLISION message to station AI, carriers would move away!
 			if (ship != nullptr)  ship->doScriptEvent(OOJSID("shipCollided"), oo::ToObjC(station)); // no COLLISION message to ship AI, dockingAI.plist would abort.
 			

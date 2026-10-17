@@ -1599,7 +1599,7 @@ void HeadUpDisplay::drawScanner(const oo::PList &info)
 				if ([scannedEntity isShip])
 				{
 					::ShipEntity *ship = oo::ToShip(scannedEntity);
-					isHostile = (((ship != nullptr ? ship->hasHostileTarget() : false))&&((ship != nullptr ? ship->primaryTarget() : id{}) == oo::ToObjC(PLAYER)));
+					isHostile = (((ship != nullptr ? ship->hasHostileTarget() : false))&&((ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == PLAYER));
 					GLfloat *base_col = (ship != nullptr ? ship->scannerDisplayColorForShip(PLAYER, isHostile, flash, (ship != nullptr ? ship->scannerDisplayColor1() : (OOColor *)nullptr), (ship != nullptr ? ship->scannerDisplayColor2() : (OOColor *)nullptr), (ship != nullptr ? ship->scannerDisplayColorHostile1() : (OOColor *)nullptr), (ship != nullptr ? ship->scannerDisplayColorHostile2() : (OOColor *)nullptr)) : (GLfloat *)nullptr);
 					col[0] = base_col[0];	col[1] = base_col[1];	col[2] = base_col[2];	col[3] = alpha * base_col[3];
 				}
@@ -1861,7 +1861,7 @@ void HeadUpDisplay::drawCompass(const oo::PList &info)
 				
 			case COMPASS_MODE_BEACONS:
 				drawCompassBeaconBlipAt(relativePosition, siz, alpha);
-				::Entity <OOBeaconEntity>		*beacon = (PLAYER != nullptr ? (Entity <OOBeaconEntity> *)PLAYER->nextBeacon() : (Entity <OOBeaconEntity> *)nullptr);
+				::Entity <OOBeaconEntity>		*beacon = (PLAYER != nullptr ? (Entity <OOBeaconEntity> *)oo::ToObjC(PLAYER->nextBeacon()) : (Entity <OOBeaconEntity> *)nullptr);
 				OOHUDBeaconIcon	*beaconIcon = [beacon beaconDrawable];	// nil beacon or drawable: nothing, as the message to nil
 				if (beaconIcon != nullptr)  beaconIcon->drawHUDBeaconIconAt(NSMakePoint(x, y), siz, alpha, z1);
 				break;
@@ -1930,9 +1930,9 @@ void HeadUpDisplay::drawTargetReticle(const oo::PList &info)
 {
 	GLfloat alpha = info.get<oo::NonNegative<float>>(ALPHA_KEY, 1.0f) * overallAlpha;
 	
-	if ((PLAYER != nullptr ? PLAYER->primaryTarget() : id{}) != nil)
+	if ((PLAYER != nullptr ? PLAYER->primaryTarget() : (cxx::Entity *)nullptr) != nil)
 	{
-		hudDrawReticleOnTarget((PLAYER != nullptr ? PLAYER->primaryTarget() : id{}), PLAYER, z1, alpha, reticleTargetSensitive, &propertiesReticleTargetSensitive, NO, YES, info, _reticleColors);
+		hudDrawReticleOnTarget(oo::ToObjC(PLAYER != nullptr ? PLAYER->primaryTarget() : (cxx::Entity *)nullptr), PLAYER, z1, alpha, reticleTargetSensitive, &propertiesReticleTargetSensitive, NO, YES, info, _reticleColors);
 		drawDirectionCue(info);
 	}
 	// extra feature if extra equipment installed
@@ -1952,7 +1952,7 @@ void HeadUpDisplay::drawSecondaryTargetReticle(const oo::PList &info)
 	{
 		// needs target memory to be working in addition to any other equipment
 		// this item may be bound to
-		::Entity *primary = (player != nullptr ? player->primaryTarget() : id{});	// the objects: a target may be any entity (bead oo-9ht.144)
+		::Entity *primary = oo::ToObjC((player != nullptr ? player->primaryTarget() : (cxx::Entity *)nullptr));	// the objects: a target may be any entity (bead oo-9ht.144)
 		for (unsigned i = 0; i < PLAYER_TARGET_MEMORY_SIZE; i++)
 		{
 			const oo::WeakRef<cxx::Entity> sec_ref = (player != nullptr ? player->targetMemory() : std::vector<oo::WeakRef<cxx::Entity>>()).at(i);	// an empty slot (was OONull) is an empty ref (bead oo-9ht.39.5.2)
@@ -2788,7 +2788,7 @@ void HeadUpDisplay::drawIconForMissile(::ShipEntity *missile, bool selected, int
 	}
 	else
 	{
-		if ((missile != nullptr ? missile->primaryTarget() : id{}) == nil)  GLColorWithOverallAlpha(green_color, alpha);
+		if ((missile != nullptr ? missile->primaryTarget() : (cxx::Entity *)nullptr) == nil)  GLColorWithOverallAlpha(green_color, alpha);
 		else  GLColorWithOverallAlpha(red_color, alpha);
 	}
 	
@@ -2951,7 +2951,7 @@ void HeadUpDisplay::drawDirectionCue(const oo::PList & /*info*/)
 	
 	if ((UNIVERSE != nullptr ? UNIVERSE->getDisplayGUI() : false))  return;
 	
-	::Entity		*target = (PLAYER != nullptr ? PLAYER->primaryTarget() : id{});
+	::Entity		*target = oo::ToObjC((PLAYER != nullptr ? PLAYER->primaryTarget() : (cxx::Entity *)nullptr));
 	if (target == nil)  return;
 	
 	// draw the direction cue
@@ -4646,7 +4646,7 @@ GLfloat HeadUpDisplayEntityCollisionRadius(Entity *entity)	{ return [entity coll
 Quaternion HeadUpDisplayEntityOrientation(Entity *entity)	{ return [entity orientation]; }
 std::optional<std::string> HeadUpDisplayShipScanDescription(ShipEntity *ship)	{ return (ship != nullptr ? ship->scanDescription() : std::optional<std::string>()); }
 bool HeadUpDisplayShipIsCloaked(ShipEntity *ship)	{ return (ship != nullptr ? ship->isCloaked() : false); }
-bool HeadUpDisplayShipIsHostileToPlayer(ShipEntity *ship)	{ return (((ship != nullptr ? ship->hasHostileTarget() : false))&&((ship != nullptr ? ship->primaryTarget() : id{}) == oo::ToObjC(PLAYER))); }
+bool HeadUpDisplayShipIsHostileToPlayer(ShipEntity *ship)	{ return (((ship != nullptr ? ship->hasHostileTarget() : false))&&((ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == PLAYER)); }
 GLfloat *HeadUpDisplayShipScannerDisplayColor(ShipEntity *ship, BOOL isHostile, BOOL flash)	{ return (ship != nullptr ? ship->scannerDisplayColorForShip(PLAYER, isHostile, flash, (ship != nullptr ? ship->scannerDisplayColor1() : (OOColor *)nullptr), (ship != nullptr ? ship->scannerDisplayColor2() : (OOColor *)nullptr), (ship != nullptr ? ship->scannerDisplayColorHostile1() : (OOColor *)nullptr), (ship != nullptr ? ship->scannerDisplayColorHostile2() : (OOColor *)nullptr)) : (GLfloat *)nullptr); }
 GLfloat *HeadUpDisplayVisualEffectScannerDisplayColor(OOVisualEffectEntity *vis, BOOL flash)	{ return (vis != nullptr ? vis->scannerDisplayColorForShip(flash, vis->scannerDisplayColor1(), vis->scannerDisplayColor2()) : (GLfloat *)nullptr); }
 WORMHOLE_SCANINFO HeadUpDisplayWormholeScanInfo(WormholeEntity *wormhole)	{ return (wormhole != nullptr ? wormhole->scanInfo() : WORMHOLE_SCANINFO{}); }

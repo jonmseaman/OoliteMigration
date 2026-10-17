@@ -758,7 +758,7 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 - (BOOL) isShipWithSubEntityShip:(Entity *)other
 {
 	ShipEntity *ship = ShipPart(_cxxEntity.get());
-	if (ship != nullptr)  return ship->isShipWithSubEntityShip(other);
+	if (ship != nullptr)  return ship->isShipWithSubEntityShip(oo::ToCxx(other));
 	OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get());	// its facade answered it until bead oo-9ht.165
 	return effect != nullptr ? effect->isShipWithSubEntityShip(other) : NO;
 }
@@ -787,7 +787,7 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 - (OOComparisonResult) compareBeaconCodeWith:(Entity<OOBeaconEntity> *)other
 {
-	if (ShipEntity *ship = ShipPart(_cxxEntity.get()))  return ship->compareBeaconCodeWith(other);
+	if (ShipEntity *ship = ShipPart(_cxxEntity.get()))  return ship->compareBeaconCodeWith(oo::ToCxx(other));
 	if (OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()))  return effect->compareBeaconCodeWith(other);
 	OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(_cxxEntity.get());
 	return waypoint != nullptr ? waypoint->compareBeaconCodeWith(other) : (OOComparisonResult)0;
@@ -848,7 +848,7 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 - (Entity <OOBeaconEntity> *) prevBeacon
 {
-	if (ShipEntity *ship = ShipPart(_cxxEntity.get()))  return (Entity <OOBeaconEntity> *)ship->prevBeacon();
+	if (ShipEntity *ship = ShipPart(_cxxEntity.get()))  return (Entity <OOBeaconEntity> *)oo::ToObjC(ship->prevBeacon());
 	if (OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()))  return effect->prevBeacon();
 	OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(_cxxEntity.get());
 	return waypoint != nullptr ? waypoint->prevBeacon() : nil;
@@ -857,7 +857,7 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 - (Entity <OOBeaconEntity> *) nextBeacon
 {
-	if (ShipEntity *ship = ShipPart(_cxxEntity.get()))  return (Entity <OOBeaconEntity> *)ship->nextBeacon();
+	if (ShipEntity *ship = ShipPart(_cxxEntity.get()))  return (Entity <OOBeaconEntity> *)oo::ToObjC(ship->nextBeacon());
 	if (OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()))  return effect->nextBeacon();
 	OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(_cxxEntity.get());
 	return waypoint != nullptr ? waypoint->nextBeacon() : nil;
@@ -866,7 +866,7 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 - (void) setPrevBeacon:(Entity <OOBeaconEntity> *)beaconShip
 {
-	if (ShipEntity *ship = ShipPart(_cxxEntity.get()))  ship->setPrevBeacon(beaconShip);
+	if (ShipEntity *ship = ShipPart(_cxxEntity.get()))  ship->setPrevBeacon(oo::ToCxx(beaconShip));
 	else if (OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()))  effect->setPrevBeacon(beaconShip);
 	else if (OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(_cxxEntity.get()))  waypoint->setPrevBeacon(beaconShip);
 }
@@ -874,7 +874,7 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 - (void) setNextBeacon:(Entity <OOBeaconEntity> *)beaconShip
 {
-	if (ShipEntity *ship = ShipPart(_cxxEntity.get()))  ship->setNextBeacon(beaconShip);
+	if (ShipEntity *ship = ShipPart(_cxxEntity.get()))  ship->setNextBeacon(oo::ToCxx(beaconShip));
 	else if (OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get()))  effect->setNextBeacon(beaconShip);
 	else if (OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(_cxxEntity.get()))  waypoint->setNextBeacon(beaconShip);
 }
