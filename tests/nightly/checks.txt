@@ -622,3 +622,4 @@
 [oo-9ht.39.8.10] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/js-api-contract.sh && bash tools/tier-c.sh --only goldens
 [oo-9ht.39.8.11] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/js-api-contract.sh && bash tools/tier-c.sh --only goldens
 [oo-9ht.39.8.6] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/js-api-contract.sh && bash tools/tier-c.sh --only goldens
+[oo-9ht.39.8.8] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/js-api-contract.sh && bash tools/tier-c.sh --only goldens
