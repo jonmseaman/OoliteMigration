@@ -77,7 +77,7 @@ static ooscript::Object sWaypointPrototype;
 } // namespace
 
 namespace {
-static bool JSWaypointGetWaypointEntity(ooscript::Context context, ooscript::Object stationObj, OOWaypointEntity **outEntity, OOBeaconEntityObject **outObject);
+static bool JSWaypointGetWaypointEntity(ooscript::Context context, ooscript::Object stationObj, OOWaypointEntity **outEntity);
 } // namespace
 
 
@@ -171,27 +171,25 @@ void InitOOJSWaypoint(ooscript::Context context, ooscript::Object global)
 
 
 namespace {
-static bool JSWaypointGetWaypointEntity(ooscript::Context context, ooscript::Object wormholeObj, OOWaypointEntity **outEntity, OOBeaconEntityObject **outObject)
+static bool JSWaypointGetWaypointEntity(ooscript::Context context, ooscript::Object wormholeObj, OOWaypointEntity **outEntity)
 {
 	OOJS_PROFILE_ENTER
 	
 	bool						result;
 	cxx::Entity					*entity = nullptr;	// the slot holds the C++ entity (bead oo-9ht.39.3)
 	
-	if (outEntity == NULL || outObject == NULL)  return false;
+	if (outEntity == NULL)  return false;
 	*outEntity = nullptr;
-	*outObject = nil;
 	
 	result = OOJSEntityGetEntity(context, wormholeObj, &entity);
 	if (!result)  return false;
 	
-	// The object is the root's facade since bead oo-9ht.108: a waypoint is its C++ part (a nil or
-	// other entity is not, as -isKindOfClass: answered). The object answers the beacon selectors.
+	// A waypoint is the C++ OOWaypointEntity (a nil or other entity is not, as -isKindOfClass:
+	// answered). The natives call its members (bead oo-9ht.39.8.18), where they messaged its object.
 	OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(entity);
 	if (waypoint == nullptr)  return false;
 	
 	*outEntity = waypoint;
-	*outObject = (OOBeaconEntityObject *)oo::ToObjC(entity);
 	return true;
 	
 	OOJS_PROFILE_EXIT
@@ -231,28 +229,26 @@ static bool WaypointGetProperty(Context cx, Object obj, PropertyId propID, Value
 	OOJS_NATIVE_ENTER(context)
 	
 	OOWaypointEntity				*waypoint = nullptr;
-	OOBeaconEntityObject			*entity = nil;
 	oo::PList result;	// null: nil
 	std::optional<std::string> text;
 	Quaternion q = kIdentityQuaternion;
 
-	if (!JSWaypointGetWaypointEntity(context, thisObj, &waypoint, &entity))  return false;
-	if (entity == nil)  { *value_raw = ooscript::undefinedValue(); return true; }
+	if (!JSWaypointGetWaypointEntity(context, thisObj, &waypoint))  return false;	// not null after this (its object, nil only without a facade, is not asked since bead oo-9ht.39.8.18)
 	
 	switch (ooscript::idToInt32(propID))
 	{
 	case kWaypoint_beaconCode:
-		text = [entity beaconCode];
+		text = waypoint->beaconCode();
 		if (text.has_value())  result = oo::PList(*text);
 		break;
 
 	case kWaypoint_beaconLabel:
-		text = [entity beaconLabel];
+		text = waypoint->beaconLabel();
 		if (text.has_value())  result = oo::PList(*text);
 		break;
 
 	case kWaypoint_orientation:
-		q = [entity orientation];
+		q = waypoint->getOrientation();	// what the object's -orientation answered
 		if (!waypoint->getOriented())
 		{
 			q = kZeroQuaternion;
@@ -287,13 +283,11 @@ static bool WaypointSetProperty(Context cx, Object obj, PropertyId propID, bool 
 	OOJS_NATIVE_ENTER(context)
 
 	OOWaypointEntity				*waypoint = nullptr;
-	OOBeaconEntityObject			*entity = nil;
 	double        fValue;
 	std::optional<std::string>	sValue;
 	Quaternion			qValue;
 
-	if (!JSWaypointGetWaypointEntity(context, thisObj, &waypoint, &entity)) return false;
-	if (entity == nil)  return true;
+	if (!JSWaypointGetWaypointEntity(context, thisObj, &waypoint)) return false;	// not null after this (bead oo-9ht.39.8.18)
 	
 	switch (ooscript::idToInt32(propID))
 	{
@@ -301,7 +295,7 @@ static bool WaypointSetProperty(Context cx, Object obj, PropertyId propID, bool 
 			sValue = cxx_OOStringFromJSValue(context,*value_raw);
 			if (!sValue.has_value() || sValue->empty()) 
 			{
-				if ([entity isBeacon]) 
+				if (waypoint->isBeacon()) 
 				{
 					if (UNIVERSE != nullptr)  UNIVERSE->clearBeacon(waypoint);	// the C++ waypoint (bead oo-9ht.39.8.10)
 					if ((PLAYER != nullptr ? PLAYER->nextBeaconEntity() : nullptr) == waypoint)	// the C++ entities (bead oo-9ht.39.8.10; not virtual, so the binding test stands in for it)
@@ -312,13 +306,13 @@ static bool WaypointSetProperty(Context cx, Object obj, PropertyId propID, bool 
 			}
 			else 
 			{
-				if ([entity isBeacon]) 
+				if (waypoint->isBeacon()) 
 				{
-					[entity setBeaconCode:sValue];
+					waypoint->setBeaconCode(sValue);
 				}
 				else // Universe needs to update beacon lists in this case only
 				{
-					[entity setBeaconCode:sValue];
+					waypoint->setBeaconCode(sValue);
 					if (UNIVERSE != nullptr)  UNIVERSE->setNextBeacon(waypoint);	// the C++ waypoint (bead oo-9ht.39.8.10)
 				}
 			}
@@ -329,7 +323,7 @@ static bool WaypointSetProperty(Context cx, Object obj, PropertyId propID, bool 
 			sValue = cxx_OOStringFromJSValue(context,*value_raw);
 			if (sValue.has_value())
 			{
-				[entity setBeaconLabel:sValue];
+				waypoint->setBeaconLabel(sValue);
 				return true;
 			}
 			break;
@@ -337,7 +331,7 @@ static bool WaypointSetProperty(Context cx, Object obj, PropertyId propID, bool 
 		case kWaypoint_orientation:
 			if (JSValueToQuaternion(context, *value_raw, &qValue))
 			{
-				[entity setNormalOrientation:qValue];
+				waypoint->cxx::Entity::setNormalOrientation(qValue);	// what the object's selector called; qualified: the final overrider for a waypoint (no override, no subclass), so the binding test stands in for it
 				return true;
 			}
 			break;
