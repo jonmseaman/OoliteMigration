@@ -4266,9 +4266,9 @@ static bool ShipCheckCourseToDestination(ooscript::Context context, ooscript::Ca
 	GET_THIS_SHIP(thisEnt);
 	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 
-	Entity *hazard = (UNIVERSE != nullptr ? UNIVERSE->hazardOnRouteFromEntity(oo::ToObjC(thisEnt), ship->desiredRange(), ship->destination()) : nullptr);
+	cxx::Entity *hazard = (UNIVERSE != nullptr ? UNIVERSE->hazardOnRouteFromEntity(thisEnt, ship->desiredRange(), ship->destination()) : nullptr);	// the C++ entities (bead oo-9ht.39.8.6)
 
-	OOJS_RETURN_OBJECT(hazard);
+	OOJS_RETURN(OOJSValueFromCxxObject(context, hazard));	// the C++ hazard's JS value (its object's until bead oo-9ht.39.8.6)
 
 	OOJS_PROFILE_EXIT
 }
@@ -4282,7 +4282,7 @@ static bool ShipGetSafeCourseToDestination(ooscript::Context context, ooscript::
 	GET_THIS_SHIP(thisEnt);
 	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 
-	HPVector waypoint = (UNIVERSE != nullptr ? UNIVERSE->getSafeVectorFromEntity(oo::ToObjC(thisEnt), ship->desiredRange(), ship->destination()) : HPVector{});
+	HPVector waypoint = (UNIVERSE != nullptr ? UNIVERSE->getSafeVectorFromEntity(thisEnt, ship->desiredRange(), ship->destination()) : HPVector{});	// the C++ ship (bead oo-9ht.39.8.6)
 
 	OOJS_RETURN_HPVECTOR(waypoint);
 

@@ -79,8 +79,8 @@ typedef BOOL (*EntityFilterPredicate)(Entity *entity, void *parameter);
 	virtual bool addEntity(::Entity * /*entity*/) VALUE_BODY \
 	virtual bool removeEntity(::Entity * /*entity*/) VALUE_BODY \
 	/* Slice 14: routes */ \
-	virtual ::Entity *hazardOnRouteFromEntity(::Entity * /*e1*/, double /*dist*/, HPVector /*p2*/) VALUE_BODY \
-	virtual HPVector getSafeVectorFromEntity(::Entity * /*e1*/, double /*dist*/, HPVector /*p2*/) VALUE_BODY \
+	virtual cxx::Entity *hazardOnRouteFromEntity(cxx::Entity * /*e1*/, double /*dist*/, HPVector /*p2*/) VALUE_BODY \
+	virtual HPVector getSafeVectorFromEntity(cxx::Entity * /*e1*/, double /*dist*/, HPVector /*p2*/) VALUE_BODY \
 	/* Slice 15: finding entities */ \
 	virtual std::vector<oo::ObjCRef<::Entity *>> findEntitiesMatchingPredicate(EntityFilterPredicate /*predicate*/, void * /*parameter*/, double /*range*/, ::Entity * /*e1*/) VALUE_BODY \
 	/* Slice 20: system data and names */ \

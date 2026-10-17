@@ -1501,7 +1501,7 @@ void ShipEntity::setDestinationWithinTarget()
 
 void ShipEntity::checkCourseToDestination()
 {
-	::Entity *hazard = (UNIVERSE != nullptr ? UNIVERSE->hazardOnRouteFromEntity(oo::ToObjC(this), desired_range, _destination) : nullptr);
+	::Entity *hazard = oo::ToObjC(UNIVERSE != nullptr ? UNIVERSE->hazardOnRouteFromEntity(this, desired_range, _destination) : nullptr);	// the C++ entities (bead oo-9ht.39.8.6); the hazard's object is messaged below
 	
 	if (hazard == nil || ([hazard isShip] && HPdistance(position, [hazard position]) > scannerRange) || ([hazard isPlanet] && aegis_status == AEGIS_NONE)) 
 		{ if (shipAI != nullptr)  shipAI->message("COURSE_OK"); } // Avoid going into a waypoint.plist for far away objects, it cripples the main AI a bit in its funtionality.
@@ -1512,7 +1512,7 @@ void ShipEntity::checkCourseToDestination()
 			if (shipAI != nullptr)  shipAI->reactToMessage("HAZARD_CAN_BE_DESTROYED", "checkCourseToDestination");
 		}
 		
-		_destination = (UNIVERSE != nullptr ? UNIVERSE->getSafeVectorFromEntity(oo::ToObjC(this), desired_range, _destination) : HPVector{});
+		_destination = (UNIVERSE != nullptr ? UNIVERSE->getSafeVectorFromEntity(this, desired_range, _destination) : HPVector{});	// the C++ ship (bead oo-9ht.39.8.6)
 		if (shipAI != nullptr)  shipAI->message("WAYPOINT_SET");
 	}
 }

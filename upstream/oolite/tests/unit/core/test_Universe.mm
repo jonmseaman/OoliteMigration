@@ -585,7 +585,7 @@ OO_TEST(slice14NoEntity)
 		HPVector p2 = make_HPvector(0, 0, 1000);
 
 		OO_CHECK(!u->isVectorClearFromEntity(nullptr, 0, p2));
-		OO_CHECK(u->hazardOnRouteFromEntity(nullptr, 0, p2) == nil);
+		OO_CHECK(u->hazardOnRouteFromEntity(nullptr, 0, p2) == nullptr);
 		OO_CHECK(HPvector_equal(u->getSafeVectorFromEntity(nullptr, 0, p2), kZeroHPVector));
 		OO_CHECK(u->firstShipHitByLaserFromShip(nullptr, WEAPON_FACING_FORWARD, kZeroVector, NULL) == nil);
 		// The demo ship needs a docked player; with none there is no ship.
@@ -606,8 +606,8 @@ OO_TEST(slice14ClearRoute)
 		// Nothing else in the universe: clear, no hazard, the destination is safe as it is.
 		SetSortedEntities(u, { e1 });
 		OO_CHECK(u->isVectorClearFromEntity(e1, 0, p2));
-		OO_CHECK(u->hazardOnRouteFromEntity(e1, 0, p2) == nil);
-		OO_CHECK(HPvector_equal(u->getSafeVectorFromEntity(e1, 0, p2), p2));
+		OO_CHECK(u->hazardOnRouteFromEntity(oo::ToCxx(e1), 0, p2) == nullptr);
+		OO_CHECK(HPvector_equal(u->getSafeVectorFromEntity(oo::ToCxx(e1), 0, p2), p2));
 
 		// An entity off the route, behind the start, or beyond the destination is no hazard.
 		Entity *aside = MakeEntity(make_HPvector(500, 0, 500), 50);
@@ -615,8 +615,8 @@ OO_TEST(slice14ClearRoute)
 		Entity *beyond = MakeEntity(make_HPvector(0, 0, 1500), 50);
 		SetSortedEntities(u, { e1, aside, behind, beyond });
 		OO_CHECK(u->isVectorClearFromEntity(e1, 0, p2));
-		OO_CHECK(u->hazardOnRouteFromEntity(e1, 0, p2) == nil);
-		OO_CHECK(HPvector_equal(u->getSafeVectorFromEntity(e1, 0, p2), p2));
+		OO_CHECK(u->hazardOnRouteFromEntity(oo::ToCxx(e1), 0, p2) == nullptr);
+		OO_CHECK(HPvector_equal(u->getSafeVectorFromEntity(oo::ToCxx(e1), 0, p2), p2));
 
 		// An entity nothing collides with is no hazard either.
 		Entity *ghost = [[[Slice14GhostEntity alloc] init] autorelease];
@@ -624,7 +624,7 @@ OO_TEST(slice14ClearRoute)
 		[ghost setCollisionRadius:50];
 		SetSortedEntities(u, { e1, ghost });
 		OO_CHECK(u->isVectorClearFromEntity(e1, 0, p2));
-		OO_CHECK(u->hazardOnRouteFromEntity(e1, 0, p2) == nil);
+		OO_CHECK(u->hazardOnRouteFromEntity(oo::ToCxx(e1), 0, p2) == nullptr);
 		u->n_entities = 0;
 	}
 }
@@ -641,20 +641,20 @@ OO_TEST(slice14Hazard)
 		SetSortedEntities(u, { e1, rock });
 
 		OO_CHECK(!u->isVectorClearFromEntity(e1, 0, p2));
-		OO_CHECK(u->hazardOnRouteFromEntity(e1, 0, p2) == rock);
+		OO_CHECK(u->hazardOnRouteFromEntity(oo::ToCxx(e1), 0, p2) == oo::ToCxx(rock));
 
 		// The safe vector steers short of the rock and away from the side it is on.
-		HPVector safe = u->getSafeVectorFromEntity(e1, 0, p2);
+		HPVector safe = u->getSafeVectorFromEntity(oo::ToCxx(e1), 0, p2);
 		OO_CHECK(!HPvector_equal(safe, p2));
 		OO_CHECK(safe.z < 500 && safe.x < 20);
 
 		// Within range of the destination already: clear, whatever is in the way.
 		OO_CHECK(u->isVectorClearFromEntity(e1, 2000, p2));
-		OO_CHECK(u->hazardOnRouteFromEntity(e1, 2000, p2) == nil);
+		OO_CHECK(u->hazardOnRouteFromEntity(oo::ToCxx(e1), 2000, p2) == nullptr);
 
 		// Stopping short of the rock: the route is clear.
 		OO_CHECK(u->isVectorClearFromEntity(e1, 600, p2));
-		OO_CHECK(u->hazardOnRouteFromEntity(e1, 600, p2) == nil);
+		OO_CHECK(u->hazardOnRouteFromEntity(oo::ToCxx(e1), 600, p2) == nullptr);
 		u->n_entities = 0;
 	}
 }
