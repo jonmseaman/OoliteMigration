@@ -2425,7 +2425,7 @@ static bool ShipEjectItem(ooscript::Context context, ooscript::CallArgs &oojsArg
 		return false;
 	}
 	
-	OOJS_RETURN_OBJECT(oo::ToObjC(ship->ejectShipOfRole(role)));
+	OOJS_RETURN(OOJSValueFromCxxObject(context, ship->ejectShipOfRole(role)));	// the C++ ship's JS value (its object's until bead oo-9ht.39.8.1)
 	
 	OOJS_NATIVE_EXIT
 }
@@ -2506,7 +2506,7 @@ static bool ShipEjectSpecificItem(ooscript::Context context, ooscript::CallArgs 
 		return false;
 	}
 	
-	OOJS_RETURN_OBJECT(oo::ToObjC(ship->ejectShipOfType(itemKey)));
+	OOJS_RETURN(OOJSValueFromCxxObject(context, ship->ejectShipOfType(itemKey)));	// the C++ ship's JS value (its object's until bead oo-9ht.39.8.1)
 	
 	OOJS_NATIVE_EXIT
 }
@@ -2553,7 +2553,7 @@ static bool ShipDumpCargo(ooscript::Context context, ooscript::CallArgs &oojsArg
 		}
 	}
 
-	OOJS_RETURN_OBJECT(oo::ToObjC(ship->dumpCargoItem(pref)));
+	OOJS_RETURN(OOJSValueFromCxxObject(context, ship->dumpCargoItem(pref)));	// the C++ pod's JS value (its object's until bead oo-9ht.39.8.1)
 	
 	OOJS_NATIVE_EXIT
 }
@@ -3223,15 +3223,15 @@ static bool ShipFireMissile(ooscript::Context context, ooscript::CallArgs &oojsA
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity			*thisEnt = nullptr;
-	id					result = nullptr;
+	ShipEntity			*result = nullptr;
 	
 	GET_THIS_SHIP(thisEnt);
 	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 	
-	if (oojsArgs.count() > 0)  result = oo::ToObjC(ship->fireMissileWithIdentifier(cxx_OOStringFromJSValue(context, OOJS_ARGV[0]), ship->primaryTarget()));
-	else  result = oo::ToObjC(ship->fireMissile());
+	if (oojsArgs.count() > 0)  result = ship->fireMissileWithIdentifier(cxx_OOStringFromJSValue(context, OOJS_ARGV[0]), ship->primaryTarget());
+	else  result = ship->fireMissile();
 	
-	OOJS_RETURN_OBJECT(result);
+	OOJS_RETURN(OOJSValueFromCxxObject(context, result));	// the C++ missile's JS value (its object's until bead oo-9ht.39.8.1)
 	
 	OOJS_NATIVE_EXIT
 }
@@ -3263,7 +3263,7 @@ static bool ShipFindNearestStation(ooscript::Context context, ooscript::CallArgs
 		}
 	}
 	
-	OOJS_RETURN_OBJECT(oo::ToObjC(result));
+	OOJS_RETURN(OOJSValueFromCxxObject(context, result));	// the C++ station's JS value (its object's until bead oo-9ht.39.8.1)
 	
 	OOJS_NATIVE_EXIT
 }
@@ -3628,7 +3628,7 @@ bool RemoveOrExplodeShip(ooscript::Context context, ooscript::CallArgs &oojsArgs
 		}
 	}
 	
-	if (thisEnt == oo::ToShip(oo::ToObjC((UNIVERSE != nullptr ? UNIVERSE->station() : nullptr))))
+	if (thisEnt == oo::ToShip((UNIVERSE != nullptr ? UNIVERSE->station() : nullptr)))	// the C++ station (through its object until bead oo-9ht.39.8.1)
 	{
 		// Allow exploding of main station (e.g. nova mission)
 		if (UNIVERSE != nullptr)  UNIVERSE->unMagicMainStation();
@@ -3889,7 +3889,7 @@ static bool ShipPatrolReportIn(ooscript::Context context, ooscript::CallArgs &oo
 	}
 	if (target != nullptr && target->getIsStation())	// none: not a station, as a message to nil
 	{
-		StationEntity *station = oo::ToStation(oo::ToObjC(target));
+		StationEntity *station = oo::ToStation(target);	// the C++ ship (through its object until bead oo-9ht.39.8.1)
 		station->acceptPatrolReportFrom(thisEnt);
 	}
 

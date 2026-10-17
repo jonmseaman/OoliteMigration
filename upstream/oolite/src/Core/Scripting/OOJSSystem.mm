@@ -843,7 +843,7 @@ static bool SystemAddPlanet(ooscript::Context context, ooscript::CallArgs &oojsA
 	planet = (player != nullptr ? player->addPlanetEntity(*key) : (OOPlanetEntity *)nullptr);
 	OOJS_END_FULL_NATIVE
 	
-	OOJS_RETURN_OBJECT(oo::ToObjC(planet));
+	OOJS_RETURN(OOJSValueFromCxxObject(context, planet));	// the C++ planet's JS value (its object's until bead oo-9ht.39.8.1)
 	
 	OOJS_NATIVE_EXIT
 }
@@ -872,7 +872,7 @@ static bool SystemAddMoon(ooscript::Context context, ooscript::CallArgs &oojsArg
 	planet = (player != nullptr ? player->addMoonEntity(*key) : (OOPlanetEntity *)nullptr);
 	OOJS_END_FULL_NATIVE
 	
-	OOJS_RETURN_OBJECT(oo::ToObjC(planet));
+	OOJS_RETURN(OOJSValueFromCxxObject(context, planet));	// the C++ planet's JS value (its object's until bead oo-9ht.39.8.1)
 	
 	OOJS_NATIVE_EXIT
 }

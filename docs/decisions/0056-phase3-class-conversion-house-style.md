@@ -7634,3 +7634,35 @@ rows, classified from their declared encodings. `test_ShipEntityAI`, `test_Stati
 `test_EntityShaderBindings` `everyPermittedNameBindsAsBySelector`: the names bound by row only are sorted into
 the by-name table's (whose facade methods are deleted; checked non-empty) and the rest, still checked equal to
 the unchanged expected list. No case was removed.
+
+## Amendment (bead oo-9ht.39.8.1): the ship and system bindings return the C++ entity's JS value
+
+oo-9ht.39 step 4c (bead oo-9ht.39.8), family 1 of its plan (batch AE, Migration Completion session,
+2026-10-17). Batch AC measured the bindings' `oo::ToObjC` uses; most are crossings into C++ APIs that
+still take or return `::Entity *` and need those APIs moved first, one family at a time.
+
+1. **The JS value of a C++ entity** is `OOJSValueFromCxxObject(context, entity)` (its virtual
+   `jsValueInContext()`; JS null for null), where the bindings went through its object
+   (`OOJS_RETURN_OBJECT(oo::ToObjC(x))`: `OOJSValueFromNativeObject()`, then the facade's
+   `-oo_jsValueInContext:`, which forwarded to the same member; nil gave null): `OOJSShip`
+   `ejectItem`, `ejectSpecificItem`, `dumpCargo`, `fireMissile`, `findNearestStation`, and `OOJSSystem`
+   `addPlanet`, `addMoon`.
+2. **Two crossings back to the C++ ship.** `OOJSShip` `explode`/`remove` (`RemoveOrExplodeShip`) compares the ship with the main station
+   (`oo::ToShip(UNIVERSE->station())`) and `patrolReportIn`'s station is `oo::ToStation(target)`, where
+   both went to the object and back.
+
+**Defaults (rule 10).** Identical JS-visible behaviour (the unreachable facade-less difference of amendment
+oo-9ht.39.7.1 applies). **Scope rule found here:** `OOJSStation`, `OOJSMission`, `OOJSPlanet` and `OOJSEntity`
+are linked by their unit tests with a stand-in `cxx::Entity` that is not the game's (`test_OOJSStation`
+`class Entity : public oo::RefCounted`, its JS glue in the stand-in object's `-oo_jsValueInContext:`), so their
+returns and sends (the station's eight launchers, the mission's `displayModel`, the planet's `orientation`,
+`dumpState`) move only with those stand-ins re-based under oo-9n5p9 (the stand-in C++ entity answering
+`jsValueInContext()` / the members), a separate family. Left for the next families (bead notes of
+oo-9ht.39.8): those, the Universe/player beacon API (`clearBeacon`, `setNextBeacon`, `nextBeacon`), the ship
+target API (`setFoundTarget`, `setPrimaryAggressor`, `add/removeDefenseTarget`),
+`hazardOnRouteFromEntity`/`getSafeVectorFromEntity`, the compass target, `doScriptEvent` arguments, the
+system's `relativeTo` object, the ECM warning's description, the object accessors (`OOJSEntityObjectFromJSObject`,
+the exhaust plume's, flasher's and waypoint's `outObject`), and the facade's JS forwarders and categories.
+
+**Tests.** None changed; `test_OOJSShip` and `test_OOJSSystem` link the game, and js-api-contract and the
+goldens cover the values.
