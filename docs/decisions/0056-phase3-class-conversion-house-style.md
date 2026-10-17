@@ -7545,3 +7545,35 @@ is missing; and two player queries answer as `OOCallByName` on the facade. `test
 `AI.mm` with a stand-in ship and no table) gains stand-in definitions of the two functions that
 take the selector path, as the game's take it for an untabled name; no case or expected value
 changes and no case was retired.
+
+## Amendment (bead oo-9ht.39.7.2): callObjC and the string expander call the entities' by-name methods on the C++ entity
+
+oo-9ht.39 step 4b, part (b) (batch AD, 2026-10-17), on part (a) (amendment oo-9ht.39.7.1).
+
+1. **Typed adaptors.** The generator gives each row with no argument a second adaptor that keeps the
+   body's result by its C++ type in `OOEntityByNameValue`: an integer, enum or `BOOL` as a
+   `long long` (as `OOCallIntegerMethod()` converted the method's result), a `float`/`double` as a
+   `double`, a `Vector`, a `Quaternion`, an object (`id`-convertible), a property list; any other
+   result is computed and dropped (callObjC never calls such a method). `oo::CallEntityByNameTyped`
+   calls it for a tabled name that applies to the entity, and answers false (nothing called) else.
+2. **callObjC** (`OOJSCall.mm`, the entity path): the name's `-respondsToSelector:` is
+   `oo::EntityRespondsToName`; the string-argument, property-list and void forms call
+   `oo::CallEntityByName`; the integer, float, double, vector, quaternion and object forms read the
+   typed adaptor when the name is tabled for the entity. Each still takes the row's type from
+   `OOJSCallEntityMethods.h` (the same declared type), so the JS value, the `_bool` reading, the
+   error messages and the unmatched types (which call nothing) are as before. A name the by-name
+   table does not hold (the facade's forwarders, the planet's, the beacon's, a colour result) is
+   called on the object as before.
+3. **The string expander** asks (`OOCAssert`) and calls the player's special and legacy keys with
+   `oo::EntityRespondsToName` / `oo::CallEntityByName` on `PLAYER`.
+
+**Defaults (rule 10).** Identical behaviour (the unreachable facade-less difference of amendment
+oo-9ht.39.7.1 applies). The planet's and the beacon's categories, the deferred calls and the
+deletion of the categories are part (c), oo-9ht.39.7.3.
+
+**Tests.** `test_OOEntityCalledByName` gains `typedCallAnswersAsTheMethod`: a typed adaptor exactly
+on the rows with no argument, and for a ship three `BOOL`, two float, a vector and an object getter
+answer as the facade method's IMP; untabled, foreign and argument names call nothing. `test_OOJSCall`
+and the expander harness (`tests/unit/expander/PlayerEntity.h`), which link no table, gain
+stand-ins for the functions that take the selector path; no case or expected value changes and no
+case was retired.

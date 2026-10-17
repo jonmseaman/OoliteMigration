@@ -9,6 +9,7 @@ for the C++ part it applies to, exactly as -[Entity respondsToSelector:] and the
 answered it, and called as OOCallByName called the method (the same signature rules, read from
 @encode() of the declared types instead of the method's type encoding). Any other name, and a
 tabled name whose signature the call cannot use, go to the entity's Objective-C object as before.
+callObjC() reads a typed result through oo::CallEntityByNameTyped (bead oo-9ht.39.7.2).
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -50,6 +51,7 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OORuntime.h"
 #include <cstring>
 #include <string_view>
+#include <type_traits>
 #include <unordered_map>
 
 
@@ -104,6 +106,27 @@ oo::PList OOEntityByNameAdaptPList(cxx::Entity *entity, const std::string *, con
 	}
 }
 
+
+template <auto Function>
+void OOEntityByNameTyped(cxx::Entity *entity, OOEntityByNameValue &value)
+{
+	using Result = decltype(Function(entity));
+	if constexpr (std::is_void_v<Result>)  Function(entity);
+	else if constexpr (std::is_same_v<Result, oo::PList>)  value.plist = Function(entity);
+	else if constexpr (std::is_integral_v<Result> && std::is_signed_v<Result> && sizeof(Result) == 1)
+	{
+		// a signed char (BOOL): its value, sign kept, as OOCallIntegerMethod() converted it
+		const long long bits = static_cast<unsigned char>(Function(entity));
+		value.integer = (bits > 127) ? bits - 256 : bits;
+	}
+	else if constexpr (std::is_integral_v<Result> || std::is_enum_v<Result>)  value.integer = static_cast<long long>(Function(entity));
+	else if constexpr (std::is_floating_point_v<Result>)  value.real = static_cast<double>(Function(entity));
+	else if constexpr (std::is_same_v<Result, Vector>)  value.vector = Function(entity);
+	else if constexpr (std::is_same_v<Result, Quaternion>)  value.quaternion = Function(entity);
+	else if constexpr (std::is_convertible_v<Result, id>)  value.object = Function(entity);
+	else  (void)Function(entity);	// a result callObjC() cannot read (it does not call such a method)
+}
+
 }	// namespace
 
 
@@ -141,6 +164,15 @@ bool oo::EntityByNameRowApplies(const OOEntityByNameRow &row, cxx::Entity *entit
 	if ((flags & kOOByNamePlayer) != 0 && (flags & kOOByNameProxy) != 0 && ProxyPart(entity) != nullptr)  return true;
 	if ((flags & kOOByNamePlayer) != 0 && PlayerEntityPart(entity) != nullptr)  return true;
 	return ((flags & kOOByNameStation) != 0 && StationPart(entity) != nullptr) || ((flags & kOOByNameDock) != 0 && DockPart(entity) != nullptr);
+}
+
+
+bool oo::CallEntityByNameTyped(cxx::Entity *entity, const std::string &name, OOEntityByNameValue &value)
+{
+	const OOEntityByNameRow *row = EntityByNameRowNamed(name);
+	if (row == nullptr || row->typed == nullptr || !EntityByNameRowApplies(*row, entity))  return false;
+	row->typed(entity, value);
+	return true;
 }
 
 

@@ -91,6 +91,14 @@ std::string Copied(char *copied)
 }
 
 
+// <imp> as a function of the method's own signature, through void (*)(void) (as OOCallByName.mm's As()).
+template <class Function>
+Function As(IMP imp)
+{
+	return reinterpret_cast<Function>(reinterpret_cast<void (*)(void)>(imp));
+}
+
+
 // The names -respondsToSelector: answers by rules of their own, before the name sets.
 const std::set<std::string> kOwnRules =
 {
@@ -201,6 +209,55 @@ OO_TEST(callAnswersAsTheSelectorPath)
 		OO_CHECK(!oo::CallEntityByName(player.entity, "credits_number").isNull());
 		OO_CHECK(!oo::EntityRespondsToName(nullptr, "credits_number"));
 		OO_CHECK(oo::CallEntityByName(nullptr, "credits_number").isNull());
+	}
+}
+
+
+// A method with no argument has a typed adaptor (bead oo-9ht.39.7.2), and its result is the
+// facade method's, read by type as callObjC() read it: an integer, a float, a vector, an object.
+OO_TEST(typedCallAnswersAsTheMethod)
+{
+	@autoreleasepool
+	{
+		for (const OOEntityByNameRow &row : oo::EntityByNameRows())
+		{
+			OO_CHECK((row.typed != nullptr) == (row.argument == OOEntityByNameArgument::None));
+		}
+
+		const Sample &ship = Samples()[0];
+		for (const char *name : { "isFrangible", "isHulk", "isCloaked" })
+		{
+			OOEntityByNameValue value;
+			OO_CHECK(oo::CallEntityByNameTyped(ship.entity, name, value));
+			SEL selector = OOSelectorFromName(name);
+			OO_CHECK_EQ(value.integer, static_cast<long long>(As<BOOL (*)(id, SEL)>([ship.object methodForSelector:selector])(ship.object, selector)));
+		}
+		for (const char *name : { "maxThrust", "heatInsulation" })
+		{
+			OOEntityByNameValue value;
+			OO_CHECK(oo::CallEntityByNameTyped(ship.entity, name, value));
+			SEL selector = OOSelectorFromName(name);
+			OO_CHECK_EQ(value.real, static_cast<double>(As<float (*)(id, SEL)>([ship.object methodForSelector:selector])(ship.object, selector)));
+		}
+		{
+			OOEntityByNameValue value;
+			OO_CHECK(oo::CallEntityByNameTyped(ship.entity, "forwardVector", value));
+			SEL selector = OOSelectorFromName("forwardVector");
+			const Vector v = As<Vector (*)(id, SEL)>([ship.object methodForSelector:selector])(ship.object, selector);
+			OO_CHECK(value.vector.x == v.x && value.vector.y == v.y && value.vector.z == v.z);
+		}
+		{
+			OOEntityByNameValue value;
+			OO_CHECK(oo::CallEntityByNameTyped(ship.entity, "primaryAggressor", value));
+			SEL selector = OOSelectorFromName("primaryAggressor");
+			OO_CHECK(value.object == As<id (*)(id, SEL)>([ship.object methodForSelector:selector])(ship.object, selector));
+		}
+
+		// Not tabled, not the entity's, or taking an argument: nothing is called.
+		OOEntityByNameValue value;
+		OO_CHECK(!oo::CallEntityByNameTyped(ship.entity, "noSuchSelector", value));
+		OO_CHECK(!oo::CallEntityByNameTyped(Samples()[6].entity, "isHulk", value));
+		OO_CHECK(!oo::CallEntityByNameTyped(Samples()[3].entity, "awardCredits:", value));
 	}
 }
 
