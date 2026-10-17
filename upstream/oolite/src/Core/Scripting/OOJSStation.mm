@@ -831,7 +831,7 @@ static bool StationLaunchShipWithRole(ooscript::Context context, ooscript::CallA
 	if (abortAllDockings) { if (station != nullptr)  station->abortAllDockings(); }
 	OOJS_END_FULL_NATIVE
 
-	OOJS_RETURN_OBJECT(oo::ToObjC(result));
+	OOJS_RETURN(OOJSValueFromCxxObject(context, result));	// the C++ ship's JS value (its object's until bead oo-9ht.39.8.2)
 	OOJS_NATIVE_EXIT
 }
 } // namespace
@@ -849,7 +849,7 @@ static bool StationLaunchDefenseShip(ooscript::Context context, ooscript::CallAr
 	OOJS_BEGIN_FULL_NATIVE(context)
 	launched = (station != nullptr ? station->launchDefenseShip() : (::ShipEntity *)nil);
 	OOJS_END_FULL_NATIVE
-	OOJS_RETURN_OBJECT(oo::ToObjC(launched));
+	OOJS_RETURN(OOJSValueFromCxxObject(context, launched));	// the C++ ship's JS value (its object's until bead oo-9ht.39.8.2)
 
 	OOJS_NATIVE_EXIT
 }
@@ -868,7 +868,7 @@ static bool StationLaunchEscort(ooscript::Context context, ooscript::CallArgs &o
 	OOJS_BEGIN_FULL_NATIVE(context)
 	launched = (station != nullptr ? station->launchEscort() : (::ShipEntity *)nil);
 	OOJS_END_FULL_NATIVE
-	OOJS_RETURN_OBJECT(oo::ToObjC(launched));
+	OOJS_RETURN(OOJSValueFromCxxObject(context, launched));	// the C++ ship's JS value (its object's until bead oo-9ht.39.8.2)
 
 	OOJS_NATIVE_EXIT
 }
@@ -887,7 +887,7 @@ static bool StationLaunchScavenger(ooscript::Context context, ooscript::CallArgs
 	OOJS_BEGIN_FULL_NATIVE(context)
 	launched = (station != nullptr ? station->launchScavenger() : (::ShipEntity *)nil);
 	OOJS_END_FULL_NATIVE
-	OOJS_RETURN_OBJECT(oo::ToObjC(launched));
+	OOJS_RETURN(OOJSValueFromCxxObject(context, launched));	// the C++ ship's JS value (its object's until bead oo-9ht.39.8.2)
 
 	OOJS_NATIVE_EXIT
 }
@@ -906,7 +906,7 @@ static bool StationLaunchMiner(ooscript::Context context, ooscript::CallArgs &oo
 	OOJS_BEGIN_FULL_NATIVE(context)
 	launched = (station != nullptr ? station->launchMiner() : (::ShipEntity *)nil);
 	OOJS_END_FULL_NATIVE
-	OOJS_RETURN_OBJECT(oo::ToObjC(launched));
+	OOJS_RETURN(OOJSValueFromCxxObject(context, launched));	// the C++ ship's JS value (its object's until bead oo-9ht.39.8.2)
 	OOJS_NATIVE_EXIT
 }
 } // namespace
@@ -924,7 +924,7 @@ static bool StationLaunchPirateShip(ooscript::Context context, ooscript::CallArg
 	OOJS_BEGIN_FULL_NATIVE(context)
 	launched = (station != nullptr ? station->launchPirateShip() : (::ShipEntity *)nil);
 	OOJS_END_FULL_NATIVE
-	OOJS_RETURN_OBJECT(oo::ToObjC(launched));
+	OOJS_RETURN(OOJSValueFromCxxObject(context, launched));	// the C++ ship's JS value (its object's until bead oo-9ht.39.8.2)
 
 	OOJS_NATIVE_EXIT
 }
@@ -943,7 +943,7 @@ static bool StationLaunchShuttle(ooscript::Context context, ooscript::CallArgs &
 	OOJS_BEGIN_FULL_NATIVE(context)
 	launched = (station != nullptr ? station->launchShuttle() : (::ShipEntity *)nil);
 	OOJS_END_FULL_NATIVE
-	OOJS_RETURN_OBJECT(oo::ToObjC(launched));
+	OOJS_RETURN(OOJSValueFromCxxObject(context, launched));	// the C++ ship's JS value (its object's until bead oo-9ht.39.8.2)
 	OOJS_NATIVE_EXIT
 }
 } // namespace
@@ -961,7 +961,7 @@ static bool StationLaunchPatrol(ooscript::Context context, ooscript::CallArgs &o
 	OOJS_BEGIN_FULL_NATIVE(context)
 	launched = (station != nullptr ? station->launchPatrol() : (::ShipEntity *)nil);
 	OOJS_END_FULL_NATIVE
-	OOJS_RETURN_OBJECT(oo::ToObjC(launched));
+	OOJS_RETURN(OOJSValueFromCxxObject(context, launched));	// the C++ ship's JS value (its object's until bead oo-9ht.39.8.2)
 	OOJS_NATIVE_EXIT
 }
 } // namespace

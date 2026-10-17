@@ -286,8 +286,10 @@ static bool PlanetGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			return true;
 
 		case kPlanet_orientation:
-			// The root's selector, which reaches the C++ virtual member (as the message did; nil for none).
-			return QuaternionToJSValue(context, [oo::ToObjC(planet) normalOrientation], value_raw);
+			// The C++ member the root's selector reached (bead oo-9ht.39.8.2), qualified: the final overrider for a
+			// planet (OOPlanetEntity has no subclass and does not override it), so the binding test stands in for
+			// it; zero for none, as the message to nil.
+			return QuaternionToJSValue(context, planet != nullptr ? planet->cxx::Entity::normalOrientation() : Quaternion{}, value_raw);
 		
 		case kPlanet_rotationalVelocity:
 			return ooscript::newNumberValue(cx, (planet != nullptr ? planet->rotationalVelocity() : 0.0), value);
@@ -400,7 +402,9 @@ static bool PlanetSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			if (JSValueToQuaternion(context, *value_raw, &qValue))
 			{
 				quaternion_normalize(&qValue);
-				[oo::ToObjC(planet) setOrientation:qValue];	// the root's selector, which reaches the C++ virtual member
+				// The C++ member the root's selector reached (bead oo-9ht.39.8.2), qualified: the final overrider
+				// (OOPlanetEntity has no subclass), so the binding test stands in for it; nothing for none.
+				if (planet != nullptr)  planet->OOPlanetEntity::setOrientation(qValue);
 				return true;
 			}
 			break;

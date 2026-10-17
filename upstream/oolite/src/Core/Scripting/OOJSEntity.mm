@@ -536,7 +536,7 @@ static bool EntityDumpState(ooscript::Context context, ooscript::CallArgs &oojsA
 	
 	cxx::Entity *thisEnt = nullptr;
 	OOJSEntityGetEntity(context, OOJS_THIS, &thisEnt);
-	[oo::ToObjC(thisEnt) dumpState];
+	if (thisEnt != nullptr)  thisEnt->dumpState();	// the C++ member, which the object's -dumpState called (bead oo-9ht.39.8.2)
 	
 	OOJS_RETURN_VOID;
 	

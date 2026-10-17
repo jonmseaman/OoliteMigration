@@ -797,7 +797,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 			ooscript::valueToInt32(context, (value), &personality);
 			if (demoShip != nullptr)  demoShip->setEntityPersonalityInt(personality);
 		}
-		ooscript::Value demoShipVal = [oo::ToObjC(demoShip) oo_jsValueInContext:context];	// the ship's object (C++ ship since bead oo-9ht.144)
+		ooscript::Value demoShipVal = OOJSValueFromCxxObject(context, demoShip);	// the C++ ship's JS value (its object's -oo_jsValueInContext: until bead oo-9ht.39.8.2)
 		ooscript::setProperty(context, (sMissionObject), "displayModel", (&demoShipVal));
 	}
 	else
