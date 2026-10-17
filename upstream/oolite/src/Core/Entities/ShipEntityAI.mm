@@ -45,6 +45,7 @@
 #import "OOConstToJSString.h"
 #import "ResourceManager.h"
 #import "GameController.h"
+#import "OOCallByName.h"	// oo::ScheduleEntityCall
 
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/Log.hpp"
@@ -1745,7 +1746,8 @@ void ShipEntity::ejectCargo()
 	dumpCargo();
 	for (i = 1; i < cargo_to_go; i++)
 	{
-		OOScheduleDeferredCall(oo::ToObjC(this), @selector(dumpCargo), nil, 0.75 * i);	// drop 3 canisters per 2 seconds
+		// drop 3 canisters per 2 seconds (a deferred call on the C++ ship since bead oo-9ht.39.7.3; by name on its object before)
+		oo::ScheduleEntityCall(this, [](cxx::Entity *entity) { if (ShipEntity *ship = dynamic_cast<ShipEntity *>(entity))  ship->dumpCargo(); }, 0.75 * i);
 	}
 }
 

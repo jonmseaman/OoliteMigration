@@ -7577,3 +7577,60 @@ answer as the facade method's IMP; untabled, foreign and argument names call not
 and the expander harness (`tests/unit/expander/PlayerEntity.h`), which link no table, gain
 stand-ins for the functions that take the selector path; no case or expected value changes and no
 case was retired.
+
+## Amendment (bead oo-9ht.39.7.3): the facade's by-name categories are deleted; the C++ table is the source
+
+oo-9ht.39 step 4b, part (c) (batch AE, Migration Completion session, 2026-10-17), on parts (a) and (b)
+(amendments oo-9ht.39.7.1, oo-9ht.39.7.2).
+
+1. **Deleted from `Entity+ObjCBridge.mm`:** the five categories `Entity (OOShipSelectorsCalledByName)`,
+   `(OOPlayerSelectorsCalledByName)`, `(OOStationSelectorsCalledByName)`, `(OODockSelectorsCalledByName)`,
+   `(OOVisualEffectSelectorsCalledByName)` (970 methods), their name sets (`IsShip/Player/Proxy/Station/
+   Dock/EffectSelectorCalledByName()`), the by-name branches of `-[Entity respondsToSelector:]` and the
+   now-unused `ProxyPart()`. The planet's and the beacon's categories stay (`EntityShaderBindings`,
+   `test_OOPlanetEntity`); the object no longer answers a by-name name.
+2. **The table is the source.** `OOEntityCalledByNameTable.h` is edited by hand; `tools/gen-entity-by-name-table.py`
+   reads it back when the categories are absent (`table_rows()`) and renders it again, so `--check` (in
+   the nightly lines) fails unless every row names its own function with the function's `#if`
+   conditions, result and argument, no name is there twice, no function is left without a row and the
+   flags are the six known ones. `tools/gen-callobjc-entity-table.py` reads the table's rows where the
+   facade marks the categories' place (`// BY-NAME TABLE ROWS HERE`), with the same classification, so
+   callObjC keeps all 1008 names (the generated `OOJSCallEntityMethods.h` is unchanged but the comment and
+   the spacing of one `@encode(ShipEntity *)`).
+3. **Deferred calls.** `oo::ScheduleEntityCall(entity, call, delay)` (`OOCallByName.h`, defined in
+   `OOEntityCalledByName.mm`): AI.mm's holder pattern, an `OOObject` that `OOScheduleDeferredCall()` retains
+   and whose `-fire` calls a plain function with the entity it holds by `oo::Ref` (the deferred call
+   retained the entity's object, which held the entity). The afterburner sound's update
+   (`PlayerEntitySound.mm`, and the table's `cxx_scheduleAfterburnerSoundUpdate` row) and the ship's
+   cargo dumped one canister at a time (`ShipEntityAI.mm` `ejectCargo`, `OOJSShip.mm` `dumpCargo`) use it,
+   each function asking for the class as the facade's method did.
+4. **Logging.** `oo::CallEntityByName` logs `callByName.badSignature` itself for a tabled name that applies
+   but whose signature the call cannot use, with the class of the entity's object and the row's type
+   encoding (result, `@`, `:`, argument) **without the frame offsets** the method's encoding had
+   (`{Vector=fff}@:` where it printed `{Vector=fff}16@0:8`) — a log-text-only change, the default the bead
+   proposed. A tabled name that does not apply still goes to the object, which no longer has the method,
+   so `callByName.unknownSelector` is logged exactly as before.
+5. **Other by-name sends.** `ShaderRandomSeed` (`EntityShaderBindings.mm`) for an object that is not the
+   root facade's own class: the object's own `-randomSeedForShaders` if its class has one (as the message
+   found it), else the ship part's member (the category's body). Sends of category methods to the player's
+   object on paths not built on Windows (`PlayerEntity.mm` `setUpSound` and the non-mass-dependent fuel
+   price, `PlayerEntityControls.mm` field-of-view keys, `PlayerEntityLoadSave.mm` AppKit load/save) call
+   the C++ members the category bodies called. The Mac-only `pauseFullScreenModeToPerform:@selector(savePlayer)`
+   (performed by `GameController+FullScreen.mm`, not built on Windows; the SDL build only stores the target)
+   is left as it was and would need the holder when the Mac build is revived.
+
+**Defaults (rule 10).** Identical behaviour but the badSignature log text (item 4). The unreachable
+facade-less difference of amendment oo-9ht.39.7.1 extends to the deferred calls and the shader seed (a C++
+entity with no object is called where the message to nil did nothing).
+
+**Tests (oo-9n5p9, approval lines on main).** `test_OOEntityCalledByName`: the facade-contract checks retire
+(rows against the facade's methods, applies-to against its `-respondsToSelector:`, calls against
+`OOCallByName` on it and its IMPs); the table's self-checks stay, `oo::EntityRespondsToName` must answer each
+row as it applies, the calls are compared with the C++ members the bodies call, and the facade-method count
+check counts the facade's methods plus the rows. `test_OOJSCallEntityMethods`: the oracle adds the table's
+rows, classified from their declared encodings. `test_ShipEntityAI`, `test_StationEntity`,
+`test_PlayerEntity`, `test_ProxyPlayerEntity`: their checks of by-name names on the object become
+`oo::EntityRespondsToName` / `oo::CallEntityByName(Typed)` on the C++ entity, same names and expected values.
+`test_EntityShaderBindings` `everyPermittedNameBindsAsBySelector`: the names bound by row only are sorted into
+the by-name table's (whose facade methods are deleted; checked non-empty) and the rest, still checked equal to
+the unchanged expected list. No case was removed.

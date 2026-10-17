@@ -39,6 +39,7 @@
 #import "PlayerEntitySound.h"
 #import "PlayerEntityStickMapper.h"
 #import "OOJoystickManager.h"
+#import "OOCallByName.h"	// oo::EntityRespondsToName / oo::CallEntityByName (bead oo-9ht.39.7.3)
 
 #include "oo_test.hpp"
 
@@ -355,9 +356,9 @@ OO_TEST(deallocReleasesWhatThePlayerHeld)
 }
 
 
-// The crossing (bead oo-9ht.177): the player's object is a ship whose C++ part is the player; it
-// answers the player's selectors called by name (ADR-0056 amendment oo-9ht.177), which a ship's
-// object does not.
+// The crossing (bead oo-9ht.177): the player's object is a ship whose C++ part is the player; the
+// player answers the player's selectors called by name (ADR-0056 amendment oo-9ht.177), which a
+// ship does not (the by-name table's answer since bead oo-9ht.39.7.3, the object's until then).
 OO_TEST(playerObjectIsAShipWhosePartIsThePlayer)
 {
 	@autoreleasepool
@@ -369,12 +370,12 @@ OO_TEST(playerObjectIsAShipWhosePartIsThePlayer)
 		OO_CHECK(oo::ToCxx(object) == player);
 		OO_CHECK(dynamic_cast<PlayerEntity *>(oo::ToCxx(object)) == player);
 		OO_CHECK(oo::AsObjCEntity(player) == nullptr);	// a C++ player, not an adapter
-		OO_CHECK([object respondsToSelector:@selector(commanderName_string)]);
-		OO_CHECK([object respondsToSelector:@selector(credits_number)]);
-		OO_CHECK(![object respondsToSelector:@selector(noSuchPlayerSelector)]);
+		OO_CHECK(oo::EntityRespondsToName(player, "commanderName_string"));
+		OO_CHECK(oo::EntityRespondsToName(player, "credits_number"));
+		OO_CHECK(!oo::EntityRespondsToName(player, "noSuchPlayerSelector"));
 
 		::ShipEntity *ship = static_cast<TestMissile *>(oo::ToShip(oo::NewShipObject(oo::makeRef<TestMissile>(), "missile", oo::PList())));
-		OO_CHECK(ship != nil && ![oo::ToObjC(ship) respondsToSelector:@selector(commanderName_string)]);
+		OO_CHECK(ship != nil && !oo::EntityRespondsToName(oo::ToCxx(oo::ToObjC(ship)), "commanderName_string"));
 		[oo::ToObjC(ship) release];
 		Release(player);
 	}

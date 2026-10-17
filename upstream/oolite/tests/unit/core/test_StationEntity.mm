@@ -25,6 +25,7 @@
 #import "OOObjCPList.h"
 #import "EntityOOJavaScriptExtensions.h"
 #import "OOJSStation.h"
+#import "OOCallByName.h"	// oo::EntityRespondsToName / oo::CallEntityByName (bead oo-9ht.39.7.3)
 
 #include "oo_test.hpp"
 
@@ -704,18 +705,19 @@ OO_TEST(slice4LaunchersWithoutLaunchDock)
 }
 
 
-// The launchers stay reachable by selector (ADR-0055 item 5: AI and scripts send them by name).
+// The launchers stay reachable by name (ADR-0055 item 5: AI and scripts send them by name); the
+// by-name table answers them since bead oo-9ht.39.7.3 (the facade's -respondsToSelector: until then).
 OO_TEST(slice4LaunchersAnswerTheirSelectors)
 {
 	@autoreleasepool
 	{
 		SetUp();
 		TestStation *station = MakeStation("selectors");
-		OO_CHECK([oo::ToObjC(station) respondsToSelector:@selector(launchIndependentShip:)] && [oo::ToObjC(station) respondsToSelector:@selector(launchShipWithRole:)]);
-		OO_CHECK([oo::ToObjC(station) respondsToSelector:@selector(launchPolice)] && [oo::ToObjC(station) respondsToSelector:@selector(launchDefenseShip)]);
-		OO_CHECK([oo::ToObjC(station) respondsToSelector:@selector(launchScavenger)] && [oo::ToObjC(station) respondsToSelector:@selector(launchMiner)]);
-		OO_CHECK([oo::ToObjC(station) respondsToSelector:@selector(launchPirateShip)] && [oo::ToObjC(station) respondsToSelector:@selector(launchShuttle)]);
-		OO_CHECK([oo::ToObjC(station) respondsToSelector:@selector(launchEscort)] && [oo::ToObjC(station) respondsToSelector:@selector(launchPatrol)]);
+		OO_CHECK(oo::EntityRespondsToName(station, "launchIndependentShip:") && oo::EntityRespondsToName(station, "launchShipWithRole:"));
+		OO_CHECK(oo::EntityRespondsToName(station, "launchPolice") && oo::EntityRespondsToName(station, "launchDefenseShip"));
+		OO_CHECK(oo::EntityRespondsToName(station, "launchScavenger") && oo::EntityRespondsToName(station, "launchMiner"));
+		OO_CHECK(oo::EntityRespondsToName(station, "launchPirateShip") && oo::EntityRespondsToName(station, "launchShuttle"));
+		OO_CHECK(oo::EntityRespondsToName(station, "launchEscort") && oo::EntityRespondsToName(station, "launchPatrol"));
 	}
 }
 

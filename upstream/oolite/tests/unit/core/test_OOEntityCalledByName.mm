@@ -10,6 +10,12 @@
 	-respondsToSelector: answers by their own rules) must be answered for every entity, so no name
 	the facade answered by entity kind is missing from the table. The facade is the real one, so
 	the test links the whole game but main (['*']).
+	Since bead oo-9ht.39.7.3 the categories are deleted and the table is the source (ADR-0056
+	amendment oo-9ht.39.7.3): the facade-contract checks retire under oo-9n5p9 (the rows checked
+	against the facade's methods and its -respondsToSelector:, the calls compared with the facade's
+	IMPs and with OOCallByName on it); the table's own checks stay, and the calls are compared with
+	the C++ members the rows' bodies call. Every facade method the table does not hold is still
+	answered for every entity.
 	Run: bash tools/check-core-tests.sh test_OOEntityCalledByName
 */
 
@@ -83,22 +89,6 @@ const std::vector<Sample> &Samples()
 }
 
 
-std::string Copied(char *copied)
-{
-	std::string result = copied != nullptr ? copied : "(none)";
-	std::free(copied);
-	return result;
-}
-
-
-// <imp> as a function of the method's own signature, through void (*)(void) (as OOCallByName.mm's As()).
-template <class Function>
-Function As(IMP imp)
-{
-	return reinterpret_cast<Function>(reinterpret_cast<void (*)(void)>(imp));
-}
-
-
 // The names -respondsToSelector: answers by rules of their own, before the name sets.
 const std::set<std::string> kOwnRules =
 {
@@ -111,35 +101,25 @@ const std::set<std::string> kOwnRules =
 
 
 // Each row is a facade method with the row's result and argument types (OOCallByName read these).
+// The categories are deleted (bead oo-9ht.39.7.3): the check against the facade's methods retires
+// under oo-9n5p9; the table's own checks stay.
 OO_TEST(rowsAreTheFacadesMethodsWithTheirTypes)
 {
 	std::set<std::string> names;
-	std::string missing, different;
 	for (const OOEntityByNameRow &row : oo::EntityByNameRows())
 	{
 		OO_CHECK(names.insert(row.name).second);	// no name twice
 		OO_CHECK(oo::EntityByNameRowNamed(row.name) == &row);
-		Method method = class_getInstanceMethod([::Entity class], OOSelectorFromName(row.name));
-		if (method == nullptr)  { missing += std::string(" ") + row.name;  continue; }
-		bool same = (Copied(method_copyReturnType(method)) == row.result);
-		const unsigned count = method_getNumberOfArguments(method);
-		switch (row.argument)
-		{
-			case OOEntityByNameArgument::None:		same = same && count == 2;  break;
-			case OOEntityByNameArgument::String:	same = same && count == 3 && Copied(method_copyArgumentType(method, 2)) == @encode(const std::string &);  break;
-			case OOEntityByNameArgument::PList:		same = same && count == 3 && Copied(method_copyArgumentType(method, 2)) == @encode(const oo::PList &);  break;
-		}
-		if (!same)  different += std::string(" ") + row.name;
 	}
 	OO_CHECK(names.size() > 900);	// the five categories' 968 methods
-	OO_CHECK_EQ(missing, std::string());
-	OO_CHECK_EQ(different, std::string());
 	OO_CHECK(oo::EntityByNameRowNamed("noSuchSelector") == nullptr);
 }
 
 
 // A row applies to exactly the entities the facade's -respondsToSelector: answered it for, and
-// oo::EntityRespondsToName answers every name of the facade as the facade does.
+// oo::EntityRespondsToName answers every name of the facade as the facade does. The facade no
+// longer answers the rows (bead oo-9ht.39.7.3): the comparison with it retires under oo-9n5p9;
+// oo::EntityRespondsToName still answers each row exactly as the row applies.
 OO_TEST(appliesToIsTheFacadesAnswer)
 {
 	@autoreleasepool
@@ -147,11 +127,9 @@ OO_TEST(appliesToIsTheFacadesAnswer)
 		std::string different;
 		for (const OOEntityByNameRow &row : oo::EntityByNameRows())
 		{
-			SEL selector = OOSelectorFromName(row.name);
 			for (const Sample &sample : Samples())
 			{
-				const bool facade = [sample.object respondsToSelector:selector];
-				if (oo::EntityByNameRowApplies(row, sample.entity) != facade || oo::EntityRespondsToName(sample.entity, row.name) != facade)
+				if (oo::EntityRespondsToName(sample.entity, row.name) != oo::EntityByNameRowApplies(row, sample.entity))
 				{
 					different += std::string(" ") + row.name + "/" + sample.kind;
 				}
@@ -185,24 +163,27 @@ OO_TEST(noOtherNameDependsOnTheEntity)
 			}
 		}
 		std::free(methods);
-		OO_CHECK(count > 1000);
+		OO_CHECK(count + oo::EntityByNameRows().size() > 1000);	// the facade's methods and the rows that were its categories' (bead oo-9ht.39.7.3)
 		OO_CHECK_EQ(gated, std::string());
 	}
 }
 
 
-// The call answers what the facade's method answered through OOCallByName.
+// The call answers what the facade's method answered through OOCallByName: the player's C++
+// member, which the method's body called (the method is gone since bead oo-9ht.39.7.3; the
+// comparison with OOCallByName on the facade retires under oo-9n5p9).
 OO_TEST(callAnswersAsTheSelectorPath)
 {
 	@autoreleasepool
 	{
 		const Sample &player = Samples()[3];
 		const Sample &ship = Samples()[0];
+		PlayerEntity *playerPart = dynamic_cast<PlayerEntity *>(player.entity);
+		OO_CHECK(playerPart != nullptr);
+		OO_CHECK(playerPart != nullptr && oo::CallEntityByName(player.entity, "commanderName_string") == playerPart->commanderName_string());
+		OO_CHECK(playerPart != nullptr && oo::CallEntityByName(player.entity, "credits_number") == playerPart->credits_number());
 		for (const char *name : { "commanderName_string", "credits_number" })
 		{
-			const oo::PList viaTable = oo::CallEntityByName(player.entity, name);
-			const oo::PList viaFacade = OOCallByName(player.object, OOSelectorFromName(name));
-			OO_CHECK(viaTable == viaFacade);
 			// not a ship's: nothing, as the facade's path answered (it logs that the object does not respond)
 			OO_CHECK(oo::CallEntityByName(ship.entity, name).isNull());
 		}
@@ -224,33 +205,39 @@ OO_TEST(typedCallAnswersAsTheMethod)
 			OO_CHECK((row.typed != nullptr) == (row.argument == OOEntityByNameArgument::None));
 		}
 
+		// The facade's IMPs are gone (bead oo-9ht.39.7.3): each result is compared with the ship's C++
+		// member the method's body called (the comparison with the IMP retires under oo-9n5p9).
 		const Sample &ship = Samples()[0];
-		for (const char *name : { "isFrangible", "isHulk", "isCloaked" })
+		ShipEntity *shipPart = dynamic_cast<ShipEntity *>(ship.entity);
+		OO_CHECK(shipPart != nullptr);
+		if (shipPart == nullptr)  return;
+		const std::pair<const char *, BOOL> flags[] =
+		{
+			{ "isFrangible", shipPart->getIsFrangible() }, { "isHulk", shipPart->getIsHulk() }, { "isCloaked", shipPart->isCloaked() },
+		};
+		for (const auto &[name, expected] : flags)
 		{
 			OOEntityByNameValue value;
 			OO_CHECK(oo::CallEntityByNameTyped(ship.entity, name, value));
-			SEL selector = OOSelectorFromName(name);
-			OO_CHECK_EQ(value.integer, static_cast<long long>(As<BOOL (*)(id, SEL)>([ship.object methodForSelector:selector])(ship.object, selector)));
+			OO_CHECK_EQ(value.integer, static_cast<long long>(expected));
 		}
-		for (const char *name : { "maxThrust", "heatInsulation" })
+		const std::pair<const char *, float> reals[] = { { "maxThrust", shipPart->maxThrust() }, { "heatInsulation", shipPart->heatInsulation() } };
+		for (const auto &[name, expected] : reals)
 		{
 			OOEntityByNameValue value;
 			OO_CHECK(oo::CallEntityByNameTyped(ship.entity, name, value));
-			SEL selector = OOSelectorFromName(name);
-			OO_CHECK_EQ(value.real, static_cast<double>(As<float (*)(id, SEL)>([ship.object methodForSelector:selector])(ship.object, selector)));
+			OO_CHECK_EQ(value.real, static_cast<double>(expected));
 		}
 		{
 			OOEntityByNameValue value;
 			OO_CHECK(oo::CallEntityByNameTyped(ship.entity, "forwardVector", value));
-			SEL selector = OOSelectorFromName("forwardVector");
-			const Vector v = As<Vector (*)(id, SEL)>([ship.object methodForSelector:selector])(ship.object, selector);
+			const Vector v = shipPart->forwardVector();
 			OO_CHECK(value.vector.x == v.x && value.vector.y == v.y && value.vector.z == v.z);
 		}
 		{
 			OOEntityByNameValue value;
 			OO_CHECK(oo::CallEntityByNameTyped(ship.entity, "primaryAggressor", value));
-			SEL selector = OOSelectorFromName("primaryAggressor");
-			OO_CHECK(value.object == As<id (*)(id, SEL)>([ship.object methodForSelector:selector])(ship.object, selector));
+			OO_CHECK(value.object == shipPart->primaryAggressor());
 		}
 
 		// Not tabled, not the entity's, or taking an argument: nothing is called.

@@ -2281,7 +2281,7 @@ bool PlayerEntity::setUpAndConfirmOK(bool stopOnError, bool saveGame)
 	/* on OSes that allow safe deletion of open files, can use sounds
 	 * on the OXZ screen and other start screens */
 	if (UNIVERSE != nullptr)  UNIVERSE->preloadSounds();
-	[oo::ToObjC(this) setUpSound];
+	setUpSound();	// the C++ member (by name on the object until bead oo-9ht.39.7.3)
 	if (saveGame)
 	{
 		worldScripts = ResourceManager::loadScripts();
@@ -10738,7 +10738,7 @@ bool PlayerEntity::tryBuyingItem(const std::string &eqKey)
 #if MASS_DEPENDENT_FUEL_PRICES
 		OOCreditsQuantity creditsForRefuel = (fuelCapacity() - getFuel()) * pricePerUnit * fuelChargeRate();
 #else
-		OOCreditsQuantity creditsForRefuel = ([oo::ToObjC(this) fuelCapacity] - [oo::ToObjC(this) fuel]) * pricePerUnit;
+		OOCreditsQuantity creditsForRefuel = (fuelCapacity() - getFuel()) * pricePerUnit;
 #endif
 		if (credits >= creditsForRefuel)	// Ensure we don't overflow
 		{
