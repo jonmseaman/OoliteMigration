@@ -102,7 +102,36 @@ struct OOEntityFacadeRow
 };
 
 
+/*	Every name a C++ entity's Objective-C object (the root's facade) answered outside the by-name
+	table (bead oo-9ht.39.9, ADR-0056 amendment oo-9ht.39.9): its own methods, its categories' and
+	its root classes' (OOWeakRefObject, OOObject and their categories), measured on the facade by the
+	selector path OOCallByName took (OOEntityObjectNamesTable.h). oo::EntityRespondsToName answers
+	each for the entities the object answered it for, and oo::CallEntityByName no longer asks the
+	object: a facade row's method with no argument that OOCallByName could call is the row's body;
+	any other is logged as the call logged it (the method's type encoding, as the object's method had
+	it), and a root-class or lifetime method that the call could call (init, dealloc, retain,
+	release, ...) is answered but never called.
+*/
+enum OOEntityObjectNameKind: std::uint8_t
+{
+	kOOEntityObjectSignature,	// no signature a by-name call can use: logged
+	kOOEntityObjectCalled,		// a facade row's method with no argument: the row's body, called
+	kOOEntityObjectLifetime		// a root-class or lifetime method: answered, logged, never called
+};
+
+struct OOEntityObjectName
+{
+	const char				*name;
+	bool					(*answers)(cxx::Entity *entity);	// null: every entity
+	OOEntityObjectNameKind	kind;
+	const char				*encoding;	// the object's method's type encoding
+};
+
+
 namespace oo {
+
+std::span<const OOEntityObjectName> EntityObjectNames();
+const OOEntityObjectName *EntityObjectNameNamed(const std::string &name);	// null if the object did not answer it
 
 std::span<const OOEntityFacadeRow> EntityFacadeRows();
 const OOEntityFacadeRow *EntityFacadeRowNamed(const std::string &name);	// null if not a facade row

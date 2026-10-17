@@ -16,6 +16,11 @@
 	IMPs and with OOCallByName on it); the table's own checks stay, and the calls are compared with
 	the C++ members the rows' bodies call. Every facade method the table does not hold is still
 	answered for every entity.
+	Since bead oo-9ht.39.9 a name outside the by-name table is answered without the entity's object
+	(OOEntityObjectNamesTable.h, ADR-0056 amendment oo-9ht.39.9): the table is checked against the
+	facade's methods and its -respondsToSelector: while the facade is built, and each kind of name
+	is answered and logged as OOCallByName answered and logged it, but for the root-class and
+	lifetime methods, which are no longer called.
 	Run: bash tools/check-core-tests.sh test_OOEntityCalledByName
 */
 
@@ -32,10 +37,12 @@
 
 #include "oo_test.hpp"
 #include "oofnd/objc/OORuntime.h"
+#include "oofnd/Log.hpp"
 
 #include <objc/runtime.h>
 #include <cstdlib>
 #include <cstring>
+#include <string_view>
 #include <set>
 #include <string>
 #include <utility>
@@ -165,6 +172,169 @@ OO_TEST(noOtherNameDependsOnTheEntity)
 		std::free(methods);
 		OO_CHECK(count + oo::EntityByNameRows().size() > 1000);	// the facade's methods and the rows that were its categories' (bead oo-9ht.39.7.3)
 		OO_CHECK_EQ(gated, std::string());
+	}
+}
+
+// The names the entity's object answered outside the by-name table (bead oo-9ht.39.9): what
+// OOCallByName did with each, read from the facade's methods and its -respondsToSelector: as the
+// call read them (OOCallByName.mm ResultKind(), ArgumentKind()).
+namespace {
+
+std::string Owned(char *encoding)
+{
+	std::string result = encoding != nullptr ? encoding : "";
+	std::free(encoding);
+	return result;
+}
+
+
+std::string_view Unqualified(std::string_view encoding)
+{
+	while (!encoding.empty() && std::strchr("rnNoORV", encoding.front()) != nullptr)  encoding.remove_prefix(1);
+	return encoding;
+}
+
+
+// Whether OOCallByName called the method with no argument (else it logged its signature).
+bool CalledWithNoArgument(Method method)
+{
+	static const std::string plistResult = Owned(method_copyReturnType(class_getInstanceMethod(objc_getClass("OOCallByNameSignatures"), OOSelectorFromName("resultPList"))));
+	if (method_getNumberOfArguments(method) != 2)  return false;
+	const std::string result = Owned(method_copyReturnType(method));
+	const std::string_view type = Unqualified(result);
+	return type == "v" || type == "@" || result == plistResult || (type.size() == 1 && std::strchr("cCsSiIlLqQfdB", type.front()) != nullptr);
+}
+
+
+// Every name of the facade's class and its root classes, and the facade rows'.
+std::set<std::string> FacadeNames()
+{
+	std::set<std::string> names;
+	for (Class c = [::Entity class]; c != Nil; c = class_getSuperclass(c))
+	{
+		unsigned count = 0;
+		Method *methods = class_copyMethodList(c, &count);
+		for (unsigned i = 0; i < count; i++)  names.insert(sel_getName(method_getName(methods[i])));
+		std::free(methods);
+	}
+	for (const OOEntityFacadeRow &row : oo::EntityFacadeRows())  names.insert(row.name);
+	return names;
+}
+
+
+std::vector<std::string> gLog;
+
+void Capture(std::string_view line)
+{
+	gLog.emplace_back(line);
+}
+
+
+int LogLinesContaining(std::string_view text)
+{
+	int count = 0;
+	for (const std::string &line : gLog)
+	{
+		if (line.find(text) != std::string::npos)  count++;
+	}
+	return count;
+}
+
+}	// namespace
+
+
+// The table holds exactly the names the facade's object answered outside the by-name table, for
+// exactly the entities it answered them for, each with its method's type encoding and what
+// OOCallByName did with it (a facade-contract check: it goes with the facade, oo-9ht.39).
+OO_TEST(objectNamesAreTheFacadesAnswers)
+{
+	@autoreleasepool
+	{
+		std::string different;
+		const std::set<std::string> names = FacadeNames();
+		for (const OOEntityObjectName &row : oo::EntityObjectNames())
+		{
+			if (!names.contains(row.name))  different += std::string(" notTheFacades:") + row.name;
+			Method method = class_getInstanceMethod([::Entity class], OOSelectorFromName(row.name));
+			if (method == nullptr)  { different += std::string(" noMethod:") + row.name; continue; }
+			if (row.encoding != std::string(method_getTypeEncoding(method)))  different += std::string(" encoding:") + row.name;
+			const bool facadeRow = oo::EntityFacadeRowNamed(row.name) != nullptr;
+			const OOEntityObjectNameKind kind = !CalledWithNoArgument(method) ? kOOEntityObjectSignature : (facadeRow ? kOOEntityObjectCalled : kOOEntityObjectLifetime);
+			if (row.kind != kind)  different += std::string(" kind:") + row.name;
+			if (row.kind == kOOEntityObjectCalled && oo::EntityFacadeRowNamed(row.name)->typed == nullptr)  different += std::string(" noBody:") + row.name;
+		}
+		for (const std::string &name : names)
+		{
+			if (oo::EntityByNameRowNamed(name) != nullptr)  continue;
+			const OOEntityObjectName *row = oo::EntityObjectNameNamed(name);
+			SEL selector = OOSelectorFromName(name.c_str());
+			for (const Sample &sample : Samples())
+			{
+				const bool answered = class_getInstanceMethod(object_getClass(sample.object), selector) != nullptr && [sample.object respondsToSelector:selector];
+				const bool tabled = row != nullptr && (row->answers == nullptr || row->answers(sample.entity));
+				if (answered != tabled)  different += " " + name + "/" + sample.kind;
+			}
+		}
+		OO_CHECK_EQ(different, std::string());
+		OO_CHECK(oo::EntityObjectNames().size() > 150);
+	}
+}
+
+
+// A name outside the by-name table is answered without the object (bead oo-9ht.39.9): (a) a method
+// whose signature the call cannot use is answered and logged; (b) a root-class or lifetime method
+// is answered and logged, never called; a facade row's method is its body; (c) any other name does
+// not respond. The texts are OOCallByName's, for the class of a C++ entity's object (Entity).
+OO_TEST(objectNamesAnsweredWithoutTheObject)
+{
+	@autoreleasepool
+	{
+		oo::log::logger().setInitialized(true);
+		oo::log::logger().setSink(&Capture);
+		const Sample &ship = Samples()[0];
+		const Sample &waypoint = Samples()[6];
+
+		// (a) the facade's own method with an argument, and a facade row's struct result
+		gLog.clear();
+		OO_CHECK(oo::EntityRespondsToName(ship.entity, "setOwner:"));
+		OO_CHECK(oo::CallEntityByName(ship.entity, "setOwner:", std::string("x")).isNull());
+		OO_CHECK(oo::CallEntityByName(ship.entity, "position").isNull());
+		OO_CHECK_EQ(LogLinesContaining("-[Entity setOwner:] has no signature a by-name call can use (type encoding v24@0:8@16)."), 1);
+		OO_CHECK_EQ(LogLinesContaining("-[Entity position] has no signature a by-name call can use (type encoding {HPVector=ddd}16@0:8)."), 1);
+
+		// (b) answered, logged, never called: the entity is not released
+		gLog.clear();
+		const auto references = ship.entity->retainCount();
+		for (const char *name : { "release", "autorelease", "dealloc", "retain", "init", "weakRetain", "hash" })
+		{
+			OO_CHECK(oo::EntityRespondsToName(ship.entity, name));
+			OO_CHECK(oo::CallEntityByName(ship.entity, name).isNull());
+		}
+		OO_CHECK_EQ(ship.entity->retainCount(), references);
+		OO_CHECK_EQ(LogLinesContaining("-[Entity release] has no signature a by-name call can use (type encoding Vv16@0:8)."), 1);
+		OO_CHECK_EQ(LogLinesContaining("-[Entity dealloc] has no signature a by-name call can use"), 1);
+		OO_CHECK_EQ(LogLinesContaining("has no signature a by-name call can use"), 7);
+
+		// a facade row's method with no argument is its body (nothing logged); with an argument it is logged
+		gLog.clear();
+		OO_CHECK(oo::CallEntityByName(ship.entity, "isShip").isNull());
+		OO_CHECK(oo::CallEntityByName(waypoint.entity, "isBeacon").isNull());
+		OO_CHECK(gLog.empty());
+		OO_CHECK(oo::CallEntityByName(ship.entity, "isShip", std::string("x")).isNull());
+		OO_CHECK_EQ(LogLinesContaining("-[Entity isShip] has no signature a by-name call can use (type encoding c16@0:8)."), 1);
+		OO_CHECK_EQ(gLog.size(), size_t(1));
+
+		// (c) any other name, a beacon's name for an entity that is no beacon's part, and the JS glue the
+		// facade no longer answered: does not respond
+		gLog.clear();
+		OO_CHECK(!oo::EntityRespondsToName(ship.entity, "noSuchMethod"));
+		OO_CHECK(oo::CallEntityByName(ship.entity, "noSuchMethod").isNull());
+		OO_CHECK(oo::CallEntityByName(ship.entity, "deleteJSSelf").isNull());
+		OO_CHECK(oo::CallEntityByName(waypoint.entity, "isHulk").isNull());
+		OO_CHECK_EQ(LogLinesContaining("Entity does not respond to noSuchMethod."), 1);
+		OO_CHECK_EQ(LogLinesContaining("Entity does not respond to deleteJSSelf."), 1);
+		OO_CHECK_EQ(LogLinesContaining("Entity does not respond to isHulk."), 1);
+		oo::log::logger().setSink(nullptr);
 	}
 }
 

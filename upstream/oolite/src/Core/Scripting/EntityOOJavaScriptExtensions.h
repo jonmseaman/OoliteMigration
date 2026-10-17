@@ -7,10 +7,10 @@ JavaScript support methods for entities.
 C++20 since bead oo-g223 (proposed ADR-0056, amendments oo-ppc and oo-ykoy): the bodies of the
 categories Entity (OOJavaScriptExtensions) and ShipEntity (OOJavaScriptExtensions), which the
 engine and the bindings reach by selector, are the free functions below, one per method, named
-after the class the category extends and the selector's first keyword. Since bead oo-9ht.128 the
-category Entity (OOJavaScriptExtensions) is the root's facade's (Entity+ObjCBridge.h/.mm, moved
-unchanged from EntityOOJavaScriptExtensions+ObjCBridge.h/.mm, which it deleted); ShipEntity's
-went with the ship's facade (bead oo-9ht.144) and PlayerEntity's with the player's (oo-9ht.177).
+after the class the category extends and the selector's first keyword. The category Entity
+(OOJavaScriptExtensions) was the root's facade's from bead oo-9ht.128 and is deleted since bead
+oo-9ht.39.8.9 (the engine asks the C++ entity, below); ShipEntity's went with the ship's facade
+(bead oo-9ht.144) and PlayerEntity's with the player's (oo-9ht.177).
 Since bead oo-9ht.39.3 (ADR-0056 amendment oo-9ht.39.3) an entity's JS object holds the C++ entity
 (an OOJSEntityHolder, OOJSEntity.h, in its private slot), and the functions that made and dropped
 it take the C++ entity.
@@ -43,7 +43,7 @@ class ShipEntity;	// C++ since bead oo-9ht.144
 
 
 // Entity (OOJavaScriptExtensions). Since bead oo-9ht.39.3 the JS object's functions take the C++
-// entity (cxx::Entity's JS glue members call them; the root facade's selectors forward to those).
+// entity (cxx::Entity's JS glue members call them; the engine asks those members, bead oo-9ht.39.8.9).
 bool EntityJSIsVisibleToScripts(void);
 std::optional<std::string> EntityJSClassName(void);
 ooscript::Value EntityJSValueInContext(cxx::Entity *entity, ooscript::Context context);
