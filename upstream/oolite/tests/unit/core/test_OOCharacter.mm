@@ -32,40 +32,42 @@
 	has government s % 8; even systems are inhabited by " Human Colonials " (padded, capitalised,
 	so trimming and lowercasing show), odd ones by "Furry Felines", and system 9 by nobody.
 */
-@interface Universe: OOObject
-- (const oo::PList *) cxx_descriptions;
-- (oo::PList) cxx_generateSystemData:(OOSystemID)s;
-- (std::optional<std::string>) cxx_getSystemInhabitants:(OOSystemID)sys plural:(BOOL)plural;
-- (OOSystemID) cxx_findSystemFromName:(const std::string &)sysName;
-@end
+#import "UniverseStandIn.h"
 
-@implementation Universe
-
-- (const oo::PList *) cxx_descriptions
+// The universe as the code under test sees it: a stand-in for the C++ class (bead oo-ql9rn deleted
+// the Objective-C facade the test's Objective-C stand-in stood in for), with the header's names and signatures.
+// It answers virtual members, so it has the game's vtable (UniverseStandIn.h) and StandInUniverse overrides them.
+class Universe : public oo::RefCounted
 {
-	static const oo::PList *descriptions = new oo::PList(oo::PList::Dict{});
-	return descriptions;
-}
+public:
+	OO_UNIVERSE_STAND_IN_VIRTUAL_MEMBERS
 
-- (oo::PList) cxx_generateSystemData:(OOSystemID)s
+	oo::PList generateSystemData(OOSystemID);
+	std::optional<std::string> getSystemInhabitants(OOSystemID, bool);
+};
+
+class StandInUniverse : public Universe
+{
+public:
+	const oo::PList *descriptions() override
+	{
+		static const oo::PList *descriptions = new oo::PList(oo::PList::Dict{});
+		return descriptions;
+	}
+	OOSystemID findSystemFromName(const std::string &sysName) override	{ return (sysName == "Lave") ? 7 : -1; }
+};
+
+oo::PList Universe::generateSystemData(OOSystemID s)
 {
 	oo::PList::Dict data{ { "government", oo::PList(s % 8) } };
 	if (s != 200)  data.emplace("name", oo::PList("System " + std::to_string(s)));
 	return oo::PList(std::move(data));
 }
-
-- (std::optional<std::string>) cxx_getSystemInhabitants:(OOSystemID)sys plural:(BOOL)plural
+std::optional<std::string> Universe::getSystemInhabitants(OOSystemID sys, bool plural)
 {
 	if (sys == 9)  return std::nullopt;
 	return (sys % 2 == 0) ? " Human Colonials " : "Furry Felines";
 }
-
-- (OOSystemID) cxx_findSystemFromName:(const std::string &)sysName
-{
-	return (sysName == "Lave") ? 7 : -1;
-}
-
-@end
 
 Universe *gSharedUniverse = nil;
 
@@ -138,7 +140,7 @@ void Reseed()
 
 void Fake()
 {
-	if (gSharedUniverse == nil)  gSharedUniverse = [[Universe alloc] init];
+	if (gSharedUniverse == nil)  gSharedUniverse = new StandInUniverse();
 	Reseed();
 }
 

@@ -35,13 +35,16 @@
 static OOSystemID gCurrentSystem = 7;
 static OOGalaxyID gGalaxy = 0;
 
-@interface Universe: OOObject
-- (OOSystemID) currentSystemID;
-@end
+// The universe as the code under test sees it: a stand-in for the C++ class (bead oo-ql9rn deleted
+// the Objective-C facade this stood in for), with the header's names and signatures.
+class Universe
+{
+public:
+	OOSystemID currentSystemID();
+};
 
-@implementation Universe
-- (OOSystemID) currentSystemID  { return gCurrentSystem; }
-@end
+OOSystemID Universe::currentSystemID()	{ return gCurrentSystem; }
+
 
 Universe *gSharedUniverse = nil;
 
@@ -96,7 +99,7 @@ namespace {
 
 void Fake()
 {
-	if (gSharedUniverse == nil)  gSharedUniverse = [[Universe alloc] init];
+	if (gSharedUniverse == nil)  gSharedUniverse = new Universe();
 	if (gOOPlayer == nullptr)  gOOPlayer = new PlayerEntity;	// never deleted
 	gCurrentSystem = 7;
 	gGalaxy = 0;

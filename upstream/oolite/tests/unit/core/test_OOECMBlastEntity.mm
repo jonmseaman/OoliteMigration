@@ -39,36 +39,25 @@ extern Universe *gSharedUniverse;
 
 
 // UNIVERSE: never initialised; records what is removed and what is searched for.
-@interface TestUniverse: Universe
+class TestUniverse : public Universe
 {
-@public
-	Entity					*_removed;
-	std::vector<double>		*_ranges;
-	Entity					*_searchedFrom;
-}
-@end
+public:
+	Entity					*_removed = {};
+	std::vector<double>		*_ranges = {};
+	Entity					*_searchedFrom = {};
 
-
-@implementation TestUniverse
-
-- (BOOL) removeEntity:(Entity *)entity
-{
-	_removed = entity;
-	return YES;
-}
-
-
-- (std::vector<oo::ObjCRef<Entity *>>) cxx_findEntitiesMatchingPredicate:(EntityFilterPredicate)predicate
-										 parameter:(void *)parameter
-										   inRange:(double)range
-										  ofEntity:(Entity *)entity
-{
-	_ranges->push_back(range);
-	_searchedFrom = entity;
-	return {};
-}
-
-@end
+	bool removeEntity(::Entity *entity) override
+	{
+		_removed = entity;
+		return YES;
+	}
+	std::vector<oo::ObjCRef<::Entity *>> findEntitiesMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, ::Entity *entity) override
+	{
+		_ranges->push_back(range);
+		_searchedFrom = entity;
+		return {};
+	}
+};
 
 
 extern ooscript::Context gOOJSMainThreadContext;	// the engine's (OOJavaScriptEngine.mm)
@@ -84,8 +73,7 @@ void SetUp()
 {
 	if (sUniverse == nil)
 	{
-		sUniverse = (TestUniverse *)class_createInstance([TestUniverse class], 0);	// never released
-		sUniverse->_cxxUniverse = oo::makeRef<cxx::Universe>(sUniverse);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
+		sUniverse = new TestUniverse();	// never released
 	}
 	sRanges.clear();
 	sUniverse->_ranges = &sRanges;

@@ -93,13 +93,19 @@ T *NewTestPlayer()
 
 
 // UNIVERSE: never initialised; answers the system and the system manager, and records removals.
-@interface TestUniverse: Universe
+class TestUniverse : public Universe
 {
-@public
-	OOSystemID		_system;
-	Entity			*_removed;
-}
-@end
+public:
+	OOSystemID &_system = systemID;	// the universe's own state, which its getter answers (bead oo-ql9rn)
+	Entity			*_removed = {};
+
+	std::optional<std::string> getSystemName(OOSystemID sys, OOGalaxyID /*gnum*/) override	{ return "System " + std::to_string(sys); }	// getSystemName(sys) asks it
+	bool removeEntity(::Entity *entity) override
+	{
+		_removed = entity;
+		return YES;
+	}
+};
 
 
 extern ooscript::Context gOOJSMainThreadContext;	// the engine's (OOJavaScriptEngine.mm)
@@ -112,32 +118,6 @@ OOSystemDescriptionManager *sManager = nullptr;
 }
 
 
-@implementation TestUniverse
-
-- (OOTimeAbsolute) getTime								{ return 0; }
-- (OOSystemID) currentSystemID							{ return _system; }
-- (OOSunEntity *) sun									{ return nil; }
-- (OOSystemDescriptionManager *) systemManager			{ return sManager; }
-- (std::optional<std::string>) cxx_getSystemName:(OOSystemID)sys	{ return "System " + std::to_string(sys); }
-
-
-// The game's clock format (descriptions.plist), for the description's arrival time.
-- (std::optional<std::string>) cxx_descriptionForKey:(const std::string &)key
-{
-	if (key == "clock-format")  return "%07d:%02d:%02d:%02d";
-	return std::nullopt;
-}
-
-
-- (BOOL) removeEntity:(Entity *)entity
-{
-	_removed = entity;
-	return YES;
-}
-
-@end
-
-
 namespace {
 
 TestUniverse *sUniverse = nil;
@@ -148,8 +128,7 @@ void SetUp()
 {
 	if (sUniverse == nil)
 	{
-		sUniverse = (TestUniverse *)class_createInstance([TestUniverse class], 0);	// never released
-		sUniverse->_cxxUniverse = oo::makeRef<cxx::Universe>(sUniverse);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
+		sUniverse = new TestUniverse();	// never released
 		sPlayer = NewTestPlayer<TestPlayer>();
 		// Systems 7 at (10, 20) and 9 at (13, 24) of galaxy 0: 5 light-year units apart, 2.0 LY.
 		oo::Ref<OOSystemDescriptionManager> manager = oo::makeRef<OOSystemDescriptionManager>();
@@ -157,6 +136,10 @@ void SetUp()
 		manager->setProperties(oo::PList(oo::PList::Dict{ { "coordinates", oo::PList("13 24") } }), "0 9");
 		manager->buildRouteCache();	// fills the coordinates cache
 		sManager = manager.leakRef();	// never released
+		// What -systemManager and -cxx_descriptionForKey: answered: the universe's own manager and
+		// descriptions (the game's clock format, for the description's arrival time; bead oo-ql9rn).
+		sUniverse->systemManager = oo::Ref<OOSystemDescriptionManager>(sManager);
+		sUniverse->_descriptions = oo::PList(oo::PList::Dict{ { "clock-format", oo::PList("%07d:%02d:%02d:%02d") } });
 	}
 	sUniverse->_system = 7;
 	sUniverse->_removed = nil;

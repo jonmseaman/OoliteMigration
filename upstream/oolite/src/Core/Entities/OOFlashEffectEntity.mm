@@ -124,7 +124,7 @@ void OOFlashEffectEntity::update(OOTimeDelta delta_t)
 	_colorComponents[3] = _alpha * ((lifeTime < tf) ? (lifeTime / tf) : (_duration - lifeTime) / tf1);
 	
 	// Disappear as necessary.
-	if (lifeTime > _duration)  [UNIVERSE removeEntity:oo::ToObjC(this)];
+	if (lifeTime > _duration)  { if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(oo::ToObjC(this)); }
 }
 
 

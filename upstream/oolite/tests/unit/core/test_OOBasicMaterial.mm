@@ -53,22 +53,31 @@ GLint OOOpenGLExtensionManager::textureUnitCount()										{ std::abort(); }
 /*	UNIVERSE is gSharedUniverse. The material asks it -reducedDetail (-permitSpecular), and the
 	specifier asks it -useShaders; a stand-in answers both (amendment oo-vt0o item 4).
 */
-@class Universe;
+class Universe;
 Universe *gSharedUniverse = nil;
 
-@interface TestUniverse: OOObject
-{
-@public
-	BOOL	_reducedDetail;
-}
-- (BOOL) reducedDetail;
-- (BOOL) useShaders;
-@end
+#import "UniverseStandIn.h"
 
-@implementation TestUniverse
-- (BOOL) reducedDetail	{ return _reducedDetail; }
-- (BOOL) useShaders		{ return NO; }
-@end
+// The universe as the code under test sees it: a stand-in for the C++ class (bead oo-ql9rn deleted
+// the Objective-C facade the test's TestUniverse stood in for), with the header's names and signatures.
+// It answers virtual members, so it has the game's vtable (UniverseStandIn.h) and TestUniverse overrides them.
+class Universe : public oo::RefCounted
+{
+public:
+	OO_UNIVERSE_STAND_IN_VIRTUAL_MEMBERS
+
+	BOOL	_reducedDetail;
+
+	bool useShaders();
+};
+
+class TestUniverse : public Universe
+{
+public:
+	bool reducedDetail() override	{ return _reducedDetail; }
+};
+
+bool Universe::useShaders()	{ return NO; }
 
 
 // A C++ subclass, as OOSingleTextureMaterial is: it denies specular, and asks the base class.
@@ -230,9 +239,9 @@ OO_TEST(permitSpecular)
 		const oo::PList config = Config({ { "specular_exponent", oo::PList(std::int64_t(20)) } });
 
 		// Reduced detail denies specular: the exponent and colour are not applied.
-		TestUniverse *universe = [[[TestUniverse alloc] init] autorelease];
+		TestUniverse *universe = new TestUniverse();
 		universe->_reducedDetail = YES;
-		gSharedUniverse = (Universe *)universe;
+		gSharedUniverse = universe;
 		const oo::Ref<OOBasicMaterial> m = OOBasicMaterial::materialWithName(std::string("Reduced"), config);
 		OO_CHECK(!m->permitSpecular());
 		OO_CHECK(m->shininess() == 0 && Same(Specular(m.get()).v, { 0, 0, 0, 1 }));

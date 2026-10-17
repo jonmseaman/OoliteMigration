@@ -60,7 +60,7 @@ void OOCrosshairs::render()
 		OOGL(glDisable(GL_LIGHTING));
 		OOGL(glDisable(GL_TEXTURE_2D));
 		OOGLPushModelView();
-		OOGLTranslateModelView(make_vector(0.0, 0.0, [[UNIVERSE gameView] display_z]));
+		OOGLTranslateModelView(make_vector(0.0, 0.0, [(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) display_z]));
 		
 		OOGL(glVertexPointer(2, GL_FLOAT, sizeof (GLfloat) * 6, _data));
 		OOGL(glColorPointer(4, GL_FLOAT, sizeof (GLfloat) * 6, _data + 2));

@@ -52,21 +52,14 @@ extern Universe *gSharedUniverse;
 
 
 // UNIVERSE: never initialised; answers the detail setting and the game view.
-@interface TestUniverse: Universe
+class TestUniverse : public Universe
 {
-@public
-	BOOL		_reduced;
-	TestView	*_view;
-}
-@end
+public:
+	BOOL _reduced = {};
+	TestView	*_view = {};
 
-
-@implementation TestUniverse
-
-- (BOOL) reducedDetail				{ return _reduced; }
-- (MyOpenGLView *) gameView			{ return (MyOpenGLView *)_view; }
-
-@end
+	bool reducedDetail() override	{ return _reduced; }
+};
 
 
 namespace {
@@ -78,9 +71,9 @@ void SetUp()
 {
 	if (sUniverse == nil)
 	{
-		sUniverse = (TestUniverse *)class_createInstance([TestUniverse class], 0);	// never released
-		sUniverse->_cxxUniverse = oo::makeRef<cxx::Universe>(sUniverse);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
+		sUniverse = new TestUniverse();	// never released
 		sUniverse->_view = [[TestView alloc] init];
+		sUniverse->gameView = (MyOpenGLView *)sUniverse->_view;	// what -gameView answered (bead oo-ql9rn)
 	}
 	sUniverse->_reduced = NO;
 	sUniverse->_view->_size = NSMakeSize(800, 600);

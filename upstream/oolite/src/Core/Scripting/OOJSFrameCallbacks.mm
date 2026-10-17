@@ -164,7 +164,7 @@ void OOJSFrameCallbacksInvoke(OOTimeDelta inDeltaT)
 	
 	if (sCount != 0)
 	{
-		const OOTimeDelta	delta = inDeltaT * [UNIVERSE timeAccelerationFactor];
+		const OOTimeDelta	delta = inDeltaT * (UNIVERSE != nullptr ? UNIVERSE->getTimeAccelerationFactor() : 0.0);
 		ooscript::Context context = OOJSAcquireContext();
 		ooscript::Value				deltaVal, result;
 		NSUInteger			i;

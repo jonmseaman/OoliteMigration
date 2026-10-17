@@ -5,7 +5,7 @@ MyOpenGLView+ObjCBridge.h
 TRANSITIONAL (proposed ADR-0056, bead oo-6rb6): the Objective-C MyOpenGLView, a facade over the C++
 cxx::MyOpenGLView (MyOpenGLView.h), for the code that is not converted yet: the game controller,
 which makes the view with +alloc/-init and drives the splash screen, the universe and every caller
-of [UNIVERSE gameView], and the Input category (MyOpenGLView+Input.mm), which is still an
+of (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr), and the Input category (MyOpenGLView+Input.mm), which is still an
 Objective-C category of this facade and reaches the view's state through oo::ToCxx(self) (ADR-0056
 amendment oo-3bgz). Its interface is the one MyOpenGLView.h declared before the conversion, copied
 exactly (same selectors, same types), less the ivars, which are the C++ class's members. Each method

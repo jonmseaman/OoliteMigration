@@ -55,16 +55,22 @@ public:
 	BOOL _throwCxx = {};
 };
 
-@interface Universe: OOObject
+// The universe as the code under test sees it: a stand-in for the C++ class (bead oo-ql9rn deleted
+// the Objective-C facade this stood in for), with the header's names and signatures.
+class Universe
 {
-@public
+public:
 	oo::Ref<OOCommodities> _commodities;
 	oo::Ref<OOCommodityMarket> _market;
-}
-- (OOCommodities *) commodities;
-- (OOCommodityMarket *) commodityMarket;
-- (OOSystemID) currentSystemID;
-@end
+
+	::OOCommodities *getCommodities();
+	::OOCommodityMarket *getCommodityMarket();
+	OOSystemID currentSystemID();
+};
+
+::OOCommodities *Universe::getCommodities()	{ return _commodities.get(); }
+::OOCommodityMarket *Universe::getCommodityMarket()	{ return _market.get(); }
+OOSystemID Universe::currentSystemID()	{ return 7; }
 
 #import "ResourceManager.h"
 
@@ -143,13 +149,6 @@ std::optional<std::string> PlayerEntity::getSpecialCargo()  { return _specialCar
 ::OOScript * PlayerEntity::commodityScriptNamed(const std::optional<std::string> &script)  { (void)script; return nil; }
 
 
-@implementation Universe
-
-- (OOCommodities *) commodities  { return _commodities.get(); }
-- (OOCommodityMarket *) commodityMarket  { return _market.get(); }
-- (OOSystemID) currentSystemID  { return 7; }
-
-@end
 
 
 // ResourceManager is C++ since bead oo-9ht.150 deleted its Objective-C facade: C++ definitions of the
@@ -378,7 +377,7 @@ void SetUpContext()
 	sGlobal = ooscript::getGlobalObject(sContext);
 	ooscript::initStandardClasses(sContext, sGlobal);
 
-	sUniverse = [[Universe alloc] init];	// kept for the life of the test
+	sUniverse = new Universe();	// kept for the life of the test
 	gSharedUniverse = sUniverse;
 	sPlayer = new PlayerEntity;
 	gOOPlayer = sPlayer;

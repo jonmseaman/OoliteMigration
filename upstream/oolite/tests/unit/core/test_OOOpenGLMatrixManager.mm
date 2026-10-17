@@ -54,7 +54,7 @@ OOShaderSetting cxx_OOShaderSettingFromString(const std::string &string)
 // UNIVERSE is gSharedUniverse; its -gameView answers an OOTestView, which stands for the game
 // view's facade. The view is C++ (MyOpenGLView): the facade crosses to sView, whose manager the
 // OOGL* functions use. The C++ view's members they reach are stubbed here.
-@class Universe;
+class Universe;
 Universe *gSharedUniverse = nil;
 
 @interface OOTestView: OOObject
@@ -73,17 +73,28 @@ cxx::MyOpenGLView::~MyOpenGLView()  {}
 OOOpenGLMatrixManager *cxx::MyOpenGLView::getOpenGLMatrixManager()  { return matrixManager.get(); }
 cxx::MyOpenGLView *oo::ToCxx(MyOpenGLView *view)  { return (view != nil) ? sView.get() : nullptr; }
 
-@interface OOTestUniverse: OOObject
-{
-@public
-	OOTestView *view;
-}
-- (OOTestView *) gameView;
-@end
+#import "UniverseStandIn.h"
 
-@implementation OOTestUniverse
-- (OOTestView *) gameView  { return view; }
-@end
+// The universe as the code under test sees it: a stand-in for the C++ class (bead oo-ql9rn deleted
+// the Objective-C facade the test's OOTestUniverse stood in for), with the header's names and signatures.
+// It answers virtual members, so it has the game's vtable (UniverseStandIn.h) and OOTestUniverse overrides them.
+class Universe : public oo::RefCounted
+{
+public:
+	OO_UNIVERSE_STAND_IN_VIRTUAL_MEMBERS
+
+	OOTestView *view;
+
+
+};
+
+class OOTestUniverse : public Universe
+{
+public:
+	::MyOpenGLView *getGameView() override	{ return (MyOpenGLView *)view; }	// what -gameView answered
+};
+
+
 
 
 // --- Helpers ------------------------------------------------------------------------------------
@@ -387,9 +398,9 @@ OO_TEST(openGLFunctionsUseTheGameViewsManager)
 		sView = oo::makeRef<cxx::MyOpenGLView>();
 		sView->matrixManager = manager;
 		OOTestView *view = [[[OOTestView alloc] init] autorelease];
-		OOTestUniverse *universe = [[[OOTestUniverse alloc] init] autorelease];
+		OOTestUniverse *universe = new OOTestUniverse();
 		universe->view = view;
-		gSharedUniverse = (Universe *)universe;
+		gSharedUniverse = universe;
 
 		OOGLResetModelView();
 		OOGLLoadModelView(kSample);

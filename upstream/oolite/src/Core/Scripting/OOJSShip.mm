@@ -1469,7 +1469,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			{
 				if (ship->isBeacon()) 
 				{
-					[UNIVERSE clearBeacon:(::Entity<OOBeaconEntity> *)oo::ToObjC(entity)];
+					if (UNIVERSE != nullptr)  UNIVERSE->clearBeacon((::Entity<OOBeaconEntity> *)oo::ToObjC(entity));
 					if ((PLAYER != nullptr ? (::Entity <OOBeaconEntity> *)PLAYER->nextBeacon() : (::Entity <OOBeaconEntity> *)nullptr) == oo::ToObjC(entity))
 					{
 						if (PLAYER != nullptr)  PLAYER->setCompassMode(COMPASS_MODE_PLANET);
@@ -1485,7 +1485,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 				else // Universe needs to update beacon lists in this case only
 				{
 					ship->setBeaconCode(sValue);
-					[UNIVERSE setNextBeacon:(::Entity<OOBeaconEntity> *)oo::ToObjC(entity)];
+					if (UNIVERSE != nullptr)  UNIVERSE->setNextBeacon((::Entity<OOBeaconEntity> *)oo::ToObjC(entity));
 				}
 			}
 			return true;
@@ -3250,7 +3250,7 @@ static bool ShipFindNearestStation(ooscript::Context context, ooscript::CallArgs
 	double				sdist, distance = 1E32;
 	
 	ShipEntity			*se = nullptr;
-	for (const auto &stationRef : [UNIVERSE cxx_stations])
+	for (const auto &stationRef : (UNIVERSE != nullptr ? UNIVERSE->stations() : std::vector<oo::ObjCRef<::Entity *>>()))
 	{
 		se = oo::ToShip(stationRef.get());
 		sdist = HPdistance2(ship->getPosition(), (se != nullptr ? se->getPosition() : kZeroHPVector));	// (a message to nil answered zero)
@@ -3318,7 +3318,7 @@ static bool ShipSetCargo(ooscript::Context context, ooscript::CallArgs &oojsArgs
 		return false;
 	}
 	
-	OOCommodities *commodities = [UNIVERSE commodities];	// null: no good is defined, as a message to nil
+	OOCommodities *commodities = (UNIVERSE != nullptr ? UNIVERSE->getCommodities() : nullptr);	// null: no good is defined, as a message to nil
 	if (commodities != nullptr && commodities->goodDefined(*commodity))
 	{
 		ship->setCommodityForPod(commodity, count);
@@ -3627,10 +3627,10 @@ bool RemoveOrExplodeShip(ooscript::Context context, ooscript::CallArgs &oojsArgs
 		}
 	}
 	
-	if (thisEnt == oo::ToShip(oo::ToObjC([UNIVERSE station])))
+	if (thisEnt == oo::ToShip(oo::ToObjC((UNIVERSE != nullptr ? UNIVERSE->station() : nullptr))))
 	{
 		// Allow exploding of main station (e.g. nova mission)
-		[UNIVERSE unMagicMainStation];
+		if (UNIVERSE != nullptr)  UNIVERSE->unMagicMainStation();
 	}
 	
 	if (EXPECT_NOT(ship->status() == STATUS_DOCKED))
@@ -4265,7 +4265,7 @@ static bool ShipCheckCourseToDestination(ooscript::Context context, ooscript::Ca
 	GET_THIS_SHIP(thisEnt);
 	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 
-	Entity *hazard = [UNIVERSE hazardOnRouteFromEntity:oo::ToObjC(thisEnt) toDistance:ship->desiredRange() fromPoint:ship->destination()];
+	Entity *hazard = (UNIVERSE != nullptr ? UNIVERSE->hazardOnRouteFromEntity(oo::ToObjC(thisEnt), ship->desiredRange(), ship->destination()) : nullptr);
 
 	OOJS_RETURN_OBJECT(hazard);
 
@@ -4281,7 +4281,7 @@ static bool ShipGetSafeCourseToDestination(ooscript::Context context, ooscript::
 	GET_THIS_SHIP(thisEnt);
 	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 
-	HPVector waypoint = [UNIVERSE getSafeVectorFromEntity:oo::ToObjC(thisEnt) toDistance:ship->desiredRange() fromPoint:ship->destination()];
+	HPVector waypoint = (UNIVERSE != nullptr ? UNIVERSE->getSafeVectorFromEntity(oo::ToObjC(thisEnt), ship->desiredRange(), ship->destination()) : HPVector{});
 
 	OOJS_RETURN_HPVECTOR(waypoint);
 
@@ -4361,7 +4361,7 @@ static bool ShipAdjustCargo(ooscript::Context context, ooscript::CallArgs &oojsA
 
 	if (adjustment > 0)
 	{
-		ok = ship->addCargo([UNIVERSE cxx_getContainersOfCommodity:commodity.value_or("") :adjustment]); // non-reified templates
+		ok = ship->addCargo((UNIVERSE != nullptr ? UNIVERSE->getContainersOfCommodity(commodity.value_or(""), adjustment) : std::vector<oo::ObjCRef<::Entity *>>())); // non-reified templates
 	}
 	else if (adjustment < 0)
 	{
@@ -4613,7 +4613,7 @@ static bool ShipStaticRoleIsInCategory(ooscript::Context context, ooscript::Call
 		const std::optional<std::string> role = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 		const std::optional<std::string> category = cxx_OOStringFromJSValue(context, OOJS_ARGV[1]);
 
-		OOJS_RETURN_BOOL(role.has_value() && category.has_value() && [UNIVERSE cxx_role:*role isInCategory:*category]);	// a nil role or category matched nothing
+		OOJS_RETURN_BOOL(role.has_value() && category.has_value() && (UNIVERSE != nullptr ? UNIVERSE->role(*role, *category) : false));	// a nil role or category matched nothing
 	}
 	else
 	{

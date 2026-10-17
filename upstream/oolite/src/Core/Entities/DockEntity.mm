@@ -384,7 +384,7 @@ NSUInteger DockEntity::pruneAndCountShipsOnApproach()
 	// Enumerate over a snapshot of the keys because we mutate the map.
 	for (unsigned short idObj : ShipIDsIn(shipsOnApproach))
 	{
-		::ShipEntity *ship = oo::ToShip([UNIVERSE entityForUniversalID:idObj]);
+		::ShipEntity *ship = oo::ToShip((UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(idObj) : id{}));
 		/* Remove ships from the approach queue if they are dead, or
 		 * are more than 25.6km from the dock.
 		 */
@@ -401,9 +401,9 @@ NSUInteger DockEntity::pruneAndCountShipsOnApproach()
 	
 	if (shipsOnApproach.empty())
 	{
-		if (last_launch_time < [UNIVERSE getTime])
+		if (last_launch_time < (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0))
 		{
-			last_launch_time = [UNIVERSE getTime];
+			last_launch_time = (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0);
 		}
 	}
 	
@@ -419,7 +419,7 @@ void DockEntity::abortAllDockings()
 	
 	for (unsigned short idObj : ShipIDsIn(shipsOnApproach))
 	{
-		::ShipEntity *ship = oo::ToShip([UNIVERSE entityForUniversalID:idObj]);
+		::ShipEntity *ship = oo::ToShip((UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(idObj) : id{}));
 		if ((ship != nullptr ? ship->getIsShip() : false))
 		{
 			if (ship != nullptr)  ship->sendAIMessage("DOCKING_ABORTED");
@@ -454,7 +454,7 @@ void DockEntity::abortAllDockings()
 	// mark docking queue flight pattern as clear
 	clearAllIdLocks();
 
-	last_launch_time = [UNIVERSE getTime] + playerExtraTime;
+	last_launch_time = (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0) + playerExtraTime;
 }
 
 
@@ -462,7 +462,7 @@ void DockEntity::autoDockShipsInQueue(std::map<unsigned short, std::vector<oo::P
 {	
 	for (unsigned short idObj : ShipIDsIn(queue))
 	{
-		::ShipEntity *ship = oo::ToShip([UNIVERSE entityForUniversalID:idObj]);
+		::ShipEntity *ship = oo::ToShip((UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(idObj) : id{}));
 		if ((ship != nullptr ? ship->getIsShip() : false))
 		{
 			pullInShipIfPermitted(ship);
@@ -681,7 +681,7 @@ oo::PList DockEntity::dockingInstructionsForShip(::ShipEntity *ship)
 	if (next.find("hold_message_given") == nullptr)
 	{
 		// COMM-CHATTER
-		[UNIVERSE clearPreviousMessage];
+		if (UNIVERSE != nullptr)  UNIVERSE->clearPreviousMessage();
 		sendExpandedMessage("[station-hold-position]", ship);
 		auto stack = shipsOnApproach.find(shipID);
 		if (stack != shipsOnApproach.end() && stack->second.size() > 1)
@@ -803,7 +803,7 @@ void DockEntity::addShipToShipsOnApproach(::ShipEntity *ship)
 		
 		if (i == corridor_final_approach)
 		{
-			if (station == [UNIVERSE station])
+			if (station == (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr))
 			{
 				nextCoords["comms_message"] = oo::PList("[station-begin-final-aproach]");
 			}
@@ -820,7 +820,7 @@ void DockEntity::addShipToShipsOnApproach(::ShipEntity *ship)
 	
 	
 	// COMM-CHATTER
-	if (station == [UNIVERSE station])
+	if (station == (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr))
 	{
 		if (station != nullptr)  station->sendExpandedMessage("[station-welcome]", ship);
 	}
@@ -837,7 +837,7 @@ void DockEntity::noteDockingForShip(::ShipEntity *ship)
 	abortDockingForShip(ship);
 	
 	// avoid clashes with outgoing ships
-	last_launch_time = [UNIVERSE getTime];
+	last_launch_time = (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0);
 
 }
 
@@ -996,7 +996,7 @@ bool DockEntity::shipIsInDockingCorridor(::ShipEntity *ship)
 			{
 				// player is in docking corridor and facing dock
 				// and within 3km
-				[UNIVERSE cxx_addMessage:OO_DESC("oolite-station-docking-requires-clearance") forCount:3];
+				if (UNIVERSE != nullptr)  UNIVERSE->addMessage(OO_DESC("oolite-station-docking-requires-clearance"), 3);
 			}
 		}
 	}
@@ -1012,7 +1012,7 @@ bool DockEntity::shipIsInDockingCorridor(::ShipEntity *ship)
 		{ // launch-only dock: will collide!
 			if (arbb.min.z < dd)
 			{
-				if (ship != nullptr)  ship->takeScrapeDamage(5 * [UNIVERSE getTimeDelta]*(ship != nullptr ? ship->getFlightSpeed() : 0.0f), oo::ToObjC(station));
+				if (ship != nullptr)  ship->takeScrapeDamage(5 * (UNIVERSE != nullptr ? UNIVERSE->getTimeDelta() : 0.0)*(ship != nullptr ? ship->getFlightSpeed() : 0.0f), oo::ToObjC(station));
 				// and bounce
 				HPVector rel = HPvector_subtract((ship != nullptr ? ship->getPosition() : HPVector{}),port_pos);
 				rel = HPvector_multiply_scalar(HPvector_normal(rel),(ship != nullptr ? ship->getFlightSpeed() : 0.0f)*0.4);
@@ -1058,7 +1058,7 @@ bool DockEntity::shipIsInDockingCorridor(::ShipEntity *ship)
 			GLfloat correction_factor = -arbb.min.z / (arbb.max.z - arbb.min.z);	// proportion of ship inside
 		
 			// damage the ship according to velocity - don't send collision messages to AIs to avoid problems.
-			if (ship != nullptr)  ship->takeScrapeDamage(5 * [UNIVERSE getTimeDelta]*(ship != nullptr ? ship->getFlightSpeed() : 0.0f), oo::ToObjC(station));
+			if (ship != nullptr)  ship->takeScrapeDamage(5 * (UNIVERSE != nullptr ? UNIVERSE->getTimeDelta() : 0.0)*(ship != nullptr ? ship->getFlightSpeed() : 0.0f), oo::ToObjC(station));
 			if (station != nullptr)  station->doScriptEvent(OOJSID("shipCollided"), oo::ToObjC(ship)); // no COLLISION message to station AI, carriers would move away!
 			if (ship != nullptr)  ship->doScriptEvent(OOJSID("shipCollided"), oo::ToObjC(station)); // no COLLISION message to ship AI, dockingAI.plist would abort.
 			
@@ -1153,10 +1153,10 @@ void DockEntity::launchShip(::ShipEntity *ship)
 	if (ship != nullptr)  ship->setRoll((station != nullptr ? station->getFlightRoll() : 0.0f));
 	if (ship != nullptr)  ship->setPitch(0.0);
 	if (ship != nullptr)  ship->setYaw(0.0);
-	[UNIVERSE addEntity:oo::ToObjC(ship)];
+	if (UNIVERSE != nullptr)  UNIVERSE->addEntity(oo::ToObjC(ship));
 	if (ship != nullptr)  ship->setStatus(STATUS_LAUNCHING);
 	if (ship != nullptr)  ship->setDesiredSpeed(launchSpeed); // must be set after initialising the AI to correct any speed set by AI
-	last_launch_time = [UNIVERSE getTime];
+	last_launch_time = (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0);
 	double delay = (port_corridor + 2 * port_dimensions.z)/launchSpeed; // pause until 2 portlengths outside of the station.
 	if (ship != nullptr)  ship->setLaunchDelay(delay);
 	[(ship != nullptr ? ship->getAI() : (::AI *)nullptr) setNextThinkTime:last_launch_time + delay]; // pause while launching
@@ -1211,7 +1211,7 @@ bool DockEntity::allowsLaunchingOf(::ShipEntity *ship)
 
 bool DockEntity::dockingCorridorIsEmpty()
 {
-	double unitime = [UNIVERSE getTime];
+	double unitime = (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0);
 	
 	if (unitime < last_launch_time + STATION_DELAY_BETWEEN_LAUNCHES)
 	{
@@ -1229,8 +1229,8 @@ bool DockEntity::dockingCorridorIsEmpty()
 
 	// check against all ships
 	BOOL			isEmpty = YES;
-	int				ent_count =		UNIVERSE->_cxxUniverse->n_entities;
-	cxx::Entity			**uni_entities =	UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
+	int				ent_count =		UNIVERSE->n_entities;
+	cxx::Entity			**uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
 	std::vector<::Entity *>	my_entities(ent_count);
 	int i;
 	int ship_count = 0;
@@ -1290,8 +1290,8 @@ void DockEntity::clearDockingCorridor()
 	// check against all ships
 	::StationEntity	*station = oo::ToStation(parentEntity());
 	BOOL			isClear = YES;
-	int				ent_count =			UNIVERSE->_cxxUniverse->n_entities;
-	cxx::Entity			**uni_entities =	UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
+	int				ent_count =			UNIVERSE->n_entities;
+	cxx::Entity			**uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
 	std::vector<::Entity *>	my_entities(ent_count);
 	int i;
 	int ship_count = 0;

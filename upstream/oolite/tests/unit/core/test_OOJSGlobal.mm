@@ -68,9 +68,16 @@ public:
 /*	The universe: time acceleration, mission text (whose lookup raises while _raise is set),
 	inhabitants, the view, the GUI, screen textures by key, the game view, pause and quit.
 */
-@interface Universe: OOObject
+#import "UniverseStandIn.h"
+
+// The universe as the code under test sees it: a stand-in for the C++ class (bead oo-ql9rn deleted
+// the Objective-C facade the test's Objective-C stand-in stood in for), with the header's names and signatures.
+// It answers virtual members, so it has the game's vtable (UniverseStandIn.h) and StandInUniverse overrides them.
+class Universe : public oo::RefCounted
 {
-@public
+public:
+	OO_UNIVERSE_STAND_IN_VIRTUAL_MEMBERS
+
 	double _timeAcceleration;
 	OOViewID _view;
 	GuiDisplayGen *_gui;
@@ -79,19 +86,24 @@ public:
 	int _quit;
 	BOOL _raise;
 	BOOL _throwCxx;
-}
-- (double) timeAccelerationFactor;
-- (void) setTimeAccelerationFactor:(double)newTimeAccelerationFactor;
-- (oo::PList) cxx_missiontext;
-- (std::optional<std::string>) cxx_getSystemInhabitants:(OOSystemID)sys plural:(BOOL)plural;
-- (OOViewID) viewDirection;
-- (GuiDisplayGen *) gui;
-- (oo::PList) cxx_screenTextureDescriptorForKey:(const std::string &)key;
-- (void) cxx_setScreenTextureDescriptorForKey:(const std::string &)key descriptor:(const oo::PList &)desc;
-- (MyOpenGLView *) gameView;
-- (void) pauseGame;
-- (void) quitGame;
-@end
+
+	double getTimeAccelerationFactor();
+	void setTimeAccelerationFactor(double);
+	void pauseGame();
+	void quitGame();
+	oo::PList getMissiontext();
+	std::optional<std::string> getSystemInhabitants(OOSystemID, bool);
+	oo::PList screenTextureDescriptorForKey(const std::string &);
+	void setScreenTextureDescriptorForKey(const std::string &, const oo::PList &);
+};
+
+class StandInUniverse : public Universe
+{
+public:
+	OOViewID getViewDirection() override	{ return _view; }
+	::GuiDisplayGen *getGui() override	{ return _gui; }
+	::MyOpenGLView *getGameView() override	{ return nil; }
+};
 
 // The GUI is C++ since bead oo-9ht.143 deleted its facade: the members OOJSGlobal.mm calls are
 // defined below (a C++ stand-in with the facade stand-in's answers).
@@ -152,17 +164,11 @@ bool PlayerEntity::setExtraGuiScreenKeys(OOGUIScreenID gui, ::OOJSGuiScreenKeyDe
 }
 
 
-@implementation Universe
-
-- (double) timeAccelerationFactor  { return _timeAcceleration; }
-- (void) setTimeAccelerationFactor:(double)newTimeAccelerationFactor  { _timeAcceleration = newTimeAccelerationFactor; }
-- (OOViewID) viewDirection  { return _view; }
-- (GuiDisplayGen *) gui  { return _gui; }
-- (MyOpenGLView *) gameView  { return nil; }
-- (void) pauseGame  { _paused++; }
-- (void) quitGame  { _quit++; }
-
-- (oo::PList) cxx_missiontext
+double Universe::getTimeAccelerationFactor()	{ return _timeAcceleration; }
+void Universe::setTimeAccelerationFactor(double newTimeAccelerationFactor)	{ _timeAcceleration = newTimeAccelerationFactor; }
+void Universe::pauseGame()	{ _paused++; }
+void Universe::quitGame()	{ _quit++; }
+oo::PList Universe::getMissiontext()
 {
 	if (_raise)  [OOException raise:OOInvalidArgumentException format:"missiontext %s", "boom"];
 	if (_throwCxx)  throw std::runtime_error("cxx boom");
@@ -171,26 +177,21 @@ bool PlayerEntity::setExtraGuiScreenKeys(OOGUIScreenID gui, ::OOJSGuiScreenKeyDe
 	text["number"] = oo::PList(5.0);
 	return oo::PList(std::move(text));
 }
-
-- (std::optional<std::string>) cxx_getSystemInhabitants:(OOSystemID)sys plural:(BOOL)plural
+std::optional<std::string> Universe::getSystemInhabitants(OOSystemID sys, bool plural)
 {
 	(void)sys;
 	return plural ? std::string("Furry Felines") : std::string("Furry Feline");
 }
-
-- (oo::PList) cxx_screenTextureDescriptorForKey:(const std::string &)key
+oo::PList Universe::screenTextureDescriptorForKey(const std::string &key)
 {
 	auto found = _screenTextures.find(key);
 	return found != _screenTextures.end() ? found->second : oo::PList();
 }
-
-- (void) cxx_setScreenTextureDescriptorForKey:(const std::string &)key descriptor:(const oo::PList &)desc
+void Universe::setScreenTextureDescriptorForKey(const std::string &key, const oo::PList &desc)
 {
 	if (desc.isNull())  _screenTextures.erase(key);
 	else  _screenTextures[key] = desc;
 }
-
-@end
 
 
 GuiDisplayGen::GuiDisplayGen() {}
@@ -553,7 +554,7 @@ void SetUpContext()
 	sPlayer->_galaxy = 3;
 	sPlayer->_screen = GUI_SCREEN_STATUS;
 	gOOPlayer = sPlayer;
-	sUniverse = [[Universe alloc] init];
+	sUniverse = new StandInUniverse();
 	sUniverse->_timeAcceleration = 1;
 	sUniverse->_view = VIEW_GUI_DISPLAY;
 	sGui = oo::makeRef<GuiDisplayGen>();	// kept for the life of the test

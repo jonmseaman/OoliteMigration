@@ -169,9 +169,16 @@ public:
 };
 
 
-@interface Universe: OOObject
+#import "UniverseStandIn.h"
+
+// The universe as the code under test sees it: a stand-in for the C++ class (bead oo-ql9rn deleted
+// the Objective-C facade the test's Objective-C stand-in stood in for), with the header's names and signatures.
+// It answers virtual members, so it has the game's vtable (UniverseStandIn.h) and StandInUniverse overrides them.
+class Universe : public oo::RefCounted
 {
-@public
+public:
+	OO_UNIVERSE_STAND_IN_VIRTUAL_MEMBERS
+
 	std::vector<std::string> _comms;
 	std::vector<std::string> _console;
 	std::vector<double> _counts;
@@ -181,15 +188,20 @@ public:
 	BOOL _interstellar;
 	double _range;
 	oo::PList _destinations;
-}
-- (void) cxx_addCommsMessage:(const std::optional<std::string> &)text forCount:(OOTimeDelta)count;
-- (void) cxx_addMessage:(const std::optional<std::string> &)text forCount:(OOTimeDelta)count;
-- (void) cxx_startSpeakingString:(const std::string &)text;
-- (BOOL) isSpeaking;
-- (void) stopSpeaking;
-- (BOOL) inInterstellarSpace;
-- (oo::PList) cxx_nearbyDestinationsWithinRange:(double)range;
-@end
+
+	void addCommsMessage(const std::optional<std::string> &, OOTimeDelta);
+	void startSpeakingString(const std::string &);
+	bool isSpeaking();
+	void stopSpeaking();
+	oo::PList nearbyDestinationsWithinRange(double);
+};
+
+class StandInUniverse : public Universe
+{
+public:
+	void addMessage(const std::optional<std::string> &text, OOTimeDelta count) override	{ _console.push_back(text.value_or("(nil)")); _counts.push_back(count); }
+	bool inInterstellarSpace() override	{ return _interstellar; }
+};
 
 
 #import "OOJSPlayer.h"
@@ -328,17 +340,11 @@ void PlayerEntity::addRoleToPlayer(const std::string &role)  { _lastRole = role;
 void PlayerEntity::addRoleToPlayer(const std::string &role, NSUInteger slot)  { _lastRole = role; _lastRoleSlot = slot; }
 
 
-@implementation Universe
-
-- (void) cxx_addCommsMessage:(const std::optional<std::string> &)text forCount:(OOTimeDelta)count  { _comms.push_back(text.value_or("(nil)")); _counts.push_back(count); }
-- (void) cxx_addMessage:(const std::optional<std::string> &)text forCount:(OOTimeDelta)count  { _console.push_back(text.value_or("(nil)")); _counts.push_back(count); }
-- (void) cxx_startSpeakingString:(const std::string &)text  { _spoken.push_back(text); }
-- (BOOL) isSpeaking  { return _speaking; }
-- (void) stopSpeaking  { _stops++; _speaking = NO; }
-- (BOOL) inInterstellarSpace  { return _interstellar; }
-- (oo::PList) cxx_nearbyDestinationsWithinRange:(double)range  { _range = range; return _destinations; }
-
-@end
+void Universe::addCommsMessage(const std::optional<std::string> &text, OOTimeDelta count)	{ _comms.push_back(text.value_or("(nil)")); _counts.push_back(count); }
+void Universe::startSpeakingString(const std::string &text)	{ _spoken.push_back(text); }
+bool Universe::isSpeaking()	{ return _speaking; }
+void Universe::stopSpeaking()	{ _stops++; _speaking = NO; }
+oo::PList Universe::nearbyDestinationsWithinRange(double range)	{ _range = range; return _destinations; }
 
 
 // The display strings, as PlayerEntity.m and OOConstToString.mm make them, for what the test uses.
@@ -552,7 +558,7 @@ void SetUpContext()
 	ooscript::initStandardClasses(sContext, sGlobal);
 
 	// Kept for the life of the test.
-	sUniverse = [[Universe alloc] init];
+	sUniverse = new StandInUniverse();
 	gSharedUniverse = sUniverse;
 	sPlayer = new PlayerEntity;
 	gOOPlayer = sPlayer;

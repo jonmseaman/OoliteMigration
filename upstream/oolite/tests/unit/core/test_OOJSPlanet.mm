@@ -33,7 +33,7 @@
 
 // MARK: The classes, as far as the binding sees them ----------------------------------------------
 
-@class Universe;
+class Universe;
 @class Entity;
 
 namespace cxx {
@@ -118,13 +118,26 @@ public:
 
 // The universe, as far as the binding asks it anything: its main planet (the C++ planet since bead
 // oo-9ht.129).
-@interface FakeUniverse: OOObject
+#import "UniverseStandIn.h"
+
+// The universe as the code under test sees it: a stand-in for the C++ class (bead oo-ql9rn deleted
+// the Objective-C facade the test's FakeUniverse stood in for), with the header's names and signatures.
+// It answers virtual members, so it has the game's vtable (UniverseStandIn.h) and FakeUniverse overrides them.
+class Universe : public oo::RefCounted
 {
-@public
+public:
+	OO_UNIVERSE_STAND_IN_VIRTUAL_MEMBERS
+
 	OOPlanetEntity *_planet;
-}
-- (OOPlanetEntity *) planet;
-@end
+
+
+};
+
+class FakeUniverse : public Universe
+{
+public:
+	::OOPlanetEntity *planet() override	{ return _planet; }
+};
 
 @interface Entity (OOJavaScriptExtensions)
 - (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
@@ -228,11 +241,7 @@ OOPlanetEntity *NewPlanet()
 }
 
 
-@implementation FakeUniverse
 
-- (OOPlanetEntity *) planet  { return _planet; }
-
-@end
 
 
 // MARK: What the rest of the engine provides ------------------------------------------------------
@@ -551,9 +560,9 @@ void SetUpContext()
 	sMoon = NewPlanet();
 	sMoon->_type = STELLAR_TYPE_MOON;
 	sMoon->_radius = 1000;
-	sUniverse = [[FakeUniverse alloc] init];
+	sUniverse = new FakeUniverse();
 	sUniverse->_planet = sPlanet;
-	gSharedUniverse = (Universe *)sUniverse;
+	gSharedUniverse = sUniverse;
 	Define("planet", JSValueForEntity(oo::ToObjC(sPlanet)));
 	Define("moon", JSValueForEntity(oo::ToObjC(sMoon)));
 	Define("plainEntity", JSValueForObject(&sFakeEntityClass, gOOEntityJSPrototype, [[Entity alloc] init]));

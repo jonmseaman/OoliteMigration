@@ -201,7 +201,7 @@ oo::Ref<OOJSTimer> OOJSTimer::timerWithDelay(OOTimeAbsolute delay, OOTimeDelta i
 
 bool OOJSTimer::initWithDelay(OOTimeAbsolute delay, OOTimeDelta interval, ooscript::Context context, ooscript::Value function, ooscript::Object jsThis)
 {
-	if (!initWithNextTime([UNIVERSE getTime] + delay, interval))  return false;
+	if (!initWithNextTime((UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0) + delay, interval))  return false;
 	{
 		OOCAssert(OOJSValueIsFunction(context, function), "Attempt to init OOJSTimer with a function that isn't.");
 

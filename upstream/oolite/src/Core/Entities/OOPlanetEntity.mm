@@ -170,14 +170,14 @@ oo::PList MaterialConfigWithTextures(const oo::PList &configuration, std::initia
 // this is exclusively called to initialise the main planet.
 void OOPlanetEntity::initAsMainPlanetForSystem(OOSystemID s)
 {
-	oo::PList planetInfo = [UNIVERSE cxx_generateSystemData:s];
+	oo::PList planetInfo = (UNIVERSE != nullptr ? UNIVERSE->generateSystemData(s) : oo::PList());
 
 	SetInfo(planetInfo, "mainForLocalSystem", oo::PList(static_cast<bool>(YES)));
 	if (s != (PLAYER != nullptr ? PLAYER->systemID() : 0))
 	{
 		SetInfo(planetInfo, "isMiniature", oo::PList(static_cast<bool>(YES)));
 	}
-	initFromDictionary(planetInfo, planetInfo.get<bool>("has_atmosphere", YES), ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getRandomSeedForSystem(s, (PLAYER != nullptr ? PLAYER->galaxyNumber() : OOGalaxyID{})) : Random_Seed()), s);
+	initFromDictionary(planetInfo, planetInfo.get<bool>("has_atmosphere", YES), ((UNIVERSE != nullptr ? UNIVERSE->getSystemManager() : nullptr) != nullptr ? UNIVERSE->getSystemManager()->getRandomSeedForSystem(s, (PLAYER != nullptr ? PLAYER->galaxyNumber() : OOGalaxyID{})) : Random_Seed()), s);
 }
 
 
@@ -193,7 +193,7 @@ void OOPlanetEntity::initFromDictionary(const oo::PList &dictionary, bool atmosp
 
 	scanClass = CLASS_NO_DRAW;
 	
-	oo::PList planetInfo = [UNIVERSE cxx_generateSystemData:systemID];	// null where it was nil
+	oo::PList planetInfo = (UNIVERSE != nullptr ? UNIVERSE->generateSystemData(systemID) : oo::PList());	// null where it was nil
 
 	setUpTypeParametersWithSourceInfo(dict, planetInfo);
 
@@ -225,7 +225,7 @@ void OOPlanetEntity::initFromDictionary(const oo::PList &dictionary, bool atmosp
 	if (techLevel > 14)  techLevel = 14;
 	_shuttlesOnGround = 1 + techLevel / 2;
 	_shuttleLaunchInterval = 3600.0 / (double)_shuttlesOnGround;	// All are launched in one hour.
-	_lastLaunchTime = [UNIVERSE getTime] + 30.0 - _shuttleLaunchInterval;	// launch 30s after player enters universe.
+	_lastLaunchTime = (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0) + 30.0 - _shuttleLaunchInterval;	// launch 30s after player enters universe.
 																			// make delay > 0 to allow scripts adding a station nearby.
 	
 	int percent_land = planetInfo.get<int>("percent_land", 24 + (gen_rnd_number() % 48));
@@ -257,7 +257,7 @@ void OOPlanetEntity::initFromDictionary(const oo::PList &dictionary, bool atmosp
 		// shader atmosphere always has a radius of collision_radius + ATMOSPHERE_DEPTH. For texture atmosphere, we need to check
 		// if a shader atmosphere is also used. If yes, set its radius to just cover the planet so that it doesn't conflict with 
 		// the shader atmosphere at the planet edges. If no shader atmosphere is used, then set it to the standard radius
-		double atmosphereRadius = [UNIVERSE detailLevel] >= DETAIL_LEVEL_SHADERS ? collision_radius : collision_radius + ATMOSPHERE_DEPTH;
+		double atmosphereRadius = (UNIVERSE != nullptr ? UNIVERSE->getDetailLevel() : OOGraphicsDetail{}) >= DETAIL_LEVEL_SHADERS ? collision_radius : collision_radius + ATMOSPHERE_DEPTH;
 		_atmosphereDrawable = OOPlanetDrawable::atmosphereWithRadius(atmosphereRadius);
 		_cloudsShaderDrawable = OOPlanetDrawable::atmosphereWithRadius(atmosphereRadius);
 		_atmosphereShaderDrawable = OOPlanetDrawable::atmosphereWithRadius(collision_radius + ATMOSPHERE_DEPTH);
@@ -628,7 +628,7 @@ void OOPlanetEntity::update(OOTimeDelta delta_t)
 	
 	if (EXPECT(!_miniature))
 	{
-		BOOL canDrawShaderAtmosphere = _atmosphereShaderDrawable != nullptr && [UNIVERSE detailLevel] >= DETAIL_LEVEL_SHADERS;
+		BOOL canDrawShaderAtmosphere = _atmosphereShaderDrawable != nullptr && (UNIVERSE != nullptr ? UNIVERSE->getDetailLevel() : OOGraphicsDetail{}) >= DETAIL_LEVEL_SHADERS;
 		if (EXPECT_NOT(_atmosphereDrawable != nullptr && cam_zero_distance < _mesopause2))
 		{
 			OOCAssert(_airColor != nullptr, "Expected a non-nil air colour for normal planet. Exiting.");
@@ -674,17 +674,14 @@ void OOPlanetEntity::update(OOTimeDelta delta_t)
 				{
 					if (PLAYER->isSunlit && _airColor != nullptr) mixColor = _airColor;
 				}
-				[UNIVERSE setSkyColorRed:mixColor->redComponent() * aleph2
-								   green:mixColor->greenComponent() * aleph2
-									blue:mixColor->blueComponent() * aleph
-								   alpha:aleph];
+				if (UNIVERSE != nullptr)  UNIVERSE->setSkyColorRed(mixColor->redComponent() * aleph2, mixColor->greenComponent() * aleph2, mixColor->blueComponent() * aleph, aleph);
 				double atmosphereRadius = canDrawShaderAtmosphere ? collision_radius : collision_radius + (ATMOSPHERE_DEPTH * alt);
 				_atmosphereDrawable->setRadius(atmosphereRadius);
 				if (_cloudsShaderDrawable) _cloudsShaderDrawable->setRadius(atmosphereRadius);
 				if (_atmosphereShaderDrawable)  _atmosphereShaderDrawable->setRadius(collision_radius + (ATMOSPHERE_DEPTH * alt));
 				// apply air resistance for the ship, not the camera. Although setSkyColorRed
 				// has already set the air resistance to aleph, override it immediately
-				[UNIVERSE setAirResistanceFactor:OOClamp_0_1_f(1.0 - trueAlt)];
+				if (UNIVERSE != nullptr)  UNIVERSE->setAirResistanceFactor(OOClamp_0_1_f(1.0 - trueAlt));
 			}
 		}
 		else
@@ -704,11 +701,11 @@ void OOPlanetEntity::update(OOTimeDelta delta_t)
 			}
 			if ((PLAYER != nullptr ? PLAYER->findNearestPlanet() : (OOPlanetEntity *)nullptr) == this) // ensure no problems in case of more than one planets
 			{
-				[UNIVERSE setAirResistanceFactor:0.0f];	// out of atmosphere - no air friction
+				if (UNIVERSE != nullptr)  UNIVERSE->setAirResistanceFactor(0.0f);	// out of atmosphere - no air friction
 			}
 		}
 		
-		double time = [UNIVERSE getTime];
+		double time = (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0);
 		
 		if (_shuttlesOnGround > 0 && time > _lastLaunchTime + _shuttleLaunchInterval)  launchShuttle();
 	}
@@ -738,22 +735,22 @@ bool OOPlanetEntity::isFinishedLoading()
 // translucent is read only in the branch that OOLITE_HAVE_FIXED_THE_ABOVE_DESCRIBED_BUG_WHICH_WE_HAVENT compiles out.
 void OOPlanetEntity::drawImmediate(bool /*immediate*/, bool /*translucent*/)
 {
-	BOOL canDrawShaderAtmosphere = _atmosphereShaderDrawable != nullptr && [UNIVERSE detailLevel] >= DETAIL_LEVEL_SHADERS;
+	BOOL canDrawShaderAtmosphere = _atmosphereShaderDrawable != nullptr && (UNIVERSE != nullptr ? UNIVERSE->getDetailLevel() : OOGraphicsDetail{}) >= DETAIL_LEVEL_SHADERS;
 	
-	if ([UNIVERSE breakPatternHide])   return; // DON'T DRAW
+	if ((UNIVERSE != nullptr ? UNIVERSE->breakPatternHide() : false))   return; // DON'T DRAW
 	if (_miniature && !isFinishedLoading())  return; // For responsiveness, don't block to draw as miniature.
 
 	// too far away to be drawn
 	if (magnitude(cameraRelativePosition) > radius()*3000) {
 		return;
 	}
-	if (![UNIVERSE viewFrustumIntersectsSphereAt:cameraRelativePosition withRadius:(radius() + ATMOSPHERE_DEPTH)])
+	if (!(UNIVERSE != nullptr ? UNIVERSE->viewFrustumIntersectsSphereAt(cameraRelativePosition, (radius() + ATMOSPHERE_DEPTH)) : false))
 	{
 		// Don't draw
 		return;
 	}
 	
-	if ([UNIVERSE wireframeGraphics])  OOGLWireframeModeOn();
+	if ((UNIVERSE != nullptr ? UNIVERSE->getWireframeGraphics() : false))  OOGLWireframeModeOn();
 	
 	if (!_miniature)
 	{
@@ -818,7 +815,7 @@ void OOPlanetEntity::drawImmediate(bool /*immediate*/, bool /*translucent*/)
 	}
 #endif
 	
-	if ([UNIVERSE wireframeGraphics])  OOGLWireframeModeOff();
+	if ((UNIVERSE != nullptr ? UNIVERSE->getWireframeGraphics() : false))  OOGLWireframeModeOff();
 }
 
 
@@ -843,9 +840,7 @@ bool OOPlanetEntity::planetHasStation()
 {
 	// find the nearest station...
 	::ShipEntity	*station =  nil;
-	station = oo::ToShip([UNIVERSE nearestShipMatchingPredicate:IsStationPredicate
-										   parameter:nil
-									relativeToEntity:oo::ToObjC(this)]);
+	station = oo::ToShip((UNIVERSE != nullptr ? UNIVERSE->nearestShipMatchingPredicate(IsStationPredicate, nullptr, oo::ToObjC(this)) : id{}));
 	
 	if (station && HPdistance((station != nullptr ? station->getPosition() : HPVector{}), position) < 4 * collision_radius) // there is a station in range.
 	{
@@ -866,7 +861,7 @@ void OOPlanetEntity::launchShuttle()
 		// don't launch if game not started
 		return;
 	}
-	if (this != [UNIVERSE planet] && !planetHasStation())
+	if (this != (UNIVERSE != nullptr ? UNIVERSE->planet() : nullptr) && !planetHasStation())
 	{
 		// don't launch shuttles when no station is nearby.
 		_shuttlesOnGround = 0;
@@ -878,7 +873,7 @@ void OOPlanetEntity::launchShuttle()
 	float start_distance = collision_radius + 125.0f;
 	HPVector launch_pos = HPvector_add(position, vectorToHPVector(vector_multiply_scalar(vector_forward_from_quaternion(q1), start_distance)));
 	
-	::ShipEntity *shuttle_ship = [UNIVERSE cxx_newShipWithRole:"shuttle"];   // retain count = 1
+	::ShipEntity *shuttle_ship = (UNIVERSE != nullptr ? UNIVERSE->newShipWithRole("shuttle") : (::ShipEntity *)nil);   // retain count = 1
 	if (shuttle_ship)
 	{
 		if ((shuttle_ship != nullptr ? shuttle_ship->getCrew() : std::optional<std::vector<oo::Ref<OOCharacter>>>()).value_or(std::vector<oo::Ref<OOCharacter>>()).empty())
@@ -892,9 +887,9 @@ void OOPlanetEntity::launchShuttle()
 		if (shuttle_ship != nullptr)  shuttle_ship->setScanClass(CLASS_NEUTRAL);
 		if (shuttle_ship != nullptr)  shuttle_ship->setCargoFlag(CARGO_FLAG_FULL_PLENTIFUL);
 		if (shuttle_ship != nullptr)  shuttle_ship->switchAITo("oolite-shuttleAI.js");
-		[UNIVERSE addEntity:oo::ToObjC(shuttle_ship)];	// STATUS_IN_FLIGHT, AI state GLOBAL
+		if (UNIVERSE != nullptr)  UNIVERSE->addEntity(oo::ToObjC(shuttle_ship));	// STATUS_IN_FLIGHT, AI state GLOBAL
 		_shuttlesOnGround--;
-		_lastLaunchTime = [UNIVERSE getTime];
+		_lastLaunchTime = (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0);
 		
 		if (shuttle_ship != nullptr)  [oo::ToObjC(shuttle_ship) release];
 	}
@@ -1055,7 +1050,7 @@ void OOPlanetEntity::setTextureFileName(const std::optional<std::string> &textur
 	const oo::PList materialDefaults = ResourceManager::materialDefaults();
 	
 #if OO_SHADERS
-	OOGraphicsDetail detailLevel = [UNIVERSE detailLevel];
+	OOGraphicsDetail detailLevel = (UNIVERSE != nullptr ? UNIVERSE->getDetailLevel() : OOGraphicsDetail{});
 	BOOL shadersOn = detailLevel >= DETAIL_LEVEL_SHADERS;
 #else
 	const BOOL shadersOn = NO;

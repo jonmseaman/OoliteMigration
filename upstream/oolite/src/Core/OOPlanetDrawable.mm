@@ -164,8 +164,8 @@ void OOPlanetDrawable::setLevelOfDetail(float lod)
 
 void OOPlanetDrawable::calculateLevelOfDetailForViewDistance(float distance)
 {
-	BOOL simple = [UNIVERSE reducedDetail];
-	float	drawFactor = [[UNIVERSE gameView] viewSize].width / (simple ? 100.0 : 40.0);
+	BOOL simple = (UNIVERSE != nullptr ? UNIVERSE->reducedDetail() : false);
+	float	drawFactor = [(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) viewSize].width / (simple ? 100.0 : 40.0);
 	float	drawRatio2 = drawFactor * _radius / sqrtf(distance); // proportional to size on screen in pixels
 	
 	float lod = sqrtf(drawRatio2 * LOD_FACTOR);
@@ -281,7 +281,7 @@ void OOPlanetDrawable::renderCommonParts()
 	OOGL(glDrawElements(GL_TRIANGLES, data->faceCount*3, data->type, data->indices));
 	
 #ifndef NDEBUG
-	if ([UNIVERSE wireframeGraphics])
+	if ((UNIVERSE != nullptr ? UNIVERSE->getWireframeGraphics() : false))
 	{
 		OODebugDrawBasisAtOrigin(1.5);
 	}

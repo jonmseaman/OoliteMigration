@@ -316,11 +316,11 @@ oo::Ref<OOCommodityMarket> OOCommodities::generateMarketForSystemWithEconomy(OOE
 			q = cap;
 		}
 		OOCreditsQuantity p = generatePriceForGood(good, economy);
-		good = createDefinitionFrom(good, p, q, commodity, nullptr, [UNIVERSE currentSystemID]);
+		good = createDefinitionFrom(good, p, q, commodity, nullptr, (UNIVERSE != nullptr ? UNIVERSE->currentSystemID() : 0));
 
 		if (script != nil)
 		{
-			good = modifyGood(good, script, nullptr, [UNIVERSE currentSystemID], true);
+			good = modifyGood(good, script, nullptr, (UNIVERSE != nullptr ? UNIVERSE->currentSystemID() : 0), true);
 		}
 		market->setGood(commodity, good);
 	}
@@ -340,7 +340,7 @@ oo::Ref<OOCommodityMarket> OOCommodities::generateMarketForStation(::StationEnti
 
 	oo::Ref<OOCommodityMarket> market = oo::makeRef<OOCommodityMarket>();
 	OOCargoQuantity capacity = (station != nullptr ? station->getMarketCapacity() : 0);
-	OOCommodityMarket *mainMarket = [UNIVERSE commodityMarket];
+	OOCommodityMarket *mainMarket = (UNIVERSE != nullptr ? UNIVERSE->getCommodityMarket() : nullptr);
 
 	for (const auto &[commodity, info] : _commodityLists)	// key order (bead oo-3rb.154)
 	{
@@ -379,10 +379,10 @@ oo::Ref<OOCommodityMarket> OOCommodities::generateMarketForStation(::StationEnti
 			q = (q * capacity) / baseCapacity;
 		}
 
-		good = createDefinitionFrom(good, p, q, commodity, station, [UNIVERSE currentSystemID]);
+		good = createDefinitionFrom(good, p, q, commodity, station, (UNIVERSE != nullptr ? UNIVERSE->currentSystemID() : 0));
 		if (marketScript != nil)
 		{
-			good = modifyGood(good, marketScript, station, [UNIVERSE currentSystemID], true);
+			good = modifyGood(good, marketScript, station, (UNIVERSE != nullptr ? UNIVERSE->currentSystemID() : 0), true);
 		}
 
 		market->setGood(commodity, good);

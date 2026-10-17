@@ -74,21 +74,15 @@ T *NewTestPlayer()
 
 // UNIVERSE: never initialised; makes the standard subentities, an effect with no definition, by
 // key ("missing" has none).
-@interface TestUniverse: Universe
-@end
-
-
-@implementation TestUniverse
-
-- (OOTimeAbsolute) getTime	{ return 0; }
-
-- (Entity *) cxx_newVisualEffectWithName:(const std::string &)effectKey
+class TestUniverse : public Universe
 {
-	if (effectKey == "missing")  return nil;
-	return oo::NewVisualEffectObject(effectKey, oo::PList());	// the effect's object since bead oo-9ht.165
-}
-
-@end
+public:
+	::Entity *newVisualEffectWithName(const std::string &effectKey) override
+	{
+		if (effectKey == "missing")  return nil;
+		return oo::NewVisualEffectObject(effectKey, oo::PList());	// the effect's object since bead oo-9ht.165
+	}
+};
 
 
 namespace {
@@ -114,8 +108,7 @@ void SetUp()
 	static Universe *universe = nil;
 	if (universe == nil)
 	{
-		universe = (Universe *)class_createInstance([TestUniverse class], 0);	// never released
-		universe->_cxxUniverse = oo::makeRef<cxx::Universe>(universe);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz; bead oo-9ht.174)
+		universe = new TestUniverse();	// never released
 	}
 	gSharedUniverse = universe;
 	static TestPlayer *player = nullptr;

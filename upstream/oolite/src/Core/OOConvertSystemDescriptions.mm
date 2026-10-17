@@ -224,7 +224,7 @@ void CompileSystemDescriptions(BOOL asXML)
 
 void ExportSystemDescriptions(BOOL asXML)
 {
-	const oo::PList descriptions = *[UNIVERSE cxx_descriptions];
+	const oo::PList descriptions = *UNIVERSE->descriptions();
 	const oo::PList *sysDescArray = descriptions.get<oo::PList::Array>("system_description");
 
 	const oo::PList keyMap = ResourceManager::dictionaryFromFilesNamed("sysdesc_key_table.plist", std::string("Config"), false);

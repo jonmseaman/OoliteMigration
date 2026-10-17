@@ -31,7 +31,7 @@
 
 // --- Link stubs: what render() references. The test never renders; a call is a test bug. -------
 
-@class Universe;
+class Universe;
 Universe *gSharedUniverse = nil;
 
 void OOSetOpenGLState_(OOOpenGLStateID, const char *, unsigned)	{ std::abort(); }

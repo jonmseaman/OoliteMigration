@@ -71,7 +71,7 @@ bool OOScriptTimer::initWithNextTime(OOTimeAbsolute nextTime, OOTimeDelta interv
 	{
 		if (interval <= 0.0)  interval = -1.0;
 		
-		now = [UNIVERSE getTime];
+		now = (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0);
 		if (nextTime < 0.0)  nextTime = now + interval;
 		if (nextTime < now && interval < 0)
 		{
@@ -92,7 +92,7 @@ bool OOScriptTimer::initWithNextTime(OOTimeAbsolute nextTime, OOTimeDelta interv
 	// Sets nextTime to current time + delay.
 bool OOScriptTimer::initOneShotTimerWithDelay(OOTimeDelta delay)
 {
-	return initWithNextTime([UNIVERSE getTime] + delay, -1.0);
+	return initWithNextTime((UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0) + delay, -1.0);
 }
 
 
@@ -207,7 +207,7 @@ void OOScriptTimer::updateTimers()
 	
 	sUpdating = true;
 	
-	now = [UNIVERSE getTime];
+	now = (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0);
 	for (;;)
 	{
 		next = (sTimers != nullptr) ? sTimers->peekAtNextObject() : nullptr;
@@ -255,7 +255,7 @@ bool OOScriptTimer::isValidForScheduling()
 	OOTimeAbsolute		now;
 	double				scaled;
 	
-	now = [UNIVERSE getTime];
+	now = (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0);
 	if (_nextTime <= now)
 	{
 		if (_interval <= 0.0 && _hasBeenRun)  return false;	// One-shot timer which has expired

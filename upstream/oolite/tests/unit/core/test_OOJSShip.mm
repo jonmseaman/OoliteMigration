@@ -78,40 +78,33 @@ public:
 
 
 // The universe: never initialised (test_ShipEntity.mm's), recording what the beacon setter tells it.
-@interface TestUniverse: Universe
-@end
-
-
-@implementation TestUniverse
-
-- (void) setNextBeacon:(Entity <OOBeaconEntity> *)beaconShip  { sLog.push_back("setNextBeacon " + [beaconShip beaconCode].value_or("(none)")); }
-- (void) clearBeacon:(Entity <OOBeaconEntity> *)beaconShip  { sLog.push_back("clearBeacon"); }
-- (StationEntity *) station  { return nil; }
-- (void) unMagicMainStation  { sLog.push_back("unMagicMainStation"); }
-- (std::vector<oo::ObjCRef<::Entity *>>) cxx_stations  { return {}; }	// the stations' objects (the ship's facade since bead oo-9ht.175)
-- (OOCommodities *) commodities  { return nil; }
-- (Entity *) hazardOnRouteFromEntity:(Entity *)e1 toDistance:(double)dist fromPoint:(HPVector)p2
+class TestUniverse : public Universe
 {
-	sLog.push_back(oo::str::format("hazardOnRoute %g (%g, %g, %g)", dist, p2.x, p2.y, p2.z));
-	return nil;
-}
-- (BOOL) cxx_role:(const std::string &)role isInCategory:(const std::string &)category
-{
-	sLog.push_back("role " + role + " isInCategory " + category);
-	return role == "trader";
-}
-- (std::vector<oo::ObjCRef<::Entity *>>) cxx_getContainersOfCommodity:(const std::string &)commodity_name :(OOCargoQuantity)how_many
-{
-	sLog.push_back(oo::str::format("getContainersOfCommodity %s %u", commodity_name.c_str(), static_cast<unsigned>(how_many)));
-	return {};
-}
-- (HPVector) getSafeVectorFromEntity:(Entity *)e1 toDistance:(double)dist fromPoint:(HPVector)p2
-{
-	sLog.push_back(oo::str::format("getSafeVector %g (%g, %g, %g)", dist, p2.x, p2.y, p2.z));
-	return make_HPvector(10, 20, 30);
-}
-
-@end
+public:
+	void setNextBeacon(OOBeaconEntityObject *beaconShip) override	{ sLog.push_back("setNextBeacon " + [beaconShip beaconCode].value_or("(none)")); }
+	void clearBeacon(OOBeaconEntityObject *beaconShip) override	{ sLog.push_back("clearBeacon"); }
+	void unMagicMainStation() override	{ sLog.push_back("unMagicMainStation"); }
+	::Entity *hazardOnRouteFromEntity(::Entity *e1, double dist, HPVector p2) override
+	{
+		sLog.push_back(oo::str::format("hazardOnRoute %g (%g, %g, %g)", dist, p2.x, p2.y, p2.z));
+		return nil;
+	}
+	bool role(const std::string &role, const std::string &category) override
+	{
+		sLog.push_back("role " + role + " isInCategory " + category);
+		return role == "trader";
+	}
+	std::vector<oo::ObjCRef<::Entity *>> getContainersOfCommodity(const std::string &commodity_name, OOCargoQuantity how_many) override
+	{
+		sLog.push_back(oo::str::format("getContainersOfCommodity %s %u", commodity_name.c_str(), static_cast<unsigned>(how_many)));
+		return {};
+	}
+	HPVector getSafeVectorFromEntity(::Entity *e1, double dist, HPVector p2) override
+	{
+		sLog.push_back(oo::str::format("getSafeVector %g (%g, %g, %g)", dist, p2.x, p2.y, p2.z));
+		return make_HPvector(10, 20, 30);
+	}
+};
 
 
 // A ship that keeps ShipEntity's own set-up (test_ShipEntity.mm's).
@@ -234,8 +227,7 @@ void SetUp()
 	sRealPlayer = gOOPlayer;	// the one InitOOJSPlayerShip() made, which player.ship holds
 	sRealPlayer->isPlayer = true;	// what the player's set-up sets, which the engine's player has not run
 
-	Universe *universe = (Universe *)class_createInstance([TestUniverse class], 0);	// never released
-	universe->_cxxUniverse = oo::makeRef<cxx::Universe>(universe);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
+	Universe *universe = new TestUniverse();	// never released
 	gSharedUniverse = universe;
 	gOOPlayer = NewTestPlayer<TestPlayer>();
 

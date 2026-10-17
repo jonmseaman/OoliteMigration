@@ -70,29 +70,37 @@ oo::PList Good(std::initializer_list<std::pair<const char *, oo::PList>> entries
 }	// namespace
 
 
-@interface Universe: OOObject
-{
-@public
-	oo::Ref<OOCommodityMarket>	market;
-}
-- (oo::PList) cxx_equipmentData;
-- (oo::PList) cxx_equipmentDataOutfitting;
-- (const oo::PList *) cxx_descriptions;
-- (std::optional<std::string>) cxx_descriptionForKey:(const std::string &)key;
-- (OOCommodityMarket *) commodityMarket;
-@end
+#import "UniverseStandIn.h"
 
-@implementation Universe
-- (oo::PList) cxx_equipmentData				{ return EquipmentData(); }
-- (oo::PList) cxx_equipmentDataOutfitting	{ return EquipmentData(); }
-- (const oo::PList *) cxx_descriptions
+// The universe as the code under test sees it: a stand-in for the C++ class (bead oo-ql9rn deleted
+// the Objective-C facade the test's Objective-C stand-in stood in for), with the header's names and signatures.
+// It answers virtual members, so it has the game's vtable (UniverseStandIn.h) and StandInUniverse overrides them.
+class Universe : public oo::RefCounted
 {
-	static const oo::PList descriptions = oo::PList(oo::PList::Dict{});
-	return &descriptions;
-}
-- (std::optional<std::string>) cxx_descriptionForKey:(const std::string &)key	{ return std::nullopt; }
-- (OOCommodityMarket *) commodityMarket		{ return market.get(); }
-@end
+public:
+	OO_UNIVERSE_STAND_IN_VIRTUAL_MEMBERS
+
+	oo::Ref<OOCommodityMarket>	market;
+
+	oo::PList getEquipmentData();
+	oo::PList getEquipmentDataOutfitting();
+	::OOCommodityMarket *getCommodityMarket();
+};
+
+class StandInUniverse : public Universe
+{
+public:
+	const oo::PList *descriptions() override
+	{
+		static const oo::PList descriptions = oo::PList(oo::PList::Dict{});
+		return &descriptions;
+	}
+	std::optional<std::string> descriptionForKey(const std::string &key) override	{ return std::nullopt; }
+};
+
+oo::PList Universe::getEquipmentData()	{ return EquipmentData(); }
+oo::PList Universe::getEquipmentDataOutfitting()	{ return EquipmentData(); }
+::OOCommodityMarket *Universe::getCommodityMarket()	{ return market.get(); }
 
 Universe *gSharedUniverse = nil;
 
@@ -181,7 +189,7 @@ namespace {
 
 void LoadEquipment()
 {
-	if (gSharedUniverse == nil)  gSharedUniverse = [[Universe alloc] init];
+	if (gSharedUniverse == nil)  gSharedUniverse = new StandInUniverse();
 	if (gOOPlayer == nullptr)  gOOPlayer = new PlayerEntity;	// never deleted
 	OOEquipmentType::loadEquipment();
 }

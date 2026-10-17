@@ -39,26 +39,26 @@ MA 02110-1301, USA.
 
 Random_Seed OOStringExpanderUniverseRandomSeedForCurrentSystem(void)
 {
-	auto *manager = [UNIVERSE systemManager];	// null: a zero seed, as a message to nil (auto: the expander harness stubs the class)
+	auto *manager = (UNIVERSE != nullptr ? UNIVERSE->getSystemManager() : nullptr);	// null: a zero seed, as a message to nil (auto: the expander harness stubs the class)
 	return (manager != nullptr) ? manager->getRandomSeedForCurrentSystem() : Random_Seed{};
 }
 
 
 const oo::PList *OOStringExpanderUniverseDescriptions(void)
 {
-	return [UNIVERSE cxx_descriptions];
+	return (UNIVERSE != nullptr ? UNIVERSE->descriptions() : nullptr);
 }
 
 
 std::optional<std::string> OOStringExpanderUniverseGetSystemName(OOSystemID sysID)
 {
-	return [UNIVERSE cxx_getSystemName:sysID];
+	return (UNIVERSE != nullptr ? UNIVERSE->getSystemName(sysID) : std::optional<std::string>());
 }
 
 
 std::optional<std::string> OOStringExpanderUniverseGetSystemNameForGalaxy(OOSystemID sysID, OOGalaxyID galID)
 {
-	return [UNIVERSE cxx_getSystemName:sysID forGalaxy:galID];
+	return (UNIVERSE != nullptr ? UNIVERSE->getSystemName(sysID, galID) : std::optional<std::string>());
 }
 
 

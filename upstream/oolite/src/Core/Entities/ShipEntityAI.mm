@@ -407,9 +407,7 @@ void ShipEntity::requestDockingCoordinates()
 	}
 	else
 	{
-		station = oo::ToStation([UNIVERSE nearestShipMatchingPredicate:IsStationPredicate
-											   parameter:nil
-										relativeToEntity:oo::ToObjC(this)]);
+		station = oo::ToStation((UNIVERSE != nullptr ? UNIVERSE->nearestShipMatchingPredicate(IsStationPredicate, nullptr, oo::ToObjC(this)) : id{}));
 	}
 	
 	distanceToStation2 = HPdistance2((station != nullptr ? station->getPosition() : HPVector{}), getPosition());
@@ -507,8 +505,8 @@ void ShipEntity::enterTargetWormhole()
 	if (!whole)
 	{
 		// locate nearest wormhole
-		int				ent_count =		UNIVERSE->_cxxUniverse->n_entities;
-		cxx::Entity**		uni_entities =	UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
+		int				ent_count =		UNIVERSE->n_entities;
+		cxx::Entity**		uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
 		std::vector<::Entity *>	wormholes(ent_count);	// their Objective-C objects (bead oo-9ht.112)
 		int i;
 		int wh_count = 0;
@@ -722,7 +720,7 @@ bool ShipEntity::performHyperSpaceExitReplace(bool replace, OOSystemID systemID)
 	NSUInteger		i = 0;
 	
 	// get a list of destinations within range
-	const oo::PList sDests = [UNIVERSE cxx_nearbyDestinationsWithinRange: 0.1f * fuel];
+	const oo::PList sDests = (UNIVERSE != nullptr ? UNIVERSE->nearbyDestinationsWithinRange(0.1f * fuel) : oo::PList());
 	NSUInteger n_dests = sDests.count();
 	
 	// if none available report to the AI and exit
@@ -736,7 +734,7 @@ bool ShipEntity::performHyperSpaceExitReplace(bool replace, OOSystemID systemID)
 	}
 	
 	// check if we're clear of nearby masses
-	::ShipEntity *blocker = oo::ToShip([UNIVERSE entityForUniversalID:checkShipsInVicinityForWitchJumpExit()]);
+	::ShipEntity *blocker = oo::ToShip((UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(checkShipsInVicinityForWitchJumpExit()) : id{}));
 	if (blocker)
 	{
 		setFoundTarget(oo::ToObjC(blocker));
@@ -785,7 +783,7 @@ bool ShipEntity::performHyperSpaceExitReplace(bool replace, OOSystemID systemID)
 	::Entity *wholeObject = oo::NewEntityFacade(whRef);
 	whRef->initWormholeTo(targetSystem, this);
 	WormholeEntity  *whole = whRef.get();
-	[UNIVERSE addEntity: wholeObject];
+	if (UNIVERSE != nullptr)  UNIVERSE->addEntity(wholeObject);
 	
 	enterWormhole(whole, replace);
 	
@@ -889,7 +887,7 @@ void ShipEntity::abortAllDockings()	{ LogNotAStation(this, "abortAllDockings"); 
 // The station's unit of the category StationEntity (OOAIPrivate), overriding the ship's.
 void StationEntity::acceptDistressMessageFrom(::ShipEntity *other)
 {
-	if (this != [UNIVERSE station])  return;
+	if (this != (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr))  return;
 
 	const oo::WeakRef<cxx::Entity> old_target = _primaryTarget;
 	_primaryTarget = oo::WeakEntityRef(other != nullptr ? other->primaryTarget() : id{});
@@ -913,7 +911,7 @@ void ShipEntity::setStateTo(const std::string &state)	// called by name (ADR-005
 
 void ShipEntity::pauseAI(const std::string &intervalString)	// called by name (ADR-0055 item 5)
 {
-	[shipAI setNextThinkTime:[UNIVERSE getTime] + oo::str::doubleValue(intervalString)];
+	[shipAI setNextThinkTime:(UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0) + oo::str::doubleValue(intervalString)];
 }
 
 
@@ -931,7 +929,7 @@ void ShipEntity::randomPauseAI(const std::string &intervalString)	// called by n
 	start = oo::str::doubleValue(tokens[0]);	// -oo_doubleAtIndex:
 	end   = oo::str::doubleValue(tokens[1]);
 	
-	[shipAI setNextThinkTime:[UNIVERSE getTime] + (start + (end - start)*randf())];
+	[shipAI setNextThinkTime:(UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0) + (start + (end - start)*randf())];
 }
 
 
@@ -1258,9 +1256,7 @@ void ShipEntity::getWitchspaceEntryCoordinates()
 	// we don't use "checkScanner" because we must rely on finding a present station.
 	//
 	::StationEntity	*station =  nil;
-	station = oo::ToStation([UNIVERSE nearestShipMatchingPredicate:IsStationPredicate
-										   parameter:nil
-									relativeToEntity:oo::ToObjC(this)]);
+	station = oo::ToStation((UNIVERSE != nullptr ? UNIVERSE->nearestShipMatchingPredicate(IsStationPredicate, nullptr, oo::ToObjC(this)) : id{}));
 	
 	if (station && HPdistance2((station != nullptr ? station->getPosition() : HPVector{}), position) < SCANNER_MAX_RANGE2) // there is a station in range.
 	{
@@ -1504,7 +1500,7 @@ void ShipEntity::setDestinationWithinTarget()
 
 void ShipEntity::checkCourseToDestination()
 {
-	::Entity *hazard = [UNIVERSE hazardOnRouteFromEntity: oo::ToObjC(this) toDistance: desired_range fromPoint: _destination];
+	::Entity *hazard = (UNIVERSE != nullptr ? UNIVERSE->hazardOnRouteFromEntity(oo::ToObjC(this), desired_range, _destination) : nullptr);
 	
 	if (hazard == nil || ([hazard isShip] && HPdistance(position, [hazard position]) > scannerRange) || ([hazard isPlanet] && aegis_status == AEGIS_NONE)) 
 		[shipAI message:"COURSE_OK"]; // Avoid going into a waypoint.plist for far away objects, it cripples the main AI a bit in its funtionality.
@@ -1515,7 +1511,7 @@ void ShipEntity::checkCourseToDestination()
 			[shipAI cxx_reactToMessage:"HAZARD_CAN_BE_DESTROYED" context:"checkCourseToDestination"];
 		}
 		
-		_destination = [UNIVERSE getSafeVectorFromEntity:oo::ToObjC(this) toDistance:desired_range fromPoint:_destination];
+		_destination = (UNIVERSE != nullptr ? UNIVERSE->getSafeVectorFromEntity(oo::ToObjC(this), desired_range, _destination) : HPVector{});
 		[shipAI message:"WAYPOINT_SET"];
 	}
 }
@@ -1629,9 +1625,9 @@ void ShipEntity::findNewDefenseTarget()
 void ShipEntity::scanForOffenders()
 {
 	/*-- Locates all the ships in range and compares their legal status or bounty against ranrot_rand() & 255 - chooses the worst offender --*/
-	float gov_factor =	0.4 * [UNIVERSE cxx_currentSystemData].get<int>(std::string(KEY_GOVERNMENT)); // 0 .. 7 (0 anarchic .. 7 most stable) --> [0.0, 0.4, 0.8, 1.2, 1.6, 2.0, 2.4, 2.8]
+	float gov_factor =	0.4 * (UNIVERSE != nullptr ? UNIVERSE->currentSystemData() : oo::PList()).get<int>(std::string(KEY_GOVERNMENT)); // 0 .. 7 (0 anarchic .. 7 most stable) --> [0.0, 0.4, 0.8, 1.2, 1.6, 2.0, 2.4, 2.8]
 	//
-	if ([UNIVERSE sun] == nil)
+	if ((UNIVERSE != nullptr ? UNIVERSE->sun() : nullptr) == nil)
 		gov_factor = 1.0;
 	//
 	_foundTarget = nullptr;
@@ -1670,7 +1666,7 @@ void ShipEntity::setCourseToWitchpoint()
 {
 	if (UNIVERSE)
 	{
-		_destination = [UNIVERSE getWitchspaceExitPosition];
+		_destination = (UNIVERSE != nullptr ? UNIVERSE->getWitchspaceExitPosition() : HPVector{});
 		desired_range = 10000.0;   // 10km away
 	}
 }
@@ -1678,15 +1674,15 @@ void ShipEntity::setCourseToWitchpoint()
 
 void ShipEntity::setDestinationToWitchpoint()
 {
-	_destination = [UNIVERSE getWitchspaceExitPosition];
+	_destination = (UNIVERSE != nullptr ? UNIVERSE->getWitchspaceExitPosition() : HPVector{});
 }
 
 
 void ShipEntity::setDestinationToStationBeacon()
 {
-	if ([UNIVERSE station])
+	if ((UNIVERSE != nullptr && UNIVERSE->station() != nullptr))
 	{
-		_destination = ([UNIVERSE station] != nullptr ? [UNIVERSE station]->beaconPosition() : HPVector{});
+		_destination = ((UNIVERSE != nullptr ? UNIVERSE->station() : nullptr) != nullptr ? UNIVERSE->station()->beaconPosition() : HPVector{});
 	}
 }
 
@@ -1814,8 +1810,8 @@ void ShipEntity::thargonCheckMother()
 
 void ShipEntity::becomeUncontrolledThargon()
 {
-	int			ent_count =		UNIVERSE->_cxxUniverse->n_entities;
-	cxx::Entity**	uni_entities =	UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
+	int			ent_count =		UNIVERSE->n_entities;
+	cxx::Entity**	uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
 	int i;
 	for (i = 0; i < ent_count; i++) if (uni_entities[i]->isShip)
 	{
@@ -2000,9 +1996,9 @@ void ShipEntity::setPlanetPatrolCoordinates()
 	HPVector r_pos = HPvector_subtract(position, coordinates);
 	if (HPmagnitude2(r_pos) < 1000000 || patrol_counter == 0)
 	{
-		::Entity *the_sun = oo::ToObjC([UNIVERSE sun]);	// its Objective-C object (C++ since bead oo-9ht.111)
+		::Entity *the_sun = oo::ToObjC((UNIVERSE != nullptr ? UNIVERSE->sun() : nullptr));	// its Objective-C object (C++ since bead oo-9ht.111)
 		::ShipEntity *the_station = (group() != nullptr ? group()->leader() : (::ShipEntity *)nil);
-		if(!the_station || !(the_station != nullptr ? the_station->getIsStation() : false)) the_station = oo::ToShip(oo::ToObjC([UNIVERSE station]));
+		if(!the_station || !(the_station != nullptr ? the_station->getIsStation() : false)) the_station = oo::ToShip(oo::ToObjC((UNIVERSE != nullptr ? UNIVERSE->station() : nullptr)));
 		if ((!the_sun)||(!the_station))
 			return;
 		HPVector sun_pos = the_sun->_cxxEntity->position;
@@ -2064,13 +2060,13 @@ void ShipEntity::setPlanetPatrolCoordinates()
 
 void ShipEntity::setSunSkimStartCoordinates()
 {
-	if ([UNIVERSE sun] == nil)
+	if ((UNIVERSE != nullptr ? UNIVERSE->sun() : nullptr) == nil)
 	{
 		[shipAI message:"NO_SUN_FOUND"];
 		return;
 	}
 	
-	HPVector v0 = [UNIVERSE getSunSkimStartPositionForShip:this];
+	HPVector v0 = (UNIVERSE != nullptr ? UNIVERSE->getSunSkimStartPositionForShip(this) : HPVector{});
 	
 	if (!HPvector_equal(v0, kZeroHPVector))
 	{
@@ -2086,22 +2082,22 @@ void ShipEntity::setSunSkimStartCoordinates()
 
 void ShipEntity::setSunSkimEndCoordinates()
 {
-	if ([UNIVERSE sun] == nil)
+	if ((UNIVERSE != nullptr ? UNIVERSE->sun() : nullptr) == nil)
 	{
 		[shipAI message:"NO_SUN_FOUND"];
 		return;
 	}
 	
-	coordinates = [UNIVERSE getSunSkimEndPositionForShip:this];
+	coordinates = (UNIVERSE != nullptr ? UNIVERSE->getSunSkimEndPositionForShip(this) : HPVector{});
 	[shipAI message:"APPROACH_COORDINATES"];
 }
 
 
 void ShipEntity::setSunSkimExitCoordinates()
 {
-	::Entity *the_sun = oo::ToObjC([UNIVERSE sun]);	// its Objective-C object (C++ since bead oo-9ht.111)
+	::Entity *the_sun = oo::ToObjC((UNIVERSE != nullptr ? UNIVERSE->sun() : nullptr));	// its Objective-C object (C++ since bead oo-9ht.111)
 	if (the_sun == nil)  return;
-	HPVector v1 = [UNIVERSE getSunSkimEndPositionForShip:this];
+	HPVector v1 = (UNIVERSE != nullptr ? UNIVERSE->getSunSkimEndPositionForShip(this) : HPVector{});
 	HPVector vs = the_sun->_cxxEntity->position;
 	HPVector vout = HPvector_subtract(v1,vs);
 	if (vout.x||vout.y||vout.z)
@@ -2118,7 +2114,7 @@ void ShipEntity::patrolReportIn()
 {
 	// Set a report time in the patrolled station to delay a new launch.
 	::ShipEntity *the_station = (group() != nullptr ? group()->leader() : (::ShipEntity *)nil);
-	if(!the_station || !(the_station != nullptr ? the_station->getIsStation() : false)) the_station = oo::ToShip(oo::ToObjC([UNIVERSE station]));
+	if(!the_station || !(the_station != nullptr ? the_station->getIsStation() : false)) the_station = oo::ToShip(oo::ToObjC((UNIVERSE != nullptr ? UNIVERSE->station() : nullptr)));
 	if (oo::ToStation(oo::ToObjC(the_station)) != nullptr)  oo::ToStation(oo::ToObjC(the_station))->acceptPatrolReportFrom(this);
 }
 
@@ -2283,7 +2279,7 @@ void ShipEntity::setDestinationToDockingAbort()
 	if (!the_target) {
 		/* Probably the player trying to dock with docking computer
 		 * from out of scanner range */
-		the_target = oo::ToObjC([UNIVERSE station]);
+		the_target = oo::ToObjC((UNIVERSE != nullptr ? UNIVERSE->station() : nullptr));
 	}
 	double bo_distance = 8000; //	8km back off
 	HPVector v0 = position;
@@ -2538,7 +2534,7 @@ void ShipEntity::setCoordinates(const std::string &system_x_y_z)	// called by na
 	HPVector posn = make_HPvector((float)oo::str::doubleValue(xString), (float)oo::str::doubleValue(yString), (float)oo::str::doubleValue(zString));
 	GLfloat	scalar = 1.0;
 	
-	coordinates = [UNIVERSE cxx_coordinatesForPosition:posn withCoordinateSystem:systemString returningScalar:&scalar];
+	coordinates = (UNIVERSE != nullptr ? UNIVERSE->coordinatesForPosition(posn, systemString, &scalar) : HPVector{});
 	
 	[shipAI message:"APPROACH_COORDINATES"];
 }
@@ -2546,7 +2542,7 @@ void ShipEntity::setCoordinates(const std::string &system_x_y_z)	// called by na
 
 void ShipEntity::checkForNormalSpace()
 {
-	if ([UNIVERSE sun] && [UNIVERSE planet])
+	if ((UNIVERSE != nullptr && UNIVERSE->sun() != nullptr) && (UNIVERSE != nullptr && UNIVERSE->planet() != nullptr))
 		[shipAI message:"NORMAL_SPACE"];
 	else
 		[shipAI message:"INTERSTELLAR_SPACE"];
@@ -2556,8 +2552,8 @@ void ShipEntity::checkForNormalSpace()
 void ShipEntity::setTargetToRandomStation()
 {
 	/*- selects the nearest station it can find -*/
-	int				ent_count = UNIVERSE->_cxxUniverse->n_entities;
-	cxx::Entity			**uni_entities = UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
+	int				ent_count = UNIVERSE->n_entities;
+	cxx::Entity			**uni_entities = UNIVERSE->sortedEntities;	// grab the public sorted list
 	std::vector<::Entity *>	my_entities(ent_count);
 	::StationEntity	*station = nil, *my_station = nil;
 	double			maxRange2 = desired_range * desired_range;
@@ -2582,9 +2578,9 @@ void ShipEntity::setTargetToRandomStation()
 		// select a random station
 		station = oo::ToStation(my_entities[ranrot_rand() % station_count]);
 		// if more than one candidate do not select main station
-		if (station == [UNIVERSE station] && station_count > 1)
+		if (station == (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr) && station_count > 1)
 		{
-			while (station == [UNIVERSE station])
+			while (station == (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr))
 			{
 				station = oo::ToStation(my_entities[ranrot_rand() % station_count]);
 			}
@@ -2719,7 +2715,7 @@ void ShipEntity::ai_debugMessage(const std::string &message)	// called by name (
 // racing code TODO
 void ShipEntity::targetFirstBeaconWithCode(const std::string &code)	// called by name (ADR-0055 item 5)
 {
-	const std::vector<oo::ObjCRef<::Entity <OOBeaconEntity> *>> all_beacons = [UNIVERSE cxx_listBeaconsWithCode:code];
+	const std::vector<oo::ObjCRef<::Entity <OOBeaconEntity> *>> all_beacons = (UNIVERSE != nullptr ? UNIVERSE->listBeaconsWithCode(code) : std::vector<oo::ObjCRef<::Entity <OOBeaconEntity> *>>());
 	if (!all_beacons.empty())
 	{
 		addTarget(all_beacons[0].get());
@@ -2732,7 +2728,7 @@ void ShipEntity::targetFirstBeaconWithCode(const std::string &code)	// called by
 
 void ShipEntity::targetNextBeaconWithCode(const std::string &code)	// called by name (ADR-0055 item 5)
 {
-	const std::vector<oo::ObjCRef<::Entity <OOBeaconEntity> *>> all_beacons = [UNIVERSE cxx_listBeaconsWithCode:code];
+	const std::vector<oo::ObjCRef<::Entity <OOBeaconEntity> *>> all_beacons = (UNIVERSE != nullptr ? UNIVERSE->listBeaconsWithCode(code) : std::vector<oo::ObjCRef<::Entity <OOBeaconEntity> *>>());
 	::ShipEntity		*current_beacon = oo::ToShip(primaryTarget());
 	
 	if ((!current_beacon)||(!(current_beacon != nullptr ? current_beacon->isBeacon() : false)))

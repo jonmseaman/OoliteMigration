@@ -66,15 +66,11 @@ T *NewTestPlayer()
 
 
 // UNIVERSE: never initialised.
-@interface TestUniverse: Universe
-@end
+class TestUniverse : public Universe
+{
+public:
 
-
-@implementation TestUniverse
-
-- (OOTimeAbsolute) getTime	{ return 0; }
-
-@end
+};
 
 
 namespace {
@@ -84,8 +80,7 @@ void SetUp()
 	static Universe *universe = nil;
 	if (universe == nil)
 	{
-		universe = (Universe *)class_createInstance([TestUniverse class], 0);	// never released
-		universe->_cxxUniverse = oo::makeRef<cxx::Universe>(universe);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
+		universe = new TestUniverse();	// never released
 	}
 	gSharedUniverse = universe;
 	static TestPlayer *player = nullptr;

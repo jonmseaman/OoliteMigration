@@ -93,7 +93,7 @@ void OOEntityWithDrawable::drawImmediate(bool /*immediate*/, bool translucent)
 			// http://aegidian.org/bb/viewtopic.php?f=3&t=13619 - CIM
 			if (cam_zero_distance > (clipradius+1000)*(clipradius+1000))
 			{
-				if (![UNIVERSE viewFrustumIntersectsSphereAt:cameraRelativePosition withRadius:clipradius])
+				if (!(UNIVERSE != nullptr ? UNIVERSE->viewFrustumIntersectsSphereAt(cameraRelativePosition, clipradius) : false))
 				{
 					return;
 				}
@@ -105,7 +105,7 @@ void OOEntityWithDrawable::drawImmediate(bool /*immediate*/, bool translucent)
 			if (cam_zero_distance > (collision_radius+1000)*(collision_radius+1000))
 			{
 				// check correct sub-entity position
-				if (![UNIVERSE viewFrustumIntersectsSphereAt:cameraRelativePosition withRadius:collisionRadius()])
+				if (!(UNIVERSE != nullptr ? UNIVERSE->viewFrustumIntersectsSphereAt(cameraRelativePosition, collisionRadius()) : false))
 				{
 					return;
 				}
@@ -113,7 +113,7 @@ void OOEntityWithDrawable::drawImmediate(bool /*immediate*/, bool translucent)
 		}
 	}
 
-	if ([UNIVERSE wireframeGraphics])  OOGLWireframeModeOn();
+	if ((UNIVERSE != nullptr ? UNIVERSE->getWireframeGraphics() : false))  OOGLWireframeModeOn();
 
 	OODrawable *cxxDrawable = drawable.get();
 	if (cxxDrawable != nullptr)
@@ -122,7 +122,7 @@ void OOEntityWithDrawable::drawImmediate(bool /*immediate*/, bool translucent)
 		else  cxxDrawable->renderOpaqueParts();
 	}
 
-	if ([UNIVERSE wireframeGraphics])  OOGLWireframeModeOff();
+	if ((UNIVERSE != nullptr ? UNIVERSE->getWireframeGraphics() : false))  OOGLWireframeModeOff();
 }
 
 

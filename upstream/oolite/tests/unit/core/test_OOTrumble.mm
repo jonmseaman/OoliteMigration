@@ -194,27 +194,32 @@ void PlayerEntity::addTrumble(OOTrumble *t)  { added.push_back(t); }
 void PlayerEntity::removeTrumble(OOTrumble *t)  { removed.push_back(t); }
 
 
-@interface Universe: OOObject
+#import "UniverseStandIn.h"
+
+// The universe as the code under test sees it: a stand-in for the C++ class (bead oo-ql9rn deleted
+// the Objective-C facade the test's Objective-C stand-in stood in for), with the header's names and signatures.
+// It answers virtual members, so it has the game's vtable (UniverseStandIn.h) and StandInUniverse overrides them.
+class Universe : public oo::RefCounted
 {
-@public
+public:
+	OO_UNIVERSE_STAND_IN_VIRTUAL_MEMBERS
+
 	OOViewID view;
 	oo::Ref<OOCommodityMarket> market;
-}
-- (OOViewID) viewDirection;
-- (OOCommodityMarket *) commodityMarket;
-- (std::optional<std::string>) cxx_displayNameForCommodity:(const std::string &)co_type;
-- (void) cxx_addMessage:(const std::optional<std::string> &)text forCount:(OOTimeDelta)count;
-@end
 
-@implementation Universe
-- (OOViewID) viewDirection	{ return view; }
-- (OOCommodityMarket *) commodityMarket	{ return market.get(); }
-- (std::optional<std::string>) cxx_displayNameForCommodity:(const std::string &)co_type	{ return "Display " + co_type; }
-- (void) cxx_addMessage:(const std::optional<std::string> &)text forCount:(OOTimeDelta)count
+	::OOCommodityMarket *getCommodityMarket();
+	std::optional<std::string> displayNameForCommodity(const std::string &);
+};
+
+class StandInUniverse : public Universe
 {
-	gLog.push_back("message " + text.value_or("-") + " for " + std::to_string(count));
-}
-@end
+public:
+	OOViewID getViewDirection() override	{ return view; }
+	void addMessage(const std::optional<std::string> &text, OOTimeDelta count) override	{ gLog.push_back("message " + text.value_or("-") + " for " + std::to_string(count)); }
+};
+
+::OOCommodityMarket *Universe::getCommodityMarket()	{ return market.get(); }
+std::optional<std::string> Universe::displayNameForCommodity(const std::string &co_type)	{ return "Display " + co_type; }
 
 Universe *gSharedUniverse = nil;
 
@@ -306,7 +311,7 @@ void Reset()
 {
 	if (gSharedUniverse == nil)
 	{
-		gSharedUniverse = [[Universe alloc] init];
+		gSharedUniverse = new StandInUniverse();
 		gSharedUniverse->market = oo::makeRef<OOCommodityMarket>();
 	}
 	gSharedUniverse->view = VIEW_FORWARD;

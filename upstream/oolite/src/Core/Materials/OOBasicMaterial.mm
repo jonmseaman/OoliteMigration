@@ -345,7 +345,7 @@ void OOBasicMaterial::setShininess(uint8_t value)
 
 bool OOBasicMaterial::permitSpecular()
 {
-	return ![UNIVERSE reducedDetail];
+	return !(UNIVERSE != nullptr ? UNIVERSE->reducedDetail() : false);
 }
 
 

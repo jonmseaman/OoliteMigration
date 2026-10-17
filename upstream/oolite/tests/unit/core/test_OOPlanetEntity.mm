@@ -80,25 +80,16 @@ T *NewTestPlayer()
 
 
 // UNIVERSE: never initialised; answers the system data, the time and the detail level.
-@interface TestUniverse: Universe
+class TestUniverse : public Universe
 {
-@public
-	oo::PList	_systemData;
-	double		_time;
-	float		_airResistance;
-}
-@end
+public:
+	oo::PList _systemData = {};
+	OOTimeAbsolute &_time = universal_time;	// the universe's own state, which its getter answers (bead oo-ql9rn)
+	GLfloat &_airResistance = airResistanceFactor;	// the universe's own state, which setAirResistanceFactor() sets (bead oo-ql9rn)
 
-
-@implementation TestUniverse
-
-- (oo::PList) cxx_generateSystemData:(OOSystemID)s		{ return _systemData; }
-- (OOTimeAbsolute) getTime								{ return _time; }
-- (OOGraphicsDetail) detailLevel						{ return DETAIL_LEVEL_MINIMUM; }
-- (BOOL) reducedDetail									{ return YES; }
-- (void) setAirResistanceFactor:(GLfloat)factor			{ _airResistance = factor; }
-
-@end
+	oo::PList generateSystemData(OOSystemID s, bool /*useCache*/) override	{ return _systemData; }
+	bool reducedDetail() override	{ return YES; }
+};
 
 
 namespace {
@@ -121,8 +112,7 @@ void SetUp()
 {
 	if (sUniverse == nil)
 	{
-		sUniverse = (TestUniverse *)class_createInstance([TestUniverse class], 0);	// never released
-		sUniverse->_cxxUniverse = oo::makeRef<cxx::Universe>(sUniverse);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
+		sUniverse = new TestUniverse();	// never released
 		new (&sUniverse->_systemData) oo::PList();
 		sPlayer = NewTestPlayer<TestPlayer>();
 		OOTexture::configurationFactory = &NoTexture;

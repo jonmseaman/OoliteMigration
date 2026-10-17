@@ -116,14 +116,14 @@ oo::PList StationEntity::launchIndependentShip(const std::string &role)	// calle
 
 	if((trader && (randf() < 0.1)) || sunskimmer)
 	{
-		ship = [UNIVERSE cxx_newShipWithRole:"sunskim-trader"];
+		ship = (UNIVERSE != nullptr ? UNIVERSE->newShipWithRole("sunskim-trader") : (::ShipEntity *)nil);
 		sunskimmer = true;
 		trader = true;
 		shipRole = "trader"; // make sure also sunskimmers get trader role.
 	}
 	else
 	{
-		ship = [UNIVERSE cxx_newShipWithRole:shipRole];
+		ship = (UNIVERSE != nullptr ? UNIVERSE->newShipWithRole(shipRole) : (::ShipEntity *)nil);
 	}
 
 	if (!fitsInDock(ship))
@@ -149,7 +149,7 @@ oo::PList StationEntity::launchIndependentShip(const std::string &role)	// calle
 			if (sunskimmer) 
 			{
 				if (ship != nullptr)  ship->setFuel((Ranrot()&31));
-				[UNIVERSE makeSunSkimmer:ship andSetAI:YES];
+				if (UNIVERSE != nullptr)  UNIVERSE->makeSunSkimmer(ship, YES);
 			}
 			else
 			{
@@ -204,7 +204,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 	for (i = 0; (i < 4)&&(defenders_launched < max_police) ; i++)
 	{
 		::ShipEntity  *police_ship = nil;
-		if (![UNIVERSE entityForUniversalID:police_target])
+		if (!(UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(police_target) : id{}))
 		{
 			noteLostTarget();
 			return oo::EntityNodesFrom(std::vector<oo::ObjCRef<::Entity *>>());
@@ -214,11 +214,11 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 		 * ships */
 		if ((Ranrot() & 3) + 9 < techlevel)
 		{
-			police_ship = [UNIVERSE cxx_newShipWithRole:"interceptor"];   // retain count = 1
+			police_ship = (UNIVERSE != nullptr ? UNIVERSE->newShipWithRole("interceptor") : (::ShipEntity *)nil);   // retain count = 1
 		}
 		else
 		{
-			police_ship = [UNIVERSE cxx_newShipWithRole:"police"];   // retain count = 1
+			police_ship = (UNIVERSE != nullptr ? UNIVERSE->newShipWithRole("police") : (::ShipEntity *)nil);   // retain count = 1
 		}
 		
 		if (police_ship && fitsInDock(police_ship))
@@ -230,7 +230,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 			
 			if (police_ship != nullptr)  police_ship->setGroup(stationGroup());	// who's your Daddy
 			if (police_ship != nullptr)  police_ship->setPrimaryRole("police");
-			if (police_ship != nullptr)  police_ship->addTarget([UNIVERSE entityForUniversalID:police_target]);
+			if (police_ship != nullptr)  police_ship->addTarget((UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(police_target) : id{}));
 			if ((police_ship != nullptr ? police_ship->getScanClass() : OOScanClass{}) == CLASS_NOT_SET)
 				if (police_ship != nullptr)  police_ship->setScanClass(CLASS_POLICE);
 			if (police_ship != nullptr)  police_ship->setBounty(0, kOOLegalStatusReasonSetup);
@@ -279,7 +279,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 	if (defenders_launched >= max_defense_ships)   // shuttles are to rockhermits what police ships are to stations
 		return nil;
 	
-	if (![UNIVERSE entityForUniversalID:defense_target])
+	if (!(UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(defense_target) : id{}))
 	{
 		noteLostTarget();
 		return nil;
@@ -288,7 +288,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 	const std::optional<std::string> defense_ship_key = OptionalStringValue(shipinfoDictionary.find("defense_ship"));	// -oo_stringForKey:
 	if (defense_ship_key)
 	{
-		defense_ship = [UNIVERSE cxx_newShipWithName:*defense_ship_key];
+		defense_ship = (UNIVERSE != nullptr ? UNIVERSE->newShipWithName(*defense_ship_key) : (::ShipEntity *)nil);
 	}
 	// The retry below was a pointer comparison of the role with the default role string: it ran
 	// exactly when shipdata supplied defense_ship_role (-oo_stringForKey:defaultValue: returned the
@@ -298,11 +298,11 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 	{
 		const std::optional<std::string> defense_ship_role = OptionalStringValue(shipinfoDictionary.find("defense_ship_role"));
 		shipdataSuppliedRole = defense_ship_role.has_value();
-		defense_ship = [UNIVERSE cxx_newShipWithRole:defense_ship_role.value_or(default_defense_ship_role)];
+		defense_ship = (UNIVERSE != nullptr ? UNIVERSE->newShipWithRole(defense_ship_role.value_or(default_defense_ship_role)) : (::ShipEntity *)nil);
 	}
 
 	if (!defense_ship && shipdataSuppliedRole)
-		defense_ship = [UNIVERSE cxx_newShipWithRole:default_defense_ship_role];
+		defense_ship = (UNIVERSE != nullptr ? UNIVERSE->newShipWithRole(default_defense_ship_role) : (::ShipEntity *)nil);
 
 	if (!defense_ship || !fitsInDock(defense_ship))
 	{
@@ -338,7 +338,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 	}
 	if (defense_ship != nullptr)  defense_ship->setGroup(stationGroup());	// who's your Daddy
 	
-	if (defense_ship != nullptr)  defense_ship->addTarget([UNIVERSE entityForUniversalID:defense_target]);
+	if (defense_ship != nullptr)  defense_ship->addTarget((UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(defense_target) : id{}));
 
 	if ((scanClass != CLASS_ROCK)&&(scanClass != CLASS_STATION))
 	{
@@ -375,12 +375,12 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 
 	::ShipEntity  *scavenger_ship;
 	
-	unsigned scavs = [UNIVERSE cxx_countShipsWithPrimaryRole:"scavenger" inRange:SCANNER_MAX_RANGE ofEntity:oo::ToObjC(self)] + countOfShipsInLaunchQueueWithPrimaryRole("scavenger");
+	unsigned scavs = (UNIVERSE != nullptr ? UNIVERSE->countShipsWithPrimaryRole("scavenger", SCANNER_MAX_RANGE, oo::ToObjC(self)) : 0u) + countOfShipsInLaunchQueueWithPrimaryRole("scavenger");
 	
 	if (scavs >= max_scavengers)  return nil;
 	if (scavengers_launched >= max_scavengers)  return nil;
 			
-	scavenger_ship = [UNIVERSE cxx_newShipWithRole:"scavenger"];   // retain count = 1
+	scavenger_ship = (UNIVERSE != nullptr ? UNIVERSE->newShipWithRole("scavenger") : (::ShipEntity *)nil);   // retain count = 1
 	
 	if (!fitsInDock(scavenger_ship))
 	{
@@ -421,7 +421,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 
 	::ShipEntity  *miner_ship;
 	
-	int		n_miners = [UNIVERSE cxx_countShipsWithPrimaryRole:"miner" inRange:SCANNER_MAX_RANGE ofEntity:oo::ToObjC(self)] + countOfShipsInLaunchQueueWithPrimaryRole("miner");
+	int		n_miners = (UNIVERSE != nullptr ? UNIVERSE->countShipsWithPrimaryRole("miner", SCANNER_MAX_RANGE, oo::ToObjC(self)) : 0u) + countOfShipsInLaunchQueueWithPrimaryRole("miner");
 	
 	if (n_miners >= 1)	// just the one
 		return nil;
@@ -429,7 +429,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 	// count miners as scavengers...
 	if (scavengers_launched >= max_scavengers)  return nil;
 	
-	miner_ship = [UNIVERSE cxx_newShipWithRole:"miner"];   // retain count = 1
+	miner_ship = (UNIVERSE != nullptr ? UNIVERSE->newShipWithRole("miner") : (::ShipEntity *)nil);   // retain count = 1
 
 	if (!fitsInDock(miner_ship))
 	{
@@ -474,14 +474,14 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 	
 	if (defenders_launched >= max_defense_ships)  return nil;   // shuttles are to rockhermits what police ships are to stations
 	
-	if (![UNIVERSE entityForUniversalID:defense_target])
+	if (!(UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(defense_target) : id{}))
 	{
 		noteLostTarget();
 		return nil;
 	}
 	
 	// Yep! The standard hermit defence ships, even if they're the aggressor.
-	pirate_ship = [UNIVERSE cxx_newShipWithRole:"pirate"];   // retain count = 1
+	pirate_ship = (UNIVERSE != nullptr ? UNIVERSE->newShipWithRole("pirate") : (::ShipEntity *)nil);   // retain count = 1
 	// Nope, use standard pirates in a generic method.
 	
 	if (!fitsInDock(pirate_ship))
@@ -503,7 +503,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 		if (pirate_ship != nullptr)  pirate_ship->setOwner(self);
 		if (pirate_ship != nullptr)  pirate_ship->setGroup(stationGroup());	// who's your Daddy
 		if (pirate_ship != nullptr)  pirate_ship->setPrimaryRole("defense_ship");
-		if (pirate_ship != nullptr)  pirate_ship->addTarget([UNIVERSE entityForUniversalID:defense_target]);
+		if (pirate_ship != nullptr)  pirate_ship->addTarget((UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(defense_target) : id{}));
 		if (pirate_ship != nullptr)  pirate_ship->setScanClass(CLASS_NEUTRAL);
 		if ((pirate_ship != nullptr ? pirate_ship->heatInsulation() : 0.0f) < heatInsulation())
 			if (pirate_ship != nullptr)  pirate_ship->setHeatInsulation(heatInsulation());
@@ -529,7 +529,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 	}
 	::ShipEntity  *shuttle_ship;
 		
-	shuttle_ship = [UNIVERSE cxx_newShipWithRole:"shuttle"];   // retain count = 1
+	shuttle_ship = (UNIVERSE != nullptr ? UNIVERSE->newShipWithRole("shuttle") : (::ShipEntity *)nil);   // retain count = 1
 	
 	if (!fitsInDock(shuttle_ship))
 	{
@@ -567,7 +567,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 	}
 	::ShipEntity  *escort_ship;
 		
-	escort_ship = [UNIVERSE cxx_newShipWithRole:"escort"];   // retain count = 1
+	escort_ship = (UNIVERSE != nullptr ? UNIVERSE->newShipWithRole("escort") : (::ShipEntity *)nil);   // retain count = 1
 	
 	if (escort_ship && fitsInDock(escort_ship))
 	{
@@ -606,9 +606,9 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 			techlevel = 6;
 			
 		if ((Ranrot() & 7) + 6 <= techlevel)
-			patrol_ship = [UNIVERSE cxx_newShipWithRole:"interceptor"];   // retain count = 1
+			patrol_ship = (UNIVERSE != nullptr ? UNIVERSE->newShipWithRole("interceptor") : (::ShipEntity *)nil);   // retain count = 1
 		else
-			patrol_ship = [UNIVERSE cxx_newShipWithRole:"police"];   // retain count = 1
+			patrol_ship = (UNIVERSE != nullptr ? UNIVERSE->newShipWithRole("police") : (::ShipEntity *)nil);   // retain count = 1
 
 		if (!fitsInDock(patrol_ship))
 		{
@@ -653,7 +653,7 @@ void StationEntity::launchShipWithRole(const std::string &role)	// called by nam
 		return;
 	}
 	const std::string &shipRole = role;
-	::ShipEntity  *ship = [UNIVERSE cxx_newShipWithRole:shipRole];   // retain count = 1
+	::ShipEntity  *ship = (UNIVERSE != nullptr ? UNIVERSE->newShipWithRole(shipRole) : (::ShipEntity *)nil);   // retain count = 1
 	if (ship && fitsInDock(ship))
 	{
 		if (!(ship != nullptr ? ship->getCrew() : std::optional<std::vector<oo::Ref<OOCharacter>>>()).has_value())
@@ -733,7 +733,7 @@ OOTechLevelID StationEntity::getEquivalentTechLevel()
 {
 	if (equivalentTechLevel == NSNotFound)
 	{
-		return [UNIVERSE cxx_currentSystemData].get<int>(std::string(KEY_TECHLEVEL));
+		return (UNIVERSE != nullptr ? UNIVERSE->currentSystemData() : oo::PList()).get<int>(std::string(KEY_TECHLEVEL));
 	}
 	else
 	{
@@ -796,7 +796,7 @@ std::optional<std::string> StationEntity::getMarketScriptName()
 
 bool StationEntity::getMarketMonitored()
 {
-	if (this == [UNIVERSE station])
+	if (this == (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr))
 	{
 		return YES;
 	}
@@ -806,7 +806,7 @@ bool StationEntity::getMarketMonitored()
 
 bool StationEntity::getMarketBroadcast()
 {
-	if (this == [UNIVERSE station])
+	if (this == (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr))
 	{
 		return YES;
 	}
@@ -836,11 +836,11 @@ OOCreditsQuantity StationEntity::legalStatusOfManifest(::OOCommodityMarket *mani
 
 ::OOCommodityMarket *StationEntity::getLocalMarket()
 {
-	if (this == [UNIVERSE station])
+	if (this == (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr))
 	{
 		// main stations use the system market
 		// just return a reference
-		return [UNIVERSE commodityMarket];
+		return (UNIVERSE != nullptr ? UNIVERSE->getCommodityMarket() : nullptr);
 	}
 	if (!localMarket)
 	{
@@ -911,7 +911,7 @@ void StationEntity::setInterfaceDefinition(::OOJSInterfaceDefinition *definition
 
 ::OOCommodityMarket *StationEntity::initialiseLocalMarket()
 {
-	localMarket = ([UNIVERSE commodities] != nullptr ? [UNIVERSE commodities]->generateMarketForStation(this) : oo::Ref<OOCommodityMarket>());
+	localMarket = ((UNIVERSE != nullptr ? UNIVERSE->getCommodities() : nullptr) != nullptr ? UNIVERSE->getCommodities()->generateMarketForStation(this) : oo::Ref<OOCommodityMarket>());
 	return localMarket.get();
 }
 
@@ -928,7 +928,7 @@ void StationEntity::setPlanet(::OOPlanetEntity *planet_entity)
 ::OOPlanetEntity *StationEntity::getPlanet()
 {
 	// The planet is C++ since bead oo-9ht.129: null for any other entity (and for none, as nil).
-	return dynamic_cast<::OOPlanetEntity *>(oo::ToCxx((::Entity *)[UNIVERSE entityForUniversalID:planet]));
+	return dynamic_cast<::OOPlanetEntity *>(oo::ToCxx((::Entity *)(UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(planet) : id{})));
 }
 
 
@@ -1014,17 +1014,17 @@ bool StationEntity::setUpShipFromDictionary(const oo::PList &dict)
 
 	// Non main stations may have requiresDockingClearance set to yes as a result of the code below,
 	// but this variable should be irrelevant for them, as they do not make use of it anyway.
-	requiresDockingClearance = (unsigned char)dict.get<bool>("requires_docking_clearance", [UNIVERSE dockingClearanceProtocolActive]);
+	requiresDockingClearance = (unsigned char)dict.get<bool>("requires_docking_clearance", (UNIVERSE != nullptr ? UNIVERSE->dockingClearanceProtocolActive() : false));
 	
 	allowsFastDocking = (unsigned char)dict.get<bool>("allows_fast_docking", NO);
 	
 	allowsAutoDocking = (unsigned char)dict.get<bool>("allows_auto_docking", YES);
 	
-	allowsSaving = [UNIVERSE deterministicPopulation];
+	allowsSaving = (UNIVERSE != nullptr ? UNIVERSE->deterministicPopulation() : false);
 
 	interstellarUndockingAllowed = (unsigned char)dict.get<bool>("interstellar_undocking", NO);
 	
-	double unitime = [UNIVERSE getTime];
+	double unitime = (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0);
 
 	if (getHasNPCTraffic())  // removed the 'isRotatingStation' restriction.
 	{
@@ -1200,7 +1200,7 @@ std::optional<std::string> StationEntity::marketOverrideName()
 
 bool StationEntity::hasShipyard()
 {
-	if ([UNIVERSE station] == this)
+	if ((UNIVERSE != nullptr ? UNIVERSE->station() : nullptr) == this)
 		return YES;
 	const oo::PList	*determinantValue = shipinfoDictionary.find("has_shipyard");
 
@@ -1238,7 +1238,7 @@ void StationEntity::generateShipyard(OOTechLevelID stationTechLevel)
 
 	if (getLocalShipyard() == nullptr)
 	{
-		const oo::PList forSale = [UNIVERSE cxx_shipsForSaleForSystem:[UNIVERSE currentSystemID] withTL:stationTechLevel atTime:(PLAYER != nullptr ? PLAYER->clockTime() : 0.0)];
+		const oo::PList forSale = (UNIVERSE != nullptr ? UNIVERSE->shipsForSaleForSystem((UNIVERSE != nullptr ? UNIVERSE->currentSystemID() : 0), stationTechLevel, (PLAYER != nullptr ? PLAYER->clockTime() : 0.0)) : oo::PList());
 		const oo::PList::Array *entries = forSale.getIf<oo::PList::Array>();
 		setLocalShipyard(entries != nullptr ? *entries : oo::PList::Array());	// nil gave an empty shipyard
 	}
@@ -1708,9 +1708,9 @@ void StationEntity::clearDockingCorridor()
 void StationEntity::update(OOTimeDelta delta_t)
 {
 	BOOL isRockHermit = (scanClass == CLASS_ROCK);
-	BOOL isMainStation = (this == [UNIVERSE station]);
+	BOOL isMainStation = (this == (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr));
 	
-	double unitime = [UNIVERSE getTime];
+	double unitime = (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0);
 	
 	if (!isMainStation && localMarket == nil)
 	{
@@ -2018,7 +2018,7 @@ void StationEntity::noteDockedShip(::ShipEntity *ship)
 	if ((player != nullptr ? player->getDockingClearanceStatus() : OODockingClearanceStatus{}) != DOCKING_CLEARANCE_STATUS_GRANTED)
 	{
 		// avoid interfering with docking clearance on another bay
-		last_launch_time = [UNIVERSE getTime];
+		last_launch_time = (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0);
 	}
 	addShipToStationCount(ship);
 	
@@ -2113,7 +2113,7 @@ void StationEntity::takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::E
 	}
 	
 	// If this is the system's main station...
-	if (this == [UNIVERSE station] && !isFriend)
+	if (this == (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr) && !isFriend)
 	{
 		//...get angry
 		BOOL isEnergyMine = [ent isCascadeWeapon];
@@ -2140,7 +2140,7 @@ void StationEntity::takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::E
 		}
 	}
 	// Stop damage if main station & close to death!
-	if (!isFriend && (this != [UNIVERSE station] || amount < energy) )
+	if (!isFriend && (this != (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr) || amount < energy) )
 	{
 		// Handle damage like a ship.
 		ShipEntity::takeEnergyDamage(amount, entPart, otherPart, weaponIdentifier);	// [super takeEnergyDamage:...]
@@ -2150,21 +2150,21 @@ void StationEntity::takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::E
 
 void StationEntity::adjustVelocity(Vector xVel)
 {
-	if (this != [UNIVERSE station])  ShipEntity::adjustVelocity(xVel); //dont get moved
+	if (this != (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr))  ShipEntity::adjustVelocity(xVel); //dont get moved
 }
 
 
 void StationEntity::takeScrapeDamage(double amount, ::Entity *ent)
 {
 	// Stop damage if main station
-	if (this != [UNIVERSE station])  ShipEntity::takeScrapeDamage(amount, ent);
+	if (this != (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr))  ShipEntity::takeScrapeDamage(amount, ent);
 }
 
 
 void StationEntity::takeHeatDamage(double amount)
 {
 	// Stop damage if main station
-	if (this != [UNIVERSE station])  ShipEntity::takeHeatDamage(amount);
+	if (this != (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr))  ShipEntity::takeHeatDamage(amount);
 }
 
 
@@ -2238,7 +2238,7 @@ void StationEntity::decreaseAlertLevel()
 // Exposed to AI
 void StationEntity::becomeExplosion()
 {
-	if (this == [UNIVERSE station])  return;
+	if (this == (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr))  return;
 	
 	// launch docked ships if possible
 	::PlayerEntity* player = PLAYER;
@@ -2246,8 +2246,8 @@ void StationEntity::becomeExplosion()
 	{
 		// undock the player!
 		if (player != nullptr)  player->leaveDock(this);
-		[UNIVERSE setViewDirection:VIEW_FORWARD];
-		[[UNIVERSE gameController] setMouseInteractionModeForFlight];
+		if (UNIVERSE != nullptr)  UNIVERSE->setViewDirection(VIEW_FORWARD);
+		[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) setMouseInteractionModeForFlight];
 		if (player != nullptr)  player->warnAboutHostiles();	// sound a klaxon
 	}
 	
@@ -2266,21 +2266,21 @@ void StationEntity::becomeExplosion()
 // Exposed to AI
 void StationEntity::becomeEnergyBlast()
 {
-	if (this == [UNIVERSE station])  return;
+	if (this == (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr))  return;
 	ShipEntity::becomeEnergyBlast();	// [super becomeEnergyBlast]
 }
 
 
 void StationEntity::becomeLargeExplosion(double factor)
 {
-	if (this == [UNIVERSE station])  return;
+	if (this == (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr))  return;
 	ShipEntity::becomeLargeExplosion(factor);	// [super becomeLargeExplosion:factor]
 }
 
 
 void StationEntity::acceptPatrolReportFrom(::ShipEntity * /* patrol_ship */)
 {
-	last_patrol_report_time = [UNIVERSE getTime];
+	last_patrol_report_time = (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0);
 }
 
 
@@ -2289,13 +2289,13 @@ void StationEntity::acceptPatrolReportFrom(::ShipEntity * /* patrol_ship */)
 std::optional<std::string> StationEntity::acceptDockingClearanceRequestFrom(::ShipEntity *other)
 {
 	std::optional<std::string>	result;	// nullopt: no answer yet (was nil)
-	double		timeNow = [UNIVERSE getTime];
+	double		timeNow = (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0);
 	::PlayerEntity	*player = PLAYER;
 	
 	doScriptEvent(OOJSID("stationReceivedDockingRequest"), oo::ToObjC(other));
 
 
-	[UNIVERSE clearPreviousMessage];
+	if (UNIVERSE != nullptr)  UNIVERSE->clearPreviousMessage();
 
 	sanityCheckShipsOnApproach();
 
@@ -2307,7 +2307,7 @@ std::optional<std::string> StationEntity::acceptDockingClearanceRequestFrom(::Sh
 		//       ensure we clear the timer to allow NPC traffic.  If we
 		//       don't, normal traffic will resume once the timer runs out.
 		// No clearance is needed, but don't send friendly messages to hostile ships!
-		if (!(((other != nullptr ? other->getIsPlayer() : false) && (other != nullptr ? other->hasHostileTarget() : false)) || (this == [UNIVERSE station] && (other != nullptr ? other->getBounty() : 0) > 50)))
+		if (!(((other != nullptr ? other->getIsPlayer() : false) && (other != nullptr ? other->hasHostileTarget() : false)) || (this == (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr) && (other != nullptr ? other->getBounty() : 0) > 50)))
 		{
 			sendExpandedMessage("[station-docking-clearance-not-required]", other);
 		}
@@ -2368,7 +2368,7 @@ std::optional<std::string> StationEntity::acceptDockingClearanceRequestFrom(::Sh
 	// Deny docking for fugitives at the main station
 	// TODO: Should this be another key in shipdata.plist and/or should this
 	//  apply to all stations?
-	if (!result && this == [UNIVERSE station] && (other != nullptr ? other->getBounty() : 0) > 50)	// do not grant docking clearance to fugitives
+	if (!result && this == (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr) && (other != nullptr ? other->getBounty() : 0) > 50)	// do not grant docking clearance to fugitives
 	{
 		sendExpandedMessage("[station-docking-clearance-H-clearance-refused]", other);
 		if ((other != nullptr ? other->getIsPlayer() : false))

@@ -116,7 +116,7 @@ public:
 
 
 	/*	For subclasses: return true to permit specular settings, false to deny
-		them. By default, this is ![UNIVERSE reducedDetail].
+		them. By default, this is !(UNIVERSE != nullptr ? UNIVERSE->reducedDetail() : false).
 	*/
 	virtual bool permitSpecular();
 

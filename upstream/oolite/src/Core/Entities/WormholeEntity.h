@@ -35,7 +35,7 @@ MA 02110-1301, USA.
 #define WORMHOLE_SHRINK_RATE			4000.0
 #define WORMHOLE_LEADER_SPEED_FACTOR 0.25
 
-@class Universe;
+class Universe;
 class ShipEntity;	// C++ since bead oo-9ht.144
 
 typedef enum

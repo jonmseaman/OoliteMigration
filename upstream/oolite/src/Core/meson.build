@@ -94,7 +94,6 @@ oolite_sources += files(
     'Octree.mm',
     'ResourceManager.mm',
     'Universe.mm',
-    'Universe+ObjCBridge.mm',
     'legacy_random.c',
 )
 

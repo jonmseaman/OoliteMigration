@@ -112,7 +112,7 @@ void OOBreakPatternEntity::update(OOTimeDelta delta_t)
 	_lifetime -= BREAK_PATTERN_RING_SPEED * delta_t;
 	if (_lifetime < 0.0)
 	{
-		[UNIVERSE removeEntity:oo::ToObjC(this)];
+		if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(oo::ToObjC(this));
 	}
 }
 

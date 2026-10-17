@@ -543,7 +543,7 @@ oo::PList PlayerEntity::processKeyCode(const oo::PList &key_def)
 // special case for navigation keys - these keys cannot use mod keys, so they can't be impacted by multiple keypresses
 bool PlayerEntity::checkNavKeyPress(const oo::PList &key_def)
 {
-	::MyOpenGLView  *gameView = [UNIVERSE gameView];
+	::MyOpenGLView  *gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
 	for (std::size_t i = 0; i < key_def.count(); i++)
 	{
 		const oo::PList *def = key_def.at(i);
@@ -574,7 +574,7 @@ bool PlayerEntity::checkKeyPressIgnoreCtrl(const oo::PList &key_def, bool ignore
 
 bool PlayerEntity::checkKeyPress(const oo::PList &key_def, bool fKey_only, bool ignore_ctrl)
 {
-	::MyOpenGLView  *gameView = [UNIVERSE gameView];
+	::MyOpenGLView  *gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
 	for (std::size_t i = 0; i < key_def.count(); i++)
 	{
 		const oo::PList *def = key_def.at(i);
@@ -606,7 +606,7 @@ int PlayerEntity::getFirstKeyCode(const oo::PList &key_def)
 
 void PlayerEntity::getPollControls(double delta_t)
 {
-	::MyOpenGLView  *gameView = [UNIVERSE gameView];
+	::MyOpenGLView  *gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
 	const char *exceptionContext = "setup";
 	
 	@try
@@ -665,7 +665,7 @@ void PlayerEntity::getPollControls(double delta_t)
 // controller or view answered as a message to nil did: no interaction mode, a zero position).
 static int ClickedGUIRow(GuiDisplayGen *gui)
 {
-	cxx::Universe *universe = oo::ToCxx(UNIVERSE);
+	Universe *universe = UNIVERSE;
 	if (universe == nullptr)  return 0;
 	cxx::GameController *controller = oo::ToCxx(universe->gameController());
 	if (controller != nullptr && controller->mouseInteractionMode() == MOUSE_MODE_UI_SCREEN_WITH_INTERACTION && gui != nullptr)
@@ -680,8 +680,8 @@ static int ClickedGUIRow(GuiDisplayGen *gui)
 // DJS + aegidian: Moved from the big switch/case block in pollGuiArrowKeyControls
 bool PlayerEntity::handleGUIUpDownArrowKeys()
 {
-	::MyOpenGLView	*gameView = [UNIVERSE gameView];
-	::GuiDisplayGen	*gui = [UNIVERSE gui];
+	::MyOpenGLView	*gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
+	::GuiDisplayGen	*gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 	BOOL			result = NO;
 	BOOL			arrow_up = checkKeyPress(n_key_gui_arrow_up); 
 	BOOL			arrow_down = checkKeyPress(n_key_gui_arrow_down); 
@@ -764,9 +764,9 @@ bool PlayerEntity::handleGUIUpDownArrowKeys()
 
 void PlayerEntity::targetNewSystem(int direction, bool whileTyping)
 {
-	target_system_id = [UNIVERSE gui]->targetNextFoundSystem(direction);
+	target_system_id = UNIVERSE->getGui()->targetNextFoundSystem(direction);
 	setInfoSystemID(target_system_id, YES);
-	cursor_coordinates = ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getCoordinatesForSystem(target_system_id, galaxy_number) : NSMakePoint(0, 0));
+	cursor_coordinates = ((UNIVERSE != nullptr ? UNIVERSE->getSystemManager() : nullptr) != nullptr ? UNIVERSE->getSystemManager()->getCoordinatesForSystem(target_system_id, galaxy_number) : NSMakePoint(0, 0));
 
 	found_system_id = target_system_id;
 	if (!whileTyping)
@@ -779,7 +779,7 @@ void PlayerEntity::targetNewSystem(int direction, bool whileTyping)
 
 void PlayerEntity::clearPlanetSearchString()
 {
-	[[UNIVERSE gameView] resetTypedString];
+	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) resetTypedString];
 	planetSearchString.reset();
 }
 
@@ -797,11 +797,11 @@ void PlayerEntity::switchToMainView()
 	if (showDemoShips)
 	{
 		setShowDemoShips(NO);
-		[UNIVERSE removeDemoShips];
+		if (UNIVERSE != nullptr)  UNIVERSE->removeDemoShips();
 	}
-	[(::MyOpenGLView *)[UNIVERSE gameView] allowStringInput:NO];
-	if (isMouseControlOn())  [[UNIVERSE gameView] resetMouse];
-	[UNIVERSE enterGUIViewModeWithMouseInteraction:NO];
+	[(::MyOpenGLView *)(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) allowStringInput:NO];
+	if (isMouseControlOn())  [(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) resetMouse];
+	if (UNIVERSE != nullptr)  UNIVERSE->enterGUIViewModeWithMouseInteraction(NO);
 	noteGUIDidChangeFrom(oldScreen, gui_screen);
 }
 
@@ -836,13 +836,12 @@ void PlayerEntity::beginWitchspaceCountdown(int spin_time)
 		setStatus(STATUS_WITCHSPACE_COUNTDOWN);
 		playStandardHyperspace();
 		// say it!
-		[UNIVERSE clearPreviousMessage];
+		if (UNIVERSE != nullptr)  UNIVERSE->clearPreviousMessage();
 		int seconds = round(witchspaceCountdown);
-		const std::string destination = [UNIVERSE cxx_getSystemName:nextHopTargetSystemID()].value_or("");
-		[UNIVERSE cxx_displayCountdownMessage:ExpandKeyWithArguments("witch-to-x-in-y-seconds",
-			{ { "seconds", oo::PList::signedInteger(seconds) }, { "destination", oo::PList(destination) } }) forCount:1.0];
+		const std::string destination = (UNIVERSE != nullptr ? UNIVERSE->getSystemName(nextHopTargetSystemID()) : std::optional<std::string>()).value_or("");
+		if (UNIVERSE != nullptr)  UNIVERSE->displayCountdownMessage(ExpandKeyWithArguments("witch-to-x-in-y-seconds", { { "seconds", oo::PList::signedInteger(seconds) }, { "destination", oo::PList(destination) } }), 1.0);
 		doScriptEvent(OOJSID("playerStartedJumpCountdown"), { oo::PList("standard"), oo::PList::singleReal(static_cast<float>(witchspaceCountdown)) });
-		[UNIVERSE preloadPlanetTexturesForSystem:target_system_id];
+		if (UNIVERSE != nullptr)  UNIVERSE->preloadPlanetTexturesForSystem(target_system_id);
 	}
 }
 
@@ -862,7 +861,7 @@ void PlayerEntity::cancelWitchspaceCountdown()
 		playHyperspaceAborted();
 	}
 	// say it!
-	[UNIVERSE clearPreviousMessage];
+	if (UNIVERSE != nullptr)  UNIVERSE->clearPreviousMessage();
 	doScriptEvent(OOJSID("playerCancelledJumpCountdown"));
 }
 
@@ -874,8 +873,8 @@ void PlayerEntity::pollApplicationControls()
 	const char *exceptionContext = "setup";
 	
 	// does fullscreen / quit / snapshot
-	::MyOpenGLView  *gameView = [UNIVERSE gameView];
-	::GameController *gameController = [UNIVERSE gameController];
+	::MyOpenGLView  *gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
+	::GameController *gameController = (UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr);
 	
 	BOOL onTextEntryScreen = (gui_screen == GUI_SCREEN_LONG_RANGE_CHART) || (gui_screen == GUI_SCREEN_MISSION) || 
 		(gui_screen == GUI_SCREEN_SAVE) || (gui_screen == GUI_SCREEN_OXZMANAGER || (gui_screen == GUI_SCREEN_KEYBOARD_ENTRY));
@@ -893,7 +892,7 @@ void PlayerEntity::pollApplicationControls()
 				[gameController exitFullScreenMode];
 				if (mouse_control_on)
 				{
-					[UNIVERSE cxx_addMessage:OO_DESC("mouse-off") forCount:3.0];
+					if (UNIVERSE != nullptr)  UNIVERSE->addMessage(OO_DESC("mouse-off"), 3.0);
 					mouse_control_on = NO;
 				}
 			}
@@ -932,9 +931,9 @@ void PlayerEntity::pollApplicationControls()
 						// In all other cases we can't handle pause. Unpause immediately.
 						script_time = saved_script_time;
 						[gameView allowStringInput:NO];
-						if ([UNIVERSE pauseMessageVisible])
+						if ((UNIVERSE != nullptr ? UNIVERSE->pauseMessageVisible() : false))
 						{
-							[UNIVERSE clearPreviousMessage];	// remove the 'paused' message.
+							if (UNIVERSE != nullptr)  UNIVERSE->clearPreviousMessage();	// remove the 'paused' message.
 						}
 						[gameController setGamePaused:NO];
 					}
@@ -966,7 +965,7 @@ void PlayerEntity::pollApplicationControls()
 		if (!onTextEntryScreen && checkKeyPress(n_key_show_fps))   //  'F' key
 		{
 			exceptionContext = "toggle FPS";
-			if (!f_key_pressed)  [UNIVERSE setDisplayFPS:![UNIVERSE displayFPS]];
+			if (!f_key_pressed)  { if (UNIVERSE != nullptr)  UNIVERSE->setDisplayFPS(!(UNIVERSE != nullptr ? UNIVERSE->getDisplayFPS() : false)); }
 			f_key_pressed = YES;
 		}
 		else
@@ -979,8 +978,8 @@ void PlayerEntity::pollApplicationControls()
 		{
 			if (!f9_key_pressed)
 			{
-				BOOL oldBloom = [UNIVERSE bloom];
-				[UNIVERSE setBloom:!oldBloom];
+				BOOL oldBloom = (UNIVERSE != nullptr ? UNIVERSE->bloom() : false);
+				if (UNIVERSE != nullptr)  UNIVERSE->setBloom(!oldBloom);
 			}
 			f9_key_pressed = YES;
 		}
@@ -1008,7 +1007,7 @@ void PlayerEntity::pollApplicationControls()
 					mouse_control_on = !mouse_control_on;
 					if (mouse_control_on)
 					{
-						[UNIVERSE cxx_addMessage:OO_DESC("mouse-on") forCount:3.0];
+						if (UNIVERSE != nullptr)  UNIVERSE->addMessage(OO_DESC("mouse-on"), 3.0);
 						/*	Ensure the keyboard pitch override (intended to lock
 						 out the joystick if the player runs to the keyboard)
 						 is reset */
@@ -1026,7 +1025,7 @@ void PlayerEntity::pollApplicationControls()
 					}
 					else
 					{
-						[UNIVERSE cxx_addMessage:OO_DESC("mouse-off") forCount:3.0];
+						if (UNIVERSE != nullptr)  UNIVERSE->addMessage(OO_DESC("mouse-off"), 3.0);
                     #if OOLITE_GNUSTEP
 						[gameView grabMouseInsideGameWindow:NO];
                     #endif
@@ -1048,7 +1047,7 @@ void PlayerEntity::pollApplicationControls()
 			if (mouse_control_on)
 			{
 				mouse_control_on = NO;
-				[UNIVERSE cxx_addMessage:OO_DESC("mouse-off") forCount:3.0];
+				if (UNIVERSE != nullptr)  UNIVERSE->addMessage(OO_DESC("mouse-off"), 3.0);
             #if OOLITE_GNUSTEP
 				[gameView grabMouseInsideGameWindow:NO];
             #endif
@@ -1090,7 +1089,7 @@ void PlayerEntity::pollApplicationControls()
 
 void PlayerEntity::pollFlightControls(double delta_t)
 {
-	::MyOpenGLView		*gameView = [UNIVERSE gameView];
+	::MyOpenGLView		*gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
 	OOJoystickManager	*stickHandler = OOJoystickManager::sharedStickHandler();
 	const char			*exceptionContext = "setup";
 
@@ -1099,7 +1098,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 		exceptionContext = "joystick handling";
 		const BOOL *joyButtonState = OOJoystickManager::sharedStickHandler()->getAllButtonStates();
 		
-		BOOL paused = [[UNIVERSE gameController] isGamePaused];
+		BOOL paused = [(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) isGamePaused];
 		double speed_delta = SHIP_THRUST_FACTOR * thrust;
 		
 		if (!paused && gui_screen == GUI_SCREEN_MISSION)
@@ -1146,7 +1145,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 			}
 			else
 			{
-				[UNIVERSE gui]->clearBackground();
+				UNIVERSE->getGui()->clearBackground();
 				switchToThisView(view);
 				if (_missionWithCallback)
 				{
@@ -1160,7 +1159,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 		{
 			exceptionContext = "arrow keys";
 			// arrow keys
-			if ([UNIVERSE displayGUI])
+			if ((UNIVERSE != nullptr ? UNIVERSE->getDisplayGUI() : false))
 				pollGuiArrowKeyControls(delta_t);
 			else
 				pollFlightArrowKeyControls(delta_t);
@@ -1168,7 +1167,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 			//  view keys
 			pollViewControls();
 			
-			if (OOMouseInteractionModeIsFlightMode([[UNIVERSE gameController] mouseInteractionMode]))
+			if (OOMouseInteractionModeIsFlightMode([(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) mouseInteractionMode]))
 			{
 				exceptionContext = "afterburner";
 				if ((joyButtonState[BUTTON_FUELINJECT] || checkKeyPress(n_key_inject_fuel)) &&
@@ -1177,14 +1176,14 @@ void PlayerEntity::pollFlightControls(double delta_t)
 				{
 					if (fuel > 0 && !afterburner_engaged)
 					{
-						[UNIVERSE cxx_addMessage:OO_DESC("fuel-inject-on") forCount:1.5];
+						if (UNIVERSE != nullptr)  UNIVERSE->addMessage(OO_DESC("fuel-inject-on"), 1.5);
 						afterburner_engaged = YES;
 						startAfterburnerSound();
 					}
 					else
 					{
 						if (fuel <= 0.0)
-							[UNIVERSE cxx_addMessage:OO_DESC("fuel-out") forCount:1.5];
+							if (UNIVERSE != nullptr)  UNIVERSE->addMessage(OO_DESC("fuel-out"), 1.5);
 					}
 					afterburner_engaged = (fuel > 0);
 				}
@@ -1202,7 +1201,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 				// Updated DJS original code to fix BUG #17482 - (Getafix 2010/09/13)
 				if ((checkKeyPress(n_key_increase_speed) ||
 						joyButtonState[BUTTON_INCTHRUST] ||
-						 ((mouse_control_on)&&([gameView mouseWheelState] == gvMouseWheelUp) && ([UNIVERSE viewDirection] <= VIEW_STARBOARD || ![gameView isCapsLockOn])))
+						 ((mouse_control_on)&&([gameView mouseWheelState] == gvMouseWheelUp) && ((UNIVERSE != nullptr ? UNIVERSE->getViewDirection() : OOViewID{}) <= VIEW_STARBOARD || ![gameView isCapsLockOn])))
 					&& (flightSpeed < maxFlightSpeed) && (!afterburner_engaged))
 				{
 					flightSpeed += speed_delta * delta_t * mouseWheelDeltaFactor;
@@ -1210,7 +1209,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 				
 				if ((checkKeyPress(n_key_decrease_speed) ||
 						joyButtonState[BUTTON_DECTHRUST] ||
-						((mouse_control_on)&&([gameView mouseWheelState] == gvMouseWheelDown) && ([UNIVERSE viewDirection] <= VIEW_STARBOARD || ![gameView isCapsLockOn])))
+						((mouse_control_on)&&([gameView mouseWheelState] == gvMouseWheelDown) && ((UNIVERSE != nullptr ? UNIVERSE->getViewDirection() : OOViewID{}) <= VIEW_STARBOARD || ![gameView isCapsLockOn])))
 					&& (!afterburner_engaged))
 				{
 					flightSpeed -= speed_delta * delta_t * mouseWheelDeltaFactor;	
@@ -1250,7 +1249,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 							if (hyperspeed_locked)
 							{
 								playJumpMassLocked();
-								[UNIVERSE cxx_addMessage:OO_DESC("jump-mass-locked") forCount:1.5];
+								if (UNIVERSE != nullptr)  UNIVERSE->addMessage(OO_DESC("jump-mass-locked"), 1.5);
 							}
 						}
 						else
@@ -1267,7 +1266,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 				
 				exceptionContext = "shoot";
 				//  shoot 'a'
-				if (((checkNavKeyPress(n_key_fire_lasers))||((mouse_control_on)&&([gameView isDown:gvMouseLeftButton]) && ([UNIVERSE viewDirection] <= VIEW_STARBOARD || ![gameView isCapsLockOn]))||joyButtonState[BUTTON_FIRE])&&(shot_time > weapon_recharge_rate))
+				if (((checkNavKeyPress(n_key_fire_lasers))||((mouse_control_on)&&([gameView isDown:gvMouseLeftButton]) && ((UNIVERSE != nullptr ? UNIVERSE->getViewDirection() : OOViewID{}) <= VIEW_STARBOARD || ![gameView isCapsLockOn]))||joyButtonState[BUTTON_FIRE])&&(shot_time > weapon_recharge_rate))
 				{
 					if (fireMainWeapon())
 					{
@@ -1293,7 +1292,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 						{
 							playWeaponsOffline();
 						}
-						[UNIVERSE cxx_addMessage:weaponsOnlineToggleMsg forCount:2.0];
+						if (UNIVERSE != nullptr)  UNIVERSE->addMessage(weaponsOnlineToggleMsg, 2.0);
 						doScriptEvent(OOJSID("weaponsSystemsToggled"), { oo::PList(static_cast<bool>(weaponsOnline())) });
 						weaponsOnlineToggle_pressed = YES;
 					}
@@ -1395,16 +1394,16 @@ void PlayerEntity::pollFlightControls(double delta_t)
 							if (c > 0)
 							{
 								playNextEquipmentSelected();
-								[UNIVERSE cxx_addMessage:OO_DESC("equipment-primed-none") forCount:2.0];
+								if (UNIVERSE != nullptr)  UNIVERSE->addMessage(OO_DESC("equipment-primed-none"), 2.0);
 							}
-							else [UNIVERSE cxx_addMessage:OO_DESC("equipment-primed-none-available") forCount:2.0];
+							else { if (UNIVERSE != nullptr)  UNIVERSE->addMessage(OO_DESC("equipment-primed-none-available"), 2.0); }
 						}
 						else
 						{
 							playNextEquipmentSelected();
 							eqKey = eqScripts[primedEquipment].first;
 							const std::string equipmentName = (OOEquipmentType::equipmentTypeWithIdentifier(eqKey).get() != nullptr ? OOEquipmentType::equipmentTypeWithIdentifier(eqKey).get()->name() : std::optional<std::string>()).value_or(std::string());
-							[UNIVERSE cxx_addMessage:ExpandKeyWithArguments("equipment-primed", { { "equipmentName", oo::PList(equipmentName) } }) forCount:2.0];
+							if (UNIVERSE != nullptr)  UNIVERSE->addMessage(ExpandKeyWithArguments("equipment-primed", { { "equipmentName", oo::PList(equipmentName) } }), 2.0);
 						}
 						doScriptEvent(OOJSID("playerChangedPrimedEquipment"), { oo::PList(eqKey) });
 					}
@@ -1536,12 +1535,12 @@ void PlayerEntity::pollFlightControls(double delta_t)
 						safeAllMissiles();
 						if (!ident_engaged && weaponsOnline())
 						{
-							[UNIVERSE cxx_addMessage:OO_DESC("missile-safe") forCount:2.0];
+							if (UNIVERSE != nullptr)  UNIVERSE->addMessage(OO_DESC("missile-safe"), 2.0);
 							playMissileSafe();
 						}
 						else
 						{
-							[UNIVERSE cxx_addMessage:OO_DESC("ident-off") forCount:2.0];
+							if (UNIVERSE != nullptr)  UNIVERSE->addMessage(OO_DESC("ident-off"), 2.0);
 							playIdentOff();
 						}
 						ident_engaged = NO;
@@ -1559,7 +1558,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 						if (weaponsOnline() && fireECM())
 						{
 							playFiredECMSound();
-							[UNIVERSE cxx_addMessage:OO_DESC("ecm-on") forCount:3.0];
+							if (UNIVERSE != nullptr)  UNIVERSE->addMessage(OO_DESC("ecm-on"), 3.0);
 						}
 					}
 				}
@@ -1676,11 +1675,11 @@ void PlayerEntity::pollFlightControls(double delta_t)
 							if (galactic_witchjump)
 							{
 								galactic_witchjump = NO;
-								[UNIVERSE cxx_addMessage:OO_DESC("witch-user-galactic-abort") forCount:3.0];
+								if (UNIVERSE != nullptr)  UNIVERSE->addMessage(OO_DESC("witch-user-galactic-abort"), 3.0);
 							}
 							else
 							{
-								[UNIVERSE cxx_addMessage:OO_DESC("witch-user-abort") forCount:3.0];
+								if (UNIVERSE != nullptr)  UNIVERSE->addMessage(OO_DESC("witch-user-abort"), 3.0);
 							}
 						}
 						else if (witchJumpChecklist(false))
@@ -1706,11 +1705,11 @@ void PlayerEntity::pollFlightControls(double delta_t)
 							if (galactic_witchjump)
 							{
 								galactic_witchjump = NO;
-								[UNIVERSE cxx_addMessage:OO_DESC("witch-user-galactic-abort") forCount:3.0];
+								if (UNIVERSE != nullptr)  UNIVERSE->addMessage(OO_DESC("witch-user-galactic-abort"), 3.0);
 							}
 							else
 							{
-								[UNIVERSE cxx_addMessage:OO_DESC("witch-user-abort") forCount:3.0];
+								if (UNIVERSE != nullptr)  UNIVERSE->addMessage(OO_DESC("witch-user-abort"), 3.0);
 							}
 						}
 						else
@@ -1724,7 +1723,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 							setStatus(STATUS_WITCHSPACE_COUNTDOWN);
 							playGalacticHyperspace();
 							// say it!
-							[UNIVERSE cxx_addMessage:oo::str::formatRuntime(OO_DESC("witch-galactic-in-f-seconds"), { witchspaceCountdown }) forCount:1.0];
+							if (UNIVERSE != nullptr)  UNIVERSE->addMessage(oo::str::formatRuntime(OO_DESC("witch-galactic-in-f-seconds"), { witchspaceCountdown }), 1.0);
 							// FIXME: how to preload target system for hyperspace jump?
 							
 							doScriptEvent(OOJSID("playerStartedJumpCountdown"), { oo::PList("galactic"), oo::PList::singleReal(static_cast<float>(witchspaceCountdown)) });
@@ -1739,7 +1738,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 
 #if OO_FOV_INFLIGHT_CONTROL_ENABLED
 			// Field of view controls
-			if (![UNIVERSE displayGUI])
+			if (!(UNIVERSE != nullptr ? UNIVERSE->getDisplayGUI() : false))
 			{
 				if (([oo::ToObjC(this) checkKeyPress:n_key_inc_field_of_view] || joyButtonState[BUTTON_INC_FIELD_OF_VIEW]) && (fieldOfView < MAX_FOV))
 				{
@@ -1811,8 +1810,8 @@ void PlayerEntity::pollFlightControls(double delta_t)
 				gui_screen == GUI_SCREEN_STICKPROFILE || gui_screen == GUI_SCREEN_KEYBOARD || gui_screen == GUI_SCREEN_KEYBOARD_CONFIRMCLEAR ||
 				gui_screen == GUI_SCREEN_KEYBOARD_CONFIG || gui_screen == GUI_SCREEN_KEYBOARD_ENTRY || gui_screen == GUI_SCREEN_KEYBOARD_LAYOUT)
 			{
-				if ([UNIVERSE pauseMessageVisible]) [UNIVERSE messageGUI]->leaveLastLine();
-				else [UNIVERSE messageGUI]->clear();
+				if ((UNIVERSE != nullptr ? UNIVERSE->pauseMessageVisible() : false)) UNIVERSE->messageGUI()->leaveLastLine();
+				else UNIVERSE->messageGUI()->clear();
 				NSTimeInterval	time_this_frame = oo::date::monotonicSeconds();	// intervals only (time_last_frame)
 				OOTimeDelta		time_delta;
 				if (![[::GameController sharedController] isGamePaused])
@@ -1837,9 +1836,9 @@ void PlayerEntity::pollFlightControls(double delta_t)
 			{
 				if (!dump_entity_list_pressed)
 				{
-					[UNIVERSE debugDumpEntities];
+					if (UNIVERSE != nullptr)  UNIVERSE->debugDumpEntities();
 					gDebugFlags = 0;
-					[UNIVERSE cxx_addMessage:"Entity List dumped. Debugging OFF" forCount:3];
+					if (UNIVERSE != nullptr)  UNIVERSE->addMessage("Entity List dumped. Debugging OFF", 3);
 				}
 				dump_entity_list_pressed = YES;
 			}
@@ -1850,13 +1849,13 @@ void PlayerEntity::pollFlightControls(double delta_t)
 			if (checkKeyPress(n_key_debug_full) && ![gameView allowingStringInput])// look for the 'd' key
 			{
 				gDebugFlags = DEBUG_ALL;
-				[UNIVERSE cxx_addMessage:"Full debug ON" forCount:3];
+				if (UNIVERSE != nullptr)  UNIVERSE->addMessage("Full debug ON", 3);
 			}
 			
 			if (checkKeyPress(n_key_debug_collision) && ![gameView allowingStringInput])// look for the 'b' key
 			{
 				gDebugFlags |= DEBUG_COLLISIONS;
-				[UNIVERSE cxx_addMessage:"Collision debug ON" forCount:3];
+				if (UNIVERSE != nullptr)  UNIVERSE->addMessage("Collision debug ON", 3);
 			}
 			
 			if (checkKeyPress(n_key_debug_console_connect) && !::OODebugMonitor::sharedDebugMonitor()->usingPlugInController() && ![gameView allowingStringInput]) // look for the 'c' key
@@ -1868,12 +1867,12 @@ void PlayerEntity::pollFlightControls(double delta_t)
 					{
 						OOInitDebugSupport();
 						if (::OODebugMonitor::sharedDebugMonitor()->debuggerConnected())
-							[UNIVERSE cxx_addMessage:"Connected to debug console." forCount:3];
+							if (UNIVERSE != nullptr)  UNIVERSE->addMessage("Connected to debug console.", 3);
 					}
 					else
 					{
 						::OODebugMonitor::sharedDebugMonitor()->setDebugger(nullptr);
-						[UNIVERSE cxx_addMessage:"Disconnected from debug console." forCount:3];
+						if (UNIVERSE != nullptr)  UNIVERSE->addMessage("Disconnected from debug console.", 3);
 					}
 				}
 				autopilot_key_pressed = YES;
@@ -1884,23 +1883,23 @@ void PlayerEntity::pollFlightControls(double delta_t)
 			if (checkKeyPress(n_key_debug_bounding_boxes) && ![gameView allowingStringInput])// look for the 'x' key
 			{
 				gDebugFlags |= DEBUG_BOUNDING_BOXES;
-				[UNIVERSE cxx_addMessage:"Bounding box debug ON" forCount:3];
+				if (UNIVERSE != nullptr)  UNIVERSE->addMessage("Bounding box debug ON", 3);
 			}
 			
 			if (checkKeyPress(n_key_debug_shaders) && ![gameView allowingStringInput])// look for the 's' key
 			{
 				oo::log::logger().setDisplay("$shaderDebugOn", true);
-				[UNIVERSE cxx_addMessage:"Shader debug ON" forCount:3];
+				if (UNIVERSE != nullptr)  UNIVERSE->addMessage("Shader debug ON", 3);
 			}
 
-			if ((checkKeyPress(n_key_gui_arrow_left) || checkKeyPress(n_key_gui_arrow_right)) && gui_screen != GUI_SCREEN_GAMEOPTIONS && [UNIVERSE displayFPS] && ![gameView allowingStringInput])
+			if ((checkKeyPress(n_key_gui_arrow_left) || checkKeyPress(n_key_gui_arrow_right)) && gui_screen != GUI_SCREEN_GAMEOPTIONS && (UNIVERSE != nullptr ? UNIVERSE->getDisplayFPS() : false) && ![gameView allowingStringInput])
 			{
 				if (!leftRightKeyPressed)
 				{
 					float newTimeAccelerationFactor = checkKeyPress(n_key_gui_arrow_left) ?
-							fmax([UNIVERSE timeAccelerationFactor] / 2.0f, TIME_ACCELERATION_FACTOR_MIN) :
-							fmin([UNIVERSE timeAccelerationFactor] * 2.0f, TIME_ACCELERATION_FACTOR_MAX);
-					[UNIVERSE setTimeAccelerationFactor:newTimeAccelerationFactor];
+							fmax((UNIVERSE != nullptr ? UNIVERSE->getTimeAccelerationFactor() : 0.0) / 2.0f, TIME_ACCELERATION_FACTOR_MIN) :
+							fmin((UNIVERSE != nullptr ? UNIVERSE->getTimeAccelerationFactor() : 0.0) * 2.0f, TIME_ACCELERATION_FACTOR_MAX);
+					if (UNIVERSE != nullptr)  UNIVERSE->setTimeAccelerationFactor(newTimeAccelerationFactor);
 				}
 				leftRightKeyPressed = YES;
 			}
@@ -1911,7 +1910,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 			if (checkKeyPress(n_key_debug_off) && ![gameView allowingStringInput])// look for the 'n' key
 			{
 				gDebugFlags = 0;
-				[UNIVERSE cxx_addMessage:"All debug flags OFF" forCount:3];
+				if (UNIVERSE != nullptr)  UNIVERSE->addMessage("All debug flags OFF", 3);
 				oo::log::logger().setDisplay("$shaderDebugOn", false);
 			}
 	#endif
@@ -1959,21 +1958,21 @@ void PlayerEntity::pollFlightControls(double delta_t)
 							break;
 					}
 					[gameView allowStringInput:NO];
-					[UNIVERSE clearPreviousMessage];
-					[UNIVERSE setViewDirection:(OOViewID)saved_view_direction];
+					if (UNIVERSE != nullptr)  UNIVERSE->clearPreviousMessage();
+					if (UNIVERSE != nullptr)  UNIVERSE->setViewDirection((OOViewID)saved_view_direction);
 					currentWeaponFacing = saved_weapon_facing;
 					// make sure the light comes from the right direction after resuming from pause!
-					if (saved_gui_screen == GUI_SCREEN_SYSTEM_DATA) [UNIVERSE setMainLightPosition:_sysInfoLight];
-					[UNIVERSE gui]->setForegroundTextureKey("overlay");
-					[[UNIVERSE gameController] setGamePaused:NO];
+					if (saved_gui_screen == GUI_SCREEN_SYSTEM_DATA) { if (UNIVERSE != nullptr)  UNIVERSE->setMainLightPosition(_sysInfoLight); }
+					UNIVERSE->getGui()->setForegroundTextureKey("overlay");
+					[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) setGamePaused:NO];
 				}
 				else
 				{
-					saved_view_direction = [UNIVERSE viewDirection];
+					saved_view_direction = (UNIVERSE != nullptr ? UNIVERSE->getViewDirection() : OOViewID{});
 					saved_script_time = script_time;
 					saved_gui_screen = gui_screen;
 					saved_weapon_facing = currentWeaponFacing;
-					[UNIVERSE pauseGame];	// pause handler
+					if (UNIVERSE != nullptr)  UNIVERSE->pauseGame();	// pause handler
 				}
 			}
 			pause_pressed = YES;
@@ -1992,12 +1991,12 @@ void PlayerEntity::pollFlightControls(double delta_t)
 
 void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 {
-	::MyOpenGLView	*gameView = [UNIVERSE gameView];
+	::MyOpenGLView	*gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
 	BOOL			moving = NO;
 	BOOL			dragging = NO;
 	double			cursor_speed = ([gameView isCtrlDown] ? 20.0 : 10.0)* chart_zoom;
-	::GameController  *controller = [UNIVERSE gameController];
-	::GuiDisplayGen	*gui = [UNIVERSE gui];
+	::GameController  *controller = (UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr);
+	::GuiDisplayGen	*gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 	GUI_ROW_INIT(gui);
 	
 	// deal with string inputs as necessary
@@ -2046,11 +2045,11 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 				if (oo::str::length([gameView cxx_typedString].value_or("")) > 0)
 				{
 					planetSearchString = oo::str::lowercase(*[gameView cxx_typedString]);
-					NSPoint search_coords = [UNIVERSE cxx_findSystemCoordinatesWithPrefix:*planetSearchString];
+					NSPoint search_coords = (UNIVERSE != nullptr ? UNIVERSE->findSystemCoordinatesWithPrefix(*planetSearchString) : NSPoint{});
 					if ((search_coords.x >= 0.0)&&(search_coords.y >= 0.0))
 					{
 						// always reset the found system index at the beginning of a new search
-						if (oo::str::length(*planetSearchString) == 1) [UNIVERSE gui]->targetNextFoundSystem(0);
+						if (oo::str::length(*planetSearchString) == 1) UNIVERSE->getGui()->targetNextFoundSystem(0);
 						
 						// Always select the right one out of 2 overlapping systems.
 						targetNewSystem(0, YES);
@@ -2066,7 +2065,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 					if ([gameView isDown:gvDeleteKey]) // did we just delete the string ?
 					{
 						found_system_id = -1;
-						[UNIVERSE cxx_findSystemCoordinatesWithPrefix:""];
+						if (UNIVERSE != nullptr)  UNIVERSE->findSystemCoordinatesWithPrefix("");
 					}
 					planetSearchString.reset();
 				}
@@ -2220,7 +2219,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 						target_chart_focus = cursor_coordinates;
 						target_chart_centre = galaxy_coordinates;
 						found_system_id = -1;
-						[UNIVERSE cxx_findSystemCoordinatesWithPrefix:""];
+						if (UNIVERSE != nullptr)  UNIVERSE->findSystemCoordinatesWithPrefix("");
 						moving = YES;
 					}
 				}
@@ -2265,7 +2264,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 						{
 							clearPlanetSearchString();
 							previousInfoSystem();
-							target_chart_focus = ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getCoordinatesForSystem(info_system_id, galaxy_number) : NSMakePoint(0, 0));
+							target_chart_focus = ((UNIVERSE != nullptr ? UNIVERSE->getSystemManager() : nullptr) != nullptr ? UNIVERSE->getSystemManager()->getCoordinatesForSystem(info_system_id, galaxy_number) : NSMakePoint(0, 0));
 						}
 						pressedArrow = 1;
 					}
@@ -2294,7 +2293,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 						{
 							clearPlanetSearchString();
 							nextInfoSystem();
-							target_chart_focus = ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getCoordinatesForSystem(info_system_id, galaxy_number) : NSMakePoint(0, 0));
+							target_chart_focus = ((UNIVERSE != nullptr ? UNIVERSE->getSystemManager() : nullptr) != nullptr ? UNIVERSE->getSystemManager()->getCoordinatesForSystem(info_system_id, galaxy_number) : NSMakePoint(0, 0));
 						}
 						pressedArrow = 2;
 					}
@@ -2351,20 +2350,20 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 				{
 					if (found_system_id == -1)
 					{
-						target_system_id = [UNIVERSE findSystemNumberAtCoords:cursor_coordinates withGalaxy:galaxy_number includingHidden:NO];
+						target_system_id = (UNIVERSE != nullptr ? UNIVERSE->findSystemNumberAtCoords(cursor_coordinates, galaxy_number, NO) : 0);
 						setInfoSystemID(target_system_id, YES);
 					}
 					else
 					{
 						// if found with a search string, don't recalculate! Required for overlapping systems, like Divees & Tezabi in galaxy 5
-						NSPoint fpos = ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getCoordinatesForSystem(found_system_id, galaxy_number) : NSMakePoint(0, 0));
+						NSPoint fpos = ((UNIVERSE != nullptr ? UNIVERSE->getSystemManager() : nullptr) != nullptr ? UNIVERSE->getSystemManager()->getCoordinatesForSystem(found_system_id, galaxy_number) : NSMakePoint(0, 0));
 						if (fpos.x != cursor_coordinates.x && fpos.y != cursor_coordinates.y)
 						{
-							target_system_id = [UNIVERSE findSystemNumberAtCoords:cursor_coordinates withGalaxy:galaxy_number includingHidden:NO];
+							target_system_id = (UNIVERSE != nullptr ? UNIVERSE->findSystemNumberAtCoords(cursor_coordinates, galaxy_number, NO) : 0);
 							setInfoSystemID(target_system_id, YES);
 						}
 					}
-					cursor_coordinates = ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getCoordinatesForSystem(target_system_id, galaxy_number) : NSMakePoint(0, 0));
+					cursor_coordinates = ((UNIVERSE != nullptr ? UNIVERSE->getSystemManager() : nullptr) != nullptr ? UNIVERSE->getSystemManager()->getCoordinatesForSystem(target_system_id, galaxy_number) : NSMakePoint(0, 0));
 				}
 				if (chart_focus_coordinates.x - target_chart_centre.x <= -CHART_SCROLL_AT_X*chart_zoom)
 				{
@@ -2520,24 +2519,24 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 			if (checkKeyPress(n_key_gui_arrow_up)) //  '<--'
 			{
 				if (!upDownKeyPressed)
-					[UNIVERSE selectIntro2Previous];
+					if (UNIVERSE != nullptr)  UNIVERSE->selectIntro2Previous();
 			}
 			if (checkKeyPress(n_key_gui_arrow_down)) //  '-->'
 			{
 				if (!upDownKeyPressed)
-					[UNIVERSE selectIntro2Next];
+					if (UNIVERSE != nullptr)  UNIVERSE->selectIntro2Next();
 			}
 			upDownKeyPressed = ((checkKeyPress(n_key_gui_arrow_up))||(checkKeyPress(n_key_gui_arrow_down)));
 
 			if (checkKeyPress(n_key_gui_arrow_left)) //  '<--'
 			{
 				if (!leftRightKeyPressed)
-					[UNIVERSE selectIntro2PreviousCategory];
+					if (UNIVERSE != nullptr)  UNIVERSE->selectIntro2PreviousCategory();
 			}
 			if (checkKeyPress(n_key_gui_arrow_right)) //  '-->'
 			{
 				if (!leftRightKeyPressed)
-					[UNIVERSE selectIntro2NextCategory];
+					if (UNIVERSE != nullptr)  UNIVERSE->selectIntro2NextCategory();
 			}
 			leftRightKeyPressed = ((checkKeyPress(n_key_gui_arrow_left))||(checkKeyPress(n_key_gui_arrow_right)));
 
@@ -2592,7 +2591,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 				if ((guiSelectedRow == GUI_ROW(,BEGIN_NEW))&&(!disc_operation_in_progress))
 				{
 					disc_operation_in_progress = YES;
-					[UNIVERSE cxx_setUseAddOns:std::string(SCENARIO_OXP_DEFINITION_ALL) fromSaveGame:NO forceReinit:YES]; // calls reinitAndShowDemo
+					if (UNIVERSE != nullptr)  UNIVERSE->setUseAddOns(std::string(SCENARIO_OXP_DEFINITION_ALL), NO, YES); // calls reinitAndShowDemo
 				}
 				
 				if ([gameView isDown:gvMouseDoubleClick])
@@ -2609,7 +2608,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 			// vs fullscreen.
 			if ((guiSelectedRow == GUI_ROW(,QUIT)) && selectKeyPress)
 			{
-				[[UNIVERSE gameController] cxx_exitAppWithContext:"Exit Game selected on options screen"];
+				[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) cxx_exitAppWithContext:"Exit Game selected on options screen"];
 			}
 #endif
 			
@@ -2984,7 +2983,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 					{
 						if (!oo::str::hasPrefix(key.value_or(""), "More:")) // don't do anything if we clicked/selected a "More:" line
 						{
-							[UNIVERSE removeDemoShips];
+							if (UNIVERSE != nullptr)  UNIVERSE->removeDemoShips();
 							setGuiToStatusScreen();
 							playBuyShip();
 							doScriptEvent(OOJSID("playerBoughtNewShip"), { oo::EntityObjectNode(this), oo::PList::unsignedInteger(shipprice) }); // some equipment.oxp might want to know everything has changed.
@@ -3044,7 +3043,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 						// do callback
 						if (definition)
 						{
-							[[UNIVERSE gameView] clearKeys];
+							[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) clearKeys];
 							definition->runCallback(key);
 						}
 						else
@@ -3096,8 +3095,8 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 
 void PlayerEntity::pollMarketScreenControls()
 {
-	::MyOpenGLView	*gameView = [UNIVERSE gameView];
-	::GuiDisplayGen	*gui = [UNIVERSE gui];
+	::MyOpenGLView	*gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
+	::GuiDisplayGen	*gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 
 	if (gui_screen == GUI_SCREEN_MARKET)
 	{
@@ -3354,8 +3353,8 @@ void PlayerEntity::pollMarketScreenControls()
 
 void PlayerEntity::handleGameOptionsScreenKeys()
 {
-	::MyOpenGLView		*gameView = [UNIVERSE gameView];
-	::GuiDisplayGen		*gui = [UNIVERSE gui];
+	::MyOpenGLView		*gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
+	::GuiDisplayGen		*gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 	GUI_ROW_INIT(gui);
 	
 	handleGUIUpDownArrowKeys();
@@ -3385,7 +3384,7 @@ void PlayerEntity::handleGameOptionsScreenKeys()
 			if (!hdrMaxBrightnessControlPressed)
 			{
 				int			direction = (checkKeyPress(n_key_gui_arrow_right)) ? 1 : -1;
-				const oo::PList	*brightnessesValue = [UNIVERSE cxx_descriptions]->find("hdr_maxBrightness_array");
+				const oo::PList	*brightnessesValue = UNIVERSE->descriptions()->find("hdr_maxBrightness_array");
 				const oo::PList	brightnesses = (brightnessesValue != nullptr && brightnessesValue->isArray()) ? *brightnessesValue : oo::PList();
 				// -indexOfObject: with the %d string: only string elements ever matched; not found was NSNotFound narrowed to int
 				const std::string	currentBrightness = std::to_string((int)[gameView hdrMaxBrightness]);
@@ -3439,7 +3438,7 @@ void PlayerEntity::handleGameOptionsScreenKeys()
 		guiSelectedRow == GUI_ROW(GAME,DISPLAY) &&
 		(checkKeyPress(n_key_gui_arrow_right) || checkKeyPress(n_key_gui_arrow_left)))
 	{
-		::GameController	*controller = [UNIVERSE gameController];
+		::GameController	*controller = (UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr);
 		int				direction = (checkKeyPress(n_key_gui_arrow_right)) ? 1 : -1;
 		NSInteger		displayModeIndex = [controller indexOfCurrentDisplayMode];
 		const oo::PList	modes = [controller displayModes];
@@ -3520,8 +3519,8 @@ void PlayerEntity::handleGameOptionsScreenKeys()
 
 				if (isSpeechOn == OOSPEECHSETTINGS_ALL)
 				{
-					[UNIVERSE stopSpeaking];
-					if (message.has_value())  [UNIVERSE cxx_startSpeakingString:*message];
+					if (UNIVERSE != nullptr)  UNIVERSE->stopSpeaking();
+					if (message.has_value())  { if (UNIVERSE != nullptr)  UNIVERSE->startSpeakingString(*message); }
 				}
 			}
 		}
@@ -3539,17 +3538,17 @@ void PlayerEntity::handleGameOptionsScreenKeys()
 			{
 				playChangedOption();
 				if (checkKeyPress(n_key_gui_arrow_right))
-					voice_no = [UNIVERSE nextVoice: voice_no];
+					voice_no = (UNIVERSE != nullptr ? UNIVERSE->nextVoice(voice_no) : 0u);
 				else
-					voice_no = [UNIVERSE prevVoice: voice_no];
-				[UNIVERSE setVoice: voice_no withGenderM:voice_gender_m];
-				const std::string voiceName = [UNIVERSE cxx_voiceName:voice_no].value_or("");
+					voice_no = (UNIVERSE != nullptr ? UNIVERSE->prevVoice(voice_no) : 0u);
+				if (UNIVERSE != nullptr)  UNIVERSE->setVoice(voice_no, voice_gender_m);
+				const std::string voiceName = (UNIVERSE != nullptr ? UNIVERSE->voiceName(voice_no) : std::optional<std::string>()).value_or("");
 				const std::string message = ExpandKeyWithArguments("gameoptions-voice-name", { { "voiceName", oo::PList(voiceName) } });
 				gui->setText(message, GUI_ROW(GAME,SPEECH_LANGUAGE), GUI_ALIGN_CENTER);
 				if (isSpeechOn == OOSPEECHSETTINGS_ALL)
 				{
-					[UNIVERSE stopSpeaking];
-					if (const std::optional<std::string> spokenVoiceName = [UNIVERSE cxx_voiceName:voice_no])  [UNIVERSE cxx_startSpeakingString:*spokenVoiceName];
+					if (UNIVERSE != nullptr)  UNIVERSE->stopSpeaking();
+					if (const std::optional<std::string> spokenVoiceName = (UNIVERSE != nullptr ? UNIVERSE->voiceName(voice_no) : std::optional<std::string>()))  { if (UNIVERSE != nullptr)  UNIVERSE->startSpeakingString(*spokenVoiceName); }
 				}
 				timeLastKeyPress = script_time;
 			}
@@ -3570,13 +3569,13 @@ void PlayerEntity::handleGameOptionsScreenKeys()
 				if (m != voice_gender_m)
 				{
 					voice_gender_m = m;
-					[UNIVERSE setVoice:voice_no withGenderM:voice_gender_m];
+					if (UNIVERSE != nullptr)  UNIVERSE->setVoice(voice_no, voice_gender_m);
 					const std::string message = OO_DESC(voice_gender_m ? "gameoptions-voice-M" : "gameoptions-voice-F");
 					gui->setText(message, GUI_ROW(GAME,SPEECH_GENDER), GUI_ALIGN_CENTER);
 					if (isSpeechOn == OOSPEECHSETTINGS_ALL)
 					{
-						[UNIVERSE stopSpeaking];
-						if (const std::optional<std::string> spokenVoiceName = [UNIVERSE cxx_voiceName:voice_no])  [UNIVERSE cxx_startSpeakingString:*spokenVoiceName];
+						if (UNIVERSE != nullptr)  UNIVERSE->stopSpeaking();
+						if (const std::optional<std::string> spokenVoiceName = (UNIVERSE != nullptr ? UNIVERSE->voiceName(voice_no) : std::optional<std::string>()))  { if (UNIVERSE != nullptr)  UNIVERSE->startSpeakingString(*spokenVoiceName); }
 					}
 				}
 			}
@@ -3604,7 +3603,7 @@ void PlayerEntity::handleGameOptionsScreenKeys()
 			if ((int)musicController->mode() != initialMode)
 			{
 				playChangedOption();
-				const std::string musicMode = [UNIVERSE cxx_descriptionForArrayKey:"music-mode" index:OOMusicController::sharedController()->mode()].value_or("");
+				const std::string musicMode = (UNIVERSE != nullptr ? UNIVERSE->descriptionForArrayKey("music-mode", OOMusicController::sharedController()->mode()) : std::optional<std::string>()).value_or("");
 				const std::string message = ExpandKeyWithArguments("gameoptions-music-mode", { { "musicMode", oo::PList(musicMode) } });
 				gui->setText(message, GUI_ROW(GAME,MUSIC), GUI_ALIGN_CENTER);
 			}
@@ -3615,18 +3614,18 @@ void PlayerEntity::handleGameOptionsScreenKeys()
 	
 	if ((guiSelectedRow == GUI_ROW(GAME,AUTOSAVE))&&((checkKeyPress(n_key_gui_arrow_right))||(checkKeyPress(n_key_gui_arrow_left))))
 	{
-		if (checkKeyPress(n_key_gui_arrow_right) != [UNIVERSE autoSave])
+		if (checkKeyPress(n_key_gui_arrow_right) != (UNIVERSE != nullptr ? UNIVERSE->getAutoSave() : false))
 			playChangedOption();
-		[UNIVERSE setAutoSave:checkKeyPress(n_key_gui_arrow_right)];
-		if ([UNIVERSE autoSave])
+		if (UNIVERSE != nullptr)  UNIVERSE->setAutoSave(checkKeyPress(n_key_gui_arrow_right));
+		if ((UNIVERSE != nullptr ? UNIVERSE->getAutoSave() : false))
 		{
 			// if just enabled, we want to autosave immediately
-			[UNIVERSE setAutoSaveNow:YES];
+			if (UNIVERSE != nullptr)  UNIVERSE->setAutoSaveNow(YES);
 			gui->setText(OO_DESC("gameoptions-autosave-yes"), GUI_ROW(GAME,AUTOSAVE), GUI_ALIGN_CENTER);
 		}
 		else
 		{
-			[UNIVERSE setAutoSaveNow:NO];
+			if (UNIVERSE != nullptr)  UNIVERSE->setAutoSaveNow(NO);
 			gui->setText(OO_DESC("gameoptions-autosave-no"), GUI_ROW(GAME,AUTOSAVE), GUI_ALIGN_CENTER);
 		}
 	}
@@ -3703,18 +3702,18 @@ void PlayerEntity::handleGameOptionsScreenKeys()
 	{
 		if (!colorblindModeControlPressed)
 		{
-			int colorblindMode = [UNIVERSE colorblindMode];
+			int colorblindMode = (UNIVERSE != nullptr ? UNIVERSE->colorblindMode() : 0);
 			if (checkKeyPress(n_key_gui_arrow_right))
 			{
-				[UNIVERSE setCurrentPostFX:[UNIVERSE nextColorblindMode:colorblindMode]];
+				if (UNIVERSE != nullptr)  UNIVERSE->setCurrentPostFX((UNIVERSE != nullptr ? UNIVERSE->nextColorblindMode(colorblindMode) : 0));
 			}
 			else
 			{
-				[UNIVERSE setCurrentPostFX:[UNIVERSE prevColorblindMode:colorblindMode]];
+				if (UNIVERSE != nullptr)  UNIVERSE->setCurrentPostFX((UNIVERSE != nullptr ? UNIVERSE->prevColorblindMode(colorblindMode) : 0));
 			}
-			colorblindMode = [UNIVERSE colorblindMode]; // get the updated value
-			const oo::PList *colorblindModes = [UNIVERSE cxx_descriptions]->find("colorblind_mode");
-			const std::string colorblindModeDesc = (colorblindModes != nullptr && colorblindModes->isArray()) ? colorblindModes->at<std::string>(static_cast<std::size_t>([UNIVERSE useShaders] ? colorblindMode : 0)) : std::string();
+			colorblindMode = (UNIVERSE != nullptr ? UNIVERSE->colorblindMode() : 0); // get the updated value
+			const oo::PList *colorblindModes = UNIVERSE->descriptions()->find("colorblind_mode");
+			const std::string colorblindModeDesc = (colorblindModes != nullptr && colorblindModes->isArray()) ? colorblindModes->at<std::string>(static_cast<std::size_t>((UNIVERSE != nullptr ? UNIVERSE->useShaders() : false) ? colorblindMode : 0)) : std::string();
 			const std::string colorblindModeMsg = ExpandKeyWithArguments("gameoptions-colorblind-mode", { { "colorblindModeDesc", oo::PList(colorblindModeDesc) } });
 			gui->setText(colorblindModeMsg, GUI_ROW(GAME,COLORBLINDMODE), GUI_ALIGN_CENTER);
 		}
@@ -3728,10 +3727,10 @@ void PlayerEntity::handleGameOptionsScreenKeys()
  	{
 		if ((guiSelectedRow == GUI_ROW(GAME,WIREFRAMEGRAPHICS))&&((checkKeyPress(n_key_gui_arrow_right))||(checkKeyPress(n_key_gui_arrow_left))))
 		{
-			if (checkKeyPress(n_key_gui_arrow_right) != [UNIVERSE wireframeGraphics])
+			if (checkKeyPress(n_key_gui_arrow_right) != (UNIVERSE != nullptr ? UNIVERSE->getWireframeGraphics() : false))
 				playChangedOption();
-			[UNIVERSE setWireframeGraphics:checkKeyPress(n_key_gui_arrow_right)];
-			if ([UNIVERSE wireframeGraphics])
+			if (UNIVERSE != nullptr)  UNIVERSE->setWireframeGraphics(checkKeyPress(n_key_gui_arrow_right));
+			if ((UNIVERSE != nullptr ? UNIVERSE->getWireframeGraphics() : false))
 				gui->setText(OO_DESC("gameoptions-wireframe-graphics-yes"), GUI_ROW(GAME,WIREFRAMEGRAPHICS), GUI_ALIGN_CENTER);
 			else
 				gui->setText(OO_DESC("gameoptions-wireframe-graphics-no"), GUI_ROW(GAME,WIREFRAMEGRAPHICS), GUI_ALIGN_CENTER);
@@ -3792,13 +3791,13 @@ void PlayerEntity::handleGameOptionsScreenKeys()
 			Generally we should decide whether the menu values should cycle or 
 			not and apply it for all menu entries.
 			*/ 
-			if ((([UNIVERSE detailLevel] == DETAIL_LEVEL_MINIMUM) && (direction == -1)) || 
-					(([UNIVERSE detailLevel] == DETAIL_LEVEL_MAXIMUM) && (direction == 1)))
+			if ((((UNIVERSE != nullptr ? UNIVERSE->getDetailLevel() : OOGraphicsDetail{}) == DETAIL_LEVEL_MINIMUM) && (direction == -1)) || 
+					(((UNIVERSE != nullptr ? UNIVERSE->getDetailLevel() : OOGraphicsDetail{}) == DETAIL_LEVEL_MAXIMUM) && (direction == 1)))
 				direction = 0;
 			
-			OOGraphicsDetail detailLevel = (OOGraphicsDetail)([UNIVERSE detailLevel] + direction);
-			[UNIVERSE setDetailLevel:detailLevel];
-			detailLevel = [UNIVERSE detailLevel];
+			OOGraphicsDetail detailLevel = (OOGraphicsDetail)(UNIVERSE->getDetailLevel() + direction);
+			if (UNIVERSE != nullptr)  UNIVERSE->setDetailLevel(detailLevel);
+			detailLevel = (UNIVERSE != nullptr ? UNIVERSE->getDetailLevel() : OOGraphicsDetail{});
 
 			const std::string shaderEffectsOptionsString = cxx_OOExpand("gameoptions-detaillevel-[detailLevel]", detailLevel).value_or(std::string());
 			gui->setText(ExpandKeyWithArguments(shaderEffectsOptionsString.c_str(), {}), GUI_ROW(GAME,SHADEREFFECTS), GUI_ALIGN_CENTER);
@@ -3826,10 +3825,10 @@ void PlayerEntity::handleGameOptionsScreenKeys()
 
 	if ((guiSelectedRow == GUI_ROW(GAME,DOCKINGCLEARANCE))&&((checkKeyPress(n_key_gui_arrow_right))||(checkKeyPress(n_key_gui_arrow_left))))
 	{
-		if (checkKeyPress(n_key_gui_arrow_right) != [UNIVERSE dockingClearanceProtocolActive])
+		if (checkKeyPress(n_key_gui_arrow_right) != (UNIVERSE != nullptr ? UNIVERSE->dockingClearanceProtocolActive() : false))
 			playChangedOption();
-		[UNIVERSE setDockingClearanceProtocolActive:checkKeyPress(n_key_gui_arrow_right)];
-		if ([UNIVERSE dockingClearanceProtocolActive])
+		if (UNIVERSE != nullptr)  UNIVERSE->setDockingClearanceProtocolActive(checkKeyPress(n_key_gui_arrow_right));
+		if ((UNIVERSE != nullptr ? UNIVERSE->dockingClearanceProtocolActive() : false))
 			gui->setText(OO_DESC("gameoptions-docking-clearance-yes"), GUI_ROW(GAME,DOCKINGCLEARANCE), GUI_ALIGN_CENTER);
 		else
 			gui->setText(OO_DESC("gameoptions-docking-clearance-no"), GUI_ROW(GAME,DOCKINGCLEARANCE), GUI_ALIGN_CENTER);
@@ -3845,8 +3844,8 @@ void PlayerEntity::handleGameOptionsScreenKeys()
 
 void PlayerEntity::handleKeyMapperScreenKeys()
 {
-	::MyOpenGLView	*gameView = [UNIVERSE gameView];
-	::GuiDisplayGen	*gui = [UNIVERSE gui];
+	::MyOpenGLView	*gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
+	::GuiDisplayGen	*gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 
 	keyMapperInputHandler(gui, gameView);
 	leftRightKeyPressed = checkKeyPress(n_key_gui_arrow_right) || checkKeyPress(n_key_gui_arrow_left) || checkKeyPress(n_key_gui_page_up) || checkKeyPress(n_key_gui_page_down);
@@ -3869,13 +3868,13 @@ void PlayerEntity::handleKeyMapperScreenKeys()
 			if (from_function < 0)  from_function = 0;
 			
 			setGuiToKeyMapperScreen(from_function, YES);
-			if ([UNIVERSE gui]->getSelectedRow() < GUI_ROW_KC_FUNCSTART)
+			if (UNIVERSE->getGui()->getSelectedRow() < GUI_ROW_KC_FUNCSTART)
 			{
-				[UNIVERSE gui]->setSelectedRow(GUI_ROW_KC_FUNCSTART);
+				UNIVERSE->getGui()->setSelectedRow(GUI_ROW_KC_FUNCSTART);
 			}
 			if (from_function == 0)
 			{
-				[UNIVERSE gui]->setSelectedRow(GUI_ROW_KC_FUNCSTART + MAX_ROWS_KC_FUNCTIONS - 1);
+				UNIVERSE->getGui()->setSelectedRow(GUI_ROW_KC_FUNCSTART + MAX_ROWS_KC_FUNCTIONS - 1);
 			}
 		}
 	}
@@ -3884,8 +3883,8 @@ void PlayerEntity::handleKeyMapperScreenKeys()
 
 void PlayerEntity::handleKeyboardLayoutKeys()
 {
-	::MyOpenGLView	*gameView = [UNIVERSE gameView];
-	::GuiDisplayGen	*gui = [UNIVERSE gui];
+	::MyOpenGLView	*gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
+	::GuiDisplayGen	*gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 	
 	handleKeyboardLayoutEntryKeys(gui, gameView);
 	leftRightKeyPressed = checkKeyPress(n_key_gui_arrow_right) || checkKeyPress(n_key_gui_arrow_left) || checkKeyPress(n_key_gui_page_up) || checkKeyPress(n_key_gui_page_down);
@@ -3908,13 +3907,13 @@ void PlayerEntity::handleKeyboardLayoutKeys()
 			if (from_function < 0)  from_function = 0;
 			
 			setGuiToKeyboardLayoutScreen(from_function, YES);
-			if ([UNIVERSE gui]->getSelectedRow() < GUI_ROW_KC_FUNCSTART)
+			if (UNIVERSE->getGui()->getSelectedRow() < GUI_ROW_KC_FUNCSTART)
 			{
-				[UNIVERSE gui]->setSelectedRow(GUI_ROW_KC_FUNCSTART);
+				UNIVERSE->getGui()->setSelectedRow(GUI_ROW_KC_FUNCSTART);
 			}
 			if (from_function == 0)
 			{
-				[UNIVERSE gui]->setSelectedRow(GUI_ROW_KC_FUNCSTART + MAX_ROWS_KC_FUNCTIONS - 1);
+				UNIVERSE->getGui()->setSelectedRow(GUI_ROW_KC_FUNCSTART + MAX_ROWS_KC_FUNCTIONS - 1);
 			}
 		}
 	}
@@ -3923,8 +3922,8 @@ void PlayerEntity::handleKeyboardLayoutKeys()
 
 void PlayerEntity::handleStickMapperScreenKeys()
 {
-	::MyOpenGLView	*gameView = [UNIVERSE gameView];
-	::GuiDisplayGen	*gui = [UNIVERSE gui];
+	::MyOpenGLView	*gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
+	::GuiDisplayGen	*gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 	
 	stickMapperInputHandler(gui, gameView);
 	leftRightKeyPressed = checkKeyPress(n_key_gui_arrow_right) || checkKeyPress(n_key_gui_arrow_left) || checkKeyPress(n_key_gui_page_up) || checkKeyPress(n_key_gui_page_down);
@@ -3947,13 +3946,13 @@ void PlayerEntity::handleStickMapperScreenKeys()
 			if (from_function < 0)  from_function = 0;
 			
 			setGuiToStickMapperScreen(from_function, YES);
-			if ([UNIVERSE gui]->getSelectedRow() < GUI_ROW_FUNCSTART)
+			if (UNIVERSE->getGui()->getSelectedRow() < GUI_ROW_FUNCSTART)
 			{
-				[UNIVERSE gui]->setSelectedRow(GUI_ROW_FUNCSTART);
+				UNIVERSE->getGui()->setSelectedRow(GUI_ROW_FUNCSTART);
 			}
 			if (from_function == 0)
 			{
-				[UNIVERSE gui]->setSelectedRow(GUI_ROW_FUNCSTART + MAX_ROWS_FUNCTIONS - 1);
+				UNIVERSE->getGui()->setSelectedRow(GUI_ROW_FUNCSTART + MAX_ROWS_FUNCTIONS - 1);
 			}
 		}
 	}
@@ -3973,14 +3972,14 @@ void PlayerEntity::pollCustomViewControls()
 	static BOOL shift_down;
 	static BOOL caps_on = NO;
 	static NSTimeInterval last_time = 0.0;
-	::MyOpenGLView *gameView = [UNIVERSE gameView];
+	::MyOpenGLView *gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
 	const BOOL *joyButtonState = OOJoystickManager::sharedStickHandler()->getAllButtonStates();
 
 	if (checkKeyPress(n_key_custom_view) || joyButtonState[BUTTON_EXTVIEWCYCLE])
 	{
 		if (!customView_pressed && !_customViews.empty() && gui_screen != GUI_SCREEN_LONG_RANGE_CHART && ![gameView allowingStringInput])
 		{
-			if ([UNIVERSE viewDirection] == VIEW_CUSTOM)	// already in custom view mode
+			if ((UNIVERSE != nullptr ? UNIVERSE->getViewDirection() : OOViewID{}) == VIEW_CUSTOM)	// already in custom view mode
 			{
 				// rotate the custom views
 				_customViewIndex = (_customViewIndex + 1) % _customViews.size();
@@ -3996,7 +3995,7 @@ void PlayerEntity::pollCustomViewControls()
 	else
 		customView_pressed = NO;
 	NSTimeInterval this_time = oo::date::monotonicSeconds();	// intervals only (last_time)
-	if ([UNIVERSE viewDirection] > VIEW_STARBOARD && [gameView isCapsLockOn])
+	if ((UNIVERSE != nullptr ? UNIVERSE->getViewDirection() : OOViewID{}) > VIEW_STARBOARD && [gameView isCapsLockOn])
 	{
 		BOOL ctrl_down = [gameView isCtrlDown];
 		float customViewZoomSpeed = ctrl_down ? CUSTOM_VIEW_ZOOM_SPEED * CUSTOM_VIEW_SPEED_REDUCTION_FACTOR: CUSTOM_VIEW_ZOOM_SPEED;
@@ -4111,7 +4110,7 @@ void PlayerEntity::pollViewControls()
 	if(!pollControls)
 		return;
 	
-	::MyOpenGLView	*gameView = [UNIVERSE gameView];
+	::MyOpenGLView	*gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
 	OOJoystickManager *stickHandler = OOJoystickManager::sharedStickHandler();
 	
 	NSPoint			virtualView = NSZeroPoint;
@@ -4133,7 +4132,7 @@ void PlayerEntity::pollViewControls()
 	const BOOL *joyButtonState = stickHandler->getAllButtonStates();
 	
 	//  view keys
-	if ((checkKeyPress(n_key_view_forward)) || (virtualView.y < -view_threshold)||joyButtonState[BUTTON_VIEWFORWARD] || (((checkKeyPress(n_key_hyperspace) && gui_screen != GUI_SCREEN_LONG_RANGE_CHART) || joyButtonState[BUTTON_HYPERDRIVE]) && [UNIVERSE displayGUI]))
+	if ((checkKeyPress(n_key_view_forward)) || (virtualView.y < -view_threshold)||joyButtonState[BUTTON_VIEWFORWARD] || (((checkKeyPress(n_key_hyperspace) && gui_screen != GUI_SCREEN_LONG_RANGE_CHART) || joyButtonState[BUTTON_HYPERDRIVE]) && (UNIVERSE != nullptr ? UNIVERSE->getDisplayGUI() : false)))
 	{
 		switchToThisView(VIEW_FORWARD);
 	}
@@ -4257,7 +4256,7 @@ void PlayerEntity::pollViewControls()
 	//  show comms log '`'
 	if (checkKeyPress(n_key_comms_log))
 	{
-		[UNIVERSE showCommsLog: 1.5];
+		if (UNIVERSE != nullptr)  UNIVERSE->showCommsLog(1.5);
 		if (hud != nullptr)  hud->refreshLastTransmitter();
 	}
 }
@@ -4265,7 +4264,7 @@ void PlayerEntity::pollViewControls()
 
 void PlayerEntity::pollFlightArrowKeyControls(double delta_t)
 {
-	::MyOpenGLView		*gameView = [UNIVERSE gameView];
+	::MyOpenGLView		*gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
 	OOJoystickManager	*stickHandler = OOJoystickManager::sharedStickHandler();
 	NSUInteger			numSticks = stickHandler->joystickCount();
 	NSPoint				virtualStick = NSZeroPoint;
@@ -4325,7 +4324,7 @@ void PlayerEntity::pollFlightArrowKeyControls(double delta_t)
 	double roll_dampner = ROLL_DAMPING_FACTOR * delta_t;
 	double pitch_dampner = PITCH_DAMPING_FACTOR * delta_t;
 	double yaw_dampner = YAW_DAMPING_FACTOR * delta_t;
-	BOOL capsLockCustomView = [UNIVERSE viewDirection] == VIEW_CUSTOM && [gameView isCapsLockOn];
+	BOOL capsLockCustomView = (UNIVERSE != nullptr ? UNIVERSE->getViewDirection() : OOViewID{}) == VIEW_CUSTOM && [gameView isCapsLockOn];
 	
 	BOOL	isCtrlDown = [gameView isCtrlDown];
 	
@@ -4515,8 +4514,8 @@ void PlayerEntity::pollGuiScreenControlsWithFKeyAlias(bool fKeyAlias)
 	if(!pollControls && fKeyAlias)	// Still OK to run, if we don't use number keys.
 		return;
 	
-	::GuiDisplayGen	*gui = [UNIVERSE gui];
-	::MyOpenGLView	*gameView = [UNIVERSE gameView];
+	::GuiDisplayGen	*gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
+	::MyOpenGLView	*gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
 	BOOL			docked_okay = (status() == STATUS_DOCKED);
 	
 	//  text displays
@@ -4671,12 +4670,12 @@ void PlayerEntity::pollGuiScreenControlsWithFKeyAlias(bool fKeyAlias)
 
 void PlayerEntity::pollGameOverControls(double /*delta_t*/)
 {
-	::MyOpenGLView  *gameView = [UNIVERSE gameView];
+	::MyOpenGLView  *gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
 	if ([gameView isDown:32])   // look for the spacebar
 	{
 		if (!spacePressed)
 		{
-			[UNIVERSE cxx_displayMessage:"" forCount:1.0];
+			if (UNIVERSE != nullptr)  UNIVERSE->displayMessage("", 1.0);
 			shot_time = INITIAL_SHOT_TIME;	// forces immediate restart
 		}
 		spacePressed = YES;
@@ -4698,7 +4697,7 @@ void PlayerEntity::pollAutopilotControls(double delta_t)
 	const BOOL *joyButtonState = OOJoystickManager::sharedStickHandler()->getAllButtonStates();
 
 	// controls polled while the autopilot is active
-	if (![[UNIVERSE gameController] isGamePaused])
+	if (![(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) isGamePaused])
 	{
 		//  view keys
 		pollViewControls();
@@ -4706,7 +4705,7 @@ void PlayerEntity::pollAutopilotControls(double delta_t)
 		//  text displays
 		pollGuiScreenControls();
 		
-		if ([UNIVERSE displayGUI])
+		if ((UNIVERSE != nullptr ? UNIVERSE->getDisplayGUI() : false))
 			pollGuiArrowKeyControls(delta_t);
 		
 		if (checkKeyPress(n_key_autopilot) || joyButtonState[BUTTON_DOCKCPU]
@@ -4715,7 +4714,7 @@ void PlayerEntity::pollAutopilotControls(double delta_t)
 			if (hasDockingComputer() && !autopilot_key_pressed && !fast_autopilot_key_pressed)
 			{
 				disengageAutopilot();
-				[UNIVERSE cxx_addMessage:OO_DESC("autopilot-off") forCount:4.5];
+				if (UNIVERSE != nullptr)  UNIVERSE->addMessage(OO_DESC("autopilot-off"), 4.5);
 			}
 			autopilot_key_pressed = YES;
 			if (checkKeyPress(n_key_autodock) || joyButtonState[BUTTON_DOCKCPUFAST])
@@ -4782,8 +4781,8 @@ void PlayerEntity::pollAutopilotControls(double delta_t)
 
 void PlayerEntity::pollDockedControls(double delta_t)
 {
-	::MyOpenGLView			*gameView = [UNIVERSE gameView];
-	::GameController			*gameController = [UNIVERSE gameController];
+	::MyOpenGLView			*gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
+	::GameController			*gameController = (UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr);
 	const BOOL *joyButtonState = OOJoystickManager::sharedStickHandler()->getAllButtonStates();
 	const char				*exceptionContext = "setup";
 	
@@ -4802,11 +4801,11 @@ void PlayerEntity::pollDockedControls(double delta_t)
 				{
 					script_time = saved_script_time;
 					[gameView allowStringInput:NO];
-					if ([UNIVERSE pauseMessageVisible])
+					if ((UNIVERSE != nullptr ? UNIVERSE->pauseMessageVisible() : false))
 					{
-						[UNIVERSE clearPreviousMessage];	// remove the 'paused' message.
+						if (UNIVERSE != nullptr)  UNIVERSE->clearPreviousMessage();	// remove the 'paused' message.
 					}
-					[UNIVERSE gui]->setForegroundTextureKey("docked_overlay");
+					UNIVERSE->getGui()->setForegroundTextureKey("docked_overlay");
 					[gameController setGamePaused:NO];
 				}
 				else
@@ -4814,9 +4813,9 @@ void PlayerEntity::pollDockedControls(double delta_t)
     				if (!isMissionScreenWithTextEntry)
 					{
 						saved_script_time = script_time;
-						[UNIVERSE messageGUI]->clear();
+						UNIVERSE->messageGUI()->clear();
 						
-						[UNIVERSE pauseGame];	// 'paused' handler
+						if (UNIVERSE != nullptr)  UNIVERSE->pauseGame();	// 'paused' handler
       				}
 				}
 			}
@@ -4868,11 +4867,11 @@ void PlayerEntity::pollDockedControls(double delta_t)
 void PlayerEntity::handleUndockControl()
 {
 	// FIXME: should this not be in leaveDock:? (Note: leaveDock: is also called from script method launchFromStation and -[StationEntity becomeExplosion]) -- Ahruman 20080308
-	[UNIVERSE setUpUniverseFromStation]; // player pre-launch
+	if (UNIVERSE != nullptr)  UNIVERSE->setUpUniverseFromStation(); // player pre-launch
 	if (dockedStation() == nil)  setDockedAtMainStation();
 	
 	::StationEntity *dockedStation = this->dockedStation();
-	if (dockedStation == [UNIVERSE station] && [UNIVERSE autoSaveNow] && !(([UNIVERSE sun] != nullptr ? [UNIVERSE sun]->goneNova() : false) || ([UNIVERSE sun] != nullptr ? [UNIVERSE sun]->willGoNova() : false)))
+	if (dockedStation == (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr) && (UNIVERSE != nullptr ? UNIVERSE->getAutoSaveNow() : false) && !(((UNIVERSE != nullptr ? UNIVERSE->sun() : nullptr) != nullptr ? UNIVERSE->sun()->goneNova() : false) || ((UNIVERSE != nullptr ? UNIVERSE->sun() : nullptr) != nullptr ? UNIVERSE->sun()->willGoNova() : false)))
 	{
 		autosavePlayer();
 	}
@@ -4882,8 +4881,8 @@ void PlayerEntity::handleUndockControl()
 
 void PlayerEntity::pollDemoControls(double /*delta_t*/)
 {
-	::MyOpenGLView	*gameView = [UNIVERSE gameView];
-	::GuiDisplayGen	*gui = [UNIVERSE gui];
+	::MyOpenGLView	*gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
+	::GuiDisplayGen	*gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 	NSUInteger end_row = 21;
 	::OOOXZManager *oxzmanager = ::OOOXZManager::sharedManager();
 
@@ -4900,7 +4899,7 @@ void PlayerEntity::pollDemoControls(double /*delta_t*/)
 					if (([gameView isDown:gvMouseDoubleClick] || checkKeyPress(n_key_gui_select)) && gui->getSelectedRow() == 2+row_zero)
 					{
 						disc_operation_in_progress = YES;
-						[UNIVERSE removeDemoShips];
+						if (UNIVERSE != nullptr)  UNIVERSE->removeDemoShips();
 						gui->clearBackground();
 						if (!loadPlayer())
 						{
@@ -4928,7 +4927,7 @@ void PlayerEntity::pollDemoControls(double /*delta_t*/)
 				}
 				else if (([gameView isDown:gvMouseDoubleClick] || checkKeyPress(n_key_gui_select)) && gui->getSelectedRow() == 6+row_zero)
 				{
-					[[UNIVERSE gameController] cxx_exitAppWithContext:"Exit Game selected on start screen"];
+					[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) cxx_exitAppWithContext:"Exit Game selected on start screen"];
 				}
 				else
 				{
@@ -4987,24 +4986,24 @@ void PlayerEntity::pollDemoControls(double /*delta_t*/)
 			if (checkKeyPress(n_key_gui_arrow_up))	//  '<--'
 			{
 				if (!upDownKeyPressed)
-					[UNIVERSE selectIntro2Previous];
+					if (UNIVERSE != nullptr)  UNIVERSE->selectIntro2Previous();
 			}
 			if (checkKeyPress(n_key_gui_arrow_down))	//  '-->'
 			{
 				if (!upDownKeyPressed)
-					[UNIVERSE selectIntro2Next];
+					if (UNIVERSE != nullptr)  UNIVERSE->selectIntro2Next();
 			}
 			upDownKeyPressed = ((checkKeyPress(n_key_gui_arrow_up))||(checkKeyPress(n_key_gui_arrow_down)));
 
 			if (checkKeyPress(n_key_gui_arrow_left))	//  '<--'
 			{
 				if (!leftRightKeyPressed)
-					[UNIVERSE selectIntro2PreviousCategory];
+					if (UNIVERSE != nullptr)  UNIVERSE->selectIntro2PreviousCategory();
 			}
 			if (checkKeyPress(n_key_gui_arrow_right))	//  '-->'
 			{
 				if (!leftRightKeyPressed)
-					[UNIVERSE selectIntro2NextCategory];
+					if (UNIVERSE != nullptr)  UNIVERSE->selectIntro2NextCategory();
 			}
 			leftRightKeyPressed = ((checkKeyPress(n_key_gui_arrow_left))||(checkKeyPress(n_key_gui_arrow_right)));
 			
@@ -5051,7 +5050,7 @@ void PlayerEntity::pollDemoControls(double /*delta_t*/)
 				{
 					if (!startScenario())
 					{
-						[UNIVERSE removeDemoShips];
+						if (UNIVERSE != nullptr)  UNIVERSE->removeDemoShips();
 						setGuiToIntroFirstGo(YES);
 					} 
 				}
@@ -5279,7 +5278,7 @@ void PlayerEntity::pollMissionInterruptControls()
 		{
 			if (gui_screen != GUI_SCREEN_SYSTEM_DATA)
 			{
-				[UNIVERSE removeDemoShips];
+				if (UNIVERSE != nullptr)  UNIVERSE->removeDemoShips();
 			}
 			endMissionScreenAndNoteOpportunity();
 		}
@@ -5289,8 +5288,8 @@ void PlayerEntity::pollMissionInterruptControls()
 
 void PlayerEntity::handleMissionCallback()
 {
-	[UNIVERSE removeDemoShips];
-	[UNIVERSE gui]->clearBackground();
+	if (UNIVERSE != nullptr)  UNIVERSE->removeDemoShips();
+	UNIVERSE->getGui()->clearBackground();
 
 	setGuiToMissionEndScreen(); // need this to find out if we call a new mission screen inside callback.
 	
@@ -5320,7 +5319,7 @@ void PlayerEntity::handleMissionCallback()
 
 void PlayerEntity::setGuiToMissionEndScreen()
 {
-	::MyOpenGLView	*gameView = [UNIVERSE gameView];
+	::MyOpenGLView	*gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
 	[gameView clearKeys];
 	if (status() != STATUS_DOCKED)
 	{
@@ -5343,7 +5342,7 @@ void PlayerEntity::setGuiToMissionEndScreen()
 		{
 			noteGUIWillChangeTo(GUI_SCREEN_SHIPYARD);
 			setGuiToShipyardScreen(0);
-			[UNIVERSE gui]->setSelectedRow(GUI_ROW_SHIPYARD_START);
+			UNIVERSE->getGui()->setSelectedRow(GUI_ROW_SHIPYARD_START);
 			showShipyardInfoForSelection();
 		}
 		else
@@ -5388,7 +5387,7 @@ void PlayerEntity::switchToThisView(OOViewID viewDirection)
 
 void PlayerEntity::switchToThisView(OOViewID viewDirection, bool processWeaponFacing)
 {
-	switchToThisView(viewDirection, [UNIVERSE viewDirection], processWeaponFacing, NO);
+	switchToThisView(viewDirection, (UNIVERSE != nullptr ? UNIVERSE->getViewDirection() : OOViewID{}), processWeaponFacing, NO);
 }
 
 
@@ -5396,8 +5395,8 @@ void PlayerEntity::switchToThisView(OOViewID viewDirection, OOViewID oldViewDire
 {
 	if (!justNotify)
 	{	
-		if ([UNIVERSE displayGUI]) switchToMainView();
-		[UNIVERSE setViewDirection:viewDirection];
+		if ((UNIVERSE != nullptr ? UNIVERSE->getDisplayGUI() : false)) switchToMainView();
+		if (UNIVERSE != nullptr)  UNIVERSE->setViewDirection(viewDirection);
 	}
 	if (processWeaponFacing)
 	{
@@ -5434,7 +5433,7 @@ void PlayerEntity::switchToThisView(OOViewID viewDirection, OOViewID oldViewDire
 			OO_LOG_ERR(cxx_kOOLogParameterError, "{} called with processWeaponFacing=YES for non-main view {}.", static_cast<const char *>(__FUNCTION__), static_cast<unsigned>(viewDirection));
 		}
 	}
-	if ((oldViewDirection != viewDirection || viewDirection == VIEW_CUSTOM) && ![[UNIVERSE gameController] isGamePaused])
+	if ((oldViewDirection != viewDirection || viewDirection == VIEW_CUSTOM) && ![(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) isGamePaused])
 	{
 		ooscript::Context context = OOJSAcquireContext();
 		ShipScriptEvent(context, this, "viewDirectionChanged", OOJSValueFromViewID(context, viewDirection), OOJSValueFromViewID(context, oldViewDirection));
@@ -5464,11 +5463,11 @@ void PlayerEntity::handleAutopilotOn(bool fastDocking)
 	if (![target isStation])
 	{
 		::Universe  *uni        = UNIVERSE;
-		cxx::Entity    **entities  = uni->_cxxUniverse->sortedEntities;	// grab the public sorted list
+		cxx::Entity    **entities  = uni->sortedEntities;	// grab the public sorted list
 		int       nStations   = 0;
 		unsigned  i;
 		
-		for (i = 0; i < uni->_cxxUniverse->n_entities && nStations < 2; i++)
+		for (i = 0; i < uni->n_entities && nStations < 2; i++)
 		{
 			if (entities[i]->isStation && oo::ToStation(entities[i]) != nullptr &&
 				entities[i]->zero_distance <= SCANNER_MAX_RANGE2)
@@ -5483,7 +5482,7 @@ void PlayerEntity::handleAutopilotOn(bool fastDocking)
 		
 		if (withinStationAegis() && legalStatusValue <= 50)
 		{
-			target = oo::ToObjC([UNIVERSE station]);
+			target = oo::ToObjC((UNIVERSE != nullptr ? UNIVERSE->station() : nullptr));
 		}
 		else if (nStations != 1)
 		{
@@ -5513,10 +5512,10 @@ void PlayerEntity::handleAutopilotOn(bool fastDocking)
 		message = ExpandKeyWithArguments("autopilot-station-does-not-allow-autodocking", { { "stationName", oo::PList(stationName) } });
 	}
 	// Deny if station is hostile or player is a fugitive trying to dock at the main station.
-	else if ((legalStatusValue > 50 && ts == [UNIVERSE station]) || (ts != nullptr ? ts->isHostileTo(oo::ToObjC(this)) : false))
+	else if ((legalStatusValue > 50 && ts == (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr)) || (ts != nullptr ? ts->isHostileTo(oo::ToObjC(this)) : false))
 	{
 		playAutopilotCannotDockWithTarget();
-		message = ExpandKeyWithArguments((ts == [UNIVERSE station]) ? "autopilot-denied" : "autopilot-target-docking-instructions-denied", { { "stationName", oo::PList(stationName) } });
+		message = ExpandKeyWithArguments((ts == (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr)) ? "autopilot-denied" : "autopilot-target-docking-instructions-denied", { { "stationName", oo::PList(stationName) } });
 	}
 	// If we're fast-docking, perform the docking logic
 	else if (fastDocking && (ts != nullptr ? ts->getAllowsFastDocking() : false))
@@ -5527,7 +5526,7 @@ void PlayerEntity::handleAutopilotOn(bool fastDocking)
 			// TOO_BIG_TO_DOCK issued when docks are scripted to reject docking
 			if((oo::ToDock(sub.get()) != nullptr ? oo::ToDock(sub.get())->canAcceptShipForDocking(this) : std::optional<std::string>()) == "TOO_BIG_TO_DOCK")	// a dock's object is a ship's since bead oo-9ht.180
 			{
-				message = ExpandKeyWithArguments((ts == [UNIVERSE station]) ? "autopilot-denied" : "autopilot-target-docking-instructions-denied", { { "stationName", oo::PList(stationName) } });
+				message = ExpandKeyWithArguments((ts == (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr)) ? "autopilot-denied" : "autopilot-target-docking-instructions-denied", { { "stationName", oo::PList(stationName) } });
 				goto abort;
 			}
 		}
@@ -5536,8 +5535,8 @@ void PlayerEntity::handleAutopilotOn(bool fastDocking)
 		{
 			// there's a slight chance you'll be fined for your past offences when autodocking
 			int fine_chance = ranrot_rand() & 0x03ff;	//	0..1023
-			int government = 1 + [UNIVERSE cxx_currentSystemData].get<int>(std::string(KEY_GOVERNMENT));	// 1..8
-			if ([UNIVERSE inInterstellarSpace])  government = 2;	// equivalent to Feudal. I'm assuming any station in interstellar space is military. -- Ahruman 2008-05-29
+			int government = 1 + (UNIVERSE != nullptr ? UNIVERSE->currentSystemData() : oo::PList()).get<int>(std::string(KEY_GOVERNMENT));	// 1..8
+			if ((UNIVERSE != nullptr ? UNIVERSE->inInterstellarSpace() : false))  government = 2;	// equivalent to Feudal. I'm assuming any station in interstellar space is military. -- Ahruman 2008-05-29
 			fine_chance /= government;
 			if (fine_chance < legalStatusValue)
 			{
@@ -5547,11 +5546,11 @@ void PlayerEntity::handleAutopilotOn(bool fastDocking)
 		
 		setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_GRANTED);
 		
-		[UNIVERSE forceWitchspaceEntries];
+		if (UNIVERSE != nullptr)  UNIVERSE->forceWitchspaceEntries();
 		ship_clock_adjust += 1200.0;			// 20 minutes penalty to enter dock
 		ident_engaged = NO;
 		safeAllMissiles();
-		[UNIVERSE setViewDirection:VIEW_FORWARD];
+		if (UNIVERSE != nullptr)  UNIVERSE->setViewDirection(VIEW_FORWARD);
 		enterDock(ts);
 	}
 	else
@@ -5563,7 +5562,7 @@ void PlayerEntity::handleAutopilotOn(bool fastDocking)
 	
 abort:
 	// Clean-up code
-	if (message.has_value()) [UNIVERSE cxx_addMessage:*message forCount:4.5];
+	if (message.has_value()) { if (UNIVERSE != nullptr)  UNIVERSE->addMessage(message, 4.5); }
 	return;
 }
 
@@ -5578,7 +5577,7 @@ void PlayerEntity::handleButtonIdent()
 	if (primaryTarget() == nil)
 	{
 		playIdentOn();
-		[UNIVERSE cxx_addMessage:cxx_OOExpandKey("ident-on") forCount:2.0];
+		if (UNIVERSE != nullptr)  UNIVERSE->addMessage(cxx_OOExpandKey("ident-on"), 2.0);
 	}
 	else
 	{
@@ -5622,14 +5621,14 @@ void PlayerEntity::handleButtonTargetMissile()
 			}
 			if (oo::ToShip(missile_entity[activeMissile].get()) != nullptr)  oo::ToShip(missile_entity[activeMissile].get())->noteLostTarget();
 			const std::string weaponName = (oo::ToShip(missile_entity[activeMissile].get()) != nullptr ? oo::ToShip(missile_entity[activeMissile].get())->getName() : std::optional<std::string>()).value_or(std::string());	// (nil raised in the expansion)
-			[UNIVERSE cxx_addMessage:ExpandKeyWithArguments("missile-armed", { { "weaponName", oo::PList(weaponName) } }) forCount:2.0];
+			if (UNIVERSE != nullptr)  UNIVERSE->addMessage(ExpandKeyWithArguments("missile-armed", { { "weaponName", oo::PList(weaponName) } }), 2.0);
 			playMissileArmed();
 		}
 	}
 	else if ((oo::ToShip(missile_entity[activeMissile].get()) != nullptr ? oo::ToShip(missile_entity[activeMissile].get())->isMine() : false))
 	{
 		const std::string weaponName = (oo::ToShip(missile_entity[activeMissile].get()) != nullptr ? oo::ToShip(missile_entity[activeMissile].get())->getName() : std::optional<std::string>()).value_or(std::string());	// (nil raised in the expansion)
-		[UNIVERSE cxx_addMessage:ExpandKeyWithArguments("mine-armed", { { "weaponName", oo::PList(weaponName) } }) forCount:2.0];
+		if (UNIVERSE != nullptr)  UNIVERSE->addMessage(ExpandKeyWithArguments("mine-armed", { { "weaponName", oo::PList(weaponName) } }), 2.0);
 		playMineArmed();
 	}
 	ident_engaged = NO;

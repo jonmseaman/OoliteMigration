@@ -470,7 +470,7 @@ void OOMesh::renderOpaqueParts()
 			OO_LOG(cxx_kOOLogException, "***** {} for {} encountered exception: {} : {} *****", __PRETTY_FUNCTION__, description(), [exception name], [exception reason]);
 			brokenInRender = YES;
 		}
-		if (strncmp([exception name], "Oolite", 6) == 0)  [UNIVERSE handleOoliteException:exception];	// handle these ourself
+		if (strncmp([exception name], "Oolite", 6) == 0)  { if (UNIVERSE != nullptr)  UNIVERSE->handleOoliteException(exception); }	// handle these ourself
 		else  @throw exception;	// pass these on
 	}
 	

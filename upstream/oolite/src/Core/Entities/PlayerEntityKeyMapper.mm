@@ -242,8 +242,8 @@ void PlayerEntity::setGuiToKeyMapperScreen(unsigned skip, bool resetCurrentRow)
 {
 	const std::string kbd = KeyboardCode();
 
-	::GuiDisplayGen *gui = [UNIVERSE gui];
-	::MyOpenGLView *gameView = [UNIVERSE gameView];
+	::GuiDisplayGen *gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
+	::MyOpenGLView *gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
 	OOGUIScreenID oldScreen = gui_screen;
 	OOGUITabStop tabStop[GUI_MAX_COLUMNS];
 	tabStop[0] = 10;
@@ -255,7 +255,7 @@ void PlayerEntity::setGuiToKeyMapperScreen(unsigned skip, bool resetCurrentRow)
 
 	gui_screen = GUI_SCREEN_KEYBOARD;
 	BOOL guiChanged = (oldScreen != gui_screen);
-	[[UNIVERSE gameController] setMouseInteractionModeForUIWithMouseInteraction:YES];
+	[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) setMouseInteractionModeForUIWithMouseInteraction:YES];
 
 	gui->clear();
 	gui->setTitle(std::string("Configure Keyboard"));
@@ -302,7 +302,7 @@ void PlayerEntity::setGuiToKeyMapperScreen(unsigned skip, bool resetCurrentRow)
 
 	[gameView clearMouse];
 	[gameView clearKeys];
-	[UNIVERSE enterGUIViewModeWithMouseInteraction:YES];
+	if (UNIVERSE != nullptr)  UNIVERSE->enterGUIViewModeWithMouseInteraction(YES);
 
 	if (guiChanged) noteGUIDidChangeFrom(oldScreen, gui_screen);
 }
@@ -524,7 +524,7 @@ void PlayerEntity::setGuiToKeyConfigScreen()
 void PlayerEntity::setGuiToKeyConfigScreen(bool resetSelectedRow)
 {
 	NSUInteger i = 0;
-	::GuiDisplayGen *gui=[UNIVERSE gui];
+	::GuiDisplayGen *gui=(UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 	OOGUIScreenID oldScreen = gui_screen;
 	OOGUITabStop tabStop[GUI_MAX_COLUMNS];
 	tabStop[0] = 10;
@@ -609,15 +609,15 @@ void PlayerEntity::setGuiToKeyConfigScreen(bool resetSelectedRow)
 
 	gui->setForegroundTextureKey(std::string(status() == STATUS_DOCKED ? "docked_overlay" : "paused_overlay"));
 	gui->setBackgroundTextureKey(std::string("keyboardsettings"));
-	[[UNIVERSE gameView] clearMouse];
-	[[UNIVERSE gameView] clearKeys];
+	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) clearMouse];
+	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) clearKeys];
 	if (guiChanged) noteGUIDidChangeFrom(oldScreen, gui_screen);
 }
 
 
 void PlayerEntity::outputKeyDefinition(const std::string &key, const std::string &shift, const std::string &mod1, const std::string &mod2, NSUInteger skiprows)
 {
-	::GuiDisplayGen *gui=[UNIVERSE gui];
+	::GuiDisplayGen *gui=(UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 	const std::string definition = selected_entry.get<std::string>(std::string(KEY_KC_DEFINITION));
 
 	gui->setArray(Columns({ std::optional<std::string>(skiprows == 0 ? OO_DESC("oolite-keyconfig-update-key") : OO_DESC("oolite-keyconfig-update-alternate")), key }), GUI_ROW_KC_KEY + skiprows);
@@ -695,8 +695,8 @@ void PlayerEntity::handleKeyConfigKeys(::GuiDisplayGen *gui, ::MyOpenGLView *gam
 
 void PlayerEntity::setGuiToKeyConfigEntryScreen()
 {
-	::GuiDisplayGen *gui = [UNIVERSE gui];
-	::MyOpenGLView *gameView = [UNIVERSE gameView];
+	::GuiDisplayGen *gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
+	::MyOpenGLView *gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
 	OOGUIScreenID oldScreen = gui_screen;
 	gui_screen = GUI_SCREEN_KEYBOARD_ENTRY;
 	BOOL guiChanged = (oldScreen != gui_screen);
@@ -735,7 +735,7 @@ void PlayerEntity::setGuiToKeyConfigEntryScreen()
 
 	gui->setForegroundTextureKey(std::string(status() == STATUS_DOCKED ? "docked_overlay" : "paused_overlay"));
 	gui->setBackgroundTextureKey(std::string("keyboardsettings"));
-	[UNIVERSE enterGUIViewModeWithMouseInteraction:NO];
+	if (UNIVERSE != nullptr)  UNIVERSE->enterGUIViewModeWithMouseInteraction(NO);
 
 	[gameView clearMouse];
 	[gameView clearKeys];
@@ -842,7 +842,7 @@ void PlayerEntity::updateShiftKeyDefinition(const std::string &key, NSUInteger i
 
 void PlayerEntity::setGuiToConfirmClearScreen()
 {
-	::GuiDisplayGen *gui=[UNIVERSE gui];
+	::GuiDisplayGen *gui=(UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 	OOGUIScreenID oldScreen = gui_screen;
 
 	gui_screen = GUI_SCREEN_KEYBOARD_CONFIRMCLEAR;
@@ -866,8 +866,8 @@ void PlayerEntity::setGuiToConfirmClearScreen()
 	gui->setForegroundTextureKey(std::string(status() == STATUS_DOCKED ? "docked_overlay" : "paused_overlay"));
 	gui->setBackgroundTextureKey(std::string("keyboardsettings"));
 
-	[[UNIVERSE gameView] clearMouse];
-	[[UNIVERSE gameView] clearKeys];
+	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) clearMouse];
+	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) clearKeys];
 	if (guiChanged) noteGUIDidChangeFrom(oldScreen, gui_screen);
 }
 
@@ -880,8 +880,8 @@ void PlayerEntity::handleKeyMapperConfirmClearKeys(::GuiDisplayGen *gui, ::MyOpe
 	if ([gameView isDown:gvMouseDoubleClick]) [gameView clearMouse];
 
 	// Translation issue: we can't confidently use raw Y and N ascii as shortcuts. It's better to use the load-previous-commander keys.
-	const oo::PList *yesValue = [UNIVERSE cxx_descriptions]->find("load-previous-commander-yes");
-	const oo::PList *noValue = [UNIVERSE cxx_descriptions]->find("load-previous-commander-no");
+	const oo::PList *yesValue = UNIVERSE->descriptions()->find("load-previous-commander-yes");
+	const oo::PList *noValue = UNIVERSE->descriptions()->find("load-previous-commander-no");
 	const std::u16string valueYes = oo::utf8ToUtf16(oo::str::lowercase(oo::PListGet<std::string>::from(yesValue, "y")));
 	const std::u16string valueNo = oo::utf8ToUtf16(oo::str::lowercase(oo::PListGet<std::string>::from(noValue, "n")));
 	unsigned char cYes, cNo;
@@ -1242,8 +1242,8 @@ void PlayerEntity::setGuiToKeyboardLayoutScreen(unsigned skip)
 
 void PlayerEntity::setGuiToKeyboardLayoutScreen(unsigned skip, bool /*resetCurrentRow*/)
 {
-	::GuiDisplayGen *gui = [UNIVERSE gui];
-	::MyOpenGLView *gameView = [UNIVERSE gameView];
+	::GuiDisplayGen *gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
+	::MyOpenGLView *gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
 	OOGUIScreenID oldScreen = gui_screen;
 	OOGUITabStop tabStop[GUI_MAX_COLUMNS];
 	tabStop[0] = 10;
@@ -1253,7 +1253,7 @@ void PlayerEntity::setGuiToKeyboardLayoutScreen(unsigned skip, bool /*resetCurre
 	gui_screen = GUI_SCREEN_KEYBOARD_LAYOUT;
 	BOOL guiChanged = (oldScreen != gui_screen);
 
-	[[UNIVERSE gameController] setMouseInteractionModeForUIWithMouseInteraction:YES];
+	[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) setMouseInteractionModeForUIWithMouseInteraction:YES];
 
 	gui->clear();
 	gui->setTitle(std::string("Select Keyboard Layout"));
@@ -1269,7 +1269,7 @@ void PlayerEntity::setGuiToKeyboardLayoutScreen(unsigned skip, bool /*resetCurre
 
 	[gameView clearMouse];
 	[gameView clearKeys];
-	[UNIVERSE enterGUIViewModeWithMouseInteraction:YES];
+	if (UNIVERSE != nullptr)  UNIVERSE->enterGUIViewModeWithMouseInteraction(YES);
 
 	if (guiChanged) noteGUIDidChangeFrom(oldScreen, gui_screen);
 }

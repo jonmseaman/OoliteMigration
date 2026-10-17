@@ -1210,7 +1210,7 @@ static bool VectorToCoordinateSystem(ooscript::Context context, ooscript::CallAr
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
-	result = [UNIVERSE cxx_legacyPositionFrom:thisv asCoordinateSystem:*coordScheme];
+	result = (UNIVERSE != nullptr ? UNIVERSE->legacyPositionFrom(thisv, *coordScheme) : HPVector{});
 	OOJS_END_FULL_NATIVE
 	
 	OOJS_RETURN_HPVECTOR(result);
@@ -1242,7 +1242,7 @@ static bool VectorFromCoordinateSystem(ooscript::Context context, ooscript::Call
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
 	std::string arg = oo::str::format("%s %f %f %f", coordScheme->c_str(), thisv.x, thisv.y, thisv.z);
-	result = [UNIVERSE cxx_coordinatesFromCoordinateSystemString:arg];
+	result = (UNIVERSE != nullptr ? UNIVERSE->coordinatesFromCoordinateSystemString(arg) : HPVector{});
 	OOJS_END_FULL_NATIVE
 	
 	OOJS_RETURN_HPVECTOR(result);

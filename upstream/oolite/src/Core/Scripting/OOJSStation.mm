@@ -433,7 +433,7 @@ static bool StationGetProperty(Context cx, Object obj, PropertyId propID, Value 
 	switch (ooscript::idToInt32(propID))
 	{
 		case kStation_isMainStation:
-			*value_raw = OOJSValueFromBOOL(entity == [UNIVERSE station]);
+			*value_raw = OOJSValueFromBOOL(entity == (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr));
 			return true;
 		
 		case kStation_hasNPCTraffic:
@@ -739,7 +739,7 @@ static bool StationDockPlayer(ooscript::Context context, ooscript::CallArgs &ooj
 	OOJS_NATIVE_ENTER(context)
 	
 	PlayerEntity	*player = OOPlayerForScripting();
-	GameController	*gameController = [UNIVERSE gameController];
+	GameController	*gameController = (UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr);
 	
 	if (EXPECT_NOT([gameController isGamePaused]))
 	{
@@ -756,7 +756,7 @@ static bool StationDockPlayer(ooscript::Context context, ooscript::CallArgs &ooj
 		JSStationGetStationEntity(context, OOJS_THIS, &stationForDockingPlayer); 
 		if (player != nullptr)  player->setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_GRANTED);
 		if (player != nullptr)  player->PlayerEntity::safeAllMissiles();	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
-		[UNIVERSE setViewDirection:VIEW_FORWARD];
+		if (UNIVERSE != nullptr)  UNIVERSE->setViewDirection(VIEW_FORWARD);
 		if (player != nullptr)  player->PlayerEntity::enterDock(stationForDockingPlayer);	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 	}
 	OOJS_RETURN_VOID;
@@ -1113,7 +1113,7 @@ static bool StationSetMarketPrice(ooscript::Context context, ooscript::CallArgs 
 	}
 	
 	std::optional<std::string> commodity = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
-	OOCommodities *commodities = [UNIVERSE commodities];	// null: no good is defined, as a message to nil
+	OOCommodities *commodities = (UNIVERSE != nullptr ? UNIVERSE->getCommodities() : nullptr);	// null: no good is defined, as a message to nil
 	if (EXPECT_NOT(commodities == nullptr || !commodities->goodDefined(commodity.value_or(""))))
 	{
 		cxx_OOJSReportBadArguments(context, "Station", "setMarketPrice", MIN(oojsArgs.count(), 2U), OOJS_ARGV, std::nullopt, "Unrecognised commodity type");
@@ -1157,7 +1157,7 @@ static bool StationSetMarketQuantity(ooscript::Context context, ooscript::CallAr
 	}
 	
 	const std::string commodity = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]).value_or("");
-	OOCommodities *commodities = [UNIVERSE commodities];	// null: no good is defined, as a message to nil
+	OOCommodities *commodities = (UNIVERSE != nullptr ? UNIVERSE->getCommodities() : nullptr);	// null: no good is defined, as a message to nil
 	if (EXPECT_NOT(commodities == nullptr || !commodities->goodDefined(commodity)))
 	{
 		cxx_OOJSReportBadArguments(context, "Station", "setMarketQuantity", MIN(oojsArgs.count(), 2U), OOJS_ARGV, std::nullopt, "Unrecognised commodity type");
@@ -1277,7 +1277,7 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 	result[std::string(SHIPYARD_KEY_SHIPDATA_KEY)] = *shipKey;	// non-nil: a nil key found no shipyard information above
 
 	// add an ID
-	Random_Seed ship_seed = [UNIVERSE marketSeed];
+	Random_Seed ship_seed = (UNIVERSE != nullptr ? UNIVERSE->marketSeed() : Random_Seed{});
 	int superRand1 = ship_seed.a * 0x10000 + ship_seed.c * 0x100 + ship_seed.e;
 	uint32_t superRand2 = ship_seed.b * 0x10000 + ship_seed.d * 0x100 + ship_seed.f;
 	superRand2 &= Ranrot();

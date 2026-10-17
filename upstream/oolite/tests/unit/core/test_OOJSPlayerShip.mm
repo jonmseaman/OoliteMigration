@@ -88,33 +88,25 @@ public:
 };
 
 
-@interface FakeUniverse: OOObject
+class FakeUniverse : public Universe
 {
-@public
-	OOViewID _viewDirection;
-	oo::Ref<FakeGui> _gui;
-	std::string _lastCommander;
-	std::vector<std::string> _messages;
-}
-@end
+public:
+	OOViewID _viewDirection = {};
+	oo::Ref<FakeGui> _gui = {};
+	std::string _lastCommander = {};
+	std::vector<std::string> _messages = {};
 
-
-@implementation FakeUniverse
-
-- (OOViewID) viewDirection  { return _viewDirection; }
-- (GuiDisplayGen *) messageGUI  { return _gui.get(); }
-
-- (OOCreditsQuantity) cxx_tradeInValueForCommanderDictionary:(const oo::PList &)cmdrDict
-{
-	_lastCommander = oo::DescriptionOf(cmdrDict);
-	return 123456;
-}
-
-- (std::optional<std::string>) cxx_descriptionForKey:(const std::string &)key  { return std::nullopt; }
-- (GuiDisplayGen *) gui  { return _gui.get(); }
-- (void) cxx_addMessage:(const std::optional<std::string> &)text forCount:(OOTimeDelta)count  { _messages.push_back(oo::str::format("%s %g", text.value_or("(nil)").c_str(), count)); }
-
-@end
+	OOViewID getViewDirection() override	{ return _viewDirection; }
+	::GuiDisplayGen *messageGUI() override	{ return _gui.get(); }
+	OOCreditsQuantity tradeInValueForCommanderDictionary(const oo::PList &cmdrDict) override
+	{
+		_lastCommander = oo::DescriptionOf(cmdrDict);
+		return 123456;
+	}
+	std::optional<std::string> descriptionForKey(const std::string &key) override	{ return std::nullopt; }
+	::GuiDisplayGen *getGui() override	{ return _gui.get(); }
+	void addMessage(const std::optional<std::string> &text, OOTimeDelta count) override	{ _messages.push_back(oo::str::format("%s %g", text.value_or("(nil)").c_str(), count)); }
+};
 
 
 class FakePlayer : public PlayerEntity	// C++ since bead oo-9ht.177 deleted the Objective-C player
@@ -348,12 +340,12 @@ void SetUp()
 
 	sRealPlayer = gOOPlayer;	// the one InitOOJSPlayerShip() made, which player.ship holds
 
-	sUniverse = [[FakeUniverse alloc] init];
+	sUniverse = new FakeUniverse();
 	sUniverse->_viewDirection = VIEW_AFT;
 	sUniverse->_gui = oo::makeRef<FakeGui>();
 	sUniverse->_gui->_textColor = OOColor::colorWithRed(1.0f, 0.5f, 0.25f, 1.0f);
 	sUniverse->_gui->_textCommsColor = OOColor::colorWithRed(0.0f, 1.0f, 0.0f, 0.5f);
-	gSharedUniverse = (Universe *)sUniverse;
+	gSharedUniverse = sUniverse;
 
 	sPlayer = NewTestPlayer<FakePlayer>();
 	sPlayer->_hud = oo::makeRef<HeadUpDisplay>();

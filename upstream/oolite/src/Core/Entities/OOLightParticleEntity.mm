@@ -61,7 +61,7 @@ void OOLightParticleEntity::initWithDiameter(float diameter)
 	{
 		_diameter = diameter;
 		no_draw_distance = pow(diameter / 2.0, M_SQRT2) * NO_DRAW_DISTANCE_FACTOR * NO_DRAW_DISTANCE_FACTOR;
-		no_draw_distance *= [UNIVERSE reducedDetail] ? PARTICLE_DISTANCE_SCALE_LOW : PARTICLE_DISTANCE_SCALE_HIGH;
+		no_draw_distance *= (UNIVERSE != nullptr ? UNIVERSE->reducedDetail() : false) ? PARTICLE_DISTANCE_SCALE_LOW : PARTICLE_DISTANCE_SCALE_HIGH;
 		
 		_colorComponents[0] = 1.0f;
 		_colorComponents[1] = 1.0f;
@@ -129,7 +129,7 @@ void OOLightParticleEntity::drawSubEntityImmediate(bool immediate, bool transluc
 	OOGLPushModelView();
 
 	/* Flashers are drawn using the absolute view matrix */
-	OOGLLoadModelView([UNIVERSE viewMatrix]);
+	OOGLLoadModelView((UNIVERSE != nullptr ? UNIVERSE->getViewMatrix() : OOMatrix{}));
 	/* ...modified by the aggregate translation calculated above */
 	OOGLTranslateModelView(HPVectorToVector(HPvector_subtract(abspos,(PLAYER != nullptr ? PLAYER->viewpointPosition() : HPVector{}))));	// move to camera-relative position	
 	drawImmediate(immediate, translucent);
@@ -141,7 +141,7 @@ void OOLightParticleEntity::drawSubEntityImmediate(bool immediate, bool transluc
 void OOLightParticleEntity::drawImmediate(bool /*immediate*/, bool translucent)
 {
 	if (!translucent) return;
-	if ([UNIVERSE breakPatternHide] && !getIsImmuneToBreakPatternHide())
+	if ((UNIVERSE != nullptr ? UNIVERSE->breakPatternHide() : false) && !getIsImmuneToBreakPatternHide())
 	{
 		::Entity *father = owner();
 		while (father != nil)	// && father != (Entity *)NO_TARGET, which is nil: NO_TARGET is 0
@@ -174,7 +174,7 @@ void OOLightParticleEntity::drawImmediate(bool /*immediate*/, bool translucent)
 	OOGL(glTexEnvfv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, components));
 	OOGL(glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_BLEND));
 	
-	OOViewID viewDir = [UNIVERSE viewDirection];
+	OOViewID viewDir = (UNIVERSE != nullptr ? UNIVERSE->getViewDirection() : OOViewID{});
 	if (viewDir != VIEW_GUI_DISPLAY)  OOGLMultModelView((PLAYER != nullptr ? PLAYER->drawRotationMatrix() : OOMatrix{}));
 	if (OOTexture *blob = texture())  blob->apply();	// a message to nil did nothing
 	

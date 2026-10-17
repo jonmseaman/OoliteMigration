@@ -217,7 +217,7 @@ static bool ClockGetProperty(Context cx, Object obj, PropertyId propID, Value *v
 	switch (ooscript::idToInt32(propID))
 	{
 		case kClock_absoluteSeconds:
-			return ooscript::newNumberValue(cx, [UNIVERSE getTime], value);
+			return ooscript::newNumberValue(cx, (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0), value);
 
 		case kClock_seconds:
 			return ooscript::newNumberValue(cx, clockTime, value);

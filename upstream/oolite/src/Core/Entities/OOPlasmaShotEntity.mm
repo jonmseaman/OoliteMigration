@@ -81,7 +81,7 @@ void OOPlasmaShotEntity::initWithPosition(HPVector inPosition,
 
 bool OOPlasmaShotEntity::canCollide()
 {
-	return [UNIVERSE getTime] > getSpawnTime() + kPlasmaShotActivationDelay;
+	return (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0) > getSpawnTime() + kPlasmaShotActivationDelay;
 }
 
 
@@ -119,11 +119,11 @@ void OOPlasmaShotEntity::update(double delta_t)
 						   from:self
 					  becauseOf:owner()
 			   weaponIdentifier:"EQ_WEAPON_PLASMA_SHOT"];
-			[UNIVERSE removeEntity:self];
+			if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(self);
 			
 			// Spawn a plasma burst.
 			::Entity *burst = oo::NewEntityFacade(OOPlasmaBurstEntity::burstWithPosition(getPosition()));
-			[UNIVERSE addEntity:burst];
+			if (UNIVERSE != nullptr)  UNIVERSE->addEntity(burst);
 		}
 	}
 	
@@ -131,5 +131,5 @@ void OOPlasmaShotEntity::update(double delta_t)
 	_colorComponents[3] = attenuation;
 #endif
 	
-	if (lifeTime > _duration)  [UNIVERSE removeEntity:self];
+	if (lifeTime > _duration)  { if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(self); }
 }

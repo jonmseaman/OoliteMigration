@@ -269,7 +269,7 @@ GameController::~GameController()
 #endif
 	
 	[_gameView release];
-	[UNIVERSE release];
+	if (UNIVERSE != nullptr)  UNIVERSE->release();
 }
 
 
@@ -385,7 +385,7 @@ void GameController::setGameView(::MyOpenGLView *view)
 	[_gameView release];
 	_gameView = [view retain];
 	[_gameView setGameController:oo::ToObjC(this)];
-	[UNIVERSE setGameView:_gameView];
+	if (UNIVERSE != nullptr)  UNIVERSE->setGameView(_gameView);
 }
 
 
@@ -435,10 +435,10 @@ void GameController::doPerformGameTick()
 				delta_t = MINIMUM_GAME_TICK;		// peg the maximum pause (at 0.5->1.0 seconds) to protect against when the machine sleeps	
 		}
 		
-		[UNIVERSE update:delta_t];
+		if (UNIVERSE != nullptr)  UNIVERSE->update(delta_t);
 		if (EXPECT_NOT((PLAYER != nullptr ? PLAYER->status() : OOEntityStatus{}) == STATUS_RESTART_GAME))
 		{
-			[UNIVERSE reinitAndShowDemo:YES];
+			if (UNIVERSE != nullptr)  UNIVERSE->reinitAndShowDemo(YES);
 		}
 		::OOSound::update();
 		if (!gameIsPaused)
@@ -635,7 +635,7 @@ void GameController::applicationDidFinishLaunching()
 
 		// moved here to try to avoid initialising this before having an Open GL context
 		//logProgress(OO_DESC("Initialising universe")); // DESC expansions only possible after Universe init
-		[[::Universe alloc] initWithGameView:_gameView];
+		Universe::newUniverse(_gameView);	// +1, kept in gSharedUniverse and released by the destructor
 		
 		loadPlayerIfRequired();
 		
@@ -678,8 +678,8 @@ void GameController::loadPlayerIfRequired()
 		logProgress(OO_DESC("loading-player"));
 		// fix problem with non-shader lighting when starting skips
 		// the splash screen
-		[UNIVERSE useGUILightSource:YES];
-		[UNIVERSE useGUILightSource:NO];
+		if (UNIVERSE != nullptr)  UNIVERSE->useGUILightSource(YES);
+		if (UNIVERSE != nullptr)  UNIVERSE->useGUILightSource(NO);
 		if (PLAYER != nullptr)  PLAYER->loadPlayerFromFile(*_playerFileToLoad, NO);
 	}
 }
@@ -709,7 +709,7 @@ void GameController::beginSplashScreen()
 
 void GameController::logProgress(const std::string &message)
 {
-	if (![UNIVERSE doingStartUp])  return;
+	if (!(UNIVERSE != nullptr ? UNIVERSE->doingStartUp() : false))  return;
 
 #if OOLITE_MAC_OS_X
 	[splashProgressTextField setStringValue:oo::NSStringFrom(message)];

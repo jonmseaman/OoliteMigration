@@ -136,18 +136,30 @@ public:
 #import "OOColor.h"	// and its row colours
 
 
-@interface Universe: OOObject
+#import "UniverseStandIn.h"
+
+// The universe as the code under test sees it: a stand-in for the C++ class (bead oo-ql9rn deleted
+// the Objective-C facade the test's Objective-C stand-in stood in for), with the header's names and signatures.
+// It answers virtual members, so it has the game's vtable (UniverseStandIn.h) and StandInUniverse overrides them.
+class Universe : public oo::RefCounted
 {
-@public
+public:
+	OO_UNIVERSE_STAND_IN_VIRTUAL_MEMBERS
+
 	GuiDisplayGen *_gui;
 	ShipEntity *_demoShip;
 	std::vector<std::string> _calls;
-}
-- (GuiDisplayGen *) gui;
-- (oo::PList) cxx_missiontext;
-- (void) removeDemoShips;
-- (ShipEntity *) cxx_makeDemoShipWithRole:(const std::string &)role spinning:(BOOL)spinning;
-@end
+
+	oo::PList getMissiontext();
+	void removeDemoShips();
+	::ShipEntity *makeDemoShipWithRole(const std::string &, bool);
+};
+
+class StandInUniverse : public Universe
+{
+public:
+	::GuiDisplayGen *getGui() override	{ return _gui; }
+};
 
 
 
@@ -412,19 +424,13 @@ namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
 ::Entity *oo::ToObjC(cxx::Entity *entity)  { return entity != nullptr ? sDemoShipObject : nil; }
 
 
-@implementation Universe
-
-- (GuiDisplayGen *) gui  { return _gui; }
-- (oo::PList) cxx_missiontext  { return Dict({ { "mission_title", oo::PList("The [name] Job") }, { "mission_number", oo::PList(12) } }); }
-- (void) removeDemoShips  { _calls.push_back("removeDemoShips"); }
-
-- (ShipEntity *) cxx_makeDemoShipWithRole:(const std::string &)role spinning:(BOOL)spinning
+oo::PList Universe::getMissiontext()	{ return Dict({ { "mission_title", oo::PList("The [name] Job") }, { "mission_number", oo::PList(12) } }); }
+void Universe::removeDemoShips()	{ _calls.push_back("removeDemoShips"); }
+::ShipEntity *Universe::makeDemoShipWithRole(const std::string &role, bool spinning)
 {
 	_calls.push_back("demoShip('" + role + "', " + (spinning ? "YES)" : "NO)"));
 	return role == "none" ? nil : _demoShip;
 }
-
-@end
 
 
 #import "OOScript.h"
@@ -803,7 +809,7 @@ void SetUpContext()
 	sPlayer->_status = STATUS_DOCKED;
 	sPlayer->_exitScreen = GUI_SCREEN_STATUS;
 	gOOPlayer = sPlayer;
-	sUniverse = [[Universe alloc] init];
+	sUniverse = new StandInUniverse();
 	sUniverse->_gui = oo::makeRef<GuiDisplayGen>().leakRef();	// kept for the life of the test
 	sUniverse->_demoShip = new ShipEntity;
 	sDemoShipObject = [[Entity alloc] init];

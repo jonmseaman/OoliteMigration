@@ -242,7 +242,7 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 		ship->shipWillDealloc();
 	}
 
-	[UNIVERSE ensureEntityReallyRemoved:self];
+	if (UNIVERSE != nullptr)  UNIVERSE->ensureEntityReallyRemoved(self);
 	_cxxEntity->setCollisionRegion(nullptr);		// DESTROY(collisionRegion)
 	[self deleteJSSelf];
 	[self setOwner:nil];

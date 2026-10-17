@@ -226,7 +226,7 @@ oo::PList cxx_OOTextureSpecFromObject(const oo::PList &object, const std::option
 
 
 // The universe: the three settings the creators and the materials ask about.
-@class Universe;
+class Universe;
 Universe *gSharedUniverse = nil;
 
 // The game view is C++ (MyOpenGLView). There is none here: its crossing answers none, and its
@@ -234,23 +234,32 @@ Universe *gSharedUniverse = nil;
 cxx::MyOpenGLView *oo::ToCxx(MyOpenGLView *)  { return nullptr; }
 OOOpenGLMatrixManager *cxx::MyOpenGLView::getOpenGLMatrixManager()  { return matrixManager.get(); }
 
-@interface TestUniverse: OOObject
+#import "UniverseStandIn.h"
+
+// The universe as the code under test sees it: a stand-in for the C++ class (bead oo-ql9rn deleted
+// the Objective-C facade the test's TestUniverse stood in for), with the header's names and signatures.
+// It answers virtual members, so it has the game's vtable (UniverseStandIn.h) and TestUniverse overrides them.
+class Universe : public oo::RefCounted
 {
-@public
+public:
+	OO_UNIVERSE_STAND_IN_VIRTUAL_MEMBERS
+
 	BOOL				_useShaders;
 	BOOL				_reducedDetail;
 	OOGraphicsDetail	_detailLevel;
-}
-- (BOOL) useShaders;
-- (BOOL) reducedDetail;
-- (OOGraphicsDetail) detailLevel;
-@end
 
-@implementation TestUniverse
-- (BOOL) useShaders					{ return _useShaders; }
-- (BOOL) reducedDetail				{ return _reducedDetail; }
-- (OOGraphicsDetail) detailLevel	{ return _detailLevel; }
-@end
+	bool useShaders();
+	OOGraphicsDetail getDetailLevel();
+};
+
+class TestUniverse : public Universe
+{
+public:
+	bool reducedDetail() override	{ return _reducedDetail; }
+};
+
+bool Universe::useShaders()	{ return _useShaders; }
+OOGraphicsDetail Universe::getDetailLevel()	{ return _detailLevel; }
 
 
 namespace {
@@ -265,11 +274,11 @@ bool SetUp(BOOL useShaders, OOGraphicsDetail detail = DETAIL_LEVEL_MINIMUM)
 {
 	if (!OOTestGLContext())  return false;
 	OOOpenGLExtensionManager::sharedManager();
-	if (gUniverse == nil)  gUniverse = [[TestUniverse alloc] init];
+	if (gUniverse == nil)  gUniverse = new TestUniverse();
 	gUniverse->_useShaders = useShaders;
 	gUniverse->_detailLevel = detail;
 	gUniverse->_reducedDetail = NO;
-	gSharedUniverse = (Universe *)gUniverse;
+	gSharedUniverse = gUniverse;
 	gShaderFiles = {
 		{ "oolite-tangent-space-vertex.vertex", kVertex },
 		{ "oolite-default-shader.fragment", kFragment },

@@ -109,11 +109,8 @@ bool ResourceManager::writeDiagnosticData(const oo::Data &data, const std::strin
 }
 
 
-@implementation Universe
-- (NSDictionary *) descriptions { return oo::ObjectFromPList(sDescriptions); }
-// The C++ form the tools call since oo-3rb.310, over the same data (bead oo-3rb.335: stub-API tracking).
-- (const oo::PList *) cxx_descriptions { return &sDescriptions; }
-@end
+// The C++ universe's member (bead oo-ql9rn), over the same data as the Objective-C stub's C++ form.
+const oo::PList *Universe::descriptions()  { return &sDescriptions; }
 static Universe *sUniverse;
 Universe *OOGetUniverse(void) { return sUniverse; }
 
@@ -198,7 +195,7 @@ int main(int argc, const char *argv[])
 			fprintf(stderr, "cannot parse %s\n", argv[1]);
 			return 2;
 		}
-		sUniverse = [[Universe alloc] init];
+		sUniverse = new Universe();
 
 		std::vector<std::vector<std::string>> recorded;
 		auto run = [&](void (^body)(void))

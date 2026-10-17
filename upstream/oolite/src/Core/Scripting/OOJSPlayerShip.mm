@@ -813,7 +813,7 @@ static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Val
 			return true;
 			
 		case kPlayerShip_viewDirection:
-			*value_raw = OOJSValueFromViewID(context, [UNIVERSE viewDirection]);
+			*value_raw = OOJSValueFromViewID(context, (UNIVERSE != nullptr ? UNIVERSE->getViewDirection() : OOViewID{}));
 			return true;
 
 		case kPlayerShip_viewPositionAft:
@@ -833,7 +833,7 @@ static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Val
 			break;
 		
 	  case kPlayerShip_price:
-			return ooscript::newNumberValue(cx, [UNIVERSE cxx_tradeInValueForCommanderDictionary:(player != nullptr ? player->commanderDataDictionary() : oo::PList())], value);
+			return ooscript::newNumberValue(cx, (UNIVERSE != nullptr ? UNIVERSE->tradeInValueForCommanderDictionary((player != nullptr ? player->commanderDataDictionary() : oo::PList())) : 0), value);
 
 	  case kPlayerShip_serviceLevel:
 			return ooscript::newNumberValue(cx, (player != nullptr ? player->tradeInFactor() : int{}), value);
@@ -857,11 +857,11 @@ static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Val
 			return ooscript::newNumberValue(cx, -(player != nullptr ? player->getFlightYaw() : 0.0f), value);
 			
 		case kPlayerShip_messageGuiTextColor:
-			result = NormalizedColorComponents([UNIVERSE messageGUI]->getTextColor());
+			result = NormalizedColorComponents(UNIVERSE->messageGUI()->getTextColor());
 			break;
 			
 		case kPlayerShip_messageGuiTextCommsColor:
-			result = NormalizedColorComponents([UNIVERSE messageGUI]->getTextCommsColor());
+			result = NormalizedColorComponents(UNIVERSE->messageGUI()->getTextCommsColor());
 			break;
 			
 		default:
@@ -1291,7 +1291,7 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 			colorForScript = OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value_raw));
 			if (colorForScript != nullptr || ooscript::isNull(*value_raw))
 			{
-				[UNIVERSE messageGUI]->setTextColor(colorForScript.get());
+				UNIVERSE->messageGUI()->setTextColor(colorForScript.get());
 				return true;
 			}
 			break;
@@ -1300,7 +1300,7 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 			colorForScript = OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, *value_raw));
 			if (colorForScript != nullptr || ooscript::isNull(*value_raw))
 			{
-				[UNIVERSE messageGUI]->setTextCommsColor(colorForScript.get());
+				UNIVERSE->messageGUI()->setTextCommsColor(colorForScript.get());
 				return true;
 			}
 			break;
@@ -1765,7 +1765,7 @@ static bool PlayerShipSetCustomView(ooscript::Context context, ooscript::CallArg
 	}
 
 // must be in custom view
-	if ([UNIVERSE viewDirection] != VIEW_CUSTOM) 
+	if ((UNIVERSE != nullptr ? UNIVERSE->getViewDirection() : OOViewID{}) != VIEW_CUSTOM) 
 	{
 		cxx_OOJSReportError(context, "PlayerShip.setCustomView only works when custom view is active.");
 		return false;
@@ -1822,7 +1822,7 @@ static bool PlayerShipResetCustomView(ooscript::Context context, ooscript::CallA
 	PlayerEntity		*player = OOPlayerForScripting();
 	
 // must be in custom view
-	if ([UNIVERSE viewDirection] != VIEW_CUSTOM) 
+	if ((UNIVERSE != nullptr ? UNIVERSE->getViewDirection() : OOViewID{}) != VIEW_CUSTOM) 
 	{
 		cxx_OOJSReportError(context, "PlayerShip.setCustomView only works when custom view is active.");
 		return false;
@@ -1975,7 +1975,7 @@ static bool PlayerShipBeginGalacticHyperspaceCountdown(ooscript::Context context
 		if (player != nullptr)  player->setStatus(STATUS_WITCHSPACE_COUNTDOWN);
 		if (player != nullptr)  player->playGalacticHyperspace();
 		// say it!
-		[UNIVERSE cxx_addMessage:oo::str::format(OO_DESC("witch-galactic-in-f-seconds").c_str(), witchspaceSpinUpTime) forCount:1.0];
+		if (UNIVERSE != nullptr)  UNIVERSE->addMessage(oo::str::format(OO_DESC("witch-galactic-in-f-seconds").c_str(), witchspaceSpinUpTime), 1.0);
 		begun = true;
 	}
 	OOJS_RETURN_BOOL(begun);
@@ -2056,7 +2056,7 @@ static bool PlayerShipSetMultiFunctionText(ooscript::Context context, ooscript::
 	}
 	else
 	{
-		GuiDisplayGen	*gui = [UNIVERSE gui];
+		GuiDisplayGen	*gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 		if (player != nullptr)  player->setMultiFunctionText(gui->reflowTextForMFD(value), key);
 	}
 

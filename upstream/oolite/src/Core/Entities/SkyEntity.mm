@@ -139,7 +139,7 @@ void SkyEntity::initWithColors(OOColor *col1In, OOColor *col2In, const oo::PList
 		nebulaCount = nebulaCountMultiplier * SKY_BASIS_BLOBS * (0.5 + randf());
 	}
 
-	if ([UNIVERSE reducedDetail])
+	if ((UNIVERSE != nullptr ? UNIVERSE->reducedDetail() : false))
 	{
 		// limit stars and blobs to basis levels, and halve stars again
 		if (starCount > SKY_BASIS_STARS)
@@ -185,7 +185,7 @@ bool SkyEntity::changeProperty(const std::string &key, const oo::PList &dict)
 		if (col != nullptr)
 		{
 			skyColor = col;		// [col copy]: a copy of an immutable colour is the colour itself
-			[UNIVERSE setLighting];
+			if (UNIVERSE != nullptr)  UNIVERSE->setLighting();
 		}
 	}
 	else
@@ -245,7 +245,7 @@ GLfloat SkyEntity::cameraRangeBack()
 
 void SkyEntity::drawImmediate(bool immediate, bool translucent)
 {
-	if ([UNIVERSE breakPatternHide])  return;
+	if ((UNIVERSE != nullptr ? UNIVERSE->breakPatternHide() : false))  return;
 
 	OOEntityWithDrawable::drawImmediate(immediate, translucent);
 

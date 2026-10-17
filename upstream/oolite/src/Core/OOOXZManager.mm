@@ -1275,7 +1275,7 @@ bool OOOXZManager::isRestarting()
 	{
 		// Rebuilds OXP search
 		ResourceManager::reset();
-		[UNIVERSE reinitAndShowDemo:YES];
+		if (UNIVERSE != nullptr)  UNIVERSE->reinitAndShowDemo(YES);
 		_changesMade = false;
 		_interfaceState = OXZ_STATE_MAIN;
 		_downloadStatus = OXZ_DOWNLOAD_NONE; // clear error state
@@ -1383,7 +1383,7 @@ bool OOOXZManager::removeOXZ(NSUInteger item)
 
 void OOOXZManager::gui()
 {
-	::GuiDisplayGen	*gui = [UNIVERSE gui];
+	::GuiDisplayGen	*gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 	OOGUIRow		startRow = OXZ_GUI_ROW_EXIT;
 
 #if OOLITE_WINDOWS
@@ -1662,7 +1662,7 @@ void OOOXZManager::gui()
 
 void OOOXZManager::processSelection()
 {
-	::GuiDisplayGen	*gui = [UNIVERSE gui];
+	::GuiDisplayGen	*gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 	OOGUIRow selection = (gui != nullptr ? gui->getSelectedRow() : 0);
 
 	if (selection == OXZ_GUI_ROW_EXIT)
@@ -1827,7 +1827,7 @@ void OOOXZManager::processTextInput(const std::string &input)
 
 void OOOXZManager::refreshTextInput(const std::string &input)
 {
-	::GuiDisplayGen	*gui = [UNIVERSE gui];
+	::GuiDisplayGen	*gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 	if (gui != nullptr)  gui->setText(DescFormat(OO_DESC("oolite-oxzmanager-text-prompt-@"), {input}), OXZ_GUI_ROW_INPUT, GUI_ALIGN_LEFT);
 	if (validateFilter(input))
 	{
@@ -1849,7 +1849,7 @@ void OOOXZManager::processFilterKey()
 	if (_interfaceState == OXZ_STATE_PICK_INSTALL || _interfaceState == OXZ_STATE_PICK_INSTALLED || _interfaceState == OXZ_STATE_PICK_REMOVE || _interfaceState == OXZ_STATE_MAIN)
 	{
 		_interfaceState = OXZ_STATE_SETFILTER;
-		[[UNIVERSE gameView] resetTypedString];
+		[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) resetTypedString];
 		this->gui();
 	}
 	// else this key does nothing
@@ -1860,7 +1860,7 @@ void OOOXZManager::processShowInfoKey()
 {
 	if (_interfaceState == OXZ_STATE_PICK_INSTALL || _interfaceState == OXZ_STATE_PICK_INSTALLED || _interfaceState == OXZ_STATE_PICK_REMOVE)
 	{
-		::GuiDisplayGen	*gui = [UNIVERSE gui];
+		::GuiDisplayGen	*gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 
 		if (_interfaceShowingOXZDetail)
 		{
@@ -1911,7 +1911,7 @@ void OOOXZManager::processShowInfoKey()
 			const std::optional<std::string> infoURL = ManifestString(manifest, std::string(kOOManifestInformationURL));
 			if (gui != nullptr)  gui->setText(DescFormat(OO_DESC("oolite-oxzmanager-infopage-infourl-@"), {Arg(infoURL)}), 25, GUI_ALIGN_LEFT);
 			// copy url info text to clipboard automatically once we are in the oxz info page
-			[[UNIVERSE gameView] cxx_stringToClipboard:infoURL.value_or(std::string())];	  
+			[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) cxx_stringToClipboard:infoURL.value_or(std::string())];	  
 				  
 // instructions
 			if (gui != nullptr)
@@ -1931,7 +1931,7 @@ void OOOXZManager::processExtractKey()
 	// an OXP in the main AddOns folder if it's safe to do so.
 	if (!_interfaceShowingOXZDetail && (_interfaceState == OXZ_STATE_PICK_INSTALLED || _interfaceState == OXZ_STATE_PICK_REMOVE))
 	{
-		::GuiDisplayGen	*gui = [UNIVERSE gui];
+		::GuiDisplayGen	*gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 		OOGUIRow selection = (gui != nullptr ? gui->getSelectedRow() : 0);
 		
 		if (selection < OXZ_GUI_ROW_LISTSTART || selection >= OXZ_GUI_ROW_LISTSTART + OXZ_GUI_NUM_LISTROWS)
@@ -1970,7 +1970,7 @@ OOGUIRow OOOXZManager::showInstallOptions()
 	OOGUIRow startRow = OXZ_GUI_ROW_LISTPREV;
 	const std::vector<oo::PList> options = installOptions();
 	NSUInteger optCount = _filteredList.count();
-	::GuiDisplayGen	*gui = [UNIVERSE gui];
+	::GuiDisplayGen	*gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 	OOGUITabSettings tab_stops;
 	tab_stops[0] = 0;
 	tab_stops[1] = 100;
@@ -2185,7 +2185,7 @@ OOGUIRow OOOXZManager::showRemoveOptions()
 	// shows the current installation options page
 	OOGUIRow startRow = OXZ_GUI_ROW_LISTPREV;
 	const std::vector<oo::PList> options = removeOptions();
-	::GuiDisplayGen	*gui = [UNIVERSE gui];
+	::GuiDisplayGen	*gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 	if (options.empty())
 	{
 		if (gui != nullptr)  gui->addLongText(OO_DESC("oolite-oxzmanager-nothing-removable"), OXZ_GUI_ROW_PROGRESS, GUI_ALIGN_LEFT);
@@ -2328,7 +2328,7 @@ void OOOXZManager::showOptionsUpdate()
 
 void OOOXZManager::showOptionsPrev()
 {
-	::GuiDisplayGen	*gui = [UNIVERSE gui];
+	::GuiDisplayGen	*gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 	if (_interfaceState == OXZ_STATE_PICK_INSTALL || _interfaceState == OXZ_STATE_PICK_REMOVE || _interfaceState == OXZ_STATE_PICK_INSTALLED)
 	{
 		if ((gui != nullptr ? gui->getSelectedRow() : 0) == OXZ_GUI_ROW_LISTPREV)
@@ -2366,7 +2366,7 @@ void OOOXZManager::processOptionsNext()
 
 void OOOXZManager::showOptionsNext()
 {
-	::GuiDisplayGen	*gui = [UNIVERSE gui];
+	::GuiDisplayGen	*gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 	if (_interfaceState == OXZ_STATE_PICK_INSTALL || _interfaceState == OXZ_STATE_PICK_REMOVE || _interfaceState == OXZ_STATE_PICK_INSTALLED)
 	{
 		if ((gui != nullptr ? gui->getSelectedRow() : 0) == OXZ_GUI_ROW_LISTNEXT)

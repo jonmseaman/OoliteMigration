@@ -66,27 +66,18 @@ T *NewTestPlayer()
 
 
 // UNIVERSE: never initialised; answers the test's time and records what is removed.
-@interface TestUniverse: Universe
+class TestUniverse : public Universe
 {
-@public
-	OOTimeAbsolute	_time;
-	Entity			*_removed;
-}
-@end
+public:
+	OOTimeAbsolute &_time = universal_time;	// the universe's own state, which its getter answers (bead oo-ql9rn)
+	Entity			*_removed = {};
 
-
-@implementation TestUniverse
-
-- (OOTimeAbsolute) getTime	{ return _time; }
-
-
-- (BOOL) removeEntity:(Entity *)entity
-{
-	_removed = entity;
-	return YES;
-}
-
-@end
+	bool removeEntity(::Entity *entity) override
+	{
+		_removed = entity;
+		return YES;
+	}
+};
 
 
 namespace {
@@ -109,8 +100,7 @@ void SetUp(OOTimeAbsolute time)
 {
 	if (sUniverse == nil)
 	{
-		sUniverse = (TestUniverse *)class_createInstance([TestUniverse class], 0);	// never released
-		sUniverse->_cxxUniverse = oo::makeRef<cxx::Universe>(sUniverse);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
+		sUniverse = new TestUniverse();	// never released
 		sTexture = oo::makeRef<OOTexture>().leakRef();	// never released
 		OOTexture::nameFactory = &LoadTexture;
 	}

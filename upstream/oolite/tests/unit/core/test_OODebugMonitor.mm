@@ -81,7 +81,15 @@ uint32_t gLiveEntityCount = 0;
 @class Entity;
 oo::PList WormholeEntityShipsInTransit(Entity *)  { return oo::PList(); }
 
-@class Universe;
+// UNIVERSE stays nil here, so the monitor's guarded call never reaches it; the stand-in only links
+// it (bead oo-ql9rn: it was a message to nil).
+class Universe
+{
+public:
+	std::vector<oo::ObjCRef<::Entity *>> entityList();
+};
+std::vector<oo::ObjCRef<::Entity *>> Universe::entityList()  { return {}; }
+
 Universe *gSharedUniverse = nil;
 
 // The ship is C++ since bead oo-9ht.144 deleted the Objective-C ship: what the monitor's entity dump

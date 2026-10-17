@@ -235,7 +235,7 @@ static bool OoliteGetProperty(Context cx, Object obj, PropertyId propID, Value *
 	OOJS_NATIVE_ENTER(context)
 	
 	oo::PList				result;	// null: nil
-	MyOpenGLView			*gameView = [UNIVERSE gameView];
+	MyOpenGLView			*gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
 	
 	switch (ooscript::idToInt32(propID))
 	{
@@ -264,7 +264,7 @@ static bool OoliteGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			return true;
 		
 		case kOolite_gameSettings:
-			result = [UNIVERSE cxx_gameSettings];
+			result = (UNIVERSE != nullptr ? UNIVERSE->gameSettings() : oo::PList());
 			break;
 			
 		case kOolite_resourcePaths:
@@ -280,7 +280,7 @@ static bool OoliteGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			return ooscript::newNumberValue(cx, [gameView colorSaturation], value);
 			
 		case kOolite_postFX:
-			*value_raw = ooscript::int32Value([UNIVERSE currentPostFX]);
+			*value_raw = ooscript::int32Value((UNIVERSE != nullptr ? UNIVERSE->currentPostFX() : 0));
 			return true;
 			
 		case kOolite_hdrToneMapper:
@@ -309,7 +309,7 @@ static bool OoliteGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			
 #ifndef NDEBUG
 		case kOolite_timeAccelerationFactor:
-			return ooscript::newNumberValue(cx, [UNIVERSE timeAccelerationFactor], value);
+			return ooscript::newNumberValue(cx, (UNIVERSE != nullptr ? UNIVERSE->getTimeAccelerationFactor() : 0.0), value);
 #endif
 		
 		default:
@@ -339,7 +339,7 @@ static bool OoliteSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 	double					fValue;
 	int32_t					iValue;
 	std::optional<std::string>	sValue;
-	MyOpenGLView 			*gameView = [UNIVERSE gameView];
+	MyOpenGLView 			*gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
 	
 	switch (ooscript::idToInt32(propID))
 	{
@@ -356,7 +356,7 @@ static bool OoliteSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			if (ooscript::valueToInt32(cx, *value, &iValue))
 			{
 				iValue = MAX(iValue, 0);
-				[UNIVERSE setCurrentPostFX:iValue];
+				if (UNIVERSE != nullptr)  UNIVERSE->setCurrentPostFX(iValue);
 				return true;
 			}
 			break;
@@ -389,7 +389,7 @@ static bool OoliteSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 		case kOolite_timeAccelerationFactor:
 			if (ooscript::valueToNumber(cx, *value, &fValue))
 			{
-				[UNIVERSE setTimeAccelerationFactor:fValue];
+				if (UNIVERSE != nullptr)  UNIVERSE->setTimeAccelerationFactor(fValue);
 				return true;
 			}
 			break;

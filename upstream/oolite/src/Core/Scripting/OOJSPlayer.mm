@@ -521,7 +521,7 @@ static bool PlayerCommsMessage(ooscript::Context context, ooscript::CallArgs &oo
 		return false;
 	}
 	
-	[UNIVERSE cxx_addCommsMessage:*message forCount:time];
+	if (UNIVERSE != nullptr)  UNIVERSE->addCommsMessage(message, time);
 	if (PLAYER != nullptr)  PLAYER->ShipEntity::doScriptEvent(OOJSID("commsMessageReceived"), { oo::PList(*message), oo::PList() });	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 	OOJS_RETURN_VOID;
 	
@@ -549,7 +549,7 @@ static bool PlayerConsoleMessage(ooscript::Context context, ooscript::CallArgs &
 		return false;
 	}
 	
-	[UNIVERSE cxx_addMessage:*message forCount:time];
+	if (UNIVERSE != nullptr)  UNIVERSE->addMessage(message, time);
 	OOJS_RETURN_VOID;
 	
 	OOJS_NATIVE_EXIT
@@ -710,7 +710,7 @@ static bool PlayerAudioMessage(ooscript::Context context, ooscript::CallArgs &oo
 		return false;
 	}
 	
-	if ((player != nullptr ? player->getIsSpeechOn() : OOSpeechSettings{}) >= OOSPEECHSETTINGS_COMMS)  [UNIVERSE cxx_startSpeakingString:*audioMessage];
+	if ((player != nullptr ? player->getIsSpeechOn() : OOSpeechSettings{}) >= OOSPEECHSETTINGS_COMMS)  { if (UNIVERSE != nullptr)  UNIVERSE->startSpeakingString(*audioMessage); }
 	OOJS_RETURN_VOID;
 	
 	OOJS_NATIVE_EXIT
@@ -809,12 +809,12 @@ static bool PlayerSetEscapePodDestination(ooscript::Context context, ooscript::C
 				if (player != nullptr)  player->setDockTarget(NULL);
 				
 				double rescueRange = MAX_JUMP_RANGE;	// reach at least 1 other system!
-				if ([UNIVERSE inInterstellarSpace])
+				if ((UNIVERSE != nullptr ? UNIVERSE->inInterstellarSpace() : false))
 				{
 					// Set 3.5 ly as the limit, enough to reach at least 2 systems!
 					rescueRange = MAX_JUMP_RANGE / 2.0;
 				}
-				oo::PList		destinations = [UNIVERSE cxx_nearbyDestinationsWithinRange:rescueRange];
+				oo::PList		destinations = (UNIVERSE != nullptr ? UNIVERSE->nearbyDestinationsWithinRange(rescueRange) : oo::PList());
 				oo::PList::Array	sDests;
 				if (const oo::PList::Array *array = destinations.getIf<oo::PList::Array>())  sDests = *array;
 				NSUInteger		i = 0, nDests = sDests.size();
@@ -907,7 +907,7 @@ static bool PlayerStopAudioMessage(ooscript::Context context, ooscript::CallArgs
 {
 	
 	OOJS_NATIVE_ENTER(context)
-	if ([UNIVERSE isSpeaking])  [UNIVERSE stopSpeaking];
+	if ((UNIVERSE != nullptr ? UNIVERSE->isSpeaking() : false))  { if (UNIVERSE != nullptr)  UNIVERSE->stopSpeaking(); }
 	OOJS_RETURN_VOID;
 	
 	OOJS_NATIVE_EXIT

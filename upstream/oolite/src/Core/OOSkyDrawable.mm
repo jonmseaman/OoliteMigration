@@ -160,7 +160,7 @@ OOSkyDrawable::OOSkyDrawable(OOColor *color1,
 	{
 		setUpStars(color1, color2);
 
-		if (![UNIVERSE reducedDetail])
+		if (!(UNIVERSE != nullptr ? UNIVERSE->reducedDetail() : false))
 		{
 			setUpNebulae(color3,
 						 color4,

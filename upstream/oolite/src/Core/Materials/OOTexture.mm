@@ -861,7 +861,7 @@ OOTextureFlags OOApplyTextureOptionDefaults(OOTextureFlags options)
 	// Set default flags if needed
 	if ((options & kOOTextureMinFilterMask) == kOOTextureMinFilterDefault)
 	{
-		if ([UNIVERSE reducedDetail])
+		if ((UNIVERSE != nullptr ? UNIVERSE->reducedDetail() : false))
 		{
 			options |= kOOTextureMinFilterLinear;
 		}

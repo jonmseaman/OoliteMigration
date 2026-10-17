@@ -99,15 +99,18 @@ oo::PList EquipmentData()
 }	// namespace
 
 
-@interface Universe: OOObject
-- (oo::PList) cxx_equipmentData;
-- (oo::PList) cxx_equipmentDataOutfitting;
-@end
+// The universe as the code under test sees it: a stand-in for the C++ class (bead oo-ql9rn deleted
+// the Objective-C facade this stood in for), with the header's names and signatures.
+class Universe
+{
+public:
+	oo::PList getEquipmentData();
+	oo::PList getEquipmentDataOutfitting();
+};
 
-@implementation Universe
-- (oo::PList) cxx_equipmentData				{ return EquipmentData(); }
-- (oo::PList) cxx_equipmentDataOutfitting	{ return oo::PList(oo::PList::Array{ EquipmentData().at(0) != nullptr ? *EquipmentData().at(0) : oo::PList(), Item(9, 9, "Outfit", "EQ_OUTFIT", "Only outfitting") }); }
-@end
+oo::PList Universe::getEquipmentData()	{ return EquipmentData(); }
+oo::PList Universe::getEquipmentDataOutfitting()	{ return oo::PList(oo::PList::Array{ EquipmentData().at(0) != nullptr ? *EquipmentData().at(0) : oo::PList(), Item(9, 9, "Outfit", "EQ_OUTFIT", "Only outfitting") }); }
+
 
 Universe *gSharedUniverse = nil;
 
@@ -204,7 +207,7 @@ namespace {
 
 void Reset()
 {
-	if (gSharedUniverse == nil)  gSharedUniverse = [[Universe alloc] init];
+	if (gSharedUniverse == nil)  gSharedUniverse = new Universe();
 	if (gOOPlayer == nullptr)  gOOPlayer = new PlayerEntity;	// never deleted
 	gLog.clear();
 	gEnforceStandards = NO;

@@ -357,7 +357,7 @@ bool OOVisualEffectEntity::setUpOneStandardSubentity(const oo::PList &subentDict
 		return false;
 	}
 
-	subentity = [UNIVERSE cxx_newVisualEffectWithName:*subentKey];
+	subentity = (UNIVERSE != nullptr ? UNIVERSE->newVisualEffectWithName(*subentKey) : nullptr);
 	if (subentity == nil) {
 		OO_LOG("setup.visualeffect.badEntry.subentities", "Failed to set up entity {}", *subentKey);
 		return false;
@@ -857,7 +857,7 @@ void OOVisualEffectEntity::doScriptEvent(ooscript::PropertyId message)
 void OOVisualEffectEntity::remove()
 {
 	doScriptEvent(OOJSID("effectRemoved"));
-	[UNIVERSE removeEntity:(::Entity*)oo::ToObjC(this)];
+	if (UNIVERSE != nullptr)  UNIVERSE->removeEntity((::Entity*)oo::ToObjC(this));
 }
 
 
@@ -930,7 +930,7 @@ OOHUDBeaconIcon *OOVisualEffectEntity::beaconDrawable()
 
 		if (length > 1)
 		{
-			const oo::PList *iconEntry = [UNIVERSE cxx_descriptions]->find(*_beaconCode);
+			const oo::PList *iconEntry = UNIVERSE->descriptions()->find(*_beaconCode);
 			const oo::PList iconData = (iconEntry != nullptr) ? *iconEntry : oo::PList();
 			if (iconData.isArray())  _beaconDrawable = OOPolygonSprite::initWithDataArray(iconData, 0.5, *_beaconCode);	// null where it answered nil
 		}

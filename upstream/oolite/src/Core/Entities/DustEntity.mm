@@ -269,7 +269,7 @@ Vector DustEntity::offsetPlayerPosition()
 void DustEntity::checkShaderMode()
 {
 	shaderMode = kShaderModeOff;
-	if ([UNIVERSE detailLevel] >= DETAIL_LEVEL_SHADERS)
+	if ((UNIVERSE != nullptr ? UNIVERSE->getDetailLevel() : OOGraphicsDetail{}) >= DETAIL_LEVEL_SHADERS)
 	{
 		if (OOOpenGLExtensionManager::sharedManager()->useDustShader())
 		{
@@ -288,7 +288,7 @@ Vector DustEntity::warpVector()
 
 void DustEntity::drawImmediate(bool /*immediate*/, bool translucent)
 {
-	if (!drawDust || [UNIVERSE breakPatternHide] || !translucent)  return;	// DON'T DRAW
+	if (!drawDust || (UNIVERSE != nullptr ? UNIVERSE->breakPatternHide() : false) || !translucent)  return;	// DON'T DRAW
 	
 	::PlayerEntity* player = PLAYER;
 	assert(player != nil);
@@ -303,8 +303,8 @@ void DustEntity::drawImmediate(bool /*immediate*/, bool translucent)
 #endif
 	
 
-	GLfloat	*fogcolor = [UNIVERSE skyClearColor];
-	float	idealDustSize = [[UNIVERSE gameView] viewSize].width / 800.0f;
+	GLfloat	*fogcolor = (UNIVERSE != nullptr ? UNIVERSE->getSkyClearColor() : nullptr);
+	float	idealDustSize = [(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) viewSize].width / 800.0f;
 	
 	BOOL	warp_stars = (player != nullptr ? player->atHyperspeed() : false);
 	float	dustIntensity;
@@ -342,7 +342,7 @@ void DustEntity::drawImmediate(bool /*immediate*/, bool translucent)
 
 		float	*color = NULL;
 		if (player->isSunlit)  color = color_fv;
-		else  color = UNIVERSE->_cxxUniverse->stars_ambient;
+		else  color = UNIVERSE->stars_ambient;
 		OOGL(glColor4f(color[0], color[1], color[2], dustIntensity));
 	
 #if OO_SHADERS

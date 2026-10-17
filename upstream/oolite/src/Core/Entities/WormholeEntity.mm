@@ -58,7 +58,7 @@ namespace {
 // to a missing manager answered zeros).
 NSPoint SystemCoordinates(OOSystemID system, OOGalaxyID galaxy)
 {
-	OOSystemDescriptionManager *manager = [UNIVERSE systemManager];
+	OOSystemDescriptionManager *manager = (UNIVERSE != nullptr ? UNIVERSE->getSystemManager() : nullptr);
 	return manager != nullptr ? manager->getCoordinatesForSystem(system, galaxy) : NSMakePoint(0, 0);
 }
 
@@ -163,10 +163,10 @@ void WormholeEntity::initWormholeTo(OOSystemID s, ::ShipEntity *ship)
 	{
 		double		now = (PLAYER != nullptr ? PLAYER->clockTimeAdjusted() : 0.0);
 		double		distance;
-		::OOSunEntity	*sun = [UNIVERSE sun];
+		::OOSunEntity	*sun = (UNIVERSE != nullptr ? UNIVERSE->sun() : nullptr);
 		
 		_misjump = NO;
-		origin = [UNIVERSE currentSystemID];
+		origin = (UNIVERSE != nullptr ? UNIVERSE->currentSystemID() : 0);
 		destination = s;
 		originCoords = (PLAYER != nullptr ? PLAYER->getGalaxy_coordinates() : NSPoint{});
 		destinationCoords = SystemCoordinates(destination, (PLAYER != nullptr ? PLAYER->galaxyNumber() : OOGalaxyID{}));
@@ -262,7 +262,7 @@ bool WormholeEntity::suckInShip(::ShipEntity *ship)
 	{
 		return NO;
 	}
-	if (origin != [UNIVERSE currentSystemID])
+	if (origin != (UNIVERSE != nullptr ? UNIVERSE->currentSystemID() : 0))
 	{
 		// if we're no longer in the origin system, can't suck in
 		return NO;
@@ -318,14 +318,14 @@ bool WormholeEntity::suckInShip(::ShipEntity *ship)
 
 	collision_radius = 0.5 * M_PI * pow(witch_mass, 1.0/3.0);
 	
-	[UNIVERSE addWitchspaceJumpEffectForShip:ship];
+	if (UNIVERSE != nullptr)  UNIVERSE->addWitchspaceJumpEffectForShip(ship);
 	
 	// Should probably pass the wormhole, but they have no JS representation
 	if (ship != nullptr)  ship->setStatus(STATUS_ENTERING_WITCHSPACE);
 	if (ship != nullptr)  ship->doScriptEvent(OOJSID("shipWillEnterWormhole"));
 	[(ship != nullptr ? ship->getAI() : (::AI *)nullptr) message:"ENTERED_WITCHSPACE"];
 
-	[UNIVERSE removeEntity:oo::ToObjC(ship)];
+	if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(oo::ToObjC(ship));
 	[(ship != nullptr ? ship->getAI() : (::AI *)nullptr) clearStack];	// get rid of any preserved states
 
 	if ((ship != nullptr ? ship->getIsStation() : false))
@@ -334,7 +334,7 @@ bool WormholeEntity::suckInShip(::ShipEntity *ship)
 		{
 			// the carrier has jumped while the player is docked
 			if (ship != nullptr)  oo::ToShip([oo::ToObjC(ship) retain]);
-			[UNIVERSE carryPlayerOn:oo::ToStation(oo::ToObjC(ship)) inWormhole:this];
+			if (UNIVERSE != nullptr)  UNIVERSE->carryPlayerOn(oo::ToStation(oo::ToObjC(ship)), this);
 			if (ship != nullptr)  [oo::ToObjC(ship) release];
 		}
 	}		
@@ -370,8 +370,8 @@ void WormholeEntity::disgorgeShips()
 			// Only calculate exit position once so that all ships arrive from the same point
 			if (!hasExitPosition)
 			{
-				position = [UNIVERSE getWitchspaceExitPosition];	// no need to reset PRNG.
-				GLfloat min_d1 = [UNIVERSE safeWitchspaceExitDistance];
+				position = (UNIVERSE != nullptr ? UNIVERSE->getWitchspaceExitPosition() : HPVector{});	// no need to reset PRNG.
+				GLfloat min_d1 = (UNIVERSE != nullptr ? UNIVERSE->safeWitchspaceExitDistance() : 0.0f);
 				Quaternion	q1;
 				quaternion_set_random(&q1);
 				double		d1 = SCANNER_MAX_RANGE*((ranrot_rand() % 256)/256.0 - 0.5);
@@ -394,8 +394,8 @@ void WormholeEntity::disgorgeShips()
 			if (hasExitPosition && (!containsPlayer || useExitXYScatter))
 			{
 				HPVector shippos;
-				Vector exit_vector_x = vector_right_from_quaternion([UNIVERSE getWitchspaceExitRotation]);			
-				Vector exit_vector_y = vector_up_from_quaternion([UNIVERSE getWitchspaceExitRotation]);
+				Vector exit_vector_x = vector_right_from_quaternion((UNIVERSE != nullptr ? UNIVERSE->getWitchspaceExitRotation() : Quaternion{}));			
+				Vector exit_vector_y = vector_up_from_quaternion((UNIVERSE != nullptr ? UNIVERSE->getWitchspaceExitRotation() : Quaternion{}));
 // entry wormhole has a radius of around 100m (or perhaps more)
 // so randomise exit positions slightly too for second and subsequent ships
 // helps avoid collisions when two ships enter wormhole at same time
@@ -440,11 +440,11 @@ void WormholeEntity::disgorgeShips()
 			else
 			{
 				// arrived 2 seconds or more before the player. Rings have faded out.
-				if (ship != nullptr)  ship->setOrientation([UNIVERSE getWitchspaceExitRotation]);
+				if (ship != nullptr)  ship->setOrientation((UNIVERSE != nullptr ? UNIVERSE->getWitchspaceExitRotation() : Quaternion{}));
 				if (ship != nullptr)  ship->setPitch(0.0);
 				if (ship != nullptr)  ship->setRoll(0.0);
 				if (ship != nullptr)  ship->setVelocity(kZeroVector);
-				[UNIVERSE addEntity:oo::ToObjC(ship)];	// AI and status get initialised here
+				if (UNIVERSE != nullptr)  UNIVERSE->addEntity(oo::ToObjC(ship));	// AI and status get initialised here
 			}
 			if (ship != nullptr)  ship->setSpeed(exitSpeed()); // all ships from this wormhole have same velocity
 
@@ -606,7 +606,7 @@ std::optional<std::string> WormholeEntity::descriptionComponents() const
 {
 	double now = (PLAYER != nullptr ? PLAYER->clockTime() : 0.0);
 	return oo::str::format("destination: %s ttl: %.2fs arrival: %s",
-		_misjump ? "Interstellar Space" : [UNIVERSE cxx_getSystemName:destination].value_or("(null)").c_str(),
+		_misjump ? "Interstellar Space" : (UNIVERSE != nullptr ? UNIVERSE->getSystemName(destination) : std::optional<std::string>()).value_or("(null)").c_str(),
 		expiry_time - now,
 		cxx_ClockToString(arrival_time, false).c_str());
 }
@@ -618,7 +618,7 @@ std::optional<std::string> WormholeEntity::identFromShip(::ShipEntity *ship)
 	{
 		if (scanInfo() >= WH_SCANINFO_DESTINATION)
 		{
-			return oo::str::formatRuntime(OO_DESC("wormhole-to-@"), { [UNIVERSE cxx_getSystemName:destination].value_or("(null)") });
+			return oo::str::formatRuntime(OO_DESC("wormhole-to-@"), { (UNIVERSE != nullptr ? UNIVERSE->getSystemName(destination) : std::optional<std::string>()).value_or("(null)") });
 		}
 		else
 		{
@@ -642,7 +642,7 @@ std::optional<std::string> WormholeEntity::identFromShip(::ShipEntity *ship)
 bool WormholeEntity::canCollide()
 {
 	/* Correct test for far end of wormhole */
-	if (origin != [UNIVERSE currentSystemID])
+	if (origin != (UNIVERSE != nullptr ? UNIVERSE->currentSystemID() : 0))
 	{
 		// if we're no longer in the origin system, can't suck in
 		return NO;
@@ -691,14 +691,14 @@ void WormholeEntity::update(OOTimeDelta delta_t)
 
 		// If we're a saved wormhole waiting to disgorge more ships, it's safe
 		// to remove self from UNIVERSE, but we need the current position!
-		[UNIVERSE removeEntity: oo::ToObjC(this)];
+		if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(oo::ToObjC(this));
 	}
 }
 
 
 void WormholeEntity::drawImmediate(bool /*immediate*/, bool translucent)
 {
-	if ([UNIVERSE breakPatternHide])
+	if ((UNIVERSE != nullptr ? UNIVERSE->breakPatternHide() : false))
 		return;		// DON'T DRAW DURING BREAK PATTERN
 	
 	if (cam_zero_distance > no_draw_distance)
@@ -855,8 +855,8 @@ const char *WormholeEntity::scanInfoString()
 void WormholeEntity::dumpSelfState()
 {
 	Entity::dumpSelfState();
-	OO_LOG("dumpState.wormholeEntity", "Origin                 : {}", [UNIVERSE cxx_getSystemName:origin].value_or("(null)"));
-	OO_LOG("dumpState.wormholeEntity", "Destination            : {}", [UNIVERSE cxx_getSystemName:destination].value_or("(null)"));
+	OO_LOG("dumpState.wormholeEntity", "Origin                 : {}", (UNIVERSE != nullptr ? UNIVERSE->getSystemName(origin) : std::optional<std::string>()).value_or("(null)"));
+	OO_LOG("dumpState.wormholeEntity", "Destination            : {}", (UNIVERSE != nullptr ? UNIVERSE->getSystemName(destination) : std::optional<std::string>()).value_or("(null)"));
 	OO_LOG("dumpState.wormholeEntity", "Expiry Time            : {}", cxx_ClockToString(expiry_time, false));
 	OO_LOG("dumpState.wormholeEntity", "Arrival Time           : {}", cxx_ClockToString(arrival_time, false));
 	OO_LOG("dumpState.wormholeEntity", "Projected Arrival Time : {}", cxx_ClockToString(estimated_arrival_time, false));

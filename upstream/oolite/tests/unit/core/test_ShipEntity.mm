@@ -172,8 +172,7 @@ void SetUp()
 	static Universe *universe = nil;
 	if (universe == nil)
 	{
-		universe = (Universe *)class_createInstance([Universe class], 0);	// never released
-		universe->_cxxUniverse = oo::makeRef<cxx::Universe>(universe);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
+		universe = new Universe();	// never released
 	}
 	gSharedUniverse = universe;
 	static TestPlayer *player = nullptr;
@@ -1699,7 +1698,7 @@ OO_TEST(aegisSystemsAndStatus)
 		OO_CHECK((ship != nullptr ? ship->homeSystem() : 0) == 7 && (ship != nullptr ? ship->destinationSystem() : 0) == 42);
 
 		if (ship != nullptr)  ship->setStatus(STATUS_LAUNCHING);
-		OO_CHECK((ship != nullptr ? ship->status() : OOEntityStatus{}) == STATUS_LAUNCHING && LaunchTime(ship) == [UNIVERSE getTime]);
+		OO_CHECK((ship != nullptr ? ship->status() : OOEntityStatus{}) == STATUS_LAUNCHING && LaunchTime(ship) == (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0));
 		if (ship != nullptr)  ship->setStatus(STATUS_IN_FLIGHT);
 		OO_CHECK((ship != nullptr ? ship->status() : OOEntityStatus{}) == STATUS_IN_FLIGHT);
 		if (ship != nullptr)  ship->setLaunchDelay(2.5);

@@ -41,13 +41,23 @@
 // reference whose objects would link the game. The paths the test runs never reach the aborting
 // ones: no ship has a condition script, a subentity, a vector or quaternion string, and nothing
 // flushes the cache.
-@class Universe;
+class Universe;
 class PlayerEntity;
 PlayerEntity *gOOPlayer = nullptr;
 #include "OOEntityEnums.h"
 namespace cxx { class Entity { public: OOEntityStatus status(); }; }	// as Entity.h declares it (PLAYER is C++ since bead oo-9ht.177)
 OOEntityStatus cxx::Entity::status()  { std::abort(); }
 Universe *gSharedUniverse = nil;
+
+// UNIVERSE stays nil here, so the registry's guarded call never reaches it; the stand-in only links
+// it (bead oo-ql9rn: it was a message to nil).
+class OOScript;
+class Universe
+{
+public:
+	::OOScript *getConditionScript(const std::string &scriptname);
+};
+::OOScript *Universe::getConditionScript(const std::string &)  { return nullptr; }
 ooscript::Context gOOJSMainThreadContext = nullptr;
 void OOJSInitJSIDCachePRIVATE(const char *, ooscript::PropertyId *)  { std::abort(); }
 ooscript::Value OOJSValueFromPList(ooscript::Context, const oo::PList &)  { std::abort(); }

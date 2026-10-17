@@ -183,7 +183,7 @@ bool OOPlanetTextureGenerator::initWithPlanetInfo(const oo::PList &planetInfo, R
 			_info.paleCloudColor = FloatRGBFromDictColor(planetInfo, "polar_cloud_color");
 		}
 		
-		OOGraphicsDetail detailLevel = [UNIVERSE detailLevel];
+		OOGraphicsDetail detailLevel = (UNIVERSE != nullptr ? UNIVERSE->getDetailLevel() : OOGraphicsDetail{});
 		
 #ifndef TEXGEN_TEST_RIG
 		if (detailLevel < DETAIL_LEVEL_SHADERS || planetInfo.get<bool>("isMiniature", false))
@@ -575,7 +575,7 @@ END:
 		const std::string diffuseName = oo::str::format("planet-%u-%u-diffuse-new", _info.seed.high, _info.seed.low);
 		const std::string lightsName = oo::str::format("planet-%u-%u-lights-new", _info.seed.high, _info.seed.low);
 		
-		[[UNIVERSE gameView] cxx_dumpRGBAToRGBFileNamed:diffuseName
+		[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) cxx_dumpRGBAToRGBFileNamed:diffuseName
 								   andGrayFileNamed:lightsName
 											  bytes:buffer
 											  width:_width
@@ -602,7 +602,7 @@ void OOPlanetTextureGenerator::dumpNoiseBuffer(float *noise)
 		}
 	}
 	
-	[[UNIVERSE gameView] cxx_dumpGrayToFileNamed:noiseName
+	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) cxx_dumpGrayToFileNamed:noiseName
 									   bytes:noisePx
 									   width:_width
 									  height:_height
@@ -1263,7 +1263,7 @@ void OOPlanetNormalMapGenerator::completeWithData(void *data_, unsigned width_, 
 	const std::string normalName = oo::str::format("planet-%u-%u-normal-new", _seed.high, _seed.low);
 	const std::string specularName = oo::str::format("planet-%u-%u-specular-new", _seed.high, _seed.low);
 	
-	[[UNIVERSE gameView] cxx_dumpRGBAToRGBFileNamed:normalName
+	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) cxx_dumpRGBAToRGBFileNamed:normalName
 							   andGrayFileNamed:specularName
 										  bytes:_data
 										  width:_width
@@ -1360,7 +1360,7 @@ void OOPlanetAtmosphereGenerator::completeWithData(void *data_, unsigned width_,
 	const std::string rgbName = oo::str::format("planet-%u-%u-atmosphere-rgb-new", _seed.high, _seed.low);
 	const std::string alphaName = oo::str::format("planet-%u-%u-atmosphere-alpha-new", _seed.high, _seed.low);
 	
-	[[UNIVERSE gameView] cxx_dumpRGBAToRGBFileNamed:rgbName
+	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) cxx_dumpRGBAToRGBFileNamed:rgbName
 							   andGrayFileNamed:alphaName
 										  bytes:_data
 										  width:_width

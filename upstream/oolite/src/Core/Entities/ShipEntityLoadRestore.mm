@@ -216,7 +216,7 @@ oo::PList ShipEntity::savedShipDictionaryWithContext(OOShipSaveContext *context)
 
 		const oo::PList mergedPlist(std::move(mergedData));
 		// A station is made in C++ since bead oo-9ht.175 (the universe picked its class).
-		if ([UNIVERSE cxx_isStationShipDictionary:mergedPlist])  ship = oo::ToShip([oo::ToObjC(StationEntity::newStationObject(shipKey, mergedPlist)) autorelease]);
+		if ((UNIVERSE != nullptr ? UNIVERSE->isStationShipDictionary(mergedPlist) : false))  ship = oo::ToShip([oo::ToObjC(StationEntity::newStationObject(shipKey, mergedPlist)) autorelease]);
 		else  ship = oo::ToShip([oo::NewShipObject(oo::makeRef<::ShipEntity>(), shipKey, mergedPlist) autorelease]);
 
 		// FIXME: restore AI.
@@ -233,7 +233,7 @@ oo::PList ShipEntity::savedShipDictionaryWithContext(OOShipSaveContext *context)
 		const std::optional<std::string> shipPrimaryRole = OptionalStringForKey(dict, KEY_PRIMARY_ROLE);
 		if (!fallback || !shipPrimaryRole.has_value())  return nil;
 
-		ship = oo::ToShip([oo::ToObjC([UNIVERSE cxx_newShipWithRole:*shipPrimaryRole]) autorelease]);
+		ship = oo::ToShip([oo::ToObjC((UNIVERSE != nullptr ? UNIVERSE->newShipWithRole(*shipPrimaryRole) : (::ShipEntity *)nil)) autorelease]);
 		if (ship == nil)  return nil;
 	}
 

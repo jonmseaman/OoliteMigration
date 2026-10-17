@@ -118,7 +118,7 @@ std::optional<std::string> PlayerEntity::dockedStationDisplayName()
 
 bool PlayerEntity::dockedAtMainStation()
 {
-	return status() == STATUS_DOCKED && dockedStation() == [UNIVERSE station];
+	return status() == STATUS_DOCKED && dockedStation() == (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr);
 }
 
 
@@ -126,7 +126,7 @@ void PlayerEntity::awardCommodityType(const std::string &type, OOCargoQuantity a
 {
 	OOMassUnit				unit;
 
-	if (!([UNIVERSE commodities] != nullptr ? [UNIVERSE commodities]->goodDefined(type) : false))
+	if (!((UNIVERSE != nullptr ? UNIVERSE->getCommodities() : nullptr) != nullptr ? UNIVERSE->getCommodities()->goodDefined(type) : false))
 	{
 		return;
 	}
@@ -155,7 +155,7 @@ void PlayerEntity::awardCommodityType(const std::string &type, OOCargoQuantity a
 						int smaller_quantity = 1 + ((amount - 1) % amount_per_container);
 						if (cargo.size() < maxAvailableCargoSpace())
 						{
-							::ShipEntity* container = [UNIVERSE cxx_newShipWithRole:"1t-cargopod"];
+							::ShipEntity* container = (UNIVERSE != nullptr ? UNIVERSE->newShipWithRole("1t-cargopod") : (::ShipEntity *)nil);
 							if (container)
 							{
 								// the cargopod ship is just being set up. If ejected,  will call UNIVERSE addEntity
@@ -179,7 +179,7 @@ void PlayerEntity::awardCommodityType(const std::string &type, OOCargoQuantity a
 				{
 					if (cargo.size() < maxAvailableCargoSpace())
 					{
-						::ShipEntity* container = [UNIVERSE cxx_newShipWithRole:"1t-cargopod"];
+						::ShipEntity* container = (UNIVERSE != nullptr ? UNIVERSE->newShipWithRole("1t-cargopod") : (::ShipEntity *)nil);
 						if (container)
 						{
 							// the cargopod ship is just being set up. If ejected, will call UNIVERSE addEntity
@@ -226,8 +226,8 @@ OOGalaxyID PlayerEntity::currentGalaxyID()
 
 OOSystemID PlayerEntity::currentSystemID()
 {
-	if ([UNIVERSE sun] == nil)  return -1;	// Interstellar space
-	return [UNIVERSE currentSystemID];
+	if ((UNIVERSE != nullptr ? UNIVERSE->sun() : nullptr) == nil)  return -1;	// Interstellar space
+	return (UNIVERSE != nullptr ? UNIVERSE->currentSystemID() : 0);
 }
 
 
@@ -290,21 +290,21 @@ OOTimeDelta PlayerEntity::scriptTimer()
  * reset it after generating the number. */
 unsigned PlayerEntity::systemPseudoRandom100()
 {
-	seed_RNG_only_for_planet_description(([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getRandomSeedForCurrentSystem() : Random_Seed()));
+	seed_RNG_only_for_planet_description(((UNIVERSE != nullptr ? UNIVERSE->getSystemManager() : nullptr) != nullptr ? UNIVERSE->getSystemManager()->getRandomSeedForCurrentSystem() : Random_Seed()));
 	return (gen_rnd_number() * 256 + gen_rnd_number()) % 100;
 }
 
 
 unsigned PlayerEntity::systemPseudoRandom256()
 {
-	seed_RNG_only_for_planet_description(([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getRandomSeedForCurrentSystem() : Random_Seed()));
+	seed_RNG_only_for_planet_description(((UNIVERSE != nullptr ? UNIVERSE->getSystemManager() : nullptr) != nullptr ? UNIVERSE->getSystemManager()->getRandomSeedForCurrentSystem() : Random_Seed()));
 	return gen_rnd_number();
 }
 
 
 double PlayerEntity::systemPseudoRandomFloat()
 {
-	seed_RNG_only_for_planet_description(([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getRandomSeedForCurrentSystem() : Random_Seed()));
+	seed_RNG_only_for_planet_description(((UNIVERSE != nullptr ? UNIVERSE->getSystemManager() : nullptr) != nullptr ? UNIVERSE->getSystemManager()->getRandomSeedForCurrentSystem() : Random_Seed()));
 	unsigned a = gen_rnd_number();
 	unsigned b = gen_rnd_number();
 	unsigned c = gen_rnd_number();

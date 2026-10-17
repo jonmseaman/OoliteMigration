@@ -589,17 +589,17 @@ void CollisionRegion::findShadowedEntities()
 	//
 	unsigned i, j;
 	
-	if ([UNIVERSE reducedDetail])  return;	// don't do this in reduced detail mode
+	if ((UNIVERSE != nullptr ? UNIVERSE->reducedDetail() : false))  return;	// don't do this in reduced detail mode
 	
-	::OOSunEntity* the_sun = [UNIVERSE sun];
+	::OOSunEntity* the_sun = (UNIVERSE != nullptr ? UNIVERSE->sun() : nullptr);
 	
 	if (the_sun == nil)
 	{
 		return;	// sun is required
 	}
 	
-	unsigned	ent_count =	UNIVERSE->_cxxUniverse->n_entities;
-	cxx::Entity		**uni_entities = UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
+	unsigned	ent_count =	UNIVERSE->n_entities;
+	cxx::Entity		**uni_entities = UNIVERSE->sortedEntities;	// grab the public sorted list
 	std::vector<cxx::Entity *>	planets(ent_count);
 	unsigned	n_planets = 0;
 	std::vector<cxx::Entity *>	ships(ent_count);
@@ -648,7 +648,7 @@ void CollisionRegion::findShadowedEntities()
 		cxx::Entity *occluder = nullptr;
 		if (e1->isSunlit == NO)
 		{
-			occluder = oo::ToCxx((::Entity *)[UNIVERSE entityForUniversalID:e1->shadingEntityID]);
+			occluder = oo::ToCxx((::Entity *)(UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(e1->shadingEntityID) : id{}));
 			if (occluder != nil)
 			{
 				occluder_moved = occluder->hasMoved;

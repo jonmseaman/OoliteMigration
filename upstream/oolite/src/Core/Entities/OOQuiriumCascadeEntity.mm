@@ -117,14 +117,14 @@ void OOQuiriumCascadeEntity::update(OOTimeDelta delta_t)
 	// expire after ttl
 	if (_timePassed > kQuiriumCascadeDuration)
 	{
-		[UNIVERSE removeEntity:self];
+		if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(self);
 	}
 }
 
 
 void OOQuiriumCascadeEntity::drawImmediate(bool /*immediate*/, bool translucent)
 {
-	if (!translucent || [UNIVERSE breakPatternHide])  return;
+	if (!translucent || (UNIVERSE != nullptr ? UNIVERSE->breakPatternHide() : false))  return;
 	
 	OO_ENTER_OPENGL();
 	OOSetOpenGLState(OPENGL_STATE_ADDITIVE_BLENDING);
