@@ -4870,7 +4870,7 @@ void ShipEntity::behaviour_attack_slow_dogfight(double delta_t)
 	double  range = rangeToPrimaryTarget();
 	::ShipEntity*	target = oo::ToShip(primaryTarget());
 	double aspect = approachAspectToPrimaryTarget();
-	if (range < 2.5*(collision_radius+target->collision_radius) && proximityAlert() == oo::ToObjC(target) && aspect > 0) {
+	if (range < 2.5*(collision_radius+target->collision_radius) && proximityAlert() == target && aspect > 0) {
 		desired_speed = maxFlightSpeed;
 		avoidCollision();
 		return;
@@ -4940,7 +4940,7 @@ void ShipEntity::behaviour_evasive_action(double delta_t)
 	}
 	
 	if (cloakAutomatic) activateCloakingDevice();
-	if (proximityAlert() != nil)
+	if (proximityAlert() != nullptr)
 	{
 		avoidCollision();
 		return;
@@ -5272,7 +5272,7 @@ void ShipEntity::behaviour_attack_broadside_target(double delta_t, bool leftside
 	}
 
 // can get closer on broadsides since there's less risk of a collision
-	if ((range < COMBAT_BROADSIDE_IN_RANGE_FACTOR * currentWeaponRange)||(proximityAlert() != nil))
+	if ((range < COMBAT_BROADSIDE_IN_RANGE_FACTOR * currentWeaponRange)||(proximityAlert() != nullptr))
 	{
 		if (!hasProximityAlertIgnoringTarget(YES))
 		{
@@ -5374,9 +5374,9 @@ void ShipEntity::behaviour_attack_broadside_target(double delta_t, bool leftside
 void ShipEntity::behaviour_close_to_broadside_range(double delta_t)
 {
 	double  range = rangeToPrimaryTarget();
-	if (proximityAlert() != nil)
+	if (proximityAlert() != nullptr)
 	{
-		if (proximityAlert() == primaryTarget())
+		if (proximityAlert() == oo::ToCxx(static_cast<::Entity *>(primaryTarget())))
 		{
 			behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET; // this behaviour will handle proximity_alert.
 			behaviour_attack_fly_from_target(delta_t); // do it now.
@@ -5417,9 +5417,9 @@ void ShipEntity::behaviour_close_to_broadside_range(double delta_t)
 void ShipEntity::behaviour_close_with_target(double delta_t)
 {
 	double  range = rangeToPrimaryTarget();
-	if (proximityAlert() != nil)
+	if (proximityAlert() != nullptr)
 	{
-		if (proximityAlert() == primaryTarget())
+		if (proximityAlert() == oo::ToCxx(static_cast<::Entity *>(primaryTarget())))
 		{
 			behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET; // this behaviour will handle proximity_alert.
 			behaviour_attack_fly_from_target(delta_t); // do it now.
@@ -5547,9 +5547,9 @@ void ShipEntity::behaviour_fly_to_target_six(double delta_t)
 	if (canBurn) max_available_speed *= afterburnerFactor();
 	
 	// deal with collisions and lost targets
-	if (proximityAlert() != nil)
+	if (proximityAlert() != nullptr)
 	{
-		if (proximityAlert() == primaryTarget())
+		if (proximityAlert() == oo::ToCxx(static_cast<::Entity *>(primaryTarget())))
 		{
 			behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET; // this behaviour will handle proximity_alert.
 			behaviour_attack_fly_from_target(delta_t); // do it now.
@@ -5694,9 +5694,9 @@ void ShipEntity::behaviour_attack_mining_target(double delta_t)
 		desired_speed = maxFlightSpeed * 0.375;
 		return;
 	}
-	else if ((range < 650) || (proximityAlert() != nil))
+	else if ((range < 650) || (proximityAlert() != nullptr))
 	{
-		if (proximityAlert() == nil)	// NO_TARGET is 0: `== (Entity *)NO_TARGET` was the nil test
+		if (proximityAlert() == nullptr)	// NO_TARGET is 0: `== (Entity *)NO_TARGET` was the nil test
 		{
 			desired_speed = range * maxFlightSpeed / (650.0 * 16.0);
 		}
@@ -5747,7 +5747,7 @@ void ShipEntity::behaviour_attack_fly_to_target(double delta_t)
 	}
 
 	::ShipEntity *target = oo::ToShip(rawTarget);
-	if ((range < COMBAT_IN_RANGE_FACTOR * weaponRange)||(proximityAlert() != nil))
+	if ((range < COMBAT_IN_RANGE_FACTOR * weaponRange)||(proximityAlert() != nullptr))
 	{
 		if (!hasProximityAlertIgnoringTarget(YES))
 		{
@@ -7500,14 +7500,16 @@ NSUInteger ShipEntity::turretCount()
 }
 
 
-::Entity *ShipEntity::proximityAlert()
+// The C++ entity (bead oo-9ht.39.23.2): null, and forgotten, when its object is gone, as before.
+cxx::Entity *ShipEntity::proximityAlert()
 {
 	::Entity* prox = oo::WeakEntityObject(_proximityAlert);
 	if (prox == nil)
 	{
 		_proximityAlert = nullptr;
+		return nullptr;
 	}
-	return prox;
+	return oo::ToCxx(prox);
 }
 
 
@@ -11725,7 +11727,7 @@ double ShipEntity::approachAspectToPrimaryTarget()
 
 bool ShipEntity::hasProximityAlertIgnoringTarget(bool ignore_target)
 {
-	if ((proximityAlert() != nil)&&(!ignore_target || (proximityAlert() != primaryTarget())))
+	if ((proximityAlert() != nullptr)&&(!ignore_target || (proximityAlert() != oo::ToCxx(static_cast<::Entity *>(primaryTarget())))))
 	{
 		return YES;
 	}
@@ -15026,7 +15028,7 @@ void ShipEntity::dumpSelfState()
 	ADD_FLAG_IF_SET(isFrangible);
 	ADD_FLAG_IF_SET(cloaking_device_active);
 	ADD_FLAG_IF_SET(canFragment);
-	ADD_FLAG_IF_SET(proximityAlert() != nil);
+	ADD_FLAG_IF_SET(proximityAlert() != nullptr);
 	for (const std::string &flag : flags)
 	{
 		if (!flagsString.empty())  flagsString += ", ";

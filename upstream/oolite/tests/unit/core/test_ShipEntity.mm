@@ -1477,7 +1477,7 @@ OO_TEST(avoidCollisionAndResume)
 		OO_CHECK(Behaviour(ship) == BEHAVIOUR_FLY_TO_DESTINATION);
 
 		SetProximityAlert(ship, oo::ToObjC(rock));
-		OO_CHECK((ship != nullptr ? ship->proximityAlert() : (::Entity *)nullptr) == oo::ToObjC(rock));
+		OO_CHECK((ship != nullptr ? ship->proximityAlert() : (cxx::Entity *)nullptr) == rock);
 		if (ship != nullptr)  ship->avoidCollision();
 		OO_CHECK(Behaviour(ship) == BEHAVIOUR_AVOID_COLLISION);
 		OO_CHECK(HPvector_equal((ship != nullptr ? ship->destination() : HPVector{}), make_HPvector(0, 0, 200)));
@@ -1485,7 +1485,7 @@ OO_TEST(avoidCollisionAndResume)
 		if (ship != nullptr)  ship->resumePostProximityAlert();
 		OO_CHECK(Behaviour(ship) == BEHAVIOUR_FLY_TO_DESTINATION && (ship != nullptr ? ship->desiredRange() : 0.0) == 300 && (ship != nullptr ? ship->desiredSpeed() : 0.0) == 12);
 		OO_CHECK(HPvector_equal((ship != nullptr ? ship->destination() : HPVector{}), make_HPvector(0, 0, 9000)));
-		OO_CHECK((ship != nullptr ? ship->proximityAlert() : (::Entity *)nullptr) == nil);
+		OO_CHECK((ship != nullptr ? ship->proximityAlert() : (cxx::Entity *)nullptr) == nullptr);
 
 		// A missile does not avoid anything.
 		if (ship != nullptr)  ship->setScanClass(CLASS_MISSILE);
@@ -1495,9 +1495,9 @@ OO_TEST(avoidCollisionAndResume)
 
 		// Clearing the alert, and a light object never raises one.
 		if (ship != nullptr)  ship->setProximityAlert(nullptr);
-		OO_CHECK((ship != nullptr ? ship->proximityAlert() : (::Entity *)nullptr) == nil);
+		OO_CHECK((ship != nullptr ? ship->proximityAlert() : (cxx::Entity *)nullptr) == nullptr);
 		if (ship != nullptr)  ship->setProximityAlert(rock);		// mass 0
-		OO_CHECK((ship != nullptr ? ship->proximityAlert() : (::Entity *)nullptr) == nil);
+		OO_CHECK((ship != nullptr ? ship->proximityAlert() : (cxx::Entity *)nullptr) == nullptr);
 	}
 }
 

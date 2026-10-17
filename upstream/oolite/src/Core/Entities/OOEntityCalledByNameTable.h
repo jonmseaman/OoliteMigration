@@ -217,7 +217,7 @@ uint8_t ByName_93(cxx::Entity *entity)
 NSUInteger ByName_94(cxx::Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->turretCount() : NSUInteger{}; }
 Entity * ByName_95(cxx::Entity *entity)
-{ ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->proximityAlert() : nil; }
+{ ShipEntity *ship = ShipPart(entity); return ship != nullptr ? oo::ToObjC(ship->proximityAlert()) : nil; }
 BOOL ByName_96(cxx::Entity *entity, const std::string &role)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hasRole(role) : NO; }
 void ByName_97(cxx::Entity *entity, const std::string &role)

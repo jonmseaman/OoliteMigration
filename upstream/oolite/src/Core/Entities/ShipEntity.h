@@ -531,7 +531,7 @@ public:
 	uint8_t maxEscortCount();
 	void setMaxEscortCount(uint8_t newCount);
 	NSUInteger turretCount();
-	::Entity *proximityAlert();
+	cxx::Entity *proximityAlert();	// C++ since bead oo-9ht.39.23.2
 	void setProximityAlert(::ShipEntity *other);
 	std::optional<std::string> getName();
 	std::optional<std::string> getShipUniqueName();

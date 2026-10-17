@@ -8120,3 +8120,14 @@ sweeps). This slice converts one member family: `ShipEntity::lastEscortTarget()`
 **Defaults (rule 10).** Behaviour-identical (goldens, core tests). **Tests (standing approval oo-9n5p9, lines on
 main first).** `test_ShipEntity` and `test_ShipEntityAI` compare the three getters with the C++ entity instead
 of its object and hand the setters the C++ entity; the same entities and expected values, no case removed.
+
+## Amendment (bead oo-9ht.39.23.2): the ship's proximity alert is a C++ entity
+
+oo-9ht.39 step 5e, slice 2 (batch AI, Migration Completion session, 2026-10-17), as amendment oo-9ht.39.23.1:
+`ShipEntity::proximityAlert()` returns `cxx::Entity *` (the member was already `oo::WeakRef<cxx::Entity>`, and
+`setProximityAlert()` already took the C++ ship). The getter still answers null, and forgets the alert, when the
+entity's object is gone; otherwise the C++ entity (`oo::ToCxx()` of the object). The ship's comparisons with its
+primary target compare the target's C++ entity; `OOJSShip`'s `proximityAlert` node takes the C++ entity overload of
+`oo::EntityObjectNode()` (the same object); the by-name table's function returns the object as before (5a,
+oo-9ht.39.24, removes that). Behaviour-identical. **Tests (oo-9n5p9, line on main first):** `test_ShipEntity`
+compares the getter with the C++ entity; same expected values.
