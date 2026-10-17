@@ -602,9 +602,10 @@ void AI::reactToMessage(const std::string &message, const std::optional<std::str
 	{
 		if (currentState.has_value())
 		{
-			if ((owner != nullptr ? [oo::ToObjC(owner) respondsToSelector:OOSelectorFromName("interpretAIMessage:")] : false))
+			// the ship's C++ part answers its methods called by name (bead oo-9ht.39.7.1)
+			if (oo::EntityRespondsToName(owner, "interpretAIMessage:"))
 			{
-				OOCallByName(oo::ToObjC(owner), OOSelectorFromName("interpretAIMessage:"), message);
+				oo::CallEntityByName(owner, "interpretAIMessage:", message);
 			}
 		}
 	}
@@ -656,11 +657,11 @@ void AI::takeAction(const std::string &action)
 				dataString = std::move(joined);
 			}
 
-			SEL selector = OOSelectorFromName(selectorStr);
-			if ((owner != nullptr ? [oo::ToObjC(owner) respondsToSelector:selector] : false))
+			// the ship's C++ part answers its methods called by name (bead oo-9ht.39.7.1)
+			if (oo::EntityRespondsToName(owner, selectorStr))
 			{
-				if (dataString.has_value())  OOCallByName(oo::ToObjC(owner), selector, *dataString);
-				else  OOCallByName(oo::ToObjC(owner), selector);
+				if (dataString.has_value())  oo::CallEntityByName(owner, selectorStr, *dataString);
+				else  oo::CallEntityByName(owner, selectorStr);
 			}
 			else
 			{

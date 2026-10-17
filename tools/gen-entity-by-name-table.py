@@ -1,0 +1,294 @@
+#!/usr/bin/env python3
+"""Generate the entities' by-name C++ table (bead oo-9ht.39.7.1, ADR-0056 amendment oo-9ht.39.7.1).
+
+The root entity facade's five by-name categories (Entity (OOShipSelectorsCalledByName),
+(OOPlayerSelectorsCalledByName), (OOStationSelectorsCalledByName), (OODockSelectorsCalledByName),
+(OOVisualEffectSelectorsCalledByName) in upstream/oolite/src/Core/Entities/Entity+ObjCBridge.mm)
+become one C++ table, upstream/oolite/src/Core/Entities/OOEntityCalledByNameTable.h: a row per
+method, exactly the categories' names, each keeping its #if conditions, with
+
+  - the applies-to flags: the name sets (IsShipSelectorCalledByName() and its siblings) that
+    -[Entity respondsToSelector:] reads to answer the name for an entity's C++ part;
+  - @encode() of the declared result type, which the dispatcher classifies as OOCallByName
+    classifies the method's type encoding;
+  - the argument kind (none, const std::string &, const oo::PList &);
+  - an adaptor taking cxx::Entity *: the category method's body, verbatim, with the entity for
+    _cxxEntity.get().
+
+    python3 tools/gen-entity-by-name-table.py           # rewrite the header
+    python3 tools/gen-entity-by-name-table.py --check   # exit 1 if the header is stale
+"""
+
+import pathlib
+import re
+import sys
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+SRC = ROOT / "upstream/oolite/src"
+FACADE = SRC / "Core/Entities/Entity+ObjCBridge.mm"
+OUT = SRC / "Core/Entities/OOEntityCalledByNameTable.h"
+
+CATEGORIES = [
+    "OOShipSelectorsCalledByName",
+    "OOPlayerSelectorsCalledByName",
+    "OOStationSelectorsCalledByName",
+    "OODockSelectorsCalledByName",
+    "OOVisualEffectSelectorsCalledByName",
+]
+# name set function -> flag
+SETS = {
+    "IsShipSelectorCalledByName": "kOOByNameShip",
+    "IsPlayerSelectorCalledByName": "kOOByNamePlayer",
+    "IsProxySelectorCalledByName": "kOOByNameProxy",
+    "IsStationSelectorCalledByName": "kOOByNameStation",
+    "IsDockSelectorCalledByName": "kOOByNameDock",
+    "IsEffectSelectorCalledByName": "kOOByNameEffect",
+}
+# -respondsToSelector: answers these before the name sets: a row must not hold one.
+PLANET = {"airColorAsVector", "illuminationColorAsVector", "airColorMixRatio", "airDensity",
+          "terminatorThresholdVector"}
+BEACON = {"compareBeaconCodeWith:", "beaconCode", "setBeaconCode:", "beaconLabel", "setBeaconLabel:",
+          "isBeacon", "beaconDrawable", "prevBeacon", "nextBeacon", "setPrevBeacon:", "setNextBeacon:",
+          "isJammingScanning"}
+ARG_KINDS = {"const std::string &": "String", "const oo::PList &": "PList"}
+ARG_TYPES = {"String": "const std::string &", "PList": "const oo::PList &"}
+
+
+def skip_literal(text, i):
+    """Index past the string/char literal or comment at text[i], or i if none starts there."""
+    c = text[i]
+    if text.startswith("//", i):
+        j = text.find("\n", i)
+        return len(text) if j < 0 else j
+    if text.startswith("/*", i):
+        return text.index("*/", i + 2) + 2
+    if c in "\"'":
+        j = i + 1
+        while text[j] != c:
+            j += 2 if text[j] == "\\" else 1
+        return j + 1
+    return i
+
+
+def balanced_braces(text, start):
+    """Index just past the brace group opening at text[start] == '{' (literals and comments skipped)."""
+    depth = 0
+    i = start
+    while i < len(text):
+        j = skip_literal(text, i)
+        if j != i:
+            i = j
+            continue
+        if text[i] == "{":
+            depth += 1
+        elif text[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return i + 1
+        i += 1
+    raise ValueError("unbalanced braces at %d" % start)
+
+
+def balanced_parens(text, start):
+    depth = 0
+    for i in range(start, len(text)):
+        if text[i] == "(":
+            depth += 1
+        elif text[i] == ")":
+            depth -= 1
+            if depth == 0:
+                return i + 1
+    raise ValueError("unbalanced: " + text)
+
+
+def norm(t):
+    return re.sub(r"\s*&\s*", " &", re.sub(r"\s*\*\s*", " *", re.sub(r"\s+", " ", t.strip()))).strip()
+
+
+def parse_header(header):
+    """(result type, name, argument type, argument name) of '- (T) name[:(A)arg]'."""
+    rest = header.strip()[1:].lstrip()
+    end = balanced_parens(rest, 0)
+    ret = norm(rest[1:end - 1])
+    rest = rest[end:].strip()
+    m = re.match(r"([A-Za-z_][A-Za-z0-9_]*)\s*(.*)$", rest, re.S)
+    name, tail = m.group(1), m.group(2).strip()
+    if not tail:
+        return ret, name, None, None
+    if not tail.startswith(":"):
+        raise SystemExit("cannot parse method header: " + header)
+    tail = tail[1:].strip()
+    end = balanced_parens(tail, 0)
+    arg = norm(tail[1:end - 1])
+    argname = tail[end:].strip()
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", argname):
+        raise SystemExit("not a one-argument method: " + header)
+    return ret, name + ":", arg, argname
+
+
+def name_sets(text):
+    sets = {}
+    for func in SETS:
+        m = re.search(r"^bool " + func + r"\(SEL selector\)\n\{(.*?)^\}", text, re.S | re.M)
+        if m is None:
+            raise SystemExit("name set not found: " + func)
+        body = re.sub(r"//[^\n]*", "", m.group(1))
+        sets[func] = set(re.findall(r'"([^"]+)"', body))
+    return sets
+
+
+def methods(text):
+    """[(conditions, category, header, body)] of the five categories' methods, in file order."""
+    result = []
+    lines = text.split("\n")
+    offsets = []
+    pos = 0
+    for line in lines:
+        offsets.append(pos)
+        pos += len(line) + 1
+    conds = []
+    category = None
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        s = line.strip()
+        if re.match(r"#\s*(if|ifdef|ifndef)\b", s):
+            conds.append(s)
+        elif re.match(r"#\s*(else|elif)\b", s):
+            raise SystemExit(f"#else/#elif is not handled: {s}")
+        elif re.match(r"#\s*endif\b", s):
+            conds.pop()
+        elif line.startswith("@implementation"):
+            m = re.match(r"@implementation\s+Entity\s*\((\w+)\)", line)
+            category = m.group(1) if m and m.group(1) in CATEGORIES else None
+        elif line.startswith("@end"):
+            category = None
+        elif category is not None and re.match(r"-\s*\(", line):
+            start = offsets[i]
+            brace = text.index("{", start)
+            end = balanced_braces(text, brace)
+            header = text[start:brace]
+            body = text[brace:end]
+            result.append((list(conds), category, header, body))
+            # continue after the line holding the closing brace
+            while i + 1 < len(lines) and offsets[i + 1] < end:
+                i += 1
+        i += 1
+    if conds:
+        raise SystemExit("unbalanced #if")
+    return result
+
+
+def rows():
+    text = FACADE.read_text(encoding="utf-8")
+    sets = name_sets(text)
+    seen = set()
+    result = []
+    for conds, category, header, body in methods(text):
+        ret, name, arg, argname = parse_header(header)
+        if name in seen:
+            raise SystemExit("defined twice: " + name)
+        seen.add(name)
+        if name in PLANET or name in BEACON:
+            raise SystemExit("a planet or beacon name in a by-name category: " + name)
+        flags = [flag for func, flag in SETS.items() if name in sets[func]]
+        if not flags:
+            raise SystemExit(f"{name} ({category}) is in no name set: -respondsToSelector: never answers it")
+        if arg is not None and arg not in ARG_KINDS:
+            raise SystemExit(f"{name}: an argument a by-name call cannot pass: {arg}")
+        if "_cxxEntity" in body.replace("_cxxEntity.get()", ""):
+            raise SystemExit(f"{name}: body reads _cxxEntity other than _cxxEntity.get()")
+        if re.search(r"\b(self|super|_cmd)\b", body):
+            raise SystemExit(f"{name}: body reads self, super or _cmd")
+        if re.search(r"\bentity\b", body):
+            raise SystemExit(f"{name}: body already names 'entity'")
+        result.append((conds, category, ret, name, arg, argname, flags, body.replace("_cxxEntity.get()", "entity")))
+    missing = set().union(*sets.values()) - seen
+    if missing:
+        raise SystemExit("names in the sets the categories do not define: " + ", ".join(sorted(missing)))
+    return result
+
+
+HEAD = """/*
+
+OOEntityCalledByNameTable.h
+
+GENERATED by tools/gen-entity-by-name-table.py from the root entity facade's by-name categories
+(Entity+ObjCBridge.mm: Entity (OOShipSelectorsCalledByName), (OOPlayerSelectorsCalledByName),
+(OOStationSelectorsCalledByName), (OODockSelectorsCalledByName), (OOVisualEffectSelectorsCalledByName)).
+Do not edit: rerun the script. Bead oo-9ht.39.7.1, ADR-0056 amendment oo-9ht.39.7.1.
+
+One row per category method, exactly the categories' names and #if conditions: the name sets
+-[Entity respondsToSelector:] reads (the applies-to flags), @encode() of the declared result, the
+argument kind, and the adaptor: the method's body, verbatim, with the entity for _cxxEntity.get().
+Included by OOEntityCalledByName.mm only, after the parts (ShipPart() ...) the bodies read.
+
+*/
+
+#ifndef OOENTITYCALLEDBYNAMETABLE_H
+#define OOENTITYCALLEDBYNAMETABLE_H
+
+namespace {
+
+// The category methods, as functions of the C++ entity.
+"""
+
+
+def render():
+    out = [HEAD]
+    table = []
+    current = []
+
+    def switch(conds, sink):
+        nonlocal current
+        if conds != current:
+            for _ in current:
+                sink.append("#endif")
+            for c in conds:
+                sink.append(c)
+            current = conds
+
+    data = rows()
+    for index, (conds, category, ret, name, arg, argname, flags, body) in enumerate(data):
+        switch(conds, out)
+        params = "cxx::Entity *entity" if re.search(r"\bentity\b", body) else "cxx::Entity *"
+        if arg is not None:
+            params += ", " + arg + (argname if re.search(r"\b" + argname + r"\b", body) else "")
+        out.append(f"{ret} ByName_{index}({params})")
+        out.append(body)
+    switch([], out)
+    current = []
+    out.append("")
+    out.append("}\t// namespace")
+    out.append("")
+    out.append("")
+    out.append("// name, applies-to flags, @encode() of the result, argument kind, adaptor")
+    out.append("inline const OOEntityByNameRow kOOEntityByNameRows[] =")
+    out.append("{")
+    for index, (conds, category, ret, name, arg, argname, flags, body) in enumerate(data):
+        switch(conds, out)
+        kind = ARG_KINDS[arg] if arg is not None else "None"
+        out.append(f"\t{{ \"{name}\",\t{' | '.join(flags)},\t@encode({ret}),\tOOEntityByNameArgument::{kind},\t&OOEntityByNameAdapt{kind}<&ByName_{index}> }},")
+    switch([], out)
+    out.append("};")
+    out.append("")
+    out.append("#endif\t// OOENTITYCALLEDBYNAMETABLE_H")
+    out.append("")
+    return "\n".join(out)
+
+
+def main():
+    text = render()
+    if "--check" in sys.argv[1:]:
+        current = OUT.read_text(encoding="utf-8") if OUT.exists() else ""
+        if current != text:
+            print(f"{OUT.relative_to(ROOT)} is stale: run python3 tools/gen-entity-by-name-table.py", file=sys.stderr)
+            return 1
+        return 0
+    OUT.write_text(text, encoding="utf-8", newline="\n")
+    print(f"wrote {OUT.relative_to(ROOT)} ({text.count(chr(10) + chr(9) + '{ ')} rows)")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

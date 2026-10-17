@@ -325,19 +325,17 @@ void PerformActionStatment(const oo::PList &statement, Entity *target)
 	
 	std::string					selectorString;
 	std::optional<std::string>	argumentString;
-	SEL							selector = NULL;
 	PlayerEntity				*player = PLAYER;
 
 	selectorString = statement.at<std::string>(1);
 	if (statement.count() > 2)  argumentString = statement.at<std::string>(2);
 
-	selector = OOSelectorFromName(selectorString.c_str());
-
-	// -respondsToSelector:, which the root's facade answers for the player's selectors called by name
+	// The target's C++ part answers its methods called by name (bead oo-9ht.39.7.1), the player's
 	// for the player only (bead oo-9ht.177); the planet's shader bindings are never actions
-	if (target == nil || ![target respondsToSelector:selector])
+	cxx::Entity *cxxTarget = oo::ToCxx(target);
+	if (cxxTarget == nullptr || !oo::EntityRespondsToName(cxxTarget, selectorString))
 	{
-		target = oo::ToObjC(player);
+		cxxTarget = player;
 	}
 
 	if (argumentString.has_value())
@@ -348,13 +346,13 @@ void PerformActionStatment(const oo::PList &statement, Entity *target)
 		PlayerEntity *cxxPlayer = player;
 		const oo::PList locals = (cxxPlayer != nullptr) ? cxxPlayer->localVariablesForMission(sCurrentMissionKey) : oo::PList();
 		const std::optional<std::string> expanded = cxx_OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), *argumentString, oo::PList(), locals, std::nullopt, kOOExpandNoOptions);
-		if (expanded.has_value())  OOCallByName(target, selector, *expanded);
-		else  OOCallByName(target, selector, oo::PList());
+		if (expanded.has_value())  oo::CallEntityByName(cxxTarget, selectorString, *expanded);
+		else  oo::CallEntityByName(cxxTarget, selectorString, oo::PList());
 	}
 	else
 	{
 		// Method without argument.
-		OOCallByName(target, selector);
+		oo::CallEntityByName(cxxTarget, selectorString);
 	}
 }
 
@@ -584,7 +582,7 @@ bool PlayerEntity::scriptTestCondition(const oo::PList &scriptCondition)
 
 	OOOperationType				opType;
 	std::string					selectorString;
-	SEL							selector = NULL;
+	std::string					selector;	// the query's name (bead oo-9ht.39.7.1: called on the player's C++ part)
 	OOComparisonType			comparator;
 	std::optional<std::string>	lhsString;
 	std::string					expandedRHS;
@@ -602,7 +600,7 @@ bool PlayerEntity::scriptTestCondition(const oo::PList &scriptCondition)
 	if (opType == OP_MISSION_VAR)
 	{
 		sMissionStringValue = ConditionString(missionVariableForKey(selectorString));
-		selector = @selector(mission_string);
+		selector = "mission_string";
 		opType = OP_STRING;
 	}
 	else if (opType == OP_LOCAL_VAR)
@@ -610,12 +608,12 @@ bool PlayerEntity::scriptTestCondition(const oo::PList &scriptCondition)
 		const oo::PList locals = localVariablesForMission(sCurrentMissionKey);
 		const oo::PList *local = locals.find(selectorString);
 		sMissionStringValue = ConditionString(local != nullptr ? *local : oo::PList());
-		selector = @selector(mission_string);
+		selector = "mission_string";
 		opType = OP_STRING;
 	}
 	else
 	{
-		selector = OOSelectorFromName(selectorString.c_str());
+		selector = selectorString;
 	}
 
 	expandedRHS = expandScriptRightHandSide(operandArray).value_or(std::string());
@@ -623,7 +621,7 @@ bool PlayerEntity::scriptTestCondition(const oo::PList &scriptCondition)
 	if (opType == OP_STRING)
 	{
 		// The query is called by name and answers a PList (ADR-0055 item 5).
-		lhsString = ConditionString(OOCallByName(oo::ToObjC(this), selector));
+		lhsString = ConditionString(oo::CallEntityByName(this, selector));
 
 	#define DOUBLEVAL(x) ((x).has_value() ? oo::str::doubleValue(*(x)) : 0.0)
 
@@ -662,7 +660,7 @@ bool PlayerEntity::scriptTestCondition(const oo::PList &scriptCondition)
 	}
 	else if (opType == OP_NUMBER)
 	{
-		lhsValue = QueryDoubleValue(OOCallByName(oo::ToObjC(this), selector));
+		lhsValue = QueryDoubleValue(oo::CallEntityByName(this, selector));
 
 		if (comparator == COMPARISON_ONEOF)
 		{
@@ -706,7 +704,7 @@ bool PlayerEntity::scriptTestCondition(const oo::PList &scriptCondition)
 	}
 	else if (opType == OP_BOOL)
 	{
-		lhsFlag = ConditionString(OOCallByName(oo::ToObjC(this), selector)) == std::optional<std::string>("YES");
+		lhsFlag = ConditionString(oo::CallEntityByName(this, selector)) == std::optional<std::string>("YES");
 		rhsFlag = expandedRHS == "YES";
 
 		switch (comparator)
@@ -759,7 +757,7 @@ std::optional<std::string> PlayerEntity::expandScriptRightHandSide(const oo::PLi
 			if (ElementAt(component, 0).boolValue())
 			{
 				// (nil prints "(null)", for backwards compatibility)
-				value = oo::DescriptionOf(OOCallByName(oo::ToObjC(this), OOSelectorFromName(value.c_str())));
+				value = oo::DescriptionOf(oo::CallEntityByName(this, value));
 			}
 
 			if (!first)  result += " ";
@@ -929,11 +927,11 @@ std::optional<std::string> PlayerEntity::replaceVariablesInString(const std::str
 		}
 		else if (oo::str::hasSuffix(valueString, "_number") || oo::str::hasSuffix(valueString, "_bool") || oo::str::hasSuffix(valueString, "_string"))
 		{
-			SEL valueselector = OOSelectorFromName(valueString.c_str());
-			if ([oo::ToObjC(this) respondsToSelector:valueselector])
+			// called by name on the player's C++ part (bead oo-9ht.39.7.1); "%@" of the result, as
+			// +stringWithFormat: printed it
+			if (oo::EntityRespondsToName(this, valueString))
 			{
-				// called by name; "%@" of the result, as +stringWithFormat: printed it
-				replace(valueString, oo::DescriptionOf(OOCallByName(oo::ToObjC(this), valueselector)));
+				replace(valueString, oo::DescriptionOf(oo::CallEntityByName(this, valueString)));
 			}
 		}
 		else if (oo::str::hasPrefix(valueString, "[") && oo::str::hasSuffix(valueString, "]"))

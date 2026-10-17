@@ -31,6 +31,9 @@ reaches a (const oo::PList &) parameter as a string PList; a PList argument reac
 	expander [selector] keys                                                    or a number)
 	HUD dials (HeadUpDisplay.mm), joystick callbacks            PList           void
 
+An entity's method is called by its name through oo::CallEntityByName (below) since bead
+oo-9ht.39.7.1: the AI's actions and messages and the legacy script engine.
+
 oo-qps.72 deleted the transitional form that passed an id parameter the argument as an
 Objective-C object: such a method is logged (callByName.badSignature) and not called.
 tools/check-selector-types.py --check --strict-called-by-name rejects an object parameter, or an
@@ -82,6 +85,26 @@ inline oo::PList OOCallByName(id target, SEL selector, const char *argument)
 {
 	return OOCallByName(target, selector, std::string(argument));
 }
+
+
+/*	An entity's method called by name (bead oo-9ht.39.7.1, ADR-0056 amendment oo-9ht.39.7.1): the
+	same call on the entity's C++ part. A name of the facade's by-name categories (the generated
+	table, OOEntityCalledByNameTable.h) is answered by the C++ part it applies to, as the facade's
+	-respondsToSelector: and its category method answered it; any other name, and a tabled name
+	whose signature the call cannot use, go to the entity's Objective-C object as before (that
+	path logs callByName.unknownSelector / callByName.badSignature). A null entity does nothing.
+	Defined in OOEntityCalledByName.mm.
+*/
+namespace cxx { class Entity; }
+
+namespace oo {
+
+bool EntityRespondsToName(cxx::Entity *entity, const std::string &name);
+PList CallEntityByName(cxx::Entity *entity, const std::string &name);
+PList CallEntityByName(cxx::Entity *entity, const std::string &name, const std::string &argument);
+PList CallEntityByName(cxx::Entity *entity, const std::string &name, const PList &argument);
+
+}	// namespace oo
 
 }	// extern "C++"
 

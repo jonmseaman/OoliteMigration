@@ -23,6 +23,8 @@
 */
 
 #import "AI.h"
+#import "OOCallByName.h"	// oo::CallEntityByName, stood in below (bead oo-9ht.39.7.1)
+#include "oofnd/objc/OORuntime.h"
 
 #include "oofnd/Log.hpp"
 #include "oo_test.hpp"
@@ -261,6 +263,17 @@ void ShipEntity::setAIScript(const std::string &aiString)	{ static_cast<TestShip
 
 namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }	// Entity+ObjCBridge.mm's, which the test does not link
 ::Entity *oo::ToObjC(cxx::Entity *entity)  { return entity != nullptr ? entity->_object : nil; }
+
+// OOEntityCalledByName.mm's (bead oo-9ht.39.7.1), which the test does not link: the test ship has
+// no C++ table, so every name goes to its object, the path that file takes for an untabled name.
+bool oo::EntityRespondsToName(cxx::Entity *entity, const std::string &name)
+{
+	::Entity *object = oo::ToObjC(entity);
+	return object != nil && [object respondsToSelector:OOSelectorFromName(name.c_str())];
+}
+oo::PList oo::CallEntityByName(cxx::Entity *entity, const std::string &name)  { return entity != nullptr ? OOCallByName(oo::ToObjC(entity), OOSelectorFromName(name.c_str())) : oo::PList(); }
+oo::PList oo::CallEntityByName(cxx::Entity *entity, const std::string &name, const std::string &argument)  { return entity != nullptr ? OOCallByName(oo::ToObjC(entity), OOSelectorFromName(name.c_str()), argument) : oo::PList(); }
+oo::PList oo::CallEntityByName(cxx::Entity *entity, const std::string &name, const oo::PList &argument)  { return entity != nullptr ? OOCallByName(oo::ToObjC(entity), OOSelectorFromName(name.c_str()), argument) : oo::PList(); }
 
 
 namespace {
