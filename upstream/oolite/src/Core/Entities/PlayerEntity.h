@@ -610,6 +610,7 @@ public:
 	NSUInteger maxPlayerRoles();
 	void updateSystemMemory();
 	virtual ::Entity *getCompassTarget();
+	cxx::Entity *getCompassTargetEntity();	// getCompassTarget()'s C++ entity, null for none (bead oo-9ht.39.8.11)
 	void setCompassTarget(::Entity *value);
 	virtual void validateCompassTarget();
 	std::optional<std::string> compassTargetLabel();

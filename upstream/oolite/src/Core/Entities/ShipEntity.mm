@@ -10365,6 +10365,16 @@ void ShipEntity::setPrimaryAggressor(::Entity *targetEntity)
 }
 
 
+/*	The target members of a C++ entity (bead oo-9ht.39.8.11): the JS bindings hold the C++ entity, and the members
+	above still take the object (their other callers hold objects), so these cross here, once, and call
+	them (setFoundTarget() through the virtual: the player overrides it).
+*/
+void ShipEntity::setFoundTargetEntity(cxx::Entity *target)  { setFoundTarget(oo::ToObjC(target)); }
+void ShipEntity::setPrimaryAggressorEntity(cxx::Entity *target)  { setPrimaryAggressor(oo::ToObjC(target)); }
+bool ShipEntity::addDefenseTargetEntity(cxx::Entity *target)  { return addDefenseTarget(oo::ToObjC(target)); }
+void ShipEntity::removeDefenseTargetEntity(cxx::Entity *target)  { removeDefenseTarget(oo::ToObjC(target)); }
+
+
 ::Entity *ShipEntity::lastEscortTarget()
 {
 	::Entity *result = oo::WeakEntityObject(_lastEscortTarget);

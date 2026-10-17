@@ -994,7 +994,7 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 				if (player != nullptr)  player->setNextCompassMode();
 				if (player != nullptr)  player->validateCompassTarget();
 				// cycle the targets until we either get back to the start (entity not found) or we find the one we're looking for
-				while ((player != nullptr ? player->getCompassTarget() : (::Entity *)nullptr) != current && (player != nullptr ? player->getCompassTarget() : (::Entity *)nullptr) != oo::ToObjC(eValue))
+				while ((player != nullptr ? player->getCompassTarget() : (::Entity *)nullptr) != current && (player != nullptr ? player->getCompassTargetEntity() : nullptr) != eValue)	// the C++ entities (bead oo-9ht.39.8.11)
 				{
 					if (player != nullptr)  player->setNextCompassMode();
 					if (player != nullptr)  player->validateCompassTarget();

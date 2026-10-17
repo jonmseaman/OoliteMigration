@@ -5397,6 +5397,14 @@ void PlayerEntity::updateSystemMemory()
 }
 
 
+// Through the virtual getCompassTarget() (a test's player answers it), while the compass target is
+// answered as an object (bead oo-9ht.39.8.11): the JS binding compares the C++ entity.
+cxx::Entity *PlayerEntity::getCompassTargetEntity()
+{
+	return oo::ToCxx(getCompassTarget());
+}
+
+
 void PlayerEntity::setCompassTarget(::Entity *value)
 {
 	compassTarget = oo::WeakEntityRef(value);

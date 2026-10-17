@@ -736,8 +736,10 @@ public:
 	int numberOfScannedShips();
 	::Entity *foundTarget();
 	virtual void setFoundTarget(::Entity *targetEntity);
+	void setFoundTargetEntity(cxx::Entity *target);	// setFoundTarget() of the C++ entity's object (bead oo-9ht.39.8.11)
 	::Entity *primaryAggressor();
 	void setPrimaryAggressor(::Entity *targetEntity);
+	void setPrimaryAggressorEntity(cxx::Entity *target);	// setPrimaryAggressor() of the C++ entity's object (bead oo-9ht.39.8.11)
 	::Entity *lastEscortTarget();
 	void setLastEscortTarget(::Entity *targetEntity);
 
@@ -789,10 +791,12 @@ public:
 	std::vector<oo::ObjCRef<::Entity *>> allDefenseTargets();
 	std::vector<oo::ObjCRef<::Entity *>> defenseTargets();
 	bool addDefenseTarget(::Entity *target);
+	bool addDefenseTargetEntity(cxx::Entity *target);	// addDefenseTarget() of the C++ entity's object (bead oo-9ht.39.8.11)
 	void validateDefenseTargets();
 	bool isDefenseTarget(::Entity *target);
 	void removeAllDefenseTargets();
 	void removeDefenseTarget(::Entity *target);
+	void removeDefenseTargetEntity(cxx::Entity *target);	// removeDefenseTarget() of the C++ entity's object (bead oo-9ht.39.8.11)
 	double rangeToPrimaryTarget();
 	double rangeToSecondaryTarget(::Entity *target);
 	double approachAspectToPrimaryTarget();
