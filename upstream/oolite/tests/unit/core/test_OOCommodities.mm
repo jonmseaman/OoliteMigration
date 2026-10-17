@@ -110,19 +110,20 @@ public:
 PlayerEntity *gOOPlayer = nullptr;
 
 
-@interface Universe: OOObject
+// The universe as the code under test sees it: a stand-in for the C++ class (bead oo-ql9rn deleted
+// the Objective-C facade this stood in for), with the header's names and signatures.
+class Universe
 {
-@public
+public:
 	oo::Ref<OOCommodityMarket> mainMarket;	// the C++ market (bead oo-9ht.21 deleted its facade)
-}
-- (OOSystemID) currentSystemID;
-- (OOCommodityMarket *) commodityMarket;
-@end
 
-@implementation Universe
-- (OOSystemID) currentSystemID				{ return 7; }
-- (OOCommodityMarket *) commodityMarket		{ return mainMarket.get(); }
-@end
+	OOSystemID currentSystemID();
+	::OOCommodityMarket *getCommodityMarket();
+};
+
+OOSystemID Universe::currentSystemID()	{ return 7; }
+::OOCommodityMarket *Universe::getCommodityMarket()	{ return mainMarket.get(); }
+
 
 Universe *gSharedUniverse = nil;
 
@@ -186,7 +187,7 @@ namespace {
 
 void Reset()
 {
-	if (gSharedUniverse == nil)  gSharedUniverse = [[Universe alloc] init];
+	if (gSharedUniverse == nil)  gSharedUniverse = new Universe();
 	if (gOOPlayer == nullptr)  gOOPlayer = new PlayerEntity;	// never deleted
 	gLog.clear();
 	ranrot_srand(20260930);

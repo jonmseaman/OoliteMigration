@@ -104,7 +104,7 @@ void OOSoundSourcePool::playSoundWithKey(const std::string &key,
 	::OOSound				*sound = NULL;
 
 	// Convert expiry time to absolute
-	now = [UNIVERSE getTime];
+	now = (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0);
 	absExpiryTime = expiryTime + now;
 
 	// Avoid repeats if required
@@ -216,7 +216,7 @@ uint8_t OOSoundSourcePool::selectSlotForPriority(float priority)
 {
 	uint8_t					curr, count, expiredLower = kNoSlot, unexpiredLower = kNoSlot, expiredEqual = kNoSlot;
 	PoolElement				*element = NULL;
-	OOTimeAbsolute			now = [UNIVERSE getTime];
+	OOTimeAbsolute			now = (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0);
 
 #define NEXT(x) (((x) + 1) % _count)
 

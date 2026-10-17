@@ -225,21 +225,43 @@ public:
 - (void) setGamePaused:(BOOL)value;
 @end
 
-@interface Universe: OOObject
+#import "UniverseStandIn.h"
+
+// The universe as the code under test sees it: a stand-in for the C++ class (bead oo-ql9rn deleted
+// the Objective-C facade the test's Objective-C stand-in stood in for), with the header's names and signatures.
+// It answers virtual members, so it has the game's vtable (UniverseStandIn.h) and StandInUniverse overrides them.
+class Universe : public oo::RefCounted
 {
-@public
+public:
+	OO_UNIVERSE_STAND_IN_VIRTUAL_MEMBERS
+
 	StationEntity *_station;
 	oo::Ref<OOCommodities> _commodities;
 	GameController *_controller;
 	OOViewID _view;
-}
-- (StationEntity *) station;
-- (OOCommodities *) commodities;
-- (GameController *) gameController;
-- (void) setViewDirection:(OOViewID)vd;
-- (Random_Seed) marketSeed;
-- (OOSystemID) currentSystemID;
-@end
+
+	::OOCommodities *getCommodities();
+	::GameController *gameController();
+	void setViewDirection(OOViewID);
+	Random_Seed marketSeed();
+	OOSystemID currentSystemID();
+	::OOCommodityMarket *getCommodityMarket();	// link stub
+	oo::PList getEquipmentData();	// link stub
+	oo::PList getEquipmentDataOutfitting();	// link stub
+};
+
+// Link stubs, never reached: the code under test calls them on paths the test does not take (the
+// Objective-C stand-in did not answer them; bead oo-ql9rn).
+::OOCommodityMarket *Universe::getCommodityMarket()  { std::abort(); }
+oo::PList Universe::getEquipmentData()  { std::abort(); }
+oo::PList Universe::getEquipmentDataOutfitting()  { std::abort(); }
+
+
+class StandInUniverse : public Universe
+{
+public:
+	::StationEntity *station() override	{ return _station; }
+};
 
 #import "ResourceManager.h"
 
@@ -463,14 +485,11 @@ oo::PList PlayerEntity::missionVariableForKey(const std::string &key)  { std::ab
 @end
 
 
-@implementation Universe
-- (StationEntity *) station  { return _station; }
-- (OOCommodities *) commodities  { return _commodities.get(); }
-- (GameController *) gameController  { return _controller; }
-- (void) setViewDirection:(OOViewID)vd  { _view = vd; }
-- (Random_Seed) marketSeed  { return Random_Seed{}; }
-- (OOSystemID) currentSystemID  { return 7; }
-@end
+::OOCommodities *Universe::getCommodities()	{ return _commodities.get(); }
+::GameController *Universe::gameController()	{ return _controller; }
+void Universe::setViewDirection(OOViewID vd)	{ _view = vd; }
+Random_Seed Universe::marketSeed()	{ return Random_Seed{}; }
+OOSystemID Universe::currentSystemID()	{ return 7; }
 
 
 // The ship registry is C++ (bead oo-9ht.122): a C++ stand-in with the facade stand-in's answers.
@@ -829,7 +848,7 @@ void SetUpContext()
 	OOJSRegisterSubclass(&sFakeShipClass, &sFakeEntityClass);
 	InitOOJSStation(sContext, sGlobal);
 
-	sUniverse = [[Universe alloc] init];	// kept for the life of the test
+	sUniverse = new StandInUniverse();	// kept for the life of the test
 	gSharedUniverse = sUniverse;
 	sUniverse->_controller = [[GameController alloc] init];
 	sUniverse->_commodities = oo::makeRef<OOCommodities>();

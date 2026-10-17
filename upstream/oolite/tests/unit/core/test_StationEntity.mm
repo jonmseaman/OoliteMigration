@@ -98,8 +98,7 @@ void SetUp()
 	static Universe *universe = nil;
 	if (universe == nil)
 	{
-		universe = (Universe *)class_createInstance([Universe class], 0);	// never released
-		universe->_cxxUniverse = oo::makeRef<cxx::Universe>(universe);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
+		universe = new Universe();	// never released
 	}
 	gSharedUniverse = universe;
 	static TestStationPlayer *player = nullptr;
@@ -196,7 +195,7 @@ OO_TEST(initAndSetUpFromDictionary)
 		OO_CHECK((station != nullptr ? station->getRequiresDockingClearance() : false));
 		OO_CHECK((station != nullptr ? station->getAllowsFastDocking() : false) && !(station != nullptr ? station->getAllowsAutoDocking() : false));
 		OO_CHECK((station != nullptr ? station->getInterstellarUndockingAllowed() : false));
-		OO_CHECK((station != nullptr ? station->getAllowsSaving() : false) == [UNIVERSE deterministicPopulation]);	// a fixed station (no top speed)
+		OO_CHECK((station != nullptr ? station->getAllowsSaving() : false) == (UNIVERSE != nullptr ? UNIVERSE->deterministicPopulation() : false));	// a fixed station (no top speed)
 		OO_CHECK(vector_equal((station != nullptr ? station->virtualPortDimensions() : Vector{}), make_vector(69, 69, 250)));
 		OO_CHECK((station != nullptr ? station->playerReservedDock() : (DockEntity *)nullptr) == nil);
 		OO_CHECK((station != nullptr ? station->group() : (OOShipGroup *)nullptr) != nil && (station != nullptr ? station->group() : (OOShipGroup *)nullptr) == (station != nullptr ? station->stationGroup() : (OOShipGroup *)nullptr));
@@ -232,7 +231,7 @@ OO_TEST(setUpDefaults)
 		OO_CHECK((station != nullptr ? station->getMarketDefinition() : oo::PList()).isNull());
 		OO_CHECK(!(station != nullptr ? station->getMarketScriptName() : std::optional<std::string>()).has_value());
 		OO_CHECK(!(station != nullptr ? station->getMarketMonitored() : false) && (station != nullptr ? station->getMarketBroadcast() : false));
-		OO_CHECK((station != nullptr ? station->getRequiresDockingClearance() : false) == [UNIVERSE dockingClearanceProtocolActive]);
+		OO_CHECK((station != nullptr ? station->getRequiresDockingClearance() : false) == (UNIVERSE != nullptr ? UNIVERSE->dockingClearanceProtocolActive() : false));
 		OO_CHECK(!(station != nullptr ? station->getAllowsFastDocking() : false) && (station != nullptr ? station->getAllowsAutoDocking() : false));
 		OO_CHECK(!(station != nullptr ? station->getInterstellarUndockingAllowed() : false));
 		OO_CHECK(!(station != nullptr ? station->isRotatingStation() : false) || (station != nullptr ? station->shipInfoDictionary() : oo::PList()).find("roles") == nullptr);
@@ -630,7 +629,7 @@ OO_TEST(slice3PatrolsAndQueues)
 		TestStation *station = MakeStation("base");
 		SetLastPatrolReport3(station, -1000);
 		if (station != nullptr)  station->acceptPatrolReportFrom(nullptr);
-		OO_CHECK(LastPatrolReport3(station) == [UNIVERSE getTime]);
+		OO_CHECK(LastPatrolReport3(station) == (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0));
 		OO_CHECK((station != nullptr ? station->currentlyInDockingQueues() : unsigned{}) == 0 && (station != nullptr ? station->currentlyInLaunchingQueues() : unsigned{}) == 0);
 	}
 }

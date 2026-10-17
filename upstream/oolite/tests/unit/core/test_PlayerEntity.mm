@@ -206,8 +206,7 @@ void SetUp()
 	static Universe *universe = nil;
 	if (universe == nil)
 	{
-		universe = (Universe *)class_createInstance([Universe class], 0);	// never released
-		universe->_cxxUniverse = oo::makeRef<cxx::Universe>(universe);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
+		universe = new Universe();	// never released
 	}
 	gSharedUniverse = universe;
 	gOOPlayer = nullptr;	// making the player expects to make the only one
@@ -588,7 +587,7 @@ OO_TEST(slice5SessionAndCollisions)
 	{
 		SetUp();
 		TestPlayer *player = MakePlayer();
-		OO_CHECK(player->sessionID() == [UNIVERSE sessionID]);
+		OO_CHECK(player->sessionID() == (UNIVERSE != nullptr ? UNIVERSE->sessionID() : 0));
 		player->setStatus(STATUS_IN_FLIGHT);
 		OO_CHECK(player->canCollide());
 		player->setStatus(STATUS_DOCKED);

@@ -157,15 +157,18 @@ extern "C" void OOJSUnreachable(const char *function, const char *, unsigned)
 
 
 // The universe's time acceleration, which scales each frame's delta.
-@interface FakeUniverse: OOObject
-- (double) timeAccelerationFactor;
-@end
+// The universe as the code under test sees it: a stand-in for the C++ class (bead oo-ql9rn deleted
+// the Objective-C facade the test's FakeUniverse stood in for), with the header's names and signatures.
+class Universe
+{
+public:
+	double getTimeAccelerationFactor();
+};
+typedef Universe FakeUniverse;
 
-@implementation FakeUniverse
-- (double) timeAccelerationFactor  { return 2.0; }
-@end
+double Universe::getTimeAccelerationFactor()	{ return 2.0; }
 
-@class Universe;
+class Universe;
 Universe *gSharedUniverse = nil;
 
 
@@ -182,7 +185,7 @@ void SetUpContext()
 	sGlobal = ooscript::getGlobalObject(gOOJSMainThreadContext);
 	ooscript::initStandardClasses(gOOJSMainThreadContext, sGlobal);
 	InitOOJSFrameCallbacks(gOOJSMainThreadContext, sGlobal);
-	gSharedUniverse = (Universe *)[[FakeUniverse alloc] init];
+	gSharedUniverse = new FakeUniverse();
 }
 
 

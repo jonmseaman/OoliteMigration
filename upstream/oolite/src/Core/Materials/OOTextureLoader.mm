@@ -80,7 +80,7 @@ oo::Ref<OOTextureLoader> OOTextureLoader::loaderWithPath(const std::optional<std
 	if (EXPECT_NOT(!sHaveSetUp))  setUp();
 
 	// Get reduced detail setting (every time, in case it changes; we don't want to call through to Universe on the loading thread in case the implementation becomes non-trivial).
-	sReducedDetail = [UNIVERSE reducedDetail];
+	sReducedDetail = (UNIVERSE != nullptr ? UNIVERSE->reducedDetail() : false);
 
 	// Get a suitable loader. FIXME -- this should sniff the data instead of relying on extensions.
 	extension = oo::str::lowercase(oo::str::pathExtension(*inPath));

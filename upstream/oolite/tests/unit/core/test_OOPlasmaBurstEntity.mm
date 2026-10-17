@@ -55,20 +55,18 @@ T *NewTestPlayer()
 
 
 static Entity *sRemoved = nil;
-static OOTimeAbsolute sTime = 0;
 
 
 // UNIVERSE: never initialised; answers the time the test sets and records what is removed.
-@interface TestUniverse: Universe
-@end
+class TestUniverse : public Universe
+{
+public:
+	bool removeEntity(::Entity *entity) override	{ sRemoved = entity; return YES; }
+};
 
-
-@implementation TestUniverse
-
-- (OOTimeAbsolute) getTime				{ return sTime; }
-- (BOOL) removeEntity:(Entity *)entity	{ sRemoved = entity; return YES; }
-
-@end
+// The time the test sets is the universe's own clock, which getTime() answers (bead oo-ql9rn).
+Universe *SharedTestUniverse()	{ static Universe *universe = new TestUniverse(); return universe; }	// never released
+#define sTime	(SharedTestUniverse()->universal_time)
 
 
 namespace {
@@ -92,8 +90,7 @@ void SetUp()
 	static Universe *universe = nil;
 	if (universe == nil)
 	{
-		universe = (Universe *)class_createInstance([TestUniverse class], 0);	// never released
-		universe->_cxxUniverse = oo::makeRef<cxx::Universe>(universe);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
+		universe = SharedTestUniverse();
 	}
 	gSharedUniverse = universe;
 	static TestPlayer *player = nullptr;

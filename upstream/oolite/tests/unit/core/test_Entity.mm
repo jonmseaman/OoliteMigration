@@ -177,7 +177,7 @@ bool Logged(const std::string &text)
 template <class T>
 T &UniverseIvar(const char *name)
 {
-	cxx::Universe *part = sUniverse->_cxxUniverse.get();
+	Universe *part = sUniverse;
 	if (std::strcmp(name, "_sessionID") == 0)  return reinterpret_cast<T &>(part->_sessionID);
 	if (std::strcmp(name, "universal_time") == 0)  return reinterpret_cast<T &>(part->universal_time);
 	std::abort();
@@ -189,14 +189,13 @@ void SetUpUniverse()
 {
 	if (sUniverse == nil)
 	{
-		sUniverse = (Universe *)class_createInstance([Universe class], 0);	// never released
-		sUniverse->_cxxUniverse = oo::makeRef<cxx::Universe>(sUniverse);	// what -initWithGameView: makes first
+		sUniverse = new Universe();	// never released
 	}
 	gSharedUniverse = sUniverse;
 	UniverseIvar<NSUInteger>("_sessionID") = 0;
 	UniverseIvar<OOTimeAbsolute>("universal_time") = 0;
-	sUniverse->_cxxUniverse->n_entities = 0;
-	sUniverse->_cxxUniverse->x_list_start = sUniverse->_cxxUniverse->y_list_start = sUniverse->_cxxUniverse->z_list_start = nil;
+	sUniverse->n_entities = 0;
+	sUniverse->x_list_start = sUniverse->y_list_start = sUniverse->z_list_start = nil;
 }
 
 
@@ -486,16 +485,16 @@ OO_TEST(linkedLists)
 		Entity *c = MakeEntity(make_HPvector(30, 20, 10), 1.0f);
 
 		[a updateLinkedLists];		// not in the lists: nothing happens
-		OO_CHECK(XNext(a) == nil && sUniverse->_cxxUniverse->x_list_start == nil);
+		OO_CHECK(XNext(a) == nil && sUniverse->x_list_start == nil);
 
 		[a addToLinkedLists];
 		[b addToLinkedLists];
 		[c addToLinkedLists];
-		sUniverse->_cxxUniverse->n_entities = 3;
-		OO_CHECK(oo::ToObjC(sUniverse->_cxxUniverse->x_list_start) == a && XNext(a) == b && XNext(b) == c && XNext(c) == nil);
+		sUniverse->n_entities = 3;
+		OO_CHECK(oo::ToObjC(sUniverse->x_list_start) == a && XNext(a) == b && XNext(b) == c && XNext(c) == nil);
 		OO_CHECK(XPrevious(a) == nil && XPrevious(b) == a && XPrevious(c) == b);
-		OO_CHECK(oo::ToObjC(sUniverse->_cxxUniverse->y_list_start) == b && YNext(b) == c && YNext(c) == a && YNext(a) == nil);
-		OO_CHECK(oo::ToObjC(sUniverse->_cxxUniverse->z_list_start) == c && ZNext(c) == a && ZNext(a) == b && ZNext(b) == nil);
+		OO_CHECK(oo::ToObjC(sUniverse->y_list_start) == b && YNext(b) == c && YNext(c) == a && YNext(a) == nil);
+		OO_CHECK(oo::ToObjC(sUniverse->z_list_start) == c && ZNext(c) == a && ZNext(a) == b && ZNext(b) == nil);
 
 		// Moving b to the far end of x re-sorts it, and the lists still check.
 #ifndef NDEBUG
@@ -504,14 +503,14 @@ OO_TEST(linkedLists)
 #endif
 		[b setPosition:make_HPvector(40, 10, 30)];
 		[b updateLinkedLists];
-		OO_CHECK(oo::ToObjC(sUniverse->_cxxUniverse->x_list_start) == a && XNext(a) == c && XNext(c) == b && XNext(b) == nil);
+		OO_CHECK(oo::ToObjC(sUniverse->x_list_start) == a && XNext(a) == c && XNext(c) == b && XNext(b) == nil);
 		OO_CHECK(XPrevious(b) == c && XPrevious(c) == a);
-		OO_CHECK(oo::ToObjC(sUniverse->_cxxUniverse->y_list_start) == b && YNext(b) == c);
+		OO_CHECK(oo::ToObjC(sUniverse->y_list_start) == b && YNext(b) == c);
 
 		[c removeFromLinkedLists];
-		sUniverse->_cxxUniverse->n_entities = 2;
-		OO_CHECK(oo::ToObjC(sUniverse->_cxxUniverse->x_list_start) == a && XNext(a) == b && XPrevious(b) == a);
-		OO_CHECK(oo::ToObjC(sUniverse->_cxxUniverse->z_list_start) == a && ZNext(a) == b);
+		sUniverse->n_entities = 2;
+		OO_CHECK(oo::ToObjC(sUniverse->x_list_start) == a && XNext(a) == b && XPrevious(b) == a);
+		OO_CHECK(oo::ToObjC(sUniverse->z_list_start) == a && ZNext(a) == b);
 		OO_CHECK(XNext(c) == nil && XPrevious(c) == nil);
 		[c removeFromLinkedLists];	// removed already: nothing happens
 #ifndef NDEBUG
@@ -524,11 +523,11 @@ OO_TEST(linkedLists)
 		// universe's own check rebuilds it): pinned as it is.
 		[a setPosition:make_HPvector(50, 30, 20)];
 		[a updateLinkedLists];
-		OO_CHECK(oo::ToObjC(sUniverse->_cxxUniverse->x_list_start) == a && XNext(b) == a && XPrevious(a) == b && XPrevious(b) == nil);
+		OO_CHECK(oo::ToObjC(sUniverse->x_list_start) == a && XNext(b) == a && XPrevious(a) == b && XPrevious(b) == nil);
 
 		[a removeFromLinkedLists];
 		[b removeFromLinkedLists];
-		sUniverse->_cxxUniverse->n_entities = 0;
+		sUniverse->n_entities = 0;
 	}
 }
 
@@ -719,11 +718,11 @@ OO_TEST(cxxEntityBehindItsFacade)
 		Entity *other = MakeEntity(make_HPvector(20, 0, 0), 1.0f);
 		[facade addToLinkedLists];
 		[other addToLinkedLists];
-		sUniverse->_cxxUniverse->n_entities = 2;
-		OO_CHECK(oo::ToObjC(sUniverse->_cxxUniverse->x_list_start) == facade && XNext(facade) == other && XPrevious(other) == facade);
+		sUniverse->n_entities = 2;
+		OO_CHECK(oo::ToObjC(sUniverse->x_list_start) == facade && XNext(facade) == other && XPrevious(other) == facade);
 		[facade removeFromLinkedLists];
 		[other removeFromLinkedLists];
-		sUniverse->_cxxUniverse->n_entities = 0;
+		sUniverse->n_entities = 0;
 	}
 	// The facade was the entity's identity and owner: gone with the pool, and never made again.
 	OO_CHECK(oo::ToObjC(entity.get()) == nil);

@@ -390,7 +390,7 @@ static bool ConsoleGetProperty(ooscript::Context context, ooscript::Object thisO
 #endif		
 			
 		case kConsole_detailLevel:
-			*value = OOJSValueFromPList(context, oo::PList(cxx_OOStringFromGraphicsDetail([UNIVERSE detailLevel])));
+			*value = OOJSValueFromPList(context, oo::PList(cxx_OOStringFromGraphicsDetail((UNIVERSE != nullptr ? UNIVERSE->getDetailLevel() : OOGraphicsDetail{}))));
 			break;
 			
 		case kConsole_maximumDetailLevel:
@@ -398,7 +398,7 @@ static bool ConsoleGetProperty(ooscript::Context context, ooscript::Object thisO
 			break;
 			
 		case kConsole_displayFPS:
-			*value = OOJSValueFromBOOL([UNIVERSE displayFPS]);
+			*value = OOJSValueFromBOOL((UNIVERSE != nullptr ? UNIVERSE->getDisplayFPS() : false));
 			break;
 			
 		case kConsole_platformDescription:
@@ -493,14 +493,14 @@ static bool ConsoleSetProperty(ooscript::Context context, ooscript::Object thisO
 		case kConsole_detailLevel:
 			sValue = cxx_OOStringFromJSValue(context, *value);
 			OOJS_BEGIN_FULL_NATIVE(context)
-			[UNIVERSE setDetailLevel:cxx_OOGraphicsDetailFromString(sValue.value_or(""))];
+			if (UNIVERSE != nullptr)  UNIVERSE->setDetailLevel(cxx_OOGraphicsDetailFromString(sValue.value_or("")));
 			OOJS_END_FULL_NATIVE
 			break;
 			
 		case kConsole_displayFPS:
 			if (ooscript::valueToBoolean(context, *value, &bValue))
 			{
-				[UNIVERSE setDisplayFPS:bValue];
+				if (UNIVERSE != nullptr)  UNIVERSE->setDisplayFPS(bValue);
 			}
 			break;
 			

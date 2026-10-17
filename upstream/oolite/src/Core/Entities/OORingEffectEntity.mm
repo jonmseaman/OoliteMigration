@@ -137,14 +137,14 @@ void OORingEffectEntity::update(OOTimeDelta delta_t)
 	
 	if (_timePassed > kRingDuration)
 	{
-		[UNIVERSE removeEntity:oo::ToObjC(this)];
+		if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(oo::ToObjC(this));
 	}
 }
 
 
 void OORingEffectEntity::drawImmediate(bool /*immediate*/, bool translucent)
 {
-	if (!translucent || [UNIVERSE breakPatternHide])  return;
+	if (!translucent || (UNIVERSE != nullptr ? UNIVERSE->breakPatternHide() : false))  return;
 	
 	OO_ENTER_OPENGL();
 	OOSetOpenGLState(OPENGL_STATE_ADDITIVE_BLENDING);

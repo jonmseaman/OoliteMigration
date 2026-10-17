@@ -49,9 +49,16 @@ class StationEntity;
 	space, a system's coordinates (system 99's raise from -coordinatesForSystem:, system 98's throw
 	a C++ exception), routes, and what was set last.
 */
-@interface Universe: OOObject
+#import "UniverseStandIn.h"
+
+// The universe as the code under test sees it: a stand-in for the C++ class (bead oo-ql9rn deleted
+// the Objective-C facade the test's Objective-C stand-in stood in for), with the header's names and signatures.
+// It answers virtual members, so it has the game's vtable (UniverseStandIn.h) and StandInUniverse overrides them.
+class Universe : public oo::RefCounted
 {
-@public
+public:
+	OO_UNIVERSE_STAND_IN_VIRTUAL_MEMBERS
+
 	BOOL _interstellar;
 	std::map<std::string, oo::PList> _data;
 	oo::PList _currentSystemData;
@@ -60,18 +67,29 @@ class StationEntity;
 	std::string _lastSet;
 	OOSystemID _routeFrom, _routeTo;
 	OORouteType _routeType;
-}
-- (BOOL) inInterstellarSpace;
-- (oo::PList) cxx_currentSystemData;
-- (oo::PList) cxx_systemDataForGalaxy:(OOGalaxyID)gnum planet:(OOSystemID)pnum key:(const std::string &)key;
-- (void) cxx_setSystemDataForGalaxy:(OOGalaxyID)gnum planet:(OOSystemID)pnum key:(const std::string &)key value:(const oo::PList &)value fromManifest:(const std::optional<std::string> &)manifest forLayer:(OOSystemLayer)layer;
-- (std::vector<std::string>) cxx_systemDataKeysForGalaxy:(OOGalaxyID)gnum planet:(OOSystemID)pnum;
-- (NSPoint) coordinatesForSystem:(OOSystemID)s;
-- (OOSystemDescriptionManager *) systemManager;
-- (oo::PList) cxx_routeFromSystem:(OOSystemID)start toSystem:(OOSystemID)goal optimizedBy:(OORouteType)optimizeBy;
-- (OOCommodities *) commodities;
-- (OOSystemID) currentSystemID;
-@end
+
+	::OOCommodities *getCommodities();
+	OOSystemID currentSystemID();
+	oo::PList systemDataForGalaxy(OOGalaxyID, OOSystemID, const std::string &);
+	std::vector<std::string> systemDataKeysForGalaxy(OOGalaxyID, OOSystemID);
+	NSPoint coordinatesForSystem(OOSystemID);
+	oo::PList routeFromSystem(OOSystemID, OOSystemID, OORouteType);
+	::OOCommodityMarket *getCommodityMarket();	// link stub
+};
+
+// Link stubs, never reached: the code under test calls them on paths the test does not take (the
+// Objective-C stand-in did not answer them; bead oo-ql9rn).
+::OOCommodityMarket *Universe::getCommodityMarket()  { std::abort(); }
+
+
+class StandInUniverse : public Universe
+{
+public:
+	bool inInterstellarSpace() override;
+	oo::PList currentSystemData() override;
+	::OOSystemDescriptionManager *getSystemManager() override;
+	void setSystemDataForGalaxy(OOGalaxyID, OOSystemID, const std::string &, const oo::PList &, const std::optional<std::string> &, OOSystemLayer) override;
+};
 
 // PLAYER: C++ since bead oo-9ht.177 deleted the Objective-C player this stood in for: the members
 // the code under test calls, declared as the game headers declare them (the test imports none
@@ -139,28 +157,23 @@ std::string Key(OOGalaxyID g, OOSystemID s, const std::string &key)
 }	// namespace
 
 
-@implementation Universe
-
-- (BOOL) inInterstellarSpace  { return _interstellar; }
-- (oo::PList) cxx_currentSystemData  { return _currentSystemData; }
-- (OOSystemDescriptionManager *) systemManager  { return _systemManager.get(); }
-- (OOCommodities *) commodities  { return _commodities.get(); }
-- (OOSystemID) currentSystemID  { return 7; }
-
-- (oo::PList) cxx_systemDataForGalaxy:(OOGalaxyID)gnum planet:(OOSystemID)pnum key:(const std::string &)key
+bool StandInUniverse::inInterstellarSpace()	{ return _interstellar; }
+oo::PList StandInUniverse::currentSystemData()	{ return _currentSystemData; }
+::OOSystemDescriptionManager *StandInUniverse::getSystemManager()	{ return _systemManager.get(); }
+::OOCommodities *Universe::getCommodities()	{ return _commodities.get(); }
+OOSystemID Universe::currentSystemID()	{ return 7; }
+oo::PList Universe::systemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum, const std::string &key)
 {
 	auto found = _data.find(Key(gnum, pnum, key));
 	return found != _data.end() ? found->second : oo::PList();
 }
-
-- (void) cxx_setSystemDataForGalaxy:(OOGalaxyID)gnum planet:(OOSystemID)pnum key:(const std::string &)key value:(const oo::PList &)value fromManifest:(const std::optional<std::string> &)manifest forLayer:(OOSystemLayer)layer
+void StandInUniverse::setSystemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum, const std::string &key, const oo::PList &value, const std::optional<std::string> &manifest, OOSystemLayer layer)
 {
 	_lastSet = Key(gnum, pnum, key) + "=" + oo::DescriptionOf(value) + " from " + manifest.value_or("(none)") + " layer " + std::to_string(static_cast<int>(layer));
 	if (value.isNull())  _data.erase(Key(gnum, pnum, key));
 	else  _data[Key(gnum, pnum, key)] = value;
 }
-
-- (std::vector<std::string>) cxx_systemDataKeysForGalaxy:(OOGalaxyID)gnum planet:(OOSystemID)pnum
+std::vector<std::string> Universe::systemDataKeysForGalaxy(OOGalaxyID gnum, OOSystemID pnum)
 {
 	std::vector<std::string> keys;
 	const std::string prefix = Key(gnum, pnum, "");
@@ -170,15 +183,13 @@ std::string Key(OOGalaxyID g, OOSystemID s, const std::string &key)
 	}
 	return keys;
 }
-
-- (NSPoint) coordinatesForSystem:(OOSystemID)s
+NSPoint Universe::coordinatesForSystem(OOSystemID s)
 {
 	if (s == 99)  [OOException raise:OOInvalidArgumentException format:"coordinates %s", "boom"];
 	if (s == 98)  throw std::runtime_error("cxx boom");
 	return NSMakePoint(s * 4, s * 2);
 }
-
-- (oo::PList) cxx_routeFromSystem:(OOSystemID)start toSystem:(OOSystemID)goal optimizedBy:(OORouteType)optimizeBy
+oo::PList Universe::routeFromSystem(OOSystemID start, OOSystemID goal, OORouteType optimizeBy)
 {
 	_routeFrom = start;
 	_routeTo = goal;
@@ -186,8 +197,6 @@ std::string Key(OOGalaxyID g, OOSystemID s, const std::string &key)
 	if (goal == 13)  return oo::PList();	// no route
 	return Dict({ { "jumps", oo::PList(2.0) }, { "route", oo::PList(oo::PList::Array{ oo::PList(static_cast<double>(start)), oo::PList(static_cast<double>(goal)) }) } });
 }
-
-@end
 
 
 OOGalaxyID PlayerEntity::currentGalaxyID()  { return _galaxy; }
@@ -604,7 +613,7 @@ void SetUpContext()
 	static ooscript::FunctionSpec functions[] = { { "info", TestInfo, 2, 0 }, { 0 } };
 	ooscript::defineFunctions(sContext, sGlobal, functions);
 
-	sUniverse = [[Universe alloc] init];	// kept for the life of the test
+	sUniverse = new StandInUniverse();	// kept for the life of the test
 	gSharedUniverse = sUniverse;
 	sPlayer = new PlayerEntity;
 	gOOPlayer = sPlayer;

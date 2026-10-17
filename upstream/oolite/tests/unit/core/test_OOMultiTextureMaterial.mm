@@ -232,7 +232,15 @@ oo::PList cxx_OOTextureSpecFromObject(const oo::PList &object, const std::option
 
 
 // UNIVERSE is gSharedUniverse: nil, so not reduced detail and no shaders.
-@class Universe;
+// UNIVERSE stays nil here, so the code under test's guarded calls never reach it; the stand-in only
+// links them (bead oo-ql9rn: they were messages to nil).
+class Universe
+{
+public:
+	bool useShaders();
+};
+bool Universe::useShaders()  { return false; }
+
 Universe *gSharedUniverse = nil;
 
 

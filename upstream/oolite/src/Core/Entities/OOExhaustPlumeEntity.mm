@@ -131,8 +131,8 @@ void OOExhaustPlumeEntity::update(OOTimeDelta /*delta_t*/)
 // also don't draw if the ship isn't visible
 	if (EXPECT_NOT(ship == nil || !(ship != nullptr ? ship->isVisible() : false) || ((ship != nullptr ? ship->getIsPlayer() : false) && (ship != nullptr ? ship->suppressFlightNotifications() : false)))) return;
 
-	OOTimeAbsolute now = [UNIVERSE getTime];
-	if ([UNIVERSE getTime] > _trackTime + kTimeStep)
+	OOTimeAbsolute now = (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0);
+	if ((UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0) > _trackTime + kTimeStep)
 	{
 		saveToLastFrame();
 		_trackTime = now;
@@ -151,7 +151,7 @@ void OOExhaustPlumeEntity::update(OOTimeDelta /*delta_t*/)
 	
 	Frame zero =
 	{
-		.timeframe = [UNIVERSE getTime],
+		.timeframe = (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0),
 		.orientation = shipQrotation,
 		.k = (ship != nullptr ? ship->forwardVector() : Vector{})
 	};
@@ -434,7 +434,7 @@ void OOExhaustPlumeEntity::drawSubEntityImmediate(bool /*immediate*/, bool trans
 	OOGL(glVertexPointer(3, GL_FLOAT, 0, _glVertices));
 	OOGL(glColorPointer(4, GL_FLOAT, 0, _exhaustBaseColors));
 
-	double intpart, dphase = 1.0-modf((double)[UNIVERSE getTime]*2.5,&intpart);
+	double intpart, dphase = 1.0-modf((double)(UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0)*2.5,&intpart);
 	GLfloat phase = (GLfloat)dphase;
 
 	GLfloat texCoords[68] = {
@@ -465,7 +465,7 @@ void OOExhaustPlumeEntity::drawSubEntityImmediate(bool /*immediate*/, bool trans
 	OOGL(glTexCoordPointer(2, GL_FLOAT, 0, texCoords));
 
 	// reduced detail for internal view to avoid rendering artefacts
-	if ([owner() isPlayer] && [UNIVERSE viewDirection] != VIEW_CUSTOM)
+	if ([owner() isPlayer] && (UNIVERSE != nullptr ? UNIVERSE->getViewDirection() : OOViewID{}) != VIEW_CUSTOM)
 	{
 		OOGL(glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_INT, afttstr1));
 		OOGL(glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_INT, afttstr2));
@@ -538,7 +538,7 @@ void OOExhaustPlumeEntity::saveToLastFrame()
 	// so just use the rotation matrix, then translate using HPVectors
 	HPVector framePos = OOHPVectorMultiplyMatrix(getPosition(), (ship != nullptr ? ship->drawRotationMatrix() : OOMatrix{}));
 	framePos = HPvector_add(framePos,(ship != nullptr ? ship->getPosition() : HPVector{}));
-	Frame frame = { [UNIVERSE getTime], framePos, (ship != nullptr ? ship->normalOrientation() : Quaternion{}), (ship != nullptr ? ship->upVector() : Vector{}) };
+	Frame frame = { (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0), framePos, (ship != nullptr ? ship->normalOrientation() : Quaternion{}), (ship != nullptr ? ship->upVector() : Vector{}) };
 	
 	_track[_nextFrame] = frame;
 	_nextFrame = (_nextFrame + 1) % kExhaustFrameCount;
@@ -607,7 +607,7 @@ void OOExhaustPlumeEntity::resetPlume()
 	
 	// Absolute position of self
 	Vector framePos = OOVectorMultiplyMatrix([self position], [ship drawTransformationMatrix]);
-	Frame frame = { [UNIVERSE getTime], framePos, [ship normalOrientation], [ship upVector] };
+	Frame frame = { (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0), framePos, [ship normalOrientation], [ship upVector] };
 	
 	_track[_nextFrame] = frame;
 	_nextFrame = (_nextFrame + 1) % kExhaustFrameCount;*/

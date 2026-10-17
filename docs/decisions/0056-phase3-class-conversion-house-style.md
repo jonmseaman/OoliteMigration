@@ -7168,3 +7168,88 @@ shader material's `_oo_texture_objects` (textures put in a material configuratio
 
 **Consequences.** No Objective-C texture or texture facade is left, and OOTexture.h no longer
 imports OOWeakReference.h; it still imports OOCocoa.h (`NSSize`).
+
+
+## Amendment (bead oo-ql9rn): the universe's facade is deleted; UNIVERSE is the C++ object
+
+- Date: 2026-10-16. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch AA
+  (one branch). Exemplar: `src/Core/Universe.h/.mm` (`Universe::newUniverse()`, the destructor,
+  `OOUniverseDelayedMessage`), `GameController.mm`, `tests/unit/core/test_Universe.mm`,
+  `test_OOSparkEntity.mm` (a whole-game test's universe), `test_OOCommodities.mm` (a narrow test's
+  stand-in). Follows amendments oo-riqmz, oo-9ht.177 and oo-9ht.144 (the large facades).
+
+**Context.** Once every slice of docs/phases/3-slices/Universe.md was converted (oo-pas), the
+Objective-C `Universe` (Universe+ObjCBridge.h/.mm, an `OOWeakRefObject`) was 334 forwarders to
+`cxx::Universe`, the initialiser and `-dealloc`, the Mac speech arms and the delayed-message holder.
+About 1,700 sends to `UNIVERSE`, 400 sends to `self` in Universe.mm, 85 `_cxxUniverse->` reads and
+21 whole-game tests' Objective-C subclasses of it, three whole-game and about thirty narrow tests' stand-in universes still used it.
+
+**Decision (recommended defaults).**
+
+1. **The universe is the global C++ class** `class Universe : public oo::RefCounted` (out of
+   namespace cxx; Universe.mm's `namespace cxx` blocks go, every bare name there was already
+   qualified). `gSharedUniverse` and `UNIVERSE` are the C++ object. `Universe::newUniverse(view)`
+   is `[[Universe alloc] initWithGameView:view]`: the universe +1 (the game controller keeps it in
+   `gSharedUniverse` and releases it in its destructor), a second one released and the same
+   exception raised (`-[Universe(OOObjCBridge) initWithGameView:]`, the text the facade's
+   `__PRETTY_FUNCTION__` gave). The facade's `-dealloc` is the destructor, which runs `dealloc()`
+   (clearing `gSharedUniverse` as before). `@class Universe` forward declarations are
+   `class Universe;`. `OOUniverseDescriptionForKey()`, `OOUniverseDescriptions()` and
+   `OOUniverseSoundNameForCustomSoundKey()` are inline in Universe.h: a call when there is a
+   universe, else what the message to nil answered.
+2. **Sends become member calls** (the batch F/I/K/O converter, a textual pass with the facade's
+   forwarders as the map and a compiler-diagnostic pass for any other receiver typed `Universe *`):
+   every `[UNIVERSE ...]` keeps the message to nil's answer (`UNIVERSE != nullptr ? UNIVERSE->m() :
+   zero`, or `if (UNIVERSE != nullptr)` for a statement, and `UNIVERSE != nullptr && UNIVERSE->m()
+   != nullptr` where a pointer answer is a condition), because the universe is absent during
+   start-up and in tests; inside the class `[self ...]` is a plain member call and `self` is `this`.
+   `_cxxUniverse->` is deleted (one mechanical replacement) and `oo::ToCxx(UNIVERSE)` is `UNIVERSE`.
+3. **Selectors found by name: one.** Nothing finds a universe selector by name but the deferred
+   delayed message (`OOScheduleDeferredCall(self, @selector(addDelayedMessage:), holder, ...)`). The
+   holder stays the Objective-C object the deferred call retains, and is now the call's target:
+   `-[OOUniverseDelayedMessage deliverToUniverse]` hands itself to `UNIVERSE->addDelayedMessage()`.
+   So the table of by-name selectors is that one entry, exactly today's (rule 10: conservative).
+4. **Test seams, declared once** (amendment oo-9ht.107 item 6, oo-9ht.177 item 5). A whole-game
+   test's Objective-C subclass of the universe, or an unrelated Objective-C object it cast to
+   `Universe *` (test_OOJSSystem, test_OOJSPlayerShip, test_OOOXZManager), is a C++ subclass of the
+   game's `Universe` overriding the members the Objective-C one answered. Those members are
+   `virtual` and are declared in one place, `src/Core/UniverseVirtualMembers.h`
+   (`OO_UNIVERSE_VIRTUAL_MEMBERS(VOID_BODY, VALUE_BODY)`, expanded at the top of the class with `;`):
+   18 for the entity and effect tests (lighting, roles, beacons, the sky colour, visual effects,
+   cargo, adding and removing entities, routes, finding entities, system data and names, reduced
+   detail) and 41 for the three whole-game JS tests (the system's finds, counts, additions,
+   populator, waypoints and data, the player ship's view, GUIs, messages and trade-in value, the
+   OXZ manager's GUI, view, descriptions, system manager and demo). Each keeps its slice's place
+   in Universe.h as a comment. A narrow test's stand-in (Universe.mm not linked) that answers a
+   virtual member has the game's vtable: `tests/unit/core/UniverseStandIn.h` expands the same list
+   with default bodies in a `class Universe : public oo::RefCounted`, and the test's subclass
+   overrides what its Objective-C stand-in answered; a stand-in that answers only non-virtual
+   members is a plain `class Universe` with the header's signatures, defined out of line. A narrow
+   test that includes the real header (test_OOJSClock, test_OOJSVector) defines the members the
+   code under test calls and makes UNIVERSE storage nothing constructs (those members read no
+   state). Where a whole-game subclass answered a getter that stays non-virtual, it sets the
+   universe's own state instead: `getTime()` (`universal_time`; a field the test set is a
+   reference to it), `currentSystemID()` (`systemID`), `getDetailLevel()` (the never-initialised
+   level is the minimum it answered), `setAirResistanceFactor()` (`airResistanceFactor`), and the
+   Wormhole test's system manager and clock-format description; `getCommodities()` already answers
+   nil. A universe made by a test is never released: its teardown is the facade's `-dealloc`
+   (flushing the caches, the GL objects). The expander's and the sysdesc tools' stub universes are
+   plain stand-ins.
+5. **The Mac speech arms** are members in Universe.mm (bodies verbatim; not built).
+6. **Left as they were (follow-up), as amendment oo-9ht.177 item 6:** the members marked "Formerly
+   @private" stay public (the tests and a few callers read them) and the members holding
+   Objective-C objects keep their types; making them private and `oo::Ref` is a change of its own.
+
+**Differences.** The deferred call's target is the holder, so the "NSTimer ignoring exception" log
+line (an exception raised while a delayed message is shown) prints the holder's address where it
+printed the universe's. No game behaviour changes.
+
+**Tests** (standing approval oo-9n5p9, lines on main first): `test_Universe facadeAndPart`'s
+crossings go (`oo::ToCxx`/`oo::ToObjC` of a universe, the facade-only universe released before
+`-initWithGameView:`); the never-initialised universes are `new Universe()` / `new TestUniverse()`
+where they were `class_createInstance` plus the `_cxxUniverse` set-up line; every other case calls
+the same members with every expected value kept.
+
+**Consequences.** No Objective-C universe is left; the universe no longer subclasses
+`OOWeakRefObject`, which leaves the Entity facade, AI and DustEntity's binding as the
+`OOWeakRefObject` subclasses oo-9ht.22 waits on.

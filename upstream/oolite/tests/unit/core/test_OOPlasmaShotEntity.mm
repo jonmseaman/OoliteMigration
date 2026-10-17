@@ -63,36 +63,25 @@ T *NewTestPlayer()
 
 
 // UNIVERSE: never initialised; answers the test's time and records what is added and removed.
-@interface TestUniverse: Universe
+class TestUniverse : public Universe
 {
-@public
-	OOTimeAbsolute	_time;
-	Entity			*_removed;
-	Entity			*_added;
-}
-@end
+public:
+	OOTimeAbsolute &_time = universal_time;	// the universe's own state, which its getter answers (bead oo-ql9rn)
+	Entity			*_removed = {};
+	Entity			*_added = {};
 
-
-@implementation TestUniverse
-
-- (OOTimeAbsolute) getTime	{ return _time; }
-
-
-- (BOOL) removeEntity:(Entity *)entity
-{
-	_removed = entity;
-	return YES;
-}
-
-
-- (BOOL) addEntity:(Entity *)entity
-{
-	[_added release];
-	_added = [entity retain];
-	return YES;
-}
-
-@end
+	bool removeEntity(::Entity *entity) override
+	{
+		_removed = entity;
+		return YES;
+	}
+	bool addEntity(::Entity *entity) override
+	{
+		[_added release];
+		_added = [entity retain];
+		return YES;
+	}
+};
 
 
 // What the shot hits: records the damage.
@@ -146,8 +135,7 @@ void SetUp(OOTimeAbsolute time)
 {
 	if (sUniverse == nil)
 	{
-		sUniverse = (TestUniverse *)class_createInstance([TestUniverse class], 0);	// never released
-		sUniverse->_cxxUniverse = oo::makeRef<cxx::Universe>(sUniverse);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
+		sUniverse = new TestUniverse();	// never released
 	}
 	sUniverse->_time = time;
 	sUniverse->_removed = nil;

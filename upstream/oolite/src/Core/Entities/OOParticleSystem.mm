@@ -124,7 +124,7 @@ void OOParticleSystem::update(OOTimeDelta delta_t)
 	}
 	
 	// disappear eventually.
-	if (_timePassed > _duration)  [UNIVERSE removeEntity:oo::ToObjC(this)];
+	if (_timePassed > _duration)  { if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(oo::ToObjC(this)); }
 }
 
 
@@ -139,7 +139,7 @@ do { \
 
 void OOParticleSystem::drawImmediate(bool /*immediate*/, bool translucent)
 {
-	if (!translucent || [UNIVERSE breakPatternHide])  return;
+	if (!translucent || (UNIVERSE != nullptr ? UNIVERSE->breakPatternHide() : false))  return;
 
 	OO_ENTER_OPENGL();
 	OOSetOpenGLState(OPENGL_STATE_ADDITIVE_BLENDING);
@@ -159,7 +159,7 @@ void OOParticleSystem::drawImmediate(bool /*immediate*/, bool translucent)
 	GLfloat		(*particleColor)[4] = _particleColor;
 	GLfloat		*particleSize = _particleSize;
 	
-	if ([UNIVERSE reducedDetail])
+	if ((UNIVERSE != nullptr ? UNIVERSE->reducedDetail() : false))
 	{
 		// Quick rendering - particle cloud is effectively a 2D billboard.
 		OOGLPushModelView();

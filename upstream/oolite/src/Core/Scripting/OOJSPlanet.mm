@@ -267,7 +267,7 @@ static bool PlanetGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			return true;
 
 		case kPlanet_isMainPlanet:
-			*value_raw = OOJSValueFromBOOL(planet == [UNIVERSE planet]);
+			*value_raw = OOJSValueFromBOOL(planet == (UNIVERSE != nullptr ? UNIVERSE->planet() : nullptr));
 			return true;
 			
 		case kPlanet_radius:

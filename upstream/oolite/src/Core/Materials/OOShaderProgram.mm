@@ -61,7 +61,7 @@ std::string GetGLSLInfoLog(GLhandleARB shaderObject);
 // The game view's matrix manager, taken from the C++ view. Null when there is no universe or view.
 OOOpenGLMatrixManager *GameViewMatrixManager()
 {
-	cxx::MyOpenGLView *view = oo::ToCxx([UNIVERSE gameView]);
+	cxx::MyOpenGLView *view = oo::ToCxx((UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr));
 	return (view != nullptr) ? view->getOpenGLMatrixManager() : nullptr;
 }
 

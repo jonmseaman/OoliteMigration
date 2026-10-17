@@ -114,7 +114,7 @@ void OOEquipmentType::loadEquipment()
 	std::vector<std::string> conditionScripts;	// first-seen order
 	std::map<std::string, oo::Ref<OOEquipmentType>, std::less<>> byIdentifier;
 
-	for (const oo::PList &itemInfo : EquipmentItems([UNIVERSE cxx_equipmentData]))
+	for (const oo::PList &itemInfo : EquipmentItems((UNIVERSE != nullptr ? UNIVERSE->getEquipmentData() : oo::PList())))
 	{
 		oo::Ref<OOEquipmentType> item = createWithInfo(itemInfo);
 		if (item != nullptr)
@@ -141,7 +141,7 @@ void OOEquipmentType::loadEquipment()
 
 	// same for the outfitting dataset
 	equipmentTypes.clear();
-	for (const oo::PList &itemInfo : EquipmentItems([UNIVERSE cxx_equipmentDataOutfitting]))
+	for (const oo::PList &itemInfo : EquipmentItems((UNIVERSE != nullptr ? UNIVERSE->getEquipmentDataOutfitting() : oo::PList())))
 	{
 		oo::Ref<OOEquipmentType> item = createWithInfo(itemInfo);
 		if (item != nullptr)

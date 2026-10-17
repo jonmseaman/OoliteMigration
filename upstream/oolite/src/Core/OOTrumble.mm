@@ -471,7 +471,7 @@ void OOTrumble::updateTrumble(double delta_t)
 {
 	// player movement
 	NSPoint p_mov = NSMakePoint(TRUMBLE_MAX_ROTATIONAL_VELOCITY * (player != nullptr ? player->dialPitch() : 0.0f),	TRUMBLE_MAX_ROTATIONAL_VELOCITY * (player != nullptr ? player->dialRoll() : 0.0f));
-	switch ([UNIVERSE viewDirection])
+	switch ((UNIVERSE != nullptr ? UNIVERSE->getViewDirection() : OOViewID{}))
 	{
 		GLfloat t;
 		case VIEW_AFT:
@@ -569,7 +569,7 @@ void OOTrumble::updateTrumble(double delta_t)
 		{
 			::ShipEntity *cargopod = oo::ToShip((*cargopods)[i].get());
 			const std::string cargo_type = (cargopod != nullptr ? cargopod->commodityType() : std::optional<std::string>()).value_or("");	// nil arrived as ""
-			float yumminess = (1.0 + randf()) * ([UNIVERSE commodityMarket] != nullptr ? [UNIVERSE commodityMarket]->trumbleOpinionForGood(cargo_type) : 0.0f);
+			float yumminess = (1.0 + randf()) * ((UNIVERSE != nullptr ? UNIVERSE->getCommodityMarket() : nullptr) != nullptr ? UNIVERSE->getCommodityMarket()->trumbleOpinionForGood(cargo_type) : 0.0f);
 			if (yumminess > mostYummy)
 			{
 				selectedCargopod = cargopod;
@@ -590,9 +590,9 @@ void OOTrumble::updateTrumble(double delta_t)
 			{
 				// eaten all of this cargo!
 				const std::string ms = oo::str::formatRuntime(OO_DESC("trumbles-eat-@"),
-								{ [UNIVERSE cxx_displayNameForCommodity:(selectedCargopod != nullptr ? selectedCargopod->commodityType() : std::optional<std::string>()).value_or("")].value_or("(null)") });
+								{ (UNIVERSE != nullptr ? UNIVERSE->displayNameForCommodity((selectedCargopod != nullptr ? selectedCargopod->commodityType() : std::optional<std::string>()).value_or("")) : std::optional<std::string>()).value_or("(null)") });
 
-				[UNIVERSE cxx_addMessage:ms forCount: 4.5];
+				if (UNIVERSE != nullptr)  UNIVERSE->addMessage(ms, 4.5);
 				if (cargopods != nullptr)  std::erase(*cargopods, oo::ToObjC(selectedCargopod));
 				trumbleAppetiteAccumulator -= 10.0;
 				

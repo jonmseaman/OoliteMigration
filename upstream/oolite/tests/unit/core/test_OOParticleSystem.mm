@@ -70,23 +70,17 @@ T *NewTestPlayer()
 
 
 // UNIVERSE: never initialised; records what is removed.
-@interface TestUniverse: Universe
+class TestUniverse : public Universe
 {
-@public
-	Entity	*_removed;
-}
-@end
+public:
+	Entity	*_removed = {};
 
-
-@implementation TestUniverse
-
-- (BOOL) removeEntity:(Entity *)entity
-{
-	_removed = entity;
-	return YES;
-}
-
-@end
+	bool removeEntity(::Entity *entity) override
+	{
+		_removed = entity;
+		return YES;
+	}
+};
 
 
 // An effect, for the collision test.
@@ -122,8 +116,7 @@ void SetUp()
 {
 	if (sUniverse == nil)
 	{
-		sUniverse = (TestUniverse *)class_createInstance([TestUniverse class], 0);	// never released
-		sUniverse->_cxxUniverse = oo::makeRef<cxx::Universe>(sUniverse);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
+		sUniverse = new TestUniverse();	// never released
 		sTexture = oo::makeRef<OOTexture>().leakRef();	// never released
 		OOTexture::nameFactory = &LoadTexture;
 	}

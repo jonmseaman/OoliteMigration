@@ -495,7 +495,7 @@ void OODebugMonitor::dumpMemoryStatistics()
 
 	EntityDumpState entityDumpState;
 
-	for (const auto &entity : [UNIVERSE cxx_entityList])
+	for (const auto &entity : (UNIVERSE != nullptr ? UNIVERSE->entityList() : std::vector<oo::ObjCRef<::Entity *>>()))
 	{
 		dumpEntity(entity.get(), &entityDumpState, true);
 	}

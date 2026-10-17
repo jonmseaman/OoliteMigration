@@ -85,10 +85,7 @@ void OOECMBlastEntity::update(OOTimeDelta delta_t)
 		radius *= SCANNER_MAX_RANGE;
 		_blastsRemaining--;
 		
-		const std::vector<oo::ObjCRef<::Entity *>> targets = [UNIVERSE cxx_findEntitiesMatchingPredicate:IsShipPredicate
-														 parameter:NULL
-														   inRange:radius
-														  ofEntity:self];
+		const std::vector<oo::ObjCRef<::Entity *>> targets = (UNIVERSE != nullptr ? UNIVERSE->findEntitiesMatchingPredicate(IsShipPredicate, NULL, radius, self) : std::vector<oo::ObjCRef<::Entity *>>());
 		NSUInteger i, count = targets.size();
 		if (count > 0)
 		{
@@ -109,7 +106,7 @@ void OOECMBlastEntity::update(OOTimeDelta delta_t)
 		_nextBlast += ECM_PULSE_INTERVAL;
 	}
 	
-	if (_blastsRemaining == 0 || !validShip)  [UNIVERSE removeEntity:self];
+	if (_blastsRemaining == 0 || !validShip)  { if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(self); }
 }
 
 

@@ -186,7 +186,7 @@ void OOLaserShotEntity::update(OOTimeDelta delta_t)
 
 	if (_lifetime < 0)
 	{
-		[UNIVERSE removeEntity:oo::ToObjC(this)];
+		if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(oo::ToObjC(this));
 	}
 }
 
@@ -207,7 +207,7 @@ static const GLfloat kLaserVertices[] =
 
 void OOLaserShotEntity::drawImmediate(bool /*immediate*/, bool translucent)
 {
-	if (!translucent || [UNIVERSE breakPatternHide])  return;
+	if (!translucent || (UNIVERSE != nullptr ? UNIVERSE->breakPatternHide() : false))  return;
 
 	OO_ENTER_OPENGL();
 	OOSetOpenGLState(OPENGL_STATE_ADDITIVE_BLENDING);
@@ -223,7 +223,7 @@ void OOLaserShotEntity::drawImmediate(bool /*immediate*/, bool translucent)
 	
 	OOGLScaleModelView(make_vector(kLaserHalfWidth, kLaserHalfWidth, _range));
 	if (OOTexture *shot = texture1())  shot->apply();	// a message to nil did nothing
-	GLfloat s = sinf([UNIVERSE getTime]);
+	GLfloat s = sinf((UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0));
 	GLfloat phase = s*(_range/200.0f);
 	GLfloat phase2 = (1.0f+s)*(_range/200.0f);
 	GLfloat phase3 = -s*(_range/500.0f);

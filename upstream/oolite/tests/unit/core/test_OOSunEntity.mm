@@ -72,37 +72,22 @@ T *NewTestPlayer()
 
 
 // UNIVERSE: never initialised; records what the sun sets.
-@interface TestUniverse: Universe
+class TestUniverse : public Universe
 {
-@public
-	Vector							_mainLight;
+public:
+	Vector _mainLight = {};
 	GLfloat							_sky[4];
-	int								_skySets;
-	std::map<std::string, oo::PList>	_systemData;
-}
-@end
+	int _skySets = {};
+	std::map<std::string, oo::PList> _systemData = {};
 
-
-@implementation TestUniverse
-
-- (OOTimeAbsolute) getTime	{ return 0; }
-
-- (void) setMainLightPosition:(Vector)sunPos	{ _mainLight = sunPos; }
-
-
-- (void) setSkyColorRed:(GLfloat)red green:(GLfloat)green blue:(GLfloat)blue alpha:(GLfloat)alpha
-{
-	_sky[0] = red;  _sky[1] = green;  _sky[2] = blue;  _sky[3] = alpha;
-	_skySets++;
-}
-
-
-- (void) cxx_setSystemDataKey:(const std::string &)key value:(const oo::PList &)value fromManifest:(const std::optional<std::string> &)manifest
-{
-	_systemData[key] = value;
-}
-
-@end
+	void setMainLightPosition(Vector sunPos) override	{ _mainLight = sunPos; }
+	void setSkyColorRed(GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha) override
+	{
+		_sky[0] = red;  _sky[1] = green;  _sky[2] = blue;  _sky[3] = alpha;
+		_skySets++;
+	}
+	void setSystemDataKey(const std::string &key, const oo::PList &value, const std::optional<std::string> &manifest) override	{ _systemData[key] = value; }
+};
 
 
 namespace {
@@ -115,8 +100,7 @@ void SetUp()
 {
 	if (sUniverse == nil)
 	{
-		sUniverse = (TestUniverse *)class_createInstance([TestUniverse class], 0);	// never released
-		sUniverse->_cxxUniverse = oo::makeRef<cxx::Universe>(sUniverse);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
+		sUniverse = new TestUniverse();	// never released
 		new (&sUniverse->_systemData) std::map<std::string, oo::PList>();
 		sPlayer = NewTestPlayer<TestPlayer>();
 	}

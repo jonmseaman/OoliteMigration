@@ -116,7 +116,7 @@ oo::PList OOMaterial::synthesizeMaterialDictionaryWithName(const std::optional<s
 		.uniforms = {}
 	};
 	
-	if ([UNIVERSE reducedDetail])
+	if ((UNIVERSE != nullptr ? UNIVERSE->reducedDetail() : false))
 	{
 		context.maxTextures = 3;
 	}
@@ -133,7 +133,7 @@ oo::PList OOMaterial::synthesizeMaterialDictionaryWithName(const std::optional<s
 	SynthNormalMap(&context);
 	SynthSpecular(&context);
 	
-	if ([UNIVERSE detailLevel] >= DETAIL_LEVEL_SHADERS)
+	if ((UNIVERSE != nullptr ? UNIVERSE->getDetailLevel() : OOGraphicsDetail{}) >= DETAIL_LEVEL_SHADERS)
 	{
 		//	Add uniforms required for hull heat glow.
 		context.uniforms["uHullHeatLevel"] = oo::PList("hullHeatLevel");
@@ -305,7 +305,7 @@ oo::Ref<OOMaterial> OOMaterial::materialWithName(const std::optional<std::string
 	
 #if OO_SHADERS
 
-	if ([UNIVERSE useShaders])
+	if ((UNIVERSE != nullptr ? UNIVERSE->useShaders() : false))
 	{
 		if (OOShaderMaterial::configurationDictionarySpecifiesShaderMaterial(configuration))
 		{
@@ -319,7 +319,7 @@ oo::Ref<OOMaterial> OOMaterial::materialWithName(const std::optional<std::string
 		if (result == nullptr &&
 				(smooth ||
 				 gDebugFlags & DEBUG_NO_SHADER_FALLBACK ||
-				 [UNIVERSE detailLevel] >= DETAIL_LEVEL_SHADERS ||
+				 (UNIVERSE != nullptr ? UNIVERSE->getDetailLevel() : OOGraphicsDetail{}) >= DETAIL_LEVEL_SHADERS ||
 				 !cxx_OOMaterialCombinedSpecularMapSpecifier(configuration).isNull() ||
 				 !cxx_OOMaterialNormalMapSpecifier(configuration).isNull() ||
 				 !cxx_OOMaterialParallaxMapSpecifier(configuration).isNull() ||
@@ -339,7 +339,7 @@ oo::Ref<OOMaterial> OOMaterial::materialWithName(const std::optional<std::string
 #endif
 	
 #if OO_MULTITEXTURE
-	if (result == nullptr /*&& ![UNIVERSE reducedDetail]*/)
+	if (result == nullptr /*&& !(UNIVERSE != nullptr ? UNIVERSE->reducedDetail() : false)*/)
 	{
 		if (!cxx_OOMaterialEmissionMapSpecifier(configuration).isNull() ||
 			!cxx_OOMaterialIlluminationMapSpecifier(configuration).isNull() ||
@@ -382,7 +382,7 @@ oo::Ref<OOMaterial> OOMaterial::materialWithName(const std::optional<std::string
 	
 #if OO_SHADERS
 
-	if ([UNIVERSE useShaders] && name.has_value())
+	if ((UNIVERSE != nullptr ? UNIVERSE->useShaders() : false) && name.has_value())
 	{
 		if (const oo::PList *found = shadersDict.get<oo::PList::Dict>(*name))
 		{

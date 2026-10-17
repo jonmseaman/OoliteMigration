@@ -605,3 +605,4 @@
 [oo-9ht.185] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/tier-c.sh --only goldens
 [oo-hrcs] export PATH="/ucrt64/bin:$PATH"; tools/tier-a.sh upstream/oolite/src/Core/OODebugGLDrawing.cpp
 [oo-9ht.99] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/tier-c.sh --only goldens
+[oo-ql9rn] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/check-string-expander.sh && bash tools/js-api-contract.sh && bash tools/tier-c.sh --only goldens

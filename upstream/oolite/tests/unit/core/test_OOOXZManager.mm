@@ -586,7 +586,7 @@ OO_TEST(restartAndUpdateAll)
 // Slices 3 and 4 (beads oo-q7r3, oo-qbgo): the GUI pages. A stand-in UNIVERSE (amendment oo-8kx7
 // item 7, as an object put in gSharedUniverse for these cases only, since the test links the real
 // Universe) answers -gui with a recording screen; the manager's sends to it are the page.
-@class Universe;
+#import "Universe.h"	// the real class: the test links the whole game (bead oo-ql9rn)
 extern Universe *gSharedUniverse;
 
 // The page's rows (OOOXZManager.mm's private OXZ_GUI_ROW_* values).
@@ -657,34 +657,29 @@ public:
 @end
 
 
-@interface TestUniverse: OOObject
+// The universe the manager sees: a C++ subclass of the game's (bead oo-ql9rn deleted the Objective-C
+// facade the test's Objective-C TestUniverse stood in for), overriding the same members. Its
+// descriptions are testDescriptions (the class has a member _descriptions).
+class TestUniverse : public Universe
 {
-@public
-	oo::Ref<TestGui>	gui;
-	TestGameView	*gameView;
-	oo::PList		descriptions;
-}
-@end
+public:
+	oo::Ref<TestGui> testGui = {};
+	TestGameView	*testGameView = nil;
+	oo::PList testDescriptions = {};
 
-@implementation TestUniverse
-- (id) init
-{
-	if ((self = [super init]))
+	TestUniverse()
 	{
-		gui = oo::makeRef<TestGui>();
-		gameView = [[TestGameView alloc] init];
-		descriptions = oo::PList(oo::PList::Dict());
+		testGui = oo::makeRef<TestGui>();
+		testGameView = [[TestGameView alloc] init];
+		testDescriptions = oo::PList(oo::PList::Dict());
 	}
-	return self;
-}
-- (void) dealloc	{ [gameView release]; [super dealloc]; }
-- (GuiDisplayGen *) gui	{ return gui.get(); }
-- (id) gameView	{ return gameView; }
-- (std::optional<std::string>) cxx_descriptionForKey:(const std::string &)key	{ (void)key; return std::nullopt; }
-- (const oo::PList *) cxx_descriptions	{ return &descriptions; }
-- (id) systemManager	{ return nil; }
-- (BOOL) reinitAndShowDemo:(BOOL)showDemo	{ (void)showDemo; return YES; }
-@end
+	::GuiDisplayGen *getGui() override	{ return testGui.get(); }
+	::MyOpenGLView *getGameView() override	{ return (MyOpenGLView *)testGameView; }	// what -gameView answered (an id)
+	std::optional<std::string> descriptionForKey(const std::string &key) override	{ (void)key; return std::nullopt; }
+	const oo::PList *descriptions() override	{ return &testDescriptions; }
+	::OOSystemDescriptionManager *getSystemManager() override	{ return nullptr; }
+	bool reinitAndShowDemo(bool showDemo) override	{ (void)showDemo; return YES; }
+};
 
 
 namespace {
@@ -693,13 +688,13 @@ namespace {
 struct StandInUniverse
 {
 	TestUniverse *universe;
-	StandInUniverse()  { universe = [[TestUniverse alloc] init]; gSharedUniverse = (Universe *)universe; }
-	~StandInUniverse()  { gSharedUniverse = nil; [universe release]; }
+	StandInUniverse()  { universe = new TestUniverse(); gSharedUniverse = universe; }
+	~StandInUniverse()  { gSharedUniverse = nil; }	// never released: a universe's teardown (the facade's -dealloc) flushes the caches and the GL objects
 	std::string Page()
 	{
 		std::string page;
-		for (const std::string &line : universe->gui->log)  page += line + "\n";
-		universe->gui->log.clear();
+		for (const std::string &line : universe->testGui->log)  page += line + "\n";
+		universe->testGui->log.clear();
 		return page;
 	}
 };
@@ -745,7 +740,7 @@ OO_TEST(guiPages)
 		m->_offset = 0;
 		m->_item = 0;
 		m->setFilter("*");
-		standIn.universe->gui->selected = 0;
+		standIn.universe->testGui->selected = 0;
 
 		m->_interfaceState = OXZ_STATE_NODATA;
 		m->gui();
@@ -903,7 +898,7 @@ OO_TEST(guiPages)
 		// The list pages (slice 4's options), with the filter line through the string expander.
 		m->_changesMade = false;
 		m->_downloadStatus = OXZ_DOWNLOAD_NONE;
-		standIn.universe->gui->selected = OXZ_GUI_ROW_LISTSTART;
+		standIn.universe->testGui->selected = OXZ_GUI_ROW_LISTSTART;
 		m->_interfaceState = OXZ_STATE_PICK_INSTALL;
 		m->gui();
 		OO_CHECK_PAGE("pick install", standIn.Page(),
@@ -1151,7 +1146,7 @@ OO_TEST(guiInput)
 	{
 		StandInUniverse standIn;
 		OOOXZManager *m = Manager();
-		TestGui *gui = standIn.universe->gui.get();
+		TestGui *gui = standIn.universe->testGui.get();
 
 		// The filter: the key, typed text, its prompt.
 		m->_interfaceState = OXZ_STATE_NODATA;
@@ -1163,7 +1158,7 @@ OO_TEST(guiInput)
 		m->processFilterKey();
 		OO_CHECK(m->_interfaceState == OXZ_STATE_SETFILTER);
 		OO_CHECK(!m->_interfaceShowingOXZDetail);
-		OO_CHECK_EQ(standIn.universe->gameView->resets, 1);
+		OO_CHECK_EQ(standIn.universe->testGameView->resets, 1);
 		OO_CHECK(m->isAcceptingTextInput());
 		OO_CHECK(m->isAcceptingGUIInput());
 		standIn.Page();
@@ -1262,7 +1257,7 @@ OO_TEST(guiInput)
 		OO_CHECK(m->_interfaceShowingOXZDetail);
 		OO_CHECK(!m->isAcceptingGUIInput());
 		OO_CHECK_EQ(m->_item, 1u);
-		OO_CHECK_TEXT(standIn.universe->gameView->clipboard, "");
+		OO_CHECK_TEXT(standIn.universe->testGameView->clipboard, "");
 		OO_CHECK_PAGE("info", standIn.Page(),
 			"clear keep\n"
 			"title oolite-oxzmanager-title-infopage\n"
@@ -1514,7 +1509,7 @@ OO_TEST(optionPages)
 	{
 		StandInUniverse standIn;
 		OOOXZManager *m = Manager();
-		TestGui *gui = standIn.universe->gui.get();
+		TestGui *gui = standIn.universe->testGui.get();
 		const oo::PList savedList = m->manifests();
 
 		// Thirteen entries: two pages of ten.

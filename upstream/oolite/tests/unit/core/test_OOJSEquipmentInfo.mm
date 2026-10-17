@@ -112,15 +112,18 @@ oo::PList EquipmentData()
 }	// namespace
 
 
-@interface Universe: OOObject
-- (oo::PList) cxx_equipmentData;
-- (oo::PList) cxx_equipmentDataOutfitting;
-@end
+// The universe as the code under test sees it: a stand-in for the C++ class (bead oo-ql9rn deleted
+// the Objective-C facade this stood in for), with the header's names and signatures.
+class Universe
+{
+public:
+	oo::PList getEquipmentData();
+	oo::PList getEquipmentDataOutfitting();
+};
 
-@implementation Universe
-- (oo::PList) cxx_equipmentData				{ return EquipmentData(); }
-- (oo::PList) cxx_equipmentDataOutfitting	{ return EquipmentData(); }
-@end
+oo::PList Universe::getEquipmentData()	{ return EquipmentData(); }
+oo::PList Universe::getEquipmentDataOutfitting()	{ return EquipmentData(); }
+
 
 Universe *gSharedUniverse = nil;
 
@@ -499,7 +502,7 @@ PlayerEntity *sPlayer = nullptr;
 void SetUpContext()
 {
 	if (sContext != nullptr)  return;
-	gSharedUniverse = [[Universe alloc] init];	// kept for the life of the test
+	gSharedUniverse = new Universe();	// kept for the life of the test
 	sPlayer = new PlayerEntity;
 	sPlayer->_fuel = 30;
 	sPlayer->_fuelChargeRate = 1.5f;

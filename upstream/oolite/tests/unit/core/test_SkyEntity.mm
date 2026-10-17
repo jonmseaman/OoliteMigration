@@ -59,20 +59,13 @@ public:
 
 
 // UNIVERSE: never initialised; counts -setLighting.
-@interface TestUniverse: Universe
+class TestUniverse : public Universe
 {
-@public
-	int			_lightings;
-}
-@end
+public:
+	int _lightings = {};
 
-
-@implementation TestUniverse
-
-- (OOTimeAbsolute) getTime	{ return 0; }
-- (void) setLighting		{ _lightings++; }
-
-@end
+	void setLighting() override	{ _lightings++; }
+};
 
 
 namespace {
@@ -123,8 +116,7 @@ void SetUp()
 {
 	if (sUniverse == nil)
 	{
-		sUniverse = (TestUniverse *)class_createInstance([TestUniverse class], 0);	// never released
-		sUniverse->_cxxUniverse = oo::makeRef<cxx::Universe>(sUniverse);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
+		sUniverse = new TestUniverse();	// never released
 		sPlayer = NewTestPlayer<TestPlayer>();
 		OOSkyDrawableTestAccess::SetStarSetUpStandIn(SetUpStars);
 	}

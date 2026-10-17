@@ -301,15 +301,18 @@ namespace {
 double sNow = 100.0;
 } // namespace
 
-@interface FakeUniverse: OOObject
-- (double) getTime;
-@end
+// The universe as the code under test sees it: a stand-in for the C++ class (bead oo-ql9rn deleted
+// the Objective-C facade the test's FakeUniverse stood in for), with the header's names and signatures.
+class Universe
+{
+public:
+	OOTimeAbsolute getTime();
+};
+typedef Universe FakeUniverse;
 
-@implementation FakeUniverse
-- (double) getTime  { return sNow; }
-@end
+OOTimeAbsolute Universe::getTime()	{ return sNow; }
 
-@class Universe;
+class Universe;
 Universe *gSharedUniverse = nil;
 
 
@@ -339,7 +342,7 @@ void SetUpContext()
 	sGlobal = ooscript::getGlobalObject(gOOJSMainThreadContext);
 	ooscript::initStandardClasses(gOOJSMainThreadContext, sGlobal);
 	InitOOJSTimer(gOOJSMainThreadContext, sGlobal);
-	gSharedUniverse = (Universe *)[[FakeUniverse alloc] init];
+	gSharedUniverse = new FakeUniverse();
 }
 
 

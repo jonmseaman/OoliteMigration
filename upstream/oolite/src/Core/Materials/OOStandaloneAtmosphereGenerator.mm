@@ -113,7 +113,7 @@ bool OOStandaloneAtmosphereGenerator::initWithPlanetInfo(const oo::PList &planet
 		_info.cloudColor = FloatRGBFromDictColor(planetInfo, "cloud_color");
 		_info.paleCloudColor = FloatRGBFromDictColor(planetInfo, "polar_cloud_color");
 		
-		OOGraphicsDetail detailLevel = [UNIVERSE detailLevel];
+		OOGraphicsDetail detailLevel = (UNIVERSE != nullptr ? UNIVERSE->getDetailLevel() : OOGraphicsDetail{});
 		
 #ifndef TEXGEN_TEST_RIG
 		if (detailLevel < DETAIL_LEVEL_SHADERS)
@@ -290,7 +290,7 @@ END:
 		const std::string diffuseName = oo::str::format("atmosphere-%u-%u-diffuse-new", _info.seed.high, _info.seed.low);
 		const std::string lightsName = oo::str::format("atmosphere-%u-%u-alpha-new", _info.seed.high, _info.seed.low);
 		
-		[[UNIVERSE gameView] cxx_dumpRGBAToRGBFileNamed:diffuseName
+		[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) cxx_dumpRGBAToRGBFileNamed:diffuseName
 								   andGrayFileNamed:lightsName
 											  bytes:aBuffer
 											  width:_width
@@ -317,7 +317,7 @@ void OOStandaloneAtmosphereGenerator::dumpNoiseBuffer(float *noise)
 		}
 	}
 	
-	[[UNIVERSE gameView] cxx_dumpGrayToFileNamed:noiseName
+	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) cxx_dumpGrayToFileNamed:noiseName
 									   bytes:noisePx
 									   width:_width
 									  height:_height

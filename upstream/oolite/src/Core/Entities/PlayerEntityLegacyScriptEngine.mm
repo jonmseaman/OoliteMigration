@@ -158,7 +158,7 @@ bool IsWhitespaceNotNewline(char16_t c)
 // universe's C++ part holds the table (no universe: none, as a message to nil answered).
 std::optional<std::string> MissionTextForKey(const std::string &key)
 {
-	cxx::Universe *universe = oo::ToCxx(UNIVERSE);
+	Universe *universe = UNIVERSE;
 	const oo::PList missionText = (universe != nullptr) ? universe->getMissiontext() : oo::PList();
 	const oo::PList *entry = missionText.find(key);
 	const oo::PList value = (entry != nullptr) ? *entry : oo::PList();
@@ -206,7 +206,7 @@ oo::PList StringOrNull(const std::optional<std::string> &string)
 // The universe's C++ part answers (no universe: null, as a message to nil did).
 oo::PList CurrentSystemDataValue(std::string_view key)
 {
-	cxx::Universe *universe = oo::ToCxx(UNIVERSE);
+	Universe *universe = UNIVERSE;
 	const oo::PList data = (universe != nullptr) ? universe->currentSystemData() : oo::PList();
 	const oo::PList *value = data.find(key);
 	return value != nullptr ? *value : oo::PList();
@@ -962,7 +962,7 @@ void PlayerEntity::setMissionDescription(const std::string &textKey, const std::
 
 	if (!text.has_value())
 	{
-		OO_LOG_ERR(kOOLogScriptMissionDescNoText, "in {}, no mission text set for key '{}' [UNIVERSE missiontext] is:\n{} ", CurrentScriptDescription(), textKey, oo::DescriptionOf([UNIVERSE cxx_missiontext]));
+		OO_LOG_ERR(kOOLogScriptMissionDescNoText, "in {}, no mission text set for key '{}' [UNIVERSE missiontext] is:\n{} ", CurrentScriptDescription(), textKey, oo::DescriptionOf((UNIVERSE != nullptr ? UNIVERSE->getMissiontext() : oo::PList())));
 		return;
 	}
 
@@ -1177,13 +1177,13 @@ oo::PList PlayerEntity::foundEquipment_bool()	// called by name (ADR-0043 item 2
 
 oo::PList PlayerEntity::sunWillGoNova_bool()	// called by name (ADR-0043 item 21); returns whether the sun is going to go nova
 {
-	return oo::PList((([UNIVERSE sun] != nullptr ? [UNIVERSE sun]->willGoNova() : false))? "YES" : "NO");
+	return oo::PList((((UNIVERSE != nullptr ? UNIVERSE->sun() : nullptr) != nullptr ? UNIVERSE->sun()->willGoNova() : false))? "YES" : "NO");
 }
 
 
 oo::PList PlayerEntity::sunGoneNova_bool()	// called by name (ADR-0043 item 21); returns whether the sun has gone nova
 {
-	return oo::PList((([UNIVERSE sun] != nullptr ? [UNIVERSE sun]->goneNova() : false))? "YES" : "NO");
+	return oo::PList((((UNIVERSE != nullptr ? UNIVERSE->sun() : nullptr) != nullptr ? UNIVERSE->sun()->goneNova() : false))? "YES" : "NO");
 }
 
 
@@ -1303,7 +1303,7 @@ std::optional<std::string> PlayerEntity::expandMessage(const std::string &valueS
 
 void PlayerEntity::commsMessage(const std::string &valueString)	// called by name (ADR-0055 item 5); shared selector (proposed ADR-0043)
 {
-	[UNIVERSE cxx_addCommsMessage:expandMessage(valueString) forCount:4.5];
+	if (UNIVERSE != nullptr)  UNIVERSE->addCommsMessage(expandMessage(valueString), 4.5);
 }
 
 
@@ -1318,13 +1318,13 @@ void PlayerEntity::commsMessageByUnpiloted(const std::string &valueString)	// ca
 
 void PlayerEntity::consoleMessage3s(const std::string &valueString)	// called by name (ADR-0043 item 21)
 {
-	[UNIVERSE cxx_addMessage:expandMessage(valueString) forCount: 3];
+	if (UNIVERSE != nullptr)  UNIVERSE->addMessage(expandMessage(valueString), 3);
 }
 
 
 void PlayerEntity::consoleMessage6s(const std::string &valueString)	// called by name (ADR-0043 item 21)
 {
-	[UNIVERSE cxx_addMessage:expandMessage(valueString) forCount: 6];
+	if (UNIVERSE != nullptr)  UNIVERSE->addMessage(expandMessage(valueString), 6);
 }
 
 
@@ -1426,7 +1426,7 @@ void PlayerEntity::setPlanetinfo(const std::string &key_valueString)	// called b
 	/* Legacy script planetinfo settings are now non-persistent over save/load
 	 * Virtually nothing uses them any more, and expecting them to have a
 	 * manifest and identifying what it is if so seems unnecessary */
-	[UNIVERSE cxx_setSystemDataKey:keyString value:oo::PList(valueString) fromManifest:std::string()];
+	if (UNIVERSE != nullptr)  UNIVERSE->setSystemDataKey(keyString, oo::PList(valueString), std::string());
 
 }
 
@@ -1449,7 +1449,7 @@ void PlayerEntity::setSpecificPlanetInfo(const std::string &key_valueString)	// 
 	const std::string keyString = TrimWhitespace(tokens[2]);
 	const std::string valueString = TrimWhitespace(tokens[3]);
 
-	[UNIVERSE cxx_setSystemDataForGalaxy:gnum planet:pnum key:keyString value:oo::PList(valueString) fromManifest:std::string() forLayer:OO_LAYER_OXP_DYNAMIC];
+	if (UNIVERSE != nullptr)  UNIVERSE->setSystemDataForGalaxy(gnum, pnum, keyString, oo::PList(valueString), std::string(), OO_LAYER_OXP_DYNAMIC);
 }
 
 
@@ -1470,7 +1470,7 @@ void PlayerEntity::awardCargo(const std::string &amount_typeString)	// called by
 
 	const oo::PList tokenArray = TokenArray(tokens);
 	const std::string &type = tokens[1];	// the good (Amendment 1 item 10: a std::string)
-	if (!([UNIVERSE commodities] != nullptr ? [UNIVERSE commodities]->goodDefined(type) : false))
+	if (!((UNIVERSE != nullptr ? UNIVERSE->getCommodities() : nullptr) != nullptr ? UNIVERSE->getCommodities()->goodDefined(type) : false))
 	{
 		OO_LOG(kOOLogSyntaxAwardCargo, "***** SCRIPT ERROR: in {}, CANNOT awardCargo: '{}' ({})", CurrentScriptDescription(), argument, "unknown type");
 		return;
@@ -1584,10 +1584,7 @@ void PlayerEntity::messageShipAIs(const std::string &roles_message)	// called by
 	std::string roleString = tokens[0];
 	const std::string messageString = JoinedFrom(tokens, 1);
 
-	for (const auto &target : [UNIVERSE cxx_findShipsMatchingPredicate:HasPrimaryRolePredicate
-															  parameter:&roleString
-																inRange:-1
-															   ofEntity:nil])
+	for (const auto &target : (UNIVERSE != nullptr ? UNIVERSE->findShipsMatchingPredicate(HasPrimaryRolePredicate, &roleString, -1, nullptr) : std::vector<oo::ObjCRef<::Entity *>>()))
 	{
 		[(oo::ToShip(target.get()) != nullptr ? oo::ToShip(target.get())->getAI() : (::AI *)nullptr) cxx_reactToMessage:messageString context:std::string("messageShipAIs:")];
 	}
@@ -1624,7 +1621,7 @@ void PlayerEntity::addShips(const std::string &roles_number)	// called by name (
 	OO_LOG(kOOLogNoteAddShips, "DEBUG: Going to add {} ships with role '{}'", number, roleString);
 
 	while (number--)
-		[UNIVERSE cxx_witchspaceShipWithPrimaryRole:roleString];
+		if (UNIVERSE != nullptr)  UNIVERSE->witchspaceShipWithPrimaryRole(roleString);
 }
 
 
@@ -1652,7 +1649,7 @@ void PlayerEntity::addSystemShips(const std::string &roles_number_position)	// c
 	OO_LOG(kOOLogNoteAddShips, "DEBUG: Going to add {} ships with role '{}' at a point {:.3f} along route1", number, roleString, posn);
 
 	while (number--)
-		[UNIVERSE cxx_addShipWithRole:roleString nearRouteOneAt:posn];
+		if (UNIVERSE != nullptr)  UNIVERSE->addShipWithRole(roleString, posn);
 }
 
 
@@ -1681,7 +1678,7 @@ void PlayerEntity::addShipsAt(const std::string &roles_number_system_x_y_z)	// c
 
 	OO_LOG(kOOLogNoteAddShips, "DEBUG: Going to add {} ship(s) with role '{}' at point ({:.3f}, {:.3f}, {:.3f}) using system {}", number, roleString, posn.x, posn.y, posn.z, systemString);
 
-	if (![UNIVERSE cxx_addShips: number withRole:roleString nearPosition: posn withCoordinateSystem: systemString])
+	if (!(UNIVERSE != nullptr ? UNIVERSE->addShipsNearPosition(number, roleString, posn, systemString) : false))
 	{
 		OO_LOG(kOOLogScriptAddShipsFailed, "***** SCRIPT ERROR: in {}, {} could not add {} ships with role \"{}\"", CurrentScriptDescription(), "addShipsAt:", (unsigned)number, roleString);
 	}
@@ -1713,7 +1710,7 @@ void PlayerEntity::addShipsAtPrecisely(const std::string &roles_number_system_x_
 
 	OO_LOG(kOOLogNoteAddShips, "DEBUG: Going to add {} ship(s) with role '{}' precisely at point ({:.3f}, {:.3f}, {:.3f}) using system {}", number, roleString, posn.x, posn.y, posn.z, systemString);
 
-	if (![UNIVERSE cxx_addShips: number withRole:roleString atPosition: posn withCoordinateSystem: systemString])
+	if (!(UNIVERSE != nullptr ? UNIVERSE->addShipsAtPosition(number, roleString, posn, systemString) : false))
 	{
 		OO_LOG(kOOLogScriptAddShipsFailed, "***** SCRIPT ERROR: in {}, {} could not add {} ships with role '{}'", CurrentScriptDescription(), "addShipsAtPrecisely:", (unsigned)number, roleString);
 	}
@@ -1748,7 +1745,7 @@ void PlayerEntity::addShipsWithinRadius(const std::string &roles_number_system_x
 
 	OO_LOG(kOOLogNoteAddShips, "DEBUG: Going to add {} ship(s) with role '{}' within {:.2f} radius about point ({:.3f}, {:.3f}, {:.3f}) using system {}", number, roleString, (double)r, x, y, z, systemString);
 
-	if (![UNIVERSE cxx_addShips:number withRole: roleString nearPosition: posn withCoordinateSystem: systemString withinRadius: r])
+	if (!(UNIVERSE != nullptr ? UNIVERSE->addShipsNearPosition(number, roleString, posn, systemString, r) : false))
 	{
 		OO_LOG(kOOLogScriptAddShipsFailed, "***** SCRIPT ERROR :in {}, {} could not add {} ships with role \"{}\"", CurrentScriptDescription(), "addShipsWithinRadius:", (unsigned)number, roleString);
 	}
@@ -1757,7 +1754,7 @@ void PlayerEntity::addShipsWithinRadius(const std::string &roles_number_system_x
 
 void PlayerEntity::spawnShip(const std::string &ship_key)	// called by name (ADR-0055 item 5)
 {
-	if ([UNIVERSE cxx_spawnShip:ship_key])
+	if ((UNIVERSE != nullptr ? UNIVERSE->spawnShip(ship_key) : false))
 	{
 		OO_LOG(kOOLogNoteAddShips, "DEBUG: Spawned ship with shipdata key '{}'.", ship_key);
 	}
@@ -1968,7 +1965,7 @@ void PlayerEntity::subtract(const std::string &missionVariableString_value)	// c
 
 void PlayerEntity::checkForShips(const std::string &roleString)	// called by name (ADR-0043 item 21)
 {
-	shipsFound = [UNIVERSE cxx_countShipsWithPrimaryRole:roleString];
+	shipsFound = (UNIVERSE != nullptr ? UNIVERSE->countShipsWithPrimaryRole(roleString) : 0u);
 }
 
 
@@ -1999,7 +1996,7 @@ void PlayerEntity::addMissionText(const std::string &textKey)	// called by name 
 
 void PlayerEntity::addLiteralMissionText(const std::string &text)	// called by name (ADR-0043 item 21)
 {
-	::GuiDisplayGen *gui = [UNIVERSE gui];
+	::GuiDisplayGen *gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 
 	for (const std::string &para : oo::str::split(text, "\n"))
 	{
@@ -2010,7 +2007,7 @@ void PlayerEntity::addLiteralMissionText(const std::string &text)	// called by n
 
 void PlayerEntity::setMissionChoiceByTextEntry(bool enable)
 {
-	::MyOpenGLView	*gameView = [UNIVERSE gameView];
+	::MyOpenGLView	*gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
 	_missionTextEntry = enable;
 	[gameView resetTypedString];
 }
@@ -2018,7 +2015,7 @@ void PlayerEntity::setMissionChoiceByTextEntry(bool enable)
 
 void PlayerEntity::setMissionChoices(const std::string &choicesKey)	// called by name (ADR-0043 item 21); choicesKey is a key for a dictionary of // choices/choice phrases in missiontext.plist and also..
 {
-	const oo::PList missionText = [UNIVERSE cxx_missiontext];
+	const oo::PList missionText = (UNIVERSE != nullptr ? UNIVERSE->getMissiontext() : oo::PList());
 	const oo::PList *choicesEntry = missionText.find(choicesKey);
 	const oo::PList choicesDict = (choicesEntry != nullptr) ? *choicesEntry : oo::PList();
 	if (!choicesDict.isDict() || choicesDict.count() == 0)
@@ -2031,7 +2028,7 @@ void PlayerEntity::setMissionChoices(const std::string &choicesKey)	// called by
 
 void PlayerEntity::setMissionChoicesDictionary(const oo::PList &choicesDict)
 {
-	::GuiDisplayGen* gui = [UNIVERSE gui];
+	::GuiDisplayGen* gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 	// TODO: MORE STUFF HERE
 	//
 	// What it does now:
@@ -2069,7 +2066,7 @@ void PlayerEntity::setMissionChoicesDictionary(const oo::PList &choicesDict)
 	gui->setText(std::string(), end_row);				// clears out the 'Press spacebar' message
 	gui->setKey(std::string(), end_row);					// clears the key to enable pollDemoControls to check for a selection
 	gui->setSelectableRange(NSMakeRange(0,0));	// clears the selectable range
-	[UNIVERSE enterGUIViewModeWithMouseInteraction:YES]; // enables mouse selection of the choices list items
+	if (UNIVERSE != nullptr)  UNIVERSE->enterGUIViewModeWithMouseInteraction(YES); // enables mouse selection of the choices list items
 
 	OOGUIRow			choicesRow = (end_row+1) - keysCount;
 	std::string			choiceText;
@@ -2211,11 +2208,11 @@ void PlayerEntity::showShipModel(const std::string &role)	// called by name (ADR
 	const std::string roleString = role;
 	if (roleString == "none" || roleString.empty())
 	{
-		[UNIVERSE removeDemoShips];
+		if (UNIVERSE != nullptr)  UNIVERSE->removeDemoShips();
 		return;
 	}
 
-	::ShipEntity *ship = [UNIVERSE cxx_makeDemoShipWithRole:roleString spinning:YES];
+	::ShipEntity *ship = (UNIVERSE != nullptr ? UNIVERSE->makeDemoShipWithRole(roleString, YES) : (::ShipEntity *)nil);
 	OO_LOG(kOOLogNoteShowShipModel, "::::: showShipModel:'{}' ({}) ({})", roleString, oo::DescriptionOf(oo::ToObjC(ship)), (ship != nullptr ? ship->getName() : std::optional<std::string>()).value_or("(null)"));
 }
 
@@ -2283,7 +2280,7 @@ void PlayerEntity::setFuelLeak(const std::string &value)	// called by name (ADR-
 	if (fuel_leak_rate > 0)
 	{
 		playFuelLeak();
-		[UNIVERSE cxx_addMessage:OO_DESC("danger-fuel-leak") forCount:6];
+		if (UNIVERSE != nullptr)  UNIVERSE->addMessage(OO_DESC("danger-fuel-leak"), 6);
 		OO_LOG(kOOLogNoteFuelLeak, "{}", "FUEL LEAK activated!");
 	}
 }
@@ -2298,14 +2295,14 @@ oo::PList PlayerEntity::fuelLeakRate_number()	// called by name (ADR-0043 item 2
 void PlayerEntity::setSunNovaIn(const std::string &time_value)	// called by name (ADR-0043 item 21)
 {
 	double time_until_nova = oo::str::doubleValue(time_value);
-	if ([UNIVERSE sun] != nullptr)  [UNIVERSE sun]->setGoingNova(YES, time_until_nova);
+	if ((UNIVERSE != nullptr ? UNIVERSE->sun() : nullptr) != nullptr)  UNIVERSE->sun()->setGoingNova(YES, time_until_nova);
 }
 
 
 void PlayerEntity::launchFromStation()
 {
 	// ensure autosave is ready for the next unscripted launch
-	if ([UNIVERSE autoSave]) [UNIVERSE setAutoSaveNow:YES];
+	if ((UNIVERSE != nullptr ? UNIVERSE->getAutoSave() : false)) { if (UNIVERSE != nullptr)  UNIVERSE->setAutoSaveNow(YES); }
 	if (status() == STATUS_DOCKING)  setStatus(STATUS_DOCKED); // needed here to prevent the normal update from continuing with docking.
 	leaveDock(dockedStation());
 }
@@ -2315,10 +2312,10 @@ void PlayerEntity::blowUpStation()
 {
 	::StationEntity		*mainStation = nil;
 	
-	mainStation = [UNIVERSE station];
+	mainStation = (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr);
 	if (mainStation != nil)
 	{
-		[UNIVERSE unMagicMainStation];
+		if (UNIVERSE != nullptr)  UNIVERSE->unMagicMainStation();
 		if (mainStation != nullptr)  mainStation->takeEnergyDamage(500000000.0, nullptr, nullptr, std::string());	// 500 million should do it!
 	}
 }
@@ -2328,8 +2325,8 @@ void PlayerEntity::sendAllShipsAway()
 {
 	if (!UNIVERSE)
 		return;
-	int			ent_count =		UNIVERSE->_cxxUniverse->n_entities;
-	cxx::Entity**	uni_entities =	UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
+	int			ent_count =		UNIVERSE->n_entities;
+	cxx::Entity**	uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
 	std::vector<::Entity *>	my_entities(ent_count);
 	int i;
 	for (i = 0; i < ent_count; i++)
@@ -2351,7 +2348,7 @@ void PlayerEntity::sendAllShipsAway()
 				if (se1 != nullptr)  se1->setAITo("exitingTraderAI.plist");	// lets them return to their previous state after the jump
 				[se1AI cxx_setState:"EXIT_SYSTEM"];
 				// The following should prevent all ships leaving at once (freezes oolite on slower machines)
-				[se1AI setNextThinkTime:[UNIVERSE getTime] + 3 + (ranrot_rand() & 15)];
+				[se1AI setNextThinkTime:(UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0) + 3 + (ranrot_rand() & 15)];
 				if (se1 != nullptr)  se1->setPrimaryRole("oolite-none");	// prevents new ship from appearing at witchpoint when this one leaves!
 			}
 		}
@@ -2377,7 +2374,7 @@ void PlayerEntity::addPlanet(const std::string &planetKey)	// called by name (AD
 	if (!UNIVERSE)
 		return nil;
 	// The system properties, once, as an oo::PList (null when there are none).
-	const oo::PList dict = ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getPropertiesForSystemKey(planetKey) : oo::PList());
+	const oo::PList dict = ((UNIVERSE != nullptr ? UNIVERSE->getSystemManager() : nullptr) != nullptr ? UNIVERSE->getSystemManager()->getPropertiesForSystemKey(planetKey) : oo::PList());
 	if (dict.isNull())
 	{
 		OO_LOG("script.error.addPlanet.keyNotFound", "***** ERROR: could not find an entry in planetinfo.plist for '{}'", planetKey);
@@ -2393,7 +2390,7 @@ void PlayerEntity::addPlanet(const std::string &planetKey)	// called by name (AD
 		// autoreleased Objective-C object (the facade went with bead oo-9ht.129).
 		oo::Ref<::OOPlanetEntity> planetRef = oo::makeRef<::OOPlanetEntity>();
 		oo::NewEntityFacade(planetRef);
-		planetRef->initFromDictionary(dict, true, ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getRandomSeedForCurrentSystem() : Random_Seed()), system_id);
+		planetRef->initFromDictionary(dict, true, ((UNIVERSE != nullptr ? UNIVERSE->getSystemManager() : nullptr) != nullptr ? UNIVERSE->getSystemManager()->getRandomSeedForCurrentSystem() : Random_Seed()), system_id);
 		planet = planetRef.get();
 	}
 
@@ -2412,12 +2409,12 @@ void PlayerEntity::addPlanet(const std::string &planetKey)	// called by name (AD
 	}
 
 	const std::string positionString = ConditionString(*positionValue).value_or(std::string());
-	if(oo::str::hasPrefix(positionString, "abs ") && ([UNIVERSE planet] != nil || [UNIVERSE sun] !=nil))
+	if(oo::str::hasPrefix(positionString, "abs ") && ((UNIVERSE != nullptr ? UNIVERSE->planet() : nullptr) != nil || (UNIVERSE != nullptr ? UNIVERSE->sun() : nullptr) !=nil))
 	{
 		OO_LOG_WARN("script.deprecated", "setting {} for {} '{}' in 'abs' inside .plists can cause compatibility issues across Oolite versions. Use coordinates relative to main system objects instead.","position","planet",planetKey);
 	}
 
-	HPVector posn = [UNIVERSE cxx_coordinatesFromCoordinateSystemString:positionString];
+	HPVector posn = (UNIVERSE != nullptr ? UNIVERSE->coordinatesFromCoordinateSystemString(positionString) : HPVector{});
 	if (posn.x || posn.y || posn.z)
 	{
 		OO_LOG(kOOLogDebugAddPlanet, "planet position ({:.2f} {:.2f} {:.2f}) derived from {}", posn.x, posn.y, posn.z, positionString);
@@ -2429,7 +2426,7 @@ void PlayerEntity::addPlanet(const std::string &planetKey)	// called by name (AD
 	}
 	if (planet != nullptr)  planet->setPosition(posn);
 
-	[UNIVERSE addEntity:oo::ToObjC(planet)];
+	if (UNIVERSE != nullptr)  UNIVERSE->addEntity(oo::ToObjC(planet));
 	return planet;
 }
 
@@ -2447,7 +2444,7 @@ void PlayerEntity::addMoon(const std::string &moonKey)	// called by name (ADR-00
 	if (!UNIVERSE)
 		return nil;
 	// The system properties, once, as an oo::PList (null when there are none).
-	const oo::PList dict = ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getPropertiesForSystemKey(moonKey) : oo::PList());
+	const oo::PList dict = ((UNIVERSE != nullptr ? UNIVERSE->getSystemManager() : nullptr) != nullptr ? UNIVERSE->getSystemManager()->getPropertiesForSystemKey(moonKey) : oo::PList());
 	if (dict.isNull())
 	{
 		OO_LOG("script.error.addPlanet.keyNotFound", "***** ERROR: could not find an entry in planetinfo.plist for '{}'", moonKey);
@@ -2463,7 +2460,7 @@ void PlayerEntity::addMoon(const std::string &moonKey)	// called by name (ADR-00
 		// autoreleased Objective-C object (the facade went with bead oo-9ht.129).
 		oo::Ref<::OOPlanetEntity> planetRef = oo::makeRef<::OOPlanetEntity>();
 		oo::NewEntityFacade(planetRef);
-		planetRef->initFromDictionary(dict, false, ([UNIVERSE systemManager] != nullptr ? [UNIVERSE systemManager]->getRandomSeedForCurrentSystem() : Random_Seed()), system_id);
+		planetRef->initFromDictionary(dict, false, ((UNIVERSE != nullptr ? UNIVERSE->getSystemManager() : nullptr) != nullptr ? UNIVERSE->getSystemManager()->getRandomSeedForCurrentSystem() : Random_Seed()), system_id);
 		planet = planetRef.get();
 	}
 
@@ -2482,12 +2479,12 @@ void PlayerEntity::addMoon(const std::string &moonKey)	// called by name (ADR-00
 	}
 
 	const std::string positionString = ConditionString(*positionValue).value_or(std::string());
-	if(oo::str::hasPrefix(positionString, "abs ") && ([UNIVERSE planet] != nil || [UNIVERSE sun] !=nil))
+	if(oo::str::hasPrefix(positionString, "abs ") && ((UNIVERSE != nullptr ? UNIVERSE->planet() : nullptr) != nil || (UNIVERSE != nullptr ? UNIVERSE->sun() : nullptr) !=nil))
 	{
 		OO_LOG_WARN("script.deprecated", "setting {} for {} '{}' in 'abs' inside .plists can cause compatibility issues across Oolite versions. Use coordinates relative to main system objects instead.","position","moon",moonKey);
 	}
 
-	HPVector posn = [UNIVERSE cxx_coordinatesFromCoordinateSystemString:positionString];
+	HPVector posn = (UNIVERSE != nullptr ? UNIVERSE->coordinatesFromCoordinateSystemString(positionString) : HPVector{});
 	if (posn.x || posn.y || posn.z)
 	{
 		OO_LOG(kOOLogDebugAddPlanet, "moon position ({:.2f} {:.2f} {:.2f}) derived from {}", posn.x, posn.y, posn.z, positionString);
@@ -2499,7 +2496,7 @@ void PlayerEntity::addMoon(const std::string &moonKey)	// called by name (ADR-00
 	}
 	if (planet != nullptr)  planet->setPosition(posn);
 
-	[UNIVERSE addEntity:oo::ToObjC(planet)];
+	if (UNIVERSE != nullptr)  UNIVERSE->addEntity(oo::ToObjC(planet));
 	return planet;
 }
 
@@ -2586,8 +2583,8 @@ void PlayerEntity::setGuiToMissionScreen()
 
 void PlayerEntity::refreshMissionScreenTextEntry()
 {
-	::MyOpenGLView	*gameView = [UNIVERSE gameView];
-	::GuiDisplayGen	*gui = [UNIVERSE gui];
+	::MyOpenGLView	*gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
+	::GuiDisplayGen	*gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 	NSUInteger end_row = 21;
 	if (getHud() != nullptr && getHud()->getAllowBigGui()) 
 	{
@@ -2607,7 +2604,7 @@ void PlayerEntity::refreshMissionScreenTextEntry()
 
 void PlayerEntity::setGuiToMissionScreenWithCallback(bool callback)
 {
-	::GuiDisplayGen	*gui = [UNIVERSE gui];
+	::GuiDisplayGen	*gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 	OOGUIScreenID	oldScreen = gui_screen;
 	NSUInteger end_row = 21;
 	if (getHud() != nullptr && getHud()->getAllowBigGui()) 
@@ -2654,7 +2651,7 @@ void PlayerEntity::setGuiToMissionScreenWithCallback(bool callback)
 	OOMusicController::sharedController()->playMissionMusic();
 	
 	// the following are necessary...
-	[UNIVERSE enterGUIViewModeWithMouseInteraction:NO];
+	if (UNIVERSE != nullptr)  UNIVERSE->enterGUIViewModeWithMouseInteraction(NO);
 	_missionWithCallback = callback;
 	_missionAllowInterrupt = NO;
 	noteGUIDidChangeFrom(oldScreen, gui_screen);
@@ -2664,7 +2661,7 @@ void PlayerEntity::setGuiToMissionScreenWithCallback(bool callback)
 
 void PlayerEntity::setBackgroundFromDescriptionsKey(const std::string &d_key)
 {
-	const oo::PList *itemsEntry = [UNIVERSE cxx_descriptions]->find(d_key);
+	const oo::PList *itemsEntry = UNIVERSE->descriptions()->find(d_key);
 	const oo::PList items = (itemsEntry != nullptr) ? *itemsEntry : oo::PList();
 	//
 	if (items.isNull())
@@ -2774,7 +2771,7 @@ bool PlayerEntity::processSceneString(const std::string &item, Vector off)
 		Vector	scene_offset = {0};
 		cxx_ScanVectorFromString(joined(2, 3), &scene_offset);
 		scene_offset.x += off.x;	scene_offset.y += off.y;	scene_offset.z += off.z;
-		const oo::PList *sceneEntry = [UNIVERSE cxx_descriptions]->find(scene_key);
+		const oo::PList *sceneEntry = UNIVERSE->descriptions()->find(scene_key);
 		const oo::PList scene_items = (sceneEntry != nullptr) ? *sceneEntry : oo::PList();
 		OO_LOG(kOOLogDebugProcessSceneStringAddScene, "::::: adding scene: '{}'", scene_key);
 		//
@@ -2800,11 +2797,11 @@ bool PlayerEntity::processSceneString(const std::string &item, Vector off)
 
 		if (i_key == "ship" || i_key == "model")
 		{
-			ship = [UNIVERSE cxx_newShipWithName:i_info[1]];
+			ship = (UNIVERSE != nullptr ? UNIVERSE->newShipWithName(i_info[1]) : (::ShipEntity *)nil);
 		}
 		else if (i_key == "role")
 		{
-			ship = [UNIVERSE cxx_newShipWithRole:i_info[1]];
+			ship = (UNIVERSE != nullptr ? UNIVERSE->newShipWithRole(i_info[1]) : (::ShipEntity *)nil);
 		}
 		if (!ship)
 			return NO;
@@ -2817,10 +2814,10 @@ bool PlayerEntity::processSceneString(const std::string &item, Vector off)
 		OO_LOG(kOOLogDebugProcessSceneStringAddModel, "::::: adding model to scene:'{}'", oo::DescriptionOf(oo::ToObjC(ship)));
 		if (ship != nullptr)  ship->setOrientation(model_q);
 		if (ship != nullptr)  ship->setPosition(vectorToHPVector(model_p0));
-		[UNIVERSE setMainLightPosition:(Vector){ DEMO_LIGHT_POSITION }]; // set light origin
+		if (UNIVERSE != nullptr)  UNIVERSE->setMainLightPosition((Vector){ DEMO_LIGHT_POSITION }); // set light origin
 		if (ship != nullptr)  ship->setScanClass(CLASS_NO_DRAW);
 		if (ship != nullptr)  ship->switchAITo("nullAI.plist");
-		[UNIVERSE addEntity: oo::ToObjC(ship)];	// STATUS_IN_FLIGHT, AI state GLOBAL
+		if (UNIVERSE != nullptr)  UNIVERSE->addEntity(oo::ToObjC(ship));	// STATUS_IN_FLIGHT, AI state GLOBAL
 		if (ship != nullptr)  ship->setStatus(STATUS_COCKPIT_DISPLAY);
 		if (ship != nullptr)  ship->setRoll(0.0);
 		if (ship != nullptr)  ship->setPitch(0.0);
@@ -2838,7 +2835,7 @@ bool PlayerEntity::processSceneString(const std::string &item, Vector off)
 		if (i_info.size() != 9)	// must be player_x_y_z_W_X_Y_Z_align
 			return NO;				//		   0..... 1 2 3 4 5 6 7 8....
 
-		::ShipEntity* doppelganger = [UNIVERSE cxx_newShipWithName:shipDataKey().value_or(std::string())];   // retain count = 1
+		::ShipEntity* doppelganger = (UNIVERSE != nullptr ? UNIVERSE->newShipWithName(shipDataKey().value_or(std::string())) : (::ShipEntity *)nil);   // retain count = 1
 		if (!doppelganger)
 			return NO;
 
@@ -2852,10 +2849,10 @@ bool PlayerEntity::processSceneString(const std::string &item, Vector off)
 		OO_LOG(kOOLogDebugProcessSceneStringAddModel, "::::: adding model to scene:'{}'", oo::DescriptionOf(oo::ToObjC(doppelganger)));
 		if (doppelganger != nullptr)  doppelganger->setOrientation(model_q);
 		if (doppelganger != nullptr)  doppelganger->setPosition(vectorToHPVector(model_p0));
-		[UNIVERSE setMainLightPosition:(Vector){ DEMO_LIGHT_POSITION }]; // set light origin
+		if (UNIVERSE != nullptr)  UNIVERSE->setMainLightPosition((Vector){ DEMO_LIGHT_POSITION }); // set light origin
 		if (doppelganger != nullptr)  doppelganger->setScanClass(CLASS_NO_DRAW);
 		if (doppelganger != nullptr)  doppelganger->switchAITo("nullAI.plist");
-		[UNIVERSE addEntity: oo::ToObjC(doppelganger)];
+		if (UNIVERSE != nullptr)  UNIVERSE->addEntity(oo::ToObjC(doppelganger));
 		if (doppelganger != nullptr)  doppelganger->setStatus(STATUS_COCKPIT_DISPLAY);
 		if (doppelganger != nullptr)  doppelganger->setRoll(0.0);
 		if (doppelganger != nullptr)  doppelganger->setPitch(0.0);
@@ -2883,12 +2880,12 @@ bool PlayerEntity::processSceneString(const std::string &item, Vector off)
 			_sysInfoLight = (info_system_id & 2) ? (Vector){ 6000.0, -5000.0, -10000.0 } : (Vector){ 6000.0, 4000.0, -10000.0 };
 		}
 
-		[UNIVERSE setMainLightPosition:_sysInfoLight]; // set light origin
+		if (UNIVERSE != nullptr)  UNIVERSE->setMainLightPosition(_sysInfoLight); // set light origin
 
 		::OOPlanetEntity *originalPlanet = nil;
-		if (i_key == "local-planet" && [UNIVERSE sun])
+		if (i_key == "local-planet" && (UNIVERSE != nullptr && UNIVERSE->sun() != nullptr))
 		{
-			originalPlanet = [UNIVERSE planet];
+			originalPlanet = (UNIVERSE != nullptr ? UNIVERSE->planet() : nullptr);
 		}
 		else
 		{
@@ -2929,7 +2926,7 @@ bool PlayerEntity::processSceneString(const std::string &item, Vector off)
 		 *     - necessary to duplicate the rotation already performed in PlanetEntity.m since we reset the orientation above. */
 		int		deltaT = floor(fmod(clockTimeAdjusted(), 86400));
 		if (doppelganger != nullptr)  doppelganger->update(deltaT);
-		[UNIVERSE addEntity:oo::ToObjC(doppelganger)];
+		if (UNIVERSE != nullptr)  UNIVERSE->addEntity(oo::ToObjC(doppelganger));
 
 		return YES;
 	}

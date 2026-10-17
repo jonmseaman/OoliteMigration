@@ -70,22 +70,34 @@ typedef enum
 /*	The universe. While _raise is set, -cxx_gameSettings raises, and while _throwCxx is set it
 	throws a C++ exception, so the test sees what an exception under a native becomes.
 */
-@interface Universe: OOObject
+#import "UniverseStandIn.h"
+
+// The universe as the code under test sees it: a stand-in for the C++ class (bead oo-ql9rn deleted
+// the Objective-C facade the test's Objective-C stand-in stood in for), with the header's names and signatures.
+// It answers virtual members, so it has the game's vtable (UniverseStandIn.h) and StandInUniverse overrides them.
+class Universe : public oo::RefCounted
 {
-@public
+public:
+	OO_UNIVERSE_STAND_IN_VIRTUAL_MEMBERS
+
 	MyOpenGLView *_gameView;
 	int _currentPostFX;
 	double _timeAccelerationFactor;
 	BOOL _raise;
 	BOOL _throwCxx;
-}
-- (MyOpenGLView *) gameView;
-- (oo::PList) cxx_gameSettings;
-- (int) currentPostFX;
-- (void) setCurrentPostFX:(int)newCurrentPostFX;
-- (double) timeAccelerationFactor;
-- (void) setTimeAccelerationFactor:(double)newTimeAccelerationFactor;
-@end
+
+	oo::PList gameSettings();
+	int currentPostFX();
+	void setCurrentPostFX(int);
+	double getTimeAccelerationFactor();
+	void setTimeAccelerationFactor(double);
+};
+
+class StandInUniverse : public Universe
+{
+public:
+	::MyOpenGLView *getGameView() override	{ return _gameView; }
+};
 
 
 #import "ResourceManager.h"
@@ -130,23 +142,16 @@ oo::PList Dict(std::initializer_list<std::pair<const char *, oo::PList>> entries
 @end
 
 
-@implementation Universe
-
-- (MyOpenGLView *) gameView  { return _gameView; }
-
-- (oo::PList) cxx_gameSettings
+oo::PList Universe::gameSettings()
 {
 	if (_raise)  [OOException raise:OOInvalidArgumentException format:"settings %s", "boom"];
 	if (_throwCxx)  throw std::runtime_error("cxx boom");
 	return Dict({ { "detailLevel", oo::PList("DETAIL_LEVEL_SHADERS") }, { "musicMode", oo::PList("MUSIC_ON") } });
 }
-
-- (int) currentPostFX  { return _currentPostFX; }
-- (void) setCurrentPostFX:(int)newCurrentPostFX  { _currentPostFX = newCurrentPostFX; }
-- (double) timeAccelerationFactor  { return _timeAccelerationFactor; }
-- (void) setTimeAccelerationFactor:(double)newTimeAccelerationFactor  { _timeAccelerationFactor = newTimeAccelerationFactor; }
-
-@end
+int Universe::currentPostFX()	{ return _currentPostFX; }
+void Universe::setCurrentPostFX(int newCurrentPostFX)	{ _currentPostFX = newCurrentPostFX; }
+double Universe::getTimeAccelerationFactor()	{ return _timeAccelerationFactor; }
+void Universe::setTimeAccelerationFactor(double newTimeAccelerationFactor)	{ _timeAccelerationFactor = newTimeAccelerationFactor; }
 
 
 // ResourceManager is C++ since bead oo-9ht.150 deleted its Objective-C facade: C++ definitions of the
@@ -404,7 +409,7 @@ void SetUpContext()
 	sView->_colorSaturation = 1.0f;
 	sView->_hdrToneMapper = OOHDR_TONEMAPPER_DICE;
 	sView->_sdrToneMapper = OOSDR_TONEMAPPER_AgX;
-	sUniverse = [[Universe alloc] init];
+	sUniverse = new StandInUniverse();
 	sUniverse->_gameView = sView;
 	sUniverse->_currentPostFX = 2;
 	sUniverse->_timeAccelerationFactor = 1.0;

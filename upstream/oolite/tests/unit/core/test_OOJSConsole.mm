@@ -338,24 +338,27 @@ GLint OOOpenGLExtensionManager::textureUnitCount()  { return 4; }
 GLint OOOpenGLExtensionManager::textureImageUnitCount()  { return 16; }
 
 
-@interface FakeUniverse: OOObject
+// The universe as the code under test sees it: a stand-in for the C++ class (bead oo-ql9rn deleted
+// the Objective-C facade the test's FakeUniverse stood in for), with the header's names and signatures.
+class Universe
 {
-@public
+public:
 	OOGraphicsDetail _detailLevel;
 	BOOL _displayFPS;
-}
-@end
 
-@implementation FakeUniverse
+	OOGraphicsDetail getDetailLevel();
+	void setDetailLevel(OOGraphicsDetail);
+	bool getDisplayFPS();
+	void setDisplayFPS(bool);
+};
+typedef Universe FakeUniverse;
 
-- (OOGraphicsDetail) detailLevel  { return _detailLevel; }
-- (void) setDetailLevel:(OOGraphicsDetail)value  { _detailLevel = value; }
-- (BOOL) displayFPS  { return _displayFPS; }
-- (void) setDisplayFPS:(BOOL)value  { _displayFPS = value; }
+OOGraphicsDetail Universe::getDetailLevel()	{ return _detailLevel; }
+void Universe::setDetailLevel(OOGraphicsDetail value)	{ _detailLevel = value; }
+bool Universe::getDisplayFPS()	{ return _displayFPS; }
+void Universe::setDisplayFPS(bool value)	{ _displayFPS = value; }
 
-@end
-
-@class Universe;
+class Universe;
 Universe *gSharedUniverse = nil;
 
 
@@ -468,7 +471,7 @@ void SetUpContext()
 	ooscript::beginRequest(sContext);
 	sGlobal = ooscript::getGlobalObject(sContext);
 	ooscript::initStandardClasses(sContext, sGlobal);
-	gSharedUniverse = (Universe *)[[FakeUniverse alloc] init];
+	gSharedUniverse = new FakeUniverse();
 	sPlainEntity = [[Entity alloc] init];
 	sInspectableEntity = [[InspectableEntity alloc] init];
 

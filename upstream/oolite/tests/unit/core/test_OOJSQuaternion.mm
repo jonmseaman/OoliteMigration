@@ -189,6 +189,11 @@ void OOJSUnreachable(const char *function, const char *, unsigned)
 
 Universe *gSharedUniverse = nil;	// OOJSVector.mm's coordinate-system methods read it; not called here
 
+// Link stubs, never reached: OOJSVector.mm's coordinate-system methods call them on the universe,
+// which stays nil here (bead oo-ql9rn: they were messages to nil).
+HPVector Universe::legacyPositionFrom(HPVector, const std::string &)  { std::abort(); }
+HPVector Universe::coordinatesFromCoordinateSystemString(const std::string &)  { std::abort(); }
+
 
 // MARK: The context -------------------------------------------------------------------------------
 

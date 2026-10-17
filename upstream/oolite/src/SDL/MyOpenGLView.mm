@@ -575,7 +575,7 @@ void cxx::MyOpenGLView::setUpBasicOpenGLStateWithSize()
 
 	if (UNIVERSE)
 	{
-		[UNIVERSE setLighting];
+		if (UNIVERSE != nullptr)  UNIVERSE->setLighting();
 	}
 	else
 	{
@@ -672,7 +672,7 @@ void cxx::MyOpenGLView::updateScreen()
 {
 	if (UNIVERSE)
 	{
-		[UNIVERSE drawUniverse];  // do all the drawing!
+		if (UNIVERSE != nullptr)  UNIVERSE->drawUniverse();  // do all the drawing!
 	}
 	else
 	{

@@ -70,19 +70,11 @@ T *NewTestPlayer()
 
 
 // UNIVERSE: never initialised; answers the test's time.
-@interface TestUniverse: Universe
+class TestUniverse : public Universe
 {
-@public
-	OOTimeAbsolute	_time;
-}
-@end
-
-
-@implementation TestUniverse
-
-- (OOTimeAbsolute) getTime	{ return _time; }
-
-@end
+public:
+	OOTimeAbsolute &_time = universal_time;	// the universe's own state, which its getter answers (bead oo-ql9rn)
+};
 
 
 /*	The plume's ship: answers what the plume asks a ShipEntity. C++ since bead oo-9ht.144 deleted the
@@ -124,8 +116,7 @@ void SetUp(OOTimeAbsolute time)
 {
 	if (sUniverse == nil)
 	{
-		sUniverse = (TestUniverse *)class_createInstance([TestUniverse class], 0);	// never released
-		sUniverse->_cxxUniverse = oo::makeRef<cxx::Universe>(sUniverse);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
+		sUniverse = new TestUniverse();	// never released
 		sTexture = oo::makeRef<OOTexture>().leakRef();	// never released
 		OOTexture::nameFactory = &LoadTexture;
 	}

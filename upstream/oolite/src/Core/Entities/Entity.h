@@ -47,7 +47,8 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOObjCRef.h"
 #include "OOJSPrivateObject.h"
 
-@class Universe, Entity;
+@class Entity;
+class Universe;
 #include "OOTexture.h"	// allTextures() answers oo::Ref<OOTexture>, which needs the class (bead oo-9ht.99)
 class OOVisualEffectEntity;	// C++ since bead oo-9ht.165
 class ShipEntity;	// C++ since bead oo-9ht.144

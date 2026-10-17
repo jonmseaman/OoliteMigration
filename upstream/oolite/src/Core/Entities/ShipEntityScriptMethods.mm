@@ -40,7 +40,7 @@ MA 02110-1301, USA.
 
 	if (shipKey.has_value())
 	{
-		item = oo::ToShip([oo::ToObjC([UNIVERSE cxx_newShipWithName:*shipKey]) autorelease]);
+		item = oo::ToShip([oo::ToObjC((UNIVERSE != nullptr ? UNIVERSE->newShipWithName(*shipKey) : (::ShipEntity *)nil)) autorelease]);
 		if (item != nil)  dumpItem(item);
 	}
 	
@@ -54,7 +54,7 @@ MA 02110-1301, USA.
 
 	if (role.has_value())
 	{
-		item = oo::ToShip([oo::ToObjC([UNIVERSE cxx_newShipWithRole:*role]) autorelease]);
+		item = oo::ToShip([oo::ToObjC((UNIVERSE != nullptr ? UNIVERSE->newShipWithRole(*role) : (::ShipEntity *)nil)) autorelease]);
 		if (item != nil)  dumpItem(item);
 	}
 	
@@ -76,7 +76,7 @@ std::vector<oo::ObjCRef<::Entity *>> ShipEntity::spawnShipsWithRole(const std::s
 
 	do
 	{
-		spawned = [UNIVERSE cxx_spawnShipWithRole:role near:oo::ToObjC(ship)];
+		spawned = (UNIVERSE != nullptr ? UNIVERSE->spawnShipWithRole(role, oo::ToObjC(ship)) : (::ShipEntity *)nil);
 		if (spawned != nil)
 		{
 			if (spawned != nullptr)  spawned->setTemperature(randomEjectaTemperature());

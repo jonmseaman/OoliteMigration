@@ -150,7 +150,7 @@ void PlayerEntity::setGuiToStickMapperScreen(unsigned skip)
 
 void PlayerEntity::setGuiToStickMapperScreen(unsigned skip, bool resetCurrentRow)
 {
-	::GuiDisplayGen	*gui = [UNIVERSE gui];
+	::GuiDisplayGen	*gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 	OOJoystickManager	*stickHandler = OOJoystickManager::sharedStickHandler();
 	const std::vector<std::string>	stickList = stickHandler->listSticks();
 	unsigned		stickCount = stickList.size();
@@ -209,7 +209,7 @@ void PlayerEntity::setGuiToStickMapperScreen(unsigned skip, bool resetCurrentRow
 	{
 		gui->setSelectedRow(GUI_ROW_STICKPROFILE);
 	}
-	[[UNIVERSE gameView] suppressKeysUntilKeyUp];
+	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) suppressKeysUntilKeyUp];
 	gui->setForegroundTextureKey(std::string(status() == STATUS_DOCKED ? "docked_overlay" : "paused_overlay"));
 	gui->setBackgroundTextureKey(std::string("settings"));
 }
@@ -256,10 +256,10 @@ void PlayerEntity::stickMapperInputHandler(::GuiDisplayGen *gui, ::MyOpenGLView 
 			if (from_function < 0)  from_function = 0;
 			
 			setGuiToStickMapperScreen(from_function);
-			if ([UNIVERSE gui]->getSelectedRow() < 0)
-				[UNIVERSE gui]->setSelectedRow(GUI_ROW_FUNCSTART);
+			if (UNIVERSE->getGui()->getSelectedRow() < 0)
+				UNIVERSE->getGui()->setSelectedRow(GUI_ROW_FUNCSTART);
 			if (from_function == 0)
-				[UNIVERSE gui]->setSelectedRow(GUI_ROW_FUNCSTART + MAX_ROWS_FUNCTIONS - 1);
+				UNIVERSE->getGui()->setSelectedRow(GUI_ROW_FUNCSTART + MAX_ROWS_FUNCTIONS - 1);
 			return;
 		}
 		

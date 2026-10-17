@@ -621,7 +621,7 @@ void StickProfileScreen::showScreen()
 	gui->setText(OO_DESC("gui-back"), GUI_ROW_STICKPROFILE_BACK);
 	gui->setKey(std::string(GUI_KEY_OK), GUI_ROW_STICKPROFILE_BACK);
 	gui->setSelectableRange(NSMakeRange(1, GUI_ROW_STICKPROFILE_BACK));
-	[[UNIVERSE gameView] suppressKeysUntilKeyUp];
+	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) suppressKeysUntilKeyUp];
 	gui->setForegroundTextureKey(std::string((PLAYER != nullptr ? PLAYER->status() : OOEntityStatus{}) == STATUS_DOCKED ? "docked_overlay" : "paused_overlay"));
 	gui->setBackgroundTextureKey(std::string("settings"));
 	return;

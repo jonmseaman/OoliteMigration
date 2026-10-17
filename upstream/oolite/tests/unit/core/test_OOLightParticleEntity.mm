@@ -60,15 +60,11 @@ T *NewTestPlayer()
 
 
 // UNIVERSE: never initialised; answers the time the test sets.
-@interface TestUniverse: Universe
-@end
+class TestUniverse : public Universe
+{
+public:
 
-
-@implementation TestUniverse
-
-- (OOTimeAbsolute) getTime		{ return 0; }
-
-@end
+};
 
 
 // A subclass, as OOFlashEffectEntity is: counts its draws and answers its own texture. (An
@@ -117,8 +113,7 @@ void SetUp()
 	static Universe *universe = nil;
 	if (universe == nil)
 	{
-		universe = (Universe *)class_createInstance([TestUniverse class], 0);	// never released
-		universe->_cxxUniverse = oo::makeRef<cxx::Universe>(universe);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
+		universe = new TestUniverse();	// never released
 	}
 	gSharedUniverse = universe;
 	static TestPlayer *player = nullptr;
@@ -167,7 +162,7 @@ OO_TEST(initWithDiameter)
 		// The draw distance grows with the diameter; reduced detail (a minimum detail level) scales it by 12.
 		GLfloat expected = pow(8.0f / 2.0, M_SQRT2) * NO_DRAW_DISTANCE_FACTOR * NO_DRAW_DISTANCE_FACTOR;
 		expected *= 12.0;
-		OO_CHECK([UNIVERSE reducedDetail]);
+		OO_CHECK((UNIVERSE != nullptr ? UNIVERSE->reducedDetail() : false));
 		OO_CHECK(NoDrawDistance(object) == expected);
 
 		// A subclass initialises the same way.

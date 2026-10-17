@@ -342,7 +342,7 @@ oo::PList OOSystemDescriptionManager::exportScriptedChanges()
 
 oo::PList OOSystemDescriptionManager::getPropertiesForCurrentSystem()
 {
-	OOSystemID s = [UNIVERSE currentSystemID];
+	OOSystemID s = (UNIVERSE != nullptr ? UNIVERSE->currentSystemID() : 0);
 	if (s >= 0)
 	{
 		NSUInteger index = ((PLAYER != nullptr ? PLAYER->PlayerEntity::galaxyNumber() : OOGalaxyID{}) * OO_SYSTEMS_PER_GALAXY) + s;	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
@@ -618,13 +618,13 @@ std::vector<OOSystemID> OOSystemDescriptionManager::getNeighbourIDsForSystem(OOS
 
 Random_Seed OOSystemDescriptionManager::getRandomSeedForCurrentSystem()
 {
-	if ([UNIVERSE currentSystemID] < 0)
+	if ((UNIVERSE != nullptr ? UNIVERSE->currentSystemID() : 0) < 0)
 	{
 		return kNilRandomSeed;
 	}
 	else
 	{
-		OOSystemID s = [UNIVERSE currentSystemID];
+		OOSystemID s = (UNIVERSE != nullptr ? UNIVERSE->currentSystemID() : 0);
 		NSUInteger index = ((PLAYER != nullptr ? PLAYER->PlayerEntity::galaxyNumber() : OOGalaxyID{}) * OO_SYSTEMS_PER_GALAXY) + s;	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 		if (index >= OO_SYSTEM_CACHE_LENGTH)
 		{

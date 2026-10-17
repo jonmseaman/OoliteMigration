@@ -58,7 +58,7 @@ constexpr std::string_view kExplosionTexture		= "texture";
 bool OOExplosionCloudEntity::initExplosionCloudWithEntity(::Entity *entity, float size, const oo::PList &settings)
 {
 	unsigned i;
-	unsigned maxCount = [UNIVERSE detailLevel] <= DETAIL_LEVEL_SHADERS ? 10 : 25;
+	unsigned maxCount = (UNIVERSE != nullptr ? UNIVERSE->getDetailLevel() : OOGraphicsDetail{}) <= DETAIL_LEVEL_SHADERS ? 10 : 25;
 	HPVector pos = [entity position];
 	Vector vel = [entity velocity];
 

@@ -624,7 +624,7 @@ static oo::PList GetParameterImageDescriptor(ooscript::Context context, ooscript
 	ooscript::Value value = ooscript::nullValue();
 	if (ooscript::getProperty((context), (object), key, (&value)))
 	{
-		return [UNIVERSE gui]->textureDescriptorFromJSValue(value, context, "mission.runScreen()");
+		return UNIVERSE->getGui()->textureDescriptorFromJSValue(value, context, "mission.runScreen()");
 	}
 	else
 	{
@@ -703,7 +703,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 		std::optional<std::string> titleKey = GetParameterString(context, params, "titleKey");
 		if (titleKey.has_value())
 		{
-			const oo::PList missionText = [UNIVERSE cxx_missiontext];
+			const oo::PList missionText = (UNIVERSE != nullptr ? UNIVERSE->getMissiontext() : oo::PList());
 			std::optional<std::string> message = StringFromPList(missionText.find(*titleKey));	// -objectForKey:
 			if (message.has_value())
 			{
@@ -766,7 +766,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 		}
 	}
 
-	[UNIVERSE removeDemoShips];	// remove any demoship or miniature planet that may be remaining from previous screens
+	if (UNIVERSE != nullptr)  UNIVERSE->removeDemoShips();	// remove any demoship or miniature planet that may be remaining from previous screens
 	
 	ShipEntity *demoShip = nil;
 	if (ooscript::getProperty(context, (params), "model", (&value)) && !ooscript::isUndefined(value))
@@ -786,7 +786,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 			}
 			
 		//	[player showShipModel:oo::NSStringOrNil(cxx_OOStringFromJSValue(context, value))];
-			demoShip = [UNIVERSE cxx_makeDemoShipWithRole:role.value_or("") spinning:(bool)spinning];
+			demoShip = (UNIVERSE != nullptr ? UNIVERSE->makeDemoShipWithRole(role.value_or(""), (bool)spinning) : (::ShipEntity *)nil);
 		}
 	}
 	if (demoShip != nil)
@@ -893,10 +893,10 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 	std::optional<std::string> firstKey = GetParameterString(context, params, "initialChoicesKey");
 	if (firstKey.has_value())
 	{
-		OOGUIRow row = [UNIVERSE gui]->rowForKey(firstKey);
+		OOGUIRow row = UNIVERSE->getGui()->rowForKey(firstKey);
 		if (row != -1)
 		{
-			[UNIVERSE gui]->setSelectedRow(row);
+			UNIVERSE->getGui()->setSelectedRow(row);
 		}
 	}
 	

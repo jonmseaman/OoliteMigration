@@ -32,7 +32,7 @@
 
 // MARK: The classes, as far as the binding sees them ----------------------------------------------
 
-@class Universe;
+class Universe;
 class PlayerEntity;
 
 namespace cxx {
@@ -92,19 +92,31 @@ public:
 @end
 
 // The universe's beacon list and the player's compass: what the binding tells them.
-@interface FakeGame: OOObject
+#import "UniverseStandIn.h"
+
+// The universe as the code under test sees it: a stand-in for the C++ class (bead oo-ql9rn deleted
+// the Objective-C facade FakeGame stood in for). It answers virtual members, so it has the game's
+// vtable (UniverseStandIn.h) and FakeGame overrides them; FakeGame also answers the player's
+// compass (the player stand-in calls it).
+class Universe : public oo::RefCounted
 {
-@public
-	id _nextBeacon;
-	int _cleared;
-	int _added;
-	int _compassMode;
-}
-- (void) setNextBeacon:(Entity *)beacon;
-- (void) clearBeacon:(Entity *)beacon;
-- (Entity *) nextBeacon;
-- (void) setCompassMode:(OOCompassMode)mode;
-@end
+public:
+	OO_UNIVERSE_STAND_IN_VIRTUAL_MEMBERS
+};
+
+class FakeGame : public Universe
+{
+public:
+	id _nextBeacon = nil;
+	int _cleared = 0;
+	int _added = 0;
+	int _compassMode = 0;
+
+	void setNextBeacon(Entity <OOBeaconEntity> *beacon) override  { _added++; (void)beacon; }
+	void clearBeacon(Entity <OOBeaconEntity> *beacon) override  { _cleared++; beacon->_beaconCode = std::nullopt; }
+	Entity *nextBeacon()  { return _nextBeacon; }
+	void setCompassMode(OOCompassMode mode)  { _compassMode = static_cast<int>(mode); }
+};
 
 // PLAYER: C++ since bead oo-9ht.177 deleted the Objective-C player the fake game stood in for: the
 // compass members the binding calls (declared as the game headers declare them; the test imports
@@ -187,17 +199,9 @@ OOScalar OOWaypointEntity::size()
 }
 
 
-@implementation FakeGame
 
-- (void) setNextBeacon:(Entity *)beacon  { _added++; (void)beacon; }
-- (void) clearBeacon:(Entity *)beacon  { _cleared++; beacon->_beaconCode = std::nullopt; }
-- (Entity *) nextBeacon  { return _nextBeacon; }
-- (void) setCompassMode:(OOCompassMode)mode  { _compassMode = static_cast<int>(mode); }
-
-@end
-
-::Entity *ShipEntity::nextBeacon()  { return [static_cast<PlayerEntity *>(this)->_game nextBeacon]; }
-void PlayerEntity::setCompassMode(OOCompassMode value)  { [static_cast<PlayerEntity *>(this)->_game setCompassMode:value]; }
+::Entity *ShipEntity::nextBeacon()  { return static_cast<PlayerEntity *>(this)->_game->nextBeacon(); }
+void PlayerEntity::setCompassMode(OOCompassMode value)  { static_cast<PlayerEntity *>(this)->_game->setCompassMode(value); }
 
 
 // MARK: What the rest of the engine provides ------------------------------------------------------
@@ -452,8 +456,8 @@ void SetUpContext()
 	gOOEntityJSPrototype = ooscript::initClass(sContext, sGlobal, nullptr, &sFakeEntityClass, OOJSUnconstructableConstruct, 0, nullptr, nullptr, nullptr, nullptr);
 	InitOOJSWaypoint(sContext, sGlobal);
 
-	sGame = [[FakeGame alloc] init];	// kept for the life of the test
-	gSharedUniverse = (Universe *)sGame;
+	sGame = new FakeGame();	// kept for the life of the test
+	gSharedUniverse = sGame;
 	gOOPlayer = new PlayerEntity;	// never deleted
 	gOOPlayer->_game = sGame;
 	sWaypoint = [[Entity alloc] init];	// kept for the life of the test

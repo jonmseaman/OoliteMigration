@@ -410,7 +410,7 @@ std::optional<std::string> ResourceManager::errors()
 	result.reserve(sErrors.size());
 	for (const ResourceManagerError &error : sErrors)
 	{
-		std::optional<std::string> errStr = [UNIVERSE cxx_descriptionForKey:error.key];
+		std::optional<std::string> errStr = (UNIVERSE != nullptr ? UNIVERSE->descriptionForKey(error.key) : std::optional<std::string>());
 		if (errStr.has_value())
 		{
 			// The descriptions.plist entry is the format (data, not a literal): ADR-0043 item 19.

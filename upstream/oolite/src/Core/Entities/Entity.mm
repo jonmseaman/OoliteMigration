@@ -75,7 +75,7 @@ Entity::Entity()
 */
 void Entity::init()
 {
-	_sessionID = [UNIVERSE sessionID];
+	_sessionID = (UNIVERSE != nullptr ? UNIVERSE->sessionID() : 0);
 
 	orientation = kIdentityQuaternion;
 	rotMatrix = kIdentityMatrix;
@@ -86,7 +86,7 @@ void Entity::init()
 	scanClass = CLASS_NOT_SET;
 	Entity::setStatus(STATUS_COCKPIT_DISPLAY);	// the base's own: ShipEntity's override does the same for this status
 
-	spawnTime = [UNIVERSE getTime];
+	spawnTime = (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0);
 
 	isSunlit = YES;
 
@@ -198,7 +198,7 @@ bool Entity::isWaypoint()
 bool Entity::validForAddToUniverse()
 {
 	NSUInteger mySessionID = sessionID();
-	NSUInteger currentSessionID = [UNIVERSE sessionID];
+	NSUInteger currentSessionID = (UNIVERSE != nullptr ? UNIVERSE->sessionID() : 0);
 	if (EXPECT_NOT(mySessionID != currentSessionID))
 	{
 		OO_LOG_ERR("entity.invalidSession", "Entity {} from session {} cannot be added to universe in session {}. This is an internal error, please report it.", oo::ShortDescriptionOf(oo::ToObjC(this)), static_cast<size_t>(mySessionID), static_cast<size_t>(currentSessionID));
@@ -219,7 +219,7 @@ void Entity::addToLinkedLists()
 	// insert at the start
 	if (UNIVERSE)
 	{
-		x_previous = nil; x_next = UNIVERSE->_cxxUniverse->x_list_start;
+		x_previous = nil; x_next = UNIVERSE->x_list_start;
 		// move UP the list
 		while ((x_next)&&(x_next->position.x - x_next->collision_radius < position.x - collision_radius))
 		{
@@ -228,9 +228,9 @@ void Entity::addToLinkedLists()
 		}
 		if (x_next)		x_next->x_previous = this;
 		if (x_previous) x_previous->x_next = this;
-		else			UNIVERSE->_cxxUniverse->x_list_start = this;
+		else			UNIVERSE->x_list_start = this;
 
-		y_previous = nil; y_next = UNIVERSE->_cxxUniverse->y_list_start;
+		y_previous = nil; y_next = UNIVERSE->y_list_start;
 		// move UP the list
 		while ((y_next)&&(y_next->position.y - y_next->collision_radius < position.y - collision_radius))
 		{
@@ -239,9 +239,9 @@ void Entity::addToLinkedLists()
 		}
 		if (y_next)		y_next->y_previous = this;
 		if (y_previous) y_previous->y_next = this;
-		else			UNIVERSE->_cxxUniverse->y_list_start = this;
+		else			UNIVERSE->y_list_start = this;
 
-		z_previous = nil; z_next = UNIVERSE->_cxxUniverse->z_list_start;
+		z_previous = nil; z_next = UNIVERSE->z_list_start;
 		// move UP the list
 		while ((z_next)&&(z_next->position.z - z_next->collision_radius < position.z - collision_radius))
 		{
@@ -250,7 +250,7 @@ void Entity::addToLinkedLists()
 		}
 		if (z_next)		z_next->z_previous = this;
 		if (z_previous) z_previous->z_next = this;
-		else			UNIVERSE->_cxxUniverse->z_list_start = this;
+		else			UNIVERSE->z_list_start = this;
 
 	}
 
@@ -260,7 +260,7 @@ void Entity::addToLinkedLists()
 		if (!checkLinkedLists())
 		{
 			OO_LOG(kOOLogEntityAddToListError, "DEBUG LINKED LISTS - problem encountered while adding {} to linked lists", oo::DescriptionOf(oo::ToObjC(this)));
-			[UNIVERSE debugDumpEntities];
+			if (UNIVERSE != nullptr)  UNIVERSE->debugDumpEntities();
 		}
 	}
 #endif
@@ -280,12 +280,12 @@ void Entity::removeFromLinkedLists()
 	// make sure the starting point is still correct
 	if (UNIVERSE)
 	{
-		if ((UNIVERSE->_cxxUniverse->x_list_start == this)&&(x_next))
-				UNIVERSE->_cxxUniverse->x_list_start = x_next;
-		if ((UNIVERSE->_cxxUniverse->y_list_start == this)&&(y_next))
-				UNIVERSE->_cxxUniverse->y_list_start = y_next;
-		if ((UNIVERSE->_cxxUniverse->z_list_start == this)&&(z_next))
-				UNIVERSE->_cxxUniverse->z_list_start = z_next;
+		if ((UNIVERSE->x_list_start == this)&&(x_next))
+				UNIVERSE->x_list_start = x_next;
+		if ((UNIVERSE->y_list_start == this)&&(y_next))
+				UNIVERSE->y_list_start = y_next;
+		if ((UNIVERSE->z_list_start == this)&&(z_next))
+				UNIVERSE->z_list_start = z_next;
 	}
 	//
 	if (x_previous)		x_previous->x_next = x_next;
@@ -307,7 +307,7 @@ void Entity::removeFromLinkedLists()
 		if (!checkLinkedLists())
 		{
 			OO_LOG(kOOLogEntityRemoveFromListError, "DEBUG LINKED LISTS - problem encountered while removing {} from linked lists", oo::DescriptionOf(oo::ToObjC(this)));
-			[UNIVERSE debugDumpEntities];
+			if (UNIVERSE != nullptr)  UNIVERSE->debugDumpEntities();
 		}
 	}
 #endif
@@ -317,15 +317,15 @@ void Entity::removeFromLinkedLists()
 bool Entity::checkLinkedLists()
 {
 	// DEBUG check for loops
-	if (UNIVERSE->_cxxUniverse->n_entities > 0)
+	if (UNIVERSE->n_entities > 0)
 	{
 		int n;
 		Entity	*check, *last;
 		//
 		last = nil;
 		//
-		n = UNIVERSE->_cxxUniverse->n_entities;
-		check = UNIVERSE->_cxxUniverse->x_list_start;
+		n = UNIVERSE->n_entities;
+		check = UNIVERSE->x_list_start;
 		while ((n--)&&(check))
 		{
 			last = check;
@@ -333,21 +333,21 @@ bool Entity::checkLinkedLists()
 		}
 		if ((check)||(n > 0))
 		{
-			OO_LOG(kOOLogEntityVerificationError, "Broken x_next {} list ({}) ***", oo::DescriptionOf(oo::ToObjC(UNIVERSE->_cxxUniverse->x_list_start)), n);
+			OO_LOG(kOOLogEntityVerificationError, "Broken x_next {} list ({}) ***", oo::DescriptionOf(oo::ToObjC(UNIVERSE->x_list_start)), n);
 			return NO;
 		}
 		//
-		n = UNIVERSE->_cxxUniverse->n_entities;
+		n = UNIVERSE->n_entities;
 		check = last;
 		while ((n--)&&(check))	check = check->x_previous;
 		if ((check)||(n > 0))
 		{
-			OO_LOG(kOOLogEntityVerificationError, "Broken x_previous {} list ({}) ***", oo::DescriptionOf(oo::ToObjC(UNIVERSE->_cxxUniverse->x_list_start)), n);
+			OO_LOG(kOOLogEntityVerificationError, "Broken x_previous {} list ({}) ***", oo::DescriptionOf(oo::ToObjC(UNIVERSE->x_list_start)), n);
 			return NO;
 		}
 		//
-		n = UNIVERSE->_cxxUniverse->n_entities;
-		check = UNIVERSE->_cxxUniverse->y_list_start;
+		n = UNIVERSE->n_entities;
+		check = UNIVERSE->y_list_start;
 		while ((n--)&&(check))
 		{
 			last = check;
@@ -355,21 +355,21 @@ bool Entity::checkLinkedLists()
 		}
 		if ((check)||(n > 0))
 		{
-			OO_LOG(kOOLogEntityVerificationError, "Broken y_next {} list ({}) ***", oo::DescriptionOf(oo::ToObjC(UNIVERSE->_cxxUniverse->y_list_start)), n);
+			OO_LOG(kOOLogEntityVerificationError, "Broken y_next {} list ({}) ***", oo::DescriptionOf(oo::ToObjC(UNIVERSE->y_list_start)), n);
 			return NO;
 		}
 		//
-		n = UNIVERSE->_cxxUniverse->n_entities;
+		n = UNIVERSE->n_entities;
 		check = last;
 		while ((n--)&&(check))	check = check->y_previous;
 		if ((check)||(n > 0))
 		{
-			OO_LOG(kOOLogEntityVerificationError, "Broken y_previous {} list ({}) ***", oo::DescriptionOf(oo::ToObjC(UNIVERSE->_cxxUniverse->y_list_start)), n);
+			OO_LOG(kOOLogEntityVerificationError, "Broken y_previous {} list ({}) ***", oo::DescriptionOf(oo::ToObjC(UNIVERSE->y_list_start)), n);
 			return NO;
 		}
 		//
-		n = UNIVERSE->_cxxUniverse->n_entities;
-		check = UNIVERSE->_cxxUniverse->z_list_start;
+		n = UNIVERSE->n_entities;
+		check = UNIVERSE->z_list_start;
 		while ((n--)&&(check))
 		{
 			last = check;
@@ -377,16 +377,16 @@ bool Entity::checkLinkedLists()
 		}
 		if ((check)||(n > 0))
 		{
-			OO_LOG(kOOLogEntityVerificationError, "Broken z_next {} list ({}) ***", oo::DescriptionOf(oo::ToObjC(UNIVERSE->_cxxUniverse->z_list_start)), n);
+			OO_LOG(kOOLogEntityVerificationError, "Broken z_next {} list ({}) ***", oo::DescriptionOf(oo::ToObjC(UNIVERSE->z_list_start)), n);
 			return NO;
 		}
 		//
-		n = UNIVERSE->_cxxUniverse->n_entities;
+		n = UNIVERSE->n_entities;
 		check = last;
 		while ((n--)&&(check))	check = check->z_previous;
 		if ((check)||(n > 0))
 		{
-			OO_LOG(kOOLogEntityVerificationError, "Broken z_previous {} list ({}) ***", oo::DescriptionOf(oo::ToObjC(UNIVERSE->_cxxUniverse->z_list_start)), n);
+			OO_LOG(kOOLogEntityVerificationError, "Broken z_previous {} list ({}) ***", oo::DescriptionOf(oo::ToObjC(UNIVERSE->z_list_start)), n);
 			return NO;
 		}
 	}
@@ -407,7 +407,7 @@ void Entity::updateLinkedLists()
 		if (!checkLinkedLists())
 		{
 			OO_LOG(kOOLogEntityVerificationError, "DEBUG LINKED LISTS problem encountered before updating linked lists for {}", oo::DescriptionOf(oo::ToObjC(this)));
-			[UNIVERSE debugDumpEntities];
+			if (UNIVERSE != nullptr)  UNIVERSE->debugDumpEntities();
 		}
 	}
 #endif
@@ -433,7 +433,7 @@ void Entity::updateLinkedLists()
 	if (x_previous)	// insert self into the list after x_previous..
 		x_previous->x_next = this;
 	if ((x_previous == nil)&&(UNIVERSE))	// if we're the first then tell the UNIVERSE!
-			UNIVERSE->_cxxUniverse->x_list_start = this;
+			UNIVERSE->x_list_start = this;
 
 	// update position in linked list for position.y
 	// take self out of list..
@@ -456,7 +456,7 @@ void Entity::updateLinkedLists()
 	if (y_previous)	// insert self into the list after y_previous..
 		y_previous->y_next = this;
 	if ((y_previous == nil)&&(UNIVERSE))	// if we're the first then tell the UNIVERSE!
-			UNIVERSE->_cxxUniverse->y_list_start = this;
+			UNIVERSE->y_list_start = this;
 
 	// update position in linked list for position.z
 	// take self out of list..
@@ -479,7 +479,7 @@ void Entity::updateLinkedLists()
 	if (z_previous)	// insert self into the list after z_previous..
 		z_previous->z_next = this;
 	if ((z_previous == nil)&&(UNIVERSE))	// if we're the first then tell the UNIVERSE!
-			UNIVERSE->_cxxUniverse->z_list_start = this;
+			UNIVERSE->z_list_start = this;
 
 	// done
 #ifndef NDEBUG
@@ -488,7 +488,7 @@ void Entity::updateLinkedLists()
 		if (!checkLinkedLists())
 		{
 			OO_LOG(kOOLogEntityUpdateError, "DEBUG LINKED LISTS problem encountered after updating linked lists for {}", oo::DescriptionOf(oo::ToObjC(this)));
-			[UNIVERSE debugDumpEntities];
+			if (UNIVERSE != nullptr)  UNIVERSE->debugDumpEntities();
 		}
 	}
 #endif
@@ -1060,7 +1060,7 @@ void Entity::setLastDrawCounter(NSUInteger drawCounter)
 // For shader bindings.
 GLfloat Entity::universalTime()
 {
-	return [UNIVERSE getTime];
+	return (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0);
 }
 
 
@@ -1072,7 +1072,7 @@ GLfloat Entity::getSpawnTime()
 
 GLfloat Entity::timeElapsedSinceSpawn()
 {
-	return [UNIVERSE getTime] - spawnTime;
+	return (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0) - spawnTime;
 }
 
 

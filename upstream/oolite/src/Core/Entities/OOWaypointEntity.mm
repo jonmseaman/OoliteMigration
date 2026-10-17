@@ -256,7 +256,7 @@ OOHUDBeaconIcon *OOWaypointEntity::beaconDrawable()
 
 		if (length > 1)
 		{
-			const oo::PList *iconEntry = [UNIVERSE cxx_descriptions]->find(*_beaconCode);
+			const oo::PList *iconEntry = UNIVERSE->descriptions()->find(*_beaconCode);
 			const oo::PList iconData = (iconEntry != nullptr) ? *iconEntry : oo::PList();
 			if (iconData.isArray())  _beaconDrawable = OOPolygonSprite::initWithDataArray(iconData, 0.5, *_beaconCode);	// null where it answered nil
 		}

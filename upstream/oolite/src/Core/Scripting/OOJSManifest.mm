@@ -220,7 +220,7 @@ static bool ManifestGetProperty(Context cx, Object obj, PropertyId propID, Value
 		 * compatible-ish with 1.80 and earlier except that
 		 * alienItems and similar aliases don't work */
 		std::string key = cxx_OOStringFromJSString(context, ooscript::idToString(propID)).value_or(std::string());
-		OOCommodities *commodities = [UNIVERSE commodities];	// null: no good is defined, as a message to nil
+		OOCommodities *commodities = (UNIVERSE != nullptr ? UNIVERSE->getCommodities() : nullptr);	// null: no good is defined, as a message to nil
 		if (commodities != nullptr && commodities->goodDefined(key))
 		{
 			*value = ooscript::int32Value((entity != nullptr ? entity->cargoQuantityForType(key) : 0));
@@ -255,7 +255,7 @@ static bool ManifestSetProperty(Context cx, Object obj, PropertyId propID, bool 
 	{
 		std::string key = cxx_OOStringFromJSString(context, ooscript::idToString(propID)).value_or(std::string());
 
-		OOCommodityMarket *market = [UNIVERSE commodityMarket];
+		OOCommodityMarket *market = (UNIVERSE != nullptr ? UNIVERSE->getCommodityMarket() : nullptr);
 		OOMassUnit unit = (market != nullptr) ? market->massUnitForGood(key) : UNITS_TONS;	// UNITS_TONS (0): what a message to nil answered
 		// we can always change gold, platinum & gem-stones quantities, even with special cargo
 		if (unit == UNITS_TONS && (entity != nullptr ? entity->PlayerEntity::getSpecialCargo() : std::optional<std::string>()).has_value())	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it

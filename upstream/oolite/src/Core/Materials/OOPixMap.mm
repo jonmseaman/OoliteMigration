@@ -148,7 +148,7 @@ void OODumpPixMap(OOPixMap pixMap, const std::string &name)
 {
 	if (!OOIsValidPixMap(pixMap))  return;
 	
-	MyOpenGLView *gameView = [UNIVERSE gameView];
+	MyOpenGLView *gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
 	
 	switch (pixMap.format)
 	{

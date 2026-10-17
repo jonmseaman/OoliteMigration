@@ -64,16 +64,11 @@ static Entity *sRemoved = nil;
 
 
 // UNIVERSE: never initialised; records what is removed.
-@interface TestUniverse: Universe
-@end
-
-
-@implementation TestUniverse
-
-- (OOTimeAbsolute) getTime				{ return 0; }
-- (BOOL) removeEntity:(Entity *)entity	{ sRemoved = entity; return YES; }
-
-@end
+class TestUniverse : public Universe
+{
+public:
+	bool removeEntity(::Entity *entity) override	{ sRemoved = entity; return YES; }
+};
 
 
 
@@ -98,8 +93,7 @@ void SetUp()
 	static Universe *universe = nil;
 	if (universe == nil)
 	{
-		universe = (Universe *)class_createInstance([TestUniverse class], 0);	// never released
-		universe->_cxxUniverse = oo::makeRef<cxx::Universe>(universe);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
+		universe = new TestUniverse();	// never released
 	}
 	gSharedUniverse = universe;
 	static TestPlayer *player = nullptr;
