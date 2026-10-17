@@ -7307,3 +7307,27 @@ unchanged. A bound uniform's description names the C++ target's address and the 
 **Tests.** `test_OOShaderUniform cxxTargetBindings` (new) pins the C++ target binding: the failing
 cases, the value read on every apply, normalisation, the description, a target that has gone and
 none. `test_DustEntity shaderBindings` keeps pinning both members' values. No case was retired.
+
+## Amendment (bead oo-9ht.22.1): a ship group holds its ships as oo::WeakRef
+
+- Date: 2026-10-17. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch AB.
+  Exemplar: `src/Core/OOShipGroup.h/.mm`, `tests/unit/core/test_OOShipGroup.mm`. The first slice of
+  oo-9ht.22 that does not wait for the Entity facade; follows amendment oo-9ht.39.5.2.
+
+**Decision (recommended defaults).** `OOShipGroup`'s members and leader were `OOWeakReference`
+proxies of the ships' Objective-C objects (`-weakRetain`); they are `oo::WeakRef<cxx::Entity>` of
+the ships' C++ parts, in a `std::vector` of `_capacity` slots (the malloc'd array; `resizeTo()`
+resizes it where it reallocated, the first `_count` kept). A weak reference reads null exactly
+when the object's did, since the entity facade's `-dealloc` drops its part's weak references
+(amendment oo-9ht.39.5.2), so the members' order, the swap-remove of dead members, the update
+count, the leader's drop when it dies and the description are unchanged. The destructor's releases
+go with the vector. The group no longer imports `OOWeakReference.h`.
+
+**Differences.** None in the game. A removed or dead member's slot no longer leaks its proxy (the
+swap-remove overwrote it without a release).
+
+**Tests** (standing approval oo-9n5p9, line on main first): `test_OOShipGroup
+dyingGroupReleasesLeaderReference`'s checks of the objects' `OOWeakReference` (`weakSelf`, through
+the stand-in `WatchedShip`) retire with the group's use of it; the case keeps its group checks.
+The stand-in root is an `OOObject` and the test no longer links `OOWeakReference`. Every other
+case is unchanged.
