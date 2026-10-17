@@ -2997,12 +2997,12 @@ NSUInteger PlayerEntity::eqScriptIndexForKey(const std::string &eq_key)
 void PlayerEntity::targetNearestHostile()
 {
 	scanForHostiles();
-	::Entity *ent = foundTarget();
+	::Entity *ent = oo::ToObjC(foundTarget());
 	if (ent != nil)
 	{
 		ident_engaged = YES;
 		missile_status = MISSILE_STATUS_TARGET_LOCKED;
-		addTarget(ent);
+		addTarget(oo::ToCxx(ent));
 	}
 }
 
@@ -3010,12 +3010,12 @@ void PlayerEntity::targetNearestHostile()
 void PlayerEntity::targetNearestIncomingMissile()
 {
 	scanForNearestIncomingMissile();
-	::Entity *ent = foundTarget();
+	::Entity *ent = oo::ToObjC(foundTarget());
 	if (ent != nil)
 	{
 		ident_engaged = YES;
 		missile_status = MISSILE_STATUS_TARGET_LOCKED;
-		addTarget(ent);
+		addTarget(oo::ToCxx(ent));
 	}
 }
 

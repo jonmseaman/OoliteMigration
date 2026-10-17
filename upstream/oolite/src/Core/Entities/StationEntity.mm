@@ -194,7 +194,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 		return oo::EntityNodesFrom(result);
 	}
 
-	OOUniversalID	police_target = [primaryTarget() universalID];
+	OOUniversalID	police_target = [oo::ToObjC(primaryTarget()) universalID];
 	unsigned		i;
 	OOTechLevelID	techlevel = getEquivalentTechLevel();
 	if (techlevel == NSNotFound)  techlevel = 6;
@@ -230,7 +230,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 			
 			if (police_ship != nullptr)  police_ship->setGroup(stationGroup());	// who's your Daddy
 			if (police_ship != nullptr)  police_ship->setPrimaryRole("police");
-			if (police_ship != nullptr)  police_ship->addTarget((UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(police_target) : id{}));
+			if (police_ship != nullptr)  police_ship->addTarget(oo::ToCxx(static_cast<::Entity *>(UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(police_target) : id{})));
 			if ((police_ship != nullptr ? police_ship->getScanClass() : OOScanClass{}) == CLASS_NOT_SET)
 				if (police_ship != nullptr)  police_ship->setScanClass(CLASS_POLICE);
 			if (police_ship != nullptr)  police_ship->setBounty(0, kOOLegalStatusReasonSetup);
@@ -259,7 +259,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 		return nil;
 	}
 
-	OOUniversalID	defense_target = [primaryTarget() universalID];
+	OOUniversalID	defense_target = [oo::ToObjC(primaryTarget()) universalID];
 	::ShipEntity	*defense_ship = nil;
 	std::string	default_defense_ship_role;
 	const std::string	defense_ship_ai = "oolite-defenseShipAI.js";
@@ -338,7 +338,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 	}
 	if (defense_ship != nullptr)  defense_ship->setGroup(stationGroup());	// who's your Daddy
 	
-	if (defense_ship != nullptr)  defense_ship->addTarget((UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(defense_target) : id{}));
+	if (defense_ship != nullptr)  defense_ship->addTarget(oo::ToCxx(static_cast<::Entity *>(UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(defense_target) : id{})));
 
 	if ((scanClass != CLASS_ROCK)&&(scanClass != CLASS_STATION))
 	{
@@ -469,7 +469,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 		return nil;
 	}
 	//Pirate ships are launched from the same pool as defence ships.
-	OOUniversalID	defense_target = [primaryTarget() universalID];
+	OOUniversalID	defense_target = [oo::ToObjC(primaryTarget()) universalID];
 	::ShipEntity		*pirate_ship = nil;
 	
 	if (defenders_launched >= max_defense_ships)  return nil;   // shuttles are to rockhermits what police ships are to stations
@@ -503,7 +503,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 		if (pirate_ship != nullptr)  pirate_ship->setOwner(self);
 		if (pirate_ship != nullptr)  pirate_ship->setGroup(stationGroup());	// who's your Daddy
 		if (pirate_ship != nullptr)  pirate_ship->setPrimaryRole("defense_ship");
-		if (pirate_ship != nullptr)  pirate_ship->addTarget((UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(defense_target) : id{}));
+		if (pirate_ship != nullptr)  pirate_ship->addTarget(oo::ToCxx(static_cast<::Entity *>(UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(defense_target) : id{})));
 		if (pirate_ship != nullptr)  pirate_ship->setScanClass(CLASS_NEUTRAL);
 		if ((pirate_ship != nullptr ? pirate_ship->heatInsulation() : 0.0f) < heatInsulation())
 			if (pirate_ship != nullptr)  pirate_ship->setHeatInsulation(heatInsulation());
@@ -2127,15 +2127,15 @@ void StationEntity::takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::E
 				b *= 1.5; //bigger bounty!
 			}
 			if (oo::ToShip(other) != nullptr)  oo::ToShip(other)->markAsOffender(b, kOOLegalStatusReasonAttackedMainStation);
-			setPrimaryAggressor(other);
-			setFoundTarget(other);
+			setPrimaryAggressor(oo::ToCxx(other));
+			setFoundTarget(oo::ToCxx(other));
 			launchPolice();
 		}
 
 		if (isEnergyMine) //don't blow up!
 		{
 			increaseAlertLevel();
-			respondToAttackFrom(ent, other);
+			respondToAttackFrom(oo::ToCxx(ent), oo::ToCxx(other));
 			return;
 		}
 	}
@@ -2154,7 +2154,7 @@ void StationEntity::adjustVelocity(Vector xVel)
 }
 
 
-void StationEntity::takeScrapeDamage(double amount, ::Entity *ent)
+void StationEntity::takeScrapeDamage(double amount, cxx::Entity *ent)
 {
 	// Stop damage if main station
 	if (this != (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr))  ShipEntity::takeScrapeDamage(amount, ent);

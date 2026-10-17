@@ -177,7 +177,7 @@ public:
 	bool hasHostileTarget() override;
 	void takeEnergyDamage(double amount, cxx::Entity *ent, cxx::Entity *other, const std::string &weaponIdentifier) override;
 	void adjustVelocity(Vector xVel) override;
-	void takeScrapeDamage(double amount, ::Entity *ent) override;
+	void takeScrapeDamage(double amount, cxx::Entity *ent) override;
 	void takeHeatDamage(double amount) override;
 	std::optional<std::string> getAllegiance();
 	void setAllegiance(const std::optional<std::string> &newAllegiance);

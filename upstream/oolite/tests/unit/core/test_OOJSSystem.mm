@@ -77,7 +77,7 @@ std::vector<oo::ObjCRef<::Entity *>> MatchingEntities(const std::vector<oo::ObjC
 	std::vector<oo::ObjCRef<::Entity *>> result;
 	for (const auto &e : entities)
 	{
-		if (predicate(e.get(), parameter))  result.push_back(e);
+		if (predicate(oo::ToCxx(e.get()), parameter))  result.push_back(e);
 	}
 	return result;
 }

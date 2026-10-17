@@ -117,7 +117,7 @@ public:
 	bool isVisibleToScripts() override;
 	bool setUpShipFromDictionary(const oo::PList &dict) override;
 	void update(OOTimeDelta delta_t) override;
-	void noteTakingDamage(double amount, ::Entity *entity, OOShipDamageType type) override;
+	void noteTakingDamage(double amount, cxx::Entity *entity, OOShipDamageType type) override;
 	void takeEnergyDamage(double amount, cxx::Entity *ent, cxx::Entity *other, const std::string &weaponIdentifier) override;
 	void drawImmediate(bool immediate, bool translucent) override;
 

@@ -273,7 +273,7 @@ BOOL ByName_121(cxx::Entity *entity)
 void ByName_122(cxx::Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->transitionToAegisNone(); }
 Entity * ByName_123(cxx::Entity *entity)
-{ ShipEntity *ship = ShipPart(entity); return ship != nullptr ? (Entity<OOStellarBody> *)ship->findNearestStellarBody() : nil; }
+{ ShipEntity *ship = ShipPart(entity); return ship != nullptr ? (Entity<OOStellarBody> *)oo::ToObjC(ship->findNearestStellarBody()) : nil; }
 OOAegisStatus ByName_124(cxx::Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->checkForAegis() : OOAegisStatus{}; }
 void ByName_125(cxx::Entity *entity)
@@ -399,9 +399,9 @@ void ByName_184(cxx::Entity *entity)
 int ByName_185(cxx::Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->numberOfScannedShips() : int{}; }
 Entity * ByName_186(cxx::Entity *entity)
-{ ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->foundTarget() : nil; }
+{ ShipEntity *ship = ShipPart(entity); return ship != nullptr ? oo::ToObjC(ship->foundTarget()) : nil; }
 Entity * ByName_187(cxx::Entity *entity)
-{ ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->primaryAggressor() : nil; }
+{ ShipEntity *ship = ShipPart(entity); return ship != nullptr ? oo::ToObjC(ship->primaryAggressor()) : nil; }
 Entity * ByName_188(cxx::Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? oo::ToObjC(ship->lastEscortTarget()) : nil; }
 Entity * ByName_189(cxx::Entity *entity)
@@ -539,7 +539,7 @@ oo::PList ByName_253(cxx::Entity *entity)
 void ByName_254(cxx::Entity *entity, const oo::PList &override)
 { if (ShipEntity *ship = ShipPart(entity))  ship->overrideScriptInfo(override); }
 Entity * ByName_255(cxx::Entity *entity)
-{ ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->entityForShaderProperties() : nil; }
+{ ShipEntity *ship = ShipPart(entity); return oo::ToObjC(ship != nullptr ? ship->entityForShaderProperties() : nil); }
 BOOL ByName_256(cxx::Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getIsDemoShip() : NO; }
 OOTimeAbsolute ByName_257(cxx::Entity *entity)

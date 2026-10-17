@@ -506,7 +506,7 @@ public:
 	void performDockingUpdates(OOTimeDelta /*delta_t*/);
 	void performDeadUpdates(OOTimeDelta /*delta_t*/);
 	void gameOverFadeToBW();
-	bool isValidTarget(::Entity *target) override;
+	bool isValidTarget(cxx::Entity *target) override;
 	void showGameOver();
 	void showShipModelWithKey(const std::string &shipKey, const oo::PList &shipDataIn, uint16_t personality, GLfloat factorX, GLfloat factorY, GLfloat factorZ, const std::optional<std::string> &context);
 	void updateTargeting();
@@ -674,7 +674,7 @@ public:
 	using ShipEntity::doesHitLine;	// the ship's other overloads, which the player does not override
 	GLfloat doesHitLine(HPVector v0, HPVector v1, ::ShipEntity **hitEntity) override;
 	void takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::Entity *otherPart, const std::string &weaponIdentifier) override;
-	void takeScrapeDamage(double amount, ::Entity *ent) override;
+	void takeScrapeDamage(double amount, cxx::Entity *ent) override;
 	void takeHeatDamage(double amount) override;
 	::ShipEntity *createDoppelganger();	// the proxy (its object until bead oo-9ht.144)
 	::ShipEntity *launchEscapeCapsule() override;
@@ -691,7 +691,7 @@ public:
 	void markAsOffender(int offence_value, OOLegalStatusReason reason) override;
 	void collectBountyFor(::ShipEntity *other) override;
 	virtual bool takeInternalDamage();
-	void getDestroyedBy(::Entity *whom, OOShipDamageType type) override;
+	void getDestroyedBy(cxx::Entity *whom, OOShipDamageType type) override;
 	void loseTargetStatus();
 	bool endScenario(const std::string &key);
 	void enterDock(::StationEntity *station) override;
@@ -842,8 +842,8 @@ public:
 	std::optional<std::string> screenModeStringForWidth(unsigned width, unsigned height, float refreshRate);
 	void getSuppressTargetLost();
 	virtual void setScoopsActive();
-	void setFoundTarget(::Entity *targetEntity) override;
-	void addTarget(::Entity *targetEntity) override;
+	void setFoundTarget(cxx::Entity *targetEntity) override;
+	void addTarget(cxx::Entity *targetEntity) override;
 	void clearTargetMemory();
 	std::vector<oo::WeakRef<cxx::Entity>> targetMemory();
 	bool moveTargetMemoryBy(NSInteger delta);

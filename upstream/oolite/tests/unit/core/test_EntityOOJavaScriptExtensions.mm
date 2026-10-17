@@ -46,16 +46,16 @@ public:
 	std::vector<std::string>		_told;		// "add <name>" / "remove <name>"
 	const char						*_name = "";
 
-	id primaryTarget() override	{ return _testPrimaryTarget; }
+	cxx::Entity *primaryTarget() override	{ return oo::ToCxx(static_cast<::Entity *>(_testPrimaryTarget)); }	// the C++ entity since bead oo-9ht.39.23
 
-	void addTarget(::Entity *targetEntity) override
+	void addTarget(cxx::Entity *targetEntity) override
 	{
-		_told.push_back(std::string("add ") + (targetEntity != nil ? static_cast<TestShip *>(oo::ToShip(targetEntity))->_name : "nil"));
+		_told.push_back(std::string("add ") + (targetEntity != nullptr ? static_cast<TestShip *>(oo::ToShip(targetEntity))->_name : "nil"));
 	}
 
-	void removeTarget(::Entity *targetEntity) override
+	void removeTarget(cxx::Entity *targetEntity) override
 	{
-		_told.push_back(std::string("remove ") + (targetEntity != nil ? static_cast<TestShip *>(oo::ToShip(targetEntity))->_name : "nil"));
+		_told.push_back(std::string("remove ") + (targetEntity != nullptr ? static_cast<TestShip *>(oo::ToShip(targetEntity))->_name : "nil"));
 	}
 };
 

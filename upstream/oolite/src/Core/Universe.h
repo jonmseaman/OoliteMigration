@@ -70,7 +70,7 @@ class OOPlanetEntity;	// C++ since bead oo-9ht.129
 class CollisionRegion;
 
 
-typedef BOOL (*EntityFilterPredicate)(Entity *entity, void *parameter);
+typedef BOOL (*EntityFilterPredicate)(cxx::Entity *entity, void *parameter);	// the C++ entity since bead oo-9ht.39.23
 
 #ifndef OO_SCANCLASS_TYPE
 #define OO_SCANCLASS_TYPE
@@ -529,7 +529,7 @@ public:
 	bool addShips(int howMany, const std::string &desc, BoundingBox bbox);
 	// spawnShip(): virtual, in OO_UNIVERSE_VIRTUAL_MEMBERS (UniverseVirtualMembers.h)
 	// witchspaceShipWithPrimaryRole(): virtual, in OO_UNIVERSE_VIRTUAL_MEMBERS (UniverseVirtualMembers.h)
-	::ShipEntity *spawnShipWithRole(const std::string &desc, ::Entity *entity);
+	::ShipEntity *spawnShipWithRole(const std::string &desc, cxx::Entity *entity);	// the C++ entity since bead oo-9ht.39.23
 	// addVisualEffectAt(): virtual, in OO_UNIVERSE_VIRTUAL_MEMBERS (UniverseVirtualMembers.h)	// the effect's object (bead oo-9ht.165)
 
 	// Slice 7: adding ships within a radius and on routes, role categories, witchspace entries and effects, break patterns, the docking clearance protocol, game over.

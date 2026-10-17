@@ -76,13 +76,13 @@ std::vector<oo::ObjCRef<::Entity *>> ShipEntity::spawnShipsWithRole(const std::s
 
 	do
 	{
-		spawned = (UNIVERSE != nullptr ? UNIVERSE->spawnShipWithRole(role, oo::ToObjC(ship)) : (::ShipEntity *)nil);
+		spawned = (UNIVERSE != nullptr ? UNIVERSE->spawnShipWithRole(role, ship) : (::ShipEntity *)nil);
 		if (spawned != nil)
 		{
 			if (spawned != nullptr)  spawned->setTemperature(randomEjectaTemperature());
 			if (isMissileFlagSet() && (spawned != nullptr ? spawned->shipInfoDictionary() : oo::PList()).get<bool>("is_submunition"))
 			{
-				if (spawned != nullptr)  spawned->setOwner(oo::ToCxx((::Entity *)owner()));
+				if (spawned != nullptr)  spawned->setOwner(ownerEntity());	// owner()'s C++ entity (bead oo-9ht.39.23)
 				if (spawned != nullptr)  spawned->addTarget(primaryTarget());
 				if (spawned != nullptr)  spawned->setIsMissileFlag(YES);
 			}

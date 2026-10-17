@@ -178,10 +178,10 @@ void ShipEntity::scanForHostiles()
 		::ShipEntity *thing = scanned_ships[i];
 		GLfloat d2 = distance2_scanned_ships[i];
 		if ((d2 < found_d2) 
-			&& ((thing != nullptr ? thing->isThargoid() : false) || (((thing != nullptr ? thing->primaryTarget() : id{}) == oo::ToObjC(this)) && (thing != nullptr ? thing->hasHostileTarget() : false)) || (thing != nullptr ? thing->isDefenseTarget(oo::ToObjC(this)) : false))
+			&& ((thing != nullptr ? thing->isThargoid() : false) || (((thing != nullptr ? thing->primaryTarget() : (cxx::Entity *)nullptr) == this) && (thing != nullptr ? thing->hasHostileTarget() : false)) || (thing != nullptr ? thing->isDefenseTarget(this) : false))
 			&& !(thing != nullptr ? thing->isCloaked() : false))
 		{
-			setFoundTarget(oo::ToObjC(thing));
+			setFoundTarget(thing);
 			found_d2 = d2;
 		}
 	}
@@ -200,7 +200,7 @@ void ShipEntity::groupAttackTarget()
 	
 	if (group() == nil)		// ship is alone!
 	{
-		setFoundTarget(oo::ToObjC(target));
+		setFoundTarget(target);
 		if (shipAI != nullptr)  shipAI->reactToMessage("GROUP_ATTACK_TARGET", "groupAttackTarget");
 		doScriptEvent(OOJSID("helpRequestReceived"), oo::ToObjC(this), oo::ToObjC(target));
 		return;
@@ -209,7 +209,7 @@ void ShipEntity::groupAttackTarget()
 	for (const oo::ObjCRef<::Entity *> &member : (group() != nullptr ? group()->memberArray() : std::vector<oo::ObjCRef<::Entity *>>()))
 	{
 		ship = oo::ToShip(member.get());
-		if (ship != nullptr)  ship->setFoundTarget(oo::ToObjC(target));
+		if (ship != nullptr)  ship->setFoundTarget(target);
 		if (ship != nullptr)  ship->reactToAIMessage("GROUP_ATTACK_TARGET", "groupAttackTarget");
 		if (ship != nullptr)  ship->doScriptEvent(OOJSID("helpRequestReceived"), oo::ToObjC(this), oo::ToObjC(target));
 
@@ -218,7 +218,7 @@ void ShipEntity::groupAttackTarget()
 			for (const oo::ObjCRef<::Entity *> &escortRef : ((ship != nullptr ? ship->escortGroup() : (OOShipGroup *)nullptr) != nullptr ? (ship != nullptr ? ship->escortGroup() : (OOShipGroup *)nullptr)->memberArrayExcludingLeader() : std::vector<oo::ObjCRef<::Entity *>>()))
 			{
 				::ShipEntity		*escort = oo::ToShip(escortRef.get());
-				if (escort != nullptr)  escort->setFoundTarget(oo::ToObjC(target));
+				if (escort != nullptr)  escort->setFoundTarget(target);
 				if (escort != nullptr)  escort->reactToAIMessage("GROUP_ATTACK_TARGET", "groupAttackTarget");
 				if (escort != nullptr)  escort->doScriptEvent(OOJSID("helpRequestReceived"), oo::ToObjC(this), oo::ToObjC(target));
 			}
@@ -331,7 +331,7 @@ void ShipEntity::performLandOnPlanet()
 
 void ShipEntity::performMining()
 {
-	::Entity *target = primaryTarget();
+	::Entity *target = oo::ToObjC(primaryTarget());
 	// mining is not seen as hostile behaviour, so ensure it is only used against rocks.
 	if (target &&  [target scanClass] == CLASS_ROCK)
 	{
@@ -458,7 +458,7 @@ void ShipEntity::recallDockingInstructions()
 			::StationEntity *targetStation = oo::ToStation([oo::ObjectIn(*stationRef) weakRefUnderlyingObject]);
 			if (targetStation != nil)
 			{
-				addTarget(oo::ToObjC(targetStation));
+				addTarget(targetStation);
 				setTargetStation(targetStation);
 			}
 			else 
@@ -492,7 +492,7 @@ void ShipEntity::enterPlayerWormhole()
 void ShipEntity::enterTargetWormhole()
 {
 	WormholeEntity *whole = nullptr;	// C++ since bead oo-9ht.112
-	cxx::Entity		*targEnt = oo::ToCxx(static_cast<::Entity *>(primaryTarget()));	// any entity: a wormhole is the one sought (the ship's object was typed ShipEntity until bead oo-9ht.144)
+	cxx::Entity		*targEnt = primaryTarget();	// any entity: a wormhole is the one sought (the ship's object was typed ShipEntity until bead oo-9ht.144)
 	double found_d2 = scannerRange * scannerRange;
 	
 	if (targEnt && (HPdistance2(position, targEnt->getPosition()) < found_d2))
@@ -539,7 +539,7 @@ void ShipEntity::wormholeEscorts()
 	::ShipEntity			*ship = nil;
 	::Entity			*whole = nil;	// the wormhole's Objective-C object (the root's facade since bead oo-9ht.112)
 	
-	whole = primaryTarget();
+	whole = oo::ToObjC(primaryTarget());
 	if (![whole isWormhole])  return;
 	
 	const std::optional<std::string> context = DebugContext(oo::ToObjC(this), "wormholeEscorts");
@@ -547,7 +547,7 @@ void ShipEntity::wormholeEscorts()
 	for (const auto &shipRef : escorts())
 	{
 		ship = oo::ToShip(shipRef.get());
-		if (ship != nullptr)  ship->addTarget(whole);
+		if (ship != nullptr)  ship->addTarget(oo::ToCxx(whole));
 		if (ship != nullptr)  ship->reactToAIMessage("ENTER WORMHOLE", context);
 		if (ship != nullptr)  ship->doScriptEvent(OOJSID("wormholeSuggested"), whole);
 	}
@@ -636,7 +636,7 @@ void ShipEntity::broadcastDistressMessageWithDumping(bool dumpCargo)
 		::ShipEntity*	ship = scanned_ships[i];
 
     // dump cargo if energy is low
-		if (dumpCargo && !is_buoy && primaryAggressor() == oo::ToObjC(ship) && energy < 0.375 * maxEnergy)
+		if (dumpCargo && !is_buoy && primaryAggressor() == ship && energy < 0.375 * maxEnergy)
 		{
 			ejectCargo();
 			performFlee();
@@ -648,7 +648,7 @@ void ShipEntity::broadcastDistressMessageWithDumping(bool dumpCargo)
 		{
 			if (ship != nullptr)  ship->doScriptEvent(OOJSID("distressMessageReceived"), oo::ToObjC(aggressor_ship), oo::ToObjC(this));
 
-			if (!is_buoy && primaryAggressor() == oo::ToObjC(ship) && energy < 0.375 * maxEnergy)
+			if (!is_buoy && primaryAggressor() == ship && energy < 0.375 * maxEnergy)
 			{
 				sendExpandedMessage("[beg-for-mercy]", ship);
 			}
@@ -738,7 +738,7 @@ bool ShipEntity::performHyperSpaceExitReplace(bool replace, OOSystemID systemID)
 	::ShipEntity *blocker = oo::ToShip((UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(checkShipsInVicinityForWitchJumpExit()) : id{}));
 	if (blocker)
 	{
-		setFoundTarget(oo::ToObjC(blocker));
+		setFoundTarget(blocker);
 		if (shipAI != nullptr)  shipAI->reactToMessage("WITCHSPACE BLOCKED", "performHyperSpaceExit");
 		doScriptEvent(OOJSID("shipWitchspaceBlocked"), oo::ToObjC(blocker));
 
@@ -810,9 +810,9 @@ void ShipEntity::scanForNearestShipWithPredicate(EntityFilterPredicate predicate
 		candidate = scanned_ships[i];
 		d2 = distance2_scanned_ships[i];
 		if ((d2 < found_d2) && (candidate->scanClass != CLASS_CARGO) && ((candidate != nullptr ? candidate->status() : OOEntityStatus{}) != STATUS_DOCKED) 
-					&& predicate(oo::ToObjC(candidate), parameter) && !(candidate != nullptr ? candidate->isCloaked() : false))
+					&& predicate(candidate, parameter) && !(candidate != nullptr ? candidate->isCloaked() : false))
 		{
-			setFoundTarget(oo::ToObjC(candidate));
+			setFoundTarget(candidate);
 			found_d2 = d2;
 		}
 	}
@@ -830,7 +830,7 @@ void ShipEntity::scanForNearestShipWithNegatedPredicate(EntityFilterPredicate pr
 
 void ShipEntity::acceptDistressMessageFrom(::ShipEntity *other)
 {
-	setFoundTarget((other != nullptr ? other->primaryTarget() : id{}));
+	setFoundTarget((other != nullptr ? other->primaryTarget() : (cxx::Entity *)nullptr));
 	if (isPolice())
 	{
 		if (oo::ToShip(foundTarget()) != nullptr)  oo::ToShip(foundTarget())->markAsOffender(8, kOOLegalStatusReasonDistressCall);  // you have been warned!!
@@ -891,8 +891,8 @@ void StationEntity::acceptDistressMessageFrom(::ShipEntity *other)
 	if (this != (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr))  return;
 
 	const oo::WeakRef<cxx::Entity> old_target = _primaryTarget;
-	_primaryTarget = oo::WeakEntityRef(other != nullptr ? other->primaryTarget() : id{});
-	if (oo::ToShip((other != nullptr ? other->primaryTarget() : id{})) != nullptr)  oo::ToShip((other != nullptr ? other->primaryTarget() : id{}))->markAsOffender(8, kOOLegalStatusReasonDistressCall);	// mark their card
+	_primaryTarget = oo::WeakRef<cxx::Entity>(other != nullptr ? other->primaryTarget() : (cxx::Entity *)nullptr);
+	if (oo::ToShip((other != nullptr ? other->primaryTarget() : (cxx::Entity *)nullptr)) != nullptr)  oo::ToShip((other != nullptr ? other->primaryTarget() : (cxx::Entity *)nullptr))->markAsOffender(8, kOOLegalStatusReasonDistressCall);	// mark their card
 	launchDefenseShip();
 	_primaryTarget = old_target;
 
@@ -1002,10 +1002,10 @@ void ShipEntity::setThrustFactorTo(const std::string &thrustFactorString)	// cal
 
 void ShipEntity::setTargetToPrimaryAggressor()
 {
-	::Entity *primeAggressor = primaryAggressor();
+	::Entity *primeAggressor = oo::ToObjC(primaryAggressor());
 	if (!primeAggressor)
 		return;
-	if (primaryTarget() == primeAggressor)
+	if (primaryTarget() == oo::ToCxx(primeAggressor))
 		return;
 	
 	// a more considered approach here:
@@ -1014,7 +1014,7 @@ void ShipEntity::setTargetToPrimaryAggressor()
 	if (hasHostileTarget() && randf() < 0.75)	// if I'm attacking, ignore 75% of new aggressor's attacks
 	{
 				// but add them as a secondary target anyway
-		addDefenseTarget(primeAggressor);
+		addDefenseTarget(oo::ToCxx(primeAggressor));
 		return;
 	}
 	// react only if the primary aggressor is not a friendly ship, else ignore it
@@ -1022,12 +1022,12 @@ void ShipEntity::setTargetToPrimaryAggressor()
 	{
 		// inform our old target of our new target
 		//
-		::Entity *primeTarget = primaryTarget();
+		::Entity *primeTarget = oo::ToObjC(primaryTarget());
 		if ((primeTarget)&&(primeTarget->_cxxEntity->isShip))
 		{
 			::ShipEntity *currentShip = oo::ToShip(primaryTarget());
-			if (currentShip != nullptr && currentShip->getAI() != nullptr)  currentShip->getAI()->message(oo::str::format("%s %d %d", std::string(AIMS_AGGRESSOR_SWITCHED_TARGET).c_str(), universalID, [primaryAggressor() universalID]));
-			if (currentShip != nullptr)  currentShip->doScriptEvent(OOJSID("shipAttackerDistracted"), primaryAggressor());
+			if (currentShip != nullptr && currentShip->getAI() != nullptr)  currentShip->getAI()->message(oo::str::format("%s %d %d", std::string(AIMS_AGGRESSOR_SWITCHED_TARGET).c_str(), universalID, [oo::ToObjC(primaryAggressor()) universalID]));
+			if (currentShip != nullptr)  currentShip->doScriptEvent(OOJSID("shipAttackerDistracted"), oo::ToObjC(primaryAggressor()));
 		}
 		
 		// okay, so let's now target the aggressor
@@ -1038,15 +1038,15 @@ void ShipEntity::setTargetToPrimaryAggressor()
 
 void ShipEntity::addPrimaryAggressorAsDefenseTarget()
 {
-	::Entity *primeAggressor = primaryAggressor();
+	::Entity *primeAggressor = oo::ToObjC(primaryAggressor());
 	if (!primeAggressor)
 		return;
-	if (isDefenseTarget(primeAggressor))
+	if (isDefenseTarget(oo::ToCxx(primeAggressor)))
 		return;
 	
 	if ([primeAggressor isShip] && !(oo::ToShip(primeAggressor) != nullptr ? oo::ToShip(primeAggressor)->isFriendlyTo(this) : false))
 	{
-		addDefenseTarget(primeAggressor);
+		addDefenseTarget(oo::ToCxx(primeAggressor));
 	}
 }
 
@@ -1077,7 +1077,7 @@ void ShipEntity::scanForNearestMerchantman()
 			if (d2 < found_d2)
 			{
 				found_d2 = d2;
-				setFoundTarget(oo::ToObjC(ship));
+				setFoundTarget(ship);
 			}
 		}
 	}
@@ -1108,7 +1108,7 @@ void ShipEntity::scanForRandomMerchantman()
 	else
 	{
 		i = ranrot_rand() % n_found;	// pick a number from 0 -> (n_found - 1)
-		setFoundTarget(oo::ToObjC(ids_found[i]));
+		setFoundTarget(ids_found[i]);
 		if (shipAI != nullptr)  shipAI->message("TARGET_FOUND");
 	}
 }
@@ -1156,7 +1156,7 @@ void ShipEntity::scanForLoot()
 				if (d2 < found_d2)
 				{
 					found_d2 = d2;
-					setFoundTarget(oo::ToObjC(other));
+					setFoundTarget(other);
 				}
 			}
 		}
@@ -1191,7 +1191,7 @@ void ShipEntity::scanForRandomLoot()
 	
 	if (things_found != 0)
 	{
-		setFoundTarget(oo::ToObjC(thing_uids_found[ranrot_rand() % things_found]));
+		setFoundTarget(thing_uids_found[ranrot_rand() % things_found]);
 		if (shipAI != nullptr)  shipAI->message("TARGET_FOUND");
 	}
 	else
@@ -1214,12 +1214,12 @@ void ShipEntity::setTargetToFoundTarget()
 
 void ShipEntity::addFoundTargetAsDefenseTarget()
 {
-	::Entity* fTarget = foundTarget();
+	::Entity* fTarget = oo::ToObjC(foundTarget());
 	if (fTarget != nil)
 	{
 		if ([fTarget isShip] && !(oo::ToShip(fTarget) != nullptr ? oo::ToShip(fTarget)->isFriendlyTo(this) : false))
 		{
-			addDefenseTarget(fTarget);
+			addDefenseTarget(oo::ToCxx(fTarget));
 		}
 	}
 }
@@ -1299,7 +1299,7 @@ void ShipEntity::fightOrFleeMissile()
 		::ShipEntity *thing = scanned_ships[i];
 		if (thing->scanClass == CLASS_MISSILE)
 		{
-			target = oo::ToShip((thing != nullptr ? thing->primaryTarget() : id{}));
+			target = oo::ToShip((thing != nullptr ? thing->primaryTarget() : (cxx::Entity *)nullptr));
 			
 			if (target == this)
 			{
@@ -1321,8 +1321,8 @@ void ShipEntity::fightOrFleeMissile()
 	
 	if (missile == nil)  return;
 	
-	addTarget(oo::ToObjC(missile));
-	addDefenseTarget(oo::ToObjC(missile));
+	addTarget(missile);
+	addDefenseTarget(missile);
 	
 	// Notify own ship script that we are being attacked.	
 	::ShipEntity *hunter = oo::ToShip((missile != nullptr ? missile->owner() : id{}));
@@ -1338,8 +1338,8 @@ void ShipEntity::fightOrFleeMissile()
 		for (const oo::ObjCRef<::Entity *> &member : (group() != nullptr ? group()->memberArray() : std::vector<oo::ObjCRef<::Entity *>>()))
 		{
 			police = oo::ToShip(member.get());
-			if (police != nullptr)  police->setFoundTarget(oo::ToObjC(hunter));
-			if (police != nullptr)  police->setPrimaryAggressor(oo::ToObjC(hunter));
+			if (police != nullptr)  police->setFoundTarget(hunter);
+			if (police != nullptr)  police->setPrimaryAggressor(hunter);
 		}
 	}
 	
@@ -1350,8 +1350,8 @@ void ShipEntity::fightOrFleeMissile()
 	{
 		// use the ECM and battle on
 		
-		setPrimaryAggressor(oo::ToObjC(hunter));	// lets get them now for that!
-		setFoundTarget(oo::ToObjC(hunter));
+		setPrimaryAggressor(hunter);	// lets get them now for that!
+		setFoundTarget(hunter);
 		
 		fireECM();
 		return;
@@ -1479,7 +1479,7 @@ void ShipEntity::exitAIWithMessage(const std::string &message)	// called by name
 
 void ShipEntity::setDestinationToTarget()
 {
-	::Entity *the_target = primaryTarget();
+	::Entity *the_target = oo::ToObjC(primaryTarget());
 	if (the_target)
 		_destination = the_target->_cxxEntity->position;
 }
@@ -1487,7 +1487,7 @@ void ShipEntity::setDestinationToTarget()
 
 void ShipEntity::setDestinationWithinTarget()
 {
-	::Entity *the_target = primaryTarget();
+	::Entity *the_target = oo::ToObjC(primaryTarget());
 	if (the_target)
 	{
 		HPVector pos = the_target->_cxxEntity->position;
@@ -1536,7 +1536,7 @@ void ShipEntity::checkAegis()
 			return;
 		case AEGIS_CLOSE_TO_ANY_PLANET:
 		{
-			::Entity<OOStellarBody> *nearest = (::Entity<OOStellarBody> *)findNearestStellarBody();
+			::Entity<OOStellarBody> *nearest = (::Entity<OOStellarBody> *)oo::ToObjC(findNearestStellarBody());
 			
 			if([nearest isSun])
 			{
@@ -1611,11 +1611,11 @@ void ShipEntity::findNewDefenseTarget()
 	for (i = 0; i < n_scanned_ships ; i++)
 	{
 		::ShipEntity *ship = scanned_ships[i];
-		if (!(ship != nullptr ? ship->isCloaked() : false) && (((ship != nullptr ? ship->primaryTarget() : id{}) == oo::ToObjC(this) && (ship != nullptr ? ship->hasHostileTarget() : false)) || (ship != nullptr ? ship->isMine() : false) || ((ship != nullptr ? ship->isThargoid() : false) != isThargoid())))
+		if (!(ship != nullptr ? ship->isCloaked() : false) && (((ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == this && (ship != nullptr ? ship->hasHostileTarget() : false)) || (ship != nullptr ? ship->isMine() : false) || ((ship != nullptr ? ship->isThargoid() : false) != isThargoid())))
 		{
-			if (!isDefenseTarget(oo::ToObjC(ship)))
+			if (!isDefenseTarget(ship))
 			{
-				addDefenseTarget(oo::ToObjC(ship));
+				addDefenseTarget(ship);
 				return;
 			}
 		}
@@ -1652,7 +1652,7 @@ void ShipEntity::scanForOffenders()
 			{
 				if (group == nil || group != (ship != nullptr ? ship->group() : (OOShipGroup *)nullptr))  // fellows with bounty can't be offenders
 				{
-					setFoundTarget(oo::ToObjC(ship));
+					setFoundTarget(ship);
 					worst_legal_factor = legal_factor;
 				}
 			}
@@ -1711,13 +1711,13 @@ void ShipEntity::wormholeGroup()
 	::ShipEntity			*ship = nil;
 	::Entity			*whole = nil;	// the wormhole's Objective-C object (the root's facade since bead oo-9ht.112)
 	
-	whole = primaryTarget();
+	whole = oo::ToObjC(primaryTarget());
 	if (![whole isWormhole])  return;
 	
 	for (const oo::ObjCRef<::Entity *> &member : (group() != nullptr ? group()->memberArray() : std::vector<oo::ObjCRef<::Entity *>>()))
 	{
 		ship = oo::ToShip(member.get());
-		if (ship != nullptr)  ship->addTarget(whole);
+		if (ship != nullptr)  ship->addTarget(oo::ToCxx(whole));
 		if (ship != nullptr)  ship->reactToAIMessage("ENTER WORMHOLE", "wormholeGroup");
 		if (ship != nullptr)  ship->doScriptEvent(OOJSID("wormholeSuggested"), whole);
 	}
@@ -1772,7 +1772,7 @@ void ShipEntity::scanForNonThargoid()
 		GLfloat d2 = distance2_scanned_ships[i];
 		if (((thing != nullptr ? thing->getScanClass() : OOScanClass{}) != CLASS_CARGO) && ((thing != nullptr ? thing->status() : OOEntityStatus{}) != STATUS_DOCKED) && !(thing != nullptr ? thing->isThargoid() : false) && !(thing != nullptr ? thing->isCloaked() : false) && (d2 < found_d2))
 		{
-			setFoundTarget(oo::ToObjC(thing));
+			setFoundTarget(thing);
 			if ((thing != nullptr ? thing->getIsPlayer() : false)) d2 = 0.0;   // prefer the player
 			found_d2 = d2;
 		}
@@ -1818,13 +1818,13 @@ void ShipEntity::becomeUncontrolledThargon()
 	for (i = 0; i < ent_count; i++) if (uni_entities[i]->isShip)
 	{
 		::ShipEntity *other = oo::ToShip(uni_entities[i]);
-		if ((other != nullptr ? other->primaryTarget() : id{}) == oo::ToObjC(this))
+		if ((other != nullptr ? other->primaryTarget() : (cxx::Entity *)nullptr) == this)
 		{
-			if (other != nullptr)  other->removeTarget(oo::ToObjC(this));
+			if (other != nullptr)  other->removeTarget(this);
 		}
-		if ((other != nullptr ? other->isDefenseTarget(oo::ToObjC(this)) : false))
+		if ((other != nullptr ? other->isDefenseTarget(this) : false))
 		{
-			if (other != nullptr)  other->removeDefenseTarget(oo::ToObjC(this));
+			if (other != nullptr)  other->removeDefenseTarget(this);
 		}
 	}
 	// now we're just a bunch of alien artefacts!
@@ -1853,7 +1853,7 @@ void ShipEntity::fightOrFleeHostiles()
 		::Entity *leTarget = oo::ToObjC(lastEscortTarget());
 		if (leTarget != nil)
 		{
-			setFoundTarget(leTarget);
+			setFoundTarget(oo::ToCxx(leTarget));
 			if (shipAI != nullptr)  shipAI->message("FLEEING");
 			return;
 		}
@@ -1950,13 +1950,13 @@ void ShipEntity::scanForFormationLeader()
 	for (i = 0; i < n_scanned_ships; i++)
 	{
 		::ShipEntity *ship = scanned_ships[i];
-		if ((ship != this) && (!ship->isPlayer) && (ship->scanClass == scanClass) && (ship != nullptr ? ship->primaryTarget() : id{}) != oo::ToObjC(this) && !(ship != nullptr ? ship->isCloaked() : false))	// look for alike
+		if ((ship != this) && (!ship->isPlayer) && (ship->scanClass == scanClass) && (ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) != this && !(ship != nullptr ? ship->isCloaked() : false))	// look for alike
 		{
 			GLfloat d2 = distance2_scanned_ships[i];
 			if ((d2 < found_d2) && (ship != nullptr ? ship->canAcceptEscort(this) : false))
 			{
 				found_d2 = d2;
-				setFoundTarget(oo::ToObjC(ship));
+				setFoundTarget(ship);
 			}
 		}
 	}
@@ -2182,7 +2182,7 @@ void ShipEntity::markTargetForOffence(const std::string &valueString)	// called 
 
 void ShipEntity::storeTarget()
 {
-	::Entity	*target = primaryTarget();
+	::Entity	*target = oo::ToObjC(primaryTarget());
 	
 	if (target)
 	{
@@ -2219,7 +2219,7 @@ void ShipEntity::recallStoredTarget()
 	
 	if (found)
 	{
-		setFoundTarget(oo::ToObjC(oldTarget));
+		setFoundTarget(oldTarget);
 		if (shipAI != nullptr)  shipAI->message("TARGET_FOUND");
 	}
 	else
@@ -2249,7 +2249,7 @@ void ShipEntity::scanForRocks()
 			GLfloat d2 = distance2_scanned_ships[i];
 			if (d2 < found_d2)
 			{
-				setFoundTarget(oo::ToObjC(thing));
+				setFoundTarget(thing);
 				found_d2 = d2;
 			}
 		}
@@ -2264,7 +2264,7 @@ void ShipEntity::scanForRocks()
 				GLfloat d2 = distance2_scanned_ships[i];
 				if (d2 < found_d2)
 				{
-					setFoundTarget(oo::ToObjC(thing));
+					setFoundTarget(thing);
 					found_d2 = d2;
 				}
 			}
@@ -2317,11 +2317,11 @@ void ShipEntity::requestNewTarget()
 		::ShipEntity *thing = scanned_ships[i];
 		GLfloat d2 = distance2_scanned_ships[i];
 		GLfloat e1 = (thing != nullptr ? thing->getEnergy() : 0.0f);
-		if ((d2 < found_d2) && !(thing != nullptr ? thing->isCloaked() : false) && (((thing != nullptr ? thing->isThargoid() : false) && !(mother != nullptr ? mother->isThargoid() : false)) || (((thing != nullptr ? thing->primaryTarget() : id{}) == oo::ToObjC(mother)) && (thing != nullptr ? thing->hasHostileTarget() : false))))
+		if ((d2 < found_d2) && !(thing != nullptr ? thing->isCloaked() : false) && (((thing != nullptr ? thing->isThargoid() : false) && !(mother != nullptr ? mother->isThargoid() : false)) || (((thing != nullptr ? thing->primaryTarget() : (cxx::Entity *)nullptr) == mother) && (thing != nullptr ? thing->hasHostileTarget() : false))))
 		{
 			if (e1 > max_e)
 			{
-				setFoundTarget(oo::ToObjC(thing));
+				setFoundTarget(thing);
 				max_e = e1;
 			}
 		}
@@ -2594,7 +2594,7 @@ void ShipEntity::setTargetToRandomStation()
 	//
 	if (station)
 	{
-		addTarget(oo::ToObjC(station));
+		addTarget(station);
 		setTargetStation(station);
 		if (shipAI != nullptr)  shipAI->message("STATION_FOUND");
 	}
@@ -2611,7 +2611,7 @@ void ShipEntity::setTargetToLastStation()
 	
 	if (station != nil && [station isStation])
 	{
-		addTarget(station);
+		addTarget(oo::ToCxx(station));
 	}
 	else
 	{
@@ -2720,7 +2720,7 @@ void ShipEntity::targetFirstBeaconWithCode(const std::string &code)	// called by
 	const std::vector<oo::ObjCRef<::Entity <OOBeaconEntity> *>> all_beacons = (UNIVERSE != nullptr ? UNIVERSE->listBeaconsWithCode(code) : std::vector<oo::ObjCRef<::Entity <OOBeaconEntity> *>>());
 	if (!all_beacons.empty())
 	{
-		addTarget(all_beacons[0].get());
+		addTarget(oo::ToCxx(all_beacons[0].get()));
 		if (shipAI != nullptr)  shipAI->message("TARGET_FOUND");
 	}
 	else
@@ -2756,7 +2756,7 @@ void ShipEntity::targetNextBeaconWithCode(const std::string &code)	// called by 
 	if (i < all_beacons.size())
 	{
 		// locate current target in list
-		addTarget(all_beacons[i].get());
+		addTarget(oo::ToCxx(all_beacons[i].get()));
 		if (shipAI != nullptr)  shipAI->message("TARGET_FOUND");
 	}
 	else

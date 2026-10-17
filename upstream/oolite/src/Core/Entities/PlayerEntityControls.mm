@@ -1652,7 +1652,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 				{
 					if (!docking_clearance_request_key_pressed)
 					{
-						::Entity *primeTarget = primaryTarget();
+						::Entity *primeTarget = oo::ToObjC(primaryTarget());
 						performDockingRequest(oo::ToStation(primeTarget));
 					}
 					docking_clearance_request_key_pressed = YES;
@@ -1779,7 +1779,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 				if (!dump_target_state_pressed)
 				{
 					dump_target_state_pressed = YES;
-					id target = primaryTarget();
+					id target = oo::ToObjC(primaryTarget());
 					if (target == nil)	target = oo::ToObjC(this);
 					[target dumpState];
 				}
@@ -5458,7 +5458,7 @@ void PlayerEntity::handleAutopilotOn(bool fastDocking)
 		goto abort;
 	}
 	
-	::Entity *target; target = primaryTarget();
+	::Entity *target; target = oo::ToObjC(primaryTarget());
 	// If target isn't dockable, check for nearby stations
 	if (![target isStation])
 	{
@@ -5512,7 +5512,7 @@ void PlayerEntity::handleAutopilotOn(bool fastDocking)
 		message = ExpandKeyWithArguments("autopilot-station-does-not-allow-autodocking", { { "stationName", oo::PList(stationName) } });
 	}
 	// Deny if station is hostile or player is a fugitive trying to dock at the main station.
-	else if ((legalStatusValue > 50 && ts == (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr)) || (ts != nullptr ? ts->isHostileTo(oo::ToObjC(this)) : false))
+	else if ((legalStatusValue > 50 && ts == (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr)) || (ts != nullptr ? ts->isHostileTo(this) : false))
 	{
 		playAutopilotCannotDockWithTarget();
 		message = ExpandKeyWithArguments((ts == (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr)) ? "autopilot-denied" : "autopilot-target-docking-instructions-denied", { { "stationName", oo::PList(stationName) } });
@@ -5605,7 +5605,7 @@ void PlayerEntity::handleButtonTargetMissile()
 	missile_status = MISSILE_STATUS_ARMED;
 	if ((oo::ToShip(missile_entity[activeMissile].get()) != nullptr ? oo::ToShip(missile_entity[activeMissile].get())->getIsMissile() : false))
 	{
-		if ([primaryTarget() isShip])
+		if ([oo::ToObjC(primaryTarget()) isShip])
 		{
 			missile_status = MISSILE_STATUS_TARGET_LOCKED;
 			if (oo::ToShip(missile_entity[activeMissile].get()) != nullptr)  oo::ToShip(missile_entity[activeMissile].get())->addTarget(primaryTarget());

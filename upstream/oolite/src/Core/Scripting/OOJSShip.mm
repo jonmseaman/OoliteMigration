@@ -872,7 +872,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			return true;
 			
 		case kShip_target:
-			result = oo::EntityObjectNode(static_cast<::Entity *>(ship->primaryTarget()));	// an entity's object or nil (bead oo-9ht.39.5.2)
+			result = oo::EntityObjectNode(ship->primaryTarget());	// the C++ entity's object node or nil (bead oo-9ht.39.5.2; the getter answers the C++ entity since oo-9ht.39.23)
 			break;
 		
 		case kShip_defenseTargets:
@@ -1610,7 +1610,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			}
 			else if (JSValueToEntity(context, *value, &target) && IsShip(target))
 			{
-				ship->setFoundTargetEntity(target);	// the C++ entity (bead oo-9ht.39.8.11)
+				ship->setFoundTarget(target);	// the C++ entity (bead oo-9ht.39.8.11; the member takes it since oo-9ht.39.23)
 				return true;
 			}
 			break;
@@ -1625,7 +1625,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			}
 			else if (JSValueToEntity(context, *value, &target) && IsShip(target))
 			{
-				ship->setPrimaryAggressorEntity(target);	// the C++ entity (bead oo-9ht.39.8.11)
+				ship->setPrimaryAggressor(target);	// the C++ entity (bead oo-9ht.39.8.11; the member takes it since oo-9ht.39.23)
 				return true;
 			}
 			break;
@@ -3690,7 +3690,7 @@ static bool ShipAddDefenseTarget(ooscript::Context context, ooscript::CallArgs &
 		return false;
 	}
 	
-	ship->addDefenseTargetEntity(target);	// the C++ ship (bead oo-9ht.39.8.11)
+	ship->addDefenseTarget(target);	// the C++ ship (bead oo-9ht.39.8.11; the member takes it since oo-9ht.39.23)
 
 	OOJS_RETURN_VOID;
 	
@@ -3713,7 +3713,7 @@ static bool ShipRemoveDefenseTarget(ooscript::Context context, ooscript::CallArg
 		return false;
 	}
 	
-	ship->removeDefenseTargetEntity(target);	// the C++ ship (bead oo-9ht.39.8.11)
+	ship->removeDefenseTarget(target);	// the C++ ship (bead oo-9ht.39.8.11; the member takes it since oo-9ht.39.23)
 
 	OOJS_RETURN_VOID;
 	

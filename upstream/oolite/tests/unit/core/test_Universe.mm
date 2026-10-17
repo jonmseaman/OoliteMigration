@@ -682,9 +682,9 @@ Entity *MakeShipLike(HPVector position, GLfloat radius)
 }
 
 
-BOOL IsFarPredicate(Entity *entity, void *parameter)	// x beyond *(double *)parameter
+BOOL IsFarPredicate(cxx::Entity *entity, void *parameter)	// x beyond *(double *)parameter
 {
-	return [entity position].x > *(double *)parameter;
+	return [oo::ToObjC(entity) position].x > *(double *)parameter;
 }
 
 }	// namespace
