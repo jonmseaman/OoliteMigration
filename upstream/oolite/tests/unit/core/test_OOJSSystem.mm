@@ -202,10 +202,10 @@ public:
 		_lastRelativeTo = entity;
 		return MatchingEntities(this->_entities, predicate, parameter);
 	}
-	std::vector<oo::ObjCRef<::Entity *>> findEntitiesMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, ::Entity *entity) override
+	std::vector<oo::ObjCRef<::Entity *>> findEntitiesMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, cxx::Entity *entity) override	// the reference's C++ entity since bead oo-9ht.39.8.23
 	{
 		_lastRange = range;
-		_lastRelativeTo = entity;
+		_lastRelativeTo = oo::ToObjC(entity);
 		return MatchingEntities(this->_entities, predicate, parameter);
 	}
 	float getAmbientLightLevel() override	{ return _ambient; }
@@ -225,19 +225,19 @@ public:
 		return std::nullopt;
 	}
 	void setSystemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum, const std::string &key, const oo::PList &value, const std::optional<std::string> &manifest, OOSystemLayer layer) override	{ _log.push_back(oo::str::format("set %d:%d %s=%s manifest=%s layer=%d", gnum, pnum, key.c_str(), oo::DescriptionOf(value).c_str(), manifest.value_or("none").c_str(), static_cast<int>(layer))); }
-	unsigned countShipsWithPrimaryRole(const std::string &role, double range, ::Entity *entity) override
+	unsigned countShipsWithPrimaryRole(const std::string &role, double range, cxx::Entity *entity) override
 	{
-		_log.push_back(oo::str::format("countPrimary %s %g %s", role.c_str(), range, Describe(entity).c_str()));
+		_log.push_back(oo::str::format("countPrimary %s %g %s", role.c_str(), range, Describe(oo::ToObjC(entity)).c_str()));
 		return 3;
 	}
-	unsigned countShipsWithRole(const std::string &role, double range, ::Entity *entity) override
+	unsigned countShipsWithRole(const std::string &role, double range, cxx::Entity *entity) override
 	{
-		_log.push_back(oo::str::format("countRole %s %g %s", role.c_str(), range, Describe(entity).c_str()));
+		_log.push_back(oo::str::format("countRole %s %g %s", role.c_str(), range, Describe(oo::ToObjC(entity)).c_str()));
 		return 4;
 	}
-	unsigned countShipsWithScanClass(OOScanClass scanClass, double range, ::Entity *entity) override
+	unsigned countShipsWithScanClass(OOScanClass scanClass, double range, cxx::Entity *entity) override
 	{
-		_log.push_back(oo::str::format("countScanClass %d %g %s", static_cast<int>(scanClass), range, Describe(entity).c_str()));
+		_log.push_back(oo::str::format("countScanClass %d %g %s", static_cast<int>(scanClass), range, Describe(oo::ToObjC(entity)).c_str()));
 		return 5;
 	}
 	HPVector locationByCode(const std::string &code, ::OOSunEntity *sun, ::OOPlanetEntity *planet) override

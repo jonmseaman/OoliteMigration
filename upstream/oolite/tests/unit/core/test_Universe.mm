@@ -714,9 +714,9 @@ OO_TEST(slice15CountAndFind)
 		OO_CHECK(u->countShipsMatchingPredicate(IsFarPredicate, &limit, -1, nullptr) == 1);
 		OO_CHECK(u->countShipsMatchingPredicate(NULL, NULL, 500, a) == 0);
 
-		std::vector<oo::ObjCRef<Entity *>> found = u->findEntitiesMatchingPredicate(NULL, NULL, -1, a);
+		std::vector<oo::ObjCRef<Entity *>> found = u->findEntitiesMatchingPredicate(NULL, NULL, -1, oo::ToCxx(a));	// the reference's C++ entity since bead oo-9ht.39.8.23
 		OO_CHECK(found.size() == 2 && found[0].get() == b && found[1].get() == c);	// in the sorted list's order
-		found = u->findEntitiesMatchingPredicate(IsFarPredicate, &limit, 95, a);
+		found = u->findEntitiesMatchingPredicate(IsFarPredicate, &limit, 95, oo::ToCxx(a));
 		OO_CHECK(found.size() == 1 && found[0].get() == b);
 		found = u->findShipsMatchingPredicate(NULL, NULL, -1, nullptr);
 		OO_CHECK(found.size() == 1 && found[0].get() == c);

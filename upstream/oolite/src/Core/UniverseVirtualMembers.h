@@ -82,7 +82,7 @@ typedef BOOL (*EntityFilterPredicate)(Entity *entity, void *parameter);
 	virtual cxx::Entity *hazardOnRouteFromEntity(cxx::Entity * /*e1*/, double /*dist*/, HPVector /*p2*/) VALUE_BODY \
 	virtual HPVector getSafeVectorFromEntity(cxx::Entity * /*e1*/, double /*dist*/, HPVector /*p2*/) VALUE_BODY \
 	/* Slice 15: finding entities */ \
-	virtual std::vector<oo::ObjCRef<::Entity *>> findEntitiesMatchingPredicate(EntityFilterPredicate /*predicate*/, void * /*parameter*/, double /*range*/, ::Entity * /*e1*/) VALUE_BODY \
+	virtual std::vector<oo::ObjCRef<::Entity *>> findEntitiesMatchingPredicate(EntityFilterPredicate /*predicate*/, void * /*parameter*/, double /*range*/, cxx::Entity * /*e1*/) VALUE_BODY	/* the reference's C++ entity (bead oo-9ht.39.8.23) */ \
 	/* Slice 20: system data and names */ \
 	virtual oo::PList generateSystemData(OOSystemID /*s*/, bool /*useCache*/) VALUE_BODY \
 	virtual void setSystemDataKey(const std::string &/*key*/, const oo::PList &/*value*/, const std::optional<std::string> &/*manifest*/) VOID_BODY \
@@ -109,9 +109,9 @@ typedef BOOL (*EntityFilterPredicate)(Entity *entity, void *parameter);
 	virtual const oo::PList *descriptions() VALUE_BODY \
 	virtual std::optional<std::string> descriptionForKey(const std::string &/*key*/) VALUE_BODY \
 	virtual void setSystemDataForGalaxy(OOGalaxyID /*gnum*/, OOSystemID /*pnum*/, const std::string &/*key*/, const oo::PList &/*value*/, const std::optional<std::string> &/*manifest*/, OOSystemLayer /*layer*/) VOID_BODY \
-	virtual unsigned countShipsWithPrimaryRole(const std::string &/*role*/, double /*range*/, ::Entity * /*entity*/) VALUE_BODY \
-	virtual unsigned countShipsWithRole(const std::string &/*role*/, double /*range*/, ::Entity * /*entity*/) VALUE_BODY \
-	virtual unsigned countShipsWithScanClass(OOScanClass /*scanClass*/, double /*range*/, ::Entity * /*entity*/) VALUE_BODY \
+	virtual unsigned countShipsWithPrimaryRole(const std::string &/*role*/, double /*range*/, cxx::Entity * /*entity*/) VALUE_BODY \
+	virtual unsigned countShipsWithRole(const std::string &/*role*/, double /*range*/, cxx::Entity * /*entity*/) VALUE_BODY \
+	virtual unsigned countShipsWithScanClass(OOScanClass /*scanClass*/, double /*range*/, cxx::Entity * /*entity*/) VALUE_BODY \
 	virtual HPVector locationByCode(const std::string &/*code*/, ::OOSunEntity * /*sun*/, ::OOPlanetEntity * /*planet*/) VALUE_BODY \
 	virtual void witchspaceShipWithPrimaryRole(const std::string &/*role*/) VOID_BODY \
 	virtual void addShipWithRole(const std::string &/*desc*/, double /*route_fraction*/) VOID_BODY \

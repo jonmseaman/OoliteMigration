@@ -375,7 +375,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 
 	::ShipEntity  *scavenger_ship;
 	
-	unsigned scavs = (UNIVERSE != nullptr ? UNIVERSE->countShipsWithPrimaryRole("scavenger", SCANNER_MAX_RANGE, oo::ToObjC(self)) : 0u) + countOfShipsInLaunchQueueWithPrimaryRole("scavenger");
+	unsigned scavs = (UNIVERSE != nullptr ? UNIVERSE->countShipsWithPrimaryRole("scavenger", SCANNER_MAX_RANGE, self) : 0u) + countOfShipsInLaunchQueueWithPrimaryRole("scavenger");
 	
 	if (scavs >= max_scavengers)  return nil;
 	if (scavengers_launched >= max_scavengers)  return nil;
@@ -421,7 +421,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 
 	::ShipEntity  *miner_ship;
 	
-	int		n_miners = (UNIVERSE != nullptr ? UNIVERSE->countShipsWithPrimaryRole("miner", SCANNER_MAX_RANGE, oo::ToObjC(self)) : 0u) + countOfShipsInLaunchQueueWithPrimaryRole("miner");
+	int		n_miners = (UNIVERSE != nullptr ? UNIVERSE->countShipsWithPrimaryRole("miner", SCANNER_MAX_RANGE, self) : 0u) + countOfShipsInLaunchQueueWithPrimaryRole("miner");
 	
 	if (n_miners >= 1)	// just the one
 		return nil;
