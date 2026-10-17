@@ -45,6 +45,8 @@ public:
 	virtual void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
 	virtual std::optional<std::string> jsClassName();
 	virtual bool isVisibleToScripts();
+	Quaternion getOrientation();	// the binding calls these since bead oo-9ht.39.8.18 (its object's selectors did)
+	void setNormalOrientation(Quaternion quat);
 };
 
 }	// namespace cxx
@@ -62,6 +64,11 @@ public:
 	bool getOriented();
 	OOScalar size();
 	void setSize(OOScalar newSize);
+	std::optional<std::string> beaconCode();	// the binding calls these since bead oo-9ht.39.8.18 (its object's selectors did)
+	void setBeaconCode(const std::optional<std::string> &bcode);
+	std::optional<std::string> beaconLabel();
+	void setBeaconLabel(const std::optional<std::string> &blabel);
+	bool isBeacon();
 
 	BOOL _oriented = NO;
 	OOScalar _size = 0;
@@ -82,13 +89,6 @@ public:
 	Quaternion _orientation;
 }
 - (id) weakRefUnderlyingObject;
-- (std::optional<std::string>) beaconCode;
-- (void) setBeaconCode:(const std::optional<std::string> &)bcode;
-- (std::optional<std::string>) beaconLabel;
-- (void) setBeaconLabel:(const std::optional<std::string> &)blabel;
-- (BOOL) isBeacon;
-- (Quaternion) orientation;
-- (void) setNormalOrientation:(Quaternion)quat;
 @end
 
 // The universe's beacon list and the player's compass: what the binding tells them.
@@ -161,13 +161,6 @@ public:
 @implementation Entity
 
 - (id) weakRefUnderlyingObject  { return self; }
-- (std::optional<std::string>) beaconCode  { return _beaconCode; }
-- (void) setBeaconCode:(const std::optional<std::string> &)bcode  { _beaconCode = bcode; }
-- (std::optional<std::string>) beaconLabel  { return _beaconLabel; }
-- (void) setBeaconLabel:(const std::optional<std::string> &)blabel  { _beaconLabel = blabel; }
-- (BOOL) isBeacon  { return _beaconCode.has_value() && !_beaconCode->empty(); }
-- (Quaternion) orientation  { return _orientation; }
-- (void) setNormalOrientation:(Quaternion)quat  { _orientation = quat; }
 
 @end
 
@@ -409,6 +402,17 @@ namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
 	auto found = sObjects.find(entity);
 	return found != sObjects.end() ? found->second : nil;
 }
+
+
+// The waypoint's beacon and orientation, on its object's fields, as the object's selectors answered
+// them until bead oo-9ht.39.8.18.
+std::optional<std::string> OOWaypointEntity::beaconCode()  { return oo::ToObjC(this)->_beaconCode; }
+void OOWaypointEntity::setBeaconCode(const std::optional<std::string> &bcode)  { oo::ToObjC(this)->_beaconCode = bcode; }
+std::optional<std::string> OOWaypointEntity::beaconLabel()  { return oo::ToObjC(this)->_beaconLabel; }
+void OOWaypointEntity::setBeaconLabel(const std::optional<std::string> &blabel)  { oo::ToObjC(this)->_beaconLabel = blabel; }
+bool OOWaypointEntity::isBeacon()  { const std::optional<std::string> &code = oo::ToObjC(this)->_beaconCode; return code.has_value() && !code->empty(); }
+Quaternion cxx::Entity::getOrientation()  { return oo::ToObjC(this)->_orientation; }
+void cxx::Entity::setNormalOrientation(Quaternion quat)  { oo::ToObjC(this)->_orientation = quat; }
 
 
 // MARK: The context -------------------------------------------------------------------------------

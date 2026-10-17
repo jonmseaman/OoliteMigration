@@ -7850,3 +7850,25 @@ session, 2026-10-17).
 **Tests (standing approval oo-9n5p9, line on main before this change).** `test_OOJSVisualEffect`'s effect
 stand-in gains the overload, recording the sub-entity's object as the object overload recorded it; no case or
 expected value changes. `test_OOVisualEffectEntity` (the game's class) still calls the object overload.
+
+## Amendment (bead oo-9ht.39.8.18): the waypoint binding calls the C++ waypoint
+
+oo-9ht.39 step 4c (bead oo-9ht.39.8), family F6 part 6e for the waypoint (batch AF, Migration Completion
+session, 2026-10-17).
+
+1. **`OOJSWaypoint`'s getter and setter call the C++ waypoint** where they messaged its object:
+   `beaconCode()`, `setBeaconCode()`, `beaconLabel()`, `setBeaconLabel()`, `isBeacon()` (the facade's beacon
+   selectors called exactly these for a waypoint), `getOrientation()` (the facade's `-orientation`) and
+   `cxx::Entity::setNormalOrientation()` (the facade's `-setNormalOrientation:` called the virtual on a
+   C++-only entity; the call is **qualified**, the final overrider for a waypoint - `OOWaypointEntity` does
+   not override it and has no subclass - so the binding test stands in for it).
+2. **`JSWaypointGetWaypointEntity()`** answers the C++ waypoint only; its `oo::ToObjC` goes, and with it the
+   natives' "object is nil" exits, which a waypoint with its facade never took.
+
+**Defaults (rule 10).** Identical JS-visible behaviour; the facade-less difference of amendment oo-9ht.39.7.1
+is unreachable.
+
+**Tests (standing approval oo-9n5p9, line on main before this change).** `test_OOJSWaypoint`'s object
+stand-ins for the seven selectors become the C++ members over the same object fields (the fake universe's
+`clearBeacon()` still clears the object's code field, which the C++ stand-in reads); no case or expected value
+changes.
