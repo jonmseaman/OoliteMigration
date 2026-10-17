@@ -7905,3 +7905,40 @@ unreachable.
 **Tests (standing approval oo-9n5p9, line on main before this change).** `test_OOJSFlasher`'s object stand-in
 for `-owner` becomes `cxx::Entity::owner()` over the same object field, and its effect stand-in gains the
 `removeSubEntity(cxx::Entity *)` overload recording the sub-entity's object; no case or expected value changes.
+
+## Amendment (bead oo-9ht.39.8.21): the entity binding's property blocks call the C++ entity
+
+oo-9ht.39 step 4c (bead oo-9ht.39.8), family F6 part 6f (bead oo-9ht.39.8.7 part (b); batch AG, Migration
+Completion session, 2026-10-17). `OOJSEntity`'s `EntityGetProperty`/`EntitySetProperty` messaged
+`oo::ToObjC(cxxEntity)` with 28 selectors. They call the C++ members the root facade's selectors called:
+`collisionRadius()`, `getPosition()`/`setPosition()`, `normalOrientation()`/`setNormalOrientation()`,
+`status()`, `getScanClass()`/`setScanClass()`, `getMass()`, `getEnergy()`/`setEnergy()`,
+`getMaxEnergy()`/`setMaxEnergy()`, `isInSpace()`, the `getIs...()`/`is...()` family,
+`getDistanceTravelled()`, `getSpawnTime()`, and `oo::ToShip(cxx::Entity *)` for the ship's plumes and aegis.
+
+1. **Virtual members.** Ten of these are virtual. Where the facade's selector called `link->superX()` for an
+   Objective-C entity (`oo::ObjCEntityLink`), the C++ virtual reaches `oo::ObjCEntity`'s override, which
+   messages the object, whose selector (or the facade's, calling `superX()`) runs: the same body. No
+   Objective-C entity subclass is left in the game (only tests define them), and no facade but the root one
+   (and the quirium cascade's, which adds `-isCascadeWeapon` only) defines these selectors.
+2. **The owner.** `cxx::Entity::ownerEntity()` (new, non-virtual, out of line) answers `_owner.get()`, the
+   owner's C++ entity: what `owner()` answers the object of (`oo::WeakEntityObject`; the facade's `-dealloc`
+   drops the weak references, so both read none together). The property answers
+   `OOJSValueFromCxxObject()` of it (null for none), the value `OOJSValueFromNativeObject()` gave of the
+   object (its `-oo_jsValueInContext:` forwards to the C++ entity's glue). An entity that owns itself still
+   answers null.
+3. **The vtable seam.** The root entity's virtual members (46, the three `OOJSPrivateObject` overrides, and
+   the two debug-only ones) move, in their order, into `OO_ENTITY_VIRTUAL_MEMBERS` and
+   `OO_ENTITY_DEBUG_VIRTUAL_MEMBERS` (`src/Core/Entities/EntityVirtualMembers.h`), which `Entity.h` expands
+   where its first virtual member was (each old place keeps a pointer comment), as amendment oo-ql9rn item 4
+   did for the universe. A narrow test's stand-in derives from `oo::RefCounted` and `::OOJSPrivateObject`
+   and expands `OO_ENTITY_STAND_IN_VIRTUAL_MEMBERS` (`tests/unit/core/EntityStandIn.h`) first, so its vtable
+   has the game's slots. The declaration order, so the vtable, is unchanged.
+
+**Defaults (rule 10).** Identical JS-visible behaviour (js-api-contract, goldens). The binding's
+`oo::ToObjC` in `OOJSEntity.mm` goes.
+
+**Tests (standing approval oo-9n5p9, line on main before this change).** `test_OOJSEntity`'s stand-in C++
+entity gains the game's vtable and the members the blocks call (a `TestEntityPart` subclass overrides the
+virtual ones), each messaging the same Objective-C stand-in object as the binding did; its stand-in
+`OOJSValueFromCxxObject` answers an entity's own JS object. No case or expected value changes.
