@@ -401,7 +401,7 @@ void ShipEntity::requestDockingCoordinates()
 	::Entity			*targStation = nil;
 	double		distanceToStation2 = 0.0;
 	
-	targStation = targetStation();
+	targStation = oo::ToObjC(targetStation());
 	if ([targStation isStation])
 	{
 		station = oo::ToStation(targStation);
@@ -459,7 +459,7 @@ void ShipEntity::recallDockingInstructions()
 			if (targetStation != nil)
 			{
 				addTarget(oo::ToObjC(targetStation));
-				setTargetStation(oo::ToObjC(targetStation));
+				setTargetStation(targetStation);
 			}
 			else 
 			{
@@ -2045,7 +2045,7 @@ void ShipEntity::setPlanetPatrolCoordinates()
 			if (randf() < .25)
 			{
 				// consider docking
-				setTargetStation(oo::ToObjC(the_station));
+				setTargetStation(the_station);
 				setAITo("dockingAI.plist");
 				return;
 			}
@@ -2277,7 +2277,7 @@ void ShipEntity::scanForRocks()
 
 void ShipEntity::setDestinationToDockingAbort()
 {
-	::Entity *the_target = targetStation();
+	::Entity *the_target = oo::ToObjC(targetStation());
 	if (!the_target) {
 		/* Probably the player trying to dock with docking computer
 		 * from out of scanner range */
@@ -2595,7 +2595,7 @@ void ShipEntity::setTargetToRandomStation()
 	if (station)
 	{
 		addTarget(oo::ToObjC(station));
-		setTargetStation(oo::ToObjC(station));
+		setTargetStation(station);
 		if (shipAI != nullptr)  shipAI->message("STATION_FOUND");
 	}
 	else
@@ -2607,7 +2607,7 @@ void ShipEntity::setTargetToRandomStation()
 
 void ShipEntity::setTargetToLastStation()
 {
-	::Entity	*station = targetStation();
+	::Entity	*station = oo::ToObjC(targetStation());
 	
 	if (station != nil && [station isStation])
 	{

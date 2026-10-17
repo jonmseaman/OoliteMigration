@@ -3834,8 +3834,8 @@ void PlayerEntity::performDockingRequest(::StationEntity *stationForDocking)
 	if (stationForDocking == nil) return;
 	if (!(stationForDocking != nullptr ? stationForDocking->getIsStation() : false)) return;	// a StationEntity (-isKindOfClass:) by its type since bead oo-9ht.175
 	if (isDocked())  return;
-	if (autopilot_engaged && targetStation() == oo::ToObjC(stationForDocking))	return;
-	if (autopilot_engaged && targetStation() != oo::ToObjC(stationForDocking))
+	if (autopilot_engaged && targetStation() == stationForDocking)	return;
+	if (autopilot_engaged && targetStation() != stationForDocking)
 	{
 		disengageAutopilot();
 	}
@@ -3865,8 +3865,8 @@ void PlayerEntity::cancelDockingRequest(::StationEntity *stationForDocking)
 	if (stationForDocking == nil) return;
 	if (!(stationForDocking != nullptr ? stationForDocking->getIsStation() : false)) return;	// a StationEntity (-isKindOfClass:) by its type since bead oo-9ht.175
 	if (isDocked())  return;
-	if (autopilot_engaged && targetStation() == oo::ToObjC(stationForDocking))	return;
-	if (autopilot_engaged && targetStation() != oo::ToObjC(stationForDocking))
+	if (autopilot_engaged && targetStation() == stationForDocking)	return;
+	if (autopilot_engaged && targetStation() != stationForDocking)
 	{
 		disengageAutopilot();
 	}
@@ -3886,12 +3886,12 @@ bool PlayerEntity::engageAutopilotToStation(::StationEntity *stationForDocking)
 	if (stationForDocking == nil)   return NO;
 	if (isDocked())  return NO;
 	
-	if (autopilot_engaged && targetStation() == oo::ToObjC(stationForDocking))
+	if (autopilot_engaged && targetStation() == stationForDocking)
 	{	
 		return YES;
 	}
 		
-	setTargetStation(oo::ToObjC(stationForDocking));
+	setTargetStation(stationForDocking);
 	_primaryTarget = nullptr;
 	autopilot_engaged = YES;
 	ident_engaged = NO;

@@ -6897,7 +6897,7 @@ void ShipEntity::drawDebugStuff()
 			OODebugDrawColoredLine(HPVectorToVector(getPosition()), HPVectorToVector([pTarget position]), OOColor::colorWithRed(0.2, 0.0, 0.0, 1.0).get());
 		}
 		
-		::Entity *sTarget = targetStation();
+		::Entity *sTarget = oo::ToObjC(targetStation());
 		if (sTarget != pTarget && [sTarget isStation])
 		{
 			OODebugDrawPoint(HPVectorToVector([sTarget position]), OOColor::cyanColor().get());
@@ -10441,21 +10441,22 @@ void ShipEntity::setRememberedShip(cxx::Entity *targetEntity)
 }
 
 
-::Entity *ShipEntity::targetStation()
+// The C++ entity (bead oo-9ht.39.23.4): null, and forgotten, when its object is gone or it is no valid target, as before.
+cxx::Entity *ShipEntity::targetStation()
 {
 	::Entity *result = oo::WeakEntityObject(_targetStation);
 	if (result == nil || !isValidTarget(result))
 	{
 		_targetStation = nullptr;
-		return nil;
+		return nullptr;
 	}
-	return result;
+	return oo::ToCxx(result);
 }
 
 
-void ShipEntity::setTargetStation(::Entity *targetEntity)
+void ShipEntity::setTargetStation(cxx::Entity *targetEntity)
 {
-	_targetStation = oo::WeakEntityRef(targetEntity);
+	_targetStation = oo::WeakRef<cxx::Entity>(targetEntity);
 }
 
 
@@ -14381,7 +14382,7 @@ void ShipEntity::dockEscorts()
 		// act individually now!
 		if ((escort != nullptr ? escort->group() : (OOShipGroup *)nullptr) == escortGroup)  { if (escort != nullptr)  escort->setGroup(nullptr); }
 		if ((escort != nullptr ? escort->owner() : id{}) == oo::ToObjC(this))  { if (escort != nullptr)  escort->setOwner(escort); }
-		if(target && (target != nullptr ? target->getIsStation() : false)) { if (escort != nullptr)  escort->setTargetStation(oo::ToObjC(target)); }
+		if(target && (target != nullptr ? target->getIsStation() : false)) { if (escort != nullptr)  escort->setTargetStation(target); }
 		// JSAI: handles own delay
 		if (!(escort != nullptr ? escort->hasNewAI() : false))
 		{
@@ -14403,7 +14404,7 @@ void ShipEntity::setTargetToNearestStationIncludingHostiles(bool includeHostiles
 	if ([mother isStation])
 	{
 		addTarget(mother);
-		setTargetStation(mother);
+		setTargetStation(oo::ToCxx(mother));
 		return;	// head for mother!
 	}
 
@@ -14437,7 +14438,7 @@ void ShipEntity::setTargetToNearestStationIncludingHostiles(bool includeHostiles
 	if (station)
 	{
 		addTarget(oo::ToObjC(station));
-		setTargetStation(oo::ToObjC(station));
+		setTargetStation(station);
 	}
 	else
 	{
@@ -14484,7 +14485,7 @@ void ShipEntity::setTargetToSystemStation()
 	}
 	
 	addTarget(oo::ToObjC(system_station));
-	setTargetStation(oo::ToObjC(system_station));
+	setTargetStation(system_station);
 	return;
 }
 

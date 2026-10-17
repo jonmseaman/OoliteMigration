@@ -2050,18 +2050,18 @@ OO_TEST(slice24RememberedShips)
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("rememberer");
 		TestShip *other = MakeLateSliceShip("other");
-		OO_CHECK((ship != nullptr ? ship->thankedShip() : (cxx::Entity *)nullptr) == nullptr && (ship != nullptr ? ship->rememberedShip() : (cxx::Entity *)nullptr) == nullptr && (ship != nullptr ? ship->targetStation() : (Entity *)nullptr) == nil);
+		OO_CHECK((ship != nullptr ? ship->thankedShip() : (cxx::Entity *)nullptr) == nullptr && (ship != nullptr ? ship->rememberedShip() : (cxx::Entity *)nullptr) == nullptr && (ship != nullptr ? ship->targetStation() : (cxx::Entity *)nullptr) == nullptr);
 
 		if (ship != nullptr)  ship->setThankedShip(other);
 		if (ship != nullptr)  ship->setRememberedShip(other);
-		if (ship != nullptr)  ship->setTargetStation(oo::ToObjC(other));
-		OO_CHECK((ship != nullptr ? ship->thankedShip() : (cxx::Entity *)nullptr) == other && (ship != nullptr ? ship->rememberedShip() : (cxx::Entity *)nullptr) == other && (id)(ship != nullptr ? ship->targetStation() : (Entity *)nullptr) == oo::ToObjC(other));
+		if (ship != nullptr)  ship->setTargetStation(other);
+		OO_CHECK((ship != nullptr ? ship->thankedShip() : (cxx::Entity *)nullptr) == other && (ship != nullptr ? ship->rememberedShip() : (cxx::Entity *)nullptr) == other && (ship != nullptr ? ship->targetStation() : (cxx::Entity *)nullptr) == other);
 
 		// A ship that is no longer a valid target is forgotten, and stays forgotten.
 		if (other != nullptr)  other->setStatus(STATUS_DOCKED);
-		OO_CHECK((ship != nullptr ? ship->thankedShip() : (cxx::Entity *)nullptr) == nullptr && (ship != nullptr ? ship->rememberedShip() : (cxx::Entity *)nullptr) == nullptr && (ship != nullptr ? ship->targetStation() : (Entity *)nullptr) == nil);
+		OO_CHECK((ship != nullptr ? ship->thankedShip() : (cxx::Entity *)nullptr) == nullptr && (ship != nullptr ? ship->rememberedShip() : (cxx::Entity *)nullptr) == nullptr && (ship != nullptr ? ship->targetStation() : (cxx::Entity *)nullptr) == nullptr);
 		if (other != nullptr)  other->setStatus(STATUS_IN_FLIGHT);
-		OO_CHECK((ship != nullptr ? ship->thankedShip() : (cxx::Entity *)nullptr) == nullptr && (ship != nullptr ? ship->rememberedShip() : (cxx::Entity *)nullptr) == nullptr && (ship != nullptr ? ship->targetStation() : (Entity *)nullptr) == nil);
+		OO_CHECK((ship != nullptr ? ship->thankedShip() : (cxx::Entity *)nullptr) == nullptr && (ship != nullptr ? ship->rememberedShip() : (cxx::Entity *)nullptr) == nullptr && (ship != nullptr ? ship->targetStation() : (cxx::Entity *)nullptr) == nullptr);
 
 		if (ship != nullptr)  ship->setThankedShip(other);
 		if (ship != nullptr)  ship->setThankedShip(nullptr);
