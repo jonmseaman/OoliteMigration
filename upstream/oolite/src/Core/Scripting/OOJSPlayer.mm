@@ -757,7 +757,9 @@ static bool PlayerReplaceShip(ooscript::Context context, ooscript::CallArgs &ooj
 
 	if (success) 
 	{ 
-		if (player != nullptr)  player->doScriptEvent(OOJSID("playerReplacedShip"), oo::ToObjC(player));
+		// The player's entity node (bead oo-9ht.39.8.8), as the next event's: its JS value is the C++ player's, which its
+		// object's -oo_jsValueInContext: answered; qualified: the final overrider, so the binding test stands in for it.
+		if (player != nullptr)  player->ShipEntity::doScriptEvent(OOJSID("playerReplacedShip"), { oo::EntityObjectNode(player) });
 		// slightly misnamed world event now - to be deprecated
 		if (player != nullptr)  player->ShipEntity::doScriptEvent(OOJSID("playerBoughtNewShip"), { oo::EntityObjectNode(player), oo::PList::signedInteger(0) });	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 	}

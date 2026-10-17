@@ -7782,3 +7782,29 @@ its object).
 **Tests (standing approval oo-9n5p9, lines on main before this change).** `test_OOJSShip`'s `TestUniverse`
 overrides take the C++ entity (same log lines; nullptr for nil); `test_Universe`'s slice-14 cases pass
 `oo::ToCxx(e1)` and compare the hazard with `nullptr` / `oo::ToCxx(rock)`; same routes, same expected answers.
+
+## Amendment (bead oo-9ht.39.8.8): the ECM warning describes, and playerReplacedShip passes, the C++ entity
+
+oo-9ht.39 step 4c (bead oo-9ht.39.8), family F7 of its plan (batch AF, Migration Completion session,
+2026-10-17).
+
+1. **`OOJSShip`'s `fireECM()` warning** describes the ship with `EntityJSDescription(thisEnt)`
+   (`EntityOOJavaScriptExtensions.h`), where it took `OOObjectJSDescription()` of its object: both are
+   "[<jsClassName()> <descriptionComponents()>]" (or "[object <name>]") from the same C++ members; the text is
+   identical.
+2. **`OOJSPlayer`'s `replaceShip()`** sends `playerReplacedShip` with the player's entity node
+   (`oo::EntityObjectNode(player)`, through the `std::vector<oo::PList>` overload, qualified as the
+   `playerBoughtNewShip` event beside it), where it passed the player's object to the `id` overload. The script
+   sees the same JS value (the C++ player's `jsValueInContext()`, which the object's `-oo_jsValueInContext:`
+   answered); the vector overload also roots the value against the GC while the event runs, which only
+   makes it safer.
+3. **Kept: `OOJSShipGroup`'s two-escort-groups warning** (`oo::DescriptionOf(oo::ToObjC(ship))`). Its text
+   is the object's `-cxx_description`, which embeds the object's address (`<ShipEntity 0x...>`); a C++
+   description would print another address, so the text cannot stay identical while the facade exists. It goes
+   with the facade (oo-9ht.39), as an address change in a warning.
+
+**Defaults (rule 10).** Identical text and JS values; no behaviour change.
+
+**Tests.** None changed: `test_OOJSShip` links the game (`fireECM()` without ECM is exercised), and
+`test_OOJSPlayer`'s ship stand-in already answers the vector overload, which records the same
+`playerReplacedShip(PlayerEntity)` event.

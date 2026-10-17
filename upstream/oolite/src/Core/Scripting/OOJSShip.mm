@@ -2771,7 +2771,9 @@ static bool ShipFireECM(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	OK = ship->fireECM();
 	if (!OK)
 	{
-		cxx_OOJSReportWarning(context, "Ship %s was requested to fire ECM burst but does not carry ECM equipment.", OOObjectJSDescription(oo::ToObjC(thisEnt)).value_or("(null)").c_str());
+		// The C++ ship's JS description (bead oo-9ht.39.8.8): what its object's OOObjectJSDescription() made of the same
+		// jsClassName() and descriptionComponents().
+		cxx_OOJSReportWarning(context, "Ship %s was requested to fire ECM burst but does not carry ECM equipment.", EntityJSDescription(thisEnt).value_or("(null)").c_str());
 	}
 	
 	OOJS_RETURN_BOOL(OK);
