@@ -7700,3 +7700,33 @@ members, on the same object fields.
 Left for the next families (bead notes of oo-9ht.39.8): beacons (F3), ship targets (F4),
 hazard/safe-vector (F5), object accessors (F6), descriptions and `doScriptEvent` (F7), the facade's JS
 forwarders and categories (F8).
+
+## Amendment (bead oo-9ht.39.8.10): the universe's beacon list members take the C++ entity
+
+oo-9ht.39 step 4c (bead oo-9ht.39.8), family F3 of its plan (batch AF, Migration Completion session,
+2026-10-17). The ship, visual effect and waypoint bindings' `beaconCode` setters crossed to the object for
+the universe's beacon list and for the compare with the player's next beacon.
+
+1. **`Universe::setNextBeacon()` / `clearBeacon()` take the C++ entity** (`cxx::Entity *`, virtual in
+   `UniverseVirtualMembers.h`) and cross to its object inside, where the beacon list is still kept on the
+   entities' objects (`firstBeacon()`, `-setPrevBeacon:`/`-setNextBeacon:`). The bindings pass the entity
+   they hold (`OOJSShip`, `OOJSVisualEffect`: the C++ entity; `OOJSWaypoint`: the C++ waypoint, where it
+   passed the waypoint's object); the universe's own callers pass the C++ ship (they passed
+   `oo::ToObjC(se)`) or `oo::ToCxx()` of the effect's or waypoint's object they hold. Same object reaches
+   the same body: `oo::ToObjC(oo::ToCxx(x)) == x` for a live entity.
+2. **`ShipEntity::nextBeaconEntity()`** answers `oo::ToCxx(nextBeacon())`: through the virtual
+   `nextBeacon()` (a test's player overrides it), so the crossing is in the ship while the beacon chain is on
+   objects, and the three bindings compare C++ entities: `PLAYER->nextBeaconEntity() == entity` where they
+   compared `PLAYER->nextBeacon()` with the entity's object. Not virtual, so the binding tests stand in for it
+   (the `PlayerEntity::nextBeacon()` qualification of bead oo-9ht.177 is no longer needed there).
+
+**Defaults (rule 10).** Identical behaviour: the compare is the same identity on the other side of the
+crossing; the universe's members run the same body on the same object. Not done here (later work on the beacon
+chain itself): the list on C++ entities (`_firstBeacon`/`_lastBeacon` already are), `nextBeacon()` answering
+the C++ entity, the player's compass cycling and the HUD.
+
+**Tests (standing approval oo-9n5p9, lines on main before this change).** Only stand-ins: the
+`setNextBeacon`/`clearBeacon` overrides of `test_OOJSShip`, `test_OOJSVisualEffect` and `test_OOJSWaypoint`
+take the C++ entity (the ship's log reads `beaconCode()`, which its object's `-beaconCode` answered; the
+others clear the same field), and the latter two's player stand-ins add `nextBeaconEntity()`; no case or
+expected value changes.

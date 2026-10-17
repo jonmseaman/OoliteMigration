@@ -473,8 +473,8 @@ static bool VisualEffectSetProperty(Context cx, Object obj, PropertyId propID, b
 			{
 				if ((entity != nullptr ? entity->isBeacon() : false)) 
 				{
-					if (UNIVERSE != nullptr)  UNIVERSE->clearBeacon((::Entity <OOBeaconEntity> *)oo::ToObjC(entity));
-					if ((PLAYER != nullptr ? (::Entity <OOBeaconEntity> *)PLAYER->PlayerEntity::nextBeacon() : (::Entity <OOBeaconEntity> *)nullptr) == (::Entity <OOBeaconEntity> *)oo::ToObjC(entity))	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
+					if (UNIVERSE != nullptr)  UNIVERSE->clearBeacon(entity);	// the C++ entity (bead oo-9ht.39.8.10)
+					if ((PLAYER != nullptr ? PLAYER->nextBeaconEntity() : nullptr) == entity)	// the C++ entities (bead oo-9ht.39.8.10; not virtual, so the binding test stands in for it)
 					{
 						if (PLAYER != nullptr)  PLAYER->PlayerEntity::setCompassMode(COMPASS_MODE_PLANET);	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 					}
@@ -489,7 +489,7 @@ static bool VisualEffectSetProperty(Context cx, Object obj, PropertyId propID, b
 				else // Universe needs to update beacon lists in this case only
 				{
 					if (entity != nullptr)  entity->setBeaconCode(sValue);
-					if (UNIVERSE != nullptr)  UNIVERSE->setNextBeacon((::Entity <OOBeaconEntity> *)oo::ToObjC(entity));
+					if (UNIVERSE != nullptr)  UNIVERSE->setNextBeacon(entity);	// the C++ entity (bead oo-9ht.39.8.10)
 				}
 			}
 			return true;

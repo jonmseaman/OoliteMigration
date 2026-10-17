@@ -4181,8 +4181,10 @@ void Universe::setLastBeacon(OOBeaconEntityObject *beacon)
 }
 
 
-void Universe::setNextBeacon(OOBeaconEntityObject *beaconShip)
+void Universe::setNextBeacon(cxx::Entity *beacon)
 {
+	// The C++ entity (bead oo-9ht.39.8.10); the beacon list is still kept on the entities' objects.
+	OOBeaconEntityObject *beaconShip = (OOBeaconEntityObject *)oo::ToObjC(beacon);
 	if ([beaconShip isBeacon])
 	{
 		setLastBeacon(beaconShip);
@@ -4195,8 +4197,10 @@ void Universe::setNextBeacon(OOBeaconEntityObject *beaconShip)
 }
 
 
-void Universe::clearBeacon(OOBeaconEntityObject *beaconShip)
+void Universe::clearBeacon(cxx::Entity *beacon)
 {
+	// The C++ entity (bead oo-9ht.39.8.10); the beacon list is still kept on the entities' objects.
+	OOBeaconEntityObject *beaconShip = (OOBeaconEntityObject *)oo::ToObjC(beacon);
 	::Entity <OOBeaconEntity>				*tmp = nil;
 
 	if ([beaconShip isBeacon])
@@ -5848,7 +5852,7 @@ bool Universe::addEntity(::Entity *entity)
 				se = oo::ToShip(entity);
 				if ((se != nullptr ? se->isBeacon() : false))
 				{
-					setNextBeacon((::Entity<OOBeaconEntity> *)oo::ToObjC(se));
+					setNextBeacon(se);	// the C++ ship (bead oo-9ht.39.8.10)
 				}
 				if ((se != nullptr ? se->getIsStation() : false))
 				{
@@ -5893,7 +5897,7 @@ bool Universe::addEntity(::Entity *entity)
 				ve = (::OOBeaconEntityObject *)entity;
 				if ([ve isBeacon])
 				{
-					setNextBeacon(ve);
+					setNextBeacon(oo::ToCxx(ve));	// its C++ part (bead oo-9ht.39.8.10)
 				}
 			}
 			else if ([entity isWaypoint])
@@ -5901,7 +5905,7 @@ bool Universe::addEntity(::Entity *entity)
 				wp = (::OOBeaconEntityObject *)entity;
 				if ([wp isBeacon])
 				{
-					setNextBeacon(wp);
+					setNextBeacon(oo::ToCxx(wp));	// its C++ part (bead oo-9ht.39.8.10)
 				}
 			}
 		}
@@ -11008,17 +11012,17 @@ bool Universe::doRemoveEntity(::Entity *entity)
 		if ([entity isShip])
 		{
 			::ShipEntity *se = oo::ToShip(entity);
-			clearBeacon((::Entity<OOBeaconEntity> *)oo::ToObjC(se));
+			clearBeacon(se);	// the C++ ship (bead oo-9ht.39.8.10)
 		}
 		if ([entity isWaypoint])
 		{
 			::OOBeaconEntityObject *wp = (::OOBeaconEntityObject *)entity;	// the root's facade since bead oo-9ht.108
-			clearBeacon(wp);
+			clearBeacon(oo::ToCxx(wp));	// its C++ part (bead oo-9ht.39.8.10)
 		}
 		if ([entity isVisualEffect])
 		{
 			::OOBeaconEntityObject *ve = (::OOBeaconEntityObject *)entity;	// an effect's object (bead oo-9ht.165)
-			clearBeacon(ve);
+			clearBeacon(oo::ToCxx(ve));	// its C++ part (bead oo-9ht.39.8.10)
 		}
 		
 		if ([entity isWormhole])

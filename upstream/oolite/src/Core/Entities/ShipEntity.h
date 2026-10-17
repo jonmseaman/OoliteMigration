@@ -317,6 +317,7 @@ public:
 	OOHUDBeaconIcon *beaconDrawable();	// borrowed (the protocol type until bead oo-7ae4p)
 	::Entity *prevBeacon();
 	virtual ::Entity *nextBeacon();
+	cxx::Entity *nextBeaconEntity();	// nextBeacon()'s C++ entity, null for none (bead oo-9ht.39.8.10)
 	void setPrevBeacon(::Entity *beaconShip);
 	void setNextBeacon(::Entity *beaconShip);
 	void setIsBoulder(bool flag);

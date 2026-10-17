@@ -1469,8 +1469,8 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			{
 				if (ship->isBeacon()) 
 				{
-					if (UNIVERSE != nullptr)  UNIVERSE->clearBeacon((::Entity<OOBeaconEntity> *)oo::ToObjC(entity));
-					if ((PLAYER != nullptr ? (::Entity <OOBeaconEntity> *)PLAYER->nextBeacon() : (::Entity <OOBeaconEntity> *)nullptr) == oo::ToObjC(entity))
+					if (UNIVERSE != nullptr)  UNIVERSE->clearBeacon(entity);	// the C++ entity (bead oo-9ht.39.8.10)
+					if ((PLAYER != nullptr ? PLAYER->nextBeaconEntity() : nullptr) == entity)
 					{
 						if (PLAYER != nullptr)  PLAYER->setCompassMode(COMPASS_MODE_PLANET);
 					}
@@ -1485,7 +1485,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 				else // Universe needs to update beacon lists in this case only
 				{
 					ship->setBeaconCode(sValue);
-					if (UNIVERSE != nullptr)  UNIVERSE->setNextBeacon((::Entity<OOBeaconEntity> *)oo::ToObjC(entity));
+					if (UNIVERSE != nullptr)  UNIVERSE->setNextBeacon(entity);	// the C++ entity (bead oo-9ht.39.8.10)
 				}
 			}
 			return true;

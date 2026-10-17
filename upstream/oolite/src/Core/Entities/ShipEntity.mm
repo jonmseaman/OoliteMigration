@@ -1978,6 +1978,14 @@ OOHUDBeaconIcon *ShipEntity::beaconDrawable()
 }
 
 
+// Through the virtual nextBeacon() (a test's player answers it), while the beacon chain is on objects
+// (bead oo-9ht.39.8.10): the JS bindings compare the C++ entity.
+cxx::Entity *ShipEntity::nextBeaconEntity()
+{
+	return oo::ToCxx(nextBeacon());
+}
+
+
 void ShipEntity::setPrevBeacon(::Entity *beaconShip)
 {
 	if (beaconShip != (::Entity <OOBeaconEntity> *)prevBeacon())

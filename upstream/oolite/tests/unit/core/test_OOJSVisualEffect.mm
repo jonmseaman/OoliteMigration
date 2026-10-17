@@ -205,8 +205,9 @@ public:
 	int _added = 0;
 	int _compassMode = 0;
 
-	void setNextBeacon(Entity <OOBeaconEntity> *beacon) override  { _added++; (void)beacon; }
-	void clearBeacon(Entity <OOBeaconEntity> *beacon) override  { _cleared++; static_cast<OOVisualEffectEntity *>(beacon->_cxxEntity.get())->_beaconCode = std::nullopt; }
+	// The C++ entity since bead oo-9ht.39.8.10 (it was the effect's object, holding this part).
+	void setNextBeacon(cxx::Entity *beacon) override  { _added++; (void)beacon; }
+	void clearBeacon(cxx::Entity *beacon) override  { _cleared++; static_cast<OOVisualEffectEntity *>(beacon)->_beaconCode = std::nullopt; }
 	Entity *nextBeacon()  { return _nextBeacon; }
 	void setCompassMode(OOCompassMode mode)  { _compassMode = static_cast<int>(mode); }
 };
@@ -218,6 +219,7 @@ class ShipEntity : public cxx::Entity	// C++ since bead oo-9ht.144
 {
 public:
 	::Entity *nextBeacon();
+	cxx::Entity *nextBeaconEntity();
 };
 
 class PlayerEntity : public ShipEntity
@@ -437,6 +439,7 @@ bool OOVisualEffectEntity::isVisibleToScripts()  { return ::OOJSVisualEffectIsVi
 
 
 ::Entity *ShipEntity::nextBeacon()  { return static_cast<PlayerEntity *>(this)->_game->nextBeacon(); }
+cxx::Entity *ShipEntity::nextBeaconEntity()  { ::Entity *object = nextBeacon(); return object != nil ? object->_cxxEntity.get() : nullptr; }	// as the game's (oo::ToCxx of it)
 void PlayerEntity::setCompassMode(OOCompassMode value)  { static_cast<PlayerEntity *>(this)->_game->setCompassMode(value); }
 
 
