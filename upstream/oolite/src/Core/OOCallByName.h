@@ -92,7 +92,11 @@ inline oo::PList OOCallByName(id target, SEL selector, const char *argument)
 	table, OOEntityCalledByNameTable.h) is answered by the C++ part it applies to, as the facade's
 	-respondsToSelector: and its category method answered it; any other name, and a tabled name
 	whose signature the call cannot use, go to the entity's Objective-C object as before (that
-	path logs callByName.unknownSelector / callByName.badSignature). A null entity does nothing.
+	path logs callByName.unknownSelector / callByName.badSignature). Since bead oo-9ht.39.7.3 the
+	categories are deleted and the table is the source: a tabled name that applies but whose
+	signature the call cannot use is logged here (callByName.badSignature, with the type encoding
+	without frame offsets); a tabled name that does not apply still goes to the object, which no
+	longer has the method and logs callByName.unknownSelector as before. A null entity does nothing.
 	Defined in OOEntityCalledByName.mm.
 */
 namespace cxx { class Entity; }
@@ -103,6 +107,15 @@ bool EntityRespondsToName(cxx::Entity *entity, const std::string &name);
 PList CallEntityByName(cxx::Entity *entity, const std::string &name);
 PList CallEntityByName(cxx::Entity *entity, const std::string &name, const std::string &argument);
 PList CallEntityByName(cxx::Entity *entity, const std::string &name, const PList &argument);
+
+/*	An entity's method called after <delay> seconds (bead oo-9ht.39.7.3, ADR-0056 amendment
+	oo-9ht.39.7.3): what OOScheduleDeferredCall() of the method's selector on the entity's object
+	did (the afterburner sound's update, a ship's cargo dumped a canister at a time). The call holds
+	the entity, as the deferred call retained its object, which held it, and calls <call> with it
+	when it fires; <call> asks for the entity's class, as the facade's method did. A null entity
+	schedules nothing. Defined in OOEntityCalledByName.mm.
+*/
+void ScheduleEntityCall(cxx::Entity *entity, void (*call)(cxx::Entity *entity), double delay);
 
 }	// namespace oo
 

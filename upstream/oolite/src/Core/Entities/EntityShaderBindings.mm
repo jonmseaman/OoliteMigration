@@ -420,9 +420,17 @@ bool ShaderRandomSeed(cxx::Entity *entity, uint32_t *outSeed)
 		*outSeed = ship->randomSeedForShaders();
 		return true;
 	}
+	// Another object: its own method if its class has one (as the message found it), else a ship's
+	// part's, which the by-name category answered (the C++ table's row since bead oo-9ht.39.7.3).
 	id object = oo::ToObjC(entity);
-	if (![object respondsToSelector:@selector(randomSeedForShaders)])  return false;
-	*outSeed = [object randomSeedForShaders];
+	if ([object respondsToSelector:@selector(randomSeedForShaders)])
+	{
+		*outSeed = [object randomSeedForShaders];
+		return true;
+	}
+	ShipEntity *ship = ShipPart(entity);
+	if (ship == nullptr)  return false;
+	*outSeed = ship->randomSeedForShaders();
 	return true;
 }
 

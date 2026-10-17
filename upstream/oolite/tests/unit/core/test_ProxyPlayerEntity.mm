@@ -24,6 +24,8 @@
 #import "Universe.h"
 #import "PlayerEntity.h"
 #import "EntityOOJavaScriptExtensions.h"
+#import "OOCallByName.h"	// oo::EntityRespondsToName / oo::CallEntityByName (bead oo-9ht.39.7.3)
+#import "OOEntityCalledByName.h"	// oo::CallEntityByNameTyped (bead oo-9ht.39.7.3)
 
 #include "oo_test.hpp"
 
@@ -249,7 +251,8 @@ OO_TEST(objCProxyPartIsAProxy)
 
 // The proxy's dials by name (bead oo-9ht.183): the shaders bind them to the proxy's object, which
 // answers them for a proxy's part (and a plain ship's object does not); the root's facade since
-// bead oo-9ht.144.
+// bead oo-9ht.144, the by-name table's rows since bead oo-9ht.39.7.3 (answered and called on the
+// C++ proxy, as the facade's methods answered them).
 OO_TEST(dialsAnsweredByNameForAProxy)
 {
 	@autoreleasepool
@@ -259,13 +262,14 @@ OO_TEST(dialsAnsweredByNameForAProxy)
 		ProxyPlayerEntity *proxy = MakeProxy(&object);
 		proxy->setDialForwardShield(0.5f);
 		proxy->setTradeInFactor(42);
-		OO_CHECK([object respondsToSelector:@selector(dialForwardShield)] && [object respondsToSelector:@selector(tradeInFactor)]);
-		OO_CHECK(((GLfloat (*)(id, SEL))class_getMethodImplementation(object_getClass(object), @selector(dialForwardShield)))(object, @selector(dialForwardShield)) == 0.5f);
-		OO_CHECK(((int (*)(id, SEL))class_getMethodImplementation(object_getClass(object), @selector(tradeInFactor)))(object, @selector(tradeInFactor)) == 42);
-		OO_CHECK(((OOAlertCondition (*)(id, SEL))class_getMethodImplementation(object_getClass(object), @selector(alertCondition)))(object, @selector(alertCondition)) == ALERT_CONDITION_DOCKED);
+		OO_CHECK(oo::EntityRespondsToName(proxy, "dialForwardShield") && oo::EntityRespondsToName(proxy, "tradeInFactor"));
+		OOEntityByNameValue dial, factor, condition;
+		OO_CHECK(oo::CallEntityByNameTyped(proxy, "dialForwardShield", dial) && static_cast<GLfloat>(dial.real) == 0.5f);
+		OO_CHECK(oo::CallEntityByNameTyped(proxy, "tradeInFactor", factor) && factor.integer == 42);
+		OO_CHECK(oo::CallEntityByNameTyped(proxy, "alertCondition", condition) && static_cast<OOAlertCondition>(condition.integer) == ALERT_CONDITION_DOCKED);
 
 		ShipEntity *ship = oo::ToShip([oo::NewShipObject(oo::makeRef<::ShipEntity>(), "ship", oo::PList(oo::PList::Dict{ { "unpiloted", oo::PList(true) } })) autorelease]);
-		OO_CHECK(ship != nil && !(ship != nullptr ? [oo::ToObjC(ship) respondsToSelector:@selector(dialForwardShield)] : false));
+		OO_CHECK(ship != nil && !(ship != nullptr ? oo::EntityRespondsToName(oo::ToCxx(oo::ToObjC(ship)), "dialForwardShield") : false));
 	}
 }
 

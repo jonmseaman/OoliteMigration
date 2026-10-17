@@ -19,6 +19,7 @@
 #import "StationEntity.h"
 #import "Universe.h"
 #import "PlayerEntity.h"
+#import "OOCallByName.h"	// oo::EntityRespondsToName / oo::CallEntityByName (bead oo-9ht.39.7.3)
 
 #include "oo_test.hpp"
 
@@ -91,18 +92,6 @@ ShipEntity *NewTestAIStation(const std::string &key, const oo::PList &dict)
 }
 
 }	// namespace
-
-
-// The category Entity (OOShipSelectorsCalledByName)'s station stubs (ShipEntity (OOAIStationStubs)
-// until bead oo-9ht.144), which no game header declares (the Objective-C station's interface declared
-// their selectors until bead oo-9ht.175). The AI sends them by name to a ship's object.
-@interface Entity (OOAIStationStubs)
-- (void) increaseAlertLevel;
-- (void) decreaseAlertLevel;
-- (void) abortAllDockings;
-- (void) launchShipWithRole:(const std::string &)param;
-- (oo::PList) launchPolice;
-@end
 
 
 namespace {
@@ -374,11 +363,13 @@ OO_TEST(slice1StationStubs)
 	{
 		SetUp();
 		TestAIShip *ship = MakeShip("notastation");
-		[(id)oo::ToObjC(ship) increaseAlertLevel];
-		[(id)oo::ToObjC(ship) decreaseAlertLevel];
-		[(id)oo::ToObjC(ship) abortAllDockings];
-		[(id)oo::ToObjC(ship) launchShipWithRole:std::string("trader")];
-		OO_CHECK([(id)oo::ToObjC(ship) launchPolice].isNull());
+		// The AI calls them by name: the by-name table's rows since bead oo-9ht.39.7.3 (the category
+		// Entity (OOShipSelectorsCalledByName)'s station stubs, sent to the ship's object, until then).
+		oo::CallEntityByName(ship, "increaseAlertLevel");
+		oo::CallEntityByName(ship, "decreaseAlertLevel");
+		oo::CallEntityByName(ship, "abortAllDockings");
+		oo::CallEntityByName(ship, "launchShipWithRole:", std::string("trader"));
+		OO_CHECK(oo::CallEntityByName(ship, "launchPolice").isNull());
 		OO_CHECK((ship != nullptr ? ship->status() : OOEntityStatus{}) == STATUS_IN_FLIGHT);
 	}
 }

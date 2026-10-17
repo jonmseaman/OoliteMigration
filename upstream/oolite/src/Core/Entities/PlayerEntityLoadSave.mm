@@ -150,16 +150,16 @@ bool PlayerEntity::loadPlayer()
 	BOOL				OK = YES;
 	
 #if OO_USE_APPKIT_LOAD_SAVE_ALWAYS
-	OK = [oo::ToObjC(this) loadPlayerWithPanel];
+	OK = loadPlayerWithPanel();
 #elif OOLITE_USE_APPKIT_LOAD_SAVE
 	// OS X: use system open/save dialogs in windowed mode, custom interface in full-screen.
 	if ([(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) inFullScreenMode])
 	{
-		[oo::ToObjC(this) setGuiToLoadCommanderScreen];
+		setGuiToLoadCommanderScreen();
 	}
 	else
 	{
-		OK = [oo::ToObjC(this) loadPlayerWithPanel];
+		OK = loadPlayerWithPanel();
 	}
 #else
 	// Other platforms: use custom interface all the time.
@@ -172,16 +172,16 @@ bool PlayerEntity::loadPlayer()
 void PlayerEntity::savePlayer()
 {
 #if OO_USE_APPKIT_LOAD_SAVE_ALWAYS
-	[oo::ToObjC(this) savePlayerWithPanel];
+	savePlayerWithPanel();
 #elif OOLITE_USE_APPKIT_LOAD_SAVE
 	// OS X: use system open/save dialogs in windowed mode, custom interface in full-screen.
 	if ([(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) inFullScreenMode])
 	{
-		[oo::ToObjC(this) setGuiToSaveCommanderScreen:oo::StdString(oo::ToObjC(this).lastsaveName)];
+		setGuiToSaveCommanderScreen(oo::StdString(oo::ToObjC(this).lastsaveName));
 	}
 	else
 	{
-		[oo::ToObjC(this) savePlayerWithPanel];
+		savePlayerWithPanel();
 	}
 #else
 	// Other platforms: use custom interface all the time.
@@ -906,9 +906,9 @@ void PlayerEntity::savePlayerWithPanel()
 		ShipScriptEventNoCx(this, "playerWillSaveGame", OOJSSTR("STANDARD_SAVE"));
 		
 		oo::ToObjC(this).lastsaveName = newName;
-		[oo::ToObjC(this) writePlayerToPath:oo::StdString(path)];
+		writePlayerToPath(oo::StdString(path));
 	}
-	[oo::ToObjC(this) setGuiToStatusScreen];
+	setGuiToStatusScreen();
 }
 
 #endif

@@ -30,6 +30,7 @@ MA 02110-1301, USA.
 #import "OOMaths.h"
 #import "OOEquipmentType.h"
 #import "GameController.h"
+#import "OOCallByName.h"	// oo::ScheduleEntityCall
 
 #include "oofnd/String.hpp"
 
@@ -512,7 +513,8 @@ void PlayerEntity::updateAfterburnerSound()
 		if (sAfterburnerSources[which] != nullptr)  sAfterburnerSources[which]->play();
 		which = !which;
 		
-		OOScheduleDeferredCall(oo::ToObjC(this), @selector(updateAfterburnerSound), nil, 1.25);	// and swap sounds in 1.25s time (by name: the root's facade answers it, beads oo-9ht.177, oo-9ht.144)
+		// and swap sounds in 1.25s time (a deferred call on the C++ player since bead oo-9ht.39.7.3; by name on its object before)
+		oo::ScheduleEntityCall(this, [](cxx::Entity *entity) { if (PlayerEntity *player = dynamic_cast<PlayerEntity *>(entity))  player->updateAfterburnerSound(); }, 1.25);
 	}
 }
 

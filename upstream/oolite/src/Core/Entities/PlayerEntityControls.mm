@@ -1740,13 +1740,13 @@ void PlayerEntity::pollFlightControls(double delta_t)
 			// Field of view controls
 			if (!(UNIVERSE != nullptr ? UNIVERSE->getDisplayGUI() : false))
 			{
-				if (([oo::ToObjC(this) checkKeyPress:n_key_inc_field_of_view] || joyButtonState[BUTTON_INC_FIELD_OF_VIEW]) && (fieldOfView < MAX_FOV))
+				if ((checkKeyPress(n_key_inc_field_of_view) || joyButtonState[BUTTON_INC_FIELD_OF_VIEW]) && (fieldOfView < MAX_FOV))
 				{
 					fieldOfView *= pow(fov_delta, delta_t);
 					if (fieldOfView > MAX_FOV)  fieldOfView = MAX_FOV;
 				}
 
-				if (([oo::ToObjC(this) checkKeyPress:n_key_dec_field_of_view] || joyButtonState[BUTTON_DEC_FIELD_OF_VIEW]) && (fieldOfView > MIN_FOV))
+				if ((checkKeyPress(n_key_dec_field_of_view) || joyButtonState[BUTTON_DEC_FIELD_OF_VIEW]) && (fieldOfView > MIN_FOV))
 				{
 					fieldOfView /= pow(fov_delta, delta_t);
 					if (fieldOfView < MIN_FOV)  fieldOfView = MIN_FOV;

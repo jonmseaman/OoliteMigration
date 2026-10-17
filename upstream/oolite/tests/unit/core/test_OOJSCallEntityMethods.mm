@@ -11,10 +11,15 @@
 	names and the compiler's .cxx_construct/.cxx_destruct. The table must list exactly that set, and
 	each row must classify its method as the matcher did. The facade is the real one, so the test
 	links the whole game but main (['*']).
+	Since bead oo-9ht.39.7.3 the facade's five by-name categories are the C++ by-name table
+	(OOEntityCalledByNameTable.h): the oracle adds its rows, each classified as the matcher
+	classified the category method, from the row's declared result and argument (the encodings the
+	method had; test_OOEntityCalledByName checked them against the methods until then).
 	Run: bash tools/check-core-tests.sh
 */
 
 #import "OOJSCallEntityMethods.h"
+#import "OOEntityCalledByName.h"
 #import "OOShaderUniformMethodType.h"
 
 #include "oo_test.hpp"
@@ -88,6 +93,28 @@ std::optional<OracleRow> Oracle(Method method)
 }
 
 
+// The matcher's classification of a by-name row's method (its declared result and argument).
+std::optional<OracleRow> Oracle(const OOEntityByNameRow &row)
+{
+	const bool voidResult = std::strcmp(row.result, @encode(void)) == 0;
+	const bool plistResult = std::strcmp(row.result, @encode(oo::PList)) == 0;
+	switch (row.argument)
+	{
+		case OOEntityByNameArgument::None:
+			if (voidResult)  return OracleRow{ OOJSCallEntityMethodForm::VoidVoid, kOOShaderUniformTypeInvalid };
+			if (plistResult)  return OracleRow{ OOJSCallEntityMethodForm::PListVoid, kOOShaderUniformTypeInvalid };
+			return OracleRow{ OOJSCallEntityMethodForm::Typed, OOShaderUniformTypeFromEncoding(row.result) };
+		case OOEntityByNameArgument::String:
+			if (voidResult)  return OracleRow{ OOJSCallEntityMethodForm::VoidString, kOOShaderUniformTypeInvalid };
+			if (plistResult)  return OracleRow{ OOJSCallEntityMethodForm::PListString, kOOShaderUniformTypeInvalid };
+			return std::nullopt;	// called with its argument missing
+		case OOEntityByNameArgument::PList:
+			return std::nullopt;	// an argument the templates do not take
+	}
+	return std::nullopt;
+}
+
+
 std::map<std::string, OracleRow> OracleSafeSet()
 {
 	std::map<std::string, OracleRow> result;
@@ -103,6 +130,13 @@ std::map<std::string, OracleRow> OracleSafeSet()
 		if (std::optional<OracleRow> row = Oracle(methods[i]))  result[name] = *row;
 	}
 	std::free(methods);
+	for (const OOEntityByNameRow &row : oo::EntityByNameRows())
+	{
+		std::string bare = row.name;
+		if (!bare.empty() && bare.back() == ':')  bare.pop_back();
+		if (kExcluded.contains(bare))  continue;
+		if (std::optional<OracleRow> oracle = Oracle(row))  result[row.name] = *oracle;
+	}
 	return result;
 }
 

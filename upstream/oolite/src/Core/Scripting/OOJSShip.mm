@@ -2548,7 +2548,8 @@ static bool ShipDumpCargo(ooscript::Context context, ooscript::CallArgs &oojsArg
 
 		for (i = 1; i < count; i++)
 		{
-			OOScheduleDeferredCall(oo::ToObjC(thisEnt), @selector(dumpCargo), nil, (0.75 * i));	// drop 3 canisters per 2 seconds
+			// drop 3 canisters per 2 seconds (a deferred call on the C++ ship since bead oo-9ht.39.7.3; by name on its object before)
+			oo::ScheduleEntityCall(thisEnt, [](cxx::Entity *entity) { if (ShipEntity *ship = dynamic_cast<ShipEntity *>(entity))  ship->dumpCargo(); }, (0.75 * i));
 		}
 	}
 

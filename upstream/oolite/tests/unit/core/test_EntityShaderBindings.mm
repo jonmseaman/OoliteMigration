@@ -46,6 +46,7 @@ extern PlayerEntity *gOOPlayer;
 
 // The values under test, as the uniforms reach them: the binding for a name (bead oo-9ht.158).
 #import "OOShaderUniformMethodType.h"
+#import "OOEntityCalledByName.h"	// the by-name table's names (bead oo-9ht.39.7.3)
 
 
 // PLAYER: answers what the category asks for, with the test's values (C++ since bead oo-9ht.177
@@ -269,7 +270,7 @@ OO_TEST(everyPermittedNameBindsAsBySelector)
 		};
 		Entity *const objects[] = { AnEntity(), oo::ToObjC(sPlayer) };	// any entity; a player (a ship)
 		int rows = 0;
-		std::string bySelectorOnly, byRowOnly;
+		std::string bySelectorOnly, byRowOnly, byNameRowOnly;
 		for (Entity *object : objects)
 		{
 			for (const char *name : kNames)
@@ -281,7 +282,8 @@ OO_TEST(everyPermittedNameBindsAsBySelector)
 				std::string problem;
 				const bool bySelector = OOShaderUniformBindMethod(object, sel_registerName(name), &method, &type, &problem);
 				if (bySelector && !byRow)  bySelectorOnly += std::string(" ") + name;
-				if (byRow && !bySelector)  byRowOnly += std::string(" ") + name;	// the facade no longer has the method (bead oo-9ht.127)
+				// the facade no longer has the method (bead oo-9ht.127; a by-name table row's since bead oo-9ht.39.7.3)
+				if (byRow && !bySelector)  (oo::EntityByNameRowNamed(name) != nullptr ? byNameRowOnly : byRowOnly) += std::string(" ") + name;
 				if (byRow && bySelector)  OO_CHECK(binding.type == type);
 				if (byRow)
 				{
@@ -298,6 +300,9 @@ OO_TEST(everyPermittedNameBindsAsBySelector)
 		const std::string kRowOnly = " clock pseudoFixedD100 pseudoFixedD256 systemGovernment systemEconomy systemTechLevel systemPopulation systemProductivity";
 		OO_CHECK(byRowOnly == kRowOnly + kRowOnly);
 		if (byRowOnly != kRowOnly + kRowOnly)  fprintf(stderr, "bound by row only:%s\n", byRowOnly.c_str());
+		// Bound by row only too since bead oo-9ht.39.7.3: the by-name table's names (the facade's by-name
+		// categories, deleted), which the selector path no longer finds on the object (oo-9n5p9).
+		OO_CHECK(!byNameRowOnly.empty());
 		OO_CHECK(rows > 0);
 		OO_CHECK(Binding(AnEntity(), "laserColor").get == nullptr);
 		OO_CHECK(Binding(AnEntity(), "airColorAsVector").get == nullptr);	// a planet's only

@@ -8,8 +8,10 @@ table OOEntityCalledByNameTable.h (tools/gen-entity-by-name-table.py): a tabled 
 for the C++ part it applies to, exactly as -[Entity respondsToSelector:] and the category method
 answered it, and called as OOCallByName called the method (the same signature rules, read from
 @encode() of the declared types instead of the method's type encoding). Any other name, and a
-tabled name whose signature the call cannot use, go to the entity's Objective-C object as before.
-callObjC() reads a typed result through oo::CallEntityByNameTyped (bead oo-9ht.39.7.2).
+tabled name that does not apply, go to the entity's Objective-C object as before. callObjC() reads
+a typed result through oo::CallEntityByNameTyped (bead oo-9ht.39.7.2). Since bead oo-9ht.39.7.3
+the categories are deleted (the table is the source): a tabled name that applies but whose
+signature the call cannot use is logged here, and oo::ScheduleEntityCall holds the deferred calls.
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -43,12 +45,14 @@ MA 02110-1301, USA.
 #import "ProxyPlayerEntity.h"
 #import "StationEntity.h"
 #import "DockEntity.h"
-#import "GameController.h"	// OOScheduleDeferredCall (the player's selectors called by name)
+#import "GameController.h"	// OOScheduleDeferredCall (oo::ScheduleEntityCall, the player's selectors called by name)
 #import "AI.h"
 #import "Universe.h"
 #import "OODescription.h"
 #include "oofnd/objc/OOObjCPeer.h"
 #include "oofnd/objc/OORuntime.h"
+#include "oofnd/Log.hpp"
+#include <objc/runtime.h>
 #include <cstring>
 #include <string_view>
 #include <type_traits>
@@ -200,26 +204,31 @@ Kind ResultKind(const char *encoding)
 }
 
 
-// The row's call with the argument, if OOCallByName would make it (its usable signatures); none
-// if the name is not tabled, does not apply to the entity, or the signature is unusable.
-std::optional<oo::PList> CallRow(cxx::Entity *entity, const std::string &name, const std::string *string, const oo::PList *plist)
+// The tabled row the name names, if it applies to the entity; null for any other name.
+const OOEntityByNameRow *ApplyingRow(cxx::Entity *entity, const std::string &name)
 {
 	const OOEntityByNameRow *row = oo::EntityByNameRowNamed(name);
-	if (row == nullptr || !oo::EntityByNameRowApplies(*row, entity))  return std::nullopt;
+	return (row != nullptr && oo::EntityByNameRowApplies(*row, entity)) ? row : nullptr;
+}
 
-	const Kind result = ResultKind(row->result);
+
+// The row's call with the argument, if OOCallByName would make it (its usable signatures); none
+// if the signature is unusable.
+std::optional<oo::PList> CallRow(const OOEntityByNameRow &row, cxx::Entity *entity, const std::string *string, const oo::PList *plist)
+{
+	const Kind result = ResultKind(row.result);
 	const bool hasArgument = (string != nullptr || plist != nullptr);
-	if (hasArgument != (row->argument != OOEntityByNameArgument::None) || result == Kind::Unsupported)  return std::nullopt;
+	if (hasArgument != (row.argument != OOEntityByNameArgument::None) || result == Kind::Unsupported)  return std::nullopt;
 
 	// A string reaches a PList parameter as a string PList; a PList reaches a string parameter
 	// only when it is a string.
 	oo::PList stringAsPList;
-	if (row->argument == OOEntityByNameArgument::String && plist != nullptr)
+	if (row.argument == OOEntityByNameArgument::String && plist != nullptr)
 	{
 		string = plist->getIf<std::string>();
 		if (string == nullptr)  return std::nullopt;
 	}
-	if (row->argument == OOEntityByNameArgument::PList)
+	if (row.argument == OOEntityByNameArgument::PList)
 	{
 		if (result != Kind::Void && result != Kind::Object)  return std::nullopt;
 		if (string != nullptr)
@@ -229,9 +238,38 @@ std::optional<oo::PList> CallRow(cxx::Entity *entity, const std::string &name, c
 		}
 	}
 
-	oo::PList answer = row->call(entity, string, plist);
+	oo::PList answer = row.call(entity, string, plist);
 	// only a PList result is the call's result; a void, scalar or object result is ignored
 	return (result == Kind::PList) ? std::move(answer) : oo::PList();
+}
+
+
+/*	The line OOCallByName logged for a method whose signature the call cannot use (OOCallByName.mm
+	LogBadSignature), for a tabled name that applies: the class of the entity's object, as the
+	category method was its; the type encoding is the row's, @encode() of the result, of self and
+	_cmd and of the argument, without the frame offsets the method's encoding had (bead
+	oo-9ht.39.7.3, ADR-0056 amendment oo-9ht.39.7.3: a log-text-only change). An entity with no
+	object logs nothing, as the call to a nil target did.
+*/
+void LogBadSignature(cxx::Entity *entity, const OOEntityByNameRow &row)
+{
+	::Entity *object = oo::ToObjC(entity);
+	if (object == nil)  return;
+	std::string encoding = std::string(row.result) + @encode(id) + @encode(SEL);
+	if (row.argument == OOEntityByNameArgument::String)  encoding += @encode(const std::string &);
+	if (row.argument == OOEntityByNameArgument::PList)  encoding += @encode(const oo::PList &);
+	OO_LOG_ERR("callByName.badSignature", "-[{} {}] has no signature a by-name call can use (type encoding {}).", class_getName(object_getClass(object)), row.name, encoding);
+}
+
+
+// A tabled name that applies, called or logged; none for any other name (the object's path).
+std::optional<oo::PList> CallTabled(cxx::Entity *entity, const std::string &name, const std::string *string, const oo::PList *plist)
+{
+	const OOEntityByNameRow *row = ApplyingRow(entity, name);
+	if (row == nullptr)  return std::nullopt;
+	if (std::optional<oo::PList> result = CallRow(*row, entity, string, plist))  return result;
+	LogBadSignature(entity, *row);
+	return oo::PList();
 }
 
 
@@ -255,7 +293,7 @@ bool oo::EntityRespondsToName(cxx::Entity *entity, const std::string &name)
 oo::PList oo::CallEntityByName(cxx::Entity *entity, const std::string &name)
 {
 	if (entity == nullptr)  return PList();
-	if (std::optional<PList> result = CallRow(entity, name, nullptr, nullptr))  return *result;
+	if (std::optional<PList> result = CallTabled(entity, name, nullptr, nullptr))  return *result;
 	return OOCallByName(oo::ToObjC(entity), SelectorNamed(name));
 }
 
@@ -263,7 +301,7 @@ oo::PList oo::CallEntityByName(cxx::Entity *entity, const std::string &name)
 oo::PList oo::CallEntityByName(cxx::Entity *entity, const std::string &name, const std::string &argument)
 {
 	if (entity == nullptr)  return PList();
-	if (std::optional<PList> result = CallRow(entity, name, &argument, nullptr))  return *result;
+	if (std::optional<PList> result = CallTabled(entity, name, &argument, nullptr))  return *result;
 	return OOCallByName(oo::ToObjC(entity), SelectorNamed(name), argument);
 }
 
@@ -271,6 +309,43 @@ oo::PList oo::CallEntityByName(cxx::Entity *entity, const std::string &name, con
 oo::PList oo::CallEntityByName(cxx::Entity *entity, const std::string &name, const PList &argument)
 {
 	if (entity == nullptr)  return PList();
-	if (std::optional<PList> result = CallRow(entity, name, nullptr, &argument))  return *result;
+	if (std::optional<PList> result = CallTabled(entity, name, nullptr, &argument))  return *result;
 	return OOCallByName(oo::ToObjC(entity), SelectorNamed(name), argument);
+}
+
+
+/*	A deferred call's target (bead oo-9ht.39.7.3; AI.mm's OOAIDeferredCall is the pattern): the
+	Objective-C object OOScheduleDeferredCall() retains until the call fires, as it retained the
+	entity's object before. It holds the entity, so the call keeps it alive, as the object did.
+*/
+@interface OOEntityDeferredCall: OOObject
+{
+@public
+	oo::Ref<cxx::Entity>	_entity;
+	void					(*_call)(cxx::Entity *entity);
+}
+
+- (void) fire;
+
+@end
+
+
+@implementation OOEntityDeferredCall
+
+- (void) fire
+{
+	_call(_entity.get());
+}
+
+@end
+
+
+void oo::ScheduleEntityCall(cxx::Entity *entity, void (*call)(cxx::Entity *entity), double delay)
+{
+	if (entity == nullptr || call == nullptr)  return;
+	OOEntityDeferredCall *holder = [[OOEntityDeferredCall alloc] init];
+	holder->_entity = oo::Ref<cxx::Entity>(entity);
+	holder->_call = call;
+	OOScheduleDeferredCall(holder, OOSelectorFromName("fire"), nil, delay);
+	[holder release];
 }
