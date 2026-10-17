@@ -14,7 +14,7 @@ public:
 	Random_Seed getRandomSeedForCurrentSystem();
 };
 // The universe is C++ since bead oo-ql9rn deleted its Objective-C facade: the bridge calls the
-// members of the same names, as OOStringExpander+ObjCBridge.mm calls them in the game:
+// members of the same names, as OOStringExpander.mm calls them in the game:
 //   [UNIVERSE cxx_descriptions]                  -> descriptions()
 //   [UNIVERSE cxx_getSystemName:s (forGalaxy:g)] -> getSystemName(s (, g))
 //   [UNIVERSE systemManager]                     -> getSystemManager()

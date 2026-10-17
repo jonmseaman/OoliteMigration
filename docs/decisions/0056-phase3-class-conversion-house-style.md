@@ -7253,3 +7253,20 @@ the same members with every expected value kept.
 **Consequences.** No Objective-C universe is left; the universe no longer subclasses
 `OOWeakRefObject`, which leaves the Entity facade, AI and DustEntity's binding as the
 `OOWeakRefObject` subclasses oo-9ht.22 waits on.
+
+## Amendment (bead oo-9ht.159): the string expander's bridge is deleted
+
+- Date: 2026-10-17. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Batch AA
+  (one branch). Exemplar: `src/Core/OOStringExpander.mm`, `tools/check-string-expander.sh`.
+  Finishes amendment oo-9ht.139 items 3-4 once the universe (oo-ql9rn), the player (oo-9ht.177)
+  and the resource manager (oo-9ht.150) are C++.
+
+**Decision (recommended defaults).** `OOStringExpander+ObjCBridge.h/.mm` and its meson line go.
+Each bridge function's body replaces its call in OOStringExpander.mm: the universe's and the
+player's members guarded as the message to nil was (the seed, the system names, the mission
+variables, the key bindings), `ResourceManager::whitelistDictionary()`, and the player's
+by-name selectors still asked of its Objective-C object (`[oo::ToObjC(PLAYER)
+respondsToSelector:]`). The descriptions are `UNIVERSE->descriptions()`, unguarded: the nil
+answer was dereferenced at every call, so a missing universe failed there before as well.
+`tools/check-string-expander.sh` no longer compiles or links a bridge; its stubs stand in for the
+C++ classes, and its digests are unchanged.
