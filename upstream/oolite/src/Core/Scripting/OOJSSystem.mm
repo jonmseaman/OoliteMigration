@@ -95,16 +95,16 @@ static ooscript::Object sSystemPrototype;
 
 // Support functions for entity search methods.
 namespace {
-static BOOL GetRelativeToAndRange(ooscript::Context context, const std::string &methodName, unsigned *ioArgc, ooscript::Value **ioArgv, Entity **outRelativeTo, double *outRange);
+static BOOL GetRelativeToAndRange(ooscript::Context context, const std::string &methodName, unsigned *ioArgc, ooscript::Value **ioArgv, cxx::Entity **outRelativeTo, double *outRange);
 } // namespace
 namespace {
-static std::vector<oo::ObjCRef<::Entity *>> FindJSVisibleEntities(EntityFilterPredicate predicate, void *parameter, Entity *relativeTo, double range);
+static std::vector<oo::ObjCRef<::Entity *>> FindJSVisibleEntities(EntityFilterPredicate predicate, void *parameter, cxx::Entity *relativeTo, double range);
 } // namespace
 namespace {
-static std::vector<oo::ObjCRef<::Entity *>> FindShips(EntityFilterPredicate predicate, void *parameter, Entity *relativeTo, double range);
+static std::vector<oo::ObjCRef<::Entity *>> FindShips(EntityFilterPredicate predicate, void *parameter, cxx::Entity *relativeTo, double range);
 } // namespace
 namespace {
-static OOComparisonResult CompareEntitiesByDistance(id a, id b, void *relativeTo);
+static OOComparisonResult CompareEntitiesByDistance(id a, id b, cxx::Entity *relativeTo);
 } // namespace
 
 namespace {
@@ -904,7 +904,7 @@ static bool SystemCountShipsWithPrimaryRole(ooscript::Context context, ooscript:
 	OOJS_NATIVE_ENTER(context)
 	
 	std::optional<std::string>			role;
-	Entity				*relativeTo = nil;
+	cxx::Entity			*relativeTo = nullptr;	// the C++ entity (bead oo-9ht.39.8.23)
 	double				range = -1;
 	unsigned			result;
 	
@@ -939,7 +939,7 @@ static bool SystemCountShipsWithRole(ooscript::Context context, ooscript::CallAr
 	OOJS_NATIVE_ENTER(context)
 	
 	std::optional<std::string>			role;
-	Entity				*relativeTo = nil;
+	cxx::Entity			*relativeTo = nullptr;	// the C++ entity (bead oo-9ht.39.8.23)
 	double				range = -1;
 	unsigned			result;
 	
@@ -974,7 +974,7 @@ static bool SystemShipsWithPrimaryRole(ooscript::Context context, ooscript::Call
 	OOJS_NATIVE_ENTER(context)
 	
 	std::optional<std::string>			role;
-	Entity				*relativeTo = nil;
+	cxx::Entity			*relativeTo = nullptr;	// the C++ entity (bead oo-9ht.39.8.23)
 	double				range = -1;
 	std::vector<oo::ObjCRef<::Entity *>>	result;
 	
@@ -1010,7 +1010,7 @@ static bool SystemShipsWithRole(ooscript::Context context, ooscript::CallArgs &o
 	OOJS_NATIVE_ENTER(context)
 	
 	std::optional<std::string>			role;
-	Entity				*relativeTo = nil;
+	cxx::Entity			*relativeTo = nullptr;	// the C++ entity (bead oo-9ht.39.8.23)
 	double				range = -1;
 	std::vector<oo::ObjCRef<::Entity *>>	result;
 	
@@ -1046,7 +1046,7 @@ static bool SystemCountEntitiesWithScanClass(ooscript::Context context, ooscript
 	OOJS_NATIVE_ENTER(context)
 	
 	OOScanClass			scanClass = CLASS_NOT_SET;
-	Entity				*relativeTo = nil;
+	cxx::Entity			*relativeTo = nullptr;	// the C++ entity (bead oo-9ht.39.8.23)
 	double				range = -1;
 	unsigned			result;
 	
@@ -1081,7 +1081,7 @@ static bool SystemEntitiesWithScanClass(ooscript::Context context, ooscript::Cal
 	OOJS_NATIVE_ENTER(context)
 	
 	OOScanClass			scanClass = CLASS_NOT_SET;
-	Entity				*relativeTo = nil;
+	cxx::Entity			*relativeTo = nullptr;	// the C++ entity (bead oo-9ht.39.8.23)
 	double				range = -1;
 	std::vector<oo::ObjCRef<::Entity *>>	result;
 	
@@ -1118,7 +1118,7 @@ static bool SystemFilteredEntities(ooscript::Context context, ooscript::CallArgs
 	
 	ooscript::Object jsThis = NULL;
 	ooscript::Value				predicate;
-	Entity				*relativeTo = nil;
+	cxx::Entity			*relativeTo = nullptr;	// the C++ entity (bead oo-9ht.39.8.23)
 	double				range = -1;
 	std::vector<oo::ObjCRef<::Entity *>>	result;
 	
@@ -1858,7 +1858,7 @@ static bool SystemAddShipsOrGroupToRoute(Context cx, CallArgs &oojsArgs, bool is
 
 
 namespace {
-static BOOL GetRelativeToAndRange(ooscript::Context context, const std::string &methodName, unsigned *ioArgc, ooscript::Value **ioArgv, Entity **outRelativeTo, double *outRange)
+static BOOL GetRelativeToAndRange(ooscript::Context context, const std::string &methodName, unsigned *ioArgc, ooscript::Value **ioArgv, cxx::Entity **outRelativeTo, double *outRange)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -1868,13 +1868,13 @@ static BOOL GetRelativeToAndRange(ooscript::Context context, const std::string &
 	// Get optional argument relativeTo : Entity
 	if (*ioArgc != 0)
 	{
-		cxx::Entity *relativeTo = nullptr;	// the C++ entity since bead oo-9ht.39.3; its object goes out
+		cxx::Entity *relativeTo = nullptr;	// the C++ entity since bead oo-9ht.39.3, which goes out since bead oo-9ht.39.8.23
 		if (EXPECT_NOT(ooscript::isNull(**ioArgv) || !JSValueToEntity(context, **ioArgv, &relativeTo)))
 		{
 			cxx_OOJSReportBadArguments(context, "System", methodName, 1, *ioArgv, std::nullopt, "entity");
 			return NO;
 		}
-		*outRelativeTo = oo::ToObjC(relativeTo);
+		*outRelativeTo = relativeTo;
 		(*ioArgv)++; (*ioArgc)--;
 	}
 	
@@ -1897,7 +1897,7 @@ static BOOL GetRelativeToAndRange(ooscript::Context context, const std::string &
 
 
 namespace {
-static std::vector<oo::ObjCRef<::Entity *>> FindJSVisibleEntities(EntityFilterPredicate predicate, void *parameter, Entity *relativeTo, double range)
+static std::vector<oo::ObjCRef<::Entity *>> FindJSVisibleEntities(EntityFilterPredicate predicate, void *parameter, cxx::Entity *relativeTo, double range)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -1910,7 +1910,7 @@ static std::vector<oo::ObjCRef<::Entity *>> FindJSVisibleEntities(EntityFilterPr
 	
 	result = (UNIVERSE != nullptr ? UNIVERSE->findEntitiesMatchingPredicate(ANDPredicate, &param, range, relativeTo) : std::vector<oo::ObjCRef<::Entity *>>());
 	
-	if (relativeTo != nil && !oo::ToCxx(relativeTo)->getIsPlayer())
+	if (relativeTo != nullptr && !relativeTo->getIsPlayer())
 	{
 		// -sortUsingFunction:context: with the same comparison (a stable sort: GNUstep's is timsort).
 		std::stable_sort(result.begin(), result.end(), [relativeTo](const oo::ObjCRef<::Entity *> &a, const oo::ObjCRef<::Entity *> &b)
@@ -1926,7 +1926,7 @@ static std::vector<oo::ObjCRef<::Entity *>> FindJSVisibleEntities(EntityFilterPr
 
 
 namespace {
-static std::vector<oo::ObjCRef<::Entity *>> FindShips(EntityFilterPredicate predicate, void *parameter, Entity *relativeTo, double range)
+static std::vector<oo::ObjCRef<::Entity *>> FindShips(EntityFilterPredicate predicate, void *parameter, cxx::Entity *relativeTo, double range)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -1943,17 +1943,17 @@ static std::vector<oo::ObjCRef<::Entity *>> FindShips(EntityFilterPredicate pred
 
 
 namespace {
-static OOComparisonResult CompareEntitiesByDistance(id a, id b, void *relativeTo)
+static OOComparisonResult CompareEntitiesByDistance(id a, id b, cxx::Entity *relativeTo)
 {
 	OOJS_PROFILE_ENTER
 	
 	Entity				*ea = a,
-	*eb = b,
-	*r = (id)relativeTo;
+	*eb = b;
+	cxx::Entity			*r = relativeTo;	// the C++ entity (bead oo-9ht.39.8.23)
 	float				d1, d2;
 	
-	d1 = HPdistance2(ea->_cxxEntity->position, r->_cxxEntity->position);
-	d2 = HPdistance2(eb->_cxxEntity->position, r->_cxxEntity->position);
+	d1 = HPdistance2(ea->_cxxEntity->position, r->position);
+	d2 = HPdistance2(eb->_cxxEntity->position, r->position);
 	
 	if (d1 < d2)  return OOOrderedAscending;
 	else if (d1 > d2)  return OOOrderedDescending;

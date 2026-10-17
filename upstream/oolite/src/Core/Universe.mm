@@ -6657,10 +6657,11 @@ std::vector<oo::ObjCRef<::Entity *>> Universe::entitiesWithinRange(double range,
 
 
 // The role predicates read a std::string, held here for the call.
-unsigned Universe::countShipsWithRole(const std::string &role, double range, ::Entity *entity)
+// The reference entity is the C++ entity (bead oo-9ht.39.8.23); the count still reads the lists' objects.
+unsigned Universe::countShipsWithRole(const std::string &role, double range, cxx::Entity *entity)
 {
 	std::string roleParameter = role;
-	return countShipsMatchingPredicate(HasRolePredicate, &roleParameter, range, entity);
+	return countShipsMatchingPredicate(HasRolePredicate, &roleParameter, range, oo::ToObjC(entity));
 }
 
 
@@ -6670,17 +6671,17 @@ unsigned Universe::countShipsWithRole(const std::string &role)
 }
 
 
-unsigned Universe::countShipsWithPrimaryRole(const std::string &role, double range, ::Entity *entity)
+unsigned Universe::countShipsWithPrimaryRole(const std::string &role, double range, cxx::Entity *entity)
 {
 	std::string roleParameter = role;
-	return countShipsMatchingPredicate(HasPrimaryRolePredicate, &roleParameter, range, entity);
+	return countShipsMatchingPredicate(HasPrimaryRolePredicate, &roleParameter, range, oo::ToObjC(entity));
 }
 
 
 // HasScanClassPredicate reads the scan class as an OOScanClass.
-unsigned Universe::countShipsWithScanClass(OOScanClass scanClass, double range, ::Entity *entity)
+unsigned Universe::countShipsWithScanClass(OOScanClass scanClass, double range, cxx::Entity *entity)
 {
-	return countShipsMatchingPredicate(HasScanClassPredicate, &scanClass, range, entity);
+	return countShipsMatchingPredicate(HasScanClassPredicate, &scanClass, range, oo::ToObjC(entity));
 }
 
 
@@ -6744,7 +6745,9 @@ unsigned Universe::countShipsMatchingPredicate(EntityFilterPredicate predicate, 
 
 // NOTE: OOJSSystem relies on this returning entities in distance-from-player order.
 // This can be easily changed by removing the [reference isPlayer] conditions in FindJSVisibleEntities().
-std::vector<oo::ObjCRef<::Entity *>> Universe::findEntitiesMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, ::Entity *e1)
+// The reference entity is the C++ entity (bead oo-9ht.39.8.23): its position is what -position answered, and
+// the entity the list holds for it is skipped, as its object was.
+std::vector<oo::ObjCRef<::Entity *>> Universe::findEntitiesMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, cxx::Entity *e1)
 {
 	OOJS_PROFILE_ENTER
 
@@ -6758,14 +6761,14 @@ std::vector<oo::ObjCRef<::Entity *>> Universe::findEntitiesMatchingPredicate(Ent
 
 	result.reserve(n_entities);
 	
-	if (e1 != nil)  p1 = [e1 position];
+	if (e1 != nullptr)  p1 = e1->getPosition();
 	else  p1 = kZeroHPVector;
 	
 	for (i = 0; i < n_entities; i++)
 	{
 		::Entity *e2 = oo::ToObjC(sortedEntities[i]);
 		
-		if (e1 != e2 &&
+		if (e1 != sortedEntities[i] &&
 			EntityInRange(p1, e2, range) &&
 			predicate(e2, parameter))
 		{
@@ -6812,11 +6815,11 @@ std::vector<oo::ObjCRef<::Entity *>> Universe::findShipsMatchingPredicate(Entity
 			predicate, parameter
 		};
 
-		return findEntitiesMatchingPredicate(ANDPredicate, &param, range, entity);
+		return findEntitiesMatchingPredicate(ANDPredicate, &param, range, oo::ToCxx(entity));
 	}
 	else
 	{
-		return findEntitiesMatchingPredicate(IsShipPredicate, NULL, range, entity);
+		return findEntitiesMatchingPredicate(IsShipPredicate, NULL, range, oo::ToCxx(entity));
 	}
 }
 
@@ -6831,11 +6834,11 @@ std::vector<oo::ObjCRef<::Entity *>> Universe::findVisualEffectsMatchingPredicat
 			predicate, parameter
 		};
 
-		return findEntitiesMatchingPredicate(ANDPredicate, &param, range, entity);
+		return findEntitiesMatchingPredicate(ANDPredicate, &param, range, oo::ToCxx(entity));
 	}
 	else
 	{
-		return findEntitiesMatchingPredicate(IsVisualEffectPredicate, NULL, range, entity);
+		return findEntitiesMatchingPredicate(IsVisualEffectPredicate, NULL, range, oo::ToCxx(entity));
 	}
 }
 

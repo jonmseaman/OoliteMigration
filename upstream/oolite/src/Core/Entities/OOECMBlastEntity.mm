@@ -85,7 +85,7 @@ void OOECMBlastEntity::update(OOTimeDelta delta_t)
 		radius *= SCANNER_MAX_RANGE;
 		_blastsRemaining--;
 		
-		const std::vector<oo::ObjCRef<::Entity *>> targets = (UNIVERSE != nullptr ? UNIVERSE->findEntitiesMatchingPredicate(IsShipPredicate, NULL, radius, self) : std::vector<oo::ObjCRef<::Entity *>>());
+		const std::vector<oo::ObjCRef<::Entity *>> targets = (UNIVERSE != nullptr ? UNIVERSE->findEntitiesMatchingPredicate(IsShipPredicate, NULL, radius, this) : std::vector<oo::ObjCRef<::Entity *>>());
 		NSUInteger i, count = targets.size();
 		if (count > 0)
 		{

@@ -7942,3 +7942,29 @@ Completion session, 2026-10-17). `OOJSEntity`'s `EntityGetProperty`/`EntitySetPr
 entity gains the game's vtable and the members the blocks call (a `TestEntityPart` subclass overrides the
 virtual ones), each messaging the same Objective-C stand-in object as the binding did; its stand-in
 `OOJSValueFromCxxObject` answers an entity's own JS object. No case or expected value changes.
+
+## Amendment (bead oo-9ht.39.8.23): the system binding's relativeTo and the universe queries it feeds take the C++ entity
+
+oo-9ht.39 step 4c (bead oo-9ht.39.8), family F6 part 6d (bead oo-9ht.39.8.7 part (c); batch AG, Migration
+Completion session, 2026-10-17). `OOJSSystem`'s `GetRelativeToAndRange()` answers the reference entity's C++
+entity (its `oo::ToObjC` goes); `FindJSVisibleEntities()`, `FindShips()` and `CompareEntitiesByDistance()`
+take it (the distance reads its `position`, the sort guard its `getIsPlayer()`).
+
+1. **The universe queries.** `Universe::countShipsWithPrimaryRole()`, `countShipsWithRole()`,
+   `countShipsWithScanClass()` (their three-argument forms) and `findEntitiesMatchingPredicate()`
+   (`OO_UNIVERSE_VIRTUAL_MEMBERS`) take `cxx::Entity *` for the reference entity.
+   `findEntitiesMatchingPredicate()` reads its `getPosition()` (what `-position` answered) and skips the
+   sorted list's entry that is it (the list holds the C++ entities; it skipped the same entry's object). The
+   three counts hand `countShipsMatchingPredicate()` the entity's object, as before: the count helpers and
+   the list's predicates still take objects (later work with the entity lists). `findShipsMatchingPredicate()`
+   and `findVisualEffectsMatchingPredicate()` keep their object parameter and pass its C++ entity on.
+2. **Callers.** `OOECMBlastEntity` passes `this`, `StationEntity` its `self` (both C++; they passed the
+   object of the same entity), `ShipEntity` passes no entity as before.
+
+**Defaults (rule 10).** Identical behaviour (js-api-contract, goldens).
+
+**Tests (standing approval oo-9n5p9, line on main before this change).** The universe stand-ins of
+`test_OOJSSystem` (the four overrides) and `test_OOECMBlastEntity` (`findEntitiesMatchingPredicate`) take the
+C++ entity and record its object (`oo::ToObjC`), as they recorded the object they were given;
+`test_Universe`'s two `findEntitiesMatchingPredicate()` calls pass `oo::ToCxx()` of the same entity. No case's
+expectation changes.
