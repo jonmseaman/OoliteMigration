@@ -7830,3 +7830,23 @@ orientation stub answers its fake entity's `-orientation` (the same raise and th
 position stubs, which no case reaches, abort as the files' other link stubs; `test_OOJSEntity` (which links
 `OOJSEntity.mm`) gains link definitions of `getPosition()`/`getOrientation()` on its stand-in C++ entity,
 answering its object's fields; no case or expected value changes.
+
+## Amendment (bead oo-9ht.39.8.13): the visual effect binding's stale check and sub-entity removal take the C++ effect
+
+oo-9ht.39 step 4c (bead oo-9ht.39.8), family F6 part 6b of its plan (batch AF, Migration Completion
+session, 2026-10-17).
+
+1. **Stale check.** `OOJSVisualEffect`'s `GET_THIS_EFFECT` asks `OOIsStaleEntity()` of the C++ effect (the
+   overload of amendment oo-9ht.39.3: null, or the stale player's C++ part) where it asked it of the effect's
+   object (nil, or the stale player's object): the same answer for an effect with its facade.
+2. **`OOVisualEffectEntity::removeSubEntity(cxx::Entity *)`**, an overload beside the one taking the
+   sub-entity's object, crosses once to that object and calls it (the effect's `_subEntities` hold the
+   sub-entities' objects); `remove()` of a sub-entity effect calls it with the C++ effect where the binding
+   crossed. `OOJSFlasher`'s call, which holds the flasher's object, is unchanged (part 6e). No caller passes a
+   bare `nil`, so the overloads are never ambiguous.
+
+**Defaults (rule 10).** Identical behaviour; no behaviour change.
+
+**Tests (standing approval oo-9n5p9, line on main before this change).** `test_OOJSVisualEffect`'s effect
+stand-in gains the overload, recording the sub-entity's object as the object overload recorded it; no case or
+expected value changes. `test_OOVisualEffectEntity` (the game's class) still calls the object overload.

@@ -92,6 +92,7 @@ public:
 	void clearSubEntities();
 	bool setUpSubEntities();
 	void removeSubEntity(OOVisualEffectSubEntity *sub);
+	void removeSubEntity(cxx::Entity *sub);	// the C++ sub-entity: removes its object (bead oo-9ht.39.8.13)
 	void setNoDrawDistance();
 	std::vector<oo::ObjCRef<::Entity *>> subEntities();	// a snapshot; empty before the first subentity (was nil)
 	NSUInteger subEntityCount();

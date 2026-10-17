@@ -310,6 +310,14 @@ void OOVisualEffectEntity::removeSubEntity(OOVisualEffectSubEntity *sub)
 }
 
 
+// The C++ sub-entity (bead oo-9ht.39.8.13): the list holds the sub-entities' objects, so this crosses once, where
+// the visual effect binding crossed.
+void OOVisualEffectEntity::removeSubEntity(cxx::Entity *sub)
+{
+	removeSubEntity((OOVisualEffectSubEntity *)oo::ToObjC(sub));
+}
+
+
 void OOVisualEffectEntity::setNoDrawDistance()
 {
 	GLfloat r = _profileRadius * scaleMax();
