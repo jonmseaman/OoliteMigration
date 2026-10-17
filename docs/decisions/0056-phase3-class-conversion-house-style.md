@@ -7872,3 +7872,19 @@ is unreachable.
 stand-ins for the seven selectors become the C++ members over the same object fields (the fake universe's
 `clearBeacon()` still clears the object's code field, which the C++ stand-in reads); no case or expected value
 changes.
+
+## Amendment (bead oo-9ht.39.8.19): the exhaust plume binding asks the C++ plume
+
+oo-9ht.39 step 4c (bead oo-9ht.39.8), family F6 part 6e for the exhaust plume (batch AF, Migration
+Completion session, 2026-10-17). `OOJSExhaustPlume`'s `remove()` was the binding's only native that asked
+the plume's object: `OOIsStaleEntity()` of the object and its `-owner`. It asks the C++ plume:
+`OOIsStaleEntity()`'s C++ overload (amendment oo-9ht.39.3) and `cxx::Entity::owner()` (non-virtual; the
+facade's `-owner` answered exactly it). `JSExhaustPlumeGetExhaustPlumeEntity()` answers the C++ plume only;
+its `oo::ToObjC` goes.
+
+**Defaults (rule 10).** Identical behaviour; the facade-less difference of amendment oo-9ht.39.7.1 is
+unreachable.
+
+**Tests (standing approval oo-9n5p9, line on main before this change).** `test_OOJSExhaustPlume`'s object
+stand-in for `-owner` becomes `cxx::Entity::owner()` over the same object field; no case or expected value
+changes.
