@@ -52,6 +52,7 @@ class StationEntity;
 class OOPlanetEntity;
 class OOSunEntity;
 class GuiDisplayGen;
+namespace cxx { class Entity; }
 typedef BOOL (*EntityFilterPredicate)(Entity *entity, void *parameter);
 
 
@@ -68,8 +69,8 @@ typedef BOOL (*EntityFilterPredicate)(Entity *entity, void *parameter);
 	/* Slice 8: the main station */ \
 	virtual void unMagicMainStation() VOID_BODY \
 	/* Slice 9: beacons, the sky colour, visual effects */ \
-	virtual void setNextBeacon(Entity <OOBeaconEntity> * /*beaconShip*/) VOID_BODY \
-	virtual void clearBeacon(Entity <OOBeaconEntity> * /*beaconShip*/) VOID_BODY \
+	virtual void setNextBeacon(cxx::Entity * /*beacon*/) VOID_BODY \
+	virtual void clearBeacon(cxx::Entity * /*beacon*/) VOID_BODY \
 	virtual void setSkyColorRed(GLfloat /*red*/, GLfloat /*green*/, GLfloat /*blue*/, GLfloat /*alpha*/) VOID_BODY \
 	virtual ::Entity *newVisualEffectWithName(const std::string &/*effectKey*/) VALUE_BODY	/* the effect's object, +1 (bead oo-9ht.165) */ \
 	/* Slice 10: cargo */ \

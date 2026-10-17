@@ -303,8 +303,8 @@ static bool WaypointSetProperty(Context cx, Object obj, PropertyId propID, bool 
 			{
 				if ([entity isBeacon]) 
 				{
-					if (UNIVERSE != nullptr)  UNIVERSE->clearBeacon(entity);
-					if ((PLAYER != nullptr ? (::Entity <OOBeaconEntity> *)PLAYER->PlayerEntity::nextBeacon() : (::Entity <OOBeaconEntity> *)nullptr) == entity)	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
+					if (UNIVERSE != nullptr)  UNIVERSE->clearBeacon(waypoint);	// the C++ waypoint (bead oo-9ht.39.8.10)
+					if ((PLAYER != nullptr ? PLAYER->nextBeaconEntity() : nullptr) == waypoint)	// the C++ entities (bead oo-9ht.39.8.10; not virtual, so the binding test stands in for it)
 					{
 						if (PLAYER != nullptr)  PLAYER->PlayerEntity::setCompassMode(COMPASS_MODE_PLANET);	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 					}
@@ -319,7 +319,7 @@ static bool WaypointSetProperty(Context cx, Object obj, PropertyId propID, bool 
 				else // Universe needs to update beacon lists in this case only
 				{
 					[entity setBeaconCode:sValue];
-					if (UNIVERSE != nullptr)  UNIVERSE->setNextBeacon(entity);
+					if (UNIVERSE != nullptr)  UNIVERSE->setNextBeacon(waypoint);	// the C++ waypoint (bead oo-9ht.39.8.10)
 				}
 			}
 			return true;
