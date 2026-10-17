@@ -191,6 +191,43 @@ oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &unifor
 }
 
 
+oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &uniformName,
+													   OOShaderProgram *shaderProgram,
+													   oo::RefCounted *target,
+													   const std::string &property,
+													   uint8_t boundType,
+													   OOShaderCxxBindingGetter get,
+													   OOUniformConvertOptions options)
+{
+	/*	The selector initialiser's checks and log line, for a C++ target's member (bead oo-t0e2m):
+		the member's getter replaces the method found by selector, and the type is the method's
+		return type it replaced. A target that is itself a C++ object has no super target.
+	*/
+	if (EXPECT_NOT(shaderProgram == NULL || get == NULL))  return nullptr;
+	if (EXPECT_NOT(boundType == kOOShaderUniformTypeInvalid || boundType >= kOOShaderUniformTypeCount))  return nullptr;
+
+	oo::Ref<OOShaderUniform> result = oo::adopt(new OOShaderUniform());
+	result->location = glGetUniformLocationARB(shaderProgram->program(), uniformName.c_str());
+	if (result->location == -1)
+	{
+		OO_LOG("shader.uniform.bind.failed", "Could not bind uniform \"{}\" to {} (no uniform of that name could be found).", uniformName, property);
+		return nullptr;
+	}
+
+	result->name = uniformName;
+	result->isBinding = YES;
+	result->convertClamp = (options & kOOUniformConvertClamp) != 0;
+	result->convertNormalize = (options & kOOUniformConvertNormalize) != 0;
+	result->convertToMatrix = (options & kOOUniformConvertToMatrix) != 0;
+	result->type = boundType;
+	result->value.binding.cxxGet = get;
+	result->cxxProperty = property;
+	result->cxxTarget = target;
+	result->isActiveBinding = target != nullptr;
+	return result;
+}
+
+
 OOShaderUniform::~OOShaderUniform()
 {
 	if (isBinding)  [value.binding.object release];
@@ -203,7 +240,14 @@ std::optional<std::string> OOShaderUniform::description()
 	const char					*valueType = nullptr;
 	id							object;
 
-	if (isBinding)
+	if (isBinding && value.binding.cxxGet != NULL)
+	{
+		// A C++ target (bead oo-t0e2m): its address and the member's name.
+		oo::RefCounted *cxxObject = cxxTarget.get();
+		if (cxxObject != nullptr)  valueDesc = oo::str::format("[<%s> %s]", oo::str::pointerDescription(cxxObject).c_str(), cxxProperty.c_str());
+		else  valueDesc = "0";
+	}
+	else if (isBinding)
 	{
 		object = [value.binding.object weakRefUnderlyingObject];
 		if (object != nil)
@@ -314,6 +358,7 @@ void OOShaderUniform::setBindingTarget(id<OOWeakReferenceSupport> target)
 	OOShaderUniformType		boundType = kOOShaderUniformTypeInvalid;
 
 	if (!isBinding)  return;
+	if (value.binding.cxxGet != NULL)  return;	// a C++ target's member is bound once, by its factory (bead oo-t0e2m)
 
 	// Resolve "supertarget" if applicable
 	if (bindToSuper)
@@ -427,13 +472,22 @@ void OOShaderUniform::applyBinding()
 		gone, but adding code to save a small amount of spacein a case that
 		shouldn't occur in normal usage is silly.
 	*/
-	object = [value.binding.object weakRefUnderlyingObject];
-	if (object == nil)  return;
-
-	// A member binding (bead oo-9ht.158) reads its value once, into the field its type uses.
+	// A member binding (bead oo-9ht.158), or a C++ target's (bead oo-t0e2m), reads its value once,
+	// into the field its type uses.
 	OOShaderBindingValue		member = {};
-	const bool					isMember = value.binding.memberGet != NULL;
-	if (isMember)  value.binding.memberGet(object, member);
+	const bool					isMember = value.binding.memberGet != NULL || value.binding.cxxGet != NULL;
+	if (value.binding.cxxGet != NULL)
+	{
+		oo::RefCounted *cxxObject = cxxTarget.get();
+		if (cxxObject == nullptr)  return;
+		value.binding.cxxGet(cxxObject, member);
+	}
+	else
+	{
+		object = [value.binding.object weakRefUnderlyingObject];
+		if (object == nil)  return;
+		if (isMember)  value.binding.memberGet(object, member);
+	}
 
 	switch (type)
 	{

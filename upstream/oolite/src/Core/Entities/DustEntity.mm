@@ -37,6 +37,7 @@ MA 02110-1301, USA.
 #import "OOMaterial.h"		// For kTangentAttributeIndex
 #import "OOShaderProgram.h"
 #import "OOShaderUniform.h"
+#import "OOShaderUniformMethodType.h"
 #endif
 
 #import "PlayerEntity.h"
@@ -60,37 +61,29 @@ enum
 
 
 #if OO_SHADERS
-/*	What the dust shader's uniforms are bound to, by selector (-warpVector, -offsetPlayerPosition),
-	until the shader binding takes a C++ target: the DustEntity's own, private Objective-C object
-	(bead oo-9ht.77, which deleted the DustEntity facade that was bound before). It does not retain
-	the dust; the dust clears it in its destructor.
+/*	The dust shader's two uniforms read the dust's members (bead oo-t0e2m, which deleted the
+	file-local Objective-C object they were bound to by selector since bead oo-9ht.77).
+	The uniform holds the dust weakly, as it held that object: once the dust has gone it sets nothing.
 */
-@interface OODustShaderBinding: OOWeakRefObject
+namespace {
+
+void DustWarpVectorBinding(oo::RefCounted *target, OOShaderBindingValue &outValue)
 {
-@public
-	DustEntity	*_dust;
+	outValue.v = static_cast<DustEntity *>(target)->warpVector();
 }
 
-- (Vector) warpVector;
-- (Vector) offsetPlayerPosition;
 
-@end
+void DustOffsetPlayerPositionBinding(oo::RefCounted *target, OOShaderBindingValue &outValue)
+{
+	outValue.v = static_cast<DustEntity *>(target)->offsetPlayerPosition();
+}
 
-
-@implementation OODustShaderBinding
-
-- (Vector) warpVector				{ return _dust != nullptr ? _dust->warpVector() : kZeroVector; }
-- (Vector) offsetPlayerPosition		{ return _dust != nullptr ? _dust->offsetPlayerPosition() : kZeroVector; }
-
-@end
+}	// namespace
 #endif
 
 
 DustEntity::~DustEntity()
 {
-#if OO_SHADERS
-	if (shaderBinding.get() != nil)  ((OODustShaderBinding *)shaderBinding.get())->_dust = nullptr;
-#endif
 	OOGraphicsResetManager::sharedManager()->unregisterCxxClient(this);
 }
 
@@ -214,13 +207,6 @@ OOShaderProgram *DustEntity::getShader()
 {
 	if (shader == nullptr)
 	{
-		if (shaderBinding.get() == nil)
-		{
-			OODustShaderBinding *binding = [[OODustShaderBinding alloc] init];
-			binding->_dust = this;
-			shaderBinding = oo::adoptObjC<id>(binding);	// what the uniforms are bound to
-		}
-		id self = shaderBinding.get();
 		std::string prefix = oo::str::format(
 						   "#define OODUST_SCALE_MAX    (float(%g))\n"
 							"#define OODUST_SCALE_FACTOR (float(%g))\n"
@@ -241,13 +227,17 @@ OOShaderProgram *DustEntity::getShader()
 		uniforms.clear();
 		oo::Ref<OOShaderUniform> uWarp = OOShaderUniform::initWithName("uWarp",
 																		shader.get(),
-																		self,
-																		OOSelectorFromName("warpVector"),
+																		this,
+																		"warpVector",
+																		kOOShaderUniformTypeVector,	// -warpVector's return type
+																		DustWarpVectorBinding,
 																		0);
 		oo::Ref<OOShaderUniform> uOffsetPlayerPosition = OOShaderUniform::initWithName("uOffsetPlayerPosition",
 																						shader.get(),
-																						self,
-																						OOSelectorFromName("offsetPlayerPosition"),
+																						this,
+																						"offsetPlayerPosition",
+																						kOOShaderUniformTypeVector,	// -offsetPlayerPosition's return type
+																						DustOffsetPlayerPositionBinding,
 																						0);
 		
 		uniforms.push_back(uWarp);
