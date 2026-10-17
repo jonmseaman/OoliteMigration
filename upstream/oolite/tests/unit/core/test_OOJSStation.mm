@@ -64,15 +64,21 @@ typedef enum
 
 typedef OOEquipmentType* OOWeaponType;
 
+#include "OOJSPrivateObject.h"
+
 namespace cxx {
 
-// The C++ root, as far as the binding and the root's JS category reach it.
-class Entity : public oo::RefCounted
+// The C++ root, as far as the binding and the root's JS category reach it; its JS glue
+// (OOJSPrivateObject, as the game's root implements it) answers its object's JS value
+// (bead oo-9ht.39.8.2: the binding's launches return OOJSValueFromCxxObject of the C++ ship).
+class Entity : public oo::RefCounted, public OOJSPrivateObject
 {
 public:
 	virtual ~Entity();
 	virtual void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
 	virtual std::optional<std::string> jsClassName();
+	ooscript::Value jsValueInContext(ooscript::Context context) override;
+	void clearJSSelf(ooscript::Object selfVal) override;
 };
 
 }	// namespace cxx
@@ -356,6 +362,14 @@ namespace {
 cxx::Entity::~Entity() = default;
 void cxx::Entity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)  { (void)outClass; (void)outPrototype; }
 std::optional<std::string> cxx::Entity::jsClassName()  { return std::nullopt; }
+// What OOJSValueFromNativeObject made of the entity's object, which the binding returned until bead
+// oo-9ht.39.8.2: its -oo_jsValueInContext:, null for none.
+ooscript::Value cxx::Entity::jsValueInContext(ooscript::Context context)
+{
+	::Entity *object = oo::ToObjC(this);
+	return object != nil ? [object oo_jsValueInContext:context] : ooscript::nullValue();
+}
+void cxx::Entity::clearJSSelf(ooscript::Object)  {}
 GLfloat ShipEntity::getFlightRoll()  { return static_cast<StationEntity *>(this)->_roll; }	// the cases ask stations only
 void ShipEntity::setRawRoll(double amount)  { static_cast<StationEntity *>(this)->_roll = static_cast<float>(amount); }
 OOAlertCondition ShipEntity::alertCondition()  { return static_cast<OOAlertCondition>(static_cast<StationEntity *>(this)->_alertLevel); }

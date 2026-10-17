@@ -59,11 +59,16 @@ typedef NSInteger OOGUIRow;	// as GuiDisplayGen.h declares it
 // PLAYER: C++ since bead oo-9ht.177 deleted the Objective-C player this stood in for: the members
 // the code under test calls, declared as the game headers declare them (the test imports none
 // that defines the classes), with the stand-in's answers.
+#include "oofnd/Ref.hpp"
+#include "OOJSPrivateObject.h"
+
 namespace cxx {
-class Entity
+class Entity : public oo::RefCounted, public OOJSPrivateObject	// the game's root's bases (its JS glue)
 {
 public:
 	OOEntityStatus status();
+	ooscript::Value jsValueInContext(ooscript::Context context) override;
+	void clearJSSelf(ooscript::Object selfVal) override;
 };
 
 }	// namespace cxx
@@ -422,6 +427,10 @@ void GuiDisplayGen::setArray(const std::vector<std::string> &, OOGUIRow)  { std:
 ::Entity *sDemoShipObject = nil;
 namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
 ::Entity *oo::ToObjC(cxx::Entity *entity)  { return entity != nullptr ? sDemoShipObject : nil; }
+// The C++ ship's JS value (bead oo-9ht.39.8.2: displayModel is OOJSValueFromCxxObject of the demo
+// ship): its object's, which the binding asked until then.
+ooscript::Value cxx::Entity::jsValueInContext(ooscript::Context context)  { return [oo::ToObjC(this) oo_jsValueInContext:context]; }
+void cxx::Entity::clearJSSelf(ooscript::Object)  {}
 
 
 oo::PList Universe::getMissiontext()	{ return Dict({ { "mission_title", oo::PList("The [name] Job") }, { "mission_number", oo::PList(12) } }); }
@@ -773,9 +782,10 @@ void OOJSUnreachable(const char *function, const char *, unsigned)
 
 
 // (a C++ function, outside the C block above)
-ooscript::Value OOJSValueFromCxxObject(ooscript::Context, OOJSPrivateObject *object)
+ooscript::Value OOJSValueFromCxxObject(ooscript::Context context, OOJSPrivateObject *object)
 {
 	if (object != nullptr && object == static_cast<OOJSPrivateObject *>(sRunningScript))  return ooscript::objectValue(sScriptObject);
+	if (dynamic_cast<cxx::Entity *>(object) != nullptr)  return object->jsValueInContext(context);	// the demo ship (bead oo-9ht.39.8.2)
 	return ooscript::nullValue();
 }
 

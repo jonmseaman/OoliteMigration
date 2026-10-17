@@ -47,6 +47,7 @@ class Entity : public oo::RefCounted	// the C++ root, as far as a ship's part ne
 {
 public:
 	virtual ~Entity();
+	void dumpState();	// the binding calls it since bead oo-9ht.39.8.2 (the object's -dumpState did)
 };
 }	// namespace cxx
 
@@ -99,7 +100,6 @@ public:
 - (BOOL) isVisualEffect;
 - (BOOL) isWormhole;
 - (BOOL) isInSpace;
-- (void) dumpState;
 @end
 
 // A ship: C++ since bead oo-9ht.144 deleted the Objective-C ship this stood in for, the C++ part of
@@ -179,7 +179,6 @@ bool EntityFromArgumentList(ooscript::Context context, const std::optional<std::
 - (BOOL) isVisualEffect  { return _isVisualEffect; }
 - (BOOL) isWormhole  { return _isWormhole; }
 - (BOOL) isInSpace  { return _isInSpace; }
-- (void) dumpState  { _dumps++; }
 
 @end
 
@@ -308,6 +307,9 @@ namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
 	auto found = sObjects.find(entity);
 	return found != sObjects.end() ? found->second : nil;
 }
+
+// What the object's -dumpState counted until bead oo-9ht.39.8.2.
+void cxx::Entity::dumpState()  { oo::ToObjC(this)->_dumps++; }
 
 
 extern "C" {

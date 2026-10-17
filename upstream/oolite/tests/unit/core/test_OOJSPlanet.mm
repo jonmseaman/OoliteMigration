@@ -47,6 +47,7 @@ public:
 	virtual void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
 	virtual std::optional<std::string> jsClassName();
 	virtual bool isVisibleToScripts();
+	Quaternion normalOrientation();	// the game's is virtual; the binding calls the root's (bead oo-9ht.39.8.2)
 
 	::Entity *_object = nil;
 };
@@ -79,6 +80,7 @@ public:
 	void setRotationalVelocity(double v);
 	Vector terminatorThresholdVector();
 	void setTerminatorThresholdVector(Vector newTerminatorThresholdVector);
+	void setOrientation(Quaternion quat);	// the game's overrides the root's virtual; the binding calls it qualified
 
 	void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype) override;
 	std::optional<std::string> jsClassName() override;
@@ -99,8 +101,9 @@ public:
 };
 
 
-// The root's facade: the planet's object (the C++ part first, where oo::ToCxx reads it); its
-// orientation is the root's selectors', which the binding sends.
+// The root's facade: the planet's object (the C++ part first, where oo::ToCxx reads it); it holds the
+// orientation, which the C++ members answer (the root's selectors, which the binding sent until bead
+// oo-9ht.39.8.2).
 // What an entity's JS object holds since bead oo-9ht.39.3: a weak reference to the C++ entity.
 #include "OOJSEntityHolder.h"
 
@@ -112,8 +115,6 @@ public:
 	Quaternion _orientation;
 }
 - (id) weakRefUnderlyingObject;
-- (Quaternion) normalOrientation;
-- (void) setOrientation:(Quaternion)quat;
 @end
 
 // The universe, as far as the binding asks it anything: its main planet (the C++ planet since bead
@@ -162,8 +163,6 @@ public:
 @implementation Entity
 
 - (id) weakRefUnderlyingObject  { return self; }
-- (Quaternion) normalOrientation  { return _orientation; }
-- (void) setOrientation:(Quaternion)quat  { _orientation = quat; }
 
 @end
 
@@ -187,6 +186,9 @@ cxx::Entity::~Entity()  {}
 void cxx::Entity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)  { *outClass = nullptr; *outPrototype = nullptr; }
 std::optional<std::string> cxx::Entity::jsClassName()  { return std::string("Entity"); }
 bool cxx::Entity::isVisibleToScripts()  { return false; }
+// The orientation the object's -normalOrientation and -setOrientation: answered and set until bead oo-9ht.39.8.2.
+Quaternion cxx::Entity::normalOrientation()  { return oo::ToObjC(this)->_orientation; }
+void OOPlanetEntity::setOrientation(Quaternion quat)  { oo::ToObjC(this)->_orientation = quat; }
 
 
 OOStellarBodyType OOPlanetEntity::planetType()  { return _type; }

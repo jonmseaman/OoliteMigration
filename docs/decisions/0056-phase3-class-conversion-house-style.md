@@ -7666,3 +7666,37 @@ the exhaust plume's, flasher's and waypoint's `outObject`), and the facade's JS 
 
 **Tests.** None changed; `test_OOJSShip` and `test_OOJSSystem` link the game, and js-api-contract and the
 goldens cover the values.
+
+## Amendment (bead oo-9ht.39.8.2): the station, mission, planet and entity bindings take the C++ entity
+
+oo-9ht.39 step 4c (bead oo-9ht.39.8), family F2 of its plan (batch AF, Migration Completion session,
+2026-10-17): the bindings amendment oo-9ht.39.8.1 left because their unit tests link a stand-in
+`cxx::Entity`.
+
+1. **The JS value of a C++ entity** is `OOJSValueFromCxxObject(context, entity)` where the binding went
+   through its object: `OOJSStation`'s eight launchers (`launchShipWithRole`, `launchDefenseShip`,
+   `launchEscort`, `launchScavenger`, `launchMiner`, `launchPirateShip`, `launchShuttle`, `launchPatrol`;
+   `OOJS_RETURN_OBJECT(oo::ToObjC(x))`) and `OOJSMission`'s `displayModel`
+   (`[oo::ToObjC(demoShip) oo_jsValueInContext:]`). The facade's `-oo_jsValueInContext:` forwarded to the
+   same `jsValueInContext()`; null for null, as for nil.
+2. **Members, not selectors.** `OOJSPlanet`'s `orientation` reads `cxx::Entity::normalOrientation()` and sets
+   `OOPlanetEntity::setOrientation()`, `OOJSEntity`'s `dumpState()` calls `cxx::Entity::dumpState()`, where
+   they messaged the object (whose `-normalOrientation`, `-setOrientation:` and `-dumpState` called the same
+   members on a C++-only entity; a planet has no Objective-C link). The planet's calls are **qualified**: the
+   final overriders for a planet (`OOPlanetEntity` has no subclass and does not override
+   `normalOrientation`), so the binding test stands in for them, as the visual effect's `nextBeacon` (bead
+   oo-9ht.177). No planet: a zero quaternion and nothing set, as the message to nil.
+
+**Defaults (rule 10).** Identical JS-visible behaviour; no behaviour change.
+
+**Tests (standing approval oo-9n5p9, lines on main before this change).** Only stand-ins move, no case or
+expected value: `test_OOJSStation`'s and `test_OOJSMission`'s stand-in C++ entity takes the game root's JS
+glue base (`OOJSPrivateObject`; the mission's also `oo::RefCounted`, so the binding's upcast lands where the
+game's would) and its `jsValueInContext()` answers its object's `-oo_jsValueInContext:` (null for none);
+the mission's `OOJSValueFromCxxObject` stub answers an entity's `jsValueInContext()`. `test_OOJSPlanet`'s and
+`test_OOJSEntity`'s object stand-ins for `-normalOrientation`/`-setOrientation:`/`-dumpState` become the C++
+members, on the same object fields.
+
+Left for the next families (bead notes of oo-9ht.39.8): beacons (F3), ship targets (F4),
+hazard/safe-vector (F5), object accessors (F6), descriptions and `doScriptEvent` (F7), the facade's JS
+forwarders and categories (F8).
