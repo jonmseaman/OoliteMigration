@@ -194,4 +194,50 @@ OO_TEST(tableLeavesOutUnsafeNames)
 }
 
 
+
+// Since bead oo-9ht.39.8.25 callObjC() asks and calls an entity's C++ part for every name of its
+// table: each name is a by-name row or a facade row (OOEntityCalledByName.mm), never both; each facade
+// row is a method of the root facade (the class Entity, with its categories), and has the facade
+// method's body exactly when callObjC() can read the method's result.
+OO_TEST(everyNameIsAnsweredByTheCxxEntity)
+{
+	@autoreleasepool
+	{
+		std::set<std::string> names;
+		for (const OOJSCallEntityMethodRow &row : kOOJSCallEntityMethods)  names.insert(row.name);
+
+		std::string uncovered, twice, notInTable, notFacade, typedMismatch;
+		for (const OOJSCallEntityMethodRow &row : kOOJSCallEntityMethods)
+		{
+			const bool byName = (oo::EntityByNameRowNamed(row.name) != nullptr);
+			const OOEntityFacadeRow *facade = oo::EntityFacadeRowNamed(row.name);
+			if (!byName && facade == nullptr)  uncovered += std::string(" ") + row.name;
+			if (byName && facade != nullptr)  twice += std::string(" ") + row.name;
+			if (facade == nullptr)  continue;
+			if (row.form != OOJSCallEntityMethodForm::Typed)  { if (facade->typed == nullptr)  typedMismatch += std::string(" ") + row.name;  continue; }
+			switch (OOShaderUniformTypeFromEncoding(row.encoding))
+			{
+				case kOOShaderUniformTypeInvalid:
+				case kOOShaderUniformTypeHPVector:
+				case kOOShaderUniformTypeMatrix:
+				case kOOShaderUniformTypePoint:
+					break;	// callObjC() reads no result: a body is optional
+				default:
+					if (facade->typed == nullptr)  typedMismatch += std::string(" ") + row.name;
+			}
+		}
+		for (const OOEntityFacadeRow &facade : oo::EntityFacadeRows())
+		{
+			if (!names.contains(facade.name))  notInTable += std::string(" ") + facade.name;
+			if (class_getInstanceMethod([::Entity class], sel_registerName(facade.name)) == NULL)  notFacade += std::string(" ") + facade.name;
+		}
+		OO_CHECK_EQ(uncovered, std::string());
+		OO_CHECK_EQ(twice, std::string());
+		OO_CHECK_EQ(notInTable, std::string());
+		OO_CHECK_EQ(notFacade, std::string());
+		OO_CHECK_EQ(typedMismatch, std::string());
+	}
+}
+
+
 OO_TEST_MAIN()

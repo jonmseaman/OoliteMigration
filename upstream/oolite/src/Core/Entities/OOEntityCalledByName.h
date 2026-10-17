@@ -39,6 +39,7 @@ MA 02110-1301, USA.
 #include <string>
 
 namespace cxx { class Entity; }
+class OOColor;
 
 
 // The name sets -[Entity respondsToSelector:] read: a row applies to an entity whose C++ part is
@@ -70,6 +71,7 @@ struct OOEntityByNameValue
 	Vector		vector{};
 	Quaternion	quaternion{};
 	id			object = nil;
+	OOColor		*color = nullptr;	// a colour result, borrowed (fogUniform; bead oo-9ht.39.8.25)
 	oo::PList	plist;
 };
 
@@ -86,14 +88,32 @@ struct OOEntityByNameRow
 };
 
 
+/*	The root facade's own selectors that callObjC() lists (OOJSCallEntityMethods.h) and the by-name
+	table does not (bead oo-9ht.39.8.25, ADR-0056 amendment oo-9ht.39.8.25): a row per name, its
+	answer (null: every entity, as -[Entity respondsToSelector:] answered the facade's methods; the
+	planet's and the beacon's selectors for the parts it answered them for) and, for a name callObjC()
+	can call, the facade method's body on the C++ entity, its result kept by type.
+*/
+struct OOEntityFacadeRow
+{
+	const char				*name;
+	bool					(*answers)(cxx::Entity *entity);
+	void					(*typed)(cxx::Entity *entity, OOEntityByNameValue &value);
+};
+
+
 namespace oo {
+
+std::span<const OOEntityFacadeRow> EntityFacadeRows();
+const OOEntityFacadeRow *EntityFacadeRowNamed(const std::string &name);	// null if not a facade row
 
 std::span<const OOEntityByNameRow> EntityByNameRows();
 const OOEntityByNameRow *EntityByNameRowNamed(const std::string &name);	// null if not tabled
 bool EntityByNameRowApplies(const OOEntityByNameRow &row, cxx::Entity *entity);
 
 // The tabled method with no argument that applies to the entity, called, its result kept by type
-// in value (bead oo-9ht.39.7.2); false (nothing called) for any other name.
+// in value (bead oo-9ht.39.7.2), or the facade row's (bead oo-9ht.39.8.25); false (nothing called)
+// for any other name.
 bool CallEntityByNameTyped(cxx::Entity *entity, const std::string &name, OOEntityByNameValue &value);
 
 }	// namespace oo

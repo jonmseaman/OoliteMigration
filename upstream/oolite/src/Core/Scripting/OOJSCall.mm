@@ -102,11 +102,13 @@ const CxxMethod kPlayerMethods[] =
 };
 
 
-// The table's entry for name when object is the player (it answered the categories), else null.
-// The player is C++ since bead oo-9ht.177; object is its Objective-C object (a ship's).
-const CxxMethod *CxxMethodNamed(id object, const std::optional<std::string> &name)
+// The table's entry for name when the callee is the player (it answered the categories), else null.
+// The player is C++ since bead oo-9ht.177: the callee is the C++ entity, or an object (its own, a
+// ship's) whose C++ part is the player (bead oo-9ht.39.8.25).
+const CxxMethod *CxxMethodNamed(id object, cxx::Entity *entity, const std::optional<std::string> &name)
 {
-	if (!name.has_value() || PLAYER == nullptr || object != oo::ToObjC(PLAYER))  return nullptr;
+	cxx::Entity *callee = (entity != nullptr) ? entity : oo::ToCxx(object);
+	if (!name.has_value() || PLAYER == nullptr || callee != PLAYER)  return nullptr;
 	for (const CxxMethod &method : kPlayerMethods)
 	{
 		if (*name == method.name)  return &method;
@@ -156,11 +158,13 @@ bool ScalarBoolValue(id object)
 }
 
 
-/*	The call: of any object by its method's signature (OOJSCallObjCObjectMethod), or of an entity's
-	object by the entity table (entityTable): a name the table does not list does not respond, and
-	a listed one is called with the table's signature. An entity's by-name methods (the generated
-	table OOEntityCalledByNameTable.h) are asked of and called on its C++ part (bead oo-9ht.39.7.2),
-	as the facade answered and called them; any other name goes to its object as before.
+/*	The call: of any object by its method's signature (OOJSCallObjCObjectMethod), or of an entity
+	by the entity table (entityTable): a name the table does not list does not respond, and a listed
+	one is called with the table's signature. An entity's by-name methods (the generated table
+	OOEntityCalledByNameTable.h) are asked of and called on its C++ part (bead oo-9ht.39.7.2), as the
+	facade answered and called them, and so are the facade's own methods the table lists (its rows
+	in OOEntityCalledByName.mm, bead oo-9ht.39.8.25): an entity's call has no object (object is nil).
+	Its "does not respond" error still names the entity's object, whose address the text holds.
 */
 bool CallMethod(ooscript::Context context, id object, const std::string &oo_jsClassName, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult, bool entityTable, cxx::Entity *entity)
 {
@@ -180,9 +184,10 @@ bool CallMethod(ooscript::Context context, id object, const std::string &oo_jsCl
 		return false;
 	}
 	
-	if ((oo::ToShip(object) != nullptr))
+	ShipEntity *ship = (entity != nullptr) ? oo::ToShip(entity) : oo::ToShip(object);	// the C++ entity's (bead oo-9ht.39.8.25)
+	if (ship != nullptr)
 	{
-		if (PLAYER != nullptr)  PLAYER->PlayerEntity::setScriptTarget(oo::ToShip(object));	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
+		if (PLAYER != nullptr)  PLAYER->PlayerEntity::setScriptTarget(ship);	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it
 	}
 	
 	selectorString = cxx_OOStringFromJSValue(context, argv[0]);
@@ -204,7 +209,7 @@ bool CallMethod(ooscript::Context context, id object, const std::string &oo_jsCl
 	selector = OOSelectorFromName(selectorString.has_value() ? selectorString->c_str() : NULL);
 	
 #if OO_DEBUG
-	if (const CxxMethod *cxxMethod = CxxMethodNamed(object, selectorString))
+	if (const CxxMethod *cxxMethod = CxxMethodNamed(object, entity, selectorString))
 	{
 		// As the category's method was called: a property-list result as kMethodTypePListVoid's
 		// (no name in the table ends in "_bool"), a void method leaves the result alone.
@@ -226,9 +231,9 @@ bool CallMethod(ooscript::Context context, id object, const std::string &oo_jsCl
 		}
 		else
 		{
-			IMP method = [object methodForSelector:selector];
-			// A by-name method with a numeric, vector or quaternion result is called on the entity's
-			// C++ part (bead oo-9ht.39.7.2), its result read as the method's was.
+			IMP method = (entity == nullptr) ? [object methodForSelector:selector] : nullptr;	// an object's call only
+			// An entity's method with a numeric, vector, quaternion, colour or object result is called
+			// on its C++ part (beads oo-9ht.39.7.2, oo-9ht.39.8.25), its result read as the method's was.
 			OOEntityByNameValue typed;
 			bool byName = false;
 			switch (type)
@@ -245,7 +250,12 @@ bool CallMethod(ooscript::Context context, id object, const std::string &oo_jsCl
 				case kMethodTypeDoubleVoid:
 				case kMethodTypeVectorVoid:
 				case kMethodTypeQuaternionVoid:
-					byName = (entity != nullptr && oo::CallEntityByNameTyped(entity, *selectorString, typed));
+				case kMethodTypeColorVoid:
+				case kMethodTypeObjectVoid:
+					// An entity's typed call: the table holds every name callObjC() lists for an entity
+					// (bead oo-9ht.39.8.25); one it cannot call leaves the zero values.
+					if (entity != nullptr)  oo::CallEntityByNameTyped(entity, *selectorString, typed);
+					byName = (entity != nullptr);
 					break;
 				default:
 					break;
@@ -260,7 +270,7 @@ bool CallMethod(ooscript::Context context, id object, const std::string &oo_jsCl
 					
 				case kMethodTypeColorVoid:
 					// A colour result is its PList::Object node, as the colour's facade's was (bead oo-9ht.1).
-					result = OOColorObjectNode(((ColorReturnMsgSend)method)(object, selector));
+					result = OOColorObjectNode(byName ? typed.color : ((ColorReturnMsgSend)method)(object, selector));
 					if (selectorString.has_value() && oo::str::hasSuffix(*selectorString, "_bool"))  result = oo::PList(false);	// a colour answered neither -boolValue nor -intValue
 					break;
 
@@ -269,8 +279,7 @@ bool CallMethod(ooscript::Context context, id object, const std::string &oo_jsCl
 					if (type == kMethodTypePListVoid)  result = (entity != nullptr) ? oo::CallEntityByName(entity, *selectorString) : OOCallByName(object, selector);
 					// An object result (a ship, a colour) is its PList::Object node, as oo::PListFrom()
 					// made of it; OOCallByName ignores an object result (ADR-0055 Amendment 2).
-					else if (entity != nullptr && oo::CallEntityByNameTyped(entity, *selectorString, typed))  result = oo::PListObject(typed.object);
-					else  result = oo::PListObject(((id (*)(id, SEL))method)(object, selector));
+					else  result = oo::PListObject(byName ? typed.object : ((id (*)(id, SEL))method)(object, selector));
 					if (selectorString.has_value() && oo::str::hasSuffix(*selectorString, "_bool"))
 					{
 						// OOBooleanFromObject(result, false): a string or number reads as oo::plist_get::boolFrom
@@ -336,7 +345,9 @@ bool CallMethod(ooscript::Context context, id object, const std::string &oo_jsCl
 	}
 	else
 	{
-		cxx_OOJSReportError(context, "%s.callObjC(): %s does not respond to method %s.", oo_jsClassName.c_str(), oo::ShortDescriptionOf(object).c_str(), (selectorString ? selectorString->c_str() : "(null)"));
+		// An entity's text names its object, whose address it holds (ADR-0056 amendment oo-9ht.39.8.25).
+		id described = (entity != nullptr) ? oo::ToObjC(entity) : object;
+		cxx_OOJSReportError(context, "%s.callObjC(): %s does not respond to method %s.", oo_jsClassName.c_str(), oo::ShortDescriptionOf(described).c_str(), (selectorString ? selectorString->c_str() : "(null)"));
 		error = true;
 	}
 	
@@ -355,7 +366,7 @@ bool OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::s
 
 bool OOJSCallEntityMethod(ooscript::Context context, cxx::Entity *entity, const std::string &oo_jsClassName, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult)
 {
-	return CallMethod(context, oo::ToObjC(entity), oo_jsClassName, argc, argv, outResult, true, entity);
+	return CallMethod(context, nil, oo_jsClassName, argc, argv, outResult, true, entity);	// the C++ entity only (bead oo-9ht.39.8.25)
 }
 
 
