@@ -7730,3 +7730,30 @@ the C++ entity, the player's compass cycling and the HUD.
 take the C++ entity (the ship's log reads `beaconCode()`, which its object's `-beaconCode` answered; the
 others clear the same field), and the latter two's player stand-ins add `nextBeaconEntity()`; no case or
 expected value changes.
+
+## Amendment (bead oo-9ht.39.8.11): the ship target members and the compass target take the C++ entity from the bindings
+
+oo-9ht.39 step 4c (bead oo-9ht.39.8), family F4 of its plan (batch AF, Migration Completion session,
+2026-10-17). `OOJSShip`'s `AIFoundTarget` and `AIPrimaryAggressor` setters and `addDefenseTarget()` /
+`removeDefenseTarget()`, and `OOJSPlayerShip`'s `compassTarget` setter, crossed to the object of the C++
+entity they hold.
+
+1. **`ShipEntity::setFoundTargetEntity()`, `setPrimaryAggressorEntity()`, `addDefenseTargetEntity()`,
+   `removeDefenseTargetEntity()`** take the C++ entity, cross to its object once and call the member that
+   takes the object (`setFoundTarget()` through the virtual: the player overrides it). Named, not
+   overloads: an overload on `cxx::Entity *` beside `::Entity *` makes every `nil`/`nullptr` argument of the
+   members' 70-odd callers ambiguous. The members keep taking the object for those callers (the AI, the
+   player, the ship's own code), which hold objects; moving them is later work.
+2. **`PlayerEntity::getCompassTargetEntity()`** answers `oo::ToCxx(getCompassTarget())` through the virtual
+   (a test's player overrides it); the `compassTarget` setter's cycle compares it with the C++ entity where it
+   compared `getCompassTarget()` with the entity's object.
+
+**Defaults (rule 10).** Identical behaviour: the same members run on the same object; a compare is the same
+identity on the other side of the crossing, for every entity with a facade. For an entity without one
+(`oo::ToObjC` answers nil and so does `getCompassTarget()`), the object compare matched nil with nil and the
+C++ compare does not: the unreachable facade-less difference of amendment oo-9ht.39.7.1 (every entity has its
+facade while the facade exists), which also applies to the next-beacon compare of amendment oo-9ht.39.8.10.
+
+**Tests.** None changed: `test_OOJSShip` and `test_OOJSPlayerShip` link the game (their players override the
+virtual `getCompassTarget()`/`nextBeacon()`, which the new members call); js-api-contract and the goldens
+cover the values.

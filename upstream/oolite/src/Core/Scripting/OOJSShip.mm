@@ -1610,7 +1610,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			}
 			else if (JSValueToEntity(context, *value, &target) && IsShip(target))
 			{
-				ship->setFoundTarget(oo::ToObjC(target));
+				ship->setFoundTargetEntity(target);	// the C++ entity (bead oo-9ht.39.8.11)
 				return true;
 			}
 			break;
@@ -1625,7 +1625,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			}
 			else if (JSValueToEntity(context, *value, &target) && IsShip(target))
 			{
-				ship->setPrimaryAggressor(oo::ToObjC(target));
+				ship->setPrimaryAggressorEntity(target);	// the C++ entity (bead oo-9ht.39.8.11)
 				return true;
 			}
 			break;
@@ -3688,7 +3688,7 @@ static bool ShipAddDefenseTarget(ooscript::Context context, ooscript::CallArgs &
 		return false;
 	}
 	
-	ship->addDefenseTarget(oo::ToObjC(target));
+	ship->addDefenseTargetEntity(target);	// the C++ ship (bead oo-9ht.39.8.11)
 
 	OOJS_RETURN_VOID;
 	
@@ -3711,7 +3711,7 @@ static bool ShipRemoveDefenseTarget(ooscript::Context context, ooscript::CallArg
 		return false;
 	}
 	
-	ship->removeDefenseTarget(oo::ToObjC(target));
+	ship->removeDefenseTargetEntity(target);	// the C++ ship (bead oo-9ht.39.8.11)
 
 	OOJS_RETURN_VOID;
 	
