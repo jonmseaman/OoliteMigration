@@ -126,23 +126,23 @@ OO_TEST(entityIsNotVisible)
 	@autoreleasepool
 	{
 		Entity *entity = [[[Entity alloc] init] autorelease];
-		OO_CHECK(![entity isVisibleToScripts]);
-		OO_CHECK([entity cxx_oo_jsClassName] == std::optional<std::string>("Entity"));
+		OO_CHECK(!OOJSEntityIsVisibleToScripts(oo::ToCxx(entity)));
+		OO_CHECK(OOJSEntityJSClassName(oo::ToCxx(entity)) == std::optional<std::string>("Entity"));
 
 		ooscript::ClassDef *jsClass = nullptr;
 		ooscript::Object prototype = reinterpret_cast<ooscript::Object>(1);
-		[entity getJSClass:&jsClass andPrototype:&prototype];
+		OOJSEntityGetJSClass(oo::ToCxx(entity), &jsClass, &prototype);
 		OO_CHECK(jsClass == JSEntityClass());
 		OO_CHECK(prototype == JSEntityPrototype());
 
 		// Not visible: no JS object is made, and the value is null.
 		SetUpContext();
-		ooscript::Value value = [entity oo_jsValueInContext:sContext];
+		ooscript::Value value = OOJSEntityJSValue(oo::ToCxx(entity), sContext);
 		OO_CHECK(ooscript::isNull(value));
 		OO_CHECK(entity->_cxxEntity->_jsSelf == nullptr);
 
 		// With no JS object, -deleteJSSelf does nothing.
-		[entity deleteJSSelf];
+		oo::ToCxx(entity)->deleteJSSelf();
 		OO_CHECK(entity->_cxxEntity->_jsSelf == nullptr);
 	}
 }
@@ -159,7 +159,7 @@ OO_TEST(existingJSObject)
 		// An entity that already has its JS object answers it, visible or not.
 		Entity *entity = [[[Entity alloc] init] autorelease];
 		entity->_cxxEntity->_jsSelf = object;
-		ooscript::Value value = [entity oo_jsValueInContext:sContext];
+		ooscript::Value value = OOJSEntityJSValue(oo::ToCxx(entity), sContext);
 		OO_CHECK(ooscript::isObject(value));
 		ooscript::Object got = nullptr;
 		OO_CHECK(ooscript::valueToObject(sContext, value, &got) && got == object);
@@ -167,7 +167,7 @@ OO_TEST(existingJSObject)
 		TestVisibleEntity *visible = [[[TestVisibleEntity alloc] init] autorelease];
 		visible->_cxxEntity->_jsSelf = object;
 		got = nullptr;
-		OO_CHECK(ooscript::valueToObject(sContext, [visible oo_jsValueInContext:sContext], &got) && got == object);
+		OO_CHECK(ooscript::valueToObject(sContext, OOJSEntityJSValue(oo::ToCxx(visible), sContext), &got) && got == object);
 
 		// The test's object is not rooted: the entities let go of it before they go.
 		entity->_cxxEntity->_jsSelf = nullptr;
@@ -181,11 +181,11 @@ OO_TEST(visibleEntityKeepsEntityClass)
 	@autoreleasepool
 	{
 		TestVisibleEntity *visible = [[[TestVisibleEntity alloc] init] autorelease];
-		OO_CHECK([visible isVisibleToScripts]);
-		OO_CHECK([visible cxx_oo_jsClassName] == std::optional<std::string>("Entity"));
+		OO_CHECK(OOJSEntityIsVisibleToScripts(oo::ToCxx(visible)));
+		OO_CHECK(OOJSEntityJSClassName(oo::ToCxx(visible)) == std::optional<std::string>("Entity"));
 		ooscript::ClassDef *jsClass = nullptr;
 		ooscript::Object prototype = nullptr;
-		[visible getJSClass:&jsClass andPrototype:&prototype];
+		OOJSEntityGetJSClass(oo::ToCxx(visible), &jsClass, &prototype);
 		OO_CHECK(jsClass == JSEntityClass());
 	}
 }
@@ -196,12 +196,12 @@ OO_TEST(shipIsVisible)
 	@autoreleasepool
 	{
 		TestShip *ship = Ship("ship");
-		OO_CHECK([oo::ToObjC(ship) isVisibleToScripts]);
-		OO_CHECK([oo::ToObjC(ship) cxx_oo_jsClassName] == std::optional<std::string>("Ship"));
+		OO_CHECK(OOJSEntityIsVisibleToScripts(ship));
+		OO_CHECK(OOJSEntityJSClassName(ship) == std::optional<std::string>("Ship"));
 
 		ooscript::ClassDef *jsClass = nullptr;
 		ooscript::Object prototype = reinterpret_cast<ooscript::Object>(1);
-		[oo::ToObjC(ship) getJSClass:&jsClass andPrototype:&prototype];
+		OOJSEntityGetJSClass(ship, &jsClass, &prototype);
 		OO_CHECK(jsClass == JSShipClass());
 		OO_CHECK(prototype == JSShipPrototype());
 	}
@@ -340,21 +340,21 @@ OO_TEST(cxxEntityAnswersThroughItsJSMembers)
 
 		Entity *plain = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
 		OO_CHECK(plain != nil && [plain class] == [Entity class]);
-		OO_CHECK(![plain isVisibleToScripts] && !oo::ToCxx(plain)->isVisibleToScripts());
-		OO_CHECK([plain cxx_oo_jsClassName] == std::optional<std::string>("Entity"));
-		[plain getJSClass:&jsClass andPrototype:&prototype];
+		OO_CHECK(!OOJSEntityIsVisibleToScripts(oo::ToCxx(plain)) && !oo::ToCxx(plain)->isVisibleToScripts());
+		OO_CHECK(OOJSEntityJSClassName(oo::ToCxx(plain)) == std::optional<std::string>("Entity"));
+		OOJSEntityGetJSClass(oo::ToCxx(plain), &jsClass, &prototype);
 		OO_CHECK(jsClass == JSEntityClass() && prototype == JSEntityPrototype());
 
 		Entity *scripted = oo::NewEntityFacade(oo::makeRef<TestScriptedEntity>());
 		OO_CHECK(scripted != nil && [scripted class] == [Entity class]);
-		OO_CHECK([scripted isVisibleToScripts]);
-		OO_CHECK([scripted cxx_oo_jsClassName] == std::optional<std::string>("TestScripted"));
-		[scripted getJSClass:&jsClass andPrototype:&prototype];
+		OO_CHECK(OOJSEntityIsVisibleToScripts(oo::ToCxx(scripted)));
+		OO_CHECK(OOJSEntityJSClassName(oo::ToCxx(scripted)) == std::optional<std::string>("TestScripted"));
+		OOJSEntityGetJSClass(oo::ToCxx(scripted), &jsClass, &prototype);
 		OO_CHECK(jsClass == &sTestScriptedClass && prototype == nullptr);
 
 		// An Objective-C override answers first; the C++ part keeps the default.
 		TestVisibleEntity *visible = [[[TestVisibleEntity alloc] init] autorelease];
-		OO_CHECK([visible isVisibleToScripts] && !oo::ToCxx(visible)->isVisibleToScripts());
+		OO_CHECK(OOJSEntityIsVisibleToScripts(oo::ToCxx(visible)) && !oo::ToCxx(visible)->isVisibleToScripts());
 	}
 }
 

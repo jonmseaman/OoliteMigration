@@ -822,10 +822,10 @@ OO_TEST(mfdsAndDials)
 OO_TEST(playerCategory)
 {
 	SetUp();
-	OO_CHECK_EQ([oo::ToObjC(sRealPlayer) cxx_oo_jsClassName].value_or("<none>"), "PlayerShip");
+	OO_CHECK_EQ(OOJSEntityJSClassName(sRealPlayer).value_or("<none>"), "PlayerShip");
 	OO_CHECK(sRealPlayer->_jsSelf == JSPlayerShipObject());
 	ooscript::Context context = OOJSAcquireContext();
-	OO_CHECK(ooscript::isObject([oo::ToObjC(sRealPlayer) oo_jsValueInContext:context]) && ooscript::toObject([oo::ToObjC(sRealPlayer) oo_jsValueInContext:context]) == JSPlayerShipObject());
+	OO_CHECK(ooscript::isObject(OOJSEntityJSValue(sRealPlayer, context)) && ooscript::toObject(OOJSEntityJSValue(sRealPlayer, context)) == JSPlayerShipObject());
 	OOJSRelinquishContext(context);
 
 	// The engine's reset drops the player's JS object.

@@ -8008,3 +8008,48 @@ by-name or a facade row, never both; each facade row is a facade method and has 
 reads one). `test_OOJSCall` (standing approval oo-9n5p9, line on main before this change): its stand-in
 `oo::CallEntityByNameTyped` answers what the test entity's object's method answers (an integer), since
 the call no longer reaches the object; no case or expected value changes.
+
+## Amendment (bead oo-9ht.39.8.9): the engine asks the C++ entity for its JS glue; the root facade's JS category goes
+
+oo-9ht.39 step 4c (bead oo-9ht.39.8), family F8 (batch AH, Migration Completion session, 2026-10-17). The
+root facade's category `Entity (OOJavaScriptExtensions)` (`-isVisibleToScripts`, `-cxx_oo_jsClassName`,
+`-oo_jsValueInContext:`, `-getJSClass:andPrototype:`, `-deleteJSSelf`; amendment oo-9ht.128) forwarded each
+selector to the C++ part. Its senders now ask the C++ entity, and the category is deleted.
+
+1. **The senders.** `OOJavaScriptEngineJSValueInContext()` and `OOJavaScriptEngineJSClassName()` (the engine's
+   conversion of any object: `OOJSValueFromNativeObject()`, so an entity's `PList::Object` node, the
+   `filteredEntities` predicate's argument, and the description's class name) take an entity's object, or a
+   weak reference to one (`-weakRefUnderlyingObject`), to its C++ entity: `OOJSEntityJSValue()` and
+   `OOJSEntityJSClassName()`. `OOJavaScriptEngineIsVisibleToScripts()` (the entity predicates) answers
+   `OOJSEntityIsVisibleToScripts()`. A weak reference whose object has gone is still asked (undefined, no
+   name), and so is every non-entity object. `OOWeakReference.mm`'s two sends (178/199) are therefore reached
+   only for non-entity objects; they stay.
+2. **Objective-C entities** (`oo::ObjCEntityLink`; tests only, no game class). The four exported functions
+   (`EntityOOJavaScriptExtensions.h`; `OOJSEntityGetJSClass()` and `OOJSEntityJSValue()` are new, beside the
+   two from bead oo-9ht.39.5.1) send the selector only to a class that has its own method for it
+   (`class_getInstanceMethod` differs from the root's, the idiom of `Entity+ObjCBridge.mm`'s shader check);
+   otherwise they call the C++ part (the adapter, whose members are the root's), which is what the inherited
+   facade method forwarded to. An adapter whose object has gone answers as a message to nil did. The selectors
+   are declared for those sends only (`@interface Entity (OOJSOwnGlue)`, no implementation).
+3. **The deletion.** The category's declaration (`Entity+ObjCBridge.h`) and implementation
+   (`Entity+ObjCBridge.mm`) go; the facade's `-dealloc` calls `_cxxEntity->deleteJSSelf()`, which
+   `-deleteJSSelf` forwarded to. callObjC()'s facade rows for `isVisibleToScripts` and `deleteJSSelf`
+   (amendment oo-9ht.39.8.25) stay, with their bodies: callObjC() answers them as before.
+4. **Not changed.** The console's `inspectEntity()` still asks the entity's object for `-inspect` (amendment
+   oo-9ht.181 item 3): that send is to the object, not to the deleted category, and dropping it would change
+   `test_OOJSConsole`'s expectation; it goes with `oo::ToObjC` (the facade itself). The console's
+   `-cxx_oo_jsClassName` send (`callObjC()`, line 999) is the non-entity object path. The object fallbacks of
+   `oo::EntityRespondsToName()`/`oo::CallEntityByName()` for names outside both tables, and the
+   does-not-respond texts that name the object, are later work with the facade's deletion.
+
+**Defaults (rule 10).** Identical behaviour for every entity of the game (js-api-contract, goldens). For an
+Objective-C entity (tests only) a class's own override of one of the selectors still answers.
+
+**Tests (standing approval oo-9n5p9, lines on main before this change).** The whole-game tests that sent the
+deleted selectors to an entity's object call the exported functions on its C++ entity (`oo::ToCxx()`, or the
+C++ entity they held) with the same expected values: `test_EntityOOJavaScriptExtensions`,
+`test_OOJSPlayerShip`, `test_ProxyPlayerEntity`, `test_StationEntity`, `test_OOPlanetEntity`,
+`test_WormholeEntity`, `test_OOSunEntity`, `test_OOExhaustPlumeEntity`, `test_OOWaypointEntity`,
+`test_OOFlasherEntity`, `test_OOVisualEffectEntity`. `test_OOJSCallEntityMethods`'
+`everyNameIsAnsweredByTheCxxEntity` no longer requires the facade method for the two facade rows whose methods
+this deletes. No case is removed and no expected value changes.

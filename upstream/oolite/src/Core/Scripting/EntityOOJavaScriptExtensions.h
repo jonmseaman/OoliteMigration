@@ -56,6 +56,11 @@ std::optional<std::string> EntityJSDescription(cxx::Entity *entity);
 // oo-9ht.39.5.1).
 bool OOJSEntityIsVisibleToScripts(cxx::Entity *entity);
 std::optional<std::string> OOJSEntityJSClassName(cxx::Entity *entity);
+// The same for the JS class and prototype, and for the JS value (the entity's own JS object; null
+// for no entity, as OOJSValueFromNativeObject() gave for nil): what the engine asked an entity's
+// object by -getJSClass:andPrototype: and -oo_jsValueInContext: (bead oo-9ht.39.8.9).
+void OOJSEntityGetJSClass(cxx::Entity *entity, ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
+ooscript::Value OOJSEntityJSValue(cxx::Entity *entity, ooscript::Context context);
 
 // ShipEntity (OOJavaScriptExtensions)
 bool ShipEntityJSIsVisibleToScripts(void);

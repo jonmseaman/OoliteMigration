@@ -327,11 +327,11 @@ OO_TEST(jsExtensions)
 		OOBeaconEntityObject *wp = Waypoint("W");
 		ooscript::ClassDef *jsClass = nullptr, *expectedClass = nullptr;
 		ooscript::Object prototype = nullptr, expectedPrototype = nullptr;
-		[wp getJSClass:&jsClass andPrototype:&prototype];
+		OOJSEntityGetJSClass(oo::ToCxx(wp), &jsClass, &prototype);
 		OOJSWaypointGetJSClass(&expectedClass, &expectedPrototype);
 		OO_CHECK(jsClass != nullptr && jsClass == expectedClass && prototype == expectedPrototype);
-		OO_CHECK([wp cxx_oo_jsClassName] == std::optional<std::string>("Waypoint"));
-		OO_CHECK([wp isVisibleToScripts] == YES);
+		OO_CHECK(OOJSEntityJSClassName(oo::ToCxx(wp)) == std::optional<std::string>("Waypoint"));
+		OO_CHECK(OOJSEntityIsVisibleToScripts(oo::ToCxx(wp)) == YES);
 	}
 }
 

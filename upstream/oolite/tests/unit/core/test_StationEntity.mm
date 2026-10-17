@@ -758,10 +758,10 @@ OO_TEST(stationAnswersTheStationJSClass)
 		ooscript::Object stationPrototype = nullptr;
 		OOJSStationGetJSClass(&stationClass, &stationPrototype);
 
-		OO_CHECK([oo::ToObjC(station) cxx_oo_jsClassName] == std::optional<std::string>("Station"));
+		OO_CHECK(OOJSEntityJSClassName(station) == std::optional<std::string>("Station"));
 		ooscript::ClassDef *jsClass = nullptr;
 		ooscript::Object prototype = reinterpret_cast<ooscript::Object>(1);
-		[oo::ToObjC(station) getJSClass:&jsClass andPrototype:&prototype];
+		OOJSEntityGetJSClass(station, &jsClass, &prototype);
 		OO_CHECK(jsClass == stationClass);
 		OO_CHECK(prototype == stationPrototype);
 

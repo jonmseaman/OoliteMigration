@@ -218,7 +218,7 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 	if (UNIVERSE != nullptr)  UNIVERSE->ensureEntityReallyRemoved(self);
 	_cxxEntity->setCollisionRegion(nullptr);		// DESTROY(collisionRegion)
-	[self deleteJSSelf];
+	_cxxEntity->deleteJSSelf();	// what the deleted -deleteJSSelf forwarded to (bead oo-9ht.39.8.9)
 	[self setOwner:nil];
 	[self setAtmosphereFogging:nil];	// [atmosphereFogging release]
 
@@ -929,28 +929,10 @@ PlayerEntity *PlayerEntityPart(cxx::Entity *entity)
 // BY-NAME TABLE ROWS HERE (tools/gen-callobjc-entity-table.py reads OOEntityCalledByNameTable.h)
 
 
-/*	The category Entity (OOJavaScriptExtensions) (bead oo-9ht.128): moved unchanged from
-	EntityOOJavaScriptExtensions+ObjCBridge.mm, which it deleted. The class questions go to the C++
-	part, whose defaults are these bodies and which a C++ subclass overrides (ADR-0056 amendment
-	oo-9ht.107). Since bead oo-9ht.39.3 the JS object is the C++ entity's (its jsValueInContext()
-	and deleteJSSelf(), ADR-0056 amendment oo-9ht.39.3): the engine still sends these selectors to
-	an entity's object where it holds one (a property list's Object node, OOJSValueFromNativeObject()),
-	so they forward until the entity lists hold C++ entities (oo-9ht.39 step 3).
+/*	The category Entity (OOJavaScriptExtensions) (bead oo-9ht.128) is deleted (bead oo-9ht.39.8.9,
+	ADR-0056 amendment oo-9ht.39.8.9): its five selectors forwarded to the C++ part, which the
+	engine now asks directly (EntityOOJavaScriptExtensions.h).
 */
-@implementation Entity (OOJavaScriptExtensions)
-
-- (BOOL) isVisibleToScripts													{ return _cxxEntity->isVisibleToScripts(); }
-- (std::optional<std::string>) cxx_oo_jsClassName							{ return _cxxEntity->jsClassName(); }
-- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context			{ return _cxxEntity->jsValueInContext(context); }	// the C++ entity's glue (bead oo-9ht.39.3)
-
-- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype
-{
-	_cxxEntity->getJSClass(outClass, outPrototype);
-}
-
-- (void) deleteJSSelf														{ _cxxEntity->deleteJSSelf(); }
-
-@end
 
 #if OO_SHADERS || !defined(NDEBUG)
 

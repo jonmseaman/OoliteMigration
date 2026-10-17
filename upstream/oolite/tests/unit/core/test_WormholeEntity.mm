@@ -435,11 +435,11 @@ OO_TEST(jsExtensions)
 		ooscript::ClassDef *jsClass = nullptr, *expectedClass = nullptr;
 		ooscript::Object prototype = nullptr, expectedPrototype = nullptr;
 		::Entity *object = oo::ToObjC(wh);	// what the engine asks (the root's facade since bead oo-9ht.112)
-		[object getJSClass:&jsClass andPrototype:&prototype];
+		OOJSEntityGetJSClass(oo::ToCxx(object), &jsClass, &prototype);
 		OOJSWormholeGetJSClass(&expectedClass, &expectedPrototype);
 		OO_CHECK(jsClass != nullptr && jsClass == expectedClass && prototype == expectedPrototype);
-		OO_CHECK([object cxx_oo_jsClassName] == std::optional<std::string>("Wormhole"));
-		OO_CHECK([object isVisibleToScripts] == YES);
+		OO_CHECK(OOJSEntityJSClassName(oo::ToCxx(object)) == std::optional<std::string>("Wormhole"));
+		OO_CHECK(OOJSEntityIsVisibleToScripts(oo::ToCxx(object)) == YES);
 	}
 }
 
