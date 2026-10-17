@@ -115,12 +115,12 @@ void ShipEntity::setAITo(const std::string &aiString)	// called by name (ADR-005
 	}
 	if (oo::str::hasSuffix(ai, ".plist"))
 	{
-		[getAI() cxx_setStateMachine:ai withJSScript:"oolite-nullAI.js"];
+		if (getAI() != nullptr)  getAI()->setStateMachine(ai, "oolite-nullAI.js");
 		setAIScript("oolite-nullAI.js");
 	}
 	else if (oo::str::hasSuffix(ai, ".js"))
 	{
-		[getAI() cxx_setStateMachine:"nullAI.plist" withJSScript:ai];
+		if (getAI() != nullptr)  getAI()->setStateMachine("nullAI.plist", ai);
 		setAIScript(ai);
 	}
 	else
@@ -160,7 +160,7 @@ void ShipEntity::setAIScript(const std::string &aiString)
 void ShipEntity::switchAITo(const std::string &aiString)	// called by name (ADR-0055 item 5)
 {
 	setAITo(aiString);
-	[getAI() clearStack];
+	if (getAI() != nullptr)  getAI()->clearStack();
 }
 
 
@@ -200,7 +200,7 @@ void ShipEntity::groupAttackTarget()
 	if (group() == nil)		// ship is alone!
 	{
 		setFoundTarget(oo::ToObjC(target));
-		[shipAI cxx_reactToMessage:"GROUP_ATTACK_TARGET" context:"groupAttackTarget"];
+		if (shipAI != nullptr)  shipAI->reactToMessage("GROUP_ATTACK_TARGET", "groupAttackTarget");
 		doScriptEvent(OOJSID("helpRequestReceived"), oo::ToObjC(this), oo::ToObjC(target));
 		return;
 	}
@@ -321,7 +321,7 @@ void ShipEntity::performLandOnPlanet()
 	else
 	{
 		behaviour = BEHAVIOUR_IDLE;
-		[shipAI message:"NO_PLANET_NEARBY"];
+		if (shipAI != nullptr)  shipAI->message("NO_PLANET_NEARBY");
 	}
 	
 	frustration = 0.0;
@@ -427,7 +427,7 @@ void ShipEntity::requestDockingCoordinates()
 			
 			// the strings the instructions hold (StationEntity -dockingInstructionsForShip:), sent as before (absent: nothing)
 			const oo::PList *aiMessage = dockingInstructions.find("ai_message");
-			if (aiMessage != nullptr && aiMessage->isString())  [shipAI message:*aiMessage->getIf<std::string>()];
+			if (aiMessage != nullptr && aiMessage->isString())  { if (shipAI != nullptr)  shipAI->message(*aiMessage->getIf<std::string>()); }
 			const oo::PList *commsMessage = dockingInstructions.find("comms_message");
 			if (commsMessage != nullptr && commsMessage->isString())  { if (station != nullptr)  station->sendExpandedMessage(*commsMessage->getIf<std::string>(), this); }
 		}
@@ -439,7 +439,7 @@ void ShipEntity::requestDockingCoordinates()
 	
 	if (dockingInstructions.isNull())
 	{
-		[shipAI message:"NO_STATION_FOUND"];
+		if (shipAI != nullptr)  shipAI->message("NO_STATION_FOUND");
 	}
 }
 
@@ -589,7 +589,7 @@ bool ShipEntity::suggestEscortTo(::ShipEntity *mother)
 			
 			setOwner(mother);
 			setGroup((mother != nullptr ? mother->escortGroup() : (OOShipGroup *)nullptr));
-			[shipAI message:"ESCORTING"];
+			if (shipAI != nullptr)  shipAI->message("ESCORTING");
 			return YES;
 		}
 		
@@ -602,7 +602,7 @@ bool ShipEntity::suggestEscortTo(::ShipEntity *mother)
 		
 	}
 	setOwner(this);
-	[shipAI message:"NOT_ESCORTING"];
+	if (shipAI != nullptr)  shipAI->message("NOT_ESCORTING");
 	doScriptEvent(OOJSID("escortRejected"), oo::ToObjC(mother));
 	return NO;
 }
@@ -688,11 +688,11 @@ void ShipEntity::checkFoundTarget()
 {
 	if (foundTarget() != nil) 
 	{
-		[shipAI message:"TARGET_FOUND"];
+		if (shipAI != nullptr)  shipAI->message("TARGET_FOUND");
 	}
 	else
 	{
-		[shipAI message:"NOTHING_FOUND"];
+		if (shipAI != nullptr)  shipAI->message("NOTHING_FOUND");
 	}
 }
 
@@ -707,7 +707,7 @@ bool ShipEntity::performHyperSpaceExitReplace(bool replace, OOSystemID systemID)
 {
 	if(!hasHyperspaceMotor())
 	{
-		[shipAI cxx_reactToMessage:"WITCHSPACE UNAVAILABLE" context:"performHyperSpaceExit"];
+		if (shipAI != nullptr)  shipAI->reactToMessage("WITCHSPACE UNAVAILABLE", "performHyperSpaceExit");
 		return NO;
 	}
 	if(status() == STATUS_ENTERING_WITCHSPACE)
@@ -726,7 +726,7 @@ bool ShipEntity::performHyperSpaceExitReplace(bool replace, OOSystemID systemID)
 	// if none available report to the AI and exit
 	if (n_dests == 0)
 	{
-		[shipAI cxx_reactToMessage:"WITCHSPACE UNAVAILABLE" context:"performHyperSpaceExit"];
+		if (shipAI != nullptr)  shipAI->reactToMessage("WITCHSPACE UNAVAILABLE", "performHyperSpaceExit");
 		
 		// If no systems exist near us, the AI is switched to a different state, so we do not need
 		// the nearby destinations array anymore.
@@ -738,7 +738,7 @@ bool ShipEntity::performHyperSpaceExitReplace(bool replace, OOSystemID systemID)
 	if (blocker)
 	{
 		setFoundTarget(oo::ToObjC(blocker));
-		[shipAI cxx_reactToMessage:"WITCHSPACE BLOCKED" context:"performHyperSpaceExit"];
+		if (shipAI != nullptr)  shipAI->reactToMessage("WITCHSPACE BLOCKED", "performHyperSpaceExit");
 		doScriptEvent(OOJSID("shipWitchspaceBlocked"), oo::ToObjC(blocker));
 
 		return NO;
@@ -835,7 +835,7 @@ void ShipEntity::acceptDistressMessageFrom(::ShipEntity *other)
 		if (oo::ToShip(foundTarget()) != nullptr)  oo::ToShip(foundTarget())->markAsOffender(8, kOOLegalStatusReasonDistressCall);  // you have been warned!!
 	}
 	
-	[shipAI cxx_reactToMessage:"ACCEPT_DISTRESS_CALL" context:DebugContext(oo::ToObjC(other), "broadcastDistressMessage")];
+	if (shipAI != nullptr)  shipAI->reactToMessage("ACCEPT_DISTRESS_CALL", DebugContext(oo::ToObjC(other), "broadcastDistressMessage"));
 	
 }
 
@@ -905,13 +905,13 @@ void StationEntity::acceptDistressMessageFrom(::ShipEntity *other)
 
 void ShipEntity::setStateTo(const std::string &state)	// called by name (ADR-0055 item 5)
 {
-	[getAI() cxx_setState:state];
+	if (getAI() != nullptr)  getAI()->setState(state);
 }
 
 
 void ShipEntity::pauseAI(const std::string &intervalString)	// called by name (ADR-0055 item 5)
 {
-	[shipAI setNextThinkTime:(UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0) + oo::str::doubleValue(intervalString)];
+	if (shipAI != nullptr)  shipAI->setNextThinkTime((UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0) + oo::str::doubleValue(intervalString));
 }
 
 
@@ -929,7 +929,7 @@ void ShipEntity::randomPauseAI(const std::string &intervalString)	// called by n
 	start = oo::str::doubleValue(tokens[0]);	// -oo_doubleAtIndex:
 	end   = oo::str::doubleValue(tokens[1]);
 	
-	[shipAI setNextThinkTime:(UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0) + (start + (end - start)*randf())];
+	if (shipAI != nullptr)  shipAI->setNextThinkTime((UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0) + (start + (end - start)*randf()));
 }
 
 
@@ -937,14 +937,14 @@ void ShipEntity::dropMessages(const std::string &messageString)	// called by nam
 {
 	for (const std::string &message : oo::str::split(messageString, ","))
 	{
-		[shipAI cxx_dropMessage:oo::str::trimTrailing(oo::str::trimLeading(message, IsWhitespace), IsWhitespace)];
+		if (shipAI != nullptr)  shipAI->dropMessage(oo::str::trimTrailing(oo::str::trimLeading(message, IsWhitespace), IsWhitespace));
 	}
 }
 
 
 void ShipEntity::debugDumpPendingMessages()
 {
-	[shipAI debugDumpPendingMessages];
+	if (shipAI != nullptr)  shipAI->debugDumpPendingMessages();
 }
 
 
@@ -1025,7 +1025,7 @@ void ShipEntity::setTargetToPrimaryAggressor()
 		if ((primeTarget)&&(primeTarget->_cxxEntity->isShip))
 		{
 			::ShipEntity *currentShip = oo::ToShip(primaryTarget());
-			[(currentShip != nullptr ? currentShip->getAI() : (::AI *)nullptr) message:oo::str::format("%s %d %d", std::string(AIMS_AGGRESSOR_SWITCHED_TARGET).c_str(), universalID, [primaryAggressor() universalID])];
+			if (currentShip != nullptr && currentShip->getAI() != nullptr)  currentShip->getAI()->message(oo::str::format("%s %d %d", std::string(AIMS_AGGRESSOR_SWITCHED_TARGET).c_str(), universalID, [primaryAggressor() universalID]));
 			if (currentShip != nullptr)  currentShip->doScriptEvent(OOJSID("shipAttackerDistracted"), primaryAggressor());
 		}
 		
@@ -1102,13 +1102,13 @@ void ShipEntity::scanForRandomMerchantman()
 	}
 	if (n_found == 0)
 	{
-		[shipAI message:"NOTHING_FOUND"];
+		if (shipAI != nullptr)  shipAI->message("NOTHING_FOUND");
 	}
 	else
 	{
 		i = ranrot_rand() % n_found;	// pick a number from 0 -> (n_found - 1)
 		setFoundTarget(oo::ToObjC(ids_found[i]));
-		[shipAI message:"TARGET_FOUND"];
+		if (shipAI != nullptr)  shipAI->message("TARGET_FOUND");
 	}
 }
 
@@ -1120,13 +1120,13 @@ void ShipEntity::scanForLoot()
 	{
 		if (!hasCargoScoop())
 		{
-			[shipAI message:"NOTHING_FOUND"];		//can't collect loot if you have no scoop!
+			if (shipAI != nullptr)  shipAI->message("NOTHING_FOUND");		//can't collect loot if you have no scoop!
 			return;
 		}
 		if (cargoCount() >= maxAvailableCargoSpace())
 		{
-			if (max_cargo)  [shipAI message:"HOLD_FULL"];	//can't collect loot if holds are full!
-			[shipAI message:"NOTHING_FOUND"];		//can't collect loot if holds are full!
+			if (max_cargo)  { if (shipAI != nullptr)  shipAI->message("HOLD_FULL"); }	//can't collect loot if holds are full!
+			if (shipAI != nullptr)  shipAI->message("NOTHING_FOUND");		//can't collect loot if holds are full!
 			return;
 		}
 	}
@@ -1134,7 +1134,7 @@ void ShipEntity::scanForLoot()
 	{
 		if (magnitude2(getVelocity()))
 		{
-			[shipAI message:"NOTHING_FOUND"];		//can't collect loot if you're a moving station
+			if (shipAI != nullptr)  shipAI->message("NOTHING_FOUND");		//can't collect loot if you're a moving station
 			return;
 		}
 	}
@@ -1169,7 +1169,7 @@ void ShipEntity::scanForRandomLoot()
 	/*-- Locates the all debris in range and chooses a piece at random from the first sixteen found --*/
 	if (!getIsStation() && !hasCargoScoop())
 	{
-		[shipAI message:"NOTHING_FOUND"];		//can't collect loot if you have no scoop!
+		if (shipAI != nullptr)  shipAI->message("NOTHING_FOUND");		//can't collect loot if you have no scoop!
 		return;
 	}
 	//
@@ -1191,10 +1191,10 @@ void ShipEntity::scanForRandomLoot()
 	if (things_found != 0)
 	{
 		setFoundTarget(oo::ToObjC(thing_uids_found[ranrot_rand() % things_found]));
-		[shipAI message:"TARGET_FOUND"];
+		if (shipAI != nullptr)  shipAI->message("TARGET_FOUND");
 	}
 	else
-		[shipAI message:"NOTHING_FOUND"];
+		{ if (shipAI != nullptr)  shipAI->message("NOTHING_FOUND"); }
 }
 
 
@@ -1206,7 +1206,7 @@ void ShipEntity::setTargetToFoundTarget()
 	}
 	else
 	{
-		[shipAI message:"TARGET_LOST"]; // to prevent the ship going for a wrong, previous target. Should not be a reactToMessage.
+		if (shipAI != nullptr)  shipAI->message("TARGET_LOST"); // to prevent the ship going for a wrong, previous target. Should not be a reactToMessage.
 	}
 }
 
@@ -1228,15 +1228,15 @@ void ShipEntity::checkForFullHold()
 {
 	if (!max_cargo)
 	{
-		[shipAI message:"NO_CARGO_BAY"];
+		if (shipAI != nullptr)  shipAI->message("NO_CARGO_BAY");
 	}
 	else if (cargoCount() >= maxAvailableCargoSpace())
 	{
-		[shipAI message:"HOLD_FULL"];
+		if (shipAI != nullptr)  shipAI->message("HOLD_FULL");
 	}
 	else
 	{
-		[shipAI message:"HOLD_NOT_FULL"];
+		if (shipAI != nullptr)  shipAI->message("HOLD_NOT_FULL");
 	}
 }
 
@@ -1359,7 +1359,7 @@ void ShipEntity::fightOrFleeMissile()
 	// RUN AWAY !!
 	desired_range = 10000;
 	performFlee();
-	[shipAI message:"FLEEING"];
+	if (shipAI != nullptr)  shipAI->message("FLEEING");
 }
 
 
@@ -1383,7 +1383,7 @@ void ShipEntity::setCourseToPlanet()
 	}
 	else
 	{
-		[shipAI message:"NO_PLANET_FOUND"];
+		if (shipAI != nullptr)  shipAI->message("NO_PLANET_FOUND");
 	}
 }
 
@@ -1417,7 +1417,7 @@ void ShipEntity::checkTargetLegalStatus()
 	::ShipEntity  *other_ship = oo::ToShip(primaryTarget());
 	if (!other_ship)
 	{
-		[shipAI message:"NO_TARGET"];
+		if (shipAI != nullptr)  shipAI->message("NO_TARGET");
 		return;
 	}
 	else
@@ -1425,20 +1425,20 @@ void ShipEntity::checkTargetLegalStatus()
 		int ls = (other_ship != nullptr ? other_ship->legalStatus() : int{});
 		if (ls > 50)
 		{
-			[shipAI message:"TARGET_FUGITIVE"];
+			if (shipAI != nullptr)  shipAI->message("TARGET_FUGITIVE");
 			return;
 		}
 		if (ls > 20)
 		{
-			[shipAI message:"TARGET_OFFENDER"];
+			if (shipAI != nullptr)  shipAI->message("TARGET_OFFENDER");
 			return;
 		}
 		if (ls > 0)
 		{
-			[shipAI message:"TARGET_MINOR_OFFENDER"];
+			if (shipAI != nullptr)  shipAI->message("TARGET_MINOR_OFFENDER");
 			return;
 		}
-		[shipAI message:"TARGET_CLEAN"];
+		if (shipAI != nullptr)  shipAI->message("TARGET_CLEAN");
 	}
 }
 
@@ -1447,32 +1447,32 @@ void ShipEntity::checkOwnLegalStatus()
 {
 	if (scanClass == CLASS_THARGOID)
 	{
-		[shipAI message:"SELF_THARGOID"];
+		if (shipAI != nullptr)  shipAI->message("SELF_THARGOID");
 		return;
 	}
 	int ls = legalStatus();
 	if (ls > 50)
 	{
-		[shipAI message:"SELF_FUGITIVE"];
+		if (shipAI != nullptr)  shipAI->message("SELF_FUGITIVE");
 		return;
 	}
 	if (ls > 20)
 	{
-		[shipAI message:"SELF_OFFENDER"];
+		if (shipAI != nullptr)  shipAI->message("SELF_OFFENDER");
 		return;
 	}
 	if (ls > 0)
 	{
-		[shipAI message:"SELF_MINOR_OFFENDER"];
+		if (shipAI != nullptr)  shipAI->message("SELF_MINOR_OFFENDER");
 		return;
 	}
-	[shipAI message:"SELF_CLEAN"];
+	if (shipAI != nullptr)  shipAI->message("SELF_CLEAN");
 }
 
 
 void ShipEntity::exitAIWithMessage(const std::string &message)	// called by name (ADR-0055 item 5)
 {
-	[shipAI cxx_exitStateMachineWithMessage:message.empty() ? std::string("RESTARTED") : message];
+	if (shipAI != nullptr)  shipAI->exitStateMachineWithMessage(message.empty() ? std::string("RESTARTED") : message);
 }
 
 
@@ -1503,16 +1503,16 @@ void ShipEntity::checkCourseToDestination()
 	::Entity *hazard = (UNIVERSE != nullptr ? UNIVERSE->hazardOnRouteFromEntity(oo::ToObjC(this), desired_range, _destination) : nullptr);
 	
 	if (hazard == nil || ([hazard isShip] && HPdistance(position, [hazard position]) > scannerRange) || ([hazard isPlanet] && aegis_status == AEGIS_NONE)) 
-		[shipAI message:"COURSE_OK"]; // Avoid going into a waypoint.plist for far away objects, it cripples the main AI a bit in its funtionality.
+		{ if (shipAI != nullptr)  shipAI->message("COURSE_OK"); } // Avoid going into a waypoint.plist for far away objects, it cripples the main AI a bit in its funtionality.
 	else
 	{
 		if ([hazard isShip] && (weapon_damage * 24.0 > [hazard energy]))
 		{
-			[shipAI cxx_reactToMessage:"HAZARD_CAN_BE_DESTROYED" context:"checkCourseToDestination"];
+			if (shipAI != nullptr)  shipAI->reactToMessage("HAZARD_CAN_BE_DESTROYED", "checkCourseToDestination");
 		}
 		
 		_destination = (UNIVERSE != nullptr ? UNIVERSE->getSafeVectorFromEntity(oo::ToObjC(this), desired_range, _destination) : HPVector{});
-		[shipAI message:"WAYPOINT_SET"];
+		if (shipAI != nullptr)  shipAI->message("WAYPOINT_SET");
 	}
 }
 
@@ -1529,7 +1529,7 @@ void ShipEntity::checkAegis()
 	switch (aegis_status)
 	{
 		case AEGIS_CLOSE_TO_MAIN_PLANET: 
-			[shipAI message:"AEGIS_CLOSE_TO_MAIN_PLANET"];
+			if (shipAI != nullptr)  shipAI->message("AEGIS_CLOSE_TO_MAIN_PLANET");
 			// It's been a few years since 1.71 - it should be safe enough to comment out the line below for 1.77/1.78 -- Kaks 20120917
 			//[shipAI message:@"AEGIS_CLOSE_TO_PLANET"];	     // fires only for main planets, kept for compatibility with pre-1.72 AI plists.
 			return;
@@ -1539,33 +1539,33 @@ void ShipEntity::checkAegis()
 			
 			if([nearest isSun])
 			{
-				[shipAI message:"CLOSE_TO_SUN"];
+				if (shipAI != nullptr)  shipAI->message("CLOSE_TO_SUN");
 			}
 			else
 			{
-				[shipAI message:"CLOSE_TO_PLANET"];
+				if (shipAI != nullptr)  shipAI->message("CLOSE_TO_PLANET");
 				if (OOStellarBodyPlanetType(nearest) == STELLAR_TYPE_MOON)
 				{
-					[shipAI message:"CLOSE_TO_MOON"];
+					if (shipAI != nullptr)  shipAI->message("CLOSE_TO_MOON");
 				}
 				else
 				{
-					[shipAI message:"CLOSE_TO_SECONDARY_PLANET"];
+					if (shipAI != nullptr)  shipAI->message("CLOSE_TO_SECONDARY_PLANET");
 				}
 			}
 			return;
 		}
 		case AEGIS_IN_DOCKING_RANGE:
-			[shipAI message:"AEGIS_IN_DOCKING_RANGE"];
+			if (shipAI != nullptr)  shipAI->message("AEGIS_IN_DOCKING_RANGE");
 			return;
 		case AEGIS_NONE:
-			[shipAI message:"AEGIS_NONE"];
+			if (shipAI != nullptr)  shipAI->message("AEGIS_NONE");
 			return;
 	}
 	
 	OO_LOG("unclassified", "Aegis status for {} has taken on invalid value {}. This is an internal error, please report it.", oo::DescriptionOf(oo::ToObjC(this)), static_cast<int>(aegis_status));
 	aegis_status = AEGIS_NONE;
-	[shipAI message:"AEGIS_NONE"];
+	if (shipAI != nullptr)  shipAI->message("AEGIS_NONE");
 }
 
 
@@ -1573,20 +1573,20 @@ void ShipEntity::checkEnergy()
 {
 	if (energy == maxEnergy)
 	{
-		[shipAI message:"ENERGY_FULL"];
+		if (shipAI != nullptr)  shipAI->message("ENERGY_FULL");
 		return;
 	}
 	if (energy >= maxEnergy * 0.75)
 	{
-		[shipAI message:"ENERGY_HIGH"];
+		if (shipAI != nullptr)  shipAI->message("ENERGY_HIGH");
 		return;
 	}
 	if (energy <= maxEnergy * 0.25)
 	{
-		[shipAI message:"ENERGY_LOW"];
+		if (shipAI != nullptr)  shipAI->message("ENERGY_LOW");
 		return;
 	}
-	[shipAI message:"ENERGY_MEDIUM"];
+	if (shipAI != nullptr)  shipAI->message("ENERGY_MEDIUM");
 }
 
 
@@ -1596,10 +1596,10 @@ void ShipEntity::checkHeatInsulation()
 	
 	if (heatInsulation() < minInsulation)
 	{
-		[shipAI message:"INSULATION_POOR"];
+		if (shipAI != nullptr)  shipAI->message("INSULATION_POOR");
 		return;
 	}
-	[shipAI message:"INSULATION_OK"];
+	if (shipAI != nullptr)  shipAI->message("INSULATION_OK");
 }
 
 
@@ -1701,7 +1701,7 @@ void ShipEntity::performHyperSpaceExitWithoutReplacing()
 
 void ShipEntity::disengageAutopilot()
 {
-	OO_LOG_ERR("ai.invalid.notPlayer", "Error in {}:{}, AI method endAutoPilot is only applicable to the player.", [shipAI cxx_name].value_or("(null)"), [shipAI cxx_state].value_or("(null)"));
+	OO_LOG_ERR("ai.invalid.notPlayer", "Error in {}:{}, AI method endAutoPilot is only applicable to the player.", (shipAI != nullptr ? shipAI->name() : std::optional<std::string>()).value_or("(null)"), (shipAI != nullptr ? shipAI->state() : std::optional<std::string>()).value_or("(null)"));
 }
 
 
@@ -1789,7 +1789,7 @@ void ShipEntity::thargonCheckMother()
 	
 	if (mother && mother != this && HPdistance2(mother->position, position) < maxRange2)
 	{
-		[shipAI message:"TARGET_FOUND"]; // no need for scanning, we still have our mother.
+		if (shipAI != nullptr)  shipAI->message("TARGET_FOUND"); // no need for scanning, we still have our mother.
 	}
 	else
 	{
@@ -1838,7 +1838,7 @@ void ShipEntity::becomeUncontrolledThargon()
 void ShipEntity::checkDistanceTravelled()
 {
 	if (distanceTravelled > desired_range)
-		[shipAI message:"GONE_BEYOND_RANGE"];
+		{ if (shipAI != nullptr)  shipAI->message("GONE_BEYOND_RANGE"); }
 }
 
 
@@ -1852,15 +1852,15 @@ void ShipEntity::fightOrFleeHostiles()
 		if (leTarget != nil)
 		{
 			setFoundTarget(leTarget);
-			[shipAI message:"FLEEING"];
+			if (shipAI != nullptr)  shipAI->message("FLEEING");
 			return;
 		}
 		
 		setPrimaryAggressor(foundTarget());
 		addTarget(foundTarget());
 		deployEscorts();
-		[shipAI message:"DEPLOYING_ESCORTS"];
-		[shipAI message:"FLEEING"];
+		if (shipAI != nullptr)  shipAI->message("DEPLOYING_ESCORTS");
+		if (shipAI != nullptr)  shipAI->message("FLEEING");
 		return;
 	}
 	
@@ -1872,7 +1872,7 @@ void ShipEntity::fightOrFleeHostiles()
 			setPrimaryAggressor(foundTarget());
 			addTarget(foundTarget());
 			fireMissile();
-			[shipAI message:"FLEEING"];
+			if (shipAI != nullptr)  shipAI->message("FLEEING");
 			return;
 		}
 	}
@@ -1882,11 +1882,11 @@ void ShipEntity::fightOrFleeHostiles()
 	{
 		setPrimaryAggressor(foundTarget());
 		//[self performAttack];
-		[shipAI message:"FIGHTING"];
+		if (shipAI != nullptr)  shipAI->message("FIGHTING");
 		return;
 	}
 	
-	[shipAI message:"FLEEING"];
+	if (shipAI != nullptr)  shipAI->message("FLEEING");
 }
 
 
@@ -1905,13 +1905,13 @@ void ShipEntity::escortCheckMother()
 	{
 		setOwner(mother);
 		setGroup((mother != nullptr ? mother->escortGroup() : (OOShipGroup *)nullptr));
-		[shipAI message:"ESCORTING"];
+		if (shipAI != nullptr)  shipAI->message("ESCORTING");
 	}
 	else
 	{
 		setOwner(this);
 		if (group() == (mother != nullptr ? mother->escortGroup() : (OOShipGroup *)nullptr))  setGroup(nullptr);
-		[shipAI message:"NOT_ESCORTING"];
+		if (shipAI != nullptr)  shipAI->message("NOT_ESCORTING");
 	}
 }
 
@@ -1925,15 +1925,15 @@ void ShipEntity::checkGroupOddsVersusTarget()
 	
 	if (ownGroupCount == targetGroupCount)
 	{
-		[shipAI message:"ODDS_LEVEL"];
+		if (shipAI != nullptr)  shipAI->message("ODDS_LEVEL");
 	}
 	else if (ownGroupCount > targetGroupCount)
 	{
-		[shipAI message:"ODDS_GOOD"];
+		if (shipAI != nullptr)  shipAI->message("ODDS_GOOD");
 	}
 	else
 	{
-		[shipAI message:"ODDS_BAD"];
+		if (shipAI != nullptr)  shipAI->message("ODDS_BAD");
 	}
 }
 
@@ -1959,10 +1959,10 @@ void ShipEntity::scanForFormationLeader()
 		}
 	}
 	
-	if (foundTarget() != nil)  [shipAI message:"TARGET_FOUND"];
+	if (foundTarget() != nil)  { if (shipAI != nullptr)  shipAI->message("TARGET_FOUND"); }
 	else
 	{
-		[shipAI message:"NOTHING_FOUND"];
+		if (shipAI != nullptr)  shipAI->message("NOTHING_FOUND");
 		if (hasPrimaryRole("wingman"))
 		{
 			// become free-lance police :)
@@ -2054,7 +2054,7 @@ void ShipEntity::setPlanetPatrolCoordinates()
 			}
 		}
 	}
-	[shipAI message:"APPROACH_COORDINATES"];
+	if (shipAI != nullptr)  shipAI->message("APPROACH_COORDINATES");
 }
 
 
@@ -2062,7 +2062,7 @@ void ShipEntity::setSunSkimStartCoordinates()
 {
 	if ((UNIVERSE != nullptr ? UNIVERSE->sun() : nullptr) == nil)
 	{
-		[shipAI message:"NO_SUN_FOUND"];
+		if (shipAI != nullptr)  shipAI->message("NO_SUN_FOUND");
 		return;
 	}
 	
@@ -2071,11 +2071,11 @@ void ShipEntity::setSunSkimStartCoordinates()
 	if (!HPvector_equal(v0, kZeroHPVector))
 	{
 		coordinates = v0;
-		[shipAI message:"APPROACH_COORDINATES"];
+		if (shipAI != nullptr)  shipAI->message("APPROACH_COORDINATES");
 	}
 	else
 	{
-		[shipAI message:"WAIT_FOR_SUN"];
+		if (shipAI != nullptr)  shipAI->message("WAIT_FOR_SUN");
 	}
 }
 
@@ -2084,12 +2084,12 @@ void ShipEntity::setSunSkimEndCoordinates()
 {
 	if ((UNIVERSE != nullptr ? UNIVERSE->sun() : nullptr) == nil)
 	{
-		[shipAI message:"NO_SUN_FOUND"];
+		if (shipAI != nullptr)  shipAI->message("NO_SUN_FOUND");
 		return;
 	}
 	
 	coordinates = (UNIVERSE != nullptr ? UNIVERSE->getSunSkimEndPositionForShip(this) : HPVector{});
-	[shipAI message:"APPROACH_COORDINATES"];
+	if (shipAI != nullptr)  shipAI->message("APPROACH_COORDINATES");
 }
 
 
@@ -2106,7 +2106,7 @@ void ShipEntity::setSunSkimExitCoordinates()
 		vout.z = 1.0;
 	v1.x += 10000 * vout.x;	v1.y += 10000 * vout.y;	v1.z += 10000 * vout.z;
 	coordinates = v1;
-	[shipAI message:"APPROACH_COORDINATES"];
+	if (shipAI != nullptr)  shipAI->message("APPROACH_COORDINATES");
 }
 
 
@@ -2124,17 +2124,17 @@ void ShipEntity::checkForMotherStation()
 	::ShipEntity *motherStation = (group() != nullptr ? group()->leader() : (::ShipEntity *)nil);
 	if ((!motherStation) || (!(motherStation->isStation)))
 	{
-		[shipAI message:"NOTHING_FOUND"];
+		if (shipAI != nullptr)  shipAI->message("NOTHING_FOUND");
 		return;
 	}
 	double found_d2 = scannerRange * scannerRange;
 	HPVector v0 = motherStation->position;
 	if (HPdistance2(v0,position) > found_d2)
 	{
-		[shipAI message:"NOTHING_FOUND"];
+		if (shipAI != nullptr)  shipAI->message("NOTHING_FOUND");
 		return;
 	}
-	[shipAI message:"STATION_FOUND"];		
+	if (shipAI != nullptr)  shipAI->message("STATION_FOUND");		
 }
 
 
@@ -2158,7 +2158,7 @@ void ShipEntity::markTargetForFines()
 		noteLostTarget();
 		return;
 	}
-	if ((ship != nullptr ? ship->markForFines() : false))  [shipAI message:"TARGET_MARKED"];
+	if ((ship != nullptr ? ship->markForFines() : false))  { if (shipAI != nullptr)  shipAI->message("TARGET_MARKED"); }
 }
 
 
@@ -2218,12 +2218,12 @@ void ShipEntity::recallStoredTarget()
 	if (found)
 	{
 		setFoundTarget(oo::ToObjC(oldTarget));
-		[shipAI message:"TARGET_FOUND"];
+		if (shipAI != nullptr)  shipAI->message("TARGET_FOUND");
 	}
 	else
 	{
 		if (oldTarget == nil) _rememberedShip = nullptr; // ship no longer exists
-		[shipAI message:"NOTHING_FOUND"];
+		if (shipAI != nullptr)  shipAI->message("NOTHING_FOUND");
 	}
 	
 }
@@ -2300,7 +2300,7 @@ void ShipEntity::requestNewTarget()
 	::ShipEntity *mother = (group() != nullptr ? group()->leader() : (::ShipEntity *)nil);
 	if (mother == nil)
 	{
-		[shipAI message:"MOTHER_LOST"];
+		if (shipAI != nullptr)  shipAI->message("MOTHER_LOST");
 		return;
 	}
 	
@@ -2335,7 +2335,7 @@ void ShipEntity::rollD(const std::string &die_number)	// called by name (ADR-005
 	if (die_sides > 0)
 	{
 		int die_roll = 1 + (ranrot_rand() % die_sides);
-		[shipAI cxx_reactToMessage:oo::str::format("ROLL_%d", die_roll) context:"rollD:"];
+		if (shipAI != nullptr)  shipAI->reactToMessage(oo::str::format("ROLL_%d", die_roll), "rollD:");
 	}
 	else
 	{
@@ -2437,7 +2437,7 @@ void ShipEntity::scanForNearestShipMatchingPredicate(const std::string &predicat
 	
 	const std::string &expression = predicateExpression;
 	
-	const std::optional<std::string> aiName = [getAI() cxx_name];
+	const std::optional<std::string> aiName = (getAI() != nullptr ? getAI()->name() : std::optional<std::string>());
 #ifndef NDEBUG
 	/*	In debug/test release builds, scripts are cached per AI in order to be
 	 able to report errors correctly. For end-user releases, we only cache
@@ -2495,13 +2495,13 @@ void ShipEntity::scanForNearestShipMatchingPredicate(const std::string &predicat
 		
 		if (!errorCache.contains(key))
 		{
-			OO_LOG("ai.scanForNearestShipMatchingPredicate.compile.failed", "Could not compile JavaScript predicate \"{}\" for AI {}.", predicateExpression, [getAI() cxx_name].value_or("(null)"));
+			OO_LOG("ai.scanForNearestShipMatchingPredicate.compile.failed", "Could not compile JavaScript predicate \"{}\" for AI {}.", predicateExpression, (getAI() != nullptr ? getAI()->name() : std::optional<std::string>()).value_or("(null)"));
 			errorCache.insert(key);
 		}
 		
 		// Select nothing
 		_foundTarget = nullptr;
-		[getAI() message:"NOTHING_FOUND"];
+		if (getAI() != nullptr)  getAI()->message("NOTHING_FOUND");
 	}
 	
 	ooscript::reportPendingException((context));
@@ -2536,16 +2536,16 @@ void ShipEntity::setCoordinates(const std::string &system_x_y_z)	// called by na
 	
 	coordinates = (UNIVERSE != nullptr ? UNIVERSE->coordinatesForPosition(posn, systemString, &scalar) : HPVector{});
 	
-	[shipAI message:"APPROACH_COORDINATES"];
+	if (shipAI != nullptr)  shipAI->message("APPROACH_COORDINATES");
 }
 
 
 void ShipEntity::checkForNormalSpace()
 {
 	if ((UNIVERSE != nullptr && UNIVERSE->sun() != nullptr) && (UNIVERSE != nullptr && UNIVERSE->planet() != nullptr))
-		[shipAI message:"NORMAL_SPACE"];
+		{ if (shipAI != nullptr)  shipAI->message("NORMAL_SPACE"); }
 	else
-		[shipAI message:"INTERSTELLAR_SPACE"];
+		{ if (shipAI != nullptr)  shipAI->message("INTERSTELLAR_SPACE"); }
 }
 
 
@@ -2594,11 +2594,11 @@ void ShipEntity::setTargetToRandomStation()
 	{
 		addTarget(oo::ToObjC(station));
 		setTargetStation(oo::ToObjC(station));
-		[shipAI message:"STATION_FOUND"];
+		if (shipAI != nullptr)  shipAI->message("STATION_FOUND");
 	}
 	else
 	{
-		[shipAI message:"NO_STATION_IN_RANGE"];
+		if (shipAI != nullptr)  shipAI->message("NO_STATION_IN_RANGE");
 	}
 }
 
@@ -2613,7 +2613,7 @@ void ShipEntity::setTargetToLastStation()
 	}
 	else
 	{
-		[shipAI message:"NO_STATION_FOUND"];
+		if (shipAI != nullptr)  shipAI->message("NO_STATION_FOUND");
 		setTargetStation(nullptr);
 	}
 	
@@ -2638,11 +2638,11 @@ void ShipEntity::scriptActionOnTarget(const std::string &action)	// called by na
 	if (!deprecationWarning)
 	{
 		deprecationWarning = YES;
-		OO_LOG("script.deprecated.scriptActionOnTarget", "----- WARNING in AI {}: the AI method scriptActionOnTarget: is deprecated and should not be used. It is slow and has unpredictable side effects. The recommended alternative is to use sendScriptMessage: to call a function in a ship's JavaScript ship script instead. scriptActionOnTarget: should not be used at all from scripts. An alternative is safeScriptActionOnTarget:, which is similar to scriptActionOnTarget: but has less side effects.", [::AI cxx_currentlyRunningAIDescription].value_or("(null)"));
+		OO_LOG("script.deprecated.scriptActionOnTarget", "----- WARNING in AI {}: the AI method scriptActionOnTarget: is deprecated and should not be used. It is slow and has unpredictable side effects. The recommended alternative is to use sendScriptMessage: to call a function in a ship's JavaScript ship script instead. scriptActionOnTarget: should not be used at all from scripts. An alternative is safeScriptActionOnTarget:, which is similar to scriptActionOnTarget: but has less side effects.", ::AI::currentlyRunningAIDescription().value_or("(null)"));
 	}
 	else
 	{
-		OO_LOG("script.deprecated.scriptActionOnTarget.repeat", "----- WARNING in AI {}: the AI method scriptActionOnTarget: is deprecated and should not be used.", [::AI cxx_currentlyRunningAIDescription].value_or("(null)"));
+		OO_LOG("script.deprecated.scriptActionOnTarget.repeat", "----- WARNING in AI {}: the AI method scriptActionOnTarget: is deprecated and should not be used.", ::AI::currentlyRunningAIDescription().value_or("(null)"));
 	}
 #endif
 	
@@ -2650,7 +2650,7 @@ void ShipEntity::scriptActionOnTarget(const std::string &action)	// called by na
 	{
 		oldTarget = (player != nullptr ? player->scriptTarget() : (::ShipEntity *)nullptr);
 		if (player != nullptr)  player->setScriptTarget(oo::ToShip(oo::ToObjC(targEnt)));
-		if (player != nullptr)  player->runUnsanitizedScriptActions(oo::PList(oo::PList::Array{ oo::PList(action) }), YES, oo::str::format("<AI \"%s\" state %s - scriptActionOnTarget:>", [getAI() cxx_name].value_or("(null)").c_str(), [getAI() cxx_state].value_or("(null)").c_str()), targEnt);
+		if (player != nullptr)  player->runUnsanitizedScriptActions(oo::PList(oo::PList::Array{ oo::PList(action) }), YES, oo::str::format("<AI \"%s\" state %s - scriptActionOnTarget:>", (getAI() != nullptr ? getAI()->name() : std::optional<std::string>()).value_or("(null)").c_str(), (getAI() != nullptr ? getAI()->state() : std::optional<std::string>()).value_or("(null)").c_str()), targEnt);
 		if (player != nullptr)  player->checkScript();	// react immediately to any changes this makes
 		if (player != nullptr)  player->setScriptTarget(oldTarget);
 	}
@@ -2667,7 +2667,7 @@ void ShipEntity::safeScriptActionOnTarget(const std::string &action)	// called b
 	{
 		oldTarget = (player != nullptr ? player->scriptTarget() : (::ShipEntity *)nullptr);
 		if (player != nullptr)  player->setScriptTarget(oo::ToShip(oo::ToObjC(targEnt)));
-		if (player != nullptr)  player->runUnsanitizedScriptActions(oo::PList(oo::PList::Array{ oo::PList(action) }), YES, oo::str::format("<AI \"%s\" state %s - safeScriptActionOnTarget:>", [getAI() cxx_name].value_or("(null)").c_str(), [getAI() cxx_state].value_or("(null)").c_str()), targEnt);
+		if (player != nullptr)  player->runUnsanitizedScriptActions(oo::PList(oo::PList::Array{ oo::PList(action) }), YES, oo::str::format("<AI \"%s\" state %s - safeScriptActionOnTarget:>", (getAI() != nullptr ? getAI()->name() : std::optional<std::string>()).value_or("(null)").c_str(), (getAI() != nullptr ? getAI()->state() : std::optional<std::string>()).value_or("(null)").c_str()), targEnt);
 		if (player != nullptr)  player->setScriptTarget(oldTarget);
 	}
 }
@@ -2719,10 +2719,10 @@ void ShipEntity::targetFirstBeaconWithCode(const std::string &code)	// called by
 	if (!all_beacons.empty())
 	{
 		addTarget(all_beacons[0].get());
-		[shipAI message:"TARGET_FOUND"];
+		if (shipAI != nullptr)  shipAI->message("TARGET_FOUND");
 	}
 	else
-		[shipAI message:"NOTHING_FOUND"];
+		{ if (shipAI != nullptr)  shipAI->message("NOTHING_FOUND"); }
 }
 
 
@@ -2733,8 +2733,8 @@ void ShipEntity::targetNextBeaconWithCode(const std::string &code)	// called by 
 	
 	if ((!current_beacon)||(!(current_beacon != nullptr ? current_beacon->isBeacon() : false)))
 	{
-		[shipAI message:"NO_CURRENT_BEACON"];
-		[shipAI message:"NOTHING_FOUND"];
+		if (shipAI != nullptr)  shipAI->message("NO_CURRENT_BEACON");
+		if (shipAI != nullptr)  shipAI->message("NOTHING_FOUND");
 		return;
 	}
 	
@@ -2745,7 +2745,7 @@ void ShipEntity::targetNextBeaconWithCode(const std::string &code)	// called by 
 	
 	if (i == NSNotFound)
 	{
-		[shipAI message:"NOTHING_FOUND"];
+		if (shipAI != nullptr)  shipAI->message("NOTHING_FOUND");
 		return;
 	}
 	
@@ -2755,12 +2755,12 @@ void ShipEntity::targetNextBeaconWithCode(const std::string &code)	// called by 
 	{
 		// locate current target in list
 		addTarget(all_beacons[i].get());
-		[shipAI message:"TARGET_FOUND"];
+		if (shipAI != nullptr)  shipAI->message("TARGET_FOUND");
 	}
 	else
 	{
-		[shipAI message:"LAST_BEACON"];
-		[shipAI message:"NOTHING_FOUND"];
+		if (shipAI != nullptr)  shipAI->message("LAST_BEACON");
+		if (shipAI != nullptr)  shipAI->message("NOTHING_FOUND");
 	}
 }
 
@@ -2771,7 +2771,7 @@ void ShipEntity::setRacepointsFromTarget()
 	::ShipEntity *ship = oo::ToShip(primaryTarget());
 	if (ship == nil)
 	{
-		[shipAI message:"NOTHING_FOUND"];
+		if (shipAI != nullptr)  shipAI->message("NOTHING_FOUND");
 		return;
 	}
 	Vector k = ship->v_forward;
@@ -2783,7 +2783,7 @@ void ShipEntity::setRacepointsFromTarget()
 	number_of_navpoints = 2;
 	next_navpoint_index = 0;
 	_destination = navpoints[0];
-	[shipAI message:"RACEPOINTS_SET"];
+	if (shipAI != nullptr)  shipAI->message("RACEPOINTS_SET");
 }
 
 

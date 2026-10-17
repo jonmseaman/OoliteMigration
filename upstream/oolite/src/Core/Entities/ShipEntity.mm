@@ -372,7 +372,7 @@ void ShipEntity::shipWillDealloc()
 	if (ShipEntity *parent = oo::ToShip(parentEntity()))  parent->subEntityReallyDied(this);	// Will do nothing if we're not really a subentity
 	clearSubEntities();
 
-	DESTROY(shipAI);
+	shipAI = nullptr;	// DESTROY
 	roleSet = nullptr;
 	laser_color = nullptr;
 	default_laser_color = nullptr;
@@ -972,9 +972,9 @@ bool ShipEntity::setUpShipFromDictionary(const oo::PList &shipDict)
 	
 	setBounty(shipDict.get<unsigned int>("bounty", 0), kOOLegalStatusReasonSetup);
 	
-	[shipAI autorelease];
-	shipAI = [[::AI alloc] init];
-	[shipAI setOwner:this];
+	OOAIAutorelease(std::move(shipAI));	// [shipAI autorelease]
+	shipAI = oo::makeRef<::AI>();
+	shipAI->setOwner(this);
 	setAITo(shipDict.get<std::string>("ai_type", "nullAI.plist"));
 	
 	likely_cargo = shipDict.get<unsigned int>("likely_cargo");
@@ -2357,7 +2357,7 @@ void ShipEntity::setUpOneEscort(::ShipEntity *escorter, ::OOShipGroup *escortGro
 	// Let the populator decide which AI to use, unless we have a working alternative AI & we specify auto_ai = NO !
 	// (Both callers always passed a role, so the old nil test of escortRole was always true.)
 	if ( FuzzyBooleanForKey((escorter != nullptr ? escorter->shipInfoDictionary() : oo::PList()), "auto_ai", YES)
-		 || ([escortAI cxx_name].value_or(std::string()) == "nullAI.plist" && autoAI != "nullAI.plist") )
+		 || ((escortAI != nullptr ? escortAI->name() : std::optional<std::string>()).value_or(std::string()) == "nullAI.plist" && autoAI != "nullAI.plist") )
 	{
 		if (escorter != nullptr)  escorter->switchAITo(autoAI);
 	}
@@ -2376,7 +2376,7 @@ void ShipEntity::setUpOneEscort(::ShipEntity *escorter, ::OOShipGroup *escortGro
 	else
 	{
 		if (UNIVERSE != nullptr)  UNIVERSE->addEntity(oo::ToObjC(escorter)); 	// STATUS_IN_FLIGHT, AI state GLOBAL
-		[escortAI cxx_setState:"FLYING_ESCORT"];	// Begin escort flight. (If the AI doesn't define FLYING_ESCORT, this has no effect.)
+		if (escortAI != nullptr)  escortAI->setState("FLYING_ESCORT");	// Begin escort flight. (If the AI doesn't define FLYING_ESCORT, this has no effect.)
 		if (escorter != nullptr)  escorter->doScriptEvent(OOJSID("spawnedAsEscort"), oo::ToObjC(this));
 	}
 	
@@ -3010,7 +3010,7 @@ void ShipEntity::update(OOTimeDelta delta_t)
 			haveStartedJSAI = YES;
 			doScriptEvent(OOJSID("aiStarted"));
 			doScriptEvent(OOJSID("shipLaunchedFromStation"), oo::ToObjC(stationLaunchedFrom));
-			[shipAI cxx_reactToMessage:"LAUNCHED OKAY" context:"launched"];
+			if (shipAI != nullptr)  shipAI->reactToMessage("LAUNCHED OKAY", "launched");
 		}
 		else
 		{
@@ -3025,7 +3025,7 @@ void ShipEntity::update(OOTimeDelta delta_t)
 				{
 					energy = maxEnergy;
 					doScriptEvent(OOJSID("shipEnergyBecameFull"));
-					[shipAI message:"ENERGY_FULL"];
+					if (shipAI != nullptr)  shipAI->message("ENERGY_FULL");
 				}
 			}
 			
@@ -3058,7 +3058,7 @@ void ShipEntity::update(OOTimeDelta delta_t)
 			behaviour = BEHAVIOUR_IDLE;
 			frustration = 0.0;
 			setOwner(this);
-			[shipAI cxx_exitStateMachineWithMessage:std::nullopt];  // Escapepods and others should continue their old AI here.
+			if (shipAI != nullptr)  shipAI->exitStateMachineWithMessage(std::nullopt);  // Escapepods and others should continue their old AI here.
 		}
 	}
 	
@@ -3082,7 +3082,7 @@ void ShipEntity::update(OOTimeDelta delta_t)
 			{
 				energy = maxEnergy;
 				doScriptEvent(OOJSID("shipEnergyBecameFull"));
-				[shipAI message:"ENERGY_FULL"];
+				if (shipAI != nullptr)  shipAI->message("ENERGY_FULL");
 			}
 		}
 		
@@ -3322,7 +3322,7 @@ void ShipEntity::processBehaviour(OOTimeDelta delta_t)
 // called when behaviour is unable to improve position
 void ShipEntity::noteFrustration(const std::string &context)
 {
-	[shipAI cxx_reactToMessage:"FRUSTRATED" context:context];
+	if (shipAI != nullptr)  shipAI->reactToMessage("FRUSTRATED", context);
 	doScriptEvent(OOJSID("shipAIFrustrated"), { oo::PList(context) });
 }
 
@@ -4654,7 +4654,7 @@ void ShipEntity::behaviour_tractored(double delta_t)
 				setThrust(maxThrust()); // restore old thrust.
 				frustration = 0.0;
 				setOwner(this);
-				[shipAI cxx_exitStateMachineWithMessage:std::nullopt];	// exit nullAI.plist
+				if (shipAI != nullptr)  shipAI->exitStateMachineWithMessage(std::nullopt);	// exit nullAI.plist
 				return;
 			}
 			else if ((hauler != nullptr ? hauler->getIsPlayer() : false))
@@ -4698,7 +4698,7 @@ void ShipEntity::behaviour_intercept_target(double delta_t)
 		desired_speed = maxFlightSpeed;
 		if (range < desired_range)
 		{
-			[shipAI cxx_reactToMessage:"DESIRED_RANGE_ACHIEVED" context:"BEHAVIOUR_INTERCEPT_TARGET"];
+			if (shipAI != nullptr)  shipAI->reactToMessage("DESIRED_RANGE_ACHIEVED", "BEHAVIOUR_INTERCEPT_TARGET");
 			doScriptEvent(OOJSID("shipAchievedDesiredRange"));
 
 		}
@@ -6043,7 +6043,7 @@ void ShipEntity::behaviour_flee_target(double delta_t)
 	success_factor = range;
 
 	if (range > desired_range || range == 0)
-		[shipAI message:"REACHED_SAFETY"];
+		{ if (shipAI != nullptr)  shipAI->message("REACHED_SAFETY"); }
 	else
 		desired_speed = max_available_speed;
 
@@ -6139,7 +6139,7 @@ void ShipEntity::behaviour_face_destination(double delta_t)
 	if (confidenceFactor >= max_cos && flightPitch == 0.0)
 	{
 		// desired facing achieved and movement stabilised.
-		[shipAI message:"FACING_DESTINATION"];
+		if (shipAI != nullptr)  shipAI->message("FACING_DESTINATION");
 		doScriptEvent(OOJSID("shipNowFacingDestination"));
 		frustration = 0.0;
 		if(docking_match_rotation)  // IDLE stops rotating while docking
@@ -6191,7 +6191,7 @@ void ShipEntity::behaviour_land_on_planet(double delta_t)
 	{
 		behaviour = BEHAVIOUR_IDLE;
 		aiScriptWakeTime = 1; // reconsider JSAI
-		[shipAI message:"NO_PLANET_NEARBY"];
+		if (shipAI != nullptr)  shipAI->message("NO_PLANET_NEARBY");
 		return;
 	}
 		  
@@ -6292,7 +6292,7 @@ void ShipEntity::behaviour_fly_to_destination(double delta_t)
 	if (distance < desired_range) // + collision_radius)
 	{
 		// desired range achieved
-		[shipAI message:"DESIRED_RANGE_ACHIEVED"];
+		if (shipAI != nullptr)  shipAI->message("DESIRED_RANGE_ACHIEVED");
 		doScriptEvent(OOJSID("shipAchievedDesiredRange"));
 
 		if(!docking_match_rotation) // IDLE stops rotating while docking
@@ -6396,7 +6396,7 @@ void ShipEntity::behaviour_fly_from_destination(double delta_t)
 	if (distance > desired_range)
 	{
 		// desired range achieved
-		[shipAI message:"DESIRED_RANGE_ACHIEVED"];
+		if (shipAI != nullptr)  shipAI->message("DESIRED_RANGE_ACHIEVED");
 		doScriptEvent(OOJSID("shipAchievedDesiredRange"));
 
 		behaviour = BEHAVIOUR_IDLE;
@@ -8050,17 +8050,17 @@ void ShipEntity::transitionToAegisNone()
 			
 			if (lastAegisLock == oo::ToObjC((UNIVERSE != nullptr ? UNIVERSE->sun() : nullptr)))	// the sun's Objective-C object (C++ since bead oo-9ht.111)
 			{
-				[shipAI message:"AWAY_FROM_SUN"];
+				if (shipAI != nullptr)  shipAI->message("AWAY_FROM_SUN");
 			}
 			else
 			{
-				[shipAI message:"AWAY_FROM_PLANET"];
+				if (shipAI != nullptr)  shipAI->message("AWAY_FROM_PLANET");
 			}
 		}
 
 		if (aegis_status != AEGIS_CLOSE_TO_ANY_PLANET)
 		{
-			[shipAI message:"AEGIS_NONE"];
+			if (shipAI != nullptr)  shipAI->message("AEGIS_NONE");
 		}
 	}
 	aegis_status = AEGIS_NONE;
@@ -8182,12 +8182,12 @@ OOAegisStatus ShipEntity::checkForAegis()
 		if (isNearPlanetSurface)
 		{
 			doScriptEvent(OOJSID("shipApproachingPlanetSurface"), nearest);
-			[shipAI cxx_reactToMessage:"APPROACHING_SURFACE" context:"flight update"];
+			if (shipAI != nullptr)  shipAI->reactToMessage("APPROACHING_SURFACE", "flight update");
 		}
 		else
 		{
 			doScriptEvent(OOJSID("shipLeavingPlanetSurface"), nearest);
-			[shipAI cxx_reactToMessage:"LEAVING_SURFACE" context:"flight update"];
+			if (shipAI != nullptr)  shipAI->reactToMessage("LEAVING_SURFACE", "flight update");
 		}
 	}
 	
@@ -8242,13 +8242,13 @@ OOAegisStatus ShipEntity::checkForAegis()
 		if (EXPECT_NOT(aegis_status == AEGIS_IN_DOCKING_RANGE && result != aegis_status))
 		{
 			doScriptEvent(OOJSID("shipExitedStationAegis"), oo::ToObjC(the_station));
-			[shipAI message:"AEGIS_LEAVING_DOCKING_RANGE"];
+			if (shipAI != nullptr)  shipAI->message("AEGIS_LEAVING_DOCKING_RANGE");
 		}
 		
 		if (EXPECT_NOT(result == AEGIS_IN_DOCKING_RANGE && aegis_status != result))
 		{
 			doScriptEvent(OOJSID("shipEnteredStationAegis"), oo::ToObjC(the_station));
-			[shipAI message:"AEGIS_IN_DOCKING_RANGE"];
+			if (shipAI != nullptr)  shipAI->message("AEGIS_IN_DOCKING_RANGE");
 			
 			if((::Entity<OOStellarBody> *)lastAegisLock() == nil && !sunGoneNova) // With small main planets the station aegis can come before planet aegis
 			{
@@ -8270,32 +8270,32 @@ OOAegisStatus ShipEntity::checkForAegis()
 			if(aegis_status != AEGIS_NONE && (::Entity<OOStellarBody> *)lastAegisLock() != nil)	// we were close to another stellar body
 			{
 				doScriptEvent(OOJSID("shipExitedPlanetaryVicinity"), (::Entity<OOStellarBody> *)lastAegisLock());
-				[shipAI message:"AWAY_FROM_PLANET"];	// fires for suns, planets and moons.
+				if (shipAI != nullptr)  shipAI->message("AWAY_FROM_PLANET");	// fires for suns, planets and moons.
 			}
 			doScriptEvent(OOJSID("shipEnteredPlanetaryVicinity"), nearest);
 			setLastAegisLock(nearest);
 			
 			if (EXPECT_NOT([nearest isSun]))
 			{
-				[shipAI message:"CLOSE_TO_SUN"];
+				if (shipAI != nullptr)  shipAI->message("CLOSE_TO_SUN");
 			}
 			else
 			{
-				[shipAI message:"CLOSE_TO_PLANET"];
+				if (shipAI != nullptr)  shipAI->message("CLOSE_TO_PLANET");
 				
 				if (EXPECT(result == AEGIS_CLOSE_TO_MAIN_PLANET))
 				{
 					// It's been years since 1.71 - it should be safe enough to comment out the line below for 1.77/1.78 -- Kaks 20120917
 					//[shipAI message:@"AEGIS_CLOSE_TO_PLANET"];	    // fires only for main planets, kept for compatibility with pre-1.72 AI plists.
-					[shipAI message:"AEGIS_CLOSE_TO_MAIN_PLANET"];  // fires only for main planet.
+					if (shipAI != nullptr)  shipAI->message("AEGIS_CLOSE_TO_MAIN_PLANET");  // fires only for main planet.
 				}
 				else if (EXPECT_NOT(OOStellarBodyPlanetType(nearest) == STELLAR_TYPE_MOON))
 				{
-					[shipAI message:"CLOSE_TO_MOON"];
+					if (shipAI != nullptr)  shipAI->message("CLOSE_TO_MOON");
 				}
 				else
 				{
-					[shipAI message:"CLOSE_TO_SECONDARY_PLANET"];
+					if (shipAI != nullptr)  shipAI->message("CLOSE_TO_SECONDARY_PLANET");
 				}
 			}
 		}
@@ -8438,19 +8438,19 @@ void ShipEntity::setStateMachine(const std::string &smName)
 
 void ShipEntity::setAI(::AI *ai)
 {
-	[ai retain];
+	oo::Ref<::AI> newAI(ai);	// [ai retain]
 	if (shipAI)
 	{
-		[shipAI clearAllData];
-		[shipAI autorelease];
+		shipAI->clearAllData();
+		OOAIAutorelease(std::move(shipAI));	// [shipAI autorelease]
 	}
-	shipAI = ai;
+	shipAI = std::move(newAI);
 }
 
 
 ::AI *ShipEntity::getAI()
 {
-	return shipAI;
+	return shipAI.get();
 }
 
 
@@ -8462,7 +8462,7 @@ bool ShipEntity::hasAutoAI()
 
 bool ShipEntity::hasNewAI()
 {
-	return [getAI() cxx_name] == "nullAI.plist";	// (no AI never matched)
+	return (getAI() != nullptr ? getAI()->name() : std::optional<std::string>()) == "nullAI.plist";	// (no AI never matched)
 }
 
 
@@ -9592,9 +9592,9 @@ void ShipEntity::releaseCargoPodsDebris()
 			if (UNIVERSE != nullptr)  UNIVERSE->addEntity(oo::ToObjC(container));	// STATUS_IN_FLIGHT, AI state GLOBAL
 
 			::AI *containerAI = (container != nullptr ? container->getAI() : (::AI *)nullptr);
-			if ([containerAI hasSuspendedStateMachines]) // check if new or recycled cargo.
+			if ((containerAI != nullptr ? containerAI->hasSuspendedStateMachines() : false)) // check if new or recycled cargo.
 			{
-				[containerAI cxx_exitStateMachineWithMessage:std::nullopt];
+				if (containerAI != nullptr)  containerAI->exitStateMachineWithMessage(std::nullopt);
 				if (container != nullptr)  container->setThrust((container != nullptr ? container->maxThrust() : 0.0f)); // restore old value. Was set to zero on previous scooping.
 				if (container != nullptr)  container->setOwner(container);
 			}
@@ -10617,8 +10617,8 @@ void ShipEntity::noteLostTarget()
 	}
 	// always do target lost
 	doScriptEvent(OOJSID("shipTargetLost"), target);
-	if (target == nil) [shipAI message:"TARGET_LOST"];	// stale target? no major urgency.
-	else [shipAI cxx_reactToMessage:"TARGET_LOST" context:"flight updates"];	// execute immediately otherwise.
+	if (target == nil) { if (shipAI != nullptr)  shipAI->message("TARGET_LOST"); }	// stale target? no major urgency.
+	else { if (shipAI != nullptr)  shipAI->reactToMessage("TARGET_LOST", "flight updates"); }	// execute immediately otherwise.
 }
 
 
@@ -10637,12 +10637,12 @@ void ShipEntity::noteTargetDestroyed(::ShipEntity *target)
 	{
 		removeTarget(oo::ToObjC(target));
 		doScriptEvent(OOJSID("shipTargetDestroyed"), oo::ToObjC(target));
-		[shipAI message:"TARGET_DESTROYED"];
+		if (shipAI != nullptr)  shipAI->message("TARGET_DESTROYED");
 	}
 	if (isDefenseTarget(oo::ToObjC(target))) 
 	{
 		removeDefenseTarget(oo::ToObjC(target));
-		[shipAI message:"DEFENSE_TARGET_DESTROYED"];
+		if (shipAI != nullptr)  shipAI->message("DEFENSE_TARGET_DESTROYED");
 		doScriptEvent(OOJSID("defenseTargetDestroyed"), oo::ToObjC(target));
 	}
 }
@@ -13065,11 +13065,11 @@ OOCargoType ShipEntity::dumpItem(::ShipEntity *cargoObj)
 	if (UNIVERSE != nullptr)  UNIVERSE->addEntity(oo::ToObjC(jetto));	// STATUS_IN_FLIGHT, AI state GLOBAL
 	
 	jettoAI = (jetto != nullptr ? jetto->getAI() : (::AI *)nullptr);
-	if ([jettoAI hasSuspendedStateMachines]) // check if this was previous scooped cargo.
+	if ((jettoAI != nullptr ? jettoAI->hasSuspendedStateMachines() : false)) // check if this was previous scooped cargo.
 	{
 		if (jetto != nullptr)  jetto->setThrust((jetto != nullptr ? jetto->maxThrust() : 0.0f)); // restore old thrust.
 		if (jetto != nullptr)  jetto->setOwner(jetto);
-		[jettoAI cxx_exitStateMachineWithMessage:std::nullopt]; // exit nullAI.
+		if (jettoAI != nullptr)  jettoAI->exitStateMachineWithMessage(std::nullopt); // exit nullAI.
 	}
 	if (jetto != nullptr)  jetto->doScriptEvent(OOJSID("shipWasDumped"), oo::ToObjC(this));
 	doScriptEvent(OOJSID("shipDumpedCargo"), oo::ToObjC(jetto));
@@ -13490,8 +13490,8 @@ void ShipEntity::scoopUpProcess(::ShipEntity *other, bool procEvents, bool procM
 		cargo.insert(cargo.begin(), oo::ObjCRef<::Entity *>(oo::ToObjC(other)));	// places most recently scooped object at eject position
 		if (other != nullptr)  other->setStatus(STATUS_IN_HOLD);
 		if (other != nullptr)  other->performTumble();
-		[shipAI message:"CARGO_SCOOPED"];
-		if (max_cargo && cargo.size() >= maxAvailableCargoSpace())  [shipAI message:"HOLD_FULL"];
+		if (shipAI != nullptr)  shipAI->message("CARGO_SCOOPED");
+		if (max_cargo && cargo.size() >= maxAvailableCargoSpace())  { if (shipAI != nullptr)  shipAI->message("HOLD_FULL"); }
 	}
 	if (procEvents)
 	{
@@ -13912,7 +13912,7 @@ void ShipEntity::enterDock(::StationEntity *station)
 	
 	doScriptEvent(OOJSID("shipWillDockWithStation"), oo::ToObjC(station));
 	doScriptEvent(OOJSID("shipDockedWithStation"), oo::ToObjC(station));
-	[shipAI message:"DOCKED"];
+	if (shipAI != nullptr)  shipAI->message("DOCKED");
 	if (station != nullptr)  station->noteDockedShip(this);
 	if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(oo::ToObjC(this));
 }
@@ -13948,7 +13948,7 @@ void ShipEntity::enterWormhole(::WormholeEntity *w_hole, bool /* replacing */)
 	//                  creates the wormhole.
 	addTarget(oo::ToObjC(w_hole));	// its Objective-C object (C++ since bead oo-9ht.112)
 	setFoundTarget(oo::ToObjC(w_hole));
-	[shipAI cxx_reactToMessage:"WITCHSPACE OKAY" context:"performHyperSpaceExit"];	// must be a reaction, the ship is about to disappear
+	if (shipAI != nullptr)  shipAI->reactToMessage("WITCHSPACE OKAY", "performHyperSpaceExit");	// must be a reaction, the ship is about to disappear
 	
 	// CIM 2012.07.22 above only covers those cases where ship expected to leave
 	if (escortArray().size() > 1)
@@ -13970,7 +13970,7 @@ void ShipEntity::enterWormhole(::WormholeEntity *w_hole, bool /* replacing */)
 void ShipEntity::enterWitchspace()
 {
 	if (UNIVERSE != nullptr)  UNIVERSE->addWitchspaceJumpEffectForShip(this);
-	[shipAI message:"ENTERED_WITCHSPACE"];
+	if (shipAI != nullptr)  shipAI->message("ENTERED_WITCHSPACE");
 	
 	if (!((UNIVERSE != nullptr ? UNIVERSE->sun() : nullptr) != nullptr ? UNIVERSE->sun()->willGoNova() : false))
 	{
@@ -14032,7 +14032,7 @@ bool ShipEntity::witchspaceLeavingEffects()
 		return NO;
 	}
 	setStatus(STATUS_EXITING_WITCHSPACE);
-	[shipAI message:"EXITED_WITCHSPACE"];
+	if (shipAI != nullptr)  shipAI->message("EXITED_WITCHSPACE");
 	
 	if (UNIVERSE != nullptr)  UNIVERSE->addWitchspaceJumpEffectForShip(this);
 	setStatus(STATUS_IN_FLIGHT);
@@ -14164,9 +14164,9 @@ bool ShipEntity::acceptAsEscort(::ShipEntity *other_ship)
 	
 	//increased stack depth at which it can accept escorts to avoid rejections at this stage.
 	//doesn't seem to have any adverse effect for now. - Kaks.
-	if ([shipAI stackDepth] > 3)
+	if ((shipAI != nullptr ? shipAI->stackDepth() : NSUInteger{}) > 3)
 	{
-		OO_LOG("ship.escort.reject", "{} rejecting escort {} because AI stack depth is {}.", oo::DescriptionOf(oo::ToObjC(this)), oo::DescriptionOf(oo::ToObjC(other_ship)), [shipAI stackDepth]);
+		OO_LOG("ship.escort.reject", "{} rejecting escort {} because AI stack depth is {}.", oo::DescriptionOf(oo::ToObjC(this)), oo::DescriptionOf(oo::ToObjC(other_ship)), (shipAI != nullptr ? shipAI->stackDepth() : NSUInteger{}));
 		return NO;
 	}
 	
@@ -14204,7 +14204,7 @@ bool ShipEntity::acceptAsEscort(::ShipEntity *other_ship)
 			
 			doScriptEvent(OOJSID("shipAcceptedEscort"), oo::ToObjC(other_ship));
 			if (other_ship != nullptr)  other_ship->doScriptEvent(OOJSID("escortAccepted"), oo::ToObjC(this));
-			[shipAI message:"ACCEPTED_ESCORT"];
+			if (shipAI != nullptr)  shipAI->message("ACCEPTED_ESCORT");
 			return YES;
 		}
 		else
@@ -14307,7 +14307,7 @@ void ShipEntity::deployEscorts()
 	for (const auto &escortRef : escorts())
 	{
 		::ShipEntity *escort = oo::ToShip(escortRef.get());
-		if ([(escort != nullptr ? escort->getAI() : (::AI *)nullptr) cxx_name].value_or(std::string()) != "interceptAI.plist" && !(escort != nullptr ? escort->hasNewAI() : false))
+		if ((escort != nullptr && escort->getAI() != nullptr ? escort->getAI()->name() : std::optional<std::string>()).value_or(std::string()) != "interceptAI.plist" && !(escort != nullptr ? escort->hasNewAI() : false))
 		{
 			idleEscorts.push_back(escortRef);
 		}
@@ -14362,7 +14362,7 @@ void ShipEntity::dockEscorts()
 		if (!(escort != nullptr ? escort->hasNewAI() : false))
 		{
 			if (escort != nullptr)  escort->setAITo("dockingAI.plist");
-			[ai cxx_setState:"ABORT" afterDelay:delay + 0.25];
+			if (ai != nullptr)  ai->setState("ABORT", delay + 0.25);
 		}
 		if (escort != nullptr)  escort->doScriptEvent(OOJSID("escortDock"), { oo::PList::singleReal(delay) });
 	}
@@ -14417,7 +14417,7 @@ void ShipEntity::setTargetToNearestStationIncludingHostiles(bool includeHostiles
 	}
 	else
 	{
-		[shipAI message:"NO_STATION_FOUND"];
+		if (shipAI != nullptr)  shipAI->message("NO_STATION_FOUND");
 	}
 }
 
@@ -14443,8 +14443,8 @@ void ShipEntity::setTargetToSystemStation()
 	
 	if (!system_station)
 	{
-		[shipAI message:"NOTHING_FOUND"];
-		[shipAI message:"NO_STATION_FOUND"];
+		if (shipAI != nullptr)  shipAI->message("NOTHING_FOUND");
+		if (shipAI != nullptr)  shipAI->message("NO_STATION_FOUND");
 		_primaryTarget = nullptr;
 		setTargetStation(nullptr);
 		return;
@@ -14452,8 +14452,8 @@ void ShipEntity::setTargetToSystemStation()
 	
 	if (!system_station->isStation)
 	{
-		[shipAI message:"NOTHING_FOUND"];
-		[shipAI message:"NO_STATION_FOUND"];
+		if (shipAI != nullptr)  shipAI->message("NOTHING_FOUND");
+		if (shipAI != nullptr)  shipAI->message("NO_STATION_FOUND");
 		_primaryTarget = nullptr;
 		setTargetStation(nullptr);
 		return;
@@ -14616,7 +14616,7 @@ void ShipEntity::broadcastAIMessage(const std::string &ai_message)
 	for (i = 0; i < n_scanned_ships ; i++)
 	{
 		::ShipEntity* ship = scanned_ships[i];
-		[(ship != nullptr ? ship->getAI() : (::AI *)nullptr) message:expandedMessage];
+		if (ship != nullptr && ship->getAI() != nullptr)  ship->getAI()->message(expandedMessage);
 	}
 }
 
@@ -14973,7 +14973,7 @@ void ShipEntity::dumpSelfState()
 		OOLogIndent();
 		@try
 		{
-			[shipAI dumpState];
+			if (shipAI != nullptr)  shipAI->dumpState();
 		}
 		@catch (id exception) {}
 		OOLogPopIndent();
@@ -15163,13 +15163,13 @@ void ShipEntity::doScriptEvent(ooscript::PropertyId message, ooscript::Context c
 
 void ShipEntity::reactToAIMessage(const std::string &message, const std::optional<std::string> &debugContext)
 {
-	[shipAI cxx_reactToMessage:message context:debugContext];
+	if (shipAI != nullptr)  shipAI->reactToMessage(message, debugContext);
 }
 
 
 void ShipEntity::sendAIMessage(const std::string &message)
 {
-	[shipAI message:message];
+	if (shipAI != nullptr)  shipAI->message(message);
 }
 
 
@@ -15301,7 +15301,7 @@ std::optional<std::string> ShipEntity::descriptionForObjDump()
 	std::string desc = oo::str::format("%s mass %g", OOEntityWithDrawable::descriptionForObjDump().value_or("(null)").c_str(), getMass());
 	if (!getIsPlayer())
 	{
-		desc = oo::str::format("%s AI: %s", desc.c_str(), [getAI() cxx_shortDescriptionComponents].value_or("(null)").c_str());
+		desc = oo::str::format("%s AI: %s", desc.c_str(), (getAI() != nullptr ? getAI()->shortDescriptionComponents() : std::optional<std::string>()).value_or("(null)").c_str());
 	}
 	return desc;
 }

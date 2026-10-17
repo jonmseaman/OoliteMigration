@@ -1371,7 +1371,7 @@ void StationEntity::sanityCheckShipsOnApproach()
 	if (soa == 0)
 	{
 		// if all docks have no ships on approach
-		[shipAI message:"DOCKING_COMPLETE"];
+		if (shipAI != nullptr)  shipAI->message("DOCKING_COMPLETE");
 		doScriptEvent(OOJSID("stationDockingQueuesAreEmpty"));	
 	}
 }
@@ -1444,7 +1444,7 @@ void StationEntity::abortAllDockings()
 
 	_shipsOnHold->removeAllObjects();
 	
-	[shipAI message:"DOCKING_COMPLETE"];
+	if (shipAI != nullptr)  shipAI->message("DOCKING_COMPLETE");
 	doScriptEvent(OOJSID("stationDockingQueuesAreEmpty"));
 
 }
@@ -1472,7 +1472,7 @@ void StationEntity::autoDockShipsOnApproach()
 
 	autoDockShipsOnHold();
 	
-	[shipAI message:"DOCKING_COMPLETE"];
+	if (shipAI != nullptr)  shipAI->message("DOCKING_COMPLETE");
 	doScriptEvent(OOJSID("stationDockingQueuesAreEmpty"));
 
 }
@@ -1606,7 +1606,7 @@ oo::PList StationEntity::dockingInstructionsForShip(::ShipEntity *ship)
 	// we made it through holding!
 	_shipsOnHold->removeObject(oo::ToObjC(ship));
 	
-	[shipAI cxx_reactToMessage:"DOCKING_REQUESTED" context:"requestDockingCoordinates"];	// react to the request	
+	if (shipAI != nullptr)  shipAI->reactToMessage("DOCKING_REQUESTED", "requestDockingCoordinates");	// react to the request	
 	doScriptEvent(OOJSID("stationAcceptedDockingRequest"), oo::ToObjC(ship));
 
 	return (chosenDock != nullptr ? chosenDock->dockingInstructionsForShip(ship) : oo::PList());
@@ -1738,7 +1738,7 @@ void StationEntity::update(OOTimeDelta delta_t)
 				if (player != nullptr)  player->doScriptEvent(OOJSID("playerDockingClearanceExpired"));
 				if (currentlyInDockingQueues() == 0) 
 				{
-					[getAI() message:"DOCKING_COMPLETE"];
+					if (getAI() != nullptr)  getAI()->message("DOCKING_COMPLETE");
 					doScriptEvent(OOJSID("stationDockingQueuesAreEmpty"));
 				}
 				player_reserved_dock = nil;
@@ -1752,7 +1752,7 @@ void StationEntity::update(OOTimeDelta delta_t)
 				if (player != nullptr)  player->setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_NONE);
 				if (currentlyInDockingQueues() == 0) 
 				{
-					[getAI() message:"DOCKING_COMPLETE"];
+					if (getAI() != nullptr)  getAI()->message("DOCKING_COMPLETE");
 					doScriptEvent(OOJSID("stationDockingQueuesAreEmpty"));
 				}
 			}
@@ -2203,15 +2203,15 @@ void StationEntity::setAlertLevel(OOStationAlertLevel level, bool signallingScri
 		switch (level)
 		{
 			case STATION_ALERT_LEVEL_GREEN:
-				[shipAI cxx_reactToMessage:"GREEN_ALERT" context:std::nullopt];
+				if (shipAI != nullptr)  shipAI->reactToMessage("GREEN_ALERT", std::nullopt);
 				break;
 				
 			case STATION_ALERT_LEVEL_YELLOW:
-				[shipAI cxx_reactToMessage:"YELLOW_ALERT" context:std::nullopt];
+				if (shipAI != nullptr)  shipAI->reactToMessage("YELLOW_ALERT", std::nullopt);
 				break;
 				
 			case STATION_ALERT_LEVEL_RED:
-				[shipAI cxx_reactToMessage:"RED_ALERT" context:std::nullopt];
+				if (shipAI != nullptr)  shipAI->reactToMessage("RED_ALERT", std::nullopt);
 				break;
 		}
 	}
@@ -2315,7 +2315,7 @@ std::optional<std::string> StationEntity::acceptDockingClearanceRequestFrom(::Sh
 		{
 			if (player != nullptr)  player->setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_NOT_REQUIRED);
 		}
-		[shipAI cxx_reactToMessage:"DOCKING_REQUESTED" context:std::nullopt];	// react to the request	
+		if (shipAI != nullptr)  shipAI->reactToMessage("DOCKING_REQUESTED", std::nullopt);	// react to the request	
 		doScriptEvent(OOJSID("stationAcceptedDockingRequest"), oo::ToObjC(other));
 
 		last_launch_time = timeNow + DOCKING_CLEARANCE_WINDOW;
@@ -2347,7 +2347,7 @@ std::optional<std::string> StationEntity::acceptDockingClearanceRequestFrom(::Sh
 				player_reserved_dock = nil;
 				if (currentlyInDockingQueues() == 0)
 				{
-					[shipAI message:"DOCKING_COMPLETE"];
+					if (shipAI != nullptr)  shipAI->message("DOCKING_COMPLETE");
 					doScriptEvent(OOJSID("stationDockingQueuesAreEmpty"));
 				}
 				break;
@@ -2479,7 +2479,7 @@ std::optional<std::string> StationEntity::acceptDockingClearanceRequestFrom(::Sh
 		}
 
 		result = "DOCKING_CLEARANCE_GRANTED";
-		[shipAI cxx_reactToMessage:"DOCKING_REQUESTED" context:std::nullopt];	// react to the request	
+		if (shipAI != nullptr)  shipAI->reactToMessage("DOCKING_REQUESTED", std::nullopt);	// react to the request	
 		doScriptEvent(OOJSID("stationAcceptedDockingRequest"), oo::ToObjC(other));
 	}
 	return result;

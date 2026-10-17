@@ -1722,7 +1722,8 @@ OO_TEST(crewAndAI)
 		OO_CHECK(!(ship != nullptr ? ship->getCrew() : std::optional<std::vector<oo::Ref<OOCharacter>>>()).has_value());
 
 		OO_CHECK((ship != nullptr ? ship->getAI() : (::AI *)nullptr) == nil && !(ship != nullptr ? ship->hasNewAI() : false));
-		AI *ai = [[[AI alloc] init] autorelease];
+		oo::Ref<AI> heldAI = oo::makeRef<AI>();	// [[[AI alloc] init] autorelease]: C++ since bead oo-9ht.73
+		AI *ai = heldAI.get();
 		if (ship != nullptr)  ship->setAI(ai);
 		OO_CHECK((ship != nullptr ? ship->getAI() : (::AI *)nullptr) == ai);
 		if (ship != nullptr)  ship->setAI(nullptr);
