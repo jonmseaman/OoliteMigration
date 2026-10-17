@@ -606,19 +606,20 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 	return result;
 }
 
-}	// namespace
 
 
-static BOOL IsCandidateMainStationPredicate(cxx::Entity *entity, void *parameter)
+BOOL IsCandidateMainStationPredicate(cxx::Entity *entity, void * /*parameter*/)
 {
 	return entity->getIsStation() && !entity->isExplicitlyNotMainStation;	// [entity isStation]
 }
 
 
-static BOOL IsFriendlyStationPredicate(cxx::Entity *entity, void *parameter)
+BOOL IsFriendlyStationPredicate(cxx::Entity *entity, void *parameter)
 {
 	return entity->getIsStation() && !oo::ToShip(entity)->isHostileTo(oo::ToCxx((Entity *)parameter));	// [entity isStation], -isHostileTo:
 }
+
+}	// namespace	(the two predicates joined it when their signatures changed, bead oo-9ht.39.23: misc-use-anonymous-namespace)
 
 
 #define PROFILE_SHIP_SELECTION 0

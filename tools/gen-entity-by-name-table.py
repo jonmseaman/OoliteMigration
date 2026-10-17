@@ -251,15 +251,21 @@ def table_rows():
         if index not in functions:
             raise SystemExit(f"{name}: ByName_{index} is not defined")
         fconds, fret, arg, argname, body = functions.pop(index)
-        if fconds != conds or fret != ret or (ARG_KINDS[arg] if arg else "None") != kind:
+        if fconds != conds or encoded(fret) != ret or (ARG_KINDS[arg] if arg else "None") != kind:
             raise SystemExit(f"{name}: the row and ByName_{index} disagree")
         unknown = [flag for flag in flags if flag not in SETS.values()]
         if unknown:
             raise SystemExit(f"{name}: unknown flags {unknown}")
-        result.append((conds, None, ret, name, arg, argname, flags, body))
+        result.append((conds, None, fret, name, arg, argname, flags, body))
     if functions:
         raise SystemExit("functions no row names: " + ", ".join(f"ByName_{i}" for i in sorted(functions)))
     return result
+
+
+def encoded(ret):
+    # A function answering the C++ entity (bead oo-9ht.39.24) keeps its row's object encoding ("@", as
+    # @encode(Entity *) gave): the dispatcher classifies the row as it classified the method's object result.
+    return "id" if ret == "cxx::Entity *" else ret
 
 
 def rows():
@@ -306,7 +312,7 @@ oo-9ht.39.7.3): this file is the source. Edit a function and its row together, t
 python3 tools/gen-entity-by-name-table.py --check (it renders the rows again and must get this file).
 
 One row per former category method, exactly the categories' names and #if conditions: the name
-sets -[Entity respondsToSelector:] read (the applies-to flags), @encode() of the declared result,
+sets the root facade's -respondsToSelector: read (the applies-to flags), @encode() of the declared result,
 the argument kind, the adaptor: the method's body, verbatim, with the entity for _cxxEntity.get(),
 and for a method with no argument the typed adaptor (its result by type; bead oo-9ht.39.7.2).
 Included by OOEntityCalledByName.mm only, after the parts (ShipPart() ...) the bodies read.
@@ -357,7 +363,7 @@ def render():
         switch(conds, out)
         kind = ARG_KINDS[arg] if arg is not None else "None"
         typed = f"&OOEntityByNameTyped<&ByName_{index}>" if arg is None else "nullptr"
-        out.append(f"\t{{ \"{name}\",\t{' | '.join(flags)},\t@encode({ret}),\tOOEntityByNameArgument::{kind},\t&OOEntityByNameAdapt{kind}<&ByName_{index}>,\t{typed} }},")
+        out.append(f"\t{{ \"{name}\",\t{' | '.join(flags)},\t@encode({encoded(ret)}),\tOOEntityByNameArgument::{kind},\t&OOEntityByNameAdapt{kind}<&ByName_{index}>,\t{typed} }},")
     switch([], out)
     out.append("};")
     out.append("")

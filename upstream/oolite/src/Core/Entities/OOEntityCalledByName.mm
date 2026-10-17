@@ -5,7 +5,7 @@ OOEntityCalledByName.mm
 An entity's method called by name, on its C++ part (bead oo-9ht.39.7.1, ADR-0056 amendment
 oo-9ht.39.7.1; declared in OOCallByName.h). The facade's by-name categories are the generated
 table OOEntityCalledByNameTable.h (tools/gen-entity-by-name-table.py): a tabled name is answered
-for the C++ part it applies to, exactly as -[Entity respondsToSelector:] and the category method
+for the C++ part it applies to, exactly as the root facade's -respondsToSelector: and the category method
 answered it, and called as OOCallByName called the method (the same signature rules, read from
 @encode() of the declared types instead of the method's type encoding). Since bead oo-9ht.39.9 any
 other name, and a tabled name that does not apply, are answered without the entity's Objective-C
@@ -133,6 +133,7 @@ void OOEntityByNameTyped(cxx::Entity *entity, OOEntityByNameValue &value)
 	else if constexpr (std::is_same_v<Result, Vector>)  value.vector = Function(entity);
 	else if constexpr (std::is_same_v<Result, Quaternion>)  value.quaternion = Function(entity);
 	else if constexpr (std::is_same_v<Result, OOColor *>)  value.color = Function(entity);	// borrowed (bead oo-9ht.39.8.25)
+	else if constexpr (std::is_convertible_v<Result, cxx::Entity *>)  value.entity = Function(entity);	// the C++ entity (bead oo-9ht.39.24)
 	else if constexpr (std::is_convertible_v<Result, id>)  value.object = Function(entity);
 	else  (void)Function(entity);	// a result callObjC() cannot read (it does not call such a method)
 }
@@ -150,7 +151,7 @@ void OOEntityByNameTyped(cxx::Entity *entity, OOEntityByNameValue &value)
 	for no entity (zero, as a message to nil answered; the calls never pass one); a name whose
 	result callObjC() cannot read (a string, a vector of objects, a matrix, a high-precision vector,
 	a bounding box: "cannot be called", or no result) has no function. The answers are
-	-[Entity respondsToSelector:]'s: every entity but for the planet's shader selectors (a planet's
+	the root facade's -respondsToSelector:'s: every entity but for the planet's shader selectors (a planet's
 	part) and the beacon protocol's (a ship's, an effect's or a waypoint's part).
 */
 namespace {
@@ -468,7 +469,7 @@ const OOEntityByNameRow *oo::EntityByNameRowNamed(const std::string &name)
 }
 
 
-// As -[Entity respondsToSelector:] answered the name sets (the visual effect's first). A name only
+// As the root facade's -respondsToSelector: answered the name sets (the visual effect's first). A name only
 // the effect's set holds is answered by the root (super) for any entity, as the facade did; its
 // body answers zero for any part but an effect's.
 bool oo::EntityByNameRowApplies(const OOEntityByNameRow &row, cxx::Entity *entity)
@@ -658,7 +659,7 @@ bool oo::EntityRespondsToName(cxx::Entity *entity, const std::string &name)
 		::Entity *object = link->objcOwner();
 		return object != nil && [object respondsToSelector:SelectorNamed(name)];
 	}
-	// A facade row (bead oo-9ht.39.8.25): -[Entity respondsToSelector:]'s answer for the facade's method.
+	// A facade row (bead oo-9ht.39.8.25): the root facade's -respondsToSelector:'s answer for the facade's method.
 	if (const OOEntityFacadeRow *facade = EntityFacadeRowNamed(name))  return facade->answers == nullptr || facade->answers(entity);
 	// Any other name the entity's object answered (bead oo-9ht.39.9): the object is not asked.
 	return AnsweredObjectName(entity, name) != nullptr;

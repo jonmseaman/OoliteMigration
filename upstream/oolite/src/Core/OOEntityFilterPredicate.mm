@@ -32,13 +32,13 @@ MA 02110-1301, USA.
 #import "OORoleSet.h"
 
 
-BOOL YESPredicate(cxx::Entity *entity, void *parameter)
+BOOL YESPredicate(cxx::Entity * /*entity*/, void * /*parameter*/)
 {
 	return YES;
 }
 
 
-BOOL NOPredicate(cxx::Entity *entity, void *parameter)
+BOOL NOPredicate(cxx::Entity * /*entity*/, void * /*parameter*/)
 {
 	return NO;
 }
@@ -119,19 +119,19 @@ BOOL HasClassPredicate(cxx::Entity *entity, void *parameter)
 }
 
 
-BOOL IsShipPredicate(cxx::Entity *entity, void *parameter)
+BOOL IsShipPredicate(cxx::Entity *entity, void * /*parameter*/)
 {
 	return [oo::ToObjC(entity) isShip] && ![oo::ToObjC(entity) isSubEntity];
 }
 
 
-BOOL IsStationPredicate(cxx::Entity *entity, void *parameter)
+BOOL IsStationPredicate(cxx::Entity *entity, void * /*parameter*/)
 {
 	return [oo::ToObjC(entity) isStation];
 }
 
 
-BOOL IsPlanetPredicate(cxx::Entity *entity, void *parameter)
+BOOL IsPlanetPredicate(cxx::Entity *entity, void * /*parameter*/)
 {
 	if (![oo::ToObjC(entity) isPlanet])  return NO;
 	OOStellarBodyType type = OOStellarBodyPlanetType(oo::ToObjC(entity));	// the planet is C++ since bead oo-9ht.129
@@ -139,13 +139,13 @@ BOOL IsPlanetPredicate(cxx::Entity *entity, void *parameter)
 }
 
 
-BOOL IsSunPredicate(cxx::Entity *entity, void *parameter)
+BOOL IsSunPredicate(cxx::Entity *entity, void * /*parameter*/)
 {
 	return [oo::ToObjC(entity) isSun];
 }
 
 
-BOOL IsVisualEffectPredicate(cxx::Entity *entity, void *parameter)
+BOOL IsVisualEffectPredicate(cxx::Entity *entity, void * /*parameter*/)
 {
 	return [oo::ToObjC(entity) isVisualEffect] && ![oo::ToObjC(entity) isSubEntity];
 }

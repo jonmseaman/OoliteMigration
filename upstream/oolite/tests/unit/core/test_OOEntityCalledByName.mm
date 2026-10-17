@@ -407,7 +407,7 @@ OO_TEST(typedCallAnswersAsTheMethod)
 		{
 			OOEntityByNameValue value;
 			OO_CHECK(oo::CallEntityByNameTyped(ship.entity, "primaryAggressor", value));
-			OO_CHECK(oo::ToCxx(static_cast<::Entity *>(value.object)) == shipPart->primaryAggressor());
+			OO_CHECK(value.entity == shipPart->primaryAggressor());	// the C++ entity (bead oo-9ht.39.24)
 		}
 
 		// Not tabled, not the entity's, or taking an argument: nothing is called.

@@ -42,7 +42,7 @@ namespace cxx { class Entity; }
 class OOColor;
 
 
-// The name sets -[Entity respondsToSelector:] read: a row applies to an entity whose C++ part is
+// The name sets the root facade's -respondsToSelector: read: a row applies to an entity whose C++ part is
 // of a class one of its flags names (a proxy's flag with the player's: the proxy's dials).
 enum: unsigned
 {
@@ -71,6 +71,7 @@ struct OOEntityByNameValue
 	Vector		vector{};
 	Quaternion	quaternion{};
 	id			object = nil;
+	cxx::Entity	*entity = nullptr;	// an entity result, borrowed: the C++ entity (bead oo-9ht.39.24; its object, in object, before)
 	OOColor		*color = nullptr;	// a colour result, borrowed (fogUniform; bead oo-9ht.39.8.25)
 	oo::PList	plist;
 };
@@ -90,7 +91,7 @@ struct OOEntityByNameRow
 
 /*	The root facade's own selectors that callObjC() lists (OOJSCallEntityMethods.h) and the by-name
 	table does not (bead oo-9ht.39.8.25, ADR-0056 amendment oo-9ht.39.8.25): a row per name, its
-	answer (null: every entity, as -[Entity respondsToSelector:] answered the facade's methods; the
+	answer (null: every entity, as the root facade's -respondsToSelector: answered the facade's methods; the
 	planet's and the beacon's selectors for the parts it answered them for) and, for a name callObjC()
 	can call, the facade method's body on the C++ entity, its result kept by type.
 */
