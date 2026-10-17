@@ -8143,3 +8143,14 @@ the script events `shipExitedPlanetaryVicinity` still receive the object; the pl
 planet; the by-name table's function returns the object as before (5a, oo-9ht.39.24, removes that).
 `findNearestStellarBody()` is unchanged (a later slice). Behaviour-identical. **Tests (oo-9n5p9, line on main
 first):** `test_ShipEntity` compares the getter with the C++ entity; same expected values.
+
+## Amendment (bead oo-9ht.39.23.4): the ship's target station is a C++ entity
+
+oo-9ht.39 step 5e, slice 4 (batch AI, Migration Completion session, 2026-10-17), as amendment oo-9ht.39.23.1:
+`ShipEntity::targetStation()` returns, and `setTargetStation()` takes, a `cxx::Entity *` (the member was already
+`oo::WeakRef<cxx::Entity>`). The getter still answers null, and forgets the station, when its object is gone or it
+is no valid target. The seven callers that stored a C++ station's object store the station; an escort's mother
+(an object) is stored as its C++ entity; the three that message the result take its object; the player's docking
+requests compare the station itself; the by-name table's function returns the object as before (5a, oo-9ht.39.24,
+removes that). Behaviour-identical. **Tests (oo-9n5p9, lines on main first):** `test_ShipEntity` and
+`test_ShipEntityAI` compare the getter with the C++ entity; same expected values.

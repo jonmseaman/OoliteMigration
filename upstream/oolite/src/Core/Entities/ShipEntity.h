@@ -748,8 +748,8 @@ public:
 	void setThankedShip(cxx::Entity *targetEntity);
 	cxx::Entity *rememberedShip();
 	void setRememberedShip(cxx::Entity *targetEntity);
-	::Entity *targetStation();	// the object of the target station (or of the mother an escort docks with): ::StationEntity * until bead oo-9ht.175, which typed it as what it holds
-	void setTargetStation(::Entity *targetEntity);
+	cxx::Entity *targetStation();	// the target station (or the mother an escort docks with), its C++ entity since bead oo-9ht.39.23.4 (its object before; ::StationEntity * until bead oo-9ht.175)
+	void setTargetStation(cxx::Entity *targetEntity);	// C++ since bead oo-9ht.39.23.4
 	virtual bool isValidTarget(::Entity *target);
 	virtual void addTarget(::Entity *targetEntity);
 	virtual void removeTarget(::Entity *targetEntity);	// virtual: a test seam (amendment oo-9ht.107 item 6; test_EntityOOJavaScriptExtensions' ship overrides it since bead oo-9ht.144)

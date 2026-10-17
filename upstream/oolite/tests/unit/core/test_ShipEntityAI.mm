@@ -818,9 +818,9 @@ OO_TEST(slice4StationsAndCoordinates)
 		// No stations in range, and a last station that is not one: no target.
 		if (ship != nullptr)  ship->setTargetToRandomStation();
 		OO_CHECK((ship != nullptr ? ship->primaryTarget() : id{}) == nil);
-		if (ship != nullptr)  ship->setTargetStation(oo::ToObjC(other));
+		if (ship != nullptr)  ship->setTargetStation(other);
 		if (ship != nullptr)  ship->setTargetToLastStation();
-		OO_CHECK((ship != nullptr ? ship->primaryTarget() : id{}) == nil && (ship != nullptr ? ship->targetStation() : (Entity *)nullptr) == nil);
+		OO_CHECK((ship != nullptr ? ship->primaryTarget() : id{}) == nil && (ship != nullptr ? ship->targetStation() : (cxx::Entity *)nullptr) == nullptr);
 
 		// A malformed coordinate string changes nothing.
 		SetCoordinates4(ship, make_HPvector(1, 2, 3));

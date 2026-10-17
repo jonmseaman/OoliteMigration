@@ -409,7 +409,7 @@ Entity * ByName_189(cxx::Entity *entity)
 Entity * ByName_190(cxx::Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? oo::ToObjC(ship->rememberedShip()) : nil; }
 Entity * ByName_191(cxx::Entity *entity)
-{ ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->targetStation() : nil; }
+{ ShipEntity *ship = ShipPart(entity); return ship != nullptr ? oo::ToObjC(ship->targetStation()) : nil; }
 BOOL ByName_192(cxx::Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->canStillTrackPrimaryTarget() : NO; }
 Entity * ByName_193(cxx::Entity *entity)
