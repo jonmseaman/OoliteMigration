@@ -8,6 +8,7 @@ oolite_sources += files(
     'EntityShaderBindings.mm',
     'OOBreakPatternEntity.mm',
     'OOECMBlastEntity.mm',
+    'OOEntityCalledByName.mm',
     'OOEntityWithDrawable.mm',
     'OOExhaustPlumeEntity.mm',
     'OOExplosionCloudEntity.mm',

@@ -7496,3 +7496,52 @@ changes and no case was retired.
 **Consequences.** The materials no longer hold or message an entity's object for a member binding;
 what still reaches it is the selector fallback (names no row binds: none the whitelist permits but
 `laserColor`, which fails) and the log lines' class name.
+
+## Amendment (bead oo-9ht.39.7.1): the entities' by-name categories become a C++ table; the AI and the legacy script engine call it
+
+oo-9ht.39 step 4b (bead oo-9ht.39.7), part (a) of three (batch AD, Migration Completion session,
+2026-10-17; parts (b) oo-9ht.39.7.2 and (c) oo-9ht.39.7.3 are filed with acceptance).
+
+1. **`tools/gen-entity-by-name-table.py` generates `src/Core/Entities/OOEntityCalledByNameTable.h`**
+   from the root facade's five by-name categories (`Entity (OOShipSelectorsCalledByName)`,
+   `(OOPlayerSelectorsCalledByName)`, `(OOStationSelectorsCalledByName)`,
+   `(OODockSelectorsCalledByName)`, `(OOVisualEffectSelectorsCalledByName)`): one row per method
+   (970), exactly the categories' names, each keeping its `#if` conditions; the applies-to flags are
+   the name sets `-[Entity respondsToSelector:]` reads (`IsShipSelectorCalledByName()` and its
+   siblings), evaluated in its order (a name only the visual effect's set holds is answered for any
+   entity, as the root's `[super respondsToSelector:]` answered it; its body answers zero for any
+   part but an effect's); the result is `@encode()` of the declared type, classified as
+   `OOCallByName` classifies a method's type encoding; the argument kind is none, `const std::string &`
+   or `const oo::PList &`; the adaptor is the category method's body, verbatim, with the entity for
+   `_cxxEntity.get()`. The script fails if a body reads `self`, `super`, `_cmd` or `_cxxEntity`
+   otherwise, if a method is in no name set or a set names a method no category defines, or if a
+   row would be a planet or beacon name (answered by their own rules). `--check` is in the nightly
+   line; the categories stay the source until part (c).
+2. **`oo::EntityRespondsToName` / `oo::CallEntityByName`** (declared in `OOCallByName.h`, defined in
+   `OOEntityCalledByName.mm`): a tabled name is answered for the C++ part it applies to and called
+   through the adaptor with `OOCallByName`'s signature rules (arity, string-to-PList and
+   PList-to-string coercion, a PList result returned, a void, scalar or object result ignored). Any
+   other name, a tabled name that does not apply, and a tabled name whose signature the call cannot
+   use go to the entity's Objective-C object through `OOCallByName(id, SEL, ...)` exactly as before,
+   so the `callByName.unknownSelector` / `callByName.badSignature` lines are the facade path's own.
+3. **Callers.** `AI.mm` (the action, and `interpretAIMessage:`) and `PlayerEntityLegacyScriptEngine.mm`
+   (actions on the script target or the player, the `*_string`/`*_number`/`*_bool` queries, the
+   `[*_number]` substitutions) call the C++ functions with the name. Still on the selector path:
+   callObjC (`OOJSCall.mm`; its generated name table still sends the selector), the string expander,
+   the shader fallback, the deferred calls and the other `-respondsToSelector:` checks — part (b) and
+   (c).
+
+**Defaults (rule 10).** Identical behaviour. One unreachable difference: a C++ entity with no facade
+(`oo::ToObjC()` nil) now answers its tabled names where the message to nil answered nothing; every
+ship, station, dock, player, proxy and visual effect gets its facade where it is made, and the AI's
+owner and the legacy engine's targets are those. A null entity does nothing, as a nil target did.
+
+**Tests.** `test_OOEntityCalledByName` (new, links the game) keeps the selector path as the oracle:
+every row is a facade method with the row's result and argument encodings; for a ship, station,
+dock, player, proxy, visual effect and waypoint each row applies, and `oo::EntityRespondsToName`
+answers, exactly as the facade's `-respondsToSelector:`; every facade method the table does not hold
+(but the planet's and beacon's) is answered for all of them, so no name the facade answered by kind
+is missing; and two player queries answer as `OOCallByName` on the facade. `test_AI` (which links
+`AI.mm` with a stand-in ship and no table) gains stand-in definitions of the two functions that
+take the selector path, as the game's take it for an untabled name; no case or expected value
+changes and no case was retired.

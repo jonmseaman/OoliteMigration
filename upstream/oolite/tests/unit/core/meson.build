@@ -156,6 +156,7 @@ core_tests = {
     'test_OOPlanetDrawable': ['*'],
     'test_EntityOOJavaScriptExtensions': ['*'],
     'test_OOJSCallEntityMethods': ['*'],
+    'test_OOEntityCalledByName': ['*'],
     'test_EntityShaderBindings': ['*'],
     'test_WormholeEntity': ['*'],
     'test_OOSunEntity': ['*'],
