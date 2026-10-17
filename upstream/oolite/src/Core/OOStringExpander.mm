@@ -784,10 +784,11 @@ OOMaybeUnits ExpandStringKeySpecial(OOStringExpansionContext *context, const std
 	SEL selector = LookUpSelector(SpecialSubstitutionSelectors(), key);
 	if (selector != NULL)
 	{
-		OOCAssert([oo::ToObjC(PLAYER) respondsToSelector:selector], "Special string expansion selector %s for [%s] is not implemented.", OOSelectorName(selector), key.c_str());
+		OOCAssert(oo::EntityRespondsToName(PLAYER, OOSelectorName(selector)), "Special string expansion selector %s for [%s] is not implemented.", OOSelectorName(selector), key.c_str());
 
-		// Called by name (ADR-0055 item 5): a string result, as a PList.
-		const oo::PList result = OOCallByName(oo::ToObjC(PLAYER), selector);
+		// Called by name (ADR-0055 item 5) on the player's C++ part (bead oo-9ht.39.7.2): a string
+		// result, as a PList.
+		const oo::PList result = oo::CallEntityByName(PLAYER, OOSelectorName(selector));
 		if (!result.isNull())
 		{
 			const std::string *string = result.getIf<std::string>();
@@ -955,9 +956,9 @@ OOMaybeUnits ExpandLegacyScriptSelectorKey(OOStringExpansionContext *context, co
 
 	if (selector != NULL)
 	{
-		// Called by name (ADR-0055 item 5): "%@" of the result, as [[result description]] gave it
-		// (nil stays nil).
-		const oo::PList result = OOCallByName(oo::ToObjC(PLAYER), selector);
+		// Called by name (ADR-0055 item 5) on the player's C++ part (bead oo-9ht.39.7.2): "%@" of the
+		// result, as [[result description]] gave it (nil stays nil).
+		const oo::PList result = oo::CallEntityByName(PLAYER, OOSelectorName(selector));
 		return UnitsFromOptional(!result.isNull() ? std::optional<std::string>(oo::DescriptionOf(result)) : std::nullopt);
 	}
 	else
@@ -1021,7 +1022,7 @@ SEL LookUpLegacySelector(const std::string &key)
 				part of the game and cannot be overriden by OXPs. If there is an
 				invalid selector in the whitelist, it's a game bug.
 			*/
-			OOCAssert([oo::ToObjC(PLAYER) respondsToSelector:selector], "Player does not respond to whitelisted query selector %s.", key.c_str());
+			OOCAssert(oo::EntityRespondsToName(PLAYER, selectorName), "Player does not respond to whitelisted query selector %s.", key.c_str());
 		}
 
 		if (selector != NULL)

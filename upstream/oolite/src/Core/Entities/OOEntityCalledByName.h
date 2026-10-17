@@ -31,6 +31,8 @@ MA 02110-1301, USA.
 #ifndef OOENTITYCALLEDBYNAME_H
 #define OOENTITYCALLEDBYNAME_H
 
+#import "OOMaths.h"
+#import "oofnd/objc/OOObject.h"
 #include "oofnd/PList.hpp"
 #include <cstdint>
 #include <span>
@@ -58,6 +60,19 @@ enum class OOEntityByNameArgument: std::uint8_t
 	PList		// - (T) name:(const oo::PList &)
 };
 
+// A typed call's result (bead oo-9ht.39.7.2), kept by its type: an integer, enum or BOOL result
+// as a long long (as OOCallIntegerMethod() converted it), a float or double as a double, a vector,
+// a quaternion, an object, a property list. callObjC() reads the member its row's type names.
+struct OOEntityByNameValue
+{
+	long long	integer = 0;
+	double		real = 0;
+	Vector		vector{};
+	Quaternion	quaternion{};
+	id			object = nil;
+	oo::PList	plist;
+};
+
 struct OOEntityByNameRow
 {
 	const char				*name;		// the selector's name
@@ -66,6 +81,8 @@ struct OOEntityByNameRow
 	OOEntityByNameArgument	argument;
 	// The method's body on the entity, given the argument its kind takes; a PList result, else null.
 	oo::PList				(*call)(cxx::Entity *entity, const std::string *string, const oo::PList *plist);
+	// A method with no argument: its body on the entity, its result kept by type; else null.
+	void					(*typed)(cxx::Entity *entity, OOEntityByNameValue &value);
 };
 
 
@@ -74,6 +91,10 @@ namespace oo {
 std::span<const OOEntityByNameRow> EntityByNameRows();
 const OOEntityByNameRow *EntityByNameRowNamed(const std::string &name);	// null if not tabled
 bool EntityByNameRowApplies(const OOEntityByNameRow &row, cxx::Entity *entity);
+
+// The tabled method with no argument that applies to the entity, called, its result kept by type
+// in value (bead oo-9ht.39.7.2); false (nothing called) for any other name.
+bool CallEntityByNameTyped(cxx::Entity *entity, const std::string &name, OOEntityByNameValue &value);
 
 }	// namespace oo
 

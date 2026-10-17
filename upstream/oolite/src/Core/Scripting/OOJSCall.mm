@@ -41,6 +41,8 @@ MA 02110-1301, USA.
 #import "OOJSVector.h"
 #import "OOJSQuaternion.h"
 #import "OOJSCallEntityMethods.h"	// callObjC()'s names for an entity (generated; bead oo-9ht.44)
+#import "OOEntityCalledByName.h"	// the entities' by-name methods, on the C++ entity (bead oo-9ht.39.7.2)
+#import "OOCallByName.h"
 #include "oofnd/PListGet.hpp"
 #include "oofnd/String.hpp"
 
@@ -156,9 +158,11 @@ bool ScalarBoolValue(id object)
 
 /*	The call: of any object by its method's signature (OOJSCallObjCObjectMethod), or of an entity's
 	object by the entity table (entityTable): a name the table does not list does not respond, and
-	a listed one is called with the table's signature.
+	a listed one is called with the table's signature. An entity's by-name methods (the generated
+	table OOEntityCalledByNameTable.h) are asked of and called on its C++ part (bead oo-9ht.39.7.2),
+	as the facade answered and called them; any other name goes to its object as before.
 */
-bool CallMethod(ooscript::Context context, id object, const std::string &oo_jsClassName, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult, bool entityTable)
+bool CallMethod(ooscript::Context context, id object, const std::string &oo_jsClassName, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult, bool entityTable, cxx::Entity *entity)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -210,7 +214,7 @@ bool CallMethod(ooscript::Context context, id object, const std::string &oo_jsCl
 	}
 	else
 #endif
-	if (const OOJSCallEntityMethodRow *row = entityTable ? EntityMethodNamed(selectorString) : nullptr; (!entityTable || row != nullptr) && [object respondsToSelector:selector])
+	if (const OOJSCallEntityMethodRow *row = entityTable ? EntityMethodNamed(selectorString) : nullptr; (!entityTable || row != nullptr) && (entity != nullptr ? oo::EntityRespondsToName(entity, *selectorString) : [object respondsToSelector:selector]))
 	{
 		// Validate signature: the table's for an entity (bead oo-9ht.44), else the method's.
 		type = (row != nullptr) ? MethodTypeOfRow(*row) : GetMethodType(object, selector);
@@ -223,12 +227,35 @@ bool CallMethod(ooscript::Context context, id object, const std::string &oo_jsCl
 		else
 		{
 			IMP method = [object methodForSelector:selector];
+			// A by-name method with a numeric, vector or quaternion result is called on the entity's
+			// C++ part (bead oo-9ht.39.7.2), its result read as the method's was.
+			OOEntityByNameValue typed;
+			bool byName = false;
+			switch (type)
+			{
+				case kMethodTypeCharVoid:
+				case kMethodTypeUnsignedCharVoid:
+				case kMethodTypeShortVoid:
+				case kMethodTypeUnsignedShortVoid:
+				case kMethodTypeIntVoid:
+				case kMethodTypeUnsignedIntVoid:
+				case kMethodTypeLongVoid:
+				case kMethodTypeUnsignedLongVoid:
+				case kMethodTypeFloatVoid:
+				case kMethodTypeDoubleVoid:
+				case kMethodTypeVectorVoid:
+				case kMethodTypeQuaternionVoid:
+					byName = (entity != nullptr && oo::CallEntityByNameTyped(entity, *selectorString, typed));
+					break;
+				default:
+					break;
+			}
 			switch (type)
 			{
 				case kMethodTypeVoidObject:
 				case kMethodTypeObjectObject:
 					// Called by name with the joined string (ADR-0055 item 5); a void method gives null.
-					result = OOCallByName(object, selector, *paramString);
+					result = (entity != nullptr) ? oo::CallEntityByName(entity, *selectorString, *paramString) : OOCallByName(object, selector, *paramString);
 					break;
 					
 				case kMethodTypeColorVoid:
@@ -239,9 +266,10 @@ bool CallMethod(ooscript::Context context, id object, const std::string &oo_jsCl
 
 				case kMethodTypeObjectVoid:
 				case kMethodTypePListVoid:
-					if (type == kMethodTypePListVoid)  result = OOCallByName(object, selector);
+					if (type == kMethodTypePListVoid)  result = (entity != nullptr) ? oo::CallEntityByName(entity, *selectorString) : OOCallByName(object, selector);
 					// An object result (a ship, a colour) is its PList::Object node, as oo::PListFrom()
 					// made of it; OOCallByName ignores an object result (ADR-0055 Amendment 2).
+					else if (entity != nullptr && oo::CallEntityByNameTyped(entity, *selectorString, typed))  result = oo::PListObject(typed.object);
 					else  result = oo::PListObject(((id (*)(id, SEL))method)(object, selector));
 					if (selectorString.has_value() && oo::str::hasSuffix(*selectorString, "_bool"))
 					{
@@ -256,7 +284,8 @@ bool CallMethod(ooscript::Context context, id object, const std::string &oo_jsCl
 					break;
 					
 				case kMethodTypeVoidVoid:
-					OOCallByName(object, selector);
+					if (entity != nullptr)  oo::CallEntityByName(entity, *selectorString);
+					else  OOCallByName(object, selector);
 					break;
 					
 				case kMethodTypeCharVoid:
@@ -266,28 +295,28 @@ bool CallMethod(ooscript::Context context, id object, const std::string &oo_jsCl
 				case kMethodTypeIntVoid:
 				case kMethodTypeUnsignedIntVoid:
 				case kMethodTypeLongVoid:
-					result = oo::PList::signedInteger(OOCallIntegerMethod(object, selector, method, (OOShaderUniformType)type));
+					result = oo::PList::signedInteger(byName ? typed.integer : OOCallIntegerMethod(object, selector, method, (OOShaderUniformType)type));
 					break;
 					
 				case kMethodTypeUnsignedLongVoid:
-					result = oo::PList::unsignedInteger(OOCallIntegerMethod(object, selector, method, (OOShaderUniformType)type));
+					result = oo::PList::unsignedInteger(byName ? typed.integer : OOCallIntegerMethod(object, selector, method, (OOShaderUniformType)type));
 					break;
 					
 				case kMethodTypeFloatVoid:
 				case kMethodTypeDoubleVoid:
-					result = oo::PList(static_cast<double>(OOCallFloatMethod(object, selector, method, (OOShaderUniformType)type)));
+					result = oo::PList(static_cast<double>(byName ? typed.real : OOCallFloatMethod(object, selector, method, (OOShaderUniformType)type)));
 					break;
 					
 				case kMethodTypeVectorVoid:
 				{
-					Vector v = ((VectorReturnMsgSend)method)(object, selector);
+					Vector v = byName ? typed.vector : ((VectorReturnMsgSend)method)(object, selector);
 					*outResult = ooscript::objectValue(JSVectorWithVector(context, v));
 					break;
 				}
 					
 				case kMethodTypeQuaternionVoid:
 				{
-					Quaternion q = ((QuaternionReturnMsgSend)method)(object, selector);
+					Quaternion q = byName ? typed.quaternion : ((QuaternionReturnMsgSend)method)(object, selector);
 					*outResult = ooscript::objectValue(JSQuaternionWithQuaternion(context, q));
 					break;
 				}
@@ -320,13 +349,13 @@ bool CallMethod(ooscript::Context context, id object, const std::string &oo_jsCl
 
 bool OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::string &oo_jsClassName, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult)
 {
-	return CallMethod(context, object, oo_jsClassName, argc, argv, outResult, false);
+	return CallMethod(context, object, oo_jsClassName, argc, argv, outResult, false, nullptr);
 }
 
 
 bool OOJSCallEntityMethod(ooscript::Context context, cxx::Entity *entity, const std::string &oo_jsClassName, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult)
 {
-	return CallMethod(context, oo::ToObjC(entity), oo_jsClassName, argc, argv, outResult, true);
+	return CallMethod(context, oo::ToObjC(entity), oo_jsClassName, argc, argv, outResult, true, entity);
 }
 
 

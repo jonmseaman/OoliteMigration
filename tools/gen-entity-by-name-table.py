@@ -13,7 +13,10 @@ method, exactly the categories' names, each keeping its #if conditions, with
     classifies the method's type encoding;
   - the argument kind (none, const std::string &, const oo::PList &);
   - an adaptor taking cxx::Entity *: the category method's body, verbatim, with the entity for
-    _cxxEntity.get().
+    _cxxEntity.get();
+  - for a method with no argument, a typed adaptor that keeps its result by type (an integer, a
+    floating-point number, a vector, a quaternion, an object, a property list), which callObjC()
+    reads as it read the method's typed result (bead oo-9ht.39.7.2).
 
     python3 tools/gen-entity-by-name-table.py           # rewrite the header
     python3 tools/gen-entity-by-name-table.py --check   # exit 1 if the header is stale
@@ -220,7 +223,8 @@ Do not edit: rerun the script. Bead oo-9ht.39.7.1, ADR-0056 amendment oo-9ht.39.
 
 One row per category method, exactly the categories' names and #if conditions: the name sets
 -[Entity respondsToSelector:] reads (the applies-to flags), @encode() of the declared result, the
-argument kind, and the adaptor: the method's body, verbatim, with the entity for _cxxEntity.get().
+argument kind, the adaptor: the method's body, verbatim, with the entity for _cxxEntity.get(),
+and for a method with no argument the typed adaptor (its result by type; bead oo-9ht.39.7.2).
 Included by OOEntityCalledByName.mm only, after the parts (ShipPart() ...) the bodies read.
 
 */
@@ -262,13 +266,14 @@ def render():
     out.append("}\t// namespace")
     out.append("")
     out.append("")
-    out.append("// name, applies-to flags, @encode() of the result, argument kind, adaptor")
+    out.append("// name, applies-to flags, @encode() of the result, argument kind, adaptor, typed adaptor (no argument)")
     out.append("inline const OOEntityByNameRow kOOEntityByNameRows[] =")
     out.append("{")
     for index, (conds, category, ret, name, arg, argname, flags, body) in enumerate(data):
         switch(conds, out)
         kind = ARG_KINDS[arg] if arg is not None else "None"
-        out.append(f"\t{{ \"{name}\",\t{' | '.join(flags)},\t@encode({ret}),\tOOEntityByNameArgument::{kind},\t&OOEntityByNameAdapt{kind}<&ByName_{index}> }},")
+        typed = f"&OOEntityByNameTyped<&ByName_{index}>" if arg is None else "nullptr"
+        out.append(f"\t{{ \"{name}\",\t{' | '.join(flags)},\t@encode({ret}),\tOOEntityByNameArgument::{kind},\t&OOEntityByNameAdapt{kind}<&ByName_{index}>,\t{typed} }},")
     switch([], out)
     out.append("};")
     out.append("")
