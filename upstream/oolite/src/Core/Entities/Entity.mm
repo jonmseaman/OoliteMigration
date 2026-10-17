@@ -568,6 +568,12 @@ id Entity::owner()
 }
 
 
+Entity *Entity::ownerEntity()
+{
+	return _owner.get();
+}
+
+
 ::Entity *Entity::parentEntity()
 {
 	id owner = this->owner();

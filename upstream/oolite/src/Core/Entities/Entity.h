@@ -46,6 +46,7 @@ MA 02110-1301, USA.
 #include "oofnd/Ref.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 #include "OOJSPrivateObject.h"
+#import "EntityVirtualMembers.h"	// the virtual members (bead oo-9ht.39.8.21)
 
 @class Entity;
 class Universe;
@@ -100,34 +101,39 @@ public:
 	// weak reference (bead oo-9ht.39.5.2), so oo::WeakRef<cxx::Entity> reads null when it did.
 	using oo::RefCounted::dropWeakReferences;
 
+	// The virtual members, declared once in EntityVirtualMembers.h in this order (bead oo-9ht.39.8.21),
+	// so that a narrow test's stand-in for the class has the same vtable (tests/unit/core/EntityStandIn.h).
+	OO_ENTITY_VIRTUAL_MEMBERS(;, ;)
+	OO_ENTITY_DEBUG_VIRTUAL_MEMBERS(;, ;)
+
 	// The session in which the entity was created.
-	virtual NSUInteger sessionID();
+	// sessionID(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 
 	bool getIsShip();
-	virtual bool isDock();
+	// isDock(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 	bool getIsStation();
 	bool getIsSubEntity();
 	bool getIsPlayer();
-	virtual bool isPlanet();
-	virtual bool isSun();
+	// isPlanet(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
+	// isSun(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 	bool getIsSunlit();
 	bool isStellarObject();
-	virtual bool isSky();
+	// isSky(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 	bool getIsWormhole();
-	virtual bool isEffect();
-	virtual bool getIsVisualEffect();
-	virtual bool isWaypoint();
+	// isEffect(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
+	// getIsVisualEffect(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
+	// isWaypoint(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 
-	virtual bool validForAddToUniverse();
+	// validForAddToUniverse(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 	void addToLinkedLists();
 	void removeFromLinkedLists();
 
 	void updateLinkedLists();
 
-	virtual void wasAddedToUniverse();
-	virtual void wasRemovedFromUniverse();
+	// wasAddedToUniverse(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
+	// wasRemovedFromUniverse(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 
-	virtual void warnAboutHostiles();
+	// warnAboutHostiles(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 
 	CollisionRegion *getCollisionRegion();
 	void setCollisionRegion(CollisionRegion *region);
@@ -137,27 +143,28 @@ public:
 
 	bool throwingSparks();
 	void setThrowSparks(bool value);
-	virtual void throwSparks();
+	// throwSparks(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 
-	virtual void setOwner(Entity *ent);
+	// setOwner(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 	id owner();
+	Entity *ownerEntity();	// the owner's C++ entity, null once it has gone (what owner() answers the object of; bead oo-9ht.39.8.21)
 	// The objects (a ship's, or a visual effect's for its subentities: the Objective-C ShipEntity the
 	// declarations named was the type, not the answer; bead oo-9ht.144).
 	::Entity *parentEntity();		// owner if self is subentity of owner, otherwise nil.
 	::Entity *rootShipEntity();	// like parentEntity, but recursive.
 	id<OOWeakReferenceSupport> superShaderBindingTarget();
 
-	virtual void setPosition(HPVector posn);
+	// setPosition(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 	void setPositionX(OOHPScalar x, OOHPScalar y, OOHPScalar z);
 	HPVector getPosition();
 	Vector getCameraRelativePosition();
-	virtual GLfloat cameraRangeFront();
-	virtual GLfloat cameraRangeBack();
+	// cameraRangeFront(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
+	// cameraRangeBack(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 
 	// Exposed to uniform bindings.
 	Vector relativePosition();
 
-	virtual void updateCameraRelativePosition();
+	// updateCameraRelativePosition(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 	// gets a low-position relative vector
 	Vector vectorTo(Entity *entity);
 
@@ -166,31 +173,31 @@ public:
 
 	double zeroDistance();
 	double camZeroDistance();
-	virtual OOComparisonResult compareZeroDistance(Entity *otherEntity);
+	// compareZeroDistance(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 
 	BoundingBox getBoundingBox();
 
 	GLfloat getMass();
 
 	Quaternion getOrientation();
-	virtual void setOrientation(Quaternion quat);
-	virtual Quaternion normalOrientation();	// Historical wart: orientation.w is reversed for player; -normalOrientation corrects this.
-	virtual void setNormalOrientation(Quaternion quat);
-	virtual void orientationChanged();
+	// setOrientation(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
+	// normalOrientation(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
+	// setNormalOrientation(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
+	// orientationChanged(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 
 	void setVelocity(Vector vel);
-	virtual Vector getVelocity();
+	// getVelocity(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 	double speed();
 
 	GLfloat getDistanceTravelled();
 	void setDistanceTravelled(GLfloat value);
 
 
-	virtual void setStatus(OOEntityStatus stat);
+	// setStatus(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 	OOEntityStatus status();
 
 	void setScanClass(OOScanClass sClass);
-	virtual OOScanClass getScanClass();
+	// getScanClass(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 
 	void setEnergy(GLfloat amount);
 	GLfloat getEnergy();
@@ -198,40 +205,40 @@ public:
 	void setMaxEnergy(GLfloat amount);
 	GLfloat getMaxEnergy();
 
-	virtual void applyRoll(GLfloat roll, GLfloat climb);
-	virtual void applyRoll(GLfloat roll, GLfloat climb, GLfloat yaw);
-	virtual void moveForward(double amount);
+	// applyRoll(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
+	// applyRoll(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
+	// moveForward(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 
 	OOMatrix rotationMatrix();
-	virtual OOMatrix drawRotationMatrix();
+	// drawRotationMatrix(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 	OOMatrix transformationMatrix();
-	virtual OOMatrix drawTransformationMatrix();
+	// drawTransformationMatrix(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 
-	virtual bool canCollide();
-	virtual GLfloat collisionRadius();
-	virtual GLfloat frustumRadius();
+	// canCollide(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
+	// collisionRadius(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
+	// frustumRadius(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 	void setCollisionRadius(GLfloat amount);
 	std::vector<oo::ObjCRef<::Entity *>> *getCollidingEntities();	// the live list (ADR-0043 item 22)
 
-	virtual void update(OOTimeDelta delta_t);
+	// update(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 
 	void applyVelocity(OOTimeDelta delta_t);
-	virtual bool checkCloseCollisionWith(Entity *other);
+	// checkCloseCollisionWith(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 
-	virtual void takeEnergyDamage(double amount, Entity *ent, Entity *other, const std::string &weaponIdentifier);
+	// takeEnergyDamage(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 
 	void dumpState();		// General "describe situtation verbosely in log" command.
-	virtual void dumpSelfState();	// Subclasses should override this, not -dumpState, and call throught to super first.
+	// dumpSelfState(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 
-	virtual void subEntityReallyDied(::ShipEntity *sub);
+	// subEntityReallyDied(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 
 	NSUInteger getLastDrawCounter();
 	void setLastDrawCounter(NSUInteger drawCounter);
 
 	// Subclass repsonsibilities
-	virtual double findCollisionRadius();
-	virtual void drawImmediate(bool immediate, bool translucent);
-	virtual bool isVisible();
+	// findCollisionRadius(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
+	// drawImmediate(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
+	// isVisible(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 	bool isInSpace();
 	bool getIsImmuneToBreakPatternHide();
 
@@ -255,7 +262,7 @@ public:
 	unsigned systemProductivity();
 
 	// What "%@" prints between the braces of <Class 0x...>{...} (OODescription.h).
-	virtual std::optional<std::string> descriptionComponents() const;
+	// descriptionComponents(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 
 	/*	Entity (OOJavaScriptExtensions)'s class questions, which the engine asks by selector: the
 		root category forwards them here, so a C++ entity whose own façade is gone answers for its
@@ -265,9 +272,9 @@ public:
 		reaches them only for an Objective-C entity with no override of its own, and a forwarding
 		adapter would send the selector back to the category, which would call the adapter again.
 	*/
-	virtual void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
-	virtual std::optional<std::string> jsClassName();
-	virtual bool isVisibleToScripts();
+	// getJSClass(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
+	// jsClassName(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
+	// isVisibleToScripts(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 
 	/*	The entity's JS glue (OOJSPrivateObject, bead oo-9ht.39.3; ADR-0056 amendment oo-9ht.39.3):
 		what the root facade's -oo_jsValueInContext:, -oo_clearJSSelf: and -cxx_oo_jsDescription
@@ -276,16 +283,16 @@ public:
 		the slot held the facade's weak reference. The bodies are EntityOOJavaScriptExtensions.mm's.
 		deleteJSSelf() is the facade's -deleteJSSelf (the engine's reset, and -dealloc).
 	*/
-	ooscript::Value jsValueInContext(ooscript::Context context) override;
-	void clearJSSelf(ooscript::Object selfVal) override;
-	std::optional<std::string> jsDescription() override;
+	// jsValueInContext(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
+	// clearJSSelf(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
+	// jsDescription(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 	void deleteJSSelf();
 
 #ifndef NDEBUG
 	std::optional<std::string> descriptionForObjDumpBasic();
-	virtual std::optional<std::string> descriptionForObjDump();
+	// descriptionForObjDump(): virtual, in OO_ENTITY_DEBUG_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 
-	virtual std::vector<oo::Ref<OOTexture>> allTextures();
+	// allTextures(): virtual, in OO_ENTITY_DEBUG_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 #endif
 
 	// the base object for ships/stations/anything actually
