@@ -61,9 +61,9 @@ class TestUniverse : public Universe
 public:
 	Entity	*_removed = {};
 
-	bool removeEntity(::Entity *entity) override
+	bool removeEntity(cxx::Entity *entity) override	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
 	{
-		_removed = entity;
+		_removed = oo::ToObjC(entity);
 		return YES;
 	}
 };
@@ -90,8 +90,8 @@ void SetUp()
 
 // --- How the test makes a ring (ported by the conversion), and nothing else ----------------------
 
-Entity *Ring(Entity *source)			{ return oo::NewEntityFacade(OORingEffectEntity::ringFromEntity(source)); }
-Entity *ShrinkingRing(Entity *source)	{ return oo::NewEntityFacade(OORingEffectEntity::shrinkingRingFromEntity(source)); }
+Entity *Ring(Entity *source)			{ return oo::NewEntityFacade(OORingEffectEntity::ringFromEntity(oo::ToCxx(source))); }	// the source's C++ entity since bead oo-9ht.39.26
+Entity *ShrinkingRing(Entity *source)	{ return oo::NewEntityFacade(OORingEffectEntity::shrinkingRingFromEntity(oo::ToCxx(source))); }
 
 // --------------------------------------------------------------------------------------------------
 

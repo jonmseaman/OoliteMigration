@@ -409,7 +409,7 @@ void ShipEntity::requestDockingCoordinates()
 	}
 	else
 	{
-		station = oo::ToStation((UNIVERSE != nullptr ? UNIVERSE->nearestShipMatchingPredicate(IsStationPredicate, nullptr, oo::ToObjC(this)) : id{}));
+		station = oo::ToStation((UNIVERSE != nullptr ? UNIVERSE->nearestShipMatchingPredicate(IsStationPredicate, nullptr, this) : nullptr));
 	}
 	
 	distanceToStation2 = HPdistance2((station != nullptr ? station->getPosition() : HPVector{}), getPosition());
@@ -736,7 +736,7 @@ bool ShipEntity::performHyperSpaceExitReplace(bool replace, OOSystemID systemID)
 	}
 	
 	// check if we're clear of nearby masses
-	::ShipEntity *blocker = oo::ToShip((UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(checkShipsInVicinityForWitchJumpExit()) : id{}));
+	::ShipEntity *blocker = oo::ToShip((UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(checkShipsInVicinityForWitchJumpExit()) : nullptr));
 	if (blocker)
 	{
 		setFoundTarget(blocker);
@@ -782,7 +782,7 @@ bool ShipEntity::performHyperSpaceExitReplace(bool replace, OOSystemID systemID)
 	// +alloc/-initWormholeTo:fromShip:/-autorelease: a new C++ wormhole and its autoreleased
 	// Objective-C object (bead oo-9ht.112).
 	oo::Ref<WormholeEntity> whRef = oo::makeRef<WormholeEntity>();
-	::Entity *wholeObject = oo::NewEntityFacade(whRef);
+	cxx::Entity *wholeObject = oo::MadeEntity(whRef);	// the wormhole, given its object (bead oo-9ht.39.26)
 	whRef->initWormholeTo(targetSystem, this);
 	WormholeEntity  *whole = whRef.get();
 	if (UNIVERSE != nullptr)  UNIVERSE->addEntity(wholeObject);
@@ -1258,7 +1258,7 @@ void ShipEntity::getWitchspaceEntryCoordinates()
 	// we don't use "checkScanner" because we must rely on finding a present station.
 	//
 	::StationEntity	*station =  nil;
-	station = oo::ToStation((UNIVERSE != nullptr ? UNIVERSE->nearestShipMatchingPredicate(IsStationPredicate, nullptr, oo::ToObjC(this)) : id{}));
+	station = oo::ToStation((UNIVERSE != nullptr ? UNIVERSE->nearestShipMatchingPredicate(IsStationPredicate, nullptr, this) : nullptr));
 	
 	if (station && HPdistance2((station != nullptr ? station->getPosition() : HPVector{}), position) < SCANNER_MAX_RANGE2) // there is a station in range.
 	{
@@ -1537,9 +1537,9 @@ void ShipEntity::checkAegis()
 			return;
 		case AEGIS_CLOSE_TO_ANY_PLANET:
 		{
-			::Entity<OOStellarBody> *nearest = (::Entity<OOStellarBody> *)oo::ToObjC(findNearestStellarBody());
+			cxx::Entity *nearest = findNearestStellarBody();	// the C++ entity (bead oo-al52f)
 			
-			if([nearest isSun])
+			if(nearest != nullptr && nearest->isSun())
 			{
 				if (shipAI != nullptr)  shipAI->message("CLOSE_TO_SUN");
 			}
@@ -2721,10 +2721,10 @@ void ShipEntity::ai_debugMessage(const std::string &message)	// called by name (
 // racing code TODO
 void ShipEntity::targetFirstBeaconWithCode(const std::string &code)	// called by name (ADR-0055 item 5)
 {
-	const std::vector<oo::ObjCRef<::Entity <OOBeaconEntity> *>> all_beacons = (UNIVERSE != nullptr ? UNIVERSE->listBeaconsWithCode(code) : std::vector<oo::ObjCRef<::Entity <OOBeaconEntity> *>>());
+	const std::vector<oo::EntityHold> all_beacons = (UNIVERSE != nullptr ? UNIVERSE->listBeaconsWithCode(code) : std::vector<oo::EntityHold>());	// held C++ entities (bead oo-9ht.39.26)
 	if (!all_beacons.empty())
 	{
-		addTarget(oo::ToCxx(all_beacons[0].get()));
+		addTarget(all_beacons[0].get());
 		if (shipAI != nullptr)  shipAI->message("TARGET_FOUND");
 	}
 	else
@@ -2734,7 +2734,7 @@ void ShipEntity::targetFirstBeaconWithCode(const std::string &code)	// called by
 
 void ShipEntity::targetNextBeaconWithCode(const std::string &code)	// called by name (ADR-0055 item 5)
 {
-	const std::vector<oo::ObjCRef<::Entity <OOBeaconEntity> *>> all_beacons = (UNIVERSE != nullptr ? UNIVERSE->listBeaconsWithCode(code) : std::vector<oo::ObjCRef<::Entity <OOBeaconEntity> *>>());
+	const std::vector<oo::EntityHold> all_beacons = (UNIVERSE != nullptr ? UNIVERSE->listBeaconsWithCode(code) : std::vector<oo::EntityHold>());	// held C++ entities (bead oo-9ht.39.26)
 	::ShipEntity		*current_beacon = oo::ToShip(primaryTarget());
 	
 	if ((!current_beacon)||(!(current_beacon != nullptr ? current_beacon->isBeacon() : false)))
@@ -2746,7 +2746,7 @@ void ShipEntity::targetNextBeaconWithCode(const std::string &code)	// called by 
 	
 	// find the current beacon in the list..
 	// -indexOfObject: (identity for entities)
-	const auto found = std::find_if(all_beacons.begin(), all_beacons.end(), [current_beacon](const oo::ObjCRef<::Entity *> &beacon) { return beacon.get() == oo::ToObjC(current_beacon); });
+	const auto found = std::find_if(all_beacons.begin(), all_beacons.end(), [current_beacon](const oo::EntityHold &beacon) { return beacon.get() == current_beacon; });
 	NSUInteger i = found != all_beacons.end() ? (NSUInteger)(found - all_beacons.begin()) : NSNotFound;
 	
 	if (i == NSNotFound)
@@ -2760,7 +2760,7 @@ void ShipEntity::targetNextBeaconWithCode(const std::string &code)	// called by 
 	if (i < all_beacons.size())
 	{
 		// locate current target in list
-		addTarget(oo::ToCxx(all_beacons[i].get()));
+		addTarget(all_beacons[i].get());
 		if (shipAI != nullptr)  shipAI->message("TARGET_FOUND");
 	}
 	else

@@ -8419,3 +8419,71 @@ facade's identity, three facade-versus-C++ comparisons, `_cxxController`), the r
 calls the same members with every expected value kept; the stand-ins are as item 4.
 
 **Consequences.** No Objective-C game controller or view is compiled.
+
+## Amendment (bead oo-9ht.39.26): the universe owns its entities through oo::EntityHold and answers C++ entities (step 5c)
+
+oo-9ht.39 step 5c, batch AM (track A), Migration Completion session, 2026-10-18, one branch and one commit.
+Status: Proposed (recommended defaults, CLAUDE.md rule 10). Exemplar: `src/Core/Entities/OOEntityHold.h`,
+`Universe::addEntity()`/`doRemoveEntity()`.
+
+**Context.** The universe's owning lists kept the entities' Objective-C objects (amendment oo-9ht.39.4 item 2),
+its API took and answered objects, and its +1 creators were released through `[oo::ToObjC(x) release]`. The
+object owns its C++ part and is what the JS wrappers, the weak references and `oo::ToObjC()`'s peer map hang on,
+so an owning list must keep the OBJECT alive exactly as long as before, not just the part.
+
+**Decision (recommended defaults).**
+
+1. **`oo::EntityHold`** (`OOEntityHold.h`, imported by Entity+ObjCBridge.h and UniverseVirtualMembers.h): an
+   owning reference that retains the entity's object (`oo::ObjCRef` of `oo::ToObjC(entity)`, what an
+   `oo::ObjCRef<::Entity *>` of it retained) and answers the C++ entity; null for null and for an Objective-C
+   entity whose object has gone. Lifetime order is unchanged by construction: holding is the same retain of the
+   same object. At 5k (oo-9ht.39.28) it becomes `oo::Ref<cxx::Entity>` there, in one place.
+2. **The owning lists hold it**: `entities`, `allPlanets`, `allStations`, `activeWormholes`,
+   `entitiesDeadThisUpdate`, `waypoints`, `cargoPods`; `AddIfAbsent()`/`AutoreleaseAll()` gain hold overloads
+   (the autoreleased list hands each object to the pool: retained, autoreleased, the hold's reference released).
+3. **The API takes and answers C++ entities**: `addEntity()`/`removeEntity()`/`doRemoveEntity()`/
+   `ensureEntityReallyRemoved()` take `cxx::Entity *`; `entityForUniversalID()`, `firstEntityTargetedByPlayer*()`,
+   `findOneEntityMatchingPredicate()`, `nearest*MatchingPredicate()` (still `[[x retain] autorelease]`),
+   `addVisualEffectAt()`, `newVisualEffectWithName()` (its object still +1), `firstBeacon()`/`lastBeacon()` answer
+   it; the list answers and snapshots (`planets()`, `stations()`, `wormholes()`, `currentWaypoints()`,
+   `entitiesWithinRange()`, `find*MatchingPredicate()`, `addShipsAt()`, `addShipsToRoute()`, `getContainersOf*()`,
+   `listBeaconsWithCode()`, `entityList()`) are `oo::EntityHold`s, so the blast-damage and search loops that kill
+   entities while iterating still keep the objects. The count/find/nearest reference entity is the C++ entity.
+4. **The +1 references kept by hand** go through `oo::RetainEntity()`/`ReleaseEntity()`/`AutoreleaseEntity()`
+   (the object's `-retain`/`-release`/`-autorelease`, the same messages; nothing for null) and creators hand a new
+   C++ entity over with `oo::MadeEntity()` (`oo::NewEntityFacade()`, autoreleased, as before; answers the entity).
+   The universe's retained snapshot arrays are `std::vector<cxx::Entity *>` retained/released with them.
+5. **Sends become the members the facade forwarded to** (amendment oo-9ht.39.16 item 2): virtual where the
+   Objective-C adapter overrides them (`validForAddToUniverse`, `wasAddedToUniverse`, `canCollide`, `update`,
+   `isEffect`, `getIsVisualEffect`, `isWaypoint`, `cameraRange*`, `drawImmediate`, `descriptionForObjDump`, ...),
+   `oo::EntityIsShip/IsPlayer/IsPlanet/Status` for those questions; `oo::EntityIsBeacon()` and the beacon-list
+   helpers `oo::PrevBeacon/NextBeacon/SetPrevBeacon/SetNextBeacon/BeaconCode/SetBeaconCode/CompareBeaconCodes`
+   (Entity+ObjCBridge) send the protocol's messages to the entity's object and answer C++ entities, so the
+   universe's beacon list walks C++ entities with the same links. `OOStellarBodyRadius()` gains a C++ overload
+   (sun, planet, else the object's `-radius`); `PlayerEntity::setCompassTargetEntity()`, `oo::NewVisualEffect()`,
+   `ShipEntity::setCargo()/addCargo()` hold overloads (the cargo list still keeps the pods' objects, 5k) and
+   `oo::EntityNodesFrom()` of holds are additions. The ring and explosion-cloud factories take the source's C++
+   entity (position, orientation, velocity, collision radius: the members `-position` etc. forwarded to; a null
+   source still answers zero / no ring).
+6. **The "universe.unremovedEntity" log line** moves into the root facade's `-dealloc`, before it calls
+   `ensureEntityReallyRemoved()` with its C++ part: the same text, the same order, still describing the object
+   (the peer map answers nil for an object being deallocated, so the universe could not describe it).
+
+**Defaults (rule 10).** Behaviour-identical (goldens, core tests). Flagged, not observable in the game: (a) a hold
+takes the object through `oo::ToObjC()`, which autoreleases it; where a caller handed the universe an object it
+already had (the sky and dust, waypoints, the find results), the object is now also in the current autorelease
+pool, and the snapshot arrays that sent `-release` straight to their objects now release through
+`oo::ReleaseEntity()` - either can delay a deallocation to the pool's drain, never bring one earlier, and every
+such entity is also held by the universe's list; (b) `entityForUniversalID()` answers a gone Objective-C stand-in's
+C++ part where it answered nil, and `doRemoveEntity()`'s debug "not in the sorted list" lines describe an entity
+being deallocated as nil (both only reachable with tests' stand-ins or on an internal error).
+
+**Tests (standing approval oo-9n5p9, lines on main first).** Sixteen stand-ins and call sites re-based to the new
+signatures (`test_Universe`, `test_OOJSSystem`, `test_OOJSShip`, `test_OODebugMonitor`, `test_OOVisualEffectEntity`,
+`test_OORingEffectEntity`, `test_OOParticleSystem` and nine effect tests' `removeEntity()` overrides): they hand
+`oo::ToCxx()` of the same objects and record or compare `oo::ToObjC()` of the results. No case or expected value
+changes.
+
+**Left.** The ship's, player's and HUD's own object lists and snapshots (cargo, escorts, sub-entities, the
+scanner/mass-lock loops, `getScannedWormholes()`), which convert at the universe's edge with `oo::ToObjC()` until
+5k; ShipEntity/AI/ScriptMethods residue oo-al52f.

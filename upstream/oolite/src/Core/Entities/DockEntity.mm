@@ -384,7 +384,7 @@ NSUInteger DockEntity::pruneAndCountShipsOnApproach()
 	// Enumerate over a snapshot of the keys because we mutate the map.
 	for (unsigned short idObj : ShipIDsIn(shipsOnApproach))
 	{
-		::ShipEntity *ship = oo::ToShip((UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(idObj) : id{}));
+		::ShipEntity *ship = oo::ToShip((UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(idObj) : nullptr));
 		/* Remove ships from the approach queue if they are dead, or
 		 * are more than 25.6km from the dock.
 		 */
@@ -419,7 +419,7 @@ void DockEntity::abortAllDockings()
 	
 	for (unsigned short idObj : ShipIDsIn(shipsOnApproach))
 	{
-		::ShipEntity *ship = oo::ToShip((UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(idObj) : id{}));
+		::ShipEntity *ship = oo::ToShip((UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(idObj) : nullptr));
 		if ((ship != nullptr ? ship->getIsShip() : false))
 		{
 			if (ship != nullptr)  ship->sendAIMessage("DOCKING_ABORTED");
@@ -462,7 +462,7 @@ void DockEntity::autoDockShipsInQueue(std::map<unsigned short, std::vector<oo::P
 {	
 	for (unsigned short idObj : ShipIDsIn(queue))
 	{
-		::ShipEntity *ship = oo::ToShip((UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(idObj) : id{}));
+		::ShipEntity *ship = oo::ToShip((UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(idObj) : nullptr));
 		if ((ship != nullptr ? ship->getIsShip() : false))
 		{
 			pullInShipIfPermitted(ship);
@@ -578,7 +578,7 @@ oo::PList DockEntity::dockingInstructionsForShip(::ShipEntity *ship)
 		// some error has occurred - log it, and send the try-again message
 		oo::PList::Dict queue;
 		for (const auto &[queuedID, queuedStack] : shipsOnApproach)  queue[oo::str::format("%u", (unsigned)queuedID)] = oo::PList(oo::PList::Array(queuedStack));
-		OO_LOG_ERR("station.issueDockingInstructions.failed", "couldn't addShipToShipsOnApproach:{} in {}, retrying later -- shipsOnApproach:\n{}", oo::DescriptionOf(oo::ToObjC(ship)), oo::DescriptionOf(oo::ToObjC(self)), DescriptionForLog(oo::PList(std::move(queue))));
+		OO_LOG_ERR("station.issueDockingInstructions.failed", "couldn't addShipToShipsOnApproach:{} in {}, retrying later -- shipsOnApproach:\n{}", oo::EntityDescription(ship), oo::EntityDescription(self), DescriptionForLog(oo::PList(std::move(queue))));
 		
 		return DockingInstructions(station, (ship != nullptr ? ship->getPosition() : HPVector{}), 200, 100, "TRY_AGAIN_LATER", NO, -1);
 	}
@@ -1153,7 +1153,7 @@ void DockEntity::launchShip(::ShipEntity *ship)
 	if (ship != nullptr)  ship->setRoll((station != nullptr ? station->getFlightRoll() : 0.0f));
 	if (ship != nullptr)  ship->setPitch(0.0);
 	if (ship != nullptr)  ship->setYaw(0.0);
-	if (UNIVERSE != nullptr)  UNIVERSE->addEntity(oo::ToObjC(ship));
+	if (UNIVERSE != nullptr)  UNIVERSE->addEntity(ship);
 	if (ship != nullptr)  ship->setStatus(STATUS_LAUNCHING);
 	if (ship != nullptr)  ship->setDesiredSpeed(launchSpeed); // must be set after initialising the AI to correct any speed set by AI
 	last_launch_time = (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0);
@@ -1231,16 +1231,16 @@ bool DockEntity::dockingCorridorIsEmpty()
 	BOOL			isEmpty = YES;
 	int				ent_count =		UNIVERSE->n_entities;
 	cxx::Entity			**uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
-	std::vector<::Entity *>	my_entities(ent_count);
+	std::vector<cxx::Entity *>	my_entities(ent_count);	// each one's object retained (bead oo-9ht.39.26)
 	int i;
 	int ship_count = 0;
 	
 	for (i = 0; i < ent_count; i++)
 	{
 		//on red alert, launch even if the player is trying block the corridor. Ignore cargopods or other small debris.
-		if ([oo::ToObjC(uni_entities[i]) isShip] && ((station == nullptr || station->getAlertLevel() < STATION_ALERT_LEVEL_RED) || ![oo::ToObjC(uni_entities[i]) isPlayer]) && [oo::ToObjC(uni_entities[i]) mass] > 1000)
+		if (oo::EntityIsShip(uni_entities[i]) && ((station == nullptr || station->getAlertLevel() < STATION_ALERT_LEVEL_RED) || !oo::EntityIsPlayer(uni_entities[i])) && uni_entities[i]->getMass() > 1000)
 		{
-			my_entities[ship_count++] = [oo::ToObjC(uni_entities[i]) retain];		//	retained
+			my_entities[ship_count++] = oo::RetainEntity(uni_entities[i]);		//	retained
 		}
 	}
 
@@ -1278,7 +1278,7 @@ bool DockEntity::dockingCorridorIsEmpty()
 	
 	for (i = 0; i < ship_count; i++)
 	{
-		[my_entities[i] release];		//released
+		oo::ReleaseEntity(my_entities[i]);		//released
 	}
 
 	return isEmpty;
@@ -1292,7 +1292,7 @@ void DockEntity::clearDockingCorridor()
 	BOOL			isClear = YES;
 	int				ent_count =			UNIVERSE->n_entities;
 	cxx::Entity			**uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
-	std::vector<::Entity *>	my_entities(ent_count);
+	std::vector<cxx::Entity *>	my_entities(ent_count);	// each one's object retained (bead oo-9ht.39.26)
 	int i;
 	int ship_count = 0;
 	
@@ -1300,7 +1300,7 @@ void DockEntity::clearDockingCorridor()
 	{
 		if (uni_entities[i]->isShip)
 		{
-			my_entities[ship_count++] = [oo::ToObjC(uni_entities[i]) retain];		//	retained
+			my_entities[ship_count++] = oo::RetainEntity(uni_entities[i]);		//	retained
 		}
 	}
 
@@ -1353,7 +1353,7 @@ void DockEntity::clearDockingCorridor()
 	
 	for (i = 0; i < ship_count; i++)
 	{
-		[my_entities[i] release];		//released
+		oo::ReleaseEntity(my_entities[i]);		//released
 	}
 
 }

@@ -242,6 +242,10 @@ namespace oo {
 // body failed, as [[OOVisualEffectEntity alloc] cxx_initWithKey:definition:] answered. +1, as +alloc gave.
 ::Entity *NewVisualEffectObject(const std::string &key, const oo::PList &dict) OO_RETURNS_RETAINED;
 
+// The same effect, answered as its C++ entity (bead oo-9ht.39.26): its object is still +1; null where
+// NewVisualEffectObject() answered nil.
+inline cxx::Entity *NewVisualEffect(const std::string &key, const oo::PList &dict)  { return ToCxx(NewVisualEffectObject(key, dict)); }
+
 // The effect an object holds: nullptr for nil or another entity (what -isKindOfClass:
 // [OOVisualEffectEntity class] and the cast after it found).
 inline OOVisualEffectEntity *ToEffect(::Entity *entity)

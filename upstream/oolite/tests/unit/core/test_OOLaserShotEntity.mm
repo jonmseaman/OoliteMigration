@@ -67,7 +67,7 @@ static Entity *sRemoved = nil;
 class TestUniverse : public Universe
 {
 public:
-	bool removeEntity(::Entity *entity) override	{ sRemoved = entity; return YES; }
+	bool removeEntity(cxx::Entity *entity) override	{ sRemoved = oo::ToObjC(entity); return YES; }	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
 };
 
 

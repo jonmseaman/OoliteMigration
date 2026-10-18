@@ -98,10 +98,10 @@ namespace {
 static BOOL GetRelativeToAndRange(ooscript::Context context, const std::string &methodName, unsigned *ioArgc, ooscript::Value **ioArgv, cxx::Entity **outRelativeTo, double *outRange);
 } // namespace
 namespace {
-static std::vector<oo::ObjCRef<::Entity *>> FindJSVisibleEntities(EntityFilterPredicate predicate, void *parameter, cxx::Entity *relativeTo, double range);
+static std::vector<oo::EntityHold> FindJSVisibleEntities(EntityFilterPredicate predicate, void *parameter, cxx::Entity *relativeTo, double range);
 } // namespace
 namespace {
-static std::vector<oo::ObjCRef<::Entity *>> FindShips(EntityFilterPredicate predicate, void *parameter, cxx::Entity *relativeTo, double range);
+static std::vector<oo::EntityHold> FindShips(EntityFilterPredicate predicate, void *parameter, cxx::Entity *relativeTo, double range);
 } // namespace
 namespace {
 static OOComparisonResult CompareEntitiesByDistance(cxx::Entity *a, cxx::Entity *b, cxx::Entity *relativeTo);
@@ -460,9 +460,9 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			
 		case kSystem_planets:
 		{
-			std::vector<oo::ObjCRef<::Entity *>> visible;	// the planets' Objective-C objects
-			for (const auto &r : (UNIVERSE != nullptr ? UNIVERSE->planets() : std::vector<oo::ObjCRef<::Entity *>>())) {
-				if (!OOJSEntityIsVisibleToScripts(oo::ToCxx(r.get())))  continue;	// the C++ planet's answer (bead oo-9ht.39.5.1)
+			std::vector<oo::EntityHold> visible;	// the planets (their objects held, bead oo-9ht.39.26)
+			for (const auto &r : (UNIVERSE != nullptr ? UNIVERSE->planets() : std::vector<oo::EntityHold>())) {
+				if (!OOJSEntityIsVisibleToScripts(r.get()))  continue;	// the C++ planet's answer (bead oo-9ht.39.5.1)
 				visible.push_back(r);
 			}
 			result = oo::EntityNodesFrom(visible);
@@ -471,7 +471,7 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 		}
 			
 		case kSystem_stations:
-			result = oo::EntityNodesFrom((UNIVERSE != nullptr ? UNIVERSE->stations() : std::vector<oo::ObjCRef<::Entity *>>()));
+			result = oo::EntityNodesFrom((UNIVERSE != nullptr ? UNIVERSE->stations() : std::vector<oo::EntityHold>()));
 			handled = true;
 			break;
 
@@ -479,9 +479,9 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 		{
 			// An immutable dictionary of the waypoints by key, as -currentWaypoints built it.
 			oo::PList::Dict waypoints;
-			for (const auto &[key, waypoint] : (UNIVERSE != nullptr ? UNIVERSE->currentWaypoints() : std::map<std::string, oo::ObjCRef<::Entity *>, std::less<>>()))
+			for (const auto &[key, waypoint] : (UNIVERSE != nullptr ? UNIVERSE->currentWaypoints() : std::map<std::string, oo::EntityHold, std::less<>>()))
 			{
-				if (waypoint.get() != nil)  waypoints[key] = oo::EntityObjectNode(waypoint.get());
+				if (waypoint.get() != nullptr)  waypoints[key] = oo::EntityObjectNode(waypoint.get());
 			}
 			result = oo::PList(std::move(waypoints));
 			handled = true;
@@ -489,20 +489,20 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 		}
 
 		case kSystem_wormholes:
-			result = oo::EntityNodesFrom((UNIVERSE != nullptr ? UNIVERSE->wormholes() : std::vector<oo::ObjCRef<::Entity *>>()));
+			result = oo::EntityNodesFrom((UNIVERSE != nullptr ? UNIVERSE->wormholes() : std::vector<oo::EntityHold>()));
 			handled = true;
 			break;
 
 		case kSystem_allShips:
 			OOJS_BEGIN_FULL_NATIVE(context)
-			result = oo::EntityNodesFrom((UNIVERSE != nullptr ? UNIVERSE->findShipsMatchingPredicate(JSEntityIsJavaScriptSearchablePredicate, NULL, -1, nullptr) : std::vector<oo::ObjCRef<::Entity *>>()));
+			result = oo::EntityNodesFrom((UNIVERSE != nullptr ? UNIVERSE->findShipsMatchingPredicate(JSEntityIsJavaScriptSearchablePredicate, NULL, -1, nullptr) : std::vector<oo::EntityHold>()));
 			OOJS_END_FULL_NATIVE
 			handled = true;
 			break;
 
 		case kSystem_allDemoShips:
 			OOJS_BEGIN_FULL_NATIVE(context)
-			result = oo::EntityNodesFrom((UNIVERSE != nullptr ? UNIVERSE->findShipsMatchingPredicate(JSEntityIsDemoShipPredicate, NULL, -1, nullptr) : std::vector<oo::ObjCRef<::Entity *>>()));
+			result = oo::EntityNodesFrom((UNIVERSE != nullptr ? UNIVERSE->findShipsMatchingPredicate(JSEntityIsDemoShipPredicate, NULL, -1, nullptr) : std::vector<oo::EntityHold>()));
 			OOJS_END_FULL_NATIVE
 			handled = true;
 			break;
@@ -510,7 +510,7 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 
 		case kSystem_allVisualEffects:
 			OOJS_BEGIN_FULL_NATIVE(context)
-			result = oo::EntityNodesFrom((UNIVERSE != nullptr ? UNIVERSE->findVisualEffectsMatchingPredicate(JSEntityIsJavaScriptSearchablePredicate, NULL, -1, nullptr) : std::vector<oo::ObjCRef<::Entity *>>()));
+			result = oo::EntityNodesFrom((UNIVERSE != nullptr ? UNIVERSE->findVisualEffectsMatchingPredicate(JSEntityIsJavaScriptSearchablePredicate, NULL, -1, nullptr) : std::vector<oo::EntityHold>()));
 			OOJS_END_FULL_NATIVE
 			handled = true;
 			break;
@@ -976,7 +976,7 @@ static bool SystemShipsWithPrimaryRole(ooscript::Context context, ooscript::Call
 	std::optional<std::string>			role;
 	cxx::Entity			*relativeTo = nullptr;	// the C++ entity (bead oo-9ht.39.8.23)
 	double				range = -1;
-	std::vector<oo::ObjCRef<::Entity *>>	result;
+	std::vector<oo::EntityHold>	result;
 	
 	if (oojsArgs.count() > 0)  role = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(!role.has_value()))
@@ -1012,7 +1012,7 @@ static bool SystemShipsWithRole(ooscript::Context context, ooscript::CallArgs &o
 	std::optional<std::string>			role;
 	cxx::Entity			*relativeTo = nullptr;	// the C++ entity (bead oo-9ht.39.8.23)
 	double				range = -1;
-	std::vector<oo::ObjCRef<::Entity *>>	result;
+	std::vector<oo::EntityHold>	result;
 	
 	if (oojsArgs.count() > 0)  role = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(!role.has_value()))
@@ -1083,7 +1083,7 @@ static bool SystemEntitiesWithScanClass(ooscript::Context context, ooscript::Cal
 	OOScanClass			scanClass = CLASS_NOT_SET;
 	cxx::Entity			*relativeTo = nullptr;	// the C++ entity (bead oo-9ht.39.8.23)
 	double				range = -1;
-	std::vector<oo::ObjCRef<::Entity *>>	result;
+	std::vector<oo::EntityHold>	result;
 	
 	if (oojsArgs.count() > 0)  scanClass = OOScanClassFromJSValue(context, OOJS_ARGV[0]);
 	if (scanClass == CLASS_NOT_SET)
@@ -1120,7 +1120,7 @@ static bool SystemFilteredEntities(ooscript::Context context, ooscript::CallArgs
 	ooscript::Value				predicate;
 	cxx::Entity			*relativeTo = nullptr;	// the C++ entity (bead oo-9ht.39.8.23)
 	double				range = -1;
-	std::vector<oo::ObjCRef<::Entity *>>	result;
+	std::vector<oo::EntityHold>	result;
 	
 	// Get this and predicate arguments
 	if (oojsArgs.count() < 2 || !OOJSValueIsFunction(context, OOJS_ARGV[1]) || !ooscript::valueToObject(context, (OOJS_ARGV[0]), OOJSFOBJP(&jsThis)))
@@ -1562,7 +1562,7 @@ static bool SystemAddVisualEffect(ooscript::Context context, ooscript::CallArgs 
 		return false;
 	}
 
-	Entity *result = nil;	// the effect's object (bead oo-9ht.165)
+	cxx::Entity *result = nullptr;	// the C++ effect (beads oo-9ht.165, oo-9ht.39.26)
 
 	OOJS_BEGIN_FULL_NATIVE(context)
 
@@ -1570,7 +1570,7 @@ static bool SystemAddVisualEffect(ooscript::Context context, ooscript::CallArgs 
 
 	OOJS_END_FULL_NATIVE
 	
-	OOJS_RETURN_OBJECT(result);
+	OOJS_RETURN(OOJSEntityJSValue(result, context));	// what OOJSValueFromNativeObject() gave for its object (amendment oo-9ht.39.16)
 
 	OOJS_NATIVE_EXIT
 }
@@ -1767,7 +1767,7 @@ static bool SystemAddShipsOrGroup(Context cx, CallArgs &oojsArgs, bool isGroup)
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
 	// Note: the use of witchspace-in effects (as in legacy_addShips) depends on proximity to the witchpoint.
-	const std::vector<oo::ObjCRef<::Entity *>> added = (UNIVERSE != nullptr ? UNIVERSE->addShipsAt(where, *role, count, radius, isGroup) : std::vector<oo::ObjCRef<::Entity *>>());
+	const std::vector<oo::EntityHold> added = (UNIVERSE != nullptr ? UNIVERSE->addShipsAt(where, *role, count, radius, isGroup) : std::vector<oo::EntityHold>());
 	if (!added.empty())  result = oo::EntityNodesFrom(added);	// null where no ship was added, as before
 	
 	if (isGroup)
@@ -1838,7 +1838,7 @@ static bool SystemAddShipsOrGroupToRoute(Context cx, CallArgs &oojsArgs, bool is
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
 	// Note: the use of witchspace-in effects (as in legacy_addShips) depends on proximity to the witchpoint.	
-	const std::vector<oo::ObjCRef<::Entity *>> added = (UNIVERSE != nullptr ? UNIVERSE->addShipsToRoute(*route, *role, count, where, isGroup) : std::vector<oo::ObjCRef<::Entity *>>());
+	const std::vector<oo::EntityHold> added = (UNIVERSE != nullptr ? UNIVERSE->addShipsToRoute(*route, *role, count, where, isGroup) : std::vector<oo::EntityHold>());
 	if (!added.empty())  result = oo::EntityNodesFrom(added);	// null where no ship was added, as before
 	
 	if (isGroup)
@@ -1897,36 +1897,36 @@ static BOOL GetRelativeToAndRange(ooscript::Context context, const std::string &
 
 
 namespace {
-static std::vector<oo::ObjCRef<::Entity *>> FindJSVisibleEntities(EntityFilterPredicate predicate, void *parameter, cxx::Entity *relativeTo, double range)
+static std::vector<oo::EntityHold> FindJSVisibleEntities(EntityFilterPredicate predicate, void *parameter, cxx::Entity *relativeTo, double range)
 {
 	OOJS_PROFILE_ENTER
 	
-	std::vector<oo::ObjCRef<::Entity *>>	result;
+	std::vector<oo::EntityHold>	result;
 	BinaryOperationPredicateParameter	param =
 	{
 		JSEntityIsJavaScriptSearchablePredicate, NULL,
 		predicate, parameter
 	};
 	
-	result = (UNIVERSE != nullptr ? UNIVERSE->findEntitiesMatchingPredicate(ANDPredicate, &param, range, relativeTo) : std::vector<oo::ObjCRef<::Entity *>>());
+	result = (UNIVERSE != nullptr ? UNIVERSE->findEntitiesMatchingPredicate(ANDPredicate, &param, range, relativeTo) : std::vector<oo::EntityHold>());
 	
 	if (relativeTo != nullptr && !relativeTo->getIsPlayer())
 	{
 		// -sortUsingFunction:context: with the same comparison (a stable sort: GNUstep's is timsort).
-		std::stable_sort(result.begin(), result.end(), [relativeTo](const oo::ObjCRef<::Entity *> &a, const oo::ObjCRef<::Entity *> &b)
+		std::stable_sort(result.begin(), result.end(), [relativeTo](const oo::EntityHold &a, const oo::EntityHold &b)
 		{
-			return CompareEntitiesByDistance(oo::ToCxx(a.get()), oo::ToCxx(b.get()), relativeTo) == OOOrderedAscending;
+			return CompareEntitiesByDistance(a.get(), b.get(), relativeTo) == OOOrderedAscending;
 		});
 	}
 	return result;	// empty for no matches, as the empty array was
 	
-	OOJS_PROFILE_EXIT_VAL(std::vector<oo::ObjCRef<::Entity *>>())
+	OOJS_PROFILE_EXIT_VAL(std::vector<oo::EntityHold>())
 }
 } // namespace
 
 
 namespace {
-static std::vector<oo::ObjCRef<::Entity *>> FindShips(EntityFilterPredicate predicate, void *parameter, cxx::Entity *relativeTo, double range)
+static std::vector<oo::EntityHold> FindShips(EntityFilterPredicate predicate, void *parameter, cxx::Entity *relativeTo, double range)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -1937,7 +1937,7 @@ static std::vector<oo::ObjCRef<::Entity *>> FindShips(EntityFilterPredicate pred
 	};
 	return FindJSVisibleEntities(ANDPredicate, &param, relativeTo, range);
 	
-	OOJS_PROFILE_EXIT_VAL(std::vector<oo::ObjCRef<::Entity *>>())
+	OOJS_PROFILE_EXIT_VAL(std::vector<oo::EntityHold>())
 }
 } // namespace
 

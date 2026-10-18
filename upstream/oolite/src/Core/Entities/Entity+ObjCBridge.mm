@@ -135,6 +135,95 @@ std::string oo::EntityDescription(cxx::Entity *entity)
 }
 
 
+cxx::Entity *oo::RetainEntity(cxx::Entity *entity)
+{
+	[ToObjC(entity) retain];
+	return entity;
+}
+
+
+void oo::ReleaseEntity(cxx::Entity *entity)
+{
+	[ToObjC(entity) release];
+}
+
+
+cxx::Entity *oo::AutoreleaseEntity(cxx::Entity *entity)
+{
+	[ToObjC(entity) autorelease];
+	return entity;
+}
+
+
+cxx::Entity *oo::MadeEntity(const Ref<cxx::Entity> &entity)
+{
+	return ToCxx(NewEntityFacade(entity));
+}
+
+
+bool oo::EntityIsBeacon(cxx::Entity *entity)
+{
+	if (ObjCEntityLink *link = AsObjCEntity(entity))
+	{
+		id object = link->objcOwner();
+		return [object isBeacon];
+	}
+	if (ShipEntity *ship = ShipPart(entity))  return ship->isBeacon();
+	if (OOVisualEffectEntity *effect = EffectPart(entity))  return effect->isBeacon();
+	OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(entity);
+	return waypoint != nullptr ? waypoint->isBeacon() : NO;
+}
+
+
+cxx::Entity *oo::PrevBeacon(cxx::Entity *beacon)
+{
+	id object = ToObjC(beacon);
+	return ToCxx([object prevBeacon]);
+}
+
+
+cxx::Entity *oo::NextBeacon(cxx::Entity *beacon)
+{
+	id object = ToObjC(beacon);
+	return ToCxx([object nextBeacon]);
+}
+
+
+void oo::SetPrevBeacon(cxx::Entity *beacon, cxx::Entity *other)
+{
+	id object = ToObjC(beacon);
+	[object setPrevBeacon:(::Entity <OOBeaconEntity> *)ToObjC(other)];
+}
+
+
+void oo::SetNextBeacon(cxx::Entity *beacon, cxx::Entity *other)
+{
+	id object = ToObjC(beacon);
+	[object setNextBeacon:(::Entity <OOBeaconEntity> *)ToObjC(other)];
+}
+
+
+std::optional<std::string> oo::BeaconCode(cxx::Entity *beacon)
+{
+	id object = ToObjC(beacon);
+	return object != nil ? [object beaconCode] : std::nullopt;	// nil answered no code
+}
+
+
+void oo::SetBeaconCode(cxx::Entity *beacon, const std::optional<std::string> &code)
+{
+	id object = ToObjC(beacon);
+	[object setBeaconCode:code];
+}
+
+
+OOComparisonResult oo::CompareBeaconCodes(cxx::Entity *beacon, cxx::Entity *other)
+{
+	id object = ToObjC(beacon);
+	return [object compareBeaconCodeWith:(::Entity <OOBeaconEntity> *)ToObjC(other)];
+}
+
+
 std::string oo::EntityClassName(cxx::Entity *entity)
 {
 	if (ObjCEntityLink *link = AsObjCEntity(entity))  return OOClassName([link->objcOwner() class]);
@@ -228,7 +317,16 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 		ship->shipWillDealloc();
 	}
 
-	if (UNIVERSE != nullptr)  UNIVERSE->ensureEntityReallyRemoved(self);
+	if (UNIVERSE != nullptr)
+	{
+		// The universe takes the C++ entity (bead oo-9ht.39.26); its log line is here, where the
+		// object can still describe itself (oo::ToObjC() answers nil for an object being deallocated).
+		if (_cxxEntity->getUniversalID() != NO_TARGET)
+		{
+			OO_LOG("universe.unremovedEntity", "Entity {} dealloced without being removed from universe! (This is an internal programming error, please report it.)", oo::DescriptionOf(self));
+		}
+		UNIVERSE->ensureEntityReallyRemoved(_cxxEntity.get());
+	}
 	_cxxEntity->setCollisionRegion(nullptr);		// DESTROY(collisionRegion)
 	_cxxEntity->deleteJSSelf();	// what the deleted -deleteJSSelf forwarded to (bead oo-9ht.39.8.9)
 	[self setOwner:nil];

@@ -128,7 +128,7 @@ oo::PList StationEntity::launchIndependentShip(const std::string &role)	// calle
 
 	if (!fitsInDock(ship))
 	{
-		if (ship != nullptr)  [oo::ToObjC(ship) release];
+		if (ship != nullptr)  oo::ReleaseEntity(ship);
 		return oo::PList();
 	}
 	
@@ -177,7 +177,7 @@ oo::PList StationEntity::launchIndependentShip(const std::string &role)	// calle
 		}
 		
 		if (ship != nullptr)  ship->setPendingEscortCount(0);
-		if (ship != nullptr)  oo::ToShip([oo::ToObjC(ship) autorelease]);
+		if (ship != nullptr)  oo::ToShip(oo::AutoreleaseEntity(ship));
 	}
 	return oo::EntityObjectNode(ship);
 }
@@ -204,7 +204,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 	for (i = 0; (i < 4)&&(defenders_launched < max_police) ; i++)
 	{
 		::ShipEntity  *police_ship = nil;
-		if (!(UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(police_target) : id{}))
+		if ((UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(police_target) : nullptr) == nullptr)
 		{
 			noteLostTarget();
 			return oo::EntityNodesFrom(std::vector<oo::ObjCRef<::Entity *>>());
@@ -230,7 +230,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 			
 			if (police_ship != nullptr)  police_ship->setGroup(stationGroup());	// who's your Daddy
 			if (police_ship != nullptr)  police_ship->setPrimaryRole("police");
-			if (police_ship != nullptr)  police_ship->addTarget(oo::ToCxx(static_cast<::Entity *>(UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(police_target) : id{})));
+			if (police_ship != nullptr)  police_ship->addTarget((UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(police_target) : nullptr));
 			if ((police_ship != nullptr ? police_ship->getScanClass() : OOScanClass{}) == CLASS_NOT_SET)
 				if (police_ship != nullptr)  police_ship->setScanClass(CLASS_POLICE);
 			if (police_ship != nullptr)  police_ship->setBounty(0, kOOLegalStatusReasonSetup);
@@ -241,7 +241,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 			defenders_launched++;
 			result.push_back(oo::ObjCRef<::Entity *>(oo::ToObjC(police_ship)));
 		}
-		if (police_ship != nullptr)  oo::ToShip([oo::ToObjC(police_ship) autorelease]);
+		if (police_ship != nullptr)  oo::ToShip(oo::AutoreleaseEntity(police_ship));
 	}
 	abortAllDockings();
 	return oo::EntityNodesFrom(result);
@@ -279,7 +279,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 	if (defenders_launched >= max_defense_ships)   // shuttles are to rockhermits what police ships are to stations
 		return nil;
 	
-	if (!(UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(defense_target) : id{}))
+	if ((UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(defense_target) : nullptr) == nullptr)
 	{
 		noteLostTarget();
 		return nil;
@@ -306,7 +306,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 
 	if (!defense_ship || !fitsInDock(defense_ship))
 	{
-		if (defense_ship != nullptr)  [oo::ToObjC(defense_ship) release];
+		if (defense_ship != nullptr)  oo::ReleaseEntity(defense_ship);
 		return nil;
 	}
 	
@@ -338,7 +338,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 	}
 	if (defense_ship != nullptr)  defense_ship->setGroup(stationGroup());	// who's your Daddy
 	
-	if (defense_ship != nullptr)  defense_ship->addTarget(oo::ToCxx(static_cast<::Entity *>(UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(defense_target) : id{})));
+	if (defense_ship != nullptr)  defense_ship->addTarget((UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(defense_target) : nullptr));
 
 	if ((scanClass != CLASS_ROCK)&&(scanClass != CLASS_STATION))
 	{
@@ -355,7 +355,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 	}
 
 	addShipToLaunchQueue(defense_ship, YES);
-	if (defense_ship != nullptr)  oo::ToShip([oo::ToObjC(defense_ship) autorelease]);
+	if (defense_ship != nullptr)  oo::ToShip(oo::AutoreleaseEntity(defense_ship));
 	abortAllDockings();
 	
 	return defense_ship;
@@ -384,7 +384,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 	
 	if (!fitsInDock(scavenger_ship))
 	{
-		if (scavenger_ship != nullptr)  [oo::ToObjC(scavenger_ship) release];
+		if (scavenger_ship != nullptr)  oo::ReleaseEntity(scavenger_ship);
 		return nil;
 	}
 	
@@ -402,7 +402,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 		if (scavenger_ship != nullptr)  scavenger_ship->setGroup(stationGroup());	// who's your Daddy -- FIXME: should we have a separate group for non-escort auxiliaires?
 		if (scavenger_ship != nullptr)  scavenger_ship->switchAITo("oolite-scavengerAI.js");
 		addShipToLaunchQueue(scavenger_ship, NO);
-		if (scavenger_ship != nullptr)  oo::ToShip([oo::ToObjC(scavenger_ship) autorelease]);
+		if (scavenger_ship != nullptr)  oo::ToShip(oo::AutoreleaseEntity(scavenger_ship));
 	}
 	return scavenger_ship;
 }
@@ -433,7 +433,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 
 	if (!fitsInDock(miner_ship))
 	{
-		if (miner_ship != nullptr)  [oo::ToObjC(miner_ship) release];
+		if (miner_ship != nullptr)  oo::ReleaseEntity(miner_ship);
 		return nil;
 	}
 	
@@ -451,7 +451,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 		if (miner_ship != nullptr)  miner_ship->setGroup(stationGroup());	// who's your Daddy -- FIXME: should we have a separate group for non-escort auxiliaires?
 		if (miner_ship != nullptr)  miner_ship->switchAITo("oolite-scavengerAI.js");
 		addShipToLaunchQueue(miner_ship, NO);
-		if (miner_ship != nullptr)  oo::ToShip([oo::ToObjC(miner_ship) autorelease]);
+		if (miner_ship != nullptr)  oo::ToShip(oo::AutoreleaseEntity(miner_ship));
 	}
 	return miner_ship;
 }
@@ -474,7 +474,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 	
 	if (defenders_launched >= max_defense_ships)  return nil;   // shuttles are to rockhermits what police ships are to stations
 	
-	if (!(UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(defense_target) : id{}))
+	if ((UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(defense_target) : nullptr) == nullptr)
 	{
 		noteLostTarget();
 		return nil;
@@ -486,7 +486,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 	
 	if (!fitsInDock(pirate_ship))
 	{
-		if (pirate_ship != nullptr)  [oo::ToObjC(pirate_ship) release];
+		if (pirate_ship != nullptr)  oo::ReleaseEntity(pirate_ship);
 		return nil;
 	}
 		
@@ -503,7 +503,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 		if (pirate_ship != nullptr)  pirate_ship->setOwner(self);
 		if (pirate_ship != nullptr)  pirate_ship->setGroup(stationGroup());	// who's your Daddy
 		if (pirate_ship != nullptr)  pirate_ship->setPrimaryRole("defense_ship");
-		if (pirate_ship != nullptr)  pirate_ship->addTarget(oo::ToCxx(static_cast<::Entity *>(UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(defense_target) : id{})));
+		if (pirate_ship != nullptr)  pirate_ship->addTarget((UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(defense_target) : nullptr));
 		if (pirate_ship != nullptr)  pirate_ship->setScanClass(CLASS_NEUTRAL);
 		if ((pirate_ship != nullptr ? pirate_ship->heatInsulation() : 0.0f) < heatInsulation())
 			if (pirate_ship != nullptr)  pirate_ship->setHeatInsulation(heatInsulation());
@@ -511,7 +511,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 		if (pirate_ship != nullptr)  pirate_ship->setBounty(10 + floor(randf() * 20), kOOLegalStatusReasonSetup);	// modified for variety
 
 		addShipToLaunchQueue(pirate_ship, NO);
-		if (pirate_ship != nullptr)  oo::ToShip([oo::ToObjC(pirate_ship) autorelease]);
+		if (pirate_ship != nullptr)  oo::ToShip(oo::AutoreleaseEntity(pirate_ship));
 		abortAllDockings();
 	}
 	return pirate_ship;
@@ -533,7 +533,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 	
 	if (!fitsInDock(shuttle_ship))
 	{
-		if (shuttle_ship != nullptr)  [oo::ToObjC(shuttle_ship) release];
+		if (shuttle_ship != nullptr)  oo::ReleaseEntity(shuttle_ship);
 		return nil;
 	}
 	
@@ -550,7 +550,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 		if (shuttle_ship != nullptr)  shuttle_ship->switchAITo("oolite-shuttleAI.js");
 		addShipToLaunchQueue(shuttle_ship, NO);
 		
-		if (shuttle_ship != nullptr)  oo::ToShip([oo::ToObjC(shuttle_ship) autorelease]);
+		if (shuttle_ship != nullptr)  oo::ToShip(oo::AutoreleaseEntity(shuttle_ship));
 	}
 	return shuttle_ship;
 }
@@ -582,7 +582,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 		addShipToLaunchQueue(escort_ship, NO);
 		
 	}
-	if (escort_ship != nullptr)  [oo::ToObjC(escort_ship) release];
+	if (escort_ship != nullptr)  oo::ReleaseEntity(escort_ship);
 	return escort_ship;
 }
 
@@ -612,7 +612,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 
 		if (!fitsInDock(patrol_ship))
 		{
-			if (patrol_ship != nullptr)  [oo::ToObjC(patrol_ship) release];
+			if (patrol_ship != nullptr)  oo::ReleaseEntity(patrol_ship);
 			return nil;
 		}
 		
@@ -635,7 +635,7 @@ oo::PList StationEntity::launchPolice()	// called by name (ADR-0055 item 5)
 			if (patrol_ship != nullptr)  patrol_ship->switchAITo("oolite-policeAI.js");
 			addShipToLaunchQueue(patrol_ship, NO);
 			acceptPatrolReportFrom(patrol_ship);
-			if (patrol_ship != nullptr)  oo::ToShip([oo::ToObjC(patrol_ship) autorelease]);
+			if (patrol_ship != nullptr)  oo::ToShip(oo::AutoreleaseEntity(patrol_ship));
 			return patrol_ship;
 		}
 	}
@@ -665,7 +665,7 @@ void StationEntity::launchShipWithRole(const std::string &role)	// called by nam
 		if (ship != nullptr)  ship->setGroup(stationGroup());	// who's your Daddy
 		addShipToLaunchQueue(ship, NO);
 	}
-	if (ship != nullptr)  [oo::ToObjC(ship) release];
+	if (ship != nullptr)  oo::ReleaseEntity(ship);
 }
 
 
@@ -928,7 +928,7 @@ void StationEntity::setPlanet(::OOPlanetEntity *planet_entity)
 ::OOPlanetEntity *StationEntity::getPlanet()
 {
 	// The planet is C++ since bead oo-9ht.129: null for any other entity (and for none, as nil).
-	return dynamic_cast<::OOPlanetEntity *>(oo::ToCxx((::Entity *)(UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(planet) : id{})));
+	return dynamic_cast<::OOPlanetEntity *>((UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(planet) : nullptr));
 }
 
 
@@ -1078,7 +1078,7 @@ bool StationEntity::setUpSubEntities()
 		::ShipEntity *subEntity = oo::ToShip(sub);
 		if ((subEntity != nullptr ? subEntity->getIsStation() : false))
 		{
-			OO_LOG("setup.ship.badType.subentities", "Subentity {} ({}) of station {} is itself a StationEntity. This is an internal error - please report it. ", oo::DescriptionOf(oo::ToObjC(subEntity)), (subEntity != nullptr ? subEntity->shipDataKey() : std::optional<std::string>()).value_or("(null)"), getDisplayName().value_or("(null)"));
+			OO_LOG("setup.ship.badType.subentities", "Subentity {} ({}) of station {} is itself a StationEntity. This is an internal error - please report it. ", oo::EntityDescription(subEntity), (subEntity != nullptr ? subEntity->shipDataKey() : std::optional<std::string>()).value_or("(null)"), getDisplayName().value_or("(null)"));
 		}
 	}
 #endif
@@ -1089,8 +1089,8 @@ bool StationEntity::setUpSubEntities()
 		return YES;
 	}
 
-	cxx_OOStandardsDeprecated(oo::str::format("No docks set up for %s", oo::DescriptionOf(oo::ToObjC(self)).c_str()));
-	OO_LOG("ship.setup.docks", "No docks set up for {}, making virtual dock", oo::DescriptionOf(oo::ToObjC(self)));
+	cxx_OOStandardsDeprecated(oo::str::format("No docks set up for %s", oo::EntityDescription(self).c_str()));
+	OO_LOG("ship.setup.docks", "No docks set up for {}, making virtual dock", oo::EntityDescription(self));
 
 	// no real docks, make a virtual one
 	// position and orientation as OOPropertyListFromVector / OOPropertyListFromQuaternion built them (floats)
@@ -2004,7 +2004,7 @@ bool StationEntity::fitsInDock(::ShipEntity *ship, bool logNoFit)
 	}
 
 	if (logNoFit) OO_LOG("station.launchShip.failed", "Cancelled launch for a {} with role {}, as it is too large for the docking port of the {}.",
-			  (ship != nullptr ? ship->getDisplayName() : std::optional<std::string>()).value_or("(null)"), (ship != nullptr ? ship->getPrimaryRole() : std::optional<std::string>()).value_or("(null)"), oo::DescriptionOf(oo::ToObjC(self)));
+			  (ship != nullptr ? ship->getDisplayName() : std::optional<std::string>()).value_or("(null)"), (ship != nullptr ? ship->getPrimaryRole() : std::optional<std::string>()).value_or("(null)"), oo::EntityDescription(self));
 	return NO;
 }
 

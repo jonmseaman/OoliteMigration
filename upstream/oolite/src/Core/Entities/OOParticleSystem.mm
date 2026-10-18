@@ -124,7 +124,7 @@ void OOParticleSystem::update(OOTimeDelta delta_t)
 	}
 	
 	// disappear eventually.
-	if (_timePassed > _duration)  { if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(oo::ToObjC(this)); }
+	if (_timePassed > _duration)  { if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(this); }
 }
 
 
@@ -232,7 +232,7 @@ void OOParticleSystem::drawImmediate(bool /*immediate*/, bool translucent)
 	OOGL(glPopAttrib());
 	
 	OOVerifyOpenGLState();
-	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "OOParticleSystem after drawing " + oo::DescriptionOf(oo::ToObjC(this)); });
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "OOParticleSystem after drawing " + oo::EntityDescription(this); });
 }
 
 
@@ -283,10 +283,10 @@ void OOSmallFragmentBurstEntity::initFragmentBurstFrom(HPVector fragPosition, Ve
 }
 
 
-oo::Ref<OOSmallFragmentBurstEntity> OOSmallFragmentBurstEntity::fragmentBurstFromEntity(::Entity *entity)
+oo::Ref<OOSmallFragmentBurstEntity> OOSmallFragmentBurstEntity::fragmentBurstFromEntity(cxx::Entity *entity)
 {
 	oo::Ref<OOSmallFragmentBurstEntity> result = oo::makeRef<OOSmallFragmentBurstEntity>();
-	result->initFragmentBurstFrom([entity position], [entity velocity], [entity collisionRadius]);
+	result->initFragmentBurstFrom(entity != nullptr ? entity->getPosition() : kZeroHPVector, entity != nullptr ? entity->getVelocity() : kZeroVector, entity != nullptr ? entity->collisionRadius() : 0.0f);	// the C++ entity's members (bead oo-al52f); none answers zero, as nil did
 	return result;
 }
 
@@ -334,10 +334,10 @@ void OOBigFragmentBurstEntity::initFragmentBurstFrom(HPVector fragPosition, Vect
 }
 
 
-oo::Ref<OOBigFragmentBurstEntity> OOBigFragmentBurstEntity::fragmentBurstFromEntity(::Entity *entity)
+oo::Ref<OOBigFragmentBurstEntity> OOBigFragmentBurstEntity::fragmentBurstFromEntity(cxx::Entity *entity)
 {
 	oo::Ref<OOBigFragmentBurstEntity> result = oo::makeRef<OOBigFragmentBurstEntity>();
-	result->initFragmentBurstFrom([entity position], vector_multiply_scalar([entity velocity], 0.85), [entity collisionRadius]);
+	result->initFragmentBurstFrom(entity != nullptr ? entity->getPosition() : kZeroHPVector, vector_multiply_scalar(entity != nullptr ? entity->getVelocity() : kZeroVector, 0.85), entity != nullptr ? entity->collisionRadius() : 0.0f);	// the C++ entity's members (bead oo-al52f)
 	return result;
 }
 

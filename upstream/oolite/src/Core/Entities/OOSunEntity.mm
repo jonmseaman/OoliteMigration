@@ -440,7 +440,7 @@ void OOSunEntity::drawOpaqueParts()
 	}
 	
 	OOVerifyOpenGLState();
-	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "SunEntity after drawing " + oo::DescriptionOf(oo::ToObjC(this)); });
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "SunEntity after drawing " + oo::EntityDescription(this); });
 }
 
 
@@ -847,6 +847,24 @@ double OOStellarBodyRadius(::Entity *body)
 	if (OOSunEntity *sun = dynamic_cast<OOSunEntity *>(oo::ToCxx(body)))  return sun->radius();
 	if (OOPlanetEntity *planet = dynamic_cast<OOPlanetEntity *>(oo::ToCxx(body)))  return planet->radius();
 	return [(::Entity<OOStellarBody> *)body radius];
+}
+
+
+double OOStellarBodyRadius(cxx::Entity *body)
+{
+	if (body == nullptr)  return 0.0;
+	if (OOSunEntity *sun = dynamic_cast<OOSunEntity *>(body))  return sun->radius();
+	if (OOPlanetEntity *planet = dynamic_cast<OOPlanetEntity *>(body))  return planet->radius();
+	return OOStellarBodyRadius(oo::ToObjC(body));
+}
+
+
+OOStellarBodyType OOStellarBodyPlanetType(cxx::Entity *body)
+{
+	if (body == nullptr)  return (OOStellarBodyType)0;
+	if (OOSunEntity *sun = dynamic_cast<OOSunEntity *>(body))  return sun->planetType();
+	if (OOPlanetEntity *planet = dynamic_cast<OOPlanetEntity *>(body))  return planet->planetType();
+	return OOStellarBodyPlanetType(oo::ToObjC(body));
 }
 
 

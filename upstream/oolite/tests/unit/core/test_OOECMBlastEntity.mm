@@ -46,12 +46,12 @@ public:
 	std::vector<double>		*_ranges = {};
 	Entity					*_searchedFrom = {};
 
-	bool removeEntity(::Entity *entity) override
+	bool removeEntity(cxx::Entity *entity) override	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
 	{
-		_removed = entity;
+		_removed = oo::ToObjC(entity);
 		return YES;
 	}
-	std::vector<oo::ObjCRef<::Entity *>> findEntitiesMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, cxx::Entity *entity) override	// the reference's C++ entity since bead oo-9ht.39.8.23
+	std::vector<oo::EntityHold> findEntitiesMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, cxx::Entity *entity) override	// held C++ entities since bead oo-9ht.39.26	// the reference's C++ entity since bead oo-9ht.39.8.23
 	{
 		_ranges->push_back(range);
 		_searchedFrom = oo::ToObjC(entity);

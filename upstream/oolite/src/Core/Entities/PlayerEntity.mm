@@ -475,7 +475,7 @@ PlayerEntity *PlayerEntity::sharedPlayer()
 	oo::Ref<PlayerEntity> player = oo::makeRef<PlayerEntity>();
 	@autoreleasepool
 	{
-		return oo::ToShip([oo::NewEntityFacade(player) retain]);
+		return oo::ToShip(oo::RetainEntity(oo::MadeEntity(player)));
 	}
 }
 
@@ -610,7 +610,7 @@ void PlayerEntity::unloadAllCargoPodsForType(const std::string &type, ::OOCommod
 			}
 			else	// undefined
 			{
-				OO_LOG("player.badCargoPod", "Cargo pod {} has bad commodity type, rejecting.", oo::DescriptionOf(oo::ToObjC(cargoItem)));
+				OO_LOG("player.badCargoPod", "Cargo pod {} has bad commodity type, rejecting.", oo::EntityDescription(cargoItem));
 				continue;
 			}
 			cargo.erase(cargo.begin() + i);
@@ -654,7 +654,7 @@ void PlayerEntity::unloadCargoPodsForType(const std::string &type, OOCargoQuanti
 			}
 			else	// undefined
 			{
-				OO_LOG("player.badCargoPod", "Cargo pod {} has bad commodity type (COMMODITY_UNDEFINED), rejecting.", oo::DescriptionOf(oo::ToObjC(cargoItem)));
+				OO_LOG("player.badCargoPod", "Cargo pod {} has bad commodity type (COMMODITY_UNDEFINED), rejecting.", oo::EntityDescription(cargoItem));
 				continue;
 			}
 		}
@@ -698,7 +698,7 @@ void PlayerEntity::createCargoPodWithType(const std::string &type, OOCargoQuanti
 		if (container != nullptr)  container->setStatus(STATUS_IN_HOLD);
 		if (container != nullptr)  container->setCommodity(type, amount);
 		cargo.emplace_back(oo::ToObjC(container));
-		if (container != nullptr)  [oo::ToObjC(container) release];
+		if (container != nullptr)  oo::ReleaseEntity(container);
 	}
 	else
 	{
@@ -808,7 +808,7 @@ void PlayerEntity::loadCargoPodsForType(const std::string &type, OOCargoQuantity
 						if (container != nullptr)  container->setScanClass(CLASS_CARGO);
 						if (container != nullptr)  container->setCommodity(type, smaller_quantity);
 						cargo.emplace_back(oo::ToObjC(container));
-						if (container != nullptr)  [oo::ToObjC(container) release];
+						if (container != nullptr)  oo::ReleaseEntity(container);
 					}
 				}
 				else
@@ -838,7 +838,7 @@ void PlayerEntity::loadCargoPodsForType(const std::string &type, OOCargoQuantity
 						if (container != nullptr)  container->setStatus(STATUS_IN_HOLD);
 						if (container != nullptr)  container->setCommodity(type, 1);
 						cargo.emplace_back(oo::ToObjC(container));
-						if (container != nullptr)  [oo::ToObjC(container) release];
+						if (container != nullptr)  oo::ReleaseEntity(container);
 					}
 				}
 				quantity--;
@@ -3211,8 +3211,8 @@ void PlayerEntity::doBookkeeping(double delta_t)
 			if ((UNIVERSE != nullptr ? UNIVERSE->station() : nullptr) != nullptr)  UNIVERSE->station()->update(2.34375 * market_rnd);	// from 0..10 minutes
 		}
 		
-		::Entity	*dockTargetEntity = (UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(_dockTarget) : id{});	// main station in the original system, unless overridden.
-		if ([dockTargetEntity isStation]) // fails if _dockTarget is NO_TARGET
+		cxx::Entity	*dockTargetEntity = (UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(_dockTarget) : nullptr);	// main station in the original system, unless overridden.
+		if (dockTargetEntity != nullptr && dockTargetEntity->getIsStation()) // fails if _dockTarget is NO_TARGET
 		{
 			if (doppelganger != nullptr)  doppelganger->becomeExplosion();	// blow up the doppelganger
 			// restore player ship
@@ -3221,7 +3221,7 @@ void PlayerEntity::doBookkeeping(double delta_t)
 			{
 				// FIXME: this should use OOShipType, which should exist. -- Ahruman
 				setMesh((player_ship != nullptr ? player_ship->mesh() : (OOMesh *)nullptr));
-				if (player_ship != nullptr)  [oo::ToObjC(player_ship) release];						// we only wanted it for its polygons!
+				if (player_ship != nullptr)  oo::ReleaseEntity(player_ship);						// we only wanted it for its polygons!
 			}
 			if (UNIVERSE != nullptr)  UNIVERSE->setViewDirection(VIEW_FORWARD);
 			if (UNIVERSE != nullptr)  UNIVERSE->setBlockJSPlayerShipProps(NO);	// re-enable player.ship!
@@ -4161,7 +4161,7 @@ void PlayerEntity::performLaunchingUpdates(OOTimeDelta delta_t)
 		setStatus(STATUS_IN_FLIGHT);
 
 		setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_NONE);
-		::StationEntity *stationLaunchedFrom = oo::ToStation((UNIVERSE != nullptr ? UNIVERSE->nearestEntityMatchingPredicate(IsStationPredicate, NULL, oo::ToObjC(this)) : id{}));
+		::StationEntity *stationLaunchedFrom = oo::ToStation((UNIVERSE != nullptr ? UNIVERSE->nearestEntityMatchingPredicate(IsStationPredicate, NULL, this) : nullptr));
 		doScriptEvent(OOJSID("shipLaunchedFromStation"), oo::ToObjC(stationLaunchedFrom));
 	}
 }
@@ -4318,13 +4318,13 @@ void PlayerEntity::showShipModelWithKey(const std::string &shipKey, const oo::PL
 	const oo::PList *subEntStatus = shipData.find("subentities_status");
 	// show missing subentities if there's a subentities_status key
 	if (subEntStatus != nullptr) { if (ship != nullptr)  ship->deserializeShipSubEntitiesFrom(oo::PListGet<std::string>::from(subEntStatus, std::string())); }
-	if (UNIVERSE != nullptr)  UNIVERSE->addEntity(oo::ToObjC(ship));
+	if (UNIVERSE != nullptr)  UNIVERSE->addEntity(ship);
 	// MKW - save demo ship for its rotation
 	demoShip = oo::ObjCRef<::Entity *>(oo::ToObjC(ship));
 	
 	if (ship != nullptr)  ship->setStatus(STATUS_COCKPIT_DISPLAY);
 	
-	if (ship != nullptr)  [oo::ToObjC(ship) release];
+	if (ship != nullptr)  oo::ReleaseEntity(ship);
 }
 
 
@@ -4391,10 +4391,10 @@ void PlayerEntity::updateTargeting()
 			(ident_engaged || missile_status != MISSILE_STATUS_SAFE) &&
 			(status() == STATUS_IN_FLIGHT || status() == STATUS_WITCHSPACE_COUNTDOWN))
 	{
-		::Entity *target = (UNIVERSE != nullptr ? UNIVERSE->firstEntityTargetedByPlayer() : nullptr);
-		if (isValidTarget(oo::ToCxx(target)))
+		cxx::Entity *target = (UNIVERSE != nullptr ? UNIVERSE->firstEntityTargetedByPlayer() : nullptr);
+		if (isValidTarget(target))
 		{
-			addTarget(oo::ToCxx(target));
+			addTarget(target);
 		}
 	}
 	
@@ -5411,6 +5411,12 @@ void PlayerEntity::setCompassTarget(::Entity *value)
 }
 
 
+void PlayerEntity::setCompassTargetEntity(cxx::Entity *value)
+{
+	compassTarget = oo::WeakRef<cxx::Entity>(value);	// oo::WeakEntityRef() of its object
+}
+
+
 void PlayerEntity::validateCompassTarget()
 {
 	::OOSunEntity		*the_sun = (UNIVERSE != nullptr ? UNIVERSE->sun() : nullptr);
@@ -5536,7 +5542,7 @@ void PlayerEntity::setPrevCompassMode()
 		case COMPASS_MODE_INACTIVE:
 		case COMPASS_MODE_BASIC:
 		case COMPASS_MODE_PLANET:
-			beacon = (UNIVERSE != nullptr ? UNIVERSE->lastBeacon() : nullptr);
+			beacon = (::Entity <OOBeaconEntity> *)oo::ToObjC(UNIVERSE != nullptr ? UNIVERSE->lastBeacon() : nullptr);	// its object (the universe answers the C++ beacon, bead oo-9ht.39.26)
 			while (beacon != nil && [beacon isJammingScanning])
 			{
 				beacon = [beacon prevBeacon];
@@ -5629,7 +5635,7 @@ void PlayerEntity::setNextCompassMode()
 			// else fall through to switch to beacon mode.
 			
 		case COMPASS_MODE_TARGET:
-			beacon = (UNIVERSE != nullptr ? UNIVERSE->firstBeacon() : nullptr);
+			beacon = (::Entity <OOBeaconEntity> *)oo::ToObjC(UNIVERSE != nullptr ? UNIVERSE->firstBeacon() : nullptr);	// its object (the universe answers the C++ beacon, bead oo-9ht.39.26)
 			while (beacon != nil && [beacon isJammingScanning])
 			{
 				beacon = [beacon nextBeacon];
@@ -6162,7 +6168,7 @@ bool PlayerEntity::mountMissile(::ShipEntity *missile)
 bool PlayerEntity::mountMissileWithRole(const std::string &role)
 {
 	if (missileCount() >= missileCapacity()) return NO;
-	return mountMissile(oo::ToShip([oo::ToObjC((UNIVERSE != nullptr ? UNIVERSE->newShipWithRole(role) : (::ShipEntity *)nil)) autorelease]));
+	return mountMissile(oo::ToShip(oo::AutoreleaseEntity((UNIVERSE != nullptr ? UNIVERSE->newShipWithRole(role) : (::ShipEntity *)nil))));
 }
 
 
@@ -6536,7 +6542,7 @@ GLfloat PlayerEntity::doesHitLine(HPVector v0, HPVector v1, ::ShipEntity **hitEn
 	if (hit_distance)
 	{
 		if (hitEntity)
-			hitEntity[0] = oo::ToShip(oo::ToObjC(this));
+			hitEntity[0] = oo::ToShip(this);
 	}
 
 	bool shields = false;
@@ -6702,9 +6708,9 @@ void PlayerEntity::takeScrapeDamage(double amount, cxx::Entity *ent)
 		OO_LOG("player.ship.damage", "Player took negative scrape damage {:.3f} so we made it positive", amount);
 		amount = -amount;
 	}
-	OO_LOG("player.ship.damage", "Player took {:.3f} scrape damage from {}", amount, oo::DescriptionOf(oo::ToObjC(ent)));
+	OO_LOG("player.ship.damage", "Player took {:.3f} scrape damage from {}", amount, oo::EntityDescription(ent));
 	
-	[[oo::ToObjC(ent) retain] autorelease];
+	oo::AutoreleaseEntity(oo::RetainEntity(ent));
 	rel_pos = ent ? [oo::ToObjC(ent) position] : kZeroHPVector;
 	rel_pos = HPvector_subtract(rel_pos, position);
 	// rel_pos is now small
@@ -6793,7 +6799,7 @@ void PlayerEntity::takeHeatDamage(double amount)
 
 ::ShipEntity *PlayerEntity::createDoppelganger()
 {
-	::ShipEntity *result = oo::ToShip([oo::ToObjC((UNIVERSE != nullptr ? UNIVERSE->newShipWithName(shipDataKey().value_or(""), YES) : (::ShipEntity *)nil)) autorelease]);
+	::ShipEntity *result = oo::ToShip(oo::AutoreleaseEntity((UNIVERSE != nullptr ? UNIVERSE->newShipWithName(shipDataKey().value_or(""), YES) : (::ShipEntity *)nil)));
 	
 	if (result != nil)
 	{
@@ -6855,7 +6861,7 @@ void PlayerEntity::takeHeatDamage(double amount)
 		if (doppelganger != nullptr)  doppelganger->setRoll(0.2 * (randf() - 0.5));
 		if (doppelganger != nullptr)  doppelganger->setOwner(oo::ToCxx(oo::ToObjC(this)));
 		if (doppelganger != nullptr)  doppelganger->setThrust(0); // drifts
-		if (UNIVERSE != nullptr)  UNIVERSE->addEntity(oo::ToObjC(doppelganger));
+		if (UNIVERSE != nullptr)  UNIVERSE->addEntity(doppelganger);
 	}
 
 	setFoundTarget(doppelganger); // must do this before setting status
@@ -6945,7 +6951,7 @@ void PlayerEntity::takeHeatDamage(double amount)
 	port_shot_time = 0.0;
 	starboard_shot_time = 0.0;
 	
-	if (escapePod != nullptr)  [oo::ToObjC(escapePod) release];
+	if (escapePod != nullptr)  oo::ReleaseEntity(escapePod);
 	
 	return doppelganger;
 }
@@ -6987,12 +6993,12 @@ void PlayerEntity::rotateCargo()
 	{
 		cargo.erase(cargo.begin());	// take it from the eject position
 		cargo.emplace_back(oo::ToObjC(pod));	// move it to the last position
-		if (pod != nullptr)  [oo::ToObjC(pod) release];
+		if (pod != nullptr)  oo::ReleaseEntity(pod);
 		pod = oo::ToShip([cargo[0].get() retain]);
 		contents = (pod != nullptr ? pod->commodityType() : std::optional<std::string>());
 		rotates++;
 	} while (sameContents(contents)&&(rotates < n_cargo));
-	if (pod != nullptr)  [oo::ToObjC(pod) release];
+	if (pod != nullptr)  oo::ReleaseEntity(pod);
 	
 	const std::string commodity = (UNIVERSE != nullptr ? UNIVERSE->displayNameForCommodity(contents.value_or(std::string())) : std::optional<std::string>()).value_or(std::string());	// (nil raised in the expansion)
 	if (UNIVERSE != nullptr)  UNIVERSE->addMessage(ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "ready-to-eject-commodity", { { "commodity", oo::PList(commodity) } }), 3.0);
@@ -7004,10 +7010,10 @@ void PlayerEntity::rotateCargo()
 		pod = oo::ToShip(cargo[i].get());
 		if (sameContents((pod != nullptr ? pod->commodityType() : std::optional<std::string>())))
 		{
-			if (pod != nullptr)  oo::ToShip([oo::ToObjC(pod) retain]);
+			if (pod != nullptr)  oo::ToShip(oo::RetainEntity(pod));
 			cargo.erase(cargo.begin() + i--);
 			cargo.emplace_back(oo::ToObjC(pod));
-			if (pod != nullptr)  [oo::ToObjC(pod) release];
+			if (pod != nullptr)  oo::ReleaseEntity(pod);
 			rotates++;
 		}
 	}
@@ -7249,7 +7255,7 @@ void PlayerEntity::getDestroyedBy(cxx::Entity *whom, OOShipDamageType type)
 {
 	if (isDocked())  return;	// Can't die while docked. (Doing so would cause breakage elsewhere.)
 	
-	OO_LOG("player.ship.damage", "Player destroyed by {} due to {}", oo::DescriptionOf(oo::ToObjC(whom)), cxx_OOStringFromShipDamageType(type));
+	OO_LOG("player.ship.damage", "Player destroyed by {} due to {}", oo::EntityDescription(whom), cxx_OOStringFromShipDamageType(type));
 	
 	if (!(UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr ? UNIVERSE->gameController()->playerFileToLoad() : std::optional<std::string>()).has_value())
 	{
@@ -7635,7 +7641,7 @@ bool PlayerEntity::witchJumpChecklist(bool isGalacticJump)
 	{
 		// check nearby masses
 		//UPDATE_STAGE("checking for mass blockage");
-		::ShipEntity* blocker = oo::ToShip((UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(checkShipsInVicinityForWitchJumpExit()) : id{}));
+		::ShipEntity* blocker = oo::ToShip((UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(checkShipsInVicinityForWitchJumpExit()) : nullptr));
 		if (blocker)
 		{
 			if (UNIVERSE != nullptr)  UNIVERSE->clearPreviousMessage();
@@ -7944,7 +7950,7 @@ void PlayerEntity::enterWitchspace()
 		whRef->initWormholeTo(jumpTarget, this);
 		wormhole = whRef.get();
 	}
-	if (UNIVERSE != nullptr)  UNIVERSE->addEntity(oo::ToObjC(wormhole)); // Add new wormhole to Universe to let other ships target it. Required for ships following the player.
+	if (UNIVERSE != nullptr)  UNIVERSE->addEntity(wormhole); // Add new wormhole to Universe to let other ships target it. Required for ships following the player.
 	addScannedWormhole(wormhole);
 	
 	setStatus(STATUS_ENTERING_WITCHSPACE);
@@ -10807,7 +10813,7 @@ bool PlayerEntity::tryBuyingItem(const std::string &eqKey)
 	
 	if (oo::str::hasSuffix(eqKey, "MISSILE") || oo::str::hasSuffix(eqKey, "MINE"))
 	{
-		::ShipEntity* weapon = oo::ToShip([oo::ToObjC((UNIVERSE != nullptr ? UNIVERSE->newShipWithRole(eqKey) : (::ShipEntity *)nil)) autorelease]);
+		::ShipEntity* weapon = oo::ToShip(oo::AutoreleaseEntity((UNIVERSE != nullptr ? UNIVERSE->newShipWithRole(eqKey) : (::ShipEntity *)nil)));
 		if (weapon)  OO_LOG("equip.buy.mounted", "Got ship for mounted weapon role {}", eqKey);
 		else  OO_LOG("equip.buy.mounted.failed", "Could not find ship for mounted weapon role {}", eqKey);
 		
@@ -13467,7 +13473,7 @@ void PlayerEntity::setDockingClearanceStatus(OODockingClearanceStatus newValue)
 		}
 		else
 		{
-			OO_LOG("player.badDockingTarget", "Attempt to dock at {}.", oo::DescriptionOf(oo::ToObjC(primaryTarget())));
+			OO_LOG("player.badDockingTarget", "Attempt to dock at {}.", oo::EntityDescription(primaryTarget()));
 			targetDockStation = nil;
 			dockingClearanceStatus = DOCKING_CLEARANCE_STATUS_NONE;
 		}

@@ -516,7 +516,7 @@ void PlayerEntity::runScriptActions(const oo::PList &actions, const std::optiona
 				  "***** EXCEPTION {}: {} while handling legacy script actions for {}",
 				  [exception name],
 				  [exception reason],
-				  (contextName.has_value() && oo::str::hasPrefix(*contextName, kActionTempPrefix)) ? oo::ShortDescriptionOf(oo::ToObjC(target)) : contextName.value_or("(null)"));
+				  (contextName.has_value() && oo::str::hasPrefix(*contextName, kActionTempPrefix)) ? oo::EntityShortDescription(target) : contextName.value_or("(null)"));
 			// Suppress exception
 		}
 
@@ -1582,7 +1582,7 @@ void PlayerEntity::messageShipAIs(const std::string &roles_message)	// called by
 	std::string roleString = tokens[0];
 	const std::string messageString = JoinedFrom(tokens, 1);
 
-	for (const auto &target : (UNIVERSE != nullptr ? UNIVERSE->findShipsMatchingPredicate(HasPrimaryRolePredicate, &roleString, -1, nullptr) : std::vector<oo::ObjCRef<::Entity *>>()))
+	for (const auto &target : (UNIVERSE != nullptr ? UNIVERSE->findShipsMatchingPredicate(HasPrimaryRolePredicate, &roleString, -1, nullptr) : std::vector<oo::EntityHold>()))
 	{
 		if (oo::ToShip(target.get()) != nullptr && oo::ToShip(target.get())->getAI() != nullptr)  oo::ToShip(target.get())->getAI()->reactToMessage(messageString, std::string("messageShipAIs:"));
 	}
@@ -1591,7 +1591,7 @@ void PlayerEntity::messageShipAIs(const std::string &roles_message)	// called by
 
 void PlayerEntity::ejectItem(const std::string &itemKey)	// called by name (ADR-0043 item 21)
 {
-	if (::scriptTarget == nil)  ::scriptTarget = oo::ToShip(oo::ToObjC(this));
+	if (::scriptTarget == nil)  ::scriptTarget = oo::ToShip(this);
 	if (::scriptTarget != nullptr)  ::scriptTarget->ejectShipOfType(itemKey);
 }
 
@@ -2211,7 +2211,7 @@ void PlayerEntity::showShipModel(const std::string &role)	// called by name (ADR
 	}
 
 	::ShipEntity *ship = (UNIVERSE != nullptr ? UNIVERSE->makeDemoShipWithRole(roleString, YES) : (::ShipEntity *)nil);
-	OO_LOG(kOOLogNoteShowShipModel, "::::: showShipModel:'{}' ({}) ({})", roleString, oo::DescriptionOf(oo::ToObjC(ship)), (ship != nullptr ? ship->getName() : std::optional<std::string>()).value_or("(null)"));
+	OO_LOG(kOOLogNoteShowShipModel, "::::: showShipModel:'{}' ({}) ({})", roleString, oo::EntityDescription(ship), (ship != nullptr ? ship->getName() : std::optional<std::string>()).value_or("(null)"));
 }
 
 
@@ -2424,7 +2424,7 @@ void PlayerEntity::addPlanet(const std::string &planetKey)	// called by name (AD
 	}
 	if (planet != nullptr)  planet->setPosition(posn);
 
-	if (UNIVERSE != nullptr)  UNIVERSE->addEntity(oo::ToObjC(planet));
+	if (UNIVERSE != nullptr)  UNIVERSE->addEntity(planet);
 	return planet;
 }
 
@@ -2494,7 +2494,7 @@ void PlayerEntity::addMoon(const std::string &moonKey)	// called by name (ADR-00
 	}
 	if (planet != nullptr)  planet->setPosition(posn);
 
-	if (UNIVERSE != nullptr)  UNIVERSE->addEntity(oo::ToObjC(planet));
+	if (UNIVERSE != nullptr)  UNIVERSE->addEntity(planet);
 	return planet;
 }
 
@@ -2809,20 +2809,20 @@ bool PlayerEntity::processSceneString(const std::string &item, Vector off)
 		Vector	model_offset = cxx_positionOffsetForShipInRotationToAlignment(ship, model_q, i_info[9]);
 		model_p0 = vector_add(model_p0, vector_subtract(off, model_offset));
 
-		OO_LOG(kOOLogDebugProcessSceneStringAddModel, "::::: adding model to scene:'{}'", oo::DescriptionOf(oo::ToObjC(ship)));
+		OO_LOG(kOOLogDebugProcessSceneStringAddModel, "::::: adding model to scene:'{}'", oo::EntityDescription(ship));
 		if (ship != nullptr)  ship->setOrientation(model_q);
 		if (ship != nullptr)  ship->setPosition(vectorToHPVector(model_p0));
 		if (UNIVERSE != nullptr)  UNIVERSE->setMainLightPosition((Vector){ DEMO_LIGHT_POSITION }); // set light origin
 		if (ship != nullptr)  ship->setScanClass(CLASS_NO_DRAW);
 		if (ship != nullptr)  ship->switchAITo("nullAI.plist");
-		if (UNIVERSE != nullptr)  UNIVERSE->addEntity(oo::ToObjC(ship));	// STATUS_IN_FLIGHT, AI state GLOBAL
+		if (UNIVERSE != nullptr)  UNIVERSE->addEntity(ship);	// STATUS_IN_FLIGHT, AI state GLOBAL
 		if (ship != nullptr)  ship->setStatus(STATUS_COCKPIT_DISPLAY);
 		if (ship != nullptr)  ship->setRoll(0.0);
 		if (ship != nullptr)  ship->setPitch(0.0);
 		if (ship != nullptr)  ship->setVelocity(kZeroVector);
 		if (ship != nullptr)  ship->setBehaviour(BEHAVIOUR_STOP_STILL);
 
-		if (ship != nullptr)  [oo::ToObjC(ship) release];
+		if (ship != nullptr)  oo::ReleaseEntity(ship);
 		return YES;
 	}
 	//
@@ -2844,20 +2844,20 @@ bool PlayerEntity::processSceneString(const std::string &item, Vector off)
 		model_p0.y += off.y - model_offset.y;
 		model_p0.z += off.z - model_offset.z;
 
-		OO_LOG(kOOLogDebugProcessSceneStringAddModel, "::::: adding model to scene:'{}'", oo::DescriptionOf(oo::ToObjC(doppelganger)));
+		OO_LOG(kOOLogDebugProcessSceneStringAddModel, "::::: adding model to scene:'{}'", oo::EntityDescription(doppelganger));
 		if (doppelganger != nullptr)  doppelganger->setOrientation(model_q);
 		if (doppelganger != nullptr)  doppelganger->setPosition(vectorToHPVector(model_p0));
 		if (UNIVERSE != nullptr)  UNIVERSE->setMainLightPosition((Vector){ DEMO_LIGHT_POSITION }); // set light origin
 		if (doppelganger != nullptr)  doppelganger->setScanClass(CLASS_NO_DRAW);
 		if (doppelganger != nullptr)  doppelganger->switchAITo("nullAI.plist");
-		if (UNIVERSE != nullptr)  UNIVERSE->addEntity(oo::ToObjC(doppelganger));
+		if (UNIVERSE != nullptr)  UNIVERSE->addEntity(doppelganger);
 		if (doppelganger != nullptr)  doppelganger->setStatus(STATUS_COCKPIT_DISPLAY);
 		if (doppelganger != nullptr)  doppelganger->setRoll(0.0);
 		if (doppelganger != nullptr)  doppelganger->setPitch(0.0);
 		if (doppelganger != nullptr)  doppelganger->setVelocity(kZeroVector);
 		if (doppelganger != nullptr)  doppelganger->setBehaviour(BEHAVIOUR_STOP_STILL);
 
-		if (doppelganger != nullptr)  [oo::ToObjC(doppelganger) release];
+		if (doppelganger != nullptr)  oo::ReleaseEntity(doppelganger);
 		return YES;
 	}
 	//
@@ -2916,7 +2916,7 @@ bool PlayerEntity::processSceneString(const std::string &item, Vector off)
 		//Quaternion model_q = { 0.83, 0.365148, 0.182574, 0.0 }; // shows new planets' north pole.
 		//Quaternion model_q = { 0.83, -0.365148, 0.182574, 0.0 }; // shows new planets' south pole.
 		Quaternion model_q = { 0.83, 0.12, 0.44, 0.0 };	// new planets - default orientation.
-		OO_LOG(kOOLogDebugProcessSceneStringAddMiniPlanet, "::::: adding {} to scene:'{}'", i_key, oo::DescriptionOf(oo::ToObjC(doppelganger)));
+		OO_LOG(kOOLogDebugProcessSceneStringAddMiniPlanet, "::::: adding {} to scene:'{}'", i_key, oo::EntityDescription(doppelganger));
 		if (doppelganger != nullptr)  doppelganger->setOrientation(model_q);
 		// HPVect: mission screen coordinates are small enough that we don't need high-precision for calculations
 		if (doppelganger != nullptr)  doppelganger->setPosition(vectorToHPVector(model_p0));
@@ -2924,7 +2924,7 @@ bool PlayerEntity::processSceneString(const std::string &item, Vector off)
 		 *     - necessary to duplicate the rotation already performed in PlanetEntity.m since we reset the orientation above. */
 		int		deltaT = floor(fmod(clockTimeAdjusted(), 86400));
 		if (doppelganger != nullptr)  doppelganger->update(deltaT);
-		if (UNIVERSE != nullptr)  UNIVERSE->addEntity(oo::ToObjC(doppelganger));
+		if (UNIVERSE != nullptr)  UNIVERSE->addEntity(doppelganger);
 
 		return YES;
 	}

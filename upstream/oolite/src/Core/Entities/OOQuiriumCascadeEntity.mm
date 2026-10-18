@@ -117,7 +117,7 @@ void OOQuiriumCascadeEntity::update(OOTimeDelta delta_t)
 	// expire after ttl
 	if (_timePassed > kQuiriumCascadeDuration)
 	{
-		if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(self);
+		if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(this);
 	}
 }
 
@@ -144,7 +144,7 @@ void OOQuiriumCascadeEntity::drawImmediate(bool /*immediate*/, bool translucent)
 	OOGL(glPopAttrib());
 	
 	OOVerifyOpenGLState();
-	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "OOQuiriumCascadeEntity after drawing " + oo::DescriptionOf(oo::ToObjC(this)); });
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "OOQuiriumCascadeEntity after drawing " + oo::EntityDescription(this); });
 }
 
 

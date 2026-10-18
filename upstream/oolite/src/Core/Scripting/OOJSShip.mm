@@ -3253,7 +3253,7 @@ static bool ShipFindNearestStation(ooscript::Context context, ooscript::CallArgs
 	double				sdist, distance = 1E32;
 	
 	ShipEntity			*se = nullptr;
-	for (const auto &stationRef : (UNIVERSE != nullptr ? UNIVERSE->stations() : std::vector<oo::ObjCRef<::Entity *>>()))
+	for (const auto &stationRef : (UNIVERSE != nullptr ? UNIVERSE->stations() : std::vector<oo::EntityHold>()))
 	{
 		se = oo::ToShip(stationRef.get());
 		sdist = HPdistance2(ship->getPosition(), (se != nullptr ? se->getPosition() : kZeroHPVector));	// (a message to nil answered zero)
@@ -4364,7 +4364,7 @@ static bool ShipAdjustCargo(ooscript::Context context, ooscript::CallArgs &oojsA
 
 	if (adjustment > 0)
 	{
-		ok = ship->addCargo((UNIVERSE != nullptr ? UNIVERSE->getContainersOfCommodity(commodity.value_or(""), adjustment) : std::vector<oo::ObjCRef<::Entity *>>())); // non-reified templates
+		ok = ship->addCargo((UNIVERSE != nullptr ? UNIVERSE->getContainersOfCommodity(commodity.value_or(""), adjustment) : std::vector<oo::EntityHold>())); // non-reified templates
 	}
 	else if (adjustment < 0)
 	{

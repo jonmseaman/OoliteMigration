@@ -55,12 +55,12 @@ constexpr std::string_view kExplosionTexture		= "texture";
 }	// namespace
 
 
-bool OOExplosionCloudEntity::initExplosionCloudWithEntity(::Entity *entity, float size, const oo::PList &settings)
+bool OOExplosionCloudEntity::initExplosionCloudWithEntity(cxx::Entity *entity, float size, const oo::PList &settings)
 {
 	unsigned i;
 	unsigned maxCount = (UNIVERSE != nullptr ? UNIVERSE->getDetailLevel() : OOGraphicsDetail{}) <= DETAIL_LEVEL_SHADERS ? 10 : 25;
-	HPVector pos = [entity position];
-	Vector vel = [entity velocity];
+	HPVector pos = entity != nullptr ? entity->getPosition() : kZeroHPVector;	// the C++ entity (bead oo-9ht.39.26); nil answered zero
+	Vector vel = entity != nullptr ? entity->getVelocity() : kZeroVector;
 
 	if (settings.isNull()) {
 		_settings = oo::PList(oo::PList::Dict{});
@@ -74,7 +74,7 @@ bool OOExplosionCloudEntity::initExplosionCloudWithEntity(::Entity *entity, floa
 	}
 
 	if (size == 0.0) {
-		size = [entity collisionRadius]*_settings.get<float>(kExplosionSize, kExplosionDefaultSize);
+		size = (entity != nullptr ? entity->collisionRadius() : 0.0f)*_settings.get<float>(kExplosionSize, kExplosionDefaultSize);
 	}
 
 	_growthRate = _settings.get<float>(kExplosionGrowth, kGrowthRateFactor) * size;
@@ -172,7 +172,7 @@ bool OOExplosionCloudEntity::initExplosionCloudWithEntity(::Entity *entity, floa
 // -dealloc released the texture: _texture does.
 
 
-oo::Ref<OOExplosionCloudEntity> OOExplosionCloudEntity::explosionCloudFromEntity(::Entity *entity, const oo::PList &settings)
+oo::Ref<OOExplosionCloudEntity> OOExplosionCloudEntity::explosionCloudFromEntity(cxx::Entity *entity, const oo::PList &settings)
 {
 	oo::Ref<OOExplosionCloudEntity> result = oo::makeRef<OOExplosionCloudEntity>();
 	if (!result->initExplosionCloudWithEntity(entity, 0, settings))  return nullptr;
@@ -180,7 +180,7 @@ oo::Ref<OOExplosionCloudEntity> OOExplosionCloudEntity::explosionCloudFromEntity
 }
 
 
-oo::Ref<OOExplosionCloudEntity> OOExplosionCloudEntity::explosionCloudFromEntity(::Entity *entity, float size, const oo::PList &settings)
+oo::Ref<OOExplosionCloudEntity> OOExplosionCloudEntity::explosionCloudFromEntity(cxx::Entity *entity, float size, const oo::PList &settings)
 {
 	oo::Ref<OOExplosionCloudEntity> result = oo::makeRef<OOExplosionCloudEntity>();
 	if (!result->initExplosionCloudWithEntity(entity, size, settings))  return nullptr;

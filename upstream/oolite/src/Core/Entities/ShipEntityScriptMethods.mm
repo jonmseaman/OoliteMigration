@@ -40,7 +40,7 @@ MA 02110-1301, USA.
 
 	if (shipKey.has_value())
 	{
-		item = oo::ToShip([oo::ToObjC((UNIVERSE != nullptr ? UNIVERSE->newShipWithName(*shipKey) : (::ShipEntity *)nil)) autorelease]);
+		item = oo::ToShip(oo::AutoreleaseEntity((UNIVERSE != nullptr ? UNIVERSE->newShipWithName(*shipKey) : (::ShipEntity *)nil)));
 		if (item != nil)  dumpItem(item);
 	}
 	
@@ -54,7 +54,7 @@ MA 02110-1301, USA.
 
 	if (role.has_value())
 	{
-		item = oo::ToShip([oo::ToObjC((UNIVERSE != nullptr ? UNIVERSE->newShipWithRole(*role) : (::ShipEntity *)nil)) autorelease]);
+		item = oo::ToShip(oo::AutoreleaseEntity((UNIVERSE != nullptr ? UNIVERSE->newShipWithRole(*role) : (::ShipEntity *)nil)));
 		if (item != nil)  dumpItem(item);
 	}
 	
@@ -70,7 +70,7 @@ std::vector<oo::ObjCRef<::Entity *>> ShipEntity::spawnShipsWithRole(const std::s
 
 	if (count == 0)  return result;
 
-	OO_LOG("script.debug.note.addShips", "Spawning {} x '{}' near {} {}", count, role, oo::ShortDescriptionOf(oo::ToObjC(this)), getUniversalID());
+	OO_LOG("script.debug.note.addShips", "Spawning {} x '{}' near {} {}", count, role, oo::EntityShortDescription(this), getUniversalID());
 
 	result.reserve(count);
 
