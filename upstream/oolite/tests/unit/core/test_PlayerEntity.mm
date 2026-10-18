@@ -1336,7 +1336,7 @@ public:
 	using RecordingPlayer::doScriptEvent;
 	using RecordingPlayer::addRoleToPlayer;
 
-	void doScriptEvent(ooscript::PropertyId message, const std::vector<oo::PList> &arguments) override
+	void doScriptEvent(ooscript::PropertyId /*message*/, const std::vector<oo::PList> &arguments) override
 	{
 		sSent.count++; sSent.number = (int)arguments.size();
 	}

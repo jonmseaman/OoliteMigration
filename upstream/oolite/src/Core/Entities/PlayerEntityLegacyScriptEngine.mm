@@ -2141,7 +2141,7 @@ void PlayerEntity::setMissionChoicesDictionary(const oo::PList &choicesDict)
 			gui->setKey(std::string(GUI_KEY_SKIP), choicesRow);
 		}
 		choicesRow++;
-		if (choicesRow > (end_row + 1)) break;
+		if (static_cast<NSUInteger>(choicesRow) > (end_row + 1)) break;
 	}
 
 	if (!selectableRowExists)

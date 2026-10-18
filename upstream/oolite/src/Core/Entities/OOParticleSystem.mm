@@ -277,7 +277,7 @@ void OOSmallFragmentBurstEntity::initFragmentBurstFrom(HPVector fragPosition, Ve
 		for (unsigned i = 0; i < count; i++)
 		{
 			// Note: initWithPosition:... stashes speeds in _particleSize[].
-			_particleSize[i] = 32.0f * kMinSpeed / _particleSize[i];
+			_particleSize[i] = 32.0f * static_cast<float>(kMinSpeed) / _particleSize[i];
 		}
 	}
 }

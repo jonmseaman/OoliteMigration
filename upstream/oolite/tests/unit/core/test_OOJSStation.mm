@@ -495,9 +495,9 @@ void PlayerEntity::enterDock(::StationEntity *station)
 {
 	_dockLog += "dock " + (station != nil ? station->_name : std::string("nil")); _docked = YES;
 }
-oo::PList PlayerEntity::processKeyCode(const oo::PList &key_def)  { std::abort(); }
-std::optional<std::string> PlayerEntity::validateKey(const std::string &key, const oo::PList &check_keys)  { std::abort(); }
-oo::PList PlayerEntity::missionVariableForKey(const std::string &key)  { std::abort(); }
+oo::PList PlayerEntity::processKeyCode(const oo::PList &/*key_def*/)  { std::abort(); }
+std::optional<std::string> PlayerEntity::validateKey(const std::string &/*key*/, const oo::PList &/*check_keys*/)  { std::abort(); }
+oo::PList PlayerEntity::missionVariableForKey(const std::string &/*key*/)  { std::abort(); }
 ::OOScript * PlayerEntity::commodityScriptNamed(const std::optional<std::string> &script)  { (void)script; return nil; }
 
 

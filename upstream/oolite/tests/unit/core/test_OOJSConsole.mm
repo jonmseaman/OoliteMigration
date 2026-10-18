@@ -150,7 +150,7 @@ void cxx_OOJSReportError(ooscript::Context context, const char *format, ...)
 }
 
 
-void cxx_OOJSReportWarning(ooscript::Context context, const char *format, ...)
+void cxx_OOJSReportWarning(ooscript::Context /*context*/, const char *format, ...)
 {
 	va_list args;
 	va_start(args, format);
@@ -417,7 +417,6 @@ Universe *gSharedUniverse = nil;
 
 namespace {
 
-ooscript::Object sEntityProto = nullptr;	// JS objects of this prototype stand for entities
 Entity *sPlainEntity = nil;
 Entity *sInspectableEntity = nil;
 

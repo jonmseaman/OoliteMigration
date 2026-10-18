@@ -25,6 +25,14 @@ endif
 # emits an effective -O3 (measured 2026-09-27, oo-6ece; 10 TUs). Pass optimization=2 explicitly
 # so the last -O on each QuickJS compile line is the pinned level. b_ndebug=true keeps release
 # NDEBUG semantics. -ffp-contract=off reaches it through add_global_arguments in meson.build.
+# Bead oo-bipqn: QuickJS-ng adds dependency('threads') (-pthread) to its link line, and every target
+# that links it. The MinGW clang driver does not use -pthread when linking (cutils.h takes Win32
+# threads under _WIN32), so each link printed "argument unused during compilation: '-pthread'".
+# On Windows the threads dependency is the same compile flag without the unused link flag, so the
+# objects and the links are unchanged and the driver has nothing to report.
+if host_machine.system() == 'windows'
+    meson.override_dependency('threads', declare_dependency(compile_args: ['-pthread']))
+endif
 quickjs_ng_proj = subproject(
     'quickjs-ng',
     default_options: [

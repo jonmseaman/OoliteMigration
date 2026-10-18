@@ -3193,7 +3193,7 @@ cxx::Entity * Universe::addVisualEffectAt(HPVector pos, const std::string &key)
 	OOJS_PROFILE_ENTER
 
 	// minimise the time between creating ship & assigning position.
-	if (radius == NSNotFound)
+	if (radius == static_cast<GLfloat>(NSNotFound))
 	{
 		GLfloat scalar = 1.0;
 		coordinatesForPosition(pos, "abs", &scalar);
@@ -10928,7 +10928,7 @@ Vector Universe::randomPlaceWithinScannerFrom(Vector pos, Vector route, double o
 
 HPVector Universe::fractionalPositionFrom(HPVector point0, HPVector point1, double routeFraction)
 {
-	if (routeFraction == NSNotFound) routeFraction = randf();
+	if (routeFraction == static_cast<double>(NSNotFound)) routeFraction = randf();
 	
 	point1 = OOHPVectorInterpolate(point0, point1, routeFraction);
 	

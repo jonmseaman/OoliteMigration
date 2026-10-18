@@ -56,7 +56,7 @@ class StickProfileTestPlayer : public PlayerEntity	// C++ since bead oo-9ht.177 
 {
 public:
 	using PlayerEntity::doScriptEvent;
-	void doScriptEvent(ooscript::PropertyId message, const std::vector<oo::PList> & arguments) override	{  }
+	void doScriptEvent(ooscript::PropertyId /*message*/, const std::vector<oo::PList> & /*arguments*/) override	{  }
 };
 
 // [[TestPlayer alloc] init] (bead oo-9ht.177): a C++ player under the ship's facade, as

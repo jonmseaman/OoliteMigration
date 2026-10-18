@@ -63,7 +63,7 @@ oo::PList Universe::generateSystemData(OOSystemID s)
 	if (s != 200)  data.emplace("name", oo::PList("System " + std::to_string(s)));
 	return oo::PList(std::move(data));
 }
-std::optional<std::string> Universe::getSystemInhabitants(OOSystemID sys, bool plural)
+std::optional<std::string> Universe::getSystemInhabitants(OOSystemID sys, bool /*plural*/)
 {
 	if (sys == 9)  return std::nullopt;
 	return (sys % 2 == 0) ? " Human Colonials " : "Furry Felines";
@@ -76,7 +76,7 @@ Universe *gSharedUniverse = nil;
 // overrides a description asks for.
 static int gExpansions = 0;
 
-std::optional<std::string> cxx_OOExpandDescriptionString(Random_Seed seed, const std::string &string, const oo::PList &overrides, const oo::PList &legacyLocals, const std::optional<std::string> &systemName, OOExpandOptions options)
+std::optional<std::string> cxx_OOExpandDescriptionString(Random_Seed /*seed*/, const std::string &string, const oo::PList &overrides, const oo::PList &/*legacyLocals*/, const std::optional<std::string> &/*systemName*/, OOExpandOptions /*options*/)
 {
 	if (string == "%R")  return "R" + std::to_string(++gExpansions);
 	std::string result = "<" + string;

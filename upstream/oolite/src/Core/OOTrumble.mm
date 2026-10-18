@@ -809,7 +809,7 @@ void OOTrumble::updateShudder(double delta_t)
 	}
 }
 
-void OOTrumble::updateStoned(double delta_t)
+void OOTrumble::updateStoned(double /*delta_t*/)
 {
 }
 

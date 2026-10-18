@@ -87,7 +87,7 @@ public:
 	OOTimeAbsolute &_time = universal_time;	// the universe's own state, which its getter answers (bead oo-ql9rn)
 	GLfloat &_airResistance = airResistanceFactor;	// the universe's own state, which setAirResistanceFactor() sets (bead oo-ql9rn)
 
-	oo::PList generateSystemData(OOSystemID s, bool /*useCache*/) override	{ return _systemData; }
+	oo::PList generateSystemData(OOSystemID /*s*/, bool /*useCache*/) override	{ return _systemData; }
 	bool reducedDetail() override	{ return YES; }
 };
 
@@ -419,11 +419,11 @@ OO_TEST(facade)
 		moon->setAirDensity(0.5f);
 		moon->setTerminatorThresholdVector(make_vector(1, 2, 3));
 		// Called as the uniforms call them: the implementation found by selector.
-		float (*floatValue)(id, SEL) = (float (*)(id, SEL))[object methodForSelector:@selector(airDensity)];
+		float (*floatValue)(id, SEL) = (float (*)(id, SEL))(void (*)(void))[object methodForSelector:@selector(airDensity)];
 		OO_CHECK(floatValue(object, @selector(airDensity)) == 0.5f);
-		floatValue = (float (*)(id, SEL))[object methodForSelector:@selector(airColorMixRatio)];
+		floatValue = (float (*)(id, SEL))(void (*)(void))[object methodForSelector:@selector(airColorMixRatio)];
 		OO_CHECK(floatValue(object, @selector(airColorMixRatio)) == moon->airColorMixRatio());
-		Vector (*vectorValue)(id, SEL) = (Vector (*)(id, SEL))[object methodForSelector:@selector(terminatorThresholdVector)];
+		Vector (*vectorValue)(id, SEL) = (Vector (*)(id, SEL))(void (*)(void))[object methodForSelector:@selector(terminatorThresholdVector)];
 		Vector t = vectorValue(object, @selector(terminatorThresholdVector));
 		OO_CHECK(t.x == 1 && t.y == 2 && t.z == 3);
 		Entity *rock = [[[Entity alloc] init] autorelease];

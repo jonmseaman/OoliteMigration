@@ -86,7 +86,7 @@ public:
 		_sky[0] = red;  _sky[1] = green;  _sky[2] = blue;  _sky[3] = alpha;
 		_skySets++;
 	}
-	void setSystemDataKey(const std::string &key, const oo::PList &value, const std::optional<std::string> &manifest) override	{ _systemData[key] = value; }
+	void setSystemDataKey(const std::string &key, const oo::PList &value, const std::optional<std::string> &/*manifest*/) override	{ _systemData[key] = value; }
 };
 
 

@@ -9189,7 +9189,7 @@ void PlayerEntity::setGuiToGameOptionsScreen()
 				}
 			}
 			
-			if (brightnessIdx == NSNotFound)
+			if (static_cast<NSInteger>(brightnessIdx) == NSNotFound)
 			{
 				OO_LOG_WARN("hdr.maxBrightness.notFound", "{}", "couldn't find current max brightness setting, switching to 400 nits.");
 				brightnessIdx = 0;

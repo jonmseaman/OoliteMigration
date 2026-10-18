@@ -74,7 +74,7 @@ public:
 class TestAIStation : public StationEntity
 {
 public:
-	bool setUpOneStandardSubentity(const oo::PList &subentDict, bool asTurret) override	{ return YES; }
+	bool setUpOneStandardSubentity(const oo::PList &/*subentDict*/, bool /*asTurret*/) override	{ return YES; }
 	bool isVisibleToScripts() override	{ return NO; }
 };
 

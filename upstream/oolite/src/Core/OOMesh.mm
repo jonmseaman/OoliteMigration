@@ -607,7 +607,7 @@ unsigned OOMesh::octreeDepth()
 	if (ys < zs)  { t = zs; zs = ys; ys = t; }
 	size = (xs + ys) / 2.0f;	// Use average of two largest
 
-	if (size < kOctreeSmallSizeThreshold)  result = kSmallOctreeDepth;
+	if (size < static_cast<GLfloat>(kOctreeSmallSizeThreshold))  result = kSmallOctreeDepth;
 	else while (result < kMaxOctreeDepth)
 	{
 		if (size < threshold) break;

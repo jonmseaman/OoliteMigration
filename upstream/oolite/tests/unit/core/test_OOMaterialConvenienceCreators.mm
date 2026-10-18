@@ -60,7 +60,7 @@ BOOL cxx_ScanQuaternionFromString(const std::optional<std::string> &, Quaternion
 
 
 // The binding whitelist, which the game implements elsewhere: everything.
-BOOL OOUniformBindingPermitted(const std::string &propertyName, cxx::Entity *bindingTarget)	{ return YES; }
+BOOL OOUniformBindingPermitted(const std::string &/*propertyName*/, cxx::Entity * /*bindingTarget*/)	{ return YES; }
 
 
 // The resource manager: the extension manager's two class methods, and shader files from a table.
@@ -303,7 +303,9 @@ oo::Ref<OOMaterial> Make(const char *name, oo::PList::Dict config, bool smooth =
 template <typename T>
 bool IsExactly(const oo::Ref<OOMaterial> &material)
 {
-	return material != nullptr && typeid(*material.get()) == typeid(T);
+	if (material == nullptr)  return false;
+	const OOMaterial &object = *material.get();
+	return typeid(object) == typeid(T);
 }
 
 }	// namespace

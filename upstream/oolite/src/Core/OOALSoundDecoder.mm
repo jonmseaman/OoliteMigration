@@ -537,7 +537,7 @@ static size_t OOReadOXZVorbis (void *ptr, size_t size, size_t nmemb, void *datas
 }
 
 
-static int OOCloseOXZVorbis (void *datasource)
+int OOCloseOXZVorbis (void * /*datasource*/)
 {
 //  doing this prevents replaying
 //	OOALSoundVorbisCodec *src = (OOALSoundVorbisCodec *)datasource;

@@ -26,6 +26,7 @@ MA 02110-1301, USA.
 #include "OOJSSpecialFunctions.h"
 #include "OOJSEngineCore.h"	// OOJSValue
 #include "oofnd/Ref.hpp"
+#include "ooscript/JSEngine.hpp"	// ooscript::Context, ooscript::Object (InitOOJSSpecialFunctions)
 
 
 static bool SpecialJSWarning(ooscript::Context context, ooscript::CallArgs &oojsArgs);
@@ -45,7 +46,7 @@ static ooscript::FunctionSpec sSpecialFunctionsMethods[] =
 };
 
 
-void InitOOJSSpecialFunctions(ooscript::Context context, ooscript::Object global)
+void InitOOJSSpecialFunctions(ooscript::Context /*context*/, ooscript::Object /*global*/)
 {
 }
 

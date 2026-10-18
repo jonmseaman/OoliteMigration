@@ -52,7 +52,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 int SendIntValue(id object, SEL intValue)
 {
 	using IntValueIMP = int (*)(id, SEL);
-	return reinterpret_cast<IntValueIMP>(class_getMethodImplementation(object_getClass(object), intValue))(object, intValue);
+	return reinterpret_cast<IntValueIMP>(reinterpret_cast<void (*)(void)>(class_getMethodImplementation(object_getClass(object), intValue)))(object, intValue);
 }
 
 }	// namespace

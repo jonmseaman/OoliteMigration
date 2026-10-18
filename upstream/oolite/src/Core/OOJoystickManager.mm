@@ -637,7 +637,7 @@ void OOJoystickManager::decodeButtonEvent(JoyButtonEvent *evt)
 		OO_LOG("decodeButtonEvent", "Joystick button out of range: {}", evt->button);
 		return;
 	}
-	if (evt->type == JOYBUTTONDOWN)
+	if (evt->type == static_cast<SDL_EventType>(JOYBUTTONDOWN))
 	{
 		bs = true;
 		if(function == BUTTON_PRECISION)

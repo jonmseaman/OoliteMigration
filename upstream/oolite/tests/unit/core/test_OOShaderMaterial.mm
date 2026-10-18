@@ -271,7 +271,7 @@ void OOTexture::forceRebind()	{}
 
 
 // The binding whitelist, which the game implements elsewhere: everything but "forbidden".
-BOOL OOUniformBindingPermitted(const std::string &propertyName, cxx::Entity *bindingTarget)
+BOOL OOUniformBindingPermitted(const std::string &propertyName, cxx::Entity * /*bindingTarget*/)
 {
 	return propertyName != "forbidden";
 }
