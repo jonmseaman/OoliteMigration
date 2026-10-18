@@ -648,6 +648,7 @@
 [oo-9ht.39.27.1] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/tier-c.sh --only goldens
 [oo-9ht.39.16] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/js-api-contract.sh && bash tools/check-string-expander.sh && bash tools/tier-c.sh --only goldens
 [oo-9ht.39.17] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/tier-c.sh --only goldens
+[oo-envci] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/tier-c.sh --only goldens
 [oo-jwt2g] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/js-api-contract.sh && bash tools/tier-c.sh --only goldens
 # Phase 3 exit gate oo-o8x: the slow half of its proof (the Tier-1 corpus and the rest of Tier C); the fast half is its acceptance block.
 [oo-o8x] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/tier-c.sh --only corpus,jsapi,fleetdata
