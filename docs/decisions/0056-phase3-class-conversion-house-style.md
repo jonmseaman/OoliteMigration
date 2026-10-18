@@ -8886,3 +8886,17 @@ flavour.
    so a 2-pixel side would scale to 1 (2 x 1 for a 4 x 2 image). That changes the pinned expectations in
    `test_OOTextureLoader` and `test_OOConcreteTexture` (and possibly how tiny textures are scaled in the game), so
    it needs Jon's approval line; it is a one-line change in the header plus those re-pins.
+
+## Amendment (bead oo-h3sye): the game's controller is never destroyed, as upstream's
+
+Track A batch AP, Migration Completion session, 2026-10-18. Status: Proposed (recommended default, CLAUDE.md
+rule 10). `src/SDL/main.mm` kept the controller in a namespace-scope `oo::Ref<GameController>` (since the
+controller's conversion), so at process exit the static destructors released it and tore the universe down
+(`Universe::dealloc`, every entity's teardown, the textures) after function-local statics such as `oo::log`'s
+logger had already been destroyed: the sanitized build reported a heap-use-after-free in
+`oo::log::Logger::willDisplay` on every normal exit. Upstream's `GameController *controller` was never released;
+the game leaves through `exit(0)` from inside `GameController::exitAppWithContext()`, so main never returns and
+releasing it "before main returns" is not reachable. **Default taken:** the global is a raw `GameController *`
+holding the one leaked reference (`oo::makeRef<GameController>().leakRef()`), so nothing runs at exit that
+upstream did not run. **Difference (flagged):** the exit-time teardown that the `oo::Ref` introduced (no upstream
+counterpart, nothing it did reached a file or the console the goldens read) no longer runs.

@@ -53,7 +53,11 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 
 namespace
 {
-oo::Ref<GameController> controller;
+// The controller lives to the end of the process and is never destroyed, as upstream's
+// GameController *controller was never released (bead oo-h3sye): the game exits with exit(0) from
+// inside it, and a namespace-scope oo::Ref would tear the universe down during static destruction,
+// after function-local statics such as oo::log's logger have died.
+GameController *controller = nullptr;
 }
 #endif
 
@@ -173,7 +177,7 @@ int main(int argc, char *argv[])
 	{
 		// dajt: allocate and set the NSApplication delegate manually because not
 		// using NIB to do this
-		controller = oo::makeRef<GameController>();
+		controller = oo::makeRef<GameController>().leakRef();	// never released (see above)
 		
 		for (i = 1; i < argc; i++)
 		{
