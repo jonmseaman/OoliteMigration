@@ -990,7 +990,7 @@ static bool ConsoleCallObjCMethod(ooscript::Context context, ooscript::CallArgs 
 	// answer its object's -cxx_oo_jsClassName forwarded to; any other object's is its own.
 	std::optional<std::string> className;
 	if (entity != nullptr)  className = OOJSEntityJSClassName(entity);
-	else  className = [object cxx_oo_jsClassName];
+	else if (OOJSObjectAnswersGlue(object, @selector(cxx_oo_jsClassName)))  className = [object cxx_oo_jsClassName];	// else OOObject's default, none (bead oo-t7o84)
 	if (entity != nullptr)  OK = OOJSCallEntityMethod(context, entity, className.value_or(std::string()), oojsArgs.count(), OOJS_ARGV, &result);
 	else  OK = OOJSCallObjCObjectMethod(context, object, className.value_or(std::string()), oojsArgs.count(), OOJS_ARGV, &result);
 	OOJSResumeTimeLimiter();

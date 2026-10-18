@@ -142,9 +142,10 @@ private:
 
 
 
-/*	The root-class JS glue for classes rooted on OOObject: the category OOObject (OOJavaScript)
-	(OOObject+OOJavaScript.h) and the bodies of its default methods, which the category
-	forwards to (amendment oo-ppc item 3).
+/*	The root-class JS glue for classes rooted on OOObject: the defaults of the selectors
+	OOObject+OOJavaScript.h declares, which its bridges call for an object whose class has no
+	method of its own (the category OOObject (OOJavaScriptConversion) forwarded to them, amendment
+	oo-ppc item 3, until bead oo-t7o84 deleted it).
 */
 ooscript::Value OOObjectJSValueInContext(ooscript::Context context);
 std::optional<std::string> OOObjectJSClassName();

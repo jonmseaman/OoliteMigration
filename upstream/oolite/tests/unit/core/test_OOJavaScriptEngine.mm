@@ -600,10 +600,12 @@ OO_TEST(nativeObjectValues)
 		TestNative *native = [[[TestNative alloc] init] autorelease];
 		OO_CHECK(ooscript::isUndefined(OOJSValueFromNativeObject(context, native)));
 		OO_CHECK(OOJSObjectFromNativeObject(context, native) == NULL);
-		OO_CHECK(![native cxx_oo_jsClassName].has_value());
-		OO_CHECK_EQ([native cxx_oo_jsDescription].value_or("<none>"), "[TestNative x=1]");
-		OO_CHECK_EQ([native cxx_oo_jsDescriptionWithClassName:std::string("Named")].value_or("<none>"), "[Named x=1]");
-		OO_CHECK_EQ([[[[OOObject alloc] init] autorelease] cxx_oo_jsDescription].value_or("<none>"), "[object OOObject]");
+		// (Asked through the engine's C++ bridges since bead oo-t7o84 deleted the category OOObject
+		// (OOJavaScriptConversion) that answered these selectors.)
+		OO_CHECK(!OOJavaScriptEngineJSClassName(native).has_value());
+		OO_CHECK_EQ(OOJavaScriptEngineJSDescription(native).value_or("<none>"), "[TestNative x=1]");
+		OO_CHECK_EQ(OOJavaScriptEngineJSDescriptionWithClassName(native, std::string("Named")).value_or("<none>"), "[Named x=1]");
+		OO_CHECK_EQ(OOJavaScriptEngineJSDescription([[[OOObject alloc] init] autorelease]).value_or("<none>"), "[object OOObject]");
 
 		// A native vector is a Vector3D.
 		oo::Ref<OONativeVector> vector = oo::makeRef<OONativeVector>(make_vector(1.0f, 2.0f, 3.0f));
