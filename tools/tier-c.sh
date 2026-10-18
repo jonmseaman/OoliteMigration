@@ -594,8 +594,13 @@ stage_asan() {
   local symtest sym_addr
   # objdump prints the address as 8 hex digits under the 0x140000000 image base (hence the "0x1"
   # prefix) or, on the current toolchain, as the full 16-digit VA; take either as it comes.
+  # The probe is the game's main() in src/SDL/main.mm, which every build has; SDL3's SDL_main.h
+  # renames it SDL_main (the symbol "main" is SDL_main_impl.h's, with no src/ line). It was the
+  # Objective-C method -[OOOpenALController init] until the Phase 3 conversion deleted that method,
+  # after which the entry-point fallback (the MinGW CRT's WinMainCRTStartup, no source line) failed
+  # the stage on every sanitized build (bead oo-rr2ug).
   sym_addr="$(objdump -d "$binary" 2>/dev/null \
-              | awk '/<_i_OOOpenALController__init>:/{a=$1; sub(":","",a); print (length(a) <= 8 ? "0x1" a : "0x" a); exit}' || true)"
+              | awk '/^[0-9a-f]+ <SDL_main>:/{a=$1; sub(":","",a); print (length(a) <= 8 ? "0x1" a : "0x" a); exit}' || true)"
   # Fall back to the entry point when that symbol moves; what matters is that SOME engine address
   # resolves to a src/ path, not which one.
   [ -n "$sym_addr" ] || sym_addr="$(objdump -f "$binary" 2>/dev/null | awk '/start address/{print $NF}')"
