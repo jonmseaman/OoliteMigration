@@ -52,7 +52,6 @@ MA 02110-1301, USA.
 #import "OOMacroOpenGL.h"
 #import "OOProfilingStopwatch.h"
 #import "OODebugFlags.h"
-#import "NSObjectOOExtensions.h"
 
 #import "OOJavaScriptEngine.h"
 #import "OODebugStandards.h"
@@ -806,7 +805,7 @@ size_t OOMesh::totalSize()
 	OOMeshMaterialCount i;
 	for (i = 0; i != materialCount; i++)
 	{
-		// -oo_objectSize: the object's own size (was its facade class's instance size), 0 for nil.
+		// The object's own size (was its facade class's instance size), 0 for nil.
 		if (materials[i] != nullptr)  result += materials[i]->objectSize();
 	}
 

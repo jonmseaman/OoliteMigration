@@ -102,7 +102,7 @@ bool OOParticleSystem::canCollide()
 
 bool OOParticleSystem::checkCloseCollisionWith(cxx::Entity *other)
 {
-	if (oo::ToObjC(other) == owner())  return false;
+	if (other == oo::LiveOwner(this))  return false;	// the owner's C++ entity, null for none (bead oo-9ht.39.20)
 	return other == nullptr || !other->isEffect();	// [nil isEffect] answered NO
 }
 

@@ -224,7 +224,7 @@ bool OOSunEntity::canCollide()
 
 
 #ifndef NDEBUG
-bool OOSunEntity::checkCloseCollisionWith(Entity *other)
+bool OOSunEntity::checkCloseCollisionWith(cxx::Entity *other)
 {
 	if (gDebugFlags & DEBUG_COLLISIONS)
 	{
@@ -843,10 +843,7 @@ bool OOSunEntity::isVisibleToScripts()
 // other body by selector.
 double OOStellarBodyRadius(::Entity *body)
 {
-	if (body == nil)  return 0.0;
-	if (OOSunEntity *sun = dynamic_cast<OOSunEntity *>(oo::ToCxx(body)))  return sun->radius();
-	if (OOPlanetEntity *planet = dynamic_cast<OOPlanetEntity *>(oo::ToCxx(body)))  return planet->radius();
-	return [(::Entity<OOStellarBody> *)body radius];
+	return OOStellarBodyRadius(oo::ToCxx(body));	// its C++ entity, asked below (bead oo-9ht.39.20)
 }
 
 
@@ -855,7 +852,8 @@ double OOStellarBodyRadius(cxx::Entity *body)
 	if (body == nullptr)  return 0.0;
 	if (OOSunEntity *sun = dynamic_cast<OOSunEntity *>(body))  return sun->radius();
 	if (OOPlanetEntity *planet = dynamic_cast<OOPlanetEntity *>(body))  return planet->radius();
-	return OOStellarBodyRadius(oo::ToObjC(body));
+	::Entity<OOStellarBody> *object = (::Entity<OOStellarBody> *)oo::ToObjC(body);	// any other body by selector
+	return [object radius];
 }
 
 
@@ -864,14 +862,12 @@ OOStellarBodyType OOStellarBodyPlanetType(cxx::Entity *body)
 	if (body == nullptr)  return (OOStellarBodyType)0;
 	if (OOSunEntity *sun = dynamic_cast<OOSunEntity *>(body))  return sun->planetType();
 	if (OOPlanetEntity *planet = dynamic_cast<OOPlanetEntity *>(body))  return planet->planetType();
-	return OOStellarBodyPlanetType(oo::ToObjC(body));
+	::Entity<OOStellarBody> *object = (::Entity<OOStellarBody> *)oo::ToObjC(body);	// any other body by selector
+	return [object planetType];
 }
 
 
 OOStellarBodyType OOStellarBodyPlanetType(::Entity *body)
 {
-	if (body == nil)  return (OOStellarBodyType)0;
-	if (OOSunEntity *sun = dynamic_cast<OOSunEntity *>(oo::ToCxx(body)))  return sun->planetType();
-	if (OOPlanetEntity *planet = dynamic_cast<OOPlanetEntity *>(oo::ToCxx(body)))  return planet->planetType();
-	return [(::Entity<OOStellarBody> *)body planetType];
+	return OOStellarBodyPlanetType(oo::ToCxx(body));	// its C++ entity, asked above (bead oo-9ht.39.20)
 }

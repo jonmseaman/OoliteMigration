@@ -26,7 +26,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOCocoa.h"
-#import "OOWeakReference.h"
+#import "oofnd/objc/OOObject.h"
 #import "OOTypes.h"
 #import "OOMaths.h"
 
@@ -45,7 +45,7 @@ typedef enum
 #define MAX_SUBDIVIDE			6
 
 
-@protocol OOStellarBody <OOObject, OOWeakReferenceSupport>
+@protocol OOStellarBody <OOObject>	// (and the weak-reference protocol until bead oo-9ht.22.3: nothing adopts it)
 
 - (double) radius;
 - (OOStellarBodyType) planetType;

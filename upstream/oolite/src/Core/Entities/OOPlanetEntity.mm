@@ -819,7 +819,7 @@ void OOPlanetEntity::drawImmediate(bool /*immediate*/, bool /*translucent*/)
 }
 
 
-bool OOPlanetEntity::checkCloseCollisionWith(Entity *other)
+bool OOPlanetEntity::checkCloseCollisionWith(cxx::Entity *other)
 {
 	if (!other)
 		return NO;

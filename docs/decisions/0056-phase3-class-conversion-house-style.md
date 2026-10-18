@@ -8620,3 +8620,133 @@ comment: track A, oo-9ht.39.28, oo-9ht.186), OOWeakReference+ObjCBridge (oo-9ht.
 (oo-3pl05), OOObject+OOJavaScript.mm (oo-t7o84), OODescription.mm (oo-8sql7), NSObjectOOExtensions.mm
 (oo-6e1.1), the oofnd/objc roots and OOObjCPeer.h's comment (oo-4aq6a), GameController.mm's Mac block (oo-sqzbw)
 and the excepted GameController+FullScreen.mm.
+
+## Amendment (beads oo-9ht.39.18, oo-9ht.39.19, oo-9ht.39.20, oo-9ht.39.27, oo-9ht.39.25, oo-9ht.186): the player, station, dock, effects, HUD and bindings stop sending through the facade (steps 5h, 5i, 5j and the 5b/5d residue); the cascade's category is deleted
+
+oo-9ht.39 steps 5h, 5i, 5j and the residue of 5b and 5d, with oo-9ht.186, batch AN (track A), Migration Completion
+session, 2026-10-18, one branch and one commit. Status: Proposed (recommended defaults, CLAUDE.md rule 10).
+Behaviour-identical and compiler-driven (probes with `-Werror=receiver-expr`), as amendments oo-9ht.39.16 and
+oo-9ht.39.26. Exemplars: `DockEntity::launchQueue`, `PlayerEntity::validateCompassTarget()`, `hudDrawReticleOnTarget()`.
+
+1. **The cascade's category goes (oo-9ht.186).** `OOQuiriumCascadeEntity+ObjCBridge.h/.mm` (the root facade's
+   `-isCascadeWeapon`) and its meson entry are deleted. `OOEntityIsCascadeWeapon(cxx::Entity *)`
+   (`OOQuiriumCascadeEntity.h`) is the category's body: false for null and for every entity but a cascade. The
+   player's, ship's and station's damage handlers ask it of the C++ attacker, the scanners of each scanned entity.
+   The callObjC() row `isCascadeWeapon` stays (`gen-callobjc-entity-table.py` renders it as a retired category
+   row, where the category's rows followed the facade's; the header loses only the import and names it), answered on the
+   C++ part by `Facade_isCascadeWeapon` as since oo-9ht.39.8.25; `OOEntityObjectNamesTable.h` keeps its row.
+2. **Sends become members.** `doScriptEvent(..., oo::ToObjC(x))` passes the entity (amendment oo-9ht.39.16
+   item 1); `[oo::ToObjC(x) isShip/isPlanet/isPlayer/isSubEntity/status]` are `oo::EntityIs*()`/`EntityStatus()`;
+   `-isStation`, `-isWormhole`, `-universalID`, `-position` are the members they forwarded to (`getIsStation()`,
+   `getIsWormhole()`, `getUniversalID()`, `getPosition()`) with nil's answer for null; `-isVisible`,
+   `-collisionRadius`, `-isEffect`, `-getIsVisualEffect` are the virtual members the Objective-C adapter
+   overrides. `oo::ToCxx(oo::ToObjC(this))` is `this`; `oo::ToCxx(oo::WeakEntityObject(r))` is
+   `oo::LiveEntity(r)`; an owner's object compared or converted is `oo::LiveOwner()`.
+3. **Holds (amendment oo-9ht.39.26).** The dock's launch queue, the station's `dockSubEntities()` and
+   `launchPolice()` result, the wormhole's ships in transit and the player's scanned wormholes
+   (`getScannedWormholes()`) are `oo::EntityHold`s: the same objects retained, the C++ entities answered.
+   The loaded wormholes' extra never-released +1 is kept (`oo::RetainEntity(oo::MadeEntity(...))`).
+4. **The player.** The compass (`validateCompassTarget()`, the next/previous-compass-mode beacon walks), the
+   altitude dial, `dialTargetName()`, `takeEnergyDamage()` (its attacker and cause; their +1/autorelease through
+   `oo::RetainEntity()`/`AutoreleaseEntity()`; descriptions through `oo::EntityDescription()`, byte for byte),
+   the legacy script's target-nearest actions and the docking-request, autopilot and debug-dump keys work on
+   C++ entities. The beacon walks link through the protocol's messages as before (`oo::PrevBeacon`/`NextBeacon`;
+   `oo::BeaconIsJammingScanning()`, added to Entity+ObjCBridge with the other beacon helpers, sends
+   `-isJammingScanning`).
+5. **The HUD.** `hudDrawReticleOnTarget()`, `hudDrawWaypoint()` and the `HeadUpDisplayEntity*()` /
+   `HeadUpDisplayUniverseFirstEntityTargetedByPlayer*()` helpers take and answer C++ entities; the compass
+   reference, the target-memory reticles and the waypoints are C++ entities (`getCompassTargetEntity()`,
+   `oo::LiveEntity()`).
+6. **Effects and bodies.** `checkCloseCollisionWith()` of the sun, planet and wormhole are written
+   `cxx::Entity *` (they were, through the injected class name); the wormhole asks `isEffect()` as the particle
+   system does; the particle system compares `oo::LiveOwner()`; the effect's beacon code comparison is
+   `oo::BeaconCode()`, its beacon links `oo::LiveEntity()`. `OOStellarBodyRadius()`/`OOStellarBodyPlanetType()`
+   of an object ask the C++ overload with its part (sun, planet, else the object by selector, as before).
+   `OOJSVisualEffect`'s sub-effect removal finds its parent through `oo::LiveOwner()`.
+
+**Defaults (rule 10).** Behaviour-identical (goldens, core tests). Flagged, not observable in the game: where a
+local held `oo::ToObjC(x)` and is now `x`, an Objective-C stand-in whose object has gone is asked of its C++ part
+(it answered as nil), as amendments oo-9ht.39.16 and oo-9ht.39.24 flagged; the debug build's dump-target key
+calls `dumpState()` (what the facade's `-dumpState` called; an Objective-C class overriding `-dumpState` is not
+reached - none in the game).
+
+**Tests (standing approval oo-9n5p9, lines on main 6bb8f6a91, 6672136c0).** Re-based, no case or expected value
+changed: `test_OOQuiriumCascadeEntity` (the two `-isCascadeWeapon` sends ask `OOEntityIsCascadeWeapon()`),
+`test_OOEntityCalledByName` and `test_OOJSCallEntityMethods` (their facade-contract checks treat the deleted
+category's name as they treat the deleted JS glue's: answered, its row and body still required), `test_DockEntity` (the launch queue compared with the C++ ships), `test_StationEntity` and
+`test_OODebugMonitor` (signatures of `dockSubEntities()` and the stand-in `getScannedWormholes()`).
+
+**Left (5k, oo-9ht.39.28; the beads' acceptance is a ratchet).** The object lists and snapshots (cargo, sub-entities
+and the effect's sub-entity enumerators, the colliding list, `OOWeakSet` ships on hold, defense targets, the
+scanners' and mass-lock retained snapshots, missiles, `wormholeObject`/`demoShip` with their deliberate leaks,
+`spawnShipsWithRole()`), the legacy script's object targets, the player's object compass getter
+(`getCompassTarget()`, a test's player overrides it), the debug monitor's `dumpEntity(id)`, OOShipGroup's
+`memberArray()`, the JS glue for Objective-C entities, what only an object answers (`-beaconDrawable`,
+`-beaconLabel`, `-weakRetain`, `-isKindOfClass:`, descriptions, the player facade's save-panel properties).
+
+## Amendment (bead oo-9ht.22.3, with notes for oo-6e1.1 and oo-4hdyr): the ships' and stations' weak sets are oo::WeakSet; OOWeakReference's non-entity users go
+
+- Date: 2026-10-18. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Track B5,
+  Migration Completion session, one branch and one commit. Exemplar: `ShipEntity::addDefenseTarget()`,
+  `StationEntity::holdPositionInstructionForShip()`. The second slice of oo-9ht.22 that does not wait
+  for the Entity facade; follows amendments oo-9ht.22.1 and oo-9ht.39.5.2.
+
+**Decision (recommended defaults).**
+
+1. **The weak sets.** `ShipEntity::_defenseTargets`, `_collisionExceptions` and
+   `StationEntity::_shipsOnHold` were `oo::Ref<OOWeakSet>` of the ships' Objective-C objects (each
+   member an `OOWeakReference` from `-weakRetain`); they are `oo::WeakSet<cxx::Entity>`
+   (`oofnd/WeakSet.hpp`) of the ships' C++ parts, held by value. As in amendment oo-9ht.22.1, a
+   member leaves exactly when the object's weak reference died (the facade's `-dealloc` drops its
+   part's weak references), membership is identity, order is insertion order, a removed or dead
+   member goes without disturbing the others' order, and adding nothing is ignored. The lazy
+   allocation goes (an empty set answers as the absent one did: count 0, no member); the dealloc and
+   `willDealloc()` clears, and `initStationDefaults()`'s new set is a cleared one. The public API is
+   unchanged: `collisionExceptions()`, `allDefenseTargets()` and `defenseTargets()` still answer
+   `oo::ObjCRef<::Entity *>` snapshots of the live members (`oo::ToObjC()` of each, the object the
+   set held), for oo-9ht.39.28 to make C++.
+2. **OOWeakSet is dead.** Nothing in the game uses it. `OOWeakSet.h/.mm` (still built: the core
+   tests' meson asserts a tested source is in the game target) and `test_OOWeakSet` stay, unchanged but for a note, until oo-9ht.22 deletes them
+   with `OOWeakReference` (deleting the test needs Jon's ADR-0049 line, as `test_OOWeakReference`'s
+   does, and the `[oo-cc8a]` nightly line names it): `oo::WeakSet` has its own tests
+   (`tests/unit/oofnd/test_weakset.cpp`).
+3. **Imports and comments.** `OOWeakReference.h` is no longer imported by `OODebugMonitor.h`,
+   `Universe.h`, `OOMaterial.h`, `OOShaderMaterial.h`, `OOMesh.h`, `OODrawable.h` or `OOStellarBody.h`,
+   none of which used it; `OOShaderUniform.h`, which keeps the Objective-C binding path (an entity's
+   object, item 5), imports it instead of `@class`. `@protocol OOStellarBody` no longer lists
+   `OOWeakReferenceSupport` (no class adopts the protocol; it is a cast type). Comments naming the
+   old API in non-entity files (the scripts, timers and definitions, the engine core, AI, the HUD,
+   OOCallByName, OOMaterialState) say "weak reference proxy". `OOWeakReference+ObjCBridge.h`'s
+   usage example (ThingWatcher) is replaced by a summary pointing to `oo::WeakRef`/`oo::WeakSet`.
+4. **NSObjectOOExtensions (oo-6e1.1).** The imports nothing uses go (`Octree.mm`, `OOMesh.mm`,
+   `OOSkyDrawable.mm`, `Entity.mm`) and the comments naming `-oo_objectSize` are reworded. The class
+   stays: its senders are the root facade's live-entity memory count (`Entity+ObjCBridge.mm`), the
+   debug monitor's `dumpEntity(id)` and `OOWeakReference`'s forwarding override, all entity-bound.
+   Default for oo-9ht.39.28 (flagged: debug output only): the memory count and the debug monitor's
+   entity size become the C++ entity's dynamic size (a virtual `objectSize()` answering
+   `sizeof *this`, as `OODrawable::objectSize()`), where they were the facade class's instance size.
+5. **Left for oo-9ht.39.28 (the root facade), then oo-9ht.22.** `OOWeakRefObject` (the root facade's
+   superclass, `weakSelf`), `Entity::superShaderBindingTarget()`'s `id<OOWeakReferenceSupport>` and
+   `OOShaderUniform`'s Objective-C binding target (an entity's object, for an Objective-C entity
+   subclass), the entities' weak Object nodes (`ShipEntity.mm` proximity condition and
+   `_primaryTarget` restore, `StationEntity.mm`'s `station` accessor, `ShipEntityAI.mm`), the JS
+   engine's unwrap of a weak reference in a private slot and in `OOObject+OOJavaScript.mm`
+   (`weakRefUnderlyingObject`: every weak reference left is an entity's), the names table's rows
+   and `OOJSCallEntityMethods.h`'s `superShaderBindingTarget` row, and comments in entity files
+   (`OOEntityCalledByName.h`, `OOJSConsole.mm`, `OOJSShip.mm`, `PlayerEntity.mm`,
+   `OOVisualEffectEntity.h`'s and `Entity.h`'s imports). Then oo-9ht.22 deletes the class files,
+   `OOWeakSet`, their meson lines and tests.
+6. **The brightness sentinel (oo-4hdyr): no change.** `PList::at()` is bounds-checked, so the
+   unmatched brightness's index (`static_cast<std::size_t>(-1)`) reads no element: `at<int>()`
+   answers the fallback, 0, as the Objective-C `-oo_intAtIndex:` did for an out-of-range index. It is
+   not an out-of-bounds access; the missing warning and the 0-nit label are upstream behaviour, kept.
+
+**Differences.** None in the game. `OOStellarBody`'s protocol object no longer inherits
+`OOWeakReferenceSupport` (nothing asks).
+
+**Tests** (standing approval oo-9n5p9, line on main 97f87d939): `test_StationEntity`'s
+`ShipsOnHold2` accessor answers the station's `oo::WeakSet<cxx::Entity>`, and its calls are spelled
+`add(ship)`/`contains(ship)` where they were `addObject(oo::ToObjC(ship))`/`containsObject(...)`;
+no check or expected value changes. `OOEntityObjectNamesTable.h`'s `subEntityReallyDied:` row
+records the facade method's type encoding, which spells out `ShipEntity`'s members: it is
+re-measured (the two weak sets' new type), as the table's header says it is measured.

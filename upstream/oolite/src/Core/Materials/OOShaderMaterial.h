@@ -37,7 +37,6 @@ SOFTWARE.
 #define OOSHADERMATERIAL_H
 
 #import "OOBasicMaterial.h"
-#import "OOWeakReference.h"
 #import "OOShaderProgram.h"
 #import "OOMaths.h"
 #include "oofnd/objc/OOObjCRef.h"

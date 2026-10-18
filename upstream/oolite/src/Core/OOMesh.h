@@ -36,7 +36,6 @@ MA 02110-1301, USA.
 
 #import "OODrawable.h"
 #import "OOOpenGL.h"
-#import "OOWeakReference.h"
 #import "OOOpenGLExtensionManager.h"
 #import "OOGraphicsResetManager.h"
 namespace cxx { class Entity; }	// Entity.h: the shader binding target (bead oo-9ht.39.6)

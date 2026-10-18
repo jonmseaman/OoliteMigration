@@ -142,8 +142,8 @@ OO_TEST(fromShip)
 		OO_CHECK(HPvector_equal([cascade position], make_HPvector(5, 6, 7)));
 		OO_CHECK([cascade status] == STATUS_EFFECT && [cascade scanClass] == CLASS_MINE);
 		OO_CHECK([cascade owner] == shipOwner);
-		OO_CHECK([cascade isEffect] && [cascade isCascadeWeapon]);
-		OO_CHECK(![ship isCascadeWeapon]);
+		OO_CHECK([cascade isEffect] && OOEntityIsCascadeWeapon(oo::ToCxx(cascade)));	// the deleted category's -isCascadeWeapon (bead oo-9ht.186)
+		OO_CHECK(!OOEntityIsCascadeWeapon(oo::ToCxx(ship)));
 		OO_CHECK(![cascade canCollide] && [cascade checkCloseCollisionWith:nil] && [cascade checkCloseCollisionWith:ship]);
 		OO_CHECK(oo::DescriptionOf(cascade).starts_with("<OOQuiriumCascadeEntity 0x"));
 		OO_CHECK(oo::DescriptionOf(cascade).ends_with("{0.000000 seconds passed of 20.000000}"));

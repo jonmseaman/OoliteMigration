@@ -21,7 +21,6 @@
 #import "DockEntity.h"
 #import "Universe.h"
 #import "PlayerEntity.h"
-#import "OOWeakSet.h"
 #import "OOObjCPList.h"
 #import "EntityOOJavaScriptExtensions.h"
 #import "OOJSStation.h"
@@ -209,7 +208,7 @@ OO_TEST(initAndSetUpFromDictionary)
 		OO_CHECK(sVirtualDockDict.get<std::string>("dock_label", "") == "the docking bay");
 		const oo::PList *position = sVirtualDockDict.find("position");
 		OO_CHECK(position != nullptr && position->get<double>("z", 0) == 750.0 && position->get<double>("x", 1) == 0.0);
-		OO_CHECK((station != nullptr ? station->dockSubEntities() : std::vector<oo::ObjCRef<::Entity *>>()).empty());
+		OO_CHECK((station != nullptr ? station->dockSubEntities() : std::vector<oo::EntityHold>()).empty());
 	}
 }
 
@@ -434,7 +433,7 @@ TestVisitor *MakeVisitor(const std::string &key, oo::PList::Dict extra = {})
 	return static_cast<TestVisitor *>(oo::ToShip([oo::NewShipObject(oo::makeRef<TestVisitor>(), key, oo::PList(std::move(dict))) autorelease]));
 }
 
-OOWeakSet *ShipsOnHold2(StationEntity *s)				{ return s->_shipsOnHold.get(); }
+oo::WeakSet<cxx::Entity> *ShipsOnHold2(StationEntity *s)	{ return &s->_shipsOnHold; }
 void SetDefendersLaunched2(StationEntity *s, unsigned n)	{ s->defenders_launched = n; }
 void SetScavengersLaunched2(StationEntity *s, unsigned n)	{ s->scavengers_launched = n; }
 unsigned DockedShuttles2(StationEntity *s)				{ return s->docked_shuttles; }
@@ -450,7 +449,7 @@ OO_TEST(slice2NoDocks)
 		SetUp();
 		TestStation *station = MakeStation("dockless2");
 		TestVisitor *ship = MakeVisitor("visitor");
-		OO_CHECK((station != nullptr ? station->dockSubEntities() : std::vector<oo::ObjCRef<::Entity *>>()).empty());
+		OO_CHECK((station != nullptr ? station->dockSubEntities() : std::vector<oo::EntityHold>()).empty());
 		OO_CHECK(!(station != nullptr ? station->hasMultipleDocks() : false) && !(station != nullptr ? station->hasClearDock() : false) && !(station != nullptr ? station->hasLaunchDock() : false) && !(station != nullptr ? station->hasEligibleDock() : false));
 		OO_CHECK((station != nullptr ? station->selectDockForDocking() : (DockEntity *)nullptr) == nil);
 		OO_CHECK(!(station != nullptr ? station->dockingCorridorIsEmpty() : false));
@@ -480,7 +479,7 @@ OO_TEST(slice2HoldPosition)
 		TestStation *station = MakeStation("holder");
 		TestVisitor *ship = MakeVisitor("waiter");
 		if (ship != nullptr)  ship->setPosition(make_HPvector(1, 2, 3));
-		ShipsOnHold2(station)->addObject(oo::ToObjC(ship));		// already holding: no message
+		ShipsOnHold2(station)->add(ship);		// already holding: no message
 		const oo::PList hold = (station != nullptr ? station->holdPositionInstructionForShip(ship) : oo::PList());
 		OO_CHECK(hold.get<std::string>("ai_message", "") == "HOLD_POSITION" && hold.find("comms_message") == nullptr);
 		OO_CHECK(hold.get<double>("speed", -1) == 0 && hold.get<double>("range", -1) == 100);
@@ -489,14 +488,14 @@ OO_TEST(slice2HoldPosition)
 		OO_CHECK(destination != nullptr && destination->get<double>("x", 0) == 1 && destination->get<double>("z", 0) == 3);
 		const oo::PList *stationRef = hold.find("station");
 		OO_CHECK(stationRef != nullptr && [oo::ObjectIn(*stationRef) weakRefUnderlyingObject] == oo::ToObjC(station));
-		OO_CHECK(ShipsOnHold2(station)->containsObject(oo::ToObjC(ship)) && ShipsOnHold2(station)->count() == 1);
+		OO_CHECK(ShipsOnHold2(station)->contains(ship) && ShipsOnHold2(station)->count() == 1);
 
 		if (station != nullptr)  station->clear();
 		OO_CHECK(ShipsOnHold2(station)->count() == 0);
 
-		ShipsOnHold2(station)->addObject(oo::ToObjC(ship));
+		ShipsOnHold2(station)->add(ship);
 		if (station != nullptr)  station->abortDockingForShip(ship);
-		OO_CHECK(!ShipsOnHold2(station)->containsObject(oo::ToObjC(ship)));
+		OO_CHECK(!ShipsOnHold2(station)->contains(ship));
 	}
 }
 
@@ -538,7 +537,7 @@ OO_TEST(slice2MembersFromCxx)
 		TestVisitor *ship = MakeVisitor("guest");
 		StationEntity *part = station;
 		OO_CHECK(!part->hasMultipleDocks() && !part->fitsInDock(nil) && part->selectDockForDocking() == nil);
-		ShipsOnHold2(station)->addObject(oo::ToObjC(ship));
+		ShipsOnHold2(station)->add(ship);
 		OO_CHECK(part->holdPositionInstructionForShip(ship).get<std::string>("ai_message", "") == "HOLD_POSITION");
 		part->clear();
 		OO_CHECK(ShipsOnHold2(station)->count() == 0);

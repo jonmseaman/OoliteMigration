@@ -52,7 +52,7 @@ typedef enum
 // A ship in transit (the old entry dictionary's "ship", "time" and "shipBeacon").
 struct OOWormholeTransit
 {
-	oo::ObjCRef<::Entity *>	ship;
+	oo::EntityHold				ship;	// the ship, its object held (bead oo-9ht.39.20)
 	double						time;		// arrival relative to the wormhole's arrival_time
 	std::optional<std::string>	beacon;		// the ship's beacon code when it entered, if any
 };

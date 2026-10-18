@@ -357,7 +357,7 @@ OO_TEST(launchQueue)
 		dock->addShipToLaunchQueue(second, true);
 		OO_CHECK((dock != nullptr ? dock->countOfShipsInLaunchQueue() : 0) == 2);
 		DockEntity *part = dock;
-		OO_CHECK(part->launchQueue[0].get() == oo::ToObjC(second) && part->launchQueue[1].get() == oo::ToObjC(first));
+		OO_CHECK(part->launchQueue[0].get() == second && part->launchQueue[1].get() == first);	// the queue holds the C++ ships (bead oo-9ht.39.19)
 		OO_CHECK((first != nullptr ? first->status() : OOEntityStatus{}) == STATUS_DOCKED && (second != nullptr ? second->status() : OOEntityStatus{}) == STATUS_DOCKED);
 		OO_CHECK((dock != nullptr ? dock->countOfShipsInLaunchQueueWithPrimaryRole("no-such-role") : 0) == 0);
 		part->no_docking_while_launching = YES;

@@ -38,7 +38,7 @@
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
-#import "OOWeakSet.h"
+#include "oofnd/WeakSet.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 #include "Octree.h"
 #import "OORoleSet.h"
@@ -1413,10 +1413,11 @@ public:
 	Vector					_escortPositions[MAX_ESCORTS] = {};
 	BOOL					_escortPositionsValid = {};
 	
-	oo::Ref<::OOWeakSet>		_defenseTargets = {};			 // defense targets
+	// The ships' C++ parts, held weakly (OOWeakSets of their objects until bead oo-9ht.22.3)
+	oo::WeakSet<cxx::Entity>	_defenseTargets = {};			 // defense targets
 	
 	// ships in this set can't be collided with
-	oo::Ref<::OOWeakSet>		_collisionExceptions = {};
+	oo::WeakSet<cxx::Entity>	_collisionExceptions = {};
 
 	GLfloat					_profileRadius = {};
 	
