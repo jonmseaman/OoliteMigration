@@ -38,6 +38,7 @@ MA 02110-1301, USA.
 #include "oofnd/Ref.hpp"
 #include "oofnd/PList.hpp"
 #include "oofnd/objc/OOObjCRef.h"
+#include "OOEntityHold.h"	// memberArray() (bead oo-xn1j1)
 #include "OOJSPrivateObject.h"
 
 #include <vector>
@@ -66,8 +67,8 @@ public:
 	void setLeader(::ShipEntity *leader);
 
 	// The members at the time this is called, even if the group is mutated later.
-	std::vector<oo::ObjCRef<::Entity *>> memberArray();	// arbitrary order
-	std::vector<oo::ObjCRef<::Entity *>> memberArrayExcludingLeader();	// arbitrary order
+	std::vector<oo::EntityHold> memberArray();	// arbitrary order
+	std::vector<oo::EntityHold> memberArrayExcludingLeader();	// arbitrary order
 
 	bool containsShip(::ShipEntity *ship);
 	bool addShip(::ShipEntity *ship);

@@ -62,11 +62,11 @@ MA 02110-1301, USA.
 }
 
 
-std::vector<oo::ObjCRef<::Entity *>> ShipEntity::spawnShipsWithRole(const std::string &role, NSUInteger count)
+std::vector<oo::EntityHold> ShipEntity::spawnShipsWithRole(const std::string &role, NSUInteger count)
 {
 	::ShipEntity				*ship = oo::ToShip(rootShipEntity());	// FIXME: (EMMSTRAN) implement an -absolutePosition method, use that in spawnShipWithRole:near:, and use self instead of root.
 	::ShipEntity				*spawned = nil;
-	std::vector<oo::ObjCRef<::Entity *>>	result;
+	std::vector<oo::EntityHold>	result;
 
 	if (count == 0)  return result;
 
@@ -90,7 +90,7 @@ std::vector<oo::ObjCRef<::Entity *>> ShipEntity::spawnShipsWithRole(const std::s
 	  		{
 	 			if (spawned != nullptr)  spawned->setOwner(this);
 	 		}
-			result.emplace_back(oo::ToObjC(spawned));
+			result.emplace_back(spawned);
 		}
 	}
 	while (--count);

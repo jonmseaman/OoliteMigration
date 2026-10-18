@@ -26,6 +26,7 @@
 #include "oo_test.hpp"
 
 #include "oofnd/objc/OOObjCRef.h"
+#include "OOEntityHold.h"	// the cargo list (bead oo-xn1j1)
 
 #include <objc/runtime.h>
 
@@ -161,7 +162,7 @@ class ShipEntity : public cxx::Entity
 {
 public:
 	GLfloat hullHeatLevel();
-	std::vector<oo::ObjCRef<::Entity *>> *getCargo();
+	std::vector<oo::EntityHold> *getCargo();
 	std::optional<std::string> commodityType();
 
 	std::string commodity;	// a cargo pod's
@@ -179,14 +180,14 @@ public:
 
 	GLfloat pitch = {}, roll = {}, heat = {};
 	float appetite = {};
-	std::vector<oo::ObjCRef<::Entity *>> cargo;
+	std::vector<oo::EntityHold> cargo;
 	std::vector<OOTrumble *> added, removed;
 };
 
 GLfloat PlayerEntity::dialRoll()  { return roll; }
 GLfloat PlayerEntity::dialPitch()  { return pitch; }
 GLfloat ShipEntity::hullHeatLevel()  { return static_cast<PlayerEntity *>(this)->heat; }
-std::vector<oo::ObjCRef<::Entity *>> *ShipEntity::getCargo()  { return &static_cast<PlayerEntity *>(this)->cargo; }
+std::vector<oo::EntityHold> *ShipEntity::getCargo()  { return &static_cast<PlayerEntity *>(this)->cargo; }
 std::optional<std::string> ShipEntity::commodityType()  { return commodity; }
 float PlayerEntity::trumbleAppetiteAccumulator()  { return appetite; }
 void PlayerEntity::setTrumbleAppetiteAccumulator(float value)  { appetite = value; }
@@ -550,9 +551,9 @@ OO_TEST(feedingPopAndSpawn)
 		PlayerEntity *p = Player();
 		for (const char *good : { "gems", "furs", "food" })
 		{
-			p->cargo.push_back(oo::ObjCRef<::Entity *>(NewPod(good)));
+			p->cargo.push_back(oo::EntityHold(NewPod(good)->_cxxEntity.get()));
 		}
-		::Entity *food = p->cargo[2].get();
+		cxx::Entity *food = p->cargo[2].get();
 		p->appetite = 9.5f;
 		oo::Ref<OOTrumble> t = Trumble("Zq");
 		oo::PList::Dict state = *t->dictionary().getIf<oo::PList::Dict>();

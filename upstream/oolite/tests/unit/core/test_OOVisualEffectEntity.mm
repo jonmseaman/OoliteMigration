@@ -222,14 +222,14 @@ OO_TEST(flasherSubentities)
 	{
 		OOVisualEffectEntity *effect = Effect("lights", Dict({ { "subentities", oo::PList(oo::PList::Array{ Flasher(10), oo::PList(std::string("not a dictionary")) }) } }));
 		OO_CHECK_EQ(effect->subEntityCount(), 1u);	// the string made no subentity
-		std::vector<oo::ObjCRef<Entity *>> flashers = effect->flasherEnumerator();	// the flashers' objects (bead oo-9ht.107)
+		std::vector<oo::EntityHold> flashers = effect->flasherEnumerator();	// the flashers (bead oo-9ht.107; held C++ entities since bead oo-xn1j1)
 		OO_CHECK_EQ(flashers.size(), 1u);
 		OO_CHECK(effect->effectSubEntityEnumerator().empty());
 		OO_CHECK(effect->visualEffectSubEntityEnumerator().has_value() && effect->visualEffectSubEntityEnumerator()->empty());
 		if (flashers.size() != 1)  return;
 
-		Entity<OOSubEntity> *flasher = (Entity<OOSubEntity> *)flashers[0].get();
-		OO_CHECK(effect->subEntities().size() == 1 && effect->subEntities()[0].get() == flasher);
+		Entity<OOSubEntity> *flasher = (Entity<OOSubEntity> *)oo::ToObjC(flashers[0].get());
+		OO_CHECK(effect->subEntities().size() == 1 && effect->subEntities()[0].get() == oo::ToCxx(flasher));
 		OO_CHECK([flasher owner] == oo::ToObjC(effect));
 		OO_CHECK([flasher isSubEntity]);
 		OO_CHECK(effect->hasSubEntity(flasher));
@@ -274,7 +274,7 @@ OO_TEST(standardSubentities)
 		// Made, and the snapshot taken, in a pool of their own: what is left after it drains is what
 		// owns the child (pending autoreleases are not ownership).
 		OOVisualEffectEntity *effect = nullptr;
-		std::vector<oo::ObjCRef<Entity *>> effects;	// the subentities' objects (bead oo-9ht.165)
+		std::vector<oo::EntityHold> effects;	// the subentities (bead oo-9ht.165; held C++ entities since bead oo-xn1j1)
 		::Entity *effectObject = nil;
 		@autoreleasepool
 		{
@@ -290,7 +290,7 @@ OO_TEST(standardSubentities)
 		OO_CHECK_EQ(effect->flasherEnumerator().size(), 1u);
 		if (effects.size() != 1)  return;
 
-		Entity *childObject = effects[0].get();	// the child's object (bead oo-9ht.165)
+		Entity *childObject = oo::WeakEntityObject(oo::WeakRef<cxx::Entity>(effects[0].get()));	// the child's object (bead oo-9ht.165), +0 and not autoreleased
 		OOVisualEffectEntity *child = oo::ToEffect(childObject);
 		OO_CHECK(child->effectKey() == std::optional<std::string>("child"));
 		OO_CHECK(Near(child->getPosition().y, 5.0));
@@ -470,8 +470,8 @@ OO_TEST(facadeContract)
 		OO_CHECK(effect->scaleMax() == 5.0f);
 
 		// The flasher's owner is the façade the C++ member handed it.
-		std::vector<oo::ObjCRef<Entity *>> flashers = cxxEffect->flasherEnumerator();
-		OO_CHECK(flashers.size() == 1 && [flashers[0].get() owner] == oo::ToObjC(effect));
+		std::vector<oo::EntityHold> flashers = cxxEffect->flasherEnumerator();
+		OO_CHECK(flashers.size() == 1 && [oo::ToObjC(flashers[0].get()) owner] == oo::ToObjC(effect));
 
 		// Slice 2, on the façade, reads the state the class keeps.
 		OO_CHECK(Near(effect->hullHeatLevel(), 60.0 / 256.0));

@@ -609,10 +609,8 @@ public:
 	void clearRolesFromPlayer(float chance);
 	NSUInteger maxPlayerRoles();
 	void updateSystemMemory();
-	virtual ::Entity *getCompassTarget();
-	cxx::Entity *getCompassTargetEntity();	// getCompassTarget()'s C++ entity, null for none (bead oo-9ht.39.8.11)
-	void setCompassTarget(::Entity *value);
-	void setCompassTargetEntity(cxx::Entity *value);	// setCompassTarget() of the entity's object, by its C++ entity (bead oo-9ht.39.26)
+	virtual cxx::Entity *getCompassTargetEntity();	// the compass target's C++ entity, null for none or once its object has gone (the object-answering getCompassTarget() until bead oo-zwnvp)
+	void setCompassTargetEntity(cxx::Entity *value);	// (setCompassTarget() of the entity's object until bead oo-zwnvp)
 	virtual void validateCompassTarget();
 	std::optional<std::string> compassTargetLabel();
 
@@ -1626,7 +1624,7 @@ private:
 	
 	oo::Ref<OOCommodityMarket>	shipCommodityData;
 	
-	oo::ObjCRef<::Entity *>	missile_entity[PLAYER_MAX_MISSILES];	// holds the actual missile entities or equivalents (held; bead oo-5q11i)
+	oo::EntityHold	missile_entity[PLAYER_MAX_MISSILES];	// holds the actual missile entities or equivalents (held; bead oo-5q11i; oo::EntityHold since bead oo-xn1j1)
 	OOUniversalID			_dockTarget = {};	// used by the escape pod code
 	
 	int						legalStatusValue = {};	// the ivar legalStatus; it both is and isn't an OOCreditsQuantity, because of quantum.
@@ -1906,10 +1904,10 @@ private:
 	OODockingClearanceStatus dockingClearanceStatus = {};
 	
 	std::vector<oo::EntityHold>	scannedWormholes;	// their objects held (bead oo-9ht.39.18)
-	WormholeEntity				*wormhole = {};	// C++ since bead oo-9ht.112; wormholeObject holds its Objective-C object
-	oo::ObjCRef<::Entity *>		wormholeObject;	// the wormhole's Objective-C object (the root's facade, which owns it), held (bead oo-5q11i)
+	WormholeEntity				*wormhole = {};	// C++ since bead oo-9ht.112; wormholeObject holds it
+	oo::EntityHold				wormholeObject;	// the wormhole, held (bead oo-5q11i; oo::EntityHold since bead oo-xn1j1)
 
-	oo::ObjCRef<::Entity *>	demoShip; // Used while docked to maintain demo ship rotation. (held; bead oo-5q11i)
+	oo::EntityHold	demoShip; // Used while docked to maintain demo ship rotation. (held; bead oo-5q11i; oo::EntityHold since bead oo-xn1j1)
 	std::vector<oo::Ref<OOLaserShotEntity>>	lastShot; // used to correctly position laser shots on first frame of firing
 	
 	oo::Ref<::StickProfileScreen>	stickProfileScreen;

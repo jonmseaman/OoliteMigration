@@ -283,13 +283,13 @@ public:
 	void setScriptedMisjump(bool newValue);
 	GLfloat scriptedMisjumpRange();
 	void setScriptedMisjumpRange(GLfloat newValue);
-	std::vector<oo::ObjCRef<::Entity *>> getSubEntities();
+	std::vector<oo::EntityHold> getSubEntities();
 	NSUInteger subEntityCount();
 	bool hasSubEntity(cxx::Entity *sub);
-	std::vector<oo::ObjCRef<::Entity *>> subEntityEnumerator();
-	std::vector<oo::ObjCRef<::Entity *>> shipSubEntities();
-	std::vector<oo::ObjCRef<::Entity *>> flasherEnumerator();	// the flashers' objects (the nearest façade left)
-	std::vector<oo::ObjCRef<::Entity *>> exhausts();	// the plumes' objects (the root façade)
+	std::vector<oo::EntityHold> subEntityEnumerator();
+	std::vector<oo::EntityHold> shipSubEntities();
+	std::vector<oo::EntityHold> flasherEnumerator();	// the flashers' objects (the nearest façade left)
+	std::vector<oo::EntityHold> exhausts();	// the plumes' objects (the root façade)
 	::ShipEntity *subEntityTakingDamage();
 	void setSubEntityTakingDamage(::ShipEntity *sub);
 	::OOScript *shipScript();
@@ -523,8 +523,8 @@ public:
 #endif
 	::OOShipGroup *stationGroup();
 	bool hasEscorts();
-	std::vector<oo::ObjCRef<::Entity *>> escorts();
-	std::vector<oo::ObjCRef<::Entity *>> escortArray();
+	std::vector<oo::EntityHold> escorts();
+	std::vector<oo::EntityHold> escortArray();
 	uint8_t escortCount();
 	uint8_t pendingEscortCount();
 	void setPendingEscortCount(uint8_t count);
@@ -644,13 +644,11 @@ public:
 	OOCargoQuantity availableCargoSpace();
 	virtual OOCargoQuantity cargoQuantityOnBoard();
 	OOCargoType cargoType();
-	std::vector<oo::ObjCRef<::Entity *>> *getCargo();
+	std::vector<oo::EntityHold> *getCargo();
 	NSUInteger cargoCount();
 	virtual oo::PList cargoListForScripting();
-	void setCargo(const std::vector<oo::ObjCRef<::Entity *>> &some_cargo);
-	void setCargo(const std::vector<oo::EntityHold> &some_cargo);	// the universe's pods (bead oo-9ht.39.26): the list keeps their objects
-	bool addCargo(const std::vector<oo::ObjCRef<::Entity *>> &some_cargo);
-	bool addCargo(const std::vector<oo::EntityHold> &some_cargo);	// the same (bead oo-9ht.39.26)
+	void setCargo(const std::vector<oo::EntityHold> &some_cargo);
+	bool addCargo(const std::vector<oo::EntityHold> &some_cargo);
 	bool removeCargo(const std::string &commodity, OOCargoQuantity amount);
 	bool showScoopMessage();
 	OOCargoFlag cargoFlag();
@@ -783,13 +781,13 @@ public:
 	double trackDestination(double delta_t, bool retreat);
 	GLfloat rollToMatchUp(Vector up_vec, GLfloat match_roll);
 	GLfloat rangeToDestination();
-	std::vector<oo::ObjCRef<::Entity *>> collisionExceptions();
+	std::vector<oo::EntityHold> collisionExceptions();
 	void addCollisionException(::ShipEntity *ship);
 	void removeCollisionException(::ShipEntity *ship);
 	bool collisionExceptedFor(::ShipEntity *ship);
 	NSUInteger defenseTargetCount();
-	std::vector<oo::ObjCRef<::Entity *>> allDefenseTargets();
-	std::vector<oo::ObjCRef<::Entity *>> defenseTargets();
+	std::vector<oo::EntityHold> allDefenseTargets();
+	std::vector<oo::EntityHold> defenseTargets();
 	bool addDefenseTarget(cxx::Entity *target);	// C++ since bead oo-9ht.39.23
 	void validateDefenseTargets();
 	bool isDefenseTarget(cxx::Entity *target);
@@ -962,7 +960,7 @@ public:
 	// std::nullopt ejects nothing, as nil did (proposed ADR-0043, bead oo-tm7d).
 	::ShipEntity *ejectShipOfType(const std::optional<std::string> &shipKey);	// Note: ship type, not role.
 	::ShipEntity *ejectShipOfRole(const std::optional<std::string> &role);
-	std::vector<oo::ObjCRef<::Entity *>> spawnShipsWithRole(const std::string &role, NSUInteger count);
+	std::vector<oo::EntityHold> spawnShipsWithRole(const std::string &role, NSUInteger count);
 
 	// Category LoadRestore (ShipEntityLoadRestore.mm, bead oo-kw44): saving and restoring individual
 	// non-player ships. The context (nullptr for none) synchronises the groups of ships saved together.
@@ -1299,7 +1297,7 @@ public:
 	OOTimeAbsolute			cargo_dump_time = {};			// time cargo was last dumped
 	OOTimeAbsolute			last_shot_time = {};				// time shot was last fired
 	
-	std::vector<oo::ObjCRef<::Entity *>>	cargo;	// cargo containers go in here (index 0 is the eject position); edited in place through -cxx_cargo
+	std::vector<oo::EntityHold>	cargo;	// cargo containers go in here (index 0 is the eject position); edited in place through -cxx_cargo
 	
 	std::optional<std::string>	commodity_type;			// type of commodity in a container; nullopt: not a pod (was nil)
 	OOCargoQuantity			commodity_amount = {};			// 1 if unit is TONNES (0), possibly more if precious metals KILOGRAMS (1)
@@ -1371,7 +1369,7 @@ public:
 	uint16_t				entity_personality = {};			// Per-entity random number. Exposed to shaders and scripts.
 	oo::PList				scriptInfo;				// script_info dictionary from shipdata.plist, exposed to scripts; null: none
 	
-	std::vector<oo::ObjCRef<::Entity *>>	subEntities;	// empty == none (was nil)
+	std::vector<oo::EntityHold>	subEntities;	// empty == none (was nil)
 	::OOEquipmentType			*missile_list[SHIPENTITY_MAX_MISSILES] = {};
 
 	// various types of target

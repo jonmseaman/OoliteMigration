@@ -164,7 +164,7 @@ OO_TEST(update)
 		[ship setOwner:shipOwner];
 		Entity *cascade = MakeCascade(oo::ToShip(ship));
 		TestVictim *victim = [[[TestVictim alloc] init] autorelease];
-		[cascade cxx_collidingEntities]->emplace_back(victim);
+		[cascade cxx_collidingEntities]->emplace_back(oo::ToCxx(victim));
 
 		// A tenth of a second: past the collision delay, expanding, and dealing energy.
 		[cascade update:0.1];

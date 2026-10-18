@@ -313,11 +313,11 @@ bool OOJSVisualEffectIsVisibleToScripts(void)
 	return true;
 }
 
-std::vector<oo::ObjCRef<::Entity *>> OOJSVisualEffectSubEntitiesForScript(OOVisualEffectEntity *effect)
+std::vector<oo::EntityHold> OOJSVisualEffectSubEntitiesForScript(OOVisualEffectEntity *effect)
 {
 	const auto subs = effect->visualEffectSubEntityEnumerator();
 	if (!subs.has_value())  return {};
-	std::vector<oo::ObjCRef<::Entity *>> result;
+	std::vector<oo::EntityHold> result;
 	result.reserve(subs->size());
 	for (const auto &sub : *subs)
 	{
@@ -415,7 +415,7 @@ static bool VisualEffectGetProperty(Context cx, Object obj, PropertyId propID, V
 		case kVisualEffect_subEntities:
 			{
 				// nil before the first subentity (was [subEntitiesForScript] == nil)
-				const auto subs = (entity != nullptr ? entity->visualEffectSubEntityEnumerator() : std::optional<std::vector<oo::ObjCRef<::Entity *>>>());
+				const auto subs = (entity != nullptr ? entity->visualEffectSubEntityEnumerator() : std::optional<std::vector<oo::EntityHold>>());
 				if (subs.has_value())  result = oo::EntityNodesFrom(*subs);
 			}
 			break;

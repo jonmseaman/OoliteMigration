@@ -45,6 +45,7 @@ MA 02110-1301, USA.
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"
 #include "oofnd/objc/OOObjCRef.h"
+#include "OOEntityHold.h"	// the owning entity lists (bead oo-xn1j1)
 #include "OOJSPrivateObject.h"
 #import "EntityVirtualMembers.h"	// the virtual members (bead oo-9ht.39.8.21)
 
@@ -218,7 +219,7 @@ public:
 	// collisionRadius(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 	// frustumRadius(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 	void setCollisionRadius(GLfloat amount);
-	std::vector<oo::ObjCRef<::Entity *>> *getCollidingEntities();	// the live list (ADR-0043 item 22)
+	std::vector<oo::EntityHold> *getCollidingEntities();	// the live list (ADR-0043 item 22)
 
 	// update(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 
@@ -365,7 +366,7 @@ public:
 	BoundingBox				boundingBox = {};
 	GLfloat					mass = {};
 
-	std::vector<oo::ObjCRef<::Entity *>>	collidingEntities;	// filled by CollisionRegion each frame
+	std::vector<oo::EntityHold>	collidingEntities;	// filled by CollisionRegion each frame
 
 	OOTimeAbsolute			spawnTime = {};
 

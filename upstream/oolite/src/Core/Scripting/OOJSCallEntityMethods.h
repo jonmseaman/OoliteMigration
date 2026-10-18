@@ -102,7 +102,7 @@ inline const OOJSCallEntityMethodRow kOOJSCallEntityMethods[] =
 	{ "canCollide",	OOJSCallEntityMethodForm::Typed,	@encode(BOOL) },
 	{ "collisionRadius",	OOJSCallEntityMethodForm::Typed,	@encode(GLfloat) },
 	{ "frustumRadius",	OOJSCallEntityMethodForm::Typed,	@encode(GLfloat) },
-	{ "cxx_collidingEntities",	OOJSCallEntityMethodForm::Typed,	@encode(std::vector<oo::ObjCRef<::Entity *>> *) },
+	{ "cxx_collidingEntities",	OOJSCallEntityMethodForm::Typed,	@encode(std::vector<oo::EntityHold> *) },
 	{ "dumpState",	OOJSCallEntityMethodForm::VoidVoid,	nullptr },
 	{ "dumpSelfState",	OOJSCallEntityMethodForm::VoidVoid,	nullptr },
 	{ "lastDrawCounter",	OOJSCallEntityMethodForm::Typed,	@encode(NSUInteger) },

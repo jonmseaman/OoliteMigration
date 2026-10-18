@@ -260,15 +260,15 @@ double QueryDoubleValue(const oo::PList &value)
 }
 
 
-void PerformScriptActions(const oo::PList &actions, Entity *target);
-void PerformConditionalStatment(const oo::PList &actions, Entity *target);
-void PerformActionStatment(const oo::PList &statement, Entity *target);
+void PerformScriptActions(const oo::PList &actions, cxx::Entity *target);
+void PerformConditionalStatment(const oo::PList &actions, cxx::Entity *target);
+void PerformActionStatment(const oo::PList &statement, cxx::Entity *target);
 BOOL TestScriptConditions(const oo::PList &conditions);
 } // namespace
 
 
 namespace {
-void PerformScriptActions(const oo::PList &actions, Entity *target)
+void PerformScriptActions(const oo::PList &actions, cxx::Entity *target)
 {
 	const oo::PList::Array *statements = actions.getIf<oo::PList::Array>();
 	if (statements == nullptr)  return;
@@ -286,7 +286,7 @@ void PerformScriptActions(const oo::PList &actions, Entity *target)
 }
 
 
-void PerformConditionalStatment(const oo::PList &statement, Entity *target)
+void PerformConditionalStatment(const oo::PList &statement, cxx::Entity *target)
 {
 	/*	A sanitized conditional statement takes the form of an array:
 		(true, conditions, trueActions, falseActions)
@@ -308,7 +308,7 @@ void PerformConditionalStatment(const oo::PList &statement, Entity *target)
 }
 
 
-void PerformActionStatment(const oo::PList &statement, Entity *target)
+void PerformActionStatment(const oo::PList &statement, cxx::Entity *target)
 {
 	/*	A sanitized action statement takes the form of an array:
 		(false, selector [, argument])
@@ -332,7 +332,7 @@ void PerformActionStatment(const oo::PList &statement, Entity *target)
 
 	// The target's C++ part answers its methods called by name (bead oo-9ht.39.7.1), the player's
 	// for the player only (bead oo-9ht.177); the planet's shader bindings are never actions
-	cxx::Entity *cxxTarget = oo::ToCxx(target);
+	cxx::Entity *cxxTarget = target;	// (oo::ToCxx of its object until bead oo-zwnvp)
 	if (cxxTarget == nullptr || !oo::EntityRespondsToName(cxxTarget, selectorString))
 	{
 		cxxTarget = player;
@@ -508,7 +508,7 @@ void PlayerEntity::runScriptActions(const oo::PList &actions, const std::optiona
 
 		@try
 		{
-			PerformScriptActions(actions, oo::ToObjC(target));
+			PerformScriptActions(actions, target);
 		}
 		@catch (::OOException *exception)
 		{

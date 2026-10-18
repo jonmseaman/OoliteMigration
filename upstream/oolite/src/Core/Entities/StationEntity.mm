@@ -954,9 +954,9 @@ std::vector<oo::EntityHold> StationEntity::dockSubEntities()
 	std::vector<oo::EntityHold> result;
 	for (const auto &subRef : getSubEntities())
 	{
-		::Entity *sub = subRef.get();
-		if (![sub isDock])  continue;
-		result.push_back(oo::EntityHold(oo::ToCxx(sub)));	// a dock (a ship's object since bead oo-9ht.180), its object held
+		cxx::Entity *sub = subRef.get();
+		if (sub == nullptr || !sub->isDock())  continue;	// -isDock
+		result.push_back(subRef);	// a dock, held
 	}
 	return result;
 }
@@ -1072,8 +1072,8 @@ bool StationEntity::setUpSubEntities()
 #ifndef NDEBUG
 	for (const auto &subRef : getSubEntities())
 	{
-		::Entity *sub = subRef.get();
-		if (![sub isShip])  continue;
+		cxx::Entity *sub = subRef.get();
+		if (!oo::EntityIsShip(sub))  continue;
 		::ShipEntity *subEntity = oo::ToShip(sub);
 		if ((subEntity != nullptr ? subEntity->getIsStation() : false))
 		{

@@ -217,10 +217,10 @@ OO_TEST(subEntitiesForScript)
 
 		TestShip *turret = Ship("turret");
 		TestShip *hull = Ship("hull");
-		ship->subEntities = { oo::ObjCRef<::Entity *>(oo::ToObjC(turret)), oo::ObjCRef<::Entity *>(oo::ToObjC(hull)) };
-		std::vector<oo::ObjCRef<Entity *>> subs = ShipEntityJSSubEntitiesForScript(ship);
+		ship->subEntities = { oo::EntityHold(turret), oo::EntityHold(hull) };
+		std::vector<oo::EntityHold> subs = ShipEntityJSSubEntitiesForScript(ship);
 		OO_CHECK(subs.size() == 2);
-		OO_CHECK(subs.size() == 2 && subs[0].get() == oo::ToObjC(turret) && subs[1].get() == oo::ToObjC(hull));
+		OO_CHECK(subs.size() == 2 && subs[0].get() == turret && subs[1].get() == hull);
 		ship->subEntities.clear();
 	}
 }

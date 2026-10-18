@@ -118,11 +118,11 @@ public:
 class ShipEntity : public cxx::Entity
 {
 public:
-	std::vector<oo::ObjCRef<::Entity *>> subEntityEnumerator();
+	std::vector<oo::EntityHold> subEntityEnumerator();
 };
 
 cxx::Entity::~Entity() = default;
-std::vector<oo::ObjCRef<::Entity *>> ShipEntity::subEntityEnumerator()  { std::abort(); }
+std::vector<oo::EntityHold> ShipEntity::subEntityEnumerator()  { std::abort(); }
 namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
 ::Entity *oo::ToObjC(cxx::Entity *)  { std::abort(); }
 

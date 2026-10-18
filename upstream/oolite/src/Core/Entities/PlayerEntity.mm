@@ -503,7 +503,7 @@ void PlayerEntity::deferredInit()
 	int i;
 	for (i = 0; i < PLAYER_MAX_MISSILES; i++)
 	{
-		missile_entity[i] = nil;
+		missile_entity[i] = nullptr;
 	}
 	setUpAndConfirmOK(NO);
 
@@ -697,7 +697,7 @@ void PlayerEntity::createCargoPodWithType(const std::string &type, OOCargoQuanti
 		if (container != nullptr)  container->setScanClass(CLASS_CARGO);
 		if (container != nullptr)  container->setStatus(STATUS_IN_HOLD);
 		if (container != nullptr)  container->setCommodity(type, amount);
-		cargo.emplace_back(oo::ToObjC(container));
+		cargo.emplace_back(container);
 		if (container != nullptr)  oo::ReleaseEntity(container);
 	}
 	else
@@ -807,7 +807,7 @@ void PlayerEntity::loadCargoPodsForType(const std::string &type, OOCargoQuantity
 						if (container != nullptr)  container->setStatus(STATUS_IN_HOLD);
 						if (container != nullptr)  container->setScanClass(CLASS_CARGO);
 						if (container != nullptr)  container->setCommodity(type, smaller_quantity);
-						cargo.emplace_back(oo::ToObjC(container));
+						cargo.emplace_back(container);
 						if (container != nullptr)  oo::ReleaseEntity(container);
 					}
 				}
@@ -837,7 +837,7 @@ void PlayerEntity::loadCargoPodsForType(const std::string &type, OOCargoQuantity
 						if (container != nullptr)  container->setScanClass(CLASS_CARGO);
 						if (container != nullptr)  container->setStatus(STATUS_IN_HOLD);
 						if (container != nullptr)  container->setCommodity(type, 1);
-						cargo.emplace_back(oo::ToObjC(container));
+						cargo.emplace_back(container);
 						if (container != nullptr)  oo::ReleaseEntity(container);
 					}
 				}
@@ -1283,7 +1283,7 @@ void PlayerEntity::setWormhole(::WormholeEntity *newWormhole)
 	// so the object's retain count is its holders' alone afterwards, as before.
 	@autoreleasepool
 	{
-		wormholeObject = oo::ObjCRef<::Entity *>(oo::ToObjC(newWormhole));	// nil for null
+		wormholeObject = oo::EntityHold(newWormhole);	// null for null
 		wormhole = newWormhole;
 	}
 }
@@ -2103,7 +2103,7 @@ bool PlayerEntity::setCommanderDataFromDictionary(const oo::PList &dict)
 				if (amiss)
 				{
 					missile_list[missileCount] = OOEquipmentType::equipmentTypeWithIdentifier(*missile_desc).get();
-					missile_entity[missileCount] = oo::adoptObjC(oo::ToObjC(amiss));   // retain count = 1
+					missile_entity[missileCount] = oo::EntityHold::adopt(amiss);   // retain count = 1
 					missileCount++;
 				}
 				else
@@ -2119,7 +2119,7 @@ bool PlayerEntity::setCommanderDataFromDictionary(const oo::PList &dict)
 		for (NSUInteger i = 0; i < missiles; i++)
 		{
 			missile_list[i] = OOEquipmentType::equipmentTypeWithIdentifier("EQ_MISSILE").get();
-			missile_entity[i] = oo::adoptObjC(oo::ToObjC((UNIVERSE != nullptr ? UNIVERSE->newShipWithRole("EQ_MISSILE") : (::ShipEntity *)nil)));	// retain count = 1 - should be okay as long as we keep a missile with this role
+			missile_entity[i] = oo::EntityHold::adopt((UNIVERSE != nullptr ? UNIVERSE->newShipWithRole("EQ_MISSILE") : (::ShipEntity *)nil));	// retain count = 1 - should be okay as long as we keep a missile with this role
 																			// in the base package.
 		}
 	}
@@ -2546,7 +2546,7 @@ bool PlayerEntity::setUpAndConfirmOK(bool stopOnError, bool saveGame)
 	
 	cloaking_device_active = NO;
 
-	(void)demoShip.leakRef();	// dropped without a release, as assigning nil to the raw pointer did (bead oo-5q11i keeps that)
+	demoShip.leak();	// dropped without a release, as assigning nil to the raw pointer did (bead oo-5q11i keeps that)
 	
 	OOMusicController::sharedController()->justStop();
 	stickProfileScreen = oo::makeRef<StickProfileScreen>();
@@ -2631,7 +2631,7 @@ bool PlayerEntity::setUpShipFromDictionary(const oo::PList &shipDict)
 	for (i = 0; i < missiles; i++)
 	{
 		missile_list[i] = OOEquipmentType::equipmentTypeWithIdentifier("EQ_MISSILE").get();
-		missile_entity[i] = oo::adoptObjC(oo::ToObjC((UNIVERSE != nullptr ? UNIVERSE->newShipWithRole("EQ_MISSILE") : (::ShipEntity *)nil)));   // retain count = 1
+		missile_entity[i] = oo::EntityHold::adopt((UNIVERSE != nullptr ? UNIVERSE->newShipWithRole("EQ_MISSILE") : (::ShipEntity *)nil));   // retain count = 1
 	}
 	
 	_primaryTarget = nullptr;
@@ -3373,9 +3373,9 @@ void PlayerEntity::doBookkeeping(double delta_t)
 	totalBoundingBox = boundingBox; //	reset totalBoundingBox
 	for (const auto &seRef : getSubEntities())
 	{
-		::Entity *se = seRef.get();
-		[se update:delta_t];
-		if ([se isShip])
+		cxx::Entity *se = seRef.get();
+		if (se != nullptr)  se->update(delta_t);
+		if (oo::EntityIsShip(se))
 		{
 			BoundingBox sebb = (oo::ToShip(se) != nullptr ? oo::ToShip(se)->findSubentityBoundingBox() : BoundingBox{});
 			bounding_box_add_vector(&totalBoundingBox, sebb.max);
@@ -4294,9 +4294,9 @@ void PlayerEntity::showShipModelWithKey(const std::string &shipKey, const oo::PL
 	
 	Quaternion		q2 = { (GLfloat)M_SQRT1_2, (GLfloat)M_SQRT1_2, (GLfloat)0.0f, (GLfloat)0.0f };
 	// MKW - retrieve last demo ships' orientation and release it
-	if( demoShip != nil )
+	if( demoShip )
 	{
-		q2 = [demoShip.get() orientation];
+		q2 = demoShip->getOrientation();
 		demoShip = nullptr;
 	}
 	
@@ -4320,7 +4320,7 @@ void PlayerEntity::showShipModelWithKey(const std::string &shipKey, const oo::PL
 	if (subEntStatus != nullptr) { if (ship != nullptr)  ship->deserializeShipSubEntitiesFrom(oo::PListGet<std::string>::from(subEntStatus, std::string())); }
 	if (UNIVERSE != nullptr)  UNIVERSE->addEntity(ship);
 	// MKW - save demo ship for its rotation
-	demoShip = oo::ObjCRef<::Entity *>(oo::ToObjC(ship));
+	demoShip = oo::EntityHold(ship);
 	
 	if (ship != nullptr)  ship->setStatus(STATUS_COCKPIT_DISPLAY);
 	
@@ -5385,29 +5385,17 @@ void PlayerEntity::updateSystemMemory()
 }
 
 
-::Entity *PlayerEntity::getCompassTarget()
-{
-	::Entity *result = oo::WeakEntityObject(compassTarget);
-	if (result == nil)
-	{
-		compassTarget = nullptr;
-		return nil;
-	}
-	return result;
-}
-
-
-// Through the virtual getCompassTarget() (a test's player answers it), while the compass target is
-// answered as an object (bead oo-9ht.39.8.11): the JS binding compares the C++ entity.
+// Virtual: a test's player answers it. What the object-answering getCompassTarget() answered the C++
+// entity of (bead oo-zwnvp): null once the target's object has gone, which also forgets it.
 cxx::Entity *PlayerEntity::getCompassTargetEntity()
 {
-	return oo::ToCxx(getCompassTarget());
-}
-
-
-void PlayerEntity::setCompassTarget(::Entity *value)
-{
-	compassTarget = oo::WeakEntityRef(value);
+	cxx::Entity *result = oo::LiveEntity(compassTarget);
+	if (result == nullptr)
+	{
+		compassTarget = nullptr;
+		return nullptr;
+	}
+	return result;
 }
 
 
@@ -5496,10 +5484,10 @@ std::optional<std::string> PlayerEntity::compassTargetLabel()
 		return "";
 	case COMPASS_MODE_BEACONS:
 	{
-		::Entity *target = getCompassTarget();
+		cxx::Entity *target = getCompassTargetEntity();
 		if (target)
 		{
-			return [(::Entity <OOBeaconEntity> *)target beaconLabel];
+			return [(::Entity <OOBeaconEntity> *)oo::ToObjC(target) beaconLabel];	// the beacon category's answer
 		}
 		return "";
 	}
@@ -5929,8 +5917,8 @@ void PlayerEntity::tidyMissilePylons()
 	OO_LOG("missile.tidying.debug", "Tidying fitted {} of possible {} missiles", missiles, PLAYER_MAX_MISSILES);
 	for(i = 0; i < PLAYER_MAX_MISSILES; i++)
 	{
-		OO_LOG("missile.tidying.debug", "{} {} {}", i, oo::DescriptionOf(missile_entity[i].get()), (missile_list[i] != nullptr) ? missile_list[i]->description() : std::string("(null)"));
-		if(missile_entity[i] != nil)
+		OO_LOG("missile.tidying.debug", "{} {} {}", i, oo::EntityDescription(missile_entity[i].get()), (missile_list[i] != nullptr) ? missile_list[i]->description() : std::string("(null)"));
+		if(missile_entity[i])
 		{
 			missile_entity[pylon] = missile_entity[i];
 			const std::optional<std::string> missileRole = (oo::ToShip(missile_entity[i].get()) != nullptr ? oo::ToShip(missile_entity[i].get())->getPrimaryRole() : std::optional<std::string>());
@@ -5942,7 +5930,7 @@ void PlayerEntity::tidyMissilePylons()
 	// Now clean up the remainder of the pylons.
 	for(i = pylon; i < PLAYER_MAX_MISSILES; i++)
 	{
-		missile_entity[i] = nil;
+		missile_entity[i] = nullptr;
 		// not strictly needed, but helps clear things up
 		missile_list[i] = nil;
 	}
@@ -6150,9 +6138,9 @@ bool PlayerEntity::mountMissile(::ShipEntity *missile)
 	unsigned i;
 	for (i = 0; i < max_missiles; i++)
 	{
-		if (missile_entity[i] == nil)
+		if (!missile_entity[i])
 		{
-			missile_entity[i] = oo::ObjCRef<::Entity *>(oo::ToObjC(missile));
+			missile_entity[i] = oo::EntityHold(missile);
 			const std::optional<std::string> missileRole = (missile != nullptr ? missile->getPrimaryRole() : std::optional<std::string>());
 			missile_list[missiles] = missileRole.has_value() ? OOEquipmentType::equipmentTypeWithIdentifier(*missileRole).get() : nil;
 			missiles++;
@@ -6271,7 +6259,7 @@ bool PlayerEntity::assignToActivePylon(const std::string &equipmentKey)
 	if (!amiss) return NO;
 
 	// replace the missile now.
-	missile_entity[activeMissile] = oo::adoptObjC(oo::ToObjC(amiss));
+	missile_entity[activeMissile] = oo::EntityHold::adopt(amiss);
 	missile_list[activeMissile] = eqType;
 	
 	// make sure the new missile is properly activated.
@@ -6551,7 +6539,7 @@ GLfloat PlayerEntity::doesHitLine(HPVector v0, HPVector v1, ::ShipEntity **hitEn
 		shields = true;
 	}
 	
-	for (const oo::ObjCRef<::Entity *> &seRef : shipSubEntities())	// the -shipSubEntityEnumerator order
+	for (const oo::EntityHold &seRef : shipSubEntities())	// the -shipSubEntityEnumerator order
 	{
 		::ShipEntity		*se = oo::ToShip(seRef.get());
 		if (se == nullptr)  continue;	// (shipSubEntities() answers ships)
@@ -6982,7 +6970,7 @@ void PlayerEntity::rotateCargo()
 	NSInteger i, n_cargo = cargo.size();
 	if (n_cargo == 0)  return;
 	
-	::ShipEntity *pod = oo::ToShip([cargo[0].get() retain]);
+	::ShipEntity *pod = oo::ToShip(oo::RetainEntity(cargo[0].get()));
 	const std::optional<std::string> current_contents = (pod != nullptr ? pod->commodityType() : std::optional<std::string>());
 	std::optional<std::string> contents;
 	// -isEqualToString: with a nil on either side was NO
@@ -6992,9 +6980,9 @@ void PlayerEntity::rotateCargo()
 	do
 	{
 		cargo.erase(cargo.begin());	// take it from the eject position
-		cargo.emplace_back(oo::ToObjC(pod));	// move it to the last position
+		cargo.emplace_back(pod);	// move it to the last position
 		if (pod != nullptr)  oo::ReleaseEntity(pod);
-		pod = oo::ToShip([cargo[0].get() retain]);
+		pod = oo::ToShip(oo::RetainEntity(cargo[0].get()));
 		contents = (pod != nullptr ? pod->commodityType() : std::optional<std::string>());
 		rotates++;
 	} while (sameContents(contents)&&(rotates < n_cargo));
@@ -7012,7 +7000,7 @@ void PlayerEntity::rotateCargo()
 		{
 			if (pod != nullptr)  oo::ToShip(oo::RetainEntity(pod));
 			cargo.erase(cargo.begin() + i--);
-			cargo.emplace_back(oo::ToObjC(pod));
+			cargo.emplace_back(pod);
 			if (pod != nullptr)  oo::ReleaseEntity(pod);
 			rotates++;
 		}
@@ -7169,7 +7157,7 @@ bool PlayerEntity::takeInternalDamage()
 			return NO;
 		if (UNIVERSE != nullptr)  UNIVERSE->clearPreviousMessage();
 		if (UNIVERSE != nullptr)  UNIVERSE->addMessage(oo::str::formatRuntime(OO_DESC("@-destroyed"), { *cargo_desc }), 4.5);
-		std::erase(cargo, oo::ToObjC(pod));
+		std::erase(cargo, static_cast<cxx::Entity *>(pod));
 		return YES;
 	}
 	else
@@ -7870,8 +7858,8 @@ void PlayerEntity::enterWormhole(::WormholeEntity *w_hole)
 		return; // has already entered a different wormhole
 	}
 	BOOL misjump = scriptedMisjump() || (w_hole != nullptr ? w_hole->withMisjump() : false) || flightPitch == max_flight_pitch || randf() > 0.995;
-	(void)wormholeObject.leakRef();	// a wormhole held here was dropped without a release, as before (bead oo-5q11i keeps that)
-	wormholeObject = oo::ObjCRef<::Entity *>(oo::ToObjC(w_hole));	// its Objective-C object (bead oo-9ht.112)
+	wormholeObject.leak();	// a wormhole held here was dropped without a release, as before (bead oo-5q11i keeps that)
+	wormholeObject = oo::EntityHold(w_hole);	// held (its Objective-C object, bead oo-9ht.112; a hold since bead oo-xn1j1)
 	wormhole = w_hole;
 	addScannedWormhole(wormhole);
 	setStatus(STATUS_ENTERING_WITCHSPACE);
@@ -7945,8 +7933,8 @@ void PlayerEntity::enterWitchspace()
 	{
 		// +alloc/-init...: a new C++ wormhole and its Objective-C object, +1 (bead oo-9ht.112).
 		oo::Ref<WormholeEntity> whRef = oo::makeRef<WormholeEntity>();
-		(void)wormholeObject.leakRef();	// a wormhole held here was dropped without a release, as before (bead oo-5q11i keeps that)
-		wormholeObject = oo::ObjCRef<::Entity *>(oo::NewEntityFacade(whRef));
+		wormholeObject.leak();	// a wormhole held here was dropped without a release, as before (bead oo-5q11i keeps that)
+		wormholeObject = oo::EntityHold(oo::MadeEntity(whRef));
 		whRef->initWormholeTo(jumpTarget, this);
 		wormhole = whRef.get();
 	}
@@ -12084,7 +12072,7 @@ bool PlayerEntity::removeFromPylon(NSUInteger pylon)
 {
 	if (pylon >= max_missiles) return NO;
 	
-	if (missile_entity[pylon] != nil)
+	if (missile_entity[pylon])
 	{
 		const std::optional<std::string> missileRole = (oo::ToShip(missile_entity[pylon].get()) != nullptr ? oo::ToShip(missile_entity[pylon].get())->getPrimaryRole() : std::optional<std::string>());
 		ShipEntity::removeExternalStore(missileRole.has_value() ? OOEquipmentType::equipmentTypeWithIdentifier(*missileRole).get() : nil);

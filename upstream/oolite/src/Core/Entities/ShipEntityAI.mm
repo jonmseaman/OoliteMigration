@@ -207,7 +207,7 @@ void ShipEntity::groupAttackTarget()
 		return;
 	}
 	
-	for (const oo::ObjCRef<::Entity *> &member : (group() != nullptr ? group()->memberArray() : std::vector<oo::ObjCRef<::Entity *>>()))
+	for (const oo::EntityHold &member : (group() != nullptr ? group()->memberArray() : std::vector<oo::EntityHold>()))
 	{
 		ship = oo::ToShip(member.get());
 		if (ship != nullptr)  ship->setFoundTarget(target);
@@ -216,7 +216,7 @@ void ShipEntity::groupAttackTarget()
 
 		if ((ship != nullptr ? ship->escortGroup() : (OOShipGroup *)nullptr) != (ship != nullptr ? ship->group() : (OOShipGroup *)nullptr) && ((ship != nullptr ? ship->escortGroup() : (OOShipGroup *)nullptr) != nullptr ? (ship != nullptr ? ship->escortGroup() : (OOShipGroup *)nullptr)->count() : 0) > 1) // Ship has a seperate escort group.
 		{
-			for (const oo::ObjCRef<::Entity *> &escortRef : ((ship != nullptr ? ship->escortGroup() : (OOShipGroup *)nullptr) != nullptr ? (ship != nullptr ? ship->escortGroup() : (OOShipGroup *)nullptr)->memberArrayExcludingLeader() : std::vector<oo::ObjCRef<::Entity *>>()))
+			for (const oo::EntityHold &escortRef : ((ship != nullptr ? ship->escortGroup() : (OOShipGroup *)nullptr) != nullptr ? (ship != nullptr ? ship->escortGroup() : (OOShipGroup *)nullptr)->memberArrayExcludingLeader() : std::vector<oo::EntityHold>()))
 			{
 				::ShipEntity		*escort = oo::ToShip(escortRef.get());
 				if (escort != nullptr)  escort->setFoundTarget(target);
@@ -1336,7 +1336,7 @@ void ShipEntity::fightOrFleeMissile()
 		// Note: prior to 1.73 this was done only if we had ECM.
 		::ShipEntity		*police = nil;
 		
-		for (const oo::ObjCRef<::Entity *> &member : (group() != nullptr ? group()->memberArray() : std::vector<oo::ObjCRef<::Entity *>>()))
+		for (const oo::EntityHold &member : (group() != nullptr ? group()->memberArray() : std::vector<oo::EntityHold>()))
 		{
 			police = oo::ToShip(member.get());
 			if (police != nullptr)  police->setFoundTarget(hunter);
@@ -1715,7 +1715,7 @@ void ShipEntity::wormholeGroup()
 	whole = primaryTarget();
 	if (!(whole != nullptr && whole->getIsWormhole()))  return;
 	
-	for (const oo::ObjCRef<::Entity *> &member : (group() != nullptr ? group()->memberArray() : std::vector<oo::ObjCRef<::Entity *>>()))
+	for (const oo::EntityHold &member : (group() != nullptr ? group()->memberArray() : std::vector<oo::EntityHold>()))
 	{
 		ship = oo::ToShip(member.get());
 		if (ship != nullptr)  ship->addTarget(whole);
