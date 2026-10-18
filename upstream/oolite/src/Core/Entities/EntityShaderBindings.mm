@@ -161,7 +161,7 @@ constexpr EntityShaderBindingRow kEntityShaderBindings[] =
 	{ "viewpointOffset", @encode(Vector), [](cxx::Entity *part) -> bool { return PlayerEntityPart(part) != nullptr; },
 		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> Vector { PlayerEntity *player = PlayerEntityPart(part); return player != nullptr ? player->viewpointOffset() : kZeroVector; }()); } },
 	{ "collisionRadius", @encode(GLfloat), [](cxx::Entity *) -> bool { return true; },
-		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> GLfloat { if (oo::ObjCEntityLink *link = oo::AsObjCEntity(part)) return link->superCollisionRadius(); return part->collisionRadius(); }()); } },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> GLfloat { return part->collisionRadius(); }()); } },
 	{ "mass", @encode(GLfloat), [](cxx::Entity *) -> bool { return true; },
 		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> GLfloat { return part->getMass(); }()); } },
 	{ "energy", @encode(GLfloat), [](cxx::Entity *) -> bool { return true; },
@@ -253,7 +253,7 @@ constexpr EntityShaderBindingRow kEntityShaderBindings[] =
 	{ "legalStatus", @encode(int), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
 		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> int { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->legalStatus() : int{}; }()); } },
 	{ "velocity", @encode(Vector), [](cxx::Entity *) -> bool { return true; },
-		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> Vector { if (oo::ObjCEntityLink *link = oo::AsObjCEntity(part)) return link->superGetVelocity(); return part->getVelocity(); }()); } },
+		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> Vector { return part->getVelocity(); }()); } },
 	{ "missileCapacity", @encode(NSUInteger), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
 		[](cxx::Entity *part, OOShaderBindingValue &out) { StoreShaderBindingValue(out, [part]() -> NSUInteger { ShipEntity *ship = ShipPart(part); return ship != nullptr ? ship->missileCapacity() : NSUInteger{}; }()); } },
 	{ "missileCount", @encode(NSUInteger), [](cxx::Entity *part) -> bool { return ShipPart(part) != nullptr; },
@@ -383,7 +383,7 @@ namespace {
 
 bool IsRootFacadesPart(cxx::Entity *entity)
 {
-	return oo::AsObjCEntity(entity) == nullptr && [oo::ToObjC(entity) isMemberOfClass:[::Entity class]];
+	return [oo::ToObjC(entity) isMemberOfClass:[::Entity class]];
 }
 
 

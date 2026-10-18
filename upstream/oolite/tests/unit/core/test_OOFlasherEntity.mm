@@ -274,7 +274,7 @@ OO_TEST(drawsOnlyWhileActive)
 	@autoreleasepool
 	{
 		SetUp();
-		Entity *owner = [[[Entity alloc] init] autorelease];
+		Entity *owner = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
 		SetCamZeroDistance(oo::ToCxx(owner), 1e30f);		// beyond any draw distance: the draw stops at the cut-off
 		OOFlasherEntity *flasher = Flasher(WhiteBlack(1, 0.5));
 		flasher->setOwner(oo::ToCxx(owner));
@@ -311,7 +311,7 @@ OO_TEST(isFlasher)
 	{
 		SetUp();
 		// The category -isFlasher went with the facade (bead oo-9ht.107): callers ask the C++ part.
-		Entity *plain = [[[Entity alloc] init] autorelease];
+		Entity *plain = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
 		OO_CHECK(dynamic_cast<OOFlasherEntity *>(oo::ToCxx(plain)) == nullptr);
 		const oo::Ref<OOLightParticleEntity> lightParticle = oo::makeRef<OOLightParticleEntity>();	// C++ since bead oo-9ht.76
 		Entity *particle = oo::NewEntityFacade(lightParticle);
@@ -333,7 +333,6 @@ OO_TEST(facade)
 		// Objective-C entity's adapter.
 		Entity *object = oo::NewEntityFacade(OOFlasherEntity::flasherWithDictionary(WhiteBlack(1, 0.5)));
 		OO_CHECK(dynamic_cast<OOFlasherEntity *>(oo::ToCxx(object)) != nullptr);
-		OO_CHECK(oo::AsObjCEntity(oo::ToCxx(object)) == nullptr);
 		OO_CHECK(oo::ToObjC(oo::ToCxx(object)) == object);
 	}
 }

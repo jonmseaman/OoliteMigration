@@ -47,25 +47,21 @@ static int crid_counter = 1;
 namespace {
 
 /*	What the root facade's selectors answered for an entity (bead oo-9ht.39.27): the C++ member each
-	forwarded to; an Objective-C entity (a test's stand-in, whose class may answer itself) is still
-	messaged, and answers as nil once its object has gone. -isPlayer, -isShip, -isPlanet and -status
-	are oo::EntityIsPlayer() etc. (Entity+ObjCBridge.h, bead oo-9ht.39.16).
+	forwarded to (an Objective-C stand-in was messaged until bead oo-j12i2). -isPlayer, -isShip,
+	-isPlanet and -status are oo::EntityIsPlayer() etc. (Entity+ObjCBridge.h, bead oo-9ht.39.16).
 */
 bool EntityIsVisible(cxx::Entity *entity)
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() isVisible];
 	return entity != nullptr && entity->isVisible();	// nil's answer for none
 }
 
 OOUniversalID EntityUniversalID(cxx::Entity *entity)
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() universalID];
 	return entity != nullptr ? entity->getUniversalID() : OOUniversalID{};
 }
 
 bool EntityChecksCloseCollisionWith(cxx::Entity *entity, cxx::Entity *other)
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() checkCloseCollisionWith:oo::ToObjC(other)];
 	return entity != nullptr && entity->checkCloseCollisionWith(other);
 }
 

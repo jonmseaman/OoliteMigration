@@ -99,8 +99,7 @@ OOVisualEffectEntity *EffectPart(cxx::Entity *entity)
 ::Entity *oo::ToObjC(cxx::Entity *entity)
 {
 	if (entity == nullptr)  return nil;
-	if (ObjCEntityLink *link = AsObjCEntity(entity))  return link->objcOwner();
-	// A C++ entity's facade made it and owns it (oo::NewEntityFacade): never a new one here.
+	// The entity's facade made it and owns it (oo::NewEntityFacade): never a new one here.
 	return Peers().peerFor(entity, [] { return nil; });
 }
 
@@ -109,7 +108,6 @@ OOVisualEffectEntity *EffectPart(cxx::Entity *entity)
 {
 	cxx::Entity *entity = ref.get();
 	if (entity == nullptr)  return nil;
-	if (ObjCEntityLink *link = AsObjCEntity(entity))  return link->objcOwner();
 	return Peers().livePeer(entity);
 }
 
@@ -129,28 +127,29 @@ std::string oo::EntityDescription(cxx::Entity *entity)
 ::Entity *oo::NewEntityFacade(const Ref<cxx::Entity> &entity)
 {
 	if (entity == nullptr)  return nil;
-	OOCParameterAssert(AsObjCEntity(entity.get()) == nullptr);
 	Class facadeClass = [::Entity class];
 	return [[(::Entity *)[facadeClass alloc] initWithCxxEntity:entity.get()] autorelease];
 }
 
 
+// The object is read +0 (Peers().livePeer(), not oo::ToObjC(), which also autoreleases it), as an
+// Objective-C entity's object was read, so each is exactly the one message (bead oo-j12i2).
 cxx::Entity *oo::RetainEntity(cxx::Entity *entity)
 {
-	[ToObjC(entity) retain];
+	[(entity != nullptr ? Peers().livePeer(entity) : nil) retain];
 	return entity;
 }
 
 
 void oo::ReleaseEntity(cxx::Entity *entity)
 {
-	[ToObjC(entity) release];
+	[(entity != nullptr ? Peers().livePeer(entity) : nil) release];
 }
 
 
 cxx::Entity *oo::AutoreleaseEntity(cxx::Entity *entity)
 {
-	[ToObjC(entity) autorelease];
+	[(entity != nullptr ? Peers().livePeer(entity) : nil) autorelease];
 	return entity;
 }
 
@@ -172,11 +171,6 @@ cxx::Entity *oo::MadeEntity(const Ref<cxx::Entity> &entity)
 
 bool oo::EntityIsBeacon(cxx::Entity *entity)
 {
-	if (ObjCEntityLink *link = AsObjCEntity(entity))
-	{
-		id object = link->objcOwner();
-		return [object isBeacon];
-	}
 	if (ShipEntity *ship = ShipPart(entity))  return ship->isBeacon();
 	if (OOVisualEffectEntity *effect = EffectPart(entity))  return effect->isBeacon();
 	OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(entity);
@@ -264,7 +258,6 @@ std::optional<std::string> oo::BeaconLabel(cxx::Entity *beacon)
 
 std::string oo::EntityClassName(cxx::Entity *entity)
 {
-	if (ObjCEntityLink *link = AsObjCEntity(entity))  return OOClassName([link->objcOwner() class]);
 	int status = 0;
 	char *demangled = abi::__cxa_demangle(typeid(*entity).name(), nullptr, nullptr, &status);
 	std::string result = (status == 0 && demangled != nullptr) ? demangled : typeid(*entity).name();
@@ -284,15 +277,10 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 @implementation Entity
 
-// An Objective-C entity: [[X alloc] init] of a subclass (or of this class).
-- (id) init
-{
-	// -init sent again to an initialised entity keeps its C++ part (see -initWithCxxEntity:).
-	if (_cxxEntity != nullptr)  return [self initWithCxxEntity:_cxxEntity.get()];
-	return [self initWithCxxEntity:oo::makeRef<oo::ObjCEntity<cxx::Entity>>(self).get()];
-}
-
-
+/*	-init, which made an Objective-C entity ([[X alloc] init] of a subclass, or of this class, over an
+	adapter oo::ObjCEntity), is deleted with the adapter (bead oo-j12i2): every entity is C++, and its
+	object is the one oo::NewEntityFacade made.
+*/
 - (id) initWithCxxEntity:(cxx::Entity *)entity
 {
 	self = [super init];
@@ -310,12 +298,9 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 	else
 	{
 		_cxxEntity = oo::Ref<cxx::Entity>(entity);
-		if (oo::AsObjCEntity(entity) == nullptr)
+		@autoreleasepool
 		{
-			@autoreleasepool
-			{
-				Peers().peerFor(entity, [self] { return [self retain]; });
-			}
+			Peers().peerFor(entity, [self] { return [self retain]; });
 		}
 	}
 
@@ -380,18 +365,16 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 		else holds it (bead oo-9ht.39.5.2).
 	*/
 	_cxxEntity->dropWeakReferences();
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  link->objcOwnerDeallocated();
-	else  Peers().forget(_cxxEntity.get());
+	Peers().forget(_cxxEntity.get());
 	_cxxEntity = nullptr;	// the C++ part goes with the object, before its superclass's -dealloc
 
 	[super dealloc];
 }
 
 
-// A C++ entity's facade describes itself with the C++ class's name and components.
+// The facade describes itself with the C++ class's name and components.
 - (std::optional<std::string>) cxx_description
 {
-	if (oo::AsObjCEntity(_cxxEntity.get()) != nullptr)  return [super cxx_description];
 	std::string result = oo::str::format("<%s %s>", oo::EntityClassName(_cxxEntity.get()).c_str(), oo::str::pointerDescription(self).c_str());
 	if (const std::optional<std::string> components = _cxxEntity->descriptionComponents())  result += "{" + *components + "}";
 	return result;
@@ -405,14 +388,12 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 */
 - (std::optional<std::string>) cxx_descriptionComponents
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  return link->superDescriptionComponents();
 	return _cxxEntity->descriptionComponents();
 }
 
 
 - (NSUInteger) sessionID
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  return link->superSessionID();
 	return _cxxEntity->sessionID();
 }
 
@@ -422,7 +403,6 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 - (BOOL) isDock
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  return link->superIsDock();
 	return _cxxEntity->isDock();
 }
 
@@ -434,14 +414,12 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 - (BOOL) isPlanet
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  return link->superIsPlanet();
 	return _cxxEntity->isPlanet();
 }
 
 
 - (BOOL) isSun
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  return link->superIsSun();
 	return _cxxEntity->isSun();
 }
 
@@ -452,7 +430,6 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 - (BOOL) isSky
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  return link->superIsSky();
 	return _cxxEntity->isSky();
 }
 
@@ -462,28 +439,24 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 - (BOOL) isEffect
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  return link->superIsEffect();
 	return _cxxEntity->isEffect();
 }
 
 
 - (BOOL) isVisualEffect
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  return link->superGetIsVisualEffect();
 	return _cxxEntity->getIsVisualEffect();
 }
 
 
 - (BOOL) isWaypoint
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  return link->superIsWaypoint();
 	return _cxxEntity->isWaypoint();
 }
 
 
 - (BOOL) validForAddToUniverse
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  return link->superValidForAddToUniverse();
 	return _cxxEntity->validForAddToUniverse();
 }
 
@@ -495,22 +468,19 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 - (void) wasAddedToUniverse
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  link->superWasAddedToUniverse();
-	else  _cxxEntity->wasAddedToUniverse();
+	_cxxEntity->wasAddedToUniverse();
 }
 
 
 - (void) wasRemovedFromUniverse
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  link->superWasRemovedFromUniverse();
-	else  _cxxEntity->wasRemovedFromUniverse();
+	_cxxEntity->wasRemovedFromUniverse();
 }
 
 
 - (void) warnAboutHostiles
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  link->superWarnAboutHostiles();
-	else  _cxxEntity->warnAboutHostiles();
+	_cxxEntity->warnAboutHostiles();
 }
 
 
@@ -522,15 +492,13 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 - (void) throwSparks
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  link->superThrowSparks();
-	else  _cxxEntity->throwSparks();
+	_cxxEntity->throwSparks();
 }
 
 
 - (void) setOwner:(Entity *)ent
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  link->superSetOwner(oo::ToCxx(ent));
-	else  _cxxEntity->setOwner(oo::ToCxx(ent));
+	_cxxEntity->setOwner(oo::ToCxx(ent));
 }
 
 
@@ -542,8 +510,7 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 - (void) setPosition:(HPVector)posn
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  link->superSetPosition(posn);
-	else  _cxxEntity->setPosition(posn);
+	_cxxEntity->setPosition(posn);
 }
 
 
@@ -554,14 +521,12 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 - (GLfloat) cameraRangeFront
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  return link->superCameraRangeFront();
 	return _cxxEntity->cameraRangeFront();
 }
 
 
 - (GLfloat) cameraRangeBack
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  return link->superCameraRangeBack();
 	return _cxxEntity->cameraRangeBack();
 }
 
@@ -595,8 +560,7 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 - (void) updateCameraRelativePosition
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  link->superUpdateCameraRelativePosition();
-	else  _cxxEntity->updateCameraRelativePosition();
+	_cxxEntity->updateCameraRelativePosition();
 }
 
 
@@ -609,7 +573,6 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 - (OOComparisonResult) compareZeroDistance:(Entity *)otherEntity
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  return link->superCompareZeroDistance(oo::ToCxx(otherEntity));
 	return _cxxEntity->compareZeroDistance(oo::ToCxx(otherEntity));
 }
 
@@ -620,8 +583,7 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 - (void) setOrientation:(Quaternion)quat
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  link->superSetOrientation(quat);
-	else  _cxxEntity->setOrientation(quat);
+	_cxxEntity->setOrientation(quat);
 }
 
 
@@ -630,22 +592,19 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 - (Quaternion) normalOrientation
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  return link->superNormalOrientation();
 	return _cxxEntity->normalOrientation();
 }
 
 
 - (void) setNormalOrientation:(Quaternion)quat
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  link->superSetNormalOrientation(quat);
-	else  _cxxEntity->setNormalOrientation(quat);
+	_cxxEntity->setNormalOrientation(quat);
 }
 
 
 - (void) orientationChanged
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  link->superOrientationChanged();
-	else  _cxxEntity->orientationChanged();
+	_cxxEntity->orientationChanged();
 }
 
 
@@ -654,7 +613,6 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 - (Vector) velocity
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  return link->superGetVelocity();
 	return _cxxEntity->getVelocity();
 }
 
@@ -666,8 +624,7 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 - (void) setStatus:(OOEntityStatus)stat
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  link->superSetStatus(stat);
-	else  _cxxEntity->setStatus(stat);
+	_cxxEntity->setStatus(stat);
 }
 
 
@@ -677,7 +634,6 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 - (OOScanClass) scanClass
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  return link->superGetScanClass();
 	return _cxxEntity->getScanClass();
 }
 
@@ -690,22 +646,19 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 - (void) applyRoll:(GLfloat)roll andClimb:(GLfloat)climb
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  link->superApplyRoll(roll, climb);
-	else  _cxxEntity->applyRoll(roll, climb);
+	_cxxEntity->applyRoll(roll, climb);
 }
 
 
 - (void) applyRoll:(GLfloat)roll climb:(GLfloat)climb andYaw:(GLfloat)yaw
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  link->superApplyRoll(roll, climb, yaw);
-	else  _cxxEntity->applyRoll(roll, climb, yaw);
+	_cxxEntity->applyRoll(roll, climb, yaw);
 }
 
 
 - (void) moveForward:(double)amount
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  link->superMoveForward(amount);
-	else  _cxxEntity->moveForward(amount);
+	_cxxEntity->moveForward(amount);
 }
 
 
@@ -714,7 +667,6 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 - (OOMatrix) drawRotationMatrix
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  return link->superDrawRotationMatrix();
 	return _cxxEntity->drawRotationMatrix();
 }
 
@@ -724,28 +676,24 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 - (OOMatrix) drawTransformationMatrix
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  return link->superDrawTransformationMatrix();
 	return _cxxEntity->drawTransformationMatrix();
 }
 
 
 - (BOOL) canCollide
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  return link->superCanCollide();
 	return _cxxEntity->canCollide();
 }
 
 
 - (GLfloat) collisionRadius
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  return link->superCollisionRadius();
 	return _cxxEntity->collisionRadius();
 }
 
 
 - (GLfloat) frustumRadius
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  return link->superFrustumRadius();
 	return _cxxEntity->frustumRadius();
 }
 
@@ -756,8 +704,7 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 - (void) update:(OOTimeDelta)delta_t
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  link->superUpdate(delta_t);
-	else  _cxxEntity->update(delta_t);
+	_cxxEntity->update(delta_t);
 }
 
 
@@ -766,15 +713,13 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 - (BOOL) checkCloseCollisionWith:(Entity *)other
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  return link->superCheckCloseCollisionWith(oo::ToCxx(other));
 	return _cxxEntity->checkCloseCollisionWith(oo::ToCxx(other));
 }
 
 
 - (void) takeEnergyDamage:(double)amount from:(Entity *)ent becauseOf:(Entity *)other weaponIdentifier:(const std::string &)weaponIdentifier
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  link->superTakeEnergyDamage(amount, oo::ToCxx(ent), oo::ToCxx(other), weaponIdentifier);
-	else  _cxxEntity->takeEnergyDamage(amount, oo::ToCxx(ent), oo::ToCxx(other), weaponIdentifier);
+	_cxxEntity->takeEnergyDamage(amount, oo::ToCxx(ent), oo::ToCxx(other), weaponIdentifier);
 }
 
 
@@ -783,15 +728,13 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 - (void) dumpSelfState
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  link->superDumpSelfState();
-	else  _cxxEntity->dumpSelfState();
+	_cxxEntity->dumpSelfState();
 }
 
 
 - (void) subEntityReallyDied:(ShipEntity *)sub
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  link->superSubEntityReallyDied(sub);
-	else  _cxxEntity->subEntityReallyDied(sub);
+	_cxxEntity->subEntityReallyDied(sub);
 }
 
 
@@ -801,21 +744,18 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 - (double) findCollisionRadius
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  return link->superFindCollisionRadius();
 	return _cxxEntity->findCollisionRadius();
 }
 
 
 - (void) drawImmediate:(bool)immediate translucent:(bool)translucent
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  link->superDrawImmediate(immediate, translucent);
-	else  _cxxEntity->drawImmediate(immediate, translucent);
+	_cxxEntity->drawImmediate(immediate, translucent);
 }
 
 
 - (BOOL) isVisible
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  return link->superIsVisible();
 	return _cxxEntity->isVisible();
 }
 
@@ -835,14 +775,12 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 - (std::optional<std::string>) descriptionForObjDump
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  return link->superDescriptionForObjDump();
 	return _cxxEntity->descriptionForObjDump();
 }
 
 
 - (std::vector<oo::Ref<OOTexture>>) cxx_allTextures
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(_cxxEntity.get()))  return link->superAllTextures();
 	return _cxxEntity->allTextures();
 }
 #endif

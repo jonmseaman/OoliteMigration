@@ -8949,3 +8949,49 @@ releasing it "before main returns" is not reachable. **Default taken:** the glob
 holding the one leaked reference (`oo::makeRef<GameController>().leakRef()`), so nothing runs at exit that
 upstream did not run. **Difference (flagged):** the exit-time teardown that the `oo::Ref` introduced (no upstream
 counterpart, nothing it did reached a file or the console the goldens read) no longer runs.
+
+## Amendment (beads oo-j12i2, oo-vdw34): the tests' Objective-C entities become C++; the adapter oo::ObjCEntity is deleted (step 5k.3)
+
+oo-9ht.39 step 5k slice 3 (child of oo-9ht.39.28) with oo-vdw34, batch AP (track A), Migration Completion session,
+2026-10-18, one branch and one commit. Status: Proposed (recommended defaults, CLAUDE.md rule 10).
+
+**Context.** An Objective-C entity (`[[X alloc] init]` of the root facade or a subclass) had an adapter as its C++
+part, `oo::ObjCEntity<Base>`/`oo::ObjCEntityLink` (Entity+ObjCBridge.h), whose virtual members messaged the object
+so the subclass's overrides ran; every C++ path that asked an entity something kept an "an Objective-C entity is
+still messaged" branch for it. Only the tests made such entities.
+
+**Decision (recommended defaults).**
+
+1. **The tests' stand-ins are C++.** A plain `[[Entity alloc] init]` is `oo::NewEntityFacade(oo::makeRef<cxx::Entity>())`
+   (a C++ entity under its object, autoreleased; `[... retain]` where `+alloc`'s +1 was kept); an Objective-C subclass
+   is a C++ subclass overriding the virtual members its selectors became (the members the adapter overrode), made
+   with `oo::MadeEntity()`; an override of a non-virtual answer (`-isShip`, `-isSubEntity`, `-status`) is the C++
+   entity's own flag or status, set where the test set it. Recorded entities are C++ entities.
+2. **The adapter goes**: `oo::ObjCEntity`, `oo::ObjCEntityLink`, `oo::AsObjCEntity()`, the facade's `-init` (which
+   made one) and every adapter branch: the facade's methods' `super...()` paths, `oo::ToObjC()`/`WeakEntityObject()`,
+   `oo::EntityIs*()`/`EntityStatus()`/`EntityIsBeacon()`/`EntityClassName()`, the filter predicates, CollisionRegion's
+   questions, the shader bindings' member rows and root-facade test, the by-name calls (`Facade_*` bodies,
+   `oo::EntityRespondsToName()`/`CallEntityByName()`, the logged class name), the JS glue (`ObjCEntityOwning`,
+   `ObjCEntityGone`, the JS description) and `OOObject+OOJavaScript`'s questions. Each keeps its C++ path unchanged.
+3. **`oo::RetainEntity()`/`ReleaseEntity()`/`AutoreleaseEntity()` read the object +0** (`Peers().livePeer()`, not
+   `oo::ToObjC()`, which also retained and autoreleased it), so each is exactly the one message, as an Objective-C
+   entity's object received it and as the C++ count will (oo-dpyk8).
+4. **oo-vdw34 (the sanitized debug core suite).** The debug build's `OOGetPlayer()` asserts that PLAYER is set; nine
+   tests read it with none. Incidental reads get a stand-in PLAYER before the first read (a player whose viewpoint
+   is the origin, so camera-relative positions are the release build's with none: test_CollisionRegion,
+   test_OOECMBlastEntity, test_OOOXZManager; test_OODebugMonitor's own stand-in, answering no wormholes; test_Entity
+   sets PLAYER before the player's position; test_PlayerEntity's passengers case makes its player PLAYER); the
+   deliberate no-player checks (test_Universe slice 9, test_SkyEntity's update, test_HeadUpDisplay's cxxAPI, and
+   test_OOOXZManager's guiInput and optionPages, which leave through PLAYER's intro screen only with none and so
+   run with none) are guarded `#if !OO_DEBUG`, unchanged in the release-style test flavour the gates run.
+
+**Defaults (rule 10).** Behaviour-identical in the game (goldens, core tests). Flagged: (a) item 3 brings a
+deallocation that waited, since amendment oo-9ht.39.26, for the pool's drain after the universe's last by-hand release
+back to that release, as upstream's `[x release]` did (goldens prove the game unchanged); (b) a C++ stand-in's class
+name prints as the C++ class's (test_Entity keeps the name `TestObjCEntity`, which its expected texts print).
+
+**Tests (standing approval oo-9n5p9, lines on main first).** Re-based, no expected value changed; retired as façade
+cases: test_Entity's releasedBeforeInit, objCEntityBehindACxxPointer, adapterOutlivesItsObject, initSentAgain's
+`-init` identity/recount checks and cxxEntityBehindItsFacade's adapter check; test_EntityOOJavaScriptExtensions'
+"an Objective-C override answers first" check; the `oo::AsObjCEntity(...) == nullptr` checks of nine files. Listed
+per file in tools/retire-test-approvals.txt.

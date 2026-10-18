@@ -414,10 +414,12 @@ OO_TEST(slice9BeaconsWaypointsBreakPatternAndAIs)
 
 		part->breakPatternCounter = 3;
 		OO_CHECK(!u->breakPatternOver());
+#if !OO_DEBUG	// the debug build asserts that PLAYER is set (OOGetPlayer()), so only a release-style build can ask with none (bead oo-vdw34)
 		PlayerEntity *standIn = gOOPlayer;
 		gOOPlayer = nullptr;	// no player: an earlier case leaves its stand-in (slice 14's SetUpTestPlayer())
 		OO_CHECK(u->breakPatternHide());	// no player
 		gOOPlayer = standIn;
+#endif
 		part->breakPatternCounter = 0;
 		OO_CHECK(u->breakPatternOver());
 
@@ -490,11 +492,15 @@ OO_TEST(slice12FrameCounterAndViewMatrix)
 }
 
 
+namespace { void SetUpTestPlayer(); }	// below (slice 14)
+
+
 OO_TEST(slice13EntityLookUp)
 {
 	@autoreleasepool
 	{
 		Universe *u = NewUniverse();
+		SetUpTestPlayer();	// PLAYER, which the debug build asserts is set (bead oo-vdw34); id 100 answers it
 
 		// No target, an empty slot and out of range are nil; 100 is the player's.
 		OO_CHECK(u->entityForUniversalID(NO_TARGET) == nil);
@@ -560,7 +566,7 @@ void SetSortedEntities(Universe *u, std::initializer_list<Entity *> list)
 Entity *MakeEntity(HPVector position, GLfloat radius)
 {
 	SetUpTestPlayer();
-	Entity *entity = [[[Entity alloc] init] autorelease];
+	Entity *entity = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
 	[entity setPosition:position];
 	[entity setCollisionRadius:radius];
 	return entity;
@@ -569,12 +575,11 @@ Entity *MakeEntity(HPVector position, GLfloat radius)
 }	// namespace
 
 
-@interface Slice14GhostEntity: Entity	// an entity nothing collides with
-@end
-
-@implementation Slice14GhostEntity
-- (BOOL) canCollide	{ return NO; }
-@end
+class Slice14GhostEntity : public cxx::Entity	// an entity nothing collides with (an Objective-C subclass until bead oo-j12i2)
+{
+public:
+	bool canCollide() override	{ return false; }
+};
 
 
 OO_TEST(slice14NoEntity)
@@ -619,7 +624,7 @@ OO_TEST(slice14ClearRoute)
 		OO_CHECK(HPvector_equal(u->getSafeVectorFromEntity(oo::ToCxx(e1), 0, p2), p2));
 
 		// An entity nothing collides with is no hazard either.
-		Entity *ghost = [[[Slice14GhostEntity alloc] init] autorelease];
+		Entity *ghost = oo::NewEntityFacade(oo::makeRef<Slice14GhostEntity>());
 		[ghost setPosition:make_HPvector(0, 0, 500)];
 		[ghost setCollisionRadius:50];
 		SetSortedEntities(u, { e1, ghost });
@@ -663,19 +668,20 @@ OO_TEST(slice14Hazard)
 // Slice 15 (bead oo-dg9d1): counting and finding entities by predicate, time, collisions, the view
 // direction. Written against the Objective-C API and run on the unconverted class first; the
 // entities sit in the sorted list by hand, as slice 14's.
-@interface Slice15ShipLike: Entity	// counts as a ship for the ship predicates
-@end
-
-@implementation Slice15ShipLike
-- (BOOL) isShip	{ return YES; }
-@end
+// Counts as a ship for the ship predicates (an Objective-C subclass answering -isShip YES until bead
+// oo-j12i2; a C++ entity whose ship flag, which -isShip and the predicates read, is set).
+class Slice15ShipLike : public cxx::Entity
+{
+public:
+	Slice15ShipLike()	{ isShip = YES; }
+};
 
 
 namespace {
 
 Entity *MakeShipLike(HPVector position, GLfloat radius)
 {
-	Entity *entity = [[[Slice15ShipLike alloc] init] autorelease];
+	Entity *entity = oo::NewEntityFacade(oo::makeRef<Slice15ShipLike>());
 	[entity setPosition:position];
 	[entity setCollisionRadius:radius];
 	return entity;
@@ -894,8 +900,12 @@ OO_TEST(slice17UpdateOff)
 		u->no_update = YES;
 		u->universal_time = 5.0;
 		u->time_delta = 0.5;
-		Entity *dead = [[Entity alloc] init];
-		u->entitiesDeadThisUpdate.emplace_back(oo::ToCxx(dead));	// held C++ entities since bead oo-9ht.39.26
+		Entity *dead = nil;
+		@autoreleasepool	// the making's autoreleases drain here, as +alloc made none (bead oo-j12i2)
+		{
+			dead = [oo::NewEntityFacade(oo::makeRef<cxx::Entity>()) retain];
+			u->entitiesDeadThisUpdate.emplace_back(oo::ToCxx(dead));	// held C++ entities since bead oo-9ht.39.26
+		}
 		[dead release];
 
 		@autoreleasepool
@@ -961,7 +971,7 @@ OO_TEST(slice18FilterSortedLists)
 	{
 		Universe *u = NewUniverse();
 		Entity *a = MakeEntity(make_HPvector(0, 0, 0), 10);
-		Entity *ghost = [[[Slice14GhostEntity alloc] init] autorelease];
+		Entity *ghost = oo::NewEntityFacade(oo::makeRef<Slice14GhostEntity>());
 		[ghost setPosition:make_HPvector(0, 0, 5)];
 		[ghost setCollisionRadius:10];
 		Entity *b = MakeEntity(make_HPvector(0, 0, 15), 10);

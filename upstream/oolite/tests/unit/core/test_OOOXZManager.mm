@@ -39,6 +39,8 @@
 #include "oofnd/ResourcePaths.hpp"
 #include "oofnd/String.hpp"
 #include "oo_test.hpp"
+#import "PlayerEntity.h"	// the stand-in PLAYER (bead oo-vdw34)
+extern PlayerEntity *gOOPlayer;
 
 #include <chrono>
 #include <cstdio>
@@ -120,10 +122,36 @@ stdfs::path CacheDirectory()
 }
 
 
+// PLAYER (bead oo-vdw34): the debug build asserts it is set (OOGetPlayer()), so the manager's GUI page,
+// which asks it to let go of its sounds (Windows), has a player; its viewpoint is the origin. Never released, as the player is not.
+class TestPlayer : public PlayerEntity
+{
+public:
+	HPVector viewpointPosition() override	{ return kZeroHPVector; }
+};
+
+
+void SetUpTestPlayer()
+{
+	static TestPlayer *player = nullptr;
+	if (player == nullptr)
+	{
+		oo::Ref<TestPlayer> made = oo::makeRef<TestPlayer>();
+		@autoreleasepool
+		{
+			[oo::NewEntityFacade(made) retain];	// +1, as PlayerEntity::sharedPlayer() makes the game's
+		}
+		player = made.get();
+	}
+	gOOPlayer = player;
+}
+
+
 // The scratch home, add-on folders and game folder, and the manifest cache the manager loads,
 // made once, before the singleton exists.
 void SetUp()
 {
+	SetUpTestPlayer();
 	if (!sRoot.empty())  return;
 	sRoot = stdfs::temp_directory_path() / ("oo-test-oxzmanager-" + std::to_string(static_cast<unsigned long>(::_getpid())));
 	stdfs::remove_all(sRoot);
@@ -1142,6 +1170,11 @@ OO_TEST(guiPages)
 OO_TEST(guiInput)
 {
 	SetUp();
+	// The manager leaves these pages through the intro screen, which it shows only with no PLAYER
+	// (PLAYER's setGuiToIntroFirstGo()): they run with none, as before, which only a release-style
+	// build can (the debug build asserts PLAYER is set; bead oo-vdw34).
+	gOOPlayer = nullptr;
+#if !OO_DEBUG
 	@autoreleasepool
 	{
 		StandInUniverse standIn;
@@ -1484,10 +1517,13 @@ OO_TEST(guiInput)
 		OO_CHECK(m->isRestarting());
 		OO_CHECK(m->_interfaceState == OXZ_STATE_MAIN);
 	}
+#endif
 }
 
 
-// Slice 4 (bead oo-qbgo): the install and remove option pages, and their paging.
+// Slice 4 (bead oo-qbgo): the install and remove option pages, and their paging. Release-style
+// builds only (see the case; bead oo-vdw34).
+#if !OO_DEBUG
 namespace {
 
 std::vector<oo::PList> InstallOptions()	{ return Manager()->installOptions(); }
@@ -1505,6 +1541,10 @@ std::string OptionTitles(const std::vector<oo::PList> &options)
 OO_TEST(optionPages)
 {
 	SetUp();
+	// The manager leaves these pages through the intro screen, which it shows only with no PLAYER
+	// (PLAYER's setGuiToIntroFirstGo()): they run with none, as before, which only a release-style
+	// build can (the debug build asserts PLAYER is set; bead oo-vdw34).
+	gOOPlayer = nullptr;
 	@autoreleasepool
 	{
 		StandInUniverse standIn;
@@ -1755,6 +1795,7 @@ OO_TEST(optionPages)
 		m->_interfaceState = OXZ_STATE_MAIN;
 	}
 }
+#endif
 
 
 OO_TEST_MAIN()

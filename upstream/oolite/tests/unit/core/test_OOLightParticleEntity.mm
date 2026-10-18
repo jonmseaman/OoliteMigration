@@ -87,13 +87,8 @@ public:
 };
 
 
-// An owner whose camera distance the test sets.
-@interface TestOwner: Entity
-@end
-
-
-@implementation TestOwner
-@end
+// An owner whose camera distance the test sets: a plain entity (an Objective-C subclass that
+// overrode nothing until bead oo-j12i2).
 
 
 namespace {
@@ -203,7 +198,7 @@ OO_TEST(drawSubEntity)
 		SetUp();
 		Entity *object = nil;
 		TestParticle *particle = NewParticle<TestParticle>(1.0f, &object);
-		TestOwner *owner = [[[TestOwner alloc] init] autorelease];
+		Entity *owner = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
 		[object setOwner:owner];
 
 		// Opaque pass: nothing.

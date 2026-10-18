@@ -280,7 +280,7 @@ OO_TEST(subEntityRelationship)
 	@autoreleasepool
 	{
 		SetUp();
-		Entity *plain = [[[Entity alloc] init] autorelease];
+		Entity *plain = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
 		TestShip *ship = MakeShip<TestShip>("mother", Definition());
 		TestShip *sub = MakeShip<TestShip>("turret", Definition());
 		TestShip *other = MakeShip<TestShip>("other", Definition());
@@ -769,7 +769,7 @@ OO_TEST(closeCollisionAndFrame)
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>("hull", Definition());
 		TestShip *other = MakeShip<TestShip>("other", Definition());
-		Entity *plain = [[[Entity alloc] init] autorelease];
+		Entity *plain = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
 		OO_CHECK(!(ship != nullptr ? ship->checkCloseCollisionWith(nullptr) : false));
 		OO_CHECK((ship != nullptr ? ship->checkCloseCollisionWith(oo::ToCxx(plain)) : false) && Part(ship)->collider == oo::ToCxx(plain));
 		MutablePart(ship)->collider = nil;
@@ -2083,7 +2083,7 @@ OO_TEST(slice24IsValidTarget)
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("judge");
 		TestShip *other = MakeLateSliceShip("target");
-		Entity *plain = [[[Entity alloc] init] autorelease];
+		Entity *plain = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
 		OO_CHECK(!(ship != nullptr ? ship->isValidTarget(nullptr) : false));
 		OO_CHECK((ship != nullptr ? ship->isValidTarget(other) : false));
 		OO_CHECK(!(ship != nullptr ? ship->isValidTarget(oo::ToCxx(plain)) : false));		// neither a ship nor a wormhole
@@ -2467,7 +2467,7 @@ OO_TEST(slice26DefenseTargets)
 		TestShip *ship = MakeLateSliceShip("defender");
 		TestShip *a = MakeLateSliceShip("attacker-a");
 		TestShip *b = MakeLateSliceShip("attacker-b");
-		Entity *plain = [[[Entity alloc] init] autorelease];
+		Entity *plain = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
 		OO_CHECK((ship != nullptr ? ship->defenseTargetCount() : 0) == 0 && (ship != nullptr ? ship->allDefenseTargets() : std::vector<oo::EntityHold>()).empty() && (ship != nullptr ? ship->defenseTargets() : std::vector<oo::EntityHold>()).empty());
 		if (ship != nullptr)  ship->validateDefenseTargets();		// none yet: fine
 

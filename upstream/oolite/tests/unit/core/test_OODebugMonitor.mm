@@ -145,7 +145,7 @@ public:
 
 NSUInteger PlayerEntity::dialMaxMissiles()  { std::abort(); }
 ::ShipEntity *PlayerEntity::missileForPylon(NSUInteger /*value*/)  { std::abort(); }
-std::vector<oo::EntityHold> PlayerEntity::getScannedWormholes()  { std::abort(); }
+std::vector<oo::EntityHold> PlayerEntity::getScannedWormholes()  { return {}; }	// no wormholes (the memory statistics' stand-in player asks; bead oo-vdw34)
 
 PlayerEntity *gOOPlayer = nullptr;
 
@@ -804,7 +804,10 @@ OO_TEST(memoryStatistics)
 
 		gLiveEntityCount = 3;
 		gLog.clear();
+		static PlayerEntity sStandInPlayer;	// the debug build asserts that PLAYER is set (OOGetPlayer(); bead oo-vdw34): one with no wormholes
+		gOOPlayer = &sStandInPlayer;
 		monitor->dumpMemoryStatistics();
+		gOOPlayer = nullptr;
 		OO_CHECK(LogLinesContaining("Memory statistics:") == 1);
 		OO_CHECK(LogLinesContaining("Entitites:") == 1);
 		OO_CHECK(LogLinesContaining("Total entity size (excluding 3 entities not accounted for): 0 bytes (0 bytes entity objects, 0 bytes drawables)") == 1);

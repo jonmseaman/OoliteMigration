@@ -310,7 +310,6 @@ OO_TEST(facade)
 		Entity *object = oo::NewEntityFacade(OOExhaustPlumeEntity::exhaustForShip(oo::ToShip(Ship()), { "0", "0", "0", "1", "1", "1" }, 1.0f));
 		OO_CHECK([object class] == [Entity class]);
 		OO_CHECK(dynamic_cast<OOExhaustPlumeEntity *>(oo::ToCxx(object)) != nullptr);
-		OO_CHECK(oo::AsObjCEntity(oo::ToCxx(object)) == nullptr);
 		OO_CHECK(oo::ToObjC(oo::ToCxx(object)) == object);
 	}
 }

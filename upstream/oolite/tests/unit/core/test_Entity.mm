@@ -70,35 +70,32 @@ T *NewTestPlayer()
 }
 
 
-// An unconverted entity: an Objective-C subclass, as ShipEntity is. Each override counts, so the
-// test sees which of the root's methods reach it.
-@interface TestObjCEntity: Entity
+// A subclass whose overrides count, so the test sees which of the root's members reach it. An
+// Objective-C subclass (an unconverted entity, as ShipEntity was) until bead oo-j12i2 deleted the
+// adapter that let one be a C++ entity: a C++ subclass overriding the virtual members its selectors
+// became, with the same counts. Global and keeping its name, which the expected log and dump texts
+// print (the C++ class's name, as they printed the Objective-C class's).
+class TestObjCEntity : public cxx::Entity
 {
-@public
-	int			_cameraUpdates;
-	int			_orientationChanges;
-	int			_selfStateDumps;
-	int			_draws;
-	GLfloat		_frustumRadius;
-	NSUInteger	_session;
-	BOOL		_visible;
-}
-@end
+public:
+	bool isPlanet() override								{ return true; }
+	bool canCollide() override								{ return false; }
+	GLfloat frustumRadius() override						{ return _frustumRadius; }
+	NSUInteger sessionID() override							{ return _session; }
+	bool isVisible() override								{ return _visible; }
+	void updateCameraRelativePosition() override			{ _cameraUpdates++; cxx::Entity::updateCameraRelativePosition(); }
+	void orientationChanged() override						{ _orientationChanges++; cxx::Entity::orientationChanged(); }
+	void dumpSelfState() override							{ cxx::Entity::dumpSelfState(); _selfStateDumps++; }
+	void drawImmediate(bool, bool) override					{ _draws++; }
 
-
-@implementation TestObjCEntity
-
-- (BOOL) isPlanet								{ return YES; }
-- (BOOL) canCollide								{ return NO; }
-- (GLfloat) frustumRadius						{ return _frustumRadius; }
-- (NSUInteger) sessionID						{ return _session; }
-- (BOOL) isVisible								{ return _visible; }
-- (void) updateCameraRelativePosition			{ _cameraUpdates++; [super updateCameraRelativePosition]; }
-- (void) orientationChanged						{ _orientationChanges++; [super orientationChanged]; }
-- (void) dumpSelfState							{ [super dumpSelfState]; _selfStateDumps++; }
-- (void) drawImmediate:(bool)immediate translucent:(bool)translucent	{ _draws++; }
-
-@end
+	int			_cameraUpdates = 0;
+	int			_orientationChanges = 0;
+	int			_selfStateDumps = 0;
+	int			_draws = 0;
+	GLfloat		_frustumRadius = 0;
+	NSUInteger	_session = 0;
+	BOOL		_visible = NO;
+};
 
 
 // A converted entity: a C++ subclass. Global, as a game class is, so that its description names
@@ -203,16 +200,16 @@ TestPlayer *SetUpPlayer(HPVector position, HPVector viewpoint)
 {
 	static TestPlayer *player = nullptr;
 	if (player == nullptr)  player = NewTestPlayer<TestPlayer>();	// never released, as the player is not
+	gOOPlayer = player;	// before its position, which reads PLAYER (the debug build asserts it is set; bead oo-vdw34)
 	player->setPosition(position);
 	player->_viewpoint = viewpoint;
-	gOOPlayer = player;
 	return player;
 }
 
 
 Entity *MakeEntity(HPVector position, GLfloat radius)
 {
-	Entity *entity = [[[Entity alloc] init] autorelease];
+	Entity *entity = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
 	[entity setPosition:position];
 	[entity setCollisionRadius:radius];
 	return entity;
@@ -248,7 +245,7 @@ OO_TEST(defaults)
 		UniverseIvar<NSUInteger>("_sessionID") = 7;
 		UniverseIvar<OOTimeAbsolute>("universal_time") = 12.5;
 
-		Entity *entity = [[[Entity alloc] init] autorelease];
+		Entity *entity = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
 		OO_CHECK([entity sessionID] == 7);
 		OO_CHECK([entity spawnTime] == 12.5f);
 		OO_CHECK(![entity isShip] && ![entity isDock] && ![entity isStation] && ![entity isSubEntity] && ![entity isPlayer]);
@@ -442,7 +439,7 @@ OO_TEST(ownersAndParents)
 		Entity *entity = MakeEntity(kZeroHPVector, 1.0f);
 		@autoreleasepool
 		{
-			Entity *owner = [[Entity alloc] init];
+			Entity *owner = [oo::NewEntityFacade(oo::makeRef<cxx::Entity>()) retain];
 			[entity setOwner:owner];
 			OO_CHECK([entity owner] == owner);
 			// Not a ship with this as a subentity: no parent, and not a ship itself.
@@ -571,36 +568,36 @@ OO_TEST(objCSubclassOverrides)
 		SetUpUniverse();
 		SetUpPlayer(kZeroHPVector, kZeroHPVector);
 
-		TestObjCEntity *entity = [[[TestObjCEntity alloc] init] autorelease];
+		TestObjCEntity *entity = static_cast<TestObjCEntity *>(oo::MadeEntity(oo::makeRef<TestObjCEntity>()));
 		entity->_frustumRadius = 1.5f;
 		entity->_session = 3;
 
-		// The root's own methods send to self, so they reach the subclass's overrides.
-		OO_CHECK([entity isStellarObject]);
-		[entity setPosition:make_HPvector(0, 0, 10)];
+		// The root's own members call the virtual members, so they reach the subclass's overrides.
+		OO_CHECK(entity->isStellarObject());
+		entity->setPosition(make_HPvector(0, 0, 10));
 		OO_CHECK(entity->_cameraUpdates == 1);
-		OO_CHECK([entity cameraRangeFront] == 8.5f && [entity cameraRangeBack] == 11.5f);
-		[entity setOrientation:kIdentityQuaternion];
-		[entity applyRoll:0.5f andClimb:0];
+		OO_CHECK(entity->cameraRangeFront() == 8.5f && entity->cameraRangeBack() == 11.5f);
+		entity->setOrientation(kIdentityQuaternion);
+		entity->applyRoll(0.5f, 0);
 		OO_CHECK(entity->_orientationChanges == 2);
 		CaptureLog();
-		OO_CHECK(![entity validForAddToUniverse]);	// session 3 is not the universe's 0
+		OO_CHECK(!entity->validForAddToUniverse());	// session 3 is not the universe's 0
 		OO_CHECK(Logged("from session 3 cannot be added to universe in session 0"));
 		entity->_session = 0;
-		OO_CHECK([entity validForAddToUniverse]);
-		[entity dumpState];
+		OO_CHECK(entity->validForAddToUniverse());
+		entity->dumpState();
 		OO_CHECK(entity->_selfStateDumps == 1);
 		OO_CHECK(Logged("State for <TestObjCEntity 0x") && Logged("Mass: 0"));
-		[entity setStatus:STATUS_IN_FLIGHT];
-		[entity update:0];
+		entity->setStatus(STATUS_IN_FLIGHT);
+		entity->update(0);
 		OO_CHECK(entity->_cameraUpdates == 2);
-		OO_CHECK(![entity canCollide]);
-		[entity drawImmediate:false translucent:false];
+		OO_CHECK(!entity->canCollide());
+		entity->drawImmediate(false, false);
 		OO_CHECK(entity->_draws == 1);
 #ifndef NDEBUG
 		entity->_visible = NO;
-		OO_CHECK([entity descriptionForObjDump]->ends_with("range: 10 (visible: no)"));
-		OO_CHECK([entity descriptionForObjDumpBasic]->starts_with("TestObjCEntity position: "));
+		OO_CHECK(entity->descriptionForObjDump()->ends_with("range: 10 (visible: no)"));
+		OO_CHECK(entity->descriptionForObjDumpBasic()->starts_with("TestObjCEntity position: "));
 #endif
 	}
 }
@@ -636,9 +633,13 @@ OO_TEST(liveEntityCount)
 
 		const uint32_t count = gLiveEntityCount;
 		const size_t memory = gTotalEntityMemory;
-		TestObjCEntity *entity = [[TestObjCEntity alloc] init];
+		Entity *entity = nil;
+		@autoreleasepool
+		{
+			entity = [oo::NewEntityFacade(oo::makeRef<TestObjCEntity>()) retain];	// +1, as +alloc's was
+		}
 		OO_CHECK(gLiveEntityCount == count + 1);
-		OO_CHECK(gTotalEntityMemory == memory + class_getInstanceSize([TestObjCEntity class]));
+		OO_CHECK(gTotalEntityMemory == memory + class_getInstanceSize(object_getClass(entity)));	// its object's size (bead oo-j12i2: the facade's)
 		[entity release];
 		OO_CHECK(gLiveEntityCount == count && gTotalEntityMemory == memory);
 	}
@@ -646,40 +647,8 @@ OO_TEST(liveEntityCount)
 #endif
 
 
-// A failing initialiser releases self before [super init] and answers nil (OOQuiriumCascadeEntity,
-// OOFlasherEntity and others with a nil ship): -dealloc runs on an entity whose -init never did.
-@interface TestFailingInitEntity: Entity
-- (id) initFailing;
-@end
-
-
-@implementation TestFailingInitEntity
-
-- (id) initFailing
-{
-	[self release];
-	return nil;
-}
-
-@end
-
-
-OO_TEST(releasedBeforeInit)
-{
-	@autoreleasepool
-	{
-		SetUpUniverse();
-		SetUpPlayer(kZeroHPVector, kZeroHPVector);
-#ifndef NDEBUG
-		const uint32_t count = gLiveEntityCount;
-		const size_t memory = gTotalEntityMemory;
-#endif
-		OO_CHECK([[TestFailingInitEntity alloc] initFailing] == nil);
-#ifndef NDEBUG
-		OO_CHECK(gLiveEntityCount == count && gTotalEntityMemory == memory);
-#endif
-	}
-}
+// releasedBeforeInit (a failing Objective-C initialiser's [self release] before the facade's -init
+// ran) retired with the Objective-C entities' adapter (bead oo-j12i2, under oo-9n5p9): a façade case.
 
 
 // --- The crossing (after the conversion) ---------------------------------------------------------
@@ -698,7 +667,6 @@ OO_TEST(cxxEntityBehindItsFacade)
 		Entity *facade = oo::NewEntityFacade(entity);
 		OO_CHECK(facade != nil && [facade class] == [Entity class]);
 		OO_CHECK(oo::ToCxx(facade) == entity.get() && oo::ToObjC(entity.get()) == facade);
-		OO_CHECK(oo::AsObjCEntity(entity.get()) == nullptr);
 #ifndef NDEBUG
 		OO_CHECK(gLiveEntityCount == count + 1);
 #endif
@@ -732,49 +700,8 @@ OO_TEST(cxxEntityBehindItsFacade)
 }
 
 
-OO_TEST(objCEntityBehindACxxPointer)
-{
-	@autoreleasepool
-	{
-		SetUpUniverse();
-		SetUpPlayer(kZeroHPVector, kZeroHPVector);
-
-		TestObjCEntity *objCEntity = [[[TestObjCEntity alloc] init] autorelease];
-		objCEntity->_frustumRadius = 1.5f;
-		cxx::Entity *part = oo::ToCxx(objCEntity);
-		OO_CHECK(part != nullptr && oo::ToObjC(part) == objCEntity && oo::AsObjCEntity(part) != nullptr);
-
-		// Virtual calls from C++ reach the Objective-C overrides, or the root's own answers.
-		OO_CHECK(part->isPlanet() && part->isStellarObject() && !part->canCollide() && !part->isSun());
-		part->setPosition(make_HPvector(0, 0, 10));
-		OO_CHECK(objCEntity->_cameraUpdates == 1);
-		OO_CHECK(part->cameraRangeFront() == 8.5f);
-		OO_CHECK(part->descriptionComponents() == std::optional<std::string>("position: (0, 0, 10) scanClass: CLASS_NOT_SET status: STATUS_COCKPIT_DISPLAY"));
-
-		// The state is the C++ part's, whichever side reads it.
-		part->energy = 12.0f;
-		OO_CHECK([objCEntity energy] == 12.0f);
-		[objCEntity setMaxEnergy:20.0f];
-		OO_CHECK(part->maxEnergy == 20.0f);
-	}
-}
-
-
-OO_TEST(adapterOutlivesItsObject)
-{
-	oo::Ref<cxx::Entity> part;
-	@autoreleasepool
-	{
-		SetUpUniverse();
-		SetUpPlayer(kZeroHPVector, kZeroHPVector);
-		TestObjCEntity *objCEntity = [[[TestObjCEntity alloc] init] autorelease];
-		objCEntity->_frustumRadius = 1.5f;
-		part = oo::Ref<cxx::Entity>(oo::ToCxx(objCEntity));
-	}
-	// Its virtual members answer as a message to nil did.
-	OO_CHECK(!part->isPlanet() && part->frustumRadius() == 0.0f && !part->canCollide());
-	OO_CHECK(oo::ToObjC(part) == nil);
-}
+// objCEntityBehindACxxPointer and adapterOutlivesItsObject (an Objective-C entity's C++ part, the
+// adapter oo::ObjCEntity) retired with the adapter (bead oo-j12i2, under oo-9n5p9): façade cases.
 
 
 OO_TEST(facadeNilStaysNil)
@@ -796,21 +723,15 @@ OO_TEST(initSentAgain)
 	{
 		SetUpUniverse();
 		SetUpPlayer(kZeroHPVector, kZeroHPVector);
-		TestObjCEntity *entity = [[[TestObjCEntity alloc] init] autorelease];
-		cxx::Entity *part = oo::ToCxx(entity);
-		[entity setPosition:make_HPvector(1, 2, 3)];
-		[entity setStatus:STATUS_IN_FLIGHT];
-		[entity setEnergy:42];
-		[entity setUniversalID:9];
-		OO_CHECK([entity init] == entity);
-		OO_CHECK(oo::ToCxx(entity) == part);
-		OO_CHECK(HPvector_equal([entity position], kZeroHPVector) && [entity status] == STATUS_COCKPIT_DISPLAY);
-		OO_CHECK([entity energy] == 42 && [entity universalID] == 9);
-		[entity setUniversalID:NO_TARGET];
-#ifndef NDEBUG
-		gLiveEntityCount--;		// -init counted it again, as it did
-		gTotalEntityMemory -= class_getInstanceSize([TestObjCEntity class]);
-#endif
+		TestObjCEntity *entity = static_cast<TestObjCEntity *>(oo::MadeEntity(oo::makeRef<TestObjCEntity>()));
+		entity->setPosition(make_HPvector(1, 2, 3));
+		entity->setStatus(STATUS_IN_FLIGHT);
+		entity->setEnergy(42);
+		entity->setUniversalID(9);
+		entity->init();	// the body -init ran again (bead oo-j12i2: the facade's -init identity and recount, façade checks, retired)
+		OO_CHECK(HPvector_equal(entity->getPosition(), kZeroHPVector) && entity->status() == STATUS_COCKPIT_DISPLAY);
+		OO_CHECK(entity->getEnergy() == 42 && entity->getUniversalID() == 9);
+		entity->setUniversalID(NO_TARGET);
 	}
 }
 

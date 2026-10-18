@@ -245,12 +245,15 @@ OO_TEST(update)
 		OO_CHECK(ZeroDistance(sky) == (GLfloat)(MAX_CLEAR_DEPTH * MAX_CLEAR_DEPTH));
 		OO_CHECK(CamZeroDistance(sky) == ZeroDistance(sky));
 
-		// No player: the position stays.
+		// No player: the position stays. Only a release-style build can ask with none: the debug build
+		// asserts that PLAYER is set (OOGetPlayer(); bead oo-vdw34).
+#if !OO_DEBUG
 		gOOPlayer = nullptr;
 		sPlayer->_viewpoint = make_HPvector(8, 8, 8);
 		[sky update:0.1];
 		OO_CHECK(HPvector_equal([sky position], make_HPvector(5, 6, 7)));
 		gOOPlayer = sPlayer;
+#endif
 	}
 }
 
@@ -283,7 +286,6 @@ OO_TEST(facade)
 		Entity *sky = Sky(Dict({ { "sky_n_stars", oo::PList(0) } }));
 		// A C++ entity (amendment oo-0mxi), not an Objective-C entity's adapter.
 		OO_CHECK(dynamic_cast<SkyEntity *>(oo::ToCxx(sky)) != nullptr);
-		OO_CHECK(oo::AsObjCEntity(oo::ToCxx(sky)) == nullptr);
 		OO_CHECK(oo::ToObjC(oo::ToCxx(sky)) == sky);
 	}
 }

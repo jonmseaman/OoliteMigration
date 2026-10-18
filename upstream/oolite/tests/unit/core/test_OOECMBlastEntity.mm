@@ -22,6 +22,7 @@
 #import "OOECMBlastEntity.h"
 #import "Universe.h"
 #import "ShipEntity.h"	// the ship is C++ (bead oo-9ht.144)
+#import "PlayerEntity.h"	// the stand-in PLAYER (bead oo-vdw34)
 
 #include "oo_test.hpp"
 
@@ -33,7 +34,6 @@
 uint32_t gDebugFlags = 0;
 #endif
 
-class PlayerEntity;
 extern PlayerEntity *gOOPlayer;
 extern Universe *gSharedUniverse;
 
@@ -69,6 +69,32 @@ TestUniverse *sUniverse = nil;
 std::vector<double> sRanges;
 
 
+// PLAYER (bead oo-vdw34): the debug build asserts it is set (OOGetPlayer()), so the entities' positions,
+// which read it, have a player whose viewpoint is the origin: the camera-relative positions are the
+// release build's with no player (the origin's). Never released, as the player is not.
+class TestPlayer : public PlayerEntity
+{
+public:
+	HPVector viewpointPosition() override	{ return kZeroHPVector; }
+};
+
+
+void SetUpTestPlayer()
+{
+	static TestPlayer *player = nullptr;
+	if (player == nullptr)
+	{
+		oo::Ref<TestPlayer> made = oo::makeRef<TestPlayer>();
+		@autoreleasepool
+		{
+			[oo::NewEntityFacade(made) retain];	// +1, as PlayerEntity::sharedPlayer() makes the game's
+		}
+		player = made.get();
+	}
+	gOOPlayer = player;
+}
+
+
 void SetUp()
 {
 	if (sUniverse == nil)
@@ -80,6 +106,7 @@ void SetUp()
 	sUniverse->_removed = nil;
 	sUniverse->_searchedFrom = nil;
 	gSharedUniverse = sUniverse;
+	SetUpTestPlayer();
 	// The ship's -dealloc sends its (absent) scripts entityDestroyed in a request on the main
 	// thread's context, so there is one, with nothing in it (the ship stand-in is C++ since bead
 	// oo-9ht.144, as test_StationEntity's ships are).

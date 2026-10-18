@@ -53,22 +53,16 @@ uint32_t gDebugFlags = 0;
 
 // MARK: The stand-ins -----------------------------------------------------------------------------
 
-// An entity scripts can see; it answers like any Entity otherwise.
-@interface TestEntity: Entity
+// An entity scripts can see; it answers like any Entity otherwise (an Objective-C subclass until bead
+// oo-j12i2; a C++ one overriding the member its -isVisibleToScripts became; its -group, which nothing
+// asked once the system asked the C++ ship for its group, went with it).
+class TestEntity : public cxx::Entity
 {
-@public
-	BOOL _visible;
-	oo::Ref<OOShipGroup> _group;	// C++ since bead oo-9ht.19
-}
-@end
+public:
+	bool isVisibleToScripts() override  { return _visible; }
 
-
-@implementation TestEntity
-
-- (BOOL) isVisibleToScripts  { return _visible; }
-- (OOShipGroup *) group  { return _group.get(); }
-
-@end
+	bool _visible = false;
+};
 
 
 // The universe answers held C++ entities (bead oo-9ht.39.26): the stand-in's lists of objects, so held.
@@ -309,11 +303,17 @@ FakeUniverse *sUniverse = nil;
 FakePlayer *sPlayer = nullptr;
 
 
-TestEntity *MakeEntity(double x, BOOL visible)
+// Its object (the test keeps entities as their objects), +1 as +alloc's was.
+::Entity *MakeEntity(double x, BOOL visible)
 {
-	TestEntity *entity = [[TestEntity alloc] init];	// kept for the life of the test
+	oo::Ref<TestEntity> part = oo::makeRef<TestEntity>();
+	::Entity *entity = nil;
+	@autoreleasepool
+	{
+		entity = [oo::NewEntityFacade(part) retain];	// kept for the life of the test
+	}
 	[entity setPosition:make_HPvector(x, 0, 0)];
-	entity->_visible = visible;
+	part->_visible = visible;
 	return entity;
 }
 
@@ -375,13 +375,13 @@ void SetUp()
 	sUniverse->_waypoints["nav-b"] = oo::ObjCRef<::Entity *>(MakeEntity(51, YES));
 
 	// The searchable entities, out of distance order; one is invisible.
-	TestEntity *farthest = MakeEntity(300, YES);
+	::Entity *farthest = MakeEntity(300, YES);
 	[farthest setScanClass:CLASS_BUOY];
-	TestEntity *nearest = MakeEntity(100, YES);
+	::Entity *nearest = MakeEntity(100, YES);
 	[nearest setScanClass:CLASS_NEUTRAL];
-	TestEntity *hidden = MakeEntity(150, NO);
+	::Entity *hidden = MakeEntity(150, NO);
 	[hidden setScanClass:CLASS_NEUTRAL];
-	TestEntity *middle = MakeEntity(200, YES);
+	::Entity *middle = MakeEntity(200, YES);
 	[middle setScanClass:CLASS_NEUTRAL];
 	sUniverse->_entities = { oo::ObjCRef<::Entity *>(farthest), oo::ObjCRef<::Entity *>(nearest), oo::ObjCRef<::Entity *>(hidden), oo::ObjCRef<::Entity *>(middle) };
 

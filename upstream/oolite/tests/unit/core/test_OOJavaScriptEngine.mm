@@ -79,27 +79,19 @@ static int sNativeDeallocs = 0;
 @end
 
 
-// An entity whose script-visible answers the test chooses (the predicates ask only these).
-@interface TestScriptEntity: Entity
+// An entity whose script-visible answers the test chooses (the predicates ask only these). An
+// Objective-C subclass until bead oo-j12i2: a C++ one overriding the virtual members its selectors
+// became; its -isShip, -isSubEntity and -status answers are the C++ entity's own flags and status,
+// which the predicates read for a C++ entity, set where the test set its ivars.
+class TestScriptEntity : public cxx::Entity
 {
-@public
-	BOOL			_scriptVisible;
-	BOOL			_ship;
-	BOOL			_subEntity;
-	OOEntityStatus	_testStatus;
-}
-@end
+public:
+	bool isVisibleToScripts() override  { return _scriptVisible; }
+	bool isPlanet() override  { return false; }
+	ooscript::Value jsValueInContext(ooscript::Context) override  { return ooscript::int32Value(42); }
 
-@implementation TestScriptEntity
-
-- (BOOL) isVisibleToScripts							{ return _scriptVisible; }
-- (BOOL) isShip										{ return _ship; }
-- (BOOL) isSubEntity								{ return _subEntity; }
-- (BOOL) isPlanet									{ return NO; }
-- (OOEntityStatus) status							{ return _testStatus; }
-- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context	{ return ooscript::int32Value(42); }
-
-@end
+	bool _scriptVisible = false;
+};
 
 
 #if OOJSENGINE_MONITOR_SUPPORT
@@ -721,44 +713,44 @@ OO_TEST(entityPredicates)
 		OO_CHECK(!JSEntityIsJavaScriptSearchablePredicate(nullptr, NULL));
 		OO_CHECK(!JSEntityIsDemoShipPredicate(nullptr, NULL));
 
-		TestScriptEntity *entity = [[[TestScriptEntity alloc] init] autorelease];
-		entity->_testStatus = STATUS_IN_FLIGHT;
-		OO_CHECK(!JSEntityIsJavaScriptVisiblePredicate(oo::ToCxx(entity), NULL));
-		OO_CHECK(!JSEntityIsJavaScriptSearchablePredicate(oo::ToCxx(entity), NULL));
+		TestScriptEntity *entity = static_cast<TestScriptEntity *>(oo::MadeEntity(oo::makeRef<TestScriptEntity>()));
+		entity->setStatus(STATUS_IN_FLIGHT);
+		OO_CHECK(!JSEntityIsJavaScriptVisiblePredicate(entity, NULL));
+		OO_CHECK(!JSEntityIsJavaScriptSearchablePredicate(entity, NULL));
 
-		entity->_scriptVisible = YES;
-		OO_CHECK(JSEntityIsJavaScriptVisiblePredicate(oo::ToCxx(entity), NULL));
-		OO_CHECK(JSEntityIsJavaScriptSearchablePredicate(oo::ToCxx(entity), NULL));	// neither ship nor planet
-		OO_CHECK(!JSEntityIsDemoShipPredicate(oo::ToCxx(entity), NULL));
+		entity->_scriptVisible = true;
+		OO_CHECK(JSEntityIsJavaScriptVisiblePredicate(entity, NULL));
+		OO_CHECK(JSEntityIsJavaScriptSearchablePredicate(entity, NULL));	// neither ship nor planet
+		OO_CHECK(!JSEntityIsDemoShipPredicate(entity, NULL));
 
-		entity->_ship = YES;
-		OO_CHECK(JSEntityIsJavaScriptSearchablePredicate(oo::ToCxx(entity), NULL));
-		OO_CHECK(!JSEntityIsDemoShipPredicate(oo::ToCxx(entity), NULL));
-		entity->_subEntity = YES;
-		OO_CHECK(!JSEntityIsJavaScriptSearchablePredicate(oo::ToCxx(entity), NULL));
-		entity->_subEntity = NO;
-		entity->_testStatus = STATUS_COCKPIT_DISPLAY;
-		OO_CHECK(!JSEntityIsJavaScriptSearchablePredicate(oo::ToCxx(entity), NULL));
-		OO_CHECK(JSEntityIsDemoShipPredicate(oo::ToCxx(entity), NULL));
-		entity->_subEntity = YES;
-		OO_CHECK(!JSEntityIsDemoShipPredicate(oo::ToCxx(entity), NULL));
+		entity->isShip = YES;
+		OO_CHECK(JSEntityIsJavaScriptSearchablePredicate(entity, NULL));
+		OO_CHECK(!JSEntityIsDemoShipPredicate(entity, NULL));
+		entity->isSubEntity = YES;
+		OO_CHECK(!JSEntityIsJavaScriptSearchablePredicate(entity, NULL));
+		entity->isSubEntity = NO;
+		entity->setStatus(STATUS_COCKPIT_DISPLAY);
+		OO_CHECK(!JSEntityIsJavaScriptSearchablePredicate(entity, NULL));
+		OO_CHECK(JSEntityIsDemoShipPredicate(entity, NULL));
+		entity->isSubEntity = YES;
+		OO_CHECK(!JSEntityIsDemoShipPredicate(entity, NULL));
 
 		// A JS function as a predicate: called with the entity's JS value.
 		ooscript::Context context = OOJSAcquireContext();
 		JSFunctionPredicateParameter param = { context, Eval(context, "(function (e) { return e === 42; })"), NULL, NO };
-		OO_CHECK(JSFunctionPredicate(oo::ToCxx(entity), &param));
+		OO_CHECK(JSFunctionPredicate(entity, &param));
 		OO_CHECK(!param.errorFlag);
 		param.function = Eval(context, "(function (e) { return e !== 42; })");
-		OO_CHECK(!JSFunctionPredicate(oo::ToCxx(entity), &param));
+		OO_CHECK(!JSFunctionPredicate(entity, &param));
 		OO_CHECK(!param.errorFlag);
 
 		StartLog();
 		param.function = Eval(context, "(function (e) { throw new Error('predicate boom'); })");
-		OO_CHECK(!JSFunctionPredicate(oo::ToCxx(entity), &param));
+		OO_CHECK(!JSFunctionPredicate(entity, &param));
 		OO_CHECK(param.errorFlag);
 		OO_CHECK(LogLinesContaining("predicate boom") >= 1);
 		param.function = Eval(context, "(function (e) { return true; })");
-		OO_CHECK(!JSFunctionPredicate(oo::ToCxx(entity), &param));	// the error flag stops further filtering
+		OO_CHECK(!JSFunctionPredicate(entity, &param));	// the error flag stops further filtering
 		OOJSRelinquishContext(context);
 	}
 }

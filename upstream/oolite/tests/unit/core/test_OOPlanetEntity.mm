@@ -377,7 +377,7 @@ OO_TEST(closeCollision)
 		SetUp();
 		OOPlanetEntity *moon = Planet(NO);
 		OO_CHECK(!moon->checkCloseCollisionWith(nullptr));
-		Entity *rock = [[[Entity alloc] init] autorelease];
+		Entity *rock = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
 		OO_CHECK(moon->checkCloseCollisionWith(oo::ToCxx(rock)));
 	}
 }
@@ -409,7 +409,6 @@ OO_TEST(facade)
 		OO_CHECK(object != nil && [object class] == [Entity class]);
 		// A C++ entity (amendment oo-0mxi), not an Objective-C entity's adapter.
 		OO_CHECK(oo::ToCxx(object) == moon);
-		OO_CHECK(oo::AsObjCEntity(moon) == nullptr);
 		OOPlanetEntity *mini = Miniature(moon);
 		OO_CHECK([oo::ToObjC(mini) class] == [Entity class] && oo::ToCxx(oo::ToObjC(mini)) == mini);
 
@@ -426,7 +425,7 @@ OO_TEST(facade)
 		Vector (*vectorValue)(id, SEL) = (Vector (*)(id, SEL))(void (*)(void))[object methodForSelector:@selector(terminatorThresholdVector)];
 		Vector t = vectorValue(object, @selector(terminatorThresholdVector));
 		OO_CHECK(t.x == 1 && t.y == 2 && t.z == 3);
-		Entity *rock = [[[Entity alloc] init] autorelease];
+		Entity *rock = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
 		OO_CHECK(![rock respondsToSelector:@selector(airColorAsVector)] && ![rock respondsToSelector:@selector(airDensity)]);
 		OO_CHECK([rock respondsToSelector:@selector(relativePosition)]);
 	}
