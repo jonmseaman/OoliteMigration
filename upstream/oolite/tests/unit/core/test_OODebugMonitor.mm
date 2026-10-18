@@ -79,8 +79,8 @@ uint32_t gLiveEntityCount = 0;
 
 // WormholeEntity.mm's (the wormhole is C++ since bead oo-9ht.112, so the monitor's dump asks it
 // through this function, where it sent -shipsInTransit): the test dumps no entity.
-@class Entity;
-oo::PList WormholeEntityShipsInTransit(Entity *)  { return oo::PList(); }
+namespace cxx { class Entity; }
+oo::PList WormholeEntityShipsInTransit(cxx::Entity *)  { return oo::PList(); }
 
 // UNIVERSE stays nil here, so the monitor's guarded call never reaches it; the stand-in only links
 // it (bead oo-ql9rn: it was a message to nil).
@@ -102,6 +102,9 @@ class Entity : public oo::RefCounted
 {
 public:
 	virtual ~Entity();
+	bool getIsShip();
+	bool getIsPlayer();
+	bool getIsWormhole();
 };
 }	// namespace cxx
 
@@ -122,6 +125,9 @@ public:
 };
 
 cxx::Entity::~Entity() = default;
+bool cxx::Entity::getIsShip()  { std::abort(); }
+bool cxx::Entity::getIsPlayer()  { std::abort(); }
+bool cxx::Entity::getIsWormhole()  { std::abort(); }
 std::vector<oo::EntityHold> ShipEntity::subEntityEnumerator()  { std::abort(); }
 namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
 ::Entity *oo::ToObjC(cxx::Entity *)  { std::abort(); }
@@ -260,7 +266,7 @@ std::optional<std::string> OOScript::name()					{ return std::nullopt; }
 std::optional<std::string> OOScript::scriptDescription()		{ return std::nullopt; }
 std::optional<std::string> OOScript::version()				{ return std::nullopt; }
 bool OOScript::requiresTickle()								{ return false; }
-void OOScript::runWithTarget(::Entity *)						{}
+void OOScript::runWithTarget(cxx::Entity *)						{}
 bool OOScript::callMethod(ooscript::PropertyId, ooscript::Context, ooscript::Value *, int, ooscript::Value *)	{ return false; }
 std::string OOScript::className() const						{ return "OOScript"; }
 std::string OOScript::description() const						{ return "<OOScript>"; }

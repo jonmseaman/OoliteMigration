@@ -175,6 +175,7 @@ void ooscript::beginRequest(ooscript::Context)							{ std::abort(); }
 void ooscript::endRequest(ooscript::Context)							{ std::abort(); }
 bool ooscript::isInRequest(ooscript::Context)							{ std::abort(); }
 ooscript::Value ooscript::int32Value(std::int32_t)						{ std::abort(); }
+ooscript::Value ooscript::nullValue()									{ std::abort(); }	// the station argument's for none (bead oo-w9pi2)
 bool ooscript::isObjectOrNull(ooscript::Value)							{ std::abort(); }
 ooscript::Object ooscript::toObject(ooscript::Value)					{ std::abort(); }
 extern "C" ooscript::Value OOJSValueFromNativeObject(ooscript::Context, id)	{ std::abort(); }

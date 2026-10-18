@@ -297,9 +297,9 @@ OO_TEST(standardSubentities)
 		OO_CHECK(child->owner() == oo::ToObjC(effect));
 		OO_CHECK(child->getIsSubEntity());
 		OO_CHECK([childObject retainCount] == 2);	// the parent's list and the enumerator's snapshot (effects)
-		OO_CHECK(effect->isShipWithSubEntityShip(oo::ToObjC(child)));
+		OO_CHECK(effect->isShipWithSubEntityShip(child));
 		OO_CHECK(child->parentEntity() == effect);
-		OO_CHECK(!child->isShipWithSubEntityShip(oo::ToObjC(effect)));
+		OO_CHECK(!child->isShipWithSubEntityShip(effect));
 
 		// Rescaling the whole effect moves and rescales its subentities.
 		effect->rescaleBy(2.0f);

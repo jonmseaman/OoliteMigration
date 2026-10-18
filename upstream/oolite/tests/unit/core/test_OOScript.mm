@@ -54,14 +54,14 @@ public:
 	std::optional<std::string> scriptDescription() override	{ return std::string("an Objective-C test script"); }
 	std::optional<std::string> version() override			{ if (hasVersion)  return std::string("1.5"); return std::nullopt; }
 	bool requiresTickle() override							{ return true; }
-	void runWithTarget(::Entity *target) override			{ runs++; lastTarget = target; }
+	void runWithTarget(cxx::Entity *target) override			{ runs++; lastTarget = target; }
 
 	std::optional<std::string> superName()					{ return OOScript::name(); }
 	std::optional<std::string> superDescriptionComponents()	{ return OOScript::descriptionComponents(); }
 	bool superRequiresTickle()								{ return OOScript::requiresTickle(); }
 
 	int		runs = 0;
-	Entity	*lastTarget = nil;
+	cxx::Entity	*lastTarget = nullptr;	// the C++ entity (bead oo-w9pi2)
 	bool	hasVersion = false;
 };
 
@@ -165,9 +165,9 @@ OO_TEST(objCSubclass)
 		OO_CHECK(script->requiresTickle());
 
 		Entity *target = [[[Entity alloc] init] autorelease];
-		script->runWithTarget(target);
+		script->runWithTarget(oo::ToCxx(target));
 		OO_CHECK_EQ(script->runs, 1);
-		OO_CHECK(script->lastTarget == target);
+		OO_CHECK(script->lastTarget == oo::ToCxx(target));
 	}
 }
 
@@ -274,10 +274,10 @@ public:
 	std::optional<std::string> name() override				{ return std::string("cxx"); }
 	std::optional<std::string> version() override			{ return std::string("2"); }
 	bool requiresTickle() override							{ return true; }
-	void runWithTarget(::Entity *target) override			{ runs++; lastTarget = target; }
+	void runWithTarget(cxx::Entity *target) override			{ runs++; lastTarget = target; }
 
 	int runs = 0;
-	::Entity *lastTarget = nullptr;
+	cxx::Entity *lastTarget = nullptr;	// the C++ entity (bead oo-w9pi2)
 };
 
 }	// namespace
@@ -297,9 +297,9 @@ OO_TEST(crossingCxxSubclass)
 		OO_CHECK(script->requiresTickle());
 		OO_CHECK(script->description().find("\"cxx\" version 2") != std::string::npos);
 		Entity *target = [[[Entity alloc] init] autorelease];
-		script->runWithTarget(target);
+		script->runWithTarget(oo::ToCxx(target));
 		OO_CHECK_EQ(script->runs, 1);
-		OO_CHECK(script->lastTarget == target);
+		OO_CHECK(script->lastTarget == oo::ToCxx(target));
 
 		// The loaders as static members.
 		OO_CHECK(OOScript::scriptsFromList(std::vector<std::string>{ "oo-test-missing.js" }).empty());

@@ -1861,8 +1861,8 @@ void HeadUpDisplay::drawCompass(const oo::PList &info)
 				
 			case COMPASS_MODE_BEACONS:
 				drawCompassBeaconBlipAt(relativePosition, siz, alpha);
-				::Entity <OOBeaconEntity>		*beacon = (PLAYER != nullptr ? (Entity <OOBeaconEntity> *)oo::ToObjC(PLAYER->nextBeacon()) : (Entity <OOBeaconEntity> *)nullptr);
-				OOHUDBeaconIcon	*beaconIcon = [beacon beaconDrawable];	// nil beacon or drawable: nothing, as the message to nil
+				cxx::Entity		*beacon = (PLAYER != nullptr ? PLAYER->nextBeacon() : nullptr);
+				OOHUDBeaconIcon	*beaconIcon = oo::BeaconDrawable(beacon);	// nil beacon or drawable: nothing, as the message to nil (bead oo-w9pi2)
 				if (beaconIcon != nullptr)  beaconIcon->drawHUDBeaconIconAt(NSMakePoint(x, y), siz, alpha, z1);
 				break;
 		}

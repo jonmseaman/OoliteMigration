@@ -51,6 +51,7 @@ SOFTWARE.
 #import "OODrawable.h"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/Notification.hpp"
+#include <map>
 
 
 namespace {
@@ -385,33 +386,33 @@ struct OODebugMonitor::EntityDumpState
 {
 	std::set<oo::Ref<OOTexture>>	entityTextures;
 	std::set<oo::Ref<OOTexture>>	visibleEntityTextures;
-	std::set<oo::ObjCRef<id>>	seenEntities;
+	std::map<cxx::Entity *, oo::EntityHold>	seenEntities;	// each held, as its object was retained (bead oo-w9pi2)
 	unsigned					seenCount = 0;
 	size_t						totalEntityObjSize = 0;
 	size_t						totalDrawableSize = 0;
 };
 
 
-void OODebugMonitor::dumpEntity(id entity, EntityDumpState *state, bool parentVisible)
+void OODebugMonitor::dumpEntity(cxx::Entity *entity, EntityDumpState *state, bool parentVisible)
 {
-	if (entity == nil || state->seenEntities.count(oo::ObjCRef<id>(entity)) != 0)  return;
-	state->seenEntities.insert(oo::ObjCRef<id>(entity));
+	if (entity == nullptr || state->seenEntities.count(entity) != 0)  return;
+	state->seenEntities.emplace(entity, oo::EntityHold(entity));
 
 	state->seenCount++;
 
-	size_t entitySize = [entity oo_objectSize];
+	size_t entitySize = [oo::ToObjC(entity) oo_objectSize];	// its object's size (the object goes at 5k.4, oo-dpyk8)
 	size_t drawableSize = 0;
 	// -isKindOfClass:[OOEntityWithDrawable class] and -drawable until bead oo-9ht.40 deleted that facade
-	OOEntityWithDrawable *withDrawable = [entity isKindOfClass:[::Entity class]] ? dynamic_cast<OOEntityWithDrawable *>(oo::ToCxx((::Entity *)entity)) : nullptr;
+	OOEntityWithDrawable *withDrawable = dynamic_cast<OOEntityWithDrawable *>(entity);
 	if (withDrawable != nullptr)
 	{
 		OODrawable *drawable = withDrawable->getDrawable();	// C++ since bead oo-hahfg
 		drawableSize = (drawable != nullptr) ? drawable->totalSize() : 0;
 	}
 
-	bool visible = parentVisible && [entity isVisible];
+	bool visible = parentVisible && entity->isVisible();	// the virtual member -isVisible forwarded to
 
-	for (const oo::Ref<OOTexture> &texture : [entity cxx_allTextures])
+	for (const oo::Ref<OOTexture> &texture : entity->allTextures())
 	{
 		state->entityTextures.insert(texture);
 		if (visible)  state->visibleEntityTextures.insert(texture);
@@ -428,35 +429,35 @@ void OODebugMonitor::dumpEntity(id entity, EntityDumpState *state, bool parentVi
 		extra += ", drawable: " + SizeString(drawableSize);
 	}
 
-	writeMemStat(oo::str::format("%s: %s%s", oo::ShortDescriptionOf(entity).c_str(), SizeString(entitySize).c_str(), extra.c_str()));
+	writeMemStat(oo::str::format("%s: %s%s", oo::ShortDescriptionOf(oo::ToObjC(entity)).c_str(), SizeString(entitySize)	/* spelled out: the test links without Entity+ObjCBridge.mm */.c_str(), extra.c_str()));
 
 	state->totalEntityObjSize += entitySize;
 	state->totalDrawableSize += drawableSize;
 
 	oo::log::indent();
-	if ([entity isShip])
+	if (oo::EntityIsShip(entity))
 	{
 		for (const auto &subRef : (oo::ToShip(entity) != nullptr ? oo::ToShip(entity)->subEntityEnumerator() : std::vector<oo::EntityHold>()))
 		{
-			dumpEntity(oo::ToObjC(subRef.get()), state, visible);
+			dumpEntity(subRef.get(), state, visible);
 		}
 
-		if ([entity isPlayer] && PLAYER != nullptr)
+		if (oo::EntityIsPlayer(entity) && PLAYER != nullptr)
 		{
 			PlayerEntity *player = PLAYER;	// the entity that answers -isPlayer (C++ since bead oo-9ht.177)
 			NSUInteger i, count = player->dialMaxMissiles();
 			for (i = 0; i < count; i++)
 			{
-				id subentity = oo::ToObjC(player->missileForPylon(i));
-				if (subentity != nil)  dumpEntity(subentity, state, false);
+				cxx::Entity *subentity = player->missileForPylon(i);
+				if (subentity != nullptr)  dumpEntity(subentity, state, false);
 			}
 		}
 	}
-	if ([entity isPlanet])
+	if (oo::EntityIsPlanet(entity))
 	{
 		// FIXME: dump atmosphere texture.
 	}
-	if ([entity isWormhole])
+	if (entity->getIsWormhole())
 	{
 		const oo::PList shipsInTransit = WormholeEntityShipsInTransit(entity);	// -shipsInTransit (C++ since bead oo-9ht.112)
 		if (const oo::PList::Array *shipInfos = shipsInTransit.getIf<oo::PList::Array>())
@@ -465,7 +466,7 @@ void OODebugMonitor::dumpEntity(id entity, EntityDumpState *state, bool parentVi
 			{
 				const oo::PList *shipNode = shipInfo.find("ship");
 				::ShipEntity *ship = oo::ToShip((shipNode != nullptr) ? oo::EntityIn(*shipNode) : nullptr);	// the ship's entity node (bead oo-9ht.39.5.3)
-				dumpEntity(oo::ToObjC(ship), state, false);
+				dumpEntity(ship, state, false);
 			}
 		}
 	}
@@ -497,11 +498,11 @@ void OODebugMonitor::dumpMemoryStatistics()
 
 	for (const auto &entity : (UNIVERSE != nullptr ? UNIVERSE->entityList() : std::vector<oo::EntityHold>()))
 	{
-		dumpEntity(oo::ToObjC(entity.get()), &entityDumpState, true);	// its object (the universe holds the C++ entity, bead oo-9ht.39.26)
+		dumpEntity(entity.get(), &entityDumpState, true);
 	}
 	for (const oo::EntityHold &entityRef : (PLAYER != nullptr ? PLAYER->getScannedWormholes() : std::vector<oo::EntityHold>()))
 	{
-		dumpEntity(oo::ToObjC(entityRef.get()), &entityDumpState, true);	// its object (the player holds the C++ wormhole, bead oo-9ht.39.18)
+		dumpEntity(entityRef.get(), &entityDumpState, true);
 	}
 
 	oo::log::outdent();

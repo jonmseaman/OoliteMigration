@@ -98,6 +98,7 @@ public:
 	NSUInteger subEntityCount();
 	std::optional<std::vector<oo::EntityHold>> visualEffectSubEntityEnumerator();	// the visual-effect subentities' objects; nullopt where the array was nil
 	bool hasSubEntity(OOVisualEffectSubEntity *sub);
+	bool hasSubEntity(cxx::Entity *sub);	// the C++ entity's (bead oo-w9pi2)
 
 	std::vector<oo::EntityHold> subEntityEnumerator();	// snapshot, same as subEntities()
 	std::vector<oo::EntityHold> effectSubEntityEnumerator();	// the visual-effect subentities' objects
@@ -127,7 +128,7 @@ public:
 	void drawSubEntityImmediate(bool immediate, bool translucent) override;
 
 	// Entity (SubEntityRelationship): the root's facade answers it for an effect's part.
-	bool isShipWithSubEntityShip(::Entity *other);
+	bool isShipWithSubEntityShip(cxx::Entity *other);	// the C++ entity (bead oo-w9pi2; was its object)
 
 	bool isEffect() override;
 	bool getIsVisualEffect() override;

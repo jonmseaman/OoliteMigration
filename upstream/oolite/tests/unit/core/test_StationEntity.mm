@@ -487,7 +487,7 @@ OO_TEST(slice2HoldPosition)
 		const oo::PList *destination = hold.find("destination");
 		OO_CHECK(destination != nullptr && destination->get<double>("x", 0) == 1 && destination->get<double>("z", 0) == 3);
 		const oo::PList *stationRef = hold.find("station");
-		OO_CHECK(stationRef != nullptr && [oo::ObjectIn(*stationRef) weakRefUnderlyingObject] == oo::ToObjC(station));
+		OO_CHECK(stationRef != nullptr && oo::EntityInWeakNode(*stationRef) == station);
 		OO_CHECK(ShipsOnHold2(station)->contains(ship) && ShipsOnHold2(station)->count() == 1);
 
 		if (station != nullptr)  station->clear();

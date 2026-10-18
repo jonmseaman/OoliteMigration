@@ -456,7 +456,7 @@ void ShipEntity::recallDockingInstructions()
 		desired_range = dockingInstructions.get<float>("range");
 		if (const oo::PList *stationRef = dockingInstructions.find("station"))
 		{
-			::StationEntity *targetStation = oo::ToStation([oo::ObjectIn(*stationRef) weakRefUnderlyingObject]);
+			::StationEntity *targetStation = oo::ToStation(oo::EntityInWeakNode(*stationRef));
 			if (targetStation != nil)
 			{
 				addTarget(targetStation);

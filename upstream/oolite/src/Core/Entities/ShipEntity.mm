@@ -7301,7 +7301,7 @@ void ShipEntity::avoidCollision()
 		if (primaryTarget() != nil)
 		{
 			// must use the weak ref here to prevent potential over-retention
-			condition["primaryTarget"] = oo::PListObject([[oo::ToObjC(primaryTarget()) weakRetain] autorelease]);	// its object's weak reference, as -weakSelf answered while _primaryTarget held it (bead oo-9ht.39.5.2)
+			condition["primaryTarget"] = oo::EntityWeakNode(primaryTarget());	// weakly, as its object's weak reference was (bead oo-w9pi2)
 		}
 		condition["desired_range"] = oo::PList::singleReal(desired_range);	// floats, as oo_setFloat: stored them
 		condition["desired_speed"] = oo::PList::singleReal(desired_speed);
@@ -7326,7 +7326,7 @@ void ShipEntity::resumePostProximityAlert()
 
 	behaviour =		(OOBehaviour)previousCondition.get<int>("behaviour");
 	const oo::PList *previousTarget = previousCondition.find("primaryTarget");
-	_primaryTarget =	oo::WeakEntityRef([(previousTarget != nullptr ? oo::ObjectIn(*previousTarget) : nil) weakRefUnderlyingObject]);	// the node holds the target's weak reference (its object)
+	_primaryTarget =	oo::WeakRef<cxx::Entity>(previousTarget != nullptr ? oo::EntityInWeakNode(*previousTarget) : nullptr);	// the node holds the target weakly (bead oo-w9pi2)
 	startTrackingCurve();
 	desired_range =	previousCondition.get<float>("desired_range");
 	desired_speed =	previousCondition.get<float>("desired_speed");

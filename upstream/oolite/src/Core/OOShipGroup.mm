@@ -75,7 +75,7 @@ public:
 			Fill();
 		}
 
-		::ShipEntity *operator*() const  { return oo::ToShip(_buffer[_position]); }	// the member's ship (the object until bead oo-9ht.144)
+		::ShipEntity *operator*() const  { return oo::ToShip(_buffer[_position].get()); }	// the member's ship (the object until bead oo-9ht.144)
 		Iterator &operator++()
 		{
 			OOCAssert(_group->updateCount() == _updateCount, "OOShipGroup was mutated while being enumerated.");
@@ -94,7 +94,7 @@ public:
 		OOShipGroup	*_group;
 		NSUInteger		_updateCount;
 		NSUInteger		_index = 0, _batchCount = 0, _position = 0;
-		id				_buffer[kBatchSize];
+		oo::EntityHold	_buffer[kBatchSize];	// held, as the autoreleased objects were (bead oo-w9pi2)
 	};
 
 	Iterator begin() const  { return Iterator(_group); }
@@ -102,7 +102,7 @@ public:
 
 private:
 	// One batch of live members (a friend of OOShipGroup, for its ivars).
-	static NSUInteger FillBatch(OOShipGroup *group, NSUInteger *ioIndex, id *buffer, NSUInteger length);
+	static NSUInteger FillBatch(OOShipGroup *group, NSUInteger *ioIndex, oo::EntityHold *buffer, NSUInteger length);
 
 	OOShipGroup	*_group;
 };
@@ -431,7 +431,7 @@ NSUInteger OOShipGroup::updateCount()
 
 // One batch of live members for OOShipGroupMembers: the body of the former
 // -countByEnumeratingWithState:objects:count:, unchanged.
-NSUInteger OOShipGroupMembers::FillBatch(OOShipGroup *group, NSUInteger *ioIndex, id *buffer, NSUInteger length)
+NSUInteger OOShipGroupMembers::FillBatch(OOShipGroup *group, NSUInteger *ioIndex, oo::EntityHold *buffer, NSUInteger length)
 {
 	NSUInteger				srcIndex, dstIndex = 0;
 	::ShipEntity				*item = nil;
@@ -443,7 +443,7 @@ NSUInteger OOShipGroupMembers::FillBatch(OOShipGroup *group, NSUInteger *ioIndex
 		item = oo::ToShip(group->_members[srcIndex].get());
 		if (item != nil)
 		{
-			buffer[dstIndex++] = oo::ToObjC(item);
+			buffer[dstIndex++] = oo::EntityHold(item);	// its object retained (and autoreleased by oo::ToObjC), as before
 			srcIndex++;
 		}
 		else

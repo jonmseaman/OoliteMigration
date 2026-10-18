@@ -8887,6 +8887,55 @@ flavour.
    `test_OOTextureLoader` and `test_OOConcreteTexture` (and possibly how tiny textures are scaled in the game), so
    it needs Jon's approval line; it is a one-line change in the header plus those re-pins.
 
+## Amendment (bead oo-w9pi2): the last object-typed entity APIs take C++ entities (step 5k.2b)
+
+oo-9ht.39 step 5k slice 2b (child of oo-9ht.39.28), batch AP (track A), Migration Completion session, 2026-10-18,
+one branch and one commit. Status: Proposed (recommended defaults, CLAUDE.md rule 10). Method as amendments
+oo-xn1j1 and oo-zwnvp. Exemplar: `OODebugMonitor::dumpEntity()`, `oo::EntityWeakNode()`.
+
+**Decision (recommended defaults).**
+
+1. **Signatures take `cxx::Entity *`**: `OOScript::runWithTarget()` (and the JS and plist scripts' overrides; the
+   legacy engine passes `this`), `WormholeEntityShipsInTransit()`, `OOVisualEffectEntity::isShipWithSubEntityShip()`
+   (with a C++ `hasSubEntity()` overload), `OODebugMonitor::dumpEntity()` (its seen-set holds each entity with
+   `oo::EntityHold`, the same retain the `ObjCRef<id>` was; its sends are the members they forwarded to).
+2. **`Entity::parentEntity()`** asks `oo::EntityIsShipWithSubEntityShip(owner, this)` (Entity+ObjCBridge, the
+   category SubEntityRelationship's body: the ship's or the effect's member, NO otherwise) of `oo::LiveOwner(this)`.
+3. **Weak entity nodes.** The docking instructions' `station` and the collision-avoidance condition's
+   `primaryTarget` were `oo::PListObject()` of the object's `-weakRetain` (an `OOWeakReference`); they are
+   `oo::EntityWeakNode()` (Entity.h: an `EntityWeakPListForeign` holding `oo::WeakRef<cxx::Entity>`, which reads null
+   exactly when the object's weak reference did), read back with `oo::EntityInWeakNode()`. Its JS value
+   (`ship.dockingInstructions.station`) is the entity's, undefined once it has gone, as the proxy forwarded; its class
+   name is "OOWeakReference" and its description the entity's, or `<Dead OOWeakReference 0x...>`.
+4. **Per-site**: the ship group's batch buffer holds `oo::EntityHold`s (the same retain, and `oo::ToObjC()`'s
+   autorelease, as the `id` buffer of autoreleased objects); the commodity script's station argument is
+   the C++ station's virtual `jsValueInContext()` (what `OOJSValueFromNativeObject()` of its object reached through
+   `OOJSEntityJSValue()`; a virtual call, so the narrow tests that link OOCommodities.mm need no new stand-in); the HUD's beacon icon
+   and the player's beacon compass label go through `oo::BeaconDrawable()`/`oo::BeaconLabel()` (Entity+ObjCBridge,
+   the beacon category's messages, as `oo::BeaconCode()`); the console's `callObjC()` calls an entity by its C++
+   part alone; the player's Objective-C-only sends through `oo::ToObjC(this)` are its members (`lastsaveName()`,
+   `setLastsaveName()`, `loadPlayerFromFile()`, `makeKeyGuiDict()`, `makeStickGuiDict()`; Mac-only or compiled out
+   on SDL). `HasClassPredicate` (unused) is deleted.
+
+**Defaults (rule 10).** Behaviour-identical (goldens, core tests). Flagged, not observable in the game: (a) the
+quicksave fallback's full-screen pause stores no target (`pauseFullScreenModeToPerform(@selector(savePlayer), nil)`):
+the SDL build never performs the pause target, and the entity's object did not answer `-savePlayer` (a by-name row);
+(b) the plist script's "badTarget" log names `oo::EntityClassName()` of a non-ship target (its C++ class, or an
+Objective-C stand-in's class, which it printed before; the only game caller passes the player); (c) a dead weak
+node's description prints the node's address where it printed the proxy's; (d) the console's `callObjC()` on an
+Objective-C stand-in whose object has gone calls its part where it reported "non-Objective-C object".
+
+**Tests (standing approval oo-9n5p9).** Re-based, no case or expected value changed: ten
+never-called `OOScript::runWithTarget()` stand-ins, `test_OODebugMonitor` (stand-in signatures and three aborting
+`cxx::Entity` members), `test_OOScript`/`test_OOPListScript` (hand and compare `oo::ToCxx()` of the same targets),
+`test_OOVisualEffectEntity` (two checks hand the C++ entities), `test_StationEntity` (reads the weak node),
+`test_OOCommodities` (a never-called `ooscript::nullValue()` link stub; lines on main 31a5a13d0, 345bf91ee).
+
+**Left (5k.3 oo-j12i2, 5k.4 oo-dpyk8).** The console's `-inspect` (a test stand-in answers it), the creators
+(`NewShipObject()`, `NewVisualEffectObject()`, the legacy script's planets) and the `oo::To*(::Entity *)` overloads, the
+spelled-out descriptions/sizes of files whose tests link without the facade (AI, OODebugMonitor, OOShipGroup,
+OOJSShipGroup), and everything an Objective-C stand-in still needs.
+
 ## Amendment (bead oo-h3sye): the game's controller is never destroyed, as upstream's
 
 Track A batch AP, Migration Completion session, 2026-10-18. Status: Proposed (recommended default, CLAUDE.md

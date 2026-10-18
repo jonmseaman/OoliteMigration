@@ -455,7 +455,7 @@ std::optional<std::string> OOJSScript::version()
 }
 
 
-void OOJSScript::runWithTarget(::Entity *)
+void OOJSScript::runWithTarget(cxx::Entity *)
 {
 
 }

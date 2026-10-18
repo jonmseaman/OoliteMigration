@@ -184,6 +184,14 @@ bool oo::EntityIsBeacon(cxx::Entity *entity)
 }
 
 
+bool oo::EntityIsShipWithSubEntityShip(cxx::Entity *entity, cxx::Entity *other)
+{
+	if (ShipEntity *ship = ShipPart(entity))  return ship->isShipWithSubEntityShip(other);
+	OOVisualEffectEntity *effect = EffectPart(entity);
+	return effect != nullptr ? effect->isShipWithSubEntityShip(other) : NO;
+}
+
+
 cxx::Entity *oo::PrevBeacon(cxx::Entity *beacon)
 {
 	id object = ToObjC(beacon);
@@ -237,6 +245,20 @@ bool oo::BeaconIsJammingScanning(cxx::Entity *beacon)
 {
 	id object = ToObjC(beacon);
 	return [object isJammingScanning];
+}
+
+
+OOHUDBeaconIcon *oo::BeaconDrawable(cxx::Entity *beacon)
+{
+	id object = ToObjC(beacon);
+	return [object beaconDrawable];
+}
+
+
+std::optional<std::string> oo::BeaconLabel(cxx::Entity *beacon)
+{
+	id object = ToObjC(beacon);
+	return object != nil ? [object beaconLabel] : std::nullopt;	// nil answered no label
 }
 
 
@@ -883,10 +905,7 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 - (BOOL) isShipWithSubEntityShip:(Entity *)other
 {
-	ShipEntity *ship = ShipPart(_cxxEntity.get());
-	if (ship != nullptr)  return ship->isShipWithSubEntityShip(oo::ToCxx(other));
-	OOVisualEffectEntity *effect = EffectPart(_cxxEntity.get());	// its facade answered it until bead oo-9ht.165
-	return effect != nullptr ? effect->isShipWithSubEntityShip(other) : NO;
+	return oo::EntityIsShipWithSubEntityShip(_cxxEntity.get(), oo::ToCxx(other));
 }
 
 

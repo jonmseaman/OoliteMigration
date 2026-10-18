@@ -983,8 +983,8 @@ static bool ConsoleCallObjCMethod(ooscript::Context context, ooscript::CallArgs 
 	// oo-9ht.39.5.3) and calls by its name table (bead oo-9ht.44).
 	const oo::PList thisNode = cxx_OOJSPListFromJSObject(context, OOJS_THIS);
 	cxx::Entity *entity = oo::EntityIn(thisNode);
-	object = (entity != nullptr) ? oo::ToObjC(entity) : oo::ObjectIn(thisNode);
-	if (object == nil)
+	object = (entity != nullptr) ? nil : oo::ObjectIn(thisNode);	// an entity is called by its C++ part alone (bead oo-w9pi2)
+	if (entity == nullptr && object == nil)
 	{
 		cxx_OOJSReportError(context, "Attempt to call __callObjCMethod() for non-Objective-C object %s.", cxx_OOStringFromJSValueEvenIfNull(context, ooscript::objectValue(OOJS_THIS)).value_or("(null)").c_str());
 		return false;

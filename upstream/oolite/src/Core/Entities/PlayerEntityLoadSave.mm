@@ -177,7 +177,7 @@ void PlayerEntity::savePlayer()
 	// OS X: use system open/save dialogs in windowed mode, custom interface in full-screen.
 	if ([(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) inFullScreenMode])
 	{
-		setGuiToSaveCommanderScreen(oo::StdString(oo::ToObjC(this).lastsaveName));
+		setGuiToSaveCommanderScreen(lastsaveName().value_or(""));	// the member the property read (bead oo-w9pi2)
 	}
 	else
 	{
@@ -879,7 +879,7 @@ bool PlayerEntity::loadPlayerWithPanel()
 		NSURL *url = oPanel.URL;
 		if (url.isFileURL)
 		{
-			return [oo::ToObjC(this) loadPlayerFromFile:oo::StdString(url.path) asNew:NO];
+			return loadPlayerFromFile(oo::StdString(url.path), NO);	// the member (bead oo-w9pi2)
 		}
 	}
 	
@@ -893,7 +893,7 @@ void PlayerEntity::savePlayerWithPanel()
 	
 	sPanel.allowedFileTypes = [NSArray arrayWithObject:@"oolite-save"];
 	sPanel.canSelectHiddenExtension = YES;
-	sPanel.nameFieldStringValue = oo::ToObjC(this).lastsaveName;
+	sPanel.nameFieldStringValue = @(lastsaveName().value_or("").c_str());	// the member (bead oo-w9pi2)
 	
 	if ([sPanel runModal] == NSOKButton)
 	{
@@ -905,7 +905,7 @@ void PlayerEntity::savePlayerWithPanel()
 		
 		ShipScriptEventNoCx(this, "playerWillSaveGame", OOJSSTR("STANDARD_SAVE"));
 		
-		oo::ToObjC(this).lastsaveName = newName;
+		setLastsaveName(oo::StdString(newName));	// the member (bead oo-w9pi2)
 		writePlayerToPath(oo::StdString(path));
 	}
 	setGuiToStatusScreen();

@@ -2563,7 +2563,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 						{
 							OO_LOG(cxx_kOOLogException, "{}", "\n\n***** Trying a normal save instead *****\n\n");
 							if ((controller != nullptr ? controller->inFullScreenMode() : false))
-							{ if (controller != nullptr)  controller->pauseFullScreenModeToPerform(@selector(savePlayer), oo::ToObjC(this)); }
+							{ if (controller != nullptr)  controller->pauseFullScreenModeToPerform(@selector(savePlayer), nil); }	// no target: the SDL build never performs it, and the entity's object no longer answers -savePlayer (bead oo-w9pi2)
 							else
 								savePlayer();
 						}

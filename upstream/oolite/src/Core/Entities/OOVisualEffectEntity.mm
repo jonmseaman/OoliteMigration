@@ -431,8 +431,13 @@ std::optional<std::vector<oo::EntityHold>> OOVisualEffectEntity::visualEffectSub
 
 bool OOVisualEffectEntity::hasSubEntity(OOVisualEffectSubEntity *sub)
 {
+	return hasSubEntity(oo::ToCxx(sub));
+}
+
+
+bool OOVisualEffectEntity::hasSubEntity(cxx::Entity *subPart)
+{
 	if (!_subEntities.has_value())  return false;
-	cxx::Entity *subPart = oo::ToCxx(sub);
 	return std::find_if(_subEntities->begin(), _subEntities->end(), [subPart](const auto &entry) { return entry.get() == subPart; }) != _subEntities->end();
 }
 
@@ -746,20 +751,22 @@ oo::PList OOVisualEffectEntity::effectInfoDictionary()
 
 
 // (SubEntityRelationship) a slightly misnamed test now things other than ships can have subents
-bool OOVisualEffectEntity::isShipWithSubEntityShip(::Entity *other)
+// The C++ entity (bead oo-w9pi2): the members its object's messages forwarded to (the virtual
+// getIsVisualEffect() and setOwner(), which an Objective-C entity's adapter sends on; nil's NO for none).
+bool OOVisualEffectEntity::isShipWithSubEntityShip(cxx::Entity *other)
 {
 	assert (getIsVisualEffect());
 
-	if (![other isVisualEffect])  return false;
-	if (![other isSubEntity])  return false;
-	if ([other owner] != oo::ToObjC(this))  return false;
+	if (other == nullptr || !other->getIsVisualEffect())  return false;
+	if (!oo::EntityIsSubEntity(other))  return false;
+	if (oo::LiveOwner(other) != this)  return false;	// its owner's object is this effect's
 
 #ifndef NDEBUG
 	// Sanity check; this should always be true.
-	if (!hasSubEntity((OOVisualEffectSubEntity *)other))
+	if (!hasSubEntity(other))
 	{
-		OO_LOG_ERR("visualeffect.subentity.sanityCheck.failed", "{} thinks it's a subentity of {}, but the supposed parent does not agree. {}", oo::ShortDescriptionOf(other), oo::EntityShortDescription(this), "This is an internal error, please report it.");
-		[other setOwner:nil];
+		OO_LOG_ERR("visualeffect.subentity.sanityCheck.failed", "{} thinks it's a subentity of {}, but the supposed parent does not agree. {}", oo::EntityShortDescription(other), oo::EntityShortDescription(this), "This is an internal error, please report it.");
+		other->setOwner(nullptr);
 		return false;
 	}
 #endif

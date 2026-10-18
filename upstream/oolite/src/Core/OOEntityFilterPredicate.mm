@@ -117,12 +117,6 @@ BOOL HasScanClassPredicate(cxx::Entity *entity, void *parameter)
 }
 
 
-BOOL HasClassPredicate(cxx::Entity *entity, void *parameter)
-{
-	return [oo::ToObjC(entity) isKindOfClass:(Class)parameter];
-}
-
-
 BOOL IsShipPredicate(cxx::Entity *entity, void * /*parameter*/)
 {
 	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() isShip] && ![link->objcOwner() isSubEntity];
