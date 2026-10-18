@@ -21,7 +21,7 @@ the largest fan-out phase and the least seam-bound, and it is the phase the meta
 
 ## Exit gate
 
-- [ ] Zero `@implementation` in `src/` (`grep -rc '@implementation' src` is 0)
+- [ ] Zero `@implementation` in `src/`, scoped by [ADR-0061](../decisions/0061-phase3-exit-gate-scope.md): `^@implementation` outside `src/oofnd/objc/` (Phase 4) and the Mac-only `GameController+FullScreen.mm` / `GameController (MacOSX)` block (Phase 5)
 - [ ] Every `.m` file that had no `@implementation` is now `.c`, byte-for-byte the same code ([ADR-0012](../decisions/0012-c-stays-c.md))
 - [ ] All goldens reproduce; Tier-1 corpus green; ASan clean; Windows clean at `-Wall -Wextra`
 - [ ] The six giant files converted (frontier + human; tracked individually in the status log)
