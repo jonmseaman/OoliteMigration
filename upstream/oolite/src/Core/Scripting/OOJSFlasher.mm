@@ -196,7 +196,7 @@ static bool JSFlasherGetFlasherEntity(ooscript::Context context, ooscript::Objec
 	OOJS_PROFILE_ENTER
 
 	bool						result;
-	cxx::Entity					*entity = nullptr;	// the slot holds the C++ entity (bead oo-9ht.39.3)
+	Entity					*entity = nullptr;	// the slot holds the C++ entity (bead oo-9ht.39.3)
 
 	if (outEntity == NULL)  return false;
 	*outEntity = nullptr;
@@ -396,7 +396,7 @@ static bool FlasherRemove(ooscript::Context context, ooscript::CallArgs &oojsArg
 	OOFlasherEntity				*thisEnt = nullptr;
 	GET_THIS_FLASHER(thisEnt);
 
-	cxx::Entity			*parent = thisEnt->owner();	// the C++ member its object's -owner answered (beads oo-9ht.39.8.20, oo-dpyk8)
+	Entity			*parent = thisEnt->owner();	// the C++ member its object's -owner answered (beads oo-9ht.39.8.20, oo-dpyk8)
 	if (oo::EntityIsShip(parent))
 	{
 		if (oo::ToShip(parent) != nullptr)  oo::ToShip(parent)->removeFlasher(thisEnt);

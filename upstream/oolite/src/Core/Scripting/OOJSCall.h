@@ -61,7 +61,7 @@ bool OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::s
 	(its object's per-part -respondsToSelector:) is called, with the table's signature; any other
 	name (a root-class or lifetime selector, one with other arguments) does not respond.
 */
-namespace cxx { class Entity; }
-bool OOJSCallEntityMethod(ooscript::Context context, cxx::Entity *entity, const std::string &oo_jsClassName, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult);
+class Entity;
+bool OOJSCallEntityMethod(ooscript::Context context, Entity *entity, const std::string &oo_jsClassName, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult);
 
 #endif

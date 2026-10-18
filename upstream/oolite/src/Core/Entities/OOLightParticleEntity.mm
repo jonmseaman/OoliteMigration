@@ -108,12 +108,12 @@ void OOLightParticleEntity::drawSubEntityImmediate(bool immediate, bool transluc
 		zero_distances are necessary for flashers, if they haven't already.
 		-- Ahruman 2009-09-20
 	*/
-	cxx::Entity *ownerPart = oo::LiveOwner(this);	// -owner's C++ entity (bead oo-zwnvp)
+	Entity *ownerPart = oo::LiveOwner(this);	// -owner's C++ entity (bead oo-zwnvp)
 	cam_zero_distance = ownerPart != nullptr ? ownerPart->camZeroDistance() : 0;	// a message to nil answered 0
 	if (no_draw_distance <= cam_zero_distance)  return;
 	
-	cxx::Entity *father = ownerPart;
-	cxx::Entity *last = nullptr;
+	Entity *father = ownerPart;
+	Entity *last = nullptr;
 	HPVector abspos = position;
 
 	while (father != nullptr && father != last)	// && father != (Entity *)NO_TARGET, which is nil: NO_TARGET is 0
@@ -144,7 +144,7 @@ void OOLightParticleEntity::drawImmediate(bool /*immediate*/, bool translucent)
 	if (!translucent) return;
 	if ((UNIVERSE != nullptr ? UNIVERSE->breakPatternHide() : false) && !getIsImmuneToBreakPatternHide())
 	{
-		cxx::Entity *father = oo::LiveOwner(this);	// -owner's C++ entity (bead oo-zwnvp)
+		Entity *father = oo::LiveOwner(this);	// -owner's C++ entity (bead oo-zwnvp)
 		while (father != nullptr)	// && father != (Entity *)NO_TARGET, which is nil: NO_TARGET is 0
 		{
 			if (!oo::EntityIsSubEntity(father))  break;

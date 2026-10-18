@@ -34,7 +34,7 @@ MA 02110-1301, USA.
 #import "OODrawable.h"	// the drawable is held by oo::Ref (a complete type wherever the entity is destroyed)
 
 
-class OOEntityWithDrawable : public cxx::Entity
+class OOEntityWithDrawable : public Entity
 {
 public:
 	OODrawable *getDrawable();	// borrowed

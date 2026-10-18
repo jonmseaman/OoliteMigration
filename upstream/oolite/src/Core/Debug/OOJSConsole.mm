@@ -800,7 +800,7 @@ static bool ConsoleInspectEntity(ooscript::Context context, ooscript::CallArgs &
 {
 	OOJS_NATIVE_ENTER(context)
 	
-	cxx::Entity			*cxxEntity = nullptr;	// the C++ entity since bead oo-9ht.39.3
+	Entity			*cxxEntity = nullptr;	// the C++ entity since bead oo-9ht.39.3
 	
 	if (JSValueToEntity(context, OOJS_ARGV[0], &cxxEntity))
 	{
@@ -976,7 +976,7 @@ static bool ConsoleCallObjCMethod(ooscript::Context context, ooscript::CallArgs 
 	// An entity's `this` converts to its entity node, whose C++ entity this takes (bead
 	// oo-9ht.39.5.3) and calls by its name table (bead oo-9ht.44).
 	const oo::PList thisNode = cxx_OOJSPListFromJSObject(context, OOJS_THIS);
-	cxx::Entity *entity = oo::EntityIn(thisNode);
+	Entity *entity = oo::EntityIn(thisNode);
 	object = (entity != nullptr) ? nil : oo::ObjectIn(thisNode);	// an entity is called by its C++ part alone (bead oo-w9pi2)
 	if (entity == nullptr && object == nil)
 	{

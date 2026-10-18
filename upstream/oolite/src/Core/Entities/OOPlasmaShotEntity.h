@@ -51,7 +51,7 @@ public:
 						  OOColor *color);
 
 	bool canCollide() override;
-	bool checkCloseCollisionWith(cxx::Entity *other) override;
+	bool checkCloseCollisionWith(Entity *other) override;
 	void update(double delta_t) override;
 
 private:

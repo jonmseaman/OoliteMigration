@@ -9047,3 +9047,29 @@ plain-Object-node checks; the `[object class] == [Entity class]` checks of five 
 entity's Objective-C object; the entity path's are kept), whose debug playerStatisticsByName calls the player
 through the entity path. Narrow tests' stand-ins re-based (owner() answers the C++
 entity, the property-list stand-ins carry entity nodes). Listed per file in tools/retire-test-approvals.txt.
+
+## Amendment (beads oo-9ht.39.28, oo-9ht.39.29): the root facade's step closes; cxx::Entity becomes Entity (steps 5k, 5l)
+
+**Context.** With the root facade deleted (oo-dpyk8) the name `Entity` is free: the C++ root was `cxx::Entity` only so
+that the Objective-C `Entity` could keep the name while both existed.
+
+**Decision (recommended defaults).** Mechanical, behaviour-identical: the class leaves namespace cxx (`cxx::Entity` is
+`Entity` everywhere, its forward declarations `class Entity;`, the `@class Entity;` forward declarations of the
+deleted Objective-C class become `class Entity;`); `cxx::OOSubEntityInterface` stays in namespace cxx. The by-name
+generator renders `Entity *` (its `--check` passes on the renamed header). A narrow test's own stand-in root loses its
+`namespace cxx`; a narrow test whose stand-in for the root's object was an Objective-C class named `Entity` names it
+`TestEntityObject` with the runtime name "Entity" (`objc_runtime_name`), so the texts it prints are unchanged.
+Comments that named `_cxxEntity` are reworded (the acceptance greps them).
+
+**oo-9ht.39.28 (step 5k) closes with oo-dpyk8's deletion of the facade.** Its acceptance's facade-use line (the
+refined check of oo-9ht.39.9, `grep -v 'cxx::Entity \*'`) cannot reach zero, before or after the rename: it also
+counts GameController's own `oo::ToObjC(this)` (the ADR-0061 Mac fullscreen exemption), the weak references'
+`oo::ToObjC`/`oo::ToCxx` (oo-9ht.22's), and every `Entity *` once the class is `Entity` (this bead). Recommended default
+(rule 10, flagged for Jon): the line counts the root facade's own uses only,
+`! git grep -nE 'oo::(ToObjC|ToCxx|NewEntityFacade|WeakEntityObject)\((static_cast<)?(::)?(cxx::)?Entity\b|\[Entity |ObjCRef<(::)?Entity\b|_cxxEntity->|^@implementation Entity\b' -- upstream/oolite/src`;
+the seven comments it found (`-[Entity sel]`, `ObjCRef<::Entity *>`) are reworded.
+
+**Tests (standing approval oo-9n5p9, lines on main first).** Renames only; no case or expected value changes. The
+three link stubs for the deleted facade's `oo::ToObjC()` (test_OOCommodities, test_OOJSManifest,
+test_OOJSSystemInfo; nothing calls it since oo-dpyk8) go, and test_ShipEntity's casts of beacons to the deleted
+`Entity<OOBeaconEntity> *` are dropped (the C++ entity is compared with nil, as it was).

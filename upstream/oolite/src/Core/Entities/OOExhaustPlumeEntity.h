@@ -50,7 +50,7 @@ enum
 	cxx::OOSubEntityInterface, and the graphics reset manager through a C++ client in
 	OOExhaustPlumeEntity.mm.
 */
-class OOExhaustPlumeEntity : public cxx::Entity, public cxx::OOSubEntityInterface
+class OOExhaustPlumeEntity : public Entity, public cxx::OOSubEntityInterface
 {
 public:
 	// definition: the exhaust's tokens (x y z scale_x scale_y scale_z), read as -oo_floatAtIndex: read them.

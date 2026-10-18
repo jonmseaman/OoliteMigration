@@ -245,7 +245,7 @@ enum
 };
 
 
-@class Entity;
+class Entity;
 class PlayerEntity;
 class GuiDisplayGen;
 
@@ -531,12 +531,12 @@ Vector HeadUpDisplayPlayerCustomViewForwardVector(PlayerEntity *player);
 Vector HeadUpDisplayPlayerCustomViewUpVector(PlayerEntity *player);
 Quaternion HeadUpDisplayPlayerCustomViewQuaternion(PlayerEntity *player);
 OOMatrix HeadUpDisplayPlayerRotationMatrix(PlayerEntity *player);
-bool HeadUpDisplayEntityIsShip(cxx::Entity *entity);
-bool HeadUpDisplayEntityIsWormhole(cxx::Entity *entity);
-bool HeadUpDisplayEntityIsVisualEffect(cxx::Entity *entity);
-HPVector HeadUpDisplayEntityPosition(cxx::Entity *entity);
-GLfloat HeadUpDisplayEntityCollisionRadius(cxx::Entity *entity);
-Quaternion HeadUpDisplayEntityOrientation(cxx::Entity *entity);
+bool HeadUpDisplayEntityIsShip(Entity *entity);
+bool HeadUpDisplayEntityIsWormhole(Entity *entity);
+bool HeadUpDisplayEntityIsVisualEffect(Entity *entity);
+HPVector HeadUpDisplayEntityPosition(Entity *entity);
+GLfloat HeadUpDisplayEntityCollisionRadius(Entity *entity);
+Quaternion HeadUpDisplayEntityOrientation(Entity *entity);
 std::optional<std::string> HeadUpDisplayShipScanDescription(ShipEntity *ship);
 bool HeadUpDisplayShipIsCloaked(ShipEntity *ship);
 bool HeadUpDisplayShipIsHostileToPlayer(ShipEntity *ship);
@@ -548,6 +548,6 @@ double HeadUpDisplayWormholeExpiryTime(WormholeEntity *wormhole);
 OOTimeAbsolute HeadUpDisplayUniverseGetTime();
 const oo::PList *HeadUpDisplayUniverseDescriptions();	// MissileIconDefinition()
 OOViewID HeadUpDisplayUniverseViewDirection();
-cxx::Entity *HeadUpDisplayUniverseFirstEntityTargetedByPlayer();
-cxx::Entity *HeadUpDisplayUniverseFirstEntityTargetedByPlayerPrecisely();
+Entity *HeadUpDisplayUniverseFirstEntityTargetedByPlayer();
+Entity *HeadUpDisplayUniverseFirstEntityTargetedByPlayerPrecisely();
 

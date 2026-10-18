@@ -53,14 +53,14 @@ T *NewTestPlayer()
 }
 
 
-static cxx::Entity *sRemoved = nil;
+static Entity *sRemoved = nil;
 
 
 // UNIVERSE: never initialised; records what is removed.
 class TestUniverse : public Universe
 {
 public:
-	bool removeEntity(cxx::Entity *entity) override	{ sRemoved = entity; return YES; }	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
+	bool removeEntity(Entity *entity) override	{ sRemoved = entity; return YES; }	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
 };
 
 
@@ -68,14 +68,14 @@ namespace {
 
 // --- How a spark is made, and its colour (a @protected ivar), and nothing else -------------------
 
-cxx::Entity *MakeSpark(HPVector position, Vector velocity, OOTimeDelta duration, float size, OOColor *color)
+Entity *MakeSpark(HPVector position, Vector velocity, OOTimeDelta duration, float size, OOColor *color)
 {
 	return oo::MadeEntity(OOSparkEntity::sparkWithPosition(position, velocity, duration, size, color));
 }
 
 // The object is the root Entity's facade since bead oo-9ht.76; its C++ part is the particle.
-OOLightParticleEntity *Particle(cxx::Entity *e)				{ return static_cast<OOLightParticleEntity *>(e); }
-const GLfloat *ColorComponents(cxx::Entity *e)				{ return Particle(e)->_colorComponents; }
+OOLightParticleEntity *Particle(Entity *e)				{ return static_cast<OOLightParticleEntity *>(e); }
+const GLfloat *ColorComponents(Entity *e)				{ return Particle(e)->_colorComponents; }
 
 // --------------------------------------------------------------------------------------------------
 
@@ -98,7 +98,7 @@ void SetUp()
 bool Near(GLfloat a, GLfloat b)  { return fabs(a - b) < 1e-5; }
 
 
-bool ComponentsAre(cxx::Entity *e, GLfloat r, GLfloat g, GLfloat b, GLfloat a)
+bool ComponentsAre(Entity *e, GLfloat r, GLfloat g, GLfloat b, GLfloat a)
 {
 	const GLfloat *c = ColorComponents(e);
 	return Near(c[0], r) && Near(c[1], g) && Near(c[2], b) && Near(c[3], a);
@@ -113,7 +113,7 @@ OO_TEST(initWithPosition)
 	{
 		SetUp();
 		oo::Ref<OOColor>	color = OOColor::colorWithRed(0.2f, 0.4f, 0.6f, 0.8f);
-		cxx::Entity *spark = MakeSpark(make_HPvector(1, 2, 3), make_vector(10, 0, 0), 2.0, 4.0f, color.get());
+		Entity *spark = MakeSpark(make_HPvector(1, 2, 3), make_vector(10, 0, 0), 2.0, 4.0f, color.get());
 		OO_CHECK(spark != nil);
 		OO_CHECK(HPvector_equal(spark->getPosition(), make_HPvector(1, 2, 3)));
 		OO_CHECK(vector_equal(spark->getVelocity(), make_vector(10, 0, 0)));
@@ -132,7 +132,7 @@ OO_TEST(fadesTowardsRedAndIsRemoved)
 	{
 		SetUp();
 		oo::Ref<OOColor>	color = OOColor::colorWithRed(0.2f, 0.4f, 0.6f, 0.8f);
-		cxx::Entity *spark = MakeSpark(make_HPvector(1, 2, 3), make_vector(10, 0, 0), 2.0, 4.0f, color.get());
+		Entity *spark = MakeSpark(make_HPvector(1, 2, 3), make_vector(10, 0, 0), 2.0, 4.0f, color.get());
 
 		// Half way: half the base colour, plus half red; moved by its velocity.
 		spark->update(1.0);

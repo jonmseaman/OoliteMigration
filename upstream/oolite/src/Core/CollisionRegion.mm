@@ -50,17 +50,17 @@ namespace {
 	forwarded to (an Objective-C stand-in was messaged until bead oo-j12i2). -isPlayer, -isShip,
 	-isPlanet and -status are oo::EntityIsPlayer() etc. (Entity+ObjCBridge.h, bead oo-9ht.39.16).
 */
-bool EntityIsVisible(cxx::Entity *entity)
+bool EntityIsVisible(Entity *entity)
 {
 	return entity != nullptr && entity->isVisible();	// nil's answer for none
 }
 
-OOUniversalID EntityUniversalID(cxx::Entity *entity)
+OOUniversalID EntityUniversalID(Entity *entity)
 {
 	return entity != nullptr ? entity->getUniversalID() : OOUniversalID{};
 }
 
-bool EntityChecksCloseCollisionWith(cxx::Entity *entity, cxx::Entity *other)
+bool EntityChecksCloseCollisionWith(Entity *entity, Entity *other)
 {
 	return entity != nullptr && entity->checkCloseCollisionWith(other);
 }
@@ -72,7 +72,7 @@ CollisionRegion::CollisionRegion()	// Designated initializer.
 {
 	{
 		max_entities = COLLISION_MAX_ENTITIES;
-		entity_array = (cxx::Entity **)malloc(max_entities * sizeof(cxx::Entity *));
+		entity_array = (Entity **)malloc(max_entities * sizeof(Entity *));
 		if (entity_array == NULL)
 		{
 			// -init released itself and returned nil; a constructor cannot, so it raises what
@@ -221,14 +221,14 @@ void CollisionRegion::clearEntityList()
 }
 
 
-void CollisionRegion::addEntity(cxx::Entity *ent)
+void CollisionRegion::addEntity(Entity *ent)
 {
 	// expand if necessary
 	//	
 	if (n_entities == max_entities)
 	{
 		max_entities = 1 + max_entities * 2;
-		cxx::Entity **new_store = (cxx::Entity **)realloc(static_cast<void *>(entity_array), max_entities * sizeof(cxx::Entity *));
+		Entity **new_store = (Entity **)realloc(static_cast<void *>(entity_array), max_entities * sizeof(Entity *));
 		if (new_store == NULL)
 		{
 			[OOException raise:OOMallocException format:"Not enough memory to grow collision region member list."];
@@ -242,7 +242,7 @@ void CollisionRegion::addEntity(cxx::Entity *ent)
 }
 
 
-bool CollisionRegion::checkEntity(cxx::Entity *ent)
+bool CollisionRegion::checkEntity(Entity *ent)
 {
 	HPVector position = ent->position;
 	
@@ -277,11 +277,11 @@ void CollisionRegion::findCollisions()
 	//
 	// According to Shark, when this was in Universe this was where Oolite spent most time!
 	//
-	cxx::Entity		*e1, *e2;	// C++ parts (bead oo-9ht.39.4)
+	Entity		*e1, *e2;	// C++ parts (bead oo-9ht.39.4)
 	HPVector		p1;
 	double		dist2, r1, r2, r0, min_dist2;
 	unsigned	i;
-	std::vector<cxx::Entity *>	entities_to_test(n_entities);
+	std::vector<Entity *>	entities_to_test(n_entities);
 	
 	// only check unfiltered entities
 	unsigned n_entities_to_test = 0;
@@ -461,7 +461,7 @@ void CollisionRegion::findCollisions()
 namespace {
 
 // an outValue of 1 means it's just being occluded.
-BOOL entityByEntityOcclusionToValue(cxx::Entity *e1, cxx::Entity *e2, OOSunEntity *the_sun, float *outValue)
+BOOL entityByEntityOcclusionToValue(Entity *e1, Entity *e2, OOSunEntity *the_sun, float *outValue)
 {
 	if (EXPECT_NOT(e1 == e2))
 	{
@@ -474,7 +474,7 @@ BOOL entityByEntityOcclusionToValue(cxx::Entity *e1, cxx::Entity *e2, OOSunEntit
 }	// namespace
 
 // an outValue of 1 means it's just being occluded.
-BOOL shadowAtPointOcclusionToValue(HPVector e1pos, GLfloat e1rad, cxx::Entity *e2, OOSunEntity *the_sun, float *outValue)
+BOOL shadowAtPointOcclusionToValue(HPVector e1pos, GLfloat e1rad, Entity *e2, OOSunEntity *the_sun, float *outValue)
 {
 	*outValue = 1.5f;	// initial 'fully lit' value
 	
@@ -594,7 +594,7 @@ BOOL shadowAtPointOcclusionToValue(HPVector e1pos, GLfloat e1rad, cxx::Entity *e
 
 namespace {
 
-inline BOOL testEntityOccludedByEntity(cxx::Entity *e1, cxx::Entity *e2, OOSunEntity *the_sun)
+inline BOOL testEntityOccludedByEntity(Entity *e1, Entity *e2, OOSunEntity *the_sun)
 {
 	float tmp;		// we're not interested in the amount of occlusion just now.
 	return entityByEntityOcclusionToValue(e1, e2, the_sun, &tmp);
@@ -623,10 +623,10 @@ void CollisionRegion::findShadowedEntities()
 	}
 	
 	unsigned	ent_count =	UNIVERSE->n_entities;
-	cxx::Entity		**uni_entities = UNIVERSE->sortedEntities;	// grab the public sorted list
-	std::vector<cxx::Entity *>	planets(ent_count);
+	Entity		**uni_entities = UNIVERSE->sortedEntities;	// grab the public sorted list
+	std::vector<Entity *>	planets(ent_count);
 	unsigned	n_planets = 0;
-	std::vector<cxx::Entity *>	ships(ent_count);
+	std::vector<Entity *>	ships(ent_count);
 	unsigned	n_ships = 0;
 	
 	for (i = 0; i < ent_count; i++)
@@ -657,7 +657,7 @@ void CollisionRegion::findShadowedEntities()
 	// test each entity in this region against the others
 	for (i = 0; i < n_entities; i++)
 	{
-		cxx::Entity *e1 = entity_array[i];
+		Entity *e1 = entity_array[i];
 		if (!EntityIsVisible(e1))
 		{
 			continue; // don't check shading of objects we can't see
@@ -669,7 +669,7 @@ void CollisionRegion::findShadowedEntities()
 			e1->shadingEntityID = NO_TARGET;
 			continue;	// don't check shading in demo mode
 		}
-		cxx::Entity *occluder = nullptr;
+		Entity *occluder = nullptr;
 		if (e1->isSunlit == NO)
 		{
 			occluder = (UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(e1->shadingEntityID) : nullptr);

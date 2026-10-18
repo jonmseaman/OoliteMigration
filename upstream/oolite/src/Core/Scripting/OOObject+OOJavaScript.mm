@@ -133,7 +133,7 @@ bool OOJavaScriptEngineIsKindOfClass(id object, Class requiredClass)
 }
 
 
-bool OOJavaScriptEngineIsVisibleToScripts(cxx::Entity *entity)
+bool OOJavaScriptEngineIsVisibleToScripts(Entity *entity)
 {
 	return OOJSEntityIsVisibleToScripts(entity);	// the C++ entity's answer, which the root facade's selector forwarded to (bead oo-9ht.39.8.9)
 }
@@ -141,25 +141,25 @@ bool OOJavaScriptEngineIsVisibleToScripts(cxx::Entity *entity)
 
 // The root facade's -isShip, -isSubEntity, -isPlanet and -status forwarded to these members (bead
 // oo-9ht.39.25; an Objective-C stand-in was asked until bead oo-j12i2).
-bool OOJavaScriptEngineIsShip(cxx::Entity *entity)
+bool OOJavaScriptEngineIsShip(Entity *entity)
 {
 	return entity != nullptr && entity->getIsShip();
 }
 
 
-bool OOJavaScriptEngineIsSubEntity(cxx::Entity *entity)
+bool OOJavaScriptEngineIsSubEntity(Entity *entity)
 {
 	return entity != nullptr && entity->getIsSubEntity();
 }
 
 
-bool OOJavaScriptEngineIsPlanet(cxx::Entity *entity)
+bool OOJavaScriptEngineIsPlanet(Entity *entity)
 {
 	return entity != nullptr && entity->isPlanet();
 }
 
 
-OOEntityStatus OOJavaScriptEngineStatus(cxx::Entity *entity)
+OOEntityStatus OOJavaScriptEngineStatus(Entity *entity)
 {
 	return entity != nullptr ? entity->status() : OOEntityStatus{};
 }

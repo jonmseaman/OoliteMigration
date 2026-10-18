@@ -112,7 +112,7 @@ std::vector<oo::EntityHold> VisualEffectsIn(const OOVisualEffectSubEntities &sub
 // [[OOVisualEffectEntity alloc] cxx_initWithKey:definition:] until bead oo-9ht.165 deleted the
 // effect's facade: the root's facade (OOEntityWithDrawable's until bead oo-9ht.40) holding a new effect (+1, as +alloc gave), then
 // the initialiser's body, which may fail, as the Objective-C one did.
-cxx::Entity *oo::NewVisualEffect(const std::string &key, const oo::PList &dict)
+Entity *oo::NewVisualEffect(const std::string &key, const oo::PList &dict)
 {
 	const Ref<OOVisualEffectEntity> effect = makeRef<OOVisualEffectEntity>();
 	MadeEntityRetained(effect);	// +1, as +alloc gave (its object's, until bead oo-dpyk8)
@@ -303,7 +303,7 @@ bool OOVisualEffectEntity::setUpSubEntities()
 
 
 // The list holds the sub-entities (bead oo-xn1j1); [sub setOwner:nil] first, as before.
-void OOVisualEffectEntity::removeSubEntity(cxx::Entity *sub)
+void OOVisualEffectEntity::removeSubEntity(Entity *sub)
 {
 	if (sub != nullptr)  sub->setOwner(nullptr);
 	if (_subEntities.has_value())  std::erase_if(*_subEntities, [sub](const auto &entry) { return entry.get() == sub; });
@@ -337,7 +337,7 @@ bool OOVisualEffectEntity::setUpOneSubentity(const oo::PList &subentDict)
 bool OOVisualEffectEntity::setUpOneFlasher(const oo::PList &subentDict)
 {
 	// C++ since bead oo-9ht.107: the flasher's object is the nearest façade left.
-	cxx::Entity *flasher = oo::MadeEntity(OOFlasherEntity::flasherWithDictionary(subentDict));
+	Entity *flasher = oo::MadeEntity(OOFlasherEntity::flasherWithDictionary(subentDict));
 	if (flasher != nullptr)  flasher->setPosition(subentDict ? OOHPVectorFromPList(subentDict.find("position"), kZeroHPVector) : kZeroHPVector);
 	addSubEntity(flasher);
 	return true;
@@ -346,7 +346,7 @@ bool OOVisualEffectEntity::setUpOneFlasher(const oo::PList &subentDict)
 
 bool OOVisualEffectEntity::setUpOneStandardSubentity(const oo::PList &subentDict)
 {
-	cxx::Entity		*subentity = nullptr;	// the effect, its object +1 (beads oo-9ht.165, oo-9ht.39.26)
+	Entity		*subentity = nullptr;	// the effect, its object +1 (beads oo-9ht.165, oo-9ht.39.26)
 	std::optional<std::string>	subentKey;
 	HPVector				subPosition;
 	Quaternion			subOrientation;
@@ -377,7 +377,7 @@ bool OOVisualEffectEntity::setUpOneStandardSubentity(const oo::PList &subentDict
 }
 
 
-void OOVisualEffectEntity::addSubEntity(cxx::Entity *sub)
+void OOVisualEffectEntity::addSubEntity(Entity *sub)
 {
 	if (sub == nullptr)  return;
 
@@ -421,7 +421,7 @@ std::optional<std::vector<oo::EntityHold>> OOVisualEffectEntity::visualEffectSub
 }
 
 
-bool OOVisualEffectEntity::hasSubEntity(cxx::Entity *subPart)
+bool OOVisualEffectEntity::hasSubEntity(Entity *subPart)
 {
 	if (!_subEntities.has_value())  return false;
 	return std::find_if(_subEntities->begin(), _subEntities->end(), [subPart](const auto &entry) { return entry.get() == subPart; }) != _subEntities->end();
@@ -476,7 +476,7 @@ void OOVisualEffectEntity::rescaleBy(GLfloat factor)
 	}
 
 	// rescale subentities
-	cxx::Entity	*se = nullptr;
+	Entity	*se = nullptr;
 	for (const auto &seRef : SubEntitiesOf(_subEntities))
 	{
 		se = seRef.get();
@@ -532,7 +532,7 @@ GLfloat OOVisualEffectEntity::scaleX()
 void OOVisualEffectEntity::setScaleX(GLfloat factor)
 {
 	// rescale subentities
-	cxx::Entity	*se = nullptr;
+	Entity	*se = nullptr;
 	GLfloat flasher_factor = pow(factor/_scaleX,1.0/3.0);
 	for (const auto &seRef : SubEntitiesOf(_subEntities))
 	{
@@ -569,7 +569,7 @@ GLfloat OOVisualEffectEntity::scaleY()
 void OOVisualEffectEntity::setScaleY(GLfloat factor)
 {
 	// rescale subentities
-	cxx::Entity	*se = nullptr;
+	Entity	*se = nullptr;
 	GLfloat flasher_factor = pow(factor/_scaleY,1.0/3.0);
 	for (const auto &seRef : SubEntitiesOf(_subEntities))
 	{
@@ -606,7 +606,7 @@ GLfloat OOVisualEffectEntity::scaleZ()
 void OOVisualEffectEntity::setScaleZ(GLfloat factor)
 {
 	// rescale subentities
-	cxx::Entity	*se = nullptr;
+	Entity	*se = nullptr;
 	GLfloat flasher_factor = pow(factor/_scaleZ,1.0/3.0);
 	for (const auto &seRef : SubEntitiesOf(_subEntities))
 	{
@@ -689,7 +689,7 @@ void OOVisualEffectEntity::drawImmediate(bool immediate, bool translucent)
 	// Draw subentities.
 	if (!immediate)	// TODO: is this relevant any longer?
 	{
-		cxx::Entity *subEntity = nullptr;
+		Entity *subEntity = nullptr;
 		for (const auto &subEntityRef : SubEntitiesOf(_subEntities))
 		{
 			subEntity = subEntityRef.get();
@@ -709,7 +709,7 @@ void OOVisualEffectEntity::update(OOTimeDelta delta_t)
 		_haveExecutedSpawnAction = true;
 	}
 
-	cxx::Entity *se = nullptr;
+	Entity *se = nullptr;
 	for (const auto &seRef : SubEntitiesOf(_subEntities))
 	{
 		se = seRef.get();
@@ -739,7 +739,7 @@ oo::PList OOVisualEffectEntity::effectInfoDictionary()
 // (SubEntityRelationship) a slightly misnamed test now things other than ships can have subents
 // The C++ entity (bead oo-w9pi2): the members its object's messages forwarded to (the virtual
 // getIsVisualEffect() and setOwner(), which an Objective-C entity's adapter sends on; nil's NO for none).
-bool OOVisualEffectEntity::isShipWithSubEntityShip(cxx::Entity *other)
+bool OOVisualEffectEntity::isShipWithSubEntityShip(Entity *other)
 {
 	assert (getIsVisualEffect());
 
@@ -869,7 +869,7 @@ void OOVisualEffectEntity::remove()
 
 /* beacons */
 
-OOComparisonResult OOVisualEffectEntity::compareBeaconCodeWith(cxx::Entity *other)
+OOComparisonResult OOVisualEffectEntity::compareBeaconCodeWith(Entity *other)
 {
 	return (OOComparisonResult)oo::str::caseInsensitiveCompare(beaconCode().value_or(""), oo::BeaconCode(other).value_or(""));
 }
@@ -952,32 +952,32 @@ OOHUDBeaconIcon *OOVisualEffectEntity::beaconDrawable()
 }
 
 
-cxx::Entity *OOVisualEffectEntity::prevBeacon()
+Entity *OOVisualEffectEntity::prevBeacon()
 {
 	return oo::LiveEntity(_prevBeacon);
 }
 
 
-cxx::Entity *OOVisualEffectEntity::nextBeacon()
+Entity *OOVisualEffectEntity::nextBeacon()
 {
 	return oo::LiveEntity(_nextBeacon);
 }
 
 
-void OOVisualEffectEntity::setPrevBeacon(cxx::Entity *beaconShip)
+void OOVisualEffectEntity::setPrevBeacon(Entity *beaconShip)
 {
 	if (beaconShip != prevBeacon())
 	{
-		_prevBeacon = oo::WeakRef<cxx::Entity>(beaconShip);
+		_prevBeacon = oo::WeakRef<Entity>(beaconShip);
 	}
 }
 
 
-void OOVisualEffectEntity::setNextBeacon(cxx::Entity *beaconShip)
+void OOVisualEffectEntity::setNextBeacon(Entity *beaconShip)
 {
 	if (beaconShip != nextBeacon())
 	{
-		_nextBeacon = oo::WeakRef<cxx::Entity>(beaconShip);
+		_nextBeacon = oo::WeakRef<Entity>(beaconShip);
 	}
 }
 

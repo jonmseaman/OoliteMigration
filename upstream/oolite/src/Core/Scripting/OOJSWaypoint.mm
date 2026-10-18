@@ -176,7 +176,7 @@ static bool JSWaypointGetWaypointEntity(ooscript::Context context, ooscript::Obj
 	OOJS_PROFILE_ENTER
 	
 	bool						result;
-	cxx::Entity					*entity = nullptr;	// the slot holds the C++ entity (bead oo-9ht.39.3)
+	Entity					*entity = nullptr;	// the slot holds the C++ entity (bead oo-9ht.39.3)
 	
 	if (outEntity == NULL)  return false;
 	*outEntity = nullptr;
@@ -331,7 +331,7 @@ static bool WaypointSetProperty(Context cx, Object obj, PropertyId propID, bool 
 		case kWaypoint_orientation:
 			if (JSValueToQuaternion(context, *value_raw, &qValue))
 			{
-				waypoint->cxx::Entity::setNormalOrientation(qValue);	// what the object's selector called; qualified: the final overrider for a waypoint (no override, no subclass), so the binding test stands in for it
+				waypoint->Entity::setNormalOrientation(qValue);	// what the object's selector called; qualified: the final overrider for a waypoint (no override, no subclass), so the binding test stands in for it
 				return true;
 			}
 			break;

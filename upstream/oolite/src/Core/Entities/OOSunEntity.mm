@@ -224,7 +224,7 @@ bool OOSunEntity::canCollide()
 
 
 #ifndef NDEBUG
-bool OOSunEntity::checkCloseCollisionWith(cxx::Entity *other)
+bool OOSunEntity::checkCloseCollisionWith(Entity *other)
 {
 	if (gDebugFlags & DEBUG_COLLISIONS)
 	{
@@ -841,7 +841,7 @@ bool OOSunEntity::isVisibleToScripts()
 
 // OOStellarBody.h: the sun (bead oo-9ht.111) and the planet (bead oo-9ht.129) asked directly, any
 // other body by selector.
-double OOStellarBodyRadius(cxx::Entity *body)
+double OOStellarBodyRadius(Entity *body)
 {
 	if (body == nullptr)  return 0.0;
 	if (OOSunEntity *sun = dynamic_cast<OOSunEntity *>(body))  return sun->radius();
@@ -850,7 +850,7 @@ double OOStellarBodyRadius(cxx::Entity *body)
 }
 
 
-OOStellarBodyType OOStellarBodyPlanetType(cxx::Entity *body)
+OOStellarBodyType OOStellarBodyPlanetType(Entity *body)
 {
 	if (body == nullptr)  return (OOStellarBodyType)0;
 	if (OOSunEntity *sun = dynamic_cast<OOSunEntity *>(body))  return sun->planetType();

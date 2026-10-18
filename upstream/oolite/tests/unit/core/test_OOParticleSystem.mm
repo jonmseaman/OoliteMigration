@@ -73,9 +73,9 @@ T *NewTestPlayer()
 class TestUniverse : public Universe
 {
 public:
-	cxx::Entity	*_removed = {};
+	Entity	*_removed = {};
 
-	bool removeEntity(cxx::Entity *entity) override	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
+	bool removeEntity(Entity *entity) override	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
 	{
 		_removed = entity;
 		return YES;
@@ -85,7 +85,7 @@ public:
 
 // An effect, for the collision test (an Objective-C subclass until bead oo-j12i2; a C++ one
 // overriding the member its selector became).
-class TestEffect : public cxx::Entity
+class TestEffect : public Entity
 {
 public:
 	bool isEffect() override	{ return true; }
@@ -130,17 +130,17 @@ void SetUp()
 
 // --- How the test makes a cloud (ported by the conversion), and nothing else ---------------------
 
-cxx::Entity *SmallBurst(cxx::Entity *source)	{ return oo::MadeEntity(OOSmallFragmentBurstEntity::fragmentBurstFromEntity(source)); }	// the source's C++ entity since bead oo-al52f
-cxx::Entity *BigBurst(cxx::Entity *source)	{ return oo::MadeEntity(OOBigFragmentBurstEntity::fragmentBurstFromEntity(source)); }
-cxx::Entity *Cloud(cxx::Entity *source, const oo::PList &settings)	{ return oo::MadeEntity(OOExplosionCloudEntity::explosionCloudFromEntity(source, settings)); }	// the source's C++ entity since bead oo-9ht.39.26
-cxx::Entity *SizedCloud(cxx::Entity *source, float size, const oo::PList &settings)	{ return oo::MadeEntity(OOExplosionCloudEntity::explosionCloudFromEntity(source, size, settings)); }
+Entity *SmallBurst(Entity *source)	{ return oo::MadeEntity(OOSmallFragmentBurstEntity::fragmentBurstFromEntity(source)); }	// the source's C++ entity since bead oo-al52f
+Entity *BigBurst(Entity *source)	{ return oo::MadeEntity(OOBigFragmentBurstEntity::fragmentBurstFromEntity(source)); }
+Entity *Cloud(Entity *source, const oo::PList &settings)	{ return oo::MadeEntity(OOExplosionCloudEntity::explosionCloudFromEntity(source, settings)); }	// the source's C++ entity since bead oo-9ht.39.26
+Entity *SizedCloud(Entity *source, float size, const oo::PList &settings)	{ return oo::MadeEntity(OOExplosionCloudEntity::explosionCloudFromEntity(source, size, settings)); }
 
 // --------------------------------------------------------------------------------------------------
 
 
-cxx::Entity *Source(Vector velocity)
+Entity *Source(Vector velocity)
 {
-	cxx::Entity *source = oo::MadeEntity(oo::makeRef<cxx::Entity>());
+	Entity *source = oo::MadeEntity(oo::makeRef<Entity>());
 	source->setCollisionRadius(10.0f);
 	source->setPosition(make_HPvector(1, 2, 3));
 	source->setVelocity(velocity);
@@ -161,7 +161,7 @@ bool VectorNear(Vector a, Vector b)
 
 
 // What every particle cloud is.
-bool IsParticleEffect(cxx::Entity *cloud)
+bool IsParticleEffect(Entity *cloud)
 {
 	return cloud != nil && HPvector_equal(cloud->getPosition(), make_HPvector(1, 2, 3)) && cloud->status() == STATUS_EFFECT
 		&& cloud->getScanClass() == CLASS_NO_DRAW && cloud->isEffect() && !cloud->canCollide() && cloud->collisionRadius() == 0
@@ -170,7 +170,7 @@ bool IsParticleEffect(cxx::Entity *cloud)
 
 
 // Grows at the given speed, lives the given time, then removes itself.
-bool GrowsAndExpires(cxx::Entity *cloud, double speed, double duration)
+bool GrowsAndExpires(Entity *cloud, double speed, double duration)
 {
 	cloud->update(0.5);
 	bool ok = Near(cloud->collisionRadius(), 0.5 * speed) && sUniverse->_removed == nil;
@@ -188,7 +188,7 @@ OO_TEST(smallFragmentBurst)
 	@autoreleasepool
 	{
 		SetUp();
-		cxx::Entity *burst = SmallBurst(Source(make_vector(4, 5, 6)));
+		Entity *burst = SmallBurst(Source(make_vector(4, 5, 6)));
 		OO_CHECK(IsParticleEffect(burst));
 		OO_CHECK(VectorNear(burst->getVelocity(), make_vector(4, 5, 6)));
 		OO_CHECK(oo::EntityDescription(burst).starts_with("<OOSmallFragmentBurstEntity 0x"));
@@ -203,7 +203,7 @@ OO_TEST(bigFragmentBurst)
 	@autoreleasepool
 	{
 		SetUp();
-		cxx::Entity *burst = BigBurst(Source(make_vector(100, 0, 0)));
+		Entity *burst = BigBurst(Source(make_vector(100, 0, 0)));
 		OO_CHECK(IsParticleEffect(burst));
 		OO_CHECK(VectorNear(burst->getVelocity(), make_vector(85, 0, 0)));
 		OO_CHECK(oo::EntityDescription(burst).starts_with("<OOBigFragmentBurstEntity 0x"));
@@ -218,9 +218,9 @@ OO_TEST(collisions)
 	@autoreleasepool
 	{
 		SetUp();
-		cxx::Entity *burst = SmallBurst(Source(kZeroVector));
-		cxx::Entity *other = Source(kZeroVector);
-		cxx::Entity *effect = oo::MadeEntity(oo::makeRef<TestEffect>());
+		Entity *burst = SmallBurst(Source(kZeroVector));
+		Entity *other = Source(kZeroVector);
+		Entity *effect = oo::MadeEntity(oo::makeRef<TestEffect>());
 		OO_CHECK(burst->checkCloseCollisionWith(other));
 		OO_CHECK(!burst->checkCloseCollisionWith(effect));
 		OO_CHECK(!burst->checkCloseCollisionWith(nil));	// nil is its (nil) owner
@@ -234,7 +234,7 @@ OO_TEST(explosionCloudDefaults)
 	@autoreleasepool
 	{
 		SetUp();
-		cxx::Entity *cloud = Cloud(Source(make_vector(0, 3000, 4000)), oo::PList());
+		Entity *cloud = Cloud(Source(make_vector(0, 3000, 4000)), oo::PList());
 		OO_CHECK(IsParticleEffect(cloud));
 		OO_CHECK(sTextureName == std::optional<std::string>("oolite-particle-cloud2.png"));
 		OO_CHECK(VectorNear(cloud->getVelocity(), make_vector(0, 600, 800)));	// capped at 1000
@@ -259,7 +259,7 @@ OO_TEST(explosionCloudSettings)
 		settings["size"] = oo::PList(4.0);
 		settings["spread"] = oo::PList(0.5);
 		settings["texture"] = oo::PList(std::string("test-cloud.png"));
-		cxx::Entity *cloud = Cloud(Source(kZeroVector), oo::PList(settings));
+		Entity *cloud = Cloud(Source(kZeroVector), oo::PList(settings));
 		OO_CHECK(IsParticleEffect(cloud));
 		OO_CHECK(sTextureName == std::optional<std::string>("test-cloud.png"));
 		OO_CHECK(oo::EntityDescription(cloud).ends_with("{ttl: 2.000s}"));
@@ -267,7 +267,7 @@ OO_TEST(explosionCloudSettings)
 
 		// An explicit size wins over the settings' factor.
 		SetUp();
-		cxx::Entity *sized = SizedCloud(Source(kZeroVector), 50.0f, oo::PList(settings));
+		Entity *sized = SizedCloud(Source(kZeroVector), 50.0f, oo::PList(settings));
 		OO_CHECK(GrowsAndExpires(sized, 50.0 * 1.2 * 0.5, 2.0));
 	}
 }

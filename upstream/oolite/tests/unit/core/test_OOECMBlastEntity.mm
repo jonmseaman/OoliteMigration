@@ -42,16 +42,16 @@ extern Universe *gSharedUniverse;
 class TestUniverse : public Universe
 {
 public:
-	cxx::Entity					*_removed = {};
+	Entity					*_removed = {};
 	std::vector<double>		*_ranges = {};
-	cxx::Entity					*_searchedFrom = {};
+	Entity					*_searchedFrom = {};
 
-	bool removeEntity(cxx::Entity *entity) override	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
+	bool removeEntity(Entity *entity) override	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
 	{
 		_removed = entity;
 		return YES;
 	}
-	std::vector<oo::EntityHold> findEntitiesMatchingPredicate(EntityFilterPredicate /*predicate*/, void * /*parameter*/, double range, cxx::Entity *entity) override	// held C++ entities since bead oo-9ht.39.26	// the reference's C++ entity
+	std::vector<oo::EntityHold> findEntitiesMatchingPredicate(EntityFilterPredicate /*predicate*/, void * /*parameter*/, double range, Entity *entity) override	// held C++ entities since bead oo-9ht.39.26	// the reference's C++ entity
 	{
 		_ranges->push_back(range);
 		_searchedFrom = entity;
@@ -116,9 +116,9 @@ void SetUp()
 
 // A ship: C++ since bead oo-9ht.144 (the blast calls its members), under its object
 // (oo::NewEntityFacade, autoreleased as the plain entity was), never set up.
-cxx::Entity *Ship()
+Entity *Ship()
 {
-	cxx::Entity *ship = oo::MadeEntity(oo::makeRef<::ShipEntity>());
+	Entity *ship = oo::MadeEntity(oo::makeRef<::ShipEntity>());
 	ship->setPosition(make_HPvector(10, 20, 30));
 	ship->setStatus(STATUS_IN_FLIGHT);
 	return ship;
@@ -127,11 +127,11 @@ cxx::Entity *Ship()
 
 // --- How the test makes a blast (ported by the conversion), and nothing else ---------------------
 
-cxx::Entity *Blast(cxx::Entity *ship)	{ return oo::MadeEntity(OOECMBlastEntity::initFromShip(oo::ToShip(ship))); }
+Entity *Blast(Entity *ship)	{ return oo::MadeEntity(OOECMBlastEntity::initFromShip(oo::ToShip(ship))); }
 
 
 // What -[Entity isECMBlast] answered, from the C++ member (bead oo-9ht.75 deleted the category).
-bool IsECMBlast(cxx::Entity *entity)
+bool IsECMBlast(Entity *entity)
 {
 	OOECMBlastEntity *blast = dynamic_cast<OOECMBlastEntity *>(entity);
 	return blast != nullptr && blast->isECMBlast();
@@ -157,8 +157,8 @@ OO_TEST(blastAtTheShip)
 	@autoreleasepool
 	{
 		SetUp();
-		cxx::Entity *ship = Ship();
-		cxx::Entity *blast = Blast(ship);
+		Entity *ship = Ship();
+		Entity *blast = Blast(ship);
 		OO_CHECK(blast != nil);
 		OO_CHECK(HPvector_equal(blast->getPosition(), make_HPvector(10, 20, 30)));
 		OO_CHECK(blast->status() == STATUS_EFFECT && blast->getScanClass() == CLASS_NO_DRAW);
@@ -173,8 +173,8 @@ OO_TEST(fourPulsesThenGone)
 	@autoreleasepool
 	{
 		SetUp();
-		cxx::Entity *ship = Ship();
-		cxx::Entity *blast = Blast(ship);
+		Entity *ship = Ship();
+		Entity *blast = Blast(ship);
 
 		blast->update(0.25);
 		OO_CHECK(sRanges.empty() && sUniverse->_removed == nil);
@@ -197,18 +197,18 @@ OO_TEST(deadShipEndsIt)
 	@autoreleasepool
 	{
 		SetUp();
-		cxx::Entity *ship = Ship();
-		cxx::Entity *blast = Blast(ship);
+		Entity *ship = Ship();
+		Entity *blast = Blast(ship);
 		ship->setStatus(STATUS_DEAD);
 		blast->update(0.5);
 		OO_CHECK(sRanges.empty() && sUniverse->_removed == blast);
 	}
 
-	cxx::Entity *blast = nil;
+	Entity *blast = nil;
 	@autoreleasepool
 	{
 		SetUp();
-		cxx::Entity *ship = oo::RetainEntity(oo::MadeEntity(oo::makeRef<::ShipEntity>()));	// a ship (bead oo-9ht.144)
+		Entity *ship = oo::RetainEntity(oo::MadeEntity(oo::makeRef<::ShipEntity>()));	// a ship (bead oo-9ht.144)
 		blast = oo::RetainEntity(Blast(ship));
 		oo::ReleaseEntity(ship);		// the blast holds it weakly
 	}

@@ -189,7 +189,7 @@ void OOWaypointEntity::drawImmediate(bool /*immediate*/, bool translucent)
 
 /* beacons */
 
-OOComparisonResult OOWaypointEntity::compareBeaconCodeWith(cxx::Entity *other)
+OOComparisonResult OOWaypointEntity::compareBeaconCodeWith(Entity *other)
 {
 	return (OOComparisonResult)oo::str::caseInsensitiveCompare(beaconCode().value_or(""), oo::BeaconCode(other).value_or(""));
 }
@@ -272,32 +272,32 @@ OOHUDBeaconIcon *OOWaypointEntity::beaconDrawable()
 }
 
 
-cxx::Entity *OOWaypointEntity::prevBeacon()
+Entity *OOWaypointEntity::prevBeacon()
 {
 	return oo::LiveEntity(_prevBeacon);
 }
 
 
-cxx::Entity *OOWaypointEntity::nextBeacon()
+Entity *OOWaypointEntity::nextBeacon()
 {
 	return oo::LiveEntity(_nextBeacon);
 }
 
 
-void OOWaypointEntity::setPrevBeacon(cxx::Entity *beaconShip)
+void OOWaypointEntity::setPrevBeacon(Entity *beaconShip)
 {
 	if (beaconShip != prevBeacon())
 	{
-		_prevBeacon = oo::WeakRef<cxx::Entity>(beaconShip);
+		_prevBeacon = oo::WeakRef<Entity>(beaconShip);
 	}
 }
 
 
-void OOWaypointEntity::setNextBeacon(cxx::Entity *beaconShip)
+void OOWaypointEntity::setNextBeacon(Entity *beaconShip)
 {
 	if (beaconShip != nextBeacon())
 	{
-		_nextBeacon = oo::WeakRef<cxx::Entity>(beaconShip);
+		_nextBeacon = oo::WeakRef<Entity>(beaconShip);
 	}
 }
 

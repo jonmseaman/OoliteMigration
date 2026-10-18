@@ -80,7 +80,7 @@ void OOFlashEffectEntity::initLaserFlashWithPosition(HPVector pos, Vector vel, O
 
 // The C++ entity (bead oo-al52f; it was its Objective-C object, amendment oo-bj8 item 4): the
 // members -position, -velocity and -collisionRadius forwarded to; none answers zero, as nil did.
-oo::Ref<OOFlashEffectEntity> OOFlashEffectEntity::explosionFlashFromEntity(cxx::Entity *entity)
+oo::Ref<OOFlashEffectEntity> OOFlashEffectEntity::explosionFlashFromEntity(Entity *entity)
 {
 	const oo::Ref<OOFlashEffectEntity> flash = oo::makeRef<OOFlashEffectEntity>();
 	flash->initExplosionFlashWithPosition(entity != nullptr ? entity->getPosition() : kZeroHPVector, entity != nullptr ? entity->getVelocity() : kZeroVector, entity != nullptr ? entity->collisionRadius() : 0.0f);

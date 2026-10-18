@@ -45,7 +45,7 @@ MA 02110-1301, USA.
 	reset client (OOGraphicsResetClient), and the dust shader's uniforms are bound to its members
 	(bead oo-t0e2m: OOShaderUniform's C++ target binding).
 */
-class DustEntity : public cxx::Entity, public OOGraphicsResetClient
+class DustEntity : public Entity, public OOGraphicsResetClient
 {
 public:
 	DustEntity() = default;

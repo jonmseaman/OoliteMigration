@@ -780,7 +780,7 @@ static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Val
 			return true;
 			
 		case kPlayerShip_compassTarget:
-			result = oo::EntityObjectNode(player != nullptr ? player->getCompassTargetEntity() : (cxx::Entity *)nullptr);	// the C++ entity's node, the same object's (bead oo-9ht.39.25)
+			result = oo::EntityObjectNode(player != nullptr ? player->getCompassTargetEntity() : (Entity *)nullptr);	// the C++ entity's node, the same object's (bead oo-9ht.39.25)
 			break;
 			
 		case kPlayerShip_compassType:
@@ -897,7 +897,7 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 	OOGalacticHyperspaceBehaviour ghBehaviour;
 	Vector						vValue;
 	oo::Ref<OOColor>		colorForScript;	// the colours are converted (OOColor)
-	cxx::Entity					*eValue = nullptr;	// as JSValueToEntity() answers (the C++ entity since bead oo-9ht.39.3)
+	Entity					*eValue = nullptr;	// as JSValueToEntity() answers (the C++ entity since bead oo-9ht.39.3)
 
 	switch (ooscript::idToInt32(propID))
 	{
@@ -990,7 +990,7 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 			// make sure we have a valid entity
 			if (!ooscript::isNull(*value_raw) && JSValueToEntity(context, *value_raw, &eValue)) 
 			{
-				cxx::Entity *current = (player != nullptr ? player->getCompassTargetEntity() : nullptr);	// the C++ entities (bead oo-9ht.39.25)
+				Entity *current = (player != nullptr ? player->getCompassTargetEntity() : nullptr);	// the C++ entities (bead oo-9ht.39.25)
 				if (player != nullptr)  player->setNextCompassMode();
 				if (player != nullptr)  player->validateCompassTarget();
 				// cycle the targets until we either get back to the start (entity not found) or we find the one we're looking for

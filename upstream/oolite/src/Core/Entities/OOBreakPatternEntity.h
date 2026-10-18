@@ -41,7 +41,7 @@ enum
 struct OOBreakPatternEntityTestAccess;
 
 
-class OOBreakPatternEntity : public cxx::Entity
+class OOBreakPatternEntity : public Entity
 {
 public:
 	// +breakPatternWithPolygonSides:startAngle:aspectRatio:: a new ring, initialised.

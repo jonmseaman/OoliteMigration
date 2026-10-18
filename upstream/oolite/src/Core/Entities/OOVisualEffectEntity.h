@@ -89,12 +89,12 @@ public:
 
 	void clearSubEntities();
 	bool setUpSubEntities();
-	void removeSubEntity(cxx::Entity *sub);	// the C++ sub-entity (bead oo-9ht.39.8.13; the list holds it since bead oo-xn1j1)
+	void removeSubEntity(Entity *sub);	// the C++ sub-entity (bead oo-9ht.39.8.13; the list holds it since bead oo-xn1j1)
 	void setNoDrawDistance();
 	std::vector<oo::EntityHold> subEntities();	// a snapshot; empty before the first subentity (was nil)
 	NSUInteger subEntityCount();
 	std::optional<std::vector<oo::EntityHold>> visualEffectSubEntityEnumerator();	// the visual-effect subentities' objects; nullopt where the array was nil
-	bool hasSubEntity(cxx::Entity *sub);	// the C++ entity's (bead oo-w9pi2)
+	bool hasSubEntity(Entity *sub);	// the C++ entity's (bead oo-w9pi2)
 
 	std::vector<oo::EntityHold> subEntityEnumerator();	// snapshot, same as subEntities()
 	std::vector<oo::EntityHold> effectSubEntityEnumerator();	// the visual-effect subentities' objects
@@ -124,7 +124,7 @@ public:
 	void drawSubEntityImmediate(bool immediate, bool translucent) override;
 
 	// Entity (SubEntityRelationship): the root's facade answers it for an effect's part.
-	bool isShipWithSubEntityShip(cxx::Entity *other);	// the C++ entity (bead oo-w9pi2; was its object)
+	bool isShipWithSubEntityShip(Entity *other);	// the C++ entity (bead oo-w9pi2; was its object)
 
 	bool isEffect() override;
 	bool getIsVisualEffect() override;
@@ -152,17 +152,17 @@ public:
 	void remove();
 
 	// OOBeaconEntity: the root's facade (Entity (OOWaypointBeacon)) answers it for an effect's part.
-	OOComparisonResult compareBeaconCodeWith(cxx::Entity *other);
+	OOComparisonResult compareBeaconCodeWith(Entity *other);
 	std::optional<std::string> beaconCode();
 	void setBeaconCode(const std::optional<std::string> &bcode);
 	std::optional<std::string> beaconLabel();
 	void setBeaconLabel(const std::optional<std::string> &blabel);
 	bool isBeacon();
 	OOHUDBeaconIcon *beaconDrawable();	// borrowed (the protocol type until bead oo-7ae4p)
-	cxx::Entity *prevBeacon();	// the C++ entity since bead oo-9ht.39.24 (null once its object has gone, as before)
-	cxx::Entity *nextBeacon();
-	void setPrevBeacon(cxx::Entity *beaconShip);
-	void setNextBeacon(cxx::Entity *beaconShip);
+	Entity *prevBeacon();	// the C++ entity since bead oo-9ht.39.24 (null once its object has gone, as before)
+	Entity *nextBeacon();
+	void setPrevBeacon(Entity *beaconShip);
+	void setNextBeacon(Entity *beaconShip);
 	bool isJammingScanning();
 
 	// convenience for shaders
@@ -214,8 +214,8 @@ public:
 	// beacons
 	std::optional<std::string>	_beaconCode;
 	std::optional<std::string>	_beaconLabel;
-	oo::WeakRef<cxx::Entity>	_prevBeacon;	// the beacons' C++ parts (bead oo-9ht.39.5.2; were their objects' weak references)
-	oo::WeakRef<cxx::Entity>	_nextBeacon;
+	oo::WeakRef<Entity>	_prevBeacon;	// the beacons' C++ parts (bead oo-9ht.39.5.2; were their objects' weak references)
+	oo::WeakRef<Entity>	_nextBeacon;
 	oo::Ref<OOHUDBeaconIcon>	_beaconDrawable;
 
 	// scaling (were scaleX, scaleY, scaleZ, named like their getters)
@@ -224,7 +224,7 @@ public:
 	GLfloat _scaleZ = {};
 
 private:
-	void addSubEntity(cxx::Entity *sub);
+	void addSubEntity(Entity *sub);
 	bool setUpOneSubentity(const oo::PList &subentDict);
 	bool setUpOneFlasher(const oo::PList &subentDict);
 	bool setUpOneStandardSubentity(const oo::PList &subentDict);
@@ -237,11 +237,11 @@ namespace oo {
 // A new effect (bead oo-9ht.165) after the effect's initialiser body (OOVisualEffectEntity::initWithKey()),
 // made as its object was (oo::MadeEntityRetained(); bead oo-dpyk8); null where the body failed, as
 // [[OOVisualEffectEntity alloc] cxx_initWithKey:definition:] answered nil. +1, as +alloc gave.
-cxx::Entity *NewVisualEffect(const std::string &key, const oo::PList &dict);
+Entity *NewVisualEffect(const std::string &key, const oo::PList &dict);
 
 // The effect an entity is: nullptr for null or another entity (what -isKindOfClass:
 // [OOVisualEffectEntity class] and the cast after it found; bead oo-9ht.39.3).
-inline OOVisualEffectEntity *ToEffect(cxx::Entity *entity)
+inline OOVisualEffectEntity *ToEffect(Entity *entity)
 {
 	return dynamic_cast<OOVisualEffectEntity *>(entity);
 }

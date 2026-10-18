@@ -48,14 +48,14 @@ namespace {
 
 // The parts the facade's categories asked (ShipPart, EffectPart, the waypoint): each is nullptr for
 // any other entity.
-ShipEntity *ShipPart(cxx::Entity *entity)						{ return dynamic_cast<ShipEntity *>(entity); }
-OOVisualEffectEntity *EffectPart(cxx::Entity *entity)			{ return dynamic_cast<OOVisualEffectEntity *>(entity); }
-OOWaypointEntity *WaypointPart(cxx::Entity *entity)				{ return dynamic_cast<OOWaypointEntity *>(entity); }
+ShipEntity *ShipPart(Entity *entity)						{ return dynamic_cast<ShipEntity *>(entity); }
+OOVisualEffectEntity *EffectPart(Entity *entity)			{ return dynamic_cast<OOVisualEffectEntity *>(entity); }
+OOWaypointEntity *WaypointPart(Entity *entity)				{ return dynamic_cast<OOWaypointEntity *>(entity); }
 
 }	// namespace
 
 
-cxx::Entity *oo::WithObject(cxx::Entity *entity)
+Entity *oo::WithObject(Entity *entity)
 {
 	return (entity != nullptr && entity->hasObject()) ? entity : nullptr;
 }
@@ -63,25 +63,25 @@ cxx::Entity *oo::WithObject(cxx::Entity *entity)
 
 // --- Counts (OOEntityHold.h) ----------------------------------------------------------------------
 
-bool oo::detail::EntityHasObject(const cxx::Entity *entity) noexcept  { return entity != nullptr && entity->hasObject(); }
-void oo::detail::EntityRetain(cxx::Entity *entity) noexcept  { if (entity != nullptr)  entity->retain(); }
-void oo::detail::EntityRelease(cxx::Entity *entity) noexcept  { if (entity != nullptr)  entity->release(); }
+bool oo::detail::EntityHasObject(const Entity *entity) noexcept  { return entity != nullptr && entity->hasObject(); }
+void oo::detail::EntityRetain(Entity *entity) noexcept  { if (entity != nullptr)  entity->retain(); }
+void oo::detail::EntityRelease(Entity *entity) noexcept  { if (entity != nullptr)  entity->release(); }
 
 
-cxx::Entity *oo::RetainEntity(cxx::Entity *entity)
+Entity *oo::RetainEntity(Entity *entity)
 {
 	if (WithObject(entity) != nullptr)  entity->retain();
 	return entity;
 }
 
 
-void oo::ReleaseEntity(cxx::Entity *entity)
+void oo::ReleaseEntity(Entity *entity)
 {
 	if (WithObject(entity) != nullptr)  entity->release();
 }
 
 
-cxx::Entity *oo::AutoreleaseEntity(cxx::Entity *entity)
+Entity *oo::AutoreleaseEntity(Entity *entity)
 {
 	// The caller's +1 goes to the current Objective-C pool, released at the same drain and in the
 	// same order as -autorelease's object (oo::AutoreleaseInObjCPool, bead oo-pvhrh).
@@ -90,7 +90,7 @@ cxx::Entity *oo::AutoreleaseEntity(cxx::Entity *entity)
 }
 
 
-cxx::Entity *oo::MadeEntityRetained(const Ref<cxx::Entity> &entity)
+Entity *oo::MadeEntityRetained(const Ref<Entity> &entity)
 {
 	if (entity == nullptr)  return nullptr;
 	// The facade's -initWithCxxEntity:: from here the entity has its object, and it is counted.
@@ -104,13 +104,13 @@ cxx::Entity *oo::MadeEntityRetained(const Ref<cxx::Entity> &entity)
 }
 
 
-cxx::Entity *oo::MadeEntity(const Ref<cxx::Entity> &entity)
+Entity *oo::MadeEntity(const Ref<Entity> &entity)
 {
 	return AutoreleaseEntity(MadeEntityRetained(entity));	// [[... alloc] init...] autorelease]
 }
 
 
-cxx::Entity *oo::EntityInitAgain(cxx::Entity *entity)
+Entity *oo::EntityInitAgain(Entity *entity)
 {
 	entity->init();
 #ifndef NDEBUG
@@ -123,7 +123,7 @@ cxx::Entity *oo::EntityInitAgain(cxx::Entity *entity)
 
 // --- Descriptions ---------------------------------------------------------------------------------
 
-std::string oo::EntityClassName(cxx::Entity *entity)
+std::string oo::EntityClassName(Entity *entity)
 {
 	int status = 0;
 	char *demangled = abi::__cxa_demangle(typeid(*entity).name(), nullptr, nullptr, &status);
@@ -134,7 +134,7 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 }
 
 
-std::string oo::EntityOwnDescription(cxx::Entity *entity)
+std::string oo::EntityOwnDescription(Entity *entity)
 {
 	if (entity == nullptr)  return "(null)";
 	// The facade's -cxx_description: the C++ class's name and components.
@@ -144,13 +144,13 @@ std::string oo::EntityOwnDescription(cxx::Entity *entity)
 }
 
 
-std::string oo::EntityDescription(cxx::Entity *entity)
+std::string oo::EntityDescription(Entity *entity)
 {
 	return EntityOwnDescription(WithObject(entity));	// "(null)", as DescriptionOf(nil), without its object
 }
 
 
-std::string oo::EntityShortDescription(cxx::Entity *entity)
+std::string oo::EntityShortDescription(Entity *entity)
 {
 	// OOObject's -cxx_shortDescription, which the facade did not override: its class (the root
 	// facade's, Entity) and address, no components.
@@ -159,7 +159,7 @@ std::string oo::EntityShortDescription(cxx::Entity *entity)
 }
 
 
-void oo::InspectEntity(cxx::Entity *entity)
+void oo::InspectEntity(Entity *entity)
 {
 	if (WithObject(entity) != nullptr)  entity->inspect();
 }
@@ -167,7 +167,7 @@ void oo::InspectEntity(cxx::Entity *entity)
 
 // --- The categories' questions -------------------------------------------------------------------
 
-bool oo::EntityIsShipWithSubEntityShip(cxx::Entity *entity, cxx::Entity *other)
+bool oo::EntityIsShipWithSubEntityShip(Entity *entity, Entity *other)
 {
 	if (ShipEntity *ship = ShipPart(entity))  return ship->isShipWithSubEntityShip(other);
 	OOVisualEffectEntity *effect = EffectPart(entity);
@@ -175,7 +175,7 @@ bool oo::EntityIsShipWithSubEntityShip(cxx::Entity *entity, cxx::Entity *other)
 }
 
 
-bool oo::EntityIsBeacon(cxx::Entity *entity)
+bool oo::EntityIsBeacon(Entity *entity)
 {
 	if (ShipEntity *ship = ShipPart(entity))  return ship->isBeacon();
 	if (OOVisualEffectEntity *effect = EffectPart(entity))  return effect->isBeacon();
@@ -189,7 +189,7 @@ bool oo::EntityIsBeacon(cxx::Entity *entity)
 	its object answered nil's zero. The links it answered were the linked entities' objects (+0), so
 	an entity without its object is none.
 */
-cxx::Entity *oo::PrevBeacon(cxx::Entity *beacon)
+Entity *oo::PrevBeacon(Entity *beacon)
 {
 	beacon = WithObject(beacon);
 	if (ShipEntity *ship = ShipPart(beacon))  return WithObject(ship->prevBeacon());
@@ -199,7 +199,7 @@ cxx::Entity *oo::PrevBeacon(cxx::Entity *beacon)
 }
 
 
-cxx::Entity *oo::NextBeacon(cxx::Entity *beacon)
+Entity *oo::NextBeacon(Entity *beacon)
 {
 	beacon = WithObject(beacon);
 	if (ShipEntity *ship = ShipPart(beacon))  return WithObject(ship->nextBeacon());
@@ -209,7 +209,7 @@ cxx::Entity *oo::NextBeacon(cxx::Entity *beacon)
 }
 
 
-void oo::SetPrevBeacon(cxx::Entity *beacon, cxx::Entity *other)
+void oo::SetPrevBeacon(Entity *beacon, Entity *other)
 {
 	beacon = WithObject(beacon);
 	other = WithObject(other);
@@ -219,7 +219,7 @@ void oo::SetPrevBeacon(cxx::Entity *beacon, cxx::Entity *other)
 }
 
 
-void oo::SetNextBeacon(cxx::Entity *beacon, cxx::Entity *other)
+void oo::SetNextBeacon(Entity *beacon, Entity *other)
 {
 	beacon = WithObject(beacon);
 	other = WithObject(other);
@@ -229,7 +229,7 @@ void oo::SetNextBeacon(cxx::Entity *beacon, cxx::Entity *other)
 }
 
 
-std::optional<std::string> oo::BeaconCode(cxx::Entity *beacon)
+std::optional<std::string> oo::BeaconCode(Entity *beacon)
 {
 	beacon = WithObject(beacon);
 	if (ShipEntity *ship = ShipPart(beacon))  return ship->beaconCode();
@@ -239,7 +239,7 @@ std::optional<std::string> oo::BeaconCode(cxx::Entity *beacon)
 }
 
 
-void oo::SetBeaconCode(cxx::Entity *beacon, const std::optional<std::string> &code)
+void oo::SetBeaconCode(Entity *beacon, const std::optional<std::string> &code)
 {
 	beacon = WithObject(beacon);
 	if (ShipEntity *ship = ShipPart(beacon))  ship->setBeaconCode(code);
@@ -248,7 +248,7 @@ void oo::SetBeaconCode(cxx::Entity *beacon, const std::optional<std::string> &co
 }
 
 
-OOComparisonResult oo::CompareBeaconCodes(cxx::Entity *beacon, cxx::Entity *other)
+OOComparisonResult oo::CompareBeaconCodes(Entity *beacon, Entity *other)
 {
 	beacon = WithObject(beacon);
 	other = WithObject(other);
@@ -259,7 +259,7 @@ OOComparisonResult oo::CompareBeaconCodes(cxx::Entity *beacon, cxx::Entity *othe
 }
 
 
-bool oo::BeaconIsJammingScanning(cxx::Entity *beacon)
+bool oo::BeaconIsJammingScanning(Entity *beacon)
 {
 	beacon = WithObject(beacon);
 	if (ShipEntity *ship = ShipPart(beacon))  return ship->isJammingScanning();
@@ -269,7 +269,7 @@ bool oo::BeaconIsJammingScanning(cxx::Entity *beacon)
 }
 
 
-OOHUDBeaconIcon *oo::BeaconDrawable(cxx::Entity *beacon)
+OOHUDBeaconIcon *oo::BeaconDrawable(Entity *beacon)
 {
 	beacon = WithObject(beacon);
 	if (ShipEntity *ship = ShipPart(beacon))  return ship->beaconDrawable();
@@ -279,7 +279,7 @@ OOHUDBeaconIcon *oo::BeaconDrawable(cxx::Entity *beacon)
 }
 
 
-std::optional<std::string> oo::BeaconLabel(cxx::Entity *beacon)
+std::optional<std::string> oo::BeaconLabel(Entity *beacon)
 {
 	beacon = WithObject(beacon);
 	if (ShipEntity *ship = ShipPart(beacon))  return ship->beaconLabel();

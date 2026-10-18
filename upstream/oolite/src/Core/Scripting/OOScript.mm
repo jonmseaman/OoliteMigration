@@ -314,7 +314,7 @@ bool OOScript::requiresTickle()
 }
 
 
-void OOScript::runWithTarget(cxx::Entity *)
+void OOScript::runWithTarget(Entity *)
 {
 	OO_LOG_ERR(cxx_kOOLogSubclassResponsibility, "{}", "OOScript should not be used directly!");
 }

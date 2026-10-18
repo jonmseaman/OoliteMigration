@@ -77,34 +77,34 @@ std::optional<std::string> EntityJSClassName(void)
 */
 
 
-bool OOJSEntityIsVisibleToScripts(cxx::Entity *entity)
+bool OOJSEntityIsVisibleToScripts(Entity *entity)
 {
 	if (entity == nullptr)  return false;	// nil's answer
 	return entity->isVisibleToScripts();
 }
 
 
-std::optional<std::string> OOJSEntityJSClassName(cxx::Entity *entity)
+std::optional<std::string> OOJSEntityJSClassName(Entity *entity)
 {
 	if (entity == nullptr)  return std::nullopt;	// nil's answer
 	return entity->jsClassName();
 }
 
 
-void OOJSEntityGetJSClass(cxx::Entity *entity, ooscript::ClassDef **outClass, ooscript::Object *outPrototype)
+void OOJSEntityGetJSClass(Entity *entity, ooscript::ClassDef **outClass, ooscript::Object *outPrototype)
 {
 	entity->getJSClass(outClass, outPrototype);
 }
 
 
-ooscript::Value OOJSEntityJSValue(cxx::Entity *entity, ooscript::Context context)
+ooscript::Value OOJSEntityJSValue(Entity *entity, ooscript::Context context)
 {
 	if (entity == nullptr)  return ooscript::nullValue();	// OOJSValueFromNativeObject()'s for nil
 	return entity->jsValueInContext(context);
 }
 
 
-ooscript::Value EntityJSValueInContext(cxx::Entity *entity, ooscript::Context context)
+ooscript::Value EntityJSValueInContext(Entity *entity, ooscript::Context context)
 {
 	ooscript::ClassDef					*jsClass = NULL;
 	ooscript::Object prototype = NULL;
@@ -144,7 +144,7 @@ void EntityJSGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outProt
 }
 
 
-void EntityJSDeleteJSSelf(cxx::Entity *entity)
+void EntityJSDeleteJSSelf(Entity *entity)
 {
 	if (entity->_jsSelf != NULL)
 	{
@@ -164,7 +164,7 @@ void EntityJSDeleteJSSelf(cxx::Entity *entity)
 	components; the JS class name is -cxx_oo_jsClassName's (the C++ entity's jsClassName()), else
 	the root facade's class name, "Entity".
 */
-std::optional<std::string> EntityJSDescription(cxx::Entity *entity)
+std::optional<std::string> EntityJSDescription(Entity *entity)
 {
 	if (entity == nullptr)  return std::nullopt;	// (the holder asks only a live entity)
 	std::optional<std::string> name = entity->jsClassName();
@@ -229,5 +229,5 @@ void ShipEntityJSSetTargetForScript(ShipEntity *ship, ShipEntity *target)
 	{
 		if (me != nullptr)  me->addTarget(target);
 	}
-	else  { if (me != nullptr)  me->removeTarget((me != nullptr ? me->primaryTarget() : (cxx::Entity *)nullptr)); }
+	else  { if (me != nullptr)  me->removeTarget((me != nullptr ? me->primaryTarget() : (Entity *)nullptr)); }
 }

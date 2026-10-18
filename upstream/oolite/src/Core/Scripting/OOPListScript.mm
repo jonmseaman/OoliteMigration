@@ -102,7 +102,7 @@ bool OOPListScript::requiresTickle()
 }
 
 
-void OOPListScript::runWithTarget(cxx::Entity *target)
+void OOPListScript::runWithTarget(Entity *target)
 {
 	if (target != nullptr && !(oo::ToShip(target) != nullptr))
 	{

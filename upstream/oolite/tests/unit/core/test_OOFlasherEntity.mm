@@ -92,8 +92,8 @@ void SetUp()
 // --- Ivars the test reads and sets, and nothing else -----------------------------------------------
 
 const GLfloat *ColorComponents(OOFlasherEntity *e)			{ return e->_colorComponents; }
-GLfloat CamZeroDistance(cxx::Entity *e)					{ return e->cam_zero_distance; }
-void SetCamZeroDistance(cxx::Entity *e, GLfloat value)	{ e->cam_zero_distance = value; }
+GLfloat CamZeroDistance(Entity *e)					{ return e->cam_zero_distance; }
+void SetCamZeroDistance(Entity *e, GLfloat value)	{ e->cam_zero_distance = value; }
 
 // --------------------------------------------------------------------------------------------------
 
@@ -274,7 +274,7 @@ OO_TEST(drawsOnlyWhileActive)
 	@autoreleasepool
 	{
 		SetUp();
-		cxx::Entity *owner = oo::MadeEntity(oo::makeRef<cxx::Entity>());
+		Entity *owner = oo::MadeEntity(oo::makeRef<Entity>());
 		SetCamZeroDistance(owner, 1e30f);		// beyond any draw distance: the draw stops at the cut-off
 		OOFlasherEntity *flasher = Flasher(WhiteBlack(1, 0.5));
 		flasher->setOwner(owner);
@@ -311,10 +311,10 @@ OO_TEST(isFlasher)
 	{
 		SetUp();
 		// The category -isFlasher went with the facade (bead oo-9ht.107): callers ask the C++ part.
-		cxx::Entity *plain = oo::MadeEntity(oo::makeRef<cxx::Entity>());
+		Entity *plain = oo::MadeEntity(oo::makeRef<Entity>());
 		OO_CHECK(dynamic_cast<OOFlasherEntity *>(plain) == nullptr);
 		const oo::Ref<OOLightParticleEntity> lightParticle = oo::makeRef<OOLightParticleEntity>();	// C++ since bead oo-9ht.76
-		cxx::Entity *particle = oo::MadeEntity(lightParticle);
+		Entity *particle = oo::MadeEntity(lightParticle);
 		lightParticle->initWithDiameter(1.0f);
 		OO_CHECK(dynamic_cast<OOFlasherEntity *>(particle) == nullptr);
 		OOFlasherEntity *flasher = Flasher(Dict({}));
@@ -331,7 +331,7 @@ OO_TEST(facade)
 		// The object is the nearest façade left (amendment oo-9ht.12 item 6; the root's since bead
 		// oo-9ht.76), whose C++ part is the flasher: a C++ entity (amendment oo-0mxi), not an
 		// Objective-C entity's adapter.
-		cxx::Entity *object = oo::MadeEntity(OOFlasherEntity::flasherWithDictionary(WhiteBlack(1, 0.5)));
+		Entity *object = oo::MadeEntity(OOFlasherEntity::flasherWithDictionary(WhiteBlack(1, 0.5)));
 		OO_CHECK(dynamic_cast<OOFlasherEntity *>(object) != nullptr);
 		OO_CHECK(object == object);
 	}
@@ -346,7 +346,7 @@ OO_TEST(jsExtensions)
 	@autoreleasepool
 	{
 		SetUp();
-		cxx::Entity *flasher = Flasher(WhiteBlack(1, 0.5));
+		Entity *flasher = Flasher(WhiteBlack(1, 0.5));
 		ooscript::ClassDef *jsClass = nullptr, *expectedClass = nullptr;
 		ooscript::Object prototype = nullptr, expectedPrototype = nullptr;
 		OOJSEntityGetJSClass(flasher, &jsClass, &prototype);

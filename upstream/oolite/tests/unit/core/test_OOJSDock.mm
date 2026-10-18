@@ -25,8 +25,6 @@
 
 // MARK: The entity classes, as far as the binding sees them ---------------------------------------
 
-namespace cxx {
-
 // The C++ root, as far as the binding and the root's JS category reach it.
 class Entity : public oo::RefCounted
 {
@@ -36,11 +34,9 @@ public:
 	virtual std::optional<std::string> jsClassName();
 };
 
-}	// namespace cxx
-
 // The ship: C++ since bead oo-9ht.144 deleted the Objective-C ship this stood in for (a ship's part
 // is a plain one, held by its object as a dock's is).
-class ShipEntity : public cxx::Entity
+class ShipEntity : public Entity
 {
 };
 
@@ -49,10 +45,11 @@ class ShipEntity : public cxx::Entity
 #include "OOJSEntityHolder.h"
 
 
-@interface Entity: OOObject
+__attribute__((objc_runtime_name("Entity")))
+@interface TestEntityObject: OOObject
 {
 @public
-	oo::Ref<cxx::Entity> _cxxEntity;
+	oo::Ref<Entity> _cxxEntity;
 }
 - (id) weakRefUnderlyingObject;
 @end
@@ -86,7 +83,7 @@ public:
 	::ShipEntity *_queued = nullptr;
 };
 
-@interface Entity (OOJavaScriptExtensions)
+@interface TestEntityObject (OOJavaScriptExtensions)
 - (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
 - (std::optional<std::string>) cxx_oo_jsClassName;
 @end
@@ -103,12 +100,12 @@ public:
 #include <string>
 
 
-cxx::Entity::~Entity() = default;
-void cxx::Entity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)  { (void)outClass; (void)outPrototype; }
-std::optional<std::string> cxx::Entity::jsClassName()  { return std::nullopt; }
+Entity::~Entity() = default;
+void Entity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)  { (void)outClass; (void)outPrototype; }
+std::optional<std::string> Entity::jsClassName()  { return std::nullopt; }
 
 
-@implementation Entity
+@implementation TestEntityObject
 
 - (id) weakRefUnderlyingObject
 {
@@ -315,32 +312,32 @@ ooscript::Runtime sRuntime;
 ooscript::Context sContext;
 ooscript::Object sGlobal;
 DockEntity *sDock = nullptr;	// the C++ dock (its object: sDockObject)
-Entity *sDockObject = nil;
-Entity *sShip = nil;	// a ship's object and its C++ part (the Objective-C ship until bead oo-9ht.144)
+TestEntityObject *sDockObject = nil;
+TestEntityObject *sShip = nil;	// a ship's object and its C++ part (the Objective-C ship until bead oo-9ht.144)
 ShipEntity *sShipPart = nullptr;
 
 
 // A ship's object holding its C++ part, kept for the life of the test.
-Entity *NewShipObject(oo::Ref<cxx::Entity> part)
+TestEntityObject *NewShipObject(oo::Ref<Entity> part)
 {
-	Entity *object = [[Entity alloc] init];
+	TestEntityObject *object = [[TestEntityObject alloc] init];
 	object->_cxxEntity = part;
 	return object;
 }
 
 
-ooscript::Value JSValueForObject(ooscript::ClassDef *jsClass, ooscript::Object prototype, Entity *entity)
+ooscript::Value JSValueForObject(ooscript::ClassDef *jsClass, ooscript::Object prototype, TestEntityObject *entity)
 {
 	ooscript::Object object = ooscript::newObject(sContext, jsClass, prototype, nullptr);
-	if (entity->_cxxEntity == nullptr)  entity->_cxxEntity = oo::makeRef<cxx::Entity>();	// a plain entity's C++ part
+	if (entity->_cxxEntity == nullptr)  entity->_cxxEntity = oo::makeRef<Entity>();	// a plain entity's C++ part
 	if (object == nullptr || !OOJSSetCxxPrivate(sContext, object, oo::makeRef<OOJSEntityHolder>(entity->_cxxEntity.get()).get()))  return ooscript::nullValue();	// the slot holds the C++ entity (bead oo-9ht.39.3)
 	return ooscript::objectValue(object);
 }
 
 
-// A JS object for an entity, as -[Entity oo_jsValueInContext:] makes it: the class and prototype
+// A JS object for an entity, as -[TestEntityObject oo_jsValueInContext:] makes it: the class and prototype
 // the entity's category names, and the entity in the private slot.
-ooscript::Value JSValueForEntity(Entity *entity)
+ooscript::Value JSValueForEntity(TestEntityObject *entity)
 {
 	ooscript::ClassDef *jsClass = nullptr;
 	ooscript::Object prototype = nullptr;
@@ -380,7 +377,7 @@ void SetUpContext()
 	Define("dock", JSValueForEntity(sDockObject));
 	Define("ship", JSValueForObject(&sFakeShipClass, sShipPrototype, sShip));
 	Define("otherShip", JSValueForObject(&sFakeShipClass, sShipPrototype, NewShipObject(oo::makeRef<ShipEntity>())));
-	Define("plainEntity", JSValueForObject(&sFakeEntityClass, gOOEntityJSPrototype, [[Entity alloc] init]));
+	Define("plainEntity", JSValueForObject(&sFakeEntityClass, gOOEntityJSPrototype, [[TestEntityObject alloc] init]));
 }
 
 

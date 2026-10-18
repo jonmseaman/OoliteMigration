@@ -791,7 +791,7 @@ static bool PlayerSetEscapePodDestination(ooscript::Context context, ooscript::C
 	if (oojsArgs.count() == 1)
 	{
 		destValue = cxx_OOJSPListFromJSValue(context, OOJS_ARGV[0]);
-		cxx::Entity *destEntity = oo::EntityIn(destValue);	// the entity node's (its object until bead oo-dpyk8)
+		Entity *destEntity = oo::EntityIn(destValue);	// the entity node's (its object until bead oo-dpyk8)
 		
 		if (destValue.isNull())
 		{

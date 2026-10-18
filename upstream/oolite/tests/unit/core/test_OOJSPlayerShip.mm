@@ -61,7 +61,7 @@ uint32_t gDebugFlags = 0;
 
 // An entity scripts can see; it answers like any Entity otherwise (an Objective-C subclass until bead
 // oo-j12i2; a C++ one overriding the member its selector became).
-class TestEntity : public cxx::Entity
+class TestEntity : public Entity
 {
 public:
 	bool isVisibleToScripts() override  { return true; }
@@ -110,7 +110,7 @@ class FakePlayer : public PlayerEntity	// C++ since bead oo-9ht.177 deleted the 
 {
 public:
 	oo::Ref<HeadUpDisplay> _hud;	// C++ since bead oo-mwd58
-	cxx::Entity *_dockedStation = {}, *_compassTarget = {};
+	Entity *_dockedStation = {}, *_compassTarget = {};
 	BOOL _docked = {};
 	std::optional<std::string> _specialCargo, _fastA, _fastB;
 	std::string _primed;
@@ -119,8 +119,8 @@ public:
 	double _clockTime = {};
 	BOOL _contractsAccept = {};
 	std::vector<std::string> _log;
-	cxx::Entity *_other = {};
-	std::vector<cxx::Entity *> _compassCycle;
+	Entity *_other = {};
+	std::vector<Entity *> _compassCycle;
 	std::set<std::string> _equipment;
 	BOOL _hyperspaceMotor = {};
 
@@ -158,7 +158,7 @@ public:
 	bool injectorsEngaged() override	{ return NO; }
 	bool getMassLockable() override	{ return YES; }
 	bool hyperspeedEngaged() override	{ return NO; }
-	cxx::Entity * getCompassTargetEntity() override	{ return _compassTarget; }
+	Entity * getCompassTargetEntity() override	{ return _compassTarget; }
 	OOCompassMode getCompassMode() override	{ return COMPASS_MODE_PLANET; }
 	bool weaponsOnline() override	{ return YES; }
 	Vector viewpointOffsetAft() override	{ return make_vector(0, 0, -1); }
@@ -231,7 +231,7 @@ public:
 		_log.push_back(oo::str::format("setWeaponMount %d %s %s", static_cast<int>(facing), eqKey.c_str(), context.value_or("(nil)").c_str()));
 		return YES;
 	}
-	void setStatus(OOEntityStatus stat) override	{ _log.push_back(oo::str::format("setStatus %d", static_cast<int>(stat))); cxx::Entity::setStatus(stat); }	// the root's status, which status() answers
+	void setStatus(OOEntityStatus stat) override	{ _log.push_back(oo::str::format("setStatus %d", static_cast<int>(stat))); Entity::setStatus(stat); }	// the root's status, which status() answers
 	void setTargetSystemID(OOSystemID sid) override	{ _log.push_back(oo::str::format("setTargetSystemID %d", sid)); }
 	void setInfoSystemID(OOSystemID sid, bool moveChart) override	{ _log.push_back(oo::str::format("setInfoSystemID %d %d", sid, moveChart ? 1 : 0)); }
 	void launchFromStation() override	{ _log.push_back("launchFromStation"); }
@@ -361,7 +361,7 @@ void SetUp()
 	sPlayer->_capacity = 2;
 	sPlayer->_clockTime = 1000;
 	sPlayer->_contractsAccept = YES;
-	sPlayer->cxx::Entity::setStatus(STATUS_DOCKED);
+	sPlayer->Entity::setStatus(STATUS_DOCKED);
 	gOOPlayer = sPlayer;
 }
 
@@ -681,15 +681,15 @@ OO_TEST(setterTargetSystem)
 {
 	SetUp();
 	Log(sPlayer->_log);
-	sPlayer->cxx::Entity::setStatus(STATUS_DOCKED);
+	sPlayer->Entity::setStatus(STATUS_DOCKED);
 	OO_CHECK_EVAL("(function () { player.ship.targetSystem = 33; })()", "undefined");
 	OO_CHECK_LOG(sPlayer->_log, "setTargetSystemID 33");
-	sPlayer->cxx::Entity::setStatus(STATUS_IN_FLIGHT);
+	sPlayer->Entity::setStatus(STATUS_IN_FLIGHT);
 	OO_CHECK(Eval("(function () { player.ship.targetSystem = 33; })()").rfind("threw: ", 0) == 0);
-	sPlayer->cxx::Entity::setStatus(STATUS_ENTERING_WITCHSPACE);
+	sPlayer->Entity::setStatus(STATUS_ENTERING_WITCHSPACE);
 	OO_CHECK(Eval("(function () { player.ship.targetSystem = 33; })()").rfind("threw: ", 0) == 0);
 	OO_CHECK_LOG(sPlayer->_log, "");
-	sPlayer->cxx::Entity::setStatus(STATUS_DOCKED);
+	sPlayer->Entity::setStatus(STATUS_DOCKED);
 }
 
 
@@ -751,19 +751,19 @@ OO_TEST(hyperspaceCountdowns)
 	OO_CHECK_EVAL("player.ship.beginHyperspaceCountdown()", "false");
 	OO_CHECK_EVAL("player.ship.cancelHyperspaceCountdown()", "false");
 	sPlayer->_hyperspaceMotor = YES;
-	sPlayer->cxx::Entity::setStatus(STATUS_IN_FLIGHT);
+	sPlayer->Entity::setStatus(STATUS_IN_FLIGHT);
 	OO_CHECK_EVAL("player.ship.beginHyperspaceCountdown(10)", "true");
 	OO_CHECK_EVAL("player.ship.beginHyperspaceCountdown()", "true");
 	OO_CHECK_LOG(sPlayer->_log, "witchJumpChecklist 0; beginWitchspaceCountdown 10; witchJumpChecklist 0; beginWitchspaceCountdown 0");
 	OO_CHECK(Eval("player.ship.beginHyperspaceCountdown(4)").rfind("threw: ", 0) == 0);
 	OO_CHECK(Eval("player.ship.beginHyperspaceCountdown(61)").rfind("threw: ", 0) == 0);
 	OO_CHECK_EVAL("player.ship.cancelHyperspaceCountdown()", "false");	// not counting down
-	sPlayer->cxx::Entity::setStatus(STATUS_WITCHSPACE_COUNTDOWN);
+	sPlayer->Entity::setStatus(STATUS_WITCHSPACE_COUNTDOWN);
 	OO_CHECK_EVAL("player.ship.cancelHyperspaceCountdown()", "true");
 	OO_CHECK_LOG(sPlayer->_log, "cancelWitchspaceCountdown; setJumpType 0");
 
 	// Galactic: needs the drive, in flight.
-	sPlayer->cxx::Entity::setStatus(STATUS_IN_FLIGHT);
+	sPlayer->Entity::setStatus(STATUS_IN_FLIGHT);
 	OO_CHECK_EVAL("player.ship.beginGalacticHyperspaceCountdown()", "false");
 	sPlayer->_equipment.insert("EQ_GAL_DRIVE");
 	Log(sUniverse->_messages);
@@ -772,7 +772,7 @@ OO_TEST(hyperspaceCountdowns)
 	OO_CHECK_LOG(sUniverse->_messages, "witch-galactic-in-f-seconds 1");
 	OO_CHECK(Eval("player.ship.beginGalacticHyperspaceCountdown(3)").rfind("threw: ", 0) == 0);
 	sPlayer->_equipment.clear();
-	sPlayer->cxx::Entity::setStatus(STATUS_DOCKED);
+	sPlayer->Entity::setStatus(STATUS_DOCKED);
 }
 
 

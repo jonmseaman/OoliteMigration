@@ -356,7 +356,7 @@ static bool JSStationGetStationEntity(ooscript::Context context, ooscript::Objec
 	OOJS_PROFILE_ENTER
 	
 	bool						result;
-	cxx::Entity					*entity = nullptr;	// the slot holds the C++ entity (bead oo-9ht.39.3)
+	Entity					*entity = nullptr;	// the slot holds the C++ entity (bead oo-9ht.39.3)
 	
 	if (outEntity == NULL)  return false;
 	*outEntity = nil;
@@ -382,7 +382,7 @@ static bool JSStationGetShipEntity(ooscript::Context context, ooscript::Object s
 	OOJS_PROFILE_ENTER
 	
 	bool						result;
-	cxx::Entity					*entity = nullptr;	// the slot holds the C++ entity (bead oo-9ht.39.3)
+	Entity					*entity = nullptr;	// the slot holds the C++ entity (bead oo-9ht.39.3)
 	
 	if (outEntity == NULL)  return false;
 	*outEntity = nil;
@@ -978,7 +978,7 @@ static bool StationLaunchPolice(ooscript::Context context, ooscript::CallArgs &o
 	oo::PList::Array launched;	// the launched ships' entity nodes, in order (bead oo-9ht.39.5.3)
 	OOJS_BEGIN_FULL_NATIVE(context)
 	const oo::PList police = (station != nullptr ? station->launchPolice() : oo::PList());
-	for (cxx::Entity *ship : oo::EntitiesIn(police))  launched.push_back(oo::EntityObjectNode(ship));
+	for (Entity *ship : oo::EntitiesIn(police))  launched.push_back(oo::EntityObjectNode(ship));
 	OOJS_END_FULL_NATIVE
 	OOJS_RETURN_PLIST(oo::PList(std::move(launched)));
 	OOJS_NATIVE_EXIT

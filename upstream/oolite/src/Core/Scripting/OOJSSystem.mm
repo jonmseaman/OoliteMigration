@@ -95,16 +95,16 @@ static ooscript::Object sSystemPrototype;
 
 // Support functions for entity search methods.
 namespace {
-static BOOL GetRelativeToAndRange(ooscript::Context context, const std::string &methodName, unsigned *ioArgc, ooscript::Value **ioArgv, cxx::Entity **outRelativeTo, double *outRange);
+static BOOL GetRelativeToAndRange(ooscript::Context context, const std::string &methodName, unsigned *ioArgc, ooscript::Value **ioArgv, Entity **outRelativeTo, double *outRange);
 } // namespace
 namespace {
-static std::vector<oo::EntityHold> FindJSVisibleEntities(EntityFilterPredicate predicate, void *parameter, cxx::Entity *relativeTo, double range);
+static std::vector<oo::EntityHold> FindJSVisibleEntities(EntityFilterPredicate predicate, void *parameter, Entity *relativeTo, double range);
 } // namespace
 namespace {
-static std::vector<oo::EntityHold> FindShips(EntityFilterPredicate predicate, void *parameter, cxx::Entity *relativeTo, double range);
+static std::vector<oo::EntityHold> FindShips(EntityFilterPredicate predicate, void *parameter, Entity *relativeTo, double range);
 } // namespace
 namespace {
-static OOComparisonResult CompareEntitiesByDistance(cxx::Entity *a, cxx::Entity *b, cxx::Entity *relativeTo);
+static OOComparisonResult CompareEntitiesByDistance(Entity *a, Entity *b, Entity *relativeTo);
 } // namespace
 
 namespace {
@@ -904,7 +904,7 @@ static bool SystemCountShipsWithPrimaryRole(ooscript::Context context, ooscript:
 	OOJS_NATIVE_ENTER(context)
 	
 	std::optional<std::string>			role;
-	cxx::Entity			*relativeTo = nullptr;	// the C++ entity (bead oo-9ht.39.8.23)
+	Entity			*relativeTo = nullptr;	// the C++ entity (bead oo-9ht.39.8.23)
 	double				range = -1;
 	unsigned			result;
 	
@@ -939,7 +939,7 @@ static bool SystemCountShipsWithRole(ooscript::Context context, ooscript::CallAr
 	OOJS_NATIVE_ENTER(context)
 	
 	std::optional<std::string>			role;
-	cxx::Entity			*relativeTo = nullptr;	// the C++ entity (bead oo-9ht.39.8.23)
+	Entity			*relativeTo = nullptr;	// the C++ entity (bead oo-9ht.39.8.23)
 	double				range = -1;
 	unsigned			result;
 	
@@ -974,7 +974,7 @@ static bool SystemShipsWithPrimaryRole(ooscript::Context context, ooscript::Call
 	OOJS_NATIVE_ENTER(context)
 	
 	std::optional<std::string>			role;
-	cxx::Entity			*relativeTo = nullptr;	// the C++ entity (bead oo-9ht.39.8.23)
+	Entity			*relativeTo = nullptr;	// the C++ entity (bead oo-9ht.39.8.23)
 	double				range = -1;
 	std::vector<oo::EntityHold>	result;
 	
@@ -1010,7 +1010,7 @@ static bool SystemShipsWithRole(ooscript::Context context, ooscript::CallArgs &o
 	OOJS_NATIVE_ENTER(context)
 	
 	std::optional<std::string>			role;
-	cxx::Entity			*relativeTo = nullptr;	// the C++ entity (bead oo-9ht.39.8.23)
+	Entity			*relativeTo = nullptr;	// the C++ entity (bead oo-9ht.39.8.23)
 	double				range = -1;
 	std::vector<oo::EntityHold>	result;
 	
@@ -1046,7 +1046,7 @@ static bool SystemCountEntitiesWithScanClass(ooscript::Context context, ooscript
 	OOJS_NATIVE_ENTER(context)
 	
 	OOScanClass			scanClass = CLASS_NOT_SET;
-	cxx::Entity			*relativeTo = nullptr;	// the C++ entity (bead oo-9ht.39.8.23)
+	Entity			*relativeTo = nullptr;	// the C++ entity (bead oo-9ht.39.8.23)
 	double				range = -1;
 	unsigned			result;
 	
@@ -1081,7 +1081,7 @@ static bool SystemEntitiesWithScanClass(ooscript::Context context, ooscript::Cal
 	OOJS_NATIVE_ENTER(context)
 	
 	OOScanClass			scanClass = CLASS_NOT_SET;
-	cxx::Entity			*relativeTo = nullptr;	// the C++ entity (bead oo-9ht.39.8.23)
+	Entity			*relativeTo = nullptr;	// the C++ entity (bead oo-9ht.39.8.23)
 	double				range = -1;
 	std::vector<oo::EntityHold>	result;
 	
@@ -1118,7 +1118,7 @@ static bool SystemFilteredEntities(ooscript::Context context, ooscript::CallArgs
 	
 	ooscript::Object jsThis = NULL;
 	ooscript::Value				predicate;
-	cxx::Entity			*relativeTo = nullptr;	// the C++ entity (bead oo-9ht.39.8.23)
+	Entity			*relativeTo = nullptr;	// the C++ entity (bead oo-9ht.39.8.23)
 	double				range = -1;
 	std::vector<oo::EntityHold>	result;
 	
@@ -1562,7 +1562,7 @@ static bool SystemAddVisualEffect(ooscript::Context context, ooscript::CallArgs 
 		return false;
 	}
 
-	cxx::Entity *result = nullptr;	// the C++ effect (beads oo-9ht.165, oo-9ht.39.26)
+	Entity *result = nullptr;	// the C++ effect (beads oo-9ht.165, oo-9ht.39.26)
 
 	OOJS_BEGIN_FULL_NATIVE(context)
 
@@ -1772,7 +1772,7 @@ static bool SystemAddShipsOrGroup(Context cx, CallArgs &oojsArgs, bool isGroup)
 	
 	if (isGroup)
 	{
-		const std::vector<cxx::Entity *> ships = oo::EntitiesIn(result);	// borrowed: result holds them (bead oo-9ht.39.5.3)
+		const std::vector<Entity *> ships = oo::EntitiesIn(result);	// borrowed: result holds them (bead oo-9ht.39.5.3)
 		ShipEntity *first = (ships.size() > 0 ? oo::ToShip(ships[0]) : nullptr);
 		if (ships.size() > 0)  result = OOShipGroupObjectNode(first != nullptr ? first->group() : nullptr);
 		else  result = oo::PList();
@@ -1843,7 +1843,7 @@ static bool SystemAddShipsOrGroupToRoute(Context cx, CallArgs &oojsArgs, bool is
 	
 	if (isGroup)
 	{
-		const std::vector<cxx::Entity *> ships = oo::EntitiesIn(result);	// borrowed: result holds them (bead oo-9ht.39.5.3)
+		const std::vector<Entity *> ships = oo::EntitiesIn(result);	// borrowed: result holds them (bead oo-9ht.39.5.3)
 		ShipEntity *first = (ships.size() > 0 ? oo::ToShip(ships[0]) : nullptr);
 		if (ships.size() > 0)  result = OOShipGroupObjectNode(first != nullptr ? first->group() : nullptr);
 		else  result = oo::PList();
@@ -1858,7 +1858,7 @@ static bool SystemAddShipsOrGroupToRoute(Context cx, CallArgs &oojsArgs, bool is
 
 
 namespace {
-static BOOL GetRelativeToAndRange(ooscript::Context context, const std::string &methodName, unsigned *ioArgc, ooscript::Value **ioArgv, cxx::Entity **outRelativeTo, double *outRange)
+static BOOL GetRelativeToAndRange(ooscript::Context context, const std::string &methodName, unsigned *ioArgc, ooscript::Value **ioArgv, Entity **outRelativeTo, double *outRange)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -1868,7 +1868,7 @@ static BOOL GetRelativeToAndRange(ooscript::Context context, const std::string &
 	// Get optional argument relativeTo : Entity
 	if (*ioArgc != 0)
 	{
-		cxx::Entity *relativeTo = nullptr;	// the C++ entity since bead oo-9ht.39.3, which goes out since bead oo-9ht.39.8.23
+		Entity *relativeTo = nullptr;	// the C++ entity since bead oo-9ht.39.3, which goes out since bead oo-9ht.39.8.23
 		if (EXPECT_NOT(ooscript::isNull(**ioArgv) || !JSValueToEntity(context, **ioArgv, &relativeTo)))
 		{
 			cxx_OOJSReportBadArguments(context, "System", methodName, 1, *ioArgv, std::nullopt, "entity");
@@ -1897,7 +1897,7 @@ static BOOL GetRelativeToAndRange(ooscript::Context context, const std::string &
 
 
 namespace {
-static std::vector<oo::EntityHold> FindJSVisibleEntities(EntityFilterPredicate predicate, void *parameter, cxx::Entity *relativeTo, double range)
+static std::vector<oo::EntityHold> FindJSVisibleEntities(EntityFilterPredicate predicate, void *parameter, Entity *relativeTo, double range)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -1926,7 +1926,7 @@ static std::vector<oo::EntityHold> FindJSVisibleEntities(EntityFilterPredicate p
 
 
 namespace {
-static std::vector<oo::EntityHold> FindShips(EntityFilterPredicate predicate, void *parameter, cxx::Entity *relativeTo, double range)
+static std::vector<oo::EntityHold> FindShips(EntityFilterPredicate predicate, void *parameter, Entity *relativeTo, double range)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -1943,13 +1943,13 @@ static std::vector<oo::EntityHold> FindShips(EntityFilterPredicate predicate, vo
 
 
 namespace {
-static OOComparisonResult CompareEntitiesByDistance(cxx::Entity *a, cxx::Entity *b, cxx::Entity *relativeTo)
+static OOComparisonResult CompareEntitiesByDistance(Entity *a, Entity *b, Entity *relativeTo)
 {
 	OOJS_PROFILE_ENTER
 	
-	cxx::Entity			*ea = a,	// the C++ entities (bead oo-9ht.39.25)
+	Entity			*ea = a,	// the C++ entities (bead oo-9ht.39.25)
 	*eb = b;
-	cxx::Entity			*r = relativeTo;	// the C++ entity (bead oo-9ht.39.8.23)
+	Entity			*r = relativeTo;	// the C++ entity (bead oo-9ht.39.8.23)
 	float				d1, d2;
 	
 	d1 = HPdistance2(ea->position, r->position);

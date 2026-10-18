@@ -8,7 +8,7 @@ C++20 since bead oo-bj8, the Entities pattern seam (proposed ADR-0056, amendment
 Objective-C Entity facade (Entity+ObjCBridge.h) is deleted (bead oo-dpyk8, oo-9ht.39 step 5k.4): the
 C++ entity is its own identity and owns itself (oo::RefCounted; its last release runs what the
 facade's -dealloc ran, willDispose()). EntityHelpers.h, imported at the end of this header, keeps
-the facade's questions. The class leaves namespace cxx with oo-9ht.39.29.
+the facade's questions. The class left namespace cxx with bead oo-9ht.39.29.
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -46,7 +46,7 @@ MA 02110-1301, USA.
 #include "OOJSPrivateObject.h"
 #import "EntityVirtualMembers.h"	// the virtual members (bead oo-9ht.39.8.21)
 
-@class Entity;
+class Entity;
 class Universe;
 #include "OOTexture.h"	// allTextures() answers oo::Ref<OOTexture>, which needs the class (bead oo-9ht.99)
 class OOVisualEffectEntity;	// C++ since bead oo-9ht.165
@@ -75,8 +75,6 @@ extern size_t gTotalEntityMemory;
 // OOEntityStatus, OOScanClass and their defaults (bead oo-9ht.64: plain header).
 #include "OOEntityEnums.h"
 
-
-namespace cxx {
 
 /*	The base object for ships, stations, anything actually.
 
@@ -395,6 +393,8 @@ private:
 };
 
 
+namespace cxx {
+
 /*	The protocol OOSubEntity's methods, for a C++ subentity whose own façade is gone (ADR-0056
 	amendment oo-9ht.107): the owner that sent a subentity -rescaleBy: or
 	-drawSubEntityImmediate:translucent: calls these when the subentity's C++ part adopts this
@@ -432,7 +432,7 @@ OOScanClass cxx_OOScanClassFromString(const std::string &string);
 	does not apply to this entity, or its type is not bindable (as the selector path failed).
 */
 struct OOShaderMemberBinding;	// OOShaderUniformMethodType.h
-bool EntityShaderMemberBindingFor(cxx::Entity *entity, const char *property, OOShaderMemberBinding *outBinding);
+bool EntityShaderMemberBindingFor(Entity *entity, const char *property, OOShaderMemberBinding *outBinding);
 
 
 #include "oofnd/PList.hpp"
@@ -449,24 +449,24 @@ namespace oo {
 class EntityWeakPListForeign final : public PListForeign
 {
 public:
-	explicit EntityWeakPListForeign(cxx::Entity *entity) : _entity(entity) {}
-	cxx::Entity *entity() const noexcept  { return _entity.get(); }
+	explicit EntityWeakPListForeign(Entity *entity) : _entity(entity) {}
+	Entity *entity() const noexcept  { return _entity.get(); }
 	std::string className() const override  { return "OOWeakReference"; }	// what the proxy's class was
 	std::string description() const override;	// the entity's description, or <Dead OOWeakReference 0x...> (Entity.mm)
 
 private:
-	WeakRef<cxx::Entity>	_entity;
+	WeakRef<Entity>	_entity;
 };
 
 // The entity's weak node; a null PList for null.
-inline PList EntityWeakNode(cxx::Entity *entity)
+inline PList EntityWeakNode(Entity *entity)
 {
 	if (entity == nullptr)  return PList();
 	return PList(PList::Object(makeRef<EntityWeakPListForeign>(entity)));
 }
 
 // The live C++ entity of a weak node; null once it has gone, and for any other node.
-inline cxx::Entity *EntityInWeakNode(const PList &plist)
+inline Entity *EntityInWeakNode(const PList &plist)
 {
 	const PList::Object *node = plist.getIf<PList::Object>();
 	if (node == nullptr)  return nullptr;

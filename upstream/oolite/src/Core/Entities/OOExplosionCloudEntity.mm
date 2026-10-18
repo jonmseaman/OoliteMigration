@@ -55,7 +55,7 @@ constexpr std::string_view kExplosionTexture		= "texture";
 }	// namespace
 
 
-bool OOExplosionCloudEntity::initExplosionCloudWithEntity(cxx::Entity *entity, float size, const oo::PList &settings)
+bool OOExplosionCloudEntity::initExplosionCloudWithEntity(Entity *entity, float size, const oo::PList &settings)
 {
 	unsigned i;
 	unsigned maxCount = (UNIVERSE != nullptr ? UNIVERSE->getDetailLevel() : OOGraphicsDetail{}) <= DETAIL_LEVEL_SHADERS ? 10 : 25;
@@ -172,7 +172,7 @@ bool OOExplosionCloudEntity::initExplosionCloudWithEntity(cxx::Entity *entity, f
 // -dealloc released the texture: _texture does.
 
 
-oo::Ref<OOExplosionCloudEntity> OOExplosionCloudEntity::explosionCloudFromEntity(cxx::Entity *entity, const oo::PList &settings)
+oo::Ref<OOExplosionCloudEntity> OOExplosionCloudEntity::explosionCloudFromEntity(Entity *entity, const oo::PList &settings)
 {
 	oo::Ref<OOExplosionCloudEntity> result = oo::makeRef<OOExplosionCloudEntity>();
 	if (!result->initExplosionCloudWithEntity(entity, 0, settings))  return nullptr;
@@ -180,7 +180,7 @@ oo::Ref<OOExplosionCloudEntity> OOExplosionCloudEntity::explosionCloudFromEntity
 }
 
 
-oo::Ref<OOExplosionCloudEntity> OOExplosionCloudEntity::explosionCloudFromEntity(cxx::Entity *entity, float size, const oo::PList &settings)
+oo::Ref<OOExplosionCloudEntity> OOExplosionCloudEntity::explosionCloudFromEntity(Entity *entity, float size, const oo::PList &settings)
 {
 	oo::Ref<OOExplosionCloudEntity> result = oo::makeRef<OOExplosionCloudEntity>();
 	if (!result->initExplosionCloudWithEntity(entity, size, settings))  return nullptr;

@@ -386,14 +386,14 @@ struct OODebugMonitor::EntityDumpState
 {
 	std::set<oo::Ref<OOTexture>>	entityTextures;
 	std::set<oo::Ref<OOTexture>>	visibleEntityTextures;
-	std::map<cxx::Entity *, oo::EntityHold>	seenEntities;	// each held, as its object was retained (bead oo-w9pi2)
+	std::map<Entity *, oo::EntityHold>	seenEntities;	// each held, as its object was retained (bead oo-w9pi2)
 	unsigned					seenCount = 0;
 	size_t						totalEntityObjSize = 0;
 	size_t						totalDrawableSize = 0;
 };
 
 
-void OODebugMonitor::dumpEntity(cxx::Entity *entity, EntityDumpState *state, bool parentVisible)
+void OODebugMonitor::dumpEntity(Entity *entity, EntityDumpState *state, bool parentVisible)
 {
 	if (entity == nullptr || state->seenEntities.count(entity) != 0)  return;
 	state->seenEntities.emplace(entity, oo::EntityHold(entity));
@@ -448,7 +448,7 @@ void OODebugMonitor::dumpEntity(cxx::Entity *entity, EntityDumpState *state, boo
 			NSUInteger i, count = player->dialMaxMissiles();
 			for (i = 0; i < count; i++)
 			{
-				cxx::Entity *subentity = player->missileForPylon(i);
+				Entity *subentity = player->missileForPylon(i);
 				if (subentity != nullptr)  dumpEntity(subentity, state, false);
 			}
 		}

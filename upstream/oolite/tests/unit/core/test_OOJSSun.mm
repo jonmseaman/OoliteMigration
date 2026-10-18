@@ -28,8 +28,6 @@
 
 // MARK: The entity classes, as far as the binding sees them ---------------------------------------
 
-namespace cxx {
-
 // The C++ root, as far as the binding and the root's JS category reach it.
 class Entity : public oo::RefCounted
 {
@@ -40,13 +38,11 @@ public:
 	virtual bool isVisibleToScripts();
 };
 
-}	// namespace cxx
-
 
 /*	A sun whose radius is 99 raises from radius(), one whose radius is 98 throws a C++ exception, so
 	the test sees what an exception under a native becomes.
 */
-class OOSunEntity : public cxx::Entity
+class OOSunEntity : public Entity
 {
 public:
 	double radius();
@@ -72,15 +68,16 @@ public:
 #include "OOJSEntityHolder.h"
 
 
-@interface Entity: OOObject
+__attribute__((objc_runtime_name("Entity")))
+@interface TestEntityObject: OOObject
 {
 @public
-	oo::Ref<cxx::Entity> _cxxEntity;	// the sun's C++ part (oo::ToCxx reads it)
+	oo::Ref<Entity> _cxxEntity;	// the sun's C++ part (oo::ToCxx reads it)
 }
 - (id) weakRefUnderlyingObject;
 @end
 
-@interface Entity (OOJavaScriptExtensions)
+@interface TestEntityObject (OOJavaScriptExtensions)
 - (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
 - (std::optional<std::string>) cxx_oo_jsClassName;
 - (BOOL) isVisibleToScripts;
@@ -99,7 +96,7 @@ public:
 #include <vector>
 
 
-@implementation Entity
+@implementation TestEntityObject
 
 - (id) weakRefUnderlyingObject  { return self; }
 
@@ -108,17 +105,17 @@ public:
 
 // The root's JS category, as the game's asks the C++ part (EntityOOJavaScriptExtensions+ObjCBridge.mm,
 // bead oo-9ht.107): the engine sends these selectors to the wrapped object.
-@implementation Entity (OOJavaScriptExtensions)
+@implementation TestEntityObject (OOJavaScriptExtensions)
 - (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype  { _cxxEntity->getJSClass(outClass, outPrototype); }
 - (std::optional<std::string>) cxx_oo_jsClassName  { return _cxxEntity->jsClassName(); }
 - (BOOL) isVisibleToScripts  { return _cxxEntity->isVisibleToScripts(); }
 @end
 
 
-cxx::Entity::~Entity()  {}
-void cxx::Entity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)  { *outClass = nullptr; *outPrototype = nullptr; }
-std::optional<std::string> cxx::Entity::jsClassName()  { return std::string("Entity"); }
-bool cxx::Entity::isVisibleToScripts()  { return false; }
+Entity::~Entity()  {}
+void Entity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)  { *outClass = nullptr; *outPrototype = nullptr; }
+std::optional<std::string> Entity::jsClassName()  { return std::string("Entity"); }
+bool Entity::isVisibleToScripts()  { return false; }
 
 
 std::optional<std::string> OOSunEntity::name()  { return _name; }
@@ -316,22 +313,22 @@ namespace {
 ooscript::Runtime sRuntime;
 ooscript::Context sContext;
 ooscript::Object sGlobal;
-Entity *sSunObject = nil;	// the sun's Objective-C object, which the JS object holds
+TestEntityObject *sSunObject = nil;	// the sun's Objective-C object, which the JS object holds
 OOSunEntity *sSun = nullptr;	// its C++ part
 
 
-ooscript::Value JSValueForObject(ooscript::ClassDef *jsClass, ooscript::Object prototype, Entity *entity)
+ooscript::Value JSValueForObject(ooscript::ClassDef *jsClass, ooscript::Object prototype, TestEntityObject *entity)
 {
 	ooscript::Object object = ooscript::newObject(sContext, jsClass, prototype, nullptr);
-	if (entity->_cxxEntity == nullptr)  entity->_cxxEntity = oo::makeRef<cxx::Entity>();	// a plain entity's C++ part
+	if (entity->_cxxEntity == nullptr)  entity->_cxxEntity = oo::makeRef<Entity>();	// a plain entity's C++ part
 	if (object == nullptr || !OOJSSetCxxPrivate(sContext, object, oo::makeRef<OOJSEntityHolder>(entity->_cxxEntity.get()).get()))  return ooscript::nullValue();	// the slot holds the C++ entity (bead oo-9ht.39.3)
 	return ooscript::objectValue(object);
 }
 
 
-// A JS object for an entity, as -[Entity oo_jsValueInContext:] makes it: the class and prototype
+// A JS object for an entity, as -[TestEntityObject oo_jsValueInContext:] makes it: the class and prototype
 // the entity's category names, and the entity in the private slot.
-ooscript::Value JSValueForEntity(Entity *entity)
+ooscript::Value JSValueForEntity(TestEntityObject *entity)
 {
 	ooscript::ClassDef *jsClass = nullptr;
 	ooscript::Object prototype = nullptr;
@@ -357,13 +354,13 @@ void SetUpContext()
 	gOOEntityJSPrototype = ooscript::initClass(sContext, sGlobal, nullptr, &sFakeEntityClass, OOJSUnconstructableConstruct, 0, nullptr, nullptr, nullptr, nullptr);
 	InitOOJSSun(sContext, sGlobal);
 
-	sSunObject = [[Entity alloc] init];	// kept for the life of the test
+	sSunObject = [[TestEntityObject alloc] init];	// kept for the life of the test
 	sSunObject->_cxxEntity = oo::makeRef<OOSunEntity>();
 	sSun = static_cast<OOSunEntity *>(sSunObject->_cxxEntity.get());
 	sSun->_radius = 250000.5;
 	sSun->_name = "Lave";
 	Define("sun", JSValueForEntity(sSunObject));
-	Define("plainEntity", JSValueForObject(&sFakeEntityClass, gOOEntityJSPrototype, [[Entity alloc] init]));
+	Define("plainEntity", JSValueForObject(&sFakeEntityClass, gOOEntityJSPrototype, [[TestEntityObject alloc] init]));
 }
 
 

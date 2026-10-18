@@ -646,7 +646,7 @@ namespace {
 BOOL JSShipGetShipEntity(ooscript::Context context, ooscript::Object inObject, ShipEntity **outShip)
 {
 	OOCParameterAssert(outShip != NULL);
-	cxx::Entity *entity = nullptr;
+	Entity *entity = nullptr;
 	if (EXPECT_NOT(!OOJSEntityGetEntityOfClass(context, inObject, &sShipClass, &entity)))  return NO;
 	*outShip = oo::ToShip(entity);
 	return YES;
@@ -709,7 +709,7 @@ bool AIHasSuspendedStateMachines(ShipEntity *ship)
 
 // Whether an entity is a ship, as -isKindOfClass:[ShipEntity class] answered: a ship's C++ part is a
 // ShipEntity (Entity+ObjCBridge.mm picks the facade class from it). False for none.
-bool IsShip(cxx::Entity *entity)
+bool IsShip(Entity *entity)
 {
 	return dynamic_cast<ShipEntity *>(entity) != nullptr;
 }
@@ -1371,7 +1371,7 @@ bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObject, oos
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity					*entity = nullptr;
-	cxx::Entity					*target = nullptr;	// as JSValueToEntity() answers (the C++ entity since bead oo-9ht.39.3)
+	Entity					*target = nullptr;	// as JSValueToEntity() answers (the C++ entity since bead oo-9ht.39.3)
 	std::optional<std::string>	sValue;
 	double					fValue;
 	int32_t						iValue;
@@ -2548,7 +2548,7 @@ static bool ShipDumpCargo(ooscript::Context context, ooscript::CallArgs &oojsArg
 		for (i = 1; i < count; i++)
 		{
 			// drop 3 canisters per 2 seconds (a deferred call on the C++ ship since bead oo-9ht.39.7.3; by name on its object before)
-			oo::ScheduleEntityCall(thisEnt, [](cxx::Entity *entity) { if (ShipEntity *ship = dynamic_cast<ShipEntity *>(entity))  ship->dumpCargo(); }, (0.75 * i));
+			oo::ScheduleEntityCall(thisEnt, [](Entity *entity) { if (ShipEntity *ship = dynamic_cast<ShipEntity *>(entity))  ship->dumpCargo(); }, (0.75 * i));
 		}
 	}
 
@@ -3926,7 +3926,7 @@ static bool ShipEnterWormhole(ooscript::Context context, ooscript::CallArgs &ooj
 	OOJS_PROFILE_ENTER
 	
 	ShipEntity *thisEnt = nullptr;
-	cxx::Entity	*hole = nullptr;
+	Entity	*hole = nullptr;
 
 	if ((PLAYER != nullptr ? PLAYER->status() : OOEntityStatus{}) != STATUS_ENTERING_WITCHSPACE)
 	{
@@ -4267,7 +4267,7 @@ static bool ShipCheckCourseToDestination(ooscript::Context context, ooscript::Ca
 	GET_THIS_SHIP(thisEnt);
 	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not
 
-	cxx::Entity *hazard = (UNIVERSE != nullptr ? UNIVERSE->hazardOnRouteFromEntity(thisEnt, ship->desiredRange(), ship->destination()) : nullptr);	// the C++ entities (bead oo-9ht.39.8.6)
+	Entity *hazard = (UNIVERSE != nullptr ? UNIVERSE->hazardOnRouteFromEntity(thisEnt, ship->desiredRange(), ship->destination()) : nullptr);	// the C++ entities (bead oo-9ht.39.8.6)
 
 	OOJS_RETURN(OOJSValueFromCxxObject(context, hazard));	// the C++ hazard's JS value (its object's until bead oo-9ht.39.8.6)
 

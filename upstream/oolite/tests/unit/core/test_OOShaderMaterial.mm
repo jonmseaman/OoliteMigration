@@ -187,7 +187,7 @@ oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &unifor
 	OO_TEST_MADE_UNIFORM(uniformName, oo::str::format("quaternion %g %g %g %g %s", constValue.w, constValue.x, constValue.y, constValue.z, asMatrix ? "matrix" : "vector"));
 }
 
-oo::Ref<OOShaderUniform> OOShaderUniform::initWithEntityTarget(const std::string &uniformName, OOShaderProgram *, cxx::Entity *, SEL selector, OOUniformConvertOptions options)
+oo::Ref<OOShaderUniform> OOShaderUniform::initWithEntityTarget(const std::string &uniformName, OOShaderProgram *, Entity *, SEL selector, OOUniformConvertOptions options)
 {
 	OO_TEST_MADE_UNIFORM(uniformName, oo::str::format("binding %s options %u", sel_getName(selector), (unsigned)options));
 }
@@ -197,7 +197,7 @@ oo::Ref<OOShaderUniform> OOShaderUniform::initWithEntityTarget(const std::string
 OOShaderUniform::~OOShaderUniform()  {}
 std::optional<std::string> OOShaderUniform::description()					{ return name; }
 void OOShaderUniform::apply()												{ gUniformApplies++; }
-void OOShaderUniform::setEntityBindingTarget(cxx::Entity *target)	{ gUniformTargets.push_back(name + (target != nullptr ? " target" : " nil")); }
+void OOShaderUniform::setEntityBindingTarget(Entity *target)	{ gUniformTargets.push_back(name + (target != nullptr ? " target" : " nil")); }
 
 
 // The textures: "missing" fails to load, and then the null texture stands in.
@@ -271,7 +271,7 @@ void OOTexture::forceRebind()	{}
 
 
 // The binding whitelist, which the game implements elsewhere: everything but "forbidden".
-BOOL OOUniformBindingPermitted(const std::string &propertyName, cxx::Entity * /*bindingTarget*/)
+BOOL OOUniformBindingPermitted(const std::string &propertyName, Entity * /*bindingTarget*/)
 {
 	return propertyName != "forbidden";
 }
@@ -281,18 +281,18 @@ BOOL OOUniformBindingPermitted(const std::string &propertyName, cxx::Entity * /*
 // links no entity, so the class is a stand-in), whose seed the entities' hook answers as the
 // Objective-C target's -randomSeedForShaders did. (Its -someBinding was never called: the uniforms
 // are stand-ins.)
-namespace cxx { class Entity {}; }
-class TestTarget : public cxx::Entity {};
+class Entity {};
+class TestTarget : public Entity {};
 
 const OOShaderEntityHooks *OOShaderEntityHooksIfSet() noexcept
 {
 	static const OOShaderEntityHooks hooks =
 	{
-		[](cxx::Entity *) -> cxx::Entity * { return nullptr; },
-		[](cxx::Entity *) -> std::string { return "(null)"; },	// its object's class and description (bead oo-dpyk8): nil's
-		[](cxx::Entity *) -> std::string { return "(null)"; },
-		[](cxx::Entity *, const char *, OOShaderMemberBinding *) -> bool { return false; },
-		[](cxx::Entity *, uint32_t *outSeed) -> bool { *outSeed = 12345; return true; },
+		[](Entity *) -> Entity * { return nullptr; },
+		[](Entity *) -> std::string { return "(null)"; },	// its object's class and description (bead oo-dpyk8): nil's
+		[](Entity *) -> std::string { return "(null)"; },
+		[](Entity *, const char *, OOShaderMemberBinding *) -> bool { return false; },
+		[](Entity *, uint32_t *outSeed) -> bool { *outSeed = 12345; return true; },
 	};
 	return &hooks;
 }
@@ -328,7 +328,7 @@ oo::PList Config(oo::PList::Dict dict)
 const oo::PList kSources = Config({ { "_oo_vertex_shader_source", oo::PList("VS") }, { "_oo_fragment_shader_source", oo::PList("FS") } });
 
 
-oo::Ref<OOShaderMaterial> Make(const oo::PList &configuration, const oo::PList &macros = oo::PList(), cxx::Entity *target = nullptr)
+oo::Ref<OOShaderMaterial> Make(const oo::PList &configuration, const oo::PList &macros = oo::PList(), Entity *target = nullptr)
 {
 	gProgramRequests.clear();
 	gUniforms.clear();

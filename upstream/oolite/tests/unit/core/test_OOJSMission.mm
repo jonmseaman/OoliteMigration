@@ -43,7 +43,8 @@ typedef NSInteger OOGUIRow;	// as GuiDisplayGen.h declares it
 
 // The demo ship's object (the root's; the Objective-C ship's until bead oo-9ht.144 deleted it), which
 // oo::ToObjC answers for the demo ship.
-@interface Entity: OOObject
+__attribute__((objc_runtime_name("Entity")))
+@interface TestEntityObject: OOObject
 {
 @public
 	ooscript::Object _jsSelf;
@@ -62,7 +63,6 @@ typedef NSInteger OOGUIRow;	// as GuiDisplayGen.h declares it
 #include "oofnd/Ref.hpp"
 #include "OOJSPrivateObject.h"
 
-namespace cxx {
 class Entity : public oo::RefCounted, public OOJSPrivateObject	// the game's root's bases (its JS glue)
 {
 public:
@@ -71,10 +71,8 @@ public:
 	void clearJSSelf(ooscript::Object selfVal) override;
 };
 
-}	// namespace cxx
-
 // The ship: C++ since bead oo-9ht.144 (the demo ship is a plain one).
-class ShipEntity : public cxx::Entity
+class ShipEntity : public Entity
 {
 public:
 	void setEntityPersonalityInt(uint16_t value);
@@ -264,7 +262,7 @@ void CaptureLog(std::string_view line)
 }	// namespace
 
 
-@implementation Entity
+@implementation TestEntityObject
 
 - (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
 {
@@ -283,7 +281,7 @@ void CaptureLog(std::string_view line)
 
 void PlayerEntity::setScriptTarget(::ShipEntity *ship)  { (void)ship; }
 void ShipEntity::setEntityPersonalityInt(uint16_t value)  { _personality = value; }
-OOEntityStatus cxx::Entity::status()  { return static_cast<PlayerEntity *>(this)->_status; }
+OOEntityStatus Entity::status()  { return static_cast<PlayerEntity *>(this)->_status; }
 oo::PList PlayerEntity::getMissionDestinations()  { return oo::PList(_destinations); }
 std::optional<std::string> PlayerEntity::missionScreenID()
 {
@@ -424,13 +422,13 @@ void GuiDisplayGen::setArray(const std::vector<std::string> &, OOGUIRow)  { std:
 
 
 // The demo ship's object, which oo::ToObjC answers (only the demo ship crosses).
-::Entity *sDemoShipObject = nil;
-namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
-::Entity *oo::ToObjC(cxx::Entity *entity)  { return entity != nullptr ? sDemoShipObject : nil; }
+::TestEntityObject *sDemoShipObject = nil;
+namespace oo { ::TestEntityObject *ToObjC(Entity *entity); }
+::TestEntityObject *oo::ToObjC(Entity *entity)  { return entity != nullptr ? sDemoShipObject : nil; }
 // The C++ ship's JS value (bead oo-9ht.39.8.2: displayModel is OOJSValueFromCxxObject of the demo
 // ship): its object's, which the binding asked until then.
-ooscript::Value cxx::Entity::jsValueInContext(ooscript::Context context)  { return [oo::ToObjC(this) oo_jsValueInContext:context]; }
-void cxx::Entity::clearJSSelf(ooscript::Object)  {}
+ooscript::Value Entity::jsValueInContext(ooscript::Context context)  { return [oo::ToObjC(this) oo_jsValueInContext:context]; }
+void Entity::clearJSSelf(ooscript::Object)  {}
 
 
 oo::PList Universe::getMissiontext()	{ return Dict({ { "mission_title", oo::PList("The [name] Job") }, { "mission_number", oo::PList(12) } }); }
@@ -466,7 +464,7 @@ std::optional<std::string> OOScript::name()					{ return std::nullopt; }
 std::optional<std::string> OOScript::scriptDescription()		{ return std::nullopt; }
 std::optional<std::string> OOScript::version()				{ return std::nullopt; }
 bool OOScript::requiresTickle()								{ return false; }
-void OOScript::runWithTarget(cxx::Entity *)						{}
+void OOScript::runWithTarget(Entity *)						{}
 bool OOScript::callMethod(ooscript::PropertyId, ooscript::Context, ooscript::Value *, int, ooscript::Value *)	{ return false; }
 std::string OOScript::className() const						{ return "OOScript"; }
 std::string OOScript::description() const						{ return "<OOScript>"; }
@@ -781,7 +779,7 @@ void OOJSUnreachable(const char *function, const char *, unsigned)
 ooscript::Value OOJSValueFromCxxObject(ooscript::Context context, OOJSPrivateObject *object)
 {
 	if (object != nullptr && object == static_cast<OOJSPrivateObject *>(sRunningScript))  return ooscript::objectValue(sScriptObject);
-	if (dynamic_cast<cxx::Entity *>(object) != nullptr)  return object->jsValueInContext(context);	// the demo ship (bead oo-9ht.39.8.2)
+	if (dynamic_cast<Entity *>(object) != nullptr)  return object->jsValueInContext(context);	// the demo ship (bead oo-9ht.39.8.2)
 	return ooscript::nullValue();
 }
 
@@ -818,7 +816,7 @@ void SetUpContext()
 	sUniverse = new StandInUniverse();
 	sUniverse->_gui = oo::makeRef<GuiDisplayGen>().leakRef();	// kept for the life of the test
 	sUniverse->_demoShip = new ShipEntity;
-	sDemoShipObject = [[Entity alloc] init];
+	sDemoShipObject = [[TestEntityObject alloc] init];
 	gSharedUniverse = sUniverse;
 	sEngine = new OOJavaScriptEngine;
 	sRunningScript = oo::makeRef<OOJSScript>().leakRef();

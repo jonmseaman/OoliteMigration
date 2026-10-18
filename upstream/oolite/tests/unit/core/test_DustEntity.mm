@@ -85,7 +85,7 @@ TestPlayer *SetUp()
 
 
 // What the universe does: a dust entity, and its root facade.
-cxx::Entity *MakeDust(DustEntity **outDust)
+Entity *MakeDust(DustEntity **outDust)
 {
 	oo::Ref<DustEntity> dust = oo::makeRef<DustEntity>();
 	dust->init();
@@ -110,7 +110,7 @@ OO_TEST(init)
 	{
 		SetUp();
 		DustEntity *dust = nullptr;
-		cxx::Entity *object = MakeDust(&dust);
+		Entity *object = MakeDust(&dust);
 		OO_CHECK(object != nil && dust != nullptr && dynamic_cast<DustEntity *>(object) == dust);
 		OO_CHECK(dust->status() == STATUS_ACTIVE);
 		OO_CHECK(dust->collisionRadius() == DUST_SCALE && !dust->canCollide());
@@ -135,7 +135,7 @@ OO_TEST(cameraRelativePosition)
 	{
 		TestPlayer *player = SetUp();
 		DustEntity *dust = nullptr;
-		cxx::Entity *object = MakeDust(&dust);
+		Entity *object = MakeDust(&dust);
 		player->_viewpoint = make_HPvector(2500, -100, 4000);
 		dust->updateCameraRelativePosition();
 		Vector relative = object->getCameraRelativePosition();

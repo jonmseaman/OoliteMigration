@@ -202,7 +202,7 @@ oo::Ref<OOMesh> OOMesh::meshWithName(const std::string &name,
 									 const oo::PList &shadersDict,
 									 bool smooth,
 									 const oo::PList &macros,
-									 cxx::Entity *object)
+									 Entity *object)
 {
 	// [[self alloc] initWithName:...] autoreleased: a new mesh, loaded, or null when it did not load.
 	oo::Ref<OOMesh> mesh = oo::makeRef<OOMesh>();
@@ -216,7 +216,7 @@ oo::Ref<OOMesh> OOMesh::meshWithName(const std::string &name,
 									 const oo::PList &shadersDict,
 									 bool smooth,
 									 const oo::PList &macros,
-									 cxx::Entity *object,
+									 Entity *object,
 									 float scale,
 									 bool cacheWriteable)
 {
@@ -336,7 +336,7 @@ void OOMesh::renderOpaqueParts()
 {
 	OO_ENTER_OPENGL();
 	
-	cxx::Entity *bindingEntity = _shaderBindingTarget.get();	// a message to a gone target's weak reference answered NO
+	Entity *bindingEntity = _shaderBindingTarget.get();	// a message to a gone target's weak reference answered NO
 	BOOL meshBelongsToVisualEffect = bindingEntity != nullptr && bindingEntity->getIsVisualEffect();
 	
 	OOSetOpenGLState(OPENGL_STATE_OPAQUE);
@@ -750,7 +750,7 @@ oo::Ref<OOMesh> OOMesh::meshRescaledBy(GLfloat scaleFactor)
 
 
 
-void OOMesh::setBindingTarget(cxx::Entity *target)
+void OOMesh::setBindingTarget(Entity *target)
 {
 	unsigned				i;
 
@@ -835,7 +835,7 @@ bool OOMesh::initWithName(const std::string &name,
 						  const oo::PList &shadersDict,
 						  bool smooth,
 						  const oo::PList &macros,
-						  cxx::Entity *target,
+						  Entity *target,
 						  float scale,
 						  bool cacheWriteable)
 {

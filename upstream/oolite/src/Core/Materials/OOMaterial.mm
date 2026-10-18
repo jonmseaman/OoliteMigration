@@ -142,7 +142,7 @@ bool OOMaterial::isFinishedLoading()
 }
 
 
-void OOMaterial::setBindingTarget(cxx::Entity */*target*/)
+void OOMaterial::setBindingTarget(Entity */*target*/)
 {
 
 }

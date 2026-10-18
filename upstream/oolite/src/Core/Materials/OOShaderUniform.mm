@@ -242,7 +242,7 @@ oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &unifor
 
 oo::Ref<OOShaderUniform> OOShaderUniform::initWithEntityTarget(const std::string &uniformName,
 															   OOShaderProgram *shaderProgram,
-															   cxx::Entity *target,
+															   Entity *target,
 															   SEL selector,
 															   OOUniformConvertOptions options)
 {
@@ -463,7 +463,7 @@ void OOShaderUniform::setBindingTarget(id<OOWeakReferenceSupport> target)
 }
 
 
-void OOShaderUniform::setEntityBindingTarget(cxx::Entity *target)
+void OOShaderUniform::setEntityBindingTarget(Entity *target)
 {
 	const OOShaderEntityHooks *hooks = OOShaderEntityHooksIfSet();
 
@@ -481,7 +481,7 @@ void OOShaderUniform::setEntityBindingTarget(cxx::Entity *target)
 	{
 		for (;;)
 		{
-			cxx::Entity *superCandidate = hooks->superTarget(target);
+			Entity *superCandidate = hooks->superTarget(target);
 			if (superCandidate == nullptr || superCandidate == target)  break;
 			target = superCandidate;
 		}

@@ -178,7 +178,7 @@ static bool JSDockGetDockEntity(ooscript::Context context, ooscript::Object dock
 	OOJS_PROFILE_ENTER
 	
 	bool						result;
-	cxx::Entity					*entity = nullptr;	// the slot holds the C++ entity (bead oo-9ht.39.3)
+	Entity					*entity = nullptr;	// the slot holds the C++ entity (bead oo-9ht.39.3)
 	
 	if (outEntity == NULL)  return false;
 	*outEntity = nil;
@@ -205,7 +205,7 @@ static bool JSDockGetShipEntity(ooscript::Context context, ooscript::Object ship
 	OOJS_PROFILE_ENTER
 	
 	bool						result;
-	cxx::Entity					*entity = nullptr;	// the slot holds the C++ entity (bead oo-9ht.39.3)
+	Entity					*entity = nullptr;	// the slot holds the C++ entity (bead oo-9ht.39.3)
 	
 	if (outEntity == NULL)  return false;
 	*outEntity = nil;

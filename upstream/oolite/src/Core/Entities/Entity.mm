@@ -60,8 +60,6 @@ constexpr const char *kOOLogEntityVerificationError		= "entity.linkedList.verify
 
 
 
-namespace cxx {
-
 // -init's body is init(), which the facade runs again when an initialised entity is sent -init.
 Entity::Entity()
 {
@@ -623,18 +621,15 @@ Entity *Entity::ownerEntity()
 }
 
 
-}	// namespace cxx
 
 
 std::string oo::EntityWeakPListForeign::description() const
 {
 	// What "%@" printed for the weak reference: its object's description, or <Dead ...> once gone.
-	if (cxx::Entity *entity = _entity.get())  return EntityDescription(entity);
+	if (Entity *entity = _entity.get())  return EntityDescription(entity);
 	return str::format("<Dead OOWeakReference %s>", str::pointerDescription(this).c_str());
 }
 
-
-namespace cxx {
 
 Entity *Entity::parentEntity()
 {
@@ -1263,4 +1258,3 @@ void Entity::deleteJSSelf()
 	::EntityJSDeleteJSSelf(this);
 }
 
-}	// namespace cxx

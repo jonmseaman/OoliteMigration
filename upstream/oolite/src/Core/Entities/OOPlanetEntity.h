@@ -54,7 +54,7 @@ class OOPlanetDrawable;	// C++ since bead oo-mw4u (no facade: this class is its 
 	(OOStellarBodyRadius() asks them for an Objective-C object), and the root's facade answers the
 	shader binding selectors for a planet only (Entity (OOPlanetShaderBindings), Entity+ObjCBridge.mm).
 */
-class OOPlanetEntity : public cxx::Entity, public ::OOGraphicsResetClient
+class OOPlanetEntity : public Entity, public ::OOGraphicsResetClient
 {
 public:
 	~OOPlanetEntity() override;	// unregisters the graphics reset client (bead oo-9ht.23)

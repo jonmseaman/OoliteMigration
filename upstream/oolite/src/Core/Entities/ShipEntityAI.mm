@@ -68,7 +68,7 @@ bool IsWhitespace(char16_t c)
 
 
 // A debug context "<description> suffix" in debug builds, nil (nullopt) otherwise.
-std::optional<std::string> DebugContext(cxx::Entity *entity, const char *suffix)	// the entity's object's short description (bead oo-9ht.39.16)
+std::optional<std::string> DebugContext(Entity *entity, const char *suffix)	// the entity's object's short description (bead oo-9ht.39.16)
 {
 #ifndef NDEBUG
 	return oo::str::format("%s %s", oo::EntityShortDescription(entity).c_str(), suffix);
@@ -179,7 +179,7 @@ void ShipEntity::scanForHostiles()
 		::ShipEntity *thing = scanned_ships[i];
 		GLfloat d2 = distance2_scanned_ships[i];
 		if ((d2 < found_d2) 
-			&& ((thing != nullptr ? thing->isThargoid() : false) || (((thing != nullptr ? thing->primaryTarget() : (cxx::Entity *)nullptr) == this) && (thing != nullptr ? thing->hasHostileTarget() : false)) || (thing != nullptr ? thing->isDefenseTarget(this) : false))
+			&& ((thing != nullptr ? thing->isThargoid() : false) || (((thing != nullptr ? thing->primaryTarget() : (Entity *)nullptr) == this) && (thing != nullptr ? thing->hasHostileTarget() : false)) || (thing != nullptr ? thing->isDefenseTarget(this) : false))
 			&& !(thing != nullptr ? thing->isCloaked() : false))
 		{
 			setFoundTarget(thing);
@@ -332,7 +332,7 @@ void ShipEntity::performLandOnPlanet()
 
 void ShipEntity::performMining()
 {
-	cxx::Entity *target = primaryTarget();
+	Entity *target = primaryTarget();
 	// mining is not seen as hostile behaviour, so ensure it is only used against rocks.
 	if (target &&  (target != nullptr ? target->getScanClass() : OOScanClass{}) == CLASS_ROCK)
 	{
@@ -399,7 +399,7 @@ void ShipEntity::requestDockingCoordinates()
 	 then use the nearest it can find (which may be a rock hermit) -*/
 	
 	::StationEntity	*station =  nil;
-	cxx::Entity			*targStation = nullptr;
+	Entity			*targStation = nullptr;
 	double		distanceToStation2 = 0.0;
 	
 	targStation = targetStation();
@@ -493,7 +493,7 @@ void ShipEntity::enterPlayerWormhole()
 void ShipEntity::enterTargetWormhole()
 {
 	WormholeEntity *whole = nullptr;	// C++ since bead oo-9ht.112
-	cxx::Entity		*targEnt = primaryTarget();	// any entity: a wormhole is the one sought (the ship's object was typed ShipEntity until bead oo-9ht.144)
+	Entity		*targEnt = primaryTarget();	// any entity: a wormhole is the one sought (the ship's object was typed ShipEntity until bead oo-9ht.144)
 	double found_d2 = scannerRange * scannerRange;
 	
 	if (targEnt && (HPdistance2(position, targEnt->getPosition()) < found_d2))
@@ -508,18 +508,18 @@ void ShipEntity::enterTargetWormhole()
 	{
 		// locate nearest wormhole
 		int				ent_count =		UNIVERSE->n_entities;
-		cxx::Entity**		uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
-		std::vector<oo::Ref<cxx::Entity>>	wormholes(ent_count);	// kept for the loop, as the objects were retained (bead oo-9ht.39.16)
+		Entity**		uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
+		std::vector<oo::Ref<Entity>>	wormholes(ent_count);	// kept for the loop, as the objects were retained (bead oo-9ht.39.16)
 		int i;
 		int wh_count = 0;
 		for (i = 0; i < ent_count; i++)
 			if (uni_entities[i]->isWormhole)
-				wormholes[wh_count++] = oo::Ref<cxx::Entity>(uni_entities[i]);
+				wormholes[wh_count++] = oo::Ref<Entity>(uni_entities[i]);
 		//
 		//double found_d2 = scannerRange * scannerRange;
 		for (i = 0; i < wh_count ; i++)
 		{
-			cxx::Entity *wh = wormholes[i].get();
+			Entity *wh = wormholes[i].get();
 			double d2 = HPdistance2(position, wh->position);
 			if (d2 < found_d2)
 			{
@@ -538,7 +538,7 @@ void ShipEntity::enterTargetWormhole()
 void ShipEntity::wormholeEscorts()
 {
 	::ShipEntity			*ship = nil;
-	cxx::Entity			*whole = nullptr;	// the wormhole (bead oo-9ht.39.16)
+	Entity			*whole = nullptr;	// the wormhole (bead oo-9ht.39.16)
 	
 	whole = primaryTarget();
 	if (!(whole != nullptr && whole->getIsWormhole()))  return;
@@ -782,7 +782,7 @@ bool ShipEntity::performHyperSpaceExitReplace(bool replace, OOSystemID systemID)
 	// +alloc/-initWormholeTo:fromShip:/-autorelease: a new C++ wormhole and its autoreleased
 	// Objective-C object (bead oo-9ht.112).
 	oo::Ref<WormholeEntity> whRef = oo::makeRef<WormholeEntity>();
-	cxx::Entity *wholeObject = oo::MadeEntity(whRef);	// the wormhole, given its object (bead oo-9ht.39.26)
+	Entity *wholeObject = oo::MadeEntity(whRef);	// the wormhole, given its object (bead oo-9ht.39.26)
 	whRef->initWormholeTo(targetSystem, this);
 	WormholeEntity  *whole = whRef.get();
 	if (UNIVERSE != nullptr)  UNIVERSE->addEntity(wholeObject);
@@ -831,7 +831,7 @@ void ShipEntity::scanForNearestShipWithNegatedPredicate(EntityFilterPredicate pr
 
 void ShipEntity::acceptDistressMessageFrom(::ShipEntity *other)
 {
-	setFoundTarget((other != nullptr ? other->primaryTarget() : (cxx::Entity *)nullptr));
+	setFoundTarget((other != nullptr ? other->primaryTarget() : (Entity *)nullptr));
 	if (isPolice())
 	{
 		if (oo::ToShip(foundTarget()) != nullptr)  oo::ToShip(foundTarget())->markAsOffender(8, kOOLegalStatusReasonDistressCall);  // you have been warned!!
@@ -891,9 +891,9 @@ void StationEntity::acceptDistressMessageFrom(::ShipEntity *other)
 {
 	if (this != (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr))  return;
 
-	const oo::WeakRef<cxx::Entity> old_target = _primaryTarget;
-	_primaryTarget = oo::WeakRef<cxx::Entity>(other != nullptr ? other->primaryTarget() : (cxx::Entity *)nullptr);
-	if (oo::ToShip((other != nullptr ? other->primaryTarget() : (cxx::Entity *)nullptr)) != nullptr)  oo::ToShip((other != nullptr ? other->primaryTarget() : (cxx::Entity *)nullptr))->markAsOffender(8, kOOLegalStatusReasonDistressCall);	// mark their card
+	const oo::WeakRef<Entity> old_target = _primaryTarget;
+	_primaryTarget = oo::WeakRef<Entity>(other != nullptr ? other->primaryTarget() : (Entity *)nullptr);
+	if (oo::ToShip((other != nullptr ? other->primaryTarget() : (Entity *)nullptr)) != nullptr)  oo::ToShip((other != nullptr ? other->primaryTarget() : (Entity *)nullptr))->markAsOffender(8, kOOLegalStatusReasonDistressCall);	// mark their card
 	launchDefenseShip();
 	_primaryTarget = old_target;
 
@@ -1003,7 +1003,7 @@ void ShipEntity::setThrustFactorTo(const std::string &thrustFactorString)	// cal
 
 void ShipEntity::setTargetToPrimaryAggressor()
 {
-	cxx::Entity *primeAggressor = primaryAggressor();
+	Entity *primeAggressor = primaryAggressor();
 	if (!primeAggressor)
 		return;
 	if (primaryTarget() == primeAggressor)
@@ -1023,7 +1023,7 @@ void ShipEntity::setTargetToPrimaryAggressor()
 	{
 		// inform our old target of our new target
 		//
-		cxx::Entity *primeTarget = primaryTarget();
+		Entity *primeTarget = primaryTarget();
 		if ((primeTarget)&&(primeTarget->isShip))
 		{
 			::ShipEntity *currentShip = oo::ToShip(primaryTarget());
@@ -1039,7 +1039,7 @@ void ShipEntity::setTargetToPrimaryAggressor()
 
 void ShipEntity::addPrimaryAggressorAsDefenseTarget()
 {
-	cxx::Entity *primeAggressor = primaryAggressor();
+	Entity *primeAggressor = primaryAggressor();
 	if (!primeAggressor)
 		return;
 	if (isDefenseTarget(primeAggressor))
@@ -1215,7 +1215,7 @@ void ShipEntity::setTargetToFoundTarget()
 
 void ShipEntity::addFoundTargetAsDefenseTarget()
 {
-	cxx::Entity *fTarget = foundTarget();
+	Entity *fTarget = foundTarget();
 	if (fTarget != nil)
 	{
 		if (oo::EntityIsShip(fTarget) && !(oo::ToShip(fTarget) != nullptr ? oo::ToShip(fTarget)->isFriendlyTo(this) : false))
@@ -1300,7 +1300,7 @@ void ShipEntity::fightOrFleeMissile()
 		::ShipEntity *thing = scanned_ships[i];
 		if (thing->scanClass == CLASS_MISSILE)
 		{
-			target = oo::ToShip((thing != nullptr ? thing->primaryTarget() : (cxx::Entity *)nullptr));
+			target = oo::ToShip((thing != nullptr ? thing->primaryTarget() : (Entity *)nullptr));
 			
 			if (target == this)
 			{
@@ -1480,7 +1480,7 @@ void ShipEntity::exitAIWithMessage(const std::string &message)	// called by name
 
 void ShipEntity::setDestinationToTarget()
 {
-	cxx::Entity *the_target = primaryTarget();
+	Entity *the_target = primaryTarget();
 	if (the_target)
 		_destination = the_target->position;
 }
@@ -1488,7 +1488,7 @@ void ShipEntity::setDestinationToTarget()
 
 void ShipEntity::setDestinationWithinTarget()
 {
-	cxx::Entity *the_target = primaryTarget();
+	Entity *the_target = primaryTarget();
 	if (the_target)
 	{
 		HPVector pos = the_target->position;
@@ -1502,7 +1502,7 @@ void ShipEntity::setDestinationWithinTarget()
 
 void ShipEntity::checkCourseToDestination()
 {
-	cxx::Entity *hazard = (UNIVERSE != nullptr ? UNIVERSE->hazardOnRouteFromEntity(this, desired_range, _destination) : nullptr);	// the C++ entities (bead oo-9ht.39.8.6); asked what its object answered (bead oo-9ht.39.16)
+	Entity *hazard = (UNIVERSE != nullptr ? UNIVERSE->hazardOnRouteFromEntity(this, desired_range, _destination) : nullptr);	// the C++ entities (bead oo-9ht.39.8.6); asked what its object answered (bead oo-9ht.39.16)
 	
 	if (hazard == nullptr || (oo::EntityIsShip(hazard) && HPdistance(position, hazard->getPosition()) > scannerRange) || (oo::EntityIsPlanet(hazard) && aegis_status == AEGIS_NONE)) 
 		{ if (shipAI != nullptr)  shipAI->message("COURSE_OK"); } // Avoid going into a waypoint.plist for far away objects, it cripples the main AI a bit in its funtionality.
@@ -1537,7 +1537,7 @@ void ShipEntity::checkAegis()
 			return;
 		case AEGIS_CLOSE_TO_ANY_PLANET:
 		{
-			cxx::Entity *nearest = findNearestStellarBody();	// the C++ entity (bead oo-al52f)
+			Entity *nearest = findNearestStellarBody();	// the C++ entity (bead oo-al52f)
 			
 			if(nearest != nullptr && nearest->isSun())
 			{
@@ -1612,7 +1612,7 @@ void ShipEntity::findNewDefenseTarget()
 	for (i = 0; i < n_scanned_ships ; i++)
 	{
 		::ShipEntity *ship = scanned_ships[i];
-		if (!(ship != nullptr ? ship->isCloaked() : false) && (((ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == this && (ship != nullptr ? ship->hasHostileTarget() : false)) || (ship != nullptr ? ship->isMine() : false) || ((ship != nullptr ? ship->isThargoid() : false) != isThargoid())))
+		if (!(ship != nullptr ? ship->isCloaked() : false) && (((ship != nullptr ? ship->primaryTarget() : (Entity *)nullptr) == this && (ship != nullptr ? ship->hasHostileTarget() : false)) || (ship != nullptr ? ship->isMine() : false) || ((ship != nullptr ? ship->isThargoid() : false) != isThargoid())))
 		{
 			if (!isDefenseTarget(ship))
 			{
@@ -1710,7 +1710,7 @@ void ShipEntity::disengageAutopilot()
 void ShipEntity::wormholeGroup()
 {
 	::ShipEntity			*ship = nil;
-	cxx::Entity			*whole = nullptr;	// the wormhole (bead oo-9ht.39.16)
+	Entity			*whole = nullptr;	// the wormhole (bead oo-9ht.39.16)
 	
 	whole = primaryTarget();
 	if (!(whole != nullptr && whole->getIsWormhole()))  return;
@@ -1748,7 +1748,7 @@ void ShipEntity::ejectCargo()
 	for (i = 1; i < cargo_to_go; i++)
 	{
 		// drop 3 canisters per 2 seconds (a deferred call on the C++ ship since bead oo-9ht.39.7.3; by name on its object before)
-		oo::ScheduleEntityCall(this, [](cxx::Entity *entity) { if (ShipEntity *ship = dynamic_cast<ShipEntity *>(entity))  ship->dumpCargo(); }, 0.75 * i);
+		oo::ScheduleEntityCall(this, [](Entity *entity) { if (ShipEntity *ship = dynamic_cast<ShipEntity *>(entity))  ship->dumpCargo(); }, 0.75 * i);
 	}
 }
 
@@ -1814,12 +1814,12 @@ void ShipEntity::thargonCheckMother()
 void ShipEntity::becomeUncontrolledThargon()
 {
 	int			ent_count =		UNIVERSE->n_entities;
-	cxx::Entity**	uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
+	Entity**	uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
 	int i;
 	for (i = 0; i < ent_count; i++) if (uni_entities[i]->isShip)
 	{
 		::ShipEntity *other = oo::ToShip(uni_entities[i]);
-		if ((other != nullptr ? other->primaryTarget() : (cxx::Entity *)nullptr) == this)
+		if ((other != nullptr ? other->primaryTarget() : (Entity *)nullptr) == this)
 		{
 			if (other != nullptr)  other->removeTarget(this);
 		}
@@ -1851,7 +1851,7 @@ void ShipEntity::fightOrFleeHostiles()
 	
 	if (hasEscorts())
 	{
-		cxx::Entity *leTarget = lastEscortTarget();
+		Entity *leTarget = lastEscortTarget();
 		if (leTarget != nil)
 		{
 			setFoundTarget(leTarget);
@@ -1951,7 +1951,7 @@ void ShipEntity::scanForFormationLeader()
 	for (i = 0; i < n_scanned_ships; i++)
 	{
 		::ShipEntity *ship = scanned_ships[i];
-		if ((ship != this) && (!ship->isPlayer) && (ship->scanClass == scanClass) && (ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) != this && !(ship != nullptr ? ship->isCloaked() : false))	// look for alike
+		if ((ship != this) && (!ship->isPlayer) && (ship->scanClass == scanClass) && (ship != nullptr ? ship->primaryTarget() : (Entity *)nullptr) != this && !(ship != nullptr ? ship->isCloaked() : false))	// look for alike
 		{
 			GLfloat d2 = distance2_scanned_ships[i];
 			if ((d2 < found_d2) && (ship != nullptr ? ship->canAcceptEscort(this) : false))
@@ -1999,7 +1999,7 @@ void ShipEntity::setPlanetPatrolCoordinates()
 	HPVector r_pos = HPvector_subtract(position, coordinates);
 	if (HPmagnitude2(r_pos) < 1000000 || patrol_counter == 0)
 	{
-		cxx::Entity *the_sun = (UNIVERSE != nullptr ? UNIVERSE->sun() : nullptr);
+		Entity *the_sun = (UNIVERSE != nullptr ? UNIVERSE->sun() : nullptr);
 		::ShipEntity *the_station = (group() != nullptr ? group()->leader() : (::ShipEntity *)nil);
 		if(!the_station || !(the_station != nullptr ? the_station->getIsStation() : false)) the_station = oo::ToShip((UNIVERSE != nullptr ? UNIVERSE->station() : nullptr));
 		if ((!the_sun)||(!the_station))
@@ -2098,7 +2098,7 @@ void ShipEntity::setSunSkimEndCoordinates()
 
 void ShipEntity::setSunSkimExitCoordinates()
 {
-	cxx::Entity *the_sun = (UNIVERSE != nullptr ? UNIVERSE->sun() : nullptr);
+	Entity *the_sun = (UNIVERSE != nullptr ? UNIVERSE->sun() : nullptr);
 	if (the_sun == nil)  return;
 	HPVector v1 = (UNIVERSE != nullptr ? UNIVERSE->getSunSkimEndPositionForShip(this) : HPVector{});
 	HPVector vs = the_sun->position;
@@ -2183,7 +2183,7 @@ void ShipEntity::markTargetForOffence(const std::string &valueString)	// called 
 
 void ShipEntity::storeTarget()
 {
-	cxx::Entity *target = primaryTarget();
+	Entity *target = primaryTarget();
 	
 	if (target)
 	{
@@ -2278,7 +2278,7 @@ void ShipEntity::scanForRocks()
 
 void ShipEntity::setDestinationToDockingAbort()
 {
-	cxx::Entity *the_target = targetStation();
+	Entity *the_target = targetStation();
 	if (!the_target) {
 		/* Probably the player trying to dock with docking computer
 		 * from out of scanner range */
@@ -2318,7 +2318,7 @@ void ShipEntity::requestNewTarget()
 		::ShipEntity *thing = scanned_ships[i];
 		GLfloat d2 = distance2_scanned_ships[i];
 		GLfloat e1 = (thing != nullptr ? thing->getEnergy() : 0.0f);
-		if ((d2 < found_d2) && !(thing != nullptr ? thing->isCloaked() : false) && (((thing != nullptr ? thing->isThargoid() : false) && !(mother != nullptr ? mother->isThargoid() : false)) || (((thing != nullptr ? thing->primaryTarget() : (cxx::Entity *)nullptr) == mother) && (thing != nullptr ? thing->hasHostileTarget() : false))))
+		if ((d2 < found_d2) && !(thing != nullptr ? thing->isCloaked() : false) && (((thing != nullptr ? thing->isThargoid() : false) && !(mother != nullptr ? mother->isThargoid() : false)) || (((thing != nullptr ? thing->primaryTarget() : (Entity *)nullptr) == mother) && (thing != nullptr ? thing->hasHostileTarget() : false))))
 		{
 			if (e1 > max_e)
 			{
@@ -2559,8 +2559,8 @@ void ShipEntity::setTargetToRandomStation()
 {
 	/*- selects the nearest station it can find -*/
 	int				ent_count = UNIVERSE->n_entities;
-	cxx::Entity			**uni_entities = UNIVERSE->sortedEntities;	// grab the public sorted list
-	std::vector<oo::Ref<cxx::Entity>>	my_entities(ent_count);	// kept for the search, as the objects were retained (bead oo-9ht.39.16)
+	Entity			**uni_entities = UNIVERSE->sortedEntities;	// grab the public sorted list
+	std::vector<oo::Ref<Entity>>	my_entities(ent_count);	// kept for the search, as the objects were retained (bead oo-9ht.39.16)
 	::StationEntity	*station = nil, *my_station = nil;
 	double			maxRange2 = desired_range * desired_range;
 	int				i;
@@ -2574,7 +2574,7 @@ void ShipEntity::setTargetToRandomStation()
 			my_station = oo::ToStation(uni_entities[i]);
 			if ((my_station != nullptr ? my_station->getMaxFlightSpeed() : 0.0f) == 0 && (my_station != nullptr ? my_station->getHasNPCTraffic() : false) && HPdistance2(position, (my_station != nullptr ? my_station->getPosition() : HPVector{})) < maxRange2)
 			{
-				my_entities[station_count++] = oo::Ref<cxx::Entity>(uni_entities[i]);		//	retained
+				my_entities[station_count++] = oo::Ref<Entity>(uni_entities[i]);		//	retained
 			}
 		}
 	}
@@ -2611,7 +2611,7 @@ void ShipEntity::setTargetToRandomStation()
 
 void ShipEntity::setTargetToLastStation()
 {
-	cxx::Entity *station = targetStation();
+	Entity *station = targetStation();
 	
 	if (station != nil && (station != nullptr && station->getIsStation()))
 	{

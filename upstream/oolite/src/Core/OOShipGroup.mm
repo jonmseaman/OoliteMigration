@@ -208,7 +208,7 @@ void OOShipGroup::setLeader(::ShipEntity *leader)
 	{
 		_leader.reset();
 		addShip(leader);
-		_leader = oo::WeakRef<cxx::Entity>(leader);	// empty for none
+		_leader = oo::WeakRef<Entity>(leader);	// empty for none
 	}
 }
 
@@ -282,7 +282,7 @@ bool OOShipGroup::addShip(::ShipEntity *ship)
 		}
 	}
 
-	_members[_count++] = oo::WeakRef<cxx::Entity>(ship);	// empty for none
+	_members[_count++] = oo::WeakRef<Entity>(ship);	// empty for none
 	return true;
 }
 

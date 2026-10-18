@@ -71,7 +71,7 @@ void OORingEffectEntity::initialize()
 
 
 // The source is the C++ entity (bead oo-9ht.39.26; it was its Objective-C object, amendment oo-bj8 item 4).
-bool OORingEffectEntity::initRingFromEntity(cxx::Entity *sourceEntity)
+bool OORingEffectEntity::initRingFromEntity(Entity *sourceEntity)
 {
 	if (sourceEntity == nullptr)
 	{
@@ -100,7 +100,7 @@ bool OORingEffectEntity::initRingFromEntity(cxx::Entity *sourceEntity)
 }
 
 
-oo::Ref<OORingEffectEntity> OORingEffectEntity::ringFromEntity(cxx::Entity *sourceEntity)
+oo::Ref<OORingEffectEntity> OORingEffectEntity::ringFromEntity(Entity *sourceEntity)
 {
 	initialize();
 	oo::Ref<OORingEffectEntity> result = oo::makeRef<OORingEffectEntity>();
@@ -109,7 +109,7 @@ oo::Ref<OORingEffectEntity> OORingEffectEntity::ringFromEntity(cxx::Entity *sour
 }
 
 
-oo::Ref<OORingEffectEntity> OORingEffectEntity::shrinkingRingFromEntity(cxx::Entity *sourceEntity)
+oo::Ref<OORingEffectEntity> OORingEffectEntity::shrinkingRingFromEntity(Entity *sourceEntity)
 {
 	oo::Ref<OORingEffectEntity> result = ringFromEntity(sourceEntity);
 	if (result != nullptr)

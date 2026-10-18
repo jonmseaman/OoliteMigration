@@ -149,7 +149,7 @@ private:
 
 	void applicationWillTerminate(const oo::Notification &notification);
 	void writeMemStat(const std::string &line);
-	void dumpEntity(cxx::Entity *entity, EntityDumpState *state, bool parentVisible);	// the C++ entity (bead oo-w9pi2; was its object)
+	void dumpEntity(Entity *entity, EntityDumpState *state, bool parentVisible);	// the C++ entity (bead oo-w9pi2; was its object)
 
 	void setUpDebugConsoleScript();
 	void javaScriptEngineWillReset(const oo::Notification &notification);

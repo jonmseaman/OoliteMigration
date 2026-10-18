@@ -15,27 +15,27 @@
 
 #include <string>
 
-namespace cxx { class Entity; }
+class Entity;
 
 namespace oo {
 namespace detail {
-bool EntityHasObject(const cxx::Entity *entity) noexcept;
-void EntityRetain(cxx::Entity *entity) noexcept;
-void EntityRelease(cxx::Entity *entity) noexcept;
+bool EntityHasObject(const Entity *entity) noexcept;
+void EntityRetain(Entity *entity) noexcept;
+void EntityRelease(Entity *entity) noexcept;
 }	// namespace detail
-cxx::Entity *WithObject(cxx::Entity *entity);
-std::string EntityDescription(cxx::Entity *entity);
-std::string EntityShortDescription(cxx::Entity *entity);
+Entity *WithObject(Entity *entity);
+std::string EntityDescription(Entity *entity);
+std::string EntityShortDescription(Entity *entity);
 }	// namespace oo
 
 
-bool oo::detail::EntityHasObject(const cxx::Entity *entity) noexcept	{ return entity != nullptr && oo::ToObjC(const_cast<cxx::Entity *>(entity)) != nil; }
-void oo::detail::EntityRetain(cxx::Entity *entity) noexcept				{ if (entity != nullptr)  [oo::ToObjC(entity) retain]; }
-void oo::detail::EntityRelease(cxx::Entity *entity) noexcept			{ if (entity != nullptr)  [oo::ToObjC(entity) release]; }
-cxx::Entity *oo::WithObject(cxx::Entity *entity)						{ return (entity != nullptr && oo::ToObjC(entity) != nil) ? entity : nullptr; }
+bool oo::detail::EntityHasObject(const Entity *entity) noexcept	{ return entity != nullptr && oo::ToObjC(const_cast<Entity *>(entity)) != nil; }
+void oo::detail::EntityRetain(Entity *entity) noexcept				{ if (entity != nullptr)  [oo::ToObjC(entity) retain]; }
+void oo::detail::EntityRelease(Entity *entity) noexcept			{ if (entity != nullptr)  [oo::ToObjC(entity) release]; }
+Entity *oo::WithObject(Entity *entity)						{ return (entity != nullptr && oo::ToObjC(entity) != nil) ? entity : nullptr; }
 #ifndef OO_ENTITY_HELPERS_STAND_IN_NO_DESCRIPTIONS
-std::string oo::EntityDescription(cxx::Entity *entity)					{ return oo::DescriptionOf(oo::ToObjC(entity)); }
-std::string oo::EntityShortDescription(cxx::Entity *entity)				{ return oo::ShortDescriptionOf(oo::ToObjC(entity)); }
+std::string oo::EntityDescription(Entity *entity)					{ return oo::DescriptionOf(oo::ToObjC(entity)); }
+std::string oo::EntityShortDescription(Entity *entity)				{ return oo::ShortDescriptionOf(oo::ToObjC(entity)); }
 #endif
 
 #endif	// ENTITY_HELPERS_STAND_IN_H

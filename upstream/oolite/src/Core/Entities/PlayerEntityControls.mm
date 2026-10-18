@@ -1653,7 +1653,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 				{
 					if (!docking_clearance_request_key_pressed)
 					{
-						cxx::Entity *primeTarget = primaryTarget();
+						Entity *primeTarget = primaryTarget();
 						performDockingRequest(oo::ToStation(primeTarget));
 					}
 					docking_clearance_request_key_pressed = YES;
@@ -1780,7 +1780,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 				if (!dump_target_state_pressed)
 				{
 					dump_target_state_pressed = YES;
-					cxx::Entity *target = primaryTarget();
+					Entity *target = primaryTarget();
 					if (target == nullptr)	target = this;
 					target->dumpState();	// what the facade's -dumpState called (bead oo-9ht.39.18)
 				}
@@ -5459,12 +5459,12 @@ void PlayerEntity::handleAutopilotOn(bool fastDocking)
 		goto abort;
 	}
 	
-	cxx::Entity *target; target = primaryTarget();	// the C++ entities (bead oo-9ht.39.18)
+	Entity *target; target = primaryTarget();	// the C++ entities (bead oo-9ht.39.18)
 	// If target isn't dockable, check for nearby stations
 	if (!(target != nullptr && target->getIsStation()))
 	{
 		::Universe  *uni        = UNIVERSE;
-		cxx::Entity    **entities  = uni->sortedEntities;	// grab the public sorted list
+		Entity    **entities  = uni->sortedEntities;	// grab the public sorted list
 		int       nStations   = 0;
 		unsigned  i;
 		

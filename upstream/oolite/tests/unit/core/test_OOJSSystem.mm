@@ -56,7 +56,7 @@ uint32_t gDebugFlags = 0;
 // An entity scripts can see; it answers like any Entity otherwise (an Objective-C subclass until bead
 // oo-j12i2; a C++ one overriding the member its -isVisibleToScripts became; its -group, which nothing
 // asked once the system asked the C++ ship for its group, went with it).
-class TestEntity : public cxx::Entity
+class TestEntity : public Entity
 {
 public:
 	bool isVisibleToScripts() override  { return _visible; }
@@ -102,7 +102,7 @@ public:
 	OOGalaxyID _galaxy = {};
 	OOSystemID _system = {};
 	std::vector<std::string> _log;
-	cxx::Entity *_planetToAdd = {};
+	Entity *_planetToAdd = {};
 
 	void setScriptTarget(::ShipEntity * /*ship*/) override	{  }
 	OOGalaxyID currentGalaxyID() override	{ return _galaxy; }
@@ -150,7 +150,7 @@ std::string PredicateName(EntityFilterPredicate predicate)
 }
 
 
-std::string Describe(cxx::Entity *entity)
+std::string Describe(Entity *entity)
 {
 	return entity == nil ? "nil" : oo::str::format("%g", entity->position.x);
 }
@@ -169,7 +169,7 @@ class FakeUniverse : public Universe
 {
 public:
 	BOOL _interstellar = {};
-	cxx::Entity *_station, *_planet, *_sun;
+	Entity *_station, *_planet, *_sun;
 	std::vector<oo::EntityHold> _planets, _stations, _wormholes, _entities;
 	std::map<std::string, oo::EntityHold, std::less<>> _waypoints;	// the waypoints' objects (bead oo-9ht.108)
 	float _ambient = {};
@@ -180,10 +180,10 @@ public:
 	oo::PList _descriptions = {};
 	std::vector<std::string> _log = {};
 	double _lastRange = {};
-	cxx::Entity *_lastRelativeTo = {};
+	Entity *_lastRelativeTo = {};
 	std::string _lastShipsPredicate = {};
 	std::vector<oo::EntityHold> _shipsToAdd = {};
-	cxx::Entity *_effectToAdd = {};
+	Entity *_effectToAdd = {};
 	oo::PList _lastPopulator = {};
 
 	bool inInterstellarSpace() override	{ return _interstellar; }
@@ -199,21 +199,21 @@ public:
 	}
 	std::vector<oo::EntityHold> wormholes() override	{ return Held(_wormholes); }
 	std::map<std::string, oo::EntityHold, std::less<>> currentWaypoints() override	{ return Held(_waypoints); }
-	std::vector<oo::EntityHold> findShipsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, cxx::Entity *entity) override	// the C++ entity since bead oo-9ht.39.26
+	std::vector<oo::EntityHold> findShipsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, Entity *entity) override	// the C++ entity since bead oo-9ht.39.26
 	{
 		_lastShipsPredicate = "ships:" + PredicateName(predicate);
 		_lastRange = range;
 		_lastRelativeTo = entity;
 		return Held(MatchingEntities(this->_entities, predicate, parameter));
 	}
-	std::vector<oo::EntityHold> findVisualEffectsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, cxx::Entity *entity) override
+	std::vector<oo::EntityHold> findVisualEffectsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, Entity *entity) override
 	{
 		_lastShipsPredicate = "effects:" + PredicateName(predicate);
 		_lastRange = range;
 		_lastRelativeTo = entity;
 		return Held(MatchingEntities(this->_entities, predicate, parameter));
 	}
-	std::vector<oo::EntityHold> findEntitiesMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, cxx::Entity *entity) override	// the reference's C++ entity since bead oo-9ht.39.8.23
+	std::vector<oo::EntityHold> findEntitiesMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, Entity *entity) override	// the reference's C++ entity since bead oo-9ht.39.8.23
 	{
 		_lastRange = range;
 		_lastRelativeTo = entity;
@@ -236,17 +236,17 @@ public:
 		return std::nullopt;
 	}
 	void setSystemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum, const std::string &key, const oo::PList &value, const std::optional<std::string> &manifest, OOSystemLayer layer) override	{ _log.push_back(oo::str::format("set %d:%d %s=%s manifest=%s layer=%d", gnum, pnum, key.c_str(), oo::DescriptionOf(value).c_str(), manifest.value_or("none").c_str(), static_cast<int>(layer))); }
-	unsigned countShipsWithPrimaryRole(const std::string &role, double range, cxx::Entity *entity) override
+	unsigned countShipsWithPrimaryRole(const std::string &role, double range, Entity *entity) override
 	{
 		_log.push_back(oo::str::format("countPrimary %s %g %s", role.c_str(), range, Describe(entity).c_str()));
 		return 3;
 	}
-	unsigned countShipsWithRole(const std::string &role, double range, cxx::Entity *entity) override
+	unsigned countShipsWithRole(const std::string &role, double range, Entity *entity) override
 	{
 		_log.push_back(oo::str::format("countRole %s %g %s", role.c_str(), range, Describe(entity).c_str()));
 		return 4;
 	}
-	unsigned countShipsWithScanClass(OOScanClass scanClass, double range, cxx::Entity *entity) override
+	unsigned countShipsWithScanClass(OOScanClass scanClass, double range, Entity *entity) override
 	{
 		_log.push_back(oo::str::format("countScanClass %d %g %s", static_cast<int>(scanClass), range, Describe(entity).c_str()));
 		return 5;
@@ -274,7 +274,7 @@ public:
 		_log.push_back("findSystem " + sysName);
 		return sysName == "Lave" ? 7 : -1;
 	}
-	cxx::Entity *addVisualEffectAt(HPVector pos, const std::string &key) override	// the C++ effect since bead oo-9ht.39.26
+	Entity *addVisualEffectAt(HPVector pos, const std::string &key) override	// the C++ effect since bead oo-9ht.39.26
 	{
 		_log.push_back(oo::str::format("addVisualEffect %s %g %g %g", key.c_str(), pos.x, pos.y, pos.z));
 		return _effectToAdd;	// the effect (the stand-in answered its object as the effect)
@@ -304,10 +304,10 @@ FakePlayer *sPlayer = nullptr;
 
 
 // Its object (the test keeps entities as their objects), +1 as +alloc's was.
-cxx::Entity *MakeEntity(double x, BOOL visible)
+Entity *MakeEntity(double x, BOOL visible)
 {
 	oo::Ref<TestEntity> part = oo::makeRef<TestEntity>();
-	cxx::Entity *entity = nil;
+	Entity *entity = nil;
 	@autoreleasepool
 	{
 		entity = oo::RetainEntity(oo::MadeEntity(part));	// kept for the life of the test
@@ -375,13 +375,13 @@ void SetUp()
 	sUniverse->_waypoints["nav-b"] = oo::EntityHold(MakeEntity(51, YES));
 
 	// The searchable entities, out of distance order; one is invisible.
-	cxx::Entity *farthest = MakeEntity(300, YES);
+	Entity *farthest = MakeEntity(300, YES);
 	farthest->setScanClass(CLASS_BUOY);
-	cxx::Entity *nearest = MakeEntity(100, YES);
+	Entity *nearest = MakeEntity(100, YES);
 	nearest->setScanClass(CLASS_NEUTRAL);
-	cxx::Entity *hidden = MakeEntity(150, NO);
+	Entity *hidden = MakeEntity(150, NO);
 	hidden->setScanClass(CLASS_NEUTRAL);
-	cxx::Entity *middle = MakeEntity(200, YES);
+	Entity *middle = MakeEntity(200, YES);
 	middle->setScanClass(CLASS_NEUTRAL);
 	sUniverse->_entities = { oo::EntityHold(farthest), oo::EntityHold(nearest), oo::EntityHold(hidden), oo::EntityHold(middle) };
 
@@ -516,7 +516,7 @@ OO_TEST(propertiesWithoutSystemData)
 	OO_CHECK_EVAL("system.populatorSettings.pirates.priority", "10");
 
 	// No station, planet or sun: null.
-	cxx::Entity *station = sUniverse->_station;
+	Entity *station = sUniverse->_station;
 	sUniverse->_station = nil;
 	OO_CHECK_EVAL("system.mainStation", "null");
 	sUniverse->_station = station;
@@ -613,7 +613,7 @@ OO_TEST(methods)
 
 	OO_CHECK_EVAL("system.locationFromCode('OUTSIDE_SUN')", "(1, 2, 3)");
 	OO_CHECK_LOG(sUniverse->_log, "location OUTSIDE_SUN 30 20");
-	cxx::Entity *sun = sUniverse->_sun;
+	Entity *sun = sUniverse->_sun;
 	sUniverse->_sun = nil;
 	OO_CHECK_EVAL("system.locationFromCode('OUTSIDE_SUN')", "(1, 2, 3)");
 	OO_CHECK_LOG(sUniverse->_log, "location WITCHPOINT nil nil");

@@ -76,7 +76,7 @@ T *NewTestPlayer()
 // adapter that let one be a C++ entity: a C++ subclass overriding the virtual members its selectors
 // became, with the same counts. Global and keeping its name, which the expected log and dump texts
 // print (the C++ class's name, as they printed the Objective-C class's).
-class TestObjCEntity : public cxx::Entity
+class TestObjCEntity : public Entity
 {
 public:
 	bool isPlanet() override								{ return true; }
@@ -84,9 +84,9 @@ public:
 	GLfloat frustumRadius() override						{ return _frustumRadius; }
 	NSUInteger sessionID() override							{ return _session; }
 	bool isVisible() override								{ return _visible; }
-	void updateCameraRelativePosition() override			{ _cameraUpdates++; cxx::Entity::updateCameraRelativePosition(); }
-	void orientationChanged() override						{ _orientationChanges++; cxx::Entity::orientationChanged(); }
-	void dumpSelfState() override							{ cxx::Entity::dumpSelfState(); _selfStateDumps++; }
+	void updateCameraRelativePosition() override			{ _cameraUpdates++; Entity::updateCameraRelativePosition(); }
+	void orientationChanged() override						{ _orientationChanges++; Entity::orientationChanged(); }
+	void dumpSelfState() override							{ Entity::dumpSelfState(); _selfStateDumps++; }
 	void drawImmediate(bool, bool) override					{ _draws++; }
 
 	int			_cameraUpdates = 0;
@@ -101,12 +101,12 @@ public:
 
 // A converted entity: a C++ subclass. Global, as a game class is, so that its description names
 // it as the game's would.
-class TestCxxEntity : public cxx::Entity
+class TestCxxEntity : public Entity
 {
 public:
 	bool isPlanet() override										{ return true; }
 	GLfloat frustumRadius() override								{ return 2.0f; }
-	void updateCameraRelativePosition() override					{ cameraUpdates++; cxx::Entity::updateCameraRelativePosition(); }
+	void updateCameraRelativePosition() override					{ cameraUpdates++; Entity::updateCameraRelativePosition(); }
 	std::optional<std::string> descriptionComponents() const override	{ return "test"; }
 
 	int cameraUpdates = 0;
@@ -117,16 +117,16 @@ namespace {
 
 // --- Ivars the game reads directly (ent->x_next, ent->hasMoved), and nothing else -----------------
 
-cxx::Entity *XPrevious(cxx::Entity *e)	{ return e->x_previous; }
-cxx::Entity *XNext(cxx::Entity *e)		{ return e->x_next; }
-cxx::Entity *YNext(cxx::Entity *e)		{ return e->y_next; }
-cxx::Entity *ZNext(cxx::Entity *e)		{ return e->z_next; }
-bool HasMoved(cxx::Entity *e)		{ return e->hasMoved; }
-bool HasRotated(cxx::Entity *e)		{ return e->hasRotated; }
-void SetSubEntity(cxx::Entity *e, bool value)	{ e->isSubEntity = value; }
-void SetIsShip(cxx::Entity *e, bool value)		{ e->isShip = value; }
-GLfloat NoDrawDistance(cxx::Entity *e)			{ return e->no_draw_distance; }
-Vector CameraRelativePosition(cxx::Entity *e)	{ return e->cameraRelativePosition; }
+Entity *XPrevious(Entity *e)	{ return e->x_previous; }
+Entity *XNext(Entity *e)		{ return e->x_next; }
+Entity *YNext(Entity *e)		{ return e->y_next; }
+Entity *ZNext(Entity *e)		{ return e->z_next; }
+bool HasMoved(Entity *e)		{ return e->hasMoved; }
+bool HasRotated(Entity *e)		{ return e->hasRotated; }
+void SetSubEntity(Entity *e, bool value)	{ e->isSubEntity = value; }
+void SetIsShip(Entity *e, bool value)		{ e->isShip = value; }
+GLfloat NoDrawDistance(Entity *e)			{ return e->no_draw_distance; }
+Vector CameraRelativePosition(Entity *e)	{ return e->cameraRelativePosition; }
 
 // --------------------------------------------------------------------------------------------------
 
@@ -200,9 +200,9 @@ TestPlayer *SetUpPlayer(HPVector position, HPVector viewpoint)
 }
 
 
-cxx::Entity *MakeEntity(HPVector position, GLfloat radius)
+Entity *MakeEntity(HPVector position, GLfloat radius)
 {
-	cxx::Entity *entity = oo::MadeEntity(oo::makeRef<cxx::Entity>());
+	Entity *entity = oo::MadeEntity(oo::makeRef<Entity>());
 	entity->setPosition(position);
 	entity->setCollisionRadius(radius);
 	return entity;
@@ -238,7 +238,7 @@ OO_TEST(defaults)
 		UniverseIvar<NSUInteger>("_sessionID") = 7;
 		UniverseIvar<OOTimeAbsolute>("universal_time") = 12.5;
 
-		cxx::Entity *entity = oo::MadeEntity(oo::makeRef<cxx::Entity>());
+		Entity *entity = oo::MadeEntity(oo::makeRef<Entity>());
 		OO_CHECK(entity->sessionID() == 7);
 		OO_CHECK(entity->getSpawnTime() == 12.5f);
 		OO_CHECK(!entity->getIsShip() && !entity->isDock() && !entity->getIsStation() && !entity->getIsSubEntity() && !entity->getIsPlayer());
@@ -277,7 +277,7 @@ OO_TEST(accessors)
 		SetUpUniverse();
 		SetUpPlayer(make_HPvector(1, 1, 1), make_HPvector(0, 0, 10));
 
-		cxx::Entity *entity = MakeEntity(make_HPvector(3, 4, 10), 2.0f);
+		Entity *entity = MakeEntity(make_HPvector(3, 4, 10), 2.0f);
 		OO_CHECK(HPvector_equal(entity->getPosition(), make_HPvector(3, 4, 10)));
 		// -setPosition: updates the camera-relative position from PLAYER's viewpoint.
 		OO_CHECK(VectorEqual(entity->getCameraRelativePosition(), make_vector(3, 4, 0)));
@@ -288,7 +288,7 @@ OO_TEST(accessors)
 		OO_CHECK(HPvector_equal(entity->getPosition(), make_HPvector(-1, -2, -3)));
 		OO_CHECK(VectorEqual(entity->getCameraRelativePosition(), make_vector(-1, -2, -13)));
 
-		cxx::Entity *other = MakeEntity(make_HPvector(2, 2, 2), 1.0f);
+		Entity *other = MakeEntity(make_HPvector(2, 2, 2), 1.0f);
 		OO_CHECK(VectorEqual(entity->vectorTo(other), make_vector(3, 4, 5)));
 
 		entity->setVelocity(make_vector(3, 0, 4));
@@ -339,7 +339,7 @@ OO_TEST(orientationAndMovement)
 		SetUpUniverse();
 		SetUpPlayer(kZeroHPVector, kZeroHPVector);
 
-		cxx::Entity *entity = MakeEntity(kZeroHPVector, 1.0f);
+		Entity *entity = MakeEntity(kZeroHPVector, 1.0f);
 		Quaternion q = make_quaternion(2, 0, 0, 0);	// normalised by -setOrientation:
 		entity->setOrientation(q);
 		OO_CHECK(quaternion_equal(entity->getOrientation(), kIdentityQuaternion));
@@ -392,7 +392,7 @@ OO_TEST(update)
 		SetUpPlayer(make_HPvector(0, 0, 1), make_HPvector(0, 0, 2));
 
 		// In the cockpit display, the distances are from the origin and the entity does not move.
-		cxx::Entity *entity = MakeEntity(make_HPvector(3, 0, 4), 1.0f);
+		Entity *entity = MakeEntity(make_HPvector(3, 0, 4), 1.0f);
 		entity->setVelocity(make_vector(1, 0, 0));
 		entity->update(2);
 		OO_CHECK(entity->zeroDistance() == 25.0 && entity->camZeroDistance() == 25.0);
@@ -411,7 +411,7 @@ OO_TEST(update)
 		OO_CHECK(HasMoved(entity));
 
 		// A subentity takes its owner's distances.
-		cxx::Entity *sub = MakeEntity(make_HPvector(100, 0, 0), 1.0f);
+		Entity *sub = MakeEntity(make_HPvector(100, 0, 0), 1.0f);
 		sub->setOwner(entity);
 		SetSubEntity(sub, true);
 		sub->setStatus(STATUS_IN_FLIGHT);
@@ -429,10 +429,10 @@ OO_TEST(ownersAndParents)
 		SetUpUniverse();
 		SetUpPlayer(kZeroHPVector, kZeroHPVector);
 
-		cxx::Entity *entity = MakeEntity(kZeroHPVector, 1.0f);
+		Entity *entity = MakeEntity(kZeroHPVector, 1.0f);
 		@autoreleasepool
 		{
-			cxx::Entity *owner = oo::RetainEntity(oo::MadeEntity(oo::makeRef<cxx::Entity>()));
+			Entity *owner = oo::RetainEntity(oo::MadeEntity(oo::makeRef<Entity>()));
 			entity->setOwner(owner);
 			OO_CHECK(entity->owner() == owner);
 			// Not a ship with this as a subentity: no parent, and not a ship itself.
@@ -470,9 +470,9 @@ OO_TEST(linkedLists)
 		SetUpPlayer(kZeroHPVector, kZeroHPVector);
 
 		// Sorted by the low edge of each entity's sphere on each axis.
-		cxx::Entity *a = MakeEntity(make_HPvector(10, 30, 20), 1.0f);
-		cxx::Entity *b = MakeEntity(make_HPvector(20, 10, 30), 1.0f);
-		cxx::Entity *c = MakeEntity(make_HPvector(30, 20, 10), 1.0f);
+		Entity *a = MakeEntity(make_HPvector(10, 30, 20), 1.0f);
+		Entity *b = MakeEntity(make_HPvector(20, 10, 30), 1.0f);
+		Entity *c = MakeEntity(make_HPvector(30, 20, 10), 1.0f);
 
 		a->updateLinkedLists();		// not in the lists: nothing happens
 		OO_CHECK(XNext(a) == nil && sUniverse->x_list_start == nil);
@@ -530,7 +530,7 @@ OO_TEST(sessionAndShaderBindings)
 		SetUpPlayer(make_HPvector(0, 1, 0), kZeroHPVector);
 		UniverseIvar<OOTimeAbsolute>("universal_time") = 100;
 
-		cxx::Entity *entity = MakeEntity(make_HPvector(0, 0, 3), 1.0f);
+		Entity *entity = MakeEntity(make_HPvector(0, 0, 3), 1.0f);
 		OO_CHECK(entity->validForAddToUniverse());
 		UniverseIvar<NSUInteger>("_sessionID") = 1;	// a new game started since
 		OO_CHECK(!entity->validForAddToUniverse());
@@ -603,7 +603,7 @@ OO_TEST(rootDefaultsForSubclassResponsibilities)
 		SetUpUniverse();
 		SetUpPlayer(kZeroHPVector, kZeroHPVector);
 
-		cxx::Entity *entity = MakeEntity(kZeroHPVector, 1.0f);
+		Entity *entity = MakeEntity(kZeroHPVector, 1.0f);
 		CaptureLog();
 		OO_CHECK(entity->findCollisionRadius() == 0);	// logs the subclass responsibility
 		entity->drawImmediate(true, false);
@@ -626,7 +626,7 @@ OO_TEST(liveEntityCount)
 
 		const uint32_t count = gLiveEntityCount;
 		const size_t memory = gTotalEntityMemory;
-		cxx::Entity *entity = nil;
+		Entity *entity = nil;
 		@autoreleasepool
 		{
 			entity = oo::RetainEntity(oo::MadeEntity(oo::makeRef<TestObjCEntity>()));	// +1, as +alloc's was
@@ -659,7 +659,7 @@ OO_TEST(cxxEntityBehindItsFacade)
 		SetUpUniverse();
 		SetUpPlayer(kZeroHPVector, kZeroHPVector);
 
-		cxx::Entity *facade = oo::MadeEntity(entity);
+		Entity *facade = oo::MadeEntity(entity);
 		OO_CHECK(facade == entity.get());
 		// (The facade's class and its oo::ToCxx()/oo::ToObjC() identity: retired with the facade,
 		// bead oo-dpyk8, under oo-9n5p9.)
@@ -679,7 +679,7 @@ OO_TEST(cxxEntityBehindItsFacade)
 #endif
 
 		// The lists link its facade, among Objective-C entities.
-		cxx::Entity *other = MakeEntity(make_HPvector(20, 0, 0), 1.0f);
+		Entity *other = MakeEntity(make_HPvector(20, 0, 0), 1.0f);
 		facade->addToLinkedLists();
 		other->addToLinkedLists();
 		sUniverse->n_entities = 2;
@@ -734,7 +734,7 @@ OO_TEST(dumpStateOwnerLines)
 	{
 		SetUpUniverse();
 		SetUpPlayer(kZeroHPVector, kZeroHPVector);
-		cxx::Entity *entity = MakeEntity(kZeroHPVector, 1.0f);
+		Entity *entity = MakeEntity(kZeroHPVector, 1.0f);
 		CaptureLog();
 		entity->dumpState();
 		OO_CHECK(Logged("Owner: none") && Logged("Flags: isSunlit") && Logged("Collision Test Filter: 0"));

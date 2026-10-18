@@ -1463,7 +1463,7 @@ ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &p
 				// the weak reference forwarded to its object's.
 				if (const auto *weak = dynamic_cast<const oo::EntityWeakPListForeign *>(node->get()))
 				{
-					cxx::Entity *entity = weak->entity();
+					Entity *entity = weak->entity();
 					return entity != nullptr ? OOJSEntityJSValue(entity, context) : ooscript::undefinedValue();
 				}
 				// The one null and a held value: their own JS glue, which their facades forwarded to (bead oo-wdqw1).
@@ -2006,7 +2006,7 @@ bool OOJSObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &oo
 }
 
 
-BOOL JSFunctionPredicate(cxx::Entity *entity, void *parameter)
+BOOL JSFunctionPredicate(Entity *entity, void *parameter)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -2051,7 +2051,7 @@ BOOL JSFunctionPredicate(cxx::Entity *entity, void *parameter)
 }
 
 
-BOOL JSEntityIsJavaScriptVisiblePredicate(cxx::Entity *entity, void * /*parameter*/)
+BOOL JSEntityIsJavaScriptVisiblePredicate(Entity *entity, void * /*parameter*/)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -2061,7 +2061,7 @@ BOOL JSEntityIsJavaScriptVisiblePredicate(cxx::Entity *entity, void * /*paramete
 }
 
 
-BOOL JSEntityIsJavaScriptSearchablePredicate(cxx::Entity *entity, void * /*parameter*/)
+BOOL JSEntityIsJavaScriptSearchablePredicate(Entity *entity, void * /*parameter*/)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -2092,7 +2092,7 @@ BOOL JSEntityIsJavaScriptSearchablePredicate(cxx::Entity *entity, void * /*param
 }
 
 
-BOOL JSEntityIsDemoShipPredicate(cxx::Entity *entity, void * /*parameter*/)
+BOOL JSEntityIsDemoShipPredicate(Entity *entity, void * /*parameter*/)
 {
 	return (OOJavaScriptEngineIsVisibleToScripts(entity) && OOJavaScriptEngineIsShip(entity) && OOJavaScriptEngineStatus(entity) == STATUS_COCKPIT_DISPLAY && !OOJavaScriptEngineIsSubEntity(entity));
 }

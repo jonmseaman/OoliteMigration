@@ -75,7 +75,7 @@ BoundingBox OODrawable::boundingBox()
 }
 
 
-void OODrawable::setBindingTarget(cxx::Entity */*target*/)
+void OODrawable::setBindingTarget(Entity */*target*/)
 {
 	
 }

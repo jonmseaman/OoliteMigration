@@ -101,7 +101,7 @@ public:
 	std::optional<std::string> name() override;
 	std::optional<std::string> scriptDescription() override;
 	std::optional<std::string> version() override;
-	void runWithTarget(cxx::Entity *target) override;
+	void runWithTarget(Entity *target) override;
 
 private:
 	void javaScriptEngineWillReset(const oo::Notification &notification);

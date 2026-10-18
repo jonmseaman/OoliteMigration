@@ -2169,7 +2169,7 @@ bool PlayerEntity::setCommanderDataFromDictionary(const oo::PList &dict)
 	for (const oo::PList &whCurrDict : (whList != nullptr) ? *whList : oo::PList::Array())
 	{
 		oo::Ref<WormholeEntity> whRef = oo::makeRef<WormholeEntity>();
-		cxx::Entity *wh = oo::RetainEntity(oo::MadeEntity(whRef));	// its object (the +1 of the old +alloc is still never released, as before)
+		Entity *wh = oo::RetainEntity(oo::MadeEntity(whRef));	// its object (the +1 of the old +alloc is still never released, as before)
 		whRef->initWithDict(whCurrDict);
 		scannedWormholes.push_back(oo::EntityHold(wh));
 		/* TODO - add to Universe if the wormhole hasn't expired yet; but in this case
@@ -2716,7 +2716,7 @@ bool PlayerEntity::canCollide()
 // Slice 6 of docs/phases/3-slices/PlayerEntity.md (bead oo-vzjco): sun glare, the atmosphere, update:.
 // (Its facade forwarded each selector until bead oo-9ht.177 deleted it; sends to self are member calls.)
 
-OOComparisonResult PlayerEntity::compareZeroDistance(cxx::Entity * /*otherEntity*/)
+OOComparisonResult PlayerEntity::compareZeroDistance(Entity * /*otherEntity*/)
 {
 	return OOOrderedDescending;  // always the most near
 }
@@ -2741,7 +2741,7 @@ GLfloat PlayerEntity::lookingAtSunWithThresholdAngleCos(GLfloat thresholdAngleCo
 	OOViewID vdir = (UNIVERSE != nullptr ? UNIVERSE->getViewDirection() : OOViewID{});
 	unsigned i;
 	unsigned	ent_count =	UNIVERSE->n_entities;
-	cxx::Entity		**uni_entities = UNIVERSE->sortedEntities;	// grab the public sorted list
+	Entity		**uni_entities = UNIVERSE->sortedEntities;	// grab the public sorted list
 	for (i = 0; i < ent_count; i++)
 	{
 		if (uni_entities[i]->isSunlit)
@@ -3211,7 +3211,7 @@ void PlayerEntity::doBookkeeping(double delta_t)
 			if ((UNIVERSE != nullptr ? UNIVERSE->station() : nullptr) != nullptr)  UNIVERSE->station()->update(2.34375 * market_rnd);	// from 0..10 minutes
 		}
 		
-		cxx::Entity	*dockTargetEntity = (UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(_dockTarget) : nullptr);	// main station in the original system, unless overridden.
+		Entity	*dockTargetEntity = (UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(_dockTarget) : nullptr);	// main station in the original system, unless overridden.
 		if (dockTargetEntity != nullptr && dockTargetEntity->getIsStation()) // fails if _dockTarget is NO_TARGET
 		{
 			if (doppelganger != nullptr)  doppelganger->becomeExplosion();	// blow up the doppelganger
@@ -3359,7 +3359,7 @@ void PlayerEntity::doBookkeeping(double delta_t)
 	if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->setFov(fieldOfView, YES);
 	
 	// scanner sanity check - lose any targets further than maximum scanner range
-	cxx::Entity *primeTarget = primaryTarget();	// any entity (a wormhole too; the object was typed ShipEntity until bead oo-9ht.144)
+	Entity *primeTarget = primaryTarget();	// any entity (a wormhole too; the object was typed ShipEntity until bead oo-9ht.144)
 	if (primeTarget && HPdistance2(primeTarget->getPosition(), getPosition()) > SCANNER_MAX_RANGE2 && !autopilot_engaged)
 	{
 		if (UNIVERSE != nullptr)  UNIVERSE->addMessage(OO_DESC("target-lost"), 3.0);
@@ -3373,7 +3373,7 @@ void PlayerEntity::doBookkeeping(double delta_t)
 	totalBoundingBox = boundingBox; //	reset totalBoundingBox
 	for (const auto &seRef : getSubEntities())
 	{
-		cxx::Entity *se = seRef.get();
+		Entity *se = seRef.get();
 		if (se != nullptr)  se->update(delta_t);
 		if (oo::EntityIsShip(se))
 		{
@@ -3435,9 +3435,9 @@ void PlayerEntity::updateAlertConditionForNearbyEntities()
 	}
 
 	int				i, ent_count	= UNIVERSE->n_entities;
-	cxx::Entity			**uni_entities	= UNIVERSE->sortedEntities;	// grab the public sorted list
-	std::vector<cxx::Entity *> my_entities(ent_count);	// the C++ entities, their objects retained (bead oo-9ht.39.18)
-	cxx::Entity			*scannedEntity = nullptr;
+	Entity			**uni_entities	= UNIVERSE->sortedEntities;	// grab the public sorted list
+	std::vector<Entity *> my_entities(ent_count);	// the C++ entities, their objects retained (bead oo-9ht.39.18)
+	Entity			*scannedEntity = nullptr;
 	for (i = 0; i < ent_count; i++)
 	{
 		my_entities[i] = oo::RetainEntity(uni_entities[i]);	// retained
@@ -3494,7 +3494,7 @@ void PlayerEntity::updateAlertConditionForNearbyEntities()
 				else if (oo::EntityIsShip(scannedEntity))
 				{
 					::ShipEntity *ship = oo::ToShip(scannedEntity);
-					foundHostiles |= (((ship != nullptr ? ship->hasHostileTarget() : false))&&((ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == this));
+					foundHostiles |= (((ship != nullptr ? ship->hasHostileTarget() : false))&&((ship != nullptr ? ship->primaryTarget() : (Entity *)nullptr) == this));
 				}
 			}
 		}
@@ -3571,14 +3571,14 @@ void PlayerEntity::setMaxFlightYaw(GLfloat newValue)
 }
 
 
-bool PlayerEntity::checkEntityForMassLock(cxx::Entity *ent, int theirClass)
+bool PlayerEntity::checkEntityForMassLock(Entity *ent, int theirClass)
 {
 	BOOL massLocked = NO;
 	BOOL entIsCloakedShip = oo::EntityIsShip(ent) && (oo::ToShip(ent) != nullptr ? oo::ToShip(ent)->isCloaked() : false);
 	
 	if (EXPECT_NOT(ent->isStellarObject()))
 	{
-		cxx::Entity *stellar = ent;	// a sun or a planet (bead oo-9ht.39.18)
+		Entity *stellar = ent;	// a sun or a planet (bead oo-9ht.39.18)
 		if (EXPECT(OOStellarBodyPlanetType(stellar) != STELLAR_TYPE_MINIATURE))
 		{
 			double dist = stellar->zero_distance;
@@ -4230,7 +4230,7 @@ void PlayerEntity::gameOverFadeToBW()
 // Target is valid if it's within Scanner range, AND
 // Target is a ship AND is not cloaked or jamming, OR
 // Target is a wormhole AND player has the Wormhole Scanner
-bool PlayerEntity::isValidTarget(cxx::Entity *target)	// the C++ entity since bead oo-9ht.39.23
+bool PlayerEntity::isValidTarget(Entity *target)	// the C++ entity since bead oo-9ht.39.23
 {
 	// Just in case we got called with a bad target.
 	if (!target)
@@ -4366,8 +4366,8 @@ void PlayerEntity::updateTargeting()
 		unsigned i;
 		for (i = 0; i < max_missiles; i++)
 		{
-			if ((oo::ToShip(missile_entity[i].get()) != nullptr ? oo::ToShip(missile_entity[i].get())->primaryTarget() : (cxx::Entity *)nullptr) != nil &&
-					!isValidTarget((oo::ToShip(missile_entity[i].get()) != nullptr ? oo::ToShip(missile_entity[i].get())->primaryTarget() : (cxx::Entity *)nullptr)))
+			if ((oo::ToShip(missile_entity[i].get()) != nullptr ? oo::ToShip(missile_entity[i].get())->primaryTarget() : (Entity *)nullptr) != nil &&
+					!isValidTarget((oo::ToShip(missile_entity[i].get()) != nullptr ? oo::ToShip(missile_entity[i].get())->primaryTarget() : (Entity *)nullptr)))
 			{
 				if (UNIVERSE != nullptr)  UNIVERSE->addMessage(OO_DESC("target-lost"), 3.0);
 				playTargetLost();
@@ -4378,7 +4378,7 @@ void PlayerEntity::updateTargeting()
 					_primaryTarget = nullptr;
 					missile_status = MISSILE_STATUS_ARMED;
 				}
-			} else if (i == activeMissile && (oo::ToShip(missile_entity[i].get()) != nullptr ? oo::ToShip(missile_entity[i].get())->primaryTarget() : (cxx::Entity *)nullptr) == nil) {
+			} else if (i == activeMissile && (oo::ToShip(missile_entity[i].get()) != nullptr ? oo::ToShip(missile_entity[i].get())->primaryTarget() : (Entity *)nullptr) == nil) {
 				missile_status = MISSILE_STATUS_ARMED;
 			}
 		}
@@ -4391,7 +4391,7 @@ void PlayerEntity::updateTargeting()
 			(ident_engaged || missile_status != MISSILE_STATUS_SAFE) &&
 			(status() == STATUS_IN_FLIGHT || status() == STATUS_WITCHSPACE_COUNTDOWN))
 	{
-		cxx::Entity *target = (UNIVERSE != nullptr ? UNIVERSE->firstEntityTargetedByPlayer() : nullptr);
+		Entity *target = (UNIVERSE != nullptr ? UNIVERSE->firstEntityTargetedByPlayer() : nullptr);
 		if (isValidTarget(target))
 		{
 			addTarget(target);
@@ -4692,7 +4692,7 @@ void PlayerEntity::setOcclusionLevel(float level)
 void PlayerEntity::setDockedAtMainStation()
 {
 	setDockedStation((UNIVERSE != nullptr ? UNIVERSE->station() : nullptr));
-	if (_dockedStation != oo::WeakRef<cxx::Entity>())  setStatus(STATUS_DOCKED);
+	if (_dockedStation != oo::WeakRef<Entity>())  setStatus(STATUS_DOCKED);
 }
 
 
@@ -4704,7 +4704,7 @@ void PlayerEntity::setDockedAtMainStation()
 
 void PlayerEntity::setDockedStation(::StationEntity *station)
 {
-	_dockedStation = oo::WeakRef<cxx::Entity>(station);
+	_dockedStation = oo::WeakRef<Entity>(station);
 }
 
 
@@ -5070,7 +5070,7 @@ GLfloat PlayerEntity::dialAltitude()
 	// find nearest planet type entity...
 	assert(UNIVERSE != nil);
 	
-	cxx::Entity	*nearestPlanet = findNearestStellarBody();
+	Entity	*nearestPlanet = findNearestStellarBody();
 	if (nearestPlanet == nullptr)  return 1.0f;
 	
 	GLfloat	zd = nearestPlanet->zero_distance;
@@ -5239,7 +5239,7 @@ std::vector<std::string> PlayerEntity::getRoleWeights()
 
 void PlayerEntity::addRoleForAggression(::ShipEntity *victim)
 {
-	if ((victim != nullptr ? victim->isExplicitlyUnpiloted() : false) || (victim != nullptr ? victim->getIsHulk() : false) || (victim != nullptr ? victim->hasHostileTarget() : false) || oo::EntityIsPlayer((victim != nullptr ? victim->primaryAggressor() : (cxx::Entity *)nullptr)))
+	if ((victim != nullptr ? victim->isExplicitlyUnpiloted() : false) || (victim != nullptr ? victim->getIsHulk() : false) || (victim != nullptr ? victim->hasHostileTarget() : false) || oo::EntityIsPlayer((victim != nullptr ? victim->primaryAggressor() : (Entity *)nullptr)))
 	{
 		return;
 	}
@@ -5387,9 +5387,9 @@ void PlayerEntity::updateSystemMemory()
 
 // Virtual: a test's player answers it. What the object-answering getCompassTarget() answered the C++
 // entity of (bead oo-zwnvp): null once the target's object has gone, which also forgets it.
-cxx::Entity *PlayerEntity::getCompassTargetEntity()
+Entity *PlayerEntity::getCompassTargetEntity()
 {
-	cxx::Entity *result = oo::LiveEntity(compassTarget);
+	Entity *result = oo::LiveEntity(compassTarget);
 	if (result == nullptr)
 	{
 		compassTarget = nullptr;
@@ -5399,23 +5399,23 @@ cxx::Entity *PlayerEntity::getCompassTargetEntity()
 }
 
 
-void PlayerEntity::setCompassTargetEntity(cxx::Entity *value)
+void PlayerEntity::setCompassTargetEntity(Entity *value)
 {
-	compassTarget = oo::WeakRef<cxx::Entity>(value);	// oo::WeakEntityRef() of its object
+	compassTarget = oo::WeakRef<Entity>(value);	// oo::WeakEntityRef() of its object
 }
 
 
 void PlayerEntity::validateCompassTarget()
 {
 	::OOSunEntity		*the_sun = (UNIVERSE != nullptr ? UNIVERSE->sun() : nullptr);
-	cxx::Entity			*the_planet = (UNIVERSE != nullptr ? UNIVERSE->planet() : nullptr);	// C++ since bead oo-9ht.129
+	Entity			*the_planet = (UNIVERSE != nullptr ? UNIVERSE->planet() : nullptr);	// C++ since bead oo-9ht.129
 	::StationEntity	*the_station = (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr);
-	cxx::Entity			*the_target = primaryTarget();
-	cxx::Entity		*beacon = nextBeacon();
+	Entity			*the_target = primaryTarget();
+	Entity		*beacon = nextBeacon();
 	if (isInSpace() && the_sun && the_planet		// be in a system
 		&& !(the_sun != nullptr ? the_sun->goneNova() : false))			// and the system has not been novabombed
 	{
-		cxx::Entity *new_target = nullptr;	// the C++ entities (bead oo-9ht.39.18)
+		Entity *new_target = nullptr;	// the C++ entities (bead oo-9ht.39.18)
 		OOAegisStatus	aegis = checkForAegis();
 		
 		switch (getCompassMode())
@@ -5484,7 +5484,7 @@ std::optional<std::string> PlayerEntity::compassTargetLabel()
 		return "";
 	case COMPASS_MODE_BEACONS:
 	{
-		cxx::Entity *target = getCompassTargetEntity();
+		Entity *target = getCompassTargetEntity();
 		if (target)
 		{
 			return oo::BeaconLabel(target);	// the beacon category's answer (bead oo-w9pi2)
@@ -5523,7 +5523,7 @@ void PlayerEntity::setCompassMode(OOCompassMode value)
 void PlayerEntity::setPrevCompassMode()
 {
 	OOAegisStatus	aegis = AEGIS_NONE;
-	cxx::Entity		*beacon = nullptr;	// the C++ beacons, linked through their objects (bead oo-9ht.39.18)
+	Entity		*beacon = nullptr;	// the C++ beacons, linked through their objects (bead oo-9ht.39.18)
 	
 	switch (compassMode)
 	{
@@ -5592,7 +5592,7 @@ void PlayerEntity::setPrevCompassMode()
 void PlayerEntity::setNextCompassMode()
 {
 	OOAegisStatus	aegis = AEGIS_NONE;
-	cxx::Entity		*beacon = nullptr;	// the C++ beacons, linked through their objects (bead oo-9ht.39.18)
+	Entity		*beacon = nullptr;	// the C++ beacons, linked through their objects (bead oo-9ht.39.18)
 	
 	switch (compassMode)
 	{
@@ -5689,7 +5689,7 @@ std::optional<std::string> PlayerEntity::getSpecialCargo()
 
 std::optional<std::string> PlayerEntity::dialTargetName()
 {
-	cxx::Entity		*target_entity = primaryTarget();
+	Entity		*target_entity = primaryTarget();
 	std::optional<std::string>	result;
 
 	if (target_entity == nullptr)
@@ -5903,7 +5903,7 @@ void PlayerEntity::safeAllMissiles()
 	unsigned i;
 	for (i = 0; i < max_missiles; i++)
 	{
-		if (missile_entity[i] && (oo::ToShip(missile_entity[i].get()) != nullptr ? oo::ToShip(missile_entity[i].get())->primaryTarget() : (cxx::Entity *)nullptr) != nil)
+		if (missile_entity[i] && (oo::ToShip(missile_entity[i].get()) != nullptr ? oo::ToShip(missile_entity[i].get())->primaryTarget() : (Entity *)nullptr) != nil)
 			if (oo::ToShip(missile_entity[i].get()) != nullptr)  oo::ToShip(missile_entity[i].get())->removeTarget(nullptr);
 	}
 	missile_status = MISSILE_STATUS_SAFE;
@@ -5964,10 +5964,10 @@ void PlayerEntity::selectNextMissile()
 				if( (oo::ToShip(missile_entity[activeMissile].get()) != nullptr ? oo::ToShip(missile_entity[activeMissile].get())->getIsMissile() : false) )
 				{
 					if( hasEquipmentItemProviding("EQ_MULTI_TARGET") &&
-							((oo::ToShip(missile_entity[next_missile].get()) != nullptr ? oo::ToShip(missile_entity[next_missile].get())->primaryTarget() : (cxx::Entity *)nullptr) != nil))
+							((oo::ToShip(missile_entity[next_missile].get()) != nullptr ? oo::ToShip(missile_entity[next_missile].get())->primaryTarget() : (Entity *)nullptr) != nil))
 					{
 						// copy the missile's target
-						addTarget((oo::ToShip(missile_entity[next_missile].get()) != nullptr ? oo::ToShip(missile_entity[next_missile].get())->primaryTarget() : (cxx::Entity *)nullptr));
+						addTarget((oo::ToShip(missile_entity[next_missile].get()) != nullptr ? oo::ToShip(missile_entity[next_missile].get())->primaryTarget() : (Entity *)nullptr));
 						missile_status = MISSILE_STATUS_TARGET_LOCKED;
 					}
 					else if (primaryTarget() != nil)
@@ -6188,7 +6188,7 @@ bool PlayerEntity::mountMissileWithRole(const std::string &role)
 	{
 		if (missile_status != MISSILE_STATUS_TARGET_LOCKED) return nil;
 		//  release this before creating it anew in fireMissileWithIdentifier
-		firedMissile = fireMissileWithIdentifier(identifier, (missile != nullptr ? missile->primaryTarget() : (cxx::Entity *)nullptr));
+		firedMissile = fireMissileWithIdentifier(identifier, (missile != nullptr ? missile->primaryTarget() : (Entity *)nullptr));
 
 		if (firedMissile != nil)
 		{
@@ -6565,10 +6565,10 @@ GLfloat PlayerEntity::doesHitLine(HPVector v0, HPVector v1, ::ShipEntity **hitEn
 }
 
 
-void PlayerEntity::takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::Entity *otherPart, const std::string &weaponIdentifier)
+void PlayerEntity::takeEnergyDamage(double amount, Entity *entPart, Entity *otherPart, const std::string &weaponIdentifier)
 {
-	cxx::Entity *ent = entPart;	// the C++ entities (bead oo-9ht.39.18)
-	cxx::Entity *other = otherPart;
+	Entity *ent = entPart;	// the C++ entities (bead oo-9ht.39.18)
+	Entity *other = otherPart;
 	HPVector		rel_pos;
 	OOScalar		d_forward, d_right, d_up;
 	BOOL		internal_damage = NO;	// base chance
@@ -6649,7 +6649,7 @@ void PlayerEntity::takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::En
 			/* Heat increase from energy impacts will never directly cause
 			 * overheating - too easy for missile hits to cause an uncredited
 			 * death by overheating against NPCs, so same rules for player */
-			ship_temperature += amount * (mass > 400000 ? 200000 / mass : 0.5) / heatInsulation();	// SHIP_ENERGY_DAMAGE_TO_HEAT_FACTOR, which names the facade's _cxxEntity
+			ship_temperature += amount * (mass > 400000 ? 200000 / mass : 0.5) / heatInsulation();	// SHIP_ENERGY_DAMAGE_TO_HEAT_FACTOR, which named the facade's C++ entity
 			if (ship_temperature > SHIP_MAX_CABIN_TEMP)
 			{
 				ship_temperature = SHIP_MAX_CABIN_TEMP;
@@ -6683,7 +6683,7 @@ void PlayerEntity::takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::En
 }
 
 
-void PlayerEntity::takeScrapeDamage(double amount, cxx::Entity *ent)
+void PlayerEntity::takeScrapeDamage(double amount, Entity *ent)
 {
 	HPVector  rel_pos;
 	OOScalar  d_forward, d_right, d_up;
@@ -7157,7 +7157,7 @@ bool PlayerEntity::takeInternalDamage()
 			return NO;
 		if (UNIVERSE != nullptr)  UNIVERSE->clearPreviousMessage();
 		if (UNIVERSE != nullptr)  UNIVERSE->addMessage(oo::str::formatRuntime(OO_DESC("@-destroyed"), { *cargo_desc }), 4.5);
-		std::erase(cargo, static_cast<cxx::Entity *>(pod));
+		std::erase(cargo, static_cast<Entity *>(pod));
 		return YES;
 	}
 	else
@@ -7239,7 +7239,7 @@ bool PlayerEntity::takeInternalDamage()
 }
 
 
-void PlayerEntity::getDestroyedBy(cxx::Entity *whom, OOShipDamageType type)
+void PlayerEntity::getDestroyedBy(Entity *whom, OOShipDamageType type)
 {
 	if (isDocked())  return;	// Can't die while docked. (Doing so would cause breakage elsewhere.)
 	
@@ -7283,18 +7283,18 @@ void PlayerEntity::loseTargetStatus()
 	if (!UNIVERSE)
 		return;
 	int			ent_count =		UNIVERSE->n_entities;
-	cxx::Entity**	uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
-	std::vector<cxx::Entity *> my_entities(ent_count);
+	Entity**	uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
+	std::vector<Entity *> my_entities(ent_count);
 	int i;
 	for (i = 0; i < ent_count; i++)
 		my_entities[i] = oo::RetainEntity(uni_entities[i]);		//	retained (its object; bead oo-9ht.39.18)
 	for (i = 0; i < ent_count ; i++)
 	{
-		cxx::Entity* thing = my_entities[i];
+		Entity* thing = my_entities[i];
 		if (thing->isShip)
 		{
 			::ShipEntity* ship = oo::ToShip(thing);
-			if (this == (ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr))
+			if (this == (ship != nullptr ? ship->primaryTarget() : (Entity *)nullptr))
 			{
 				if (ship != nullptr)  ship->noteLostTarget();
 			}
@@ -12120,7 +12120,7 @@ NSUInteger PlayerEntity::passengerCapacity()
 bool PlayerEntity::hasHostileTarget()
 {
 	::ShipEntity *playersTarget = oo::ToShip(primaryTarget());
-	return ((playersTarget != nullptr ? playersTarget->getIsShip() : false) && (playersTarget != nullptr ? playersTarget->hasHostileTarget() : false) && (playersTarget != nullptr ? playersTarget->primaryTarget() : (cxx::Entity *)nullptr) == this);
+	return ((playersTarget != nullptr ? playersTarget->getIsShip() : false) && (playersTarget != nullptr ? playersTarget->hasHostileTarget() : false) && (playersTarget != nullptr ? playersTarget->primaryTarget() : (Entity *)nullptr) == this);
 }
 
 
@@ -12515,7 +12515,7 @@ void PlayerEntity::setScoopsActive()
 
 
 // override shipentity to stop foundTarget being changed during escape sequence
-void PlayerEntity::setFoundTarget(cxx::Entity *targetEntity)
+void PlayerEntity::setFoundTarget(Entity *targetEntity)
 {
 	/* Rare, but can happen, e.g. if a Q-mine goes off nearby during
 	 * the sequence */
@@ -12523,12 +12523,12 @@ void PlayerEntity::setFoundTarget(cxx::Entity *targetEntity)
 	{
 		return;
 	}
-	_foundTarget = oo::WeakRef<cxx::Entity>(targetEntity);
+	_foundTarget = oo::WeakRef<Entity>(targetEntity);
 }
 
 
 // override shipentity addTarget to implement target_memory
-void PlayerEntity::addTarget(cxx::Entity *targetEntity)	// the C++ entity since bead oo-9ht.39.23
+void PlayerEntity::addTarget(Entity *targetEntity)	// the C++ entity since bead oo-9ht.39.23
 {
 	if (status() != STATUS_IN_FLIGHT && status() != STATUS_WITCHSPACE_COUNTDOWN)  return;
 	if (targetEntity == this)  return;
@@ -12543,11 +12543,11 @@ void PlayerEntity::addTarget(cxx::Entity *targetEntity)	// the C++ entity since 
 	// wormholes don't go in target memory
 	else if (hasEquipmentItemProviding("EQ_TARGET_MEMORY") && targetEntity != nullptr)
 	{
-		const oo::WeakRef<cxx::Entity> targetRef = oo::WeakRef<cxx::Entity>(targetEntity);	// was [targetEntity weakSelf] (bead oo-9ht.39.5.2)
+		const oo::WeakRef<Entity> targetRef = oo::WeakRef<Entity>(targetEntity);	// was [targetEntity weakSelf] (bead oo-9ht.39.5.2)
 		// -indexOfObject: compared the weak references (proxies) by identity; WeakRef's == compares the same identity
-		const auto slotFor = [this](const oo::WeakRef<cxx::Entity> &ref) -> NSUInteger
+		const auto slotFor = [this](const oo::WeakRef<Entity> &ref) -> NSUInteger
 		{
-			const auto found = std::find_if(target_memory.begin(), target_memory.end(), [&ref](const oo::WeakRef<cxx::Entity> &slot) { return slot == ref; });
+			const auto found = std::find_if(target_memory.begin(), target_memory.end(), [&ref](const oo::WeakRef<Entity> &slot) { return slot == ref; });
 			return (found != target_memory.end()) ? static_cast<NSUInteger>(found - target_memory.begin()) : NSNotFound;
 		};
 		NSUInteger i = slotFor(targetRef);
@@ -12558,7 +12558,7 @@ void PlayerEntity::addTarget(cxx::Entity *targetEntity)	// the C++ entity since 
 		}		
 		else
 		{
-			i = slotFor(oo::WeakRef<cxx::Entity>());	// an empty slot
+			i = slotFor(oo::WeakRef<Entity>());	// an empty slot
 			// find and use a blank space in memory
 			if (i != NSNotFound)
 			{
@@ -12616,7 +12616,7 @@ void PlayerEntity::clearTargetMemory()
 }
 
 
-std::vector<oo::WeakRef<cxx::Entity>> PlayerEntity::targetMemory()
+std::vector<oo::WeakRef<Entity>> PlayerEntity::targetMemory()
 {
 	return target_memory;
 }
@@ -12632,8 +12632,8 @@ bool PlayerEntity::moveTargetMemoryBy(NSInteger delta)
 		while (idx >= PLAYER_TARGET_MEMORY_SIZE) idx -= PLAYER_TARGET_MEMORY_SIZE;
 		target_memory_index = idx;
 
-		const oo::WeakRef<cxx::Entity> &targ_ref = target_memory.at(target_memory_index);
-		if (targ_ref != oo::WeakRef<cxx::Entity>())	// a weak reference (-isProxy), not an empty slot
+		const oo::WeakRef<Entity> &targ_ref = target_memory.at(target_memory_index);
+		if (targ_ref != oo::WeakRef<Entity>())	// a weak reference (-isProxy), not an empty slot
 		{
 			::ShipEntity *potential_target = oo::ToShip(targ_ref.get());
 		

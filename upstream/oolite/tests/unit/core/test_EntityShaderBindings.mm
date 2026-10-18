@@ -10,7 +10,7 @@
 	category sends with values the test sets; a system attribute that is not a number reads 0, as
 	-unsignedIntValue of nil did. The test links the whole game but main (['*']) for Entity. The
 	expectations were written against the Objective-C category and run on it first; the
-	conversion (amendment oo-9fwb: members of cxx::Entity, the category's forwarders in
+	conversion (amendment oo-9fwb: members of Entity, the category's forwarders in
 	EntityShaderBindings+ObjCBridge.mm) changed no line here. Since the uniforms bind the members
 	through the entities' member table (bead oo-9ht.158) and the forwarders went (bead oo-9ht.127),
 	the test asks the binding a uniform makes for each name on an entity's object, and pins the
@@ -107,15 +107,15 @@ void SetUp()
 }
 
 
-cxx::Entity *AnEntity()
+Entity *AnEntity()
 {
-	return oo::MadeEntity(oo::makeRef<cxx::Entity>());
+	return oo::MadeEntity(oo::makeRef<Entity>());
 }
 
 
 // The binding a uniform bound to the name on the entity's object makes (the member table; the
 // entity's own since bead oo-dpyk8 deleted the object).
-OOShaderMemberBinding Binding(cxx::Entity *entity, const char *name)
+OOShaderMemberBinding Binding(Entity *entity, const char *name)
 {
 	OOShaderMemberBinding binding = {};
 	if (!EntityShaderMemberBindingFor(entity, name, &binding))  binding = {};
@@ -123,7 +123,7 @@ OOShaderMemberBinding Binding(cxx::Entity *entity, const char *name)
 }
 
 // What a uniform bound to the name reads: an integer or a float.
-long long BoundInt(cxx::Entity *entity, const char *name)
+long long BoundInt(Entity *entity, const char *name)
 {
 	OOShaderBindingValue value = {};
 	const OOShaderMemberBinding binding = Binding(entity, name);
@@ -131,7 +131,7 @@ long long BoundInt(cxx::Entity *entity, const char *name)
 	return value.i;
 }
 
-double BoundFloat(cxx::Entity *entity, const char *name)
+double BoundFloat(Entity *entity, const char *name)
 {
 	OOShaderBindingValue value = {};
 	const OOShaderMemberBinding binding = Binding(entity, name);
@@ -147,7 +147,7 @@ OO_TEST(clockTime)
 	@autoreleasepool
 	{
 		SetUp();
-		cxx::Entity *entity = AnEntity();
+		Entity *entity = AnEntity();
 		sPlayer->_clockTime = 1234.5;
 		OO_CHECK(BoundFloat(entity, "clock") == 1234.5f);
 		// A double clock time is narrowed to a float.
@@ -162,7 +162,7 @@ OO_TEST(flavourNumbers)
 	@autoreleasepool
 	{
 		SetUp();
-		cxx::Entity *entity = AnEntity();
+		Entity *entity = AnEntity();
 		sPlayer->_random100 = 42;
 		sPlayer->_random256 = 200;
 		OO_CHECK(BoundInt(entity, "pseudoFixedD100") == 42);
@@ -176,7 +176,7 @@ OO_TEST(systemAttributes)
 	@autoreleasepool
 	{
 		SetUp();
-		cxx::Entity *entity = AnEntity();
+		Entity *entity = AnEntity();
 		sPlayer->_government = oo::PList(3);
 		sPlayer->_economy = oo::PList(5);
 		sPlayer->_techLevel = oo::PList(11);
@@ -196,7 +196,7 @@ OO_TEST(attributeNotANumberIsZero)
 	@autoreleasepool
 	{
 		SetUp();
-		cxx::Entity *entity = AnEntity();
+		Entity *entity = AnEntity();
 		// No value (nil), and a value that is not a number: 0, as -unsignedIntValue of nil.
 		sPlayer->_government = oo::PList();
 		sPlayer->_economy = oo::PList("rich");
@@ -215,7 +215,7 @@ OO_TEST(uniformTypes)
 	{
 		// The uniform's type is the method's return type: a float for the clock ('f'), unsigned
 		// ints ('I') for the rest.
-		cxx::Entity *entity = AnEntity();
+		Entity *entity = AnEntity();
 		OO_CHECK(Binding(entity, "clock").type == kOOShaderUniformTypeFloat);
 		OO_CHECK(Binding(entity, "pseudoFixedD100").type == kOOShaderUniformTypeUnsignedInt);
 		OO_CHECK(Binding(entity, "pseudoFixedD256").type == kOOShaderUniformTypeUnsignedInt);
@@ -271,9 +271,9 @@ OO_TEST(everyPermittedNameBindsAsBySelector)
 		"tradeInFactor", "forwardVector", "rightVector", "upVector", "shaderFloat1", "shaderFloat2",
 		"shaderInt1", "shaderInt2", "shaderVector1", "shaderVector2",
 		};
-		cxx::Entity *const objects[] = { AnEntity(), sPlayer };	// any entity; a player (a ship)
+		Entity *const objects[] = { AnEntity(), sPlayer };	// any entity; a player (a ship)
 		int rows = 0;
-		for (cxx::Entity *object : objects)
+		for (Entity *object : objects)
 		{
 			for (const char *name : kNames)
 			{

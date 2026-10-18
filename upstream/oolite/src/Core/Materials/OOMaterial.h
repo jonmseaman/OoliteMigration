@@ -45,7 +45,7 @@ SOFTWARE.
 #import "oofnd/objc/OOObject.h"
 #import "OOOpenGL.h"
 #import "OOOpenGLExtensionManager.h"
-namespace cxx { class Entity; }	// Entity.h: the shader binding target (bead oo-9ht.39.6)
+class Entity;	// Entity.h: the shader binding target (bead oo-9ht.39.6)
 
 #include <vector>
 #include "oofnd/objc/OOObjCRef.h"
@@ -93,7 +93,7 @@ public:
 	virtual bool isFinishedLoading();
 
 	// Only used by shader material, but defined for all materials for convenience.
-	virtual void setBindingTarget(cxx::Entity *target);
+	virtual void setBindingTarget(Entity *target);
 
 	// True if material wants three-component cube map texture coordinates.
 	virtual bool wantsNormalsAsTextureCoordinates();
@@ -134,7 +134,7 @@ public:
 												const std::optional<std::string> &cacheKey,
 												const oo::PList &configuration,
 												const oo::PList &macros,
-												cxx::Entity *object,
+												Entity *object,
 												bool smooth);
 
 	/*	Select an appropriate material description (based on availability of
@@ -146,7 +146,7 @@ public:
 												const oo::PList &materialDict,
 												const oo::PList &shadersDict,
 												const oo::PList &macros,
-												cxx::Entity *object,
+												Entity *object,
 												bool smooth);
 
 private:
@@ -158,7 +158,7 @@ private:
 															 const std::optional<std::string> &cacheKey,
 															 const oo::PList &configuration,
 															 const oo::PList &macros,
-															 cxx::Entity *target);
+															 Entity *target);
 };
 
 

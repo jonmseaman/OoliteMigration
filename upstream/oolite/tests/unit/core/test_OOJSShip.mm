@@ -56,7 +56,7 @@ namespace {
 
 // What the stand-ins were told, in order (slice 2 on).
 std::vector<std::string> sLog;
-cxx::Entity *sNextBeacon = nil;
+Entity *sNextBeacon = nil;
 BOOL sPlayerDocked = NO;	// what the engine's player answers -isDocked (slice 3)
 
 }	// namespace
@@ -67,7 +67,7 @@ class TestPlayer : public PlayerEntity	// C++ since bead oo-9ht.177 deleted the 
 {
 public:
 	HPVector viewpointPosition() override	{ return kZeroHPVector; }
-	cxx::Entity *nextBeacon() override	{ return sNextBeacon; }	// the C++ entity since bead oo-9ht.39.23
+	Entity *nextBeacon() override	{ return sNextBeacon; }	// the C++ entity since bead oo-9ht.39.23
 	void setCompassMode(OOCompassMode value) override	{ sLog.push_back(oo::str::format("setCompassMode %d", static_cast<int>(value))); }
 	void setScriptTarget(::ShipEntity * ship) override	{ sLog.push_back("setScriptTarget " + (ship != nullptr ? ship->getName() : std::optional<std::string>()).value_or("(nil)")); }
 	unsigned score() override	{ return 1000; }
@@ -82,10 +82,10 @@ class TestUniverse : public Universe
 {
 public:
 	// The C++ entity since bead oo-9ht.39.8.10 (its object's -beaconCode was the ship's).
-	void setNextBeacon(cxx::Entity *beacon) override	{ ShipEntity *ship = dynamic_cast<ShipEntity *>(beacon); sLog.push_back("setNextBeacon " + (ship != nullptr ? ship->beaconCode() : std::optional<std::string>()).value_or("(none)")); }
-	void clearBeacon(cxx::Entity *beacon) override	{ (void)beacon; sLog.push_back("clearBeacon"); }
+	void setNextBeacon(Entity *beacon) override	{ ShipEntity *ship = dynamic_cast<ShipEntity *>(beacon); sLog.push_back("setNextBeacon " + (ship != nullptr ? ship->beaconCode() : std::optional<std::string>()).value_or("(none)")); }
+	void clearBeacon(Entity *beacon) override	{ (void)beacon; sLog.push_back("clearBeacon"); }
 	void unMagicMainStation() override	{ sLog.push_back("unMagicMainStation"); }
-	cxx::Entity *hazardOnRouteFromEntity(cxx::Entity * /*e1*/, double dist, HPVector p2) override	// the C++ entities since bead oo-9ht.39.8.6
+	Entity *hazardOnRouteFromEntity(Entity * /*e1*/, double dist, HPVector p2) override	// the C++ entities since bead oo-9ht.39.8.6
 	{
 		sLog.push_back(oo::str::format("hazardOnRoute %g (%g, %g, %g)", dist, p2.x, p2.y, p2.z));
 		return nullptr;
@@ -100,7 +100,7 @@ public:
 		sLog.push_back(oo::str::format("getContainersOfCommodity %s %u", commodity_name.c_str(), static_cast<unsigned>(how_many)));
 		return {};
 	}
-	HPVector getSafeVectorFromEntity(cxx::Entity * /*e1*/, double dist, HPVector p2) override	// the C++ entity since bead oo-9ht.39.8.6
+	HPVector getSafeVectorFromEntity(Entity * /*e1*/, double dist, HPVector p2) override	// the C++ entity since bead oo-9ht.39.8.6
 	{
 		sLog.push_back(oo::str::format("getSafeVector %g (%g, %g, %g)", dist, p2.x, p2.y, p2.z));
 		return make_HPvector(10, 20, 30);

@@ -60,14 +60,14 @@ T *NewTestPlayer()
 }
 
 
-static cxx::Entity *sRemoved = nil;
+static Entity *sRemoved = nil;
 
 
 // UNIVERSE: never initialised; records what is removed.
 class TestUniverse : public Universe
 {
 public:
-	bool removeEntity(cxx::Entity *entity) override	{ sRemoved = entity; return YES; }	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
+	bool removeEntity(Entity *entity) override	{ sRemoved = entity; return YES; }	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
 };
 
 
@@ -111,10 +111,10 @@ void SetUp()
 // and weapon range). C++ since bead oo-9ht.144 deleted the Objective-C ship: the class calls the
 // ship's members, so it is a C++ ship (never set up) under its object (oo::NewEntityFacade,
 // autoreleased as the test's entity was) whose fields give those answers.
-cxx::Entity *MakeShip()
+Entity *MakeShip()
 {
 	oo::Ref<::ShipEntity> part = oo::makeRef<::ShipEntity>();
-	cxx::Entity *ship = oo::MadeEntity(part);
+	Entity *ship = oo::MadeEntity(part);
 	part->isShip = YES;
 	part->flightSpeed = 50.0f;
 	part->weaponRange = 1000.0f;
@@ -125,7 +125,7 @@ cxx::Entity *MakeShip()
 
 // A shot, made as the ship makes one: its Objective-C object is autoreleased in the test's pool and
 // holds it.
-oo::Ref<OOLaserShotEntity> Shot(cxx::Entity *ship, OOWeaponFacing direction, Vector offset)
+oo::Ref<OOLaserShotEntity> Shot(Entity *ship, OOWeaponFacing direction, Vector offset)
 {
 	oo::Ref<OOLaserShotEntity> shot = OOLaserShotEntity::laserFromShip(oo::ToShip(ship), direction, offset);
 	oo::MadeEntity(shot);
@@ -150,7 +150,7 @@ OO_TEST(laserFromShip)
 	@autoreleasepool
 	{
 		SetUp();
-		cxx::Entity *ship = MakeShip();
+		Entity *ship = MakeShip();
 		oo::Ref<OOLaserShotEntity> shot = Shot(ship, WEAPON_FACING_FORWARD, make_vector(0, 0, 10));
 		OO_CHECK(shot != nullptr);
 		OO_CHECK(HPvector_equal(shot->getPosition(), make_HPvector(100, 0, 10)));
@@ -202,7 +202,7 @@ OO_TEST(update)
 	@autoreleasepool
 	{
 		SetUp();
-		cxx::Entity *ship = MakeShip();
+		Entity *ship = MakeShip();
 		oo::Ref<OOLaserShotEntity> shot = Shot(ship, WEAPON_FACING_FORWARD, make_vector(0, 0, 10));
 
 		// An NPC's shot moves by its velocity.
