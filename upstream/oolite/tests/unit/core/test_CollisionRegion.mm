@@ -17,6 +17,8 @@
 #import "CollisionRegion.h"
 #import "Entity.h"
 #import "OOSunEntity.h"
+#import "PlayerEntity.h"	// the stand-in PLAYER (bead oo-vdw34)
+extern PlayerEntity *gOOPlayer;
 #import "OODescription.h"
 
 #include "oo_test.hpp"
@@ -32,9 +34,37 @@ uint32_t gDebugFlags = 0;
 
 namespace {
 
+
+// PLAYER (bead oo-vdw34): the debug build asserts it is set (OOGetPlayer()), so the entities' positions,
+// which read it, have a player whose viewpoint is the origin: the camera-relative positions are the
+// release build's with no player (the origin's). Never released, as the player is not.
+class TestPlayer : public PlayerEntity
+{
+public:
+	HPVector viewpointPosition() override	{ return kZeroHPVector; }
+};
+
+
+void SetUpTestPlayer()
+{
+	static TestPlayer *player = nullptr;
+	if (player == nullptr)
+	{
+		oo::Ref<TestPlayer> made = oo::makeRef<TestPlayer>();
+		@autoreleasepool
+		{
+			[oo::NewEntityFacade(made) retain];	// +1, as PlayerEntity::sharedPlayer() makes the game's
+		}
+		player = made.get();
+	}
+	gOOPlayer = player;
+}
+
+
 Entity *MakeEntity(HPVector position, GLfloat radius)
 {
-	Entity *entity = [[[Entity alloc] init] autorelease];
+	SetUpTestPlayer();
+	Entity *entity = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
 	[entity setPosition:position];
 	[entity setCollisionRadius:radius];
 	return entity;

@@ -318,7 +318,6 @@ NSUInteger ShipGroupCursorBatch(OOShipGroupCursor &cursor, ShipEntity **batch)
 ::Entity *oo::NewShipObject(const Ref<ShipEntity> &ship, const std::string &key, const oo::PList &dict)
 {
 	if (ship == nullptr)  return nil;
-	OOCParameterAssert(AsObjCEntity(ship.get()) == nullptr);
 	::Entity *object = [[::Entity alloc] initWithCxxEntity:ship.get()];	// +1, as +alloc gave (the root's facade since bead oo-9ht.40)
 	if (object == nil)  return nil;
 	if (!ship->initShipSetUp(key, dict))

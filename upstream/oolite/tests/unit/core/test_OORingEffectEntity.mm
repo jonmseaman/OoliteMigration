@@ -98,7 +98,7 @@ Entity *ShrinkingRing(Entity *source)	{ return oo::NewEntityFacade(OORingEffectE
 
 Entity *Source()
 {
-	Entity *source = [[[Entity alloc] init] autorelease];
+	Entity *source = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
 	[source setCollisionRadius:8.0f];
 	[source setPosition:make_HPvector(1, 2, 3)];
 	[source setOrientation:make_quaternion(0, 1, 0, 0)];

@@ -107,33 +107,30 @@ BOOL NANDPredicate(cxx::Entity *entity, void *parameter)
 }
 
 
-/*	The predicates ask the C++ entity what the root facade's selectors forwarded to (bead oo-9ht.39.27);
-	an Objective-C entity (a test's stand-in) is still messaged, as its class may answer itself.
+/*	The predicates ask the C++ entity what the root facade's selectors forwarded to (bead oo-9ht.39.27;
+	an Objective-C stand-in was messaged until bead oo-j12i2).
 */
 BOOL HasScanClassPredicate(cxx::Entity *entity, void *parameter)
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return *static_cast<const OOScanClass *>(parameter) == [link->objcOwner() scanClass];
 	return *static_cast<const OOScanClass *>(parameter) == (entity != nullptr ? entity->getScanClass() : OOScanClass{});	// an OOScanClass, as the callers pass it
 }
 
 
 BOOL IsShipPredicate(cxx::Entity *entity, void * /*parameter*/)
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() isShip] && ![link->objcOwner() isSubEntity];
 	return entity != nullptr && entity->getIsShip() && !entity->getIsSubEntity();
 }
 
 
 BOOL IsStationPredicate(cxx::Entity *entity, void * /*parameter*/)
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() isStation];
 	return entity != nullptr && entity->getIsStation();
 }
 
 
 BOOL IsPlanetPredicate(cxx::Entity *entity, void * /*parameter*/)
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity); link != nullptr ? ![link->objcOwner() isPlanet] : !(entity != nullptr && entity->isPlanet()))  return NO;
+	if (!(entity != nullptr && entity->isPlanet()))  return NO;
 	OOStellarBodyType type = OOStellarBodyPlanetType(entity);	// the planet is C++ since bead oo-9ht.129
 	return (type == STELLAR_TYPE_NORMAL_PLANET || type == STELLAR_TYPE_MOON);
 }
@@ -141,14 +138,12 @@ BOOL IsPlanetPredicate(cxx::Entity *entity, void * /*parameter*/)
 
 BOOL IsSunPredicate(cxx::Entity *entity, void * /*parameter*/)
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() isSun];
 	return entity != nullptr && entity->isSun();
 }
 
 
 BOOL IsVisualEffectPredicate(cxx::Entity *entity, void * /*parameter*/)
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() isVisualEffect] && ![link->objcOwner() isSubEntity];
 	return entity != nullptr && entity->getIsVisualEffect() && !entity->getIsSubEntity();
 }
 

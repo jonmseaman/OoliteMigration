@@ -156,31 +156,26 @@ bool OOJavaScriptEngineIsVisibleToScripts(cxx::Entity *entity)
 
 
 // The root facade's -isShip, -isSubEntity, -isPlanet and -status forwarded to these members (bead
-// oo-9ht.39.25); an Objective-C entity's class may answer them itself, so it is still asked (nil's
-// answer once its object has gone).
+// oo-9ht.39.25; an Objective-C stand-in was asked until bead oo-j12i2).
 bool OOJavaScriptEngineIsShip(cxx::Entity *entity)
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() isShip];
 	return entity != nullptr && entity->getIsShip();
 }
 
 
 bool OOJavaScriptEngineIsSubEntity(cxx::Entity *entity)
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() isSubEntity];
 	return entity != nullptr && entity->getIsSubEntity();
 }
 
 
 bool OOJavaScriptEngineIsPlanet(cxx::Entity *entity)
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() isPlanet];
 	return entity != nullptr && entity->isPlanet();
 }
 
 
 OOEntityStatus OOJavaScriptEngineStatus(cxx::Entity *entity)
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() status];
 	return entity != nullptr ? entity->status() : OOEntityStatus{};
 }

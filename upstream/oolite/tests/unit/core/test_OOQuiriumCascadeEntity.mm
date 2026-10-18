@@ -67,29 +67,24 @@ public:
 };
 
 
-// What the cascade collides with: records the damage it is dealt.
-@interface TestVictim: Entity
+// What the cascade collides with: records the damage it is dealt (an Objective-C subclass until bead
+// oo-j12i2; a C++ one overriding the member its selector became, recording the C++ entities).
+class TestVictim : public cxx::Entity
 {
-@public
-	double			_damage;
-	Entity			*_from;
-	Entity			*_becauseOf;
+public:
+	void takeEnergyDamage(double amount, cxx::Entity *ent, cxx::Entity *other, const std::string &weaponIdentifier) override
+	{
+		_damage = amount;
+		_from = ent;
+		_becauseOf = other;
+		_weapon = weaponIdentifier;
+	}
+
+	double			_damage = 0;
+	cxx::Entity		*_from = nullptr;
+	cxx::Entity		*_becauseOf = nullptr;
 	std::string		_weapon;
-}
-@end
-
-
-@implementation TestVictim
-
-- (void) takeEnergyDamage:(double)amount from:(Entity *)ent becauseOf:(Entity *)other weaponIdentifier:(const std::string &)weaponIdentifier
-{
-	_damage = amount;
-	_from = ent;
-	_becauseOf = other;
-	_weapon = weaponIdentifier;
-}
-
-@end
+};
 
 
 extern ooscript::Context gOOJSMainThreadContext;	// the engine's (OOJavaScriptEngine.mm)
@@ -133,7 +128,7 @@ OO_TEST(fromShip)
 		OO_CHECK(MakeCascade(nil) == nil);
 
 		Entity *ship = oo::NewEntityFacade(oo::makeRef<::ShipEntity>());	// a C++ ship under its object (bead oo-9ht.144), never set up
-		Entity *shipOwner = [[[Entity alloc] init] autorelease];
+		Entity *shipOwner = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
 		[ship setPosition:make_HPvector(5, 6, 7)];
 		[ship setOwner:shipOwner];
 
@@ -160,11 +155,11 @@ OO_TEST(update)
 	{
 		SetUp();
 		Entity *ship = oo::NewEntityFacade(oo::makeRef<::ShipEntity>());	// a C++ ship under its object (bead oo-9ht.144), never set up
-		Entity *shipOwner = [[[Entity alloc] init] autorelease];
+		Entity *shipOwner = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
 		[ship setOwner:shipOwner];
 		Entity *cascade = MakeCascade(oo::ToShip(ship));
-		TestVictim *victim = [[[TestVictim alloc] init] autorelease];
-		[cascade cxx_collidingEntities]->emplace_back(oo::ToCxx(victim));
+		TestVictim *victim = static_cast<TestVictim *>(oo::MadeEntity(oo::makeRef<TestVictim>()));
+		[cascade cxx_collidingEntities]->emplace_back(victim);
 
 		// A tenth of a second: past the collision delay, expanding, and dealing energy.
 		[cascade update:0.1];
@@ -173,7 +168,7 @@ OO_TEST(update)
 		const double energy = 0.1 * (100000 - 90000 * (0.1 / 20.0));
 		OO_CHECK(fabs([cascade energy] - energy) < 1e-2);
 		OO_CHECK(fabs(victim->_damage - energy) < 1e-2);
-		OO_CHECK(victim->_from == cascade && victim->_becauseOf == shipOwner && victim->_weapon == "EQ_QC_MINE");
+		OO_CHECK(victim->_from == oo::ToCxx(cascade) && victim->_becauseOf == oo::ToCxx(shipOwner) && victim->_weapon == "EQ_QC_MINE");
 		OO_CHECK(oo::DescriptionOf(cascade).ends_with("{0.100000 seconds passed of 20.000000}"));
 		OO_CHECK(sRemoved == nil);
 

@@ -109,7 +109,7 @@ void SetUp()
 
 Entity *AnEntity()
 {
-	return [[[Entity alloc] init] autorelease];
+	return oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
 }
 
 

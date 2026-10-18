@@ -82,65 +82,37 @@ std::optional<std::string> EntityJSClassName(void)
 	dropped when the engine resets. The body is the one the facade's JS value selector ran, asking the
 	C++ entity what it asked the facade (whose selectors answered from the C++ part).
 */
-/*	The class questions the facade's JS value selector asked by selector: an Objective-C entity's
-	own override answered first (the adapter does not forward them), a C++ entity's members answered
-	through the root facade's category. Exported since bead oo-9ht.39.5.1 for the engine's generic
-	paths that asked an entity's object (OOJSSystem's planets filter, callObjC()'s class name).
+/*	The class questions the facade's JS value selector asked by selector, answered by the C++ entity's
+	members (the root facade's category forwarded to them). Exported since bead oo-9ht.39.5.1 for the
+	engine's generic paths that asked an entity's object (OOJSSystem's planets filter, callObjC()'s
+	class name). An Objective-C stand-in's own override was sent until bead oo-j12i2 deleted the
+	adapter.
 */
-/*	Since bead oo-9ht.39.8.9 (ADR-0056 amendment oo-9ht.39.8.9) only a class's own method is sent:
-	the root facade's, which a class without one inherited, forwarded to the C++ part (the adapter,
-	whose members are the root's), which is what answers instead. An adapter whose object has gone
-	answers as the message to nil did.
-*/
-namespace {
-
-bool ObjCEntityGone(cxx::Entity *entity)
-{
-	oo::ObjCEntityLink *link = oo::AsObjCEntity(entity);
-	return link != nullptr && link->objcOwner() == nil;
-}
-
-::Entity *ObjCEntityOwning(cxx::Entity *entity, SEL selector)
-{
-	oo::ObjCEntityLink *link = oo::AsObjCEntity(entity);
-	if (link == nullptr)  return nil;
-	::Entity *object = link->objcOwner();
-	if (object == nil)  return nil;
-	if (class_getInstanceMethod(object_getClass(object), selector) == class_getInstanceMethod([::Entity class], selector))  return nil;
-	return object;
-}
-
-}	// namespace
 
 
 bool OOJSEntityIsVisibleToScripts(cxx::Entity *entity)
 {
-	if (entity == nullptr || ObjCEntityGone(entity))  return false;	// nil's answer
-	if (::Entity *object = ObjCEntityOwning(entity, @selector(isVisibleToScripts)))  return [object isVisibleToScripts];
+	if (entity == nullptr)  return false;	// nil's answer
 	return entity->isVisibleToScripts();
 }
 
 
 std::optional<std::string> OOJSEntityJSClassName(cxx::Entity *entity)
 {
-	if (entity == nullptr || ObjCEntityGone(entity))  return std::nullopt;	// nil's answer
-	if (::Entity *object = ObjCEntityOwning(entity, @selector(cxx_oo_jsClassName)))  return [object cxx_oo_jsClassName];
+	if (entity == nullptr)  return std::nullopt;	// nil's answer
 	return entity->jsClassName();
 }
 
 
 void OOJSEntityGetJSClass(cxx::Entity *entity, ooscript::ClassDef **outClass, ooscript::Object *outPrototype)
 {
-	if (ObjCEntityGone(entity))  return;	// nil's answer: nothing
-	if (::Entity *object = ObjCEntityOwning(entity, @selector(getJSClass:andPrototype:)))  [object getJSClass:outClass andPrototype:outPrototype];
-	else  entity->getJSClass(outClass, outPrototype);
+	entity->getJSClass(outClass, outPrototype);
 }
 
 
 ooscript::Value OOJSEntityJSValue(cxx::Entity *entity, ooscript::Context context)
 {
 	if (entity == nullptr)  return ooscript::nullValue();	// OOJSValueFromNativeObject()'s for nil
-	if (::Entity *object = ObjCEntityOwning(entity, @selector(oo_jsValueInContext:)))  return [object oo_jsValueInContext:context];
 	return entity->jsValueInContext(context);
 }
 
@@ -203,13 +175,11 @@ void EntityJSDeleteJSSelf(cxx::Entity *entity)
 /*	What the facade's -cxx_oo_jsDescription answered (OOObject (OOJavaScriptConversion)'s
 	OOObjectJSDescription): "[<JS class name> <components>]", or "[object <JS class name>]" with no
 	components; the JS class name is -cxx_oo_jsClassName's (the C++ entity's jsClassName()), else
-	the Objective-C class's name, the root facade's ("Entity") for a C++ entity. An Objective-C
-	entity is still asked by selector.
+	the root facade's class name, "Entity".
 */
 std::optional<std::string> EntityJSDescription(cxx::Entity *entity)
 {
 	if (entity == nullptr)  return std::nullopt;	// (the holder asks only a live entity)
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return OOJavaScriptEngineJSDescription(link->objcOwner());	// its own selectors, as before
 	std::optional<std::string> name = entity->jsClassName();
 	if (!name.has_value())  name = std::string("Entity");	// the root facade's class
 	if (const std::optional<std::string> components = entity->descriptionComponents())

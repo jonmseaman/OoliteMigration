@@ -59,16 +59,13 @@ uint32_t gDebugFlags = 0;
 
 // MARK: The stand-ins -----------------------------------------------------------------------------
 
-// An entity scripts can see; it answers like any Entity otherwise.
-@interface TestEntity: Entity
-@end
-
-
-@implementation TestEntity
-
-- (BOOL) isVisibleToScripts  { return YES; }
-
-@end
+// An entity scripts can see; it answers like any Entity otherwise (an Objective-C subclass until bead
+// oo-j12i2; a C++ one overriding the member its selector became).
+class TestEntity : public cxx::Entity
+{
+public:
+	bool isVisibleToScripts() override  { return true; }
+};
 
 
 // The GUI is C++ since bead oo-9ht.143 deleted its facade: the stand-in overrides the members the
@@ -350,8 +347,11 @@ void SetUp()
 	sPlayer = NewTestPlayer<FakePlayer>();
 	sPlayer->_hud = oo::makeRef<HeadUpDisplay>();
 	sPlayer->_hud->initWithDictionary(oo::PList(oo::PList::Dict{}), std::string("test-hud.plist"));
-	sPlayer->_dockedStation = [[TestEntity alloc] init];
-	sPlayer->_other = [[TestEntity alloc] init];
+	@autoreleasepool
+	{
+		sPlayer->_dockedStation = [oo::NewEntityFacade(oo::makeRef<TestEntity>()) retain];	// +1, as +alloc's was
+		sPlayer->_other = [oo::NewEntityFacade(oo::makeRef<TestEntity>()) retain];
+	}
 	[sPlayer->_dockedStation setPosition:make_HPvector(5, 0, 0)];
 	sPlayer->_docked = YES;
 	sPlayer->_specialCargo = "Ten tonnes of rare orchids";

@@ -164,7 +164,7 @@ OO_TEST(objCSubclass)
 		OO_CHECK(!script->superRequiresTickle());
 		OO_CHECK(script->requiresTickle());
 
-		Entity *target = [[[Entity alloc] init] autorelease];
+		Entity *target = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
 		script->runWithTarget(oo::ToCxx(target));
 		OO_CHECK_EQ(script->runs, 1);
 		OO_CHECK(script->lastTarget == oo::ToCxx(target));
@@ -296,7 +296,7 @@ OO_TEST(crossingCxxSubclass)
 		OO_CHECK_EQ(script->displayName().value_or("<none>"), "cxx 2");
 		OO_CHECK(script->requiresTickle());
 		OO_CHECK(script->description().find("\"cxx\" version 2") != std::string::npos);
-		Entity *target = [[[Entity alloc] init] autorelease];
+		Entity *target = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
 		script->runWithTarget(oo::ToCxx(target));
 		OO_CHECK_EQ(script->runs, 1);
 		OO_CHECK(script->lastTarget == oo::ToCxx(target));

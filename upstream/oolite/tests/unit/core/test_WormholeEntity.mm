@@ -80,16 +80,13 @@ T *NewTestPlayer()
 
 
 
-// An effect, for the collision test.
-@interface TestEffect: Entity
-@end
-
-
-@implementation TestEffect
-
-- (BOOL) isEffect	{ return YES; }
-
-@end
+// An effect, for the collision test (an Objective-C subclass until bead oo-j12i2; a C++ one
+// overriding the member its selector became).
+class TestEffect : public cxx::Entity
+{
+public:
+	bool isEffect() override	{ return true; }
+};
 
 
 // UNIVERSE: never initialised; answers the system and the system manager, and records removals.
@@ -328,7 +325,7 @@ OO_TEST(collisions)
 		sPlayer->_coordinates = NSMakePoint(10, 20);
 
 		OO_CHECK(wh->checkCloseCollisionWith(oo::ToCxx(Ship(1.0f))));
-		OO_CHECK(!wh->checkCloseCollisionWith(oo::ToCxx([[[TestEffect alloc] init] autorelease])));
+		OO_CHECK(!wh->checkCloseCollisionWith(oo::MadeEntity(oo::makeRef<TestEffect>())));
 	}
 }
 
@@ -419,7 +416,6 @@ OO_TEST(facade)
 		OO_CHECK(object != nil && [object class] == [Entity class]);
 		// A C++ entity (amendment oo-0mxi), not an Objective-C entity's adapter.
 		OO_CHECK(dynamic_cast<WormholeEntity *>(oo::ToCxx(object)) == wh);
-		OO_CHECK(oo::AsObjCEntity(wh) == nullptr);
 	}
 }
 

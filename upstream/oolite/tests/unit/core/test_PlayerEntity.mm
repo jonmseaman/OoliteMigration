@@ -369,7 +369,6 @@ OO_TEST(playerObjectIsAShipWhosePartIsThePlayer)
 		OO_CHECK(object != nil && oo::ToShip(object) != nullptr);	// a ship's object (-isKindOfClass:[ShipEntity class] until bead oo-9ht.144)
 		OO_CHECK(oo::ToCxx(object) == player);
 		OO_CHECK(dynamic_cast<PlayerEntity *>(oo::ToCxx(object)) == player);
-		OO_CHECK(oo::AsObjCEntity(player) == nullptr);	// a C++ player, not an adapter
 		OO_CHECK(oo::EntityRespondsToName(player, "commanderName_string"));
 		OO_CHECK(oo::EntityRespondsToName(player, "credits_number"));
 		OO_CHECK(!oo::EntityRespondsToName(player, "noSuchPlayerSelector"));
@@ -1612,6 +1611,7 @@ OO_TEST(contractsSlice1PassengersVolumeAndReport)
 	{
 		SetUp();
 		CategoryPlayer *player = MakeCategoryPlayer();
+		gOOPlayer = player;	// addPassenger() reads PLAYER's clock, which the debug build asserts is set (bead oo-vdw34)
 		PlayerEntityTestAccess::max_passengers(player) = 2;
 		OO_CHECK(player->addPassenger("Ann", 1, 2, 100.0, 10.0, 1.0, 2));
 		OO_CHECK(sSent.count == 2 && sSent.text == "trader-courier+" && sSent.number == 2);
@@ -1627,6 +1627,7 @@ OO_TEST(contractsSlice1PassengersVolumeAndReport)
 		player->addMessageToReport("");
 		player->addMessageToReport("two");
 		OO_CHECK(PlayerEntityTestAccess::dockingReport(player) == "one\n\ntwo");
+		gOOPlayer = nullptr;
 	}
 }
 

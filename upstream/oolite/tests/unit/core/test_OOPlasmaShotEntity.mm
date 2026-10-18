@@ -84,43 +84,34 @@ public:
 };
 
 
-// What the shot hits: records the damage.
-@interface TestTarget: Entity
+// What the shot hits: records the damage (an Objective-C subclass until bead oo-j12i2; a C++ one
+// overriding the member its selector became, recording the C++ entities).
+class TestTarget : public cxx::Entity
 {
-@public
-	double		_amount;
-	Entity		*_from;
-	Entity		*_becauseOf;
-	std::string	_weapon;
-	int			_hits;
-}
-@end
+public:
+	void takeEnergyDamage(double amount, cxx::Entity *ent, cxx::Entity *other, const std::string &weaponIdentifier) override
+	{
+		_hits++;
+		_amount = amount;
+		_from = ent;
+		_becauseOf = other;
+		_weapon = weaponIdentifier;
+	}
+
+	double			_amount = 0;
+	cxx::Entity		*_from = nullptr;
+	cxx::Entity		*_becauseOf = nullptr;
+	std::string		_weapon;
+	int				_hits = 0;
+};
 
 
-@implementation TestTarget
-
-- (void) takeEnergyDamage:(double)amount from:(Entity *)ent becauseOf:(Entity *)other weaponIdentifier:(const std::string &)weaponIdentifier
+// An effect, for the collision test (an Objective-C subclass until bead oo-j12i2).
+class TestEffect : public cxx::Entity
 {
-	_hits++;
-	_amount = amount;
-	_from = ent;
-	_becauseOf = other;
-	_weapon = weaponIdentifier;
-}
-
-@end
-
-
-// An effect, for the collision test.
-@interface TestEffect: Entity
-@end
-
-
-@implementation TestEffect
-
-- (BOOL) isEffect	{ return YES; }
-
-@end
+public:
+	bool isEffect() override	{ return true; }
+};
 
 
 extern ooscript::Context gOOJSMainThreadContext;	// the engine's (OOJavaScriptEngine.mm)
@@ -226,8 +217,8 @@ OO_TEST(collisions)
 	{
 		SetUp(0.0);
 		Entity *shot = RedShot();
-		Entity *plain = [[[Entity alloc] init] autorelease];
-		Entity *effect = [[[TestEffect alloc] init] autorelease];
+		Entity *plain = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
+		Entity *effect = oo::NewEntityFacade(oo::makeRef<TestEffect>());
 
 		// No owner: a plain entity's root ship is nil too.
 		OO_CHECK(![shot checkCloseCollisionWith:plain]);
@@ -258,10 +249,10 @@ OO_TEST(hitDamagesAndBursts)
 		[shot update:0.1];
 		OO_CHECK(sUniverse->_removed == nil && sUniverse->_added == nil);
 
-		TestTarget *target = [[[TestTarget alloc] init] autorelease];
-		SetColliding(shot, target);
+		TestTarget *target = static_cast<TestTarget *>(oo::MadeEntity(oo::makeRef<TestTarget>()));
+		SetColliding(shot, oo::ToObjC(target));
 		[shot update:0.1];
-		OO_CHECK(target->_hits == 1 && target->_amount == 7.0 && target->_from == shot && target->_becauseOf == ship);
+		OO_CHECK(target->_hits == 1 && target->_amount == 7.0 && target->_from == oo::ToCxx(shot) && target->_becauseOf == oo::ToCxx(ship));
 		OO_CHECK(target->_weapon == "EQ_WEAPON_PLASMA_SHOT");
 		OO_CHECK(sUniverse->_removed == shot);
 		Entity *burst = sUniverse->_added;

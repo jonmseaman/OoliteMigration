@@ -323,7 +323,6 @@ OO_TEST(facade)
 		OO_CHECK(object != nil && [object class] == [Entity class]);
 		// A C++ entity (amendment oo-0mxi), not an Objective-C entity's adapter.
 		OO_CHECK(dynamic_cast<OOSunEntity *>(oo::ToCxx(object)) == sun);
-		OO_CHECK(oo::AsObjCEntity(sun) == nullptr);
 	}
 }
 

@@ -134,7 +134,7 @@ OOFlashEffectEntity *Part(Entity *flash)						{ return dynamic_cast<OOFlashEffec
 
 Entity *Exploding()
 {
-	Entity *e = [[[Entity alloc] init] autorelease];
+	Entity *e = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
 	[e setPosition:make_HPvector(10, 20, 30)];
 	[e setVelocity:make_vector(1, 2, 3)];
 	[e setCollisionRadius:2.0f];
@@ -267,7 +267,6 @@ OO_TEST(facade)
 		Entity *flash = FlashObject(OOFlashEffectEntity::explosionFlashFromEntity(oo::ToCxx(Exploding())));
 		// A C++ entity (amendment oo-0mxi), not an Objective-C entity's adapter.
 		OO_CHECK(dynamic_cast<OOFlashEffectEntity *>(oo::ToCxx(flash)) != nullptr);
-		OO_CHECK(oo::AsObjCEntity(oo::ToCxx(flash)) == nullptr);
 		OO_CHECK(oo::ToObjC(oo::ToCxx(flash)) == flash);
 	}
 }

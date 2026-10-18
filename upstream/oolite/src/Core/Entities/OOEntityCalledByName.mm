@@ -9,8 +9,8 @@ for the C++ part it applies to, exactly as the root facade's -respondsToSelector
 answered it, and called as OOCallByName called the method (the same signature rules, read from
 @encode() of the declared types instead of the method's type encoding). Since bead oo-9ht.39.9 any
 other name, and a tabled name that does not apply, are answered without the entity's Objective-C
-object, as OOCallByName answered them on it (OOEntityObjectNamesTable.h); an Objective-C entity's
-(tests only) still go to its object. callObjC() reads
+object, as OOCallByName answered them on it (OOEntityObjectNamesTable.h); an Objective-C stand-in's
+went to its object until bead oo-j12i2. callObjC() reads
 a typed result through oo::CallEntityByNameTyped (bead oo-9ht.39.7.2). Since bead oo-9ht.39.7.3
 the categories are deleted (the table is the source): a tabled name that applies but whose
 signature the call cannot use is logged here, and oo::ScheduleEntityCall holds the deferred calls.
@@ -174,31 +174,31 @@ OOHUDBeaconIcon * Facade_beaconDrawable(cxx::Entity *entity)
 double Facade_camZeroDistance(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->camZeroDistance(); }
 GLfloat Facade_cameraRangeBack(cxx::Entity *entity)
-{ if (entity == nullptr)  return {}; if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return link->superCameraRangeBack(); return entity->cameraRangeBack(); }
+{ if (entity == nullptr)  return {}; return entity->cameraRangeBack(); }
 GLfloat Facade_cameraRangeFront(cxx::Entity *entity)
-{ if (entity == nullptr)  return {}; if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return link->superCameraRangeFront(); return entity->cameraRangeFront(); }
+{ if (entity == nullptr)  return {}; return entity->cameraRangeFront(); }
 Vector Facade_cameraRelativePosition(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getCameraRelativePosition(); }
 BOOL Facade_canCollide(cxx::Entity *entity)
-{ if (entity == nullptr)  return {}; if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return link->superCanCollide(); return entity->canCollide(); }
+{ if (entity == nullptr)  return {}; return entity->canCollide(); }
 GLfloat Facade_collisionRadius(cxx::Entity *entity)
-{ if (entity == nullptr)  return {}; if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return link->superCollisionRadius(); return entity->collisionRadius(); }
+{ if (entity == nullptr)  return {}; return entity->collisionRadius(); }
 void Facade_deleteJSSelf(cxx::Entity *entity)
 { if (entity == nullptr)  return; entity->deleteJSSelf(); }
 GLfloat Facade_distanceTravelled(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getDistanceTravelled(); }
 void Facade_dumpSelfState(cxx::Entity *entity)
-{ if (entity == nullptr)  return; if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  link->superDumpSelfState(); else  entity->dumpSelfState(); }
+{ if (entity == nullptr)  return; entity->dumpSelfState(); }
 void Facade_dumpState(cxx::Entity *entity)
 { if (entity == nullptr)  return; entity->dumpState(); }
 GLfloat Facade_energy(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getEnergy(); }
 double Facade_findCollisionRadius(cxx::Entity *entity)
-{ if (entity == nullptr)  return {}; if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return link->superFindCollisionRadius(); return entity->findCollisionRadius(); }
+{ if (entity == nullptr)  return {}; return entity->findCollisionRadius(); }
 OOColor * Facade_fogUniform(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->fogUniform().get(); }
 GLfloat Facade_frustumRadius(cxx::Entity *entity)
-{ if (entity == nullptr)  return {}; if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return link->superFrustumRadius(); return entity->frustumRadius(); }
+{ if (entity == nullptr)  return {}; return entity->frustumRadius(); }
 Vector Facade_illuminationColorAsVector(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; OOPlanetEntity *planet = dynamic_cast<OOPlanetEntity *>(entity); return planet != nullptr ? planet->illuminationColorAsVector() : kZeroVector; }
 BOOL Facade_isBeacon(cxx::Entity *entity)
@@ -206,9 +206,9 @@ BOOL Facade_isBeacon(cxx::Entity *entity)
 BOOL Facade_isCascadeWeapon(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; OOQuiriumCascadeEntity *cascade = dynamic_cast<OOQuiriumCascadeEntity *>(entity); return cascade != nullptr ? cascade->isCascadeWeapon() : NO; }
 BOOL Facade_isDock(cxx::Entity *entity)
-{ if (entity == nullptr)  return {}; if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return link->superIsDock(); return entity->isDock(); }
+{ if (entity == nullptr)  return {}; return entity->isDock(); }
 BOOL Facade_isEffect(cxx::Entity *entity)
-{ if (entity == nullptr)  return {}; if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return link->superIsEffect(); return entity->isEffect(); }
+{ if (entity == nullptr)  return {}; return entity->isEffect(); }
 BOOL Facade_isImmuneToBreakPatternHide(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getIsImmuneToBreakPatternHide(); }
 BOOL Facade_isInSpace(cxx::Entity *entity)
@@ -216,13 +216,13 @@ BOOL Facade_isInSpace(cxx::Entity *entity)
 BOOL Facade_isJammingScanning(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; if (ShipEntity *ship = ShipPart(entity))  return ship->isJammingScanning(); if (OOVisualEffectEntity *effect = EffectPart(entity))  return effect->isJammingScanning(); OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(entity); return waypoint != nullptr ? waypoint->isJammingScanning() : NO; }
 BOOL Facade_isPlanet(cxx::Entity *entity)
-{ if (entity == nullptr)  return {}; if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return link->superIsPlanet(); return entity->isPlanet(); }
+{ if (entity == nullptr)  return {}; return entity->isPlanet(); }
 BOOL Facade_isPlayer(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getIsPlayer(); }
 BOOL Facade_isShip(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getIsShip(); }
 BOOL Facade_isSky(cxx::Entity *entity)
-{ if (entity == nullptr)  return {}; if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return link->superIsSky(); return entity->isSky(); }
+{ if (entity == nullptr)  return {}; return entity->isSky(); }
 BOOL Facade_isStation(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getIsStation(); }
 BOOL Facade_isStellarObject(cxx::Entity *entity)
@@ -230,17 +230,17 @@ BOOL Facade_isStellarObject(cxx::Entity *entity)
 BOOL Facade_isSubEntity(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getIsSubEntity(); }
 BOOL Facade_isSun(cxx::Entity *entity)
-{ if (entity == nullptr)  return {}; if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return link->superIsSun(); return entity->isSun(); }
+{ if (entity == nullptr)  return {}; return entity->isSun(); }
 BOOL Facade_isSunlit(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getIsSunlit(); }
 BOOL Facade_isVisible(cxx::Entity *entity)
-{ if (entity == nullptr)  return {}; if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return link->superIsVisible(); return entity->isVisible(); }
+{ if (entity == nullptr)  return {}; return entity->isVisible(); }
 BOOL Facade_isVisibleToScripts(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->isVisibleToScripts(); }
 BOOL Facade_isVisualEffect(cxx::Entity *entity)
-{ if (entity == nullptr)  return {}; if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return link->superGetIsVisualEffect(); return entity->getIsVisualEffect(); }
+{ if (entity == nullptr)  return {}; return entity->getIsVisualEffect(); }
 BOOL Facade_isWaypoint(cxx::Entity *entity)
-{ if (entity == nullptr)  return {}; if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return link->superIsWaypoint(); return entity->isWaypoint(); }
+{ if (entity == nullptr)  return {}; return entity->isWaypoint(); }
 BOOL Facade_isWormhole(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getIsWormhole(); }
 NSUInteger Facade_lastDrawCounter(cxx::Entity *entity)
@@ -252,11 +252,11 @@ GLfloat Facade_maxEnergy(cxx::Entity *entity)
 cxx::Entity * Facade_nextBeacon(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; if (ShipEntity *ship = ShipPart(entity))  return ship->nextBeacon(); if (OOVisualEffectEntity *effect = EffectPart(entity))  return effect->nextBeacon(); OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(entity); return waypoint != nullptr ? waypoint->nextBeacon() : nullptr; }
 Quaternion Facade_normalOrientation(cxx::Entity *entity)
-{ if (entity == nullptr)  return {}; if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return link->superNormalOrientation(); return entity->normalOrientation(); }
+{ if (entity == nullptr)  return {}; return entity->normalOrientation(); }
 Quaternion Facade_orientation(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getOrientation(); }
 void Facade_orientationChanged(cxx::Entity *entity)
-{ if (entity == nullptr)  return; if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  link->superOrientationChanged(); else  entity->orientationChanged(); }
+{ if (entity == nullptr)  return; entity->orientationChanged(); }
 id Facade_owner(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->owner(); }
 cxx::Entity * Facade_parentEntity(cxx::Entity *entity)
@@ -270,9 +270,9 @@ void Facade_removeFromLinkedLists(cxx::Entity *entity)
 cxx::Entity * Facade_rootShipEntity(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->rootShipEntity(); }
 OOScanClass Facade_scanClass(cxx::Entity *entity)
-{ if (entity == nullptr)  return {}; if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return link->superGetScanClass(); return entity->getScanClass(); }
+{ if (entity == nullptr)  return {}; return entity->getScanClass(); }
 NSUInteger Facade_sessionID(cxx::Entity *entity)
-{ if (entity == nullptr)  return {}; if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return link->superSessionID(); return entity->sessionID(); }
+{ if (entity == nullptr)  return {}; return entity->sessionID(); }
 GLfloat Facade_spawnTime(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getSpawnTime(); }
 double Facade_speed(cxx::Entity *entity)
@@ -284,7 +284,7 @@ id<OOWeakReferenceSupport> Facade_superShaderBindingTarget(cxx::Entity *entity)
 Vector Facade_terminatorThresholdVector(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; OOPlanetEntity *planet = dynamic_cast<OOPlanetEntity *>(entity); return planet != nullptr ? planet->terminatorThresholdVector() : kZeroVector; }
 void Facade_throwSparks(cxx::Entity *entity)
-{ if (entity == nullptr)  return; if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  link->superThrowSparks(); else  entity->throwSparks(); }
+{ if (entity == nullptr)  return; entity->throwSparks(); }
 BOOL Facade_throwingSparks(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->throwingSparks(); }
 GLfloat Facade_timeElapsedSinceSpawn(cxx::Entity *entity)
@@ -294,19 +294,19 @@ OOUniversalID Facade_universalID(cxx::Entity *entity)
 GLfloat Facade_universalTime(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->universalTime(); }
 void Facade_updateCameraRelativePosition(cxx::Entity *entity)
-{ if (entity == nullptr)  return; if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  link->superUpdateCameraRelativePosition(); else  entity->updateCameraRelativePosition(); }
+{ if (entity == nullptr)  return; entity->updateCameraRelativePosition(); }
 void Facade_updateLinkedLists(cxx::Entity *entity)
 { if (entity == nullptr)  return; entity->updateLinkedLists(); }
 BOOL Facade_validForAddToUniverse(cxx::Entity *entity)
-{ if (entity == nullptr)  return {}; if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return link->superValidForAddToUniverse(); return entity->validForAddToUniverse(); }
+{ if (entity == nullptr)  return {}; return entity->validForAddToUniverse(); }
 Vector Facade_velocity(cxx::Entity *entity)
-{ if (entity == nullptr)  return {}; if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return link->superGetVelocity(); return entity->getVelocity(); }
+{ if (entity == nullptr)  return {}; return entity->getVelocity(); }
 void Facade_warnAboutHostiles(cxx::Entity *entity)
-{ if (entity == nullptr)  return; if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  link->superWarnAboutHostiles(); else  entity->warnAboutHostiles(); }
+{ if (entity == nullptr)  return; entity->warnAboutHostiles(); }
 void Facade_wasAddedToUniverse(cxx::Entity *entity)
-{ if (entity == nullptr)  return; if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  link->superWasAddedToUniverse(); else  entity->wasAddedToUniverse(); }
+{ if (entity == nullptr)  return; entity->wasAddedToUniverse(); }
 void Facade_wasRemovedFromUniverse(cxx::Entity *entity)
-{ if (entity == nullptr)  return; if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  link->superWasRemovedFromUniverse(); else  entity->wasRemovedFromUniverse(); }
+{ if (entity == nullptr)  return; entity->wasRemovedFromUniverse(); }
 double Facade_zeroDistance(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->zeroDistance(); }
 
@@ -568,13 +568,12 @@ std::optional<oo::PList> CallRow(const OOEntityByNameRow &row, cxx::Entity *enti
 }
 
 
-/*	The class OOCallByName's lines named: the entity's object's. A C++ entity's object is the root's
-	facade, of class Entity (not asked since bead oo-9ht.39.9, ADR-0056 amendment oo-9ht.39.9); an
-	Objective-C entity's (tests only) is of its own class.
+/*	The class OOCallByName's lines named: the entity's object's, the root's facade, of class Entity (not
+	asked since bead oo-9ht.39.9, ADR-0056 amendment oo-9ht.39.9; an Objective-C stand-in's own class
+	until bead oo-j12i2).
 */
-const char *ObjectClassName(cxx::Entity *entity)
+const char *ObjectClassName(cxx::Entity *)
 {
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return class_getName(object_getClass(link->objcOwner()));
 	return "Entity";
 }
 
@@ -602,12 +601,6 @@ std::optional<oo::PList> CallTabled(cxx::Entity *entity, const std::string &name
 	if (std::optional<oo::PList> result = CallRow(*row, entity, string, plist))  return result;
 	LogBadSignature(entity, *row);
 	return oo::PList();
-}
-
-
-SEL SelectorNamed(const std::string &name)
-{
-	return OOSelectorFromName(name.c_str());
 }
 
 
@@ -655,11 +648,6 @@ bool oo::EntityRespondsToName(cxx::Entity *entity, const std::string &name)
 {
 	if (entity == nullptr)  return false;
 	if (const OOEntityByNameRow *row = EntityByNameRowNamed(name))  return EntityByNameRowApplies(*row, entity);
-	// An Objective-C entity's class may answer more: it is asked, as before.
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))
-	{
-		return [link->objcOwner() respondsToSelector:SelectorNamed(name)];	// NO for none, as a message to nil answers
-	}
 	// A facade row (bead oo-9ht.39.8.25): the root facade's -respondsToSelector:'s answer for the facade's method.
 	if (const OOEntityFacadeRow *facade = EntityFacadeRowNamed(name))  return facade->answers == nullptr || facade->answers(entity);
 	// Any other name the entity's object answered (bead oo-9ht.39.9): the object is not asked.
@@ -671,7 +659,6 @@ oo::PList oo::CallEntityByName(cxx::Entity *entity, const std::string &name)
 {
 	if (entity == nullptr)  return PList();
 	if (std::optional<PList> result = CallTabled(entity, name, nullptr, nullptr))  return *result;
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return OOCallByName(link->objcOwner(), SelectorNamed(name));
 	return CallObjectName(entity, name, false);
 }
 
@@ -680,7 +667,6 @@ oo::PList oo::CallEntityByName(cxx::Entity *entity, const std::string &name, con
 {
 	if (entity == nullptr)  return PList();
 	if (std::optional<PList> result = CallTabled(entity, name, &argument, nullptr))  return *result;
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return OOCallByName(link->objcOwner(), SelectorNamed(name), argument);
 	return CallObjectName(entity, name, true);
 }
 
@@ -689,7 +675,6 @@ oo::PList oo::CallEntityByName(cxx::Entity *entity, const std::string &name, con
 {
 	if (entity == nullptr)  return PList();
 	if (std::optional<PList> result = CallTabled(entity, name, nullptr, &argument))  return *result;
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return OOCallByName(link->objcOwner(), SelectorNamed(name), argument);
 	return CallObjectName(entity, name, true);
 }
 

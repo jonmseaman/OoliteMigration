@@ -83,16 +83,13 @@ public:
 };
 
 
-// An effect, for the collision test.
-@interface TestEffect: Entity
-@end
-
-
-@implementation TestEffect
-
-- (BOOL) isEffect	{ return YES; }
-
-@end
+// An effect, for the collision test (an Objective-C subclass until bead oo-j12i2; a C++ one
+// overriding the member its selector became).
+class TestEffect : public cxx::Entity
+{
+public:
+	bool isEffect() override	{ return true; }
+};
 
 
 namespace {
@@ -143,7 +140,7 @@ Entity *SizedCloud(Entity *source, float size, const oo::PList &settings)	{ retu
 
 Entity *Source(Vector velocity)
 {
-	Entity *source = [[[Entity alloc] init] autorelease];
+	Entity *source = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
 	[source setCollisionRadius:10.0f];
 	[source setPosition:make_HPvector(1, 2, 3)];
 	[source setVelocity:velocity];
@@ -223,7 +220,7 @@ OO_TEST(collisions)
 		SetUp();
 		Entity *burst = SmallBurst(Source(kZeroVector));
 		Entity *other = Source(kZeroVector);
-		Entity *effect = [[[TestEffect alloc] init] autorelease];
+		Entity *effect = oo::NewEntityFacade(oo::makeRef<TestEffect>());
 		OO_CHECK([burst checkCloseCollisionWith:other]);
 		OO_CHECK(![burst checkCloseCollisionWith:effect]);
 		OO_CHECK(![burst checkCloseCollisionWith:nil]);	// nil is its (nil) owner

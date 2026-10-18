@@ -18,14 +18,9 @@ It is a hierarchy root's facade, as OODrawable+ObjCBridge.h is, with two differe
 	C++ code that keeps an entity keeps that object (oo::ObjCRef<Entity *>, amendment oo-smy
 	item 4).
 
-	the entity is                        its Objective-C object is            virtual calls on
-	                                                                          the C++ side reach
-	-----------------------------------  -----------------------------------  ------------------
-	an Objective-C subclass              the subclass instance; an adapter,   the subclass's
-	  (unconverted, [[X alloc] init])    oo::ObjCEntity<Base>, is its C++     methods
-	                                     part
-	a C++ subclass (converted)           the facade oo::NewEntityFacade made  the C++ overrides
-	                                     when the entity was made
+	Every entity is a C++ one (the Objective-C subclasses' adapter, oo::ObjCEntity, went with the
+	tests' last Objective-C stand-ins, bead oo-j12i2): its object is the facade oo::NewEntityFacade
+	made when the entity was made, and virtual calls reach the C++ overrides.
 
 2.	The state is the C++ part's. _cxxEntity is @public, and unconverted code that read an ivar
 	directly reads the C++ member through it, by the same name: ent->_cxxEntity->position, and
@@ -421,226 +416,36 @@ inline std::vector<cxx::Entity *> EntitiesIn(const PList &plist)
 // OOLightParticleEntity, and the leaves with a facade; else Entity).
 ::Entity *NewEntityFacade(const Ref<cxx::Entity> &entity);
 
-// The class name "%@" and the debug dumps print: the Objective-C class of an Objective-C entity,
-// the C++ class's name ("cxx::" dropped) of a C++ one.
+// The class name "%@" and the debug dumps print: the C++ class's name ("cxx::" dropped).
 std::string EntityClassName(cxx::Entity *entity);
 
 
-/*	The C++ part of an Objective-C entity, in two halves. ObjCEntity<Base> derives from Base, the
-	C++ class of the Objective-C class's nearest converted superclass (cxx::Entity, or
-	OOEntityWithDrawable: amendment oo-up4b item 1), and each of its virtual members messages
-	the Objective-C object, so the subclass's override runs, as it did when the base class was
-	Objective-C. ObjCEntityLink is its non-template half: the object, and a super...() member per
-	virtual member that is Base's own, which is what [super ...] (or a subclass that does not
-	override) reached. The facade's methods call those on an Objective-C entity. The Objective-C
-	object owns the adapter (its _cxxEntity) and is not retained by it; its -dealloc clears the
-	pointer, after which the members answer as a message to nil did. The template is not final: a
-	converted intermediate class that adds virtual members derives its own adapter from it
-	(OOLightParticleEntity+ObjCBridge.mm, amendment oo-0otc).
-*/
-class ObjCEntityLink
-{
-public:
-	explicit ObjCEntityLink(::Entity *objcOwner) : _objcOwner(objcOwner) {}
-	virtual ~ObjCEntityLink() = default;
-	ObjCEntityLink(const ObjCEntityLink &) = delete;
-	ObjCEntityLink &operator=(const ObjCEntityLink &) = delete;
-
-	::Entity *objcOwner()			{ return _objcOwner; }
-	void objcOwnerDeallocated()		{ _objcOwner = nil; }
-
-	virtual NSUInteger superSessionID() = 0;
-	virtual bool superIsDock() = 0;
-	virtual bool superIsPlanet() = 0;
-	virtual bool superIsSun() = 0;
-	virtual bool superIsSky() = 0;
-	virtual bool superIsEffect() = 0;
-	virtual bool superGetIsVisualEffect() = 0;
-	virtual bool superIsWaypoint() = 0;
-	virtual bool superValidForAddToUniverse() = 0;
-	virtual void superWasAddedToUniverse() = 0;
-	virtual void superWasRemovedFromUniverse() = 0;
-	virtual void superWarnAboutHostiles() = 0;
-	virtual void superThrowSparks() = 0;
-	virtual void superSetOwner(cxx::Entity *ent) = 0;
-	virtual void superSetPosition(HPVector posn) = 0;
-	virtual GLfloat superCameraRangeFront() = 0;
-	virtual GLfloat superCameraRangeBack() = 0;
-	virtual void superUpdateCameraRelativePosition() = 0;
-	virtual OOComparisonResult superCompareZeroDistance(cxx::Entity *otherEntity) = 0;
-	virtual void superSetOrientation(Quaternion quat) = 0;
-	virtual Quaternion superNormalOrientation() = 0;
-	virtual void superSetNormalOrientation(Quaternion quat) = 0;
-	virtual void superOrientationChanged() = 0;
-	virtual Vector superGetVelocity() = 0;
-	virtual void superSetStatus(OOEntityStatus stat) = 0;
-	virtual OOScanClass superGetScanClass() = 0;
-	virtual void superApplyRoll(GLfloat roll, GLfloat climb) = 0;
-	virtual void superApplyRoll(GLfloat roll, GLfloat climb, GLfloat yaw) = 0;
-	virtual void superMoveForward(double amount) = 0;
-	virtual OOMatrix superDrawRotationMatrix() = 0;
-	virtual OOMatrix superDrawTransformationMatrix() = 0;
-	virtual bool superCanCollide() = 0;
-	virtual GLfloat superCollisionRadius() = 0;
-	virtual GLfloat superFrustumRadius() = 0;
-	virtual void superUpdate(OOTimeDelta delta_t) = 0;
-	virtual bool superCheckCloseCollisionWith(cxx::Entity *other) = 0;
-	virtual void superTakeEnergyDamage(double amount, cxx::Entity *ent, cxx::Entity *other, const std::string &weaponIdentifier) = 0;
-	virtual void superDumpSelfState() = 0;
-	virtual void superSubEntityReallyDied(ShipEntity *sub) = 0;
-	virtual double superFindCollisionRadius() = 0;
-	virtual void superDrawImmediate(bool immediate, bool translucent) = 0;
-	virtual bool superIsVisible() = 0;
-	virtual std::optional<std::string> superDescriptionComponents() const = 0;
-#ifndef NDEBUG
-	virtual std::optional<std::string> superDescriptionForObjDump() = 0;
-	virtual std::vector<Ref<OOTexture>> superAllTextures() = 0;
-#endif
-
-protected:
-	::Entity	*_objcOwner = {};	// Not retained.
-};
-
-
-template <class Base>
-class ObjCEntity : public Base, public ObjCEntityLink
-{
-public:
-	explicit ObjCEntity(::Entity *objcOwner) : ObjCEntityLink(objcOwner) {}
-
-	NSUInteger sessionID() override	{ return [_objcOwner sessionID]; }
-	bool isDock() override	{ return [_objcOwner isDock]; }
-	bool isPlanet() override	{ return [_objcOwner isPlanet]; }
-	bool isSun() override	{ return [_objcOwner isSun]; }
-	bool isSky() override	{ return [_objcOwner isSky]; }
-	bool isEffect() override	{ return [_objcOwner isEffect]; }
-	bool getIsVisualEffect() override	{ return [_objcOwner isVisualEffect]; }
-	bool isWaypoint() override	{ return [_objcOwner isWaypoint]; }
-	bool validForAddToUniverse() override	{ return [_objcOwner validForAddToUniverse]; }
-	void wasAddedToUniverse() override	{ [_objcOwner wasAddedToUniverse]; }
-	void wasRemovedFromUniverse() override	{ [_objcOwner wasRemovedFromUniverse]; }
-	void warnAboutHostiles() override	{ [_objcOwner warnAboutHostiles]; }
-	void throwSparks() override	{ [_objcOwner throwSparks]; }
-	void setOwner(cxx::Entity *ent) override	{ [_objcOwner setOwner:ToObjC(ent)]; }
-	void setPosition(HPVector posn) override	{ [_objcOwner setPosition:posn]; }
-	GLfloat cameraRangeFront() override	{ return [_objcOwner cameraRangeFront]; }
-	GLfloat cameraRangeBack() override	{ return [_objcOwner cameraRangeBack]; }
-	void updateCameraRelativePosition() override	{ [_objcOwner updateCameraRelativePosition]; }
-	OOComparisonResult compareZeroDistance(cxx::Entity *otherEntity) override	{ return [_objcOwner compareZeroDistance:ToObjC(otherEntity)]; }
-	void setOrientation(Quaternion quat) override	{ [_objcOwner setOrientation:quat]; }
-	Quaternion normalOrientation() override	{ return [_objcOwner normalOrientation]; }
-	void setNormalOrientation(Quaternion quat) override	{ [_objcOwner setNormalOrientation:quat]; }
-	void orientationChanged() override	{ [_objcOwner orientationChanged]; }
-	Vector getVelocity() override	{ return [_objcOwner velocity]; }
-	void setStatus(OOEntityStatus stat) override	{ [_objcOwner setStatus:stat]; }
-	OOScanClass getScanClass() override	{ return [_objcOwner scanClass]; }
-	void applyRoll(GLfloat roll, GLfloat climb) override	{ [_objcOwner applyRoll:roll andClimb:climb]; }
-	void applyRoll(GLfloat roll, GLfloat climb, GLfloat yaw) override	{ [_objcOwner applyRoll:roll climb:climb andYaw:yaw]; }
-	void moveForward(double amount) override	{ [_objcOwner moveForward:amount]; }
-	OOMatrix drawRotationMatrix() override	{ return [_objcOwner drawRotationMatrix]; }
-	OOMatrix drawTransformationMatrix() override	{ return [_objcOwner drawTransformationMatrix]; }
-	bool canCollide() override	{ return [_objcOwner canCollide]; }
-	GLfloat collisionRadius() override	{ return [_objcOwner collisionRadius]; }
-	GLfloat frustumRadius() override	{ return [_objcOwner frustumRadius]; }
-	void update(OOTimeDelta delta_t) override	{ [_objcOwner update:delta_t]; }
-	bool checkCloseCollisionWith(cxx::Entity *other) override	{ return [_objcOwner checkCloseCollisionWith:ToObjC(other)]; }
-	void takeEnergyDamage(double amount, cxx::Entity *ent, cxx::Entity *other, const std::string &weaponIdentifier) override	{ [_objcOwner takeEnergyDamage:amount from:ToObjC(ent) becauseOf:ToObjC(other) weaponIdentifier:weaponIdentifier]; }
-	void dumpSelfState() override	{ [_objcOwner dumpSelfState]; }
-	void subEntityReallyDied(ShipEntity *sub) override	{ [_objcOwner subEntityReallyDied:sub]; }
-	double findCollisionRadius() override	{ return [_objcOwner findCollisionRadius]; }
-	void drawImmediate(bool immediate, bool translucent) override	{ [_objcOwner drawImmediate:immediate translucent:translucent]; }
-	bool isVisible() override	{ return [_objcOwner isVisible]; }
-	std::optional<std::string> descriptionComponents() const override	{ return [_objcOwner cxx_descriptionComponents]; }
-#ifndef NDEBUG
-	std::optional<std::string> descriptionForObjDump() override	{ return [_objcOwner descriptionForObjDump]; }
-	std::vector<Ref<OOTexture>> allTextures() override	{ return [_objcOwner cxx_allTextures]; }
-#endif
-
-	NSUInteger superSessionID() override	{ return Base::sessionID(); }
-	bool superIsDock() override	{ return Base::isDock(); }
-	bool superIsPlanet() override	{ return Base::isPlanet(); }
-	bool superIsSun() override	{ return Base::isSun(); }
-	bool superIsSky() override	{ return Base::isSky(); }
-	bool superIsEffect() override	{ return Base::isEffect(); }
-	bool superGetIsVisualEffect() override	{ return Base::getIsVisualEffect(); }
-	bool superIsWaypoint() override	{ return Base::isWaypoint(); }
-	bool superValidForAddToUniverse() override	{ return Base::validForAddToUniverse(); }
-	void superWasAddedToUniverse() override	{ Base::wasAddedToUniverse(); }
-	void superWasRemovedFromUniverse() override	{ Base::wasRemovedFromUniverse(); }
-	void superWarnAboutHostiles() override	{ Base::warnAboutHostiles(); }
-	void superThrowSparks() override	{ Base::throwSparks(); }
-	void superSetOwner(cxx::Entity *ent) override	{ Base::setOwner(ent); }
-	void superSetPosition(HPVector posn) override	{ Base::setPosition(posn); }
-	GLfloat superCameraRangeFront() override	{ return Base::cameraRangeFront(); }
-	GLfloat superCameraRangeBack() override	{ return Base::cameraRangeBack(); }
-	void superUpdateCameraRelativePosition() override	{ Base::updateCameraRelativePosition(); }
-	OOComparisonResult superCompareZeroDistance(cxx::Entity *otherEntity) override	{ return Base::compareZeroDistance(otherEntity); }
-	void superSetOrientation(Quaternion quat) override	{ Base::setOrientation(quat); }
-	Quaternion superNormalOrientation() override	{ return Base::normalOrientation(); }
-	void superSetNormalOrientation(Quaternion quat) override	{ Base::setNormalOrientation(quat); }
-	void superOrientationChanged() override	{ Base::orientationChanged(); }
-	Vector superGetVelocity() override	{ return Base::getVelocity(); }
-	void superSetStatus(OOEntityStatus stat) override	{ Base::setStatus(stat); }
-	OOScanClass superGetScanClass() override	{ return Base::getScanClass(); }
-	void superApplyRoll(GLfloat roll, GLfloat climb) override	{ Base::applyRoll(roll, climb); }
-	void superApplyRoll(GLfloat roll, GLfloat climb, GLfloat yaw) override	{ Base::applyRoll(roll, climb, yaw); }
-	void superMoveForward(double amount) override	{ Base::moveForward(amount); }
-	OOMatrix superDrawRotationMatrix() override	{ return Base::drawRotationMatrix(); }
-	OOMatrix superDrawTransformationMatrix() override	{ return Base::drawTransformationMatrix(); }
-	bool superCanCollide() override	{ return Base::canCollide(); }
-	GLfloat superCollisionRadius() override	{ return Base::collisionRadius(); }
-	GLfloat superFrustumRadius() override	{ return Base::frustumRadius(); }
-	void superUpdate(OOTimeDelta delta_t) override	{ Base::update(delta_t); }
-	bool superCheckCloseCollisionWith(cxx::Entity *other) override	{ return Base::checkCloseCollisionWith(other); }
-	void superTakeEnergyDamage(double amount, cxx::Entity *ent, cxx::Entity *other, const std::string &weaponIdentifier) override	{ Base::takeEnergyDamage(amount, ent, other, weaponIdentifier); }
-	void superDumpSelfState() override	{ Base::dumpSelfState(); }
-	void superSubEntityReallyDied(ShipEntity *sub) override	{ Base::subEntityReallyDied(sub); }
-	double superFindCollisionRadius() override	{ return Base::findCollisionRadius(); }
-	void superDrawImmediate(bool immediate, bool translucent) override	{ Base::drawImmediate(immediate, translucent); }
-	bool superIsVisible() override	{ return Base::isVisible(); }
-	std::optional<std::string> superDescriptionComponents() const override	{ return Base::descriptionComponents(); }
-#ifndef NDEBUG
-	std::optional<std::string> superDescriptionForObjDump() override	{ return Base::descriptionForObjDump(); }
-	std::vector<Ref<OOTexture>> superAllTextures() override	{ return Base::allTextures(); }
-#endif
-};
-
-
-// The adapter half of an Objective-C entity's C++ part; null for a C++ entity.
-inline ObjCEntityLink *AsObjCEntity(cxx::Entity *entity)  { return dynamic_cast<ObjCEntityLink *>(entity); }
-
 /*	What the root facade's -isShip, -isSubEntity, -isPlayer, -isPlanet and -status answered for an entity's
-	object (bead oo-9ht.39.16): the C++ member each forwarded to; an Objective-C entity (a test's
-	stand-in, whose class may answer itself) is still messaged, and answers as nil once its object
-	has gone; nil's answer for none.
+	object (bead oo-9ht.39.16): the C++ member each forwarded to; nil's answer for none. (An Objective-C
+	entity, a test's stand-in, was messaged until bead oo-j12i2 deleted the adapter.)
 */
 inline bool EntityIsShip(cxx::Entity *entity)
 {
-	if (ObjCEntityLink *link = AsObjCEntity(entity))  return [link->objcOwner() isShip];
 	return entity != nullptr && entity->getIsShip();
 }
 
 inline bool EntityIsSubEntity(cxx::Entity *entity)
 {
-	if (ObjCEntityLink *link = AsObjCEntity(entity))  return [link->objcOwner() isSubEntity];
 	return entity != nullptr && entity->getIsSubEntity();
 }
 
 inline bool EntityIsPlayer(cxx::Entity *entity)
 {
-	if (ObjCEntityLink *link = AsObjCEntity(entity))  return [link->objcOwner() isPlayer];
 	return entity != nullptr && entity->getIsPlayer();
 }
 
 inline bool EntityIsPlanet(cxx::Entity *entity)
 {
-	if (ObjCEntityLink *link = AsObjCEntity(entity))  return [link->objcOwner() isPlanet];
 	return entity != nullptr && entity->isPlanet();
 }
 
 inline OOEntityStatus EntityStatus(cxx::Entity *entity)
 {
-	if (ObjCEntityLink *link = AsObjCEntity(entity))  return [link->objcOwner() status];
 	return entity != nullptr ? entity->status() : OOEntityStatus{};
 }
 
@@ -649,7 +454,7 @@ inline OOEntityStatus EntityStatus(cxx::Entity *entity)
 bool EntityIsShipWithSubEntityShip(cxx::Entity *entity, cxx::Entity *other);
 
 // What the facade's -isBeacon answered for an entity's object (bead oo-9ht.39.26): the ship's,
-// effect's or waypoint's member, NO for anything else; an Objective-C entity is still messaged.
+// effect's or waypoint's member, NO for anything else.
 bool EntityIsBeacon(cxx::Entity *entity);
 
 /*	The beacon list's links and code, of the C++ entities (bead oo-9ht.39.26): what the protocol's

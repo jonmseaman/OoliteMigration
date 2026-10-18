@@ -293,7 +293,6 @@ OO_TEST(facade)
 		Entity *wp = Waypoint("W");	// the root's facade (the protocol type would pick a subclass's crossing)
 		// A C++ entity (amendment oo-0mxi), not an Objective-C entity's adapter.
 		OO_CHECK(dynamic_cast<OOWaypointEntity *>(oo::ToCxx(wp)) != nullptr);
-		OO_CHECK(oo::AsObjCEntity(oo::ToCxx(wp)) == nullptr);
 		OO_CHECK(oo::ToObjC(oo::ToCxx(wp)) == wp);
 	}
 }
@@ -308,7 +307,7 @@ OO_TEST(beaconSelectorsForAWaypointOnly)
 		SetUp();
 		OOBeaconEntityObject *wp = Waypoint("W");
 		OO_CHECK([wp respondsToSelector:@selector(beaconCode)] && [wp respondsToSelector:@selector(setNextBeacon:)]);
-		Entity *plain = [[[Entity alloc] init] autorelease];
+		Entity *plain = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
 		OO_CHECK(![plain respondsToSelector:@selector(beaconCode)] && ![plain respondsToSelector:@selector(isBeacon)]);
 		OO_CHECK(![(OOBeaconEntityObject *)plain isBeacon] && ![(OOBeaconEntityObject *)plain beaconCode].has_value());
 		OO_CHECK([(OOBeaconEntityObject *)plain nextBeacon] == nil);
