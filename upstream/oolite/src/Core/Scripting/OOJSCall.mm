@@ -279,6 +279,9 @@ bool CallMethod(ooscript::Context context, id object, const std::string &oo_jsCl
 					if (type == kMethodTypePListVoid)  result = (entity != nullptr) ? oo::CallEntityByName(entity, *selectorString) : OOCallByName(object, selector);
 					// An object result (a ship, a colour) is its PList::Object node, as oo::PListFrom()
 					// made of it; OOCallByName ignores an object result (ADR-0055 Amendment 2).
+					// An entity result is its entity's Object node (bead oo-9ht.39.24): the same object, class name,
+					// description and JS value as the object's node.
+					else if (byName && typed.entity != nullptr)  result = oo::EntityObjectNode(typed.entity);
 					else  result = oo::PListObject(byName ? typed.object : ((id (*)(id, SEL))method)(object, selector));
 					if (selectorString.has_value() && oo::str::hasSuffix(*selectorString, "_bool"))
 					{

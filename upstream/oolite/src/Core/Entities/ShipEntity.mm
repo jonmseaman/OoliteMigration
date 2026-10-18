@@ -578,10 +578,8 @@ struct AuthorityPredicateParameter
 	bool				victimWithinAegis;		// [victim withinStationAegis]
 };
 
-}	// namespace
 
-
-static BOOL AuthorityPredicate(cxx::Entity *entity, void *parameter)
+BOOL AuthorityPredicate(cxx::Entity *entity, void *parameter)
 {
 	const AuthorityPredicateParameter	*param = (const AuthorityPredicateParameter *)parameter;
 	cxx::Entity							*entityPart = entity;
@@ -602,6 +600,8 @@ static BOOL AuthorityPredicate(cxx::Entity *entity, void *parameter)
 	// Reject others
 	return NO;
 }
+
+}	// namespace	(AuthorityPredicate joined it when its signature changed, bead oo-9ht.39.23: misc-use-anonymous-namespace)
 
 
 

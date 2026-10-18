@@ -8210,3 +8210,34 @@ probes ran with `-Werror=receiver-expr`.
 `test_OOJSSystem`, `test_Universe` and `test_OOJavaScriptEngine` hand the members the C++ entity and compare their results with it; their
 seams (`primaryTarget`, `addTarget`, `removeTarget`, `nextBeacon` overrides) and test predicates take and answer
 it. The same entities and expected values; no case removed.
+
+## Amendment (bead oo-9ht.39.24.1): the by-name table's entity results carry the C++ entity
+
+oo-9ht.39 step 5a, slice 1 (batch AJ, Migration Completion session, 2026-10-17). The 27 functions of
+`OOEntityCalledByNameTable.h` whose result is an entity (the ship's `subEntityTakingDamage`, `proximityAlert`,
+`findNearestStellarBody`, `lastAegisLock`, `foundTarget`, `primaryAggressor`, `lastEscortTarget`, `thankedShip`,
+`rememberedShip`, `targetStation`, `shipHitByLaser`, `fireMissile`, `launchEscapeCapsule`,
+`entityForShaderProperties`; the station's seven `launch*`, `playerReservedDock`, `selectDockForDocking`; the
+player's `dockedStation`, `getTargetDockStation`, `createDoppelganger`, and `compassTarget` through
+`getCompassTargetEntity()`) return the `cxx::Entity *` instead of
+`oo::ToObjC()` of it. `OOEntityByNameValue` gains `cxx::Entity *entity` (borrowed), which the typed adaptor fills
+for such a result; callObjC() makes the entity's Object node (`oo::EntityObjectNode()`: the same object, class
+name, description, identity and JS value as the object's node it made before). The rows keep the object's type
+encoding ("@"), written `@encode(id)` (it was `@encode(Entity *)`, the same string): `gen-entity-by-name-table.py`
+renders a `cxx::Entity *` result so; callObjC()'s 27 rows in `OOJSCallEntityMethods.h` are edited the same way in
+place (`gen-callobjc-entity-table.py --check` already fails on main: it would drop the three JS-glue rows kept by
+hand since oo-9ht.39.8.9, so it is not re-run).
+Comments that named `-[Entity respondsToSelector:]` name the root facade's `-respondsToSelector:`.
+
+**Defaults (rule 10).** Behaviour-identical. Left for oo-9ht.39.24 (they need the entity's own API first): the
+facade rows `parentEntity`, `rootShipEntity`, `prevBeacon`/`nextBeacon` (an effect's and a waypoint's answer their
+object), `cxx_collidingEntities`' row (an owning list
+of objects until the facade goes) and callObjC()'s "does not respond" text, which prints the object's address.
+**Tests (oo-9n5p9, line on main first).** `test_OOEntityCalledByName` reads `value.entity` for `primaryAggressor`;
+same expected value.
+
+Also (oo-9ht.39.23's tier-a): the static `AuthorityPredicate` (ShipEntity.mm) and the universe's
+`IsCandidateMainStationPredicate`/`IsFriendlyStationPredicate`, re-signed by oo-9ht.39.23, join the anonymous
+namespace before them (clang-tidy misc-use-anonymous-namespace on the changed lines), and the re-signed
+predicates that ignore an argument leave it unnamed (`/*parameter*/`, misc-unused-parameters, as the JS
+predicates already did); no behaviour change.
