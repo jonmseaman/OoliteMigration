@@ -1208,7 +1208,7 @@ bool GuiDisplayGen::setBackgroundTextureDescriptor(const oo::PList &descriptor)
 bool GuiDisplayGen::setForegroundTextureDescriptor(const oo::PList &descriptor)
 {
 	// FIXME: for some reason passing kOOTextureSRGBA when in SDR results in double gamma correction
-	uint32_t srgbaOption = [(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) hdrOutput] ? kOOTextureSRGBA : 0;
+	uint32_t srgbaOption = (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr ? UNIVERSE->getGameView()->hdrOutput() : false) ? kOOTextureSRGBA : 0;
 	foregroundSprite = NewTextureSpriteWithDescriptor(descriptor, srgbaOption);
 	return foregroundSprite.get() != nullptr;
 }
@@ -1324,7 +1324,7 @@ void GuiDisplayGen::drawEquipmentList(const oo::PList &eqptList, GLfloat z)
 	i = itemsPerColumn * 2 + 2;
 	if (eqptCount > i) // don't fit in one page?
 	{
-		[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) setMouseInteractionModeForUIWithMouseInteraction:YES];
+		if (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr)  UNIVERSE->gameController()->setMouseInteractionModeForUIWithMouseInteraction(YES);
 
 		i = itemsPerColumn * 4; // total items in the first and last pages
 		itemsPerColumn--; // for all the middle pages.
@@ -1356,7 +1356,7 @@ void GuiDisplayGen::drawEquipmentList(const oo::PList &eqptList, GLfloat z)
 		// pages earlier, but only one now, as e.g. in the case of a hud that wss
 		// subsequently hidden, resulting in the equip list fitting in one page,
 		// so we need to deactivate it
-		if (OOMouseInteractionModeIsUIScreen([(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) mouseInteractionMode]))
+		if (OOMouseInteractionModeIsUIScreen((UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr ? UNIVERSE->gameController()->mouseInteractionMode() : OOMouseInteractionMode{})))
 		{
 			// clear the gui-more and gui-back key rows first
 			setText("", firstRow);
@@ -1365,7 +1365,7 @@ void GuiDisplayGen::drawEquipmentList(const oo::PList &eqptList, GLfloat z)
 			setKey("SKIP-ROW", firstRow + STATUS_EQUIPMENT_MAX_ROWS);
 			setSelectableRange(NSMakeRange(0,0));
 
-			[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) setMouseInteractionModeForUIWithMouseInteraction:NO];
+			if (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr)  UNIVERSE->gameController()->setMouseInteractionModeForUIWithMouseInteraction(NO);
 		}
 	}
 
@@ -1443,7 +1443,7 @@ void GuiDisplayGen::drawGUIBackground()
 {
 	GLfloat x = drawPosition.x;
 	GLfloat y = drawPosition.y;
-	GLfloat z = [(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) display_z];
+	GLfloat z = (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr ? UNIVERSE->getGameView()->getDisplay_z() : 0.0f);
 
 	if (backgroundSprite.get()!=nullptr)
 	{
@@ -1463,7 +1463,7 @@ int GuiDisplayGen::drawGUI(GLfloat alpha, bool drawCursor)
 {
 	GLfloat x = drawPosition.x;
 	GLfloat y = drawPosition.y;
-	GLfloat z = [(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) display_z];
+	GLfloat z = (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr ? UNIVERSE->getGameView()->getDisplay_z() : 0.0f);
 	
 	if (alpha > 0.05f)
 	{
@@ -1519,7 +1519,7 @@ int GuiDisplayGen::drawGUI(GLfloat alpha, bool drawCursor)
 
 	if (drawCursor)
 	{
-		NSPoint vjpos = [(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) virtualJoystickPosition];
+		NSPoint vjpos = (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr ? UNIVERSE->getGameView()->getVirtualJoystickPosition() : NSPoint{});
 		double cursor_x = size_in_pixels.width * vjpos.x;
 		if (cursor_x < -size_in_pixels.width * 0.5)  cursor_x = -size_in_pixels.width * 0.5f;
 		if (cursor_x > size_in_pixels.width * 0.5)   cursor_x = size_in_pixels.width * 0.5f;
@@ -1536,7 +1536,7 @@ int GuiDisplayGen::drawGUI(GLfloat alpha, bool drawCursor)
 		
 		cursor_x += x;
 		cursor_y += y;
-		[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) setVirtualJoystick:cursor_x/size_in_pixels.width :-cursor_y/size_in_pixels.height];
+		if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->setVirtualJoystick(cursor_x/size_in_pixels.width, -cursor_y/size_in_pixels.height);
 
 		OOGLBEGIN(GL_LINES);
 			glVertex3f((float)cursor_x - h1, (float)cursor_y, z);	glVertex3f((float)cursor_x - h3, (float)cursor_y, z);
@@ -2188,7 +2188,7 @@ void GuiDisplayGen::drawStarChart(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha
 	}
 	
 	BOOL		*systemsFound = (UNIVERSE != nullptr ? UNIVERSE->systemsFound() : nullptr);
-	NSSize		viewSize = [(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) backingViewSize];
+	NSSize		viewSize = (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr ? UNIVERSE->getGameView()->backingViewSize() : NSSize{});
 	double aspect_ratio = viewSize.width / viewSize.height;
 
 	// default colours - match those in HeadUpDisplay:OODrawPlanetInfo

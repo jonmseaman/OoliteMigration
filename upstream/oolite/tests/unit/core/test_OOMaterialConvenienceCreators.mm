@@ -229,10 +229,10 @@ oo::PList cxx_OOTextureSpecFromObject(const oo::PList &object, const std::option
 class Universe;
 Universe *gSharedUniverse = nil;
 
-// The game view is C++ (MyOpenGLView). There is none here: its crossing answers none, and its
-// manager accessor, which the shader program's matrix uniforms would use, is never reached.
-cxx::MyOpenGLView *oo::ToCxx(MyOpenGLView *)  { return nullptr; }
-OOOpenGLMatrixManager *cxx::MyOpenGLView::getOpenGLMatrixManager()  { return matrixManager.get(); }
+// The game view is C++ (MyOpenGLView; its facade's crossing went with bead oo-9ht.153). There is
+// none here: its manager accessor, which the shader program's matrix uniforms would use, is never
+// reached.
+OOOpenGLMatrixManager *MyOpenGLView::getOpenGLMatrixManager()  { return matrixManager.get(); }
 
 #import "UniverseStandIn.h"
 

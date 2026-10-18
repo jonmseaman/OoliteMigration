@@ -1595,7 +1595,7 @@ bool PlayerEntity::setCommanderDataFromDictionary(const oo::PList &dict)
 
 	customDialSettings.clear();
 
-	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) resetTypedString];
+	if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->resetTypedString();
 
 	// Required keys
 	if (!StringForKey(dict, "ship_desc").has_value())  return NO;
@@ -2211,7 +2211,7 @@ bool PlayerEntity::setUpAndConfirmOK(bool stopOnError)
 
 bool PlayerEntity::setUpAndConfirmOK(bool stopOnError, bool saveGame)
 {
-	fieldOfView = [(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) fov:YES];
+	fieldOfView = (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr ? UNIVERSE->getGameView()->fov(YES) : 0.0f);
 	unsigned i;
 	
 	showDemoShips = NO;
@@ -2222,9 +2222,9 @@ bool PlayerEntity::setUpAndConfirmOK(bool stopOnError, bool saveGame)
 	::OOScriptTimer::noteGameReset();
 	::OOScriptTimer::updateTimers();
 	
-	::GameController		*gc = [(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) gameController];
+	::GameController		*gc = (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr ? UNIVERSE->getGameView()->getGameController() : (::GameController *)nullptr);
 	
-	if (![gc inFullScreenMode] && stopOnError)	[gc stopAnimationTimer];	// start of critical section
+	if (!(gc != nullptr ? gc->inFullScreenMode() : false) && stopOnError)	{ if (gc != nullptr)  gc->stopAnimationTimer(); }	// start of critical section
 	
 	if (EXPECT_NOT(![[::OOJavaScriptEngine sharedEngine] reset] && stopOnError)) // always (try to) reset the engine, then find out if we need to stop.
 	{
@@ -2252,17 +2252,17 @@ bool PlayerEntity::setUpAndConfirmOK(bool stopOnError, bool saveGame)
 		OO_LOG("script.javascript.init.error", "{}", "Scheduling new JavaScript reset.");
 		shot_time = kDeadResetTime - 0.02f;	// schedule reinit 20 milliseconds from now.
 		
-		if (![gc inFullScreenMode])	[gc startAnimationTimer];	// keep the game ticking over.
+		if (!(gc != nullptr ? gc->inFullScreenMode() : false))	{ if (gc != nullptr)  gc->startAnimationTimer(); }	// keep the game ticking over.
 		return NO;
 	}
 	
 	// end of critical section
-	if (![gc inFullScreenMode] && stopOnError)	[gc startAnimationTimer];
+	if (!(gc != nullptr ? gc->inFullScreenMode() : false) && stopOnError)	{ if (gc != nullptr)  gc->startAnimationTimer(); }
 	
 	// Load locale script before any regular scripts.
 	OOScriptAutorelease(OOScript::jsScriptFromFileNamed("oolite-locale-functions.js", oo::PList()));	// (nothing keeps it)
 	
-	[[::GameController sharedController] cxx_logProgress:OO_DESC("loading-scripts")];
+	::GameController::sharedController()->logProgress(OO_DESC("loading-scripts"));
 	
 	if (UNIVERSE != nullptr)  UNIVERSE->setBlockJSPlayerShipProps(NO);	// full access to player.ship properties!
 	worldScripts.clear();
@@ -2292,7 +2292,7 @@ bool PlayerEntity::setUpAndConfirmOK(bool stopOnError, bool saveGame)
 	// make sure extraGuiScreenKeys is clear
 	extraGuiScreenKeys.clear();
 
-	[[::GameController sharedController] cxx_logProgress:cxx_OOExpandKeyRandomized("loading-miscellany").value_or(std::string())];
+	::GameController::sharedController()->logProgress(cxx_OOExpandKeyRandomized("loading-miscellany").value_or(std::string()));
 	
 	// if there is cargo remaining from previously (e.g. a game restart), remove it (-cargoList was never nil)
 	removeAllCargo(YES);		// force removal of cargo
@@ -2320,7 +2320,7 @@ bool PlayerEntity::setUpAndConfirmOK(bool stopOnError, bool saveGame)
 	
 	setScriptTarget(nullptr);
 	resetMissionChoice();
-	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) resetTypedString];
+	if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->resetTypedString();
 	found_system_id = -1;
 	
 	reputation = oo::PList::Dict{
@@ -3356,7 +3356,7 @@ void PlayerEntity::doBookkeeping(double delta_t)
 		if (hud != nullptr)  hud->setScannerZoom(z1);
 	}
 
-	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) setFov:fieldOfView fromFraction:YES];
+	if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->setFov(fieldOfView, YES);
 	
 	// scanner sanity check - lose any targets further than maximum scanner range
 	cxx::Entity *primeTarget = primaryTarget();	// any entity (a wormhole too; the object was typed ShipEntity until bead oo-9ht.144)
@@ -3396,16 +3396,16 @@ void PlayerEntity::doBookkeeping(double delta_t)
 	// update mousewheel status
 	UPDATE_STAGE("updating mousewheel delta");
 	::MyOpenGLView *gView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
-	float mouseWheelDelta = [gView mouseWheelDelta];
+	float mouseWheelDelta = (gView != nullptr ? gView->mouseWheelDelta() : 0.0f);
 	if (mouseWheelDelta > 0.0f)
 	{
-		if (mouseWheelDelta < delta_t)  [gView setMouseWheelDelta:0.0f];
-		else  [gView setMouseWheelDelta:mouseWheelDelta - delta_t];
+		if (mouseWheelDelta < delta_t)  { if (gView != nullptr)  gView->setMouseWheelDelta(0.0f); }
+		else  { if (gView != nullptr)  gView->setMouseWheelDelta(mouseWheelDelta - delta_t); }
 	}
 	else if (mouseWheelDelta < 0.0f)
 	{
-		if (mouseWheelDelta > -delta_t)  [gView setMouseWheelDelta:0.0f];
-		else  [gView setMouseWheelDelta:mouseWheelDelta + delta_t];
+		if (mouseWheelDelta > -delta_t)  { if (gView != nullptr)  gView->setMouseWheelDelta(0.0f); }
+		else  { if (gView != nullptr)  gView->setMouseWheelDelta(mouseWheelDelta + delta_t); }
 	}
 	
 	STAGE_TRACKING_END
@@ -4204,14 +4204,14 @@ void PlayerEntity::gameOverFadeToBW()
 	{
 		::MyOpenGLView *gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
 		static float originalColorSaturation = -1.0f;
-		if (originalColorSaturation == -1.0f)  originalColorSaturation = [gameView colorSaturation];
+		if (originalColorSaturation == -1.0f)  originalColorSaturation = (gameView != nullptr ? gameView->colorSaturation() : 0.0f);
 		if (shotTime() < secondsToBWFadeOut)
 		{
 			// fade to black & white within secondsToBWFadeOut, independently of
 			// frame rate and original color saturation
 			if (fps_counter != 0)
 			{
-				[gameView adjustColorSaturation:-(originalColorSaturation * (1.0f / secondsToBWFadeOut) * (UNIVERSE != nullptr ? UNIVERSE->getTimeAccelerationFactor() : 0.0) / fps_counter)];
+				if (gameView != nullptr)  gameView->adjustColorSaturation(-(originalColorSaturation * (1.0f / secondsToBWFadeOut) * (UNIVERSE != nullptr ? UNIVERSE->getTimeAccelerationFactor() : 0.0) / fps_counter));
 			}
 		}
 		
@@ -4220,7 +4220,7 @@ void PlayerEntity::gameOverFadeToBW()
 			// make sure to subtract the current saturation because if the user presses space to skip
 			// the game over screen before the transition to b/w has been completed, whatever is left
 			// will be added to the original saturation, resulting in an oversaturated image
-			[gameView adjustColorSaturation:originalColorSaturation - [gameView colorSaturation]];
+			if (gameView != nullptr)  gameView->adjustColorSaturation(originalColorSaturation - (gameView != nullptr ? gameView->colorSaturation() : 0.0f));
 			originalColorSaturation = -1.0f;
 		}
 	}
@@ -7251,9 +7251,9 @@ void PlayerEntity::getDestroyedBy(cxx::Entity *whom, OOShipDamageType type)
 	
 	OO_LOG("player.ship.damage", "Player destroyed by {} due to {}", oo::DescriptionOf(oo::ToObjC(whom)), cxx_OOStringFromShipDamageType(type));
 	
-	if (![(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) cxx_playerFileToLoad].has_value())
+	if (!(UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr ? UNIVERSE->gameController()->playerFileToLoad() : std::optional<std::string>()).has_value())
 	{
-		[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) cxx_setPlayerFileToLoad:save_path.value_or("")];	// make sure we load the correct game
+		if (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr)  UNIVERSE->gameController()->setPlayerFileToLoad(save_path.value_or(""));	// make sure we load the correct game
 	}
 	
 	energy = 0.0f;
@@ -7351,7 +7351,7 @@ void PlayerEntity::enterDock(::StationEntity *station)
 	
 	scanner_zoom_rate = 0.0f;
 	if (UNIVERSE != nullptr)  UNIVERSE->setDisplayText(NO);
-	[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) setMouseInteractionModeForFlight];
+	if (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr)  UNIVERSE->gameController()->setMouseInteractionModeForFlight();
 	if (status() == STATUS_LAUNCHING)  return; // a JS script has aborted the docking.
 	
 	setOrientation(kIdentityQuaternion);	// reset orientation to dock
@@ -7359,7 +7359,7 @@ void PlayerEntity::enterDock(::StationEntity *station)
 	playDockWithStation();
 	if (station != nullptr)  station->noteDockedShip(this);
 	
-	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) clearKeys];	// try to stop key bounces
+	if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->clearKeys();	// try to stop key bounces
 }
 
 
@@ -7470,7 +7470,7 @@ void PlayerEntity::leaveDock(::StationEntity *station)
 	OOCParameterAssert(station == dockedStation());
 	
 	// ensure we've not left keyboard entry on
-	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) allowStringInput: NO];
+	if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->allowStringInput(NO);
 	
 	if (gui_screen == GUI_SCREEN_MISSION)
 	{
@@ -7529,13 +7529,13 @@ void PlayerEntity::leaveDock(::StationEntity *station)
 	clearTargetMemory();
 	setShowDemoShips(NO);
 	if (UNIVERSE != nullptr)  UNIVERSE->setDisplayText(NO);
-	[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) setMouseInteractionModeForFlight];
+	if (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr)  UNIVERSE->gameController()->setMouseInteractionModeForFlight();
 
-	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) clearKeys];	// try to stop keybounces
+	if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->clearKeys();	// try to stop keybounces
 	
 	if (isMouseControlOn())
 	{
-		[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) resetMouse];
+		if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->resetMouse();
 	}
 	
 	OOMusicController::sharedController()->stop();
@@ -8139,7 +8139,7 @@ void PlayerEntity::leaveWitchspace()
 	being_fined = NO;				// until you're scanned by a copper!
 	clearTargetMemory();
 	setShowDemoShips(NO);
-	[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) setMouseInteractionModeForFlight];
+	if (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr)  UNIVERSE->gameController()->setMouseInteractionModeForFlight();
 	if (UNIVERSE != nullptr)  UNIVERSE->setDisplayText(NO);
 	if (UNIVERSE != nullptr)  UNIVERSE->setWitchspaceBreakPattern(YES);
 	playExitWitchspace();
@@ -8179,7 +8179,7 @@ void PlayerEntity::setGuiToStatusScreen()
 	gui_screen = GUI_SCREEN_STATUS;
 	BOOL			guiChanged = (oldScreen != gui_screen);
 	
-	[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) setMouseInteractionModeForUIWithMouseInteraction:NO];
+	if (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr)  UNIVERSE->gameController()->setMouseInteractionModeForUIWithMouseInteraction(NO);
 	
 	// Both system_seed & target_system_seed are != nil at all times when this function is called.
 	
@@ -8260,7 +8260,7 @@ void PlayerEntity::setGuiToStatusScreen()
 
 	lastTextKey.reset();
 	
-	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) clearMouse];
+	if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->clearMouse();
 	
 	// Contributed by Pleb - show ship model if the appropriate user default key has been set - Nikos 20140127
 	if (EXPECT_NOT(oo::Defaults::standard().boolForKey("show-ship-model-in-status-screen")))
@@ -8770,7 +8770,7 @@ void PlayerEntity::setGuiToSystemDataScreenRefreshBackground(bool refreshBackgro
 
 	Random_Seed		infoSystemRandomSeed = ((UNIVERSE != nullptr ? UNIVERSE->getSystemManager() : nullptr) != nullptr ? UNIVERSE->getSystemManager()->getRandomSeedForSystem(info_system_id, galaxyNumber()) : Random_Seed());
 	
-	[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) setMouseInteractionModeForUIWithMouseInteraction:NO];
+	if (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr)  UNIVERSE->gameController()->setMouseInteractionModeForUIWithMouseInteraction(NO);
 	
 	// GUI stuff
 	{
@@ -8926,7 +8926,7 @@ void PlayerEntity::setGuiToSystemDataScreenRefreshBackground(bool refreshBackgro
 	
 	lastTextKey.reset();
 	
-	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) clearMouse];
+	if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->clearMouse();
 	
 	setShowDemoShips(NO);
 	if (UNIVERSE != nullptr)  UNIVERSE->enterGUIViewModeWithMouseInteraction(NO);
@@ -9028,7 +9028,7 @@ void PlayerEntity::setGuiToChartScreenFrom(OOGUIScreenID oldScreen)
 	
 	BOOL			guiChanged = (oldScreen != gui_screen);
 	
-	[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) setMouseInteractionModeForUIWithMouseInteraction:YES];
+	if (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr)  UNIVERSE->gameController()->setMouseInteractionModeForUIWithMouseInteraction(YES);
 	
 	target_system_id = (UNIVERSE != nullptr ? UNIVERSE->findSystemNumberAtCoords(cursor_coordinates, galaxy_number, NO) : 0);
 	
@@ -9093,8 +9093,8 @@ void PlayerEntity::setGuiToGameOptionsScreen()
 {
 	::MyOpenGLView *gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
 
-	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) clearMouse];
-	[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) setMouseInteractionModeForUIWithMouseInteraction:YES];
+	if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->clearMouse();
+	if (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr)  UNIVERSE->gameController()->setMouseInteractionModeForUIWithMouseInteraction(YES);
 
 	gui_screen = GUI_SCREEN_GAMEOPTIONS;
 
@@ -9123,14 +9123,14 @@ void PlayerEntity::setGuiToGameOptionsScreen()
 #if OO_RESOLUTION_OPTION
 		::GameController	*controller = (UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr);
 		
-		NSUInteger		displayModeIndex = [controller indexOfCurrentDisplayMode];
+		NSUInteger		displayModeIndex = (controller != nullptr ? controller->indexOfCurrentDisplayMode() : 0);
 		if (displayModeIndex == NSNotFound)
 		{
 			OO_LOG_WARN("display.currentMode.notFound", "{}", "couldn't find current fullscreen setting, switching to default.");
 			displayModeIndex = 0;
 		}
 		
-		const oo::PList	modeList = [controller displayModes];
+		const oo::PList	modeList = (controller != nullptr ? controller->getDisplayModes() : oo::PList());
 		const oo::PList	*mode = nullptr;
 		if (modeList.count())
 		{
@@ -9142,11 +9142,11 @@ void PlayerEntity::setGuiToGameOptionsScreen()
 		unsigned modeHeight = mode->get<unsigned int>(std::string(kOODisplayHeight));
 		float modeRefresh = mode->get<float>(std::string(kOODisplayRefreshRate));
 
-		BOOL runningOnPrimaryDisplayDevice = [gameView isRunningOnPrimaryDisplayDevice];
+		BOOL runningOnPrimaryDisplayDevice = (gameView != nullptr ? gameView->isRunningOnPrimaryDisplayDevice() : false);
 #if OOLITE_WINDOWS
 		if (!runningOnPrimaryDisplayDevice)
 		{
-			[gameView getDisplayDimensions:&modeWidth height:&modeHeight];
+			if (gameView != nullptr)  gameView->getDisplayDimensions(&modeWidth, &modeHeight);
 		}
 #endif
 		
@@ -9165,13 +9165,13 @@ void PlayerEntity::setGuiToGameOptionsScreen()
 
 
 #if OOLITE_WINDOWS
-		if ([gameView hdrOutput])
+		if ((gameView != nullptr ? gameView->hdrOutput() : false))
 		{
 			const oo::PList	*brightnessesNode = UNIVERSE->descriptions()->find("hdr_maxBrightness_array");
 			const oo::PList	brightnessesValue = (brightnessesNode != nullptr) ? *brightnessesNode : oo::PList();
 			const oo::PList	brightnesses = brightnessesValue.isArray() ? brightnessesValue : oo::PList();
 			// -indexOfObject: with the %d string: only string elements ever matched; not found was NSNotFound narrowed to int
-			const std::string	currentBrightness = std::to_string((int)[gameView hdrMaxBrightness]);
+			const std::string	currentBrightness = std::to_string((int)(gameView != nullptr ? gameView->hdrMaxBrightness() : 0.0f));
 			int			brightnessIdx = static_cast<int>(NSNotFound);
 			for (std::size_t i = 0; i < brightnesses.count(); i++)
 			{
@@ -9224,7 +9224,7 @@ void PlayerEntity::setGuiToGameOptionsScreen()
 		
 
 		// field of view control
-		float fov = [gameView fov:NO];
+		float fov = (gameView != nullptr ? gameView->fov(NO) : 0.0f);
 		int fovTicks = (int)((fov - MIN_FOV_DEG) * 20 / (MAX_FOV_DEG - MIN_FOV_DEG));
 		const std::string fovWordDesc = OO_DESC("gameoptions-fov-value");
 		// %c 176 gave U+00B0 (probed on GNUstep base, oo-3rb.218); written as its UTF-8 bytes
@@ -9278,7 +9278,7 @@ void PlayerEntity::setGuiToGameOptionsScreen()
 #endif
 #if !OOLITE_MAC_OS_X
 		// window/fullscreen
-		if([gameView inFullScreenMode])
+		if((gameView != nullptr ? gameView->inFullScreenMode() : false))
 		{
 			gui->setText(OO_DESC("gameoptions-play-in-window"), GUI_ROW(GAME,DISPLAYSTYLE), GUI_ALIGN_CENTER);
 		}
@@ -9301,7 +9301,7 @@ void PlayerEntity::setGuiToGameOptionsScreen()
 		gui->setText(message, GUI_ROW(GAME,MUSIC), GUI_ALIGN_CENTER);
 		gui->setKey(std::string(GUI_KEY_OK), GUI_ROW(GAME,MUSIC));
 
-		if (![gameView hdrOutput])
+		if (!(gameView != nullptr ? gameView->hdrOutput() : false))
 		{
 			if ((UNIVERSE != nullptr ? UNIVERSE->getWireframeGraphics() : false))
 				gui->setText(OO_DESC("gameoptions-wireframe-graphics-yes"), GUI_ROW(GAME,WIREFRAMEGRAPHICS), GUI_ALIGN_CENTER);
@@ -9312,7 +9312,7 @@ void PlayerEntity::setGuiToGameOptionsScreen()
 #if OOLITE_WINDOWS
 		else
 		{
-			float paperWhite = [gameView hdrPaperWhiteBrightness];
+			float paperWhite = (gameView != nullptr ? gameView->hdrPaperWhiteBrightness() : 0.0f);
 			int paperWhiteTicks = (int)((paperWhite - MIN_HDR_PAPERWHITE) * 20 / (MAX_HDR_PAPERWHITE - MIN_HDR_PAPERWHITE));
 			const std::string paperWhiteWordDesc = OO_DESC("gameoptions-hdr-paperwhite");
 			gui->setText(oo::str::format("%s%s (%d) ", paperWhiteWordDesc.c_str(), SliderString(paperWhiteTicks).c_str(), (int)paperWhite), GUI_ROW(GAME,HDRPAPERWHITE), GUI_ALIGN_CENTER);
@@ -9365,12 +9365,12 @@ void PlayerEntity::setGuiToGameOptionsScreen()
 
 void PlayerEntity::setGuiToLoadSaveScreen()
 {
-	BOOL			gamePaused = [(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) isGamePaused];
+	BOOL			gamePaused = (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr ? UNIVERSE->gameController()->isGamePaused() : false);
 	BOOL			canLoadOrSave = NO;
 	::MyOpenGLView	*gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
 	OOGUIScreenID	oldScreen = gui_screen;
 	
-	[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) setMouseInteractionModeForUIWithMouseInteraction:YES];
+	if (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr)  UNIVERSE->gameController()->setMouseInteractionModeForUIWithMouseInteraction(YES);
 
 	gui_screen = GUI_SCREEN_OPTIONS;
 
@@ -9380,7 +9380,7 @@ void PlayerEntity::setGuiToLoadSaveScreen()
 		canLoadOrSave = ((dockedStation() == (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr) || (dockedStation() != nullptr ? dockedStation()->getAllowsSaving() : false)) && !(((UNIVERSE != nullptr ? UNIVERSE->sun() : nullptr) != nullptr ? UNIVERSE->sun()->goneNova() : false) || ((UNIVERSE != nullptr ? UNIVERSE->sun() : nullptr) != nullptr ? UNIVERSE->sun()->willGoNova() : false)));
 	}
 	
-	BOOL canQuickSave = (canLoadOrSave && [[gameView gameController] cxx_playerFileToLoad].has_value());
+	BOOL canQuickSave = (canLoadOrSave && (gameView != nullptr && gameView->getGameController() != nullptr ? gameView->getGameController()->playerFileToLoad() : std::optional<std::string>()).has_value());
 	
 	// GUI stuff
 	{
@@ -9448,7 +9448,7 @@ void PlayerEntity::setGuiToLoadSaveScreen()
 	}
 	/* ends */
 	
-	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) clearMouse];
+	if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->clearMouse();
 	
 	setShowDemoShips(NO);
 	
@@ -9529,7 +9529,7 @@ OOWeaponFacingSet PlayerEntity::availableFacings()
 
 void PlayerEntity::setGuiToEquipShipScreen(int skipParam, const std::optional<std::string> &eqKeyForSelectFacing)
 {
-	[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) setMouseInteractionModeForUIWithMouseInteraction:YES];
+	if (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr)  UNIVERSE->gameController()->setMouseInteractionModeForUIWithMouseInteraction(YES);
 	
 	missiles = countMissiles();
 	OOEntityStatus searchStatus; // use STATUS_TEST, STATUS_DEAD & STATUS_ACTIVE
@@ -9973,7 +9973,7 @@ void PlayerEntity::showInformationForSelectedUpgradeWithFormatString(const std::
 
 void PlayerEntity::setGuiToInterfacesScreen(int skip)
 {
-	[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) setMouseInteractionModeForUIWithMouseInteraction:YES];
+	if (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr)  UNIVERSE->gameController()->setMouseInteractionModeForUIWithMouseInteraction(YES);
 	if (gui_screen != GUI_SCREEN_INTERFACES)
 	{
 		noteGUIWillChangeTo(GUI_SCREEN_INTERFACES);
@@ -10161,7 +10161,7 @@ void PlayerEntity::activateSelectedInterface()
 	::OOJSInterfaceDefinition *definition = InterfaceForKey(dockedStation(), key);
 	if (definition)
 	{
-		[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) clearKeys];
+		if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->clearKeys();
 		definition->runCallback(*key);	// a definition was found, so key has a value
 	}
 	else
@@ -10176,7 +10176,7 @@ void PlayerEntity::setupStartScreenGui()
 	::GuiDisplayGen	*gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 	std::string		text;
 
-	[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) setMouseInteractionModeForUIWithMouseInteraction:YES];
+	if (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr)  UNIVERSE->gameController()->setMouseInteractionModeForUIWithMouseInteraction(YES);
 
 	gui->clear();
 
@@ -10251,9 +10251,9 @@ void PlayerEntity::setGuiToIntroFirstGo(bool justCobra)
 	::GuiDisplayGen	*gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 	OOGUIRow 		msgLine = 2;
 	
-	[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) setMouseInteractionModeForUIWithMouseInteraction:NO];
-	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) clearMouse];
-	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) clearKeys];
+	if (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr)  UNIVERSE->gameController()->setMouseInteractionModeForUIWithMouseInteraction(NO);
+	if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->clearMouse();
+	if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->clearKeys();
 
 
 	if (justCobra)
@@ -10375,8 +10375,8 @@ void PlayerEntity::setGuiToIntroFirstGo(bool justCobra)
 void PlayerEntity::setGuiToOXZManager()
 {
 
-	[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) setMouseInteractionModeForUIWithMouseInteraction:NO];
-	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) clearMouse];
+	if (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr)  UNIVERSE->gameController()->setMouseInteractionModeForUIWithMouseInteraction(NO);
+	if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->clearMouse();
 	if (UNIVERSE != nullptr)  UNIVERSE->removeDemoShips();
 
 	gui_screen = GUI_SCREEN_OXZMANAGER;
@@ -10435,7 +10435,7 @@ void PlayerEntity::noteGUIDidChangeFrom(OOGUIScreenID fromScreen, OOGUIScreenID 
 			if ((UNIVERSE != nullptr ? UNIVERSE->sun() : nullptr) != nullptr)  UNIVERSE->sun()->setSunColor(OOColor::colorWithDescription(((UNIVERSE != nullptr ? UNIVERSE->getSystemManager() : nullptr) != nullptr ? UNIVERSE->getSystemManager()->getProperty("sun_color", system_id, galaxyNumber()) : oo::PList())).get());
 		}
 		
-		if (![(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) isGamePaused])
+		if (!(UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr ? UNIVERSE->gameController()->isGamePaused() : false))
 		{
 			ooscript::Context context = OOJSAcquireContext();
 			ShipScriptEvent(context, this, "guiScreenChanged", OOJSValueFromGUIScreenID(context, toScreen), OOJSValueFromGUIScreenID(context, fromScreen));
@@ -11320,7 +11320,7 @@ void PlayerEntity::setGuiToMarketScreen()
 	BOOL			guiChanged = (oldScreen != gui_screen);
 
 	
-	[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) setMouseInteractionModeForUIWithMouseInteraction:YES];
+	if (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr)  UNIVERSE->gameController()->setMouseInteractionModeForUIWithMouseInteraction(YES);
 	
 	// fix problems with economies in witchspace
 	oo::Ref<OOCommodityMarket>	blankMarket;	// held for the screen, as the autoreleased market was
@@ -11496,7 +11496,7 @@ gui->setTitle(marketScreenTitle());
 	}
 
 	
-	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) clearMouse];
+	if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->clearMouse();
 	
 	setShowDemoShips(NO);
 	if (UNIVERSE != nullptr)  UNIVERSE->enterGUIViewModeWithMouseInteraction(YES);
@@ -11520,7 +11520,7 @@ void PlayerEntity::setGuiToMarketInfoScreen()
 	BOOL			guiChanged = (oldScreen != gui_screen);
 
 	
-	[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) setMouseInteractionModeForUIWithMouseInteraction:YES];
+	if (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr)  UNIVERSE->gameController()->setMouseInteractionModeForUIWithMouseInteraction(YES);
 	
 	// fix problems with economies in witchspace
 	oo::Ref<OOCommodityMarket>	blankMarket;	// held for the screen, as the autoreleased market was
@@ -11600,7 +11600,7 @@ void PlayerEntity::setGuiToMarketInfoScreen()
 
 	}
 
-	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) clearMouse];
+	if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->clearMouse();
 	
 	setShowDemoShips(NO);
 	if (UNIVERSE != nullptr)  UNIVERSE->enterGUIViewModeWithMouseInteraction(YES);

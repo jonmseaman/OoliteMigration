@@ -2247,7 +2247,7 @@ void StationEntity::becomeExplosion()
 		// undock the player!
 		if (player != nullptr)  player->leaveDock(this);
 		if (UNIVERSE != nullptr)  UNIVERSE->setViewDirection(VIEW_FORWARD);
-		[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) setMouseInteractionModeForFlight];
+		if (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr)  UNIVERSE->gameController()->setMouseInteractionModeForFlight();
 		if (player != nullptr)  player->warnAboutHostiles();	// sound a klaxon
 	}
 	

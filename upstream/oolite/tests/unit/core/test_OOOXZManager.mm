@@ -587,6 +587,7 @@ OO_TEST(restartAndUpdateAll)
 // item 7, as an object put in gSharedUniverse for these cases only, since the test links the real
 // Universe) answers -gui with a recording screen; the manager's sends to it are the page.
 #import "Universe.h"	// the real class: the test links the whole game (bead oo-ql9rn)
+#import "MyOpenGLView.h"	// the game view is C++ (bead oo-9ht.153)
 extern Universe *gSharedUniverse;
 
 // The page's rows (OOOXZManager.mm's private OXZ_GUI_ROW_* values).
@@ -643,18 +644,17 @@ public:
 };
 
 
-@interface TestGameView: OOObject
+// The game view: a C++ subclass of the game's (bead oo-9ht.153 deleted the Objective-C facade the
+// test's Objective-C stand-in stood in for), overriding the two members it answered (virtual for it).
+class TestGameView : public MyOpenGLView
 {
-@public
-	int				resets;
+public:
+	int				resets = 0;
 	std::string		clipboard;
-}
-@end
 
-@implementation TestGameView
-- (void) resetTypedString	{ resets++; }
-- (void) cxx_stringToClipboard:(const std::string &)stringToCopy	{ clipboard = stringToCopy; }
-@end
+	void resetTypedString() override	{ resets++; }
+	void stringToClipboard(const std::string &stringToCopy) override	{ clipboard = stringToCopy; }
+};
 
 
 // The universe the manager sees: a C++ subclass of the game's (bead oo-ql9rn deleted the Objective-C
@@ -664,17 +664,17 @@ class TestUniverse : public Universe
 {
 public:
 	oo::Ref<TestGui> testGui = {};
-	TestGameView	*testGameView = nil;
+	TestGameView	*testGameView = nullptr;
 	oo::PList testDescriptions = {};
 
 	TestUniverse()
 	{
 		testGui = oo::makeRef<TestGui>();
-		testGameView = [[TestGameView alloc] init];
+		testGameView = new TestGameView();
 		testDescriptions = oo::PList(oo::PList::Dict());
 	}
 	::GuiDisplayGen *getGui() override	{ return testGui.get(); }
-	::MyOpenGLView *getGameView() override	{ return (MyOpenGLView *)testGameView; }	// what -gameView answered (an id)
+	::MyOpenGLView *getGameView() override	{ return testGameView; }	// what -gameView answered
 	std::optional<std::string> descriptionForKey(const std::string &key) override	{ (void)key; return std::nullopt; }
 	const oo::PList *descriptions() override	{ return &testDescriptions; }
 	::OOSystemDescriptionManager *getSystemManager() override	{ return nullptr; }

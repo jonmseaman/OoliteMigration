@@ -44,7 +44,7 @@
 // MARK: The classes, as far as the binding sees them ----------------------------------------------
 
 class StationEntity;
-@class GameController;
+class GameController;
 
 // As ShipEntity.h and StationEntity.h declare them (the test imports neither).
 typedef enum
@@ -222,14 +222,17 @@ public:
 	std::string _name;
 };
 
-@interface GameController: OOObject
+// The game controller: a stand-in for the C++ class (bead oo-9ht.164 deleted the Objective-C facade
+// the test's Objective-C stand-in stood in for), with the header's names and signatures, defined out
+// of line below with the stand-in's answers.
+class GameController : public oo::RefCounted
 {
-@public
-	BOOL _paused;
-}
-- (BOOL) isGamePaused;
-- (void) setGamePaused:(BOOL)value;
-@end
+public:
+	BOOL _paused = NO;
+
+	bool isGamePaused();
+	void setGamePaused(bool value);
+};
 
 #import "UniverseStandIn.h"
 
@@ -493,10 +496,8 @@ oo::PList PlayerEntity::missionVariableForKey(const std::string &key)  { std::ab
 ::OOScript * PlayerEntity::commodityScriptNamed(const std::optional<std::string> &script)  { (void)script; return nil; }
 
 
-@implementation GameController
-- (BOOL) isGamePaused  { return _paused; }
-- (void) setGamePaused:(BOOL)value  { _paused = value; }
-@end
+bool GameController::isGamePaused()  { return _paused; }
+void GameController::setGamePaused(bool value)  { _paused = value; }
 
 
 ::OOCommodities *Universe::getCommodities()	{ return _commodities.get(); }
@@ -864,7 +865,7 @@ void SetUpContext()
 
 	sUniverse = new StandInUniverse();	// kept for the life of the test
 	gSharedUniverse = sUniverse;
-	sUniverse->_controller = [[GameController alloc] init];
+	sUniverse->_controller = new GameController();	// kept for the life of the test
 	sUniverse->_commodities = oo::makeRef<OOCommodities>();
 	sPlayer = new PlayerEntity;
 	sPlayer->_name = "player";

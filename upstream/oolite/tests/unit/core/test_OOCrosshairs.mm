@@ -21,6 +21,7 @@
 #import "OOColor.h"
 #import "OOOpenGL.h"
 #import "OOOpenGLMatrixManager.h"
+#import "MyOpenGLView.h"
 
 #include "oo_test.hpp"
 
@@ -33,6 +34,7 @@
 
 class Universe;
 Universe *gSharedUniverse = nil;
+GLfloat MyOpenGLView::getDisplay_z()							{ std::abort(); }	// a member since bead oo-9ht.153 deleted the view's facade (was a send)
 
 void OOSetOpenGLState_(OOOpenGLStateID, const char *, unsigned)	{ std::abort(); }
 void OOVerifyOpenGLState_(const char *, unsigned)				{ std::abort(); }

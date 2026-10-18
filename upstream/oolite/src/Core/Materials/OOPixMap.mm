@@ -157,28 +157,15 @@ void OODumpPixMap(OOPixMap pixMap, const std::string &name)
 			break;
 			
 		case kOOPixMapGrayscale:
-			[gameView cxx_dumpGrayToFileNamed:name
-									bytes:(uint8_t *)pixMap.pixels
-									width:pixMap.width
-								   height:pixMap.height
-								 rowBytes:pixMap.rowBytes];
+			if (gameView != nullptr)  gameView->dumpGrayToFileNamed(name, (uint8_t *)pixMap.pixels, pixMap.width, pixMap.height, pixMap.rowBytes);
 			break;
 			
 		case kOOPixMapGrayscaleAlpha:
-			[gameView cxx_dumpGrayAlphaToFileNamed:name
-										 bytes:(uint8_t *)pixMap.pixels
-										 width:pixMap.width
-										height:pixMap.height
-									  rowBytes:pixMap.rowBytes];
+			if (gameView != nullptr)  gameView->dumpGrayAlphaToFileNamed(name, (uint8_t *)pixMap.pixels, pixMap.width, pixMap.height, pixMap.rowBytes);
 			break;
 			
 		case kOOPixMapRGBA:
-			[gameView cxx_dumpRGBAToRGBFileNamed:name + " rgb"
-							andGrayFileNamed:name + " alpha"
-									   bytes:(uint8_t *)pixMap.pixels
-									   width:pixMap.width
-									  height:pixMap.height
-									rowBytes:pixMap.rowBytes];
+			if (gameView != nullptr)  gameView->dumpRGBAToRGBFileNamed(name + " rgb", name + " alpha", (uint8_t *)pixMap.pixels, pixMap.width, pixMap.height, pixMap.rowBytes);
 			break;
 	}
 }

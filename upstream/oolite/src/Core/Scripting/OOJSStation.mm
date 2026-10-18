@@ -741,13 +741,13 @@ static bool StationDockPlayer(ooscript::Context context, ooscript::CallArgs &ooj
 	PlayerEntity	*player = OOPlayerForScripting();
 	GameController	*gameController = (UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr);
 	
-	if (EXPECT_NOT([gameController isGamePaused]))
+	if (EXPECT_NOT((gameController != nullptr ? gameController->isGamePaused() : false)))
 	{
 		/*	Station.dockPlayer() was executed while the game was in pause.
 			Do we want to return an error or just unpause and continue?
 			I think unpausing is the sensible thing to do here - Nikos 20110208
 		*/
-		[gameController setGamePaused:false];
+		if (gameController != nullptr)  gameController->setGamePaused(false);
 	}
 	
 	if (EXPECT(!(player != nullptr ? player->PlayerEntity::isDocked() : false)))	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it

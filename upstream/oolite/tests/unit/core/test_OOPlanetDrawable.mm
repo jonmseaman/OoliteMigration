@@ -20,6 +20,7 @@
 #import "OOPlanetData.h"
 #import "OOBasicMaterial.h"
 #import "Universe.h"
+#import "MyOpenGLView.h"	// the game view is C++ (bead oo-9ht.153)
 
 #include "oo_test.hpp"
 
@@ -35,20 +36,15 @@ extern Universe *gSharedUniverse;
 
 
 // The game view, as far as the drawable asks it.
-@interface TestView: OOObject
+// The game view: a C++ subclass of the game's (bead oo-9ht.153 deleted the Objective-C facade the
+// test's Objective-C stand-in stood in for), overriding the one member it answered (virtual for it).
+class TestView : public MyOpenGLView
 {
-@public
-	NSSize	_size;
-}
-- (NSSize) viewSize;
-@end
+public:
+	NSSize	_size = {};
 
-
-@implementation TestView
-
-- (NSSize) viewSize  { return _size; }
-
-@end
+	NSSize getViewSize() override  { return _size; }
+};
 
 
 // UNIVERSE: never initialised; answers the detail setting and the game view.
@@ -72,8 +68,8 @@ void SetUp()
 	if (sUniverse == nil)
 	{
 		sUniverse = new TestUniverse();	// never released
-		sUniverse->_view = [[TestView alloc] init];
-		sUniverse->gameView = (MyOpenGLView *)sUniverse->_view;	// what -gameView answered (bead oo-ql9rn)
+		sUniverse->_view = new TestView();	// never released
+		sUniverse->gameView = sUniverse->_view;	// what -gameView answered (bead oo-ql9rn)
 	}
 	sUniverse->_reduced = NO;
 	sUniverse->_view->_size = NSMakeSize(800, 600);

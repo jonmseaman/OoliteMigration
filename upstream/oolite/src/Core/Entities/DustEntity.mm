@@ -294,7 +294,7 @@ void DustEntity::drawImmediate(bool /*immediate*/, bool translucent)
 	
 
 	GLfloat	*fogcolor = (UNIVERSE != nullptr ? UNIVERSE->getSkyClearColor() : nullptr);
-	float	idealDustSize = [(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) viewSize].width / 800.0f;
+	float	idealDustSize = (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr ? UNIVERSE->getGameView()->getViewSize() : NSSize{}).width / 800.0f;
 	
 	BOOL	warp_stars = (player != nullptr ? player->atHyperspeed() : false);
 	float	dustIntensity;

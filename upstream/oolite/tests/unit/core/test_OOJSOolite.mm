@@ -20,6 +20,7 @@
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/PList.hpp"
+#include "oofnd/Ref.hpp"
 #include "oofnd/String.hpp"
 
 
@@ -47,24 +48,27 @@ typedef enum
 } OOSDRToneMapper;
 
 
-@interface MyOpenGLView: OOObject
+// The game view: a stand-in for the C++ class (bead oo-9ht.153 deleted the Objective-C facade the
+// test's Objective-C stand-in stood in for), with the header's names and signatures, defined out of
+// line below with the stand-in's answers.
+class MyOpenGLView : public oo::RefCounted
 {
-@public
-	float _colorSaturation;
-	BOOL _hdrOutput;
-	OOHDRToneMapper _hdrToneMapper;
-	OOSDRToneMapper _sdrToneMapper;
-	int _hdrSets;
-	int _sdrSets;
-}
-- (float) colorSaturation;
-- (void) adjustColorSaturation:(float)colorSaturationAdjustment;
-- (BOOL) hdrOutput;
-- (OOHDRToneMapper) hdrToneMapper;
-- (void) setHDRToneMapper:(OOHDRToneMapper)newToneMapper;
-- (OOSDRToneMapper) sdrToneMapper;
-- (void) setSDRToneMapper:(OOSDRToneMapper)newToneMapper;
-@end
+public:
+	float _colorSaturation = {};
+	BOOL _hdrOutput = {};
+	OOHDRToneMapper _hdrToneMapper = {};
+	OOSDRToneMapper _sdrToneMapper = {};
+	int _hdrSets = {};
+	int _sdrSets = {};
+
+	float colorSaturation();
+	void adjustColorSaturation(float colorSaturationAdjustment);
+	bool hdrOutput();
+	OOHDRToneMapper hdrToneMapper();
+	void setHDRToneMapper(OOHDRToneMapper newToneMapper);
+	OOSDRToneMapper sdrToneMapper();
+	void setSDRToneMapper(OOSDRToneMapper newToneMapper);
+};
 
 
 /*	The universe. While _raise is set, -cxx_gameSettings raises, and while _throwCxx is set it
@@ -129,17 +133,13 @@ oo::PList Dict(std::initializer_list<std::pair<const char *, oo::PList>> entries
 }	// namespace
 
 
-@implementation MyOpenGLView
-
-- (float) colorSaturation  { return _colorSaturation; }
-- (void) adjustColorSaturation:(float)colorSaturationAdjustment  { _colorSaturation += colorSaturationAdjustment; }
-- (BOOL) hdrOutput  { return _hdrOutput; }
-- (OOHDRToneMapper) hdrToneMapper  { return _hdrToneMapper; }
-- (void) setHDRToneMapper:(OOHDRToneMapper)newToneMapper  { _hdrToneMapper = newToneMapper; _hdrSets++; }
-- (OOSDRToneMapper) sdrToneMapper  { return _sdrToneMapper; }
-- (void) setSDRToneMapper:(OOSDRToneMapper)newToneMapper  { _sdrToneMapper = newToneMapper; _sdrSets++; }
-
-@end
+float MyOpenGLView::colorSaturation()  { return _colorSaturation; }
+void MyOpenGLView::adjustColorSaturation(float colorSaturationAdjustment)  { _colorSaturation += colorSaturationAdjustment; }
+bool MyOpenGLView::hdrOutput()  { return _hdrOutput; }
+OOHDRToneMapper MyOpenGLView::hdrToneMapper()  { return _hdrToneMapper; }
+void MyOpenGLView::setHDRToneMapper(OOHDRToneMapper newToneMapper)  { _hdrToneMapper = newToneMapper; _hdrSets++; }
+OOSDRToneMapper MyOpenGLView::sdrToneMapper()  { return _sdrToneMapper; }
+void MyOpenGLView::setSDRToneMapper(OOSDRToneMapper newToneMapper)  { _sdrToneMapper = newToneMapper; _sdrSets++; }
 
 
 oo::PList Universe::gameSettings()
@@ -405,7 +405,7 @@ void SetUpContext()
 	sGlobal = ooscript::getGlobalObject(sContext);
 	ooscript::initStandardClasses(sContext, sGlobal);
 
-	sView = [[MyOpenGLView alloc] init];	// kept for the life of the test
+	sView = new MyOpenGLView();	// kept for the life of the test
 	sView->_colorSaturation = 1.0f;
 	sView->_hdrToneMapper = OOHDR_TONEMAPPER_DICE;
 	sView->_sdrToneMapper = OOSDR_TONEMAPPER_AgX;

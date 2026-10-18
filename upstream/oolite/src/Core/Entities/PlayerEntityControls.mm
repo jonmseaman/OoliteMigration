@@ -548,7 +548,7 @@ bool PlayerEntity::checkNavKeyPress(const oo::PList &key_def)
 	{
 		const oo::PList *def = key_def.at(i);
 		if (def == nullptr)  continue;	// not an array of definitions
-		if ([gameView isDown:def->get<int>("key")]) return YES;
+		if ((gameView != nullptr ? gameView->isDown(def->get<int>("key")) : false)) return YES;
 	}
 	return NO;
 }
@@ -587,10 +587,10 @@ bool PlayerEntity::checkKeyPress(const oo::PList &key_def, bool fKey_only, bool 
 		// when all settings are off. This means, if the player presses two functions at once, one that requires a modifier and
 		// one that doesn't, the one that doesn't will not be triggered.
 		if (fKey_only == YES && (keycode < gvFunctionKey1 || keycode > gvFunctionKey11)) continue;
-		if ([gameView isDown:keycode]
-			&& (def->get<bool>("shift") == static_cast<bool>([gameView isShiftDown]))
-			&& (ignore_ctrl || (def->get<bool>("mod1") == static_cast<bool>([gameView isCtrlDown])))
-			&& (def->get<bool>("mod2") == static_cast<bool>([gameView isOptDown]))
+		if ((gameView != nullptr ? gameView->isDown(keycode) : false)
+			&& (def->get<bool>("shift") == static_cast<bool>((gameView != nullptr ? gameView->isShiftDown() : false)))
+			&& (ignore_ctrl || (def->get<bool>("mod1") == static_cast<bool>((gameView != nullptr ? gameView->isCtrlDown() : false))))
+			&& (def->get<bool>("mod2") == static_cast<bool>((gameView != nullptr ? gameView->isOptDown() : false)))
 		) return YES;
 	}
 	return NO;
@@ -667,10 +667,10 @@ static int ClickedGUIRow(GuiDisplayGen *gui)
 {
 	Universe *universe = UNIVERSE;
 	if (universe == nullptr)  return 0;
-	cxx::GameController *controller = oo::ToCxx(universe->gameController());
+	GameController *controller = universe->gameController();
 	if (controller != nullptr && controller->mouseInteractionMode() == MOUSE_MODE_UI_SCREEN_WITH_INTERACTION && gui != nullptr)
 	{
-		cxx::MyOpenGLView *view = oo::ToCxx(universe->getGameView());
+		MyOpenGLView *view = universe->getGameView();
 		return gui->rowAtVirtualJoystickPosition(view != nullptr ? view->getVirtualJoystickPosition() : NSPoint{});
 	}
 	return universe->cursor_row;
@@ -685,8 +685,8 @@ bool PlayerEntity::handleGUIUpDownArrowKeys()
 	BOOL			result = NO;
 	BOOL			arrow_up = checkKeyPress(n_key_gui_arrow_up); 
 	BOOL			arrow_down = checkKeyPress(n_key_gui_arrow_down); 
-	BOOL			mouse_click = [gameView isDown:gvMouseLeftButton];
-	BOOL			mouse_dbl_click = [gameView isDown:gvMouseDoubleClick];
+	BOOL			mouse_click = (gameView != nullptr ? gameView->isDown(gvMouseLeftButton) : false);
+	BOOL			mouse_dbl_click = (gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false);
 
 	if (arrow_down)
 	{
@@ -751,7 +751,7 @@ bool PlayerEntity::handleGUIUpDownArrowKeys()
 			// if double-clicked on an unselectable row, clear the
 			// state so it doesn't activate whatever was last
 			// selected
-			[gameView clearMouse];
+			if (gameView != nullptr)  gameView->clearMouse();
 		}
 	}
 
@@ -779,7 +779,7 @@ void PlayerEntity::targetNewSystem(int direction, bool whileTyping)
 
 void PlayerEntity::clearPlanetSearchString()
 {
-	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) resetTypedString];
+	if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->resetTypedString();
 	planetSearchString.reset();
 }
 
@@ -799,8 +799,8 @@ void PlayerEntity::switchToMainView()
 		setShowDemoShips(NO);
 		if (UNIVERSE != nullptr)  UNIVERSE->removeDemoShips();
 	}
-	[(::MyOpenGLView *)(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) allowStringInput:NO];
-	if (isMouseControlOn())  [(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) resetMouse];
+	if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->allowStringInput(NO);
+	if (isMouseControlOn())  { if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->resetMouse(); }
 	if (UNIVERSE != nullptr)  UNIVERSE->enterGUIViewModeWithMouseInteraction(NO);
 	noteGUIDidChangeFrom(oldScreen, gui_screen);
 }
@@ -883,13 +883,13 @@ void PlayerEntity::pollApplicationControls()
 	{
 	//  command-key controls
 	#if !OOLITE_MAC_OS_X || !OOLITE_64_BIT	// On 64-bit Macs, these are handled by normal menu shortcuts.
-		if ([gameController inFullScreenMode])
+		if ((gameController != nullptr ? gameController->inFullScreenMode() : false))
 		{
 			exceptionContext = "command key controls";
-			if ([gameView isCommandFDown])
+			if ((gameView != nullptr ? gameView->isCommandFDown() : false))
 			{
-				[gameView clearCommandF];
-				[gameController exitFullScreenMode];
+				if (gameView != nullptr)  gameView->clearCommandF();
+				if (gameController != nullptr)  gameController->exitFullScreenMode();
 				if (mouse_control_on)
 				{
 					if (UNIVERSE != nullptr)  UNIVERSE->addMessage(OO_DESC("mouse-off"), 3.0);
@@ -897,9 +897,10 @@ void PlayerEntity::pollApplicationControls()
 				}
 			}
 			
-			if ([gameView isCommandQDown])
+			if ((gameView != nullptr ? gameView->isCommandQDown() : false))
 			{
-				[gameController pauseFullScreenModeToPerform:@selector(exitAppCommandQ) onTarget:gameController];
+				// The target was the controller's object; the controller is C++ (bead oo-9ht.164), and on SDL the pair is kept, never performed: nil.
+				if (gameController != nullptr)  gameController->pauseFullScreenModeToPerform(@selector(exitAppCommandQ), nil);
 			}
 		}
 	#endif
@@ -908,13 +909,13 @@ void PlayerEntity::pollApplicationControls()
 		if (status() == STATUS_HANDLING_ERROR)
 		{
 			exceptionContext = "error handling mode";
-			if ([gameView isDown:113]||[gameView isDown:81]||[gameView isDown:27])   // 'q' | 'Q' | esc
+			if ((gameView != nullptr ? gameView->isDown(113) : false)||(gameView != nullptr ? gameView->isDown(81) : false)||(gameView != nullptr ? gameView->isDown(27) : false))   // 'q' | 'Q' | esc
 			{
-				[gameController cxx_exitAppWithContext:"Q or escape pressed in error handling mode"];
+				if (gameController != nullptr)  gameController->exitAppWithContext("Q or escape pressed in error handling mode");
 			}
 		}
 		
-		if ([gameController isGamePaused])
+		if ((gameController != nullptr ? gameController->isGamePaused() : false))
 		{
 			// What's the status?
 			switch (status())
@@ -930,12 +931,12 @@ void PlayerEntity::pollApplicationControls()
 					{
 						// In all other cases we can't handle pause. Unpause immediately.
 						script_time = saved_script_time;
-						[gameView allowStringInput:NO];
+						if (gameView != nullptr)  gameView->allowStringInput(NO);
 						if ((UNIVERSE != nullptr ? UNIVERSE->pauseMessageVisible() : false))
 						{
 							if (UNIVERSE != nullptr)  UNIVERSE->clearPreviousMessage();	// remove the 'paused' message.
 						}
-						[gameController setGamePaused:NO];
+						if (gameController != nullptr)  gameController->setGamePaused(NO);
 					}
 					break;
 			}
@@ -946,14 +947,14 @@ void PlayerEntity::pollApplicationControls()
 		const BOOL *joyButtonState = OOJoystickManager::sharedStickHandler()->getAllButtonStates();
 
 		if ((checkKeyPress(n_key_snapshot) || joyButtonState[BUTTON_SNAPSHOT]) &&
-			([gameView allowingStringInput] <= gvStringInputAlpha) && // not while entering text on the keyboard config screens
+			((gameView != nullptr ? gameView->getAllowingStringInput() : StringInput{}) <= gvStringInputAlpha) && // not while entering text on the keyboard config screens
 			!::OOOXZManager::sharedManager()->isAcceptingTextInput())   //  '*' key but not while filtering inside OXZ Manager
 		{
 			exceptionContext = "snapshot";
 			if (!taking_snapshot)
 			{
 				taking_snapshot = YES;
-				[gameView cxx_snapShot:std::nullopt]; // nil filename so that the program auto-names the snapshot
+				if (gameView != nullptr)  gameView->snapShot(std::nullopt); // nil filename so that the program auto-names the snapshot
 			}
 		}
 		else
@@ -993,7 +994,7 @@ void PlayerEntity::pollApplicationControls()
 	#if OO_DEBUG
 		allowMouseControl = YES;
 	#else
-		allowMouseControl = [gameController inFullScreenMode] ||
+		allowMouseControl = (gameController != nullptr ? gameController->inFullScreenMode() : false) ||
 					oo::Defaults::standard().boolForKey("mouse-control-in-windowed-mode");
 	#endif
 		
@@ -1012,10 +1013,10 @@ void PlayerEntity::pollApplicationControls()
 						 out the joystick if the player runs to the keyboard)
 						 is reset */
 					#if OOLITE_GNUSTEP
-						[gameView resetMouse];
+						if (gameView != nullptr)  gameView->resetMouse();
 						if (oo::Defaults::standard().boolForKey("grab-mouse-on-mouse-control"))
 						{
-							[gameView grabMouseInsideGameWindow:YES];
+							if (gameView != nullptr)  gameView->grabMouseInsideGameWindow(YES);
 						}
 					#endif
 						mouse_x_axis_map_to_yaw = checkKeyPress(n_key_mouse_control_yaw);
@@ -1027,13 +1028,13 @@ void PlayerEntity::pollApplicationControls()
 					{
 						if (UNIVERSE != nullptr)  UNIVERSE->addMessage(OO_DESC("mouse-off"), 3.0);
                     #if OOLITE_GNUSTEP
-						[gameView grabMouseInsideGameWindow:NO];
+						if (gameView != nullptr)  gameView->grabMouseInsideGameWindow(NO);
                     #endif
 					}
 				}
-				if (OOMouseInteractionModeIsFlightMode([gameController mouseInteractionMode]))
+				if (OOMouseInteractionModeIsFlightMode((gameController != nullptr ? gameController->mouseInteractionMode() : OOMouseInteractionMode{})))
 				{
-					[gameController setMouseInteractionModeForFlight];
+					if (gameController != nullptr)  gameController->setMouseInteractionModeForFlight();
 				}
 				m_key_pressed = YES;
 			}
@@ -1049,18 +1050,18 @@ void PlayerEntity::pollApplicationControls()
 				mouse_control_on = NO;
 				if (UNIVERSE != nullptr)  UNIVERSE->addMessage(OO_DESC("mouse-off"), 3.0);
             #if OOLITE_GNUSTEP
-				[gameView grabMouseInsideGameWindow:NO];
+				if (gameView != nullptr)  gameView->grabMouseInsideGameWindow(NO);
             #endif
 				
-				if (OOMouseInteractionModeIsFlightMode([gameController mouseInteractionMode]))
+				if (OOMouseInteractionModeIsFlightMode((gameController != nullptr ? gameController->mouseInteractionMode() : OOMouseInteractionMode{})))
 				{
-					[gameController setMouseInteractionModeForFlight];
+					if (gameController != nullptr)  gameController->setMouseInteractionModeForFlight();
 				}
 			}
 		}
 		
 		// HUD toggle
-		if ((checkKeyPress(n_key_hud_toggle) || joyButtonState[BUTTON_TOGGLEHUD]) && [gameController isGamePaused] && !onTextEntryScreen)	// 'o' key while paused
+		if ((checkKeyPress(n_key_hud_toggle) || joyButtonState[BUTTON_TOGGLEHUD]) && (gameController != nullptr ? gameController->isGamePaused() : false) && !onTextEntryScreen)	// 'o' key while paused
 		{
 			exceptionContext = "toggle HUD";
 			if (!hide_hud_pressed)
@@ -1098,7 +1099,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 		exceptionContext = "joystick handling";
 		const BOOL *joyButtonState = OOJoystickManager::sharedStickHandler()->getAllButtonStates();
 		
-		BOOL paused = [(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) isGamePaused];
+		BOOL paused = (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr ? UNIVERSE->gameController()->isGamePaused() : false);
 		double speed_delta = SHIP_THRUST_FACTOR * thrust;
 		
 		if (!paused && gui_screen == GUI_SCREEN_MISSION)
@@ -1167,7 +1168,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 			//  view keys
 			pollViewControls();
 			
-			if (OOMouseInteractionModeIsFlightMode([(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) mouseInteractionMode]))
+			if (OOMouseInteractionModeIsFlightMode((UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr ? UNIVERSE->gameController()->mouseInteractionMode() : OOMouseInteractionMode{})))
 			{
 				exceptionContext = "afterburner";
 				if ((joyButtonState[BUTTON_FUELINJECT] || checkKeyPress(n_key_inject_fuel)) &&
@@ -1196,12 +1197,12 @@ void PlayerEntity::pollFlightControls(double delta_t)
 				exceptionContext = "thrust";
 				// DJS: Thrust can be an axis or a button. Axis takes precidence.
 				double reqSpeed=stickHandler->getAxisState(AXIS_THRUST);
-				float mouseWheelDeltaFactor = mouse_control_on ? fabs([gameView mouseWheelDelta]) : 1.0f;
+				float mouseWheelDeltaFactor = mouse_control_on ? fabs((gameView != nullptr ? gameView->mouseWheelDelta() : 0.0f)) : 1.0f;
 				if (mouseWheelDeltaFactor == 0.0f)  mouseWheelDeltaFactor = 1.0f;
 				// Updated DJS original code to fix BUG #17482 - (Getafix 2010/09/13)
 				if ((checkKeyPress(n_key_increase_speed) ||
 						joyButtonState[BUTTON_INCTHRUST] ||
-						 ((mouse_control_on)&&([gameView mouseWheelState] == gvMouseWheelUp) && ((UNIVERSE != nullptr ? UNIVERSE->getViewDirection() : OOViewID{}) <= VIEW_STARBOARD || ![gameView isCapsLockOn])))
+						 ((mouse_control_on)&&((gameView != nullptr ? gameView->mouseWheelState() : 0) == gvMouseWheelUp) && ((UNIVERSE != nullptr ? UNIVERSE->getViewDirection() : OOViewID{}) <= VIEW_STARBOARD || !(gameView != nullptr ? gameView->isCapsLockOn() : false))))
 					&& (flightSpeed < maxFlightSpeed) && (!afterburner_engaged))
 				{
 					flightSpeed += speed_delta * delta_t * mouseWheelDeltaFactor;
@@ -1209,7 +1210,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 				
 				if ((checkKeyPress(n_key_decrease_speed) ||
 						joyButtonState[BUTTON_DECTHRUST] ||
-						((mouse_control_on)&&([gameView mouseWheelState] == gvMouseWheelDown) && ((UNIVERSE != nullptr ? UNIVERSE->getViewDirection() : OOViewID{}) <= VIEW_STARBOARD || ![gameView isCapsLockOn])))
+						((mouse_control_on)&&((gameView != nullptr ? gameView->mouseWheelState() : 0) == gvMouseWheelDown) && ((UNIVERSE != nullptr ? UNIVERSE->getViewDirection() : OOViewID{}) <= VIEW_STARBOARD || !(gameView != nullptr ? gameView->isCapsLockOn() : false))))
 					&& (!afterburner_engaged))
 				{
 					flightSpeed -= speed_delta * delta_t * mouseWheelDeltaFactor;	
@@ -1266,7 +1267,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 				
 				exceptionContext = "shoot";
 				//  shoot 'a'
-				if (((checkNavKeyPress(n_key_fire_lasers))||((mouse_control_on)&&([gameView isDown:gvMouseLeftButton]) && ((UNIVERSE != nullptr ? UNIVERSE->getViewDirection() : OOViewID{}) <= VIEW_STARBOARD || ![gameView isCapsLockOn]))||joyButtonState[BUTTON_FIRE])&&(shot_time > weapon_recharge_rate))
+				if (((checkNavKeyPress(n_key_fire_lasers))||((mouse_control_on)&&((gameView != nullptr ? gameView->isDown(gvMouseLeftButton) : false)) && ((UNIVERSE != nullptr ? UNIVERSE->getViewDirection() : OOViewID{}) <= VIEW_STARBOARD || !(gameView != nullptr ? gameView->isCapsLockOn() : false)))||joyButtonState[BUTTON_FIRE])&&(shot_time > weapon_recharge_rate))
 				{
 					if (fireMainWeapon())
 					{
@@ -1581,7 +1582,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 							// first keypress will unregister in KEY_REPEAT_INTERVAL seconds
 							escapePodKeyResetTime = oo::date::monotonicSeconds() + KEY_REPEAT_INTERVAL;
 							//[gameView clearKey:key_launch_escapepod];
-							[gameView clearKey:getFirstKeyCode(n_key_launch_escapepod)];
+							if (gameView != nullptr)  gameView->clearKey(getFirstKeyCode(n_key_launch_escapepod));
 							if (stickHandler->joystickCount())
 							{
 								stickHandler->clearStickButtonState(BUTTON_ESCAPE);
@@ -1796,9 +1797,9 @@ void PlayerEntity::pollFlightControls(double delta_t)
 			// game is paused
 			// check options menu request
 			exceptionContext = "options menu";
-			if ((checkKeyPress(n_key_gui_screen_options)) && (gui_screen != GUI_SCREEN_OPTIONS) && ![gameView allowingStringInput])
+			if ((checkKeyPress(n_key_gui_screen_options)) && (gui_screen != GUI_SCREEN_OPTIONS) && !(gameView != nullptr ? gameView->getAllowingStringInput() : StringInput{}))
 			{
-				[gameView clearKeys];
+				if (gameView != nullptr)  gameView->clearKeys();
 				setGuiToLoadSaveScreen();
 			}
 			
@@ -1814,7 +1815,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 				else UNIVERSE->messageGUI()->clear();
 				NSTimeInterval	time_this_frame = oo::date::monotonicSeconds();	// intervals only (time_last_frame)
 				OOTimeDelta		time_delta;
-				if (![[::GameController sharedController] isGamePaused])
+				if (!::GameController::sharedController()->isGamePaused())
 				{
 					time_delta = time_this_frame - time_last_frame;
 					time_last_frame = time_this_frame;
@@ -1832,7 +1833,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 			exceptionContext = "debug keys";
 	#ifndef NDEBUG
 			// look for debugging keys
-			if (checkKeyPress(n_key_dump_entity_list) && ![gameView allowingStringInput])// look for the '0' key
+			if (checkKeyPress(n_key_dump_entity_list) && !(gameView != nullptr ? gameView->getAllowingStringInput() : StringInput{}))// look for the '0' key
 			{
 				if (!dump_entity_list_pressed)
 				{
@@ -1846,19 +1847,19 @@ void PlayerEntity::pollFlightControls(double delta_t)
 				dump_entity_list_pressed = NO;
 			
 			// look for debugging keys
-			if (checkKeyPress(n_key_debug_full) && ![gameView allowingStringInput])// look for the 'd' key
+			if (checkKeyPress(n_key_debug_full) && !(gameView != nullptr ? gameView->getAllowingStringInput() : StringInput{}))// look for the 'd' key
 			{
 				gDebugFlags = DEBUG_ALL;
 				if (UNIVERSE != nullptr)  UNIVERSE->addMessage("Full debug ON", 3);
 			}
 			
-			if (checkKeyPress(n_key_debug_collision) && ![gameView allowingStringInput])// look for the 'b' key
+			if (checkKeyPress(n_key_debug_collision) && !(gameView != nullptr ? gameView->getAllowingStringInput() : StringInput{}))// look for the 'b' key
 			{
 				gDebugFlags |= DEBUG_COLLISIONS;
 				if (UNIVERSE != nullptr)  UNIVERSE->addMessage("Collision debug ON", 3);
 			}
 			
-			if (checkKeyPress(n_key_debug_console_connect) && !::OODebugMonitor::sharedDebugMonitor()->usingPlugInController() && ![gameView allowingStringInput]) // look for the 'c' key
+			if (checkKeyPress(n_key_debug_console_connect) && !::OODebugMonitor::sharedDebugMonitor()->usingPlugInController() && !(gameView != nullptr ? gameView->getAllowingStringInput() : StringInput{})) // look for the 'c' key
 			{
 				// This code is executed only if we're not using the integrated plugin controller
 				if (!autopilot_key_pressed)
@@ -1880,19 +1881,19 @@ void PlayerEntity::pollFlightControls(double delta_t)
 			else
 				autopilot_key_pressed = NO;
 			
-			if (checkKeyPress(n_key_debug_bounding_boxes) && ![gameView allowingStringInput])// look for the 'x' key
+			if (checkKeyPress(n_key_debug_bounding_boxes) && !(gameView != nullptr ? gameView->getAllowingStringInput() : StringInput{}))// look for the 'x' key
 			{
 				gDebugFlags |= DEBUG_BOUNDING_BOXES;
 				if (UNIVERSE != nullptr)  UNIVERSE->addMessage("Bounding box debug ON", 3);
 			}
 			
-			if (checkKeyPress(n_key_debug_shaders) && ![gameView allowingStringInput])// look for the 's' key
+			if (checkKeyPress(n_key_debug_shaders) && !(gameView != nullptr ? gameView->getAllowingStringInput() : StringInput{}))// look for the 's' key
 			{
 				oo::log::logger().setDisplay("$shaderDebugOn", true);
 				if (UNIVERSE != nullptr)  UNIVERSE->addMessage("Shader debug ON", 3);
 			}
 
-			if ((checkKeyPress(n_key_gui_arrow_left) || checkKeyPress(n_key_gui_arrow_right)) && gui_screen != GUI_SCREEN_GAMEOPTIONS && (UNIVERSE != nullptr ? UNIVERSE->getDisplayFPS() : false) && ![gameView allowingStringInput])
+			if ((checkKeyPress(n_key_gui_arrow_left) || checkKeyPress(n_key_gui_arrow_right)) && gui_screen != GUI_SCREEN_GAMEOPTIONS && (UNIVERSE != nullptr ? UNIVERSE->getDisplayFPS() : false) && !(gameView != nullptr ? gameView->getAllowingStringInput() : StringInput{}))
 			{
 				if (!leftRightKeyPressed)
 				{
@@ -1907,7 +1908,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 				leftRightKeyPressed = NO;
 					
 			
-			if (checkKeyPress(n_key_debug_off) && ![gameView allowingStringInput])// look for the 'n' key
+			if (checkKeyPress(n_key_debug_off) && !(gameView != nullptr ? gameView->getAllowingStringInput() : StringInput{}))// look for the 'n' key
 			{
 				gDebugFlags = 0;
 				if (UNIVERSE != nullptr)  UNIVERSE->addMessage("All debug flags OFF", 3);
@@ -1918,7 +1919,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 		
 		exceptionContext = "pause";
 		// Pause game 'p'
-		if ((checkKeyPress(n_key_pausebutton) || joyButtonState[BUTTON_PAUSE]) && gui_screen != GUI_SCREEN_LONG_RANGE_CHART && gui_screen != GUI_SCREEN_MISSION && ![gameView allowingStringInput])// look for the 'p' key
+		if ((checkKeyPress(n_key_pausebutton) || joyButtonState[BUTTON_PAUSE]) && gui_screen != GUI_SCREEN_LONG_RANGE_CHART && gui_screen != GUI_SCREEN_MISSION && !(gameView != nullptr ? gameView->getAllowingStringInput() : StringInput{}))// look for the 'p' key
 		{
 			if (!pause_pressed)
 			{
@@ -1957,14 +1958,14 @@ void PlayerEntity::pollFlightControls(double delta_t)
 							gui_screen = (OOGUIScreenID)saved_gui_screen;	// make sure we're back to the right screen
 							break;
 					}
-					[gameView allowStringInput:NO];
+					if (gameView != nullptr)  gameView->allowStringInput(NO);
 					if (UNIVERSE != nullptr)  UNIVERSE->clearPreviousMessage();
 					if (UNIVERSE != nullptr)  UNIVERSE->setViewDirection((OOViewID)saved_view_direction);
 					currentWeaponFacing = saved_weapon_facing;
 					// make sure the light comes from the right direction after resuming from pause!
 					if (saved_gui_screen == GUI_SCREEN_SYSTEM_DATA) { if (UNIVERSE != nullptr)  UNIVERSE->setMainLightPosition(_sysInfoLight); }
 					UNIVERSE->getGui()->setForegroundTextureKey("overlay");
-					[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) setGamePaused:NO];
+					if (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr)  UNIVERSE->gameController()->setGamePaused(NO);
 				}
 				else
 				{
@@ -1994,7 +1995,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 	::MyOpenGLView	*gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
 	BOOL			moving = NO;
 	BOOL			dragging = NO;
-	double			cursor_speed = ([gameView isCtrlDown] ? 20.0 : 10.0)* chart_zoom;
+	double			cursor_speed = ((gameView != nullptr ? gameView->isCtrlDown() : false) ? 20.0 : 10.0)* chart_zoom;
 	::GameController  *controller = (UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr);
 	::GuiDisplayGen	*gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 	GUI_ROW_INIT(gui);
@@ -2002,19 +2003,19 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 	// deal with string inputs as necessary
 	if (gui_screen == GUI_SCREEN_LONG_RANGE_CHART)
 	{
-		[gameView setStringInput: gvStringInputAlpha];
+		if (gameView != nullptr)  gameView->setStringInput(gvStringInputAlpha);
 	}
 	else if (gui_screen == GUI_SCREEN_SAVE)
 	{
-		[gameView setStringInput: gvStringInputLoadSave];
+		if (gameView != nullptr)  gameView->setStringInput(gvStringInputLoadSave);
 	}
 	else if (gui_screen == GUI_SCREEN_MISSION && _missionTextEntry)
 	{
-		[gameView setStringInput: gvStringInputAll];
+		if (gameView != nullptr)  gameView->setStringInput(gvStringInputAll);
 	}
 	else if (gui_screen == GUI_SCREEN_KEYBOARD_ENTRY)
 	{
-		[gameView setStringInput: gvStringInputAll];
+		if (gameView != nullptr)  gameView->setStringInput(gvStringInputAll);
 	}
 #if 0
 	// at the moment this function is never called for GUI_SCREEN_OXZMANAGER
@@ -2026,7 +2027,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 #endif
 	else
 	{
-		[gameView allowStringInput: NO];
+		if (gameView != nullptr)  gameView->allowStringInput(NO);
 		// If we have entered this screen with the injectors key pressed, make sure
 		// that injectors switch off when we release it - Nikos.
 		if (afterburner_engaged && !checkKeyPress(n_key_inject_fuel))
@@ -2042,9 +2043,9 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 
 			if (status() != STATUS_WITCHSPACE_COUNTDOWN)
 			{
-				if (oo::str::length([gameView cxx_typedString].value_or("")) > 0)
+				if (oo::str::length((gameView != nullptr ? gameView->getTypedString() : std::optional<std::string>()).value_or("")) > 0)
 				{
-					planetSearchString = oo::str::lowercase(*[gameView cxx_typedString]);
+					planetSearchString = oo::str::lowercase(*(gameView != nullptr ? gameView->getTypedString() : std::optional<std::string>()));
 					NSPoint search_coords = (UNIVERSE != nullptr ? UNIVERSE->findSystemCoordinatesWithPrefix(*planetSearchString) : NSPoint{});
 					if ((search_coords.x >= 0.0)&&(search_coords.y >= 0.0))
 					{
@@ -2062,7 +2063,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 				}
 				else
 				{
-					if ([gameView isDown:gvDeleteKey]) // did we just delete the string ?
+					if ((gameView != nullptr ? gameView->isDown(gvDeleteKey) : false)) // did we just delete the string ?
 					{
 						found_system_id = -1;
 						if (UNIVERSE != nullptr)  UNIVERSE->findSystemCoordinatesWithPrefix("");
@@ -2070,8 +2071,8 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 					planetSearchString.reset();
 				}
 				
-				moving |= (searchStringLength != oo::str::length([gameView cxx_typedString].value_or("")));
-				searchStringLength = oo::str::length([gameView cxx_typedString].value_or(""));
+				moving |= (searchStringLength != oo::str::length((gameView != nullptr ? gameView->getTypedString() : std::optional<std::string>()).value_or("")));
+				searchStringLength = oo::str::length((gameView != nullptr ? gameView->getTypedString() : std::optional<std::string>()).value_or(""));
 			}
 
 		case GUI_SCREEN_SHORT_RANGE_CHART:
@@ -2154,18 +2155,18 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 					ANA_mode = OPTIMIZED_BY_NONE;
 				}
 
-				if ([gameView isDown:gvMouseDoubleClick])
+				if ((gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false))
 				{
-					[gameView clearMouse];
+					if (gameView != nullptr)  gameView->clearMouse();
 					mouse_left_down = NO;
 					noteGUIWillChangeTo(GUI_SCREEN_SYSTEM_DATA);
 					showingLongRangeChart = (gui_screen == GUI_SCREEN_LONG_RANGE_CHART);
 					setGuiToSystemDataScreen();
 					break;
 				}
-				if ([gameView isDown:gvMouseLeftButton])
+				if ((gameView != nullptr ? gameView->isDown(gvMouseLeftButton) : false))
 				{
-					NSPoint maus = [gameView virtualJoystickPosition];
+					NSPoint maus = (gameView != nullptr ? gameView->getVirtualJoystickPosition() : NSPoint{});
 					double vadjust = MAIN_GUI_PIXEL_HEIGHT/2.0 - CHART_SCREEN_VERTICAL_CENTRE;
 					double hscale = MAIN_GUI_PIXEL_WIDTH / (64.0 * chart_zoom);
 					double vscale = MAIN_GUI_PIXEL_HEIGHT / (128.0 * chart_zoom);
@@ -2187,12 +2188,12 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 						dragging = YES;
 					}
 					if (gui_screen == GUI_SCREEN_LONG_RANGE_CHART)
-						[gameView resetTypedString];
+						if (gameView != nullptr)  gameView->resetTypedString();
 					mouse_left_down = YES;
 				}
 				else if (mouse_left_down == YES) 
 				{
-					NSPoint maus = [gameView virtualJoystickPosition];
+					NSPoint maus = (gameView != nullptr ? gameView->getVirtualJoystickPosition() : NSPoint{});
 					if (fabs(maus.x - mouse_click_position.x)*MAIN_GUI_PIXEL_WIDTH <= 2 &&
 						fabs(maus.y - mouse_click_position.y)*MAIN_GUI_PIXEL_HEIGHT <= 2)
 					{
@@ -2207,14 +2208,14 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 				}
 				if (checkKeyPress(n_key_map_home))
 				{
-					if ([gameView isOptDown])
+					if ((gameView != nullptr ? gameView->isOptDown() : false))
 					{
 						homeInfoSystem();
 						target_chart_focus = galaxy_coordinates;
 					}
 					else
 					{
-						[gameView resetTypedString];
+						if (gameView != nullptr)  gameView->resetTypedString();
 						cursor_coordinates = galaxy_coordinates;
 						target_chart_focus = cursor_coordinates;
 						target_chart_centre = galaxy_coordinates;
@@ -2228,13 +2229,13 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 					targetInfoSystem();
 					target_chart_focus = cursor_coordinates;
 				}
-				if (checkKeyPress(n_key_map_zoom_in) || [gameView mouseWheelState] == gvMouseWheelDown)
+				if (checkKeyPress(n_key_map_zoom_in) || (gameView != nullptr ? gameView->mouseWheelState() : 0) == gvMouseWheelDown)
 				{
 					target_chart_zoom *= CHART_ZOOM_SPEED_FACTOR;
 					if (target_chart_zoom > CHART_MAX_ZOOM) target_chart_zoom = CHART_MAX_ZOOM;
 					saved_chart_zoom = target_chart_zoom;
 				}
-				if (checkKeyPress(n_key_map_zoom_out) || [gameView mouseWheelState] == gvMouseWheelUp)
+				if (checkKeyPress(n_key_map_zoom_out) || (gameView != nullptr ? gameView->mouseWheelState() : 0) == gvMouseWheelUp)
 				{
 					if (gui_screen == GUI_SCREEN_LONG_RANGE_CHART)
 					{
@@ -2248,8 +2249,8 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 					target_chart_focus = target_chart_centre;
 				}
 				
-				BOOL nextSystem = [gameView isShiftDown];
-				BOOL nextSystemOnRoute = [gameView isOptDown];
+				BOOL nextSystem = (gameView != nullptr ? gameView->isShiftDown() : false);
+				BOOL nextSystemOnRoute = (gameView != nullptr ? gameView->isOptDown() : false);
 				
 				if (checkNavKeyPress(n_key_gui_arrow_left))
 				{
@@ -2270,7 +2271,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 					}
 					else if (!nextSystem && !nextSystemOnRoute)
 					{
-						[gameView resetTypedString];
+						if (gameView != nullptr)  gameView->resetTypedString();
 						cursor_coordinates.x -= cursor_speed*delta_t;
 						if (cursor_coordinates.x < 0.0) cursor_coordinates.x = 0.0;
 						moving = YES;
@@ -2299,7 +2300,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 					}
 					else if (!nextSystem && !nextSystemOnRoute)
 					{
-						[gameView resetTypedString];
+						if (gameView != nullptr)  gameView->resetTypedString();
 						cursor_coordinates.x += cursor_speed*delta_t;
 						if (cursor_coordinates.x > 256.0) cursor_coordinates.x = 256.0;
 						moving = YES;
@@ -2318,7 +2319,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 					}
 					else if (!nextSystem)
 					{
-						[gameView resetTypedString];
+						if (gameView != nullptr)  gameView->resetTypedString();
 						cursor_coordinates.y += cursor_speed*delta_t*2.0;
 						if (cursor_coordinates.y > 256.0) cursor_coordinates.y = 256.0;
 						moving = YES;
@@ -2337,7 +2338,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 					}	
 					else if (!nextSystem)
 					{
-						[gameView resetTypedString];
+						if (gameView != nullptr)  gameView->resetTypedString();
 						cursor_coordinates.y -= cursor_speed*delta_t*2.0;
 						if (cursor_coordinates.y < 0.0) cursor_coordinates.y = 0.0;
 						moving = YES;
@@ -2511,7 +2512,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 			break;
 
 		case GUI_SCREEN_SHIPLIBRARY:
-			if ([gameView isDown:' '])	//  '<space>'
+			if ((gameView != nullptr ? gameView->isDown(' ') : false))	//  '<space>'
 			{
 				// viewed in game, return to interfaces as that's where it's accessed from
 				setGuiToInterfacesScreen(0);
@@ -2544,7 +2545,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 		case GUI_SCREEN_OPTIONS:
 			handleGUIUpDownArrowKeys();
 			OOGUIRow guiSelectedRow; guiSelectedRow = gui->getSelectedRow();
-			BOOL selectKeyPress; selectKeyPress = (checkKeyPress(n_key_gui_select)||[gameView isDown:gvMouseDoubleClick]);
+			BOOL selectKeyPress; selectKeyPress = (checkKeyPress(n_key_gui_select)||(gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false));
 
 			if (selectKeyPress)   // 'enter'
 			{
@@ -2561,8 +2562,8 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 						if (strcmp([exception name], "GameNotSavedException") == 0)	// try saving game instead
 						{
 							OO_LOG(cxx_kOOLogException, "{}", "\n\n***** Trying a normal save instead *****\n\n");
-							if ([controller inFullScreenMode])
-								[controller pauseFullScreenModeToPerform:@selector(savePlayer) onTarget:oo::ToObjC(this)];
+							if ((controller != nullptr ? controller->inFullScreenMode() : false))
+							{ if (controller != nullptr)  controller->pauseFullScreenModeToPerform(@selector(savePlayer), oo::ToObjC(this)); }
 							else
 								savePlayer();
 						}
@@ -2594,8 +2595,8 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 					if (UNIVERSE != nullptr)  UNIVERSE->setUseAddOns(std::string(SCENARIO_OXP_DEFINITION_ALL), NO, YES); // calls reinitAndShowDemo
 				}
 				
-				if ([gameView isDown:gvMouseDoubleClick])
-					[gameView clearMouse];
+				if ((gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false))
+					if (gameView != nullptr)  gameView->clearMouse();
 			}
 			else
 			{
@@ -2608,13 +2609,13 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 			// vs fullscreen.
 			if ((guiSelectedRow == GUI_ROW(,QUIT)) && selectKeyPress)
 			{
-				[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) cxx_exitAppWithContext:"Exit Game selected on options screen"];
+				if (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr)  UNIVERSE->gameController()->exitAppWithContext("Exit Game selected on options screen");
 			}
 #endif
 			
 			if ((guiSelectedRow == GUI_ROW(,GAMEOPTIONS)) && selectKeyPress)
 			{
-				[gameView clearKeys];
+				if (gameView != nullptr)  gameView->clearKeys();
 				setGuiToGameOptionsScreen();
 			}
 			
@@ -2677,12 +2678,12 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 			}
 			leftRightKeyPressed = checkKeyPress(n_key_gui_arrow_right)|checkKeyPress(n_key_gui_arrow_left)|checkKeyPress(n_key_gui_page_down)|checkKeyPress(n_key_gui_page_up);
 
-			if (checkKeyPress(n_key_gui_select) || [gameView isDown:gvMouseDoubleClick])
+			if (checkKeyPress(n_key_gui_select) || (gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false))
 			{
-				if ([gameView isDown:gvMouseDoubleClick])
+				if ((gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false))
 				{
 					selectPressed = NO;
-					[gameView clearMouse];
+					if (gameView != nullptr)  gameView->clearMouse();
 				}
 				if ((!selectPressed)&&(gui->getSelectedRow() > -1))
 				{
@@ -2728,12 +2729,12 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 				}
 			}
 			leftRightKeyPressed = checkKeyPress(n_key_gui_arrow_right)|checkKeyPress(n_key_gui_arrow_left)|checkKeyPress(n_key_gui_page_down)|checkKeyPress(n_key_gui_page_up);
-			if (checkKeyPress(n_key_gui_select) || [gameView isDown:gvMouseDoubleClick])   // 'enter'
+			if (checkKeyPress(n_key_gui_select) || (gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false))   // 'enter'
 			{
-				if ([gameView isDown:gvMouseDoubleClick])
+				if ((gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false))
 				{
 					selectPressed = NO;
-					[gameView clearMouse];
+					if (gameView != nullptr)  gameView->clearMouse();
 				}
 				if ((!selectPressed)&&(gui->getSelectedRow() > -1))
 				{
@@ -2794,7 +2795,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 			break;
 			
 		case GUI_SCREEN_REPORT:
-			if ([gameView isDown:32])	// spacebar
+			if ((gameView != nullptr ? gameView->isDown(32) : false))	// spacebar
 			{
 				if (!spacePressed)
 				{
@@ -2852,12 +2853,12 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 			}
 			leftRightKeyPressed = checkKeyPress(n_key_gui_arrow_right)|checkKeyPress(n_key_gui_arrow_left)|checkKeyPress(n_key_gui_page_down)|checkKeyPress(n_key_gui_page_up);
 			
-			if (checkKeyPress(n_key_gui_select) || [gameView isDown:gvMouseDoubleClick])
+			if (checkKeyPress(n_key_gui_select) || (gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false))
 			{
-				if ([gameView isDown:gvMouseDoubleClick])
+				if ((gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false))
 				{
 					selectPressed = NO;
-					[gameView clearMouse];
+					if (gameView != nullptr)  gameView->clearMouse();
 				}
 				if ((!selectPressed)&&(gui->getSelectedRow() > -1))
 				{
@@ -2911,12 +2912,12 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 			}
 			leftRightKeyPressed = checkKeyPress(n_key_gui_arrow_right)|checkKeyPress(n_key_gui_arrow_left)|checkKeyPress(n_key_gui_page_down)|checkKeyPress(n_key_gui_page_up);
 			
-			if (checkKeyPress(n_key_gui_select) || [gameView isDown:gvMouseDoubleClick])
+			if (checkKeyPress(n_key_gui_select) || (gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false))
 			{
-				if ([gameView isDown:gvMouseDoubleClick])
+				if ((gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false))
 				{
 					selectPressed = NO;
-					[gameView clearMouse];
+					if (gameView != nullptr)  gameView->clearMouse();
 				}
 				if ((!selectPressed)&&(gui->getSelectedRow() > -1))
 				{
@@ -3000,7 +3001,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 			{
 				selectPressed = NO;
 			}
-			if ([gameView isDown:gvMouseDoubleClick])
+			if ((gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false))
 			{
 				if ((gui->getSelectedRow() == GUI_ROW_SHIPYARD_START + MAX_ROWS_SHIPS_FOR_SALE - 1) && oo::str::hasPrefix(gui->keyForRow(GUI_ROW_SHIPYARD_START + MAX_ROWS_SHIPS_FOR_SALE - 1).value_or(""), "More:"))
 				{
@@ -3014,7 +3015,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 					gui->setSelectedRow(GUI_ROW_SHIPYARD_START);
 					buySelectedShip();
 				}
-				[gameView clearMouse];
+				if (gameView != nullptr)  gameView->clearMouse();
 			}
 
 			break;
@@ -3043,7 +3044,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 						// do callback
 						if (definition)
 						{
-							[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) clearKeys];
+							if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->clearKeys();
 							definition->runCallback(key);
 						}
 						else
@@ -3201,13 +3202,13 @@ void PlayerEntity::pollMarketScreenControls()
 
 	BOOL isdocked = isDocked();
 
-	if ((checkNavKeyPress(n_key_gui_arrow_right))||(checkNavKeyPress(n_key_gui_arrow_left))||(checkKeyPress(n_key_gui_select)||[gameView isDown:gvMouseDoubleClick]))
+	if ((checkNavKeyPress(n_key_gui_arrow_right))||(checkNavKeyPress(n_key_gui_arrow_left))||(checkKeyPress(n_key_gui_select)||(gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false)))
 	{
 		if (checkNavKeyPress(n_key_gui_arrow_right))   // -->
 		{
 			if (!wait_for_key_up)
 			{
-				if (isdocked && tryBuyingCommodity(marketSelectedCommodity.value_or(std::string()), [gameView isShiftDown]))
+				if (isdocked && tryBuyingCommodity(marketSelectedCommodity.value_or(std::string()), (gameView != nullptr ? gameView->isShiftDown() : false)))
 				{
 					playBuyCommodity();
 					if (gui_screen == GUI_SCREEN_MARKET)
@@ -3243,7 +3244,7 @@ void PlayerEntity::pollMarketScreenControls()
 		{
 			if (!wait_for_key_up)
 			{
-				if (isdocked && trySellingCommodity(marketSelectedCommodity.value_or(std::string()), [gameView isShiftDown]))
+				if (isdocked && trySellingCommodity(marketSelectedCommodity.value_or(std::string()), (gameView != nullptr ? gameView->isShiftDown() : false)))
 				{
 					playSellCommodity();
 					if (gui_screen == GUI_SCREEN_MARKET)
@@ -3276,12 +3277,12 @@ void PlayerEntity::pollMarketScreenControls()
 				wait_for_key_up = YES;
 			}
 		}
-		if ((gui_screen == GUI_SCREEN_MARKET && [gameView isDown:gvMouseDoubleClick]) || checkKeyPress(n_key_gui_select))   // 'enter'
+		if ((gui_screen == GUI_SCREEN_MARKET && (gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false)) || checkKeyPress(n_key_gui_select))   // 'enter'
 		{
-			if ([gameView isDown:gvMouseDoubleClick])
+			if ((gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false))
 			{
 				wait_for_key_up = NO;
-				[gameView clearMouse];
+				if (gameView != nullptr)  gameView->clearMouse();
 			}
 			if (!wait_for_key_up)
 			{
@@ -3297,7 +3298,7 @@ void PlayerEntity::pollMarketScreenControls()
 					trySellingCommodity(item.value_or(""), YES);
 					setGuiToMarketScreen();
 				}
-				else if (isdocked && [gameView isShiftDown] && tryBuyingCommodity(item.value_or(""), YES))	// buy as much as possible (with Shift)
+				else if (isdocked && (gameView != nullptr ? gameView->isShiftDown() : false) && tryBuyingCommodity(item.value_or(""), YES))	// buy as much as possible (with Shift)
 				{
 					playBuyCommodity();
 					if (gui_screen == GUI_SCREEN_MARKET)
@@ -3359,8 +3360,8 @@ void PlayerEntity::handleGameOptionsScreenKeys()
 	
 	handleGUIUpDownArrowKeys();
 	OOGUIRow guiSelectedRow = gui->getSelectedRow();
-	BOOL selectKeyPress = (checkKeyPress(n_key_gui_select)||[gameView isDown:gvMouseDoubleClick]);
-	if ([gameView isDown:gvMouseDoubleClick])  [gameView clearMouse];
+	BOOL selectKeyPress = (checkKeyPress(n_key_gui_select)||(gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false));
+	if ((gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false))  { if (gameView != nullptr)  gameView->clearMouse(); }
 	
 	if ((guiSelectedRow == GUI_ROW(GAME,STICKMAPPER)) && selectKeyPress)
 	{
@@ -3377,7 +3378,7 @@ void PlayerEntity::handleGameOptionsScreenKeys()
 	
 	
 #if OOLITE_WINDOWS
-	if ([gameView hdrOutput])
+	if ((gameView != nullptr ? gameView->hdrOutput() : false))
 	{
 		if ((guiSelectedRow == GUI_ROW(GAME,HDRMAXBRIGHTNESS))&&((checkKeyPress(n_key_gui_arrow_right))||(checkKeyPress(n_key_gui_arrow_left))))
 		{
@@ -3387,7 +3388,7 @@ void PlayerEntity::handleGameOptionsScreenKeys()
 				const oo::PList	*brightnessesValue = UNIVERSE->descriptions()->find("hdr_maxBrightness_array");
 				const oo::PList	brightnesses = (brightnessesValue != nullptr && brightnessesValue->isArray()) ? *brightnessesValue : oo::PList();
 				// -indexOfObject: with the %d string: only string elements ever matched; not found was NSNotFound narrowed to int
-				const std::string	currentBrightness = std::to_string((int)[gameView hdrMaxBrightness]);
+				const std::string	currentBrightness = std::to_string((int)(gameView != nullptr ? gameView->hdrMaxBrightness() : 0.0f));
 				int			brightnessIdx = static_cast<int>(NSNotFound);
 				for (std::size_t i = 0; i < brightnesses.count(); i++)
 				{
@@ -3419,7 +3420,7 @@ void PlayerEntity::handleGameOptionsScreenKeys()
 				if (brightnessValue < MIN_HDR_MAXBRIGHTNESS)  brightnessValue = direction == -1 ? MAX_HDR_MAXBRIGHTNESS : MIN_HDR_MAXBRIGHTNESS;
 				if (brightnessValue > MAX_HDR_MAXBRIGHTNESS)  brightnessValue = direction == 1 ? MIN_HDR_MAXBRIGHTNESS : MAX_HDR_MAXBRIGHTNESS;
     				
-				[gameView setHDRMaxBrightness:(float)brightnessValue];
+				if (gameView != nullptr)  gameView->setHDRMaxBrightness((float)brightnessValue);
 				const std::string maxBrightnessString = cxx_OOExpandKey("gameoptions-hdr-maxbrightness", brightnessValue).value_or(std::string());
 																				
 				gui->setText(maxBrightnessString, GUI_ROW(GAME,HDRMAXBRIGHTNESS), GUI_ALIGN_CENTER);
@@ -3440,8 +3441,8 @@ void PlayerEntity::handleGameOptionsScreenKeys()
 	{
 		::GameController	*controller = (UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr);
 		int				direction = (checkKeyPress(n_key_gui_arrow_right)) ? 1 : -1;
-		NSInteger		displayModeIndex = [controller indexOfCurrentDisplayMode];
-		const oo::PList	modes = [controller displayModes];
+		NSInteger		displayModeIndex = (controller != nullptr ? controller->indexOfCurrentDisplayMode() : 0);
+		const oo::PList	modes = (controller != nullptr ? controller->getDisplayModes() : oo::PList());
 		
 		if (displayModeIndex == (NSInteger)NSNotFound)
 		{
@@ -3461,7 +3462,7 @@ void PlayerEntity::handleGameOptionsScreenKeys()
 		int modeWidth = mode.get<int>(std::string(kOODisplayWidth));
 		int modeHeight = mode.get<int>(std::string(kOODisplayHeight));
 		int modeRefresh = mode.get<int>(std::string(kOODisplayRefreshRate));
-		[controller setDisplayWidth:modeWidth Height:modeHeight Refresh:modeRefresh];
+		if (controller != nullptr)  controller->setDisplayWidth(modeWidth, modeHeight, modeRefresh);
 
 		const std::string displayModeString = screenModeStringForWidth(modeWidth, modeHeight, modeRefresh).value_or("");
 		
@@ -3473,7 +3474,7 @@ void PlayerEntity::handleGameOptionsScreenKeys()
 		/*	TODO: The gameView for the SDL game currently holds and
 		 sets the actual screen resolution (controller just stores
 		 it). This probably ought to change. */
-		[gameView setScreenSize: displayModeIndex]; // changes fullscreen mode immediately
+		if (gameView != nullptr)  gameView->setScreenSize(displayModeIndex); // changes fullscreen mode immediately
 #endif
 	}
 	if (switching_resolution && !checkKeyPress(n_key_gui_arrow_right) && !checkKeyPress(n_key_gui_arrow_left) && !selectKeyPress)
@@ -3672,14 +3673,14 @@ void PlayerEntity::handleGameOptionsScreenKeys()
 		{
 			BOOL rightKeyDown = checkKeyPress(n_key_gui_arrow_right);
 			BOOL leftKeyDown = checkKeyPress(n_key_gui_arrow_left);
-			float fov = [gameView fov:NO];
+			float fov = (gameView != nullptr ? gameView->fov(NO) : 0.0f);
 			float fovStep = (MAX_FOV_DEG - MIN_FOV_DEG) / 20.0f;
 			fov += (((rightKeyDown && (fov < MAX_FOV_DEG)) ?
 						fovStep : 0.0f) - ((leftKeyDown && (fov > MIN_FOV_DEG)) ? fovStep : 0.0f));
 			if (fov > MAX_FOV_DEG) fov = MAX_FOV_DEG;
 			if (fov < MIN_FOV_DEG) fov = MIN_FOV_DEG;
-			[gameView setFov:fov fromFraction:NO];
-			fieldOfView = [gameView fov:YES];
+			if (gameView != nullptr)  gameView->setFov(fov, NO);
+			fieldOfView = (gameView != nullptr ? gameView->fov(YES) : 0.0f);
 			int fovTicks = (int)((fov - MIN_FOV_DEG) / fovStep);
 			const std::string fovWordDesc = OO_DESC("gameoptions-fov-value");
 			std::string v1_string = "|||||||||||||||||||||||||";
@@ -3688,7 +3689,7 @@ void PlayerEntity::handleGameOptionsScreenKeys()
 			v0_string = v0_string.substr(0, static_cast<std::size_t>(20 - fovTicks));
 			// %c 176 gave U+00B0 (probed on GNUstep base with this toolchain); written as its UTF-8 bytes
 			gui->setText(oo::str::format("%s%s%s (%d%s) ", fovWordDesc.c_str(), v1_string.c_str(), v0_string.c_str(), (int)fov, "\xC2\xB0" /*the degrees symbol*/), GUI_ROW(GAME,FOV), GUI_ALIGN_CENTER);
-			oo::Defaults::standard().setFloat("fov-value", [gameView fov:NO]);
+			oo::Defaults::standard().setFloat("fov-value", (gameView != nullptr ? gameView->fov(NO) : 0.0f));
 			timeLastKeyPress = script_time;
 		}
 		fovControlPressed = YES;
@@ -3723,7 +3724,7 @@ void PlayerEntity::handleGameOptionsScreenKeys()
 		colorblindModeControlPressed = NO;
 	
 	
-	if (![gameView hdrOutput])
+	if (!(gameView != nullptr ? gameView->hdrOutput() : false))
  	{
 		if ((guiSelectedRow == GUI_ROW(GAME,WIREFRAMEGRAPHICS))&&((checkKeyPress(n_key_gui_arrow_right))||(checkKeyPress(n_key_gui_arrow_left))))
 		{
@@ -3746,11 +3747,11 @@ void PlayerEntity::handleGameOptionsScreenKeys()
 			{
 				BOOL rightKeyDown = checkKeyPress(n_key_gui_arrow_right);
 				BOOL leftKeyDown = checkKeyPress(n_key_gui_arrow_left);
-				float paperWhite = [gameView hdrPaperWhiteBrightness];
+				float paperWhite = (gameView != nullptr ? gameView->hdrPaperWhiteBrightness() : 0.0f);
 				paperWhite += (((rightKeyDown && (paperWhite < MAX_HDR_PAPERWHITE)) ? 10.0f : 0.0f) - ((leftKeyDown && (paperWhite > MIN_HDR_PAPERWHITE)) ? 10.0f : 0.0f));
 				if (paperWhite > MAX_HDR_PAPERWHITE) paperWhite = MAX_HDR_PAPERWHITE;
 				if (paperWhite < MIN_HDR_PAPERWHITE) paperWhite = MIN_HDR_PAPERWHITE;
-				[gameView setHDRPaperWhiteBrightness:paperWhite];
+				if (gameView != nullptr)  gameView->setHDRPaperWhiteBrightness(paperWhite);
 				int paperWhiteNorm = (int)((paperWhite - MIN_HDR_PAPERWHITE) * 20 / (MAX_HDR_PAPERWHITE - MIN_HDR_PAPERWHITE));
 				const std::string paperWhiteWordDesc = OO_DESC("gameoptions-hdr-paperwhite");
 				std::string v1_string = "|||||||||||||||||||||||||";
@@ -3817,7 +3818,7 @@ void PlayerEntity::handleGameOptionsScreenKeys()
 #if OOLITE_SDL
 	if ((guiSelectedRow == GUI_ROW(GAME,DISPLAYSTYLE)) && selectKeyPress)
 	{
-		[gameView toggleScreenMode];
+		if (gameView != nullptr)  gameView->toggleScreenMode();
 		// redraw GUI
 		setGuiToGameOptionsScreen();
 	}
@@ -3836,7 +3837,7 @@ void PlayerEntity::handleGameOptionsScreenKeys()
 	
 	if ((guiSelectedRow == GUI_ROW(GAME,BACK)) && selectKeyPress)
 	{
-		[gameView clearKeys];
+		if (gameView != nullptr)  gameView->clearKeys();
 		setGuiToLoadSaveScreen();
 	}
 }
@@ -3956,7 +3957,7 @@ void PlayerEntity::handleStickMapperScreenKeys()
 			}
 		}
 	}
-	if([gameView isDown:' '])  setGuiToGameOptionsScreen();
+	if((gameView != nullptr ? gameView->isDown(' ') : false))  setGuiToGameOptionsScreen();
 }
 
 
@@ -3977,7 +3978,7 @@ void PlayerEntity::pollCustomViewControls()
 
 	if (checkKeyPress(n_key_custom_view) || joyButtonState[BUTTON_EXTVIEWCYCLE])
 	{
-		if (!customView_pressed && !_customViews.empty() && gui_screen != GUI_SCREEN_LONG_RANGE_CHART && ![gameView allowingStringInput])
+		if (!customView_pressed && !_customViews.empty() && gui_screen != GUI_SCREEN_LONG_RANGE_CHART && !(gameView != nullptr ? gameView->getAllowingStringInput() : StringInput{}))
 		{
 			if ((UNIVERSE != nullptr ? UNIVERSE->getViewDirection() : OOViewID{}) == VIEW_CUSTOM)	// already in custom view mode
 			{
@@ -3995,20 +3996,20 @@ void PlayerEntity::pollCustomViewControls()
 	else
 		customView_pressed = NO;
 	NSTimeInterval this_time = oo::date::monotonicSeconds();	// intervals only (last_time)
-	if ((UNIVERSE != nullptr ? UNIVERSE->getViewDirection() : OOViewID{}) > VIEW_STARBOARD && [gameView isCapsLockOn])
+	if ((UNIVERSE != nullptr ? UNIVERSE->getViewDirection() : OOViewID{}) > VIEW_STARBOARD && (gameView != nullptr ? gameView->isCapsLockOn() : false))
 	{
-		BOOL ctrl_down = [gameView isCtrlDown];
+		BOOL ctrl_down = (gameView != nullptr ? gameView->isCtrlDown() : false);
 		float customViewZoomSpeed = ctrl_down ? CUSTOM_VIEW_ZOOM_SPEED * CUSTOM_VIEW_SPEED_REDUCTION_FACTOR: CUSTOM_VIEW_ZOOM_SPEED;
 		float customViewRotateSpeed = ctrl_down ? CUSTOM_VIEW_ROTATE_SPEED * CUSTOM_VIEW_SPEED_REDUCTION_FACTOR: CUSTOM_VIEW_ROTATE_SPEED;
 		
 		if (!caps_on)  caps_on = YES;
 		
 		OOTimeDelta delta_t = this_time - last_time;
-		if ((checkKeyPressIgnoreCtrl(n_key_custom_view_zoom_out, YES) && !checkKeyPressIgnoreCtrl(n_key_custom_view_zoom_in, YES)) || [gameView mouseWheelState] == gvMouseWheelDown)
+		if ((checkKeyPressIgnoreCtrl(n_key_custom_view_zoom_out, YES) && !checkKeyPressIgnoreCtrl(n_key_custom_view_zoom_in, YES)) || (gameView != nullptr ? gameView->mouseWheelState() : 0) == gvMouseWheelDown)
 		{
 			customViewZoomOut(pow(customViewZoomSpeed, delta_t));
 		}
-		if ((checkKeyPressIgnoreCtrl(n_key_custom_view_zoom_in, YES) && !checkKeyPressIgnoreCtrl(n_key_custom_view_zoom_out, YES)) || [gameView mouseWheelState] == gvMouseWheelUp)
+		if ((checkKeyPressIgnoreCtrl(n_key_custom_view_zoom_in, YES) && !checkKeyPressIgnoreCtrl(n_key_custom_view_zoom_out, YES)) || (gameView != nullptr ? gameView->mouseWheelState() : 0) == gvMouseWheelUp)
 		{
 			customViewZoomIn(pow(customViewZoomSpeed, delta_t));
 		}
@@ -4052,9 +4053,9 @@ void PlayerEntity::pollCustomViewControls()
 		{
 			customViewRotateRight(customViewRotateSpeed * delta_t);
 		}
-		if ([gameView isDown:gvMouseLeftButton])
+		if ((gameView != nullptr ? gameView->isDown(gvMouseLeftButton) : false))
 		{
-			if(!mouse_clicked || shift_down != [gameView isShiftDown])
+			if(!mouse_clicked || shift_down != (gameView != nullptr ? gameView->isShiftDown() : false))
 			{
 				mouse_clicked = YES;
 				viewQuaternion = (PLAYER != nullptr ? PLAYER->getCustomViewQuaternion() : Quaternion{});
@@ -4062,16 +4063,16 @@ void PlayerEntity::pollCustomViewControls()
 				rotationCenter = (PLAYER != nullptr ? PLAYER->getCustomViewRotationCenter() : Vector{});
 				up = (PLAYER != nullptr ? PLAYER->getCustomViewUpVector() : Vector{});
 				right = (PLAYER != nullptr ? PLAYER->getCustomViewRightVector() : Vector{});
-				mouse_clicked_position = [gameView virtualJoystickPosition];
-				shift_down = [gameView isShiftDown];
+				mouse_clicked_position = (gameView != nullptr ? gameView->getVirtualJoystickPosition() : NSPoint{});
+				shift_down = (gameView != nullptr ? gameView->isShiftDown() : false);
 			}
-			NSPoint mouse_position = [gameView virtualJoystickPosition];
+			NSPoint mouse_position = (gameView != nullptr ? gameView->getVirtualJoystickPosition() : NSPoint{});
 			Vector axis = vector_add(vector_multiply_scalar(up, mouse_position.x - mouse_clicked_position.x),
 				vector_multiply_scalar(right, mouse_position.y - mouse_clicked_position.y));
 			float angle = magnitude(axis);
 			axis = vector_normal(axis);
 			Quaternion newViewQuaternion = viewQuaternion;
-			if ([gameView isShiftDown])
+			if ((gameView != nullptr ? gameView->isShiftDown() : false))
 			{
 				quaternion_rotate_about_axis(&newViewQuaternion, axis, angle);
 				if (PLAYER != nullptr)  PLAYER->setCustomViewQuaternion(newViewQuaternion);
@@ -4098,7 +4099,7 @@ void PlayerEntity::pollCustomViewControls()
 		if (caps_on)
 		{
 			caps_on = NO;
-			if (isMouseControlOn())  [gameView resetMouse];
+			if (isMouseControlOn())  { if (gameView != nullptr)  gameView->resetMouse(); }
 		}
 	}
 	last_time = this_time;
@@ -4152,7 +4153,7 @@ void PlayerEntity::pollViewControls()
 	pollCustomViewControls();
 	
 	// Zoom scanner 'z'
-	if ((checkKeyPress(n_key_scanner_zoom) && ([gameView allowingStringInput] == gvStringInputNo)) || joyButtonState[BUTTON_SCANNERZOOM]) // look for the 'z' key
+	if ((checkKeyPress(n_key_scanner_zoom) && ((gameView != nullptr ? gameView->getAllowingStringInput() : StringInput{}) == gvStringInputNo)) || joyButtonState[BUTTON_SCANNERZOOM]) // look for the 'z' key
 	{
 		if (!scanner_zoom_rate)
 		{
@@ -4173,7 +4174,7 @@ void PlayerEntity::pollViewControls()
 		zoom_pressed = NO;
 	
 	// Unzoom scanner 'Z'
-	if ((checkKeyPress(n_key_scanner_unzoom) && ([gameView allowingStringInput] == gvStringInputNo)) || joyButtonState[BUTTON_SCANNERUNZOOM]) // look for the 'Z' key
+	if ((checkKeyPress(n_key_scanner_unzoom) && ((gameView != nullptr ? gameView->getAllowingStringInput() : StringInput{}) == gvStringInputNo)) || joyButtonState[BUTTON_SCANNERUNZOOM]) // look for the 'Z' key
 	{
 		if ((!scanner_zoom_rate)&&(hud != nullptr && hud->scannerZoom() > 1.0))
 			scanner_zoom_rate = SCANNER_ZOOM_RATE_DOWN;
@@ -4276,7 +4277,7 @@ void PlayerEntity::pollFlightArrowKeyControls(double delta_t)
 	 control on if they have a joystick - let them do it. */
 	if (mouse_control_on)
 	{
-		virtualStick=[gameView virtualJoystickPosition];
+		virtualStick=(gameView != nullptr ? gameView->getVirtualJoystickPosition() : NSPoint{});
 		double sensitivity = 2.0;
 		virtualStick.x *= sensitivity;
 		virtualStick.y *= sensitivity;
@@ -4324,9 +4325,9 @@ void PlayerEntity::pollFlightArrowKeyControls(double delta_t)
 	double roll_dampner = ROLL_DAMPING_FACTOR * delta_t;
 	double pitch_dampner = PITCH_DAMPING_FACTOR * delta_t;
 	double yaw_dampner = YAW_DAMPING_FACTOR * delta_t;
-	BOOL capsLockCustomView = (UNIVERSE != nullptr ? UNIVERSE->getViewDirection() : OOViewID{}) == VIEW_CUSTOM && [gameView isCapsLockOn];
+	BOOL capsLockCustomView = (UNIVERSE != nullptr ? UNIVERSE->getViewDirection() : OOViewID{}) == VIEW_CUSTOM && (gameView != nullptr ? gameView->isCapsLockOn() : false);
 	
-	BOOL	isCtrlDown = [gameView isCtrlDown];
+	BOOL	isCtrlDown = (gameView != nullptr ? gameView->isCtrlDown() : false);
 	
 	const oo::PList arrowPrec = oo::Defaults::standard().object("flight-arrow-key-precision-factor");
 	double	flightArrowKeyPrecisionFactor = oo::PListGet<double>::from(arrowPrec.isNull() ? nullptr : &arrowPrec, 0.5);
@@ -4542,7 +4543,7 @@ void PlayerEntity::pollGuiScreenControlsWithFKeyAlias(bool fKeyAlias)
 	if (checkKeyPress(n_key_gui_chart_screens, !fKeyAlias))
 	{
 		mouse_left_down = NO;
-		[gameView clearMouse];
+		if (gameView != nullptr)  gameView->clearMouse();
 		if  (!switching_chart_screens)
 		{
 			switching_chart_screens = YES;
@@ -4593,14 +4594,14 @@ void PlayerEntity::pollGuiScreenControlsWithFKeyAlias(bool fKeyAlias)
 	{
 		if (gui_screen != GUI_SCREEN_MARKET)
 		{
-			[gameView clearKeys];
+			if (gameView != nullptr)  gameView->clearKeys();
 			gui->setNoSelectedRow();
 			noteGUIWillChangeTo(GUI_SCREEN_MARKET);
 			setGuiToMarketScreen();
 		}
 		else
 		{
-			[gameView clearKeys];
+			if (gameView != nullptr)  gameView->clearKeys();
 			gui->setNoSelectedRow();
 			noteGUIWillChangeTo(GUI_SCREEN_MARKETINFO);
 			setGuiToMarketInfoScreen();
@@ -4612,7 +4613,7 @@ void PlayerEntity::pollGuiScreenControlsWithFKeyAlias(bool fKeyAlias)
 	{	
 		if ((checkKeyPress(n_key_gui_screen_options, !fKeyAlias)) && (gui_screen != GUI_SCREEN_OPTIONS))
 		{
-			[gameView clearKeys];
+			if (gameView != nullptr)  gameView->clearKeys();
 			setGuiToLoadSaveScreen();
 		}
 		
@@ -4625,7 +4626,7 @@ void PlayerEntity::pollGuiScreenControlsWithFKeyAlias(bool fKeyAlias)
 				
 				if ((gui_screen == GUI_SCREEN_EQUIP_SHIP) && (dockedStation() != nullptr ? dockedStation()->hasShipyard() : false))
 				{
-					[gameView clearKeys];
+					if (gameView != nullptr)  gameView->clearKeys();
 					noteGUIWillChangeTo(GUI_SCREEN_SHIPYARD);
 					gui->setNoSelectedRow();
 					setGuiToShipyardScreen(0);
@@ -4634,7 +4635,7 @@ void PlayerEntity::pollGuiScreenControlsWithFKeyAlias(bool fKeyAlias)
 				}
 				else
 				{
-					[gameView clearKeys];
+					if (gameView != nullptr)  gameView->clearKeys();
 					noteGUIWillChangeTo(GUI_SCREEN_EQUIP_SHIP);
 					gui->setNoSelectedRow();
 					setGuiToEquipShipScreen(0);
@@ -4671,7 +4672,7 @@ void PlayerEntity::pollGuiScreenControlsWithFKeyAlias(bool fKeyAlias)
 void PlayerEntity::pollGameOverControls(double /*delta_t*/)
 {
 	::MyOpenGLView  *gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
-	if ([gameView isDown:32])   // look for the spacebar
+	if ((gameView != nullptr ? gameView->isDown(32) : false))   // look for the spacebar
 	{
 		if (!spacePressed)
 		{
@@ -4697,7 +4698,7 @@ void PlayerEntity::pollAutopilotControls(double delta_t)
 	const BOOL *joyButtonState = OOJoystickManager::sharedStickHandler()->getAllButtonStates();
 
 	// controls polled while the autopilot is active
-	if (![(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) isGamePaused])
+	if (!(UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr ? UNIVERSE->gameController()->isGamePaused() : false))
 	{
 		//  view keys
 		pollViewControls();
@@ -4797,16 +4798,16 @@ void PlayerEntity::pollDockedControls(double delta_t)
   			BOOL isMissionScreenWithTextEntry = gui_screen == GUI_SCREEN_MISSION && _missionTextEntry;
 			if (!pause_pressed)
 			{
-				if ([gameController isGamePaused])
+				if ((gameController != nullptr ? gameController->isGamePaused() : false))
 				{
 					script_time = saved_script_time;
-					[gameView allowStringInput:NO];
+					if (gameView != nullptr)  gameView->allowStringInput(NO);
 					if ((UNIVERSE != nullptr ? UNIVERSE->pauseMessageVisible() : false))
 					{
 						if (UNIVERSE != nullptr)  UNIVERSE->clearPreviousMessage();	// remove the 'paused' message.
 					}
 					UNIVERSE->getGui()->setForegroundTextureKey("docked_overlay");
-					[gameController setGamePaused:NO];
+					if (gameController != nullptr)  gameController->setGamePaused(NO);
 				}
 				else
 				{
@@ -4829,7 +4830,7 @@ void PlayerEntity::pollDockedControls(double delta_t)
 			pause_pressed = NO;
 		}
 		
-		if ([gameController isGamePaused]) return;
+		if ((gameController != nullptr ? gameController->isGamePaused() : false)) return;
 		
 		if(pollControls)
 		{
@@ -4896,7 +4897,7 @@ void PlayerEntity::pollDemoControls(double /*delta_t*/)
 			{
 				if (!disc_operation_in_progress)
 				{
-					if (([gameView isDown:gvMouseDoubleClick] || checkKeyPress(n_key_gui_select)) && gui->getSelectedRow() == 2+row_zero)
+					if (((gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false) || checkKeyPress(n_key_gui_select)) && (gui != nullptr ? gui->getSelectedRow() : 0) == 2+row_zero)
 					{
 						disc_operation_in_progress = YES;
 						if (UNIVERSE != nullptr)  UNIVERSE->removeDemoShips();
@@ -4908,26 +4909,26 @@ void PlayerEntity::pollDemoControls(double /*delta_t*/)
 						break;
 					}
 				}
-				if (([gameView isDown:gvMouseDoubleClick] || checkKeyPress(n_key_gui_select)) && gui->getSelectedRow() == 1+row_zero)
+				if (((gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false) || checkKeyPress(n_key_gui_select)) && (gui != nullptr ? gui->getSelectedRow() : 0) == 1+row_zero)
 				{
 					missionTextRow = 0;
 					setGuiToScenarioScreen(0);
 				} 
-				else if (([gameView isDown:gvMouseDoubleClick] || checkKeyPress(n_key_gui_select)) && gui->getSelectedRow() == 3+row_zero)
+				else if (((gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false) || checkKeyPress(n_key_gui_select)) && (gui != nullptr ? gui->getSelectedRow() : 0) == 3+row_zero)
 				{
 					setGuiToIntroFirstGo(NO);
 				}
-				else if (([gameView isDown:gvMouseDoubleClick] || checkKeyPress(n_key_gui_select)) && gui->getSelectedRow() == 4+row_zero)
+				else if (((gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false) || checkKeyPress(n_key_gui_select)) && (gui != nullptr ? gui->getSelectedRow() : 0) == 4+row_zero)
 				{
 					setGuiToGameOptionsScreen();
 				}
-				else if (([gameView isDown:gvMouseDoubleClick] || checkKeyPress(n_key_gui_select)) && gui->getSelectedRow() == 5+row_zero)
+				else if (((gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false) || checkKeyPress(n_key_gui_select)) && (gui != nullptr ? gui->getSelectedRow() : 0) == 5+row_zero)
 				{
 					setGuiToOXZManager();
 				}
-				else if (([gameView isDown:gvMouseDoubleClick] || checkKeyPress(n_key_gui_select)) && gui->getSelectedRow() == 6+row_zero)
+				else if (((gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false) || checkKeyPress(n_key_gui_select)) && (gui != nullptr ? gui->getSelectedRow() : 0) == 6+row_zero)
 				{
-					[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) cxx_exitAppWithContext:"Exit Game selected on start screen"];
+					if (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr)  UNIVERSE->gameController()->exitAppWithContext("Exit Game selected on start screen");
 				}
 				else
 				{
@@ -4935,9 +4936,9 @@ void PlayerEntity::pollDemoControls(double /*delta_t*/)
 				}
 			}
 			selectPressed = checkKeyPress(n_key_gui_select);
-			if ([gameView isDown:gvMouseDoubleClick])
+			if ((gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false))
 			{
-				[gameView clearMouse];
+				if (gameView != nullptr)  gameView->clearMouse();
 			}
 			break;
 			
@@ -4978,7 +4979,7 @@ void PlayerEntity::pollDemoControls(double /*delta_t*/)
 			break;
 
 		case GUI_SCREEN_SHIPLIBRARY:
-			if ([gameView isDown:' '])	//  '<space>'
+			if ((gameView != nullptr ? gameView->isDown(' ') : false))	//  '<space>'
 			{
 				// viewed from start screen, return to it
 				setGuiToIntroFirstGo(YES);
@@ -5046,7 +5047,7 @@ void PlayerEntity::pollDemoControls(double /*delta_t*/)
 
 			if (!selectPressed)
 			{
-				if (checkKeyPress(n_key_gui_select) || [gameView isDown:gvMouseDoubleClick]) // enter
+				if (checkKeyPress(n_key_gui_select) || (gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false)) // enter
 				{
 					if (!startScenario())
 					{
@@ -5056,9 +5057,9 @@ void PlayerEntity::pollDemoControls(double /*delta_t*/)
 				}
 			}
 			selectPressed = checkKeyPress(n_key_gui_select);
-			if ([gameView isDown:gvMouseDoubleClick] || [gameView isDown:gvMouseLeftButton])
+			if ((gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false) || (gameView != nullptr ? gameView->isDown(gvMouseLeftButton) : false))
 			{
-				[gameView clearMouse];
+				if (gameView != nullptr)  gameView->clearMouse();
 			}
 			break;
 
@@ -5071,12 +5072,12 @@ void PlayerEntity::pollDemoControls(double /*delta_t*/)
 				{
 					if (oxzmanager->isAcceptingTextInput())
 					{
-						[gameView setStringInput: gvStringInputAll];
-						oxzmanager->refreshTextInput([gameView cxx_typedString].value_or(std::string()));
+						if (gameView != nullptr)  gameView->setStringInput(gvStringInputAll);
+						oxzmanager->refreshTextInput((gameView != nullptr ? gameView->getTypedString() : std::optional<std::string>()).value_or(std::string()));
 					}
 					else
 					{
-						[gameView allowStringInput: NO];
+						if (gameView != nullptr)  gameView->allowStringInput(NO);
 					}
 					if (handleGUIUpDownArrowKeys())
 					{
@@ -5101,11 +5102,11 @@ void PlayerEntity::pollDemoControls(double /*delta_t*/)
 
 					if (!selectPressed)
 					{
-						if (checkKeyPress(n_key_gui_select) || [gameView isDown:gvMouseDoubleClick]) // enter
+						if (checkKeyPress(n_key_gui_select) || (gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false)) // enter
 						{
 							if (oxzmanager->isAcceptingTextInput())
 							{
-								oxzmanager->processTextInput([gameView cxx_typedString].value_or(std::string()));
+								oxzmanager->processTextInput((gameView != nullptr ? gameView->getTypedString() : std::optional<std::string>()).value_or(std::string()));
 							}
 							else
 							{
@@ -5114,9 +5115,9 @@ void PlayerEntity::pollDemoControls(double /*delta_t*/)
 						}
 					}
 					selectPressed = checkKeyPress(n_key_gui_select);
-					if ([gameView isDown:gvMouseDoubleClick] || [gameView isDown:gvMouseLeftButton])
+					if ((gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false) || (gameView != nullptr ? gameView->isDown(gvMouseLeftButton) : false))
 					{
-						[gameView clearMouse];
+						if (gameView != nullptr)  gameView->clearMouse();
 					}
 				} // endif isAcceptingGUIInput
 				if (checkKeyPress(n_key_oxzmanager_setfilter) ||
@@ -5158,9 +5159,9 @@ void PlayerEntity::pollDemoControls(double /*delta_t*/)
 			if (_missionTextEntry)
 			{
 				refreshMissionScreenTextEntry();
-				if (checkKeyPress(n_key_gui_select) || [gameView isDown:gvMouseDoubleClick])	//  '<enter/return>' or double click
+				if (checkKeyPress(n_key_gui_select) || (gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false))	//  '<enter/return>' or double click
 				{
-					setMissionChoice([gameView cxx_typedString], std::string("enter"));
+					setMissionChoice((gameView != nullptr ? gameView->getTypedString() : std::optional<std::string>()), std::string("enter"));
 					OOMusicController::sharedController()->stopMissionMusic();
 					playDismissedMissionScreen();
 					
@@ -5179,7 +5180,7 @@ void PlayerEntity::pollDemoControls(double /*delta_t*/)
 			}
 			else if (gui->keyForRow(end_row) == "spacebar")
 			{
-				if ([gameView isDown:32])	//  '<space>'
+				if ((gameView != nullptr ? gameView->isDown(32) : false))	//  '<space>'
 				{
 					if (!spacePressed)
 					{
@@ -5213,12 +5214,12 @@ void PlayerEntity::pollDemoControls(double /*delta_t*/)
 						extra_key_pressed = NO;
 					}
 				}
-				if (checkKeyPress(n_key_gui_select) || [gameView isDown:gvMouseDoubleClick] || !extraKey.empty())	//  '<enter/return>' or double click
+				if (checkKeyPress(n_key_gui_select) || (gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false) || !extraKey.empty())	//  '<enter/return>' or double click
 				{
-					if ([gameView isDown:gvMouseDoubleClick])
+					if ((gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false))
 					{
 						selectPressed = NO;
-						[gameView clearMouse];
+						if (gameView != nullptr)  gameView->clearMouse();
 					}
 					if (!selectPressed)
 					{
@@ -5320,7 +5321,7 @@ void PlayerEntity::handleMissionCallback()
 void PlayerEntity::setGuiToMissionEndScreen()
 {
 	::MyOpenGLView	*gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
-	[gameView clearKeys];
+	if (gameView != nullptr)  gameView->clearKeys();
 	if (status() != STATUS_DOCKED)
 	{
 		// this setting is only applied when not docked
@@ -5433,7 +5434,7 @@ void PlayerEntity::switchToThisView(OOViewID viewDirection, OOViewID oldViewDire
 			OO_LOG_ERR(cxx_kOOLogParameterError, "{} called with processWeaponFacing=YES for non-main view {}.", static_cast<const char *>(__FUNCTION__), static_cast<unsigned>(viewDirection));
 		}
 	}
-	if ((oldViewDirection != viewDirection || viewDirection == VIEW_CUSTOM) && ![(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) isGamePaused])
+	if ((oldViewDirection != viewDirection || viewDirection == VIEW_CUSTOM) && !(UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr ? UNIVERSE->gameController()->isGamePaused() : false))
 	{
 		ooscript::Context context = OOJSAcquireContext();
 		ShipScriptEvent(context, this, "viewDirectionChanged", OOJSValueFromViewID(context, viewDirection), OOJSValueFromViewID(context, oldViewDirection));

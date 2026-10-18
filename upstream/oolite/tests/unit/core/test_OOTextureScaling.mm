@@ -15,6 +15,7 @@
 #import "OOTextureScaling.h"
 #import "OOLogging.h"
 #import "Universe.h"
+#import "MyOpenGLView.h"
 #include "oofnd/objc/OOException.h"
 
 #include "oo_test.hpp"
@@ -39,6 +40,14 @@ void OOLogGenericParameterErrorForFunction(const char *inFunction)
 
 const char *const cxx_kOOLogParameterError = "general.error.parameterError";	// OOLogging.mm's
 Universe *gSharedUniverse = nil;	// OODumpPixMap's UNIVERSE (debug builds); never called here
+
+// OODumpPixMap's view dumps: members since bead oo-9ht.153 deleted the view's facade (they were
+// sends); never called here.
+#ifndef NDEBUG
+void MyOpenGLView::dumpGrayToFileNamed(const std::string &, uint8_t *, NSUInteger, NSUInteger, NSUInteger)  { std::abort(); }
+void MyOpenGLView::dumpGrayAlphaToFileNamed(const std::string &, uint8_t *, NSUInteger, NSUInteger, NSUInteger)  { std::abort(); }
+void MyOpenGLView::dumpRGBAToRGBFileNamed(const std::optional<std::string> &, const std::optional<std::string> &, uint8_t *, NSUInteger, NSUInteger, NSUInteger)  { std::abort(); }
+#endif
 
 
 namespace {

@@ -1396,7 +1396,7 @@ bool ResourceManager::checkCacheUpToDateForPaths(const std::vector<std::string> 
 		OO_LOG("dataCache.rebuild.explicitFlush", "{}", "Cache explicitly flushed with always-flush-cache preference. Rebuilding from scratch.");
 		upToDate = NO;
 	}
-	else if ([::MyOpenGLView pollShiftKey])
+	else if (::MyOpenGLView::pollShiftKey())
 	{
 		OO_LOG("dataCache.rebuild.explicitFlush", "{}", "Cache explicitly flushed with shift key. Rebuilding from scratch.");
 		upToDate = NO;

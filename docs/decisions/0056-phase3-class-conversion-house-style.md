@@ -8340,3 +8340,82 @@ creators (`NewShipObject`, `oo::NewEntityFacade` and the effect factories that t
 oo-9ht.39.28; what only an object answers (`OOStellarBodyPlanetType()`, `<OOBeaconEntity>` `-beaconCode`,
 `-isCascadeWeapon`). Follow-up: oo-9ht.39.16's residue bead (filed with this amendment). **Tests:** none
 re-based (no test calls a changed signature; the new overloads and helpers are additions).
+
+
+## Amendment (beads oo-9ht.164, oo-9ht.153, oo-43xoj): the game controller's and the game view's facades are deleted; both are global C++ classes
+
+- Date: 2026-10-17. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Track B
+  (one branch, one commit). Exemplar: `src/Core/GameController.h/.mm` (`setGameView()`,
+  `beginSplashScreen()`), `src/SDL/MyOpenGLView.h`, `tests/unit/core/test_GameController.mm` (a
+  whole-game test's C++ view), `test_OOJSOolite.mm` (a narrow test's stand-in),
+  `test_OOOpenGLMatrixManager.mm` (a narrow test that makes a view). Follows amendments oo-zkpmt,
+  oo-6rb6, oo-3bgz and oo-ql9rn (the universe: the large-facade pattern).
+
+**Context.** `GameController+ObjCBridge.h/.mm` (41 forwarders to `cxx::GameController`, the singleton
+facade, `-init` raising for a second controller, the deferred call's `@try` helper) and
+`MyOpenGLView+ObjCBridge.h/.mm` (91 forwarders to `cxx::MyOpenGLView`, `-init` running `init()`,
+`+pollShiftKey`) were all that was left of either class in Objective-C. About 850 sends reached
+them: the player family (controls, key and stick mappers, load/save), the HUD, the GUI, the universe,
+the OXZ manager, the JS bindings, the crosshairs, the planet drawable, the verifier, the debug
+standards and the two classes themselves; 12 tests stood in or crossed them.
+
+**Decision (recommended defaults).**
+
+1. **Both are global C++ classes** (`class GameController`, `class MyOpenGLView`, both
+   `oo::RefCounted`; namespace cxx and every `cxx::` at their uses go; `@class` forward declarations
+   are `class`). Both bridge files of each and their `meson.build` entries are deleted.
+   `GameControllerPerformSelectorWithObject()` (the deferred call's `@try`/`@catch`, amendment
+   oo-9ht.139 item 3) moves verbatim to `GameController.mm`. `OO_DEBUG_PROGRESS` & co. call the
+   singleton's members. `+sharedController` is `GameController::sharedController()` (never null:
+   made on first use, no guard); `+[MyOpenGLView pollShiftKey]` is the static member.
+2. **Sends become member calls** (the batch F/AA converter with the facades' forwarders as the map,
+   then the compiler's receiver diagnostics), keeping the message to nil's answer: `if (v != nullptr)
+   v->m();` / `(v != nullptr ? v->m() : zero)`, and for the universe's getters `UNIVERSE != nullptr
+   && UNIVERSE->getGameView() != nullptr ? UNIVERSE->getGameView()->m() : zero` (same for
+   `gameController()`), because the view and controller are absent in start-up and in tests.
+   `-retain`/`-release` of the view are `retain()`/`release()`, guarded (`setGameView()` in the
+   controller and the universe keep their order: release the old, retain the new). `oo::ToCxx()` /
+   `oo::ToObjC()` of a view or controller are the pointer itself. The three HUD one-send wrappers
+   (`HeadUpDisplayUniverseGameView()`, `HeadUpDisplayGameViewFov()`, `HeadUpDisplayGameViewViewSize()`,
+   amendment oo-9ht.139 items 3-4) are replaced at their call sites. The OOShaderProgram and
+   OOOpenGLMatrixManager lookups read the C++ view directly (bead oo-43xoj, which the facade's
+   deletion completes). `OOFullScreenController` (Mac-only callers) holds its view as
+   `oo::Ref<MyOpenGLView>` (it retained the object).
+3. **Making the view.** `beginSplashScreen()` makes it with `new MyOpenGLView()` and `init()`. The
+   old code kept `[MyOpenGLView alloc]` and ignored `-init`'s answer, so a view whose SDL start failed
+   was released and the pointer left dangling (the next send was undefined behaviour); now the failed
+   view is released and the pointer is null, so the sends that follow are skipped as messages to nil.
+   **Behaviour change only when SDL cannot start** (the game then has no window either way).
+4. **Test seams.** A whole-game test's recording view (test_GameController, test_OOOXZManager,
+   test_OOPlanetDrawable) is a C++ subclass of `MyOpenGLView` overriding what its Objective-C stand-in
+   answered; those 11 members are `virtual` (`endSplashScreen`, `updateScreen`, `setGameController`,
+   `inFullScreenMode`, `getScreenSizeArray`, `currentScreenSize`, `currentScreenMode`,
+   `noteMouseInteractionModeChangedFrom`, `resetTypedString`, `stringToClipboard`, `getViewSize`),
+   marked in the header; nothing in the game overrides them. A narrow test that makes a view without
+   linking `MyOpenGLView.mm` defines the destructor and those members as never-run stand-ins. A narrow
+   test's stand-in view or controller (test_OOJSOolite, test_OOJSGlobal, test_OOJSStation) is a plain
+   C++ class with the header's names and signatures defined out of line; test_OODebugStandards'
+   controller and test_MyOpenGLView's round-tripped controller are storage nothing constructs (the
+   members called read no state), as test_OOJSClock's universe.
+5. **Selectors found by name: none new.** The SDL `pauseFullScreenModeToPerform(SEL, id)` keeps the
+   pair it is given and never performs it (only the Mac category, not built, did). The controller's
+   own pause target (`exitAppCommandQ` on Command-Q in full screen) was the controller's object; it is
+   nil now (rule 10: the stored pair is never read on SDL). `performGameTick(id)`'s unused sender is
+   nil where it was the controller's object.
+6. **Left as they were (follow-up), as amendment oo-ql9rn item 6:** the view's and controller's
+   state stays public (the tests and callers read it); the Mac-only code (`GameController (MacOSX)`,
+   `GameController+FullScreen.mm` oo-b7hg, the `OO_USE_FULLSCREEN_CONTROLLER` arms that still write
+   `[oo::ToObjC(this) ...]`, the AppKit load/save arms of `PlayerEntityLoadSave.mm`), `OOShipRegistry.mm`'s
+   `#if PRELOAD` progress-bar sends and the `#if 0` blocks are not compiled and are left as they were; `OOQuiriumCascadeEntity+ObjCBridge` is a category of the
+   Objective-C Entity and goes with the Entity facade (batch AK), not here.
+
+**Differences.** The SDL-start-failure path (item 3) and the never-read pause target (item 5). No
+game behaviour changes otherwise.
+
+**Tests** (standing approval oo-9n5p9, lines on main first): retired as facade contract:
+`test_GameController facadeContract`'s crossings (`oo::ToCxx`/`oo::ToObjC` both ways, nil's, the
+facade's identity, three facade-versus-C++ comparisons, `_cxxController`), the rest of it now
+`cxxAPI`; `test_MyOpenGLView facadeContract`'s three crossings, the rest `cxxAPI`. Every other case
+calls the same members with every expected value kept; the stand-ins are as item 4.
+
+**Consequences.** No Objective-C game controller or view is compiled.

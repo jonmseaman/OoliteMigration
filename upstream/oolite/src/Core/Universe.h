@@ -55,7 +55,9 @@ class OOMaterial;
 #include <string_view>
 #endif
 
-@class GameController, MyOpenGLView, Entity, OOException;
+@class Entity, OOException;
+class GameController;
+class MyOpenGLView;
 class OOVisualEffectEntity;	// C++ since bead oo-9ht.165
 class ShipEntity;	// C++ since bead oo-9ht.144
 class DockEntity;

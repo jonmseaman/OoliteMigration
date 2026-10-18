@@ -2007,7 +2007,7 @@ void PlayerEntity::setMissionChoiceByTextEntry(bool enable)
 {
 	::MyOpenGLView	*gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
 	_missionTextEntry = enable;
-	[gameView resetTypedString];
+	if (gameView != nullptr)  gameView->resetTypedString();
 }
 
 
@@ -2590,7 +2590,7 @@ void PlayerEntity::refreshMissionScreenTextEntry()
 	}
 
 	// The DESC entry is the format (data): ADR-0043 item 19.
-	const std::optional<std::string> typed = [gameView cxx_typedString];
+	const std::optional<std::string> typed = (gameView != nullptr ? gameView->getTypedString() : std::optional<std::string>());
 	gui->setText(oo::str::formatRuntime(OO_DESC("mission-screen-text-prompt-@"), { typed.has_value() ? oo::str::FormatArg(*typed) : oo::str::FormatArg::null() }), end_row, GUI_ALIGN_LEFT);
 	gui->setColor(OOColor::cyanColor().get(), end_row);
 	

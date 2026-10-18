@@ -72,12 +72,16 @@ static void SetUpSparkle(void);
 #endif
 
 
-static cxx::GameController *sSharedController = nullptr;
+namespace {
+
+GameController *sSharedController = nullptr;
+
+}	// namespace
 
 
 
 #if OOLITE_MAC_OS_X
-// Only the fenced Mac category below still sends these; they are cxx::GameController members since
+// Only the fenced Mac category below still sends these; they are GameController members since
 // beads oo-hn0fw and oo-5ah4k (Phase 5 writes the Mac layer again).
 @interface GameController (OOPrivate)
 
@@ -215,8 +219,6 @@ bool NextDeferredCallDeadline(std::chrono::steady_clock::time_point *outDeadline
 }
 
 
-namespace cxx {
-
 GameController *GameController::sharedController()
 {
 	if (sSharedController == nullptr)
@@ -268,7 +270,7 @@ GameController::~GameController()
 	[[[NSWorkspace sharedWorkspace] notificationCenter]	removeObserver:UNIVERSE];
 #endif
 	
-	[_gameView release];
+	if (_gameView != nullptr)  _gameView->release();
 	if (UNIVERSE != nullptr)  UNIVERSE->release();
 }
 
@@ -357,7 +359,7 @@ void GameController::setMouseInteractionMode(OOMouseInteractionMode mode)
 	else
 #endif
 	{
-		[gameView() noteMouseInteractionModeChangedFrom:oldMode to:mode];
+		if (gameView() != nullptr)  gameView()->noteMouseInteractionModeChangedFrom(oldMode, mode);
 	}
 }
 
@@ -382,9 +384,10 @@ void GameController::setMouseInteractionModeForUIWithMouseInteraction(bool inter
 
 void GameController::setGameView(::MyOpenGLView *view)
 {
-	[_gameView release];
-	_gameView = [view retain];
-	[_gameView setGameController:oo::ToObjC(this)];
+	if (_gameView != nullptr)  _gameView->release();
+	if (view != nullptr)  view->retain();
+	_gameView = view;
+	if (_gameView != nullptr)  _gameView->setGameController(this);
 	if (UNIVERSE != nullptr)  UNIVERSE->setGameView(_gameView);
 }
 
@@ -412,7 +415,7 @@ void GameController::performGameTick(id /*sender*/)
 {
 	void *pool = objc_autoreleasePoolPush();
 	
-	[_gameView pollControls];
+	if (_gameView != nullptr)  _gameView->pollControls();
 	doPerformGameTick();
 	
 	objc_autoreleasePoolPop(pool);
@@ -463,7 +466,7 @@ void GameController::doPerformGameTick()
 	
 	@try
 	{
-		[_gameView updateScreen];
+		if (_gameView != nullptr)  _gameView->updateScreen();
 	}
 	@catch (id exception) {}
 }
@@ -500,7 +503,7 @@ void GameController::performGameTickIfDue()
 	while (next <= now)  next += sGameTickInterval;
 	sNextGameTick = next;
 	
-	performGameTick(oo::ToObjC(this));
+	performGameTick(nil);	// the sender (the controller's object until bead oo-9ht.164) is unused
 }
 
 
@@ -582,10 +585,6 @@ void GameController::runFrameLoop()
 	}
 }
 
-}	// namespace cxx
-
-
-namespace cxx {
 
 void GameController::applicationDidFinishLaunching()
 {
@@ -690,10 +689,18 @@ void GameController::beginSplashScreen()
 #if !OOLITE_MAC_OS_X
 	if(!_gameView)
 	{
-		_gameView = [::MyOpenGLView alloc];
-		[_gameView init];
-		[_gameView setGameController:oo::ToObjC(this)];
-		[_gameView initSplashScreen];
+		/*	[[MyOpenGLView alloc] init], whose answer was not kept: a view whose init() fails (SDL could
+			not start) was released, which left _gameView dangling; it is null now, and the sends
+			below are skipped as messages to nil (ADR-0056 amendment oo-9ht.153 item 2).
+		*/
+		_gameView = new ::MyOpenGLView();
+		if (!_gameView->init())
+		{
+			_gameView->release();
+			_gameView = nullptr;
+		}
+		if (_gameView != nullptr)  _gameView->setGameController(this);
+		if (_gameView != nullptr)  _gameView->initSplashScreen();
 	}
 #else
 	[_gameView updateScreen];
@@ -787,7 +794,7 @@ void GameController::endSplashScreen()
 	[gameWindow setContentView:_gameView];
 	[gameWindow makeFirstResponder:_gameView];
 #elif OOLITE_SDL
-	[_gameView endSplashScreen];
+	if (_gameView != nullptr)  _gameView->endSplashScreen();
 #endif
 }
 
@@ -802,7 +809,7 @@ void GameController::exitAppWithContext(const std::string &context)
 #if OOLITE_WINDOWS
 	// This should not be required normally but we have to ensure that
 	// desktop resolution is restored also on some Intel cards on Win10
-	if (![_gameView atDesktopResolution])
+	if (!(_gameView != nullptr ? _gameView->getAtDesktopResolution() : false))
 	{
 		OO_LOG("gameController.exitApp", "{}", "Restoring desktop resolution.");
 		ChangeDisplaySettingsEx(NULL, NULL, NULL, 0, NULL);
@@ -829,7 +836,7 @@ void GameController::exitAppCommandQ()
 
 void GameController::windowDidResize()
 {
-	[_gameView updateScreen];
+	if (_gameView != nullptr)  _gameView->updateScreen();
 }
 
 
@@ -917,7 +924,6 @@ void GameController::reportUnhandledStartupExceptionName(const std::string &name
 	#endif
 }
 
-}	// namespace cxx
 
 
 #if OOLITE_MAC_OS_X
@@ -1266,3 +1272,19 @@ static void SetUpSparkle(void)
 }
 
 #endif
+
+
+bool GameControllerPerformSelectorWithObject(id target, SEL selector, id argument, const char **outName, const char **outReason)
+{
+	@try
+	{
+		[target performSelector:selector withObject:argument];
+	}
+	@catch (OOException *exception)
+	{
+		*outName = [exception name];
+		*outReason = [exception reason];
+		return false;
+	}
+	return true;
+}
