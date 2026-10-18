@@ -848,7 +848,6 @@ oo::PList AI::loadStateMachine(const std::string &smName, const std::string &scr
 {
 	oo::PList				newSM;
 	::OOCacheManager			*cacheMgr = OOCacheManager::sharedCache();
-	void					*pool = NULL;
 
 	if (smName != "nullAI.plist")
 	{
@@ -860,7 +859,6 @@ oo::PList AI::loadStateMachine(const std::string &smName, const std::string &scr
 
 	if (newSM.isNull())
 	{
-		pool = objc_autoreleasePoolPush();
 		OO_LOG("ai.load", "Loading and sanitizing AI \"{}\"", smName);
 		OOLogPushIndent();
 		oo::log::indentIf("ai.load");
@@ -918,8 +916,6 @@ oo::PList AI::loadStateMachine(const std::string &smName, const std::string &scr
 		{
 			OOLogPopIndent();
 		}
-
-		objc_autoreleasePoolPop(pool);
 	}
 
 	return newSM;

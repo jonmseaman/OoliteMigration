@@ -105,12 +105,10 @@ void OOFileScannerVerifierStage::run()
 	_caseWarnings.clear();
 	_badPLists.clear();
 	
-	@autoreleasepool
 	{
 		scanForFiles();
 	}
 	
-	@autoreleasepool
 	{
 		checkRootFolders();
 		checkKnownFiles();
@@ -243,7 +241,6 @@ oo::PList OOFileScannerVerifierStage::plistNamed(const std::optional<std::string
 	oo::fs::Result<oo::Data> data = oo::fs::readFile(oo::fs::pathFromUTF8(*path));
 	if (!data)  return oo::PList();
 	
-	@autoreleasepool
 	{
 		// +[NSPropertyListSerialization propertyListFromData:...errorDescription:]; the error
 		// string it gave is PListError::description().

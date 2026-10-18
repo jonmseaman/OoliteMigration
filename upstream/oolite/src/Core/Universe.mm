@@ -8225,7 +8225,6 @@ void Universe::setGalaxyTo(OOGalaxyID g, bool forced)
 		galaxyID = g;
 		
 		// systems
-		@autoreleasepool
 		{
 			for (i = 0; i < 256; i++)
 			{

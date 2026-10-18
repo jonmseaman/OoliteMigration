@@ -171,7 +171,6 @@ void OOCheckShipDataPListVerifierStage::run()
 	});
 	for (const std::string &shipKey : shipList)
 	{
-		@autoreleasepool
 		{
 			const oo::PList *shipInfo = _shipdataPList.get<oo::PList::Dict>(shipKey);
 			if (shipInfo == nullptr)

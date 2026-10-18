@@ -155,7 +155,6 @@ OOSkyDrawable::OOSkyDrawable(OOColor *color1,
 	_starCount = starCount;
 	_nebulaCount = nebulaCount;
 
-	@autoreleasepool
 	{
 		setUpStars(color1, color2);
 
