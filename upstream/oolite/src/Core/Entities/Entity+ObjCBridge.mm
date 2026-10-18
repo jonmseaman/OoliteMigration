@@ -120,6 +120,12 @@ std::string oo::EntityShortDescription(cxx::Entity *entity)
 }
 
 
+std::string oo::EntityDescription(cxx::Entity *entity)
+{
+	return DescriptionOf(ToObjC(entity));
+}
+
+
 ::Entity *oo::NewEntityFacade(const Ref<cxx::Entity> &entity)
 {
 	if (entity == nullptr)  return nil;

@@ -8294,3 +8294,49 @@ controller's are not the entity facade's (the facade-use regex counts them).
 the six tests that define `gOOJSPlayerIfStale` define it as `cxx::Entity *` and store the stale entity's C++ part (`test_OOJSPlayer`: the C++ player, `sPlayer`, which its
 stand-in object stands for; the object has no part).
 The same entities and expected values; no case removed.
+
+## Amendment (bead oo-9ht.39.16): ShipEntity.mm and ShipEntityAI.mm stop sending through the facade (per-file sweeps 5f, 5g)
+
+oo-9ht.39 steps 5f (oo-9ht.39.16) and 5g (oo-9ht.39.17), batch AL (track A), Migration Completion session,
+2026-10-17, in one branch and one commit. Behaviour-identical, compiler-driven (probes with
+`-Werror=receiver-expr`), as amendment oo-9ht.39.23:
+
+1. **Script events take the entity.** `ShipEntity::doScriptEvent()` gains `cxx::Entity *` overloads (one and two
+   entities; one entity with an AI message) that pass `OOJSEntityJSValue(entity)`, the value
+   `OOJSValueFromNativeObject()` gave for the entity's object (null for none); the ships' calls pass the entity
+   (`this`, the target, the station, the missile ...). The `id` overloads stay for other arguments.
+   `OOJSValueFromNativeObject(context, oo::ToObjC(entity))` and the JS-function search's `jsThis` take
+   `OOJSEntityJSValue()` the same way.
+2. **Questions the facade forwarded ask the member.** `[oo::ToObjC(x) isShip]`, `-isSubEntity`, `-isPlayer`,
+   `-isPlanet`, `-status` are `oo::EntityIsShip(x)` etc. (Entity+ObjCBridge.h, moved there from
+   CollisionRegion.mm's anonymous namespace, bead oo-9ht.39.27, so both files share them): an Objective-C
+   entity (a test's stand-in) is still messaged, nil's answer for none. State reads (`-position`, `-velocity`,
+   `-speed`, `-mass`, `-energy`, `-scanClass`, `-collisionRadius`, `-findCollisionRadius`, `-drawRotationMatrix`,
+   `-universalID`, `-isWormhole`, `-isStation`) and `-takeEnergyDamage:...`, `-setOwner:` call the member the
+   facade forwarded to (virtual where the adapter overrides it, so a stand-in still answers), with nil's
+   answer where the receiver could be nil. Locals that held `oo::ToObjC(primaryTarget())` (and the other
+   target getters) hold the C++ entity; `x->_cxxEntity->m` is `x->m`.
+3. **Reads +0.** The target getters' `oo::ToCxx(oo::WeakEntityObject(ref))` is `oo::LiveEntity(ref)`, and an
+   entity's `owner()` compared with an object is `oo::LiveOwner(entity)` (the owner's object's C++ entity,
+   +0, null once it has gone) - the same null cases as before. Log descriptions are
+   `oo::EntityDescription()` / `oo::EntityShortDescription()` (Entity+ObjCBridge: `oo::DescriptionOf()`/
+   `ShortDescriptionOf()` of the object, byte for byte; the text holds the object's address, so they go with
+   the facade, 5k); `DebugContext()` (ShipEntityAI.mm) takes the entity.
+4. **Retained snapshots.** The AI's nearest-wormhole and random-station searches kept the universe's objects
+   retained for the search; they keep `oo::Ref<cxx::Entity>` of the parts (nothing in the search can remove
+   an entity). The defense-target and in-range snapshots (`std::vector<oo::ObjCRef<::Entity *>>`) still keep
+   the objects; the loops read each entry's C++ entity once.
+
+**Defaults (rule 10).** Behaviour-identical (goldens, core tests). Flagged, not observable in the game: a gone
+Objective-C stand-in's JS value is asked of its C++ part (it was nil's), as amendment oo-9ht.39.24 flagged for
+`JSFunctionPredicate`; the converted locals no longer retain and autorelease the target's object (each was
+read where it was valid, and the function never removes it). **Left (each needs another step; the beads'
+acceptance is a ratchet on the count, 377 -> 195 in ShipEntity.mm, 81 -> 13 in ShipEntityAI.mm):** the
+universe's API, which takes and answers objects (`addEntity`/`removeEntity`, `entitiesWithinRange`,
+`entityForUniversalID`, the predicate searches, `listBeaconsWithCode`, its +1 `newShip...` objects released
+through `[oo::ToObjC(x) release]`) - 5c, oo-9ht.39.26; the owning lists and snapshots of objects (`subEntities`,
+`cargo`, escorts, passengers, group members, the defense-target and collision-exception weak sets) and the
+creators (`NewShipObject`, `oo::NewEntityFacade` and the effect factories that take the source's object) - 5k,
+oo-9ht.39.28; what only an object answers (`OOStellarBodyPlanetType()`, `<OOBeaconEntity>` `-beaconCode`,
+`-isCascadeWeapon`). Follow-up: oo-9ht.39.16's residue bead (filed with this amendment). **Tests:** none
+re-based (no test calls a changed signature; the new overloads and helpers are additions).

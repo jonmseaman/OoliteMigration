@@ -350,6 +350,18 @@ inline PList EntityObjectNode(const Ref<cxx::Entity> &entity)  { return EntityOb
 // "does not respond" error prints it; it goes with the facade (oo-9ht.39 step 5k).
 std::string EntityShortDescription(cxx::Entity *entity);
 
+// What oo::DescriptionOf(ToObjC(entity)) printed (bead oo-9ht.39.16): the entity's object's
+// description, which holds the object's address; "(null)" for null. Goes with the facade (5k).
+std::string EntityDescription(cxx::Entity *entity);
+
+// The C++ entity of what WeakEntityObject(ref) answers (bead oo-9ht.39.16): null once the entity's
+// object has gone, as the object read +0 was nil.
+inline cxx::Entity *LiveEntity(const WeakRef<cxx::Entity> &ref)  { return ToCxx(WeakEntityObject(ref)); }
+
+// The C++ entity of what an entity's owner() answers (its owner's object, +0; bead oo-9ht.39.16):
+// null for none, or once the owner's object has gone.
+inline cxx::Entity *LiveOwner(cxx::Entity *entity)  { return entity != nullptr ? ToCxx(static_cast<::Entity *>(entity->owner())) : nullptr; }
+
 // The C++ entity of an entity's Object node, borrowed; null for any other node. A plain Object node
 // of an entity's object (oo::PListObject(), still made by Objective-C callers and the tests'
 // stand-ins) answers the same entity until the facade goes.
@@ -583,6 +595,41 @@ public:
 
 // The adapter half of an Objective-C entity's C++ part; null for a C++ entity.
 inline ObjCEntityLink *AsObjCEntity(cxx::Entity *entity)  { return dynamic_cast<ObjCEntityLink *>(entity); }
+
+/*	What the root facade's -isShip, -isSubEntity, -isPlayer, -isPlanet and -status answered for an entity's
+	object (bead oo-9ht.39.16): the C++ member each forwarded to; an Objective-C entity (a test's
+	stand-in, whose class may answer itself) is still messaged, and answers as nil once its object
+	has gone; nil's answer for none.
+*/
+inline bool EntityIsShip(cxx::Entity *entity)
+{
+	if (ObjCEntityLink *link = AsObjCEntity(entity))  return [link->objcOwner() isShip];
+	return entity != nullptr && entity->getIsShip();
+}
+
+inline bool EntityIsSubEntity(cxx::Entity *entity)
+{
+	if (ObjCEntityLink *link = AsObjCEntity(entity))  return [link->objcOwner() isSubEntity];
+	return entity != nullptr && entity->getIsSubEntity();
+}
+
+inline bool EntityIsPlayer(cxx::Entity *entity)
+{
+	if (ObjCEntityLink *link = AsObjCEntity(entity))  return [link->objcOwner() isPlayer];
+	return entity != nullptr && entity->getIsPlayer();
+}
+
+inline bool EntityIsPlanet(cxx::Entity *entity)
+{
+	if (ObjCEntityLink *link = AsObjCEntity(entity))  return [link->objcOwner() isPlanet];
+	return entity != nullptr && entity->isPlanet();
+}
+
+inline OOEntityStatus EntityStatus(cxx::Entity *entity)
+{
+	if (ObjCEntityLink *link = AsObjCEntity(entity))  return [link->objcOwner() status];
+	return entity != nullptr ? entity->status() : OOEntityStatus{};
+}
 
 }	// namespace oo
 
