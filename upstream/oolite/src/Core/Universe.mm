@@ -3423,8 +3423,8 @@ void Universe::forceWitchspaceEntries()
 		if (sortedEntities[i]->isShip)
 		{
 			::ShipEntity *my_ship = oo::ToShip(sortedEntities[i]);
-			::Entity* my_target = oo::ToObjC((my_ship != nullptr ? my_ship->primaryTarget() : (cxx::Entity *)nullptr));
-			if ([my_target isWormhole])
+			cxx::Entity *my_target = oo::WithObject((my_ship != nullptr ? my_ship->primaryTarget() : (cxx::Entity *)nullptr));
+			if (my_target != nullptr && my_target->getIsWormhole())	// what -isWormhole forwarded to (bead oo-dpyk8)
 			{
 				if (my_ship != nullptr)  my_ship->enterTargetWormhole();
 			}

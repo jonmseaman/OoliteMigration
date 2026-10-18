@@ -8995,3 +8995,55 @@ cases: test_Entity's releasedBeforeInit, objCEntityBehindACxxPointer, adapterOut
 `-init` identity/recount checks and cxxEntityBehindItsFacade's adapter check; test_EntityOOJavaScriptExtensions'
 "an Objective-C override answers first" check; the `oo::AsObjCEntity(...) == nullptr` checks of nine files. Listed
 per file in tools/retire-test-approvals.txt.
+
+## Amendment (bead oo-dpyk8): the root Entity facade is deleted; the entity's count is its object's (step 5k.4)
+
+**Context.** After oo-j12i2 every entity's Objective-C object was the root facade over a C++ entity, and nothing
+but the facade's own lifetime, its class and its categories' by-selector answers was left of it. The facade's
+`-retain`/`-release`/`-autorelease` were the entity's lifetime; its `-dealloc` was the entity's teardown.
+
+**Decision (recommended defaults).**
+
+1. **`oo::EntityHold` is a held `cxx::Entity *` on the entity's own count** (`oo::Ref`'s rule, with the facade's
+   rule for an entity without its object: held as null). `oo::RetainEntity()`/`ReleaseEntity()`/`AutoreleaseEntity()`
+   act on that count (the autorelease hands the +1 to the current Objective-C pool, `oo::AutoreleaseInObjCPool()`, so
+   it is released at the same drain, in the same order). The creators make the entity with `oo::MadeEntity()` /
+   `oo::MadeEntityRetained()` (what `oo::NewEntityFacade()` and `+alloc` did: from then on it "has its object", is
+   counted live, and holds the +1).
+2. **The facade's `-dealloc` is the entity's last-release hook**: `oo::RefCounted::willDispose()` (new, protected,
+   virtual, empty by default; `dispose()` runs it once with the object whole and aborts if it resurrects the object)
+   and `cxx::Entity::willDispose()` runs the facade's `-dealloc` body in the same order. The drain points are
+   unchanged: every release that was the object's is the entity's.
+3. **What the facade answered is asked of the C++ entity** (EntityHelpers.h/.mm): the descriptions
+   (`oo::EntityDescription()`/`EntityShortDescription()`, class names the C++ class's, as the facade's `-description`
+   printed them), the node an entity is carried in (`oo::EntityObjectNode()`, its class name "Entity"), the beacon
+   category, `oo::EntityObjectSize()` (the facade's instance size, for the debug memory counts), the console's
+   `oo::InspectEntity()` (the virtual `inspect()`, empty), and the shader hooks (the bound object's class name and description for the log
+   lines, in place of the object). The generators' facade rows are frozen in `tools/gen-callobjc-entity-table.py`
+   (the facade's method list at oo-j12i2), so the generated tables are unchanged.
+4. **The tests call the C++ entity's members**, which the facade's messages forwarded to (mechanically:
+   `[e sel:a]` is the member the facade's method called); descriptions and counts are the entity's.
+5. **A narrow test links without EntityHelpers.mm.** `oo::WithObject()`, the holds' retain/release and the
+   descriptions are out of line, and the node class (`EntityPListForeign.h`, needing only the class's name) has no
+   out-of-line virtual, so a narrow test that stands in for the root with its own Objective-C objects answers them on
+   those objects (tests/unit/core/EntityHelpersStandIn.h, on the test's `oo::ToObjC()`), and carries its entities in
+   the game's nodes.
+
+**Defaults (rule 10).** Behaviour-identical in the game (goldens, core tests). Flagged: (a) the console's callObjC
+"does not respond" line and every log line that described an entity print the C++ entity's address in the
+`<Class 0x…>` form, where they printed the facade's; (b) `-inspect` (the Mac debug OXP's category) is a virtual
+member no class overrides; (c) a shader uniform bound by selector to an entity, which no row binds, is logged as the
+facade's method failing to answer, with the same text (`-[Entity sel]`), and binds nothing, as before.
+
+**Tests (standing approval oo-9n5p9, lines on main first).** Converted mechanically, no expected value changed;
+retired as façade cases (the facade's class, its `oo::ToObjC()`/`oo::ToCxx()` identity, nil's messages, and its
+method list and `-respondsToSelector:` as an oracle): test_Entity's facadeNilStaysNil and cxxEntityBehindItsFacade's
+class/identity checks; test_OOEntityCalledByName's noOtherNameDependsOnTheEntity and objectNamesAreTheFacadesAnswers;
+test_OOJSCallEntityMethods' facade half of the matcher's oracle and the "facade row is a facade method" check;
+test_EntityShaderBindings' comparison with the selector path; test_OOPlanetEntity's and test_OOWaypointEntity's
+`-respondsToSelector:`/`-methodForSelector:` checks; test_EntityOOJavaScriptExtensions' `oo::ObjectIn()` and
+plain-Object-node checks; the `[object class] == [Entity class]` checks of five files; test_ShipEntity's root-category
+`-drawSubEntityImmediate:translucent:` call; test_OOJSCall's script-target checks through callObjC's object path (an
+entity's Objective-C object; the entity path's are kept), whose debug playerStatisticsByName calls the player
+through the entity path. Narrow tests' stand-ins re-based (owner() answers the C++
+entity, the property-list stand-ins carry entity nodes). Listed per file in tools/retire-test-approvals.txt.

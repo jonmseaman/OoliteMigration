@@ -169,7 +169,7 @@ std::optional<std::string> OOShipGroup::descriptionComponents() const
 	}
 	if (mutableThis->leader() != nil)
 	{
-		desc = oo::str::format("%s, leader: %s", desc.c_str(), oo::ShortDescriptionOf(oo::ToObjC(mutableThis->leader())).c_str());
+		desc = oo::str::format("%s, leader: %s", desc.c_str(), oo::EntityShortDescription(mutableThis->leader()).c_str());
 	}
 	return desc;
 }

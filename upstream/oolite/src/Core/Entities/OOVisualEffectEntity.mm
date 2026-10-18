@@ -112,22 +112,21 @@ std::vector<oo::EntityHold> VisualEffectsIn(const OOVisualEffectSubEntities &sub
 // [[OOVisualEffectEntity alloc] cxx_initWithKey:definition:] until bead oo-9ht.165 deleted the
 // effect's facade: the root's facade (OOEntityWithDrawable's until bead oo-9ht.40) holding a new effect (+1, as +alloc gave), then
 // the initialiser's body, which may fail, as the Objective-C one did.
-::Entity *oo::NewVisualEffectObject(const std::string &key, const oo::PList &dict)
+cxx::Entity *oo::NewVisualEffect(const std::string &key, const oo::PList &dict)
 {
 	const Ref<OOVisualEffectEntity> effect = makeRef<OOVisualEffectEntity>();
-	::Entity *object = [[::Entity alloc] initWithCxxEntity:effect.get()];	// the root's facade since bead oo-9ht.40
-	if (object == nil)  return nil;
+	MadeEntityRetained(effect);	// +1, as +alloc gave (its object's, until bead oo-dpyk8)
 	if (!effect->initWithKey(key, dict))
 	{
-		[object release];
-		return nil;
+		ReleaseEntity(effect.get());
+		return nullptr;
 	}
-	return object;
+	return effect.get();
 }
 
 
 /*	-cxx_initWithKey:definition:'s body after [super init] (the constructor ran Entity's).
-	oo::NewVisualEffectObject() runs it once the object holds this effect (amendment oo-0mxi item 2);
+	oo::NewVisualEffect() runs it once the effect is made (amendment oo-0mxi item 2);
 	false where the initialiser released itself and answered nil.
 */
 bool OOVisualEffectEntity::initWithKey(const std::string &key, const oo::PList &dict)
@@ -303,13 +302,6 @@ bool OOVisualEffectEntity::setUpSubEntities()
 }
 
 
-// The sub-entity's object (the JS binding's stand-ins): its C++ entity (bead oo-xn1j1).
-void OOVisualEffectEntity::removeSubEntity(OOVisualEffectSubEntity *sub)
-{
-	removeSubEntity(oo::ToCxx(sub));
-}
-
-
 // The list holds the sub-entities (bead oo-xn1j1); [sub setOwner:nil] first, as before.
 void OOVisualEffectEntity::removeSubEntity(cxx::Entity *sub)
 {
@@ -429,12 +421,6 @@ std::optional<std::vector<oo::EntityHold>> OOVisualEffectEntity::visualEffectSub
 }
 
 
-bool OOVisualEffectEntity::hasSubEntity(OOVisualEffectSubEntity *sub)
-{
-	return hasSubEntity(oo::ToCxx(sub));
-}
-
-
 bool OOVisualEffectEntity::hasSubEntity(cxx::Entity *subPart)
 {
 	if (!_subEntities.has_value())  return false;
@@ -497,7 +483,7 @@ void OOVisualEffectEntity::rescaleBy(GLfloat factor)
 		if (se == nullptr)  continue;	// every message went to nil
 		se->setPosition(HPvector_multiply_scalar(se->getPosition(), factor));
 		if (OOSubEntityInterface *cxxSub = dynamic_cast<OOSubEntityInterface *>(se))  cxxSub->rescaleBy(factor);
-		else  [(OOVisualEffectSubEntity *)oo::ToObjC(se) rescaleBy:factor];
+		// (else: none - every effect sub-entity adopts the interface; bead oo-dpyk8)
 	}
 
 	collision_radius *= factor;
@@ -565,7 +551,7 @@ void OOVisualEffectEntity::setScaleX(GLfloat factor)
 		}
 		else
 		{
-			[(OOVisualEffectSubEntity *)oo::ToObjC(se) rescaleBy:flasher_factor];
+			if (OOSubEntityInterface *cxxSub = dynamic_cast<OOSubEntityInterface *>(se))  cxxSub->rescaleBy(flasher_factor);	// every effect sub-entity adopts it (bead oo-dpyk8)
 		}
 	}
 
@@ -602,7 +588,7 @@ void OOVisualEffectEntity::setScaleY(GLfloat factor)
 		}
 		else
 		{
-			[(OOVisualEffectSubEntity *)oo::ToObjC(se) rescaleBy:flasher_factor];
+			if (OOSubEntityInterface *cxxSub = dynamic_cast<OOSubEntityInterface *>(se))  cxxSub->rescaleBy(flasher_factor);	// every effect sub-entity adopts it (bead oo-dpyk8)
 		}
 	}
 
@@ -639,7 +625,7 @@ void OOVisualEffectEntity::setScaleZ(GLfloat factor)
 		}
 		else
 		{
-			[(OOVisualEffectSubEntity *)oo::ToObjC(se) rescaleBy:flasher_factor];
+			if (OOSubEntityInterface *cxxSub = dynamic_cast<OOSubEntityInterface *>(se))  cxxSub->rescaleBy(flasher_factor);	// every effect sub-entity adopts it (bead oo-dpyk8)
 		}
 	}
 
@@ -708,7 +694,7 @@ void OOVisualEffectEntity::drawImmediate(bool immediate, bool translucent)
 		{
 			subEntity = subEntityRef.get();
 			if (OOSubEntityInterface *cxxSub = dynamic_cast<OOSubEntityInterface *>(subEntity))  cxxSub->drawSubEntityImmediate(immediate, translucent);
-			else  [(OOVisualEffectSubEntity *)oo::ToObjC(subEntity) drawSubEntityImmediate:immediate translucent:translucent];
+			else if (::ShipEntity *ship = oo::ToShip(subEntity))  ship->drawSubEntityImmediate(immediate, translucent);	// the category's (bead oo-dpyk8)
 		}
 	}
 }

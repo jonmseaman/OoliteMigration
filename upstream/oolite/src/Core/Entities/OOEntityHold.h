@@ -2,13 +2,15 @@
 
 OOEntityHold.h
 
-TRANSITIONAL (ADR-0056 amendments oo-9ht.39.26, oo-xn1j1): how the universe and the entities' own
-lists (sub-entities, cargo, colliding entities, the player's missiles, ...) own an entity while the root
-facade (Entity+ObjCBridge.h) still exists. The entity's Objective-C object owns its C++ part and is
-what the JS wrappers, the weak references and oo::ToObjC()'s peer map hang on, so an owning list
-keeps the OBJECT alive exactly as long as it did; the holder retains the object and answers the
-C++ entity. With the facade's deletion (oo-9ht.39 step 5k) oo::EntityHold becomes
-oo::Ref<cxx::Entity> here, in one place, and the retain/release helpers become the part's.
+How the universe and the entities' own lists (sub-entities, cargo, colliding entities, the player's
+missiles, ...) own an entity (ADR-0056 amendments oo-9ht.39.26, oo-xn1j1). Until the root facade's
+deletion the holder retained the entity's Objective-C object, which owned the C++ entity; since bead
+oo-dpyk8 (oo-9ht.39 step 5k.4) the C++ entity owns itself (oo::RefCounted, its last release running
+what the facade's -dealloc ran) and the holder is a strong reference to it, with the same counts.
+
+An entity that has no object (cxx::Entity::hasObject(): never made by a creator, or in its last
+release) is held as null, as a reference to oo::ToObjC()'s nil was; the retain/release helpers do
+nothing for it, as the messages to nil did.
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -33,54 +35,63 @@ MA 02110-1301, USA.
 #ifndef OO_ENTITY_HOLD_H
 #define OO_ENTITY_HOLD_H
 
-#import "OOCocoa.h"
 #include "oofnd/Ref.hpp"
-#include "oofnd/objc/OOObjCRef.h"
 
 #include <cstddef>
+#include <utility>
 
-@class Entity;
 namespace cxx { class Entity; }
 
 
 namespace oo {
 
-// Entity+ObjCBridge.h: the entity's Objective-C object, borrowed; nil for null.
-::Entity *ToObjC(cxx::Entity *entity);
+namespace detail {
+
+// EntityHelpers.mm (a narrow test's stand-in defines its own): a retain or release of an entity that
+// has its object, nothing otherwise; whether it has one.
+bool EntityHasObject(const cxx::Entity *entity) noexcept;
+void EntityRetain(cxx::Entity *entity) noexcept;
+void EntityRelease(cxx::Entity *entity) noexcept;
+
+}	// namespace detail
 
 
-/*	An owning reference to an entity: retains the entity's Objective-C object (what an
-	oo::ObjCRef<::Entity *> of it retained) and answers its C++ entity. Null for null, and for an
-	Objective-C entity whose object has gone (oo::ToObjC() answers nil), as a reference to nil was.
+/*	An owning reference to an entity (oo::Ref<cxx::Entity> with the facade's rule for an entity
+	without its object: held as null). Copying retains, destroying releases, moving steals.
 */
 class EntityHold
 {
 public:
 	EntityHold() noexcept = default;
 	EntityHold(std::nullptr_t) noexcept {}
-	explicit EntityHold(cxx::Entity *entity) : _object(ToObjC(entity)), _entity(_object.get() != nil ? entity : nullptr) {}
+	explicit EntityHold(cxx::Entity *entity) noexcept : _entity(detail::EntityHasObject(entity) ? entity : nullptr)  { detail::EntityRetain(_entity); }
+	EntityHold(const EntityHold &other) noexcept : _entity(other._entity)  { detail::EntityRetain(_entity); }
+	EntityHold(EntityHold &&other) noexcept : _entity(std::exchange(other._entity, nullptr)) {}
+	~EntityHold()  { detail::EntityRelease(_entity); }
 
-	// Takes over a +1 reference to the entity's object (what oo::adoptObjC(oo::ToObjC(entity)) held;
-	// bead oo-xn1j1). The holder releases it as usual.
-	static EntityHold adopt(cxx::Entity *entity)
+	EntityHold &operator=(const EntityHold &other) noexcept
+	{
+		EntityHold(other).swap(*this);
+		return *this;
+	}
+	EntityHold &operator=(EntityHold &&other) noexcept
+	{
+		EntityHold(std::move(other)).swap(*this);
+		return *this;
+	}
+	void swap(EntityHold &other) noexcept  { std::swap(_entity, other._entity); }
+
+	// Takes over a +1 reference to the entity (oo::RetainEntity()'s; what oo::adoptObjC(oo::ToObjC(entity))
+	// held, bead oo-xn1j1). Null, and nothing taken, for an entity without its object, as nil was.
+	static EntityHold adopt(cxx::Entity *entity) noexcept
 	{
 		EntityHold result;
-		result._object = adoptObjC(ToObjC(entity));
-		result._entity = result._object.get() != nil ? entity : nullptr;
+		if (detail::EntityHasObject(entity))  result._entity = entity;
 		return result;
 	}
 
-	// Takes over a +1 reference to an entity's object itself, with no oo::ToObjC() (what
-	// oo::adoptObjC(object) held; bead oo-xn1j1). Entity+ObjCBridge.mm.
-	static EntityHold adoptObject(::Entity *object);
-
-	// Drops the reference without a release (what ObjCRef::leakRef() did, the deliberate leaks; bead
-	// oo-xn1j1). Null afterwards.
-	void leak() noexcept
-	{
-		(void)_object.leakRef();
-		_entity = nullptr;
-	}
+	// Drops the reference without a release (the deliberate leaks; bead oo-xn1j1). Null afterwards.
+	void leak() noexcept  { _entity = nullptr; }
 
 	cxx::Entity *get() const noexcept  { return _entity; }
 	cxx::Entity *operator->() const noexcept  { return _entity; }
@@ -90,23 +101,30 @@ public:
 	friend bool operator==(const EntityHold &a, const cxx::Entity *b) noexcept  { return a._entity == b; }
 
 private:
-	ObjCRef<::Entity *>	_object;
-	cxx::Entity			*_entity = nullptr;
+	cxx::Entity	*_entity = nullptr;
 };
 
 
-/*	The entity's object's reference count, for the universe's +1 creators and the references the
-	universe kept by hand (Entity+ObjCBridge.mm): -retain, -release and -autorelease of
-	oo::ToObjC(entity), the same messages; nothing for null. RetainEntity() answers its argument.
+/*	The universe's +1 creators and the references the universe and the entities keep by hand
+	(EntityHelpers.mm): what -retain, -release and -autorelease of the entity's object did, on the
+	entity's own count (-autorelease hands the reference to the current Objective-C autorelease pool,
+	oo::AutoreleaseInObjCPool(), so it is released at the same drain, in the same order); nothing for
+	null or an entity without its object. RetainEntity() and AutoreleaseEntity() answer their argument.
 */
 cxx::Entity *RetainEntity(cxx::Entity *entity);
 void ReleaseEntity(cxx::Entity *entity);
 cxx::Entity *AutoreleaseEntity(cxx::Entity *entity);
 
-/*	A C++ entity just made, given its Objective-C object (oo::NewEntityFacade(), autoreleased, as
-	the creators made it); answers the entity (null for null). Call it once, where it is made.
+/*	A C++ entity just made, given its object, as the creators made it (oo::NewEntityFacade(), +1 and
+	autoreleased): from here it has its object, it is counted as a live entity, and the pool holds one
+	reference until it drains. Answers the entity (null for null). Call it once, where it is made.
 */
 cxx::Entity *MadeEntity(const Ref<cxx::Entity> &entity);
+
+/*	The same without the autorelease: the creators that answered +1 (oo::NewShipObject(),
+	oo::NewVisualEffectObject(): +alloc's object). The caller owns the +1.
+*/
+cxx::Entity *MadeEntityRetained(const Ref<cxx::Entity> &entity);
 
 }	// namespace oo
 

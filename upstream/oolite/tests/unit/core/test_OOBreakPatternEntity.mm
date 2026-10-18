@@ -49,20 +49,20 @@ T *NewTestPlayer()
 	oo::Ref<T> player = oo::makeRef<T>();
 	@autoreleasepool
 	{
-		[oo::NewEntityFacade(player) retain];
+		oo::RetainEntity(oo::MadeEntity(player));
 	}
 	return player.get();
 }
 
 
-static Entity *sRemoved = nil;
+static cxx::Entity *sRemoved = nil;
 
 
 // UNIVERSE: never initialised; records what is removed.
 class TestUniverse : public Universe
 {
 public:
-	bool removeEntity(cxx::Entity *entity) override	{ sRemoved = oo::ToObjC(entity); return YES; }	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
+	bool removeEntity(cxx::Entity *entity) override	{ sRemoved = entity; return YES; }	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
 };
 
 
@@ -167,7 +167,7 @@ OO_TEST(lifetime)
 	{
 		SetUp();
 		oo::Ref<OOBreakPatternEntity> ring = OOBreakPatternEntity::breakPatternWithPolygonSides(4, 0.0f, 1.0f);
-		Entity *facade = oo::NewEntityFacade(ring);	// what removeEntity: is sent
+		cxx::Entity *facade = oo::MadeEntity(ring);	// what removeEntity: is sent
 		ring->setStatus(STATUS_EFFECT);
 		ring->setVelocity(make_vector(0, 0, 10));
 		ring->setLifetime(100.0);

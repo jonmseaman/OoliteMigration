@@ -54,7 +54,7 @@ T *NewTestPlayer()
 	oo::Ref<T> player = oo::makeRef<T>();
 	@autoreleasepool
 	{
-		[oo::NewEntityFacade(player) retain];
+		oo::RetainEntity(oo::MadeEntity(player));
 	}
 	return player.get();
 }
@@ -100,7 +100,7 @@ oo::PList Definition()
 DockEntity *MakeDock(const std::string &key)
 {
 	::ShipEntity *ship = DockEntity::newDockObject(key, Definition());
-	[oo::ToObjC(ship) autorelease];
+	oo::AutoreleaseEntity(ship);
 	return static_cast<DockEntity *>(ship);
 }
 
@@ -110,7 +110,7 @@ DockEntity *MakeDockOfStation(TestDockStation **outStation)
 {
 	// [[[TestDockStation alloc] cxx_initWithKey:definition:] autorelease] until bead oo-9ht.175: made as
 	// StationEntity::newStationObject() makes a station, its object (the ship's facade) autoreleased.
-	::ShipEntity *object = oo::ToShip([oo::NewShipObject(oo::makeRef<TestDockStation>(), "dock-station", Definition()) autorelease]);
+	::ShipEntity *object = oo::ToShip(oo::AutoreleaseEntity(oo::NewShipObject(oo::makeRef<TestDockStation>(), "dock-station", Definition())));
 	TestDockStation *station = static_cast<TestDockStation *>(object);
 	station->initStationDefaults();
 	DockEntity *dock = MakeDock("dock");
@@ -250,7 +250,7 @@ namespace {
 // A ship with the universal ID the approach queue keys it by.
 ShipEntity *MakeQueuedShip(OOUniversalID shipID)
 {
-	ShipEntity *ship = oo::ToShip([oo::NewShipObject(oo::makeRef<::ShipEntity>(), "queued", Definition()) autorelease]);
+	ShipEntity *ship = oo::ToShip(oo::AutoreleaseEntity(oo::NewShipObject(oo::makeRef<::ShipEntity>(), "queued", Definition())));
 	ship->universalID = shipID;
 	return ship;
 }
@@ -379,7 +379,7 @@ OO_TEST(objCDockPartIsADock)
 		DockEntity *dock = MakeDock("crossing");
 		DockEntity *part = dock;
 		OO_CHECK(part != nullptr);
-		OO_CHECK(oo::ToDock(oo::ToObjC(part)) == part);
+		OO_CHECK(oo::ToDock(part) == part);
 
 		cxx::Entity *asEntity = part;
 		OO_CHECK(asEntity->isDock());

@@ -377,57 +377,43 @@ bool EntityShaderMemberBindingFor(cxx::Entity *entity, const char *property, OOS
 /*	What the uniforms and the materials ask of a binding target that is an entity (bead oo-9ht.39.6,
 	ADR-0056 amendment oo-9ht.39.6), registered so that the materials link without the entities.
 	Each answers what the entity's object answered: the root facade's methods are the C++ entity's
-	members, and an Objective-C subclass's object (a test's) is asked, since it may override them.
+	members (bead oo-dpyk8 deleted the object).
 */
 namespace {
 
-bool IsRootFacadesPart(cxx::Entity *entity)
-{
-	return [oo::ToObjC(entity) isMemberOfClass:[::Entity class]];
-}
-
-
+// What the root facade's object answered (bead oo-dpyk8 deleted it): the entity's own members, for an
+// entity that has its object; nil's answers for one without.
 cxx::Entity *ShaderSuperTarget(cxx::Entity *entity)
 {
-	// -[Entity superShaderBindingTarget]: the parent entity (Entity::superShaderBindingTarget()).
-	if (IsRootFacadesPart(entity))  return entity->parentEntity();
-	return oo::ToCxx((::Entity *)[oo::ToObjC(entity) superShaderBindingTarget]);
+	// -[Entity superShaderBindingTarget]: the parent entity; nil's for an entity without its object.
+	return (oo::WithObject(entity) != nullptr) ? entity->parentEntity() : nullptr;
 }
 
 
-id ShaderObject(cxx::Entity *entity)
+std::string ShaderClassName(cxx::Entity *entity)
 {
-	return oo::ToObjC(entity);
+	return (oo::WithObject(entity) != nullptr) ? std::string("Entity") : std::string("(null)");	// its object's class, the root facade
+}
+
+
+std::string ShaderDescription(cxx::Entity *entity)
+{
+	return oo::EntityDescription(entity);
 }
 
 
 bool ShaderMemberBinding(cxx::Entity *entity, const char *property, OOShaderMemberBinding *outBinding)
 {
-	// The root's facade only: a subclass's object may override the method, which the selector path asks.
-	if (!IsRootFacadesPart(entity))  return false;
+	if (oo::WithObject(entity) == nullptr)  return false;	// nil bound nothing
 	return EntityShaderMemberBindingFor(entity, property, outBinding);
 }
 
 
 bool ShaderRandomSeed(cxx::Entity *entity, uint32_t *outSeed)
 {
-	// -randomSeedForShaders: the ship family's, found by name (the root's facade answers it for a
-	// ship's part, Entity (OOShipSelectorsCalledByName)).
-	if (IsRootFacadesPart(entity))
-	{
-		ShipEntity *ship = ShipPart(entity);
-		if (ship == nullptr)  return false;
-		*outSeed = ship->randomSeedForShaders();
-		return true;
-	}
-	// Another object: its own method if its class has one (as the message found it), else a ship's
-	// part's, which the by-name category answered (the C++ table's row since bead oo-9ht.39.7.3).
-	id object = oo::ToObjC(entity);
-	if ([object respondsToSelector:@selector(randomSeedForShaders)])
-	{
-		*outSeed = [object randomSeedForShaders];
-		return true;
-	}
+	// -randomSeedForShaders: the ship family's, found by name (the root's facade answered it for a
+	// ship's part, the by-name table's row since bead oo-9ht.39.7.3), and a ship's part's where there
+	// was no object to ask.
 	ShipEntity *ship = ShipPart(entity);
 	if (ship == nullptr)  return false;
 	*outSeed = ship->randomSeedForShaders();
@@ -435,7 +421,7 @@ bool ShaderRandomSeed(cxx::Entity *entity, uint32_t *outSeed)
 }
 
 
-const bool sShaderEntityHooksRegistered = (OOSetShaderEntityHooks({ &ShaderSuperTarget, &ShaderObject, &ShaderMemberBinding, &ShaderRandomSeed }), true);
+const bool sShaderEntityHooksRegistered = (OOSetShaderEntityHooks({ &ShaderSuperTarget, &ShaderClassName, &ShaderDescription, &ShaderMemberBinding, &ShaderRandomSeed }), true);
 
 }	// namespace
 

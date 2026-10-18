@@ -39,6 +39,7 @@
 #include "oofnd/String.hpp"
 #import "OODescription.h"
 #import "OOObjCPList.h"
+#include "EntityPListForeign.h"	// an entity's node (bead oo-dpyk8)
 
 
 // MARK: The classes, as far as the binding sees them ----------------------------------------------
@@ -350,6 +351,7 @@ ooscript::Object gOOEntityJSPrototype = nullptr;
 
 
 namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }	// Entity+ObjCBridge.mm's, defined below
+#import "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
 
 namespace {
 
@@ -444,7 +446,7 @@ void StationEntity::generateShipyard()
 	return _launched;
 }
 
-oo::PList StationEntity::launchIndependentShip(const std::string &role)  { _lastLaunch = "role " + role; return oo::PListObject(oo::ToObjC(_launched)); }
+oo::PList StationEntity::launchIndependentShip(const std::string &role)  { _lastLaunch = "role " + role; return oo::EntityObjectNode(_launched); }	// the C++ entity's node (bead oo-dpyk8)
 ::ShipEntity *StationEntity::launchDefenseShip()  { return launched("defense"); }
 ::ShipEntity *StationEntity::launchEscort()  { return launched("escort"); }
 ::ShipEntity *StationEntity::launchScavenger()  { return launched("scavenger"); }
@@ -456,10 +458,12 @@ oo::PList StationEntity::launchIndependentShip(const std::string &role)  { _last
 oo::PList StationEntity::launchPolice()
 {
 	_lastLaunch = "police";
-	std::vector<oo::ObjCRef<::Entity *>> ships;
-	if (_launched != nullptr)  ships.emplace_back(oo::ToObjC(_launched));
-	ships.emplace_back(oo::ToObjC(_launched));
-	return oo::PListFromObjects(ships);
+	// The launched ship's node twice, as the array of its object twice was; none for no ship (the
+	// nil object was left out). The C++ entity's nodes since bead oo-dpyk8.
+	oo::PList::Array ships;
+	if (_launched != nullptr)  ships.push_back(oo::EntityObjectNode(_launched));
+	if (_launched != nullptr)  ships.push_back(oo::EntityObjectNode(_launched));
+	return oo::PList(std::move(ships));
 }
 
 void StationEntity::setInterfaceDefinition(::OOJSInterfaceDefinition *definition, const std::string &key)
@@ -664,6 +668,7 @@ ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &p
 		return js != nullptr ? ooscript::stringValue(js) : ooscript::nullValue();
 	}
 	if (plist.isNumber())  return ooscript::numberValue(plist.doubleValue());
+	if (cxx::Entity *entity = oo::EntityIn(plist))  return OOJSValueFromNativeObject(context, oo::ToObjC(entity));	// an entity's node: its object's value (bead oo-dpyk8)
 	if (id object = oo::ObjectIn(plist))  return OOJSValueFromNativeObject(context, object);
 	if (const oo::PList::Array *array = plist.getIf<oo::PList::Array>())
 	{

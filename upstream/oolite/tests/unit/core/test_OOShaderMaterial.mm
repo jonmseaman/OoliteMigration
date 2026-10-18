@@ -289,7 +289,8 @@ const OOShaderEntityHooks *OOShaderEntityHooksIfSet() noexcept
 	static const OOShaderEntityHooks hooks =
 	{
 		[](cxx::Entity *) -> cxx::Entity * { return nullptr; },
-		[](cxx::Entity *) -> id { return nil; },
+		[](cxx::Entity *) -> std::string { return "(null)"; },	// its object's class and description (bead oo-dpyk8): nil's
+		[](cxx::Entity *) -> std::string { return "(null)"; },
 		[](cxx::Entity *, const char *, OOShaderMemberBinding *) -> bool { return false; },
 		[](cxx::Entity *, uint32_t *outSeed) -> bool { *outSeed = 12345; return true; },
 	};

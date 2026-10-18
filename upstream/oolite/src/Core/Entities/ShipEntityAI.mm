@@ -1326,7 +1326,7 @@ void ShipEntity::fightOrFleeMissile()
 	addDefenseTarget(missile);
 	
 	// Notify own ship script that we are being attacked.	
-	::ShipEntity *hunter = oo::ToShip((missile != nullptr ? missile->owner() : id{}));
+	::ShipEntity *hunter = oo::ToShip((missile != nullptr ? missile->owner() : nullptr));
 	doScriptEvent(OOJSID("shipBeingAttacked"), hunter);
 	if (hunter != nullptr)  hunter->doScriptEvent(OOJSID("shipAttackedOther"), this);
 	

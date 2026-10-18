@@ -72,7 +72,7 @@ T *NewTestPlayer()
 	oo::Ref<T> player = oo::makeRef<T>();
 	@autoreleasepool
 	{
-		[oo::NewEntityFacade(player) retain];
+		oo::RetainEntity(oo::MadeEntity(player));
 	}
 	return player.get();
 }
@@ -94,12 +94,12 @@ class TestUniverse : public Universe
 {
 public:
 	OOSystemID &_system = systemID;	// the universe's own state, which its getter answers (bead oo-ql9rn)
-	Entity			*_removed = {};
+	cxx::Entity			*_removed = {};
 
 	std::optional<std::string> getSystemName(OOSystemID sys, OOGalaxyID /*gnum*/) override	{ return "System " + std::to_string(sys); }	// getSystemName(sys) asks it
 	bool removeEntity(cxx::Entity *entity) override	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
 	{
-		_removed = oo::ToObjC(entity);
+		_removed = entity;
 		return YES;
 	}
 };
@@ -153,7 +153,7 @@ void SetUp()
 
 // --- Ivars the test sets and reads, and nothing else ----------------------------------------------
 
-void SetMass(Entity *e, GLfloat mass)		{ e->_cxxEntity->mass = mass; }
+void SetMass(cxx::Entity *e, GLfloat mass)		{ e->mass = mass; }
 
 // --------------------------------------------------------------------------------------------------
 
@@ -166,20 +166,20 @@ bool Near(double a, double b)
 
 // A ship: C++ since bead oo-9ht.144 (the wormhole calls its members), under its object
 // (oo::NewEntityFacade, autoreleased as the plain entity was), never set up.
-Entity *Ship(GLfloat mass)
+cxx::Entity *Ship(GLfloat mass)
 {
-	Entity *ship = oo::NewEntityFacade(oo::makeRef<::ShipEntity>());
+	cxx::Entity *ship = oo::MadeEntity(oo::makeRef<::ShipEntity>());
 	SetMass(ship, mass);
-	[ship setPosition:make_HPvector(1, 2, 3)];
+	ship->setPosition(make_HPvector(1, 2, 3));
 	return ship;
 }
 
 
 // alloc/init.../autorelease: a new C++ wormhole, owned by its autoreleased Objective-C object.
-WormholeEntity *ToNine(Entity *ship)
+WormholeEntity *ToNine(cxx::Entity *ship)
 {
 	oo::Ref<WormholeEntity> wh = oo::makeRef<WormholeEntity>();
-	(void)oo::NewEntityFacade(wh);
+	(void)oo::MadeEntity(wh);
 	wh->initWormholeTo(9, oo::ToShip(ship));
 	return wh.get();
 }
@@ -188,7 +188,7 @@ WormholeEntity *ToNine(Entity *ship)
 WormholeEntity *FromDict(const oo::PList &dict)
 {
 	oo::Ref<WormholeEntity> wh = oo::makeRef<WormholeEntity>();
-	(void)oo::NewEntityFacade(wh);
+	(void)oo::MadeEntity(wh);
 	wh->initWithDict(dict);
 	return wh.get();
 }
@@ -324,7 +324,7 @@ OO_TEST(collisions)
 		OO_CHECK(!wh->canCollide());
 		sPlayer->_coordinates = NSMakePoint(10, 20);
 
-		OO_CHECK(wh->checkCloseCollisionWith(oo::ToCxx(Ship(1.0f))));
+		OO_CHECK(wh->checkCloseCollisionWith(Ship(1.0f)));
 		OO_CHECK(!wh->checkCloseCollisionWith(oo::MadeEntity(oo::makeRef<TestEffect>())));
 	}
 }
@@ -341,7 +341,7 @@ OO_TEST(update)
 		OO_CHECK(sUniverse->_removed == nil);
 		sPlayer->_clock = 1600.0;						// past its expiry
 		saved->update(0.1);
-		OO_CHECK(sUniverse->_removed == oo::ToObjC(saved));
+		OO_CHECK(sUniverse->_removed == saved);
 
 		sPlayer->_clock = 1000.0;
 		WormholeEntity *wh = ToNine(Ship(1000.0f));
@@ -359,8 +359,8 @@ OO_TEST(suckInRefused)
 		SetUp();
 		WormholeEntity *wh = ToNine(Ship(1000.0f));
 		OO_CHECK(!wh->suckInShip(nullptr));
-		Entity *leaving = Ship(10.0f);
-		[leaving setStatus:STATUS_ENTERING_WITCHSPACE];
+		cxx::Entity *leaving = Ship(10.0f);
+		leaving->setStatus(STATUS_ENTERING_WITCHSPACE);
 		OO_CHECK(!wh->suckInShip(oo::ToShip(leaving)));
 		sUniverse->_system = 8;
 		OO_CHECK(!wh->suckInShip(oo::ToShip(Ship(10.0f))));
@@ -397,10 +397,10 @@ OO_TEST(description)
 	{
 		SetUp();
 		WormholeEntity *wh = ToNine(Ship(1000.0f));
-		const std::string description = oo::DescriptionOf(oo::ToObjC(wh));
+		const std::string description = oo::EntityDescription(wh);
 		OO_CHECK(description.find("destination: System 9 ttl: 50.00s arrival: 0000000:") != std::string::npos);
 		wh->setMisjump();
-		OO_CHECK(oo::DescriptionOf(oo::ToObjC(wh)).find("destination: Interstellar Space") != std::string::npos);
+		OO_CHECK(oo::EntityDescription(wh).find("destination: Interstellar Space") != std::string::npos);
 	}
 }
 
@@ -412,10 +412,10 @@ OO_TEST(facade)
 		SetUp();
 		WormholeEntity *wh = ToNine(Ship(1000.0f));
 		// Its Objective-C object is the root's facade since bead oo-9ht.112 (amendment oo-9ht.107).
-		::Entity *object = oo::ToObjC(wh);
-		OO_CHECK(object != nil && [object class] == [Entity class]);
+		cxx::Entity *object = wh;
+		OO_CHECK(object != nil);	// (and its object's class, the root facade: retired with the facade, bead oo-dpyk8, under oo-9n5p9)
 		// A C++ entity (amendment oo-0mxi), not an Objective-C entity's adapter.
-		OO_CHECK(dynamic_cast<WormholeEntity *>(oo::ToCxx(object)) == wh);
+		OO_CHECK(dynamic_cast<WormholeEntity *>(object) == wh);
 	}
 }
 
@@ -430,12 +430,12 @@ OO_TEST(jsExtensions)
 		WormholeEntity *wh = ToNine(Ship(1000.0f));
 		ooscript::ClassDef *jsClass = nullptr, *expectedClass = nullptr;
 		ooscript::Object prototype = nullptr, expectedPrototype = nullptr;
-		::Entity *object = oo::ToObjC(wh);	// what the engine asks (the root's facade since bead oo-9ht.112)
-		OOJSEntityGetJSClass(oo::ToCxx(object), &jsClass, &prototype);
+		cxx::Entity *object = wh;	// what the engine asks (the root's facade since bead oo-9ht.112)
+		OOJSEntityGetJSClass(object, &jsClass, &prototype);
 		OOJSWormholeGetJSClass(&expectedClass, &expectedPrototype);
 		OO_CHECK(jsClass != nullptr && jsClass == expectedClass && prototype == expectedPrototype);
-		OO_CHECK(OOJSEntityJSClassName(oo::ToCxx(object)) == std::optional<std::string>("Wormhole"));
-		OO_CHECK(OOJSEntityIsVisibleToScripts(oo::ToCxx(object)) == YES);
+		OO_CHECK(OOJSEntityJSClassName(object) == std::optional<std::string>("Wormhole"));
+		OO_CHECK(OOJSEntityIsVisibleToScripts(object) == YES);
 	}
 }
 

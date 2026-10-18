@@ -45,7 +45,8 @@ public:
 	virtual void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
 	virtual std::optional<std::string> jsClassName();
 	virtual bool isVisibleToScripts();
-	id owner();	// the binding calls it since bead oo-9ht.39.8.20 (its object's -owner did)
+	cxx::Entity *owner();	// the binding calls it since bead oo-9ht.39.8.20 (its object's -owner did); the C++ entity since bead oo-dpyk8
+	bool getIsShip();	// what its object's -isShip forwarded to (bead oo-dpyk8)
 };
 
 }	// namespace cxx
@@ -170,6 +171,7 @@ void ShipEntity::removeFlasher(OOFlasherEntity *flasher)  { _removedFlasher = fl
 
 void OOVisualEffectEntity::removeSubEntity(OOVisualEffectSubEntity *sub)  { _removed = sub; }
 namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }	// defined below
+#import "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
 void OOVisualEffectEntity::removeSubEntity(cxx::Entity *sub)  { _removed = oo::ToObjC(sub); }	// its object, as the binding passed it until bead oo-9ht.39.8.20
 
 
@@ -415,7 +417,12 @@ namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
 }
 
 // The owner its object's -owner answered until bead oo-9ht.39.8.20, on the same object field.
-id cxx::Entity::owner()  { return oo::ToObjC(this)->_owner; }
+cxx::Entity *cxx::Entity::owner()
+{
+	::Entity *object = (::Entity *)oo::ToObjC(this)->_owner;
+	return object != nil ? object->_cxxEntity.get() : nullptr;	// its C++ part (bead oo-dpyk8)
+}
+bool cxx::Entity::getIsShip()  { return [oo::ToObjC(this) isShip]; }
 
 
 // MARK: The context -------------------------------------------------------------------------------

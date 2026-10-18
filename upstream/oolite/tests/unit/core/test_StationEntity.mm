@@ -57,7 +57,7 @@ T *NewTestPlayer()
 	oo::Ref<T> player = oo::makeRef<T>();
 	@autoreleasepool
 	{
-		[oo::NewEntityFacade(player) retain];
+		oo::RetainEntity(oo::MadeEntity(player));
 	}
 	return player.get();
 }
@@ -130,7 +130,7 @@ TestStation *MakeStation(const std::string &key, oo::PList::Dict extra = {})
 	if (ship == nullptr)  return nullptr;
 	TestStation *station = static_cast<TestStation *>(ship);
 	station->initStationDefaults();
-	[oo::ToObjC(station) autorelease];
+	oo::AutoreleaseEntity(station);
 	return station;
 }
 
@@ -395,10 +395,10 @@ OO_TEST(objCStationPartIsAStation)
 	{
 		SetUp();
 		TestStation *station = MakeStation("crossing", { { "name", oo::PList(std::string("Dodo")) } });
-		Entity *asEntity = oo::ToObjC(station);
+		cxx::Entity *asEntity = station;
 		StationEntity *part = station;
 		OO_CHECK(part != nullptr);
-		OO_CHECK(dynamic_cast<StationEntity *>(oo::ToCxx(asEntity)) == part);
+		OO_CHECK(dynamic_cast<StationEntity *>(asEntity) == part);
 		OO_CHECK(oo::ToStation(asEntity) == part);
 		OO_CHECK(part->getHasBreakPattern() && part->getMarketCapacity() == MAIN_SYSTEM_MARKET_LIMIT);
 
@@ -407,7 +407,7 @@ OO_TEST(objCStationPartIsAStation)
 		SetExplicitlyUnpiloted(station, false);
 		OO_CHECK(!asShip->isUnpiloted());
 		cxx::Entity *asCxxEntity = part;
-		OO_CHECK(asCxxEntity->descriptionComponents() == [oo::ToObjC(station) cxx_descriptionComponents]);
+		OO_CHECK(asCxxEntity->descriptionComponents() == station->descriptionComponents());
 	}
 }
 
@@ -430,7 +430,7 @@ TestVisitor *MakeVisitor(const std::string &key, oo::PList::Dict extra = {})
 {
 	oo::PList::Dict dict{ { "unpiloted", oo::PList(true) } };
 	for (auto &entry : extra)  dict[entry.first] = entry.second;
-	return static_cast<TestVisitor *>(oo::ToShip([oo::NewShipObject(oo::makeRef<TestVisitor>(), key, oo::PList(std::move(dict))) autorelease]));
+	return static_cast<TestVisitor *>(oo::ToShip(oo::AutoreleaseEntity(oo::NewShipObject(oo::makeRef<TestVisitor>(), key, oo::PList(std::move(dict))))));
 }
 
 oo::WeakSet<cxx::Entity> *ShipsOnHold2(StationEntity *s)	{ return &s->_shipsOnHold; }
@@ -554,9 +554,9 @@ double LastPatrolReport3(StationEntity *s)			{ return s->last_patrol_report_time
 void SetLastPatrolReport3(StationEntity *s, double t)	{ s->last_patrol_report_time = t; }
 void SetEnergy3(cxx::Entity *e, GLfloat energy)		{ e->energy = energy; e->maxEnergy = 1000; }
 GLfloat Energy3(cxx::Entity *e)						{ return e->energy; }
-void SetPrimaryTarget3(ShipEntity *s, Entity *target)
+void SetPrimaryTarget3(ShipEntity *s, cxx::Entity *target)
 {
-	s->_primaryTarget = oo::WeakEntityRef(target);	// the entity's C++ part (bead oo-9ht.39.5.2)
+	s->_primaryTarget = oo::WeakRef<cxx::Entity>(target);	// the entity's C++ part (bead oo-9ht.39.5.2)
 }
 
 }	// namespace
@@ -591,7 +591,7 @@ OO_TEST(slice3AllegianceAndAlertLevel)
 		// A target at yellow or red alert is a hostile one; none, or green, is not.
 		OO_CHECK(!(station != nullptr ? station->hasHostileTarget() : false));
 		TestVisitor *intruder = MakeVisitor("intruder");
-		SetPrimaryTarget3(station, oo::ToObjC(intruder));
+		SetPrimaryTarget3(station, intruder);
 		OO_CHECK((station != nullptr ? station->hasHostileTarget() : false));
 		if (station != nullptr)  station->setAlertLevel(STATION_ALERT_LEVEL_GREEN, NO);
 		OO_CHECK(!(station != nullptr ? station->hasHostileTarget() : false));
@@ -648,7 +648,7 @@ OO_TEST(slice3MembersFromCxx)
 		part->setAllegiance(std::string("neutral"));
 		OO_CHECK(part->getAllegiance() == std::optional<std::string>("neutral"));
 		ShipEntity *asShip = part;
-		SetPrimaryTarget3(station, oo::ToObjC(MakeVisitor("foe")));
+		SetPrimaryTarget3(station, MakeVisitor("foe"));
 		OO_CHECK(asShip->hasHostileTarget());		// virtual: the station's
 		TestVisitor *friendly = MakeVisitor("friend");
 		if (friendly != nullptr)  friendly->setGroup((station != nullptr ? station->group() : (OOShipGroup *)nullptr));
@@ -680,14 +680,14 @@ OO_TEST(slice4LaunchersWithoutLaunchDock)
 	{
 		SetUp();
 		TestStation *station = MakeStation("launcher", { { "max_police", oo::PList(4) }, { "max_defense_ships", oo::PList(4) } });
-		SetPrimaryTarget3(station, oo::ToObjC(MakeVisitor("quarry")));
+		SetPrimaryTarget3(station, MakeVisitor("quarry"));
 		OO_CHECK(!(station != nullptr ? station->hasLaunchDock() : false));
 		const unsigned defenders = DefendersLaunched4(station);
 		const unsigned scavengers = ScavengersLaunched4(station);
 		const unsigned shuttles = DockedShuttles4(station);
 
 		OO_CHECK((station != nullptr ? station->launchIndependentShip("trader") : oo::PList()).isNull());
-		OO_CHECK(oo::ObjCRefsIn<::Entity *>((station != nullptr ? station->launchPolice() : oo::PList())).empty());
+		OO_CHECK(oo::EntitiesIn((station != nullptr ? station->launchPolice() : oo::PList())).empty());
 		OO_CHECK((station != nullptr ? station->launchDefenseShip() : (::ShipEntity *)nil) == nil);
 		OO_CHECK((station != nullptr ? station->launchScavenger() : (::ShipEntity *)nil) == nil);
 		OO_CHECK((station != nullptr ? station->launchMiner() : (::ShipEntity *)nil) == nil);
@@ -728,11 +728,11 @@ OO_TEST(slice4MembersFromCxx)
 	{
 		SetUp();
 		TestStation *station = MakeStation("member4");
-		SetPrimaryTarget3(station, oo::ToObjC(MakeVisitor("mark")));
+		SetPrimaryTarget3(station, MakeVisitor("mark"));
 		StationEntity *part = station;
 		const unsigned defenders = DefendersLaunched4(station);
 		OO_CHECK(part->launchIndependentShip("trader").isNull());
-		OO_CHECK(oo::ObjCRefsIn<::Entity *>(part->launchPolice()).empty());
+		OO_CHECK(oo::EntitiesIn(part->launchPolice()).empty());
 		OO_CHECK(part->launchDefenseShip() == nil && part->launchScavenger() == nil && part->launchMiner() == nil);
 		OO_CHECK(part->launchPirateShip() == nil && part->launchShuttle() == nil && part->launchEscort() == nil);
 		OO_CHECK(part->launchPatrol() == nil);

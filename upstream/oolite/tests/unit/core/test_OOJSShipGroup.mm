@@ -30,6 +30,7 @@
 #include "oofnd/String.hpp"
 #import "OODescription.h"
 #import "OOObjCPList.h"
+#include "EntityPListForeign.h"	// an entity's node (bead oo-dpyk8)
 
 
 // MARK: The classes, as far as the binding sees them ----------------------------------------------
@@ -130,6 +131,7 @@ bool ShipEntity::acceptAsEscort(::ShipEntity *other_ship)
 
 namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }	// Entity+ObjCBridge.mm's, which the test does not link
 ::Entity *oo::ToObjC(cxx::Entity *entity)  { return entity != nullptr ? entity->_object : nil; }
+#import "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
 
 
 @implementation Entity
@@ -235,6 +237,7 @@ ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &p
 		if (OOJSPrivateObject *glue = dynamic_cast<OOJSPrivateObject *>(node->get()))  return OOJSValueFromCxxObject(context, glue);
 		if (dynamic_cast<OONull *>(node->get()) != nullptr)  return ooscript::nullValue();	// OONull is null
 	}
+	if (cxx::Entity *entity = oo::EntityIn(plist))  return OOJSValueFromNativeObject(context, oo::ToObjC(entity));	// an entity's node: its object's value (bead oo-dpyk8)
 	if (id object = oo::ObjectIn(plist))  return OOJSValueFromNativeObject(context, object);
 	if (const oo::PList::Array *array = plist.getIf<oo::PList::Array>())
 	{

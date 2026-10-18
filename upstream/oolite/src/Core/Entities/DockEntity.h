@@ -143,13 +143,6 @@ public:
 
 namespace oo {
 
-// The dock whose Objective-C object is <entity> (a dock's object is a ship's since bead
-// oo-9ht.180): nullptr for nil or any other entity, where -isKindOfClass:[DockEntity class] was NO.
-inline ::DockEntity *ToDock(::Entity *entity)
-{
-	return dynamic_cast<::DockEntity *>(ToCxx(entity));
-}
-
 // The same of a C++ entity (what an entity's JS object holds since bead oo-9ht.39.3).
 inline ::DockEntity *ToDock(cxx::Entity *entity)
 {

@@ -51,8 +51,6 @@ class OOFlasherEntity;	// C++ only since bead oo-9ht.107
 	array was nil).
 */
 // A subentity, as the class names it from inside namespace cxx (where Entity is the C++ root).
-typedef Entity<OOSubEntity> OOVisualEffectSubEntity;
-typedef Entity<OOBeaconEntity> OOVisualEffectBeaconEntity;
 using OOVisualEffectSubEntities = std::vector<oo::EntityHold>;
 
 
@@ -91,13 +89,11 @@ public:
 
 	void clearSubEntities();
 	bool setUpSubEntities();
-	void removeSubEntity(OOVisualEffectSubEntity *sub);
 	void removeSubEntity(cxx::Entity *sub);	// the C++ sub-entity (bead oo-9ht.39.8.13; the list holds it since bead oo-xn1j1)
 	void setNoDrawDistance();
 	std::vector<oo::EntityHold> subEntities();	// a snapshot; empty before the first subentity (was nil)
 	NSUInteger subEntityCount();
 	std::optional<std::vector<oo::EntityHold>> visualEffectSubEntityEnumerator();	// the visual-effect subentities' objects; nullopt where the array was nil
-	bool hasSubEntity(OOVisualEffectSubEntity *sub);
 	bool hasSubEntity(cxx::Entity *sub);	// the C++ entity's (bead oo-w9pi2)
 
 	std::vector<oo::EntityHold> subEntityEnumerator();	// snapshot, same as subEntities()
@@ -238,23 +234,13 @@ private:
 
 namespace oo {
 
-// An effect's Objective-C object (bead oo-9ht.165): the root's facade (OOEntityWithDrawable's until bead oo-9ht.40) holding a new
-// effect, after the effect's initialiser body (OOVisualEffectEntity::initWithKey()); nil where the
-// body failed, as [[OOVisualEffectEntity alloc] cxx_initWithKey:definition:] answered. +1, as +alloc gave.
-::Entity *NewVisualEffectObject(const std::string &key, const oo::PList &dict) OO_RETURNS_RETAINED;
+// A new effect (bead oo-9ht.165) after the effect's initialiser body (OOVisualEffectEntity::initWithKey()),
+// made as its object was (oo::MadeEntityRetained(); bead oo-dpyk8); null where the body failed, as
+// [[OOVisualEffectEntity alloc] cxx_initWithKey:definition:] answered nil. +1, as +alloc gave.
+cxx::Entity *NewVisualEffect(const std::string &key, const oo::PList &dict);
 
-// The same effect, answered as its C++ entity (bead oo-9ht.39.26): its object is still +1; null where
-// NewVisualEffectObject() answered nil.
-inline cxx::Entity *NewVisualEffect(const std::string &key, const oo::PList &dict)  { return ToCxx(NewVisualEffectObject(key, dict)); }
-
-// The effect an object holds: nullptr for nil or another entity (what -isKindOfClass:
-// [OOVisualEffectEntity class] and the cast after it found).
-inline OOVisualEffectEntity *ToEffect(::Entity *entity)
-{
-	return dynamic_cast<OOVisualEffectEntity *>(ToCxx(entity));
-}
-
-// The same of a C++ entity (what an entity's JS object holds since bead oo-9ht.39.3).
+// The effect an entity is: nullptr for null or another entity (what -isKindOfClass:
+// [OOVisualEffectEntity class] and the cast after it found; bead oo-9ht.39.3).
 inline OOVisualEffectEntity *ToEffect(cxx::Entity *entity)
 {
 	return dynamic_cast<OOVisualEffectEntity *>(entity);

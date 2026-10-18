@@ -208,9 +208,6 @@ inline constexpr std::string_view PLANETINFO_INTERSTELLAR_KEY			= "interstellar 
 #endif
 
 
-// A beacon, which stays its Objective-C object (the beacon members of slice 9). Named at file scope
-// as OOWaypointEntity.h names it.
-typedef Entity <OOBeaconEntity> OOBeaconEntityObject;
 
 
 /*	The universe (beads oo-riqmz, oo-pas; the Objective-C facade went with bead oo-ql9rn, ADR-0056

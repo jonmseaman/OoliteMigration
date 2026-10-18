@@ -31,6 +31,7 @@
 #include "oofnd/PList.hpp"
 #include "oofnd/String.hpp"
 #import "OOObjCPList.h"
+#include "EntityPListForeign.h"	// an entity's node (bead oo-dpyk8)
 #import "OODescription.h"
 #include <cstring>
 
@@ -82,6 +83,9 @@ std::optional<std::string> cxx_OOStringFromJSValueEvenIfNull(ooscript::Context c
 }
 
 
+@class Entity;
+namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }	// below
+
 // A property list as JS: strings, numbers and booleans as themselves; an object node as the
 // string "<object CLASS>", which is enough to see which object came back.
 ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &plist)
@@ -93,7 +97,13 @@ ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &p
 		case oo::PList::Type::Integer:
 		case oo::PList::Type::Real:  return ooscript::numberValue(plist.doubleValue());
 		case oo::PList::Type::String:  text = *plist.getIf<std::string>();  break;
-		case oo::PList::Type::Object:  text = "<object " + oo::DescriptionOf([oo::ObjectIn(plist) class]) + ">";  break;
+		case oo::PList::Type::Object:
+		{
+			cxx::Entity *entity = oo::EntityIn(plist);	// an entity's node: its object (bead oo-dpyk8)
+			id object = entity != nullptr ? (id)oo::ToObjC(entity) : oo::ObjectIn(plist);
+			text = "<object " + oo::DescriptionOf([object class]) + ">";
+			break;
+		}
 		default:  return ooscript::nullValue();
 	}
 	return ooscript::stringValue(ooscript::newStringCopyN(context, text.data(), text.size()));
@@ -204,8 +214,8 @@ TestPlayerObject *sPlayerObject = nil;	// the player's Objective-C object
 namespace cxx { class Entity; }
 namespace oo {
 ::Entity *ToObjC(cxx::Entity *entity)  { return entity != nullptr ? (::Entity *)sPlayerObject : nil; }	// only the player crosses
-std::string EntityShortDescription(cxx::Entity *entity)  { return ShortDescriptionOf(ToObjC(entity)); }	// Entity+ObjCBridge.mm's (bead oo-9ht.39.24)
 }
+#import "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
 
 // OOEntityCalledByName.mm's (bead oo-9ht.39.7.2), which the test does not link: the test's entities
 // have no C++ table, so every name goes to the object by selector, the path callObjC() takes for a
@@ -465,10 +475,11 @@ OO_TEST(shipBecomesScriptTarget)
 		TestShip *ship = [[[TestShip alloc] init] autorelease];
 		gOOPlayer->scriptTarget = nullptr;
 		OO_CHECK_EQ(Call(ship, "answer"), "1");
-		OO_CHECK(gOOPlayer->scriptTarget == ship->_cxxEntity.get());
 		TestTarget *target = [[[TestTarget alloc] init] autorelease];
 		OO_CHECK_EQ(Call(target, "answer"), "42");
-		OO_CHECK(gOOPlayer->scriptTarget == ship->_cxxEntity.get());	// not a ship: unchanged
+		// (That a ship's Objective-C object, called by the object path, made its C++ ship the script
+		// target, and a non-ship left it: retired with the root facade, which was every entity's
+		// object, bead oo-dpyk8, under oo-9n5p9. The entity path's script target is checked below.)
 	}
 }
 
@@ -496,17 +507,18 @@ OO_TEST(entityMethodsByTable)
 #if OO_DEBUG
 // The player's conversion statistics by name (PS.callObjC("reportJSVectorStatistics")): the
 // categories' selectors, now C++ members reached through callObjC's name table (bead oo-9ht.15),
-// with the categories' signatures; only the player answers them.
+// with the categories' signatures; only the player answers them. The player is called as the C++
+// entity it is (its object, which the case called, went with the root facade, bead oo-dpyk8).
 OO_TEST(playerStatisticsByName)
 {
 	@autoreleasepool
 	{
 		Context();
 		sStatisticsCalls.clear();
-		OO_CHECK_EQ(Call(sPlayerObject, "reportJSVectorStatistics"), "vector statistics");
-		OO_CHECK_EQ(Call(sPlayerObject, "clearJSVectorStatistics"), "<unchanged>");	// void
-		OO_CHECK_EQ(Call(sPlayerObject, "reportJSQuaternionStatistics"), "quaternion statistics");
-		OO_CHECK_EQ(Call(sPlayerObject, { StringValue("clearJSQuaternionStatistics"), StringValue("x") }), "<unchanged>");	// parameters ignored
+		OO_CHECK_EQ(CallEntity(gOOPlayer, "reportJSVectorStatistics"), "vector statistics");
+		OO_CHECK_EQ(CallEntity(gOOPlayer, "clearJSVectorStatistics"), "<unchanged>");	// void
+		OO_CHECK_EQ(CallEntity(gOOPlayer, "reportJSQuaternionStatistics"), "quaternion statistics");
+		OO_CHECK_EQ(CallEntity(gOOPlayer, { StringValue("clearJSQuaternionStatistics"), StringValue("x") }), "<unchanged>");	// parameters ignored
 		OO_CHECK_EQ(sStatisticsCalls.size(), 4u);
 		if (sStatisticsCalls.size() == 4)
 		{

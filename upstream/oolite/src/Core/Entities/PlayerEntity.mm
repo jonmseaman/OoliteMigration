@@ -485,7 +485,7 @@ void PlayerEntity::deferredInit()
 	OOCAssert(gOOPlayer == this, "Expected only one PlayerEntity to exist at a time.");
 	// -[ShipEntity cxx_initWithKey:definition:] sent again: since bead oo-9ht.144 the root's -initWithCxxEntity:
 	// (what the ship's -initShipPart sent an initialised ship), then the ship's set-up.
-	OOCAssert([oo::ToObjC(this) initWithCxxEntity:this] == oo::ToObjC(this) && initShipSetUp(std::string(PLAYER_SHIP_DESC), oo::PList(oo::PList::Dict{})), "PlayerEntity requires -[ShipEntity cxx_initWithKey:definition:] to return unmodified self.");
+	OOCAssert(oo::EntityInitAgain(this) == this && initShipSetUp(std::string(PLAYER_SHIP_DESC), oo::PList(oo::PList::Dict{})), "PlayerEntity requires -[ShipEntity cxx_initWithKey:definition:] to return unmodified self.");
 
 	maxFieldOfView = MAX_FOV;
 #if OO_FOV_INFLIGHT_CONTROL_ENABLED

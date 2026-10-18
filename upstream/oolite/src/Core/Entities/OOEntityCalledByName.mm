@@ -257,7 +257,7 @@ Quaternion Facade_orientation(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getOrientation(); }
 void Facade_orientationChanged(cxx::Entity *entity)
 { if (entity == nullptr)  return; entity->orientationChanged(); }
-id Facade_owner(cxx::Entity *entity)
+cxx::Entity * Facade_owner(cxx::Entity *entity)	// the owner's C++ entity (its object's until bead oo-dpyk8)
 { if (entity == nullptr)  return {}; return entity->owner(); }
 cxx::Entity * Facade_parentEntity(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->parentEntity(); }
@@ -279,7 +279,7 @@ double Facade_speed(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->speed(); }
 OOEntityStatus Facade_status(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->status(); }
-id<OOWeakReferenceSupport> Facade_superShaderBindingTarget(cxx::Entity *entity)
+cxx::Entity * Facade_superShaderBindingTarget(cxx::Entity *entity)	// the parent's C++ entity (its object's until bead oo-dpyk8)
 { if (entity == nullptr)  return {}; return entity->superShaderBindingTarget(); }
 Vector Facade_terminatorThresholdVector(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; OOPlanetEntity *planet = dynamic_cast<OOPlanetEntity *>(entity); return planet != nullptr ? planet->terminatorThresholdVector() : kZeroVector; }

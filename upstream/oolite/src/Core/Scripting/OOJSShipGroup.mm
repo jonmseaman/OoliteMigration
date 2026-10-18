@@ -442,7 +442,7 @@ static bool ShipGroupAddShip(ooscript::Context context, ooscript::CallArgs &oojs
 				OOShipGroup			*cxxThatGroup = thatGroup;
 				if (((cxxThatGroup != nullptr) ? cxxThatGroup->count() : 0) > 1 && (((cxxThatGroup != nullptr) ? cxxThatGroup->leader() : nil) != nullptr ? ((cxxThatGroup != nullptr) ? cxxThatGroup->leader() : nil)->escortGroup() : (OOShipGroup *)nullptr) == thatGroup)	// new escort already escorting!
 				{
-					cxx_OOJSReportWarningForCaller(context, "ShipGroup", "addShip", "Ship %s cannot be assigned to two escort groups, ignoring.", oo::DescriptionOf(oo::ToObjC(ship)).c_str());
+					cxx_OOJSReportWarningForCaller(context, "ShipGroup", "addShip", "Ship %s cannot be assigned to two escort groups, ignoring.", oo::EntityDescription(ship).c_str());
 					OK = false;
 				}
 				else

@@ -110,7 +110,7 @@ class FakePlayer : public PlayerEntity	// C++ since bead oo-9ht.177 deleted the 
 {
 public:
 	oo::Ref<HeadUpDisplay> _hud;	// C++ since bead oo-mwd58
-	::Entity *_dockedStation = {}, *_compassTarget = {};
+	cxx::Entity *_dockedStation = {}, *_compassTarget = {};
 	BOOL _docked = {};
 	std::optional<std::string> _specialCargo, _fastA, _fastB;
 	std::string _primed;
@@ -119,8 +119,8 @@ public:
 	double _clockTime = {};
 	BOOL _contractsAccept = {};
 	std::vector<std::string> _log;
-	::Entity *_other = {};
-	std::vector<::Entity *> _compassCycle;
+	cxx::Entity *_other = {};
+	std::vector<cxx::Entity *> _compassCycle;
 	std::set<std::string> _equipment;
 	BOOL _hyperspaceMotor = {};
 
@@ -130,7 +130,7 @@ public:
 	bool isDocked() override	{ return _docked; }
 	// The station is C++ since bead oo-9ht.175: the stand-in entity's C++ part, which only crosses back to
 	// its Objective-C object (oo::ToObjC) in the code the test runs, as the stub universe's planet does.
-	::StationEntity * dockedStation() override	{ return static_cast<::StationEntity *>(oo::ToCxx(_dockedStation)); }
+	::StationEntity * dockedStation() override	{ return static_cast<::StationEntity *>(_dockedStation); }
 	std::optional<std::string> getSpecialCargo() override	{ return _specialCargo; }
 	::HeadUpDisplay * getHud() override	{ return _hud.get(); }
 	OOGalacticHyperspaceBehaviour getGalacticHyperspaceBehaviour() override	{ return GALACTIC_HYPERSPACE_BEHAVIOUR_FIXED_COORDINATES; }
@@ -158,7 +158,7 @@ public:
 	bool injectorsEngaged() override	{ return NO; }
 	bool getMassLockable() override	{ return YES; }
 	bool hyperspeedEngaged() override	{ return NO; }
-	cxx::Entity * getCompassTargetEntity() override	{ return oo::ToCxx(_compassTarget); }
+	cxx::Entity * getCompassTargetEntity() override	{ return _compassTarget; }
 	OOCompassMode getCompassMode() override	{ return COMPASS_MODE_PLANET; }
 	bool weaponsOnline() override	{ return YES; }
 	Vector viewpointOffsetAft() override	{ return make_vector(0, 0, -1); }
@@ -301,7 +301,7 @@ T *NewTestPlayer()
 	oo::Ref<T> player = oo::makeRef<T>();
 	@autoreleasepool
 	{
-		[oo::NewEntityFacade(player) retain];
+		oo::RetainEntity(oo::MadeEntity(player));
 	}
 	return player.get();
 }
@@ -349,10 +349,10 @@ void SetUp()
 	sPlayer->_hud->initWithDictionary(oo::PList(oo::PList::Dict{}), std::string("test-hud.plist"));
 	@autoreleasepool
 	{
-		sPlayer->_dockedStation = [oo::NewEntityFacade(oo::makeRef<TestEntity>()) retain];	// +1, as +alloc's was
-		sPlayer->_other = [oo::NewEntityFacade(oo::makeRef<TestEntity>()) retain];
+		sPlayer->_dockedStation = oo::RetainEntity(oo::MadeEntity(oo::makeRef<TestEntity>()));	// +1, as +alloc's was
+		sPlayer->_other = oo::RetainEntity(oo::MadeEntity(oo::makeRef<TestEntity>()));
 	}
-	[sPlayer->_dockedStation setPosition:make_HPvector(5, 0, 0)];
+	sPlayer->_dockedStation->setPosition(make_HPvector(5, 0, 0));
 	sPlayer->_docked = YES;
 	sPlayer->_specialCargo = "Ten tonnes of rare orchids";
 	sPlayer->_fastA = "EQ_CLOAKING_DEVICE";

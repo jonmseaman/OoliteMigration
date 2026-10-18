@@ -63,7 +63,7 @@ struct Sample
 {
 	const char		*kind;
 	cxx::Entity		*entity;
-	::Entity		*object;
+	cxx::Entity		*object;
 };
 
 
@@ -71,7 +71,7 @@ template <class T>
 Sample Make(const char *kind)
 {
 	oo::Ref<T> entity = oo::makeRef<T>();
-	::Entity *object = [oo::NewEntityFacade(entity) retain];
+	cxx::Entity *object = oo::RetainEntity(oo::MadeEntity(entity));
 	return Sample{ kind, entity.get(), object };
 }
 
@@ -95,14 +95,6 @@ const std::vector<Sample> &Samples()
 	return samples;
 }
 
-
-// The names -respondsToSelector: answers by rules of their own, before the name sets.
-const std::set<std::string> kOwnRules =
-{
-	"airColorAsVector", "illuminationColorAsVector", "airColorMixRatio", "airDensity", "terminatorThresholdVector",
-	"compareBeaconCodeWith:", "beaconCode", "setBeaconCode:", "beaconLabel", "setBeaconLabel:", "isBeacon",
-	"beaconDrawable", "prevBeacon", "nextBeacon", "setPrevBeacon:", "setNextBeacon:", "isJammingScanning",
-};
 
 }	// namespace
 
@@ -147,88 +139,12 @@ OO_TEST(appliesToIsTheFacadesAnswer)
 }
 
 
-// Every facade method the table does not hold is answered for every entity: the facade answered
-// no other name by the entity's kind, so the table holds them all.
-OO_TEST(noOtherNameDependsOnTheEntity)
-{
-	@autoreleasepool
-	{
-		std::string gated;
-		unsigned count = 0;
-		Method *methods = class_copyMethodList([::Entity class], &count);
-		for (unsigned i = 0; i < count; i++)
-		{
-			SEL selector = method_getName(methods[i]);
-			const std::string name = sel_getName(selector);
-			if (oo::EntityByNameRowNamed(name) != nullptr || kOwnRules.contains(name))  continue;
-			for (const Sample &sample : Samples())
-			{
-				if (![sample.object respondsToSelector:selector] || !oo::EntityRespondsToName(sample.entity, name))
-				{
-					gated += " " + name + "/" + sample.kind;
-				}
-			}
-		}
-		std::free(methods);
-		OO_CHECK(count + oo::EntityByNameRows().size() > 1000);	// the facade's methods and the rows that were its categories' (bead oo-9ht.39.7.3)
-		OO_CHECK_EQ(gated, std::string());
-	}
-}
+// noOtherNameDependsOnTheEntity (every facade method the table does not hold is answered for every
+// entity, read from the facade's method list and its -respondsToSelector:) retired with the facade
+// (bead oo-dpyk8, under oo-9n5p9): a façade case.
 
-// The names the entity's object answered outside the by-name table (bead oo-9ht.39.9): what
-// OOCallByName did with each, read from the facade's methods and its -respondsToSelector: as the
-// call read them (OOCallByName.mm ResultKind(), ArgumentKind()).
+// The log the calls below write.
 namespace {
-
-std::string Owned(char *encoding)
-{
-	std::string result = encoding != nullptr ? encoding : "";
-	std::free(encoding);
-	return result;
-}
-
-
-std::string_view Unqualified(std::string_view encoding)
-{
-	while (!encoding.empty() && std::strchr("rnNoORV", encoding.front()) != nullptr)  encoding.remove_prefix(1);
-	return encoding;
-}
-
-
-// Whether OOCallByName called the method with no argument (else it logged its signature).
-bool CalledWithNoArgument(Method method)
-{
-	static const std::string plistResult = Owned(method_copyReturnType(class_getInstanceMethod(objc_getClass("OOCallByNameSignatures"), OOSelectorFromName("resultPList"))));
-	if (method_getNumberOfArguments(method) != 2)  return false;
-	const std::string result = Owned(method_copyReturnType(method));
-	const std::string_view type = Unqualified(result);
-	return type == "v" || type == "@" || result == plistResult || (type.size() == 1 && std::strchr("cCsSiIlLqQfdB", type.front()) != nullptr);
-}
-
-
-// Every name of the facade's class and its root classes, and the facade rows'.
-std::set<std::string> FacadeNames()
-{
-	std::set<std::string> names;
-	for (Class c = [::Entity class]; c != Nil; c = class_getSuperclass(c))
-	{
-		unsigned count = 0;
-		Method *methods = class_copyMethodList(c, &count);
-		for (unsigned i = 0; i < count; i++)  names.insert(sel_getName(method_getName(methods[i])));
-		std::free(methods);
-	}
-	for (const OOEntityFacadeRow &row : oo::EntityFacadeRows())  names.insert(row.name);
-	return names;
-}
-
-
-// The facade category methods deleted before the facade (bead oo-9ht.186, the cascade's
-// -isCascadeWeapon, which every entity's object answered): their rows stay, answered by the C++ part.
-bool DeletedCategoryName(std::string_view name)
-{
-	return name == "isCascadeWeapon";
-}
-
 
 std::vector<std::string> gLog;
 
@@ -251,48 +167,10 @@ int LogLinesContaining(std::string_view text)
 }	// namespace
 
 
-// The table holds exactly the names the facade's object answered outside the by-name table, for
-// exactly the entities it answered them for, each with its method's type encoding and what
-// OOCallByName did with it (a facade-contract check: it goes with the facade, oo-9ht.39).
-OO_TEST(objectNamesAreTheFacadesAnswers)
-{
-	@autoreleasepool
-	{
-		std::string different;
-		const std::set<std::string> names = FacadeNames();
-		for (const OOEntityObjectName &row : oo::EntityObjectNames())
-		{
-			if (!names.contains(row.name))  different += std::string(" notTheFacades:") + row.name;
-			if (DeletedCategoryName(row.name))
-			{
-				// its method went with its category (bead oo-9ht.186): the row stays, called, with its body
-				if (row.kind != kOOEntityObjectCalled || oo::EntityFacadeRowNamed(row.name) == nullptr || oo::EntityFacadeRowNamed(row.name)->typed == nullptr)  different += std::string(" deleted:") + row.name;
-				continue;
-			}
-			Method method = class_getInstanceMethod([::Entity class], OOSelectorFromName(row.name));
-			if (method == nullptr)  { different += std::string(" noMethod:") + row.name; continue; }
-			if (row.encoding != std::string(method_getTypeEncoding(method)))  different += std::string(" encoding:") + row.name;
-			const bool facadeRow = oo::EntityFacadeRowNamed(row.name) != nullptr;
-			const OOEntityObjectNameKind kind = !CalledWithNoArgument(method) ? kOOEntityObjectSignature : (facadeRow ? kOOEntityObjectCalled : kOOEntityObjectLifetime);
-			if (row.kind != kind)  different += std::string(" kind:") + row.name;
-			if (row.kind == kOOEntityObjectCalled && oo::EntityFacadeRowNamed(row.name)->typed == nullptr)  different += std::string(" noBody:") + row.name;
-		}
-		for (const std::string &name : names)
-		{
-			if (oo::EntityByNameRowNamed(name) != nullptr)  continue;
-			const OOEntityObjectName *row = oo::EntityObjectNameNamed(name);
-			SEL selector = OOSelectorFromName(name.c_str());
-			for (const Sample &sample : Samples())
-			{
-				const bool answered = DeletedCategoryName(name) || (class_getInstanceMethod(object_getClass(sample.object), selector) != nullptr && [sample.object respondsToSelector:selector]);
-				const bool tabled = row != nullptr && (row->answers == nullptr || row->answers(sample.entity));
-				if (answered != tabled)  different += " " + name + "/" + sample.kind;
-			}
-		}
-		OO_CHECK_EQ(different, std::string());
-		OO_CHECK(oo::EntityObjectNames().size() > 150);
-	}
-}
+// objectNamesAreTheFacadesAnswers (the table holds exactly the names the facade's object answered
+// outside the by-name table, read from the facade's methods and its -respondsToSelector:; a
+// facade-contract check, which went with the facade) retired with the facade (bead oo-dpyk8, under
+// oo-9n5p9).
 
 
 // A name outside the by-name table is answered without the object (bead oo-9ht.39.9): (a) a method

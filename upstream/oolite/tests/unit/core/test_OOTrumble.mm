@@ -615,6 +615,8 @@ OO_TEST(cxxClass)
 
 // The pods' objects (Entity+ObjCBridge.mm's, which the test does not link).
 namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
+#define OO_ENTITY_HELPERS_STAND_IN_NO_DESCRIPTIONS 1	// the test links no OODescription.mm
+#import "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
 ::Entity *oo::ToObjC(cxx::Entity *entity)
 {
 	auto found = sObjects.find(entity);

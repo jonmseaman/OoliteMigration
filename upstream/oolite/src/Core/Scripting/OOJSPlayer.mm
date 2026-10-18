@@ -791,16 +791,16 @@ static bool PlayerSetEscapePodDestination(ooscript::Context context, ooscript::C
 	if (oojsArgs.count() == 1)
 	{
 		destValue = cxx_OOJSPListFromJSValue(context, OOJS_ARGV[0]);
-		id destObject = oo::ObjectIn(destValue);
+		cxx::Entity *destEntity = oo::EntityIn(destValue);	// the entity node's (its object until bead oo-dpyk8)
 		
 		if (destValue.isNull())
 		{
 			if (player != nullptr)  player->setDockTarget(NULL);
 			OK = true;
 		}
-		else if ((oo::ToShip(destObject) != nullptr) && [destObject isStation])
+		else if ((oo::ToShip(destEntity) != nullptr) && destEntity->getIsStation())	// what -isStation forwarded to
 		{
-			if (player != nullptr)  player->setDockTarget(oo::ToShip(destObject));
+			if (player != nullptr)  player->setDockTarget(oo::ToShip(destEntity));
 			OK = true;
 		}
 		else if (const std::string *destString = destValue.getIf<std::string>())

@@ -846,8 +846,7 @@ double OOStellarBodyRadius(cxx::Entity *body)
 	if (body == nullptr)  return 0.0;
 	if (OOSunEntity *sun = dynamic_cast<OOSunEntity *>(body))  return sun->radius();
 	if (OOPlanetEntity *planet = dynamic_cast<OOPlanetEntity *>(body))  return planet->radius();
-	::Entity<OOStellarBody> *object = (::Entity<OOStellarBody> *)oo::ToObjC(body);	// any other body by selector
-	return [object radius];
+	return 0.0;	// any other body: none in the game; its object did not answer -radius (bead oo-dpyk8)
 }
 
 
@@ -856,6 +855,5 @@ OOStellarBodyType OOStellarBodyPlanetType(cxx::Entity *body)
 	if (body == nullptr)  return (OOStellarBodyType)0;
 	if (OOSunEntity *sun = dynamic_cast<OOSunEntity *>(body))  return sun->planetType();
 	if (OOPlanetEntity *planet = dynamic_cast<OOPlanetEntity *>(body))  return planet->planetType();
-	::Entity<OOStellarBody> *object = (::Entity<OOStellarBody> *)oo::ToObjC(body);	// any other body by selector
-	return [object planetType];
+	return (OOStellarBodyType)0;	// any other body: none in the game; its object did not answer -planetType (bead oo-dpyk8)
 }

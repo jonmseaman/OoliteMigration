@@ -262,6 +262,7 @@ void ShipEntity::setAIScript(const std::string &aiString)	{ static_cast<TestShip
 
 namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }	// Entity+ObjCBridge.mm's, which the test does not link
 ::Entity *oo::ToObjC(cxx::Entity *entity)  { return entity != nullptr ? entity->_object : nil; }
+#import "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
 
 // OOEntityCalledByName.mm's (bead oo-9ht.39.7.1), which the test does not link: the test ship has
 // no C++ table, so every name goes to its object, the path that file takes for an untabled name.

@@ -58,7 +58,7 @@ T *NewTestPlayer()
 	oo::Ref<T> player = oo::makeRef<T>();
 	@autoreleasepool
 	{
-		[oo::NewEntityFacade(player) retain];
+		oo::RetainEntity(oo::MadeEntity(player));
 	}
 	return player.get();
 }
@@ -85,12 +85,12 @@ TestPlayer *SetUp()
 
 
 // What the universe does: a dust entity, and its root facade.
-Entity *MakeDust(DustEntity **outDust)
+cxx::Entity *MakeDust(DustEntity **outDust)
 {
 	oo::Ref<DustEntity> dust = oo::makeRef<DustEntity>();
 	dust->init();
 	*outDust = dust.get();
-	return oo::NewEntityFacade(dust);
+	return oo::MadeEntity(dust);
 }
 
 
@@ -110,8 +110,8 @@ OO_TEST(init)
 	{
 		SetUp();
 		DustEntity *dust = nullptr;
-		Entity *object = MakeDust(&dust);
-		OO_CHECK(object != nil && dust != nullptr && dynamic_cast<DustEntity *>(oo::ToCxx(object)) == dust);
+		cxx::Entity *object = MakeDust(&dust);
+		OO_CHECK(object != nil && dust != nullptr && dynamic_cast<DustEntity *>(object) == dust);
 		OO_CHECK(dust->status() == STATUS_ACTIVE);
 		OO_CHECK(dust->collisionRadius() == DUST_SCALE && !dust->canCollide());
 		OO_CHECK(ColorIs(dust->dustColor(), 0.5f, 1.0f, 1.0f, 1.0f));
@@ -135,10 +135,10 @@ OO_TEST(cameraRelativePosition)
 	{
 		TestPlayer *player = SetUp();
 		DustEntity *dust = nullptr;
-		Entity *object = MakeDust(&dust);
+		cxx::Entity *object = MakeDust(&dust);
 		player->_viewpoint = make_HPvector(2500, -100, 4000);
 		dust->updateCameraRelativePosition();
-		Vector relative = [object cameraRelativePosition];
+		Vector relative = object->getCameraRelativePosition();
 		OO_CHECK(relative.x == -500 && relative.y == 100 && relative.z == 0);
 
 		// update(): puts the dust at zero distance (it is always around the player).

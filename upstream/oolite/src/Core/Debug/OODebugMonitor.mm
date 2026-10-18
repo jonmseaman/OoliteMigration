@@ -400,7 +400,7 @@ void OODebugMonitor::dumpEntity(cxx::Entity *entity, EntityDumpState *state, boo
 
 	state->seenCount++;
 
-	size_t entitySize = [oo::ToObjC(entity) oo_objectSize];	// its object's size (the object goes at 5k.4, oo-dpyk8)
+	size_t entitySize = oo::EntityObjectSize(entity);	// its object's size, as -oo_objectSize answered (bead oo-dpyk8)
 	size_t drawableSize = 0;
 	// -isKindOfClass:[OOEntityWithDrawable class] and -drawable until bead oo-9ht.40 deleted that facade
 	OOEntityWithDrawable *withDrawable = dynamic_cast<OOEntityWithDrawable *>(entity);
@@ -429,7 +429,7 @@ void OODebugMonitor::dumpEntity(cxx::Entity *entity, EntityDumpState *state, boo
 		extra += ", drawable: " + SizeString(drawableSize);
 	}
 
-	writeMemStat(oo::str::format("%s: %s%s", oo::ShortDescriptionOf(oo::ToObjC(entity)).c_str(), SizeString(entitySize)	/* spelled out: the test links without Entity+ObjCBridge.mm */.c_str(), extra.c_str()));
+	writeMemStat(oo::str::format("%s: %s%s", oo::EntityShortDescription(entity).c_str(), SizeString(entitySize).c_str(), extra.c_str()));
 
 	state->totalEntityObjSize += entitySize;
 	state->totalDrawableSize += drawableSize;

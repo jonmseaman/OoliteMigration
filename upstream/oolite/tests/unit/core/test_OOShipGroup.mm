@@ -103,8 +103,10 @@ void ShipEntity::setOwner(cxx::Entity *who_owns_entity)
 	lastOwner = who_owns_entity;
 }
 
-namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }	// Entity+ObjCBridge.mm's, which the test does not link
+namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }	// the test's (the game's went with its facade, bead oo-dpyk8)
 ::Entity *oo::ToObjC(cxx::Entity *entity)  { return entity != nullptr ? entity->_object : nil; }
+
+#import "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
 
 
 namespace {

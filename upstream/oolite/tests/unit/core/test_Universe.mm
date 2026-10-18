@@ -51,7 +51,7 @@ Universe *NewUniverse()
 // The members other classes read directly: through the facade's _cxxUniverse after the conversion
 // (ADR-0056 amendment oo-riqmz), the universe's own since bead oo-ql9rn.
 unsigned EntityListCount(Universe *u)		{ return u->n_entities; }
-Entity *SortedEntity(Universe *u, unsigned i)	{ return oo::ToObjC(u->sortedEntities[i]); }
+cxx::Entity *SortedEntity(Universe *u, unsigned i)	{ return u->sortedEntities[i]; }
 int CursorRow(Universe *u)					{ return u->cursor_row; }
 GLfloat StarsAmbient(Universe *u, int i)	{ return u->stars_ambient[i]; }
 bool ListHeadsEmpty(Universe *u)			{ return u->x_list_start == nil && u->y_list_start == nil && u->z_list_start == nil; }
@@ -506,7 +506,7 @@ OO_TEST(slice13EntityLookUp)
 		OO_CHECK(u->entityForUniversalID(NO_TARGET) == nil);
 		OO_CHECK(u->entityForUniversalID(MIN_ENTITY_UID + 1) == nil);
 		OO_CHECK(u->entityForUniversalID(MAX_ENTITY_UID + 1) == nil);
-		OO_CHECK(oo::ToObjC(u->entityForUniversalID(100)) == oo::ToObjC(PLAYER));
+		OO_CHECK(u->entityForUniversalID(100) == PLAYER);
 
 		// No demo ships among no entities: the demo ship is cleared.
 		u->removeDemoShips();
@@ -537,7 +537,7 @@ T *NewTestPlayer()
 	oo::Ref<T> player = oo::makeRef<T>();
 	@autoreleasepool
 	{
-		[oo::NewEntityFacade(player) retain];
+		oo::RetainEntity(oo::MadeEntity(player));
 	}
 	return player.get();
 }
@@ -554,21 +554,21 @@ void SetUpTestPlayer()
 }
 
 
-void SetSortedEntities(Universe *u, std::initializer_list<Entity *> list)
+void SetSortedEntities(Universe *u, std::initializer_list<cxx::Entity *> list)
 {
 	unsigned n = 0;
-	for (Entity *e : list)  u->sortedEntities[n++] = oo::ToCxx(e);
+	for (cxx::Entity *e : list)  u->sortedEntities[n++] = e;
 	u->sortedEntities[n] = nil;
 	u->n_entities = n;
 }
 
 
-Entity *MakeEntity(HPVector position, GLfloat radius)
+cxx::Entity *MakeEntity(HPVector position, GLfloat radius)
 {
 	SetUpTestPlayer();
-	Entity *entity = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
-	[entity setPosition:position];
-	[entity setCollisionRadius:radius];
+	cxx::Entity *entity = oo::MadeEntity(oo::makeRef<cxx::Entity>());
+	entity->setPosition(position);
+	entity->setCollisionRadius(radius);
 	return entity;
 }
 
@@ -605,31 +605,31 @@ OO_TEST(slice14ClearRoute)
 	@autoreleasepool
 	{
 		Universe *u = NewUniverse();
-		Entity *e1 = MakeEntity(make_HPvector(0, 0, 0), 10);
+		cxx::Entity *e1 = MakeEntity(make_HPvector(0, 0, 0), 10);
 		HPVector p2 = make_HPvector(0, 0, 1000);
 
 		// Nothing else in the universe: clear, no hazard, the destination is safe as it is.
 		SetSortedEntities(u, { e1 });
-		OO_CHECK(u->isVectorClearFromEntity(oo::ToCxx(e1), 0, p2));
-		OO_CHECK(u->hazardOnRouteFromEntity(oo::ToCxx(e1), 0, p2) == nullptr);
-		OO_CHECK(HPvector_equal(u->getSafeVectorFromEntity(oo::ToCxx(e1), 0, p2), p2));
+		OO_CHECK(u->isVectorClearFromEntity(e1, 0, p2));
+		OO_CHECK(u->hazardOnRouteFromEntity(e1, 0, p2) == nullptr);
+		OO_CHECK(HPvector_equal(u->getSafeVectorFromEntity(e1, 0, p2), p2));
 
 		// An entity off the route, behind the start, or beyond the destination is no hazard.
-		Entity *aside = MakeEntity(make_HPvector(500, 0, 500), 50);
-		Entity *behind = MakeEntity(make_HPvector(0, 0, -300), 50);
-		Entity *beyond = MakeEntity(make_HPvector(0, 0, 1500), 50);
+		cxx::Entity *aside = MakeEntity(make_HPvector(500, 0, 500), 50);
+		cxx::Entity *behind = MakeEntity(make_HPvector(0, 0, -300), 50);
+		cxx::Entity *beyond = MakeEntity(make_HPvector(0, 0, 1500), 50);
 		SetSortedEntities(u, { e1, aside, behind, beyond });
-		OO_CHECK(u->isVectorClearFromEntity(oo::ToCxx(e1), 0, p2));
-		OO_CHECK(u->hazardOnRouteFromEntity(oo::ToCxx(e1), 0, p2) == nullptr);
-		OO_CHECK(HPvector_equal(u->getSafeVectorFromEntity(oo::ToCxx(e1), 0, p2), p2));
+		OO_CHECK(u->isVectorClearFromEntity(e1, 0, p2));
+		OO_CHECK(u->hazardOnRouteFromEntity(e1, 0, p2) == nullptr);
+		OO_CHECK(HPvector_equal(u->getSafeVectorFromEntity(e1, 0, p2), p2));
 
 		// An entity nothing collides with is no hazard either.
-		Entity *ghost = oo::NewEntityFacade(oo::makeRef<Slice14GhostEntity>());
-		[ghost setPosition:make_HPvector(0, 0, 500)];
-		[ghost setCollisionRadius:50];
+		cxx::Entity *ghost = oo::MadeEntity(oo::makeRef<Slice14GhostEntity>());
+		ghost->setPosition(make_HPvector(0, 0, 500));
+		ghost->setCollisionRadius(50);
 		SetSortedEntities(u, { e1, ghost });
-		OO_CHECK(u->isVectorClearFromEntity(oo::ToCxx(e1), 0, p2));
-		OO_CHECK(u->hazardOnRouteFromEntity(oo::ToCxx(e1), 0, p2) == nullptr);
+		OO_CHECK(u->isVectorClearFromEntity(e1, 0, p2));
+		OO_CHECK(u->hazardOnRouteFromEntity(e1, 0, p2) == nullptr);
 		u->n_entities = 0;
 	}
 }
@@ -640,26 +640,26 @@ OO_TEST(slice14Hazard)
 	@autoreleasepool
 	{
 		Universe *u = NewUniverse();
-		Entity *e1 = MakeEntity(make_HPvector(0, 0, 0), 10);
-		Entity *rock = MakeEntity(make_HPvector(20, 0, 500), 50);
+		cxx::Entity *e1 = MakeEntity(make_HPvector(0, 0, 0), 10);
+		cxx::Entity *rock = MakeEntity(make_HPvector(20, 0, 500), 50);
 		HPVector p2 = make_HPvector(0, 0, 1000);
 		SetSortedEntities(u, { e1, rock });
 
-		OO_CHECK(!u->isVectorClearFromEntity(oo::ToCxx(e1), 0, p2));
-		OO_CHECK(u->hazardOnRouteFromEntity(oo::ToCxx(e1), 0, p2) == oo::ToCxx(rock));
+		OO_CHECK(!u->isVectorClearFromEntity(e1, 0, p2));
+		OO_CHECK(u->hazardOnRouteFromEntity(e1, 0, p2) == rock);
 
 		// The safe vector steers short of the rock and away from the side it is on.
-		HPVector safe = u->getSafeVectorFromEntity(oo::ToCxx(e1), 0, p2);
+		HPVector safe = u->getSafeVectorFromEntity(e1, 0, p2);
 		OO_CHECK(!HPvector_equal(safe, p2));
 		OO_CHECK(safe.z < 500 && safe.x < 20);
 
 		// Within range of the destination already: clear, whatever is in the way.
-		OO_CHECK(u->isVectorClearFromEntity(oo::ToCxx(e1), 2000, p2));
-		OO_CHECK(u->hazardOnRouteFromEntity(oo::ToCxx(e1), 2000, p2) == nullptr);
+		OO_CHECK(u->isVectorClearFromEntity(e1, 2000, p2));
+		OO_CHECK(u->hazardOnRouteFromEntity(e1, 2000, p2) == nullptr);
 
 		// Stopping short of the rock: the route is clear.
-		OO_CHECK(u->isVectorClearFromEntity(oo::ToCxx(e1), 600, p2));
-		OO_CHECK(u->hazardOnRouteFromEntity(oo::ToCxx(e1), 600, p2) == nullptr);
+		OO_CHECK(u->isVectorClearFromEntity(e1, 600, p2));
+		OO_CHECK(u->hazardOnRouteFromEntity(e1, 600, p2) == nullptr);
 		u->n_entities = 0;
 	}
 }
@@ -679,18 +679,18 @@ public:
 
 namespace {
 
-Entity *MakeShipLike(HPVector position, GLfloat radius)
+cxx::Entity *MakeShipLike(HPVector position, GLfloat radius)
 {
-	Entity *entity = oo::NewEntityFacade(oo::makeRef<Slice15ShipLike>());
-	[entity setPosition:position];
-	[entity setCollisionRadius:radius];
+	cxx::Entity *entity = oo::MadeEntity(oo::makeRef<Slice15ShipLike>());
+	entity->setPosition(position);
+	entity->setCollisionRadius(radius);
 	return entity;
 }
 
 
 BOOL IsFarPredicate(cxx::Entity *entity, void *parameter)	// x beyond *(double *)parameter
 {
-	return [oo::ToObjC(entity) position].x > *(double *)parameter;
+	return entity->getPosition().x > *(double *)parameter;
 }
 
 }	// namespace
@@ -701,40 +701,40 @@ OO_TEST(slice15CountAndFind)
 	@autoreleasepool
 	{
 		Universe *u = NewUniverse();
-		Entity *a = MakeEntity(make_HPvector(0, 0, 0), 10);
-		Entity *b = MakeEntity(make_HPvector(100, 0, 0), 10);
-		Entity *c = MakeShipLike(make_HPvector(1000, 0, 0), 10);
+		cxx::Entity *a = MakeEntity(make_HPvector(0, 0, 0), 10);
+		cxx::Entity *b = MakeEntity(make_HPvector(100, 0, 0), 10);
+		cxx::Entity *c = MakeShipLike(make_HPvector(1000, 0, 0), 10);
 		SetSortedEntities(u, { a, b, c });
 
 		// No predicate is every entity; no entity counts from the origin; the reference itself never counts.
 		OO_CHECK(u->countEntitiesMatchingPredicate(NULL, NULL, -1, nullptr) == 3);
-		OO_CHECK(u->countEntitiesMatchingPredicate(NULL, NULL, -1, oo::ToCxx(a)) == 2);
+		OO_CHECK(u->countEntitiesMatchingPredicate(NULL, NULL, -1, a) == 2);
 		// The range reaches the other entity's surface: b's is 90 away from a, c's 990.
-		OO_CHECK(u->countEntitiesMatchingPredicate(NULL, NULL, 95, oo::ToCxx(a)) == 1);
-		OO_CHECK(u->countEntitiesMatchingPredicate(NULL, NULL, 85, oo::ToCxx(a)) == 0);
+		OO_CHECK(u->countEntitiesMatchingPredicate(NULL, NULL, 95, a) == 1);
+		OO_CHECK(u->countEntitiesMatchingPredicate(NULL, NULL, 85, a) == 0);
 		double limit = 50;
 		OO_CHECK(u->countEntitiesMatchingPredicate(IsFarPredicate, &limit, -1, nullptr) == 2);
 
 		// Ships: only c.
-		OO_CHECK(u->countShipsMatchingPredicate(NULL, NULL, -1, oo::ToCxx(a)) == 1);
+		OO_CHECK(u->countShipsMatchingPredicate(NULL, NULL, -1, a) == 1);
 		OO_CHECK(u->countShipsMatchingPredicate(IsFarPredicate, &limit, -1, nullptr) == 1);
-		OO_CHECK(u->countShipsMatchingPredicate(NULL, NULL, 500, oo::ToCxx(a)) == 0);
+		OO_CHECK(u->countShipsMatchingPredicate(NULL, NULL, 500, a) == 0);
 
-		std::vector<oo::EntityHold> found = u->findEntitiesMatchingPredicate(NULL, NULL, -1, oo::ToCxx(a));	// the reference's C++ entity since bead oo-9ht.39.8.23
-		OO_CHECK(found.size() == 2 && oo::ToObjC(found[0].get()) == b && oo::ToObjC(found[1].get()) == c);	// in the sorted list's order
-		found = u->findEntitiesMatchingPredicate(IsFarPredicate, &limit, 95, oo::ToCxx(a));
-		OO_CHECK(found.size() == 1 && oo::ToObjC(found[0].get()) == b);
+		std::vector<oo::EntityHold> found = u->findEntitiesMatchingPredicate(NULL, NULL, -1, a);	// the reference's C++ entity since bead oo-9ht.39.8.23
+		OO_CHECK(found.size() == 2 && found[0].get() == b && found[1].get() == c);	// in the sorted list's order
+		found = u->findEntitiesMatchingPredicate(IsFarPredicate, &limit, 95, a);
+		OO_CHECK(found.size() == 1 && found[0].get() == b);
 		found = u->findShipsMatchingPredicate(NULL, NULL, -1, nullptr);
-		OO_CHECK(found.size() == 1 && oo::ToObjC(found[0].get()) == c);
+		OO_CHECK(found.size() == 1 && found[0].get() == c);
 		OO_CHECK(u->findVisualEffectsMatchingPredicate(NULL, NULL, -1, nullptr).empty());
 
 		// Within range of an entity: the ships only; none for no entity.
-		OO_CHECK(u->entitiesWithinRange(2000, oo::ToCxx(a)).size() == 1);
-		OO_CHECK(u->entitiesWithinRange(500, oo::ToCxx(a)).empty());
+		OO_CHECK(u->entitiesWithinRange(2000, a).size() == 1);
+		OO_CHECK(u->entitiesWithinRange(500, a).empty());
 		OO_CHECK(u->entitiesWithinRange(2000, nullptr).empty());
 
 		// The scan class.
-		[c setScanClass:CLASS_ROCK];
+		c->setScanClass(CLASS_ROCK);
 		OO_CHECK(u->countShipsWithScanClass(CLASS_ROCK, -1, nullptr) == 1);
 		OO_CHECK(u->countShipsWithScanClass(CLASS_NEUTRAL, -1, nullptr) == 0);
 
@@ -748,26 +748,26 @@ OO_TEST(slice15FindOneAndNearest)
 	@autoreleasepool
 	{
 		Universe *u = NewUniverse();
-		Entity *a = MakeEntity(make_HPvector(0, 0, 0), 10);
-		Entity *b = MakeEntity(make_HPvector(300, 0, 0), 10);
-		Entity *c = MakeShipLike(make_HPvector(200, 0, 0), 10);
-		Entity *d = MakeShipLike(make_HPvector(-500, 0, 0), 10);
+		cxx::Entity *a = MakeEntity(make_HPvector(0, 0, 0), 10);
+		cxx::Entity *b = MakeEntity(make_HPvector(300, 0, 0), 10);
+		cxx::Entity *c = MakeShipLike(make_HPvector(200, 0, 0), 10);
+		cxx::Entity *d = MakeShipLike(make_HPvector(-500, 0, 0), 10);
 		SetSortedEntities(u, { a, b, c, d });
 		double limit = 250;
 
-		OO_CHECK(oo::ToObjC(u->findOneEntityMatchingPredicate(NULL, NULL)) == a);
-		OO_CHECK(oo::ToObjC(u->findOneEntityMatchingPredicate(IsFarPredicate, &limit)) == b);
+		OO_CHECK(u->findOneEntityMatchingPredicate(NULL, NULL) == a);
+		OO_CHECK(u->findOneEntityMatchingPredicate(IsFarPredicate, &limit) == b);
 		limit = 5000;
-		OO_CHECK(oo::ToObjC(u->findOneEntityMatchingPredicate(IsFarPredicate, &limit)) == nil);
+		OO_CHECK(u->findOneEntityMatchingPredicate(IsFarPredicate, &limit) == nil);
 
-		OO_CHECK(oo::ToObjC(u->nearestEntityMatchingPredicate(NULL, NULL, oo::ToCxx(a))) == c);
-		OO_CHECK(oo::ToObjC(u->nearestEntityMatchingPredicate(NULL, NULL, nullptr)) == a);
+		OO_CHECK(u->nearestEntityMatchingPredicate(NULL, NULL, a) == c);
+		OO_CHECK(u->nearestEntityMatchingPredicate(NULL, NULL, nullptr) == a);
 		limit = 250;
-		OO_CHECK(oo::ToObjC(u->nearestEntityMatchingPredicate(IsFarPredicate, &limit, oo::ToCxx(a))) == b);
-		OO_CHECK(oo::ToObjC(u->nearestShipMatchingPredicate(NULL, NULL, oo::ToCxx(b))) == c);
-		OO_CHECK(oo::ToObjC(u->nearestShipMatchingPredicate(IsFarPredicate, &limit, oo::ToCxx(a))) == nil);
+		OO_CHECK(u->nearestEntityMatchingPredicate(IsFarPredicate, &limit, a) == b);
+		OO_CHECK(u->nearestShipMatchingPredicate(NULL, NULL, b) == c);
+		OO_CHECK(u->nearestShipMatchingPredicate(IsFarPredicate, &limit, a) == nil);
 		limit = -1000;
-		OO_CHECK(oo::ToObjC(u->nearestShipMatchingPredicate(IsFarPredicate, &limit, oo::ToCxx(c))) == d);
+		OO_CHECK(u->nearestShipMatchingPredicate(IsFarPredicate, &limit, c) == d);
 
 		u->n_entities = 0;
 	}
@@ -900,20 +900,20 @@ OO_TEST(slice17UpdateOff)
 		u->no_update = YES;
 		u->universal_time = 5.0;
 		u->time_delta = 0.5;
-		Entity *dead = nil;
+		cxx::Entity *dead = nil;
 		@autoreleasepool	// the making's autoreleases drain here, as +alloc made none (bead oo-j12i2)
 		{
-			dead = [oo::NewEntityFacade(oo::makeRef<cxx::Entity>()) retain];
-			u->entitiesDeadThisUpdate.emplace_back(oo::ToCxx(dead));	// held C++ entities since bead oo-9ht.39.26
+			dead = oo::RetainEntity(oo::MadeEntity(oo::makeRef<cxx::Entity>()));
+			u->entitiesDeadThisUpdate.emplace_back(dead);	// held C++ entities since bead oo-9ht.39.26
 		}
-		[dead release];
+		oo::ReleaseEntity(dead);
 
 		@autoreleasepool
 		{
 			u->update(1.0);
 			OO_CHECK(u->getTime() == 5.0 && u->getTimeDelta() == 0.5);	// no time passes
 			OO_CHECK(u->entitiesDeadThisUpdate.empty());
-			OO_CHECK([dead retainCount] == 1);	// alive until the pool drains
+			OO_CHECK(dead->retainCount() == 1);	// alive until the pool drains
 		}
 	}
 }
@@ -947,19 +947,19 @@ OO_TEST(slice17Settings)
 // and run on the unconverted class first. The x, y and z lists are linked by hand in one order.
 namespace {
 
-void LinkLists(Universe *u, std::initializer_list<Entity *> list)
+void LinkLists(Universe *u, std::initializer_list<cxx::Entity *> list)
 {
-	Entity *previous = nil;
-	for (Entity *e : list)
+	cxx::Entity *previous = nil;
+	for (cxx::Entity *e : list)
 	{
-		cxx::Entity *part = e->_cxxEntity.get();
-		part->x_previous = part->y_previous = part->z_previous = oo::ToCxx(previous);
+		cxx::Entity *part = e;
+		part->x_previous = part->y_previous = part->z_previous = previous;
 		part->x_next = part->y_next = part->z_next = nil;
-		if (previous != nil)  previous->_cxxEntity->x_next = previous->_cxxEntity->y_next = previous->_cxxEntity->z_next = part;
+		if (previous != nil)  previous->x_next = previous->y_next = previous->z_next = part;
 		previous = e;
 	}
-	Entity *first = list.size() > 0 ? *list.begin() : nil;
-	u->x_list_start = u->y_list_start = u->z_list_start = oo::ToCxx(first);
+	cxx::Entity *first = list.size() > 0 ? *list.begin() : nil;
+	u->x_list_start = u->y_list_start = u->z_list_start = first;
 }
 
 }	// namespace
@@ -970,25 +970,25 @@ OO_TEST(slice18FilterSortedLists)
 	@autoreleasepool
 	{
 		Universe *u = NewUniverse();
-		Entity *a = MakeEntity(make_HPvector(0, 0, 0), 10);
-		Entity *ghost = oo::NewEntityFacade(oo::makeRef<Slice14GhostEntity>());
-		[ghost setPosition:make_HPvector(0, 0, 5)];
-		[ghost setCollisionRadius:10];
-		Entity *b = MakeEntity(make_HPvector(0, 0, 15), 10);
-		Entity *c = MakeEntity(make_HPvector(0, 0, 1000), 10);
-		a->_cxxEntity->collision_chain = oo::ToCxx(c);	// stale chains are cleared
-		c->_cxxEntity->collision_chain = oo::ToCxx(a);
+		cxx::Entity *a = MakeEntity(make_HPvector(0, 0, 0), 10);
+		cxx::Entity *ghost = oo::MadeEntity(oo::makeRef<Slice14GhostEntity>());
+		ghost->setPosition(make_HPvector(0, 0, 5));
+		ghost->setCollisionRadius(10);
+		cxx::Entity *b = MakeEntity(make_HPvector(0, 0, 15), 10);
+		cxx::Entity *c = MakeEntity(make_HPvector(0, 0, 1000), 10);
+		a->collision_chain = c;	// stale chains are cleared
+		c->collision_chain = a;
 		LinkLists(u, { a, ghost, b, c });
 
 		u->filterSortedLists();
 
 		// a and b overlap on z: chained, past the entity that cannot collide; c is alone.
-		OO_CHECK(a->_cxxEntity->collision_chain == oo::ToCxx(b));
-		OO_CHECK(b->_cxxEntity->collision_chain == nil);
-		OO_CHECK(c->_cxxEntity->collision_chain == nil && ghost->_cxxEntity->collision_chain == nil);
-		OO_CHECK(a->_cxxEntity->collisionTestFilter == 0 && b->_cxxEntity->collisionTestFilter == 0);
-		OO_CHECK(c->_cxxEntity->collisionTestFilter == 1);
-		OO_CHECK(ghost->_cxxEntity->collisionTestFilter == 3);
+		OO_CHECK(a->collision_chain == b);
+		OO_CHECK(b->collision_chain == nil);
+		OO_CHECK(c->collision_chain == nil && ghost->collision_chain == nil);
+		OO_CHECK(a->collisionTestFilter == 0 && b->collisionTestFilter == 0);
+		OO_CHECK(c->collisionTestFilter == 1);
+		OO_CHECK(ghost->collisionTestFilter == 3);
 
 		LinkLists(u, {});
 		u->filterSortedLists();	// no entities: nothing to do
@@ -1324,19 +1324,19 @@ OO_TEST(slice25DoRemoveEntity)
 	@autoreleasepool
 	{
 		Universe *u = NewUniverse();
-		Entity *a = MakeEntity(make_HPvector(0, 0, 0), 1);
-		Entity *b = MakeEntity(make_HPvector(5, 0, 0), 1);
+		cxx::Entity *a = MakeEntity(make_HPvector(0, 0, 0), 1);
+		cxx::Entity *b = MakeEntity(make_HPvector(5, 0, 0), 1);
 		SetSortedEntities(u, { a, b });
-		a->_cxxEntity->zero_index = 0;
-		b->_cxxEntity->zero_index = 1;
-		u->entities.emplace_back(oo::ToCxx(a));	// held C++ entities since bead oo-9ht.39.26
-		u->entities.emplace_back(oo::ToCxx(b));
+		a->zero_index = 0;
+		b->zero_index = 1;
+		u->entities.emplace_back(a);	// held C++ entities since bead oo-9ht.39.26
+		u->entities.emplace_back(b);
 
-		OO_CHECK(u->doRemoveEntity(oo::ToCxx(a)));
+		OO_CHECK(u->doRemoveEntity(a));
 		OO_CHECK(u->n_entities == 1 && SortedEntity(u, 0) == b && SortedEntity(u, 1) == nil);
-		OO_CHECK(b->_cxxEntity->zero_index == 0 && a->_cxxEntity->zero_index == -1);
-		OO_CHECK(u->entities.size() == 1 && oo::ToObjC(u->entities[0].get()) == b);
-		OO_CHECK(!u->doRemoveEntity(oo::ToCxx(a)));	// gone already: not in the definitive list
+		OO_CHECK(b->zero_index == 0 && a->zero_index == -1);
+		OO_CHECK(u->entities.size() == 1 && u->entities[0].get() == b);
+		OO_CHECK(!u->doRemoveEntity(a));	// gone already: not in the definitive list
 
 		u->n_entities = 0;
 		u->entities.clear();

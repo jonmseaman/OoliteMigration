@@ -2387,7 +2387,7 @@ void PlayerEntity::addPlanet(const std::string &planetKey)	// called by name (AD
 		// [[[OOPlanetEntity alloc] initFromDictionary:...] autorelease]: a new C++ planet, kept by its
 		// autoreleased Objective-C object (the facade went with bead oo-9ht.129).
 		oo::Ref<::OOPlanetEntity> planetRef = oo::makeRef<::OOPlanetEntity>();
-		oo::NewEntityFacade(planetRef);
+		oo::MadeEntity(planetRef);
 		planetRef->initFromDictionary(dict, true, ((UNIVERSE != nullptr ? UNIVERSE->getSystemManager() : nullptr) != nullptr ? UNIVERSE->getSystemManager()->getRandomSeedForCurrentSystem() : Random_Seed()), system_id);
 		planet = planetRef.get();
 	}
@@ -2457,7 +2457,7 @@ void PlayerEntity::addMoon(const std::string &moonKey)	// called by name (ADR-00
 		// [[[OOPlanetEntity alloc] initFromDictionary:...] autorelease]: a new C++ planet, kept by its
 		// autoreleased Objective-C object (the facade went with bead oo-9ht.129).
 		oo::Ref<::OOPlanetEntity> planetRef = oo::makeRef<::OOPlanetEntity>();
-		oo::NewEntityFacade(planetRef);
+		oo::MadeEntity(planetRef);
 		planetRef->initFromDictionary(dict, false, ((UNIVERSE != nullptr ? UNIVERSE->getSystemManager() : nullptr) != nullptr ? UNIVERSE->getSystemManager()->getRandomSeedForCurrentSystem() : Random_Seed()), system_id);
 		planet = planetRef.get();
 	}
@@ -2890,7 +2890,7 @@ bool PlayerEntity::processSceneString(const std::string &item, Vector off)
 			// [[[OOPlanetEntity alloc] initAsMainPlanetForSystem:] autorelease]: a new C++ planet, kept by
 			// its autoreleased Objective-C object (the facade went with bead oo-9ht.129).
 			oo::Ref<::OOPlanetEntity> planetRef = oo::makeRef<::OOPlanetEntity>();
-			oo::NewEntityFacade(planetRef);
+			oo::MadeEntity(planetRef);
 			planetRef->initAsMainPlanetForSystem(info_system_id);
 			originalPlanet = planetRef.get();
 		}
@@ -2899,7 +2899,7 @@ bool PlayerEntity::processSceneString(const std::string &item, Vector off)
 		if (originalPlanet != nullptr)
 		{
 			oo::Ref<::OOPlanetEntity> miniature = originalPlanet->miniatureVersion();
-			oo::NewEntityFacade(miniature);
+			oo::MadeEntity(miniature);
 			doppelganger = miniature.get();
 		}
 		if (doppelganger == nil)  return NO;

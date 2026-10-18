@@ -81,7 +81,7 @@ T *NewTestPlayer()
 	oo::Ref<T> player = oo::makeRef<T>();
 	@autoreleasepool
 	{
-		[oo::NewEntityFacade(player) retain];
+		oo::RetainEntity(oo::MadeEntity(player));
 	}
 	return player.get();
 }
@@ -107,22 +107,23 @@ void SetUp()
 }
 
 
-Entity *AnEntity()
+cxx::Entity *AnEntity()
 {
-	return oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
+	return oo::MadeEntity(oo::makeRef<cxx::Entity>());
 }
 
 
-// The binding a uniform bound to the name on the entity's object makes (the member table).
-OOShaderMemberBinding Binding(Entity *entity, const char *name)
+// The binding a uniform bound to the name on the entity's object makes (the member table; the
+// entity's own since bead oo-dpyk8 deleted the object).
+OOShaderMemberBinding Binding(cxx::Entity *entity, const char *name)
 {
 	OOShaderMemberBinding binding = {};
-	if (!OOShaderMemberBindingFor(entity, sel_registerName(name), &binding))  binding = {};
+	if (!EntityShaderMemberBindingFor(entity, name, &binding))  binding = {};
 	return binding;
 }
 
 // What a uniform bound to the name reads: an integer or a float.
-long long BoundInt(Entity *entity, const char *name)
+long long BoundInt(cxx::Entity *entity, const char *name)
 {
 	OOShaderBindingValue value = {};
 	const OOShaderMemberBinding binding = Binding(entity, name);
@@ -130,7 +131,7 @@ long long BoundInt(Entity *entity, const char *name)
 	return value.i;
 }
 
-double BoundFloat(Entity *entity, const char *name)
+double BoundFloat(cxx::Entity *entity, const char *name)
 {
 	OOShaderBindingValue value = {};
 	const OOShaderMemberBinding binding = Binding(entity, name);
@@ -146,7 +147,7 @@ OO_TEST(clockTime)
 	@autoreleasepool
 	{
 		SetUp();
-		Entity *entity = AnEntity();
+		cxx::Entity *entity = AnEntity();
 		sPlayer->_clockTime = 1234.5;
 		OO_CHECK(BoundFloat(entity, "clock") == 1234.5f);
 		// A double clock time is narrowed to a float.
@@ -161,7 +162,7 @@ OO_TEST(flavourNumbers)
 	@autoreleasepool
 	{
 		SetUp();
-		Entity *entity = AnEntity();
+		cxx::Entity *entity = AnEntity();
 		sPlayer->_random100 = 42;
 		sPlayer->_random256 = 200;
 		OO_CHECK(BoundInt(entity, "pseudoFixedD100") == 42);
@@ -175,7 +176,7 @@ OO_TEST(systemAttributes)
 	@autoreleasepool
 	{
 		SetUp();
-		Entity *entity = AnEntity();
+		cxx::Entity *entity = AnEntity();
 		sPlayer->_government = oo::PList(3);
 		sPlayer->_economy = oo::PList(5);
 		sPlayer->_techLevel = oo::PList(11);
@@ -195,7 +196,7 @@ OO_TEST(attributeNotANumberIsZero)
 	@autoreleasepool
 	{
 		SetUp();
-		Entity *entity = AnEntity();
+		cxx::Entity *entity = AnEntity();
 		// No value (nil), and a value that is not a number: 0, as -unsignedIntValue of nil.
 		sPlayer->_government = oo::PList();
 		sPlayer->_economy = oo::PList("rich");
@@ -214,7 +215,7 @@ OO_TEST(uniformTypes)
 	{
 		// The uniform's type is the method's return type: a float for the clock ('f'), unsigned
 		// ints ('I') for the rest.
-		Entity *entity = AnEntity();
+		cxx::Entity *entity = AnEntity();
 		OO_CHECK(Binding(entity, "clock").type == kOOShaderUniformTypeFloat);
 		OO_CHECK(Binding(entity, "pseudoFixedD100").type == kOOShaderUniformTypeUnsignedInt);
 		OO_CHECK(Binding(entity, "pseudoFixedD256").type == kOOShaderUniformTypeUnsignedInt);
@@ -234,7 +235,7 @@ OO_TEST(subclassesAnswerToo)
 		SetUp();
 		// A subclass of Entity (here the test's player) answers the category's selectors.
 		sPlayer->_random100 = 7;
-		OO_CHECK(BoundInt(oo::ToObjC(sPlayer), "pseudoFixedD100") == 7);	// the player's object (C++ player since bead oo-9ht.177)
+		OO_CHECK(BoundInt(sPlayer, "pseudoFixedD100") == 7);	// the player's object (C++ player since bead oo-9ht.177)
 	}
 }
 
@@ -242,7 +243,9 @@ OO_TEST(subclassesAnswerToo)
 // Bead oo-9ht.39.6.1: every name whitelist.plist permits a shader to bind on an entity (its four
 // shader_*_binding_methods arrays) is a row of the member table where the root's facade answered it,
 // with the uniform type the selector path read from the facade's method; laserColor, which nothing
-// answers, and the NSUInteger names, whose type no uniform takes, bind neither way.
+// answers, and the NSUInteger names, whose type no uniform takes, bind neither way. The comparison
+// with the selector path on the entity's object (the root facade's methods) is retired with the
+// facade (bead oo-dpyk8, under oo-9n5p9): the rows and the bindings they make are still checked.
 OO_TEST(everyPermittedNameBindsAsBySelector)
 {
 	@autoreleasepool
@@ -268,48 +271,28 @@ OO_TEST(everyPermittedNameBindsAsBySelector)
 		"tradeInFactor", "forwardVector", "rightVector", "upVector", "shaderFloat1", "shaderFloat2",
 		"shaderInt1", "shaderInt2", "shaderVector1", "shaderVector2",
 		};
-		Entity *const objects[] = { AnEntity(), oo::ToObjC(sPlayer) };	// any entity; a player (a ship)
+		cxx::Entity *const objects[] = { AnEntity(), sPlayer };	// any entity; a player (a ship)
 		int rows = 0;
-		std::string bySelectorOnly, byRowOnly, byNameRowOnly;
-		for (Entity *object : objects)
+		for (cxx::Entity *object : objects)
 		{
 			for (const char *name : kNames)
 			{
 				OOShaderMemberBinding binding = {};
-				const bool byRow = OOShaderMemberBindingFor(object, sel_registerName(name), &binding);
-				IMP method = nullptr;
-				OOShaderUniformType type = kOOShaderUniformTypeInvalid;
-				std::string problem;
-				const bool bySelector = OOShaderUniformBindMethod(object, sel_registerName(name), &method, &type, &problem);
-				if (bySelector && !byRow)  bySelectorOnly += std::string(" ") + name;
-				// the facade no longer has the method (bead oo-9ht.127; a by-name table row's since bead oo-9ht.39.7.3)
-				if (byRow && !bySelector)  (oo::EntityByNameRowNamed(name) != nullptr ? byNameRowOnly : byRowOnly) += std::string(" ") + name;
-				if (byRow && bySelector)  OO_CHECK(binding.type == type);
+				const bool byRow = EntityShaderMemberBindingFor(object, name, &binding);
 				if (byRow)
 				{
-					OO_CHECK(binding.target == oo::ToCxx(object));
+					OO_CHECK(binding.target == object);
 					rows++;
 				}
 			}
 		}
-		// No name the facade binds by selector is left without its row.
-		OO_CHECK(bySelectorOnly.empty());
-		if (!bySelectorOnly.empty())  fprintf(stderr, "bound by selector only:%s\n", bySelectorOnly.c_str());
-		// Bound by row only: the names whose facade methods bead oo-9ht.127 deleted (the clock, the flavour
-		// numbers and the system attributes), on both objects.
-		const std::string kRowOnly = " clock pseudoFixedD100 pseudoFixedD256 systemGovernment systemEconomy systemTechLevel systemPopulation systemProductivity";
-		OO_CHECK(byRowOnly == kRowOnly + kRowOnly);
-		if (byRowOnly != kRowOnly + kRowOnly)  fprintf(stderr, "bound by row only:%s\n", byRowOnly.c_str());
-		// Bound by row only too since bead oo-9ht.39.7.3: the by-name table's names (the facade's by-name
-		// categories, deleted), which the selector path no longer finds on the object (oo-9n5p9).
-		OO_CHECK(!byNameRowOnly.empty());
 		OO_CHECK(rows > 0);
 		OO_CHECK(Binding(AnEntity(), "laserColor").get == nullptr);
 		OO_CHECK(Binding(AnEntity(), "airColorAsVector").get == nullptr);	// a planet's only
 		OO_CHECK(Binding(AnEntity(), "cameraRelativePosition").type == kOOShaderUniformTypeVector);
 		OO_CHECK(Binding(AnEntity(), "fogUniform").type == kOOShaderUniformTypeColor);
-		OO_CHECK(Binding(oo::ToObjC(sPlayer), "tradeInFactor").type == kOOShaderUniformTypeInt);
-		OO_CHECK(BoundInt(oo::ToObjC(sPlayer), "tradeInFactor") == sPlayer->tradeInFactor());
+		OO_CHECK(Binding(sPlayer, "tradeInFactor").type == kOOShaderUniformTypeInt);
+		OO_CHECK(BoundInt(sPlayer, "tradeInFactor") == sPlayer->tradeInFactor());
 	}
 }
 
