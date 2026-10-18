@@ -641,4 +641,22 @@ OO_TEST(cxxAPI)
 }
 
 
+// The file to load may be handed back from the member itself (the load does this): it is read in
+// full before the member changes, kept or cleared as for any other name (found by ASan as a
+// heap-use-after-free in the sanitized game's launch, oo-hpaeu).
+OO_TEST(playerFileToLoadFromItsOwnValue)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		GameController *controller = ::GameController::sharedController();
+		controller->setPlayerFileToLoad("saves/a-much-longer-name-than-fits-inline.oolite-save");
+		controller->setPlayerFileToLoad(*GameControllerTestAccess::_playerFileToLoad(controller));
+		OO_CHECK(controller->playerFileToLoad() == std::optional<std::string>("saves/a-much-longer-name-than-fits-inline.oolite-save"));
+		controller->setPlayerFileToLoad("x");
+		OO_CHECK(!controller->playerFileToLoad().has_value());
+	}
+}
+
+
 OO_TEST_MAIN()

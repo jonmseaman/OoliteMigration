@@ -8,6 +8,9 @@
 # class as one entry: its test name and the game sources whose objects it needs (['*']: all but main).
 # tools/check-core-tests.sh fails when a test_*.mm here is missing from this list.
 
+openal_tests = ['test_OOOpenALController', 'test_OOSound', 'test_OOALBufferedSound', 'test_OOALStreamedSound',
+    'test_OOMusic', 'test_OOSoundChannel', 'test_OOSoundMixer', 'test_MyOpenGLView']
+
 core_tests = {
     'test_OOJSEngineTimeManagement': ['Core/Scripting/OOJSEngineTimeManagement.mm', 'Core/OOProfilingStopwatch.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OODescription.mm'],
     'test_OOJSGuiScreenKeyDefinition': ['Core/Scripting/OOJSGuiScreenKeyDefinition.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OODescription.mm'],
@@ -215,5 +218,9 @@ foreach name, game_sources : core_tests
         override_options: oolite_override_options,
         install: false,
     )
-    test(name, exe, suite: 'core', timeout: 60)
+    # 'openal': the tests that open the OpenAL device (alcOpenDevice). A sanitized run leaves them
+    # out with --no-suite openal: the prebuilt libopenal-1.dll's onexit registration trips ASan's
+    # allocator-ownership check inside ucrtbase.dll, a third-party report no suppression reaches
+    # (oo-dg6vf; tools/asan-suppressions.txt). The game's sanitized launch uses --nosound instead.
+    test(name, exe, suite: name in openal_tests ? ['core', 'openal'] : 'core', timeout: 60)
 endforeach

@@ -718,7 +718,11 @@ void GameController::loadPlayerIfRequired()
 		// the splash screen
 		if (UNIVERSE != nullptr)  UNIVERSE->useGUILightSource(YES);
 		if (UNIVERSE != nullptr)  UNIVERSE->useGUILightSource(NO);
-		if (PLAYER != nullptr)  PLAYER->loadPlayerFromFile(*_playerFileToLoad, NO);
+		// A copy: loading resets the add-ons, whose demo screen resets _playerFileToLoad, and a
+		// reference into it would dangle while the load still reads it (oo-hpaeu: an ASan
+		// heap-use-after-free; the Objective-C original passed a retained string object).
+		const std::string fileToLoad = *_playerFileToLoad;
+		if (PLAYER != nullptr)  PLAYER->loadPlayerFromFile(fileToLoad, NO);
 	}
 }
 
@@ -887,9 +891,12 @@ std::optional<std::string> GameController::playerFileToLoad()
 
 void GameController::setPlayerFileToLoad(const std::string &filename)
 {
-	_playerFileToLoad = std::nullopt;
+	// filename may be *_playerFileToLoad itself (the load passes the file it is loading back
+	// here), so it is read in full before the member changes.
+	std::optional<std::string> toLoad;
 	if (oo::str::lowercase(oo::str::pathExtension(filename)) == "oolite-save")
-		_playerFileToLoad = filename;
+		toLoad = filename;
+	_playerFileToLoad = std::move(toLoad);
 }
 
 

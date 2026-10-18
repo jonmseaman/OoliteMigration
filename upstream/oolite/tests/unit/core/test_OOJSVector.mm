@@ -381,7 +381,10 @@ OO_TEST(statistics)
 {
 	clearJSVectorStatistics();
 	Eval("new Vector3D(1, 2, 3).add(new Vector3D(1, 1, 1)).add([1, 2, 3]).add(Vector3D.prototype)");
-	const std::string *report = reportJSVectorStatistics().getIf<std::string>();
+	// The report is kept in a local: a pointer into the temporary would dangle once the statement
+	// ends (oo-zdxtn, an ASan stack-use-after-scope).
+	const oo::PList reportNode = reportJSVectorStatistics();
+	const std::string *report = reportNode.getIf<std::string>();
 	OO_CHECK(report != nullptr);
 	if (report != nullptr)
 	{
@@ -390,7 +393,8 @@ OO_TEST(statistics)
 		OO_CHECK(report->find("prototype-to-zero conversions: 1 (") != std::string::npos);
 	}
 	clearJSVectorStatistics();
-	report = reportJSVectorStatistics().getIf<std::string>();
+	const oo::PList clearedNode = reportJSVectorStatistics();
+	report = clearedNode.getIf<std::string>();
 	OO_CHECK(report != nullptr && report->find("total: 0") != std::string::npos);
 }
 #endif
