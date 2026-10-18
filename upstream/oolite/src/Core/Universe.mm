@@ -149,8 +149,8 @@ const GLuint framebufferQuadIndices[] = {
 
 Universe *gSharedUniverse = nil;
 
-extern Entity *gOOJSPlayerIfStale;
-Entity *gOOJSPlayerIfStale = nil;
+extern cxx::Entity *gOOJSPlayerIfStale;
+cxx::Entity *gOOJSPlayerIfStale = nullptr;	// the player's C++ entity (bead oo-9ht.39.25)
 
 
 static BOOL MaintainLinkedLists(Universe* uni);
@@ -6418,7 +6418,7 @@ void Universe::addLaserHitEffectsAt(HPVector pos, ::ShipEntity *target, float da
 	::ShipEntity		*hit_subentity = nil;
 	HPVector			p0 = (srcEntity != nullptr ? srcEntity->getPosition() : HPVector{});
 	Quaternion		q1 = (srcEntity != nullptr ? srcEntity->normalOrientation() : Quaternion{});
-	::ShipEntity		*parent = oo::ToShip((srcEntity != nullptr ? srcEntity->parentEntity() : (::Entity *)nil));
+	::ShipEntity		*parent = oo::ToShip((srcEntity != nullptr ? srcEntity->parentEntity() : (cxx::Entity *)nullptr));
 	
 	if (parent)
 	{
@@ -10604,7 +10604,7 @@ void Universe::setAutoCommLog(bool value)
 
 bool Universe::blockJSPlayerShipProps()
 {
-	return gOOJSPlayerIfStale != nil;
+	return gOOJSPlayerIfStale != nullptr;
 }
 
 
@@ -10612,11 +10612,11 @@ void Universe::setBlockJSPlayerShipProps(bool value)
 {
 	if (value)
 	{
-		gOOJSPlayerIfStale = oo::ToObjC(PLAYER);
+		gOOJSPlayerIfStale = PLAYER;
 	}
 	else
 	{
-		gOOJSPlayerIfStale = nil;
+		gOOJSPlayerIfStale = nullptr;
 	}
 }
 

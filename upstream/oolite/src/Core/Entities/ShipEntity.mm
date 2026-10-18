@@ -1672,7 +1672,7 @@ std::vector<oo::ObjCRef<::Entity *>> ShipEntity::exhausts()
 #ifndef NDEBUG
 	// Sanity check - there have been problems here, see fireLaserShotInDirection:
 	// -parentEntity will take care of reporting insanity.
-	if ((result != nullptr ? result->parentEntity() : (::Entity *)nil) != oo::ToObjC(this))  result = nil;
+	if ((result != nullptr ? result->parentEntity() : (cxx::Entity *)nullptr) != this)  result = nil;
 #endif
 	
 	// Clear the weakref if the subentity is dead.
@@ -10778,7 +10778,7 @@ double ShipEntity::ballTrackLeadingTarget(double delta_t, cxx::Entity *target)
 	// this is in absolute coordinates, so now rotate it
 
 	::Entity		*last = nil;
-	::Entity		*father = parentEntity();
+	::Entity		*father = oo::WeakEntityObject(oo::WeakRef<cxx::Entity>(parentEntity()));	// the loop asks the objects, +0 as the owner was read (bead oo-9ht.39.24: parentEntity() answers the C++ entity)
 
 	Quaternion  q = kIdentityQuaternion;
 	while ((father)&&(father != last) && (father != nil))	// (Entity *)NO_TARGET
@@ -12119,7 +12119,7 @@ bool ShipEntity::fireTurretCannon(double range)
 	HPVector		origin = getPosition();
 
 	::Entity		*last = nil;
-	::Entity		*father = parentEntity();
+	::Entity		*father = oo::WeakEntityObject(oo::WeakRef<cxx::Entity>(parentEntity()));	// the loop asks the objects, +0 as the owner was read (bead oo-9ht.39.24: parentEntity() answers the C++ entity)
 	OOMatrix	r_mat;
 
 	vel = vector_forward_from_quaternion(orientation);		// Facing
@@ -12144,7 +12144,7 @@ bool ShipEntity::fireTurretCannon(double range)
 																			laser_color.get()));
 	
 	if (UNIVERSE != nullptr)  UNIVERSE->addEntity(shot);
-	[shot setOwner:rootShipEntity()];	// has to be done AFTER adding shot to the UNIVERSE
+	[shot setOwner:oo::ToObjC(rootShipEntity())];	// has to be done AFTER adding shot to the UNIVERSE
 	
 	resetShotTime();
 	return YES;
@@ -13151,7 +13151,7 @@ bool ShipEntity::collideWithShip(::ShipEntity *other)
 	if (!other)
 		return NO;
 	
-	::ShipEntity* otherParent = oo::ToShip((other != nullptr ? other->parentEntity() : (::Entity *)nil));
+	::ShipEntity* otherParent = oo::ToShip((other != nullptr ? other->parentEntity() : (cxx::Entity *)nullptr));
 	BOOL otherIsStation = other == (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr);
 	// calculate line of centers using centres
 	hploc = HPvector_normal_or_zbasis(HPvector_subtract((other != nullptr ? other->absolutePositionForSubentity() : HPVector{}), position));
@@ -15066,7 +15066,7 @@ void ShipEntity::overrideScriptInfo(const oo::PList &override)
 
 cxx::Entity *ShipEntity::entityForShaderProperties()
 {
-	return oo::ToCxx(rootShipEntity());
+	return rootShipEntity();
 }
 
 

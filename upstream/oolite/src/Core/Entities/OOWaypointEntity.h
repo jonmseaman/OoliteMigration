@@ -76,17 +76,17 @@ public:
 
 	// OOBeaconEntity, answered for the waypoint by the root facade's category (the facade's until
 	// bead oo-9ht.108). Other beacons stay their Objective-C objects (amendment oo-bj8 item 4).
-	OOComparisonResult compareBeaconCodeWith(OOBeaconEntityObject *other);
+	OOComparisonResult compareBeaconCodeWith(cxx::Entity *other);
 	std::optional<std::string> beaconCode();
 	void setBeaconCode(const std::optional<std::string> &bcode);
 	std::optional<std::string> beaconLabel();
 	void setBeaconLabel(const std::optional<std::string> &blabel);
 	bool isBeacon();
 	OOHUDBeaconIcon *beaconDrawable();	// borrowed (the protocol type until bead oo-7ae4p)
-	OOBeaconEntityObject *prevBeacon();
-	OOBeaconEntityObject *nextBeacon();
-	void setPrevBeacon(OOBeaconEntityObject *beaconShip);
-	void setNextBeacon(OOBeaconEntityObject *beaconShip);
+	cxx::Entity *prevBeacon();	// the C++ entity since bead oo-9ht.39.24 (null once its object has gone, as before)
+	cxx::Entity *nextBeacon();
+	void setPrevBeacon(cxx::Entity *beaconShip);
+	void setNextBeacon(cxx::Entity *beaconShip);
 	bool isJammingScanning();
 
 private:

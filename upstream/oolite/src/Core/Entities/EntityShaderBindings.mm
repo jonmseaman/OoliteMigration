@@ -390,7 +390,7 @@ bool IsRootFacadesPart(cxx::Entity *entity)
 cxx::Entity *ShaderSuperTarget(cxx::Entity *entity)
 {
 	// -[Entity superShaderBindingTarget]: the parent entity (Entity::superShaderBindingTarget()).
-	if (IsRootFacadesPart(entity))  return oo::ToCxx(entity->parentEntity());
+	if (IsRootFacadesPart(entity))  return entity->parentEntity();
 	return oo::ToCxx((::Entity *)[oo::ToObjC(entity) superShaderBindingTarget]);
 }
 

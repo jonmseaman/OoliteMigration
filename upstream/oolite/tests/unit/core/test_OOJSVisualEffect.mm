@@ -591,7 +591,7 @@ std::map<ooscript::ClassDef *, int> sConverters;
 } // namespace
 
 ooscript::Object gOOEntityJSPrototype = nullptr;
-Entity *gOOJSPlayerIfStale = nil;
+cxx::Entity *gOOJSPlayerIfStale = nullptr;	// the player's C++ entity (bead oo-9ht.39.25)
 Universe *gSharedUniverse = nil;
 PlayerEntity *gOOPlayer = nullptr;
 
@@ -1020,12 +1020,12 @@ OO_TEST(otherObjects)
 	OO_CHECK_EVAL("VisualEffect.prototype.remove.call({})", "threw: Native method expected Entity, got [object Object].");
 	OO_CHECK_EVAL("VisualEffect.prototype.dataKey", "<evaluation failed>");	// the prototype is not an effect
 	// A stale effect: methods do nothing.
-	gOOJSPlayerIfStale = sEffect;
+	gOOJSPlayerIfStale = sEffectPart;	// its C++ part (bead oo-9ht.39.25)
 	sEffectPart->_removed = 0;
 	OO_CHECK_EVAL("effect.remove()", "undefined");
 	OO_CHECK_EQ(sEffectPart->_removed, 0);
 	OO_CHECK_EVAL("effect.getMaterials()", "undefined");
-	gOOJSPlayerIfStale = nil;
+	gOOJSPlayerIfStale = nullptr;
 }
 
 

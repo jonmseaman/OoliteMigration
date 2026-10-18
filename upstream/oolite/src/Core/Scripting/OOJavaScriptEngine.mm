@@ -2001,7 +2001,7 @@ BOOL JSFunctionPredicate(cxx::Entity *entity, void *parameter)
 	
 	if (EXPECT_NOT(param->errorFlag))  return NO;
 	
-	args[0] = OOJavaScriptEngineJSValueInContext(oo::ToObjC(entity), param->context);	// entity is required to be non-nil (asserted above), so oo_jsValueInContext: is safe.
+	args[0] = OOJSEntityJSValue(entity, param->context);	// the C++ entity's glue (bead oo-9ht.39.25); entity is required to be non-nil (asserted above).
 	
 	OOJSStartTimeLimiter();
 	OOJSResumeTimeLimiter();
@@ -2035,7 +2035,7 @@ BOOL JSEntityIsJavaScriptVisiblePredicate(cxx::Entity *entity, void * /*paramete
 {
 	OOJS_PROFILE_ENTER
 	
-	return OOJavaScriptEngineIsVisibleToScripts(oo::ToObjC(entity));
+	return OOJavaScriptEngineIsVisibleToScripts(entity);
 	
 	OOJS_PROFILE_EXIT
 }
@@ -2045,14 +2045,14 @@ BOOL JSEntityIsJavaScriptSearchablePredicate(cxx::Entity *entity, void * /*param
 {
 	OOJS_PROFILE_ENTER
 	
-	if (!OOJavaScriptEngineIsVisibleToScripts(oo::ToObjC(entity)))  return NO;
-	if (OOJavaScriptEngineIsShip(oo::ToObjC(entity)))
+	if (!OOJavaScriptEngineIsVisibleToScripts(entity))  return NO;
+	if (OOJavaScriptEngineIsShip(entity))
 	{
-		if (OOJavaScriptEngineIsSubEntity(oo::ToObjC(entity)))  return NO;
-		if (OOJavaScriptEngineStatus(oo::ToObjC(entity)) == STATUS_COCKPIT_DISPLAY)  return NO;	// Demo ship
+		if (OOJavaScriptEngineIsSubEntity(entity))  return NO;
+		if (OOJavaScriptEngineStatus(entity) == STATUS_COCKPIT_DISPLAY)  return NO;	// Demo ship
 		return YES;
 	}
-	else if (OOJavaScriptEngineIsPlanet(oo::ToObjC(entity)))
+	else if (OOJavaScriptEngineIsPlanet(entity))
 	{
 		switch (static_cast<OOPlanetEntity *>(entity)->planetType())	// a planet: not nil (C++ since bead oo-9ht.129)
 		{
@@ -2074,7 +2074,7 @@ BOOL JSEntityIsJavaScriptSearchablePredicate(cxx::Entity *entity, void * /*param
 
 BOOL JSEntityIsDemoShipPredicate(cxx::Entity *entity, void * /*parameter*/)
 {
-	return (OOJavaScriptEngineIsVisibleToScripts(oo::ToObjC(entity)) && OOJavaScriptEngineIsShip(oo::ToObjC(entity)) && OOJavaScriptEngineStatus(oo::ToObjC(entity)) == STATUS_COCKPIT_DISPLAY && !OOJavaScriptEngineIsSubEntity(oo::ToObjC(entity)));
+	return (OOJavaScriptEngineIsVisibleToScripts(entity) && OOJavaScriptEngineIsShip(entity) && OOJavaScriptEngineStatus(entity) == STATUS_COCKPIT_DISPLAY && !OOJavaScriptEngineIsSubEntity(entity));
 }
 
 namespace {

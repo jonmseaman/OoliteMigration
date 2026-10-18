@@ -413,31 +413,38 @@ bool OOJavaScriptEngineIsKindOfClass(id object, Class requiredClass)
 }
 
 
-bool OOJavaScriptEngineIsVisibleToScripts(Entity *entity)
+bool OOJavaScriptEngineIsVisibleToScripts(cxx::Entity *entity)
 {
-	return OOJSEntityIsVisibleToScripts(oo::ToCxx(entity));	// the C++ entity's answer, which the root facade's selector forwarded to (bead oo-9ht.39.8.9)
+	return OOJSEntityIsVisibleToScripts(entity);	// the C++ entity's answer, which the root facade's selector forwarded to (bead oo-9ht.39.8.9)
 }
 
 
-bool OOJavaScriptEngineIsShip(Entity *entity)
+// The root facade's -isShip, -isSubEntity, -isPlanet and -status forwarded to these members (bead
+// oo-9ht.39.25); an Objective-C entity's class may answer them itself, so it is still asked (nil's
+// answer once its object has gone).
+bool OOJavaScriptEngineIsShip(cxx::Entity *entity)
 {
-	return [entity isShip];
+	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() isShip];
+	return entity != nullptr && entity->getIsShip();
 }
 
 
-bool OOJavaScriptEngineIsSubEntity(Entity *entity)
+bool OOJavaScriptEngineIsSubEntity(cxx::Entity *entity)
 {
-	return [entity isSubEntity];
+	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() isSubEntity];
+	return entity != nullptr && entity->getIsSubEntity();
 }
 
 
-bool OOJavaScriptEngineIsPlanet(Entity *entity)
+bool OOJavaScriptEngineIsPlanet(cxx::Entity *entity)
 {
-	return [entity isPlanet];
+	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() isPlanet];
+	return entity != nullptr && entity->isPlanet();
 }
 
 
-OOEntityStatus OOJavaScriptEngineStatus(Entity *entity)
+OOEntityStatus OOJavaScriptEngineStatus(cxx::Entity *entity)
 {
-	return [entity status];
+	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() status];
+	return entity != nullptr ? entity->status() : OOEntityStatus{};
 }

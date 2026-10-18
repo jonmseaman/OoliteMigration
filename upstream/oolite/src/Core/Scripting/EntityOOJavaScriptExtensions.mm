@@ -259,15 +259,15 @@ void ShipEntityJSSetTargetForScript(ShipEntity *ship, ShipEntity *target)
 	// Ensure coherence by not fiddling with subentities.
 	while ((me != nullptr ? me->getIsSubEntity() : false))
 	{
-		if (oo::ToObjC(me) == (me != nullptr ? me->owner() : id{}) || (me != nullptr ? me->owner() : id{}) == nil)  break;
+		if (me == oo::ToShip((me != nullptr ? me->owner() : id{})) || (me != nullptr ? me->owner() : id{}) == nil)  break;	// its own object (bead oo-9ht.39.25: the ship, not its object)
 		me = oo::ToShip((me != nullptr ? me->owner() : id{}));
 	}
 	while ((target != nullptr ? target->getIsSubEntity() : false))
 	{
-		if (oo::ToObjC(target) == (target != nullptr ? target->owner() : id{}) || (target != nullptr ? target->owner() : id{}) == nil)  break;
+		if (target == oo::ToShip((target != nullptr ? target->owner() : id{})) || (target != nullptr ? target->owner() : id{}) == nil)  break;	// its own object (bead oo-9ht.39.25: the ship, not its object)
 		target = oo::ToShip((target != nullptr ? target->owner() : id{}));
 	}
-	if (!(oo::ToShip(oo::ToObjC(me)) != nullptr))  return;
+	if (me == nullptr)  return;	// what ToShip(ToObjC(me)) asked (bead oo-9ht.39.25)
 	if (target != nil)
 	{
 		if (me != nullptr)  me->addTarget(target);

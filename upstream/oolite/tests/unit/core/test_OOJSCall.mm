@@ -204,6 +204,7 @@ TestPlayerObject *sPlayerObject = nil;	// the player's Objective-C object
 namespace cxx { class Entity; }
 namespace oo {
 ::Entity *ToObjC(cxx::Entity *entity)  { return entity != nullptr ? (::Entity *)sPlayerObject : nil; }	// only the player crosses
+std::string EntityShortDescription(cxx::Entity *entity)  { return ShortDescriptionOf(ToObjC(entity)); }	// Entity+ObjCBridge.mm's (bead oo-9ht.39.24)
 }
 
 // OOEntityCalledByName.mm's (bead oo-9ht.39.7.2), which the test does not link: the test's entities
