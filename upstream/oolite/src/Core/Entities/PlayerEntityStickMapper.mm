@@ -209,7 +209,7 @@ void PlayerEntity::setGuiToStickMapperScreen(unsigned skip, bool resetCurrentRow
 	{
 		gui->setSelectedRow(GUI_ROW_STICKPROFILE);
 	}
-	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) suppressKeysUntilKeyUp];
+	if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->suppressKeysUntilKeyUp();
 	gui->setForegroundTextureKey(std::string(status() == STATUS_DOCKED ? "docked_overlay" : "paused_overlay"));
 	gui->setBackgroundTextureKey(std::string("settings"));
 }
@@ -223,7 +223,7 @@ void PlayerEntity::stickMapperInputHandler(::GuiDisplayGen *gui, ::MyOpenGLView 
 	// a function - other than look for Escape.
 	if(waitingForStickCallback)
 	{
-		if([gameView isDown: 27])
+		if((gameView != nullptr ? gameView->isDown(27) : false))
 		{
 			stickHandler->clearCallback();
 			gui->setArray(std::vector<std::string>{ "Function setting aborted." }, GUI_ROW_INSTRUCT);
@@ -236,7 +236,7 @@ void PlayerEntity::stickMapperInputHandler(::GuiDisplayGen *gui, ::MyOpenGLView 
 	
 	handleGUIUpDownArrowKeys();
 	
-	if (gui->getSelectedRow() == GUI_ROW_STICKPROFILE && [gameView isDown: 13])
+	if (gui->getSelectedRow() == GUI_ROW_STICKPROFILE && (gameView != nullptr ? gameView->isDown(13) : false))
 	{
 		setGuiToStickProfileScreen(gui);
 		return;
@@ -248,7 +248,7 @@ void PlayerEntity::stickMapperInputHandler(::GuiDisplayGen *gui, ::MyOpenGLView 
 	else
 		selFunctionIdx=-1;
 
-	if([gameView isDown: 13])
+	if((gameView != nullptr ? gameView->isDown(13) : false))
 	{
 		if (key.has_value() && oo::str::hasPrefix(*key, "More:"))
 		{
@@ -284,7 +284,7 @@ void PlayerEntity::stickMapperInputHandler(::GuiDisplayGen *gui, ::MyOpenGLView 
 		waitingForStickCallback=YES;
 	}
 	
-	if([gameView isDown: 'u'])
+	if((gameView != nullptr ? gameView->isDown('u') : false))
 	{
 		if (selFunctionIdx >= 0)  removeFunction(selFunctionIdx);
 	}

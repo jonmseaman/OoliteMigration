@@ -383,7 +383,7 @@ void OOSunEntity::drawOpaqueParts()
 	if ((UNIVERSE != nullptr ? UNIVERSE->reducedDetail() : false))
 	{	
 		int subdivideLevel = 2;		// 4 is probably the maximum!
-		float drawFactor = [(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) viewSize].width / 100.0;
+		float drawFactor = (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr ? UNIVERSE->getGameView()->getViewSize() : NSSize{}).width / 100.0;
 		float drawRatio2 = drawFactor * effective_radius / sqrt_zero_distance; // equivalent to size on screen in pixels
 	
 		if (cam_zero_distance > 0.0f)
@@ -602,8 +602,8 @@ void OOSunEntity::drawDirectVisionSunGlare()
 	{
 		NSSize	siz =	UNIVERSE->getGui()->size();
 		::MyOpenGLView *gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
-		GLfloat aspectRatio = ([gameView viewSize].width / [gameView viewSize].height);
-		GLfloat z  = [gameView display_z] / (aspectRatio > 4.0f/3.0f ? aspectRatio : 1.0f / aspectRatio);
+		GLfloat aspectRatio = ((gameView != nullptr ? gameView->getViewSize() : NSSize{}).width / (gameView != nullptr ? gameView->getViewSize() : NSSize{}).height);
+		GLfloat z  = (gameView != nullptr ? gameView->getDisplay_z() : 0.0f) / (aspectRatio > 4.0f/3.0f ? aspectRatio : 1.0f / aspectRatio);
 		GLfloat atmosphericReductionFactor =  1.0f - (PLAYER != nullptr ? PLAYER->insideAtmosphereFraction() : 0.0f);
 		// 182: square of ratio of radius to sun-witchpoint distance
 		// in default Lave
@@ -647,8 +647,8 @@ void OOSunEntity::drawStarGlare()
 		GLfloat glareColor[4] = {discColor[0], discColor[1], discColor[2], alpha};
 		NSSize		siz =	UNIVERSE->getGui()->size();
 		::MyOpenGLView *gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
-		GLfloat aspectRatio = ([gameView viewSize].width / [gameView viewSize].height);
-		GLfloat z  = [gameView display_z] / (aspectRatio > 4.0f/3.0f ? aspectRatio : 1.0f / aspectRatio);
+		GLfloat aspectRatio = ((gameView != nullptr ? gameView->getViewSize() : NSSize{}).width / (gameView != nullptr ? gameView->getViewSize() : NSSize{}).height);
+		GLfloat z  = (gameView != nullptr ? gameView->getDisplay_z() : 0.0f) / (aspectRatio > 4.0f/3.0f ? aspectRatio : 1.0f / aspectRatio);
 		OOGL(glColor4fv(glareColor));
 
 		OOGLBEGIN(GL_QUADS);

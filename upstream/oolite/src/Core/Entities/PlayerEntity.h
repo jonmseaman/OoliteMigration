@@ -49,7 +49,7 @@ MA 02110-1301, USA.
 #include "oofnd/Ref.hpp"
 #include "oofnd/objc/OOAssert.h"
 
-@class MyOpenGLView;
+class MyOpenGLView;
 class ShipEntity;	// C++ since bead oo-9ht.144
 class GuiDisplayGen;
 #import "HeadUpDisplay.h"	// C++ since bead oo-mwd58: the player keeps its HUD (oo::Ref)

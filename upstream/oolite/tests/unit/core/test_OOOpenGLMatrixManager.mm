@@ -24,6 +24,7 @@
 #include "oofnd/PList.hpp"
 
 #include <cmath>
+#include <cstdlib>
 #include <string>
 #include <vector>
 
@@ -51,27 +52,31 @@ OOShaderSetting cxx_OOShaderSettingFromString(const std::string &string)
 }
 
 
-// UNIVERSE is gSharedUniverse; its -gameView answers an OOTestView, which stands for the game
-// view's facade. The view is C++ (MyOpenGLView): the facade crosses to sView, whose manager the
-// OOGL* functions use. The C++ view's members they reach are stubbed here.
+// UNIVERSE is gSharedUniverse; its getGameView() answers sView, the C++ view (its facade, which
+// crossed to sView, was deleted by bead oo-9ht.153), whose manager the OOGL* functions use. The C++
+// view's members they reach are stubbed here, and its virtual members (never called).
 class Universe;
 Universe *gSharedUniverse = nil;
 
-@interface OOTestView: OOObject
-@end
-
-@implementation OOTestView
-@end
-
 namespace {
 
-oo::Ref<cxx::MyOpenGLView> sView;
+oo::Ref<MyOpenGLView> sView;
 
 }	// namespace
 
-cxx::MyOpenGLView::~MyOpenGLView()  {}
-OOOpenGLMatrixManager *cxx::MyOpenGLView::getOpenGLMatrixManager()  { return matrixManager.get(); }
-cxx::MyOpenGLView *oo::ToCxx(MyOpenGLView *view)  { return (view != nil) ? sView.get() : nullptr; }
+MyOpenGLView::~MyOpenGLView()  {}
+OOOpenGLMatrixManager *MyOpenGLView::getOpenGLMatrixManager()  { return matrixManager.get(); }
+void MyOpenGLView::endSplashScreen()  { std::abort(); }
+void MyOpenGLView::updateScreen()  { std::abort(); }
+void MyOpenGLView::setGameController(::GameController *)  { std::abort(); }
+bool MyOpenGLView::inFullScreenMode()  { std::abort(); }
+std::vector<oo::PList> MyOpenGLView::getScreenSizeArray()  { std::abort(); }
+NSSize MyOpenGLView::currentScreenSize()  { std::abort(); }
+oo::PList MyOpenGLView::currentScreenMode()  { std::abort(); }
+void MyOpenGLView::noteMouseInteractionModeChangedFrom(OOMouseInteractionMode, OOMouseInteractionMode)  { std::abort(); }
+void MyOpenGLView::resetTypedString()  { std::abort(); }
+void MyOpenGLView::stringToClipboard(const std::string &)  { std::abort(); }
+NSSize MyOpenGLView::getViewSize()  { std::abort(); }
 
 #import "UniverseStandIn.h"
 
@@ -83,7 +88,7 @@ class Universe : public oo::RefCounted
 public:
 	OO_UNIVERSE_STAND_IN_VIRTUAL_MEMBERS
 
-	OOTestView *view;
+	MyOpenGLView *view;
 
 
 };
@@ -91,7 +96,7 @@ public:
 class OOTestUniverse : public Universe
 {
 public:
-	::MyOpenGLView *getGameView() override	{ return (MyOpenGLView *)view; }	// what -gameView answered
+	::MyOpenGLView *getGameView() override	{ return view; }	// what -gameView answered
 };
 
 
@@ -395,11 +400,10 @@ OO_TEST(openGLFunctionsUseTheGameViewsManager)
 	{
 		oo::Ref<OOOpenGLMatrixManager> manager = oo::makeRef<OOOpenGLMatrixManager>();
 		OOOpenGLMatrixManager *m = manager.get();
-		sView = oo::makeRef<cxx::MyOpenGLView>();
+		sView = oo::makeRef<MyOpenGLView>();
 		sView->matrixManager = manager;
-		OOTestView *view = [[[OOTestView alloc] init] autorelease];
 		OOTestUniverse *universe = new OOTestUniverse();
-		universe->view = view;
+		universe->view = sView.get();
 		gSharedUniverse = universe;
 
 		OOGLResetModelView();

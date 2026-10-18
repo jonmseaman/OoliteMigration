@@ -136,7 +136,7 @@ namespace {
 */
 bool IsCommandModifierKeyDown(::MyOpenGLView *gameView)
 {
-	cxx::MyOpenGLView *view = oo::ToCxx(gameView);
+	MyOpenGLView *view = gameView;
 	return view != nullptr && view->isCtrlDown();
 }
 
@@ -193,7 +193,7 @@ void PlayerEntity::autosavePlayer()
 {
 	std::optional<std::string>	tmp_path;
 	std::optional<std::string>	tmp_name;
-	const std::string			dir = [(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) cxx_playerFileDirectory].value_or("");
+	const std::string			dir = (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr ? UNIVERSE->gameController()->playerFileDirectory() : std::optional<std::string>()).value_or("");
 
 	tmp_name = lastsaveName();
 	tmp_path = save_path;
@@ -234,7 +234,7 @@ void PlayerEntity::quicksavePlayer()
 	std::optional<std::string>	path;
 
 	path = save_path;
-	if (!path)  path = [[gameView gameController] cxx_playerFileToLoad];
+	if (!path)  path = (gameView != nullptr && gameView->getGameController() != nullptr ? gameView->getGameController()->playerFileToLoad() : std::optional<std::string>());
 	if (!path)
 	{
 		OO_LOG("quickSave.failed.noName", "{}", "ERROR no file name returned by [[gameView gameController] playerFileToLoad]");
@@ -245,7 +245,7 @@ void PlayerEntity::quicksavePlayer()
 	ShipScriptEventNoCx(this, "playerWillSaveGame", OOJSSTR("QUICK_SAVE"));
 
 	writePlayerToPath(*path);
-	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) suppressKeysUntilKeyUp];
+	if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->suppressKeysUntilKeyUp();
 	setGuiToStatusScreen();
 }
 
@@ -409,7 +409,7 @@ std::optional<std::string> PlayerEntity::commanderSelector()
 {
 	::MyOpenGLView	*gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
 	::GuiDisplayGen	*gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
-	std::string		dir = [(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) cxx_playerFileDirectory].value_or("");
+	std::string		dir = (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr ? UNIVERSE->gameController()->playerFileDirectory() : std::optional<std::string>()).value_or("");
 	
 	int idx;
 	if(handleGUIUpDownArrowKeys())
@@ -440,19 +440,19 @@ std::optional<std::string> PlayerEntity::commanderSelector()
 		currentPage--;
 		playMenuPagePrevious();
 		lsCommanders(gui, dir, currentPage, std::nullopt);
-		[gameView suppressKeysUntilKeyUp];
+		if (gameView != nullptr)  gameView->suppressKeysUntilKeyUp();
 	}
 	if ((checkKeyPress(n_key_gui_arrow_right) || checkKeyPress(n_key_gui_page_down)) && (gui->keyForRow(MOREROW) == GUI_KEY_OK))
 	{
 		currentPage++;
 		playMenuPageNext();
 		lsCommanders(gui, dir, currentPage, std::nullopt);
-		[gameView suppressKeysUntilKeyUp];
+		if (gameView != nullptr)  gameView->suppressKeysUntilKeyUp();
 	}
 	
 	// Enter pressed - find the commander name underneath.
 	// ignore Ctrl for the moment - we check for it explicitly later
-	if (checkKeyPressIgnoreCtrl(n_key_gui_select, YES)||[gameView isDown:gvMouseDoubleClick])
+	if (checkKeyPressIgnoreCtrl(n_key_gui_select, YES)||(gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false))
 	{
 		switch (gui->getSelectedRow())
 		{
@@ -466,12 +466,12 @@ std::optional<std::string> PlayerEntity::commanderSelector()
 			case BACKROW:
 				currentPage--;
 				lsCommanders(gui, dir, currentPage, std::nullopt);
-				[gameView suppressKeysUntilKeyUp];
+				if (gameView != nullptr)  gameView->suppressKeysUntilKeyUp();
 				break;
 			case MOREROW:
 				currentPage++;
 				lsCommanders(gui, dir, currentPage, std::nullopt);
-				[gameView suppressKeysUntilKeyUp];
+				if (gameView != nullptr)  gameView->suppressKeysUntilKeyUp();
 				break;
 			default:
 			{
@@ -481,22 +481,22 @@ std::optional<std::string> PlayerEntity::commanderSelector()
 					return OptionalStringValue(cdr.find("saved_game_path"));
 				else
 				{
-					if (IsCommandModifierKeyDown(gameView)||[gameView isDown:gvMouseDoubleClick])
+					if (IsCommandModifierKeyDown(gameView)||(gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false))
 					{
 						// change directory to the selected path
 						const std::string newDir = cdr.get<std::string>("saved_game_path");
-						[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) cxx_setPlayerFileDirectory:newDir];
+						if (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr)  UNIVERSE->gameController()->setPlayerFileDirectory(newDir);
 						dir = newDir;
 						currentPage = 0;
 						lsCommanders(gui, dir, currentPage, std::nullopt);
-						[gameView suppressKeysUntilKeyUp];
+						if (gameView != nullptr)  gameView->suppressKeysUntilKeyUp();
 					}
 				}
 			}
 		}
 	}
 	
-	if([gameView isDown: 27]) // escape key
+	if((gameView != nullptr ? gameView->isDown(27) : false)) // escape key
 	{
 		setGuiToStatusScreen();
 	}
@@ -508,7 +508,7 @@ void PlayerEntity::saveCommanderInputHandler()
 {
 	::MyOpenGLView	*gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
 	::GuiDisplayGen	*gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
-	std::string		dir = [(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) cxx_playerFileDirectory].value_or("");
+	std::string		dir = (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr ? UNIVERSE->gameController()->playerFileDirectory() : std::optional<std::string>()).value_or("");
 	
 	if (handleGUIUpDownArrowKeys())
 	{
@@ -520,7 +520,7 @@ void PlayerEntity::saveCommanderInputHandler()
 			if (idx >= 0 && (std::size_t)idx < cdrDetailArray.size() && cdrDetailArray[idx].get<bool>("isSavedGame"))	// don't show things that aren't saved games
 				commanderNameString = CommanderSaveName(cdrDetailArray[idx]).value_or("");
 			else
-				commanderNameString = [gameView cxx_typedString].value_or("");
+				commanderNameString = (gameView != nullptr ? gameView->getTypedString() : std::optional<std::string>()).value_or("");
 		}
 		else
 		{
@@ -532,35 +532,35 @@ void PlayerEntity::saveCommanderInputHandler()
 	}
 	else
 	{
-		commanderNameString = [gameView cxx_typedString].value_or("");
+		commanderNameString = (gameView != nullptr ? gameView->getTypedString() : std::optional<std::string>()).value_or("");
 	}
 	
-	[gameView cxx_setTypedString: commanderNameString];
+	if (gameView != nullptr)  gameView->setTypedString(commanderNameString);
 	
 	gui->setText(oo::str::formatRuntime(OO_DESC("savescreen-commander-name-@"), { commanderNameString }), INPUTROW);
 	gui->setColor(OOColor::cyanColor().get(), INPUTROW);
 	
 	// handle page <-- and page --> keys, and on-screen buttons
-	if (((([gameView isDown:gvMouseDoubleClick] || checkKeyPress(n_key_gui_select)) && gui->getSelectedRow() == BACKROW) || (checkKeyPress(n_key_gui_arrow_left) || checkKeyPress(n_key_gui_page_up)))
+	if (((((gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false) || checkKeyPress(n_key_gui_select)) && gui->getSelectedRow() == BACKROW) || (checkKeyPress(n_key_gui_arrow_left) || checkKeyPress(n_key_gui_page_up)))
 					&& (gui->keyForRow(BACKROW) == GUI_KEY_OK))
 	{
 		currentPage--;
 		lsCommanders(gui, dir, currentPage, std::nullopt);
-		[gameView suppressKeysUntilKeyUp];
+		if (gameView != nullptr)  gameView->suppressKeysUntilKeyUp();
 	}
 	//
-	if (((([gameView isDown:gvMouseDoubleClick] || checkKeyPress(n_key_gui_select)) && gui->getSelectedRow() == MOREROW) || (checkKeyPress(n_key_gui_arrow_right) || checkKeyPress(n_key_gui_page_down)))
+	if (((((gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false) || checkKeyPress(n_key_gui_select)) && gui->getSelectedRow() == MOREROW) || (checkKeyPress(n_key_gui_arrow_right) || checkKeyPress(n_key_gui_page_down)))
 					&& (gui->keyForRow(MOREROW) == GUI_KEY_OK))
 	{
 		currentPage++;
 		lsCommanders(gui, dir, currentPage, std::nullopt);
-		[gameView suppressKeysUntilKeyUp];
+		if (gameView != nullptr)  gameView->suppressKeysUntilKeyUp();
 	}
 	
 	// ignore Ctrl if pressed together with Enter for the moment - we check for it explicitly immediately after
-	if((checkKeyPressIgnoreCtrl(n_key_gui_select, YES)||[gameView isDown:gvMouseDoubleClick]) && !commanderNameString.empty())
+	if((checkKeyPressIgnoreCtrl(n_key_gui_select, YES)||(gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false)) && !commanderNameString.empty())
 	{
-		if (IsCommandModifierKeyDown(gameView)||[gameView isDown:gvMouseDoubleClick])
+		if (IsCommandModifierKeyDown(gameView)||(gameView != nullptr ? gameView->isDown(gvMouseDoubleClick) : false))
 		{
 			int guiSelectedRow=gui->getSelectedRow();
 			int	idx = (guiSelectedRow - STARTROW) + (currentPage * NUMROWS);
@@ -570,11 +570,11 @@ void PlayerEntity::saveCommanderInputHandler()
 			{
 				// change directory to the selected path
 				const std::string newDir = cdr.get<std::string>("saved_game_path");
-				[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) cxx_setPlayerFileDirectory:newDir];
+				if (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr)  UNIVERSE->gameController()->setPlayerFileDirectory(newDir);
 				dir = newDir;
 				currentPage = 0;
 				lsCommanders(gui, dir, currentPage, std::nullopt);
-				[gameView suppressKeysUntilKeyUp];
+				if (gameView != nullptr)  gameView->suppressKeysUntilKeyUp();
 			}
 		}
 		else
@@ -582,23 +582,23 @@ void PlayerEntity::saveCommanderInputHandler()
 			pollControls = YES;
 			if (existingNativeSave(commanderNameString))
 			{
-				[gameView suppressKeysUntilKeyUp];
+				if (gameView != nullptr)  gameView->suppressKeysUntilKeyUp();
 				setGuiToOverwriteScreen(commanderNameString);
 			}
 			else
 			{
 				nativeSavePlayer(commanderNameString);
-				[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) suppressKeysUntilKeyUp];
+				if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->suppressKeysUntilKeyUp();
 				setGuiToStatusScreen();
 			}
 		}
 	}
 	
-	if([gameView isDown: 27]) // escape key
+	if((gameView != nullptr ? gameView->isDown(27) : false)) // escape key
 	{
 		// get out of here
 		pollControls = YES;
-		[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) resetTypedString];
+		if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->resetTypedString();
 		setGuiToStatusScreen();
 	}
 }
@@ -619,16 +619,16 @@ void PlayerEntity::overwriteCommanderInputHandler()
 	cYes = FirstUnitLowByte(valueYes);	// Use lower byte of unichar.
 	cNo = FirstUnitLowByte(valueNo);	// Use lower byte of unichar.
 	
-	if ((checkKeyPress(n_key_gui_select) && (gui->getSelectedRow() == SAVE_OVERWRITE_YES_ROW))||[gameView isDown:cYes]||[gameView isDown:cYes - 32])
+	if ((checkKeyPress(n_key_gui_select) && (gui->getSelectedRow() == SAVE_OVERWRITE_YES_ROW))||(gameView != nullptr ? gameView->isDown(cYes) : false)||(gameView != nullptr ? gameView->isDown(cYes - 32) : false))
 	{
 		pollControls=YES;
 		nativeSavePlayer(commanderNameString);
 		playSaveOverwriteYes();
-		[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) suppressKeysUntilKeyUp];
+		if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->suppressKeysUntilKeyUp();
 		setGuiToStatusScreen();
 	}
 	
-	if ((checkKeyPress(n_key_gui_select) && (gui->getSelectedRow() == SAVE_OVERWRITE_NO_ROW))||[gameView isDown:27]||[gameView isDown:cNo]||[gameView isDown:cNo - 32])
+	if ((checkKeyPress(n_key_gui_select) && (gui->getSelectedRow() == SAVE_OVERWRITE_NO_ROW))||(gameView != nullptr ? gameView->isDown(27) : false)||(gameView != nullptr ? gameView->isDown(cNo) : false)||(gameView != nullptr ? gameView->isDown(cNo - 32) : false))
 	{
 		// esc or NO was pressed - get out of here
 		pollControls=YES;
@@ -750,14 +750,14 @@ bool PlayerEntity::loadPlayerFromFile(const std::string &fileToOpen, bool asNew)
 		{
 			save_path = fileToOpen;
 		
-			[[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) gameController] cxx_setPlayerFileToLoad:fileToOpen];
-			[[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) gameController] cxx_setPlayerFileDirectory:fileToOpen];
+			if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr && UNIVERSE->getGameView()->getGameController() != nullptr)  UNIVERSE->getGameView()->getGameController()->setPlayerFileToLoad(fileToOpen);
+			if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr && UNIVERSE->getGameView()->getGameController() != nullptr)  UNIVERSE->getGameView()->getGameController()->setPlayerFileDirectory(fileToOpen);
 		}
 	}
 	else
 	{
 		OO_LOG("load.failed", "***** Failed to load saved game \"{}\": {}", oo::str::lastPathComponent(fileToOpen), fail_reason.value_or("unknown error"));
-		[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) cxx_setPlayerFileToLoad:""];
+		if (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr)  UNIVERSE->gameController()->setPlayerFileToLoad("");
 		if (UNIVERSE != nullptr)  UNIVERSE->handleGameOver();
 		if (UNIVERSE != nullptr)  UNIVERSE->clearPreviousMessage();
 		if (UNIVERSE != nullptr)  UNIVERSE->addMessage(OO_DESC("loadfailed-saved-game-failed-to-load"), 9.0);
@@ -849,7 +849,7 @@ bool PlayerEntity::loadPlayerFromFile(const std::string &fileToOpen, bool asNew)
 	startUpComplete();
 
 	// if the file was specified in the command line at startup, DO NOT suppress the keys!
-	if ([(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) finishedLaunching])  [(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) suppressKeysUntilKeyUp];
+	if ((UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr ? UNIVERSE->gameController()->finishedLaunching() : false))  { if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->suppressKeysUntilKeyUp(); }
 	if (asNew) 
 	{
 		gui_screen = GUI_SCREEN_NEWGAME;
@@ -918,7 +918,7 @@ void PlayerEntity::writePlayerToPath(const std::string &path)
 {
 	std::string		errDesc;
 	BOOL			didSave = NO;
-	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) resetTypedString];
+	if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->resetTypedString();
 
 	if (path.empty())
 	{
@@ -939,8 +939,8 @@ void PlayerEntity::writePlayerToPath(const std::string &path)
 		if (UNIVERSE != nullptr)  UNIVERSE->clearPreviousMessage();	// allow this to be given time and again
 		if (UNIVERSE != nullptr)  UNIVERSE->addMessage(OO_DESC("game-saved"), 2);
 		save_path = path;
-		[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) cxx_setPlayerFileToLoad:*save_path];
-		[(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) cxx_setPlayerFileDirectory:save_path];	// engaged: path, just set
+		if (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr)  UNIVERSE->gameController()->setPlayerFileToLoad(*save_path);
+		if (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr)  UNIVERSE->gameController()->setPlayerFileDirectory(save_path);	// engaged: path, just set
 		// no duplicated autosave immediately after a save.
 		if (UNIVERSE != nullptr)  UNIVERSE->setAutoSaveNow(NO);
 	}
@@ -950,14 +950,14 @@ void PlayerEntity::writePlayerToPath(const std::string &path)
 		[::OOException raise:"OoliteException"
 					format:"Attempt to save game to file '%s' failed: %s", path.c_str(), errDesc.c_str()];
 	}
-	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) suppressKeysUntilKeyUp];
+	if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->suppressKeysUntilKeyUp();
 	setGuiToStatusScreen();
 }
 
 
 void PlayerEntity::nativeSavePlayer(const std::string &cdrName)
 {
-	const std::string dir = [(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) cxx_playerFileDirectory].value_or("");
+	const std::string dir = (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr ? UNIVERSE->gameController()->playerFileDirectory() : std::optional<std::string>()).value_or("");
 	const std::string savePath = oo::str::appendingPathComponent(dir, SaveFileName(cdrName));
 
 	ShipScriptEventNoCx(this, "playerWillSaveGame", OOJSSTR("STANDARD_SAVE"));
@@ -973,7 +973,7 @@ void PlayerEntity::nativeSavePlayer(const std::string &cdrName)
 void PlayerEntity::setGuiToLoadCommanderScreen()
 {
 	::GuiDisplayGen *gui=(UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
-	const std::string dir = [(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) cxx_playerFileDirectory].value_or("");
+	const std::string dir = (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr ? UNIVERSE->gameController()->playerFileDirectory() : std::optional<std::string>()).value_or("");
 	
 	gui_screen = GUI_SCREEN_LOAD;
 	
@@ -986,7 +986,7 @@ void PlayerEntity::setGuiToLoadCommanderScreen()
 	gui->setForegroundTextureKey("docked_overlay");
 	gui->setBackgroundTextureKey("load_save");
 	
-	[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) suppressKeysUntilKeyUp];
+	if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->suppressKeysUntilKeyUp();
 	
 	setShowDemoShips(YES);
 	if (UNIVERSE != nullptr)  UNIVERSE->enterGUIViewModeWithMouseInteraction(YES);
@@ -997,7 +997,7 @@ void PlayerEntity::setGuiToSaveCommanderScreen(const std::string &cdrName)
 {
 	::GuiDisplayGen *gui=(UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 	::MyOpenGLView *gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
-	const std::string dir = [(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) cxx_playerFileDirectory].value_or("");
+	const std::string dir = (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr ? UNIVERSE->gameController()->playerFileDirectory() : std::optional<std::string>()).value_or("");
 	
 	pollControls = NO;
 	gui_screen = GUI_SCREEN_SAVE;
@@ -1016,8 +1016,8 @@ void PlayerEntity::setGuiToSaveCommanderScreen(const std::string &cdrName)
 	gui->setForegroundTextureKey("docked_overlay");
 	gui->setBackgroundTextureKey("load_save");
 	
-	[gameView cxx_setTypedString:cdrName];
-	[gameView suppressKeysUntilKeyUp];
+	if (gameView != nullptr)  gameView->setTypedString(cdrName);
+	if (gameView != nullptr)  gameView->suppressKeysUntilKeyUp();
 	
 	setShowDemoShips(YES);
 	if (UNIVERSE != nullptr)  UNIVERSE->enterGUIViewModeWithMouseInteraction(YES);
@@ -1054,7 +1054,7 @@ void PlayerEntity::setGuiToOverwriteScreen(const std::string &cdrName)
 	gui->setBackgroundTextureKey("load_save");
 	
 	setShowDemoShips(NO);
-	[gameView setStringInput:gvStringInputNo];
+	if (gameView != nullptr)  gameView->setStringInput(gvStringInputNo);
 	if (UNIVERSE != nullptr)  UNIVERSE->enterGUIViewModeWithMouseInteraction(NO);	// FIXME: should be YES, but was NO before introducing new mouse mode stuff. If set to YES, choices can be selected but not activated.
 }
 
@@ -1244,7 +1244,7 @@ void PlayerEntity::lsCommanders(::GuiDisplayGen *gui, const std::string &directo
 // check for an existing saved game...
 bool PlayerEntity::existingNativeSave(const std::string &cdrName)
 {
-	const std::string dir = [(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) cxx_playerFileDirectory].value_or("");
+	const std::string dir = (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr ? UNIVERSE->gameController()->playerFileDirectory() : std::optional<std::string>()).value_or("");
 	
 	const std::string savePath = oo::str::appendingPathComponent(dir, SaveFileName(cdrName));
 	return oo::fs::fileExists(oo::fs::pathFromUTF8(savePath));

@@ -104,7 +104,7 @@ void OOStandardsInternal(const std::string &type, const std::string &message)
 
 	if (sEnforcement == STANDARDS_ENFORCEMENT_QUIT)
 	{
-		[[GameController sharedController] cxx_exitAppWithContext:type];
+		::GameController::sharedController()->exitAppWithContext(type);
 		// exit
 	}
 }

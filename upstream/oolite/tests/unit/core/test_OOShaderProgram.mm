@@ -69,12 +69,12 @@ OOShaderSetting cxx_OOShaderSettingFromString(const std::string &string)
 
 
 // UNIVERSE is gSharedUniverse: nil, so there is no game view and no matrix manager. The view is
-// C++ (MyOpenGLView): its crossing answers none, and its manager accessor is never reached.
+// C++ (MyOpenGLView; its facade's crossing went with bead oo-9ht.153), and its manager accessor is
+// never reached.
 class Universe;
 Universe *gSharedUniverse = nil;
 
-cxx::MyOpenGLView *oo::ToCxx(MyOpenGLView *)  { return nullptr; }
-OOOpenGLMatrixManager *cxx::MyOpenGLView::getOpenGLMatrixManager()  { return matrixManager.get(); }
+OOOpenGLMatrixManager *MyOpenGLView::getOpenGLMatrixManager()  { return matrixManager.get(); }
 
 
 namespace {

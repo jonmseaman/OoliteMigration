@@ -53,7 +53,7 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 
 namespace
 {
-oo::Ref<cxx::GameController> controller;
+oo::Ref<GameController> controller;
 }
 #endif
 
@@ -173,7 +173,7 @@ int main(int argc, char *argv[])
 	{
 		// dajt: allocate and set the NSApplication delegate manually because not
 		// using NIB to do this
-		controller = oo::makeRef<cxx::GameController>();
+		controller = oo::makeRef<GameController>();
 		
 		for (i = 1; i < argc; i++)
 		{

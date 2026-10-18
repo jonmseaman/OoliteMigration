@@ -40,7 +40,7 @@
 
 // MARK: The classes, as far as the binding sees them ----------------------------------------------
 
-@class MyOpenGLView;
+class MyOpenGLView;
 
 /*	The player: its galaxy and screen, key binding descriptions, extra GUI screen keys and the
 	equipment screen's background.
@@ -108,9 +108,13 @@ public:
 // The GUI is C++ since bead oo-9ht.143 deleted its facade: the members OOJSGlobal.mm calls are
 // defined below (a C++ stand-in with the facade stand-in's answers).
 
-@interface MyOpenGLView: OOObject
-- (BOOL) cxx_snapShot:(const std::optional<std::string> &)filename;
-@end
+// The game view is C++ since bead oo-9ht.153 deleted its facade: the member OOJSGlobal.mm calls is
+// defined below (never run: there is no view).
+class MyOpenGLView : public oo::RefCounted
+{
+public:
+	bool snapShot(const std::optional<std::string> &filename);
+};
 
 #import "ResourceManager.h"
 
@@ -245,9 +249,7 @@ OOGUIRow GuiDisplayGen::addLongText(const std::optional<std::string> &, OOGUIRow
 void GuiDisplayGen::setArray(const std::vector<std::string> &, OOGUIRow)  { std::abort(); }
 
 
-@implementation MyOpenGLView
-- (BOOL) cxx_snapShot:(const std::optional<std::string> &)filename  { (void)filename; std::abort(); }	// never run
-@end
+bool MyOpenGLView::snapShot(const std::optional<std::string> &filename)  { (void)filename; std::abort(); }	// never run
 
 
 // ResourceManager is C++ since bead oo-9ht.150 deleted its Objective-C facade: C++ definitions of the

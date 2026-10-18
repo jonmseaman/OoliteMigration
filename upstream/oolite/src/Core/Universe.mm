@@ -329,7 +329,7 @@ void Universe::initWithGameView(::MyOpenGLView *inGameView)
 	OOOpenGLExtensionManager::sharedManager();
 	setDetailLevelDirectly(OOGraphicsDetailFromNumber(prefs.object("detailLevel").isNull() ? OOOpenGLExtensionManager::sharedManager()->defaultDetailLevel() : static_cast<unsigned int>(prefs.integerForKey("detailLevel"))));
 
-	initTargetFramebufferWithViewSize([gameView backingViewSize]);
+	initTargetFramebufferWithViewSize((gameView != nullptr ? gameView->backingViewSize() : NSSize{}));
 
 	::OOMaterial::setUp();
 
@@ -353,10 +353,10 @@ void Universe::initWithGameView(::MyOpenGLView *inGameView)
 	autoSave = prefs.boolForKey("autosave");
 	wireframeGraphics = prefs.boolForKey("wireframe-graphics");
 	doProcedurallyTexturedPlanets = prefs.object("procedurally-textured-planets").isNull() ? YES : prefs.boolForKey("procedurally-textured-planets");
-	[inGameView setMsaa:prefs.boolForKey("anti-aliasing")];
-	OO_LOG("MSAA.setup", "Multisample anti-aliasing {}requested.", [inGameView msaa] ? "" : "not ");
-	[inGameView setFov:OOClamp_0_max_f(prefs.object("fov-value").isNull() ? 57.2f : prefs.floatForKey("fov-value"), MAX_FOV_DEG) fromFraction:NO];
-	if ([inGameView fov:NO] < MIN_FOV_DEG)  [inGameView setFov:MIN_FOV_DEG fromFraction:NO];
+	if (inGameView != nullptr)  inGameView->setMsaa(prefs.boolForKey("anti-aliasing"));
+	OO_LOG("MSAA.setup", "Multisample anti-aliasing {}requested.", (inGameView != nullptr ? inGameView->msaa() : false) ? "" : "not ");
+	if (inGameView != nullptr)  inGameView->setFov(OOClamp_0_max_f(prefs.object("fov-value").isNull() ? 57.2f : prefs.floatForKey("fov-value"), MAX_FOV_DEG), NO);
+	if ((inGameView != nullptr ? inGameView->fov(NO) : 0.0f) < MIN_FOV_DEG)  { if (inGameView != nullptr)  inGameView->setFov(MIN_FOV_DEG, NO); }
 
  	setECMVisualFXEnabled(prefs.object("ecm-visual-fx").isNull() ? YES : prefs.boolForKey("ecm-visual-fx"));
 
@@ -390,14 +390,14 @@ void Universe::initWithGameView(::MyOpenGLView *inGameView)
 #endif
 #endif
 
-	[[::GameController sharedController] cxx_logProgress:OO_DESC("loading-ships")];
+	::GameController::sharedController()->logProgress(OO_DESC("loading-ships"));
 	// Load ship data
 
 	OOShipRegistry::sharedRegistry();
 
 	entities.reserve(MAX_NUMBER_OF_ENTITIES);
 
-	[[::GameController sharedController] cxx_logProgress:cxx_OOExpandKeyRandomized("loading-miscellany").value_or(std::string())];
+	::GameController::sharedController()->logProgress(cxx_OOExpandKeyRandomized("loading-miscellany").value_or(std::string()));
 
 	// this MUST have the default no. of rows else the GUI_ROW macros in PlayerEntity.h need modification
 	gui = oo::makeRef<GuiDisplayGen>();
@@ -434,16 +434,16 @@ void Universe::initWithGameView(::MyOpenGLView *inGameView)
 	framesDoneThisUpdate = 0;
 	drawCounter = 0;
 
-	[[::GameController sharedController] cxx_logProgress:OO_DESC("initializing-debug-support")];
+	::GameController::sharedController()->logProgress(OO_DESC("initializing-debug-support"));
 	OOInitDebugSupport();
 
-	[[::GameController sharedController] cxx_logProgress:OO_DESC("running-scripts")];
+	::GameController::sharedController()->logProgress(OO_DESC("running-scripts"));
 	if (player != nullptr)  player->completeSetUp();
 
-	[[::GameController sharedController] cxx_logProgress:OO_DESC("populating-space")];
+	::GameController::sharedController()->logProgress(OO_DESC("populating-space"));
 	populateNormalSpace();
 
-	[[::GameController sharedController] cxx_logProgress:cxx_OOExpandKeyRandomized("loading-miscellany").value_or(std::string())];
+	::GameController::sharedController()->logProgress(cxx_OOExpandKeyRandomized("loading-miscellany").value_or(std::string()));
 
 #if OO_LOCALIZATION_TOOLS
 	runLocalizationTools();
@@ -483,7 +483,7 @@ void Universe::dealloc()
 	replacedSystemManager = nullptr;
 	demo_ships = oo::PList();
 	screenBackgrounds = oo::PList();
-	[gameView release];
+	if (gameView != nullptr)  gameView->release();
 	allPlanets.clear();
 	allStations.clear();
 
@@ -1359,14 +1359,14 @@ void Universe::pauseGame()
 		}
 	}
 	
-	[gameController() setGamePaused:YES];
+	if (gameController() != nullptr)  gameController()->setGamePaused(YES);
 }
 
 
 void Universe::quitGame()
 {
 	OO_LOG("universe.quit", "{}", "Quit command received by Universe.");
-	[gameController() cxx_exitAppWithContext:"Universe Request"];
+	if (gameController() != nullptr)  gameController()->exitAppWithContext("Universe Request");
 }
 
 
@@ -1747,7 +1747,7 @@ void Universe::setUpSpace()
 	
 	Random_Seed systemSeed = (systemManager != nullptr ? systemManager->getRandomSeedForCurrentSystem() : Random_Seed());
 
-	[[::GameController sharedController] cxx_logProgress:OO_DESC("populating-space")];
+	::GameController::sharedController()->logProgress(OO_DESC("populating-space"));
 	
 	sunGoneNova = systeminfo.get<bool>("sun_gone_nova", NO);
 
@@ -3576,9 +3576,9 @@ void Universe::setDockingClearanceProtocolActive(bool newValue)
 
 void Universe::handleGameOver()
 {
-	if ([gameController() cxx_playerFileToLoad].has_value())
+	if ((gameController() != nullptr ? gameController()->playerFileToLoad() : std::optional<std::string>()).has_value())
 	{
-		[gameController() loadPlayerIfRequired];
+		if (gameController() != nullptr)  gameController()->loadPlayerIfRequired();
 	}
 	else
 	{
@@ -4902,8 +4902,9 @@ std::optional<std::string> Universe::describeCommodity(const std::string &co_typ
 
 void Universe::setGameView(::MyOpenGLView *view)
 {
-	[gameView release];
-	gameView = [view retain];
+	if (gameView != nullptr)  gameView->release();
+	if (view != nullptr)  view->retain();
+	gameView = view;
 }
 
 
@@ -4915,7 +4916,7 @@ void Universe::setGameView(::MyOpenGLView *view)
 
 ::GameController * Universe::gameController()
 {
-	return [getGameView() gameController];
+	return (getGameView() != nullptr ? getGameView()->getGameController() : (::GameController *)nullptr);
 }
 
 
@@ -4930,18 +4931,18 @@ oo::PList Universe::gameSettings()
 	result["wireframeGraphics"] = oo::PList(static_cast<bool>(wireframeGraphics));
 	result["procedurallyTexturedPlanets"] = oo::PList(static_cast<bool>(doProcedurallyTexturedPlanets));
 
-	result["fovValue"] = oo::PList::singleReal([gameView fov:NO]);
+	result["fovValue"] = oo::PList::singleReal((gameView != nullptr ? gameView->fov(NO) : 0.0f));
 
 #if OOLITE_WINDOWS
-	if ([gameView hdrOutput])
+	if ((gameView != nullptr ? gameView->hdrOutput() : false))
 	{
-		result["hdr-max-brightness"] = oo::PList::singleReal([gameView hdrMaxBrightness]);
-		result["hdr-paperwhite-brightness"] = oo::PList::singleReal([gameView hdrPaperWhiteBrightness]);
-		result["hdr-tone-mapper"] = oo::PList(cxx_OOStringFromHDRToneMapper([gameView hdrToneMapper]));
+		result["hdr-max-brightness"] = oo::PList::singleReal((gameView != nullptr ? gameView->hdrMaxBrightness() : 0.0f));
+		result["hdr-paperwhite-brightness"] = oo::PList::singleReal((gameView != nullptr ? gameView->hdrPaperWhiteBrightness() : 0.0f));
+		result["hdr-tone-mapper"] = oo::PList(cxx_OOStringFromHDRToneMapper((gameView != nullptr ? gameView->hdrToneMapper() : OOHDRToneMapper{})));
 	}
 #endif
 
-	result["sdr-tone-mapper"] = oo::PList(cxx_OOStringFromSDRToneMapper([gameView sdrToneMapper]));
+	result["sdr-tone-mapper"] = oo::PList(cxx_OOStringFromSDRToneMapper((gameView != nullptr ? gameView->sdrToneMapper() : OOSDRToneMapper{})));
 
 	result["detailLevel"] = oo::PList(cxx_OOStringFromGraphicsDetail(getDetailLevel()));
 
@@ -4955,9 +4956,9 @@ oo::PList Universe::gameSettings()
 	result["musicMode"] = oo::PList(desc);
 
 	result["gameWindow"] = oo::PList(oo::PList::Dict{
-		{ "width", oo::PList::singleReal([gameView backingViewSize].width) },
-		{ "height", oo::PList::singleReal([gameView backingViewSize].height) },
-		{ "fullScreen", oo::PList(static_cast<bool>([gameController() inFullScreenMode])) },
+		{ "width", oo::PList::singleReal((gameView != nullptr ? gameView->backingViewSize() : NSSize{}).width) },
+		{ "height", oo::PList::singleReal((gameView != nullptr ? gameView->backingViewSize() : NSSize{}).height) },
+		{ "fullScreen", oo::PList(static_cast<bool>((gameController() != nullptr ? gameController()->inFullScreenMode() : false))) },
 	});
 
 	result["keyConfig"] = (PLAYER != nullptr ? PLAYER->keyConfig() : oo::PList());
@@ -5216,7 +5217,7 @@ void Universe::drawUniverse()
 {
 	int currentPostFX = this->currentPostFX();
 	BOOL hudSeparateRenderPass =  useShaders() && (currentPostFX == OO_POSTFX_NONE || ((currentPostFX == OO_POSTFX_CLOAK || currentPostFX == OO_POSTFX_CRTBADSIGNAL) && colorblindMode() == OO_POSTFX_NONE));
- 	NSSize  viewSize = [gameView backingViewSize];
+ 	NSSize  viewSize = (gameView != nullptr ? gameView->backingViewSize() : NSSize{});
 	OO_LOG("universe.profile.draw", "{}", "Begin draw");
 	
 	if (!no_update)
@@ -5228,7 +5229,7 @@ void Universe::drawUniverse()
 	
 		if(useShaders())
 		{
-			if ([gameView msaa])
+			if ((gameView != nullptr ? gameView->msaa() : false))
 			{
 				OOGL(glBindFramebuffer(GL_FRAMEBUFFER, msaaFramebufferID));
 			}
@@ -5314,13 +5315,13 @@ void Universe::drawUniverse()
 			}
 
 			// We need to bring forward the near plane of the frustum on the long distance pass by this factor to avoid clipping objects at the corner of the window
-			float distanceFactor = sqrt(1 + ([gameView fov:YES]*[gameView fov:YES] * (1.0 + 1.0/(aspect*aspect)))); 
+			float distanceFactor = sqrt(1 + ((gameView != nullptr ? gameView->fov(YES) : 0.0f)*(gameView != nullptr ? gameView->fov(YES) : 0.0f) * (1.0 + 1.0/(aspect*aspect)))); 
 
 			for (vdist=0;vdist<=1;vdist++)
 			{
 				float   nearPlane = vdist ? 1.0 : INTERMEDIATE_CLEAR_DEPTH;
 				float   farPlane = vdist ? breakPlane : MAX_CLEAR_DEPTH;
-				float   ratio = (displayGUI ? 0.5 : [gameView fov:YES]) * nearPlane / distanceFactor; // 0.5 is field of view ratio for GUIs
+				float   ratio = (displayGUI ? 0.5 : (gameView != nullptr ? gameView->fov(YES) : 0.0f)) * nearPlane / distanceFactor; // 0.5 is field of view ratio for GUIs
 				
 				OOGLResetProjection();
 				if ((displayGUI && 4*aspect >= 3) || (!displayGUI && 4*aspect <= 3))
@@ -5589,7 +5590,7 @@ void Universe::drawUniverse()
 			cxx_OOCheckOpenGLErrors("Universe after drawing entities");
 			OO_LOG("universe.profile.draw", "{}", "Begin HUD");
 			
-			GLfloat	lineWidth = [gameView backingViewSize].width / 1024.0; // restore line size
+			GLfloat	lineWidth = (gameView != nullptr ? gameView->backingViewSize() : NSSize{}).width / 1024.0; // restore line size
 			if (lineWidth < 1.0)  lineWidth = 1.0;
 			if (lineWidth > 1.5)  lineWidth = 1.5; // don't overscale; think of ultra-wide screen setups
 			OOGL(GLScaledLineWidth(lineWidth));
@@ -5658,7 +5659,7 @@ void Universe::drawUniverse()
 			
 			// frame complete, when it is time to update the fps_counter, updateClocks:delta_t
 			// in PlayerEntity.m will take care of resetting the processed frames number to 0.
-			if (![gameController() isGamePaused])
+			if (!(gameController() != nullptr ? gameController()->isGamePaused() : false))
 			{
 				framesDoneThisUpdate++;
 			}
@@ -5699,10 +5700,10 @@ void Universe::drawUniverse()
 
 void Universe::prepareToRenderIntoDefaultFramebuffer()
 {
-	NSSize viewSize = [gameView backingViewSize];
+	NSSize viewSize = (gameView != nullptr ? gameView->backingViewSize() : NSSize{});
 	if(useShaders())
 	{
-		if ([gameView msaa])
+		if ((gameView != nullptr ? gameView->msaa() : false))
 		{
 			// resolve MSAA framebuffer to target framebuffer
 			OOGL(glBindFramebuffer(GL_READ_FRAMEBUFFER, msaaFramebufferID));
@@ -5747,7 +5748,7 @@ void Universe::drawMessage()
 	float overallAlpha = (hud != nullptr) ? hud->getOverallAlpha() : 0.0f;	// a nil HUD answered 0
 	if (displayGUI)
 	{
-		if ([gameController() mouseInteractionMode] == MOUSE_MODE_UI_SCREEN_WITH_INTERACTION)
+		if ((gameController() != nullptr ? gameController()->mouseInteractionMode() : OOMouseInteractionMode{}) == MOUSE_MODE_UI_SCREEN_WITH_INTERACTION)
 		{
 			cursor_row = (gui != nullptr) ? gui->drawGUI(1.0, YES) : 0;	// a nil GUI answered 0
 		}
@@ -5772,7 +5773,7 @@ void Universe::drawWatermarkString(const std::string &watermarkString)
 	// position the watermark string on the top right hand corner of the game window and right-align it
 	const int halfGuiWidth = MAIN_GUI_PIXEL_WIDTH / 2, halfGuiHeight = MAIN_GUI_PIXEL_HEIGHT / 2;	// integer halves, as before
 	cxx_OODrawString(watermarkString, halfGuiWidth - watermarkStringSize.width + 80,
-						halfGuiHeight - watermarkStringSize.height, [gameView display_z], NSMakeSize(10,10));
+						halfGuiHeight - watermarkStringSize.height, (gameView != nullptr ? gameView->getDisplay_z() : 0.0f), NSMakeSize(10,10));
 }
 
 
@@ -6920,7 +6921,7 @@ void Universe::findCollisionsAndShadows()
 		universeRegion->checkEntity(sortedEntities[i]);	// sorts out which region it's in
 	}
 	
-	if (![gameController() isGamePaused])
+	if (!(gameController() != nullptr ? gameController()->isGamePaused() : false))
 	{
 		universeRegion->findCollisions();
 	}
@@ -6997,18 +6998,18 @@ void Universe::setViewDirection(OOViewID vd)
 	
 	if (guiSelected)
 	{
-		[gameController() setMouseInteractionModeForUIWithMouseInteraction:NO];
+		if (gameController() != nullptr)  gameController()->setMouseInteractionModeForUIWithMouseInteraction(NO);
 	}
 	else
 	{
 		displayGUI = NO;   // switch off any text displays
-		[gameController() setMouseInteractionModeForFlight];
+		if (gameController() != nullptr)  gameController()->setMouseInteractionModeForFlight();
 	}
 	
 	if (viewDirection != vd || viewDirection == VIEW_CUSTOM)
 	{
 		#if (ALLOW_CUSTOM_VIEWS_WHILE_PAUSED)
-		BOOL gamePaused = [gameController() isGamePaused];
+		BOOL gamePaused = (gameController() != nullptr ? gameController()->isGamePaused() : false);
 		#else
 		BOOL gamePaused = NO;
 		#endif
@@ -7037,7 +7038,7 @@ void Universe::enterGUIViewModeWithMouseInteraction(bool mouseInteraction)
 		ShipScriptEvent(context, player, "viewDirectionChanged", OOJSValueFromViewID(context, viewDirection), OOJSValueFromViewID(context, vd));
 		OOJSRelinquishContext(context);
 	}
-	[gameController() setMouseInteractionModeForUIWithMouseInteraction:mouseInteraction];
+	if (gameController() != nullptr)  gameController()->setMouseInteractionModeForUIWithMouseInteraction(mouseInteraction);
 }
 
 
@@ -10411,7 +10412,7 @@ void Universe::handleOoliteException(::OOException *exception)
 			OO_LOG(cxx_kOOLogException, "***** Handling Fatal : {} : {} *****", [exception name], [exception reason]);
 			std::string exception_msg = oo::str::format("Exception : %s : %s Please take a screenshot and/or press esc or Q to quit.", [exception name], [exception reason]);
 			addMessage(exception_msg, 30.0);
-			[gameController() setGamePaused:YES];
+			if (gameController() != nullptr)  gameController()->setGamePaused(YES);
 		}
 		else
 		{
@@ -10781,8 +10782,8 @@ bool Universe::reinitAndShowDemo(bool showDemo)
 	//       be aware of cache flushes so it can automatically
 	//       reinitialize itself - mwerle 20081107.
 	OOShipRegistry::reload();
-	[gameController() setGamePaused:NO];
-	[gameController() setMouseInteractionModeForUIWithMouseInteraction:NO];
+	if (gameController() != nullptr)  gameController()->setGamePaused(NO);
+	if (gameController() != nullptr)  gameController()->setMouseInteractionModeForUIWithMouseInteraction(NO);
 	if (PLAYER != nullptr)  PLAYER->setSpeed(0.0);
 	
 	loadDescriptions();
@@ -10822,7 +10823,7 @@ bool Universe::reinitAndShowDemo(bool showDemo)
 	
 	addEntity(oo::ToObjC(player));
 	demo_ship = nil;
-	[gameController() cxx_setPlayerFileToLoad:""];		// reset Quicksave
+	if (gameController() != nullptr)  gameController()->setPlayerFileToLoad("");		// reset Quicksave
 	
 	setUpInitialUniverse();
 	autoSaveNow = NO;	// don't autosave immediately after restarting a game
@@ -11572,7 +11573,7 @@ void Universe::initTargetFramebufferWithViewSize(NSSize viewSize)
 		// shader for applying bloom and any necessary post-proc fx, tonemapping and gamma correction
 		finalProgram = OOShaderProgram::shaderProgramWithVertexShaderName("oolite-final.vertex",
 #if OOLITE_WINDOWS
-													[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) hdrOutput] ? "oolite-final-hdr.fragment" : "oolite-final.fragment",
+													(UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr ? UNIVERSE->getGameView()->hdrOutput() : false) ? "oolite-final-hdr.fragment" : "oolite-final.fragment",
 #else
 													"oolite-final.fragment",
 #endif
@@ -11694,7 +11695,7 @@ void Universe::drawTargetTextureIntoDefaultFramebuffer()
 	GLhandleARB program = textureProgram->program();
 	GLhandleARB blur = blurProgram->program();
 	GLhandleARB final = finalProgram->program();
-	NSSize viewSize = [gameView backingViewSize];
+	NSSize viewSize = (gameView != nullptr ? gameView->backingViewSize() : NSSize{});
 	float fboResolution[2] = {(float)viewSize.width, (float)viewSize.height};
 
 	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, passthroughFramebufferID));
@@ -11742,19 +11743,19 @@ void Universe::drawTargetTextureIntoDefaultFramebuffer()
 	OOGL(glUniform2fv(glGetUniformLocation(final, "uResolution"), 1, fboResolution));
 	OOGL(glUniform1i(glGetUniformLocation(final, "uPostFX"), currentPostFX()));
 #if OOLITE_WINDOWS
-	if([gameView hdrOutput])
+	if((gameView != nullptr ? gameView->hdrOutput() : false))
 	{
-		OOGL(glUniform1f(glGetUniformLocation(final, "uMaxBrightness"), [gameView hdrMaxBrightness]));
-		OOGL(glUniform1f(glGetUniformLocation(final, "uPaperWhiteBrightness"), [gameView hdrPaperWhiteBrightness]));
-		OOGL(glUniform1i(glGetUniformLocation(final, "uHDRToneMapper"), [gameView hdrToneMapper]));
+		OOGL(glUniform1f(glGetUniformLocation(final, "uMaxBrightness"), (gameView != nullptr ? gameView->hdrMaxBrightness() : 0.0f)));
+		OOGL(glUniform1f(glGetUniformLocation(final, "uPaperWhiteBrightness"), (gameView != nullptr ? gameView->hdrPaperWhiteBrightness() : 0.0f)));
+		OOGL(glUniform1i(glGetUniformLocation(final, "uHDRToneMapper"), (gameView != nullptr ? gameView->hdrToneMapper() : OOHDRToneMapper{})));
 	}
 #endif
-	OOGL(glUniform1i(glGetUniformLocation(final, "uSDRToneMapper"), [gameView sdrToneMapper]));
+	OOGL(glUniform1i(glGetUniformLocation(final, "uSDRToneMapper"), (gameView != nullptr ? gameView->sdrToneMapper() : OOSDRToneMapper{})));
 	
 	OOGL(glActiveTexture(GL_TEXTURE1));
 	OOGL(glBindTexture(GL_TEXTURE_2D, pingpongColorbuffers[!horizontal]));
 	OOGL(glUniform1i(glGetUniformLocation(final, "bloomBlur"), 1));
-	OOGL(glUniform1f(glGetUniformLocation(final, "uSaturation"), [gameView colorSaturation]));
+	OOGL(glUniform1f(glGetUniformLocation(final, "uSaturation"), (gameView != nullptr ? gameView->colorSaturation() : 0.0f)));
 	
 	OOGL(glBindVertexArray(quadTextureVAO));
 	OOGL(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0));

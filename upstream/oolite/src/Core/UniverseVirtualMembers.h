@@ -46,7 +46,8 @@ MA 02110-1301, USA.
 #include <string>
 #include <vector>
 
-@class Entity, MyOpenGLView;
+@class Entity;
+class MyOpenGLView;
 @protocol OOBeaconEntity;
 class StationEntity;
 class OOPlanetEntity;

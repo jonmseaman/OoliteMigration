@@ -165,7 +165,7 @@ void OOPlanetDrawable::setLevelOfDetail(float lod)
 void OOPlanetDrawable::calculateLevelOfDetailForViewDistance(float distance)
 {
 	BOOL simple = (UNIVERSE != nullptr ? UNIVERSE->reducedDetail() : false);
-	float	drawFactor = [(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) viewSize].width / (simple ? 100.0 : 40.0);
+	float	drawFactor = (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr ? UNIVERSE->getGameView()->getViewSize() : NSSize{}).width / (simple ? 100.0 : 40.0);
 	float	drawRatio2 = drawFactor * _radius / sqrtf(distance); // proportional to size on screen in pixels
 	
 	float lod = sqrtf(drawRatio2 * LOD_FACTOR);

@@ -277,7 +277,7 @@ static bool OoliteGetProperty(Context cx, Object obj, PropertyId propID, Value *
 		}
 			
 		case kOolite_colorSaturation:
-			return ooscript::newNumberValue(cx, [gameView colorSaturation], value);
+			return ooscript::newNumberValue(cx, (gameView != nullptr ? gameView->colorSaturation() : 0.0f), value);
 			
 		case kOolite_postFX:
 			*value_raw = ooscript::int32Value((UNIVERSE != nullptr ? UNIVERSE->currentPostFX() : 0));
@@ -287,9 +287,9 @@ static bool OoliteGetProperty(Context cx, Object obj, PropertyId propID, Value *
 		{
 			std::optional<std::string> toneMapperStr = "OOHDR_TONEMAPPER_UNDEFINED";
 #if OOLITE_WINDOWS
-			if ([gameView hdrOutput])
+			if ((gameView != nullptr ? gameView->hdrOutput() : false))
 			{
-				toneMapperStr = cxx_OOStringFromHDRToneMapper([gameView hdrToneMapper]);
+				toneMapperStr = cxx_OOStringFromHDRToneMapper((gameView != nullptr ? gameView->hdrToneMapper() : OOHDRToneMapper{}));
 			}
 #endif
 			if (toneMapperStr.has_value())  result = oo::PList(*toneMapperStr);
@@ -299,9 +299,9 @@ static bool OoliteGetProperty(Context cx, Object obj, PropertyId propID, Value *
 		case kOolite_sdrToneMapper:
 		{
 			std::optional<std::string> toneMapperStr = "OOSDR_TONEMAPPER_UNDEFINED";
-			if (![gameView hdrOutput])
+			if (!(gameView != nullptr ? gameView->hdrOutput() : false))
 			{
-				toneMapperStr = cxx_OOStringFromSDRToneMapper([gameView sdrToneMapper]);
+				toneMapperStr = cxx_OOStringFromSDRToneMapper((gameView != nullptr ? gameView->sdrToneMapper() : OOSDRToneMapper{}));
 			}
 			if (toneMapperStr.has_value())  result = oo::PList(*toneMapperStr);
 			break;
@@ -346,8 +346,8 @@ static bool OoliteSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 		case kOolite_colorSaturation:
 			if (ooscript::valueToNumber(cx, *value, &fValue))
 			{
-				float currentColorSaturation = [gameView colorSaturation];
-				[gameView adjustColorSaturation:fValue - currentColorSaturation];
+				float currentColorSaturation = (gameView != nullptr ? gameView->colorSaturation() : 0.0f);
+				if (gameView != nullptr)  gameView->adjustColorSaturation(fValue - currentColorSaturation);
 				return true;
 			}
 			break;
@@ -367,7 +367,7 @@ static bool OoliteSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			if (sValue.has_value())
 			{
 #if OOLITE_WINDOWS
-				if ([gameView hdrOutput])  [gameView setHDRToneMapper:cxx_OOHDRToneMapperFromString(*sValue)];
+				if ((gameView != nullptr ? gameView->hdrOutput() : false))  { if (gameView != nullptr)  gameView->setHDRToneMapper(cxx_OOHDRToneMapperFromString(*sValue)); }
 				else  cxx_OOJSReportWarning(context, "hdrToneMapper cannot be set if not running in HDR mode");
 #endif
 				return true;
@@ -379,7 +379,7 @@ static bool OoliteSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			sValue = cxx_OOStringFromJSValue(context,*value_raw);
 			if (sValue.has_value())
 			{
-				if (![gameView hdrOutput])  [gameView setSDRToneMapper:cxx_OOSDRToneMapperFromString(*sValue)];
+				if (!(gameView != nullptr ? gameView->hdrOutput() : false))  { if (gameView != nullptr)  gameView->setSDRToneMapper(cxx_OOSDRToneMapperFromString(*sValue)); }
 				else  cxx_OOJSReportWarning(context, "sdrToneMapper cannot be set if not running in SDR mode");
 				return true;
 			}

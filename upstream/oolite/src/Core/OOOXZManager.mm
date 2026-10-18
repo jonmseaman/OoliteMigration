@@ -1849,7 +1849,7 @@ void OOOXZManager::processFilterKey()
 	if (_interfaceState == OXZ_STATE_PICK_INSTALL || _interfaceState == OXZ_STATE_PICK_INSTALLED || _interfaceState == OXZ_STATE_PICK_REMOVE || _interfaceState == OXZ_STATE_MAIN)
 	{
 		_interfaceState = OXZ_STATE_SETFILTER;
-		[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) resetTypedString];
+		if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->resetTypedString();
 		this->gui();
 	}
 	// else this key does nothing
@@ -1911,7 +1911,7 @@ void OOOXZManager::processShowInfoKey()
 			const std::optional<std::string> infoURL = ManifestString(manifest, std::string(kOOManifestInformationURL));
 			if (gui != nullptr)  gui->setText(DescFormat(OO_DESC("oolite-oxzmanager-infopage-infourl-@"), {Arg(infoURL)}), 25, GUI_ALIGN_LEFT);
 			// copy url info text to clipboard automatically once we are in the oxz info page
-			[(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) cxx_stringToClipboard:infoURL.value_or(std::string())];	  
+			if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->stringToClipboard(infoURL.value_or(std::string()));	  
 				  
 // instructions
 			if (gui != nullptr)
@@ -2556,7 +2556,7 @@ void OOOXZManager::downloadDidReceiveData(const std::string &data)
 	 * loop (it runs on its own thread, proposed ADR-0044); the call stays
 	 * so a burst of queued chunks still lets the game tick between them.
 	 */
-	[[::GameController sharedController] fireDueTimers];
+	::GameController::sharedController()->fireDueTimers();
 #endif
 }
 

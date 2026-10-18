@@ -229,7 +229,7 @@ class OOCrosshairs;
 #define OVERALL_ALPHA_KEY		"overall_alpha"
 #define NONLINEAR_SCANNER		@"nonlinear_scanner"
 
-#define Z1						[(MyOpenGLView *)[[player universe] gameView] display_z]
+#define Z1						(UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr ? UNIVERSE->getGameView()->getDisplay_z() : 0.0f)
 
 #define ONE_EIGHTH				0.125
 
@@ -520,10 +520,6 @@ class OOVisualEffectEntity;	// C++ since bead oo-9ht.165
 */
 // -[[UNIVERSE gui] cxx_setGLColorFromSetting:defaultValue:alpha:] (OODrawPlanetInfo()).
 void HeadUpDisplayUniverseGUISetGLColorFromSetting(const std::optional<std::string> &setting, OOColor *defaultValue, GLfloat alpha);
-// [UNIVERSE gameView], -[MyOpenGLView fov:] and -[MyOpenGLView viewSize] (drawScannerGrid()).
-MyOpenGLView *HeadUpDisplayUniverseGameView();
-GLfloat HeadUpDisplayGameViewFov(MyOpenGLView *gameView, bool inFraction);
-NSSize HeadUpDisplayGameViewViewSize(MyOpenGLView *gameView);
 // The player, entities and universe as the reticles and waypoints read them (hudDrawReticleOnTarget(),
 // hudDrawWaypoint(), hudRotateViewpointForVirtualDepth()).
 OOGUIScreenID HeadUpDisplayPlayerGuiScreen(PlayerEntity *player);

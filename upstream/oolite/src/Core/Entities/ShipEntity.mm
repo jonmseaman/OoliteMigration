@@ -9431,7 +9431,7 @@ void ShipEntity::setHulk(bool isNowHulk)
 
 void ShipEntity::noteTakingDamage(double amount, cxx::Entity *entity, OOShipDamageType type)
 {
-	if (amount < 0 || (amount == 0 && [(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) isGamePaused]))  return;
+	if (amount < 0 || (amount == 0 && (UNIVERSE != nullptr && UNIVERSE->gameController() != nullptr ? UNIVERSE->gameController()->isGamePaused() : false)))  return;
 	
 	ooscript::Context context = OOJSAcquireContext();
 	

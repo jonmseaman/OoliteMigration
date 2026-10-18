@@ -1037,7 +1037,7 @@ static bool GlobalTakeSnapShot(ooscript::Context context, ooscript::CallArgs &oo
 	
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
-	result = [(UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr) cxx_snapShot:value];
+	result = (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr ? UNIVERSE->getGameView()->snapShot(value) : false);
 	OOJS_END_FULL_NATIVE
 	
 	OOJS_RETURN_BOOL(result);
