@@ -141,7 +141,7 @@ void WormholeEntity::initWithDict(const oo::PList &dict)
 					if (ship != nil)
 					{
 						// time_delta as stored; it was only ever read with -oo_doubleForKey: (0 when absent)
-						shipsInTransit.push_back(OOWormholeTransit{ oo::ObjCRef<::Entity *>(oo::ToObjC(ship)), currShipDict.get<double>("time_delta"), std::nullopt });
+						shipsInTransit.push_back(OOWormholeTransit{ oo::EntityHold(ship), currShipDict.get<double>("time_delta"), std::nullopt });
 					}
 					else
 					{
@@ -305,7 +305,7 @@ bool WormholeEntity::suckInShip(::ShipEntity *ship)
 		}
 	}
 	
-	shipsInTransit.push_back(OOWormholeTransit{ oo::ObjCRef<::Entity *>(oo::ToObjC(ship)),
+	shipsInTransit.push_back(OOWormholeTransit{ oo::EntityHold(ship),
 						now + travel_time - arrival_time,
 						(ship != nullptr ? ship->beaconCode() : std::optional<std::string>()) });	// in case a beacon code has been set, nullopt otherwise
 	witch_mass += (ship != nullptr ? ship->getMass() : 0.0f);
@@ -657,11 +657,10 @@ bool WormholeEntity::canCollide()
 }
 
 
-// The other entity stays its Objective-C object (amendment oo-bj8 item 4): messages to nil answer as before.
-bool WormholeEntity::checkCloseCollisionWith(Entity *otherEntity)
+// The other entity's -isEffect, as the particle system asks it (bead oo-9ht.39.20): [nil isEffect] answered NO.
+bool WormholeEntity::checkCloseCollisionWith(cxx::Entity *otherEntity)
 {
-	::Entity *other = oo::ToObjC(otherEntity);
-	return ![other isEffect];
+	return otherEntity == nullptr || !otherEntity->isEffect();
 }
 
 

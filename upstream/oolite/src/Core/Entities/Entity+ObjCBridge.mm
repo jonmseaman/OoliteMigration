@@ -224,6 +224,13 @@ OOComparisonResult oo::CompareBeaconCodes(cxx::Entity *beacon, cxx::Entity *othe
 }
 
 
+bool oo::BeaconIsJammingScanning(cxx::Entity *beacon)
+{
+	id object = ToObjC(beacon);
+	return [object isJammingScanning];
+}
+
+
 std::string oo::EntityClassName(cxx::Entity *entity)
 {
 	if (ObjCEntityLink *link = AsObjCEntity(entity))  return OOClassName([link->objcOwner() class]);

@@ -288,7 +288,7 @@ void DockEntity::clearIdLocks(::ShipEntity *ship)
 	int i;
 	for (i = 1; i < MAX_DOCKING_STAGES; i++)
 	{
-		if (ship == nullptr || oo::ToObjC(ship) == oo::WeakEntityObject(id_lock[i]))
+		if (ship == nullptr || ship == oo::LiveEntity(id_lock[i]))
 		{
 			id_lock[i] = nullptr;
 		}
@@ -327,9 +327,9 @@ void DockEntity::update(OOTimeDelta delta_t)
 	
 	if ((!launchQueue.empty())&&(shipsOnApproach.empty())&&dockingCorridorIsEmpty())
 	{
-		const oo::ObjCRef<::Entity *> se = launchQueue.front();
+		const oo::EntityHold se = launchQueue.front();
 		// check to make sure ship has not been destroyed in queue by script
-		if ([se.get() status] == STATUS_DOCKED)
+		if (oo::EntityStatus(se.get()) == STATUS_DOCKED)
 		{
 			launchShip(oo::ToShip(se.get()));
 		}
@@ -652,9 +652,9 @@ oo::PList DockEntity::dockingInstructionsForShip(::ShipEntity *ship)
 	coords.y += rel_coords.x * vi.y + rel_coords.y * vj.y + rel_coords.z * vk.y;
 	coords.z += rel_coords.x * vi.z + rel_coords.y * vj.z + rel_coords.z * vk.z;
 	
-	if(oo::WeakEntityObject(id_lock[docking_stage]) == nil &&
-	   oo::WeakEntityObject(id_lock[docking_stage + 1]) == nil &&
-	   oo::WeakEntityObject(id_lock[docking_stage + 2]) == nil)	// check three stages ahead
+	if(oo::LiveEntity(id_lock[docking_stage]) == nullptr &&
+	   oo::LiveEntity(id_lock[docking_stage + 1]) == nullptr &&
+	   oo::LiveEntity(id_lock[docking_stage + 2]) == nullptr)	// check three stages ahead
 	{
 		// approach is clear - move to next position
 		//
@@ -1059,8 +1059,8 @@ bool DockEntity::shipIsInDockingCorridor(::ShipEntity *ship)
 		
 			// damage the ship according to velocity - don't send collision messages to AIs to avoid problems.
 			if (ship != nullptr)  ship->takeScrapeDamage(5 * (UNIVERSE != nullptr ? UNIVERSE->getTimeDelta() : 0.0)*(ship != nullptr ? ship->getFlightSpeed() : 0.0f), station);
-			if (station != nullptr)  station->doScriptEvent(OOJSID("shipCollided"), oo::ToObjC(ship)); // no COLLISION message to station AI, carriers would move away!
-			if (ship != nullptr)  ship->doScriptEvent(OOJSID("shipCollided"), oo::ToObjC(station)); // no COLLISION message to ship AI, dockingAI.plist would abort.
+			if (station != nullptr)  station->doScriptEvent(OOJSID("shipCollided"), ship); // no COLLISION message to station AI, carriers would move away!
+			if (ship != nullptr)  ship->doScriptEvent(OOJSID("shipCollided"), station); // no COLLISION message to ship AI, dockingAI.plist would abort.
 			
 			Vector delta;
 			delta.x = 0.5f * (arbb.max.x + arbb.min.x) * correction_factor;
@@ -1107,11 +1107,11 @@ void DockEntity::addShipToLaunchQueue(::ShipEntity *ship, bool priority)
 	if (ship != nullptr)  ship->setStatus(STATUS_DOCKED);
 	if (priority)
 	{
-		launchQueue.insert(launchQueue.begin(), oo::ObjCRef<::Entity *>(oo::ToObjC(ship)));
+		launchQueue.insert(launchQueue.begin(), oo::EntityHold(ship));
 	}
 	else
 	{
-		launchQueue.push_back(oo::ObjCRef<::Entity *>(oo::ToObjC(ship)));
+		launchQueue.push_back(oo::EntityHold(ship));
 	}
 }
 
@@ -1163,15 +1163,15 @@ void DockEntity::launchShip(::ShipEntity *ship)
 	
 	if (ship != nullptr)  ship->resetExhaustPlumes();	// resets stuff for tracking/exhausts
 	
-	if (ship != nullptr)  ship->doScriptEvent(OOJSID("shipWillLaunchFromStation"), oo::ToObjC(station));
-	if (station != nullptr)  station->doScriptEvent(OOJSID("stationLaunchedShip"), oo::ToObjC(ship), "STATION_LAUNCHED_SHIP");
+	if (ship != nullptr)  ship->doScriptEvent(OOJSID("shipWillLaunchFromStation"), station);
+	if (station != nullptr)  station->doScriptEvent(OOJSID("stationLaunchedShip"), ship, "STATION_LAUNCHED_SHIP");
 }
 
 
 NSUInteger DockEntity::countOfShipsInLaunchQueueWithPrimaryRole(const std::string &role)
 {
 	NSUInteger count = 0;
-	for (const oo::ObjCRef<::Entity *> &ship : launchQueue)
+	for (const oo::EntityHold &ship : launchQueue)
 	{
 		if ((oo::ToShip(ship.get()) != nullptr ? oo::ToShip(ship.get())->hasPrimaryRole(role) : false))  count++;
 	}

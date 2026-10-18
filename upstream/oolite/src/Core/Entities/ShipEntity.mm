@@ -13632,7 +13632,7 @@ void ShipEntity::takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::Enti
 	if (status() == STATUS_DEAD)  return;
 	if (amount <= 0.0)  return;
 	
-	BOOL energyMine = [ent isCascadeWeapon];
+	BOOL energyMine = OOEntityIsCascadeWeapon(entPart);
 	BOOL cascade = NO;
 	if (energyMine)
 	{

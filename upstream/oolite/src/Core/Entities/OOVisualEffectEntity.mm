@@ -873,7 +873,7 @@ void OOVisualEffectEntity::remove()
 
 OOComparisonResult OOVisualEffectEntity::compareBeaconCodeWith(cxx::Entity *other)
 {
-	return (OOComparisonResult)oo::str::caseInsensitiveCompare(beaconCode().value_or(""), [(OOVisualEffectBeaconEntity *)oo::ToObjC(other) beaconCode].value_or(""));
+	return (OOComparisonResult)oo::str::caseInsensitiveCompare(beaconCode().value_or(""), oo::BeaconCode(other).value_or(""));
 }
 
 
@@ -956,13 +956,13 @@ OOHUDBeaconIcon *OOVisualEffectEntity::beaconDrawable()
 
 cxx::Entity *OOVisualEffectEntity::prevBeacon()
 {
-	return oo::ToCxx(oo::WeakEntityObject(_prevBeacon));
+	return oo::LiveEntity(_prevBeacon);
 }
 
 
 cxx::Entity *OOVisualEffectEntity::nextBeacon()
 {
-	return oo::ToCxx(oo::WeakEntityObject(_nextBeacon));
+	return oo::LiveEntity(_nextBeacon);
 }
 
 

@@ -1653,7 +1653,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 				{
 					if (!docking_clearance_request_key_pressed)
 					{
-						::Entity *primeTarget = oo::ToObjC(primaryTarget());
+						cxx::Entity *primeTarget = primaryTarget();
 						performDockingRequest(oo::ToStation(primeTarget));
 					}
 					docking_clearance_request_key_pressed = YES;
@@ -1780,9 +1780,9 @@ void PlayerEntity::pollFlightControls(double delta_t)
 				if (!dump_target_state_pressed)
 				{
 					dump_target_state_pressed = YES;
-					id target = oo::ToObjC(primaryTarget());
-					if (target == nil)	target = oo::ToObjC(this);
-					[target dumpState];
+					cxx::Entity *target = primaryTarget();
+					if (target == nullptr)	target = this;
+					target->dumpState();	// what the facade's -dumpState called (bead oo-9ht.39.18)
 				}
 			}
 			else  dump_target_state_pressed = NO;
@@ -5459,9 +5459,9 @@ void PlayerEntity::handleAutopilotOn(bool fastDocking)
 		goto abort;
 	}
 	
-	::Entity *target; target = oo::ToObjC(primaryTarget());
+	cxx::Entity *target; target = primaryTarget();	// the C++ entities (bead oo-9ht.39.18)
 	// If target isn't dockable, check for nearby stations
-	if (![target isStation])
+	if (!(target != nullptr && target->getIsStation()))
 	{
 		::Universe  *uni        = UNIVERSE;
 		cxx::Entity    **entities  = uni->sortedEntities;	// grab the public sorted list
@@ -5474,7 +5474,7 @@ void PlayerEntity::handleAutopilotOn(bool fastDocking)
 				entities[i]->zero_distance <= SCANNER_MAX_RANGE2)
 			{
 				nStations++;
-				target = oo::ToObjC(entities[i]);
+				target = entities[i];
 			}
 		}
 		// If inside the Aegis, dock with the main station.
@@ -5483,7 +5483,7 @@ void PlayerEntity::handleAutopilotOn(bool fastDocking)
 		
 		if (withinStationAegis() && legalStatusValue <= 50)
 		{
-			target = oo::ToObjC((UNIVERSE != nullptr ? UNIVERSE->station() : nullptr));
+			target = (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr);
 		}
 		else if (nStations != 1)
 		{
@@ -5522,7 +5522,7 @@ void PlayerEntity::handleAutopilotOn(bool fastDocking)
 	else if (fastDocking && (ts != nullptr ? ts->getAllowsFastDocking() : false))
 	{
 		// check whether there are docks that do not accept docking - even one such dock will result in rejection
-		for (const auto &sub : (ts != nullptr ? ts->dockSubEntities() : std::vector<oo::ObjCRef<::Entity *>>()))
+		for (const auto &sub : (ts != nullptr ? ts->dockSubEntities() : std::vector<oo::EntityHold>()))
 		{
 			// TOO_BIG_TO_DOCK issued when docks are scripted to reject docking
 			if((oo::ToDock(sub.get()) != nullptr ? oo::ToDock(sub.get())->canAcceptShipForDocking(this) : std::optional<std::string>()) == "TOO_BIG_TO_DOCK")	// a dock's object is a ship's since bead oo-9ht.180
@@ -5606,7 +5606,7 @@ void PlayerEntity::handleButtonTargetMissile()
 	missile_status = MISSILE_STATUS_ARMED;
 	if ((oo::ToShip(missile_entity[activeMissile].get()) != nullptr ? oo::ToShip(missile_entity[activeMissile].get())->getIsMissile() : false))
 	{
-		if ([oo::ToObjC(primaryTarget()) isShip])
+		if (oo::EntityIsShip(primaryTarget()))
 		{
 			missile_status = MISSILE_STATUS_TARGET_LOCKED;
 			if (oo::ToShip(missile_entity[activeMissile].get()) != nullptr)  oo::ToShip(missile_entity[activeMissile].get())->addTarget(primaryTarget());

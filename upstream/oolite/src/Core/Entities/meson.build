@@ -21,7 +21,6 @@ oolite_sources += files(
     'OOPlasmaBurstEntity.mm',
     'OOPlasmaShotEntity.mm',
     'OOQuiriumCascadeEntity.mm',
-    'OOQuiriumCascadeEntity+ObjCBridge.mm',
     'OORingEffectEntity.mm',
     'OOSparkEntity.mm',
     'OOSunEntity.mm',

@@ -147,7 +147,7 @@ void OOEntityByNameTyped(cxx::Entity *entity, OOEntityByNameValue &value)
 /*	The root facade's own selectors that callObjC() lists and the by-name table does not (bead
 	oo-9ht.39.8.25, ADR-0056 amendment oo-9ht.39.8.25), so callObjC() asks and calls an entity's C++
 	part for every name of its table. Each function is the facade method's body (Entity+ObjCBridge.mm,
-	OOQuiriumCascadeEntity+ObjCBridge.mm), verbatim, with the entity for _cxxEntity.get(), after a guard
+	and the cascade's category, deleted by bead oo-9ht.186), verbatim, with the entity for _cxxEntity.get(), after a guard
 	for no entity (zero, as a message to nil answered; the calls never pass one); a name whose
 	result callObjC() cannot read (a string, a vector of objects, a matrix, a high-precision vector,
 	a bounding box: "cannot be called", or no result) has no function. The answers are

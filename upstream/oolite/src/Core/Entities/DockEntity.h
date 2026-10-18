@@ -124,7 +124,7 @@ public:
 	// @private in Objective-C; still public (the tests read them), as the player's were after its
 	// facade went (ADR-0056 amendment oo-9ht.177 item 6)
 	std::map<unsigned short, std::vector<oo::PList>>	shipsOnApproach;	// coordinate stacks (Dicts) by ship ID (the old +numberWithUnsignedShort: key)
-	std::vector<oo::ObjCRef<::Entity *>>	launchQueue;
+	std::vector<oo::EntityHold>	launchQueue;	// the ships' objects held (bead oo-9ht.39.19)
 	double					last_launch_time = {};
 //	double					approach_spacing; // not needed now holding pattern changed
 	

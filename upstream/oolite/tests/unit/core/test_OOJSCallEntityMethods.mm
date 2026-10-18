@@ -142,6 +142,8 @@ std::map<std::string, OracleRow> OracleSafeSet()
 	result["isVisibleToScripts"] = OracleRow{ OOJSCallEntityMethodForm::Typed, OOShaderUniformTypeFromEncoding(@encode(BOOL)) };
 	result["cxx_oo_jsClassName"] = OracleRow{ OOJSCallEntityMethodForm::Typed, OOShaderUniformTypeFromEncoding(@encode(std::optional<std::string>)) };
 	result["deleteJSSelf"] = OracleRow{ OOJSCallEntityMethodForm::VoidVoid, kOOShaderUniformTypeInvalid };
+	// The cascade's category (deleted by bead oo-9ht.186): its one method, as the matcher classified it.
+	result["isCascadeWeapon"] = OracleRow{ OOJSCallEntityMethodForm::Typed, OOShaderUniformTypeFromEncoding(@encode(BOOL)) };
 	return result;
 }
 
@@ -234,8 +236,9 @@ OO_TEST(everyNameIsAnsweredByTheCxxEntity)
 		for (const OOEntityFacadeRow &facade : oo::EntityFacadeRows())
 		{
 			if (!names.contains(facade.name))  notInTable += std::string(" ") + facade.name;
-			// The root facade's JS glue category is deleted (bead oo-9ht.39.8.9): its rows keep the body.
-			const bool deletedGlue = (std::strcmp(facade.name, "isVisibleToScripts") == 0 || std::strcmp(facade.name, "deleteJSSelf") == 0);
+			// The root facade's JS glue category is deleted (bead oo-9ht.39.8.9), and the cascade's (bead
+			// oo-9ht.186): their rows keep the body.
+			const bool deletedGlue = (std::strcmp(facade.name, "isVisibleToScripts") == 0 || std::strcmp(facade.name, "deleteJSSelf") == 0 || std::strcmp(facade.name, "isCascadeWeapon") == 0);
 			if (!deletedGlue && class_getInstanceMethod([::Entity class], sel_registerName(facade.name)) == NULL)  notFacade += std::string(" ") + facade.name;
 		}
 		OO_CHECK_EQ(uncovered, std::string());
