@@ -56,7 +56,7 @@ namespace {
 
 // What the stand-ins were told, in order (slice 2 on).
 std::vector<std::string> sLog;
-Entity *sNextBeacon = nil;
+cxx::Entity *sNextBeacon = nil;
 BOOL sPlayerDocked = NO;	// what the engine's player answers -isDocked (slice 3)
 
 }	// namespace
@@ -67,7 +67,7 @@ class TestPlayer : public PlayerEntity	// C++ since bead oo-9ht.177 deleted the 
 {
 public:
 	HPVector viewpointPosition() override	{ return kZeroHPVector; }
-	cxx::Entity *nextBeacon() override	{ return oo::ToCxx(sNextBeacon); }	// the C++ entity since bead oo-9ht.39.23
+	cxx::Entity *nextBeacon() override	{ return sNextBeacon; }	// the C++ entity since bead oo-9ht.39.23
 	void setCompassMode(OOCompassMode value) override	{ sLog.push_back(oo::str::format("setCompassMode %d", static_cast<int>(value))); }
 	void setScriptTarget(::ShipEntity * ship) override	{ sLog.push_back("setScriptTarget " + (ship != nullptr ? ship->getName() : std::optional<std::string>()).value_or("(nil)")); }
 	unsigned score() override	{ return 1000; }
@@ -144,7 +144,7 @@ T *NewTestPlayer()
 	oo::Ref<T> player = oo::makeRef<T>();
 	@autoreleasepool
 	{
-		[oo::NewEntityFacade(player) retain];
+		oo::RetainEntity(oo::MadeEntity(player));
 	}
 	return player.get();
 }
@@ -260,9 +260,9 @@ std::string Eval(const std::string &src)
 	SetUp();
 	ooscript::Context context = OOJSAcquireContext();
 	ooscript::Object global = OOJavaScriptEngine::sharedEngine()->globalObject();
-	ooscript::Value shipValue = OOJSValueFromNativeObject(context, oo::ToObjC(sShip));
+	ooscript::Value shipValue = sShip->jsValueInContext(context);
 	ooscript::setProperty(context, global, "ship", &shipValue);
-	ooscript::Value otherValue = OOJSValueFromNativeObject(context, oo::ToObjC(sOther));
+	ooscript::Value otherValue = sOther->jsValueInContext(context);
 	ooscript::setProperty(context, global, "other", &otherValue);
 	std::string wrapped = "(function () { try { return String(" + src + "); } catch (e) { return 'threw: ' + (e && e.message !== undefined ? e.message : e); } })()";
 	ooscript::Value result = ooscript::undefinedValue();
@@ -568,7 +568,7 @@ OO_TEST(setterBeaconCode)
 	Log();
 	OO_CHECK_EVAL(SET("beaconCode", "'C'"), "C");	// already a beacon: only the code changes
 	OO_CHECK_LOG("");
-	sNextBeacon = oo::ToObjC(sShip);	// the compass is on this beacon
+	sNextBeacon = sShip;	// the compass is on this beacon
 	OO_CHECK_EVAL(SET("beaconCode", "''"), "C");	// cleared from the universe's list, code kept
 	OO_CHECK_LOG("clearBeacon; setCompassMode " + std::to_string(static_cast<int>(COMPASS_MODE_PLANET)));
 	sNextBeacon = nil;
@@ -818,7 +818,7 @@ OO_TEST(methodsRemoveAndExplode)
 	PlainShip *queued = static_cast<PlainShip *>(oo::ToShip(oo::NewShipObject(oo::makeRef<PlainShip>(), "queued", oo::PList(oo::PList::Dict{ { "name", oo::PList(std::string("Queued")) } }))));
 	if (queued != nullptr)  queued->setStatus(STATUS_DOCKED);
 	ooscript::Context context = OOJSAcquireContext();
-	ooscript::Value queuedValue = OOJSValueFromNativeObject(context, oo::ToObjC(queued));
+	ooscript::Value queuedValue = queued->jsValueInContext(context);
 	ooscript::setProperty(context, OOJavaScriptEngine::sharedEngine()->globalObject(), "queued", &queuedValue);
 	OOJSRelinquishContext(context);
 	Log();
@@ -826,7 +826,7 @@ OO_TEST(methodsRemoveAndExplode)
 	OO_CHECK((queued != nullptr ? queued->status() : OOEntityStatus{}) == STATUS_DEAD);
 	OO_CHECK((queued != nullptr ? queued->shipScript() : (OOScript *)nullptr) == nil);	// suppressing the death event drops the script
 	OO_CHECK_LOG("");
-	if (queued != nullptr)  [oo::ToObjC(queued) release];
+	if (queued != nullptr)  oo::ReleaseEntity(queued);
 }
 
 

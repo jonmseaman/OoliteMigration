@@ -135,8 +135,8 @@ OO_TEST(cachedScripts)
 		OO_CHECK(zeta->description().find("OOPListScript") != std::string::npos);
 
 		// A run whose target is not a ship logs and does nothing (it never reaches the player).
-		Entity *notAShip = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
-		zeta->runWithTarget(oo::ToCxx(notAShip));
+		cxx::Entity *notAShip = oo::MadeEntity(oo::makeRef<cxx::Entity>());
+		zeta->runWithTarget(notAShip);
 	}
 }
 

@@ -48,19 +48,6 @@ MA 02110-1301, USA.
 #include <objc/runtime.h>
 
 
-/*	The JS glue selectors an Objective-C entity's class may define for itself (bead oo-9ht.39.8.9):
-	the root facade's category that answered them for every entity (forwarding to the C++ part) is
-	deleted, so these declare them only for the sends below, which go to a class that has its own.
-*/
-@interface Entity (OOJSOwnGlue)
-
-- (BOOL) isVisibleToScripts;
-- (std::optional<std::string>) cxx_oo_jsClassName;
-- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
-
-@end
-
-
 // MARK: Entity (OOJavaScriptExtensions)
 
 bool EntityJSIsVisibleToScripts(void)
@@ -229,13 +216,13 @@ void ShipEntityJSSetTargetForScript(ShipEntity *ship, ShipEntity *target)
 	// Ensure coherence by not fiddling with subentities.
 	while ((me != nullptr ? me->getIsSubEntity() : false))
 	{
-		if (me == oo::ToShip((me != nullptr ? me->owner() : id{})) || (me != nullptr ? me->owner() : id{}) == nil)  break;	// its own object (bead oo-9ht.39.25: the ship, not its object)
-		me = oo::ToShip((me != nullptr ? me->owner() : id{}));
+		if (me == oo::ToShip((me != nullptr ? me->owner() : nullptr)) || (me != nullptr ? me->owner() : nullptr) == nil)  break;	// its own object (bead oo-9ht.39.25: the ship, not its object)
+		me = oo::ToShip((me != nullptr ? me->owner() : nullptr));
 	}
 	while ((target != nullptr ? target->getIsSubEntity() : false))
 	{
-		if (target == oo::ToShip((target != nullptr ? target->owner() : id{})) || (target != nullptr ? target->owner() : id{}) == nil)  break;	// its own object (bead oo-9ht.39.25: the ship, not its object)
-		target = oo::ToShip((target != nullptr ? target->owner() : id{}));
+		if (target == oo::ToShip((target != nullptr ? target->owner() : nullptr)) || (target != nullptr ? target->owner() : nullptr) == nil)  break;	// its own object (bead oo-9ht.39.25: the ship, not its object)
+		target = oo::ToShip((target != nullptr ? target->owner() : nullptr));
 	}
 	if (me == nullptr)  return;	// what ToShip(ToObjC(me)) asked (bead oo-9ht.39.25)
 	if (target != nil)

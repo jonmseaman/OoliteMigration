@@ -217,7 +217,7 @@ oo::PList ShipEntity::savedShipDictionaryWithContext(OOShipSaveContext *context)
 		const oo::PList mergedPlist(std::move(mergedData));
 		// A station is made in C++ since bead oo-9ht.175 (the universe picked its class).
 		if ((UNIVERSE != nullptr ? UNIVERSE->isStationShipDictionary(mergedPlist) : false))  ship = oo::ToShip(oo::AutoreleaseEntity(StationEntity::newStationObject(shipKey, mergedPlist)));
-		else  ship = oo::ToShip([oo::NewShipObject(oo::makeRef<::ShipEntity>(), shipKey, mergedPlist) autorelease]);
+		else  ship = oo::ToShip(oo::AutoreleaseEntity(oo::NewShipObject(oo::makeRef<::ShipEntity>(), shipKey, mergedPlist)));
 
 		// FIXME: restore AI.
 		if (ship != nullptr)  ship->setAITo(dict.get<std::string>(KEY_AI, "nullAI.plist"));

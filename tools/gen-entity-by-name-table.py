@@ -269,6 +269,8 @@ def encoded(ret):
 
 
 def rows():
+    if not FACADE.exists():
+        return table_rows()	# the facade itself was deleted by bead oo-dpyk8: the header is the source
     text = FACADE.read_text(encoding="utf-8")
     if not any(f"@implementation Entity ({category})" in text for category in CATEGORIES):
         return table_rows()

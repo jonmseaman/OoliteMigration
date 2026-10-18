@@ -57,7 +57,7 @@ T *NewTestPlayer()
 	oo::Ref<T> player = oo::makeRef<T>();
 	@autoreleasepool
 	{
-		[oo::NewEntityFacade(player) retain];
+		oo::RetainEntity(oo::MadeEntity(player));
 	}
 	return player.get();
 }
@@ -106,11 +106,11 @@ void SetUp()
 
 // An unpiloted ship (a crewed one would ask the universe for a pilot). The proxy, held by its
 // object (the ship's facade, autoreleased as [[[ProxyPlayerEntity alloc] ...] autorelease] was).
-ProxyPlayerEntity *MakeProxy(::Entity **outObject = nullptr)
+ProxyPlayerEntity *MakeProxy(cxx::Entity **outObject = nullptr)
 {
 	oo::PList::Dict dict{ { "unpiloted", oo::PList(true) } };
 	::ShipEntity *ship = ProxyPlayerEntity::newProxyObject("proxy", oo::PList(std::move(dict)));
-	::Entity *object = [oo::ToObjC(ship) autorelease];
+	cxx::Entity *object = oo::AutoreleaseEntity(ship);
 	if (outObject != nullptr)  *outObject = object;
 	return dynamic_cast<ProxyPlayerEntity *>(ship);
 }
@@ -122,7 +122,7 @@ TestDialPlayer *MakeDialPlayer()
 	PlayerEntity *saved = gOOPlayer;
 	gOOPlayer = nullptr;
 	TestDialPlayer *player = NewTestPlayer<TestDialPlayer>();
-	[oo::ToObjC(player) autorelease];	// as [[[TestDialPlayer alloc] init] autorelease]
+	oo::AutoreleaseEntity(player);	// as [[[TestDialPlayer alloc] init] autorelease]
 	gOOPlayer = saved;
 	return player;
 }
@@ -234,12 +234,12 @@ OO_TEST(objCProxyPartIsAProxy)
 	@autoreleasepool
 	{
 		SetUp();
-		::Entity *object = nil;
+		cxx::Entity *object = nil;
 		ProxyPlayerEntity *part = MakeProxy(&object);
-		Entity *asEntity = object;
+		cxx::Entity *asEntity = object;
 		OO_CHECK(part != nullptr);
-		OO_CHECK(dynamic_cast<ProxyPlayerEntity *>(oo::ToCxx(asEntity)) == part);
-		OO_CHECK(oo::ToObjC(part) == object);
+		OO_CHECK(dynamic_cast<ProxyPlayerEntity *>(asEntity) == part);
+		OO_CHECK(part == object);
 
 		part->setAlertCondition(ALERT_CONDITION_GREEN);
 		ShipEntity *asShip = part;
@@ -258,7 +258,7 @@ OO_TEST(dialsAnsweredByNameForAProxy)
 	@autoreleasepool
 	{
 		SetUp();
-		::Entity *object = nil;
+		cxx::Entity *object = nil;
 		ProxyPlayerEntity *proxy = MakeProxy(&object);
 		proxy->setDialForwardShield(0.5f);
 		proxy->setTradeInFactor(42);
@@ -268,8 +268,8 @@ OO_TEST(dialsAnsweredByNameForAProxy)
 		OO_CHECK(oo::CallEntityByNameTyped(proxy, "tradeInFactor", factor) && factor.integer == 42);
 		OO_CHECK(oo::CallEntityByNameTyped(proxy, "alertCondition", condition) && static_cast<OOAlertCondition>(condition.integer) == ALERT_CONDITION_DOCKED);
 
-		ShipEntity *ship = oo::ToShip([oo::NewShipObject(oo::makeRef<::ShipEntity>(), "ship", oo::PList(oo::PList::Dict{ { "unpiloted", oo::PList(true) } })) autorelease]);
-		OO_CHECK(ship != nil && !(ship != nullptr ? oo::EntityRespondsToName(oo::ToCxx(oo::ToObjC(ship)), "dialForwardShield") : false));
+		ShipEntity *ship = oo::ToShip(oo::AutoreleaseEntity(oo::NewShipObject(oo::makeRef<::ShipEntity>(), "ship", oo::PList(oo::PList::Dict{ { "unpiloted", oo::PList(true) } }))));
+		OO_CHECK(ship != nil && !(ship != nullptr ? oo::EntityRespondsToName(ship, "dialForwardShield") : false));
 	}
 }
 
@@ -282,16 +282,16 @@ OO_TEST(playerAndProxyAreVisibleToScripts)
 	@autoreleasepool
 	{
 		SetUp();
-		::Entity *object = nil;
+		cxx::Entity *object = nil;
 		ProxyPlayerEntity *proxy = MakeProxy(&object);
 		OO_CHECK(proxy->isVisibleToScripts());
-		OO_CHECK(OOJSEntityIsVisibleToScripts(oo::ToCxx(object)));
+		OO_CHECK(OOJSEntityIsVisibleToScripts(object));
 
 		ShipEntity *player = gOOPlayer;
 		OO_CHECK(player->isVisibleToScripts());
 		OO_CHECK(OOJSEntityIsVisibleToScripts(player));
 
-		ShipEntity *ship = oo::ToShip([oo::NewShipObject(oo::makeRef<::ShipEntity>(), "ship", oo::PList(oo::PList::Dict{ { "unpiloted", oo::PList(true) } })) autorelease]);
+		ShipEntity *ship = oo::ToShip(oo::AutoreleaseEntity(oo::NewShipObject(oo::makeRef<::ShipEntity>(), "ship", oo::PList(oo::PList::Dict{ { "unpiloted", oo::PList(true) } }))));
 		OO_CHECK(OOJSEntityIsVisibleToScripts(ship));
 	}
 }

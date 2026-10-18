@@ -71,7 +71,7 @@ T *NewTestPlayer()
 	oo::Ref<T> player = oo::makeRef<T>();
 	@autoreleasepool
 	{
-		[oo::NewEntityFacade(player) retain];
+		oo::RetainEntity(oo::MadeEntity(player));
 	}
 	return player.get();
 }
@@ -168,7 +168,7 @@ OOPlanetEntity *Planet(BOOL atmosphere, int radiusKm = 5000)
 {
 	Random_Seed seed = { 1, 2, 3, 4, 5, 6 };
 	oo::Ref<OOPlanetEntity> planet = oo::makeRef<OOPlanetEntity>();
-	(void)oo::NewEntityFacade(planet);
+	(void)oo::MadeEntity(planet);
 	planet->initFromDictionary(PlanetDict(radiusKm), atmosphere, seed, 7);
 	return planet.get();
 }
@@ -178,7 +178,7 @@ OOPlanetEntity *Planet(BOOL atmosphere, int radiusKm = 5000)
 OOPlanetEntity *Miniature(OOPlanetEntity *planet)
 {
 	oo::Ref<OOPlanetEntity> mini = planet->miniatureVersion();
-	(void)oo::NewEntityFacade(mini);
+	(void)oo::MadeEntity(mini);
 	return mini.get();
 }
 
@@ -377,8 +377,8 @@ OO_TEST(closeCollision)
 		SetUp();
 		OOPlanetEntity *moon = Planet(NO);
 		OO_CHECK(!moon->checkCloseCollisionWith(nullptr));
-		Entity *rock = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
-		OO_CHECK(moon->checkCloseCollisionWith(oo::ToCxx(rock)));
+		cxx::Entity *rock = oo::MadeEntity(oo::makeRef<cxx::Entity>());
+		OO_CHECK(moon->checkCloseCollisionWith(rock));
 	}
 }
 
@@ -389,7 +389,7 @@ OO_TEST(description)
 	{
 		SetUp();
 		OOPlanetEntity *moon = Planet(NO, 3000);
-		std::string description = oo::DescriptionOf(oo::ToObjC(moon));
+		std::string description = oo::EntityDescription(moon);
 		OO_CHECK(description.find("OOPlanetEntity") != std::string::npos);
 		OO_CHECK(description.find("radius: 30000 m") != std::string::npos);
 	}
@@ -405,29 +405,21 @@ OO_TEST(facade)
 	{
 		SetUp();
 		OOPlanetEntity *moon = Planet(NO);
-		Entity *object = oo::ToObjC(moon);
-		OO_CHECK(object != nil && [object class] == [Entity class]);
+		cxx::Entity *object = moon;
+		OO_CHECK(object != nil);	// (and its object's class, the root facade: retired with the facade, bead oo-dpyk8, under oo-9n5p9)
 		// A C++ entity (amendment oo-0mxi), not an Objective-C entity's adapter.
-		OO_CHECK(oo::ToCxx(object) == moon);
+		OO_CHECK(object == moon);
 		OOPlanetEntity *mini = Miniature(moon);
-		OO_CHECK([oo::ToObjC(mini) class] == [Entity class] && oo::ToCxx(oo::ToObjC(mini)) == mini);
+		OO_CHECK(mini == mini);	// (and its object's class, the root facade: retired with the facade, bead oo-dpyk8, under oo-9n5p9)
 
-		// The shader bindings, by selector: the planet's values, and no other entity binds them.
-		OO_CHECK([object respondsToSelector:@selector(airColorAsVector)] && [object respondsToSelector:@selector(terminatorThresholdVector)]);
-		OO_CHECK([object respondsToSelector:@selector(airColorMixRatio)] && [object respondsToSelector:@selector(airDensity)] && [object respondsToSelector:@selector(illuminationColorAsVector)]);
+		// The shader bindings: the planet's values, which its object's selectors forwarded to. (That the
+		// object answered them by selector, and a plain entity's did not, is retired with the facade,
+		// bead oo-dpyk8, under oo-9n5p9.)
 		moon->setAirDensity(0.5f);
 		moon->setTerminatorThresholdVector(make_vector(1, 2, 3));
-		// Called as the uniforms call them: the implementation found by selector.
-		float (*floatValue)(id, SEL) = (float (*)(id, SEL))(void (*)(void))[object methodForSelector:@selector(airDensity)];
-		OO_CHECK(floatValue(object, @selector(airDensity)) == 0.5f);
-		floatValue = (float (*)(id, SEL))(void (*)(void))[object methodForSelector:@selector(airColorMixRatio)];
-		OO_CHECK(floatValue(object, @selector(airColorMixRatio)) == moon->airColorMixRatio());
-		Vector (*vectorValue)(id, SEL) = (Vector (*)(id, SEL))(void (*)(void))[object methodForSelector:@selector(terminatorThresholdVector)];
-		Vector t = vectorValue(object, @selector(terminatorThresholdVector));
+		OO_CHECK(moon->airDensity() == 0.5f);
+		Vector t = moon->terminatorThresholdVector();
 		OO_CHECK(t.x == 1 && t.y == 2 && t.z == 3);
-		Entity *rock = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
-		OO_CHECK(![rock respondsToSelector:@selector(airColorAsVector)] && ![rock respondsToSelector:@selector(airDensity)]);
-		OO_CHECK([rock respondsToSelector:@selector(relativePosition)]);
 	}
 }
 
@@ -443,12 +435,12 @@ OO_TEST(jsExtensions)
 		OOPlanetEntity *moon = Planet(NO);
 		ooscript::ClassDef *jsClass = nullptr, *expectedClass = nullptr;
 		ooscript::Object prototype = nullptr, expectedPrototype = nullptr;
-		Entity *object = oo::ToObjC(moon);
-		OOJSEntityGetJSClass(oo::ToCxx(object), &jsClass, &prototype);
+		cxx::Entity *object = moon;
+		OOJSEntityGetJSClass(object, &jsClass, &prototype);
 		OOJSPlanetGetJSClass(&expectedClass, &expectedPrototype);
 		OO_CHECK(jsClass != nullptr && jsClass == expectedClass && prototype == expectedPrototype);
-		OO_CHECK(OOJSEntityJSClassName(oo::ToCxx(object)) == std::optional<std::string>("Moon"));
-		OO_CHECK(OOJSEntityIsVisibleToScripts(oo::ToCxx(object)) == YES);
+		OO_CHECK(OOJSEntityJSClassName(object) == std::optional<std::string>("Moon"));
+		OO_CHECK(OOJSEntityIsVisibleToScripts(object) == YES);
 	}
 }
 

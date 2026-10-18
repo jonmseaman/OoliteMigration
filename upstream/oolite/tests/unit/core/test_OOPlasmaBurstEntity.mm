@@ -48,20 +48,20 @@ T *NewTestPlayer()
 	oo::Ref<T> player = oo::makeRef<T>();
 	@autoreleasepool
 	{
-		[oo::NewEntityFacade(player) retain];
+		oo::RetainEntity(oo::MadeEntity(player));
 	}
 	return player.get();
 }
 
 
-static Entity *sRemoved = nil;
+static cxx::Entity *sRemoved = nil;
 
 
 // UNIVERSE: never initialised; answers the time the test sets and records what is removed.
 class TestUniverse : public Universe
 {
 public:
-	bool removeEntity(cxx::Entity *entity) override	{ sRemoved = oo::ToObjC(entity); return YES; }	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
+	bool removeEntity(cxx::Entity *entity) override	{ sRemoved = entity; return YES; }	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
 };
 
 // The time the test sets is the universe's own clock, which getTime() answers (bead oo-ql9rn).
@@ -73,14 +73,14 @@ namespace {
 
 // --- How a burst is made, and its colour (a @protected ivar), and nothing else -------------------
 
-Entity *MakeBurst(HPVector position)
+cxx::Entity *MakeBurst(HPVector position)
 {
-	return oo::NewEntityFacade(OOPlasmaBurstEntity::burstWithPosition(position));
+	return oo::MadeEntity(OOPlasmaBurstEntity::burstWithPosition(position));
 }
 
 // The object is the root Entity's facade since bead oo-9ht.76; its C++ part is the particle.
-OOLightParticleEntity *Particle(Entity *e)				{ return static_cast<OOLightParticleEntity *>(oo::ToCxx(e)); }
-const GLfloat *ColorComponents(Entity *e)				{ return Particle(e)->_colorComponents; }
+OOLightParticleEntity *Particle(cxx::Entity *e)				{ return static_cast<OOLightParticleEntity *>(e); }
+const GLfloat *ColorComponents(cxx::Entity *e)				{ return Particle(e)->_colorComponents; }
 
 // --------------------------------------------------------------------------------------------------
 
@@ -101,7 +101,7 @@ void SetUp()
 }
 
 
-bool ComponentsAre(Entity *e, GLfloat r, GLfloat g, GLfloat b, GLfloat a)
+bool ComponentsAre(cxx::Entity *e, GLfloat r, GLfloat g, GLfloat b, GLfloat a)
 {
 	const GLfloat *c = ColorComponents(e);
 	return c[0] == r && c[1] == g && c[2] == b && c[3] == a;
@@ -115,13 +115,13 @@ OO_TEST(initWithPosition)
 	@autoreleasepool
 	{
 		SetUp();
-		Entity *burst = MakeBurst(make_HPvector(4, 5, 6));
+		cxx::Entity *burst = MakeBurst(make_HPvector(4, 5, 6));
 		OO_CHECK(burst != nil);
-		OO_CHECK(HPvector_equal([burst position], make_HPvector(4, 5, 6)));
-		OO_CHECK(Particle(burst)->diameter() == 64.0f && [burst collisionRadius] == 2.0f);
-		OO_CHECK([burst status] == STATUS_EFFECT && [burst scanClass] == CLASS_NO_DRAW && [burst isEffect]);
+		OO_CHECK(HPvector_equal(burst->getPosition(), make_HPvector(4, 5, 6)));
+		OO_CHECK(Particle(burst)->diameter() == 64.0f && burst->collisionRadius() == 2.0f);
+		OO_CHECK(burst->status() == STATUS_EFFECT && burst->getScanClass() == CLASS_NO_DRAW && burst->isEffect());
 		OO_CHECK(ComponentsAre(burst, 1.0f, 0.0f, 0.0f, 1.0f));
-		OO_CHECK(oo::DescriptionOf(burst).starts_with("<OOPlasmaBurstEntity 0x"));
+		OO_CHECK(oo::EntityDescription(burst).starts_with("<OOPlasmaBurstEntity 0x"));
 	}
 }
 
@@ -131,16 +131,16 @@ OO_TEST(growsFadesAndIsRemoved)
 	@autoreleasepool
 	{
 		SetUp();
-		Entity *burst = MakeBurst(make_HPvector(4, 5, 6));
+		cxx::Entity *burst = MakeBurst(make_HPvector(4, 5, 6));
 
 		sTime = 1.0;
-		[burst update:0.1];
+		burst->update(0.1);
 		OO_CHECK(Particle(burst)->diameter() == 128.0f);
 		OO_CHECK(ComponentsAre(burst, 1.0f, 0.0f, 0.0f, 0.5f));
 		OO_CHECK(sRemoved == nil);
 
 		sTime = 2.5;
-		[burst update:0.1];
+		burst->update(0.1);
 		OO_CHECK(Particle(burst)->diameter() == 64.0f + 2.5f * 64.0f);
 		OO_CHECK(ComponentsAre(burst, 1.0f, 0.0f, 0.0f, 0.0f));
 		OO_CHECK(sRemoved == burst);

@@ -57,16 +57,9 @@ SOFTWARE.
 
 
 
-// The Mac debug OXP's inspector adds -inspect to entities (a category on Entity); inspectEntity()
-// sends it to an entity that answers it. OOJSConsole+ObjCBridge.mm held the send until bead
-// oo-9ht.96 (ADR-0056 amendment oo-9ht.181): it is a message while the entity's object is the
-// root's facade (oo-9ht.39).
-@interface Entity (OODebugInspector)
-
-// Method added by inspector in Debug OXP under OS X only.
-- (void) inspect;
-
-@end
+// The Mac debug OXP's inspector added -inspect to entities (a category on Entity); inspectEntity()
+// sent it to an entity that answered it. Since the root facade's deletion (bead oo-dpyk8) it calls
+// the entity's virtual inspect() (oo::InspectEntity()), which does nothing unless a subclass overrides it.
 
 
 static ooscript::Object sConsolePrototype = NULL;
@@ -307,8 +300,10 @@ OODebugMonitor *MonitorFromJSObject(ooscript::Context context, ooscript::Object 
 */
 void ReportNotTheMonitor(ooscript::Context context, ooscript::Object object, const char *function)
 {
-	id native = (object != NULL) ? OOJSNativeObjectFromJSObject(context, object) : nil;
-	cxx_OOJSReportError(context, "Expected OODebugMonitor, got %s in %s. %s", oo::DescriptionOf([native class]).c_str(), function, "This is an internal error, please report it.");
+	const oo::PList node = (object != NULL) ? cxx_OOJSPListFromJSObject(context, object) : oo::PList();
+	// An entity's node: the class of its object, the root facade's (bead oo-dpyk8).
+	const std::string className = (oo::EntityIn(node) != nullptr) ? std::string("Entity") : oo::DescriptionOf([oo::ObjectIn(node) class]);
+	cxx_OOJSReportError(context, "Expected OODebugMonitor, got %s in %s. %s", className.c_str(), function, "This is an internal error, please report it.");
 }
 
 
@@ -809,9 +804,8 @@ static bool ConsoleInspectEntity(ooscript::Context context, ooscript::CallArgs &
 	
 	if (JSValueToEntity(context, OOJS_ARGV[0], &cxxEntity))
 	{
-		Entity *entity = oo::ToObjC(cxxEntity);	// the inspector's selector is the object's
 		OOJS_BEGIN_FULL_NATIVE(context)
-		if ([entity respondsToSelector:@selector(inspect)])  [entity inspect];	// -inspect, if the entity has it (nothing for nil)
+		oo::InspectEntity(cxxEntity);	// -inspect, if the entity has it (nothing for nil)
 		OOJS_END_FULL_NATIVE
 	}
 	

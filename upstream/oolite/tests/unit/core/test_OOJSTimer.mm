@@ -35,8 +35,21 @@
 #include "oo_test.hpp"
 
 #include <cstdarg>
+#include <cstdlib>
 #include <string>
 #include <vector>
+
+
+// EntityHelpers.mm's (bead oo-dpyk8), which the test does not link: an entity's node (its hold and
+// its description) is reached only for an entity, which the test has none of. A null hold releases
+// nothing.
+namespace cxx { class Entity; }
+namespace oo {
+namespace detail { void EntityRelease(cxx::Entity *entity) noexcept; }
+std::string EntityDescription(cxx::Entity *entity);
+}
+void oo::detail::EntityRelease(cxx::Entity *entity) noexcept  { if (entity != nullptr)  std::abort(); }
+std::string oo::EntityDescription(cxx::Entity *)  { std::abort(); }
 
 
 extern "C" void InitOOJSTimer(ooscript::Context context, ooscript::Object global);

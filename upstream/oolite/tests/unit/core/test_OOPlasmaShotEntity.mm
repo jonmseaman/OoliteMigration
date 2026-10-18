@@ -56,7 +56,7 @@ T *NewTestPlayer()
 	oo::Ref<T> player = oo::makeRef<T>();
 	@autoreleasepool
 	{
-		[oo::NewEntityFacade(player) retain];
+		oo::RetainEntity(oo::MadeEntity(player));
 	}
 	return player.get();
 }
@@ -67,18 +67,18 @@ class TestUniverse : public Universe
 {
 public:
 	OOTimeAbsolute &_time = universal_time;	// the universe's own state, which its getter answers (bead oo-ql9rn)
-	Entity			*_removed = {};
-	Entity			*_added = {};
+	cxx::Entity			*_removed = {};
+	cxx::Entity			*_added = {};
 
 	bool removeEntity(cxx::Entity *entity) override	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
 	{
-		_removed = oo::ToObjC(entity);
+		_removed = entity;
 		return YES;
 	}
 	bool addEntity(cxx::Entity *entity) override	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
 	{
-		[_added release];
-		_added = [oo::ToObjC(entity) retain];
+		oo::ReleaseEntity(_added);
+		_added = oo::RetainEntity(entity);
 		return YES;
 	}
 };
@@ -130,7 +130,7 @@ void SetUp(OOTimeAbsolute time)
 	}
 	sUniverse->_time = time;
 	sUniverse->_removed = nil;
-	[sUniverse->_added release];
+	oo::ReleaseEntity(sUniverse->_added);
 	sUniverse->_added = nil;
 	gSharedUniverse = sUniverse;
 	static TestPlayer *player = nullptr;
@@ -145,20 +145,20 @@ void SetUp(OOTimeAbsolute time)
 
 // --- How the test makes a shot and reads its colour (ported by the conversion), and nothing else -
 
-Entity *Shot(HPVector position, Vector velocity, float energy, OOTimeDelta duration, OOColor *color)
+cxx::Entity *Shot(HPVector position, Vector velocity, float energy, OOTimeDelta duration, OOColor *color)
 {
-	return oo::NewEntityFacade(OOPlasmaShotEntity::shotWithPosition(position, velocity, energy, duration, color));
+	return oo::MadeEntity(OOPlasmaShotEntity::shotWithPosition(position, velocity, energy, duration, color));
 }
 
-OOLightParticleEntity *Particle(Entity *shot)	{ return static_cast<OOLightParticleEntity *>(oo::ToCxx(shot)); }	// the root's facade since bead oo-9ht.76
-const GLfloat *ColorComponents(Entity *shot)	{ return Particle(shot)->_colorComponents; }
-void SetColliding(Entity *shot, Entity *other)	{ shot->_cxxEntity->collidingEntities.emplace_back(oo::ToCxx(other)); }
-void SetIsShip(Entity *e)						{ e->_cxxEntity->isShip = true; }
+OOLightParticleEntity *Particle(cxx::Entity *shot)	{ return static_cast<OOLightParticleEntity *>(shot); }	// the root's facade since bead oo-9ht.76
+const GLfloat *ColorComponents(cxx::Entity *shot)	{ return Particle(shot)->_colorComponents; }
+void SetColliding(cxx::Entity *shot, cxx::Entity *other)	{ shot->collidingEntities.emplace_back(other); }
+void SetIsShip(cxx::Entity *e)						{ e->isShip = true; }
 
 // --------------------------------------------------------------------------------------------------
 
 
-Entity *RedShot()
+cxx::Entity *RedShot()
 {
 	return Shot(make_HPvector(1, 2, 3), make_vector(4, 5, 6), 7.0f, 2.0, OOColor::colorWithRed(1.0f, 0.0f, 0.0f, 0.5f).get());
 }
@@ -166,9 +166,9 @@ Entity *RedShot()
 
 // A ship: C++ since bead oo-9ht.144 (its root ship entity is the C++ ship), under its object
 // (oo::NewEntityFacade, autoreleased as the plain entity was), never set up, marked as a ship.
-Entity *Ship()
+cxx::Entity *Ship()
 {
-	Entity *ship = oo::NewEntityFacade(oo::makeRef<::ShipEntity>());
+	cxx::Entity *ship = oo::MadeEntity(oo::makeRef<::ShipEntity>());
 	SetIsShip(ship);
 	return ship;
 }
@@ -181,15 +181,15 @@ OO_TEST(shotIsMade)
 	@autoreleasepool
 	{
 		SetUp(10.0);
-		Entity *shot = RedShot();
-		OO_CHECK(shot != nil && dynamic_cast<OOLightParticleEntity *>(oo::ToCxx(shot)) != nullptr);
-		OO_CHECK(HPvector_equal([shot position], make_HPvector(1, 2, 3)));
-		Vector v = [shot velocity];
+		cxx::Entity *shot = RedShot();
+		OO_CHECK(shot != nil && dynamic_cast<OOLightParticleEntity *>(shot) != nullptr);
+		OO_CHECK(HPvector_equal(shot->getPosition(), make_HPvector(1, 2, 3)));
+		Vector v = shot->getVelocity();
 		OO_CHECK(v.x == 4 && v.y == 5 && v.z == 6);
-		OO_CHECK([shot energy] == 7.0f && [shot collisionRadius] == 2.0f);
+		OO_CHECK(shot->getEnergy() == 7.0f && shot->collisionRadius() == 2.0f);
 		OO_CHECK(Particle(shot)->diameter() == 12.0f);
-		OO_CHECK([shot status] == STATUS_EFFECT && [shot scanClass] == CLASS_NO_DRAW && [shot isEffect]);
-		OO_CHECK([shot spawnTime] == 10.0f);
+		OO_CHECK(shot->status() == STATUS_EFFECT && shot->getScanClass() == CLASS_NO_DRAW && shot->isEffect());
+		OO_CHECK(shot->getSpawnTime() == 10.0f);
 		const GLfloat *c = ColorComponents(shot);
 		OO_CHECK(c[0] == 1.0f && c[1] == 0.0f && c[2] == 0.0f && c[3] == 1.0f);	// always opaque
 	}
@@ -201,12 +201,12 @@ OO_TEST(activationDelay)
 	@autoreleasepool
 	{
 		SetUp(10.0);
-		Entity *shot = RedShot();
-		OO_CHECK(![shot canCollide]);
+		cxx::Entity *shot = RedShot();
+		OO_CHECK(!shot->canCollide());
 		sUniverse->_time = 10.04;
-		OO_CHECK(![shot canCollide]);
+		OO_CHECK(!shot->canCollide());
 		sUniverse->_time = 10.06;
-		OO_CHECK([shot canCollide]);
+		OO_CHECK(shot->canCollide());
 	}
 }
 
@@ -216,20 +216,20 @@ OO_TEST(collisions)
 	@autoreleasepool
 	{
 		SetUp(0.0);
-		Entity *shot = RedShot();
-		Entity *plain = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
-		Entity *effect = oo::NewEntityFacade(oo::makeRef<TestEffect>());
+		cxx::Entity *shot = RedShot();
+		cxx::Entity *plain = oo::MadeEntity(oo::makeRef<cxx::Entity>());
+		cxx::Entity *effect = oo::MadeEntity(oo::makeRef<TestEffect>());
 
 		// No owner: a plain entity's root ship is nil too.
-		OO_CHECK(![shot checkCloseCollisionWith:plain]);
+		OO_CHECK(!shot->checkCloseCollisionWith(plain));
 
-		Entity *ship = Ship();
-		[shot setOwner:ship];
-		OO_CHECK([shot checkCloseCollisionWith:plain]);
-		OO_CHECK(![shot checkCloseCollisionWith:effect]);
-		OO_CHECK(![shot checkCloseCollisionWith:ship]);	// its own ship
-		OO_CHECK([shot checkCloseCollisionWith:Ship()]);
-		OO_CHECK([shot checkCloseCollisionWith:nil]);
+		cxx::Entity *ship = Ship();
+		shot->setOwner(ship);
+		OO_CHECK(shot->checkCloseCollisionWith(plain));
+		OO_CHECK(!shot->checkCloseCollisionWith(effect));
+		OO_CHECK(!shot->checkCloseCollisionWith(ship));	// its own ship
+		OO_CHECK(shot->checkCloseCollisionWith(Ship()));
+		OO_CHECK(shot->checkCloseCollisionWith(nil));
 	}
 }
 
@@ -239,25 +239,25 @@ OO_TEST(hitDamagesAndBursts)
 	@autoreleasepool
 	{
 		SetUp(0.0);
-		Entity *shot = RedShot();
-		Entity *ship = Ship();
-		[shot setOwner:ship];
+		cxx::Entity *shot = RedShot();
+		cxx::Entity *ship = Ship();
+		shot->setOwner(ship);
 
 		// Its own ship is not hit.
 		SetColliding(shot, ship);
 		sUniverse->_time = 0.1;
-		[shot update:0.1];
+		shot->update(0.1);
 		OO_CHECK(sUniverse->_removed == nil && sUniverse->_added == nil);
 
 		TestTarget *target = static_cast<TestTarget *>(oo::MadeEntity(oo::makeRef<TestTarget>()));
-		SetColliding(shot, oo::ToObjC(target));
-		[shot update:0.1];
-		OO_CHECK(target->_hits == 1 && target->_amount == 7.0 && target->_from == oo::ToCxx(shot) && target->_becauseOf == oo::ToCxx(ship));
+		SetColliding(shot, target);
+		shot->update(0.1);
+		OO_CHECK(target->_hits == 1 && target->_amount == 7.0 && target->_from == shot && target->_becauseOf == ship);
 		OO_CHECK(target->_weapon == "EQ_WEAPON_PLASMA_SHOT");
 		OO_CHECK(sUniverse->_removed == shot);
-		Entity *burst = sUniverse->_added;
-		OO_CHECK(burst != nil && burst != shot && dynamic_cast<OOPlasmaBurstEntity *>(oo::ToCxx(burst)) != nullptr);	// a C++ entity (oo-l2s5)
-		OO_CHECK(HPvector_equal([burst position], [shot position]));
+		cxx::Entity *burst = sUniverse->_added;
+		OO_CHECK(burst != nil && burst != shot && dynamic_cast<OOPlasmaBurstEntity *>(burst) != nullptr);	// a C++ entity (oo-l2s5)
+		OO_CHECK(HPvector_equal(burst->getPosition(), shot->getPosition()));
 	}
 }
 
@@ -267,12 +267,12 @@ OO_TEST(expires)
 	@autoreleasepool
 	{
 		SetUp(0.0);
-		Entity *shot = RedShot();
+		cxx::Entity *shot = RedShot();
 		sUniverse->_time = 1.0;
-		[shot update:1.0];
+		shot->update(1.0);
 		OO_CHECK(sUniverse->_removed == nil);
 		sUniverse->_time = 2.5;
-		[shot update:1.5];
+		shot->update(1.5);
 		OO_CHECK(sUniverse->_removed == shot);
 	}
 }

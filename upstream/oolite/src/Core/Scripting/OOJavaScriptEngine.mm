@@ -1457,6 +1457,8 @@ ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &p
 			{
 				if (OOJSPrivateObject *glue = dynamic_cast<OOJSPrivateObject *>(node->get()))  return OOJSValueFromCxxObject(context, glue);
 				if (OONativeVector *box = dynamic_cast<OONativeVector *>(node->get()))  return OONativeVectorJSValueInContext(box, context);
+				// An entity's node (bead oo-dpyk8): the entity's JS value, which its object's forwarded to.
+				if (const auto *held = dynamic_cast<const oo::EntityPListForeign *>(node->get()))  return OOJSEntityJSValue(held->entity(), context);
 				// An entity held weakly (bead oo-w9pi2): the entity's value, undefined once it has gone, as
 				// the weak reference forwarded to its object's.
 				if (const auto *weak = dynamic_cast<const oo::EntityWeakPListForeign *>(node->get()))

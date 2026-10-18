@@ -27,6 +27,7 @@
 #include "oofnd/PList.hpp"
 #include "oofnd/String.hpp"
 #import "OOObjCPList.h"
+#include "EntityPListForeign.h"	// an entity's node (bead oo-dpyk8)
 
 
 // MARK: The classes, as far as the binding sees them ----------------------------------------------
@@ -88,6 +89,7 @@ class Entity : public oo::RefCounted
 public:
 	virtual ~Entity();
 	OOEntityStatus status();
+	bool getIsStation();	// what its object's -isStation forwarded to (bead oo-dpyk8)
 };
 }	// namespace cxx
 
@@ -228,11 +230,14 @@ std::string EventName(ooscript::PropertyId propID)
 }
 
 
+::Entity *TestObjectOfPart(cxx::Entity *entity);	// below
+
 std::string Describe(const oo::PList &plist)
 {
 	if (plist.isNull())  return "null";
 	if (const std::string *str = plist.getIf<std::string>())  return *str;
 	if (plist.isNumber())  return oo::str::format("%g", plist.doubleValue());
+	if (cxx::Entity *entity = oo::EntityIn(plist))  return class_getName(object_getClass(TestObjectOfPart(entity)));	// an entity's node: its object's class (bead oo-dpyk8)
 	if (id object = oo::ObjectIn(plist))  return class_getName(object_getClass(object));
 	return "?";
 }
@@ -274,9 +279,22 @@ oo::PList Dict(std::initializer_list<std::pair<const char *, oo::PList>> entries
 namespace oo {
 ::Entity *ToObjC(cxx::Entity *entity)  { return entity != nullptr ? sPlayerObject : nil; }	// only the player crosses
 }
+#import "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
 
 cxx::Entity::~Entity() = default;
 OOEntityStatus cxx::Entity::status()  { return static_cast<PlayerEntity *>(this)->_status; }
+
+// The object of each C++ part the script handed over (a station's), and the player's for any other
+// (bead oo-dpyk8: the binding hands over the C++ entity, where it handed over the object).
+namespace {
+std::map<cxx::Entity *, ::Entity *> sPartObjects;
+::Entity *TestObjectOfPart(cxx::Entity *entity)
+{
+	auto found = sPartObjects.find(entity);
+	return found != sPartObjects.end() ? found->second : oo::ToObjC(entity);
+}
+}	// namespace
+bool cxx::Entity::getIsStation()  { return [TestObjectOfPart(this) isStation]; }	// what its object's -isStation forwarded to
 void PlayerEntity::setScriptTargetToSelf()  { _scriptTargetSets++; }
 std::optional<std::string> PlayerEntity::commanderName()  { return _commanderName; }
 void PlayerEntity::setCommanderName(const std::optional<std::string> &value)  { _commanderName = value; }
@@ -422,7 +440,10 @@ oo::PList cxx_OOJSPListFromJSValue(ooscript::Context context, ooscript::Value va
 	}
 	if (ooscript::isObject(value) && ooscript::getObjectClass(context, ooscript::toObject(value)) == &sFakeStationClass)
 	{
-		return oo::PListObject((id)ooscript::getPrivate(context, ooscript::toObject(value)));
+		// The station's C++ entity's node, as the game's converter makes it (bead oo-dpyk8).
+		::Entity *object = (::Entity *)ooscript::getPrivate(context, ooscript::toObject(value));
+		sPartObjects[object->_cxxEntity.get()] = object;
+		return oo::EntityObjectNode(object->_cxxEntity.get());
 	}
 	return oo::PList(std::string("[object]"));
 }

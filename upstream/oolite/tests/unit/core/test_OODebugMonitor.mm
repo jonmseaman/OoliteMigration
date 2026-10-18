@@ -131,6 +131,7 @@ bool cxx::Entity::getIsWormhole()  { std::abort(); }
 std::vector<oo::EntityHold> ShipEntity::subEntityEnumerator()  { std::abort(); }
 namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
 ::Entity *oo::ToObjC(cxx::Entity *)  { std::abort(); }
+#import "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8): never reached either
 
 // PLAYER: C++ since bead oo-9ht.177 deleted the Objective-C player; the members the monitor calls
 // on it (declared as PlayerEntity.h declares them; the test imports no game header that defines

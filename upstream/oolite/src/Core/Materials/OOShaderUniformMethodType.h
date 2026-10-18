@@ -130,8 +130,10 @@ struct OOShaderEntityHooks
 {
 	// -superShaderBindingTarget: the entity a "bind to super" uniform binds to next, or null.
 	cxx::Entity *(*superTarget)(cxx::Entity *entity);
-	// The entity's Objective-C object, which a name no row binds is still bound to by selector.
-	id (*object)(cxx::Entity *entity);
+	// What the log lines printed for the entity's Objective-C object (bead oo-dpyk8, which deleted it):
+	// its class's name ("Entity"), and its description; "(null)" for an entity without one.
+	std::string (*className)(cxx::Entity *entity);
+	std::string (*description)(cxx::Entity *entity);
 	// The row of the entities' member table for the name, where it binds this entity (only for the
 	// root facade's own class, as the member lookup above).
 	bool (*memberBinding)(cxx::Entity *entity, const char *property, OOShaderMemberBinding *outBinding);

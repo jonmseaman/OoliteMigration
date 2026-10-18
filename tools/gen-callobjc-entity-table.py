@@ -25,9 +25,97 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SRC = ROOT / "upstream/oolite/src"
-SOURCES = [
-    SRC / "Core/Entities/Entity+ObjCBridge.mm",
-]
+# The root entity facade (Entity+ObjCBridge.mm) was deleted by bead oo-dpyk8 (oo-9ht.39 step 5k.4): its
+# @implementation blocks' callable methods stay callObjC() names (answered on the C++ entity by
+# OOEntityCalledByName.mm's facade rows), rendered as they were, in its order: (name, the #if
+# conditions, the form, the declared return type), with the place its by-name categories held.
+FACADE_ROWS = [('cxx_description', [], 'Typed', 'std::optional<std::string>'),
+ ('cxx_descriptionComponents', [], 'Typed', 'std::optional<std::string>'),
+ ('sessionID', [], 'Typed', 'NSUInteger'),
+ ('isShip', [], 'Typed', 'BOOL'),
+ ('isDock', [], 'Typed', 'BOOL'),
+ ('isStation', [], 'Typed', 'BOOL'),
+ ('isSubEntity', [], 'Typed', 'BOOL'),
+ ('isPlayer', [], 'Typed', 'BOOL'),
+ ('isPlanet', [], 'Typed', 'BOOL'),
+ ('isSun', [], 'Typed', 'BOOL'),
+ ('isSunlit', [], 'Typed', 'BOOL'),
+ ('isStellarObject', [], 'Typed', 'BOOL'),
+ ('isSky', [], 'Typed', 'BOOL'),
+ ('isWormhole', [], 'Typed', 'BOOL'),
+ ('isEffect', [], 'Typed', 'BOOL'),
+ ('isVisualEffect', [], 'Typed', 'BOOL'),
+ ('isWaypoint', [], 'Typed', 'BOOL'),
+ ('validForAddToUniverse', [], 'Typed', 'BOOL'),
+ ('addToLinkedLists', [], 'VoidVoid', 'void'),
+ ('removeFromLinkedLists', [], 'VoidVoid', 'void'),
+ ('updateLinkedLists', [], 'VoidVoid', 'void'),
+ ('wasAddedToUniverse', [], 'VoidVoid', 'void'),
+ ('wasRemovedFromUniverse', [], 'VoidVoid', 'void'),
+ ('warnAboutHostiles', [], 'VoidVoid', 'void'),
+ ('universalID', [], 'Typed', 'OOUniversalID'),
+ ('throwingSparks', [], 'Typed', 'BOOL'),
+ ('throwSparks', [], 'VoidVoid', 'void'),
+ ('owner', [], 'Typed', 'id'),
+ ('parentEntity', [], 'Typed', 'id'),
+ ('superShaderBindingTarget', [], 'Typed', 'id<OOWeakReferenceSupport>'),
+ ('rootShipEntity', [], 'Typed', 'id'),
+ ('position', [], 'Typed', 'HPVector'),
+ ('cameraRelativePosition', [], 'Typed', 'Vector'),
+ ('cameraRangeFront', [], 'Typed', 'GLfloat'),
+ ('cameraRangeBack', [], 'Typed', 'GLfloat'),
+ ('relativePosition', [], 'Typed', 'Vector'),
+ ('updateCameraRelativePosition', [], 'VoidVoid', 'void'),
+ ('absolutePositionForSubentity', [], 'Typed', 'HPVector'),
+ ('zeroDistance', [], 'Typed', 'double'),
+ ('camZeroDistance', [], 'Typed', 'double'),
+ ('boundingBox', [], 'Typed', 'BoundingBox'),
+ ('mass', [], 'Typed', 'GLfloat'),
+ ('orientation', [], 'Typed', 'Quaternion'),
+ ('normalOrientation', [], 'Typed', 'Quaternion'),
+ ('orientationChanged', [], 'VoidVoid', 'void'),
+ ('velocity', [], 'Typed', 'Vector'),
+ ('speed', [], 'Typed', 'double'),
+ ('distanceTravelled', [], 'Typed', 'GLfloat'),
+ ('status', [], 'Typed', 'OOEntityStatus'),
+ ('scanClass', [], 'Typed', 'OOScanClass'),
+ ('energy', [], 'Typed', 'GLfloat'),
+ ('maxEnergy', [], 'Typed', 'GLfloat'),
+ ('rotationMatrix', [], 'Typed', 'OOMatrix'),
+ ('drawRotationMatrix', [], 'Typed', 'OOMatrix'),
+ ('transformationMatrix', [], 'Typed', 'OOMatrix'),
+ ('drawTransformationMatrix', [], 'Typed', 'OOMatrix'),
+ ('canCollide', [], 'Typed', 'BOOL'),
+ ('collisionRadius', [], 'Typed', 'GLfloat'),
+ ('frustumRadius', [], 'Typed', 'GLfloat'),
+ ('cxx_collidingEntities', [], 'Typed', 'std::vector<oo::EntityHold> *'),
+ ('dumpState', [], 'VoidVoid', 'void'),
+ ('dumpSelfState', [], 'VoidVoid', 'void'),
+ ('lastDrawCounter', [], 'Typed', 'NSUInteger'),
+ ('findCollisionRadius', [], 'Typed', 'double'),
+ ('isVisible', [], 'Typed', 'BOOL'),
+ ('isInSpace', [], 'Typed', 'BOOL'),
+ ('isImmuneToBreakPatternHide', [], 'Typed', 'BOOL'),
+ ('universalTime', [], 'Typed', 'GLfloat'),
+ ('spawnTime', [], 'Typed', 'GLfloat'),
+ ('timeElapsedSinceSpawn', [], 'Typed', 'GLfloat'),
+ ('fogUniform', [], 'Typed', 'OOColor *'),
+ ('descriptionForObjDumpBasic', ['#ifndef NDEBUG'], 'Typed', 'std::optional<std::string>'),
+ ('descriptionForObjDump', ['#ifndef NDEBUG'], 'Typed', 'std::optional<std::string>'),
+ ('cxx_allTextures', ['#ifndef NDEBUG'], 'Typed', 'std::vector<oo::Ref<OOTexture>>'),
+ ('airColorAsVector', [], 'Typed', 'Vector'),
+ ('illuminationColorAsVector', [], 'Typed', 'Vector'),
+ ('airColorMixRatio', [], 'Typed', 'float'),
+ ('airDensity', [], 'Typed', 'float'),
+ ('terminatorThresholdVector', [], 'Typed', 'Vector'),
+ ('beaconCode', [], 'Typed', 'std::optional<std::string>'),
+ ('beaconLabel', [], 'Typed', 'std::optional<std::string>'),
+ ('isBeacon', [], 'Typed', 'BOOL'),
+ ('beaconDrawable', [], 'Typed', 'OOHUDBeaconIcon *'),
+ ('prevBeacon', [], 'Typed', 'id'),
+ ('nextBeacon', [], 'Typed', 'id'),
+ ('isJammingScanning', [], 'Typed', 'BOOL'),
+ ('BY_NAME_AND_JS_ROWS', [], None, None)]
 # The cascade's Entity (OOQuiriumCascadeExtensions) category was deleted by bead oo-9ht.186; its one
 # method stays a callObjC() name (answered on the C++ part by OOEntityCalledByName.mm's facade row
 # Facade_isCascadeWeapon), rendered where the category's rows followed the facade's.
@@ -143,47 +231,16 @@ def classify(ret, arg):
 
 def rows():
     result = []
-    for path in SOURCES:
-        conds = []
-        inimpl = False
-        for line in path.read_text(encoding="utf-8").splitlines():
-            s = line.strip()
-            if re.match(r"#\s*(if|ifdef|ifndef)\b", s):
-                conds.append(s)
-                continue
-            if re.match(r"#\s*(else|elif)\b", s):
-                raise SystemExit(f"{path.name}: #else/#elif is not handled: {s}")
-            if re.match(r"#\s*endif\b", s):
-                conds.pop()
-                continue
-            if s.startswith(BY_NAME_MARKER):
-                for bconds, ret, name, arg in by_name_methods():
-                    form = classify(ret, arg)
-                    if form is not None and name.rstrip(":") not in EXCLUDED:
-                        result.append((conds + bconds, name, form, ret))
-                for name, form, ret in RETIRED_JS_CATEGORY_ROWS:
-                    result.append((list(conds), name, form, ret))
-                continue
-            if re.match(r"@implementation\s+Entity\b", line):
-                inimpl = True
-                continue
-            if line.startswith("@end"):
-                inimpl = False
-                continue
-            if not inimpl or not re.match(r"-\s*\(", line):
-                continue
-            parsed = parse_method(line)
-            if parsed is None:
-                continue
-            ret, name, arg = parsed
-            if ENTITY_RESULT.match(ret):
-                ret = "id"	# the same "@"; callObjC() makes the C++ entity's Object node (bead oo-9ht.39.24)
-            if name.rstrip(":") in EXCLUDED:
-                continue
-            form = classify(ret, arg)
-            if form is None:
-                continue	# an argument the templates do not take: not callable by name
-            result.append((list(conds), name, form, ret))
+    for name, conds, form, ret in FACADE_ROWS:
+        if name == "BY_NAME_AND_JS_ROWS":
+            for bconds, bret, bname, arg in by_name_methods():
+                bform = classify(bret, arg)
+                if bform is not None and bname.rstrip(":") not in EXCLUDED:
+                    result.append((conds + bconds, bname, bform, bret))
+            for jname, jform, jret in RETIRED_JS_CATEGORY_ROWS:
+                result.append((list(conds), jname, jform, jret))
+            continue
+        result.append((list(conds), name, form, ret))
     for name, form, ret in RETIRED_CASCADE_CATEGORY_ROWS:
         result.append(([], name, form, ret))
     return result

@@ -50,20 +50,20 @@ T *NewTestPlayer()
 	oo::Ref<T> player = oo::makeRef<T>();
 	@autoreleasepool
 	{
-		[oo::NewEntityFacade(player) retain];
+		oo::RetainEntity(oo::MadeEntity(player));
 	}
 	return player.get();
 }
 
 
-static Entity *sRemoved = nil;
+static cxx::Entity *sRemoved = nil;
 
 
 // UNIVERSE: never initialised; records what is removed.
 class TestUniverse : public Universe
 {
 public:
-	bool removeEntity(cxx::Entity *entity) override	{ sRemoved = oo::ToObjC(entity); return YES; }	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
+	bool removeEntity(cxx::Entity *entity) override	{ sRemoved = entity; return YES; }	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
 };
 
 
@@ -94,7 +94,7 @@ namespace {
 
 // --- How a cascade is made, and nothing else --------------------------------------------------------
 
-Entity *MakeCascade(ShipEntity *ship)	{ return oo::NewEntityFacade(OOQuiriumCascadeEntity::quiriumCascadeFromShip(ship)); }
+cxx::Entity *MakeCascade(ShipEntity *ship)	{ return oo::MadeEntity(OOQuiriumCascadeEntity::quiriumCascadeFromShip(ship)); }
 
 // --------------------------------------------------------------------------------------------------
 
@@ -127,24 +127,24 @@ OO_TEST(fromShip)
 		SetUp();
 		OO_CHECK(MakeCascade(nil) == nil);
 
-		Entity *ship = oo::NewEntityFacade(oo::makeRef<::ShipEntity>());	// a C++ ship under its object (bead oo-9ht.144), never set up
-		Entity *shipOwner = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
-		[ship setPosition:make_HPvector(5, 6, 7)];
-		[ship setOwner:shipOwner];
+		cxx::Entity *ship = oo::MadeEntity(oo::makeRef<::ShipEntity>());	// a C++ ship under its object (bead oo-9ht.144), never set up
+		cxx::Entity *shipOwner = oo::MadeEntity(oo::makeRef<cxx::Entity>());
+		ship->setPosition(make_HPvector(5, 6, 7));
+		ship->setOwner(shipOwner);
 
-		Entity *cascade = MakeCascade(oo::ToShip(ship));
+		cxx::Entity *cascade = MakeCascade(oo::ToShip(ship));
 		OO_CHECK(cascade != nil);
-		OO_CHECK(HPvector_equal([cascade position], make_HPvector(5, 6, 7)));
-		OO_CHECK([cascade status] == STATUS_EFFECT && [cascade scanClass] == CLASS_MINE);
-		OO_CHECK([cascade owner] == shipOwner);
-		OO_CHECK([cascade isEffect] && OOEntityIsCascadeWeapon(oo::ToCxx(cascade)));	// the deleted category's -isCascadeWeapon (bead oo-9ht.186)
-		OO_CHECK(!OOEntityIsCascadeWeapon(oo::ToCxx(ship)));
-		OO_CHECK(![cascade canCollide] && [cascade checkCloseCollisionWith:nil] && [cascade checkCloseCollisionWith:ship]);
-		OO_CHECK(oo::DescriptionOf(cascade).starts_with("<OOQuiriumCascadeEntity 0x"));
-		OO_CHECK(oo::DescriptionOf(cascade).ends_with("{0.000000 seconds passed of 20.000000}"));
+		OO_CHECK(HPvector_equal(cascade->getPosition(), make_HPvector(5, 6, 7)));
+		OO_CHECK(cascade->status() == STATUS_EFFECT && cascade->getScanClass() == CLASS_MINE);
+		OO_CHECK(cascade->owner() == shipOwner);
+		OO_CHECK(cascade->isEffect() && OOEntityIsCascadeWeapon(cascade));	// the deleted category's -isCascadeWeapon (bead oo-9ht.186)
+		OO_CHECK(!OOEntityIsCascadeWeapon(ship));
+		OO_CHECK(!cascade->canCollide() && cascade->checkCloseCollisionWith(nil) && cascade->checkCloseCollisionWith(ship));
+		OO_CHECK(oo::EntityDescription(cascade).starts_with("<OOQuiriumCascadeEntity 0x"));
+		OO_CHECK(oo::EntityDescription(cascade).ends_with("{0.000000 seconds passed of 20.000000}"));
 
 		// Nothing is drawn in the opaque pass.
-		[cascade drawImmediate:false translucent:false];
+		cascade->drawImmediate(false, false);
 	}
 }
 
@@ -154,26 +154,26 @@ OO_TEST(update)
 	@autoreleasepool
 	{
 		SetUp();
-		Entity *ship = oo::NewEntityFacade(oo::makeRef<::ShipEntity>());	// a C++ ship under its object (bead oo-9ht.144), never set up
-		Entity *shipOwner = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
-		[ship setOwner:shipOwner];
-		Entity *cascade = MakeCascade(oo::ToShip(ship));
+		cxx::Entity *ship = oo::MadeEntity(oo::makeRef<::ShipEntity>());	// a C++ ship under its object (bead oo-9ht.144), never set up
+		cxx::Entity *shipOwner = oo::MadeEntity(oo::makeRef<cxx::Entity>());
+		ship->setOwner(shipOwner);
+		cxx::Entity *cascade = MakeCascade(oo::ToShip(ship));
 		TestVictim *victim = static_cast<TestVictim *>(oo::MadeEntity(oo::makeRef<TestVictim>()));
-		[cascade cxx_collidingEntities]->emplace_back(victim);
+		cascade->getCollidingEntities()->emplace_back(victim);
 
 		// A tenth of a second: past the collision delay, expanding, and dealing energy.
-		[cascade update:0.1];
-		OO_CHECK([cascade canCollide]);
-		OO_CHECK(fabs([cascade collisionRadius] - 100.0f) < 1e-3);
+		cascade->update(0.1);
+		OO_CHECK(cascade->canCollide());
+		OO_CHECK(fabs(cascade->collisionRadius() - 100.0f) < 1e-3);
 		const double energy = 0.1 * (100000 - 90000 * (0.1 / 20.0));
-		OO_CHECK(fabs([cascade energy] - energy) < 1e-2);
+		OO_CHECK(fabs(cascade->getEnergy() - energy) < 1e-2);
 		OO_CHECK(fabs(victim->_damage - energy) < 1e-2);
-		OO_CHECK(victim->_from == oo::ToCxx(cascade) && victim->_becauseOf == oo::ToCxx(shipOwner) && victim->_weapon == "EQ_QC_MINE");
-		OO_CHECK(oo::DescriptionOf(cascade).ends_with("{0.100000 seconds passed of 20.000000}"));
+		OO_CHECK(victim->_from == cascade && victim->_becauseOf == shipOwner && victim->_weapon == "EQ_QC_MINE");
+		OO_CHECK(oo::EntityDescription(cascade).ends_with("{0.100000 seconds passed of 20.000000}"));
 		OO_CHECK(sRemoved == nil);
 
 		// Twenty seconds: removed.
-		[cascade update:20.0];
+		cascade->update(20.0);
 		OO_CHECK(sRemoved == cascade);
 	}
 }

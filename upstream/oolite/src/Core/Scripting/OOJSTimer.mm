@@ -301,7 +301,8 @@ void OOJSTimer::timerFired()
 	// stop and remove the timer if _jsThis (the first parameter in the constructor) dies.
 	const oo::PList thisValue = cxx_OOJSPListFromJSObject(context, _jsThis);
 	id object = oo::ObjectIn(thisValue);
-	if (object != nil)
+	if (oo::EntityIn(thisValue) != nullptr)  described = true;	// an entity's object described itself (bead oo-dpyk8)
+	else if (object != nil)
 	{
 		described = [object cxx_oo_jsDescription].has_value();
 		if (!described)  described = oo::DescriptionOf(object) != "(null)";	// -description was nil

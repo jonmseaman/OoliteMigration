@@ -58,41 +58,6 @@ struct OracleRow
 };
 
 
-bool SameEncoding(char *copied, const char *expected)
-{
-	bool result = (copied != nullptr && std::strcmp(copied, expected) == 0);
-	std::free(copied);
-	return result;
-}
-
-
-// The template signature returnType (self, _cmd[, argument]), as the template class's methods had it.
-bool Matches(Method method, const char *returnType, const char *argument)
-{
-	const char *arguments[] = { @encode(id), @encode(SEL), argument };
-	unsigned count = method_getNumberOfArguments(method);
-	if (count != (argument != nullptr ? 3u : 2u))  return false;
-	if (!SameEncoding(method_copyReturnType(method), returnType))  return false;
-	for (unsigned i = 0; i < count; i++)
-	{
-		if (!SameEncoding(method_copyArgumentType(method, i), arguments[i]))  return false;
-	}
-	return true;
-}
-
-
-// The matcher's classification of a method in its safe set; nullopt outside it.
-std::optional<OracleRow> Oracle(Method method)
-{
-	if (Matches(method, @encode(void), nullptr))  return OracleRow{ OOJSCallEntityMethodForm::VoidVoid, kOOShaderUniformTypeInvalid };
-	if (Matches(method, @encode(void), @encode(const std::string &)))  return OracleRow{ OOJSCallEntityMethodForm::VoidString, kOOShaderUniformTypeInvalid };
-	if (Matches(method, @encode(oo::PList), @encode(const std::string &)))  return OracleRow{ OOJSCallEntityMethodForm::PListString, kOOShaderUniformTypeInvalid };
-	if (Matches(method, @encode(oo::PList), nullptr))  return OracleRow{ OOJSCallEntityMethodForm::PListVoid, kOOShaderUniformTypeInvalid };
-	if (method_getNumberOfArguments(method) != 2)  return std::nullopt;	// called with its arguments missing
-	return OracleRow{ OOJSCallEntityMethodForm::Typed, OOShaderUniformTypeFromMethod(method) };
-}
-
-
 // The matcher's classification of a by-name row's method (its declared result and argument).
 std::optional<OracleRow> Oracle(const OOEntityByNameRow &row)
 {
@@ -115,21 +80,11 @@ std::optional<OracleRow> Oracle(const OOEntityByNameRow &row)
 }
 
 
+// The safe set's by-name rows (the facade's own methods went with it, bead oo-dpyk8: their half of
+// the oracle is retired under oo-9n5p9).
 std::map<std::string, OracleRow> OracleSafeSet()
 {
 	std::map<std::string, OracleRow> result;
-	unsigned count = 0;
-	Method *methods = class_copyMethodList([Entity class], &count);
-	for (unsigned i = 0; i < count; i++)
-	{
-		const std::string name = sel_getName(method_getName(methods[i]));
-		if (name.empty() || name[0] == '.')  continue;	// .cxx_construct / .cxx_destruct
-		std::string bare = name;
-		if (!bare.empty() && bare.back() == ':')  bare.pop_back();
-		if (kExcluded.contains(bare))  continue;
-		if (std::optional<OracleRow> row = Oracle(methods[i]))  result[name] = *row;
-	}
-	std::free(methods);
 	for (const OOEntityByNameRow &row : oo::EntityByNameRows())
 	{
 		std::string bare = row.name;
@@ -137,13 +92,6 @@ std::map<std::string, OracleRow> OracleSafeSet()
 		if (kExcluded.contains(bare))  continue;
 		if (std::optional<OracleRow> oracle = Oracle(row))  result[row.name] = *oracle;
 	}
-	// The root facade's JS glue category (deleted by bead oo-9ht.39.8.9): its three methods the
-	// safe set held, classified as the matcher classified them (their result encodings).
-	result["isVisibleToScripts"] = OracleRow{ OOJSCallEntityMethodForm::Typed, OOShaderUniformTypeFromEncoding(@encode(BOOL)) };
-	result["cxx_oo_jsClassName"] = OracleRow{ OOJSCallEntityMethodForm::Typed, OOShaderUniformTypeFromEncoding(@encode(std::optional<std::string>)) };
-	result["deleteJSSelf"] = OracleRow{ OOJSCallEntityMethodForm::VoidVoid, kOOShaderUniformTypeInvalid };
-	// The cascade's category (deleted by bead oo-9ht.186): its one method, as the matcher classified it.
-	result["isCascadeWeapon"] = OracleRow{ OOJSCallEntityMethodForm::Typed, OOShaderUniformTypeFromEncoding(@encode(BOOL)) };
 	return result;
 }
 
@@ -158,9 +106,9 @@ OO_TEST(tableIsTheMatchersSafeSet)
 		std::map<std::string, const OOJSCallEntityMethodRow *> table;
 		for (const OOJSCallEntityMethodRow &row : kOOJSCallEntityMethods)  table[row.name] = &row;
 		OO_CHECK_EQ(table.size(), std::size(kOOJSCallEntityMethods));	// no name twice
-		OO_CHECK(oracle.size() > 400);	// the facade's forwarders and by-name categories
+		OO_CHECK(oracle.size() > 400);	// the by-name categories (and the facade's forwarders, which went with it: bead oo-dpyk8)
 
-		std::string missing, extra, different;
+		std::string missing, different;
 		for (const auto &[name, row] : oracle)
 		{
 			auto found = table.find(name);
@@ -170,12 +118,9 @@ OO_TEST(tableIsTheMatchersSafeSet)
 			if (same && row.form == OOJSCallEntityMethodForm::Typed)  same = (OOShaderUniformTypeFromEncoding(entry.encoding) == row.type);
 			if (!same)  different += " " + name;
 		}
-		for (const auto &[name, entry] : table)
-		{
-			if (!oracle.contains(name))  extra += " " + name;
-		}
+		// (No row outside the oracle: retired with the facade, whose methods were the rest of it; bead
+		// oo-dpyk8, under oo-9n5p9.)
 		OO_CHECK_EQ(missing, std::string());
-		OO_CHECK_EQ(extra, std::string());
 		OO_CHECK_EQ(different, std::string());
 	}
 }
@@ -213,7 +158,7 @@ OO_TEST(everyNameIsAnsweredByTheCxxEntity)
 		std::set<std::string> names;
 		for (const OOJSCallEntityMethodRow &row : kOOJSCallEntityMethods)  names.insert(row.name);
 
-		std::string uncovered, twice, notInTable, notFacade, typedMismatch;
+		std::string uncovered, twice, notInTable, typedMismatch;
 		for (const OOJSCallEntityMethodRow &row : kOOJSCallEntityMethods)
 		{
 			const bool byName = (oo::EntityByNameRowNamed(row.name) != nullptr);
@@ -236,15 +181,11 @@ OO_TEST(everyNameIsAnsweredByTheCxxEntity)
 		for (const OOEntityFacadeRow &facade : oo::EntityFacadeRows())
 		{
 			if (!names.contains(facade.name))  notInTable += std::string(" ") + facade.name;
-			// The root facade's JS glue category is deleted (bead oo-9ht.39.8.9), and the cascade's (bead
-			// oo-9ht.186): their rows keep the body.
-			const bool deletedGlue = (std::strcmp(facade.name, "isVisibleToScripts") == 0 || std::strcmp(facade.name, "deleteJSSelf") == 0 || std::strcmp(facade.name, "isCascadeWeapon") == 0);
-			if (!deletedGlue && class_getInstanceMethod([::Entity class], sel_registerName(facade.name)) == NULL)  notFacade += std::string(" ") + facade.name;
+			// (That each is a method of the root facade: retired with the facade, bead oo-dpyk8, under oo-9n5p9.)
 		}
 		OO_CHECK_EQ(uncovered, std::string());
 		OO_CHECK_EQ(twice, std::string());
 		OO_CHECK_EQ(notInTable, std::string());
-		OO_CHECK_EQ(notFacade, std::string());
 		OO_CHECK_EQ(typedMismatch, std::string());
 	}
 }

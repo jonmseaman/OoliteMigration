@@ -146,11 +146,21 @@ protected:
 	// control block, as a -weakRetain after -weakRefDrop got a new proxy.
 	void dropWeakReferences() const noexcept { dropWeakControl(); }
 
+	// The part of -dealloc that ran while the object was still whole, before [super dealloc]: called
+	// once, when the count reaches zero, before the weak references are zeroed and the object is
+	// deleted (bead oo-dpyk8: the entity's facade's -dealloc body). The count reads 1 while it runs,
+	// so a balanced retain and release inside it do not dispose again; a retain it leaves unbalanced
+	// would resurrect an object whose -dealloc has run, a programming error, and aborts.
+	virtual void willDispose() noexcept {}
+
 private:
 	friend struct detail::WeakAccess;
 
 	void dispose() const noexcept
 	{
+		rc_.store(1, std::memory_order_relaxed);
+		const_cast<RefCounted*>(this)->willDispose();
+		if (rc_.fetch_sub(1, std::memory_order_acq_rel) != 1)  std::abort();
 		dropWeakControl();   // weak refs read nullptr before any destructor body runs
 		delete this;
 	}

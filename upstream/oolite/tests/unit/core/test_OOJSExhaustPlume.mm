@@ -45,7 +45,7 @@ public:
 	virtual void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
 	virtual std::optional<std::string> jsClassName();
 	virtual bool isVisibleToScripts();
-	id owner();	// the binding calls it since bead oo-9ht.39.8.19 (its object's -owner did)
+	cxx::Entity *owner();	// the binding calls it since bead oo-9ht.39.8.19 (its object's -owner did); the C++ entity since bead oo-dpyk8
 };
 
 }	// namespace cxx
@@ -335,7 +335,11 @@ namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
 }
 
 // The owner its object's -owner answered until bead oo-9ht.39.8.19, on the same object field.
-id cxx::Entity::owner()  { return oo::ToObjC(this)->_owner; }
+cxx::Entity *cxx::Entity::owner()
+{
+	::Entity *object = (::Entity *)oo::ToObjC(this)->_owner;
+	return object != nil ? object->_cxxEntity.get() : nullptr;	// its C++ part (bead oo-dpyk8)
+}
 
 
 // MARK: The context -------------------------------------------------------------------------------

@@ -87,14 +87,22 @@ bool OOShaderMaterial::configurationDictionarySpecifiesShaderMaterial(const oo::
 }
 
 
-// The binding target's Objective-C object, which the log lines describe as they described the
-// target (bead oo-9ht.39.6); nil for none, or where the entities have registered no hooks.
+// What the log lines printed for the binding target's Objective-C object (beads oo-9ht.39.6,
+// oo-dpyk8): its class's name and its description; "(null)" for none, or where the entities have
+// registered no hooks, as nil's.
 namespace {
 
-id TargetObject(cxx::Entity *target)
+std::string TargetClassName(cxx::Entity *target)
 {
 	const OOShaderEntityHooks *hooks = OOShaderEntityHooksIfSet();
-	return (target != nullptr && hooks != nullptr) ? hooks->object(target) : nil;
+	return (target != nullptr && hooks != nullptr) ? hooks->className(target) : std::string("(null)");
+}
+
+
+std::string TargetDescription(cxx::Entity *target)
+{
+	const OOShaderEntityHooks *hooks = OOShaderEntityHooksIfSet();
+	return (target != nullptr && hooks != nullptr) ? hooks->description(target) : std::string("(null)");
 }
 
 }	// namespace
@@ -348,7 +356,7 @@ bool OOShaderMaterial::bindSafeUniform(const std::string &uniformName,
 	}
 	else
 	{
-		OO_LOG("shader.uniform.unpermittedMethod", "Did not bind uniform \"{}\" to property -[{} {}] - unpermitted method.", uniformName, oo::DescriptionOf([TargetObject(target) class]), property.value_or("(null)"));
+		OO_LOG("shader.uniform.unpermittedMethod", "Did not bind uniform \"{}\" to property -[{} {}] - unpermitted method.", uniformName, TargetClassName(target), property.value_or("(null)"));
 	}
 
 	return false;
@@ -635,7 +643,7 @@ void OOShaderMaterial::addUniformsFromDictionary(const oo::PList &uniformDefs, c
 
 		if (!gotValue)
 		{
-			OO_LOG("shader.uniform.badDescription", "----- Warning: could not bind uniform \"{}\" for target {} -- could not interpret definition:\n{}", name, oo::DescriptionOf(TargetObject(target)), oo::DescriptionOf(definition));
+			OO_LOG("shader.uniform.badDescription", "----- Warning: could not bind uniform \"{}\" for target {} -- could not interpret definition:\n{}", name, TargetDescription(target), oo::DescriptionOf(definition));
 		}
 	}
 

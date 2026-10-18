@@ -49,7 +49,7 @@ T *NewTestPlayer()
 	oo::Ref<T> player = oo::makeRef<T>();
 	@autoreleasepool
 	{
-		[oo::NewEntityFacade(player) retain];
+		oo::RetainEntity(oo::MadeEntity(player));
 	}
 	return player.get();
 }
@@ -59,11 +59,11 @@ T *NewTestPlayer()
 class TestUniverse : public Universe
 {
 public:
-	Entity	*_removed = {};
+	cxx::Entity	*_removed = {};
 
 	bool removeEntity(cxx::Entity *entity) override	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
 	{
-		_removed = oo::ToObjC(entity);
+		_removed = entity;
 		return YES;
 	}
 };
@@ -90,19 +90,19 @@ void SetUp()
 
 // --- How the test makes a ring (ported by the conversion), and nothing else ----------------------
 
-Entity *Ring(Entity *source)			{ return oo::NewEntityFacade(OORingEffectEntity::ringFromEntity(oo::ToCxx(source))); }	// the source's C++ entity since bead oo-9ht.39.26
-Entity *ShrinkingRing(Entity *source)	{ return oo::NewEntityFacade(OORingEffectEntity::shrinkingRingFromEntity(oo::ToCxx(source))); }
+cxx::Entity *Ring(cxx::Entity *source)			{ return oo::MadeEntity(OORingEffectEntity::ringFromEntity(source)); }	// the source's C++ entity since bead oo-9ht.39.26
+cxx::Entity *ShrinkingRing(cxx::Entity *source)	{ return oo::MadeEntity(OORingEffectEntity::shrinkingRingFromEntity(source)); }
 
 // --------------------------------------------------------------------------------------------------
 
 
-Entity *Source()
+cxx::Entity *Source()
 {
-	Entity *source = oo::NewEntityFacade(oo::makeRef<cxx::Entity>());
-	[source setCollisionRadius:8.0f];
-	[source setPosition:make_HPvector(1, 2, 3)];
-	[source setOrientation:make_quaternion(0, 1, 0, 0)];
-	[source setVelocity:make_vector(4, 5, 6)];
+	cxx::Entity *source = oo::MadeEntity(oo::makeRef<cxx::Entity>());
+	source->setCollisionRadius(8.0f);
+	source->setPosition(make_HPvector(1, 2, 3));
+	source->setOrientation(make_quaternion(0, 1, 0, 0));
+	source->setVelocity(make_vector(4, 5, 6));
 	return source;
 }
 
@@ -125,21 +125,21 @@ OO_TEST(ringTakesTheSource)
 	@autoreleasepool
 	{
 		SetUp();
-		Entity *source = Source();
-		for (Entity *ring : { Ring(source), ShrinkingRing(source) })
+		cxx::Entity *source = Source();
+		for (cxx::Entity *ring : { Ring(source), ShrinkingRing(source) })
 		{
 			OO_CHECK(ring != nil && ring != source);
-			OO_CHECK(HPvector_equal([ring position], make_HPvector(1, 2, 3)));
-			Quaternion q = [ring orientation];
+			OO_CHECK(HPvector_equal(ring->getPosition(), make_HPvector(1, 2, 3)));
+			Quaternion q = ring->getOrientation();
 			OO_CHECK(q.w == 0 && q.x == 1 && q.y == 0 && q.z == 0);
-			Vector v = [ring velocity];
+			Vector v = ring->getVelocity();
 			OO_CHECK(v.x == 4 && v.y == 5 && v.z == 6);
-			OO_CHECK([ring status] == STATUS_EFFECT && [ring scanClass] == CLASS_NO_DRAW);
-			OO_CHECK([ring owner] == source);
-			OO_CHECK([ring isEffect] && ![ring canCollide]);
-			OO_CHECK(![ring isShip] && ![ring isVisualEffect]);
-			OO_CHECK(oo::DescriptionOf(ring).starts_with("<OORingEffectEntity 0x"));
-			OO_CHECK(oo::DescriptionOf(ring).ends_with("{0.000000 seconds passed of 2.000000}"));
+			OO_CHECK(ring->status() == STATUS_EFFECT && ring->getScanClass() == CLASS_NO_DRAW);
+			OO_CHECK(ring->owner() == source);
+			OO_CHECK(ring->isEffect() && !ring->canCollide());
+			OO_CHECK(!ring->getIsShip() && !ring->getIsVisualEffect());
+			OO_CHECK(oo::EntityDescription(ring).starts_with("<OORingEffectEntity 0x"));
+			OO_CHECK(oo::EntityDescription(ring).ends_with("{0.000000 seconds passed of 2.000000}"));
 		}
 	}
 }
@@ -150,15 +150,15 @@ OO_TEST(updateCountsAndExpires)
 	@autoreleasepool
 	{
 		SetUp();
-		Entity *ring = Ring(Source());
-		[ring update:0.5];
-		OO_CHECK(oo::DescriptionOf(ring).ends_with("{0.500000 seconds passed of 2.000000}"));
-		OO_CHECK(HPvector_equal([ring position], make_HPvector(3, 4.5, 6)));	// moved by its velocity
+		cxx::Entity *ring = Ring(Source());
+		ring->update(0.5);
+		OO_CHECK(oo::EntityDescription(ring).ends_with("{0.500000 seconds passed of 2.000000}"));
+		OO_CHECK(HPvector_equal(ring->getPosition(), make_HPvector(3, 4.5, 6)));	// moved by its velocity
 		OO_CHECK(sUniverse->_removed == nil);
 
-		[ring update:1.5];
+		ring->update(1.5);
 		OO_CHECK(sUniverse->_removed == nil);	// exactly two seconds: not yet
-		[ring update:0.25];
+		ring->update(0.25);
 		OO_CHECK(sUniverse->_removed == ring);
 	}
 }

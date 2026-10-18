@@ -396,8 +396,8 @@ static bool FlasherRemove(ooscript::Context context, ooscript::CallArgs &oojsArg
 	OOFlasherEntity				*thisEnt = nullptr;
 	GET_THIS_FLASHER(thisEnt);
 
-	Entity				*parent = thisEnt->owner();	// the C++ member its object's -owner answered (bead oo-9ht.39.8.20)
-	if ([parent isShip])
+	cxx::Entity			*parent = thisEnt->owner();	// the C++ member its object's -owner answered (beads oo-9ht.39.8.20, oo-dpyk8)
+	if (oo::EntityIsShip(parent))
 	{
 		if (oo::ToShip(parent) != nullptr)  oo::ToShip(parent)->removeFlasher(thisEnt);
 	}

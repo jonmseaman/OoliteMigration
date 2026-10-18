@@ -63,7 +63,7 @@ T *NewTestPlayer()
 	oo::Ref<T> player = oo::makeRef<T>();
 	@autoreleasepool
 	{
-		[oo::NewEntityFacade(player) retain];
+		oo::RetainEntity(oo::MadeEntity(player));
 	}
 	return player.get();
 }
@@ -153,10 +153,10 @@ bool VectorIs(Vector v, float x, float y, float z)
 
 
 // A ship's object (autoreleased, as the Objective-C stand-in was), holding the stand-in ship.
-Entity *Ship()
+cxx::Entity *Ship()
 {
 	oo::Ref<TestShip> ship = oo::makeRef<TestShip>();
-	Entity *object = oo::NewEntityFacade(ship);
+	cxx::Entity *object = oo::MadeEntity(ship);
 	ship->isShip = YES;	// a ship (its subentity plume asks it, as a set-up ship answers)
 	ship->_visible = true;
 	ship->setSpeedFactor(1.0f);
@@ -170,14 +170,14 @@ Entity *Ship()
 }
 
 
-TestShip *Part(Entity *ship)	{ return static_cast<TestShip *>(oo::ToShip(ship)); }
+TestShip *Part(cxx::Entity *ship)	{ return static_cast<TestShip *>(oo::ToShip(ship)); }
 
 
 // A plume, made as the ship makes one: its Objective-C object is autoreleased in the test's pool and
 // holds it; null for no tokens.
-OOExhaustPlumeEntity *Plume(Entity *ship, std::vector<std::string> tokens, float scale)
+OOExhaustPlumeEntity *Plume(cxx::Entity *ship, std::vector<std::string> tokens, float scale)
 {
-	return static_cast<OOExhaustPlumeEntity *>(oo::ToCxx(oo::NewEntityFacade(OOExhaustPlumeEntity::exhaustForShip(oo::ToShip(ship), tokens, scale))));
+	return static_cast<OOExhaustPlumeEntity *>(oo::MadeEntity(OOExhaustPlumeEntity::exhaustForShip(oo::ToShip(ship), tokens, scale)));
 }
 
 }	// namespace
@@ -188,14 +188,14 @@ OO_TEST(made)
 	@autoreleasepool
 	{
 		SetUp(0.0);
-		Entity *ship = Ship();
+		cxx::Entity *ship = Ship();
 		OOExhaustPlumeEntity *plume = Plume(ship, { "1", "2", "3", "4", "5", "1.5" }, 2.0f);
 		OO_CHECK(plume != nullptr);
 		OO_CHECK(plume->owner() == ship);
 		OO_CHECK(HPvector_equal(plume->getPosition(), make_HPvector(2, 4, 6)));
 		OO_CHECK(VectorIs(plume->scale(), 8, 10, 1.5f));	// z is not scaled
 		// The category -isExhaust went with the facade (bead oo-9ht.110): callers ask the C++ part.
-		OO_CHECK(plume->isExhaust() && dynamic_cast<OOExhaustPlumeEntity *>(oo::ToCxx(ship)) == nullptr);
+		OO_CHECK(plume->isExhaust() && dynamic_cast<OOExhaustPlumeEntity *>(ship) == nullptr);
 		OO_CHECK(plume->findCollisionRadius() == 0.0);
 
 		OO_CHECK(Plume(ship, {}, 1.0f) == nullptr);
@@ -208,7 +208,7 @@ OO_TEST(scaleZ)
 	@autoreleasepool
 	{
 		SetUp(0.0);
-		Entity *ship = Ship();
+		cxx::Entity *ship = Ship();
 		OO_CHECK(VectorIs(Plume(ship, { "0", "0", "0", "1", "1", "0.4" }, 1.0f)->scale(), 1, 1, 1));
 		OO_CHECK(VectorIs(Plume(ship, { "0", "0", "0", "1", "1", "2.5" }, 1.0f)->scale(), 1, 1, 1));
 		OOExhaustPlumeEntity *plume = Plume(ship, { "0", "0", "0", "1", "1", "2" }, 1.0f);
@@ -240,7 +240,7 @@ OO_TEST(updateWithoutVisibleShip)
 	@autoreleasepool
 	{
 		SetUp(1.0);
-		Entity *ship = Ship();
+		cxx::Entity *ship = Ship();
 		OOExhaustPlumeEntity *plume = Plume(ship, { "0", "0", "-10", "2", "2", "1" }, 1.0f);
 		SetCollisionRadius(plume, 42.0f);
 		Part(ship)->_visible = false;
@@ -259,7 +259,7 @@ OO_TEST(updateBelowMinimalSpeed)
 	@autoreleasepool
 	{
 		SetUp(1.0);
-		Entity *ship = Ship();
+		cxx::Entity *ship = Ship();
 		OOExhaustPlumeEntity *plume = Plume(ship, { "0", "0", "-10", "2", "2", "1" }, 1.0f);
 		SetCollisionRadius(plume, 42.0f);
 		Part(ship)->setSpeedFactor(0.0005f);
@@ -274,7 +274,7 @@ OO_TEST(updateMeasures)
 	@autoreleasepool
 	{
 		SetUp(1.0);
-		Entity *ship = Ship();
+		cxx::Entity *ship = Ship();
 		OOExhaustPlumeEntity *plume = Plume(ship, { "0", "0", "-10", "2", "2", "1" }, 1.0f);
 		plume->resetPlume();
 		plume->update(0.1);
@@ -307,10 +307,10 @@ OO_TEST(facade)
 		SetUp(0.0);
 		// The object is the root's facade, the nearest left (amendment oo-9ht.12 item 6), whose C++
 		// part is the plume: a C++ entity (amendment oo-0mxi), not an Objective-C entity's adapter.
-		Entity *object = oo::NewEntityFacade(OOExhaustPlumeEntity::exhaustForShip(oo::ToShip(Ship()), { "0", "0", "0", "1", "1", "1" }, 1.0f));
-		OO_CHECK([object class] == [Entity class]);
-		OO_CHECK(dynamic_cast<OOExhaustPlumeEntity *>(oo::ToCxx(object)) != nullptr);
-		OO_CHECK(oo::ToObjC(oo::ToCxx(object)) == object);
+		cxx::Entity *object = oo::MadeEntity(OOExhaustPlumeEntity::exhaustForShip(oo::ToShip(Ship()), { "0", "0", "0", "1", "1", "1" }, 1.0f));
+		// (Its object's class, the root facade, was checked here: retired with the facade, bead oo-dpyk8, under oo-9n5p9.)
+		OO_CHECK(dynamic_cast<OOExhaustPlumeEntity *>(object) != nullptr);
+		OO_CHECK(object == object);
 	}
 }
 
@@ -323,14 +323,14 @@ OO_TEST(jsExtensions)
 	@autoreleasepool
 	{
 		SetUp(0.0);
-		Entity *plume = oo::ToObjC(Plume(Ship(), { "0", "0", "0", "1", "1", "1" }, 1.0f));
+		cxx::Entity *plume = Plume(Ship(), { "0", "0", "0", "1", "1", "1" }, 1.0f);
 		ooscript::ClassDef *jsClass = nullptr, *expectedClass = nullptr;
 		ooscript::Object prototype = nullptr, expectedPrototype = nullptr;
-		OOJSEntityGetJSClass(oo::ToCxx(plume), &jsClass, &prototype);
+		OOJSEntityGetJSClass(plume, &jsClass, &prototype);
 		OOJSExhaustPlumeGetJSClass(&expectedClass, &expectedPrototype);
 		OO_CHECK(jsClass != nullptr && jsClass == expectedClass && prototype == expectedPrototype);
-		OO_CHECK(OOJSEntityJSClassName(oo::ToCxx(plume)) == std::optional<std::string>("ExhaustPlume"));
-		OO_CHECK(OOJSEntityIsVisibleToScripts(oo::ToCxx(plume)) == YES);
+		OO_CHECK(OOJSEntityJSClassName(plume) == std::optional<std::string>("ExhaustPlume"));
+		OO_CHECK(OOJSEntityIsVisibleToScripts(plume) == YES);
 	}
 }
 

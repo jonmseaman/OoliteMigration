@@ -52,7 +52,7 @@ T *NewTestPlayer()
 	oo::Ref<T> player = oo::makeRef<T>();
 	@autoreleasepool
 	{
-		[oo::NewEntityFacade(player) retain];
+		oo::RetainEntity(oo::MadeEntity(player));
 	}
 	return player.get();
 }
@@ -87,7 +87,7 @@ ShipEntity *NewTestAIStation(const std::string &key, const oo::PList &dict)
 {
 	ShipEntity *station = oo::ToShip(oo::NewShipObject(oo::makeRef<TestAIStation>(), key, dict));
 	if (station != nullptr)  static_cast<StationEntity *>(station)->initStationDefaults();
-	[oo::ToObjC(station) autorelease];
+	oo::AutoreleaseEntity(station);
 	return station;	// the station (its object until bead oo-9ht.144)
 }
 
@@ -112,9 +112,9 @@ void SetDockingInstructions(ShipEntity *s, const oo::PList &instructions)	{ s->d
 void SetScannerRange(ShipEntity *s, GLfloat r)	{ s->scannerRange = r; }
 void SetAccuracy(ShipEntity *s, GLfloat a)		{ s->accuracy = a; }
 void SetNearPlanetSurface(ShipEntity *s, bool v)	{ s->isNearPlanetSurface = v; }
-void SetPrimaryTarget(ShipEntity *s, Entity *target)
+void SetPrimaryTarget(ShipEntity *s, cxx::Entity *target)
 {
-	s->_primaryTarget = oo::WeakEntityRef(target);	// the entity's C++ part (bead oo-9ht.39.5.2)
+	s->_primaryTarget = oo::WeakRef<cxx::Entity>(target);	// the entity's C++ part (bead oo-9ht.39.5.2)
 }
 
 
@@ -137,7 +137,7 @@ void SetUp()
 TestAIShip *MakeShip(const char *key)
 {
 	// [[[TestAIShip alloc] cxx_initWithKey:definition:] autorelease] until bead oo-9ht.144
-	return static_cast<TestAIShip *>(oo::ToShip([oo::NewShipObject(oo::makeRef<TestAIShip>(), key, oo::PList(oo::PList::Dict{})) autorelease]));
+	return static_cast<TestAIShip *>(oo::ToShip(oo::AutoreleaseEntity(oo::NewShipObject(oo::makeRef<TestAIShip>(), key, oo::PList(oo::PList::Dict{})))));
 }
 
 
@@ -305,7 +305,7 @@ OO_TEST(slice1NothingToActOn)
 
 		// No escort to suggest to: the ship is its own owner.
 		OO_CHECK(!(ship != nullptr ? ship->suggestEscortTo(nullptr) : false));
-		OO_CHECK((ship != nullptr ? ship->owner() : id{}) == oo::ToObjC(ship));
+		OO_CHECK((ship != nullptr ? ship->owner() : nullptr) == ship);
 
 		// No aggressor: no distress call.
 		if (ship != nullptr)  ship->broadcastDistressMessage();
@@ -315,7 +315,7 @@ OO_TEST(slice1NothingToActOn)
 		// No primary target: no group attack, and a target that is not a wormhole: no escorts sent.
 		if (ship != nullptr)  ship->groupAttackTarget();
 		OO_CHECK((ship != nullptr ? ship->foundTarget() : (cxx::Entity *)nullptr) == nil);
-		SetPrimaryTarget(ship, oo::ToObjC(other));
+		SetPrimaryTarget(ship, other);
 		if (ship != nullptr)  ship->wormholeEscorts();
 		OO_CHECK((ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == other);
 
@@ -344,7 +344,7 @@ OO_TEST(slice1AcceptDistressMessage)
 		TestAIShip *ship = MakeShip("helper");
 		TestAIShip *caller = MakeShip("caller");
 		TestAIShip *attacker = MakeShip("attacker");
-		SetPrimaryTarget(caller, oo::ToObjC(attacker));
+		SetPrimaryTarget(caller, attacker);
 		if (ship != nullptr)  ship->acceptDistressMessageFrom(caller);
 		OO_CHECK((ship != nullptr ? ship->foundTarget() : (cxx::Entity *)nullptr) == attacker);
 
@@ -389,7 +389,7 @@ OO_TEST(slice1MembersFromCxx)
 
 		TestAIShip *caller = MakeShip("caller");
 		TestAIShip *attacker = MakeShip("attacker");
-		SetPrimaryTarget(caller, oo::ToObjC(attacker));
+		SetPrimaryTarget(caller, attacker);
 		part->acceptDistressMessageFrom(caller);
 		OO_CHECK((ship != nullptr ? ship->foundTarget() : (cxx::Entity *)nullptr) == attacker);
 
@@ -407,14 +407,14 @@ OO_TEST(slice1MembersFromCxx)
 
 namespace {
 
-void SetPosition2(Entity *e, HPVector p)			{ e->_cxxEntity->position = p; }
+void SetPosition2(cxx::Entity *e, HPVector p)			{ e->position = p; }
 HPVector Coordinates2(ShipEntity *s)				{ return s->coordinates; }
 void SetCoordinates2(ShipEntity *s, HPVector c)	{ s->coordinates = c; }
 void SetCruiseSpeed2(ShipEntity *s, GLfloat v)	{ s->cruiseSpeed = v; }
 void SetMaxThrust2(ShipEntity *s, GLfloat v)		{ s->max_thrust = v; }
 GLfloat Thrust2(ShipEntity *s)					{ return s->thrust; }
 bool PitchingOver2(ShipEntity *s)				{ return s->pitching_over; }
-void SetCollisionRadius2(Entity *e, GLfloat r)	{ e->_cxxEntity->collision_radius = r; }
+void SetCollisionRadius2(cxx::Entity *e, GLfloat r)	{ e->collision_radius = r; }
 
 }	// namespace
 
@@ -459,7 +459,7 @@ OO_TEST(slice2Destinations)
 		SetUp();
 		TestAIShip *ship = MakeShip("navigator");
 		TestAIShip *target = MakeShip("target");
-		SetPosition2(oo::ToObjC(ship), make_HPvector(10, 20, 30));
+		SetPosition2(ship, make_HPvector(10, 20, 30));
 		if (ship != nullptr)  ship->setDestinationToCurrentLocation();
 		OO_CHECK(HPdistance(Destination(ship), make_HPvector(10, 20, 30)) <= 0.5 + 1e-6);
 
@@ -473,9 +473,9 @@ OO_TEST(slice2Destinations)
 		if (ship != nullptr)  ship->setDestinationToTarget();
 		if (ship != nullptr)  ship->setDestinationWithinTarget();
 		OO_CHECK(HPdistance2(Destination(ship), make_HPvector(1, 2, 3)) == 0);
-		SetPosition2(oo::ToObjC(target), make_HPvector(500, 0, 0));
-		SetCollisionRadius2(oo::ToObjC(target), 20);
-		SetPrimaryTarget(ship, oo::ToObjC(target));
+		SetPosition2(target, make_HPvector(500, 0, 0));
+		SetCollisionRadius2(target, 20);
+		SetPrimaryTarget(ship, target);
 		if (ship != nullptr)  ship->setDestinationToTarget();
 		OO_CHECK(HPdistance2(Destination(ship), make_HPvector(500, 0, 0)) == 0);
 		if (ship != nullptr)  ship->setDestinationWithinTarget();
@@ -487,7 +487,7 @@ OO_TEST(slice2Destinations)
 
 		// No station in the universe: ten seconds of flight forward.
 		SetMaxFlight(ship, 100, 1, 1);
-		SetPosition2(oo::ToObjC(ship), make_HPvector(0, 0, 0));
+		SetPosition2(ship, make_HPvector(0, 0, 0));
 		if (ship != nullptr)  ship->getWitchspaceEntryCoordinates();
 		OO_CHECK(HPdistance(Coordinates2(ship), make_HPvector(0, 0, 1000)) < 1e-3);
 	}
@@ -568,7 +568,7 @@ OO_TEST(slice2MembersFromCxx)
 		ShipEntity *part = ship;
 		part->setSpeedTo("7");
 		OO_CHECK(DesiredSpeed(ship) == 7.0f);
-		SetPosition2(oo::ToObjC(ship), make_HPvector(4, 5, 6));
+		SetPosition2(ship, make_HPvector(4, 5, 6));
 		part->setCoordinatesFromPosition();
 		part->setDestinationFromCoordinates();
 		OO_CHECK(HPdistance2(Destination(ship), make_HPvector(4, 5, 6)) == 0);
@@ -584,7 +584,7 @@ namespace {
 
 OOAegisStatus AegisStatus3(ShipEntity *s)			{ return s->aegis_status; }
 void SetAegisStatus3(ShipEntity *s, int status)	{ s->aegis_status = (OOAegisStatus)status; }
-void SetEnergy3(Entity *e, GLfloat energy, GLfloat maxEnergy)	{ e->_cxxEntity->energy = energy; e->_cxxEntity->maxEnergy = maxEnergy; }
+void SetEnergy3(cxx::Entity *e, GLfloat energy, GLfloat maxEnergy)	{ e->energy = energy; e->maxEnergy = maxEnergy; }
 HPVector Coordinates3(ShipEntity *s)				{ return s->coordinates; }
 void SetCoordinates3(ShipEntity *s, HPVector c)	{ s->coordinates = c; }
 void SetDestination3(ShipEntity *s, HPVector d)	{ s->_destination = d; }
@@ -608,7 +608,7 @@ OO_TEST(slice3ChecksAndScans)
 		if (ship != nullptr)  ship->checkAegis();
 		OO_CHECK(AegisStatus3(ship) == AEGIS_NONE);
 
-		SetEnergy3(oo::ToObjC(ship), 50, 100);
+		SetEnergy3(ship, 50, 100);
 		if (ship != nullptr)  ship->checkEnergy();
 		if (ship != nullptr)  ship->checkHeatInsulation();
 		if (ship != nullptr)  ship->checkDistanceTravelled();
@@ -632,7 +632,7 @@ OO_TEST(slice3ChecksAndScans)
 		OO_CHECK((ship != nullptr ? ship->foundTarget() : (cxx::Entity *)nullptr) == nil);
 		if (ship != nullptr)  ship->setFoundTarget(other);
 		if (ship != nullptr)  ship->thargonCheckMother();		// no mother and none to be found
-		OO_CHECK((ship != nullptr ? ship->foundTarget() : (cxx::Entity *)nullptr) == nil && (ship != nullptr ? ship->owner() : id{}) != oo::ToObjC(other));
+		OO_CHECK((ship != nullptr ? ship->foundTarget() : (cxx::Entity *)nullptr) == nil && (ship != nullptr ? ship->owner() : nullptr) != other);
 	}
 }
 
@@ -665,13 +665,13 @@ OO_TEST(slice3NothingToActOn)
 
 		// No escort to suggest to, no mother to check: the ship is its own owner.
 		if (ship != nullptr)  ship->suggestEscort();
-		OO_CHECK((ship != nullptr ? ship->owner() : id{}) == oo::ToObjC(ship));
+		OO_CHECK((ship != nullptr ? ship->owner() : nullptr) == ship);
 		if (ship != nullptr)  ship->setOwner(nullptr);
 		if (ship != nullptr)  ship->escortCheckMother();
-		OO_CHECK((ship != nullptr ? ship->owner() : id{}) == oo::ToObjC(ship));
+		OO_CHECK((ship != nullptr ? ship->owner() : nullptr) == ship);
 
 		// A target that is not a wormhole: nobody goes.
-		SetPrimaryTarget(ship, oo::ToObjC(other));
+		SetPrimaryTarget(ship, other);
 		if (ship != nullptr)  ship->wormholeGroup();
 		OO_CHECK((ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == other);
 
@@ -695,7 +695,7 @@ OO_TEST(slice3TargetsAndFighting)
 		TestAIShip *other = MakeShip("other");
 
 		// The target is remembered, and forgotten when there is none.
-		SetPrimaryTarget(ship, oo::ToObjC(other));
+		SetPrimaryTarget(ship, other);
 		if (ship != nullptr)  ship->storeTarget();
 		OO_CHECK((ship != nullptr ? ship->rememberedShip() : (cxx::Entity *)nullptr) == other);
 		SetPrimaryTarget(ship, nil);
@@ -708,7 +708,7 @@ OO_TEST(slice3TargetsAndFighting)
 		OO_CHECK((ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == nil);
 
 		// Full energy, no escorts, no missiles: fight the found target.
-		SetEnergy3(oo::ToObjC(ship), 100, 100);
+		SetEnergy3(ship, 100, 100);
 		if (ship != nullptr)  ship->setFoundTarget(other);
 		if (ship != nullptr)  ship->fightOrFleeHostiles();
 		OO_CHECK((ship != nullptr ? ship->primaryAggressor() : (cxx::Entity *)nullptr) == other && (ship != nullptr ? ship->isDefenseTarget(other) : false));
@@ -725,7 +725,7 @@ OO_TEST(slice3MembersFromCxx)
 		TestAIShip *ship = MakeShip("member3");
 		TestAIShip *other = MakeShip("other");
 		ShipEntity *part = ship;
-		SetPrimaryTarget(ship, oo::ToObjC(other));
+		SetPrimaryTarget(ship, other);
 		part->storeTarget();
 		OO_CHECK((ship != nullptr ? ship->rememberedShip() : (cxx::Entity *)nullptr) == other);
 		SetAegisStatus3(ship, 42);
@@ -742,14 +742,14 @@ OO_TEST(slice3MembersFromCxx)
 
 namespace {
 
-bool ThrowSparks4(Entity *e)						{ return e->_cxxEntity->throw_sparks; }
+bool ThrowSparks4(cxx::Entity *e)						{ return e->throw_sparks; }
 unsigned NavpointCount4(ShipEntity *s)			{ return s->number_of_navpoints; }
 unsigned NextNavpoint4(ShipEntity *s)			{ return s->next_navpoint_index; }
 HPVector Navpoint4(ShipEntity *s, unsigned i)	{ return s->navpoints[i]; }
 HPVector Coordinates4(ShipEntity *s)				{ return s->coordinates; }
 void SetCoordinates4(ShipEntity *s, HPVector c)	{ s->coordinates = c; }
-void SetPosition4(Entity *e, HPVector p)			{ e->_cxxEntity->position = p; }
-void SetCollisionRadius4(Entity *e, GLfloat r)	{ e->_cxxEntity->collision_radius = r; }
+void SetPosition4(cxx::Entity *e, HPVector p)			{ e->position = p; }
+void SetCollisionRadius4(cxx::Entity *e, GLfloat r)	{ e->collision_radius = r; }
 
 }	// namespace
 
@@ -810,8 +810,8 @@ OO_TEST(slice4StationsAndCoordinates)
 		TestAIShip *other = MakeShip("other");
 
 		// No station anywhere: back off 8 km from the origin, straight back.
-		SetPosition4(oo::ToObjC(ship), make_HPvector(0, 0, 0));
-		SetCollisionRadius4(oo::ToObjC(ship), 0);
+		SetPosition4(ship, make_HPvector(0, 0, 0));
+		SetCollisionRadius4(ship, 0);
 		if (ship != nullptr)  ship->setDestinationToDockingAbort();
 		OO_CHECK(HPdistance(Coordinates4(ship), make_HPvector(0, 0, -8000)) < 1e-3 && HPdistance(Destination(ship), make_HPvector(0, 0, -8000)) < 1e-3);
 
@@ -844,7 +844,7 @@ OO_TEST(slice4ActionsAndRacepoints)
 		OO_CHECK((ship != nullptr ? ship->getFuel() : OOFuelQuantity{}) == 30);
 
 		if (ship != nullptr)  ship->ai_throwSparks();
-		OO_CHECK(ThrowSparks4(oo::ToObjC(ship)));
+		OO_CHECK(ThrowSparks4(ship));
 
 		// Nothing to act on, or no script to tell: nothing happens.
 		if (ship != nullptr)  ship->scriptActionOnTarget("set: mission_x 1");
@@ -860,16 +860,16 @@ OO_TEST(slice4ActionsAndRacepoints)
 		// No target: no racepoints.
 		if (ship != nullptr)  ship->setRacepointsFromTarget();
 		OO_CHECK(NavpointCount4(ship) == 0);
-		SetPosition4(oo::ToObjC(pylon), make_HPvector(100, 0, 0));
-		SetCollisionRadius4(oo::ToObjC(pylon), 10);
+		SetPosition4(pylon, make_HPvector(100, 0, 0));
+		SetCollisionRadius4(pylon, 10);
 		if (pylon != nullptr)  pylon->setOrientation(kIdentityQuaternion);
-		SetPrimaryTarget(ship, oo::ToObjC(pylon));
+		SetPrimaryTarget(ship, pylon);
 		if (ship != nullptr)  ship->setRacepointsFromTarget();
 		OO_CHECK(NavpointCount4(ship) == 2 && NextNavpoint4(ship) == 0);
 		OO_CHECK(HPdistance(Navpoint4(ship, 0), make_HPvector(100, 0, -10)) < 1e-3 && HPdistance(Navpoint4(ship, 1), make_HPvector(100, 0, 10)) < 1e-3);
 		OO_CHECK(HPdistance2(Destination(ship), Navpoint4(ship, 0)) == 0);
 
-		SetCollisionRadius4(oo::ToObjC(ship), 25);
+		SetCollisionRadius4(ship, 25);
 		if (ship != nullptr)  ship->performFlyRacepoints();
 		OO_CHECK(Behaviour(ship) == BEHAVIOUR_FLY_THRU_NAVPOINTS && DesiredRange(ship) == 25 && NextNavpoint4(ship) == 0);
 	}
@@ -887,7 +887,7 @@ OO_TEST(slice4MembersFromCxx)
 		if (ship != nullptr)  ship->setFuel(0);
 		part->addFuel("2");
 		OO_CHECK((ship != nullptr ? ship->getFuel() : OOFuelQuantity{}) == 20);
-		SetCollisionRadius4(oo::ToObjC(ship), 12);
+		SetCollisionRadius4(ship, 12);
 		part->performFlyRacepoints();
 		OO_CHECK(Behaviour(ship) == BEHAVIOUR_FLY_THRU_NAVPOINTS && DesiredRange(ship) == 12);
 	}

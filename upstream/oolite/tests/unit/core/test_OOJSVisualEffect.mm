@@ -38,6 +38,7 @@
 #include "oofnd/PList.hpp"
 #include "oofnd/String.hpp"
 #import "OOObjCPList.h"
+#include "EntityPListForeign.h"	// an entity's node (bead oo-dpyk8)
 #import "OOScript.h"
 
 
@@ -45,6 +46,7 @@
 
 class Universe;
 class PlayerEntity;
+@class Entity;	// the test's stand-in root object, below (OOEntityHold.h declared the game's until bead oo-dpyk8 deleted it)
 
 // The C++ root, as far as the binding and the root's JS category reach it (the members the
 // binding calls, declared as Entity.h declares them), and the C++ part's object (oo::ToObjC).
@@ -57,7 +59,7 @@ public:
 	virtual std::optional<std::string> jsClassName();
 	virtual bool isVisibleToScripts();
 	bool getIsSubEntity();
-	id owner();
+	cxx::Entity *owner();	// the C++ entity since bead oo-dpyk8
 
 	BOOL _isSubEntity = NO;
 	id _owner = nil;
@@ -296,11 +298,12 @@ void cxx::Entity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *ou
 std::optional<std::string> cxx::Entity::jsClassName()  { return std::nullopt; }
 bool cxx::Entity::isVisibleToScripts()  { return false; }
 bool cxx::Entity::getIsSubEntity()  { return _isSubEntity; }
-id cxx::Entity::owner()  { return _owner; }
+cxx::Entity *cxx::Entity::owner()  { return _owner != nil ? ((::Entity *)_owner)->_cxxEntity.get() : nullptr; }	// its object's C++ part (bead oo-dpyk8)
 
 // The object of a C++ part: the one that holds it (the game's never makes one here either).
 namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
 ::Entity *oo::ToObjC(cxx::Entity *entity)  { return entity != nullptr ? entity->_object : nil; }
+#import "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
 
 
 namespace {
@@ -514,7 +517,8 @@ ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &p
 		return js != nullptr ? ooscript::stringValue(js) : ooscript::nullValue();
 	}
 	if (plist.isNumber())  return ooscript::numberValue(plist.doubleValue());
-	if (id object = oo::ObjectIn(plist))
+	cxx::Entity *nodeEntity = oo::EntityIn(plist);	// an entity's node: its object (bead oo-dpyk8)
+	if (id object = (nodeEntity != nullptr) ? (id)oo::ToObjC(nodeEntity) : oo::ObjectIn(plist))
 	{
 		std::string name = std::string("[") + class_getName(object_getClass(object)) + "]";
 		// An entity's object is named by its C++ part's class, as oo::EntityClassName() names it

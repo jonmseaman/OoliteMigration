@@ -466,7 +466,7 @@ void OOExhaustPlumeEntity::drawSubEntityImmediate(bool /*immediate*/, bool trans
 	OOGL(glTexCoordPointer(2, GL_FLOAT, 0, texCoords));
 
 	// reduced detail for internal view to avoid rendering artefacts
-	if ([owner() isPlayer] && (UNIVERSE != nullptr ? UNIVERSE->getViewDirection() : OOViewID{}) != VIEW_CUSTOM)
+	if (oo::EntityIsPlayer(owner()) && (UNIVERSE != nullptr ? UNIVERSE->getViewDirection() : OOViewID{}) != VIEW_CUSTOM)
 	{
 		OOGL(glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_INT, afttstr1));
 		OOGL(glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_INT, afttstr2));
@@ -613,7 +613,7 @@ void OOExhaustPlumeEntity::resetPlume()
 	_track[_nextFrame] = frame;
 	_nextFrame = (_nextFrame + 1) % kExhaustFrameCount;*/
 	_nextFrame = 0;
-	HPVector framePos = OOHPVectorMultiplyMatrix(getPosition(), [owner() drawTransformationMatrix]);
+	HPVector framePos = OOHPVectorMultiplyMatrix(getPosition(), (owner() != nullptr ? owner()->drawTransformationMatrix() : OOMatrix{}));	// a message to nil's zero matrix
 	uint8_t i;
 	for (i = 0; i < kExhaustFrameCount; i++)
 	{

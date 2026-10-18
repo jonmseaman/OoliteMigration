@@ -38,9 +38,6 @@ MA 02110-1301, USA.
 	nil). The initializer is -cxx_initWithDictionary: (bead oo-3rb.292.1; its id twin retired with
 	oo-qps.44).
 */
-// Another beacon, which stays its Objective-C object (amendment oo-bj8 item 4). Named at file
-// scope: inside namespace cxx a protocol list cannot follow the qualified name ::Entity.
-typedef Entity <OOBeaconEntity> OOBeaconEntityObject;
 
 
 /*	C++ only since bead oo-9ht.108 deleted its Objective-C facade (ADR-0056 amendments oo-9ht.23 and

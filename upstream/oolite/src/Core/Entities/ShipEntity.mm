@@ -315,17 +315,16 @@ NSUInteger ShipGroupCursorBatch(OOShipGroupCursor &cursor, ShipEntity **batch)
 	-init body runs once, as [super init] did), then the set-up from the definition. The failing
 	set-up released the object, as the initialiser did.
 */
-::Entity *oo::NewShipObject(const Ref<ShipEntity> &ship, const std::string &key, const oo::PList &dict)
+ShipEntity *oo::NewShipObject(const Ref<ShipEntity> &ship, const std::string &key, const oo::PList &dict)
 {
-	if (ship == nullptr)  return nil;
-	::Entity *object = [[::Entity alloc] initWithCxxEntity:ship.get()];	// +1, as +alloc gave (the root's facade since bead oo-9ht.40)
-	if (object == nil)  return nil;
+	if (ship == nullptr)  return nullptr;
+	MadeEntityRetained(ship);	// +1, as +alloc gave (its object's, until bead oo-dpyk8)
 	if (!ship->initShipSetUp(key, dict))
 	{
-		[object release];
-		return nil;
+		ReleaseEntity(ship.get());
+		return nullptr;
 	}
-	return object;
+	return ship.get();
 }
 
 
@@ -2624,7 +2623,7 @@ bool ShipEntity::validForAddToUniverse()
 
 bool ShipEntity::checkCloseCollisionWith(cxx::Entity *otherPart)
 {
-	if (otherPart == nullptr || oo::ToObjC(otherPart) == nil)  return NO;	// (no object: nil)
+	if (oo::WithObject(otherPart) == nullptr)  return NO;	// (no object: nil)
 	if (std::find_if(collidingEntities.begin(), collidingEntities.end(), [otherPart](const oo::EntityHold &e) { return e.get() == otherPart; }) != collidingEntities.end())  return NO;	// we know about this already! (-containsObject:, identity for entities)
 	
 	::ShipEntity *otherShip = nil;
@@ -6869,9 +6868,9 @@ void ShipEntity::drawImmediate(bool immediate, bool translucent)
 			for (const auto &sub : subs)
 			{
 				cxx::Entity *subEntity = sub.get();
-				OOCAssert((subEntity != nullptr ? subEntity->owner() : nil) == oo::ToObjC(this), "Subentity ownership broke - %s should be owned by %s but is owned by %s.", oo::EntityDescription(subEntity).c_str(), oo::EntityDescription(this).c_str(), oo::DescriptionOf(subEntity != nullptr ? subEntity->owner() : nil).c_str());
+				OOCAssert((subEntity != nullptr ? subEntity->owner() : nullptr) == oo::WithObject(this), "Subentity ownership broke - %s should be owned by %s but is owned by %s.", oo::EntityDescription(subEntity).c_str(), oo::EntityDescription(this).c_str(), oo::EntityDescription(subEntity != nullptr ? subEntity->owner() : nullptr).c_str());
 				if (cxx::OOSubEntityInterface *cxxSub = dynamic_cast<cxx::OOSubEntityInterface *>(subEntity))  cxxSub->drawSubEntityImmediate(immediate, translucent);
-				else  [(::Entity<OOSubEntity> *)oo::ToObjC(subEntity) drawSubEntityImmediate:immediate translucent:translucent];
+				// (else: nothing - the root's category drew only a ship's or an effect's part, which adopt the interface; bead oo-dpyk8)
 			}
 		}
 	}
@@ -9537,7 +9536,7 @@ void ShipEntity::rescaleBy(GLfloat factor, bool writeToCache)
 		if (se == nullptr)  continue;	// every message went to nil
 		se->setPosition(HPvector_multiply_scalar(se->getPosition(), factor));
 		if (cxx::OOSubEntityInterface *cxxSub = dynamic_cast<cxx::OOSubEntityInterface *>(se))  cxxSub->rescaleBy(factor, writeToCache);
-		else  [(::Entity<OOSubEntity> *)oo::ToObjC(se) rescaleBy:factor writeToCache:writeToCache];
+		// (else: none - every ship sub-entity adopts the interface; bead oo-dpyk8)
 	}
 	
 	// rescale mass

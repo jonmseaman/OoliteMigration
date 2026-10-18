@@ -1454,30 +1454,18 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity *ship, Quaterni
 namespace oo {
 
 /*	A ship made in C++ (beads oo-9ht.183, oo-9ht.144; ADR-0056 amendments oo-9ht.183 and
-	oo-9ht.144): its object, the root's facade (OOEntityWithDrawable's until bead oo-9ht.40) (oo::NewEntityFacade), holding ship, set
-	up from the definition as -cxx_initWithKey:definition: set up a ship; retained (+1), as
-	+alloc/-init's object was, or nil when the set-up fails (the failing initialiser released it).
+	oo-9ht.144): made as its object was (oo::MadeEntityRetained(): it has its object and is counted;
+	bead oo-dpyk8), set up from the definition as -cxx_initWithKey:definition: set up a ship;
+	retained (+1), as +alloc/-init's object was, or null when the set-up fails (the failing
+	initialiser released it).
 */
-::Entity *NewShipObject(const Ref<ShipEntity> &ship, const std::string &key, const oo::PList &dict) OO_RETURNS_RETAINED;
+ShipEntity *NewShipObject(const Ref<ShipEntity> &ship, const std::string &key, const oo::PList &dict);
 
-// The ship an object holds: nullptr for nil or another entity (what -isKindOfClass:[ShipEntity
-// class] and the cast after it found).
-inline ShipEntity *ToShip(::Entity *entity)
-{
-	return dynamic_cast<ShipEntity *>(ToCxx(entity));
-}
-
-// The same of a C++ entity (what an entity's JS object holds since bead oo-9ht.39.3).
+// The ship an entity is: nullptr for null or another entity (what -isKindOfClass:[ShipEntity class]
+// and the cast after it found; the object overloads went with the facade, bead oo-dpyk8).
 inline ShipEntity *ToShip(cxx::Entity *entity)
 {
 	return dynamic_cast<ShipEntity *>(entity);
-}
-
-// The same of any object (an id): nullptr for one that is not an entity, as -isKindOfClass:
-// [ShipEntity class] answered for it.
-inline ShipEntity *ToShip(id object)
-{
-	return [object isKindOfClass:[::Entity class]] ? ToShip(static_cast<::Entity *>(object)) : nullptr;
 }
 
 }	// namespace oo

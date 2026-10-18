@@ -269,13 +269,6 @@ public:
 
 namespace oo {
 
-// The station whose Objective-C object is <entity> (a station's object is a ship's since bead
-// oo-9ht.175): nullptr for nil or any other entity, where -isKindOfClass:[StationEntity class] was NO.
-inline ::StationEntity *ToStation(::Entity *entity)
-{
-	return dynamic_cast<::StationEntity *>(ToCxx(entity));
-}
-
 // The same question of a C++ ship (a ship is C++ since bead oo-9ht.144): nullptr for null or another ship.
 inline ::StationEntity *ToStation(::ShipEntity *ship)
 {

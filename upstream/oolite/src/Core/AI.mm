@@ -290,7 +290,7 @@ void AI::reportStackOverflow()
 		BOOL stackDump = oo::log::willDisplay("ai.error.stackOverflow.dump");
 		
 		const char *trailer = stackDump ? " -- stack:" : ".";
-		OO_LOG_ERR("ai.error.stackOverflow", "AI stack overflow for {} in {}: {}{}\n", oo::ShortDescriptionOf(oo::ToObjC(owner())), stateMachineName, currentState.value_or("(null)"), trailer);
+		OO_LOG_ERR("ai.error.stackOverflow", "AI stack overflow for {} in {}: {}{}\n", oo::EntityShortDescription(owner()), stateMachineName, currentState.value_or("(null)"), trailer);
 
 		if (stackDump)
 		{
@@ -318,7 +318,7 @@ void AI::preserveCurrentStateMachine()
 		reportStackOverflow();
 
 		[OOException raise:"OoliteException"
-					format:"AI stack overflow for %s", oo::DescriptionOf(oo::ToObjC(owner())).c_str()];
+					format:"AI stack overflow for %s", oo::EntityDescription(owner()).c_str()];
 	}
 	
 	const oo::PList *script = stateMachine.find("jsScript");
@@ -524,7 +524,7 @@ void AI::reactToMessage(const std::string &message, const std::optional<std::str
 		unsigned depth = 0;
 		while (stack != NULL)
 		{
-			OO_LOG("ai.error.recursion.stackTrace", "{}  {} - {}:{}.{} ({})", depth++, oo::ShortDescriptionOf(oo::ToObjC(stack->owner)), stack->aiName, stack->state.value_or("(null)"), *stack->message, *stack->context);
+			OO_LOG("ai.error.recursion.stackTrace", "{}  {} - {}:{}.{} ({})", depth++, oo::EntityShortDescription(stack->owner), stack->aiName, stack->state.value_or("(null)"), *stack->message, *stack->context);
 			stack = stack->back;
 		}
 		
@@ -882,7 +882,7 @@ oo::PList AI::loadStateMachine(const std::string &smName, const std::string &scr
 				{
 					fromString = oo::str::format(" from %s:%s", name().value_or("(null)").c_str(), state->c_str());
 				}
-				OO_LOG("ai.load.failed.unknownAI", "Can't switch AI for {}{} to \"{}\" - could not load file.", oo::ShortDescriptionOf(oo::ToObjC(owner())), fromString, smName);
+				OO_LOG("ai.load.failed.unknownAI", "Can't switch AI for {}{} to \"{}\" - could not load file.", oo::EntityShortDescription(owner()), fromString, smName);
 				return oo::PList();
 			}
 

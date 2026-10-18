@@ -108,7 +108,7 @@ namespace cxx { class Entity; }
 	/* Entity (OOJavaScriptExtensions)'s class questions (ADR-0056 amendment oo-9ht.107; Entity.h). */ \
 	virtual void getJSClass(ooscript::ClassDef ** /*outClass*/, ooscript::Object * /*outPrototype*/) VOID_BODY \
 	virtual std::optional<std::string> jsClassName() VALUE_BODY \
-	virtual bool isVisibleToScripts() VALUE_BODY \
+	virtual bool isVisibleToScripts() VALUE_BODY 	/* The Mac debug OXP's inspector's -inspect (the console's inspectEntity(); bead oo-dpyk8): nothing unless overridden. */ 	virtual void inspect() VOID_BODY \
 	/* The entity's JS glue (OOJSPrivateObject, bead oo-9ht.39.3; Entity.h). */ \
 	ooscript::Value jsValueInContext(ooscript::Context /*context*/) override VALUE_BODY \
 	void clearJSSelf(ooscript::Object /*selfVal*/) override VOID_BODY \

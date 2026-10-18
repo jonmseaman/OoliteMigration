@@ -491,6 +491,43 @@ OO_TEST(dropWeakReferencesZeroesThemWhileTheObjectLives)
 	OO_CHECK(w.get() == nullptr && again.get() == nullptr);
 }
 
+// willDispose() (bead oo-dpyk8): the last release runs it once, with the object whole (its weak
+// references still read it), before the weak references are zeroed and the destructor runs; a
+// balanced retain and release inside it do not dispose again.
+class Disposing : public Thing
+{
+public:
+	explicit Disposing(std::string name, std::vector<std::string> *log) : Thing(std::move(name)), _log(log) {}
+	~Disposing() override  { _log->push_back("destructor"); }
+	oo::WeakRef<Thing> watcher;
+
+protected:
+	void willDispose() noexcept override
+	{
+		_log->push_back(std::string("willDispose, weak ") + (watcher.get() == this ? "live" : "dead") + ", count " + std::to_string(retainCount()));
+		retain();
+		release();   // balanced: no second dispose
+		_log->push_back("after balanced pair");
+	}
+
+private:
+	std::vector<std::string> *_log;
+};
+
+OO_TEST(willDisposeRunsOnceWithTheObjectWhole)
+{
+	std::vector<std::string> log;
+	oo::Ref<Disposing> d = oo::makeRef<Disposing>("d", &log);
+	d->watcher = d.get();
+	oo::WeakRef<Thing> outside = d.get();
+	d->retain();
+	d->release();
+	OO_CHECK(log.empty());
+	d.reset();
+	OO_CHECK((log == std::vector<std::string>{ "willDispose, weak live, count 1", "after balanced pair", "destructor" }));
+	OO_CHECK(outside.get() == nullptr);
+}
+
 // --- AutoreleaseScope: the autorelease pool ----------------------------------------------------
 
 OO_TEST(autoreleaseReleasesAtScopeEnd)

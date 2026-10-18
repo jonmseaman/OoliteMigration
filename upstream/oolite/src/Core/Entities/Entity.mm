@@ -26,6 +26,8 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OORuntime.h"
 #import "EntityOOJavaScriptExtensions.h"
 #import "PlayerEntity.h"
+#import "StationEntity.h"	// willDispose(): the station's and the dock's parts (bead oo-dpyk8)
+#import "DockEntity.h"
 #import "OOPlanetEntity.h"
 
 #import "OOMaths.h"
@@ -95,7 +97,55 @@ void Entity::init()
 }
 
 
-// -dealloc is the facade's: it tells the universe and the script about the Objective-C object.
+/*	What the root facade's -dealloc ran before the C++ part went (bead oo-dpyk8, oo-9ht.39 step 5k.4):
+	the last release runs it, with the entity whole (oo::RefCounted::willDispose()), in the same order.
+	An entity that never had its object (no creator made its facade) ran none of it, so it runs none.
+	From its first line the entity no longer has its object (hasObject()), as oo::ToObjC() answered
+	nil for an object being deallocated: holds and retains of it are null and nothing.
+*/
+void Entity::willDispose() noexcept
+{
+	if (!_hasObject)  return;
+	_disposing = true;
+
+	/*	A ship's -dealloc ran first: its facade was a subclass of the root's until bead oo-9ht.144.
+		The player's, a station's or a dock's part first, as their facades' -dealloc ran before the
+		ship's (beads oo-9ht.177, oo-9ht.175, oo-9ht.180); then the weak references, dropped before
+		entityDestroyed (see ShipEntity::shipWillDealloc()); then the ship's body.
+	*/
+	if (::ShipEntity *ship = dynamic_cast<::ShipEntity *>(this))
+	{
+		if (::PlayerEntity *player = dynamic_cast<::PlayerEntity *>(ship))  player->willDealloc();
+		if (::StationEntity *station = dynamic_cast<::StationEntity *>(ship))  station->willDealloc();
+		if (::DockEntity *dock = dynamic_cast<::DockEntity *>(ship))  dock->willDealloc();
+		dropWeakReferences();
+		ship->shipWillDealloc();
+	}
+
+	if (UNIVERSE != nullptr)
+	{
+		// The log line describes the entity before it goes (the facade's described its object; the
+		// address is the entity's since bead oo-dpyk8).
+		if (getUniversalID() != NO_TARGET)
+		{
+			OO_LOG("universe.unremovedEntity", "Entity {} dealloced without being removed from universe! (This is an internal programming error, please report it.)", oo::EntityOwnDescription(this));
+		}
+		UNIVERSE->ensureEntityReallyRemoved(this);
+	}
+	setCollisionRegion(nullptr);		// DESTROY(collisionRegion)
+	deleteJSSelf();
+	setOwner(nullptr);					// [self setOwner:nil]
+	setAtmosphereFogging(nullptr);		// [atmosphereFogging release]
+
+#ifndef NDEBUG
+	gLiveEntityCount--;
+	gTotalEntityMemory -= oo::EntityObjectSize(this);
+#endif
+
+	// The weak references read null from here, where the facade's superclass's -dealloc dropped the
+	// object's (bead oo-9ht.39.5.2).
+	dropWeakReferences();
+}
 
 
 std::optional<std::string> Entity::descriptionComponents() const
@@ -557,13 +607,13 @@ void Entity::throwSparks()
 
 void Entity::setOwner(Entity *ent)
 {
-	_owner = oo::WeakEntityRef(oo::ToObjC(ent));
+	_owner = oo::WithObject(ent);	// an entity without its object was nil's empty reference (bead oo-dpyk8)
 }
 
 
-id Entity::owner()
+Entity *Entity::owner()
 {
-	return oo::WeakEntityObject(_owner);
+	return oo::WithObject(_owner.get());	// +0, null once it has gone, as the object read (bead oo-dpyk8)
 }
 
 
@@ -594,9 +644,9 @@ Entity *Entity::parentEntity()
 }
 
 
-id<OOWeakReferenceSupport> Entity::superShaderBindingTarget()
+Entity *Entity::superShaderBindingTarget()
 {
-	return oo::WeakEntityObject(oo::WeakRef<cxx::Entity>(parentEntity()));	// +0, as the owner was read (bead oo-9ht.39.24)
+	return oo::WithObject(parentEntity());	// +0, as the owner was read (beads oo-9ht.39.24, oo-dpyk8)
 }
 
 
@@ -684,7 +734,7 @@ HPVector Entity::absolutePositionForSubentityOffset(HPVector offset)
 		abspos = HPvector_add(OOHPVectorMultiplyMatrix(abspos, father->drawRotationMatrix()), father->getPosition());
 		last = father;
 		if (!last->getIsSubEntity()) break;
-		father = oo::ToCxx(static_cast<::Entity *>(father->owner()));
+		father = father->owner();
 	}
 	return abspos;
 }
@@ -934,7 +984,7 @@ void Entity::update(OOTimeDelta delta_t)
 		if (getIsSubEntity())
 		{
 			// A message to a nil owner answered 0.
-			Entity *ownerEntity = oo::ToCxx(static_cast<::Entity *>(owner()));
+			Entity *ownerEntity = owner();
 			zero_distance = ownerEntity != nullptr ? ownerEntity->zeroDistance() : 0;
 			cam_zero_distance = ownerEntity != nullptr ? ownerEntity->camZeroDistance() : 0;
 			updateCameraRelativePosition();
@@ -1017,12 +1067,12 @@ void Entity::dumpSelfState()
 {
 	std::vector<std::string>	flags;
 	std::string					flagsString;
-	id							owner = this->owner();
+	Entity						*owner = this->owner();
 	std::string					ownerDescription;	// the literals were @"self" and @"none"
 
-	if (owner == oo::ToObjC(this))  ownerDescription = "self";
-	else if (owner == nil)  ownerDescription = "none";
-	else  ownerDescription = oo::DescriptionOf(owner);
+	if (owner == oo::WithObject(this))  ownerDescription = "self";	// the objects compared (bead oo-dpyk8)
+	else if (owner == nullptr)  ownerDescription = "none";
+	else  ownerDescription = oo::EntityDescription(owner);
 
 	OO_LOG("dumpState.entity", "Universal ID: {}", static_cast<unsigned>(universalID));
 	OO_LOG("dumpState.entity", "Scan class: {}", cxx_OOStringFromScanClass(scanClass));
@@ -1056,9 +1106,15 @@ void Entity::dumpSelfState()
 }
 
 
+// The Mac debug OXP's inspector added -inspect to entities; no class answers it in this build (bead oo-dpyk8).
+void Entity::inspect()
+{
+}
+
+
 void Entity::subEntityReallyDied(::ShipEntity *sub)
 {
-	OO_LOG("entity.bug", "{} called for non-ship entity {} by {}", __PRETTY_FUNCTION__, oo::str::pointerDescription(oo::ToObjC(this)), oo::str::pointerDescription(sub));
+	OO_LOG("entity.bug", "{} called for non-ship entity {} by {}", __PRETTY_FUNCTION__, oo::str::pointerDescription(oo::WithObject(this)), oo::str::pointerDescription(sub));	// the entity's address (its object's until bead oo-dpyk8)
 }
 
 
@@ -1109,7 +1165,8 @@ std::optional<std::string> Entity::descriptionForObjDumpBasic()
 {
 	const std::optional<std::string> components = descriptionComponents();
 	if (components.has_value())  return oo::str::format("%s %s", oo::EntityClassName(this).c_str(), components->c_str());
-	return [oo::ToObjC(this) cxx_description];
+	if (!hasObject())  return std::nullopt;	// -cxx_description sent to nil
+	return oo::EntityDescription(this);
 }
 
 

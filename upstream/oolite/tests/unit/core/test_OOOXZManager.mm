@@ -139,7 +139,7 @@ void SetUpTestPlayer()
 		oo::Ref<TestPlayer> made = oo::makeRef<TestPlayer>();
 		@autoreleasepool
 		{
-			[oo::NewEntityFacade(made) retain];	// +1, as PlayerEntity::sharedPlayer() makes the game's
+			oo::RetainEntity(oo::MadeEntity(made));	// +1, as PlayerEntity::sharedPlayer() makes the game's
 		}
 		player = made.get();
 	}

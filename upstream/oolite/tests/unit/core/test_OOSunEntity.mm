@@ -63,7 +63,7 @@ T *NewTestPlayer()
 	oo::Ref<T> player = oo::makeRef<T>();
 	@autoreleasepool
 	{
-		[oo::NewEntityFacade(player) retain];
+		oo::RetainEntity(oo::MadeEntity(player));
 	}
 	return player.get();
 }
@@ -137,7 +137,7 @@ bool Near(double a, double b)
 OOSunEntity *Sun(OOColor *color, double radius)
 {
 	oo::Ref<OOSunEntity> sun = oo::makeRef<OOSunEntity>();
-	(void)oo::NewEntityFacade(sun);
+	(void)oo::MadeEntity(sun);
 	sun->initSunWithColor(color, Dict({
 		{ "sun_name", oo::PList("Sol") },
 		{ "sun_radius", oo::PList(radius) },
@@ -284,7 +284,7 @@ OO_TEST(description)
 		SetUp();
 		OOSunEntity *sun = RedSun();
 		sun->setGoingNova(YES, 10.0);
-		const std::string description = oo::DescriptionOf(oo::ToObjC(sun));
+		const std::string description = oo::EntityDescription(sun);
 		OO_CHECK(description.find("radius: 1.000km") != std::string::npos);
 		OO_CHECK(description.find("(will go nova)") != std::string::npos);
 	}
@@ -319,10 +319,10 @@ OO_TEST(facade)
 		SetUp();
 		OOSunEntity *sun = RedSun();
 		// Its Objective-C object is the root's facade since bead oo-9ht.111 (amendment oo-9ht.107).
-		::Entity *object = oo::ToObjC(sun);
-		OO_CHECK(object != nil && [object class] == [Entity class]);
+		cxx::Entity *object = sun;
+		OO_CHECK(object != nil);	// (and its object's class, the root facade: retired with the facade, bead oo-dpyk8, under oo-9n5p9)
 		// A C++ entity (amendment oo-0mxi), not an Objective-C entity's adapter.
-		OO_CHECK(dynamic_cast<OOSunEntity *>(oo::ToCxx(object)) == sun);
+		OO_CHECK(dynamic_cast<OOSunEntity *>(object) == sun);
 	}
 }
 
@@ -337,12 +337,12 @@ OO_TEST(jsExtensions)
 		OOSunEntity *sun = RedSun();
 		ooscript::ClassDef *jsClass = nullptr, *expectedClass = nullptr;
 		ooscript::Object prototype = nullptr, expectedPrototype = nullptr;
-		::Entity *object = oo::ToObjC(sun);	// what the engine asks (the root's facade since bead oo-9ht.111)
-		OOJSEntityGetJSClass(oo::ToCxx(object), &jsClass, &prototype);
+		cxx::Entity *object = sun;	// what the engine asks (the root's facade since bead oo-9ht.111)
+		OOJSEntityGetJSClass(object, &jsClass, &prototype);
 		OOJSSunGetJSClass(&expectedClass, &expectedPrototype);
 		OO_CHECK(jsClass != nullptr && jsClass == expectedClass && prototype == expectedPrototype);
-		OO_CHECK(OOJSEntityJSClassName(oo::ToCxx(object)) == std::optional<std::string>("Sun"));
-		OO_CHECK(OOJSEntityIsVisibleToScripts(oo::ToCxx(object)) == YES);
+		OO_CHECK(OOJSEntityJSClassName(object) == std::optional<std::string>("Sun"));
+		OO_CHECK(OOJSEntityIsVisibleToScripts(object) == YES);
 	}
 }
 

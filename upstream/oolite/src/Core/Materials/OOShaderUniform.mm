@@ -39,6 +39,17 @@ SOFTWARE.
 #import "OOOpenGLExtensionManager.h"
 #import "OOShaderUniformMethodType.h"
 
+
+/*	The informal protocol for an Objective-C binding target to "forward" its bindings up a hierarchy
+	(bead oo-dpyk8 moved it here from the deleted entity facade's header, which declared it for the
+	entities' objects; the entities answer through OOShaderEntityHooks).
+*/
+@interface OOObject (ShaderBindingHierarchy)
+
+- (id<OOWeakReferenceSupport>) superShaderBindingTarget;
+
+@end
+
 #include "oofnd/String.hpp"
 
 
@@ -244,8 +255,8 @@ oo::Ref<OOShaderUniform> OOShaderUniform::initWithEntityTarget(const std::string
 	if (result->location == -1)
 	{
 		const OOShaderEntityHooks *hooks = OOShaderEntityHooksIfSet();
-		id object = (target != nullptr && hooks != nullptr) ? hooks->object(target) : nil;
-		OO_LOG("shader.uniform.bind.failed", "Could not bind uniform \"{}\" to -[{} {}] (no uniform of that name could be found).", uniformName, oo::DescriptionOf([object class]), OOSelectorName(selector));
+		const std::string className = (target != nullptr && hooks != nullptr) ? hooks->className(target) : std::string("(null)");	// its object's class (bead oo-dpyk8)
+		OO_LOG("shader.uniform.bind.failed", "Could not bind uniform \"{}\" to -[{} {}] (no uniform of that name could be found).", uniformName, className, OOSelectorName(selector));
 		return nullptr;
 	}
 
@@ -490,7 +501,16 @@ void OOShaderUniform::setEntityBindingTarget(cxx::Entity *target)
 		return;
 	}
 
-	setBindingTarget((target != nullptr && hooks != nullptr) ? hooks->object(target) : nil);
+	/*	No row binds the name for this entity: the entity's object was bound by selector, which it did not
+		answer (the member table holds every name the object answered, bead oo-9ht.39.6.1), so the
+		binding failed and was logged; with no object (or no hooks) nothing was bound or logged. The
+		object went with bead oo-dpyk8: the same state and the same line.
+	*/
+	setBindingTarget(nil);
+	if (target != nullptr && hooks != nullptr && hooks->className(target) != "(null)")
+	{
+		OO_LOG("shader.uniform.bind.failed", "Shader could not bind uniform \"{}\" to -[{} {}] ({}).", name, hooks->className(target), OOSelectorName(value.binding.selector), "target does not respond to selector");
+	}
 }
 
 

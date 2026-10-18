@@ -5,13 +5,10 @@ Entity.h
 Base class for entities, i.e. drawable world objects.
 
 C++20 since bead oo-bj8, the Entities pattern seam (proposed ADR-0056, amendment oo-bj8). The
-class is cxx::Entity while Entity+ObjCBridge.h, imported at the end of this header, keeps the
-Objective-C Entity: the facade its callers message, the base its unconverted subclasses
-(ShipEntity, PlanetEntity, the effects, ...) derive from, and each entity's identity (the object
-the universe, weak references and JavaScript hold). The entity's state lives here, in the C++
-class. Unconverted code that read an ivar directly reads the member through the facade's one
-ivar: ent->_cxxEntity->position, and _cxxEntity->position in an Objective-C subclass's method.
-The bridge's deletion bead moves the class out of namespace cxx.
+Objective-C Entity facade (Entity+ObjCBridge.h) is deleted (bead oo-dpyk8, oo-9ht.39 step 5k.4): the
+C++ entity is its own identity and owns itself (oo::RefCounted; its last release runs what the
+facade's -dealloc ran, willDispose()). EntityHelpers.h, imported at the end of this header, keeps
+the facade's questions. The class leaves namespace cxx with oo-9ht.39.29.
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -98,9 +95,21 @@ public:
 	// entity is sent -init (PlayerEntity's deferred initialisation). Only then does it re-run.
 	void init();
 
-	// The facade's -dealloc zeroes the weak references to the C++ part where it dropped its own
-	// weak reference (bead oo-9ht.39.5.2), so oo::WeakRef<cxx::Entity> reads null when it did.
+	// The facade's -dealloc zeroed the weak references to the C++ part where it dropped its own
+	// weak reference (bead oo-9ht.39.5.2); willDispose() does so at the same points.
 	using oo::RefCounted::dropWeakReferences;
+
+	/*	The entity's object (bead oo-dpyk8): it "has" one from the creator that made its facade
+		(oo::MadeEntity(), oo::NewShipObject(), ...) until its last release begins, which is when
+		oo::ToObjC() answered non-nil. Holds, retains, descriptions and nodes of an entity without
+		one answer as nil's did (EntityHelpers.h, OOEntityHold.h).
+	*/
+	bool hasObject() const noexcept  { return _hasObject && !_disposing; }
+	void setMadeWithObject() noexcept  { _hasObject = true; }	// the creators' (oo::MadeEntity())
+
+	// What the facade's -dealloc ran before the C++ part went (bead oo-dpyk8), for an entity that
+	// had its object: the last release runs it (oo::RefCounted::willDispose()).
+	void willDispose() noexcept override;
 
 	// The virtual members, declared once in EntityVirtualMembers.h in this order (bead oo-9ht.39.8.21),
 	// so that a narrow test's stand-in for the class has the same vtable (tests/unit/core/EntityStandIn.h).
@@ -147,13 +156,13 @@ public:
 	// throwSparks(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 
 	// setOwner(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
-	id owner();
-	Entity *ownerEntity();	// the owner's C++ entity, null once it has gone (what owner() answers the object of; bead oo-9ht.39.8.21)
+	Entity *owner();		// the owner while it has its object, null for none or once it has gone (what -owner answered the object of, +0; bead oo-dpyk8)
+	Entity *ownerEntity();	// the owner's C++ entity, null once it has gone (bead oo-9ht.39.8.21)
 	// The objects (a ship's, or a visual effect's for its subentities: the Objective-C ShipEntity the
 	// declarations named was the type, not the answer; bead oo-9ht.144).
 	Entity *parentEntity();		// owner if self is subentity of owner, otherwise null (the C++ entity since bead oo-9ht.39.24).
 	Entity *rootShipEntity();	// like parentEntity, but recursive.
-	id<OOWeakReferenceSupport> superShaderBindingTarget();
+	Entity *superShaderBindingTarget();	// the parent entity, +0 (what -superShaderBindingTarget answered the object of; bead oo-dpyk8)
 
 	// setPosition(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 	void setPositionX(OOHPScalar x, OOHPScalar y, OOHPScalar z);
@@ -376,6 +385,9 @@ public:
 private:
 	bool checkLinkedLists();
 
+	bool					_hasObject = false;		// made by a creator (the facade's -initWithCxxEntity:)
+	bool					_disposing = false;		// in its last release (-dealloc)
+
 	NSUInteger				_sessionID = {};
 
 	oo::WeakRef<Entity>		_owner;	// the owner's C++ part (bead oo-9ht.39.5.2; was its object's weak reference)
@@ -466,6 +478,6 @@ inline cxx::Entity *EntityInWeakNode(const PList &plist)
 #endif
 
 
-// Transitional: the Objective-C Entity, for callers and subclasses not yet converted. Deleted,
-// with namespace cxx above, by the bridge's deletion bead.
-#import "Entity+ObjCBridge.h"
+
+// What the deleted facade's header kept for its callers: the questions it answered (bead oo-dpyk8).
+#include "EntityHelpers.h"

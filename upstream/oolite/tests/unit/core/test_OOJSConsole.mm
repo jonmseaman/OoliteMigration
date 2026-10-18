@@ -246,6 +246,14 @@ id OOJSNativeObjectFromJSObject(ooscript::Context, ooscript::Object)
 }
 
 
+// The node of a JS object, which the console reads to name what it was given (bead oo-dpyk8: an
+// entity's node names its object's class): as above, none in the test wraps a native object.
+oo::PList cxx_OOJSPListFromJSObject(ooscript::Context, ooscript::Object)
+{
+	return oo::PList();
+}
+
+
 id OOJSNativeObjectOfClassFromJSObject(ooscript::Context context, ooscript::Object object, Class requiredClass)
 {
 	id result = OOJSNativeObjectFromJSObject(context, object);
@@ -295,6 +303,20 @@ OOGraphicsDetail cxx_OOGraphicsDetailFromString(const std::string &string)
 }
 
 
+// EntityHelpers.mm's (bead oo-dpyk8), which the test does not link: an entity's node (its hold and
+// its description) is reached only for an entity, which the test has none of. A null hold releases
+// nothing.
+namespace cxx { class Entity; }
+namespace oo {
+namespace detail { void EntityRelease(cxx::Entity *entity) noexcept; }
+std::string EntityDescription(cxx::Entity *entity);
+cxx::Entity *WithObject(cxx::Entity *entity);
+}
+void oo::detail::EntityRelease(cxx::Entity *entity) noexcept  { if (entity != nullptr)  std::abort(); }
+std::string oo::EntityDescription(cxx::Entity *)  { std::abort(); }
+cxx::Entity *oo::WithObject(cxx::Entity *entity)  { if (entity != nullptr)  std::abort();  return nullptr; }
+
+
 // MARK: Debug-flavour link stand-ins (bead oo-iimku) -------------------------------------------------
 // OOJSConsole.mm's callObjC() (#if OO_DEBUG) and its diagnostic dumps (#if DEBUG) compile only in
 // the debug flavour, which builds this test for Tier C's ASan stage. No case reaches them; a call
@@ -305,7 +327,6 @@ OOGraphicsDetail cxx_OOGraphicsDetailFromString(const std::string &string)
 
 namespace cxx { class Entity; }
 
-oo::PList cxx_OOJSPListFromJSObject(ooscript::Context, ooscript::Object)  { std::abort(); }
 std::optional<std::string> cxx_OOStringFromJSValueEvenIfNull(ooscript::Context, ooscript::Value)  { std::abort(); }
 std::optional<std::string> OOJSEntityJSClassName(cxx::Entity *)  { std::abort(); }
 bool OOJSCallEntityMethod(ooscript::Context, cxx::Entity *, const std::string &, unsigned, ooscript::Value *, ooscript::Value *)  { std::abort(); }
@@ -463,6 +484,15 @@ namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
 	if (entity == InspectablePart())  return sInspectableEntity;
 	if (entity == PlainPart())  return sPlainEntity;
 	return nil;
+}
+
+// EntityHelpers.mm's oo::InspectEntity() (bead oo-dpyk8), as the console asked the object until then:
+// -inspect, if the entity's object answers it.
+namespace oo { void InspectEntity(cxx::Entity *entity); }
+void oo::InspectEntity(cxx::Entity *entity)
+{
+	::Entity *object = oo::ToObjC(entity);
+	if ([object respondsToSelector:@selector(inspect)])  [(id)object inspect];
 }
 
 

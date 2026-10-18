@@ -344,6 +344,7 @@ cxx::Entity *gOOJSPlayerIfStale = nullptr;	// the player's C++ entity (bead oo-9
 
 // oo::ToObjC (Entity+ObjCBridge.mm): the object of a C++ part the test wrapped, nil for any other.
 namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
+#import "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
 ::Entity *oo::ToObjC(cxx::Entity *entity)
 {
 	auto found = sObjects.find(entity);

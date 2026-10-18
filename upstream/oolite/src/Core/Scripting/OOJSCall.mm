@@ -103,11 +103,11 @@ const CxxMethod kPlayerMethods[] =
 
 
 // The table's entry for name when the callee is the player (it answered the categories), else null.
-// The player is C++ since bead oo-9ht.177: the callee is the C++ entity, or an object (its own, a
-// ship's) whose C++ part is the player (bead oo-9ht.39.8.25).
-const CxxMethod *CxxMethodNamed(id object, cxx::Entity *entity, const std::optional<std::string> &name)
+// The player is C++ since bead oo-9ht.177: the callee is the C++ entity (an object whose C++ part
+// was the player, bead oo-9ht.39.8.25, went with the root facade, bead oo-dpyk8).
+const CxxMethod *CxxMethodNamed(id, cxx::Entity *entity, const std::optional<std::string> &name)
 {
-	cxx::Entity *callee = (entity != nullptr) ? entity : ([object isKindOfClass:[::Entity class]] ? oo::ToCxx(static_cast<::Entity *>(object)) : nullptr);
+	cxx::Entity *callee = entity;
 	if (!name.has_value() || PLAYER == nullptr || callee != PLAYER)  return nullptr;
 	for (const CxxMethod &method : kPlayerMethods)
 	{
@@ -184,7 +184,7 @@ bool CallMethod(ooscript::Context context, id object, const std::string &oo_jsCl
 		return false;
 	}
 	
-	ShipEntity *ship = (entity != nullptr) ? oo::ToShip(entity) : oo::ToShip(object);	// the C++ entity's (bead oo-9ht.39.8.25)
+	ShipEntity *ship = (entity != nullptr) ? oo::ToShip(entity) : nullptr;	// the C++ entity's (bead oo-9ht.39.8.25); no other object is a ship (bead oo-dpyk8)
 	if (ship != nullptr)
 	{
 		if (PLAYER != nullptr)  PLAYER->PlayerEntity::setScriptTarget(ship);	// qualified: the final overrider (bead oo-9ht.177), so the binding test stands in for it

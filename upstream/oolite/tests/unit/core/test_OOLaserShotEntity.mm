@@ -54,20 +54,20 @@ T *NewTestPlayer()
 	oo::Ref<T> player = oo::makeRef<T>();
 	@autoreleasepool
 	{
-		[oo::NewEntityFacade(player) retain];
+		oo::RetainEntity(oo::MadeEntity(player));
 	}
 	return player.get();
 }
 
 
-static Entity *sRemoved = nil;
+static cxx::Entity *sRemoved = nil;
 
 
 // UNIVERSE: never initialised; records what is removed.
 class TestUniverse : public Universe
 {
 public:
-	bool removeEntity(cxx::Entity *entity) override	{ sRemoved = oo::ToObjC(entity); return YES; }	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
+	bool removeEntity(cxx::Entity *entity) override	{ sRemoved = entity; return YES; }	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
 };
 
 
@@ -111,24 +111,24 @@ void SetUp()
 // and weapon range). C++ since bead oo-9ht.144 deleted the Objective-C ship: the class calls the
 // ship's members, so it is a C++ ship (never set up) under its object (oo::NewEntityFacade,
 // autoreleased as the test's entity was) whose fields give those answers.
-Entity *MakeShip()
+cxx::Entity *MakeShip()
 {
 	oo::Ref<::ShipEntity> part = oo::makeRef<::ShipEntity>();
-	Entity *ship = oo::NewEntityFacade(part);
+	cxx::Entity *ship = oo::MadeEntity(part);
 	part->isShip = YES;
 	part->flightSpeed = 50.0f;
 	part->weaponRange = 1000.0f;
-	[ship setPosition:make_HPvector(100, 0, 0)];
+	ship->setPosition(make_HPvector(100, 0, 0));
 	return ship;
 }
 
 
 // A shot, made as the ship makes one: its Objective-C object is autoreleased in the test's pool and
 // holds it.
-oo::Ref<OOLaserShotEntity> Shot(Entity *ship, OOWeaponFacing direction, Vector offset)
+oo::Ref<OOLaserShotEntity> Shot(cxx::Entity *ship, OOWeaponFacing direction, Vector offset)
 {
 	oo::Ref<OOLaserShotEntity> shot = OOLaserShotEntity::laserFromShip(oo::ToShip(ship), direction, offset);
-	oo::NewEntityFacade(shot);
+	oo::MadeEntity(shot);
 	return shot;
 }
 
@@ -150,7 +150,7 @@ OO_TEST(laserFromShip)
 	@autoreleasepool
 	{
 		SetUp();
-		Entity *ship = MakeShip();
+		cxx::Entity *ship = MakeShip();
 		oo::Ref<OOLaserShotEntity> shot = Shot(ship, WEAPON_FACING_FORWARD, make_vector(0, 0, 10));
 		OO_CHECK(shot != nullptr);
 		OO_CHECK(HPvector_equal(shot->getPosition(), make_HPvector(100, 0, 10)));
@@ -160,8 +160,8 @@ OO_TEST(laserFromShip)
 		OO_CHECK(shot->collisionRadius() == 1000.0f);
 		OO_CHECK(shot->status() == STATUS_EFFECT && shot->isEffect() && !shot->canCollide());
 		OO_CHECK(ColorIs(shot.get(), 1.0f / 3.0f, 0.0f, 0.0f, 0.09f));
-		OO_CHECK(oo::DescriptionOf(oo::ToObjC(shot.get())).starts_with("<OOLaserShotEntity 0x"));
-		OO_CHECK(oo::DescriptionOf(oo::ToObjC(shot.get())).find("{ttl: 0.090s - position: (100, 0, 10)") != std::string::npos);
+		OO_CHECK(oo::EntityDescription(shot.get()).starts_with("<OOLaserShotEntity 0x"));
+		OO_CHECK(oo::EntityDescription(shot.get()).find("{ttl: 0.090s - position: (100, 0, 10)") != std::string::npos);
 
 		// The other facings turn the shot about the ship's up axis.
 		oo::Ref<OOLaserShotEntity> aft = Shot(ship, WEAPON_FACING_AFT, kZeroVector);
@@ -202,7 +202,7 @@ OO_TEST(update)
 	@autoreleasepool
 	{
 		SetUp();
-		Entity *ship = MakeShip();
+		cxx::Entity *ship = MakeShip();
 		oo::Ref<OOLaserShotEntity> shot = Shot(ship, WEAPON_FACING_FORWARD, make_vector(0, 0, 10));
 
 		// An NPC's shot moves by its velocity.
@@ -210,13 +210,13 @@ OO_TEST(update)
 		OO_CHECK(HPvector_equal(shot->getPosition(), make_HPvector(100, 0, 12.5)));
 		OO_CHECK(sRemoved == nil);
 		shot->update(0.05);
-		OO_CHECK(sRemoved == oo::ToObjC(shot.get()));
+		OO_CHECK(sRemoved == shot.get());
 
 		// The player's shot is put back where its ship's laser is.
 		sRemoved = nil;
-		ship->_cxxEntity->isPlayer = YES;
+		ship->isPlayer = YES;
 		oo::Ref<OOLaserShotEntity> playerShot = Shot(ship, WEAPON_FACING_FORWARD, make_vector(0, 0, 10));
-		[ship setPosition:make_HPvector(200, 0, 0)];
+		ship->setPosition(make_HPvector(200, 0, 0));
 		playerShot->update(0.05);
 		OO_CHECK(HPvector_equal(playerShot->getPosition(), make_HPvector(200, 0, 10)));
 		OO_CHECK(quaternion_equal(playerShot->getOrientation(), kIdentityQuaternion));
