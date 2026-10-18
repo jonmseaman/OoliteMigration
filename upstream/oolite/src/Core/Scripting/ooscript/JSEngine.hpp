@@ -197,18 +197,18 @@ using FinalizeHook   = void (*)(Context cx, Object obj);
 struct PropertySpec
 {
 	const char*     name;      // nullptr terminates a table
-	std::int8_t     tinyid;    // passed to getter/setter as int32Id(tinyid)
-	PropertyFlag    flags;
-	PropertyGetter  getter;    // nullptr = engine default
-	PropertySetter  setter;    // nullptr = engine default
+	std::int8_t     tinyid = 0;    // passed to getter/setter as int32Id(tinyid)
+	PropertyFlag    flags = PropertyFlag{};
+	PropertyGetter  getter = nullptr;    // nullptr = engine default
+	PropertySetter  setter = nullptr;    // nullptr = engine default
 };
 
 struct FunctionSpec
 {
 	const char*     name;      // nullptr terminates a table
-	NativeFn        call;
-	std::uint16_t   nargs;
-	std::uint16_t   flags;     // PropertyFlag bits for the defined property
+	NativeFn        call = nullptr;
+	std::uint16_t   nargs = 0;
+	std::uint16_t   flags = 0;     // PropertyFlag bits for the defined property
 };
 
 // The "new" enumerate protocol (JSCLASS_NEW_ENUMERATE): the engine drives an iterator through
@@ -241,19 +241,19 @@ constexpr ClassFlag operator|(ClassFlag a, ClassFlag b) noexcept
 struct ClassDef
 {
 	const char*     name;
-	ClassFlag       flags;
-	PropertyGetter  addProperty;
-	PropertyGetter  delProperty;
-	PropertyGetter  getProperty;
-	PropertySetter  setProperty;
-	EnumerateHook   enumerate;
-	NewEnumerateHook newEnumerate;   // used only with ClassFlag::NewEnumerate
-	ResolveHook     resolve;
-	ConvertHook     convert;
-	FinalizeHook    finalize;
-	NativeFn        call;        // the object is callable
-	NativeFn        construct;   // the object is a constructor
-	void*           backend;     // owned by the backend; initialise to nullptr
+	ClassFlag       flags = ClassFlag{};
+	PropertyGetter  addProperty = nullptr;
+	PropertyGetter  delProperty = nullptr;
+	PropertyGetter  getProperty = nullptr;
+	PropertySetter  setProperty = nullptr;
+	EnumerateHook   enumerate = nullptr;
+	NewEnumerateHook newEnumerate = nullptr;   // used only with ClassFlag::NewEnumerate
+	ResolveHook     resolve = nullptr;
+	ConvertHook     convert = nullptr;
+	FinalizeHook    finalize = nullptr;
+	NativeFn        call = nullptr;        // the object is callable
+	NativeFn        construct = nullptr;   // the object is a constructor
+	void*           backend = nullptr;     // owned by the backend; initialise to nullptr
 };
 
 // MARK: Objects ---------------------------------------------------------------------------------

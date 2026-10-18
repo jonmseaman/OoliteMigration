@@ -2426,7 +2426,7 @@ std::string OOOXZManager::extractOXZ(NSUInteger item)
 	NSUInteger counter = 0;
 	char rawComponentName[512];
 	bool error = false;
-	unz_file_info64 file_info = {0};
+	unz_file_info64 file_info = {};
 	if (unzGoToFirstFile(uf) == UNZ_OK)
 	{
 		do
