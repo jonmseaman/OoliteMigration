@@ -256,7 +256,7 @@ oo::PList OOCommodities::modifyGood(const oo::PList &good, ::OOScript *script, :
 	// accepted result comes back through oo::PListFrom (an exact round trip, Amendment 2 item 11).
 	ooscript::Value				args[] = {
 		OOJSValueFromPList(context, good),
-		OOJSValueFromNativeObject(context, oo::ToObjC(station)),
+		station != nullptr ? station->jsValueInContext(context) : ooscript::nullValue(),	// the C++ station's JS value, which OOJSValueFromNativeObject() of its object reached (bead oo-w9pi2)
 		ooscript::int32Value(system)
 	};
 	BOOL				OK = YES;

@@ -102,11 +102,11 @@ bool OOPListScript::requiresTickle()
 }
 
 
-void OOPListScript::runWithTarget(::Entity *target)
+void OOPListScript::runWithTarget(cxx::Entity *target)
 {
-	if (target != nil && !(oo::ToShip(target) != nullptr))
+	if (target != nullptr && !(oo::ToShip(target) != nullptr))
 	{
-		OO_LOG("script.legacy.run.badTarget", "Expected ShipEntity or nil for target, got {}.", oo::DescriptionOf([target class]));
+		OO_LOG("script.legacy.run.badTarget", "Expected ShipEntity or nil for target, got {}.", oo::EntityClassName(target));	// its class's name (bead oo-w9pi2)
 		return;
 	}
 

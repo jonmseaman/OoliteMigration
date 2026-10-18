@@ -66,7 +66,6 @@ BOOL XORPredicate(cxx::Entity *entity, void *parameter);						// Parameter: Bina
 BOOL NANDPredicate(cxx::Entity *entity, void *parameter);					// Parameter: BinaryOperationPredicateParameter. NAND operator.
 
 BOOL HasScanClassPredicate(cxx::Entity *entity, void *parameter);			// Parameter: an OOScanClass
-BOOL HasClassPredicate(cxx::Entity *entity, void *parameter);				// Parameter: Class
 BOOL IsShipPredicate(cxx::Entity *entity, void *parameter);					// Parameter: ignored. Tests isShip and !isSubentity.
 BOOL IsStationPredicate(cxx::Entity *entity, void *parameter);				// Parameter: ignored. Tests isStation.
 BOOL IsPlanetPredicate(cxx::Entity *entity, void *parameter);				// Parameter: ignored. Tests isPlanet and planetType == STELLAR_TYPE_NORMAL_PLANET.

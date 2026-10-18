@@ -644,6 +644,10 @@ inline OOEntityStatus EntityStatus(cxx::Entity *entity)
 	return entity != nullptr ? entity->status() : OOEntityStatus{};
 }
 
+// What the category SubEntityRelationship's -isShipWithSubEntityShip: answered for an entity's object
+// (bead oo-w9pi2): the ship's or the visual effect's member, NO for anything else (and for none).
+bool EntityIsShipWithSubEntityShip(cxx::Entity *entity, cxx::Entity *other);
+
 // What the facade's -isBeacon answered for an entity's object (bead oo-9ht.39.26): the ship's,
 // effect's or waypoint's member, NO for anything else; an Objective-C entity is still messaged.
 bool EntityIsBeacon(cxx::Entity *entity);
@@ -662,6 +666,8 @@ std::optional<std::string> BeaconCode(cxx::Entity *beacon);
 void SetBeaconCode(cxx::Entity *beacon, const std::optional<std::string> &code);
 OOComparisonResult CompareBeaconCodes(cxx::Entity *beacon, cxx::Entity *other);
 bool BeaconIsJammingScanning(cxx::Entity *beacon);	// -isJammingScanning, the same way (bead oo-9ht.39.18)
+OOHUDBeaconIcon *BeaconDrawable(cxx::Entity *beacon);	// -beaconDrawable, the same way (bead oo-w9pi2)
+std::optional<std::string> BeaconLabel(cxx::Entity *beacon);	// -beaconLabel, the same way (bead oo-w9pi2)
 
 }	// namespace oo
 

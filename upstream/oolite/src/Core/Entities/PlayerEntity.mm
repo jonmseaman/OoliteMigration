@@ -5487,7 +5487,7 @@ std::optional<std::string> PlayerEntity::compassTargetLabel()
 		cxx::Entity *target = getCompassTargetEntity();
 		if (target)
 		{
-			return [(::Entity <OOBeaconEntity> *)oo::ToObjC(target) beaconLabel];	// the beacon category's answer
+			return oo::BeaconLabel(target);	// the beacon category's answer (bead oo-w9pi2)
 		}
 		return "";
 	}

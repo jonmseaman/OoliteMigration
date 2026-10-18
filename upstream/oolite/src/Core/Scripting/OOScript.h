@@ -58,7 +58,7 @@ MA 02110-1301, USA.
 #include <string>
 #include <vector>
 
-@class Entity;
+namespace cxx { class Entity; }
 
 
 class OOScript : public oo::PListForeign, public ::OOJSPrivateObject
@@ -86,7 +86,7 @@ public:
 	virtual std::optional<std::string> scriptDescription();	// nullopt: none
 	virtual std::optional<std::string> version();			// nullopt: none (bead oo-3rb.291.1)
 	virtual bool requiresTickle();
-	virtual void runWithTarget(::Entity *target);
+	virtual void runWithTarget(cxx::Entity *target);	// the C++ entity (bead oo-w9pi2; was its object)
 
 	std::optional<std::string> displayName();	// flipped with its family (bead oo-3rb.267): "name version" if version is defined, otherwise just "name".
 

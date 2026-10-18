@@ -482,7 +482,7 @@ void PlayerEntity::checkScript()
 		// load order (was script-name byte order, and before that the hash order of -allValues).
 		for (const auto &entry : tickleScripts)
 		{
-			if (entry.second != nullptr)  entry.second->runWithTarget(oo::ToObjC(this));
+			if (entry.second != nullptr)  entry.second->runWithTarget(this);
 		}
 	}
 	@catch (::OOException *exception)

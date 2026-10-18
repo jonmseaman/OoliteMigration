@@ -421,6 +421,48 @@ OOScanClass cxx_OOScanClassFromString(const std::string &string);
 */
 struct OOShaderMemberBinding;	// OOShaderUniformMethodType.h
 bool EntityShaderMemberBindingFor(cxx::Entity *entity, const char *property, OOShaderMemberBinding *outBinding);
+
+
+#include "oofnd/PList.hpp"
+
+namespace oo {
+
+/*	An entity carried WEAKLY through plist data (bead oo-w9pi2): what oo::PListObject() of the
+	entity's object's -weakRetain made (the docking instructions' station, the collision-avoidance
+	condition's primary target). The payload holds a weak reference to the C++ entity, which reads
+	null exactly when the object's weak reference did (the facade's -dealloc drops both at one
+	point), so the node keeps nothing alive, as before. Its JS value is the entity's, undefined
+	once it has gone (OOJSValueFromPList), as the weak reference forwarded.
+*/
+class EntityWeakPListForeign final : public PListForeign
+{
+public:
+	explicit EntityWeakPListForeign(cxx::Entity *entity) : _entity(entity) {}
+	cxx::Entity *entity() const noexcept  { return _entity.get(); }
+	std::string className() const override  { return "OOWeakReference"; }	// what the proxy's class was
+	std::string description() const override;	// the entity's description, or <Dead OOWeakReference 0x...> (Entity.mm)
+
+private:
+	WeakRef<cxx::Entity>	_entity;
+};
+
+// The entity's weak node; a null PList for null.
+inline PList EntityWeakNode(cxx::Entity *entity)
+{
+	if (entity == nullptr)  return PList();
+	return PList(PList::Object(makeRef<EntityWeakPListForeign>(entity)));
+}
+
+// The live C++ entity of a weak node; null once it has gone, and for any other node.
+inline cxx::Entity *EntityInWeakNode(const PList &plist)
+{
+	const PList::Object *node = plist.getIf<PList::Object>();
+	if (node == nullptr)  return nullptr;
+	const auto *payload = dynamic_cast<const EntityWeakPListForeign *>(node->get());
+	return payload != nullptr ? payload->entity() : nullptr;
+}
+
+}	// namespace oo
 #endif
 
 

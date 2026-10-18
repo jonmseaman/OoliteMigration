@@ -785,15 +785,9 @@ std::vector<oo::PList> PlayerEntity::stickFunctionList()
 	 makeStickGuiDict(OO_DESC("stickmapper-comms-log"), HW_BUTTON, STICK_NOFUNCTION, BUTTON_COMMSLOG));
 #if OO_FOV_INFLIGHT_CONTROL_ENABLED
 	funcList.push_back(
-	 [oo::ToObjC(this) makeStickGuiDict:OO_DESC("stickmapper-increase-field-of-view")
-				  allowable:HW_AXIS|HW_BUTTON
-					 axisfn:AXIS_FIELD_OF_VIEW
-					  butfn:BUTTON_INC_FIELD_OF_VIEW]);
+	 makeStickGuiDict(OO_DESC("stickmapper-increase-field-of-view"), HW_AXIS|HW_BUTTON, AXIS_FIELD_OF_VIEW, BUTTON_INC_FIELD_OF_VIEW));	// the member (bead oo-w9pi2)
 	funcList.push_back(
-	 [oo::ToObjC(this) makeStickGuiDict:OO_DESC("stickmapper-decrease-field-of-view")
-				  allowable:HW_AXIS|HW_BUTTON
-					 axisfn:AXIS_FIELD_OF_VIEW
-					  butfn:BUTTON_DEC_FIELD_OF_VIEW]);
+	 makeStickGuiDict(OO_DESC("stickmapper-decrease-field-of-view"), HW_AXIS|HW_BUTTON, AXIS_FIELD_OF_VIEW, BUTTON_DEC_FIELD_OF_VIEW));
 #endif
 	if (customEquipActivation.size() > 0) {
 		funcList.push_back(makeStickGuiDictHeader(OO_DESC("stickmapper-header-oxp-equip")));

@@ -893,8 +893,8 @@ bool WormholeEntity::isVisibleToScripts()
 }
 
 
-oo::PList WormholeEntityShipsInTransit(::Entity *entity)
+oo::PList WormholeEntityShipsInTransit(cxx::Entity *entity)
 {
-	WormholeEntity *wormhole = (entity != nil) ? dynamic_cast<WormholeEntity *>(oo::ToCxx(entity)) : nullptr;
+	WormholeEntity *wormhole = dynamic_cast<WormholeEntity *>(entity);	// the C++ entity (bead oo-w9pi2; was its object)
 	return (wormhole != nullptr) ? wormhole->getShipsInTransit() : oo::PList();
 }

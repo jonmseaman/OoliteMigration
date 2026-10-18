@@ -66,7 +66,7 @@ public:
 	std::optional<std::string> scriptDescription() override;
 	std::optional<std::string> version() override;
 	bool requiresTickle() override;
-	void runWithTarget(::Entity *target) override;
+	void runWithTarget(cxx::Entity *target) override;
 
 private:
 	static std::vector<oo::Ref<OOScript>> scriptsFromDictionaryOfScripts(const oo::PList &dictionary, const std::string &filePath);

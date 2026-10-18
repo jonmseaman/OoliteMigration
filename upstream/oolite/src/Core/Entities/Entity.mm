@@ -573,10 +573,23 @@ Entity *Entity::ownerEntity()
 }
 
 
+}	// namespace cxx
+
+
+std::string oo::EntityWeakPListForeign::description() const
+{
+	// What "%@" printed for the weak reference: its object's description, or <Dead ...> once gone.
+	if (cxx::Entity *entity = _entity.get())  return EntityDescription(entity);
+	return str::format("<Dead OOWeakReference %s>", str::pointerDescription(this).c_str());
+}
+
+
+namespace cxx {
+
 Entity *Entity::parentEntity()
 {
-	id owner = this->owner();
-	if ([owner isShipWithSubEntityShip:oo::ToObjC(this)])  return oo::ToCxx(static_cast<::Entity *>(owner));
+	Entity *owner = oo::LiveOwner(this);	// the owner's object's part, +0 (bead oo-w9pi2)
+	if (oo::EntityIsShipWithSubEntityShip(owner, this))  return owner;
 	return nullptr;
 }
 

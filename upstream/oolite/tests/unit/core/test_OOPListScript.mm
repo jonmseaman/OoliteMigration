@@ -136,7 +136,7 @@ OO_TEST(cachedScripts)
 
 		// A run whose target is not a ship logs and does nothing (it never reaches the player).
 		Entity *notAShip = [[[Entity alloc] init] autorelease];
-		zeta->runWithTarget(notAShip);
+		zeta->runWithTarget(oo::ToCxx(notAShip));
 	}
 }
 

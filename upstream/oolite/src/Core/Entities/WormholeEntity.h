@@ -156,4 +156,4 @@ private:
 
 // -[WormholeEntity shipsInTransit] of a wormhole's Objective-C object (the root's facade since bead
 // oo-9ht.112), for the debug monitor's dump; a null PList for nil or another entity.
-oo::PList WormholeEntityShipsInTransit(::Entity *entity);
+oo::PList WormholeEntityShipsInTransit(cxx::Entity *entity);

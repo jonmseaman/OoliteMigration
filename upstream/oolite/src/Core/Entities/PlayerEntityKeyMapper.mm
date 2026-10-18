@@ -1151,8 +1151,8 @@ std::vector<oo::PList> PlayerEntity::keyFunctionList()
 	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_mouse_control_yaw"), "key_mouse_control_yaw"));
 	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_hud_toggle"), "key_hud_toggle"));
 #if OO_FOV_INFLIGHT_CONTROL_ENABLED
-	funcList.push_back([oo::ToObjC(this) makeKeyGuiDict:OO_DESC("oolite-keydesc-key_inc_field_of_view") keyDef:"key_inc_field_of_view"]);
-	funcList.push_back([oo::ToObjC(this) makeKeyGuiDict:OO_DESC("oolite-keydesc-key_dec_field_of_view") keyDef:"key_dec_field_of_view"]);
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_inc_field_of_view"), "key_inc_field_of_view"));	// the member (bead oo-w9pi2)
+	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_dec_field_of_view"), "key_dec_field_of_view"));
 #endif
 	funcList.push_back(makeKeyGuiDict(OO_DESC("oolite-keydesc-key_comms_log"), "key_comms_log"));
 

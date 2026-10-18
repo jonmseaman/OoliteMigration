@@ -77,7 +77,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	acc["destination"] = oo::PList(oo::PList::Dict{ { "x", oo::PList(coords.x) }, { "y", oo::PList(coords.y) }, { "z", oo::PList(coords.z) } });
 	acc["speed"] = oo::PList(static_cast<double>(speed));
 	acc["range"] = oo::PList(static_cast<double>(range));
-	acc["station"] = oo::PListObject([[oo::ToObjC(station) weakRetain] autorelease]);
+	acc["station"] = oo::EntityWeakNode(station);	// weakly, as its object's weak reference was (bead oo-w9pi2)
 	acc["match_rotation"] = oo::PList(static_cast<bool>(match_rotation));
 	acc["docking_stage"] = oo::PList::signedInteger(docking_stage);
 	if (ai_message)
