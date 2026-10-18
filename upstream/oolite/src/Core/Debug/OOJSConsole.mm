@@ -1176,7 +1176,6 @@ static bool ConsoleDumpNamedRoots(ooscript::Context context, ooscript::CallArgs 
 	OOJS_NATIVE_ENTER(context)
 	
 	bool OK = false;
-	@autoreleasepool
 	{
 		const std::optional<std::string> diagnosticDirectory = ResourceManager::diagnosticFileLocation();
 		const std::string path = diagnosticDirectory.has_value() ? oo::str::appendingPathComponent(*diagnosticDirectory, "js-roots.txt") : std::string();

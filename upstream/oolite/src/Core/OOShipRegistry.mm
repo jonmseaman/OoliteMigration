@@ -201,7 +201,6 @@ void OOShipRegistry::reload()
 
 void OOShipRegistry::init()
 {
-	@autoreleasepool
 	{
 		OOCacheManager			*cache = OOCacheManager::sharedCache();
 

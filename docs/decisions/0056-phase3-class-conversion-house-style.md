@@ -9163,3 +9163,58 @@ tests only test_OOJavaScriptEngine sends the category's selectors.
 **Tests.** Approval lines under oo-9n5p9 (tools/retire-test-approvals.txt): test_OOJavaScriptEngine (four direct
 sends re-based to the C++ bridges), test_ShipEntity and test_OOJSSystem (member reads/writes through
 ShipEntityTestAccess). No case or expected value changes; no test file is deleted.
+
+## Amendment (beads oo-31u, oo-31u.1): Phase 4 deferred release — what replaces the autorelease pool, and the pools with nothing to drain
+
+**Context.** Phase 4 seam 4.1 (oo-31u, batch AS). Its placeholder says done when
+`grep -rn 'AutoreleaseScope|autorelease' src` is empty. The inventory on main (2026-10-18, 252 matching
+lines in 81 files under `upstream/oolite/src`):
+
+| Kind | Lines | Where |
+|---|---|---|
+| Pools: `@autoreleasepool`, `objc_autoreleasePoolPush`/`Pop` | 41 + 42 | frame loop, JS calls and natives, worker and watchdog threads, loaders, verifier, C abstraction layer |
+| Entity deferred release: `oo::MadeEntity`, `oo::AutoreleaseEntity`, `AutoreleaseAll` | ~70 call sites (not all match the grep) | creators in Universe, ShipEntity, StationEntity, PlayerEntity... |
+| Replaced-object keepers: `OOScriptAutorelease`, `OOAIAutorelease`, `OODrawableAutorelease`, `OOMaterialAutorelease`, all through `oo::AutoreleaseInObjCPool` | 10 call sites | ivar replacement and owner destructors |
+| C++ pool: `oo::autorelease`, `oo::AutoreleaseScope` | 2 call sites + Ref.hpp | `OOTexture::clearCache`, `ResourceManager::ooSoundNamed` (no cache) — no scope is open in the game, so both leak, as GNUstep did without a pool |
+| Objective-C root objects: `-autorelease` of OOObject, OOConstantString, OOException, the OOWeakReference bridge, OOObjCPeer's `objc_autorelease`, OOAsyncQueue/OOPriorityQueue payloads | ~15 | go with their classes and the runtime (oo-4aq6a, oo-9ht.22, oo-dbz) |
+| Mac-only (`NSAppleScript` in OOMusicController, GameController (MacOSX)) | 2 | Phase 5 |
+| Comments that narrate what used to be autoreleased | ~60 | go with the code they explain |
+
+Every deferred release left is behaviour: an entity, script, AI, drawable or material handed to the pool dies at
+that pool's drain, in LIFO order (ADR-0045), and goldens, the core tests and ~25 unit tests that call
+`oo::AutoreleaseEntity`, `OO*Autorelease` or drain an `@autoreleasepool` observe it. An "explicit ownership"
+replacement (a `Ref` held to the end of the caller, or by the owner until its next replacement) either releases
+earlier than the drain or reorders the releases; neither is behaviour-identical, and the test edits it needs are
+not re-bases under oo-9n5p9.
+
+**Decision (recommended defaults, proceeding on them; Jon may overrule).**
+
+1. **Destruction is never earlier and the drain order is kept.** A deferred release becomes explicit ownership
+   only where an owner provably outlives the drain and the order is unchanged; nowhere else in this seam.
+2. **A pool with nothing to drain is deleted (oo-31u.1).** Its block stays as a plain `{ }`, so every local is
+   destroyed where it was. "Nothing to drain": the body reaches no entity creator, keeper, `AutoreleaseAll`,
+   JavaScript call, peer (`oo::ToObjC`) or thread entry. The only object such a body can still autorelease is an
+   OOException it raises, which now drains at the enclosing pool: later, never earlier, and its `-dealloc` is
+   unobservable. Deleted: OOLoggingInit, OOSanitizeLegacyScriptInternal, ConsoleDumpNamedRoots,
+   OOShipRegistry::init, Universe::setGalaxyTo's name loop, OOSkyDrawable's initialiser, OOPolygonSprite::loadPolygons,
+   the profiler's entry/exit bookkeeping (OOJS_PROFILE builds), OOSynthesizeMaterialShader, AI::loadStateMachine
+   (whose early return also skipped its pop), and the verifier's file scanner (3), shipdata stage and schema
+   verifier.
+3. **The game's C++ pool is `oo::AutoreleaseScope`, not nothing.** When libobjc2 goes (oo-dbz), each pool that
+   remains becomes an `oo::AutoreleaseScope` at the same place, `oo::AutoreleaseInObjCPool(ref)` becomes
+   `oo::autorelease(ref.leakRef())` (as OOObjCRef.h already says), and a test's `@autoreleasepool` becomes an
+   `oo::AutoreleaseScope` (the precedent of test_OOSoundSource). ADR-0045 made the scope's drain order the
+   runtime's, so this is behaviour-identical. oo-31u's done-when therefore becomes: no Objective-C autorelease
+   (`objc_autorelease*`, `-autorelease`, `@autoreleasepool`) in src outside `oofnd/objc/` (deleted by oo-dbz),
+   and C++ deferred release only through `oo::autorelease`/`oo::AutoreleaseScope`. `oo::AutoreleaseScope`, its
+   own tests (test_ref.cpp, test_objc_floor.mm) and the comments explaining a lifetime stay.
+4. **Deleting `oo::AutoreleaseScope` outright is a later, behaviour-changing decision for Jon**, not part of
+   Phase 4: every remaining deferred release would get an owner, accepting earlier or reordered destruction, with
+   golden and test re-blessing.
+5. **Order of work under oo-31u.** oo-31u.1 (this amendment's item 2). Then, on the default of item 3: the
+   replaced-object keepers (oo-31u.7) and entity deferred releases (oo-31u.6) move onto `oo::autorelease` together
+   with the pools that drain them (oo-31u.8), in one branch per cluster, with the tests' pools re-based; that
+   re-base needs an approval line (not covered by oo-9n5p9). The two scope-less `oo::autorelease` leaks are
+   oo-31u.9.
+
+**Tests.** oo-31u.1 changes no test file, case or expected value.

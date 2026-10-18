@@ -482,7 +482,6 @@ static void FunctionCallback(ooscript::Function function, ooscript::Script scrip
 	
 	OOHighResTimeValue start = OOGetHighResTime();
 	
-	@autoreleasepool
 	{
 		if (entering > 0)
 		{
@@ -564,7 +563,6 @@ void OOJSProfileExit(OOJSProfileStackFrame *frame)
 	if (EXPECT(!sProfiling))  return;
 	
 	OOHighResTimeValue	now = OOGetHighResTime();
-	@autoreleasepool
 	{
 		bool				done = false;
 		

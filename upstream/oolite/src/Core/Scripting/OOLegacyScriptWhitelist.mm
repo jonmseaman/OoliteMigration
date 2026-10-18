@@ -82,7 +82,6 @@ static oo::PList OOSanitizeLegacyScriptInternal(const oo::PList &script, SanStac
 	oo::PList::Array			result;
 	NSUInteger					index = 0;
 
-	@autoreleasepool
 	{
 		result.reserve(script.count());
 

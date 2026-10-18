@@ -431,11 +431,9 @@ bool OOPListSchemaVerifier::verifyPList(const oo::PList &rootPList,
 	SchemaType				type = kTypeUnknown;
 	std::optional<OOPListSchemaVerifierError> error;
 	oo::PList				resolvedSpecifier;
-	void					*pool = NULL;
 
 	assert(outStop != NULL);
 
-	pool = objc_autoreleasePoolPush();
 
 	DebugDumpPushIndent();
 
@@ -492,7 +490,6 @@ bool OOPListSchemaVerifier::verifyPList(const oo::PList &rootPList,
 	}
 
 	if (outError != NULL && error.has_value())  *outError = error;
-	objc_autoreleasePoolPop(pool);
 
 	return !error.has_value();
 }

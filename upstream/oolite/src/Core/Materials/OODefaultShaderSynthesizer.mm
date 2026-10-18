@@ -79,8 +79,6 @@ BOOL OOSynthesizeMaterialShader(const oo::PList &configuration, const std::optio
 {
 	OOCParameterAssert(!configuration.isNull() && outVertexShader != NULL && outFragmentShader != NULL && outTextureSpecs != NULL && outUniformSpecs != NULL);
 	
-	// Kept from the @autoreleasepool: the material specifier functions answer autoreleased colours.
-	void *pool = objc_autoreleasePoolPush();
 	{
 		oo::Ref<OODefaultShaderSynthesizer> synthesizer = oo::makeRef<OODefaultShaderSynthesizer>(configuration, materialKey, entityName);
 
@@ -100,7 +98,6 @@ BOOL OOSynthesizeMaterialShader(const oo::PList &configuration, const std::optio
 			*outUniformSpecs = oo::PList();
 		}
 	}
-	objc_autoreleasePoolPop(pool);
 
 	return YES;
 }

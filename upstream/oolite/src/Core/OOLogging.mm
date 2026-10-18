@@ -221,7 +221,6 @@ void OOLoggingInit(void)
 {
 	if (sInited) return;
 
-	@autoreleasepool
 	{
 		sInited = YES;	// Must be before OOLogOutputHandlerInit().
 		oo::log::logger().setSink(LogSink);

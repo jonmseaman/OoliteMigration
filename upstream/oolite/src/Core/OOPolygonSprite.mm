@@ -273,7 +273,6 @@ bool OOPolygonSprite::loadPolygons(const oo::PList &dataArray, float outlineWidt
 {
 	OOCParameterAssert(dataArray);
 	
-	void *pool = objc_autoreleasePoolPush();
 	GLUtesselator *tesselator = NULL;
 	std::vector<OOPolygonContour> contours;			// the tesselator points into these until the end
 	std::vector<OOPolygonContour> outlineContours;	// (vectors move their buffers, so the points stay put)
@@ -416,7 +415,6 @@ END:
 	SVGDumpEnd(&polygonData);
 	free(polygonData.data);
 	gluDeleteTess(tesselator);
-	objc_autoreleasePoolPop(pool);
 	return polygonData.OK;
 }
 
