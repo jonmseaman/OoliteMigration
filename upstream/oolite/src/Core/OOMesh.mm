@@ -632,7 +632,6 @@ oo::Ref<Octree> OOMesh::getOctree()
 		octree = baseFileOctreeCacheRef ? OOCacheManagerOctreeForModel(*baseFileOctreeCacheRef) : oo::Ref<Octree>();
 		if (octree == nullptr)
 		{
-			void *pool = objc_autoreleasePoolPush();	// @autoreleasepool
 			{
 				oo::Ref<OOMeshToOctreeConverter> converter = OOMeshToOctreeConverter::converterWithCapacity(faceCount);
 				OOMeshFaceCount i;
@@ -652,7 +651,6 @@ oo::Ref<Octree> OOMesh::getOctree()
 					OOCacheManagerSetOctree(octree.get(), *baseFileOctreeCacheRef);
 				}
 			}
-			objc_autoreleasePoolPop(pool);
 		}
 		else
 		{
@@ -844,7 +842,6 @@ bool OOMesh::initWithName(const std::string &name,
 	// The mesh is new (the factory made it; -init's defaults, which loading overwrites). It answers
 	// whether it loaded: the factory drops it when not, as [self release] did.
 	bool loaded = false;
-	void *pool = objc_autoreleasePoolPush();	// @autoreleasepool
 	{
 		_normalMode = smooth ? kNormalModeSmooth : kNormalModePerFace;
 		_cacheWriteable = cacheWriteable;
@@ -887,7 +884,6 @@ bool OOMesh::initWithName(const std::string &name,
 		}
 #endif
 	}
-	objc_autoreleasePoolPop(pool);
 	return loaded;
 	
 	OOJS_PROFILE_EXIT
@@ -1090,14 +1086,12 @@ bool OOMesh::loadData(const std::string &filename, float scale)
 		const oo::str::CharacterSet	newlineCharSet = oo::str::CharacterSet::newline();
 		
 		{
-			void *pool = objc_autoreleasePoolPush();
 			const std::optional<std::string> dataOpt = ResourceManager::stringFromFilesNamed(filename, "Models", NO);
 			if (!dataOpt)
 			{
 				// Model not found
 				OO_LOG(kOOLogMeshDataNotFound, "***** ERROR: could not find {}", filename);
 				cxx_OOStandardsError("Model file not found");
-				objc_autoreleasePoolPop(pool);
 				return NO;
 			}
 			
@@ -1135,8 +1129,6 @@ bool OOMesh::loadData(const std::string &filename, float scale)
 				data += lines[li];
 			}
 			scanner.emplace(data);
-
-			objc_autoreleasePoolPop(pool);
 		}
 		
 		PROFILE("finished preprocessing");

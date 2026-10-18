@@ -69,7 +69,6 @@ void OOModelVerifierStage::run()
 
 	for (const OOModelVerifierEntry &info : _modelsToCheck)
 	{
-		@autoreleasepool
 		{
 			checkModel(info.name,
 					   info.context,
