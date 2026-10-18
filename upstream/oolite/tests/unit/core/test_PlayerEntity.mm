@@ -346,9 +346,9 @@ OO_TEST(deallocReleasesWhatThePlayerHeld)
 		SetUp();
 		missile = oo::NewShipObject(oo::makeRef<TestMissile>(), "missile", oo::PList());
 		TestPlayer *player = NewTestPlayer<TestPlayer>();
-		PlayerEntityTestAccess::missile_entity(player)[2] = oo::adoptObjC([missile retain]);	// held by oo::ObjCRef since bead oo-5q11i
+		PlayerEntityTestAccess::missile_entity(player)[2] = oo::EntityHold::adoptObject([missile retain]);	// held by oo::ObjCRef since bead oo-5q11i, oo::EntityHold since bead oo-xn1j1
 		OO_CHECK([missile retainCount] == 2);
-		OO_CHECK(PlayerEntityTestAccess::missile_entity(player)[2] == missile);
+		OO_CHECK(PlayerEntityTestAccess::missile_entity(player)[2] == oo::ToCxx(missile));
 		Release(player);
 	}
 	OO_CHECK([missile retainCount] == 1);
@@ -789,8 +789,8 @@ OO_TEST(slice11CountMissiles)
 		TestPlayer *player = MakePlayer();
 		player->max_missiles = 4;
 		OO_CHECK(player->countMissiles() == 0);
-		PlayerEntityTestAccess::missile_entity(player)[1] = oo::adoptObjC([oo::ToObjC(missile) retain]);	// held by oo::ObjCRef since bead oo-5q11i
-		PlayerEntityTestAccess::missile_entity(player)[3] = oo::adoptObjC([oo::ToObjC(missile) retain]);	// held by oo::ObjCRef since bead oo-5q11i
+		PlayerEntityTestAccess::missile_entity(player)[1] = oo::EntityHold::adoptObject([oo::ToObjC(missile) retain]);	// held by oo::ObjCRef since bead oo-5q11i, oo::EntityHold since bead oo-xn1j1
+		PlayerEntityTestAccess::missile_entity(player)[3] = oo::EntityHold::adoptObject([oo::ToObjC(missile) retain]);	// held by oo::ObjCRef since bead oo-5q11i, oo::EntityHold since bead oo-xn1j1
 		OO_CHECK(player->countMissiles() == 2);
 		player->max_missiles = 2;
 		OO_CHECK(player->countMissiles() == 1);

@@ -8684,6 +8684,74 @@ scanners' and mass-lock retained snapshots, missiles, `wormholeObject`/`demoShip
 `memberArray()`, the JS glue for Objective-C entities, what only an object answers (`-beaconDrawable`,
 `-beaconLabel`, `-weakRetain`, `-isKindOfClass:`, descriptions, the player facade's save-panel properties).
 
+## Amendment (bead oo-xn1j1): the entities' owning object lists hold oo::EntityHold (step 5k.1)
+
+oo-9ht.39 step 5k slice 1 (child of oo-9ht.39.28), batch AO (track A), Migration Completion session, 2026-10-18,
+one branch and one commit. Status: Proposed (recommended defaults, CLAUDE.md rule 10). Exemplar:
+`ShipEntity::addSubEntity()`/`subEntityDied()`, `OOVisualEffectEntity::addSubEntity()`.
+
+**Context.** Step 5k deletes the root facade; its object owns the C++ part, so every list that owns an entity
+must first stop holding the object as an object. Amendment oo-9ht.39.26 gave the universe `oo::EntityHold`
+(retains the same object, answers the C++ entity); the entities' own lists still held `oo::ObjCRef<::Entity *>`.
+
+**Decision (recommended defaults).**
+
+1. **These lists and snapshots are `std::vector<oo::EntityHold>`**: `Entity::collidingEntities` (and
+   `getCollidingEntities()`, the facade's `-cxx_collidingEntities`, so the generated callObjC table's `@encode`);
+   the ship's `subEntities`, `cargo` and `getSubEntities()`/`subEntityEnumerator()`/`shipSubEntities()`/
+   `flasherEnumerator()`/`exhausts()`/`escorts()`/`escortArray()`/`getCargo()`/`setCargo()`/`addCargo()`/
+   `spawnShipsWithRole()`, the weak sets' snapshots `collisionExceptions()`/`allDefenseTargets()`/`defenseTargets()`
+   (the sets are `oo::WeakSet<cxx::Entity>` since oo-9ht.22.3), the escape-pod passengers, jetsam and idle-escort snapshots; the visual effect's
+   `OOVisualEffectSubEntities` and its enumerators; `OOShipGroup::memberArray()`/`memberArrayExcludingLeader()`;
+   `ShipEntityJSSubEntitiesForScript()`, `OOJSVisualEffectSubEntitiesForScript()`; the player's `missile_entity[]`,
+   `wormholeObject` and `demoShip` are single `oo::EntityHold`s. The `setCargo()`/`addCargo()`
+   hold overloads of amendment oo-9ht.39.26 and their `PodObjects()` crossing go (one signature each now).
+2. **Lifetime is identical by construction**: a hold is the same retain of the same object an `ObjCRef` was; a
+   copied hold retains as a copied `ObjCRef` did; `[[x retain] autorelease]` of an element is
+   `oo::AutoreleaseEntity(oo::RetainEntity(x))` (the collision loop, the cargo dump), the deliberate sub-entity
+   list leak is `oo::RetainEntity()` of each element. `oo::EntityHold::adopt(entity)` takes over a +1 as
+   `oo::adoptObjC(oo::ToObjC(entity))` did (the missiles), `adoptObject(object)` as `oo::adoptObjC(object)` did
+   (a test's own +1 object), and `leak()` is the deliberate `leakRef()` of the wormhole and demo ship. Identity comparisons (`std::find`, `std::erase`, the
+   collision list's "already known") compare the C++ entity, which is one-to-one with the object.
+3. **Sends to an element become the member the facade forwarded to** (amendment oo-9ht.39.16 item 2): virtual
+   members where the Objective-C adapter overrides them (`setOwner`, `wasAddedToUniverse`,
+   `wasRemovedFromUniverse`, `update`, `setPosition`, `findCollisionRadius`, `takeEnergyDamage`, `isSun`, `isDock`,
+   `getIsVisualEffect`), `oo::EntityIsShip()` for `-isShip`, the plain forwarders (`getPosition`,
+   `isStellarObject`, `getIsWormhole`, `rootShipEntity`) otherwise; a message to a nil element is a null guard.
+   The plasma shot and the cascade hand the victim `this` and `ownerEntity()` (what `self` and `-owner` were the
+   objects of). `OOVisualEffectEntity::addSubEntity()` and the C++ `removeSubEntity()` take the C++ entity; the
+   object overloads of `removeSubEntity()`/`hasSubEntity()` (the JS binding's stand-ins call them) convert once.
+   The effect's `-rescaleBy:`/`-drawSubEntityImmediate:` fallback for a sub-entity that is not a C++
+   `OOSubEntityInterface` (an Objective-C stand-in) still messages its object, as the ship's draw and rescale
+   loops do. In the same file sweep: `ShipEntity::takeEnergyDamage()` and `checkCloseCollisionWith()` work on
+   the C++ arguments (`oo::LiveOwner()` for `[ent owner]`, `oo::EntityIsShip()`, `rootShipEntity()`); the
+   turret-aim and launch-position loops walk `father` as a C++ entity (`oo::LiveEntity()` of the parent, as the
+   +0 object read was nil once gone; `oo::LiveOwner()` for `[father owner]`; `oo::EntityIsSubEntity()`); the
+   nearest-station snapshot retains/releases with `oo::RetainEntity()`/`ReleaseEntity()`; the exhaust plumes and
+   ship flashers are made with `oo::MadeEntity()` (their objects made as before).
+4. **Left as they were**: `OODebugMonitor::dumpEntity(id)` (its sub-entity loop hands it `oo::ToObjC()` of each).
+
+**Defaults (rule 10).** Behaviour-identical (goldens, core tests). The `oo::ToObjC()` inside a new hold
+autoreleases the object as the `ObjCRef(oo::ToObjC(x))` it replaces did (amendment oo-9ht.39.26 (a)); where a
+hold replaces an `ObjCRef` of an object already in hand (the effect's sub-entities, the wormhole made with
+`oo::MadeEntity()`) that adds a pending autorelease, which can only delay a deallocation to the pool's drain.
+Flagged, not observable in play: the by-name names table's rows for the facade's `cxx_collidingEntities`,
+`initWithCxxEntity:` and `subEntityReallyDied:` (`OOEntityObjectNamesTable.h`) carry the new type encodings (the
+list type, and the entity and ship layouts those encodings spell out, changed; the table stays equal to the
+facade, which `test_OOEntityCalledByName` proves), so a script calling one of those facade-internal names by name
+logs the new signature text.
+
+**Tests (standing approval oo-9n5p9, lines on main first).** Ten files re-based to the list types:
+`test_ShipEntity` (sub-entity, escort, cargo and spawn-list checks), `test_EntityOOJavaScriptExtensions`,
+`test_OOPlasmaShotEntity` and `test_OOQuiriumCascadeEntity` (their colliding-list set-up hands `oo::ToCxx()` of
+the same object), `test_OOShipGroup` (`HasMembers`), `test_OOVisualEffectEntity` (enumerator results read through
+`oo::ToObjC()`; the retain-count check is unchanged and still holds), `test_PlayerEntity` (its missiles are
+held with `oo::EntityHold::adoptObject()` of the same +1 objects; the retain-count checks are unchanged), and three
+files whose stand-ins redeclare a changed signature (`test_OOTrumble`'s `getCargo()`, `test_OOJSVisualEffect`'s
+`visualEffectSubEntityEnumerator()`/`OOJSVisualEffectSubEntitiesForScript()`, `test_OODebugMonitor`'s
+`subEntityEnumerator()`): a stale stand-in still links (the return type is not in the mangled name) and crashes, so
+a signature change must grep the tests' stand-ins too. No case or expected value changes; no case
+retired.
 ## Amendment (bead oo-9ht.22.3, with notes for oo-6e1.1 and oo-4hdyr): the ships' and stations' weak sets are oo::WeakSet; OOWeakReference's non-entity users go
 
 - Date: 2026-10-18. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Track B5,

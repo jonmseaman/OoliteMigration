@@ -908,7 +908,7 @@ void Entity::setCollisionRadius(GLfloat amount)
 }
 
 
-std::vector<oo::ObjCRef<::Entity *>> *Entity::getCollidingEntities()
+std::vector<oo::EntityHold> *Entity::getCollidingEntities()
 {
 	return &collidingEntities;
 }

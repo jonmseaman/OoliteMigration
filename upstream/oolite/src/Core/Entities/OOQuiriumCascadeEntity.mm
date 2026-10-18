@@ -76,7 +76,6 @@ std::optional<std::string> OOQuiriumCascadeEntity::descriptionComponents() const
 
 void OOQuiriumCascadeEntity::update(OOTimeDelta delta_t)
 {
-	::Entity *self = oo::ToObjC(this);
 	
 	cxx::Entity::update(delta_t);
 	_timePassed += delta_t;
@@ -104,14 +103,14 @@ void OOQuiriumCascadeEntity::update(OOTimeDelta delta_t)
 	}
 
 	// manage collisions
-	::Entity *owner = this->owner();
-	const std::vector<oo::ObjCRef<::Entity *>> colliding = collidingEntities;	// a snapshot (enumerating the live array while it changed raised)
-	for (const oo::ObjCRef<::Entity *> &collidingEntity : colliding)
+	cxx::Entity *owner = ownerEntity();
+	const std::vector<oo::EntityHold> colliding = collidingEntities;	// a snapshot (enumerating the live array while it changed raised)
+	for (const oo::EntityHold &collidingEntity : colliding)
 	{
-		::Entity *e = collidingEntity.get();
+		cxx::Entity *e = collidingEntity.get();
 		// we're going to force the weapon id to be the qbomb key here, because at this point the cascade entity isn't a ship any more
 		// and there's no link back to the original.
-		[e takeEnergyDamage:energy from:self becauseOf:owner weaponIdentifier:"EQ_QC_MINE"];
+		if (e != nullptr)  e->takeEnergyDamage(energy, this, owner, "EQ_QC_MINE");
 	}
 	
 	// expire after ttl

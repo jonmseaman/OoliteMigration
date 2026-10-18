@@ -53,7 +53,7 @@ class OOFlasherEntity;	// C++ only since bead oo-9ht.107
 // A subentity, as the class names it from inside namespace cxx (where Entity is the C++ root).
 typedef Entity<OOSubEntity> OOVisualEffectSubEntity;
 typedef Entity<OOBeaconEntity> OOVisualEffectBeaconEntity;
-using OOVisualEffectSubEntities = std::vector<oo::ObjCRef<Entity<OOSubEntity> *>>;
+using OOVisualEffectSubEntities = std::vector<oo::EntityHold>;
 
 
 
@@ -92,16 +92,16 @@ public:
 	void clearSubEntities();
 	bool setUpSubEntities();
 	void removeSubEntity(OOVisualEffectSubEntity *sub);
-	void removeSubEntity(cxx::Entity *sub);	// the C++ sub-entity: removes its object (bead oo-9ht.39.8.13)
+	void removeSubEntity(cxx::Entity *sub);	// the C++ sub-entity (bead oo-9ht.39.8.13; the list holds it since bead oo-xn1j1)
 	void setNoDrawDistance();
-	std::vector<oo::ObjCRef<::Entity *>> subEntities();	// a snapshot; empty before the first subentity (was nil)
+	std::vector<oo::EntityHold> subEntities();	// a snapshot; empty before the first subentity (was nil)
 	NSUInteger subEntityCount();
-	std::optional<std::vector<oo::ObjCRef<::Entity *>>> visualEffectSubEntityEnumerator();	// the visual-effect subentities' objects; nullopt where the array was nil
+	std::optional<std::vector<oo::EntityHold>> visualEffectSubEntityEnumerator();	// the visual-effect subentities' objects; nullopt where the array was nil
 	bool hasSubEntity(OOVisualEffectSubEntity *sub);
 
-	std::vector<oo::ObjCRef<::Entity *>> subEntityEnumerator();	// snapshot, same as subEntities()
-	std::vector<oo::ObjCRef<::Entity *>> effectSubEntityEnumerator();	// the visual-effect subentities' objects
-	std::vector<oo::ObjCRef<::Entity *>> flasherEnumerator();	// flasher subentities' objects (the nearest façade left), a snapshot
+	std::vector<oo::EntityHold> subEntityEnumerator();	// snapshot, same as subEntities()
+	std::vector<oo::EntityHold> effectSubEntityEnumerator();	// the visual-effect subentities' objects
+	std::vector<oo::EntityHold> flasherEnumerator();	// flasher subentities' objects (the nearest façade left), a snapshot
 
 	void orientationChanged() override;
 	Vector forwardVector();
@@ -227,7 +227,7 @@ public:
 	GLfloat _scaleZ = {};
 
 private:
-	void addSubEntity(OOVisualEffectSubEntity *sub);
+	void addSubEntity(cxx::Entity *sub);
 	bool setUpOneSubentity(const oo::PList &subentDict);
 	bool setUpOneFlasher(const oo::PList &subentDict);
 	bool setUpOneStandardSubentity(const oo::PList &subentDict);

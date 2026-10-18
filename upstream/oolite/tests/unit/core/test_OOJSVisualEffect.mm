@@ -34,6 +34,7 @@
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/objc/OOObjCRef.h"
+#include "OOEntityHold.h"	// the sub-entity lists (bead oo-xn1j1)
 #include "oofnd/PList.hpp"
 #include "oofnd/String.hpp"
 #import "OOObjCPList.h"
@@ -143,7 +144,7 @@ public:
 	void setShaderVector1(Vector value);
 	Vector shaderVector2();
 	void setShaderVector2(Vector value);
-	std::optional<std::vector<oo::ObjCRef<::Entity *>>> visualEffectSubEntityEnumerator();
+	std::optional<std::vector<oo::EntityHold>> visualEffectSubEntityEnumerator();
 	::OOScript *script();
 	oo::PList scriptInfo();
 	oo::PList effectInfoDictionary();
@@ -173,7 +174,7 @@ public:
 	float _shaderFloat1 = 0, _shaderFloat2 = 0;
 	int _shaderInt1 = 0, _shaderInt2 = 0;
 	Vector _shaderVector1 = {}, _shaderVector2 = {};
-	std::optional<std::vector<oo::ObjCRef<::Entity *>>> _subs;
+	std::optional<std::vector<oo::EntityHold>> _subs;
 	int _subsAfterSetUp = 0;
 	OOScript *_script = nullptr;	// a C++ script since bead oo-9ht.133 deleted its facade (retained)
 	oo::PList _scriptInfo;
@@ -242,7 +243,7 @@ extern "C" void InitOOJSVisualEffect(ooscript::Context context, ooscript::Object
 void OOJSVisualEffectGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
 std::optional<std::string> OOJSVisualEffectJSClassName(void);
 bool OOJSVisualEffectIsVisibleToScripts(void);
-std::vector<oo::ObjCRef<Entity *>> OOJSVisualEffectSubEntitiesForScript(OOVisualEffectEntity *effect);	// what -subEntitiesForScript answered
+std::vector<oo::EntityHold> OOJSVisualEffectSubEntitiesForScript(OOVisualEffectEntity *effect);	// what -subEntitiesForScript answered
 
 
 #include "oo_test.hpp"
@@ -396,7 +397,7 @@ Vector OOVisualEffectEntity::shaderVector1()  { return _shaderVector1; }
 void OOVisualEffectEntity::setShaderVector1(Vector value)  { _shaderVector1 = value; }
 Vector OOVisualEffectEntity::shaderVector2()  { return _shaderVector2; }
 void OOVisualEffectEntity::setShaderVector2(Vector value)  { _shaderVector2 = value; }
-std::optional<std::vector<oo::ObjCRef<::Entity *>>> OOVisualEffectEntity::visualEffectSubEntityEnumerator()  { return _subs; }
+std::optional<std::vector<oo::EntityHold>> OOVisualEffectEntity::visualEffectSubEntityEnumerator()  { return _subs; }
 ::OOScript *OOVisualEffectEntity::script()  { return _script; }
 oo::PList OOVisualEffectEntity::scriptInfo()  { return _scriptInfo; }
 oo::PList OOVisualEffectEntity::effectInfoDictionary()  { return _effectInfo; }
@@ -425,8 +426,8 @@ void OOVisualEffectEntity::clearSubEntities()
 
 bool OOVisualEffectEntity::setUpSubEntities()
 {
-	std::vector<oo::ObjCRef<::Entity *>> subs;
-	for (int i = 0; i < _subsAfterSetUp; i++)  subs.emplace_back(NewEffectObject());
+	std::vector<oo::EntityHold> subs;
+	for (int i = 0; i < _subsAfterSetUp; i++)  subs.emplace_back(NewEffectObject()->_cxxEntity.get());
 	if (!subs.empty())  _subs = subs;
 	return YES;
 }
@@ -855,10 +856,10 @@ OO_TEST(subEntitiesForScript)
 	// None before the first subentity, then the visual-effect subentities, in order.
 	// (-subEntitiesForScript, the facade's forwarder to the binding's function until bead oo-9ht.165)
 	OO_CHECK(OOJSVisualEffectSubEntitiesForScript(sEffectPart).empty());
-	sEffectPart->_subs = std::vector<oo::ObjCRef<::Entity *>>{ oo::ObjCRef<::Entity *>(sSub) };
-	std::vector<oo::ObjCRef<Entity *>> subs = OOJSVisualEffectSubEntitiesForScript(sEffectPart);
+	sEffectPart->_subs = std::vector<oo::EntityHold>{ oo::EntityHold(sSub->_cxxEntity.get()) };
+	std::vector<oo::EntityHold> subs = OOJSVisualEffectSubEntitiesForScript(sEffectPart);
 	OO_CHECK_EQ(subs.size(), 1u);
-	OO_CHECK(subs.size() == 1 && subs[0].get() == sSub);
+	OO_CHECK(subs.size() == 1 && subs[0].get() == sSub->_cxxEntity.get());
 	OO_CHECK_EVAL("effect.subEntities", "[OOVisualEffectEntity]");
 	sEffectPart->_subs = std::nullopt;
 	OO_CHECK_EVAL("effect.subEntities", "null");

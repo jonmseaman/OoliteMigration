@@ -171,7 +171,7 @@ MA 02110-1301, USA.
 - (GLfloat) collisionRadius;
 - (GLfloat) frustumRadius;
 - (void) setCollisionRadius:(GLfloat)amount;
-- (std::vector<oo::ObjCRef<Entity *>> *) cxx_collidingEntities;	// the live list (ADR-0043 item 22); nullptr on nil
+- (std::vector<oo::EntityHold> *) cxx_collidingEntities;	// the live list (ADR-0043 item 22); nullptr on nil
 
 - (void) update:(OOTimeDelta)delta_t;
 

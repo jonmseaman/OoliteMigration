@@ -119,10 +119,10 @@ ShipEntity *NewShip()
 }
 
 
-bool HasMembers(const std::vector<oo::ObjCRef<::Entity *>> &members, std::vector<ShipEntity *> expected)
+bool HasMembers(const std::vector<oo::EntityHold> &members, std::vector<ShipEntity *> expected)
 {
 	std::vector<ShipEntity *> got;
-	for (const oo::ObjCRef<::Entity *> &object : members)  got.push_back(Ship(object.get()));
+	for (const oo::EntityHold &object : members)  got.push_back(Ship(oo::ToObjC(object.get())));
 	std::sort(got.begin(), got.end());
 	std::sort(expected.begin(), expected.end());
 	return got == expected;

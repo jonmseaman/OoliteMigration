@@ -66,6 +66,6 @@ ooscript::Value OOJSEntityJSValue(cxx::Entity *entity, ooscript::Context context
 bool ShipEntityJSIsVisibleToScripts(void);
 void ShipEntityJSGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
 std::optional<std::string> ShipEntityJSClassName(void);
-std::vector<oo::ObjCRef<Entity *>> ShipEntityJSSubEntitiesForScript(ShipEntity *ship);
+std::vector<oo::EntityHold> ShipEntityJSSubEntitiesForScript(ShipEntity *ship);
 void ShipEntityJSSetTargetForScript(ShipEntity *ship, ShipEntity *target);
 

@@ -878,15 +878,14 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 		case kShip_defenseTargets:
 		{
 			ship->validateDefenseTargets();
-			std::vector<oo::ObjCRef<::Entity *>> targets;
+			std::vector<oo::EntityHold> targets;
 			targets.reserve(ship->defenseTargetCount());
 			for (const auto &candidate : ship->defenseTargets())
 			{
 				// The set's snapshot holds the ships themselves, whose -weakRefUnderlyingObject (OOObject's)
 				// was self.
-				Entity *target = candidate.get();
-				if (target == nullptr)  break;	// the old loop stopped at the first zeroed reference
-				targets.emplace_back(target);
+				if (!candidate)  break;	// the old loop stopped at the first zeroed reference
+				targets.push_back(candidate);
 			}
 			result = oo::EntityNodesFrom(targets);
 			break;
@@ -2568,7 +2567,7 @@ static bool ShipSpawn(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	std::optional<std::string>	role;
 	int32_t					count = 1;
 	bool					gotCount = true;
-	std::vector<oo::ObjCRef<::Entity *>>	result;
+	std::vector<oo::EntityHold>	result;
 	
 	GET_THIS_SHIP(thisEnt);
 	ShipEntity			*ship = thisEnt;	// not null: thisEnt is not

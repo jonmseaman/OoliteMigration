@@ -241,10 +241,10 @@ std::optional<std::string> ShipEntityJSClassName(void)
 }
 
 
-std::vector<oo::ObjCRef<::Entity *>> ShipEntityJSSubEntitiesForScript(ShipEntity *ship)
+std::vector<oo::EntityHold> ShipEntityJSSubEntitiesForScript(ShipEntity *ship)
 {
-	std::vector<oo::ObjCRef<::Entity *>> result;
-	for (const auto &sub : (ship != nullptr ? ship->shipSubEntities() : std::vector<oo::ObjCRef<::Entity *>>()))
+	std::vector<oo::EntityHold> result;
+	for (const auto &sub : (ship != nullptr ? ship->shipSubEntities() : std::vector<oo::EntityHold>()))
 	{
 		result.emplace_back(sub.get());
 	}
