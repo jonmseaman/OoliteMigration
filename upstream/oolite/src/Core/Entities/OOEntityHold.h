@@ -2,7 +2,8 @@
 
 OOEntityHold.h
 
-TRANSITIONAL (ADR-0056 amendment oo-9ht.39.26): how the universe owns an entity while the root
+TRANSITIONAL (ADR-0056 amendments oo-9ht.39.26, oo-xn1j1): how the universe and the entities' own
+lists (sub-entities, cargo, colliding entities, the player's missiles, ...) own an entity while the root
 facade (Entity+ObjCBridge.h) still exists. The entity's Objective-C object owns its C++ part and is
 what the JS wrappers, the weak references and oo::ToObjC()'s peer map hang on, so an owning list
 keeps the OBJECT alive exactly as long as it did; the holder retains the object and answers the
@@ -58,6 +59,28 @@ public:
 	EntityHold() noexcept = default;
 	EntityHold(std::nullptr_t) noexcept {}
 	explicit EntityHold(cxx::Entity *entity) : _object(ToObjC(entity)), _entity(_object.get() != nil ? entity : nullptr) {}
+
+	// Takes over a +1 reference to the entity's object (what oo::adoptObjC(oo::ToObjC(entity)) held;
+	// bead oo-xn1j1). The holder releases it as usual.
+	static EntityHold adopt(cxx::Entity *entity)
+	{
+		EntityHold result;
+		result._object = adoptObjC(ToObjC(entity));
+		result._entity = result._object.get() != nil ? entity : nullptr;
+		return result;
+	}
+
+	// Takes over a +1 reference to an entity's object itself, with no oo::ToObjC() (what
+	// oo::adoptObjC(object) held; bead oo-xn1j1). Entity+ObjCBridge.mm.
+	static EntityHold adoptObject(::Entity *object);
+
+	// Drops the reference without a release (what ObjCRef::leakRef() did, the deliberate leaks; bead
+	// oo-xn1j1). Null afterwards.
+	void leak() noexcept
+	{
+		(void)_object.leakRef();
+		_entity = nullptr;
+	}
 
 	cxx::Entity *get() const noexcept  { return _entity; }
 	cxx::Entity *operator->() const noexcept  { return _entity; }

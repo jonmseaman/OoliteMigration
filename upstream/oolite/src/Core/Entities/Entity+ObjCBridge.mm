@@ -155,6 +155,15 @@ cxx::Entity *oo::AutoreleaseEntity(cxx::Entity *entity)
 }
 
 
+oo::EntityHold oo::EntityHold::adoptObject(::Entity *object)
+{
+	EntityHold result;
+	result._object = adoptObjC(object);
+	result._entity = ToCxx(object);
+	return result;
+}
+
+
 cxx::Entity *oo::MadeEntity(const Ref<cxx::Entity> &entity)
 {
 	return ToCxx(NewEntityFacade(entity));
@@ -720,7 +729,7 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 
 - (void) setCollisionRadius:(GLfloat)amount				{ _cxxEntity->setCollisionRadius(amount); }
-- (std::vector<oo::ObjCRef<::Entity *>> *) cxx_collidingEntities	{ return _cxxEntity->getCollidingEntities(); }
+- (std::vector<oo::EntityHold> *) cxx_collidingEntities	{ return _cxxEntity->getCollidingEntities(); }
 
 
 - (void) update:(OOTimeDelta)delta_t

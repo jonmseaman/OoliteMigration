@@ -314,7 +314,7 @@ void CollisionRegion::findCollisions()
 		e1 = entities_to_test[i];
 		if (e1->hasCollided)
 		{
-			if (std::vector<oo::ObjCRef<::Entity *>> *colliding = [oo::ToObjC(e1) cxx_collidingEntities])  colliding->clear();
+			if (std::vector<oo::EntityHold> *colliding = e1->getCollidingEntities())  colliding->clear();
 			e1->hasCollided = NO;
 		}
 		if (e1->isShip)
@@ -426,21 +426,21 @@ void CollisionRegion::findCollisions()
 							// now we have no need to check the e2-e1 collision
 							if (e1->collider)
 							{
-								if (std::vector<oo::ObjCRef<::Entity *>> *colliding = [oo::ToObjC(e1) cxx_collidingEntities])  colliding->push_back(oo::ObjCRef<::Entity *>(oo::ToObjC(e1->collider)));
+								if (std::vector<oo::EntityHold> *colliding = e1->getCollidingEntities())  colliding->emplace_back(e1->collider);
 							}
 							else
 							{
-								if (std::vector<oo::ObjCRef<::Entity *>> *colliding = [oo::ToObjC(e1) cxx_collidingEntities])  colliding->push_back(oo::ObjCRef<::Entity *>(oo::ToObjC(e2)));
+								if (std::vector<oo::EntityHold> *colliding = e1->getCollidingEntities())  colliding->emplace_back(e2);
 							}
 							e1->hasCollided = YES;
 						
 							if (e2->collider)
 							{
-								if (std::vector<oo::ObjCRef<::Entity *>> *colliding = [oo::ToObjC(e2) cxx_collidingEntities])  colliding->push_back(oo::ObjCRef<::Entity *>(oo::ToObjC(e2->collider)));
+								if (std::vector<oo::EntityHold> *colliding = e2->getCollidingEntities())  colliding->emplace_back(e2->collider);
 							}
 							else
 							{
-								if (std::vector<oo::ObjCRef<::Entity *>> *colliding = [oo::ToObjC(e2) cxx_collidingEntities])  colliding->push_back(oo::ObjCRef<::Entity *>(oo::ToObjC(e1)));
+								if (std::vector<oo::EntityHold> *colliding = e2->getCollidingEntities())  colliding->emplace_back(e1);
 							}
 							e2->hasCollided = YES;
 						}

@@ -563,7 +563,7 @@ void OOTrumble::updateTrumble(double delta_t)
 		// consult menu...
 		::ShipEntity *selectedCargopod = nil;
 		float mostYummy = 0.0;
-		std::vector<oo::ObjCRef<::Entity *>> *cargopods = (player != nullptr ? player->getCargo() : (std::vector<oo::ObjCRef<::Entity *>> *)nullptr);	// the cargo pods (live: eaten ones are removed)
+		std::vector<oo::EntityHold> *cargopods = (player != nullptr ? player->getCargo() : (std::vector<oo::EntityHold> *)nullptr);	// the cargo pods (live: eaten ones are removed)
 		NSUInteger i, n_pods = cargopods != nullptr ? cargopods->size() : 0;
 		for (i = 0 ; i < n_pods; i++)
 		{
@@ -593,7 +593,7 @@ void OOTrumble::updateTrumble(double delta_t)
 								{ (UNIVERSE != nullptr ? UNIVERSE->displayNameForCommodity((selectedCargopod != nullptr ? selectedCargopod->commodityType() : std::optional<std::string>()).value_or("")) : std::optional<std::string>()).value_or("(null)") });
 
 				if (UNIVERSE != nullptr)  UNIVERSE->addMessage(ms, 4.5);
-				if (cargopods != nullptr)  std::erase(*cargopods, oo::ToObjC(selectedCargopod));
+				if (cargopods != nullptr)  std::erase(*cargopods, static_cast<cxx::Entity *>(selectedCargopod));
 				trumbleAppetiteAccumulator -= 10.0;
 				
 				// consider breeding - must be full grown and happy

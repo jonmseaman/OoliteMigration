@@ -213,25 +213,25 @@ void OOShipGroup::setLeader(::ShipEntity *leader)
 }
 
 
-std::vector<oo::ObjCRef<::Entity *>> OOShipGroup::memberArray()
+std::vector<oo::EntityHold> OOShipGroup::memberArray()
 {
-	std::vector<oo::ObjCRef<::Entity *>>	result;
+	std::vector<oo::EntityHold>	result;
 
 	if (_count == 0)  return result;
 
 	result.reserve(_count);
 	for (::ShipEntity *ship : OOShipGroupMembers(this))
 	{
-		result.emplace_back(oo::ToObjC(ship));
+		result.emplace_back(ship);
 	}
 
 	return result;
 }
 
 
-std::vector<oo::ObjCRef<::Entity *>> OOShipGroup::memberArrayExcludingLeader()
+std::vector<oo::EntityHold> OOShipGroup::memberArrayExcludingLeader()
 {
-	std::vector<oo::ObjCRef<::Entity *>>	result;
+	std::vector<oo::EntityHold>	result;
 	::ShipEntity				*leader = nil;
 
 	if (_count == 0)  return result;
@@ -242,7 +242,7 @@ std::vector<oo::ObjCRef<::Entity *>> OOShipGroup::memberArrayExcludingLeader()
 	{
 		if (ship != leader)
 		{
-			result.emplace_back(oo::ToObjC(ship));
+			result.emplace_back(ship);
 		}
 	}
 

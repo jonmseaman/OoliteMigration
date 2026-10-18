@@ -161,7 +161,7 @@ Entity *Shot(HPVector position, Vector velocity, float energy, OOTimeDelta durat
 
 OOLightParticleEntity *Particle(Entity *shot)	{ return static_cast<OOLightParticleEntity *>(oo::ToCxx(shot)); }	// the root's facade since bead oo-9ht.76
 const GLfloat *ColorComponents(Entity *shot)	{ return Particle(shot)->_colorComponents; }
-void SetColliding(Entity *shot, Entity *other)	{ shot->_cxxEntity->collidingEntities.emplace_back(other); }
+void SetColliding(Entity *shot, Entity *other)	{ shot->_cxxEntity->collidingEntities.emplace_back(oo::ToCxx(other)); }
 void SetIsShip(Entity *e)						{ e->_cxxEntity->isShip = true; }
 
 // --------------------------------------------------------------------------------------------------

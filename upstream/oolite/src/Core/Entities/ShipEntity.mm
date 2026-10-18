@@ -1217,7 +1217,7 @@ std::optional<std::string> ShipEntity::serializeShipSubEntities()
 
 void ShipEntity::deserializeShipSubEntitiesFrom(const std::string &string)
 {
-	const std::vector<oo::ObjCRef<::Entity *>> subEnts = shipSubEntities();
+	const std::vector<oo::EntityHold> subEnts = shipSubEntities();
 	const std::u16string	units = oo::utf8ToUtf16(string);	// indexed in UTF-16 units, as -substringWithRange: was
 	NSInteger			i,idx, start = (NSInteger)subEnts.size() - 1;
 	NSInteger			strMaxIdx = (NSInteger)units.size() - 1;
@@ -1254,8 +1254,7 @@ bool ShipEntity::setUpSubEntities()
 		// at<std::string>: a string, or a number's text, else "" (no tokens), as the string reader gave.
 		const std::vector<std::string> definition = oo::str::tokens(plumes->at<std::string>(i));
 		// C++ since bead oo-9ht.110: the plume's object is the root façade; nil for no tokens.
-		::Entity<OOSubEntity> *exhaust = (::Entity<OOSubEntity> *)oo::NewEntityFacade(OOExhaustPlumeEntity::exhaustForShip(this, definition, _scaleFactor));
-		addSubEntity(oo::ToCxx(exhaust));
+		addSubEntity(oo::MadeEntity(OOExhaustPlumeEntity::exhaustForShip(this, definition, _scaleFactor)));	// its object made as before (null for none)
 	}
 
 	const oo::PList	*subs = ArrayForKey(shipDict, "subentities");
@@ -1281,10 +1280,11 @@ GLfloat ShipEntity::frustumRadius()
 	OOScalar exhaust_length = 0;
 	for (const auto &exhaust : exhausts())
 	{
-		::Entity *exEnt = exhaust.get();
-		if ([exEnt findCollisionRadius] > exhaust_length)
+		cxx::Entity *exEnt = exhaust.get();
+		const double exRadius = exEnt != nullptr ? exEnt->findCollisionRadius() : 0;	// a message to nil answered 0
+		if (exRadius > exhaust_length)
 		{
-			exhaust_length = [exEnt findCollisionRadius];
+			exhaust_length = exRadius;
 		}
 	}
 	return _profileRadius + exhaust_length;
@@ -1313,10 +1313,10 @@ bool ShipEntity::setUpOneFlasher(const oo::PList &subentDict)
 {
 	// C++ since bead oo-9ht.107: the flasher's object is the nearest façade left.
 	const oo::Ref<OOFlasherEntity> flasher = OOFlasherEntity::flasherWithDictionary(subentDict);
-	::Entity<OOSubEntity> *flasherObject = (::Entity<OOSubEntity> *)oo::NewEntityFacade(flasher);
-	[flasherObject setPosition:HPvector_multiply_scalar(HPVectorForKey(subentDict, "position"),_scaleFactor)];
+	cxx::Entity *flasherPart = oo::MadeEntity(flasher);	// its object made as before
+	if (flasherPart != nullptr)  flasherPart->setPosition(HPvector_multiply_scalar(HPVectorForKey(subentDict, "position"),_scaleFactor));
 	flasher->rescaleBy(_scaleFactor);
-	addSubEntity(oo::ToCxx(flasherObject));
+	addSubEntity(flasherPart);
 	return YES;
 }
 
@@ -1470,7 +1470,7 @@ void ShipEntity::removeScript()
 void ShipEntity::clearSubEntities()
 {
 	// Ensure backlinks are broken (last to first, as -makeObjectsPerformSelector:withObject: went)
-	for (auto sub = subEntities.rbegin(); sub != subEntities.rend(); ++sub)  [sub->get() setOwner:nil];
+	for (auto sub = subEntities.rbegin(); sub != subEntities.rend(); ++sub)  if (sub->get() != nullptr)  sub->get()->setOwner(nullptr);
 	subEntities.clear();
 	
 	// reset size & mass!
@@ -1607,7 +1607,7 @@ void ShipEntity::setScriptedMisjumpRange(GLfloat newValue)
 }
 
 
-std::vector<oo::ObjCRef<::Entity *>> ShipEntity::getSubEntities()
+std::vector<oo::EntityHold> ShipEntity::getSubEntities()
 {
 	return subEntities;
 }
@@ -1622,44 +1622,44 @@ NSUInteger ShipEntity::subEntityCount()
 bool ShipEntity::hasSubEntity(cxx::Entity *sub)
 {
 	// Identity: a subentity's -isEqual: is NSObject's.
-	return std::find(subEntities.begin(), subEntities.end(), oo::ToObjC(sub)) != subEntities.end();
+	return sub != nullptr && std::find(subEntities.begin(), subEntities.end(), sub) != subEntities.end();	// the list holds no null
 }
 
 
-std::vector<oo::ObjCRef<::Entity *>> ShipEntity::subEntityEnumerator()
+std::vector<oo::EntityHold> ShipEntity::subEntityEnumerator()
 {
 	return subEntities;
 }
 
 
-std::vector<oo::ObjCRef<::Entity *>> ShipEntity::shipSubEntities()
+std::vector<oo::EntityHold> ShipEntity::shipSubEntities()
 {
-	std::vector<oo::ObjCRef<::Entity *>> result;
+	std::vector<oo::EntityHold> result;
 	for (const auto &sub : subEntities)
 	{
-		if ([sub.get() isShip])  result.emplace_back(sub.get());
+		if (oo::EntityIsShip(sub.get()))  result.push_back(sub);
 	}
 	return result;
 }
 
 
-std::vector<oo::ObjCRef<::Entity *>> ShipEntity::flasherEnumerator()
+std::vector<oo::EntityHold> ShipEntity::flasherEnumerator()
 {
-	std::vector<oo::ObjCRef<::Entity *>> flashers;
+	std::vector<oo::EntityHold> flashers;
 	for (const auto &sub : subEntities)
 	{
-		if (dynamic_cast<OOFlasherEntity *>(oo::ToCxx(sub.get())) != nullptr)  flashers.emplace_back(sub.get());
+		if (dynamic_cast<OOFlasherEntity *>(sub.get()) != nullptr)  flashers.push_back(sub);
 	}
 	return flashers;
 }
 
 
-std::vector<oo::ObjCRef<::Entity *>> ShipEntity::exhausts()
+std::vector<oo::EntityHold> ShipEntity::exhausts()
 {
-	std::vector<oo::ObjCRef<::Entity *>> result;
+	std::vector<oo::EntityHold> result;
 	for (const auto &sub : subEntities)
 	{
-		if (dynamic_cast<OOExhaustPlumeEntity *>(oo::ToCxx(sub.get())) != nullptr)  result.emplace_back(sub.get());
+		if (dynamic_cast<OOExhaustPlumeEntity *>(sub.get()) != nullptr)  result.push_back(sub);
 	}
 	return result;
 }
@@ -1862,8 +1862,8 @@ void ShipEntity::wasAddedToUniverse()
 	}
 
 	//	Tell subentities, too (last to first, as -makeObjectsPerformSelector: went)
-	const std::vector<oo::ObjCRef<::Entity *>> subs = subEntities;
-	for (auto sub = subs.rbegin(); sub != subs.rend(); ++sub)  [sub->get() wasAddedToUniverse];
+	const std::vector<oo::EntityHold> subs = subEntities;
+	for (auto sub = subs.rbegin(); sub != subs.rend(); ++sub)  { if (sub->get() != nullptr)  sub->get()->wasAddedToUniverse(); }
 	
 	resetExhaustPlumes();
 }
@@ -1872,8 +1872,8 @@ void ShipEntity::wasAddedToUniverse()
 void ShipEntity::wasRemovedFromUniverse()
 {
 	// last to first, as -makeObjectsPerformSelector: went
-	const std::vector<oo::ObjCRef<::Entity *>> subs = subEntities;
-	for (auto sub = subs.rbegin(); sub != subs.rend(); ++sub)  [sub->get() wasRemovedFromUniverse];
+	const std::vector<oo::EntityHold> subs = subEntities;
+	for (auto sub = subs.rbegin(); sub != subs.rend(); ++sub)  { if (sub->get() != nullptr)  sub->get()->wasRemovedFromUniverse(); }
 }
 
 
@@ -2249,27 +2249,27 @@ void ShipEntity::setUpMixedEscorts()
 	}
 	
 	// check prime subentities against the other's hull
-	const std::vector<oo::ObjCRef<::Entity *>> &prime_subs = prime->subEntities;
+	const std::vector<oo::EntityHold> &prime_subs = prime->subEntities;
 	if (!prime_subs.empty())
 	{
 		NSUInteger i, n_subs = prime_subs.size();
 		for (i = 0; i < n_subs; i++)
 		{
-			::Entity* se = prime_subs[i].get();
-			if (oo::ToCxx(se)->getIsShip() && oo::ToCxx(se)->canCollide() && doOctreesCollide(oo::ToShip(se), other))
+			cxx::Entity* se = prime_subs[i].get();
+			if (se->getIsShip() && se->canCollide() && doOctreesCollide(oo::ToShip(se), other))
 				return other;
 		}
 	}
 
 	// check prime hull against the other's subentities
-	const std::vector<oo::ObjCRef<::Entity *>> &other_subs = other->subEntities;
+	const std::vector<oo::EntityHold> &other_subs = other->subEntities;
 	if (!other_subs.empty())
 	{
 		NSUInteger i, n_subs = other_subs.size();
 		for (i = 0; i < n_subs; i++)
 		{
-			::Entity* se = other_subs[i].get();
-			if (oo::ToCxx(se)->getIsShip() && oo::ToCxx(se)->canCollide() && doOctreesCollide(prime, oo::ToShip(se)))
+			cxx::Entity* se = other_subs[i].get();
+			if (se->getIsShip() && se->canCollide() && doOctreesCollide(prime, oo::ToShip(se)))
 				return oo::ToShip(se);
 		}
 	}
@@ -2280,14 +2280,14 @@ void ShipEntity::setUpMixedEscorts()
 		NSUInteger i, n_osubs = other_subs.size();
 		for (i = 0; i < n_osubs; i++)
 		{
-			::Entity* oe = other_subs[i].get();
-			if (oo::ToCxx(oe)->getIsShip() && oo::ToCxx(oe)->canCollide())
+			cxx::Entity* oe = other_subs[i].get();
+			if (oe->getIsShip() && oe->canCollide())
 			{
 				NSUInteger j, n_psubs = prime_subs.size();
 				for (j = 0; j <  n_psubs; j++)
 				{
-					::Entity* pe = prime_subs[j].get();
-					if (oo::ToCxx(pe)->getIsShip() && oo::ToCxx(pe)->canCollide() && doOctreesCollide(oo::ToShip(pe), oo::ToShip(oe)))
+					cxx::Entity* pe = prime_subs[j].get();
+					if (pe->getIsShip() && pe->canCollide() && doOctreesCollide(oo::ToShip(pe), oo::ToShip(oe)))
 						return oo::ToShip(oe);
 				}
 			}
@@ -2625,13 +2625,11 @@ bool ShipEntity::validForAddToUniverse()
 
 bool ShipEntity::checkCloseCollisionWith(cxx::Entity *otherPart)
 {
-	::Entity *other = oo::ToObjC(otherPart);
-
-	if (other == nil)  return NO;
-	if (std::find_if(collidingEntities.begin(), collidingEntities.end(), [other](const oo::ObjCRef<::Entity *> &e) { return e.get() == other; }) != collidingEntities.end())  return NO;	// we know about this already! (-containsObject:, identity for entities)
+	if (otherPart == nullptr || oo::ToObjC(otherPart) == nil)  return NO;	// (no object: nil)
+	if (std::find_if(collidingEntities.begin(), collidingEntities.end(), [otherPart](const oo::EntityHold &e) { return e.get() == otherPart; }) != collidingEntities.end())  return NO;	// we know about this already! (-containsObject:, identity for entities)
 	
 	::ShipEntity *otherShip = nil;
-	if ([other isShip])  otherShip = oo::ToShip(other);
+	if (oo::EntityIsShip(otherPart))  otherShip = oo::ToShip(otherPart);
 	
 	if (canScoop(otherShip))  return YES;	// quick test - could this improve scooping for small ships? I think so!
 	
@@ -2723,7 +2721,7 @@ void ShipEntity::update(OOTimeDelta delta_t)
 		if (subEntityCount() > 0)
 		{
 			// only copy the subent array if there are subentities
-			const std::vector<oo::ObjCRef<::Entity *>> subs = subEntities;	// a snapshot, as -subEntities copied
+			const std::vector<oo::EntityHold> subs = subEntities;	// a snapshot, as -subEntities copied
 			for (const auto &sub : subs)
 			{
 				::ShipEntity *se = oo::ToShip(sub.get());
@@ -3041,7 +3039,7 @@ void ShipEntity::update(OOTimeDelta delta_t)
 			if (subEntityCount() > 0)
 			{
 				// only copy the subent array if there are subentities
-				const std::vector<oo::ObjCRef<::Entity *>> subs = subEntities;	// a snapshot, as -subEntities copied
+				const std::vector<oo::EntityHold> subs = subEntities;	// a snapshot, as -subEntities copied
 				for (const auto &sub : subs)
 				{
 					::ShipEntity *se = oo::ToShip(sub.get());
@@ -3141,7 +3139,7 @@ void ShipEntity::update(OOTimeDelta delta_t)
 	if (subEntityCount() > 0)
 	{
 		// only copy the subent array if there are subentities
-		const std::vector<oo::ObjCRef<::Entity *>> subs = subEntities;	// a snapshot, as -subEntities copied
+		const std::vector<oo::EntityHold> subs = subEntities;	// a snapshot, as -subEntities copied
 		for (const auto &sub : subs)
 		{
 			::ShipEntity *se = oo::ToShip(sub.get());
@@ -6472,9 +6470,9 @@ void ShipEntity::behaviour_track_as_turret(double delta_t)
 	}
 	
 	// can't fire on primary target; track secondary targets instead
-	for (const auto &targetRef : (turret_owner != nullptr ? turret_owner->defenseTargets() : std::vector<oo::ObjCRef<::Entity *>>()))
+	for (const auto &targetRef : (turret_owner != nullptr ? turret_owner->defenseTargets() : std::vector<oo::EntityHold>()))
 	{
-		cxx::Entity *target = oo::ToCxx(targetRef.get());	// the snapshot keeps its object (bead oo-9ht.39.16)
+		cxx::Entity *target = targetRef.get();	// the snapshot keeps its object (bead oo-9ht.39.16)
 		// defense targets cannot be tracked while cloaked
 		if (target->getScanClass() == CLASS_NO_DRAW || (oo::ToShip(target) != nullptr ? oo::ToShip(target)->isCloaked() : false) || target->getEnergy() <= 0.0)
 		{
@@ -6868,13 +6866,13 @@ void ShipEntity::drawImmediate(bool immediate, bool translucent)
 		// save time by not copying the subentity array if it's empty - CIM
 		if (subEntityCount() > 0) 
 		{ 
-			const std::vector<oo::ObjCRef<::Entity *>> subs = subEntities;	// a snapshot, as -subEntities copied
+			const std::vector<oo::EntityHold> subs = subEntities;	// a snapshot, as -subEntities copied
 			for (const auto &sub : subs)
 			{
-				::Entity<OOSubEntity> *subEntity = (::Entity<OOSubEntity> *)sub.get();
-				OOCAssert([subEntity owner] == oo::ToObjC(this), "Subentity ownership broke - %s should be owned by %s but is owned by %s.", oo::DescriptionOf(subEntity).c_str(), oo::EntityDescription(this).c_str(), oo::DescriptionOf([subEntity owner]).c_str());
-				if (cxx::OOSubEntityInterface *cxxSub = dynamic_cast<cxx::OOSubEntityInterface *>(oo::ToCxx((::Entity *)subEntity)))  cxxSub->drawSubEntityImmediate(immediate, translucent);
-				else  [subEntity drawSubEntityImmediate:immediate translucent:translucent];
+				cxx::Entity *subEntity = sub.get();
+				OOCAssert((subEntity != nullptr ? subEntity->owner() : nil) == oo::ToObjC(this), "Subentity ownership broke - %s should be owned by %s but is owned by %s.", oo::EntityDescription(subEntity).c_str(), oo::EntityDescription(this).c_str(), oo::DescriptionOf(subEntity != nullptr ? subEntity->owner() : nil).c_str());
+				if (cxx::OOSubEntityInterface *cxxSub = dynamic_cast<cxx::OOSubEntityInterface *>(subEntity))  cxxSub->drawSubEntityImmediate(immediate, translucent);
+				else  [(::Entity<OOSubEntity> *)oo::ToObjC(subEntity) drawSubEntityImmediate:immediate translucent:translucent];
 			}
 		}
 	}
@@ -7154,8 +7152,8 @@ void ShipEntity::addSubEntity(cxx::Entity *sub)
 	
 	sub->isSubEntity = YES;
 	// Order matters - need consistent state in setOwner:. -- Ahruman 2008-04-20
-	subEntities.emplace_back(oo::ToObjC(sub));
-	[oo::ToObjC(sub) setOwner:oo::ToObjC(this)];
+	subEntities.emplace_back(sub);
+	sub->setOwner(this);	// [subObject setOwner:self]
 	
 	addSubentityToCollisionRadius(sub);
 }
@@ -7432,23 +7430,23 @@ bool ShipEntity::hasEscorts()
 }
 
 
-std::vector<oo::ObjCRef<::Entity *>> ShipEntity::escorts()
+std::vector<oo::EntityHold> ShipEntity::escorts()
 {
 
-	std::vector<oo::ObjCRef<::Entity *>> escorts;
+	std::vector<oo::EntityHold> escorts;
 	if (_escortGroup == nullptr)  return escorts;
 	// The group's members at this moment, in its order, without self (as -ooExcludingObject: skipped it).
-	for (const oo::ObjCRef<::Entity *> &memberRef : _escortGroup->memberArray())
+	for (const oo::EntityHold &memberRef : _escortGroup->memberArray())
 	{
 		::ShipEntity *member = oo::ToShip(memberRef.get());
 		if (member == this)  continue;
-		escorts.emplace_back(oo::ToObjC(member));
+		escorts.emplace_back(member);
 	}
 	return escorts;
 }
 
 
-std::vector<oo::ObjCRef<::Entity *>> ShipEntity::escortArray()
+std::vector<oo::EntityHold> ShipEntity::escortArray()
 {
 
 	return escorts();
@@ -8848,7 +8846,7 @@ OOCargoType ShipEntity::cargoType()
 /* Note: this array probably contains some template cargo pods. Do not
  * pass it to Javascript without reifying them first. The live container: callers edit it in place
  * (ADR-0043 Amendment 3 item 22); nullptr for a nil receiver. */
-std::vector<oo::ObjCRef<::Entity *>> *ShipEntity::getCargo()
+std::vector<oo::EntityHold> *ShipEntity::getCargo()
 {
 	return &cargo;
 }
@@ -8898,38 +8896,13 @@ oo::PList ShipEntity::cargoListForScripting()
 }
 
 
-void ShipEntity::setCargo(const std::vector<oo::ObjCRef<::Entity *>> &some_cargo)
+void ShipEntity::setCargo(const std::vector<oo::EntityHold> &some_cargo)
 {
 	cargo = some_cargo;
 }
 
 
-// The universe's pods are held C++ entities (bead oo-9ht.39.26); the cargo list still keeps the
-// pods' objects (until the facade goes, oo-9ht.39 step 5k): the same objects, retained the same.
-namespace {
-std::vector<oo::ObjCRef<::Entity *>> PodObjects(const std::vector<oo::EntityHold> &pods)
-{
-	std::vector<oo::ObjCRef<::Entity *>> objects;
-	objects.reserve(pods.size());
-	for (const oo::EntityHold &pod : pods)  objects.emplace_back(oo::ToObjC(pod.get()));
-	return objects;
-}
-}	// namespace
-
-
-void ShipEntity::setCargo(const std::vector<oo::EntityHold> &some_cargo)
-{
-	setCargo(PodObjects(some_cargo));
-}
-
-
 bool ShipEntity::addCargo(const std::vector<oo::EntityHold> &some_cargo)
-{
-	return addCargo(PodObjects(some_cargo));
-}
-
-
-bool ShipEntity::addCargo(const std::vector<oo::ObjCRef<::Entity *>> &some_cargo)
 {
 	if (cargo.size() + some_cargo.size() > maxAvailableCargoSpace())
 	{
@@ -9558,13 +9531,14 @@ void ShipEntity::rescaleBy(GLfloat factor, bool writeToCache)
 	}
 
 	// rescale subentities
-	const std::vector<oo::ObjCRef<::Entity *>> subs = subEntities;	// a snapshot, as -subEntities copied
+	const std::vector<oo::EntityHold> subs = subEntities;	// a snapshot, as -subEntities copied
 	for (const auto &sub : subs)
 	{
-		::Entity<OOSubEntity>	*se = (::Entity<OOSubEntity> *)sub.get();
-		[se setPosition:HPvector_multiply_scalar([se position], factor)];
-		if (cxx::OOSubEntityInterface *cxxSub = dynamic_cast<cxx::OOSubEntityInterface *>(oo::ToCxx((::Entity *)se)))  cxxSub->rescaleBy(factor, writeToCache);
-		else  [se rescaleBy:factor writeToCache:writeToCache];
+		cxx::Entity	*se = sub.get();
+		if (se == nullptr)  continue;	// every message went to nil
+		se->setPosition(HPvector_multiply_scalar(se->getPosition(), factor));
+		if (cxx::OOSubEntityInterface *cxxSub = dynamic_cast<cxx::OOSubEntityInterface *>(se))  cxxSub->rescaleBy(factor, writeToCache);
+		else  [(::Entity<OOSubEntity> *)oo::ToObjC(se) rescaleBy:factor writeToCache:writeToCache];
 	}
 	
 	// rescale mass
@@ -9580,7 +9554,7 @@ void ShipEntity::releaseCargoPodsDebris()
 	Quaternion q;
 	int speed_low = 200;
 
-	std::vector<oo::ObjCRef<::Entity *>> jetsam;  // this will contain the stuff to get thrown out
+	std::vector<oo::EntityHold> jetsam;  // this will contain the stuff to get thrown out
 	unsigned cargo_chance = 70;
 	jetsam = cargo;   // what the ship is carrying
 	cargo.clear();   // dispense with it!
@@ -9992,9 +9966,8 @@ void ShipEntity::broadcastEnergyBlastImminent()
 
 void ShipEntity::removeExhaust(OOExhaustPlumeEntity *exhaust)
 {
-	::Entity *exhaustObject = oo::ToObjC(exhaust);
-	std::erase(subEntities, exhaustObject);
-	[exhaustObject setOwner:nil];
+	std::erase(subEntities, static_cast<cxx::Entity *>(exhaust));
+	if (exhaust != nullptr)  exhaust->setOwner(nullptr);	// [exhaustObject setOwner:nil]
 }
 
 
@@ -10006,9 +9979,8 @@ void ShipEntity::removeExhaust(OOExhaustPlumeEntity *exhaust)
 
 void ShipEntity::removeFlasher(OOFlasherEntity *flasher)
 {
-	::Entity *flasherObject = oo::ToObjC(flasher);
-	std::erase(subEntities, flasherObject);
-	[flasherObject setOwner:nil];
+	std::erase(subEntities, static_cast<cxx::Entity *>(flasher));
+	if (flasher != nullptr)  flasher->setOwner(nullptr);	// [flasherObject setOwner:nil]
 }
 
 
@@ -10020,7 +9992,7 @@ void ShipEntity::subEntityDied(::ShipEntity *sub)
 	// TODO? Recalculating collision radius should increase collision testing efficiency,
 	// but for most ship models the difference would be marginal. -- Kaks 20110429
 	mass -= (sub != nullptr ? sub->getMass() : 0.0f); // missing subents affect fuel charge rate, etc..
-	std::erase(subEntities, oo::ToObjC(sub));	// the list holds the objects
+	std::erase(subEntities, static_cast<cxx::Entity *>(sub));
 }
 
 
@@ -10034,7 +10006,7 @@ void ShipEntity::subEntityReallyDied(::ShipEntity *sub)
 		
 		// Leak subentity list: one more retain each, so that emptying the list keeps them all alive,
 		// as dropping the array pointer did.
-		for (const auto &leaked : subEntities)  objc_retain(leaked.get());
+		for (const auto &leaked : subEntities)  oo::RetainEntity(leaked.get());
 		subEntities.clear();
 	}
 }
@@ -10247,7 +10219,7 @@ void ShipEntity::resetExhaustPlumes()
 {
 	for (const auto &exEnt : exhausts())
 	{
-		if (OOExhaustPlumeEntity *exhaust = dynamic_cast<OOExhaustPlumeEntity *>(oo::ToCxx(exEnt.get())))  exhaust->resetPlume();
+		if (OOExhaustPlumeEntity *exhaust = dynamic_cast<OOExhaustPlumeEntity *>(exEnt.get()))  exhaust->resetPlume();
 	}
 }
 
@@ -10802,14 +10774,14 @@ double ShipEntity::ballTrackLeadingTarget(double delta_t, cxx::Entity *target)
 	vector_to_target = HPVectorToVector(HPvector_subtract(target->getPosition(), my_position));
 	// this is in absolute coordinates, so now rotate it
 
-	::Entity		*last = nil;
-	::Entity		*father = oo::WeakEntityObject(oo::WeakRef<cxx::Entity>(parentEntity()));	// the loop asks the objects, +0 as the owner was read (bead oo-9ht.39.24: parentEntity() answers the C++ entity)
+	cxx::Entity		*last = nullptr;
+	cxx::Entity		*father = oo::LiveEntity(oo::WeakRef<cxx::Entity>(parentEntity()));	// null once its object has gone, as the object read +0 was nil (bead oo-xn1j1)
 
 	Quaternion  q = kIdentityQuaternion;
-	while ((father)&&(father != last) && (father != nil))	// (Entity *)NO_TARGET
+	while ((father)&&(father != last) && (father != nullptr))	// (Entity *)NO_TARGET
 	{
 		/* Fix orientation */
-		Quaternion fo = [father normalOrientation];
+		Quaternion fo = father->normalOrientation();
 		fo.w = -fo.w;
 		/* The below code works for player turrets where the
 		 * orientation is different, but not for NPC turrets. Taking
@@ -10818,8 +10790,8 @@ double ShipEntity::ballTrackLeadingTarget(double delta_t, cxx::Entity *target)
 		 * find, but this works well enough for 1.82 - CIM */
 		q = quaternion_multiply(q,quaternion_conjugate(fo));
 		last = father;
-		if (![last isSubEntity]) break;
-		father = [father owner];
+		if (!oo::EntityIsSubEntity(last)) break;
+		father = oo::LiveOwner(father);	// [father owner]
 	}
 	q = quaternion_conjugate(q);
 	// q now contains the rotation to the turret's reference system
@@ -11582,11 +11554,11 @@ GLfloat ShipEntity::rangeToDestination()
 }
 
 
-std::vector<oo::ObjCRef<::Entity *>> ShipEntity::collisionExceptions()
+std::vector<oo::EntityHold> ShipEntity::collisionExceptions()
 {
 	// The live ones, in the weak set's order (empty when there are none).
-	std::vector<oo::ObjCRef<::Entity *>> result;
-	for (const oo::Ref<cxx::Entity> &exception : _collisionExceptions.allObjects())  result.emplace_back(oo::ToObjC(exception.get()));
+	std::vector<oo::EntityHold> result;
+	for (const oo::Ref<cxx::Entity> &exception : _collisionExceptions.allObjects())  result.emplace_back(exception.get());
 	return result;
 }
 
@@ -11615,19 +11587,19 @@ NSUInteger ShipEntity::defenseTargetCount()
 }
 
 
-std::vector<oo::ObjCRef<::Entity *>> ShipEntity::allDefenseTargets()
+std::vector<oo::EntityHold> ShipEntity::allDefenseTargets()
 {
-	std::vector<oo::ObjCRef<::Entity *>> result;
-	for (const oo::Ref<cxx::Entity> &target : _defenseTargets.allObjects())  result.emplace_back(oo::ToObjC(target.get()));
+	std::vector<oo::EntityHold> result;
+	for (const oo::Ref<cxx::Entity> &target : _defenseTargets.allObjects())  result.emplace_back(target.get());
 	return result;
 }
 
 
-std::vector<oo::ObjCRef<::Entity *>> ShipEntity::defenseTargets()
+std::vector<oo::EntityHold> ShipEntity::defenseTargets()
 {
 	// What the weak set's enumerator gave: the live targets, in its order.
-	std::vector<oo::ObjCRef<::Entity *>> targets;
-	for (const oo::Ref<cxx::Entity> &target : _defenseTargets.allObjects())  targets.emplace_back(oo::ToObjC(target.get()));
+	std::vector<oo::EntityHold> targets;
+	for (const oo::Ref<cxx::Entity> &target : _defenseTargets.allObjects())  targets.emplace_back(target.get());
 	return targets;
 }
 
@@ -11654,7 +11626,7 @@ void ShipEntity::validateDefenseTargets()
 	// iterate a copy as we'll be modifying original during enumeration
 	for (const auto &targetRef : allDefenseTargets())
 	{
-		cxx::Entity *target = oo::ToCxx(targetRef.get());
+		cxx::Entity *target = targetRef.get();
 		if ((target != nullptr ? target->status() : OOEntityStatus{}) == STATUS_DEAD)
 		{
 			removeDefenseTarget(target);
@@ -12112,20 +12084,20 @@ bool ShipEntity::fireTurretCannon(double range)
 	Vector		vel;	
 	HPVector		origin = getPosition();
 
-	::Entity		*last = nil;
-	::Entity		*father = oo::WeakEntityObject(oo::WeakRef<cxx::Entity>(parentEntity()));	// the loop asks the objects, +0 as the owner was read (bead oo-9ht.39.24: parentEntity() answers the C++ entity)
+	cxx::Entity		*last = nullptr;
+	cxx::Entity		*father = oo::LiveEntity(oo::WeakRef<cxx::Entity>(parentEntity()));	// null once its object has gone, as the object read +0 was nil (bead oo-xn1j1)
 	OOMatrix	r_mat;
 
 	vel = vector_forward_from_quaternion(orientation);		// Facing
 	// adjust velocity and position vectors to absolute coordinates
-	while ((father)&&(father != last) && (father != nil))	// (Entity *)NO_TARGET
+	while ((father)&&(father != last) && (father != nullptr))	// (Entity *)NO_TARGET
 	{
-		r_mat = [father drawRotationMatrix];
-		origin = HPvector_add(OOHPVectorMultiplyMatrix(origin, r_mat), [father position]);
+		r_mat = father->drawRotationMatrix();
+		origin = HPvector_add(OOHPVectorMultiplyMatrix(origin, r_mat), father->getPosition());
 		vel = OOVectorMultiplyMatrix(vel, r_mat);
 		last = father;
-		if (![last isSubEntity]) break;
-		father = [father owner];
+		if (!oo::EntityIsSubEntity(last)) break;
+		father = oo::LiveOwner(father);	// [father owner]
 	}
 	
 	origin = HPvector_add(origin, vectorToHPVector(vector_multiply_scalar(vel, collision_radius + 0.5)));	// Start just outside collision sphere
@@ -12284,7 +12256,7 @@ bool ShipEntity::fireDirectLaserDefensiveShot()
 {
 	for (const auto &targetRef : defenseTargets())
 	{
-		cxx::Entity *target = oo::ToCxx(targetRef.get());	// the snapshot keeps its object (bead oo-9ht.39.16)
+		cxx::Entity *target = targetRef.get();	// the snapshot keeps its object (bead oo-9ht.39.16)
 		// can't fire defensively at cloaked ships
 		if (target->getScanClass() == CLASS_NO_DRAW || (oo::ToShip(target) != nullptr ? oo::ToShip(target)->isCloaked() : false) || target->getEnergy() <= 0.0)
 		{
@@ -12902,7 +12874,7 @@ bool ShipEntity::launchCascadeMine()
 	::ShipEntity		*result = nil;
 	::ShipEntity			*mainPod = nil;
 	unsigned			n_pods, i;
-	std::optional<std::vector<oo::ObjCRef<::Entity *>>>	passengers;	// only with more than one pod, as before
+	std::optional<std::vector<oo::EntityHold>>	passengers;	// only with more than one pod, as before
 	
 	/*
 		CHANGE: both player & NPCs can now launch escape pods in interstellar
@@ -12936,7 +12908,7 @@ bool ShipEntity::launchCascadeMine()
 	{
 		::ShipEntity	*passenger = nil;
 		passenger = launchPodWithCrew(std::vector<oo::Ref<OOCharacter>>{ oo::Ref<OOCharacter>(OOCharacter::randomCharacterWithRole("passenger", gen_rnd_number())) });
-		if (passengers.has_value())  passengers->emplace_back(oo::ToObjC(passenger));
+		if (passengers.has_value())  passengers->emplace_back(passenger);
 	}
 
 	// the passengers' pods as an array, or null (nil) with a single pod
@@ -12963,7 +12935,7 @@ void ShipEntity::dumpCargo()
 	{
 		if (!preferred.has_value())
 		{
-			jetto = oo::ToShip([[cargo[0].get() retain] autorelease]);
+			jetto = oo::ToShip(oo::AutoreleaseEntity(oo::RetainEntity(cargo[0].get())));
 		}
 		else
 		{
@@ -12972,7 +12944,7 @@ void ShipEntity::dumpCargo()
 			{
 				if ((oo::ToShip(cargo[i].get()) != nullptr ? oo::ToShip(cargo[i].get())->commodityType() : std::optional<std::string>()) == preferred)
 				{
-					jetto = oo::ToShip([[cargo[i].get() retain] autorelease]);
+					jetto = oo::ToShip(oo::AutoreleaseEntity(oo::RetainEntity(cargo[i].get())));
 					found = YES;
 					break;
 				}
@@ -12980,7 +12952,7 @@ void ShipEntity::dumpCargo()
 			if (found == NO)
 			{
 				// dump anything
-				jetto = oo::ToShip([[cargo[0].get() retain] autorelease]);
+				jetto = oo::ToShip(oo::AutoreleaseEntity(oo::RetainEntity(cargo[0].get())));
 				i = 0;
 			}
 		}
@@ -13105,31 +13077,31 @@ void ShipEntity::manageCollisions()
 {
 	// deal with collisions
 	//
-	::Entity*		ent;
+	cxx::Entity*		ent;
 	::ShipEntity* other_ship;
 	
 	while (!collidingEntities.empty())
 	{
 		// EMMSTRAN: investigate if doing this backwards would be more efficient. (Not entirely obvious, the vector is kinda funky.) -- Ahruman 2011-02-12
-		ent = [[collidingEntities.front().get() retain] autorelease];
+		ent = oo::AutoreleaseEntity(oo::RetainEntity(collidingEntities.front().get()));	// [[... retain] autorelease]
 		collidingEntities.erase(collidingEntities.begin());
 		if (ent)
 		{
-			if ([ent isShip])
+			if (oo::EntityIsShip(ent))
 			{
 				other_ship = oo::ToShip(ent);
 				collideWithShip(other_ship);
 			}
-			else if ([ent isStellarObject])
+			else if (ent->isStellarObject())
 			{
-				getDestroyedBy(oo::ToCxx(ent), [ent isSun] ? kOODamageTypeHitASun : kOODamageTypeHitAPlanet);
+				getDestroyedBy(ent, ent->isSun() ? kOODamageTypeHitASun : kOODamageTypeHitAPlanet);
 				if (this == PLAYER)  oo::RetainEntity(this);
 			}
-			else if ([ent isWormhole])
+			else if (ent->getIsWormhole())
 			{
 				// the C++ wormhole (C++ since bead oo-9ht.112; a C-style cast of its object until bead oo-9ht.144)
-				if( getIsPlayer() ) enterWormhole(static_cast<::WormholeEntity *>(oo::ToCxx(ent)));
-				else enterWormhole(static_cast<::WormholeEntity *>(oo::ToCxx(ent)), NO);
+				if( getIsPlayer() ) enterWormhole(static_cast<::WormholeEntity *>(ent));
+				else enterWormhole(static_cast<::WormholeEntity *>(ent), NO);
 			}
 		}
 	}
@@ -13282,7 +13254,7 @@ bool ShipEntity::collideWithShip(::ShipEntity *other)
 	}
 	
 	// remove self from other's collision list
-	if (std::vector<oo::ObjCRef<::Entity *>> *colliding = (other != nullptr ? other->getCollidingEntities() : (std::vector<oo::ObjCRef<::Entity *>> *)nullptr))  std::erase_if(*colliding, [this](const oo::ObjCRef<::Entity *> &e) { return e.get() == oo::ToObjC(this); });	// -removeObject:
+	if (std::vector<oo::EntityHold> *colliding = (other != nullptr ? other->getCollidingEntities() : (std::vector<oo::EntityHold> *)nullptr))  std::erase_if(*colliding, [this](const oo::EntityHold &e) { return e.get() == this; });	// -removeObject:
 	
 	doScriptEvent(OOJSID("shipCollided"), other, "COLLISION");
 	if (other != nullptr)  other->doScriptEvent(OOJSID("shipCollided"), this, "COLLISION");
@@ -13503,7 +13475,7 @@ void ShipEntity::scoopUpProcess(::ShipEntity *other, bool procEvents, bool procM
 				}
 			}
 		}
-		cargo.insert(cargo.begin(), oo::ObjCRef<::Entity *>(oo::ToObjC(other)));	// places most recently scooped object at eject position
+		cargo.insert(cargo.begin(), oo::EntityHold(other));	// places most recently scooped object at eject position
 		if (other != nullptr)  other->setStatus(STATUS_IN_HOLD);
 		if (other != nullptr)  other->performTumble();
 		if (shipAI != nullptr)  shipAI->message("CARGO_SCOOPED");
@@ -13518,13 +13490,13 @@ void ShipEntity::scoopUpProcess(::ShipEntity *other, bool procEvents, bool procM
 	// then remove it from the hold, or it will be over-retained
 	if ((other != nullptr ? other->status() : OOEntityStatus{}) != STATUS_IN_HOLD) 
 	{
-		if ((std::find(cargo.begin(), cargo.end(), oo::ToObjC(other)) != cargo.end()))
+		if (other != nullptr && (std::find(cargo.begin(), cargo.end(), other) != cargo.end()))	// the list holds no null
 		{
-			std::erase(cargo, oo::ToObjC(other));
+			std::erase(cargo, other);
 		}
 	}
 
-	if (std::vector<oo::ObjCRef<::Entity *>> *colliding = (other != nullptr ? other->getCollidingEntities() : (std::vector<oo::ObjCRef<::Entity *>> *)nullptr))  std::erase_if(*colliding, [this](const oo::ObjCRef<::Entity *> &e) { return e.get() == oo::ToObjC(this); });	// -removeObject:, so it can't be scooped twice!
+	if (std::vector<oo::EntityHold> *colliding = (other != nullptr ? other->getCollidingEntities() : (std::vector<oo::EntityHold> *)nullptr))  std::erase_if(*colliding, [this](const oo::EntityHold &e) { return e.get() == this; });	// -removeObject:, so it can't be scooped twice!
 	// make sure other ships trying to scoop it lose it
 	// probably already happened, but some may have acquired it
 	// after the scooping started, and they might get stuck in a scooping
@@ -13595,8 +13567,6 @@ bool ShipEntity::cascadeIfAppropriateWithDamageAmount(double amount, cxx::Entity
 
 void ShipEntity::takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::Entity *otherPart, const std::string & /* weaponIdentifier */)
 {
-	::Entity *ent = oo::ToObjC(entPart);
-	::Entity *other = oo::ToObjC(otherPart);
 	if (status() == STATUS_DEAD)  return;
 	if (amount <= 0.0)  return;
 	
@@ -13604,7 +13574,7 @@ void ShipEntity::takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::Enti
 	BOOL cascade = NO;
 	if (energyMine)
 	{
-		cascade = cascadeIfAppropriateWithDamageAmount(amount, oo::ToCxx(static_cast<::Entity *>([ent owner])));
+		cascade = cascadeIfAppropriateWithDamageAmount(amount, oo::LiveOwner(entPart));	// [ent owner]'s C++ entity
 	}
 	
 	energy -= amount;
@@ -13624,13 +13594,13 @@ void ShipEntity::takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::Enti
 	being_mined = NO;
 	::ShipEntity *hunter = nil;
 	
-	hunter = oo::ToShip([other rootShipEntity]);
-	if (hunter == nil && [other isShip]) hunter = oo::ToShip(other);
+	hunter = oo::ToShip(otherPart != nullptr ? otherPart->rootShipEntity() : nullptr);
+	if (hunter == nil && oo::EntityIsShip(otherPart)) hunter = oo::ToShip(otherPart);
 	
 	// must check for this before potentially deleting 'other' for cloaking
-	if ((other)&&([other isShip]))
+	if ((otherPart)&&(oo::EntityIsShip(otherPart)))
 	{
-		being_mined = ((oo::ToShip(other) != nullptr ? oo::ToShip(other)->isMining() : false) != NO);
+		being_mined = ((oo::ToShip(otherPart) != nullptr ? oo::ToShip(otherPart)->isMining() : false) != NO);
 	}
 
 	if (hunter !=nil && oo::LiveOwner(this) != hunter) // our owner could be the same entity as the one responsible for our taking damage in the case of submunitions
@@ -13640,7 +13610,7 @@ void ShipEntity::takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::Enti
 			doScriptEvent(OOJSID("shipBeingAttackedByCloaked"), "ATTACKED_BY_CLOAKED");
 			
 			// lose it!
-			other = nil;
+			otherPart = nullptr;
 			hunter = nil;
 		}
 	}
@@ -13666,7 +13636,7 @@ void ShipEntity::takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::Enti
 		// tell ourselves we've been attacked
 		if (energy > 0)
 		{
-			respondToAttackFrom(oo::ToCxx(ent), hunter);
+			respondToAttackFrom(entPart, hunter);
 		}
 
 		::OOShipGroup *group = this->group();
@@ -13683,33 +13653,33 @@ void ShipEntity::takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::Enti
 					{
 						if (groupLeader != nullptr)  groupLeader->setFoundTarget(hunter);
 						if (groupLeader != nullptr)  groupLeader->setPrimaryAggressor(hunter);
-						if (groupLeader != nullptr)  groupLeader->respondToAttackFrom(oo::ToCxx(ent), hunter);
+						if (groupLeader != nullptr)  groupLeader->respondToAttackFrom(entPart, hunter);
 						//unsetting group leader for carriers can break stuff
 					}
 				}
 				if (isPirate())
 				{
-					for (const oo::ObjCRef<::Entity *> &otherPirateRef : (group != nullptr ? group->memberArray() : std::vector<oo::ObjCRef<::Entity *>>()))
+					for (const oo::EntityHold &otherPirateRef : (group != nullptr ? group->memberArray() : std::vector<oo::EntityHold>()))
 					{
 						::ShipEntity *otherPirate = oo::ToShip(otherPirateRef.get());
 						if (otherPirate != this && randf() < 0.5)	// 50% chance they'll help
 						{
 							if (otherPirate != nullptr)  otherPirate->setFoundTarget(hunter);
 							if (otherPirate != nullptr)  otherPirate->setPrimaryAggressor(hunter);
-							if (otherPirate != nullptr)  otherPirate->respondToAttackFrom(oo::ToCxx(ent), hunter);
+							if (otherPirate != nullptr)  otherPirate->respondToAttackFrom(entPart, hunter);
 						}
 					}
 				}
 				else if (iAmTheLaw)
 				{
-					for (const oo::ObjCRef<::Entity *> &otherPoliceRef : (group != nullptr ? group->memberArray() : std::vector<oo::ObjCRef<::Entity *>>()))
+					for (const oo::EntityHold &otherPoliceRef : (group != nullptr ? group->memberArray() : std::vector<oo::EntityHold>()))
 					{
 						::ShipEntity *otherPolice = oo::ToShip(otherPoliceRef.get());
 						if (otherPolice != this)
 						{
 							if (otherPolice != nullptr)  otherPolice->setFoundTarget(hunter);
 							if (otherPolice != nullptr)  otherPolice->setPrimaryAggressor(hunter);
-							if (otherPolice != nullptr)  otherPolice->respondToAttackFrom(oo::ToCxx(ent), hunter);
+							if (otherPolice != nullptr)  otherPolice->respondToAttackFrom(entPart, hunter);
 						}
 					}
 				}
@@ -13744,7 +13714,7 @@ void ShipEntity::takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::Enti
 	
 	if (!suppressExplosion)
 	{
-		noteTakingDamage(amount, oo::ToCxx(other), damageType);
+		noteTakingDamage(amount, otherPart, damageType);
 		if (cascade) energy = 0.0; // explicit set energy to zero in case an oxp raised the energy in previous line.
 	}
 
@@ -13755,7 +13725,7 @@ void ShipEntity::takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::Enti
 		if (this != (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr)) 
 		{
 			if (hunter != nil)  { if (hunter != nullptr)  hunter->noteTargetDestroyed(this); }
-			getDestroyedBy(oo::ToCxx(other), damageType);
+			getDestroyedBy(otherPart, damageType);
 		}
 	}
 	else
@@ -14100,10 +14070,10 @@ void ShipEntity::switchLightsOn()
 {
 	_lightsActive = YES;
 
-	const std::vector<oo::ObjCRef<::Entity *>> subs = subEntities;
+	const std::vector<oo::EntityHold> subs = subEntities;
 	for (const auto &se : subs)
 	{
-		if (OOFlasherEntity *flasher = dynamic_cast<OOFlasherEntity *>(oo::ToCxx(se.get())))  flasher->setActive(YES);
+		if (OOFlasherEntity *flasher = dynamic_cast<OOFlasherEntity *>(se.get()))  flasher->setActive(YES);
 	}
 	for (const auto &sub : shipSubEntities())
 	{
@@ -14117,10 +14087,10 @@ void ShipEntity::switchLightsOff()
 {
 	_lightsActive = NO;
 
-	const std::vector<oo::ObjCRef<::Entity *>> subs = subEntities;
+	const std::vector<oo::EntityHold> subs = subEntities;
 	for (const auto &se : subs)
 	{
-		if (OOFlasherEntity *flasher = dynamic_cast<OOFlasherEntity *>(oo::ToCxx(se.get())))  flasher->setActive(NO);
+		if (OOFlasherEntity *flasher = dynamic_cast<OOFlasherEntity *>(se.get()))  flasher->setActive(NO);
 	}
 	for (const auto &sub : shipSubEntities())
 	{
@@ -14300,7 +14270,7 @@ HPVector ShipEntity::coordinatesForEscortPosition(unsigned idx)
 void ShipEntity::deployEscorts()
 {
 	::ShipEntity		*target = nil;
-	std::vector<oo::ObjCRef<::Entity *>>	idleEscorts;	// in escort order (was a mutable set: hash order)
+	std::vector<oo::EntityHold>	idleEscorts;	// in escort order (was a mutable set: hash order)
 	unsigned		deployCount;
 	
 	if (primaryTarget() == nil || _escortGroup == nil)  return;
@@ -14404,12 +14374,12 @@ void ShipEntity::setTargetToNearestStationIncludingHostiles(bool includeHostiles
 		return;
 	int			ent_count = UNIVERSE->n_entities;
 	cxx::Entity		**uni_entities = UNIVERSE->sortedEntities;	// grab the public sorted list
-	std::vector<::Entity*> my_entities(ent_count);
+	std::vector<cxx::Entity*> my_entities(ent_count);
 	int i;
 	int station_count = 0;
 	for (i = 0; i < ent_count; i++)
 		if (uni_entities[i]->isStation)
-			my_entities[station_count++] = [oo::ToObjC(uni_entities[i]) retain];		//	retained
+			my_entities[station_count++] = oo::RetainEntity(uni_entities[i]);		//	retained
 	//
 	::StationEntity *thing = nil, *station = nil;
 	double range2, nearest2 = SCANNER_MAX_RANGE2 * 1000000.0; // 1000x typical scanner range (25600 km), squared.
@@ -14424,7 +14394,7 @@ void ShipEntity::setTargetToNearestStationIncludingHostiles(bool includeHostiles
 		}
 	}
 	for (i = 0; i < station_count; i++)
-		[my_entities[i] release];		//	released
+		oo::ReleaseEntity(my_entities[i]);		//	released
 	//
 	if (station)
 	{

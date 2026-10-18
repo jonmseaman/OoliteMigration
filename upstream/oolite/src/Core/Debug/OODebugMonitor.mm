@@ -436,9 +436,9 @@ void OODebugMonitor::dumpEntity(id entity, EntityDumpState *state, bool parentVi
 	oo::log::indent();
 	if ([entity isShip])
 	{
-		for (const auto &subRef : (oo::ToShip(entity) != nullptr ? oo::ToShip(entity)->subEntityEnumerator() : std::vector<oo::ObjCRef<::Entity *>>()))
+		for (const auto &subRef : (oo::ToShip(entity) != nullptr ? oo::ToShip(entity)->subEntityEnumerator() : std::vector<oo::EntityHold>()))
 		{
-			dumpEntity(subRef.get(), state, visible);
+			dumpEntity(oo::ToObjC(subRef.get()), state, visible);
 		}
 
 		if ([entity isPlayer] && PLAYER != nullptr)
