@@ -9218,3 +9218,13 @@ not re-bases under oo-9n5p9.
    oo-31u.9.
 
 **Tests.** oo-31u.1 changes no test file, case or expected value.
+
+## Amendment (bead oo-31u.10): the mesh loaders' and the OXP verifier's pools have nothing to drain
+
+**Context.** Amendment oo-31u item 2 applied to the pools oo-31u.1 left for checking: OOMesh's octree build,
+initialiser and file read, and the OXP verifier's driver (OOOXPVerifier.mm) and its model and texture stages.
+
+**Decision.** Deleted on item 2's rule: the bodies build geometry, parse files, make materials and textures and
+run the verifier's own stages; none reaches an entity creator, a keeper (OOMaterialAutorelease is only
+OOPlanetDrawable's), `AutoreleaseAll`, JavaScript, a peer or a thread entry. Blocks stay plain blocks; locals
+die where they did. **Tests.** No test file, case or expected value changes.

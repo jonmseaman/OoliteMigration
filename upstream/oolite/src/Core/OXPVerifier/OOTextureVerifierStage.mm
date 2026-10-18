@@ -59,7 +59,6 @@ void OOTextureVerifierStage::run()
 {
 	for (const std::string &name : _usedTextures)
 	{
-		@autoreleasepool
 		{
 			checkTextureNamed(name, "Textures");
 		}

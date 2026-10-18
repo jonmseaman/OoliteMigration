@@ -167,9 +167,6 @@ bool OOOXPVerifier::runVerificationIfRequested()
 	std::optional<std::string>	foundPath;
 	bool				exists, isDirectory;
 	oo::Ref<OOOXPVerifier>	verifier;
-	void				*pool = NULL;
-	
-	pool = objc_autoreleasePoolPush();
 	
 	const std::vector<std::string> &arguments = oo::process::arguments();
 
@@ -183,7 +180,6 @@ bool OOOXPVerifier::runVerificationIfRequested()
 			if (!foundPath.has_value())
 			{
 				OO_LOG("verifyOXP.noPath", "***** ERROR: {} passed without path argument; nothing to verify.", arg.c_str());
-				objc_autoreleasePoolPop(pool);
 				return true;
 			}
 			foundPath = ExpandTildeInPath(*foundPath);
@@ -193,7 +189,6 @@ bool OOOXPVerifier::runVerificationIfRequested()
 	
 	if (!foundPath.has_value())
 	{
-		objc_autoreleasePoolPop(pool);
 		return false;
 	}
 	
@@ -212,12 +207,9 @@ bool OOOXPVerifier::runVerificationIfRequested()
 	else
 	{
 		verifier = createWithPath(foundPath);
-		objc_autoreleasePoolPop(pool);
-		pool = objc_autoreleasePoolPush();
 		if (verifier != nullptr)  verifier->run();	// -run sent to nil did nothing
 		verifier = nullptr;
 	}
-	objc_autoreleasePoolPop(pool);
 	
 	// Whether or not we got a valid path, -verify-oxp was passed.
 	return true;
@@ -428,7 +420,6 @@ void OOOXPVerifier::registerBaseStages()
 {
 	Class					stageClass = Nil;
 
-	@autoreleasepool
 	{
 		// Load stages specified as array of class names in verifyOXP.plist
 		std::vector<std::string> stages = configurationSetForKey("stages").value_or(std::vector<std::string>());
@@ -477,7 +468,6 @@ void OOOXPVerifier::buildDependencyGraph()
 	std::map<::OOOXPVerifierStage *, std::vector<std::string>>	dependenciesByStage,
 															dependentsByStage;
 
-	@autoreleasepool
 	{
 		/*	Iterate over all stages, getting dependency and dependent sets.
 			This is done in advance so that -dependencies and -dependents may
@@ -573,14 +563,12 @@ void OOOXPVerifier::buildDependencyGraph()
 
 void OOOXPVerifier::runStages()
 {
-	void					*pool = NULL;
 	::OOOXPVerifierStage	*stageToRun = nullptr;
 	std::optional<std::string>	stageName;
 	
 	// Loop while there are still stages to run.
 	for (;;)
 	{
-		pool = objc_autoreleasePoolPush();
 		
 		// Look through queue for a stage that's ready
 		stageToRun = nullptr;
@@ -595,7 +583,6 @@ void OOOXPVerifier::runStages()
 		if (stageToRun == nullptr)
 		{
 			// No more runnable stages
-			objc_autoreleasePoolPop(pool);
 			break;
 		}
 		
@@ -625,10 +612,8 @@ void OOOXPVerifier::runStages()
 		oo::log::popIndent();
 		
 		std::erase(_waitingStages, stageToRun);
-		objc_autoreleasePoolPop(pool);
 	}
 	
-	pool = objc_autoreleasePoolPush();
 	
 	if (!_waitingStages.empty())
 	{
@@ -642,7 +627,6 @@ void OOOXPVerifier::runStages()
 	}
 	_waitingStages.clear();
 	
-	objc_autoreleasePoolPop(pool);
 }
 
 
