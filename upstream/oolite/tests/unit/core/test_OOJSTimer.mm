@@ -250,22 +250,24 @@ void OOJSUnreachable(const char *function, const char *, unsigned)
 /*	The engine object: the one method the timer sends it (-callJSFunction:...), which calls the
 	function as the engine does, and the script stack the timer pushes its owner on.
 */
-@interface OOJavaScriptEngine: OOObject
-+ (OOJavaScriptEngine *) sharedEngine;
-- (BOOL) callJSFunction:(ooscript::Value)function forObject:(ooscript::Object)jsThis argc:(unsigned)argc argv:(ooscript::Value *)argv result:(ooscript::Value *)outResult;
-@end
-
-@implementation OOJavaScriptEngine
-
-+ (OOJavaScriptEngine *) sharedEngine
+// The engine (OOJavaScriptEngine.h; a C++ class since bead oo-wdqw1 deleted its facade), declared
+// with the header's names and signatures but not its class; the stand-in's answers are kept.
+class OOJavaScriptEngine
 {
-	static OOJavaScriptEngine *engine = nil;
-	if (engine == nil)  engine = [[OOJavaScriptEngine alloc] init];
+public:
+	static OOJavaScriptEngine *sharedEngine();
+	bool callJSFunction(ooscript::Value function, ooscript::Object jsThis, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult);
+};
+
+
+OOJavaScriptEngine *OOJavaScriptEngine::sharedEngine()
+{
+	static OOJavaScriptEngine *engine = new OOJavaScriptEngine;
 	return engine;
 }
 
 
-- (BOOL) callJSFunction:(ooscript::Value)function forObject:(ooscript::Object)jsThis argc:(unsigned)argc argv:(ooscript::Value *)argv result:(ooscript::Value *)outResult
+bool OOJavaScriptEngine::callJSFunction(ooscript::Value function, ooscript::Object jsThis, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult)
 {
 	sCalls++;
 	ooscript::Context context = gOOJSMainThreadContext;
@@ -273,8 +275,6 @@ void OOJSUnreachable(const char *function, const char *, unsigned)
 	if (!OK)  ooscript::clearPendingException(context);
 	return OK;
 }
-
-@end
 
 
 #import "OOScript.h"
@@ -520,7 +520,7 @@ OO_TEST(engineReset)
 {
 	sNow = 100.0;
 	OO_CHECK_EQ(Eval("globalThis.log3 = []; globalThis.r = new Timer({}, function () { log3.push('r'); }, 1, 1); r.isRunning"), "true");
-	oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineWillResetNotificationName, [OOJavaScriptEngine sharedEngine]);
+	oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineWillResetNotificationName, OOJavaScriptEngine::sharedEngine());
 	OO_CHECK_EQ(Eval("r.isRunning"), "false");
 	OO_CHECK_EQ(Eval("String(r)"), "[Timer invalid]");
 	Update(105.0);

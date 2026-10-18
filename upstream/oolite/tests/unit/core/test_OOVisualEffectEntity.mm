@@ -102,7 +102,7 @@ void SetUp()
 		OO_CHECK(oo::fs::writeFile(root / "Resources" / "Info-gnustep.plist", oo::Data("{ CFBundleVersion = \"9.9.9-test\"; }", 35), oo::fs::WriteMode::direct).has_value());
 		@autoreleasepool	// the engine autoreleases facades as it starts (as test_OOJSSystem, bead oo-9ht.172; here oo-9ht.174)
 		{
-			(void)[OOJavaScriptEngine sharedEngine];
+			(void)OOJavaScriptEngine::sharedEngine();
 		}
 	}
 	static Universe *universe = nil;

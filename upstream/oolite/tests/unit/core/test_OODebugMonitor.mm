@@ -174,61 +174,61 @@ std::optional<std::string> ResourceManager::pathForFileNamed(const std::string &
 // bead oo-9ht.74.1; the stand-in protocol that was here went with the Objective-C one.
 
 
-@interface OOJavaScriptEngine: OOObject
+// The engine and the one null (OOJavaScriptEngine.h; C++ classes since bead oo-wdqw1 deleted their
+// facades), declared with the header's names and signatures but not their classes; the null is its
+// own property-list node's foreign object, as in the game.
+class OOJavaScriptEngine
 {
-@public
-	OOJavaScriptEngineMonitor	*_monitor;	// the C++ monitor interface (bead oo-9ht.74.1)
-	ooscript::Object	_global;
-}
-+ (OOJavaScriptEngine *) sharedEngine;
-- (void) setMonitor:(OOJavaScriptEngineMonitor *)monitor;
-- (ooscript::Object) globalObject;
-- (void) removeGCObjectRoot:(ooscript::Object *)rootPtr;
-@end
+public:
+	static OOJavaScriptEngine *sharedEngine();
+	void setMonitor(OOJavaScriptEngineMonitor *monitor);
+	ooscript::Object globalObject();
+	void removeGCObjectRoot(ooscript::Object *rootPtr);
 
-@implementation OOJavaScriptEngine
+	OOJavaScriptEngineMonitor	*_monitor = nullptr;	// the C++ monitor interface (bead oo-9ht.74.1)
+};
 
-+ (OOJavaScriptEngine *) sharedEngine
+OOJavaScriptEngine *OOJavaScriptEngine::sharedEngine()
 {
-	static OOJavaScriptEngine *engine = nil;
-	if (engine == nil)  engine = [[OOJavaScriptEngine alloc] init];
+	static OOJavaScriptEngine *engine = new OOJavaScriptEngine;
 	return engine;
 }
 
 
-- (void) setMonitor:(OOJavaScriptEngineMonitor *)monitor
+void OOJavaScriptEngine::setMonitor(OOJavaScriptEngineMonitor *monitor)
 {
 	_monitor = monitor;
 }
 
 
-- (ooscript::Object) globalObject
+ooscript::Object OOJavaScriptEngine::globalObject()
 {
 	return ooscript::getGlobalObject(gOOJSMainThreadContext);
 }
 
 
-- (void) removeGCObjectRoot:(ooscript::Object *)rootPtr
+void OOJavaScriptEngine::removeGCObjectRoot(ooscript::Object *rootPtr)
 {
 	ooscript::removeObjectRoot(gOOJSMainThreadContext, rootPtr);
 }
 
-@end
 
-
-@interface OONull: OOObject
-+ (OONull *) null;
-@end
-
-@implementation OONull
-+ (OONull *) null
+class OONull : public oo::PListForeign
 {
-	static OONull *sNull = nil;
-	if (sNull == nil)  sNull = [[OONull alloc] init];
+public:
+	static OONull *null();
+	std::string className() const override;
+	std::string description() const override;
+};
+
+OONull *OONull::null()
+{
+	static OONull *sNull = oo::makeRef<OONull>().leakRef();
 	return sNull;
 }
-@end
 
+std::string OONull::className() const	{ return "OONull"; }
+std::string OONull::description() const	{ return "<null>"; }
 
 
 
@@ -281,13 +281,14 @@ OOJSScript *OOJSScript::currentlyRunningScript()
 }
 
 
-@class OOJSValue;
+class OOJSValue;
 
 
-extern "C" OOJSValue *JSSpecialFunctionsObjectWrapper(ooscript::Context context)
+// The special-functions object (OOJSSpecialFunctions.h): none, as the stand-in gave (nil).
+oo::Ref<OOJSValue> JSSpecialFunctionsObjectWrapper(ooscript::Context context)
 {
 	(void)context;
-	return nil;
+	return nullptr;
 }
 
 
@@ -469,7 +470,7 @@ void SetUp()
 	oxp.emplace("show-console-on-log", oo::PList(kFalse));
 	oxp.emplace("error-fg-color", oo::PList("redColor"));
 	oxp.emplace("bogus-color", oo::PList("not a colour"));
-	oxp.emplace("hidden", oo::PListObject([OONull null]));
+	oxp.emplace("hidden", oo::PList(oo::PList::Object(oo::Ref<oo::PListForeign>(OONull::null()))));	// [OONull null]
 	sOXPConfig = oo::PList(std::move(oxp));
 
 	oo::PList::Dict overrides;
@@ -547,7 +548,7 @@ OO_TEST(sharedMonitorIsSetUpOnce)
 		OODebugMonitor *monitor = OODebugMonitor::sharedDebugMonitor();
 		OO_CHECK(monitor != nullptr);
 		OO_CHECK(OODebugMonitor::sharedDebugMonitor() == monitor);
-		OO_CHECK([OOJavaScriptEngine sharedEngine]->_monitor == static_cast<OOJavaScriptEngineMonitor *>(monitor));
+		OO_CHECK(OOJavaScriptEngine::sharedEngine()->_monitor == static_cast<OOJavaScriptEngineMonitor *>(monitor));
 
 		OO_CHECK(sConsoleScriptsMade == 1);
 		// The console property is an Object node of the monitor itself (bead oo-9ht.74; it was the facade's).
@@ -827,7 +828,7 @@ OO_TEST(javaScriptValueAndEngineReset)
 		const ooscript::Value again = monitor->jsValueInContext(gOOJSMainThreadContext);
 		OO_CHECK(ooscript::toObject(again) == ooscript::toObject(first) && sConsoleWrappersMade == 1);
 
-		OOJavaScriptEngine *engine = [OOJavaScriptEngine sharedEngine];
+		OOJavaScriptEngine *engine = OOJavaScriptEngine::sharedEngine();
 		const int scripts = sConsoleScriptsMade;
 		oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineWillResetNotificationName, engine);
 		OO_CHECK(sConsoleDestroys == 1);

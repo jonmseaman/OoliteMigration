@@ -58,30 +58,30 @@ ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &p
 }
 
 
-@interface OOJavaScriptEngine: OOObject
-+ (OOJavaScriptEngine *) sharedEngine;
-- (BOOL) callJSFunction:(ooscript::Value)function forObject:(ooscript::Object)jsThis argc:(unsigned)argc argv:(ooscript::Value *)argv result:(ooscript::Value *)outResult;
-@end
-
-@implementation OOJavaScriptEngine
-
-+ (OOJavaScriptEngine *) sharedEngine
+// The engine (OOJavaScriptEngine.h; a C++ class since bead oo-wdqw1 deleted its facade), declared
+// with the header's names and signatures but not its class; the stand-in's answers are kept.
+class OOJavaScriptEngine
 {
-	static OOJavaScriptEngine *engine = nil;
-	if (engine == nil)  engine = [[OOJavaScriptEngine alloc] init];
+public:
+	static OOJavaScriptEngine *sharedEngine();
+	bool callJSFunction(ooscript::Value function, ooscript::Object jsThis, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult);
+};
+
+
+OOJavaScriptEngine *OOJavaScriptEngine::sharedEngine()
+{
+	static OOJavaScriptEngine *engine = new OOJavaScriptEngine;
 	return engine;
 }
 
 
-- (BOOL) callJSFunction:(ooscript::Value)function forObject:(ooscript::Object)jsThis argc:(unsigned)argc argv:(ooscript::Value *)argv result:(ooscript::Value *)outResult
+bool OOJavaScriptEngine::callJSFunction(ooscript::Value function, ooscript::Object jsThis, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult)
 {
 	sCalls++;
 	bool OK = ooscript::callFunctionValue(gOOJSMainThreadContext, jsThis, function, argc, argv, outResult);
 	if (!OK)  ooscript::clearPendingException(gOOJSMainThreadContext);
 	return OK;
 }
-
-@end
 
 
 // The script stack: the running script (set by the test) and what was pushed.
@@ -248,12 +248,12 @@ OO_TEST(engineReset)
 		const oo::Ref<OOJSGuiScreenKeyDefinition> definition = oo::makeRef<OOJSGuiScreenKeyDefinition>();
 		definition->setCallback(Evaluate("(function () {})"));
 		definition->setCallbackThis(ooscript::toObject(Evaluate("({})")));
-		oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineWillResetNotificationName, [OOJavaScriptEngine sharedEngine]);
+		oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineWillResetNotificationName, OOJavaScriptEngine::sharedEngine());
 		OO_CHECK(ooscript::isUndefined(definition->callback()));
 		OO_CHECK(definition->callbackThis() == NULL);
 	}
 	// A definition that is gone no longer observes: another reset is harmless.
-	oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineWillResetNotificationName, [OOJavaScriptEngine sharedEngine]);
+	oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineWillResetNotificationName, OOJavaScriptEngine::sharedEngine());
 	OO_CHECK(true);
 }
 

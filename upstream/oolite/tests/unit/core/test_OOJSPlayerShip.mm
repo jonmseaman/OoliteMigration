@@ -336,7 +336,7 @@ void SetUp()
 	const std::string info = "{ CFBundleVersion = \"9.9.9-test\"; }";
 	OO_CHECK(oo::fs::writeFile(sRoot / "Resources" / "Info-gnustep.plist", oo::Data(info.data(), info.size()), oo::fs::WriteMode::direct).has_value());
 	ResourceManager::setUseAddOns(std::string(SCENARIO_OXP_DEFINITION_NONE));	// strict: the built-in Resources alone
-	(void)[OOJavaScriptEngine sharedEngine];
+	(void)OOJavaScriptEngine::sharedEngine();
 
 	sRealPlayer = gOOPlayer;	// the one InitOOJSPlayerShip() made, which player.ship holds
 
@@ -372,7 +372,7 @@ std::string Eval(const std::string &src)
 {
 	SetUp();
 	ooscript::Context context = OOJSAcquireContext();
-	ooscript::Object global = [[OOJavaScriptEngine sharedEngine] globalObject];
+	ooscript::Object global = OOJavaScriptEngine::sharedEngine()->globalObject();
 	std::string wrapped = "(function () { try { return String(" + src + "); } catch (e) { return 'threw: ' + (e && e.message !== undefined ? e.message : e); } })()";
 	ooscript::Value result = ooscript::undefinedValue();
 	std::string text;
@@ -829,7 +829,7 @@ OO_TEST(playerCategory)
 	OOJSRelinquishContext(context);
 
 	// The engine's reset drops the player's JS object.
-	oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineWillResetNotificationName, [OOJavaScriptEngine sharedEngine]);
+	oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineWillResetNotificationName, OOJavaScriptEngine::sharedEngine());
 	OO_CHECK(sRealPlayer->_jsSelf == nullptr);
 	context = OOJSAcquireContext();
 	OOJSPlayerShipSetJSSelf(sRealPlayer, JSPlayerShipObject(), context);	// as InitOOJSPlayerShip() did

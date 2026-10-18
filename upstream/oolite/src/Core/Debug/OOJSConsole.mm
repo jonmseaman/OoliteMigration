@@ -328,16 +328,16 @@ ooscript::Object DebugMonitorToJSConsole(ooscript::Context context, OODebugMonit
 {
 	OOJS_PROFILE_ENTER
 	
-	OOJavaScriptEngine		*engine = nil;
+	OOJavaScriptEngine		*engine = nullptr;
 	ooscript::Object object = NULL;
 	ooscript::Object settingsObject = NULL;
 	ooscript::Value					value;
 	
-	engine = [OOJavaScriptEngine sharedEngine];
+	engine = OOJavaScriptEngine::sharedEngine();
 	
 	if (sConsolePrototype == NULL)
 	{
-		InitOOJSConsole(context, [engine globalObject]);
+		InitOOJSConsole(context, engine->globalObject());
 	}
 	
 	// Create Console object
@@ -417,15 +417,15 @@ static bool ConsoleGetProperty(ooscript::Context context, ooscript::Object thisO
 			break;
 			
 		case kConsole_showErrorLocations:
-			*value = OOJSValueFromBOOL([[OOJavaScriptEngine sharedEngine] showErrorLocations]);
+			*value = OOJSValueFromBOOL(OOJavaScriptEngine::sharedEngine()->showErrorLocations());
 			break;
 			
 		case kConsole_dumpStackForErrors:
-			*value = OOJSValueFromBOOL([[OOJavaScriptEngine sharedEngine] dumpStackForErrors]);
+			*value = OOJSValueFromBOOL(OOJavaScriptEngine::sharedEngine()->dumpStackForErrors());
 			break;
 			
 		case kConsole_dumpStackForWarnings:
-			*value = OOJSValueFromBOOL([[OOJavaScriptEngine sharedEngine] dumpStackForWarnings]);
+			*value = OOJSValueFromBOOL(OOJavaScriptEngine::sharedEngine()->dumpStackForWarnings());
 			break;
 			
 		case kConsole_glVendorString:
@@ -525,21 +525,21 @@ static bool ConsoleSetProperty(ooscript::Context context, ooscript::Object thisO
 		case kConsole_showErrorLocations:
 			if (ooscript::valueToBoolean(context, *value, &bValue))
 			{
-				[[OOJavaScriptEngine sharedEngine] setShowErrorLocations:bValue];
+				OOJavaScriptEngine::sharedEngine()->setShowErrorLocations(bValue);
 			}
 			break;
 			
 		case kConsole_dumpStackForErrors:
 			if (ooscript::valueToBoolean(context, *value, &bValue))
 			{
-				[[OOJavaScriptEngine sharedEngine] setDumpStackForErrors:bValue];
+				OOJavaScriptEngine::sharedEngine()->setDumpStackForErrors(bValue);
 			}
 			break;
 			
 		case kConsole_dumpStackForWarnings:
 			if (ooscript::valueToBoolean(context, *value, &bValue))
 			{
-				[[OOJavaScriptEngine sharedEngine] setDumpStackForWarnings:bValue];
+				OOJavaScriptEngine::sharedEngine()->setDumpStackForWarnings(bValue);
 			}
 			break;
 			

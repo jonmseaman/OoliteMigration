@@ -2531,7 +2531,7 @@ void PlayerEntity::doMissionCallback()
 {
 	// make sure we don't call the same callback twice
 	_missionWithCallback = NO;
-	[[::OOJavaScriptEngine sharedEngine] runMissionCallback];
+	OOJavaScriptEngine::sharedEngine()->runMissionCallback();
 }
 
 

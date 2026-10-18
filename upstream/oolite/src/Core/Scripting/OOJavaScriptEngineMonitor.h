@@ -38,7 +38,7 @@ MA 02110-1301, USA.
 #include <optional>
 #include <string>
 
-@class OOJavaScriptEngine;
+class OOJavaScriptEngine;
 
 
 class OOJavaScriptEngineMonitor

@@ -43,7 +43,7 @@ SOFTWARE.
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/StdLib.hpp"
 #import "OOJSFunction.h"
-@class OOJSValue;
+#include "OOJSEngineCore.h"	// OOJSValue, which the matcher holds
 
 
 enum
@@ -77,7 +77,7 @@ private:
 
 	oo::Ref<OOJSFunction>	_tester = {};
 	std::optional<std::string>	_cachedRegExpString = {};	// UTF-8; nullopt: nothing cached (proposed ADR-0043)
-	::OOJSValue				*_cachedRegExpObject = {};
+	oo::Ref<OOJSValue>		_cachedRegExpObject = {};
 	NSUInteger				_cachedFlags = {};
 };
 

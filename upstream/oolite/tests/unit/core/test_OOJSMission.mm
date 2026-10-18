@@ -172,15 +172,15 @@ public:
 /*	The engine calls the mission screen's callback. While _raise is set it raises instead, as a
 	script error could, which MissionRunCallback() logs and ignores.
 */
-@interface OOJavaScriptEngine: OOObject
+class OOJavaScriptEngine	// a C++ class since bead oo-wdqw1 deleted its facade: the header's names and signatures
 {
-@public
-	int _calls;
-	BOOL _raise;
-}
-+ (OOJavaScriptEngine *) sharedEngine;
-- (BOOL) callJSFunction:(ooscript::Value)function forObject:(ooscript::Object)jsThis argc:(unsigned)argc argv:(ooscript::Value *)argv result:(ooscript::Value *)outResult;
-@end
+public:
+	static OOJavaScriptEngine *sharedEngine();
+	bool callJSFunction(ooscript::Value function, ooscript::Object jsThis, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult);
+
+	int _calls = 0;
+	BOOL _raise = NO;
+};
 
 
 // The music controller, a converted class the binding only calls (amendment oo-jy98 item 3): the
@@ -479,21 +479,17 @@ void OOJSScript::popScript(OOJSScript *script)  { sScriptStack.push_back("-" + (
 
 
 namespace {
-OOJavaScriptEngine *sEngine = nil;
+OOJavaScriptEngine *sEngine = nullptr;
 }
 
-@implementation OOJavaScriptEngine
+OOJavaScriptEngine *OOJavaScriptEngine::sharedEngine()  { return sEngine; }
 
-+ (OOJavaScriptEngine *) sharedEngine  { return sEngine; }
-
-- (BOOL) callJSFunction:(ooscript::Value)function forObject:(ooscript::Object)jsThis argc:(unsigned)argc argv:(ooscript::Value *)argv result:(ooscript::Value *)outResult
+bool OOJavaScriptEngine::callJSFunction(ooscript::Value function, ooscript::Object jsThis, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult)
 {
 	_calls++;
 	if (_raise)  [OOException raise:OOInvalidArgumentException format:"callback %s", "boom"];
 	return ooscript::callFunctionValue(sContext, jsThis, function, argc, argv, outResult);
 }
-
-@end
 
 
 OOMusicController::OOMusicController()
@@ -824,7 +820,7 @@ void SetUpContext()
 	sUniverse->_demoShip = new ShipEntity;
 	sDemoShipObject = [[Entity alloc] init];
 	gSharedUniverse = sUniverse;
-	sEngine = [[OOJavaScriptEngine alloc] init];
+	sEngine = new OOJavaScriptEngine;
 	sRunningScript = oo::makeRef<OOJSScript>().leakRef();
 	sRunningScript->_name = "oolite-test-mission";
 	sScriptObject = ooscript::newObject(sContext, nullptr, nullptr, nullptr);

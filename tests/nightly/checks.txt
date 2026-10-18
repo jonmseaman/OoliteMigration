@@ -659,3 +659,5 @@
 [oo-9ht.164] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/check-string-expander.sh && bash tools/js-api-contract.sh && bash tools/tier-c.sh --only goldens
 [oo-9ht.153] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/check-string-expander.sh && bash tools/js-api-contract.sh && bash tools/tier-c.sh --only goldens
 [oo-43xoj] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/check-string-expander.sh && bash tools/js-api-contract.sh && bash tools/tier-c.sh --only goldens
+[oo-wdqw1] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/check-string-expander.sh && bash tools/js-api-contract.sh && bash tools/tier-c.sh --only goldens
+[oo-dxzhu] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/check-string-expander.sh && bash tools/js-api-contract.sh && bash tools/tier-c.sh --only goldens

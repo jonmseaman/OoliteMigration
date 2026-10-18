@@ -22,6 +22,7 @@
 #import "OOTypes.h"
 #include "ooscript/JSEngine.hpp"
 #import "OOJSEngineNativeWrappers.h"
+#include "OOJSEngineCore.h"	// OOJSValue
 #include "oofnd/String.hpp"
 
 #include "oo_test.hpp"
@@ -94,41 +95,26 @@ std::optional<std::string> cxx_OOStringFromJSValue(ooscript::Context context, oo
 }
 
 
-// A JS value kept alive for Objective-C, as the engine's OOJSValue does.
-@interface OOJSValue: OOObject
+// A JS value kept alive for C++ (OOJSEngineCore.h; a C++ class since bead oo-wdqw1 deleted its
+// facade): the members the deferred add calls, defined here with the stand-in's answers.
+oo::Ref<OOJSValue> OOJSValue::valueWithJSValue(ooscript::Value value, ooscript::Context context)
 {
-@public
-	ooscript::Value _val;
-}
-+ (id) valueWithJSValue:(ooscript::Value)value inContext:(ooscript::Context)context;
-@end
-
-@implementation OOJSValue
-
-+ (id) valueWithJSValue:(ooscript::Value)value inContext:(ooscript::Context)context
-{
-	OOJSValue *result = [[[OOJSValue alloc] init] autorelease];
+	oo::Ref<OOJSValue> result = oo::makeRef<OOJSValue>();
 	result->_val = value;
 	ooscript::addNamedValueRoot(context, &result->_val, "test OOJSValue");
 	return result;
 }
 
 
-- (void) dealloc
+OOJSValue::~OOJSValue()
 {
 	ooscript::removeValueRoot(gOOJSMainThreadContext, &_val);
-	[super dealloc];
 }
 
-@end
 
-
-extern "C" ooscript::Value OOJSValueFromNativeObject(ooscript::Context context, id object)
-{
-	(void)context;
-	if (object == nil)  return ooscript::nullValue();
-	return static_cast<OOJSValue *>(object)->_val;
-}
+ooscript::Value OOJSValue::jsValueInContext(ooscript::Context)  { return _val; }
+std::string OOJSValue::className() const  { return "OOJSValue"; }
+std::string OOJSValue::description() const  { return "<OOJSValue>"; }
 
 
 #ifndef NDEBUG

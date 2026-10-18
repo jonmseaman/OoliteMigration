@@ -41,7 +41,7 @@
 
 // MARK: The file's API, as its header declares it ----------------------------------------------
 
-@class OOJavaScriptEngine;
+class OOJavaScriptEngine;
 
 // OOTimeProfile and OOTimeProfileEntry, as OOJSEngineTimeManagement.h declares them (test_OOJSEngineTimeManagement.hpp).
 
@@ -102,22 +102,15 @@ extern "C" void OOJSDumpStack(ooscript::Context)
 
 
 // The engine owns the runtime; the watchdog reads it from the engine's ivar, as in the game.
-@interface OOJavaScriptEngine: OOObject
+// The engine (a C++ class since bead oo-wdqw1 deleted its facade): reference counted, as the
+// watchdog holds it; the engine owns the runtime, which the watchdog is handed with it.
+class OOJavaScriptEngine : public oo::RefCounted
 {
-@public
-	ooscript::Runtime _runtime;
-}
-- (id) initWithRuntime:(ooscript::Runtime)runtime;
-@end
+public:
+	explicit OOJavaScriptEngine(ooscript::Runtime runtime) : _runtime(runtime) {}
 
-@implementation OOJavaScriptEngine
-- (id) initWithRuntime:(ooscript::Runtime)runtime
-{
-	self = [super init];
-	if (self != nil)  _runtime = runtime;
-	return self;
-}
-@end
+	ooscript::Runtime _runtime;
+};
 
 
 #import "OOScript.h"
@@ -320,7 +313,7 @@ OO_TEST(watchdog)
 {
 	// The watchdog stops a script that runs past its limit.
 	ooscript::Runtime runtime = ooscript::newRuntime(8u * 1024u * 1024u);
-	OOJSTimeManagementInit([[[OOJavaScriptEngine alloc] initWithRuntime:runtime] autorelease], runtime);
+	OOJSTimeManagementInit(oo::makeRef<OOJavaScriptEngine>(runtime).get(), runtime);	// the watchdog keeps its own reference
 	ooscript::Context context = ooscript::newContext(runtime, 8192);	// the context callback sets the operation callback
 	ooscript::beginRequest(context);
 	ooscript::Object global = ooscript::getGlobalObject(context);

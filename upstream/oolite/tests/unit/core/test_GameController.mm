@@ -147,7 +147,7 @@ void SetUp()
 	stdfs::current_path(sRoot);
 	stdfs::create_directories(sRoot / "Resources");
 	OO_CHECK(oo::fs::writeFile(sRoot / "Resources" / "Info-gnustep.plist", oo::Data("{ CFBundleVersion = \"9.9.9-test\"; }", 35), oo::fs::WriteMode::direct).has_value());
-	(void)[OOJavaScriptEngine sharedEngine];
+	(void)OOJavaScriptEngine::sharedEngine();
 	sPlayer = NewTestPlayer<TestPlayer>();	// never released
 	gOOPlayer = sPlayer;
 }

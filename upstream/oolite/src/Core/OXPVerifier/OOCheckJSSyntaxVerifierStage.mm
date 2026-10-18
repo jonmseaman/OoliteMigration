@@ -79,7 +79,7 @@ void OOCheckJSSyntaxVerifierStage::run()
 	
 	if (scriptsFolder == false && configScript == false)  return;
 
-	[[OOJavaScriptEngine sharedEngine] setShowErrorLocations:YES];
+	OOJavaScriptEngine::sharedEngine()->setShowErrorLocations(YES);
 
 	for (const std::string &scriptFile : scriptFiles)
 	{

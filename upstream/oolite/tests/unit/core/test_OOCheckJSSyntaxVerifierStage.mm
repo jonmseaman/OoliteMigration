@@ -66,29 +66,27 @@ std::vector<std::string> gScriptPaths;		// +scriptWithPath:properties:, in order
 }	// namespace
 
 
-@interface OOJavaScriptEngine: OOObject
-
-+ (OOJavaScriptEngine *) sharedEngine;
-- (void) setShowErrorLocations:(BOOL)value;
-
-@end
-
-
-@implementation OOJavaScriptEngine
-
-+ (OOJavaScriptEngine *) sharedEngine
+// The engine (OOJavaScriptEngine.h; a C++ class since bead oo-wdqw1 deleted its facade), declared
+// with the header's names and signatures but not its class.
+class OOJavaScriptEngine
 {
-	static OOJavaScriptEngine *engine = [[OOJavaScriptEngine alloc] init];
+public:
+	static OOJavaScriptEngine *sharedEngine();
+	void setShowErrorLocations(bool value);
+};
+
+
+OOJavaScriptEngine *OOJavaScriptEngine::sharedEngine()
+{
+	static OOJavaScriptEngine *engine = new OOJavaScriptEngine;
 	return engine;
 }
 
 
-- (void) setShowErrorLocations:(BOOL)value
+void OOJavaScriptEngine::setShowErrorLocations(bool value)
 {
 	if (value)  gShowErrorLocations++;
 }
-
-@end
 
 
 #import "OOScript.h"

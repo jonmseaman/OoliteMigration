@@ -367,7 +367,7 @@ bool OOJSScript::initWithPath(const std::optional<std::string> &path, const oo::
 	if (!problem.has_value())
 	{
 		oo::NotificationCenter::defaultCenter().addObserver(this, kOOJavaScriptEngineWillResetNotificationName,
-															[::OOJavaScriptEngine sharedEngine],
+															OOJavaScriptEngine::sharedEngine(),
 															[this](const oo::Notification &notification) { javaScriptEngineWillReset(notification); });
 	}
 
@@ -378,7 +378,7 @@ bool OOJSScript::initWithPath(const std::optional<std::string> &path, const oo::
 OOJSScript::~OOJSScript()
 {
 	oo::NotificationCenter::defaultCenter().removeObserver(this, kOOJavaScriptEngineWillResetNotificationName,
-															[::OOJavaScriptEngine sharedEngine]);
+															OOJavaScriptEngine::sharedEngine());
 
 	if (_jsSelf != NULL)
 	{

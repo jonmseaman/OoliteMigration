@@ -223,7 +223,7 @@ void SetUp()
 	// PlayerEntity::sharedPlayer() answers it (the C++ player cannot change class, as
 	// object_setClass() made the Objective-C one a TestPlayerShip; bead oo-9ht.177).
 	gOOPlayer = NewTestPlayer<TestPlayerShip>();
-	(void)[OOJavaScriptEngine sharedEngine];
+	(void)OOJavaScriptEngine::sharedEngine();
 
 	sRealPlayer = gOOPlayer;	// the one InitOOJSPlayerShip() made, which player.ship holds
 	sRealPlayer->isPlayer = true;	// what the player's set-up sets, which the engine's player has not run
@@ -259,7 +259,7 @@ std::string Eval(const std::string &src)
 {
 	SetUp();
 	ooscript::Context context = OOJSAcquireContext();
-	ooscript::Object global = [[OOJavaScriptEngine sharedEngine] globalObject];
+	ooscript::Object global = OOJavaScriptEngine::sharedEngine()->globalObject();
 	ooscript::Value shipValue = OOJSValueFromNativeObject(context, oo::ToObjC(sShip));
 	ooscript::setProperty(context, global, "ship", &shipValue);
 	ooscript::Value otherValue = OOJSValueFromNativeObject(context, oo::ToObjC(sOther));
@@ -819,7 +819,7 @@ OO_TEST(methodsRemoveAndExplode)
 	if (queued != nullptr)  queued->setStatus(STATUS_DOCKED);
 	ooscript::Context context = OOJSAcquireContext();
 	ooscript::Value queuedValue = OOJSValueFromNativeObject(context, oo::ToObjC(queued));
-	ooscript::setProperty(context, [[OOJavaScriptEngine sharedEngine] globalObject], "queued", &queuedValue);
+	ooscript::setProperty(context, OOJavaScriptEngine::sharedEngine()->globalObject(), "queued", &queuedValue);
 	OOJSRelinquishContext(context);
 	Log();
 	OO_CHECK_EVAL("queued.remove(true)", "undefined");

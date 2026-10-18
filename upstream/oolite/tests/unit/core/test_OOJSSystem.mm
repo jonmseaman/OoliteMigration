@@ -354,7 +354,7 @@ void SetUp()
 	OO_CHECK(oo::fs::writeFile(sRoot / "Resources" / "Info-gnustep.plist", oo::Data(info.data(), info.size()), oo::fs::WriteMode::direct).has_value());
 	@autoreleasepool	// the engine autoreleases facades as it starts (as Eval(), bead oo-9ht.172)
 	{
-		(void)[OOJavaScriptEngine sharedEngine];
+		(void)OOJavaScriptEngine::sharedEngine();
 	}
 
 	sUniverse = new FakeUniverse();
@@ -424,7 +424,7 @@ std::string Eval(const std::string &src)
 	@autoreleasepool
 	{
 		ooscript::Context context = OOJSAcquireContext();
-		ooscript::Object global = [[OOJavaScriptEngine sharedEngine] globalObject];
+		ooscript::Object global = OOJavaScriptEngine::sharedEngine()->globalObject();
 		std::string wrapped = "(function () { try { return String(" + src + "); } catch (e) { return 'threw: ' + (e && e.message !== undefined ? e.message : e); } })()";
 		ooscript::Value result = ooscript::undefinedValue();
 		if (!ooscript::evaluateScript(context, global, wrapped.c_str(), static_cast<unsigned>(wrapped.size()), "test.js", 1, &result))

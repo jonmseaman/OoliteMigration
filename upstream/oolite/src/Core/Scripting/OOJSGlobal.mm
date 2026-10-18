@@ -438,7 +438,7 @@ static bool GlobalLog(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	OO_LOG(messageClass, "{}", message.value_or("(null)"));
 	
 #if OOJSENGINE_MONITOR_SUPPORT
-	cxx::OOJavaScriptEngine::sharedEngine()->sendMonitorLogMessage(message, std::nullopt, context);
+	OOJavaScriptEngine::sharedEngine()->sendMonitorLogMessage(message, std::nullopt, context);
 #endif
 	OOJS_END_FULL_NATIVE
 	

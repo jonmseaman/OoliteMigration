@@ -274,9 +274,14 @@ public:
 
 #import "ResourceManager.h"
 
-@interface OOJavaScriptEngine: OOObject
-+ (OOJavaScriptEngine *) sharedEngine;
-@end
+// The engine (OOJavaScriptEngine.h; a C++ class since bead oo-wdqw1 deleted its facade), declared
+// with the header's names and signatures but not its class.
+class OOJavaScriptEngine
+{
+public:
+	static OOJavaScriptEngine *sharedEngine();
+	bool callJSFunction(ooscript::Value function, ooscript::Object jsThis, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult);
+};
 
 
 @interface Entity (OOJavaScriptExtensions)
@@ -527,13 +532,14 @@ oo::PList ResourceManager::dictionaryFromFilesNamed(const std::string &fileName,
 
 
 
-@implementation OOJavaScriptEngine
-+ (OOJavaScriptEngine *) sharedEngine
+OOJavaScriptEngine *OOJavaScriptEngine::sharedEngine()
 {
-	static OOJavaScriptEngine *engine = [[OOJavaScriptEngine alloc] init];
+	static OOJavaScriptEngine *engine = new OOJavaScriptEngine;
 	return engine;
 }
-@end
+
+// The interface definitions' callback call: never reached here (the stand-in did not answer it).
+bool OOJavaScriptEngine::callJSFunction(ooscript::Value, ooscript::Object, unsigned, ooscript::Value *, ooscript::Value *)  { std::abort(); }
 
 
 #import "OOScript.h"

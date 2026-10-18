@@ -266,14 +266,14 @@ static bool ContextCallback(ooscript::Context context, ooscript::ContextOp conte
 void OOJSTimeManagementInit(OOJavaScriptEngine *engine, ooscript::Runtime runtime)
 {
 	// The watchdog holds the engine for its (endless) life, as a detached selector thread did.
-	[engine retain];
+	if (engine != nullptr)  engine->retain();
 	oo::thread::detach([engine, runtime]()
 	{
 		@autoreleasepool
 		{
 			WatchdogTimerThread(runtime);
 		}
-		[engine release];
+		if (engine != nullptr)  engine->release();
 	});
 	
 	ooscript::setContextCallback(runtime, ContextCallback);
