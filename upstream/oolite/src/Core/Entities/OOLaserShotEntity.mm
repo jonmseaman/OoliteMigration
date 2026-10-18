@@ -75,7 +75,7 @@ void OOLaserShotEntity::initLaserFromShip(::ShipEntity *srcEntity, OOWeaponFacin
 {
 	// [super init] could not fail: the constructor ran Entity's -init body.
 
-	::ShipEntity			*ship = oo::ToShip((srcEntity != nullptr ? srcEntity->rootShipEntity() : (::Entity *)nil));
+	::ShipEntity			*ship = oo::ToShip((srcEntity != nullptr ? srcEntity->rootShipEntity() : (cxx::Entity *)nullptr));
 	Vector				middle = OOBoundingBoxCenter((srcEntity != nullptr ? srcEntity->getBoundingBox() : BoundingBox{}));
 
 	OOCParameterAssert((srcEntity != nullptr ? srcEntity->getIsShip() : false) && (ship != nullptr ? ship->getIsShip() : false));

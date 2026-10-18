@@ -104,7 +104,7 @@ namespace {
 static std::vector<oo::ObjCRef<::Entity *>> FindShips(EntityFilterPredicate predicate, void *parameter, cxx::Entity *relativeTo, double range);
 } // namespace
 namespace {
-static OOComparisonResult CompareEntitiesByDistance(id a, id b, cxx::Entity *relativeTo);
+static OOComparisonResult CompareEntitiesByDistance(cxx::Entity *a, cxx::Entity *b, cxx::Entity *relativeTo);
 } // namespace
 
 namespace {
@@ -1915,7 +1915,7 @@ static std::vector<oo::ObjCRef<::Entity *>> FindJSVisibleEntities(EntityFilterPr
 		// -sortUsingFunction:context: with the same comparison (a stable sort: GNUstep's is timsort).
 		std::stable_sort(result.begin(), result.end(), [relativeTo](const oo::ObjCRef<::Entity *> &a, const oo::ObjCRef<::Entity *> &b)
 		{
-			return CompareEntitiesByDistance(a.get(), b.get(), relativeTo) == OOOrderedAscending;
+			return CompareEntitiesByDistance(oo::ToCxx(a.get()), oo::ToCxx(b.get()), relativeTo) == OOOrderedAscending;
 		});
 	}
 	return result;	// empty for no matches, as the empty array was
@@ -1943,17 +1943,17 @@ static std::vector<oo::ObjCRef<::Entity *>> FindShips(EntityFilterPredicate pred
 
 
 namespace {
-static OOComparisonResult CompareEntitiesByDistance(id a, id b, cxx::Entity *relativeTo)
+static OOComparisonResult CompareEntitiesByDistance(cxx::Entity *a, cxx::Entity *b, cxx::Entity *relativeTo)
 {
 	OOJS_PROFILE_ENTER
 	
-	Entity				*ea = a,
+	cxx::Entity			*ea = a,	// the C++ entities (bead oo-9ht.39.25)
 	*eb = b;
 	cxx::Entity			*r = relativeTo;	// the C++ entity (bead oo-9ht.39.8.23)
 	float				d1, d2;
 	
-	d1 = HPdistance2(ea->_cxxEntity->position, r->position);
-	d2 = HPdistance2(eb->_cxxEntity->position, r->position);
+	d1 = HPdistance2(ea->position, r->position);
+	d2 = HPdistance2(eb->position, r->position);
 	
 	if (d1 < d2)  return OOOrderedAscending;
 	else if (d1 > d2)  return OOOrderedDescending;

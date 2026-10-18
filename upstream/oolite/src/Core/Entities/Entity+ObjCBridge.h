@@ -345,6 +345,11 @@ inline PList EntityObjectNode(::Entity *object)
 inline PList EntityObjectNode(cxx::Entity *entity)  { return EntityObjectNode(ToObjC(entity)); }
 inline PList EntityObjectNode(const Ref<cxx::Entity> &entity)  { return EntityObjectNode(entity.get()); }
 
+// What oo::ShortDescriptionOf(ToObjC(entity)) printed (bead oo-9ht.39.24): the entity's object's
+// short description, whose text holds the object's address; "(null)" for null. callObjC()'s
+// "does not respond" error prints it; it goes with the facade (oo-9ht.39 step 5k).
+std::string EntityShortDescription(cxx::Entity *entity);
+
 // The C++ entity of an entity's Object node, borrowed; null for any other node. A plain Object node
 // of an entity's object (oo::PListObject(), still made by Objective-C callers and the tests'
 // stand-ins) answers the same entity until the facade goes.

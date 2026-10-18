@@ -298,7 +298,7 @@ OO_TEST(standardSubentities)
 		OO_CHECK(child->getIsSubEntity());
 		OO_CHECK([childObject retainCount] == 2);	// the parent's list and the enumerator's snapshot (effects)
 		OO_CHECK(effect->isShipWithSubEntityShip(oo::ToObjC(child)));
-		OO_CHECK((id)child->parentEntity() == oo::ToObjC(effect));
+		OO_CHECK(child->parentEntity() == effect);
 		OO_CHECK(!child->isShipWithSubEntityShip(oo::ToObjC(effect)));
 
 		// Rescaling the whole effect moves and rescales its subentities.
@@ -405,10 +405,9 @@ OO_TEST(beacons)
 		OO_CHECK(effect->prevBeacon() == nil && effect->nextBeacon() == nil);
 
 		OOVisualEffectEntity *other = Effect("other", Dict({}));
-		OOVisualEffectBeaconEntity *otherObject = (OOVisualEffectBeaconEntity *)oo::ToObjC(other);	// the beacon list holds objects
-		effect->setPrevBeacon(otherObject);
-		effect->setNextBeacon(otherObject);
-		OO_CHECK(effect->prevBeacon() == otherObject && effect->nextBeacon() == otherObject);
+		effect->setPrevBeacon(other);	// the C++ entity (bead oo-9ht.39.24)
+		effect->setNextBeacon(other);
+		OO_CHECK(effect->prevBeacon() == other && effect->nextBeacon() == other);
 		effect->setNextBeacon(nullptr);
 		OO_CHECK(effect->nextBeacon() == nil);
 		effect->setPrevBeacon(nullptr);
@@ -416,7 +415,7 @@ OO_TEST(beacons)
 		// An empty code is none.
 		effect->setBeaconCode(std::optional<std::string>(""));
 		OO_CHECK(!effect->beaconCode().has_value());
-		OO_CHECK(effect->compareBeaconCodeWith(otherObject) == OOOrderedSame);
+		OO_CHECK(effect->compareBeaconCodeWith(other) == OOOrderedSame);
 	}
 }
 

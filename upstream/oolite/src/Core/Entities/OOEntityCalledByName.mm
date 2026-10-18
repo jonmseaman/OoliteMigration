@@ -152,7 +152,9 @@ void OOEntityByNameTyped(cxx::Entity *entity, OOEntityByNameValue &value)
 	result callObjC() cannot read (a string, a vector of objects, a matrix, a high-precision vector,
 	a bounding box: "cannot be called", or no result) has no function. The answers are
 	the root facade's -respondsToSelector:'s: every entity but for the planet's shader selectors (a planet's
-	part) and the beacon protocol's (a ship's, an effect's or a waypoint's part).
+	part) and the beacon protocol's (a ship's, an effect's or a waypoint's part). The entity results
+	(nextBeacon, prevBeacon, parentEntity, rootShipEntity) are the C++ entity since bead oo-9ht.39.24:
+	callObjC() makes its Object node, the same as the object's.
 */
 namespace {
 
@@ -247,8 +249,8 @@ GLfloat Facade_mass(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getMass(); }
 GLfloat Facade_maxEnergy(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getMaxEnergy(); }
-Entity <OOBeaconEntity> * Facade_nextBeacon(cxx::Entity *entity)
-{ if (entity == nullptr)  return {}; if (ShipEntity *ship = ShipPart(entity))  return (Entity <OOBeaconEntity> *)oo::ToObjC(ship->nextBeacon()); if (OOVisualEffectEntity *effect = EffectPart(entity))  return effect->nextBeacon(); OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(entity); return waypoint != nullptr ? waypoint->nextBeacon() : nil; }
+cxx::Entity * Facade_nextBeacon(cxx::Entity *entity)
+{ if (entity == nullptr)  return {}; if (ShipEntity *ship = ShipPart(entity))  return ship->nextBeacon(); if (OOVisualEffectEntity *effect = EffectPart(entity))  return effect->nextBeacon(); OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(entity); return waypoint != nullptr ? waypoint->nextBeacon() : nullptr; }
 Quaternion Facade_normalOrientation(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return link->superNormalOrientation(); return entity->normalOrientation(); }
 Quaternion Facade_orientation(cxx::Entity *entity)
@@ -257,15 +259,15 @@ void Facade_orientationChanged(cxx::Entity *entity)
 { if (entity == nullptr)  return; if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  link->superOrientationChanged(); else  entity->orientationChanged(); }
 id Facade_owner(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->owner(); }
-Entity * Facade_parentEntity(cxx::Entity *entity)
+cxx::Entity * Facade_parentEntity(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->parentEntity(); }
-Entity <OOBeaconEntity> * Facade_prevBeacon(cxx::Entity *entity)
-{ if (entity == nullptr)  return {}; if (ShipEntity *ship = ShipPart(entity))  return (Entity <OOBeaconEntity> *)oo::ToObjC(ship->prevBeacon()); if (OOVisualEffectEntity *effect = EffectPart(entity))  return effect->prevBeacon(); OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(entity); return waypoint != nullptr ? waypoint->prevBeacon() : nil; }
+cxx::Entity * Facade_prevBeacon(cxx::Entity *entity)
+{ if (entity == nullptr)  return {}; if (ShipEntity *ship = ShipPart(entity))  return ship->prevBeacon(); if (OOVisualEffectEntity *effect = EffectPart(entity))  return effect->prevBeacon(); OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(entity); return waypoint != nullptr ? waypoint->prevBeacon() : nullptr; }
 Vector Facade_relativePosition(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->relativePosition(); }
 void Facade_removeFromLinkedLists(cxx::Entity *entity)
 { if (entity == nullptr)  return; entity->removeFromLinkedLists(); }
-Entity * Facade_rootShipEntity(cxx::Entity *entity)
+cxx::Entity * Facade_rootShipEntity(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; return entity->rootShipEntity(); }
 OOScanClass Facade_scanClass(cxx::Entity *entity)
 { if (entity == nullptr)  return {}; if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return link->superGetScanClass(); return entity->getScanClass(); }
@@ -656,8 +658,7 @@ bool oo::EntityRespondsToName(cxx::Entity *entity, const std::string &name)
 	// An Objective-C entity's class may answer more: it is asked, as before.
 	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))
 	{
-		::Entity *object = link->objcOwner();
-		return object != nil && [object respondsToSelector:SelectorNamed(name)];
+		return [link->objcOwner() respondsToSelector:SelectorNamed(name)];	// NO for none, as a message to nil answers
 	}
 	// A facade row (bead oo-9ht.39.8.25): the root facade's -respondsToSelector:'s answer for the facade's method.
 	if (const OOEntityFacadeRow *facade = EntityFacadeRowNamed(name))  return facade->answers == nullptr || facade->answers(entity);

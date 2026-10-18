@@ -574,26 +574,26 @@ Entity *Entity::ownerEntity()
 }
 
 
-::Entity *Entity::parentEntity()
+Entity *Entity::parentEntity()
 {
 	id owner = this->owner();
-	if ([owner isShipWithSubEntityShip:oo::ToObjC(this)])  return owner;
-	return nil;
+	if ([owner isShipWithSubEntityShip:oo::ToObjC(this)])  return oo::ToCxx(static_cast<::Entity *>(owner));
+	return nullptr;
 }
 
 
 id<OOWeakReferenceSupport> Entity::superShaderBindingTarget()
 {
-	return parentEntity();
+	return oo::WeakEntityObject(oo::WeakRef<cxx::Entity>(parentEntity()));	// +0, as the owner was read (bead oo-9ht.39.24)
 }
 
 
-::Entity *Entity::rootShipEntity()
+Entity *Entity::rootShipEntity()
 {
-	::Entity *parent = parentEntity();
-	if (parent != nil)  return oo::ToCxx(parent)->rootShipEntity();
-	if (getIsShip())  return oo::ToObjC(this);
-	return nil;
+	Entity *parent = parentEntity();
+	if (parent != nullptr)  return parent->rootShipEntity();
+	if (getIsShip())  return this;
+	return nullptr;
 }
 
 
@@ -665,7 +665,7 @@ HPVector Entity::absolutePositionForSubentityOffset(HPVector offset)
 {
 	HPVector		abspos = HPvector_add(position, OOHPVectorMultiplyMatrix(offset, rotMatrix));
 	Entity		*last = nil;
-	Entity		*father = oo::ToCxx(parentEntity());
+	Entity		*father = parentEntity();
 
 	while (father != nil && father != last)
 	{

@@ -8241,3 +8241,56 @@ Also (oo-9ht.39.23's tier-a): the static `AuthorityPredicate` (ShipEntity.mm) an
 namespace before them (clang-tidy misc-use-anonymous-namespace on the changed lines), and the re-signed
 predicates that ignore an argument leave it unnamed (`/*parameter*/`, misc-unused-parameters, as the JS
 predicates already did); no behaviour change.
+
+## Amendment (bead oo-9ht.39.24): the parent, root and beacon getters answer C++ entities; slices of 5b and 5d
+
+oo-9ht.39 steps 5a (the rest), 5b slice 1 (oo-9ht.39.25.1) and 5d slice 1 (oo-9ht.39.27.1), batch AK, Migration
+Completion session, 2026-10-17, in one branch and one commit. Also oo-9ht.39.30 (landed before it): the callObjC
+table generator renders the three JS-glue rows kept by hand since oo-9ht.39.8.9, so `--check` passes again.
+
+1. **Parent and root.** `cxx::Entity::parentEntity()` and `rootShipEntity()` answer the C++ entity (they answered
+   the object; still null when the owner is not a ship holding this one, or has gone). The root facade's
+   `-parentEntity`, `Entity::superShaderBindingTarget()` and the ship's turret/sub-entity loops that still ask the
+   objects read the parent's object `+0` through `oo::WeakEntityObject()`, as they read the owner before
+   (`oo::ToObjC()` would retain and autorelease it and so keep it alive to the end of the pool; a waypoint test
+   checks exactly that a released beacon reads nil). Callers convert at the edge (compiler-driven).
+2. **Beacons.** The effect's and the waypoint's `prevBeacon()`/`nextBeacon()` answer the C++ entity (null once
+   its object has gone, as before); `setPrevBeacon()`/`setNextBeacon()`/`compareBeaconCodeWith()` take it; the
+   facade's beacon getters read the object `+0` as above.
+3. **The by-name and callObjC rows.** The facade rows `parentEntity`, `rootShipEntity`, `prevBeacon`,
+   `nextBeacon` (`OOEntityCalledByName.mm`) answer the C++ entity, which callObjC() makes the Object node of
+   (amendment oo-9ht.39.24.1); `gen-callobjc-entity-table.py` writes a facade method answering an entity as
+   `@encode(id)` (the same "@"). An Objective-C entity's name question no longer names its object's type.
+   callObjC()'s "does not respond" text gets the entity's object's description from
+   `oo::EntityShortDescription()` (Entity+ObjCBridge: `oo::ShortDescriptionOf(oo::ToObjC(entity))`, byte for
+   byte; the text holds the object's address, so it goes with the facade, 5k).
+4. **5b.1, the JS engine.** `OOJavaScriptEngineIsVisibleToScripts/IsShip/IsSubEntity/IsPlanet/Status` take
+   `cxx::Entity *` and answer the members the root facade's selectors forwarded to; the JS predicates pass the
+   entity, and `JSFunctionPredicate` hands the function `OOJSEntityJSValue(entity)`. `gOOJSPlayerIfStale` holds
+   the player's C++ entity (the object overload of `OOIsStaleEntity()` goes). The player's `compassTarget`
+   getter and setter compare `getCompassTargetEntity()`; `filteredEntities`' distance sort compares C++
+   entities; `ShipEntityJSSetTargetForScript` climbs sub-entities by ship (`ToShip(owner())`).
+5. **5d.1, filters, collision, groups.** `OOEntityFilterPredicate.mm`'s scan-class, ship, station, planet, sun
+   and effect predicates and `CollisionRegion.mm`'s `isPlayer`/`isShip`/`isPlanet`/`isVisible`/`status`/
+   `universalID`/`checkCloseCollisionWith:` sends ask the C++ members. `OOShipGroup` compares members by identity
+   (`-isEqual:` of their objects was identity, OOObject's); its leader's description still names the object
+   (its unit tests link no facade). `OOJSVisualEffect`'s sub-effect removal still reads the owner's object
+   (its test links no `Entity.mm`).
+
+**Defaults (rule 10).** Behaviour-identical (goldens, core tests). Wherever a facade selector was sent, an
+Objective-C entity (an `oo::ObjCEntityLink` adapter: the tests' stand-ins, whose classes override `-isShip`,
+`-status`, ...) is still messaged and answers as nil once its object has gone; every other entity answers the
+member the root facade forwarded to. Flagged, not observable in the game: `JSFunctionPredicate` asks a gone
+Objective-C stand-in's C++ part for its JS value (it asked nil); the collision and filter questions no longer
+retain and autorelease each entity's object per call. Kept until the facade goes (amendment oo-9ht.39.4): the
+owning lists (`cxx_collidingEntities`' row and the collision list; the universe's lists the JS bindings read;
+`OOShipGroup::memberArray()`), the Objective-C adapter's glue, and what only an object answers
+(`OOStellarBodyPlanetType()`, `-isKindOfClass:`, a description). The ship's facade beacon getters (oo-9ht.39.23)
+still return `oo::ToObjC()` of the entity. The engine's own `oo::ToObjC(engine/OOJSValue/OONull)` and the game
+controller's are not the entity facade's (the facade-use regex counts them).
+
+**Tests (standing approval oo-9n5p9, lines on main first).** `test_DockEntity`, `test_OOVisualEffectEntity`,
+`test_OOWaypointEntity` hand and compare the C++ entity; `test_OOJSCall` stands in `oo::EntityShortDescription`;
+the six tests that define `gOOJSPlayerIfStale` define it as `cxx::Entity *` and store the stale entity's C++ part (`test_OOJSPlayer`: the C++ player, `sPlayer`, which its
+stand-in object stands for; the object has no part).
+The same entities and expected values; no case removed.

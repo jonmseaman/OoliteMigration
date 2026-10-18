@@ -349,8 +349,9 @@ bool CallMethod(ooscript::Context context, id object, const std::string &oo_jsCl
 	else
 	{
 		// An entity's text names its object, whose address it holds (ADR-0056 amendment oo-9ht.39.8.25).
-		id described = (entity != nullptr) ? oo::ToObjC(entity) : object;
-		cxx_OOJSReportError(context, "%s.callObjC(): %s does not respond to method %s.", oo_jsClassName.c_str(), oo::ShortDescriptionOf(described).c_str(), (selectorString ? selectorString->c_str() : "(null)"));
+		// The entity's object's text comes from the facade (bead oo-9ht.39.24), byte for byte.
+		std::string described = (entity != nullptr) ? oo::EntityShortDescription(entity) : oo::ShortDescriptionOf(object);
+		cxx_OOJSReportError(context, "%s.callObjC(): %s does not respond to method %s.", oo_jsClassName.c_str(), described.c_str(), (selectorString ? selectorString->c_str() : "(null)"));
 		error = true;
 	}
 	

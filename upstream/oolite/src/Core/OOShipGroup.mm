@@ -254,7 +254,7 @@ bool OOShipGroup::containsShip(::ShipEntity *ship)
 {
 	for (::ShipEntity *containedShip : OOShipGroupMembers(this))
 	{
-		if ((ship != nullptr ? [oo::ToObjC(ship) isEqual:oo::ToObjC(containedShip)] : false))
+		if (ship != nullptr && ship == containedShip)	// what -isEqual: of their objects answered (identity; bead oo-9ht.39.27)
 		{
 			return true;
 		}
@@ -301,7 +301,7 @@ bool OOShipGroup::removeShip(::ShipEntity *ship)
 	shipEnum.setPerformCleanup(NO);
 	while ((containedShip = shipEnum.next()))
 	{
-		if ((ship != nullptr ? [oo::ToObjC(ship) isEqual:oo::ToObjC(containedShip)] : false))
+		if (ship != nullptr && ship == containedShip)	// what -isEqual: of their objects answered (identity; bead oo-9ht.39.27)
 		{
 			index = shipEnum.index() - 1;
 			_members[index] = _members[--_count];
