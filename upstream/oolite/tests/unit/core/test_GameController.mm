@@ -36,6 +36,8 @@
 
 #include <cstdlib>
 #include <filesystem>
+#include <functional>
+#include <memory>
 #include <process.h>
 #include <string>
 #include <vector>
@@ -125,6 +127,22 @@ public:
 - (void) raise:(id)argument		{ _calls.push_back("raise"); OORaiseException(OOGenericException, "%s", "deferred call failure"); }
 
 @end
+
+
+// The controller's state is private since bead oo-auu6o; GameController.h names this struct its friend
+// so the checks below read and set the same members (expected values unchanged).
+struct GameControllerTestAccess
+{
+	static auto &_playerFileToLoad(GameController *controller)	{ return controller->_playerFileToLoad; }
+	static auto &pauseSelector(GameController *controller)	{ return controller->pauseSelector; }
+	static auto &pauseTarget(GameController *controller)	{ return controller->pauseTarget; }
+	static auto &width(GameController *controller)	{ return controller->width; }
+	static auto &height(GameController *controller)	{ return controller->height; }
+	static auto &refresh(GameController *controller)	{ return controller->refresh; }
+	static auto &fullscreenDisplayMode(GameController *controller)	{ return controller->fullscreenDisplayMode; }
+	static auto &fullscreen(GameController *controller)	{ return controller->fullscreen; }
+	static auto &stayInFullScreenMode(GameController *controller)	{ return controller->stayInFullScreenMode; }
+};
 
 
 namespace {
@@ -377,9 +395,9 @@ OO_TEST(fullScreenMembers)
 
 		OO_CHECK_EQ(controller->getDisplayModes().count(), 3u);
 		OO_CHECK(controller->getDisplayModes() == controller->getDisplayModes());
-		OO_CHECK_EQ(controller->width, 1280u);
-		OO_CHECK_EQ(controller->height, 720u);
-		OO_CHECK_EQ(controller->refresh, 75u);
+		OO_CHECK_EQ(GameControllerTestAccess::width(controller), 1280u);
+		OO_CHECK_EQ(GameControllerTestAccess::height(controller), 720u);
+		OO_CHECK_EQ(GameControllerTestAccess::refresh(controller), 75u);
 		OO_CHECK(controller->indexOfCurrentDisplayMode() == 2u);
 		OO_CHECK(controller->indexOfCurrentDisplayMode() == 2u);
 		OO_CHECK(controller->findDisplayModeForWidth(640, 480, 60) == Mode(640, 480, 60));
@@ -387,15 +405,15 @@ OO_TEST(fullScreenMembers)
 
 		OO_CHECK(controller->setDisplayWidth(640, 480, 60));
 		OO_CHECK(controller->indexOfCurrentDisplayMode() == 0u);
-		OO_CHECK(controller->fullscreenDisplayMode == Mode(640, 480, 60));
+		OO_CHECK(GameControllerTestAccess::fullscreenDisplayMode(controller) == Mode(640, 480, 60));
 		OO_CHECK_EQ(oo::Defaults::standard().integerForKey("display_refresh"), 60);
 		OO_CHECK(!controller->setDisplayWidth(1280, 720, 30));
-		OO_CHECK_EQ(controller->width, 640u);
+		OO_CHECK_EQ(GameControllerTestAccess::width(controller), 640u);
 
 		// No current mode: the screen's size, refresh unchanged; no match is NSNotFound.
 		view->_currentMode = oo::PList();
 		controller->setUpDisplayModes();
-		OO_CHECK_EQ(controller->width, 0u);
+		OO_CHECK_EQ(GameControllerTestAccess::width(controller), 0u);
 		OO_CHECK(controller->indexOfCurrentDisplayMode() == NSNotFound);
 
 		view->_inFullScreen = YES;
@@ -404,25 +422,25 @@ OO_TEST(fullScreenMembers)
 		OO_CHECK(!controller->inFullScreenMode());
 
 		controller->setFullScreenMode(true);
-		OO_CHECK(controller->fullscreen);
+		OO_CHECK(GameControllerTestAccess::fullscreen(controller));
 		controller->setFullScreenMode(false);
-		OO_CHECK(!controller->fullscreen);
+		OO_CHECK(!GameControllerTestAccess::fullscreen(controller));
 
-		controller->stayInFullScreenMode = true;
+		GameControllerTestAccess::stayInFullScreenMode(controller) = true;
 		oo::Defaults::standard().setBool("fullscreen", true);
 		controller->exitFullScreenMode();
-		OO_CHECK(!controller->stayInFullScreenMode);
+		OO_CHECK(!GameControllerTestAccess::stayInFullScreenMode(controller));
 		OO_CHECK(!oo::Defaults::standard().boolForKey("fullscreen"));
 
 		TestTarget *target = [[TestTarget alloc] init];
-		controller->stayInFullScreenMode = true;
+		GameControllerTestAccess::stayInFullScreenMode(controller) = true;
 		controller->pauseFullScreenModeToPerform(@selector(record:), target);
-		OO_CHECK(controller->pauseSelector == @selector(record:));
-		OO_CHECK(controller->pauseTarget == target);
-		OO_CHECK(!controller->stayInFullScreenMode);
+		OO_CHECK(GameControllerTestAccess::pauseSelector(controller) == @selector(record:));
+		OO_CHECK(GameControllerTestAccess::pauseTarget(controller) == target);
+		OO_CHECK(!GameControllerTestAccess::stayInFullScreenMode(controller));
 		controller->pauseFullScreenModeToPerform(@selector(raise:), nil);
-		OO_CHECK(controller->pauseSelector == @selector(raise:));
-		OO_CHECK(controller->pauseTarget == nil);
+		OO_CHECK(GameControllerTestAccess::pauseSelector(controller) == @selector(raise:));
+		OO_CHECK(GameControllerTestAccess::pauseTarget(controller) == nil);
 		[target release];
 	}
 }
@@ -491,6 +509,38 @@ OO_TEST(deferredCalls)
 		controller->fireDueTimers();
 		OO_CHECK(target->_calls.size() == 3 && target->_calls.back() == "raise");
 		OO_CHECK([target retainCount] == 3);	// the leaked +1 and the pending 60 s call's
+
+		// Bead oo-pvhrh (added): a C++ deferred call shares the performs' queue - due calls run one per
+		// pass in scheduling order, what the call captures is kept until it has run, and an OOException
+		// from it is swallowed and the call kept (its captures stay, as the performer leaked its target).
+		// (The pending 60 s call above is not due.)
+		TestTarget *cxxTarget = [[TestTarget alloc] init];
+		std::vector<std::string> order;
+		std::shared_ptr<int> kept = std::make_shared<int>(1);
+
+		OOScheduleDeferredCall([&order, kept]() { order.push_back("cxx"); }, 0.0);
+		OOScheduleDeferredCall(cxxTarget, @selector(record:), nil, -1.0);
+		OOScheduleDeferredCall(std::function<void()>(), 0.0);	// an empty call: nothing scheduled
+		OO_CHECK(kept.use_count() == 2);
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(5));
+		controller->fireDueTimers();
+		OO_CHECK(order == std::vector<std::string>({ "cxx" }));
+		OO_CHECK(cxxTarget->_calls.empty());
+		OO_CHECK(kept.use_count() == 1);
+		controller->fireDueTimers();
+		OO_CHECK(cxxTarget->_calls == std::vector<std::string>({ "nil" }));
+		controller->fireDueTimers();	// nothing due
+		OO_CHECK(order.size() == 1 && cxxTarget->_calls.size() == 1);
+
+		std::shared_ptr<int> leaked = std::make_shared<int>(2);
+		OOScheduleDeferredCall([&order, leaked]() { order.push_back("raise"); OORaiseException(OOGenericException, "%s", "deferred call failure"); }, 0.0);
+		std::this_thread::sleep_for(std::chrono::milliseconds(5));
+		controller->fireDueTimers();
+		OO_CHECK(order.size() == 2 && order.back() == "raise");
+		OO_CHECK(leaked.use_count() == 2);	// the call was not destroyed
+
+		[cxxTarget release];
 
 		controller->stopAnimationTimer();
 		[argument release];
@@ -585,7 +635,7 @@ OO_TEST(cxxAPI)
 
 		// The state the members keep.
 		controller->setPlayerFileToLoad("x.oolite-save");
-		OO_CHECK(controller->_playerFileToLoad == std::optional<std::string>("x.oolite-save"));
+		OO_CHECK(GameControllerTestAccess::_playerFileToLoad(controller) == std::optional<std::string>("x.oolite-save"));
 		controller->setPlayerFileToLoad("x");
 	}
 }

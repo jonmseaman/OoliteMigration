@@ -275,16 +275,6 @@ bool BeaconCodeMatches(const std::optional<std::string> &beaconCode, const std::
 //	members. The Objective-C facade's initialiser and -dealloc are newUniverse() and the destructor
 //	(bead oo-ql9rn).
 
-@implementation OOUniverseDelayedMessage
-
-- (void) deliverToUniverse
-{
-	if (UNIVERSE != nullptr)  UNIVERSE->addDelayedMessage(self);
-}
-
-@end
-
-
 Universe::Universe()
 {
 }
@@ -7196,18 +7186,16 @@ void Universe::addDelayedMessage(const std::optional<std::string> &text, OOTimeD
 	oo::PList::Dict msgDict;
 	if (text.has_value())  msgDict["message"] = oo::PList(*text);
 	msgDict["duration"] = oo::PList(count);
-	::OOUniverseDelayedMessage *holder = [[::OOUniverseDelayedMessage alloc] init];
-	holder->message = oo::PList(std::move(msgDict));
-	OOScheduleDeferredCall(holder, @selector(deliverToUniverse), nil, delay);	// the holder hands itself to UNIVERSE (the target was the facade, bead oo-ql9rn)
-	[holder release];
+	// The call carries the dictionary and hands it to UNIVERSE when it runs (the target was the
+	// facade, bead oo-ql9rn; the Objective-C holder OOUniverseDelayedMessage until bead oo-pvhrh).
+	OOScheduleDeferredCall([message = oo::PList(std::move(msgDict))]() { if (UNIVERSE != nullptr)  UNIVERSE->addDelayedMessage(message); }, delay);
 }
 
 
-void Universe::addDelayedMessage(::OOUniverseDelayedMessage *holder)
+void Universe::addDelayedMessage(const oo::PList &message)
 {
 	std::optional<std::string>	msg;
 	OOTimeDelta		msg_duration;
-	const oo::PList	message = (holder != nil) ? holder->message : oo::PList();
 
 	msg = OptionalStringIn(message, "message");
 	if (!msg.has_value())  return;
@@ -10442,7 +10430,7 @@ void Universe::setAirResistanceFactor(GLfloat newFactor)
 }
 
 
-// The speech arms. The Mac's moved here from the facade's @implementation with its deletion (bead
+// The speech arms. The Mac's moved here from the facade's class body with its deletion (bead
 // oo-ql9rn), bodies verbatim; it is not built (docs/phases/3-slices/Universe.md "mac-only"; Phase 5
 // rewrites the Mac layer).
 #if OOLITE_MAC_OS_X

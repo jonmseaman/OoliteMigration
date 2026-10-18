@@ -398,6 +398,14 @@ OO_TEST(standardUniformLocations)
 }
 
 
+// The view's state is private since bead oo-mlpcc; MyOpenGLView.h names this struct its friend so
+// the checks below read and set the same member (expected values unchanged).
+struct MyOpenGLViewTestAccess
+{
+	static auto &matrixManager(MyOpenGLView *view)	{ return view->matrixManager; }
+};
+
+
 OO_TEST(openGLFunctionsUseTheGameViewsManager)
 {
 	OO_CHECK(OOTestGLContext());
@@ -406,7 +414,7 @@ OO_TEST(openGLFunctionsUseTheGameViewsManager)
 		oo::Ref<OOOpenGLMatrixManager> manager = oo::makeRef<OOOpenGLMatrixManager>();
 		OOOpenGLMatrixManager *m = manager.get();
 		sView = oo::makeRef<MyOpenGLView>();
-		sView->matrixManager = manager;
+		MyOpenGLViewTestAccess::matrixManager(sView.get()) = manager;
 		OOTestUniverse *universe = new OOTestUniverse();
 		universe->view = sView.get();
 		gSharedUniverse = universe;

@@ -122,35 +122,11 @@ size_t OODrawable::totalSize()
 #endif
 
 
-/*	OODrawableAutorelease()'s keeper: an autoreleased Objective-C object that holds the drawable, so
-	the pool's drain releases it as it released the facade. Private to this file; nothing messages
-	it (as OOScript.mm's keeper, amendment oo-9ht.133 item 3).
+/*	OODrawableAutorelease(): the drawable goes to the Objective-C autorelease pool, whose drain releases it
+	where the keeper object that held it was released (bead oo-pvhrh; oo::AutoreleaseInObjCPool).
 */
-@interface OODrawableAutoreleaseKeeper: OOObject
-{
-@private
-	oo::Ref<OODrawable>	_drawable;
-}
-
-- (id) initWithDrawable:(oo::Ref<OODrawable>)drawable;
-
-@end
-
-
-@implementation OODrawableAutoreleaseKeeper
-
-- (id) initWithDrawable:(oo::Ref<OODrawable>)drawable
-{
-	self = [super init];
-	if (self != nil)  _drawable = std::move(drawable);
-	return self;
-}
-
-@end
-
-
 void OODrawableAutorelease(oo::Ref<OODrawable> drawable)
 {
 	if (drawable == nullptr)  return;
-	[[[OODrawableAutoreleaseKeeper alloc] initWithDrawable:std::move(drawable)] autorelease];
+	oo::AutoreleaseInObjCPool(std::move(drawable));
 }

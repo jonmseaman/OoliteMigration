@@ -34,6 +34,7 @@ SOFTWARE.
 #include <cstdlib>
 #include <cxxabi.h>
 #include <typeinfo>
+#include "oofnd/objc/OOObjCRef.h"	// oo::AutoreleaseInObjCPool (bead oo-pvhrh)
 
 
 namespace {
@@ -192,35 +193,11 @@ void OOMaterial::willDealloc()
 }
 
 
-/*	OOMaterialAutorelease()'s keeper: an autoreleased Objective-C object that holds the material, so
-	the pool's drain releases it as it released the facade. Private to this file; nothing messages
-	it (as OODrawable.mm's keeper, amendment oo-hahfg item 1).
+/*	OOMaterialAutorelease(): the material goes to the Objective-C autorelease pool, whose drain releases it
+	where the keeper object that held it was released (bead oo-pvhrh; oo::AutoreleaseInObjCPool).
 */
-@interface OOMaterialAutoreleaseKeeper: OOObject
-{
-@private
-	oo::Ref<OOMaterial>	_material;
-}
-
-- (id) initWithMaterial:(oo::Ref<OOMaterial>)material;
-
-@end
-
-
-@implementation OOMaterialAutoreleaseKeeper
-
-- (id) initWithMaterial:(oo::Ref<OOMaterial>)material
-{
-	self = [super init];
-	if (self != nil)  _material = std::move(material);
-	return self;
-}
-
-@end
-
-
 void OOMaterialAutorelease(oo::Ref<OOMaterial> material)
 {
 	if (material == nullptr)  return;
-	[[[OOMaterialAutoreleaseKeeper alloc] initWithMaterial:std::move(material)] autorelease];
+	oo::AutoreleaseInObjCPool(std::move(material));
 }

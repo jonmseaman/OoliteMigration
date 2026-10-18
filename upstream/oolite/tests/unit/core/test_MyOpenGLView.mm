@@ -404,6 +404,16 @@ OO_TEST(dumpGrayAlphaLeavesTheCallersBytes)
 #endif
 
 
+// The view's state is private since bead oo-mlpcc; MyOpenGLView.h names this struct its friend so
+// the checks below read the same members (expected values unchanged).
+struct MyOpenGLViewTestAccess
+{
+	static auto &viewSize(MyOpenGLView *view)	{ return view->viewSize; }
+	static auto &display_z(MyOpenGLView *view)	{ return view->display_z; }
+	static auto &matrixManager(MyOpenGLView *view)	{ return view->matrixManager; }
+};
+
+
 // After the conversion: the C++ view the game made (its facade's crossings went with bead oo-9ht.153).
 OO_TEST(cxxAPI)
 {
@@ -415,10 +425,10 @@ OO_TEST(cxxAPI)
 		OO_CHECK(cxxView->getWindowCaption() == view->getWindowCaption());
 		OO_CHECK(cxxView->getDisplayId() == view->getDisplayId());
 		cxxView->updateGLSize(NSMakeSize(1024, 768));
-		OO_CHECK(view->getViewSize().width == 1024 && cxxView->viewSize.height == 768);
-		OO_CHECK(Near(cxxView->display_z, 640.0));
+		OO_CHECK(view->getViewSize().width == 1024 && MyOpenGLViewTestAccess::viewSize(cxxView).height == 768);
+		OO_CHECK(Near(MyOpenGLViewTestAccess::display_z(cxxView), 640.0));
 		// The matrix manager is C++; the view's getter answers it.
-		OO_CHECK(cxxView->getOpenGLMatrixManager() == cxxView->matrixManager.get());
+		OO_CHECK(cxxView->getOpenGLMatrixManager() == MyOpenGLViewTestAccess::matrixManager(cxxView).get());
 	}
 }
 

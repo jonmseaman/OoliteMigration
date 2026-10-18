@@ -39,6 +39,7 @@ MA 02110-1301, USA.
 #include <cstdlib>
 #include <cxxabi.h>
 #include <typeinfo>
+#include "oofnd/objc/OOObjCRef.h"	// oo::AutoreleaseInObjCPool (bead oo-pvhrh)
 
 
 namespace {
@@ -358,34 +359,11 @@ void OOScript::clearJSSelf(ooscript::Object)
 }
 
 
-/*	OOScriptAutorelease()'s keeper: an autoreleased Objective-C object that holds the script, so the
-	pool's drain releases it as it released the facade. Private to this file; nothing messages it.
+/*	OOScriptAutorelease(): the script goes to the Objective-C autorelease pool, whose drain releases it
+	where the keeper object that held it was released (bead oo-pvhrh; oo::AutoreleaseInObjCPool).
 */
-@interface OOScriptAutoreleaseKeeper: OOObject
-{
-@private
-	oo::Ref<OOScript>	_script;
-}
-
-- (id) initWithScript:(oo::Ref<OOScript>)script;
-
-@end
-
-
-@implementation OOScriptAutoreleaseKeeper
-
-- (id) initWithScript:(oo::Ref<OOScript>)script
-{
-	self = [super init];
-	if (self != nil)  _script = std::move(script);
-	return self;
-}
-
-@end
-
-
 void OOScriptAutorelease(oo::Ref<OOScript> script)
 {
 	if (script == nullptr)  return;
-	[[[OOScriptAutoreleaseKeeper alloc] initWithScript:std::move(script)] autorelease];
+	oo::AutoreleaseInObjCPool(std::move(script));
 }
