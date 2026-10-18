@@ -248,7 +248,7 @@ static void DumpMipMap(void *data, OOPixMapDimension width, OOPixMapDimension he
 
 OOPixMap OOScalePixMap(OOPixMap srcPx, OOPixMapDimension dstWidth, OOPixMapDimension dstHeight, bool leaveSpaceForMipMaps)
 {
-	OOPixMap			dstPx = {0}, sparePx = {0};
+	OOPixMap			dstPx = {}, sparePx = {};
 	bool				OK = YES;
 	
 	//	Sanity check.
