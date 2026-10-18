@@ -44,6 +44,15 @@ EXCLUDED = {
 }
 STRING_ARG = "const std::string &"
 
+# The facade's Entity (OOJavaScriptExtensions) category was deleted by bead oo-9ht.39.8.9; its
+# callable methods stay callObjC() names (answered on the C++ part by OOEntityCalledByName.mm's
+# facade rows), rendered where the category followed the by-name rows (bead oo-9ht.39.30).
+RETIRED_JS_CATEGORY_ROWS = [
+    ("isVisibleToScripts", "Typed", "BOOL"),
+    ("cxx_oo_jsClassName", "Typed", "std::optional<std::string>"),
+    ("deleteJSSelf", "VoidVoid", "void"),
+]
+
 
 def balanced(text, start):
     """Index just past the parenthesised group that opens at text[start] == '('."""
@@ -144,6 +153,8 @@ def rows():
                     form = classify(ret, arg)
                     if form is not None and name.rstrip(":") not in EXCLUDED:
                         result.append((conds + bconds, name, form, ret))
+                for name, form, ret in RETIRED_JS_CATEGORY_ROWS:
+                    result.append((list(conds), name, form, ret))
                 continue
             if re.match(r"@implementation\s+Entity\b", line):
                 inimpl = True
