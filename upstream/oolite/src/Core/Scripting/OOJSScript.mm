@@ -104,7 +104,7 @@ struct RunningStack
 {
 	RunningStack			*back = nullptr;
 	// The running script, held weakly (bead oo-9ht.133: the stack held its Objective-C object, or
-	// the OOWeakReference a timer or definition pushed); null for a script-less push.
+	// the weak reference proxy a timer or definition pushed); null for a script-less push.
 	oo::WeakRef<OOJSScript>	current;
 	bool					scriptless = false;	// pushed with no script, which scriptStack() refuses
 };
@@ -141,7 +141,7 @@ static oo::PList ScriptConverter(ooscript::Context context, ooscript::Object obj
 
 
 /*	A Script object's private slot (bead oo-9ht.133): a weak reference to its script, as the slot held
-	the OOWeakReference the script's -weakRetain gave, so the JS object does not keep the script
+	the weak reference proxy the script's facade gave, so the JS object does not keep the script
 	alive. The slot retains it once; OOJSCxxObjectWrapperFinalize releases it (it has no JS glue of
 	its own: the converter and toString() below ask the script, and answer what a dead reference
 	did once it has gone).
@@ -251,7 +251,7 @@ bool OOJSScript::initWithPath(const std::optional<std::string> &path, const oo::
 
 		if (!problem.has_value())
 		{
-			// (the slot held the script's -weakRetain: a weak reference, retained)
+			// (the slot held the script's weak reference proxy, retained)
 			if (!OOJSSetCxxPrivate(context, _jsSelf, oo::makeRef<ScriptPrivate>(this).get()))
 			{
 				problem = "could not set private backreference";
@@ -805,7 +805,7 @@ static void AddStackToArrayReversed(std::vector<oo::Ref<OOJSScript>> &array, Run
 	{
 		AddStackToArrayReversed(array, stack->back);
 		// -addObject: raised on the nil a script-less push leaves (GNUstep 1.31.1's text). A weak
-		// push whose script has gone was a dead OOWeakReference, not nil: it is a null entry.
+		// push whose script has gone was a dead weak reference proxy, not nil: it is a null entry.
 		if (stack->scriptless)  [OOException raise:OOInvalidArgumentException format:"Tried to add nil to array"];
 		array.emplace_back(stack->current.get());
 	}

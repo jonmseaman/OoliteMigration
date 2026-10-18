@@ -41,7 +41,7 @@ id result, on a selector a dispatcher calls by name.
 
 A nil target does nothing (as messaging nil). A target that does not answer <selector>, or whose
 method has no signature above, is logged (callByName.unknownSelector / callByName.badSignature)
-and not called; the result is a null PList. A forwarding proxy (OOWeakReference) is followed.
+and not called; the result is a null PList. A forwarding proxy (an entity's weak reference) is followed.
 Phase 3 replaces the IMP lookup with a map from name to handler; the signatures stay.
 
 Oolite

@@ -41,7 +41,6 @@ MA 02110-1301, USA.
 #include "oofnd/Scanner.hpp"
 #import "OORoleSet.h"
 #import "OOShipGroup.h"
-#import "OOWeakSet.h"
 #import "GameController.h"
 #import "MyOpenGLView.h"
 #import "OOSystemDescriptionManager.h"
@@ -384,8 +383,8 @@ void ShipEntity::shipWillDealloc()
 	script = nullptr;
 	aiScript = nullptr;
 	octree = nullptr;
-	_defenseTargets = nullptr;
-	_collisionExceptions = nullptr;
+	_defenseTargets.removeAll();
+	_collisionExceptions.removeAll();
 
 	setSubEntityTakingDamage(nullptr);
 	removeAllEquipment();
@@ -11587,74 +11586,53 @@ std::vector<oo::ObjCRef<::Entity *>> ShipEntity::collisionExceptions()
 {
 	// The live ones, in the weak set's order (empty when there are none).
 	std::vector<oo::ObjCRef<::Entity *>> result;
-	if (_collisionExceptions != nullptr)
-	{
-		for (const oo::ObjCRef<id> &exception : _collisionExceptions->allObjects())  result.emplace_back(static_cast<::Entity *>(exception.get()));
-	}
+	for (const oo::Ref<cxx::Entity> &exception : _collisionExceptions.allObjects())  result.emplace_back(oo::ToObjC(exception.get()));
 	return result;
 }
 
 
 void ShipEntity::addCollisionException(::ShipEntity *ship)
 {
-	if (_collisionExceptions == nullptr)
-	{
-		// Allocate lazily for the benefit of the ships that never need this.
-		_collisionExceptions = ::OOWeakSet::set();
-	}
-	_collisionExceptions->addObject(oo::ToObjC(ship));
+	_collisionExceptions.add(ship);	// (was allocated lazily, as an OOWeakSet of the ships' objects)
 }
 
 
 void ShipEntity::removeCollisionException(::ShipEntity *ship)
 {
-	if (_collisionExceptions != nullptr)
-	{
-		_collisionExceptions->removeObject(oo::ToObjC(ship));
-	}
+	_collisionExceptions.remove(ship);
 }
 
 
 bool ShipEntity::collisionExceptedFor(::ShipEntity *ship)
 {
-	if (_collisionExceptions == nullptr)
-	{
-		return NO;
-	}
-	return _collisionExceptions->containsObject(oo::ToObjC(ship));
+	return _collisionExceptions.contains(ship);
 }
 
 
 NSUInteger ShipEntity::defenseTargetCount()
 {
-	return (_defenseTargets != nullptr) ? _defenseTargets->count() : 0;
+	return _defenseTargets.count();
 }
 
 
 std::vector<oo::ObjCRef<::Entity *>> ShipEntity::allDefenseTargets()
 {
 	std::vector<oo::ObjCRef<::Entity *>> result;
-	if (_defenseTargets != nullptr)
-	{
-		for (const oo::ObjCRef<id> &target : _defenseTargets->allObjects())  result.emplace_back(static_cast<::Entity *>(target.get()));
-	}
+	for (const oo::Ref<cxx::Entity> &target : _defenseTargets.allObjects())  result.emplace_back(oo::ToObjC(target.get()));
 	return result;
 }
 
 
 std::vector<oo::ObjCRef<::Entity *>> ShipEntity::defenseTargets()
 {
-	// What the weak set's enumerator gave, in its order: it stops at the first zeroed reference.
+	// What the weak set's enumerator gave: the live targets, in its order.
 	std::vector<oo::ObjCRef<::Entity *>> targets;
-	if (_defenseTargets != nullptr)
-	{
-		for (const oo::ObjCRef<id> &target : _defenseTargets->objectEnumerator())  targets.emplace_back(static_cast<::Entity *>(target.get()));
-	}
+	for (const oo::Ref<cxx::Entity> &target : _defenseTargets.allObjects())  targets.emplace_back(oo::ToObjC(target.get()));
 	return targets;
 }
 
 
-// The C++ entity since bead oo-9ht.39.23; the weak set still holds its object.
+// The C++ entity since bead oo-9ht.39.23; the weak set holds it since bead oo-9ht.22.3.
 bool ShipEntity::addDefenseTarget(cxx::Entity *target)
 {
 	if (defenseTargetCount() >= MAX_TARGETS)
@@ -11666,23 +11644,13 @@ bool ShipEntity::addDefenseTarget(cxx::Entity *target)
 	{
 		return NO;
 	}
-	if (_defenseTargets == nullptr)
-	{
-		// Allocate lazily for the benefit of the ships that never get in fights.
-		_defenseTargets = ::OOWeakSet::set();
-	}
-	
-	_defenseTargets->addObject(oo::ToObjC(target));
+	_defenseTargets.add(target);	// (was allocated lazily, as an OOWeakSet of the targets' objects)
 	return YES;
 }
 
 
 void ShipEntity::validateDefenseTargets()
 {
-	if (_defenseTargets == nullptr)
-	{
-		return;
-	}
 	// iterate a copy as we'll be modifying original during enumeration
 	for (const auto &targetRef : allDefenseTargets())
 	{
@@ -11697,20 +11665,20 @@ void ShipEntity::validateDefenseTargets()
 
 bool ShipEntity::isDefenseTarget(cxx::Entity *target)
 {
-	return _defenseTargets != nullptr && _defenseTargets->containsObject(oo::ToObjC(target));
+	return _defenseTargets.contains(target);
 }
 
 
 // exposed to AI (as alias of clearDefenseTargets)
 void ShipEntity::removeAllDefenseTargets()
 {
-	if (_defenseTargets != nullptr)  _defenseTargets->removeAllObjects();
+	_defenseTargets.removeAll();
 }
 
 
 void ShipEntity::removeDefenseTarget(cxx::Entity *target)
 {
-	if (_defenseTargets != nullptr)  _defenseTargets->removeObject(oo::ToObjC(target));
+	_defenseTargets.remove(target);
 }
 
 

@@ -209,7 +209,7 @@ public:
 
 	// @private in Objective-C; still public (the tests read them), as the player's were after its
 	// facade went (ADR-0056 amendment oo-9ht.177 item 6)
-	oo::Ref<::OOWeakSet>		_shipsOnHold = {};
+	oo::WeakSet<cxx::Entity>	_shipsOnHold = {};	// the ships' C++ parts, weakly (an OOWeakSet of their objects until bead oo-9ht.22.3)
 	::DockEntity				*player_reserved_dock = {};
 	double					last_launch_time = {};
 	double					approach_spacing = {};

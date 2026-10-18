@@ -10,8 +10,8 @@ C++20 since bead oo-u61e.4 (proposed ADR-0056, the OOColor house style), a subcl
 facade, which was then its object, by bead oo-9ht.133 (ADR-0056 amendment oo-9ht.133): the script's
 identity is the C++ object. Holders keep it as oo::Ref (the timers and definitions as oo::WeakRef),
 the stack of running scripts holds it weakly, and the Script JS object's private slot holds a weak
-reference to it (OOJSPrivateObject glue, amendment oo-6symp), as it held the facade's
-OOWeakReference.
+reference to it (OOJSPrivateObject glue, amendment oo-6symp), as it held the facade's weak
+reference proxy.
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -66,8 +66,8 @@ public:
 		timers. Failing to balance these will crash!
 		Passing a nil script is valid for cases where JS is used which is not
 		attached to a specific script.
-		The weak form is for a holder that keeps its script weakly (it pushed the OOWeakReference
-		-weakRetain gave it); pop it with its get().
+		The weak form is for a holder that keeps its script weakly (it pushed the weak reference
+		proxy the script's facade gave it); pop it with its get().
 	*/
 	static void pushScript(OOJSScript *script);
 	static void pushScript(const oo::WeakRef<OOJSScript> &script);

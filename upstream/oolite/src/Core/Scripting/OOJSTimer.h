@@ -74,7 +74,7 @@ private:
 	ooscript::Value				_function = {};
 	ooscript::Object _jsThis = {};	// The object that is 'this' in the function call.
 
-	oo::WeakRef<OOJSScript>		_owningScript;	// a weak reference (was -weakRetain)
+	oo::WeakRef<OOJSScript>		_owningScript;	// a weak reference (was the facade's weak reference proxy)
 
 	ooscript::Object _jsSelf = {};	// The JS Timer object proxy for this OOJSTimer.
 };

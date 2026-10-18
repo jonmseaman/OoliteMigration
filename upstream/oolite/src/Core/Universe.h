@@ -31,7 +31,6 @@ MA 02110-1301, USA.
 #import "legacy_random.h"
 #import "OOMaths.h"
 #import "OOColor.h"
-#import "OOWeakReference.h"
 #import "OOTypes.h"
 #import "OOSound.h"
 #import "OOJSPropID.h"

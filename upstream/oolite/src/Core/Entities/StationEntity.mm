@@ -47,7 +47,6 @@
 #import "OODebugGLDrawing.h"
 #import "OODebugFlags.h"
 #import "OODebugStandards.h"
-#import "OOWeakSet.h"
 #import "OOPListGameTypes.h"
 #import "OOObjCPList.h"
 #include "oofnd/Log.hpp"
@@ -688,7 +687,7 @@ void StationEntity::initStationDefaults()
 	OOJS_PROFILE_ENTER
 
 	isStation = YES;
-	_shipsOnHold = ::OOWeakSet::set();
+	_shipsOnHold.removeAll();	// a new, empty set
 	hasBreakPattern = YES;
 
 	OOJS_PROFILE_EXIT_VOID
@@ -697,7 +696,7 @@ void StationEntity::initStationDefaults()
 
 void StationEntity::willDealloc()
 {
-	_shipsOnHold = nullptr;
+	_shipsOnHold.removeAll();
 	localMarket = nullptr;
 //	DESTROY(localPassengers);
 //	DESTROY(localContracts);
@@ -1337,13 +1336,13 @@ void StationEntity::dumpSelfState()
 	// approach and hold lists.
 	
 	// Ships on hold list, only used with moving stations (= carriers)
-	if(_shipsOnHold->count() > 0)
+	if(_shipsOnHold.count() > 0)
 	{
-		OO_LOG("dumpState.stationEntity", "{} Ships on hold (unsorted):", _shipsOnHold->count());
+		OO_LOG("dumpState.stationEntity", "{} Ships on hold (unsorted):", _shipsOnHold.count());
 		
 		oo::log::indent();
 		unsigned		i = 1;
-		for (const oo::ObjCRef<id> &shipRef : _shipsOnHold->objectEnumerator())
+		for (const oo::Ref<cxx::Entity> &shipRef : _shipsOnHold.allObjects())
 		{
 			::ShipEntity *ship = oo::ToShip(shipRef.get());
 			OO_LOG("dumpState.stationEntity", "Nr {}: {} at distance {:g} with role: {}", i++, (ship != nullptr ? ship->getDisplayName() : std::optional<std::string>()).value_or("(null)"), HPdistance(getPosition(), (ship != nullptr ? ship->getPosition() : HPVector{})), (ship != nullptr ? ship->getPrimaryRole() : std::optional<std::string>()).value_or("(null)"));
@@ -1424,8 +1423,8 @@ void StationEntity::abortAllDockings()
 	}
 	
 	// -makeObjectsPerformSelector:withObject: of the live ships on hold, in order
-	for (const oo::ObjCRef<id> &holdRef : _shipsOnHold->objectEnumerator())  { if (oo::ToShip(holdRef.get()) != nullptr)  oo::ToShip(holdRef.get())->sendAIMessage("DOCKING_ABORTED"); }
-	for (const oo::ObjCRef<id> &holdRef : _shipsOnHold->objectEnumerator())
+	for (const oo::Ref<cxx::Entity> &holdRef : _shipsOnHold.allObjects())  { if (oo::ToShip(holdRef.get()) != nullptr)  oo::ToShip(holdRef.get())->sendAIMessage("DOCKING_ABORTED"); }
+	for (const oo::Ref<cxx::Entity> &holdRef : _shipsOnHold.allObjects())
 	{
 		::ShipEntity *hold = oo::ToShip(holdRef.get());
 		if (hold != nullptr)  hold->doScriptEvent(OOJSID("stationWithdrewDockingClearance"));
@@ -1442,7 +1441,7 @@ void StationEntity::abortAllDockings()
 		if (player != nullptr)  player->doScriptEvent(OOJSID("stationWithdrewDockingClearance"));
 	}
 
-	_shipsOnHold->removeAllObjects();
+	_shipsOnHold.removeAll();
 	
 	if (shipAI != nullptr)  shipAI->message("DOCKING_COMPLETE");
 	doScriptEvent(OOJSID("stationDockingQueuesAreEmpty"));
@@ -1452,13 +1451,13 @@ void StationEntity::abortAllDockings()
 
 void StationEntity::autoDockShipsOnHold()
 {
-	for (const oo::ObjCRef<id> &shipRef : _shipsOnHold->objectEnumerator())
+	for (const oo::Ref<cxx::Entity> &shipRef : _shipsOnHold.allObjects())
 	{
 		::ShipEntity *ship = oo::ToShip(shipRef.get());
 		pullInShipIfPermitted(ship);
 	}
 	
-	_shipsOnHold->removeAllObjects();
+	_shipsOnHold.removeAll();
 }
 
 
@@ -1604,7 +1603,7 @@ oo::PList StationEntity::dockingInstructionsForShip(::ShipEntity *ship)
 	}
 	
 	// we made it through holding!
-	_shipsOnHold->removeObject(oo::ToObjC(ship));
+	_shipsOnHold.remove(ship);
 	
 	if (shipAI != nullptr)  shipAI->reactToMessage("DOCKING_REQUESTED", "requestDockingCoordinates");	// react to the request	
 	doScriptEvent(OOJSID("stationAcceptedDockingRequest"), ship);
@@ -1615,10 +1614,10 @@ oo::PList StationEntity::dockingInstructionsForShip(::ShipEntity *ship)
 
 oo::PList StationEntity::holdPositionInstructionForShip(::ShipEntity *ship)
 {
-	if (!_shipsOnHold->containsObject(oo::ToObjC(ship)))
+	if (!_shipsOnHold.contains(ship))
 	{
 		sendExpandedMessage("[station-acknowledges-hold-position]", ship);
-		_shipsOnHold->addObject(oo::ToObjC(ship));
+		_shipsOnHold.add(ship);
 	}
 	
 	return cxx_OOMakeDockingInstructions(this, (ship != nullptr ? ship->getPosition() : HPVector{}), 0, 100, "HOLD_POSITION", std::nullopt, NO, -1);
@@ -1630,7 +1629,7 @@ void StationEntity::abortDockingForShip(::ShipEntity *ship)
 	if (ship != nullptr)  ship->sendAIMessage("DOCKING_ABORTED");
 	if (ship != nullptr)  ship->doScriptEvent(OOJSID("stationWithdrewDockingClearance"));
 	
-	_shipsOnHold->removeObject(oo::ToObjC(ship));
+	_shipsOnHold.remove(ship);
 	
 	for (const oo::EntityHold &dock : dockSubEntities())
 	{
@@ -1834,7 +1833,7 @@ void StationEntity::clear()
 		if (sub != nullptr)  sub->clear();
 	}
 	
-	_shipsOnHold->removeAllObjects();
+	_shipsOnHold.removeAll();
 }
 
 
@@ -2493,7 +2492,7 @@ unsigned StationEntity::currentlyInDockingQueues()
 		::DockEntity *sub = oo::ToDock(dock.get());
 		soa += (sub != nullptr ? sub->countOfShipsInDockingQueue() : 0);
 	}
-	soa += _shipsOnHold->count();
+	soa += _shipsOnHold.count();
 	return soa;
 }
 

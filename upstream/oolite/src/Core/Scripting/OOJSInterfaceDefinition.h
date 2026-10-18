@@ -3,7 +3,7 @@
 OOJSInterfaceDefinition.h
 
 C++20 since bead oo-8fpc (proposed ADR-0056, the OOColor house style; amendment oo-o89). Bead
-oo-9ht.61 deleted its Objective-C facade (an OOWeakRefObject) and moved it to the global namespace:
+oo-9ht.61 deleted its Objective-C facade (a weak-referenceable object) and moved it to the global namespace:
 the station keeps its definitions as oo::Ref, and the player reads them as C++.
 
 
@@ -70,7 +70,7 @@ private:
 
 	ooscript::Value				_callback = {};
 	ooscript::Object _callbackThis = {};
-	oo::WeakRef<OOJSScript>		_owningScript;	// a weak reference (was -weakRetain)
+	oo::WeakRef<OOJSScript>		_owningScript;	// a weak reference (was the facade's weak reference proxy)
 
 	std::optional<std::string>	_title;		// nullopt until set (was nil)
 	std::optional<std::string>	_summary;

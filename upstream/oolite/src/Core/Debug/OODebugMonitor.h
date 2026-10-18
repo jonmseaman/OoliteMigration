@@ -45,7 +45,6 @@ SOFTWARE.
 
 #import "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
-#import "OOWeakReference.h"
 #import "OODebuggerInterface.h"
 #include "OOJavaScriptEngineMonitor.h"	// the engine's monitor, a C++ interface since bead oo-9ht.74.1
 #include "OOJSPrivateObject.h"	// the console's JS glue (bead oo-9ht.74)

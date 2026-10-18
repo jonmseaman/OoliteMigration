@@ -8683,3 +8683,70 @@ scanners' and mass-lock retained snapshots, missiles, `wormholeObject`/`demoShip
 (`getCompassTarget()`, a test's player overrides it), the debug monitor's `dumpEntity(id)`, OOShipGroup's
 `memberArray()`, the JS glue for Objective-C entities, what only an object answers (`-beaconDrawable`,
 `-beaconLabel`, `-weakRetain`, `-isKindOfClass:`, descriptions, the player facade's save-panel properties).
+
+## Amendment (bead oo-9ht.22.3, with notes for oo-6e1.1 and oo-4hdyr): the ships' and stations' weak sets are oo::WeakSet; OOWeakReference's non-entity users go
+
+- Date: 2026-10-18. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Track B5,
+  Migration Completion session, one branch and one commit. Exemplar: `ShipEntity::addDefenseTarget()`,
+  `StationEntity::holdPositionInstructionForShip()`. The second slice of oo-9ht.22 that does not wait
+  for the Entity facade; follows amendments oo-9ht.22.1 and oo-9ht.39.5.2.
+
+**Decision (recommended defaults).**
+
+1. **The weak sets.** `ShipEntity::_defenseTargets`, `_collisionExceptions` and
+   `StationEntity::_shipsOnHold` were `oo::Ref<OOWeakSet>` of the ships' Objective-C objects (each
+   member an `OOWeakReference` from `-weakRetain`); they are `oo::WeakSet<cxx::Entity>`
+   (`oofnd/WeakSet.hpp`) of the ships' C++ parts, held by value. As in amendment oo-9ht.22.1, a
+   member leaves exactly when the object's weak reference died (the facade's `-dealloc` drops its
+   part's weak references), membership is identity, order is insertion order, a removed or dead
+   member goes without disturbing the others' order, and adding nothing is ignored. The lazy
+   allocation goes (an empty set answers as the absent one did: count 0, no member); the dealloc and
+   `willDealloc()` clears, and `initStationDefaults()`'s new set is a cleared one. The public API is
+   unchanged: `collisionExceptions()`, `allDefenseTargets()` and `defenseTargets()` still answer
+   `oo::ObjCRef<::Entity *>` snapshots of the live members (`oo::ToObjC()` of each, the object the
+   set held), for oo-9ht.39.28 to make C++.
+2. **OOWeakSet is dead.** Nothing in the game uses it. `OOWeakSet.h/.mm` (still built: the core
+   tests' meson asserts a tested source is in the game target) and `test_OOWeakSet` stay, unchanged but for a note, until oo-9ht.22 deletes them
+   with `OOWeakReference` (deleting the test needs Jon's ADR-0049 line, as `test_OOWeakReference`'s
+   does, and the `[oo-cc8a]` nightly line names it): `oo::WeakSet` has its own tests
+   (`tests/unit/oofnd/test_weakset.cpp`).
+3. **Imports and comments.** `OOWeakReference.h` is no longer imported by `OODebugMonitor.h`,
+   `Universe.h`, `OOMaterial.h`, `OOShaderMaterial.h`, `OOMesh.h`, `OODrawable.h` or `OOStellarBody.h`,
+   none of which used it; `OOShaderUniform.h`, which keeps the Objective-C binding path (an entity's
+   object, item 5), imports it instead of `@class`. `@protocol OOStellarBody` no longer lists
+   `OOWeakReferenceSupport` (no class adopts the protocol; it is a cast type). Comments naming the
+   old API in non-entity files (the scripts, timers and definitions, the engine core, AI, the HUD,
+   OOCallByName, OOMaterialState) say "weak reference proxy". `OOWeakReference+ObjCBridge.h`'s
+   usage example (ThingWatcher) is replaced by a summary pointing to `oo::WeakRef`/`oo::WeakSet`.
+4. **NSObjectOOExtensions (oo-6e1.1).** The imports nothing uses go (`Octree.mm`, `OOMesh.mm`,
+   `OOSkyDrawable.mm`, `Entity.mm`) and the comments naming `-oo_objectSize` are reworded. The class
+   stays: its senders are the root facade's live-entity memory count (`Entity+ObjCBridge.mm`), the
+   debug monitor's `dumpEntity(id)` and `OOWeakReference`'s forwarding override, all entity-bound.
+   Default for oo-9ht.39.28 (flagged: debug output only): the memory count and the debug monitor's
+   entity size become the C++ entity's dynamic size (a virtual `objectSize()` answering
+   `sizeof *this`, as `OODrawable::objectSize()`), where they were the facade class's instance size.
+5. **Left for oo-9ht.39.28 (the root facade), then oo-9ht.22.** `OOWeakRefObject` (the root facade's
+   superclass, `weakSelf`), `Entity::superShaderBindingTarget()`'s `id<OOWeakReferenceSupport>` and
+   `OOShaderUniform`'s Objective-C binding target (an entity's object, for an Objective-C entity
+   subclass), the entities' weak Object nodes (`ShipEntity.mm` proximity condition and
+   `_primaryTarget` restore, `StationEntity.mm`'s `station` accessor, `ShipEntityAI.mm`), the JS
+   engine's unwrap of a weak reference in a private slot and in `OOObject+OOJavaScript.mm`
+   (`weakRefUnderlyingObject`: every weak reference left is an entity's), the names table's rows
+   and `OOJSCallEntityMethods.h`'s `superShaderBindingTarget` row, and comments in entity files
+   (`OOEntityCalledByName.h`, `OOJSConsole.mm`, `OOJSShip.mm`, `PlayerEntity.mm`,
+   `OOVisualEffectEntity.h`'s and `Entity.h`'s imports). Then oo-9ht.22 deletes the class files,
+   `OOWeakSet`, their meson lines and tests.
+6. **The brightness sentinel (oo-4hdyr): no change.** `PList::at()` is bounds-checked, so the
+   unmatched brightness's index (`static_cast<std::size_t>(-1)`) reads no element: `at<int>()`
+   answers the fallback, 0, as the Objective-C `-oo_intAtIndex:` did for an out-of-range index. It is
+   not an out-of-bounds access; the missing warning and the 0-nit label are upstream behaviour, kept.
+
+**Differences.** None in the game. `OOStellarBody`'s protocol object no longer inherits
+`OOWeakReferenceSupport` (nothing asks).
+
+**Tests** (standing approval oo-9n5p9, line on main 97f87d939): `test_StationEntity`'s
+`ShipsOnHold2` accessor answers the station's `oo::WeakSet<cxx::Entity>`, and its calls are spelled
+`add(ship)`/`contains(ship)` where they were `addObject(oo::ToObjC(ship))`/`containsObject(...)`;
+no check or expected value changes. `OOEntityObjectNamesTable.h`'s `subEntityReallyDied:` row
+records the facade method's type encoding, which spells out `ShipEntity`'s members: it is
+re-measured (the two weak sets' new type), as the table's header says it is measured.

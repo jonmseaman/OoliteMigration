@@ -3,7 +3,7 @@
 OOJSGuiScreenKeyDefinition.h
 
 C++20 since bead oo-xg7g (proposed ADR-0056, the OOColor house style; amendment oo-o89). Bead
-oo-9ht.62 deleted its Objective-C facade (an OOWeakRefObject) and moved it to the global namespace:
+oo-9ht.62 deleted its Objective-C facade (a weak-referenceable object) and moved it to the global namespace:
 the JS global object makes it and the player keeps it as oo::Ref.
 
 
@@ -68,7 +68,7 @@ private:
 
 	ooscript::Value				_callback = {};
 	ooscript::Object _callbackThis = {};
-	oo::WeakRef<OOJSScript>		_owningScript;	// a weak reference (was -weakRetain)
+	oo::WeakRef<OOJSScript>		_owningScript;	// a weak reference (was the facade's weak reference proxy)
 
 	std::optional<std::string>	_name;			// nullopt until set (was nil)
 	oo::PList			_registerKeys;	// key name -> key definitions; null until set (was nil)
