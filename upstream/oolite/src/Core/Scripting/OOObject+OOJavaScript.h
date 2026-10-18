@@ -93,15 +93,8 @@ std::optional<std::string> OOJavaScriptEngineJSDescription(id object);
 void OOJavaScriptEngineClearJSSelf(id object, ooscript::Object selfVal);
 // -isKindOfClass: of any object; NO for nil.
 bool OOJavaScriptEngineIsKindOfClass(id object, Class requiredClass);
-// What the entity predicates ask an entity (Entity and EntityOOJavaScriptExtensions.h) (amendment
-// oo-nge8 item 5). They take the C++ entity since bead oo-9ht.39.25 and ask what the root facade's
-// selectors forwarded to; an Objective-C entity (a test's stand-in) is still messaged.
-class Entity;
-bool OOJavaScriptEngineIsVisibleToScripts(Entity *entity);
-bool OOJavaScriptEngineIsShip(Entity *entity);
-bool OOJavaScriptEngineIsSubEntity(Entity *entity);
-bool OOJavaScriptEngineIsPlanet(Entity *entity);
-OOEntityStatus OOJavaScriptEngineStatus(Entity *entity);
+// The entity predicates' questions (amendment oo-nge8 item 5) ask the C++ entity and are in
+// OOJavaScriptEngine.mm since bead oo-t7o84 (ADR-0056 amendment oo-9ht.184).
 /*	Inside a catch (...) handler: true, with the exception's name and reason, if the exception
 	being handled is an OOException (what @catch (OOException *) caught); false for anything else,
 	which the handler rethrows.

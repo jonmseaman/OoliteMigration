@@ -1392,33 +1392,46 @@ public:
 	
 
 	
-	// @private in Objective-C: private once ShipEntity is converted (oo-k8a); public while the
-	// facade's unconverted methods read them, since an Objective-C class cannot be a C++ friend
+	// @private in Objective-C, private again in C++ (bead oo-9ht.184, ADR-0056 amendment
+	// oo-9ht.184) in declaration order, so construction and destruction order are unchanged. The
+	// members a unit test reads or sets directly stay public (marked "test-read") until their tests
+	// read them through a test-access struct (a test re-base, which needs Jon's approval line).
+private:
 	oo::WeakRef<Entity>		_subEntityTakingDamage;	//	frangible => subEntities can be damaged individually
 
 	std::optional<std::string>	_shipKey;				// nullopt: nil
 	
+public:	// test-read: _equipment, _heatInsulation (test_ShipEntity)
 	std::vector<std::string>	_equipment;	// equipment keys, in order added; empty == none (was nil)
 	float					_heatInsulation = {};
 	
+private:
 	oo::WeakRef<Entity>		_lastAegisLock;			// remember last aegis planet/sun
 	
+public:	// test-read: _group (test_OOJSSystem)
 	oo::Ref<::OOShipGroup>		_group;			// C++ since bead oo-9ht.19
+private:
 	oo::Ref<::OOShipGroup>		_escortGroup;
+public:	// test-read: _maxEscortCount, _pendingEscortCount (test_ShipEntity)
 	uint8_t					_maxEscortCount = {};
 	uint8_t					_pendingEscortCount = {};
+private:
 	// Cache of ship-relative positions, managed by -coordinatesForEscortPosition:.
 	Vector					_escortPositions[MAX_ESCORTS] = {};
+public:	// test-read: _escortPositionsValid (test_ShipEntity)
 	BOOL					_escortPositionsValid = {};
 	
+private:
 	// The ships' C++ parts, held weakly (OOWeakSets of their objects until bead oo-9ht.22.3)
 	oo::WeakSet<Entity>	_defenseTargets = {};			 // defense targets
 	
 	// ships in this set can't be collided with
 	oo::WeakSet<Entity>	_collisionExceptions = {};
 
+public:	// test-read: _profileRadius (test_ShipEntity)
 	GLfloat					_profileRadius = {};
 	
+private:
 	oo::WeakRef<Entity>		_shipHitByLaser;			// entity hit by the last laser shot
 	
 	// beacons
@@ -1428,12 +1441,15 @@ public:
 	oo::WeakRef<Entity>		_nextBeacon;
 	oo::Ref<OOHUDBeaconIcon>	_beaconDrawable;
 
+public:	// test-read: _nextAegisCheck, isDemoShip, demoRate (test_ShipEntity)
 	double			_nextAegisCheck = {};
 
 	// Demo ship state
 	BOOL			isDemoShip = {};
 	OOScalar		demoRate = {};
+private:
 	OOTimeAbsolute		demoStartTime = {};
+public:	// test-read: demoStartOrientation (test_ShipEntity)
 	Quaternion		demoStartOrientation = {};
 };
 

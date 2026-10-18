@@ -2051,6 +2051,46 @@ BOOL JSFunctionPredicate(Entity *entity, void *parameter)
 }
 
 
+namespace {
+
+/*	What the entity predicates ask an entity (amendment oo-nge8 item 5): C++, moved from
+	OOObject+OOJavaScript.mm, whose one-line bridges they were (bead oo-t7o84, ADR-0056 amendment
+	oo-9ht.184).
+*/
+bool OOJavaScriptEngineIsVisibleToScripts(Entity *entity)
+{
+	return OOJSEntityIsVisibleToScripts(entity);	// the C++ entity's answer, which the root facade's selector forwarded to (bead oo-9ht.39.8.9)
+}
+
+
+// The root facade's -isShip, -isSubEntity, -isPlanet and -status forwarded to these members (bead
+// oo-9ht.39.25; an Objective-C stand-in was asked until bead oo-j12i2).
+bool OOJavaScriptEngineIsShip(Entity *entity)
+{
+	return entity != nullptr && entity->getIsShip();
+}
+
+
+bool OOJavaScriptEngineIsSubEntity(Entity *entity)
+{
+	return entity != nullptr && entity->getIsSubEntity();
+}
+
+
+bool OOJavaScriptEngineIsPlanet(Entity *entity)
+{
+	return entity != nullptr && entity->isPlanet();
+}
+
+
+OOEntityStatus OOJavaScriptEngineStatus(Entity *entity)
+{
+	return entity != nullptr ? entity->status() : OOEntityStatus{};
+}
+
+}	// namespace
+
+
 BOOL JSEntityIsJavaScriptVisiblePredicate(Entity *entity, void * /*parameter*/)
 {
 	OOJS_PROFILE_ENTER

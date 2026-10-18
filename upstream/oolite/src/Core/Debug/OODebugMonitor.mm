@@ -39,7 +39,6 @@ SOFTWARE.
 #import "OOJSEngineTimeManagement.h"
 #import "OOJSSpecialFunctions.h"
 
-#import "NSObjectOOExtensions.h"
 #import "OOTexture.h"
 #include "oofnd/String.hpp"
 #include "oofnd/Log.hpp"
@@ -400,7 +399,7 @@ void OODebugMonitor::dumpEntity(Entity *entity, EntityDumpState *state, bool par
 
 	state->seenCount++;
 
-	size_t entitySize = oo::EntityObjectSize(entity);	// its object's size, as -oo_objectSize answered (bead oo-dpyk8)
+	size_t entitySize = oo::EntityObjectSize(entity);	// its object's size, as the root's debug size method answered it (bead oo-dpyk8)
 	size_t drawableSize = 0;
 	// -isKindOfClass:[OOEntityWithDrawable class] and -drawable until bead oo-9ht.40 deleted that facade
 	OOEntityWithDrawable *withDrawable = dynamic_cast<OOEntityWithDrawable *>(entity);
