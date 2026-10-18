@@ -45,6 +45,11 @@ oo::Ref<OORegExpMatcher> OORegExpMatcher::regExpMatcher()  { return oo::makeRef<
 bool OORegExpMatcher::string(const std::string &, const std::string &)  { return false; }
 OORegExpMatcher::~OORegExpMatcher()  {}
 
+// OOLogging.mm's (it would bring the resource manager into the link); in the debug flavour
+// OOOpenGL.mm's OOGL error check and state dump call them (bead oo-iimku).
+void OOLogIndent(void)  {}
+void OOLogOutdent(void)  {}
+
 
 OOShaderSetting cxx_OOShaderSettingFromString(const std::string &string)
 {

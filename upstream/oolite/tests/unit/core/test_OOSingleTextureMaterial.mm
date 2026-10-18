@@ -135,6 +135,10 @@ oo::PList cxx_OOTextureSpecFromObject(const oo::PList &object, const std::option
 // Link stubs (amendment oo-zffj item 2), never reached here: OOOpenGL.mm's GL state dump.
 OOOpenGLExtensionManager *OOOpenGLExtensionManager::sharedManager()	{ std::abort(); }
 GLint OOOpenGLExtensionManager::textureUnitCount()							{ std::abort(); }
+// OOOpenGLStateManager.mm's (linked for the debug build's OOGLNoteCurrentFunction) multitexture
+// entry points live in OOOpenGLExtensionManager.mm, which this test stubs; never called here.
+PFNGLACTIVETEXTUREARBPROC glActiveTextureARB = nullptr;
+PFNGLCLIENTACTIVETEXTUREARBPROC glClientActiveTextureARB = nullptr;
 
 
 // UNIVERSE is gSharedUniverse: nil, so not reduced detail and no shaders.
