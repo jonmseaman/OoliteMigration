@@ -841,12 +841,6 @@ bool OOSunEntity::isVisibleToScripts()
 
 // OOStellarBody.h: the sun (bead oo-9ht.111) and the planet (bead oo-9ht.129) asked directly, any
 // other body by selector.
-double OOStellarBodyRadius(::Entity *body)
-{
-	return OOStellarBodyRadius(oo::ToCxx(body));	// its C++ entity, asked below (bead oo-9ht.39.20)
-}
-
-
 double OOStellarBodyRadius(cxx::Entity *body)
 {
 	if (body == nullptr)  return 0.0;
@@ -864,10 +858,4 @@ OOStellarBodyType OOStellarBodyPlanetType(cxx::Entity *body)
 	if (OOPlanetEntity *planet = dynamic_cast<OOPlanetEntity *>(body))  return planet->planetType();
 	::Entity<OOStellarBody> *object = (::Entity<OOStellarBody> *)oo::ToObjC(body);	// any other body by selector
 	return [object planetType];
-}
-
-
-OOStellarBodyType OOStellarBodyPlanetType(::Entity *body)
-{
-	return OOStellarBodyPlanetType(oo::ToCxx(body));	// its C++ entity, asked above (bead oo-9ht.39.20)
 }

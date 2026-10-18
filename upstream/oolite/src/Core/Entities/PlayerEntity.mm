@@ -5385,29 +5385,17 @@ void PlayerEntity::updateSystemMemory()
 }
 
 
-::Entity *PlayerEntity::getCompassTarget()
-{
-	::Entity *result = oo::WeakEntityObject(compassTarget);
-	if (result == nil)
-	{
-		compassTarget = nullptr;
-		return nil;
-	}
-	return result;
-}
-
-
-// Through the virtual getCompassTarget() (a test's player answers it), while the compass target is
-// answered as an object (bead oo-9ht.39.8.11): the JS binding compares the C++ entity.
+// Virtual: a test's player answers it. What the object-answering getCompassTarget() answered the C++
+// entity of (bead oo-zwnvp): null once the target's object has gone, which also forgets it.
 cxx::Entity *PlayerEntity::getCompassTargetEntity()
 {
-	return oo::ToCxx(getCompassTarget());
-}
-
-
-void PlayerEntity::setCompassTarget(::Entity *value)
-{
-	compassTarget = oo::WeakEntityRef(value);
+	cxx::Entity *result = oo::LiveEntity(compassTarget);
+	if (result == nullptr)
+	{
+		compassTarget = nullptr;
+		return nullptr;
+	}
+	return result;
 }
 
 
@@ -5496,10 +5484,10 @@ std::optional<std::string> PlayerEntity::compassTargetLabel()
 		return "";
 	case COMPASS_MODE_BEACONS:
 	{
-		::Entity *target = getCompassTarget();
+		cxx::Entity *target = getCompassTargetEntity();
 		if (target)
 		{
-			return [(::Entity <OOBeaconEntity> *)target beaconLabel];
+			return [(::Entity <OOBeaconEntity> *)oo::ToObjC(target) beaconLabel];	// the beacon category's answer
 		}
 		return "";
 	}

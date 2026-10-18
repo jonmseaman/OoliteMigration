@@ -85,11 +85,10 @@ bool OOPlasmaShotEntity::canCollide()
 }
 
 
-// The other entity stays its Objective-C object (amendment oo-bj8 item 4): messages to nil answer as before.
+// The other entity's members (its object's until bead oo-zwnvp); null answers as a message to nil did.
 bool OOPlasmaShotEntity::checkCloseCollisionWith(cxx::Entity *otherEntity)
 {
-	::Entity *other = oo::ToObjC(otherEntity);
-	return ([other rootShipEntity] != owner()) && ![other isEffect];
+	return ((otherEntity != nullptr ? otherEntity->rootShipEntity() : nullptr) != ownerEntity()) && !(otherEntity != nullptr && otherEntity->isEffect());
 }
 
 

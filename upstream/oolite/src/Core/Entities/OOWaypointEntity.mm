@@ -132,7 +132,7 @@ void OOWaypointEntity::drawImmediate(bool /*immediate*/, bool translucent)
 	int8_t i,j,k;
 
 	GLfloat a = 0.75;
-	if ((PLAYER != nullptr ? PLAYER->getCompassTarget() : (::Entity *)nullptr) != oo::ToObjC(this))
+	if ((PLAYER != nullptr ? PLAYER->getCompassTargetEntity() : nullptr) != this)
 	{
 		a *= 0.25;
 	}
@@ -191,7 +191,7 @@ void OOWaypointEntity::drawImmediate(bool /*immediate*/, bool translucent)
 
 OOComparisonResult OOWaypointEntity::compareBeaconCodeWith(cxx::Entity *other)
 {
-	return (OOComparisonResult)oo::str::caseInsensitiveCompare(beaconCode().value_or(""), [(OOBeaconEntityObject *)oo::ToObjC(other) beaconCode].value_or(""));
+	return (OOComparisonResult)oo::str::caseInsensitiveCompare(beaconCode().value_or(""), oo::BeaconCode(other).value_or(""));
 }
 
 
@@ -274,13 +274,13 @@ OOHUDBeaconIcon *OOWaypointEntity::beaconDrawable()
 
 cxx::Entity *OOWaypointEntity::prevBeacon()
 {
-	return oo::ToCxx(oo::WeakEntityObject(_prevBeacon));
+	return oo::LiveEntity(_prevBeacon);
 }
 
 
 cxx::Entity *OOWaypointEntity::nextBeacon()
 {
-	return oo::ToCxx(oo::WeakEntityObject(_nextBeacon));
+	return oo::LiveEntity(_nextBeacon);
 }
 
 
