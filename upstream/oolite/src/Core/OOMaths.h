@@ -44,7 +44,7 @@ extern "C" {
 #endif
 
 #ifdef __OBJC__
-#import "OOCocoa.h"
+#include "OOCocoa.h"
 #endif
 
 #include "OOFunctionAttributes.h"

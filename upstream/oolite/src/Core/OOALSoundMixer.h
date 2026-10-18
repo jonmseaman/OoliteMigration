@@ -36,8 +36,8 @@ SOFTWARE.
 #ifndef OOALSOUNDMIXER_H
 #define OOALSOUNDMIXER_H
 
-#import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
+#include "OOCocoa.h"
+#include "oofnd/objc/OOObject.h"
 
 #include "oofnd/Ref.hpp"
 

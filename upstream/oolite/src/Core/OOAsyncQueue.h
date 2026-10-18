@@ -33,7 +33,7 @@ SOFTWARE.
 #ifndef OOASYNCQUEUE_H
 #define OOASYNCQUEUE_H
 
-#import "OOCocoa.h"
+#include "OOCocoa.h"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"
 

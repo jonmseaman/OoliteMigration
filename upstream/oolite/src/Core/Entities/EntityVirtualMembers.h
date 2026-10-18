@@ -34,10 +34,10 @@ MA 02110-1301, USA.
 #ifndef ENTITY_VIRTUAL_MEMBERS_H
 #define ENTITY_VIRTUAL_MEMBERS_H
 
-#import "OOCocoa.h"
-#import "OOMaths.h"
-#import "OOTypes.h"
-#import "OOEntityEnums.h"	// OOEntityStatus, OOScanClass
+#include "OOCocoa.h"
+#include "OOMaths.h"
+#include "OOTypes.h"
+#include "OOEntityEnums.h"	// OOEntityStatus, OOScanClass
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/Ref.hpp"
 #include "OOTexture.h"	// allTextures() answers oo::Ref<OOTexture>

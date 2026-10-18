@@ -37,14 +37,14 @@ SOFTWARE.
 #ifndef OOEQUIPMENTTYPE_H
 #define OOEQUIPMENTTYPE_H
 
-#import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
+#include "OOCocoa.h"
+#include "oofnd/objc/OOObject.h"
 #include "ooscript/JSEngine.hpp"
-#import "OOTypes.h"
-#import "OOOpenGL.h"
+#include "OOTypes.h"
+#include "OOOpenGL.h"
 #include "oofnd/objc/OOObjCRef.h"
 #include "oofnd/Ref.hpp"
-#import "OOColor.h"
+#include "OOColor.h"
 
 #include <map>
 #include <optional>

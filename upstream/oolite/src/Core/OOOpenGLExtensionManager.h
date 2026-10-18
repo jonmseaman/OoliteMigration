@@ -37,10 +37,10 @@ SOFTWARE.
 #ifndef OOOPENGLEXTENSIONMANAGER_H
 #define OOOPENGLEXTENSIONMANAGER_H
 
-#import "OOCocoa.h"
-#import "OOOpenGL.h"
-#import "OOFunctionAttributes.h"
-#import "OOTypes.h"
+#include "OOCocoa.h"
+#include "OOOpenGL.h"
+#include "OOFunctionAttributes.h"
+#include "OOTypes.h"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"
 #include "oofnd/PList.hpp"

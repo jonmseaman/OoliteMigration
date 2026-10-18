@@ -37,7 +37,9 @@ SOFTWARE.
 
 */
 
-#import "OOCocoa.h"
+#pragma once
+
+#include "OOCocoa.h"
 #include <optional>
 #include <string>
 #include <string_view>

@@ -29,9 +29,11 @@ SOFTWARE.
 */
 
 
+#pragma once
+
 #ifndef OOENCODINGCONVERTER_EXCLUDE	// For the convenience of fonttexgen
 
-#import "OOCocoa.h"
+#include "OOCocoa.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"

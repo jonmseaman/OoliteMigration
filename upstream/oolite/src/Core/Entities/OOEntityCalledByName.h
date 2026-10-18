@@ -31,8 +31,8 @@ MA 02110-1301, USA.
 #ifndef OOENTITYCALLEDBYNAME_H
 #define OOENTITYCALLEDBYNAME_H
 
-#import "OOMaths.h"
-#import "oofnd/objc/OOObject.h"
+#include "OOMaths.h"
+#include "oofnd/objc/OOObject.h"
 #include "oofnd/PList.hpp"
 #include <cstdint>
 #include <span>

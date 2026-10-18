@@ -26,7 +26,9 @@ MA 02110-1301, USA.
 
 */
 
-#import "Entity.h"
+#pragma once
+
+#include "Entity.h"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
 #include "oofnd/objc/OOObjCRef.h"

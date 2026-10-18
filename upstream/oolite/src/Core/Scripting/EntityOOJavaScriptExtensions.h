@@ -36,8 +36,10 @@ MA 02110-1301, USA.
 */
 
 
-#import "Entity.h"
-#import "OOJavaScriptEngine.h"
+#pragma once
+
+#include "Entity.h"
+#include "OOJavaScriptEngine.h"
 
 class ShipEntity;	// C++ since bead oo-9ht.144
 

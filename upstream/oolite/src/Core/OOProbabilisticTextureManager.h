@@ -35,10 +35,10 @@ SOFTWARE.
 #ifndef OOPROBABILISTICTEXTUREMANAGER_H
 #define OOPROBABILISTICTEXTUREMANAGER_H
 
-#import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
-#import "OOOpenGL.h"
-#import "OOMaths.h"
+#include "OOCocoa.h"
+#include "oofnd/objc/OOObject.h"
+#include "OOOpenGL.h"
+#include "OOMaths.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"

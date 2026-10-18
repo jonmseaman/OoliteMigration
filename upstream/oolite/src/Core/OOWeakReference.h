@@ -22,8 +22,8 @@ This code is hereby placed in the public domain.
 #ifndef OOWEAKREFERENCE_H
 #define OOWEAKREFERENCE_H
 
-#import "OOCocoa.h"
-#import "OOFunctionAttributes.h"
+#include "OOCocoa.h"
+#include "OOFunctionAttributes.h"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"
 #include "ooscript/JSEngine.hpp"
@@ -78,6 +78,6 @@ private:
 // Transitional: the Objective-C OOWeakReference (the reference callers hold), the
 // OOWeakReferenceSupport protocol and OOWeakRefObject. Deleted, with namespace cxx above, by the
 // bridge's deletion bead.
-#import "OOWeakReference+ObjCBridge.h"
+#include "OOWeakReference+ObjCBridge.h"
 
 #endif	// OOWEAKREFERENCE_H

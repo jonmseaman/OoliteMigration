@@ -29,7 +29,9 @@ SOFTWARE.
 
 */
 
-#import "OOCocoa.h"
+#pragma once
+
+#include "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
 class OODebugMonitor;	// C++ since bead oo-9ht.74 deleted its Objective-C facade
 

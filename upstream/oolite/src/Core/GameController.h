@@ -25,11 +25,13 @@ MA 02110-1301, USA.
 */
 
 
-#import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
-#import "OOFunctionAttributes.h"
-#import "OOFullScreenController.h"
-#import "OOMouseInteractionMode.h"
+#pragma once
+
+#include "OOCocoa.h"
+#include "oofnd/objc/OOObject.h"
+#include "OOFunctionAttributes.h"
+#include "OOFullScreenController.h"
+#include "OOMouseInteractionMode.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"

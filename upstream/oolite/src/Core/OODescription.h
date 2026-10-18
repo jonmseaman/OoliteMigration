@@ -62,8 +62,8 @@ MA 02110-1301, USA.
 #ifndef OODESCRIPTION_H
 #define OODESCRIPTION_H
 
-#import "oofnd/objc/OOObject.h"
-#import "oofnd/objc/OOConstantString.h"
+#include "oofnd/objc/OOObject.h"
+#include "oofnd/objc/OOConstantString.h"
 
 // extern "C++" because this header is reached from inside an extern "C" block (OOMaths.h ->
 // OOCocoa.h), as OOLogging.h is.

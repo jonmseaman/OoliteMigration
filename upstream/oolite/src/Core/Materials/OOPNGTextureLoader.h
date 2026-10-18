@@ -30,9 +30,9 @@ SOFTWARE.
 #ifndef OOPNGTEXTURELOADER_H
 #define OOPNGTEXTURELOADER_H
 
-#import "png.h"
-#import "OOTexture.h"
-#import "OOTextureLoader.h"
+#include "png.h"
+#include "OOTexture.h"
+#include "OOTextureLoader.h"
 
 #include "oofnd/Data.hpp"
 #include "oofnd/StdLib.hpp"

@@ -41,8 +41,8 @@ SOFTWARE.
 #ifndef OOPRIORITYQUEUE_H
 #define OOPRIORITYQUEUE_H
 
-#import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
+#include "OOCocoa.h"
+#include "oofnd/objc/OOObject.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"

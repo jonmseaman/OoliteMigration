@@ -30,9 +30,11 @@ MA 02110-1301, USA.
 
 */
 
-#import "OODrawable.h"
-#import "OOMaths.h"
-#import "OOMaterial.h"
+#pragma once
+
+#include "OODrawable.h"
+#include "OOMaths.h"
+#include "OOMaterial.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/objc/OOObjCRef.h"

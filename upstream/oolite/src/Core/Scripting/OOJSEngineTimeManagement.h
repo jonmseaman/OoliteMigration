@@ -33,7 +33,9 @@ SOFTWARE.
 */
 
 
-#import "OOJavaScriptEngine.h"
+#pragma once
+
+#include "OOJavaScriptEngine.h"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 #include "oofnd/Ref.hpp"
@@ -86,7 +88,7 @@ void OOJSStopTimeLimiter(void);
 
 
 #if OOJS_PROFILE
-#import "OOProfilingStopwatch.h"
+#include "OOProfilingStopwatch.h"
 
 /*
 	Profiling support.

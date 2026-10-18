@@ -29,13 +29,15 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOCocoa.h"
+#pragma once
+
+#include "OOCocoa.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"
 #include "oofnd/PList.hpp"
 
-#import "OOAsyncWorkManager.h"
+#include "OOAsyncWorkManager.h"
 
 
 /*	Foundation sweep (proposed ADR-0043, bead oo-19g0): cache names and keys are UTF-8

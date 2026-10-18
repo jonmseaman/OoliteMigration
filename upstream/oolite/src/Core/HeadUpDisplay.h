@@ -24,15 +24,17 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
-#import "OOOpenGL.h"
+#pragma once
 
-#import "OOTypes.h"
-#import "OOMaths.h"
-#import "MyOpenGLView.h"
-#import "ShipEntity.h"
-#import "OOPolygonSprite.h"	// OOHUDBeaconIcon (bead oo-7ae4p)
+#include "OOCocoa.h"
+#include "oofnd/objc/OOObject.h"
+#include "OOOpenGL.h"
+
+#include "OOTypes.h"
+#include "OOMaths.h"
+#include "MyOpenGLView.h"
+#include "ShipEntity.h"
+#include "OOPolygonSprite.h"	// OOHUDBeaconIcon (bead oo-7ae4p)
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
@@ -510,7 +512,7 @@ NSRect cxx_OORectFromString(const std::string &text, GLfloat x, GLfloat y, NSSiz
 void OOHUDResetTextEngine(void);
 
 
-#import "WormholeEntity.h"	// WORMHOLE_SCANINFO (a send below)
+#include "WormholeEntity.h"	// WORMHOLE_SCANINFO (a send below)
 class OOVisualEffectEntity;	// C++ since bead oo-9ht.165
 
 /*	Sends of converted free functions to classes that are still Objective-C (ADR-0056 amendment

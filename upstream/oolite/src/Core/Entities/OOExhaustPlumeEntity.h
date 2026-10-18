@@ -23,8 +23,10 @@ MA 02110-1301, USA.
 
 */
 
-#import "ShipEntity.h"
-#import "OOTexture.h"
+#pragma once
+
+#include "ShipEntity.h"
+#include "OOTexture.h"
 
 #include "oofnd/StdLib.hpp"
 

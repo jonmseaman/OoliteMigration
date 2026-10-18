@@ -27,7 +27,9 @@ SOFTWARE.
 
 */
 
-#import "OOJavaScriptEngine.h"
+#pragma once
+
+#include "OOJavaScriptEngine.h"
 
 #ifdef __cplusplus
 extern "C" {

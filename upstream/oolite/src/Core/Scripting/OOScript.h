@@ -47,7 +47,7 @@ MA 02110-1301, USA.
 #ifndef OOSCRIPT_H
 #define OOSCRIPT_H
 
-#import "OOCocoa.h"
+#include "OOCocoa.h"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"
 #include "oofnd/PList.hpp"

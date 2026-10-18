@@ -31,7 +31,7 @@ MA 02110-1301, USA.
 #ifndef OOSHIPGROUP_H
 #define OOSHIPGROUP_H
 
-#import "OOCocoa.h"
+#include "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
 
 #include "oofnd/StdLib.hpp"

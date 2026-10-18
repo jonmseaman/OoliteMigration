@@ -22,7 +22,7 @@
 	SOFTWARE.
 */
 
-#import "OOIsNumberLiteral.h"
+#include "OOIsNumberLiteral.h"
 
 
 #if 0

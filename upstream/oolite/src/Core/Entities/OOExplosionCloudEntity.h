@@ -28,7 +28,9 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOParticleSystem.h"
+#pragma once
+
+#include "OOParticleSystem.h"
 
 #include "oofnd/PList.hpp"
 #include "oofnd/objc/OOObjCRef.h"

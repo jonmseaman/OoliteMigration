@@ -43,8 +43,10 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
+#pragma once
+
+#include "OOCocoa.h"
+#include "oofnd/objc/OOObject.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
@@ -179,7 +181,7 @@ inline constexpr std::string_view STICK_YAW_AXIS_PROFILE_SETTING = "YawAxisProfi
 
 #if OOLITE_SDL
 
-#import <SDL3/SDL_events.h>
+#include <SDL3/SDL_events.h>
 
 enum
 {
@@ -256,7 +258,7 @@ typedef struct
 #endif //OOLITE_SDL
 
 
-#import "OOJoystickProfile.h"
+#include "OOJoystickProfile.h"
 #include "oofnd/String.hpp"
 
 class OOJoystickManager : public oo::RefCounted

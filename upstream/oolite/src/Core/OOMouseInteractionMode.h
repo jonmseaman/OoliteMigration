@@ -23,8 +23,10 @@ MA 02110-1301, USA.
 
 */
 
+#pragma once
+
 #ifdef __OBJC__
-#import "OOCocoa.h"
+#include "OOCocoa.h"
 #else
 /*	Plain C++ translation unit (OOMouseInteractionMode.cpp, ADR-0012): only BOOL is needed, and OOCocoa.h
 	imports Foundation, which does not compile outside Objective-C.

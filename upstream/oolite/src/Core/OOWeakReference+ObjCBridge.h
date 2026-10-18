@@ -43,9 +43,9 @@ This code is hereby placed in the public domain.
 #ifndef OOWEAKREFERENCE_OBJCBRIDGE_H
 #define OOWEAKREFERENCE_OBJCBRIDGE_H
 
-#import "OOCocoa.h"
-#import "OOFunctionAttributes.h"
-#import "oofnd/objc/OOObject.h"
+#include "OOCocoa.h"
+#include "OOFunctionAttributes.h"
+#include "oofnd/objc/OOObject.h"
 
 @class OOWeakReference;
 

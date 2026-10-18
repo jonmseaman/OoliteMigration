@@ -31,8 +31,10 @@ MA 02110-1301, USA.
 
 */
 
-#import "ShipEntity.h"
-#import "StationEntity.h"	// For MAX_DOCKING_STAGES
+#pragma once
+
+#include "ShipEntity.h"
+#include "StationEntity.h"	// For MAX_DOCKING_STAGES
 
 
 /*	The dock's state and members (docs/phases/3-slices/DockEntity.md).

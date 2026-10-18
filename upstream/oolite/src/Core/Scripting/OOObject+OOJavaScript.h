@@ -35,8 +35,8 @@ MA 02110-1301, USA.
 #ifndef OOOBJECT_OOJAVASCRIPT_H
 #define OOOBJECT_OOJAVASCRIPT_H
 
-#import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
+#include "OOCocoa.h"
+#include "oofnd/objc/OOObject.h"
 
 #include <objc/runtime.h>
 

@@ -22,11 +22,13 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
-#import "OOOpenGL.h"
-#import "OOMouseInteractionMode.h"
-#import "OOOpenGLMatrixManager.h"
+#pragma once
+
+#include "OOCocoa.h"
+#include "oofnd/objc/OOObject.h"
+#include "OOOpenGL.h"
+#include "OOMouseInteractionMode.h"
+#include "OOOpenGLMatrixManager.h"
 #include "oofnd/Ref.hpp"
 
 #include "oofnd/StdLib.hpp"

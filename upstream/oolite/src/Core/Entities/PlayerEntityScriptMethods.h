@@ -25,7 +25,9 @@ MA 02110-1301, USA.
 
 */
 
-#import "PlayerEntity.h"
+#pragma once
+
+#include "PlayerEntity.h"
 
 
 /*	Bead oo-50zg (ADR-0056 amendments oo-o89 item 4 and oo-42dr): the category PlayerEntity

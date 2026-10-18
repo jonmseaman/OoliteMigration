@@ -24,9 +24,11 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOCocoa.h"
-#import "OOTypes.h"
-#import "legacy_random.h"
+#pragma once
+
+#include "OOCocoa.h"
+#include "OOTypes.h"
+#include "legacy_random.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"

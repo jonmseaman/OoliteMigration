@@ -25,7 +25,9 @@ MA 02110-1301, USA.
 
 */
 
-#import "ShipEntity.h"
+#pragma once
+
+#include "ShipEntity.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"

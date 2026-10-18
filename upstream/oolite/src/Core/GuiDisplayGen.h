@@ -25,12 +25,14 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
+#pragma once
+
+#include "OOCocoa.h"
+#include "oofnd/objc/OOObject.h"
 #include "ooscript/JSEngine.hpp"
-#import "OOMaths.h"
-#import "OOTypes.h"
-#import "OOFunctionAttributes.h"
+#include "OOMaths.h"
+#include "OOTypes.h"
+#include "OOFunctionAttributes.h"
 
 #include "oofnd/PList.hpp"
 #include "oofnd/StdLib.hpp"

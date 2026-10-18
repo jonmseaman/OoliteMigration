@@ -38,8 +38,8 @@ MA 02110-1301, USA.
 #ifndef OOPLISTGAMETYPES_H
 #define OOPLISTGAMETYPES_H
 
-#import "OOCocoa.h"
-#import "OOMaths.h"
+#include "OOCocoa.h"
+#include "OOMaths.h"
 
 #include "oofnd/PListGet.hpp"
 

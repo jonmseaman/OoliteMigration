@@ -24,14 +24,16 @@
  
  */
 
-#import "OOEntityWithDrawable.h"
+#pragma once
+
+#include "OOEntityWithDrawable.h"
 #include "ooscript/JSEngine.hpp"
-#import "OOPlanetEntity.h"
-#import "OOJSPropID.h"
-#import "HeadUpDisplay.h"
-#import "OOWeakReference.h"
-#import "OOColor.h"
-#import "OOPolygonSprite.h"	// OOHUDBeaconIcon (bead oo-7ae4p): the beacon drawable is oo::Ref
+#include "OOPlanetEntity.h"
+#include "OOJSPropID.h"
+#include "HeadUpDisplay.h"
+#include "OOWeakReference.h"
+#include "OOColor.h"
+#include "OOPolygonSprite.h"	// OOHUDBeaconIcon (bead oo-7ae4p): the beacon drawable is oo::Ref
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"

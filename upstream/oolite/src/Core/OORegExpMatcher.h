@@ -38,11 +38,11 @@ SOFTWARE.
 #ifndef OOREGEXPMATCHER_H
 #define OOREGEXPMATCHER_H
 
-#import "OOCocoa.h"
+#include "OOCocoa.h"
 #include "oofnd/Ref.hpp"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/StdLib.hpp"
-#import "OOJSFunction.h"
+#include "OOJSFunction.h"
 #include "OOJSEngineCore.h"	// OOJSValue, which the matcher holds
 
 

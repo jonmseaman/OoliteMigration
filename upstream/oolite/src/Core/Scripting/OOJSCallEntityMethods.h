@@ -16,12 +16,12 @@ Included by OOJSCall.mm and its test only.
 #ifndef OOJSCALLENTITYMETHODS_H
 #define OOJSCALLENTITYMETHODS_H
 
-#import "Entity.h"
-#import "ShipEntity.h"
-#import "PlayerEntity.h"
-#import "StationEntity.h"
-#import "OOVisualEffectEntity.h"
-#import "OOPlanetEntity.h"
+#include "Entity.h"
+#include "ShipEntity.h"
+#include "PlayerEntity.h"
+#include "StationEntity.h"
+#include "OOVisualEffectEntity.h"
+#include "OOPlanetEntity.h"
 #include "oofnd/PList.hpp"
 #include <string>
 

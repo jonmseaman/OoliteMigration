@@ -24,7 +24,9 @@ MA 02110-1301, USA.
 
 */
 
-#import "PlayerEntity.h"
+#pragma once
+
+#include "PlayerEntity.h"
 
 /*	Beads oo-130j, oo-ng9h, oo-z1nv, oo-vn3o (ADR-0056 amendment oo-lmdi8): the category PlayerEntity (Scripting) is members of
 	PlayerEntity, declared in PlayerEntity.h and defined in PlayerEntityLegacyScriptEngine.mm. Its Objective-C interface,

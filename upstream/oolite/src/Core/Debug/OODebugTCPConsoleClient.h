@@ -27,10 +27,12 @@ SOFTWARE.
 
 */
 
-#import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
-#import "OODebuggerInterface.h"
-#import "OOTCPStreamDecoderAbstractionLayer.h"
+#pragma once
+
+#include "OOCocoa.h"
+#include "oofnd/objc/OOObject.h"
+#include "OODebuggerInterface.h"
+#include "OOTCPStreamDecoderAbstractionLayer.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"

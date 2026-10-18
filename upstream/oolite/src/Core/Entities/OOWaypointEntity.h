@@ -25,8 +25,10 @@ MA 02110-1301, USA.
 
 */
 
-#import "Entity.h"
-#import "OOPolygonSprite.h"	// OOHUDBeaconIcon (bead oo-7ae4p): the beacon drawable is oo::Ref
+#pragma once
+
+#include "Entity.h"
+#include "OOPolygonSprite.h"	// OOHUDBeaconIcon (bead oo-7ae4p): the beacon drawable is oo::Ref
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"

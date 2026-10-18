@@ -32,9 +32,9 @@ MA 02110-1301, USA.
 #define OOCHARACTER_H
 
 #include "ooscript/JSEngine.hpp"
-#import "OOTypes.h"
-#import "legacy_random.h"
-#import "OOJSPropID.h"
+#include "OOTypes.h"
+#include "legacy_random.h"
+#include "OOJSPropID.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"

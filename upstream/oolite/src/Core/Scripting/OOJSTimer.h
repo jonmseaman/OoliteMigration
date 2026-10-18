@@ -35,7 +35,7 @@ MA 02110-1301, USA.
 #ifndef OOJSTIMER_H
 #define OOJSTIMER_H
 
-#import "OOScriptTimer.h"
+#include "OOScriptTimer.h"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 #include "OOJSPrivateObject.h"

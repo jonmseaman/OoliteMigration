@@ -39,9 +39,9 @@ OUT OF OR
 #ifndef OOSOUNDSOURCE_H
 #define OOSOUNDSOURCE_H
 
-#import "OOSoundSource.h"
-#import "OOMaths.h"
-#import "OOALSoundChannel.h"
+#include "OOSoundSource.h"
+#include "OOMaths.h"
+#include "OOALSoundChannel.h"
 
 #include "oofnd/Ref.hpp"
 

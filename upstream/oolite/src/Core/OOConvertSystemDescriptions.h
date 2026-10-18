@@ -40,7 +40,9 @@ SOFTWARE.
 */
 
 
-#import "OOCocoa.h"
+#pragma once
+
+#include "OOCocoa.h"
 
 #include "oofnd/PList.hpp"
 

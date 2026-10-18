@@ -35,9 +35,9 @@ MA 02110-1301, USA.
 #ifndef OOJSSYSTEMINFO_H
 #define OOJSSYSTEMINFO_H
 
-#import "OOCocoa.h"
+#include "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
-#import "OOTypes.h"
+#include "OOTypes.h"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"
 #include "oofnd/PList.hpp"

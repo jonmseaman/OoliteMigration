@@ -26,6 +26,8 @@ MA 02110-1301, USA.
 
 */
 
+#pragma once
+
 #include "ooscript/JSEngine.hpp"
 #ifdef __cplusplus
 extern "C" {

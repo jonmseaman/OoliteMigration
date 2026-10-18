@@ -31,9 +31,11 @@ MA 02110-1301, USA.
 
 */
 
-#import "ShipEntity.h"
-#import "OOJSInterfaceDefinition.h"
-#import "Universe.h"
+#pragma once
+
+#include "ShipEntity.h"
+#include "OOJSInterfaceDefinition.h"
+#include "Universe.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"

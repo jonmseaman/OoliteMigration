@@ -26,8 +26,10 @@ MA 02110-1301, USA.
 */
 
 
-#import "OOCocoa.h"
-#import "OOMaths.h"
+#pragma once
+
+#include "OOCocoa.h"
+#include "OOMaths.h"
 
 
 // Option flags for OOExpandDescriptionString().

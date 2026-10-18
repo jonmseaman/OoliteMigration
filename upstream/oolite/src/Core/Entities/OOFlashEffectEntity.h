@@ -25,7 +25,9 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOLightParticleEntity.h"
+#pragma once
+
+#include "OOLightParticleEntity.h"
 
 
 /*	C++ only since bead oo-9ht.106 deleted its Objective-C facade (ADR-0056 amendments oo-9ht.107,

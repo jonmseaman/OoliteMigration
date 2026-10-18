@@ -23,7 +23,7 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOMouseInteractionMode.h"
+#include "OOMouseInteractionMode.h"
 
 #include "oofnd/String.hpp"
 

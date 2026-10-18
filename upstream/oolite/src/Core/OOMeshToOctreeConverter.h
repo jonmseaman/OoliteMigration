@@ -28,10 +28,10 @@ MA 02110-1301, USA.
 #ifndef OOMESHTOOCTREECONVERTER_H
 #define OOMESHTOOCTREECONVERTER_H
 
-#import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
-#import "OOMaths.h"
-#import "Octree.h"
+#include "OOCocoa.h"
+#include "oofnd/objc/OOObject.h"
+#include "OOMaths.h"
+#include "Octree.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"

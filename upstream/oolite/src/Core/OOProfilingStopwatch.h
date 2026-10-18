@@ -33,7 +33,7 @@ SOFTWARE.
 
 #ifndef OOSTOPWATCH_STANDALONE
 #ifdef __OBJC__
-#import "OOCocoa.h"
+#include "OOCocoa.h"
 #else
 /*	A plain C++ translation unit (bead oo-9ht.72: the JS bindings, through
 	OOJSEngineNativeWrappers.h) cannot parse OOCocoa.h's Objective-C class declarations. The one platform switch

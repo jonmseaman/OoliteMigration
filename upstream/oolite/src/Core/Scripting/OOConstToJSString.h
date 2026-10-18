@@ -30,6 +30,8 @@ MA 02110-1301, USA.
 	not Objective-C. The script engine facade, OOINLINE, NSInteger/NSUInteger and the constant
 	enumerations are all the inlines below need.
 */
+#pragma once
+
 #include "ooscript/JSEngine.hpp"
 #include "OOFunctionAttributes.h"
 #include "OOTypes.h"
