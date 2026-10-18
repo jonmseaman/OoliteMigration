@@ -8855,3 +8855,34 @@ part (the HUD's target, the plasma shot's other).
 `isShipWithSubEntityShip(::Entity *)`, the ship group's fast enumeration, the filter's `isKindOfClass`, the
 commodity script's JS value, the beacon category's drawable/label, the weak-reference conditions, the console's
 inspector, the player facade's Objective-C-only methods, the object creators and the `oo::To*(::Entity *)` overloads.
+
+## Amendment (bead oo-lglaq, proposed): OORoundUpToPowerOf2's undefined inputs keep the optimised build's answer
+
+Track C4 (Migration Completion session, 2026-10-18). Status: **proposed** (rule 10: the default below is taken and
+the work proceeds on it; **Jon's call**, flagged). `OORoundUpToPowerOf2_32/_64` (`src/Core/OOFastArithmetic.h`,
+plain C shared with upstream) computed `0x80000000U >> (__builtin_clz(value - 1) - 1)`: undefined for 1
+(`__builtin_clz(0)`) and for 0 and values above the high bit (a shift by -1). `OOTextureLoader::getDesiredWidth`
+and `OOTextureVerifierStage` pass `(2 * side) / 3`, which is 1 for a 2-pixel side, so `test_OOTextureLoader` and
+`test_OOConcreteTexture` pin what the -O2 build produced (2 x 2 for a 4 x 2 image) and failed in the -O0 debug
+flavour.
+
+1. **The default taken: keep the shipped answer, remove the undefined behaviour.** 1 returns 2 and 0 and values
+   above the high bit return 1 (not 0, as the old header note said), explicitly, in every flavour; every other
+   input is unchanged. No existing expectation changes.
+2. **How the values were measured.** A probe build of `test_OOFastArithmetic` against the UNFIXED header in the
+   -O2 test flavour printed, for inputs passed through volatiles and through a non-inlined call alike: 0 -> 1,
+   1 -> 2, 2 -> 2, 3 -> 4, 5 -> 8, 0x7FFFFFFF and 0x80000000 -> 0x80000000, 0x80000001, 0xC0000000 and
+   0xFFFFFFFF -> 1; the 64-bit function the same (1 -> 2, 0 and above the high bit -> 1); `_NS(1)` -> 2;
+   `(2 * 2) / 3` -> 2. The same comparisons written as checks (`Round32(1) == 2`) FAILED on the unfixed header
+   at -O2: the optimiser, entitled to assume the undefined case away, folded them to false. That is the defect
+   itself, and why the pins only mean something once the inputs are defined. The disassembly of the -O2 game and test binaries agrees: the
+   compiler emits `bsr; xor 31; dec; shr`, x86 masks a shift by -1 to 31 (hence 1), and `bsr` of 0 leaves its
+   destination unchanged, which at the texture loader's height, the cube-map width and both verifier sides is
+   the zero source register itself (hence 2). The texture loader's non-cube WIDTH and the mipmap generator's
+   power-of-two check use a different destination register, so there the shipped answer for 1 depended on a
+   register's previous contents (another side's computation, or a pointer); 2 is taken for them too. The -O0
+   build answered 4 for 1 in a standalone probe.
+3. **The alternative, not taken: the honest answer 1 -> 1.** Mathematically the power of two at or above 1 is 1,
+   so a 2-pixel side would scale to 1 (2 x 1 for a 4 x 2 image). That changes the pinned expectations in
+   `test_OOTextureLoader` and `test_OOConcreteTexture` (and possibly how tiny textures are scaled in the game), so
+   it needs Jon's approval line; it is a one-line change in the header plus those re-pins.

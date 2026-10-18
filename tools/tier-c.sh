@@ -739,13 +739,35 @@ stage_goldens() {
   [ "$n" -ge "$GOLDEN_FLOOR" ] \
     || fail goldens "found $n blessed scenario(s) under $(native "$gdir"), fewer than the floor of $GOLDEN_FLOOR -- a golden stage with nothing to compare passes vacuously"
 
+  # A SANITIZED APP (bead oo-tc08n): OO_APP_DIR at the asan stage's build, e.g.
+  #   OO_APP_DIR=upstream/oolite/build/meson_debug/oolite.app tools/tier-c.sh --only asan,goldens
+  # The -O0 AddressSanitizer game answers the console far more slowly than the test build (scenario
+  # 001 measured "no answer to 'player.ship.docked' within 15s" with no ASan report), so the
+  # console's per-command wait is raised for it; the scenarios, their dumps and the goldens are
+  # unchanged. It needs the ASan runtime DLL on PATH, the software GL DLLs beside it as the asan
+  # stage stages them, and --nosound (the asan stage's launch flag: the prebuilt OpenAL DLL trips
+  # ASan, oo-dg6vf). Any AddressSanitizer report in a scenario's game stderr fails the stage.
+  local sanitized=() asan_reports=() sandll dll
+  if objdump -p "$APP_DIR/oolite.exe" 2>/dev/null | grep -qi 'libclang_rt\.asan_dynamic'; then
+    sandll="$(bash "$HERE/asan-resource-dir.sh" --dll-dir)" \
+      || fail goldens "the app is sanitized but the ASan runtime DLL directory could not be located"
+    for dll in opengl32.dll libgallium_wgl.dll; do
+      [ -f "${MINGW_PREFIX:-/ucrt64}/bin/$dll" ] && cp -f "${MINGW_PREFIX:-/ucrt64}/bin/$dll" "$APP_DIR/" 2>/dev/null || true
+    done
+    sanitized=(PATH="$(cygpath -u "$sandll"):$PATH"
+               ASAN_OPTIONS="halt_on_error=0:abort_on_error=0:detect_leaks=0:symbolize=1"
+               OO_GAME_EXTRA_ARGS="${OO_GAME_EXTRA_ARGS:+$OO_GAME_EXTRA_ARGS }--nosound"
+               OO_CONSOLE_EVAL_TIMEOUT="${OOLITE_TIER_C_SANITIZED_EVAL_TIMEOUT:-120}")
+    detail "sanitized app: console wait ${OOLITE_TIER_C_SANITIZED_EVAL_TIMEOUT:-120}s, --nosound"
+  fi
+
   for name in "${names[@]}"; do
     local out="$RUN_ROOT/$name.json" log="$RUN_ROOT/$name.log" port rc=0
     port="$(free_port)"
     local s=$SECONDS
     case "$name" in
       001-launch-dock)
-        ( cd "$REPO_ROOT" && "$PY" "$(native "$REPO_ROOT/tests/golden/launch_dock.py")" \
+        ( cd "$REPO_ROOT" && env "${sanitized[@]}" "$PY" "$(native "$REPO_ROOT/tests/golden/launch_dock.py")" \
             --app-dir "$(native "$APP_DIR")" --out "$(native "$out")" \
             --run-root "$RUN_ROOT_NATIVE/ld-$name" ) > "$log" 2>&1 || rc=$?
         ;;
@@ -763,7 +785,7 @@ plistlib.dump({'console-host': '127.0.0.1', 'console-port': int(sys.argv[2])},
           || fail goldens "could not write the private debugConfig.plist for $name"
         ( cd "$REPO_ROOT" \
           && OO_ADDITIONALADDONSDIRS="$(native "$RUN_ROOT/cfg-$name")" \
-             "$PY" "$(native "$REPO_ROOT/tests/golden/dump/run_dump.py")" \
+             env "${sanitized[@]}" "$PY" "$(native "$REPO_ROOT/tests/golden/dump/run_dump.py")" \
                --app-dir "$(native "$APP_DIR")" --port "$port" \
                --out "$(native "$out")" --output-dir "$(native "$RUN_ROOT/out-$name")" ) \
           > "$log" 2>&1 || rc=$?
@@ -793,9 +815,20 @@ plistlib.dump({'console-host': '127.0.0.1', 'console-port': int(sys.argv[2])},
              fail goldens "scenario $name matched its golden but failed its own launch/dock evidence check"; }
     fi
     detail "$(printf '%-18s MATCH  %3ds  port %s' "$name" "$wall" "$port")"
+    # Sanitized: every scenario still runs and compares; any report fails the stage after the loop.
+    if [ "${#sanitized[@]}" -gt 0 ]; then
+      local f
+      while read -r f; do
+        [ -n "$f" ] && grep -q 'ERROR: AddressSanitizer' "$f" && asan_reports+=("$f"); true
+      done < <(find "$RUN_ROOT/ld-$name" "$RUN_ROOT/out-$name" -name game-stderr.txt 2>/dev/null)
+    fi
     ok=$(( ok + 1 ))
   done
   [ "$ok" -eq "$n" ] || fail goldens "$ok of $n blessed scenarios verified"
+  if [ "${#asan_reports[@]}" -gt 0 ]; then
+    grep -h -A12 -m1 'ERROR: AddressSanitizer' "${asan_reports[0]}" >&2 || true
+    fail goldens "every scenario matched, but the sanitized game wrote AddressSanitizer report(s): $(for f in "${asan_reports[@]}"; do native "$f"; printf ' '; done)"
+  fi
 
   # The unblessed scenarios. Their SPEC and evidence checkers are exercised offline -- the specs
   # exist, parse, and satisfy their own checkers -- which is the part that rots while a golden

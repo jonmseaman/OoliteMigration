@@ -127,6 +127,7 @@ core_tests = {
     'test_OOMesh': ['*'],
     'test_OOPolygonSprite': ['*'],
     'test_OOVector': ['Core/OOVector.mm', 'Core/legacy_random.c', 'Core/OODescription.mm'],
+    'test_OOFastArithmetic': ['Core/OODescription.mm'],
     'test_OOAsyncQueue': ['Core/OOAsyncQueue.mm'],
     'test_OOProfilingStopwatch': ['Core/OOProfilingStopwatch.mm'],
     'test_OOAsyncWorkManager': ['Core/OOAsyncWorkManager.mm', 'Core/OOAsyncQueue.mm', 'Core/OOCPUInfo.mm', 'Core/OODescription.mm'],
