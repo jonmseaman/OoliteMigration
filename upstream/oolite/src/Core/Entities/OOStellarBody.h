@@ -47,17 +47,6 @@ typedef enum
 #define MAX_SUBDIVIDE			6
 
 
-@protocol OOStellarBody <OOObject>	// (and the weak-reference protocol until bead oo-9ht.22.3: nothing adopts it)
-
-- (double) radius;
-- (OOStellarBodyType) planetType;
-
-- (std::optional<std::string>) cxx_name;	// nullopt: unnamed (bead oo-3rb.289.12)
-- (void) cxx_setName:(const std::optional<std::string> &)name;
-
-@end
-
-
 /*	-radius and -planetType of a stellar body's Objective-C object (bead oo-9ht.111): the sun and the
 	planet, C++ since their facades were deleted (beads oo-9ht.111, oo-9ht.129), are asked directly
 	(their object is the root Entity's facade, which does not answer them); any other body by

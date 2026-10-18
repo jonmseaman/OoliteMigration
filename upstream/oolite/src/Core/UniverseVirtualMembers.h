@@ -49,7 +49,6 @@ MA 02110-1301, USA.
 
 class Entity;
 class MyOpenGLView;
-@protocol OOBeaconEntity;
 class StationEntity;
 class OOPlanetEntity;
 class OOSunEntity;

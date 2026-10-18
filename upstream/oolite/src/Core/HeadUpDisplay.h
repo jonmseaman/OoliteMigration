@@ -65,19 +65,19 @@ class OOCrosshairs;
 #define ZOOM_INDICATOR_CENTRE_Y		-216
 #define ZOOM_INDICATOR_WIDTH		11.0f
 #define ZOOM_INDICATOR_HEIGHT		14.0f
-#define ZOOM_LEVELS_IMAGE			@"zoom.png"
+#define ZOOM_LEVELS_IMAGE			"zoom.png"
 
-#define COMPASS_IMAGE			@"compass.png"
+#define COMPASS_IMAGE			"compass.png"
 #define COMPASS_CENTRE_X		132
 #define COMPASS_CENTRE_Y		-216
 #define COMPASS_SIZE			56
 #define COMPASS_HALF_SIZE		28
-#define COMPASS_REDDOT_IMAGE	@"reddot.png"
-#define COMPASS_GREENDOT_IMAGE  @"greendot.png"
+#define COMPASS_REDDOT_IMAGE	"reddot.png"
+#define COMPASS_GREENDOT_IMAGE  "greendot.png"
 #define COMPASS_DOT_SIZE		16
 #define COMPASS_HALF_DOT_SIZE	8
 
-#define AEGIS_IMAGE				@"aegis.png"
+#define AEGIS_IMAGE				"aegis.png"
 #define AEGIS_CENTRE_X			-132
 #define AEGIS_CENTRE_Y			-216
 #define AEGIS_WIDTH				24
@@ -229,7 +229,7 @@ class OOCrosshairs;
 #define TITLE_KEY				"title"
 #define BACKGROUND_RGBA_KEY		"background_rgba"
 #define OVERALL_ALPHA_KEY		"overall_alpha"
-#define NONLINEAR_SCANNER		@"nonlinear_scanner"
+#define NONLINEAR_SCANNER		"nonlinear_scanner"
 
 #define Z1						(UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr ? UNIVERSE->getGameView()->getDisplay_z() : 0.0f)
 

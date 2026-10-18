@@ -164,8 +164,8 @@ inline constexpr std::string_view KEY_STANDARD_EQUIPMENT				= "standard_equipmen
 inline constexpr std::string_view KEY_EQUIPMENT_MISSILES				= "missiles";
 inline constexpr std::string_view KEY_EQUIPMENT_FORWARD_WEAPON		= "forward_weapon_type";
 inline constexpr std::string_view KEY_EQUIPMENT_AFT_WEAPON			= "aft_weapon_type";
-#define KEY_EQUIPMENT_PORT_WEAPON			@"port_weapon_type"
-#define KEY_EQUIPMENT_STARBOARD_WEAPON		@"starboard_weapon_type"
+#define KEY_EQUIPMENT_PORT_WEAPON			"port_weapon_type"
+#define KEY_EQUIPMENT_STARBOARD_WEAPON		"starboard_weapon_type"
 inline constexpr std::string_view KEY_EQUIPMENT_EXTRAS				= "extras";
 inline constexpr std::string_view KEY_WEAPON_FACINGS					= "weapon_facings";
 inline constexpr std::string_view KEY_RENOVATION_MULTIPLIER					= "renovation_multiplier";
