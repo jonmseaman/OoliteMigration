@@ -242,7 +242,7 @@ bool OOALSoundVorbisCodec::initWithPath(const std::optional<std::string> &path)
 				else
 				{
 					int err = UNZ_OK;
-					unz_file_info64 file_info = {0};
+					unz_file_info64 file_info = {};
 					err = unzGetCurrentFileInfo64(uf, &file_info, NULL, 0, NULL, 0, NULL, 0);
 					if (err != UNZ_OK)
 					{
