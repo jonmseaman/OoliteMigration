@@ -130,8 +130,8 @@ Octree_details Octree::octreeDetails()
 {
 	Octree_details details =
 	{
-		.octree = _octree,
 		.radius = _radius,
+		.octree = _octree,
 		.octree_collision = _collisionOctree
 	};
 	return details;
