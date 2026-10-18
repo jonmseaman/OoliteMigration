@@ -44,6 +44,25 @@
 # line here mentions the game, and tools/tier-c.sh's attribution check runs on the SYMBOLISED output,
 # so a report with a frame in the game executable goes red whatever this file says.
 
+# ------------------------------------------------------------------------------------------------
+# SANITIZED UNIT RUNS AND THE GOLDEN HARNESS (bead oo-dg6vf, 2026-10-18)
+# ------------------------------------------------------------------------------------------------
+#
+# Measured on the sanitized debug flavour's core suite: these entries do NOT reach the two reports
+# above. The file was passed to ASan the only way a Windows path survives ASAN_OPTIONS' colon
+# syntax, quoted (suppressions="C:/.../asan-suppressions.txt", which ASan parses), and
+# test_OOOpenALController still died on bad-malloc_usable_size; interceptor_via_lib applies to
+# interceptor memory-range checks, not to the allocator's ownership checks (bad-free,
+# bad-malloc_usable_size). windows_hook_rtl_allocators=1 changes the first report to bad-free and
+# still dies. These reports are not recoverable (no -fsanitize-recover), so halt_on_error=0 does
+# not help either. The remedy is therefore the same as Tier C's --nosound, applied per caller:
+#   - the core unit suite: every test that opens the OpenAL device is also in meson suite
+#     'openal' (tests/unit/core/meson.build); a sanitized run passes --no-suite openal;
+#   - the golden harness: tests/component/console.py appends OO_GAME_EXTRA_ARGS to the game's
+#     command line; a sanitized golden run sets OO_GAME_EXTRA_ARGS=--nosound, and the harness
+#     keeps the game's stderr (game-stderr.txt in the run's output dir) so a report is not lost.
+# The unsanitized gates still run every OpenAL test and launch the game with sound.
+
 # ucrtbase.dll owns the CRT onexit table. libopenal's DllMain-time registration allocates inside
 # it with the CRT's own allocator, which ASan's HeapSize/free interceptors do not own. Not ours.
 interceptor_via_lib:ucrtbase.dll

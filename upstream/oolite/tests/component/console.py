@@ -66,6 +66,7 @@ class DebugConsole:
         self._server = None
         self._conn = None
         self._proc = None
+        self._stderr = None
 
     # --- lifecycle ---------------------------------------------------------------------------
 
@@ -118,14 +119,26 @@ class DebugConsole:
         if not os.path.isfile(path):
             raise ConsoleError(f"no Oolite binary at {path}; build it first")
         argv = [path, "--no-splash"]
+        # OO_GAME_EXTRA_ARGS: extra command-line arguments for the game, split on whitespace. A
+        # sanitized run of the golden harness passes --nosound, as tier-c's sanitized launch does
+        # (oo-dg6vf: opening the OpenAL device trips a third-party ASan report that is fatal).
+        argv += os.environ.get("OO_GAME_EXTRA_ARGS", "").split()
         if self.load_save:
             argv += ["-load", self.load_save]
+        # The game's stderr is kept in the output dir when there is one (oo-vdw34): a sanitized
+        # build reports there, and a game that dies mid-run otherwise leaves no trace of why. Appended,
+        # so a retried start keeps the attempt before it.
+        stderr = subprocess.DEVNULL
+        if self.output_dir:
+            os.makedirs(self.output_dir, exist_ok=True)
+            self._stderr = open(os.path.join(self.output_dir, "game-stderr.txt"), "ab")
+            stderr = self._stderr
         self._proc = subprocess.Popen(
             argv,
             cwd=self.app_dir,
             env=self._env(),
             stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            stderr=stderr,
         )
 
     def _accept(self, timeout):
@@ -193,6 +206,9 @@ class DebugConsole:
                 except subprocess.TimeoutExpired:
                     self._proc.kill()
                     self._proc.wait(timeout=10)
+            if self._stderr is not None:
+                self._stderr.close()
+                self._stderr = None
 
     def __enter__(self):
         return self

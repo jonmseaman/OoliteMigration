@@ -927,7 +927,11 @@ static void StretchVerticallyN_x1(OOPixMap srcPx, OOPixMap dstPx)
 		}
 	}
 	
-	// Copy last row (without referring to the last-plus-oneth row)
+	// Copy last row (without referring to the last-plus-oneth row). src0 is re-pointed at the last
+	// source row: after the loop it is one row past the row the final pass blended from, which is
+	// that same last row only while dstPx.height < 2 * srcPx.height, and one row past the end of
+	// the buffer otherwise (oo-snnh6, an ASan heap-buffer-overflow READ).
+	src0 = (uint8_t *)(src + srcRowBytes * (srcPx.height - 1));
 	x = xCount;
 	while (x--)
 	{
@@ -979,7 +983,11 @@ static void StretchVerticallyN_x4(OOPixMap srcPx, OOPixMap dstPx)
 		}
 	}
 	
-	// Copy last row (without referring to the last-plus-oneth row)
+	// Copy last row (without referring to the last-plus-oneth row). src0 is re-pointed at the last
+	// source row: after the loop it is one row past the row the final pass blended from, which is
+	// that same last row only while dstPx.height < 2 * srcPx.height, and one row past the end of
+	// the buffer otherwise (oo-snnh6, an ASan heap-buffer-overflow READ).
+	src0 = (uint32_t *)(src + srcRowBytes * (srcPx.height - 1));
 	x = xCount;
 	while (x--)
 	{
@@ -1030,7 +1038,11 @@ static void StretchVerticallyN_x8(OOPixMap srcPx, OOPixMap dstPx)
 		}
 	}
 	
-	// Copy last row (without referring to the last-plus-oneth row)
+	// Copy last row (without referring to the last-plus-oneth row). src0 is re-pointed at the last
+	// source row: after the loop it is one row past the row the final pass blended from, which is
+	// that same last row only while dstPx.height < 2 * srcPx.height, and one row past the end of
+	// the buffer otherwise (oo-snnh6, an ASan heap-buffer-overflow READ).
+	src0 = (uint64_t *)(src + srcRowBytes * (srcPx.height - 1));
 	x = xCount;
 	while (x--)
 	{
@@ -1092,6 +1104,9 @@ static void StretchHorizontally1(OOPixMap srcPx, OOPixMap dstPx)
 		
 		px0 = px1;
 		src = srcStart + (fractX >> 12);
+		// The last pixel's look-ahead lands one past the row exactly when its weight is 0; clamp it
+		// so the last row does not read past the buffer (oo-snnh6), as StretchHorizontally4 does.
+		if (EXPECT_NOT((fractX >> 12) >= srcPx.width))  src = srcStart + (srcPx.width - 1);
 		px1 = *src;
 		
 		*dst++ = (px0 * weight0 + px1 * weight1) >> 8;
@@ -1155,6 +1170,9 @@ static void StretchHorizontally2(OOPixMap srcPx, OOPixMap dstPx)
 		
 		px0 = px1;
 		src = srcStart + (fractX >> 12);
+		// The last pixel's look-ahead lands one past the row exactly when its weight is 0; clamp it
+		// so the last row does not read past the buffer (oo-snnh6), as StretchHorizontally4 does.
+		if (EXPECT_NOT((fractX >> 12) >= srcPx.width))  src = srcStart + (srcPx.width - 1);
 		px1 = *src;
 		
 		hi = (px0 & 0xFF00) * weight0 + (px1 & 0xFF00) * weight1;
