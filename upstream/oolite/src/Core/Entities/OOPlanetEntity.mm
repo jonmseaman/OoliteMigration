@@ -21,7 +21,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 MA 02110-1301, USA.
 
 C++20 since bead oo-mp0d (proposed ADR-0056, amendments oo-bj8 item 12, oo-0mxi and oo-ubjo), a
-leaf of cxx::Entity. Its Objective-C facade was deleted by bead oo-9ht.129 (amendments oo-9ht.12,
+leaf of Entity. Its Objective-C facade was deleted by bead oo-9ht.129 (amendments oo-9ht.12,
 oo-9ht.107, oo-9ht.23 and oo-9ht.129): the class is global and its object is the root's facade.
 
 */
@@ -819,7 +819,7 @@ void OOPlanetEntity::drawImmediate(bool /*immediate*/, bool /*translucent*/)
 }
 
 
-bool OOPlanetEntity::checkCloseCollisionWith(cxx::Entity *other)
+bool OOPlanetEntity::checkCloseCollisionWith(Entity *other)
 {
 	if (!other)
 		return NO;

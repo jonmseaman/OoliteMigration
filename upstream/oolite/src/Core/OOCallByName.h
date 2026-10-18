@@ -99,14 +99,14 @@ inline oo::PList OOCallByName(id target, SEL selector, const char *argument)
 	longer has the method and logs callByName.unknownSelector as before. A null entity does nothing.
 	Defined in OOEntityCalledByName.mm.
 */
-namespace cxx { class Entity; }
+class Entity;
 
 namespace oo {
 
-bool EntityRespondsToName(cxx::Entity *entity, const std::string &name);
-PList CallEntityByName(cxx::Entity *entity, const std::string &name);
-PList CallEntityByName(cxx::Entity *entity, const std::string &name, const std::string &argument);
-PList CallEntityByName(cxx::Entity *entity, const std::string &name, const PList &argument);
+bool EntityRespondsToName(Entity *entity, const std::string &name);
+PList CallEntityByName(Entity *entity, const std::string &name);
+PList CallEntityByName(Entity *entity, const std::string &name, const std::string &argument);
+PList CallEntityByName(Entity *entity, const std::string &name, const PList &argument);
 
 /*	An entity's method called after <delay> seconds (bead oo-9ht.39.7.3, ADR-0056 amendment
 	oo-9ht.39.7.3): what OOScheduleDeferredCall() of the method's selector on the entity's object
@@ -115,7 +115,7 @@ PList CallEntityByName(cxx::Entity *entity, const std::string &name, const PList
 	when it fires; <call> asks for the entity's class, as the facade's method did. A null entity
 	schedules nothing. Defined in OOEntityCalledByName.mm.
 */
-void ScheduleEntityCall(cxx::Entity *entity, void (*call)(cxx::Entity *entity), double delay);
+void ScheduleEntityCall(Entity *entity, void (*call)(Entity *entity), double delay);
 
 }	// namespace oo
 

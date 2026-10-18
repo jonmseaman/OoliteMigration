@@ -166,7 +166,7 @@ static bool JSWormholeGetWormholeEntity(ooscript::Context context, ooscript::Obj
 	OOJS_PROFILE_ENTER
 	
 	bool						result;
-	cxx::Entity					*entity = nullptr;	// the slot holds the C++ entity (bead oo-9ht.39.3)
+	Entity					*entity = nullptr;	// the slot holds the C++ entity (bead oo-9ht.39.3)
 	
 	if (outEntity == NULL)  return false;
 	*outEntity = nullptr;

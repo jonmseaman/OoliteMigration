@@ -117,8 +117,8 @@ public:
 	bool isVisibleToScripts() override;
 	bool setUpShipFromDictionary(const oo::PList &dict) override;
 	void update(OOTimeDelta delta_t) override;
-	void noteTakingDamage(double amount, cxx::Entity *entity, OOShipDamageType type) override;
-	void takeEnergyDamage(double amount, cxx::Entity *ent, cxx::Entity *other, const std::string &weaponIdentifier) override;
+	void noteTakingDamage(double amount, Entity *entity, OOShipDamageType type) override;
+	void takeEnergyDamage(double amount, Entity *ent, Entity *other, const std::string &weaponIdentifier) override;
 	void drawImmediate(bool immediate, bool translucent) override;
 
 	// @private in Objective-C; still public (the tests read them), as the player's were after its
@@ -128,7 +128,7 @@ public:
 	double					last_launch_time = {};
 //	double					approach_spacing; // not needed now holding pattern changed
 	
-	oo::WeakRef<cxx::Entity>	id_lock[MAX_DOCKING_STAGES];	// weak references to a ship (its C++ part since bead oo-9ht.39.5.2; its object's before)
+	oo::WeakRef<Entity>	id_lock[MAX_DOCKING_STAGES];	// weak references to a ship (its C++ part since bead oo-9ht.39.5.2; its object's before)
 	
 	Vector  				port_dimensions = {};
 	double					port_corridor = {};				// corridor length inside station.
@@ -144,7 +144,7 @@ public:
 namespace oo {
 
 // The same of a C++ entity (what an entity's JS object holds since bead oo-9ht.39.3).
-inline ::DockEntity *ToDock(cxx::Entity *entity)
+inline ::DockEntity *ToDock(Entity *entity)
 {
 	return dynamic_cast<::DockEntity *>(entity);
 }

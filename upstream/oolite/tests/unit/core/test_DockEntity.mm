@@ -149,7 +149,7 @@ OO_TEST(initAndSetUp)
 		OO_CHECK((dock != nullptr ? dock->shipDataKey() : std::optional<std::string>()) == std::optional<std::string>("dock"));
 		OO_CHECK((dock != nullptr ? dock->allowsDocking() : false) && (dock != nullptr ? dock->allowsLaunching() : false) && !(dock != nullptr ? dock->disallowedDockingCollides() : false));
 		OO_CHECK((dock != nullptr ? dock->countOfShipsInDockingQueue() : 0) == 0 && (dock != nullptr ? dock->countOfShipsInLaunchQueue() : 0) == 0);
-		OO_CHECK((dock != nullptr ? dock->parentEntity() : (cxx::Entity *)nullptr) == nullptr);
+		OO_CHECK((dock != nullptr ? dock->parentEntity() : (Entity *)nullptr) == nullptr);
 	}
 }
 
@@ -207,7 +207,7 @@ OO_TEST(dimensionsAndPortUpVector)
 		SetUp();
 		TestDockStation *station = nullptr;
 		DockEntity *dock = MakeDockOfStation(&station);
-		OO_CHECK((dock != nullptr ? dock->parentEntity() : (cxx::Entity *)nullptr) == station);
+		OO_CHECK((dock != nullptr ? dock->parentEntity() : (Entity *)nullptr) == station);
 
 		if (dock != nullptr)  dock->setVirtual();
 		if (dock != nullptr)  dock->setDimensionsAndCorridor(NO, YES, NO);
@@ -381,7 +381,7 @@ OO_TEST(objCDockPartIsADock)
 		OO_CHECK(part != nullptr);
 		OO_CHECK(oo::ToDock(part) == part);
 
-		cxx::Entity *asEntity = part;
+		Entity *asEntity = part;
 		OO_CHECK(asEntity->isDock());
 		OO_CHECK(part->allowsDocking() && part->allowsLaunching() && !part->disallowedDockingCollides());
 		part->setAllowsDocking(false);

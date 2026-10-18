@@ -59,9 +59,9 @@ T *NewTestPlayer()
 class TestUniverse : public Universe
 {
 public:
-	cxx::Entity	*_removed = {};
+	Entity	*_removed = {};
 
-	bool removeEntity(cxx::Entity *entity) override	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
+	bool removeEntity(Entity *entity) override	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
 	{
 		_removed = entity;
 		return YES;
@@ -90,15 +90,15 @@ void SetUp()
 
 // --- How the test makes a ring (ported by the conversion), and nothing else ----------------------
 
-cxx::Entity *Ring(cxx::Entity *source)			{ return oo::MadeEntity(OORingEffectEntity::ringFromEntity(source)); }	// the source's C++ entity since bead oo-9ht.39.26
-cxx::Entity *ShrinkingRing(cxx::Entity *source)	{ return oo::MadeEntity(OORingEffectEntity::shrinkingRingFromEntity(source)); }
+Entity *Ring(Entity *source)			{ return oo::MadeEntity(OORingEffectEntity::ringFromEntity(source)); }	// the source's C++ entity since bead oo-9ht.39.26
+Entity *ShrinkingRing(Entity *source)	{ return oo::MadeEntity(OORingEffectEntity::shrinkingRingFromEntity(source)); }
 
 // --------------------------------------------------------------------------------------------------
 
 
-cxx::Entity *Source()
+Entity *Source()
 {
-	cxx::Entity *source = oo::MadeEntity(oo::makeRef<cxx::Entity>());
+	Entity *source = oo::MadeEntity(oo::makeRef<Entity>());
 	source->setCollisionRadius(8.0f);
 	source->setPosition(make_HPvector(1, 2, 3));
 	source->setOrientation(make_quaternion(0, 1, 0, 0));
@@ -125,8 +125,8 @@ OO_TEST(ringTakesTheSource)
 	@autoreleasepool
 	{
 		SetUp();
-		cxx::Entity *source = Source();
-		for (cxx::Entity *ring : { Ring(source), ShrinkingRing(source) })
+		Entity *source = Source();
+		for (Entity *ring : { Ring(source), ShrinkingRing(source) })
 		{
 			OO_CHECK(ring != nil && ring != source);
 			OO_CHECK(HPvector_equal(ring->getPosition(), make_HPvector(1, 2, 3)));
@@ -150,7 +150,7 @@ OO_TEST(updateCountsAndExpires)
 	@autoreleasepool
 	{
 		SetUp();
-		cxx::Entity *ring = Ring(Source());
+		Entity *ring = Ring(Source());
 		ring->update(0.5);
 		OO_CHECK(oo::EntityDescription(ring).ends_with("{0.500000 seconds passed of 2.000000}"));
 		OO_CHECK(HPvector_equal(ring->getPosition(), make_HPvector(3, 4.5, 6)));	// moved by its velocity

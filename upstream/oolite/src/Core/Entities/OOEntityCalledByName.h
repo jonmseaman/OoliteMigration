@@ -38,7 +38,7 @@ MA 02110-1301, USA.
 #include <span>
 #include <string>
 
-namespace cxx { class Entity; }
+class Entity;
 class OOColor;
 
 
@@ -71,7 +71,7 @@ struct OOEntityByNameValue
 	Vector		vector{};
 	Quaternion	quaternion{};
 	id			object = nil;
-	cxx::Entity	*entity = nullptr;	// an entity result, borrowed: the C++ entity (bead oo-9ht.39.24; its object, in object, before)
+	Entity	*entity = nullptr;	// an entity result, borrowed: the C++ entity (bead oo-9ht.39.24; its object, in object, before)
 	OOColor		*color = nullptr;	// a colour result, borrowed (fogUniform; bead oo-9ht.39.8.25)
 	oo::PList	plist;
 };
@@ -83,9 +83,9 @@ struct OOEntityByNameRow
 	const char				*result;	// @encode() of the declared result type
 	OOEntityByNameArgument	argument;
 	// The method's body on the entity, given the argument its kind takes; a PList result, else null.
-	oo::PList				(*call)(cxx::Entity *entity, const std::string *string, const oo::PList *plist);
+	oo::PList				(*call)(Entity *entity, const std::string *string, const oo::PList *plist);
 	// A method with no argument: its body on the entity, its result kept by type; else null.
-	void					(*typed)(cxx::Entity *entity, OOEntityByNameValue &value);
+	void					(*typed)(Entity *entity, OOEntityByNameValue &value);
 };
 
 
@@ -98,8 +98,8 @@ struct OOEntityByNameRow
 struct OOEntityFacadeRow
 {
 	const char				*name;
-	bool					(*answers)(cxx::Entity *entity);
-	void					(*typed)(cxx::Entity *entity, OOEntityByNameValue &value);
+	bool					(*answers)(Entity *entity);
+	void					(*typed)(Entity *entity, OOEntityByNameValue &value);
 };
 
 
@@ -123,7 +123,7 @@ enum OOEntityObjectNameKind: std::uint8_t
 struct OOEntityObjectName
 {
 	const char				*name;
-	bool					(*answers)(cxx::Entity *entity);	// null: every entity
+	bool					(*answers)(Entity *entity);	// null: every entity
 	OOEntityObjectNameKind	kind;
 	const char				*encoding;	// the object's method's type encoding
 };
@@ -139,12 +139,12 @@ const OOEntityFacadeRow *EntityFacadeRowNamed(const std::string &name);	// null 
 
 std::span<const OOEntityByNameRow> EntityByNameRows();
 const OOEntityByNameRow *EntityByNameRowNamed(const std::string &name);	// null if not tabled
-bool EntityByNameRowApplies(const OOEntityByNameRow &row, cxx::Entity *entity);
+bool EntityByNameRowApplies(const OOEntityByNameRow &row, Entity *entity);
 
 // The tabled method with no argument that applies to the entity, called, its result kept by type
 // in value (bead oo-9ht.39.7.2), or the facade row's (bead oo-9ht.39.8.25); false (nothing called)
 // for any other name.
-bool CallEntityByNameTyped(cxx::Entity *entity, const std::string &name, OOEntityByNameValue &value);
+bool CallEntityByNameTyped(Entity *entity, const std::string &name, OOEntityByNameValue &value);
 
 }	// namespace oo
 

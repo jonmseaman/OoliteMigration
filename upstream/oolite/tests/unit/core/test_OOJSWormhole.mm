@@ -32,8 +32,6 @@
 
 // MARK: The entity classes, as far as the binding sees them ---------------------------------------
 
-namespace cxx {
-
 // The C++ root, as far as the binding and the root's JS category reach it.
 class Entity : public oo::RefCounted
 {
@@ -44,13 +42,11 @@ public:
 	virtual bool isVisibleToScripts();
 };
 
-}	// namespace cxx
-
 
 /*	A wormhole whose arrival time is -1 raises from arrivalTime(), one whose arrival time is -2
 	throws a C++ exception, so the test sees what an exception under a native becomes.
 */
-class WormholeEntity : public cxx::Entity
+class WormholeEntity : public Entity
 {
 public:
 	double arrivalTime();
@@ -73,15 +69,16 @@ public:
 #include "OOJSEntityHolder.h"
 
 
-@interface Entity: OOObject
+__attribute__((objc_runtime_name("Entity")))
+@interface TestEntityObject: OOObject
 {
 @public
-	oo::Ref<cxx::Entity> _cxxEntity;	// the wormhole's C++ part (oo::ToCxx reads it)
+	oo::Ref<Entity> _cxxEntity;	// the wormhole's C++ part (oo::ToCxx reads it)
 }
 - (id) weakRefUnderlyingObject;
 @end
 
-@interface Entity (OOJavaScriptExtensions)
+@interface TestEntityObject (OOJavaScriptExtensions)
 - (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
 - (std::optional<std::string>) cxx_oo_jsClassName;
 - (BOOL) isVisibleToScripts;
@@ -99,7 +96,7 @@ public:
 #include <string>
 
 
-@implementation Entity
+@implementation TestEntityObject
 
 - (id) weakRefUnderlyingObject
 {
@@ -111,17 +108,17 @@ public:
 
 // The root's JS category, as the game's asks the C++ part (EntityOOJavaScriptExtensions+ObjCBridge.mm,
 // bead oo-9ht.107): the engine sends these selectors to the wrapped object.
-@implementation Entity (OOJavaScriptExtensions)
+@implementation TestEntityObject (OOJavaScriptExtensions)
 - (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype  { _cxxEntity->getJSClass(outClass, outPrototype); }
 - (std::optional<std::string>) cxx_oo_jsClassName  { return _cxxEntity->jsClassName(); }
 - (BOOL) isVisibleToScripts  { return _cxxEntity->isVisibleToScripts(); }
 @end
 
 
-cxx::Entity::~Entity()  {}
-void cxx::Entity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)  { *outClass = nullptr; *outPrototype = nullptr; }
-std::optional<std::string> cxx::Entity::jsClassName()  { return std::string("Entity"); }
-bool cxx::Entity::isVisibleToScripts()  { return false; }
+Entity::~Entity()  {}
+void Entity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)  { *outClass = nullptr; *outPrototype = nullptr; }
+std::optional<std::string> Entity::jsClassName()  { return std::string("Entity"); }
+bool Entity::isVisibleToScripts()  { return false; }
 
 
 double WormholeEntity::arrivalTime()
@@ -284,13 +281,13 @@ namespace {
 ooscript::Runtime sRuntime;
 ooscript::Context sContext;
 ooscript::Object sGlobal;
-Entity *sWormhole = nil;				// the wormhole's Objective-C object, which the JS object holds
+TestEntityObject *sWormhole = nil;				// the wormhole's Objective-C object, which the JS object holds
 WormholeEntity *sWormholePart = nullptr;	// its C++ part
 
 
 // A JS object for an entity, as EntityJSValueInContext() makes it: the class and prototype the
 // entity's category names, and a holder of its C++ part in the private slot (bead oo-9ht.39.3).
-ooscript::Value JSValueForEntity(Entity *entity)
+ooscript::Value JSValueForEntity(TestEntityObject *entity)
 {
 	ooscript::ClassDef *jsClass = nullptr;
 	ooscript::Object prototype = nullptr;
@@ -312,7 +309,7 @@ void SetUpContext()
 	gOOEntityJSPrototype = ooscript::initClass(sContext, sGlobal, nullptr, &sFakeEntityClass, OOJSUnconstructableConstruct, 0, nullptr, nullptr, nullptr, nullptr);
 	InitOOJSWormhole(sContext, sGlobal);
 
-	sWormhole = [[Entity alloc] init];	// kept for the life of the test
+	sWormhole = [[TestEntityObject alloc] init];	// kept for the life of the test
 	sWormhole->_cxxEntity = oo::makeRef<WormholeEntity>();
 	sWormholePart = static_cast<WormholeEntity *>(sWormhole->_cxxEntity.get());
 	sWormholePart->_arrivalTime = 1000.5;
@@ -323,8 +320,8 @@ void SetUpContext()
 	ooscript::setProperty(sContext, sGlobal, "wormhole", &wormhole);
 	ooscript::Value entity = ooscript::nullValue();
 	ooscript::Object plain = ooscript::newObject(sContext, &sFakeEntityClass, gOOEntityJSPrototype, nullptr);
-	Entity *plainEntity = [[Entity alloc] init];	// kept for the life of the test
-	plainEntity->_cxxEntity = oo::makeRef<cxx::Entity>();	// an entity that is not a wormhole
+	TestEntityObject *plainEntity = [[TestEntityObject alloc] init];	// kept for the life of the test
+	plainEntity->_cxxEntity = oo::makeRef<Entity>();	// an entity that is not a wormhole
 	if (plain != nullptr && OOJSSetCxxPrivate(sContext, plain, oo::makeRef<OOJSEntityHolder>(plainEntity->_cxxEntity.get()).get()))  entity = ooscript::objectValue(plain);
 	ooscript::setProperty(sContext, sGlobal, "plainEntity", &entity);
 }

@@ -49,7 +49,7 @@ SOFTWARE.
 
 
 struct OOShaderBindingValue;	// OOShaderUniformMethodType.h (bead oo-9ht.158)
-namespace cxx { class Entity; }	// Entity.h: the materials' binding target (bead oo-9ht.39.6)
+class Entity;	// Entity.h: the materials' binding target (bead oo-9ht.39.6)
 
 /*	A uniform bound to a C++ object's member (bead oo-t0e2m, ADR-0056 amendment oo-t0e2m): the
 	getter reads the member into the field its type uses (OOShaderBindingValue), as a member table's
@@ -106,7 +106,7 @@ public:
 	*/
 	static oo::Ref<OOShaderUniform> initWithEntityTarget(const std::string &uniformName,
 														 OOShaderProgram *shaderProgram,
-														 cxx::Entity *target,
+														 Entity *target,
 														 SEL selector,
 														 OOUniformConvertOptions options);
 
@@ -116,7 +116,7 @@ public:
 	void apply();
 
 	void setBindingTarget(id<OOWeakReferenceSupport> target);
-	void setEntityBindingTarget(cxx::Entity *target);	// bead oo-9ht.39.6: as initWithEntityTarget() binds
+	void setEntityBindingTarget(Entity *target);	// bead oo-9ht.39.6: as initWithEntityTarget() binds
 
 private:
 	OOShaderUniform() = default;

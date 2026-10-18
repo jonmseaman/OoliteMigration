@@ -137,7 +137,7 @@ EXCLUDED = {
 }
 STRING_ARG = "const std::string &"
 # A facade method answering one entity (Entity *, Entity <OOBeaconEntity> *): its row is written
-# @encode(id), the same "@", as the by-name table writes a cxx::Entity * result (bead oo-9ht.39.24).
+# @encode(id), the same "@", as the by-name table writes an Entity * result (bead oo-9ht.39.24).
 ENTITY_RESULT = re.compile(r"^Entity\b[^*]*\*$")
 
 # The facade's Entity (OOJavaScriptExtensions) category was deleted by bead oo-9ht.39.8.9; its

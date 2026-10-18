@@ -190,7 +190,7 @@ namespace {
 // class, DEFINE_JS_OBJECT_GETTER(JSPlanetGetPlanetObject, &sPlanetClass, ...) before).
 bool JSPlanetGetPlanetEntity(ooscript::Context context, ooscript::Object inObject, OOPlanetEntity **outObject)
 {
-	cxx::Entity *entity = nullptr;
+	Entity *entity = nullptr;
 	if (!OOJSEntityGetEntityOfClass(context, inObject, &sPlanetClass, &entity))  return false;
 	*outObject = dynamic_cast<OOPlanetEntity *>(entity);
 	return true;
@@ -289,7 +289,7 @@ static bool PlanetGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			// The C++ member the root's selector reached (bead oo-9ht.39.8.2), qualified: the final overrider for a
 			// planet (OOPlanetEntity has no subclass and does not override it), so the binding test stands in for
 			// it; zero for none, as the message to nil.
-			return QuaternionToJSValue(context, planet != nullptr ? planet->cxx::Entity::normalOrientation() : Quaternion{}, value_raw);
+			return QuaternionToJSValue(context, planet != nullptr ? planet->Entity::normalOrientation() : Quaternion{}, value_raw);
 		
 		case kPlanet_rotationalVelocity:
 			return ooscript::newNumberValue(cx, (planet != nullptr ? planet->rotationalVelocity() : 0.0), value);

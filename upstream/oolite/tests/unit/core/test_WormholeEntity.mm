@@ -82,7 +82,7 @@ T *NewTestPlayer()
 
 // An effect, for the collision test (an Objective-C subclass until bead oo-j12i2; a C++ one
 // overriding the member its selector became).
-class TestEffect : public cxx::Entity
+class TestEffect : public Entity
 {
 public:
 	bool isEffect() override	{ return true; }
@@ -94,10 +94,10 @@ class TestUniverse : public Universe
 {
 public:
 	OOSystemID &_system = systemID;	// the universe's own state, which its getter answers (bead oo-ql9rn)
-	cxx::Entity			*_removed = {};
+	Entity			*_removed = {};
 
 	std::optional<std::string> getSystemName(OOSystemID sys, OOGalaxyID /*gnum*/) override	{ return "System " + std::to_string(sys); }	// getSystemName(sys) asks it
-	bool removeEntity(cxx::Entity *entity) override	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
+	bool removeEntity(Entity *entity) override	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
 	{
 		_removed = entity;
 		return YES;
@@ -153,7 +153,7 @@ void SetUp()
 
 // --- Ivars the test sets and reads, and nothing else ----------------------------------------------
 
-void SetMass(cxx::Entity *e, GLfloat mass)		{ e->mass = mass; }
+void SetMass(Entity *e, GLfloat mass)		{ e->mass = mass; }
 
 // --------------------------------------------------------------------------------------------------
 
@@ -166,9 +166,9 @@ bool Near(double a, double b)
 
 // A ship: C++ since bead oo-9ht.144 (the wormhole calls its members), under its object
 // (oo::NewEntityFacade, autoreleased as the plain entity was), never set up.
-cxx::Entity *Ship(GLfloat mass)
+Entity *Ship(GLfloat mass)
 {
-	cxx::Entity *ship = oo::MadeEntity(oo::makeRef<::ShipEntity>());
+	Entity *ship = oo::MadeEntity(oo::makeRef<::ShipEntity>());
 	SetMass(ship, mass);
 	ship->setPosition(make_HPvector(1, 2, 3));
 	return ship;
@@ -176,7 +176,7 @@ cxx::Entity *Ship(GLfloat mass)
 
 
 // alloc/init.../autorelease: a new C++ wormhole, owned by its autoreleased Objective-C object.
-WormholeEntity *ToNine(cxx::Entity *ship)
+WormholeEntity *ToNine(Entity *ship)
 {
 	oo::Ref<WormholeEntity> wh = oo::makeRef<WormholeEntity>();
 	(void)oo::MadeEntity(wh);
@@ -215,7 +215,7 @@ OO_TEST(madeByShip)
 	{
 		SetUp();
 		WormholeEntity *wh = ToNine(Ship(1000.0f));
-		OO_CHECK(wh != nil && dynamic_cast<WormholeEntity *>(static_cast<cxx::Entity *>(wh)) != nullptr && wh->getIsWormhole());
+		OO_CHECK(wh != nil && dynamic_cast<WormholeEntity *>(static_cast<Entity *>(wh)) != nullptr && wh->getIsWormhole());
 		OO_CHECK(wh->status() == STATUS_EFFECT && wh->getScanClass() == CLASS_WORMHOLE);
 		OO_CHECK(wh->getOrigin() == 7 && wh->getDestination() == 9);
 		NSPoint o = wh->originCoordinates(), d = wh->destinationCoordinates();
@@ -359,7 +359,7 @@ OO_TEST(suckInRefused)
 		SetUp();
 		WormholeEntity *wh = ToNine(Ship(1000.0f));
 		OO_CHECK(!wh->suckInShip(nullptr));
-		cxx::Entity *leaving = Ship(10.0f);
+		Entity *leaving = Ship(10.0f);
 		leaving->setStatus(STATUS_ENTERING_WITCHSPACE);
 		OO_CHECK(!wh->suckInShip(oo::ToShip(leaving)));
 		sUniverse->_system = 8;
@@ -412,7 +412,7 @@ OO_TEST(facade)
 		SetUp();
 		WormholeEntity *wh = ToNine(Ship(1000.0f));
 		// Its Objective-C object is the root's facade since bead oo-9ht.112 (amendment oo-9ht.107).
-		cxx::Entity *object = wh;
+		Entity *object = wh;
 		OO_CHECK(object != nil);	// (and its object's class, the root facade: retired with the facade, bead oo-dpyk8, under oo-9n5p9)
 		// A C++ entity (amendment oo-0mxi), not an Objective-C entity's adapter.
 		OO_CHECK(dynamic_cast<WormholeEntity *>(object) == wh);
@@ -430,7 +430,7 @@ OO_TEST(jsExtensions)
 		WormholeEntity *wh = ToNine(Ship(1000.0f));
 		ooscript::ClassDef *jsClass = nullptr, *expectedClass = nullptr;
 		ooscript::Object prototype = nullptr, expectedPrototype = nullptr;
-		cxx::Entity *object = wh;	// what the engine asks (the root's facade since bead oo-9ht.112)
+		Entity *object = wh;	// what the engine asks (the root's facade since bead oo-9ht.112)
 		OOJSEntityGetJSClass(object, &jsClass, &prototype);
 		OOJSWormholeGetJSClass(&expectedClass, &expectedPrototype);
 		OO_CHECK(jsClass != nullptr && jsClass == expectedClass && prototype == expectedPrototype);

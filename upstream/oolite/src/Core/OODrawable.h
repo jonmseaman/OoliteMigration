@@ -39,7 +39,7 @@ SOFTWARE.
 #import "oofnd/objc/OOObject.h"
 #import "OOOpenGL.h"
 #import "OOMaths.h"
-namespace cxx { class Entity; }	// Entity.h: the shader binding target (bead oo-9ht.39.6)
+class Entity;	// Entity.h: the shader binding target (bead oo-9ht.39.6)
 
 #include <vector>
 #include "oofnd/objc/OOObjCRef.h"
@@ -63,7 +63,7 @@ public:
 	virtual BoundingBox boundingBox();
 
 	// Passed to all materials.
-	virtual void setBindingTarget(cxx::Entity *target);
+	virtual void setBindingTarget(Entity *target);
 
 	virtual void dumpSelfState();
 

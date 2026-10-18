@@ -9,7 +9,7 @@ did not keep the entity alive and read as a stale reference (nil) once it had go
 does the same with oo::WeakRef. The slot retains the holder (OOJSSetCxxPrivate) and the finalizer
 releases it (OOJSCxxObjectWrapperFinalize). EntityJSValueInContext() makes one per JS object.
 
-Include it after cxx::Entity's definition (Entity.h; a test's stand-in): oo::WeakRef needs the
+Include it after Entity's definition (Entity.h; a test's stand-in): oo::WeakRef needs the
 complete class. The JS glue members are defined in OOJSEntity.mm (a narrow test that links a
 binding without it defines them as stand-ins).
 
@@ -43,10 +43,10 @@ MA 02110-1301, USA.
 class OOJSEntityHolder final : public oo::RefCounted, public OOJSPrivateObject
 {
 public:
-	explicit OOJSEntityHolder(cxx::Entity *entity) : _entity(entity) {}
+	explicit OOJSEntityHolder(Entity *entity) : _entity(entity) {}
 
 	// The entity, borrowed; null once it has gone (what the weak reference proxy's underlying object was: nil).
-	cxx::Entity *entity() const  { return _entity.get(); }
+	Entity *entity() const  { return _entity.get(); }
 
 	// The entity's own glue, as the engine sent its selectors to the slot's weak reference, which
 	// forwarded them to the facade: its JS value, nothing on finalization (OOObject's
@@ -56,7 +56,7 @@ public:
 	std::optional<std::string> jsDescription() override;
 
 private:
-	oo::WeakRef<cxx::Entity>	_entity;
+	oo::WeakRef<Entity>	_entity;
 };
 
 #endif	// OOJSENTITYHOLDER_H

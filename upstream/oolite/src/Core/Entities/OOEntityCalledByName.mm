@@ -67,12 +67,12 @@ MA 02110-1301, USA.
 namespace {
 
 // The parts the category methods' bodies read, as the facade's (Entity+ObjCBridge.mm) are.
-ShipEntity *ShipPart(cxx::Entity *entity)				{ return dynamic_cast<ShipEntity *>(entity); }
-StationEntity *StationPart(cxx::Entity *entity)			{ return dynamic_cast<StationEntity *>(entity); }
-DockEntity *DockPart(cxx::Entity *entity)				{ return dynamic_cast<DockEntity *>(entity); }
-PlayerEntity *PlayerEntityPart(cxx::Entity *entity)		{ return dynamic_cast<PlayerEntity *>(entity); }
-ProxyPlayerEntity *ProxyPart(cxx::Entity *entity)		{ return dynamic_cast<ProxyPlayerEntity *>(entity); }
-OOVisualEffectEntity *EffectPart(cxx::Entity *entity)	{ return dynamic_cast<OOVisualEffectEntity *>(entity); }
+ShipEntity *ShipPart(Entity *entity)				{ return dynamic_cast<ShipEntity *>(entity); }
+StationEntity *StationPart(Entity *entity)			{ return dynamic_cast<StationEntity *>(entity); }
+DockEntity *DockPart(Entity *entity)				{ return dynamic_cast<DockEntity *>(entity); }
+PlayerEntity *PlayerEntityPart(Entity *entity)		{ return dynamic_cast<PlayerEntity *>(entity); }
+ProxyPlayerEntity *ProxyPart(Entity *entity)		{ return dynamic_cast<ProxyPlayerEntity *>(entity); }
+OOVisualEffectEntity *EffectPart(Entity *entity)	{ return dynamic_cast<OOVisualEffectEntity *>(entity); }
 
 }	// namespace
 
@@ -81,7 +81,7 @@ OOVisualEffectEntity *EffectPart(cxx::Entity *entity)	{ return dynamic_cast<OOVi
 namespace {
 
 template <auto Function>
-oo::PList OOEntityByNameAdaptNone(cxx::Entity *entity, const std::string *, const oo::PList *)
+oo::PList OOEntityByNameAdaptNone(Entity *entity, const std::string *, const oo::PList *)
 {
 	if constexpr (std::is_same_v<decltype(Function(entity)), oo::PList>)  return Function(entity);
 	else
@@ -93,7 +93,7 @@ oo::PList OOEntityByNameAdaptNone(cxx::Entity *entity, const std::string *, cons
 
 
 template <auto Function>
-oo::PList OOEntityByNameAdaptString(cxx::Entity *entity, const std::string *string, const oo::PList *)
+oo::PList OOEntityByNameAdaptString(Entity *entity, const std::string *string, const oo::PList *)
 {
 	if constexpr (std::is_same_v<decltype(Function(entity, *string)), oo::PList>)  return Function(entity, *string);
 	else
@@ -105,7 +105,7 @@ oo::PList OOEntityByNameAdaptString(cxx::Entity *entity, const std::string *stri
 
 
 template <auto Function>
-oo::PList OOEntityByNameAdaptPList(cxx::Entity *entity, const std::string *, const oo::PList *plist)
+oo::PList OOEntityByNameAdaptPList(Entity *entity, const std::string *, const oo::PList *plist)
 {
 	if constexpr (std::is_same_v<decltype(Function(entity, *plist)), oo::PList>)  return Function(entity, *plist);
 	else
@@ -117,7 +117,7 @@ oo::PList OOEntityByNameAdaptPList(cxx::Entity *entity, const std::string *, con
 
 
 template <auto Function>
-void OOEntityByNameTyped(cxx::Entity *entity, OOEntityByNameValue &value)
+void OOEntityByNameTyped(Entity *entity, OOEntityByNameValue &value)
 {
 	using Result = decltype(Function(entity));
 	if constexpr (std::is_void_v<Result>)  Function(entity);
@@ -133,7 +133,7 @@ void OOEntityByNameTyped(cxx::Entity *entity, OOEntityByNameValue &value)
 	else if constexpr (std::is_same_v<Result, Vector>)  value.vector = Function(entity);
 	else if constexpr (std::is_same_v<Result, Quaternion>)  value.quaternion = Function(entity);
 	else if constexpr (std::is_same_v<Result, OOColor *>)  value.color = Function(entity);	// borrowed (bead oo-9ht.39.8.25)
-	else if constexpr (std::is_convertible_v<Result, cxx::Entity *>)  value.entity = Function(entity);	// the C++ entity (bead oo-9ht.39.24)
+	else if constexpr (std::is_convertible_v<Result, Entity *>)  value.entity = Function(entity);	// the C++ entity (bead oo-9ht.39.24)
 	else if constexpr (std::is_convertible_v<Result, id>)  value.object = Function(entity);
 	else  (void)Function(entity);	// a result callObjC() cannot read (it does not call such a method)
 }
@@ -147,7 +147,7 @@ void OOEntityByNameTyped(cxx::Entity *entity, OOEntityByNameValue &value)
 /*	The root facade's own selectors that callObjC() lists and the by-name table does not (bead
 	oo-9ht.39.8.25, ADR-0056 amendment oo-9ht.39.8.25), so callObjC() asks and calls an entity's C++
 	part for every name of its table. Each function is the facade method's body (Entity+ObjCBridge.mm,
-	and the cascade's category, deleted by bead oo-9ht.186), verbatim, with the entity for _cxxEntity.get(), after a guard
+	and the cascade's category, deleted by bead oo-9ht.186), verbatim, with the entity for the facade's own C++ entity, after a guard
 	for no entity (zero, as a message to nil answered; the calls never pass one); a name whose
 	result callObjC() cannot read (a string, a vector of objects, a matrix, a high-precision vector,
 	a bounding box: "cannot be called", or no result) has no function. The answers are
@@ -158,156 +158,156 @@ void OOEntityByNameTyped(cxx::Entity *entity, OOEntityByNameValue &value)
 */
 namespace {
 
-bool AnswersPlanet(cxx::Entity *entity)	{ return dynamic_cast<OOPlanetEntity *>(entity) != nullptr; }
-bool AnswersBeacon(cxx::Entity *entity)	{ return dynamic_cast<OOWaypointEntity *>(entity) != nullptr || ShipPart(entity) != nullptr || EffectPart(entity) != nullptr; }
+bool AnswersPlanet(Entity *entity)	{ return dynamic_cast<OOPlanetEntity *>(entity) != nullptr; }
+bool AnswersBeacon(Entity *entity)	{ return dynamic_cast<OOWaypointEntity *>(entity) != nullptr || ShipPart(entity) != nullptr || EffectPart(entity) != nullptr; }
 
-void Facade_addToLinkedLists(cxx::Entity *entity)
+void Facade_addToLinkedLists(Entity *entity)
 { if (entity == nullptr)  return; entity->addToLinkedLists(); }
-Vector Facade_airColorAsVector(cxx::Entity *entity)
+Vector Facade_airColorAsVector(Entity *entity)
 { if (entity == nullptr)  return {}; OOPlanetEntity *planet = dynamic_cast<OOPlanetEntity *>(entity); return planet != nullptr ? planet->airColorAsVector() : kZeroVector; }
-float Facade_airColorMixRatio(cxx::Entity *entity)
+float Facade_airColorMixRatio(Entity *entity)
 { if (entity == nullptr)  return {}; OOPlanetEntity *planet = dynamic_cast<OOPlanetEntity *>(entity); return planet != nullptr ? planet->airColorMixRatio() : 0.0f; }
-float Facade_airDensity(cxx::Entity *entity)
+float Facade_airDensity(Entity *entity)
 { if (entity == nullptr)  return {}; OOPlanetEntity *planet = dynamic_cast<OOPlanetEntity *>(entity); return planet != nullptr ? planet->airDensity() : 0.0f; }
-OOHUDBeaconIcon * Facade_beaconDrawable(cxx::Entity *entity)
+OOHUDBeaconIcon * Facade_beaconDrawable(Entity *entity)
 { if (entity == nullptr)  return {}; if (ShipEntity *ship = ShipPart(entity))  return ship->beaconDrawable(); if (OOVisualEffectEntity *effect = EffectPart(entity))  return effect->beaconDrawable(); OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(entity); return waypoint != nullptr ? waypoint->beaconDrawable() : nullptr; }
-double Facade_camZeroDistance(cxx::Entity *entity)
+double Facade_camZeroDistance(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->camZeroDistance(); }
-GLfloat Facade_cameraRangeBack(cxx::Entity *entity)
+GLfloat Facade_cameraRangeBack(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->cameraRangeBack(); }
-GLfloat Facade_cameraRangeFront(cxx::Entity *entity)
+GLfloat Facade_cameraRangeFront(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->cameraRangeFront(); }
-Vector Facade_cameraRelativePosition(cxx::Entity *entity)
+Vector Facade_cameraRelativePosition(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getCameraRelativePosition(); }
-BOOL Facade_canCollide(cxx::Entity *entity)
+BOOL Facade_canCollide(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->canCollide(); }
-GLfloat Facade_collisionRadius(cxx::Entity *entity)
+GLfloat Facade_collisionRadius(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->collisionRadius(); }
-void Facade_deleteJSSelf(cxx::Entity *entity)
+void Facade_deleteJSSelf(Entity *entity)
 { if (entity == nullptr)  return; entity->deleteJSSelf(); }
-GLfloat Facade_distanceTravelled(cxx::Entity *entity)
+GLfloat Facade_distanceTravelled(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getDistanceTravelled(); }
-void Facade_dumpSelfState(cxx::Entity *entity)
+void Facade_dumpSelfState(Entity *entity)
 { if (entity == nullptr)  return; entity->dumpSelfState(); }
-void Facade_dumpState(cxx::Entity *entity)
+void Facade_dumpState(Entity *entity)
 { if (entity == nullptr)  return; entity->dumpState(); }
-GLfloat Facade_energy(cxx::Entity *entity)
+GLfloat Facade_energy(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getEnergy(); }
-double Facade_findCollisionRadius(cxx::Entity *entity)
+double Facade_findCollisionRadius(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->findCollisionRadius(); }
-OOColor * Facade_fogUniform(cxx::Entity *entity)
+OOColor * Facade_fogUniform(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->fogUniform().get(); }
-GLfloat Facade_frustumRadius(cxx::Entity *entity)
+GLfloat Facade_frustumRadius(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->frustumRadius(); }
-Vector Facade_illuminationColorAsVector(cxx::Entity *entity)
+Vector Facade_illuminationColorAsVector(Entity *entity)
 { if (entity == nullptr)  return {}; OOPlanetEntity *planet = dynamic_cast<OOPlanetEntity *>(entity); return planet != nullptr ? planet->illuminationColorAsVector() : kZeroVector; }
-BOOL Facade_isBeacon(cxx::Entity *entity)
+BOOL Facade_isBeacon(Entity *entity)
 { if (entity == nullptr)  return {}; if (ShipEntity *ship = ShipPart(entity))  return ship->isBeacon(); if (OOVisualEffectEntity *effect = EffectPart(entity))  return effect->isBeacon(); OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(entity); return waypoint != nullptr ? waypoint->isBeacon() : NO; }
-BOOL Facade_isCascadeWeapon(cxx::Entity *entity)
+BOOL Facade_isCascadeWeapon(Entity *entity)
 { if (entity == nullptr)  return {}; OOQuiriumCascadeEntity *cascade = dynamic_cast<OOQuiriumCascadeEntity *>(entity); return cascade != nullptr ? cascade->isCascadeWeapon() : NO; }
-BOOL Facade_isDock(cxx::Entity *entity)
+BOOL Facade_isDock(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->isDock(); }
-BOOL Facade_isEffect(cxx::Entity *entity)
+BOOL Facade_isEffect(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->isEffect(); }
-BOOL Facade_isImmuneToBreakPatternHide(cxx::Entity *entity)
+BOOL Facade_isImmuneToBreakPatternHide(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getIsImmuneToBreakPatternHide(); }
-BOOL Facade_isInSpace(cxx::Entity *entity)
+BOOL Facade_isInSpace(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->isInSpace(); }
-BOOL Facade_isJammingScanning(cxx::Entity *entity)
+BOOL Facade_isJammingScanning(Entity *entity)
 { if (entity == nullptr)  return {}; if (ShipEntity *ship = ShipPart(entity))  return ship->isJammingScanning(); if (OOVisualEffectEntity *effect = EffectPart(entity))  return effect->isJammingScanning(); OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(entity); return waypoint != nullptr ? waypoint->isJammingScanning() : NO; }
-BOOL Facade_isPlanet(cxx::Entity *entity)
+BOOL Facade_isPlanet(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->isPlanet(); }
-BOOL Facade_isPlayer(cxx::Entity *entity)
+BOOL Facade_isPlayer(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getIsPlayer(); }
-BOOL Facade_isShip(cxx::Entity *entity)
+BOOL Facade_isShip(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getIsShip(); }
-BOOL Facade_isSky(cxx::Entity *entity)
+BOOL Facade_isSky(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->isSky(); }
-BOOL Facade_isStation(cxx::Entity *entity)
+BOOL Facade_isStation(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getIsStation(); }
-BOOL Facade_isStellarObject(cxx::Entity *entity)
+BOOL Facade_isStellarObject(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->isStellarObject(); }
-BOOL Facade_isSubEntity(cxx::Entity *entity)
+BOOL Facade_isSubEntity(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getIsSubEntity(); }
-BOOL Facade_isSun(cxx::Entity *entity)
+BOOL Facade_isSun(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->isSun(); }
-BOOL Facade_isSunlit(cxx::Entity *entity)
+BOOL Facade_isSunlit(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getIsSunlit(); }
-BOOL Facade_isVisible(cxx::Entity *entity)
+BOOL Facade_isVisible(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->isVisible(); }
-BOOL Facade_isVisibleToScripts(cxx::Entity *entity)
+BOOL Facade_isVisibleToScripts(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->isVisibleToScripts(); }
-BOOL Facade_isVisualEffect(cxx::Entity *entity)
+BOOL Facade_isVisualEffect(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getIsVisualEffect(); }
-BOOL Facade_isWaypoint(cxx::Entity *entity)
+BOOL Facade_isWaypoint(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->isWaypoint(); }
-BOOL Facade_isWormhole(cxx::Entity *entity)
+BOOL Facade_isWormhole(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getIsWormhole(); }
-NSUInteger Facade_lastDrawCounter(cxx::Entity *entity)
+NSUInteger Facade_lastDrawCounter(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getLastDrawCounter(); }
-GLfloat Facade_mass(cxx::Entity *entity)
+GLfloat Facade_mass(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getMass(); }
-GLfloat Facade_maxEnergy(cxx::Entity *entity)
+GLfloat Facade_maxEnergy(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getMaxEnergy(); }
-cxx::Entity * Facade_nextBeacon(cxx::Entity *entity)
+Entity * Facade_nextBeacon(Entity *entity)
 { if (entity == nullptr)  return {}; if (ShipEntity *ship = ShipPart(entity))  return ship->nextBeacon(); if (OOVisualEffectEntity *effect = EffectPart(entity))  return effect->nextBeacon(); OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(entity); return waypoint != nullptr ? waypoint->nextBeacon() : nullptr; }
-Quaternion Facade_normalOrientation(cxx::Entity *entity)
+Quaternion Facade_normalOrientation(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->normalOrientation(); }
-Quaternion Facade_orientation(cxx::Entity *entity)
+Quaternion Facade_orientation(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getOrientation(); }
-void Facade_orientationChanged(cxx::Entity *entity)
+void Facade_orientationChanged(Entity *entity)
 { if (entity == nullptr)  return; entity->orientationChanged(); }
-cxx::Entity * Facade_owner(cxx::Entity *entity)	// the owner's C++ entity (its object's until bead oo-dpyk8)
+Entity * Facade_owner(Entity *entity)	// the owner's C++ entity (its object's until bead oo-dpyk8)
 { if (entity == nullptr)  return {}; return entity->owner(); }
-cxx::Entity * Facade_parentEntity(cxx::Entity *entity)
+Entity * Facade_parentEntity(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->parentEntity(); }
-cxx::Entity * Facade_prevBeacon(cxx::Entity *entity)
+Entity * Facade_prevBeacon(Entity *entity)
 { if (entity == nullptr)  return {}; if (ShipEntity *ship = ShipPart(entity))  return ship->prevBeacon(); if (OOVisualEffectEntity *effect = EffectPart(entity))  return effect->prevBeacon(); OOWaypointEntity *waypoint = dynamic_cast<OOWaypointEntity *>(entity); return waypoint != nullptr ? waypoint->prevBeacon() : nullptr; }
-Vector Facade_relativePosition(cxx::Entity *entity)
+Vector Facade_relativePosition(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->relativePosition(); }
-void Facade_removeFromLinkedLists(cxx::Entity *entity)
+void Facade_removeFromLinkedLists(Entity *entity)
 { if (entity == nullptr)  return; entity->removeFromLinkedLists(); }
-cxx::Entity * Facade_rootShipEntity(cxx::Entity *entity)
+Entity * Facade_rootShipEntity(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->rootShipEntity(); }
-OOScanClass Facade_scanClass(cxx::Entity *entity)
+OOScanClass Facade_scanClass(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getScanClass(); }
-NSUInteger Facade_sessionID(cxx::Entity *entity)
+NSUInteger Facade_sessionID(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->sessionID(); }
-GLfloat Facade_spawnTime(cxx::Entity *entity)
+GLfloat Facade_spawnTime(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getSpawnTime(); }
-double Facade_speed(cxx::Entity *entity)
+double Facade_speed(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->speed(); }
-OOEntityStatus Facade_status(cxx::Entity *entity)
+OOEntityStatus Facade_status(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->status(); }
-cxx::Entity * Facade_superShaderBindingTarget(cxx::Entity *entity)	// the parent's C++ entity (its object's until bead oo-dpyk8)
+Entity * Facade_superShaderBindingTarget(Entity *entity)	// the parent's C++ entity (its object's until bead oo-dpyk8)
 { if (entity == nullptr)  return {}; return entity->superShaderBindingTarget(); }
-Vector Facade_terminatorThresholdVector(cxx::Entity *entity)
+Vector Facade_terminatorThresholdVector(Entity *entity)
 { if (entity == nullptr)  return {}; OOPlanetEntity *planet = dynamic_cast<OOPlanetEntity *>(entity); return planet != nullptr ? planet->terminatorThresholdVector() : kZeroVector; }
-void Facade_throwSparks(cxx::Entity *entity)
+void Facade_throwSparks(Entity *entity)
 { if (entity == nullptr)  return; entity->throwSparks(); }
-BOOL Facade_throwingSparks(cxx::Entity *entity)
+BOOL Facade_throwingSparks(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->throwingSparks(); }
-GLfloat Facade_timeElapsedSinceSpawn(cxx::Entity *entity)
+GLfloat Facade_timeElapsedSinceSpawn(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->timeElapsedSinceSpawn(); }
-OOUniversalID Facade_universalID(cxx::Entity *entity)
+OOUniversalID Facade_universalID(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getUniversalID(); }
-GLfloat Facade_universalTime(cxx::Entity *entity)
+GLfloat Facade_universalTime(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->universalTime(); }
-void Facade_updateCameraRelativePosition(cxx::Entity *entity)
+void Facade_updateCameraRelativePosition(Entity *entity)
 { if (entity == nullptr)  return; entity->updateCameraRelativePosition(); }
-void Facade_updateLinkedLists(cxx::Entity *entity)
+void Facade_updateLinkedLists(Entity *entity)
 { if (entity == nullptr)  return; entity->updateLinkedLists(); }
-BOOL Facade_validForAddToUniverse(cxx::Entity *entity)
+BOOL Facade_validForAddToUniverse(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->validForAddToUniverse(); }
-Vector Facade_velocity(cxx::Entity *entity)
+Vector Facade_velocity(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->getVelocity(); }
-void Facade_warnAboutHostiles(cxx::Entity *entity)
+void Facade_warnAboutHostiles(Entity *entity)
 { if (entity == nullptr)  return; entity->warnAboutHostiles(); }
-void Facade_wasAddedToUniverse(cxx::Entity *entity)
+void Facade_wasAddedToUniverse(Entity *entity)
 { if (entity == nullptr)  return; entity->wasAddedToUniverse(); }
-void Facade_wasRemovedFromUniverse(cxx::Entity *entity)
+void Facade_wasRemovedFromUniverse(Entity *entity)
 { if (entity == nullptr)  return; entity->wasRemovedFromUniverse(); }
-double Facade_zeroDistance(cxx::Entity *entity)
+double Facade_zeroDistance(Entity *entity)
 { if (entity == nullptr)  return {}; return entity->zeroDistance(); }
 
 
@@ -474,7 +474,7 @@ const OOEntityByNameRow *oo::EntityByNameRowNamed(const std::string &name)
 // As the root facade's -respondsToSelector: answered the name sets (the visual effect's first). A name only
 // the effect's set holds is answered by the root (super) for any entity, as the facade did; its
 // body answers zero for any part but an effect's.
-bool oo::EntityByNameRowApplies(const OOEntityByNameRow &row, cxx::Entity *entity)
+bool oo::EntityByNameRowApplies(const OOEntityByNameRow &row, Entity *entity)
 {
 	if (entity == nullptr)  return false;
 	const unsigned flags = row.flags;
@@ -487,7 +487,7 @@ bool oo::EntityByNameRowApplies(const OOEntityByNameRow &row, cxx::Entity *entit
 }
 
 
-bool oo::CallEntityByNameTyped(cxx::Entity *entity, const std::string &name, OOEntityByNameValue &value)
+bool oo::CallEntityByNameTyped(Entity *entity, const std::string &name, OOEntityByNameValue &value)
 {
 	if (entity == nullptr)  return false;
 	if (const OOEntityByNameRow *row = EntityByNameRowNamed(name))
@@ -529,7 +529,7 @@ Kind ResultKind(const char *encoding)
 
 
 // The tabled row the name names, if it applies to the entity; null for any other name.
-const OOEntityByNameRow *ApplyingRow(cxx::Entity *entity, const std::string &name)
+const OOEntityByNameRow *ApplyingRow(Entity *entity, const std::string &name)
 {
 	const OOEntityByNameRow *row = oo::EntityByNameRowNamed(name);
 	return (row != nullptr && oo::EntityByNameRowApplies(*row, entity)) ? row : nullptr;
@@ -538,7 +538,7 @@ const OOEntityByNameRow *ApplyingRow(cxx::Entity *entity, const std::string &nam
 
 // The row's call with the argument, if OOCallByName would make it (its usable signatures); none
 // if the signature is unusable.
-std::optional<oo::PList> CallRow(const OOEntityByNameRow &row, cxx::Entity *entity, const std::string *string, const oo::PList *plist)
+std::optional<oo::PList> CallRow(const OOEntityByNameRow &row, Entity *entity, const std::string *string, const oo::PList *plist)
 {
 	const Kind result = ResultKind(row.result);
 	const bool hasArgument = (string != nullptr || plist != nullptr);
@@ -572,7 +572,7 @@ std::optional<oo::PList> CallRow(const OOEntityByNameRow &row, cxx::Entity *enti
 	asked since bead oo-9ht.39.9, ADR-0056 amendment oo-9ht.39.9; an Objective-C stand-in's own class
 	until bead oo-j12i2).
 */
-const char *ObjectClassName(cxx::Entity *)
+const char *ObjectClassName(Entity *)
 {
 	return "Entity";
 }
@@ -584,7 +584,7 @@ const char *ObjectClassName(cxx::Entity *)
 	_cmd and of the argument, without the frame offsets the method's encoding had (bead
 	oo-9ht.39.7.3, ADR-0056 amendment oo-9ht.39.7.3: a log-text-only change).
 */
-void LogBadSignature(cxx::Entity *entity, const OOEntityByNameRow &row)
+void LogBadSignature(Entity *entity, const OOEntityByNameRow &row)
 {
 	std::string encoding = std::string(row.result) + @encode(id) + @encode(SEL);
 	if (row.argument == OOEntityByNameArgument::String)  encoding += @encode(const std::string &);
@@ -594,7 +594,7 @@ void LogBadSignature(cxx::Entity *entity, const OOEntityByNameRow &row)
 
 
 // A tabled name that applies, called or logged; none for any other name (the object's path).
-std::optional<oo::PList> CallTabled(cxx::Entity *entity, const std::string &name, const std::string *string, const oo::PList *plist)
+std::optional<oo::PList> CallTabled(Entity *entity, const std::string &name, const std::string *string, const oo::PList *plist)
 {
 	const OOEntityByNameRow *row = ApplyingRow(entity, name);
 	if (row == nullptr)  return std::nullopt;
@@ -605,7 +605,7 @@ std::optional<oo::PList> CallTabled(cxx::Entity *entity, const std::string &name
 
 
 // The name, if the entity's object answered it for this entity; else null.
-const OOEntityObjectName *AnsweredObjectName(cxx::Entity *entity, const std::string &name)
+const OOEntityObjectName *AnsweredObjectName(Entity *entity, const std::string &name)
 {
 	const OOEntityObjectName *row = oo::EntityObjectNameNamed(name);
 	return (row != nullptr && (row->answers == nullptr || row->answers(entity))) ? row : nullptr;
@@ -619,7 +619,7 @@ const OOEntityObjectName *AnsweredObjectName(cxx::Entity *entity, const std::str
 	type encoding), a root-class or lifetime method included, which is no longer called; any other
 	name does not respond. The texts are OOCallByName's (OOCallByName.mm LogUnknown, LogBadSignature).
 */
-oo::PList CallObjectName(cxx::Entity *entity, const std::string &name, bool hasArgument)
+oo::PList CallObjectName(Entity *entity, const std::string &name, bool hasArgument)
 {
 	const OOEntityObjectName *row = AnsweredObjectName(entity, name);
 	if (row == nullptr)
@@ -644,7 +644,7 @@ oo::PList CallObjectName(cxx::Entity *entity, const std::string &name, bool hasA
 }	// namespace
 
 
-bool oo::EntityRespondsToName(cxx::Entity *entity, const std::string &name)
+bool oo::EntityRespondsToName(Entity *entity, const std::string &name)
 {
 	if (entity == nullptr)  return false;
 	if (const OOEntityByNameRow *row = EntityByNameRowNamed(name))  return EntityByNameRowApplies(*row, entity);
@@ -655,7 +655,7 @@ bool oo::EntityRespondsToName(cxx::Entity *entity, const std::string &name)
 }
 
 
-oo::PList oo::CallEntityByName(cxx::Entity *entity, const std::string &name)
+oo::PList oo::CallEntityByName(Entity *entity, const std::string &name)
 {
 	if (entity == nullptr)  return PList();
 	if (std::optional<PList> result = CallTabled(entity, name, nullptr, nullptr))  return *result;
@@ -663,7 +663,7 @@ oo::PList oo::CallEntityByName(cxx::Entity *entity, const std::string &name)
 }
 
 
-oo::PList oo::CallEntityByName(cxx::Entity *entity, const std::string &name, const std::string &argument)
+oo::PList oo::CallEntityByName(Entity *entity, const std::string &name, const std::string &argument)
 {
 	if (entity == nullptr)  return PList();
 	if (std::optional<PList> result = CallTabled(entity, name, &argument, nullptr))  return *result;
@@ -671,7 +671,7 @@ oo::PList oo::CallEntityByName(cxx::Entity *entity, const std::string &name, con
 }
 
 
-oo::PList oo::CallEntityByName(cxx::Entity *entity, const std::string &name, const PList &argument)
+oo::PList oo::CallEntityByName(Entity *entity, const std::string &name, const PList &argument)
 {
 	if (entity == nullptr)  return PList();
 	if (std::optional<PList> result = CallTabled(entity, name, nullptr, &argument))  return *result;
@@ -679,11 +679,11 @@ oo::PList oo::CallEntityByName(cxx::Entity *entity, const std::string &name, con
 }
 
 
-void oo::ScheduleEntityCall(cxx::Entity *entity, void (*call)(cxx::Entity *entity), double delay)
+void oo::ScheduleEntityCall(Entity *entity, void (*call)(Entity *entity), double delay)
 {
 	if (entity == nullptr || call == nullptr)  return;
 	// The call holds the entity, so it keeps the entity alive until it has run, as the Objective-C
 	// holder OOEntityDeferredCall did (bead oo-9ht.39.7.3; a C++ call since bead oo-pvhrh).
-	oo::Ref<cxx::Entity> held(entity);
+	oo::Ref<Entity> held(entity);
 	OOScheduleDeferredCall([held, call]() { call(held.get()); }, delay);
 }

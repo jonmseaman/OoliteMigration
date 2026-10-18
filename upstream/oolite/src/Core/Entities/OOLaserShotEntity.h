@@ -34,7 +34,7 @@ MA 02110-1301, USA.
 struct OOLaserShotEntityTestAccess;
 
 
-class OOLaserShotEntity : public cxx::Entity
+class OOLaserShotEntity : public Entity
 {
 public:
 	// A new shot, initialised. A caller that hands it to Objective-C gives it a facade

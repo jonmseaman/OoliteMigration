@@ -41,14 +41,14 @@ class OOExplosionCloudEntity : public OOParticleSystem
 {
 public:
 	// Null where the texture is not found (the Objective-C factories answered nil).
-	static oo::Ref<OOExplosionCloudEntity> explosionCloudFromEntity(cxx::Entity *entity, const oo::PList &settings);
-	static oo::Ref<OOExplosionCloudEntity> explosionCloudFromEntity(cxx::Entity *entity, float size, const oo::PList &settings);
+	static oo::Ref<OOExplosionCloudEntity> explosionCloudFromEntity(Entity *entity, const oo::PList &settings);
+	static oo::Ref<OOExplosionCloudEntity> explosionCloudFromEntity(Entity *entity, float size, const oo::PList &settings);
 
 	void update(OOTimeDelta delta_t) override;
 	OOTexture *texture() override;
 
 private:
-	bool initExplosionCloudWithEntity(cxx::Entity *entity, float size, const oo::PList &settings);
+	bool initExplosionCloudWithEntity(Entity *entity, float size, const oo::PList &settings);
 
 	float				_growthRate = {};
 	OOTimeDelta			_cloudDuration = {};

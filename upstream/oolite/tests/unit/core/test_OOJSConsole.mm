@@ -306,15 +306,15 @@ OOGraphicsDetail cxx_OOGraphicsDetailFromString(const std::string &string)
 // EntityHelpers.mm's (bead oo-dpyk8), which the test does not link: an entity's node (its hold and
 // its description) is reached only for an entity, which the test has none of. A null hold releases
 // nothing.
-namespace cxx { class Entity; }
+class Entity;
 namespace oo {
-namespace detail { void EntityRelease(cxx::Entity *entity) noexcept; }
-std::string EntityDescription(cxx::Entity *entity);
-cxx::Entity *WithObject(cxx::Entity *entity);
+namespace detail { void EntityRelease(Entity *entity) noexcept; }
+std::string EntityDescription(Entity *entity);
+Entity *WithObject(Entity *entity);
 }
-void oo::detail::EntityRelease(cxx::Entity *entity) noexcept  { if (entity != nullptr)  std::abort(); }
-std::string oo::EntityDescription(cxx::Entity *)  { std::abort(); }
-cxx::Entity *oo::WithObject(cxx::Entity *entity)  { if (entity != nullptr)  std::abort();  return nullptr; }
+void oo::detail::EntityRelease(Entity *entity) noexcept  { if (entity != nullptr)  std::abort(); }
+std::string oo::EntityDescription(Entity *)  { std::abort(); }
+Entity *oo::WithObject(Entity *entity)  { if (entity != nullptr)  std::abort();  return nullptr; }
 
 
 // MARK: Debug-flavour link stand-ins (bead oo-iimku) -------------------------------------------------
@@ -325,17 +325,17 @@ cxx::Entity *oo::WithObject(cxx::Entity *entity)  { if (entity != nullptr)  std:
 #if OO_DEBUG
 #import "OOShaderUniformMethodType.h"
 
-namespace cxx { class Entity; }
+class Entity;
 
 std::optional<std::string> cxx_OOStringFromJSValueEvenIfNull(ooscript::Context, ooscript::Value)  { std::abort(); }
-std::optional<std::string> OOJSEntityJSClassName(cxx::Entity *)  { std::abort(); }
-bool OOJSCallEntityMethod(ooscript::Context, cxx::Entity *, const std::string &, unsigned, ooscript::Value *, ooscript::Value *)  { std::abort(); }
+std::optional<std::string> OOJSEntityJSClassName(Entity *)  { std::abort(); }
+bool OOJSCallEntityMethod(ooscript::Context, Entity *, const std::string &, unsigned, ooscript::Value *, ooscript::Value *)  { std::abort(); }
 bool OOJSCallObjCObjectMethod(ooscript::Context, id, const std::string &, unsigned, ooscript::Value *, ooscript::Value *)  { std::abort(); }
 OOShaderUniformType OOShaderUniformTypeFromEncoding(const char *)  { std::abort(); }
-// oo::EntityIn() (Entity+ObjCBridge.h) reads ::Entity's _cxxEntity ivar; its offset variable is
+// oo::EntityIn() (Entity+ObjCBridge.h) reads ::TestEntityObject's _cxxEntity ivar; its offset variable is
 // emitted by the @implementation in Entity+ObjCBridge.mm, which this test does not link. The name
 // is the one clang gives it: the ivar's type encoding, with its '=' written as byte 2.
-extern "C" int gOOTestEntityCxxEntityIvarOffset __asm__("__objc_ivar_offset_Entity._cxxEntity.{Ref<cxx::Entity>\002^{Entity}}");
+extern "C" int gOOTestEntityCxxEntityIvarOffset __asm__("__objc_ivar_offset_Entity._cxxEntity.{Ref<Entity>\002^{Entity}}");
 int gOOTestEntityCxxEntityIvarOffset = 0;
 #endif
 
@@ -422,13 +422,14 @@ Universe *gSharedUniverse = nil;
 
 // An entity, as the console's inspectEntity() sees it: one answers -inspect (the Mac debug OXP's
 // inspector), one does not.
-@interface Entity: OOObject
+__attribute__((objc_runtime_name("Entity")))
+@interface TestEntityObject: OOObject
 @end
 
-@implementation Entity
+@implementation TestEntityObject
 @end
 
-@interface InspectableEntity: Entity
+@interface InspectableEntity: TestEntityObject
 @end
 
 @implementation InspectableEntity
@@ -438,29 +439,27 @@ Universe *gSharedUniverse = nil;
 
 namespace {
 
-Entity *sPlainEntity = nil;
-Entity *sInspectableEntity = nil;
+TestEntityObject *sPlainEntity = nil;
+TestEntityObject *sInspectableEntity = nil;
 
 }	// namespace
 
 
 // Each entity's C++ part (bead oo-9ht.39.3: an entity's JS object holds it, JSValueToEntity() answers
 // it and oo::ToObjC its object, which the console asks to -inspect). Kept for the life of the test.
-namespace cxx {
 class Entity : public oo::RefCounted
 {
 };
-}	// namespace cxx
 
 namespace {
-cxx::Entity *PlainPart()
+Entity *PlainPart()
 {
-	static const oo::Ref<cxx::Entity> part = oo::makeRef<cxx::Entity>();
+	static const oo::Ref<Entity> part = oo::makeRef<Entity>();
 	return part.get();
 }
-cxx::Entity *InspectablePart()
+Entity *InspectablePart()
 {
-	static const oo::Ref<cxx::Entity> part = oo::makeRef<cxx::Entity>();
+	static const oo::Ref<Entity> part = oo::makeRef<Entity>();
 	return part.get();
 }
 }	// namespace
@@ -468,8 +467,8 @@ cxx::Entity *InspectablePart()
 
 // inspectEntity(true) is the inspectable entity, inspectEntity(false) the other; anything else none.
 // (OOJSEntity.h declares it with C linkage.)
-extern "C" BOOL JSValueToEntity(ooscript::Context, ooscript::Value value, cxx::Entity **outEntity);
-BOOL JSValueToEntity(ooscript::Context, ooscript::Value value, cxx::Entity **outEntity)
+extern "C" BOOL JSValueToEntity(ooscript::Context, ooscript::Value value, Entity **outEntity);
+BOOL JSValueToEntity(ooscript::Context, ooscript::Value value, Entity **outEntity)
 {
 	if (!ooscript::isBoolean(value))  return NO;
 	*outEntity = ooscript::toBoolean(value) ? InspectablePart() : PlainPart();
@@ -478,8 +477,8 @@ BOOL JSValueToEntity(ooscript::Context, ooscript::Value value, cxx::Entity **out
 
 
 // oo::ToObjC (Entity+ObjCBridge.mm): each C++ part's entity, nil for any other.
-namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
-::Entity *oo::ToObjC(cxx::Entity *entity)
+namespace oo { ::TestEntityObject *ToObjC(Entity *entity); }
+::TestEntityObject *oo::ToObjC(Entity *entity)
 {
 	if (entity == InspectablePart())  return sInspectableEntity;
 	if (entity == PlainPart())  return sPlainEntity;
@@ -488,10 +487,10 @@ namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
 
 // EntityHelpers.mm's oo::InspectEntity() (bead oo-dpyk8), as the console asked the object until then:
 // -inspect, if the entity's object answers it.
-namespace oo { void InspectEntity(cxx::Entity *entity); }
-void oo::InspectEntity(cxx::Entity *entity)
+namespace oo { void InspectEntity(Entity *entity); }
+void oo::InspectEntity(Entity *entity)
 {
-	::Entity *object = oo::ToObjC(entity);
+	::TestEntityObject *object = oo::ToObjC(entity);
 	if ([object respondsToSelector:@selector(inspect)])  [(id)object inspect];
 }
 
@@ -538,7 +537,7 @@ void SetUpContext()
 	sGlobal = ooscript::getGlobalObject(sContext);
 	ooscript::initStandardClasses(sContext, sGlobal);
 	gSharedUniverse = new FakeUniverse();
-	sPlainEntity = [[Entity alloc] init];
+	sPlainEntity = [[TestEntityObject alloc] init];
 	sInspectableEntity = [[InspectableEntity alloc] init];
 
 	sConsoleObject = DebugMonitorToJSConsole(sContext, OODebugMonitor::sharedDebugMonitor());

@@ -464,7 +464,7 @@ public:
 	bool canCollide() override;
 
 	// Slice 6: sun glare, the atmosphere, update:.
-	OOComparisonResult compareZeroDistance(cxx::Entity * /*otherEntity*/) override;
+	OOComparisonResult compareZeroDistance(Entity * /*otherEntity*/) override;
 	bool validForAddToUniverse() override;
 	GLfloat lookingAtSunWithThresholdAngleCos(GLfloat thresholdAngleCos) override;
 	GLfloat insideAtmosphereFraction();
@@ -479,7 +479,7 @@ public:
 	void setMaxFlightPitch(GLfloat newValue) override;
 	void setMaxFlightRoll(GLfloat newValue) override;
 	void setMaxFlightYaw(GLfloat newValue) override;
-	bool checkEntityForMassLock(cxx::Entity *ent, int theirClass);
+	bool checkEntityForMassLock(Entity *ent, int theirClass);
 	void updateAlertCondition();
 	void updateFuelScoops(OOTimeDelta delta_t);
 	void updateClocks(OOTimeDelta delta_t);
@@ -506,7 +506,7 @@ public:
 	void performDockingUpdates(OOTimeDelta /*delta_t*/);
 	void performDeadUpdates(OOTimeDelta /*delta_t*/);
 	void gameOverFadeToBW();
-	bool isValidTarget(cxx::Entity *target) override;
+	bool isValidTarget(Entity *target) override;
 	void showGameOver();
 	void showShipModelWithKey(const std::string &shipKey, const oo::PList &shipDataIn, uint16_t personality, GLfloat factorX, GLfloat factorY, GLfloat factorZ, const std::optional<std::string> &context);
 	void updateTargeting();
@@ -609,8 +609,8 @@ public:
 	void clearRolesFromPlayer(float chance);
 	NSUInteger maxPlayerRoles();
 	void updateSystemMemory();
-	virtual cxx::Entity *getCompassTargetEntity();	// the compass target's C++ entity, null for none or once its object has gone (the object-answering getCompassTarget() until bead oo-zwnvp)
-	void setCompassTargetEntity(cxx::Entity *value);	// (setCompassTarget() of the entity's object until bead oo-zwnvp)
+	virtual Entity *getCompassTargetEntity();	// the compass target's C++ entity, null for none or once its object has gone (the object-answering getCompassTarget() until bead oo-zwnvp)
+	void setCompassTargetEntity(Entity *value);	// (setCompassTarget() of the entity's object until bead oo-zwnvp)
 	virtual void validateCompassTarget();
 	std::optional<std::string> compassTargetLabel();
 
@@ -672,8 +672,8 @@ public:
 	// Slice 14: hit testing, damage, the doppelganger, the escape capsule, dumping cargo, bounty.
 	using ShipEntity::doesHitLine;	// the ship's other overloads, which the player does not override
 	GLfloat doesHitLine(HPVector v0, HPVector v1, ::ShipEntity **hitEntity) override;
-	void takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::Entity *otherPart, const std::string &weaponIdentifier) override;
-	void takeScrapeDamage(double amount, cxx::Entity *ent) override;
+	void takeEnergyDamage(double amount, Entity *entPart, Entity *otherPart, const std::string &weaponIdentifier) override;
+	void takeScrapeDamage(double amount, Entity *ent) override;
 	void takeHeatDamage(double amount) override;
 	::ShipEntity *createDoppelganger();	// the proxy (its object until bead oo-9ht.144)
 	::ShipEntity *launchEscapeCapsule() override;
@@ -690,7 +690,7 @@ public:
 	void markAsOffender(int offence_value, OOLegalStatusReason reason) override;
 	void collectBountyFor(::ShipEntity *other) override;
 	virtual bool takeInternalDamage();
-	void getDestroyedBy(cxx::Entity *whom, OOShipDamageType type) override;
+	void getDestroyedBy(Entity *whom, OOShipDamageType type) override;
 	void loseTargetStatus();
 	bool endScenario(const std::string &key);
 	void enterDock(::StationEntity *station) override;
@@ -841,10 +841,10 @@ public:
 	std::optional<std::string> screenModeStringForWidth(unsigned width, unsigned height, float refreshRate);
 	void getSuppressTargetLost();
 	virtual void setScoopsActive();
-	void setFoundTarget(cxx::Entity *targetEntity) override;
-	void addTarget(cxx::Entity *targetEntity) override;
+	void setFoundTarget(Entity *targetEntity) override;
+	void addTarget(Entity *targetEntity) override;
 	void clearTargetMemory();
-	std::vector<oo::WeakRef<cxx::Entity>> targetMemory();
+	std::vector<oo::WeakRef<Entity>> targetMemory();
 	bool moveTargetMemoryBy(NSInteger delta);
 	virtual void printIdentLockedOnForMissile(bool missile);
 	Quaternion getCustomViewQuaternion();
@@ -1558,7 +1558,7 @@ private:
 	OOMarketFilterMode		marketFilterMode = {};
 	OOMarketSorterMode		marketSorterMode = {};
 
-	oo::WeakRef<cxx::Entity>	_dockedStation;	// a weak reference to the station's C++ part (bead oo-9ht.39.5.2; its object's, held, before)
+	oo::WeakRef<Entity>	_dockedStation;	// a weak reference to the station's C++ part (bead oo-9ht.39.5.2; its object's, held, before)
 	
 /* Used by the DOCKING_CLEARANCE code to implement docking at non-main
  * stations. Could possibly overload use of 'dockedStation' instead
@@ -1632,7 +1632,7 @@ private:
 	unsigned				ship_kills = {};
 	
 	OOCompassMode			compassMode = {};
-	oo::WeakRef<cxx::Entity>	compassTarget;	// a weak reference to the target's C++ part (bead oo-9ht.39.5.2; its object's, held, before)
+	oo::WeakRef<Entity>	compassTarget;	// a weak reference to the target's C++ part (bead oo-9ht.39.5.2; its object's, held, before)
 	
 	GLfloat					fuel_leak_rate = {};
 
@@ -1821,7 +1821,7 @@ private:
 	
 	// target memory
 	// TODO: this should use weakrefs
-	std::vector<oo::WeakRef<cxx::Entity>>	target_memory;	// an empty ref = an empty slot (was [OONull null]); C++ parts since bead oo-9ht.39.5.2
+	std::vector<oo::WeakRef<Entity>>	target_memory;	// an empty ref = an empty slot (was [OONull null]); C++ parts since bead oo-9ht.39.5.2
 	NSUInteger				target_memory_index = {};
 	
 	// custom view points

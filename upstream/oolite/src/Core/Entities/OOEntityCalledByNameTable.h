@@ -11,8 +11,8 @@ python3 tools/gen-entity-by-name-table.py --check (it renders the rows again and
 
 One row per former category method, exactly the categories' names and #if conditions: the name
 sets the root facade's -respondsToSelector: read (the applies-to flags), @encode() of the declared result,
-the argument kind, the adaptor: the method's body, verbatim, with the entity for _cxxEntity.get(),
-and for a method with no argument the typed adaptor (its result by type; bead oo-9ht.39.7.2).
+the argument kind, the adaptor: the method's body, verbatim, with the entity for the facade's own C++
+entity, and for a method with no argument the typed adaptor (its result by type; bead oo-9ht.39.7.2).
 Included by OOEntityCalledByName.mm only, after the parts (ShipPart() ...) the bodies read.
 
 */
@@ -24,2021 +24,2021 @@ namespace {
 
 // The category methods, as functions of the C++ entity.
 
-BOOL ByName_0(cxx::Entity *entity, const oo::PList &inShipDict)
+BOOL ByName_0(Entity *entity, const oo::PList &inShipDict)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->setUpFromDictionary(inShipDict) : NO; }
-BOOL ByName_1(cxx::Entity *entity, const oo::PList &shipDict)
+BOOL ByName_1(Entity *entity, const oo::PList &shipDict)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->setUpShipFromDictionary(shipDict) : NO; }
-NSUInteger ByName_2(cxx::Entity *entity)
+NSUInteger ByName_2(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->subIdx() : NSUInteger{}; }
-NSUInteger ByName_3(cxx::Entity *entity)
+NSUInteger ByName_3(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->maxShipSubEntities() : NSUInteger{}; }
-void ByName_4(cxx::Entity *entity, const std::string &string)
+void ByName_4(Entity *entity, const std::string &string)
 { if (ShipEntity *ship = ShipPart(entity))  ship->deserializeShipSubEntitiesFrom(string); }
-BOOL ByName_5(cxx::Entity *entity)
+BOOL ByName_5(Entity *entity)
 { if (OOVisualEffectEntity *effect = EffectPart(entity))  return effect->setUpSubEntities();	/* bead oo-9ht.165 */ ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->setUpSubEntities() : NO; }
-BOOL ByName_6(cxx::Entity *entity, const oo::PList &subentDict)
+BOOL ByName_6(Entity *entity, const oo::PList &subentDict)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->setUpOneSubentity(subentDict) : NO; }
-BOOL ByName_7(cxx::Entity *entity, const oo::PList &subentDict)
+BOOL ByName_7(Entity *entity, const oo::PList &subentDict)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->setUpOneFlasher(subentDict) : NO; }
-BOOL ByName_8(cxx::Entity *entity)
+BOOL ByName_8(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->isTemplateCargoPod() : NO; }
-void ByName_9(cxx::Entity *entity, const std::string &cargoString)
+void ByName_9(Entity *entity, const std::string &cargoString)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setUpCargoType(cargoString); }
-void ByName_10(cxx::Entity *entity)
+void ByName_10(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->removeScript(); }
-void ByName_11(cxx::Entity *entity)
+void ByName_11(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->clearSubEntities(); else if (OOVisualEffectEntity *effect = EffectPart(entity))  effect->clearSubEntities();	/* bead oo-9ht.165 */ }
-Quaternion ByName_12(cxx::Entity *entity)
+Quaternion ByName_12(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->subEntityRotationalVelocity() : kIdentityQuaternion; }
-GLfloat ByName_13(cxx::Entity *entity)
+GLfloat ByName_13(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getSunGlareFilter() : GLfloat{}; }
-GLfloat ByName_14(cxx::Entity *entity)
+GLfloat ByName_14(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getAccuracy() : GLfloat{}; }
-Vector ByName_15(cxx::Entity *entity)
+Vector ByName_15(Entity *entity)
 { if (OOVisualEffectEntity *effect = EffectPart(entity))  return effect->forwardVector();	/* bead oo-9ht.165 */ ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->forwardVector() : kZeroVector; }
-Vector ByName_16(cxx::Entity *entity)
+Vector ByName_16(Entity *entity)
 { if (OOVisualEffectEntity *effect = EffectPart(entity))  return effect->upVector();	/* bead oo-9ht.165 */ ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->upVector() : kZeroVector; }
-Vector ByName_17(cxx::Entity *entity)
+Vector ByName_17(Entity *entity)
 { if (OOVisualEffectEntity *effect = EffectPart(entity))  return effect->rightVector();	/* bead oo-9ht.165 */ ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->rightVector() : kZeroVector; }
-BOOL ByName_18(cxx::Entity *entity)
+BOOL ByName_18(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->scriptedMisjump() : NO; }
-GLfloat ByName_19(cxx::Entity *entity)
+GLfloat ByName_19(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->scriptedMisjumpRange() : GLfloat{}; }
-NSUInteger ByName_20(cxx::Entity *entity)
+NSUInteger ByName_20(Entity *entity)
 { if (OOVisualEffectEntity *effect = EffectPart(entity))  return effect->subEntityCount();	/* bead oo-9ht.165 */ ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->subEntityCount() : NSUInteger{}; }
-cxx::Entity * ByName_21(cxx::Entity *entity)
+Entity * ByName_21(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->subEntityTakingDamage() : nullptr; }
-OOTimeAbsolute ByName_22(cxx::Entity *entity)
+OOTimeAbsolute ByName_22(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->shipAIScriptWakeTime() : OOTimeAbsolute{}; }
-float ByName_23(cxx::Entity *entity)
+float ByName_23(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->volume() : float{}; }
-HPVector ByName_24(cxx::Entity *entity)
+HPVector ByName_24(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->absoluteTractorPosition() : kZeroHPVector; }
-BOOL ByName_25(cxx::Entity *entity)
+BOOL ByName_25(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->isBoulder() : NO; }
-BOOL ByName_26(cxx::Entity *entity)
+BOOL ByName_26(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->isMinable() : NO; }
-BOOL ByName_27(cxx::Entity *entity)
+BOOL ByName_27(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->countsAsKill() : NO; }
-void ByName_28(cxx::Entity *entity)
+void ByName_28(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setUpEscorts(); }
-void ByName_29(cxx::Entity *entity)
+void ByName_29(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setUpMixedEscorts(); }
-oo::PList ByName_30(cxx::Entity *entity)
+oo::PList ByName_30(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->shipInfoDictionary() : oo::PList(); }
-BOOL ByName_31(cxx::Entity *entity)
+BOOL ByName_31(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getIsFrangible() : NO; }
-BOOL ByName_32(cxx::Entity *entity)
+BOOL ByName_32(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->suppressFlightNotifications() : NO; }
-void ByName_33(cxx::Entity *entity, const std::string &context)
+void ByName_33(Entity *entity, const std::string &context)
 { if (ShipEntity *ship = ShipPart(entity))  ship->noteFrustration(context); }
-NSUInteger ByName_34(cxx::Entity *entity, const std::string &eqkey)
+NSUInteger ByName_34(Entity *entity, const std::string &eqkey)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->countEquipmentItem(eqkey) : NSUInteger{}; }
-BOOL ByName_35(cxx::Entity *entity, const oo::PList &equipmentKeys)
+BOOL ByName_35(Entity *entity, const oo::PList &equipmentKeys)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hasEquipmentItem(equipmentKeys) : NO; }
-BOOL ByName_36(cxx::Entity *entity, const std::string &equipmentType)
+BOOL ByName_36(Entity *entity, const std::string &equipmentType)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hasEquipmentItemProviding(equipmentType) : NO; }
-BOOL ByName_37(cxx::Entity *entity, const oo::PList &equipmentKeys)
+BOOL ByName_37(Entity *entity, const oo::PList &equipmentKeys)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hasAllEquipment(equipmentKeys) : NO; }
-BOOL ByName_38(cxx::Entity *entity)
+BOOL ByName_38(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hasHyperspaceMotor() : NO; }
-float ByName_39(cxx::Entity *entity)
+float ByName_39(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hyperspaceSpinTime() : float{}; }
-oo::PList ByName_40(cxx::Entity *entity)
+oo::PList ByName_40(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->passengerListForScripting() : oo::PList(); }
-oo::PList ByName_41(cxx::Entity *entity)
+oo::PList ByName_41(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->parcelListForScripting() : oo::PList(); }
-oo::PList ByName_42(cxx::Entity *entity)
+oo::PList ByName_42(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->contractListForScripting() : oo::PList(); }
-NSUInteger ByName_43(cxx::Entity *entity)
+NSUInteger ByName_43(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->equipmentCount() : NSUInteger{}; }
-void ByName_44(cxx::Entity *entity, const std::string &equipmentKey)
+void ByName_44(Entity *entity, const std::string &equipmentKey)
 { if (ShipEntity *ship = ShipPart(entity))  ship->removeEquipmentItem(equipmentKey); }
-void ByName_45(cxx::Entity *entity)
+void ByName_45(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->removeAllEquipment(); }
-OOCreditsQuantity ByName_46(cxx::Entity *entity)
+OOCreditsQuantity ByName_46(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->removeMissiles() : OOCreditsQuantity{}; }
-NSUInteger ByName_47(cxx::Entity *entity)
+NSUInteger ByName_47(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->parcelCount() : NSUInteger{}; }
-NSUInteger ByName_48(cxx::Entity *entity)
+NSUInteger ByName_48(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->passengerCount() : NSUInteger{}; }
-NSUInteger ByName_49(cxx::Entity *entity)
+NSUInteger ByName_49(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->passengerCapacity() : NSUInteger{}; }
-NSUInteger ByName_50(cxx::Entity *entity)
+NSUInteger ByName_50(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->missileCount() : NSUInteger{}; }
-NSUInteger ByName_51(cxx::Entity *entity)
+NSUInteger ByName_51(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->missileCapacity() : NSUInteger{}; }
-NSUInteger ByName_52(cxx::Entity *entity)
+NSUInteger ByName_52(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->extraCargo() : NSUInteger{}; }
-BOOL ByName_53(cxx::Entity *entity)
+BOOL ByName_53(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hasScoop() : NO; }
-BOOL ByName_54(cxx::Entity *entity)
+BOOL ByName_54(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hasFuelScoop() : NO; }
-BOOL ByName_55(cxx::Entity *entity)
+BOOL ByName_55(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hasCargoScoop() : NO; }
-BOOL ByName_56(cxx::Entity *entity)
+BOOL ByName_56(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hasECM() : NO; }
-BOOL ByName_57(cxx::Entity *entity)
+BOOL ByName_57(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hasCloakingDevice() : NO; }
-BOOL ByName_58(cxx::Entity *entity)
+BOOL ByName_58(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hasMilitaryScannerFilter() : NO; }
-BOOL ByName_59(cxx::Entity *entity)
+BOOL ByName_59(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hasMilitaryJammer() : NO; }
-BOOL ByName_60(cxx::Entity *entity)
+BOOL ByName_60(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hasExpandedCargoBay() : NO; }
-BOOL ByName_61(cxx::Entity *entity)
+BOOL ByName_61(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hasShieldBooster() : NO; }
-BOOL ByName_62(cxx::Entity *entity)
+BOOL ByName_62(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hasMilitaryShieldEnhancer() : NO; }
-BOOL ByName_63(cxx::Entity *entity)
+BOOL ByName_63(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hasHeatShield() : NO; }
-BOOL ByName_64(cxx::Entity *entity)
+BOOL ByName_64(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hasFuelInjection() : NO; }
-BOOL ByName_65(cxx::Entity *entity)
+BOOL ByName_65(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hasCascadeMine() : NO; }
-BOOL ByName_66(cxx::Entity *entity)
+BOOL ByName_66(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hasEscapePod() : NO; }
-BOOL ByName_67(cxx::Entity *entity)
+BOOL ByName_67(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hasDockingComputer() : NO; }
-BOOL ByName_68(cxx::Entity *entity)
+BOOL ByName_68(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hasGalacticHyperdrive() : NO; }
-float ByName_69(cxx::Entity *entity)
+float ByName_69(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->shieldBoostFactor() : float{}; }
-float ByName_70(cxx::Entity *entity)
+float ByName_70(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->maxForwardShieldLevel() : float{}; }
-float ByName_71(cxx::Entity *entity)
+float ByName_71(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->maxAftShieldLevel() : float{}; }
-float ByName_72(cxx::Entity *entity)
+float ByName_72(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->shieldRechargeRate() : float{}; }
-double ByName_73(cxx::Entity *entity)
+double ByName_73(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->maxHyperspaceDistance() : double{}; }
-float ByName_74(cxx::Entity *entity)
+float ByName_74(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->afterburnerFactor() : float{}; }
-float ByName_75(cxx::Entity *entity)
+float ByName_75(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->afterburnerRate() : float{}; }
-float ByName_76(cxx::Entity *entity)
+float ByName_76(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->maxThrust() : float{}; }
-float ByName_77(cxx::Entity *entity)
+float ByName_77(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getThrust() : float{}; }
-float ByName_78(cxx::Entity *entity)
+float ByName_78(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getReactionTime() : float{}; }
-HPVector ByName_79(cxx::Entity *entity)
+HPVector ByName_79(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->calculateTargetPosition() : kZeroHPVector; }
-void ByName_80(cxx::Entity *entity)
+void ByName_80(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->startTrackingCurve(); }
-void ByName_81(cxx::Entity *entity)
+void ByName_81(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->updateTrackingCurve(); }
-void ByName_82(cxx::Entity *entity)
+void ByName_82(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->calculateTrackingCurve(); }
 #ifndef NDEBUG
-void ByName_83(cxx::Entity *entity)
+void ByName_83(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->drawDebugStuff(); }
 #endif
-BOOL ByName_84(cxx::Entity *entity)
+BOOL ByName_84(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->isCloaked() : NO; }
-BOOL ByName_85(cxx::Entity *entity)
+BOOL ByName_85(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getCloakPassive() : NO; }
-BOOL ByName_86(cxx::Entity *entity)
+BOOL ByName_86(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hasAutoCloak() : NO; }
-void ByName_87(cxx::Entity *entity)
+void ByName_87(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->avoidCollision(); }
-void ByName_88(cxx::Entity *entity)
+void ByName_88(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->resumePostProximityAlert(); }
-double ByName_89(cxx::Entity *entity)
+double ByName_89(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getMessageTime() : double{}; }
-BOOL ByName_90(cxx::Entity *entity)
+BOOL ByName_90(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hasEscorts() : NO; }
-uint8_t ByName_91(cxx::Entity *entity)
+uint8_t ByName_91(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->escortCount() : uint8_t{}; }
-uint8_t ByName_92(cxx::Entity *entity)
+uint8_t ByName_92(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->pendingEscortCount() : uint8_t{}; }
-uint8_t ByName_93(cxx::Entity *entity)
+uint8_t ByName_93(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->maxEscortCount() : uint8_t{}; }
-NSUInteger ByName_94(cxx::Entity *entity)
+NSUInteger ByName_94(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->turretCount() : NSUInteger{}; }
-cxx::Entity * ByName_95(cxx::Entity *entity)
+Entity * ByName_95(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->proximityAlert() : nullptr; }
-BOOL ByName_96(cxx::Entity *entity, const std::string &role)
+BOOL ByName_96(Entity *entity, const std::string &role)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hasRole(role) : NO; }
-void ByName_97(cxx::Entity *entity, const std::string &role)
+void ByName_97(Entity *entity, const std::string &role)
 { if (ShipEntity *ship = ShipPart(entity))  ship->addRole(role); }
-void ByName_98(cxx::Entity *entity, const std::string &role)
+void ByName_98(Entity *entity, const std::string &role)
 { if (ShipEntity *ship = ShipPart(entity))  ship->removeRole(role); }
-void ByName_99(cxx::Entity *entity, const std::string &role)
+void ByName_99(Entity *entity, const std::string &role)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setPrimaryRole(role); }
-BOOL ByName_100(cxx::Entity *entity, const std::string &role)
+BOOL ByName_100(Entity *entity, const std::string &role)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hasPrimaryRole(role) : NO; }
-BOOL ByName_101(cxx::Entity *entity)
+BOOL ByName_101(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->isPolice() : NO; }
-BOOL ByName_102(cxx::Entity *entity)
+BOOL ByName_102(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->isThargoid() : NO; }
-BOOL ByName_103(cxx::Entity *entity)
+BOOL ByName_103(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->isTrader() : NO; }
-BOOL ByName_104(cxx::Entity *entity)
+BOOL ByName_104(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->isPirate() : NO; }
-BOOL ByName_105(cxx::Entity *entity)
+BOOL ByName_105(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getIsMissile() : NO; }
-BOOL ByName_106(cxx::Entity *entity)
+BOOL ByName_106(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->isMine() : NO; }
-BOOL ByName_107(cxx::Entity *entity)
+BOOL ByName_107(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->isWeapon() : NO; }
-BOOL ByName_108(cxx::Entity *entity)
+BOOL ByName_108(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->isEscort() : NO; }
-BOOL ByName_109(cxx::Entity *entity)
+BOOL ByName_109(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->isShuttle() : NO; }
-BOOL ByName_110(cxx::Entity *entity)
+BOOL ByName_110(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->isTurret() : NO; }
-BOOL ByName_111(cxx::Entity *entity)
+BOOL ByName_111(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->isPirateVictim() : NO; }
-BOOL ByName_112(cxx::Entity *entity)
+BOOL ByName_112(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->isExplicitlyUnpiloted() : NO; }
-BOOL ByName_113(cxx::Entity *entity)
+BOOL ByName_113(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->isUnpiloted() : NO; }
-BOOL ByName_114(cxx::Entity *entity)
+BOOL ByName_114(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hasHostileTarget() : NO; }
-GLfloat ByName_115(cxx::Entity *entity)
+GLfloat ByName_115(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getWeaponRange() : GLfloat{}; }
-float ByName_116(cxx::Entity *entity)
+float ByName_116(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->energyRechargeRate() : float{}; }
-float ByName_117(cxx::Entity *entity)
+float ByName_117(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->weaponRechargeRate() : float{}; }
-OOWeaponFacing ByName_118(cxx::Entity *entity)
+OOWeaponFacing ByName_118(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getCurrentWeaponFacing() : OOWeaponFacing{}; }
-GLfloat ByName_119(cxx::Entity *entity)
+GLfloat ByName_119(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getScannerRange() : GLfloat{}; }
-Vector ByName_120(cxx::Entity *entity)
+Vector ByName_120(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getReference() : kZeroVector; }
-BOOL ByName_121(cxx::Entity *entity)
+BOOL ByName_121(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getReportAIMessages() : NO; }
-void ByName_122(cxx::Entity *entity)
+void ByName_122(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->transitionToAegisNone(); }
-cxx::Entity * ByName_123(cxx::Entity *entity)
+Entity * ByName_123(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->findNearestStellarBody() : nullptr; }
-OOAegisStatus ByName_124(cxx::Entity *entity)
+OOAegisStatus ByName_124(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->checkForAegis() : OOAegisStatus{}; }
-void ByName_125(cxx::Entity *entity)
+void ByName_125(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->forceAegisCheck(); }
-BOOL ByName_126(cxx::Entity *entity)
+BOOL ByName_126(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->withinStationAegis() : NO; }
-cxx::Entity * ByName_127(cxx::Entity *entity)
+Entity * ByName_127(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->lastAegisLock() : nullptr; }
-OOSystemID ByName_128(cxx::Entity *entity)
+OOSystemID ByName_128(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->homeSystem() : OOSystemID{}; }
-OOSystemID ByName_129(cxx::Entity *entity)
+OOSystemID ByName_129(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->destinationSystem() : OOSystemID{}; }
-void ByName_130(cxx::Entity *entity, const std::string &crewRole)
+void ByName_130(Entity *entity, const std::string &crewRole)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setSingleCrewWithRole(crewRole); }
-void ByName_131(cxx::Entity *entity, const std::string &smName)
+void ByName_131(Entity *entity, const std::string &smName)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setStateMachine(smName); }
-BOOL ByName_132(cxx::Entity *entity)
+BOOL ByName_132(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hasAutoAI() : NO; }
-BOOL ByName_133(cxx::Entity *entity)
+BOOL ByName_133(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hasNewAI() : NO; }
-BOOL ByName_134(cxx::Entity *entity)
+BOOL ByName_134(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hasAutoWeapons() : NO; }
-double ByName_135(cxx::Entity *entity)
+double ByName_135(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getFrustration() : double{}; }
-OOFuelQuantity ByName_136(cxx::Entity *entity)
+OOFuelQuantity ByName_136(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getFuel() : OOFuelQuantity{}; }
-OOFuelQuantity ByName_137(cxx::Entity *entity)
+OOFuelQuantity ByName_137(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->fuelCapacity() : OOFuelQuantity{}; }
-GLfloat ByName_138(cxx::Entity *entity)
+GLfloat ByName_138(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->fuelChargeRate() : GLfloat{}; }
-OOCreditsQuantity ByName_139(cxx::Entity *entity)
+OOCreditsQuantity ByName_139(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getBounty() : OOCreditsQuantity{}; }
-int ByName_140(cxx::Entity *entity)
+int ByName_140(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->legalStatus() : int{}; }
-OOCargoQuantity ByName_141(cxx::Entity *entity)
+OOCargoQuantity ByName_141(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->commodityAmount() : OOCargoQuantity{}; }
-OOCargoQuantity ByName_142(cxx::Entity *entity)
+OOCargoQuantity ByName_142(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->maxAvailableCargoSpace() : OOCargoQuantity{}; }
-OOCargoQuantity ByName_143(cxx::Entity *entity)
+OOCargoQuantity ByName_143(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->availableCargoSpace() : OOCargoQuantity{}; }
-OOCargoQuantity ByName_144(cxx::Entity *entity)
+OOCargoQuantity ByName_144(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->cargoQuantityOnBoard() : OOCargoQuantity{}; }
-OOCargoType ByName_145(cxx::Entity *entity)
+OOCargoType ByName_145(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->cargoType() : CARGO_NOT_CARGO; }
-NSUInteger ByName_146(cxx::Entity *entity)
+NSUInteger ByName_146(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->cargoCount() : NSUInteger{}; }
-oo::PList ByName_147(cxx::Entity *entity)
+oo::PList ByName_147(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->cargoListForScripting() : oo::PList(); }
-BOOL ByName_148(cxx::Entity *entity)
+BOOL ByName_148(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->showScoopMessage() : NO; }
-double ByName_149(cxx::Entity *entity)
+double ByName_149(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->desiredSpeed() : double{}; }
-double ByName_150(cxx::Entity *entity)
+double ByName_150(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->desiredRange() : double{}; }
-double ByName_151(cxx::Entity *entity)
+double ByName_151(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getCruiseSpeed() : double{}; }
-GLfloat ByName_152(cxx::Entity *entity)
+GLfloat ByName_152(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getFlightRoll() : GLfloat{}; }
-GLfloat ByName_153(cxx::Entity *entity)
+GLfloat ByName_153(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getFlightPitch() : GLfloat{}; }
-GLfloat ByName_154(cxx::Entity *entity)
+GLfloat ByName_154(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getFlightYaw() : GLfloat{}; }
-GLfloat ByName_155(cxx::Entity *entity)
+GLfloat ByName_155(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getFlightSpeed() : GLfloat{}; }
-GLfloat ByName_156(cxx::Entity *entity)
+GLfloat ByName_156(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->maxFlightPitch() : GLfloat{}; }
-GLfloat ByName_157(cxx::Entity *entity)
+GLfloat ByName_157(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getMaxFlightSpeed() : GLfloat{}; }
-GLfloat ByName_158(cxx::Entity *entity)
+GLfloat ByName_158(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->maxFlightRoll() : GLfloat{}; }
-GLfloat ByName_159(cxx::Entity *entity)
+GLfloat ByName_159(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->maxFlightYaw() : GLfloat{}; }
-GLfloat ByName_160(cxx::Entity *entity)
+GLfloat ByName_160(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->speedFactor() : GLfloat{}; }
-GLfloat ByName_161(cxx::Entity *entity)
+GLfloat ByName_161(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->temperature() : GLfloat{}; }
-float ByName_162(cxx::Entity *entity)
+float ByName_162(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->randomEjectaTemperature() : float{}; }
-GLfloat ByName_163(cxx::Entity *entity)
+GLfloat ByName_163(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->heatInsulation() : GLfloat{}; }
-int ByName_164(cxx::Entity *entity)
+int ByName_164(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->damage() : int{}; }
-void ByName_165(cxx::Entity *entity)
+void ByName_165(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->dealEnergyDamageWithinDesiredRange(); }
-BOOL ByName_166(cxx::Entity *entity)
+BOOL ByName_166(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getIsHulk() : NO; }
-void ByName_167(cxx::Entity *entity)
+void ByName_167(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->releaseCargoPodsDebris(); }
-BOOL ByName_168(cxx::Entity *entity)
+BOOL ByName_168(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->showDamage() : NO; }
-void ByName_169(cxx::Entity *entity)
+void ByName_169(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->becomeExplosion(); }
-void ByName_170(cxx::Entity *entity)
+void ByName_170(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->becomeEnergyBlast(); }
-void ByName_171(cxx::Entity *entity)
+void ByName_171(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->broadcastEnergyBlastImminent(); }
-GLfloat ByName_172(cxx::Entity *entity)
+GLfloat ByName_172(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->weaponRecoveryTime() : GLfloat{}; }
-GLfloat ByName_173(cxx::Entity *entity)
+GLfloat ByName_173(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->laserHeatLevel() : GLfloat{}; }
-GLfloat ByName_174(cxx::Entity *entity)
+GLfloat ByName_174(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->laserHeatLevelAft() : GLfloat{}; }
-GLfloat ByName_175(cxx::Entity *entity)
+GLfloat ByName_175(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->laserHeatLevelForward() : GLfloat{}; }
-GLfloat ByName_176(cxx::Entity *entity)
+GLfloat ByName_176(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->laserHeatLevelPort() : GLfloat{}; }
-GLfloat ByName_177(cxx::Entity *entity)
+GLfloat ByName_177(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->laserHeatLevelStarboard() : GLfloat{}; }
-GLfloat ByName_178(cxx::Entity *entity)
+GLfloat ByName_178(Entity *entity)
 { if (OOVisualEffectEntity *effect = EffectPart(entity))  return effect->hullHeatLevel();	/* bead oo-9ht.165 */ ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->hullHeatLevel() : GLfloat{}; }
-GLfloat ByName_179(cxx::Entity *entity)
+GLfloat ByName_179(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->entityPersonality() : GLfloat{}; }
-GLint ByName_180(cxx::Entity *entity)
+GLint ByName_180(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->entityPersonalityInt() : GLint{}; }
-uint32_t ByName_181(cxx::Entity *entity)
+uint32_t ByName_181(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->randomSeedForShaders() : uint32_t{}; }
-void ByName_182(cxx::Entity *entity)
+void ByName_182(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->resetExhaustPlumes(); }
-void ByName_183(cxx::Entity *entity)
+void ByName_183(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->checkScanner(); }
-void ByName_184(cxx::Entity *entity)
+void ByName_184(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->checkScannerIgnoringUnpowered(); }
-int ByName_185(cxx::Entity *entity)
+int ByName_185(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->numberOfScannedShips() : int{}; }
-cxx::Entity * ByName_186(cxx::Entity *entity)
+Entity * ByName_186(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->foundTarget() : nullptr; }
-cxx::Entity * ByName_187(cxx::Entity *entity)
+Entity * ByName_187(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->primaryAggressor() : nullptr; }
-cxx::Entity * ByName_188(cxx::Entity *entity)
+Entity * ByName_188(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->lastEscortTarget() : nullptr; }
-cxx::Entity * ByName_189(cxx::Entity *entity)
+Entity * ByName_189(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->thankedShip() : nullptr; }
-cxx::Entity * ByName_190(cxx::Entity *entity)
+Entity * ByName_190(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->rememberedShip() : nullptr; }
-cxx::Entity * ByName_191(cxx::Entity *entity)
+Entity * ByName_191(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->targetStation() : nullptr; }
-BOOL ByName_192(cxx::Entity *entity)
+BOOL ByName_192(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->canStillTrackPrimaryTarget() : NO; }
-cxx::Entity * ByName_193(cxx::Entity *entity)
+Entity * ByName_193(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->shipHitByLaser() : nullptr; }
-void ByName_194(cxx::Entity *entity)
+void ByName_194(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->noteLostTarget(); }
-void ByName_195(cxx::Entity *entity)
+void ByName_195(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->noteLostTargetAndGoIdle(); }
-OOBehaviour ByName_196(cxx::Entity *entity)
+OOBehaviour ByName_196(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getBehaviour() : OOBehaviour{}; }
-HPVector ByName_197(cxx::Entity *entity)
+HPVector ByName_197(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->destination() : kZeroHPVector; }
-HPVector ByName_198(cxx::Entity *entity)
+HPVector ByName_198(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getCoordinates() : kZeroHPVector; }
-GLfloat ByName_199(cxx::Entity *entity)
+GLfloat ByName_199(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->rangeToDestination() : GLfloat{}; }
-NSUInteger ByName_200(cxx::Entity *entity)
+NSUInteger ByName_200(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->defenseTargetCount() : NSUInteger{}; }
-void ByName_201(cxx::Entity *entity)
+void ByName_201(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->validateDefenseTargets(); }
-void ByName_202(cxx::Entity *entity)
+void ByName_202(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->removeAllDefenseTargets(); }
-double ByName_203(cxx::Entity *entity)
+double ByName_203(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->rangeToPrimaryTarget() : double{}; }
-double ByName_204(cxx::Entity *entity)
+double ByName_204(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->approachAspectToPrimaryTarget() : double{}; }
-GLfloat ByName_205(cxx::Entity *entity)
+GLfloat ByName_205(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->currentAimTolerance() : GLfloat{}; }
-OOTimeDelta ByName_206(cxx::Entity *entity)
+OOTimeDelta ByName_206(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->shotTime() : OOTimeDelta{}; }
-void ByName_207(cxx::Entity *entity)
+void ByName_207(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->resetShotTime(); }
-BOOL ByName_208(cxx::Entity *entity)
+BOOL ByName_208(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->fireDirectLaserDefensiveShot() : NO; }
-int ByName_209(cxx::Entity *entity)
+int ByName_209(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->missedShots() : int{}; }
-Vector ByName_210(cxx::Entity *entity)
+Vector ByName_210(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->missileLaunchPosition() : kZeroVector; }
-cxx::Entity * ByName_211(cxx::Entity *entity)
+Entity * ByName_211(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->fireMissile() : nullptr; }
-BOOL ByName_212(cxx::Entity *entity)
+BOOL ByName_212(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->isMissileFlagSet() : NO; }
-OOTimeDelta ByName_213(cxx::Entity *entity)
+OOTimeDelta ByName_213(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->missileLoadTime() : OOTimeDelta{}; }
-void ByName_214(cxx::Entity *entity)
+void ByName_214(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->noticeECM(); }
-BOOL ByName_215(cxx::Entity *entity)
+BOOL ByName_215(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->fireECM() : NO; }
-BOOL ByName_216(cxx::Entity *entity)
+BOOL ByName_216(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->activateCloakingDevice() : NO; }
-void ByName_217(cxx::Entity *entity)
+void ByName_217(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->deactivateCloakingDevice(); }
-BOOL ByName_218(cxx::Entity *entity)
+BOOL ByName_218(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->launchCascadeMine() : NO; }
-cxx::Entity * ByName_219(cxx::Entity *entity)
+Entity * ByName_219(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->launchEscapeCapsule() : nullptr; }
-void ByName_220(cxx::Entity *entity)
+void ByName_220(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->dumpCargo(); }
-void ByName_221(cxx::Entity *entity)
+void ByName_221(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->manageCollisions(); }
-Vector ByName_222(cxx::Entity *entity)
+Vector ByName_222(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->thrustVector() : kZeroVector; }
-void ByName_223(cxx::Entity *entity)
+void ByName_223(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->suppressTargetLost(); }
-BOOL ByName_224(cxx::Entity *entity)
+BOOL ByName_224(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->abandonShip() : NO; }
-void ByName_225(cxx::Entity *entity)
+void ByName_225(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->enterWitchspace(); }
-void ByName_226(cxx::Entity *entity)
+void ByName_226(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->leaveWitchspace(); }
-BOOL ByName_227(cxx::Entity *entity)
+BOOL ByName_227(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->witchspaceLeavingEffects() : NO; }
-void ByName_228(cxx::Entity *entity)
+void ByName_228(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->switchLightsOn(); }
-void ByName_229(cxx::Entity *entity)
+void ByName_229(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->switchLightsOff(); }
-BOOL ByName_230(cxx::Entity *entity)
+BOOL ByName_230(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->lightsActive() : NO; }
-void ByName_231(cxx::Entity *entity)
+void ByName_231(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->updateEscortFormation(); }
-void ByName_232(cxx::Entity *entity)
+void ByName_232(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->refreshEscortPositions(); }
-void ByName_233(cxx::Entity *entity)
+void ByName_233(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->deployEscorts(); }
-void ByName_234(cxx::Entity *entity)
+void ByName_234(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->dockEscorts(); }
-void ByName_235(cxx::Entity *entity)
+void ByName_235(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setTargetToNearestFriendlyStation(); }
-void ByName_236(cxx::Entity *entity)
+void ByName_236(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setTargetToNearestStation(); }
-void ByName_237(cxx::Entity *entity)
+void ByName_237(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setTargetToSystemStation(); }
-void ByName_238(cxx::Entity *entity)
+void ByName_238(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->abortDocking(); }
-oo::PList ByName_239(cxx::Entity *entity)
+oo::PList ByName_239(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getDockingInstructions() : oo::PList(); }
-void ByName_240(cxx::Entity *entity)
+void ByName_240(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->broadcastThargoidDestroyed(); }
-void ByName_241(cxx::Entity *entity, const std::string &ai_message)
+void ByName_241(Entity *entity, const std::string &ai_message)
 { if (ShipEntity *ship = ShipPart(entity))  ship->broadcastAIMessage(ai_message); }
-void ByName_242(cxx::Entity *entity)
+void ByName_242(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setCommsMessageColor(); }
-BOOL ByName_243(cxx::Entity *entity)
+BOOL ByName_243(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->markedForFines() : NO; }
-BOOL ByName_244(cxx::Entity *entity)
+BOOL ByName_244(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->markForFines() : NO; }
-BOOL ByName_245(cxx::Entity *entity)
+BOOL ByName_245(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->isMining() : NO; }
-void ByName_246(cxx::Entity *entity, const std::string &ms)
+void ByName_246(Entity *entity, const std::string &ms)
 { if (ShipEntity *ship = ShipPart(entity))  ship->interpretAIMessage(ms); }
-void ByName_247(cxx::Entity *entity, const std::string &roles_number)
+void ByName_247(Entity *entity, const std::string &roles_number)
 { if (ShipEntity *ship = ShipPart(entity))  ship->spawn(roles_number); }
-int ByName_248(cxx::Entity *entity)
+int ByName_248(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->checkShipsInVicinityForWitchJumpExit() : int{}; }
-BOOL ByName_249(cxx::Entity *entity)
+BOOL ByName_249(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getTrackCloseContacts() : NO; }
 #if OO_SALVAGE_SUPPORT
-void ByName_250(cxx::Entity *entity)
+void ByName_250(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->claimAsSalvage(); }
-void ByName_251(cxx::Entity *entity)
+void ByName_251(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->sendCoordinatesToPilot(); }
-void ByName_252(cxx::Entity *entity)
+void ByName_252(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->pilotArrived(); }
 #endif
-oo::PList ByName_253(cxx::Entity *entity)
+oo::PList ByName_253(Entity *entity)
 { if (OOVisualEffectEntity *effect = EffectPart(entity))  return effect->scriptInfo();	/* bead oo-9ht.165 */ ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getScriptInfo() : oo::PList(); }
-void ByName_254(cxx::Entity *entity, const oo::PList &override)
+void ByName_254(Entity *entity, const oo::PList &override)
 { if (ShipEntity *ship = ShipPart(entity))  ship->overrideScriptInfo(override); }
-cxx::Entity * ByName_255(cxx::Entity *entity)
+Entity * ByName_255(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->entityForShaderProperties() : nullptr; }
-BOOL ByName_256(cxx::Entity *entity)
+BOOL ByName_256(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getIsDemoShip() : NO; }
-OOTimeAbsolute ByName_257(cxx::Entity *entity)
+OOTimeAbsolute ByName_257(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->getDemoStartTime() : OOTimeAbsolute{}; }
-void ByName_258(cxx::Entity *entity, const std::string &message)
+void ByName_258(Entity *entity, const std::string &message)
 { if (ShipEntity *ship = ShipPart(entity))  ship->sendAIMessage(message); }
-OOAlertCondition ByName_259(cxx::Entity *entity)
+OOAlertCondition ByName_259(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->alertCondition() : OOAlertCondition{}; }
-OOAlertCondition ByName_260(cxx::Entity *entity)
+OOAlertCondition ByName_260(Entity *entity)
 { ShipEntity *ship = ShipPart(entity); return ship != nullptr ? ship->realAlertCondition() : OOAlertCondition{}; }
-void ByName_261(cxx::Entity *entity)
+void ByName_261(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->doNothing(); }
-void ByName_262(cxx::Entity *entity, const std::string &aiString)
+void ByName_262(Entity *entity, const std::string &aiString)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setAITo(aiString); }
-void ByName_263(cxx::Entity *entity, const std::string &aiString)
+void ByName_263(Entity *entity, const std::string &aiString)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setAIScript(aiString); }
-void ByName_264(cxx::Entity *entity, const std::string &aiString)
+void ByName_264(Entity *entity, const std::string &aiString)
 { if (ShipEntity *ship = ShipPart(entity))  ship->switchAITo(aiString); }
-void ByName_265(cxx::Entity *entity)
+void ByName_265(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->scanForHostiles(); }
-void ByName_266(cxx::Entity *entity)
+void ByName_266(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->groupAttackTarget(); }
-void ByName_267(cxx::Entity *entity)
+void ByName_267(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->performAttack(); }
-void ByName_268(cxx::Entity *entity)
+void ByName_268(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->performCollect(); }
-void ByName_269(cxx::Entity *entity)
+void ByName_269(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->performEscort(); }
-void ByName_270(cxx::Entity *entity)
+void ByName_270(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->performFaceDestination(); }
-void ByName_271(cxx::Entity *entity)
+void ByName_271(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->performFlee(); }
-void ByName_272(cxx::Entity *entity)
+void ByName_272(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->performFlyToRangeFromDestination(); }
-void ByName_273(cxx::Entity *entity)
+void ByName_273(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->performHold(); }
-void ByName_274(cxx::Entity *entity)
+void ByName_274(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->performIdle(); }
-void ByName_275(cxx::Entity *entity)
+void ByName_275(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->performIntercept(); }
-void ByName_276(cxx::Entity *entity)
+void ByName_276(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->performLandOnPlanet(); }
-void ByName_277(cxx::Entity *entity)
+void ByName_277(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->performMining(); }
-void ByName_278(cxx::Entity *entity)
+void ByName_278(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->performScriptedAI(); }
-void ByName_279(cxx::Entity *entity)
+void ByName_279(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->performScriptedAttackAI(); }
-void ByName_280(cxx::Entity *entity)
+void ByName_280(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->performBuoyTumble(); }
-void ByName_281(cxx::Entity *entity)
+void ByName_281(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->performStop(); }
-void ByName_282(cxx::Entity *entity)
+void ByName_282(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->performTumble(); }
-void ByName_283(cxx::Entity *entity)
+void ByName_283(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->requestDockingCoordinates(); }
-void ByName_284(cxx::Entity *entity)
+void ByName_284(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->recallDockingInstructions(); }
-void ByName_285(cxx::Entity *entity)
+void ByName_285(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->scanForNearestIncomingMissile(); }
-void ByName_286(cxx::Entity *entity)
+void ByName_286(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->enterPlayerWormhole(); }
-void ByName_287(cxx::Entity *entity)
+void ByName_287(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->enterTargetWormhole(); }
-void ByName_288(cxx::Entity *entity)
+void ByName_288(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->wormholeEscorts(); }
-void ByName_289(cxx::Entity *entity)
+void ByName_289(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->wormholeEntireGroup(); }
-void ByName_290(cxx::Entity *entity)
+void ByName_290(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->broadcastDistressMessage(); }
-void ByName_291(cxx::Entity *entity)
+void ByName_291(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->checkFoundTarget(); }
-void ByName_292(cxx::Entity *entity)
+void ByName_292(Entity *entity)
 {
 	ShipEntity *ship = ShipPart(entity);
 	if (ship == nullptr)  return;
  if (StationEntity *station = StationPart(entity))  station->increaseAlertLevel(); else  ship->increaseAlertLevel(); 
 }
-void ByName_293(cxx::Entity *entity)
+void ByName_293(Entity *entity)
 {
 	ShipEntity *ship = ShipPart(entity);
 	if (ship == nullptr)  return;
  if (StationEntity *station = StationPart(entity))  station->decreaseAlertLevel(); else  ship->decreaseAlertLevel(); 
 }
-oo::PList ByName_294(cxx::Entity *entity)
+oo::PList ByName_294(Entity *entity)
 {
 	ShipEntity *ship = ShipPart(entity);
 	if (ship == nullptr)  return oo::PList();
  if (StationEntity *station = StationPart(entity))  return station->launchPolice(); return ship->launchPolice(); 
 }
-cxx::Entity * ByName_295(cxx::Entity *entity)
+Entity * ByName_295(Entity *entity)
 {
 	ShipEntity *ship = ShipPart(entity);
 	if (ship == nullptr)  return nullptr;
  if (StationEntity *station = StationPart(entity))  return station->launchDefenseShip(); ship->launchDefenseShip(); return nullptr; 
 }
-cxx::Entity * ByName_296(cxx::Entity *entity)
+Entity * ByName_296(Entity *entity)
 {
 	ShipEntity *ship = ShipPart(entity);
 	if (ship == nullptr)  return nullptr;
  if (StationEntity *station = StationPart(entity))  return station->launchScavenger(); ship->launchScavenger(); return nullptr; 
 }
-cxx::Entity * ByName_297(cxx::Entity *entity)
+Entity * ByName_297(Entity *entity)
 {
 	ShipEntity *ship = ShipPart(entity);
 	if (ship == nullptr)  return nullptr;
  if (StationEntity *station = StationPart(entity))  return station->launchMiner(); ship->launchMiner(); return nullptr; 
 }
-cxx::Entity * ByName_298(cxx::Entity *entity)
+Entity * ByName_298(Entity *entity)
 {
 	ShipEntity *ship = ShipPart(entity);
 	if (ship == nullptr)  return nullptr;
  if (StationEntity *station = StationPart(entity))  return station->launchPirateShip(); ship->launchPirateShip(); return nullptr; 
 }
-cxx::Entity * ByName_299(cxx::Entity *entity)
+Entity * ByName_299(Entity *entity)
 {
 	ShipEntity *ship = ShipPart(entity);
 	if (ship == nullptr)  return nullptr;
  if (StationEntity *station = StationPart(entity))  return station->launchShuttle(); ship->launchShuttle(); return nullptr; 
 }
-void ByName_300(cxx::Entity *entity)
+void ByName_300(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->launchTrader(); }
-cxx::Entity * ByName_301(cxx::Entity *entity)
+Entity * ByName_301(Entity *entity)
 {
 	ShipEntity *ship = ShipPart(entity);
 	if (ship == nullptr)  return nullptr;
  if (StationEntity *station = StationPart(entity))  return station->launchEscort(); ship->launchEscort(); return nullptr; 
 }
-cxx::Entity * ByName_302(cxx::Entity *entity)
+Entity * ByName_302(Entity *entity)
 {
 	ShipEntity *ship = ShipPart(entity);
 	if (ship == nullptr)  return nullptr;
  if (StationEntity *station = StationPart(entity))  return station->launchPatrol(); (void)ship->launchPatrol(); return nullptr; 
 }
-void ByName_303(cxx::Entity *entity, const std::string &param)
+void ByName_303(Entity *entity, const std::string &param)
 {
 	ShipEntity *ship = ShipPart(entity);
 	if (ship == nullptr)  return;
  if (StationEntity *station = StationPart(entity))  station->launchShipWithRole(param); else  ship->launchShipWithRole(param); 
 }
-void ByName_304(cxx::Entity *entity)
+void ByName_304(Entity *entity)
 {
 	ShipEntity *ship = ShipPart(entity);
 	if (ship == nullptr)  return;
  if (StationEntity *station = StationPart(entity))  station->abortAllDockings(); else if (DockEntity *dock = DockPart(entity))  dock->abortAllDockings(); else  ship->abortAllDockings(); 
 }
-void ByName_305(cxx::Entity *entity, const std::string &state)
+void ByName_305(Entity *entity, const std::string &state)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setStateTo(state); }
-void ByName_306(cxx::Entity *entity, const std::string &intervalString)
+void ByName_306(Entity *entity, const std::string &intervalString)
 { if (ShipEntity *ship = ShipPart(entity))  ship->pauseAI(intervalString); }
-void ByName_307(cxx::Entity *entity, const std::string &intervalString)
+void ByName_307(Entity *entity, const std::string &intervalString)
 { if (ShipEntity *ship = ShipPart(entity))  ship->randomPauseAI(intervalString); }
-void ByName_308(cxx::Entity *entity, const std::string &messageString)
+void ByName_308(Entity *entity, const std::string &messageString)
 { if (ShipEntity *ship = ShipPart(entity))  ship->dropMessages(messageString); }
-void ByName_309(cxx::Entity *entity)
+void ByName_309(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->debugDumpPendingMessages(); }
-void ByName_310(cxx::Entity *entity)
+void ByName_310(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setDestinationToCurrentLocation(); }
-void ByName_311(cxx::Entity *entity)
+void ByName_311(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setDestinationToJinkPosition(); }
-void ByName_312(cxx::Entity *entity, const std::string &rangeString)
+void ByName_312(Entity *entity, const std::string &rangeString)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setDesiredRangeTo(rangeString); }
-void ByName_313(cxx::Entity *entity)
+void ByName_313(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setDesiredRangeForWaypoint(); }
-void ByName_314(cxx::Entity *entity, const std::string &speedString)
+void ByName_314(Entity *entity, const std::string &speedString)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setSpeedTo(speedString); }
-void ByName_315(cxx::Entity *entity, const std::string &speedString)
+void ByName_315(Entity *entity, const std::string &speedString)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setSpeedFactorTo(speedString); }
-void ByName_316(cxx::Entity *entity)
+void ByName_316(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setSpeedToCruiseSpeed(); }
-void ByName_317(cxx::Entity *entity, const std::string &thrustFactorString)
+void ByName_317(Entity *entity, const std::string &thrustFactorString)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setThrustFactorTo(thrustFactorString); }
-void ByName_318(cxx::Entity *entity)
+void ByName_318(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setTargetToPrimaryAggressor(); }
-void ByName_319(cxx::Entity *entity)
+void ByName_319(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->addPrimaryAggressorAsDefenseTarget(); }
-void ByName_320(cxx::Entity *entity)
+void ByName_320(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->scanForNearestMerchantman(); }
-void ByName_321(cxx::Entity *entity)
+void ByName_321(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->scanForRandomMerchantman(); }
-void ByName_322(cxx::Entity *entity)
+void ByName_322(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->scanForLoot(); }
-void ByName_323(cxx::Entity *entity)
+void ByName_323(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->scanForRandomLoot(); }
-void ByName_324(cxx::Entity *entity)
+void ByName_324(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setTargetToFoundTarget(); }
-void ByName_325(cxx::Entity *entity)
+void ByName_325(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->addFoundTargetAsDefenseTarget(); }
-void ByName_326(cxx::Entity *entity)
+void ByName_326(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->checkForFullHold(); }
-void ByName_327(cxx::Entity *entity)
+void ByName_327(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->getWitchspaceEntryCoordinates(); }
-void ByName_328(cxx::Entity *entity)
+void ByName_328(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setDestinationFromCoordinates(); }
-void ByName_329(cxx::Entity *entity)
+void ByName_329(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setCoordinatesFromPosition(); }
-void ByName_330(cxx::Entity *entity)
+void ByName_330(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->fightOrFleeMissile(); }
-void ByName_331(cxx::Entity *entity)
+void ByName_331(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setCourseToPlanet(); }
-void ByName_332(cxx::Entity *entity)
+void ByName_332(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setTakeOffFromPlanet(); }
-void ByName_333(cxx::Entity *entity)
+void ByName_333(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->landOnPlanet(); }
-void ByName_334(cxx::Entity *entity)
+void ByName_334(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->checkTargetLegalStatus(); }
-void ByName_335(cxx::Entity *entity)
+void ByName_335(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->checkOwnLegalStatus(); }
-void ByName_336(cxx::Entity *entity, const std::string &message)
+void ByName_336(Entity *entity, const std::string &message)
 { if (ShipEntity *ship = ShipPart(entity))  ship->exitAIWithMessage(message); }
-void ByName_337(cxx::Entity *entity)
+void ByName_337(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setDestinationToTarget(); }
-void ByName_338(cxx::Entity *entity)
+void ByName_338(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setDestinationWithinTarget(); }
-void ByName_339(cxx::Entity *entity)
+void ByName_339(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->checkCourseToDestination(); }
-void ByName_340(cxx::Entity *entity)
+void ByName_340(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->checkAegis(); }
-void ByName_341(cxx::Entity *entity)
+void ByName_341(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->checkEnergy(); }
-void ByName_342(cxx::Entity *entity)
+void ByName_342(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->checkHeatInsulation(); }
-void ByName_343(cxx::Entity *entity)
+void ByName_343(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->findNewDefenseTarget(); }
-void ByName_344(cxx::Entity *entity)
+void ByName_344(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->scanForOffenders(); }
-void ByName_345(cxx::Entity *entity)
+void ByName_345(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setCourseToWitchpoint(); }
-void ByName_346(cxx::Entity *entity)
+void ByName_346(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setDestinationToWitchpoint(); }
-void ByName_347(cxx::Entity *entity)
+void ByName_347(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setDestinationToStationBeacon(); }
-void ByName_348(cxx::Entity *entity)
+void ByName_348(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->performHyperSpaceExit(); }
-void ByName_349(cxx::Entity *entity)
+void ByName_349(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->performHyperSpaceExitWithoutReplacing(); }
-void ByName_350(cxx::Entity *entity)
+void ByName_350(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->disengageAutopilot(); }
-void ByName_351(cxx::Entity *entity)
+void ByName_351(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->wormholeGroup(); }
-void ByName_352(cxx::Entity *entity, const std::string &valueString)
+void ByName_352(Entity *entity, const std::string &valueString)
 { if (ShipEntity *ship = ShipPart(entity))  ship->commsMessage(valueString); }
-void ByName_353(cxx::Entity *entity, const std::string &valueString)
+void ByName_353(Entity *entity, const std::string &valueString)
 { if (ShipEntity *ship = ShipPart(entity))  ship->commsMessageByUnpiloted(valueString); }
-void ByName_354(cxx::Entity *entity)
+void ByName_354(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->ejectCargo(); }
-void ByName_355(cxx::Entity *entity)
+void ByName_355(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->scanForThargoid(); }
-void ByName_356(cxx::Entity *entity)
+void ByName_356(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->scanForNonThargoid(); }
-void ByName_357(cxx::Entity *entity)
+void ByName_357(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->thargonCheckMother(); }
-void ByName_358(cxx::Entity *entity)
+void ByName_358(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->becomeUncontrolledThargon(); }
-void ByName_359(cxx::Entity *entity)
+void ByName_359(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->checkDistanceTravelled(); }
-void ByName_360(cxx::Entity *entity)
+void ByName_360(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->fightOrFleeHostiles(); }
-void ByName_361(cxx::Entity *entity)
+void ByName_361(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->suggestEscort(); }
-void ByName_362(cxx::Entity *entity)
+void ByName_362(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->escortCheckMother(); }
-void ByName_363(cxx::Entity *entity)
+void ByName_363(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->checkGroupOddsVersusTarget(); }
-void ByName_364(cxx::Entity *entity)
+void ByName_364(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->scanForFormationLeader(); }
-void ByName_365(cxx::Entity *entity, const std::string &msgString)
+void ByName_365(Entity *entity, const std::string &msgString)
 { if (ShipEntity *ship = ShipPart(entity))  ship->messageMother(msgString); }
-void ByName_366(cxx::Entity *entity, const std::string &msgString)
+void ByName_366(Entity *entity, const std::string &msgString)
 { if (ShipEntity *ship = ShipPart(entity))  ship->messageSelf(msgString); }
-void ByName_367(cxx::Entity *entity)
+void ByName_367(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setPlanetPatrolCoordinates(); }
-void ByName_368(cxx::Entity *entity)
+void ByName_368(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setSunSkimStartCoordinates(); }
-void ByName_369(cxx::Entity *entity)
+void ByName_369(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setSunSkimEndCoordinates(); }
-void ByName_370(cxx::Entity *entity)
+void ByName_370(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setSunSkimExitCoordinates(); }
-void ByName_371(cxx::Entity *entity)
+void ByName_371(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->patrolReportIn(); }
-void ByName_372(cxx::Entity *entity)
+void ByName_372(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->checkForMotherStation(); }
-void ByName_373(cxx::Entity *entity, const std::string &message)
+void ByName_373(Entity *entity, const std::string &message)
 { if (ShipEntity *ship = ShipPart(entity))  ship->sendTargetCommsMessage(message); }
-void ByName_374(cxx::Entity *entity)
+void ByName_374(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->markTargetForFines(); }
-void ByName_375(cxx::Entity *entity, const std::string &valueString)
+void ByName_375(Entity *entity, const std::string &valueString)
 { if (ShipEntity *ship = ShipPart(entity))  ship->markTargetForOffence(valueString); }
-void ByName_376(cxx::Entity *entity)
+void ByName_376(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->storeTarget(); }
-void ByName_377(cxx::Entity *entity)
+void ByName_377(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->recallStoredTarget(); }
-void ByName_378(cxx::Entity *entity)
+void ByName_378(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->scanForRocks(); }
-void ByName_379(cxx::Entity *entity)
+void ByName_379(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setDestinationToDockingAbort(); }
-void ByName_380(cxx::Entity *entity)
+void ByName_380(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->requestNewTarget(); }
-void ByName_381(cxx::Entity *entity, const std::string &die_number)
+void ByName_381(Entity *entity, const std::string &die_number)
 { if (ShipEntity *ship = ShipPart(entity))  ship->rollD(die_number); }
-void ByName_382(cxx::Entity *entity, const std::string &scanRole)
+void ByName_382(Entity *entity, const std::string &scanRole)
 { if (ShipEntity *ship = ShipPart(entity))  ship->scanForNearestShipWithPrimaryRole(scanRole); }
-void ByName_383(cxx::Entity *entity, const std::string &scanRole)
+void ByName_383(Entity *entity, const std::string &scanRole)
 { if (ShipEntity *ship = ShipPart(entity))  ship->scanForNearestShipHavingRole(scanRole); }
-void ByName_384(cxx::Entity *entity, const std::string &scanRoles)
+void ByName_384(Entity *entity, const std::string &scanRoles)
 { if (ShipEntity *ship = ShipPart(entity))  ship->scanForNearestShipWithAnyPrimaryRole(scanRoles); }
-void ByName_385(cxx::Entity *entity, const std::string &scanRoles)
+void ByName_385(Entity *entity, const std::string &scanRoles)
 { if (ShipEntity *ship = ShipPart(entity))  ship->scanForNearestShipHavingAnyRole(scanRoles); }
-void ByName_386(cxx::Entity *entity, const std::string &scanScanClass)
+void ByName_386(Entity *entity, const std::string &scanScanClass)
 { if (ShipEntity *ship = ShipPart(entity))  ship->scanForNearestShipWithScanClass(scanScanClass); }
-void ByName_387(cxx::Entity *entity, const std::string &scanRole)
+void ByName_387(Entity *entity, const std::string &scanRole)
 { if (ShipEntity *ship = ShipPart(entity))  ship->scanForNearestShipWithoutPrimaryRole(scanRole); }
-void ByName_388(cxx::Entity *entity, const std::string &scanRole)
+void ByName_388(Entity *entity, const std::string &scanRole)
 { if (ShipEntity *ship = ShipPart(entity))  ship->scanForNearestShipNotHavingRole(scanRole); }
-void ByName_389(cxx::Entity *entity, const std::string &scanRoles)
+void ByName_389(Entity *entity, const std::string &scanRoles)
 { if (ShipEntity *ship = ShipPart(entity))  ship->scanForNearestShipWithoutAnyPrimaryRole(scanRoles); }
-void ByName_390(cxx::Entity *entity, const std::string &scanRoles)
+void ByName_390(Entity *entity, const std::string &scanRoles)
 { if (ShipEntity *ship = ShipPart(entity))  ship->scanForNearestShipNotHavingAnyRole(scanRoles); }
-void ByName_391(cxx::Entity *entity, const std::string &scanScanClass)
+void ByName_391(Entity *entity, const std::string &scanScanClass)
 { if (ShipEntity *ship = ShipPart(entity))  ship->scanForNearestShipWithoutScanClass(scanScanClass); }
-void ByName_392(cxx::Entity *entity, const std::string &predicateExpression)
+void ByName_392(Entity *entity, const std::string &predicateExpression)
 { if (ShipEntity *ship = ShipPart(entity))  ship->scanForNearestShipMatchingPredicate(predicateExpression); }
-void ByName_393(cxx::Entity *entity, const std::string &system_x_y_z)
+void ByName_393(Entity *entity, const std::string &system_x_y_z)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setCoordinates(system_x_y_z); }
-void ByName_394(cxx::Entity *entity)
+void ByName_394(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->checkForNormalSpace(); }
-void ByName_395(cxx::Entity *entity)
+void ByName_395(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setTargetToRandomStation(); }
-void ByName_396(cxx::Entity *entity)
+void ByName_396(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setTargetToLastStation(); }
-void ByName_397(cxx::Entity *entity, const std::string &fuel_number)
+void ByName_397(Entity *entity, const std::string &fuel_number)
 { if (ShipEntity *ship = ShipPart(entity))  ship->addFuel(fuel_number); }
-void ByName_398(cxx::Entity *entity, const std::string &action)
+void ByName_398(Entity *entity, const std::string &action)
 { if (ShipEntity *ship = ShipPart(entity))  ship->scriptActionOnTarget(action); }
-void ByName_399(cxx::Entity *entity, const std::string &action)
+void ByName_399(Entity *entity, const std::string &action)
 { if (ShipEntity *ship = ShipPart(entity))  ship->safeScriptActionOnTarget(action); }
-void ByName_400(cxx::Entity *entity, const std::string &message)
+void ByName_400(Entity *entity, const std::string &message)
 { if (ShipEntity *ship = ShipPart(entity))  ship->sendScriptMessage(message); }
-void ByName_401(cxx::Entity *entity)
+void ByName_401(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->ai_throwSparks(); }
-void ByName_402(cxx::Entity *entity)
+void ByName_402(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->explodeSelf(); }
-void ByName_403(cxx::Entity *entity, const std::string &message)
+void ByName_403(Entity *entity, const std::string &message)
 { if (ShipEntity *ship = ShipPart(entity))  ship->ai_debugMessage(message); }
-void ByName_404(cxx::Entity *entity, const std::string &code)
+void ByName_404(Entity *entity, const std::string &code)
 { if (ShipEntity *ship = ShipPart(entity))  ship->targetFirstBeaconWithCode(code); }
-void ByName_405(cxx::Entity *entity, const std::string &code)
+void ByName_405(Entity *entity, const std::string &code)
 { if (ShipEntity *ship = ShipPart(entity))  ship->targetNextBeaconWithCode(code); }
-void ByName_406(cxx::Entity *entity)
+void ByName_406(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->setRacepointsFromTarget(); }
-void ByName_407(cxx::Entity *entity)
+void ByName_407(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->performFlyRacepoints(); }
-GLfloat ByName_408(cxx::Entity *entity)
+GLfloat ByName_408(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->baseMass() : GLfloat{}; }
-void ByName_409(cxx::Entity *entity)
+void ByName_409(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->unloadCargoPods(); }
-void ByName_410(cxx::Entity *entity)
+void ByName_410(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->loadCargoPods(); }
-OOCreditsQuantity ByName_411(cxx::Entity *entity)
+OOCreditsQuantity ByName_411(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->deciCredits() : OOCreditsQuantity{}; }
-int ByName_412(cxx::Entity *entity)
+int ByName_412(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->random_factor() : int{}; }
-OOGalaxyID ByName_413(cxx::Entity *entity)
+OOGalaxyID ByName_413(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->galaxyNumber() : OOGalaxyID{}; }
-NSPoint ByName_414(cxx::Entity *entity)
+NSPoint ByName_414(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getGalaxy_coordinates() : NSMakePoint(0, 0); }
-NSPoint ByName_415(cxx::Entity *entity)
+NSPoint ByName_415(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getCursor_coordinates() : NSMakePoint(0, 0); }
-NSPoint ByName_416(cxx::Entity *entity)
+NSPoint ByName_416(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getChart_centre_coordinates() : NSMakePoint(0, 0); }
-OOScalar ByName_417(cxx::Entity *entity)
+OOScalar ByName_417(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getChart_zoom() : OOScalar{}; }
-OOScalar ByName_418(cxx::Entity *entity)
+OOScalar ByName_418(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getCustom_chart_zoom() : OOScalar{}; }
-NSPoint ByName_419(cxx::Entity *entity)
+NSPoint ByName_419(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getCustom_chart_centre_coordinates() : NSMakePoint(0, 0); }
-NSPoint ByName_420(cxx::Entity *entity)
+NSPoint ByName_420(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->adjusted_chart_centre() : NSMakePoint(0, 0); }
-OORouteType ByName_421(cxx::Entity *entity)
+OORouteType ByName_421(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->ANAMode() : OORouteType{}; }
-OOSystemID ByName_422(cxx::Entity *entity)
+OOSystemID ByName_422(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->systemID() : OOSystemID{}; }
-OOSystemID ByName_423(cxx::Entity *entity)
+OOSystemID ByName_423(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->previousSystemID() : OOSystemID{}; }
-OOSystemID ByName_424(cxx::Entity *entity)
+OOSystemID ByName_424(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->targetSystemID() : OOSystemID{}; }
-OOSystemID ByName_425(cxx::Entity *entity)
+OOSystemID ByName_425(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->nextHopTargetSystemID() : OOSystemID{}; }
-OOSystemID ByName_426(cxx::Entity *entity)
+OOSystemID ByName_426(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->infoSystemID() : OOSystemID{}; }
-void ByName_427(cxx::Entity *entity)
+void ByName_427(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->nextInfoSystem(); }
-void ByName_428(cxx::Entity *entity)
+void ByName_428(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->previousInfoSystem(); }
-void ByName_429(cxx::Entity *entity)
+void ByName_429(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->homeInfoSystem(); }
-void ByName_430(cxx::Entity *entity)
+void ByName_430(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->targetInfoSystem(); }
-BOOL ByName_431(cxx::Entity *entity)
+BOOL ByName_431(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->infoSystemOnRoute() : NO; }
-oo::PList ByName_432(cxx::Entity *entity)
+oo::PList ByName_432(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->commanderDataDictionary() : oo::PList(); }
-BOOL ByName_433(cxx::Entity *entity, const oo::PList &dict)
+BOOL ByName_433(Entity *entity, const oo::PList &dict)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->setCommanderDataFromDictionary(dict) : NO; }
-void ByName_434(cxx::Entity *entity)
+void ByName_434(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->completeSetUp(); }
-void ByName_435(cxx::Entity *entity)
+void ByName_435(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->startUpComplete(); }
-GLfloat ByName_436(cxx::Entity *entity)
+GLfloat ByName_436(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->insideAtmosphereFraction() : GLfloat{}; }
-void ByName_437(cxx::Entity *entity)
+void ByName_437(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->updateMovementFlags(); }
-void ByName_438(cxx::Entity *entity)
+void ByName_438(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->updateAlertConditionForNearbyEntities(); }
-void ByName_439(cxx::Entity *entity)
+void ByName_439(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->updateAlertCondition(); }
-void ByName_440(cxx::Entity *entity)
+void ByName_440(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->checkScriptsIfAppropriate(); }
-void ByName_441(cxx::Entity *entity)
+void ByName_441(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->resetAutopilotAI(); }
 #if OO_VARIABLE_TORUS_SPEED
-GLfloat ByName_442(cxx::Entity *entity)
+GLfloat ByName_442(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getHyperspeedFactor() : GLfloat{}; }
 #endif
-BOOL ByName_443(cxx::Entity *entity)
+BOOL ByName_443(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->injectorsEngaged() : NO; }
-BOOL ByName_444(cxx::Entity *entity)
+BOOL ByName_444(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->hyperspeedEngaged() : NO; }
-void ByName_445(cxx::Entity *entity)
+void ByName_445(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->gameOverFadeToBW(); }
-void ByName_446(cxx::Entity *entity)
+void ByName_446(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->showGameOver(); }
-void ByName_447(cxx::Entity *entity)
+void ByName_447(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->updateTargeting(); }
-HPVector ByName_448(cxx::Entity *entity)
+HPVector ByName_448(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->breakPatternPosition() : kZeroHPVector; }
-Vector ByName_449(cxx::Entity *entity)
+Vector ByName_449(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->viewpointOffset() : kZeroVector; }
-Vector ByName_450(cxx::Entity *entity)
+Vector ByName_450(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->viewpointOffsetAft() : kZeroVector; }
-Vector ByName_451(cxx::Entity *entity)
+Vector ByName_451(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->viewpointOffsetForward() : kZeroVector; }
-Vector ByName_452(cxx::Entity *entity)
+Vector ByName_452(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->viewpointOffsetPort() : kZeroVector; }
-Vector ByName_453(cxx::Entity *entity)
+Vector ByName_453(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->viewpointOffsetStarboard() : kZeroVector; }
-HPVector ByName_454(cxx::Entity *entity)
+HPVector ByName_454(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->viewpointPosition() : kZeroHPVector; }
-BOOL ByName_455(cxx::Entity *entity)
+BOOL ByName_455(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getMassLockable() : NO; }
-BOOL ByName_456(cxx::Entity *entity)
+BOOL ByName_456(Entity *entity)
 { if (ProxyPlayerEntity *proxy = ProxyPart(entity))  return proxy->massLocked(); PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->massLocked() : NO; }
-BOOL ByName_457(cxx::Entity *entity)
+BOOL ByName_457(Entity *entity)
 { if (ProxyPlayerEntity *proxy = ProxyPart(entity))  return proxy->atHyperspeed(); PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->atHyperspeed() : NO; }
-float ByName_458(cxx::Entity *entity)
+float ByName_458(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->occlusionLevel() : float{}; }
-void ByName_459(cxx::Entity *entity)
+void ByName_459(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setDockedAtMainStation(); }
-cxx::Entity * ByName_460(cxx::Entity *entity)
+Entity * ByName_460(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->dockedStation() : nullptr; }
-cxx::Entity * ByName_461(cxx::Entity *entity)
+Entity * ByName_461(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getTargetDockStation() : nullptr; }
-void ByName_462(cxx::Entity *entity)
+void ByName_462(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->resetHud(); }
-BOOL ByName_463(cxx::Entity *entity, const std::string &hudFileName)
+BOOL ByName_463(Entity *entity, const std::string &hudFileName)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->switchHudTo(hudFileName) : NO; }
-float ByName_464(cxx::Entity *entity, const std::string &dialKey)
+float ByName_464(Entity *entity, const std::string &dialKey)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->dialCustomFloat(dialKey) : float{}; }
-BOOL ByName_465(cxx::Entity *entity)
+BOOL ByName_465(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getShowDemoShips() : NO; }
-float ByName_466(cxx::Entity *entity)
+float ByName_466(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->forwardShieldRechargeRate() : float{}; }
-float ByName_467(cxx::Entity *entity)
+float ByName_467(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->aftShieldRechargeRate() : float{}; }
-GLfloat ByName_468(cxx::Entity *entity)
+GLfloat ByName_468(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->forwardShieldLevel() : GLfloat{}; }
-GLfloat ByName_469(cxx::Entity *entity)
+GLfloat ByName_469(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->aftShieldLevel() : GLfloat{}; }
-oo::PList ByName_470(cxx::Entity *entity)
+oo::PList ByName_470(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->keyConfig() : oo::PList(); }
-BOOL ByName_471(cxx::Entity *entity)
+BOOL ByName_471(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->isMouseControlOn() : NO; }
-GLfloat ByName_472(cxx::Entity *entity)
+GLfloat ByName_472(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->dialRoll() : GLfloat{}; }
-GLfloat ByName_473(cxx::Entity *entity)
+GLfloat ByName_473(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->dialPitch() : GLfloat{}; }
-GLfloat ByName_474(cxx::Entity *entity)
+GLfloat ByName_474(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->dialYaw() : GLfloat{}; }
-GLfloat ByName_475(cxx::Entity *entity)
+GLfloat ByName_475(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->dialSpeed() : GLfloat{}; }
-GLfloat ByName_476(cxx::Entity *entity)
+GLfloat ByName_476(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->dialHyperSpeed() : GLfloat{}; }
-GLfloat ByName_477(cxx::Entity *entity)
+GLfloat ByName_477(Entity *entity)
 { if (ProxyPlayerEntity *proxy = ProxyPart(entity))  return proxy->dialForwardShield(); PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->dialForwardShield() : GLfloat{}; }
-GLfloat ByName_478(cxx::Entity *entity)
+GLfloat ByName_478(Entity *entity)
 { if (ProxyPlayerEntity *proxy = ProxyPart(entity))  return proxy->dialAftShield(); PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->dialAftShield() : GLfloat{}; }
-GLfloat ByName_479(cxx::Entity *entity)
+GLfloat ByName_479(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->dialEnergy() : GLfloat{}; }
-GLfloat ByName_480(cxx::Entity *entity)
+GLfloat ByName_480(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->dialMaxEnergy() : GLfloat{}; }
-GLfloat ByName_481(cxx::Entity *entity)
+GLfloat ByName_481(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->dialFuel() : GLfloat{}; }
-GLfloat ByName_482(cxx::Entity *entity)
+GLfloat ByName_482(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->dialHyperRange() : GLfloat{}; }
-GLfloat ByName_483(cxx::Entity *entity)
+GLfloat ByName_483(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->dialAltitude() : GLfloat{}; }
-double ByName_484(cxx::Entity *entity)
+double ByName_484(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->clockTime() : double{}; }
-double ByName_485(cxx::Entity *entity)
+double ByName_485(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->clockTimeAdjusted() : double{}; }
-BOOL ByName_486(cxx::Entity *entity)
+BOOL ByName_486(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->clockAdjusting() : NO; }
-double ByName_487(cxx::Entity *entity)
+double ByName_487(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->escapePodRescueTime() : double{}; }
-unsigned ByName_488(cxx::Entity *entity)
+unsigned ByName_488(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->countMissiles() : unsigned{}; }
-OOMissileStatus ByName_489(cxx::Entity *entity)
+OOMissileStatus ByName_489(Entity *entity)
 { if (ProxyPlayerEntity *proxy = ProxyPart(entity))  return proxy->dialMissileStatus(); PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->dialMissileStatus() : OOMissileStatus{}; }
-OOFuelScoopStatus ByName_490(cxx::Entity *entity)
+OOFuelScoopStatus ByName_490(Entity *entity)
 { if (ProxyPlayerEntity *proxy = ProxyPart(entity))  return proxy->dialFuelScoopStatus(); PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->dialFuelScoopStatus() : OOFuelScoopStatus{}; }
-float ByName_491(cxx::Entity *entity)
+float ByName_491(Entity *entity)
 { if (ProxyPlayerEntity *proxy = ProxyPart(entity))  return proxy->fuelLeakRate(); PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->fuelLeakRate() : float{}; }
-void ByName_492(cxx::Entity *entity)
+void ByName_492(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->addRoleForMining(); }
-void ByName_493(cxx::Entity *entity, const std::string &role)
+void ByName_493(Entity *entity, const std::string &role)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->addRoleToPlayer(role); }
-NSUInteger ByName_494(cxx::Entity *entity)
+NSUInteger ByName_494(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->maxPlayerRoles() : NSUInteger{}; }
-void ByName_495(cxx::Entity *entity)
+void ByName_495(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->updateSystemMemory(); }
-cxx::Entity * ByName_496(cxx::Entity *entity)
+Entity * ByName_496(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getCompassTargetEntity() : nullptr; }
-void ByName_497(cxx::Entity *entity)
+void ByName_497(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->validateCompassTarget(); }
-OOCompassMode ByName_498(cxx::Entity *entity)
+OOCompassMode ByName_498(Entity *entity)
 { if (ProxyPlayerEntity *proxy = ProxyPart(entity))  return proxy->compassMode(); PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getCompassMode() : OOCompassMode{}; }
-void ByName_499(cxx::Entity *entity)
+void ByName_499(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setPrevCompassMode(); }
-void ByName_500(cxx::Entity *entity)
+void ByName_500(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setNextCompassMode(); }
-NSUInteger ByName_501(cxx::Entity *entity)
+NSUInteger ByName_501(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getActiveMissile() : NSUInteger{}; }
-NSUInteger ByName_502(cxx::Entity *entity)
+NSUInteger ByName_502(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->dialMaxMissiles() : NSUInteger{}; }
-BOOL ByName_503(cxx::Entity *entity)
+BOOL ByName_503(Entity *entity)
 { if (ProxyPlayerEntity *proxy = ProxyPart(entity))  return proxy->dialIdentEngaged(); PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->dialIdentEngaged() : NO; }
-void ByName_504(cxx::Entity *entity)
+void ByName_504(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->selectNextMultiFunctionDisplay(); }
-void ByName_505(cxx::Entity *entity)
+void ByName_505(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->selectPreviousMultiFunctionDisplay(); }
-NSUInteger ByName_506(cxx::Entity *entity)
+NSUInteger ByName_506(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getActiveMFD() : NSUInteger{}; }
-void ByName_507(cxx::Entity *entity)
+void ByName_507(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->safeAllMissiles(); }
-void ByName_508(cxx::Entity *entity)
+void ByName_508(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->tidyMissilePylons(); }
-void ByName_509(cxx::Entity *entity)
+void ByName_509(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->selectNextMissile(); }
-void ByName_510(cxx::Entity *entity)
+void ByName_510(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->clearAlertFlags(); }
-int ByName_511(cxx::Entity *entity)
+int ByName_511(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getAlertFlags() : int{}; }
-OOPlayerFleeingStatus ByName_512(cxx::Entity *entity)
+OOPlayerFleeingStatus ByName_512(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->fleeingStatus() : OOPlayerFleeingStatus{}; }
-BOOL ByName_513(cxx::Entity *entity, const std::string &role)
+BOOL ByName_513(Entity *entity, const std::string &role)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->mountMissileWithRole(role) : NO; }
-BOOL ByName_514(cxx::Entity *entity, const std::string &equipmentKey)
+BOOL ByName_514(Entity *entity, const std::string &equipmentKey)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->assignToActivePylon(equipmentKey) : NO; }
-double ByName_515(cxx::Entity *entity)
+double ByName_515(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->scannerFuzziness() : double{}; }
-OOEnergyUnitType ByName_516(cxx::Entity *entity)
+OOEnergyUnitType ByName_516(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->installedEnergyUnitType() : OOEnergyUnitType{}; }
-OOEnergyUnitType ByName_517(cxx::Entity *entity)
+OOEnergyUnitType ByName_517(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->energyUnitType() : OOEnergyUnitType{}; }
-void ByName_518(cxx::Entity *entity)
+void ByName_518(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->currentWeaponStats(); }
-BOOL ByName_519(cxx::Entity *entity)
+BOOL ByName_519(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->weaponsOnline() : NO; }
-BOOL ByName_520(cxx::Entity *entity)
+BOOL ByName_520(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->fireMainWeapon() : NO; }
-cxx::Entity * ByName_521(cxx::Entity *entity)
+Entity * ByName_521(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->createDoppelganger() : nullptr; }
-void ByName_522(cxx::Entity *entity)
+void ByName_522(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->rotateCargo(); }
-BOOL ByName_523(cxx::Entity *entity)
+BOOL ByName_523(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->takeInternalDamage() : NO; }
-void ByName_524(cxx::Entity *entity)
+void ByName_524(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->loseTargetStatus(); }
-BOOL ByName_525(cxx::Entity *entity, const std::string &key)
+BOOL ByName_525(Entity *entity, const std::string &key)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->endScenario(key) : NO; }
-void ByName_526(cxx::Entity *entity)
+void ByName_526(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->docked(); }
-void ByName_527(cxx::Entity *entity)
+void ByName_527(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->witchStart(); }
-void ByName_528(cxx::Entity *entity)
+void ByName_528(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->witchEnd(); }
-double ByName_529(cxx::Entity *entity)
+double ByName_529(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->hyperspaceJumpDistance() : double{}; }
-OOFuelQuantity ByName_530(cxx::Entity *entity)
+OOFuelQuantity ByName_530(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->fuelRequiredForJump() : OOFuelQuantity{}; }
-BOOL ByName_531(cxx::Entity *entity)
+BOOL ByName_531(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->hasSufficientFuelForJump() : NO; }
-void ByName_532(cxx::Entity *entity)
+void ByName_532(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->noteCompassLostTarget(); }
-void ByName_533(cxx::Entity *entity)
+void ByName_533(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->enterGalacticWitchspace(); }
-void ByName_534(cxx::Entity *entity)
+void ByName_534(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setGuiToStatusScreen(); }
-NSUInteger ByName_535(cxx::Entity *entity)
+NSUInteger ByName_535(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->primedEquipmentCount() : NSUInteger{}; }
-unsigned ByName_536(cxx::Entity *entity)
+unsigned ByName_536(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->legalStatusOfCargoList() : unsigned{}; }
-void ByName_537(cxx::Entity *entity)
+void ByName_537(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setGuiToSystemDataScreen(); }
-void ByName_538(cxx::Entity *entity)
+void ByName_538(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setGuiToLongRangeChartScreen(); }
-void ByName_539(cxx::Entity *entity)
+void ByName_539(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setGuiToShortRangeChartScreen(); }
-void ByName_540(cxx::Entity *entity)
+void ByName_540(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setGuiToGameOptionsScreen(); }
-void ByName_541(cxx::Entity *entity)
+void ByName_541(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setGuiToLoadSaveScreen(); }
-void ByName_542(cxx::Entity *entity, const std::string &highlightKey)
+void ByName_542(Entity *entity, const std::string &highlightKey)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->highlightEquipShipScreenKey(highlightKey); }
-OOWeaponFacingSet ByName_543(cxx::Entity *entity)
+OOWeaponFacingSet ByName_543(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->availableFacings() : OOWeaponFacingSet{}; }
-void ByName_544(cxx::Entity *entity)
+void ByName_544(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->showInformationForSelectedUpgrade(); }
-void ByName_545(cxx::Entity *entity)
+void ByName_545(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->showInformationForSelectedInterface(); }
-void ByName_546(cxx::Entity *entity)
+void ByName_546(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->activateSelectedInterface(); }
-void ByName_547(cxx::Entity *entity)
+void ByName_547(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setupStartScreenGui(); }
-void ByName_548(cxx::Entity *entity)
+void ByName_548(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setGuiToOXZManager(); }
-void ByName_549(cxx::Entity *entity)
+void ByName_549(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->buySelectedItem(); }
-BOOL ByName_550(cxx::Entity *entity, const std::string &eqKey)
+BOOL ByName_550(Entity *entity, const std::string &eqKey)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->tryBuyingItem(eqKey) : NO; }
-OOCargoQuantity ByName_551(cxx::Entity *entity, const std::string &type)
+OOCargoQuantity ByName_551(Entity *entity, const std::string &type)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->cargoQuantityForType(type) : OOCargoQuantity{}; }
-void ByName_552(cxx::Entity *entity)
+void ByName_552(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->calculateCurrentCargo(); }
-void ByName_553(cxx::Entity *entity)
+void ByName_553(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->showMarketScreenHeaders(); }
-void ByName_554(cxx::Entity *entity)
+void ByName_554(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setGuiToMarketScreen(); }
-void ByName_555(cxx::Entity *entity)
+void ByName_555(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setGuiToMarketInfoScreen(); }
-void ByName_556(cxx::Entity *entity)
+void ByName_556(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->showMarketCashAndLoadLine(); }
-OOGUIScreenID ByName_557(cxx::Entity *entity)
+OOGUIScreenID ByName_557(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->guiScreen() : OOGUIScreenID{}; }
-OOSpeechSettings ByName_558(cxx::Entity *entity)
+OOSpeechSettings ByName_558(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getIsSpeechOn() : OOSpeechSettings{}; }
-void ByName_559(cxx::Entity *entity, const std::string &equipmentKey)
+void ByName_559(Entity *entity, const std::string &equipmentKey)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->addEquipmentWithScriptToCustomKeyArray(equipmentKey); }
-void ByName_560(cxx::Entity *entity)
+void ByName_560(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->validateCustomEquipActivationArray(); }
-void ByName_561(cxx::Entity *entity, const oo::PList &equipment)
+void ByName_561(Entity *entity, const oo::PList &equipment)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->addEquipmentFromCollection(equipment); }
-void ByName_562(cxx::Entity *entity)
+void ByName_562(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->getFined(); }
-int ByName_563(cxx::Entity *entity)
+int ByName_563(Entity *entity)
 { if (ProxyPlayerEntity *proxy = ProxyPart(entity))  return proxy->tradeInFactor(); PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->tradeInFactor() : int{}; }
-double ByName_564(cxx::Entity *entity)
+double ByName_564(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->renovationCosts() : double{}; }
-double ByName_565(cxx::Entity *entity)
+double ByName_565(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->renovationFactor() : double{}; }
-void ByName_566(cxx::Entity *entity)
+void ByName_566(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setDefaultViewOffsets(); }
-void ByName_567(cxx::Entity *entity)
+void ByName_567(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setDefaultCustomViews(); }
-Vector ByName_568(cxx::Entity *entity)
+Vector ByName_568(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->weaponViewOffset() : kZeroVector; }
-void ByName_569(cxx::Entity *entity)
+void ByName_569(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setUpTrumbles(); }
-NSUInteger ByName_570(cxx::Entity *entity)
+NSUInteger ByName_570(Entity *entity)
 { if (ProxyPlayerEntity *proxy = ProxyPart(entity))  return proxy->trumbleCount(); PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getTrumbleCount() : NSUInteger{}; }
-oo::PList ByName_571(cxx::Entity *entity)
+oo::PList ByName_571(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->trumbleValue() : oo::PList(); }
-void ByName_572(cxx::Entity *entity, const oo::PList &trumbleValue)
+void ByName_572(Entity *entity, const oo::PList &trumbleValue)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setTrumbleValueFrom(trumbleValue); }
-float ByName_573(cxx::Entity *entity)
+float ByName_573(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->trumbleAppetiteAccumulator() : float{}; }
-void ByName_574(cxx::Entity *entity)
+void ByName_574(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setScoopsActive(); }
-void ByName_575(cxx::Entity *entity)
+void ByName_575(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->clearTargetMemory(); }
-Quaternion ByName_576(cxx::Entity *entity)
+Quaternion ByName_576(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getCustomViewQuaternion() : kZeroQuaternion; }
-OOMatrix ByName_577(cxx::Entity *entity)
+OOMatrix ByName_577(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getCustomViewMatrix() : kZeroMatrix; }
-Vector ByName_578(cxx::Entity *entity)
+Vector ByName_578(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getCustomViewOffset() : kZeroVector; }
-Vector ByName_579(cxx::Entity *entity)
+Vector ByName_579(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getCustomViewRotationCenter() : kZeroVector; }
-Vector ByName_580(cxx::Entity *entity)
+Vector ByName_580(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getCustomViewForwardVector() : kZeroVector; }
-Vector ByName_581(cxx::Entity *entity)
+Vector ByName_581(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getCustomViewUpVector() : kZeroVector; }
-Vector ByName_582(cxx::Entity *entity)
+Vector ByName_582(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getCustomViewRightVector() : kZeroVector; }
-void ByName_583(cxx::Entity *entity)
+void ByName_583(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->resetCustomView(); }
-void ByName_584(cxx::Entity *entity)
+void ByName_584(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setCustomViewData(); }
-BOOL ByName_585(cxx::Entity *entity)
+BOOL ByName_585(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->showInfoFlag() : NO; }
-oo::PList ByName_586(cxx::Entity *entity)
+oo::PList ByName_586(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->missionOverlayDescriptor() : oo::PList(); }
-oo::PList ByName_587(cxx::Entity *entity)
+oo::PList ByName_587(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->missionOverlayDescriptorOrDefault() : oo::PList(); }
-void ByName_588(cxx::Entity *entity, const oo::PList &descriptor)
+void ByName_588(Entity *entity, const oo::PList &descriptor)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setMissionOverlayDescriptor(descriptor); }
-oo::PList ByName_589(cxx::Entity *entity)
+oo::PList ByName_589(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->missionBackgroundDescriptor() : oo::PList(); }
-oo::PList ByName_590(cxx::Entity *entity)
+oo::PList ByName_590(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->missionBackgroundDescriptorOrDefault() : oo::PList(); }
-void ByName_591(cxx::Entity *entity, const oo::PList &descriptor)
+void ByName_591(Entity *entity, const oo::PList &descriptor)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setMissionBackgroundDescriptor(descriptor); }
-OOGUIBackgroundSpecial ByName_592(cxx::Entity *entity)
+OOGUIBackgroundSpecial ByName_592(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->missionBackgroundSpecial() : OOGUIBackgroundSpecial{}; }
-void ByName_593(cxx::Entity *entity, const std::string &special)
+void ByName_593(Entity *entity, const std::string &special)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setMissionBackgroundSpecial(special); }
-OOGUIScreenID ByName_594(cxx::Entity *entity)
+OOGUIScreenID ByName_594(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->missionExitScreen() : OOGUIScreenID{}; }
-oo::PList ByName_595(cxx::Entity *entity)
+oo::PList ByName_595(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->equipScreenBackgroundDescriptor() : oo::PList(); }
-void ByName_596(cxx::Entity *entity, const oo::PList &descriptor)
+void ByName_596(Entity *entity, const oo::PList &descriptor)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setEquipScreenBackgroundDescriptor(descriptor); }
-BOOL ByName_597(cxx::Entity *entity)
+BOOL ByName_597(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->scriptsLoaded() : NO; }
-OOGalacticHyperspaceBehaviour ByName_598(cxx::Entity *entity)
+OOGalacticHyperspaceBehaviour ByName_598(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getGalacticHyperspaceBehaviour() : OOGalacticHyperspaceBehaviour{}; }
-NSPoint ByName_599(cxx::Entity *entity)
+NSPoint ByName_599(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getGalacticHyperspaceFixedCoords() : NSMakePoint(0, 0); }
-OOLongRangeChartMode ByName_600(cxx::Entity *entity)
+OOLongRangeChartMode ByName_600(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getLongRangeChartMode() : OOLongRangeChartMode{}; }
-BOOL ByName_601(cxx::Entity *entity)
+BOOL ByName_601(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getScoopOverride() : NO; }
-BOOL ByName_602(cxx::Entity *entity)
+BOOL ByName_602(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->isDocked() : NO; }
-BOOL ByName_603(cxx::Entity *entity)
+BOOL ByName_603(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->clearedToDock() : NO; }
-OODockingClearanceStatus ByName_604(cxx::Entity *entity)
+OODockingClearanceStatus ByName_604(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getDockingClearanceStatus() : OODockingClearanceStatus{}; }
-void ByName_605(cxx::Entity *entity)
+void ByName_605(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->penaltyForUnauthorizedDocking(); }
-void ByName_606(cxx::Entity *entity)
+void ByName_606(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->updateWormholes(); }
-void ByName_607(cxx::Entity *entity, const oo::PList &marker)
+void ByName_607(Entity *entity, const oo::PList &marker)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->addMissionDestinationMarker(marker); }
-BOOL ByName_608(cxx::Entity *entity, const oo::PList &marker)
+BOOL ByName_608(Entity *entity, const oo::PList &marker)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->removeMissionDestinationMarker(marker) : NO; }
-oo::PList ByName_609(cxx::Entity *entity)
+oo::PList ByName_609(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getMissionDestinations() : oo::PList(); }
-void ByName_610(cxx::Entity *entity)
+void ByName_610(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->clearExtraMissionKeys(); }
-void ByName_611(cxx::Entity *entity, const oo::PList &keys)
+void ByName_611(Entity *entity, const oo::PList &keys)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setExtraMissionKeys(keys); }
-unsigned ByName_612(cxx::Entity *entity)
+unsigned ByName_612(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->score() : unsigned{}; }
-double ByName_613(cxx::Entity *entity)
+double ByName_613(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->creditBalance() : double{}; }
-BOOL ByName_614(cxx::Entity *entity)
+BOOL ByName_614(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->dockedAtMainStation() : NO; }
-void ByName_615(cxx::Entity *entity)
+void ByName_615(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->resetScannerZoom(); }
-OOGalaxyID ByName_616(cxx::Entity *entity)
+OOGalaxyID ByName_616(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->currentGalaxyID() : OOGalaxyID{}; }
-OOSystemID ByName_617(cxx::Entity *entity)
+OOSystemID ByName_617(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->currentSystemID() : OOSystemID{}; }
-void ByName_618(cxx::Entity *entity)
+void ByName_618(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->allowMissionInterrupt(); }
-OOTimeDelta ByName_619(cxx::Entity *entity)
+OOTimeDelta ByName_619(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->scriptTimer() : OOTimeDelta{}; }
-unsigned ByName_620(cxx::Entity *entity)
+unsigned ByName_620(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->systemPseudoRandom100() : unsigned{}; }
-unsigned ByName_621(cxx::Entity *entity)
+unsigned ByName_621(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->systemPseudoRandom256() : unsigned{}; }
-double ByName_622(cxx::Entity *entity)
+double ByName_622(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->systemPseudoRandomFloat() : double{}; }
-oo::PList ByName_623(cxx::Entity *entity, const oo::PList &marker)
+oo::PList ByName_623(Entity *entity, const oo::PList &marker)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->validatedMarker(marker) : oo::PList(); }
-oo::PList ByName_624(cxx::Entity *entity)
+oo::PList ByName_624(Entity *entity)
 {
 	PlayerEntity *player = PlayerEntityPart(entity);
 	if (player == nullptr)  return oo::PList();
  const auto result = player->commanderKillsAsString(); return result.has_value() ? oo::PList(*result) : oo::PList();
 }
-oo::PList ByName_625(cxx::Entity *entity)
+oo::PList ByName_625(Entity *entity)
 {
 	PlayerEntity *player = PlayerEntityPart(entity);
 	if (player == nullptr)  return oo::PList();
  const auto result = player->commanderBountyAsString(); return result.has_value() ? oo::PList(*result) : oo::PList();
 }
-oo::PList ByName_626(cxx::Entity *entity)
+oo::PList ByName_626(Entity *entity)
 {
 	PlayerEntity *player = PlayerEntityPart(entity);
 	if (player == nullptr)  return oo::PList();
  const auto result = player->creditsFormattedForSubstitution(); return result.has_value() ? oo::PList(*result) : oo::PList();
 }
-oo::PList ByName_627(cxx::Entity *entity)
+oo::PList ByName_627(Entity *entity)
 {
 	PlayerEntity *player = PlayerEntityPart(entity);
 	if (player == nullptr)  return oo::PList();
  const auto result = player->creditsFormattedForLegacySubstitution(); return result.has_value() ? oo::PList(*result) : oo::PList();
 }
-void ByName_628(cxx::Entity *entity)
+void ByName_628(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setUpSound(); }
-void ByName_629(cxx::Entity *entity)
+void ByName_629(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setUpWeaponSounds(); }
-void ByName_630(cxx::Entity *entity)
+void ByName_630(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->destroySound(); }
-BOOL ByName_631(cxx::Entity *entity)
+BOOL ByName_631(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->isBeeping() : NO; }
-void ByName_632(cxx::Entity *entity)
+void ByName_632(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->boop(); }
-void ByName_633(cxx::Entity *entity)
+void ByName_633(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playIdentOn(); }
-void ByName_634(cxx::Entity *entity)
+void ByName_634(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playIdentOff(); }
-void ByName_635(cxx::Entity *entity)
+void ByName_635(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playIdentLockedOn(); }
-void ByName_636(cxx::Entity *entity)
+void ByName_636(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playMissileArmed(); }
-void ByName_637(cxx::Entity *entity)
+void ByName_637(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playMineArmed(); }
-void ByName_638(cxx::Entity *entity)
+void ByName_638(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playMissileSafe(); }
-void ByName_639(cxx::Entity *entity)
+void ByName_639(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playMissileLockedOn(); }
-void ByName_640(cxx::Entity *entity)
+void ByName_640(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playNextEquipmentSelected(); }
-void ByName_641(cxx::Entity *entity)
+void ByName_641(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playNextMissileSelected(); }
-void ByName_642(cxx::Entity *entity)
+void ByName_642(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playWeaponsOnline(); }
-void ByName_643(cxx::Entity *entity)
+void ByName_643(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playWeaponsOffline(); }
-void ByName_644(cxx::Entity *entity)
+void ByName_644(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playCargoJettisioned(); }
-void ByName_645(cxx::Entity *entity)
+void ByName_645(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playAutopilotOn(); }
-void ByName_646(cxx::Entity *entity)
+void ByName_646(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playAutopilotOff(); }
-void ByName_647(cxx::Entity *entity)
+void ByName_647(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playAutopilotOutOfRange(); }
-void ByName_648(cxx::Entity *entity)
+void ByName_648(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playAutopilotCannotDockWithTarget(); }
-void ByName_649(cxx::Entity *entity)
+void ByName_649(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playSaveOverwriteYes(); }
-void ByName_650(cxx::Entity *entity)
+void ByName_650(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playSaveOverwriteNo(); }
-void ByName_651(cxx::Entity *entity)
+void ByName_651(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playHoldFull(); }
-void ByName_652(cxx::Entity *entity)
+void ByName_652(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playJumpMassLocked(); }
-void ByName_653(cxx::Entity *entity)
+void ByName_653(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playTargetLost(); }
-void ByName_654(cxx::Entity *entity)
+void ByName_654(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playNoTargetInMemory(); }
-void ByName_655(cxx::Entity *entity)
+void ByName_655(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playTargetSwitched(); }
-void ByName_656(cxx::Entity *entity)
+void ByName_656(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playHyperspaceNoTarget(); }
-void ByName_657(cxx::Entity *entity)
+void ByName_657(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playHyperspaceNoFuel(); }
-void ByName_658(cxx::Entity *entity)
+void ByName_658(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playHyperspaceBlocked(); }
-void ByName_659(cxx::Entity *entity)
+void ByName_659(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playHyperspaceDistanceTooGreat(); }
-void ByName_660(cxx::Entity *entity)
+void ByName_660(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playCloakingDeviceOn(); }
-void ByName_661(cxx::Entity *entity)
+void ByName_661(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playCloakingDeviceOff(); }
-void ByName_662(cxx::Entity *entity)
+void ByName_662(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playMenuNavigationUp(); }
-void ByName_663(cxx::Entity *entity)
+void ByName_663(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playMenuNavigationDown(); }
-void ByName_664(cxx::Entity *entity)
+void ByName_664(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playMenuNavigationNot(); }
-void ByName_665(cxx::Entity *entity)
+void ByName_665(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playMenuPagePrevious(); }
-void ByName_666(cxx::Entity *entity)
+void ByName_666(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playMenuPageNext(); }
-void ByName_667(cxx::Entity *entity)
+void ByName_667(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playDismissedReportScreen(); }
-void ByName_668(cxx::Entity *entity)
+void ByName_668(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playDismissedMissionScreen(); }
-void ByName_669(cxx::Entity *entity)
+void ByName_669(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playChangedOption(); }
-void ByName_670(cxx::Entity *entity)
+void ByName_670(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->updateAfterburnerSound(); }
-void ByName_671(cxx::Entity *entity)
+void ByName_671(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->startAfterburnerSound(); }
-void ByName_672(cxx::Entity *entity)
+void ByName_672(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->stopAfterburnerSound(); }
-void ByName_673(cxx::Entity *entity)
+void ByName_673(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playCloakingDeviceInsufficientEnergy(); }
-void ByName_674(cxx::Entity *entity)
+void ByName_674(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playBuyCommodity(); }
-void ByName_675(cxx::Entity *entity)
+void ByName_675(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playBuyShip(); }
-void ByName_676(cxx::Entity *entity)
+void ByName_676(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playSellCommodity(); }
-void ByName_677(cxx::Entity *entity)
+void ByName_677(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playCantBuyCommodity(); }
-void ByName_678(cxx::Entity *entity)
+void ByName_678(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playCantSellCommodity(); }
-void ByName_679(cxx::Entity *entity)
+void ByName_679(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playCantBuyShip(); }
-void ByName_680(cxx::Entity *entity)
+void ByName_680(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playStandardHyperspace(); }
-void ByName_681(cxx::Entity *entity)
+void ByName_681(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playGalacticHyperspace(); }
-void ByName_682(cxx::Entity *entity)
+void ByName_682(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playHyperspaceAborted(); }
-void ByName_683(cxx::Entity *entity)
+void ByName_683(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playHitByECMSound(); }
-void ByName_684(cxx::Entity *entity)
+void ByName_684(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playFiredECMSound(); }
-void ByName_685(cxx::Entity *entity)
+void ByName_685(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playLaunchFromStation(); }
-void ByName_686(cxx::Entity *entity)
+void ByName_686(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playDockWithStation(); }
-void ByName_687(cxx::Entity *entity)
+void ByName_687(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playExitWitchspace(); }
-void ByName_688(cxx::Entity *entity)
+void ByName_688(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playHostileWarning(); }
-void ByName_689(cxx::Entity *entity)
+void ByName_689(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playAlertConditionRed(); }
-void ByName_690(cxx::Entity *entity)
+void ByName_690(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playEnergyLow(); }
-void ByName_691(cxx::Entity *entity)
+void ByName_691(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playDockingDenied(); }
-void ByName_692(cxx::Entity *entity)
+void ByName_692(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playWitchjumpFailure(); }
-void ByName_693(cxx::Entity *entity)
+void ByName_693(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playWitchjumpMisjump(); }
-void ByName_694(cxx::Entity *entity)
+void ByName_694(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playWitchjumpBlocked(); }
-void ByName_695(cxx::Entity *entity)
+void ByName_695(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playWitchjumpDistanceTooGreat(); }
-void ByName_696(cxx::Entity *entity)
+void ByName_696(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playWitchjumpInsufficientFuel(); }
-void ByName_697(cxx::Entity *entity)
+void ByName_697(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playFuelLeak(); }
-void ByName_698(cxx::Entity *entity)
+void ByName_698(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playEscapePodScooped(); }
-void ByName_699(cxx::Entity *entity)
+void ByName_699(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playAegisCloseToPlanet(); }
-void ByName_700(cxx::Entity *entity)
+void ByName_700(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playAegisCloseToStation(); }
-void ByName_701(cxx::Entity *entity)
+void ByName_701(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playGameOver(); }
-void ByName_702(cxx::Entity *entity, const std::string &key)
+void ByName_702(Entity *entity, const std::string &key)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playLegacyScriptSound(key); }
-void ByName_703(cxx::Entity *entity)
-{ if (PlayerEntity *player = PlayerEntityPart(entity))  oo::ScheduleEntityCall(player, [](cxx::Entity *target) { if (PlayerEntity *part = PlayerEntityPart(target))  part->updateAfterburnerSound(); }, 1.25);	/* bead oo-9ht.39.7.3: the deferred call holds the C++ player */ }
-void ByName_704(cxx::Entity *entity)
+void ByName_703(Entity *entity)
+{ if (PlayerEntity *player = PlayerEntityPart(entity))  oo::ScheduleEntityCall(player, [](Entity *target) { if (PlayerEntity *part = PlayerEntityPart(target))  part->updateAfterburnerSound(); }, 1.25);	/* bead oo-9ht.39.7.3: the deferred call holds the C++ player */ }
+void ByName_704(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->resetStickFunctions(); }
-void ByName_705(cxx::Entity *entity, const oo::PList &hwDict)
+void ByName_705(Entity *entity, const oo::PList &hwDict)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->updateFunction(hwDict); }
-oo::PList ByName_706(cxx::Entity *entity, const std::string &header)
+oo::PList ByName_706(Entity *entity, const std::string &header)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->makeStickGuiDictHeader(header) : oo::PList(); }
-void ByName_707(cxx::Entity *entity)
+void ByName_707(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->initControls(); }
-void ByName_708(cxx::Entity *entity)
+void ByName_708(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->initKeyConfigSettings(); }
-oo::PList ByName_709(cxx::Entity *entity, const oo::PList &key_def)
+oo::PList ByName_709(Entity *entity, const oo::PList &key_def)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->processKeyCode(key_def) : oo::PList(); }
-BOOL ByName_710(cxx::Entity *entity, const oo::PList &key_def)
+BOOL ByName_710(Entity *entity, const oo::PList &key_def)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->checkNavKeyPress(key_def) : NO; }
-BOOL ByName_711(cxx::Entity *entity, const oo::PList &key_def)
+BOOL ByName_711(Entity *entity, const oo::PList &key_def)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->checkKeyPress(key_def) : NO; }
-int ByName_712(cxx::Entity *entity, const oo::PList &key_def)
+int ByName_712(Entity *entity, const oo::PList &key_def)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getFirstKeyCode(key_def) : int{}; }
-BOOL ByName_713(cxx::Entity *entity)
+BOOL ByName_713(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->handleGUIUpDownArrowKeys() : NO; }
-void ByName_714(cxx::Entity *entity)
+void ByName_714(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->clearPlanetSearchString(); }
-void ByName_715(cxx::Entity *entity)
+void ByName_715(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->switchToMainView(); }
-void ByName_716(cxx::Entity *entity)
+void ByName_716(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->beginWitchspaceCountdown(); }
-void ByName_717(cxx::Entity *entity)
+void ByName_717(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->cancelWitchspaceCountdown(); }
-void ByName_718(cxx::Entity *entity)
+void ByName_718(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->pollApplicationControls(); }
-void ByName_719(cxx::Entity *entity)
+void ByName_719(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->pollMarketScreenControls(); }
-void ByName_720(cxx::Entity *entity)
+void ByName_720(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->handleGameOptionsScreenKeys(); }
-void ByName_721(cxx::Entity *entity)
+void ByName_721(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->handleKeyMapperScreenKeys(); }
-void ByName_722(cxx::Entity *entity)
+void ByName_722(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->handleKeyboardLayoutKeys(); }
-void ByName_723(cxx::Entity *entity)
+void ByName_723(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->handleStickMapperScreenKeys(); }
-void ByName_724(cxx::Entity *entity)
+void ByName_724(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->pollCustomViewControls(); }
-void ByName_725(cxx::Entity *entity)
+void ByName_725(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->pollViewControls(); }
-void ByName_726(cxx::Entity *entity)
+void ByName_726(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->pollGuiScreenControls(); }
-void ByName_727(cxx::Entity *entity)
+void ByName_727(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->handleUndockControl(); }
-void ByName_728(cxx::Entity *entity)
+void ByName_728(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->pollMissionInterruptControls(); }
-void ByName_729(cxx::Entity *entity)
+void ByName_729(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->handleMissionCallback(); }
-void ByName_730(cxx::Entity *entity)
+void ByName_730(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setGuiToMissionEndScreen(); }
-void ByName_731(cxx::Entity *entity)
+void ByName_731(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->handleButtonIdent(); }
-void ByName_732(cxx::Entity *entity)
+void ByName_732(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->handleButtonTargetMissile(); }
-void ByName_733(cxx::Entity *entity)
+void ByName_733(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->initCheckingDictionary(); }
-void ByName_734(cxx::Entity *entity)
+void ByName_734(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->resetKeyFunctions(); }
-BOOL ByName_735(cxx::Entity *entity, const oo::PList &dict)
+BOOL ByName_735(Entity *entity, const oo::PList &dict)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->entryIsDictCustomEquip(dict) : NO; }
-BOOL ByName_736(cxx::Entity *entity, const std::string &entry)
+BOOL ByName_736(Entity *entity, const std::string &entry)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->entryIsCustomEquip(entry) : NO; }
-oo::PList ByName_737(cxx::Entity *entity, const std::string &key_def)
+oo::PList ByName_737(Entity *entity, const std::string &key_def)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getCustomEquipArray(key_def) : oo::PList(); }
-NSUInteger ByName_738(cxx::Entity *entity, const std::string &key_def)
+NSUInteger ByName_738(Entity *entity, const std::string &key_def)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getCustomEquipIndex(key_def) : NSUInteger{}; }
-void ByName_739(cxx::Entity *entity)
+void ByName_739(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setGuiToKeyConfigScreen(); }
-void ByName_740(cxx::Entity *entity)
+void ByName_740(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setGuiToKeyConfigEntryScreen(); }
-void ByName_741(cxx::Entity *entity)
+void ByName_741(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setGuiToConfirmClearScreen(); }
-oo::PList ByName_742(cxx::Entity *entity, const std::string &header)
+oo::PList ByName_742(Entity *entity, const std::string &header)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->makeKeyGuiDictHeader(header) : oo::PList(); }
-BOOL ByName_743(cxx::Entity *entity, const std::string &key)
+BOOL ByName_743(Entity *entity, const std::string &key)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->entryIsEqualToDefault(key) : NO; }
-void ByName_744(cxx::Entity *entity, const std::string &key)
+void ByName_744(Entity *entity, const std::string &key)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->saveKeySetting(key); }
-void ByName_745(cxx::Entity *entity, const std::string &key)
+void ByName_745(Entity *entity, const std::string &key)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->unsetKeySetting(key); }
-void ByName_746(cxx::Entity *entity, const std::string &key)
+void ByName_746(Entity *entity, const std::string &key)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->deleteKeySetting(key); }
-void ByName_747(cxx::Entity *entity)
+void ByName_747(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->deleteAllKeySettings(); }
-oo::PList ByName_748(cxx::Entity *entity)
+oo::PList ByName_748(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->loadKeySettings() : oo::PList(); }
-void ByName_749(cxx::Entity *entity)
+void ByName_749(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->reloadPage(); }
-ShipEntity * ByName_750(cxx::Entity *entity)
+ShipEntity * ByName_750(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->scriptTarget() : nil; }
-void ByName_751(cxx::Entity *entity)
+void ByName_751(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->checkScript(); }
-BOOL ByName_752(cxx::Entity *entity, const oo::PList &array)
+BOOL ByName_752(Entity *entity, const oo::PList &array)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->scriptTestConditions(array) : NO; }
-BOOL ByName_753(cxx::Entity *entity, const oo::PList &scriptCondition)
+BOOL ByName_753(Entity *entity, const oo::PList &scriptCondition)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->scriptTestCondition(scriptCondition) : NO; }
-oo::PList ByName_754(cxx::Entity *entity)
+oo::PList ByName_754(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->missionVariables() : oo::PList(); }
-oo::PList ByName_755(cxx::Entity *entity, const std::string &key)
+oo::PList ByName_755(Entity *entity, const std::string &key)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->missionVariableForKey(key) : oo::PList(); }
-oo::PList ByName_756(cxx::Entity *entity)
+oo::PList ByName_756(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->missionsList() : oo::PList(); }
-void ByName_757(cxx::Entity *entity, const std::string &textKey)
+void ByName_757(Entity *entity, const std::string &textKey)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setMissionDescription(textKey); }
-void ByName_758(cxx::Entity *entity)
+void ByName_758(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->clearMissionDescription(); }
-void ByName_759(cxx::Entity *entity, const std::string &key)
+void ByName_759(Entity *entity, const std::string &key)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->clearMissionDescriptionForMission(key); }
-oo::PList ByName_760(cxx::Entity *entity)
+oo::PList ByName_760(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->mission_string() : oo::PList(); }
-oo::PList ByName_761(cxx::Entity *entity)
+oo::PList ByName_761(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->status_string() : oo::PList(); }
-oo::PList ByName_762(cxx::Entity *entity)
+oo::PList ByName_762(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->gui_screen_string() : oo::PList(); }
-oo::PList ByName_763(cxx::Entity *entity)
+oo::PList ByName_763(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getGalaxy_number() : oo::PList(); }
-oo::PList ByName_764(cxx::Entity *entity)
+oo::PList ByName_764(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->planet_number() : oo::PList(); }
-oo::PList ByName_765(cxx::Entity *entity)
+oo::PList ByName_765(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->score_number() : oo::PList(); }
-oo::PList ByName_766(cxx::Entity *entity)
+oo::PList ByName_766(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->credits_number() : oo::PList(); }
-oo::PList ByName_767(cxx::Entity *entity)
+oo::PList ByName_767(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->scriptTimer_number() : oo::PList(); }
-oo::PList ByName_768(cxx::Entity *entity)
+oo::PList ByName_768(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->shipsFound_number() : oo::PList(); }
-oo::PList ByName_769(cxx::Entity *entity)
+oo::PList ByName_769(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->commanderLegalStatus_number() : oo::PList(); }
-void ByName_770(cxx::Entity *entity, const std::string &valueString)
+void ByName_770(Entity *entity, const std::string &valueString)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setLegalStatus(valueString); }
-oo::PList ByName_771(cxx::Entity *entity)
+oo::PList ByName_771(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->commanderLegalStatus_string() : oo::PList(); }
-oo::PList ByName_772(cxx::Entity *entity)
+oo::PList ByName_772(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->d100_number() : oo::PList(); }
-oo::PList ByName_773(cxx::Entity *entity)
+oo::PList ByName_773(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->pseudoFixedD100_number() : oo::PList(); }
-oo::PList ByName_774(cxx::Entity *entity)
+oo::PList ByName_774(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->d256_number() : oo::PList(); }
-oo::PList ByName_775(cxx::Entity *entity)
+oo::PList ByName_775(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->pseudoFixedD256_number() : oo::PList(); }
-oo::PList ByName_776(cxx::Entity *entity)
+oo::PList ByName_776(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->clock_number() : oo::PList(); }
-oo::PList ByName_777(cxx::Entity *entity)
+oo::PList ByName_777(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->clock_secs_number() : oo::PList(); }
-oo::PList ByName_778(cxx::Entity *entity)
+oo::PList ByName_778(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->clock_mins_number() : oo::PList(); }
-oo::PList ByName_779(cxx::Entity *entity)
+oo::PList ByName_779(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->clock_hours_number() : oo::PList(); }
-oo::PList ByName_780(cxx::Entity *entity)
+oo::PList ByName_780(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->clock_days_number() : oo::PList(); }
-oo::PList ByName_781(cxx::Entity *entity)
+oo::PList ByName_781(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->fuelLevel_number() : oo::PList(); }
-oo::PList ByName_782(cxx::Entity *entity)
+oo::PList ByName_782(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->dockedAtMainStation_bool() : oo::PList(); }
-oo::PList ByName_783(cxx::Entity *entity)
+oo::PList ByName_783(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->foundEquipment_bool() : oo::PList(); }
-oo::PList ByName_784(cxx::Entity *entity)
+oo::PList ByName_784(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->sunWillGoNova_bool() : oo::PList(); }
-oo::PList ByName_785(cxx::Entity *entity)
+oo::PList ByName_785(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->sunGoneNova_bool() : oo::PList(); }
-oo::PList ByName_786(cxx::Entity *entity)
+oo::PList ByName_786(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->missionChoice_string() : oo::PList(); }
-oo::PList ByName_787(cxx::Entity *entity)
+oo::PList ByName_787(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->missionKeyPress_string() : oo::PList(); }
-oo::PList ByName_788(cxx::Entity *entity)
+oo::PList ByName_788(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->dockedTechLevel_number() : oo::PList(); }
-oo::PList ByName_789(cxx::Entity *entity)
+oo::PList ByName_789(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->dockedStationName_string() : oo::PList(); }
-oo::PList ByName_790(cxx::Entity *entity)
+oo::PList ByName_790(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->systemGovernment_string() : oo::PList(); }
-oo::PList ByName_791(cxx::Entity *entity)
+oo::PList ByName_791(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->systemGovernment_number() : oo::PList(); }
-oo::PList ByName_792(cxx::Entity *entity)
+oo::PList ByName_792(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->systemEconomy_string() : oo::PList(); }
-oo::PList ByName_793(cxx::Entity *entity)
+oo::PList ByName_793(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->systemEconomy_number() : oo::PList(); }
-oo::PList ByName_794(cxx::Entity *entity)
+oo::PList ByName_794(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->systemTechLevel_number() : oo::PList(); }
-oo::PList ByName_795(cxx::Entity *entity)
+oo::PList ByName_795(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->systemPopulation_number() : oo::PList(); }
-oo::PList ByName_796(cxx::Entity *entity)
+oo::PList ByName_796(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->systemProductivity_number() : oo::PList(); }
-oo::PList ByName_797(cxx::Entity *entity)
+oo::PList ByName_797(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->commanderName_string() : oo::PList(); }
-oo::PList ByName_798(cxx::Entity *entity)
+oo::PList ByName_798(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->commanderRank_string() : oo::PList(); }
-oo::PList ByName_799(cxx::Entity *entity)
+oo::PList ByName_799(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->commanderShip_string() : oo::PList(); }
-oo::PList ByName_800(cxx::Entity *entity)
+oo::PList ByName_800(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->commanderShipDisplayName_string() : oo::PList(); }
-void ByName_801(cxx::Entity *entity, const std::string &valueString)
+void ByName_801(Entity *entity, const std::string &valueString)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->consoleMessage3s(valueString); }
-void ByName_802(cxx::Entity *entity, const std::string &valueString)
+void ByName_802(Entity *entity, const std::string &valueString)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->consoleMessage6s(valueString); }
-void ByName_803(cxx::Entity *entity, const std::string &valueString)
+void ByName_803(Entity *entity, const std::string &valueString)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->awardCredits(valueString); }
-void ByName_804(cxx::Entity *entity, const std::string &valueString)
+void ByName_804(Entity *entity, const std::string &valueString)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->awardShipKills(valueString); }
-void ByName_805(cxx::Entity *entity, const std::string &equipString)
+void ByName_805(Entity *entity, const std::string &equipString)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->awardEquipment(equipString); }
-void ByName_806(cxx::Entity *entity, const std::string &equipString)
+void ByName_806(Entity *entity, const std::string &equipString)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->removeEquipment(equipString); }
-void ByName_807(cxx::Entity *entity, const std::string &key_valueString)
+void ByName_807(Entity *entity, const std::string &key_valueString)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setPlanetinfo(key_valueString); }
-void ByName_808(cxx::Entity *entity, const std::string &key_valueString)
+void ByName_808(Entity *entity, const std::string &key_valueString)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setSpecificPlanetInfo(key_valueString); }
-void ByName_809(cxx::Entity *entity, const std::string &amount_typeString)
+void ByName_809(Entity *entity, const std::string &amount_typeString)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->awardCargo(amount_typeString); }
-void ByName_810(cxx::Entity *entity)
+void ByName_810(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->removeAllCargo(); }
-void ByName_811(cxx::Entity *entity, const std::string &descriptionString)
+void ByName_811(Entity *entity, const std::string &descriptionString)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->useSpecialCargo(descriptionString); }
-void ByName_812(cxx::Entity *entity, const std::string &equipString)
+void ByName_812(Entity *entity, const std::string &equipString)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->testForEquipment(equipString); }
-void ByName_813(cxx::Entity *entity, const std::string &valueString)
+void ByName_813(Entity *entity, const std::string &valueString)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->awardFuel(valueString); }
-void ByName_814(cxx::Entity *entity, const std::string &roles_message)
+void ByName_814(Entity *entity, const std::string &roles_message)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->messageShipAIs(roles_message); }
-void ByName_815(cxx::Entity *entity, const std::string &itemKey)
+void ByName_815(Entity *entity, const std::string &itemKey)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->ejectItem(itemKey); }
-void ByName_816(cxx::Entity *entity, const std::string &roles_number)
+void ByName_816(Entity *entity, const std::string &roles_number)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->addShips(roles_number); }
-void ByName_817(cxx::Entity *entity, const std::string &roles_number_position)
+void ByName_817(Entity *entity, const std::string &roles_number_position)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->addSystemShips(roles_number_position); }
-void ByName_818(cxx::Entity *entity, const std::string &roles_number_system_x_y_z)
+void ByName_818(Entity *entity, const std::string &roles_number_system_x_y_z)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->addShipsAt(roles_number_system_x_y_z); }
-void ByName_819(cxx::Entity *entity, const std::string &roles_number_system_x_y_z)
+void ByName_819(Entity *entity, const std::string &roles_number_system_x_y_z)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->addShipsAtPrecisely(roles_number_system_x_y_z); }
-void ByName_820(cxx::Entity *entity, const std::string &roles_number_system_x_y_z_r)
+void ByName_820(Entity *entity, const std::string &roles_number_system_x_y_z_r)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->addShipsWithinRadius(roles_number_system_x_y_z_r); }
-void ByName_821(cxx::Entity *entity, const std::string &ship_key)
+void ByName_821(Entity *entity, const std::string &ship_key)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->spawnShip(ship_key); }
-void ByName_822(cxx::Entity *entity, const std::string &missionvariable_value)
+void ByName_822(Entity *entity, const std::string &missionvariable_value)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->set(missionvariable_value); }
-void ByName_823(cxx::Entity *entity, const std::string &missionvariable)
+void ByName_823(Entity *entity, const std::string &missionvariable)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->reset(missionvariable); }
-void ByName_824(cxx::Entity *entity, const std::string &missionVariableObject)
+void ByName_824(Entity *entity, const std::string &missionVariableObject)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->increment(missionVariableObject); }
-void ByName_825(cxx::Entity *entity, const std::string &missionVariableObject)
+void ByName_825(Entity *entity, const std::string &missionVariableObject)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->decrement(missionVariableObject); }
-void ByName_826(cxx::Entity *entity, const std::string &missionVariableString_value)
+void ByName_826(Entity *entity, const std::string &missionVariableString_value)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->add(missionVariableString_value); }
-void ByName_827(cxx::Entity *entity, const std::string &missionVariableString_value)
+void ByName_827(Entity *entity, const std::string &missionVariableString_value)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->subtract(missionVariableString_value); }
-void ByName_828(cxx::Entity *entity, const std::string &roleString)
+void ByName_828(Entity *entity, const std::string &roleString)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->checkForShips(roleString); }
-void ByName_829(cxx::Entity *entity)
+void ByName_829(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->resetScriptTimer(); }
-void ByName_830(cxx::Entity *entity, const std::string &textKey)
+void ByName_830(Entity *entity, const std::string &textKey)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->addMissionText(textKey); }
-void ByName_831(cxx::Entity *entity, const std::string &text)
+void ByName_831(Entity *entity, const std::string &text)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->addLiteralMissionText(text); }
-void ByName_832(cxx::Entity *entity, const std::string &choicesKey)
+void ByName_832(Entity *entity, const std::string &choicesKey)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setMissionChoices(choicesKey); }
-void ByName_833(cxx::Entity *entity, const oo::PList &choicesDict)
+void ByName_833(Entity *entity, const oo::PList &choicesDict)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setMissionChoicesDictionary(choicesDict); }
-void ByName_834(cxx::Entity *entity)
+void ByName_834(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->resetMissionChoice(); }
-void ByName_835(cxx::Entity *entity)
+void ByName_835(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->clearMissionScreen(); }
-void ByName_836(cxx::Entity *entity, const std::string &destinations)
+void ByName_836(Entity *entity, const std::string &destinations)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->addMissionDestination(destinations); }
-void ByName_837(cxx::Entity *entity, const std::string &destinations)
+void ByName_837(Entity *entity, const std::string &destinations)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->removeMissionDestination(destinations); }
-void ByName_838(cxx::Entity *entity, const std::string &role)
+void ByName_838(Entity *entity, const std::string &role)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->showShipModel(role); }
-void ByName_839(cxx::Entity *entity, const std::string &value)
+void ByName_839(Entity *entity, const std::string &value)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setMissionMusic(value); }
-void ByName_840(cxx::Entity *entity, const std::string &value)
+void ByName_840(Entity *entity, const std::string &value)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setMissionImage(value); }
-void ByName_841(cxx::Entity *entity, const std::string &value)
+void ByName_841(Entity *entity, const std::string &value)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setMissionBackground(value); }
-void ByName_842(cxx::Entity *entity, const std::string &value)
+void ByName_842(Entity *entity, const std::string &value)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setFuelLeak(value); }
-oo::PList ByName_843(cxx::Entity *entity)
+oo::PList ByName_843(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->fuelLeakRate_number() : oo::PList(); }
-void ByName_844(cxx::Entity *entity, const std::string &time_value)
+void ByName_844(Entity *entity, const std::string &time_value)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setSunNovaIn(time_value); }
-void ByName_845(cxx::Entity *entity)
+void ByName_845(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->launchFromStation(); }
-void ByName_846(cxx::Entity *entity)
+void ByName_846(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->blowUpStation(); }
-void ByName_847(cxx::Entity *entity)
+void ByName_847(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->sendAllShipsAway(); }
-void ByName_848(cxx::Entity *entity, const std::string &planetKey)
+void ByName_848(Entity *entity, const std::string &planetKey)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->addPlanet(planetKey); }
-void ByName_849(cxx::Entity *entity, const std::string &moonKey)
+void ByName_849(Entity *entity, const std::string &moonKey)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->addMoon(moonKey); }
-void ByName_850(cxx::Entity *entity)
+void ByName_850(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->debugOn(); }
-void ByName_851(cxx::Entity *entity)
+void ByName_851(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->debugOff(); }
-void ByName_852(cxx::Entity *entity, const std::string &args)
+void ByName_852(Entity *entity, const std::string &args)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->debugMessage(args); }
-void ByName_853(cxx::Entity *entity, const std::string &soundName)
+void ByName_853(Entity *entity, const std::string &soundName)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->playSound(soundName); }
-void ByName_854(cxx::Entity *entity)
+void ByName_854(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->doMissionCallback(); }
-void ByName_855(cxx::Entity *entity)
+void ByName_855(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->clearMissionScreenID(); }
-void ByName_856(cxx::Entity *entity)
+void ByName_856(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->endMissionScreenAndNoteOpportunity(); }
-void ByName_857(cxx::Entity *entity)
+void ByName_857(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setGuiToMissionScreen(); }
-void ByName_858(cxx::Entity *entity)
+void ByName_858(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->refreshMissionScreenTextEntry(); }
-void ByName_859(cxx::Entity *entity, const std::string &d_key)
+void ByName_859(Entity *entity, const std::string &d_key)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setBackgroundFromDescriptionsKey(d_key); }
-BOOL ByName_860(cxx::Entity *entity, const std::string &eq_key)
+BOOL ByName_860(Entity *entity, const std::string &eq_key)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->addEqScriptForKey(eq_key) : NO; }
-void ByName_861(cxx::Entity *entity, const std::string &eq_key)
+void ByName_861(Entity *entity, const std::string &eq_key)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->removeEqScriptForKey(eq_key); }
-NSUInteger ByName_862(cxx::Entity *entity, const std::string &eq_key)
+NSUInteger ByName_862(Entity *entity, const std::string &eq_key)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->eqScriptIndexForKey(eq_key) : NSUInteger{}; }
-void ByName_863(cxx::Entity *entity)
+void ByName_863(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->targetNearestHostile(); }
-void ByName_864(cxx::Entity *entity)
+void ByName_864(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->targetNearestIncomingMissile(); }
-void ByName_865(cxx::Entity *entity, const std::string &galacticHyperspaceBehaviourString)
+void ByName_865(Entity *entity, const std::string &galacticHyperspaceBehaviourString)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setGalacticHyperspaceBehaviourTo(galacticHyperspaceBehaviourString); }
-void ByName_866(cxx::Entity *entity, const std::string &galacticHyperspaceFixedCoordsString)
+void ByName_866(Entity *entity, const std::string &galacticHyperspaceFixedCoordsString)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setGalacticHyperspaceFixedCoordsTo(galacticHyperspaceFixedCoordsString); }
-OOCargoQuantity ByName_867(cxx::Entity *entity, const std::string &good)
+OOCargoQuantity ByName_867(Entity *entity, const std::string &good)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->contractedVolumeForGood(good) : OOCargoQuantity{}; }
-void ByName_868(cxx::Entity *entity, const std::string &report)
+void ByName_868(Entity *entity, const std::string &report)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->addMessageToReport(report); }
-oo::PList ByName_869(cxx::Entity *entity)
+oo::PList ByName_869(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->getReputation() : oo::PList(); }
-int ByName_870(cxx::Entity *entity)
+int ByName_870(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->passengerReputation() : int{}; }
-int ByName_871(cxx::Entity *entity)
+int ByName_871(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->parcelReputation() : int{}; }
-int ByName_872(cxx::Entity *entity)
+int ByName_872(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->contractReputation() : int{}; }
-void ByName_873(cxx::Entity *entity)
+void ByName_873(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->erodeReputation(); }
-void ByName_874(cxx::Entity *entity)
+void ByName_874(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->normaliseReputation(); }
-BOOL ByName_875(cxx::Entity *entity, const std::string &Name)
+BOOL ByName_875(Entity *entity, const std::string &Name)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->removePassenger(Name) : NO; }
-BOOL ByName_876(cxx::Entity *entity, const std::string &Name)
+BOOL ByName_876(Entity *entity, const std::string &Name)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->removeParcel(Name) : NO; }
-void ByName_877(cxx::Entity *entity)
+void ByName_877(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setGuiToManifestScreen(); }
-void ByName_878(cxx::Entity *entity)
+void ByName_878(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setGuiToDockingReportScreen(); }
-OOCreditsQuantity ByName_879(cxx::Entity *entity, const std::string &key)
+OOCreditsQuantity ByName_879(Entity *entity, const std::string &key)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->priceForShipKey(key) : OOCreditsQuantity{}; }
-void ByName_880(cxx::Entity *entity)
+void ByName_880(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->showShipyardInfoForSelection(); }
-void ByName_881(cxx::Entity *entity)
+void ByName_881(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->showTradeInInformationFooter(); }
-NSInteger ByName_882(cxx::Entity *entity)
+NSInteger ByName_882(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->missingSubEntitiesAdjustment() : NSInteger{}; }
-OOCreditsQuantity ByName_883(cxx::Entity *entity)
+OOCreditsQuantity ByName_883(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->tradeInValue() : OOCreditsQuantity{}; }
-BOOL ByName_884(cxx::Entity *entity)
+BOOL ByName_884(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->buySelectedShip() : NO; }
-BOOL ByName_885(cxx::Entity *entity, const std::string &shipKey)
+BOOL ByName_885(Entity *entity, const std::string &shipKey)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->replaceShipWithNamedShip(shipKey) : NO; }
-BOOL ByName_886(cxx::Entity *entity)
+BOOL ByName_886(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->loadPlayer() : NO; }
-void ByName_887(cxx::Entity *entity)
+void ByName_887(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->savePlayer(); }
-void ByName_888(cxx::Entity *entity)
+void ByName_888(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->autosavePlayer(); }
-void ByName_889(cxx::Entity *entity)
+void ByName_889(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->quicksavePlayer(); }
-void ByName_890(cxx::Entity *entity, const std::string &shipKey)
+void ByName_890(Entity *entity, const std::string &shipKey)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->addScenarioModel(shipKey); }
-void ByName_891(cxx::Entity *entity)
+void ByName_891(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->showScenarioDetails(); }
-BOOL ByName_892(cxx::Entity *entity)
+BOOL ByName_892(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->startScenario() : NO; }
 #if OO_USE_CUSTOM_LOAD_SAVE
-void ByName_893(cxx::Entity *entity)
+void ByName_893(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->saveCommanderInputHandler(); }
-void ByName_894(cxx::Entity *entity)
+void ByName_894(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->overwriteCommanderInputHandler(); }
 #endif
 #if OOLITE_USE_APPKIT_LOAD_SAVE
-BOOL ByName_895(cxx::Entity *entity)
+BOOL ByName_895(Entity *entity)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->loadPlayerWithPanel() : NO; }
-void ByName_896(cxx::Entity *entity)
+void ByName_896(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->savePlayerWithPanel(); }
 #endif
-void ByName_897(cxx::Entity *entity, const std::string &path)
+void ByName_897(Entity *entity, const std::string &path)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->writePlayerToPath(path); }
-void ByName_898(cxx::Entity *entity, const std::string &cdrName)
+void ByName_898(Entity *entity, const std::string &cdrName)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->nativeSavePlayer(cdrName); }
 #if OO_USE_CUSTOM_LOAD_SAVE
-void ByName_899(cxx::Entity *entity)
+void ByName_899(Entity *entity)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setGuiToLoadCommanderScreen(); }
-void ByName_900(cxx::Entity *entity, const std::string &cdrName)
+void ByName_900(Entity *entity, const std::string &cdrName)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setGuiToSaveCommanderScreen(cdrName); }
-void ByName_901(cxx::Entity *entity, const std::string &cdrName)
+void ByName_901(Entity *entity, const std::string &cdrName)
 { if (PlayerEntity *player = PlayerEntityPart(entity))  player->setGuiToOverwriteScreen(cdrName); }
-BOOL ByName_902(cxx::Entity *entity, const std::string &cdrName)
+BOOL ByName_902(Entity *entity, const std::string &cdrName)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->existingNativeSave(cdrName) : NO; }
-int ByName_903(cxx::Entity *entity, const std::string &cdrName)
+int ByName_903(Entity *entity, const std::string &cdrName)
 { PlayerEntity *player = PlayerEntityPart(entity); return player != nullptr ? player->findIndexOfCommander(cdrName) : int{}; }
 #endif
-OOTechLevelID ByName_904(cxx::Entity *entity)
+OOTechLevelID ByName_904(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->getEquivalentTechLevel() : OOTechLevelID{}; }
-Vector ByName_905(cxx::Entity *entity)
+Vector ByName_905(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->virtualPortDimensions() : kZeroVector; }
-cxx::Entity * ByName_906(cxx::Entity *entity)
+Entity * ByName_906(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->playerReservedDock() : nullptr; }
-HPVector ByName_907(cxx::Entity *entity)
+HPVector ByName_907(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->beaconPosition() : kZeroHPVector; }
-float ByName_908(cxx::Entity *entity)
+float ByName_908(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->getEquipmentPriceFactor() : float{}; }
-OOCargoQuantity ByName_909(cxx::Entity *entity)
+OOCargoQuantity ByName_909(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->getMarketCapacity() : OOCargoQuantity{}; }
-oo::PList ByName_910(cxx::Entity *entity)
+oo::PList ByName_910(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->getMarketDefinition() : oo::PList(); }
-BOOL ByName_911(cxx::Entity *entity)
+BOOL ByName_911(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->getMarketMonitored() : NO; }
-BOOL ByName_912(cxx::Entity *entity)
+BOOL ByName_912(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->getMarketBroadcast() : NO; }
-void ByName_913(cxx::Entity *entity, const oo::PList &market)
+void ByName_913(Entity *entity, const oo::PList &market)
 { if (StationEntity *station = StationPart(entity))  station->setLocalMarket(market); }
-oo::PList ByName_914(cxx::Entity *entity)
+oo::PList ByName_914(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->localMarketForScripting() : oo::PList(); }
-unsigned ByName_915(cxx::Entity *entity)
+unsigned ByName_915(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->countOfDockedContractors() : unsigned{}; }
-unsigned ByName_916(cxx::Entity *entity)
+unsigned ByName_916(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->countOfDockedPolice() : unsigned{}; }
-unsigned ByName_917(cxx::Entity *entity)
+unsigned ByName_917(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->countOfDockedDefenders() : unsigned{}; }
-BOOL ByName_918(cxx::Entity *entity)
+BOOL ByName_918(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->getInterstellarUndockingAllowed() : NO; }
-BOOL ByName_919(cxx::Entity *entity)
+BOOL ByName_919(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->getHasNPCTraffic() : NO; }
-BOOL ByName_920(cxx::Entity *entity)
+BOOL ByName_920(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->getRequiresDockingClearance() : NO; }
-BOOL ByName_921(cxx::Entity *entity)
+BOOL ByName_921(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->getAllowsFastDocking() : NO; }
-BOOL ByName_922(cxx::Entity *entity)
+BOOL ByName_922(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->getAllowsAutoDocking() : NO; }
-BOOL ByName_923(cxx::Entity *entity)
+BOOL ByName_923(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->getAllowsSaving() : NO; }
-BOOL ByName_924(cxx::Entity *entity)
+BOOL ByName_924(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->isRotatingStation() : NO; }
-BOOL ByName_925(cxx::Entity *entity)
+BOOL ByName_925(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->hasShipyard() : NO; }
-void ByName_926(cxx::Entity *entity)
+void ByName_926(Entity *entity)
 { if (StationEntity *station = StationPart(entity))  station->generateShipyard(); }
-BOOL ByName_927(cxx::Entity *entity)
+BOOL ByName_927(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->suppressArrivalReports() : NO; }
-BOOL ByName_928(cxx::Entity *entity)
+BOOL ByName_928(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->getHasBreakPattern() : NO; }
-void ByName_929(cxx::Entity *entity)
+void ByName_929(Entity *entity)
 { if (StationEntity *station = StationPart(entity))  station->sanityCheckShipsOnApproach(); }
-void ByName_930(cxx::Entity *entity)
+void ByName_930(Entity *entity)
 { if (StationEntity *station = StationPart(entity))  station->autoDockShipsOnHold(); }
-void ByName_931(cxx::Entity *entity)
+void ByName_931(Entity *entity)
 { if (StationEntity *station = StationPart(entity))  station->autoDockShipsOnApproach(); else if (DockEntity *dock = DockPart(entity))  dock->autoDockShipsOnApproach(); }
-BOOL ByName_932(cxx::Entity *entity)
+BOOL ByName_932(Entity *entity)
 { if (DockEntity *dock = DockPart(entity))  return dock->dockingCorridorIsEmpty(); StationEntity *station = StationPart(entity); return station != nullptr ? station->dockingCorridorIsEmpty() : NO; }
-void ByName_933(cxx::Entity *entity)
+void ByName_933(Entity *entity)
 { if (StationEntity *station = StationPart(entity))  station->clearDockingCorridor(); else if (DockEntity *dock = DockPart(entity))  dock->clearDockingCorridor(); }
-void ByName_934(cxx::Entity *entity)
+void ByName_934(Entity *entity)
 { if (StationEntity *station = StationPart(entity))  station->clear(); else if (DockEntity *dock = DockPart(entity))  dock->clear(); }
-BOOL ByName_935(cxx::Entity *entity)
+BOOL ByName_935(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->hasMultipleDocks() : NO; }
-BOOL ByName_936(cxx::Entity *entity)
+BOOL ByName_936(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->hasClearDock() : NO; }
-BOOL ByName_937(cxx::Entity *entity)
+BOOL ByName_937(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->hasEligibleDock() : NO; }
-BOOL ByName_938(cxx::Entity *entity)
+BOOL ByName_938(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->hasLaunchDock() : NO; }
-cxx::Entity * ByName_939(cxx::Entity *entity)
+Entity * ByName_939(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->selectDockForDocking() : nullptr; }
-unsigned ByName_940(cxx::Entity *entity, const std::string &role)
+unsigned ByName_940(Entity *entity, const std::string &role)
 { if (DockEntity *dock = DockPart(entity))  return static_cast<unsigned>(dock->countOfShipsInLaunchQueueWithPrimaryRole(role)); StationEntity *station = StationPart(entity); return station != nullptr ? station->countOfShipsInLaunchQueueWithPrimaryRole(role) : unsigned{}; }
-OOStationAlertLevel ByName_941(cxx::Entity *entity)
+OOStationAlertLevel ByName_941(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->getAlertLevel() : STATION_ALERT_LEVEL_GREEN; }
-unsigned ByName_942(cxx::Entity *entity)
+unsigned ByName_942(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->currentlyInDockingQueues() : unsigned{}; }
-unsigned ByName_943(cxx::Entity *entity)
+unsigned ByName_943(Entity *entity)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->currentlyInLaunchingQueues() : unsigned{}; }
-oo::PList ByName_944(cxx::Entity *entity, const std::string &role)
+oo::PList ByName_944(Entity *entity, const std::string &role)
 { StationEntity *station = StationPart(entity); return station != nullptr ? station->launchIndependentShip(role) : oo::PList(); }
-BOOL ByName_945(cxx::Entity *entity)
+BOOL ByName_945(Entity *entity)
 { DockEntity *dock = DockPart(entity); return dock != nullptr ? dock->allowsDocking() : NO; }
-BOOL ByName_946(cxx::Entity *entity)
+BOOL ByName_946(Entity *entity)
 { DockEntity *dock = DockPart(entity); return dock != nullptr ? dock->disallowedDockingCollides() : NO; }
-NSUInteger ByName_947(cxx::Entity *entity)
+NSUInteger ByName_947(Entity *entity)
 { DockEntity *dock = DockPart(entity); return dock != nullptr ? dock->countOfShipsInDockingQueue() : NSUInteger{}; }
-BOOL ByName_948(cxx::Entity *entity)
+BOOL ByName_948(Entity *entity)
 { DockEntity *dock = DockPart(entity); return dock != nullptr ? dock->allowsLaunching() : NO; }
-NSUInteger ByName_949(cxx::Entity *entity)
+NSUInteger ByName_949(Entity *entity)
 { DockEntity *dock = DockPart(entity); return dock != nullptr ? dock->countOfShipsInLaunchQueue() : NSUInteger{}; }
-BOOL ByName_950(cxx::Entity *entity)
+BOOL ByName_950(Entity *entity)
 { DockEntity *dock = DockPart(entity); return dock != nullptr ? dock->isOffCentre() : NO; }
-void ByName_951(cxx::Entity *entity)
+void ByName_951(Entity *entity)
 { if (DockEntity *dock = DockPart(entity))  dock->setVirtual(); }
-void ByName_952(cxx::Entity *entity)
+void ByName_952(Entity *entity)
 { if (DockEntity *dock = DockPart(entity))  dock->clearAllIdLocks(); }
-NSUInteger ByName_953(cxx::Entity *entity)
+NSUInteger ByName_953(Entity *entity)
 { DockEntity *dock = DockPart(entity); return dock != nullptr ? dock->pruneAndCountShipsOnApproach() : NSUInteger{}; }
-void ByName_954(cxx::Entity *entity)
+void ByName_954(Entity *entity)
 { if (DockEntity *dock = DockPart(entity))  dock->abortAllLaunches(); }
-BOOL ByName_955(cxx::Entity *entity, const oo::PList &effectDict)
+BOOL ByName_955(Entity *entity, const oo::PList &effectDict)
 { OOVisualEffectEntity *effect = EffectPart(entity); return effect != nullptr ? effect->setUpVisualEffectFromDictionary(effectDict) : NO; }
-void ByName_956(cxx::Entity *entity)
+void ByName_956(Entity *entity)
 { if (OOVisualEffectEntity *effect = EffectPart(entity))  effect->setNoDrawDistance(); }
-GLfloat ByName_957(cxx::Entity *entity)
+GLfloat ByName_957(Entity *entity)
 { OOVisualEffectEntity *effect = EffectPart(entity); return effect != nullptr ? effect->scaleMax() : GLfloat{}; }
-GLfloat ByName_958(cxx::Entity *entity)
+GLfloat ByName_958(Entity *entity)
 { OOVisualEffectEntity *effect = EffectPart(entity); return effect != nullptr ? effect->scaleX() : GLfloat{}; }
-GLfloat ByName_959(cxx::Entity *entity)
+GLfloat ByName_959(Entity *entity)
 { OOVisualEffectEntity *effect = EffectPart(entity); return effect != nullptr ? effect->scaleY() : GLfloat{}; }
-GLfloat ByName_960(cxx::Entity *entity)
+GLfloat ByName_960(Entity *entity)
 { OOVisualEffectEntity *effect = EffectPart(entity); return effect != nullptr ? effect->scaleZ() : GLfloat{}; }
-BOOL ByName_961(cxx::Entity *entity)
+BOOL ByName_961(Entity *entity)
 { OOVisualEffectEntity *effect = EffectPart(entity); return effect != nullptr ? effect->isBreakPattern() : NO; }
-oo::PList ByName_962(cxx::Entity *entity)
+oo::PList ByName_962(Entity *entity)
 { OOVisualEffectEntity *effect = EffectPart(entity); return effect != nullptr ? effect->effectInfoDictionary() : oo::PList(); }
-void ByName_963(cxx::Entity *entity)
+void ByName_963(Entity *entity)
 { if (OOVisualEffectEntity *effect = EffectPart(entity))  effect->remove(); }
-GLfloat ByName_964(cxx::Entity *entity)
+GLfloat ByName_964(Entity *entity)
 { OOVisualEffectEntity *effect = EffectPart(entity); return effect != nullptr ? effect->shaderFloat1() : GLfloat{}; }
-GLfloat ByName_965(cxx::Entity *entity)
+GLfloat ByName_965(Entity *entity)
 { OOVisualEffectEntity *effect = EffectPart(entity); return effect != nullptr ? effect->shaderFloat2() : GLfloat{}; }
-int ByName_966(cxx::Entity *entity)
+int ByName_966(Entity *entity)
 { OOVisualEffectEntity *effect = EffectPart(entity); return effect != nullptr ? effect->shaderInt1() : 0; }
-int ByName_967(cxx::Entity *entity)
+int ByName_967(Entity *entity)
 { OOVisualEffectEntity *effect = EffectPart(entity); return effect != nullptr ? effect->shaderInt2() : 0; }
-Vector ByName_968(cxx::Entity *entity)
+Vector ByName_968(Entity *entity)
 { OOVisualEffectEntity *effect = EffectPart(entity); return effect != nullptr ? effect->shaderVector1() : kZeroVector; }
-Vector ByName_969(cxx::Entity *entity)
+Vector ByName_969(Entity *entity)
 { OOVisualEffectEntity *effect = EffectPart(entity); return effect != nullptr ? effect->shaderVector2() : kZeroVector; }
 
 }	// namespace

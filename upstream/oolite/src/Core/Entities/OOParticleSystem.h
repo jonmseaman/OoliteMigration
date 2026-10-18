@@ -4,7 +4,7 @@ OOParticleSystem.h
 
 C++20 since bead oo-cenx, a leaf of the Entities seam (proposed ADR-0056, amendment oo-bj8 item
 12), converted with all its subclasses (amendment oo-kdyh item 1): the two fragment bursts here
-and OOExplosionCloudEntity. Global classes over cxx::Entity, with no facade: nothing messages
+and OOExplosionCloudEntity. Global classes over Entity, with no facade: nothing messages
 them by their own selectors. Their callers (ShipEntity, Universe) make them with a factory and
 hand the universe the Entity facade oo::NewEntityFacade makes, which is each one's Objective-C
 object from then on.
@@ -44,12 +44,12 @@ enum
 };
 
 
-class OOParticleSystem : public cxx::Entity
+class OOParticleSystem : public Entity
 {
 public:
 	std::optional<std::string> descriptionComponents() const override;
 	bool canCollide() override;
-	bool checkCloseCollisionWith(cxx::Entity *other) override;
+	bool checkCloseCollisionWith(Entity *other) override;
 	void update(OOTimeDelta delta_t) override;
 	void drawImmediate(bool immediate, bool translucent) override;
 	bool isEffect() override;
@@ -91,7 +91,7 @@ protected:
 class OOSmallFragmentBurstEntity : public OOParticleSystem
 {
 public:
-	static oo::Ref<OOSmallFragmentBurstEntity> fragmentBurstFromEntity(cxx::Entity *entity);	// the C++ entity (bead oo-al52f)
+	static oo::Ref<OOSmallFragmentBurstEntity> fragmentBurstFromEntity(Entity *entity);	// the C++ entity (bead oo-al52f)
 
 	void update(OOTimeDelta delta_t) override;
 
@@ -103,7 +103,7 @@ private:
 class OOBigFragmentBurstEntity : public OOParticleSystem
 {
 public:
-	static oo::Ref<OOBigFragmentBurstEntity> fragmentBurstFromEntity(cxx::Entity *entity);	// the C++ entity (bead oo-al52f)
+	static oo::Ref<OOBigFragmentBurstEntity> fragmentBurstFromEntity(Entity *entity);	// the C++ entity (bead oo-al52f)
 
 	void update(double delta_t) override;
 

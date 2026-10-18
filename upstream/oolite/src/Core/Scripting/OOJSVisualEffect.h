@@ -28,7 +28,7 @@ MA 02110-1301, USA.
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 #include <vector>
-@class Entity;
+class Entity;
 class OOVisualEffectEntity;	// C++ since bead oo-9ht.165
 
 

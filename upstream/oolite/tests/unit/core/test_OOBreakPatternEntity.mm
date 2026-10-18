@@ -55,14 +55,14 @@ T *NewTestPlayer()
 }
 
 
-static cxx::Entity *sRemoved = nil;
+static Entity *sRemoved = nil;
 
 
 // UNIVERSE: never initialised; records what is removed.
 class TestUniverse : public Universe
 {
 public:
-	bool removeEntity(cxx::Entity *entity) override	{ sRemoved = entity; return YES; }	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
+	bool removeEntity(Entity *entity) override	{ sRemoved = entity; return YES; }	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
 };
 
 
@@ -143,7 +143,7 @@ OO_TEST(flagsAndColors)
 		oo::Ref<OOBreakPatternEntity> ring = OOBreakPatternEntity::breakPatternWithPolygonSides(3, 45.0f, 1.0f);
 		OO_CHECK(ring->status() == STATUS_EFFECT && ring->scanClass == CLASS_NO_DRAW);
 		OO_CHECK(ring->isImmuneToBreakPatternHide && !ring->canCollide());
-		oo::Ref<cxx::Entity> other = oo::makeRef<cxx::Entity>();
+		oo::Ref<Entity> other = oo::makeRef<Entity>();
 		OO_CHECK(dynamic_cast<OOBreakPatternEntity *>(ring.get()) != nullptr && dynamic_cast<OOBreakPatternEntity *>(other.get()) == nullptr);
 
 		// Default: red inside, blue outside.
@@ -167,7 +167,7 @@ OO_TEST(lifetime)
 	{
 		SetUp();
 		oo::Ref<OOBreakPatternEntity> ring = OOBreakPatternEntity::breakPatternWithPolygonSides(4, 0.0f, 1.0f);
-		cxx::Entity *facade = oo::MadeEntity(ring);	// what removeEntity: is sent
+		Entity *facade = oo::MadeEntity(ring);	// what removeEntity: is sent
 		ring->setStatus(STATUS_EFFECT);
 		ring->setVelocity(make_vector(0, 0, 10));
 		ring->setLifetime(100.0);

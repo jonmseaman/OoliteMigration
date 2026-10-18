@@ -62,8 +62,8 @@ namespace {
 struct Sample
 {
 	const char		*kind;
-	cxx::Entity		*entity;
-	cxx::Entity		*object;
+	Entity		*entity;
+	Entity		*object;
 };
 
 
@@ -71,7 +71,7 @@ template <class T>
 Sample Make(const char *kind)
 {
 	oo::Ref<T> entity = oo::makeRef<T>();
-	cxx::Entity *object = oo::RetainEntity(oo::MadeEntity(entity));
+	Entity *object = oo::RetainEntity(oo::MadeEntity(entity));
 	return Sample{ kind, entity.get(), object };
 }
 

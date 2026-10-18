@@ -34,9 +34,7 @@
 // MARK: The classes, as far as the binding sees them ----------------------------------------------
 
 class Universe;
-@class Entity;
-
-namespace cxx {
+@class TestEntityObject;
 
 // The C++ root, as far as the binding and the root's JS category reach it. _object stands in for the
 // game's peer table (oo::ToObjC, below).
@@ -49,16 +47,14 @@ public:
 	virtual bool isVisibleToScripts();
 	Quaternion normalOrientation();	// the game's is virtual; the binding calls the root's (bead oo-9ht.39.8.2)
 
-	::Entity *_object = nil;
+	::TestEntityObject *_object = nil;
 };
-
-}	// namespace cxx
 
 
 /*	A planet whose radius is 99 raises from radius(), one whose radius is 98 throws a C++ exception,
 	so the test sees what an exception under a native becomes.
 */
-class OOPlanetEntity : public cxx::Entity
+class OOPlanetEntity : public Entity
 {
 public:
 	OOStellarBodyType planetType();
@@ -108,10 +104,11 @@ public:
 #include "OOJSEntityHolder.h"
 
 
-@interface Entity: OOObject
+__attribute__((objc_runtime_name("Entity")))
+@interface TestEntityObject: OOObject
 {
 @public
-	oo::Ref<cxx::Entity> _cxxEntity;	// the planet's C++ part (oo::ToCxx reads it)
+	oo::Ref<Entity> _cxxEntity;	// the planet's C++ part (oo::ToCxx reads it)
 	Quaternion _orientation;
 }
 - (id) weakRefUnderlyingObject;
@@ -140,7 +137,7 @@ public:
 	::OOPlanetEntity *planet() override	{ return _planet; }
 };
 
-@interface Entity (OOJavaScriptExtensions)
+@interface TestEntityObject (OOJavaScriptExtensions)
 - (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
 - (std::optional<std::string>) cxx_oo_jsClassName;
 - (BOOL) isVisibleToScripts;
@@ -160,7 +157,7 @@ public:
 #include <vector>
 
 
-@implementation Entity
+@implementation TestEntityObject
 
 - (id) weakRefUnderlyingObject  { return self; }
 
@@ -169,7 +166,7 @@ public:
 
 // The root's JS category, as the game's asks the C++ part (EntityOOJavaScriptExtensions+ObjCBridge.mm,
 // bead oo-9ht.107): the engine sends these selectors to the wrapped object.
-@implementation Entity (OOJavaScriptExtensions)
+@implementation TestEntityObject (OOJavaScriptExtensions)
 - (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype  { _cxxEntity->getJSClass(outClass, outPrototype); }
 - (std::optional<std::string>) cxx_oo_jsClassName  { return _cxxEntity->jsClassName(); }
 - (BOOL) isVisibleToScripts  { return _cxxEntity->isVisibleToScripts(); }
@@ -178,16 +175,16 @@ public:
 
 // oo::ToObjC (Entity+ObjCBridge.mm): the object of a C++ entity, nil for null.
 namespace oo {
-::Entity *ToObjC(cxx::Entity *entity)  { return entity != nullptr ? entity->_object : nil; }
+::TestEntityObject *ToObjC(Entity *entity)  { return entity != nullptr ? entity->_object : nil; }
 }
 
 
-cxx::Entity::~Entity()  {}
-void cxx::Entity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)  { *outClass = nullptr; *outPrototype = nullptr; }
-std::optional<std::string> cxx::Entity::jsClassName()  { return std::string("Entity"); }
-bool cxx::Entity::isVisibleToScripts()  { return false; }
+Entity::~Entity()  {}
+void Entity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)  { *outClass = nullptr; *outPrototype = nullptr; }
+std::optional<std::string> Entity::jsClassName()  { return std::string("Entity"); }
+bool Entity::isVisibleToScripts()  { return false; }
 // The orientation the object's -normalOrientation and -setOrientation: answered and set until bead oo-9ht.39.8.2.
-Quaternion cxx::Entity::normalOrientation()  { return oo::ToObjC(this)->_orientation; }
+Quaternion Entity::normalOrientation()  { return oo::ToObjC(this)->_orientation; }
 void OOPlanetEntity::setOrientation(Quaternion quat)  { oo::ToObjC(this)->_orientation = quat; }
 
 
@@ -236,7 +233,7 @@ bool OOPlanetEntity::isVisibleToScripts()  { return ::OOJSPlanetIsVisibleToScrip
 OOPlanetEntity *NewPlanet()
 {
 	oo::Ref<OOPlanetEntity> planet = oo::makeRef<OOPlanetEntity>();
-	Entity *object = [[Entity alloc] init];
+	TestEntityObject *object = [[TestEntityObject alloc] init];
 	object->_cxxEntity = planet;
 	planet->_object = object;
 	return planet.get();
@@ -510,18 +507,18 @@ OOPlanetEntity *sMoon = nil;
 FakeUniverse *sUniverse = nil;
 
 
-ooscript::Value JSValueForObject(ooscript::ClassDef *jsClass, ooscript::Object prototype, Entity *entity)
+ooscript::Value JSValueForObject(ooscript::ClassDef *jsClass, ooscript::Object prototype, TestEntityObject *entity)
 {
 	ooscript::Object object = ooscript::newObject(sContext, jsClass, prototype, nullptr);
-	if (entity->_cxxEntity == nullptr)  entity->_cxxEntity = oo::makeRef<cxx::Entity>();	// a plain entity's C++ part
+	if (entity->_cxxEntity == nullptr)  entity->_cxxEntity = oo::makeRef<Entity>();	// a plain entity's C++ part
 	if (object == nullptr || !OOJSSetCxxPrivate(sContext, object, oo::makeRef<OOJSEntityHolder>(entity->_cxxEntity.get()).get()))  return ooscript::nullValue();	// the slot holds the C++ entity (bead oo-9ht.39.3)
 	return ooscript::objectValue(object);
 }
 
 
-// A JS object for an entity, as -[Entity oo_jsValueInContext:] makes it: the class and prototype
+// A JS object for an entity, as -[TestEntityObject oo_jsValueInContext:] makes it: the class and prototype
 // the entity's category names, and the entity in the private slot.
-ooscript::Value JSValueForEntity(Entity *entity)
+ooscript::Value JSValueForEntity(TestEntityObject *entity)
 {
 	ooscript::ClassDef *jsClass = nullptr;
 	ooscript::Object prototype = nullptr;
@@ -567,7 +564,7 @@ void SetUpContext()
 	gSharedUniverse = sUniverse;
 	Define("planet", JSValueForEntity(oo::ToObjC(sPlanet)));
 	Define("moon", JSValueForEntity(oo::ToObjC(sMoon)));
-	Define("plainEntity", JSValueForObject(&sFakeEntityClass, gOOEntityJSPrototype, [[Entity alloc] init]));
+	Define("plainEntity", JSValueForObject(&sFakeEntityClass, gOOEntityJSPrototype, [[TestEntityObject alloc] init]));
 }
 
 

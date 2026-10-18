@@ -96,9 +96,9 @@ namespace {
 // --- Ivars the game reads directly, and nothing else ------------------------------------------------
 
 const GLfloat *ColorComponents(OOLightParticleEntity *e)	{ return e->_colorComponents; }
-GLfloat NoDrawDistance(cxx::Entity *e)							{ return e->no_draw_distance; }
-GLfloat CamZeroDistance(cxx::Entity *e)							{ return e->cam_zero_distance; }
-void SetCamZeroDistance(cxx::Entity *e, GLfloat value)			{ e->cam_zero_distance = value; }
+GLfloat NoDrawDistance(Entity *e)							{ return e->no_draw_distance; }
+GLfloat CamZeroDistance(Entity *e)							{ return e->cam_zero_distance; }
+void SetCamZeroDistance(Entity *e, GLfloat value)			{ e->cam_zero_distance = value; }
 
 // --------------------------------------------------------------------------------------------------
 
@@ -129,10 +129,10 @@ bool ComponentsAre(OOLightParticleEntity *e, GLfloat r, GLfloat g, GLfloat b, GL
 	facade's order. The object holds the particle; the test sends it the root's selectors.
 */
 template <class T>
-T *NewParticle(float diameter, cxx::Entity **outObject = nullptr)
+T *NewParticle(float diameter, Entity **outObject = nullptr)
 {
 	const oo::Ref<T> particle = oo::makeRef<T>();
-	cxx::Entity *object = oo::MadeEntity(particle);
+	Entity *object = oo::MadeEntity(particle);
 	particle->initWithDiameter(diameter);
 	if (outObject != nullptr)  *outObject = object;
 	return particle.get();
@@ -146,7 +146,7 @@ OO_TEST(initWithDiameter)
 	@autoreleasepool
 	{
 		SetUp();
-		cxx::Entity *object = nil;
+		Entity *object = nil;
 		OOLightParticleEntity *particle = NewParticle<OOLightParticleEntity>(8.0f, &object);
 		OO_CHECK(particle != nullptr && typeid(*particle) == typeid(OOLightParticleEntity));
 		OO_CHECK(particle->diameter() == 8.0f);
@@ -161,7 +161,7 @@ OO_TEST(initWithDiameter)
 		OO_CHECK(NoDrawDistance(object) == expected);
 
 		// A subclass initialises the same way.
-		cxx::Entity *subObject = nil;
+		Entity *subObject = nil;
 		TestParticle *sub = NewParticle<TestParticle>(2.0f, &subObject);
 		OO_CHECK(sub->diameter() == 2.0f && subObject->status() == STATUS_EFFECT && subObject->isEffect());
 	}
@@ -196,9 +196,9 @@ OO_TEST(drawSubEntity)
 	@autoreleasepool
 	{
 		SetUp();
-		cxx::Entity *object = nil;
+		Entity *object = nil;
 		TestParticle *particle = NewParticle<TestParticle>(1.0f, &object);
-		cxx::Entity *owner = oo::MadeEntity(oo::makeRef<cxx::Entity>());
+		Entity *owner = oo::MadeEntity(oo::makeRef<Entity>());
 		object->setOwner(owner);
 
 		// Opaque pass: nothing.
@@ -217,7 +217,7 @@ OO_TEST(drawSubEntity)
 		OO_CHECK(CamZeroDistance(object) == 5.0f && particle->_draws == 1);
 
 		// The base's own draw does nothing in the opaque pass, or beyond the draw distance.
-		cxx::Entity *plain = nil;
+		Entity *plain = nil;
 		(void)NewParticle<OOLightParticleEntity>(1.0f, &plain);
 		plain->drawImmediate(false, false);
 		SetCamZeroDistance(plain, NoDrawDistance(plain));
@@ -232,7 +232,7 @@ OO_TEST(texturesListTheSubclassTexture)
 	@autoreleasepool
 	{
 		SetUp();
-		cxx::Entity *object = nil;
+		Entity *object = nil;
 		TestParticle *particle = NewParticle<TestParticle>(1.0f, &object);
 		const oo::Ref<OOTexture> kept = oo::makeRef<OOTexture>();	// a C++ texture since bead oo-9ht.99; only retained and compared
 		OOTexture *texture = kept.get();
@@ -249,7 +249,7 @@ OO_TEST(description)
 	@autoreleasepool
 	{
 		SetUp();
-		cxx::Entity *object = nil;
+		Entity *object = nil;
 		(void)NewParticle<TestParticle>(1.0f, &object);
 		OO_CHECK(oo::EntityDescription(object).starts_with("<TestParticle 0x"));
 		OO_CHECK(oo::EntityDescription(object).ends_with("scanClass: CLASS_NO_DRAW status: STATUS_EFFECT}"));
@@ -272,7 +272,7 @@ OO_TEST(cxxSubclassFacade)
 		SetUp();
 		const oo::Ref<TestCxxParticle> particle = oo::makeRef<TestCxxParticle>();
 		particle->initWithDiameter(6.0f);
-		cxx::Entity *facade = oo::MadeEntity(particle);
+		Entity *facade = oo::MadeEntity(particle);
 		OO_CHECK(facade != nil);
 		OO_CHECK(particle->diameter() == 6.0f && facade->isEffect() && !facade->canCollide() && facade->status() == STATUS_EFFECT);
 		particle->setColor(OOColor::colorWithRed(0.5f, 0.25f, 0.0f, 1.0f).get(), 0.5f);

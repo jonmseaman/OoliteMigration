@@ -260,15 +260,15 @@ double QueryDoubleValue(const oo::PList &value)
 }
 
 
-void PerformScriptActions(const oo::PList &actions, cxx::Entity *target);
-void PerformConditionalStatment(const oo::PList &actions, cxx::Entity *target);
-void PerformActionStatment(const oo::PList &statement, cxx::Entity *target);
+void PerformScriptActions(const oo::PList &actions, Entity *target);
+void PerformConditionalStatment(const oo::PList &actions, Entity *target);
+void PerformActionStatment(const oo::PList &statement, Entity *target);
 BOOL TestScriptConditions(const oo::PList &conditions);
 } // namespace
 
 
 namespace {
-void PerformScriptActions(const oo::PList &actions, cxx::Entity *target)
+void PerformScriptActions(const oo::PList &actions, Entity *target)
 {
 	const oo::PList::Array *statements = actions.getIf<oo::PList::Array>();
 	if (statements == nullptr)  return;
@@ -286,7 +286,7 @@ void PerformScriptActions(const oo::PList &actions, cxx::Entity *target)
 }
 
 
-void PerformConditionalStatment(const oo::PList &statement, cxx::Entity *target)
+void PerformConditionalStatment(const oo::PList &statement, Entity *target)
 {
 	/*	A sanitized conditional statement takes the form of an array:
 		(true, conditions, trueActions, falseActions)
@@ -308,7 +308,7 @@ void PerformConditionalStatment(const oo::PList &statement, cxx::Entity *target)
 }
 
 
-void PerformActionStatment(const oo::PList &statement, cxx::Entity *target)
+void PerformActionStatment(const oo::PList &statement, Entity *target)
 {
 	/*	A sanitized action statement takes the form of an array:
 		(false, selector [, argument])
@@ -332,7 +332,7 @@ void PerformActionStatment(const oo::PList &statement, cxx::Entity *target)
 
 	// The target's C++ part answers its methods called by name (bead oo-9ht.39.7.1), the player's
 	// for the player only (bead oo-9ht.177); the planet's shader bindings are never actions
-	cxx::Entity *cxxTarget = target;	// (oo::ToCxx of its object until bead oo-zwnvp)
+	Entity *cxxTarget = target;	// (oo::ToCxx of its object until bead oo-zwnvp)
 	if (cxxTarget == nullptr || !oo::EntityRespondsToName(cxxTarget, selectorString))
 	{
 		cxxTarget = player;
@@ -2324,15 +2324,15 @@ void PlayerEntity::sendAllShipsAway()
 	if (!UNIVERSE)
 		return;
 	int			ent_count =		UNIVERSE->n_entities;
-	cxx::Entity**	uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
-	std::vector<cxx::Entity *>	my_entities(ent_count);
+	Entity**	uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
+	std::vector<Entity *>	my_entities(ent_count);
 	int i;
 	for (i = 0; i < ent_count; i++)
 		my_entities[i] = oo::RetainEntity(uni_entities[i]);		//	retained (its object; bead oo-9ht.39.18)
 
 	for (i = 1; i < ent_count; i++)
 	{
-		cxx::Entity* e1 = my_entities[i];
+		Entity* e1 = my_entities[i];
 		if (oo::EntityIsShip(e1))
 		{
 			::ShipEntity* se1 = oo::ToShip(e1);
@@ -2997,7 +2997,7 @@ NSUInteger PlayerEntity::eqScriptIndexForKey(const std::string &eq_key)
 void PlayerEntity::targetNearestHostile()
 {
 	scanForHostiles();
-	cxx::Entity *ent = foundTarget();
+	Entity *ent = foundTarget();
 	if (ent != nullptr)
 	{
 		ident_engaged = YES;
@@ -3010,7 +3010,7 @@ void PlayerEntity::targetNearestHostile()
 void PlayerEntity::targetNearestIncomingMissile()
 {
 	scanForNearestIncomingMissile();
-	cxx::Entity *ent = foundTarget();
+	Entity *ent = foundTarget();
 	if (ent != nullptr)
 	{
 		ident_engaged = YES;

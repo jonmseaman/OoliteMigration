@@ -344,7 +344,7 @@ void DockEntity::update(OOTimeDelta delta_t)
 
 
 // avoid possibility of shooting the virtual dock damaging the station
-void DockEntity::noteTakingDamage(double amount, cxx::Entity *entity, OOShipDamageType type)
+void DockEntity::noteTakingDamage(double amount, Entity *entity, OOShipDamageType type)
 {
 	if (virtual_dock) // can't be damaged
 	{
@@ -354,7 +354,7 @@ void DockEntity::noteTakingDamage(double amount, cxx::Entity *entity, OOShipDama
 }
 
 
-void DockEntity::takeEnergyDamage(double amount, cxx::Entity *ent, cxx::Entity *other, const std::string &weaponIdentifier)
+void DockEntity::takeEnergyDamage(double amount, Entity *ent, Entity *other, const std::string &weaponIdentifier)
 {
 	if (virtual_dock) // can't be damaged
 	{
@@ -664,7 +664,7 @@ oo::PList DockEntity::dockingInstructionsForShip(::ShipEntity *ship)
 				
 		if (docking_stage > 1)	// don't claim first docking stage
 		{
-			id_lock[docking_stage] = oo::WeakRef<cxx::Entity>(ship);	// otherwise - claim this docking stage
+			id_lock[docking_stage] = oo::WeakRef<Entity>(ship);	// otherwise - claim this docking stage
 		}
 		
 		//remove the previous stage from the stack
@@ -1230,8 +1230,8 @@ bool DockEntity::dockingCorridorIsEmpty()
 	// check against all ships
 	BOOL			isEmpty = YES;
 	int				ent_count =		UNIVERSE->n_entities;
-	cxx::Entity			**uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
-	std::vector<cxx::Entity *>	my_entities(ent_count);	// each one's object retained (bead oo-9ht.39.26)
+	Entity			**uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
+	std::vector<Entity *>	my_entities(ent_count);	// each one's object retained (bead oo-9ht.39.26)
 	int i;
 	int ship_count = 0;
 	
@@ -1291,8 +1291,8 @@ void DockEntity::clearDockingCorridor()
 	::StationEntity	*station = oo::ToStation(parentEntity());
 	BOOL			isClear = YES;
 	int				ent_count =			UNIVERSE->n_entities;
-	cxx::Entity			**uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
-	std::vector<cxx::Entity *>	my_entities(ent_count);	// each one's object retained (bead oo-9ht.39.26)
+	Entity			**uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
+	std::vector<Entity *>	my_entities(ent_count);	// each one's object retained (bead oo-9ht.39.26)
 	int i;
 	int ship_count = 0;
 	

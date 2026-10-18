@@ -126,25 +126,24 @@ void OOSoundSource::playOOSound(OOSound *s)		{ gSourceSound = s; gLog.push_back(
 // held as their objects, the root's (which holds the C++ part, oo::ToCxx reads it, and which
 // oo::ToObjC answers for it), declared as Entity.h and ShipEntity.h declare them (the test imports
 // neither) with the stand-in's answers.
-namespace cxx {
 class Entity : public oo::RefCounted
 {
 public:
 	virtual ~Entity();
 };
-}	// namespace cxx
 
-@interface Entity: OOObject
+__attribute__((objc_runtime_name("Entity")))
+@interface TestEntityObject: OOObject
 {
 @public
-	oo::Ref<cxx::Entity> _cxxEntity;
+	oo::Ref<Entity> _cxxEntity;
 }
 @end
 
-@implementation Entity
+@implementation TestEntityObject
 @end
 
-cxx::Entity::~Entity() = default;
+Entity::~Entity() = default;
 
 
 // The market: food is loved (1), furs liked (0.5), anything else refused. The C++ market's one
@@ -158,7 +157,7 @@ float OOCommodityMarket::trumbleOpinionForGood(const std::string &good)
 // PLAYER: C++ since bead oo-9ht.177 deleted the Objective-C player this stood in for: the members
 // the code under test calls, declared as the game headers declare them (the test imports none
 // that defines the classes), with the stand-in's answers.
-class ShipEntity : public cxx::Entity
+class ShipEntity : public Entity
 {
 public:
 	GLfloat hullHeatLevel();
@@ -295,13 +294,13 @@ namespace {
 
 // A cargo pod: a C++ ship under its object (autoreleased, as [[[ShipEntity alloc] init] autorelease]
 // was), carrying the good.
-std::map<cxx::Entity *, ::Entity *> sObjects;	// what oo::ToObjC answers
+std::map<Entity *, ::TestEntityObject *> sObjects;	// what oo::ToObjC answers
 
-::Entity *NewPod(const char *good)
+::TestEntityObject *NewPod(const char *good)
 {
 	oo::Ref<ShipEntity> ship = oo::makeRef<ShipEntity>();
 	ship->commodity = good;
-	::Entity *pod = [[[::Entity alloc] init] autorelease];
+	::TestEntityObject *pod = [[[::TestEntityObject alloc] init] autorelease];
 	pod->_cxxEntity = ship;
 	sObjects[ship.get()] = pod;
 	return pod;
@@ -553,7 +552,7 @@ OO_TEST(feedingPopAndSpawn)
 		{
 			p->cargo.push_back(oo::EntityHold(NewPod(good)->_cxxEntity.get()));
 		}
-		cxx::Entity *food = p->cargo[2].get();
+		Entity *food = p->cargo[2].get();
 		p->appetite = 9.5f;
 		oo::Ref<OOTrumble> t = Trumble("Zq");
 		oo::PList::Dict state = *t->dictionary().getIf<oo::PList::Dict>();
@@ -614,10 +613,10 @@ OO_TEST(cxxClass)
 
 
 // The pods' objects (Entity+ObjCBridge.mm's, which the test does not link).
-namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
+namespace oo { ::TestEntityObject *ToObjC(Entity *entity); }
 #define OO_ENTITY_HELPERS_STAND_IN_NO_DESCRIPTIONS 1	// the test links no OODescription.mm
 #import "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
-::Entity *oo::ToObjC(cxx::Entity *entity)
+::TestEntityObject *oo::ToObjC(Entity *entity)
 {
 	auto found = sObjects.find(entity);
 	return found != sObjects.end() ? found->second : nil;

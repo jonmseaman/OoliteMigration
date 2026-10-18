@@ -136,7 +136,7 @@ namespace {
 // class, DEFINE_JS_OBJECT_GETTER(JSSunGetSunObject, &sSunClass, ...) before).
 bool JSSunGetSunEntity(ooscript::Context context, ooscript::Object inObject, OOSunEntity **outObject)
 {
-	cxx::Entity *entity = nullptr;
+	Entity *entity = nullptr;
 	if (!OOJSEntityGetEntityOfClass(context, inObject, &sSunClass, &entity))  return false;
 	*outObject = dynamic_cast<OOSunEntity *>(entity);
 	return true;

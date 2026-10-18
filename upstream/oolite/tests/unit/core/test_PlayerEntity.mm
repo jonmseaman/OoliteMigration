@@ -225,7 +225,7 @@ void SetUp()
 #ifndef NDEBUG
 // deferredInit() sends the ship's initialiser, and so the root's -init, a second time, which counts
 // the entity again, as it did.
-void UncountSecondInit(cxx::Entity *entity)
+void UncountSecondInit(Entity *entity)
 {
 	gLiveEntityCount--;
 	gTotalEntityMemory -= oo::EntityObjectSize(entity);	// its object's size (bead oo-dpyk8)
@@ -304,7 +304,7 @@ OO_TEST(deferredInit)
 		SetUp();
 		TestPlayer *player = NewTestPlayer<TestPlayer>();
 		gOOPlayer = player;
-		cxx::Entity *asEntity = player;
+		Entity *asEntity = player;
 		void *part = asEntity;
 		player->setFuel(5);
 		PlayerEntityTestAccess::save_path(player) = std::string("some.oolite-save");
@@ -340,7 +340,7 @@ OO_TEST(deallocReleasesWhatThePlayerHeld)
 {
 	// The missile's object (+1, as +alloc/-init's was):  would autorelease it again
 	// (bead oo-9ht.144, where the missile became a C++ ship).
-	cxx::Entity *missile = nil;
+	Entity *missile = nil;
 	@autoreleasepool
 	{
 		SetUp();
@@ -365,7 +365,7 @@ OO_TEST(playerObjectIsAShipWhosePartIsThePlayer)
 	{
 		SetUp();
 		TestPlayer *player = NewTestPlayer<TestPlayer>();
-		cxx::Entity *object = player;	// the drawable's facade since bead oo-9ht.144 (the ship's until then)
+		Entity *object = player;	// the drawable's facade since bead oo-9ht.144 (the ship's until then)
 		OO_CHECK(object != nil && oo::ToShip(object) != nullptr);	// a ship's object (-isKindOfClass:[ShipEntity class] until bead oo-9ht.144)
 		OO_CHECK(object == player);
 		OO_CHECK(dynamic_cast<PlayerEntity *>(object) == player);
@@ -546,7 +546,7 @@ OO_TEST(slice3Wormhole)
 		OO_CHECK(player->getWormhole() == nil);
 		// A C++ wormhole since bead oo-9ht.112: the player retains its Objective-C object.
 		oo::Ref<WormholeEntity> holeRef = oo::makeRef<WormholeEntity>();
-		cxx::Entity *object = oo::RetainEntity(oo::MadeEntity(holeRef));
+		Entity *object = oo::RetainEntity(oo::MadeEntity(holeRef));
 		WormholeEntity *hole = holeRef.get();
 		NSUInteger count = object->retainCount();
 		player->setWormhole(hole);
@@ -626,7 +626,7 @@ OO_TEST(slice7MovementFlags)
 	{
 		SetUp();
 		TestPlayer *player = MakePlayer();
-		cxx::Entity *entity = player;
+		Entity *entity = player;
 		entity->position = make_HPvector(1, 2, 3);
 		entity->lastPosition = kZeroHPVector;
 		entity->orientation = kIdentityQuaternion;
@@ -1321,7 +1321,7 @@ OO_TEST(slice28ClearanceMarkerKeyAndExtraKeys)
 // read the GUI, the keyboard or the game's files, which the goldens cover. ------------------------
 
 namespace {
-cxx::Entity *sCategoryTarget = nil;	// what a CategoryPlayer answers as its primary target (not retained)
+Entity *sCategoryTarget = nil;	// what a CategoryPlayer answers as its primary target (not retained)
 }
 
 
@@ -1355,7 +1355,7 @@ public:
 
 	// The target the ident button finds: the unit test's universe has no descriptions to expand the
 	// "ident-on" message with (expanding one exits), so the case keeps a target.
-	cxx::Entity *primaryTarget() override	{ return sCategoryTarget; }	// the C++ entity since bead oo-9ht.39.23
+	Entity *primaryTarget() override	{ return sCategoryTarget; }	// the C++ entity since bead oo-9ht.39.23
 };
 
 

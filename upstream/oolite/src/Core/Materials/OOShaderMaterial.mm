@@ -92,14 +92,14 @@ bool OOShaderMaterial::configurationDictionarySpecifiesShaderMaterial(const oo::
 // registered no hooks, as nil's.
 namespace {
 
-std::string TargetClassName(cxx::Entity *target)
+std::string TargetClassName(Entity *target)
 {
 	const OOShaderEntityHooks *hooks = OOShaderEntityHooksIfSet();
 	return (target != nullptr && hooks != nullptr) ? hooks->className(target) : std::string("(null)");
 }
 
 
-std::string TargetDescription(cxx::Entity *target)
+std::string TargetDescription(Entity *target)
 {
 	const OOShaderEntityHooks *hooks = OOShaderEntityHooksIfSet();
 	return (target != nullptr && hooks != nullptr) ? hooks->description(target) : std::string("(null)");
@@ -111,7 +111,7 @@ std::string TargetDescription(cxx::Entity *target)
 oo::Ref<OOShaderMaterial> OOShaderMaterial::shaderMaterialWithName(const std::optional<std::string> &name,
 																   const oo::PList &configuration,
 																   const oo::PList &macros,
-																   cxx::Entity *target)
+																   Entity *target)
 {
 	oo::Ref<OOShaderMaterial> result = oo::makeRef<OOShaderMaterial>();
 	if (!result->initWithName(name, configuration, macros, target))  return nullptr;
@@ -122,7 +122,7 @@ oo::Ref<OOShaderMaterial> OOShaderMaterial::shaderMaterialWithName(const std::op
 bool OOShaderMaterial::initWithName(const std::optional<std::string> &name,
 									const oo::PList &configuration,
 									const oo::PList &macros,
-									cxx::Entity *target)
+									Entity *target)
 {
 	bool					OK = true;
 	std::optional<std::string>	macroString;
@@ -316,7 +316,7 @@ OOShaderMaterial::~OOShaderMaterial()
 
 
 bool OOShaderMaterial::bindUniform(const std::string &uniformName,
-								   cxx::Entity *source,
+								   Entity *source,
 								   SEL selector,
 								   OOUniformConvertOptions options)
 {
@@ -339,7 +339,7 @@ bool OOShaderMaterial::bindUniform(const std::string &uniformName,
 
 
 bool OOShaderMaterial::bindSafeUniform(const std::string &uniformName,
-									   cxx::Entity *target,
+									   Entity *target,
 									   const std::optional<std::string> &property,
 									   OOUniformConvertOptions options)
 {
@@ -468,7 +468,7 @@ void OOShaderMaterial::setUniform(const std::string &uniformName, Quaternion val
 }
 
 
-void OOShaderMaterial::addUniformsFromDictionary(const oo::PList &uniformDefs, cxx::Entity *target)
+void OOShaderMaterial::addUniformsFromDictionary(const oo::PList &uniformDefs, Entity *target)
 {
 	oo::PList					value;
 	std::optional<std::string>	binding;
@@ -744,7 +744,7 @@ void OOShaderMaterial::unapplyWithNext(OOMaterial *next)
 }
 
 
-void OOShaderMaterial::setBindingTarget(cxx::Entity *target)
+void OOShaderMaterial::setBindingTarget(Entity *target)
 {
 	for (const auto &[name, uniform] : uniforms)
 	{

@@ -100,7 +100,7 @@ bool OOParticleSystem::canCollide()
 }
 
 
-bool OOParticleSystem::checkCloseCollisionWith(cxx::Entity *other)
+bool OOParticleSystem::checkCloseCollisionWith(Entity *other)
 {
 	if (other == oo::LiveOwner(this))  return false;	// the owner's C++ entity, null for none (bead oo-9ht.39.20)
 	return other == nullptr || !other->isEffect();	// [nil isEffect] answered NO
@@ -283,7 +283,7 @@ void OOSmallFragmentBurstEntity::initFragmentBurstFrom(HPVector fragPosition, Ve
 }
 
 
-oo::Ref<OOSmallFragmentBurstEntity> OOSmallFragmentBurstEntity::fragmentBurstFromEntity(cxx::Entity *entity)
+oo::Ref<OOSmallFragmentBurstEntity> OOSmallFragmentBurstEntity::fragmentBurstFromEntity(Entity *entity)
 {
 	oo::Ref<OOSmallFragmentBurstEntity> result = oo::makeRef<OOSmallFragmentBurstEntity>();
 	result->initFragmentBurstFrom(entity != nullptr ? entity->getPosition() : kZeroHPVector, entity != nullptr ? entity->getVelocity() : kZeroVector, entity != nullptr ? entity->collisionRadius() : 0.0f);	// the C++ entity's members (bead oo-al52f); none answers zero, as nil did
@@ -334,7 +334,7 @@ void OOBigFragmentBurstEntity::initFragmentBurstFrom(HPVector fragPosition, Vect
 }
 
 
-oo::Ref<OOBigFragmentBurstEntity> OOBigFragmentBurstEntity::fragmentBurstFromEntity(cxx::Entity *entity)
+oo::Ref<OOBigFragmentBurstEntity> OOBigFragmentBurstEntity::fragmentBurstFromEntity(Entity *entity)
 {
 	oo::Ref<OOBigFragmentBurstEntity> result = oo::makeRef<OOBigFragmentBurstEntity>();
 	result->initFragmentBurstFrom(entity != nullptr ? entity->getPosition() : kZeroHPVector, vector_multiply_scalar(entity != nullptr ? entity->getVelocity() : kZeroVector, 0.85), entity != nullptr ? entity->collisionRadius() : 0.0f);	// the C++ entity's members (bead oo-al52f)

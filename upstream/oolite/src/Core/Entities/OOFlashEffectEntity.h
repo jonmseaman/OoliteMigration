@@ -37,7 +37,7 @@ class OOFlashEffectEntity : public OOLightParticleEntity
 public:
 	// +explosionFlashFromEntity: and +laserFlashWithPosition:velocity:color:: a new flash,
 	// initialised. Callers hand it to Objective-C with oo::NewEntityFacade.
-	static oo::Ref<OOFlashEffectEntity> explosionFlashFromEntity(cxx::Entity *entity);	// the C++ entity (bead oo-al52f)
+	static oo::Ref<OOFlashEffectEntity> explosionFlashFromEntity(Entity *entity);	// the C++ entity (bead oo-al52f)
 	static oo::Ref<OOFlashEffectEntity> laserFlashWithPosition(HPVector position, Vector vel, OOColor *color);
 
 	static void setUpTexture();

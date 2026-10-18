@@ -51,7 +51,7 @@ Universe *NewUniverse()
 // The members other classes read directly: through the facade's _cxxUniverse after the conversion
 // (ADR-0056 amendment oo-riqmz), the universe's own since bead oo-ql9rn.
 unsigned EntityListCount(Universe *u)		{ return u->n_entities; }
-cxx::Entity *SortedEntity(Universe *u, unsigned i)	{ return u->sortedEntities[i]; }
+Entity *SortedEntity(Universe *u, unsigned i)	{ return u->sortedEntities[i]; }
 int CursorRow(Universe *u)					{ return u->cursor_row; }
 GLfloat StarsAmbient(Universe *u, int i)	{ return u->stars_ambient[i]; }
 bool ListHeadsEmpty(Universe *u)			{ return u->x_list_start == nil && u->y_list_start == nil && u->z_list_start == nil; }
@@ -554,19 +554,19 @@ void SetUpTestPlayer()
 }
 
 
-void SetSortedEntities(Universe *u, std::initializer_list<cxx::Entity *> list)
+void SetSortedEntities(Universe *u, std::initializer_list<Entity *> list)
 {
 	unsigned n = 0;
-	for (cxx::Entity *e : list)  u->sortedEntities[n++] = e;
+	for (Entity *e : list)  u->sortedEntities[n++] = e;
 	u->sortedEntities[n] = nil;
 	u->n_entities = n;
 }
 
 
-cxx::Entity *MakeEntity(HPVector position, GLfloat radius)
+Entity *MakeEntity(HPVector position, GLfloat radius)
 {
 	SetUpTestPlayer();
-	cxx::Entity *entity = oo::MadeEntity(oo::makeRef<cxx::Entity>());
+	Entity *entity = oo::MadeEntity(oo::makeRef<Entity>());
 	entity->setPosition(position);
 	entity->setCollisionRadius(radius);
 	return entity;
@@ -575,7 +575,7 @@ cxx::Entity *MakeEntity(HPVector position, GLfloat radius)
 }	// namespace
 
 
-class Slice14GhostEntity : public cxx::Entity	// an entity nothing collides with (an Objective-C subclass until bead oo-j12i2)
+class Slice14GhostEntity : public Entity	// an entity nothing collides with (an Objective-C subclass until bead oo-j12i2)
 {
 public:
 	bool canCollide() override	{ return false; }
@@ -605,7 +605,7 @@ OO_TEST(slice14ClearRoute)
 	@autoreleasepool
 	{
 		Universe *u = NewUniverse();
-		cxx::Entity *e1 = MakeEntity(make_HPvector(0, 0, 0), 10);
+		Entity *e1 = MakeEntity(make_HPvector(0, 0, 0), 10);
 		HPVector p2 = make_HPvector(0, 0, 1000);
 
 		// Nothing else in the universe: clear, no hazard, the destination is safe as it is.
@@ -615,16 +615,16 @@ OO_TEST(slice14ClearRoute)
 		OO_CHECK(HPvector_equal(u->getSafeVectorFromEntity(e1, 0, p2), p2));
 
 		// An entity off the route, behind the start, or beyond the destination is no hazard.
-		cxx::Entity *aside = MakeEntity(make_HPvector(500, 0, 500), 50);
-		cxx::Entity *behind = MakeEntity(make_HPvector(0, 0, -300), 50);
-		cxx::Entity *beyond = MakeEntity(make_HPvector(0, 0, 1500), 50);
+		Entity *aside = MakeEntity(make_HPvector(500, 0, 500), 50);
+		Entity *behind = MakeEntity(make_HPvector(0, 0, -300), 50);
+		Entity *beyond = MakeEntity(make_HPvector(0, 0, 1500), 50);
 		SetSortedEntities(u, { e1, aside, behind, beyond });
 		OO_CHECK(u->isVectorClearFromEntity(e1, 0, p2));
 		OO_CHECK(u->hazardOnRouteFromEntity(e1, 0, p2) == nullptr);
 		OO_CHECK(HPvector_equal(u->getSafeVectorFromEntity(e1, 0, p2), p2));
 
 		// An entity nothing collides with is no hazard either.
-		cxx::Entity *ghost = oo::MadeEntity(oo::makeRef<Slice14GhostEntity>());
+		Entity *ghost = oo::MadeEntity(oo::makeRef<Slice14GhostEntity>());
 		ghost->setPosition(make_HPvector(0, 0, 500));
 		ghost->setCollisionRadius(50);
 		SetSortedEntities(u, { e1, ghost });
@@ -640,8 +640,8 @@ OO_TEST(slice14Hazard)
 	@autoreleasepool
 	{
 		Universe *u = NewUniverse();
-		cxx::Entity *e1 = MakeEntity(make_HPvector(0, 0, 0), 10);
-		cxx::Entity *rock = MakeEntity(make_HPvector(20, 0, 500), 50);
+		Entity *e1 = MakeEntity(make_HPvector(0, 0, 0), 10);
+		Entity *rock = MakeEntity(make_HPvector(20, 0, 500), 50);
 		HPVector p2 = make_HPvector(0, 0, 1000);
 		SetSortedEntities(u, { e1, rock });
 
@@ -670,7 +670,7 @@ OO_TEST(slice14Hazard)
 // entities sit in the sorted list by hand, as slice 14's.
 // Counts as a ship for the ship predicates (an Objective-C subclass answering -isShip YES until bead
 // oo-j12i2; a C++ entity whose ship flag, which -isShip and the predicates read, is set).
-class Slice15ShipLike : public cxx::Entity
+class Slice15ShipLike : public Entity
 {
 public:
 	Slice15ShipLike()	{ isShip = YES; }
@@ -679,16 +679,16 @@ public:
 
 namespace {
 
-cxx::Entity *MakeShipLike(HPVector position, GLfloat radius)
+Entity *MakeShipLike(HPVector position, GLfloat radius)
 {
-	cxx::Entity *entity = oo::MadeEntity(oo::makeRef<Slice15ShipLike>());
+	Entity *entity = oo::MadeEntity(oo::makeRef<Slice15ShipLike>());
 	entity->setPosition(position);
 	entity->setCollisionRadius(radius);
 	return entity;
 }
 
 
-BOOL IsFarPredicate(cxx::Entity *entity, void *parameter)	// x beyond *(double *)parameter
+BOOL IsFarPredicate(Entity *entity, void *parameter)	// x beyond *(double *)parameter
 {
 	return entity->getPosition().x > *(double *)parameter;
 }
@@ -701,9 +701,9 @@ OO_TEST(slice15CountAndFind)
 	@autoreleasepool
 	{
 		Universe *u = NewUniverse();
-		cxx::Entity *a = MakeEntity(make_HPvector(0, 0, 0), 10);
-		cxx::Entity *b = MakeEntity(make_HPvector(100, 0, 0), 10);
-		cxx::Entity *c = MakeShipLike(make_HPvector(1000, 0, 0), 10);
+		Entity *a = MakeEntity(make_HPvector(0, 0, 0), 10);
+		Entity *b = MakeEntity(make_HPvector(100, 0, 0), 10);
+		Entity *c = MakeShipLike(make_HPvector(1000, 0, 0), 10);
 		SetSortedEntities(u, { a, b, c });
 
 		// No predicate is every entity; no entity counts from the origin; the reference itself never counts.
@@ -748,10 +748,10 @@ OO_TEST(slice15FindOneAndNearest)
 	@autoreleasepool
 	{
 		Universe *u = NewUniverse();
-		cxx::Entity *a = MakeEntity(make_HPvector(0, 0, 0), 10);
-		cxx::Entity *b = MakeEntity(make_HPvector(300, 0, 0), 10);
-		cxx::Entity *c = MakeShipLike(make_HPvector(200, 0, 0), 10);
-		cxx::Entity *d = MakeShipLike(make_HPvector(-500, 0, 0), 10);
+		Entity *a = MakeEntity(make_HPvector(0, 0, 0), 10);
+		Entity *b = MakeEntity(make_HPvector(300, 0, 0), 10);
+		Entity *c = MakeShipLike(make_HPvector(200, 0, 0), 10);
+		Entity *d = MakeShipLike(make_HPvector(-500, 0, 0), 10);
 		SetSortedEntities(u, { a, b, c, d });
 		double limit = 250;
 
@@ -900,10 +900,10 @@ OO_TEST(slice17UpdateOff)
 		u->no_update = YES;
 		u->universal_time = 5.0;
 		u->time_delta = 0.5;
-		cxx::Entity *dead = nil;
+		Entity *dead = nil;
 		@autoreleasepool	// the making's autoreleases drain here, as +alloc made none (bead oo-j12i2)
 		{
-			dead = oo::RetainEntity(oo::MadeEntity(oo::makeRef<cxx::Entity>()));
+			dead = oo::RetainEntity(oo::MadeEntity(oo::makeRef<Entity>()));
 			u->entitiesDeadThisUpdate.emplace_back(dead);	// held C++ entities since bead oo-9ht.39.26
 		}
 		oo::ReleaseEntity(dead);
@@ -947,18 +947,18 @@ OO_TEST(slice17Settings)
 // and run on the unconverted class first. The x, y and z lists are linked by hand in one order.
 namespace {
 
-void LinkLists(Universe *u, std::initializer_list<cxx::Entity *> list)
+void LinkLists(Universe *u, std::initializer_list<Entity *> list)
 {
-	cxx::Entity *previous = nil;
-	for (cxx::Entity *e : list)
+	Entity *previous = nil;
+	for (Entity *e : list)
 	{
-		cxx::Entity *part = e;
+		Entity *part = e;
 		part->x_previous = part->y_previous = part->z_previous = previous;
 		part->x_next = part->y_next = part->z_next = nil;
 		if (previous != nil)  previous->x_next = previous->y_next = previous->z_next = part;
 		previous = e;
 	}
-	cxx::Entity *first = list.size() > 0 ? *list.begin() : nil;
+	Entity *first = list.size() > 0 ? *list.begin() : nil;
 	u->x_list_start = u->y_list_start = u->z_list_start = first;
 }
 
@@ -970,12 +970,12 @@ OO_TEST(slice18FilterSortedLists)
 	@autoreleasepool
 	{
 		Universe *u = NewUniverse();
-		cxx::Entity *a = MakeEntity(make_HPvector(0, 0, 0), 10);
-		cxx::Entity *ghost = oo::MadeEntity(oo::makeRef<Slice14GhostEntity>());
+		Entity *a = MakeEntity(make_HPvector(0, 0, 0), 10);
+		Entity *ghost = oo::MadeEntity(oo::makeRef<Slice14GhostEntity>());
 		ghost->setPosition(make_HPvector(0, 0, 5));
 		ghost->setCollisionRadius(10);
-		cxx::Entity *b = MakeEntity(make_HPvector(0, 0, 15), 10);
-		cxx::Entity *c = MakeEntity(make_HPvector(0, 0, 1000), 10);
+		Entity *b = MakeEntity(make_HPvector(0, 0, 15), 10);
+		Entity *c = MakeEntity(make_HPvector(0, 0, 1000), 10);
 		a->collision_chain = c;	// stale chains are cleared
 		c->collision_chain = a;
 		LinkLists(u, { a, ghost, b, c });
@@ -1324,8 +1324,8 @@ OO_TEST(slice25DoRemoveEntity)
 	@autoreleasepool
 	{
 		Universe *u = NewUniverse();
-		cxx::Entity *a = MakeEntity(make_HPvector(0, 0, 0), 1);
-		cxx::Entity *b = MakeEntity(make_HPvector(5, 0, 0), 1);
+		Entity *a = MakeEntity(make_HPvector(0, 0, 0), 1);
+		Entity *b = MakeEntity(make_HPvector(5, 0, 0), 1);
 		SetSortedEntities(u, { a, b });
 		a->zero_index = 0;
 		b->zero_index = 1;

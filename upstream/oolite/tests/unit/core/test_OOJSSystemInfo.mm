@@ -233,7 +233,7 @@ std::optional<std::string> OOScript::name()					{ return std::nullopt; }
 std::optional<std::string> OOScript::scriptDescription()		{ return std::nullopt; }
 std::optional<std::string> OOScript::version()				{ return std::nullopt; }
 bool OOScript::requiresTickle()								{ return false; }
-void OOScript::runWithTarget(cxx::Entity *)						{}
+void OOScript::runWithTarget(Entity *)						{}
 bool OOScript::callMethod(ooscript::PropertyId, ooscript::Context, ooscript::Value *, int, ooscript::Value *)	{ return false; }
 std::string OOScript::className() const						{ return "OOScript"; }
 std::string OOScript::description() const						{ return "<OOScript>"; }
@@ -272,11 +272,6 @@ std::optional<std::string> StationEntity::getMarketScriptName()	{ std::abort(); 
 OOCargoQuantity StationEntity::getMarketCapacity()				{ std::abort(); }
 bool StationEntity::getMarketMonitored()						{ std::abort(); }
 
-// Link stub: a station's Objective-C object, which only a commodity script for a station is given.
-@class Entity;
-namespace cxx { class Entity; }
-namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
-::Entity *oo::ToObjC(cxx::Entity *)	{ std::abort(); }
 
 
 // The expander: "<string>".

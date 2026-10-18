@@ -83,7 +83,7 @@ static int sNativeDeallocs = 0;
 // Objective-C subclass until bead oo-j12i2: a C++ one overriding the virtual members its selectors
 // became; its -isShip, -isSubEntity and -status answers are the C++ entity's own flags and status,
 // which the predicates read for a C++ entity, set where the test set its ivars.
-class TestScriptEntity : public cxx::Entity
+class TestScriptEntity : public Entity
 {
 public:
 	bool isVisibleToScripts() override  { return _scriptVisible; }

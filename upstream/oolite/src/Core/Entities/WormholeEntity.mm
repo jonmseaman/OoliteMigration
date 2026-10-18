@@ -658,7 +658,7 @@ bool WormholeEntity::canCollide()
 
 
 // The other entity's -isEffect, as the particle system asks it (bead oo-9ht.39.20): [nil isEffect] answered NO.
-bool WormholeEntity::checkCloseCollisionWith(cxx::Entity *otherEntity)
+bool WormholeEntity::checkCloseCollisionWith(Entity *otherEntity)
 {
 	return otherEntity == nullptr || !otherEntity->isEffect();
 }
@@ -893,7 +893,7 @@ bool WormholeEntity::isVisibleToScripts()
 }
 
 
-oo::PList WormholeEntityShipsInTransit(cxx::Entity *entity)
+oo::PList WormholeEntityShipsInTransit(Entity *entity)
 {
 	WormholeEntity *wormhole = dynamic_cast<WormholeEntity *>(entity);	// the C++ entity (bead oo-w9pi2; was its object)
 	return (wormhole != nullptr) ? wormhole->getShipsInTransit() : oo::PList();

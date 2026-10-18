@@ -275,7 +275,7 @@ static bool JSVisualEffectGetVisualEffectEntity(ooscript::Context context, ooscr
 	OOJS_PROFILE_ENTER
 	
 	bool						result;
-	cxx::Entity					*entity = nullptr;	// the slot holds the C++ entity (bead oo-9ht.39.3)
+	Entity					*entity = nullptr;	// the slot holds the C++ entity (bead oo-9ht.39.3)
 	
 	if (outEntity == NULL)  return false;
 	*outEntity = nil;

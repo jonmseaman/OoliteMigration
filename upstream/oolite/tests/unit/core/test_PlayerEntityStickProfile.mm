@@ -93,7 +93,7 @@ void SetUp()
 	(void)oo::Defaults::standard();
 
 	gOOPlayer = NewTestPlayer<StickProfileTestPlayer>();
-	gOOPlayer->cxx::Entity::setStatus(STATUS_DOCKED);	// the root's: what the Objective-C stand-in's -status answered
+	gOOPlayer->Entity::setStatus(STATUS_DOCKED);	// the root's: what the Objective-C stand-in's -status answered
 	gOOJSMainThreadContext = ooscript::newContext(ooscript::newRuntime(8u * 1024u * 1024u), 8192);
 }
 

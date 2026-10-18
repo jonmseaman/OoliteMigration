@@ -166,11 +166,6 @@ std::optional<std::string> StationEntity::getMarketScriptName()	{ std::abort(); 
 OOCargoQuantity StationEntity::getMarketCapacity()				{ std::abort(); }
 bool StationEntity::getMarketMonitored()						{ std::abort(); }
 
-// Link stub: a station's Objective-C object, which only a commodity script for a station is given.
-@class Entity;
-namespace cxx { class Entity; }
-namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
-::Entity *oo::ToObjC(cxx::Entity *)	{ std::abort(); }
 
 
 // The expander: "<string>".

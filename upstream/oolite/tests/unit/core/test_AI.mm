@@ -154,9 +154,8 @@ void OOLogOutdent(void)		{ oo::log::outdent(); }
 	classes are declared as Entity.h and ShipEntity.h declare them (the test imports neither), and
 	the part answers from its object's fields, as the object's selectors did.
 */
-@class Entity;
+@class TestEntityObject;
 
-namespace cxx {
 class Entity : public oo::RefCounted
 {
 public:
@@ -164,11 +163,10 @@ public:
 	OOUniversalID getUniversalID();
 	bool getIsPlayer();
 
-	::Entity *_object = nil;	// not retained
+	::TestEntityObject *_object = nil;	// not retained
 };
-}	// namespace cxx
 
-class ShipEntity : public cxx::Entity
+class ShipEntity : public Entity
 {
 public:
 	bool getReportAIMessages();
@@ -176,17 +174,18 @@ public:
 	void setAIScript(const std::string &aiString);
 };
 
-@interface Entity: OOObject	// the AI holds its owner's C++ part weakly since bead oo-9ht.73
+__attribute__((objc_runtime_name("Entity")))
+@interface TestEntityObject: OOObject	// the AI holds its owner's C++ part weakly since bead oo-9ht.73
 {
 @public
-	oo::Ref<cxx::Entity> _cxxEntity;
+	oo::Ref<Entity> _cxxEntity;
 }
 @end
 
-@implementation Entity
+@implementation TestEntityObject
 @end
 
-@interface TestShip: Entity
+@interface TestShip: TestEntityObject
 {
 @public
 	OOUniversalID				_id;
@@ -253,27 +252,27 @@ public:
 @end
 
 
-cxx::Entity::~Entity() = default;
-OOUniversalID cxx::Entity::getUniversalID()					{ return static_cast<TestShip *>(_object)->_id; }
-bool cxx::Entity::getIsPlayer()								{ return static_cast<TestShip *>(_object)->_isPlayer; }
+Entity::~Entity() = default;
+OOUniversalID Entity::getUniversalID()					{ return static_cast<TestShip *>(_object)->_id; }
+bool Entity::getIsPlayer()								{ return static_cast<TestShip *>(_object)->_isPlayer; }
 bool ShipEntity::getReportAIMessages()						{ return false; }
 std::optional<std::string> ShipEntity::getName()			{ return std::string("Test ship"); }
 void ShipEntity::setAIScript(const std::string &aiString)	{ static_cast<TestShip *>(_object)->_script = aiString; }
 
-namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }	// Entity+ObjCBridge.mm's, which the test does not link
-::Entity *oo::ToObjC(cxx::Entity *entity)  { return entity != nullptr ? entity->_object : nil; }
+namespace oo { ::TestEntityObject *ToObjC(Entity *entity); }	// Entity+ObjCBridge.mm's, which the test does not link
+::TestEntityObject *oo::ToObjC(Entity *entity)  { return entity != nullptr ? entity->_object : nil; }
 #import "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
 
 // OOEntityCalledByName.mm's (bead oo-9ht.39.7.1), which the test does not link: the test ship has
 // no C++ table, so every name goes to its object, the path that file takes for an untabled name.
-bool oo::EntityRespondsToName(cxx::Entity *entity, const std::string &name)
+bool oo::EntityRespondsToName(Entity *entity, const std::string &name)
 {
-	::Entity *object = oo::ToObjC(entity);
+	::TestEntityObject *object = oo::ToObjC(entity);
 	return object != nil && [object respondsToSelector:OOSelectorFromName(name.c_str())];
 }
-oo::PList oo::CallEntityByName(cxx::Entity *entity, const std::string &name)  { return entity != nullptr ? OOCallByName(oo::ToObjC(entity), OOSelectorFromName(name.c_str())) : oo::PList(); }
-oo::PList oo::CallEntityByName(cxx::Entity *entity, const std::string &name, const std::string &argument)  { return entity != nullptr ? OOCallByName(oo::ToObjC(entity), OOSelectorFromName(name.c_str()), argument) : oo::PList(); }
-oo::PList oo::CallEntityByName(cxx::Entity *entity, const std::string &name, const oo::PList &argument)  { return entity != nullptr ? OOCallByName(oo::ToObjC(entity), OOSelectorFromName(name.c_str()), argument) : oo::PList(); }
+oo::PList oo::CallEntityByName(Entity *entity, const std::string &name)  { return entity != nullptr ? OOCallByName(oo::ToObjC(entity), OOSelectorFromName(name.c_str())) : oo::PList(); }
+oo::PList oo::CallEntityByName(Entity *entity, const std::string &name, const std::string &argument)  { return entity != nullptr ? OOCallByName(oo::ToObjC(entity), OOSelectorFromName(name.c_str()), argument) : oo::PList(); }
+oo::PList oo::CallEntityByName(Entity *entity, const std::string &name, const oo::PList &argument)  { return entity != nullptr ? OOCallByName(oo::ToObjC(entity), OOSelectorFromName(name.c_str()), argument) : oo::PList(); }
 
 
 namespace {

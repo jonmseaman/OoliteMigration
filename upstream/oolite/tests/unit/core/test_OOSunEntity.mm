@@ -115,7 +115,7 @@ void SetUp()
 
 // --- Ivars the test reads, and nothing else ---------------------------------------------------------
 
-Vector CameraRelativePosition(cxx::Entity *e)	{ return e->cameraRelativePosition; }	// the C++ sun since bead oo-9ht.111
+Vector CameraRelativePosition(Entity *e)	{ return e->cameraRelativePosition; }	// the C++ sun since bead oo-9ht.111
 
 // --------------------------------------------------------------------------------------------------
 
@@ -162,7 +162,7 @@ OO_TEST(made)
 	{
 		SetUp();
 		OOSunEntity *sun = RedSun();
-		OO_CHECK(sun != nullptr && dynamic_cast<OOSunEntity *>(static_cast<cxx::Entity *>(sun)) != nullptr);
+		OO_CHECK(sun != nullptr && dynamic_cast<OOSunEntity *>(static_cast<Entity *>(sun)) != nullptr);
 		OO_CHECK(sun->radius() == 1000.0 && sun->collisionRadius() == 1000.0f);
 		OO_CHECK(sun->name() == std::optional<std::string>("Sol"));
 		OO_CHECK(sun->planetType() == STELLAR_TYPE_SUN);
@@ -319,7 +319,7 @@ OO_TEST(facade)
 		SetUp();
 		OOSunEntity *sun = RedSun();
 		// Its Objective-C object is the root's facade since bead oo-9ht.111 (amendment oo-9ht.107).
-		cxx::Entity *object = sun;
+		Entity *object = sun;
 		OO_CHECK(object != nil);	// (and its object's class, the root facade: retired with the facade, bead oo-dpyk8, under oo-9n5p9)
 		// A C++ entity (amendment oo-0mxi), not an Objective-C entity's adapter.
 		OO_CHECK(dynamic_cast<OOSunEntity *>(object) == sun);
@@ -337,7 +337,7 @@ OO_TEST(jsExtensions)
 		OOSunEntity *sun = RedSun();
 		ooscript::ClassDef *jsClass = nullptr, *expectedClass = nullptr;
 		ooscript::Object prototype = nullptr, expectedPrototype = nullptr;
-		cxx::Entity *object = sun;	// what the engine asks (the root's facade since bead oo-9ht.111)
+		Entity *object = sun;	// what the engine asks (the root's facade since bead oo-9ht.111)
 		OOJSEntityGetJSClass(object, &jsClass, &prototype);
 		OOJSSunGetJSClass(&expectedClass, &expectedPrototype);
 		OO_CHECK(jsClass != nullptr && jsClass == expectedClass && prototype == expectedPrototype);

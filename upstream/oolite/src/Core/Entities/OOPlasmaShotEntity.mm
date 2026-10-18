@@ -86,7 +86,7 @@ bool OOPlasmaShotEntity::canCollide()
 
 
 // The other entity's members (its object's until bead oo-zwnvp); null answers as a message to nil did.
-bool OOPlasmaShotEntity::checkCloseCollisionWith(cxx::Entity *otherEntity)
+bool OOPlasmaShotEntity::checkCloseCollisionWith(Entity *otherEntity)
 {
 	return ((otherEntity != nullptr ? otherEntity->rootShipEntity() : nullptr) != ownerEntity()) && !(otherEntity != nullptr && otherEntity->isEffect());
 }
@@ -108,7 +108,7 @@ void OOPlasmaShotEntity::update(double delta_t)
 	NSUInteger i, count = colliding.size();
 	for (i = 0; i < count; i++)
 	{
-		cxx::Entity *e = colliding[i].get();
+		Entity *e = colliding[i].get();
 		if ((e != nullptr ? e->rootShipEntity() : nullptr) != ownerEntity())	// what [e rootShipEntity] != -owner compared
 		{
 			// we're going to force the weapon id to be a phantom equipment key so there is something for 
@@ -117,7 +117,7 @@ void OOPlasmaShotEntity::update(double delta_t)
 			if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(this);
 			
 			// Spawn a plasma burst.
-			cxx::Entity *burst = oo::MadeEntity(OOPlasmaBurstEntity::burstWithPosition(getPosition()));
+			Entity *burst = oo::MadeEntity(OOPlasmaBurstEntity::burstWithPosition(getPosition()));
 			if (UNIVERSE != nullptr)  UNIVERSE->addEntity(burst);
 		}
 	}

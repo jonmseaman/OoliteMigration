@@ -175,9 +175,9 @@ public:
 	// Slice 3: docking clearance, damage, allegiance and alert level.
 	bool collideWithShip(::ShipEntity *other) override;
 	bool hasHostileTarget() override;
-	void takeEnergyDamage(double amount, cxx::Entity *ent, cxx::Entity *other, const std::string &weaponIdentifier) override;
+	void takeEnergyDamage(double amount, Entity *ent, Entity *other, const std::string &weaponIdentifier) override;
 	void adjustVelocity(Vector xVel) override;
-	void takeScrapeDamage(double amount, cxx::Entity *ent) override;
+	void takeScrapeDamage(double amount, Entity *ent) override;
 	void takeHeatDamage(double amount) override;
 	std::optional<std::string> getAllegiance();
 	void setAllegiance(const std::optional<std::string> &newAllegiance);
@@ -209,7 +209,7 @@ public:
 
 	// @private in Objective-C; still public (the tests read them), as the player's were after its
 	// facade went (ADR-0056 amendment oo-9ht.177 item 6)
-	oo::WeakSet<cxx::Entity>	_shipsOnHold = {};	// the ships' C++ parts, weakly (an OOWeakSet of their objects until bead oo-9ht.22.3)
+	oo::WeakSet<Entity>	_shipsOnHold = {};	// the ships' C++ parts, weakly (an OOWeakSet of their objects until bead oo-9ht.22.3)
 	::DockEntity				*player_reserved_dock = {};
 	double					last_launch_time = {};
 	double					approach_spacing = {};
@@ -276,7 +276,7 @@ inline ::StationEntity *ToStation(::ShipEntity *ship)
 }
 
 // The same of a C++ entity (what an entity's JS object holds since bead oo-9ht.39.3).
-inline ::StationEntity *ToStation(cxx::Entity *entity)
+inline ::StationEntity *ToStation(Entity *entity)
 {
 	return dynamic_cast<::StationEntity *>(entity);
 }

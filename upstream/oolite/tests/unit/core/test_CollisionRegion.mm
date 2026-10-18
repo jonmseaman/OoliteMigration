@@ -61,10 +61,10 @@ void SetUpTestPlayer()
 }
 
 
-cxx::Entity *MakeEntity(HPVector position, GLfloat radius)
+Entity *MakeEntity(HPVector position, GLfloat radius)
 {
 	SetUpTestPlayer();
-	cxx::Entity *entity = oo::MadeEntity(oo::makeRef<cxx::Entity>());
+	Entity *entity = oo::MadeEntity(oo::makeRef<Entity>());
 	entity->setPosition(position);
 	entity->setCollisionRadius(radius);
 	return entity;
@@ -84,7 +84,7 @@ oo::Ref<CollisionRegion> MakeUniverse()
 
 
 // The region an entity is filed in (the entity's C++ part holds it).
-CollisionRegion *RegionOf(cxx::Entity *entity)
+CollisionRegion *RegionOf(Entity *entity)
 {
 	return entity->getCollisionRegion();
 }
@@ -138,9 +138,9 @@ OO_TEST(entitiesAreFiled)
 	@autoreleasepool
 	{
 		oo::Ref<CollisionRegion> universe = MakeTree();
-		cxx::Entity *inner = MakeEntity(make_HPvector(1000, 0, 0), 5);
-		cxx::Entity *second = MakeEntity(make_HPvector(5000, 0, 0), 5);
-		cxx::Entity *distant = MakeEntity(make_HPvector(1.0e7, 0, 0), 5);
+		Entity *inner = MakeEntity(make_HPvector(1000, 0, 0), 5);
+		Entity *second = MakeEntity(make_HPvector(5000, 0, 0), 5);
+		Entity *distant = MakeEntity(make_HPvector(1.0e7, 0, 0), 5);
 
 		universe->clearEntityList();
 		OO_CHECK(universe->checkEntity(inner));
@@ -195,9 +195,9 @@ OO_TEST(shadowGeometry)
 		sunRef->position = make_HPvector(0, 0, 10000);
 		sunRef->collision_radius = 10;
 		OOSunEntity *sun = sunRef.get();
-		cxx::Entity *between = MakeEntity(make_HPvector(0, 0, 100), 50);
-		cxx::Entity *behind = MakeEntity(make_HPvector(0, 0, -100), 50);
-		cxx::Entity *small = MakeEntity(make_HPvector(0, 0, 100), 0.5f);
+		Entity *between = MakeEntity(make_HPvector(0, 0, 100), 50);
+		Entity *behind = MakeEntity(make_HPvector(0, 0, -100), 50);
+		Entity *small = MakeEntity(make_HPvector(0, 0, 100), 0.5f);
 		float value = 0;
 
 		OO_CHECK(shadowAtPointOcclusionToValue(kZeroHPVector, 1, between, sun, &value));
@@ -224,7 +224,7 @@ OO_TEST(cxxRegion)
 		OO_CHECK(universe->debugOut() == std::optional<std::string>("0:0:0:"));
 		OO_CHECK(EndsWith(*universe->descriptionComponents(), ", 2 subregions, 0 ents"));
 
-		cxx::Entity *entity = MakeEntity(make_HPvector(1.0e7, 0, 0), 5);
+		Entity *entity = MakeEntity(make_HPvector(1.0e7, 0, 0), 5);
 		OO_CHECK(universe->checkEntity(entity));
 		OO_CHECK(RegionOf(entity) == universe.get());
 		OO_CHECK(universe->collisionDescription() == "p0 - c0");

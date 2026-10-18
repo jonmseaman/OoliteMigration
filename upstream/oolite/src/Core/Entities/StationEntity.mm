@@ -954,7 +954,7 @@ std::vector<oo::EntityHold> StationEntity::dockSubEntities()
 	std::vector<oo::EntityHold> result;
 	for (const auto &subRef : getSubEntities())
 	{
-		cxx::Entity *sub = subRef.get();
+		Entity *sub = subRef.get();
 		if (sub == nullptr || !sub->isDock())  continue;	// -isDock
 		result.push_back(subRef);	// a dock, held
 	}
@@ -1072,7 +1072,7 @@ bool StationEntity::setUpSubEntities()
 #ifndef NDEBUG
 	for (const auto &subRef : getSubEntities())
 	{
-		cxx::Entity *sub = subRef.get();
+		Entity *sub = subRef.get();
 		if (!oo::EntityIsShip(sub))  continue;
 		::ShipEntity *subEntity = oo::ToShip(sub);
 		if ((subEntity != nullptr ? subEntity->getIsStation() : false))
@@ -1342,7 +1342,7 @@ void StationEntity::dumpSelfState()
 		
 		oo::log::indent();
 		unsigned		i = 1;
-		for (const oo::Ref<cxx::Entity> &shipRef : _shipsOnHold.allObjects())
+		for (const oo::Ref<Entity> &shipRef : _shipsOnHold.allObjects())
 		{
 			::ShipEntity *ship = oo::ToShip(shipRef.get());
 			OO_LOG("dumpState.stationEntity", "Nr {}: {} at distance {:g} with role: {}", i++, (ship != nullptr ? ship->getDisplayName() : std::optional<std::string>()).value_or("(null)"), HPdistance(getPosition(), (ship != nullptr ? ship->getPosition() : HPVector{})), (ship != nullptr ? ship->getPrimaryRole() : std::optional<std::string>()).value_or("(null)"));
@@ -1423,8 +1423,8 @@ void StationEntity::abortAllDockings()
 	}
 	
 	// -makeObjectsPerformSelector:withObject: of the live ships on hold, in order
-	for (const oo::Ref<cxx::Entity> &holdRef : _shipsOnHold.allObjects())  { if (oo::ToShip(holdRef.get()) != nullptr)  oo::ToShip(holdRef.get())->sendAIMessage("DOCKING_ABORTED"); }
-	for (const oo::Ref<cxx::Entity> &holdRef : _shipsOnHold.allObjects())
+	for (const oo::Ref<Entity> &holdRef : _shipsOnHold.allObjects())  { if (oo::ToShip(holdRef.get()) != nullptr)  oo::ToShip(holdRef.get())->sendAIMessage("DOCKING_ABORTED"); }
+	for (const oo::Ref<Entity> &holdRef : _shipsOnHold.allObjects())
 	{
 		::ShipEntity *hold = oo::ToShip(holdRef.get());
 		if (hold != nullptr)  hold->doScriptEvent(OOJSID("stationWithdrewDockingClearance"));
@@ -1451,7 +1451,7 @@ void StationEntity::abortAllDockings()
 
 void StationEntity::autoDockShipsOnHold()
 {
-	for (const oo::Ref<cxx::Entity> &shipRef : _shipsOnHold.allObjects())
+	for (const oo::Ref<Entity> &shipRef : _shipsOnHold.allObjects())
 	{
 		::ShipEntity *ship = oo::ToShip(shipRef.get());
 		pullInShipIfPermitted(ship);
@@ -2096,10 +2096,10 @@ bool StationEntity::hasHostileTarget()
 }
 
 
-void StationEntity::takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::Entity *otherPart, const std::string &weaponIdentifier)
+void StationEntity::takeEnergyDamage(double amount, Entity *entPart, Entity *otherPart, const std::string &weaponIdentifier)
 {
 	ShipEntity *self = this;
-	cxx::Entity *other = otherPart;
+	Entity *other = otherPart;
 	// stations must ignore friendly fire, otherwise the defenders' AI gets stuck.
 	BOOL			isFriend = NO;
 	::OOShipGroup		*group = this->group();
@@ -2152,7 +2152,7 @@ void StationEntity::adjustVelocity(Vector xVel)
 }
 
 
-void StationEntity::takeScrapeDamage(double amount, cxx::Entity *ent)
+void StationEntity::takeScrapeDamage(double amount, Entity *ent)
 {
 	// Stop damage if main station
 	if (this != (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr))  ShipEntity::takeScrapeDamage(amount, ent);

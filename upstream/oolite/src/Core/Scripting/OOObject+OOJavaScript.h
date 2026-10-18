@@ -96,12 +96,12 @@ bool OOJavaScriptEngineIsKindOfClass(id object, Class requiredClass);
 // What the entity predicates ask an entity (Entity and EntityOOJavaScriptExtensions.h) (amendment
 // oo-nge8 item 5). They take the C++ entity since bead oo-9ht.39.25 and ask what the root facade's
 // selectors forwarded to; an Objective-C entity (a test's stand-in) is still messaged.
-namespace cxx { class Entity; }
-bool OOJavaScriptEngineIsVisibleToScripts(cxx::Entity *entity);
-bool OOJavaScriptEngineIsShip(cxx::Entity *entity);
-bool OOJavaScriptEngineIsSubEntity(cxx::Entity *entity);
-bool OOJavaScriptEngineIsPlanet(cxx::Entity *entity);
-OOEntityStatus OOJavaScriptEngineStatus(cxx::Entity *entity);
+class Entity;
+bool OOJavaScriptEngineIsVisibleToScripts(Entity *entity);
+bool OOJavaScriptEngineIsShip(Entity *entity);
+bool OOJavaScriptEngineIsSubEntity(Entity *entity);
+bool OOJavaScriptEngineIsPlanet(Entity *entity);
+OOEntityStatus OOJavaScriptEngineStatus(Entity *entity);
 /*	Inside a catch (...) handler: true, with the exception's name and reason, if the exception
 	being handled is an OOException (what @catch (OOException *) caught); false for anything else,
 	which the handler rethrows.

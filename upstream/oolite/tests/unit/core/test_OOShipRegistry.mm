@@ -45,8 +45,8 @@ class Universe;
 class PlayerEntity;
 PlayerEntity *gOOPlayer = nullptr;
 #include "OOEntityEnums.h"
-namespace cxx { class Entity { public: OOEntityStatus status(); }; }	// as Entity.h declares it (PLAYER is C++ since bead oo-9ht.177)
-OOEntityStatus cxx::Entity::status()  { std::abort(); }
+class Entity { public: OOEntityStatus status(); };
+OOEntityStatus Entity::status()  { std::abort(); }
 Universe *gSharedUniverse = nil;
 
 // UNIVERSE stays nil here, so the registry's guarded call never reaches it; the stand-in only links

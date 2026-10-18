@@ -151,7 +151,7 @@ std::optional<std::string> OOScript::name()					{ return std::nullopt; }
 std::optional<std::string> OOScript::scriptDescription()		{ return std::nullopt; }
 std::optional<std::string> OOScript::version()				{ return std::nullopt; }
 bool OOScript::requiresTickle()								{ return false; }
-void OOScript::runWithTarget(cxx::Entity *)						{}
+void OOScript::runWithTarget(Entity *)						{}
 bool OOScript::callMethod(ooscript::PropertyId, ooscript::Context, ooscript::Value *, int, ooscript::Value *)	{ return false; }
 std::string OOScript::className() const						{ return "OOScript"; }
 std::string OOScript::description() const						{ return "<OOScript>"; }
@@ -173,15 +173,13 @@ oo::Ref<OOScript> OOScript::jsScriptFromFileNamed(const std::string &fileName, c
 // PLAYER: C++ since bead oo-9ht.177 deleted the Objective-C player this stood in for: the members
 // the code under test calls, declared as the game headers declare them (the test imports none
 // that defines the classes), with the stand-in's answers. The ship is C++ since bead oo-9ht.144.
-namespace cxx {
 class Entity
 {
 public:
 
 };
-}	// namespace cxx
 
-class ShipEntity : public cxx::Entity
+class ShipEntity : public Entity
 {
 public:
 	OOFuelQuantity getFuel();

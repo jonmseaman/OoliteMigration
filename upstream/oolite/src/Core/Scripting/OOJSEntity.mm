@@ -211,12 +211,12 @@ void InitOOJSEntity(ooscript::Context context, ooscript::Object global)
 // The holder's glue (OOJSEntityHolder.h): the entity's own, while it lives.
 ooscript::Value OOJSEntityHolder::jsValueInContext(ooscript::Context context)
 {
-	cxx::Entity *held = entity();
+	Entity *held = entity();
 	return (held != nullptr) ? OOJSValueFromCxxObject(context, held) : ooscript::nullValue();
 }
 
 
-// OOObject's -oo_clearJSSelf:, which the facade did not override, did nothing (cxx::Entity's
+// OOObject's -oo_clearJSSelf:, which the facade did not override, did nothing (Entity's
 // clearJSSelf() too): the entity's JS object is a GC root while the entity keeps it.
 void OOJSEntityHolder::clearJSSelf(ooscript::Object /*selfVal*/)
 {
@@ -225,7 +225,7 @@ void OOJSEntityHolder::clearJSSelf(ooscript::Object /*selfVal*/)
 
 std::optional<std::string> OOJSEntityHolder::jsDescription()
 {
-	cxx::Entity *held = entity();
+	Entity *held = entity();
 	return (held != nullptr) ? held->jsDescription() : std::nullopt;
 }
 
@@ -239,7 +239,7 @@ bool OOJSEntityToString(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 oo::PList OOJSEntityObjectConverter(ooscript::Context context, ooscript::Object object)
 {
 	OOJSEntityHolder *holder = static_cast<OOJSEntityHolder *>(static_cast<oo::RefCounted *>(ooscript::getPrivate(context, object)));
-	cxx::Entity *entity = (holder != nullptr) ? holder->entity() : nullptr;
+	Entity *entity = (holder != nullptr) ? holder->entity() : nullptr;
 	return oo::EntityObjectNode(entity);	// nil: a null PList
 }
 
@@ -247,7 +247,7 @@ oo::PList OOJSEntityObjectConverter(ooscript::Context context, ooscript::Object 
 HPVector OOJSEntityPositionOfJSObject(ooscript::Context context, ooscript::Object object)
 {
 	OOJSEntityHolder *holder = static_cast<OOJSEntityHolder *>(static_cast<oo::RefCounted *>(ooscript::getPrivate(context, object)));
-	cxx::Entity *entity = (holder != nullptr) ? holder->entity() : nullptr;
+	Entity *entity = (holder != nullptr) ? holder->entity() : nullptr;
 	return entity != nullptr ? entity->getPosition() : HPVector{};	// zero for none, as the message to nil
 }
 
@@ -255,12 +255,12 @@ HPVector OOJSEntityPositionOfJSObject(ooscript::Context context, ooscript::Objec
 Quaternion OOJSEntityOrientationOfJSObject(ooscript::Context context, ooscript::Object object)
 {
 	OOJSEntityHolder *holder = static_cast<OOJSEntityHolder *>(static_cast<oo::RefCounted *>(ooscript::getPrivate(context, object)));
-	cxx::Entity *entity = (holder != nullptr) ? holder->entity() : nullptr;
+	Entity *entity = (holder != nullptr) ? holder->entity() : nullptr;
 	return entity != nullptr ? entity->getOrientation() : Quaternion{};	// zero for none, as the message to nil
 }
 
 
-cxx::Entity *OOJSEntityFromJSValue(ooscript::Context context, ooscript::Value value)
+Entity *OOJSEntityFromJSValue(ooscript::Context context, ooscript::Value value)
 {
 	if (!ooscript::isObject(value))  return nullptr;
 	ooscript::Object object = ooscript::toObject(value);
@@ -270,7 +270,7 @@ cxx::Entity *OOJSEntityFromJSValue(ooscript::Context context, ooscript::Value va
 }
 
 
-bool JSValueToEntity(ooscript::Context context, ooscript::Value value, cxx::Entity **outEntity)
+bool JSValueToEntity(ooscript::Context context, ooscript::Value value, Entity **outEntity)
 {
 	if (ooscript::isObjectOrNull(value))
 	{
@@ -281,7 +281,7 @@ bool JSValueToEntity(ooscript::Context context, ooscript::Value value, cxx::Enti
 }
 
 
-bool EntityFromArgumentList(ooscript::Context context, const std::optional<std::string> &scriptClass, const std::optional<std::string> &function, unsigned argc, ooscript::Value *argv, cxx::Entity **outEntity, unsigned *outConsumed)
+bool EntityFromArgumentList(ooscript::Context context, const std::optional<std::string> &scriptClass, const std::optional<std::string> &function, unsigned argc, ooscript::Value *argv, Entity **outEntity, unsigned *outConsumed)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -324,8 +324,8 @@ static bool EntityGetProperty(Context cx, Object obj, PropertyId propID, Value *
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	cxx::Entity					*cxxEntity = nullptr;
-	cxx::Entity					*result = nullptr;
+	Entity					*cxxEntity = nullptr;
+	Entity					*result = nullptr;
 	
 	if (EXPECT_NOT(!OOJSEntityGetEntity(context, thisObj, &cxxEntity))) return false;
 	if (OOIsStaleEntity(cxxEntity))
@@ -453,7 +453,7 @@ static bool EntitySetProperty(Context cx, Object obj, PropertyId propID, bool /*
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	cxx::Entity			*cxxEntity = nullptr;
+	Entity			*cxxEntity = nullptr;
 	double				fValue;
 	HPVector				hpvValue;
 	Quaternion			qValue;
@@ -544,7 +544,7 @@ static bool EntityDumpState(ooscript::Context context, ooscript::CallArgs &oojsA
 {
 	OOJS_PROFILE_ENTER
 	
-	cxx::Entity *thisEnt = nullptr;
+	Entity *thisEnt = nullptr;
 	OOJSEntityGetEntity(context, OOJS_THIS, &thisEnt);
 	if (thisEnt != nullptr)  thisEnt->dumpState();	// the C++ member, which the object's -dumpState called (bead oo-9ht.39.8.2)
 	

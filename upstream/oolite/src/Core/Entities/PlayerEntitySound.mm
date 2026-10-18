@@ -514,7 +514,7 @@ void PlayerEntity::updateAfterburnerSound()
 		which = !which;
 		
 		// and swap sounds in 1.25s time (a deferred call on the C++ player since bead oo-9ht.39.7.3; by name on its object before)
-		oo::ScheduleEntityCall(this, [](cxx::Entity *entity) { if (PlayerEntity *player = dynamic_cast<PlayerEntity *>(entity))  player->updateAfterburnerSound(); }, 1.25);
+		oo::ScheduleEntityCall(this, [](Entity *entity) { if (PlayerEntity *player = dynamic_cast<PlayerEntity *>(entity))  player->updateAfterburnerSound(); }, 1.25);
 	}
 }
 

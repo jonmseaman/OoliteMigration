@@ -61,7 +61,7 @@ MA 02110-1301, USA.
 	with oo::NewEntityFacade (its object is the root Entity's facade) and holds it as the C++ class;
 	its OOStellarBody answers are members (OOStellarBodyRadius() asks them for an Objective-C object).
 */
-class OOSunEntity : public cxx::Entity
+class OOSunEntity : public Entity
 {
 public:
 	/*	-initSunWithColor:andDictionary:'s body after [super init] (the constructor ran Entity's),

@@ -52,7 +52,7 @@ OOECMBlastEntity::OOECMBlastEntity(ShipEntity *ship)
 {
 	_blastsRemaining = ECM_PULSE_COUNT;
 	_nextBlast = ECM_PULSE_INTERVAL;
-	_ship = oo::WeakRef<cxx::Entity>(ship);
+	_ship = oo::WeakRef<Entity>(ship);
 	
 	Entity::setPosition((ship != nullptr ? ship->getPosition() : HPVector{}));
 	

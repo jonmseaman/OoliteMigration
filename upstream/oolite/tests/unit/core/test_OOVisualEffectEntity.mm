@@ -77,7 +77,7 @@ T *NewTestPlayer()
 class TestUniverse : public Universe
 {
 public:
-	cxx::Entity *newVisualEffectWithName(const std::string &effectKey) override	// the effect, its object +1 (beads oo-9ht.165, oo-9ht.39.26)
+	Entity *newVisualEffectWithName(const std::string &effectKey) override	// the effect, its object +1 (beads oo-9ht.165, oo-9ht.39.26)
 	{
 		if (effectKey == "missing")  return nullptr;
 		return oo::NewVisualEffect(effectKey, oo::PList());
@@ -157,7 +157,7 @@ OOVisualEffectEntity *Effect(const std::string &key, const oo::PList &definition
 }
 
 
-GLfloat NoDrawDistance(cxx::Entity *e)	{ return e->no_draw_distance; }
+GLfloat NoDrawDistance(Entity *e)	{ return e->no_draw_distance; }
 
 }	// namespace
 
@@ -229,7 +229,7 @@ OO_TEST(flasherSubentities)
 		OO_CHECK(effect->visualEffectSubEntityEnumerator().has_value() && effect->visualEffectSubEntityEnumerator()->empty());
 		if (flashers.size() != 1)  return;
 
-		cxx::Entity *flasher = flashers[0].get();
+		Entity *flasher = flashers[0].get();
 		OO_CHECK(effect->subEntities().size() == 1 && effect->subEntities()[0].get() == flasher);
 		OO_CHECK(flasher->owner() == effect);
 		OO_CHECK(flasher->getIsSubEntity());
@@ -276,7 +276,7 @@ OO_TEST(standardSubentities)
 		// owns the child (pending autoreleases are not ownership).
 		OOVisualEffectEntity *effect = nullptr;
 		std::vector<oo::EntityHold> effects;	// the subentities (bead oo-9ht.165; held C++ entities since bead oo-xn1j1)
-		cxx::Entity *effectObject = nil;
+		Entity *effectObject = nil;
 		@autoreleasepool
 		{
 			effectObject = oo::NewVisualEffect("parent", Dict({ { "subentities", oo::PList(std::move(subs)) } }));
@@ -291,7 +291,7 @@ OO_TEST(standardSubentities)
 		OO_CHECK_EQ(effect->flasherEnumerator().size(), 1u);
 		if (effects.size() != 1)  return;
 
-		cxx::Entity *childObject = effects[0].get();	// the child (its object until bead oo-dpyk8; bead oo-9ht.165), +0 and not autoreleased
+		Entity *childObject = effects[0].get();	// the child (its object until bead oo-dpyk8; bead oo-9ht.165), +0 and not autoreleased
 		OOVisualEffectEntity *child = oo::ToEffect(childObject);
 		OO_CHECK(child->effectKey() == std::optional<std::string>("child"));
 		OO_CHECK(Near(child->getPosition().y, 5.0));
@@ -459,7 +459,7 @@ OO_TEST(facadeContract)
 		OOVisualEffectEntity *cxxEffect = effect;	// the C++ class since bead oo-9ht.165
 		OO_CHECK(cxxEffect != nullptr);
 		OO_CHECK(oo::ToEffect(cxxEffect) == effect);
-		OO_CHECK(oo::ToEffect(static_cast<cxx::Entity *>(nil)) == nullptr);
+		OO_CHECK(oo::ToEffect(static_cast<Entity *>(nil)) == nullptr);
 		OO_CHECK(static_cast<OOVisualEffectEntity *>(nullptr) == nil);
 
 		OO_CHECK(cxxEffect->effectKey() == effect->effectKey());
@@ -515,7 +515,7 @@ OO_TEST(jsExtensions)
 		OOVisualEffectEntity *effect = Effect("js-effect", Dict({}));
 		ooscript::ClassDef *jsClass = nullptr, *expectedClass = nullptr;
 		ooscript::Object prototype = nullptr, expectedPrototype = nullptr;
-		cxx::Entity *object = effect;	// the engine asks the object (the root's category, since bead oo-9ht.165)
+		Entity *object = effect;	// the engine asks the object (the root's category, since bead oo-9ht.165)
 		OOJSEntityGetJSClass(object, &jsClass, &prototype);
 		OOJSVisualEffectGetJSClass(&expectedClass, &expectedPrototype);
 		OO_CHECK(jsClass != nullptr && jsClass == expectedClass && prototype == expectedPrototype);

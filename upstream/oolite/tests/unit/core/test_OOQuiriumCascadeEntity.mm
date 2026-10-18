@@ -56,23 +56,23 @@ T *NewTestPlayer()
 }
 
 
-static cxx::Entity *sRemoved = nil;
+static Entity *sRemoved = nil;
 
 
 // UNIVERSE: never initialised; records what is removed.
 class TestUniverse : public Universe
 {
 public:
-	bool removeEntity(cxx::Entity *entity) override	{ sRemoved = entity; return YES; }	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
+	bool removeEntity(Entity *entity) override	{ sRemoved = entity; return YES; }	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
 };
 
 
 // What the cascade collides with: records the damage it is dealt (an Objective-C subclass until bead
 // oo-j12i2; a C++ one overriding the member its selector became, recording the C++ entities).
-class TestVictim : public cxx::Entity
+class TestVictim : public Entity
 {
 public:
-	void takeEnergyDamage(double amount, cxx::Entity *ent, cxx::Entity *other, const std::string &weaponIdentifier) override
+	void takeEnergyDamage(double amount, Entity *ent, Entity *other, const std::string &weaponIdentifier) override
 	{
 		_damage = amount;
 		_from = ent;
@@ -81,8 +81,8 @@ public:
 	}
 
 	double			_damage = 0;
-	cxx::Entity		*_from = nullptr;
-	cxx::Entity		*_becauseOf = nullptr;
+	Entity		*_from = nullptr;
+	Entity		*_becauseOf = nullptr;
 	std::string		_weapon;
 };
 
@@ -94,7 +94,7 @@ namespace {
 
 // --- How a cascade is made, and nothing else --------------------------------------------------------
 
-cxx::Entity *MakeCascade(ShipEntity *ship)	{ return oo::MadeEntity(OOQuiriumCascadeEntity::quiriumCascadeFromShip(ship)); }
+Entity *MakeCascade(ShipEntity *ship)	{ return oo::MadeEntity(OOQuiriumCascadeEntity::quiriumCascadeFromShip(ship)); }
 
 // --------------------------------------------------------------------------------------------------
 
@@ -127,12 +127,12 @@ OO_TEST(fromShip)
 		SetUp();
 		OO_CHECK(MakeCascade(nil) == nil);
 
-		cxx::Entity *ship = oo::MadeEntity(oo::makeRef<::ShipEntity>());	// a C++ ship under its object (bead oo-9ht.144), never set up
-		cxx::Entity *shipOwner = oo::MadeEntity(oo::makeRef<cxx::Entity>());
+		Entity *ship = oo::MadeEntity(oo::makeRef<::ShipEntity>());	// a C++ ship under its object (bead oo-9ht.144), never set up
+		Entity *shipOwner = oo::MadeEntity(oo::makeRef<Entity>());
 		ship->setPosition(make_HPvector(5, 6, 7));
 		ship->setOwner(shipOwner);
 
-		cxx::Entity *cascade = MakeCascade(oo::ToShip(ship));
+		Entity *cascade = MakeCascade(oo::ToShip(ship));
 		OO_CHECK(cascade != nil);
 		OO_CHECK(HPvector_equal(cascade->getPosition(), make_HPvector(5, 6, 7)));
 		OO_CHECK(cascade->status() == STATUS_EFFECT && cascade->getScanClass() == CLASS_MINE);
@@ -154,10 +154,10 @@ OO_TEST(update)
 	@autoreleasepool
 	{
 		SetUp();
-		cxx::Entity *ship = oo::MadeEntity(oo::makeRef<::ShipEntity>());	// a C++ ship under its object (bead oo-9ht.144), never set up
-		cxx::Entity *shipOwner = oo::MadeEntity(oo::makeRef<cxx::Entity>());
+		Entity *ship = oo::MadeEntity(oo::makeRef<::ShipEntity>());	// a C++ ship under its object (bead oo-9ht.144), never set up
+		Entity *shipOwner = oo::MadeEntity(oo::makeRef<Entity>());
 		ship->setOwner(shipOwner);
-		cxx::Entity *cascade = MakeCascade(oo::ToShip(ship));
+		Entity *cascade = MakeCascade(oo::ToShip(ship));
 		TestVictim *victim = static_cast<TestVictim *>(oo::MadeEntity(oo::makeRef<TestVictim>()));
 		cascade->getCollidingEntities()->emplace_back(victim);
 

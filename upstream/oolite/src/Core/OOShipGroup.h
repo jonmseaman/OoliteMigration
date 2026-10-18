@@ -44,8 +44,8 @@ MA 02110-1301, USA.
 #include <vector>
 
 class ShipEntity;	// C++ since bead oo-9ht.144
-namespace cxx { class Entity; }	// the members are held as weak references to the ships' C++ parts (bead oo-9ht.22.1)
-@class Entity;	// the members' objects (a ship's object is the drawable's facade since bead oo-9ht.144)
+class Entity;	// the members are held as weak references to the ships' C++ parts (bead oo-9ht.22.1)
+class Entity;
 
 class OOShipGroupCursor;
 class OOShipGroupMembers;	// OOShipGroup.mm's range-for over the members
@@ -109,8 +109,8 @@ private:
 	// Weak references to the ships' C++ parts (bead oo-9ht.22.1; the ships' objects' weak-reference
 	// proxies before): each reads null exactly when the object's reference did, since the entity
 	// facade's -dealloc drops its part's weak references. _capacity slots, the first _count in use.
-	std::vector<oo::WeakRef<cxx::Entity>>	_members = {};
-	oo::WeakRef<cxx::Entity>	_leader = {};
+	std::vector<oo::WeakRef<Entity>>	_members = {};
+	oo::WeakRef<Entity>	_leader = {};
 	std::optional<std::string>	_name = {};
 	ooscript::Object		_jsSelf = {};	// The JS ShipGroup object proxy for this group.
 };

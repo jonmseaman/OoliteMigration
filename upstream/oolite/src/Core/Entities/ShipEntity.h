@@ -58,7 +58,7 @@ class OOFlasherEntity;	// C++ only since bead oo-9ht.107
 class OOExhaustPlumeEntity;	// C++ only since bead oo-9ht.110
 
 // Universe.h's, for the members of ShipEntityAI.mm's scans (ADR-0056 amendment oo-42dr item 3).
-typedef BOOL (*EntityFilterPredicate)(cxx::Entity *entity, void *parameter);	// the C++ entity since bead oo-9ht.39.23
+typedef BOOL (*EntityFilterPredicate)(Entity *entity, void *parameter);	// the C++ entity since bead oo-9ht.39.23
 
 #define MAX_TARGETS						24
 #define RAIDER_MAX_CARGO				5
@@ -243,7 +243,7 @@ public:
 
 	// The category SubEntityRelationship: other is a ship that is a subentity of this ship, and
 	// this ship agrees.
-	bool isShipWithSubEntityShip(cxx::Entity *other);
+	bool isShipWithSubEntityShip(Entity *other);
 
 	// Slice 2: set-up from the ship dictionary (cxx_setUpFromDictionary:).
 	bool setUpFromDictionary(const oo::PList &inShipDict);
@@ -285,7 +285,7 @@ public:
 	void setScriptedMisjumpRange(GLfloat newValue);
 	std::vector<oo::EntityHold> getSubEntities();
 	NSUInteger subEntityCount();
-	bool hasSubEntity(cxx::Entity *sub);
+	bool hasSubEntity(Entity *sub);
 	std::vector<oo::EntityHold> subEntityEnumerator();
 	std::vector<oo::EntityHold> shipSubEntities();
 	std::vector<oo::EntityHold> flasherEnumerator();	// the flashers' objects (the nearest façade left)
@@ -315,11 +315,11 @@ public:
 	bool isVisible() override;
 	bool isBeacon();
 	OOHUDBeaconIcon *beaconDrawable();	// borrowed (the protocol type until bead oo-7ae4p)
-	cxx::Entity *prevBeacon();	// C++ since bead oo-9ht.39.23
-	virtual cxx::Entity *nextBeacon();
-	cxx::Entity *nextBeaconEntity();	// nextBeacon(), null for none (bead oo-9ht.39.8.10)
-	void setPrevBeacon(cxx::Entity *beaconShip);
-	void setNextBeacon(cxx::Entity *beaconShip);
+	Entity *prevBeacon();	// C++ since bead oo-9ht.39.23
+	virtual Entity *nextBeacon();
+	Entity *nextBeaconEntity();	// nextBeacon(), null for none (bead oo-9ht.39.8.10)
+	void setPrevBeacon(Entity *beaconShip);
+	void setNextBeacon(Entity *beaconShip);
 	void setIsBoulder(bool flag);
 	bool isBoulder();
 	bool isMinable();
@@ -342,10 +342,10 @@ public:
 	bool suppressFlightNotifications();
 	OOScanClass getScanClass() override;
 	bool canCollide() override;
-	bool checkCloseCollisionWith(cxx::Entity *other) override;
+	bool checkCloseCollisionWith(Entity *other) override;
 	BoundingBox findSubentityBoundingBox();
 	Triangle absoluteIJKForSubentity();
-	void addSubentityToCollisionRadius(cxx::Entity *subent);
+	void addSubentityToCollisionRadius(Entity *subent);
 	::ShipEntity *launchPodWithCrew(const std::vector<oo::Ref<OOCharacter>> &podCrew);
 	bool validForAddToUniverse() override;
 
@@ -355,7 +355,7 @@ public:
 	// Slice 8: behaviour dispatch, attack response, equipment queries.
 	void processBehaviour(OOTimeDelta delta_t);
 	void noteFrustration(const std::string &context);
-	void respondToAttackFrom(cxx::Entity *from, cxx::Entity *other);
+	void respondToAttackFrom(Entity *from, Entity *other);
 	bool hasOneEquipmentItem(const std::string &itemKey, bool includeWeapons, bool loading);
 	bool hasOneEquipmentItemIncludingMissiles(const std::string &itemKey, bool includeMissiles, bool loading);
 	virtual bool hasPrimaryWeapon(OOWeaponType weaponType);
@@ -501,8 +501,8 @@ public:
 	bool hasAutoCloak();
 	void setAutoCloak(bool automatic);
 	bool isJammingScanning();
-	void addSubEntity(cxx::Entity *sub);	// an OOSubEntity (amendment oo-mvzmb item 5); the C++ entity since bead oo-9ht.39.23
-	void setOwner(cxx::Entity *who_owns_entity) override;
+	void addSubEntity(Entity *sub);	// an OOSubEntity (amendment oo-mvzmb item 5); the C++ entity since bead oo-9ht.39.23
+	void setOwner(Entity *who_owns_entity) override;
 	void applyThrust(double delta_t);
 	void orientationChanged() override;
 
@@ -531,7 +531,7 @@ public:
 	uint8_t maxEscortCount();
 	void setMaxEscortCount(uint8_t newCount);
 	NSUInteger turretCount();
-	cxx::Entity *proximityAlert();	// C++ since bead oo-9ht.39.23.2
+	Entity *proximityAlert();	// C++ since bead oo-9ht.39.23.2
 	void setProximityAlert(::ShipEntity *other);
 	std::optional<std::string> getName();
 	std::optional<std::string> getShipUniqueName();
@@ -572,7 +572,7 @@ public:
 	std::optional<std::string> jsClassName() override;	// StationEntity overrides
 	bool isVisibleToScripts() override;	// YES, as the Objective-C ShipEntity answered (bead oo-ak1km); StationEntity and DockEntity override with the same answer
 	virtual bool hasHostileTarget();	// PlayerEntity and StationEntity override
-	bool isHostileTo(cxx::Entity *entity);
+	bool isHostileTo(Entity *entity);
 	GLfloat getWeaponRange();
 	void setWeaponRange(GLfloat value);
 	void setWeaponDataFromType(OOWeaponType weapon_type);
@@ -590,15 +590,15 @@ public:
 	void setReportAIMessages(bool yn);
 	void transitionToAegisNone();
 	virtual ::OOPlanetEntity *findNearestPlanet();
-	cxx::Entity *findNearestStellarBody();	// an OOStellarBody (amendment oo-mvzmb item 5); the C++ entity since bead oo-9ht.39.23
+	Entity *findNearestStellarBody();	// an OOStellarBody (amendment oo-mvzmb item 5); the C++ entity since bead oo-9ht.39.23
 	::OOPlanetEntity *findNearestPlanetExcludingMoons();
 
 	// Slice 19: aegis, home and destination systems, status, crew, AI and ship script, fuel.
 	OOAegisStatus checkForAegis();
 	void forceAegisCheck();
 	bool withinStationAegis();
-	cxx::Entity *lastAegisLock();	// a planet or sun (amendment oo-mvzmb item 5), its C++ entity
-	void setLastAegisLock(cxx::Entity *lastAegisLock);	// C++ since bead oo-9ht.39.23.3
+	Entity *lastAegisLock();	// a planet or sun (amendment oo-mvzmb item 5), its C++ entity
+	void setLastAegisLock(Entity *lastAegisLock);	// C++ since bead oo-9ht.39.23.3
 	OOSystemID homeSystem();
 	OOSystemID destinationSystem();
 	void setHomeSystem(OOSystemID s);
@@ -694,11 +694,11 @@ public:
 	void dealMomentumWithinDesiredRange(double amount);
 	bool getIsHulk();
 	void setHulk(bool isNowHulk);
-	virtual void noteTakingDamage(double amount, cxx::Entity *entity, OOShipDamageType type);
-	void noteKilledBy(cxx::Entity *whom, OOShipDamageType type);
+	virtual void noteTakingDamage(double amount, Entity *entity, OOShipDamageType type);
+	void noteKilledBy(Entity *whom, OOShipDamageType type);
 
 	// Slice 22: destruction, rescaling, cargo debris, explosions, energy blast.
-	virtual void getDestroyedBy(cxx::Entity *whom, OOShipDamageType type);
+	virtual void getDestroyedBy(Entity *whom, OOShipDamageType type);
 	void rescaleBy(GLfloat factor) override;
 	void rescaleBy(GLfloat factor, bool writeToCache) override;
 	void releaseCargoPodsDebris();
@@ -716,7 +716,7 @@ public:
 	Vector positionOffsetForAlignment(const std::string &align);
 	virtual void becomeLargeExplosion(double factor);
 	virtual void collectBountyFor(::ShipEntity *other);
-	OOComparisonResult compareBeaconCodeWith(cxx::Entity *other);	// an OOBeaconEntity (amendment oo-mvzmb item 5); the C++ entity since bead oo-9ht.39.23
+	OOComparisonResult compareBeaconCodeWith(Entity *other);	// an OOBeaconEntity (amendment oo-mvzmb item 5); the C++ entity since bead oo-9ht.39.23
 	GLfloat weaponRecoveryTime();
 	virtual GLfloat laserHeatLevel();
 	virtual GLfloat laserHeatLevelAft();
@@ -734,26 +734,26 @@ public:
 	void checkScannerIgnoringUnpowered();
 	::ShipEntity * *scannedShips();
 	int numberOfScannedShips();
-	cxx::Entity *foundTarget();	// C++ since bead oo-9ht.39.23
-	virtual void setFoundTarget(cxx::Entity *targetEntity);
-	cxx::Entity *primaryAggressor();	// C++ since bead oo-9ht.39.23
-	void setPrimaryAggressor(cxx::Entity *targetEntity);
-	cxx::Entity *lastEscortTarget();	// C++ since bead oo-9ht.39.23.1
-	void setLastEscortTarget(cxx::Entity *targetEntity);
+	Entity *foundTarget();	// C++ since bead oo-9ht.39.23
+	virtual void setFoundTarget(Entity *targetEntity);
+	Entity *primaryAggressor();	// C++ since bead oo-9ht.39.23
+	void setPrimaryAggressor(Entity *targetEntity);
+	Entity *lastEscortTarget();	// C++ since bead oo-9ht.39.23.1
+	void setLastEscortTarget(Entity *targetEntity);
 
 	// Slice 24: target memory and validity, behaviour and destination accessors, distances, leading the target.
-	cxx::Entity *thankedShip();	// C++ since bead oo-9ht.39.23.1
-	void setThankedShip(cxx::Entity *targetEntity);
-	cxx::Entity *rememberedShip();
-	void setRememberedShip(cxx::Entity *targetEntity);
-	cxx::Entity *targetStation();	// the target station (or the mother an escort docks with), its C++ entity since bead oo-9ht.39.23.4 (its object before; ::StationEntity * until bead oo-9ht.175)
-	void setTargetStation(cxx::Entity *targetEntity);	// C++ since bead oo-9ht.39.23.4
-	virtual bool isValidTarget(cxx::Entity *target);	// C++ since bead oo-9ht.39.23
-	virtual void addTarget(cxx::Entity *targetEntity);
-	virtual void removeTarget(cxx::Entity *targetEntity);	// virtual: a test seam (amendment oo-9ht.107 item 6; test_EntityOOJavaScriptExtensions' ship overrides it since bead oo-9ht.144)
+	Entity *thankedShip();	// C++ since bead oo-9ht.39.23.1
+	void setThankedShip(Entity *targetEntity);
+	Entity *rememberedShip();
+	void setRememberedShip(Entity *targetEntity);
+	Entity *targetStation();	// the target station (or the mother an escort docks with), its C++ entity since bead oo-9ht.39.23.4 (its object before; ::StationEntity * until bead oo-9ht.175)
+	void setTargetStation(Entity *targetEntity);	// C++ since bead oo-9ht.39.23.4
+	virtual bool isValidTarget(Entity *target);	// C++ since bead oo-9ht.39.23
+	virtual void addTarget(Entity *targetEntity);
+	virtual void removeTarget(Entity *targetEntity);	// virtual: a test seam (amendment oo-9ht.107 item 6; test_EntityOOJavaScriptExtensions' ship overrides it since bead oo-9ht.144)
 	bool canStillTrackPrimaryTarget();
-	virtual cxx::Entity *primaryTarget();	// C++ since bead oo-9ht.39.23 (its object, typed id, before)
-	cxx::Entity *primaryTargetWithoutValidityCheck();
+	virtual Entity *primaryTarget();	// C++ since bead oo-9ht.39.23 (its object, typed id, before)
+	Entity *primaryTargetWithoutValidityCheck();
 	bool isFriendlyTo(::ShipEntity *otherShip);
 	::ShipEntity *shipHitByLaser();
 	void setShipHitByLaser(::ShipEntity *ship);
@@ -768,7 +768,7 @@ public:
 	HPVector distance_six(GLfloat dist);
 	HPVector distance_twelve(GLfloat dist, GLfloat offset);
 	void trackOntoTarget(double delta_t, GLfloat dp);
-	double ballTrackLeadingTarget(double delta_t, cxx::Entity *target);
+	double ballTrackLeadingTarget(double delta_t, Entity *target);
 
 	// Slice 25: evasive jink, primary and side target tracking.
 	void setEvasiveJink(GLfloat z);
@@ -788,13 +788,13 @@ public:
 	NSUInteger defenseTargetCount();
 	std::vector<oo::EntityHold> allDefenseTargets();
 	std::vector<oo::EntityHold> defenseTargets();
-	bool addDefenseTarget(cxx::Entity *target);	// C++ since bead oo-9ht.39.23
+	bool addDefenseTarget(Entity *target);	// C++ since bead oo-9ht.39.23
 	void validateDefenseTargets();
-	bool isDefenseTarget(cxx::Entity *target);
+	bool isDefenseTarget(Entity *target);
 	void removeAllDefenseTargets();
-	void removeDefenseTarget(cxx::Entity *target);
+	void removeDefenseTarget(Entity *target);
 	double rangeToPrimaryTarget();
-	double rangeToSecondaryTarget(cxx::Entity *target);
+	double rangeToSecondaryTarget(Entity *target);
 	double approachAspectToPrimaryTarget();
 	bool hasProximityAlertIgnoringTarget(bool ignore_target);
 
@@ -819,7 +819,7 @@ public:
 	bool fireSubentityLaserShot(double range);
 	bool fireDirectLaserShot(double range);
 	bool fireDirectLaserDefensiveShot();
-	bool fireDirectLaserShotAt(cxx::Entity *my_target);
+	bool fireDirectLaserShotAt(Entity *my_target);
 	std::vector<Vector> laserPortOffset(OOWeaponFacing direction);
 	bool fireLaserShotInDirection(OOWeaponFacing direction, const std::string &weaponIdentifier);
 	void adjustMissedShots(int delta);
@@ -830,7 +830,7 @@ public:
 	virtual ::ShipEntity *fireMissile();
 
 	// Slice 29: missile firing, ECM, cloak, cascade mine, escape capsule, cargo dumping.
-	::ShipEntity *fireMissileWithIdentifier(const std::optional<std::string> &requestedIdentifier, cxx::Entity *target);
+	::ShipEntity *fireMissileWithIdentifier(const std::optional<std::string> &requestedIdentifier, Entity *target);
 	bool isMissileFlagSet();
 	void setIsMissileFlag(bool newValue);
 	OOTimeDelta missileLoadTime();
@@ -861,10 +861,10 @@ public:
 	void scoopUpProcess(::ShipEntity *other, bool procEvents, bool procMessages);
 
 	// Slice 31: cascades, energy / scrape / heat damage, abandoning ship, docks, wormholes, witchspace.
-	bool cascadeIfAppropriateWithDamageAmount(double amount, cxx::Entity *owner);
-	void takeEnergyDamage(double amount, cxx::Entity *ent, cxx::Entity *other, const std::string &weaponIdentifier) override;
+	bool cascadeIfAppropriateWithDamageAmount(double amount, Entity *owner);
+	void takeEnergyDamage(double amount, Entity *ent, Entity *other, const std::string &weaponIdentifier) override;
 	bool abandonShip();
-	virtual void takeScrapeDamage(double amount, cxx::Entity *ent);
+	virtual void takeScrapeDamage(double amount, Entity *ent);
 	virtual void takeHeatDamage(double amount);
 	virtual void enterDock(::StationEntity *station);
 	virtual void leaveDock(::StationEntity *station);
@@ -911,7 +911,7 @@ public:
 	bool markForFines();
 	virtual bool isMining();
 	virtual void interpretAIMessage(const std::string &ms);
-	BoundingBox findBoundingBoxRelativeTo(cxx::Entity *other, Vector _i, Vector _j, Vector _k);
+	BoundingBox findBoundingBoxRelativeTo(Entity *other, Vector _i, Vector _j, Vector _k);
 	void spawn(const std::string &roles_number);
 	int checkShipsInVicinityForWitchJumpExit();
 	bool getTrackCloseContacts();
@@ -931,7 +931,7 @@ public:
 	::OOScript *getScript();
 	oo::PList getScriptInfo();
 	void overrideScriptInfo(const oo::PList &override);
-	cxx::Entity *entityForShaderProperties();	// C++ since bead oo-9ht.39.23
+	Entity *entityForShaderProperties();	// C++ since bead oo-9ht.39.23
 	void setDemoShip(OOScalar rate);
 	bool getIsDemoShip();
 	void setDemoStartTime(OOTimeAbsolute time);
@@ -939,8 +939,8 @@ public:
 	virtual void doScriptEvent(ooscript::PropertyId message);
 	void doScriptEvent(ooscript::PropertyId message, id argument);
 	void doScriptEvent(ooscript::PropertyId message, id argument1, id argument2);
-	void doScriptEvent(ooscript::PropertyId message, cxx::Entity *argument);	// the entity's JS value, as its object's (bead oo-9ht.39.16)
-	void doScriptEvent(ooscript::PropertyId message, cxx::Entity *argument1, cxx::Entity *argument2);
+	void doScriptEvent(ooscript::PropertyId message, Entity *argument);	// the entity's JS value, as its object's (bead oo-9ht.39.16)
+	void doScriptEvent(ooscript::PropertyId message, Entity *argument1, Entity *argument2);
 	virtual void doScriptEvent(ooscript::PropertyId message, const std::vector<oo::PList> &arguments);
 	void doScriptEvent(ooscript::PropertyId message, ooscript::Value *argv, unsigned argc);
 	virtual void doScriptEvent(ooscript::PropertyId message, ooscript::Context context, ooscript::Value *argv, unsigned argc);
@@ -948,7 +948,7 @@ public:
 	void sendAIMessage(const std::string &message);
 	void doScriptEvent(ooscript::PropertyId scriptEvent, const std::string &aiMessage);
 	void doScriptEvent(ooscript::PropertyId scriptEvent, id argument, const std::string &aiMessage);
-	void doScriptEvent(ooscript::PropertyId scriptEvent, cxx::Entity *argument, const std::string &aiMessage);
+	void doScriptEvent(ooscript::PropertyId scriptEvent, Entity *argument, const std::string &aiMessage);
 	virtual OOAlertCondition alertCondition();
 	virtual OOAlertCondition realAlertCondition();
 	void doNothing();
@@ -1373,14 +1373,14 @@ public:
 	::OOEquipmentType			*missile_list[SHIPENTITY_MAX_MISSILES] = {};
 
 	// various types of target
-	oo::WeakRef<cxx::Entity>		_primaryTarget;			// for combat or rendezvous
-	oo::WeakRef<cxx::Entity>		_primaryAggressor;			// recorded after attack
-	oo::WeakRef<cxx::Entity>		_targetStation;			// for docking
-	oo::WeakRef<cxx::Entity>		_foundTarget;				// from scans
-	oo::WeakRef<cxx::Entity>		_lastEscortTarget;			// last target an escort was deployed after
-	oo::WeakRef<cxx::Entity>		_thankedShip;				// last ship thanked
-	oo::WeakRef<cxx::Entity>		_rememberedShip;			// ship being remembered
-	oo::WeakRef<cxx::Entity>		_proximityAlert;			// a ShipEntity within 2x collision_radius
+	oo::WeakRef<Entity>		_primaryTarget;			// for combat or rendezvous
+	oo::WeakRef<Entity>		_primaryAggressor;			// recorded after attack
+	oo::WeakRef<Entity>		_targetStation;			// for docking
+	oo::WeakRef<Entity>		_foundTarget;				// from scans
+	oo::WeakRef<Entity>		_lastEscortTarget;			// last target an escort was deployed after
+	oo::WeakRef<Entity>		_thankedShip;				// last ship thanked
+	oo::WeakRef<Entity>		_rememberedShip;			// ship being remembered
+	oo::WeakRef<Entity>		_proximityAlert;			// a ShipEntity within 2x collision_radius
 	
 	// Stuff for the target tracking curve.  The ship records the position of the target every reactionTime/2 seconds, then fits a curve to the
 	// last three recorded positions.  Instead of tracking the primary target's actual position it uses the curve to calculate the target's position.
@@ -1394,14 +1394,14 @@ public:
 	
 	// @private in Objective-C: private once ShipEntity is converted (oo-k8a); public while the
 	// facade's unconverted methods read them, since an Objective-C class cannot be a C++ friend
-	oo::WeakRef<cxx::Entity>		_subEntityTakingDamage;	//	frangible => subEntities can be damaged individually
+	oo::WeakRef<Entity>		_subEntityTakingDamage;	//	frangible => subEntities can be damaged individually
 
 	std::optional<std::string>	_shipKey;				// nullopt: nil
 	
 	std::vector<std::string>	_equipment;	// equipment keys, in order added; empty == none (was nil)
 	float					_heatInsulation = {};
 	
-	oo::WeakRef<cxx::Entity>		_lastAegisLock;			// remember last aegis planet/sun
+	oo::WeakRef<Entity>		_lastAegisLock;			// remember last aegis planet/sun
 	
 	oo::Ref<::OOShipGroup>		_group;			// C++ since bead oo-9ht.19
 	oo::Ref<::OOShipGroup>		_escortGroup;
@@ -1412,20 +1412,20 @@ public:
 	BOOL					_escortPositionsValid = {};
 	
 	// The ships' C++ parts, held weakly (OOWeakSets of their objects until bead oo-9ht.22.3)
-	oo::WeakSet<cxx::Entity>	_defenseTargets = {};			 // defense targets
+	oo::WeakSet<Entity>	_defenseTargets = {};			 // defense targets
 	
 	// ships in this set can't be collided with
-	oo::WeakSet<cxx::Entity>	_collisionExceptions = {};
+	oo::WeakSet<Entity>	_collisionExceptions = {};
 
 	GLfloat					_profileRadius = {};
 	
-	oo::WeakRef<cxx::Entity>		_shipHitByLaser;			// entity hit by the last laser shot
+	oo::WeakRef<Entity>		_shipHitByLaser;			// entity hit by the last laser shot
 	
 	// beacons
 	std::optional<std::string>	_beaconCode;			// nullopt: nil (never empty)
 	std::optional<std::string>	_beaconLabel;			// nullopt: nil (never empty)
-	oo::WeakRef<cxx::Entity>		_prevBeacon;
-	oo::WeakRef<cxx::Entity>		_nextBeacon;
+	oo::WeakRef<Entity>		_prevBeacon;
+	oo::WeakRef<Entity>		_nextBeacon;
 	oo::Ref<OOHUDBeaconIcon>	_beaconDrawable;
 
 	double			_nextAegisCheck = {};
@@ -1463,7 +1463,7 @@ ShipEntity *NewShipObject(const Ref<ShipEntity> &ship, const std::string &key, c
 
 // The ship an entity is: nullptr for null or another entity (what -isKindOfClass:[ShipEntity class]
 // and the cast after it found; the object overloads went with the facade, bead oo-dpyk8).
-inline ShipEntity *ToShip(cxx::Entity *entity)
+inline ShipEntity *ToShip(Entity *entity)
 {
 	return dynamic_cast<ShipEntity *>(entity);
 }

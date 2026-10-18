@@ -124,7 +124,7 @@ namespace {
 
 OOTimeDelta ShotTime(ShipEntity *s)		{ return s->shot_time; }
 OOBehaviour Behaviour(ShipEntity *s)	{ return s->behaviour; }
-void SetSubEntity(cxx::Entity *e, bool value)	{ e->isSubEntity = value; }
+void SetSubEntity(Entity *e, bool value)	{ e->isSubEntity = value; }
 void SetFrustration(ShipEntity *s, GLfloat value)	{ s->frustration = value; }
 void SetPlanetForLanding(ShipEntity *s, OOUniversalID uid)	{ s->planetForLanding = uid; }
 void SetPreviousCondition(ShipEntity *s, const oo::PList &condition)	{ s->previousCondition = condition; }
@@ -134,26 +134,26 @@ OOAegisStatus AegisStatus(ShipEntity *s)	{ return s->aegis_status; }
 void SetAegisStatus(ShipEntity *s, OOAegisStatus status)	{ s->aegis_status = status; }
 void SetSticks(ShipEntity *s, GLfloat roll, GLfloat pitch, GLfloat yaw)	{ s->stick_roll = roll; s->stick_pitch = pitch; s->stick_yaw = yaw; }
 GLfloat ScaleFactor(ShipEntity *s)	{ return s->_scaleFactor; }
-void SetMass(cxx::Entity *e, GLfloat value)	{ e->mass = value; }
+void SetMass(Entity *e, GLfloat value)	{ e->mass = value; }
 bool IsWreckage(ShipEntity *s)	{ return s->isWreckage; }
 void SetShowDamage(ShipEntity *s, bool value)	{ s->_showDamage = value; }
 void SetWeaponTemps(ShipEntity *s, GLfloat temp, GLfloat aft)	{ s->weapon_temp = temp; s->aft_weapon_temp = aft; }
 bool SuppressesExplosion(ShipEntity *s)	{ return s->suppressExplosion; }
-void SetBoundingBox(cxx::Entity *e, BoundingBox box)	{ e->boundingBox = box; }
+void SetBoundingBox(Entity *e, BoundingBox box)	{ e->boundingBox = box; }
 void SetShotTime(ShipEntity *s, OOTimeDelta value)	{ s->shot_time = value; }
 double NextAegisCheck(ShipEntity *s)	{ return s->_nextAegisCheck; }
 double LaunchTime(ShipEntity *s)	{ return s->launch_time; }
 double LaunchDelay(ShipEntity *s)	{ return s->launch_delay; }
 void SetExplicitlyUnpiloted(ShipEntity *s, bool value)	{ s->_explicitlyUnpiloted = value; }
 
-void SetPrimaryTarget(ShipEntity *s, cxx::Entity *target)
+void SetPrimaryTarget(ShipEntity *s, Entity *target)
 {
-	s->_primaryTarget = oo::WeakRef<cxx::Entity>(target);	// the entity's C++ part (bead oo-9ht.39.5.2)
+	s->_primaryTarget = oo::WeakRef<Entity>(target);	// the entity's C++ part (bead oo-9ht.39.5.2)
 }
 
-void SetProximityAlert(ShipEntity *s, cxx::Entity *other)
+void SetProximityAlert(ShipEntity *s, Entity *other)
 {
-	s->_proximityAlert = oo::WeakRef<cxx::Entity>(other);	// the entity's C++ part (bead oo-9ht.39.5.2)
+	s->_proximityAlert = oo::WeakRef<Entity>(other);	// the entity's C++ part (bead oo-9ht.39.5.2)
 }
 
 void SetNavpoints(ShipEntity *s, std::initializer_list<HPVector> points, unsigned next)
@@ -280,7 +280,7 @@ OO_TEST(subEntityRelationship)
 	@autoreleasepool
 	{
 		SetUp();
-		cxx::Entity *plain = oo::MadeEntity(oo::makeRef<cxx::Entity>());
+		Entity *plain = oo::MadeEntity(oo::makeRef<Entity>());
 		TestShip *ship = MakeShip<TestShip>("mother", Definition());
 		TestShip *sub = MakeShip<TestShip>("turret", Definition());
 		TestShip *other = MakeShip<TestShip>("other", Definition());
@@ -664,12 +664,12 @@ OO_TEST(beacons)
 		if (ship != nullptr)  ship->setBeaconCode(std::nullopt);
 		OO_CHECK(!(ship != nullptr ? ship->isBeacon() : false));
 
-		OO_CHECK((ship != nullptr ? (Entity <OOBeaconEntity> *)ship->nextBeacon() : (Entity <OOBeaconEntity> *)nullptr) == nil && (ship != nullptr ? (Entity <OOBeaconEntity> *)ship->prevBeacon() : (Entity <OOBeaconEntity> *)nullptr) == nil);
+		OO_CHECK((ship != nullptr ? ship->nextBeacon() : (Entity *)nullptr) == nil && (ship != nullptr ? ship->prevBeacon() : (Entity *)nullptr) == nil);
 		if (ship != nullptr)  ship->setNextBeacon(other);
 		if (ship != nullptr)  ship->setPrevBeacon(other);
-		OO_CHECK((ship != nullptr ? (Entity <OOBeaconEntity> *)ship->nextBeacon() : (Entity <OOBeaconEntity> *)nullptr) == (Entity <OOBeaconEntity> *)other && (ship != nullptr ? (Entity <OOBeaconEntity> *)ship->prevBeacon() : (Entity <OOBeaconEntity> *)nullptr) == (Entity <OOBeaconEntity> *)other);
+		OO_CHECK((ship != nullptr ? ship->nextBeacon() : (Entity *)nullptr) == other && (ship != nullptr ? ship->prevBeacon() : (Entity *)nullptr) == other);
 		if (ship != nullptr)  ship->setNextBeacon(nullptr);
-		OO_CHECK((ship != nullptr ? (Entity <OOBeaconEntity> *)ship->nextBeacon() : (Entity <OOBeaconEntity> *)nullptr) == nil && (ship != nullptr ? (Entity <OOBeaconEntity> *)ship->prevBeacon() : (Entity <OOBeaconEntity> *)nullptr) == (Entity <OOBeaconEntity> *)other);
+		OO_CHECK((ship != nullptr ? ship->nextBeacon() : (Entity *)nullptr) == nil && (ship != nullptr ? ship->prevBeacon() : (Entity *)nullptr) == other);
 	}
 }
 
@@ -770,7 +770,7 @@ OO_TEST(closeCollisionAndFrame)
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>("hull", Definition());
 		TestShip *other = MakeShip<TestShip>("other", Definition());
-		cxx::Entity *plain = oo::MadeEntity(oo::makeRef<cxx::Entity>());
+		Entity *plain = oo::MadeEntity(oo::makeRef<Entity>());
 		OO_CHECK(!(ship != nullptr ? ship->checkCloseCollisionWith(nullptr) : false));
 		OO_CHECK((ship != nullptr ? ship->checkCloseCollisionWith(plain) : false) && Part(ship)->collider == plain);
 		MutablePart(ship)->collider = nil;
@@ -828,7 +828,7 @@ OO_TEST(updateReachesTheSubclass)
 	{
 		SetUp();
 		CountingShip *ship = MakeShip<CountingShip>("counted", Definition());
-		cxx::Entity *part = ship;
+		Entity *part = ship;
 		part->update(0.1);
 		OO_CHECK(ship->_updates == 1);
 	}
@@ -1478,7 +1478,7 @@ OO_TEST(avoidCollisionAndResume)
 		OO_CHECK(Behaviour(ship) == BEHAVIOUR_FLY_TO_DESTINATION);
 
 		SetProximityAlert(ship, rock);
-		OO_CHECK((ship != nullptr ? ship->proximityAlert() : (cxx::Entity *)nullptr) == rock);
+		OO_CHECK((ship != nullptr ? ship->proximityAlert() : (Entity *)nullptr) == rock);
 		if (ship != nullptr)  ship->avoidCollision();
 		OO_CHECK(Behaviour(ship) == BEHAVIOUR_AVOID_COLLISION);
 		OO_CHECK(HPvector_equal((ship != nullptr ? ship->destination() : HPVector{}), make_HPvector(0, 0, 200)));
@@ -1486,7 +1486,7 @@ OO_TEST(avoidCollisionAndResume)
 		if (ship != nullptr)  ship->resumePostProximityAlert();
 		OO_CHECK(Behaviour(ship) == BEHAVIOUR_FLY_TO_DESTINATION && (ship != nullptr ? ship->desiredRange() : 0.0) == 300 && (ship != nullptr ? ship->desiredSpeed() : 0.0) == 12);
 		OO_CHECK(HPvector_equal((ship != nullptr ? ship->destination() : HPVector{}), make_HPvector(0, 0, 9000)));
-		OO_CHECK((ship != nullptr ? ship->proximityAlert() : (cxx::Entity *)nullptr) == nullptr);
+		OO_CHECK((ship != nullptr ? ship->proximityAlert() : (Entity *)nullptr) == nullptr);
 
 		// A missile does not avoid anything.
 		if (ship != nullptr)  ship->setScanClass(CLASS_MISSILE);
@@ -1496,9 +1496,9 @@ OO_TEST(avoidCollisionAndResume)
 
 		// Clearing the alert, and a light object never raises one.
 		if (ship != nullptr)  ship->setProximityAlert(nullptr);
-		OO_CHECK((ship != nullptr ? ship->proximityAlert() : (cxx::Entity *)nullptr) == nullptr);
+		OO_CHECK((ship != nullptr ? ship->proximityAlert() : (Entity *)nullptr) == nullptr);
 		if (ship != nullptr)  ship->setProximityAlert(rock);		// mass 0
-		OO_CHECK((ship != nullptr ? ship->proximityAlert() : (cxx::Entity *)nullptr) == nullptr);
+		OO_CHECK((ship != nullptr ? ship->proximityAlert() : (Entity *)nullptr) == nullptr);
 	}
 }
 
@@ -1687,12 +1687,12 @@ OO_TEST(aegisSystemsAndStatus)
 		SetAegisStatus(ship, AEGIS_IN_DOCKING_RANGE);
 		OO_CHECK((ship != nullptr ? ship->withinStationAegis() : false));
 
-		OO_CHECK((ship != nullptr ? ship->lastAegisLock() : (cxx::Entity *)nullptr) == nullptr);
+		OO_CHECK((ship != nullptr ? ship->lastAegisLock() : (Entity *)nullptr) == nullptr);
 		TestShip *body = FlyingShip("stand-in for a planet");
 		if (ship != nullptr)  ship->setLastAegisLock(body);
-		OO_CHECK((ship != nullptr ? ship->lastAegisLock() : (cxx::Entity *)nullptr) == body);
+		OO_CHECK((ship != nullptr ? ship->lastAegisLock() : (Entity *)nullptr) == body);
 		if (ship != nullptr)  ship->setLastAegisLock(nullptr);
-		OO_CHECK((ship != nullptr ? ship->lastAegisLock() : (cxx::Entity *)nullptr) == nullptr);
+		OO_CHECK((ship != nullptr ? ship->lastAegisLock() : (Entity *)nullptr) == nullptr);
 
 		if (ship != nullptr)  ship->setHomeSystem(7);
 		if (ship != nullptr)  ship->setDestinationSystem(42);
@@ -1985,7 +1985,7 @@ OO_TEST(heatPersonalityAlignmentAndBeacons)
 
 		OO_CHECK((ship != nullptr ? ship->numberOfScannedShips() : int{}) == 0);
 		if (ship != nullptr)  ship->setFoundTarget(nullptr);
-		OO_CHECK((ship != nullptr ? ship->foundTarget() : (cxx::Entity *)nullptr) == nil && (ship != nullptr ? ship->primaryAggressor() : (cxx::Entity *)nullptr) == nil && (ship != nullptr ? ship->lastEscortTarget() : (cxx::Entity *)nullptr) == nullptr);
+		OO_CHECK((ship != nullptr ? ship->foundTarget() : (Entity *)nullptr) == nil && (ship != nullptr ? ship->primaryAggressor() : (Entity *)nullptr) == nil && (ship != nullptr ? ship->lastEscortTarget() : (Entity *)nullptr) == nullptr);
 
 		SetBoundingBox(ship, BoundingBox{ { -1, -2, -3 }, { 3, 4, 5 } });
 		Vector offset = (ship != nullptr ? ship->positionOffsetForAlignment("MmC") : Vector{});
@@ -2027,7 +2027,7 @@ void SetFrustration24(ShipEntity *s, GLfloat f)	{ s->frustration = f; }
 void SetScannerRange24(ShipEntity *s, GLfloat r)	{ s->scannerRange = r; }
 void SetWeaponRange24(ShipEntity *s, GLfloat r)	{ s->weaponRange = r; }
 void SetDestination24(ShipEntity *s, HPVector d)	{ s->_destination = d; }
-void SetPosition24(cxx::Entity *e, HPVector p)		{ e->position = p; }
+void SetPosition24(Entity *e, HPVector p)		{ e->position = p; }
 void SetFlightControls24(ShipEntity *s, GLfloat v)
 {
 	s->flightRoll = s->flightPitch = s->flightYaw = v;
@@ -2039,7 +2039,7 @@ bool FlightControlsZero24(ShipEntity *s)
 	return p->flightRoll == 0 && p->flightPitch == 0 && p->flightYaw == 0 && p->stick_roll == 0 && p->stick_pitch == 0 && p->stick_yaw == 0;
 }
 bool Near24(HPVector a, HPVector b)	{ return HPdistance2(a, b) < 1e-6; }
-void SetCollisionRadius24(cxx::Entity *e, GLfloat r)	{ e->collision_radius = r; }
+void SetCollisionRadius24(Entity *e, GLfloat r)	{ e->collision_radius = r; }
 
 }	// namespace
 
@@ -2051,22 +2051,22 @@ OO_TEST(slice24RememberedShips)
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("rememberer");
 		TestShip *other = MakeLateSliceShip("other");
-		OO_CHECK((ship != nullptr ? ship->thankedShip() : (cxx::Entity *)nullptr) == nullptr && (ship != nullptr ? ship->rememberedShip() : (cxx::Entity *)nullptr) == nullptr && (ship != nullptr ? ship->targetStation() : (cxx::Entity *)nullptr) == nullptr);
+		OO_CHECK((ship != nullptr ? ship->thankedShip() : (Entity *)nullptr) == nullptr && (ship != nullptr ? ship->rememberedShip() : (Entity *)nullptr) == nullptr && (ship != nullptr ? ship->targetStation() : (Entity *)nullptr) == nullptr);
 
 		if (ship != nullptr)  ship->setThankedShip(other);
 		if (ship != nullptr)  ship->setRememberedShip(other);
 		if (ship != nullptr)  ship->setTargetStation(other);
-		OO_CHECK((ship != nullptr ? ship->thankedShip() : (cxx::Entity *)nullptr) == other && (ship != nullptr ? ship->rememberedShip() : (cxx::Entity *)nullptr) == other && (ship != nullptr ? ship->targetStation() : (cxx::Entity *)nullptr) == other);
+		OO_CHECK((ship != nullptr ? ship->thankedShip() : (Entity *)nullptr) == other && (ship != nullptr ? ship->rememberedShip() : (Entity *)nullptr) == other && (ship != nullptr ? ship->targetStation() : (Entity *)nullptr) == other);
 
 		// A ship that is no longer a valid target is forgotten, and stays forgotten.
 		if (other != nullptr)  other->setStatus(STATUS_DOCKED);
-		OO_CHECK((ship != nullptr ? ship->thankedShip() : (cxx::Entity *)nullptr) == nullptr && (ship != nullptr ? ship->rememberedShip() : (cxx::Entity *)nullptr) == nullptr && (ship != nullptr ? ship->targetStation() : (cxx::Entity *)nullptr) == nullptr);
+		OO_CHECK((ship != nullptr ? ship->thankedShip() : (Entity *)nullptr) == nullptr && (ship != nullptr ? ship->rememberedShip() : (Entity *)nullptr) == nullptr && (ship != nullptr ? ship->targetStation() : (Entity *)nullptr) == nullptr);
 		if (other != nullptr)  other->setStatus(STATUS_IN_FLIGHT);
-		OO_CHECK((ship != nullptr ? ship->thankedShip() : (cxx::Entity *)nullptr) == nullptr && (ship != nullptr ? ship->rememberedShip() : (cxx::Entity *)nullptr) == nullptr && (ship != nullptr ? ship->targetStation() : (cxx::Entity *)nullptr) == nullptr);
+		OO_CHECK((ship != nullptr ? ship->thankedShip() : (Entity *)nullptr) == nullptr && (ship != nullptr ? ship->rememberedShip() : (Entity *)nullptr) == nullptr && (ship != nullptr ? ship->targetStation() : (Entity *)nullptr) == nullptr);
 
 		if (ship != nullptr)  ship->setThankedShip(other);
 		if (ship != nullptr)  ship->setThankedShip(nullptr);
-		OO_CHECK((ship != nullptr ? ship->thankedShip() : (cxx::Entity *)nullptr) == nullptr);
+		OO_CHECK((ship != nullptr ? ship->thankedShip() : (Entity *)nullptr) == nullptr);
 
 		OO_CHECK((ship != nullptr ? ship->shipHitByLaser() : (::ShipEntity *)nil) == nil);
 		if (ship != nullptr)  ship->setShipHitByLaser(other);
@@ -2084,7 +2084,7 @@ OO_TEST(slice24IsValidTarget)
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("judge");
 		TestShip *other = MakeLateSliceShip("target");
-		cxx::Entity *plain = oo::MadeEntity(oo::makeRef<cxx::Entity>());
+		Entity *plain = oo::MadeEntity(oo::makeRef<Entity>());
 		OO_CHECK(!(ship != nullptr ? ship->isValidTarget(nullptr) : false));
 		OO_CHECK((ship != nullptr ? ship->isValidTarget(other) : false));
 		OO_CHECK(!(ship != nullptr ? ship->isValidTarget(plain) : false));		// neither a ship nor a wormhole
@@ -2107,14 +2107,14 @@ OO_TEST(slice24PrimaryTarget)
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("hunter");
 		TestShip *other = MakeLateSliceShip("prey");
-		OO_CHECK((ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == nil && (ship != nullptr ? ship->primaryTargetWithoutValidityCheck() : (cxx::Entity *)nullptr) == nil);
+		OO_CHECK((ship != nullptr ? ship->primaryTarget() : (Entity *)nullptr) == nil && (ship != nullptr ? ship->primaryTargetWithoutValidityCheck() : (Entity *)nullptr) == nil);
 		OO_CHECK(!(ship != nullptr ? ship->canStillTrackPrimaryTarget() : false));
 
 		if (ship != nullptr)  ship->addTarget(ship);		// never itself
-		OO_CHECK((ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == nil);
+		OO_CHECK((ship != nullptr ? ship->primaryTarget() : (Entity *)nullptr) == nil);
 
 		if (ship != nullptr)  ship->addTarget(other);
-		OO_CHECK((ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == other && (ship != nullptr ? ship->primaryTargetWithoutValidityCheck() : (cxx::Entity *)nullptr) == other);
+		OO_CHECK((ship != nullptr ? ship->primaryTarget() : (Entity *)nullptr) == other && (ship != nullptr ? ship->primaryTargetWithoutValidityCheck() : (Entity *)nullptr) == other);
 
 		// In range (a quarter more than the scanner's), and out of it.
 		SetScannerRange24(ship, 1000);
@@ -2127,20 +2127,20 @@ OO_TEST(slice24PrimaryTarget)
 		// An invalid target: the unchecked getter keeps it, the checked one drops it.
 		if (other != nullptr)  other->setStatus(STATUS_DEAD);
 		OO_CHECK(!(ship != nullptr ? ship->canStillTrackPrimaryTarget() : false));
-		OO_CHECK((ship != nullptr ? ship->primaryTargetWithoutValidityCheck() : (cxx::Entity *)nullptr) == other);
-		OO_CHECK((ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == nil);
-		OO_CHECK((ship != nullptr ? ship->primaryTargetWithoutValidityCheck() : (cxx::Entity *)nullptr) == nil);
+		OO_CHECK((ship != nullptr ? ship->primaryTargetWithoutValidityCheck() : (Entity *)nullptr) == other);
+		OO_CHECK((ship != nullptr ? ship->primaryTarget() : (Entity *)nullptr) == nil);
+		OO_CHECK((ship != nullptr ? ship->primaryTargetWithoutValidityCheck() : (Entity *)nullptr) == nil);
 		if (other != nullptr)  other->setStatus(STATUS_IN_FLIGHT);
 
 		// -removeTarget:nil drops the target without the lost-target events.
 		if (ship != nullptr)  ship->addTarget(other);
 		if (ship != nullptr)  ship->removeTarget(nullptr);
-		OO_CHECK((ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == nil);
+		OO_CHECK((ship != nullptr ? ship->primaryTarget() : (Entity *)nullptr) == nil);
 
 		// -removeTarget: with a target notes it lost.
 		if (ship != nullptr)  ship->addTarget(other);
 		if (ship != nullptr)  ship->removeTarget(other);
-		OO_CHECK((ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == nil);
+		OO_CHECK((ship != nullptr ? ship->primaryTarget() : (Entity *)nullptr) == nil);
 	}
 }
 
@@ -2154,15 +2154,15 @@ OO_TEST(slice24NoteLostTarget)
 		TestShip *other = MakeLateSliceShip("lost");
 		if (ship != nullptr)  ship->addTarget(other);
 		if (ship != nullptr)  ship->noteLostTarget();
-		OO_CHECK((ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == nil);
+		OO_CHECK((ship != nullptr ? ship->primaryTarget() : (Entity *)nullptr) == nil);
 		if (ship != nullptr)  ship->noteLostTarget();		// with none, still fine
-		OO_CHECK((ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == nil);
+		OO_CHECK((ship != nullptr ? ship->primaryTarget() : (Entity *)nullptr) == nil);
 
 		if (ship != nullptr)  ship->addTarget(other);
 		if (ship != nullptr)  ship->setBehaviour(BEHAVIOUR_ATTACK_TARGET);
 		SetFrustration24(ship, 5);
 		if (ship != nullptr)  ship->noteLostTargetAndGoIdle();
-		OO_CHECK((ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == nil);
+		OO_CHECK((ship != nullptr ? ship->primaryTarget() : (Entity *)nullptr) == nil);
 		OO_CHECK((ship != nullptr ? ship->getBehaviour() : OOBehaviour{}) == BEHAVIOUR_IDLE && Frustration24(ship) == 0);
 	}
 }
@@ -2359,12 +2359,12 @@ OO_TEST(slice25TargetOutOfRangeGoesIdle)
 		if (ship != nullptr)  ship->addTarget(other);
 		if (ship != nullptr)  ship->setBehaviour(BEHAVIOUR_ATTACK_TARGET);
 		OO_CHECK((ship != nullptr ? ship->trackPrimaryTarget(0.1, NO) : 0.0) == 0.0);
-		OO_CHECK((ship != nullptr ? ship->getBehaviour() : OOBehaviour{}) == BEHAVIOUR_IDLE && (ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == nil);
+		OO_CHECK((ship != nullptr ? ship->getBehaviour() : OOBehaviour{}) == BEHAVIOUR_IDLE && (ship != nullptr ? ship->primaryTarget() : (Entity *)nullptr) == nil);
 
 		if (ship != nullptr)  ship->addTarget(other);
 		if (ship != nullptr)  ship->setBehaviour(BEHAVIOUR_ATTACK_TARGET);
 		OO_CHECK((ship != nullptr ? ship->trackSideTarget(0.1, NO) : 0.0) == 0.0);
-		OO_CHECK((ship != nullptr ? ship->getBehaviour() : OOBehaviour{}) == BEHAVIOUR_IDLE && (ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == nil);
+		OO_CHECK((ship != nullptr ? ship->getBehaviour() : OOBehaviour{}) == BEHAVIOUR_IDLE && (ship != nullptr ? ship->primaryTarget() : (Entity *)nullptr) == nil);
 	}
 }
 
@@ -2376,7 +2376,7 @@ namespace {
 
 void SetUpVectors26(ShipEntity *s, Vector up, Vector right)	{ s->v_up = up; s->v_right = right; }
 void SetMaxFlightRoll26(ShipEntity *s, GLfloat r)			{ s->max_flight_roll = r; }
-void SetCollisionRadius26(cxx::Entity *e, GLfloat r)				{ e->collision_radius = r; }
+void SetCollisionRadius26(Entity *e, GLfloat r)				{ e->collision_radius = r; }
 
 }	// namespace
 
@@ -2468,7 +2468,7 @@ OO_TEST(slice26DefenseTargets)
 		TestShip *ship = MakeLateSliceShip("defender");
 		TestShip *a = MakeLateSliceShip("attacker-a");
 		TestShip *b = MakeLateSliceShip("attacker-b");
-		cxx::Entity *plain = oo::MadeEntity(oo::makeRef<cxx::Entity>());
+		Entity *plain = oo::MadeEntity(oo::makeRef<Entity>());
 		OO_CHECK((ship != nullptr ? ship->defenseTargetCount() : 0) == 0 && (ship != nullptr ? ship->allDefenseTargets() : std::vector<oo::EntityHold>()).empty() && (ship != nullptr ? ship->defenseTargets() : std::vector<oo::EntityHold>()).empty());
 		if (ship != nullptr)  ship->validateDefenseTargets();		// none yet: fine
 
@@ -2602,7 +2602,7 @@ OO_TEST(slice27Colours)
 
 namespace {
 
-void SetBoundingBox28(cxx::Entity *e, BoundingBox bb)	{ e->boundingBox = bb; }
+void SetBoundingBox28(Entity *e, BoundingBox bb)	{ e->boundingBox = bb; }
 void SetScaleFactor28(ShipEntity *s, GLfloat f)	{ s->_scaleFactor = f; }
 void SetMissiles28(ShipEntity *s, unsigned n)		{ s->missiles = n; }
 
@@ -2732,8 +2732,8 @@ OO_TEST(slice29DumpEmptyHold)
 namespace {
 
 void SetFlightSpeed30(ShipEntity *s, GLfloat v)	{ s->flightSpeed = v; }
-Vector RawVelocity30(cxx::Entity *e)					{ return e->velocity; }
-void SetMass30(cxx::Entity *e, GLfloat m)			{ e->mass = m; }
+Vector RawVelocity30(Entity *e)					{ return e->velocity; }
+void SetMass30(Entity *e, GLfloat m)			{ e->mass = m; }
 bool Near30(Vector a, Vector b)					{ return distance2(a, b) < 1e-8; }
 
 }	// namespace
@@ -2796,9 +2796,9 @@ OO_TEST(slice30ScoopingAndCollisions)
 
 namespace {
 
-void SetEnergy31(cxx::Entity *e, GLfloat energy, GLfloat maxEnergy)	{ e->energy = energy; e->maxEnergy = maxEnergy; }
-GLfloat Energy31(cxx::Entity *e)									{ return e->energy; }
-bool ThrowSparks31(cxx::Entity *e)									{ return e->throw_sparks; }
+void SetEnergy31(Entity *e, GLfloat energy, GLfloat maxEnergy)	{ e->energy = energy; e->maxEnergy = maxEnergy; }
+GLfloat Energy31(Entity *e)									{ return e->energy; }
+bool ThrowSparks31(Entity *e)									{ return e->throw_sparks; }
 
 }	// namespace
 
@@ -3099,7 +3099,7 @@ OO_TEST(slice34AlertConditionAndEvents)
 		if (ship != nullptr)  ship->setStatus(STATUS_IN_FLIGHT);
 
 		// The ship is its own shader entity when it is not a subentity.
-		OO_CHECK((ship != nullptr ? ship->entityForShaderProperties() : (cxx::Entity *)nullptr) == ship);
+		OO_CHECK((ship != nullptr ? ship->entityForShaderProperties() : (Entity *)nullptr) == ship);
 
 		// No scripts, no AI: the events and messages go nowhere, harmlessly.
 		if (ship != nullptr)  ship->doScriptEvent(OOJSID("shipSpawned"));

@@ -35,8 +35,6 @@
 
 // MARK: The entity classes, as far as the binding sees them ---------------------------------------
 
-namespace cxx {
-
 // The C++ root, as far as the binding and the root's JS category reach it.
 class Entity : public oo::RefCounted
 {
@@ -45,16 +43,14 @@ public:
 	virtual void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
 	virtual std::optional<std::string> jsClassName();
 	virtual bool isVisibleToScripts();
-	cxx::Entity *owner();	// the binding calls it since bead oo-9ht.39.8.19 (its object's -owner did); the C++ entity since bead oo-dpyk8
+	Entity *owner();	// the binding calls it since bead oo-9ht.39.8.19 (its object's -owner did); the C++ entity since bead oo-dpyk8
 };
-
-}	// namespace cxx
 
 
 /*	A plume whose scale has x = -1 raises from scale(), one with x = -2 throws a C++ exception, so the
 	test sees what an exception under a native becomes.
 */
-class OOExhaustPlumeEntity : public cxx::Entity
+class OOExhaustPlumeEntity : public Entity
 {
 public:
 	Vector scale();
@@ -72,10 +68,11 @@ public:
 #include "OOJSEntityHolder.h"
 
 
-@interface Entity: OOObject
+__attribute__((objc_runtime_name("Entity")))
+@interface TestEntityObject: OOObject
 {
 @public
-	oo::Ref<cxx::Entity> _cxxEntity;	// the plume's C++ part (oo::ToCxx reads it)
+	oo::Ref<Entity> _cxxEntity;	// the plume's C++ part (oo::ToCxx reads it)
 	id _owner;
 }
 - (id) weakRefUnderlyingObject;
@@ -83,7 +80,7 @@ public:
 
 // A ship: C++ since bead oo-9ht.144 deleted the Objective-C ship this stood in for, the C++ part of
 // its object, with the one member the binding calls (declared as ShipEntity.h declares it).
-class ShipEntity : public cxx::Entity
+class ShipEntity : public Entity
 {
 public:
 	void removeExhaust(OOExhaustPlumeEntity *exhaust);
@@ -91,7 +88,7 @@ public:
 	OOExhaustPlumeEntity *_removed = nullptr;
 };
 
-@interface Entity (OOJavaScriptExtensions)
+@interface TestEntityObject (OOJavaScriptExtensions)
 - (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
 - (std::optional<std::string>) cxx_oo_jsClassName;
 - (BOOL) isVisibleToScripts;
@@ -113,7 +110,7 @@ bool OOJSExhaustPlumeIsVisibleToScripts(void);
 #include <string>
 
 
-@implementation Entity
+@implementation TestEntityObject
 
 - (id) weakRefUnderlyingObject  { return self; }
 
@@ -125,7 +122,7 @@ void ShipEntity::removeExhaust(OOExhaustPlumeEntity *exhaust)  { _removed = exha
 
 // The root's JS category, as the game's asks the C++ part (EntityOOJavaScriptExtensions+ObjCBridge.mm,
 // bead oo-9ht.107): the engine sends these selectors to the wrapped object.
-@implementation Entity (OOJavaScriptExtensions)
+@implementation TestEntityObject (OOJavaScriptExtensions)
 
 - (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype  { _cxxEntity->getJSClass(outClass, outPrototype); }
 - (std::optional<std::string>) cxx_oo_jsClassName  { return _cxxEntity->jsClassName(); }
@@ -134,10 +131,10 @@ void ShipEntity::removeExhaust(OOExhaustPlumeEntity *exhaust)  { _removed = exha
 @end
 
 
-cxx::Entity::~Entity()  {}
-void cxx::Entity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)  { *outClass = nullptr; *outPrototype = nullptr; }
-std::optional<std::string> cxx::Entity::jsClassName()  { return std::string("Entity"); }
-bool cxx::Entity::isVisibleToScripts()  { return false; }
+Entity::~Entity()  {}
+void Entity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)  { *outClass = nullptr; *outPrototype = nullptr; }
+std::optional<std::string> Entity::jsClassName()  { return std::string("Entity"); }
+bool Entity::isVisibleToScripts()  { return false; }
 
 Vector OOExhaustPlumeEntity::scale()
 {
@@ -193,7 +190,7 @@ std::map<ooscript::ClassDef *, int> sConverters;
 } // namespace
 
 ooscript::Object gOOEntityJSPrototype = nullptr;
-cxx::Entity *gOOJSPlayerIfStale = nullptr;	// the player's C++ entity (bead oo-9ht.39.25)
+Entity *gOOJSPlayerIfStale = nullptr;	// the player's C++ entity (bead oo-9ht.39.25)
 
 
 extern "C" {
@@ -325,19 +322,19 @@ std::optional<std::string> OOJSEntityHolder::jsDescription()  { return std::null
 // oo::ToObjC (Entity+ObjCBridge.mm): the object of each C++ part the test wrapped, nil for any
 // other (the binding asks it where its natives still message the object, bead oo-9ht.39.3).
 namespace {
-std::map<cxx::Entity *, Entity *> sObjects;
+std::map<Entity *, TestEntityObject *> sObjects;
 }
-namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
-::Entity *oo::ToObjC(cxx::Entity *entity)
+namespace oo { ::TestEntityObject *ToObjC(Entity *entity); }
+::TestEntityObject *oo::ToObjC(Entity *entity)
 {
 	auto found = sObjects.find(entity);
 	return found != sObjects.end() ? found->second : nil;
 }
 
 // The owner its object's -owner answered until bead oo-9ht.39.8.19, on the same object field.
-cxx::Entity *cxx::Entity::owner()
+Entity *Entity::owner()
 {
-	::Entity *object = (::Entity *)oo::ToObjC(this)->_owner;
+	::TestEntityObject *object = (::TestEntityObject *)oo::ToObjC(this)->_owner;
 	return object != nil ? object->_cxxEntity.get() : nullptr;	// its C++ part (bead oo-dpyk8)
 }
 
@@ -349,25 +346,25 @@ namespace {
 ooscript::Runtime sRuntime;
 ooscript::Context sContext;
 ooscript::Object sGlobal;
-Entity *sPlume = nil;						// the plume's object
+TestEntityObject *sPlume = nil;						// the plume's object
 OOExhaustPlumeEntity *sPlumePart = nullptr;	// its C++ part
-Entity *sShip = nil;	// a ship's object and its C++ part (the Objective-C ship until bead oo-9ht.144)
+TestEntityObject *sShip = nil;	// a ship's object and its C++ part (the Objective-C ship until bead oo-9ht.144)
 ShipEntity *sShipPart = nullptr;
 
 
-ooscript::Value JSValueForObject(ooscript::ClassDef *jsClass, ooscript::Object prototype, Entity *entity)
+ooscript::Value JSValueForObject(ooscript::ClassDef *jsClass, ooscript::Object prototype, TestEntityObject *entity)
 {
 	ooscript::Object object = ooscript::newObject(sContext, jsClass, prototype, nullptr);
-	if (entity->_cxxEntity == nullptr)  entity->_cxxEntity = oo::makeRef<cxx::Entity>();	// a plain entity's C++ part
+	if (entity->_cxxEntity == nullptr)  entity->_cxxEntity = oo::makeRef<Entity>();	// a plain entity's C++ part
 	if (object == nullptr || !OOJSSetCxxPrivate(sContext, object, oo::makeRef<OOJSEntityHolder>(entity->_cxxEntity.get()).get()))  return ooscript::nullValue();	// the slot holds the C++ entity (bead oo-9ht.39.3)
 	sObjects[entity->_cxxEntity.get()] = entity;
 	return ooscript::objectValue(object);
 }
 
 
-// A JS object for an entity, as -[Entity oo_jsValueInContext:] makes it: the class and prototype
+// A JS object for an entity, as -[TestEntityObject oo_jsValueInContext:] makes it: the class and prototype
 // the entity's category names, and the entity in the private slot.
-ooscript::Value JSValueForEntity(Entity *entity)
+ooscript::Value JSValueForEntity(TestEntityObject *entity)
 {
 	ooscript::ClassDef *jsClass = nullptr;
 	ooscript::Object prototype = nullptr;
@@ -393,10 +390,10 @@ void SetUpContext()
 	gOOEntityJSPrototype = ooscript::initClass(sContext, sGlobal, nullptr, &sFakeEntityClass, OOJSUnconstructableConstruct, 0, nullptr, nullptr, nullptr, nullptr);
 	InitOOJSExhaustPlume(sContext, sGlobal);
 
-	sShip = [[Entity alloc] init];	// kept for the life of the test
+	sShip = [[TestEntityObject alloc] init];	// kept for the life of the test
 	sShip->_cxxEntity = oo::makeRef<ShipEntity>();
 	sShipPart = static_cast<ShipEntity *>(sShip->_cxxEntity.get());
-	sPlume = [[Entity alloc] init];
+	sPlume = [[TestEntityObject alloc] init];
 	const oo::Ref<OOExhaustPlumeEntity> part = oo::makeRef<OOExhaustPlumeEntity>();
 	sPlume->_cxxEntity = part;
 	sPlumePart = part.get();

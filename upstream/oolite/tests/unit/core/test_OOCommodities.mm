@@ -150,11 +150,6 @@ std::optional<std::string> StationEntity::getMarketScriptName()	{ return scriptN
 OOCargoQuantity StationEntity::getMarketCapacity()				{ return capacity; }
 bool StationEntity::getMarketMonitored()						{ return monitored; }
 
-// Link stub: the station's Objective-C object, which only a commodity script (never run here) is given.
-@class Entity;
-namespace cxx { class Entity; }
-namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
-::Entity *oo::ToObjC(cxx::Entity *)	{ std::abort(); }
 
 
 // The expander: "<string>".

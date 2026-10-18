@@ -191,7 +191,7 @@ OO_TEST(moon)
 	{
 		SetUp();
 		OOPlanetEntity *moon = Planet(NO);
-		OO_CHECK(moon != nullptr && dynamic_cast<OOPlanetEntity *>(static_cast<cxx::Entity *>(moon)) != nullptr);
+		OO_CHECK(moon != nullptr && dynamic_cast<OOPlanetEntity *>(static_cast<Entity *>(moon)) != nullptr);
 		OO_CHECK(moon->radius() == 50000.0);
 		OO_CHECK(moon->collisionRadius() == 50000.0f);
 		OO_CHECK(moon->getEnergy() == 50000.0f * 1000.0f);
@@ -308,7 +308,7 @@ OO_TEST(miniature)
 		SetUp();
 		OOPlanetEntity *planet = Planet(YES);
 		OOPlanetEntity *mini = Miniature(planet);
-		OO_CHECK(mini != nullptr && mini != planet && dynamic_cast<OOPlanetEntity *>(static_cast<cxx::Entity *>(mini)) != nullptr);
+		OO_CHECK(mini != nullptr && mini != planet && dynamic_cast<OOPlanetEntity *>(static_cast<Entity *>(mini)) != nullptr);
 		OO_CHECK(mini->planetType() == STELLAR_TYPE_MINIATURE);
 		OO_CHECK(mini->status() == STATUS_COCKPIT_DISPLAY);
 		OO_CHECK(mini->getScanClass() == CLASS_NO_DRAW);
@@ -377,7 +377,7 @@ OO_TEST(closeCollision)
 		SetUp();
 		OOPlanetEntity *moon = Planet(NO);
 		OO_CHECK(!moon->checkCloseCollisionWith(nullptr));
-		cxx::Entity *rock = oo::MadeEntity(oo::makeRef<cxx::Entity>());
+		Entity *rock = oo::MadeEntity(oo::makeRef<Entity>());
 		OO_CHECK(moon->checkCloseCollisionWith(rock));
 	}
 }
@@ -405,7 +405,7 @@ OO_TEST(facade)
 	{
 		SetUp();
 		OOPlanetEntity *moon = Planet(NO);
-		cxx::Entity *object = moon;
+		Entity *object = moon;
 		OO_CHECK(object != nil);	// (and its object's class, the root facade: retired with the facade, bead oo-dpyk8, under oo-9n5p9)
 		// A C++ entity (amendment oo-0mxi), not an Objective-C entity's adapter.
 		OO_CHECK(object == moon);
@@ -435,7 +435,7 @@ OO_TEST(jsExtensions)
 		OOPlanetEntity *moon = Planet(NO);
 		ooscript::ClassDef *jsClass = nullptr, *expectedClass = nullptr;
 		ooscript::Object prototype = nullptr, expectedPrototype = nullptr;
-		cxx::Entity *object = moon;
+		Entity *object = moon;
 		OOJSEntityGetJSClass(object, &jsClass, &prototype);
 		OOJSPlanetGetJSClass(&expectedClass, &expectedPrototype);
 		OO_CHECK(jsClass != nullptr && jsClass == expectedClass && prototype == expectedPrototype);

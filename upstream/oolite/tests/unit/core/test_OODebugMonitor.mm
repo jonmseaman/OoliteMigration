@@ -79,8 +79,8 @@ uint32_t gLiveEntityCount = 0;
 
 // WormholeEntity.mm's (the wormhole is C++ since bead oo-9ht.112, so the monitor's dump asks it
 // through this function, where it sent -shipsInTransit): the test dumps no entity.
-namespace cxx { class Entity; }
-oo::PList WormholeEntityShipsInTransit(cxx::Entity *)  { return oo::PList(); }
+class Entity;
+oo::PList WormholeEntityShipsInTransit(Entity *)  { return oo::PList(); }
 
 // UNIVERSE stays nil here, so the monitor's guarded call never reaches it; the stand-in only links
 // it (bead oo-ql9rn: it was a message to nil).
@@ -97,7 +97,6 @@ Universe *gSharedUniverse = nil;
 // links against (a ship's object, the root's, holds its C++ part, which oo::ToCxx reads), declared
 // as Entity.h and ShipEntity.h declare them (the test imports neither). The test dumps no entity,
 // so none is reached.
-namespace cxx {
 class Entity : public oo::RefCounted
 {
 public:
@@ -106,31 +105,31 @@ public:
 	bool getIsPlayer();
 	bool getIsWormhole();
 };
-}	// namespace cxx
 
-@interface Entity: OOObject
+__attribute__((objc_runtime_name("Entity")))
+@interface TestEntityObject: OOObject
 {
 @public
-	oo::Ref<cxx::Entity> _cxxEntity;
+	oo::Ref<Entity> _cxxEntity;
 }
 @end
 
-@implementation Entity
+@implementation TestEntityObject
 @end
 
-class ShipEntity : public cxx::Entity
+class ShipEntity : public Entity
 {
 public:
 	std::vector<oo::EntityHold> subEntityEnumerator();
 };
 
-cxx::Entity::~Entity() = default;
-bool cxx::Entity::getIsShip()  { std::abort(); }
-bool cxx::Entity::getIsPlayer()  { std::abort(); }
-bool cxx::Entity::getIsWormhole()  { std::abort(); }
+Entity::~Entity() = default;
+bool Entity::getIsShip()  { std::abort(); }
+bool Entity::getIsPlayer()  { std::abort(); }
+bool Entity::getIsWormhole()  { std::abort(); }
 std::vector<oo::EntityHold> ShipEntity::subEntityEnumerator()  { std::abort(); }
-namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }
-::Entity *oo::ToObjC(cxx::Entity *)  { std::abort(); }
+namespace oo { ::TestEntityObject *ToObjC(Entity *entity); }
+::TestEntityObject *oo::ToObjC(Entity *)  { std::abort(); }
 #import "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8): never reached either
 
 // PLAYER: C++ since bead oo-9ht.177 deleted the Objective-C player; the members the monitor calls
@@ -267,7 +266,7 @@ std::optional<std::string> OOScript::name()					{ return std::nullopt; }
 std::optional<std::string> OOScript::scriptDescription()		{ return std::nullopt; }
 std::optional<std::string> OOScript::version()				{ return std::nullopt; }
 bool OOScript::requiresTickle()								{ return false; }
-void OOScript::runWithTarget(cxx::Entity *)						{}
+void OOScript::runWithTarget(Entity *)						{}
 bool OOScript::callMethod(ooscript::PropertyId, ooscript::Context, ooscript::Value *, int, ooscript::Value *)	{ return false; }
 std::string OOScript::className() const						{ return "OOScript"; }
 std::string OOScript::description() const						{ return "<OOScript>"; }
@@ -356,7 +355,7 @@ size_t OOTexture::dataSize()	{ std::abort(); }
 // the monitor's entity dump calls (declared as OOEntityWithDrawable.h declares it). The test dumps
 // no entity, so none is reached.
 class OODrawable;
-class OOEntityWithDrawable : public cxx::Entity
+class OOEntityWithDrawable : public Entity
 {
 public:
 	OODrawable *getDrawable();

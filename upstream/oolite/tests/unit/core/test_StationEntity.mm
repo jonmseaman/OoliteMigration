@@ -395,7 +395,7 @@ OO_TEST(objCStationPartIsAStation)
 	{
 		SetUp();
 		TestStation *station = MakeStation("crossing", { { "name", oo::PList(std::string("Dodo")) } });
-		cxx::Entity *asEntity = station;
+		Entity *asEntity = station;
 		StationEntity *part = station;
 		OO_CHECK(part != nullptr);
 		OO_CHECK(dynamic_cast<StationEntity *>(asEntity) == part);
@@ -406,7 +406,7 @@ OO_TEST(objCStationPartIsAStation)
 		OO_CHECK(asShip->isUnpiloted());		// unpiloted = yes
 		SetExplicitlyUnpiloted(station, false);
 		OO_CHECK(!asShip->isUnpiloted());
-		cxx::Entity *asCxxEntity = part;
+		Entity *asCxxEntity = part;
 		OO_CHECK(asCxxEntity->descriptionComponents() == station->descriptionComponents());
 	}
 }
@@ -433,7 +433,7 @@ TestVisitor *MakeVisitor(const std::string &key, oo::PList::Dict extra = {})
 	return static_cast<TestVisitor *>(oo::ToShip(oo::AutoreleaseEntity(oo::NewShipObject(oo::makeRef<TestVisitor>(), key, oo::PList(std::move(dict))))));
 }
 
-oo::WeakSet<cxx::Entity> *ShipsOnHold2(StationEntity *s)	{ return &s->_shipsOnHold; }
+oo::WeakSet<Entity> *ShipsOnHold2(StationEntity *s)	{ return &s->_shipsOnHold; }
 void SetDefendersLaunched2(StationEntity *s, unsigned n)	{ s->defenders_launched = n; }
 void SetScavengersLaunched2(StationEntity *s, unsigned n)	{ s->scavengers_launched = n; }
 unsigned DockedShuttles2(StationEntity *s)				{ return s->docked_shuttles; }
@@ -552,11 +552,11 @@ namespace {
 
 double LastPatrolReport3(StationEntity *s)			{ return s->last_patrol_report_time; }
 void SetLastPatrolReport3(StationEntity *s, double t)	{ s->last_patrol_report_time = t; }
-void SetEnergy3(cxx::Entity *e, GLfloat energy)		{ e->energy = energy; e->maxEnergy = 1000; }
-GLfloat Energy3(cxx::Entity *e)						{ return e->energy; }
-void SetPrimaryTarget3(ShipEntity *s, cxx::Entity *target)
+void SetEnergy3(Entity *e, GLfloat energy)		{ e->energy = energy; e->maxEnergy = 1000; }
+GLfloat Energy3(Entity *e)						{ return e->energy; }
+void SetPrimaryTarget3(ShipEntity *s, Entity *target)
 {
-	s->_primaryTarget = oo::WeakRef<cxx::Entity>(target);	// the entity's C++ part (bead oo-9ht.39.5.2)
+	s->_primaryTarget = oo::WeakRef<Entity>(target);	// the entity's C++ part (bead oo-9ht.39.5.2)
 }
 
 }	// namespace
@@ -653,7 +653,7 @@ OO_TEST(slice3MembersFromCxx)
 		TestVisitor *friendly = MakeVisitor("friend");
 		if (friendly != nullptr)  friendly->setGroup((station != nullptr ? station->group() : (OOShipGroup *)nullptr));
 		SetEnergy3(station, 500);
-		cxx::Entity *asEntity = part;
+		Entity *asEntity = part;
 		asEntity->takeEnergyDamage(100, friendly, friendly, "");
 		OO_CHECK(Energy3(station) == 500);			// friendly fire, through the root's virtual
 	}

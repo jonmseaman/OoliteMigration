@@ -44,37 +44,36 @@ std::optional<std::string> OOShipGroup::jsDescription()  { return std::nullopt; 
 	ShipEntity.h declare them (the test imports neither); every object the test makes holds a ship
 	that records what the group asks of it.
 */
-@class Entity;
+@class TestEntityObject;
 
-namespace cxx {
 class Entity : public oo::RefCounted
 {
 public:
 	virtual ~Entity();
 
-	::Entity *_object = nil;	// its object (not retained)
+	::TestEntityObject *_object = nil;	// its object (not retained)
 };
-}	// namespace cxx
 
-class ShipEntity : public cxx::Entity
+class ShipEntity : public Entity
 {
 public:
 	void setGroup(::OOShipGroup *group);
-	void setOwner(cxx::Entity *who_owns_entity);
+	void setOwner(Entity *who_owns_entity);
 
 	::OOShipGroup *lastGroup = nullptr;
-	cxx::Entity *lastOwner = nullptr;
+	Entity *lastOwner = nullptr;
 	int setGroupCalls = 0;
 };
 
-@interface Entity: OOObject	// the group holds its ships' C++ parts weakly since bead oo-9ht.22.1
+__attribute__((objc_runtime_name("Entity")))
+@interface TestEntityObject: OOObject	// the group holds its ships' C++ parts weakly since bead oo-9ht.22.1
 {
 @public
-	oo::Ref<cxx::Entity> _cxxEntity;
+	oo::Ref<Entity> _cxxEntity;
 }
 @end
 
-@implementation Entity
+@implementation TestEntityObject
 
 // Every object the test makes holds its ship.
 - (id) init
@@ -89,7 +88,7 @@ public:
 
 @end
 
-cxx::Entity::~Entity() = default;
+Entity::~Entity() = default;
 
 void ShipEntity::setGroup(::OOShipGroup *group)
 {
@@ -98,26 +97,26 @@ void ShipEntity::setGroup(::OOShipGroup *group)
 }
 
 
-void ShipEntity::setOwner(cxx::Entity *who_owns_entity)
+void ShipEntity::setOwner(Entity *who_owns_entity)
 {
 	lastOwner = who_owns_entity;
 }
 
-namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }	// the test's (the game's went with its facade, bead oo-dpyk8)
-::Entity *oo::ToObjC(cxx::Entity *entity)  { return entity != nullptr ? entity->_object : nil; }
+namespace oo { ::TestEntityObject *ToObjC(Entity *entity); }	// the test's (the game's went with its facade, bead oo-dpyk8)
+::TestEntityObject *oo::ToObjC(Entity *entity)  { return entity != nullptr ? entity->_object : nil; }
 
 #import "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
 
 
 namespace {
 
-ShipEntity *Ship(::Entity *object)  { return static_cast<ShipEntity *>(object->_cxxEntity.get()); }
+ShipEntity *Ship(::TestEntityObject *object)  { return static_cast<ShipEntity *>(object->_cxxEntity.get()); }
 
 
 // A ship, its object autoreleased (as [[[ShipEntity alloc] init] autorelease] was).
 ShipEntity *NewShip()
 {
-	return Ship([[[::Entity alloc] init] autorelease]);
+	return Ship([[[::TestEntityObject alloc] init] autorelease]);
 }
 
 
@@ -220,8 +219,8 @@ OO_TEST(deadShipsLeave)
 	{
 		oo::Ref<OOShipGroup> group = OOShipGroup::groupWithName(std::nullopt);
 		ShipEntity *survivor = NewShip();
-		::Entity *doomedObject = [[::Entity alloc] init];
-		::Entity *doomedLeaderObject = [[::Entity alloc] init];
+		::TestEntityObject *doomedObject = [[::TestEntityObject alloc] init];
+		::TestEntityObject *doomedLeaderObject = [[::TestEntityObject alloc] init];
 		ShipEntity *doomed = Ship(doomedObject);
 		ShipEntity *doomedLeader = Ship(doomedLeaderObject);
 		group->addShip(survivor);
@@ -336,8 +335,8 @@ OO_TEST(dyingGroupReleasesLeaderReference)
 	// OOWeakReference (bead oo-9ht.24). Since bead oo-9ht.22.1 the references are oo::WeakRef
 	// members, released with the group; the checks of the objects' OOWeakReference (weakSelf)
 	// retired with it (ADR-0049, standing approval oo-9n5p9).
-	::Entity *leaderObject = [[::Entity alloc] init];
-	::Entity *memberObject = [[::Entity alloc] init];
+	::TestEntityObject *leaderObject = [[::TestEntityObject alloc] init];
+	::TestEntityObject *memberObject = [[::TestEntityObject alloc] init];
 	ShipEntity *leader = Ship(leaderObject), *member = Ship(memberObject);
 	@autoreleasepool
 	{

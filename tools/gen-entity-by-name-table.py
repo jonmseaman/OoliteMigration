@@ -12,7 +12,7 @@ method, exactly the categories' names, each keeping its #if conditions, with
   - @encode() of the declared result type, which the dispatcher classifies as OOCallByName
     classifies the method's type encoding;
   - the argument kind (none, const std::string &, const oo::PList &);
-  - an adaptor taking cxx::Entity *: the category method's body, verbatim, with the entity for
+  - an adaptor taking Entity *: the category method's body, verbatim, with the entity for
     _cxxEntity.get();
   - for a method with no argument, a typed adaptor that keeps its result by type (an integer, a
     floating-point number, a vector, a quaternion, an object, a property list), which callObjC()
@@ -219,7 +219,7 @@ def table_rows():
         elif re.match(r"#\s*endif\b", s):
             conds.pop()
         elif section == "functions":
-            m = re.match(r"^(.+?) ByName_(\d+)\((cxx::Entity \*(?:entity)?)(?:, (const (?:std::string|oo::PList) &)(\w*))?\)$", line)
+            m = re.match(r"^(.+?) ByName_(\d+)\((Entity \*(?:entity)?)(?:, (const (?:std::string|oo::PList) &)(\w*))?\)$", line)
             if m:
                 start = offsets[i + 1]
                 if not text.startswith("{", start):
@@ -265,7 +265,7 @@ def table_rows():
 def encoded(ret):
     # A function answering the C++ entity (bead oo-9ht.39.24) keeps its row's object encoding ("@", as
     # @encode(Entity *) gave): the dispatcher classifies the row as it classified the method's object result.
-    return "id" if ret == "cxx::Entity *" else ret
+    return "id" if ret == "Entity *" else ret
 
 
 def rows():
@@ -315,8 +315,8 @@ python3 tools/gen-entity-by-name-table.py --check (it renders the rows again and
 
 One row per former category method, exactly the categories' names and #if conditions: the name
 sets the root facade's -respondsToSelector: read (the applies-to flags), @encode() of the declared result,
-the argument kind, the adaptor: the method's body, verbatim, with the entity for _cxxEntity.get(),
-and for a method with no argument the typed adaptor (its result by type; bead oo-9ht.39.7.2).
+the argument kind, the adaptor: the method's body, verbatim, with the entity for the facade's own C++
+entity, and for a method with no argument the typed adaptor (its result by type; bead oo-9ht.39.7.2).
 Included by OOEntityCalledByName.mm only, after the parts (ShipPart() ...) the bodies read.
 
 */
@@ -347,7 +347,7 @@ def render():
     data = rows()
     for index, (conds, category, ret, name, arg, argname, flags, body) in enumerate(data):
         switch(conds, out)
-        params = "cxx::Entity *entity" if re.search(r"\bentity\b", body) else "cxx::Entity *"
+        params = "Entity *entity" if re.search(r"\bentity\b", body) else "Entity *"
         if arg is not None:
             params += ", " + arg + (argname if re.search(r"\b" + argname + r"\b", body) else "")
         out.append(f"{ret} ByName_{index}({params})")

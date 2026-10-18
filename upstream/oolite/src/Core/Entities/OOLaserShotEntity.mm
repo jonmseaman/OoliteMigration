@@ -75,7 +75,7 @@ void OOLaserShotEntity::initLaserFromShip(::ShipEntity *srcEntity, OOWeaponFacin
 {
 	// [super init] could not fail: the constructor ran Entity's -init body.
 
-	::ShipEntity			*ship = oo::ToShip((srcEntity != nullptr ? srcEntity->rootShipEntity() : (cxx::Entity *)nullptr));
+	::ShipEntity			*ship = oo::ToShip((srcEntity != nullptr ? srcEntity->rootShipEntity() : (Entity *)nullptr));
 	Vector				middle = OOBoundingBoxCenter((srcEntity != nullptr ? srcEntity->getBoundingBox() : BoundingBox{}));
 
 	OOCParameterAssert((srcEntity != nullptr ? srcEntity->getIsShip() : false) && (ship != nullptr ? ship->getIsShip() : false));
@@ -146,7 +146,7 @@ oo::Ref<OOLaserShotEntity> OOLaserShotEntity::laserFromShip(::ShipEntity *ship, 
 std::optional<std::string> OOLaserShotEntity::descriptionComponents() const
 {
 	// The getter read this ivar.
-	return oo::str::format("ttl: %.3fs - %s orientation %s", _lifetime, cxx::Entity::descriptionComponents().value_or("(null)").c_str(), QuaternionDescription(orientation).c_str());
+	return oo::str::format("ttl: %.3fs - %s orientation %s", _lifetime, Entity::descriptionComponents().value_or("(null)").c_str(), QuaternionDescription(orientation).c_str());
 }
 
 
@@ -169,7 +169,7 @@ void OOLaserShotEntity::setRange(GLfloat range)
 
 void OOLaserShotEntity::update(OOTimeDelta delta_t)
 {
-	cxx::Entity::update(delta_t);
+	Entity::update(delta_t);
 	_lifetime -= delta_t;
 	::ShipEntity		*ship = oo::ToShip(owner());
 
@@ -177,7 +177,7 @@ void OOLaserShotEntity::update(OOTimeDelta delta_t)
 	{
 		/*
 			Reposition this shot accurately. This overrides integration over
-			velocity in -[Entity update:], which is considered sufficient for
+			velocity in Entity::update(), which is considered sufficient for
 			NPC ships.
 		*/
 		setPosition(HPvector_add((ship != nullptr ? ship->getPosition() : HPVector{}), vectorToHPVector(OOVectorMultiplyMatrix(_offset, (ship != nullptr ? ship->drawRotationMatrix() : OOMatrix{})))));

@@ -77,7 +77,7 @@ std::optional<std::string> OOQuiriumCascadeEntity::descriptionComponents() const
 void OOQuiriumCascadeEntity::update(OOTimeDelta delta_t)
 {
 	
-	cxx::Entity::update(delta_t);
+	Entity::update(delta_t);
 	_timePassed += delta_t;
 	
 	rotMatrix = OOMatrixForBillboard(position, (PLAYER != nullptr ? PLAYER->getPosition() : HPVector{}));
@@ -103,11 +103,11 @@ void OOQuiriumCascadeEntity::update(OOTimeDelta delta_t)
 	}
 
 	// manage collisions
-	cxx::Entity *owner = ownerEntity();
+	Entity *owner = ownerEntity();
 	const std::vector<oo::EntityHold> colliding = collidingEntities;	// a snapshot (enumerating the live array while it changed raised)
 	for (const oo::EntityHold &collidingEntity : colliding)
 	{
-		cxx::Entity *e = collidingEntity.get();
+		Entity *e = collidingEntity.get();
 		// we're going to force the weapon id to be the qbomb key here, because at this point the cascade entity isn't a ship any more
 		// and there's no link back to the original.
 		if (e != nullptr)  e->takeEnergyDamage(energy, this, owner, "EQ_QC_MINE");
@@ -165,7 +165,7 @@ bool OOQuiriumCascadeEntity::canCollide()
 }
 
 
-bool OOQuiriumCascadeEntity::checkCloseCollisionWith(cxx::Entity * /*other*/)
+bool OOQuiriumCascadeEntity::checkCloseCollisionWith(Entity * /*other*/)
 {
 	return YES;
 }

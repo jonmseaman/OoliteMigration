@@ -40,7 +40,7 @@ MA 02110-1301, USA.
 
 
 class ShipEntity;	// C++ since bead oo-9ht.144
-namespace cxx { class Entity; }
+class Entity;
 class OOPreservedAIStateMachine;	// private to AI.mm; no facade, so global (amendment oo-fn2f item 4)
 
 
@@ -141,7 +141,7 @@ private:
 	oo::PList cleanHandlers(const oo::PList &handlers, const std::string &stateKey, const std::string &smName);
 	oo::PList cleanActions(const oo::PList &actions, const std::string &handlerKey, const std::string &stateKey, const std::string &smName);
 
-	oo::WeakRef<cxx::Entity>	_owner = {};			// the ShipEntity this is the AI for, weakly (a weak reference proxy to its object before bead oo-9ht.73)
+	oo::WeakRef<Entity>	_owner = {};			// the ShipEntity this is the AI for, weakly (a weak reference proxy to its object before bead oo-9ht.73)
 	std::optional<std::string>	ownerDesc = {};		// describes the object this is the AI for; nullopt until it has an owner
 
 	oo::PList			stateMachine = {};			// the loaded, whitelisted state machine; null: none (nil)

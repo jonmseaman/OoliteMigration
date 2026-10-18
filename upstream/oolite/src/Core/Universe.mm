@@ -149,12 +149,12 @@ const GLuint framebufferQuadIndices[] = {
 
 Universe *gSharedUniverse = nil;
 
-extern cxx::Entity *gOOJSPlayerIfStale;
-cxx::Entity *gOOJSPlayerIfStale = nullptr;	// the player's C++ entity (bead oo-9ht.39.25)
+extern Entity *gOOJSPlayerIfStale;
+Entity *gOOJSPlayerIfStale = nullptr;	// the player's C++ entity (bead oo-9ht.39.25)
 
 
 static BOOL MaintainLinkedLists(Universe* uni);
-namespace { OOINLINE BOOL EntityInRange(HPVector p1, cxx::Entity *e2, float range); }	// (the C++ entity since bead oo-9ht.39.26)
+namespace { OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range); }	// (the C++ entity since bead oo-9ht.39.26)
 
 /* TODO: route calculation is really slow - find a way to safely enable this */
 #undef CACHE_ROUTE_FROM_SYSTEM_RESULTS
@@ -189,7 +189,7 @@ void AddIfAbsent(std::vector<oo::ObjCRef<T>> &objects, U object)
 
 
 // The same on a list of held entities (bead oo-9ht.39.26): the entity's object is retained once.
-void AddIfAbsent(std::vector<oo::EntityHold> &entities, cxx::Entity *entity)
+void AddIfAbsent(std::vector<oo::EntityHold> &entities, Entity *entity)
 {
 	if (std::find(entities.begin(), entities.end(), entity) == entities.end())  entities.emplace_back(entity);
 }
@@ -614,15 +614,15 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 
 
 
-BOOL IsCandidateMainStationPredicate(cxx::Entity *entity, void * /*parameter*/)
+BOOL IsCandidateMainStationPredicate(Entity *entity, void * /*parameter*/)
 {
 	return entity->getIsStation() && !entity->isExplicitlyNotMainStation;	// [entity isStation]
 }
 
 
-BOOL IsFriendlyStationPredicate(cxx::Entity *entity, void *parameter)
+BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 {
-	return entity->getIsStation() && !oo::ToShip(entity)->isHostileTo(static_cast<cxx::Entity *>(parameter));	// the C++ entity since bead oo-9ht.39.26	// [entity isStation], -isHostileTo:
+	return entity->getIsStation() && !oo::ToShip(entity)->isHostileTo(static_cast<Entity *>(parameter));	// the C++ entity since bead oo-9ht.39.26	// [entity isStation], -isHostileTo:
 }
 
 }	// namespace	(the two predicates joined it when their signatures changed, bead oo-9ht.39.23: misc-use-anonymous-namespace)
@@ -671,7 +671,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 	if (uni->n_entities > 0)
 	{
 		int n;
-		cxx::Entity	*checkEnt, *last;	// C++ parts (bead oo-9ht.39.4)
+		Entity	*checkEnt, *last;	// C++ parts (bead oo-9ht.39.4)
 		
 		last = nil;
 		
@@ -804,7 +804,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		uni->y_list_start = nil;
 		uni->z_list_start = nil;
 
-		cxx::Entity *ent = nullptr;
+		Entity *ent = nullptr;
 		for (const oo::EntityHold &entry : allEntities)
 		{
 			ent = entry.get();
@@ -823,7 +823,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 
 
 namespace {
-OOINLINE BOOL EntityInRange(HPVector p1, cxx::Entity *e2, float range)
+OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 {
 	if (range < 0)  return YES;
 	float cr = range + e2->collision_radius;
@@ -1462,7 +1462,7 @@ void Universe::setUpUniverseFromStation()
 			int index = 0;
 			while (entities.size() > 2)
 			{
-				cxx::Entity *ent = entities[index].get();
+				Entity *ent = entities[index].get();
 				if ((ent != player)&&(ent != dockedStation))
 				{
 					if (ent->isStation)  // clear out queues
@@ -1611,7 +1611,7 @@ void Universe::setUpWitchspaceBetweenSystem(OOSystemID s1, OOSystemID s2)
 {
 	// new system is hyper-centric : witchspace exit point is origin
 	
-	cxx::Entity				*thing;	// its object retained by hand where +alloc's was (bead oo-9ht.39.26)
+	Entity				*thing;	// its object retained by hand where +alloc's was (bead oo-9ht.39.26)
 	::PlayerEntity*		player = PLAYER;
 	Quaternion			randomQ;
 	
@@ -1707,9 +1707,9 @@ void Universe::setUpWitchspaceBetweenSystem(OOSystemID s1, OOSystemID s2)
 	
 	if (allPlanets.size()>0)	// F7 sets [UNIVERSE planet], which can lead to some trouble! TODO: track down where exactly that happens!
 	{
-		cxx::Entity *tmp=allPlanets[0].get();
+		Entity *tmp=allPlanets[0].get();
 		addEntity(a_planet);
-		std::erase(allPlanets, static_cast<cxx::Entity *>(a_planet));
+		std::erase(allPlanets, static_cast<Entity *>(a_planet));
 		cachedPlanet=a_planet;
 		allPlanets[0] = oo::EntityHold(a_planet);
 		removeEntity(tmp);
@@ -1734,7 +1734,7 @@ void Universe::setUpWitchspaceBetweenSystem(OOSystemID s1, OOSystemID s2)
  * separated to allow Javascript startUp routines to be run in-between */
 void Universe::setUpSpace()
 {
-	cxx::Entity				*thing;	// its object retained by hand where +alloc's was (bead oo-9ht.39.26)
+	Entity				*thing;	// its object retained by hand where +alloc's was (bead oo-9ht.39.26)
 //	ShipEntity			*nav_buoy;
 	::ShipEntity			*stationObject;	// the station's object (the ship's facade since bead oo-9ht.175), retained
 	::StationEntity		*a_station;
@@ -3129,7 +3129,7 @@ void Universe::witchspaceShipWithPrimaryRole(const std::string &role)
 
 
 // adds a ship within the collision radius of the other entity
-::ShipEntity * Universe::spawnShipWithRole(const std::string &desc, cxx::Entity *entity)
+::ShipEntity * Universe::spawnShipWithRole(const std::string &desc, Entity *entity)
 {
 	if (entity == nullptr)  return nil;
 	
@@ -3148,13 +3148,13 @@ void Universe::witchspaceShipWithPrimaryRole(const std::string &role)
 }
 
 
-cxx::Entity * Universe::addVisualEffectAt(HPVector pos, const std::string &key)
+Entity * Universe::addVisualEffectAt(HPVector pos, const std::string &key)
 {
 	OOJS_PROFILE_ENTER
 
 	// minimise the time between creating ship & assigning position.
 
-	cxx::Entity  		*vis = newVisualEffectWithName(key); // is retained (the effect's object, bead oo-9ht.165)
+	Entity  		*vis = newVisualEffectWithName(key); // is retained (the effect's object, bead oo-9ht.165)
 	BOOL				success = NO;
 	if (vis != nullptr)
 	{
@@ -3319,7 +3319,7 @@ std::vector<oo::EntityHold> Universe::addShipsToRoute(const std::string &route, 
 	std::vector<oo::EntityHold>	ships;
 	ships.reserve(count);
 	::ShipEntity				*ship = nil;
-	cxx::Entity				*entity = nullptr;	// the planet or the sun (bead oo-9ht.39.26)
+	Entity				*entity = nullptr;	// the planet or the sun (bead oo-9ht.39.26)
 	HPVector					pos = kZeroHPVector, direction = kZeroHPVector, point0 = kZeroHPVector, point1 = kZeroHPVector;
 	double					radius = 0;
 	
@@ -3423,7 +3423,7 @@ void Universe::forceWitchspaceEntries()
 		if (sortedEntities[i]->isShip)
 		{
 			::ShipEntity *my_ship = oo::ToShip(sortedEntities[i]);
-			cxx::Entity *my_target = oo::WithObject((my_ship != nullptr ? my_ship->primaryTarget() : (cxx::Entity *)nullptr));
+			Entity *my_target = oo::WithObject((my_ship != nullptr ? my_ship->primaryTarget() : (Entity *)nullptr));
 			if (my_target != nullptr && my_target->getIsWormhole())	// what -isWormhole forwarded to (bead oo-dpyk8)
 			{
 				if (my_ship != nullptr)  my_ship->enterTargetWormhole();
@@ -3452,7 +3452,7 @@ GLfloat Universe::safeWitchspaceExitDistance()
 {
 	for (unsigned i = 0; i < n_entities; i++)
 	{
-		cxx::Entity *e2 = sortedEntities[i];
+		Entity *e2 = sortedEntities[i];
 		if (oo::EntityIsShip(e2) && (oo::ToShip(e2) != nullptr ? oo::ToShip(e2)->hasPrimaryRole("buoy-witchpoint") : false))
 		{
 			return (oo::ToShip(e2) != nullptr ? oo::ToShip(e2)->collisionRadius() : 0.0f) + MIN_DISTANCE_TO_BUOY;
@@ -4069,7 +4069,7 @@ void Universe::selectIntro2Next()
 {
 	// In interstellar space we select a random friendly carrier as mainStation.
 	// No caching: friendly status can change!
-	return oo::ToStation(findOneEntityMatchingPredicate(IsFriendlyStationPredicate, static_cast<cxx::Entity *>(ship)));	// the C++ entity (bead oo-9ht.39.26)
+	return oo::ToStation(findOneEntityMatchingPredicate(IsFriendlyStationPredicate, static_cast<Entity *>(ship)));	// the C++ entity (bead oo-9ht.39.26)
 }
 
 
@@ -4142,7 +4142,7 @@ void Universe::unMagicMainStation()
 // own, set and read through its object's messages (oo::PrevBeacon() and the rest, Entity+ObjCBridge).
 void Universe::resetBeacons()
 {
-	cxx::Entity *beaconShip = firstBeacon(), *next = nullptr;
+	Entity *beaconShip = firstBeacon(), *next = nullptr;
 	while (beaconShip)
 	{
 		next = oo::NextBeacon(beaconShip);
@@ -4156,43 +4156,43 @@ void Universe::resetBeacons()
 }
 
 
-cxx::Entity * Universe::firstBeacon()
+Entity * Universe::firstBeacon()
 {
 	return oo::LiveEntity(_firstBeacon);	// what the object's weak reference read (+0), its C++ entity
 }
 
 
-void Universe::setFirstBeacon(cxx::Entity *beacon)
+void Universe::setFirstBeacon(Entity *beacon)
 {
 	if (beacon != firstBeacon())
 	{
 		oo::SetPrevBeacon(beacon, nullptr);
 		oo::SetNextBeacon(beacon, firstBeacon());
 		oo::SetPrevBeacon(firstBeacon(), beacon);
-		_firstBeacon = oo::WeakRef<cxx::Entity>(beacon);	// oo::WeakEntityRef() of its object
+		_firstBeacon = oo::WeakRef<Entity>(beacon);	// oo::WeakEntityRef() of its object
 	}
 }
 
 
-cxx::Entity * Universe::lastBeacon()
+Entity * Universe::lastBeacon()
 {
 	return oo::LiveEntity(_lastBeacon);
 }
 
 
-void Universe::setLastBeacon(cxx::Entity *beacon)
+void Universe::setLastBeacon(Entity *beacon)
 {
 	if (beacon != lastBeacon())
 	{
 		oo::SetNextBeacon(beacon, nullptr);
 		oo::SetPrevBeacon(beacon, lastBeacon());
 		oo::SetNextBeacon(lastBeacon(), beacon);
-		_lastBeacon = oo::WeakRef<cxx::Entity>(beacon);
+		_lastBeacon = oo::WeakRef<Entity>(beacon);
 	}
 }
 
 
-void Universe::setNextBeacon(cxx::Entity *beacon)
+void Universe::setNextBeacon(Entity *beacon)
 {
 	// The C++ entity (beads oo-9ht.39.8.10, oo-9ht.39.26).
 	if (oo::EntityIsBeacon(beacon))
@@ -4207,10 +4207,10 @@ void Universe::setNextBeacon(cxx::Entity *beacon)
 }
 
 
-void Universe::clearBeacon(cxx::Entity *beacon)
+void Universe::clearBeacon(Entity *beacon)
 {
 	// The C++ entity (beads oo-9ht.39.8.10, oo-9ht.39.26).
-	cxx::Entity				*tmp = nullptr;
+	Entity				*tmp = nullptr;
 
 	if (oo::EntityIsBeacon(beacon))
 	{
@@ -4244,7 +4244,7 @@ std::map<std::string, oo::EntityHold, std::less<>> Universe::currentWaypoints()
 
 void Universe::defineWaypoint(const oo::PList &definition, const std::string &key)
 {
-	cxx::Entity *waypoint = nullptr;	// the C++ waypoint (bead oo-9ht.39.26; its object is the root's facade since bead oo-9ht.108)
+	Entity *waypoint = nullptr;	// the C++ waypoint (bead oo-9ht.39.26; its object is the root's facade since bead oo-9ht.108)
 	BOOL preserveCompass = NO;
 	const auto existing = waypoints.find(key);
 	if (existing != waypoints.end())  waypoint = existing->second.get();
@@ -4447,12 +4447,12 @@ std::optional<std::string> Universe::randomShipKeyForRoleRespectingConditions(co
 }
 
 
-cxx::Entity * Universe::newVisualEffectWithName(const std::string &effectKey)
+Entity * Universe::newVisualEffectWithName(const std::string &effectKey)
 {
 	OOJS_PROFILE_ENTER
 
 	oo::PList				effectDict;
-	cxx::Entity	*effect = nullptr;	// the effect, its object +1 (beads oo-9ht.165, oo-9ht.39.26)
+	Entity	*effect = nullptr;	// the effect, its object +1 (beads oo-9ht.165, oo-9ht.39.26)
 
 	effectDict = OOShipRegistry::sharedRegistry()->effectInfoForKey(effectKey);
 	if (effectDict.isNull())  return nil;
@@ -5254,10 +5254,10 @@ void Universe::drawUniverse()
 			Vector			view_dir, view_up;
 			OOMatrix		view_matrix;
 			int				ent_count =	n_entities;
-			std::vector<cxx::Entity *> my_entities(ent_count);	// each one's object retained and autoreleased (bead oo-9ht.39.26)
+			std::vector<Entity *> my_entities(ent_count);	// each one's object retained and autoreleased (bead oo-9ht.39.26)
 			int				draw_count = 0;
 			::PlayerEntity	*player = PLAYER;
-			cxx::Entity		*drawthing = nullptr;
+			Entity		*drawthing = nullptr;
 			BOOL			demoShipMode = (player != nullptr ? player->getShowDemoShips() : false);
 			
 			float   aspect = viewSize.height/viewSize.width;
@@ -5277,7 +5277,7 @@ void Universe::drawUniverse()
 				 * on/near the player. So long as everything uses
 				 * depth tests, we'll get away with it; it'll just
 				 * occasionally be inefficient. - CIM */
-				cxx::Entity *e = sortedEntities[i]; // ordered NEAREST -> FURTHEST AWAY
+				Entity *e = sortedEntities[i]; // ordered NEAREST -> FURTHEST AWAY
 				if (e->isVisible())
 				{
 					my_entities[draw_count++] = oo::AutoreleaseEntity(oo::RetainEntity(e));
@@ -5785,7 +5785,7 @@ void Universe::drawWatermarkString(const std::string &watermarkString)
 }
 
 
-cxx::Entity *Universe::entityForUniversalID(OOUniversalID u_id)
+Entity *Universe::entityForUniversalID(OOUniversalID u_id)
 {
 	if (u_id == 100)
 		return PLAYER;	// the player
@@ -5799,7 +5799,7 @@ cxx::Entity *Universe::entityForUniversalID(OOUniversalID u_id)
 	if ((u_id == NO_TARGET)||(!entity_for_uid[u_id]))
 		return nil;
 	
-	cxx::Entity *ent = entity_for_uid[u_id];
+	Entity *ent = entity_for_uid[u_id];
 	if (ent->isEffect())	// effects SHOULD NOT HAVE U_IDs!
 	{
 		return nil;
@@ -5814,7 +5814,7 @@ cxx::Entity *Universe::entityForUniversalID(OOUniversalID u_id)
 }
 
 
-bool Universe::addEntity(cxx::Entity *entity)
+bool Universe::addEntity(Entity *entity)
 {
 	if (entity)
 	{
@@ -5968,7 +5968,7 @@ bool Universe::addEntity(cxx::Entity *entity)
 }
 
 
-bool Universe::removeEntity(cxx::Entity *entity)
+bool Universe::removeEntity(Entity *entity)
 {
 	if (entity != nil && !oo::EntityIsPlayer(entity))
 	{
@@ -5991,7 +5991,7 @@ bool Universe::removeEntity(cxx::Entity *entity)
 }
 
 
-void Universe::ensureEntityReallyRemoved(cxx::Entity *entity)
+void Universe::ensureEntityReallyRemoved(Entity *entity)
 {
 	// Its log line ("universe.unremovedEntity") is the facade's -dealloc's, which describes the object
 	// before calling this (bead oo-9ht.39.26): the peer map no longer answers the dying object there.
@@ -6008,7 +6008,7 @@ void Universe::removeAllEntitiesExceptPlayer()
 	no_update = YES;			// no drawing while we do this!
 	
 #ifndef NDEBUG
-	cxx::Entity *p0 = entities[0].get();
+	Entity *p0 = entities[0].get();
 	if (!(p0->isPlayer))
 	{
 		OO_LOG(cxx_kOOLogInconsistentState, "{}", "***** First entity is not the player in Universe.removeAllEntitiesExceptPlayer - exiting.");
@@ -6021,7 +6021,7 @@ void Universe::removeAllEntitiesExceptPlayer()
 
 	while (entities.size() > 1)
 	{
-		cxx::Entity *ent = entities[1].get();
+		Entity *ent = entities[1].get();
 		if (ent->isStation)  // clear out queues
 			if (oo::ToStation(ent) != nullptr)  oo::ToStation(ent)->clear();
 		if (EXPECT(!ent->getIsVisualEffect()))
@@ -6058,7 +6058,7 @@ void Universe::removeDemoShips()
 	int ent_count = n_entities;
 	if (ent_count > 0)
 	{
-		cxx::Entity *ent;
+		Entity *ent;
 		for (i = 0; i < ent_count; i++)
 		{
 			ent = sortedEntities[i];
@@ -6118,7 +6118,7 @@ void Universe::removeDemoShips()
 }
 
 
-bool Universe::isVectorClearFromEntity(cxx::Entity *e1, double dist, HPVector p2)
+bool Universe::isVectorClearFromEntity(Entity *e1, double dist, HPVector p2)
 {
 	if (!e1)
 		return NO;
@@ -6135,7 +6135,7 @@ bool Universe::isVectorClearFromEntity(cxx::Entity *e1, double dist, HPVector p2
 	
 	int i;
 	int ent_count = n_entities;
-	std::vector<cxx::Entity *> my_entities(ent_count);	// each one's object retained (bead oo-9ht.39.26)
+	std::vector<Entity *> my_entities(ent_count);	// each one's object retained (bead oo-9ht.39.26)
 	for (i = 0; i < ent_count; i++)
 		my_entities[i] = oo::RetainEntity(sortedEntities[i]); //	retained
 	
@@ -6146,7 +6146,7 @@ bool Universe::isVectorClearFromEntity(cxx::Entity *e1, double dist, HPVector p2
 	
 	for (i = 0; i < ent_count ; i++)
 	{
-		cxx::Entity *e2 = my_entities[i];
+		Entity *e2 = my_entities[i];
 		if ((e2 != e1)&&(e2->canCollide()))
 		{
 			HPVector epos = e2->position;
@@ -6180,7 +6180,7 @@ bool Universe::isVectorClearFromEntity(cxx::Entity *e1, double dist, HPVector p2
 
 
 // The C++ entity, and its hazard's (bead oo-9ht.39.8.6): the list is still walked on the entities' objects.
-cxx::Entity *Universe::hazardOnRouteFromEntity(cxx::Entity *e1, double dist, HPVector p2)
+Entity *Universe::hazardOnRouteFromEntity(Entity *e1, double dist, HPVector p2)
 {
 	if (!e1)
 		return nil;
@@ -6195,10 +6195,10 @@ cxx::Entity *Universe::hazardOnRouteFromEntity(cxx::Entity *e1, double dist, HPV
 	if (nearest < 0.0)
 		return nil;			// within range already!
 	
-	cxx::Entity *result = nullptr;
+	Entity *result = nullptr;
 	int i;
 	int ent_count = n_entities;
-	std::vector<cxx::Entity *> my_entities(ent_count);	// each one's object retained (bead oo-9ht.39.26)
+	std::vector<Entity *> my_entities(ent_count);	// each one's object retained (bead oo-9ht.39.26)
 	for (i = 0; i < ent_count; i++)
 		my_entities[i] = oo::RetainEntity(sortedEntities[i]); //	retained
 	
@@ -6209,7 +6209,7 @@ cxx::Entity *Universe::hazardOnRouteFromEntity(cxx::Entity *e1, double dist, HPV
 	
 	for (i = 0; (i < ent_count) && (!result) ; i++)
 	{
-		cxx::Entity *e2 = my_entities[i];
+		Entity *e2 = my_entities[i];
 		if ((e2 != e1)&&(e2->canCollide()))
 		{
 			HPVector epos = e2->position;
@@ -6239,7 +6239,7 @@ cxx::Entity *Universe::hazardOnRouteFromEntity(cxx::Entity *e1, double dist, HPV
 
 
 // The C++ entity (bead oo-9ht.39.8.6): the list is still walked on the entities' objects.
-HPVector Universe::getSafeVectorFromEntity(cxx::Entity *e1, double dist, HPVector p2)
+HPVector Universe::getSafeVectorFromEntity(Entity *e1, double dist, HPVector p2)
 {
 	// heuristic three
 	
@@ -6253,7 +6253,7 @@ HPVector Universe::getSafeVectorFromEntity(cxx::Entity *e1, double dist, HPVecto
 	HPVector  result = p2;
 	int i;
 	int ent_count = n_entities;
-	std::vector<cxx::Entity *> my_entities(ent_count);	// each one's object retained (bead oo-9ht.39.26)
+	std::vector<Entity *> my_entities(ent_count);	// each one's object retained (bead oo-9ht.39.26)
 	for (i = 0; i < ent_count; i++)
 		my_entities[i] = oo::RetainEntity(sortedEntities[i]);	// retained
 	HPVector p1 = e1->position;
@@ -6269,7 +6269,7 @@ HPVector Universe::getSafeVectorFromEntity(cxx::Entity *e1, double dist, HPVecto
 	
 	for (i = 0; i < ent_count; i++)
 	{
-		cxx::Entity *e2 = my_entities[i];
+		Entity *e2 = my_entities[i];
 		if ((e2 != e1)&&(e2->canCollide()))
 		{
 			HPVector epos = e2->position;
@@ -6417,7 +6417,7 @@ void Universe::addLaserHitEffectsAt(HPVector pos, ::ShipEntity *target, float da
 	::ShipEntity		*hit_subentity = nil;
 	HPVector			p0 = (srcEntity != nullptr ? srcEntity->getPosition() : HPVector{});
 	Quaternion		q1 = (srcEntity != nullptr ? srcEntity->normalOrientation() : Quaternion{});
-	::ShipEntity		*parent = oo::ToShip((srcEntity != nullptr ? srcEntity->parentEntity() : (cxx::Entity *)nullptr));
+	::ShipEntity		*parent = oo::ToShip((srcEntity != nullptr ? srcEntity->parentEntity() : (Entity *)nullptr));
 	
 	if (parent)
 	{
@@ -6437,7 +6437,7 @@ void Universe::addLaserHitEffectsAt(HPVector pos, ::ShipEntity *target, float da
 	
 	for (i = 0; i < ent_count; i++)
 	{
-		cxx::Entity *ent = sortedEntities[i];
+		Entity *ent = sortedEntities[i];
 		if (ent != srcEntity && ent != parent && oo::EntityIsShip(ent) && ent->canCollide())
 		{
 			my_entities[ship_count++] = (oo::ToShip(ent) != nullptr ? oo::ToShip(oo::RetainEntity(oo::ToShip(ent))) : (::ShipEntity *)nil);
@@ -6522,16 +6522,16 @@ void Universe::addLaserHitEffectsAt(HPVector pos, ::ShipEntity *target, float da
 // each selector (until oo-ql9rn); sends to self were sends (ADR-0056 amendments oo-riqmz,
 // oo-mvzmb).
 
-cxx::Entity *Universe::firstEntityTargetedByPlayer()
+Entity *Universe::firstEntityTargetedByPlayer()
 {
 	::PlayerEntity	*player = PLAYER;
-	cxx::Entity		*hit_entity = nullptr;
+	Entity		*hit_entity = nullptr;
 	OOScalar		nearest2 = SCANNER_MAX_RANGE - 100;	// 100m shorter than range at which target is lost
 	nearest2 *= nearest2;
 	int				i;
 	int				ent_count = n_entities;
 	int				ship_count = 0;
-	std::vector<cxx::Entity *> my_entities(ent_count);	// each one's object retained (bead oo-9ht.39.26)
+	std::vector<Entity *> my_entities(ent_count);	// each one's object retained (bead oo-9ht.39.26)
 	
 	for (i = 0; i < ent_count; i++)
 	{
@@ -6567,7 +6567,7 @@ cxx::Entity *Universe::firstEntityTargetedByPlayer()
 	
 	for (i = 0; i < ship_count; i++)
 	{
-		cxx::Entity *e2 = my_entities[i];
+		Entity *e2 = my_entities[i];
 		if (e2->canCollide() && e2->getScanClass() != CLASS_NO_DRAW)
 		{
 			Vector rp = HPVectorToVector(HPvector_subtract(e2->getPosition(), p1));
@@ -6608,7 +6608,7 @@ cxx::Entity *Universe::firstEntityTargetedByPlayer()
 }
 
 
-cxx::Entity *Universe::firstEntityTargetedByPlayerPrecisely()
+Entity *Universe::firstEntityTargetedByPlayerPrecisely()
 {
 	OOWeaponFacing targetFacing;
 	Vector laserPortOffset = kZeroVector;
@@ -6648,7 +6648,7 @@ cxx::Entity *Universe::firstEntityTargetedByPlayerPrecisely()
 }
 
 
-std::vector<oo::EntityHold> Universe::entitiesWithinRange(double range, cxx::Entity *entity)
+std::vector<oo::EntityHold> Universe::entitiesWithinRange(double range, Entity *entity)
 {
 	if (entity == nil)  return {};
 
@@ -6658,7 +6658,7 @@ std::vector<oo::EntityHold> Universe::entitiesWithinRange(double range, cxx::Ent
 
 // The role predicates read a std::string, held here for the call.
 // The reference entity is the C++ entity (bead oo-9ht.39.8.23); the count reads the C++ entities (bead oo-9ht.39.26).
-unsigned Universe::countShipsWithRole(const std::string &role, double range, cxx::Entity *entity)
+unsigned Universe::countShipsWithRole(const std::string &role, double range, Entity *entity)
 {
 	std::string roleParameter = role;
 	return countShipsMatchingPredicate(HasRolePredicate, &roleParameter, range, entity);
@@ -6671,7 +6671,7 @@ unsigned Universe::countShipsWithRole(const std::string &role)
 }
 
 
-unsigned Universe::countShipsWithPrimaryRole(const std::string &role, double range, cxx::Entity *entity)
+unsigned Universe::countShipsWithPrimaryRole(const std::string &role, double range, Entity *entity)
 {
 	std::string roleParameter = role;
 	return countShipsMatchingPredicate(HasPrimaryRolePredicate, &roleParameter, range, entity);
@@ -6679,7 +6679,7 @@ unsigned Universe::countShipsWithPrimaryRole(const std::string &role, double ran
 
 
 // HasScanClassPredicate reads the scan class as an OOScanClass.
-unsigned Universe::countShipsWithScanClass(OOScanClass scanClass, double range, cxx::Entity *entity)
+unsigned Universe::countShipsWithScanClass(OOScanClass scanClass, double range, Entity *entity)
 {
 	return countShipsMatchingPredicate(HasScanClassPredicate, &scanClass, range, entity);
 }
@@ -6691,7 +6691,7 @@ unsigned Universe::countShipsWithPrimaryRole(const std::string &role)
 }
 
 
-unsigned Universe::countEntitiesMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, cxx::Entity *e1)
+unsigned Universe::countEntitiesMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, Entity *e1)
 {
 	unsigned		i, found = 0;
 	HPVector			p1;
@@ -6704,7 +6704,7 @@ unsigned Universe::countEntitiesMatchingPredicate(EntityFilterPredicate predicat
 	
 	for (i = 0; i < n_entities; i++)
 	{
-		cxx::Entity *e2 = sortedEntities[i];
+		Entity *e2 = sortedEntities[i];
 		if (e2 != e1 && predicate(e2, parameter))
 		{
 			if (range < 0)  distance = -1;	// Negative range means infinity
@@ -6724,7 +6724,7 @@ unsigned Universe::countEntitiesMatchingPredicate(EntityFilterPredicate predicat
 }
 
 
-unsigned Universe::countShipsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, cxx::Entity *entity)
+unsigned Universe::countShipsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, Entity *entity)
 {
 	if (predicate != NULL)
 	{
@@ -6747,7 +6747,7 @@ unsigned Universe::countShipsMatchingPredicate(EntityFilterPredicate predicate, 
 // This can be easily changed by removing the [reference isPlayer] conditions in FindJSVisibleEntities().
 // The reference entity is the C++ entity (bead oo-9ht.39.8.23): its position is what -position answered, and
 // the entity the list holds for it is skipped, as its object was.
-std::vector<oo::EntityHold> Universe::findEntitiesMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, cxx::Entity *e1)
+std::vector<oo::EntityHold> Universe::findEntitiesMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, Entity *e1)
 {
 	OOJS_PROFILE_ENTER
 
@@ -6766,7 +6766,7 @@ std::vector<oo::EntityHold> Universe::findEntitiesMatchingPredicate(EntityFilter
 	
 	for (i = 0; i < n_entities; i++)
 	{
-		cxx::Entity *e2 = sortedEntities[i];
+		Entity *e2 = sortedEntities[i];
 		
 		if (e1 != e2 &&
 			EntityInRange(p1, e2, range) &&
@@ -6784,10 +6784,10 @@ std::vector<oo::EntityHold> Universe::findEntitiesMatchingPredicate(EntityFilter
 }
 
 
-cxx::Entity *Universe::findOneEntityMatchingPredicate(EntityFilterPredicate predicate, void *parameter)
+Entity *Universe::findOneEntityMatchingPredicate(EntityFilterPredicate predicate, void *parameter)
 {
 	unsigned		i;
-	cxx::Entity		*candidate = nullptr;
+	Entity		*candidate = nullptr;
 	
 	OOJSPauseTimeLimiter();
 	
@@ -6805,7 +6805,7 @@ cxx::Entity *Universe::findOneEntityMatchingPredicate(EntityFilterPredicate pred
 }
 
 
-std::vector<oo::EntityHold> Universe::findShipsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, cxx::Entity *entity)
+std::vector<oo::EntityHold> Universe::findShipsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, Entity *entity)
 {
 	if (predicate != NULL)
 	{
@@ -6824,7 +6824,7 @@ std::vector<oo::EntityHold> Universe::findShipsMatchingPredicate(EntityFilterPre
 }
 
 
-std::vector<oo::EntityHold> Universe::findVisualEffectsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, cxx::Entity *entity)
+std::vector<oo::EntityHold> Universe::findVisualEffectsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, Entity *entity)
 {
 	if (predicate != NULL)
 	{
@@ -6843,12 +6843,12 @@ std::vector<oo::EntityHold> Universe::findVisualEffectsMatchingPredicate(EntityF
 }
 
 
-cxx::Entity *Universe::nearestEntityMatchingPredicate(EntityFilterPredicate predicate, void *parameter, cxx::Entity *entity)
+Entity *Universe::nearestEntityMatchingPredicate(EntityFilterPredicate predicate, void *parameter, Entity *entity)
 {
 	unsigned		i;
 	HPVector			p1;
 	float			rangeSq = INFINITY;
-	cxx::Entity		*result = nullptr;
+	Entity		*result = nullptr;
 	
 	if (predicate == NULL)  predicate = YESPredicate;
 	
@@ -6857,7 +6857,7 @@ cxx::Entity *Universe::nearestEntityMatchingPredicate(EntityFilterPredicate pred
 	
 	for (i = 0; i < n_entities; i++)
 	{
-		cxx::Entity *e2 = sortedEntities[i];
+		Entity *e2 = sortedEntities[i];
 		float distanceToReferenceEntitySquared = (float)HPdistance2(p1, e2->getPosition());
 		
 		if (entity != e2 &&
@@ -6873,7 +6873,7 @@ cxx::Entity *Universe::nearestEntityMatchingPredicate(EntityFilterPredicate pred
 }
 
 
-cxx::Entity *Universe::nearestShipMatchingPredicate(EntityFilterPredicate predicate, void *parameter, cxx::Entity *entity)
+Entity *Universe::nearestShipMatchingPredicate(EntityFilterPredicate predicate, void *parameter, Entity *entity)
 {
 	if (predicate != NULL)
 	{
@@ -7377,7 +7377,7 @@ void Universe::update(OOTimeDelta inDeltaT)
 		}
 
 		unsigned	i, ent_count = n_entities;
-		std::vector<cxx::Entity *> my_entities(ent_count);	// each one's object retained (bead oo-9ht.39.26)
+		std::vector<Entity *> my_entities(ent_count);	// each one's object retained (bead oo-9ht.39.26)
 		
 		verifyEntitySessionIDs();
 		
@@ -7389,7 +7389,7 @@ void Universe::update(OOTimeDelta inDeltaT)
 		
 		const char * volatile update_stage = "initialisation";
 #ifndef NDEBUG
-		cxx::Entity * volatile update_stage_param = nullptr;	// the C++ entity (bead oo-9ht.39.26)
+		Entity * volatile update_stage_param = nullptr;	// the C++ entity (bead oo-9ht.39.26)
 #endif
 		
 		@try
@@ -7487,7 +7487,7 @@ void Universe::update(OOTimeDelta inDeltaT)
 			OO_LOG("universe.profile.update", "{}", const_cast<const char *>(update_stage));
 			for (i = 0; i < ent_count; i++)
 			{
-				cxx::Entity *thing = my_entities[i];
+				Entity *thing = my_entities[i];
 #ifndef NDEBUG
 				update_stage_param = thing;
 				update_stage = "update:entity [%@]";
@@ -7548,7 +7548,7 @@ void Universe::update(OOTimeDelta inDeltaT)
 			if (!zombies.empty())
 			{
 				update_stage = "shootin' zombies";
-				cxx::Entity *zombie = nullptr;
+				Entity *zombie = nullptr;
 				for (const oo::EntityHold &entry : zombies)
 				{
 					zombie = entry.get();
@@ -7703,7 +7703,7 @@ void Universe::filterSortedLists()
 	becomes significant larger. However, almost all of these extra pairs are dealt with by a simple distance check.
 	I currently see no noticeable negative effect while playing, but this change might still give some trouble I missed.
 	*/
-	cxx::Entity	*e0, *next, *prev;	// C++ parts (bead oo-9ht.39.4)
+	Entity	*e0, *next, *prev;	// C++ parts (bead oo-9ht.39.4)
 	OOHPScalar start, finish, next_start, next_finish, prev_start, prev_finish;
 	
 	// using the z_list - set or clear collisionTestFilter and clear collision_chain
@@ -10195,7 +10195,7 @@ HPVector Universe::getSunSkimEndPositionForShip(::ShipEntity *ship)
 std::vector<oo::EntityHold> Universe::listBeaconsWithCode(const std::string &code)
 {
 	std::vector<oo::EntityHold>	result;	// held C++ entities (bead oo-9ht.39.26)
-	cxx::Entity		*beacon = firstBeacon();
+	Entity		*beacon = firstBeacon();
 
 	while (beacon != nullptr)
 	{
@@ -10723,7 +10723,7 @@ void Universe::verifyEntitySessionIDs()
 {
 #ifndef NDEBUG
 	std::vector<oo::EntityHold> badEntities;
-	cxx::Entity *entity = nullptr;
+	Entity *entity = nullptr;
 	
 	unsigned i;
 	for (i = 0; i < n_entities; i++)
@@ -10928,7 +10928,7 @@ HPVector Universe::fractionalPositionFrom(HPVector point0, HPVector point1, doub
 }
 
 
-bool Universe::doRemoveEntity(cxx::Entity *entity)
+bool Universe::doRemoveEntity(Entity *entity)
 {
 	// remove reference to entity in linked lists
 	if (entity->canCollide())	// filter only collidables disappearing

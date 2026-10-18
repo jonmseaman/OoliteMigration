@@ -32,7 +32,7 @@
 
 // MARK: The classes, as far as the binding sees them ----------------------------------------------
 
-@class Entity;
+@class TestEntityObject;
 
 // As ShipEntity.h and PlayerEntity.h declare them (the test imports neither).
 typedef enum
@@ -61,14 +61,15 @@ enum
 };
 
 
-namespace cxx { class Entity; }
+class Entity;
 
 // A ship's object: the root's, which holds the C++ part (oo::ToCxx reads it); a station's and the
 // player's were the Objective-C ship's until bead oo-9ht.144 deleted it.
-@interface Entity: OOObject
+__attribute__((objc_runtime_name("Entity")))
+@interface TestEntityObject: OOObject
 {
 @public
-	oo::Ref<cxx::Entity> _cxxEntity;
+	oo::Ref<Entity> _cxxEntity;
 	BOOL _isStation;
 	OOEntityStatus _status;
 }
@@ -83,7 +84,6 @@ namespace cxx { class Entity; }
 // PLAYER: C++ since bead oo-9ht.177 deleted the Objective-C player this stood in for: the members
 // the code under test calls, declared as the game headers declare them (the test imports none
 // that defines the classes), with the stand-in's answers.
-namespace cxx {
 class Entity : public oo::RefCounted
 {
 public:
@@ -91,10 +91,9 @@ public:
 	OOEntityStatus status();
 	bool getIsStation();	// what its object's -isStation forwarded to (bead oo-dpyk8)
 };
-}	// namespace cxx
 
 // The ship: C++ since bead oo-9ht.144 (a station's part is a plain one).
-class ShipEntity : public cxx::Entity
+class ShipEntity : public Entity
 {
 public:
 	void doScriptEvent(ooscript::PropertyId message, const std::vector<oo::PList> &arguments);
@@ -230,14 +229,14 @@ std::string EventName(ooscript::PropertyId propID)
 }
 
 
-::Entity *TestObjectOfPart(cxx::Entity *entity);	// below
+::TestEntityObject *TestObjectOfPart(Entity *entity);	// below
 
 std::string Describe(const oo::PList &plist)
 {
 	if (plist.isNull())  return "null";
 	if (const std::string *str = plist.getIf<std::string>())  return *str;
 	if (plist.isNumber())  return oo::str::format("%g", plist.doubleValue());
-	if (cxx::Entity *entity = oo::EntityIn(plist))  return class_getName(object_getClass(TestObjectOfPart(entity)));	// an entity's node: its object's class (bead oo-dpyk8)
+	if (Entity *entity = oo::EntityIn(plist))  return class_getName(object_getClass(TestObjectOfPart(entity)));	// an entity's node: its object's class (bead oo-dpyk8)
 	if (id object = oo::ObjectIn(plist))  return class_getName(object_getClass(object));
 	return "?";
 }
@@ -252,7 +251,7 @@ oo::PList Dict(std::initializer_list<std::pair<const char *, oo::PList>> entries
 }	// namespace
 
 
-@implementation Entity
+@implementation TestEntityObject
 
 - (BOOL) isStation  { return _isStation; }
 - (OOEntityStatus) status  { return _status; }
@@ -263,38 +262,38 @@ oo::PList Dict(std::initializer_list<std::pair<const char *, oo::PList>> entries
 // The player's Objective-C object (in the game the ship's facade over the C++ player), which
 // oo::ToObjC answers: a ship whose class is named PlayerEntity, as the game's player object was
 // before bead oo-9ht.177, so the events name it as they did.
-::Entity *sPlayerObject = nil;
+::TestEntityObject *sPlayerObject = nil;
 
-::Entity *NewPlayerObject()
+::TestEntityObject *NewPlayerObject()
 {
 	Class playerClass = objc_getClass("PlayerEntity");
 	if (playerClass == Nil)
 	{
-		playerClass = objc_allocateClassPair([Entity class], "PlayerEntity", 0);
+		playerClass = objc_allocateClassPair([TestEntityObject class], "PlayerEntity", 0);
 		objc_registerClassPair(playerClass);
 	}
 	return [[playerClass alloc] init];
 }
 
 namespace oo {
-::Entity *ToObjC(cxx::Entity *entity)  { return entity != nullptr ? sPlayerObject : nil; }	// only the player crosses
+::TestEntityObject *ToObjC(Entity *entity)  { return entity != nullptr ? sPlayerObject : nil; }	// only the player crosses
 }
 #import "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
 
-cxx::Entity::~Entity() = default;
-OOEntityStatus cxx::Entity::status()  { return static_cast<PlayerEntity *>(this)->_status; }
+Entity::~Entity() = default;
+OOEntityStatus Entity::status()  { return static_cast<PlayerEntity *>(this)->_status; }
 
 // The object of each C++ part the script handed over (a station's), and the player's for any other
 // (bead oo-dpyk8: the binding hands over the C++ entity, where it handed over the object).
 namespace {
-std::map<cxx::Entity *, ::Entity *> sPartObjects;
-::Entity *TestObjectOfPart(cxx::Entity *entity)
+std::map<Entity *, ::TestEntityObject *> sPartObjects;
+::TestEntityObject *TestObjectOfPart(Entity *entity)
 {
 	auto found = sPartObjects.find(entity);
 	return found != sPartObjects.end() ? found->second : oo::ToObjC(entity);
 }
 }	// namespace
-bool cxx::Entity::getIsStation()  { return [TestObjectOfPart(this) isStation]; }	// what its object's -isStation forwarded to
+bool Entity::getIsStation()  { return [TestObjectOfPart(this) isStation]; }	// what its object's -isStation forwarded to
 void PlayerEntity::setScriptTargetToSelf()  { _scriptTargetSets++; }
 std::optional<std::string> PlayerEntity::commanderName()  { return _commanderName; }
 void PlayerEntity::setCommanderName(const std::optional<std::string> &value)  { _commanderName = value; }
@@ -441,7 +440,7 @@ oo::PList cxx_OOJSPListFromJSValue(ooscript::Context context, ooscript::Value va
 	if (ooscript::isObject(value) && ooscript::getObjectClass(context, ooscript::toObject(value)) == &sFakeStationClass)
 	{
 		// The station's C++ entity's node, as the game's converter makes it (bead oo-dpyk8).
-		::Entity *object = (::Entity *)ooscript::getPrivate(context, ooscript::toObject(value));
+		::TestEntityObject *object = (::TestEntityObject *)ooscript::getPrivate(context, ooscript::toObject(value));
 		sPartObjects[object->_cxxEntity.get()] = object;
 		return oo::EntityObjectNode(object->_cxxEntity.get());
 	}
@@ -476,7 +475,7 @@ std::map<ooscript::ClassDef *, int> sConverters;
 
 PlayerEntity *gOOPlayer = nullptr;
 Universe *gSharedUniverse = nil;
-cxx::Entity *gOOJSPlayerIfStale = nullptr;	// the player's C++ entity (bead oo-9ht.39.25)
+Entity *gOOJSPlayerIfStale = nullptr;	// the player's C++ entity (bead oo-9ht.39.25)
 
 
 extern "C" {
@@ -555,8 +554,8 @@ ooscript::Context sContext;
 ooscript::Object sGlobal;
 PlayerEntity *sPlayer = nullptr;
 Universe *sUniverse = nil;
-::Entity *sStation = nil;	// a station's object and a ship's that is not one (C++ ships since bead oo-9ht.144)
-::Entity *sNonStation = nil;
+::TestEntityObject *sStation = nil;	// a station's object and a ship's that is not one (C++ ships since bead oo-9ht.144)
+::TestEntityObject *sNonStation = nil;
 ShipEntity *sStationShip = nullptr;
 
 
@@ -599,11 +598,11 @@ void SetUpContext()
 	sPlayer->_roleWeights = { "trader", "pirate", "trader" };
 	sPlayer->_status = STATUS_DOCKED;
 	sPlayer->_targetSystem = -1;
-	sStation = [[Entity alloc] init];
+	sStation = [[TestEntityObject alloc] init];
 	sStation->_cxxEntity = oo::makeRef<ShipEntity>();
 	sStationShip = static_cast<ShipEntity *>(sStation->_cxxEntity.get());
 	sStation->_isStation = YES;
-	sNonStation = [[Entity alloc] init];
+	sNonStation = [[TestEntityObject alloc] init];
 	sNonStation->_cxxEntity = oo::makeRef<ShipEntity>();
 
 	InitOOJSPlayer(sContext, sGlobal);

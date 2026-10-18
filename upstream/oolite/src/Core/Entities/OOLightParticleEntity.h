@@ -34,7 +34,7 @@ class OOTexture;
 	oo-9ht.23 and oo-9ht.106): a particle is made in C++ and handed to Objective-C with
 	oo::NewEntityFacade, whose object is the root Entity's facade.
 */
-class OOLightParticleEntity : public cxx::Entity
+class OOLightParticleEntity : public Entity
 {
 public:
 	// -initWithDiameter:'s body, run once right after construction (amendment oo-vl43 item 2): it

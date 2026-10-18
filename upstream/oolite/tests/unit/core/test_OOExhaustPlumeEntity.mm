@@ -135,7 +135,7 @@ void SetUp(OOTimeAbsolute time)
 
 // --- Ivars the test sets, and nothing else ---------------------------------------------------------
 
-void SetCollisionRadius(cxx::Entity *e, GLfloat value)	{ e->collision_radius = value; }
+void SetCollisionRadius(Entity *e, GLfloat value)	{ e->collision_radius = value; }
 
 // --------------------------------------------------------------------------------------------------
 
@@ -153,10 +153,10 @@ bool VectorIs(Vector v, float x, float y, float z)
 
 
 // A ship's object (autoreleased, as the Objective-C stand-in was), holding the stand-in ship.
-cxx::Entity *Ship()
+Entity *Ship()
 {
 	oo::Ref<TestShip> ship = oo::makeRef<TestShip>();
-	cxx::Entity *object = oo::MadeEntity(ship);
+	Entity *object = oo::MadeEntity(ship);
 	ship->isShip = YES;	// a ship (its subentity plume asks it, as a set-up ship answers)
 	ship->_visible = true;
 	ship->setSpeedFactor(1.0f);
@@ -170,12 +170,12 @@ cxx::Entity *Ship()
 }
 
 
-TestShip *Part(cxx::Entity *ship)	{ return static_cast<TestShip *>(oo::ToShip(ship)); }
+TestShip *Part(Entity *ship)	{ return static_cast<TestShip *>(oo::ToShip(ship)); }
 
 
 // A plume, made as the ship makes one: its Objective-C object is autoreleased in the test's pool and
 // holds it; null for no tokens.
-OOExhaustPlumeEntity *Plume(cxx::Entity *ship, std::vector<std::string> tokens, float scale)
+OOExhaustPlumeEntity *Plume(Entity *ship, std::vector<std::string> tokens, float scale)
 {
 	return static_cast<OOExhaustPlumeEntity *>(oo::MadeEntity(OOExhaustPlumeEntity::exhaustForShip(oo::ToShip(ship), tokens, scale)));
 }
@@ -188,7 +188,7 @@ OO_TEST(made)
 	@autoreleasepool
 	{
 		SetUp(0.0);
-		cxx::Entity *ship = Ship();
+		Entity *ship = Ship();
 		OOExhaustPlumeEntity *plume = Plume(ship, { "1", "2", "3", "4", "5", "1.5" }, 2.0f);
 		OO_CHECK(plume != nullptr);
 		OO_CHECK(plume->owner() == ship);
@@ -208,7 +208,7 @@ OO_TEST(scaleZ)
 	@autoreleasepool
 	{
 		SetUp(0.0);
-		cxx::Entity *ship = Ship();
+		Entity *ship = Ship();
 		OO_CHECK(VectorIs(Plume(ship, { "0", "0", "0", "1", "1", "0.4" }, 1.0f)->scale(), 1, 1, 1));
 		OO_CHECK(VectorIs(Plume(ship, { "0", "0", "0", "1", "1", "2.5" }, 1.0f)->scale(), 1, 1, 1));
 		OOExhaustPlumeEntity *plume = Plume(ship, { "0", "0", "0", "1", "1", "2" }, 1.0f);
@@ -240,7 +240,7 @@ OO_TEST(updateWithoutVisibleShip)
 	@autoreleasepool
 	{
 		SetUp(1.0);
-		cxx::Entity *ship = Ship();
+		Entity *ship = Ship();
 		OOExhaustPlumeEntity *plume = Plume(ship, { "0", "0", "-10", "2", "2", "1" }, 1.0f);
 		SetCollisionRadius(plume, 42.0f);
 		Part(ship)->_visible = false;
@@ -259,7 +259,7 @@ OO_TEST(updateBelowMinimalSpeed)
 	@autoreleasepool
 	{
 		SetUp(1.0);
-		cxx::Entity *ship = Ship();
+		Entity *ship = Ship();
 		OOExhaustPlumeEntity *plume = Plume(ship, { "0", "0", "-10", "2", "2", "1" }, 1.0f);
 		SetCollisionRadius(plume, 42.0f);
 		Part(ship)->setSpeedFactor(0.0005f);
@@ -274,7 +274,7 @@ OO_TEST(updateMeasures)
 	@autoreleasepool
 	{
 		SetUp(1.0);
-		cxx::Entity *ship = Ship();
+		Entity *ship = Ship();
 		OOExhaustPlumeEntity *plume = Plume(ship, { "0", "0", "-10", "2", "2", "1" }, 1.0f);
 		plume->resetPlume();
 		plume->update(0.1);
@@ -307,7 +307,7 @@ OO_TEST(facade)
 		SetUp(0.0);
 		// The object is the root's facade, the nearest left (amendment oo-9ht.12 item 6), whose C++
 		// part is the plume: a C++ entity (amendment oo-0mxi), not an Objective-C entity's adapter.
-		cxx::Entity *object = oo::MadeEntity(OOExhaustPlumeEntity::exhaustForShip(oo::ToShip(Ship()), { "0", "0", "0", "1", "1", "1" }, 1.0f));
+		Entity *object = oo::MadeEntity(OOExhaustPlumeEntity::exhaustForShip(oo::ToShip(Ship()), { "0", "0", "0", "1", "1", "1" }, 1.0f));
 		// (Its object's class, the root facade, was checked here: retired with the facade, bead oo-dpyk8, under oo-9n5p9.)
 		OO_CHECK(dynamic_cast<OOExhaustPlumeEntity *>(object) != nullptr);
 		OO_CHECK(object == object);
@@ -323,7 +323,7 @@ OO_TEST(jsExtensions)
 	@autoreleasepool
 	{
 		SetUp(0.0);
-		cxx::Entity *plume = Plume(Ship(), { "0", "0", "0", "1", "1", "1" }, 1.0f);
+		Entity *plume = Plume(Ship(), { "0", "0", "0", "1", "1", "1" }, 1.0f);
 		ooscript::ClassDef *jsClass = nullptr, *expectedClass = nullptr;
 		ooscript::Object prototype = nullptr, expectedPrototype = nullptr;
 		OOJSEntityGetJSClass(plume, &jsClass, &prototype);

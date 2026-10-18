@@ -54,14 +54,14 @@ T *NewTestPlayer()
 }
 
 
-static cxx::Entity *sRemoved = nil;
+static Entity *sRemoved = nil;
 
 
 // UNIVERSE: never initialised; answers the time the test sets and records what is removed.
 class TestUniverse : public Universe
 {
 public:
-	bool removeEntity(cxx::Entity *entity) override	{ sRemoved = entity; return YES; }	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
+	bool removeEntity(Entity *entity) override	{ sRemoved = entity; return YES; }	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
 };
 
 // The time the test sets is the universe's own clock, which getTime() answers (bead oo-ql9rn).
@@ -73,14 +73,14 @@ namespace {
 
 // --- How a burst is made, and its colour (a @protected ivar), and nothing else -------------------
 
-cxx::Entity *MakeBurst(HPVector position)
+Entity *MakeBurst(HPVector position)
 {
 	return oo::MadeEntity(OOPlasmaBurstEntity::burstWithPosition(position));
 }
 
 // The object is the root Entity's facade since bead oo-9ht.76; its C++ part is the particle.
-OOLightParticleEntity *Particle(cxx::Entity *e)				{ return static_cast<OOLightParticleEntity *>(e); }
-const GLfloat *ColorComponents(cxx::Entity *e)				{ return Particle(e)->_colorComponents; }
+OOLightParticleEntity *Particle(Entity *e)				{ return static_cast<OOLightParticleEntity *>(e); }
+const GLfloat *ColorComponents(Entity *e)				{ return Particle(e)->_colorComponents; }
 
 // --------------------------------------------------------------------------------------------------
 
@@ -101,7 +101,7 @@ void SetUp()
 }
 
 
-bool ComponentsAre(cxx::Entity *e, GLfloat r, GLfloat g, GLfloat b, GLfloat a)
+bool ComponentsAre(Entity *e, GLfloat r, GLfloat g, GLfloat b, GLfloat a)
 {
 	const GLfloat *c = ColorComponents(e);
 	return c[0] == r && c[1] == g && c[2] == b && c[3] == a;
@@ -115,7 +115,7 @@ OO_TEST(initWithPosition)
 	@autoreleasepool
 	{
 		SetUp();
-		cxx::Entity *burst = MakeBurst(make_HPvector(4, 5, 6));
+		Entity *burst = MakeBurst(make_HPvector(4, 5, 6));
 		OO_CHECK(burst != nil);
 		OO_CHECK(HPvector_equal(burst->getPosition(), make_HPvector(4, 5, 6)));
 		OO_CHECK(Particle(burst)->diameter() == 64.0f && burst->collisionRadius() == 2.0f);
@@ -131,7 +131,7 @@ OO_TEST(growsFadesAndIsRemoved)
 	@autoreleasepool
 	{
 		SetUp();
-		cxx::Entity *burst = MakeBurst(make_HPvector(4, 5, 6));
+		Entity *burst = MakeBurst(make_HPvector(4, 5, 6));
 
 		sTime = 1.0;
 		burst->update(0.1);

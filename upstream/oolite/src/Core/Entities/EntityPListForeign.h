@@ -5,7 +5,7 @@ EntityPListForeign.h
 The entity's property-list node (bead oo-dpyk8; EntityHelpers.h, which imports this, has the rest):
 an Object node that holds the entity, and the questions that make, read and list such nodes, with
 whether an entity has its object. Needs only the class's name, so a narrow test whose stand-in is
-its own cxx::Entity can carry its entities in nodes as the game does.
+its own Entity can carry its entities in nodes as the game does.
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -37,13 +37,13 @@ MA 02110-1301, USA.
 #include <string>
 #include <vector>
 
-namespace cxx { class Entity; }
+class Entity;
 
 
 namespace oo {
 
 // The entity, where it has its object (what oo::ToObjC() answering non-nil was); else null.
-cxx::Entity *WithObject(cxx::Entity *entity);	// EntityHelpers.mm (out of line: a narrow test's stand-in entity answers it)
+Entity *WithObject(Entity *entity);	// EntityHelpers.mm (out of line: a narrow test's stand-in entity answers it)
 
 
 /*	An entity carried through plist data as a PList::Object node (bead oo-9ht.39.5.3): the node holds
@@ -51,13 +51,13 @@ cxx::Entity *WithObject(cxx::Entity *entity);	// EntityHelpers.mm (out of line: 
 	alive as before) and answers it. Its class name is the facade's ("Entity"), its description the
 	entity's (oo::EntityDescription()), its JS value the entity's (OOJSValueFromPList).
 */
-std::string EntityDescription(cxx::Entity *entity);	// EntityHelpers.mm
+std::string EntityDescription(Entity *entity);	// EntityHelpers.mm
 
 class EntityPListForeign final : public PListForeign
 {
 public:
-	explicit EntityPListForeign(cxx::Entity *entity) : _entity(entity) {}
-	cxx::Entity *entity() const noexcept  { return _entity.get(); }
+	explicit EntityPListForeign(Entity *entity) : _entity(entity) {}
+	Entity *entity() const noexcept  { return _entity.get(); }
 	std::string className() const override  { return "Entity"; }
 	std::string description() const override  { return EntityDescription(_entity.get()); }
 
@@ -67,16 +67,16 @@ private:
 
 // The entity's Object node (what PListObject(ToObjC(entity)) made); a null PList for null and for an
 // entity without its object.
-inline PList EntityObjectNode(cxx::Entity *entity)
+inline PList EntityObjectNode(Entity *entity)
 {
 	if (WithObject(entity) == nullptr)  return PList();
 	return PList(PList::Object(makeRef<EntityPListForeign>(entity)));
 }
-inline PList EntityObjectNode(const Ref<cxx::Entity> &entity)  { return EntityObjectNode(entity.get()); }
+inline PList EntityObjectNode(const Ref<Entity> &entity)  { return EntityObjectNode(entity.get()); }
 
 
 // The C++ entity of an entity's Object node, borrowed; null for any other node.
-inline cxx::Entity *EntityIn(const PList &plist)
+inline Entity *EntityIn(const PList &plist)
 {
 	const PList::Object *node = plist.getIf<PList::Object>();
 	if (node == nullptr)  return nullptr;
@@ -99,14 +99,14 @@ inline PList EntityNodesFrom(const std::vector<EntityHold> &entities)
 
 
 // The C++ entities of an array's entity nodes, borrowed, in order; other elements are skipped.
-inline std::vector<cxx::Entity *> EntitiesIn(const PList &plist)
+inline std::vector<Entity *> EntitiesIn(const PList &plist)
 {
-	std::vector<cxx::Entity *> result;
+	std::vector<Entity *> result;
 	if (const PList::Array *array = plist.getIf<PList::Array>())
 	{
 		for (const PList &element : *array)
 		{
-			if (cxx::Entity *entity = EntityIn(element))  result.push_back(entity);
+			if (Entity *entity = EntityIn(element))  result.push_back(entity);
 		}
 	}
 	return result;

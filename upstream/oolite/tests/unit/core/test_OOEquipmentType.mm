@@ -143,7 +143,7 @@ std::optional<std::string> OOScript::name()					{ return std::nullopt; }
 std::optional<std::string> OOScript::scriptDescription()		{ return std::nullopt; }
 std::optional<std::string> OOScript::version()				{ return std::nullopt; }
 bool OOScript::requiresTickle()								{ return false; }
-void OOScript::runWithTarget(cxx::Entity *)						{}
+void OOScript::runWithTarget(Entity *)						{}
 bool OOScript::callMethod(ooscript::PropertyId, ooscript::Context, ooscript::Value *, int, ooscript::Value *)	{ return false; }
 std::string OOScript::className() const						{ return "OOScript"; }
 std::string OOScript::description() const						{ return "<OOScript>"; }

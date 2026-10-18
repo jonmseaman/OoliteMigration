@@ -340,7 +340,7 @@ BoundingBox OOPlanetDrawable::boundingBox()
 }
 
 
-void OOPlanetDrawable::setBindingTarget(cxx::Entity *target)
+void OOPlanetDrawable::setBindingTarget(Entity *target)
 {
 	if (OOMaterial *material = _material.get())  material->setBindingTarget(target);
 }

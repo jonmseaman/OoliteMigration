@@ -67,15 +67,15 @@ class TestUniverse : public Universe
 {
 public:
 	OOTimeAbsolute &_time = universal_time;	// the universe's own state, which its getter answers (bead oo-ql9rn)
-	cxx::Entity			*_removed = {};
-	cxx::Entity			*_added = {};
+	Entity			*_removed = {};
+	Entity			*_added = {};
 
-	bool removeEntity(cxx::Entity *entity) override	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
+	bool removeEntity(Entity *entity) override	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
 	{
 		_removed = entity;
 		return YES;
 	}
-	bool addEntity(cxx::Entity *entity) override	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
+	bool addEntity(Entity *entity) override	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
 	{
 		oo::ReleaseEntity(_added);
 		_added = oo::RetainEntity(entity);
@@ -86,10 +86,10 @@ public:
 
 // What the shot hits: records the damage (an Objective-C subclass until bead oo-j12i2; a C++ one
 // overriding the member its selector became, recording the C++ entities).
-class TestTarget : public cxx::Entity
+class TestTarget : public Entity
 {
 public:
-	void takeEnergyDamage(double amount, cxx::Entity *ent, cxx::Entity *other, const std::string &weaponIdentifier) override
+	void takeEnergyDamage(double amount, Entity *ent, Entity *other, const std::string &weaponIdentifier) override
 	{
 		_hits++;
 		_amount = amount;
@@ -99,15 +99,15 @@ public:
 	}
 
 	double			_amount = 0;
-	cxx::Entity		*_from = nullptr;
-	cxx::Entity		*_becauseOf = nullptr;
+	Entity		*_from = nullptr;
+	Entity		*_becauseOf = nullptr;
 	std::string		_weapon;
 	int				_hits = 0;
 };
 
 
 // An effect, for the collision test (an Objective-C subclass until bead oo-j12i2).
-class TestEffect : public cxx::Entity
+class TestEffect : public Entity
 {
 public:
 	bool isEffect() override	{ return true; }
@@ -145,20 +145,20 @@ void SetUp(OOTimeAbsolute time)
 
 // --- How the test makes a shot and reads its colour (ported by the conversion), and nothing else -
 
-cxx::Entity *Shot(HPVector position, Vector velocity, float energy, OOTimeDelta duration, OOColor *color)
+Entity *Shot(HPVector position, Vector velocity, float energy, OOTimeDelta duration, OOColor *color)
 {
 	return oo::MadeEntity(OOPlasmaShotEntity::shotWithPosition(position, velocity, energy, duration, color));
 }
 
-OOLightParticleEntity *Particle(cxx::Entity *shot)	{ return static_cast<OOLightParticleEntity *>(shot); }	// the root's facade since bead oo-9ht.76
-const GLfloat *ColorComponents(cxx::Entity *shot)	{ return Particle(shot)->_colorComponents; }
-void SetColliding(cxx::Entity *shot, cxx::Entity *other)	{ shot->collidingEntities.emplace_back(other); }
-void SetIsShip(cxx::Entity *e)						{ e->isShip = true; }
+OOLightParticleEntity *Particle(Entity *shot)	{ return static_cast<OOLightParticleEntity *>(shot); }	// the root's facade since bead oo-9ht.76
+const GLfloat *ColorComponents(Entity *shot)	{ return Particle(shot)->_colorComponents; }
+void SetColliding(Entity *shot, Entity *other)	{ shot->collidingEntities.emplace_back(other); }
+void SetIsShip(Entity *e)						{ e->isShip = true; }
 
 // --------------------------------------------------------------------------------------------------
 
 
-cxx::Entity *RedShot()
+Entity *RedShot()
 {
 	return Shot(make_HPvector(1, 2, 3), make_vector(4, 5, 6), 7.0f, 2.0, OOColor::colorWithRed(1.0f, 0.0f, 0.0f, 0.5f).get());
 }
@@ -166,9 +166,9 @@ cxx::Entity *RedShot()
 
 // A ship: C++ since bead oo-9ht.144 (its root ship entity is the C++ ship), under its object
 // (oo::NewEntityFacade, autoreleased as the plain entity was), never set up, marked as a ship.
-cxx::Entity *Ship()
+Entity *Ship()
 {
-	cxx::Entity *ship = oo::MadeEntity(oo::makeRef<::ShipEntity>());
+	Entity *ship = oo::MadeEntity(oo::makeRef<::ShipEntity>());
 	SetIsShip(ship);
 	return ship;
 }
@@ -181,7 +181,7 @@ OO_TEST(shotIsMade)
 	@autoreleasepool
 	{
 		SetUp(10.0);
-		cxx::Entity *shot = RedShot();
+		Entity *shot = RedShot();
 		OO_CHECK(shot != nil && dynamic_cast<OOLightParticleEntity *>(shot) != nullptr);
 		OO_CHECK(HPvector_equal(shot->getPosition(), make_HPvector(1, 2, 3)));
 		Vector v = shot->getVelocity();
@@ -201,7 +201,7 @@ OO_TEST(activationDelay)
 	@autoreleasepool
 	{
 		SetUp(10.0);
-		cxx::Entity *shot = RedShot();
+		Entity *shot = RedShot();
 		OO_CHECK(!shot->canCollide());
 		sUniverse->_time = 10.04;
 		OO_CHECK(!shot->canCollide());
@@ -216,14 +216,14 @@ OO_TEST(collisions)
 	@autoreleasepool
 	{
 		SetUp(0.0);
-		cxx::Entity *shot = RedShot();
-		cxx::Entity *plain = oo::MadeEntity(oo::makeRef<cxx::Entity>());
-		cxx::Entity *effect = oo::MadeEntity(oo::makeRef<TestEffect>());
+		Entity *shot = RedShot();
+		Entity *plain = oo::MadeEntity(oo::makeRef<Entity>());
+		Entity *effect = oo::MadeEntity(oo::makeRef<TestEffect>());
 
 		// No owner: a plain entity's root ship is nil too.
 		OO_CHECK(!shot->checkCloseCollisionWith(plain));
 
-		cxx::Entity *ship = Ship();
+		Entity *ship = Ship();
 		shot->setOwner(ship);
 		OO_CHECK(shot->checkCloseCollisionWith(plain));
 		OO_CHECK(!shot->checkCloseCollisionWith(effect));
@@ -239,8 +239,8 @@ OO_TEST(hitDamagesAndBursts)
 	@autoreleasepool
 	{
 		SetUp(0.0);
-		cxx::Entity *shot = RedShot();
-		cxx::Entity *ship = Ship();
+		Entity *shot = RedShot();
+		Entity *ship = Ship();
 		shot->setOwner(ship);
 
 		// Its own ship is not hit.
@@ -255,7 +255,7 @@ OO_TEST(hitDamagesAndBursts)
 		OO_CHECK(target->_hits == 1 && target->_amount == 7.0 && target->_from == shot && target->_becauseOf == ship);
 		OO_CHECK(target->_weapon == "EQ_WEAPON_PLASMA_SHOT");
 		OO_CHECK(sUniverse->_removed == shot);
-		cxx::Entity *burst = sUniverse->_added;
+		Entity *burst = sUniverse->_added;
 		OO_CHECK(burst != nil && burst != shot && dynamic_cast<OOPlasmaBurstEntity *>(burst) != nullptr);	// a C++ entity (oo-l2s5)
 		OO_CHECK(HPvector_equal(burst->getPosition(), shot->getPosition()));
 	}
@@ -267,7 +267,7 @@ OO_TEST(expires)
 	@autoreleasepool
 	{
 		SetUp(0.0);
-		cxx::Entity *shot = RedShot();
+		Entity *shot = RedShot();
 		sUniverse->_time = 1.0;
 		shot->update(1.0);
 		OO_CHECK(sUniverse->_removed == nil);

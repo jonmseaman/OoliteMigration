@@ -105,9 +105,9 @@ const CxxMethod kPlayerMethods[] =
 // The table's entry for name when the callee is the player (it answered the categories), else null.
 // The player is C++ since bead oo-9ht.177: the callee is the C++ entity (an object whose C++ part
 // was the player, bead oo-9ht.39.8.25, went with the root facade, bead oo-dpyk8).
-const CxxMethod *CxxMethodNamed(id, cxx::Entity *entity, const std::optional<std::string> &name)
+const CxxMethod *CxxMethodNamed(id, Entity *entity, const std::optional<std::string> &name)
 {
-	cxx::Entity *callee = entity;
+	Entity *callee = entity;
 	if (!name.has_value() || PLAYER == nullptr || callee != PLAYER)  return nullptr;
 	for (const CxxMethod &method : kPlayerMethods)
 	{
@@ -166,7 +166,7 @@ bool ScalarBoolValue(id object)
 	in OOEntityCalledByName.mm, bead oo-9ht.39.8.25): an entity's call has no object (object is nil).
 	Its "does not respond" error still names the entity's object, whose address the text holds.
 */
-bool CallMethod(ooscript::Context context, id object, const std::string &oo_jsClassName, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult, bool entityTable, cxx::Entity *entity)
+bool CallMethod(ooscript::Context context, id object, const std::string &oo_jsClassName, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult, bool entityTable, Entity *entity)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -368,7 +368,7 @@ bool OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::s
 }
 
 
-bool OOJSCallEntityMethod(ooscript::Context context, cxx::Entity *entity, const std::string &oo_jsClassName, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult)
+bool OOJSCallEntityMethod(ooscript::Context context, Entity *entity, const std::string &oo_jsClassName, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult)
 {
 	return CallMethod(context, nil, oo_jsClassName, argc, argv, outResult, true, entity);	// the C++ entity only (bead oo-9ht.39.8.25)
 }

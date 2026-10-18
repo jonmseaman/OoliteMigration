@@ -125,20 +125,20 @@ bool OOShaderMemberBindingFor(id target, SEL selector, OOShaderMemberBinding *ou
 	ask through these, which the entities register (EntityShaderBindings.mm), so the materials
 	still link without them; with none registered an entity target binds nothing.
 */
-namespace cxx { class Entity; }
+class Entity;
 struct OOShaderEntityHooks
 {
 	// -superShaderBindingTarget: the entity a "bind to super" uniform binds to next, or null.
-	cxx::Entity *(*superTarget)(cxx::Entity *entity);
+	Entity *(*superTarget)(Entity *entity);
 	// What the log lines printed for the entity's Objective-C object (bead oo-dpyk8, which deleted it):
 	// its class's name ("Entity"), and its description; "(null)" for an entity without one.
-	std::string (*className)(cxx::Entity *entity);
-	std::string (*description)(cxx::Entity *entity);
+	std::string (*className)(Entity *entity);
+	std::string (*description)(Entity *entity);
 	// The row of the entities' member table for the name, where it binds this entity (only for the
 	// root facade's own class, as the member lookup above).
-	bool (*memberBinding)(cxx::Entity *entity, const char *property, OOShaderMemberBinding *outBinding);
+	bool (*memberBinding)(Entity *entity, const char *property, OOShaderMemberBinding *outBinding);
 	// -randomSeedForShaders, where the entity's object answers it.
-	bool (*randomSeed)(cxx::Entity *entity, uint32_t *outSeed);
+	bool (*randomSeed)(Entity *entity, uint32_t *outSeed);
 };
 void OOSetShaderEntityHooks(const OOShaderEntityHooks &hooks) noexcept;
 const OOShaderEntityHooks *OOShaderEntityHooksIfSet() noexcept;	// null where none is registered

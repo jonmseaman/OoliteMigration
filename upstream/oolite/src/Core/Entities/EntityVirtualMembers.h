@@ -47,7 +47,7 @@ MA 02110-1301, USA.
 #include <vector>
 
 class ShipEntity;	// C++ since bead oo-9ht.144
-namespace cxx { class Entity; }
+class Entity;
 
 
 /*	VOID_BODY ends each member answering nothing, VALUE_BODY each member answering a value: ";"
@@ -71,12 +71,12 @@ namespace cxx { class Entity; }
 	virtual void wasRemovedFromUniverse() VOID_BODY \
 	virtual void warnAboutHostiles() VOID_BODY \
 	virtual void throwSparks() VOID_BODY \
-	virtual void setOwner(cxx::Entity * /*ent*/) VOID_BODY \
+	virtual void setOwner(Entity * /*ent*/) VOID_BODY \
 	virtual void setPosition(HPVector /*posn*/) VOID_BODY \
 	virtual GLfloat cameraRangeFront() VALUE_BODY \
 	virtual GLfloat cameraRangeBack() VALUE_BODY \
 	virtual void updateCameraRelativePosition() VOID_BODY \
-	virtual OOComparisonResult compareZeroDistance(cxx::Entity * /*otherEntity*/) VALUE_BODY \
+	virtual OOComparisonResult compareZeroDistance(Entity * /*otherEntity*/) VALUE_BODY \
 	virtual void setOrientation(Quaternion /*quat*/) VOID_BODY \
 	/* Historical wart: orientation.w is reversed for player; normalOrientation() corrects this. */ \
 	virtual Quaternion normalOrientation() VALUE_BODY \
@@ -94,8 +94,8 @@ namespace cxx { class Entity; }
 	virtual GLfloat collisionRadius() VALUE_BODY \
 	virtual GLfloat frustumRadius() VALUE_BODY \
 	virtual void update(OOTimeDelta /*delta_t*/) VOID_BODY \
-	virtual bool checkCloseCollisionWith(cxx::Entity * /*other*/) VALUE_BODY \
-	virtual void takeEnergyDamage(double /*amount*/, cxx::Entity * /*ent*/, cxx::Entity * /*other*/, const std::string &/*weaponIdentifier*/) VOID_BODY \
+	virtual bool checkCloseCollisionWith(Entity * /*other*/) VALUE_BODY \
+	virtual void takeEnergyDamage(double /*amount*/, Entity * /*ent*/, Entity * /*other*/, const std::string &/*weaponIdentifier*/) VOID_BODY \
 	/* Subclasses should override this, not dumpState(), and call through to the base first. */ \
 	virtual void dumpSelfState() VOID_BODY \
 	virtual void subEntityReallyDied(::ShipEntity * /*sub*/) VOID_BODY \

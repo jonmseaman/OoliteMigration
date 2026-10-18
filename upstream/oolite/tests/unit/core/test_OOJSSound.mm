@@ -103,15 +103,13 @@ struct MusicRecord
 	asks it its status, the root entity's member (declared as Entity.h declares it; the test imports
 	no game header that defines the classes), answered from the test's value.
 */
-namespace cxx {
 class Entity
 {
 public:
 	OOEntityStatus status();
 };
-}	// namespace cxx
 
-class FakePlayer : public cxx::Entity
+class FakePlayer : public Entity
 {
 public:
 	OOEntityStatus _status = {};
@@ -193,7 +191,7 @@ void OOMusicController::playMusicNamed(const std::string &name, bool loop, float
 }
 
 
-OOEntityStatus cxx::Entity::status()  { return static_cast<FakePlayer *>(this)->_status; }
+OOEntityStatus Entity::status()  { return static_cast<FakePlayer *>(this)->_status; }
 
 
 // MARK: What the rest of the engine provides ------------------------------------------------------

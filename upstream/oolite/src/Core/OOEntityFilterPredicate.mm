@@ -32,19 +32,19 @@ MA 02110-1301, USA.
 #import "OORoleSet.h"
 
 
-BOOL YESPredicate(cxx::Entity * /*entity*/, void * /*parameter*/)
+BOOL YESPredicate(Entity * /*entity*/, void * /*parameter*/)
 {
 	return YES;
 }
 
 
-BOOL NOPredicate(cxx::Entity * /*entity*/, void * /*parameter*/)
+BOOL NOPredicate(Entity * /*entity*/, void * /*parameter*/)
 {
 	return NO;
 }
 
 
-BOOL NOTPredicate(cxx::Entity *entity, void *parameter)
+BOOL NOTPredicate(Entity *entity, void *parameter)
 {
 	ChainedEntityPredicateParameter *param = (ChainedEntityPredicateParameter *)parameter;
 	if (param == NULL || param->predicate == NULL)  return NO;
@@ -53,7 +53,7 @@ BOOL NOTPredicate(cxx::Entity *entity, void *parameter)
 }
 
 
-BOOL ANDPredicate(cxx::Entity *entity, void *parameter)
+BOOL ANDPredicate(Entity *entity, void *parameter)
 {
 	BinaryOperationPredicateParameter *param = (BinaryOperationPredicateParameter *)parameter;
 	
@@ -63,7 +63,7 @@ BOOL ANDPredicate(cxx::Entity *entity, void *parameter)
 }
 
 
-BOOL ORPredicate(cxx::Entity *entity, void *parameter)
+BOOL ORPredicate(Entity *entity, void *parameter)
 {
 	BinaryOperationPredicateParameter *param = (BinaryOperationPredicateParameter *)parameter;
 	
@@ -73,7 +73,7 @@ BOOL ORPredicate(cxx::Entity *entity, void *parameter)
 }
 
 
-BOOL NORPredicate(cxx::Entity *entity, void *parameter)
+BOOL NORPredicate(Entity *entity, void *parameter)
 {
 	BinaryOperationPredicateParameter *param = (BinaryOperationPredicateParameter *)parameter;
 	
@@ -83,7 +83,7 @@ BOOL NORPredicate(cxx::Entity *entity, void *parameter)
 }
 
 
-BOOL XORPredicate(cxx::Entity *entity, void *parameter)
+BOOL XORPredicate(Entity *entity, void *parameter)
 {
 	BinaryOperationPredicateParameter *param = (BinaryOperationPredicateParameter *)parameter;
 	BOOL A, B;
@@ -95,7 +95,7 @@ BOOL XORPredicate(cxx::Entity *entity, void *parameter)
 }
 
 
-BOOL NANDPredicate(cxx::Entity *entity, void *parameter)
+BOOL NANDPredicate(Entity *entity, void *parameter)
 {
 	BinaryOperationPredicateParameter *param = (BinaryOperationPredicateParameter *)parameter;
 	BOOL A, B;
@@ -110,25 +110,25 @@ BOOL NANDPredicate(cxx::Entity *entity, void *parameter)
 /*	The predicates ask the C++ entity what the root facade's selectors forwarded to (bead oo-9ht.39.27;
 	an Objective-C stand-in was messaged until bead oo-j12i2).
 */
-BOOL HasScanClassPredicate(cxx::Entity *entity, void *parameter)
+BOOL HasScanClassPredicate(Entity *entity, void *parameter)
 {
 	return *static_cast<const OOScanClass *>(parameter) == (entity != nullptr ? entity->getScanClass() : OOScanClass{});	// an OOScanClass, as the callers pass it
 }
 
 
-BOOL IsShipPredicate(cxx::Entity *entity, void * /*parameter*/)
+BOOL IsShipPredicate(Entity *entity, void * /*parameter*/)
 {
 	return entity != nullptr && entity->getIsShip() && !entity->getIsSubEntity();
 }
 
 
-BOOL IsStationPredicate(cxx::Entity *entity, void * /*parameter*/)
+BOOL IsStationPredicate(Entity *entity, void * /*parameter*/)
 {
 	return entity != nullptr && entity->getIsStation();
 }
 
 
-BOOL IsPlanetPredicate(cxx::Entity *entity, void * /*parameter*/)
+BOOL IsPlanetPredicate(Entity *entity, void * /*parameter*/)
 {
 	if (!(entity != nullptr && entity->isPlanet()))  return NO;
 	OOStellarBodyType type = OOStellarBodyPlanetType(entity);	// the planet is C++ since bead oo-9ht.129
@@ -136,26 +136,26 @@ BOOL IsPlanetPredicate(cxx::Entity *entity, void * /*parameter*/)
 }
 
 
-BOOL IsSunPredicate(cxx::Entity *entity, void * /*parameter*/)
+BOOL IsSunPredicate(Entity *entity, void * /*parameter*/)
 {
 	return entity != nullptr && entity->isSun();
 }
 
 
-BOOL IsVisualEffectPredicate(cxx::Entity *entity, void * /*parameter*/)
+BOOL IsVisualEffectPredicate(Entity *entity, void * /*parameter*/)
 {
 	return entity != nullptr && entity->getIsVisualEffect() && !entity->getIsSubEntity();
 }
 
 
-BOOL HasRolePredicate(cxx::Entity *ship, void *parameter)
+BOOL HasRolePredicate(Entity *ship, void *parameter)
 {
 	const std::string *role = static_cast<const std::string *>(parameter);	// a role, as the callers pass it; null for none
 	return role != nullptr && (oo::ToShip(ship) != nullptr ? oo::ToShip(ship)->hasRole(*role) : false);
 }
 
 
-BOOL HasPrimaryRolePredicate(cxx::Entity *ship, void *parameter)
+BOOL HasPrimaryRolePredicate(Entity *ship, void *parameter)
 {
 	const std::string *role = static_cast<const std::string *>(parameter);	// a role, as the callers pass it; null for none
 	if (role == nullptr)
@@ -167,7 +167,7 @@ BOOL HasPrimaryRolePredicate(cxx::Entity *ship, void *parameter)
 }
 
 
-BOOL HasRoleInSetPredicate(cxx::Entity *ship, void *parameter)
+BOOL HasRoleInSetPredicate(Entity *ship, void *parameter)
 {
 	// parameter: the role strings, as the callers pass them (none empty); -intersectsSet: of them
 	const std::vector<std::string> &roles = *static_cast<const std::vector<std::string> *>(parameter);
@@ -177,7 +177,7 @@ BOOL HasRoleInSetPredicate(cxx::Entity *ship, void *parameter)
 }
 
 
-BOOL HasPrimaryRoleInSetPredicate(cxx::Entity *ship, void *parameter)
+BOOL HasPrimaryRoleInSetPredicate(Entity *ship, void *parameter)
 {
 	// parameter: the role strings, as the callers pass them; membership by string value, as
 	// -containsObject: tested it. A nil primary role is in no set.
@@ -188,7 +188,7 @@ BOOL HasPrimaryRoleInSetPredicate(cxx::Entity *ship, void *parameter)
 }
 
 
-BOOL IsHostileAgainstTargetPredicate(cxx::Entity *ship, void *parameter)
+BOOL IsHostileAgainstTargetPredicate(Entity *ship, void *parameter)
 {
-	return (oo::ToShip(ship) != nullptr ? oo::ToShip(ship)->hasHostileTarget() : false) && (oo::ToShip(ship) != nullptr ? oo::ToShip(ship)->primaryTarget() : (cxx::Entity *)nullptr) == static_cast<::ShipEntity *>(parameter);	// the ship (its object until bead oo-9ht.144)
+	return (oo::ToShip(ship) != nullptr ? oo::ToShip(ship)->hasHostileTarget() : false) && (oo::ToShip(ship) != nullptr ? oo::ToShip(ship)->primaryTarget() : (Entity *)nullptr) == static_cast<::ShipEntity *>(parameter);	// the ship (its object until bead oo-9ht.144)
 }
