@@ -609,7 +609,7 @@ void PlayerEntity::getPollControls(double delta_t)
 	::MyOpenGLView  *gameView = (UNIVERSE != nullptr ? UNIVERSE->getGameView() : nullptr);
 	const char *exceptionContext = "setup";
 	
-	@try
+	try
 	{
 		if (gameView)
 		{
@@ -650,9 +650,11 @@ void PlayerEntity::getPollControls(double delta_t)
 			}
 		}
 	}
-	@catch (::OOException *exception)
+	catch (...)
 	{
-		OO_LOG(cxx_kOOLogException, "***** Exception checking controls [{}]: {} : {}", exceptionContext, [exception name], [exception reason]);
+		const auto exception = oo::CurrentOOException();
+		if (!exception)  throw;	// not an OOException: it goes on up, as before
+		OO_LOG(cxx_kOOLogException, "***** Exception checking controls [{}]: {} : {}", exceptionContext, exception->name(), exception->reason());
 	}
 }
 
@@ -879,7 +881,7 @@ void PlayerEntity::pollApplicationControls()
 	BOOL onTextEntryScreen = (gui_screen == GUI_SCREEN_LONG_RANGE_CHART) || (gui_screen == GUI_SCREEN_MISSION) || 
 		(gui_screen == GUI_SCREEN_SAVE) || (gui_screen == GUI_SCREEN_OXZMANAGER || (gui_screen == GUI_SCREEN_KEYBOARD_ENTRY));
 
-	@try
+	try
 	{
 	//  command-key controls
 	#if !OOLITE_MAC_OS_X || !OOLITE_64_BIT	// On 64-bit Macs, these are handled by normal menu shortcuts.
@@ -1081,9 +1083,11 @@ void PlayerEntity::pollApplicationControls()
 			hide_hud_pressed = NO;
 		}
 	}
-	@catch (::OOException *exception)
+	catch (...)
 	{
-		OO_LOG(cxx_kOOLogException, "***** Exception in pollApplicationControls [{}]: {} : {}", exceptionContext, [exception name], [exception reason]);
+		const auto exception = oo::CurrentOOException();
+		if (!exception)  throw;	// not an OOException: it goes on up, as before
+		OO_LOG(cxx_kOOLogException, "***** Exception in pollApplicationControls [{}]: {} : {}", exceptionContext, exception->name(), exception->reason());
 	}
 }
 
@@ -1094,7 +1098,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 	OOJoystickManager	*stickHandler = OOJoystickManager::sharedStickHandler();
 	const char			*exceptionContext = "setup";
 
-	@try
+	try
 	{
 		exceptionContext = "joystick handling";
 		const BOOL *joyButtonState = OOJoystickManager::sharedStickHandler()->getAllButtonStates();
@@ -1983,9 +1987,11 @@ void PlayerEntity::pollFlightControls(double delta_t)
 			pause_pressed = NO;
 		}
 	}
-	@catch (::OOException *exception)
+	catch (...)
 	{
-		OO_LOG(cxx_kOOLogException, "***** Exception in pollFlightControls [{}]: {} : {}", exceptionContext, [exception name], [exception reason]);
+		const auto exception = oo::CurrentOOException();
+		if (!exception)  throw;	// not an OOException: it goes on up, as before
+		OO_LOG(cxx_kOOLogException, "***** Exception in pollFlightControls [{}]: {} : {}", exceptionContext, exception->name(), exception->reason());
 	}
 }
 
@@ -2551,15 +2557,17 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 			{
 				if ((guiSelectedRow == GUI_ROW(,QUICKSAVE))&&(!disc_operation_in_progress))
 				{
-					@try
+					try
 					{
 						disc_operation_in_progress = YES;
 						quicksavePlayer();
 					}
-					@catch (::OOException *exception)
+					catch (...)
 					{
-						OO_LOG(cxx_kOOLogException, "\n\n***** Handling exception: {} : {} *****\n\n", [exception name], [exception reason]);
-						if (strcmp([exception name], "GameNotSavedException") == 0)	// try saving game instead
+						const auto exception = oo::CurrentOOException();
+						if (!exception)  throw;	// not an OOException: it goes on up, as before
+						OO_LOG(cxx_kOOLogException, "\n\n***** Handling exception: {} : {} *****\n\n", exception->name(), exception->reason());
+						if (strcmp(exception->name(), "GameNotSavedException") == 0)	// try saving game instead
 						{
 							OO_LOG(cxx_kOOLogException, "{}", "\n\n***** Trying a normal save instead *****\n\n");
 							if ((controller != nullptr ? controller->inFullScreenMode() : false))
@@ -2569,7 +2577,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 						}
 						else
 						{
-							@throw exception;
+							throw;
 						}
 					}
 				}
@@ -4787,7 +4795,7 @@ void PlayerEntity::pollDockedControls(double delta_t)
 	const BOOL *joyButtonState = OOJoystickManager::sharedStickHandler()->getAllButtonStates();
 	const char				*exceptionContext = "setup";
 	
-	@try
+	try
 	{
 		// Pause game, 'p' key
 		exceptionContext = "pause key";
@@ -4858,9 +4866,11 @@ void PlayerEntity::pollDockedControls(double delta_t)
 		
 		pollGuiArrowKeyControls(delta_t);
 	}
-	@catch (::OOException *exception)
+	catch (...)
 	{
-		OO_LOG(cxx_kOOLogException, "***** Exception in pollDockedControls [{}]: {} : {}", exceptionContext, [exception name], [exception reason]);
+		const auto exception = oo::CurrentOOException();
+		if (!exception)  throw;	// not an OOException: it goes on up, as before
+		OO_LOG(cxx_kOOLogException, "***** Exception in pollDockedControls [{}]: {} : {}", exceptionContext, exception->name(), exception->reason());
 	}
 }
 

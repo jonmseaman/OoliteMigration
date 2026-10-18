@@ -271,7 +271,7 @@ void OOScheduleDeferredCall(std::function<void()> call, NSTimeInterval delay);
 	false when it raised an OOException, which is caught and its name and reason (the exception's own
 	strings, alive until the pool drains) written out (the caller logs them as the Foundation timer
 	did); anything else propagates. The free function FireOneDueDeferredCall() calls it (ADR-0056
-	amendment oo-9ht.139 item 3: its @try/@catch and send stay Objective-C, in GameController.mm since
-	bead oo-9ht.164).
+	amendment oo-9ht.139 item 3: its send stays Objective-C, in GameController.mm since
+	bead oo-9ht.164; its try/catch is C++ since bead oo-rskgl).
 */
 bool GameControllerPerformSelectorWithObject(id target, SEL selector, id argument, const char **outName, const char **outReason);

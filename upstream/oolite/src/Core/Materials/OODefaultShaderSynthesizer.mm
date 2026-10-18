@@ -147,21 +147,20 @@ bool OODefaultShaderSynthesizer::run()
 	_vertexBody += "void main(void)\n{\n";
 	_fragmentPreTextures += "void main(void)\n{\n";
 
-	@try
+	const oo::Finally temporaries([this] { destroyTemporaries(); });	// was @finally: runs after the handler
+	try
 	{
 		REQUIRE_STAGE(writeFinalColorComposite);
 
 		composeVertexShader();
 		composeFragmentShader();
 	}
-	@catch (OOException *exception)
+	catch (...)
 	{
+		const auto exception = oo::CurrentOOException();
+		if (!exception)  throw;	// not an OOException: it goes on up, as before
 		// Error should have been reported already.
 		return false;
-	}
-	@finally
-	{
-		destroyTemporaries();
 	}
 
 	return true;

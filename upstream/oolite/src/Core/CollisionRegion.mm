@@ -77,7 +77,7 @@ CollisionRegion::CollisionRegion()	// Designated initializer.
 		{
 			// -init released itself and returned nil; a constructor cannot, so it raises what
 			// -addEntity: raises when the list cannot grow (ADR-0056 amendment oo-44gg).
-			[OOException raise:OOMallocException format:"Not enough memory to create collision region member list."];
+			OORaiseException(OOMallocException, "Not enough memory to create collision region member list.");
 		}
 		
 		crid = crid_counter++;
@@ -231,7 +231,7 @@ void CollisionRegion::addEntity(Entity *ent)
 		Entity **new_store = (Entity **)realloc(static_cast<void *>(entity_array), max_entities * sizeof(Entity *));
 		if (new_store == NULL)
 		{
-			[OOException raise:OOMallocException format:"Not enough memory to grow collision region member list."];
+			OORaiseException(OOMallocException, "Not enough memory to grow collision region member list.");
 		}
 		
 		entity_array = new_store;

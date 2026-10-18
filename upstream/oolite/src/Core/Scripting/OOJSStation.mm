@@ -188,7 +188,7 @@ std::optional<std::string> StringAtIndex(const oo::PList &array, std::size_t ind
 // and the calling script saw it as "Native exception: <reason>". (Exceptions have their own beads.)
 void RaiseNilValueForKey(std::string_view key)
 {
-	[OOException raise:OOInvalidArgumentException format:"Tried to add nil value for key '%s' to dictionary", std::string(key).c_str()];
+	OORaiseException(OOInvalidArgumentException, "Tried to add nil value for key '%s' to dictionary", std::string(key).c_str());
 }
 
 

@@ -93,21 +93,11 @@ Class OOJavaScriptEngineOOObjectClass()
 
 bool OOJavaScriptEngineCaughtOOException(std::string &name, std::string &reason)
 {
-	try
-	{
-		throw;
-	}
-	catch (id exception)
-	{
-		if (![exception isKindOfClass:[OOException class]])  return false;
-		name = [(OOException *)exception name];
-		reason = [(OOException *)exception reason];
-		return true;
-	}
-	catch (...)
-	{
-		return false;	// not an Objective-C exception: not what @catch (OOException *) caught
-	}
+	const auto exception = oo::CurrentOOException();	// nullopt: not what @catch (OOException *) caught
+	if (!exception)  return false;
+	name = exception->name();
+	reason = exception->reason();
+	return true;
 }
 
 

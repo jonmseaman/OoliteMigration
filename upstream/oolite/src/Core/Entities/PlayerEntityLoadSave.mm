@@ -211,13 +211,15 @@ void PlayerEntity::autosavePlayer()
 
 	setLastsaveName(saveName);
 	
-	@try
+	try
 	{
 		writePlayerToPath(savePath);
 	}
-	@catch (id exception)
+	catch (...)
 	{
 		// Suppress exceptions silently. Warning the user about failed autosaves would be pretty unhelpful.
+		// (Objective-C ones: what @catch (id) caught; a C++ one goes on up.)
+		if (!oo::CurrentExceptionIsObjCObject())  throw;
 	}
 	
 	if (tmp_path.has_value())
@@ -238,8 +240,7 @@ void PlayerEntity::quicksavePlayer()
 	if (!path)
 	{
 		OO_LOG("quickSave.failed.noName", "{}", "ERROR no file name returned by [[gameView gameController] playerFileToLoad]");
-		[::OOException raise:"OoliteGameNotSavedException"
-					format:"ERROR no file name returned by [[gameView gameController] playerFileToLoad]"];
+		OORaiseException("OoliteGameNotSavedException", "ERROR no file name returned by [[gameView gameController] playerFileToLoad]");
 	}
 	
 	ShipScriptEventNoCx(this, "playerWillSaveGame", OOJSSTR("QUICK_SAVE"));
@@ -947,8 +948,7 @@ void PlayerEntity::writePlayerToPath(const std::string &path)
 	else
 	{
 		OO_LOG("save.failed", "***** SAVE ERROR: {}", errDesc);
-		[::OOException raise:"OoliteException"
-					format:"Attempt to save game to file '%s' failed: %s", path.c_str(), errDesc.c_str()];
+		OORaiseException("OoliteException", "Attempt to save game to file '%s' failed: %s", path.c_str(), errDesc.c_str());
 	}
 	if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)  UNIVERSE->getGameView()->suppressKeysUntilKeyUp();
 	setGuiToStatusScreen();

@@ -344,7 +344,7 @@ bool OOPListSchemaVerifier::delegateVerifierWithPropertyList(const oo::PList &ro
 	// selector (or nil) was (bead oo-9ht.119).
 	if (_delegate != nullptr)
 	{
-		@try
+		try
 		{
 			result = _delegate->verifierTestProperty(this,
 													 rootPList,
@@ -354,9 +354,11 @@ bool OOPListSchemaVerifier::delegateVerifierWithPropertyList(const oo::PList &ro
 													 typeKey,
 													 &error);
 		}
-		@catch (OOException *exception)
+		catch (...)
 		{
-			OO_LOG("plistVerifier.delegateException", "Property list schema verifier: delegate threw exception ({}) in -verifier:withPropertyList:named:testProperty:atPath:againstType: for type \"{}\" at {} in {} -- treating as failure.", [exception name], oo::DescriptionOf(typeKey), KeyPathToString(keyPath), name);
+			const auto exception = oo::CurrentOOException();
+			if (!exception)  throw;	// not an OOException: it goes on up, as before
+			OO_LOG("plistVerifier.delegateException", "Property list schema verifier: delegate threw exception ({}) in -verifier:withPropertyList:named:testProperty:atPath:againstType: for type \"{}\" at {} in {} -- treating as failure.", exception->name(), oo::DescriptionOf(typeKey), KeyPathToString(keyPath), name);
 			result = NO;
 			error = std::nullopt;
 		}
@@ -395,7 +397,7 @@ bool OOPListSchemaVerifier::delegateVerifierWithPropertyList(const oo::PList &ro
 
 	if (_delegate != nullptr)	// as above
 	{
-		@try
+		try
 		{
 			result = _delegate->verifierFailedForProperty(this,
 														  rootPList,
@@ -404,9 +406,11 @@ bool OOPListSchemaVerifier::delegateVerifierWithPropertyList(const oo::PList &ro
 														  error,
 														  localSchema);
 		}
-		@catch (OOException *exception)
+		catch (...)
 		{
-			OO_LOG("plistVerifier.delegateException", "Property list schema verifier: delegate threw exception ({}) in -verifier:withPropertyList:named:failedForProperty:atPath:expectedType: at {} in {} -- stopping.", [exception name], KeyPathDescriptionOfError(error).value_or("(null)"), name);
+			const auto exception = oo::CurrentOOException();
+			if (!exception)  throw;	// not an OOException: it goes on up, as before
+			OO_LOG("plistVerifier.delegateException", "Property list schema verifier: delegate threw exception ({}) in -verifier:withPropertyList:named:failedForProperty:atPath:expectedType: at {} in {} -- stopping.", exception->name(), KeyPathDescriptionOfError(error).value_or("(null)"), name);
 			result = NO;
 		}
 	}
@@ -437,7 +441,7 @@ bool OOPListSchemaVerifier::verifyPList(const oo::PList &rootPList,
 
 	DebugDumpPushIndent();
 
-	@try
+	try
 	{
 		DebugDumpIndent();
 
@@ -469,9 +473,11 @@ bool OOPListSchemaVerifier::verifyPList(const oo::PList &rootPList,
 				*outStop = YES;
 		}
 	}
-	@catch (OOException *exception)
+	catch (...)
 	{
-		error = Error(kPListErrorInternal, (BackLinkChain *)&keyPath, "Uncaught exception %s: %s in plist verifier for \"%s\" at %s.", [exception name], [exception reason], name.c_str(), KeyPathToString(keyPath).c_str());
+		const auto exception = oo::CurrentOOException();
+		if (!exception)  throw;	// not an OOException: it goes on up, as before
+		error = Error(kPListErrorInternal, (BackLinkChain *)&keyPath, "Uncaught exception %s: %s in plist verifier for \"%s\" at %s.", exception->name(), exception->reason(), name.c_str(), KeyPathToString(keyPath).c_str());
 	}
 
 	DebugDumpPopIndent();

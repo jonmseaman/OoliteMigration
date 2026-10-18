@@ -91,6 +91,7 @@ MA 02110-1301, USA.
 #import "OOJSEngineTimeManagement.h"
 #import "OOPListGameTypes.h"
 #include "oofnd/objc/OOAssert.h"
+#include "oofnd/objc/OOException.h"	// oo::Finally, oo::CurrentExceptionIsObjCObject (bead oo-rskgl)
 #include <objc/runtime.h>
 #include <string_view>
 #import "OOObjCPList.h"
@@ -9667,7 +9668,13 @@ void ShipEntity::becomeExplosion()
 	}
 	setStatus(STATUS_DEAD);
 	
-	@try
+	const oo::Finally removeDead([this]	// was @finally
+	{
+		if (this != PLAYER)
+		{
+			if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(this);
+		}
+	});
 	{
 		if (isThargoid() && roleSet != nullptr && roleSet->hasRole("thargoid-mothership"))  broadcastThargoidDestroyed();
 		
@@ -9919,13 +9926,6 @@ void ShipEntity::becomeExplosion()
 			}
 		}
 	}
-	@finally
-	{
-		if (this != PLAYER)
-		{
-			if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(this);
-		}
-	}
 }
 
 
@@ -10064,7 +10064,10 @@ void ShipEntity::becomeLargeExplosion(double factor)
 	if (status() == STATUS_DEAD)  return;
 	setStatus(STATUS_DEAD);
 	
-	@try
+	const oo::Finally removeDead([this]	// was @finally
+	{
+		if (!isPlayer)  { if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(this); }
+	});
 	{
 		// two parts to the explosion:
 		// 1. fast sparks
@@ -10092,10 +10095,6 @@ void ShipEntity::becomeLargeExplosion(double factor)
 		}
 		clearSubEntities();
 		
-	}
-	@finally
-	{
-		if (!isPlayer)  { if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(this); }
 	}
 }
 
@@ -14954,11 +14953,11 @@ void ShipEntity::dumpSelfState()
 		OO_LOG("dumpState.shipEntity.ai", "{}", "AI:");
 		OOLogPushIndent();
 		OOLogIndent();
-		@try
+		try
 		{
 			if (shipAI != nullptr)  shipAI->dumpState();
 		}
-		@catch (id exception) {}
+		catch (...) { if (!oo::CurrentExceptionIsObjCObject())  throw; }	// was @catch (id exception) {}: Objective-C objects only
 		OOLogPopIndent();
 	}
 	OO_LOG("dumpState.shipEntity", "Accuracy: {:g}", accuracy);

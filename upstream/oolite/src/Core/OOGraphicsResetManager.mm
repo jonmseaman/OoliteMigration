@@ -85,13 +85,15 @@ void OOGraphicsResetManager::resetGraphicsState()
 	for (OOGraphicsResetClient *client : cxxSnapshot)
 	{
 		if (cxxClients.find(client) == cxxClients.end())  continue;
-		@try
+		try
 		{
 			client->resetGraphicsState();
 		}
-		@catch (OOException *exception)
+		catch (...)
 		{
-			OO_LOG(cxx_kOOLogException, "***** EXCEPTION -- {} : {} -- ignored during graphics reset.", [exception name], [exception reason]);
+			const auto exception = oo::CurrentOOException();
+			if (!exception)  throw;	// not an OOException: it goes on up, as before
+			OO_LOG(cxx_kOOLogException, "***** EXCEPTION -- {} : {} -- ignored during graphics reset.", exception->name(), exception->reason());
 		}
 	}
 	

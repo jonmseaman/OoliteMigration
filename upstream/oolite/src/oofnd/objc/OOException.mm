@@ -101,3 +101,54 @@ void OORaiseException(const char *name, const char *format, ...)
 }
 
 @end
+
+
+namespace oo {
+
+const char *CaughtOOException::name() const
+{
+	return [_exception name];
+}
+
+
+const char *CaughtOOException::reason() const
+{
+	return [_exception reason];
+}
+
+
+std::optional<CaughtOOException> CurrentOOException()
+{
+	try
+	{
+		throw;
+	}
+	catch (id exception)
+	{
+		if (![exception isKindOfClass:[OOException class]])  return std::nullopt;
+		return CaughtOOException(static_cast<OOException *>(exception));
+	}
+	catch (...)
+	{
+		return std::nullopt;	// not an Objective-C exception: not what @catch (OOException *) caught
+	}
+}
+
+
+bool CurrentExceptionIsObjCObject()
+{
+	try
+	{
+		throw;
+	}
+	catch (id)
+	{
+		return true;
+	}
+	catch (...)
+	{
+		return false;
+	}
+}
+
+}	// namespace oo

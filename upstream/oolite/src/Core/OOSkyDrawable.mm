@@ -452,7 +452,7 @@ void OOSkyDrawable::loadStarTextures()
 							-0.0f).leakRef();
 		if (sStarTextures == nullptr)
 		{
-			[OOException raise:OOLITE_EXCEPTION_DATA_NOT_FOUND format:"No star textures could be loaded."];
+			OORaiseException(OOLITE_EXCEPTION_DATA_NOT_FOUND, "No star textures could be loaded.");
 		}
 	}
 
@@ -471,7 +471,7 @@ void OOSkyDrawable::loadNebulaTextures()
 							0.0f).leakRef();
 		if (sNebulaTextures == nullptr)
 		{
-			[OOException raise:OOLITE_EXCEPTION_DATA_NOT_FOUND format:"No nebula textures could be loaded."];
+			OORaiseException(OOLITE_EXCEPTION_DATA_NOT_FOUND, "No nebula textures could be loaded.");
 		}
 	}
 

@@ -806,7 +806,7 @@ static void AddStackToArrayReversed(std::vector<oo::Ref<OOJSScript>> &array, Run
 		AddStackToArrayReversed(array, stack->back);
 		// -addObject: raised on the nil a script-less push leaves (GNUstep 1.31.1's text). A weak
 		// push whose script has gone was a dead weak reference proxy, not nil: it is a null entry.
-		if (stack->scriptless)  [OOException raise:OOInvalidArgumentException format:"Tried to add nil to array"];
+		if (stack->scriptless)  OORaiseException(OOInvalidArgumentException, "Tried to add nil to array");
 		array.emplace_back(stack->current.get());
 	}
 }
@@ -945,7 +945,7 @@ static std::optional<std::string> StringForKey(const oo::PList &dictionary, cons
 // A string value for -setObject:forKey:, which raised on nil (GNUstep 1.31.1's text).
 static std::string ValueForKey(const std::optional<std::string> &value, std::string_view key)
 {
-	if (!value.has_value())  [OOException raise:OOInvalidArgumentException format:"Tried to add nil value for key '%s' to dictionary", std::string(key).c_str()];
+	if (!value.has_value())  OORaiseException(OOInvalidArgumentException, "Tried to add nil value for key '%s' to dictionary", std::string(key).c_str());
 	return *value;
 }
 } // namespace

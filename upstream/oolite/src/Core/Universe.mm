@@ -297,7 +297,7 @@ Universe *Universe::newUniverse(::MyOpenGLView *inGameView)
 	if (gSharedUniverse != nullptr)
 	{
 		universe->release();
-		[OOException raise:OOInternalInconsistencyException format:"%s: expected only one Universe to exist at a time.", "-[Universe(OOObjCBridge) initWithGameView:]"];
+		OORaiseException(OOInternalInconsistencyException, "%s: expected only one Universe to exist at a time.", "-[Universe(OOObjCBridge) initWithGameView:]");
 	}
 
 	OO_DEBUG_PROGRESS("Universe initWithGameView:");
@@ -4457,17 +4457,19 @@ Entity * Universe::newVisualEffectWithName(const std::string &effectKey)
 	effectDict = OOShipRegistry::sharedRegistry()->effectInfoForKey(effectKey);
 	if (effectDict.isNull())  return nil;
 
-	@try
+	try
 	{
 		effect = oo::NewVisualEffect(effectKey, effectDict);
 	}
-	@catch (::OOException *exception)
+	catch (...)
 	{
-		if (strcmp([exception name], OOLITE_EXCEPTION_DATA_NOT_FOUND) == 0)
+		const auto exception = oo::CurrentOOException();
+		if (!exception)  throw;	// not an OOException: it goes on up, as before
+		if (strcmp(exception->name(), OOLITE_EXCEPTION_DATA_NOT_FOUND) == 0)
 		{
-			OO_LOG(cxx_kOOLogException, "***** Oolite Exception : '{}' in [Universe newVisualEffectWithName: {} ] *****", [exception reason], effectKey);
+			OO_LOG(cxx_kOOLogException, "***** Oolite Exception : '{}' in [Universe newVisualEffectWithName: {} ] *****", exception->reason(), effectKey);
 		}
-		else  @throw exception;
+		else  throw;
 	}
 	
 	return effect;
@@ -4515,7 +4517,7 @@ Entity * Universe::newVisualEffectWithName(const std::string &effectKey)
 		}
 	}
 	
-	@try
+	try
 	{
 		if (scale != 1.0f)
 		{
@@ -4535,13 +4537,15 @@ Entity * Universe::newVisualEffectWithName(const std::string &effectKey)
 			ship = oo::ToShip(oo::NewShipObject(oo::makeRef<::ShipEntity>(), shipKey, shipDict));
 		}
 	}
-	@catch (::OOException *exception)
+	catch (...)
 	{
-		if (strcmp([exception name], OOLITE_EXCEPTION_DATA_NOT_FOUND) == 0)
+		const auto exception = oo::CurrentOOException();
+		if (!exception)  throw;	// not an OOException: it goes on up, as before
+		if (strcmp(exception->name(), OOLITE_EXCEPTION_DATA_NOT_FOUND) == 0)
 		{
-			OO_LOG(cxx_kOOLogException, "***** Oolite Exception : '{}' in [Universe newShipWithName: {} ] *****", [exception reason], shipKey);
+			OO_LOG(cxx_kOOLogException, "***** Oolite Exception : '{}' in [Universe newShipWithName: {} ] *****", exception->reason(), shipKey);
 		}
-		else  @throw exception;
+		else  throw;
 	}
 
 	// Set primary role to same as ship name, if ship name is also a role.
@@ -4564,7 +4568,7 @@ Entity * Universe::newVisualEffectWithName(const std::string &effectKey)
 	shipDict = OOShipRegistry::sharedRegistry()->shipInfoForKey(shipDataKey);
 	if (shipDict.isNull())  return nil;
 
-	@try
+	try
 	{
 		if (scale != 1.0f)
 		{
@@ -4573,13 +4577,15 @@ Entity * Universe::newVisualEffectWithName(const std::string &effectKey)
 		}
 		dock = ::DockEntity::newDockObject(shipDataKey, shipDict);	// [[DockEntity alloc] cxx_initWithKey:definition:] until bead oo-9ht.180
 	}
-	@catch (::OOException *exception)
+	catch (...)
 	{
-		if (strcmp([exception name], OOLITE_EXCEPTION_DATA_NOT_FOUND) == 0)
+		const auto exception = oo::CurrentOOException();
+		if (!exception)  throw;	// not an OOException: it goes on up, as before
+		if (strcmp(exception->name(), OOLITE_EXCEPTION_DATA_NOT_FOUND) == 0)
 		{
-			OO_LOG(cxx_kOOLogException, "***** Oolite Exception : '{}' in [Universe newDockWithName: {} ] *****", [exception reason], shipDataKey);
+			OO_LOG(cxx_kOOLogException, "***** Oolite Exception : '{}' in [Universe newDockWithName: {} ] *****", exception->reason(), shipDataKey);
 		}
-		else  @throw exception;
+		else  throw;
 	}
 
 	// Set primary role to same as name, if ship name is also a role.
@@ -5246,7 +5252,7 @@ void Universe::drawUniverse()
 				OOGL(glBindFramebuffer(GL_FRAMEBUFFER, targetFramebufferID));
 			}
 		}
-		@try
+		try
 		{
 			no_update = YES;	// block other attempts to draw
 			
@@ -5672,18 +5678,20 @@ void Universe::drawUniverse()
 				framesDoneThisUpdate++;
 			}
 		}
-		@catch (::OOException *exception)
+		catch (...)
 		{
+			const auto exception = oo::CurrentOOException();
+			if (!exception)  throw;	// not an OOException: it goes on up, as before
 			no_update = NO;	// make sure we don't get stuck in all subsequent frames.
 			
-			if (strncmp([exception name], "Oolite", 6) == 0)
+			if (strncmp(exception->name(), "Oolite", 6) == 0)
 			{
-				handleOoliteException(exception);
+				handleOoliteException(exception->object());
 			}
 			else
 			{
-				OO_LOG(cxx_kOOLogException, "***** Exception: {} : {} *****", [exception name], [exception reason]);
-				@throw exception;
+				OO_LOG(cxx_kOOLogException, "***** Exception: {} : {} *****", exception->name(), exception->reason());
+				throw;
 			}
 		}
 	}
@@ -7392,7 +7400,7 @@ void Universe::update(OOTimeDelta inDeltaT)
 		Entity * volatile update_stage_param = nullptr;	// the C++ entity (bead oo-9ht.39.26)
 #endif
 		
-		@try
+		try
 		{
 			::PlayerEntity *player = PLAYER;
 			
@@ -7580,11 +7588,13 @@ void Universe::update(OOTimeDelta inDeltaT)
 				doLinkedListMaintenanceThisUpdate = NO;
 			}
 		}
-		@catch (::OOException *exception)
+		catch (...)
 		{
-			if (strncmp([exception name], "Oolite", 6) == 0)
+			const auto exception = oo::CurrentOOException();
+			if (!exception)  throw;	// not an OOException: it goes on up, as before
+			if (strncmp(exception->name(), "Oolite", 6) == 0)
 			{
-				handleOoliteException(exception);
+				handleOoliteException(exception->object());
 			}
 			else
 			{
@@ -7592,8 +7602,8 @@ void Universe::update(OOTimeDelta inDeltaT)
 #ifndef NDEBUG
 				if (update_stage_param != nullptr)  stage = oo::str::formatRuntime(stage, { oo::EntityDescription(update_stage_param) });
 #endif
-				OO_LOG(cxx_kOOLogException, "***** Exception during [{}] in [Universe update:] : {} : {} *****", stage, [exception name], [exception reason]);
-				@throw exception;
+				OO_LOG(cxx_kOOLogException, "***** Exception during [{}] in [Universe update:] : {} : {} *****", stage, exception->name(), exception->reason());
+				throw;
 			}
 		}
 		
@@ -10399,19 +10409,20 @@ void Universe::handleOoliteException(::OOException *exception)
 {
 	if (exception != nil)
 	{
-		if (strcmp([exception name], OOLITE_EXCEPTION_FATAL) == 0)
+		const oo::CaughtOOException caught(exception);
+		if (strcmp(caught.name(), OOLITE_EXCEPTION_FATAL) == 0)
 		{
 			::PlayerEntity *player = PLAYER;
 			if (player != nullptr)  player->setStatus(STATUS_HANDLING_ERROR);
 			
-			OO_LOG(cxx_kOOLogException, "***** Handling Fatal : {} : {} *****", [exception name], [exception reason]);
-			std::string exception_msg = oo::str::format("Exception : %s : %s Please take a screenshot and/or press esc or Q to quit.", [exception name], [exception reason]);
+			OO_LOG(cxx_kOOLogException, "***** Handling Fatal : {} : {} *****", caught.name(), caught.reason());
+			std::string exception_msg = oo::str::format("Exception : %s : %s Please take a screenshot and/or press esc or Q to quit.", caught.name(), caught.reason());
 			addMessage(exception_msg, 30.0);
 			if (gameController() != nullptr)  gameController()->setGamePaused(YES);
 		}
 		else
 		{
-			OO_LOG(cxx_kOOLogException, "***** Handling Non-fatal : {} : {} *****", [exception name], [exception reason]);
+			OO_LOG(cxx_kOOLogException, "***** Handling Non-fatal : {} : {} *****", caught.name(), caught.reason());
 		}
 	}
 }
@@ -11078,7 +11089,7 @@ void Universe::populateSpaceFromActiveWormholes()
 	{
 		@autoreleasepool
 		{
-			@try
+			try
 			{
 				WormholeEntity* whole = static_cast<WormholeEntity *>(activeWormholes[0].get());
 				// If the wormhole has been scanned by the player then the
@@ -11091,9 +11102,11 @@ void Universe::populateSpaceFromActiveWormholes()
 				}
 				RemoveFirstWormhole(activeWormholes);	// empty it out
 			}
-			@catch (::OOException *exception)
+			catch (...)
 			{
-				OO_LOG(cxx_kOOLogException, "Squashing exception during wormhole unpickling ({}: {}).", [exception name], [exception reason]);
+				const auto exception = oo::CurrentOOException();
+				if (!exception)  throw;	// not an OOException: it goes on up, as before
+				OO_LOG(cxx_kOOLogException, "Squashing exception during wormhole unpickling ({}: {}).", exception->name(), exception->reason());
 			}
 		}
 	}

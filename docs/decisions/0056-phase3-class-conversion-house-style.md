@@ -9283,3 +9283,51 @@ code names, the Mac-only ones (Phase 5), and `OOALSTR`'s Objective-C arm in the 
    defined).
 
 **Tests.** No test file, case or expected value changes.
+
+## Amendment (bead oo-rskgl): the game's exception handlers become C++ try/catch; the thrown object stays OOException
+
+**Context.** Phase 4 batch AU, towards oo-4aq6a (retire the `oofnd/objc` roots). First-party src outside
+`oofnd/objc/` had 54 Objective-C raise sites, 38 `@try`/`@catch (OOException *)`, 6 `@catch (id)` and 4 `@finally`.
+Survey of the 44 test files that name `OOException`, `@try` or `@catch`: 31 raise it as a stand-in from a fake (the
+OOJS natives' `[OOException raise:format:]`, the verifier, debugger, texture-loader and graphics-reset fakes, the
+deferred-call target); 9 catch what src raises with `@catch (OOException *)` and assert its `name`/`reason`
+(OOPriorityQueue, OOProbabilitySet, OOShipGroup, OOTextureScaling, string expander, objc_assert, GameController,
+and the oofnd floor tests objc_exception/objc_floor, which test the class itself); test_Universe builds one with
+`+exceptionWithName:reason:` for `Universe::handleOoliteException`; test_OOJavaScriptEngine names `[OOException
+class]` as an arbitrary class; 3 use `@try`/`@catch (id)` around src (AI, GuiDisplayGen) or throw a plain
+`OOObject` (OOAsyncWorkManager). A C++ exception type cannot be raised by `+raise:format:` nor caught by `@catch
+(OOException *)`, so changing the thrown object needs those tests re-based: Jon's call (child bead oo-rskgl.1).
+
+**Decision (behaviour-identical; no test edited).** The thrown object is unchanged; every handler moves.
+
+1. `[OOException raise:N format:F, ...]` in src becomes `OORaiseException(N, F, ...)`: the same class, name and
+   formatted reason (amendment oo-dqxj).
+2. `@try` becomes `try`. `@catch (OOException *exception) { B }` becomes `catch (...) { const auto exception =
+   oo::CurrentOOException(); if (!exception)  throw; B' }`, where `B'` reads `exception->name()` /
+   `exception->reason()` (the same `const char *`, owned by the same object) and passes `exception->object()` where
+   an interface still takes the object (`Universe::handleOoliteException`, the verifier stage's pointer). A C++
+   `catch (...)` catches an Objective-C exception (amendment oo-ppc); `oo::CurrentOOException()` (oofnd/objc,
+   beside the class) tells an OOException from anything else exactly as the typed clause did, and `throw;`
+   rethrows the same object for anything else, as the clause let it pass.
+3. `@throw exception;` inside such a handler becomes `throw;` (the same object).
+4. `@catch (id exception)` becomes `catch (id exception)` where the handler has a body (GameController's tick), and
+   `catch (...) { if (!oo::CurrentExceptionIsObjCObject())  throw; }` where it was empty (Entity and ShipEntity
+   dumps, the screen update, the async work managers, the autosave): Objective-C objects only, as before, and no
+   empty handler (clang-tidy bugprone-empty-catch).
+5. `@try { A } @finally { B }` becomes `oo::Finally` (a scope guard declared before the `try`, so `B` runs after the
+   handler, as `@finally` did): AI's state-machine load, ShipEntity's two explosions, the default shader
+   synthesizer.
+6. `GameControllerPerformSelectorWithObject`/`DeferredCallRunCatching` and `OOJavaScriptEngineCaughtOOException` use
+   the same helper; their out-pointers still point into the exception object, alive as long as before.
+
+**Behaviour deltas (crash paths only).** (a) A C++ exception reaching a former `@catch (id)` site used to end the
+process (`std::terminate`, ADR-0029 measurement 10); it now goes on up to the next C++ handler. (b) A throw from a
+former `@finally` body while another exception is unwinding used to replace that exception; from a destructor it
+terminates. None of the four bodies (pop a log indent, free shader temporaries, remove the entity) raises.
+
+**Left (child bead oo-rskgl.1, needs Jon's approval of the test re-bases).** Throwing a C++ `oo::Exception` instead
+of the Objective-C object and deleting `OOException.mm`: `oo::CurrentOOException()`/`OORaiseException()` are the
+only two places that change in src; the tests listed above change their `+raise:format:` and `@catch (OOException
+*)` to the C++ forms. `OOJSReportWrappedException(id)` keeps its `-isKindOfClass:` test until then.
+
+**Tests.** No test file, case or expected value changes.

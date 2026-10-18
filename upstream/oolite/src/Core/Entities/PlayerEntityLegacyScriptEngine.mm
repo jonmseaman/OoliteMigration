@@ -469,7 +469,7 @@ void PlayerEntity::checkScript()
 	*/
 	status = this->status();
 	restoreStatus = status;
-	@try
+	try
 	{
 		if (sRunningScript)
 		{
@@ -485,9 +485,11 @@ void PlayerEntity::checkScript()
 			if (entry.second != nullptr)  entry.second->runWithTarget(this);
 		}
 	}
-	@catch (::OOException *exception)
+	catch (...)
 	{
-		OO_LOG(cxx_kOOLogException, "***** Exception running world scripts: {} : {}", [exception name], [exception reason]);
+		const auto exception = oo::CurrentOOException();
+		if (!exception)  throw;	// not an OOException: it goes on up, as before
+		OO_LOG(cxx_kOOLogException, "***** Exception running world scripts: {} : {}", exception->name(), exception->reason());
 	}
 	
 	// Restore anti-recursion measures.
@@ -506,16 +508,18 @@ void PlayerEntity::runScriptActions(const oo::PList &actions, const std::optiona
 		oldMissionKey = sCurrentMissionKey;
 		sCurrentMissionKey = contextName;
 
-		@try
+		try
 		{
 			PerformScriptActions(actions, target);
 		}
-		@catch (::OOException *exception)
+		catch (...)
 		{
+			const auto exception = oo::CurrentOOException();
+			if (!exception)  throw;	// not an OOException: it goes on up, as before
 			OO_LOG("script.error.exception",
 				  "***** EXCEPTION {}: {} while handling legacy script actions for {}",
-				  [exception name],
-				  [exception reason],
+				  exception->name(),
+				  exception->reason(),
 				  (contextName.has_value() && oo::str::hasPrefix(*contextName, kActionTempPrefix)) ? oo::EntityShortDescription(target) : contextName.value_or("(null)"));
 			// Suppress exception
 		}
@@ -535,16 +539,18 @@ bool PlayerEntity::scriptTestConditions(const oo::PList &array)
 {
 	BOOL				result = NO;
 	
-	@try
+	try
 	{
 		result = TestScriptConditions(array);
 	}
-	@catch (::OOException *exception)
+	catch (...)
 	{
+		const auto exception = oo::CurrentOOException();
+		if (!exception)  throw;	// not an OOException: it goes on up, as before
 		OO_LOG("script.error.exception",
 			  "***** EXCEPTION {}: {} while testing legacy script conditions.",
-			  [exception name],
-			  [exception reason]);
+			  exception->name(),
+			  exception->reason());
 		// Suppress exception
 	}
 	

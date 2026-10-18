@@ -355,7 +355,7 @@ void OOTextureLoader::setUp()
 
 void OOTextureLoader::performAsyncTask()
 {
-	@try
+	try
 	{
 		OO_LOG("texture.load.asyncLoad", "Loading texture {}", oo::str::lastPathComponent(_path));
 
@@ -373,9 +373,11 @@ void OOTextureLoader::performAsyncTask()
 
 		OO_LOG("texture.load.asyncLoad.done", "{}", "Loading complete.");
 	}
-	@catch (OOException *exception)
+	catch (...)
 	{
-		OO_LOG("texture.load.asyncLoad.exception", "***** Exception loading texture {}: {} ({}).", _path, [exception name], [exception reason]);
+		const auto exception = oo::CurrentOOException();
+		if (!exception)  throw;	// not an OOException: it goes on up, as before
+		OO_LOG("texture.load.asyncLoad.exception", "***** Exception loading texture {}: {} ({}).", _path, exception->name(), exception->reason());
 
 		// Be sure to signal load failure.
 		free(_data);

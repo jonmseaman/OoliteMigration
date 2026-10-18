@@ -317,8 +317,7 @@ void AI::preserveCurrentStateMachine()
 	{
 		reportStackOverflow();
 
-		[OOException raise:"OoliteException"
-					format:"AI stack overflow for %s", oo::EntityDescription(owner()).c_str()];
+		OORaiseException("OoliteException", "AI stack overflow for %s", oo::EntityDescription(owner()).c_str());
 	}
 	
 	const oo::PList *script = stateMachine.find("jsScript");
@@ -560,16 +559,18 @@ void AI::reactToMessage(const std::string &message, const std::optional<std::str
 	if (actions.count() > 0)
 	{
 		++recursionLimiter;
-		@try
+		try
 		{
 			for (i = 0; i < actions.count(); i++)
 			{
 				takeAction(actions.at<std::string>(i));
 			}
 		}
-		@catch (OOException *exception)
+		catch (...)
 		{
-			OO_LOG(cxx_kOOLogException, "Squashing exception {}:{} in AI handler {}:{}.{}", [exception name], [exception reason], stateMachineName, currentState.value_or("(null)"), message);
+			const auto exception = oo::CurrentOOException();
+			if (!exception)  throw;	// not an OOException: it goes on up, as before
+			OO_LOG(cxx_kOOLogException, "Squashing exception {}:{} in AI handler {}:{}.{}", exception->name(), exception->reason(), stateMachineName, currentState.value_or("(null)"), message);
 		}
 		
 		--recursionLimiter;
@@ -863,8 +864,9 @@ oo::PList AI::loadStateMachine(const std::string &smName, const std::string &scr
 		OOLogPushIndent();
 		oo::log::indentIf("ai.load");
 
-		@try
 		{
+			const oo::Finally popIndent([] { OOLogPopIndent(); });	// was @finally
+
 			// Load state machine and validate against whitelist.
 			const std::optional<std::string> aiPath = ResourceManager::pathForFileNamed(smName, "AIs");
 			if (aiPath.has_value())
@@ -911,10 +913,6 @@ oo::PList AI::loadStateMachine(const std::string &smName, const std::string &scr
 
 			// Cache.
 			cacheMgr->setPList(newSM, smName, "AIs");
-		}
-		@finally
-		{
-			OOLogPopIndent();
 		}
 	}
 

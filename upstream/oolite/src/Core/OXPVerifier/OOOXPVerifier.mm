@@ -588,7 +588,7 @@ void OOOXPVerifier::runStages()
 		
 		stageName.reset();
 		oo::log::pushIndent();
-		@try
+		try
 		{
 			stageName = stageToRun->name();
 			if (stageToRun->shouldRun())
@@ -604,10 +604,12 @@ void OOOXPVerifier::runStages()
 				stageToRun->noteSkipped();
 			}
 		}
-		@catch (OOException *exception)
+		catch (...)
 		{
+			const auto exception = oo::CurrentOOException();
+			if (!exception)  throw;	// not an OOException: it goes on up, as before
 			if (!stageName.has_value())  stageName = stageToRun->className();	// was [stageToRun class]
-			OO_LOG("verifyOXP.exception", "***** Exception occurred when running OXP verifier stage \"{}\": {}: {}", *stageName, [exception name], [exception reason]);
+			OO_LOG("verifyOXP.exception", "***** Exception occurred when running OXP verifier stage \"{}\": {}: {}", *stageName, exception->name(), exception->reason());
 		}
 		oo::log::popIndent();
 		

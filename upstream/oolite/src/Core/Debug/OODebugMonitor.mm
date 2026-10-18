@@ -141,7 +141,7 @@ bool OODebugMonitor::setDebugger(OODebuggerInterface *newDebugger)
 		// If a new debugger was specified, try to connect it.
 		if (newDebugger != nil)
 		{
-			@try
+			try
 			{
 				if (newDebugger->connectDebugMonitor(this, &error))
 				{
@@ -153,9 +153,11 @@ bool OODebugMonitor::setDebugger(OODebuggerInterface *newDebugger)
 					OO_LOG("debugMonitor.setDebugger.failed", "Could not connect to debugger {}, because an error occurred: {}", newDebugger->description(), error.value_or("(null)"));
 				}
 			}
-			@catch (OOException *exception)
+			catch (...)
 			{
-				OO_LOG("debugMonitor.setDebugger.failed", "Could not connect to debugger {}, because an exception occurred: {} -- {}", newDebugger->description(), [exception name], [exception reason]);
+				const auto exception = oo::CurrentOOException();
+				if (!exception)  throw;	// not an OOException: it goes on up, as before
+				OO_LOG("debugMonitor.setDebugger.failed", "Could not connect to debugger {}, because an exception occurred: {} -- {}", newDebugger->description(), exception->name(), exception->reason());
 			}
 		}
 	}
@@ -180,13 +182,15 @@ void OODebugMonitor::appendJSConsoleLine(const std::string &string,
 										 NSRange emphasisRange)
 {
 	OOJSPauseTimeLimiter();
-	@try
+	try
 	{
 		if (_debugger != nullptr)  _debugger->debugMonitor(this, string, colorKey, emphasisRange);
 	}
-	@catch (OOException *exception)
+	catch (...)
 	{
-		OO_LOG("debugMonitor.debuggerConnection.exception", "Exception while attempting to send JavaScript console text to debugger: {} -- {}", [exception name], [exception reason]);
+		const auto exception = oo::CurrentOOException();
+		if (!exception)  throw;	// not an OOException: it goes on up, as before
+		OO_LOG("debugMonitor.debuggerConnection.exception", "Exception while attempting to send JavaScript console text to debugger: {} -- {}", exception->name(), exception->reason());
 	}
 	OOJSResumeTimeLimiter();
 }
@@ -204,13 +208,15 @@ void OODebugMonitor::appendJSConsoleLine(const std::string &string,
 void OODebugMonitor::clearJSConsole()
 {
 	OOJSPauseTimeLimiter();
-	@try
+	try
 	{
 		if (_debugger != nullptr)  _debugger->debugMonitorClearConsole(this);
 	}
-	@catch (OOException *exception)
+	catch (...)
 	{
-		OO_LOG("debugMonitor.debuggerConnection.exception", "Exception while attempting to clear JavaScript console: {} -- {}", [exception name], [exception reason]);
+		const auto exception = oo::CurrentOOException();
+		if (!exception)  throw;	// not an OOException: it goes on up, as before
+		OO_LOG("debugMonitor.debuggerConnection.exception", "Exception while attempting to clear JavaScript console: {} -- {}", exception->name(), exception->reason());
 	}
 	OOJSResumeTimeLimiter();
 }
@@ -219,13 +225,15 @@ void OODebugMonitor::clearJSConsole()
 void OODebugMonitor::showJSConsole()
 {
 	OOJSPauseTimeLimiter();
-	@try
+	try
 	{
 		if (_debugger != nullptr)  _debugger->debugMonitorShowConsole(this);
 	}
-	@catch (OOException *exception)
+	catch (...)
 	{
-		OO_LOG("debugMonitor.debuggerConnection.exception", "Exception while attempting to show JavaScript console: {} -- {}", [exception name], [exception reason]);
+		const auto exception = oo::CurrentOOException();
+		if (!exception)  throw;	// not an OOException: it goes on up, as before
+		OO_LOG("debugMonitor.debuggerConnection.exception", "Exception while attempting to show JavaScript console: {} -- {}", exception->name(), exception->reason());
 	}
 	OOJSResumeTimeLimiter();
 }
@@ -295,13 +303,15 @@ void OODebugMonitor::setConfigurationValue(const oo::PList &value, const std::st
 	{
 		notifyValue = normalized;
 	}
-	@try
+	try
 	{
 		if (_debugger != nullptr)  _debugger->debugMonitor(this, notifyValue, keyString);
 	}
-	@catch (OOException *exception)
+	catch (...)
 	{
-		OO_LOG("debugMonitor.debuggerConnection.exception", "Exception while attempting to send configuration update to debugger: {} -- {}", [exception name], [exception reason]);
+		const auto exception = oo::CurrentOOException();
+		if (!exception)  throw;	// not an OOException: it goes on up, as before
+		OO_LOG("debugMonitor.debuggerConnection.exception", "Exception while attempting to send configuration update to debugger: {} -- {}", exception->name(), exception->reason());
 	}
 }
 
@@ -736,13 +746,15 @@ void OODebugMonitor::javaScriptEngineWillReset(const oo::Notification & /*notifi
 
 void OODebugMonitor::disconnectDebuggerWithMessage(const std::optional<std::string> &message)
 {
-	@try
+	try
 	{
 		if (_debugger != nullptr)  _debugger->disconnectDebugMonitor(this, message);
 	}
-	@catch (OOException *exception)
+	catch (...)
 	{
-		OO_LOG("debugMonitor.debuggerConnection.exception", "Exception while attempting to disconnect debugger: {} -- {}", [exception name], [exception reason]);
+		const auto exception = oo::CurrentOOException();
+		if (!exception)  throw;	// not an OOException: it goes on up, as before
+		OO_LOG("debugMonitor.debuggerConnection.exception", "Exception while attempting to disconnect debugger: {} -- {}", exception->name(), exception->reason());
 	}
 	
 	_debugger = nullptr;	// cleared, then released, as before

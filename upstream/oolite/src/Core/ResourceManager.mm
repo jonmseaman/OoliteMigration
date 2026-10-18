@@ -2237,7 +2237,7 @@ std::vector<std::pair<std::string, oo::Ref<OOScript>>> ResourceManager::loadScri
 		{
 			@autoreleasepool
 			{
-				@try
+				try
 				{
 					std::optional<std::vector<oo::Ref<OOScript>>> results = OOScript::worldScriptsAtPath(oo::str::appendingPathComponent(path, "Config"));
 					if (!results.has_value()) results = OOScript::worldScriptsAtPath(path);
@@ -2256,9 +2256,11 @@ std::vector<std::pair<std::string, oo::Ref<OOScript>>> ResourceManager::loadScri
 						}
 					}
 				}
-				@catch (OOException *exception)
+				catch (...)
 				{
-					OO_LOG("script.load.exception", "***** {} encountered exception {} ({}) while trying to load script from {} -- ignoring this location.", "+ResourceManager::loadScripts()", [exception name], [exception reason], path);
+					const auto exception = oo::CurrentOOException();
+					if (!exception)  throw;	// not an OOException: it goes on up, as before
+					OO_LOG("script.load.exception", "***** {} encountered exception {} ({}) while trying to load script from {} -- ignoring this location.", "+ResourceManager::loadScripts()", exception->name(), exception->reason(), path);
 					// Ignore exception and keep loading other scripts.
 				}
 			}

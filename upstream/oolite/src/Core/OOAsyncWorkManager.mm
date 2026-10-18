@@ -312,7 +312,7 @@ void OOAsyncWorkManager::completePendingTasks()
 void OOAsyncWorkManager::waitForTaskToComplete(OOAsyncWorkTask * /*task*/)
 {
 	OOLogGenericSubclassResponsibility();
-	[OOException raise:OOInternalInconsistencyException format:"%s called.", __PRETTY_FUNCTION__];
+	OORaiseException(OOInternalInconsistencyException, "%s called.", __PRETTY_FUNCTION__);
 }
 
 
@@ -423,11 +423,11 @@ void OOManualDispatchAsyncWorkManager::queueTask(unsigned threadNumber)
 			@autoreleasepool
 			{
 				const oo::Ref<OOAsyncWorkTask> task = _taskQueue.dequeue();
-				@try
+				try
 				{
 					task->performAsyncTask();
 				}
-				@catch (id exception) {}
+				catch (...) { if (!oo::CurrentExceptionIsObjCObject())  throw; }	// was @catch (id exception) {}: Objective-C objects only
 				queueResult(task.get());
 			}
 		}
@@ -508,11 +508,11 @@ void OOOperationQueueAsyncWorkManager::workThread(unsigned threadNumber)
 
 void OOOperationQueueAsyncWorkManager::dispatchTask(OOAsyncWorkTask *task)
 {
-	@try
+	try
 	{
 		task->performAsyncTask();
 	}
-	@catch (id exception) {}
+	catch (...) { if (!oo::CurrentExceptionIsObjCObject())  throw; }	// was @catch (id exception) {}: Objective-C objects only
 	queueResult(task);
 }
 

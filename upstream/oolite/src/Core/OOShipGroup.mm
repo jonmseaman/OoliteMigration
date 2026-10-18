@@ -398,7 +398,7 @@ NSUInteger OOShipGroup::updateCount()
 
 	if (enumerator->_updateCount != group->_updateCount)
 	{
-		[OOException raise:OOGenericException format:"Collection <OOShipGroup: %p> was mutated while being enumerated.", (void *)group];
+		OORaiseException(OOGenericException, "Collection <OOShipGroup: %p> was mutated while being enumerated.", (void *)group);
 	}
 
 	while (enumerator->_index < group->_count)
