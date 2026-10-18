@@ -150,8 +150,8 @@ public:
 	Entity *ownerEntity();	// the owner's C++ entity, null once it has gone (what owner() answers the object of; bead oo-9ht.39.8.21)
 	// The objects (a ship's, or a visual effect's for its subentities: the Objective-C ShipEntity the
 	// declarations named was the type, not the answer; bead oo-9ht.144).
-	::Entity *parentEntity();		// owner if self is subentity of owner, otherwise nil.
-	::Entity *rootShipEntity();	// like parentEntity, but recursive.
+	Entity *parentEntity();		// owner if self is subentity of owner, otherwise null (the C++ entity since bead oo-9ht.39.24).
+	Entity *rootShipEntity();	// like parentEntity, but recursive.
 	id<OOWeakReferenceSupport> superShaderBindingTarget();
 
 	// setPosition(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)

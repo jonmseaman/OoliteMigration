@@ -241,9 +241,9 @@ OO_TEST(compareBeaconCodes)
 	@autoreleasepool
 	{
 		SetUp();
-		OO_CHECK(Part(Waypoint("a"))->compareBeaconCodeWith(Waypoint("B")) == OOOrderedAscending);
-		OO_CHECK(Part(Waypoint("b"))->compareBeaconCodeWith(Waypoint("A")) == OOOrderedDescending);
-		OO_CHECK(Part(Waypoint("abc"))->compareBeaconCodeWith(Waypoint("ABC")) == OOOrderedSame);
+		OO_CHECK(Part(Waypoint("a"))->compareBeaconCodeWith(oo::ToCxx(Waypoint("B"))) == OOOrderedAscending);
+		OO_CHECK(Part(Waypoint("b"))->compareBeaconCodeWith(oo::ToCxx(Waypoint("A"))) == OOOrderedDescending);
+		OO_CHECK(Part(Waypoint("abc"))->compareBeaconCodeWith(oo::ToCxx(Waypoint("ABC"))) == OOOrderedSame);
 	}
 }
 

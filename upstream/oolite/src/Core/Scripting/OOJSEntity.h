@@ -75,7 +75,7 @@ OOINLINE bool OOJSEntityGetEntity(ooscript::Context context, ooscript::Object in
 }
 
 
-/*	OOJSNativeObjectOfClassFromJSValue(context, value, [Entity class]) for a C++ caller (bead
+/*	OOJSNativeObjectOfClassFromJSValue(context, value, <the root entity class>) for a C++ caller (bead
 	oo-9ht.39.3): the entity an entity's JS object holds, else null, with no error (another value,
 	another object, a stale entity), as that answered nil.
 */
@@ -126,21 +126,17 @@ bool EntityFromArgumentList(ooscript::Context context, const std::optional<std::
 	blockJSPlayerShipProps flag is in effect (i.e., the escape pod sequence is
 	active).
 */
+// The global holds the player's C++ entity while the flag is in effect (bead oo-9ht.39.25; it held
+// the player's object), else null.
 OOINLINE bool OOIsPlayerStale(void)
 {
-	extern Entity *gOOJSPlayerIfStale;
-	return gOOJSPlayerIfStale != nil;
+	extern cxx::Entity *gOOJSPlayerIfStale;
+	return gOOJSPlayerIfStale != nullptr;
 }
 
-OOINLINE bool OOIsStaleEntity(Entity *entity)
-{
-	extern Entity *gOOJSPlayerIfStale;
-	return entity == nil || (entity == gOOJSPlayerIfStale);
-}
-
-// The same of the C++ entity a getter answers (bead oo-9ht.39.3); the player's object is the global.
+// Of the C++ entity a getter answers (bead oo-9ht.39.3).
 OOINLINE bool OOIsStaleEntity(cxx::Entity *entity)
 {
-	extern Entity *gOOJSPlayerIfStale;
-	return entity == nullptr || (gOOJSPlayerIfStale != nil && entity == oo::ToCxx(gOOJSPlayerIfStale));
+	extern cxx::Entity *gOOJSPlayerIfStale;
+	return entity == nullptr || (gOOJSPlayerIfStale != nullptr && entity == gOOJSPlayerIfStale);
 }

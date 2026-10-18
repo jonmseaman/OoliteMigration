@@ -44,6 +44,57 @@ MA 02110-1301, USA.
 static int crid_counter = 1;
 
 
+namespace {
+
+/*	What the root facade's selectors answered for an entity (bead oo-9ht.39.27): the C++ member each
+	forwarded to; an Objective-C entity (a test's stand-in, whose class may answer itself) is still
+	messaged, and answers as nil once its object has gone.
+*/
+bool EntityIsPlayer(cxx::Entity *entity)
+{
+	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() isPlayer];
+	return entity != nullptr && entity->getIsPlayer();	// nil's answer for none
+}
+
+bool EntityIsShip(cxx::Entity *entity)
+{
+	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() isShip];
+	return entity != nullptr && entity->getIsShip();	// nil's answer for none
+}
+
+bool EntityIsPlanet(cxx::Entity *entity)
+{
+	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() isPlanet];
+	return entity != nullptr && entity->isPlanet();	// nil's answer for none
+}
+
+bool EntityIsVisible(cxx::Entity *entity)
+{
+	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() isVisible];
+	return entity != nullptr && entity->isVisible();	// nil's answer for none
+}
+
+OOEntityStatus EntityStatus(cxx::Entity *entity)
+{
+	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() status];
+	return entity != nullptr ? entity->status() : OOEntityStatus{};
+}
+
+OOUniversalID EntityUniversalID(cxx::Entity *entity)
+{
+	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() universalID];
+	return entity != nullptr ? entity->getUniversalID() : OOUniversalID{};
+}
+
+bool EntityChecksCloseCollisionWith(cxx::Entity *entity, cxx::Entity *other)
+{
+	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() checkCloseCollisionWith:oo::ToObjC(other)];
+	return entity != nullptr && entity->checkCloseCollisionWith(other);
+}
+
+}	// namespace
+
+
 CollisionRegion::CollisionRegion()	// Designated initializer.
 {
 	{
@@ -213,7 +264,7 @@ void CollisionRegion::addEntity(cxx::Entity *ent)
 		entity_array = new_store;
 	}
 	
-	if ([oo::ToObjC(ent) isPlayer])  isPlayerInRegion = YES;
+	if (EntityIsPlayer(ent))  isPlayerInRegion = YES;
 	entity_array[n_entities++] = ent;
 }
 
@@ -373,7 +424,7 @@ void CollisionRegion::findCollisions()
 							}
 							else
 							{
-								collision = [oo::ToObjC(e1) checkCloseCollisionWith:oo::ToObjC(e2)];
+								collision = EntityChecksCloseCollisionWith(e1, e2);
 							}
 						}
 						else if (e2->isStation)
@@ -385,12 +436,12 @@ void CollisionRegion::findCollisions()
 							}
 							else
 							{
-								collision = [oo::ToObjC(e2) checkCloseCollisionWith:oo::ToObjC(e1)];
+								collision = EntityChecksCloseCollisionWith(e2, e1);
 							}
 						}
 						else
 						{
-							collision = [oo::ToObjC(e1) checkCloseCollisionWith:oo::ToObjC(e2)];
+							collision = EntityChecksCloseCollisionWith(e1, e2);
 						}
 				
 						if (collision)
@@ -455,7 +506,7 @@ BOOL shadowAtPointOcclusionToValue(HPVector e1pos, GLfloat e1rad, cxx::Entity *e
 	*outValue = 1.5f;	// initial 'fully lit' value
 	
 	GLfloat cr_e2;
-	if ([oo::ToObjC(e2) isShip])
+	if (EntityIsShip(e2))
 	{
 		cr_e2 = e2->collision_radius * 0.90f;
 		// 10% smaller shadow for ships
@@ -483,7 +534,7 @@ BOOL shadowAtPointOcclusionToValue(HPVector e1pos, GLfloat e1rad, cxx::Entity *e
 	{
 		// you are nearer the sun than the potential occluder, so it
 		// probably can't shade you
-		if (d2_e2 < cr_e2 * cr_e2 && [oo::ToObjC(e2) isShip])
+		if (d2_e2 < cr_e2 * cr_e2 && EntityIsShip(e2))
 		{
 			// exception: if within the collision radius of the other
 			// object, might still be shadowed by it.
@@ -610,7 +661,7 @@ void CollisionRegion::findShadowedEntities()
 		if (uni_entities[i]->isSunlit)
 		{
 			// get a list of planet entities because they can shade across regions
-			if ([oo::ToObjC(uni_entities[i]) isPlanet])
+			if (EntityIsPlanet(uni_entities[i]))
 			{
 				//	don't bother retaining - nothing will happen to them!
 				planets[n_planets++] = uni_entities[i];
@@ -618,8 +669,8 @@ void CollisionRegion::findShadowedEntities()
 			
 			// and a list of shipentities large enough that they might cast a noticeable shadow
 			// if we can't see it, it can't be shadowing anything important
-			else if ([oo::ToObjC(uni_entities[i]) isShip] &&
-					 [oo::ToObjC(uni_entities[i]) isVisible] && 
+			else if (EntityIsShip(uni_entities[i]) &&
+					 EntityIsVisible(uni_entities[i]) && 
 					 uni_entities[i]->collision_radius >= MINIMUM_SHADOWING_ENTITY_RADIUS)
 			{
 				ships[n_ships++] = uni_entities[i];		//	don't bother retaining - nothing will happen to them!
@@ -634,12 +685,12 @@ void CollisionRegion::findShadowedEntities()
 	for (i = 0; i < n_entities; i++)
 	{
 		cxx::Entity *e1 = entity_array[i];
-		if (![oo::ToObjC(e1) isVisible])
+		if (!EntityIsVisible(e1))
 		{
 			continue; // don't check shading of objects we can't see
 		}
 		BOOL occluder_moved = NO;
-		if ([oo::ToObjC(e1) status] == STATUS_COCKPIT_DISPLAY)
+		if (EntityStatus(e1) == STATUS_COCKPIT_DISPLAY)
 		{
 			e1->isSunlit = YES;
 			e1->shadingEntityID = NO_TARGET;
@@ -654,13 +705,13 @@ void CollisionRegion::findShadowedEntities()
 				occluder_moved = occluder->hasMoved;
 			}
 		}
-		if (([oo::ToObjC(e1) isShip] ||[oo::ToObjC(e1) isPlanet]) && (e1->hasMoved || occluder_moved))
+		if ((EntityIsShip(e1) || EntityIsPlanet(e1)) && (e1->hasMoved || occluder_moved))
 		{
 			e1->isSunlit = YES;				// sunlit by default
 			e1->shadingEntityID = NO_TARGET;
 			//
 			// check demo mode here..
-			if ([oo::ToObjC(e1) isPlayer] && (static_cast<PlayerEntity *>(e1)->getShowDemoShips()))
+			if (EntityIsPlayer(e1) && (static_cast<PlayerEntity *>(e1)->getShowDemoShips()))
 			{
 				continue;	// don't check shading in demo mode
 			}
@@ -671,7 +722,7 @@ void CollisionRegion::findShadowedEntities()
 				if (testEntityOccludedByEntity(e1, occluder, the_sun))	
 				{
 					e1->isSunlit = NO;
-					e1->shadingEntityID = [oo::ToObjC(occluder) universalID];
+					e1->shadingEntityID = EntityUniversalID(occluder);
 				}
 			}
 			if (!e1->isSunlit)
@@ -687,10 +738,10 @@ void CollisionRegion::findShadowedEntities()
 				if (entityByEntityOcclusionToValue(e1, planets[j], the_sun, &occlusionNumber))
 				{
 					e1->isSunlit = NO;
-					e1->shadingEntityID = [oo::ToObjC(planets[j]) universalID];
+					e1->shadingEntityID = EntityUniversalID(planets[j]);
 					break;
 				}
-				if ([oo::ToObjC(e1) isPlayer])
+				if (EntityIsPlayer(e1))
 				{
 					static_cast<PlayerEntity *>(e1)->setOcclusionLevel(occlusionNumber);
 				}
@@ -707,7 +758,7 @@ void CollisionRegion::findShadowedEntities()
 				if (testEntityOccludedByEntity(e1, ships[j], the_sun))
 				{
 					e1->isSunlit = NO;
-					e1->shadingEntityID = [oo::ToObjC(ships[j]) universalID];
+					e1->shadingEntityID = EntityUniversalID(ships[j]);
 					break;
 				}
 			}

@@ -871,9 +871,9 @@ void OOVisualEffectEntity::remove()
 
 /* beacons */
 
-OOComparisonResult OOVisualEffectEntity::compareBeaconCodeWith(OOVisualEffectBeaconEntity *other)
+OOComparisonResult OOVisualEffectEntity::compareBeaconCodeWith(cxx::Entity *other)
 {
-	return (OOComparisonResult)oo::str::caseInsensitiveCompare(beaconCode().value_or(""), [other beaconCode].value_or(""));
+	return (OOComparisonResult)oo::str::caseInsensitiveCompare(beaconCode().value_or(""), [(OOVisualEffectBeaconEntity *)oo::ToObjC(other) beaconCode].value_or(""));
 }
 
 
@@ -954,32 +954,32 @@ OOHUDBeaconIcon *OOVisualEffectEntity::beaconDrawable()
 }
 
 
-OOVisualEffectBeaconEntity *OOVisualEffectEntity::prevBeacon()
+cxx::Entity *OOVisualEffectEntity::prevBeacon()
 {
-	return static_cast<OOVisualEffectBeaconEntity *>(oo::WeakEntityObject(_prevBeacon));
+	return oo::ToCxx(oo::WeakEntityObject(_prevBeacon));
 }
 
 
-OOVisualEffectBeaconEntity *OOVisualEffectEntity::nextBeacon()
+cxx::Entity *OOVisualEffectEntity::nextBeacon()
 {
-	return static_cast<OOVisualEffectBeaconEntity *>(oo::WeakEntityObject(_nextBeacon));
+	return oo::ToCxx(oo::WeakEntityObject(_nextBeacon));
 }
 
 
-void OOVisualEffectEntity::setPrevBeacon(OOVisualEffectBeaconEntity *beaconShip)
+void OOVisualEffectEntity::setPrevBeacon(cxx::Entity *beaconShip)
 {
 	if (beaconShip != prevBeacon())
 	{
-		_prevBeacon = oo::WeakEntityRef(beaconShip);
+		_prevBeacon = oo::WeakRef<cxx::Entity>(beaconShip);
 	}
 }
 
 
-void OOVisualEffectEntity::setNextBeacon(OOVisualEffectBeaconEntity *beaconShip)
+void OOVisualEffectEntity::setNextBeacon(cxx::Entity *beaconShip)
 {
 	if (beaconShip != nextBeacon())
 	{
-		_nextBeacon = oo::WeakEntityRef(beaconShip);
+		_nextBeacon = oo::WeakRef<cxx::Entity>(beaconShip);
 	}
 }
 

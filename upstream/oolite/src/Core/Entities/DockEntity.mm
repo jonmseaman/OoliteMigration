@@ -195,11 +195,11 @@ Vector DockEntity::portUpVectorForShipsBoundingBox(BoundingBox bb)
 
 	if (!twist)
 	{
-		return vector_up_from_quaternion(quaternion_multiply(orientation, (parentEntity() != nullptr ? oo::ToCxx(parentEntity())->getOrientation() : Quaternion{})));
+		return vector_up_from_quaternion(quaternion_multiply(orientation, (parentEntity() != nullptr ? parentEntity()->getOrientation() : Quaternion{})));
 	}
 	else
 	{
-		return vector_right_from_quaternion(quaternion_multiply(orientation, (parentEntity() != nullptr ? oo::ToCxx(parentEntity())->getOrientation() : Quaternion{})));
+		return vector_right_from_quaternion(quaternion_multiply(orientation, (parentEntity() != nullptr ? parentEntity()->getOrientation() : Quaternion{})));
 	}
 }
 

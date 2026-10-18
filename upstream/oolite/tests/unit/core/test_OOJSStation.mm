@@ -695,7 +695,7 @@ PlayerEntity *sPlayer = nullptr;
 }
 
 ooscript::Context gOOJSMainThreadContext = nullptr;
-Entity *gOOJSPlayerIfStale = nil;
+cxx::Entity *gOOJSPlayerIfStale = nullptr;	// the player's C++ entity (bead oo-9ht.39.25)
 PlayerEntity *gOOPlayer = nullptr;
 Universe *gSharedUniverse = nil;
 

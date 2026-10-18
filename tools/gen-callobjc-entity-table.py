@@ -43,6 +43,9 @@ EXCLUDED = {
     "isProxy", "zone",
 }
 STRING_ARG = "const std::string &"
+# A facade method answering one entity (Entity *, Entity <OOBeaconEntity> *): its row is written
+# @encode(id), the same "@", as the by-name table writes a cxx::Entity * result (bead oo-9ht.39.24).
+ENTITY_RESULT = re.compile(r"^Entity\b[^*]*\*$")
 
 # The facade's Entity (OOJavaScriptExtensions) category was deleted by bead oo-9ht.39.8.9; its
 # callable methods stay callObjC() names (answered on the C++ part by OOEntityCalledByName.mm's
@@ -168,6 +171,8 @@ def rows():
             if parsed is None:
                 continue
             ret, name, arg = parsed
+            if ENTITY_RESULT.match(ret):
+                ret = "id"	# the same "@"; callObjC() makes the C++ entity's Object node (bead oo-9ht.39.24)
             if name.rstrip(":") in EXCLUDED:
                 continue
             form = classify(ret, arg)

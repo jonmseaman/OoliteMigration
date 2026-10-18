@@ -155,17 +155,17 @@ public:
 	void remove();
 
 	// OOBeaconEntity: the root's facade (Entity (OOWaypointBeacon)) answers it for an effect's part.
-	OOComparisonResult compareBeaconCodeWith(OOVisualEffectBeaconEntity *other);
+	OOComparisonResult compareBeaconCodeWith(cxx::Entity *other);
 	std::optional<std::string> beaconCode();
 	void setBeaconCode(const std::optional<std::string> &bcode);
 	std::optional<std::string> beaconLabel();
 	void setBeaconLabel(const std::optional<std::string> &blabel);
 	bool isBeacon();
 	OOHUDBeaconIcon *beaconDrawable();	// borrowed (the protocol type until bead oo-7ae4p)
-	OOVisualEffectBeaconEntity *prevBeacon();
-	OOVisualEffectBeaconEntity *nextBeacon();
-	void setPrevBeacon(OOVisualEffectBeaconEntity *beaconShip);
-	void setNextBeacon(OOVisualEffectBeaconEntity *beaconShip);
+	cxx::Entity *prevBeacon();	// the C++ entity since bead oo-9ht.39.24 (null once its object has gone, as before)
+	cxx::Entity *nextBeacon();
+	void setPrevBeacon(cxx::Entity *beaconShip);
+	void setNextBeacon(cxx::Entity *beaconShip);
 	bool isJammingScanning();
 
 	// convenience for shaders

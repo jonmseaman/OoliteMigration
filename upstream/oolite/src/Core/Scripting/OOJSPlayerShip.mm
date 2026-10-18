@@ -780,7 +780,7 @@ static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Val
 			return true;
 			
 		case kPlayerShip_compassTarget:
-			result = oo::EntityObjectNode(player != nullptr ? player->getCompassTarget() : (::Entity *)nil);
+			result = oo::EntityObjectNode(player != nullptr ? player->getCompassTargetEntity() : (cxx::Entity *)nullptr);	// the C++ entity's node, the same object's (bead oo-9ht.39.25)
 			break;
 			
 		case kPlayerShip_compassType:
@@ -990,16 +990,16 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 			// make sure we have a valid entity
 			if (!ooscript::isNull(*value_raw) && JSValueToEntity(context, *value_raw, &eValue)) 
 			{
-				Entity *current = (player != nullptr ? player->getCompassTarget() : (::Entity *)nullptr);
+				cxx::Entity *current = (player != nullptr ? player->getCompassTargetEntity() : nullptr);	// the C++ entities (bead oo-9ht.39.25)
 				if (player != nullptr)  player->setNextCompassMode();
 				if (player != nullptr)  player->validateCompassTarget();
 				// cycle the targets until we either get back to the start (entity not found) or we find the one we're looking for
-				while ((player != nullptr ? player->getCompassTarget() : (::Entity *)nullptr) != current && (player != nullptr ? player->getCompassTargetEntity() : nullptr) != eValue)	// the C++ entities (bead oo-9ht.39.8.11)
+				while ((player != nullptr ? player->getCompassTargetEntity() : nullptr) != current && (player != nullptr ? player->getCompassTargetEntity() : nullptr) != eValue)	// the C++ entities (bead oo-9ht.39.8.11)
 				{
 					if (player != nullptr)  player->setNextCompassMode();
 					if (player != nullptr)  player->validateCompassTarget();
 				}
-				return (player != nullptr ? player->getCompassTarget() : (::Entity *)nullptr) != current;
+				return (player != nullptr ? player->getCompassTargetEntity() : nullptr) != current;
 			}
 			else 
 			{

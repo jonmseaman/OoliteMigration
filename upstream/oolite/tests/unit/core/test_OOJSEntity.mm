@@ -339,7 +339,7 @@ ooscript::Value JSValueForEntity(Entity *entity)
 
 } // namespace
 
-Entity *gOOJSPlayerIfStale = nil;
+cxx::Entity *gOOJSPlayerIfStale = nullptr;	// the player's C++ entity (bead oo-9ht.39.25)
 
 
 // oo::ToObjC (Entity+ObjCBridge.mm): the object of a C++ part the test wrapped, nil for any other.
@@ -743,11 +743,11 @@ OO_TEST(staleEntities)
 	OO_CHECK_EVAL("Entity.prototype.position", "undefined");
 	OO_CHECK_EVAL("(function () { Entity.prototype.energy = 5; return 'set'; })()", "set");
 	// The player while the escape pod is in flight is stale too.
-	gOOJSPlayerIfStale = sShip;
+	gOOJSPlayerIfStale = sShipPart;	// its C++ part (bead oo-9ht.39.25)
 	OO_CHECK_EVAL("ship.isValid + ':' + ship.mass + ':' + ship.owner", "false:undefined:undefined");
 	OO_CHECK_EVAL("(function () { ship.energy = 5; return 'set'; })()", "set");
 	OO_CHECK(sShip->_energy == 200);
-	gOOJSPlayerIfStale = nil;
+	gOOJSPlayerIfStale = nullptr;
 	OO_CHECK_EVAL("ship.isValid", "true");
 	// Not an entity at all.
 	OO_CHECK_EVAL("Object.getOwnPropertyDescriptor(Entity.prototype, 'mass').get.call({})", "threw: Native method expected Entity, got [object Object].");

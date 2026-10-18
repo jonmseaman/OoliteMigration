@@ -193,7 +193,7 @@ std::map<ooscript::ClassDef *, int> sConverters;
 } // namespace
 
 ooscript::Object gOOEntityJSPrototype = nullptr;
-Entity *gOOJSPlayerIfStale = nil;
+cxx::Entity *gOOJSPlayerIfStale = nullptr;	// the player's C++ entity (bead oo-9ht.39.25)
 
 
 extern "C" {

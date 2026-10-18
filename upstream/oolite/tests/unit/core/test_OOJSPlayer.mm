@@ -455,7 +455,7 @@ std::map<ooscript::ClassDef *, int> sConverters;
 
 PlayerEntity *gOOPlayer = nullptr;
 Universe *gSharedUniverse = nil;
-Entity *gOOJSPlayerIfStale = nil;
+cxx::Entity *gOOJSPlayerIfStale = nullptr;	// the player's C++ entity (bead oo-9ht.39.25)
 
 
 extern "C" {
@@ -808,7 +808,7 @@ OO_TEST(escapePodDestination)
 	SetUpContext();
 	// Only while the escape pod is in flight (the player is stale).
 	OO_CHECK_EVAL("player.setEscapePodDestination(null)", "threw: Player.setEscapePodDestination() only works while the escape pod is in flight.");
-	gOOJSPlayerIfStale = sPlayerObject;
+	gOOJSPlayerIfStale = sPlayer;	// the player's C++ entity (bead oo-9ht.39.25; the stand-in object has no part)
 
 	sPlayer->_dockTargetSet = NO;
 	OO_CHECK_EVAL("(player.setEscapePodDestination(station), 'called')", "called");
@@ -847,7 +847,7 @@ OO_TEST(escapePodDestination)
 	OO_CHECK(sPlayer->_adjustTime >= (0.2 + 4.0) * 3600.0 + 0 && sPlayer->_adjustTime <= (0.2 + 4.0) * 3600.0 + 5400.0 * 127);
 	OO_CHECK(std::fmod(sPlayer->_adjustTime - (0.2 + 4.0) * 3600.0, 5400.0) == 0);
 
-	gOOJSPlayerIfStale = nil;
+	gOOJSPlayerIfStale = nullptr;
 	sPlayer->_targetSystem = -1;
 }
 
