@@ -71,6 +71,23 @@ uint32_t gDebugFlags = 0;
 @end
 
 
+// The universe answers held C++ entities (bead oo-9ht.39.26): the stand-in's lists of objects, so held.
+std::vector<oo::EntityHold> Held(const std::vector<oo::ObjCRef<::Entity *>> &objects)
+{
+	std::vector<oo::EntityHold> result;
+	for (const auto &object : objects)  result.emplace_back(oo::ToCxx(object.get()));
+	return result;
+}
+
+
+std::map<std::string, oo::EntityHold, std::less<>> Held(const std::map<std::string, oo::ObjCRef<::Entity *>, std::less<>> &objects)
+{
+	std::map<std::string, oo::EntityHold, std::less<>> result;
+	for (const auto &[key, object] : objects)  result[key] = oo::EntityHold(oo::ToCxx(object.get()));
+	return result;
+}
+
+
 // The entities a predicate matches, of the stand-in's list (the stand-in's -matching:parameter:).
 std::vector<oo::ObjCRef<::Entity *>> MatchingEntities(const std::vector<oo::ObjCRef<::Entity *>> &entities, EntityFilterPredicate predicate, void *parameter)
 {
@@ -179,34 +196,34 @@ public:
 	::StationEntity *station() override	{ return static_cast<StationEntity *>(oo::ToCxx(_station)); }
 	::OOPlanetEntity *planet() override	{ return static_cast<OOPlanetEntity *>(oo::ToCxx(_planet)); }
 	::OOSunEntity *sun() override	{ return static_cast<OOSunEntity *>(oo::ToCxx(_sun)); }
-	std::vector<oo::ObjCRef<::Entity *>> planets() override	{ return _planets; }
-	std::vector<oo::ObjCRef<::Entity *>> stations() override
+	std::vector<oo::EntityHold> planets() override	{ return Held(_planets); }
+	std::vector<oo::EntityHold> stations() override
 	{
 		std::vector<oo::ObjCRef<::Entity *>> result;
 		for (const auto &e : _stations)  result.push_back(oo::ObjCRef<::Entity *>(e.get()));
-		return result;
+		return Held(result);
 	}
-	std::vector<oo::ObjCRef<::Entity *>> wormholes() override	{ return _wormholes; }
-	std::map<std::string, oo::ObjCRef<::Entity *>, std::less<>> currentWaypoints() override	{ return _waypoints; }
-	std::vector<oo::ObjCRef<::Entity *>> findShipsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, ::Entity *entity) override
+	std::vector<oo::EntityHold> wormholes() override	{ return Held(_wormholes); }
+	std::map<std::string, oo::EntityHold, std::less<>> currentWaypoints() override	{ return Held(_waypoints); }
+	std::vector<oo::EntityHold> findShipsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, cxx::Entity *entity) override	// the C++ entity since bead oo-9ht.39.26
 	{
 		_lastShipsPredicate = "ships:" + PredicateName(predicate);
 		_lastRange = range;
-		_lastRelativeTo = entity;
-		return MatchingEntities(this->_entities, predicate, parameter);
+		_lastRelativeTo = oo::ToObjC(entity);
+		return Held(MatchingEntities(this->_entities, predicate, parameter));
 	}
-	std::vector<oo::ObjCRef<::Entity *>> findVisualEffectsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, ::Entity *entity) override
+	std::vector<oo::EntityHold> findVisualEffectsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, cxx::Entity *entity) override
 	{
 		_lastShipsPredicate = "effects:" + PredicateName(predicate);
 		_lastRange = range;
-		_lastRelativeTo = entity;
-		return MatchingEntities(this->_entities, predicate, parameter);
+		_lastRelativeTo = oo::ToObjC(entity);
+		return Held(MatchingEntities(this->_entities, predicate, parameter));
 	}
-	std::vector<oo::ObjCRef<::Entity *>> findEntitiesMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, cxx::Entity *entity) override	// the reference's C++ entity since bead oo-9ht.39.8.23
+	std::vector<oo::EntityHold> findEntitiesMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, cxx::Entity *entity) override	// the reference's C++ entity since bead oo-9ht.39.8.23
 	{
 		_lastRange = range;
 		_lastRelativeTo = oo::ToObjC(entity);
-		return MatchingEntities(this->_entities, predicate, parameter);
+		return Held(MatchingEntities(this->_entities, predicate, parameter));
 	}
 	float getAmbientLightLevel() override	{ return _ambient; }
 	void setAmbientLightLevel(float newValue) override	{ _ambient = newValue; }
@@ -263,10 +280,10 @@ public:
 		_log.push_back("findSystem " + sysName);
 		return sysName == "Lave" ? 7 : -1;
 	}
-	::Entity *addVisualEffectAt(HPVector pos, const std::string &key) override
+	cxx::Entity *addVisualEffectAt(HPVector pos, const std::string &key) override	// the C++ effect since bead oo-9ht.39.26
 	{
 		_log.push_back(oo::str::format("addVisualEffect %s %g %g %g", key.c_str(), pos.x, pos.y, pos.z));
-		return _effectToAdd;	// the effect's object (the stand-in answered it as the effect)
+		return oo::ToCxx(_effectToAdd);	// the effect (the stand-in answered its object as the effect)
 	}
 	void setPopulatorSetting(const std::string &key, const oo::PList &setting) override
 	{
@@ -275,15 +292,15 @@ public:
 	}
 	void defineWaypoint(const oo::PList &definition, const std::string &key) override	{ _log.push_back("defineWaypoint " + key + " " + (definition.isNull() ? std::string("null") : oo::DescriptionOf(definition))); }
 	HPVector getWitchspaceExitPosition() override	{ return make_HPvector(7, 8, 9); }
-	std::vector<oo::ObjCRef<::Entity *>> addShipsAt(HPVector pos, const std::string &role, unsigned count, GLfloat radius, bool isGroup) override
+	std::vector<oo::EntityHold> addShipsAt(HPVector pos, const std::string &role, unsigned count, GLfloat radius, bool isGroup) override	// held C++ entities since bead oo-9ht.39.26
 	{
 		_log.push_back(oo::str::format("addShipsAt %g %g %g %s %u %g %d", pos.x, pos.y, pos.z, role.c_str(), count, radius, isGroup ? 1 : 0));
-		return _shipsToAdd;
+		return Held(_shipsToAdd);
 	}
-	std::vector<oo::ObjCRef<::Entity *>> addShipsToRoute(const std::string &route, const std::string &role, unsigned count, double routeFraction, bool isGroup) override
+	std::vector<oo::EntityHold> addShipsToRoute(const std::string &route, const std::string &role, unsigned count, double routeFraction, bool isGroup) override
 	{
 		_log.push_back(oo::str::format("addShipsToRoute %s %s %u %g %d", route.c_str(), role.c_str(), count, routeFraction, isGroup ? 1 : 0));
-		return _shipsToAdd;
+		return Held(_shipsToAdd);
 	}
 };
 

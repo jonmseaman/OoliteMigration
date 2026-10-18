@@ -325,17 +325,17 @@ bool WormholeEntity::suckInShip(::ShipEntity *ship)
 	if (ship != nullptr)  ship->doScriptEvent(OOJSID("shipWillEnterWormhole"));
 	if (ship != nullptr && ship->getAI() != nullptr)  ship->getAI()->message("ENTERED_WITCHSPACE");
 
-	if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(oo::ToObjC(ship));
+	if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(ship);
 	if (ship != nullptr && ship->getAI() != nullptr)  ship->getAI()->clearStack();	// get rid of any preserved states
 
 	if ((ship != nullptr ? ship->getIsStation() : false))
 	{
-		if ((PLAYER != nullptr ? PLAYER->dockedStation() : (StationEntity *)nullptr) == oo::ToStation(oo::ToObjC(ship)))
+		if ((PLAYER != nullptr ? PLAYER->dockedStation() : (StationEntity *)nullptr) == oo::ToStation(ship))
 		{
 			// the carrier has jumped while the player is docked
-			if (ship != nullptr)  oo::ToShip([oo::ToObjC(ship) retain]);
-			if (UNIVERSE != nullptr)  UNIVERSE->carryPlayerOn(oo::ToStation(oo::ToObjC(ship)), this);
-			if (ship != nullptr)  [oo::ToObjC(ship) release];
+			if (ship != nullptr)  oo::ToShip(oo::RetainEntity(ship));
+			if (UNIVERSE != nullptr)  UNIVERSE->carryPlayerOn(oo::ToStation(ship), this);
+			if (ship != nullptr)  oo::ReleaseEntity(ship);
 		}
 	}		
 
@@ -444,7 +444,7 @@ void WormholeEntity::disgorgeShips()
 				if (ship != nullptr)  ship->setPitch(0.0);
 				if (ship != nullptr)  ship->setRoll(0.0);
 				if (ship != nullptr)  ship->setVelocity(kZeroVector);
-				if (UNIVERSE != nullptr)  UNIVERSE->addEntity(oo::ToObjC(ship));	// AI and status get initialised here
+				if (UNIVERSE != nullptr)  UNIVERSE->addEntity(ship);	// AI and status get initialised here
 			}
 			if (ship != nullptr)  ship->setSpeed(exitSpeed()); // all ships from this wormhole have same velocity
 
@@ -691,7 +691,7 @@ void WormholeEntity::update(OOTimeDelta delta_t)
 
 		// If we're a saved wormhole waiting to disgorge more ships, it's safe
 		// to remove self from UNIVERSE, but we need the current position!
-		if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(oo::ToObjC(this));
+		if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(this);
 	}
 }
 
@@ -737,7 +737,7 @@ void WormholeEntity::drawImmediate(bool /*immediate*/, bool translucent)
 	}
 	
 	OOVerifyOpenGLState();
-	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "WormholeEntity after drawing " + oo::DescriptionOf(oo::ToObjC(this)); });
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "WormholeEntity after drawing " + oo::EntityDescription(this); });
 }
 
 
@@ -870,7 +870,7 @@ void WormholeEntity::dumpSelfState()
 	{
 		::ShipEntity* ship = oo::ToShip(shipsInTransit[i].ship.get());
 		double	ship_arrival_time = arrival_time + shipsInTransit[i].time;
-		OO_LOG("dumpState.wormholeEntity.ships", "Ship {}: {}  mass {:.2f}  arrival time {}", i+1, oo::DescriptionOf(oo::ToObjC(ship)), (ship != nullptr ? ship->getMass() : 0.0f), cxx_ClockToString(ship_arrival_time, false));
+		OO_LOG("dumpState.wormholeEntity.ships", "Ship {}: {}  mass {:.2f}  arrival time {}", i+1, oo::EntityDescription(ship), (ship != nullptr ? ship->getMass() : 0.0f), cxx_ClockToString(ship_arrival_time, false));
 	}
 }
 

@@ -648,7 +648,9 @@ public:
 	NSUInteger cargoCount();
 	virtual oo::PList cargoListForScripting();
 	void setCargo(const std::vector<oo::ObjCRef<::Entity *>> &some_cargo);
+	void setCargo(const std::vector<oo::EntityHold> &some_cargo);	// the universe's pods (bead oo-9ht.39.26): the list keeps their objects
 	bool addCargo(const std::vector<oo::ObjCRef<::Entity *>> &some_cargo);
+	bool addCargo(const std::vector<oo::EntityHold> &some_cargo);	// the same (bead oo-9ht.39.26)
 	bool removeCargo(const std::string &commodity, OOCargoQuantity amount);
 	bool showScoopMessage();
 	OOCargoFlag cargoFlag();

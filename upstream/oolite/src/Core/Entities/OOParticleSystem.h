@@ -91,7 +91,7 @@ protected:
 class OOSmallFragmentBurstEntity : public OOParticleSystem
 {
 public:
-	static oo::Ref<OOSmallFragmentBurstEntity> fragmentBurstFromEntity(::Entity *entity);
+	static oo::Ref<OOSmallFragmentBurstEntity> fragmentBurstFromEntity(cxx::Entity *entity);	// the C++ entity (bead oo-al52f)
 
 	void update(OOTimeDelta delta_t) override;
 
@@ -103,7 +103,7 @@ private:
 class OOBigFragmentBurstEntity : public OOParticleSystem
 {
 public:
-	static oo::Ref<OOBigFragmentBurstEntity> fragmentBurstFromEntity(::Entity *entity);
+	static oo::Ref<OOBigFragmentBurstEntity> fragmentBurstFromEntity(cxx::Entity *entity);	// the C++ entity (bead oo-al52f)
 
 	void update(double delta_t) override;
 

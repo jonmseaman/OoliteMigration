@@ -495,9 +495,9 @@ void OODebugMonitor::dumpMemoryStatistics()
 
 	EntityDumpState entityDumpState;
 
-	for (const auto &entity : (UNIVERSE != nullptr ? UNIVERSE->entityList() : std::vector<oo::ObjCRef<::Entity *>>()))
+	for (const auto &entity : (UNIVERSE != nullptr ? UNIVERSE->entityList() : std::vector<oo::EntityHold>()))
 	{
-		dumpEntity(entity.get(), &entityDumpState, true);
+		dumpEntity(oo::ToObjC(entity.get()), &entityDumpState, true);	// its object (the universe holds the C++ entity, bead oo-9ht.39.26)
 	}
 	for (const oo::ObjCRef<::Entity *> &entityRef : (PLAYER != nullptr ? PLAYER->getScannedWormholes() : std::vector<oo::ObjCRef<::Entity *>>()))
 	{

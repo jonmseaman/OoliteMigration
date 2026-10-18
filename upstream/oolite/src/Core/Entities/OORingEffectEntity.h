@@ -37,8 +37,8 @@ class OORingEffectEntity : public cxx::Entity
 {
 public:
 	// Null for a nil source (the Objective-C factories answered nil).
-	static oo::Ref<OORingEffectEntity> ringFromEntity(::Entity *sourceEntity);
-	static oo::Ref<OORingEffectEntity> shrinkingRingFromEntity(::Entity *sourceEntity);
+	static oo::Ref<OORingEffectEntity> ringFromEntity(cxx::Entity *sourceEntity);
+	static oo::Ref<OORingEffectEntity> shrinkingRingFromEntity(cxx::Entity *sourceEntity);
 
 	std::optional<std::string> descriptionComponents() const override;
 	void update(OOTimeDelta delta_t) override;
@@ -48,7 +48,7 @@ public:
 
 private:
 	static void initialize();
-	bool initRingFromEntity(::Entity *sourceEntity);
+	bool initRingFromEntity(cxx::Entity *sourceEntity);
 
 	GLfloat				_timePassed = {};
 	GLfloat				_innerRadius = {},

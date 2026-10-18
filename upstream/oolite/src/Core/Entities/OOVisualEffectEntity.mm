@@ -354,7 +354,7 @@ bool OOVisualEffectEntity::setUpOneFlasher(const oo::PList &subentDict)
 
 bool OOVisualEffectEntity::setUpOneStandardSubentity(const oo::PList &subentDict)
 {
-	::Entity			*subentity = nil;	// the effect's object (bead oo-9ht.165)
+	cxx::Entity		*subentity = nullptr;	// the effect, its object +1 (beads oo-9ht.165, oo-9ht.39.26)
 	std::optional<std::string>	subentKey;
 	HPVector				subPosition;
 	Quaternion			subOrientation;
@@ -366,7 +366,7 @@ bool OOVisualEffectEntity::setUpOneStandardSubentity(const oo::PList &subentDict
 	}
 
 	subentity = (UNIVERSE != nullptr ? UNIVERSE->newVisualEffectWithName(*subentKey) : nullptr);
-	if (subentity == nil) {
+	if (subentity == nullptr) {
 		OO_LOG("setup.visualeffect.badEntry.subentities", "Failed to set up entity {}", *subentKey);
 		return false;
 	}
@@ -374,12 +374,12 @@ bool OOVisualEffectEntity::setUpOneStandardSubentity(const oo::PList &subentDict
 	subPosition = OOHPVectorFromPList(subentDict.find("position"), kZeroHPVector);
 	subOrientation = OOQuaternionFromPList(subentDict.find("orientation"), kIdentityQuaternion);
 
-	[subentity setPosition:subPosition];
-	[subentity setOrientation:subOrientation];
+	subentity->setPosition(subPosition);
+	subentity->setOrientation(subOrientation);
 
-	addSubEntity((OOVisualEffectSubEntity *)subentity);
+	addSubEntity((OOVisualEffectSubEntity *)oo::ToObjC(subentity));
 
-	[subentity release];
+	oo::ReleaseEntity(subentity);
 
 	return true;
 }
@@ -753,7 +753,7 @@ bool OOVisualEffectEntity::isShipWithSubEntityShip(::Entity *other)
 	// Sanity check; this should always be true.
 	if (!hasSubEntity((OOVisualEffectSubEntity *)other))
 	{
-		OO_LOG_ERR("visualeffect.subentity.sanityCheck.failed", "{} thinks it's a subentity of {}, but the supposed parent does not agree. {}", oo::ShortDescriptionOf(other), oo::ShortDescriptionOf(oo::ToObjC(this)), "This is an internal error, please report it.");
+		OO_LOG_ERR("visualeffect.subentity.sanityCheck.failed", "{} thinks it's a subentity of {}, but the supposed parent does not agree. {}", oo::ShortDescriptionOf(other), oo::EntityShortDescription(this), "This is an internal error, please report it.");
 		[other setOwner:nil];
 		return false;
 	}
@@ -865,7 +865,7 @@ void OOVisualEffectEntity::doScriptEvent(ooscript::PropertyId message)
 void OOVisualEffectEntity::remove()
 {
 	doScriptEvent(OOJSID("effectRemoved"));
-	if (UNIVERSE != nullptr)  UNIVERSE->removeEntity((::Entity*)oo::ToObjC(this));
+	if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(this);
 }
 
 

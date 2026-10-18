@@ -360,7 +360,7 @@ void CollisionRegion::findCollisions()
 					if (gDebugFlags & DEBUG_COLLISIONS)
 					{
 						OO_LOG("collisionRegion.debug", "DEBUG Testing collision between {} ({}) and {} ({})",
-							  oo::DescriptionOf(oo::ToObjC(e1)), (e1->collisionTestFilter==3)?"YES":"NO", oo::DescriptionOf(oo::ToObjC(e2)), (e2->collisionTestFilter==3)?"YES":"NO");
+							  oo::EntityDescription(e1), (e1->collisionTestFilter==3)?"YES":"NO", oo::EntityDescription(e2), (e2->collisionTestFilter==3)?"YES":"NO");
 					}
 #endif
 					checks_within_range++;
@@ -676,7 +676,7 @@ void CollisionRegion::findShadowedEntities()
 		cxx::Entity *occluder = nullptr;
 		if (e1->isSunlit == NO)
 		{
-			occluder = oo::ToCxx((::Entity *)(UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(e1->shadingEntityID) : id{}));
+			occluder = (UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(e1->shadingEntityID) : nullptr);
 			if (occluder != nil)
 			{
 				occluder_moved = occluder->hasMoved;

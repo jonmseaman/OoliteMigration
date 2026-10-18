@@ -825,7 +825,7 @@ bool OOPlanetEntity::checkCloseCollisionWith(Entity *other)
 		return NO;
 	if (other->isShip)
 	{
-		::ShipEntity *ship = oo::ToShip(oo::ToObjC(other));
+		::ShipEntity *ship = oo::ToShip(other);
 		if ((ship != nullptr ? ship->getBehaviour() : OOBehaviour{}) == BEHAVIOUR_LAND_ON_PLANET)
 		{
 			return NO;
@@ -840,7 +840,7 @@ bool OOPlanetEntity::planetHasStation()
 {
 	// find the nearest station...
 	::ShipEntity	*station =  nil;
-	station = oo::ToShip((UNIVERSE != nullptr ? UNIVERSE->nearestShipMatchingPredicate(IsStationPredicate, nullptr, oo::ToObjC(this)) : id{}));
+	station = oo::ToShip((UNIVERSE != nullptr ? UNIVERSE->nearestShipMatchingPredicate(IsStationPredicate, nullptr, this) : nullptr));
 	
 	if (station && HPdistance((station != nullptr ? station->getPosition() : HPVector{}), position) < 4 * collision_radius) // there is a station in range.
 	{
@@ -887,11 +887,11 @@ void OOPlanetEntity::launchShuttle()
 		if (shuttle_ship != nullptr)  shuttle_ship->setScanClass(CLASS_NEUTRAL);
 		if (shuttle_ship != nullptr)  shuttle_ship->setCargoFlag(CARGO_FLAG_FULL_PLENTIFUL);
 		if (shuttle_ship != nullptr)  shuttle_ship->switchAITo("oolite-shuttleAI.js");
-		if (UNIVERSE != nullptr)  UNIVERSE->addEntity(oo::ToObjC(shuttle_ship));	// STATUS_IN_FLIGHT, AI state GLOBAL
+		if (UNIVERSE != nullptr)  UNIVERSE->addEntity(shuttle_ship);	// STATUS_IN_FLIGHT, AI state GLOBAL
 		_shuttlesOnGround--;
 		_lastLaunchTime = (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0);
 		
-		if (shuttle_ship != nullptr)  [oo::ToObjC(shuttle_ship) release];
+		if (shuttle_ship != nullptr)  oo::ReleaseEntity(shuttle_ship);
 	}
 }
 
@@ -1114,7 +1114,7 @@ void OOPlanetEntity::setTextureFileName(const std::optional<std::string> &textur
 	/* Generate atmosphere texture */
 	if (!isMoon)
 	{
-		OO_LOG("texture.planet.generate", "Preparing atmosphere for planet {}", oo::DescriptionOf(oo::ToObjC(this)));
+		OO_LOG("texture.planet.generate", "Preparing atmosphere for planet {}", oo::EntityDescription(this));
 		/* Generate a standalone atmosphere texture */
 		// (the C++ generator answers it retained: bead oo-y3dd)
 		oo::Ref<OOTexture> generatedAtmosphere;
@@ -1123,7 +1123,7 @@ void OOPlanetEntity::setTextureFileName(const std::optional<std::string> &textur
 																   _noiseMapSeed);
 		OOTexture *atmosphere = generatedAtmosphere.get();
 		
-		OO_LOG("texture.planet.generate", "Planet {} has atmosphere {}", oo::DescriptionOf(oo::ToObjC(this)), (atmosphere != nullptr) ? atmosphere->description() : std::string("(null)"));
+		OO_LOG("texture.planet.generate", "Planet {} has atmosphere {}", oo::EntityDescription(this), (atmosphere != nullptr) ? atmosphere->description() : std::string("(null)"));
 		
 		oo::Ref<OOSingleTextureMaterial> dynamicMaterial = OOSingleTextureMaterial::materialWithName("dynamic", atmosphere, oo::PList());
 		_atmosphereDrawable->setMaterial(dynamicMaterial.get());

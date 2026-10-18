@@ -75,9 +75,9 @@ class TestUniverse : public Universe
 public:
 	Entity	*_removed = {};
 
-	bool removeEntity(::Entity *entity) override
+	bool removeEntity(cxx::Entity *entity) override	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
 	{
-		_removed = entity;
+		_removed = oo::ToObjC(entity);
 		return YES;
 	}
 };
@@ -133,10 +133,10 @@ void SetUp()
 
 // --- How the test makes a cloud (ported by the conversion), and nothing else ---------------------
 
-Entity *SmallBurst(Entity *source)	{ return oo::NewEntityFacade(OOSmallFragmentBurstEntity::fragmentBurstFromEntity(source)); }
-Entity *BigBurst(Entity *source)	{ return oo::NewEntityFacade(OOBigFragmentBurstEntity::fragmentBurstFromEntity(source)); }
-Entity *Cloud(Entity *source, const oo::PList &settings)	{ return oo::NewEntityFacade(OOExplosionCloudEntity::explosionCloudFromEntity(source, settings)); }
-Entity *SizedCloud(Entity *source, float size, const oo::PList &settings)	{ return oo::NewEntityFacade(OOExplosionCloudEntity::explosionCloudFromEntity(source, size, settings)); }
+Entity *SmallBurst(Entity *source)	{ return oo::NewEntityFacade(OOSmallFragmentBurstEntity::fragmentBurstFromEntity(oo::ToCxx(source))); }	// the source's C++ entity since bead oo-al52f
+Entity *BigBurst(Entity *source)	{ return oo::NewEntityFacade(OOBigFragmentBurstEntity::fragmentBurstFromEntity(oo::ToCxx(source))); }
+Entity *Cloud(Entity *source, const oo::PList &settings)	{ return oo::NewEntityFacade(OOExplosionCloudEntity::explosionCloudFromEntity(oo::ToCxx(source), settings)); }	// the source's C++ entity since bead oo-9ht.39.26
+Entity *SizedCloud(Entity *source, float size, const oo::PList &settings)	{ return oo::NewEntityFacade(OOExplosionCloudEntity::explosionCloudFromEntity(oo::ToCxx(source), size, settings)); }
 
 // --------------------------------------------------------------------------------------------------
 

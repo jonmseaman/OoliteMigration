@@ -62,5 +62,8 @@ typedef enum
 	selector, as before. Nil answers 0, as the message to nil did. Defined in OOSunEntity.mm.
 */
 @class Entity;
+namespace cxx { class Entity; }
 double OOStellarBodyRadius(Entity *body);
+double OOStellarBodyRadius(cxx::Entity *body);	// the same, of the C++ entity (bead oo-9ht.39.26)
+OOStellarBodyType OOStellarBodyPlanetType(cxx::Entity *body);	// the same, of the C++ entity (bead oo-al52f)
 OOStellarBodyType OOStellarBodyPlanetType(Entity *body);

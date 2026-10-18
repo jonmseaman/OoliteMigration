@@ -186,7 +186,7 @@ void OOLaserShotEntity::update(OOTimeDelta delta_t)
 
 	if (_lifetime < 0)
 	{
-		if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(oo::ToObjC(this));
+		if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(this);
 	}
 }
 
@@ -262,7 +262,7 @@ void OOLaserShotEntity::drawImmediate(bool /*immediate*/, bool translucent)
 	OOGL(glDisable(GL_TEXTURE_2D));
 	
 	OOVerifyOpenGLState();
-	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "OOLaserShotEntity after drawing " + oo::DescriptionOf(oo::ToObjC(this)); });
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "OOLaserShotEntity after drawing " + oo::EntityDescription(this); });
 }
 
 

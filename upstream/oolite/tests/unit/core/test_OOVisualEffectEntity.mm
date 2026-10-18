@@ -77,10 +77,10 @@ T *NewTestPlayer()
 class TestUniverse : public Universe
 {
 public:
-	::Entity *newVisualEffectWithName(const std::string &effectKey) override
+	cxx::Entity *newVisualEffectWithName(const std::string &effectKey) override	// the effect, its object +1 (beads oo-9ht.165, oo-9ht.39.26)
 	{
-		if (effectKey == "missing")  return nil;
-		return oo::NewVisualEffectObject(effectKey, oo::PList());	// the effect's object since bead oo-9ht.165
+		if (effectKey == "missing")  return nullptr;
+		return oo::NewVisualEffect(effectKey, oo::PList());
 	}
 };
 

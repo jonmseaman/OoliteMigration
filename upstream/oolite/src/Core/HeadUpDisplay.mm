@@ -946,8 +946,8 @@ void HeadUpDisplay::setScannerUltraZoom(bool newValue)
 
 void HeadUpDisplay::refreshLastTransmitter()
 {
-	::Entity* lt = (UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(last_transmitter) : id{});
-	if ((lt == nil)||(!(lt->_cxxEntity->isShip)))
+	cxx::Entity *lt = (UNIVERSE != nullptr ? UNIVERSE->entityForUniversalID(last_transmitter) : nullptr);
+	if ((lt == nullptr)||(!(lt->isShip)))
 		return;
 	::ShipEntity* st = oo::ToShip(lt);
 	if ((st != nullptr ? st->getMessageTime() : 0.0) <= 0.0)
@@ -1985,9 +1985,9 @@ void HeadUpDisplay::drawWaypoints(const oo::PList &info)
 	::Entity *waypoint = nil;	// the waypoint's object (the root's facade since bead oo-9ht.108)
 	::Entity *compass = (PLAYER != nullptr ? PLAYER->getCompassTarget() : (::Entity *)nullptr);
 	
-	for (const auto &[waypointKey, waypointRef] : (UNIVERSE != nullptr ? UNIVERSE->currentWaypoints() : std::map<std::string, oo::ObjCRef<::Entity *>, std::less<>>()))
+	for (const auto &[waypointKey, waypointRef] : (UNIVERSE != nullptr ? UNIVERSE->currentWaypoints() : std::map<std::string, oo::EntityHold, std::less<>>()))
 	{
-		waypoint = waypointRef.get();
+		waypoint = oo::ToObjC(waypointRef.get());	// its object (the universe holds the C++ waypoint, bead oo-9ht.39.26)
 		hudDrawWaypoint(waypoint, PLAYER, z1, alpha, waypoint==compass, scale);
 	}
 
@@ -4637,5 +4637,5 @@ double HeadUpDisplayWormholeExpiryTime(WormholeEntity *wormhole)	{ return (wormh
 OOTimeAbsolute HeadUpDisplayUniverseGetTime()	{ return (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0); }
 const oo::PList *HeadUpDisplayUniverseDescriptions()	{ return (UNIVERSE != nullptr ? UNIVERSE->descriptions() : nullptr); }
 OOViewID HeadUpDisplayUniverseViewDirection()	{ return (UNIVERSE != nullptr ? UNIVERSE->getViewDirection() : OOViewID{}); }
-Entity *HeadUpDisplayUniverseFirstEntityTargetedByPlayer()	{ return (UNIVERSE != nullptr ? UNIVERSE->firstEntityTargetedByPlayer() : nullptr); }
-Entity *HeadUpDisplayUniverseFirstEntityTargetedByPlayerPrecisely()	{ return (UNIVERSE != nullptr ? UNIVERSE->firstEntityTargetedByPlayerPrecisely() : nullptr); }
+Entity *HeadUpDisplayUniverseFirstEntityTargetedByPlayer()	{ return oo::ToObjC(UNIVERSE != nullptr ? UNIVERSE->firstEntityTargetedByPlayer() : nullptr); }	// its object (the universe answers the C++ entity, bead oo-9ht.39.26)
+Entity *HeadUpDisplayUniverseFirstEntityTargetedByPlayerPrecisely()	{ return oo::ToObjC(UNIVERSE != nullptr ? UNIVERSE->firstEntityTargetedByPlayerPrecisely() : nullptr); }

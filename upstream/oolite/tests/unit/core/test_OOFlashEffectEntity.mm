@@ -72,9 +72,9 @@ public:
 	OOTimeAbsolute &_time = universal_time;	// the universe's own state, which its getter answers (bead oo-ql9rn)
 	Entity			*_removed = {};
 
-	bool removeEntity(::Entity *entity) override
+	bool removeEntity(cxx::Entity *entity) override	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
 	{
-		_removed = entity;
+		_removed = oo::ToObjC(entity);
 		return YES;
 	}
 };
@@ -149,7 +149,7 @@ OO_TEST(explosionFlash)
 	@autoreleasepool
 	{
 		SetUp(5.0);
-		Entity *flash = FlashObject(OOFlashEffectEntity::explosionFlashFromEntity(Exploding()));
+		Entity *flash = FlashObject(OOFlashEffectEntity::explosionFlashFromEntity(oo::ToCxx(Exploding())));
 		OO_CHECK(flash != nil && Part(flash) != nullptr);
 		OO_CHECK(HPvector_equal([flash position], make_HPvector(10, 20, 30)));
 		Vector v = [flash velocity];
@@ -187,7 +187,7 @@ OO_TEST(bigExplosionGrowsFaster)
 		SetUp(0.0);
 		Entity *big = Exploding();
 		[big setCollisionRadius:10.0f];
-		Entity *flash = FlashObject(OOFlashEffectEntity::explosionFlashFromEntity(big));
+		Entity *flash = FlashObject(OOFlashEffectEntity::explosionFlashFromEntity(oo::ToCxx(big)));
 		OO_CHECK(Part(flash)->diameter() == 10.0f);
 		sUniverse->_time = 0.1;
 		[flash update:0.1];
@@ -247,7 +247,7 @@ OO_TEST(texture)
 	@autoreleasepool
 	{
 		SetUp(0.0);
-		Entity *flash = FlashObject(OOFlashEffectEntity::explosionFlashFromEntity(Exploding()));
+		Entity *flash = FlashObject(OOFlashEffectEntity::explosionFlashFromEntity(oo::ToCxx(Exploding())));
 		sTextureName.reset();
 		OO_CHECK(Part(flash)->texture() == sTexture);
 		OO_CHECK(sTextureName == std::optional<std::string>("oolite-particle-flash.png"));
@@ -264,7 +264,7 @@ OO_TEST(facade)
 	@autoreleasepool
 	{
 		SetUp(0.0);
-		Entity *flash = FlashObject(OOFlashEffectEntity::explosionFlashFromEntity(Exploding()));
+		Entity *flash = FlashObject(OOFlashEffectEntity::explosionFlashFromEntity(oo::ToCxx(Exploding())));
 		// A C++ entity (amendment oo-0mxi), not an Objective-C entity's adapter.
 		OO_CHECK(dynamic_cast<OOFlashEffectEntity *>(oo::ToCxx(flash)) != nullptr);
 		OO_CHECK(oo::AsObjCEntity(oo::ToCxx(flash)) == nullptr);

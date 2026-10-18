@@ -3,7 +3,7 @@
 OOECMBlastEntity.m
 
 C++20 since bead oo-ryhi (see OOECMBlastEntity.h). The bodies are the Objective-C ones: a message
-to self is a member call, and the universe and the scripts are handed the entity's Objective-C
+to self is a member call, the universe is handed the C++ entity (bead oo-9ht.39.26) and the scripts the entity's Objective-C
 object, oo::ToObjC(this). The ship stays its Objective-C object (amendment oo-bj8 item 4).
 
 Oolite
@@ -73,7 +73,6 @@ oo::Ref<OOECMBlastEntity> OOECMBlastEntity::initFromShip(ShipEntity *ship)
 
 void OOECMBlastEntity::update(OOTimeDelta delta_t)
 {
-	::Entity *self = oo::ToObjC(this);
 	_nextBlast -= delta_t;
 	ShipEntity		*ship = oo::ToShip(_ship.get());
 	BOOL 			validShip = (ship != nil) && ((ship != nullptr ? ship->status() : OOEntityStatus{}) != STATUS_DEAD);
@@ -85,7 +84,7 @@ void OOECMBlastEntity::update(OOTimeDelta delta_t)
 		radius *= SCANNER_MAX_RANGE;
 		_blastsRemaining--;
 		
-		const std::vector<oo::ObjCRef<::Entity *>> targets = (UNIVERSE != nullptr ? UNIVERSE->findEntitiesMatchingPredicate(IsShipPredicate, NULL, radius, this) : std::vector<oo::ObjCRef<::Entity *>>());
+		const std::vector<oo::EntityHold> targets = (UNIVERSE != nullptr ? UNIVERSE->findEntitiesMatchingPredicate(IsShipPredicate, NULL, radius, this) : std::vector<oo::EntityHold>());
 		NSUInteger i, count = targets.size();
 		if (count > 0)
 		{
@@ -106,7 +105,7 @@ void OOECMBlastEntity::update(OOTimeDelta delta_t)
 		_nextBlast += ECM_PULSE_INTERVAL;
 	}
 	
-	if (_blastsRemaining == 0 || !validShip)  { if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(self); }
+	if (_blastsRemaining == 0 || !validShip)  { if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(this); }
 }
 
 

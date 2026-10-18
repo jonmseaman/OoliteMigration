@@ -70,15 +70,15 @@ public:
 	Entity			*_removed = {};
 	Entity			*_added = {};
 
-	bool removeEntity(::Entity *entity) override
+	bool removeEntity(cxx::Entity *entity) override	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
 	{
-		_removed = entity;
+		_removed = oo::ToObjC(entity);
 		return YES;
 	}
-	bool addEntity(::Entity *entity) override
+	bool addEntity(cxx::Entity *entity) override	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
 	{
 		[_added release];
-		_added = [entity retain];
+		_added = [oo::ToObjC(entity) retain];
 		return YES;
 	}
 };

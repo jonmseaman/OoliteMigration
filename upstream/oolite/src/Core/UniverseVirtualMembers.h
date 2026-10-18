@@ -38,6 +38,7 @@ MA 02110-1301, USA.
 #import "OOTypes.h"
 #include "oofnd/PList.hpp"
 #include "oofnd/objc/OOObjCRef.h"
+#import "OOEntityHold.h"	// owning entity references (bead oo-9ht.39.26)
 #import "OOEntityEnums.h"	// OOScanClass
 #import "OOSystemDescriptionManager.h"	// OOSystemLayer
 
@@ -73,17 +74,17 @@ typedef BOOL (*EntityFilterPredicate)(cxx::Entity *entity, void *parameter);	// 
 	virtual void setNextBeacon(cxx::Entity * /*beacon*/) VOID_BODY \
 	virtual void clearBeacon(cxx::Entity * /*beacon*/) VOID_BODY \
 	virtual void setSkyColorRed(GLfloat /*red*/, GLfloat /*green*/, GLfloat /*blue*/, GLfloat /*alpha*/) VOID_BODY \
-	virtual ::Entity *newVisualEffectWithName(const std::string &/*effectKey*/) VALUE_BODY	/* the effect's object, +1 (bead oo-9ht.165) */ \
+	virtual cxx::Entity *newVisualEffectWithName(const std::string &/*effectKey*/) VALUE_BODY	/* the effect, its object +1 (bead oo-9ht.165) */ \
 	/* Slice 10: cargo */ \
-	virtual std::vector<oo::ObjCRef<::Entity *>> getContainersOfCommodity(const std::string &/*commodity_name*/, OOCargoQuantity /*how_much*/) VALUE_BODY \
+	virtual std::vector<oo::EntityHold> getContainersOfCommodity(const std::string &/*commodity_name*/, OOCargoQuantity /*how_much*/) VALUE_BODY \
 	/* Slice 13: adding and removing entities */ \
-	virtual bool addEntity(::Entity * /*entity*/) VALUE_BODY \
-	virtual bool removeEntity(::Entity * /*entity*/) VALUE_BODY \
+	virtual bool addEntity(cxx::Entity * /**/) VALUE_BODY \
+	virtual bool removeEntity(cxx::Entity * /**/) VALUE_BODY \
 	/* Slice 14: routes */ \
 	virtual cxx::Entity *hazardOnRouteFromEntity(cxx::Entity * /*e1*/, double /*dist*/, HPVector /*p2*/) VALUE_BODY \
 	virtual HPVector getSafeVectorFromEntity(cxx::Entity * /*e1*/, double /*dist*/, HPVector /*p2*/) VALUE_BODY \
 	/* Slice 15: finding entities */ \
-	virtual std::vector<oo::ObjCRef<::Entity *>> findEntitiesMatchingPredicate(EntityFilterPredicate /*predicate*/, void * /*parameter*/, double /*range*/, cxx::Entity * /*e1*/) VALUE_BODY	/* the reference's C++ entity (bead oo-9ht.39.8.23) */ \
+	virtual std::vector<oo::EntityHold> findEntitiesMatchingPredicate(EntityFilterPredicate /*predicate*/, void * /*parameter*/, double /*range*/, cxx::Entity * /*e1*/) VALUE_BODY	/* the reference's C++ entity (bead oo-9ht.39.8.23) */ \
 	/* Slice 20: system data and names */ \
 	virtual oo::PList generateSystemData(OOSystemID /*s*/, bool /*useCache*/) VALUE_BODY \
 	virtual void setSystemDataKey(const std::string &/*key*/, const oo::PList &/*value*/, const std::optional<std::string> &/*manifest*/) VOID_BODY \
@@ -95,12 +96,12 @@ typedef BOOL (*EntityFilterPredicate)(cxx::Entity *entity, void *parameter);	// 
 	virtual ::StationEntity *station() VALUE_BODY \
 	virtual ::OOPlanetEntity *planet() VALUE_BODY \
 	virtual ::OOSunEntity *sun() VALUE_BODY \
-	virtual std::vector<oo::ObjCRef<::Entity *>> planets() VALUE_BODY \
-	virtual std::vector<oo::ObjCRef<::Entity *>> stations() VALUE_BODY \
-	virtual std::vector<oo::ObjCRef<::Entity *>> wormholes() VALUE_BODY \
-	virtual std::map<std::string, oo::ObjCRef<::Entity *>, std::less<>> currentWaypoints() VALUE_BODY \
-	virtual std::vector<oo::ObjCRef<::Entity *>> findShipsMatchingPredicate(EntityFilterPredicate /*predicate*/, void * /*parameter*/, double /*range*/, ::Entity * /*entity*/) VALUE_BODY \
-	virtual std::vector<oo::ObjCRef<::Entity *>> findVisualEffectsMatchingPredicate(EntityFilterPredicate /*predicate*/, void * /*parameter*/, double /*range*/, ::Entity * /*entity*/) VALUE_BODY \
+	virtual std::vector<oo::EntityHold> planets() VALUE_BODY \
+	virtual std::vector<oo::EntityHold> stations() VALUE_BODY \
+	virtual std::vector<oo::EntityHold> wormholes() VALUE_BODY \
+	virtual std::map<std::string, oo::EntityHold, std::less<>> currentWaypoints() VALUE_BODY \
+	virtual std::vector<oo::EntityHold> findShipsMatchingPredicate(EntityFilterPredicate /*predicate*/, void * /*parameter*/, double /*range*/, cxx::Entity * /**/) VALUE_BODY \
+	virtual std::vector<oo::EntityHold> findVisualEffectsMatchingPredicate(EntityFilterPredicate /*predicate*/, void * /*parameter*/, double /*range*/, cxx::Entity * /**/) VALUE_BODY \
 	virtual float getAmbientLightLevel() VALUE_BODY \
 	virtual void setAmbientLightLevel(float /*newValue*/) VOID_BODY \
 	virtual bool witchspaceBreakPattern() VALUE_BODY \
@@ -118,12 +119,12 @@ typedef BOOL (*EntityFilterPredicate)(cxx::Entity *entity, void *parameter);	// 
 	virtual void addShipWithRole(const std::string &/*desc*/, double /*route_fraction*/) VOID_BODY \
 	virtual bool spawnShip(const std::string &/*shipdesc*/) VALUE_BODY \
 	virtual OOSystemID findSystemFromName(const std::string &/*sysName*/) VALUE_BODY \
-	virtual ::Entity *addVisualEffectAt(HPVector /*pos*/, const std::string &/*key*/) VALUE_BODY \
+	virtual cxx::Entity *addVisualEffectAt(HPVector /*pos*/, const std::string &/*key*/) VALUE_BODY \
 	virtual void setPopulatorSetting(const std::string &/*key*/, const oo::PList &/*setting*/) VOID_BODY \
 	virtual void defineWaypoint(const oo::PList &/*definition*/, const std::string &/*key*/) VOID_BODY \
 	virtual HPVector getWitchspaceExitPosition() VALUE_BODY \
-	virtual std::vector<oo::ObjCRef<::Entity *>> addShipsAt(HPVector /*pos*/, const std::string &/*role*/, unsigned /*count*/, GLfloat /*radius*/, bool /*isGroup*/) VALUE_BODY \
-	virtual std::vector<oo::ObjCRef<::Entity *>> addShipsToRoute(const std::string &/*route*/, const std::string &/*role*/, unsigned /*count*/, double /*routeFraction*/, bool /*isGroup*/) VALUE_BODY \
+	virtual std::vector<oo::EntityHold> addShipsAt(HPVector /*pos*/, const std::string &/*role*/, unsigned /*count*/, GLfloat /*radius*/, bool /*isGroup*/) VALUE_BODY \
+	virtual std::vector<oo::EntityHold> addShipsToRoute(const std::string &/*route*/, const std::string &/*role*/, unsigned /*count*/, double /*routeFraction*/, bool /*isGroup*/) VALUE_BODY \
 	virtual OOViewID getViewDirection() VALUE_BODY \
 	virtual ::GuiDisplayGen *messageGUI() VALUE_BODY \
 	virtual OOCreditsQuantity tradeInValueForCommanderDictionary(const oo::PList &/*dict*/) VALUE_BODY \

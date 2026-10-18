@@ -201,7 +201,7 @@ bool Entity::validForAddToUniverse()
 	NSUInteger currentSessionID = (UNIVERSE != nullptr ? UNIVERSE->sessionID() : 0);
 	if (EXPECT_NOT(mySessionID != currentSessionID))
 	{
-		OO_LOG_ERR("entity.invalidSession", "Entity {} from session {} cannot be added to universe in session {}. This is an internal error, please report it.", oo::ShortDescriptionOf(oo::ToObjC(this)), static_cast<size_t>(mySessionID), static_cast<size_t>(currentSessionID));
+		OO_LOG_ERR("entity.invalidSession", "Entity {} from session {} cannot be added to universe in session {}. This is an internal error, please report it.", oo::EntityShortDescription(this), static_cast<size_t>(mySessionID), static_cast<size_t>(currentSessionID));
 		return NO;
 	}
 
@@ -213,7 +213,7 @@ void Entity::addToLinkedLists()
 {
 #ifndef NDEBUG
 	if (gDebugFlags & DEBUG_LINKED_LISTS)
-		OO_LOG(kOOLogEntityAddToList, "DEBUG adding entity {} to linked lists", oo::DescriptionOf(oo::ToObjC(this)));
+		OO_LOG(kOOLogEntityAddToList, "DEBUG adding entity {} to linked lists", oo::EntityDescription(this));
 #endif
 	//
 	// insert at the start
@@ -259,7 +259,7 @@ void Entity::addToLinkedLists()
 	{
 		if (!checkLinkedLists())
 		{
-			OO_LOG(kOOLogEntityAddToListError, "DEBUG LINKED LISTS - problem encountered while adding {} to linked lists", oo::DescriptionOf(oo::ToObjC(this)));
+			OO_LOG(kOOLogEntityAddToListError, "DEBUG LINKED LISTS - problem encountered while adding {} to linked lists", oo::EntityDescription(this));
 			if (UNIVERSE != nullptr)  UNIVERSE->debugDumpEntities();
 		}
 	}
@@ -271,7 +271,7 @@ void Entity::removeFromLinkedLists()
 {
 #ifndef NDEBUG
 	if (gDebugFlags & DEBUG_LINKED_LISTS)
-		OO_LOG(kOOLogEntityRemoveFromList, "DEBUG removing entity {} from linked lists", oo::DescriptionOf(oo::ToObjC(this)));
+		OO_LOG(kOOLogEntityRemoveFromList, "DEBUG removing entity {} from linked lists", oo::EntityDescription(this));
 #endif
 
 	if ((x_next == nil)&&(x_previous == nil))	// removed already!
@@ -306,7 +306,7 @@ void Entity::removeFromLinkedLists()
 	{
 		if (!checkLinkedLists())
 		{
-			OO_LOG(kOOLogEntityRemoveFromListError, "DEBUG LINKED LISTS - problem encountered while removing {} from linked lists", oo::DescriptionOf(oo::ToObjC(this)));
+			OO_LOG(kOOLogEntityRemoveFromListError, "DEBUG LINKED LISTS - problem encountered while removing {} from linked lists", oo::EntityDescription(this));
 			if (UNIVERSE != nullptr)  UNIVERSE->debugDumpEntities();
 		}
 	}
@@ -333,7 +333,7 @@ bool Entity::checkLinkedLists()
 		}
 		if ((check)||(n > 0))
 		{
-			OO_LOG(kOOLogEntityVerificationError, "Broken x_next {} list ({}) ***", oo::DescriptionOf(oo::ToObjC(UNIVERSE->x_list_start)), n);
+			OO_LOG(kOOLogEntityVerificationError, "Broken x_next {} list ({}) ***", oo::EntityDescription(UNIVERSE->x_list_start), n);
 			return NO;
 		}
 		//
@@ -342,7 +342,7 @@ bool Entity::checkLinkedLists()
 		while ((n--)&&(check))	check = check->x_previous;
 		if ((check)||(n > 0))
 		{
-			OO_LOG(kOOLogEntityVerificationError, "Broken x_previous {} list ({}) ***", oo::DescriptionOf(oo::ToObjC(UNIVERSE->x_list_start)), n);
+			OO_LOG(kOOLogEntityVerificationError, "Broken x_previous {} list ({}) ***", oo::EntityDescription(UNIVERSE->x_list_start), n);
 			return NO;
 		}
 		//
@@ -355,7 +355,7 @@ bool Entity::checkLinkedLists()
 		}
 		if ((check)||(n > 0))
 		{
-			OO_LOG(kOOLogEntityVerificationError, "Broken y_next {} list ({}) ***", oo::DescriptionOf(oo::ToObjC(UNIVERSE->y_list_start)), n);
+			OO_LOG(kOOLogEntityVerificationError, "Broken y_next {} list ({}) ***", oo::EntityDescription(UNIVERSE->y_list_start), n);
 			return NO;
 		}
 		//
@@ -364,7 +364,7 @@ bool Entity::checkLinkedLists()
 		while ((n--)&&(check))	check = check->y_previous;
 		if ((check)||(n > 0))
 		{
-			OO_LOG(kOOLogEntityVerificationError, "Broken y_previous {} list ({}) ***", oo::DescriptionOf(oo::ToObjC(UNIVERSE->y_list_start)), n);
+			OO_LOG(kOOLogEntityVerificationError, "Broken y_previous {} list ({}) ***", oo::EntityDescription(UNIVERSE->y_list_start), n);
 			return NO;
 		}
 		//
@@ -377,7 +377,7 @@ bool Entity::checkLinkedLists()
 		}
 		if ((check)||(n > 0))
 		{
-			OO_LOG(kOOLogEntityVerificationError, "Broken z_next {} list ({}) ***", oo::DescriptionOf(oo::ToObjC(UNIVERSE->z_list_start)), n);
+			OO_LOG(kOOLogEntityVerificationError, "Broken z_next {} list ({}) ***", oo::EntityDescription(UNIVERSE->z_list_start), n);
 			return NO;
 		}
 		//
@@ -386,7 +386,7 @@ bool Entity::checkLinkedLists()
 		while ((n--)&&(check))	check = check->z_previous;
 		if ((check)||(n > 0))
 		{
-			OO_LOG(kOOLogEntityVerificationError, "Broken z_previous {} list ({}) ***", oo::DescriptionOf(oo::ToObjC(UNIVERSE->z_list_start)), n);
+			OO_LOG(kOOLogEntityVerificationError, "Broken z_previous {} list ({}) ***", oo::EntityDescription(UNIVERSE->z_list_start), n);
 			return NO;
 		}
 	}
@@ -406,7 +406,7 @@ void Entity::updateLinkedLists()
 	{
 		if (!checkLinkedLists())
 		{
-			OO_LOG(kOOLogEntityVerificationError, "DEBUG LINKED LISTS problem encountered before updating linked lists for {}", oo::DescriptionOf(oo::ToObjC(this)));
+			OO_LOG(kOOLogEntityVerificationError, "DEBUG LINKED LISTS problem encountered before updating linked lists for {}", oo::EntityDescription(this));
 			if (UNIVERSE != nullptr)  UNIVERSE->debugDumpEntities();
 		}
 	}
@@ -487,7 +487,7 @@ void Entity::updateLinkedLists()
 	{
 		if (!checkLinkedLists())
 		{
-			OO_LOG(kOOLogEntityUpdateError, "DEBUG LINKED LISTS problem encountered after updating linked lists for {}", oo::DescriptionOf(oo::ToObjC(this)));
+			OO_LOG(kOOLogEntityUpdateError, "DEBUG LINKED LISTS problem encountered after updating linked lists for {}", oo::EntityDescription(this));
 			if (UNIVERSE != nullptr)  UNIVERSE->debugDumpEntities();
 		}
 	}
@@ -988,7 +988,7 @@ void Entity::dumpState()
 {
 	if (oo::log::willDisplay("dumpState"))
 	{
-		OO_LOG("dumpState", "State for {}:", oo::DescriptionOf(oo::ToObjC(this)));
+		OO_LOG("dumpState", "State for {}:", oo::EntityDescription(this));
 		oo::log::pushIndent();
 		oo::log::indent();
 		@try

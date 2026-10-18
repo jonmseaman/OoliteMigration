@@ -500,7 +500,7 @@ OO_TEST(slice13EntityLookUp)
 		OO_CHECK(u->entityForUniversalID(NO_TARGET) == nil);
 		OO_CHECK(u->entityForUniversalID(MIN_ENTITY_UID + 1) == nil);
 		OO_CHECK(u->entityForUniversalID(MAX_ENTITY_UID + 1) == nil);
-		OO_CHECK(u->entityForUniversalID(100) == oo::ToObjC(PLAYER));
+		OO_CHECK(oo::ToObjC(u->entityForUniversalID(100)) == oo::ToObjC(PLAYER));
 
 		// No demo ships among no entities: the demo ship is cleared.
 		u->removeDemoShips();
@@ -605,7 +605,7 @@ OO_TEST(slice14ClearRoute)
 
 		// Nothing else in the universe: clear, no hazard, the destination is safe as it is.
 		SetSortedEntities(u, { e1 });
-		OO_CHECK(u->isVectorClearFromEntity(e1, 0, p2));
+		OO_CHECK(u->isVectorClearFromEntity(oo::ToCxx(e1), 0, p2));
 		OO_CHECK(u->hazardOnRouteFromEntity(oo::ToCxx(e1), 0, p2) == nullptr);
 		OO_CHECK(HPvector_equal(u->getSafeVectorFromEntity(oo::ToCxx(e1), 0, p2), p2));
 
@@ -614,7 +614,7 @@ OO_TEST(slice14ClearRoute)
 		Entity *behind = MakeEntity(make_HPvector(0, 0, -300), 50);
 		Entity *beyond = MakeEntity(make_HPvector(0, 0, 1500), 50);
 		SetSortedEntities(u, { e1, aside, behind, beyond });
-		OO_CHECK(u->isVectorClearFromEntity(e1, 0, p2));
+		OO_CHECK(u->isVectorClearFromEntity(oo::ToCxx(e1), 0, p2));
 		OO_CHECK(u->hazardOnRouteFromEntity(oo::ToCxx(e1), 0, p2) == nullptr);
 		OO_CHECK(HPvector_equal(u->getSafeVectorFromEntity(oo::ToCxx(e1), 0, p2), p2));
 
@@ -623,7 +623,7 @@ OO_TEST(slice14ClearRoute)
 		[ghost setPosition:make_HPvector(0, 0, 500)];
 		[ghost setCollisionRadius:50];
 		SetSortedEntities(u, { e1, ghost });
-		OO_CHECK(u->isVectorClearFromEntity(e1, 0, p2));
+		OO_CHECK(u->isVectorClearFromEntity(oo::ToCxx(e1), 0, p2));
 		OO_CHECK(u->hazardOnRouteFromEntity(oo::ToCxx(e1), 0, p2) == nullptr);
 		u->n_entities = 0;
 	}
@@ -640,7 +640,7 @@ OO_TEST(slice14Hazard)
 		HPVector p2 = make_HPvector(0, 0, 1000);
 		SetSortedEntities(u, { e1, rock });
 
-		OO_CHECK(!u->isVectorClearFromEntity(e1, 0, p2));
+		OO_CHECK(!u->isVectorClearFromEntity(oo::ToCxx(e1), 0, p2));
 		OO_CHECK(u->hazardOnRouteFromEntity(oo::ToCxx(e1), 0, p2) == oo::ToCxx(rock));
 
 		// The safe vector steers short of the rock and away from the side it is on.
@@ -649,11 +649,11 @@ OO_TEST(slice14Hazard)
 		OO_CHECK(safe.z < 500 && safe.x < 20);
 
 		// Within range of the destination already: clear, whatever is in the way.
-		OO_CHECK(u->isVectorClearFromEntity(e1, 2000, p2));
+		OO_CHECK(u->isVectorClearFromEntity(oo::ToCxx(e1), 2000, p2));
 		OO_CHECK(u->hazardOnRouteFromEntity(oo::ToCxx(e1), 2000, p2) == nullptr);
 
 		// Stopping short of the rock: the route is clear.
-		OO_CHECK(u->isVectorClearFromEntity(e1, 600, p2));
+		OO_CHECK(u->isVectorClearFromEntity(oo::ToCxx(e1), 600, p2));
 		OO_CHECK(u->hazardOnRouteFromEntity(oo::ToCxx(e1), 600, p2) == nullptr);
 		u->n_entities = 0;
 	}
@@ -702,29 +702,29 @@ OO_TEST(slice15CountAndFind)
 
 		// No predicate is every entity; no entity counts from the origin; the reference itself never counts.
 		OO_CHECK(u->countEntitiesMatchingPredicate(NULL, NULL, -1, nullptr) == 3);
-		OO_CHECK(u->countEntitiesMatchingPredicate(NULL, NULL, -1, a) == 2);
+		OO_CHECK(u->countEntitiesMatchingPredicate(NULL, NULL, -1, oo::ToCxx(a)) == 2);
 		// The range reaches the other entity's surface: b's is 90 away from a, c's 990.
-		OO_CHECK(u->countEntitiesMatchingPredicate(NULL, NULL, 95, a) == 1);
-		OO_CHECK(u->countEntitiesMatchingPredicate(NULL, NULL, 85, a) == 0);
+		OO_CHECK(u->countEntitiesMatchingPredicate(NULL, NULL, 95, oo::ToCxx(a)) == 1);
+		OO_CHECK(u->countEntitiesMatchingPredicate(NULL, NULL, 85, oo::ToCxx(a)) == 0);
 		double limit = 50;
 		OO_CHECK(u->countEntitiesMatchingPredicate(IsFarPredicate, &limit, -1, nullptr) == 2);
 
 		// Ships: only c.
-		OO_CHECK(u->countShipsMatchingPredicate(NULL, NULL, -1, a) == 1);
+		OO_CHECK(u->countShipsMatchingPredicate(NULL, NULL, -1, oo::ToCxx(a)) == 1);
 		OO_CHECK(u->countShipsMatchingPredicate(IsFarPredicate, &limit, -1, nullptr) == 1);
-		OO_CHECK(u->countShipsMatchingPredicate(NULL, NULL, 500, a) == 0);
+		OO_CHECK(u->countShipsMatchingPredicate(NULL, NULL, 500, oo::ToCxx(a)) == 0);
 
-		std::vector<oo::ObjCRef<Entity *>> found = u->findEntitiesMatchingPredicate(NULL, NULL, -1, oo::ToCxx(a));	// the reference's C++ entity since bead oo-9ht.39.8.23
-		OO_CHECK(found.size() == 2 && found[0].get() == b && found[1].get() == c);	// in the sorted list's order
+		std::vector<oo::EntityHold> found = u->findEntitiesMatchingPredicate(NULL, NULL, -1, oo::ToCxx(a));	// the reference's C++ entity since bead oo-9ht.39.8.23
+		OO_CHECK(found.size() == 2 && oo::ToObjC(found[0].get()) == b && oo::ToObjC(found[1].get()) == c);	// in the sorted list's order
 		found = u->findEntitiesMatchingPredicate(IsFarPredicate, &limit, 95, oo::ToCxx(a));
-		OO_CHECK(found.size() == 1 && found[0].get() == b);
+		OO_CHECK(found.size() == 1 && oo::ToObjC(found[0].get()) == b);
 		found = u->findShipsMatchingPredicate(NULL, NULL, -1, nullptr);
-		OO_CHECK(found.size() == 1 && found[0].get() == c);
+		OO_CHECK(found.size() == 1 && oo::ToObjC(found[0].get()) == c);
 		OO_CHECK(u->findVisualEffectsMatchingPredicate(NULL, NULL, -1, nullptr).empty());
 
 		// Within range of an entity: the ships only; none for no entity.
-		OO_CHECK(u->entitiesWithinRange(2000, a).size() == 1);
-		OO_CHECK(u->entitiesWithinRange(500, a).empty());
+		OO_CHECK(u->entitiesWithinRange(2000, oo::ToCxx(a)).size() == 1);
+		OO_CHECK(u->entitiesWithinRange(500, oo::ToCxx(a)).empty());
 		OO_CHECK(u->entitiesWithinRange(2000, nullptr).empty());
 
 		// The scan class.
@@ -749,19 +749,19 @@ OO_TEST(slice15FindOneAndNearest)
 		SetSortedEntities(u, { a, b, c, d });
 		double limit = 250;
 
-		OO_CHECK(u->findOneEntityMatchingPredicate(NULL, NULL) == a);
-		OO_CHECK(u->findOneEntityMatchingPredicate(IsFarPredicate, &limit) == b);
+		OO_CHECK(oo::ToObjC(u->findOneEntityMatchingPredicate(NULL, NULL)) == a);
+		OO_CHECK(oo::ToObjC(u->findOneEntityMatchingPredicate(IsFarPredicate, &limit)) == b);
 		limit = 5000;
-		OO_CHECK(u->findOneEntityMatchingPredicate(IsFarPredicate, &limit) == nil);
+		OO_CHECK(oo::ToObjC(u->findOneEntityMatchingPredicate(IsFarPredicate, &limit)) == nil);
 
-		OO_CHECK(u->nearestEntityMatchingPredicate(NULL, NULL, a) == c);
-		OO_CHECK(u->nearestEntityMatchingPredicate(NULL, NULL, nullptr) == a);
+		OO_CHECK(oo::ToObjC(u->nearestEntityMatchingPredicate(NULL, NULL, oo::ToCxx(a))) == c);
+		OO_CHECK(oo::ToObjC(u->nearestEntityMatchingPredicate(NULL, NULL, nullptr)) == a);
 		limit = 250;
-		OO_CHECK(u->nearestEntityMatchingPredicate(IsFarPredicate, &limit, a) == b);
-		OO_CHECK(u->nearestShipMatchingPredicate(NULL, NULL, b) == c);
-		OO_CHECK(u->nearestShipMatchingPredicate(IsFarPredicate, &limit, a) == nil);
+		OO_CHECK(oo::ToObjC(u->nearestEntityMatchingPredicate(IsFarPredicate, &limit, oo::ToCxx(a))) == b);
+		OO_CHECK(oo::ToObjC(u->nearestShipMatchingPredicate(NULL, NULL, oo::ToCxx(b))) == c);
+		OO_CHECK(oo::ToObjC(u->nearestShipMatchingPredicate(IsFarPredicate, &limit, oo::ToCxx(a))) == nil);
 		limit = -1000;
-		OO_CHECK(u->nearestShipMatchingPredicate(IsFarPredicate, &limit, c) == d);
+		OO_CHECK(oo::ToObjC(u->nearestShipMatchingPredicate(IsFarPredicate, &limit, oo::ToCxx(c))) == d);
 
 		u->n_entities = 0;
 	}
@@ -895,7 +895,7 @@ OO_TEST(slice17UpdateOff)
 		u->universal_time = 5.0;
 		u->time_delta = 0.5;
 		Entity *dead = [[Entity alloc] init];
-		u->entitiesDeadThisUpdate.emplace_back(dead);
+		u->entitiesDeadThisUpdate.emplace_back(oo::ToCxx(dead));	// held C++ entities since bead oo-9ht.39.26
 		[dead release];
 
 		@autoreleasepool
@@ -1319,14 +1319,14 @@ OO_TEST(slice25DoRemoveEntity)
 		SetSortedEntities(u, { a, b });
 		a->_cxxEntity->zero_index = 0;
 		b->_cxxEntity->zero_index = 1;
-		u->entities.emplace_back(a);
-		u->entities.emplace_back(b);
+		u->entities.emplace_back(oo::ToCxx(a));	// held C++ entities since bead oo-9ht.39.26
+		u->entities.emplace_back(oo::ToCxx(b));
 
-		OO_CHECK(u->doRemoveEntity(a));
+		OO_CHECK(u->doRemoveEntity(oo::ToCxx(a)));
 		OO_CHECK(u->n_entities == 1 && SortedEntity(u, 0) == b && SortedEntity(u, 1) == nil);
 		OO_CHECK(b->_cxxEntity->zero_index == 0 && a->_cxxEntity->zero_index == -1);
-		OO_CHECK(u->entities.size() == 1 && u->entities[0].get() == b);
-		OO_CHECK(!u->doRemoveEntity(a));	// gone already: not in the definitive list
+		OO_CHECK(u->entities.size() == 1 && oo::ToObjC(u->entities[0].get()) == b);
+		OO_CHECK(!u->doRemoveEntity(oo::ToCxx(a)));	// gone already: not in the definitive list
 
 		u->n_entities = 0;
 		u->entities.clear();

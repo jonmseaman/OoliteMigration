@@ -95,7 +95,7 @@ public:
 		sLog.push_back("role " + role + " isInCategory " + category);
 		return role == "trader";
 	}
-	std::vector<oo::ObjCRef<::Entity *>> getContainersOfCommodity(const std::string &commodity_name, OOCargoQuantity how_many) override
+	std::vector<oo::EntityHold> getContainersOfCommodity(const std::string &commodity_name, OOCargoQuantity how_many) override	// held C++ entities since bead oo-9ht.39.26
 	{
 		sLog.push_back(oo::str::format("getContainersOfCommodity %s %u", commodity_name.c_str(), static_cast<unsigned>(how_many)));
 		return {};

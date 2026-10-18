@@ -100,9 +100,9 @@ public:
 	Entity			*_removed = {};
 
 	std::optional<std::string> getSystemName(OOSystemID sys, OOGalaxyID /*gnum*/) override	{ return "System " + std::to_string(sys); }	// getSystemName(sys) asks it
-	bool removeEntity(::Entity *entity) override
+	bool removeEntity(cxx::Entity *entity) override	// the C++ entity since bead oo-9ht.39.26; the record is its object, as before
 	{
-		_removed = entity;
+		_removed = oo::ToObjC(entity);
 		return YES;
 	}
 };

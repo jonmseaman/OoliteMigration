@@ -119,10 +119,10 @@ void OOPlasmaShotEntity::update(double delta_t)
 						   from:self
 					  becauseOf:owner()
 			   weaponIdentifier:"EQ_WEAPON_PLASMA_SHOT"];
-			if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(self);
+			if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(this);
 			
 			// Spawn a plasma burst.
-			::Entity *burst = oo::NewEntityFacade(OOPlasmaBurstEntity::burstWithPosition(getPosition()));
+			cxx::Entity *burst = oo::MadeEntity(OOPlasmaBurstEntity::burstWithPosition(getPosition()));
 			if (UNIVERSE != nullptr)  UNIVERSE->addEntity(burst);
 		}
 	}
@@ -131,5 +131,5 @@ void OOPlasmaShotEntity::update(double delta_t)
 	_colorComponents[3] = attenuation;
 #endif
 	
-	if (lifeTime > _duration)  { if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(self); }
+	if (lifeTime > _duration)  { if (UNIVERSE != nullptr)  UNIVERSE->removeEntity(this); }
 }

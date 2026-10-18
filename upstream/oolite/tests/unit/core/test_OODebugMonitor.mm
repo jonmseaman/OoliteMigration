@@ -27,6 +27,7 @@
 #import "OOColor.h"
 #import "OOObjCPList.h"
 #import "OODescription.h"
+#import "OOEntityHold.h"	// the universe's entity list holds C++ entities (bead oo-9ht.39.26)
 
 #include "oofnd/Defaults.hpp"
 #include "oofnd/FileSystem.hpp"
@@ -86,9 +87,9 @@ oo::PList WormholeEntityShipsInTransit(Entity *)  { return oo::PList(); }
 class Universe
 {
 public:
-	std::vector<oo::ObjCRef<::Entity *>> entityList();
+	std::vector<oo::EntityHold> entityList();	// held C++ entities since bead oo-9ht.39.26
 };
-std::vector<oo::ObjCRef<::Entity *>> Universe::entityList()  { return {}; }
+std::vector<oo::EntityHold> Universe::entityList()  { return {}; }
 
 Universe *gSharedUniverse = nil;
 

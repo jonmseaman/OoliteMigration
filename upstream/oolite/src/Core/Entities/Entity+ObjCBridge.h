@@ -60,6 +60,7 @@ MA 02110-1301, USA.
 #define ENTITY_OBJCBRIDGE_H
 
 #import "OOObjCPList.h"	// the entity's Object node (oo::EntityPListForeign)
+#import "OOEntityHold.h"	// the universe's owning references (bead oo-9ht.39.26)
 
 
 @interface Entity: OOWeakRefObject
@@ -388,6 +389,18 @@ PList EntityNodesFrom(const std::vector<ObjCRef<T>> &objects)
 	return PList(std::move(result));
 }
 
+// The same of held entities (bead oo-9ht.39.26).
+inline PList EntityNodesFrom(const std::vector<EntityHold> &entities)
+{
+	PList::Array result;
+	result.reserve(entities.size());
+	for (const EntityHold &entity : entities)
+	{
+		if (entity)  result.push_back(EntityObjectNode(entity.get()));
+	}
+	return PList(std::move(result));
+}
+
 // The C++ entities of an array's entity nodes, borrowed, in order; other elements are skipped.
 inline std::vector<cxx::Entity *> EntitiesIn(const PList &plist)
 {
@@ -630,6 +643,24 @@ inline OOEntityStatus EntityStatus(cxx::Entity *entity)
 	if (ObjCEntityLink *link = AsObjCEntity(entity))  return [link->objcOwner() status];
 	return entity != nullptr ? entity->status() : OOEntityStatus{};
 }
+
+// What the facade's -isBeacon answered for an entity's object (bead oo-9ht.39.26): the ship's,
+// effect's or waypoint's member, NO for anything else; an Objective-C entity is still messaged.
+bool EntityIsBeacon(cxx::Entity *entity);
+
+/*	The beacon list's links and code, of the C++ entities (bead oo-9ht.39.26): what the protocol's
+	-prevBeacon, -nextBeacon, -setPrevBeacon:, -setNextBeacon:, -beaconCode, -setBeaconCode: and
+	-compareBeaconCodeWith: answered and did for the entities' objects (the same messages, sent to
+	them here: a ship's, effect's or waypoint's member, or an Objective-C entity's own), answered as
+	C++ entities; nil's answer, and nothing, for none.
+*/
+cxx::Entity *PrevBeacon(cxx::Entity *beacon);
+cxx::Entity *NextBeacon(cxx::Entity *beacon);
+void SetPrevBeacon(cxx::Entity *beacon, cxx::Entity *other);
+void SetNextBeacon(cxx::Entity *beacon, cxx::Entity *other);
+std::optional<std::string> BeaconCode(cxx::Entity *beacon);
+void SetBeaconCode(cxx::Entity *beacon, const std::optional<std::string> &code);
+OOComparisonResult CompareBeaconCodes(cxx::Entity *beacon, cxx::Entity *other);
 
 }	// namespace oo
 

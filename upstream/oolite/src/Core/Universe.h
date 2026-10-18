@@ -281,7 +281,7 @@ public:
 	NSUInteger entityCount();
 #ifndef NDEBUG
 	void debugDumpEntities();
-	std::vector<oo::ObjCRef<::Entity *>> entityList();
+	std::vector<oo::EntityHold> entityList();
 #endif
 
 	Universe(const Universe &) = delete;
@@ -319,11 +319,11 @@ public:
 	int						next_universal_id = 0;
 	cxx::Entity				*entity_for_uid[MAX_ENTITY_UID] = {};	// C++ parts, borrowed (bead oo-9ht.39.4)
 
-	std::vector<oo::ObjCRef<::Entity *>>	entities;
+	std::vector<oo::EntityHold>	entities;	// owning: each entity's object (bead oo-9ht.39.26)
 
 	oo::WeakRef<cxx::Entity>	_firstBeacon,	// the beacons' C++ parts (bead oo-9ht.39.5.2; were their objects' weak references)
 							_lastBeacon;
-	std::map<std::string, oo::ObjCRef<::Entity *>, std::less<>>	waypoints;	// by key: the waypoints' objects (the root's facade since bead oo-9ht.108)
+	std::map<std::string, oo::EntityHold, std::less<>>	waypoints;	// by key: the waypoints (their objects held, bead oo-9ht.39.26)
 
 	GLfloat					skyClearColor[4] = {};
 
@@ -392,7 +392,7 @@ public:
 	oo::PList				screenBackgrounds;		// holds filenames for various screens backgrounds, loaded at initialisation
 	oo::PList				explosionSettings;		// explosion settings from explosions.plist
 
-	std::map<std::string, oo::ObjCRef<::Entity *>, std::less<>>	cargoPods; // template cargo pods, by commodity key
+	std::map<std::string, oo::EntityHold, std::less<>>	cargoPods; // template cargo pods, by commodity key
 
 	OOGalaxyID				galaxyID = 0;
 	OOSystemID				systemID = 0;
@@ -408,8 +408,8 @@ public:
 	::StationEntity			*cachedStation = nil;
 	::OOPlanetEntity		*cachedPlanet = nil;
 	::OOSunEntity			*cachedSun = nil;
-	std::vector<oo::ObjCRef<::Entity *>>	allPlanets;	// the planets' Objective-C objects (C++ since bead oo-9ht.129)
-	std::vector<oo::ObjCRef<::Entity *>>	allStations;	// the stations' objects (the ship's facade since bead oo-9ht.175), each once, in the order added
+	std::vector<oo::EntityHold>	allPlanets;	// the planets (their objects held, bead oo-9ht.39.26)
+	std::vector<oo::EntityHold>	allStations;	// the stations (their objects held, bead oo-9ht.39.26), each once, in the order added
 
 	float					ambientLightLevel = 0;
 
@@ -430,7 +430,7 @@ public:
 
 	BOOL					ECMVisualFXEnabled = NO;
 
-	std::vector<oo::ObjCRef<::Entity *>>	activeWormholes;
+	std::vector<oo::EntityHold>	activeWormholes;
 
 	std::vector<oo::Ref<OOCharacter>>	characterPool;
 
@@ -439,7 +439,7 @@ public:
 	// check and maintain linked lists occasionally
 	BOOL					doLinkedListMaintenanceThisUpdate = NO;
 
-	std::vector<oo::ObjCRef<::Entity *>>	entitiesDeadThisUpdate;	// each once, in the order removed
+	std::vector<oo::EntityHold>	entitiesDeadThisUpdate;	// each once, in the order removed
 	int						framesDoneThisUpdate = 0;
 	NSUInteger				drawCounter = 0;
 
@@ -570,10 +570,10 @@ public:
 	// wormholes(): virtual, in OO_UNIVERSE_VIRTUAL_MEMBERS (UniverseVirtualMembers.h)
 	// unMagicMainStation(): virtual, in OO_UNIVERSE_VIRTUAL_MEMBERS (UniverseVirtualMembers.h)
 	void resetBeacons();
-	OOBeaconEntityObject *firstBeacon();
-	void setFirstBeacon(OOBeaconEntityObject *beacon);
-	OOBeaconEntityObject *lastBeacon();
-	void setLastBeacon(OOBeaconEntityObject *beacon);
+	cxx::Entity *firstBeacon();	// the C++ entities (bead oo-9ht.39.26)
+	void setFirstBeacon(cxx::Entity *beacon);
+	cxx::Entity *lastBeacon();
+	void setLastBeacon(cxx::Entity *beacon);
 	// setNextBeacon(): virtual, in OO_UNIVERSE_VIRTUAL_MEMBERS (UniverseVirtualMembers.h)
 	// clearBeacon(): virtual, in OO_UNIVERSE_VIRTUAL_MEMBERS (UniverseVirtualMembers.h)
 	// currentWaypoints(): virtual, in OO_UNIVERSE_VIRTUAL_MEMBERS (UniverseVirtualMembers.h)
@@ -601,7 +601,7 @@ public:
 	::OOCommodities *getCommodities();
 	::ShipEntity *reifyCargoPod(::ShipEntity *cargoObj);
 	::ShipEntity *cargoPodFromTemplate(::ShipEntity *cargoObj);
-	std::vector<oo::ObjCRef<::Entity *>> getContainersOfGoods(OOCargoQuantity how_many, bool scarce, bool legal);
+	std::vector<oo::EntityHold> getContainersOfGoods(OOCargoQuantity how_many, bool scarce, bool legal);
 	// getContainersOfCommodity(): virtual, in OO_UNIVERSE_VIRTUAL_MEMBERS (UniverseVirtualMembers.h)
 	void fillCargopodWithRandomCargo(::ShipEntity *cargopod);
 	std::string getRandomCommodity();
@@ -632,16 +632,16 @@ public:
 	// Slice 13: messages and the watermark, entity look-up, the linked lists, adding and removing entities, demo ships.
 	void drawMessage();
 	void drawWatermarkString(const std::string &watermarkString);
-	id entityForUniversalID(OOUniversalID u_id);
+	cxx::Entity *entityForUniversalID(OOUniversalID u_id);
 	// addEntity(): virtual, in OO_UNIVERSE_VIRTUAL_MEMBERS (UniverseVirtualMembers.h)
 	// removeEntity(): virtual, in OO_UNIVERSE_VIRTUAL_MEMBERS (UniverseVirtualMembers.h)
-	void ensureEntityReallyRemoved(::Entity *entity);
+	void ensureEntityReallyRemoved(cxx::Entity *entity);
 	void removeAllEntitiesExceptPlayer();
 	void removeDemoShips();
 
 	// Slice 14: making demo ships, safe vectors, hazards on route, wreckage, laser hits.
 	::ShipEntity *makeDemoShipWithRole(const std::string &role, bool spinning);
-	bool isVectorClearFromEntity(::Entity *e1, double dist, HPVector p2);
+	bool isVectorClearFromEntity(cxx::Entity *e1, double dist, HPVector p2);
 	// hazardOnRouteFromEntity(): virtual, in OO_UNIVERSE_VIRTUAL_MEMBERS (UniverseVirtualMembers.h)
 	// getSafeVectorFromEntity(): virtual, in OO_UNIVERSE_VIRTUAL_MEMBERS (UniverseVirtualMembers.h)
 	::ShipEntity *addWreckageFrom(::ShipEntity *ship, const std::string &wreckRole, HPVector rpos, GLfloat scale, GLfloat lifetime);
@@ -649,22 +649,22 @@ public:
 	::ShipEntity *firstShipHitByLaserFromShip(::ShipEntity *srcEntity, OOWeaponFacing direction, Vector offset, GLfloat *range_ptr);
 
 	// Slice 15: player targeting, entities in range, counting and finding ships by role and predicate, time, collisions, view direction.
-	::Entity *firstEntityTargetedByPlayer();
-	::Entity *firstEntityTargetedByPlayerPrecisely();
-	std::vector<oo::ObjCRef<::Entity *>> entitiesWithinRange(double range, ::Entity *entity);
+	cxx::Entity *firstEntityTargetedByPlayer();
+	cxx::Entity *firstEntityTargetedByPlayerPrecisely();
+	std::vector<oo::EntityHold> entitiesWithinRange(double range, cxx::Entity *entity);
 	// countShipsWithRole(): virtual, in OO_UNIVERSE_VIRTUAL_MEMBERS (UniverseVirtualMembers.h)
 	unsigned countShipsWithRole(const std::string &role);
 	// countShipsWithPrimaryRole(): virtual, in OO_UNIVERSE_VIRTUAL_MEMBERS (UniverseVirtualMembers.h)
 	// countShipsWithScanClass(): virtual, in OO_UNIVERSE_VIRTUAL_MEMBERS (UniverseVirtualMembers.h)
 	unsigned countShipsWithPrimaryRole(const std::string &role);
-	unsigned countEntitiesMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, ::Entity *e1);
-	unsigned countShipsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, ::Entity *entity);
+	unsigned countEntitiesMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, cxx::Entity *e1);
+	unsigned countShipsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, cxx::Entity *entity);
 	// findEntitiesMatchingPredicate(): virtual, in OO_UNIVERSE_VIRTUAL_MEMBERS (UniverseVirtualMembers.h)
-	id findOneEntityMatchingPredicate(EntityFilterPredicate predicate, void *parameter);
+	cxx::Entity *findOneEntityMatchingPredicate(EntityFilterPredicate predicate, void *parameter);
 	// findShipsMatchingPredicate(): virtual, in OO_UNIVERSE_VIRTUAL_MEMBERS (UniverseVirtualMembers.h)
 	// findVisualEffectsMatchingPredicate(): virtual, in OO_UNIVERSE_VIRTUAL_MEMBERS (UniverseVirtualMembers.h)
-	id nearestEntityMatchingPredicate(EntityFilterPredicate predicate, void *parameter, ::Entity *entity);
-	id nearestShipMatchingPredicate(EntityFilterPredicate predicate, void *parameter, ::Entity *entity);
+	cxx::Entity *nearestEntityMatchingPredicate(EntityFilterPredicate predicate, void *parameter, cxx::Entity *entity);
+	cxx::Entity *nearestShipMatchingPredicate(EntityFilterPredicate predicate, void *parameter, cxx::Entity *entity);
 	OOTimeAbsolute getTime();
 	OOTimeDelta getTimeDelta();
 	void findCollisionsAndShadows();
@@ -776,7 +776,7 @@ public:
 	Quaternion getWitchspaceExitRotation();
 	HPVector getSunSkimStartPositionForShip(::ShipEntity *ship);
 	HPVector getSunSkimEndPositionForShip(::ShipEntity *ship);
-	std::vector<oo::ObjCRef<::Entity <OOBeaconEntity> *>> listBeaconsWithCode(const std::string &code);
+	std::vector<oo::EntityHold> listBeaconsWithCode(const std::string &code);
 	void allShipsDoScriptEvent(ooscript::PropertyId event, const std::optional<std::string> &message);
 	// getGui(): virtual, in OO_UNIVERSE_VIRTUAL_MEMBERS (UniverseVirtualMembers.h)
 	::GuiDisplayGen *commLogGUI();
@@ -836,7 +836,7 @@ public:
 	float randomDistanceWithinScanner();
 	Vector randomPlaceWithinScannerFrom(Vector pos, Vector route, double offset);
 	HPVector fractionalPositionFrom(HPVector point0, HPVector point1, double routeFraction);
-	bool doRemoveEntity(::Entity *entity);
+	bool doRemoveEntity(cxx::Entity *entity);
 	void preloadSounds();
 	void populateSpaceFromActiveWormholes();
 	std::optional<std::string> chooseStringForKey(const std::string &key, const oo::PList &dictionary);

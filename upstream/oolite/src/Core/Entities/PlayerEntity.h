@@ -612,6 +612,7 @@ public:
 	virtual ::Entity *getCompassTarget();
 	cxx::Entity *getCompassTargetEntity();	// getCompassTarget()'s C++ entity, null for none (bead oo-9ht.39.8.11)
 	void setCompassTarget(::Entity *value);
+	void setCompassTargetEntity(cxx::Entity *value);	// setCompassTarget() of the entity's object, by its C++ entity (bead oo-9ht.39.26)
 	virtual void validateCompassTarget();
 	std::optional<std::string> compassTargetLabel();
 
