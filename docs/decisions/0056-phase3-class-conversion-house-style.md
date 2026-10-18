@@ -9073,3 +9073,42 @@ the seven comments it found (`-[Entity sel]`, `ObjCRef<::Entity *>`) are reworde
 three link stubs for the deleted facade's `oo::ToObjC()` (test_OOCommodities, test_OOJSManifest,
 test_OOJSSystemInfo; nothing calls it since oo-dpyk8) go, and test_ShipEntity's casts of beacons to the deleted
 `Entity<OOBeaconEntity> *` are dropped (the C++ entity is compared with nil, as it was).
+
+## Amendment (beads oo-9ht.184, oo-3pl05, oo-t7o84, oo-6e1.1, oo-8sql7): the ship's private state is private again where no test reads it; the call-by-name reference class goes; the root categories shrink
+
+**Context.** Track A batch AQ: the Phase 3 items that need no test deleted or re-based. A test that reads a member
+directly, or an Objective-C stand-in that overrides a root category's method, would have to change spelling to a
+test-access struct or a C++ seam: that is a re-base under oo-9n5p9, which needs Jon's approval line first, so
+those members and categories stay as they are, listed per bead in the bead notes.
+
+**Decision (recommended defaults).** Mechanical, behaviour-identical.
+
+1. **ShipEntity (oo-9ht.184).** The block that was `@private` in Objective-C is private again in C++ in its
+   declaration order (`private:`/`public:` labels between the members, so construction and destruction order are
+   unchanged): `_subEntityTakingDamage`, `_shipKey`, `_lastAegisLock`, `_escortGroup`, `_escortPositions`,
+   `_defenseTargets`, `_collisionExceptions`, `_shipHitByLaser`, the five beacon members and `demoStartTime`. The
+   members a unit test reads or sets directly stay public, marked "test-read" in the header: `_equipment`,
+   `_heatInsulation`, `_maxEscortCount`, `_pendingEscortCount`, `_escortPositionsValid`, `_profileRadius`,
+   `_nextAegisCheck`, `isDemoShip`, `demoRate`, `demoStartOrientation` (test_ShipEntity) and `_group`
+   (test_OOJSSystem). Item 2 of the bead (raw retained Objective-C pointers as references) was already done by
+   the conversions it waited on: `shipAI` is `oo::Ref<::AI>`, the weak members are `oo::WeakRef<Entity>`/`oo::WeakSet`,
+   and no `DESTROY`/`-retain` of a member is left in the ship's files. The `@protected` block (public while
+   Objective-C subclasses read it) is not changed here.
+2. **OOCallByName (oo-3pl05).** The reference class `OOCallByNameSignatures` is deleted: the three encodings a
+   by-name call accepts are the compiler's `@encode` of `oo::PList`, `const std::string &` and `const oo::PList &`,
+   which are the encodings clang gives a method's result or parameter of those types byte for byte (checked on the
+   emitted IR; test_objc_call_by_name's `the_reference_encodings_on_this_toolchain` compares them with a method's
+   at run time). `OOCallByName(id, SEL, ...)` stays: callObjC's object path (OOJSCall.mm) and three tests use it
+   (test_objc_call_by_name, test_AI's stand-in `oo::CallEntityByName`, test_OOJSCall's object-path cases); it is
+   runtime use without an `@implementation`, removed with the runtime (Phase 4, oo-dbz).
+3. **OOObject+OOJavaScript (oo-t7o84).** The entity predicates' five questions (`OOJavaScriptEngineIsVisibleToScripts`,
+   `...IsShip`, `...IsSubEntity`, `...IsPlanet`, `...Status`), C++ since oo-j12i2, move into OOJavaScriptEngine.mm
+   (file-local) with their declarations. The category and the `id` bridges stay while Objective-C test stand-ins
+   override the category's methods.
+4. **NSObjectOOExtensions (oo-6e1.1).** OODebugMonitor.mm's unused import goes; two comments are reworded. The
+   category stays while OOWeakReference forwards `-oo_objectSize` (oo-9ht.22) and the by-name object table answers
+   the name (removing the row changes callObjC's answer: a debug-console behaviour change left for Jon).
+5. **OODescription (oo-8sql7).** Unchanged: the remaining Objective-C objects (weak references, exceptions, string
+   literals and the tests' stand-ins) are described through it.
+
+**Tests.** No test file, case or expected value changes.

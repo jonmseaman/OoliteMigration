@@ -31,8 +31,6 @@ MA 02110-1301, USA.
 #import "ResourceManager.h"
 #import "OOWeakReference.h"
 #import "OOVector.h"
-#import "OOPlanetEntity.h"
-#import "EntityOOJavaScriptExtensions.h"
 #include "oofnd/objc/OOException.h"
 
 
@@ -130,36 +128,4 @@ void OOJavaScriptEngineClearJSSelf(id object, ooscript::Object selfVal)
 bool OOJavaScriptEngineIsKindOfClass(id object, Class requiredClass)
 {
 	return [object isKindOfClass:requiredClass];
-}
-
-
-bool OOJavaScriptEngineIsVisibleToScripts(Entity *entity)
-{
-	return OOJSEntityIsVisibleToScripts(entity);	// the C++ entity's answer, which the root facade's selector forwarded to (bead oo-9ht.39.8.9)
-}
-
-
-// The root facade's -isShip, -isSubEntity, -isPlanet and -status forwarded to these members (bead
-// oo-9ht.39.25; an Objective-C stand-in was asked until bead oo-j12i2).
-bool OOJavaScriptEngineIsShip(Entity *entity)
-{
-	return entity != nullptr && entity->getIsShip();
-}
-
-
-bool OOJavaScriptEngineIsSubEntity(Entity *entity)
-{
-	return entity != nullptr && entity->getIsSubEntity();
-}
-
-
-bool OOJavaScriptEngineIsPlanet(Entity *entity)
-{
-	return entity != nullptr && entity->isPlanet();
-}
-
-
-OOEntityStatus OOJavaScriptEngineStatus(Entity *entity)
-{
-	return entity != nullptr ? entity->status() : OOEntityStatus{};
 }

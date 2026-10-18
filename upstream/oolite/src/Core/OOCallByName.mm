@@ -40,37 +40,14 @@ MA 02110-1301, USA.
 
 
 
-/*	One method per accepted C++ signature: their type encodings are what a called method's must be
-	(the encoding of a C++ class or reference is compiler- and ABI-specific, so it is read, not
-	spelled; tests/unit/oofnd/test_objc_call_by_name.mm pins it on this toolchain). Looked up by
-	name rather than @selector: they are read, never called by name.
+/*	The type encodings a called method's must have for each accepted C++ signature: the compiler's
+	@encode of the types, which is the encoding it gives a method's result or parameter of that type
+	(the encoding of a C++ class or reference is compiler- and ABI-specific, so it is the compiler's,
+	not spelled; tests/unit/oofnd/test_objc_call_by_name.mm pins it on this toolchain and compares it
+	with a method's). Until bead oo-3pl05 they were read from the methods of a reference class,
+	OOCallByNameSignatures (-resultPList, -stringArgument:, -plistArgument:), whose encodings are
+	these byte for byte (ADR-0056 amendment oo-3pl05).
 */
-@interface OOCallByNameSignatures: OOObject
-- (oo::PList) resultPList;
-- (void) stringArgument:(const std::string &)argument;
-- (void) plistArgument:(const oo::PList &)argument;
-@end
-
-@implementation OOCallByNameSignatures
-
-- (oo::PList) resultPList
-{
-	return oo::PList();
-}
-
-
-- (void) stringArgument:(const std::string &)argument
-{
-	(void)argument;
-}
-
-
-- (void) plistArgument:(const oo::PList &)argument
-{
-	(void)argument;
-}
-
-@end
 
 
 namespace {
@@ -104,14 +81,11 @@ struct Encodings
 
 const Encodings &ReferenceEncodings()
 {
-	static const Encodings encodings = [] {
-		Class reference = [OOCallByNameSignatures class];
-		Encodings result;
-		result.plistResult = OwnedEncoding(method_copyReturnType(class_getInstanceMethod(reference, OOSelectorFromName("resultPList"))));
-		result.stringArgument = OwnedEncoding(method_copyArgumentType(class_getInstanceMethod(reference, OOSelectorFromName("stringArgument:")), 2));
-		result.plistArgument = OwnedEncoding(method_copyArgumentType(class_getInstanceMethod(reference, OOSelectorFromName("plistArgument:")), 2));
-		return result;
-	}();
+	static const Encodings encodings = {
+		@encode(oo::PList),				// a method's oo::PList result
+		@encode(const std::string &),	// a method's const std::string & parameter
+		@encode(const oo::PList &)		// a method's const oo::PList & parameter
+	};
 	return encodings;
 }
 
