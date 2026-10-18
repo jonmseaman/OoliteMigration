@@ -464,7 +464,7 @@ public:
 	bool canCollide() override;
 
 	// Slice 6: sun glare, the atmosphere, update:.
-	OOComparisonResult compareZeroDistance(Entity * /*otherEntity*/) override;
+	OOComparisonResult compareZeroDistance(cxx::Entity * /*otherEntity*/) override;
 	bool validForAddToUniverse() override;
 	GLfloat lookingAtSunWithThresholdAngleCos(GLfloat thresholdAngleCos) override;
 	GLfloat insideAtmosphereFraction();
@@ -479,7 +479,7 @@ public:
 	void setMaxFlightPitch(GLfloat newValue) override;
 	void setMaxFlightRoll(GLfloat newValue) override;
 	void setMaxFlightYaw(GLfloat newValue) override;
-	bool checkEntityForMassLock(::Entity *ent, int theirClass);
+	bool checkEntityForMassLock(cxx::Entity *ent, int theirClass);
 	void updateAlertCondition();
 	void updateFuelScoops(OOTimeDelta delta_t);
 	void updateClocks(OOTimeDelta delta_t);
@@ -925,7 +925,7 @@ public:
 	void penaltyForUnauthorizedDocking();
 	void addScannedWormhole(::WormholeEntity *whole);
 	void updateWormholes();
-	std::vector<oo::ObjCRef<::Entity *>> getScannedWormholes();
+	std::vector<oo::EntityHold> getScannedWormholes();	// the wormholes, their objects held
 	void initialiseMissionDestinations(const oo::PList &destinations, const oo::PList &legacy);
 	std::optional<std::string> markerKey(const oo::PList &marker);
 	void addMissionDestinationMarker(const oo::PList &marker);
@@ -1905,7 +1905,7 @@ private:
 	
 	OODockingClearanceStatus dockingClearanceStatus = {};
 	
-	std::vector<oo::ObjCRef<::Entity *>>	scannedWormholes;
+	std::vector<oo::EntityHold>	scannedWormholes;	// their objects held (bead oo-9ht.39.18)
 	WormholeEntity				*wormhole = {};	// C++ since bead oo-9ht.112; wormholeObject holds its Objective-C object
 	oo::ObjCRef<::Entity *>		wormholeObject;	// the wormhole's Objective-C object (the root's facade, which owns it), held (bead oo-5q11i)
 

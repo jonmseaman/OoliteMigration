@@ -222,6 +222,14 @@ std::set<std::string> FacadeNames()
 }
 
 
+// The facade category methods deleted before the facade (bead oo-9ht.186, the cascade's
+// -isCascadeWeapon, which every entity's object answered): their rows stay, answered by the C++ part.
+bool DeletedCategoryName(std::string_view name)
+{
+	return name == "isCascadeWeapon";
+}
+
+
 std::vector<std::string> gLog;
 
 void Capture(std::string_view line)
@@ -255,6 +263,12 @@ OO_TEST(objectNamesAreTheFacadesAnswers)
 		for (const OOEntityObjectName &row : oo::EntityObjectNames())
 		{
 			if (!names.contains(row.name))  different += std::string(" notTheFacades:") + row.name;
+			if (DeletedCategoryName(row.name))
+			{
+				// its method went with its category (bead oo-9ht.186): the row stays, called, with its body
+				if (row.kind != kOOEntityObjectCalled || oo::EntityFacadeRowNamed(row.name) == nullptr || oo::EntityFacadeRowNamed(row.name)->typed == nullptr)  different += std::string(" deleted:") + row.name;
+				continue;
+			}
 			Method method = class_getInstanceMethod([::Entity class], OOSelectorFromName(row.name));
 			if (method == nullptr)  { different += std::string(" noMethod:") + row.name; continue; }
 			if (row.encoding != std::string(method_getTypeEncoding(method)))  different += std::string(" encoding:") + row.name;
@@ -270,7 +284,7 @@ OO_TEST(objectNamesAreTheFacadesAnswers)
 			SEL selector = OOSelectorFromName(name.c_str());
 			for (const Sample &sample : Samples())
 			{
-				const bool answered = class_getInstanceMethod(object_getClass(sample.object), selector) != nullptr && [sample.object respondsToSelector:selector];
+				const bool answered = DeletedCategoryName(name) || (class_getInstanceMethod(object_getClass(sample.object), selector) != nullptr && [sample.object respondsToSelector:selector]);
 				const bool tabled = row != nullptr && (row->answers == nullptr || row->answers(sample.entity));
 				if (answered != tabled)  different += " " + name + "/" + sample.kind;
 			}

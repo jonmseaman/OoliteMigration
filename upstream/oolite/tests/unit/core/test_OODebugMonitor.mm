@@ -134,12 +134,12 @@ class PlayerEntity
 public:
 	NSUInteger dialMaxMissiles();
 	::ShipEntity *missileForPylon(NSUInteger value);
-	std::vector<oo::ObjCRef<::Entity *>> getScannedWormholes();
+	std::vector<oo::EntityHold> getScannedWormholes();
 };
 
 NSUInteger PlayerEntity::dialMaxMissiles()  { std::abort(); }
 ::ShipEntity *PlayerEntity::missileForPylon(NSUInteger /*value*/)  { std::abort(); }
-std::vector<oo::ObjCRef<::Entity *>> PlayerEntity::getScannedWormholes()  { std::abort(); }
+std::vector<oo::EntityHold> PlayerEntity::getScannedWormholes()  { std::abort(); }
 
 PlayerEntity *gOOPlayer = nullptr;
 

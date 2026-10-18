@@ -661,6 +661,7 @@ void SetNextBeacon(cxx::Entity *beacon, cxx::Entity *other);
 std::optional<std::string> BeaconCode(cxx::Entity *beacon);
 void SetBeaconCode(cxx::Entity *beacon, const std::optional<std::string> &code);
 OOComparisonResult CompareBeaconCodes(cxx::Entity *beacon, cxx::Entity *other);
+bool BeaconIsJammingScanning(cxx::Entity *beacon);	// -isJammingScanning, the same way (bead oo-9ht.39.18)
 
 }	// namespace oo
 

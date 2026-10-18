@@ -140,7 +140,7 @@ BOOL IsStationPredicate(cxx::Entity *entity, void * /*parameter*/)
 BOOL IsPlanetPredicate(cxx::Entity *entity, void * /*parameter*/)
 {
 	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity); link != nullptr ? ![link->objcOwner() isPlanet] : !(entity != nullptr && entity->isPlanet()))  return NO;
-	OOStellarBodyType type = OOStellarBodyPlanetType(oo::ToObjC(entity));	// the planet is C++ since bead oo-9ht.129
+	OOStellarBodyType type = OOStellarBodyPlanetType(entity);	// the planet is C++ since bead oo-9ht.129
 	return (type == STELLAR_TYPE_NORMAL_PLANET || type == STELLAR_TYPE_MOON);
 }
 

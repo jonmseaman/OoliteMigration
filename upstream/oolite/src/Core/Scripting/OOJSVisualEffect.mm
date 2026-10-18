@@ -669,7 +669,7 @@ static bool VisualEffectRemove(ooscript::Context cx, ooscript::CallArgs &oojsArg
 	
 	if ((thisEnt != nullptr ? thisEnt->getIsSubEntity() : false))
 	{
-		OOVisualEffectEntity				*parent = oo::ToEffect(static_cast<::Entity *>(thisEnt != nullptr ? thisEnt->owner() : id{}));	// C++ since bead oo-9ht.165
+		OOVisualEffectEntity				*parent = oo::ToEffect(oo::LiveOwner(thisEnt));	// C++ since bead oo-9ht.165; the owner's C++ entity (bead oo-9ht.39.25)
 		if (parent != nullptr)  parent->removeSubEntity(thisEnt);	// the C++ sub-entity (bead oo-9ht.39.8.13)
 	}
 	else

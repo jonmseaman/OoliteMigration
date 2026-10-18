@@ -2325,18 +2325,18 @@ void PlayerEntity::sendAllShipsAway()
 		return;
 	int			ent_count =		UNIVERSE->n_entities;
 	cxx::Entity**	uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
-	std::vector<::Entity *>	my_entities(ent_count);
+	std::vector<cxx::Entity *>	my_entities(ent_count);
 	int i;
 	for (i = 0; i < ent_count; i++)
-		my_entities[i] = [oo::ToObjC(uni_entities[i]) retain];		//	retained
+		my_entities[i] = oo::RetainEntity(uni_entities[i]);		//	retained (its object; bead oo-9ht.39.18)
 
 	for (i = 1; i < ent_count; i++)
 	{
-		::Entity* e1 = my_entities[i];
-		if ([e1 isShip])
+		cxx::Entity* e1 = my_entities[i];
+		if (oo::EntityIsShip(e1))
 		{
 			::ShipEntity* se1 = oo::ToShip(e1);
-			int e_class = [e1 scanClass];
+			int e_class = e1->getScanClass();	// virtual: an Objective-C entity is still messaged
 			if (((e_class == CLASS_NEUTRAL)||(e_class == CLASS_POLICE)||(e_class == CLASS_MILITARY)||(e_class == CLASS_THARGOID)) &&
 											! ((se1 != nullptr ? se1->getIsStation() : false) && (se1 != nullptr ? se1->getMaxFlightSpeed() : 0.0f) == 0) &&  // exclude only stations, not carriers.
 											(se1 != nullptr ? se1->hasHyperspaceMotor() : false)) // exclude non jumping ships. Escorts will still be able to follow a mother.
@@ -2354,7 +2354,7 @@ void PlayerEntity::sendAllShipsAway()
 	
 	for (i = 0; i < ent_count; i++)
 	{
-		[my_entities[i] release];		//	released
+		oo::ReleaseEntity(my_entities[i]);		//	released
 	}
 }
 
@@ -2997,12 +2997,12 @@ NSUInteger PlayerEntity::eqScriptIndexForKey(const std::string &eq_key)
 void PlayerEntity::targetNearestHostile()
 {
 	scanForHostiles();
-	::Entity *ent = oo::ToObjC(foundTarget());
-	if (ent != nil)
+	cxx::Entity *ent = foundTarget();
+	if (ent != nullptr)
 	{
 		ident_engaged = YES;
 		missile_status = MISSILE_STATUS_TARGET_LOCKED;
-		addTarget(oo::ToCxx(ent));
+		addTarget(ent);
 	}
 }
 
@@ -3010,12 +3010,12 @@ void PlayerEntity::targetNearestHostile()
 void PlayerEntity::targetNearestIncomingMissile()
 {
 	scanForNearestIncomingMissile();
-	::Entity *ent = oo::ToObjC(foundTarget());
-	if (ent != nil)
+	cxx::Entity *ent = foundTarget();
+	if (ent != nullptr)
 	{
 		ident_engaged = YES;
 		missile_status = MISSILE_STATUS_TARGET_LOCKED;
-		addTarget(oo::ToCxx(ent));
+		addTarget(ent);
 	}
 }
 

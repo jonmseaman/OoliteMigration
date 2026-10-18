@@ -1524,9 +1524,9 @@ oo::PList PlayerEntity::commanderDataDictionary()
 	// wormhole information
 	oo::PList::Array wormholeDicts;
 	wormholeDicts.reserve(scannedWormholes.size());
-	for (const oo::ObjCRef<::Entity *> &wh : scannedWormholes)
+	for (const oo::EntityHold &wh : scannedWormholes)
 	{
-		wormholeDicts.push_back(static_cast<WormholeEntity *>(oo::ToCxx(wh.get()))->getDict());	// the list holds wormholes only
+		wormholeDicts.push_back(static_cast<WormholeEntity *>(wh.get())->getDict());	// the list holds wormholes only
 	}
 	result["wormholes"] = oo::PList(std::move(wormholeDicts));
 
@@ -2169,9 +2169,9 @@ bool PlayerEntity::setCommanderDataFromDictionary(const oo::PList &dict)
 	for (const oo::PList &whCurrDict : (whList != nullptr) ? *whList : oo::PList::Array())
 	{
 		oo::Ref<WormholeEntity> whRef = oo::makeRef<WormholeEntity>();
-		::Entity *whObject = [oo::NewEntityFacade(whRef) retain];	// (the +1 of the old +alloc is still never released, as before)
+		cxx::Entity *wh = oo::RetainEntity(oo::MadeEntity(whRef));	// its object (the +1 of the old +alloc is still never released, as before)
 		whRef->initWithDict(whCurrDict);
-		scannedWormholes.push_back(oo::ObjCRef<::Entity *>(whObject));
+		scannedWormholes.push_back(oo::EntityHold(wh));
 		/* TODO - add to Universe if the wormhole hasn't expired yet; but in this case
 		 * we need to save/load position and mass as well, which we currently 
 		 * don't
@@ -2716,7 +2716,7 @@ bool PlayerEntity::canCollide()
 // Slice 6 of docs/phases/3-slices/PlayerEntity.md (bead oo-vzjco): sun glare, the atmosphere, update:.
 // (Its facade forwarded each selector until bead oo-9ht.177 deleted it; sends to self are member calls.)
 
-OOComparisonResult PlayerEntity::compareZeroDistance(Entity * /*otherEntity*/)
+OOComparisonResult PlayerEntity::compareZeroDistance(cxx::Entity * /*otherEntity*/)
 {
 	return OOOrderedDescending;  // always the most near
 }
@@ -2746,12 +2746,12 @@ GLfloat PlayerEntity::lookingAtSunWithThresholdAngleCos(GLfloat thresholdAngleCo
 	{
 		if (uni_entities[i]->isSunlit)
 		{
-			if ([oo::ToObjC(uni_entities[i]) isPlanet] || 
-				([oo::ToObjC(uni_entities[i]) isShip] &&
-				 [oo::ToObjC(uni_entities[i]) isVisible]))
+			if (oo::EntityIsPlanet(uni_entities[i]) || 
+				(oo::EntityIsShip(uni_entities[i]) &&
+				 uni_entities[i]->isVisible()))
 			{
 				// the player ship can't shadow internal views
-				if (EXPECT(vdir > VIEW_STARBOARD || ![oo::ToObjC(uni_entities[i]) isPlayer]))
+				if (EXPECT(vdir > VIEW_STARBOARD || !oo::EntityIsPlayer(uni_entities[i])))
 				{
 					float shadow = 1.5f;
 					shadowAtPointOcclusionToValue(viewpointPosition(),1.0f,uni_entities[i],sun,&shadow);
@@ -3436,11 +3436,11 @@ void PlayerEntity::updateAlertConditionForNearbyEntities()
 
 	int				i, ent_count	= UNIVERSE->n_entities;
 	cxx::Entity			**uni_entities	= UNIVERSE->sortedEntities;	// grab the public sorted list
-	std::vector<::Entity*> my_entities(ent_count);
-	::Entity			*scannedEntity = nil;
+	std::vector<cxx::Entity *> my_entities(ent_count);	// the C++ entities, their objects retained (bead oo-9ht.39.18)
+	cxx::Entity			*scannedEntity = nullptr;
 	for (i = 0; i < ent_count; i++)
 	{
-		my_entities[i] = [oo::ToObjC(uni_entities[i]) retain];	// retained
+		my_entities[i] = oo::RetainEntity(uni_entities[i]);	// retained
 	}
 	BOOL massLocked = NO;
 	BOOL foundHostiles = NO;
@@ -3456,18 +3456,18 @@ void PlayerEntity::updateAlertConditionForNearbyEntities()
 		if (EXPECT_NOT(needHyperspeedNearest))
 		{
 			// not visual effects, waypoints, ships, etc.
-			if (scannedEntity != oo::ToObjC(this) && [scannedEntity canCollide] && (![scannedEntity isShip] || !collisionExceptedFor(oo::ToShip(scannedEntity))))
+			if (scannedEntity != this && scannedEntity->canCollide() && (!oo::EntityIsShip(scannedEntity) || !collisionExceptedFor(oo::ToShip(scannedEntity))))
 			{
-				hsnDistance = sqrt(scannedEntity->_cxxEntity->zero_distance)-[scannedEntity collisionRadius];
+				hsnDistance = sqrt(scannedEntity->zero_distance)-scannedEntity->collisionRadius();
 				needHyperspeedNearest = NO;
 			}
 		} 
-		else if ([scannedEntity isStellarObject])
+		else if (scannedEntity->isStellarObject())
 		{
 			// planets, stars might be closest surface even if not
 			// closest centre. That could be true of others, but the
 			// error is negligible there.
-			double thisHSN = sqrt(scannedEntity->_cxxEntity->zero_distance)-[scannedEntity collisionRadius];
+			double thisHSN = sqrt(scannedEntity->zero_distance)-scannedEntity->collisionRadius();
 			if (thisHSN < hsnDistance)
 			{
 				hsnDistance = thisHSN;
@@ -3475,9 +3475,9 @@ void PlayerEntity::updateAlertConditionForNearbyEntities()
 		}
 #endif
 		
-		if (scannedEntity->_cxxEntity->zero_distance < SCANNER_MAX_RANGE2 || !scannedEntity->_cxxEntity->isShip)
+		if (scannedEntity->zero_distance < SCANNER_MAX_RANGE2 || !scannedEntity->isShip)
 		{
-			int theirClass = [scannedEntity scanClass];
+			int theirClass = scannedEntity->getScanClass();
 			// here we could also force masslock for higher than yellow alert, but
 			// if we are going to hand over masslock control to scripting, might as well
 			// hand it over fully
@@ -3487,11 +3487,11 @@ void PlayerEntity::updateAlertConditionForNearbyEntities()
 			}
 			if (theirClass != CLASS_NO_DRAW)
 			{
-				if (theirClass == CLASS_THARGOID || [scannedEntity isCascadeWeapon])
+				if (theirClass == CLASS_THARGOID || OOEntityIsCascadeWeapon(scannedEntity))
 				{
 					foundHostiles = YES;
 				}
-				else if ([scannedEntity isShip])
+				else if (oo::EntityIsShip(scannedEntity))
 				{
 					::ShipEntity *ship = oo::ToShip(scannedEntity);
 					foundHostiles |= (((ship != nullptr ? ship->hasHostileTarget() : false))&&((ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr) == this));
@@ -3534,7 +3534,7 @@ void PlayerEntity::updateAlertConditionForNearbyEntities()
 
 	for (i = 0; i < ent_count; i++)
 	{
-		[my_entities[i] release];	//	released
+		oo::ReleaseEntity(my_entities[i]);	//	released
 	}
 	
 	BOOL energyCritical = NO;
@@ -3571,19 +3571,19 @@ void PlayerEntity::setMaxFlightYaw(GLfloat newValue)
 }
 
 
-bool PlayerEntity::checkEntityForMassLock(::Entity *ent, int theirClass)
+bool PlayerEntity::checkEntityForMassLock(cxx::Entity *ent, int theirClass)
 {
 	BOOL massLocked = NO;
-	BOOL entIsCloakedShip = [ent isShip] && (oo::ToShip(ent) != nullptr ? oo::ToShip(ent)->isCloaked() : false);
+	BOOL entIsCloakedShip = oo::EntityIsShip(ent) && (oo::ToShip(ent) != nullptr ? oo::ToShip(ent)->isCloaked() : false);
 	
-	if (EXPECT_NOT([ent isStellarObject]))
+	if (EXPECT_NOT(ent->isStellarObject()))
 	{
-		::Entity<OOStellarBody> *stellar = (::Entity<OOStellarBody> *)ent;
+		cxx::Entity *stellar = ent;	// a sun or a planet (bead oo-9ht.39.18)
 		if (EXPECT(OOStellarBodyPlanetType(stellar) != STELLAR_TYPE_MINIATURE))
 		{
-			double dist = stellar->_cxxEntity->zero_distance;
-			double rad = stellar->_cxxEntity->collision_radius;
-			double factor = ([stellar isSun]) ? 2.0 : 4.0;
+			double dist = stellar->zero_distance;
+			double rad = stellar->collision_radius;
+			double factor = (stellar->isSun()) ? 2.0 : 4.0;
 			// plus ensure mass lock when 25 km or less from the surface of small stellar bodies
 			// dist is a square distance so it needs to be compared to (rad+25000) * (rad+25000)!
 			if (dist < rad*rad*factor || dist < rad*rad + 50000*rad + 625000000 ) 
@@ -3600,13 +3600,13 @@ bool PlayerEntity::checkEntityForMassLock(::Entity *ent, int theirClass)
 		}
 	}
 
-	if (!massLocked && ent->_cxxEntity->zero_distance <= SCANNER_MAX_RANGE2)
+	if (!massLocked && ent->zero_distance <= SCANNER_MAX_RANGE2)
 	{
 		switch (theirClass)
 		{
 			case CLASS_NO_DRAW:
 				// cloaked ships do mass lock! - Nikos 20200718
-				if (entIsCloakedShip && ![ent isPlayer])
+				if (entIsCloakedShip && !oo::EntityIsPlayer(ent))
 				{
 					massLocked = YES;
 				}
@@ -3903,7 +3903,7 @@ bool PlayerEntity::engageAutopilotToStation(::StationEntity *stationForDocking)
 	if (shipAI != nullptr)  shipAI->setState("BEGIN_DOCKING");	// reboot the AI
 	playAutopilotOn();
 	OOMusicController::sharedController()->playDockingMusic();
-	doScriptEvent(OOJSID("playerStartedAutoPilot"), oo::ToObjC(stationForDocking));
+	doScriptEvent(OOJSID("playerStartedAutoPilot"), stationForDocking);
 	setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_GRANTED);
 		
 	if (afterburner_engaged)
@@ -4162,7 +4162,7 @@ void PlayerEntity::performLaunchingUpdates(OOTimeDelta delta_t)
 
 		setDockingClearanceStatus(DOCKING_CLEARANCE_STATUS_NONE);
 		::StationEntity *stationLaunchedFrom = oo::ToStation((UNIVERSE != nullptr ? UNIVERSE->nearestEntityMatchingPredicate(IsStationPredicate, NULL, this) : nullptr));
-		doScriptEvent(OOJSID("shipLaunchedFromStation"), oo::ToObjC(stationLaunchedFrom));
+		doScriptEvent(OOJSID("shipLaunchedFromStation"), stationLaunchedFrom);
 	}
 }
 
@@ -4401,7 +4401,7 @@ void PlayerEntity::updateTargeting()
 	// If our primary target is a wormhole, check to see if we have additional
 	// information
 	UPDATE_STAGE("checking for additional wormhole information");
-	if ([oo::ToObjC(primaryTarget()) isWormhole])
+	if ((primaryTarget() != nullptr && primaryTarget()->getIsWormhole()))
 	{
 		WormholeEntity *wh = static_cast<WormholeEntity *>(primaryTarget());	// -isWormhole
 		switch ((wh != nullptr ? wh->scanInfo() : WORMHOLE_SCANINFO{}))
@@ -5070,11 +5070,11 @@ GLfloat PlayerEntity::dialAltitude()
 	// find nearest planet type entity...
 	assert(UNIVERSE != nil);
 	
-	::Entity	*nearestPlanet = (::Entity<OOStellarBody> *)oo::ToObjC(findNearestStellarBody());
-	if (nearestPlanet == nil)  return 1.0f;
+	cxx::Entity	*nearestPlanet = findNearestStellarBody();
+	if (nearestPlanet == nullptr)  return 1.0f;
 	
-	GLfloat	zd = nearestPlanet->_cxxEntity->zero_distance;
-	GLfloat	cr = nearestPlanet->_cxxEntity->collision_radius;
+	GLfloat	zd = nearestPlanet->zero_distance;
+	GLfloat	cr = nearestPlanet->collision_radius;
 	GLfloat	alt = sqrt(zd) - cr;
 	
 	return OOClamp_0_1_f(alt / (GLfloat)PLAYER_DIAL_MAX_ALTITUDE);
@@ -5239,7 +5239,7 @@ std::vector<std::string> PlayerEntity::getRoleWeights()
 
 void PlayerEntity::addRoleForAggression(::ShipEntity *victim)
 {
-	if ((victim != nullptr ? victim->isExplicitlyUnpiloted() : false) || (victim != nullptr ? victim->getIsHulk() : false) || (victim != nullptr ? victim->hasHostileTarget() : false) || [oo::ToObjC((victim != nullptr ? victim->primaryAggressor() : (cxx::Entity *)nullptr)) isPlayer])
+	if ((victim != nullptr ? victim->isExplicitlyUnpiloted() : false) || (victim != nullptr ? victim->getIsHulk() : false) || (victim != nullptr ? victim->hasHostileTarget() : false) || oo::EntityIsPlayer((victim != nullptr ? victim->primaryAggressor() : (cxx::Entity *)nullptr)))
 	{
 		return;
 	}
@@ -5420,14 +5420,14 @@ void PlayerEntity::setCompassTargetEntity(cxx::Entity *value)
 void PlayerEntity::validateCompassTarget()
 {
 	::OOSunEntity		*the_sun = (UNIVERSE != nullptr ? UNIVERSE->sun() : nullptr);
-	::Entity			*the_planet = oo::ToObjC((UNIVERSE != nullptr ? UNIVERSE->planet() : nullptr));	// its Objective-C object (C++ since bead oo-9ht.129)
+	cxx::Entity			*the_planet = (UNIVERSE != nullptr ? UNIVERSE->planet() : nullptr);	// C++ since bead oo-9ht.129
 	::StationEntity	*the_station = (UNIVERSE != nullptr ? UNIVERSE->station() : nullptr);
-	::Entity			*the_target = oo::ToObjC(primaryTarget());
-	::Entity <OOBeaconEntity>		*beacon = (::Entity <OOBeaconEntity> *)oo::ToObjC(nextBeacon());
+	cxx::Entity			*the_target = primaryTarget();
+	cxx::Entity		*beacon = nextBeacon();
 	if (isInSpace() && the_sun && the_planet		// be in a system
 		&& !(the_sun != nullptr ? the_sun->goneNova() : false))			// and the system has not been novabombed
 	{
-		::Entity *new_target = nil;
+		cxx::Entity *new_target = nullptr;	// the C++ entities (bead oo-9ht.39.18)
 		OOAegisStatus	aegis = checkForAegis();
 		
 		switch (getCompassMode())
@@ -5438,7 +5438,7 @@ void PlayerEntity::validateCompassTarget()
 			case COMPASS_MODE_BASIC:
 				if ((aegis == AEGIS_CLOSE_TO_MAIN_PLANET || aegis == AEGIS_IN_DOCKING_RANGE) && the_station)
 				{
-					new_target = oo::ToObjC(the_station);
+					new_target = the_station;
 				}
 				else
 				{
@@ -5451,11 +5451,11 @@ void PlayerEntity::validateCompassTarget()
 				break;
 				
 			case COMPASS_MODE_STATION:
-				new_target = oo::ToObjC(the_station);
+				new_target = the_station;
 				break;
 				
 			case COMPASS_MODE_SUN:
-				new_target = oo::ToObjC(the_sun);	// the sun is C++ since bead oo-9ht.111
+				new_target = the_sun;	// the sun is C++ since bead oo-9ht.111
 				break;
 				
 			case COMPASS_MODE_TARGET:
@@ -5467,18 +5467,18 @@ void PlayerEntity::validateCompassTarget()
 				break;
 		}
 		
-		if (new_target == nil || [new_target status] < STATUS_ACTIVE || [new_target status] == STATUS_IN_HOLD)
+		if (new_target == nullptr || oo::EntityStatus(new_target) < STATUS_ACTIVE || oo::EntityStatus(new_target) == STATUS_IN_HOLD)
 		{
 			setCompassMode(COMPASS_MODE_PLANET);
 			new_target = the_planet;
 		}
 		
-		if (EXPECT_NOT(new_target != getCompassTarget()))
+		if (EXPECT_NOT(new_target != getCompassTargetEntity()))
 		{
-			setCompassTarget(new_target);
+			setCompassTargetEntity(new_target);
 			// a nil target was left out of the Objective-C argument array, as before
 			std::vector<oo::PList> compassArguments;
-			if (new_target != nil)  compassArguments.push_back(oo::EntityObjectNode(new_target));
+			if (new_target != nullptr)  compassArguments.push_back(oo::EntityObjectNode(new_target));
 			compassArguments.emplace_back(cxx_OOStringFromCompassMode(getCompassMode()));
 			doScriptEvent(OOJSID("compassTargetChanged"), compassArguments);
 		}
@@ -5535,19 +5535,19 @@ void PlayerEntity::setCompassMode(OOCompassMode value)
 void PlayerEntity::setPrevCompassMode()
 {
 	OOAegisStatus	aegis = AEGIS_NONE;
-	::Entity <OOBeaconEntity>		*beacon = nil;
+	cxx::Entity		*beacon = nullptr;	// the C++ beacons, linked through their objects (bead oo-9ht.39.18)
 	
 	switch (compassMode)
 	{
 		case COMPASS_MODE_INACTIVE:
 		case COMPASS_MODE_BASIC:
 		case COMPASS_MODE_PLANET:
-			beacon = (::Entity <OOBeaconEntity> *)oo::ToObjC(UNIVERSE != nullptr ? UNIVERSE->lastBeacon() : nullptr);	// its object (the universe answers the C++ beacon, bead oo-9ht.39.26)
-			while (beacon != nil && [beacon isJammingScanning])
+			beacon = (UNIVERSE != nullptr ? UNIVERSE->lastBeacon() : nullptr);
+			while (beacon != nullptr && oo::BeaconIsJammingScanning(beacon))
 			{
-				beacon = [beacon prevBeacon];
+				beacon = oo::PrevBeacon(beacon);
 			}
-			setNextBeacon(oo::ToCxx(beacon));
+			setNextBeacon(beacon);
 			
 			if (beacon != nil)
 			{
@@ -5557,12 +5557,12 @@ void PlayerEntity::setPrevCompassMode()
 			// else fall through to switch to target mode.
 
 		case COMPASS_MODE_BEACONS:
-			beacon = (::Entity <OOBeaconEntity> *)oo::ToObjC(nextBeacon());
+			beacon = nextBeacon();
 			do
 			{
-				beacon = [beacon prevBeacon];
-			} while (beacon != nil && [beacon isJammingScanning]);
-			setNextBeacon(oo::ToCxx(beacon));
+				beacon = oo::PrevBeacon(beacon);
+			} while (beacon != nullptr && oo::BeaconIsJammingScanning(beacon));
+			setNextBeacon(beacon);
 			
 			if (beacon == nil)
 			{
@@ -5604,7 +5604,7 @@ void PlayerEntity::setPrevCompassMode()
 void PlayerEntity::setNextCompassMode()
 {
 	OOAegisStatus	aegis = AEGIS_NONE;
-	::Entity <OOBeaconEntity>		*beacon = nil;
+	cxx::Entity		*beacon = nullptr;	// the C++ beacons, linked through their objects (bead oo-9ht.39.18)
 	
 	switch (compassMode)
 	{
@@ -5635,24 +5635,24 @@ void PlayerEntity::setNextCompassMode()
 			// else fall through to switch to beacon mode.
 			
 		case COMPASS_MODE_TARGET:
-			beacon = (::Entity <OOBeaconEntity> *)oo::ToObjC(UNIVERSE != nullptr ? UNIVERSE->firstBeacon() : nullptr);	// its object (the universe answers the C++ beacon, bead oo-9ht.39.26)
-			while (beacon != nil && [beacon isJammingScanning])
+			beacon = (UNIVERSE != nullptr ? UNIVERSE->firstBeacon() : nullptr);
+			while (beacon != nullptr && oo::BeaconIsJammingScanning(beacon))
 			{
-				beacon = [beacon nextBeacon];
+				beacon = oo::NextBeacon(beacon);
 			}
-			setNextBeacon(oo::ToCxx(beacon));
+			setNextBeacon(beacon);
 			
 			if (beacon != nil)  setCompassMode(COMPASS_MODE_BEACONS);
 			else  setCompassMode(COMPASS_MODE_PLANET);
 			break;
 
 		case COMPASS_MODE_BEACONS:
-			beacon = (::Entity <OOBeaconEntity> *)oo::ToObjC(nextBeacon());
+			beacon = nextBeacon();
 			do
 			{
-				beacon = [beacon nextBeacon];
-			} while (beacon != nil && [beacon isJammingScanning]);
-			setNextBeacon(oo::ToCxx(beacon));
+				beacon = oo::NextBeacon(beacon);
+			} while (beacon != nullptr && oo::BeaconIsJammingScanning(beacon));
+			setNextBeacon(beacon);
 			
 			if (beacon == nil)
 			{
@@ -5701,17 +5701,17 @@ std::optional<std::string> PlayerEntity::getSpecialCargo()
 
 std::optional<std::string> PlayerEntity::dialTargetName()
 {
-	::Entity		*target_entity = oo::ToObjC(primaryTarget());
+	cxx::Entity		*target_entity = primaryTarget();
 	std::optional<std::string>	result;
 
-	if (target_entity == nil)
+	if (target_entity == nullptr)
 	{
 		result = OO_DESC("no-target-string");
 	}
 
 	// A wormhole answered -identFromShip: through its facade until bead oo-9ht.112; it is asked
 	// directly now, and any other target that answers the selector as before.
-	if (WormholeEntity *wh = (target_entity != nil) ? dynamic_cast<WormholeEntity *>(oo::ToCxx(target_entity)) : nullptr)
+	if (WormholeEntity *wh = dynamic_cast<WormholeEntity *>(target_entity))
 	{
 		result = wh->identFromShip(this);
 	}
@@ -6094,7 +6094,7 @@ void PlayerEntity::interpretAIMessage(const std::string &message)
 	{
 		if (primaryAggressor() != nil)
 		{
-			playIncomingMissile(HPVectorToVector([oo::ToObjC(primaryAggressor()) position]));
+			playIncomingMissile(HPVectorToVector((primaryAggressor() != nullptr ? primaryAggressor()->getPosition() : kZeroHPVector)));
 		}
 		else
 		{
@@ -6232,7 +6232,7 @@ bool PlayerEntity::mountMissileWithRole(const std::string &role)
 	if (!weaponsOnline())
 		return nil;
 		
-	if (mine != nullptr)  mine->setOwner(oo::ToCxx(oo::ToObjC(this)));
+	if (mine != nullptr)  mine->setOwner(this);
 	if (mine != nullptr)  mine->setBehaviour(BEHAVIOUR_IDLE);
 	dumpItem(mine);	// includes UNIVERSE addEntity: CLASS_CARGO, STATUS_IN_FLIGHT, AI state GLOBAL ( the last one starts the timer !)
 	if (mine != nullptr)  mine->setScanClass(CLASS_MINE);
@@ -6240,7 +6240,7 @@ bool PlayerEntity::mountMissileWithRole(const std::string &role)
 	float  mine_speed = 500.0f;
 	Vector mvel = vector_subtract((mine != nullptr ? mine->getVelocity() : Vector{}), vector_multiply_scalar(v_forward, mine_speed));
 	if (mine != nullptr)  mine->setVelocity(mvel);
-	doScriptEvent(OOJSID("shipReleasedEquipment"), oo::ToObjC(mine));
+	doScriptEvent(OOJSID("shipReleasedEquipment"), mine);
 	return mine;
 }
 
@@ -6579,36 +6579,36 @@ GLfloat PlayerEntity::doesHitLine(HPVector v0, HPVector v1, ::ShipEntity **hitEn
 
 void PlayerEntity::takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::Entity *otherPart, const std::string &weaponIdentifier)
 {
-	::Entity *ent = oo::ToObjC(entPart);
-	::Entity *other = oo::ToObjC(otherPart);
+	cxx::Entity *ent = entPart;	// the C++ entities (bead oo-9ht.39.18)
+	cxx::Entity *other = otherPart;
 	HPVector		rel_pos;
 	OOScalar		d_forward, d_right, d_up;
 	BOOL		internal_damage = NO;	// base chance
 	
-	OO_LOG("player.ship.damage", "Player took damage from {} becauseOf {}", oo::DescriptionOf(ent), oo::DescriptionOf(other));
+	OO_LOG("player.ship.damage", "Player took damage from {} becauseOf {}", oo::EntityDescription(ent), oo::EntityDescription(other));
 	
 	if (status() == STATUS_DEAD)  return;
 	if (status() == STATUS_ESCAPE_SEQUENCE) return; // if the player has ejected, don't deal more damage
 	if (amount == 0.0)  return;
 	
-	BOOL cascadeWeapon = [ent isCascadeWeapon];
+	BOOL cascadeWeapon = OOEntityIsCascadeWeapon(entPart);
 	BOOL cascading = NO;
 	if (cascadeWeapon)
 	{
-		cascading = cascadeIfAppropriateWithDamageAmount(amount, oo::ToCxx(static_cast<::Entity *>([ent owner])));
+		cascading = cascadeIfAppropriateWithDamageAmount(amount, oo::LiveOwner(ent));
 	}
 	
 	// make sure ent (& its position) is the attacking _ship_/missile !
-	if (ent && [ent isSubEntity]) ent = [ent owner];
+	if (ent && oo::EntityIsSubEntity(ent)) ent = oo::LiveOwner(ent);
 	
-	[[ent retain] autorelease];
-	[[other retain] autorelease];
+	oo::AutoreleaseEntity(oo::RetainEntity(ent));
+	oo::AutoreleaseEntity(oo::RetainEntity(other));
 	
-	rel_pos = (ent != nil) ? [ent position] : kZeroHPVector;
+	rel_pos = (ent != nullptr) ? ent->getPosition() : kZeroHPVector;
 	rel_pos = HPvector_subtract(rel_pos, position);
 	
 	doScriptEvent(OOJSID("shipBeingAttacked"), ent);
-	if ([ent isShip]) { if (oo::ToShip(ent) != nullptr)  oo::ToShip(ent)->doScriptEvent(OOJSID("shipAttackedOther"), oo::ToObjC(this)); }
+	if (oo::EntityIsShip(ent)) { if (oo::ToShip(ent) != nullptr)  oo::ToShip(ent)->doScriptEvent(OOJSID("shipAttackedOther"), this); }
 
 	d_forward = dot_product(HPVectorToVector(rel_pos), v_forward);
 	d_right = dot_product(HPVectorToVector(rel_pos), v_right);
@@ -6618,7 +6618,7 @@ void PlayerEntity::takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::En
 	playShieldHit(relative, weaponIdentifier);
 
 	// firing on an innocent ship is an offence
-	if ([other isShip])
+	if (oo::EntityIsShip(other))
 	{
 		broadcastHitByLaserFrom(oo::ToShip(other));
 	}
@@ -6668,17 +6668,17 @@ void PlayerEntity::takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::En
 			}
 		}
 	}
-	noteTakingDamage(amount, oo::ToCxx(other), damageType);
+	noteTakingDamage(amount, other, damageType);
 	if (cascading) energy = 0.0; // explicitly set energy to zero when cascading, in case an oxp raised the energy in noteTakingDamage.
 	
 	if (energy <= 0.0) //use normal ship temperature calculations for heat damage
 	{
-		if ([other isShip])
+		if (oo::EntityIsShip(other))
 		{
 			if (oo::ToShip(other) != nullptr)  oo::ToShip(other)->noteTargetDestroyed(this);
 		}
 		
-		getDestroyedBy(oo::ToCxx(other), damageType);
+		getDestroyedBy(other, damageType);
 	}
 	else
 	{
@@ -6711,7 +6711,7 @@ void PlayerEntity::takeScrapeDamage(double amount, cxx::Entity *ent)
 	OO_LOG("player.ship.damage", "Player took {:.3f} scrape damage from {}", amount, oo::EntityDescription(ent));
 	
 	oo::AutoreleaseEntity(oo::RetainEntity(ent));
-	rel_pos = ent ? [oo::ToObjC(ent) position] : kZeroHPVector;
+	rel_pos = (ent != nullptr) ? ent->getPosition() : kZeroHPVector;
 	rel_pos = HPvector_subtract(rel_pos, position);
 	// rel_pos is now small
 	d_forward = dot_product(HPVectorToVector(rel_pos), v_forward);
@@ -6859,7 +6859,7 @@ void PlayerEntity::takeHeatDamage(double amount)
 		if (doppelganger != nullptr)  doppelganger->setSpeed(0.0);
 		if (doppelganger != nullptr)  doppelganger->setDesiredSpeed(0.0);
 		if (doppelganger != nullptr)  doppelganger->setRoll(0.2 * (randf() - 0.5));
-		if (doppelganger != nullptr)  doppelganger->setOwner(oo::ToCxx(oo::ToObjC(this)));
+		if (doppelganger != nullptr)  doppelganger->setOwner(this);
 		if (doppelganger != nullptr)  doppelganger->setThrust(0); // drifts
 		if (UNIVERSE != nullptr)  UNIVERSE->addEntity(doppelganger);
 	}
@@ -6914,7 +6914,7 @@ void PlayerEntity::takeHeatDamage(double amount)
 	info_system_id = system_id;
 	setDockTarget((UNIVERSE != nullptr ? UNIVERSE->station() : nullptr));	// we're docking at the main station, if there is one
 	
-	doScriptEvent(OOJSID("shipLaunchedEscapePod"), oo::ToObjC(escapePod));	// no player.ship properties should be available to script
+	doScriptEvent(OOJSID("shipLaunchedEscapePod"), escapePod);	// no player.ship properties should be available to script
 
 	// reset legal status
 	setBounty(0, kOOLegalStatusReasonEscapePod);
@@ -7296,14 +7296,14 @@ void PlayerEntity::loseTargetStatus()
 		return;
 	int			ent_count =		UNIVERSE->n_entities;
 	cxx::Entity**	uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
-	std::vector<::Entity*> my_entities(ent_count);
+	std::vector<cxx::Entity *> my_entities(ent_count);
 	int i;
 	for (i = 0; i < ent_count; i++)
-		my_entities[i] = [oo::ToObjC(uni_entities[i]) retain];		//	retained
+		my_entities[i] = oo::RetainEntity(uni_entities[i]);		//	retained (its object; bead oo-9ht.39.18)
 	for (i = 0; i < ent_count ; i++)
 	{
-		::Entity* thing = my_entities[i];
-		if (thing->_cxxEntity->isShip)
+		cxx::Entity* thing = my_entities[i];
+		if (thing->isShip)
 		{
 			::ShipEntity* ship = oo::ToShip(thing);
 			if (this == (ship != nullptr ? ship->primaryTarget() : (cxx::Entity *)nullptr))
@@ -7314,7 +7314,7 @@ void PlayerEntity::loseTargetStatus()
 	}
 	for (i = 0; i < ent_count; i++)
 	{
-		[my_entities[i] release];		//	released
+		oo::ReleaseEntity(my_entities[i]);		//	released
 	}
 }
 
@@ -7337,7 +7337,7 @@ void PlayerEntity::enterDock(::StationEntity *station)
 	
 	setStatus(STATUS_DOCKING);
 	setDockedStation(station);
-	doScriptEvent(OOJSID("shipWillDockWithStation"), oo::ToObjC(station));
+	doScriptEvent(OOJSID("shipWillDockWithStation"), station);
 
 	if (hud != nullptr && !hud->nonlinearScanner())	// (a message to nil did nothing)
 	{
@@ -7453,7 +7453,7 @@ void PlayerEntity::docked()
 	if (gui_screen != GUI_SCREEN_MISSION)  checkScript(); // a scripted pilot could have created a mission screen.
 	
 	OOJSStartTimeLimiterWithTimeLimit(kOOJSLongTimeLimit);
-	doScriptEvent(OOJSID("shipDockedWithStation"), oo::ToObjC(dockedStation));
+	doScriptEvent(OOJSID("shipDockedWithStation"), dockedStation);
 	OOJSStopTimeLimiter();
 	if (status() == STATUS_LAUNCHING) return;
 
@@ -11095,7 +11095,7 @@ OOCargoQuantity PlayerEntity::cargoQuantityOnBoard()
 	::StationEntity *station = dockedStation();
 	if (station == nil)  
 	{
-		if ([oo::ToObjC(primaryTarget()) isStation] && (oo::ToStation(primaryTarget()) != nullptr ? oo::ToStation(primaryTarget())->getMarketBroadcast() : false))
+		if ((primaryTarget() != nullptr && primaryTarget()->getIsStation()) && (oo::ToStation(primaryTarget()) != nullptr ? oo::ToStation(primaryTarget())->getMarketBroadcast() : false))
 		{
 			station = oo::ToStation(primaryTarget());
 		}
@@ -11283,7 +11283,7 @@ std::optional<std::string> PlayerEntity::marketScreenTitle()
 	/* Override normal behaviour if station broadcasts market */
 	if (dockedStation == nil)  
 	{
-		if ([oo::ToObjC(primaryTarget()) isStation] && (oo::ToStation(primaryTarget()) != nullptr ? oo::ToStation(primaryTarget())->getMarketBroadcast() : false))
+		if ((primaryTarget() != nullptr && primaryTarget()->getIsStation()) && (oo::ToStation(primaryTarget()) != nullptr ? oo::ToStation(primaryTarget())->getMarketBroadcast() : false))
 		{
 			dockedStation = oo::ToStation(primaryTarget());
 		}
@@ -12591,7 +12591,7 @@ void PlayerEntity::addTarget(cxx::Entity *targetEntity)	// the C++ entity since 
 		playIdentLockedOn();
 		printIdentLockedOnForMissile(NO);
 	}
-	else if ([oo::ToObjC(targetEntity) isShip] && weaponsOnline()) // Only let missiles target-lock onto ships
+	else if (oo::EntityIsShip(targetEntity) && weaponsOnline()) // Only let missiles target-lock onto ships
 	{
 		if ((oo::ToShip(missile_entity[activeMissile].get()) != nullptr ? oo::ToShip(missile_entity[activeMissile].get())->getIsMissile() : false))
 		{
@@ -13467,7 +13467,7 @@ void PlayerEntity::setDockingClearanceStatus(OODockingClearanceStatus newValue)
 	}
 	else if (dockingClearanceStatus == DOCKING_CLEARANCE_STATUS_REQUESTED || dockingClearanceStatus == DOCKING_CLEARANCE_STATUS_NOT_REQUIRED)
 	{
-		if ([oo::ToObjC(primaryTarget()) isStation])
+		if ((primaryTarget() != nullptr && primaryTarget()->getIsStation()))
 		{
 			targetDockStation = oo::ToStation(primaryTarget());
 		}
@@ -13510,12 +13510,12 @@ void PlayerEntity::addScannedWormhole(::WormholeEntity *whole)
 	assert(whole != nil);
 
 	// Only add if we don't have it already!
-	for (const oo::ObjCRef<::Entity *> &wh : scannedWormholes)
+	for (const oo::EntityHold &wh : scannedWormholes)
 	{
-		if (oo::ToCxx(wh.get()) == whole)  return;
+		if (wh.get() == whole)  return;
 	}
 	if (whole != nullptr)  whole->setScannedAt(clockTimeAdjusted());
-	scannedWormholes.push_back(oo::ObjCRef<::Entity *>(oo::ToObjC(whole)));
+	scannedWormholes.push_back(oo::EntityHold(whole));
 }
 
 
@@ -13529,12 +13529,12 @@ void PlayerEntity::updateWormholes()
 
 	double now = clockTimeAdjusted();
 
-	std::vector<oo::ObjCRef<::Entity *>> savedWormholes;
+	std::vector<oo::EntityHold> savedWormholes;
 	savedWormholes.reserve(scannedWormholes.size());
 
-	for (const oo::ObjCRef<::Entity *> &whRef : scannedWormholes)
+	for (const oo::EntityHold &whRef : scannedWormholes)
 	{
-		WormholeEntity *wh = static_cast<WormholeEntity *>(oo::ToCxx(whRef.get()));
+		WormholeEntity *wh = static_cast<WormholeEntity *>(whRef.get());
 		// TODO: Start drawing wormhole exit a few seconds before the first
 		//       ship is disgorged.
 		if ((wh != nullptr ? wh->arrivalTime() : 0.0) > now)
@@ -13556,7 +13556,7 @@ void PlayerEntity::updateWormholes()
 }
 
 
-std::vector<oo::ObjCRef<::Entity *>> PlayerEntity::getScannedWormholes()
+std::vector<oo::EntityHold> PlayerEntity::getScannedWormholes()
 {
 	return scannedWormholes;
 }

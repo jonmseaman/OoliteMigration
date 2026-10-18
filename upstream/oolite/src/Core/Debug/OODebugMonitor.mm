@@ -499,9 +499,9 @@ void OODebugMonitor::dumpMemoryStatistics()
 	{
 		dumpEntity(oo::ToObjC(entity.get()), &entityDumpState, true);	// its object (the universe holds the C++ entity, bead oo-9ht.39.26)
 	}
-	for (const oo::ObjCRef<::Entity *> &entityRef : (PLAYER != nullptr ? PLAYER->getScannedWormholes() : std::vector<oo::ObjCRef<::Entity *>>()))
+	for (const oo::EntityHold &entityRef : (PLAYER != nullptr ? PLAYER->getScannedWormholes() : std::vector<oo::EntityHold>()))
 	{
-		dumpEntity(entityRef.get(), &entityDumpState, true);
+		dumpEntity(oo::ToObjC(entityRef.get()), &entityDumpState, true);	// its object (the player holds the C++ wormhole, bead oo-9ht.39.18)
 	}
 
 	oo::log::outdent();
