@@ -51,6 +51,13 @@ uint32_t gDebugFlags = 0;
 #endif
 
 
+// The ship's group, private again in C++ (bead oo-9ht.184.1), and nothing else.
+struct ShipEntityTestAccess
+{
+	static oo::Ref<::OOShipGroup> &Group(::ShipEntity *s)	{ return s->_group; }
+};
+
+
 // MARK: The stand-ins -----------------------------------------------------------------------------
 
 // An entity scripts can see; it answers like any Entity otherwise (an Objective-C subclass until bead
@@ -796,7 +803,7 @@ OO_TEST(shipCreators)
 	Log(sUniverse->_log);
 	::ShipEntity *first = MakeShip(60);
 	::ShipEntity *second = MakeShip(61);
-	first->_group = OOShipGroup::groupWithName(std::string("convoy"));
+	ShipEntityTestAccess::Group(first) = OOShipGroup::groupWithName(std::string("convoy"));
 	sUniverse->_shipsToAdd = { oo::EntityHold(first), oo::EntityHold(second) };
 
 	OO_CHECK_EVAL("system.addShips('trader', 2).map(function (s) { return s.position.x; }).join()", "60,61");

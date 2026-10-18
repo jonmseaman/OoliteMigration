@@ -1237,8 +1237,9 @@ BOOL OOJSArgumentListGetNumberNoError(ooscript::Context context, unsigned argc, 
 
 // The root-class JS glue for classes rooted on OOObject (ADR-0029). Foundation objects have none:
 // OOJSValueFromNativeObject() converts them through their property-list form (proposed ADR-0051).
-// The category OOObject (OOJavaScriptConversion) forwards to these from OOObject+OOJavaScript.mm
-// (amendment oo-ppc item 3); the sends to the object go through its bridges (amendment oo-9ht.139).
+// They are OOObject's defaults, which OOObject+OOJavaScript.mm's bridges call for an object whose
+// class has no method of its own (the category that forwarded to them, amendment oo-ppc item 3, is
+// deleted: bead oo-t7o84); the sends to the object go through its bridges (amendment oo-9ht.139).
 ooscript::Value OOObjectJSValueInContext(ooscript::Context /*context*/)
 {
 	return ooscript::undefinedValue();

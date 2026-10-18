@@ -304,7 +304,9 @@ void OOJSTimer::timerFired()
 	if (oo::EntityIn(thisValue) != nullptr)  described = true;	// an entity's object described itself (bead oo-dpyk8)
 	else if (object != nil)
 	{
-		described = [object cxx_oo_jsDescription].has_value();
+		// Its class's own -cxx_oo_jsDescription, else OOObject's default, which is never nil (bead
+		// oo-t7o84 deleted the category that answered it).
+		described = !OOJSObjectAnswersGlue(object, @selector(cxx_oo_jsDescription)) || [object cxx_oo_jsDescription].has_value();
 		if (!described)  described = oo::DescriptionOf(object) != "(null)";	// -description was nil
 	}
 	else

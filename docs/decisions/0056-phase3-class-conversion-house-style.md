@@ -9112,3 +9112,54 @@ those members and categories stay as they are, listed per bead in the bead notes
    literals and the tests' stand-ins) are described through it.
 
 **Tests.** No test file, case or expected value changes.
+
+## Amendment (beads oo-t7o84, oo-8sql7, oo-9ht.184.1, oo-6e1.1): the root's JS glue category is deleted; literals describe themselves in C++; the ship's test-read state is private
+
+**Context.** Track A batch AR: the re-bases batch AQ listed (amendment oo-9ht.184 items 1, 3-5). Surveyed first:
+the stand-ins batch AQ listed in test_OOJSTimer, test_OOJSMission, test_OOJSShipGroup, test_OOJSStation,
+test_OOJSSystemInfo, test_OOJSEquipmentInfo, test_OOCharacter, test_OOJSDock/ExhaustPlume/Flasher/Planet/Sun/
+VisualEffect/Waypoint/Wormhole, test_OOJSEntity and test_OOJSQuaternion are narrow-link tests that link neither
+OOJavaScriptEngine.mm nor OOObject+OOJavaScript.mm: each answers the glue selectors itself (its own category or
+stand-in methods), so deleting the game's category does not reach them and they are unchanged. Of the full-link
+tests only test_OOJavaScriptEngine sends the category's selectors.
+
+**Decision (recommended defaults).** Behaviour-identical.
+
+1. **OOObject+OOJavaScript (oo-t7o84).** `@implementation OOObject (OOJavaScriptConversion)` is deleted. Its five
+   selectors are declared by an `@optional` protocol `OOJSObjectGlue` (so a send to `id` still compiles), and
+   `OOJSObjectAnswersGlue(id, SEL)` (inline, `class_respondsToSelector` on the object's class) says whether the
+   object's class has its own method. The engine's bridges (`OOJavaScriptEngineJSValueInContext`,
+   `...JSClassName`, `...JSDescription`, `...JSDescriptionWithClassName`, `...ClearJSSelf`) send the selector when
+   it does and otherwise call OOObject's default, the C++ function the category's method called
+   (`OOObjectJSValueInContext`, `OOObjectJSClassName`, `OOObjectJSDescription`, `OOObjectJSDescriptionWithClassName`,
+   `OOObjectClearJSSelf`); nil gets what the message to nil gave (zero value, nullopt, nothing). The two other
+   senders (OOJSTimer.mm's "is `this` still described", OOJSConsole.mm's callObjC class name) use the same test
+   inline, because their narrow tests do not link the engine: OOObject's JS description is never nil, its class
+   name is none. The class check is on the object's own class, not `-respondsToSelector:`, so a weak reference
+   (whose `-respondsToSelector:` forwards) is still asked its own forwarding methods. Left: the id bridges that
+   are not the category's (`WeakRefUnderlyingObject`, `Class`, `OOObjectClass`, `IsKindOfClass`,
+   `CaughtOOException`, `DescriptionComponents`), runtime use without an `@implementation`, removed with the root
+   and the runtime (oo-4aq6a, oo-dbz); OOWeakReference's forwarding of the glue (OOWeakReference.mm,
+   OOWeakReference+ObjCBridge.mm) goes with oo-9ht.22. **Flag (debug only):** callObjC by name on an Objective-C
+   object (OOJSCall.mm's object path) no longer finds the five selectors on an object whose class does not define
+   them ("does not respond" instead of the default's answer); no object the game puts in a JS slot is such an
+   object, and no test asks it.
+2. **OODescription (oo-8sql7), shrunk, not deleted.** The category `OOConstantString (OODescription)` is deleted:
+   `oo::DescriptionOf`/`oo::ShortDescriptionOf` answer a literal (OOConstantString, OOTinyString) with its text
+   in C++, as the category did. The category `OOObject (OODescription)` stays: its own test,
+   tests/unit/oofnd/test_objc_description.mm (`a_plain_object_is_its_class_and_pointer`), sends all four of its
+   methods to a plain object, and a test file is not deleted here. The stand-ins overriding
+   `-cxx_descriptionComponents` (test_objc_plist, test_OOJavaScriptEngine, test_OOJSShipGroup, test_OOJSStation)
+   are reached as before and need no re-base while the category stays.
+3. **ShipEntity (oo-9ht.184.1).** `friend struct ::ShipEntityTestAccess;` and the test-read members of amendment
+   oo-9ht.184 item 1 (`_equipment`, `_heatInsulation`, `_group`, `_maxEscortCount`, `_pendingEscortCount`,
+   `_escortPositionsValid`, `_profileRadius`, `_nextAegisCheck`, `isDemoShip`, `demoRate`, `demoStartOrientation`)
+   are private, in declaration order (the block is one `private:` section). test_ShipEntity and test_OOJSSystem
+   each define the struct with the accessors they need (as OOLaserShotEntityTestAccess).
+4. **NSObjectOOExtensions (oo-6e1.1).** Unchanged: the rest of the bead (OOWeakReference's `-oo_objectSize`
+   forwarding) waits on oo-9ht.22, so the `oo_objectSize` row of OOEntityObjectNamesTable.h stays (removing it
+   alone would change callObjC's answer for nothing).
+
+**Tests.** Approval lines under oo-9n5p9 (tools/retire-test-approvals.txt): test_OOJavaScriptEngine (four direct
+sends re-based to the C++ bridges), test_ShipEntity and test_OOJSSystem (member reads/writes through
+ShipEntityTestAccess). No case or expected value changes; no test file is deleted.

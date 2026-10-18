@@ -2,13 +2,15 @@
 
 OOObject+OOJavaScript.h
 
-TRANSITIONAL (proposed ADR-0056, bead oo-wdqw1): the root class's JS glue, the category OOObject
-(OOJavaScript), and the one-line bridges through which OOJavaScriptEngine.mm's free functions send
-to objects that are still Objective-C. Both were in the engine's facade file
+TRANSITIONAL (proposed ADR-0056, bead oo-wdqw1): the JS glue selectors an Objective-C object may
+answer, and the one-line bridges through which OOJavaScriptEngine.mm's free functions send to
+objects that are still Objective-C. Both were in the engine's facade file
 (OOJavaScriptEngine+ObjCBridge.h), which oo-wdqw1 deleted with the engine's, OONull's and
-OOJSValue's facades; they are not the engine's facade but the root's glue, and go with the root
-class (Phase 4). Imported as the last line of OOJavaScriptEngine.h; do not import it directly.
-Never add to this file.
+OOJSValue's facades. The root's category OOObject (OOJavaScriptConversion), which answered the
+defaults, is deleted (bead oo-t7o84): the defaults are OOJavaScriptEngine.mm's C++ functions, and
+an object is sent a selector only when its class has its own method for it. The rest goes with
+the root class and the runtime (Phase 4). Imported as the last line of OOJavaScriptEngine.h; do
+not import it directly. Never add to this file.
 
 JavaScript support for Oolite
 Copyright (C) 2007-2013 David Taylor and Jens Ayton.
@@ -36,14 +38,19 @@ MA 02110-1301, USA.
 #import "OOCocoa.h"
 #import "oofnd/objc/OOObject.h"
 
+#include <objc/runtime.h>
 
-/*	The root-class JS glue for classes rooted on OOObject (ADR-0029). An object on another root
-	has none: OOJSValueFromNativeObject() gives undefined for it (oo-qps.72).
 
-	-oo_jsValueInContext:
+/*	The JS glue selectors a class rooted on OOObject (ADR-0029) may answer itself (weak references
+	and the tests' stand-ins do). An object whose class has no method for one has OOObject's
+	default, the C++ function named beside it (OOJavaScriptEngine.h), which the deleted category
+	OOObject (OOJavaScriptConversion) answered (bead oo-t7o84); the bridges below choose. An object
+	on another root has none: OOJSValueFromNativeObject() gives undefined for it (oo-qps.72).
 
-	Return the JavaScript value representation of an object. The default
-	implementation returns ooscript::undefinedValue().
+	-oo_jsValueInContext:					default OOObjectJSValueInContext()
+
+	Return the JavaScript value representation of an object. The default is
+	ooscript::undefinedValue().
 
 	SAFETY NOTE: if this message is sent to nil, the return value depends on
 	the platform and the engine's value representation. If the
@@ -51,18 +58,19 @@ MA 02110-1301, USA.
 
 	Requires a request on context.
 
-	-cxx_oo_jsDescription
-	-cxx_oo_jsDescriptionWithClassName:
-	-cxx_oo_jsClassName
+	-cxx_oo_jsDescription					default OOObjectJSDescription()
+	-cxx_oo_jsDescriptionWithClassName:		default OOObjectJSDescriptionWithClassName()
+	-cxx_oo_jsClassName						default OOObjectJSClassName()
 
-	They wrap -cxx_descriptionComponents (OODescription.h) as [jsClassName components]. C++ string twins on OOObject.
+	They wrap -cxx_descriptionComponents (OODescription.h) as [jsClassName components].
 
-	oo_clearJSSelf:
+	oo_clearJSSelf:							default OOObjectClearJSSelf()
 	This is called by OOJSObjectWrapperFinalize() when a JS object wrapper is
-	collected. The default implementation does nothing.
+	collected. The default does nothing.
 */
-@interface OOObject (OOJavaScript)
+@protocol OOJSObjectGlue
 
+@optional
 - (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context;
 - (std::optional<std::string>) cxx_oo_jsDescription;
 - (std::optional<std::string>) cxx_oo_jsDescriptionWithClassName:(const std::optional<std::string> &)className;
@@ -72,6 +80,14 @@ MA 02110-1301, USA.
 @end
 
 
+// Whether <object>'s class (or a superclass, or a category on one) has its own method for one of
+// the selectors above, so the object answers it rather than OOObject's default. false for nil.
+inline bool OOJSObjectAnswersGlue(id object, SEL selector)
+{
+	return object != nil && class_respondsToSelector(object_getClass(object), selector);
+}
+
+
 /*	One-line bridges for OOJavaScriptEngine.mm's free functions (amendment oo-9ht.139 item 3): each
 	is the one message it is named after, verbatim, to a class that is still Objective-C (the root
 	class, weak references, the entity's object, OOException). Each goes with the conversion of the
@@ -79,7 +95,7 @@ MA 02110-1301, USA.
 */
 // -weakRefUnderlyingObject (OOWeakReferenceSupport): the object itself for a non-weakref, nil for nil.
 id OOJavaScriptEngineWeakRefUnderlyingObject(id object);
-// The JS glue of any object (OOObject (OOJavaScript)), as the object's class answers it.
+// The JS glue of any object: its class's own method, else OOObject's default (above).
 ooscript::Value OOJavaScriptEngineJSValueInContext(id object, ooscript::Context context);
 std::optional<std::string> OOJavaScriptEngineJSClassName(id object);
 std::optional<std::string> OOJavaScriptEngineJSDescriptionWithClassName(id object, const std::optional<std::string> &className);
@@ -88,7 +104,7 @@ std::optional<std::string> OOJavaScriptEngineDescriptionComponents(id object);
 Class OOJavaScriptEngineClass(id object);
 // [OOObject class]
 Class OOJavaScriptEngineOOObjectClass();
-// -cxx_oo_jsDescription and -oo_clearJSSelf: of any object (OOObject (OOJavaScript)).
+// -cxx_oo_jsDescription and -oo_clearJSSelf: of any object, as the glue above.
 std::optional<std::string> OOJavaScriptEngineJSDescription(id object);
 void OOJavaScriptEngineClearJSSelf(id object, ooscript::Object selfVal);
 // -isKindOfClass: of any object; NO for nil.

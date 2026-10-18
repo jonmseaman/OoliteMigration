@@ -118,6 +118,25 @@ T *NewShip(const std::string &key, const oo::PList &dict)
 }	// namespace
 
 
+// --- The members private again in C++ (bead oo-9ht.184.1), and nothing else -------------------------
+
+struct ShipEntityTestAccess
+{
+	static double &NextAegisCheck(ShipEntity *s)			{ return s->_nextAegisCheck; }
+	static uint8_t MaxEscortCount(const ShipEntity *s)		{ return s->_maxEscortCount; }
+	static uint8_t PendingEscortCount(const ShipEntity *s)	{ return s->_pendingEscortCount; }
+	static float HeatInsulation(const ShipEntity *s)		{ return s->_heatInsulation; }
+	static GLfloat ProfileRadius(const ShipEntity *s)		{ return s->_profileRadius; }
+	static BOOL &IsDemoShip(ShipEntity *s)					{ return s->isDemoShip; }
+	static OOScalar &DemoRate(ShipEntity *s)				{ return s->demoRate; }
+	static std::vector<std::string> &Equipment(ShipEntity *s)	{ return s->_equipment; }
+	static BOOL &EscortPositionsValid(ShipEntity *s)		{ return s->_escortPositionsValid; }
+	static Quaternion &DemoStartOrientation(ShipEntity *s)	{ return s->demoStartOrientation; }
+};
+
+// --------------------------------------------------------------------------------------------------
+
+
 namespace {
 
 // --- Ivars the game reads directly (ship->shot_time), and nothing else ----------------------------
@@ -141,7 +160,7 @@ void SetWeaponTemps(ShipEntity *s, GLfloat temp, GLfloat aft)	{ s->weapon_temp =
 bool SuppressesExplosion(ShipEntity *s)	{ return s->suppressExplosion; }
 void SetBoundingBox(Entity *e, BoundingBox box)	{ e->boundingBox = box; }
 void SetShotTime(ShipEntity *s, OOTimeDelta value)	{ s->shot_time = value; }
-double NextAegisCheck(ShipEntity *s)	{ return s->_nextAegisCheck; }
+double NextAegisCheck(ShipEntity *s)	{ return ShipEntityTestAccess::NextAegisCheck(s); }
 double LaunchTime(ShipEntity *s)	{ return s->launch_time; }
 double LaunchDelay(ShipEntity *s)	{ return s->launch_delay; }
 void SetExplicitlyUnpiloted(ShipEntity *s, bool value)	{ s->_explicitlyUnpiloted = value; }
@@ -474,9 +493,9 @@ OO_TEST(setUpShipFromDictionaryNPC)
 		OO_CHECK(part->likely_cargo == 3 && !part->hasScoopMessage);
 		OO_CHECK((ship != nullptr ? ship->hasRole("police") : false) && !(ship != nullptr ? ship->hasRole("player") : false));
 		OO_CHECK((ship != nullptr ? ship->getAccuracy() : 0.0f) == 3.0f);
-		OO_CHECK(part->_maxEscortCount == MAX_ESCORTS && part->_pendingEscortCount == MAX_ESCORTS);
+		OO_CHECK(ShipEntityTestAccess::MaxEscortCount(part) == MAX_ESCORTS && ShipEntityTestAccess::PendingEscortCount(part) == MAX_ESCORTS);
 		OO_CHECK((ship != nullptr ? ship->beaconCode() : std::optional<std::string>()) == std::optional<std::string>("B") && (ship != nullptr ? ship->beaconLabel() : std::optional<std::string>()) == std::optional<std::string>("B"));
-		OO_CHECK(part->_heatInsulation == 1.5f);
+		OO_CHECK(ShipEntityTestAccess::HeatInsulation(part) == 1.5f);
 		OO_CHECK(part->_explicitlyUnpiloted && part->crew == std::nullopt);
 		OO_CHECK(part->reactionTime == 2.0f);
 		OO_CHECK(vector_equal((ship != nullptr ? ship->forwardVector() : Vector{}), kBasisZVector) && vector_equal((ship != nullptr ? ship->upVector() : Vector{}), kBasisYVector) && vector_equal((ship != nullptr ? ship->rightVector() : Vector{}), kBasisXVector));
@@ -521,7 +540,7 @@ OO_TEST(setUpSubEntitiesAndFrustumRadius)
 		MutablePart(ship)->collision_radius = 25.0f;
 		OO_CHECK((ship != nullptr ? ship->setUpSubEntities() : false));
 		OO_CHECK((ship != nullptr ? ship->maxShipSubEntities() : 0) == 0 && (ship != nullptr ? ship->subEntityCount() : 0) == 0);
-		OO_CHECK(Part(ship)->_profileRadius == 25.0f);
+		OO_CHECK(ShipEntityTestAccess::ProfileRadius(Part(ship)) == 25.0f);
 		OO_CHECK((ship != nullptr ? ship->frustumRadius() : 0.0f) == 25.0f);
 		OO_CHECK(Part(ship)->no_draw_distance == (GLfloat)(25.0 * 25.0 * NO_DRAW_DISTANCE_FACTOR * NO_DRAW_DISTANCE_FACTOR * 2.0));
 	}
@@ -810,8 +829,8 @@ OO_TEST(updateDemoShip)
 		CountingShip *sub = MakeShip<CountingShip>("sub", Definition());
 		OO_CHECK((ship != nullptr ? ship->setUpFromDictionary(oo::PList()) : false));
 		if (ship != nullptr)  ship->addSubEntity(sub);
-		MutablePart(ship)->isDemoShip = YES;
-		MutablePart(ship)->demoRate = 0;
+		ShipEntityTestAccess::IsDemoShip(MutablePart(ship)) = YES;
+		ShipEntityTestAccess::DemoRate(MutablePart(ship)) = 0;
 		if (ship != nullptr)  ship->setMaxFlightSpeed(INFINITY);
 		if (ship != nullptr)  ship->update(0.1);
 		OO_CHECK((ship != nullptr ? ship->getMaxFlightSpeed() : 0.0f) == 300.0f);
@@ -847,7 +866,7 @@ OO_TEST(equipmentQueries)
 		TestShip *ship = MakeShip<TestShip>("kit", Definition());
 		OO_CHECK(!(ship != nullptr ? ship->hasEquipmentItem(oo::PList(std::string("EQ_A"))) : false));
 		OO_CHECK(!(ship != nullptr ? ship->hasAllEquipment(oo::PList(std::string("EQ_A"))) : false));	// none at all
-		MutablePart(ship)->_equipment = { "EQ_A", "EQ_B_DAMAGED", "EQ_A" };
+		ShipEntityTestAccess::Equipment(MutablePart(ship)) = { "EQ_A", "EQ_B_DAMAGED", "EQ_A" };
 		OO_CHECK((ship != nullptr ? ship->countEquipmentItem("EQ_A") : 0) == 2 && (ship != nullptr ? ship->countEquipmentItem("EQ_B") : 0) == 0);
 		OO_CHECK((ship != nullptr ? ship->hasOneEquipmentItem("EQ_A", NO, NO) : false));
 		OO_CHECK(!(ship != nullptr ? ship->hasOneEquipmentItem("EQ_B", NO, NO) : false));
@@ -912,7 +931,7 @@ OO_TEST(equipmentKeysAndUnknownEquipment)
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>("keys", Definition());
 		OO_CHECK((ship != nullptr ? ship->equipmentKeys() : std::vector<std::string>()).empty() && (ship != nullptr ? ship->equipmentCount() : 0) == 0);
-		MutablePart(ship)->_equipment = { "EQ_A", "EQ_B" };
+		ShipEntityTestAccess::Equipment(MutablePart(ship)) = { "EQ_A", "EQ_B" };
 		OO_CHECK((ship != nullptr ? ship->equipmentKeys() : std::vector<std::string>()) == std::vector<std::string>({ "EQ_A", "EQ_B" }) && (ship != nullptr ? ship->equipmentCount() : 0) == 2);
 		// An equipment key with no equipment type is never valid, and is not added.
 		OO_CHECK(!(ship != nullptr ? ship->equipmentValidToAdd("EQ_UNKNOWN", "npc") : false));
@@ -941,7 +960,7 @@ OO_TEST(capacitiesAndPredicates)
 		OO_CHECK((ship != nullptr ? ship->maxForwardShieldLevel() : 0.0f) == BASELINE_SHIELD_LEVEL && (ship != nullptr ? ship->maxAftShieldLevel() : 0.0f) == BASELINE_SHIELD_LEVEL);
 
 		// Each predicate is "some equipment provides the key" (a key provides itself).
-		MutablePart(ship)->_equipment = { "EQ_FUEL_SCOOPS", "EQ_ECM", "EQ_SHIELD_BOOSTER", "EQ_NAVAL_SHIELD_BOOSTER",
+		ShipEntityTestAccess::Equipment(MutablePart(ship)) = { "EQ_FUEL_SCOOPS", "EQ_ECM", "EQ_SHIELD_BOOSTER", "EQ_NAVAL_SHIELD_BOOSTER",
 			"EQ_CLOAKING_DEVICE", "EQ_MILITARY_SCANNER_FILTER", "EQ_MILITARY_JAMMER", "EQ_CARGO_BAY", "EQ_HEAT_SHIELD",
 			"EQ_FUEL_INJECTION", "EQ_QC_MINE", "EQ_ESCAPE_POD", "EQ_DOCK_COMP", "EQ_GAL_DRIVE" };
 		OO_CHECK((ship != nullptr ? ship->hasScoop() : false) && (ship != nullptr ? ship->hasFuelScoop() : false) && !(ship != nullptr ? ship->hasCargoScoop() : false));
@@ -2876,8 +2895,8 @@ OO_TEST(slice31NoCascadeWithEnergyToSpare)
 
 namespace {
 
-bool EscortPositionsValid32(ShipEntity *s)	{ return s->_escortPositionsValid; }
-void SetEscortPositionsValid32(ShipEntity *s, bool v)	{ s->_escortPositionsValid = v; }
+bool EscortPositionsValid32(ShipEntity *s)	{ return ShipEntityTestAccess::EscortPositionsValid(s); }
+void SetEscortPositionsValid32(ShipEntity *s, bool v)	{ ShipEntityTestAccess::EscortPositionsValid(s) = v; }
 
 }	// namespace
 
@@ -3036,8 +3055,8 @@ OO_TEST(slice33FindBoundingBoxRelativeTo)
 
 namespace {
 
-Quaternion DemoStartOrientation34(ShipEntity *s)	{ return s->demoStartOrientation; }
-OOScalar DemoRate34(ShipEntity *s)					{ return s->demoRate; }
+Quaternion DemoStartOrientation34(ShipEntity *s)	{ return ShipEntityTestAccess::DemoStartOrientation(s); }
+OOScalar DemoRate34(ShipEntity *s)					{ return ShipEntityTestAccess::DemoRate(s); }
 
 }	// namespace
 

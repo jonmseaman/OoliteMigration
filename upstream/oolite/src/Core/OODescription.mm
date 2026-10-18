@@ -35,14 +35,29 @@ MA 02110-1301, USA.
 
 namespace {
 
-// Whether <object> is rooted on OOObject (so it answers the C++ family).
-bool IsOOObject(id object)
+// Whether <object>'s class is <root> or a subclass of it.
+bool IsKindOf(id object, Class root)
 {
 	for (Class cls = object_getClass(object); cls != Nil; cls = class_getSuperclass(cls))
 	{
-		if (cls == [OOObject class])  return true;
+		if (cls == root)  return true;
 	}
 	return false;
+}
+
+
+// Whether <object> is rooted on OOObject (so it answers the C++ family).
+bool IsOOObject(id object)
+{
+	return IsKindOf(object, [OOObject class]);
+}
+
+
+// A string literal (OOConstantString, OOTinyString) describes itself as its text, in both forms:
+// what the category OOConstantString (OODescription) answered until bead oo-8sql7.
+bool IsLiteral(id object)
+{
+	return IsKindOf(object, [OOConstantString class]);
 }
 
 }	// namespace
@@ -76,28 +91,13 @@ bool IsOOObject(id object)
 @end
 
 
-@implementation OOConstantString (OODescription)
-
-- (std::optional<std::string>) cxx_description
-{
-	return std::string([self UTF8String]);
-}
-
-
-- (std::optional<std::string>) cxx_shortDescription
-{
-	return std::string([self UTF8String]);
-}
-
-@end
-
-
 namespace oo {
 
 std::string DescriptionOf(id object)
 {
 	if (object == nil)  return "(null)";
 	if (class_isMetaClass(object_getClass(object)))  return class_getName((Class)object);
+	if (IsLiteral(object))  return [(OOConstantString *)object UTF8String];
 	if (IsOOObject(object))
 	{
 		return [(OOObject *)object cxx_description].value_or("(null)");
@@ -112,6 +112,7 @@ std::string ShortDescriptionOf(id object)
 {
 	if (object == nil)  return "(null)";
 	if (class_isMetaClass(object_getClass(object)))  return class_getName((Class)object);
+	if (IsLiteral(object))  return [(OOConstantString *)object UTF8String];
 	if (IsOOObject(object))
 	{
 		return [(OOObject *)object cxx_shortDescription].value_or("(null)");

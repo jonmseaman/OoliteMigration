@@ -31,7 +31,9 @@ descriptionComponents() const.
 oo::DescriptionOf(x) is the text "%@" put in a formatted string for x: "(null)" for nil, the
 class name for a class object, -cxx_description for an OOObject; for an oo::PList, what "%@"
 printed for its object graph (oo::describe). oo::ShortDescriptionOf(x) is
-its short twin. OOConstantString describes itself as its text.
+its short twin. OOConstantString describes itself as its text in both, in C++ (the category
+OOConstantString (OODescription) is deleted, bead oo-8sql7). The category on OOObject stays while
+tests/unit/oofnd/test_objc_description.mm, its own test, sends its four methods to a plain object.
 
 An object not rooted on OOObject (none in the game since oo-3rb.4 / oo-qps.18) describes as
 <ClassName 0xnnnnnnnn> in both. The transitional forwarding to legacy id-typed
@@ -78,15 +80,6 @@ extern "C++" {
 - (std::optional<std::string>) cxx_shortDescriptionComponents;
 
 // <ClassName 0xnnnnnnnn>{components}, or <ClassName 0xnnnnnnnn> without components.
-- (std::optional<std::string>) cxx_description;
-- (std::optional<std::string>) cxx_shortDescription;
-
-@end
-
-
-// A string literal describes itself as its text.
-@interface OOConstantString (OODescription)
-
 - (std::optional<std::string>) cxx_description;
 - (std::optional<std::string>) cxx_shortDescription;
 
