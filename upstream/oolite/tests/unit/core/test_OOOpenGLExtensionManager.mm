@@ -70,6 +70,11 @@ bool OORegExpMatcher::string(const std::string &string, const std::string &regEx
 	return std::regex_search(string, std::regex(regExp));
 }
 
+// OOLogging.mm's (it would bring the resource manager into the link); in the debug flavour
+// OOOpenGL.mm's OOGL error check and state dump call them (bead oo-iimku).
+void OOLogIndent(void)  {}
+void OOLogOutdent(void)  {}
+
 
 OORegExpMatcher::~OORegExpMatcher()  {}
 

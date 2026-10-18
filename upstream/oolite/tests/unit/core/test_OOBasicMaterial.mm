@@ -48,6 +48,10 @@ void OOTexture::applyNone()	{ gTextureApplyNones++; }
 oo::PList cxx_OOTextureSpecFromObject(const oo::PList &, const std::optional<std::string> &)	{ std::abort(); }
 OOOpenGLExtensionManager *OOOpenGLExtensionManager::sharedManager()				{ std::abort(); }
 GLint OOOpenGLExtensionManager::textureUnitCount()										{ std::abort(); }
+// OOOpenGLStateManager.mm's (linked for the debug build's OOGLNoteCurrentFunction) multitexture
+// entry points live in OOOpenGLExtensionManager.mm, which this test stubs; never called here.
+PFNGLACTIVETEXTUREARBPROC glActiveTextureARB = nullptr;
+PFNGLCLIENTACTIVETEXTUREARBPROC glClientActiveTextureARB = nullptr;
 
 
 /*	UNIVERSE is gSharedUniverse. The material asks it -reducedDetail (-permitSpecular), and the
