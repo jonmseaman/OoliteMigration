@@ -58,7 +58,7 @@ OOJSFunction::OOJSFunction(ooscript::Function function, ooscript::Context contex
 		_name = cxx_OOStringFromJSString(context, ooscript::getFunctionId(function));
 
 		oo::NotificationCenter::defaultCenter().addObserver(this, kOOJavaScriptEngineWillResetNotificationName,
-															[::OOJavaScriptEngine sharedEngine],
+															OOJavaScriptEngine::sharedEngine(),
 															[this](const oo::Notification &) { deleteJSValue(); });
 	}
 }
@@ -85,7 +85,7 @@ oo::Ref<OOJSFunction> OOJSFunction::initWithName(const std::optional<std::string
 		context = OOJSAcquireContext();
 		releaseContext = true;
 	}
-	if (scope == NULL)  scope = [[::OOJavaScriptEngine sharedEngine] globalObject];
+	if (scope == NULL)  scope = OOJavaScriptEngine::sharedEngine()->globalObject();
 
 	if (!code.has_value() || (argCount > 0 && argNames == NULL))  OK = false;
 
@@ -133,7 +133,7 @@ void OOJSFunction::deleteJSValue()
 
 		_function = NULL;
 		oo::NotificationCenter::defaultCenter().removeObserver(this, kOOJavaScriptEngineWillResetNotificationName,
-																[::OOJavaScriptEngine sharedEngine]);
+																OOJavaScriptEngine::sharedEngine());
 	}
 }
 

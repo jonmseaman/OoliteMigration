@@ -34,4 +34,4 @@ MA 02110-1301, USA.
 
 
 void InitOOJSSpecialFunctions(ooscript::Context context, ooscript::Object global);
-oo::Ref<cxx::OOJSValue> cxx_JSSpecialFunctionsObjectWrapper(ooscript::Context context);
+oo::Ref<OOJSValue> JSSpecialFunctionsObjectWrapper(ooscript::Context context);

@@ -78,9 +78,15 @@ public:
 }
 @end
 
-@interface OONull: OOObject
-+ (OONull *) null;
-@end
+// The one null (OOJavaScriptEngine.h; a C++ class since bead oo-wdqw1 deleted its facade), declared
+// with the header's names and signatures but not its class: its own property-list node's object.
+class OONull : public oo::PListForeign
+{
+public:
+	static OONull *null();
+	std::string className() const override;
+	std::string description() const override;
+};
 
 @interface OOObject (OOJSTestGlue)
 - (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context;
@@ -143,15 +149,14 @@ namespace oo { ::Entity *ToObjC(cxx::Entity *entity); }	// Entity+ObjCBridge.mm'
 @end
 
 
-@implementation OONull
-
-+ (OONull *) null
+OONull *OONull::null()
 {
-	static OONull *null = [[OONull alloc] init];
+	static OONull *null = oo::makeRef<OONull>().leakRef();
 	return null;
 }
 
-@end
+std::string OONull::className() const	{ return "OONull"; }
+std::string OONull::description() const	{ return "<null>"; }
 
 
 // MARK: What the rest of the engine provides ------------------------------------------------------
@@ -228,6 +233,7 @@ ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &p
 	if (const oo::PList::Object *node = plist.getIf<oo::PList::Object>())	// a C++ object that is its own JS glue, as the engine asks it
 	{
 		if (OOJSPrivateObject *glue = dynamic_cast<OOJSPrivateObject *>(node->get()))  return OOJSValueFromCxxObject(context, glue);
+		if (dynamic_cast<OONull *>(node->get()) != nullptr)  return ooscript::nullValue();	// OONull is null
 	}
 	if (id object = oo::ObjectIn(plist))  return OOJSValueFromNativeObject(context, object);
 	if (const oo::PList::Array *array = plist.getIf<oo::PList::Array>())
@@ -287,10 +293,10 @@ BOOL OOJSObjectGetterImplPRIVATE(ooscript::Context context, ooscript::Object obj
 }
 
 
-// The engine's conversion asks the object for its JS value; nil and OONull are null.
+// The engine's conversion asks the object for its JS value; nil is null (OONull is a C++ node's, above).
 ooscript::Value OOJSValueFromNativeObject(ooscript::Context context, id object)
 {
-	if (object == nil || [object isKindOfClass:[OONull class]])  return ooscript::nullValue();
+	if (object == nil)  return ooscript::nullValue();
 	return [object oo_jsValueInContext:context];
 }
 

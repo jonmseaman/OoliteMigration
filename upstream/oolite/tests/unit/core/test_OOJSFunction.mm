@@ -92,27 +92,27 @@ void OOJSStopTimeLimiter(void)  { sLimiterDepth--; }
 #endif
 
 
-@interface OOJavaScriptEngine: OOObject
-+ (OOJavaScriptEngine *) sharedEngine;
-- (ooscript::Object) globalObject;
-@end
-
-@implementation OOJavaScriptEngine
-
-+ (OOJavaScriptEngine *) sharedEngine
+// The engine (OOJavaScriptEngine.h; a C++ class since bead oo-wdqw1 deleted its facade), declared
+// with the header's names and signatures but not its class; the stand-in's answers are kept.
+class OOJavaScriptEngine
 {
-	static OOJavaScriptEngine *engine = nil;
-	if (engine == nil)  engine = [[OOJavaScriptEngine alloc] init];
+public:
+	static OOJavaScriptEngine *sharedEngine();
+	ooscript::Object globalObject();
+};
+
+
+OOJavaScriptEngine *OOJavaScriptEngine::sharedEngine()
+{
+	static OOJavaScriptEngine *engine = new OOJavaScriptEngine;
 	return engine;
 }
 
 
-- (ooscript::Object) globalObject
+ooscript::Object OOJavaScriptEngine::globalObject()
 {
 	return sGlobal;
 }
-
-@end
 
 
 #import "OOScript.h"
@@ -318,7 +318,7 @@ OO_TEST(engineReset)
 	{
 		oo::Ref<OOJSFunction> function = Compile("resettable", "return 1;", {});
 		OO_CHECK(function->function() != NULL);
-		oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineWillResetNotificationName, [OOJavaScriptEngine sharedEngine]);
+		oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineWillResetNotificationName, OOJavaScriptEngine::sharedEngine());
 		OO_CHECK(function->function() == NULL);
 		OO_CHECK(ooscript::isNull(function->functionValue()));
 		OO_CHECK_EQ(function->name().value_or("<none>"), "resettable");	// the name stays

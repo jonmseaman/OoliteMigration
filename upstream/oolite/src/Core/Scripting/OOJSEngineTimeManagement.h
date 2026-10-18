@@ -231,7 +231,7 @@ private:
 #endif
 
 
-@class OOJavaScriptEngine;
+class OOJavaScriptEngine;
 
 #ifdef __cplusplus
 extern "C" {

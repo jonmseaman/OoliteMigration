@@ -61,7 +61,7 @@ SOFTWARE.
 #include <string>
 #include <vector>
 
-@class OOJavaScriptEngine;
+class OOJavaScriptEngine;
 #include "OOScript.h"	// the console script, oo::Ref<OOScript> (bead oo-9ht.133)
 #import "OOColor.h"	// the colour maps hold oo::Ref<OOColor>
 

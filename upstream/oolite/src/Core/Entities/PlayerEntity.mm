@@ -2226,7 +2226,7 @@ bool PlayerEntity::setUpAndConfirmOK(bool stopOnError, bool saveGame)
 	
 	if (!(gc != nullptr ? gc->inFullScreenMode() : false) && stopOnError)	{ if (gc != nullptr)  gc->stopAnimationTimer(); }	// start of critical section
 	
-	if (EXPECT_NOT(![[::OOJavaScriptEngine sharedEngine] reset] && stopOnError)) // always (try to) reset the engine, then find out if we need to stop.
+	if (EXPECT_NOT(!OOJavaScriptEngine::sharedEngine()->reset() && stopOnError)) // always (try to) reset the engine, then find out if we need to stop.
 	{
 		/*
 			Occasionally there's a racing condition between timers being deleted
@@ -7463,7 +7463,7 @@ void PlayerEntity::docked()
 		setGuiToStatusScreen();
 	}
 	OOCacheManager::sharedCache()->flush();
-	[[::OOJavaScriptEngine sharedEngine] garbageCollectionOpportunity:YES];
+	OOJavaScriptEngine::sharedEngine()->garbageCollectionOpportunity(YES);
 	
 	// When a mission screen is started, any on-screen message is removed immediately.
 	doWorldEventUntilMissionScreen(OOJSID("missionScreenOpportunity"));	// also displays docking reports first.
@@ -8130,7 +8130,7 @@ void PlayerEntity::leaveWitchspace()
 	/* there's going to be a slight pause at this stage anyway;
 	 * there's also going to be a lot of stale ship scripts. Force a
 	 * garbage collection while we have chance. - CIM */
-	[[::OOJavaScriptEngine sharedEngine] garbageCollectionOpportunity:YES];
+	OOJavaScriptEngine::sharedEngine()->garbageCollectionOpportunity(YES);
 	flightSpeed = wormhole ? (wormhole != nullptr ? wormhole->exitSpeed() : 0.0) : fmin(maxFlightSpeed,50.0f);
 	wormholeObject = nullptr;	// OK even if nil
 	wormhole = nullptr;

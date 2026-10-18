@@ -214,7 +214,7 @@ void MissionRunCallback()
 	ooscript::Value				argval2 = ooscript::undefinedValue();
 	ooscript::Value				rval = ooscript::undefinedValue();
 	PlayerEntity		*player = OOPlayerForScripting();
-	OOJavaScriptEngine	*engine  = [OOJavaScriptEngine sharedEngine];
+	OOJavaScriptEngine	*engine  = OOJavaScriptEngine::sharedEngine();
 	ooscript::Context context = OOJSAcquireContext();
 	
 	/*	Create temporarily-rooted local copies of sCallbackFunction and
@@ -248,11 +248,7 @@ void MissionRunCallback()
 	@try
 	{
 		OOJSScript::pushScript(cbScript);
-		[engine callJSFunction:cbFunction
-					 forObject:cbThis
-						  argc:2
-						  argv:args
-						result:&rval];
+		engine->callJSFunction(cbFunction, cbThis, 2, args, &rval);
 	}
 	@catch (OOException *exception)
 	{

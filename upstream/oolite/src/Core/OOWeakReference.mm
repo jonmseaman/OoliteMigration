@@ -173,7 +173,7 @@ size_t OOWeakReference::oo_objectSize()
 
 
 // The engine asks the C++ entity of a weak reference to an entity's object itself (bead
-// oo-9ht.39.8.9, OOJavaScriptEngine+ObjCBridge.mm), so these two are sent only to other objects.
+// oo-9ht.39.8.9, OOObject+OOJavaScript.mm since oo-wdqw1), so these two are sent only to other objects.
 ooscript::Value OOWeakReference::oo_jsValueInContext(ooscript::Context context)
 {
 	if (_object == nil)  return ooscript::undefinedValue();

@@ -8420,6 +8420,74 @@ calls the same members with every expected value kept; the stand-ins are as item
 
 **Consequences.** No Objective-C game controller or view is compiled.
 
+## Amendment (beads oo-wdqw1, oo-dxzhu): the engine's, OONull's and OOJSValue's facades are deleted; all three are global C++ classes
+
+- Date: 2026-10-18. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Track B2
+  (one branch, one commit). Exemplar: `src/Core/Scripting/OOJavaScriptEngine.h` (`OONull`,
+  `OONullObjectNode()`, `OOIsNullObjectNode()`), `OOJSEngineCore.h` (`OOJSValue`,
+  `OOJSValueObjectNode()`), `src/Core/Scripting/OOObject+OOJavaScript.h/.mm`,
+  `tests/unit/core/test_OOJSFunction.mm` (a narrow test's C++ engine stand-in). Follows amendment
+  oo-9ht.164/oo-9ht.153/oo-43xoj (the large-facade pattern).
+
+**Context.** `OOJavaScriptEngine+ObjCBridge.h/.mm` held the engine's facade (+sharedEngine and 22
+forwarders, the monitor categories), the facades of `cxx::OONull` and `cxx::OOJSValue` (which
+Objective-C collections held), the root class's JS category `OOObject (OOJavaScript)` and the
+one-line bridges through which the engine's free functions send to Objective-C objects (amendment
+oo-9ht.139). `OOJSSpecialFunctions+ObjCBridge.h/.mm` was the special-functions object's
+`OOJSValue` facade. About 80 sends reached the engine's facade (the debug support, the console,
+the player family, the GUI, the universe, the regexp matcher, the verifier, the bindings); 24 tests
+stood in for or crossed one of the three.
+
+**Decision (recommended defaults).**
+
+1. **All three are global C++ classes** (namespace cxx and every `cxx::` at their uses go;
+   `@class` forward declarations are `class`). Both bridge files of each facade and their
+   `meson.build` entries are deleted. `+sharedEngine` is `OOJavaScriptEngine::sharedEngine()`, the
+   singleton made on first use and never null, so its calls are unguarded; a local holding it
+   (`engine->callJSFunction(...)`) is unguarded likewise.
+2. **The reset notifications' sender is the C++ engine** (`post(..., this)`), and every observer
+   registers with `OOJavaScriptEngine::sharedEngine()`: the identity changes from the facade to the
+   engine on both sides at once, so who sees which notification is unchanged. `OOJSValue`'s
+   `_resetSender` is the engine. The monitor's `jsEngine(engine, ...)` is handed the C++ engine;
+   the watchdog holds it with `retain()`/`release()` (it retained the facade).
+3. **OONull and OOJSValue are their own property-list Object nodes** (`oo::PListForeign`, as
+   OOColor and OOEquipmentType are): `OONullObjectNode()` replaces `oo::PListObject([OONull null])`,
+   `OOIsNullObjectNode(node)` replaces `oo::ObjectIn(node) == [OONull null]`, and
+   `OOJSValueObjectNode(value)` replaces `oo::PListObject(facade)`. They describe themselves as
+   their facades did (`OONull`/`<null>`, `OOJSValue`/`<OOJSValue 0x...>`), and
+   `OOJSValueFromPList()` asks the node for its JS value, as the facades forwarded. The debug
+   monitor's configuration lookup treats an OONull node as it treated the OONull object (an
+   override of null hides the OXPs' value). The regexp matcher and the deferred frame callbacks
+   hold `oo::Ref<OOJSValue>`.
+4. **The special-functions object** (oo-dxzhu): `cxx_JSSpecialFunctionsObjectWrapper()` takes the
+   facade's name `JSSpecialFunctionsObjectWrapper()` and answers `oo::Ref<OOJSValue>`; the prefix
+   script and the debug console script get it as an `OOJSValueObjectNode()`.
+5. **The root's JS glue moves, unchanged, to `OOObject+OOJavaScript.h/.mm`**: the category
+   `OOObject (OOJavaScript)` and its forwarders, and the one-line bridges that send to weak
+   references, the entity's object, OOException and any root object. They are the root class's,
+   not the engine's facade (as the bead said), and go with the root (Phase 4) or with the entity
+   facade (track A) whose objects they message. `OOJavaScriptEngine.h` imports it as its last line,
+   as it imported the facade's header.
+6. **Left as they were (follow-up):** the generic `ObjectIn()` sites that compare Object nodes by
+   their Objective-C objects (`ResourceManager`'s plist equality, `OOProbabilitySet`, the schema
+   verifier's class name) never see an OONull or OOJSValue node: plists from files hold neither.
+
+**Differences.** None in game behaviour: the facade identities that changed (item 2) change on both
+sides of every comparison; a C++ OONull node answers what the facade did everywhere a node is read.
+
+**Tests** (standing approval oo-9n5p9, lines on main first): no case is retired. Retired as facade
+contract: test_OOJavaScriptEngine's `-copy` of the null (now the shared node's identity) and its
+`[OONull class]` wrong-class probe (now `[OOException class]`, same expectation). Re-based with every
+expected value kept: the engine test's sends, its OONull and OOJSValue checks (C++ members and
+nodes; the value left at exit is held by an autoreleased test keeper so it is still freed at thread
+detach); the Objective-C engine stand-ins of 13 narrow tests, the OONull stand-ins of
+test_OODebugMonitor and test_OOJSShipGroup, the OOJSValue stand-ins of test_OORegExpMatcher and
+test_OOJSFrameCallbacks, and test_OODebugMonitor's special-functions stand-in become C++ stand-ins
+with the headers' names and signatures (a member the Objective-C stand-in never answered is a
+never-run `std::abort()` one); seven whole-game tests' sends.
+
+**Consequences.** No Objective-C engine, null or held value is compiled.
+
 ## Amendment (bead oo-9ht.39.26): the universe owns its entities through oo::EntityHold and answers C++ entities (step 5c)
 
 oo-9ht.39 step 5c, batch AM (track A), Migration Completion session, 2026-10-18, one branch and one commit.

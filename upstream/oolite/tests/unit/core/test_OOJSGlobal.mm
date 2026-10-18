@@ -118,11 +118,8 @@ public:
 
 #import "ResourceManager.h"
 
-// The Objective-C engine, which OOJSGuiScreenKeyDefinition.mm (linked here) still messages for its
-// reset-notification observer and its JS calls; nothing more of it is needed.
-@interface OOJavaScriptEngine: OOObject
-+ (OOJavaScriptEngine *) sharedEngine;
-@end
+// The engine, which OOJSGuiScreenKeyDefinition.mm (linked here) calls for its reset-notification
+// observer and its JS calls, is declared below (a C++ class since bead oo-wdqw1).
 
 #import "OOJSGlobal.h"
 
@@ -266,34 +263,26 @@ oo::PList ResourceManager::dictionaryFromFilesNamed(const std::string &fileName,
 	engine header's signature but not its class (OOJavaScriptEngine.h pulls in the game's
 	classes), the way the other stand-ins here are declared. What the monitor was sent is kept.
 */
-namespace cxx {
 class OOJavaScriptEngine
 {
 public:
 	static OOJavaScriptEngine *sharedEngine();
+	bool callJSFunction(ooscript::Value function, ooscript::Object jsThis, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult);
 	void sendMonitorLogMessage(const std::optional<std::string> &message, const std::optional<std::string> &messageClass, ooscript::Context context);
 };
-}
 
 static std::vector<std::string> sMonitorMessages;
 
-@implementation OOJavaScriptEngine
-
-+ (OOJavaScriptEngine *) sharedEngine
+OOJavaScriptEngine *OOJavaScriptEngine::sharedEngine()
 {
-	static OOJavaScriptEngine *engine = [[OOJavaScriptEngine alloc] init];
+	static OOJavaScriptEngine *engine = new OOJavaScriptEngine;
 	return engine;
 }
 
-@end
+// The key definitions' callback call: never reached here (the Objective-C stand-in did not answer it).
+bool OOJavaScriptEngine::callJSFunction(ooscript::Value, ooscript::Object, unsigned, ooscript::Value *, ooscript::Value *)  { std::abort(); }
 
-cxx::OOJavaScriptEngine *cxx::OOJavaScriptEngine::sharedEngine()
-{
-	static cxx::OOJavaScriptEngine *engine = new cxx::OOJavaScriptEngine;
-	return engine;
-}
-
-void cxx::OOJavaScriptEngine::sendMonitorLogMessage(const std::optional<std::string> &message, const std::optional<std::string> &messageClass, ooscript::Context context)
+void OOJavaScriptEngine::sendMonitorLogMessage(const std::optional<std::string> &message, const std::optional<std::string> &messageClass, ooscript::Context context)
 {
 	(void)context;
 	sMonitorMessages.push_back(messageClass.value_or("(no class)") + ": " + message.value_or("(null)"));

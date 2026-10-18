@@ -20,6 +20,7 @@
 
 #import "OORegExpMatcher.h"
 #import "OOJSFunction.h"
+#include "OOJSEngineCore.h"	// OOJSValue
 #import "oofnd/objc/OOObject.h"
 
 #include "oo_test.hpp"
@@ -36,7 +37,7 @@ ooscript::Context gOOJSMainThreadContext = nullptr;
 namespace {
 
 ooscript::Object sGlobal = nullptr;
-unsigned sEngineCalls = 0;		// +[OOJavaScriptEngine sharedEngine]
+unsigned sEngineCalls = 0;		// +OOJavaScriptEngine::sharedEngine()
 unsigned sFunctionsMade = 0;	// OOJSFunction inits: one per matcher
 unsigned sRegExpsMade = 0;		// OOJSValue inits: one per RegExp the matcher compiled
 unsigned sEvaluations = 0;		// OOJSFunction evaluations: one per match
@@ -47,13 +48,16 @@ ooscript::ClassDef sGlobalClass = { "Global", ooscript::ClassFlag::Global, nullp
 }	// namespace
 
 
-@interface OOJavaScriptEngine: OOObject
-+ (id) sharedEngine;
-@end
+// The engine (OOJavaScriptEngine.h; a C++ class since bead oo-wdqw1 deleted its facade), declared
+// with the header's names and signatures but not its class; the stand-in's answers are kept.
+class OOJavaScriptEngine
+{
+public:
+	static OOJavaScriptEngine *sharedEngine();
+};
 
-@implementation OOJavaScriptEngine
 
-+ (id) sharedEngine
+OOJavaScriptEngine *OOJavaScriptEngine::sharedEngine()
 {
 	sEngineCalls++;
 	if (gOOJSMainThreadContext == nullptr)
@@ -66,10 +70,8 @@ ooscript::ClassDef sGlobalClass = { "Global", ooscript::ClassFlag::Global, nullp
 		ooscript::initStandardClasses(gOOJSMainThreadContext, sGlobal);
 		ooscript::endRequest(gOOJSMainThreadContext);
 	}
-	return nil;
+	return nullptr;
 }
-
-@end
 
 
 // OOJSFunction (src/Core/Scripting/OOJSFunction.h): the members the matcher calls, defined here in
@@ -106,40 +108,27 @@ bool OOJSFunction::evaluateWithContext(ooscript::Context context, ooscript::Obje
 }
 
 
-@interface OOJSValue: OOObject
+// The held value (OOJSEngineCore.h; a C++ class since bead oo-wdqw1 deleted its facade): the members
+// the matcher calls, defined here with the stand-in's answers.
+oo::Ref<OOJSValue> OOJSValue::valueWithJSObject(ooscript::Object object, ooscript::Context context)
 {
-@public
-	ooscript::Value _val;
-}
-- (id) initWithJSObject:(ooscript::Object)object inContext:(ooscript::Context)context;
-@end
-
-@implementation OOJSValue
-
-- (id) initWithJSObject:(ooscript::Object)object inContext:(ooscript::Context)context
-{
-	self = [super init];
-	if (self == nil)  return nil;
+	oo::Ref<OOJSValue> result = oo::makeRef<OOJSValue>();
 	sRegExpsMade++;
-	_val = ooscript::objectValue(object);
-	ooscript::addNamedValueRoot(context, &_val, "test OOJSValue");
-	return self;
+	result->_val = ooscript::objectValue(object);
+	ooscript::addNamedValueRoot(context, &result->_val, "test OOJSValue");
+	return result;
 }
 
 
-- (void) dealloc
+OOJSValue::~OOJSValue()
 {
 	ooscript::removeValueRoot(gOOJSMainThreadContext, &_val);
-	[super dealloc];
 }
 
-@end
 
-
-extern "C" ooscript::Value OOJSValueFromNativeObject(ooscript::Context, id object)
-{
-	return (object != nil) ? ((OOJSValue *)object)->_val : ooscript::nullValue();
-}
+ooscript::Value OOJSValue::jsValueInContext(ooscript::Context)  { return _val; }
+std::string OOJSValue::className() const  { return "OOJSValue"; }
+std::string OOJSValue::description() const  { return "<OOJSValue>"; }
 
 
 ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &plist)

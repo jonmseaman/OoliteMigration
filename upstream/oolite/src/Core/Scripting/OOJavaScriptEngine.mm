@@ -96,7 +96,7 @@ MA 02110-1301, USA.
 #import "OOJSSound.h"
 #import "OOJSSoundSource.h"
 #import "OOJSSpecialFunctions.h"
-#import "OOJSSpecialFunctions+ObjCBridge.h"
+#import "OOJSSpecialFunctions.h"
 #import "OOJSSystemInfo.h"
 #import "OOJSEquipmentInfo.h"
 #import "OOJSShipGroup.h"
@@ -127,7 +127,7 @@ MA 02110-1301, USA.
 
 
 namespace {
-static cxx::OOJavaScriptEngine	*sSharedEngine = nullptr;	// the one +1 is never released (amendment oo-r7m0 item 1)
+static OOJavaScriptEngine	*sSharedEngine = nullptr;	// the one +1 is never released (amendment oo-r7m0 item 1)
 } // namespace
 namespace {
 static unsigned				sErrorHandlerStackSkip = 0;
@@ -178,7 +178,7 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 	std::string			messageClass;
 	std::string			highlight = "*****";
 	std::string			activeScript;
-cxx::OOJavaScriptEngine	*jsEng = cxx::OOJavaScriptEngine::sharedEngine();
+OOJavaScriptEngine	*jsEng = OOJavaScriptEngine::sharedEngine();
 	bool				showLocation = jsEng->showErrorLocations();
 	
 	// Not OOJS_BEGIN_FULL_NATIVE() - we use the engine while paused.
@@ -258,7 +258,7 @@ cxx::OOJavaScriptEngine	*jsEng = cxx::OOJavaScriptEngine::sharedEngine();
 #if OOJSENGINE_MONITOR_SUPPORT
 		ooscript::ExceptionState *exState = ooscript::saveExceptionState(context);
 		ooscript::ErrorReport nativeReport = *report;
-		cxx::OOJavaScriptEngine::sharedEngine()->sendMonitorError(&nativeReport, messageText, (context));
+		OOJavaScriptEngine::sharedEngine()->sendMonitorError(&nativeReport, messageText, (context));
 		ooscript::restoreExceptionState(context, exState);
 #endif
 	}
@@ -272,7 +272,6 @@ cxx::OOJavaScriptEngine	*jsEng = cxx::OOJavaScriptEngine::sharedEngine();
 // JavaScript engine initialisation and shutdown
 //===========================================================================
 
-namespace cxx {
 
 OOJavaScriptEngine *OOJavaScriptEngine::sharedEngine()
 {
@@ -329,7 +328,7 @@ void OOJavaScriptEngine::init()
 	}
 	
 	// OOJSTimeManagementInit() must be called before any context is created!
-	OOJSTimeManagementInit(oo::ToObjC(this), _runtime);	// the watchdog holds the facade
+	OOJSTimeManagementInit(this, _runtime);	// the watchdog holds the engine
 	
 	createMainThreadContext();
 }
@@ -419,7 +418,7 @@ void OOJavaScriptEngine::createMainThreadContext()
 	
 	// Run prefix scripts.
 	OOScriptAutorelease(OOScript::jsScriptFromFileNamed("oolite-global-prefix.js",	// (nothing keeps it)
-														oo::PList(oo::PList::Dict{{"special", oo::PListObject(JSSpecialFunctionsObjectWrapper(gOOJSMainThreadContext))}})));
+														oo::PList(oo::PList::Dict{{"special", OOJSValueObjectNode(JSSpecialFunctionsObjectWrapper(gOOJSMainThreadContext).get())}})));
 
 	ooscript::endRequest((gOOJSMainThreadContext));
 	
@@ -491,14 +490,14 @@ bool OOJavaScriptEngine::reset()
 	}
 	
 	ooscript::Context context = OOJSAcquireContext();
-	oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineWillResetNotificationName, oo::ToObjC(this));	// the facade: what observers filter on
+	oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineWillResetNotificationName, this);	// the engine: what observers filter on
 OOJSRelinquishContext(context);
 	
 	destroyMainThreadContext();
 	createMainThreadContext();
 	
 	context = OOJSAcquireContext();
-	oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineDidResetNotificationName, oo::ToObjC(this));
+	oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineDidResetNotificationName, this);
 OOJSRelinquishContext(context);
 	
 	garbageCollectionOpportunity(true);
@@ -665,7 +664,6 @@ ooscript::ClassDef *OOJavaScriptEngine::booleanClass()
 
 
 #ifndef NDEBUG
-}	// namespace cxx
 
 
 namespace {
@@ -682,7 +680,6 @@ static void DebuggerHook(ooscript::Context context, void * /*closure*/)
 } // namespace
 
 
-namespace cxx {
 
 bool OOJavaScriptEngine::dumpStackForErrors()
 {
@@ -714,12 +711,10 @@ void OOJavaScriptEngine::enableDebuggerStatement()
 }
 #endif
 
-}	// namespace cxx
 
 
 #if OOJSENGINE_MONITOR_SUPPORT
 
-namespace cxx {
 
 void OOJavaScriptEngine::setMonitor(OOJavaScriptEngineMonitor *inMonitor)
 {
@@ -731,7 +726,7 @@ void OOJavaScriptEngine::sendMonitorError(ooscript::ErrorReport *errorReport, co
 {
 	if (_monitor != nullptr)
 	{
-		_monitor->jsEngine(oo::ToObjC(this), theContext, errorReport, sErrorHandlerStackSkip, showErrorLocations(), message);
+		_monitor->jsEngine(this, theContext, errorReport, sErrorHandlerStackSkip, showErrorLocations(), message);
 	}
 }
 
@@ -740,11 +735,10 @@ void OOJavaScriptEngine::sendMonitorLogMessage(const std::optional<std::string> 
 {
 	if (_monitor != nullptr)
 	{
-		_monitor->jsEngine(oo::ToObjC(this), theContext, message.value_or(""), messageClass);
+		_monitor->jsEngine(this, theContext, message.value_or(""), messageClass);
 	}
 }
 
-}	// namespace cxx
 
 #endif
 
@@ -1243,7 +1237,7 @@ BOOL OOJSArgumentListGetNumberNoError(ooscript::Context context, unsigned argc, 
 
 // The root-class JS glue for classes rooted on OOObject (ADR-0029). Foundation objects have none:
 // OOJSValueFromNativeObject() converts them through their property-list form (proposed ADR-0051).
-// The category OOObject (OOJavaScriptConversion) forwards to these from OOJavaScriptEngine+ObjCBridge.mm
+// The category OOObject (OOJavaScriptConversion) forwards to these from OOObject+OOJavaScript.mm
 // (amendment oo-ppc item 3); the sends to the object go through its bridges (amendment oo-9ht.139).
 ooscript::Value OOObjectJSValueInContext(ooscript::Context /*context*/)
 {
@@ -1463,6 +1457,9 @@ ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &p
 			{
 				if (OOJSPrivateObject *glue = dynamic_cast<OOJSPrivateObject *>(node->get()))  return OOJSValueFromCxxObject(context, glue);
 				if (OONativeVector *box = dynamic_cast<OONativeVector *>(node->get()))  return OONativeVectorJSValueInContext(box, context);
+				// The one null and a held value: their own JS glue, which their facades forwarded to (bead oo-wdqw1).
+				if (OONull *null = dynamic_cast<OONull *>(node->get()))  return null->jsValueInContext(context);
+				if (OOJSValue *held = dynamic_cast<OOJSValue *>(node->get()))  return held->jsValueInContext(context);
 			}
 			id object = oo::ObjectIn(plist);
 			if (object == nil)  return ooscript::undefinedValue();	// a node that holds no Objective-C object (a C++ one): no JS glue
@@ -1484,7 +1481,6 @@ ooscript::Object OOJSObjectFromNativeObject(ooscript::Context context, id object
 }
 
 
-namespace cxx {
 
 oo::Ref<OOJSValue> OOJSValue::valueWithJSValue(ooscript::Value value, ooscript::Context context)
 {
@@ -1527,9 +1523,9 @@ void OOJSValue::initWithJSValue(ooscript::Value value, ooscript::Context context
 		{
 			ooscript::addNamedValueRoot((context), (&_val), "OOJSValue");
 
-			// The engine's facade: the sender of its reset notifications. Kept for removing the
+			// The engine: the sender of its reset notifications. Kept for removing the
 			// observer, so the destructor does not ask for the engine (which could make it).
-			_resetSender = oo::ToObjC(OOJavaScriptEngine::sharedEngine());
+			_resetSender = OOJavaScriptEngine::sharedEngine();
 			oo::NotificationCenter::defaultCenter().addObserver(this, kOOJavaScriptEngineWillResetNotificationName,
 																_resetSender,
 																[this](const oo::Notification &) { deleteJSValue(); });
@@ -1574,7 +1570,18 @@ ooscript::Value OOJSValue::jsValueInContext(ooscript::Context /*context*/)
 	return _val;
 }
 
-}	// namespace cxx
+
+std::string OOJSValue::className() const
+{
+	return "OOJSValue";
+}
+
+
+std::string OOJSValue::description() const
+{
+	return oo::str::format("<OOJSValue %s>", oo::str::pointerDescription(this).c_str());
+}
+
 
 
 void OOJSStrLiteralCachePRIVATE(const char *string, ooscript::Value *strCache, BOOL *inited)
@@ -1689,7 +1696,7 @@ static std::string DescribeValue(ooscript::Context context, ooscript::Value valu
 	
 	std::optional<std::string>	result;
 	ooscript::ClassDef				*valueClass = NULL;
-	cxx::OOJavaScriptEngine	*jsEng = cxx::OOJavaScriptEngine::sharedEngine();
+	OOJavaScriptEngine	*jsEng = OOJavaScriptEngine::sharedEngine();
 	
 	if (ooscript::isObjectOrNull(value) && !ooscript::isNull(value))
 	{
@@ -1898,7 +1905,6 @@ ooscript::Value OONativeVectorJSValueInContext(OONativeVector *vector, ooscript:
 }
 
 
-namespace cxx {
 
 OONull *OONull::null()
 {
@@ -1908,10 +1914,16 @@ OONull *OONull::null()
 }
 
 
-// (-copyWithZone:, which answered the object itself, is the facade's: OOJavaScriptEngine+ObjCBridge.mm.)
+// (-copyWithZone:, which answered the object itself, was the facade's: the one null is shared by reference.)
 
 
-std::optional<std::string> OONull::description()
+std::string OONull::className() const
+{
+	return "OONull";
+}
+
+
+std::string OONull::description() const
 {
 	return "<null>";
 }
@@ -1922,7 +1934,6 @@ ooscript::Value OONull::jsValueInContext(ooscript::Context /*context*/)
 	return ooscript::nullValue();
 }
 
-}	// namespace cxx
 
 
 bool OOJSUnconstructableConstruct(ooscript::Context context, ooscript::CallArgs &oojsArgs)
@@ -2457,8 +2468,7 @@ static oo::PList PListFromJSArray(ooscript::Context context, ooscript::Object ar
 		oo::PList element = cxx_OOJSPListFromJSValue(context, value);
 		if (element.isNull())
 		{
-			::OONull *null = oo::ToObjC(cxx::OONull::null());	// [OONull null]
-			element = oo::PListObject(null);
+			element = OONullObjectNode();	// [OONull null]
 		}
 		values.push_back(std::move(element));
 	}

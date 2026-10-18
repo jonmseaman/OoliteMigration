@@ -1247,7 +1247,7 @@ oo::PList GuiDisplayGen::textureDescriptorFromJSValue(ooscript::Value value,
 
 		ooscript::Object objValue = ooscript::toObject(value);
 
-		if (OOJSGetClass(context, objValue) != [[::OOJavaScriptEngine sharedEngine] stringClass])
+		if (OOJSGetClass(context, objValue) != OOJavaScriptEngine::sharedEngine()->stringClass())
 		{
 			result = cxx_OOJSDictionaryFromJSObject(context, objValue);
 		}

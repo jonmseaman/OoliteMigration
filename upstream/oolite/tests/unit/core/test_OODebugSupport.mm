@@ -76,27 +76,27 @@ std::optional<std::string> ResourceManager::pathForFileNamed(const std::string &
 
 
 
-@interface OOJavaScriptEngine: OOObject
-+ (OOJavaScriptEngine *) sharedEngine;
-- (void) enableDebuggerStatement;
-@end
-
-@implementation OOJavaScriptEngine
-
-+ (OOJavaScriptEngine *) sharedEngine
+// The engine (OOJavaScriptEngine.h; a C++ class since bead oo-wdqw1 deleted its facade), declared
+// with the header's names and signatures but not its class; the stand-in's answers are kept.
+class OOJavaScriptEngine
 {
-	static OOJavaScriptEngine *engine = nil;
-	if (engine == nil)  engine = [[OOJavaScriptEngine alloc] init];
+public:
+	static OOJavaScriptEngine *sharedEngine();
+	void enableDebuggerStatement();
+};
+
+
+OOJavaScriptEngine *OOJavaScriptEngine::sharedEngine()
+{
+	static OOJavaScriptEngine *engine = new OOJavaScriptEngine;
 	return engine;
 }
 
 
-- (void) enableDebuggerStatement
+void OOJavaScriptEngine::enableDebuggerStatement()
 {
 	sRecord.debuggerStatementsEnabled++;
 }
-
-@end
 
 
 // The C++ monitor's and TCP client's members that the debug support calls; the client's debugger

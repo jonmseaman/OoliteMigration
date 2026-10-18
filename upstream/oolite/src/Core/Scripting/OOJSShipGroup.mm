@@ -240,7 +240,7 @@ static bool ShipGroupGetProperty(Context cx, Object obj, PropertyId propID, Valu
 		case kShipGroup_name:
 		{
 			const std::optional<std::string> name = (cxxGroup != nullptr) ? cxxGroup->name() : std::nullopt;
-			result = name.has_value() ? oo::PList(*name) : oo::PListObject([OONull null]);
+			result = name.has_value() ? oo::PList(*name) : OONullObjectNode();
 			break;
 		}
 			

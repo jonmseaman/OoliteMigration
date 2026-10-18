@@ -1,0 +1,186 @@
+/*
+
+OOObject+OOJavaScript.mm
+
+TRANSITIONAL (proposed ADR-0056, bead oo-wdqw1): see OOObject+OOJavaScript.h. The category on
+OOObject that forwards to the free functions holding its bodies (amendment oo-ppc item 3), and the
+one-line bridges of OOJavaScriptEngine.mm's free functions (amendment oo-9ht.139), moved verbatim
+from OOJavaScriptEngine+ObjCBridge.mm when oo-wdqw1 deleted the engine's facade.
+
+JavaScript support for Oolite
+Copyright (C) 2007-2013 David Taylor and Jens Ayton.
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+MA 02110-1301, USA.
+
+*/
+
+#import "OOJavaScriptEngine.h"
+#import "ResourceManager.h"
+#import "OOWeakReference.h"
+#import "OOVector.h"
+#import "OOPlanetEntity.h"
+#import "EntityOOJavaScriptExtensions.h"
+#include "oofnd/objc/OOException.h"
+
+
+
+// The root class's JS glue (amendment oo-ppc item 3): the bodies are in OOJavaScriptEngine.mm.
+@implementation OOObject (OOJavaScriptConversion)
+
+- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context	{ return OOObjectJSValueInContext(context); }
+- (std::optional<std::string>) cxx_oo_jsClassName		{ return OOObjectJSClassName(); }
+- (std::optional<std::string>) cxx_oo_jsDescription		{ return OOObjectJSDescription(self); }
+- (std::optional<std::string>) cxx_oo_jsDescriptionWithClassName:(const std::optional<std::string> &)className	{ return OOObjectJSDescriptionWithClassName(self, className); }
+- (void) oo_clearJSSelf:(ooscript::Object)selfVal		{ OOObjectClearJSSelf(selfVal); }
+
+@end
+
+
+id OOJavaScriptEngineWeakRefUnderlyingObject(id object)
+{
+	return [object weakRefUnderlyingObject];
+}
+
+
+Class OOJavaScriptEngineClass(id object)
+{
+	return [object class];
+}
+
+
+/*	An entity's object, or a weak reference to one, is not asked by selector (bead oo-9ht.39.8.9,
+	ADR-0056 amendment oo-9ht.39.8.9): its JS value and class name are its C++ entity's
+	(OOJSEntityJSValue(), OOJSEntityJSClassName()), which the root facade's -oo_jsValueInContext:
+	and -cxx_oo_jsClassName forwarded to (a weak reference's forwarded to its object's). A weak
+	reference whose object has gone is still asked: undefined and no name, as before.
+*/
+namespace {
+
+cxx::Entity *EntityOfObject(id object)
+{
+	id target = [object weakRefUnderlyingObject];	// the object itself unless a weak reference
+	if (target == nil || ![target isKindOfClass:[::Entity class]])  return nullptr;
+	return oo::ToCxx(static_cast<::Entity *>(target));
+}
+
+}	// namespace
+
+
+ooscript::Value OOJavaScriptEngineJSValueInContext(id object, ooscript::Context context)
+{
+	if (cxx::Entity *entity = EntityOfObject(object))  return OOJSEntityJSValue(entity, context);
+	return [object oo_jsValueInContext:context];
+}
+
+
+std::optional<std::string> OOJavaScriptEngineJSClassName(id object)
+{
+	if (cxx::Entity *entity = EntityOfObject(object))  return OOJSEntityJSClassName(entity);
+	return [object cxx_oo_jsClassName];
+}
+
+
+std::optional<std::string> OOJavaScriptEngineJSDescriptionWithClassName(id object, const std::optional<std::string> &className)
+{
+	return [object cxx_oo_jsDescriptionWithClassName:className];
+}
+
+
+std::optional<std::string> OOJavaScriptEngineDescriptionComponents(id object)
+{
+	return [object cxx_descriptionComponents];
+}
+
+
+Class OOJavaScriptEngineOOObjectClass()
+{
+	return [OOObject class];
+}
+
+
+bool OOJavaScriptEngineCaughtOOException(std::string &name, std::string &reason)
+{
+	try
+	{
+		throw;
+	}
+	catch (id exception)
+	{
+		if (![exception isKindOfClass:[OOException class]])  return false;
+		name = [(OOException *)exception name];
+		reason = [(OOException *)exception reason];
+		return true;
+	}
+	catch (...)
+	{
+		return false;	// not an Objective-C exception: not what @catch (OOException *) caught
+	}
+}
+
+
+std::optional<std::string> OOJavaScriptEngineJSDescription(id object)
+{
+	return [object cxx_oo_jsDescription];
+}
+
+
+void OOJavaScriptEngineClearJSSelf(id object, ooscript::Object selfVal)
+{
+	[object oo_clearJSSelf:selfVal];
+}
+
+
+bool OOJavaScriptEngineIsKindOfClass(id object, Class requiredClass)
+{
+	return [object isKindOfClass:requiredClass];
+}
+
+
+bool OOJavaScriptEngineIsVisibleToScripts(cxx::Entity *entity)
+{
+	return OOJSEntityIsVisibleToScripts(entity);	// the C++ entity's answer, which the root facade's selector forwarded to (bead oo-9ht.39.8.9)
+}
+
+
+// The root facade's -isShip, -isSubEntity, -isPlanet and -status forwarded to these members (bead
+// oo-9ht.39.25); an Objective-C entity's class may answer them itself, so it is still asked (nil's
+// answer once its object has gone).
+bool OOJavaScriptEngineIsShip(cxx::Entity *entity)
+{
+	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() isShip];
+	return entity != nullptr && entity->getIsShip();
+}
+
+
+bool OOJavaScriptEngineIsSubEntity(cxx::Entity *entity)
+{
+	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() isSubEntity];
+	return entity != nullptr && entity->getIsSubEntity();
+}
+
+
+bool OOJavaScriptEngineIsPlanet(cxx::Entity *entity)
+{
+	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() isPlanet];
+	return entity != nullptr && entity->isPlanet();
+}
+
+
+OOEntityStatus OOJavaScriptEngineStatus(cxx::Entity *entity)
+{
+	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() status];
+	return entity != nullptr ? entity->status() : OOEntityStatus{};
+}

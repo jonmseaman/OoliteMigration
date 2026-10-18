@@ -52,11 +52,9 @@ MA 02110-1301, USA.
 #endif
 
 
-namespace cxx {
-
 /*	The engine (proposed ADR-0056; docs/phases/3-slices/OOJavaScriptEngine.md): the singleton
-	that owns the JS runtime and the main thread context. The Objective-C OOJavaScriptEngine
-	(OOJavaScriptEngine+ObjCBridge.h) is its facade while anything messages it.
+	that owns the JS runtime and the main thread context. A global class since bead oo-wdqw1
+	deleted its Objective-C facade; it is the sender of its reset notifications.
 */
 class OOJavaScriptEngine : public oo::RefCounted
 {
@@ -142,12 +140,10 @@ private:
 #endif
 };
 
-}	// namespace cxx
-
 
 
 /*	The root-class JS glue for classes rooted on OOObject: the category OOObject (OOJavaScript)
-	(OOJavaScriptEngine+ObjCBridge.h) and the bodies of its default methods, which the category
+	(OOObject+OOJavaScript.h) and the bodies of its default methods, which the category
 	forwards to (amendment oo-ppc item 3).
 */
 ooscript::Value OOObjectJSValueInContext(ooscript::Context context);
@@ -161,31 +157,45 @@ class OONativeVector;
 ooscript::Value OONativeVectorJSValueInContext(OONativeVector *vector, ooscript::Context context);
 
 
-namespace cxx {
-
 /*	OONull: the placeholder for null inside native collections, which cannot
 	hold nil (was Foundation's null singleton, ADR-0029 Decision 5). A JS array
 	element that is null or undefined becomes [OONull null] in the native array, and
 	[OONull null] becomes JS null, so JS null round-trips as before. Game code
 	uses it where a collection slot is empty (MFD settings, target memory,
 	script event arguments). It describes itself as "<null>", as its
-	predecessor did, and -copy returns itself. Its Objective-C facade OONull
-	(OOJavaScriptEngine+ObjCBridge.h) is the object the collections hold.
+	predecessor did, and -copy returns itself. A property list holds it as an
+	Object node whose foreign object it is (OONullObjectNode(); bead oo-wdqw1 deleted its
+	Objective-C facade, which was what the collections held).
 */
-class OONull : public oo::RefCounted
+class OONull : public oo::PListForeign
 {
 public:
 	// The one null, made on first use; borrowed, never released (amendment oo-r7m0).
 	static OONull *null();
 
-	std::optional<std::string> description();	// "<null>"
 	ooscript::Value jsValueInContext(ooscript::Context context);	// JS null
+
+	// oo::PListForeign: what the facade answered (its class, and "%@" as "<null>").
+	std::string className() const override;
+	std::string description() const override;	// "<null>"
 };
 
-}	// namespace cxx
+
+// The one null as a PList::Object node ([OONull null] through oo::PListObject()), and whether a
+// node is that null (oo::ObjectIn(node) == [OONull null]).
+inline oo::PList OONullObjectNode()
+{
+	return oo::PList(oo::PList::Object(oo::Ref<oo::PListForeign>(OONull::null())));
+}
+
+inline bool OOIsNullObjectNode(const oo::PList &plist)
+{
+	const oo::PList::Object *node = plist.getIf<oo::PList::Object>();
+	return node != nullptr && node->get() == OONull::null();
+}
 
 
-// cxx::OOJSValue is declared in OOJSEngineCore.h (a plain C++ header, so C++-only bindings can use it).
+// OOJSValue is declared in OOJSEngineCore.h (a plain C++ header, so C++-only bindings can use it).
 
 
 
@@ -254,8 +264,8 @@ OOJS_EXTERN_C BOOL OOJSObjectGetterImplPRIVATE(ooscript::Context context, ooscri
 
 
 
-// Transitional: the Objective-C OOJavaScriptEngine (with its OOMonitorSupport category), for code not yet converted. Deleted, with namespace cxx above, by
-// the bridge's deletion bead.
-#import "OOJavaScriptEngine+ObjCBridge.h"
+// The root class's JS glue and the engine's one-line sends to Objective-C objects (bead oo-wdqw1:
+// they were in the engine's facade file; they go with the root class, Phase 4).
+#import "OOObject+OOJavaScript.h"
 
 

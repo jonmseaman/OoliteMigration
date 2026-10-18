@@ -37,7 +37,7 @@ SOFTWARE.
 #import "OOJSScript.h"
 #import "OOObjCPList.h"
 #import "OOJSEngineTimeManagement.h"
-#import "OOJSSpecialFunctions+ObjCBridge.h"
+#import "OOJSSpecialFunctions.h"
 
 #import "NSObjectOOExtensions.h"
 #import "OOTexture.h"
@@ -81,9 +81,9 @@ void OODebugMonitor::init()
 
 		_TCPIgnoresDroppedPackets = false;
 
-		::OOJavaScriptEngine *jsEng = [::OOJavaScriptEngine sharedEngine];
+		::OOJavaScriptEngine *jsEng = OOJavaScriptEngine::sharedEngine();
 #if OOJSENGINE_MONITOR_SUPPORT
-		[jsEng setMonitor:this];	// the C++ monitor interface (bead oo-9ht.74.1); the engine borrows it
+		jsEng->setMonitor(this);	// the C++ monitor interface (bead oo-9ht.74.1); the engine borrows it
 #endif
 
 		setUpDebugConsoleScript();
@@ -235,10 +235,10 @@ oo::PList OODebugMonitor::configurationValueForKey(const std::string &key)
 {
 	// The override, else (when it is missing or null) the OXPs' value; an OONull in either reads as
 	// null (an OONull override hides the OXPs' value).
-	const auto isNil = [](const oo::PList *v) { return v == nullptr || v->isNull() || (v->type() == oo::PList::Type::Object && oo::ObjectIn(*v) == nil); };
+	const auto isNil = [](const oo::PList *v) { return v == nullptr || v->isNull() || (v->type() == oo::PList::Type::Object && oo::ObjectIn(*v) == nil && !OOIsNullObjectNode(*v)); };
 	const oo::PList *result = _configOverrides.find(key);
 	if (isNil(result))  result = _configFromOXPs.find(key);
-	if (isNil(result) || oo::ObjectIn(*result) == [::OONull null])  return oo::PList();
+	if (isNil(result) || OOIsNullObjectNode(*result))  return oo::PList();
 	return *result;
 }
 
@@ -709,15 +709,15 @@ void OODebugMonitor::setUpDebugConsoleScript()
 		// (jsValueInContext()), as the facade's node's was (bead oo-9ht.74).
 		oo::PList::Dict jsProps;
 		jsProps["console"] = oo::PList(oo::PList::Object(oo::Ref<oo::PListForeign>(this)));
-		id special = JSSpecialFunctionsObjectWrapper(context);
-		if (special != nil)  jsProps["special"] = oo::PListObject(special);
+		const oo::Ref<OOJSValue> special = JSSpecialFunctionsObjectWrapper(context);
+		if (special != nullptr)  jsProps["special"] = OOJSValueObjectNode(special.get());
 		_script = OOJSScript::scriptWithPath(path, oo::PList(std::move(jsProps)));
 	}
 
 	// If no script, just make console visible globally as debugConsole.
 	if (!_script)
 	{
-		ooscript::Object global = [[::OOJavaScriptEngine sharedEngine] globalObject];
+		ooscript::Object global = OOJavaScriptEngine::sharedEngine()->globalObject();
 		ooscript::defineProperty(context, global, "debugConsole", jsValueInContext(context), NULL, NULL, ooscript::PropertyFlag::Enumerate);
 	}
 	

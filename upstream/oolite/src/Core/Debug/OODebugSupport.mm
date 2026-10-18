@@ -87,7 +87,7 @@ void OOInitDebugSupport(void)
 	{
 		// Set up monitor and register debugger, if any.
 		OODebugMonitor::sharedDebugMonitor()->setDebugger(debugger.get());
-		[[OOJavaScriptEngine sharedEngine] enableDebuggerStatement];
+		OOJavaScriptEngine::sharedEngine()->enableDebuggerStatement();
 	}
 }
 

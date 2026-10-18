@@ -326,32 +326,37 @@ std::optional<std::string> ResourceManager::diagnosticFileLocation()  { std::abo
 #endif
 
 
-@interface OOJavaScriptEngine: OOObject
+// The engine (OOJavaScriptEngine.h; a C++ class since bead oo-wdqw1 deleted its facade), declared
+// with the header's names and signatures but not its class; the stand-in's answers are kept.
+class OOJavaScriptEngine
 {
-@public
-	BOOL _showErrorLocations, _dumpStackForErrors, _dumpStackForWarnings;
-}
-+ (OOJavaScriptEngine *) sharedEngine;
-@end
+public:
+	static OOJavaScriptEngine *sharedEngine();
+	ooscript::Object globalObject();
+	bool showErrorLocations();
+	void setShowErrorLocations(bool flag);
+	bool dumpStackForErrors();
+	void setDumpStackForErrors(bool flag);
+	bool dumpStackForWarnings();
+	void setDumpStackForWarnings(bool flag);
 
-@implementation OOJavaScriptEngine
+	bool _showErrorLocations = false, _dumpStackForErrors = false, _dumpStackForWarnings = false;
+};
 
-+ (OOJavaScriptEngine *) sharedEngine
+
+OOJavaScriptEngine *OOJavaScriptEngine::sharedEngine()
 {
-	static OOJavaScriptEngine *engine = nil;
-	if (engine == nil)  engine = [[OOJavaScriptEngine alloc] init];
+	static OOJavaScriptEngine *engine = new OOJavaScriptEngine;
 	return engine;
 }
 
-- (ooscript::Object) globalObject  { return ooscript::getGlobalObject(gOOJSMainThreadContext); }
-- (BOOL) showErrorLocations  { return _showErrorLocations; }
-- (void) setShowErrorLocations:(BOOL)flag  { _showErrorLocations = flag; }
-- (BOOL) dumpStackForErrors  { return _dumpStackForErrors; }
-- (void) setDumpStackForErrors:(BOOL)flag  { _dumpStackForErrors = flag; }
-- (BOOL) dumpStackForWarnings  { return _dumpStackForWarnings; }
-- (void) setDumpStackForWarnings:(BOOL)flag  { _dumpStackForWarnings = flag; }
-
-@end
+ooscript::Object OOJavaScriptEngine::globalObject()  { return ooscript::getGlobalObject(gOOJSMainThreadContext); }
+bool OOJavaScriptEngine::showErrorLocations()  { return _showErrorLocations; }
+void OOJavaScriptEngine::setShowErrorLocations(bool flag)  { _showErrorLocations = flag; }
+bool OOJavaScriptEngine::dumpStackForErrors()  { return _dumpStackForErrors; }
+void OOJavaScriptEngine::setDumpStackForErrors(bool flag)  { _dumpStackForErrors = flag; }
+bool OOJavaScriptEngine::dumpStackForWarnings()  { return _dumpStackForWarnings; }
+void OOJavaScriptEngine::setDumpStackForWarnings(bool flag)  { _dumpStackForWarnings = flag; }
 
 
 // The OpenGL extension manager's answers: the C++ manager's members the console reads.

@@ -400,18 +400,17 @@ OOJS_EXTERN_C void OOJSRegisterObjectConverter(ooscript::ClassDef *theClass, OOJ
 #endif
 
 
-namespace cxx {
-
 /*	OOJSValue: an object whose purpose in life is to hold a JavaScript value.
-	This is somewhat useful for putting JavaScript objects in ObjC collections,
+	This is somewhat useful for putting JavaScript objects in property lists,
 	for instance to pass as properties to script loaders. The value is
 	GC rooted for the lifetime of the OOJSValue.
 
 	All methods take a context parameter, which must either be nil or a context
-	in a request. The Objective-C OOJSValue (OOJavaScriptEngine+ObjCBridge.h) is
-	its facade, which the collections hold.
+	in a request. A property list holds it as an Object node: it is its own node's foreign
+	object (OOJSValueObjectNode(); bead oo-wdqw1, whose deletion of the Objective-C facade made it
+	a global class).
 */
-class OOJSValue : public oo::RefCounted
+class OOJSValue : public oo::PListForeign
 {
 public:
 	static oo::Ref<OOJSValue> valueWithJSValue(ooscript::Value value, ooscript::Context context);
@@ -421,6 +420,10 @@ public:
 
 	ooscript::Value jsValueInContext(ooscript::Context context);	// the held value
 
+	// oo::PListForeign: what the facade answered (its class, and "%@" as <OOJSValue 0x...>).
+	std::string className() const override;
+	std::string description() const override;
+
 private:
 	// The initialisers after [super init], which could not fail: run by the factories.
 	void initWithJSValue(ooscript::Value value, ooscript::Context context);
@@ -429,10 +432,16 @@ private:
 	void deleteJSValue();
 
 	ooscript::Value					_val = {};
-	const void						*_resetSender = {};	// the engine's facade, while _val is rooted
+	const void						*_resetSender = {};	// the engine, the sender of its reset notifications, while _val is rooted
 };
 
-}	// namespace cxx
+
+// A held value as a PList::Object node (what oo::PListObject() did for the facade); null -> null PList.
+inline oo::PList OOJSValueObjectNode(OOJSValue *value)
+{
+	if (value == nullptr)  return oo::PList();
+	return oo::PList(oo::PList::Object(oo::Ref<oo::PListForeign>(value)));
+}
 
 #include "OOJSEngineNativeWrappers.h"
 

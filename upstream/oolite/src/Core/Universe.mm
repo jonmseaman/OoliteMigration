@@ -7631,7 +7631,7 @@ void Universe::update(OOTimeDelta inDeltaT)
 		uint32_t gcbytes1 = ooscript::getGCParameter(ooscript::getRuntime(context),ooscript::GCParam::Bytes);
 		OOJSRelinquishContext(context);
 #endif
-		[[::OOJavaScriptEngine sharedEngine] garbageCollectionOpportunity:NO];
+		OOJavaScriptEngine::sharedEngine()->garbageCollectionOpportunity(NO);
 #ifndef NDEBUG
 		context = OOJSAcquireContext(); 
 		uint32_t gcbytes2 = ooscript::getGCParameter(ooscript::getRuntime(context),ooscript::GCParam::Bytes);

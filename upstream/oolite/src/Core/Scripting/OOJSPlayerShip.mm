@@ -568,7 +568,7 @@ void OOJSPlayerShipSetJSSelf(PlayerEntity *player, ooscript::Object val, ooscrip
 	OOJSAddGCObjectRoot(context, &player->_jsSelf, "Player jsSelf");
 
 	oo::NotificationCenter::defaultCenter().addObserver(player, kOOJavaScriptEngineWillResetNotificationName,
-														[OOJavaScriptEngine sharedEngine],
+														OOJavaScriptEngine::sharedEngine(),
 														[player](const oo::Notification &notification) { OOJSPlayerShipJavaScriptEngineWillReset(player, notification); });
 }
 
@@ -576,7 +576,7 @@ void OOJSPlayerShipSetJSSelf(PlayerEntity *player, ooscript::Object val, ooscrip
 void OOJSPlayerShipJavaScriptEngineWillReset(PlayerEntity *player, const oo::Notification & /*notification*/)
 {
 	oo::NotificationCenter::defaultCenter().removeObserver(player, kOOJavaScriptEngineWillResetNotificationName,
-															[OOJavaScriptEngine sharedEngine]);
+															OOJavaScriptEngine::sharedEngine());
 
 	if (player->_jsSelf != NULL)
 	{
@@ -691,7 +691,7 @@ static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Val
 				oo::PList::Array list;	// [OONull null] for an inactive MFD
 				for (const std::optional<std::string> &key : (player != nullptr ? player->multiFunctionDisplayList() : std::vector<std::optional<std::string>>()))
 				{
-					list.push_back(key.has_value() ? oo::PList(*key) : oo::PListObject([OONull null]));
+					list.push_back(key.has_value() ? oo::PList(*key) : OONullObjectNode());
 				}
 				result = oo::PList(std::move(list));
 			}

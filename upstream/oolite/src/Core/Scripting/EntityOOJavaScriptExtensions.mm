@@ -167,7 +167,7 @@ ooscript::Value EntityJSValueInContext(cxx::Entity *entity, ooscript::Context co
 		{
 			OOJSAddGCObjectRoot(context, &entity->_jsSelf, "Entity jsSelf");
 			oo::NotificationCenter::defaultCenter().addObserver(entity, kOOJavaScriptEngineWillResetNotificationName,
-																[OOJavaScriptEngine sharedEngine],
+																OOJavaScriptEngine::sharedEngine(),
 																[entity](const oo::Notification &) { entity->deleteJSSelf(); });
 		}
 	}
@@ -195,7 +195,7 @@ void EntityJSDeleteJSSelf(cxx::Entity *entity)
 		OOJSRelinquishContext(context);
 		
 		oo::NotificationCenter::defaultCenter().removeObserver(entity, kOOJavaScriptEngineWillResetNotificationName,
-																[OOJavaScriptEngine sharedEngine]);
+																OOJavaScriptEngine::sharedEngine());
 	}
 }
 
