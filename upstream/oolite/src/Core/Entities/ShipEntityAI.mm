@@ -2489,7 +2489,8 @@ void ShipEntity::scanForNearestShipMatchingPredicate(const std::string &predicat
 		{
 			.context = context,
 			.function = function->functionValue(),
-			.jsThis = jsThis
+			.jsThis = jsThis,
+			.errorFlag = NO
 		};
 		scanForNearestShipWithPredicate(JSFunctionPredicate, &param);
 	}

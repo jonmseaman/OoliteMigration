@@ -109,6 +109,7 @@ oo::PList OOMaterial::synthesizeMaterialDictionaryWithName(const std::optional<s
 	{
 		.inConfig = configuration.isNull() ? oo::PList(oo::PList::Dict{}) : configuration,
 		.outConfig = oo::PList::Dict{},
+		.texturesUsed = 0,
 		.maxTextures = (NSUInteger)OOOpenGLExtensionManager::sharedManager()->textureImageUnitCount(),
 		
 		.macros = std::move(macrosCopy),
