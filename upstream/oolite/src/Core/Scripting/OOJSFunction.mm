@@ -199,7 +199,7 @@ bool OOJSFunction::evaluateWithContext(ooscript::Context context,
 {
 	NSUInteger i, argc = arguments.size();
 	assert(argc < UINT32_MAX);
-	ooscript::Value argv[argc];
+	std::vector<ooscript::Value> argv(argc);
 
 	for (i = 0; i < argc; i++)
 	{
@@ -213,7 +213,7 @@ bool OOJSFunction::evaluateWithContext(ooscript::Context context,
 	if (OK)  OK = evaluateWithContext(context,
 									  scopeObj,
 									  (uint32_t)argc,
-									  argv,
+									  argv.data(),
 									  result);
 
 	for (i = 0; i < argc; i++)

@@ -3436,7 +3436,7 @@ void PlayerEntity::updateAlertConditionForNearbyEntities()
 
 	int				i, ent_count	= UNIVERSE->n_entities;
 	cxx::Entity			**uni_entities	= UNIVERSE->sortedEntities;	// grab the public sorted list
-	::Entity			*my_entities[ent_count];
+	std::vector<::Entity*> my_entities(ent_count);
 	::Entity			*scannedEntity = nil;
 	for (i = 0; i < ent_count; i++)
 	{
@@ -7290,7 +7290,7 @@ void PlayerEntity::loseTargetStatus()
 		return;
 	int			ent_count =		UNIVERSE->n_entities;
 	cxx::Entity**	uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
-	::Entity*		my_entities[ent_count];
+	std::vector<::Entity*> my_entities(ent_count);
 	int i;
 	for (i = 0; i < ent_count; i++)
 		my_entities[i] = [oo::ToObjC(uni_entities[i]) retain];		//	retained
@@ -11339,7 +11339,7 @@ void PlayerEntity::setGuiToMarketScreen()
 	}
 
 	NSUInteger			commodityCount = (shipCommodityData != nullptr ? shipCommodityData->count() : 0);
-	OOCargoQuantity		quantityInHold[commodityCount];
+	std::vector<OOCargoQuantity> quantityInHold(commodityCount);
 		
 	for (NSUInteger i = 0; i < commodityCount; i++)
 	{
@@ -11534,7 +11534,7 @@ void PlayerEntity::setGuiToMarketInfoScreen()
 	const std::vector<std::string>	goods = applyMarketSorter(applyMarketFilter((localMarket != nullptr ? localMarket->goods() : std::vector<std::string>()), localMarket), localMarket);
 
 	NSUInteger			i, j, commodityCount = (shipCommodityData != nullptr ? shipCommodityData->count() : 0);
-	OOCargoQuantity		quantityInHold[commodityCount];
+	std::vector<OOCargoQuantity> quantityInHold(commodityCount);
 		
 	for (i = 0; i < commodityCount; i++)
 	{
