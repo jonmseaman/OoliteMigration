@@ -486,7 +486,7 @@ void AI::reactToMessage(const std::string &message, const std::optional<std::str
 	
 	/*	CRASH in _freedHandler when called via -setState: __NSFireDelayedPerform (1.69, OS X/x86).
 		Analysis: owner invalid.
-		Fix: make owner an OOWeakReference.
+		Fix: make owner a weak reference.
 		 -- Ahruman, 20070706
 	*/
 	if (owner == nil || (owner != nullptr ? owner->getUniversalID() : OOUniversalID{}) == NO_TARGET)  return;

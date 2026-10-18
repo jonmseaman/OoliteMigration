@@ -141,7 +141,7 @@ private:
 	oo::PList cleanHandlers(const oo::PList &handlers, const std::string &stateKey, const std::string &smName);
 	oo::PList cleanActions(const oo::PList &actions, const std::string &handlerKey, const std::string &stateKey, const std::string &smName);
 
-	oo::WeakRef<cxx::Entity>	_owner = {};			// the ShipEntity this is the AI for, weakly (an OOWeakReference to its object before bead oo-9ht.73)
+	oo::WeakRef<cxx::Entity>	_owner = {};			// the ShipEntity this is the AI for, weakly (a weak reference proxy to its object before bead oo-9ht.73)
 	std::optional<std::string>	ownerDesc = {};		// describes the object this is the AI for; nullopt until it has an owner
 
 	oo::PList			stateMachine = {};			// the loaded, whitelisted state machine; null: none (nil)

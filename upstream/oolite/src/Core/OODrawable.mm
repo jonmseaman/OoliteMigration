@@ -114,7 +114,7 @@ std::vector<oo::Ref<OOTexture>> OODrawable::allTextures()
 }
 
 
-// The object's own size (was [self oo_objectSize], the facade's instance size; bead oo-9ht.9).
+// The object's own size (was the facade's Objective-C instance size; bead oo-9ht.9).
 size_t OODrawable::totalSize()
 {
 	return objectSize();

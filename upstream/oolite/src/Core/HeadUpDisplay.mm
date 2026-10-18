@@ -1960,7 +1960,7 @@ void HeadUpDisplay::drawSecondaryTargetReticle(const oo::PList &info)
 			// can't use isKindOfClass because that throws
 			// OOInvalidArgumentException when called on a weakref
 			// with a dropped object.
-			// TODO: fix OOWeakReference so isKindOfClass works
+			// TODO: fix the weak reference proxy so isKindOfClass works (moot for oo::WeakRef)
 			if (sec_ref != oo::WeakRef<cxx::Entity>())	// a weak reference (-isProxy), not an empty slot
 			{
 				cxx::Entity *secondary = oo::LiveEntity(sec_ref);	// +0, null once its object has gone

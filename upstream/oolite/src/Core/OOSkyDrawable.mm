@@ -34,7 +34,6 @@ SOFTWARE.
 #import "OOGraphicsResetManager.h"
 #import "Universe.h"
 #import "OOMacroOpenGL.h"
-#import "NSObjectOOExtensions.h"
 
 #include "oofnd/Defaults.hpp"
 #include "oofnd/objc/OOException.h"
@@ -688,7 +687,7 @@ void OOSkyQuadSet::render()
 #ifndef NDEBUG
 size_t OOSkyQuadSet::totalSize()
 {
-	// sizeof *this stands for -oo_objectSize (the object's own size).
+	// sizeof *this stands for the Objective-C instance size (the object's own size).
 	return sizeof *this + static_cast<size_t>(_count) * 4 * (sizeof *_positions + sizeof *_texCoords + sizeof *_colors);
 }
 

@@ -488,7 +488,7 @@ OOJS_EXTERN_C bool OOJSUnconstructableConstruct(ooscript::Context context, ooscr
 /*	OOJSObjectWrapperFinalize
 	
 	Finalizer for JS classes whose private storage is a retained object
-	reference (generally an OOWeakReference, but doesn't have to be).
+	reference (generally a weak reference proxy, but doesn't have to be).
 */
 OOJS_EXTERN_C void OOJSObjectWrapperFinalize(ooscript::Context context, ooscript::Object thisObj);
 
@@ -496,7 +496,7 @@ OOJS_EXTERN_C void OOJSObjectWrapperFinalize(ooscript::Context context, ooscript
 /*	OOJSObjectWrapperToString
 	
 	Implementation of toString() for JS classes whose private storage is an
-	Objective-C object reference (generally an OOWeakReference).
+	Objective-C object reference (generally a weak reference proxy).
 	
 	Calls -cxx_oo_jsDescription and, if that fails, -description.
 */

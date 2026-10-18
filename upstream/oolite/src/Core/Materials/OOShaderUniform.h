@@ -45,7 +45,7 @@ SOFTWARE.
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"
 
-@class OOWeakReference;
+#import "OOWeakReference.h"	// the Objective-C binding target's weak reference (an entity's object; oo-9ht.39.28)
 
 
 struct OOShaderBindingValue;	// OOShaderUniformMethodType.h (bead oo-9ht.158)

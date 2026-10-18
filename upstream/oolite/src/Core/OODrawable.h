@@ -39,7 +39,6 @@ SOFTWARE.
 #import "oofnd/objc/OOObject.h"
 #import "OOOpenGL.h"
 #import "OOMaths.h"
-#import "OOWeakReference.h"
 namespace cxx { class Entity; }	// Entity.h: the shader binding target (bead oo-9ht.39.6)
 
 #include <vector>
