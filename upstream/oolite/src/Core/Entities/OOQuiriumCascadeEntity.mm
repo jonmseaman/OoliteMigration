@@ -49,7 +49,7 @@ bool OOQuiriumCascadeEntity::initQuiriumCascadeFromShip(::ShipEntity *ship)
 		setStatus(STATUS_EFFECT);
 		scanClass = CLASS_MINE;
 		
-		setOwner(oo::ToCxx((::Entity *)(ship != nullptr ? ship->owner() : id{})));
+		setOwner(ship != nullptr ? oo::LiveOwner(ship) : nullptr);	// [ship owner]'s C++ entity
 		
 		// Red and green channels are animated.
 		_color[2] = 1.0f;

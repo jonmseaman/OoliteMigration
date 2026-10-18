@@ -161,7 +161,7 @@ public:
 	bool injectorsEngaged() override	{ return NO; }
 	bool getMassLockable() override	{ return YES; }
 	bool hyperspeedEngaged() override	{ return NO; }
-	::Entity * getCompassTarget() override	{ return _compassTarget; }
+	cxx::Entity * getCompassTargetEntity() override	{ return oo::ToCxx(_compassTarget); }
 	OOCompassMode getCompassMode() override	{ return COMPASS_MODE_PLANET; }
 	bool weaponsOnline() override	{ return YES; }
 	Vector viewpointOffsetAft() override	{ return make_vector(0, 0, -1); }

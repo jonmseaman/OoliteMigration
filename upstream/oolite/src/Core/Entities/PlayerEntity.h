@@ -609,10 +609,8 @@ public:
 	void clearRolesFromPlayer(float chance);
 	NSUInteger maxPlayerRoles();
 	void updateSystemMemory();
-	virtual ::Entity *getCompassTarget();
-	cxx::Entity *getCompassTargetEntity();	// getCompassTarget()'s C++ entity, null for none (bead oo-9ht.39.8.11)
-	void setCompassTarget(::Entity *value);
-	void setCompassTargetEntity(cxx::Entity *value);	// setCompassTarget() of the entity's object, by its C++ entity (bead oo-9ht.39.26)
+	virtual cxx::Entity *getCompassTargetEntity();	// the compass target's C++ entity, null for none or once its object has gone (the object-answering getCompassTarget() until bead oo-zwnvp)
+	void setCompassTargetEntity(cxx::Entity *value);	// (setCompassTarget() of the entity's object until bead oo-zwnvp)
 	virtual void validateCompassTarget();
 	std::optional<std::string> compassTargetLabel();
 

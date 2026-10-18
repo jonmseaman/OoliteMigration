@@ -108,21 +108,22 @@ void OOLightParticleEntity::drawSubEntityImmediate(bool immediate, bool transluc
 		zero_distances are necessary for flashers, if they haven't already.
 		-- Ahruman 2009-09-20
 	*/
-	cam_zero_distance = [owner() camZeroDistance];
+	cxx::Entity *ownerPart = oo::LiveOwner(this);	// -owner's C++ entity (bead oo-zwnvp)
+	cam_zero_distance = ownerPart != nullptr ? ownerPart->camZeroDistance() : 0;	// a message to nil answered 0
 	if (no_draw_distance <= cam_zero_distance)  return;
 	
-	::Entity *father = owner();
-	::Entity *last = nil;
+	cxx::Entity *father = ownerPart;
+	cxx::Entity *last = nullptr;
 	HPVector abspos = position;
 
-	while (father != nil && father != last)	// && father != (Entity *)NO_TARGET, which is nil: NO_TARGET is 0
+	while (father != nullptr && father != last)	// && father != (Entity *)NO_TARGET, which is nil: NO_TARGET is 0
 	{
-		OOMatrix rM = [father drawRotationMatrix];
-		abspos = HPvector_add(OOHPVectorMultiplyMatrix(abspos, rM), [father position]);
+		OOMatrix rM = father->drawRotationMatrix();
+		abspos = HPvector_add(OOHPVectorMultiplyMatrix(abspos, rM), father->getPosition());
 		last = father;
 		
-		if (![father isSubEntity])  break;
-		father = [father owner];
+		if (!oo::EntityIsSubEntity(father))  break;
+		father = oo::LiveOwner(father);	// [father owner]
 	}
 
 	OOMatrix temp_matrix = OOGLPopModelView();
@@ -143,13 +144,13 @@ void OOLightParticleEntity::drawImmediate(bool /*immediate*/, bool translucent)
 	if (!translucent) return;
 	if ((UNIVERSE != nullptr ? UNIVERSE->breakPatternHide() : false) && !getIsImmuneToBreakPatternHide())
 	{
-		::Entity *father = owner();
-		while (father != nil)	// && father != (Entity *)NO_TARGET, which is nil: NO_TARGET is 0
+		cxx::Entity *father = oo::LiveOwner(this);	// -owner's C++ entity (bead oo-zwnvp)
+		while (father != nullptr)	// && father != (Entity *)NO_TARGET, which is nil: NO_TARGET is 0
 		{
-			if (![father isSubEntity])  break;
-			father = [father owner];
+			if (!oo::EntityIsSubEntity(father))  break;
+			father = oo::LiveOwner(father);	// [father owner]
 		}
-		if (![father isImmuneToBreakPatternHide])
+		if (!(father != nullptr && father->getIsImmuneToBreakPatternHide()))	// nil answered NO
 		{
 			return;
 		}

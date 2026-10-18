@@ -2950,8 +2950,8 @@ void HeadUpDisplay::drawDirectionCue(const oo::PList & /*info*/)
 	
 	if ((UNIVERSE != nullptr ? UNIVERSE->getDisplayGUI() : false))  return;
 	
-	::Entity		*target = oo::ToObjC((PLAYER != nullptr ? PLAYER->primaryTarget() : (cxx::Entity *)nullptr));
-	if (target == nil)  return;
+	cxx::Entity		*target = (PLAYER != nullptr ? PLAYER->primaryTarget() : (cxx::Entity *)nullptr);	// the C++ entity (its object until bead oo-zwnvp)
+	if (target == nullptr)  return;
 	
 	// draw the direction cue
 	OOMatrix	rotMatrix;
@@ -2967,7 +2967,7 @@ void HeadUpDisplay::drawDirectionCue(const oo::PList & /*info*/)
 		const float visMax = 0.984807753012208f;	// cos(10 degrees)
 		
 		// Transform the view
-		Vector rpn = (PLAYER != nullptr ? PLAYER->vectorTo(oo::ToCxx(target)) : Vector{});
+		Vector rpn = (PLAYER != nullptr ? PLAYER->vectorTo(target) : Vector{});
 		rpn = OOVectorMultiplyMatrix(rpn, rotMatrix);
 		Vector drawPos = rpn;
 		Vector forward = kZeroVector;
@@ -3002,7 +3002,7 @@ void HeadUpDisplay::drawDirectionCue(const oo::PList & /*info*/)
 		
 		if (alpha > 0.0f)
 		{
-			NSUInteger cueColorIndex = [target isWormhole] ? OO_RETICLE_COLOR_WORMHOLE : OO_RETICLE_COLOR_TARGET;
+			NSUInteger cueColorIndex = target->getIsWormhole() ? OO_RETICLE_COLOR_WORMHOLE : OO_RETICLE_COLOR_TARGET;
 			OOColor *directionCueColor = ReticleColorAt(_reticleColors, cueColorIndex);	// never null: it raises past the end
 			GLfloat	clearColorArray[4] =	{directionCueColor->redComponent(),
 											directionCueColor->greenComponent(),

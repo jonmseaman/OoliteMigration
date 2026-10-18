@@ -61,9 +61,6 @@ typedef enum
 	(their object is the root Entity's facade, which does not answer them); any other body by
 	selector, as before. Nil answers 0, as the message to nil did. Defined in OOSunEntity.mm.
 */
-@class Entity;
 namespace cxx { class Entity; }
-double OOStellarBodyRadius(Entity *body);
-double OOStellarBodyRadius(cxx::Entity *body);	// the same, of the C++ entity (bead oo-9ht.39.26)
-OOStellarBodyType OOStellarBodyPlanetType(cxx::Entity *body);	// the same, of the C++ entity (bead oo-al52f)
-OOStellarBodyType OOStellarBodyPlanetType(Entity *body);
+double OOStellarBodyRadius(cxx::Entity *body);	// of the C++ entity (bead oo-9ht.39.26; the object overloads went with bead oo-zwnvp)
+OOStellarBodyType OOStellarBodyPlanetType(cxx::Entity *body);	// the same (bead oo-al52f)

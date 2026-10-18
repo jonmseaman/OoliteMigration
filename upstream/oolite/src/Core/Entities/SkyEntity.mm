@@ -249,7 +249,7 @@ void SkyEntity::drawImmediate(bool immediate, bool translucent)
 
 	OOEntityWithDrawable::drawImmediate(immediate, translucent);
 
-	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "SkyEntity after drawing " + oo::DescriptionOf(oo::ToObjC(this)); });
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "SkyEntity after drawing " + oo::EntityDescription(this); });
 }
 
 

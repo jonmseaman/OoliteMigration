@@ -8818,3 +8818,40 @@ retired.
 no check or expected value changes. `OOEntityObjectNamesTable.h`'s `subEntityReallyDied:` row
 records the facade method's type encoding, which spells out `ShipEntity`'s members: it is
 re-measured (the two weak sets' new type), as the table's header says it is measured.
+
+## Amendment (bead oo-zwnvp): the compass target, the legacy script's targets and the stellar-body questions take C++ entities (step 5k.2)
+
+oo-9ht.39 step 5k slice 2 (child of oo-9ht.39.28), batch AO (track A), Migration Completion session, 2026-10-18.
+Status: Proposed (recommended defaults, CLAUDE.md rule 10). Exemplar: `PlayerEntity::getCompassTargetEntity()`.
+
+**Decision (recommended defaults).**
+
+1. **The compass target answers the C++ entity**: `PlayerEntity::getCompassTargetEntity()` is the virtual getter
+   (a test's player overrides it); it answers `oo::LiveEntity()` of the weak reference and forgets a target
+   whose object has gone, as the object-answering `getCompassTarget()` did. `getCompassTarget()` and
+   `setCompassTarget(::Entity *)` are deleted; the waypoint's "am I the compass target" test compares `this`.
+2. **The legacy script's statements take the C++ target** (`PerformScriptActions()`/`PerformConditionalStatment()`/
+   `PerformActionStatment()`): the target was only ever read as `oo::ToCxx()` of the object.
+3. **`OOStellarBodyRadius()`/`OOStellarBodyPlanetType()` keep only their C++ overloads** (every caller passes one).
+4. **Per-site sends become members** (amendment oo-9ht.39.16 item 2): the HUD's target cue (`primaryTarget()`,
+   `vectorTo()`, `getIsWormhole()`), the waypoint's beacon links (`oo::LiveEntity()`, the same +0 read) and code
+   compare (`oo::BeaconCode()`), the light particle's (flasher's) father loops (`oo::LiveOwner()`,
+   `oo::EntityIsSubEntity()`, the virtual `drawRotationMatrix()`, `camZeroDistance()`, `getPosition()`,
+   `getIsImmuneToBreakPatternHide()`; a nil father answered 0/NO), the plasma shot's collision check
+   (`rootShipEntity()` against `ownerEntity()`, the virtual `isEffect()`), the cascade's owner (`oo::LiveOwner()`).
+5. **Descriptions go through the facade's two helpers** `oo::EntityDescription()`/`EntityShortDescription()`
+   (exactly `oo::DescriptionOf(oo::ToObjC(x))`), so 5k.4 changes them in one place: Dust and Sky (AI, OOShipGroup
+   and OOJSShipGroup keep the spelled-out form: their tests link without Entity+ObjCBridge.mm). The loader's and the cargo code's `[[oo::ToObjC(x) autorelease]`/`release]` are
+   `oo::AutoreleaseEntity()`/`ReleaseEntity()`.
+
+**Defaults (rule 10).** Behaviour-identical (goldens, core tests). Not observable: where the object answered
+nil for a live C++ part whose object had gone (only an Objective-C test stand-in's), the C++ reads answer the
+part (the HUD's target, the plasma shot's other).
+
+**Tests (oo-9n5p9, line on main first).** `test_OOJSPlayerShip`'s player overrides `getCompassTargetEntity()`
+(answering `oo::ToCxx()` of its stand-in target) instead of `getCompassTarget()`. No case or expected value changes.
+
+**Left (oo-w9pi2, 5k.2b).** `dumpEntity(id)`, `runWithTarget(::Entity *)`, `WormholeEntityShipsInTransit(::Entity *)`,
+`isShipWithSubEntityShip(::Entity *)`, the ship group's fast enumeration, the filter's `isKindOfClass`, the
+commodity script's JS value, the beacon category's drawable/label, the weak-reference conditions, the console's
+inspector, the player facade's Objective-C-only methods, the object creators and the `oo::To*(::Entity *)` overloads.
