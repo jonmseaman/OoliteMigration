@@ -167,7 +167,7 @@ inline constexpr std::string_view BUTTON_SETTINGS = "JoystickButs"; // oo::Defau
 inline constexpr std::string_view STICK_ISAXIS = "isAxis";      // YES=axis NO=button
 inline constexpr std::string_view STICK_NUMBER = "stickNum";    // Stick number 0 to 4
 inline constexpr std::string_view STICK_AXBUT  = "stickAxBt";   // Axis or button number
-#define STICK_FUNCTION @"stickFunc" // Function of axis/button
+#define STICK_FUNCTION "stickFunc" // Function of axis/button
 inline constexpr std::string_view STICK_ROLL_AXIS_PROFILE_SETTING = "RollAxisProfile"; // Joystick Profiles
 inline constexpr std::string_view STICK_PITCH_AXIS_PROFILE_SETTING = "PitchAxisProfile"; // Joystick Profiles
 inline constexpr std::string_view STICK_YAW_AXIS_PROFILE_SETTING = "YawAxisProfile"; // Joystick Profiles

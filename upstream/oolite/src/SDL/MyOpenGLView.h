@@ -75,7 +75,6 @@ inline constexpr std::string_view SNAPSHOTHDR_EXTENSION_HDR	= ".hdr";
 #define SNAPSHOTHDR_EXTENSION_DEFAULT	SNAPSHOTHDR_EXTENSION_EXR
 
 class Entity;
-@class OpenGLSprite;
 class GameController;
 
 enum GameViewKeys

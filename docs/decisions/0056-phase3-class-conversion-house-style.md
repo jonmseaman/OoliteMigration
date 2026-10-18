@@ -9258,3 +9258,28 @@ they are C++ translation units. 153 of the headers that are imported have no inc
 
 **Tests.** No test file, case or expected value changes. The tests' own `#import`s are untouched and reach the
 same headers once, as before.
+
+## Amendment (bead oo-2gi85): stray Objective-C literals and dead Objective-C declarations outside the root
+
+**Context.** Phase 4 batch AT, towards oo-4aq6a (no Objective-C object made). Of the 241 lines matching `@"` in
+first-party src outside `oofnd/objc/`, almost all are C++ text containing `%@` or `-@"` (descriptions keys and
+format comments). The real Objective-C literals left: one in a C++ path (ShipEntity's dump), eleven in macros no
+code names, the Mac-only ones (Phase 5), and `OOALSTR`'s Objective-C arm in the debug console protocol header
+(the C decoder's abstraction layer, rule 9).
+
+**Decision (behaviour-identical).**
+
+1. `ShipEntity::dumpState` logs the text `<none>` for no target, as `oo::DescriptionOf(@"<none>")` did (a literal
+   describes itself as its text, amendment oo-8sql7 item 2).
+2. The unnamed macros `CONTRACT_KEY_DESTINATION_NAME`, `CONTRACT_KEY_LONG_DESCRIPTION`, `ZOOM_LEVELS_IMAGE`,
+   `COMPASS_IMAGE`, `COMPASS_REDDOT_IMAGE`, `COMPASS_GREENDOT_IMAGE`, `AEGIS_IMAGE`, `NONLINEAR_SCANNER`,
+   `KEY_EQUIPMENT_PORT_WEAPON`, `KEY_EQUIPMENT_STARBOARD_WEAPON` and `STICK_FUNCTION` keep their names and values
+   as plain C literals (kept, not deleted: conservative; nothing expands them). `kOODisplayBitsPerPixel` and
+   `kOODisplayIOFlags` are inside `#if OOLITE_MAC_OS_X` and stay (Phase 5).
+3. Dead declarations deleted: `@class OpenGLSprite` (MyOpenGLView.h), the `@protocol OOBeaconEntity` forward
+   declaration (UniverseVirtualMembers.h; the test that names the protocol declares its own), and
+   `@protocol OOStellarBody` (OOStellarBody.h: no class adopts it and nothing names it; its selectors are not sent
+   to an untyped receiver anywhere compiled, the one `[this cxx_name]` being inside `#if OO_SALVAGE_SUPPORT`, never
+   defined).
+
+**Tests.** No test file, case or expected value changes.

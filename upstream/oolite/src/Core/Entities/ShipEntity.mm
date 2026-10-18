@@ -14938,7 +14938,7 @@ void ShipEntity::dumpSelfState()
 	OO_LOG("dumpState.shipEntity", "Subentity count: {}", subEntityCount());
 	OO_LOG("dumpState.shipEntity", "Behaviour: {}", cxx_OOStringFromBehaviour(behaviour));
 	Entity *target = primaryTarget();
-	OO_LOG("dumpState.shipEntity", "Target: {}", target != nullptr ? oo::EntityDescription(target) : oo::DescriptionOf(@"<none>"));
+	OO_LOG("dumpState.shipEntity", "Target: {}", target != nullptr ? oo::EntityDescription(target) : std::string("<none>"));
 	OO_LOG("dumpState.shipEntity", "Destination: {}", cxx_HPVectorDescription(_destination));
 	OO_LOG("dumpState.shipEntity", "Other destination: {}", cxx_HPVectorDescription(coordinates));
 	OO_LOG("dumpState.shipEntity", "Waypoint count: {}", number_of_navpoints);
