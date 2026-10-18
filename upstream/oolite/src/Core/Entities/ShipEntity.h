@@ -939,6 +939,8 @@ public:
 	virtual void doScriptEvent(ooscript::PropertyId message);
 	void doScriptEvent(ooscript::PropertyId message, id argument);
 	void doScriptEvent(ooscript::PropertyId message, id argument1, id argument2);
+	void doScriptEvent(ooscript::PropertyId message, cxx::Entity *argument);	// the entity's JS value, as its object's (bead oo-9ht.39.16)
+	void doScriptEvent(ooscript::PropertyId message, cxx::Entity *argument1, cxx::Entity *argument2);
 	virtual void doScriptEvent(ooscript::PropertyId message, const std::vector<oo::PList> &arguments);
 	void doScriptEvent(ooscript::PropertyId message, ooscript::Value *argv, unsigned argc);
 	virtual void doScriptEvent(ooscript::PropertyId message, ooscript::Context context, ooscript::Value *argv, unsigned argc);
@@ -946,6 +948,7 @@ public:
 	void sendAIMessage(const std::string &message);
 	void doScriptEvent(ooscript::PropertyId scriptEvent, const std::string &aiMessage);
 	void doScriptEvent(ooscript::PropertyId scriptEvent, id argument, const std::string &aiMessage);
+	void doScriptEvent(ooscript::PropertyId scriptEvent, cxx::Entity *argument, const std::string &aiMessage);
 	virtual OOAlertCondition alertCondition();
 	virtual OOAlertCondition realAlertCondition();
 	void doNothing();

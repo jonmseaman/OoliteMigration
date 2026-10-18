@@ -48,36 +48,13 @@ namespace {
 
 /*	What the root facade's selectors answered for an entity (bead oo-9ht.39.27): the C++ member each
 	forwarded to; an Objective-C entity (a test's stand-in, whose class may answer itself) is still
-	messaged, and answers as nil once its object has gone.
+	messaged, and answers as nil once its object has gone. -isPlayer, -isShip, -isPlanet and -status
+	are oo::EntityIsPlayer() etc. (Entity+ObjCBridge.h, bead oo-9ht.39.16).
 */
-bool EntityIsPlayer(cxx::Entity *entity)
-{
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() isPlayer];
-	return entity != nullptr && entity->getIsPlayer();	// nil's answer for none
-}
-
-bool EntityIsShip(cxx::Entity *entity)
-{
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() isShip];
-	return entity != nullptr && entity->getIsShip();	// nil's answer for none
-}
-
-bool EntityIsPlanet(cxx::Entity *entity)
-{
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() isPlanet];
-	return entity != nullptr && entity->isPlanet();	// nil's answer for none
-}
-
 bool EntityIsVisible(cxx::Entity *entity)
 {
 	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() isVisible];
 	return entity != nullptr && entity->isVisible();	// nil's answer for none
-}
-
-OOEntityStatus EntityStatus(cxx::Entity *entity)
-{
-	if (oo::ObjCEntityLink *link = oo::AsObjCEntity(entity))  return [link->objcOwner() status];
-	return entity != nullptr ? entity->status() : OOEntityStatus{};
 }
 
 OOUniversalID EntityUniversalID(cxx::Entity *entity)
