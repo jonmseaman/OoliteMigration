@@ -39,6 +39,17 @@ OOLITE_VERSION_KEY = "Oolite version"
 
 IS_WINDOWS = sys.platform == "win32" or os.name == "nt"
 
+# How long evaluate() waits for an answer when the caller names no timeout. 15 s unless
+# OO_CONSOLE_EVAL_TIMEOUT says otherwise: the -O0 AddressSanitizer build answers far more slowly
+# than the test build, and tools/tier-c.sh raises it when its golden stage runs that build
+# (bead oo-tc08n).
+DEFAULT_EVAL_TIMEOUT = 15
+
+
+def eval_timeout():
+    return float(os.environ.get("OO_CONSOLE_EVAL_TIMEOUT") or DEFAULT_EVAL_TIMEOUT)
+
+
 
 class ConsoleError(RuntimeError):
     """The game could not be driven: it never connected, never answered, or died."""
@@ -223,7 +234,7 @@ class DebugConsole:
         """Fire a JS string into the game without waiting for output."""
         self._send({PACKET_TYPE_KEY: PERFORM_COMMAND, MESSAGE_KEY: js})
 
-    def evaluate(self, js, timeout=15):
+    def evaluate(self, js, timeout=None):
         """Run a JS expression and return its result as a string.
 
         The console replies to a command with Console Output packets, so the value has to be sent
@@ -252,6 +263,8 @@ class DebugConsole:
             f'"{head}" + "{tail}" + {wrapped} + "{head}" + "{tail}");'
         )
 
+        if timeout is None:
+            timeout = eval_timeout()
         deadline = time.time() + timeout
         while time.time() < deadline:
             if self._proc is not None and self._proc.poll() is not None:
@@ -270,9 +283,9 @@ class DebugConsole:
                 if value.startswith("ERROR: "):
                     raise ConsoleError(f"JS error evaluating {js!r}: {value[7:]}")
                 return value
-        raise ConsoleError(f"no answer to {js!r} within {timeout}s")
+        raise ConsoleError(f"no answer to {js!r} within {timeout:g}s")
 
-    def evaluate_int(self, js, timeout=15):
+    def evaluate_int(self, js, timeout=None):
         value = self.evaluate(js, timeout=timeout).strip()
         try:
             return int(float(value))
