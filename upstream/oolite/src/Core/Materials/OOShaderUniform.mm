@@ -551,7 +551,7 @@ void OOShaderUniform::applyBinding()
 	GLfloat						expVVal[4];
 	OOMatrix					mVal;
 	Quaternion					qVal;
-	NSPoint						pVal = {0};
+	NSPoint						pVal = {};
 	BOOL						isInt = NO, isFloat = NO, isVector = NO, isMatrix = NO, isPoint = NO;
 
 	/*	Design note: if the object has been dealloced, or an exception occurs,

@@ -73,9 +73,9 @@ static ooscript::String sUndefinedString;
 /*	
 	Initialize table contents (with C strings, see above) from table files.
 */
-#define ENTRY(label, val) { .value = label, .cString = #label },
-#define GALACTIC_HYPERSPACE_ENTRY(label, val) { .value = GALACTIC_HYPERSPACE_##label, .cString = #label },
-#define DIFF_STRING_ENTRY(label, string) { .value = label, .cString = string },
+#define ENTRY(label, val) { .value = label, .cString = #label, .jsString = {} },
+#define GALACTIC_HYPERSPACE_ENTRY(label, val) { .value = GALACTIC_HYPERSPACE_##label, .cString = #label, .jsString = {} },
+#define DIFF_STRING_ENTRY(label, string) { .value = label, .cString = string, .jsString = {} },
 
 static TableEntry sOOCompassModeTableEntries[] =
 {

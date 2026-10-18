@@ -2766,7 +2766,7 @@ bool PlayerEntity::processSceneString(const std::string &item, Vector off)
 		if (i_info.size() != 5)	// must be scene_key_x_y_z
 			return NO;				//		   0.... 1.. 2 3 4
 		const std::string &scene_key = i_info[1];
-		Vector	scene_offset = {0};
+		Vector	scene_offset = {};
 		cxx_ScanVectorFromString(joined(2, 3), &scene_offset);
 		scene_offset.x += off.x;	scene_offset.y += off.y;	scene_offset.z += off.z;
 		const oo::PList *sceneEntry = UNIVERSE->descriptions()->find(scene_key);
