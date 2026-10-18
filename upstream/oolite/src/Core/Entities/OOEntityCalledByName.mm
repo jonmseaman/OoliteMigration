@@ -694,38 +694,11 @@ oo::PList oo::CallEntityByName(cxx::Entity *entity, const std::string &name, con
 }
 
 
-/*	A deferred call's target (bead oo-9ht.39.7.3; AI.mm's OOAIDeferredCall is the pattern): the
-	Objective-C object OOScheduleDeferredCall() retains until the call fires, as it retained the
-	entity's object before. It holds the entity, so the call keeps it alive, as the object did.
-*/
-@interface OOEntityDeferredCall: OOObject
-{
-@public
-	oo::Ref<cxx::Entity>	_entity;
-	void					(*_call)(cxx::Entity *entity);
-}
-
-- (void) fire;
-
-@end
-
-
-@implementation OOEntityDeferredCall
-
-- (void) fire
-{
-	_call(_entity.get());
-}
-
-@end
-
-
 void oo::ScheduleEntityCall(cxx::Entity *entity, void (*call)(cxx::Entity *entity), double delay)
 {
 	if (entity == nullptr || call == nullptr)  return;
-	OOEntityDeferredCall *holder = [[OOEntityDeferredCall alloc] init];
-	holder->_entity = oo::Ref<cxx::Entity>(entity);
-	holder->_call = call;
-	OOScheduleDeferredCall(holder, OOSelectorFromName("fire"), nil, delay);
-	[holder release];
+	// The call holds the entity, so it keeps the entity alive until it has run, as the Objective-C
+	// holder OOEntityDeferredCall did (bead oo-9ht.39.7.3; a C++ call since bead oo-pvhrh).
+	oo::Ref<cxx::Entity> held(entity);
+	OOScheduleDeferredCall([held, call]() { call(held.get()); }, delay);
 }

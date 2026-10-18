@@ -307,7 +307,14 @@ public:
 	// necessarily got more complex than the non-SDL versions.
 	void handleStringInput(SDL_KeyboardEvent *kbd_event, Uint16 key_id);
 
-	/*	Internal: the view's state, read by the members above and by the other slices. */
+	// tests/unit/core/test_MyOpenGLView.mm and test_OOOpenGLMatrixManager.mm read and set the state
+	// below (bead oo-mlpcc).
+	friend struct MyOpenGLViewTestAccess;
+
+private:
+	/*	Internal: the view's state, read by the members above and by the other slices. Private again
+		since bead oo-mlpcc (public from oo-9ht.153 to it).
+	*/
 	::GameController		*gameController = {};	// not retained
 	bool				keys[NUM_KEYS] = {};
 	int					scancode2Unicode[NUM_KEYS] = {};

@@ -214,20 +214,6 @@ inline constexpr std::string_view PLANETINFO_INTERSTELLAR_KEY			= "interstellar 
 typedef Entity <OOBeaconEntity> OOBeaconEntityObject;
 
 
-/*	Carries addDelayedMessage()'s dictionary through OOScheduleDeferredCall(), which retains it
-	until the call fires, as it did the dictionary (the AI's deferred call, OOAIDeferredCall in AI.mm,
-	is the same pattern). Its class is Objective-C because the deferred call retains it and
-	performs a selector: the call's target is the holder, whose -deliverToUniverse hands it to
-	UNIVERSE (bead oo-ql9rn; the target was the universe's facade, sent -addDelayedMessage:).
-*/
-@interface OOUniverseDelayedMessage: OOObject
-{
-@public
-	oo::PList	message;
-}
-- (void) deliverToUniverse;
-@end
-
 /*	The universe (beads oo-riqmz, oo-pas; the Objective-C facade went with bead oo-ql9rn, ADR-0056
 	amendment oo-ql9rn): the old @interface's ivars, by the same names and types, every one
 	zero-initialised as the runtime zeroed them, and its methods as member functions. The game's
@@ -683,7 +669,7 @@ public:
 	void displayMessage(const std::optional<std::string> &text, OOTimeDelta count);
 	void displayCountdownMessage(const std::optional<std::string> &text, OOTimeDelta count);
 	void addDelayedMessage(const std::optional<std::string> &text, OOTimeDelta count, double delay);
-	void addDelayedMessage(::OOUniverseDelayedMessage *holder);	// the deferred call's delivery (-[OOUniverseDelayedMessage deliverToUniverse])
+	void addDelayedMessage(const oo::PList &message);	// the deferred call's delivery (bead oo-pvhrh; the holder OOUniverseDelayedMessage's -deliverToUniverse before)
 	// addMessage(): virtual, in OO_UNIVERSE_VIRTUAL_MEMBERS (UniverseVirtualMembers.h)
 	void speakWithSubstitutions(const std::optional<std::string> &text);
 	void addMessage(const std::optional<std::string> &text, OOTimeDelta count, bool forceDisplay);

@@ -35,6 +35,7 @@ MA 02110-1301, USA.
 #include "oofnd/PList.hpp"
 #include "oofnd/Ref.hpp"
 
+#include <functional>
 #include <optional>
 #include <string>
 #include <vector>
@@ -164,8 +165,12 @@ public:
 	void pauseFullScreenModeToPerform(SEL selector, id target);
 #endif
 
+	// tests/unit/core/test_GameController.mm reads and sets the state below (bead oo-auu6o).
+	friend struct GameControllerTestAccess;
+
+private:
 	// Internal: the state, read and written by the members above (and by the fenced Mac
-	// categories, not compiled).
+	// categories, not compiled). Private again since bead oo-auu6o (public from oo-9ht.164 to it).
 #if OOLITE_MAC_OS_X
 	NSTextField				*splashProgressTextField = {};
 	NSView					*splashView = {};
@@ -240,6 +245,13 @@ private:
 	as a performer on that thread's never-run run loop did not.
 */
 void OOScheduleDeferredCall(id target, SEL selector, id argument, NSTimeInterval delay);
+
+/*	The same queue for a C++ call (bead oo-pvhrh, ADR-0056 amendment oo-pvhrh): call() runs where the
+	perform ran, in the same order and pass, and is destroyed after it (what it captures is kept alive
+	until then, as the target was retained). An OOException from it is caught and logged as the
+	perform's was, and the call is then never destroyed, as the performer leaked its target.
+*/
+void OOScheduleDeferredCall(std::function<void()> call, NSTimeInterval delay);
 
 
 #if OO_DEBUG

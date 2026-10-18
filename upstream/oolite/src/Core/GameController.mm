@@ -148,7 +148,11 @@ struct OODeferredCall
 	id										target;
 	SEL										selector;
 	id										argument;
+	std::function<void()>					*call;	// a C++ call (bead oo-pvhrh): target, selector and argument unused
 };
+
+// call() with the perform's @try/@catch (GameControllerPerformSelectorWithObject below).
+bool DeferredCallRunCatching(const std::function<void()> &call, const char **outName, const char **outReason);
 
 std::vector<OODeferredCall>					sDeferredCalls;	// in scheduling order
 
@@ -165,13 +169,39 @@ void OOScheduleDeferredCall(id target, SEL selector, id argument, NSTimeInterval
 		std::chrono::steady_clock::now() + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(delay)),
 		objc_retain(target),
 		selector,
-		objc_retain(argument)
+		objc_retain(argument),
+		nullptr
 	};
 	sDeferredCalls.push_back(call);
 }
 
 
+void OOScheduleDeferredCall(std::function<void()> call, NSTimeInterval delay)
+{
+	if (!oo::thread::isMainThread() || !call)  return;
+	
+	if (delay <= 0.0)  delay = 0.0001;	// as the Foundation timer did
+	OODeferredCall entry =
+	{
+		std::chrono::steady_clock::now() + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(delay)),
+		nil,
+		nullptr,
+		nil,
+		new std::function<void()>(std::move(call))
+	};
+	sDeferredCalls.push_back(entry);
+}
+
+
 namespace {
+
+// The Foundation timer's line for an exception from a deferred call (one line for both kinds, bead oo-pvhrh).
+void LogDeferredCallException(const char *exceptionName, const char *exceptionReason, const void *target)
+{
+	// The game's own exceptions (ADR-0037): the same line, name and reason bridged.
+	OO_LOG("unclassified", "*** NSTimer ignoring exception '{}' (reason '{}') raised during posting of timer with target {} and selector 'fire'", exceptionName, exceptionReason, oo::str::pointerDescription(target));
+}
+
 
 // One step of the run loop's timer firing: the first due call in scheduling order.
 void FireOneDueDeferredCall(void)
@@ -186,10 +216,19 @@ void FireOneDueDeferredCall(void)
 			
 			// The perform and its handler, in the bridge (ADR-0056 amendment oo-9ht.139 item 3).
 			const char *exceptionName = NULL, *exceptionReason = NULL;
+			if (call.call != nullptr)
+			{
+				if (!DeferredCallRunCatching(*call.call, &exceptionName, &exceptionReason))
+				{
+					LogDeferredCallException(exceptionName, exceptionReason, call.call);
+					return;	// the call stays, as the performer leaked its target
+				}
+				delete call.call;
+				return;
+			}
 			if (!GameControllerPerformSelectorWithObject(call.target, call.selector, call.argument, &exceptionName, &exceptionReason))
 			{
-				// The game's own exceptions (ADR-0037): the same line, name and reason bridged.
-				OO_LOG("unclassified", "*** NSTimer ignoring exception '{}' (reason '{}') raised during posting of timer with target {} and selector 'fire'", exceptionName, exceptionReason, oo::str::pointerDescription(call.target));
+				LogDeferredCallException(exceptionName, exceptionReason, call.target);
 				return;	// target and argument stay retained, as the performer leaked them
 			}
 			
@@ -1272,6 +1311,26 @@ static void SetUpSparkle(void)
 }
 
 #endif
+
+
+namespace {
+
+bool DeferredCallRunCatching(const std::function<void()> &call, const char **outName, const char **outReason)
+{
+	@try
+	{
+		call();
+	}
+	@catch (OOException *exception)
+	{
+		*outName = [exception name];
+		*outReason = [exception reason];
+		return false;
+	}
+	return true;
+}
+
+}
 
 
 bool GameControllerPerformSelectorWithObject(id target, SEL selector, id argument, const char **outName, const char **outReason)

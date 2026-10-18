@@ -43,6 +43,8 @@ MA 02110-1301, USA.
 #include "oofnd/Scanner.hpp"
 
 #include <cstring>
+#include <functional>
+#include "oofnd/objc/OOObjCRef.h"	// oo::AutoreleaseInObjCPool (bead oo-pvhrh)
 
 
 enum
@@ -52,23 +54,6 @@ enum
 };
 
 
-/*	A deferred call's target (bead oo-9ht.73, amendment oo-9ht.73; the facade's class method
-	+deferredCallTrampolineWithInfo: before, with this holder as its argument): the Objective-C
-	object OOScheduleDeferredCall() retains until the call fires, as it retained the holder (amendment
-	oo-rmd7 item 1). It holds the AI, so the call keeps the AI alive, and calls the method its
-	selector named, found in kDeferredAIMethods by the name the by-name call used.
-*/
-@interface OOAIDeferredCall: OOObject
-{
-@public
-	oo::Ref<AI>		_ai;
-	const char		*_selectorName;
-	std::string		_parameter;
-}
-
-- (void) fire;
-
-@end
 
 
 
@@ -126,47 +111,38 @@ const DeferredAIMethod kDeferredAIMethods[] =
 } // namespace
 
 
-/*	OOAIAutorelease()'s keeper: an autoreleased Objective-C object that holds the AI, so the pool's
-	drain releases it as it released the facade (OOScriptAutorelease's pattern). Nothing messages it.
+/*	OOAIAutorelease(): the AI goes to the Objective-C autorelease pool, whose drain releases it where
+	the keeper object that held it was released (bead oo-pvhrh; oo::AutoreleaseInObjCPool).
 */
-@interface OOAIAutoreleaseKeeper: OOObject
-{
-@public
-	oo::Ref<AI>		_ai;
-}
-@end
-
-
-@implementation OOAIAutoreleaseKeeper
-@end
-
 
 void OOAIAutorelease(oo::Ref<AI> ai)
 {
 	if (ai == nullptr)  return;
-	OOAIAutoreleaseKeeper *keeper = [[OOAIAutoreleaseKeeper alloc] init];
-	keeper->_ai = std::move(ai);
-	[keeper autorelease];
+	oo::AutoreleaseInObjCPool(std::move(ai));
 }
 
 
-@implementation OOAIDeferredCall
+/*	A deferred call's body (bead oo-9ht.73; a C++ call since bead oo-pvhrh, where the Objective-C
+	holder OOAIDeferredCall's -fire was the target): calls the method the selector named, found in
+	kDeferredAIMethods by the name the by-name call used.
+*/
+namespace {
 
-- (void) fire
+void FireAIDeferredCall(AI *ai, const char *selectorName, const std::string &parameter)
 {
 	for (const DeferredAIMethod &entry : kDeferredAIMethods)
 	{
-		if (strcmp(entry.selectorName, _selectorName) == 0)
+		if (strcmp(entry.selectorName, selectorName) == 0)
 		{
-			(_ai.get()->*entry.method)(_parameter);
+			(ai->*entry.method)(parameter);
 			return;
 		}
 	}
 	// The by-name call's line for a selector its target did not answer (OOCallByName.mm LogUnknown).
-	OO_LOG_ERR("callByName.unknownSelector", "{} does not respond to {}.", "AI", _selectorName);
+	OO_LOG_ERR("callByName.unknownSelector", "{} does not respond to {}.", "AI", selectorName);
 }
 
-@end
+}
 
 
 #if DEBUG_GRAPHVIZ
@@ -824,13 +800,9 @@ void AI::performDeferredCall(const char *selectorName, const std::string &argume
 {
 	if (selectorName != NULL)
 	{
-		OOAIDeferredCall *call = [[OOAIDeferredCall alloc] init];
-		call->_ai = oo::Ref<AI>(this);	// the call keeps the AI alive (it retained the facade)
-		call->_selectorName = selectorName;
-		call->_parameter = argument;
-		
-		OOScheduleDeferredCall(call, OOSelectorFromName("fire"), nil, delay);
-		[call release];
+		// The call keeps the AI alive until it has run (the holder retained it; it retained the facade).
+		oo::Ref<AI> ai(this);
+		OOScheduleDeferredCall([ai, selectorName, argument]() { FireAIDeferredCall(ai.get(), selectorName, argument); }, delay);
 	}
 }
 

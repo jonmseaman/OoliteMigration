@@ -23,6 +23,7 @@
 */
 
 #import "AI.h"
+#import "GameController.h"	// OOScheduleDeferredCall, stood in below (bead oo-pvhrh)
 #import "OOCallByName.h"	// oo::CallEntityByName, stood in below (bead oo-9ht.39.7.1)
 #include "oofnd/objc/OORuntime.h"
 
@@ -31,6 +32,7 @@
 
 #include <cmath>
 #include <cstdlib>
+#include <functional>
 #include <map>
 #include <string>
 #include <vector>
@@ -101,10 +103,8 @@ namespace {
 
 struct DeferredCall
 {
-	id		target;
-	SEL		selector;
-	id		argument;
-	double	delay;
+	std::function<void()>	call;	// the AI's C++ deferred call (bead oo-pvhrh; an Objective-C target and -fire before)
+	double					delay;
 };
 
 std::vector<DeferredCall> gDeferred;
@@ -117,18 +117,17 @@ void FireDeferredCalls()
 	gDeferred.clear();
 	for (DeferredCall &call : calls)
 	{
-		[call.target performSelector:call.selector withObject:call.argument];
-		[call.target release];
-		[call.argument release];
+		call.call();
+		call.call = nullptr;	// released after its call, as the target was
 	}
 }
 
 }	// namespace
 
 
-void OOScheduleDeferredCall(id target, SEL selector, id argument, NSTimeInterval delay)
+void OOScheduleDeferredCall(std::function<void()> call, NSTimeInterval delay)
 {
-	gDeferred.push_back({ [target retain], selector, [argument retain], delay });
+	gDeferred.push_back({ std::move(call), delay });
 }
 
 
@@ -664,7 +663,7 @@ OO_TEST(deferredCalls)
 
 		ai->setState("GLOBAL", 2.5);
 		OO_CHECK(gDeferred.size() == 1);
-		OO_CHECK(gDeferred[0].target != nil && sel_getName(gDeferred[0].selector) == std::string("fire"));	// the call's own object (bead oo-9ht.73)
+		OO_CHECK(gDeferred[0].call != nullptr);	// the call's own C++ call (bead oo-9ht.73; its Objective-C object and -fire until bead oo-pvhrh)
 		OO_CHECK(gDeferred[0].delay == 2.5);
 		OO_CHECK(ai->state() == std::optional<std::string>("ATTACK"));	// not yet
 		FireDeferredCalls();

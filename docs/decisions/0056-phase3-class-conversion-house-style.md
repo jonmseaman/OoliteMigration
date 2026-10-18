@@ -8555,3 +8555,68 @@ changes.
 **Left.** The ship's, player's and HUD's own object lists and snapshots (cargo, escorts, sub-entities, the
 scanner/mass-lock loops, `getScannedWormholes()`), which convert at the universe's edge with `oo::ToObjC()` until
 5k; ShipEntity/AI/ScriptMethods residue oo-al52f.
+
+## Amendment (beads oo-pvhrh, oo-auu6o, oo-mlpcc): the deferred-call holders and autorelease keepers become C++; the controller's and view's state is private again
+
+- Date: 2026-10-18. Status: Proposed (recommended defaults, CLAUDE.md rule 10). Track B3 (one branch, one
+  commit), toward the Phase 3 gate's zero `@implementation` (oo-o8x). Exemplar: `OOScheduleDeferredCall(std::function<void()>, delay)`
+  (`src/Core/GameController.h/.mm`), `oo::AutoreleaseInObjCPool()` (`src/oofnd/objc/OOObjCRef.h`), `AI::performDeferredCall()`.
+
+**Context.** Seven small Objective-C classes were left only because an Objective-C object was the
+handle a run-loop-era mechanism needed: the deferred-call targets `OOAIDeferredCall` (AI.mm),
+`OOEntityDeferredCall` (OOEntityCalledByName.mm) and `OOUniverseDelayedMessage` (Universe.h/.mm), which
+`OOScheduleDeferredCall()` retained and sent `-fire`/`-deliverToUniverse`; and the autorelease keepers
+`OOAIAutoreleaseKeeper`, `OOScriptAutoreleaseKeeper`, `OODrawableAutoreleaseKeeper` and
+`OOMaterialAutoreleaseKeeper`, autoreleased objects whose only job was to hold a C++ reference until the
+current pool drained.
+
+**Decision (recommended defaults).**
+
+1. **A C++ deferred call shares the queue.** `OOScheduleDeferredCall(std::function<void()> call, delay)`
+   puts the call in the same `sDeferredCalls` vector as the performs (same deadline rule, delay <= 0 is
+   0.0001 s, main thread only), so due calls still fire in scheduling order, one per firing step, two per
+   pass. The callable is destroyed after it has run (what it captures is released where the target was);
+   an `OOException` from it is caught by the same `@try/@catch` (`DeferredCallRunCatching()`, beside
+   `GameControllerPerformSelectorWithObject()`), logged with the same line and the call is leaked, as the
+   performer leaked its target. The AI's call captures `oo::Ref<AI>`, the selector name and the argument
+   and calls `kDeferredAIMethods` as `-fire` did; `oo::ScheduleEntityCall()` captures `oo::Ref<cxx::Entity>`
+   and the function; `Universe::addDelayedMessage(text, count, delay)` captures the message dictionary
+   and calls `UNIVERSE->addDelayedMessage(const oo::PList &)` if there is a universe, as
+   `-deliverToUniverse` did. The `(id, SEL, id)` form stays for Objective-C callers (none in the game now;
+   test_GameController exercises it).
+2. **Keepers are blocks in the same pool.** `oo::AutoreleaseInObjCPool(oo::Ref<T>)` autoreleases a heap
+   block (`_Block_copy`, `-fblocks` is already on) that captures the reference; libobjc2's pool releases
+   the block at the same drain and in the same LIFO position as the keeper object it replaces, and the
+   block's disposal releases the reference. `OOAIAutorelease()`, `OOScriptAutorelease()`,
+   `OODrawableAutorelease()` and `OOMaterialAutorelease()` call it. It is the one place to change when the
+   pools become `oo::AutoreleaseScope` (oo-31u): `oo::autorelease(ref.leakRef())`. Measured with libobjc2
+   2.3: two blocks autoreleased into one pool are released LIFO at the pop.
+
+**Differences.** None in game behaviour. Not observable: the exception log line names the C++ call's
+address where it named the holder object's (both are `0x...` pointers).
+
+**Tests** (standing approval oo-9n5p9, lines on main first): test_AI's `OOScheduleDeferredCall()` stand-in
+takes the C++ call (it recorded the Objective-C target and selector), and its one check that the call's
+target was an object answering `fire` is retired as holder contract (now: the call is non-empty); every
+other expected value kept. Added (new checks at the end of test_GameController `deferredCalls`, none
+changed): order with the performs, kept captures, an empty call ignored, an exception swallowed and the
+call leaked.
+3. **The controller's and view's state is private again** (oo-auu6o, oo-mlpcc; amendment
+   oo-9ht.164/oo-9ht.153/oo-43xoj item 6 left it public). `GameController`'s data members are under
+   `private:`; test_GameController reads and sets the nine it checks through a test-only
+   `friend struct GameControllerTestAccess` (accessors returning the members by reference), with every
+   expected value kept. `MyOpenGLView`'s data members are under `private:` likewise; nothing outside its own files read them; test_MyOpenGLView (viewSize, display_z, matrixManager)
+   and test_OOOpenGLMatrixManager (sets matrixManager) go through `friend struct MyOpenGLViewTestAccess`, expected values
+   unchanged. The tests' recording subclasses override virtual members only and needed nothing.
+4. **Not done: the Mac-only category** (oo-sqzbw). Moving `GameController (MacOSX)` (never compiled)
+   verbatim into the excepted Mac-only `GameController+FullScreen.mm` was tried and is refused by the
+   guardrails' per-file deny-list ratchet (its `NSURL` lines count as new hits in the file they move to).
+   It stays in GameController.mm; the gate needs Jon's choice (oo-sqzbw): except the Mac block, or
+   delete it ahead of Phase 5.
+
+**Consequences.** `@implementation` left in src (literal grep, comments count): the entity facade
+(Entity+ObjCBridge.mm, OOQuiriumCascadeEntity+ObjCBridge.mm, OOJSCallEntityMethods.h's generated
+comment: track A, oo-9ht.39.28, oo-9ht.186), OOWeakReference+ObjCBridge (oo-9ht.22), OOCallByName.mm
+(oo-3pl05), OOObject+OOJavaScript.mm (oo-t7o84), OODescription.mm (oo-8sql7), NSObjectOOExtensions.mm
+(oo-6e1.1), the oofnd/objc roots and OOObjCPeer.h's comment (oo-4aq6a), GameController.mm's Mac block (oo-sqzbw)
+and the excepted GameController+FullScreen.mm.
