@@ -42,6 +42,9 @@ void OOGLPushModelView(void)									{ std::abort(); }
 OOMatrix OOGLPopModelView(void)									{ std::abort(); }
 void OOGLTranslateModelView(Vector)								{ std::abort(); }
 bool cxx_OOCheckOpenGLErrors(const char *, ...)					{ std::abort(); }
+#if OO_CHECK_GL_HEAVY && OO_GL_STATE_VERIFICATION
+void OOGLNoteCurrentFunction(const char *, unsigned)			{ std::abort(); }	// OOGL() in the debug flavour (OOOpenGLCheck.h; bead oo-iimku)
+#endif
 
 
 // The vertex buffer: 12 floats (x, y, r, g, b, a of each endpoint) per line segment.

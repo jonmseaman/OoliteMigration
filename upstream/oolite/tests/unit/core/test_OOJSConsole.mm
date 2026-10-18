@@ -32,6 +32,7 @@
 #include "oo_test.hpp"
 
 #include <cstdarg>
+#include <cstdlib>
 #include <cstdio>
 #include <string>
 #include <utility>
@@ -292,6 +293,37 @@ OOGraphicsDetail cxx_OOGraphicsDetailFromString(const std::string &string)
 {
 	return (string == "DETAIL_2") ? DETAIL_LEVEL_SHADERS : DETAIL_LEVEL_MINIMUM;
 }
+
+
+// MARK: Debug-flavour link stand-ins (bead oo-iimku) -------------------------------------------------
+// OOJSConsole.mm's callObjC() (#if OO_DEBUG) and its diagnostic dumps (#if DEBUG) compile only in
+// the debug flavour, which builds this test for Tier C's ASan stage. No case reaches them; a call
+// is a test bug.
+
+#if OO_DEBUG
+#import "OOShaderUniformMethodType.h"
+
+namespace cxx { class Entity; }
+
+oo::PList cxx_OOJSPListFromJSObject(ooscript::Context, ooscript::Object)  { std::abort(); }
+std::optional<std::string> cxx_OOStringFromJSValueEvenIfNull(ooscript::Context, ooscript::Value)  { std::abort(); }
+std::optional<std::string> OOJSEntityJSClassName(cxx::Entity *)  { std::abort(); }
+bool OOJSCallEntityMethod(ooscript::Context, cxx::Entity *, const std::string &, unsigned, ooscript::Value *, ooscript::Value *)  { std::abort(); }
+bool OOJSCallObjCObjectMethod(ooscript::Context, id, const std::string &, unsigned, ooscript::Value *, ooscript::Value *)  { std::abort(); }
+OOShaderUniformType OOShaderUniformTypeFromEncoding(const char *)  { std::abort(); }
+// oo::EntityIn() (Entity+ObjCBridge.h) reads ::Entity's _cxxEntity ivar; its offset variable is
+// emitted by the @implementation in Entity+ObjCBridge.mm, which this test does not link. The name
+// is the one clang gives it: the ivar's type encoding, with its '=' written as byte 2.
+extern "C" int gOOTestEntityCxxEntityIvarOffset __asm__("__objc_ivar_offset_Entity._cxxEntity.{Ref<cxx::Entity>\002^{Entity}}");
+int gOOTestEntityCxxEntityIvarOffset = 0;
+#endif
+
+#if DEBUG
+#import "ResourceManager.h"
+
+std::string cxx_OOJSDescribeValue(ooscript::Context, ooscript::Value, BOOL)  { std::abort(); }
+std::optional<std::string> ResourceManager::diagnosticFileLocation()  { std::abort(); }
+#endif
 
 
 @interface OOJavaScriptEngine: OOObject

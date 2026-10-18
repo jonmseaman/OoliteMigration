@@ -250,6 +250,13 @@ void OOGLPushModelView(void)				{ std::abort(); }
 OOMatrix OOGLPopModelView(void)				{ std::abort(); }
 void OOGLTranslateModelView(Vector)			{ std::abort(); }
 void OOGLMultModelView(OOMatrix)			{ std::abort(); }
+#if OO_CHECK_GL_HEAVY
+// OOGL()/OOGLBEGIN() in the debug flavour (OOOpenGLCheck.h; bead oo-iimku).
+bool cxx_OOCheckOpenGLErrors(const char *, ...)	{ std::abort(); }
+#if OO_GL_STATE_VERIFICATION
+void OOGLNoteCurrentFunction(const char *, unsigned)	{ std::abort(); }
+#endif
+#endif
 
 
 static std::string Colour(const GLfloat *c)

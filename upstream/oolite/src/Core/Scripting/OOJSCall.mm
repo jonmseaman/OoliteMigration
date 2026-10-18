@@ -107,7 +107,7 @@ const CxxMethod kPlayerMethods[] =
 // ship's) whose C++ part is the player (bead oo-9ht.39.8.25).
 const CxxMethod *CxxMethodNamed(id object, cxx::Entity *entity, const std::optional<std::string> &name)
 {
-	cxx::Entity *callee = (entity != nullptr) ? entity : oo::ToCxx(object);
+	cxx::Entity *callee = (entity != nullptr) ? entity : ([object isKindOfClass:[::Entity class]] ? oo::ToCxx(static_cast<::Entity *>(object)) : nullptr);
 	if (!name.has_value() || PLAYER == nullptr || callee != PLAYER)  return nullptr;
 	for (const CxxMethod &method : kPlayerMethods)
 	{
