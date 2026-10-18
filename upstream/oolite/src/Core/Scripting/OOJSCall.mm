@@ -152,8 +152,8 @@ MethodType MethodTypeOfRow(const OOJSCallEntityMethodRow &row)
 bool ScalarBoolValue(id object)
 {
 	SEL boolValue = OOSelectorFromName("boolValue"), intValue = OOSelectorFromName("intValue");
-	if ([object respondsToSelector:boolValue])  return ((BOOL (*)(id, SEL))[object methodForSelector:boolValue])(object, boolValue);
-	if ([object respondsToSelector:intValue])  return ((int (*)(id, SEL))[object methodForSelector:intValue])(object, intValue) != 0;
+	if ([object respondsToSelector:boolValue])  return ((BOOL (*)(id, SEL))(void (*)(void))[object methodForSelector:boolValue])(object, boolValue);
+	if ([object respondsToSelector:intValue])  return ((int (*)(id, SEL))(void (*)(void))[object methodForSelector:intValue])(object, intValue) != 0;
 	return false;
 }
 
@@ -270,7 +270,7 @@ bool CallMethod(ooscript::Context context, id object, const std::string &oo_jsCl
 					
 				case kMethodTypeColorVoid:
 					// A colour result is its PList::Object node, as the colour's facade's was (bead oo-9ht.1).
-					result = OOColorObjectNode(byName ? typed.color : ((ColorReturnMsgSend)method)(object, selector));
+					result = OOColorObjectNode(byName ? typed.color : ((ColorReturnMsgSend)(void (*)(void))method)(object, selector));
 					if (selectorString.has_value() && oo::str::hasSuffix(*selectorString, "_bool"))  result = oo::PList(false);	// a colour answered neither -boolValue nor -intValue
 					break;
 
@@ -321,14 +321,14 @@ bool CallMethod(ooscript::Context context, id object, const std::string &oo_jsCl
 					
 				case kMethodTypeVectorVoid:
 				{
-					Vector v = byName ? typed.vector : ((VectorReturnMsgSend)method)(object, selector);
+					Vector v = byName ? typed.vector : ((VectorReturnMsgSend)(void (*)(void))method)(object, selector);
 					*outResult = ooscript::objectValue(JSVectorWithVector(context, v));
 					break;
 				}
 					
 				case kMethodTypeQuaternionVoid:
 				{
-					Quaternion q = byName ? typed.quaternion : ((QuaternionReturnMsgSend)method)(object, selector);
+					Quaternion q = byName ? typed.quaternion : ((QuaternionReturnMsgSend)(void (*)(void))method)(object, selector);
 					*outResult = ooscript::objectValue(JSQuaternionWithQuaternion(context, q));
 					break;
 				}

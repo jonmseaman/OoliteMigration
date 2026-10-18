@@ -103,7 +103,7 @@ public:
 		_lastCommander = oo::DescriptionOf(cmdrDict);
 		return 123456;
 	}
-	std::optional<std::string> descriptionForKey(const std::string &key) override	{ return std::nullopt; }
+	std::optional<std::string> descriptionForKey(const std::string &/*key*/) override	{ return std::nullopt; }
 	::GuiDisplayGen *getGui() override	{ return _gui.get(); }
 	void addMessage(const std::optional<std::string> &text, OOTimeDelta count) override	{ _messages.push_back(oo::str::format("%s %g", text.value_or("(nil)").c_str(), count)); }
 };
@@ -127,7 +127,7 @@ public:
 	std::set<std::string> _equipment;
 	BOOL _hyperspaceMotor = {};
 
-	void setScriptTarget(::ShipEntity * ship) override	{  }
+	void setScriptTarget(::ShipEntity * /*ship*/) override	{  }
 	NSUInteger getActiveMissile() override	{ return 2; }
 	float fuelLeakRate() override	{ return 0.5f; }
 	bool isDocked() override	{ return _docked; }
@@ -185,7 +185,7 @@ public:
 	void setMassLockable(bool newValue) override	{ _log.push_back(oo::str::format("setMassLockable %d", newValue ? 1 : 0)); }
 	void setLongRangeChartMode(OOLongRangeChartMode mode) override	{ _log.push_back(oo::str::format("setLongRangeChartMode %d", static_cast<int>(mode))); }
 	using PlayerEntity::doScriptEvent;
-	void doScriptEvent(ooscript::PropertyId message, const std::vector<oo::PList> & arguments) override
+	void doScriptEvent(ooscript::PropertyId /*message*/, const std::vector<oo::PList> & arguments) override
 	{
 		std::string event = "event(";
 		for (std::size_t i = 0; i < arguments.size(); i++)  event += (i != 0 ? ", " : "") + oo::DescriptionOf(arguments[i]);
@@ -240,10 +240,10 @@ public:
 	void launchFromStation() override	{ _log.push_back("launchFromStation"); }
 	void removeAllCargo() override	{ _log.push_back("removeAllCargo"); }
 	void useSpecialCargo(const std::string & descriptionString) override	{ _log.push_back("useSpecialCargo " + descriptionString); }
-	bool engageAutopilotToStation(::StationEntity * stationForDocking) override	{ _log.push_back("engageAutopilotToStation"); return YES; }
+	bool engageAutopilotToStation(::StationEntity * /*stationForDocking*/) override	{ _log.push_back("engageAutopilotToStation"); return YES; }
 	void disengageAutopilot() override	{ _log.push_back("disengageAutopilot"); }
-	void requestDockingClearance(::StationEntity * stationForDocking) override	{ _log.push_back("requestDockingClearance"); }
-	void cancelDockingRequest(::StationEntity * stationForDocking) override	{ _log.push_back("cancelDockingRequest"); }
+	void requestDockingClearance(::StationEntity * /*stationForDocking*/) override	{ _log.push_back("requestDockingClearance"); }
+	void cancelDockingRequest(::StationEntity * /*stationForDocking*/) override	{ _log.push_back("cancelDockingRequest"); }
 	bool assignToActivePylon(const std::string & identifierKey) override	{ _log.push_back("assignToActivePylon " + identifierKey); return YES; }
 	void setCustomViewDataFromDictionary(const oo::PList & viewDict, bool withScaling) override	{ _log.push_back(oo::str::format("setCustomViewData %s %d", oo::DescriptionOf(viewDict).c_str(), withScaling ? 1 : 0)); }
 	void noteSwitchToView(OOViewID toView, OOViewID fromView) override	{ _log.push_back(oo::str::format("noteSwitchToView %d %d", static_cast<int>(toView), static_cast<int>(fromView))); }

@@ -1394,7 +1394,7 @@ void GuiDisplayGen::drawEquipmentList(const oo::PList &eqptList, GLfloat z)
 	}
 	if (statusPage > 1 && statusPage < pageCount)
 	{
-		setSelectableRange(NSMakeRange(firstRow, MIN(firstRow + maxRows, GUI_DEFAULT_ROWS - firstRow)));
+		setSelectableRange(NSMakeRange(firstRow, MIN(firstRow + maxRows, static_cast<NSUInteger>(GUI_DEFAULT_ROWS - firstRow))));
 		// default selected row to 'More -->' if we are looking at one of the middle pages
 		if (getSelectedRow() == -1)  setSelectedRow(firstRow + maxRows);
 	}

@@ -1514,11 +1514,11 @@ void MyOpenGLView::dumpGrayToFileNamed(const std::string &name, uint8_t *bytes, 
 	dumpFile = oo::str::appendingPathComponent(dumpFile, name + ".png");
 
 	SDL_Surface* tmpSurface = SDL_CreateSurface(width, height, SDL_PIXELFORMAT_RGBA32);
-	for(int y = 0; y < height; y++)
+	for(int y = 0; static_cast<NSUInteger>(y) < height; y++)
 	{
 		uint8_t* srcRow = bytes + rowBytes*y;
 		uint8_t* dstRow = (uint8_t*)tmpSurface->pixels + y*tmpSurface->pitch;
-		for(int x = 0; x < width; x++)
+		for(int x = 0; static_cast<NSUInteger>(x) < width; x++)
 		{
 			dstRow[4*x + 0] = srcRow[x];
 			dstRow[4*x + 1] = srcRow[x];
@@ -1540,11 +1540,11 @@ void MyOpenGLView::dumpGrayAlphaToFileNamed(const std::string &name, uint8_t *by
 	dumpFile = oo::str::appendingPathComponent(dumpFile, name + ".png");
 
 	SDL_Surface* tmpSurface = SDL_CreateSurface(width, height, SDL_PIXELFORMAT_RGBA32);	// its own pixels, as -dumpGray: never the caller's 2-byte-a-pixel buffer (bead oo-5thb0)
-	for(int y = 0; y < height; y++)
+	for(int y = 0; static_cast<NSUInteger>(y) < height; y++)
 	{
 		uint8_t* srcRow = bytes + rowBytes*y;
 		uint8_t* dstRow = (uint8_t*)tmpSurface->pixels + y*tmpSurface->pitch;
-		for(int x = 0; x < width; x++)
+		for(int x = 0; static_cast<NSUInteger>(x) < width; x++)
 		{
 			dstRow[4*x + 0] = srcRow[2*x];
 			dstRow[4*x + 1] = srcRow[2*x];

@@ -1365,7 +1365,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 }
 
 
-static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObject, ooscript::PropertyId propID, bool strict, ooscript::Value *value)
+bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObject, ooscript::PropertyId propID, bool /*strict*/, ooscript::Value *value)
 {
 	if (!ooscript::isInt32Id(propID))  return true;
 	

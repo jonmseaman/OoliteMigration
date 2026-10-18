@@ -600,7 +600,7 @@ void OOShaderUniform::applyBinding()
 			break;
 
 		case kOOShaderUniformTypeVector:
-			vVal = isMember ? member.v : ((VectorReturnMsgSend)value.binding.method)(object, value.binding.selector);
+			vVal = isMember ? member.v : ((VectorReturnMsgSend)(void (*)(void))value.binding.method)(object, value.binding.selector);
 			if (convertNormalize)  vVal = vector_normal(vVal);
 			expVVal[0] = vVal.x;
 			expVVal[1] = vVal.y;
@@ -610,7 +610,7 @@ void OOShaderUniform::applyBinding()
 			break;
 
 		case kOOShaderUniformTypeHPVector:
-			hpvVal = isMember ? member.hpv : ((HPVectorReturnMsgSend)value.binding.method)(object, value.binding.selector);
+			hpvVal = isMember ? member.hpv : ((HPVectorReturnMsgSend)(void (*)(void))value.binding.method)(object, value.binding.selector);
 			if (convertNormalize)  hpvVal = HPvector_normal(hpvVal);
 			expVVal[0] = (GLfloat)hpvVal.x;
 			expVVal[1] = (GLfloat)hpvVal.y;
@@ -620,7 +620,7 @@ void OOShaderUniform::applyBinding()
 			break;
 
 		case kOOShaderUniformTypeQuaternion:
-			qVal = isMember ? member.q : ((QuaternionReturnMsgSend)value.binding.method)(object, value.binding.selector);
+			qVal = isMember ? member.q : ((QuaternionReturnMsgSend)(void (*)(void))value.binding.method)(object, value.binding.selector);
 			if (convertToMatrix)
 			{
 				mVal = OOMatrixForQuaternionRotation(qVal);
@@ -637,12 +637,12 @@ void OOShaderUniform::applyBinding()
 			break;
 
 		case kOOShaderUniformTypeMatrix:
-			mVal = isMember ? member.m : ((MatrixReturnMsgSend)value.binding.method)(object, value.binding.selector);
+			mVal = isMember ? member.m : ((MatrixReturnMsgSend)(void (*)(void))value.binding.method)(object, value.binding.selector);
 			isMatrix = YES;
 			break;
 
 		case kOOShaderUniformTypePoint:
-			pVal = isMember ? member.p : ((PointReturnMsgSend)value.binding.method)(object, value.binding.selector);
+			pVal = isMember ? member.p : ((PointReturnMsgSend)(void (*)(void))value.binding.method)(object, value.binding.selector);
 			isPoint = YES;
 			break;
 
@@ -654,7 +654,7 @@ void OOShaderUniform::applyBinding()
 			break;
 
 		case kOOShaderUniformTypeColor:
-			if (::OOColor *color = isMember ? member.color : ((ColorReturnMsgSend)value.binding.method)(object, value.binding.selector))
+			if (::OOColor *color = isMember ? member.color : ((ColorReturnMsgSend)(void (*)(void))value.binding.method)(object, value.binding.selector))
 			{
 				expVVal[0] = color->redComponent();
 				expVVal[1] = color->greenComponent();

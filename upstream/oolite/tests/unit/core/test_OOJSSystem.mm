@@ -110,7 +110,7 @@ public:
 	std::vector<std::string> _log;
 	::Entity *_planetToAdd = {};
 
-	void setScriptTarget(::ShipEntity * ship) override	{  }
+	void setScriptTarget(::ShipEntity * /*ship*/) override	{  }
 	OOGalaxyID currentGalaxyID() override	{ return _galaxy; }
 	OOSystemID currentSystemID() override	{ return _system; }
 	unsigned systemPseudoRandom100() override	{ return 42; }

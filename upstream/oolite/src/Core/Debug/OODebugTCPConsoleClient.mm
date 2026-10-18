@@ -917,7 +917,7 @@ void OODebugTCPConsoleClient::handlePingPacket(const oo::PList &packet)
 }
 
 
-void OODebugTCPConsoleClient::handlePongPacket(const oo::PList &packet)
+void OODebugTCPConsoleClient::handlePongPacket(const oo::PList &/*packet*/)
 {
 	// Do nothing; we don't currently send pings.
 }

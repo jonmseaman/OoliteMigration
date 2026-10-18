@@ -85,7 +85,7 @@ public:
 	void setNextBeacon(cxx::Entity *beacon) override	{ ShipEntity *ship = dynamic_cast<ShipEntity *>(beacon); sLog.push_back("setNextBeacon " + (ship != nullptr ? ship->beaconCode() : std::optional<std::string>()).value_or("(none)")); }
 	void clearBeacon(cxx::Entity *beacon) override	{ (void)beacon; sLog.push_back("clearBeacon"); }
 	void unMagicMainStation() override	{ sLog.push_back("unMagicMainStation"); }
-	cxx::Entity *hazardOnRouteFromEntity(cxx::Entity *e1, double dist, HPVector p2) override	// the C++ entities since bead oo-9ht.39.8.6
+	cxx::Entity *hazardOnRouteFromEntity(cxx::Entity * /*e1*/, double dist, HPVector p2) override	// the C++ entities since bead oo-9ht.39.8.6
 	{
 		sLog.push_back(oo::str::format("hazardOnRoute %g (%g, %g, %g)", dist, p2.x, p2.y, p2.z));
 		return nullptr;
@@ -100,7 +100,7 @@ public:
 		sLog.push_back(oo::str::format("getContainersOfCommodity %s %u", commodity_name.c_str(), static_cast<unsigned>(how_many)));
 		return {};
 	}
-	HPVector getSafeVectorFromEntity(cxx::Entity *e1, double dist, HPVector p2) override	// the C++ entity since bead oo-9ht.39.8.6
+	HPVector getSafeVectorFromEntity(cxx::Entity * /*e1*/, double dist, HPVector p2) override	// the C++ entity since bead oo-9ht.39.8.6
 	{
 		sLog.push_back(oo::str::format("getSafeVector %g (%g, %g, %g)", dist, p2.x, p2.y, p2.z));
 		return make_HPvector(10, 20, 30);

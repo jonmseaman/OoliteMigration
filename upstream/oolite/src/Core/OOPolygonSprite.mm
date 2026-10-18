@@ -768,7 +768,7 @@ static void APIENTRY TessVertexCallback(void *vertexData, void *polygonData)
 }
 
 
-static void APIENTRY TessCombineCallback(GLdouble	coords[3], void *vertexData[4], GLfloat weight[4], void **outData, void *polygonData)
+void APIENTRY TessCombineCallback(GLdouble	coords[3], void * /*vertexData*/[4], GLfloat /*weight*/[4], void **outData, void *polygonData)
 {
 	TessPolygonData *data = (TessPolygonData *)polygonData;
 	NSPoint point = { coords[0], coords[1] };

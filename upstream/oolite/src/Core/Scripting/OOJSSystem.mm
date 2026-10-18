@@ -1725,7 +1725,7 @@ static bool SystemAddShipsOrGroup(Context cx, CallArgs &oojsArgs, bool isGroup)
 	int32_t				count = 0;
 	unsigned				consumed = 0;
 	HPVector				where;
-	double				radius = NSNotFound;	// a negative value means 
+	double				radius = static_cast<double>(NSNotFound);	// a negative value means 
 	oo::PList			result;
 	
 	std::string			func = isGroup ? "addGroup" : "addShips";
@@ -1798,7 +1798,7 @@ static bool SystemAddShipsOrGroupToRoute(Context cx, CallArgs &oojsArgs, bool is
 	std::optional<std::string>	route = "st"; // default route witchpoint -> station. ("st" itself is not selectable by script)
 	static const std::set<std::string>	validRoutes = { "wp", "pw", "ws", "sw", "sp", "ps" };
 	int32_t				count = 0;
-	double				where = NSNotFound;		// a negative value means random positioning!
+	double				where = static_cast<double>(NSNotFound);		// a negative value means random positioning!
 	oo::PList			result;
 	
 	std::string			func = isGroup ? "addGroup" : "addShips";

@@ -9710,7 +9710,7 @@ void ShipEntity::becomeExplosion()
 				if (UNIVERSE != nullptr)  UNIVERSE->addEntity(oo::MadeEntity(ring));
 			}
 			
-			BOOL add_debris = (UNIVERSE->n_entities < 0.95 * UNIVERSE_MAX_ENTITIES) &&
+			BOOL add_debris = (UNIVERSE->n_entities < 0.95 * static_cast<double>(UNIVERSE_MAX_ENTITIES)) &&
 									  ((UNIVERSE != nullptr ? UNIVERSE->getTimeDelta() : 0.0) < 0.125);	  // FPS > 8
 			
 			
@@ -9846,7 +9846,7 @@ void ShipEntity::becomeExplosion()
 				{
 					NSUInteger n_wreckage = 0;
 					
-					if (UNIVERSE->n_entities < 0.50 * UNIVERSE_MAX_ENTITIES)
+					if (UNIVERSE->n_entities < 0.50 * static_cast<double>(UNIVERSE_MAX_ENTITIES))
 					{
 						// Create wreckage only when UNIVERSE is less than half full.
 						// (condition set in r906 - was < 0.75 before) --Kaks 2011.10.17

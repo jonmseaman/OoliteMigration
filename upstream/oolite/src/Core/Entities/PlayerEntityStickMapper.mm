@@ -399,7 +399,7 @@ void PlayerEntity::checkCustomEquipButtons(const oo::PList &stickFn, int idx)
 	const std::string activateKey = std::string(CUSTOMEQUIP_BUTTONACTIVATE);
 	const std::string modeKey = std::string(CUSTOMEQUIP_BUTTONMODE);
 	int i;
-	for (i = 0; i < customEquipActivation.size(); i++)
+	for (i = 0; static_cast<std::size_t>(i) < customEquipActivation.size(); i++)
 	{
 		if (i != idx) {
 			const oo::PList original = customEquipActivation[i];
@@ -798,7 +798,7 @@ std::vector<oo::PList> PlayerEntity::stickFunctionList()
 	if (customEquipActivation.size() > 0) {
 		funcList.push_back(makeStickGuiDictHeader(OO_DESC("stickmapper-header-oxp-equip")));
 		int i;
-		for (i = 0; i < customEquipActivation.size(); i++)
+		for (i = 0; static_cast<std::size_t>(i) < customEquipActivation.size(); i++)
 		{
 			funcList.push_back(
 			makeStickGuiDict(oo::str::format("Activate '%s'", OptionalStringForKey(customEquipActivation[i], std::string(CUSTOMEQUIP_EQUIPNAME)).value_or("(null)").c_str()), HW_BUTTON, STICK_NOFUNCTION, (i+10000)));

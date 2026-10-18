@@ -172,7 +172,7 @@ NSUInteger OOSDLJoystickManager::joystickCount()
 
 std::optional<std::string> OOSDLJoystickManager::nameOfJoystick(NSUInteger stickNumber)
 {
-	if (stickNumber >= stickCount)  return std::string("(unknown joystick)");
+	if (stickNumber >= static_cast<NSUInteger>(stickCount))  return std::string("(unknown joystick)");
 	const char *name = SDL_GetJoystickName(stick[stickNumber]);
 	if (name == NULL)  return std::nullopt;	// no string for a NULL name, as before
 	return std::string(name);

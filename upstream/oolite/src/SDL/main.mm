@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
 	if (probeString)  *probeString = '\0'; // currentWorkingDir now contains the path we need
 
 	// Prepend system PATH env variable with our own executable's path
-	char *pathEnvVar = "Path";
+	const char *pathEnvVar = "Path";
 	const char *systemPath = SDL_getenv(pathEnvVar);
 	if (!systemPath)
 	{

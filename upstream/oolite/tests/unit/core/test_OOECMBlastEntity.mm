@@ -51,7 +51,7 @@ public:
 		_removed = oo::ToObjC(entity);
 		return YES;
 	}
-	std::vector<oo::EntityHold> findEntitiesMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, cxx::Entity *entity) override	// held C++ entities since bead oo-9ht.39.26	// the reference's C++ entity since bead oo-9ht.39.8.23
+	std::vector<oo::EntityHold> findEntitiesMatchingPredicate(EntityFilterPredicate /*predicate*/, void * /*parameter*/, double range, cxx::Entity *entity) override	// held C++ entities since bead oo-9ht.39.26	// the reference's C++ entity
 	{
 		_ranges->push_back(range);
 		_searchedFrom = oo::ToObjC(entity);

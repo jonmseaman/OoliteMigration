@@ -1349,7 +1349,7 @@ oo::PList OOShipRegistry::translateOldStyleSubentityDeclaration(const std::strin
 }
 
 
-oo::PList OOShipRegistry::translateOldStyleFlasherDeclaration(const oo::PList &tokens, const std::string &shipKey, BOOL *outFatalError)
+oo::PList OOShipRegistry::translateOldStyleFlasherDeclaration(const oo::PList &tokens, const std::string &/*shipKey*/, BOOL * /*outFatalError*/)
 {
 	Vector					position;
 	float					size, frequency, phase, hue;
@@ -1384,7 +1384,7 @@ oo::PList OOShipRegistry::translateOldStyleFlasherDeclaration(const oo::PList &t
 }
 
 
-oo::PList OOShipRegistry::translateOldStandardBasicSubentityDeclaration(const oo::PList &tokens, const std::string &shipKey, const oo::PList &shipData, BOOL *outFatalError)
+oo::PList OOShipRegistry::translateOldStandardBasicSubentityDeclaration(const oo::PList &tokens, const std::string &shipKey, const oo::PList &shipData, BOOL * /*outFatalError*/)
 {
 	std::string				subentityKey;
 	Vector					position;
@@ -1454,7 +1454,7 @@ oo::PList OOShipRegistry::validateNewStyleSubentityDeclaration(const oo::PList &
 }
 
 
-oo::PList OOShipRegistry::validateNewStyleFlasherDeclaration(const oo::PList &declaration, const std::string &shipKey, BOOL *outFatalError)
+oo::PList OOShipRegistry::validateNewStyleFlasherDeclaration(const oo::PList &declaration, const std::string &shipKey, BOOL * /*outFatalError*/)
 {
 	Vector					position = kZeroVector;
 	float					size, frequency, phase, brightfraction;

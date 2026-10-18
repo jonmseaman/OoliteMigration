@@ -999,9 +999,9 @@ void PlayerEntity::displayKeyFunctionList(::GuiDisplayGen *gui, NSUInteger skip)
 						defArray = (item != nullptr ? item->defaultModeKey() : oo::PList());
 						compArray = keyArray != nullptr ? *keyArray : oo::PList();
 					}
-					for (j = 0; j < defArray.count(); j++)
+					for (j = 0; static_cast<std::size_t>(j) < defArray.count(); j++)
 					{
-						for (k = 0; k < compArray.count(); k++)
+						for (k = 0; static_cast<std::size_t>(k) < compArray.count(); k++)
 						{
 							if (!compareKeyEntries(ElementAt(defArray, j), ElementAt(compArray, k)))
 							{
@@ -1199,7 +1199,7 @@ std::vector<oo::PList> PlayerEntity::keyFunctionList()
 	{
 		funcList.push_back(makeKeyGuiDictHeader(OO_DESC("oolite-keydesc-header-oxp-equip")));
 		int i;
-		for (i = 0; i < customEquipActivation.size(); i++)
+		for (i = 0; static_cast<std::size_t>(i) < customEquipActivation.size(); i++)
 		{
 			const oo::PList equip = customEquipActivation[i];
 			const std::string equipName = DescriptionOfString(OptionalStringForKey(equip, std::string(CUSTOMEQUIP_EQUIPNAME)));	// %@: "(null)" for nil

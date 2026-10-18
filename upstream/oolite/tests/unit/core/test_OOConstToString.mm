@@ -95,7 +95,7 @@ public:
 		static const oo::PList descriptions = oo::PList(oo::PList::Dict{});
 		return &descriptions;
 	}
-	std::optional<std::string> descriptionForKey(const std::string &key) override	{ return std::nullopt; }
+	std::optional<std::string> descriptionForKey(const std::string &/*key*/) override	{ return std::nullopt; }
 };
 
 oo::PList Universe::getEquipmentData()	{ return EquipmentData(); }
@@ -116,7 +116,7 @@ std::string cxx_OOLookUpDescriptionPRIV(const std::string &key)
 
 
 // The expander (a whole-game unit); the functions pinned here never expand.
-std::optional<std::string> cxx_OOExpandDescriptionString(Random_Seed seed, const std::string &string, const oo::PList &overrides, const oo::PList &legacyLocals, const std::optional<std::string> &systemName, OOExpandOptions options)
+std::optional<std::string> cxx_OOExpandDescriptionString(Random_Seed /*seed*/, const std::string &string, const oo::PList &/*overrides*/, const oo::PList &/*legacyLocals*/, const std::optional<std::string> &/*systemName*/, OOExpandOptions /*options*/)
 {
 	return string;
 }
@@ -172,17 +172,17 @@ public:
 };
 
 oo::PList PlayerEntity::processKeyCode(const oo::PList &key_def)	{ return key_def; }
-std::optional<std::string> PlayerEntity::validateKey(const std::string &key, const oo::PList &check_keys)	{ return std::nullopt; }
-oo::PList PlayerEntity::missionVariableForKey(const std::string &key)	{ return oo::PList(); }
+std::optional<std::string> PlayerEntity::validateKey(const std::string &/*key*/, const oo::PList &/*check_keys*/)	{ return std::nullopt; }
+oo::PList PlayerEntity::missionVariableForKey(const std::string &/*key*/)	{ return oo::PList(); }
 
 PlayerEntity *gOOPlayer = nullptr;
 
 
-void cxx_OOStandardsDeprecated(const std::string &message)	{}
+void cxx_OOStandardsDeprecated(const std::string &/*message*/)	{}
 
 extern "C" BOOL OOEnforceStandards(void)	{ return NO; }
 
-oo::PList OOSanitizeLegacyScriptConditions(const oo::PList &conditions, const std::optional<std::string> &context)	{ return conditions; }
+oo::PList OOSanitizeLegacyScriptConditions(const oo::PList &conditions, const std::optional<std::string> &/*context*/)	{ return conditions; }
 
 
 namespace {

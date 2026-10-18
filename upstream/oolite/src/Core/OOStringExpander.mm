@@ -97,7 +97,9 @@ enum
 	operation, including recursive calls (so it can't contain anything pertaining
 	to the specific string being expanded).
 */
-typedef struct
+namespace {
+
+struct OOStringExpansionContext
 {
 	Random_Seed			seed;
 	OOMaybeUnits		systemName;
@@ -114,7 +116,9 @@ typedef struct
 	OOMaybeUnits		randomNameR{};		// Cache for %R
 	oo::PList			systemDescriptions{};	// Cache for system_description (an array), used for numbered keys; null: not loaded.
 	NSUInteger			sysDescCount = 0;		// Count of systemDescriptions, valid after GetSystemDescriptions() called.
-} OOStringExpansionContext;
+};
+
+}	// namespace
 
 
 namespace {

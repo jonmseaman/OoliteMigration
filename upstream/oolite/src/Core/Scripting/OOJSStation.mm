@@ -1401,7 +1401,7 @@ static bool StationRemoveShipFromShipyard(ooscript::Context context, ooscript::C
 	bool gotIndex = true;
 	gotIndex = ooscript::valueToInt32((context), (OOJS_ARGV[0]), &shipIndex);
 
-	if (oojsArgs.count() != 1 || (!ooscript::isNull(OOJS_ARGV[0]) && !gotIndex) || shipIndex < 0 || (shipIndex + 1) > (shipyard != nullptr ? shipyard->size() : 0)) 
+	if (oojsArgs.count() != 1 || (!ooscript::isNull(OOJS_ARGV[0]) && !gotIndex) || shipIndex < 0 || static_cast<std::size_t>(shipIndex) + 1 > (shipyard != nullptr ? shipyard->size() : 0)) 
 	{
 		cxx_OOJSReportBadArguments(context, "Station", "removeShipFromShipyard", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "valid ship index");
 		return false;

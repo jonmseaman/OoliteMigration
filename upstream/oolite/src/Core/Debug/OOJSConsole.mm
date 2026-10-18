@@ -470,7 +470,7 @@ static bool ConsoleGetProperty(ooscript::Context context, ooscript::Object thisO
 }
 
 
-static bool ConsoleSetProperty(ooscript::Context context, ooscript::Object thisObject, ooscript::PropertyId propID, bool strict, ooscript::Value *value)
+bool ConsoleSetProperty(ooscript::Context context, ooscript::Object thisObject, ooscript::PropertyId propID, bool /*strict*/, ooscript::Value *value)
 {
 	if (!ooscript::isInt32Id(propID))  return true;
 	
@@ -656,7 +656,7 @@ static bool ConsoleSettingsGetProperty(ooscript::Context context, ooscript::Obje
 }
 
 
-static bool ConsoleSettingsSetProperty(ooscript::Context context, ooscript::Object thisObject, ooscript::PropertyId propID, bool strict, ooscript::Value *value)
+bool ConsoleSettingsSetProperty(ooscript::Context context, ooscript::Object thisObject, ooscript::PropertyId propID, bool /*strict*/, ooscript::Value *value)
 {
 	if (!ooscript::isStringId(propID))  return true;
 	

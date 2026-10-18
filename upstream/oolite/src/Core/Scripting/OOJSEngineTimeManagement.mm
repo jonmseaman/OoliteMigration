@@ -282,9 +282,10 @@ void OOJSTimeManagementInit(OOJavaScriptEngine *engine, ooscript::Runtime runtim
 
 #if OOJS_PROFILE
 	
-#ifndef MOZ_TRACE_JSCALLS
-#warning Profiling is enabled, but MOZ_TRACE_JSCALLS is disabled, so only native functions will be profiled.
-#endif
+// Profiling is enabled, but MOZ_TRACE_JSCALLS is disabled, so only native functions are profiled.
+// MOZ_TRACE_JSCALLS was a SpiderMonkey build option; the QuickJS-ng engine has no such hook, so it
+// is never defined and this is how every profiling build profiles. It was a #warning, printed by
+// every such build with nothing to act on (bead oo-99txa).
 
 namespace {
 static bool						sProfiling = false;

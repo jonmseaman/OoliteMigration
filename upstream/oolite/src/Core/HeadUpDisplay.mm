@@ -3614,7 +3614,7 @@ static void hudDrawStatusIconAt(int x, int y, int z, NSSize siz)
 }
 
 
-static void hudDrawReticleOnTarget(Entity *target, PlayerEntity *player1, GLfloat z1, 
+void hudDrawReticleOnTarget(Entity *target, PlayerEntity *player1, GLfloat /*z1*/, 
 				GLfloat alpha, BOOL reticleTargetSensitive, oo::PList *propertiesReticleTargetSensitive,
 				BOOL colourFromScannerColour, BOOL showText, const oo::PList &info, const std::vector<oo::Ref<OOColor>> &reticleColors)
 {
