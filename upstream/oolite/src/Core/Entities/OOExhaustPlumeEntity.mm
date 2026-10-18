@@ -152,6 +152,7 @@ void OOExhaustPlumeEntity::update(OOTimeDelta /*delta_t*/)
 	Frame zero =
 	{
 		.timeframe = (UNIVERSE != nullptr ? UNIVERSE->getTime() : 0.0),
+		.position = {},
 		.orientation = shipQrotation,
 		.k = (ship != nullptr ? ship->forwardVector() : Vector{})
 	};

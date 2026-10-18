@@ -105,15 +105,15 @@ typedef struct
 	oo::PList			legacyLocals;		// a dictionary of mixed values; null: none (was nil)
 	bool				isJavaScript;
 	bool				convertBackslashN;
-	bool				hasPercentR;		// Set to indicate we need an ExpandPercentR() pass.
+	bool				hasPercentR = false;		// Set to indicate we need an ExpandPercentR() pass.
 	bool				useGoodRNG;
-	bool				disallowPercentI;
+	bool				disallowPercentI = false;
 
-	OOMaybeUnits		systemNameWithIan;	// Cache for %I
-	OOMaybeUnits		randomNameN;		// Cache for %N
-	OOMaybeUnits		randomNameR;		// Cache for %R
-	oo::PList			systemDescriptions;	// Cache for system_description (an array), used for numbered keys; null: not loaded.
-	NSUInteger			sysDescCount;		// Count of systemDescriptions, valid after GetSystemDescriptions() called.
+	OOMaybeUnits		systemNameWithIan{};	// Cache for %I
+	OOMaybeUnits		randomNameN{};		// Cache for %N
+	OOMaybeUnits		randomNameR{};		// Cache for %R
+	oo::PList			systemDescriptions{};	// Cache for system_description (an array), used for numbered keys; null: not loaded.
+	NSUInteger			sysDescCount = 0;		// Count of systemDescriptions, valid after GetSystemDescriptions() called.
 } OOStringExpansionContext;
 
 

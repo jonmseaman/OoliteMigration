@@ -10529,7 +10529,7 @@ unsigned int Universe::setVoice(unsigned int index, bool isMale)
 
 	if (index < espeak_voice_count)
 	{
-		espeak_VOICE voice = { espeak_voices[index]->name, NULL, NULL, (unsigned char)(isMale ? 1 : 2) };
+		espeak_VOICE voice = { espeak_voices[index]->name, NULL, NULL, (unsigned char)(isMale ? 1 : 2), 0, 0, 0, 0, NULL };
 		espeak_SetVoiceByProperties (&voice);
 	}
 

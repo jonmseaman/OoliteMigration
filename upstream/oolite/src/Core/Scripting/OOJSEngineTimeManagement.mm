@@ -550,7 +550,9 @@ void OOJSProfileEnter(OOJSProfileStackFrame *frame, const char *function)
 		.key = function,
 		.function = function,
 		.startTime = OOGetHighResTime(),
-		.total = &sProfilerTotalNativeTime
+		.subTime = 0,
+		.total = &sProfilerTotalNativeTime,
+		.cleanup = NULL
 	};
 	sProfileStack = frame;
 }
