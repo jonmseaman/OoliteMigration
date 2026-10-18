@@ -25,8 +25,10 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOLightParticleEntity.h"
-#import "ShipEntity.h"
+#pragma once
+
+#include "OOLightParticleEntity.h"
+#include "ShipEntity.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"

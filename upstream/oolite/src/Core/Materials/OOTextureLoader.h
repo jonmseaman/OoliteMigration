@@ -34,9 +34,9 @@ SOFTWARE.
 #ifndef OOTEXTURELOADER_H
 #define OOTEXTURELOADER_H
 
-#import "OOOpenGL.h"
-#import "OOPixMap.h"
-#import "OOAsyncWorkManager.h"
+#include "OOOpenGL.h"
+#include "OOPixMap.h"
+#include "OOAsyncWorkManager.h"
 
 #include "oofnd/PList.hpp"
 #include "oofnd/StdLib.hpp"

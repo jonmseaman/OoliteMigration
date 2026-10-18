@@ -28,16 +28,18 @@ MA 02110-1301, USA.
 
 */
 
-#import "PlayerEntity.h"
+#pragma once
+
+#include "PlayerEntity.h"
 
 /*	Beads oo-xmvt, oo-rczn (ADR-0056 amendment oo-lmdi8): the category PlayerEntity (LoadSave) is members of
 	PlayerEntity, declared in PlayerEntity.h and defined in PlayerEntityLoadSave.mm. Its Objective-C interface,
 	for the callers that remained, was the category of the same name in PlayerEntity+ObjCBridge.h (deleted by bead oo-9ht.177),
 	which PlayerEntity.h imports. This header stays for the files that import it.
 */
-#import "GuiDisplayGen.h"
-#import "MyOpenGLView.h"
-#import "Universe.h"
+#include "GuiDisplayGen.h"
+#include "MyOpenGLView.h"
+#include "Universe.h"
 
 #define EXITROW 1
 #define LABELROW 2

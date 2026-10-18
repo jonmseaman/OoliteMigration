@@ -38,10 +38,10 @@ SOFTWARE.
 #ifndef OOTEXTURE_H
 #define OOTEXTURE_H
 
-#import "OOCocoa.h"
+#include "OOCocoa.h"
 
-#import "OOOpenGL.h"
-#import "OOPixMap.h"
+#include "OOOpenGL.h"
+#include "OOPixMap.h"
 
 #include "oofnd/PList.hpp"
 #include "oofnd/StdLib.hpp"

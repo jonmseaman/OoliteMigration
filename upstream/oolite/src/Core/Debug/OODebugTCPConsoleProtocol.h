@@ -30,9 +30,11 @@ SOFTWARE.
 */
 
 
+#pragma once
+
 #ifndef OOALSTR
 #ifdef __OBJC__
-#import "OOCocoa.h"
+#include "OOCocoa.h"
 #define OOALSTR(x) @"" x
 #else	// C
 #include <CoreFoundation/CoreFoundation.h>

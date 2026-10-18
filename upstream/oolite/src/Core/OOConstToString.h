@@ -28,11 +28,13 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOCocoa.h"
+#pragma once
+
+#include "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
-#import "OOFunctionAttributes.h"
-#import "OOTypes.h"
-#import "MyOpenGLView.h"
+#include "OOFunctionAttributes.h"
+#include "OOTypes.h"
+#include "MyOpenGLView.h"
 
 enum
 {

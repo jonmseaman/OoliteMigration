@@ -31,29 +31,31 @@
  
  */
 
-#import "OOEntityWithDrawable.h"
+#pragma once
+
+#include "OOEntityWithDrawable.h"
 #include "ooscript/JSEngine.hpp"
-#import "OOPlanetEntity.h"
-#import "OOJSPropID.h"
+#include "OOPlanetEntity.h"
+#include "OOJSPropID.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
 #include "oofnd/WeakSet.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 #include "Octree.h"
-#import "OORoleSet.h"
+#include "OORoleSet.h"
 #include <string_view>
 
 class StationEntity;
 class OOMesh;	// C++ since bead oo-9ht.132
 #include "OOScript.h"	// oo::Ref<OOScript> members and results (bead oo-9ht.133)
 class WormholeEntity;	// C++ since bead oo-9ht.112
-#import "OOColor.h"	// the colours are oo::Ref members
-#import "OOCharacter.h"	// C++ since bead oo-9ht.10: the crew is oo::Ref
-#import "OOShipGroup.h"	// C++ since bead oo-9ht.19: the groups are oo::Ref
-#import "OOEquipmentType.h"	// C++ since bead oo-9ht.28: OOWeaponType is a C++ pointer
-#import "OOPolygonSprite.h"	// OOHUDBeaconIcon (bead oo-7ae4p): the beacon drawable is oo::Ref
-#import "AI.h"	// C++ since bead oo-9ht.73: shipAI is oo::Ref
+#include "OOColor.h"	// the colours are oo::Ref members
+#include "OOCharacter.h"	// C++ since bead oo-9ht.10: the crew is oo::Ref
+#include "OOShipGroup.h"	// C++ since bead oo-9ht.19: the groups are oo::Ref
+#include "OOEquipmentType.h"	// C++ since bead oo-9ht.28: OOWeaponType is a C++ pointer
+#include "OOPolygonSprite.h"	// OOHUDBeaconIcon (bead oo-7ae4p): the beacon drawable is oo::Ref
+#include "AI.h"	// C++ since bead oo-9ht.73: shipAI is oo::Ref
 class OOFlasherEntity;	// C++ only since bead oo-9ht.107
 class OOExhaustPlumeEntity;	// C++ only since bead oo-9ht.110
 

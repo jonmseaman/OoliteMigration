@@ -25,10 +25,12 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
-#import "OOTypes.h"
-#import "OOMaths.h"
+#pragma once
+
+#include "OOCocoa.h"
+#include "oofnd/objc/OOObject.h"
+#include "OOTypes.h"
+#include "OOMaths.h"
 
 
 typedef enum

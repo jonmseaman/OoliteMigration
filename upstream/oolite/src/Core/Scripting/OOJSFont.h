@@ -29,6 +29,8 @@ SOFTWARE.
 
 */
 
+#pragma once
+
 #include "ooscript/JSEngine.hpp"
 #ifdef __cplusplus
 extern "C" {

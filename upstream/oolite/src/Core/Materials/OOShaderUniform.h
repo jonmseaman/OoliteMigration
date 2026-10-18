@@ -34,18 +34,18 @@ SOFTWARE.
 #ifndef OOSHADERUNIFORM_H
 #define OOSHADERUNIFORM_H
 
-#import "OOShaderMaterial.h"
+#include "OOShaderMaterial.h"
 
 #if OO_SHADERS
 
 
-#import "OOMaths.h"
-#import "OOColor.h"
+#include "OOMaths.h"
+#include "OOColor.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"
 
-#import "OOWeakReference.h"	// the Objective-C binding target's weak reference (an entity's object; oo-9ht.39.28)
+#include "OOWeakReference.h"	// the Objective-C binding target's weak reference (an entity's object; oo-9ht.39.28)
 
 
 struct OOShaderBindingValue;	// OOShaderUniformMethodType.h (bead oo-9ht.158)

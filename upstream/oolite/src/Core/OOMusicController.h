@@ -32,15 +32,15 @@ MA 02110-1301, USA.
 #ifndef OOMUSICCONTROLLER_H
 #define OOMUSICCONTROLLER_H
 
-#import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
-#import "OOSoundSource.h"
+#include "OOCocoa.h"
+#include "oofnd/objc/OOObject.h"
+#include "OOSoundSource.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 
-#import "OOALMusic.h"
+#include "OOALMusic.h"
 
 
 #define OOLITE_ITUNES_SUPPORT OOLITE_MAC_OS_X

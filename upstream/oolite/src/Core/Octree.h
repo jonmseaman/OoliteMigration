@@ -27,10 +27,10 @@ MA 02110-1301, USA.
 #ifndef OCTREE_H
 #define OCTREE_H
 
-#import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
-#import "OOOpenGL.h"
-#import "OOMaths.h"
+#include "OOCocoa.h"
+#include "oofnd/objc/OOObject.h"
+#include "OOOpenGL.h"
+#include "OOMaths.h"
 
 #include "oofnd/PList.hpp"
 #include "oofnd/Ref.hpp"

@@ -30,8 +30,8 @@ MA 02110-1301, USA.
 #ifndef OOTRUMBLE_H
 #define OOTRUMBLE_H
 
-#import "OOCocoa.h"
-#import "OOOpenGL.h"
+#include "OOCocoa.h"
+#include "OOOpenGL.h"
 
 #include "oofnd/Ref.hpp"
 #include "oofnd/PList.hpp"

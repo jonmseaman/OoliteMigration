@@ -27,8 +27,10 @@ SOFTWARE.
 
 */
 
-#import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
+#pragma once
+
+#include "OOCocoa.h"
+#include "oofnd/objc/OOObject.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"

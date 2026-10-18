@@ -36,9 +36,9 @@ SOFTWARE.
 #ifndef OOALMUSIC_H
 #define OOALMUSIC_H
 
-#import "OOCocoa.h"
-#import "OOALSound.h"
-#import "OOSoundSource.h"
+#include "OOCocoa.h"
+#include "OOALSound.h"
+#include "OOSoundSource.h"
 
 class OOMusic : public OOSound
 {

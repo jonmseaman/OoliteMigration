@@ -32,7 +32,7 @@ MA 02110-1301, USA.
 #ifndef OOJSFUNCTION_H
 #define OOJSFUNCTION_H
 
-#import "OOCocoa.h"
+#include "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"

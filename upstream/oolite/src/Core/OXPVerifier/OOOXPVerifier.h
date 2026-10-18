@@ -34,6 +34,8 @@ SOFTWARE.
 
 */
 
+#pragma once
+
 #ifndef OO_OXP_VERIFIER_ENABLED
 	#ifdef NDEBUG
 		#define OO_OXP_VERIFIER_ENABLED 0
@@ -44,8 +46,8 @@ SOFTWARE.
 
 #if OO_OXP_VERIFIER_ENABLED
 
-#import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
+#include "OOCocoa.h"
+#include "oofnd/objc/OOObject.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"

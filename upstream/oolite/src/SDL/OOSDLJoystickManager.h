@@ -42,9 +42,9 @@ MA 02110-1301, USA.
 #ifndef OOSDLJOYSTICKMANAGER_H
 #define OOSDLJOYSTICKMANAGER_H
 
-#import "OOCocoa.h"
-#import <SDL3/SDL_events.h>
-#import "OOJoystickManager.h"
+#include "OOCocoa.h"
+#include <SDL3/SDL_events.h>
+#include "OOJoystickManager.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"

@@ -27,8 +27,10 @@ SOFTWARE.
 
 */
 
-#import "OOTexture.h"
-#import "OOOpenGLExtensionManager.h"
+#pragma once
+
+#include "OOTexture.h"
+#include "OOOpenGLExtensionManager.h"
 
 
 // The subclass interface (the categories SubclassInterface, SubclassResponsibilities and

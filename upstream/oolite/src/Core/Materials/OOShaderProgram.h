@@ -35,10 +35,10 @@ SOFTWARE.
 #ifndef OOSHADERPROGRAM_H
 #define OOSHADERPROGRAM_H
 
-#import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
-#import "OOOpenGL.h"
-#import "OOOpenGLExtensionManager.h"
+#include "OOCocoa.h"
+#include "oofnd/objc/OOObject.h"
+#include "OOOpenGL.h"
+#include "OOOpenGLExtensionManager.h"
 
 #if OO_SHADERS
 

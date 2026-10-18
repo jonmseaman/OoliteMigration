@@ -33,14 +33,14 @@ MA 02110-1301, USA.
 #ifndef UNIVERSE_VIRTUAL_MEMBERS_H
 #define UNIVERSE_VIRTUAL_MEMBERS_H
 
-#import "OOCocoa.h"
-#import "OOMaths.h"
-#import "OOTypes.h"
+#include "OOCocoa.h"
+#include "OOMaths.h"
+#include "OOTypes.h"
 #include "oofnd/PList.hpp"
 #include "oofnd/objc/OOObjCRef.h"
-#import "OOEntityHold.h"	// owning entity references (bead oo-9ht.39.26)
-#import "OOEntityEnums.h"	// OOScanClass
-#import "OOSystemDescriptionManager.h"	// OOSystemLayer
+#include "OOEntityHold.h"	// owning entity references (bead oo-9ht.39.26)
+#include "OOEntityEnums.h"	// OOScanClass
+#include "OOSystemDescriptionManager.h"	// OOSystemLayer
 
 #include <map>
 #include <optional>

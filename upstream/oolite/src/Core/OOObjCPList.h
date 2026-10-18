@@ -44,7 +44,7 @@ MA 02110-1301, USA.
 #ifndef OOOBJCPLIST_H
 #define OOOBJCPLIST_H
 
-#import "OODescription.h"
+#include "OODescription.h"
 
 // extern "C++" as OODescription.h is: a header may be reached from inside an extern "C" block.
 extern "C++" {

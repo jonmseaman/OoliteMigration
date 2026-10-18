@@ -29,8 +29,8 @@ This code is hereby placed in the public domain.
 #ifndef OOWEAKSET_H
 #define OOWEAKSET_H
 
-#import "OOCocoa.h"
-#import "OOWeakReference.h"
+#include "OOCocoa.h"
+#include "OOWeakReference.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"

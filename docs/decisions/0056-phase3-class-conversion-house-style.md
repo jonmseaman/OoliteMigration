@@ -9228,3 +9228,33 @@ initialiser and file read, and the OXP verifier's driver (OOOXPVerifier.mm) and 
 run the verifier's own stages; none reaches an entity creator, a keeper (OOMaterialAutorelease is only
 OOPlanetDrawable's), `AutoreleaseAll`, JavaScript, a peer or a thread entry. Blocks stay plain blocks; locals
 die where they did. **Tests.** No test file, case or expected value changes.
+
+## Amendment (bead oo-cnhzq): the headers include, not import; an unguarded header is #pragma once
+
+**Context.** Phase 4 batch AT (prerequisite of oo-dbz). Inventory on main (2026-10-18, first-party
+`upstream/oolite/src` minus `oofnd/objc/`, `.agent-tmp/cc/batchAT/inventory.txt`): 2356 `#import` lines in 438
+files, 511 of them in 220 headers, 1843 in 216 `.mm` files, 2 in `.cpp` files. GCC's C++ front end warns on
+`#import` (a deprecated extension), so the Phase 4 GCC build cannot keep them, and after the `.mm`->`.cpp` rename
+they are C++ translation units. 153 of the headers that are imported have no include guard: they relied on
+`#import`'s once-per-translation-unit rule.
+
+**Decision (recommended default, behaviour-identical).**
+
+1. Every quoted `#import` in a header (`*.h`, `*.hpp`) and in the two `.cpp` files whose target resolves inside
+   `src` becomes `#include`; so do the angle imports of portable guarded headers (`<objc/...>`, `<SDL3/...>`,
+   `<vorbis/...>`) and of libpng's guarded `png.h`.
+2. A header that is the target of any first-party `#import` and has no include guard gets `#pragma once` before
+   its first line of code. `#import` and `#pragma once` both mean "enter this file once per translation unit, by
+   file identity", so every translation unit enters every header exactly as often as before, whichever directive
+   (a remaining `.mm` `#import`, a test's `#import`, or the new `#include`) reaches it first. `#pragma once`, not a
+   new `#ifndef` guard: it is the same rule as `#import` and cannot collide with an existing macro. The headers
+   with only macros and prototypes (no definitions a second entry would break) were checked by hand for X-macro
+   use: none is meant to be entered twice.
+3. Left as `#import`: `src/oofnd/objc/` (deleted with libobjc2, oo-dbz); the Mac-only framework imports (`AppKit`,
+   `Quartz`, `Sparkle`, `OpenGL/CGLMacro`, `OpenAL`, `mach`) and `JAAutoreleasePool.h` (Phase 5); and every `.mm`
+   file's own imports (oo-ua886: its tier-a runs judge clang-tidy findings by line text, so each rewritten line
+   would surface its baseline `misc-include-cleaner` finding as new; do it with oo-dbz's rename or after a
+   baseline normalisation, both on the headers this bead guarded).
+
+**Tests.** No test file, case or expected value changes. The tests' own `#import`s are untouched and reach the
+same headers once, as before.

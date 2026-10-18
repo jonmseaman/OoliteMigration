@@ -23,7 +23,9 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOFunctionAttributes.h"
+#pragma once
+
+#include "OOFunctionAttributes.h"
 #include "ooscript/JSEngine.hpp"
 
 /*

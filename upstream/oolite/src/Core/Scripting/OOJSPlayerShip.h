@@ -31,7 +31,9 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOCocoa.h"
+#pragma once
+
+#include "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/Notification.hpp"
 #include <optional>

@@ -31,20 +31,22 @@ MA 02110-1301, USA.
 */
 
 
-#import "OOCocoa.h"
+#pragma once
+
+#include "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
-#import "OOMaths.h"
-#import "OOCacheManager.h"
-#import "OOTypes.h"
-#import "OOWeakReference.h"
-#import "OOColor.h"
-#import "CollisionRegion.h"
+#include "OOMaths.h"
+#include "OOCacheManager.h"
+#include "OOTypes.h"
+#include "OOWeakReference.h"
+#include "OOColor.h"
+#include "CollisionRegion.h"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 #include "OOEntityHold.h"	// the owning entity lists (bead oo-xn1j1)
 #include "OOJSPrivateObject.h"
-#import "EntityVirtualMembers.h"	// the virtual members (bead oo-9ht.39.8.21)
+#include "EntityVirtualMembers.h"	// the virtual members (bead oo-9ht.39.8.21)
 
 class Entity;
 class Universe;

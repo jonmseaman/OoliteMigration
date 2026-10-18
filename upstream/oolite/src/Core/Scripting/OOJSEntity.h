@@ -24,11 +24,13 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOCocoa.h"
-#import "OOJavaScriptEngine.h"
-#import "Universe.h"
+#pragma once
+
+#include "OOCocoa.h"
+#include "OOJavaScriptEngine.h"
+#include "Universe.h"
 #include "oofnd/StdLib.hpp"
-#import "Entity.h"
+#include "Entity.h"
 #include "OOJSEntityHolder.h"
 
 class Entity;

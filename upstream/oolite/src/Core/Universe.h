@@ -24,23 +24,25 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOCocoa.h"
+#pragma once
+
+#include "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
-#import "OOOpenGL.h"
-#import "OOShaderProgram.h"
-#import "legacy_random.h"
-#import "OOMaths.h"
-#import "OOColor.h"
-#import "OOTypes.h"
-#import "OOSound.h"
-#import "OOJSPropID.h"
-#import "OOStellarBody.h"
-#import "OOEntityWithDrawable.h"
-#import "OOCommodities.h"
-#import "OOSystemDescriptionManager.h"
-#import "OOCommodityMarket.h"	// C++ since bead oo-9ht.21: the universe keeps its market (oo::Ref)
-#import "OOCharacter.h"	// C++ since bead oo-9ht.10: the character pool is oo::Ref
-#import "UniverseVirtualMembers.h"	// the test seams (bead oo-ql9rn)
+#include "OOOpenGL.h"
+#include "OOShaderProgram.h"
+#include "legacy_random.h"
+#include "OOMaths.h"
+#include "OOColor.h"
+#include "OOTypes.h"
+#include "OOSound.h"
+#include "OOJSPropID.h"
+#include "OOStellarBody.h"
+#include "OOEntityWithDrawable.h"
+#include "OOCommodities.h"
+#include "OOSystemDescriptionManager.h"
+#include "OOCommodityMarket.h"	// C++ since bead oo-9ht.21: the universe keeps its market (oo::Ref)
+#include "OOCharacter.h"	// C++ since bead oo-9ht.10: the character pool is oo::Ref
+#include "UniverseVirtualMembers.h"	// the test seams (bead oo-ql9rn)
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
@@ -68,7 +70,7 @@ class PlayerEntity;
 class WormholeEntity;	// C++ since bead oo-9ht.112
 class OOSunEntity;	// C++ since bead oo-9ht.111
 class OOPlanetEntity;	// C++ since bead oo-9ht.129
-#import "GuiDisplayGen.h"	// C++ since bead oo-9ht.143: the universe keeps its GUIs (oo::Ref)
+#include "GuiDisplayGen.h"	// C++ since bead oo-9ht.143: the universe keeps its GUIs (oo::Ref)
 class CollisionRegion;
 
 

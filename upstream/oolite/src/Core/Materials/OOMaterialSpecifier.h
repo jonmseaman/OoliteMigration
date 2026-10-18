@@ -27,11 +27,13 @@ SOFTWARE.
 
 */
 
-#import "OOCocoa.h"
+#pragma once
+
+#include "OOCocoa.h"
 
 #include "oofnd/PList.hpp"
 
-#import "OOColor.h"	// the colour readers answer oo::Ref<OOColor>
+#include "OOColor.h"	// the colour readers answer oo::Ref<OOColor>
 
 
 /*	Material configuration properties (Foundation sweep, proposed ADR-0043 Amendment 2, bead

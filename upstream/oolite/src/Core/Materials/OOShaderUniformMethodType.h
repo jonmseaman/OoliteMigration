@@ -28,12 +28,14 @@ SOFTWARE.
 
 */
 
-#import "OOOpenGLExtensionManager.h"
+#pragma once
+
+#include "OOOpenGLExtensionManager.h"
 
 #if OO_SHADERS || !defined(NDEBUG)
 
-#import "OOMaths.h"
-#import "OOHPVector.h"
+#include "OOMaths.h"
+#include "OOHPVector.h"
 #include <objc/runtime.h>
 #include <string>
 

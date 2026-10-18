@@ -30,6 +30,8 @@ MA 02110-1301, USA.
  causing a warning in Clang. This lets us write #define FOO (1 && OOLITE_DEBUG)
  instead.
  */
+#pragma once
+
 #ifdef NDEBUG
 #define OOLITE_DEBUG 0
 #else
@@ -74,7 +76,7 @@ MA 02110-1301, USA.
 		#undef BOOL
 	#endif
 	#include <assert.h>
-	#import "oofnd/objc/OOFoundationTypes.h"
+	#include "oofnd/objc/OOFoundationTypes.h"
 	#define OOLITE_GNUSTEP			1
 	
 	// gnustep-base's macro; the Mac OS X path below defines the same one.
@@ -233,15 +235,15 @@ extern "C++" {
 #define OOLITE_PROPERTY_SYNTAX	(OOLITE_MAC_OS_X || OOLITE_HAVE_CLANG)
 
 
-#import "OOLogging.h"
+#include "OOLogging.h"
 
 
-#import "oofnd/objc/OOObject.h"
+#include "oofnd/objc/OOObject.h"
 
 /*	The description family (-cxx_descriptionComponents & co., oo::DescriptionOf), Foundation-free
 	(proposed ADR-0055 item 1).
 */
-#import "OODescription.h"
+#include "OODescription.h"
 
 #if OOLITE_MAC_OS_X
 	#define OOLITE_RELEASE_PLIST_ERROR_STRINGS 1

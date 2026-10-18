@@ -32,8 +32,8 @@ SOFTWARE.
 #ifndef OOCOMBINEDEMISSIONMAPGENERATOR_H
 #define OOCOMBINEDEMISSIONMAPGENERATOR_H
 
-#import "OOTextureGenerator.h"
-#import "OOColor.h"
+#include "OOTextureGenerator.h"
+#include "OOColor.h"
 
 #include "oofnd/PList.hpp"
 #include "oofnd/StdLib.hpp"

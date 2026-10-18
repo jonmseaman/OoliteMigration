@@ -37,9 +37,9 @@ SOFTWARE.
 #ifndef OOALSOUNDDECODER_H
 #define OOALSOUNDDECODER_H
 
-#import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
-#import "OOFunctionAttributes.h"
+#include "OOCocoa.h"
+#include "oofnd/objc/OOObject.h"
+#include "OOFunctionAttributes.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"

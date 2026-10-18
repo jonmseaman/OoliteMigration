@@ -43,9 +43,9 @@ SOFTWARE.
 #ifndef OODEBUGMONITOR_H
 #define OODEBUGMONITOR_H
 
-#import "OOCocoa.h"
+#include "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
-#import "OODebuggerInterface.h"
+#include "OODebuggerInterface.h"
 #include "OOJavaScriptEngineMonitor.h"	// the engine's monitor, a C++ interface since bead oo-9ht.74.1
 #include "OOJSPrivateObject.h"	// the console's JS glue (bead oo-9ht.74)
 
@@ -62,7 +62,7 @@ SOFTWARE.
 
 class OOJavaScriptEngine;
 #include "OOScript.h"	// the console script, oo::Ref<OOScript> (bead oo-9ht.133)
-#import "OOColor.h"	// the colour maps hold oo::Ref<OOColor>
+#include "OOColor.h"	// the colour maps hold oo::Ref<OOColor>
 
 
 /*	The one debug monitor (sharedDebugMonitor(), made on first use and never released). The

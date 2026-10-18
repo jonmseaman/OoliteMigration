@@ -38,8 +38,8 @@ MA 02110-1301, USA.
 #ifndef OOPLISTSCRIPT_H
 #define OOPLISTSCRIPT_H
 
-#import "OOCocoa.h"
-#import "OOScript.h"
+#include "OOCocoa.h"
+#include "OOScript.h"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"
 #include "oofnd/PList.hpp"

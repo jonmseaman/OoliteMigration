@@ -32,9 +32,9 @@ SOFTWARE.
 #ifndef OOALSOUND_H
 #define OOALSOUND_H
 
-#import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
-#import "OOOpenALController.h"
+#include "OOCocoa.h"
+#include "oofnd/objc/OOObject.h"
+#include "OOOpenALController.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"

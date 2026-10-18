@@ -35,10 +35,10 @@ SOFTWARE.
 #ifndef OODRAWABLE_H
 #define OODRAWABLE_H
 
-#import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
-#import "OOOpenGL.h"
-#import "OOMaths.h"
+#include "OOCocoa.h"
+#include "oofnd/objc/OOObject.h"
+#include "OOOpenGL.h"
+#include "OOMaths.h"
 class Entity;	// Entity.h: the shader binding target (bead oo-9ht.39.6)
 
 #include <vector>

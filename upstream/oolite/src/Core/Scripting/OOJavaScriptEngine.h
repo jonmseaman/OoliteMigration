@@ -23,18 +23,20 @@ MA 02110-1301, USA.
 */
 
 
-#import "OOCocoa.h"
-#import "Universe.h"
-#import "PlayerEntity.h"
-#import "PlayerEntityLegacyScriptEngine.h"
-#import "oofnd/objc/OOObject.h"
+#pragma once
+
+#include "OOCocoa.h"
+#include "Universe.h"
+#include "PlayerEntity.h"
+#include "PlayerEntityLegacyScriptEngine.h"
+#include "oofnd/objc/OOObject.h"
 #define OOJSENGINE_MONITOR_SUPPORT OOLITE_DEBUG
 
 
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
-#import "OOJSPropID.h"
+#include "OOJSPropID.h"
 
 #include "oofnd/objc/OOAssert.h"
 #include "oofnd/objc/OOObjCRef.h"
@@ -267,6 +269,6 @@ OOJS_EXTERN_C BOOL OOJSObjectGetterImplPRIVATE(ooscript::Context context, ooscri
 
 // The root class's JS glue and the engine's one-line sends to Objective-C objects (bead oo-wdqw1:
 // they were in the engine's facade file; they go with the root class, Phase 4).
-#import "OOObject+OOJavaScript.h"
+#include "OOObject+OOJavaScript.h"
 
 

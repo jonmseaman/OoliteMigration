@@ -28,6 +28,8 @@ SOFTWARE.
 
 */
 
+#pragma once
+
 #include "OOMaths.h"
 #include "OOColor.h"
 

@@ -31,8 +31,8 @@ SOFTWARE.
 #ifndef OOCONCRETETEXTURE_H
 #define OOCONCRETETEXTURE_H
 
-#import "OOTexture.h"
-#import "OOTextureLoader.h"
+#include "OOTexture.h"
+#include "OOTextureLoader.h"
 
 #include "oofnd/StdLib.hpp"
 

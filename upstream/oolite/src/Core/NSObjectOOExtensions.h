@@ -27,7 +27,9 @@ SOFTWARE.
 
 */
 
-#import "OOCocoa.h"
+#pragma once
+
+#include "OOCocoa.h"
 
 
 // On OOObject, the root of every Oolite class (ADR-0029).

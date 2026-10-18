@@ -41,10 +41,10 @@ SOFTWARE.
 #ifndef OOMATERIAL_H
 #define OOMATERIAL_H
 
-#import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
-#import "OOOpenGL.h"
-#import "OOOpenGLExtensionManager.h"
+#include "OOCocoa.h"
+#include "oofnd/objc/OOObject.h"
+#include "OOOpenGL.h"
+#include "OOOpenGLExtensionManager.h"
 class Entity;	// Entity.h: the shader binding target (bead oo-9ht.39.6)
 
 #include <vector>

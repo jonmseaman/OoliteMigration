@@ -28,8 +28,8 @@ MA 02110-1301, USA.
 #ifndef OOPLANETTEXTUREGENERATOR_H
 #define OOPLANETTEXTUREGENERATOR_H
 
-#import "OOTextureGenerator.h"
-#import "OOMaths.h"
+#include "OOTextureGenerator.h"
+#include "OOMaths.h"
 #include "oofnd/PList.hpp"
 
 

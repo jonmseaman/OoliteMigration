@@ -25,7 +25,9 @@ MA 02110-1301, USA.
 
 */
 
-#import "Entity.h"
+#pragma once
+
+#include "Entity.h"
 
 
 /*	A converted leaf (amendment oo-bj8 item 12): global, over Entity, with no facade of its own.

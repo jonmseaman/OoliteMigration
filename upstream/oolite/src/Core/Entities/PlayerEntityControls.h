@@ -24,6 +24,8 @@ MA 02110-1301, USA.
 
 */
 
+#pragma once
+
 #include "PlayerEntity.h"
 
 /*	Beads oo-hsilb, oo-56tmj, oo-4216h, oo-n8wn2, oo-uq8px, oo-fz3l8 and oo-lmdi8 (ADR-0056 amendment

@@ -27,9 +27,11 @@ SOFTWARE.
 
 */
 
-#import "OODrawable.h"
-#import "OOOpenGL.h"
-#import "OOGraphicsResetManager.h"
+#pragma once
+
+#include "OODrawable.h"
+#include "OOOpenGL.h"
+#include "OOGraphicsResetManager.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"

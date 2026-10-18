@@ -39,7 +39,7 @@ SOFTWARE.
 #ifndef OOGRAPHICSRESETMANAGER_H
 #define OOGRAPHICSRESETMANAGER_H
 
-#import "OOCocoa.h"
+#include "OOCocoa.h"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"
 

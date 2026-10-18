@@ -24,10 +24,12 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOCocoa.h"
+#pragma once
+
+#include "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/StdLib.hpp"
-#import "OOMaths.h"
+#include "OOMaths.h"
 
 
 #ifdef __cplusplus

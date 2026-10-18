@@ -30,12 +30,14 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
-#import "OOOpenGL.h"
-#import "OOTypes.h"
-#import "GuiDisplayGen.h"
-#import "OOColor.h"
+#pragma once
+
+#include "OOCocoa.h"
+#include "oofnd/objc/OOObject.h"
+#include "OOOpenGL.h"
+#include "OOTypes.h"
+#include "GuiDisplayGen.h"
+#include "OOColor.h"
 
 #include "oofnd/PList.hpp"
 #include "oofnd/Ref.hpp"

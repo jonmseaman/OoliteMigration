@@ -29,9 +29,11 @@ MA 02110-1301, USA.
 
 */
 
+#pragma once
+
 #ifndef NDEBUG
 
-#import "OOCocoa.h"
+#include "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/StdLib.hpp"
 #include <string>

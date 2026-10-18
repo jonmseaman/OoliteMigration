@@ -27,8 +27,10 @@ MA 02110-1301, USA.
 
 */
 
+#pragma once
+
 #ifdef __OBJC__
-#import "OOCocoa.h"
+#include "OOCocoa.h"
 #endif
 #include "OOOpenGLOnly.h"
 #include "OOOpenGLCheck.h"

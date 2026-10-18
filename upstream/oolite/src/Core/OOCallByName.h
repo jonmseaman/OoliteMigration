@@ -67,7 +67,7 @@ MA 02110-1301, USA.
 #ifndef OOCALLBYNAME_H
 #define OOCALLBYNAME_H
 
-#import "oofnd/objc/OOObject.h"
+#include "oofnd/objc/OOObject.h"
 
 // extern "C++": reachable from inside an extern "C" block, as OOLogging.h is.
 extern "C++" {
