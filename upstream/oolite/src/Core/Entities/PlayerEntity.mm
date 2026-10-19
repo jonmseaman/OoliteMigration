@@ -360,12 +360,14 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 #ifndef NDEBUG
 #define STAGE_TRACKING_BEGIN	{ \
 									const char * volatile updateStage = "initialisation"; \
-									@try {
+									try {
 #define STAGE_TRACKING_END			} \
-									@catch (OOException *exception) \
+									catch (...) \
 									{ \
-										OO_LOG(cxx_kOOLogException, "***** Exception during [{}] in {} : {} : {} *****", static_cast<const char *>(updateStage), static_cast<const char *>(__PRETTY_FUNCTION__), [exception name], [exception reason]); \
-										@throw exception; \
+										const auto exception = oo::CurrentOOException(); \
+										if (!exception)  throw;	/* not an OOException: it goes on up, as before */ \
+										OO_LOG(cxx_kOOLogException, "***** Exception during [{}] in {} : {} : {} *****", static_cast<const char *>(updateStage), static_cast<const char *>(__PRETTY_FUNCTION__), exception->name(), exception->reason()); \
+										throw; \
 									} \
 								}
 #define UPDATE_STAGE(x) do { updateStage = (x); } while (0)
@@ -704,8 +706,7 @@ void PlayerEntity::createCargoPodWithType(const std::string &type, OOCargoQuanti
 	{
 		OO_LOG_ERR("player.loadCargoPods.noContainer", "{}", "couldn't create a container in [PlayerEntity loadCargoPods]");
 		// throw an exception here...
-		[::OOException raise:OOLITE_EXCEPTION_FATAL
-								format:"[PlayerEntity loadCargoPods] failed to create a container for cargo with role 'cargopod'"];
+		OORaiseException(OOLITE_EXCEPTION_FATAL, "[PlayerEntity loadCargoPods] failed to create a container for cargo with role 'cargopod'");
 	}
 }
 

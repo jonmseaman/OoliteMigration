@@ -243,8 +243,7 @@ void OOOpenGLExtensionManager::reset()
 	if (!versionIsAtLeastMajor(kMinMajorVersion, kMinMinorVersion))
 	{
 		OO_LOG("rendering.opengl.version.insufficient", "***** Oolite requires OpenGL version {}.{} or later.", static_cast<unsigned>(kMinMajorVersion), static_cast<unsigned>(kMinMinorVersion));
-		[OOException raise:"OoliteOpenGLTooOldException"
-					format:"Oolite requires at least OpenGL %u.%u. You have %u.%u (\"%s\").", kMinMajorVersion, kMinMinorVersion, major, minor, versionString];
+		OORaiseException("OoliteOpenGLTooOldException", "Oolite requires at least OpenGL %u.%u. You have %u.%u (\"%s\").", kMinMajorVersion, kMinMinorVersion, major, minor, versionString);
 	}
 	
 	const std::optional<std::string> versionStr = OptionalGLString(versionString);

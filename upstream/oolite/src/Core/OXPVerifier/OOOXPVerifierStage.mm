@@ -175,15 +175,17 @@ void OOOXPVerifierStage::performRun()
 	assert(_canRun && !_hasRun);
 	
 	oo::log::pushIndent();
-	@try
+	try
 	{
 		run();
 	}
-	@catch (OOException *exception)
+	catch (...)
 	{
+		const auto exception = oo::CurrentOOException();
+		if (!exception)  throw;	// not an OOException: it goes on up, as before
 		// %@ of a Foundation exception printed GNUstep's -description, "<ClassName: 0x...> NAME:... REASON:...";
 		// OOException has no -description, so the same layout is spelled out (proposed ADR-0037).
-		OO_LOG("verifyOXP.exception", "***** Exception while running verification stage \"{}\": <OOException: {}> NAME:{} REASON:{}", name().value_or("(null)"), oo::str::pointerDescription(exception), [exception name], [exception reason]);
+		OO_LOG("verifyOXP.exception", "***** Exception while running verification stage \"{}\": <OOException: {}> NAME:{} REASON:{}", name().value_or("(null)"), oo::str::pointerDescription(exception->object()), exception->name(), exception->reason());
 	}
 	oo::log::popIndent();
 	

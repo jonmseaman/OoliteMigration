@@ -528,7 +528,7 @@ void OOConcreteTexture::uploadTexture()
 #endif
 		else
 		{
-			[OOException raise:OOInternalInconsistencyException format:"Unhandled texture target 0x%X.", texTarget];
+			OORaiseException(OOInternalInconsistencyException, "Unhandled texture target 0x%X.", texTarget);
 		}
 
 		_valid = YES;

@@ -24,6 +24,7 @@ MA 02110-1301, USA.
 
 #import "Entity.h"
 #include "oofnd/objc/OORuntime.h"
+#include "oofnd/objc/OOException.h"	// oo::CurrentExceptionIsObjCObject (bead oo-rskgl)
 #import "EntityOOJavaScriptExtensions.h"
 #import "PlayerEntity.h"
 #import "StationEntity.h"	// willDispose(): the station's and the dock's parts (bead oo-dpyk8)
@@ -1048,11 +1049,11 @@ void Entity::dumpState()
 		OO_LOG("dumpState", "State for {}:", oo::EntityDescription(this));
 		oo::log::pushIndent();
 		oo::log::indent();
-		@try
+		try
 		{
 			dumpSelfState();
 		}
-		@catch (id exception) {}
+		catch (...) { if (!oo::CurrentExceptionIsObjCObject())  throw; }	// was @catch (id exception) {}: Objective-C objects only
 		oo::log::popIndent();
 	}
 }

@@ -151,7 +151,7 @@ struct OODeferredCall
 	std::function<void()>					*call;	// a C++ call (bead oo-pvhrh): target, selector and argument unused
 };
 
-// call() with the perform's @try/@catch (GameControllerPerformSelectorWithObject below).
+// call() with the perform's try/catch (GameControllerPerformSelectorWithObject below).
 bool DeferredCallRunCatching(const std::function<void()> &call, const char **outName, const char **outReason);
 
 std::vector<OODeferredCall>					sDeferredCalls;	// in scheduling order
@@ -465,7 +465,7 @@ void GameController::performGameTick(id /*sender*/)
 
 void GameController::doPerformGameTick()
 {
-	@try
+	try
 	{
 		if (gameIsPaused)
 			delta_t = 0.0;  // no movement!
@@ -488,14 +488,13 @@ void GameController::doPerformGameTick()
 			OOJSFrameCallbacksInvoke(delta_t);
 		}
 	}
-	@catch (id exception) 
+	catch (id exception) 
 	{
-		if ([exception isKindOfClass:[OOException class]])
+		if (const auto ooException = oo::CurrentOOException())
 		{
 			// -callStackSymbols is Foundation's; an OOException does not answer it (sending it raised
 			// out of this handler), so name the exception instead (proposed ADR-0037).
-			OOException *ooException = (OOException *)exception;
-			OO_LOG("exception.backtrace","{} : {}",[ooException name],[ooException reason]);
+			OO_LOG("exception.backtrace","{} : {}",ooException->name(),ooException->reason());
 		}
 		else
 		{
@@ -503,11 +502,11 @@ void GameController::doPerformGameTick()
 		}
 	}
 	
-	@try
+	try
 	{
 		if (_gameView != nullptr)  _gameView->updateScreen();
 	}
-	@catch (id exception) {}
+	catch (...) { if (!oo::CurrentExceptionIsObjCObject())  throw; }	// was @catch (id exception) {}: Objective-C objects only
 }
 
 
@@ -631,7 +630,7 @@ void GameController::applicationDidFinishLaunching()
 	
 	pool = objc_autoreleasePoolPush();
 	
-	@try
+	try
 	{
 		// if not verifying oxps, ensure that gameView is drawn to using beginSplashScreen
 		// OpenGL is initialised and that allows textures to initialise too.
@@ -684,9 +683,11 @@ void GameController::applicationDidFinishLaunching()
 		
 		endSplashScreen();
 	}
-	@catch (OOException *exception)
+	catch (...)
 	{
-		reportUnhandledStartupExceptionName(std::string([exception name]), std::string([exception reason]));
+		const auto exception = oo::CurrentOOException();
+		if (!exception)  throw;	// not an OOException: it goes on up, as before
+		reportUnhandledStartupExceptionName(std::string(exception->name()), std::string(exception->reason()));
 		exit(EXIT_FAILURE);
 	}
 	
@@ -1324,14 +1325,16 @@ namespace {
 
 bool DeferredCallRunCatching(const std::function<void()> &call, const char **outName, const char **outReason)
 {
-	@try
+	try
 	{
 		call();
 	}
-	@catch (OOException *exception)
+	catch (...)
 	{
-		*outName = [exception name];
-		*outReason = [exception reason];
+		const auto exception = oo::CurrentOOException();
+		if (!exception)  throw;	// not an OOException: it goes on up, as before
+		*outName = exception->name();
+		*outReason = exception->reason();
 		return false;
 	}
 	return true;
@@ -1342,14 +1345,16 @@ bool DeferredCallRunCatching(const std::function<void()> &call, const char **out
 
 bool GameControllerPerformSelectorWithObject(id target, SEL selector, id argument, const char **outName, const char **outReason)
 {
-	@try
+	try
 	{
 		[target performSelector:selector withObject:argument];
 	}
-	@catch (OOException *exception)
+	catch (...)
 	{
-		*outName = [exception name];
-		*outReason = [exception reason];
+		const auto exception = oo::CurrentOOException();
+		if (!exception)  throw;	// not an OOException: it goes on up, as before
+		*outName = exception->name();
+		*outReason = exception->reason();
 		return false;
 	}
 	return true;

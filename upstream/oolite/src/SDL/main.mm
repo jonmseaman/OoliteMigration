@@ -173,7 +173,7 @@ int main(int argc, char *argv[])
 	void *pool = objc_autoreleasePoolPush();
 	OOLoggingInit();
 	
-	@try
+	try
 	{
 		// dajt: allocate and set the NSApplication delegate manually because not
 		// using NIB to do this
@@ -247,9 +247,11 @@ int main(int argc, char *argv[])
 		// GNUstep port.
 		controller->applicationDidFinishLaunching();
 	}
-	@catch (OOException *exception)
+	catch (...)
 	{
-		OO_LOG_ERR(cxx_kOOLogException, "Root exception handler hit - terminating. This is an internal error, please report it. Exception name: {}, reason: {}", [exception name], [exception reason]);
+		const auto exception = oo::CurrentOOException();
+		if (!exception)  throw;	// not an OOException: it goes on up, as before
+		OO_LOG_ERR(cxx_kOOLogException, "Root exception handler hit - terminating. This is an internal error, please report it. Exception name: {}, reason: {}", exception->name(), exception->reason());
 		return EXIT_FAILURE;
 	}
 #endif

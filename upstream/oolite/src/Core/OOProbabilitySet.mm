@@ -217,7 +217,7 @@ oo::Ref<OOProbabilitySet> OOProbabilitySet::probabilitySetWithObjects(const oo::
 	// If count is not zero and one of the paramters is nil, we've got us a programming error.
 	if (objects == NULL || weights == NULL)
 	{
-		[OOException raise:OOInvalidArgumentException format:"Attempt to create %s with non-zero count but nil objects or weights.", "OOProbabilitySet"];
+		OORaiseException(OOInvalidArgumentException, "Attempt to create %s with non-zero count but nil objects or weights.", "OOProbabilitySet");
 		abort();	// unreachable: +raise:format: does not return (the analyser cannot see that through a message)
 	}
 
@@ -654,7 +654,7 @@ void OOConcreteMutableProbabilitySet::initWithObjects(const oo::PList *objects, 
 	// Validate parameters.
 	if (count != 0 && (objects == NULL || weights == NULL))
 	{
-		[OOException raise:OOInvalidArgumentException format:"Attempt to create %s with non-zero count but nil objects or weights.", "OOMutableProbabilitySet"];
+		OORaiseException(OOInvalidArgumentException, "Attempt to create %s with non-zero count but nil objects or weights.", "OOMutableProbabilitySet");
 		abort();	// unreachable: +raise:format: does not return (the analyser cannot see that through a message)
 	}
 

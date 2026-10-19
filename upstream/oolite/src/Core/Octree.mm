@@ -804,7 +804,7 @@ OOOctreeBuilder::OOOctreeBuilder()
 		{
 			// -init released itself and returned nil; a constructor cannot, so it raises what
 			// SetNode_slow() raises (ADR-0056 amendment oo-44gg).
-			[OOException raise:OOMallocException format:"Failed to allocate memory for octree."];
+			OORaiseException(OOMallocException, "Failed to allocate memory for octree.");
 		}
 
 		/*
@@ -920,7 +920,7 @@ void OOOctreeBuilder::SetNode_slow(OOOctreeBuilder *self, uint32_t index, int va
 	int *newBuffer = (int *)realloc(self->_octree, newCapacity * sizeof *newBuffer);
 	if (EXPECT_NOT(newBuffer == NULL))
 	{
-		[OOException raise:OOMallocException format:"Failed to allocate memory for octree."];
+		OORaiseException(OOMallocException, "Failed to allocate memory for octree.");
 	}
 	
 	self->_octree = newBuffer;

@@ -57,8 +57,8 @@ MA 02110-1301, USA.
 	OOJS_NATIVE_ENTER/EXIT and OOJS_PROFILE_ENTER/EXIT are C++ try/catch and scope guards
 	(OOJSEngineNativeWrappers.h); BOOL/YES/NO are bool/true/false. OOMusicController, which is C++
 	since bead oo-lfkq, is reached as OOMusicController (amendment oo-ppc, item 4).
-	MissionRunCallback()'s @try/@catch (OOException *) around the callback stays verbatim (amendment
-	oo-puw9 item 4); Phase 4 replaces it with the rest of the Objective-C exception sites.
+	MissionRunCallback()'s @try/@catch (OOException *) around the callback stayed verbatim (amendment
+	oo-puw9 item 4) until bead oo-rskgl made it a C++ try/catch with the other exception sites.
 	mission.markedSystems kept the destinations it reads in a local: it read them through a pointer
 	into a temporary that had died (bead oo-nge8; the same defect in OOJSSystemInfo.mm is bead
 	oo-f4241). Messages to classes that are still Objective-C (PlayerEntity, Universe,
@@ -245,15 +245,17 @@ void MissionRunCallback()
 	if (player != nullptr)  player->setMissionChoice(std::nullopt, "", false);
 	
 	// Call the callback.
-	@try
+	try
 	{
 		OOJSScript::pushScript(cbScript);
 		engine->callJSFunction(cbFunction, cbThis, 2, args, &rval);
 	}
-	@catch (OOException *exception)
+	catch (...)
 	{
+		const auto exception = oo::CurrentOOException();
+		if (!exception)  throw;	// not an OOException: it goes on up, as before
 		// Squash any exception, allow cleanup to happen and so forth.
-		OO_LOG(cxx_kOOLogException, "Ignoring exception {}:{} during handling of mission screen completion callback.", [exception name], [exception reason]);
+		OO_LOG(cxx_kOOLogException, "Ignoring exception {}:{} during handling of mission screen completion callback.", exception->name(), exception->reason());
 	}
 	OOJSScript::popScript(cbScript);
 	

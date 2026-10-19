@@ -404,7 +404,7 @@ void OOMesh::renderOpaqueParts()
 	OOGL(glEnableClientState(GL_TEXTURE_COORD_ARRAY));
 #endif
 	
-	@try
+	try
 	{
 		if (!listsReady)
 		{
@@ -462,15 +462,17 @@ void OOMesh::renderOpaqueParts()
 		listsReady = YES;
 		brokenInRender = NO;
 	}
-	@catch (OOException *exception)
+	catch (...)
 	{
+		const auto exception = oo::CurrentOOException();
+		if (!exception)  throw;	// not an OOException: it goes on up, as before
 		if (!brokenInRender)
 		{
-			OO_LOG(cxx_kOOLogException, "***** {} for {} encountered exception: {} : {} *****", __PRETTY_FUNCTION__, description(), [exception name], [exception reason]);
+			OO_LOG(cxx_kOOLogException, "***** {} for {} encountered exception: {} : {} *****", __PRETTY_FUNCTION__, description(), exception->name(), exception->reason());
 			brokenInRender = YES;
 		}
-		if (strncmp([exception name], "Oolite", 6) == 0)  { if (UNIVERSE != nullptr)  UNIVERSE->handleOoliteException(exception); }	// handle these ourself
-		else  @throw exception;	// pass these on
+		if (strncmp(exception->name(), "Oolite", 6) == 0)  { if (UNIVERSE != nullptr)  UNIVERSE->handleOoliteException(exception->object()); }	// handle these ourself
+		else  throw;	// pass these on
 	}
 	
 #if OO_SHADERS

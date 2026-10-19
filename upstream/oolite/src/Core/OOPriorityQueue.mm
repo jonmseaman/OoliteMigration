@@ -239,15 +239,13 @@ void OOPriorityQueue::addObject(id object)
 	// Validate object
 	if (object == nil)
 	{
-		[OOException raise:OOInvalidArgumentException
-					format:"Attempt to insert nil into OOPriorityQueue."];
+		OORaiseException(OOInvalidArgumentException, "Attempt to insert nil into OOPriorityQueue.");
 	}
 
 	if (![object respondsToSelector:_comparator])
 	{
-		[OOException raise:OOInvalidArgumentException
-					format:"Attempt to insert object (<%s: %p>) which does not support comparator %s into OOPriorityQueue.",
-						   class_getName(object_getClass(object)), (void *)object, sel_getName(_comparator)];
+		OORaiseException(OOInvalidArgumentException, "Attempt to insert object (<%s: %p>) which does not support comparator %s into OOPriorityQueue.",
+						   class_getName(object_getClass(object)), (void *)object, sel_getName(_comparator));
 	}
 
 	// Ensure there is sufficent space.
@@ -434,8 +432,7 @@ void OOPriorityQueue::growBuffer()
 		if (newBuffer == NULL)
 		{
 			// Failed to grow.
-			[OOException raise:OOMallocException
-						format:"Could not expand capacity of OOPriorityQueue."];
+			OORaiseException(OOMallocException, "Could not expand capacity of OOPriorityQueue.");
 		}
 	}
 
