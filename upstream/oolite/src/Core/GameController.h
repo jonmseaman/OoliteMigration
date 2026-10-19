@@ -164,7 +164,7 @@ public:
 	oo::PList findDisplayModeForWidth(unsigned int d_width, unsigned int d_height, unsigned int d_refresh);	// a mode dictionary; null: none
 	oo::PList getDisplayModes();	// an array of mode dictionaries
 	NSUInteger indexOfCurrentDisplayMode();
-	void pauseFullScreenModeToPerform(SEL selector, id target);
+	void pauseFullScreenModeToPerform(const char *selectorName, id target);	// by name since bead oo-xu228.3 (was a SEL)
 #endif
 
 	// tests/unit/core/test_GameController.mm reads and sets the state below (bead oo-auu6o).
@@ -196,7 +196,7 @@ private:
 	
 	NSTimeInterval			_splashStart = {};	// oo::date::monotonicSeconds() at start-up
 	
-	SEL						pauseSelector = {};
+	std::string				pauseSelector = {};	// the selector's name (a SEL until bead oo-xu228.3); "" none
 	OOObject				*pauseTarget = {};
 	
 	bool					gameIsPaused = {};
@@ -246,7 +246,7 @@ private:
 	its timers. Main thread only: a call scheduled on another thread never fires,
 	as a performer on that thread's never-run run loop did not.
 */
-void OOScheduleDeferredCall(id target, SEL selector, id argument, NSTimeInterval delay);
+void OOScheduleDeferredCall(id target, const char *selectorName, id argument, NSTimeInterval delay);	// selector by name since bead oo-xu228.3
 
 /*	The same queue for a C++ call (bead oo-pvhrh, ADR-0056 amendment oo-pvhrh): call() runs where the
 	perform ran, in the same order and pass, and is destroyed after it (what it captures is kept alive

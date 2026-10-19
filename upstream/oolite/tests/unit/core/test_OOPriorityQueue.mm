@@ -86,7 +86,7 @@ OO_TEST(extractsInComparatorOrder)
 {
 	@autoreleasepool
 	{
-		oo::Ref<OOPriorityQueue> queue = OOPriorityQueue::queueWithComparator(@selector(compare:));
+		oo::Ref<OOPriorityQueue> queue = OOPriorityQueue::queueWithComparator("compare:");
 		OO_CHECK(queue != nullptr && queue->count() == 0);
 		OO_CHECK(queue->nextObject() == nil && queue->peekAtNextObject() == nil);
 		for (int key : kKeys)  queue->addObject([TestItem itemWithKey:key]);
@@ -100,7 +100,7 @@ OO_TEST(extractsInComparatorOrder)
 		queue->removeNextObject();	// on an empty queue: nothing
 		OO_CHECK(queue->count() == 0);
 
-		oo::Ref<OOPriorityQueue> descending = OOPriorityQueue::queueWithComparator(@selector(compareDescending:));
+		oo::Ref<OOPriorityQueue> descending = OOPriorityQueue::queueWithComparator("compareDescending:");
 		for (int key : kKeys)  descending->addObject([TestItem itemWithKey:key]);
 		OO_CHECK(Keys(descending->objectEnumerator()) == std::vector<int>({ 9, 8, 7, 6, 5, 4, 3, 3, 2, 1, 0 }));
 
@@ -113,7 +113,7 @@ OO_TEST(removeByComparatorAndByIdentity)
 {
 	@autoreleasepool
 	{
-		oo::Ref<OOPriorityQueue> queue = OOPriorityQueue::queueWithComparator(@selector(compare:));
+		oo::Ref<OOPriorityQueue> queue = OOPriorityQueue::queueWithComparator("compare:");
 		TestItem *three = [TestItem itemWithKey:3];
 		for (int key : kKeys)  queue->addObject(key == 3 ? three : [TestItem itemWithKey:key]);
 		OO_CHECK(queue->count() == 11);
@@ -136,7 +136,7 @@ OO_TEST(bufferGrowsAndShrinks)
 {
 	@autoreleasepool
 	{
-		oo::Ref<OOPriorityQueue> queue = OOPriorityQueue::queueWithComparator(@selector(compare:));
+		oo::Ref<OOPriorityQueue> queue = OOPriorityQueue::queueWithComparator("compare:");
 		std::string text = queue->description().value_or("");
 		OO_CHECK(text.starts_with("<OOPriorityQueue 0x") && text.ends_with(">{count=0, capacity=0}"));
 
@@ -161,7 +161,7 @@ OO_TEST(copiesEqualityAndHash)
 {
 	@autoreleasepool
 	{
-		oo::Ref<OOPriorityQueue> queue = OOPriorityQueue::queueWithComparator(@selector(compare:));
+		oo::Ref<OOPriorityQueue> queue = OOPriorityQueue::queueWithComparator("compare:");
 		OO_CHECK(queue->hash() == NSNotFound);
 		for (int key : kKeys)  queue->addObject([TestItem itemWithKey:key]);
 
@@ -173,10 +173,10 @@ OO_TEST(copiesEqualityAndHash)
 		OO_CHECK(!queue->isEqual(nullptr));
 
 		// Equal keys are not equal objects (TestItem's -isEqual: is identity).
-		oo::Ref<OOPriorityQueue> other = OOPriorityQueue::queueWithComparator(@selector(compare:));
+		oo::Ref<OOPriorityQueue> other = OOPriorityQueue::queueWithComparator("compare:");
 		for (int key : kKeys)  other->addObject([TestItem itemWithKey:key]);
 		OO_CHECK(!queue->isEqual(other.get()));
-		OO_CHECK(OOPriorityQueue::queueWithComparator(@selector(compare:))->isEqual(OOPriorityQueue::queueWithComparator(@selector(compareDescending:)).get()));	// both empty
+		OO_CHECK(OOPriorityQueue::queueWithComparator("compare:")->isEqual(OOPriorityQueue::queueWithComparator("compareDescending:").get()));	// both empty
 
 		// A copy is independent.
 		copy->removeNextObject();
@@ -185,7 +185,7 @@ OO_TEST(copiesEqualityAndHash)
 		OO_CHECK(KeyOf(copy->peekAtNextObject()) == -1 && KeyOf(queue->peekAtNextObject()) == 0);
 
 		// Copying an empty queue.
-		oo::Ref<OOPriorityQueue> empty = OOPriorityQueue::queueWithComparator(@selector(compare:))->copy();
+		oo::Ref<OOPriorityQueue> empty = OOPriorityQueue::queueWithComparator("compare:")->copy();
 		OO_CHECK(empty != nullptr && empty->count() == 0);
 		empty->addObject([TestItem itemWithKey:1]);
 		OO_CHECK(KeyOf(empty->nextObject()) == 1);
@@ -196,7 +196,7 @@ OO_TEST(copiesEqualityAndHash)
 OO_TEST(retainsItsObjects)
 {
 	TestItem *item = [[TestItem alloc] init];
-	oo::Ref<OOPriorityQueue> queue = OOPriorityQueue::queueWithComparator(@selector(compare:));
+	oo::Ref<OOPriorityQueue> queue = OOPriorityQueue::queueWithComparator("compare:");
 	@autoreleasepool
 	{
 		queue->addObject(item);
@@ -223,7 +223,7 @@ OO_TEST(addObjectRaises)
 {
 	@autoreleasepool
 	{
-		oo::Ref<OOPriorityQueue> queue = OOPriorityQueue::queueWithComparator(@selector(compare:));
+		oo::Ref<OOPriorityQueue> queue = OOPriorityQueue::queueWithComparator("compare:");
 		const char *nilName = nullptr;
 		std::optional<oo::Exception> kept;	// what the autorelease pool kept alive (bead oo-rskgl.1)
 		try
@@ -324,7 +324,7 @@ OO_TEST(cxxQueueGivesTheSameOrder)
 	@autoreleasepool
 	{
 		OOPriorityQueueOf<CxxItem> cxxQueue(CompareCxx);
-		oo::Ref<OOPriorityQueue> objcQueue = OOPriorityQueue::queueWithComparator(@selector(compare:));
+		oo::Ref<OOPriorityQueue> objcQueue = OOPriorityQueue::queueWithComparator("compare:");
 		OO_CHECK(cxxQueue.count() == 0 && cxxQueue.peekAtNextObject() == nullptr);
 		OO_CHECK(cxxQueue.removeNextObject() == nullptr);
 
@@ -366,7 +366,7 @@ OO_TEST(cxxQueueHoldsAndRemovesByIdentity)
 	@autoreleasepool
 	{
 		OOPriorityQueueOf<CxxItem> queue(CompareCxx);
-		oo::Ref<OOPriorityQueue> objcQueue = OOPriorityQueue::queueWithComparator(@selector(compare:));
+		oo::Ref<OOPriorityQueue> objcQueue = OOPriorityQueue::queueWithComparator("compare:");
 		oo::Ref<CxxItem> three = CxxItem::make(3, 0);
 		TaggedItem *objcThree = [[[TaggedItem alloc] init] autorelease];
 		objcThree->_key = 3;

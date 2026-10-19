@@ -71,7 +71,8 @@ class OOPriorityQueue : public oo::RefCounted
 public:
 	// The Objective-C initialiser's factory: null where -initWithComparator: returned nil (a NULL
 	// comparator). (-init, which gave the comparator compare:, had no sender.)
-	static oo::Ref<OOPriorityQueue> queueWithComparator(SEL comparator);
+	// The comparator by its method name ("compare:"), not a SEL (bead oo-xu228.3); NULL as before.
+	static oo::Ref<OOPriorityQueue> queueWithComparator(const char *comparatorName);
 
 	~OOPriorityQueue() override;
 
