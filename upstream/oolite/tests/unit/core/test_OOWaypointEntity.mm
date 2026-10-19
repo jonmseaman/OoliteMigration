@@ -56,8 +56,8 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
 	return player.get();
@@ -132,8 +132,8 @@ Entity *Waypoint(const std::string &code)
 
 OO_TEST(defaults)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		SetUp();
 		Entity *wp = WaypointObject(Dict({ { "unused", oo::PList(1) } }));
 		OO_CHECK(wp != nil && Part(wp) != nullptr);
@@ -152,8 +152,8 @@ OO_TEST(defaults)
 
 OO_TEST(dictionary)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		SetUp();
 		Entity *wp = WaypointObject(Dict({
 			{ "position", Vec(1, 2, 3) },
@@ -173,8 +173,8 @@ OO_TEST(dictionary)
 
 OO_TEST(emptyDictionary)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		SetUp();
 		// A nil dictionary read zero-filled values and nil strings: the zero orientation is unoriented.
 		Entity *wp = WaypointObject(oo::PList());
@@ -187,8 +187,8 @@ OO_TEST(emptyDictionary)
 
 OO_TEST(orientation)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		SetUp();
 		Entity *wp = Waypoint("W");
 		wp->setOrientation(kZeroQuaternion);
@@ -202,8 +202,8 @@ OO_TEST(orientation)
 
 OO_TEST(size)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		SetUp();
 		Entity *wp = Waypoint("W");
 		Part(wp)->setSize(10.0);
@@ -218,8 +218,8 @@ OO_TEST(size)
 
 OO_TEST(beaconStrings)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		SetUp();
 		Entity *wp = WaypointObject(Dict({ { "beaconCode", oo::PList("X") }, { "beaconLabel", oo::PList("Label") } }));
 		oo::SetBeaconCode(wp, std::string(""));
@@ -238,8 +238,8 @@ OO_TEST(beaconStrings)
 
 OO_TEST(compareBeaconCodes)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		SetUp();
 		OO_CHECK(Part(Waypoint("a"))->compareBeaconCodeWith(Waypoint("B")) == OOOrderedAscending);
 		OO_CHECK(Part(Waypoint("b"))->compareBeaconCodeWith(Waypoint("A")) == OOOrderedDescending);
@@ -250,8 +250,8 @@ OO_TEST(compareBeaconCodes)
 
 OO_TEST(beaconDrawable)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		SetUp();
 		Entity *wp = Waypoint("W");
 		// A C++ OOHUDBeaconIcon since bead oo-7ae4p (the protocol type before), held as the
@@ -266,14 +266,14 @@ OO_TEST(beaconDrawable)
 
 OO_TEST(neighbours)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		SetUp();
 		Entity *wp = Waypoint("W");
 		OO_CHECK(oo::PrevBeacon(wp) == nil && oo::NextBeacon(wp) == nil);
 		Entity *other = nil;
-		@autoreleasepool
 		{
+			oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 			other = oo::RetainEntity(Waypoint("V"));
 		}
 		oo::SetPrevBeacon(wp, other);
@@ -287,8 +287,8 @@ OO_TEST(neighbours)
 
 OO_TEST(facade)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		SetUp();
 		Entity *wp = Waypoint("W");	// the root's facade (the protocol type would pick a subclass's crossing)
 		// A C++ entity (amendment oo-0mxi), not an Objective-C entity's adapter.
@@ -304,8 +304,8 @@ OO_TEST(facade)
 // beacon questions a plain entity is asked answer none.
 OO_TEST(beaconSelectorsForAWaypointOnly)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		SetUp();
 		Entity *plain = oo::MadeEntity(oo::makeRef<Entity>());
 		OO_CHECK(!oo::EntityIsBeacon(plain) && !oo::BeaconCode(plain).has_value());
@@ -319,8 +319,8 @@ OO_TEST(beaconSelectorsForAWaypointOnly)
 // is what OOJSWaypoint.mm answers.
 OO_TEST(jsExtensions)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		SetUp();
 		Entity *wp = Waypoint("W");
 		ooscript::ClassDef *jsClass = nullptr, *expectedClass = nullptr;

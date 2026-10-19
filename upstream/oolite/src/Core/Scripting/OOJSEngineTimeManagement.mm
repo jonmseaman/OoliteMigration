@@ -269,8 +269,8 @@ void OOJSTimeManagementInit(OOJavaScriptEngine *engine, ooscript::Runtime runtim
 	if (engine != nullptr)  engine->retain();
 	oo::thread::detach([engine, runtime]()
 	{
-		@autoreleasepool
 		{
+			oo::AutoreleaseScope pool;	// was @autoreleasepool (oo-31u.8)
 			WatchdogTimerThread(runtime);
 		}
 		if (engine != nullptr)  engine->release();

@@ -952,8 +952,8 @@ static bool SystemInfoStaticFilteredSystems(ooscript::Context context, ooscript:
 	
 	std::vector<oo::Ref<OOSystemInfo>> result;
 	bool OK;
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;	// was @autoreleasepool (oo-31u.8)
 		result.reserve(256);
 		
 		// Not OOJS_BEGIN_FULL_NATIVE() - we use the engine while paused.

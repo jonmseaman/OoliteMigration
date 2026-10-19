@@ -203,8 +203,8 @@ void StartWorkThreads(Body body, unsigned count)
 	{
 		oo::thread::detach([body, threadNumber]()
 		{
-			@autoreleasepool
 			{
+				oo::AutoreleaseScope pool;	// was @autoreleasepool (oo-31u.8)
 				body(threadNumber);
 			}
 		});
@@ -414,14 +414,14 @@ bool OOManualDispatchAsyncWorkManager::addTask(OOAsyncWorkTask *task, OOAsyncWor
 
 void OOManualDispatchAsyncWorkManager::queueTask(unsigned threadNumber)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;	// was @autoreleasepool (oo-31u.8)
 		SetUpWorkThread(threadNumber);
 
 		for (;;)
 		{
-			@autoreleasepool
 			{
+				oo::AutoreleaseScope taskPool;	// was @autoreleasepool (oo-31u.8)
 				const oo::Ref<OOAsyncWorkTask> task = _taskQueue.dequeue();
 				try
 				{
@@ -497,8 +497,8 @@ void OOOperationQueueAsyncWorkManager::workThread(unsigned threadNumber)
 			}
 		}
 
-		@autoreleasepool
 		{
+			oo::AutoreleaseScope pool;	// was @autoreleasepool (oo-31u.8)
 			dispatchTask(task.get());
 		}
 		task = nullptr;	// the queue's retain, released after the pool as before

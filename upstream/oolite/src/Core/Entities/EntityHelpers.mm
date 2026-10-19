@@ -31,7 +31,7 @@ MA 02110-1301, USA.
 #include "OOVisualEffectEntity.h"
 #include "ShipEntity.h"
 #include "oofnd/String.hpp"
-#include "oofnd/objc/OOObjCRef.h"	// oo::AutoreleaseInObjCPool
+#include "oofnd/Ref.hpp"	// oo::autorelease (oo-31u.6)
 
 #include <cstdlib>
 #include <cxxabi.h>
@@ -83,9 +83,9 @@ void oo::ReleaseEntity(Entity *entity)
 
 Entity *oo::AutoreleaseEntity(Entity *entity)
 {
-	// The caller's +1 goes to the current Objective-C pool, released at the same drain and in the
-	// same order as -autorelease's object (oo::AutoreleaseInObjCPool, bead oo-pvhrh).
-	if (WithObject(entity) != nullptr)  AutoreleaseInObjCPool(adopt(entity));
+	// The caller's +1 goes to the innermost oo::AutoreleaseScope, released at the same drain and in
+	// the same order as -autorelease's object (beads oo-pvhrh, oo-31u.6).
+	if (WithObject(entity) != nullptr)  oo::autorelease(entity);
 	return entity;
 }
 

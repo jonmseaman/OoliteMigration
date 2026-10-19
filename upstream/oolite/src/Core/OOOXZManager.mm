@@ -731,8 +731,8 @@ void OOOXZManager::processDownloadEvents()
 	{
 		std::optional<oo::http::Event> event = _currentDownload->nextEvent();
 		if (!event.has_value())  break;
-		@autoreleasepool
 		{
+			oo::AutoreleaseScope pool;	// was @autoreleasepool (oo-31u.8)
 			switch (event->kind)
 			{
 				case oo::http::Event::Kind::response:

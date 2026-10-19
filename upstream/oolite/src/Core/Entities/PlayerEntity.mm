@@ -475,8 +475,8 @@ PlayerEntity *PlayerEntity::sharedPlayer()
 	// picks (the drawable's since bead oo-9ht.144); the player, its object retained (+1).
 	OOCAssert(gOOPlayer == nullptr, "Expected only one PlayerEntity to exist at a time.");
 	oo::Ref<PlayerEntity> player = oo::makeRef<PlayerEntity>();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;	// was @autoreleasepool (oo-31u.8)
 		return oo::ToShip(oo::RetainEntity(oo::MadeEntity(player)));
 	}
 }
@@ -1282,8 +1282,8 @@ void PlayerEntity::setWormhole(::WormholeEntity *newWormhole)
 	// The wormhole is C++ since bead oo-9ht.112: its Objective-C object (the root's facade, which
 	// owns it) is what is retained. oo::ToObjC answers it autoreleased: the pool drains that here,
 	// so the object's retain count is its holders' alone afterwards, as before.
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;	// was @autoreleasepool (oo-31u.8)
 		wormholeObject = oo::EntityHold(newWormhole);	// null for null
 		wormhole = newWormhole;
 	}

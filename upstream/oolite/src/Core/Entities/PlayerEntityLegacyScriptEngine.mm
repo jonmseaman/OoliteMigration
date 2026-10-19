@@ -502,8 +502,8 @@ void PlayerEntity::runScriptActions(const oo::PList &actions, const std::optiona
 {
 	std::optional<std::string>	oldMissionKey;
 
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;	// was @autoreleasepool (oo-31u.8)
 		// FIXME: does this actually make sense in the context of non-missions?
 		oldMissionKey = sCurrentMissionKey;
 		sCurrentMissionKey = contextName;

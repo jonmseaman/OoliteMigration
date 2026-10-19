@@ -25,7 +25,7 @@ MA 02110-1301, USA.
 
 #ifdef GNUSTEP_BASE_LIBRARY
 #include <objc/runtime.h>
-#include <objc/objc-arc.h>
+#include "oofnd/Ref.hpp"	// oo::AutoreleaseScope (was objc-arc.h's pool functions, oo-31u.8)
 #include "GameController.h"
 #include "oofnd/Process.hpp"
 #include "oofnd/String.hpp"
@@ -41,6 +41,7 @@ MA 02110-1301, USA.
 
 #if OOLITE_WINDOWS
 #include <locale.h>
+#include <optional>
 #include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_main.h>
 // Make sure that a high performance GPU is
@@ -170,7 +171,9 @@ int main(int argc, char *argv[])
 
 	// Need this because we're not using the default run loop's autorelease
 	// pool.
-	void *pool = objc_autoreleasePoolPush();
+	// (An Objective-C pool until oo-31u.8; popped below, before applicationDidFinishLaunching.)
+	std::optional<oo::AutoreleaseScope> pool;
+	pool.emplace();
 	OOLoggingInit();
 	
 	try
@@ -241,7 +244,7 @@ int main(int argc, char *argv[])
 		
 		// Release anything allocated during the controller initialisation that
 		// is no longer required.
-		objc_autoreleasePoolPop(pool);
+		pool.reset();
 		
 		// Call applicationDidFinishLaunching because NSApp is not running in
 		// GNUstep port.

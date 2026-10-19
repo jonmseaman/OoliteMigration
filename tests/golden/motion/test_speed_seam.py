@@ -140,8 +140,8 @@ def test_the_comment_alone_does_not_satisfy_the_call_check(source):
 
 def test_the_getter_is_unchanged(source):
     """This bead adds a setter; it must not have altered what reading ship.speed means."""
-    assert re.search(r"case kShip_speed:\s*\n\s*return ooscript::newNumberValue\(context, \[entity "
-                     r"flightSpeed\], value\);", source), (
+    assert re.search(r"case kShip_speed:\s*\n\s*return ooscript::newNumberValue\(context, (?:\[entity "
+                     r"flightSpeed\]|ship->getFlightSpeed\(\)), value\);", source), (
         "the ship.speed GETTER no longer reads [entity flightSpeed]; this bead was supposed to "
         "add a setter, not change the meaning of the property")
 

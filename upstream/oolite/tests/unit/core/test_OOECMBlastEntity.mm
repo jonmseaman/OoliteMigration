@@ -85,8 +85,8 @@ void SetUpTestPlayer()
 	if (player == nullptr)
 	{
 		oo::Ref<TestPlayer> made = oo::makeRef<TestPlayer>();
-		@autoreleasepool
 		{
+			oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 			oo::RetainEntity(oo::MadeEntity(made));	// +1, as PlayerEntity::sharedPlayer() makes the game's
 		}
 		player = made.get();
@@ -144,8 +144,8 @@ bool IsECMBlast(Entity *entity)
 
 OO_TEST(noShipNoBlast)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		SetUp();
 		OO_CHECK(Blast(nil) == nil);
 	}
@@ -154,8 +154,8 @@ OO_TEST(noShipNoBlast)
 
 OO_TEST(blastAtTheShip)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		SetUp();
 		Entity *ship = Ship();
 		Entity *blast = Blast(ship);
@@ -170,8 +170,8 @@ OO_TEST(blastAtTheShip)
 
 OO_TEST(fourPulsesThenGone)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		SetUp();
 		Entity *ship = Ship();
 		Entity *blast = Blast(ship);
@@ -194,8 +194,8 @@ OO_TEST(fourPulsesThenGone)
 
 OO_TEST(deadShipEndsIt)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		SetUp();
 		Entity *ship = Ship();
 		Entity *blast = Blast(ship);
@@ -205,15 +205,15 @@ OO_TEST(deadShipEndsIt)
 	}
 
 	Entity *blast = nil;
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		SetUp();
 		Entity *ship = oo::RetainEntity(oo::MadeEntity(oo::makeRef<::ShipEntity>()));	// a ship (bead oo-9ht.144)
 		blast = oo::RetainEntity(Blast(ship));
 		oo::ReleaseEntity(ship);		// the blast holds it weakly
 	}
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		blast->update(0.5);
 		OO_CHECK(sRanges.empty() && sUniverse->_removed == blast);
 		oo::ReleaseEntity(blast);

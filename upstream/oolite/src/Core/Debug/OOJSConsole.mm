@@ -1234,8 +1234,8 @@ static bool ConsoleProfile(ooscript::Context context, ooscript::CallArgs &oojsAr
 	}
 	
 	bool result;
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;	// was @autoreleasepool (oo-31u.8)
 		oo::Ref<OOTimeProfile>	profile;
 		
 		result = PerformProfiling(context, "profile", oojsArgs.count(), OOJS_ARGV, NULL, false, &profile);
@@ -1264,8 +1264,8 @@ static bool ConsoleGetProfile(ooscript::Context context, ooscript::CallArgs &ooj
 	}
 	
 	bool result;
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;	// was @autoreleasepool (oo-31u.8)
 		oo::Ref<OOTimeProfile>	profile;
 		
 		result = PerformProfiling(context, "getProfile", oojsArgs.count(), OOJS_ARGV, NULL, false, &profile);
@@ -1294,8 +1294,8 @@ static bool ConsoleTrace(ooscript::Context context, ooscript::CallArgs &oojsArgs
 	
 	ooscript::Value				rval;
 	bool result;
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;	// was @autoreleasepool (oo-31u.8)
 		result = PerformProfiling(context, "trace", oojsArgs.count(), OOJS_ARGV, &rval, true, NULL);
 		if (result)
 		{

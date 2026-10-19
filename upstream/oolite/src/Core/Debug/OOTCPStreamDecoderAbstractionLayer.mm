@@ -12,7 +12,7 @@
 #include "OOTCPStreamDecoderAbstractionLayer.h"
 #include "OOCocoa.h"
 #include <objc/runtime.h>
-#include <objc/objc-arc.h>
+#include "oofnd/Ref.hpp"	// oo::AutoreleaseScope (was objc-arc.h's pool functions, oo-31u.8)
 
 #include "oofnd/PListParsing.hpp"
 #include "oofnd/String.hpp"
@@ -32,8 +32,10 @@ struct OOALObject
 
 struct OOALAutoreleasePool
 {
-	void *objcPool = nullptr;
 	std::vector<std::unique_ptr<OOALObject>> objects;
+	// Was an Objective-C autorelease pool pushed with this one (oo-31u.8). Declared last so it
+	// drains first, before the objects are freed, as the pool was popped before they were.
+	oo::AutoreleaseScope deferred;
 };
 
 
@@ -173,7 +175,6 @@ size_t OOALDataGetLength(OOALDataRef data)
 OOALAutoreleasePoolRef OOALCreateAutoreleasePool(void)
 {
 	auto *pool = new OOALAutoreleasePool;
-	pool->objcPool = objc_autoreleasePoolPush();
 	sPools.push_back(pool);
 	return pool;
 }
@@ -182,7 +183,6 @@ OOALAutoreleasePoolRef OOALCreateAutoreleasePool(void)
 void OOALDestroyAutoreleasePool(OOALAutoreleasePoolRef pool)
 {
 	if (!sPools.empty() && sPools.back() == pool)  sPools.pop_back();
-	objc_autoreleasePoolPop(pool->objcPool);
 	delete pool;
 }
 

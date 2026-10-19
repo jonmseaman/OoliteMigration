@@ -63,8 +63,8 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
 	return player.get();
@@ -231,8 +231,8 @@ bool QuaternionNear(Quaternion a, Quaternion b)
 
 OO_TEST(defaults)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		SetUpUniverse();
 		SetUpPlayer(kZeroHPVector, kZeroHPVector);
 		UniverseIvar<NSUInteger>("_sessionID") = 7;
@@ -272,8 +272,8 @@ OO_TEST(defaults)
 
 OO_TEST(accessors)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		SetUpUniverse();
 		SetUpPlayer(make_HPvector(1, 1, 1), make_HPvector(0, 0, 10));
 
@@ -334,8 +334,8 @@ OO_TEST(accessors)
 
 OO_TEST(orientationAndMovement)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		SetUpUniverse();
 		SetUpPlayer(kZeroHPVector, kZeroHPVector);
 
@@ -386,8 +386,8 @@ OO_TEST(orientationAndMovement)
 
 OO_TEST(update)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		SetUpUniverse();
 		SetUpPlayer(make_HPvector(0, 0, 1), make_HPvector(0, 0, 2));
 
@@ -424,14 +424,14 @@ OO_TEST(update)
 
 OO_TEST(ownersAndParents)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		SetUpUniverse();
 		SetUpPlayer(kZeroHPVector, kZeroHPVector);
 
 		Entity *entity = MakeEntity(kZeroHPVector, 1.0f);
-		@autoreleasepool
 		{
+			oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 			Entity *owner = oo::RetainEntity(oo::MadeEntity(oo::makeRef<Entity>()));
 			entity->setOwner(owner);
 			OO_CHECK(entity->owner() == owner);
@@ -464,8 +464,8 @@ OO_TEST(ownersAndParents)
 
 OO_TEST(linkedLists)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		SetUpUniverse();
 		SetUpPlayer(kZeroHPVector, kZeroHPVector);
 
@@ -524,8 +524,8 @@ OO_TEST(linkedLists)
 
 OO_TEST(sessionAndShaderBindings)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		SetUpUniverse();
 		SetUpPlayer(make_HPvector(0, 1, 0), kZeroHPVector);
 		UniverseIvar<OOTimeAbsolute>("universal_time") = 100;
@@ -556,8 +556,8 @@ OO_TEST(sessionAndShaderBindings)
 
 OO_TEST(objCSubclassOverrides)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		SetUpUniverse();
 		SetUpPlayer(kZeroHPVector, kZeroHPVector);
 
@@ -598,8 +598,8 @@ OO_TEST(objCSubclassOverrides)
 
 OO_TEST(rootDefaultsForSubclassResponsibilities)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		SetUpUniverse();
 		SetUpPlayer(kZeroHPVector, kZeroHPVector);
 
@@ -619,16 +619,16 @@ OO_TEST(rootDefaultsForSubclassResponsibilities)
 #ifndef NDEBUG
 OO_TEST(liveEntityCount)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		SetUpUniverse();
 		SetUpPlayer(kZeroHPVector, kZeroHPVector);
 
 		const uint32_t count = gLiveEntityCount;
 		const size_t memory = gTotalEntityMemory;
 		Entity *entity = nil;
-		@autoreleasepool
 		{
+			oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 			entity = oo::RetainEntity(oo::MadeEntity(oo::makeRef<TestObjCEntity>()));	// +1, as +alloc's was
 		}
 		OO_CHECK(gLiveEntityCount == count + 1);
@@ -651,8 +651,8 @@ OO_TEST(cxxEntityBehindItsFacade)
 #ifndef NDEBUG
 	const uint32_t count = gLiveEntityCount;
 #endif
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		// The test's reference goes with the pool (bead oo-dpyk8: the object's lifetime is the
 		// entity's, so the live count below falls when the entity goes).
 		const oo::Ref<TestCxxEntity> entity = oo::makeRef<TestCxxEntity>();
@@ -709,8 +709,8 @@ OO_TEST(cxxEntityBehindItsFacade)
 // state, and what it does not set stays.
 OO_TEST(initSentAgain)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		SetUpUniverse();
 		SetUpPlayer(kZeroHPVector, kZeroHPVector);
 		TestObjCEntity *entity = static_cast<TestObjCEntity *>(oo::MadeEntity(oo::makeRef<TestObjCEntity>()));
@@ -730,8 +730,8 @@ OO_TEST(initSentAgain)
 // dump; the C++ body prints them.
 OO_TEST(dumpStateOwnerLines)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		SetUpUniverse();
 		SetUpPlayer(kZeroHPVector, kZeroHPVector);
 		Entity *entity = MakeEntity(kZeroHPVector, 1.0f);
