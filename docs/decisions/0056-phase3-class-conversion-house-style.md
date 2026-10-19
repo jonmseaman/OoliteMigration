@@ -9383,3 +9383,29 @@ include-cleaner finding for any `.mm`), so a rewritten line surfaces no baseline
    to the source by `tools/check-string-expander.sh`), is unguarded, and is the test harness's to change.
 
 **Tests.** No test file, case or expected value changes.
+
+## Amendment (bead oo-4hdyr): an unmatched HDR max brightness keeps upstream's behaviour (Jon may overrule)
+
+**Context.** Item 6 of amendment oo-9ht.22.3 left oo-4hdyr open for Jon: in `PlayerEntity.mm` (the game-options
+screen's HDRMAXBRIGHTNESS row) and `PlayerEntityControls.mm` (the arrow keys on that row), `brightnessIdx` is an
+`int` set to `static_cast<int>(NSNotFound)` (-1), and the not-found test widens it back to `NSInteger`, so it never
+equals `NSNotFound` and the "switching to 400 nits" fallback never runs. Upstream's Objective-C narrowed
+`NSNotFound` to `int` the same way. `oo::PList::at<int>` out of range answers its fallback 0, as `-oo_intAtIndex:`
+did, so nothing reads out of bounds.
+
+**Decision (default; oo-4hdyr: kept upstream behaviour, Jon may overrule).**
+
+1. No game code changes. For a brightness not in `hdr_maxBrightness_array` the options row reads
+   `at<int>(SIZE_MAX)` and shows the 0-nit label; the right arrow selects the first entry (400) and the left arrow
+   wraps -2 to the last entry (1000). No warning is logged.
+2. The behaviour is pinned at helper level by a new unit test,
+   `tests/unit/oofnd/test_plist_hdr_brightness_index.cpp` (suite `oofnd-plist`): both sites' index arithmetic,
+   copied verbatim, run on the shipped array as the old-style parser reads it, plus the `NSNotFound` narrowing and
+   `at<int>` out of range. Driving the real sites needs a PlayerEntity, a Universe, a GUI, key state and a Windows
+   game view with `hdrOutput()` true; no core test has those stand-ins, and building them is far beyond the bead.
+3. To take the fix instead: compare with `static_cast<int>(NSNotFound)` at both sites (an unmatched brightness
+   then uses index 0, the 400-nit entry, and logs `hdr.maxBrightness.notFound`), and change the two "unmatched"
+   cases of the new test, which is that bead's deliberate behaviour change.
+
+**Tests.** One test file added and registered in `tests/unit/oofnd/meson.build`; no existing test file, case or
+expected value changes.

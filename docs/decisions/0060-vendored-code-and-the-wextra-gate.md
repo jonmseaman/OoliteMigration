@@ -1,6 +1,10 @@
 # ADR-0060: Vendored third-party code and the Phase 3 `-Wall -Wextra` gate
 
 - Status: Proposed (default in effect until Jon ratifies or supersedes it; hard rule 10)
+- Status: proposed — proceeding on default (Migration Completion session, 2026-10-18); Jon may overrule.
+  oo-cpztk's acceptance was narrowed to this default: a `warning_level=2` dev build with no warning from any
+  first-party path, and every warning that does appear in exactly `src/Core/MiniZip/ioapi.c` or
+  `src/SDL/stb_image_write.h`; the vendored copies are not patched.
 - Date: 2026-10-17
 - Beads: oo-cpztk (this decision), oo-o8x (the Phase 3 exit gate whose acceptance uses it)
 
