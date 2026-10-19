@@ -26,9 +26,9 @@ SOFTWARE.
 
 #ifndef OOENCODINGCONVERTER_EXCLUDE
 
-#import "OOEncodingConverter.h"
-#import "OOCache.h"
-#import "OOLogging.h"
+#include "OOEncodingConverter.h"
+#include "OOCache.h"
+#include "OOLogging.h"
 #include "oofnd/String.hpp"
 #include "oofnd/Encoding.hpp"
 

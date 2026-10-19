@@ -29,7 +29,7 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOJavaScriptEngine.h"
+#include "OOJavaScriptEngine.h"
 #include "oofnd/objc/OOException.h"
 
 #include <exception>

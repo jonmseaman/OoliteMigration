@@ -25,10 +25,10 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOBreakPatternEntity.h"
-#import "OOColor.h"
-#import "Universe.h"
-#import "OOMacroOpenGL.h"
+#include "OOBreakPatternEntity.h"
+#include "OOColor.h"
+#include "Universe.h"
+#include "OOMacroOpenGL.h"
 
 
 void OOBreakPatternEntity::initWithPolygonSides(NSUInteger sides, float startAngleDegrees, float aspectRatio)

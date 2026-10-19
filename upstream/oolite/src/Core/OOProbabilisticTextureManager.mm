@@ -25,10 +25,10 @@ SOFTWARE.
 
 */
 
-#import "OOProbabilisticTextureManager.h"
-#import "ResourceManager.h"
-#import "OOTexture.h"
-#import "PlayerEntityScriptMethods.h"
+#include "OOProbabilisticTextureManager.h"
+#include "ResourceManager.h"
+#include "OOTexture.h"
+#include "PlayerEntityScriptMethods.h"
 
 #include "oofnd/String.hpp"
 

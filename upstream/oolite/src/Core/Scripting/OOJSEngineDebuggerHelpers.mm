@@ -82,7 +82,7 @@ MA 02110-1301, USA.
 
 #ifndef NDEBUG
 
-#import "OOJavaScriptEngine.h"
+#include "OOJavaScriptEngine.h"
 
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/StdLib.hpp"

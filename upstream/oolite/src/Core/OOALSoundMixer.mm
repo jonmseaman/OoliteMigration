@@ -27,10 +27,10 @@ SOFTWARE.
 
 #include <assert.h>
 
-#import "OOALSoundMixer.h"
-#import "OOCocoa.h"
-#import "OOALSound.h"
-#import "OOALSoundChannel.h"
+#include "OOALSoundMixer.h"
+#include "OOCocoa.h"
+#include "OOALSound.h"
+#include "OOALSoundChannel.h"
 
 namespace {
 

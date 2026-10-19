@@ -25,13 +25,13 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOJSOolite.h"
-#import "OOJavaScriptEngine.h"
-#import "OOStringParsing.h"
-#import "OOJSPlayer.h"
-#import "ResourceManager.h"
-#import "MyOpenGLView.h"
-#import "OOConstToString.h"
+#include "OOJSOolite.h"
+#include "OOJavaScriptEngine.h"
+#include "OOStringParsing.h"
+#include "OOJSPlayer.h"
+#include "ResourceManager.h"
+#include "MyOpenGLView.h"
+#include "OOConstToString.h"
 #include "oofnd/PListParsing.hpp"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/ResourcePaths.hpp"

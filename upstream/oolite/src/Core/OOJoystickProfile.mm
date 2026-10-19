@@ -22,11 +22,11 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOJoystickManager.h"
-#import "OOJoystickProfile.h"
-#import "OOMaths.h"
-#import "OOLoggingExtended.h"
-#import "Universe.h"
+#include "OOJoystickManager.h"
+#include "OOJoystickProfile.h"
+#include "OOMaths.h"
+#include "OOLoggingExtended.h"
+#include "Universe.h"
 
 #define SPLINE_POINT_MIN_SPACING 0.02
 

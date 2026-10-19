@@ -26,16 +26,16 @@ SOFTWARE.
 
 */
 
-#import	"Universe.h"
+#include	"Universe.h"
 
 
 #if OO_LOCALIZATION_TOOLS
 
-#import "OOConvertSystemDescriptions.h"
+#include "OOConvertSystemDescriptions.h"
 #include "oofnd/PListWriting.hpp"
 #include "oofnd/String.hpp"
-#import "ResourceManager.h"
-#import "Universe.h"
+#include "ResourceManager.h"
+#include "Universe.h"
 
 
 /*	Foundation sweep (proposed ADR-0043, bead oo-xh1g): the descriptions are oo::PLists, the lines

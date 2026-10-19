@@ -24,11 +24,11 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOPListGameTypes.h"
-#import "OOStringParsing.h"
-#import "OOVector.h"
-#import "legacy_random.h"
-#import "OOObjCPList.h"
+#include "OOPListGameTypes.h"
+#include "OOStringParsing.h"
+#include "OOVector.h"
+#include "legacy_random.h"
+#include "OOObjCPList.h"
 
 
 namespace {

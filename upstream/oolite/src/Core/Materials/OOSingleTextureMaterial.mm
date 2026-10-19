@@ -25,9 +25,9 @@ SOFTWARE.
 
 */
 
-#import "OOSingleTextureMaterial.h"
-#import "OOTexture.h"
-#import "OOFunctionAttributes.h"
+#include "OOSingleTextureMaterial.h"
+#include "OOTexture.h"
+#include "OOFunctionAttributes.h"
 
 
 oo::Ref<OOSingleTextureMaterial> OOSingleTextureMaterial::materialWithName(const std::optional<std::string> &name, const oo::PList &configuration)

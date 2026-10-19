@@ -22,15 +22,15 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOCommodities.h"
-#import "OOCommodityMarket.h"
+#include "OOCommodities.h"
+#include "OOCommodityMarket.h"
 
-#import "StationEntity.h"
-#import "ResourceManager.h"
-#import "legacy_random.h"
-#import "OOJSScript.h"
-#import "PlayerEntity.h"
-#import "OOStringExpander.h"
+#include "StationEntity.h"
+#include "ResourceManager.h"
+#include "legacy_random.h"
+#include "OOJSScript.h"
+#include "PlayerEntity.h"
+#include "OOStringExpander.h"
 #include "oofnd/PListGet.hpp"
 
 #include <string_view>

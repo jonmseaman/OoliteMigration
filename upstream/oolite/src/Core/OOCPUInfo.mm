@@ -22,7 +22,7 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOCPUInfo.h"
+#include "OOCPUInfo.h"
 #include "oofnd/Process.hpp"
 #include "oofnd/String.hpp"
 #include <stdlib.h>

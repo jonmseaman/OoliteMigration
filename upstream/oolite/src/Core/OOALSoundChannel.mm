@@ -25,10 +25,10 @@ SOFTWARE.
 
 */
 
-#import "OOALSoundChannel.h"
-#import "OOALSound.h"
-#import "OOLogging.h"
-#import "OOMaths.h"
+#include "OOALSoundChannel.h"
+#include "OOALSound.h"
+#include "OOLogging.h"
+#include "OOMaths.h"
 
 #include "oofnd/Log.hpp"
 #include "oofnd/String.hpp"

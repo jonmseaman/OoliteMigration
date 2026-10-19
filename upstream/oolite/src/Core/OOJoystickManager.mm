@@ -24,7 +24,7 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOJoystickManager.h"
+#include "OOJoystickManager.h"
 #include "oofnd/Log.hpp"
 #include "oofnd/Defaults.hpp"
 

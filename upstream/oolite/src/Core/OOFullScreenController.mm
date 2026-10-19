@@ -23,8 +23,8 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOFullScreenController.h"
-#import "OOLogging.h"
+#include "OOFullScreenController.h"
+#include "OOLogging.h"
 
 
 OOFullScreenController::OOFullScreenController(MyOpenGLView *view)

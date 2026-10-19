@@ -26,10 +26,10 @@ MA 02110-1301, USA.
 
 */
 
-#import "Entity.h"
-#import "OOWaypointEntity.h"
-#import "OOVisualEffectEntity.h"
-#import "ShipEntity.h"
+#include "Entity.h"
+#include "OOWaypointEntity.h"
+#include "OOVisualEffectEntity.h"
+#include "ShipEntity.h"
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOObjCRef.h"	// oo::AutoreleaseInObjCPool
 

@@ -26,12 +26,12 @@ SOFTWARE.
 
 */
 
-#import "OOCrosshairs.h"
-#import "OOColor.h"
+#include "OOCrosshairs.h"
+#include "OOColor.h"
 #include "oofnd/PListGet.hpp"
-#import "Universe.h"
-#import "MyOpenGLView.h"
-#import "OOMacroOpenGL.h"
+#include "Universe.h"
+#include "MyOpenGLView.h"
+#include "OOMacroOpenGL.h"
 
 
 OOCrosshairs::OOCrosshairs(const oo::PList &points, GLfloat scale, OOColor *color, GLfloat alpha)

@@ -26,26 +26,26 @@ SOFTWARE.
 */
 
 
-#import "OOShaderMaterial.h"
-#import "OOShaderUniformMethodType.h"	// the binding target's hooks (bead oo-9ht.39.6)
+#include "OOShaderMaterial.h"
+#include "OOShaderUniformMethodType.h"	// the binding target's hooks (bead oo-9ht.39.6)
 #include "oofnd/objc/OORuntime.h"
-#import "OOObjCPList.h"
+#include "OOObjCPList.h"
 
 #if OO_SHADERS
 
-#import "ResourceManager.h"
-#import "OOShaderUniform.h"
-#import "OOFunctionAttributes.h"
-#import "OOShaderProgram.h"
-#import "OOTexture.h"
-#import "OOOpenGLExtensionManager.h"
-#import "OOMacroOpenGL.h"
-#import "Universe.h"
-#import "OOIsNumberLiteral.h"
-#import "OOLogging.h"
-#import "OODebugFlags.h"
-#import "OOStringParsing.h"
-#import "OOPListGameTypes.h"
+#include "ResourceManager.h"
+#include "OOShaderUniform.h"
+#include "OOFunctionAttributes.h"
+#include "OOShaderProgram.h"
+#include "OOTexture.h"
+#include "OOOpenGLExtensionManager.h"
+#include "OOMacroOpenGL.h"
+#include "Universe.h"
+#include "OOIsNumberLiteral.h"
+#include "OOLogging.h"
+#include "OODebugFlags.h"
+#include "OOStringParsing.h"
+#include "OOPListGameTypes.h"
 #include "oofnd/PListGet.hpp"
 #include "oofnd/Defaults.hpp"
 #include "oofnd/String.hpp"

@@ -24,24 +24,24 @@
 	
 */
 
-#import "OOTextureInternal.h"
-#import "OOConcreteTexture.h"
+#include "OOTextureInternal.h"
+#include "OOConcreteTexture.h"
 
-#import "OOTextureLoader.h"
-#import "OOTextureGenerator.h"
+#include "OOTextureLoader.h"
+#include "OOTextureGenerator.h"
 
-#import "Universe.h"
-#import "ResourceManager.h"
-#import "OOOpenGLExtensionManager.h"
-#import "OOMacroOpenGL.h"
-#import "OOCPUInfo.h"
-#import "OOPixMap.h"
-#import "OOLogging.h"
+#include "Universe.h"
+#include "ResourceManager.h"
+#include "OOOpenGLExtensionManager.h"
+#include "OOMacroOpenGL.h"
+#include "OOCPUInfo.h"
+#include "OOPixMap.h"
+#include "OOLogging.h"
 #include "oofnd/Log.hpp"
 #include "oofnd/String.hpp"
 
 #ifndef NDEBUG
-#import "OOTextureGenerator.h"
+#include "OOTextureGenerator.h"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/objc/OOAssert.h"
 #endif

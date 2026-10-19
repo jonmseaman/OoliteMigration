@@ -25,12 +25,12 @@ SOFTWARE.
 */
 
 
-#import "OOTextureScaling.h"
-#import "OOFunctionAttributes.h"
+#include "OOTextureScaling.h"
+#include "OOFunctionAttributes.h"
 #include <stdlib.h>
-#import "OOLogging.h"
-#import "OOMaths.h"
-#import "OOCPUInfo.h"
+#include "OOLogging.h"
+#include "OOMaths.h"
+#include "OOCPUInfo.h"
 #include "oofnd/objc/OOException.h"
 
 #include "oofnd/String.hpp"

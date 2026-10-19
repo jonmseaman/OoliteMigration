@@ -22,7 +22,7 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOMeshToOctreeConverter.h"
+#include "OOMeshToOctreeConverter.h"
 
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOAssert.h"
@@ -75,8 +75,8 @@ MA 02110-1301, USA.
 	models.
 */
 
-#import "OOMaths.h"
-#import "Octree.h"
+#include "OOMaths.h"
+#include "Octree.h"
 #include "oofnd/Log.hpp"
 
 

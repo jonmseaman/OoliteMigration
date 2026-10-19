@@ -23,11 +23,11 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOJSPopulatorDefinition.h"
-#import "OOJSScript.h"
-#import "OOJavaScriptEngine.h"
-#import "OOMaths.h"
-#import "OOJSVector.h"
+#include "OOJSPopulatorDefinition.h"
+#include "OOJSScript.h"
+#include "OOJavaScriptEngine.h"
+#include "OOMaths.h"
+#include "OOJSVector.h"
 
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/Notification.hpp"

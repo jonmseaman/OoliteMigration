@@ -23,17 +23,17 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOCheckShipDataPListVerifierStage.h"
-#import "OOModelVerifierStage.h"
+#include "OOCheckShipDataPListVerifierStage.h"
+#include "OOModelVerifierStage.h"
 
 #if OO_OXP_VERIFIER_ENABLED
 
-#import "OOFileScannerVerifierStage.h"
-#import "OOStringParsing.h"
-#import "ResourceManager.h"
-#import "OOStringParsing.h"
-#import "OOPListSchemaVerifier.h"
-#import "OOAIStateMachineVerifierStage.h"
+#include "OOFileScannerVerifierStage.h"
+#include "OOStringParsing.h"
+#include "ResourceManager.h"
+#include "OOStringParsing.h"
+#include "OOPListSchemaVerifier.h"
+#include "OOAIStateMachineVerifierStage.h"
 
 #include "oofnd/PListGet.hpp"
 #include "oofnd/String.hpp"

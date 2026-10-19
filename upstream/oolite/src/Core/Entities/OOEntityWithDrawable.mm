@@ -22,12 +22,12 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOEntityWithDrawable.h"
-#import "OODrawable.h"
-#import "OOTexture.h"	// allTextures() destroys oo::Ref<OOTexture>s (bead oo-9ht.99)
-#import "Universe.h"
-#import "ShipEntity.h"
-#import "OOVisualEffectEntity.h"
+#include "OOEntityWithDrawable.h"
+#include "OODrawable.h"
+#include "OOTexture.h"	// allTextures() destroys oo::Ref<OOTexture>s (bead oo-9ht.99)
+#include "Universe.h"
+#include "ShipEntity.h"
+#include "OOVisualEffectEntity.h"
 
 
 

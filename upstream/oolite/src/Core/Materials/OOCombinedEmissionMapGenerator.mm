@@ -25,14 +25,14 @@ SOFTWARE.
 
 */
 
-#import "OOCombinedEmissionMapGenerator.h"
+#include "OOCombinedEmissionMapGenerator.h"
 
-#import "OOColor.h"
-#import "OOPixMapChannelOperations.h"
-#import "OOTextureScaling.h"
-#import "OOTextureInternal.h"
-#import "OOMaterialSpecifier.h"
-#import "OOTextureLoader.h"
+#include "OOColor.h"
+#include "OOPixMapChannelOperations.h"
+#include "OOTextureScaling.h"
+#include "OOTextureInternal.h"
+#include "OOMaterialSpecifier.h"
+#include "OOTextureLoader.h"
 
 #include "oofnd/Log.hpp"
 #include "oofnd/String.hpp"

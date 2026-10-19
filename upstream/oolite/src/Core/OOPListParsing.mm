@@ -22,10 +22,10 @@ MA 02110-1301, USA.
 
 */
 
-#import "Universe.h"
-#import "OOPListParsing.h"
-#import "OOLogging.h"
-#import "OOStringParsing.h"
+#include "Universe.h"
+#include "OOPListParsing.h"
+#include "OOLogging.h"
+#include "OOStringParsing.h"
 #include "oofnd/Log.hpp"
 #include "oofnd/FileSystem.hpp"
 

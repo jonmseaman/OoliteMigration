@@ -23,15 +23,15 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOCheckJSSyntaxVerifierStage.h"
+#include "OOCheckJSSyntaxVerifierStage.h"
 
 #if OO_OXP_VERIFIER_ENABLED
 
-#import "OOFileScannerVerifierStage.h"
-#import "OOStringParsing.h"
-#import "OOScript.h"
-#import "OOJSScript.h"
-#import "OOJavaScriptEngine.h"
+#include "OOFileScannerVerifierStage.h"
+#include "OOStringParsing.h"
+#include "OOScript.h"
+#include "OOJSScript.h"
+#include "OOJavaScriptEngine.h"
 
 #include "oofnd/String.hpp"
 

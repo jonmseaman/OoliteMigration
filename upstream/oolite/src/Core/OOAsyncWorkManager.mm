@@ -25,8 +25,8 @@ SOFTWARE.
 
 */
 
-#import "OOAsyncWorkManager.h"
-#import "OOCPUInfo.h"
+#include "OOAsyncWorkManager.h"
+#include "OOCPUInfo.h"
 #include "oofnd/Thread.hpp"
 #include "oofnd/objc/OOException.h"
 

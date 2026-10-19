@@ -25,10 +25,10 @@ SOFTWARE.
 
 */
 
-#import "OOPNGTextureLoader.h"
-#import "OOFunctionAttributes.h"
-#import "OOLogging.h"
-#import "OOCPUInfo.h"
+#include "OOPNGTextureLoader.h"
+#include "OOFunctionAttributes.h"
+#include "OOLogging.h"
+#include "OOCPUInfo.h"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/String.hpp"
 

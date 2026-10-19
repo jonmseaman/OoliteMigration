@@ -21,20 +21,20 @@ MA 02110-1301, USA.
 
  */
 
-#import "OOVisualEffectEntity.h"
-#import "OOJSVisualEffect.h"
-#import "OOJSEntity.h"
-#import "OOJSVector.h"
-#import "OOJavaScriptEngine.h"
-#import "OOMesh.h"
-#import "ResourceManager.h"
-#import "EntityOOJavaScriptExtensions.h"
+#include "OOVisualEffectEntity.h"
+#include "OOJSVisualEffect.h"
+#include "OOJSEntity.h"
+#include "OOJSVector.h"
+#include "OOJavaScriptEngine.h"
+#include "OOMesh.h"
+#include "ResourceManager.h"
+#include "EntityOOJavaScriptExtensions.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
 #include <cstdint>
-#import "OOObjCPList.h"
-#import "OOScript.h"
+#include "OOObjCPList.h"
+#include "OOScript.h"
 
 // Retargeted onto the ooscript facade (JSEngine.hpp), the way OOJSVector.mm and
 // OOJSFlasher.mm do it (bead oo-sdz exemplar): stub hooks become nullptr, InitClass

@@ -26,8 +26,8 @@ SOFTWARE.
 
 */
 
-#import "OOALBufferedSound.h"
-#import "OOALSoundDecoder.h"
+#include "OOALBufferedSound.h"
+#include "OOALSoundDecoder.h"
 
 #include "oofnd/Log.hpp"
 

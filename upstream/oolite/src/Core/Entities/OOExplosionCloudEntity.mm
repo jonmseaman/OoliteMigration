@@ -26,12 +26,12 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOExplosionCloudEntity.h"
-#import "Universe.h"
-#import "PlayerEntity.h"
-#import "OOColor.h"
-#import "OOTexture.h"
-#import "OOGraphicsResetManager.h"
+#include "OOExplosionCloudEntity.h"
+#include "Universe.h"
+#include "PlayerEntity.h"
+#include "OOColor.h"
+#include "OOTexture.h"
+#include "OOGraphicsResetManager.h"
 
 #include "oofnd/PListGet.hpp"
 

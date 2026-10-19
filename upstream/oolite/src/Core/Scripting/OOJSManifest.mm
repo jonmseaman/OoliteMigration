@@ -22,17 +22,17 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOJSManifest.h"
-#import "OOJavaScriptEngine.h"
-#import "PlayerEntity.h"
-#import "PlayerEntityScriptMethods.h"
-#import "PlayerEntityContracts.h"
-#import "Universe.h"
-#import "OOCommodities.h"
-#import "OOCommodityMarket.h"
-#import "OOJSPlayer.h"
-#import "OOJSPlayerShip.h"
-#import "OOIsNumberLiteral.h"
+#include "OOJSManifest.h"
+#include "OOJavaScriptEngine.h"
+#include "PlayerEntity.h"
+#include "PlayerEntityScriptMethods.h"
+#include "PlayerEntityContracts.h"
+#include "Universe.h"
+#include "OOCommodities.h"
+#include "OOCommodityMarket.h"
+#include "OOJSPlayer.h"
+#include "OOJSPlayerShip.h"
+#include "OOIsNumberLiteral.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>

@@ -27,22 +27,22 @@ MA 02110-1301, USA.
 #ifndef NDEBUG
 
 
-#import "OOJSCall.h"
-#import "OOColor.h"	// a colour result (kMethodTypeColorVoid)
+#include "OOJSCall.h"
+#include "OOColor.h"	// a colour result (kMethodTypeColorVoid)
 #include "oofnd/objc/OORuntime.h"
-#import "OOJavaScriptEngine.h"
-#import "OOCallByName.h"
-#import "OOObjCPList.h"
+#include "OOJavaScriptEngine.h"
+#include "OOCallByName.h"
+#include "OOObjCPList.h"
 
-#import "OOFunctionAttributes.h"
-#import "ShipEntity.h"
-#import "PlayerEntity.h"	// the statistics members of callObjC's name table
-#import "OOShaderUniformMethodType.h"
-#import "OOJSVector.h"
-#import "OOJSQuaternion.h"
-#import "OOJSCallEntityMethods.h"	// callObjC()'s names for an entity (generated; bead oo-9ht.44)
-#import "OOEntityCalledByName.h"	// the entities' by-name methods, on the C++ entity (bead oo-9ht.39.7.2)
-#import "OOCallByName.h"
+#include "OOFunctionAttributes.h"
+#include "ShipEntity.h"
+#include "PlayerEntity.h"	// the statistics members of callObjC's name table
+#include "OOShaderUniformMethodType.h"
+#include "OOJSVector.h"
+#include "OOJSQuaternion.h"
+#include "OOJSCallEntityMethods.h"	// callObjC()'s names for an entity (generated; bead oo-9ht.44)
+#include "OOEntityCalledByName.h"	// the entities' by-name methods, on the C++ entity (bead oo-9ht.39.7.2)
+#include "OOCallByName.h"
 #include "oofnd/PListGet.hpp"
 #include "oofnd/String.hpp"
 

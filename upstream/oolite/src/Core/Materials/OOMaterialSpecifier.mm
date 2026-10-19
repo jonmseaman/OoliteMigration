@@ -25,10 +25,10 @@ SOFTWARE.
 
 */
 
-#import "OOMaterialSpecifier.h"
-#import "OOColor.h"
-#import "OOTexture.h"
-#import "Universe.h"
+#include "OOMaterialSpecifier.h"
+#include "OOColor.h"
+#include "OOTexture.h"
+#include "Universe.h"
 #include "oofnd/Defaults.hpp"
 
 

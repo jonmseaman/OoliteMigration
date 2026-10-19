@@ -41,13 +41,13 @@ SOFTWARE.
 	proposed ADR-0056 amendment oo-41vj.)
 */
 
-#import "OOShaderUniformMethodType.h"
+#include "OOShaderUniformMethodType.h"
 
 #if OO_SHADERS || !defined(NDEBUG)
 
 
-#import "OOMaths.h"
-#import "OOColor.h"	// @encode(OOColor *) is the complete class's, as the bindings' own
+#include "OOMaths.h"
+#include "OOColor.h"	// @encode(OOColor *) is the complete class's, as the bindings' own
 #include "oofnd/String.hpp"
 
 static BOOL				sInited = NO;

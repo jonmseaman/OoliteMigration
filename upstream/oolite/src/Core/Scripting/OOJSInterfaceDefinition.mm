@@ -23,9 +23,9 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOJSInterfaceDefinition.h"
-#import "OOJSScript.h"
-#import "OOJavaScriptEngine.h"
+#include "OOJSInterfaceDefinition.h"
+#include "OOJSScript.h"
+#include "OOJavaScriptEngine.h"
 
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/Notification.hpp"

@@ -25,19 +25,19 @@ SOFTWARE.
 
 */
 
-#import "OOOpenGLExtensionManager.h"
+#include "OOOpenGLExtensionManager.h"
 
 #if OO_SHADERS
 
-#import "OOShaderProgram.h"
-#import "OOFunctionAttributes.h"
-#import "OOStringParsing.h"
-#import "ResourceManager.h"
-#import "OOOpenGLExtensionManager.h"
-#import "OOMacroOpenGL.h"
-#import "OODebugFlags.h"
-#import "Universe.h"
-#import "MyOpenGLView.h"
+#include "OOShaderProgram.h"
+#include "OOFunctionAttributes.h"
+#include "OOStringParsing.h"
+#include "ResourceManager.h"
+#include "OOOpenGLExtensionManager.h"
+#include "OOMacroOpenGL.h"
+#include "OODebugFlags.h"
+#include "Universe.h"
+#include "MyOpenGLView.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/objc/OOObjCRef.h"

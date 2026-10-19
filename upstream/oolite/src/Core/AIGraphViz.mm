@@ -24,9 +24,9 @@ MA 02110-1301, USA.
 
 #if DEBUG_GRAPHVIZ
 
-#import "AIGraphViz.h"
-#import "OOStringParsing.h"
-#import "ResourceManager.h"
+#include "AIGraphViz.h"
+#include "OOStringParsing.h"
+#include "ResourceManager.h"
 #include "oofnd/String.hpp"
 
 

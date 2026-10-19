@@ -22,11 +22,11 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOPListScript.h"
-#import "OOPListParsing.h"
-#import "PlayerEntityLegacyScriptEngine.h"
-#import "OOLegacyScriptWhitelist.h"
-#import "OOCacheManager.h"
+#include "OOPListScript.h"
+#include "OOPListParsing.h"
+#include "PlayerEntityLegacyScriptEngine.h"
+#include "OOLegacyScriptWhitelist.h"
+#include "OOCacheManager.h"
 
 
 namespace {

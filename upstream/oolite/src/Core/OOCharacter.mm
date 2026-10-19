@@ -22,16 +22,16 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOCharacter.h"
+#include "OOCharacter.h"
 
-#import "Universe.h"
-#import "OOStringExpander.h"
-#import "OOStringParsing.h"
-#import "OOJSScript.h"
+#include "Universe.h"
+#include "OOStringExpander.h"
+#include "OOStringParsing.h"
+#include "OOJSScript.h"
 #include "oofnd/String.hpp"
 #include "oofnd/Scanner.hpp"
 #include "oofnd/objc/OORuntime.h"
-#import "OOObjCPList.h"
+#include "OOObjCPList.h"
 
 
 namespace {

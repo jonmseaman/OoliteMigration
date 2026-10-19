@@ -23,14 +23,14 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOTextureVerifierStage.h"
+#include "OOTextureVerifierStage.h"
 
 #if OO_OXP_VERIFIER_ENABLED
 
-#import "OOTexture.h"
-#import "OOTextureLoader.h"
-#import "OOFileScannerVerifierStage.h"
-#import "OOMaths.h"
+#include "OOTexture.h"
+#include "OOTextureLoader.h"
+#include "OOFileScannerVerifierStage.h"
+#include "OOMaths.h"
 #include "oofnd/Log.hpp"
 
 static const char * const kStageName	= "Testing textures and images";

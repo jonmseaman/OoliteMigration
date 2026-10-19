@@ -23,15 +23,15 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOLaserShotEntity.h"
-#import "Universe.h"
-#import "ShipEntity.h"
-#import "OOMacroOpenGL.h"
+#include "OOLaserShotEntity.h"
+#include "Universe.h"
+#include "ShipEntity.h"
+#include "OOMacroOpenGL.h"
 
-#import "OOTexture.h"
-#import "OOGraphicsResetManager.h"
+#include "OOTexture.h"
+#include "OOGraphicsResetManager.h"
 
-#import "MyOpenGLView.h"
+#include "MyOpenGLView.h"
 
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOAssert.h"

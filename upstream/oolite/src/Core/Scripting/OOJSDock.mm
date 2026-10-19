@@ -21,14 +21,14 @@ MA 02110-1301, USA.
 
  */
 
-#import "OOJSDock.h"
-#import "OOJSEntity.h"
-#import "OOJSShip.h"
-#import "OOJSPlayer.h"
-#import "OOJavaScriptEngine.h"
+#include "OOJSDock.h"
+#include "OOJSEntity.h"
+#include "OOJSShip.h"
+#include "OOJSPlayer.h"
+#include "OOJavaScriptEngine.h"
 
-#import "DockEntity.h"
-#import "GameController.h"
+#include "DockEntity.h"
+#include "GameController.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>

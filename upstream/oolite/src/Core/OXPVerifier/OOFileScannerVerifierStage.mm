@@ -51,11 +51,11 @@ SOFTWARE.
 	hierarchy into account.
 */
 
-#import "OOFileScannerVerifierStage.h"
+#include "OOFileScannerVerifierStage.h"
 
 #if OO_OXP_VERIFIER_ENABLED
 
-#import "ResourceManager.h"
+#include "ResourceManager.h"
 
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/PListParsing.hpp"

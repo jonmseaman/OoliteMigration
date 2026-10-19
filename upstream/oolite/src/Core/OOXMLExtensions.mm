@@ -22,7 +22,7 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOXMLExtensions.h"
+#include "OOXMLExtensions.h"
 
 
 #include "oofnd/FileSystem.hpp"

@@ -23,7 +23,7 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOSDLJoystickManager.h"
+#include "OOSDLJoystickManager.h"
 #include "oofnd/Log.hpp"
 #include "oofnd/String.hpp"
 

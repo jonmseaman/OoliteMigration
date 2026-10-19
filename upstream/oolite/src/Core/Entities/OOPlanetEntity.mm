@@ -26,38 +26,38 @@ oo-9ht.107, oo-9ht.23 and oo-9ht.129): the class is global and its object is the
 
 */
 
-#import "OOPlanetEntity.h"
-#import "OOJSPlanet.h"
-#import "OOObjCPList.h"
+#include "OOPlanetEntity.h"
+#include "OOJSPlanet.h"
+#include "OOObjCPList.h"
 
 
 #define NEW_ATMOSPHERE 1
 
-#import "OOPlanetDrawable.h"
-#import "OOTexture.h"
+#include "OOPlanetDrawable.h"
+#include "OOTexture.h"
 
-#import "AI.h"
-#import "Universe.h"
-#import "ShipEntity.h"
-#import "PlayerEntity.h"
-#import "ShipEntityAI.h"
-#import "OOCharacter.h"
+#include "AI.h"
+#include "Universe.h"
+#include "ShipEntity.h"
+#include "PlayerEntity.h"
+#include "ShipEntityAI.h"
+#include "OOCharacter.h"
 
-#import "OOMaths.h"
-#import "ResourceManager.h"
-#import "OOStringParsing.h"
-#import "OOSystemDescriptionManager.h"
+#include "OOMaths.h"
+#include "ResourceManager.h"
+#include "OOStringParsing.h"
+#include "OOSystemDescriptionManager.h"
 
-#import "OOPlanetTextureGenerator.h"
-#import "OOStandaloneAtmosphereGenerator.h"
-#import "OOSingleTextureMaterial.h"
-#import "OOShaderMaterial.h"
-#import "OOEntityFilterPredicate.h"
-#import "OOGraphicsResetManager.h"
-#import "OOStringExpander.h"
-#import "OOOpenGLMatrixManager.h"
-#import "OOJavaScriptEngine.h"	// OONull
-#import "OOPListGameTypes.h"
+#include "OOPlanetTextureGenerator.h"
+#include "OOStandaloneAtmosphereGenerator.h"
+#include "OOSingleTextureMaterial.h"
+#include "OOShaderMaterial.h"
+#include "OOEntityFilterPredicate.h"
+#include "OOGraphicsResetManager.h"
+#include "OOStringExpander.h"
+#include "OOOpenGLMatrixManager.h"
+#include "OOJavaScriptEngine.h"	// OONull
+#include "OOPListGameTypes.h"
 
 #include "oofnd/Log.hpp"
 #include "oofnd/PListGet.hpp"

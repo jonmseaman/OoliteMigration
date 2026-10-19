@@ -26,8 +26,8 @@ SOFTWARE.
 
 */
 
-#import "OOALStreamedSound.h"
-#import "OOALSoundDecoder.h"
+#include "OOALStreamedSound.h"
+#include "OOALSoundDecoder.h"
 
 // The decoder is released by its oo::Ref.
 OOALStreamedSound::~OOALStreamedSound()

@@ -7,10 +7,10 @@ This code is hereby placed in the public domain.
 
 */
 
-#import "OOWeakReference.h"
-#import "OOCocoa.h"	// OOObject's -description components
-#import "NSObjectOOExtensions.h"
-#import "OOJavaScriptEngine.h"	// OOObject (OOJavaScript)
+#include "OOWeakReference.h"
+#include "OOCocoa.h"	// OOObject's -description components
+#include "NSObjectOOExtensions.h"
+#include "OOJavaScriptEngine.h"	// OOObject (OOJavaScript)
 
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OORuntime.h"

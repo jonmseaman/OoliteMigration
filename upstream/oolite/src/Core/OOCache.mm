@@ -110,8 +110,8 @@ MA 02110-1301, USA.
 */
 
 
-#import "OOCache.h"
-#import "OOStringParsing.h"
+#include "OOCache.h"
+#include "OOStringParsing.h"
 
 #include "oofnd/String.hpp"
 #if DEBUG_GRAPHVIZ

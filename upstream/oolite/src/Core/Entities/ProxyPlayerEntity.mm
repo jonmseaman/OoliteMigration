@@ -23,7 +23,7 @@ MA 02110-1301, USA.
 
 */
 
-#import "ProxyPlayerEntity.h"
+#include "ProxyPlayerEntity.h"
 
 
 ::ShipEntity *ProxyPlayerEntity::newProxyObject(const std::string &key, const oo::PList &dict)

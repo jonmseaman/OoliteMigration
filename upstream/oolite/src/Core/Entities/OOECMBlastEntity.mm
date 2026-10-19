@@ -26,11 +26,11 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOECMBlastEntity.h"
-#import "Universe.h"
-#import "ShipEntity.h"
-#import "OOEntityFilterPredicate.h"
-#import "OOJavaScriptEngine.h"
+#include "OOECMBlastEntity.h"
+#include "Universe.h"
+#include "ShipEntity.h"
+#include "OOEntityFilterPredicate.h"
+#include "OOJavaScriptEngine.h"
 
 
 // NOTE: these values are documented for scripting, be careful about changing them.
@@ -42,7 +42,7 @@ MA 02110-1301, USA.
 
 
 #if ECM_DEBUG_DRAW
-#import "OODebugGLDrawing.h"
+#include "OODebugGLDrawing.h"
 #endif
 
 

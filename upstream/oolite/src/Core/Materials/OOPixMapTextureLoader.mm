@@ -26,8 +26,8 @@ SOFTWARE.
 */
 
 
-#import "OOPixMapTextureLoader.h"
-#import "OOTextureScaling.h"
+#include "OOPixMapTextureLoader.h"
+#include "OOTextureScaling.h"
 
 #include "oofnd/String.hpp"
 

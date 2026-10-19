@@ -49,12 +49,12 @@ sets that will then be immutablized.
 
 */
 
-#import "OOProbabilitySet.h"
-#import "OOFunctionAttributes.h"
-#import "legacy_random.h"
+#include "OOProbabilitySet.h"
+#include "OOFunctionAttributes.h"
+#include "legacy_random.h"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/String.hpp"
-#import "OOObjCPList.h"
+#include "OOObjCPList.h"
 
 
 namespace {

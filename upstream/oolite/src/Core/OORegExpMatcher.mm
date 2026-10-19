@@ -25,9 +25,9 @@ SOFTWARE.
 
 */
 
-#import "OORegExpMatcher.h"
-#import "OOJSFunction.h"
-#import "OOJavaScriptEngine.h"
+#include "OORegExpMatcher.h"
+#include "OOJSFunction.h"
+#include "OOJavaScriptEngine.h"
 
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/Thread.hpp"

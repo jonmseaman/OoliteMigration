@@ -25,17 +25,17 @@ SOFTWARE.
 
 */
 
-#import "OOEquipmentType.h"
-#import "Universe.h"
-#import "OOScript.h"
-#import "OOColor.h"
-#import "OOLegacyScriptWhitelist.h"
-#import "OOCacheManager.h"
-#import "OODebugStandards.h"
-#import "PlayerEntityControls.h"
-#import "PlayerEntityKeyMapper.h"
-#import "PlayerEntityLegacyScriptEngine.h"	// (was imported before the Conveniences category)
-#import "OODebugStandards.h"
+#include "OOEquipmentType.h"
+#include "Universe.h"
+#include "OOScript.h"
+#include "OOColor.h"
+#include "OOLegacyScriptWhitelist.h"
+#include "OOCacheManager.h"
+#include "OODebugStandards.h"
+#include "PlayerEntityControls.h"
+#include "PlayerEntityKeyMapper.h"
+#include "PlayerEntityLegacyScriptEngine.h"	// (was imported before the Conveniences category)
+#include "OODebugStandards.h"
 #include "oofnd/String.hpp"
 
 #include <algorithm>

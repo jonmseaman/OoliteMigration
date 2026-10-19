@@ -24,11 +24,11 @@ MA 02110-1301, USA.
 */
 
 
-#import "OOCocoa.h"
-#import "OOLegacyScriptWhitelist.h"
-#import "OOStringParsing.h"
-#import	"ResourceManager.h"
-#import "PlayerEntityLegacyScriptEngine.h"
+#include "OOCocoa.h"
+#include "OOLegacyScriptWhitelist.h"
+#include "OOStringParsing.h"
+#include	"ResourceManager.h"
+#include "PlayerEntityLegacyScriptEngine.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"

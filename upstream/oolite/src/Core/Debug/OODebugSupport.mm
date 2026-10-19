@@ -28,12 +28,12 @@ SOFTWARE.
 #ifndef NDEBUG
 
 
-#import "OODebugSupport.h"
-#import "ResourceManager.h"
-#import "OODebugMonitor.h"
-#import "OODebugTCPConsoleClient.h"
-#import "GameController.h"
-#import "OOJavaScriptEngine.h"
+#include "OODebugSupport.h"
+#include "ResourceManager.h"
+#include "OODebugMonitor.h"
+#include "OODebugTCPConsoleClient.h"
+#include "GameController.h"
+#include "OOJavaScriptEngine.h"
 
 #include "oofnd/Log.hpp"
 #include "oofnd/PListGet.hpp"

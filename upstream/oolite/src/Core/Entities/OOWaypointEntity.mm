@@ -22,17 +22,17 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOWaypointEntity.h"
-#import "Entity.h"
-#import "OOStringExpander.h"
-#import "Universe.h"
-#import "PlayerEntity.h"
-#import "OOPolygonSprite.h"
-#import "HeadUpDisplay.h"
-#import "OOOpenGL.h"
-#import "OOMacroOpenGL.h"
-#import "OOPListGameTypes.h"
-#import "OOJSWaypoint.h"
+#include "OOWaypointEntity.h"
+#include "Entity.h"
+#include "OOStringExpander.h"
+#include "Universe.h"
+#include "PlayerEntity.h"
+#include "OOPolygonSprite.h"
+#include "HeadUpDisplay.h"
+#include "OOOpenGL.h"
+#include "OOMacroOpenGL.h"
+#include "OOPListGameTypes.h"
+#include "OOJSWaypoint.h"
 
 #include "oofnd/PListGet.hpp"
 #include "oofnd/String.hpp"

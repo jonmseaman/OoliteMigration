@@ -7,13 +7,13 @@ Oolite
 */
 
 #include <SDL3/SDL_init.h>
-#import "MyOpenGLView.h"
+#include "MyOpenGLView.h"
 
-#import "GameController.h"
-#import "Universe.h"
-#import "OOSDLJoystickManager.h"
-#import "PlayerEntity.h"
-#import "ResourceManager.h"
+#include "GameController.h"
+#include "Universe.h"
+#include "OOSDLJoystickManager.h"
+#include "PlayerEntity.h"
+#include "ResourceManager.h"
 #include "oofnd/Date.hpp"
 #include "oofnd/Defaults.hpp"
 #include "oofnd/PListGet.hpp"

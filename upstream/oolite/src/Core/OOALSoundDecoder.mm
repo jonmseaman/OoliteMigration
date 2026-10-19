@@ -26,10 +26,10 @@ SOFTWARE.
 
 */
 
-#import "OOALSoundDecoder.h"
-#import <vorbis/vorbisfile.h>
-#import "OOLogging.h"
-#import "unzip.h"
+#include "OOALSoundDecoder.h"
+#include <vorbis/vorbisfile.h>
+#include "OOLogging.h"
+#include "unzip.h"
 
 #include "oofnd/String.hpp"
 

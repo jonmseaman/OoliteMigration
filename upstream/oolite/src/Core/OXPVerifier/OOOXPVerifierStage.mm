@@ -33,7 +33,7 @@ SOFTWARE.
 
 #include <assert.h>
 
-#import "OOOXPVerifierStage.h"
+#include "OOOXPVerifierStage.h"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/String.hpp"
 

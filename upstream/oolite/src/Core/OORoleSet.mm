@@ -29,10 +29,10 @@ SOFTWARE.
 
 */
 
-#import "OORoleSet.h"
+#include "OORoleSet.h"
 
-#import "OOLogging.h"
-#import "OOMaths.h"	// randf()
+#include "OOLogging.h"
+#include "OOMaths.h"	// randf()
 
 #include "oofnd/String.hpp"
 

@@ -25,9 +25,9 @@ SOFTWARE.
 
 */
 
-#import "OOGraphicsResetManager.h"
-#import "OOTexture.h"
-#import "OOOpenGLExtensionManager.h"
+#include "OOGraphicsResetManager.h"
+#include "OOTexture.h"
+#include "OOOpenGLExtensionManager.h"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/Log.hpp"
 

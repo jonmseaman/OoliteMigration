@@ -22,16 +22,16 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOTrumble.h"
-#import "Universe.h"
-#import "PlayerEntity.h"
-#import "OOTexture.h"
-#import "ResourceManager.h"
-#import "OOSound.h"
-#import "OOStringParsing.h"
-#import "OOMaths.h"
+#include "OOTrumble.h"
+#include "Universe.h"
+#include "PlayerEntity.h"
+#include "OOTexture.h"
+#include "ResourceManager.h"
+#include "OOSound.h"
+#include "OOStringParsing.h"
+#include "OOMaths.h"
 #include "oofnd/String.hpp"
-#import "MyOpenGLView.h"
+#include "MyOpenGLView.h"
 
 
 static void InitTrumbleSounds(void);

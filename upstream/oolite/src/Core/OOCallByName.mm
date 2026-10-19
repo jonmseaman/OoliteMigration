@@ -27,7 +27,7 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOCallByName.h"
+#include "OOCallByName.h"
 
 #include "oofnd/Log.hpp"
 #include "oofnd/objc/OORuntime.h"

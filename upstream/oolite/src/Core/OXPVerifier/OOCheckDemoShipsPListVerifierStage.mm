@@ -23,11 +23,11 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOCheckDemoShipsPListVerifierStage.h"
+#include "OOCheckDemoShipsPListVerifierStage.h"
 
 #if OO_OXP_VERIFIER_ENABLED
 
-#import "OOFileScannerVerifierStage.h"
+#include "OOFileScannerVerifierStage.h"
 
 static const char * const kStageName	= "Checking demoships.plist";
 

@@ -25,15 +25,15 @@ SOFTWARE.
 
 */
 
-#import "OOLogHeader.h"
+#include "OOLogHeader.h"
 #include "oofnd/Process.hpp"
-#import "OOCPUInfo.h"
-#import "OOLogging.h"
-#import "OOOXPVerifier.h"
-#import "Universe.h"
-#import "OOStellarBody.h"
-#import "OOJavaScriptEngine.h"
-#import "OOSound.h"
+#include "OOCPUInfo.h"
+#include "OOLogging.h"
+#include "OOOXPVerifier.h"
+#include "Universe.h"
+#include "OOStellarBody.h"
+#include "OOJavaScriptEngine.h"
+#include "OOSound.h"
 #include "oofnd/Date.hpp"
 #include "oofnd/Log.hpp"
 #include "oofnd/String.hpp"

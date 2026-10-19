@@ -22,25 +22,25 @@ MA 02110-1301, USA.
 
 */
 
-#import "DustEntity.h"
+#include "DustEntity.h"
 #include "oofnd/Process.hpp"
 
-#import "OOMaths.h"
-#import "Universe.h"
-#import "MyOpenGLView.h"
-#import "OOGraphicsResetManager.h"
-#import "OODebugFlags.h"
-#import "OOMacroOpenGL.h"
+#include "OOMaths.h"
+#include "Universe.h"
+#include "MyOpenGLView.h"
+#include "OOGraphicsResetManager.h"
+#include "OODebugFlags.h"
+#include "OOMacroOpenGL.h"
 
 
 #if OO_SHADERS
-#import "OOMaterial.h"		// For kTangentAttributeIndex
-#import "OOShaderProgram.h"
-#import "OOShaderUniform.h"
-#import "OOShaderUniformMethodType.h"
+#include "OOMaterial.h"		// For kTangentAttributeIndex
+#include "OOShaderProgram.h"
+#include "OOShaderUniform.h"
+#include "OOShaderUniformMethodType.h"
 #endif
 
-#import "PlayerEntity.h"
+#include "PlayerEntity.h"
 
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OORuntime.h"

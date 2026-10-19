@@ -28,7 +28,7 @@ SOFTWARE.
 
 */
 
-#import "OOProfilingStopwatch.h"
+#include "OOProfilingStopwatch.h"
 
 
 OOProfilingStopwatch::OOProfilingStopwatch()

@@ -26,7 +26,7 @@ MA 02110-1301, USA.
 
 */
 
-#import "OODescription.h"
+#include "OODescription.h"
 
 #include "oofnd/String.hpp"
 

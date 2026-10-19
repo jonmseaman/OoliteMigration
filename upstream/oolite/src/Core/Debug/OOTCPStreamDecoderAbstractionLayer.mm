@@ -9,10 +9,10 @@
 
 #ifndef NDEBUG
 
-#import "OOTCPStreamDecoderAbstractionLayer.h"
-#import "OOCocoa.h"
-#import <objc/runtime.h>
-#import <objc/objc-arc.h>
+#include "OOTCPStreamDecoderAbstractionLayer.h"
+#include "OOCocoa.h"
+#include <objc/runtime.h>
+#include <objc/objc-arc.h>
 
 #include "oofnd/PListParsing.hpp"
 #include "oofnd/String.hpp"

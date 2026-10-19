@@ -23,8 +23,8 @@ MA 02110-1301, USA.
 
 */
 
-#import "ShipEntityScriptMethods.h"
-#import "Universe.h"
+#include "ShipEntityScriptMethods.h"
+#include "Universe.h"
 #include "oofnd/Log.hpp"
 
 

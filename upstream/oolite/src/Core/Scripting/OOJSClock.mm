@@ -23,14 +23,14 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOJSClock.h"
-#import "OOJavaScriptEngine.h"
-#import "Universe.h"
-#import "OOJSPlayer.h"
-#import "PlayerEntity.h"
-#import "PlayerEntityScriptMethods.h"
-#import "OOStringParsing.h"
-#import "OODebugStandards.h"
+#include "OOJSClock.h"
+#include "OOJavaScriptEngine.h"
+#include "Universe.h"
+#include "OOJSPlayer.h"
+#include "PlayerEntity.h"
+#include "PlayerEntityScriptMethods.h"
+#include "OOStringParsing.h"
+#include "OODebugStandards.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>

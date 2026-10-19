@@ -23,18 +23,18 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOJSMission.h"
-#import "OOJavaScriptEngine.h"
-#import "OOJSScript.h"
-#import "OOConstToJSString.h"
-#import "OOJSVector.h"
+#include "OOJSMission.h"
+#include "OOJavaScriptEngine.h"
+#include "OOJSScript.h"
+#include "OOConstToJSString.h"
+#include "OOJSVector.h"
 
-#import "OOJSPlayer.h"
-#import "PlayerEntityScriptMethods.h"
-#import "OOStringExpander.h"
-#import "OOMusicController.h"
-#import "GuiDisplayGen.h"
-#import "OODebugStandards.h"
+#include "OOJSPlayer.h"
+#include "PlayerEntityScriptMethods.h"
+#include "OOStringExpander.h"
+#include "OOMusicController.h"
+#include "GuiDisplayGen.h"
+#include "OODebugStandards.h"
 #include "oofnd/objc/OOException.h"
 
 #include "ooscript/JSEngine.hpp"

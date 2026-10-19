@@ -25,10 +25,10 @@ SOFTWARE.
 
 */
 
-#import "OOMaterial.h"
+#include "OOMaterial.h"
 #include "OOMaterialState.h"
-#import "OOFunctionAttributes.h"
-#import "OOLogging.h"
+#include "OOFunctionAttributes.h"
+#include "OOLogging.h"
 #include "oofnd/String.hpp"
 
 #include <cstdlib>

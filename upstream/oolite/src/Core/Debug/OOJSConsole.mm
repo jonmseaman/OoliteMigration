@@ -28,28 +28,28 @@ SOFTWARE.
 
 #ifndef NDEBUG
 
-#import "OOJSConsole.h"
-#import "OODebugMonitor.h"
+#include "OOJSConsole.h"
+#include "OODebugMonitor.h"
 #include <stdint.h>
 
-#import "OOJSEngineTimeManagement.h"
-#import "OOJSScript.h"
-#import "OOJSVector.h"
-#import "OOJSEntity.h"
-#import "OOJSCall.h"
-#import "OOLoggingExtended.h"
-#import "OOConstToString.h"
-#import "OOOpenGLExtensionManager.h"
-#import "OODebugFlags.h"
-#import "OODebugMonitor.h"
-#import "OOProfilingStopwatch.h"
-#import "ResourceManager.h"
-#import "OOObjCPList.h"
-#import "OOLogHeader.h"	// OOPlatformDescription()
-#import "Entity.h"	// an entity's -inspect
-#import "EntityOOJavaScriptExtensions.h"	// callObjC()'s class name of an entity (bead oo-9ht.39.5.1)
+#include "OOJSEngineTimeManagement.h"
+#include "OOJSScript.h"
+#include "OOJSVector.h"
+#include "OOJSEntity.h"
+#include "OOJSCall.h"
+#include "OOLoggingExtended.h"
+#include "OOConstToString.h"
+#include "OOOpenGLExtensionManager.h"
+#include "OODebugFlags.h"
+#include "OODebugMonitor.h"
+#include "OOProfilingStopwatch.h"
+#include "ResourceManager.h"
+#include "OOObjCPList.h"
+#include "OOLogHeader.h"	// OOPlatformDescription()
+#include "Entity.h"	// an entity's -inspect
+#include "EntityOOJavaScriptExtensions.h"	// callObjC()'s class name of an entity (bead oo-9ht.39.5.1)
 #if OO_DEBUG
-#import "OOShaderUniformMethodType.h"	// callObjC()'s scalar results on the console (bead oo-9ht.74)
+#include "OOShaderUniformMethodType.h"	// callObjC()'s scalar results on the console (bead oo-9ht.74)
 #endif
 
 #include "oofnd/String.hpp"

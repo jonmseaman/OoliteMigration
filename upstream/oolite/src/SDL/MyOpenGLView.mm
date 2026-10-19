@@ -24,21 +24,21 @@ MA 02110-1301, USA.
 
 #include <SDL3/SDL_init.h>
 #include <SDL3/SDL_timer.h>
-#import "png.h"
-#import "MyOpenGLView.h"
+#include "png.h"
+#include "MyOpenGLView.h"
 #include "oofnd/Process.hpp"
 
-#import "GameController.h"
-#import "Universe.h"
-#import "OOSDLJoystickManager.h"
-#import "OOSound.h"
-#import "PlayerEntity.h"
-#import "GuiDisplayGen.h"
-#import "OOStellarBody.h"
-#import "OOGraphicsResetManager.h"
-#import "OOFullScreenController.h"
-#import "ResourceManager.h"
-#import "OOConstToString.h"
+#include "GameController.h"
+#include "Universe.h"
+#include "OOSDLJoystickManager.h"
+#include "OOSound.h"
+#include "PlayerEntity.h"
+#include "GuiDisplayGen.h"
+#include "OOStellarBody.h"
+#include "OOGraphicsResetManager.h"
+#include "OOFullScreenController.h"
+#include "ResourceManager.h"
+#include "OOConstToString.h"
 #include "oofnd/Defaults.hpp"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/PListGet.hpp"
@@ -46,7 +46,7 @@ MA 02110-1301, USA.
 #include "oofnd/ResourcePaths.hpp"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#import "stb_image_write.h"
+#include "stb_image_write.h"
 
 // The save and snapshot directory names (moved here when the NSFileManager category header retired, bead oo-pwz0).
 #define SAVEDIR "oolite-saves"

@@ -24,14 +24,14 @@ SOFTWARE.
 
 */
 
-#import "OOALSound.h"
-#import "OOLogging.h"
-#import "OOMaths.h"
-#import "OOALSoundDecoder.h"
-#import "OOOpenALController.h"
-#import "OOALBufferedSound.h"
-#import "OOALStreamedSound.h"
-#import "OOALSoundMixer.h"
+#include "OOALSound.h"
+#include "OOLogging.h"
+#include "OOMaths.h"
+#include "OOALSoundDecoder.h"
+#include "OOOpenALController.h"
+#include "OOALBufferedSound.h"
+#include "OOALStreamedSound.h"
+#include "OOALSoundMixer.h"
 #include "oofnd/Defaults.hpp"
 #include "oofnd/String.hpp"
 

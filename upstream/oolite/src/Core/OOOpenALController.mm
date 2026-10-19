@@ -23,11 +23,11 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOOpenALController.h"
+#include "OOOpenALController.h"
 #include "oofnd/Process.hpp"
-#import "OOLogging.h"
+#include "OOLogging.h"
 #include "oofnd/Log.hpp"
-#import "OOALSoundMixer.h"
+#include "OOALSoundMixer.h"
 
 namespace {
 

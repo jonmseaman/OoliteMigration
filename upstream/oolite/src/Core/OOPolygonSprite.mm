@@ -39,13 +39,13 @@ SOFTWARE.
 	the icons we're likely to encounter.
 */
 
-#import "OOPolygonSprite.h"
-#import <objc/runtime.h>
-#import <objc/objc-arc.h>
-#import "OOMacroOpenGL.h"
-#import "OOMaths.h"
-#import "OOPointMaths.h"
-#import "OOGraphicsResetManager.h"
+#include "OOPolygonSprite.h"
+#include <objc/runtime.h>
+#include <objc/objc-arc.h>
+#include "OOMacroOpenGL.h"
+#include "OOMaths.h"
+#include "OOPointMaths.h"
+#include "OOGraphicsResetManager.h"
 
 #include "oofnd/String.hpp"
 #include "oofnd/Defaults.hpp"
@@ -804,8 +804,8 @@ static void APIENTRY ErrorCallback(GLenum error, void *polygonData)
 }
 
 #ifndef NDEBUG
-#import "ResourceManager.h"
-#import "legacy_random.h"
+#include "ResourceManager.h"
+#include "legacy_random.h"
 
 static void SVGDumpBegin(TessPolygonData *data)
 {

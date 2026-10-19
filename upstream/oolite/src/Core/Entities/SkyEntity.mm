@@ -23,16 +23,16 @@ MA 02110-1301, USA.
 */
 
 
-#import "SkyEntity.h"
-#import "OOSkyDrawable.h"
-#import "PlayerEntity.h"
+#include "SkyEntity.h"
+#include "OOSkyDrawable.h"
+#include "PlayerEntity.h"
 
-#import "OOMaths.h"
-#import "Universe.h"
-#import "MyOpenGLView.h"
-#import "OOColor.h"
-#import "OOMaterial.h"
-#import "OOObjCPList.h"
+#include "OOMaths.h"
+#include "Universe.h"
+#include "MyOpenGLView.h"
+#include "OOColor.h"
+#include "OOMaterial.h"
+#include "OOObjCPList.h"
 
 #include "oofnd/Log.hpp"
 #include "oofnd/PListGet.hpp"
