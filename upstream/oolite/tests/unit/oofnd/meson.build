@@ -73,6 +73,7 @@ oofnd_plist_tests = [
     'test_plist_carrier',
     'test_plist_game_tuples',
     'test_plist_description',
+    'test_plist_hdr_brightness_index',
 ]
 
 foreach t : oofnd_plist_tests
