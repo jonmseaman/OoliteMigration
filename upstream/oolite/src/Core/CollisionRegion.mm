@@ -22,16 +22,16 @@ MA 02110-1301, USA.
 
 */
 
-#import "CollisionRegion.h"
-#import "OOMaths.h"
-#import "Universe.h"
-#import "Entity.h"
-#import "ShipEntity.h"
-#import "OOSunEntity.h"
-#import "OOPlanetEntity.h"
-#import "StationEntity.h"
-#import "PlayerEntity.h"
-#import "OODebugFlags.h"
+#include "CollisionRegion.h"
+#include "OOMaths.h"
+#include "Universe.h"
+#include "Entity.h"
+#include "ShipEntity.h"
+#include "OOSunEntity.h"
+#include "OOPlanetEntity.h"
+#include "StationEntity.h"
+#include "PlayerEntity.h"
+#include "OODebugFlags.h"
 #include "oofnd/objc/OOException.h"
 
 #include "oofnd/Log.hpp"

@@ -23,9 +23,9 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOJSFunction.h"
-#import "OOJSScript.h"
-#import "OOJSEngineTimeManagement.h"
+#include "OOJSFunction.h"
+#include "OOJSScript.h"
+#include "OOJSEngineTimeManagement.h"
 #include "oofnd/Notification.hpp"
 #include "oofnd/objc/OOAssert.h"
 #include "oofnd/String.hpp"

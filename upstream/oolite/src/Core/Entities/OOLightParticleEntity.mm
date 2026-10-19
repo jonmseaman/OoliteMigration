@@ -23,15 +23,15 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOLightParticleEntity.h"
-#import "Universe.h"
-#import "PlayerEntity.h"
-#import "OOTexture.h"
-#import "OOColor.h"
-#import "OOFunctionAttributes.h"
-#import "OOMacroOpenGL.h"
-#import "OOGraphicsResetManager.h"
-#import "MyOpenGLView.h"
+#include "OOLightParticleEntity.h"
+#include "Universe.h"
+#include "PlayerEntity.h"
+#include "OOTexture.h"
+#include "OOColor.h"
+#include "OOFunctionAttributes.h"
+#include "OOMacroOpenGL.h"
+#include "OOGraphicsResetManager.h"
+#include "MyOpenGLView.h"
 
 
 #define PARTICLE_DISTANCE_SCALE_LOW		12.0

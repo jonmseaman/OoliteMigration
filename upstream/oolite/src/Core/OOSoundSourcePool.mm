@@ -25,9 +25,9 @@ SOFTWARE.
 
 */
 
-#import "OOSoundSourcePool.h"
-#import "OOSound.h"
-#import "Universe.h"
+#include "OOSoundSourcePool.h"
+#include "OOSound.h"
+#include "Universe.h"
 
 
 enum

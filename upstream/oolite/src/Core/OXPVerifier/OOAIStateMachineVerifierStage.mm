@@ -23,12 +23,12 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOAIStateMachineVerifierStage.h"
-#import "OOPListParsing.h"
+#include "OOAIStateMachineVerifierStage.h"
+#include "OOPListParsing.h"
 
 #if OO_OXP_VERIFIER_ENABLED
 
-#import "ResourceManager.h"
+#include "ResourceManager.h"
 
 #include "oofnd/String.hpp"
 #include "oofnd/Scanner.hpp"

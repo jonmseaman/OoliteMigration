@@ -24,18 +24,18 @@ MA 02110-1301, USA.
 */
 
 
-#import "OOExhaustPlumeEntity.h"
+#include "OOExhaustPlumeEntity.h"
 
 #include "oofnd/PListGet.hpp"
-#import "ShipEntity.h"
-#import "Universe.h"
-#import "OOMacroOpenGL.h"
-#import "PlayerEntity.h"
-#import "MyOpenGLView.h"
+#include "ShipEntity.h"
+#include "Universe.h"
+#include "OOMacroOpenGL.h"
+#include "PlayerEntity.h"
+#include "MyOpenGLView.h"
 
-#import "OOTexture.h"
-#import "OOGraphicsResetManager.h"
-#import "OOJSExhaustPlume.h"
+#include "OOTexture.h"
+#include "OOGraphicsResetManager.h"
+#include "OOJSExhaustPlume.h"
 
 
 #define kOverallAlpha		1.0f

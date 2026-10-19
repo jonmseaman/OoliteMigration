@@ -30,12 +30,12 @@ SOFTWARE.
 #ifndef NDEBUG
 
 
-#import "OODebugTCPConsoleClient.h"
+#include "OODebugTCPConsoleClient.h"
 // The protocol's names as UTF-8 literals (the header would make them Objective-C string objects).
 #define OOALSTR(x) "" x
-#import "OODebugTCPConsoleProtocol.h"
-#import "OODebugMonitor.h"
-#import "OOFunctionAttributes.h"
+#include "OODebugTCPConsoleProtocol.h"
+#include "OODebugMonitor.h"
+#include "OOFunctionAttributes.h"
 #include "oofnd/Log.hpp"
 #include "oofnd/PListParsing.hpp"
 #include "oofnd/FileSystem.hpp"
@@ -59,7 +59,7 @@ SOFTWARE.
 #include <math.h>
 #include <thread>
 
-#import "OOTCPStreamDecoder.h"
+#include "OOTCPStreamDecoder.h"
 #include "oofnd/PListWriting.hpp"
 #include "oofnd/String.hpp"
 

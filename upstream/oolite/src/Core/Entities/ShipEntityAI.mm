@@ -22,38 +22,38 @@
  
  */
 
-#import "ShipEntityAI.h"
-#import "OOMaths.h"
-#import "Universe.h"
-#import "AI.h"
+#include "ShipEntityAI.h"
+#include "OOMaths.h"
+#include "Universe.h"
+#include "AI.h"
 
-#import "StationEntity.h"
-#import "OOSunEntity.h"
-#import "OOPlanetEntity.h"
-#import "WormholeEntity.h"
-#import "PlayerEntity.h"
-#import "PlayerEntityLegacyScriptEngine.h"
-#import "OOJavaScriptEngine.h"
-#import "OOJSFunction.h"
-#import "OOJSScript.h"
-#import "EntityOOJavaScriptExtensions.h"	// OOJSEntityJSValue (bead oo-9ht.39.16)
-#import "OOShipGroup.h"
+#include "StationEntity.h"
+#include "OOSunEntity.h"
+#include "OOPlanetEntity.h"
+#include "WormholeEntity.h"
+#include "PlayerEntity.h"
+#include "PlayerEntityLegacyScriptEngine.h"
+#include "OOJavaScriptEngine.h"
+#include "OOJSFunction.h"
+#include "OOJSScript.h"
+#include "EntityOOJavaScriptExtensions.h"	// OOJSEntityJSValue (bead oo-9ht.39.16)
+#include "OOShipGroup.h"
 
-#import "OOStringExpander.h"
-#import "OOStringParsing.h"
-#import "OOEntityFilterPredicate.h"
-#import "OOConstToString.h"
-#import "OOConstToJSString.h"
-#import "ResourceManager.h"
-#import "GameController.h"
-#import "OOCallByName.h"	// oo::ScheduleEntityCall
+#include "OOStringExpander.h"
+#include "OOStringParsing.h"
+#include "OOEntityFilterPredicate.h"
+#include "OOConstToString.h"
+#include "OOConstToJSString.h"
+#include "ResourceManager.h"
+#include "GameController.h"
+#include "OOCallByName.h"	// oo::ScheduleEntityCall
 
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/Log.hpp"
-#import "OOPListGameTypes.h"
+#include "OOPListGameTypes.h"
 #include "oofnd/String.hpp"
 #include "oofnd/Log.hpp"
-#import "OOObjCPList.h"
+#include "OOObjCPList.h"
 
 
 namespace

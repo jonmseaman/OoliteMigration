@@ -33,9 +33,9 @@ MA 02110-1301, USA.
 
 */
 
-#import "ShipEntity.h"
-#import "OOShipGroup.h"
-#import "OOMaths.h"
+#include "ShipEntity.h"
+#include "OOShipGroup.h"
+#include "OOMaths.h"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOAssert.h"

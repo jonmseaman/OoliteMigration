@@ -12,10 +12,10 @@ This code is hereby placed in the public domain.
 
 */
 
-#import "OOWeakReference.h"
-#import "OODescription.h"
-#import "NSObjectOOExtensions.h"
-#import "OOJavaScriptEngine.h"	// OOObject (OOJavaScript)
+#include "OOWeakReference.h"
+#include "OODescription.h"
+#include "NSObjectOOExtensions.h"
+#include "OOJavaScriptEngine.h"	// OOObject (OOJavaScript)
 
 #include "oofnd/objc/OOObjCPeer.h"
 

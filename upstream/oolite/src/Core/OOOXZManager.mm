@@ -24,29 +24,29 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOOXZManager.h"
-#import <objc/runtime.h>
-#import <objc/objc-arc.h>
-#import "OOPListParsing.h"
-#import "OOStringParsing.h"
-#import "ResourceManager.h"
-#import "OOCacheManager.h"
-#import "Universe.h"
-#import "GuiDisplayGen.h"
-#import "PlayerEntity.h"
-#import "PlayerEntitySound.h"
-#import "OOColor.h"
-#import "OOXMLExtensions.h"
-#import "OOStringExpander.h"
-#import "MyOpenGLView.h"
-#import "GameController.h"
+#include "OOOXZManager.h"
+#include <objc/runtime.h>
+#include <objc/objc-arc.h>
+#include "OOPListParsing.h"
+#include "OOStringParsing.h"
+#include "ResourceManager.h"
+#include "OOCacheManager.h"
+#include "Universe.h"
+#include "GuiDisplayGen.h"
+#include "PlayerEntity.h"
+#include "PlayerEntitySound.h"
+#include "OOColor.h"
+#include "OOXMLExtensions.h"
+#include "OOStringExpander.h"
+#include "MyOpenGLView.h"
+#include "GameController.h"
 
 #include <algorithm>
 #include <optional>
 #include <string>
 #include <vector>
 
-#import "unzip.h"
+#include "unzip.h"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/Http.hpp"
 #include "oofnd/ResourcePaths.hpp"
@@ -55,7 +55,7 @@ MA 02110-1301, USA.
 #include "oofnd/Defaults.hpp"
 #include "oofnd/PListParsing.hpp"
 
-#import "OOManifestProperties.h"
+#include "OOManifestProperties.h"
 #include "oofnd/Date.hpp"
 
 /* The URL for the manifest.plist array. */

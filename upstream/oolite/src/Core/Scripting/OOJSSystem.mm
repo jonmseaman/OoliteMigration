@@ -23,33 +23,33 @@
  
  */
 
-#import "OOJSSystem.h"
-#import "OOSunEntity.h"	// the sun is C++ since bead oo-9ht.111
-#import "OOJavaScriptEngine.h"
+#include "OOJSSystem.h"
+#include "OOSunEntity.h"	// the sun is C++ since bead oo-9ht.111
+#include "OOJavaScriptEngine.h"
 
-#import "OOJSVector.h"
-#import "OOJSQuaternion.h"
-#import "OOJSEntity.h"
-#import "OOJSPlayer.h"
-#import "Universe.h"
-#import "OOPlanetEntity.h"
-#import "PlayerEntityScriptMethods.h"
-#import "OOJSSystemInfo.h"
-#import "PlayerEntityLegacyScriptEngine.h"
-#import "ShipEntity.h"
-#import "StationEntity.h"
+#include "OOJSVector.h"
+#include "OOJSQuaternion.h"
+#include "OOJSEntity.h"
+#include "OOJSPlayer.h"
+#include "Universe.h"
+#include "OOPlanetEntity.h"
+#include "PlayerEntityScriptMethods.h"
+#include "OOJSSystemInfo.h"
+#include "PlayerEntityLegacyScriptEngine.h"
+#include "ShipEntity.h"
+#include "StationEntity.h"
 
-#import "OOConstToString.h"
-#import "OOConstToJSString.h"
-#import "OOEntityFilterPredicate.h"
-#import "OOJSPopulatorDefinition.h"
-#import "OOJSScript.h"
-#import "OODebugStandards.h"
-#import "EntityOOJavaScriptExtensions.h"
+#include "OOConstToString.h"
+#include "OOConstToJSString.h"
+#include "OOEntityFilterPredicate.h"
+#include "OOJSPopulatorDefinition.h"
+#include "OOJSScript.h"
+#include "OODebugStandards.h"
+#include "EntityOOJavaScriptExtensions.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
-#import "OOObjCPList.h"
+#include "OOObjCPList.h"
 #include "oofnd/String.hpp"
 
 /*

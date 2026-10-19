@@ -23,8 +23,8 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOPlasmaBurstEntity.h"
-#import "Universe.h"
+#include "OOPlasmaBurstEntity.h"
+#include "Universe.h"
 
 
 #define kPlasmaBurstInitialSize		64.0f

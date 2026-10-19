@@ -23,12 +23,12 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOFlashEffectEntity.h"
-#import "Universe.h"
-#import "PlayerEntity.h"
-#import "OOColor.h"
-#import "OOTexture.h"
-#import "OOGraphicsResetManager.h"
+#include "OOFlashEffectEntity.h"
+#include "Universe.h"
+#include "PlayerEntity.h"
+#include "OOColor.h"
+#include "OOTexture.h"
+#include "OOGraphicsResetManager.h"
 
 
 #define kLaserFlashDuration			0.3f

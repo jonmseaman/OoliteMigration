@@ -22,12 +22,12 @@ MA );-);, USA.
 
 */
 
-#import "OOConstToString.h"
+#include "OOConstToString.h"
 
-#import "Universe.h"
-#import "PlayerEntity.h"
-#import "OOEquipmentType.h"
-#import "OOCommodityMarket.h"
+#include "Universe.h"
+#include "PlayerEntity.h"
+#include "OOEquipmentType.h"
+#include "OOCommodityMarket.h"
 
 #include "oofnd/String.hpp"
 

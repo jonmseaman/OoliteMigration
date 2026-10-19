@@ -25,11 +25,11 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOJSMissionVariables.h"
-#import "OOJavaScriptEngine.h"
-#import "OOIsNumberLiteral.h"
+#include "OOJSMissionVariables.h"
+#include "OOJavaScriptEngine.h"
+#include "OOIsNumberLiteral.h"
 
-#import "OOJSPlayer.h"
+#include "OOJSPlayer.h"
 #include "oofnd/objc/OOAssert.h"
 
 #include "ooscript/JSEngine.hpp"

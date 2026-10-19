@@ -27,11 +27,11 @@ SOFTWARE.
 
 */
 
-#import "OODebugStandards.h"
+#include "OODebugStandards.h"
 #include "oofnd/Log.hpp"
 #include "oofnd/Defaults.hpp"
 #include "oofnd/PListGet.hpp"
-#import "GameController.h"
+#include "GameController.h"
 
 #ifdef NDEBUG
 // in release mode, stubs

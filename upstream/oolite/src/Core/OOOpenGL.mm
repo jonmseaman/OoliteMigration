@@ -22,12 +22,12 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOOpenGL.h"
-#import "OOLogging.h"
-#import "OOMaths.h"
-#import "OOMacroOpenGL.h"
-#import "OOFunctionAttributes.h"
-#import "OOOpenGLExtensionManager.h"
+#include "OOOpenGL.h"
+#include "OOLogging.h"
+#include "OOMaths.h"
+#include "OOMacroOpenGL.h"
+#include "OOFunctionAttributes.h"
+#include "OOOpenGLExtensionManager.h"
 
 #include "oofnd/Log.hpp"
 #include "oofnd/String.hpp"

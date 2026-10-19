@@ -23,17 +23,17 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOCocoa.h"
+#include "OOCocoa.h"
 #include "oofnd/objc/OORuntime.h"
-#import "OOStringExpander.h"
-#import "Universe.h"
-#import "OOJavaScriptEngine.h"
-#import "OOStringParsing.h"
-#import "ResourceManager.h"
-#import "PlayerEntityScriptMethods.h"
-#import "PlayerEntity.h"
-#import "OOCallByName.h"
-#import <objc/objc-arc.h>
+#include "OOStringExpander.h"
+#include "Universe.h"
+#include "OOJavaScriptEngine.h"
+#include "OOStringParsing.h"
+#include "ResourceManager.h"
+#include "PlayerEntityScriptMethods.h"
+#include "PlayerEntity.h"
+#include "OOCallByName.h"
+#include <objc/objc-arc.h>
 
 #include <map>
 #include <optional>

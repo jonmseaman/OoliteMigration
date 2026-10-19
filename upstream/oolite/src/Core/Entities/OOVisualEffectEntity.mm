@@ -23,39 +23,39 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOVisualEffectEntity.h"
+#include "OOVisualEffectEntity.h"
 
-#import "OOMaths.h"
-#import "Universe.h"
-#import "OOShaderMaterial.h"
-#import "OOOpenGLExtensionManager.h"
+#include "OOMaths.h"
+#include "Universe.h"
+#include "OOShaderMaterial.h"
+#include "OOOpenGLExtensionManager.h"
 
-#import "ResourceManager.h"
-#import "OOStringParsing.h"
-#import "OOStringExpander.h"
-#import "OOConstToString.h"
-#import "OOConstToJSString.h"
+#include "ResourceManager.h"
+#include "OOStringParsing.h"
+#include "OOStringExpander.h"
+#include "OOConstToString.h"
+#include "OOConstToJSString.h"
 
-#import "OOMesh.h"
+#include "OOMesh.h"
 
-#import "OOColor.h"
-#import "OOPolygonSprite.h"
-#import "HeadUpDisplay.h"
+#include "OOColor.h"
+#include "OOPolygonSprite.h"
+#include "HeadUpDisplay.h"
 
-#import "OOFlasherEntity.h"
+#include "OOFlasherEntity.h"
 
-#import "OODebugGLDrawing.h"
-#import "OODebugFlags.h"
+#include "OODebugGLDrawing.h"
+#include "OODebugFlags.h"
 
-#import "OOJSScript.h"
-#import "OOJSVisualEffect.h"
+#include "OOJSScript.h"
+#include "OOJSVisualEffect.h"
 
 
-#import "MyOpenGLView.h"
-#import "OOPListGameTypes.h"
+#include "MyOpenGLView.h"
+#include "OOPListGameTypes.h"
 
 #include "oofnd/PListGet.hpp"
-#import "OOObjCPList.h"
+#include "OOObjCPList.h"
 #include "oofnd/String.hpp"
 
 

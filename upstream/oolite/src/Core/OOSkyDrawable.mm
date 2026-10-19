@@ -25,15 +25,15 @@ SOFTWARE.
 
 */
 
-#import "OOSkyDrawable.h"
-#import "ResourceManager.h"
-#import "OOTexture.h"
-#import "GameController.h"
-#import "OOColor.h"
-#import "OOProbabilisticTextureManager.h"
-#import "OOGraphicsResetManager.h"
-#import "Universe.h"
-#import "OOMacroOpenGL.h"
+#include "OOSkyDrawable.h"
+#include "ResourceManager.h"
+#include "OOTexture.h"
+#include "GameController.h"
+#include "OOColor.h"
+#include "OOProbabilisticTextureManager.h"
+#include "OOGraphicsResetManager.h"
+#include "Universe.h"
+#include "OOMacroOpenGL.h"
 
 #include "oofnd/Defaults.hpp"
 #include "oofnd/objc/OOException.h"

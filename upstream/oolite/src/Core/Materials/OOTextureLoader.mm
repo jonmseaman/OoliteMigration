@@ -25,26 +25,26 @@ SOFTWARE.
 
 */
 
-#import "OOPNGTextureLoader.h"
-#import "OOTexture.h"
-#import "OOTextureLoader.h"
-#import "OOFunctionAttributes.h"
-#import "OOMaths.h"
-#import "Universe.h"
-#import "OOTextureScaling.h"
-#import "OOPixMapChannelOperations.h"
-#import "OOConvertCubeMapToLatLong.h"
+#include "OOPNGTextureLoader.h"
+#include "OOTexture.h"
+#include "OOTextureLoader.h"
+#include "OOFunctionAttributes.h"
+#include "OOMaths.h"
+#include "Universe.h"
+#include "OOTextureScaling.h"
+#include "OOPixMapChannelOperations.h"
+#include "OOConvertCubeMapToLatLong.h"
 #include <stdlib.h>
-#import "ResourceManager.h"
-#import "OOOpenGLExtensionManager.h"
-#import "OODebugStandards.h"
+#include "ResourceManager.h"
+#include "OOOpenGLExtensionManager.h"
+#include "OODebugStandards.h"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/Defaults.hpp"
 #include "oofnd/PListGet.hpp"
 
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOAssert.h"
-#import "OOTextureGenerator.h"
+#include "OOTextureGenerator.h"
 
 #include <cstdlib>
 #include <cxxabi.h>

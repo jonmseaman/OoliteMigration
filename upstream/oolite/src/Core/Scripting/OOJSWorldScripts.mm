@@ -23,11 +23,11 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOJSWorldScripts.h"
-#import "OOJavaScriptEngine.h"
-#import "PlayerEntity.h"
-#import "OOJSPlayer.h"
-#import "OOScript.h"
+#include "OOJSWorldScripts.h"
+#include "OOJavaScriptEngine.h"
+#include "PlayerEntity.h"
+#include "OOJSPlayer.h"
+#include "OOScript.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>

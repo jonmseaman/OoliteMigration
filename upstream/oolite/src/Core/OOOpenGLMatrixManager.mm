@@ -24,11 +24,11 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOOpenGLExtensionManager.h"
-#import "OOOpenGLMatrixManager.h"
-#import "MyOpenGLView.h"
-#import "Universe.h"
-#import "OOMacroOpenGL.h"
+#include "OOOpenGLExtensionManager.h"
+#include "OOOpenGLMatrixManager.h"
+#include "MyOpenGLView.h"
+#include "Universe.h"
+#include "OOMacroOpenGL.h"
 
 const char* ooliteStandardMatrixUniforms[] =
 {

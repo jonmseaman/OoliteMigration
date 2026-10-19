@@ -25,9 +25,9 @@ SOFTWARE.
 
 */
 
-#import "OONullTexture.h"
-#import "OOCocoa.h"
-#import "OOTextureInternal.h"
+#include "OONullTexture.h"
+#include "OOCocoa.h"
+#include "OOTextureInternal.h"
 
 
 namespace {

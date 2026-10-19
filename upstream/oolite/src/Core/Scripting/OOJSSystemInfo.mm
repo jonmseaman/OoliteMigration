@@ -22,21 +22,21 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOJSSystemInfo.h"
-#import "OOJavaScriptEngine.h"
-#import "PlayerEntityScriptMethods.h"
-#import "Universe.h"
-#import "OOJSVector.h"
-#import "OOIsNumberLiteral.h"
-#import "OOConstToString.h"
-#import "OOSystemDescriptionManager.h"
-#import "OOCommodities.h"
-#import "OOJSScript.h"
+#include "OOJSSystemInfo.h"
+#include "OOJavaScriptEngine.h"
+#include "PlayerEntityScriptMethods.h"
+#include "Universe.h"
+#include "OOJSVector.h"
+#include "OOIsNumberLiteral.h"
+#include "OOConstToString.h"
+#include "OOSystemDescriptionManager.h"
+#include "OOCommodities.h"
+#include "OOJSScript.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
 #include "oofnd/objc/OOAssert.h"
-#import "OOObjCPList.h"
+#include "OOObjCPList.h"
 #include "oofnd/String.hpp"
 
 /*

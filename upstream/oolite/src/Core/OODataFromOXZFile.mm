@@ -27,8 +27,8 @@ SOFTWARE.
 
 */
 
-#import "OOCocoa.h"
-#import "unzip.h"
+#include "OOCocoa.h"
+#include "unzip.h"
 
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/String.hpp"

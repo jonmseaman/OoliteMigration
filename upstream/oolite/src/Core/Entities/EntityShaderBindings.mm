@@ -30,16 +30,16 @@ MA 02110-1301, USA.
 
 */
 
-#import "Entity.h"
-#import "PlayerEntityScriptMethods.h"
-#import "PlayerEntityLegacyScriptEngine.h"
-#import "ShipEntity.h"
-#import "PlayerEntity.h"
-#import "ProxyPlayerEntity.h"
-#import "OOPlanetEntity.h"
-#import "OOVisualEffectEntity.h"
-#import "OOWaypointEntity.h"
-#import "OOShaderUniformMethodType.h"	// the shader binding member table (beads oo-9ht.158, oo-9ht.39.6.1)
+#include "Entity.h"
+#include "PlayerEntityScriptMethods.h"
+#include "PlayerEntityLegacyScriptEngine.h"
+#include "ShipEntity.h"
+#include "PlayerEntity.h"
+#include "ProxyPlayerEntity.h"
+#include "OOPlanetEntity.h"
+#include "OOVisualEffectEntity.h"
+#include "OOWaypointEntity.h"
+#include "OOShaderUniformMethodType.h"	// the shader binding member table (beads oo-9ht.158, oo-9ht.39.6.1)
 
 #include <array>
 #include <string>

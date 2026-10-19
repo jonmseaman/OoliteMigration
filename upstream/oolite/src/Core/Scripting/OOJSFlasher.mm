@@ -21,15 +21,15 @@ MA 02110-1301, USA.
 
  */
 
-#import "OOFlasherEntity.h"
-#import "OOColor.h"
-#import "OOJSFlasher.h"
-#import "OOJSEntity.h"
-#import "OOJSVector.h"
-#import "OOJavaScriptEngine.h"
-#import "EntityOOJavaScriptExtensions.h"
-#import "ShipEntity.h"
-#import "OOVisualEffectEntity.h"
+#include "OOFlasherEntity.h"
+#include "OOColor.h"
+#include "OOJSFlasher.h"
+#include "OOJSEntity.h"
+#include "OOJSVector.h"
+#include "OOJavaScriptEngine.h"
+#include "EntityOOJavaScriptExtensions.h"
+#include "ShipEntity.h"
+#include "OOVisualEffectEntity.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>

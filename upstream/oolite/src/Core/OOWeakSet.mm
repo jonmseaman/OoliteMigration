@@ -7,7 +7,7 @@ This code is hereby placed in the public domain.
 
 */
 
-#import "OOWeakSet.h"
+#include "OOWeakSet.h"
 
 
 

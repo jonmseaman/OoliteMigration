@@ -30,24 +30,24 @@ SOFTWARE.
 #ifndef NDEBUG
 
 
-#import "OODebugMonitor.h"
-#import "ResourceManager.h"
+#include "OODebugMonitor.h"
+#include "ResourceManager.h"
 
-#import "OOJSConsole.h"
-#import "OOJSScript.h"
-#import "OOObjCPList.h"
-#import "OOJSEngineTimeManagement.h"
-#import "OOJSSpecialFunctions.h"
+#include "OOJSConsole.h"
+#include "OOJSScript.h"
+#include "OOObjCPList.h"
+#include "OOJSEngineTimeManagement.h"
+#include "OOJSSpecialFunctions.h"
 
-#import "OOTexture.h"
+#include "OOTexture.h"
 #include "oofnd/String.hpp"
 #include "oofnd/Log.hpp"
 #include "oofnd/Defaults.hpp"
 #include "oofnd/PListGet.hpp"
 #include "oofnd/Encoding.hpp"
 #include "oofnd/FileSystem.hpp"
-#import "OOConcreteTexture.h"
-#import "OODrawable.h"
+#include "OOConcreteTexture.h"
+#include "OODrawable.h"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/Notification.hpp"
 #include <map>

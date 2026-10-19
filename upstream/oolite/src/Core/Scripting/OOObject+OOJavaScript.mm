@@ -29,10 +29,10 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOJavaScriptEngine.h"
-#import "ResourceManager.h"
-#import "OOWeakReference.h"
-#import "OOVector.h"
+#include "OOJavaScriptEngine.h"
+#include "ResourceManager.h"
+#include "OOWeakReference.h"
+#include "OOVector.h"
 #include "oofnd/objc/OOException.h"
 
 

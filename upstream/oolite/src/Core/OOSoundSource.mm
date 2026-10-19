@@ -25,9 +25,9 @@ SOFTWARE.
 
 */
 
-#import "OOSoundInternal.h"
-#import "OOLogging.h"
-#import "OOMaths.h"
+#include "OOSoundInternal.h"
+#include "OOLogging.h"
+#include "OOMaths.h"
 
 #include "oofnd/String.hpp"
 

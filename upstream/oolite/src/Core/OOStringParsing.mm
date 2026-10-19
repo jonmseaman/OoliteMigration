@@ -22,18 +22,18 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOStringParsing.h"
-#import "OOLogging.h"
-#import "legacy_random.h"
-#import "Universe.h"
-#import "PlayerEntity.h"
-#import "PlayerEntityLegacyScriptEngine.h"
-#import "OOFunctionAttributes.h"
-#import "ResourceManager.h"
-#import "HeadUpDisplay.h"
+#include "OOStringParsing.h"
+#include "OOLogging.h"
+#include "legacy_random.h"
+#include "Universe.h"
+#include "PlayerEntity.h"
+#include "PlayerEntityLegacyScriptEngine.h"
+#include "OOFunctionAttributes.h"
+#include "ResourceManager.h"
+#include "HeadUpDisplay.h"
 
-#import "OOJavaScriptEngine.h"
-#import "OOJSEngineTimeManagement.h"
+#include "OOJavaScriptEngine.h"
+#include "OOJSEngineTimeManagement.h"
 
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/Scanner.hpp"

@@ -22,12 +22,12 @@ MA 02110-1301, USA.
 
 */
 
-#import "PlayerEntityStickMapper.h"
-#import "PlayerEntityControls.h"
-#import "PlayerEntityStickProfile.h"
-#import "OOJoystickManager.h"
-#import "OOTexture.h"
-#import "HeadUpDisplay.h"
+#include "PlayerEntityStickMapper.h"
+#include "PlayerEntityControls.h"
+#include "PlayerEntityStickProfile.h"
+#include "OOJoystickManager.h"
+#include "OOTexture.h"
+#include "HeadUpDisplay.h"
 #include "oofnd/Defaults.hpp"
 
 #include "oofnd/PListGet.hpp"

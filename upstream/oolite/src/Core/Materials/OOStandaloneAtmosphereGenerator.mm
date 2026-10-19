@@ -24,8 +24,8 @@
 	MA 02110-1301, USA.
 */
 
-#import "OOCocoa.h"
-#import "OOStellarBody.h"
+#include "OOCocoa.h"
+#include "OOStellarBody.h"
 
 
 
@@ -34,20 +34,20 @@
 
 #define ALBEDO_FACTOR		0.7f	// Overall darkening of everything, allowing better contrast for snow and specular highlights.
 
-#import "OOStandaloneAtmosphereGenerator.h"
-#import "OOColor.h"
+#include "OOStandaloneAtmosphereGenerator.h"
+#include "OOColor.h"
 
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOAssert.h"
-#import "OOObjCPList.h"
+#include "OOObjCPList.h"
 
 #ifndef TEXGEN_TEST_RIG
-#import "OOTexture.h"
-#import "Universe.h"
+#include "OOTexture.h"
+#include "Universe.h"
 #endif
 
 #if DEBUG_DUMP
-#import "MyOpenGLView.h"
+#include "MyOpenGLView.h"
 #endif
 
 

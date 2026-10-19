@@ -23,11 +23,11 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOCheckPListSyntaxVerifierStage.h"
+#include "OOCheckPListSyntaxVerifierStage.h"
 
 #if OO_OXP_VERIFIER_ENABLED
 
-#import "OOFileScannerVerifierStage.h"
+#include "OOFileScannerVerifierStage.h"
 
 static const char * const kStageName	= "Checking plist well-formedness";
 

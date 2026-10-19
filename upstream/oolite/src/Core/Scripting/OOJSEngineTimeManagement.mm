@@ -25,11 +25,11 @@ SOFTWARE.
 
 */
 
-#import "OOJSEngineTimeManagement.h"
-#import "OOJavaScriptEngine.h"
-#import "OOProfilingStopwatch.h"
-#import "OOJSScript.h"
-#import "OOLoggingExtended.h"
+#include "OOJSEngineTimeManagement.h"
+#include "OOJavaScriptEngine.h"
+#include "OOProfilingStopwatch.h"
+#include "OOJSScript.h"
+#include "OOLoggingExtended.h"
 #include "oofnd/Log.hpp"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Thread.hpp"
@@ -43,7 +43,7 @@ SOFTWARE.
 #define __block __glibc_block
 #endif
 #include <unistd.h>
-#import "OOObjCPList.h"
+#include "OOObjCPList.h"
 #include "oofnd/String.hpp"
 
 #if OOLITE_LINUX

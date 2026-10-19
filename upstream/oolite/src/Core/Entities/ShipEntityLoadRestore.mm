@@ -23,18 +23,18 @@ MA 02110-1301, USA.
 
 */
 
-#import "ShipEntityLoadRestore.h"
-#import "Universe.h"
-#import "StationEntity.h"
+#include "ShipEntityLoadRestore.h"
+#include "Universe.h"
+#include "StationEntity.h"
 
-#import "OOShipRegistry.h"
-#import "OORoleSet.h"
-#import "OOConstToString.h"
-#import "OOShipGroup.h"
-#import "OOEquipmentType.h"
-#import "AI.h"
-#import "ShipEntityAI.h"
-#import "OOPListGameTypes.h"
+#include "OOShipRegistry.h"
+#include "OORoleSet.h"
+#include "OOConstToString.h"
+#include "OOShipGroup.h"
+#include "OOEquipmentType.h"
+#include "AI.h"
+#include "ShipEntityAI.h"
+#include "OOPListGameTypes.h"
 
 #include "oofnd/PListGet.hpp"
 #include "oofnd/objc/OOAssert.h"

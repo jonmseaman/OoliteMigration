@@ -25,15 +25,15 @@ SOFTWARE.
 
 */
 
-#import "OODefaultShaderSynthesizer.h"
+#include "OODefaultShaderSynthesizer.h"
 #include "oofnd/objc/OORuntime.h"
-#import <objc/objc-arc.h>
-#import "OOMesh.h"
-#import "OOTexture.h"
-#import "OOColor.h"
+#include <objc/objc-arc.h>
+#include "OOMesh.h"
+#include "OOTexture.h"
+#include "OOColor.h"
 
-#import "OOMaterialSpecifier.h"
-#import "ResourceManager.h"
+#include "OOMaterialSpecifier.h"
+#include "ResourceManager.h"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Log.hpp"

@@ -22,13 +22,13 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOJSSoundSource.h"
-#import "OOJSSound.h"
-#import "OOJSVector.h"
-#import "OOJavaScriptEngine.h"
-#import "OOJSPrivateObject.h"
-#import "OOSound.h"
-#import "ResourceManager.h"
+#include "OOJSSoundSource.h"
+#include "OOJSSound.h"
+#include "OOJSVector.h"
+#include "OOJavaScriptEngine.h"
+#include "OOJSPrivateObject.h"
+#include "OOSound.h"
+#include "ResourceManager.h"
 
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/String.hpp"

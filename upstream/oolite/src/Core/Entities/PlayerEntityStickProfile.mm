@@ -22,16 +22,16 @@ MA 02110-1301, USA.
 
 */
 
-#import "PlayerEntity.h"
-#import "PlayerEntityStickProfile.h"
-#import "PlayerEntityStickMapper.h"
-#import "OOJoystickManager.h"
-#import "OOJoystickProfile.h"
-#import "PlayerEntityControls.h"
-#import "PlayerEntitySound.h"
-#import "OOOpenGL.h"
-#import "OOMacroOpenGL.h"
-#import "HeadUpDisplay.h"
+#include "PlayerEntity.h"
+#include "PlayerEntityStickProfile.h"
+#include "PlayerEntityStickMapper.h"
+#include "OOJoystickManager.h"
+#include "OOJoystickProfile.h"
+#include "PlayerEntityControls.h"
+#include "PlayerEntitySound.h"
+#include "OOOpenGL.h"
+#include "OOMacroOpenGL.h"
+#include "HeadUpDisplay.h"
 
 #include "oofnd/String.hpp"
 

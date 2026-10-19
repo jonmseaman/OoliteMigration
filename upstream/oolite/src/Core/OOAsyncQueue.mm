@@ -28,9 +28,9 @@ SOFTWARE.
 
 #include <assert.h>
 
-#import "OOAsyncQueue.h"
-#import "OOFunctionAttributes.h"
-#import "OOLogging.h"
+#include "OOAsyncQueue.h"
+#include "OOFunctionAttributes.h"
+#include "OOLogging.h"
 #include <stdlib.h>
 
 #include "oofnd/String.hpp"

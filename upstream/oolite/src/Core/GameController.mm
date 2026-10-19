@@ -22,28 +22,28 @@ MA 02110-1301, USA.
 
 */
 
-#import "GameController.h"
-#import <objc/objc-arc.h>
-#import "Universe.h"
-#import "ResourceManager.h"
-#import "MyOpenGLView.h"
-#import "OOSound.h"
-#import "OOOpenGL.h"
-#import "PlayerEntityLoadSave.h"
+#include "GameController.h"
+#include <objc/objc-arc.h>
+#include "Universe.h"
+#include "ResourceManager.h"
+#include "MyOpenGLView.h"
+#include "OOSound.h"
+#include "OOOpenGL.h"
+#include "PlayerEntityLoadSave.h"
 #include <stdlib.h>
-#import "OOOXPVerifier.h"
-#import "OOLoggingExtended.h"
-#import "OOLogOutputHandler.h"
-#import "OODebugFlags.h"
-#import "OOJSFrameCallbacks.h"
-#import "OOOpenGLExtensionManager.h"
-#import "OOOpenALController.h"
-#import "OODebugSupport.h"
-#import "legacy_random.h"
-#import "OOOXZManager.h"
-#import "OOOpenGLMatrixManager.h"
+#include "OOOXPVerifier.h"
+#include "OOLoggingExtended.h"
+#include "OOLogOutputHandler.h"
+#include "OODebugFlags.h"
+#include "OOJSFrameCallbacks.h"
+#include "OOOpenGLExtensionManager.h"
+#include "OOOpenALController.h"
+#include "OODebugSupport.h"
+#include "legacy_random.h"
+#include "OOOXZManager.h"
+#include "OOOpenGLMatrixManager.h"
 #ifndef NDEBUG
-#import "OODebugTCPConsoleClient.h"
+#include "OODebugTCPConsoleClient.h"
 #endif
 #include "oofnd/Date.hpp"
 #include "oofnd/StdLib.hpp"
@@ -68,7 +68,7 @@ MA 02110-1301, USA.
 
 static void SetUpSparkle(void);
 #elif (OOLITE_GNUSTEP && !defined(NDEBUG))
-#import "OODebugMonitor.h"
+#include "OODebugMonitor.h"
 #endif
 
 

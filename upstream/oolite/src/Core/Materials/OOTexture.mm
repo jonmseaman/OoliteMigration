@@ -24,22 +24,22 @@
 	
 */
 
-#import "OOTexture.h"
-#import "OOTextureInternal.h"
-#import "OOConcreteTexture.h"
-#import "OONullTexture.h"
+#include "OOTexture.h"
+#include "OOTextureInternal.h"
+#include "OOConcreteTexture.h"
+#include "OONullTexture.h"
 
-#import "OOTextureLoader.h"
-#import "OOTextureGenerator.h"
+#include "OOTextureLoader.h"
+#include "OOTextureGenerator.h"
 
-#import "Universe.h"
-#import "ResourceManager.h"
-#import "OOOpenGLExtensionManager.h"
-#import "OOMacroOpenGL.h"
-#import "OOCPUInfo.h"
-#import "OOCache.h"
-#import "OOObjCPList.h"
-#import "OOPixMap.h"
+#include "Universe.h"
+#include "ResourceManager.h"
+#include "OOOpenGLExtensionManager.h"
+#include "OOMacroOpenGL.h"
+#include "OOCPUInfo.h"
+#include "OOCache.h"
+#include "OOObjCPList.h"
+#include "OOPixMap.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Defaults.hpp"

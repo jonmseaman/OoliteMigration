@@ -22,23 +22,23 @@
  
  */
 
-#import "OOStellarBody.h"
+#include "OOStellarBody.h"
 
 
-#import "OOPlanetDrawable.h"
-#import "OOPlanetData.h"
-#import "OOSingleTextureMaterial.h"
-#import "OOTexture.h"	// allTextures() destroys oo::Ref<OOTexture>s (bead oo-9ht.99)
-#import "OOOpenGL.h"
-#import "OOMacroOpenGL.h"
-#import "Universe.h"
-#import "MyOpenGLView.h"
+#include "OOPlanetDrawable.h"
+#include "OOPlanetData.h"
+#include "OOSingleTextureMaterial.h"
+#include "OOTexture.h"	// allTextures() destroys oo::Ref<OOTexture>s (bead oo-9ht.99)
+#include "OOOpenGL.h"
+#include "OOMacroOpenGL.h"
+#include "Universe.h"
+#include "MyOpenGLView.h"
 #include "oofnd/Log.hpp"
 
 #ifndef NDEBUG
-#import "Entity.h"
-#import "OODebugGLDrawing.h"
-#import "OODebugFlags.h"
+#include "Entity.h"
+#include "OODebugGLDrawing.h"
+#include "OODebugFlags.h"
 #endif
 
 

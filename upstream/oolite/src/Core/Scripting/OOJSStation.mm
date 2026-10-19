@@ -21,27 +21,27 @@ MA 02110-1301, USA.
 
  */
 
-#import "OOJSStation.h"
-#import "OOJSEntity.h"
-#import "OOJSShip.h"
-#import "OOJSPlayer.h"
-#import "PlayerEntityContracts.h"
-#import "OOJavaScriptEngine.h"
-#import "OOJSInterfaceDefinition.h"
+#include "OOJSStation.h"
+#include "OOJSEntity.h"
+#include "OOJSShip.h"
+#include "OOJSPlayer.h"
+#include "PlayerEntityContracts.h"
+#include "OOJavaScriptEngine.h"
+#include "OOJSInterfaceDefinition.h"
 
-#import "OOEquipmentType.h"
-#import "OOCommodities.h"
-#import "OOCommodityMarket.h"
-#import "OOShipRegistry.h"
-#import "OOConstToString.h"
-#import "StationEntity.h"
-#import "GameController.h"
+#include "OOEquipmentType.h"
+#include "OOCommodities.h"
+#include "OOCommodityMarket.h"
+#include "OOShipRegistry.h"
+#include "OOConstToString.h"
+#include "StationEntity.h"
+#include "GameController.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
 #include <cstdint>
 #include "oofnd/objc/OOException.h"
-#import "OOObjCPList.h"
+#include "OOObjCPList.h"
 #include "oofnd/String.hpp"
 
 /*

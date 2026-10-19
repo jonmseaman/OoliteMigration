@@ -27,9 +27,9 @@ SOFTWARE.
 */
 
 
-#import "OOCocoa.h"
-#import "OOLogOutputHandler.h"
-#import "OOLogging.h"
+#include "OOCocoa.h"
+#include "OOLogOutputHandler.h"
+#include "OOLogging.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include "oofnd/Date.hpp"

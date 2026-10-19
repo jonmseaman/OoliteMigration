@@ -28,14 +28,14 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOParticleSystem.h"
+#include "OOParticleSystem.h"
 
-#import "Universe.h"
-#import "OOTexture.h"
-#import "PlayerEntity.h"
-#import "OOLightParticleEntity.h"
-#import "OOMacroOpenGL.h"
-#import "MyOpenGLView.h"
+#include "Universe.h"
+#include "OOTexture.h"
+#include "PlayerEntity.h"
+#include "OOLightParticleEntity.h"
+#include "OOMacroOpenGL.h"
+#include "MyOpenGLView.h"
 
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOAssert.h"

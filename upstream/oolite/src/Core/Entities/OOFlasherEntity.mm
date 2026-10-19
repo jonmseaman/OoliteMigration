@@ -23,11 +23,11 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOFlasherEntity.h"
-#import "Universe.h"
-#import "PlayerEntity.h"
-#import "OOColor.h"
-#import "OOJSFlasher.h"
+#include "OOFlasherEntity.h"
+#include "Universe.h"
+#include "PlayerEntity.h"
+#include "OOColor.h"
+#include "OOJSFlasher.h"
 
 #include "oofnd/PListGet.hpp"
 

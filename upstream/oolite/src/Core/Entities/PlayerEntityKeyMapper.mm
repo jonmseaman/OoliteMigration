@@ -22,14 +22,14 @@ MA 02110-1301, USA.
 
 */ 
 
-#import "PlayerEntityKeyMapper.h"
-#import "PlayerEntityControls.h"
-#import "PlayerEntityScriptMethods.h"
-#import "OOTexture.h"
-#import "HeadUpDisplay.h"
-#import "ResourceManager.h"
-#import "GameController.h"
-#import "OOEquipmentType.h"
+#include "PlayerEntityKeyMapper.h"
+#include "PlayerEntityControls.h"
+#include "PlayerEntityScriptMethods.h"
+#include "OOTexture.h"
+#include "HeadUpDisplay.h"
+#include "ResourceManager.h"
+#include "GameController.h"
+#include "OOEquipmentType.h"
 #include "oofnd/Defaults.hpp"
 #include "oofnd/PListGet.hpp"
 #include "oofnd/StdLib.hpp"

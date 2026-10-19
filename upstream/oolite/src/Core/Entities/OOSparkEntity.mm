@@ -23,10 +23,10 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOSparkEntity.h"
-#import "Universe.h"
-#import "PlayerEntity.h"
-#import "OOColor.h"
+#include "OOSparkEntity.h"
+#include "Universe.h"
+#include "PlayerEntity.h"
+#include "OOColor.h"
 
 
 oo::Ref<OOSparkEntity> OOSparkEntity::sparkWithPosition(HPVector pos,

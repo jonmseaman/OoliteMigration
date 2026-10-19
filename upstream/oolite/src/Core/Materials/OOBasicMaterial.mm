@@ -25,12 +25,12 @@ SOFTWARE.
 
 */
 
-#import "OOBasicMaterial.h"
-#import "OOFunctionAttributes.h"
-#import "Universe.h"
-#import "OOMaterialSpecifier.h"
-#import "OOTexture.h"
-#import "OOObjCPList.h"
+#include "OOBasicMaterial.h"
+#include "OOFunctionAttributes.h"
+#include "Universe.h"
+#include "OOMaterialSpecifier.h"
+#include "OOTexture.h"
+#include "OOObjCPList.h"
 
 #include <typeinfo>
 

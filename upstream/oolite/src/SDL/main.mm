@@ -24,12 +24,12 @@ MA 02110-1301, USA.
 
 
 #ifdef GNUSTEP_BASE_LIBRARY
-#import <objc/runtime.h>
-#import <objc/objc-arc.h>
-#import "GameController.h"
+#include <objc/runtime.h>
+#include <objc/objc-arc.h>
+#include "GameController.h"
 #include "oofnd/Process.hpp"
 #include "oofnd/String.hpp"
-#import "OOLoggingExtended.h"
+#include "OOLoggingExtended.h"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/objc/OOObject.h"
 

@@ -25,11 +25,11 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOEntityFilterPredicate.h"
-#import "Entity.h"
-#import "ShipEntity.h"
-#import "OOPlanetEntity.h"
-#import "OORoleSet.h"
+#include "OOEntityFilterPredicate.h"
+#include "Entity.h"
+#include "ShipEntity.h"
+#include "OOPlanetEntity.h"
+#include "OORoleSet.h"
 
 
 BOOL YESPredicate(Entity * /*entity*/, void * /*parameter*/)

@@ -22,8 +22,8 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOCacheManager.h"
-#import "OOJavaScriptEngine.h"
+#include "OOCacheManager.h"
+#include "OOJavaScriptEngine.h"
 
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/PListParsing.hpp"
@@ -51,10 +51,10 @@ MA 02110-1301, USA.
 
 
 #if WRITE_ASYNC
-#import "OOAsyncWorkManager.h"
+#include "OOAsyncWorkManager.h"
 #endif
 #if PROFILE_WRITES
-#import "OOProfilingStopwatch.h"
+#include "OOProfilingStopwatch.h"
 #endif
 #include "oofnd/objc/OOAssert.h"
 

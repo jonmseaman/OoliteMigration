@@ -25,7 +25,7 @@ SOFTWARE.
 
 */
 
-#import "OOPixMap.h"
+#include "OOPixMap.h"
 
 #include "oofnd/String.hpp"
 
@@ -140,8 +140,8 @@ bool OOExpandPixMap(OOPixMap *ioPixMap, size_t desiredSize)
 
 #ifndef NDEBUG
 
-#import "Universe.h"
-#import "MyOpenGLView.h"
+#include "Universe.h"
+#include "MyOpenGLView.h"
 
 
 void OODumpPixMap(OOPixMap pixMap, const std::string &name)

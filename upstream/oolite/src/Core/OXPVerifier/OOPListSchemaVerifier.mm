@@ -25,22 +25,22 @@ SOFTWARE.
 
 */
 
-#import "OOPListSchemaVerifier.h"
+#include "OOPListSchemaVerifier.h"
 #include "oofnd/objc/OORuntime.h"
-#import <objc/runtime.h>
-#import <objc/objc-arc.h>
-#import "OOObjCPList.h"
+#include <objc/runtime.h>
+#include <objc/objc-arc.h>
+#include "OOObjCPList.h"
 
 #if OO_OXP_VERIFIER_ENABLED
 
-#import "OOLoggingExtended.h"
+#include "OOLoggingExtended.h"
 #include "oofnd/Log.hpp"
-#import "OOMaths.h"
+#include "OOMaths.h"
 #include "oofnd/Defaults.hpp"
 #include "oofnd/String.hpp"
 #include <limits.h>
 #include "oofnd/objc/OOException.h"
-#import "OOPListGameTypes.h"
+#include "OOPListGameTypes.h"
 
 
 #define PLIST_VERIFIER_DEBUG_DUMP_ENABLED		1

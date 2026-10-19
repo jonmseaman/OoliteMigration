@@ -21,13 +21,13 @@ MA 02110-1301, USA.
 
  */
 
-#import "OOExhaustPlumeEntity.h"
-#import "OOJSExhaustPlume.h"
-#import "OOJSEntity.h"
-#import "OOJSVector.h"
-#import "OOJavaScriptEngine.h"
-#import "EntityOOJavaScriptExtensions.h"
-#import "ShipEntity.h"
+#include "OOExhaustPlumeEntity.h"
+#include "OOJSExhaustPlume.h"
+#include "OOJSEntity.h"
+#include "OOJSVector.h"
+#include "OOJavaScriptEngine.h"
+#include "EntityOOJavaScriptExtensions.h"
+#include "ShipEntity.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>

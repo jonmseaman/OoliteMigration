@@ -23,13 +23,13 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOShipGroup.h"
-#import "OOJSShipGroup.h"
-#import "OOJavaScriptEngine.h"
-#import "OOJSEntity.h"
-#import "OOObjCPList.h"
-#import "OOShipGroup.h"
-#import "Universe.h"
+#include "OOShipGroup.h"
+#include "OOJSShipGroup.h"
+#include "OOJavaScriptEngine.h"
+#include "OOJSEntity.h"
+#include "OOObjCPList.h"
+#include "OOShipGroup.h"
+#include "Universe.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>

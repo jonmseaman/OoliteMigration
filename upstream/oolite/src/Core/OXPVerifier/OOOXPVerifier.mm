@@ -36,9 +36,9 @@ SOFTWARE.
 	see "verifier design.txt".
 */
 
-#import "OOOXPVerifier.h"
-#import <objc/runtime.h>
-#import <objc/objc-arc.h>
+#include "OOOXPVerifier.h"
+#include <objc/runtime.h>
+#include <objc/objc-arc.h>
 
 #if OO_OXP_VERIFIER_ENABLED
 
@@ -59,13 +59,13 @@ SOFTWARE.
 #include <tchar.h>
 #endif
 
-#import "OOOXPVerifierStage.h"
-#import "OOLoggingExtended.h"
+#include "OOOXPVerifierStage.h"
+#include "OOLoggingExtended.h"
 #include "oofnd/Log.hpp"
-#import "ResourceManager.h"
-#import "GameController.h"
-#import "OOCacheManager.h"
-#import "OODebugStandards.h"
+#include "ResourceManager.h"
+#include "GameController.h"
+#include "OOCacheManager.h"
+#include "OODebugStandards.h"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/Process.hpp"
 #include "oofnd/objc/OOException.h"
@@ -76,14 +76,14 @@ SOFTWARE.
 #include "oofnd/Defaults.hpp"
 #include "oofnd/ResourcePaths.hpp"
 #include "oofnd/PListGet.hpp"
-#import "OOAIStateMachineVerifierStage.h"
-#import "OOCheckJSSyntaxVerifierStage.h"
-#import "OOCheckPListSyntaxVerifierStage.h"
-#import "OOCheckDemoShipsPListVerifierStage.h"
-#import "OOCheckRequiresPListVerifierStage.h"
-#import "OOCheckEquipmentPListVerifierStage.h"
-#import "OOTextureVerifierStage.h"
-#import "OOCheckShipDataPListVerifierStage.h"
+#include "OOAIStateMachineVerifierStage.h"
+#include "OOCheckJSSyntaxVerifierStage.h"
+#include "OOCheckPListSyntaxVerifierStage.h"
+#include "OOCheckDemoShipsPListVerifierStage.h"
+#include "OOCheckRequiresPListVerifierStage.h"
+#include "OOCheckEquipmentPListVerifierStage.h"
+#include "OOTextureVerifierStage.h"
+#include "OOCheckShipDataPListVerifierStage.h"
 
 namespace {
 void SwitchLogFile(const std::string &name);
@@ -763,7 +763,7 @@ void OOOXPVerifier::dumpDebugGraphviz()
 
 
 
-#import "OOLogOutputHandler.h"
+#include "OOLogOutputHandler.h"
 
 
 namespace {

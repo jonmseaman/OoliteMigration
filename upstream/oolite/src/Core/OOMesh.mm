@@ -34,27 +34,27 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOMesh.h"
-#import "OOCacheManager.h"
-#import <objc/runtime.h>
-#import <objc/objc-arc.h>
-#import "Universe.h"
-#import "OOMeshToOctreeConverter.h"
-#import "ResourceManager.h"
-#import "Entity.h"		// for NO_DRAW_DISTANCE_FACTOR.
-#import "Octree.h"
-#import "OOMaterialConvenienceCreators.h"
-#import "OOBasicMaterial.h"
-#import "OOOpenGLExtensionManager.h"
-#import "OOGraphicsResetManager.h"
-#import "OODebugGLDrawing.h"
-#import "OOShaderMaterial.h"
-#import "OOMacroOpenGL.h"
-#import "OOProfilingStopwatch.h"
-#import "OODebugFlags.h"
+#include "OOMesh.h"
+#include "OOCacheManager.h"
+#include <objc/runtime.h>
+#include <objc/objc-arc.h>
+#include "Universe.h"
+#include "OOMeshToOctreeConverter.h"
+#include "ResourceManager.h"
+#include "Entity.h"		// for NO_DRAW_DISTANCE_FACTOR.
+#include "Octree.h"
+#include "OOMaterialConvenienceCreators.h"
+#include "OOBasicMaterial.h"
+#include "OOOpenGLExtensionManager.h"
+#include "OOGraphicsResetManager.h"
+#include "OODebugGLDrawing.h"
+#include "OOShaderMaterial.h"
+#include "OOMacroOpenGL.h"
+#include "OOProfilingStopwatch.h"
+#include "OODebugFlags.h"
 
-#import "OOJavaScriptEngine.h"
-#import "OODebugStandards.h"
+#include "OOJavaScriptEngine.h"
+#include "OODebugStandards.h"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/String.hpp"
 #include "oofnd/Scanner.hpp"

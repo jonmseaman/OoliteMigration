@@ -30,27 +30,27 @@ SOFTWARE.
 #endif
 
 
-#import "OOMaterialConvenienceCreators.h"
-#import "OOMaterialSpecifier.h"
-#import "OOColor.h"
+#include "OOMaterialConvenienceCreators.h"
+#include "OOMaterialSpecifier.h"
+#include "OOColor.h"
 
 #if USE_NEW_SHADER_SYNTHESIZER
-#import "OODefaultShaderSynthesizer.h"
-#import "ResourceManager.h"
+#include "OODefaultShaderSynthesizer.h"
+#include "ResourceManager.h"
 #endif
 
-#import "OOOpenGLExtensionManager.h"
-#import "OOShaderMaterial.h"
-#import "OOSingleTextureMaterial.h"
-#import "OOMultiTextureMaterial.h"
+#include "OOOpenGLExtensionManager.h"
+#include "OOShaderMaterial.h"
+#include "OOSingleTextureMaterial.h"
+#include "OOMultiTextureMaterial.h"
 #include "oofnd/Defaults.hpp"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/String.hpp"
 #include "oofnd/PListWriting.hpp"
-#import "Universe.h"
-#import "OOCacheManager.h"
-#import "OOTexture.h"
-#import "OODebugFlags.h"
+#include "Universe.h"
+#include "OOCacheManager.h"
+#include "OOTexture.h"
+#include "OODebugFlags.h"
 #include "oofnd/objc/OOAssert.h"
 
 

@@ -25,11 +25,11 @@ SOFTWARE.
 
 */
 
-#import "NSObjectOOExtensions.h"
+#include "NSObjectOOExtensions.h"
 
 
 #if OOLITE_MAC_OS_X
-#import <objc/runtime.h>
+#include <objc/runtime.h>
 #endif
 
 

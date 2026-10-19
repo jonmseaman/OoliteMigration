@@ -26,13 +26,13 @@ MA 02110-1301, USA.
 */
 
 
-#import "GameController.h"
+#include "GameController.h"
 
 #if OOLITE_SDL
 
-#import "MyOpenGLView.h"
-#import "Universe.h"
-#import "OOFullScreenController.h"
+#include "MyOpenGLView.h"
+#include "Universe.h"
+#include "OOFullScreenController.h"
 #include "oofnd/Defaults.hpp"
 
 

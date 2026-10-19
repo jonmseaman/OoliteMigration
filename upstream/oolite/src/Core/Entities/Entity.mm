@@ -22,24 +22,24 @@ MA 02110-1301, USA.
 
 */
 
-#import "Entity.h"
+#include "Entity.h"
 #include "oofnd/objc/OORuntime.h"
 #include "oofnd/objc/OOException.h"	// oo::CurrentExceptionIsObjCObject (bead oo-rskgl)
-#import "EntityOOJavaScriptExtensions.h"
-#import "PlayerEntity.h"
-#import "StationEntity.h"	// willDispose(): the station's and the dock's parts (bead oo-dpyk8)
-#import "DockEntity.h"
-#import "OOPlanetEntity.h"
+#include "EntityOOJavaScriptExtensions.h"
+#include "PlayerEntity.h"
+#include "StationEntity.h"	// willDispose(): the station's and the dock's parts (bead oo-dpyk8)
+#include "DockEntity.h"
+#include "OOPlanetEntity.h"
 
-#import "OOMaths.h"
-#import "Universe.h"
-#import "GameController.h"
-#import "ResourceManager.h"
-#import "OOConstToString.h"
+#include "OOMaths.h"
+#include "Universe.h"
+#include "GameController.h"
+#include "ResourceManager.h"
+#include "OOConstToString.h"
 
-#import "CollisionRegion.h"
+#include "CollisionRegion.h"
 
-#import "OODebugFlags.h"
+#include "OODebugFlags.h"
 #include "oofnd/Log.hpp"
 #include "oofnd/String.hpp"
 

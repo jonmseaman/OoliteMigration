@@ -25,9 +25,9 @@ SOFTWARE.
 
 */
 
-#import "OOTexture.h"
-#import "OOTextureGenerator.h"
-#import "OOAsyncWorkManager.h"
+#include "OOTexture.h"
+#include "OOTextureGenerator.h"
+#include "OOAsyncWorkManager.h"
 
 
 uint32_t OOTextureGenerator::textureOptions()

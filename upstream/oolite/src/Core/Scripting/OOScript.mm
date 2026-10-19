@@ -22,17 +22,17 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOScript.h"
-#import "OOJSScript.h"
-#import "OOPListScript.h"
-#import "OOLogging.h"
-#import "Universe.h"
-#import "OOJavaScriptEngine.h"
-#import "OOPListParsing.h"
-#import "ResourceManager.h"
-#import "OODebugStandards.h"
+#include "OOScript.h"
+#include "OOJSScript.h"
+#include "OOPListScript.h"
+#include "OOLogging.h"
+#include "Universe.h"
+#include "OOJavaScriptEngine.h"
+#include "OOPListParsing.h"
+#include "ResourceManager.h"
+#include "OODebugStandards.h"
 
-#import "oofnd/objc/OOObject.h"
+#include "oofnd/objc/OOObject.h"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/String.hpp"
 

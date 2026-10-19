@@ -25,15 +25,15 @@ SOFTWARE.
 
 */
 
-#import "OOOpenGLExtensionManager.h"
+#include "OOOpenGLExtensionManager.h"
 #include "oofnd/Process.hpp"
-#import "OOLogging.h"
-#import "OOFunctionAttributes.h"
+#include "OOLogging.h"
+#include "OOFunctionAttributes.h"
 #include <stdlib.h>
 
-#import "ResourceManager.h"
-#import "OORegExpMatcher.h"
-#import "OOConstToString.h"
+#include "ResourceManager.h"
+#include "OORegExpMatcher.h"
+#include "OOConstToString.h"
 #include "oofnd/objc/OOException.h"
 
 #include "oofnd/String.hpp"

@@ -22,21 +22,21 @@ MA 02110-1301, USA.
 
 */
 
-#import "AI.h"
+#include "AI.h"
 #include "oofnd/objc/OORuntime.h"
-#import <objc/runtime.h>
-#import <objc/objc-arc.h>
-#import "ResourceManager.h"
-#import "OOStringParsing.h"
-#import "OOCacheManager.h"
-#import "OOCallByName.h"
-#import "OOPListParsing.h"
+#include <objc/runtime.h>
+#include <objc/objc-arc.h>
+#include "ResourceManager.h"
+#include "OOStringParsing.h"
+#include "OOCacheManager.h"
+#include "OOCallByName.h"
+#include "OOPListParsing.h"
 
-#import "ShipEntity.h"
-#import "ShipEntityAI.h"
-#import "GameController.h"
+#include "ShipEntity.h"
+#include "ShipEntityAI.h"
+#include "GameController.h"
 #include "oofnd/objc/OOException.h"
-#import "oofnd/objc/OOObject.h"
+#include "oofnd/objc/OOObject.h"
 
 #include "oofnd/Log.hpp"
 #include "oofnd/String.hpp"
@@ -146,7 +146,7 @@ void FireAIDeferredCall(AI *ai, const char *selectorName, const std::string &par
 
 
 #if DEBUG_GRAPHVIZ
-#import "AIGraphViz.h"
+#include "AIGraphViz.h"
 #include "oofnd/Defaults.hpp"
 #endif
 

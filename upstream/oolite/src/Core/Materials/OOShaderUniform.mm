@@ -26,18 +26,18 @@ SOFTWARE.
 */
 
 
-#import "OOShaderUniform.h"
-#import "Entity.h"	// the shader binding targets' informal protocols (-superShaderBindingTarget)
+#include "OOShaderUniform.h"
+#include "Entity.h"	// the shader binding targets' informal protocols (-superShaderBindingTarget)
 #include "oofnd/objc/OORuntime.h"
 
 #if OO_SHADERS
 
-#import "OOShaderProgram.h"
-#import "OOFunctionAttributes.h"
+#include "OOShaderProgram.h"
+#include "OOFunctionAttributes.h"
 #include <string.h>
-#import "OOMaths.h"
-#import "OOOpenGLExtensionManager.h"
-#import "OOShaderUniformMethodType.h"
+#include "OOMaths.h"
+#include "OOOpenGLExtensionManager.h"
+#include "OOShaderUniformMethodType.h"
 
 
 /*	The informal protocol for an Objective-C binding target to "forward" its bindings up a hierarchy

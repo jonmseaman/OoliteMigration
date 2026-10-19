@@ -9362,3 +9362,24 @@ OOWeakReference+ObjCBridge), 2026-10-18:
    PlayerEntityControls, HeadUpDisplay, oofnd/Notification.hpp.
 
 **Tests.** No test file, case or expected value changes.
+
+## Amendment (bead oo-ua886): the .mm translation units include, not import
+
+**Context.** Phase 4 batch AV, the `.mm` half of amendment oo-cnhzq (prerequisite of oo-dbz). After oo-cnhzq every
+header a first-party `.mm` imports is include-guarded or `#pragma once`, so `#include` enters each of them exactly
+as often as `#import` did: a pure line rewrite. The tier-a concern recorded there did not materialise:
+`misc-include-cleaner` reports nothing in an Objective-C++ translation unit (the tier-a tidy cache holds no
+include-cleaner finding for any `.mm`), so a rewritten line surfaces no baseline finding as new.
+
+**Decision (behaviour-identical).**
+
+1. Every `#import` in a first-party `.mm` under `upstream/oolite/src` (215 files, outside `oofnd/objc/`) becomes
+   `#include`, with the same target, spelling and trailing comment (`.agent-tmp/cc/batchAV/imp2inc.py`, batch AT's
+   tool with its edit scope widened to `.mm`). No other line changes; no header changes.
+2. Left as `#import`: `src/oofnd/objc/` (deleted with libobjc2, oo-dbz); the Mac-only
+   `GameController+FullScreen.mm` and GameController's `#if OOLITE_MAC_OS_X` imports (`JAPersistentFileReference.h`,
+   `<Sparkle/Sparkle.h>`, `OoliteApp.h`, `OOMacJoystickManager.h`; Phase 5); and OOStringExpander's
+   `#if OO_EXPANDER_TEST_SURFACE` import of `OOStringExpanderTestSurface.h`, which lives in `tests/` (copied next
+   to the source by `tools/check-string-expander.sh`), is unguarded, and is the test harness's to change.
+
+**Tests.** No test file, case or expected value changes.

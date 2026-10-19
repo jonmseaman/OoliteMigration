@@ -22,28 +22,28 @@ MA 02110-1301, USA.
 
 */
 
-#import "GuiDisplayGen.h"
-#import "Universe.h"
-#import "GameController.h"
-#import "PlayerEntity.h"
-#import "PlayerEntityControls.h"
-#import "OOTextureSprite.h"
-#import "ResourceManager.h"
-#import "OOSound.h"
-#import "OOStringExpander.h"
-#import "OOStringParsing.h"
-#import "HeadUpDisplay.h"
-#import "OOTexture.h"
-#import "OOJavaScriptEngine.h"
-#import "PlayerEntityStickProfile.h"
-#import "OOSystemDescriptionManager.h"
+#include "GuiDisplayGen.h"
+#include "Universe.h"
+#include "GameController.h"
+#include "PlayerEntity.h"
+#include "PlayerEntityControls.h"
+#include "OOTextureSprite.h"
+#include "ResourceManager.h"
+#include "OOSound.h"
+#include "OOStringExpander.h"
+#include "OOStringParsing.h"
+#include "HeadUpDisplay.h"
+#include "OOTexture.h"
+#include "OOJavaScriptEngine.h"
+#include "PlayerEntityStickProfile.h"
+#include "OOSystemDescriptionManager.h"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/objc/OOAssert.h"
 
 #include "oofnd/Log.hpp"
 #include "oofnd/String.hpp"
 #include <map>
-#import "OOObjCPList.h"
+#include "OOObjCPList.h"
 
 OOINLINE BOOL RowInRange(OOGUIRow row, NSRange range)
 {

@@ -26,12 +26,12 @@ SOFTWARE.
 */
 
 
-#import "OOLoggingExtended.h"
-#import "OOPListParsing.h"
-#import "OOFunctionAttributes.h"
-#import "ResourceManager.h"
-#import "OOLogHeader.h"
-#import "OOLogOutputHandler.h"
+#include "OOLoggingExtended.h"
+#include "OOPListParsing.h"
+#include "OOFunctionAttributes.h"
+#include "ResourceManager.h"
+#include "OOLogHeader.h"
+#include "OOLogOutputHandler.h"
 
 #include "oofnd/Log.hpp"
 #include "oofnd/Defaults.hpp"

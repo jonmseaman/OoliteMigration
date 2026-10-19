@@ -22,25 +22,25 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOJSPlayer.h"
-#import "OOJSEntity.h"
-#import "OOJSShip.h"
-#import "OOJSVector.h"
-#import "OOJavaScriptEngine.h"
-#import "EntityOOJavaScriptExtensions.h"
+#include "OOJSPlayer.h"
+#include "OOJSEntity.h"
+#include "OOJSShip.h"
+#include "OOJSVector.h"
+#include "OOJavaScriptEngine.h"
+#include "EntityOOJavaScriptExtensions.h"
 
-#import "PlayerEntity.h"
-#import "PlayerEntityContracts.h"
-#import "PlayerEntityScriptMethods.h"
-#import "PlayerEntityLegacyScriptEngine.h"
+#include "PlayerEntity.h"
+#include "PlayerEntityContracts.h"
+#include "PlayerEntityScriptMethods.h"
+#include "PlayerEntityLegacyScriptEngine.h"
 
-#import "OOConstToString.h"
-#import "OOFunctionAttributes.h"
-#import "OOStringParsing.h"
+#include "OOConstToString.h"
+#include "OOFunctionAttributes.h"
+#include "OOStringParsing.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
-#import "OOObjCPList.h"
+#include "OOObjCPList.h"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead

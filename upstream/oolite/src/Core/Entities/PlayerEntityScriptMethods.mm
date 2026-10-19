@@ -22,22 +22,22 @@ MA 02110-1301, USA.
 
 */
 
-#import "PlayerEntityScriptMethods.h"
-#import "PlayerEntityLoadSave.h"
+#include "PlayerEntityScriptMethods.h"
+#include "PlayerEntityLoadSave.h"
 
-#import "Universe.h"
-#import "OOConstToString.h"
-#import "OOStringParsing.h"
-#import "OOCommodities.h"
+#include "Universe.h"
+#include "OOConstToString.h"
+#include "OOStringParsing.h"
+#include "OOCommodities.h"
 
 #include "oofnd/Defaults.hpp"
 #include "oofnd/PListGet.hpp"
 #include "oofnd/String.hpp"
 
-#import "OOStringExpander.h"
-#import "OOSystemDescriptionManager.h"
+#include "OOStringExpander.h"
+#include "OOSystemDescriptionManager.h"
 
-#import "StationEntity.h"
+#include "StationEntity.h"
 
 namespace {
 

@@ -27,19 +27,19 @@ MA 02110-1301, USA.
 #endif
 
 
-#import "OOJSScript.h"
-#import "OOJavaScriptEngine.h"
-#import "OOJSEngineTimeManagement.h"
+#include "OOJSScript.h"
+#include "OOJavaScriptEngine.h"
+#include "OOJSEngineTimeManagement.h"
 #include "oofnd/Notification.hpp"
 
-#import "OOLogging.h"
-#import "OOConstToString.h"
-#import "Entity.h"
-#import "EntityOOJavaScriptExtensions.h"
-#import "OOConstToJSString.h"
-#import "OOManifestProperties.h"
-#import "OOPListParsing.h"
-#import "OODebugStandards.h"
+#include "OOLogging.h"
+#include "OOConstToString.h"
+#include "Entity.h"
+#include "EntityOOJavaScriptExtensions.h"
+#include "OOConstToJSString.h"
+#include "OOManifestProperties.h"
+#include "OOPListParsing.h"
+#include "OODebugStandards.h"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/Encoding.hpp"
@@ -51,7 +51,7 @@ MA 02110-1301, USA.
 #include "oofnd/String.hpp"
 
 #if OO_CACHE_JS_SCRIPTS
-#import "OOCacheManager.h"
+#include "OOCacheManager.h"
 #endif
 
 /*
