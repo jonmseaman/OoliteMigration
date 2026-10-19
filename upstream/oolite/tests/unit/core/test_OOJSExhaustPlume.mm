@@ -138,7 +138,7 @@ bool Entity::isVisibleToScripts()  { return false; }
 
 Vector OOExhaustPlumeEntity::scale()
 {
-	if (_scale.x == -1)  [OOException raise:OOInvalidArgumentException format:"scale %s", "boom"];
+	if (_scale.x == -1)  OORaiseException(OOInvalidArgumentException, "scale %s", "boom");
 	if (_scale.x == -2)  throw std::runtime_error("cxx boom");
 	return _scale;
 }

@@ -41,15 +41,15 @@ Outcome Run(F body)
 {
 	Outcome outcome;
 	void *pool = objc_autoreleasePoolPush();
-	@try
+	try
 	{
 		body();
 	}
-	@catch (OOException *e)
+	catch (const oo::Exception &e)	// was @catch (OOException *e) (bead oo-rskgl.1)
 	{
 		outcome.raised = true;
-		outcome.name = [e name];
-		outcome.reason = [e reason];
+		outcome.name = e.name();
+		outcome.reason = e.reason();
 	}
 	objc_autoreleasePoolPop(pool);
 	return outcome;

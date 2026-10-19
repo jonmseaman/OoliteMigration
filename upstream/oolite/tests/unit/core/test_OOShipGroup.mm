@@ -255,11 +255,11 @@ OO_TEST(cursor)
 		OO_CHECK(mutated.next() == ships[0]);
 		group->addShip(NewShip());
 		bool raised = false;
-		@try
+		try
 		{
 			mutated.next();
 		}
-		@catch (OOException *exception)
+		catch (const oo::Exception &)	// was @catch (OOException *exception) (bead oo-rskgl.1)
 		{
 			raised = true;
 		}

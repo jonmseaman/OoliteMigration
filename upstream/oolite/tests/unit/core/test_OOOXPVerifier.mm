@@ -215,7 +215,7 @@ TEST_STAGE(OOTestStageG, "G")
 void run() override
 {
 	OOTestStage::run();
-	[OOException raise:"OOTestException" format:"%s", "G fails"];
+	OORaiseException("OOTestException", "%s", "G fails");
 }
 };
 

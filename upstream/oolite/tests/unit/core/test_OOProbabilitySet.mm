@@ -247,13 +247,15 @@ OO_TEST(nonZeroCountWithoutArraysRaises)
 	@autoreleasepool
 	{
 		const char *name = nullptr;
-		@try
+		std::optional<oo::Exception> kept;	// what the autorelease pool kept alive (bead oo-rskgl.1)
+		try
 		{
 			(void)OOProbabilitySet::probabilitySetWithObjects(NULL, NULL, 2);
 		}
-		@catch (OOException *e)
+		catch (const oo::Exception &e)	// was @catch (OOException *e)
 		{
-			name = [e name];
+			kept = e;
+			name = kept->name();
 		}
 		OO_CHECK(name != nullptr && std::strcmp(name, OOInvalidArgumentException) == 0);
 	}

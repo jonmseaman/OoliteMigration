@@ -82,8 +82,9 @@ MA 02110-1301, USA.
 	C++ try, a catch (...) and scope guards, so a binding file that uses them contains no
 	Objective-C exception syntax. What each one does is unchanged:
 	  * OOJS_NATIVE_EXIT catches whatever the body throws and hands it to
-	    OOJSReportCurrentException() (OOJSEngineNativeWrappers.mm), which reports an Objective-C
-	    exception exactly as OOJSReportWrappedException() did. It also reports a C++ exception
+	    OOJSReportCurrentException() (OOJSEngineNativeWrappers.mm), which reports the game's
+	    exception exactly as OOJSReportWrappedException() did (that function went with bead
+	    oo-rskgl.1, when the exception became the C++ oo::Exception). It also reports a C++ exception
 	    ("Native exception: <what()>"), which the Objective-C catch (id) could not catch: that
 	    path ended in std::terminate (ADR-0029 measurement 10).
 	  * The profiler frame is exited, and the time limiter and request are resumed, when the
@@ -136,14 +137,11 @@ MA 02110-1301, USA.
 
 /*	OOJSReportCurrentException()
 	Call only inside a catch handler. Reports the exception being handled as a JS error unless
-	one is already pending: an Objective-C exception as OOJSReportWrappedException() does, a C++
-	one as "Native exception: <what()>" (std::exception) or "Unidentified native exception".
+	one is already pending: the game's oo::Exception as "Native exception: <reason>" (what
+	OOJSReportWrappedException() did), another C++ one as "Native exception: <what()>"
+	(std::exception) or "Unidentified native exception".
 */
 void OOJSReportCurrentException(ooscript::Context context);
-
-#ifdef __OBJC__
-OOJS_EXTERN_C void OOJSReportWrappedException(ooscript::Context context, id exception);
-#endif
 
 
 #ifndef NDEBUG

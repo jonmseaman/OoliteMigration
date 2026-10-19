@@ -57,7 +57,7 @@ class OOMaterial;
 #endif
 
 class Entity;
-@class OOException;
+namespace oo { class Exception; }	// handleOoliteException (was @class OOException, bead oo-rskgl.1)
 class GameController;
 class MyOpenGLView;
 class OOVisualEffectEntity;	// C++ since bead oo-9ht.165
@@ -785,7 +785,7 @@ public:
 	void setDetailLevel(OOGraphicsDetail value);
 	OOGraphicsDetail getDetailLevel();
 	bool useShaders();
-	void handleOoliteException(::OOException *exception);
+	void handleOoliteException(const oo::Exception *exception);	// was ::OOException * (bead oo-rskgl.1)
 	GLfloat getAirResistanceFactor();
 	void setAirResistanceFactor(GLfloat newFactor);
 	bool pauseMessageVisible();

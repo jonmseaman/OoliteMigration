@@ -122,7 +122,7 @@ OOShipGroup *ShipEntity::escortGroup()  { return _escortGroup.get(); }
 
 bool ShipEntity::acceptAsEscort(::ShipEntity *other_ship)
 {
-	if (other_ship->_name == "boom")  [OOException raise:OOInvalidArgumentException format:"escort %s", "boom"];
+	if (other_ship->_name == "boom")  OORaiseException(OOInvalidArgumentException, "escort %s", "boom");
 	if (!_acceptsEscorts)  return NO;
 	_accepted++;
 	return YES;

@@ -35,18 +35,10 @@ MA 02110-1301, USA.
 #include <exception>
 
 
-void OOJSReportWrappedException(ooscript::Context context, id exception)
-{
-	if (!ooscript::isExceptionPending((context)))
-	{
-		if ([exception isKindOfClass:[OOException class]])  cxx_OOJSReportError(context, "Native exception: %s", [(OOException *)exception reason]);
-		else  cxx_OOJSReportError(context, "Unidentified native exception");
-	}
-	// Else, let the pending exception propagate.
-}
-
-
-/*	An Objective-C exception is reported as the @catch (id) this replaces reported it. A C++ one,
+/*	The game's exception (oo::Exception since bead oo-rskgl.1, the Objective-C OOException before)
+	is reported as the @catch (id) this replaces reported it, by OOJSReportWrappedException(): its
+	reason (the -isKindOfClass:[OOException class] test is the catch clause now). Any other
+	Objective-C object was "Unidentified native exception", as anything else still is. A C++ one,
 	which that clause could not catch (the process terminated, ADR-0029 measurement 10), is
 	reported from its what() in the same words, so a raise site that becomes a C++ throw in
 	Phase 3 reads the same in JS.
@@ -57,9 +49,10 @@ void OOJSReportCurrentException(ooscript::Context context)
 	{
 		throw;
 	}
-	catch (id exception)
+	catch (const oo::Exception &exception)
 	{
-		OOJSReportWrappedException(context, exception);
+		if (!ooscript::isExceptionPending((context)))  cxx_OOJSReportError(context, "Native exception: %s", exception.reason());
+		// Else, let the pending exception propagate.
 	}
 	catch (const std::exception &exception)
 	{

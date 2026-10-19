@@ -43,8 +43,10 @@ extern const char *const OOInternalInconsistencyException;
 extern const char *const OOMallocException;
 
 /*	+[OOException raise:name format:...] as a function, for converted C++ code (Phase 3, proposed
-	ADR-0056 amendment oo-dqxj): the same exception object is thrown, with the same name and
-	reason, so every @catch that caught the message send catches this. Never returns.
+	ADR-0056 amendment oo-dqxj). Since bead oo-rskgl.1 it throws the C++ oo::Exception
+	(oofnd/Exception.hpp) with the same name and formatted reason, not the Objective-C object; the
+	game's handlers catch it with oo::CurrentOOException() or catch (const oo::Exception &).
+	Never returns.
 */
 void OORaiseException(const char *name, const char *format, ...) __attribute__((format(printf, 2, 3), noreturn));
 
@@ -73,13 +75,15 @@ void OORaiseException(const char *name, const char *format, ...) __attribute__((
 @end
 
 #ifdef __cplusplus
+#include "oofnd/Exception.hpp"
 #include <optional>
 #include <utility>
 
 namespace oo {
 
-/*	The game's @try/@catch/@finally as C++ try/catch (ADR-0056 amendment oo-rskgl). The thrown
-	object is still an OOException (the tests raise and catch it), so only the handlers change:
+/*	The game's @try/@catch/@finally as C++ try/catch (ADR-0056 amendment oo-rskgl). Since bead
+	oo-rskgl.1 the thrown object is the C++ oo::Exception (OORaiseException), so the handlers ask for
+	that:
 
 	    @catch (OOException *e) { ... [e name] ... }   catch (...)
 	                                                    {
@@ -88,40 +92,36 @@ namespace oo {
 	                                                        ... e->name() ...
 	                                                    }
 	    @throw e;  (inside that handler)                throw;  (the same object, rethrown)
-	    @catch (id e) { ... }                           catch (id e) { ... }  (Objective-C objects only,
-	                                                    as before: a C++ exception is not caught)
+	    @catch (id e) { ... }                           catch (const oo::Exception &e) { ... }  (what
+	                                                    src throws; no Objective-C object is thrown)
 	    @catch (id e) {}                                catch (...)
 	                                                    {
-	                                                        if (!oo::CurrentExceptionIsObjCObject())  throw;
+	                                                        if (!oo::CurrentOOException())  throw;
 	                                                    }  (the same, without an empty handler)
 	    @try { A } @finally { B }                       { oo::Finally f([&] { B }); A }
 
-	A C++ catch (...) catches an Objective-C exception (amendment oo-ppc); CurrentOOException()
-	tells an OOException from anything else, as @catch (OOException *) did.
+	CurrentOOException() tells the game's exception from anything else, as @catch (OOException *)
+	did.
 */
 class CaughtOOException
 {
 public:
-	explicit CaughtOOException(::OOException *exception) : _exception(exception) {}
+	explicit CaughtOOException(const oo::Exception *exception) : _exception(exception) {}
 
 	// [exception name], [exception reason]: UTF-8, valid while the handler runs.
-	const char *name() const;
-	const char *reason() const;
+	const char *name() const  { return _exception->name(); }
+	const char *reason() const  { return _exception->reason(); }
 
-	// The exception object itself, for an interface that still takes one.
-	::OOException *object() const  { return _exception; }
+	// The exception itself, for an interface that still takes one.
+	const oo::Exception *object() const  { return _exception; }
 
 private:
-	::OOException		*_exception;
+	const oo::Exception	*_exception;
 };
 
-// Inside a catch handler only: the exception being handled when it is an OOException, else
-// std::nullopt (the handler then rethrows with `throw;`, as @catch (OOException *) let it pass).
+// Inside a catch handler only: the exception being handled when it is the game's oo::Exception,
+// else std::nullopt (the handler then rethrows with `throw;`, as @catch (OOException *) let it pass).
 std::optional<CaughtOOException> CurrentOOException();
-
-// Inside a catch handler only: whether the exception being handled is an Objective-C object (what
-// @catch (id) caught). A C++ exception never was: the handler rethrows it with `throw;`.
-bool CurrentExceptionIsObjCObject();
 
 
 // @finally: runs the body when the scope is left, normally or by an exception, after the handlers.

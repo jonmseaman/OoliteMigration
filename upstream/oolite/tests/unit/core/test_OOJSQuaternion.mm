@@ -179,7 +179,7 @@ void OOJSUnreachable(const char *function, const char *, unsigned)
 
 - (Quaternion) orientation
 {
-	if (_orientation.w == -1)  [OOException raise:OOInvalidArgumentException format:"orientation %s", "boom"];
+	if (_orientation.w == -1)  OORaiseException(OOInvalidArgumentException, "orientation %s", "boom");
 	if (_orientation.w == -2)  throw std::runtime_error("cxx boom");
 	return _orientation;
 }

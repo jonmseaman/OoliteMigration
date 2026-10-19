@@ -299,7 +299,7 @@ std::optional<std::string> PlayerEntity::commanderName()  { return _commanderNam
 void PlayerEntity::setCommanderName(const std::optional<std::string> &value)  { _commanderName = value; }
 unsigned PlayerEntity::score()
 {
-	if (_raise)  [OOException raise:OOInvalidArgumentException format:"score %s", "boom"];
+	if (_raise)  OORaiseException(OOInvalidArgumentException, "score %s", "boom");
 	if (_throwCxx)  throw std::runtime_error("cxx boom");
 	return _score;
 }

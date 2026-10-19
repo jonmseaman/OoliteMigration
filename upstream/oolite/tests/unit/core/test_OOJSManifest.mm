@@ -134,7 +134,7 @@ oo::PList PlayerEntity::cargoListForScripting()
 }
 OOCargoQuantity PlayerEntity::cargoQuantityForType(const std::string &type)
 {
-	if (type == "furs")  [OOException raise:OOInvalidArgumentException format:"cargo %s", "boom"];
+	if (type == "furs")  OORaiseException(OOInvalidArgumentException, "cargo %s", "boom");
 	if (type == "gems" && _throwCxx)  throw std::runtime_error("cxx boom");
 	return _cargo[type];
 }

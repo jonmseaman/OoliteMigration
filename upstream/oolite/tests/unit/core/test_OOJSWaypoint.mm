@@ -187,7 +187,7 @@ bool OOWaypointEntity::getOriented()  { return _oriented; }
 void OOWaypointEntity::setSize(OOScalar newSize)  { _size = newSize; }
 OOScalar OOWaypointEntity::size()
 {
-	if (_size == 99)  [OOException raise:OOInvalidArgumentException format:"size %s", "boom"];
+	if (_size == 99)  OORaiseException(OOInvalidArgumentException, "size %s", "boom");
 	if (_size == 98)  throw std::runtime_error("cxx boom");
 	return _size;
 }

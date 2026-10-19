@@ -100,7 +100,7 @@ public:
 		(void)rootPList;
 		verifiers.push_back(verifier);
 		delegated.push_back(name + " " + oo::DescriptionOf(typeKey) + " " + KeyPathText(keyPath) + " " + oo::DescriptionOf(subPList));
-		if (delegatedRaises)  [OOException raise:OOGenericException format:"delegate refuses %s", name.c_str()];
+		if (delegatedRaises)  OORaiseException(OOGenericException, "delegate refuses %s", name.c_str());
 		if (delegatedError && outError != nullptr)  *outError = OOPListSchemaVerifierError{ "test.domain", 42, std::string("delegate's own error"), oo::PList() };
 		return delegatedAnswer;
 	}

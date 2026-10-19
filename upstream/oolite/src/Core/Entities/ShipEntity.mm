@@ -91,7 +91,7 @@ MA 02110-1301, USA.
 #include "OOJSEngineTimeManagement.h"
 #include "OOPListGameTypes.h"
 #include "oofnd/objc/OOAssert.h"
-#include "oofnd/objc/OOException.h"	// oo::Finally, oo::CurrentExceptionIsObjCObject (bead oo-rskgl)
+#include "oofnd/objc/OOException.h"	// oo::Finally, oo::CurrentOOException (beads oo-rskgl, oo-rskgl.1)
 #include <objc/runtime.h>
 #include <string_view>
 #include "OOObjCPList.h"
@@ -14957,7 +14957,7 @@ void ShipEntity::dumpSelfState()
 		{
 			if (shipAI != nullptr)  shipAI->dumpState();
 		}
-		catch (...) { if (!oo::CurrentExceptionIsObjCObject())  throw; }	// was @catch (id exception) {}: Objective-C objects only
+		catch (...) { if (!oo::CurrentOOException())  throw; }	// was @catch (id exception) {}: the game's exceptions only (oo::Exception since oo-rskgl.1)
 		OOLogPopIndent();
 	}
 	OO_LOG("dumpState.shipEntity", "Accuracy: {:g}", accuracy);

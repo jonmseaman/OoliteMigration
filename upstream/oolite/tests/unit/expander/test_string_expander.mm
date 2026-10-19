@@ -251,16 +251,17 @@ static NSString *Expand(Random_Seed seed, NSString *string, NSString *systemName
 {
 	NSDictionary *overrides = @{ @"self:name": @"Bob", @"num": @12.5, @"big": @"123456789012.25", @"pr": @"%R", @"arr": @[@"x"], @"neg": @"-3.75" };
 	NSDictionary *locals = @{ @"local_x": @3, @"local_s": @"loc%H" };
-	@try
+	try
 	{
 		return OOExpandDescriptionString(seed, string, overrides, locals, systemName, options);
 	}
-	@catch (OOException *e)
+	catch (const oo::Exception &e)	// was @catch (OOException *e) (bead oo-rskgl.1)
 	{
-		// The expander raises OOException since bead oo-3rb.5 (the same name text; bead oo-qqz6).
-		[sLog addObject:[@"EXCEPTION " stringByAppendingString:[NSString stringWithUTF8String:[e name]]]];
+		// The expander raises OOException since bead oo-3rb.5 (the same name text; bead oo-qqz6),
+		// the C++ oo::Exception since bead oo-rskgl.1.
+		[sLog addObject:[@"EXCEPTION " stringByAppendingString:[NSString stringWithUTF8String:e.name()]]];
 	}
-	@catch (NSException *e)
+	catch (NSException *e)
 	{
 		[sLog addObject:[@"EXCEPTION " stringByAppendingString:[e name]]];
 	}
@@ -428,17 +429,17 @@ int main(int argc, char **argv)
 		for (const auto &c : cases)
 		{
 			NSString *r = nil;
-			@try
+			try
 			{
 				r = OOExpandDescriptionString(seed, c[0], del, nil, nil, kOOExpandNoOptions);
 			}
-			@catch (OOException *e)
+			catch (const oo::Exception &e)	// was @catch (OOException *e) (bead oo-rskgl.1)
 			{
-				fprintf(stderr, "test_string_expander: %s raised %s\n", [Units(c[0]) UTF8String], [e name]);
+				fprintf(stderr, "test_string_expander: %s raised %s\n", [Units(c[0]) UTF8String], e.name());
 				regressionFailures++;
 				continue;
 			}
-			@catch (NSException *e)
+			catch (NSException *e)
 			{
 				fprintf(stderr, "test_string_expander: %s raised %s\n", [Units(c[0]) UTF8String], [[e name] UTF8String]);
 				regressionFailures++;

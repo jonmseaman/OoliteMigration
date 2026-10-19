@@ -144,7 +144,7 @@ void MyOpenGLView::setSDRToneMapper(OOSDRToneMapper newToneMapper)  { _sdrToneMa
 
 oo::PList Universe::gameSettings()
 {
-	if (_raise)  [OOException raise:OOInvalidArgumentException format:"settings %s", "boom"];
+	if (_raise)  OORaiseException(OOInvalidArgumentException, "settings %s", "boom");
 	if (_throwCxx)  throw std::runtime_error("cxx boom");
 	return Dict({ { "detailLevel", oo::PList("DETAIL_LEVEL_SHADERS") }, { "musicMode", oo::PList("MUSIC_ON") } });
 }

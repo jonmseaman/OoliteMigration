@@ -225,24 +225,28 @@ OO_TEST(addObjectRaises)
 	{
 		oo::Ref<OOPriorityQueue> queue = OOPriorityQueue::queueWithComparator(@selector(compare:));
 		const char *nilName = nullptr;
-		@try
+		std::optional<oo::Exception> kept;	// what the autorelease pool kept alive (bead oo-rskgl.1)
+		try
 		{
 			queue->addObject(nil);
 		}
-		@catch (OOException *e)
+		catch (const oo::Exception &e)	// was @catch (OOException *e)
 		{
-			nilName = [e name];
+			kept = e;
+			nilName = kept->name();
 		}
 		OO_CHECK(nilName != nullptr && std::strcmp(nilName, OOInvalidArgumentException) == 0);
 
 		const char *reason = nullptr;
-		@try
+		std::optional<oo::Exception> keptReason;	// what the autorelease pool kept alive (bead oo-rskgl.1)
+		try
 		{
 			queue->addObject([[[OOObject alloc] init] autorelease]);
 		}
-		@catch (OOException *e)
+		catch (const oo::Exception &e)	// was @catch (OOException *e)
 		{
-			reason = [e reason];
+			keptReason = e;
+			reason = keptReason->reason();
 		}
 		OO_CHECK(reason != nullptr && std::string(reason).starts_with("Attempt to insert object (<OOObject: "));
 		OO_CHECK(reason != nullptr && std::string(reason).ends_with(") which does not support comparator compare: into OOPriorityQueue."));

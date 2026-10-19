@@ -266,32 +266,34 @@ OO_TEST(refusesAnInvalidPixMap)
 
 
 // The wrappers' unreachable default arm now raises with OORaiseException(), the function form of
-// +[OOException raise:format:]: the same OOException class, name and formatted reason, so a
-// @catch (OOException *) that caught the message send catches it.
+// +[OOException raise:format:]: the same name and formatted reason (the C++ oo::Exception since
+// bead oo-rskgl.1, caught as catch (const oo::Exception &) where @catch (OOException *) was).
 OO_TEST(raiseExceptionThrowsTheSameException)
 {
 	const char *name = nullptr;
 	std::string reason;
-	@try
+	std::optional<oo::Exception> kept;	// what the autorelease pool kept alive (bead oo-rskgl.1)
+	try
 	{
 		OORaiseException(OOInternalInconsistencyException, "Unsupported pixmap format in scaler: %s", OOPixMapFormatName(kOOPixMapInvalidFormat).c_str());
 	}
-	@catch (OOException *e)
+	catch (const oo::Exception &e)	// was @catch (OOException *e)
 	{
-		name = [e name];
-		reason = [e reason];
+		kept = e;
+		name = kept->name();
+		reason = kept->reason();
 	}
 	OO_CHECK(name != nullptr && std::strcmp(name, OOInternalInconsistencyException) == 0);
 	OO_CHECK_EQ(reason, std::string("Unsupported pixmap format in scaler: ") + OOPixMapFormatName(kOOPixMapInvalidFormat));
 
 	std::string messageReason;
-	@try
+	try
 	{
-		[OOException raise:OOInternalInconsistencyException format:"Unsupported pixmap format in scaler: %s", OOPixMapFormatName(kOOPixMapInvalidFormat).c_str()];
+		OORaiseException(OOInternalInconsistencyException, "Unsupported pixmap format in scaler: %s", OOPixMapFormatName(kOOPixMapInvalidFormat).c_str());	// was +[OOException raise:format:]
 	}
-	@catch (OOException *e)
+	catch (const oo::Exception &e)	// was @catch (OOException *e)
 	{
-		messageReason = [e reason];
+		messageReason = e.reason();
 	}
 	OO_CHECK_EQ(messageReason, reason);
 }

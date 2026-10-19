@@ -218,8 +218,8 @@ void PlayerEntity::autosavePlayer()
 	catch (...)
 	{
 		// Suppress exceptions silently. Warning the user about failed autosaves would be pretty unhelpful.
-		// (Objective-C ones: what @catch (id) caught; a C++ one goes on up.)
-		if (!oo::CurrentExceptionIsObjCObject())  throw;
+		// (The game's own, oo::Exception since oo-rskgl.1: what @catch (id) caught; anything else goes on up.)
+		if (!oo::CurrentOOException())  throw;
 	}
 	
 	if (tmp_path.has_value())

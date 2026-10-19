@@ -416,7 +416,7 @@ bool OOVisualEffectEntity::isBeacon()  { return _beaconCode.has_value() && !_bea
 
 GLfloat OOVisualEffectEntity::hullHeatLevel()
 {
-	if (_hullHeatLevel == 99)  [OOException raise:OOInvalidArgumentException format:"heat %s", "boom"];
+	if (_hullHeatLevel == 99)  OORaiseException(OOInvalidArgumentException, "heat %s", "boom");
 	if (_hullHeatLevel == 98)  throw std::runtime_error("cxx boom");
 	return _hullHeatLevel;
 }

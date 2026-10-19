@@ -152,7 +152,7 @@ FakePlayer *sPlayer = nullptr;
 
 double PlayerEntity::clockTime()
 {
-	if (sPlayer->_clockTime == -1)  [OOException raise:OOInvalidArgumentException format:"clock %s", "boom"];
+	if (sPlayer->_clockTime == -1)  OORaiseException(OOInvalidArgumentException, "clock %s", "boom");
 	if (sPlayer->_clockTime == -2)  throw std::runtime_error("cxx boom");
 	return sPlayer->_clockTime;
 }
