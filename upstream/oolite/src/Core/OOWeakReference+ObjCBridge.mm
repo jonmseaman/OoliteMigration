@@ -14,7 +14,6 @@ This code is hereby placed in the public domain.
 
 #include "OOWeakReference.h"
 #include "OODescription.h"
-#include "NSObjectOOExtensions.h"
 #include "OOJavaScriptEngine.h"	// OOObject (OOJavaScript)
 
 #include "oofnd/objc/OOObjCPeer.h"
@@ -133,7 +132,6 @@ cxx::OOWeakReference *oo::ToCxx(OOWeakReference *weakRef)
 - (std::optional<std::string>) cxx_shortDescription				{ return _cxxWeakReference->shortDescription(); }
 - (std::optional<std::string>) cxx_shortDescriptionComponents	{ return _cxxWeakReference->shortDescriptionComponents(); }
 - (id) className										{ return _cxxWeakReference->className(); }
-- (size_t) oo_objectSize								{ return _cxxWeakReference->oo_objectSize(); }
 
 - (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
 {

@@ -7,7 +7,6 @@ oolite_sources += files(
     'GameController.mm',
     'GuiDisplayGen.mm',
     'HeadUpDisplay.mm',
-    'NSObjectOOExtensions.mm',
     'OOALBufferedSound.mm',
     'OOALMusic.mm',
     'OOALSound.mm',
