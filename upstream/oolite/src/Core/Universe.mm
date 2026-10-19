@@ -195,18 +195,9 @@ void AddIfAbsent(std::vector<oo::EntityHold> &entities, Entity *entity)
 }
 
 
-// An autoreleased list: each element goes to the autorelease pool, which releases it when it
-// drains (the list itself released them then). The list is left empty.
-template <class T>
-void AutoreleaseAll(std::vector<oo::ObjCRef<T>> &objects)
-{
-	for (oo::ObjCRef<T> &object : objects)  objc_autorelease(object.leakRef());
-	objects.clear();
-}
-
-
-// The same on a list of held entities (bead oo-9ht.39.26): each hold's reference to the entity's
-// object goes to the pool (retained, autoreleased, then the hold's own released).
+// An autoreleased list of held entities (bead oo-9ht.39.26): each hold's reference to the entity's
+// object goes to the autorelease pool (retained, autoreleased, then the hold's own released),
+// which releases it when it drains (the list itself released them then). The list is left empty.
 void AutoreleaseAll(std::vector<oo::EntityHold> &entities)
 {
 	for (const oo::EntityHold &entity : entities)  oo::AutoreleaseEntity(oo::RetainEntity(entity.get()));
@@ -11087,8 +11078,8 @@ void Universe::populateSpaceFromActiveWormholes()
 {
 	while (!activeWormholes.empty())
 	{
-		@autoreleasepool
 		{
+			oo::AutoreleaseScope pool;	// was @autoreleasepool (oo-31u.8)
 			try
 			{
 				WormholeEntity* whole = static_cast<WormholeEntity *>(activeWormholes[0].get());

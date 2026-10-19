@@ -1193,8 +1193,8 @@ bool OOShipRegistry::preloadShipMeshes(oo::PList &ioData)
 	{
 		const oo::PList &shipEntry = ship->second;
 		const std::optional<std::string> modelName = StringForKey(&shipEntry, "model");
-		@autoreleasepool
 		{
+			oo::AutoreleaseScope pool;	// was @autoreleasepool (oo-31u.8)
 			[[::GameController sharedController] setProgressBarValue:(float)i++ / (float)count];
 
 			// (PRELOAD is 0: this names a -meshWithName: form OOMesh no longer has.)

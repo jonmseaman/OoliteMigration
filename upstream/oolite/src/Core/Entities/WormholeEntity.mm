@@ -95,8 +95,8 @@ void WormholeEntity::initWithDict(const oo::PList &dict)
 	init();
 	// [self init] could not fail.
 	{
-		@autoreleasepool
 		{
+			oo::AutoreleaseScope pool;	// was @autoreleasepool (oo-31u.8)
 			// wormholes from pre-1.80 savegames using "origin_seed" and "dest_seed"
 			// currently get defaults set; will probably disappear unnoticed
 			origin = dict.get<int>("origin_id", 0);

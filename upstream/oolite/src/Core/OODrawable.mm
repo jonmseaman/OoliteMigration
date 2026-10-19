@@ -122,11 +122,11 @@ size_t OODrawable::totalSize()
 #endif
 
 
-/*	OODrawableAutorelease(): the drawable goes to the Objective-C autorelease pool, whose drain releases it
-	where the keeper object that held it was released (bead oo-pvhrh; oo::AutoreleaseInObjCPool).
+/*	OODrawableAutorelease(): the drawable goes to the innermost oo::AutoreleaseScope, whose drain releases it
+	where the keeper object that held it was released (beads oo-pvhrh, oo-31u.7).
 */
 void OODrawableAutorelease(oo::Ref<OODrawable> drawable)
 {
 	if (drawable == nullptr)  return;
-	oo::AutoreleaseInObjCPool(std::move(drawable));
+	oo::autorelease(std::move(drawable));
 }

@@ -452,12 +452,10 @@ bool GameController::suppressClangStuff()
 
 void GameController::performGameTick(id /*sender*/)
 {
-	void *pool = objc_autoreleasePoolPush();
+	oo::AutoreleaseScope pool;	// was an Objective-C autorelease pool (oo-31u.8)
 	
 	if (_gameView != nullptr)  _gameView->pollControls();
 	doPerformGameTick();
-	
-	objc_autoreleasePoolPop(pool);
 }
 
 #endif
@@ -563,8 +561,8 @@ void GameController::runFrameLoop()
 {
 	for (;;)
 	{
-		void *pool = objc_autoreleasePoolPush();	// was an autorelease-pool block
 		{
+			oo::AutoreleaseScope pool;	// was an autorelease-pool block (an Objective-C pool until oo-31u.8)
 			fireDueDeadlines();
 			FireOneDueDeferredCall();
 			FireOneDueDeferredCall();
@@ -619,16 +617,15 @@ void GameController::runFrameLoop()
 				}
 			}
 		}
-		objc_autoreleasePoolPop(pool);
 	}
 }
 
 
 void GameController::applicationDidFinishLaunching()
 {
-	void				*pool = NULL;
-	
-	pool = objc_autoreleasePoolPush();
+	// Was an Objective-C autorelease pool pushed here and popped below (oo-31u.8).
+	std::optional<oo::AutoreleaseScope> pool;
+	pool.emplace();
 	
 	try
 	{
@@ -700,7 +697,7 @@ void GameController::applicationDidFinishLaunching()
 	_finishedLaunching = true;
 	
 	// Release anything allocated above that is not required.
-	objc_autoreleasePoolPop(pool);
+	pool.reset();
 	
 #if !OOLITE_MAC_OS_X
 	runFrameLoop();

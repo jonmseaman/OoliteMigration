@@ -34,7 +34,7 @@ SOFTWARE.
 #include <cstdlib>
 #include <cxxabi.h>
 #include <typeinfo>
-#include "oofnd/objc/OOObjCRef.h"	// oo::AutoreleaseInObjCPool (bead oo-pvhrh)
+#include "oofnd/Ref.hpp"	// oo::autorelease (beads oo-pvhrh, oo-31u.7)
 
 
 namespace {
@@ -193,11 +193,11 @@ void OOMaterial::willDealloc()
 }
 
 
-/*	OOMaterialAutorelease(): the material goes to the Objective-C autorelease pool, whose drain releases it
-	where the keeper object that held it was released (bead oo-pvhrh; oo::AutoreleaseInObjCPool).
+/*	OOMaterialAutorelease(): the material goes to the innermost oo::AutoreleaseScope, whose drain releases it
+	where the keeper object that held it was released (beads oo-pvhrh, oo-31u.7).
 */
 void OOMaterialAutorelease(oo::Ref<OOMaterial> material)
 {
 	if (material == nullptr)  return;
-	oo::AutoreleaseInObjCPool(std::move(material));
+	oo::autorelease(std::move(material));
 }

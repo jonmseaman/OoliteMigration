@@ -9410,6 +9410,40 @@ did, so nothing reads out of bounds.
 **Tests.** One test file added and registered in `tests/unit/oofnd/meson.build`; no existing test file, case or
 expected value changes.
 
+## Amendment (beads oo-31u.6, oo-31u.7, oo-31u.8): the deferred releases and their pools move to oo::AutoreleaseScope
+
+**Context.** Amendment oo-31u items 3 and 5, taken in one branch. Jon approved the tests' pool re-bases in chat on
+2026-10-19 (approval lines "oo-31u.6: ..." / "oo-31u.7: ..." in `tools/retire-test-approvals.txt`). Before this
+change the only objects the game still put in libobjc2's pool were the keepers `oo::AutoreleaseInObjCPool` made
+for C++ objects (entities, scripts, AIs, drawables, materials) and the OOException a raise autoreleased.
+
+**Decision (behaviour-identical).**
+
+1. `oo::AutoreleaseInObjCPool` is deleted (oofnd/objc/OOObjCRef.h). Its five callers hand the reference to
+   `oo::autorelease()`: `oo::AutoreleaseEntity` (and so `oo::MadeEntity` and Universe's `AutoreleaseAll`, oo-31u.6),
+   `OOScriptAutorelease`, `OOAIAutorelease`, `OODrawableAutorelease`, `OOMaterialAutorelease` (oo-31u.7). The
+   wrappers keep their names (tests call them). Universe's unused `AutoreleaseAll` over `ObjCRef` lists goes.
+2. Every pool in src that could drain them becomes an `oo::AutoreleaseScope` at the same place (oo-31u.8):
+   `@autoreleasepool { ... }` becomes `{ oo::AutoreleaseScope pool; ... }` (locals are still destroyed before the
+   drain), a push/pop pair around a block likewise, and a pool popped part-way through a function
+   (`GameController::applicationDidFinishLaunching`, SDL `main`) is a `std::optional<oo::AutoreleaseScope>`
+   emplaced at the push and reset at the pop. The C abstraction layer's pool (OOTCPStreamDecoderAbstractionLayer)
+   holds a scope declared after its objects, so it drains first, as the pool was popped before they were freed.
+   The drain order is the runtime's (ADR-0045), so every release happens at the same drain in the same order.
+3. Not here: OOWeakReference+ObjCBridge's pool (deleted with that file by oo-9ht.22), `oofnd/objc/` (oo-dbz),
+   OOMusicController's Mac-only `NSAppleScript` (Phase 5) and the two scope-less `oo::autorelease` leaks
+   (oo-31u.9).
+
+**Behaviour deltas (exceptional paths only).** An exception that leaves a pool's block now drains that scope as it
+unwinds; an Objective-C pool was left for the enclosing pop to release. Only crash and startup-failure paths
+unwind through these blocks. An OOException a raise autoreleases (until oo-rskgl.1 makes it C++) now goes to
+libobjc2's lazily-made thread pool, which is never drained: its memory, not its behaviour, outlives the raise.
+
+**Tests.** Re-bases only, every expected value kept: the pools of the five test files whose cases observe a drain
+(test_Entity, test_Universe, test_PlayerEntity, test_OOWaypointEntity, test_OOECMBlastEntity) become
+`{ oo::AutoreleaseScope scope; ... }` at the same places (the precedent of test_OOSoundSource). Every other test
+passes unchanged. tests/golden/motion/test_speed_seam.py's getter regex also accepts `ship->getFlightSpeed()`
+(oo-huei2, same branch).
 ## Amendment (bead oo-6e1.1): NSObjectOOExtensions is deleted
 
 **Context.** Batch AX. `NSObjectOOExtensions` (the root category `OOObject (OOExtensions)`: debug-only

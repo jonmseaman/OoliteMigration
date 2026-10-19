@@ -44,7 +44,7 @@ MA 02110-1301, USA.
 
 #include <cstring>
 #include <functional>
-#include "oofnd/objc/OOObjCRef.h"	// oo::AutoreleaseInObjCPool (bead oo-pvhrh)
+#include "oofnd/Ref.hpp"	// oo::autorelease (beads oo-pvhrh, oo-31u.7)
 
 
 enum
@@ -111,14 +111,14 @@ const DeferredAIMethod kDeferredAIMethods[] =
 } // namespace
 
 
-/*	OOAIAutorelease(): the AI goes to the Objective-C autorelease pool, whose drain releases it where
-	the keeper object that held it was released (bead oo-pvhrh; oo::AutoreleaseInObjCPool).
+/*	OOAIAutorelease(): the AI goes to the innermost oo::AutoreleaseScope, whose drain releases it where
+	the keeper object that held it was released (beads oo-pvhrh, oo-31u.7).
 */
 
 void OOAIAutorelease(oo::Ref<AI> ai)
 {
 	if (ai == nullptr)  return;
-	oo::AutoreleaseInObjCPool(std::move(ai));
+	oo::autorelease(std::move(ai));
 }
 
 

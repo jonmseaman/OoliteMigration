@@ -244,9 +244,10 @@ std::optional<std::string> cxx_OOExpandDescriptionString(Random_Seed seed, const
 	}
 
 	std::optional<std::string> result;
-	// Was an autorelease-pool block, kept: the expander still calls Objective-C by name (OOCallByName).
-	void *pool = objc_autoreleasePoolPush();
+	// Was an autorelease-pool block, kept as the C++ pool: what the expander calls by name may defer
+	// a release (OOCallByName).
 	{
+		oo::AutoreleaseScope pool;	// was an Objective-C autorelease pool (oo-31u.8)
 		// TODO: profile caching the results. Would need to keep track of whether we've done something nondeterministic (array selection, %R etc).
 		// (The context's values are C++ now: nothing is left to release if an exception unwinds.)
 		OOMaybeUnits intermediate;
@@ -270,7 +271,6 @@ std::optional<std::string> cxx_OOExpandDescriptionString(Random_Seed seed, const
 			OORestoreRandomState(savedRandomState);
 		}
 	}
-	objc_autoreleasePoolPop(pool);
 	return result;
 }
 

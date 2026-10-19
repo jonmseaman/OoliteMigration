@@ -61,8 +61,8 @@ bool ListHeadsEmpty(Universe *u)			{ return u->x_list_start == nil && u->y_list_
 
 OO_TEST(defaults)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 
 		OO_CHECK(u->sessionID() == 0);
@@ -101,8 +101,8 @@ OO_TEST(defaults)
 
 OO_TEST(publicMembers)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 
 		OO_CHECK(EntityListCount(u) == 0);
@@ -116,8 +116,8 @@ OO_TEST(publicMembers)
 
 OO_TEST(lightAndAir)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 
 		u->setAmbientLightLevel(3.5f);
@@ -148,8 +148,8 @@ OO_TEST(lightAndAir)
 
 OO_TEST(postFX)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 
 		u->setCurrentPostFX(OO_POSTFX_COLORBLINDNESS_DEUTER);
@@ -185,8 +185,8 @@ OO_TEST(postFX)
 
 OO_TEST(flags)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 
 		u->setDisplayFPS(7);
@@ -226,8 +226,8 @@ OO_TEST(flags)
 // oo-ql9rn one C++ object, whose accessors answer its members and which starts zeroed.
 OO_TEST(facadeAndPart)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		Universe *part = u;	// one object since bead oo-ql9rn deleted the facade (its crossings went with it)
 
@@ -257,8 +257,8 @@ OO_TEST(facadeAndPart)
 
 OO_TEST(slice2StartUpFlagsAddOnsAndEntityList)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		Universe *part = u;
 
@@ -295,8 +295,8 @@ OO_TEST(slice2StartUpFlagsAddOnsAndEntityList)
 
 OO_TEST(slice4PopulatorSettings)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		Universe *part = u;
 
@@ -325,8 +325,8 @@ OO_TEST(slice4PopulatorSettings)
 
 OO_TEST(slice5MainLightPosition)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		Universe *part = u;
 
@@ -342,8 +342,8 @@ OO_TEST(slice5MainLightPosition)
 
 OO_TEST(slice6CoordinateSystemStrings)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 
 		// Anything but four tokens is the origin, not an error.
@@ -359,8 +359,8 @@ OO_TEST(slice6CoordinateSystemStrings)
 
 OO_TEST(slice7RoleCategoriesAndFlags)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		Universe *part = u;
 
@@ -387,8 +387,8 @@ OO_TEST(slice7RoleCategoriesAndFlags)
 
 OO_TEST(slice8StationsAndPlanets)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 
 		// No sun: no main station is looked for; no planets, no stations.
@@ -402,8 +402,8 @@ OO_TEST(slice8StationsAndPlanets)
 
 OO_TEST(slice9BeaconsWaypointsBreakPatternAndAIs)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		Universe *part = u;
 
@@ -436,8 +436,8 @@ OO_TEST(slice9BeaconsWaypointsBreakPatternAndAIs)
 
 OO_TEST(slice10GameViewAndCommodities)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 
 		OO_CHECK(u->getGameView() == nil && u->gameController() == nil);
@@ -450,8 +450,8 @@ OO_TEST(slice10GameViewAndCommodities)
 
 OO_TEST(slice11ViewFrustum)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		Universe *part = u;
 
@@ -476,8 +476,8 @@ OO_TEST(slice11ViewFrustum)
 
 OO_TEST(slice12FrameCounterAndViewMatrix)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		Universe *part = u;
 
@@ -497,8 +497,8 @@ namespace { void SetUpTestPlayer(); }	// below (slice 14)
 
 OO_TEST(slice13EntityLookUp)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		SetUpTestPlayer();	// PLAYER, which the debug build asserts is set (bead oo-vdw34); id 100 answers it
 
@@ -535,8 +535,8 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
 	return player.get();
@@ -584,8 +584,8 @@ public:
 
 OO_TEST(slice14NoEntity)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		HPVector p2 = make_HPvector(0, 0, 1000);
 
@@ -602,8 +602,8 @@ OO_TEST(slice14NoEntity)
 
 OO_TEST(slice14ClearRoute)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		Entity *e1 = MakeEntity(make_HPvector(0, 0, 0), 10);
 		HPVector p2 = make_HPvector(0, 0, 1000);
@@ -637,8 +637,8 @@ OO_TEST(slice14ClearRoute)
 
 OO_TEST(slice14Hazard)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		Entity *e1 = MakeEntity(make_HPvector(0, 0, 0), 10);
 		Entity *rock = MakeEntity(make_HPvector(20, 0, 500), 50);
@@ -698,8 +698,8 @@ BOOL IsFarPredicate(Entity *entity, void *parameter)	// x beyond *(double *)para
 
 OO_TEST(slice15CountAndFind)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		Entity *a = MakeEntity(make_HPvector(0, 0, 0), 10);
 		Entity *b = MakeEntity(make_HPvector(100, 0, 0), 10);
@@ -745,8 +745,8 @@ OO_TEST(slice15CountAndFind)
 
 OO_TEST(slice15FindOneAndNearest)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		Entity *a = MakeEntity(make_HPvector(0, 0, 0), 10);
 		Entity *b = MakeEntity(make_HPvector(300, 0, 0), 10);
@@ -776,8 +776,8 @@ OO_TEST(slice15FindOneAndNearest)
 
 OO_TEST(slice15TimeAndCollisions)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		u->universal_time = 12.5;
 		u->time_delta = 0.25;
@@ -810,8 +810,8 @@ OOTimeAbsolute CountdownRepeatTime(Universe *u)		{ return u->countdown_messageRe
 
 OO_TEST(slice16Messages)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		u->universal_time = 10.0;
 
@@ -842,8 +842,8 @@ OO_TEST(slice16Messages)
 
 OO_TEST(slice16ViewDirection)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 
 		// The view it already has, with no GUI shown: nothing changes and nothing is said. (A
@@ -857,8 +857,8 @@ OO_TEST(slice16ViewDirection)
 
 OO_TEST(slice16SoundsAndBackgrounds)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		u->customSounds = oo::PList(oo::PList::Dict{
 			{ "[slice16-boom]", oo::PList("boom.ogg") },
@@ -893,23 +893,23 @@ OO_TEST(slice16SoundsAndBackgrounds)
 // player, the JavaScript engine); a universe whose updates are off only lets go of the dead.
 OO_TEST(slice17UpdateOff)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		SetUpTestPlayer();	// a player that is not dead: no dead player's update
 		u->no_update = YES;
 		u->universal_time = 5.0;
 		u->time_delta = 0.5;
 		Entity *dead = nil;
-		@autoreleasepool	// the making's autoreleases drain here, as +alloc made none (bead oo-j12i2)
 		{
+			oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6); the making's autoreleases drain here, as +alloc made none (bead oo-j12i2)
 			dead = oo::RetainEntity(oo::MadeEntity(oo::makeRef<Entity>()));
 			u->entitiesDeadThisUpdate.emplace_back(dead);	// held C++ entities since bead oo-9ht.39.26
 		}
 		oo::ReleaseEntity(dead);
 
-		@autoreleasepool
 		{
+			oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 			u->update(1.0);
 			OO_CHECK(u->getTime() == 5.0 && u->getTimeDelta() == 0.5);	// no time passes
 			OO_CHECK(u->entitiesDeadThisUpdate.empty());
@@ -921,8 +921,8 @@ OO_TEST(slice17UpdateOff)
 
 OO_TEST(slice17Settings)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 
 		u->setECMVisualFXEnabled(YES);
@@ -967,8 +967,8 @@ void LinkLists(Universe *u, std::initializer_list<Entity *> list)
 
 OO_TEST(slice18FilterSortedLists)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		Entity *a = MakeEntity(make_HPvector(0, 0, 0), 10);
 		Entity *ghost = oo::MadeEntity(oo::makeRef<Slice14GhostEntity>());
@@ -1003,8 +1003,8 @@ OO_TEST(slice18FilterSortedLists)
 // is set in the members by hand.
 OO_TEST(slice19Descriptions)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		u->_descriptions = oo::PList(oo::PList::Dict{
 			{ "slice19-text", oo::PList("Hello") },
@@ -1030,8 +1030,8 @@ OO_TEST(slice19Descriptions)
 
 OO_TEST(slice19DataAndNames)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		u->explosionSettings = oo::PList(oo::PList::Dict{ { "slice19-boom", oo::PList(oo::PList::Dict{ { "size", oo::PList(2.0) } }) } });
 		u->_scenarios = oo::PList(oo::PList::Array{ oo::PList("s") });
@@ -1069,8 +1069,8 @@ OO_TEST(slice19DataAndNames)
 // galaxy's data is left to the goldens.
 OO_TEST(slice20NamesAndRoutes)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		u->system_names[5] = std::string("Lave");
 		OO_CHECK(u->systemNameIndex(5) == "Lave");
@@ -1095,8 +1095,8 @@ OO_TEST(slice20NamesAndRoutes)
 
 OO_TEST(slice20DataAndTime)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		u->globalSettings = oo::PList(oo::PList::Dict{ { "g", oo::PList("1") } });
 		u->equipmentData = oo::PList(oo::PList::Array{ oo::PList("e") });
@@ -1119,8 +1119,8 @@ OO_TEST(slice20DataAndTime)
 // in the member by hand (no plural rules: "%0" is the singular, "%1" the plural).
 OO_TEST(slice21ShortTimeAndMarkets)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		oo::PList::Dict words{ { "contracts-no-time", oo::PList("no time") } };
 		for (const char *unit : { "day", "hour", "minute", "second" })
@@ -1151,8 +1151,8 @@ OO_TEST(slice21ShortTimeAndMarkets)
 // unconverted class first; trade-in values and brochures need the ship registry (the goldens).
 OO_TEST(slice23PositionsAndLists)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 
 		OO_CHECK(HPvector_equal(u->getWitchspaceExitPosition(), kZeroHPVector));
@@ -1172,8 +1172,8 @@ OO_TEST(slice23PositionsAndLists)
 
 OO_TEST(slice23GUIsAndFlags)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		OO_CHECK(u->getGui() == nil && u->commLogGUI() == nil && u->messageGUI() == nil);
 
@@ -1200,8 +1200,8 @@ OO_TEST(slice23GUIsAndFlags)
 // the goldens; their state is set in the members by hand.
 OO_TEST(slice24DetailAndLogs)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 
 		u->detailLevel = DETAIL_LEVEL_SHADERS;
@@ -1244,8 +1244,8 @@ OO_TEST(slice24DetailAndLogs)
 #if OOLITE_ESPEAK
 OO_TEST(slice24Voices)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		espeak_VOICE v0 = {}, v1 = {}, v2 = {};
 		v0.name = "zero";
@@ -1276,8 +1276,8 @@ OO_TEST(slice24Voices)
 
 OO_TEST(slice25RandomPositions)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		const double half = SCANNER_MAX_RANGE / 2;
 		for (int i = 0; i < 20; i++)
@@ -1297,8 +1297,8 @@ OO_TEST(slice25RandomPositions)
 
 OO_TEST(slice25ChooseStringAndWormholes)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		const oo::PList dict(oo::PList::Dict{
 			{ "one", oo::PList("only") },
@@ -1321,8 +1321,8 @@ OO_TEST(slice25ChooseStringAndWormholes)
 
 OO_TEST(slice25DoRemoveEntity)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		Entity *a = MakeEntity(make_HPvector(0, 0, 0), 1);
 		Entity *b = MakeEntity(make_HPvector(5, 0, 0), 1);
@@ -1353,8 +1353,8 @@ OO_TEST(slice25DoRemoveEntity)
 
 OO_TEST(slice26GraphVizAndTools)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 #if OO_LOCALIZATION_TOOLS
 		std::string graphViz = "start\n";
@@ -1383,8 +1383,8 @@ OO_TEST(slice26GraphVizAndTools)
 
 OO_TEST(slice26ConditionScriptsAndSounds)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		u->addConditionScripts(std::vector<std::string>());
 		OO_CHECK(u->conditionScripts.empty());
@@ -1400,8 +1400,8 @@ OO_TEST(slice26ConditionScriptsAndSounds)
 
 OO_TEST(slice26PluralDescriptions)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope scope;	// was @autoreleasepool (oo-31u.6)
 		Universe *u = NewUniverse();
 		u->_descriptions = oo::PList(oo::PList::Dict{
 			{ "plural-rules", oo::PList(oo::PList::Array{ oo::PList("=1") }) },

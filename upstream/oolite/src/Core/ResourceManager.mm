@@ -2235,8 +2235,8 @@ std::vector<std::pair<std::string, oo::Ref<OOScript>>> ResourceManager::loadScri
 		// a problem.
 		if (!corePlist("world-scripts.plist", path))
 		{
-			@autoreleasepool
 			{
+				oo::AutoreleaseScope pool;	// was @autoreleasepool (oo-31u.8)
 				try
 				{
 					std::optional<std::vector<oo::Ref<OOScript>>> results = OOScript::worldScriptsAtPath(oo::str::appendingPathComponent(path, "Config"));

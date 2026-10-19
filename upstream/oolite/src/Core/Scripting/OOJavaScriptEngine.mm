@@ -784,8 +784,8 @@ static void DumpVariable(ooscript::Context context, ooscript::Variable *prop)
 
 void OOJSDumpStack(ooscript::Context context)
 {
-	void *pool = objc_autoreleasePoolPush();	// was @autoreleasepool (amendment oo-bm1q item 4)
 	{
+		oo::AutoreleaseScope pool;	// was an Objective-C autorelease pool (oo-31u.8)
 		try
 		{
 			ooscript::StackFrame	frame = NULL;
@@ -912,7 +912,6 @@ ooscript::Object scope = ooscript::frameScopeChain(context, frame);
 			OO_LOG(cxx_kOOLogException, "Exception during JavaScript stack trace: {}:{}", name, reason);
 		}
 	}
-	objc_autoreleasePoolPop(pool);
 }
 
 

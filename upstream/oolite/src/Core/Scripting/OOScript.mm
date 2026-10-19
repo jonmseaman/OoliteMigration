@@ -39,7 +39,7 @@ MA 02110-1301, USA.
 #include <cstdlib>
 #include <cxxabi.h>
 #include <typeinfo>
-#include "oofnd/objc/OOObjCRef.h"	// oo::AutoreleaseInObjCPool (bead oo-pvhrh)
+#include "oofnd/Ref.hpp"	// oo::autorelease (beads oo-pvhrh, oo-31u.7)
 
 
 namespace {
@@ -359,11 +359,11 @@ void OOScript::clearJSSelf(ooscript::Object)
 }
 
 
-/*	OOScriptAutorelease(): the script goes to the Objective-C autorelease pool, whose drain releases it
-	where the keeper object that held it was released (bead oo-pvhrh; oo::AutoreleaseInObjCPool).
+/*	OOScriptAutorelease(): the script goes to the innermost oo::AutoreleaseScope, whose drain releases it
+	where the keeper object that held it was released (beads oo-pvhrh, oo-31u.7).
 */
 void OOScriptAutorelease(oo::Ref<OOScript> script)
 {
 	if (script == nullptr)  return;
-	oo::AutoreleaseInObjCPool(std::move(script));
+	oo::autorelease(std::move(script));
 }
