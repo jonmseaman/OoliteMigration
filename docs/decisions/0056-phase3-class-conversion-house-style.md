@@ -9331,3 +9331,34 @@ only two places that change in src; the tests listed above change their `+raise:
 *)` to the C++ forms. `OOJSReportWrappedException(id)` keeps its `-isKindOfClass:` test until then.
 
 **Tests.** No test file, case or expected value changes.
+
+## Amendment (bead oo-xu228): selectors that were only names; the rest of the @selector/SEL survey
+
+**Context.** Phase 4 batch AU, towards oo-4aq6a/oo-dbz. Survey of the @selector/SEL/objc_*/class_*/sel_* lines in
+first-party src outside `oofnd/objc/` and the blocked files (NSObjectOOExtensions, OODescription,
+OOWeakReference+ObjCBridge), 2026-10-18:
+
+1. **Names only (converted here).** The string expander's two key tables (special `[commander_name]`-style keys
+   and the whitelisted legacy query methods) stored a `SEL` made from a name and only ever read it back as that
+   name for `oo::CallEntityByName` (ADR-0055 item 5). They now store the name (`std::string`). The same keys
+   reach the same methods, the same assertions fire with the same text, the cache holds the same keys.
+2. **Interfaces the tests call with a selector (need test re-bases, Jon; child bead oo-xu228.3).**
+   `OOPriorityQueue::queueWithComparator(SEL)` (test_OOPriorityQueue passes `@selector(compare:)`);
+   `GameController::pauseFullScreenModeToPerform(SEL, id)` and its `pauseSelector` (test_GameController reads it),
+   `OOScheduleDeferredCall(id, SEL, id, ...)`/`GameControllerPerformSelectorWithObject` (test_GameController's
+   `raise:`/`record:` targets); `OOCallByName(id, SEL, ...)` (test_AI, test_OOEntityCalledByName, test_OOJSCall,
+   test_PlayerEntity, test_ProxyPlayerEntity); the shader uniform's method binding (`OOShaderUniformMethodType`,
+   `OOShaderUniform`, `OOShaderMaterial` `SEL` parameters: test_OOShaderUniformMethodType, test_OOShaderUniform,
+   test_EntityShaderBindings, test_OOShaderMaterial); OOJSCall's method-type reading (test_OOJSCall,
+   test_OOJSCallEntityMethods).
+3. **Runtime calls that exist because Objective-C objects still exist (go with oo-4aq6a/oo-dbz).** The autorelease
+   pool push/pop pairs (GameController, main.mm, the expander, the JS engine, the debug decoder layer) and
+   `objc_autorelease` in Universe; `objc_retain`/`objc_release` of deferred-call targets and JS-wrapped objects; the
+   OOJS glue answers (`OOJSObjectAnswersGlue` in OOObject+OOJavaScript, OOJSConsole, OOJSTimer); the JS engine's
+   root-class walk; OOObjCPList's class name; OOCharacter's `-intValue` of an Object node; the OOPriorityQueue
+   raise text naming an object's class and the comparator; OOEntityCalledByName's `@encode` in a log line.
+4. **Blocked classes** (OOWeakReference/OOWeakSet, oo-9ht.22). **Mac-only** (GameController's menu validation,
+   GameController+FullScreen, Universe's speech synthesizer): Phase 5. **Comments only**: PlayerEntity,
+   PlayerEntityControls, HeadUpDisplay, oofnd/Notification.hpp.
+
+**Tests.** No test file, case or expected value changes.

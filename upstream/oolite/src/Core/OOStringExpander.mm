@@ -146,16 +146,18 @@ OOMaybeUnits ExpandStringKey(OOStringExpansionContext *context, const OOUnits &k
 OOMaybeUnits ExpandStringKeyOverride(OOStringExpansionContext *context, const std::string &key);
 OOMaybeUnits ExpandStringKeySpecial(OOStringExpansionContext *context, const std::string &key);
 OOMaybeUnits ExpandStringKeyKeyboardBinding(OOStringExpansionContext *context, const OOUnits &key);
-/*	Key -> selector tables, keyed by the key's UTF-8 (string equality). Were map tables with
-	object keys and non-owned selector values (bead oo-3rb.20); never iterated.
+/*	Key -> method name tables, keyed by the key's UTF-8 (string equality). Were map tables with
+	object keys and non-owned selector values (bead oo-3rb.20); never iterated. The value is the
+	name the method is called by (oo::CallEntityByName): the selector was only ever read back as
+	its name (bead oo-xu228).
 */
-typedef std::map<std::string, SEL, std::less<>> OOSelectorTable;
+typedef std::map<std::string, std::string, std::less<>> OOSelectorTable;
 
-SEL LookUpSelector(const OOSelectorTable *table, const std::string &key)
+const std::string *LookUpSelector(const OOSelectorTable *table, const std::string &key)
 {
-	if (table == NULL)  return NULL;
+	if (table == NULL)  return nullptr;
 	auto found = table->find(key);
-	return (found != table->end()) ? found->second : NULL;
+	return (found != table->end()) ? &found->second : nullptr;
 }
 
 // A lookup's text, entering the UTF-16 engine (nullopt stays nullopt).
@@ -167,7 +169,7 @@ OOMaybeUnits ExpandStringKeyMissionVariable(OOStringExpansionContext *context, c
 OOMaybeUnits ExpandStringKeyLegacyLocalVariable(OOStringExpansionContext *context, const std::string &key);
 OOUnits ValueText(const oo::PList &value);
 OOMaybeUnits ExpandLegacyScriptSelectorKey(OOStringExpansionContext *context, const std::string &key);
-SEL LookUpLegacySelector(const std::string &key);
+const std::string *LookUpLegacySelector(const std::string &key);
 
 OOMaybeUnits ExpandPercentEscape(OOStringExpansionContext *context, const char16_t *characters, NSUInteger size, NSUInteger idx, NSUInteger *replaceLength);
 OOMaybeUnits ExpandSystemNameForGalaxyEscape(OOStringExpansionContext *context, const char16_t *characters, NSUInteger size, NSUInteger idx, NSUInteger *replaceLength);
@@ -785,14 +787,14 @@ OOMaybeUnits ExpandStringKeySpecial(OOStringExpansionContext *context, const std
 {
 	OOCParameterAssert(context != NULL);
 
-	SEL selector = LookUpSelector(SpecialSubstitutionSelectors(), key);
-	if (selector != NULL)
+	const std::string *selector = LookUpSelector(SpecialSubstitutionSelectors(), key);
+	if (selector != nullptr)
 	{
-		OOCAssert(oo::EntityRespondsToName(PLAYER, OOSelectorName(selector)), "Special string expansion selector %s for [%s] is not implemented.", OOSelectorName(selector), key.c_str());
+		OOCAssert(oo::EntityRespondsToName(PLAYER, *selector), "Special string expansion selector %s for [%s] is not implemented.", selector->c_str(), key.c_str());
 
 		// Called by name (ADR-0055 item 5) on the player's C++ part (bead oo-9ht.39.7.2): a string
 		// result, as a PList.
-		const oo::PList result = oo::CallEntityByName(PLAYER, OOSelectorName(selector));
+		const oo::PList result = oo::CallEntityByName(PLAYER, *selector);
 		if (!result.isNull())
 		{
 			const std::string *string = result.getIf<std::string>();
@@ -831,17 +833,17 @@ const OOSelectorTable *SpecialSubstitutionSelectors(void)
 	static OOSelectorTable *specials = NULL;
 	if (specials != NULL)  return specials;
 	
-	struct { const char *key; SEL selector; } selectors[] =
+	struct { const char *key; const char *selector; } selectors[] =
 	{
-		{ "commander_name", OOSelectorFromName("commanderName_string") },
-		{ "commander_shipname", OOSelectorFromName("commanderShip_string") },
-		{ "commander_shipdisplayname", OOSelectorFromName("commanderShipDisplayName_string") },
-		{ "commander_rank", OOSelectorFromName("commanderRank_string") },
-		{ "commander_kills", OOSelectorFromName("commanderKillsAsString") },
-		{ "commander_legal_status", OOSelectorFromName("commanderLegalStatus_string") },
-		{ "commander_bounty", OOSelectorFromName("commanderBountyAsString") },
-		{ "credits_number", OOSelectorFromName("creditsFormattedForSubstitution") },
-		{ "_oo_legacy_credits_number", OOSelectorFromName("creditsFormattedForLegacySubstitution") }
+		{ "commander_name", "commanderName_string" },
+		{ "commander_shipname", "commanderShip_string" },
+		{ "commander_shipdisplayname", "commanderShipDisplayName_string" },
+		{ "commander_rank", "commanderRank_string" },
+		{ "commander_kills", "commanderKillsAsString" },
+		{ "commander_legal_status", "commanderLegalStatus_string" },
+		{ "commander_bounty", "commanderBountyAsString" },
+		{ "credits_number", "creditsFormattedForSubstitution" },
+		{ "_oo_legacy_credits_number", "creditsFormattedForLegacySubstitution" }
 	};
 	unsigned i, count = sizeof selectors / sizeof *selectors;
 
@@ -956,13 +958,13 @@ OOMaybeUnits ExpandLegacyScriptSelectorKey(OOStringExpansionContext *context, co
 {
 	OOCParameterAssert(context != NULL);
 
-	SEL selector = LookUpLegacySelector(key);
+	const std::string *selector = LookUpLegacySelector(key);
 
-	if (selector != NULL)
+	if (selector != nullptr)
 	{
 		// Called by name (ADR-0055 item 5) on the player's C++ part (bead oo-9ht.39.7.2): "%@" of the
 		// result, as [[result description]] gave it (nil stays nil).
-		const oo::PList result = oo::CallEntityByName(PLAYER, OOSelectorName(selector));
+		const oo::PList result = oo::CallEntityByName(PLAYER, *selector);
 		return UnitsFromOptional(!result.isNull() ? std::optional<std::string>(oo::DescriptionOf(result)) : std::nullopt);
 	}
 	else
@@ -977,15 +979,15 @@ OOMaybeUnits ExpandLegacyScriptSelectorKey(OOStringExpansionContext *context, co
 	If <key> is a whitelisted legacy script query method, or aliases to one,
 	return the corresponding selector.
 */
-SEL LookUpLegacySelector(const std::string &key)
+const std::string *LookUpLegacySelector(const std::string &key)
 {
-	SEL selector = NULL;
+	const std::string *selector = nullptr;
 	static OOSelectorTable *selectorCache = NULL;
 
 	// Try cache lookup.
 	selector = LookUpSelector(selectorCache, key);
 
-	if (selector == NULL)
+	if (selector == nullptr)
 	{
 		// whitelist.plist's query methods (its string entries) and aliases (a string, or a
 		// number's -stringValue, as PListView's string rule gave), built once. ResourceManager is
@@ -1020,23 +1022,18 @@ SEL LookUpLegacySelector(const std::string &key)
 
 		if (whitelist->count(selectorName) != 0)
 		{
-			selector = OOSelectorFromName(selectorName.c_str());
-
 			/*	This is an assertion, not a warning, because whitelist.plist is
 				part of the game and cannot be overriden by OXPs. If there is an
 				invalid selector in the whitelist, it's a game bug.
 			*/
 			OOCAssert(oo::EntityRespondsToName(PLAYER, selectorName), "Player does not respond to whitelisted query selector %s.", key.c_str());
-		}
 
-		if (selector != NULL)
-		{
-			// Add it to cache.
+			// Add it to cache (the name; a map's element does not move).
 			if (selectorCache == NULL)
 			{
 				selectorCache = new OOSelectorTable;
 			}
-			selectorCache->emplace(key, selector);
+			selector = &selectorCache->emplace(key, selectorName).first->second;
 		}
 	}
 
