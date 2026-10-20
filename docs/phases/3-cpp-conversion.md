@@ -1,6 +1,6 @@
 # Phase 3 — Objective-C → C++20 conversion
 
-**Status:** not started · **Est.:** 12–24 eng-months · **Depends on:** [Phase 1](1-js-engine.md) and [Phase 2](2-oofnd.md)
+**Status:** conversion complete on `main`; reviewed 2026-10-20 ([Review (oo-r7fo)](#review-oo-r7fo), two tooling gaps filed); exit gate oo-o8x acceptance green on a1deba59c 2026-10-20, closes behind the review · **Est.:** 12–24 eng-months · **Depends on:** [Phase 1](1-js-engine.md) and [Phase 2](2-oofnd.md)
 **Runs in parallel with:** partly with itself (independent modules), under the freeze policy.
 
 ## Goal
@@ -249,6 +249,60 @@ From Phase 0. Every story's acceptance includes `tools/tier-a.sh <file>`; the wr
 - **6** — decided: faithful port of legacy AI and plist scripting (ADR-0013).
 - **7** — decided: MinGW-clang (ADR-0013).
 
+## Review (oo-r7fo)
+
+**Date:** 2026-10-20 · **Reviewer:** Claude Fable 5.1 (bead oo-r7fo) · **Tree:** `main` @ a1deba59c (the exit gate's own merge; worktree `bead/oo-r7fo`). Rule 7: every row is a command and its exit status, not a judgement. Heavy commands ran in the build pool at a1deba59c; logs in `.agent-tmp/cc/review3/`.
+
+### Beads
+
+`bd list --label phase:3 --all`: 728 beads, 724 closed, none escalated. Open: this review, the gate oo-o8x (every acceptance line exit 0 on a1deba59c in its accept attempt 2; bd refused the close only because this review blocks it) and the epic oo-9ht. Deferred: oo-dxxt (`OOJSWorldScripts.mm`), which has no Objective-C left and is only the `.mm` → `.cpp` rename this doc assigns to Phase 4 — re-labelled `phase:4` and re-parented under oo-6e1. Sweep split of the closed beads: 203 convert, 196 objc-bridge, 175 slices, 29 presplit, 13 renames, 108 seams/tracks.
+
+### Evidence table (every gate box and work item)
+
+| Item | Evidence command (review worktree) | Result |
+|---|---|---|
+| Entry: exemplars exist | oo-11m (`OOColor`), oo-cwz (`OXPVerifier` stage base) closed; `! grep -nE '@implementation\|@interface\|@selector\|@protocol' OOColor.{h,mm} OOOXPVerifierStage.{h,mm}` | PASS |
+| Entry: Tier A < 30 s on a converted leaf | `tools/tier-a.sh` on `OOVector.mm` / `OOSkyDrawable.mm` / `OOJSSpecialFunctions.cpp` / `OOPlanetEntity.mm` (build pool) | PASS 12 s / 18 s / 19 s / 45 s (the last is not a leaf) |
+| Entry: freeze policy, `docs/UPSTREAM_DELTA.md` | oo-kih's block: `test -f docs/UPSTREAM_DELTA.md`; `bash tools/upstream-delta.sh --check` | PASS / PASS |
+| Exit: zero `@implementation` (ADR-0061 scope) | the gate's line 1 (`grep -r '^@implementation' upstream/oolite/src` less `oofnd/objc/`, `GameController+FullScreen.mm`, the `(MacOSX)` line) | PASS (empty). Excluded definitions left: `GameController+FullScreen.mm:47`, `GameController.mm:978 (MacOSX)`, `oofnd/objc/OOConstantString.mm` ×2, `oofnd/objc/OOObject.mm` — Phase 5 and Phase 4 (oo-4aq6a) |
+| Exit: every no-`@implementation` `.m` is `.c` | `find upstream/oolite/src -name '*.m'` | empty; 217 `.mm`, 15 `.cpp` (the `.mm` → `.cpp` rename is Phase 4, oo-dbz) |
+| Exit: goldens reproduce | `bash tools/tier-c.sh --only goldens` after `tools/build-windows.sh test` (build pool, a1deba59c) | GREEN 18 s: 001 MATCH, 001-launch-dock MATCH (2 blessed verified, 18 unblessed present) |
+| Exit: Tier-1 corpus | `grep -qF '[oo-o8x] ' tests/nightly/checks.txt` (the corpus is the gate's nightly line, ADR-0021) | PASS |
+| Exit: ASan clean | the gate's line 5 (`tier-c.sh --only asan,goldens`) exit 0 in oo-o8x's accept attempt 2 on a1deba59c, 2026-10-20 (`.agent-tmp/acceptq.log`) | PASS (not re-run here: a sanitized rebuild on a shared box) |
+| Exit: Windows clean at `-Wall -Wextra` | the gate's line 3 (`build-windows.sh dev --setup-flags=-Dwarning_level=2`, ADR-0060 vendored paths excluded) exit 0 in the same accept | PASS |
+| Exit: core unit tests | `bash tools/check-core-tests.sh` (build pool) | 174 ok, 0 fail |
+| Exit: the six giant files | seams oo-k8a, oo-a70, oo-pas, oo-e1d, oo-xjm, oo-e4i closed; every `check-slice-plan.py --slice-done` line of their blocks (34+4, 28+3+3+2+4, 26, 7, 6, 6) | all PASS; `! grep '^@implementation'` on every giant's `.mm` PASS |
+| Work item 1: `oomath` | `OOMatrix.cpp`, `OOQuaternion.cpp` (renames oo-s37k, oo-69mv); `OOVector.mm` / `OOHPVector.mm` were classified convert (oo-86ek, oo-82dy: a class and `@"..."` bodies), `OOTriangle` is header-only | done |
+| Work item 2: `Core/OXPVerifier` | `grep -lE '^@(implementation\|interface)' src/Core/OXPVerifier/*` | 0 of 13 `.mm` |
+| Work item 3: leaf utilities | the eight classes' `.h`/`.mm`: 0 Objective-C declarations; no `+ObjCBridge` files | done |
+| Work items 4–7: `Materials`, `ooaudio`, `ooscript`, `ooentity` | `grep -lE '^@(implementation\|interface)'` per module | Materials 1 file (`OOShaderUniform.mm`'s `OOObject (ShaderBindingHierarchy)` category *declaration*, Phase 4 oo-xu228.3.2); audio 0; Scripting 0; Entities 0. `find src -name '*+ObjCBridge*'`: none |
+| Work item 8: `Universe` | `grep -cE '^@(implementation\|interface)' Universe.{h,mm}` | 0 / 0; oo-pas closed |
+| Leftovers: Objective-C outside `oofnd/objc/` | `grep -rE '^@(interface\|protocol)'`; live `@selector` sites | declarations only in `OODescription.h` (protocol + root category), `OOObject+OOJavaScript.h` (`OOJSObjectGlue` protocol), `OOShaderUniform.mm`; live `@selector` in `OODescription.mm` ×4, `OOObject+OOJavaScript.mm` ×5, `OOJSConsole.mm:993`, `OOJSTimer.mm:309`, `OOCallByName.mm:133`, `Universe.mm:10447` and `GameController.mm` ×4 (Mac arms). All are Phase 4's "zero Objective-C" (oo-4aq6a, oo-dbz), not `@implementation` |
+| Generator | `python3 tools/gen-stories.py --dry-run` (14 s) | 136 slice stories "nothing left to convert; not filed"; **but** 157 renames + 24 converts + 11 pre-splits + 33 foundation stories planned for converted `.mm` files, and `tools/test_gen_stories.py` fails → oo-9ht.187 |
+| Slice plans | `python3 tools/check-slice-plan.py` on every `3-slices/*.md` | 5 FAIL (GameController 3, HeadUpDisplay 30, PlayerEntityLoadSave 1, ShipEntity 35, Universe 2) → oo-9ht.188 |
+| Docs | header, ROADMAP row 3, `docs/decisions/README.md` | header said "not started", ROADMAP's focus was the Phase 2 gate, the ADR index stopped at 0058: fixed in this bead |
+
+### Re-run table (15 seams + 39 sampled closed beads, acceptance blocks re-run on a1deba59c)
+
+Cheap lines ran in the review worktree; `build-windows.sh test`, `check-core-tests.sh`, goldens and `js-api-contract.sh` ran once in the build pool (all exit 0); `tier-a.sh` for four sampled files (above); guardrails is this bead's own line.
+
+| Bead(s) | Verdict | Note |
+|---|---|---|
+| oo-xjm, oo-e4i, oo-a70, oo-e1d, oo-k8a (giants), oo-kih | PASS | every line (153 `--slice-done` lines, the `@implementation` greps, the amendment and nightly greps) |
+| oo-pas | PASS / superseded | 26 slices and `Universe.mm` grep PASS; `@implementation OOUniverseDelayedMessage` in `Universe+ObjCBridge.mm` — file deleted by oo-ql9rn |
+| oo-11m, oo-cwz, oo-2en, oo-kq7, oo-bj8, oo-smy, oo-o89, oo-ppc | PASS / superseded | class greps and nightly lines PASS; the `X+ObjCBridge.mm` meson entries were deleted by oo-9ht.1, oo-9ht.4, oo-9ht.68, oo-9ht.74, oo-dpyk8 / oo-9ht.40, oo-9ht.8 / oo-9ht.9, oo-9ht.2, oo-9ht.15; `oo::ConstructCxxPartOfCopy` left `OOMesh.mm` with the adapters (oo-dnbf) |
+| oo-ougr, oo-qaoy, oo-1iwo, oo-9ht.1, oo-9ht.22, oo-9ht.165, oo-9ht.177, oo-9ht.133, oo-9ht.57, oo-pvhrh, oo-sqzbw, oo-653ty, oo-jwt2g, oo-iimku, oo-cpztk, oo-tg2vl, oo-6e1.1, oo-8sql7, oo-3pl05, oo-t7o84, oo-h3sye, oo-tc08n, oo-4plo, oo-k7u5, oo-9ht.72, oo-9ht.154, oo-94qk | PASS | every cheap line exit 0 |
+| oo-86ek, oo-4jjl, oo-mp0d, oo-whzh, oo-7jhs5, oo-2p1ug, oo-ke13m, oo-up4b, oo-eoi6 | PASS / superseded | the façade file, its meson entry, the `cxx::` qualification or the `(OOSliceN)` category named in the line was deleted by its own deletion bead (oo-9ht.5, oo-9ht.9, the planet/texture/Universe/HUD/ShipEntity/FileScanner bridges, oo-6e1.1 under std-2026-10-19) |
+| oo-x7o | **FAIL** | `python3 -m pytest tools/test_gen_stories.py`: `test_every_ns_header_c_file_has_a_foundation_story` → oo-9ht.187 |
+| oo-9ht.140, oo-0fvy | **FAIL** | `check-slice-plan.py docs/phases/3-slices/ShipEntity.md` (35) / `PlayerEntityLoadSave.md` (1) → oo-9ht.188 |
+
+### Beads filed (parent oo-9ht, label `sweep:review-3`, both block oo-r7fo)
+
+- oo-9ht.187 (fleet, bug): the generator's rename/convert/pre-split/foundation sweeps select converted `.mm` files; `tools/test_gen_stories.py` is red on main.
+- oo-9ht.188 (fleet): five slice plans fail `tools/check-slice-plan.py` (free functions added after the plans; `ShipEntity.h` outgrew the read budget).
+
+Not filed: the Objective-C declarations and `@selector` glue listed above (Phase 4 scope by ADR-0061 and this doc's "`.mm` → `.cpp` is Phase 4"); golden scenarios 002–020 (`gen-stories` "would file": open Phase 0 beads, as in reviews 1 and 2); oo-b7hg (`GameController+FullScreen`, deferred, `phase:5`).
+
 ## Status log
 
 - 2026-09-06 — Phase doc created from MIGRATION_PLAN §8 (Phase 3) and AI_EXECUTION_PLAN §1, §6, §15.
@@ -360,3 +414,10 @@ From Phase 0. Every story's acceptance includes `tools/tier-a.sh <file>`; the wr
   helpers kept verbatim), the façade's primary `@implementation` is in `Universe+ObjCBridge.mm` with
   the fenced Mac speech arms and `OOUniverseDelayedMessage`, and the empty `OOPrivate` interfaces of
   `Universe.mm` and `PlayerEntity.mm` are gone.
+- 2026-10-20 — Phase 3 reviewed (bead oo-r7fo, [Review (oo-r7fo)](#review-oo-r7fo)): 724 of 728
+  phase:3 beads closed, the exit gate oo-o8x green on a1deba59c (all seven lines), every seam and 39
+  sampled beads re-run. Two tooling gaps filed and blocking the review: oo-9ht.187 (`gen-stories.py`
+  re-selects converted `.mm` files; `tools/test_gen_stories.py` red on main) and oo-9ht.188 (five slice
+  plans fail `check-slice-plan.py`). oo-dxxt (`OOJSWorldScripts.mm` → `.cpp`) is Phase 4 scope and was
+  re-labelled. What is left in `src/` outside `oofnd/objc/` is Objective-C *declarations* and selector
+  glue only (`OODescription.h`, `OOObject+OOJavaScript.h`, `OOShaderUniform.mm`), Phase 4's.
