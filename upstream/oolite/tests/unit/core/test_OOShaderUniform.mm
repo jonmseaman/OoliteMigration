@@ -212,7 +212,7 @@ void Reset()
 
 oo::Ref<OOShaderUniform> Bound(const char *uniform, id target, const char *selector, OOUniformConvertOptions options = 0)
 {
-	return OOShaderUniform::initWithName(uniform, gShaderProgram, target, OOSelectorFromName(selector), options);
+	return OOShaderUniform::initWithName(uniform, gShaderProgram, target, selector, options);
 }
 
 
@@ -235,7 +235,7 @@ OO_TEST(initialisersThatFail)
 		OO_CHECK(OOShaderUniform::initWithName("uVector", gShaderProgram, static_cast<OOColor *>(nullptr)) == nullptr);
 		TestTarget *target = [[[TestTarget alloc] init] autorelease];
 		OO_CHECK(OOShaderUniform::initWithName("uFloat", gShaderProgram, target, NULL, 0) == nullptr);
-		OO_CHECK(OOShaderUniform::initWithName("uFloat", nil, target, OOSelectorFromName("floatValue"), 0) == nullptr);
+		OO_CHECK(OOShaderUniform::initWithName("uFloat", nil, target, "floatValue", 0) == nullptr);
 		OO_CHECK(Bound("uMissing", target, "floatValue") == nullptr);
 	}
 }
@@ -516,7 +516,7 @@ OO_TEST(cxxAPI)
 
 		TestTarget *target = [[[TestTarget alloc] init] autorelease];
 		target->_float = 0.375f;
-		const oo::Ref<OOShaderUniform> bound = OOShaderUniform::initWithName("uFloat", gShaderProgram, target, OOSelectorFromName("floatValue"), 0);
+		const oo::Ref<OOShaderUniform> bound = OOShaderUniform::initWithName("uFloat", gShaderProgram, target, "floatValue", 0);
 		OO_CHECK(bound != nullptr);
 		bound->apply();
 		OO_CHECK(Near(Floats("uFloat", 1), { 0.375f }));
