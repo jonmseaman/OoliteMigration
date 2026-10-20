@@ -39,8 +39,8 @@ castscan_tu() {
            "$src" -- clang "$@" 2>&1)" || rc=$?
   # A TU that does not parse still ends "0 matches." with rc 0, so an error diagnostic is a
   # failed scan too: tier-a has compiled the TU first, and a scan of half a TU is not a pass.
-  if [ "$rc" -ne 0 ] || ! printf '%s\n' "$out" | grep -qE '^[0-9]+ match(es)?\.$' \
-     || printf '%s\n' "$out" | grep -qE '(^|: )(fatal )?error: '; then
+  if [ "$rc" -ne 0 ] || ! grep -qE '^[0-9]+ match(es)?\.$' <<<"$out" \
+     || grep -qE '(^|: )(fatal )?error: ' <<<"$out"; then
     printf '%s\n' "$out" | grep -E 'error' | head -20 >&2
     printf 'objc-cast-scan: clang-query did not complete on %s (exit %s)\n' "$src" "$rc" >&2
     return 2

@@ -1312,7 +1312,7 @@ check_castscan() {
       || bad "castscan: tools/tier-a.sh runs tools/objc-cast-scan.sh but tools/objc-cast-scan-selftest is gone"
     return 0
   fi
-  printf '%s\n' "$CHANGE" | grep -qE '(^|[[:space:]])tools/(objc-cast-scan[^[:space:]]*|tier-a\.sh)$' || return 0
+  grep -qE '(^|[[:space:]])tools/(objc-cast-scan[^[:space:]]*|tier-a\.sh)$' <<<"$CHANGE" || return 0
   if ! out=$(bash tools/objc-cast-scan-selftest 2>&1); then
     bad "castscan: the change touches the cast scanner and tools/objc-cast-scan-selftest fails:"
     printf '%s\n' "$out" | grep -v '^PASS' | sed 's/^/    /' >&2
