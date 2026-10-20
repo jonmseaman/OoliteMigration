@@ -731,6 +731,8 @@
 # oo-9ht.22: OOWeakReference(+ObjCBridge) and OOWeakSet are deleted; an Objective-C shader binding target is held by the runtime's zeroing weak reference (ADR-0056 amendment oo-9ht.22).
 [oo-9ht.22] export PATH="/ucrt64/bin:$PATH"; ! test -e 'upstream/oolite/src/Core/OOWeakReference+ObjCBridge.mm' && ! test -e upstream/oolite/src/Core/OOWeakSet.mm && tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/tier-c.sh --only goldens && bash tools/tier-c.sh --only asan
 [oo-xu228.3.2] export PATH="/ucrt64/bin:$PATH"; ! grep -qE 'SEL selector' upstream/oolite/src/Core/Materials/OOShaderUniform.h upstream/oolite/src/Core/Materials/OOShaderMaterial.h && tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOShaderUniform && bash tools/check-core-tests.sh test_OOShaderMaterial && bash tools/check-core-tests.sh test_EntityShaderBindings && bash tools/check-core-tests.sh test_OOShaderUniformMethodType
+# Every slice plan still passes its checker once its file is converted (oo-9ht.188).
+[oo-9ht.188] export PYTHONUTF8=1; python3 tools/check-slice-plan.py --selftest && for p in docs/phases/3-slices/*.md; do python3 tools/check-slice-plan.py "$p" >/dev/null 2>&1 || grep -qE '^(skipped|retired)' "$p" || { echo "FAIL $p"; exit 1; }; done
 # Generator sweeps select no converted file (oo-9ht.187): no phantom Phase 2/3 stories, classifier tests green.
 [oo-9ht.187] export PYTHONUTF8=1; python3 -m pytest -q tools/test_gen_stories.py && test "$(python3 tools/gen-stories.py --dry-run | grep -cE '^  sweep (renames|convert|presplit|foundation): [1-9]')" = 0
 # oo-4aq6a.9: oo::ObjCPeers (oofnd/objc/OOObjCPeer.h) is deleted with test_objc_peer (ADR-0056 amendment oo-4aq6a.9).

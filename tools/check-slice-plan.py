@@ -71,6 +71,9 @@ Checks (exit 1 on any failure):
     already converted, which ADR-0056 lets keep sends to Objective-C objects and @try (oo-9ht.117);
   * every mac-only unit lies wholly inside an OOLITE_MAC_OS_X preprocessor arm.
 An exact entry that matches no unit is a warning (the method was removed or renamed upstream).
+Once the file is converted (bead oo-9ht.188: no compiled Objective-C method is left and every slice
+passes --slice-done) the plan has done its job, so the story-shape checks (every unit assigned, no
+empty slice, the read and own budgets) become warnings; the consistency checks stay errors.
 
     python3 tools/check-slice-plan.py docs/phases/3-slices/Foo.md [--json] [--units]
     python3 tools/check-slice-plan.py --selftest
@@ -439,6 +442,7 @@ def analyse(plan_path, max_read=1500, max_own=800, base=ROOT):
     for n in sorted(set(x for x in names if names.count(x) > 1)):
         warnings.append(f"unit name {n} occurs {names.count(n)} times (preprocessor alternatives?); each copy is assigned the same way, except that a mac-only entry claims a copy in an OOLITE_MAC_OS_X arm")
     assign = {}; shared = {}; unassigned = []; empty = []
+    shape = []   # the story-shape checks: unassigned, empty slice, read and own budgets (see `done` below)
     for i, u in enumerate(units):
         best = None; owners = set()
         # A mac-only entry claims a unit inside an OOLITE_MAC_OS_X arm whatever its tier: the Mac arm
@@ -459,7 +463,7 @@ def analyse(plan_path, max_read=1500, max_own=800, base=ROOT):
             # plan's -[X m] / @X entries no longer match. It is verbatim (the oo-9ht.117 rule) whether
             # the plan's verbatim group is '*' or a list of names, or absent (oo-7j62d).
             assign[i] = "verbatim"
-        elif not owners: unassigned.append(i); errors.append(f"unassigned: {u['name']} (line {u['start']+1}-{u['end']+1}, {u['end']-u['start']+1} lines)")
+        elif not owners: unassigned.append(i); shape.append(f"unassigned: {u['name']} (line {u['start']+1}-{u['end']+1}, {u['end']-u['start']+1} lines)")
         elif len(owners) > 1:
             errors.append(f"assigned to {len(owners)} slices ({', '.join(sorted(owners))}): {u['name']}"); shared[i] = owners
         else: assign[i] = owners.pop()
@@ -512,17 +516,29 @@ def analyse(plan_path, max_read=1500, max_own=800, base=ROOT):
         if not mine:
             empty.append(g["id"])
             if landed(g): warnings.append(f"slice {g['id']} is empty: landed (its class has converted members)")
-            else: errors.append(f"slice {g['id']} is empty")
-        if read >= max_read: errors.append(f"slice {g['id']} reads ~{read} lines (header {h} + preamble {preamble} + own {own}); must be under {max_read}")
+            else: shape.append(f"slice {g['id']} is empty")
+        if read >= max_read: shape.append(f"slice {g['id']} reads ~{read} lines (header {h} + preamble {preamble} + own {own}); must be under {max_read}")
         # one-unit-slices: frontier (bead oo-9ht.157): one method over --max-own is a frontier story
         frontier = bool(plan["one_unit_slices"]) and len(mine) == 1 and own > max_own
-        if own > max_own and not frontier: errors.append(f"slice {g['id']} owns {own} lines of units; at most {max_own}" + ("" if len(mine) != 1 else " (one unit: see one-unit-slices: frontier)"))
+        if own > max_own and not frontier: shape.append(f"slice {g['id']} owns {own} lines of units; at most {max_own}" + ("" if len(mine) != 1 else " (one unit: see one-unit-slices: frontier)"))
         report.append({"id": g["id"], "title": g["title"], "verbatim": False, "mac_only": False, "units": len(mine), "own": own, "read": read,
                        "header": h, "frontier": frontier, "members": [u["name"] for u in mine]})
-    return {"plan": plan, "retired": False, "missing": False, "units": units, "assign": assign, "shared": shared,
-            "unassigned": unassigned, "empty": empty,
+    a = {"plan": plan, "retired": False, "missing": False, "units": units, "assign": assign, "shared": shared,
+         "unassigned": unassigned, "empty": empty, "code_lines": code_lines, "raw_lines": raw_lines}
+    # A converted file (bead oo-9ht.188): no compiled Objective-C method is left and every slice is
+    # --slice-done. The plan has done its job, so the checks that shape STORIES (every unit in a
+    # slice, no empty slice, the read and own budgets) constrain stories that no longer exist: a
+    # function added after the plan, or a header that grew past the budget, is reported as a warning.
+    # The plan's own consistency (a unit in two slices, a method or Objective-C in verbatim, mac-only
+    # outside a Mac arm, a missing header) is still an error.
+    done = (not any(u["kind"] == "method" and not u.get("mac") for u in units)
+            and not any(unconverted(a, g["id"]) for g in plan["groups"] if not g["verbatim"] and not g["mac_only"]))
+    if done: warnings += [f"converted file, not a story shape: {e}" for e in shape]
+    else: errors += shape
+    a.update({
             "total": total, "preamble": preamble, "header_lines": hdr, "slices": report, "errors": errors,
-            "warnings": warnings, "code_lines": code_lines, "raw_lines": raw_lines}
+            "warnings": warnings, "converted": done})
+    return a
 
 def unconverted(a, slice_id):
     """The units of slice `slice_id` that are still Objective-C: a method (it is still inside an
@@ -770,6 +786,26 @@ def selftest():
     try:
         analyse(p, base=d); fails.append("one-unit-slices: yes accepted")
     except SystemExit: pass
+    # a converted file (bead oo-9ht.188): every method a member and every slice done, so a function added
+    # after the plan, an empty slice and the read budget are warnings; until then they are errors
+    allc = SELFTEST_SRC.replace(private, 'void Foo::hidden()\n{\n\too::log("}");\n}\n')
+    allc = allc.replace("@implementation Foo\n// comment above init belongs to init\n- (id) init\n{\n\tif ((self = [super init])) { _x = helper(1); }\n\treturn self;\n}\n- (void) setA:(int)a b:(oo::PList *)b { _x = a; }\n@end\n",
+                        "Foo::Foo()\n{\n\t_x = helper(1);\n}\nvoid Foo::setA(int a, oo::PList *b) { _x = a; }\n")
+    allc += "static void addedLater(void) { }\n"
+    if "@implementation" in allc: fails.append("selftest converted-file fixture edit did not apply")
+    open(os.path.join(d, "Foo.mm"), "w").write(allc)
+    open(os.path.join(d, "plan.md"), "w").write("x\n```slice-plan\nsource: Foo.mm\nheader: Foo.h\n" + good + "```\n")
+    with contextlib.redirect_stdout(io.StringIO()):
+        if check(os.path.join(d, "plan.md"), 10, 800, base=d) != 0: fails.append("a converted file failed its story-shape checks")
+    if not analyse(os.path.join(d, "plan.md"), base=d)["converted"]: fails.append("a converted file is not reported converted")
+    run(good + "slice 3: dup\n  helper()\n", 1)                              # a unit in two slices is still an error
+    open(os.path.join(d, "plan.md"), "w").write("x\n```slice-plan\nsource: Foo.mm\nheader: Foo.h\n" + good + "```\n")
+    open(os.path.join(d, "Foo.mm"), "w").write(allc.replace("static void addedLater(void) { }", "static void addedLater(void) { }\nint more(void) { return [Foo n]; }"))
+    with contextlib.redirect_stdout(io.StringIO()):
+        if check(os.path.join(d, "plan.md"), 1500, 800, base=d) != 0: fails.append("a converted file failed on an unassigned function")
+    open(os.path.join(d, "Foo.mm"), "w").write(allc.replace("\treturn x + 1;", "\treturn [Foo bar:x];"))
+    with contextlib.redirect_stdout(io.StringIO()):
+        if check(os.path.join(d, "plan.md"), 10, 800, base=d) != 1: fails.append("a slice with Objective-C left escaped the read budget")
     import shutil; shutil.rmtree(d, ignore_errors=True)
     for f in fails: print("SELFTEST FAIL:", f)
     print("selftest OK" if not fails else "selftest FAILED")
