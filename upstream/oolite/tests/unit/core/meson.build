@@ -30,8 +30,8 @@ core_tests = {
     'test_OOSoundReferencePoint': ['Core/OOBasicSoundReferencePoint.mm'],
     'test_OOColor': ['Core/OOColor.mm', 'Core/OODescription.mm'],
     'test_OOJoystickProfile': ['Core/OOJoystickProfile.mm'],
-    'test_OOSDLJoystickManager': ['SDL/OOSDLJoystickManager.mm', 'Core/OOJoystickManager.mm', 'Core/OOJoystickProfile.mm', 'Core/OOCallByName.mm', 'Core/OODescription.mm'],
-    'test_OOJoystickManager': ['Core/OOJoystickManager.mm', 'Core/OOJoystickProfile.mm', 'Core/OOCallByName.mm', 'Core/OODescription.mm'],
+    'test_OOSDLJoystickManager': ['SDL/OOSDLJoystickManager.mm', 'Core/OOJoystickManager.mm', 'Core/OOJoystickProfile.mm', 'Core/OODescription.mm'],
+    'test_OOJoystickManager': ['Core/OOJoystickManager.mm', 'Core/OOJoystickProfile.mm', 'Core/OODescription.mm'],
     'test_OORegExpMatcher': ['Core/OORegExpMatcher.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOFileScannerVerifierStage': ['Core/OXPVerifier/OOFileScannerVerifierStage.mm', 'Core/OXPVerifier/OOOXPVerifierStage.mm', 'Core/OODescription.mm'],
     'test_OOAIStateMachineVerifierStage': ['Core/OXPVerifier/OOAIStateMachineVerifierStage.mm', 'Core/OXPVerifier/OOFileScannerVerifierStage.mm', 'Core/OXPVerifier/OOOXPVerifierStage.mm', 'Core/OODescription.mm'],
@@ -128,10 +128,10 @@ core_tests = {
     'test_OOPolygonSprite': ['*'],
     'test_OOVector': ['Core/OOVector.mm', 'Core/legacy_random.c', 'Core/OODescription.mm'],
     'test_OOFastArithmetic': ['Core/OODescription.mm'],
-    'test_OOAsyncQueue': ['Core/OOAsyncQueue.mm'],
+    # test_OOAsyncQueue retired with its only subject, the Objective-C OOAsyncQueue (bead oo-4aq6a.8, std-2026-10-19)
     'test_OOProfilingStopwatch': ['Core/OOProfilingStopwatch.mm'],
-    'test_OOAsyncWorkManager': ['Core/OOAsyncWorkManager.mm', 'Core/OOAsyncQueue.mm', 'Core/OOCPUInfo.mm', 'Core/OODescription.mm'],
-    'test_AI': ['Core/AI.mm', 'Core/OOCallByName.mm', 'Core/OODescription.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
+    'test_OOAsyncWorkManager': ['Core/OOAsyncWorkManager.mm', 'Core/OOCPUInfo.mm', 'Core/OODescription.mm'],
+    'test_AI': ['Core/AI.mm', 'Core/OODescription.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     # test_OOWeakReference retired with its only subject, the weak-reference class (bead oo-9ht.22, ADR-0049; Jon approved 2026-10-19)
     # test_OOWeakSet retired with its only subject, the Objective-C weak set (bead oo-9ht.22, ADR-0049; Jon approved 2026-10-19)
     'test_OOJSFunction': ['Core/Scripting/OOJSFunction.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OODescription.mm'],

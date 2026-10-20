@@ -818,40 +818,9 @@ OO_TEST(reset)
 }
 
 
-// An Objective-C object that keeps a held value until it is released (bead oo-wdqw1: the value is
-// C++; an autorelease keeper holds it, as OOScriptAutorelease() holds a script).
-@interface TestValueKeeper: OOObject
-{
-	oo::Ref<OOJSValue>	_value;
-}
-- (id) initWithValue:(oo::Ref<OOJSValue>)value;
-@end
-
-@implementation TestValueKeeper
-- (id) initWithValue:(oo::Ref<OOJSValue>)value
-{
-	self = [super init];
-	if (self != nil)  _value = std::move(value);
-	return self;
-}
-@end
-
-
-// Bead oo-9ht.173: a rooted value left autoreleased in the thread's own pool (no @autoreleasepool
-// here, as the game's exit(0) leaves the frame's pools open) is freed when libobjc drains that pool
-// at thread detach, after the C++ static destructors; its root removal and observer removal must
-// still find the engine's registries and the notification center. The check is the process
-// exiting 0 (tools/nightly line [oo-9ht.173] repeats it).
-OO_TEST(aValueLeftInTheThreadPoolAtExit)
-{
-	SetUp();
-	ooscript::Context context = OOJSAcquireContext();
-	ooscript::Value object = Eval(context, "({ leftAtExit: true })");
-	oo::Ref<OOJSValue> holder = OOJSValue::valueWithJSValue(object, context);
-	OO_CHECK(holder != nullptr && holder->jsValueInContext(context) == object);
-	[[[TestValueKeeper alloc] initWithValue:holder] autorelease];	// what the game's autorelease keepers do (OOScriptAutorelease())
-	OOJSRelinquishContext(context);
-}
+// (aValueLeftInTheThreadPoolAtExit, which left a rooted value in libobjc2's thread pool through an
+// OOObject-rooted keeper, retired with OOObject, bead oo-4aq6a.8: no game code puts an object in the
+// runtime's pool since the keepers became oo::AutoreleaseScope, amendment oo-31u.6.)
 
 
 OO_TEST(cleanUp)

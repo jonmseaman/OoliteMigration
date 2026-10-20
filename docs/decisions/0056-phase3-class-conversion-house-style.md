@@ -9834,3 +9834,49 @@ makes sense to unblock you"; recorded in `docs/decisions/delegated-2026-10-19.md
 texture lives until that drain and dies at it, a second clear hands nothing over, and nothing is counted as leaked.
 test_ResourceManager `soundLookupHandsNothingToTheScope`: a sound lookup, with and without a scope open, leaves
 nothing pending and counts nothing as leaked. Verified with `tier-c --only asan` on the same tree.
+
+## Amendment (bead oo-4aq6a.8): OOObject, OOConstantString and the Objective-C OOAsyncQueue are deleted; src/oofnd has no @implementation
+
+**Context.** Batch BE, the last slice of oo-4aq6a, after oo-4aq6a.3/.5/.7/.6.2 left no game class rooted on OOObject,
+no Objective-C object in plist data, callObjC(), shader bindings or the JS engine, and no compiled `@"..."` literal.
+
+**Decision (behaviour-identical in the game).**
+
+1. `src/oofnd/objc/OOObject.mm`, `OOConstantString.h/.mm` (OOConstantString, OOTinyString) and `OOObjCInstallFloor()`
+   are deleted; main() no longer calls it, and `-fconstant-string-class=OOConstantString` leaves `oofnd_objc_args` and
+   tools/check-oofnd-objc.sh (a stray `@"..."` would now fail to link). `oofnd/objc/OOObject.h` stays as a forwarding
+   header (`<objc/runtime.h>` and the opaque `OOZone`, which OOMesh's copy members name) so its ~45 includers need no
+   change. `grep -rl '@implementation' upstream/oolite/src/oofnd` is empty (oo-4aq6a's gate).
+2. OODescription's root family goes with the root: `oo::ObjectDescription`, `ObjectShortDescription`,
+   `ObjectDescriptionComponents`, `ObjectShortDescriptionComponents`, the `OOObject (OODescription)` category
+   interface, and `DescriptionOf`/`ShortDescriptionOf`'s literal and OOObject branches. What is left describes any
+   other Objective-C object as before (`(null)`, a class's name, `<Class 0x...>`; the class read with
+   `object_getClass` where `-class` was sent, which no root declares any more). The game describes no Objective-C
+   object; the string-expander harness (gnustep-base, test infrastructure) still does.
+3. The Objective-C `OOAsyncQueue` (a queue of OOObjects; the work manager has had its own C++ queue since oo-9ht.14)
+   is deleted with its meson line.
+4. With no root declaring `-class`/`-respondsToSelector:`, the two remaining sends to `id` read the runtime instead:
+   OOAssert's method-assertion reason takes the class as `[object class]` answered it (a class for itself, an
+   instance's class, Nil for nil), and `OOCallByName.mm` (no game caller since oo-4aq6a.5) leaves the game's sources;
+   the string-expander harness and test_objc_call_by_name compile it themselves, with their own roots; the two root
+   methods it sends a target (`-respondsToSelector:`, `-forwardingTargetForSelector:`) are declared in it as the
+   protocol `OOCallByNameTarget`, the same sends.
+5. The `OOLITE_OPTIONAL` fallback in OOCocoa.h, which names OOObject, is never compiled (clang has `@optional`) and is
+   left for oo-dbz with the rest of OOCocoa.h's Objective-C.
+
+**Tests.** test_objc_floor retires with its subject (with it ADR-0045 item 2's comparison of oo::AutoreleaseScope with
+libobjc2's pool, `autoreleaseScopeDrainsInTheRuntimePoolsOrder`: no game object enters that pool since amendment oo-31u.6,
+and the scope's LIFO order stays pinned by test_ref.cpp, ADR-0045 item 3); test_objc_ref, test_objc_runtime, test_objc_assert and
+test_objc_call_by_name, whose subjects (OOObjCRef.h, OORuntime.h, OOAssert, OOCallByName.mm) still exist, stand their
+objects on their own verbatim copy of the root (`tests/unit/oofnd/OOFloorTestRoot.h`) until they go with libobjc2
+(oo-dbz); test_OOAsyncQueue retires with OOAsyncQueue; test_OOJavaScriptEngine's aValueLeftInTheThreadPoolAtExit
+retires with its OOObject keeper (no game object enters libobjc2's pool since amendment oo-31u.6); the root's category
+interfaces and the unreached stand-ins of functions deleted in oo-4aq6a.6.1/.6.2 leave six JS tests. Approval lines
+"oo-4aq6a.8" (std-2026-10-19). No case or expected value of a surviving subject changes; goldens unchanged.
+
+**Left (oo-dbz and follow-ups).** Objective-C objects are still made only by test infrastructure: the floor tests'
+root above, and the string-expander harness, which links gnustep-base as its oracle and keeps its own Objective-C
+classes and copies of the deleted node (`OOHarnessObjCPList.h`) and calls `OOCallByName.mm`. Retiring the harness's
+Objective-C needs a C++ driver for its recorded digests (follow-up bead oo-6e1.2, which oo-dbz now depends on). In src: `OOCallByName.mm` (only the
+harness and test_objc_call_by_name call it), `OOObjCRef.h`/`OORuntime.h` (OOOXPVerifier's stage lookup by class name,
+Universe's `AddIfAbsent`), `@encode` in the member tables, the Mac-only Objective-C files, and `.mm` itself.

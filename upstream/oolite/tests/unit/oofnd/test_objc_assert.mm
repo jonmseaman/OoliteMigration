@@ -14,6 +14,7 @@
 */
 
 #include "oofnd/objc/OOAssert.h"
+#include "OOFloorTestRoot.h"	// the root its probe stands on (src/oofnd/objc/OOObject went with bead oo-4aq6a.8)
 
 #include "oo_test.hpp"
 

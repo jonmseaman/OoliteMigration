@@ -155,73 +155,6 @@ oo::PList OOJSBasicPrivateObjectConverter(ooscript::Context, ooscript::Object)
 }
 
 
-@interface OOObject (OOJavaScriptConversion)
-- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context;
-- (std::optional<std::string>) cxx_oo_jsClassName;
-- (std::optional<std::string>) cxx_oo_jsDescription;
-@end
-
-// OOJavaScriptEngine.mm's glue for OOObject-rooted classes, as it is there.
-@implementation OOObject (OOJavaScriptConversion)
-
-- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
-{
-	(void)context;
-	return ooscript::undefinedValue();
-}
-
-
-- (std::optional<std::string>) cxx_oo_jsClassName
-{
-	return std::nullopt;
-}
-
-
-- (std::optional<std::string>) cxx_oo_jsDescription
-{
-	const std::optional<std::string> components = [self cxx_descriptionComponents];
-	std::optional<std::string> name = [self cxx_oo_jsClassName];
-	if (!name.has_value())  name = oo::DescriptionOf([self class]);
-	if (components.has_value())  return oo::str::format("[%s %s]", name->c_str(), components->c_str());
-	return oo::str::format("[object %s]", name->c_str());
-}
-
-@end
-
-
-extern "C" ooscript::Value OOJSValueFromNativeObject(ooscript::Context context, id object)
-{
-	if (object == nil)  return ooscript::nullValue();
-	return [object oo_jsValueInContext:context];
-}
-
-
-// The class check of the engine's getter: the JS class, then the Objective-C class.
-extern "C" BOOL OOJSObjectGetterImplPRIVATE(ooscript::Context context, ooscript::Object object, ooscript::ClassDef *requiredJSClass,
-#ifndef NDEBUG
-	Class requiredObjCClass, const char *name,
-#endif
-	id *outObject)
-{
-#ifndef NDEBUG
-	(void)name;
-#endif
-	if (ooscript::getClass(context, object) != requiredJSClass)
-	{
-		std::optional<std::string> got = cxx_OOStringFromJSValue(context, ooscript::objectValue(object));
-		cxx_OOJSReportError(context, "Native method expected %s, got %s.", requiredJSClass->name, got ? got->c_str() : "(null)");
-		return NO;
-	}
-	*outObject = (id)ooscript::getPrivate(context, object);
-#ifndef NDEBUG
-	if (*outObject != nil && ![*outObject isKindOfClass:requiredObjCClass])
-	{
-		cxx_OOJSReportError(context, "wrong native object");
-		return NO;
-	}
-#endif
-	return YES;
-}
 
 
 // The JS class check of the engine's C++ getter (OOJSPrivateObject.cpp, linked since bead
@@ -235,8 +168,9 @@ extern "C" BOOL OOJSIsSubclass(ooscript::ClassDef *putativeSubclass, ooscript::C
 // OOJavaScriptEngine.mm's toString() for object wrappers.
 extern "C" bool OOJSObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	id object = (id)ooscript::getPrivate(context, ooscript::toObject(oojsArgs.thisValue()));
-	std::string description = object != nil ? [object cxx_oo_jsDescription].value_or("(null)") : std::string("[object]");
+	// (Unreached: a timer's toString() is its own. The slot holds a C++ object since bead oo-4aq6a.6.1;
+	// the Objective-C root's -cxx_oo_jsDescription it sent went with OOObject, bead oo-4aq6a.8.)
+	std::string description("[object]");
 	ooscript::String str = ooscript::newStringCopyN(context, description.data(), description.size());
 	oojsArgs.setRval(ooscript::stringValue(str));
 	return true;

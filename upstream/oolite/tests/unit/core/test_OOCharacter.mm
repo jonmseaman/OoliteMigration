@@ -112,10 +112,6 @@ bool ooscript::isInRequest(ooscript::Context)		{ std::abort(); }
 oo::Ref<OOScript> OOScript::jsScriptFromFileNamed(const std::string &, const oo::PList &)	{ std::abort(); }
 
 
-// The JavaScript class name, declared by OOJavaScriptEngine.h (which the test does not include).
-@interface OOObject (OOCharacterTestJS)
-- (std::optional<std::string>) cxx_oo_jsClassName;
-@end
 
 
 

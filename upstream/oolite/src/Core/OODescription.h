@@ -67,7 +67,6 @@ MA 02110-1301, USA.
 #define OODESCRIPTION_H
 
 #include "oofnd/objc/OOObject.h"
-#include "oofnd/objc/OOConstantString.h"
 
 // extern "C++" because this header is reached from inside an extern "C" block (OOMaths.h ->
 // OOCocoa.h), as OOLogging.h is.
@@ -91,10 +90,7 @@ extern "C++" {
 @end
 
 
-// The protocol's methods are declared on the root, so a send to an OOObject * type-checks; the root
-// does not implement them (no @implementation: ask with the functions below).
-@interface OOObject (OODescription) <OODescription>
-@end
+// (The protocol's methods were declared on the root OOObject, which went with bead oo-4aq6a.8.)
 
 
 namespace oo {
@@ -108,13 +104,8 @@ std::string ShortDescriptionOf(id object);
 // <ClassName 0xnnnnnnnn>{components} for <object>; without the braces when <components> is nullopt.
 std::string DescriptionWithComponents(id object, const std::optional<std::string> &components);
 
-// What the protocol's four messages answered (bead oo-8sql7): <object>'s class's own method (its
-// class, a superclass or a category on one has it), else the root's default, which the deleted
-// category answered; nullopt for nil, as the message to nil.
-std::optional<std::string> ObjectDescriptionComponents(id object);			// default: none
-std::optional<std::string> ObjectShortDescriptionComponents(id object);		// default: none
-std::optional<std::string> ObjectDescription(id object);		// default: DescriptionWithComponents(object, components)
-std::optional<std::string> ObjectShortDescription(id object);	// default: the same with the short components
+// (oo::ObjectDescription & co., what the protocol's messages answered for an object rooted on
+// OOObject, went with OOObject, bead oo-4aq6a.8.)
 
 // The text "%@" printed for the property list's object graph (oo::ObjectFromPList of it):
 // oo::describe (oofnd/PListDescription.hpp), GNUstep's -description byte for byte.

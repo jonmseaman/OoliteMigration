@@ -1,18 +1,17 @@
-/*	oofnd/objc/OOObject.mm
-	The Foundation-free root class (see OOObject.h and proposed ADR-0029).
-
-	Memory management is libobjc2's, not a second count: +alloc is class_createInstance (which
-	reserves the runtime's inline reference count in front of the object and runs .cxx_construct),
-	-dealloc is object_dispose (which runs .cxx_destruct). The -_ARCCompliantRetainRelease marker
-	tells libobjc2 that this class's -retain/-release/-autorelease are the runtime's own, so
-	objc_retain()/objc_release()/objc_autorelease() take the fast inline path instead of sending
-	the message back to us (which would recurse). A subclass that overrides -retain or -release
-	(an immortal singleton) loses the fast path for itself only, and the runtime then sends it
-	the message, exactly as with NSObject.
+/*	OOFloorTestRoot.h
+	The Objective-C floor tests' own root class: tests/unit/oofnd's test_objc_ref, test_objc_runtime,
+	test_objc_assert and test_objc_call_by_name stand their objects on it. It is src/oofnd/objc's
+	OOObject (proposed ADR-0029, bead oo-3rb.1), its protocols and its methods, verbatim, taken from
+	OOObject.h/.mm as bead oo-4aq6a.8 deleted them from src (no game class is rooted on OOObject), so
+	every answer those tests pin is unchanged; OOObjCInstallFloor(), the forwarding hooks and the
+	OOConstantString literal class are not here (no test here uses them). Test infrastructure only:
+	it goes with these tests, whose subjects (OOObjCRef.h, OORuntime.h, OOAssert, OOCallByName) go
+	with libobjc2 (oo-dbz). Include it once per test executable.
 */
+#ifndef OO_FLOOR_TEST_ROOT_H
+#define OO_FLOOR_TEST_ROOT_H
 
-#include "oofnd/objc/OOObject.h"
-#include "oofnd/objc/OOConstantString.h"
+#include "oofnd/objc/OOObject.h"	// <objc/runtime.h>, OOZone
 
 #include <objc/hooks.h>
 #include <objc/objc-arc.h>
@@ -20,71 +19,106 @@
 #include <cstdio>
 #include <cstdlib>
 
-namespace {
-
+// The root's method signatures (OOObject.mm's, verbatim).
 typedef id (*OOObjectMethod0)(id, SEL);
 typedef id (*OOObjectMethod1)(id, SEL, id);
 typedef id (*OOObjectMethod2)(id, SEL, id, id);
 
-// The IMP the runtime calls for a selector nothing implements (after forwardingTargetForSelector:
-// declined). NSObject raises; OOObject sends -doesNotRecognizeSelector:, which aborts. Only an
-// object-returning signature is modelled: a struct or floating-point return reads garbage, which
-// is moot because the default handler never returns.
-id OOUnrecognizedSelectorIMP(id self, SEL _cmd)
+@protocol OOCopying
+- (id) copyWithZone:(OOZone *)zone;
+@end
+
+@protocol OOMutableCopying
+- (id) mutableCopyWithZone:(OOZone *)zone;
+@end
+
+/*	Protocol form of the floor (oo-9evb). Protocols that inherited the root protocol
+	inherit <OOObject> so id<P> can send -retain / -respondsToSelector: and the
+	rest without "method not found in protocol" once gnustep-base is gone.
+	No -description here: that is the Logging seam.
+*/
+@protocol OOObject
+
+- (id) retain;
+- (oneway void) release;
+- (id) autorelease;
+- (uintptr_t) retainCount;
+
+- (id) self;
+- (Class) class;
+- (Class) superclass;
+- (BOOL) isKindOfClass:(Class)aClass;
+- (BOOL) isMemberOfClass:(Class)aClass;
+- (BOOL) respondsToSelector:(SEL)selector;
+- (BOOL) conformsToProtocol:(Protocol *)protocol;
+- (BOOL) isProxy;
+
+- (BOOL) isEqual:(id)other;
+- (uintptr_t) hash;
+
+- (id) performSelector:(SEL)selector;
+- (id) performSelector:(SEL)selector withObject:(id)object;
+- (id) performSelector:(SEL)selector withObject:(id)object1 withObject:(id)object2;
+
+@end
+
+__attribute__((objc_root_class))
+@interface OOObject <OOObject>
 {
-	Class cls = object_getClass(self);
-	if (cls != Nil && class_respondsToSelector(cls, @selector(doesNotRecognizeSelector:)))
-	{
-		[self doesNotRecognizeSelector:_cmd];
-	}
-	else
-	{
-		std::fprintf(stderr, "oofnd: unrecognised selector -%s sent to %p (class %s), which has no -doesNotRecognizeSelector:\n",
-					 sel_getName(_cmd), static_cast<void *>(self), cls != Nil ? class_getName(cls) : "Nil");
-		std::abort();
-	}
-	return nil;
+@protected
+	Class isa;
 }
 
-IMP OOForwardingHook(id, SEL)
-{
-	return reinterpret_cast<IMP>(OOUnrecognizedSelectorIMP);
-}
++ (void) initialize;
++ (id) alloc;
++ (id) allocWithZone:(OOZone *)zone;
++ (id) new;
 
-// -forwardingTargetForSelector:, consulted by libobjc2 before the forwarding hook.
-id OOProxyLookup(id receiver, SEL selector)
-{
-	Class cls = object_getClass(receiver);
-	if (cls == Nil || !class_respondsToSelector(cls, @selector(forwardingTargetForSelector:)))  return nil;
-	id target = [receiver forwardingTargetForSelector:selector];
-	return target == receiver ? nil : target;
-}
++ (Class) class;
++ (Class) superclass;
++ (BOOL) isSubclassOfClass:(Class)aClass;
++ (BOOL) instancesRespondToSelector:(SEL)selector;
++ (IMP) instanceMethodForSelector:(SEL)selector;
++ (BOOL) conformsToProtocol:(Protocol *)protocol;
 
-} // namespace
+// A class object is not refcounted; these make [SomeClass retain] etc. harmless, as on the Foundation root class.
++ (id) retain;
++ (oneway void) release;
++ (id) autorelease;
 
-#if defined(_WIN32)
-// clang's gnustep-2 code generator declares the constant-string class `dllimport` on COFF in
-// every TU that does not define it (it assumes the class lives in a DLL, as NSConstantString
-// did in gnustep-base), so each @"..." references __imp_$_OBJC_CLASS_OOConstantString. We link
-// the class statically; left alone, lld synthesises that import slot and reports LNK4217
-// ("locally defined symbol imported"), which meson's werror makes fatal. Defining the slot is
-// exactly what an import library would provide, so there is nothing to synthesise and nothing to
-// report. It lives here, not in OOConstantString.mm, because that TU defines the class symbol
-// itself. Measured in ADR-0029.
-extern "C" {
-extern char OOConstantStringClassSymbol __asm__("$_OBJC_CLASS_OOConstantString");
-extern void *const OOConstantStringImportSlot __asm__("__imp_$_OBJC_CLASS_OOConstantString");
-void *const OOConstantStringImportSlot = &OOConstantStringClassSymbol;
-}
-#endif
+- (id) init;
+- (void) dealloc;
 
-void OOObjCInstallFloor(void)
-{
-	OOConstantStringInstall();
-	objc_proxy_lookup = OOProxyLookup;
-	__objc_msg_forward2 = OOForwardingHook;
-}
+- (id) retain;
+- (oneway void) release;
+- (id) autorelease;
+- (uintptr_t) retainCount;
 
+- (id) self;
+- (Class) class;
+- (Class) superclass;
+- (BOOL) isKindOfClass:(Class)aClass;
+- (BOOL) isMemberOfClass:(Class)aClass;
+- (BOOL) respondsToSelector:(SEL)selector;
+- (IMP) methodForSelector:(SEL)selector;
+- (BOOL) conformsToProtocol:(Protocol *)protocol;
+- (BOOL) isProxy;
+
+- (BOOL) isEqual:(id)other;
+- (uintptr_t) hash;
+
+- (id) performSelector:(SEL)selector;
+- (id) performSelector:(SEL)selector withObject:(id)object;
+- (id) performSelector:(SEL)selector withObject:(id)object1 withObject:(id)object2;
+
+- (OOZone *) zone;	// always nil: the zone -copy and -mutableCopy pass
+- (id) copy;
+- (id) mutableCopy;
+
+- (id) forwardingTargetForSelector:(SEL)selector;
+- (void) doesNotRecognizeSelector:(SEL)selector;
+
+@end
 
 @implementation OOObject
 
@@ -309,3 +343,5 @@ void OOObjCInstallFloor(void)
 }
 
 @end
+
+#endif	// OO_FLOOR_TEST_ROOT_H

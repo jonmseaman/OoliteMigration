@@ -15,7 +15,7 @@
 	Linked against libobjc2 alone, like the other test_*.mm (tools/check-oofnd-objc.sh).
 */
 
-#include "oofnd/objc/OOObject.h"
+#include "OOFloorTestRoot.h"	// the root its objects stand on (src/oofnd/objc/OOObject went with bead oo-4aq6a.8)
 #include "oofnd/objc/OOObjCRef.h"
 #include "oofnd/PList.hpp"
 

@@ -5,7 +5,7 @@
 */
 
 #include "oofnd/objc/OORuntime.h"
-#include "oofnd/objc/OOObject.h"
+#include "OOFloorTestRoot.h"	// the root its objects stand on (src/oofnd/objc/OOObject went with bead oo-4aq6a.8)
 
 #include "oo_test.hpp"
 
