@@ -9714,3 +9714,37 @@ is built from the C++ object's full description, `<Entity 0x...>{taken}`, as it 
 The test's stand-ins of the engine's Objective-C wrapper glue (`OOJSObjectGetterImplPRIVATE`,
 `OOJSObjectWrapperFinalize`/`ToString`, and the `OOObject (OOJSTestGlue)` interface they send through) are not
 reached by any case and go with that glue (oo-4aq6a.6). Every case, input and expected value is unchanged.
+
+## Amendment (bead oo-4aq6a.6.1): the JS private slot holds only C++ objects
+
+**Context.** Batch BC, the first slice of oo-4aq6a.6 (the JS engine's Objective-C private-slot glue). Every JS class
+whose slot holds an object holds a C++ one (`OOJSPrivateObject.h`, amendment oo-6symp); the Player and Manifest
+classes, which still name the generic hooks, never set their slot. The engine's Objective-C slot path served only
+test_OOJavaScriptEngine's `objectWrapper` case.
+
+**Decision (behaviour-identical).**
+
+1. `OOJSObjectWrapperFinalize` is `OOJSCxxObjectWrapperFinalize` (the slot's object, a C++ `oo::RefCounted`, told
+   `clearJSSelf` as `-oo_clearJSSelf:` was sent, released, the slot emptied); no `objc_release`.
+2. `OOJSObjectWrapperToString` answers `[object <JS class name>]` (`[object]` for none). Only an Objective-C object
+   reached through the class's converter described itself; a C++ node's object never did (`oo::ObjectIn` answered
+   nil for it), so every game class's answer is unchanged.
+3. `OOJSBasicPrivateObjectConverter` makes an Object node of the slot's object when it is a `PListForeign`, else
+   a null PList (an empty slot was nil's null PList; its one game user, Player, never sets the slot).
+4. Deleted, with no game caller: `DEFINE_JS_OBJECT_GETTER`/`OOJSObjectGetterImplPRIVATE`;
+   `OOJSNativeObjectFromJSValue`/`FromJSObject`/`OfClassFromJSValue`/`OfClassFromJSObject`; the
+   `OOJavaScriptEngineClearJSSelf`/`IsKindOfClass` bridges, `OOObjectClearJSSelf` and `-oo_clearJSSelf:` in the
+   `OOJSObjectGlue` protocol; `ShipEntity::doScriptEvent(message, id[, id])` and `(scriptEvent, id, aiMessage)`
+   (every caller passes entities, lists or nothing). The unreached `id result = nil; ... OOJSValueFromNativeObject`
+   tails of OOJSExhaustPlume.mm and OOJSWormhole.mm, and OOJSStation.mm's `OOJSValueFromNativeObject(context, nil)`,
+   are `ooscript::nullValue()`, what nil gave.
+5. Left (oo-4aq6a.6.2, waiting on ADR-0062 / oo-8kdkl): `OOJSValueFromNativeObject(id)`/`OOJSObjectFromNativeObject`,
+   the root's JS glue bridges of OOObject+OOJavaScript, and OOJSFunction's `id` forms: their only tests are the
+   mixed cases test_OOJavaScriptEngine `nativeObjectValues` and test_OOJSFunction `cxxAndFacade`. Narrow tests'
+   stand-ins of the deleted functions (unreached) stay for that bead or oo-4aq6a.8.
+
+**Tests.** test_OOJavaScriptEngine (approval line "oo-4aq6a.6.1"): `objectWrapper` retires with its subject, the
+slot's Objective-C path (std-2026-10-19 item 2), with the members of `TestNative` only it used; a new case,
+`cxxObjectWrapper`, pins what survives with a C++ object: toString names the JS class with and without the
+basic converter, the converter's node holds the object, the finalizer clears its JS self once, releases it and
+empties the slot, and a second finalize does nothing.

@@ -223,7 +223,6 @@ static bool ExhaustPlumeGetProperty(Context cx, Object obj, PropertyId propID, V
 	OOJS_NATIVE_ENTER(context)
 	
 	OOExhaustPlumeEntity				*entity = nullptr;
-	id result = nil;
 
 	if (!JSExhaustPlumeGetExhaustPlumeEntity(context, thisObj, &entity))  return false;
 	if (entity == nullptr)  { *value_raw = ooscript::undefinedValue(); return true; }
@@ -238,7 +237,7 @@ static bool ExhaustPlumeGetProperty(Context cx, Object obj, PropertyId propID, V
 			return false;
 	}
 
-	*value_raw = OOJSValueFromNativeObject(context, result);
+	*value_raw = ooscript::nullValue();	// what OOJSValueFromNativeObject() gave for the nil result (unreached: every case returns; bead oo-4aq6a.6)
 	return true;
 	
 	OOJS_NATIVE_EXIT

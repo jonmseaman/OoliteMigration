@@ -1277,12 +1277,6 @@ std::optional<std::string> OOObjectJSDescriptionWithClassName(id object, const s
 }
 
 
-void OOObjectClearJSSelf(ooscript::Object /*selfVal*/)
-{
-
-}
-
-
 namespace {
 // YES if object's root class is OOObject: it answers -oo_jsValueInContext: itself. Anything else
 // is a Foundation object, whose JS glue is the conversion below (proposed ADR-0051).
@@ -1959,43 +1953,28 @@ bool OOJSUnconstructableConstruct(ooscript::Context context, ooscript::CallArgs 
 }
 
 
+// The slot holds a C++ object (bead oo-4aq6a.6): the C++ finalizer, which tells it its wrapper is
+// gone (clearJSSelf, as -oo_clearJSSelf: was sent), releases the slot's retain and empties the slot.
 void OOJSObjectWrapperFinalize(ooscript::Context context, ooscript::Object thisObj)
 {
-	OOJS_PROFILE_ENTER
-	
-	id object = (id)ooscript::getPrivate((context), (thisObj));
-	if (object != nil)
-	{
-		OOJavaScriptEngineClearJSSelf(object, thisObj);	// the slot holds the object itself (bead oo-9ht.22)
-		objc_release(object);
-		ooscript::setPrivate((context), (thisObj), nil);
-	}
-	
-	OOJS_PROFILE_EXIT_VOID
+	OOJSCxxObjectWrapperFinalize(context, thisObj);
 }
 
 
+// Only an Objective-C object found through the class's converter described itself (its
+// -cxx_oo_jsDescription, else -description); a C++ node's object never did, and no slot holds an
+// Objective-C object since bead oo-4aq6a.6: the JS class names it.
 bool OOJSObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
-	id						object = nil;
-	std::optional<std::string>	description;	// the object's own -cxx_oo_jsDescription / -description
+	std::optional<std::string>	description;
 	ooscript::ClassDef					*jsClass = NULL;
 
-	object = OOJSNativeObjectFromJSObject(context, OOJS_THIS);
-	if (object != nil)
+	jsClass = OOJSGetClass(context, OOJS_THIS);
+	if (jsClass != NULL)
 	{
-		description = OOJavaScriptEngineJSDescription(object);
-		if (!description.has_value())  description = oo::DescriptionOf(object);	// object is not nil
-	}
-	if (!description.has_value())
-	{
-		jsClass = OOJSGetClass(context, OOJS_THIS);
-		if (jsClass != NULL)
-		{
-			description = oo::str::format("[object %s]", jsClass->name);
-		}
+		description = oo::str::format("[object %s]", jsClass->name);
 	}
 	if (!description.has_value())  description = std::string("[object]");
 	
@@ -2183,59 +2162,6 @@ BOOL OOJSIsSubclass(ooscript::ClassDef *putativeSubclass, ooscript::ClassDef *su
 }
 
 
-BOOL OOJSObjectGetterImplPRIVATE(ooscript::Context context, ooscript::Object object, ooscript::ClassDef *requiredJSClass,
-#ifndef NDEBUG
-	Class requiredObjCClass, const char *name,
-#endif
-	id *outObject)
-{
-#ifndef NDEBUG
-	OOJS_PROFILE_ENTER_NAMED(name)
-	OOCParameterAssert(requiredObjCClass != Nil);
-	OOCParameterAssert(context != NULL && object != NULL && requiredJSClass != NULL && outObject != NULL);
-#else
-	OOJS_PROFILE_ENTER
-#endif
-	
-	/*
-		Ensure it's a valid type of JS object. This is absolutely necessary,
-		because if we don't check it we'll crash trying to get the private
-		field of something that isn't an ObjC object wrapper - for example,
-		Ship.setAI.call(new Vector3D, "") is valid JavaScript.
-		
-		Alternatively, we could abuse JSCLASS_PRIVATE_IS_NSISUPPORTS as a
-		flag for ObjC object wrappers (SpiderMonkey only uses it internally
-		in a debug function we don't use), but we'd still need to do an
-		Objective-C class test, and I don't think that's any faster.
-		TODO: profile.
-	*/
-	ooscript::ClassDef *actualClass = OOJSGetClass(context, object);
-	if (EXPECT_NOT(!OOJSIsSubclass(actualClass, requiredJSClass)))
-	{
-		std::optional<std::string> got = cxx_OOStringFromJSValue(context, ooscript::objectValue(object));
-		cxx_OOJSReportError(context, "Native method expected %s, got %s.", requiredJSClass->name, got ? got->c_str() : "(null)");
-		return NO;
-	}
-	OOCAssert(static_cast<std::uint32_t>(actualClass->flags) & static_cast<std::uint32_t>(ooscript::ClassFlag::HasPrivate), "Native object accessor requires JS class with private storage.");
-	
-	// Get the underlying object: the slot's own since no slot holds a weak reference (bead oo-9ht.22).
-	*outObject = (id)ooscript::getPrivate((context), (object));
-	
-#ifndef NDEBUG
-	// Double-check that the underlying object is of the expected ObjC class.
-	if (EXPECT_NOT(*outObject != nil && ![*outObject isKindOfClass:requiredObjCClass]))
-	{
-		cxx_OOJSReportError(context, "Native method expected %s from %s and got correct JS type but incorrect native object %s", oo::DescriptionOf(requiredObjCClass).c_str(), requiredJSClass->name, oo::DescriptionOf(*outObject).c_str());
-		return NO;
-	}
-#endif
-	
-	return YES;
-	
-	OOJS_PROFILE_EXIT
-}
-
-
 oo::PList OOJSDictionaryFromJSValue(ooscript::Context context, ooscript::Value value)
 {
 	OOJS_PROFILE_ENTER
@@ -2396,14 +2322,6 @@ oo::PList cxx_OOJSPListFromJSValue(ooscript::Context context, ooscript::Value va
 }
 
 
-// The object of the value's PList::Object node (nil for plist data): oo-qps.72 deleted the
-// Foundation form of the rest (ADR-0055 Amendment 2).
-id OOJSNativeObjectFromJSValue(ooscript::Context context, ooscript::Value value)
-{
-	return oo::ObjectIn(cxx_OOJSPListFromJSValue(context, value));
-}
-
-
 namespace {
 static oo::PList PListFromJSArray(ooscript::Context context, ooscript::Object array);
 static oo::PList PListFromJSStringObject(ooscript::Context context, ooscript::Object object);
@@ -2436,35 +2354,13 @@ oo::PList cxx_OOJSPListFromJSObject(ooscript::Context context, ooscript::Object 
 }
 
 
-id OOJSNativeObjectFromJSObject(ooscript::Context context, ooscript::Object tableObject)
-{
-	return oo::ObjectIn(cxx_OOJSPListFromJSObject(context, tableObject));
-}
-
-
-id OOJSNativeObjectOfClassFromJSValue(ooscript::Context context, ooscript::Value value, Class requiredClass)
-{
-	id result = OOJSNativeObjectFromJSValue(context, value);
-	if (!OOJavaScriptEngineIsKindOfClass(result, requiredClass))  result = nil;
-	return result;
-}
-
-
-id OOJSNativeObjectOfClassFromJSObject(ooscript::Context context, ooscript::Object object, Class requiredClass)
-{
-	id result = OOJSNativeObjectFromJSObject(context, object);
-	if (!OOJavaScriptEngineIsKindOfClass(result, requiredClass))  result = nil;
-	return result;
-}
-
-
+// The slot holds a C++ object (bead oo-4aq6a.6): a node of it when it is a node's foreign object,
+// else none; an empty slot is a null PList, as nil was.
 oo::PList OOJSBasicPrivateObjectConverter(ooscript::Context context, ooscript::Object object)
 {
-	id						result;
-	
-	// The slot holds the object itself (no weak reference since bead oo-9ht.22); nil: a null PList.
-	result = (id)ooscript::getPrivate((context), (object));
-	return oo::PListObject(result);
+	oo::RefCounted *held = static_cast<oo::RefCounted *>(ooscript::getPrivate((context), (object)));
+	if (oo::PListForeign *foreign = dynamic_cast<oo::PListForeign *>(held))  return oo::PList(oo::PList::Object(foreign));
+	return oo::PList();
 }
 
 

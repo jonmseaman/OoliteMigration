@@ -940,8 +940,6 @@ public:
 	void setDemoStartTime(OOTimeAbsolute time);
 	OOTimeAbsolute getDemoStartTime();
 	virtual void doScriptEvent(ooscript::PropertyId message);
-	void doScriptEvent(ooscript::PropertyId message, id argument);
-	void doScriptEvent(ooscript::PropertyId message, id argument1, id argument2);
 	void doScriptEvent(ooscript::PropertyId message, Entity *argument);	// the entity's JS value, as its object's (bead oo-9ht.39.16)
 	void doScriptEvent(ooscript::PropertyId message, Entity *argument1, Entity *argument2);
 	virtual void doScriptEvent(ooscript::PropertyId message, const std::vector<oo::PList> &arguments);
@@ -950,7 +948,6 @@ public:
 	void reactToAIMessage(const std::string &message, const std::optional<std::string> &debugContext);
 	void sendAIMessage(const std::string &message);
 	void doScriptEvent(ooscript::PropertyId scriptEvent, const std::string &aiMessage);
-	void doScriptEvent(ooscript::PropertyId scriptEvent, id argument, const std::string &aiMessage);
 	void doScriptEvent(ooscript::PropertyId scriptEvent, Entity *argument, const std::string &aiMessage);
 	virtual OOAlertCondition alertCondition();
 	virtual OOAlertCondition realAlertCondition();

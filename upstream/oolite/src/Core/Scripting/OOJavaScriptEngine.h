@@ -153,7 +153,6 @@ ooscript::Value OOObjectJSValueInContext(ooscript::Context context);
 std::optional<std::string> OOObjectJSClassName();
 std::optional<std::string> OOObjectJSDescription(id object);
 std::optional<std::string> OOObjectJSDescriptionWithClassName(id object, const std::optional<std::string> &className);
-void OOObjectClearJSSelf(ooscript::Object selfVal);
 
 // A vector box's JS value (OOJSValueFromPList, for an Object node that holds one).
 class OONativeVector;
@@ -225,45 +224,10 @@ OOJS_EXTERN_C BOOL JSEntityIsDemoShipPredicate(Entity *entity, void *parameter);
 
 
 
-/*
-	DEFINE_JS_OBJECT_GETTER()
-	Defines a helper to extract Objective-C objects from the private field of
-	JS objects, with runtime type checking. The generated accessor requires
-	a request on context. Weakrefs are automatically unpacked.
-	
-	Types which extend other types, such as entity subtypes, must register
-	their relationships with OOJSRegisterSubclass() below.
-	
-	The signature of the generator is:
-	BOOL <name>(ooscript::Context context, ooscript::Object inObject, <class>** outObject)
-	If it returns NO, inObject is of the wrong class and an error has been
-	raised. Otherwise, outObject is either a native object of the specified
-	class (or a subclass) or nil.
+/*	DEFINE_JS_OBJECT_GETTER() and OOJSObjectGetterImplPRIVATE(), which read an Objective-C object
+	from a JS object's private slot with an Objective-C class check, are deleted (bead
+	oo-4aq6a.6): every slot holds a C++ object, read by OOJSGetCxxPrivate() (OOJSPrivateObject.h).
 */
-#ifndef NDEBUG
-#define DEFINE_JS_OBJECT_GETTER(NAME, JSCLASS, JSPROTO, OBJCCLASSNAME) \
-static BOOL NAME(ooscript::Context context, ooscript::Object inObject, OBJCCLASSNAME **outObject)  GCC_ATTR((unused)); \
-static BOOL NAME(ooscript::Context context, ooscript::Object inObject, OBJCCLASSNAME **outObject) \
-{ \
-	OOCParameterAssert(outObject != NULL); \
-	static Class cls = Nil; \
-	if (EXPECT_NOT(cls == Nil))  cls = [OBJCCLASSNAME class]; \
-	return OOJSObjectGetterImplPRIVATE(context, inObject, JSCLASS, cls, #NAME, (id *)outObject); \
-}
-#else
-#define DEFINE_JS_OBJECT_GETTER(NAME, JSCLASS, JSPROTO, OBJCCLASSNAME) \
-OOINLINE BOOL NAME(ooscript::Context context, ooscript::Object inObject, OBJCCLASSNAME **outObject) \
-{ \
-	return OOJSObjectGetterImplPRIVATE(context, inObject, JSCLASS, (id *)outObject); \
-}
-#endif
-
-// For DEFINE_JS_OBJECT_GETTER()'s use.
-#ifndef NDEBUG
-OOJS_EXTERN_C BOOL OOJSObjectGetterImplPRIVATE(ooscript::Context context, ooscript::Object object, ooscript::ClassDef *requiredJSClass, Class requiredObjCClass, const char *name, id *outObject);
-#else
-OOJS_EXTERN_C BOOL OOJSObjectGetterImplPRIVATE(ooscript::Context context, ooscript::Object object, ooscript::ClassDef *requiredJSClass, id *outObject);
-#endif
 
 
 

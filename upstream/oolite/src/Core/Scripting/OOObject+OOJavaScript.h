@@ -9,8 +9,10 @@ objects that are still Objective-C. Both were in the engine's facade file
 OOJSValue's facades. The root's category OOObject (OOJavaScriptConversion), which answered the
 defaults, is deleted (bead oo-t7o84): the defaults are OOJavaScriptEngine.mm's C++ functions, and
 an object is sent a selector only when its class has its own method for it. The rest goes with
-the root class and the runtime (Phase 4). Imported as the last line of OOJavaScriptEngine.h; do
-not import it directly. Never add to this file.
+the root class and the runtime (Phase 4). Since bead oo-4aq6a.6 no JS object's private slot
+holds an Objective-C object; what is left serves OOJSValueFromNativeObject() of an Objective-C
+object, which only plist Object nodes of one and the tests make (ADR-0062, oo-8kdkl). Imported as
+the last line of OOJavaScriptEngine.h; do not import it directly. Never add to this file.
 
 JavaScript support for Oolite
 Copyright (C) 2007-2013 David Taylor and Jens Ayton.
@@ -64,9 +66,9 @@ MA 02110-1301, USA.
 
 	They wrap -cxx_descriptionComponents (OODescription.h) as [jsClassName components].
 
-	oo_clearJSSelf:							default OOObjectClearJSSelf()
-	This is called by OOJSObjectWrapperFinalize() when a JS object wrapper is
-	collected. The default does nothing.
+	(-oo_clearJSSelf:, which OOJSObjectWrapperFinalize() sent to the slot's object, went with the
+	slot's Objective-C objects, bead oo-4aq6a.6: the slot holds a C++ object, told by its
+	OOJSPrivateObject::clearJSSelf().)
 */
 @protocol OOJSObjectGlue
 
@@ -75,7 +77,6 @@ MA 02110-1301, USA.
 - (std::optional<std::string>) cxx_oo_jsDescription;
 - (std::optional<std::string>) cxx_oo_jsDescriptionWithClassName:(const std::optional<std::string> &)className;
 - (std::optional<std::string>) cxx_oo_jsClassName;
-- (void) oo_clearJSSelf:(ooscript::Object)selfVal;
 
 @end
 
@@ -102,11 +103,9 @@ std::optional<std::string> OOJavaScriptEngineDescriptionComponents(id object);
 Class OOJavaScriptEngineClass(id object);
 // [OOObject class]
 Class OOJavaScriptEngineOOObjectClass();
-// -cxx_oo_jsDescription and -oo_clearJSSelf: of any object, as the glue above.
+// -cxx_oo_jsDescription of any object, as the glue above. (The -oo_clearJSSelf: and
+// -isKindOfClass: bridges went with the slot's Objective-C objects, bead oo-4aq6a.6.)
 std::optional<std::string> OOJavaScriptEngineJSDescription(id object);
-void OOJavaScriptEngineClearJSSelf(id object, ooscript::Object selfVal);
-// -isKindOfClass: of any object; NO for nil.
-bool OOJavaScriptEngineIsKindOfClass(id object, Class requiredClass);
 // The entity predicates' questions (amendment oo-nge8 item 5) ask the C++ entity and are in
 // OOJavaScriptEngine.mm since bead oo-t7o84 (ADR-0056 amendment oo-9ht.184).
 /*	Inside a catch (...) handler: true, with the exception's name and reason, if the exception

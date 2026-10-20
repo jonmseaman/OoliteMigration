@@ -503,7 +503,7 @@ static bool StationGetProperty(Context cx, Object obj, PropertyId propID, Value 
 			if (!(entity != nullptr ? entity->hasShipyard() : false)) 
 			{
 				// return null if station has no shipyard
-				*value_raw = OOJSValueFromNativeObject(context, nil);
+				*value_raw = ooscript::nullValue();	// OOJSValueFromNativeObject(context, nil) (bead oo-4aq6a.6)
 			} 
 			else 
 			{

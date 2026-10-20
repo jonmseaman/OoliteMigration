@@ -215,7 +215,6 @@ static bool WormholeGetProperty(Context cx, Object obj, PropertyId propID, Value
 	OOJS_NATIVE_ENTER(context)
 	
 	WormholeEntity				*entity = nil;
-	id result = nil;
 	
 	if (!JSWormholeGetWormholeEntity(context, thisObj, &entity))  return false;
 	if (entity == nil)  { *value_raw = ooscript::undefinedValue(); return true; }
@@ -239,7 +238,7 @@ static bool WormholeGetProperty(Context cx, Object obj, PropertyId propID, Value
 		return false;
 	}
 
-	*value_raw = OOJSValueFromNativeObject(context, result);
+	*value_raw = ooscript::nullValue();	// what OOJSValueFromNativeObject() gave for the nil result (unreached: every case returns; bead oo-4aq6a.6)
 	return true;
 	
 	OOJS_NATIVE_EXIT
