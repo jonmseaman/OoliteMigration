@@ -170,6 +170,45 @@ class RealTreeTest(unittest.TestCase):
                 self.assertIn(f"Migrate Foundation usage to oofnd: {p.name}", titles)
 
 
+class ConvertedFileTest(unittest.TestCase):
+    """bead oo-9ht.187: a converted .mm (no @implementation the Phase 3 gate counts, ADR-0061; no NS*
+    object in its compiled header) is done, and no sweep selects it."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self.tmp.name)
+        self.addCleanup(self.tmp.cleanup)
+
+    def write(self, name, body, header):
+        m = self.dir / name
+        m.write_text(body)
+        if header is not None:
+            m.with_suffix(".h").write_text(header)
+        return m
+
+    def test_converted_cxx_class_with_value_structs_is_done(self):
+        p = self.write("Hud.mm", "void Hud::draw() { [this flush]; }\n", "class Hud { void draw(NSSize s, NSPoint at); };\n")
+        self.assertEqual(gs.classify(p), "done")
+
+    def test_mm_with_a_class_definition_is_a_conversion(self):
+        p = self.write("Thing.mm", "@implementation Thing\n@end\n", "@interface Thing : OOBase\n@end\n")
+        self.assertEqual(gs.classify(p), "convert")
+
+    def test_mm_whose_header_declares_an_ns_object_is_not_done(self):
+        p = self.write("Thing.mm", C_BODY, "NSWindow *ThingWindow(int n);\n")
+        self.assertEqual(gs.classify(p), "foundation")
+
+    def test_ns_object_in_a_mac_only_arm_does_not_count(self):
+        p = self.write("Thing.mm", C_BODY, "#if OOLITE_MAC_OS_X\nNSWindow *window;\n#else\nint window;\n#endif\n")
+        self.assertEqual(gs.classify(p), "done")
+        q = self.write("Other.mm", C_BODY, "#if OOLITE_MAC_OS_X\nint window;\n#else\nNSWindow *window;\n#endif\n")
+        self.assertEqual(gs.classify(q), "foundation", "the #else arm is compiled")
+
+    def test_a_dot_m_is_never_done(self):
+        p = self.write("Thing.m", C_BODY, "BOOL ThingIsGood(int n);\n")
+        self.assertEqual(gs.classify(p), "renames")
+
+
 class SplitDeclarationTest(unittest.TestCase):
     """bead oo-mnzc: header_declares_ns scanned line-by-line, so an NS* type in a signature SPLIT
     ACROSS LINES escaped detection and the file was classed as a mechanical rename. Declarations
