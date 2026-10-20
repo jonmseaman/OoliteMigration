@@ -1542,7 +1542,7 @@ OOPListSchemaVerifierError ErrorTypeMismatch(const char *expectedClassName, cons
 		case oo::PList::Type::Dict:		className = "dictionary";  break;
 		case oo::PList::Type::Data:		className = "data";  break;
 		case oo::PList::Type::Date:		className = "date";  break;
-		case oo::PList::Type::Object:	className = oo::DescriptionOf([oo::ObjectIn(actual) class]);  break;	// any other object: its class's name
+		case oo::PList::Type::Object:	className = "(null)";  break;	// any other object: its class's name, nil's for a node with no Objective-C object (none is made since bead oo-4aq6a.5)
 	}
 
 	return ErrorWithDictionary(kPListErrorTypeMismatch, &keyPath, oo::PList(std::move(dict)), "Expected %s, found %s.", expectedClassName, className.c_str());

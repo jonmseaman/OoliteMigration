@@ -9749,6 +9749,63 @@ slot's Objective-C path (std-2026-10-19 item 2), with the members of `TestNative
 basic converter, the converter's node holds the object, the finalizer clears its JS self once, releases it and
 empties the slot, and a second finalize does nothing.
 
+## Amendment (beads oo-4aq6a.3, oo-4aq6a.5, oo-4aq6a.7, oo-4aq6a.6.2): the Objective-C priority queue, plist node, callObjC() object path, shader binding target and root JS glue go
+
+**Context.** Batch BE, after Jon accepted ADR-0062 (2026-10-20, decision bead oo-8kdkl). What was left in `src` that
+exists only for Objective-C objects - which no game class makes - had tests with Objective-C inputs inside cases whose
+subject survives. Each is deleted here; the tests follow ADR-0062's three rules and std-2026-10-19 (approval lines
+"oo-4aq6a.3", "oo-4aq6a.5", "oo-4aq6a.7", "oo-4aq6a.6.2" in `tools/retire-test-approvals.txt`).
+
+**Decision (behaviour-identical in the game).**
+
+1. **oo-4aq6a.3.** The Objective-C `OOPriorityQueue` (`OOPriorityQueue.mm`, the class in `OOPriorityQueue.h`) is deleted;
+   `OOPriorityQueueOf<T>`, the timer queue's heap since oo-9ht.35, stays in the header. ADR-0062 item 1: the two
+   OOPriorityQueueOf cases' oracle is the Objective-C queue's output measured on main f79e7254c (scratch commit
+   5c00d221d): first four `0.10 0.15 1.6 1.13`, the rest `0.15 1.9 1.3 1.18 3.2 3.17 3.11 3.14 3.5 3.1 3.8 5.12 5.19
+   5.0 5.16 5.4 5.7`, and 3 left after the identity removal.
+2. **oo-4aq6a.5.** The Object node of an Objective-C object (`oo::PListObject`, `ObjectIn`, `PListFromObjects`,
+   `ObjCRefsIn`, `ObjCPListForeign`) is deleted; `OOObjCPList.h` stays as a forwarding header (its includes) so its
+   includers need no change. No game node held one (an entity's is `oo::EntityPListForeign`, every other a C++
+   `oo::PListForeign`), so each reader keeps what it answered for every game node: the debug monitor's nil test, the
+   console's and the texture's and the schema verifier's class name of a non-entity node ("(null)", nil's class),
+   OOCharacter's origin (a string or a number; `SendIntValue` goes), the probability set's and the resource manager's
+   equality (node identity; false for two Object nodes in `PListIsEqual`, as `[nil isEqual:nil]`), the engine's JS
+   value of a non-entity node (undefined), the JS timer's liveness test. callObjC()'s Objective-C object path
+   (`OOJSCallObjCObjectMethod`, its method-signature reader and `-boolValue`/`-intValue` of a "_bool" result) is
+   deleted: the console calls entities and monitors only, and a `this` that is neither gets the non-Objective-C error
+   it got. `OOEntityByNameValue::object` goes (no by-name row answers an Objective-C object; a static_assert keeps it
+   so). Not done here: `OOCallByName.mm` (`OOCallByName(id, name...)`), whose remaining users are the string-expander
+   harness and test_objc_call_by_name, oo-4aq6a.8's subjects.
+3. **oo-4aq6a.7.** OOShaderUniform's Objective-C binding target (the `id` factory, `setBindingTarget(id)`, the
+   zeroing weak target, the `-superShaderBindingTarget` category) and OOShaderUniformMethodType's selector path
+   (`OOShaderUniformTypeFromMethod`, `OOShaderUniformBindMethod`, `OOCallIntegerMethod`, `OOCallFloatMethod`, the IMP
+   casts, the unregistered member lookup on `id`) are deleted. The entity binding keeps the property by name
+   (`cxxProperty`; a NULL name still fails the factory) where it kept the selector; a name no row binds clears the
+   binding as `setBindingTarget(nil)` did and logs the same line; `applyBinding` reads only C++ members. Log text,
+   values applied and descriptions are unchanged. `OOShaderUniformTypeFromEncoding` stays (the member tables use it).
+4. **oo-4aq6a.6.2.** `OOJSValueFromNativeObject(id)`, `OOJSObjectFromNativeObject`, `OOJS_RETURN_OBJECT`, the root's JS
+   glue (`OOObject+OOJavaScript.h/.mm`: the bridges, `OOJSObjectAnswersGlue`, the `OOJSObjectGlue` protocol) with the
+   engine's `OOObjectJS*` defaults, and OOJSFunction's object-wrapper evaluation (`evaluatePredicateWithContext(id,
+   ObjCRef<id>...)`) are deleted; none had a game caller. The stack dump's OOException test asks
+   `oo::CurrentOOException()` directly where it asked through the bridge.
+
+**Tests.** test_OOPriorityQueue (six cases retire; two take measured literals), test_OOShaderUniform and
+test_OOShaderUniformMethodType (convert options and encodings re-pinned through the C++ factory and
+`OOShaderUniformTypeFromEncoding` first, then the selector cases retire), test_OOJSCall (the entity call's results and
+errors re-pinned through the table first, then the object-path cases retire; the entity objects are C++),
+test_OOCache and test_OOProbabilitySet (their object cases run on a C++ `oo::PListForeign` with the same checks),
+test_OOCharacter (two Objective-C origin checks retire), test_OOJavaScriptEngine (nil's null re-pinned through
+`OOJSValueFromPList`; the root-glue checks retire), test_OOJSFunction (case predicate and one check retire),
+test_objc_plist (retired with its subject); stand-in lines of the deleted node in five test_OOJS* files and the
+console's link stub go; the string-expander harness carries its own copy of the deleted node
+(`tests/unit/expander/OOHarnessObjCPList.h`) until its Objective-C goes (oo-4aq6a.8). No golden and no other expected
+value changes.
+
+**Left for oo-4aq6a.8.** `OOCallByName.mm` and test_objc_call_by_name; the string-expander harness's Objective-C;
+the orphaned `OOJSValueFromNativeObject`/`OOJSObjectGetterImplPRIVATE` stand-ins and `OOObject (...)` category
+interfaces in narrow tests; test_OOJavaScriptEngine's `aValueLeftInTheThreadPoolAtExit` (it pins libobjc2's pool
+drain at thread exit: it goes with libobjc2, oo-dbz, or is re-based onto `oo::AutoreleaseScope`); OODescription.mm's
+Objective-C family; OOObject, OOConstantString and the floor tests.
 ## Amendment (bead oo-31u.9): the two scope-less oo::autorelease calls drain at the caller's scope, as upstream
 
 **Context.** Amendment oo-31u's inventory found two C++ `oo::autorelease` calls with no `oo::AutoreleaseScope`

@@ -226,7 +226,9 @@ bool PListIsEqual(const oo::PList *a, const oo::PList *b)
 		}
 		return true;
 	}
-	if (a->getIf<oo::PList::Object>() != nullptr)  return [oo::ObjectIn(*a) isEqual:oo::ObjectIn(*b)];
+	// Object nodes: the -isEqual: of the Objective-C objects they held, nil's NO for any other node
+	// (bead oo-4aq6a.5 deleted the Objective-C object's node; no game object was one).
+	if (a->getIf<oo::PList::Object>() != nullptr)  return false;
 	return *a == *b;	// strings, data, dates
 }
 

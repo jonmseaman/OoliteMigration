@@ -46,15 +46,6 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 }
 
 
-// [object intValue], as Foundation's number and string classes declared it (an Object node's
-// object may answer it): the method's implementation called with that type. The facade's
-// oo::SendIntValue sent it until bead oo-9ht.10 deleted the facade.
-int SendIntValue(id object, SEL intValue)
-{
-	using IntValueIMP = int (*)(id, SEL);
-	return reinterpret_cast<IntValueIMP>(reinterpret_cast<void (*)(void)>(class_getMethodImplementation(object_getClass(object), intValue)))(object, intValue);
-}
-
 }	// namespace
 
 
@@ -502,13 +493,12 @@ void OOCharacter::setCharacterFromDictionary(const oo::PList &dict)
 	Random_Seed			seed;
 
 	origin = dict.find("origin");
-	// (a string, a number, or another object that answers -intValue: an Object node)
+	// (a string or a number; another object that answered -intValue, in an Object node, went with
+	// bead oo-4aq6a.5: no game object is one)
 	const std::string	*originName = (origin != nullptr) ? origin->getIf<std::string>() : nullptr;
-	id					originObject = (origin != nullptr) ? oo::ObjectIn(*origin) : nil;
-	const SEL			intValue = OOSelectorFromName("intValue");
-	const int			originValue = (originObject != nil) ? ([originObject respondsToSelector:intValue] ? SendIntValue(originObject, intValue) : 0) : dict.get<int>("origin");
+	const int			originValue = dict.get<int>("origin");
 	if ((origin != nullptr && origin->isNumber()) ||
-		(((originName != nullptr) || [originObject respondsToSelector:intValue]) && (originValue != 0 || (originName != nullptr && *originName == "0"))))
+		((originName != nullptr) && (originValue != 0 || *originName == "0")))
 	{
 		// Number or numerical string
 		setOriginSystem(originValue);

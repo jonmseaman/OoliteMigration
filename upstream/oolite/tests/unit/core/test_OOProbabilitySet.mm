@@ -155,17 +155,34 @@ OO_TEST(propertyListRoundTrip)
 }
 
 
+// Object elements: C++ objects in Object nodes (bead oo-4aq6a.5 deleted the node of an Objective-C
+// object, which this case held; the same checks through the C++ node, ADR-0062 item 3).
+namespace {
+
+class TestForeign final : public oo::PListForeign
+{
+public:
+	std::string className() const override  { return "TestForeign"; }
+	std::string description() const override  { return "<TestForeign>"; }
+};
+
+oo::PList Node(const oo::Ref<TestForeign> &object)  { return oo::PList(oo::PList::Object(object)); }
+
+}	// namespace
+
+
 OO_TEST(objectElements)
 {
-	@autoreleasepool
 	{
-		OOObject *object = [[[OOObject alloc] init] autorelease];
-		const oo::PList elements[] = { oo::PListObject(object), Str("s") };
+		oo::AutoreleaseScope pool;
+		oo::Ref<TestForeign> object = oo::makeRef<TestForeign>();
+		const oo::PList elements[] = { Node(object), Str("s") };
 		const float weights[] = { 1.0f, 1.0f };
 		oo::Ref<OOProbabilitySet> set = OOProbabilitySet::probabilitySetWithObjects(elements, weights, 2);
-		OO_CHECK(set->weightForObject(oo::PListObject(object)) == 1.0f);	// the same object in another node
-		OO_CHECK(set->weightForObject(oo::PListObject([[[OOObject alloc] init] autorelease])) == -1.0f);
-		OO_CHECK(oo::ObjectIn(set->allElements()[0]) == object);
+		OO_CHECK(set->weightForObject(Node(object)) == 1.0f);	// the same object in another node
+		OO_CHECK(set->weightForObject(Node(oo::makeRef<TestForeign>())) == -1.0f);
+		const oo::PList::Object *node = set->allElements()[0].getIf<oo::PList::Object>();
+		OO_CHECK(node != nullptr && node->get() == object.get());
 	}
 }
 

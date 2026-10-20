@@ -266,8 +266,9 @@ acceptance grep matches (comments included), the whole tree builds, and the game
 
 Use `oofnd/StdLib.hpp` for standard containers (never `<vector>` directly: OOCocoa.h's
 `true`/`false` macros), `oofnd/String.hpp` for `oo::str`, `oofnd/PList.hpp` for `oo::PList`,
-`oofnd/objc/OOObjCRef.h` for `oo::ObjCRef`, `Core/OOObjCPList.h` for an Objective-C object inside a
-property list (`oo::PListObject`, `oo::ObjectIn`, `oo::PListFromObjects`, `oo::ObjCRefsIn`), and
+`oofnd/objc/OOObjCRef.h` for `oo::ObjCRef`, a C++ `oo::PListForeign` for an object inside a
+property list (the Objective-C object's node, `Core/OOObjCPList.h`'s `oo::PListObject` & co., went with
+bead oo-4aq6a.5), and
 `oo::DescriptionOf` (`Core/OODescription.h`, imported by `OOCocoa.h`) for `%@` text. The boundary
 helpers this step used to name (`oo::StdString`, `oo::NSStringFrom`, `oo::NSStringOrNil`,
 `oo::NSArrayFromStrings` & co.) lived in `OOFoundationBridge.h` / `OOStringBridge.h`, deleted by

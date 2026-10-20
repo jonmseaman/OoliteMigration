@@ -300,15 +300,9 @@ void OOJSTimer::timerFired()
 
 	// stop and remove the timer if _jsThis (the first parameter in the constructor) dies.
 	const oo::PList thisValue = cxx_OOJSPListFromJSObject(context, _jsThis);
-	id object = oo::ObjectIn(thisValue);
 	if (oo::EntityIn(thisValue) != nullptr)  described = true;	// an entity's object described itself (bead oo-dpyk8)
-	else if (object != nil)
-	{
-		// Its class's own -cxx_oo_jsDescription, else OOObject's default, which is never nil (bead
-		// oo-t7o84 deleted the category that answered it).
-		described = !OOJSObjectAnswersGlue(object, @selector(cxx_oo_jsDescription)) || [object cxx_oo_jsDescription].has_value();
-		if (!described)  described = oo::DescriptionOf(object) != "(null)";	// -description was nil
-	}
+	// (An Objective-C object's node, described by its class's -cxx_oo_jsDescription, went with bead
+	// oo-4aq6a.5: no game object is one.)
 	else
 	{
 		// A plain value (object, array, String/Number/Boolean object): its Foundation form's

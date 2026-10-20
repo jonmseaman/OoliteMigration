@@ -191,51 +191,6 @@ bool OOJSFunction::evaluateWithContext(ooscript::Context context,
 	return OK;
 }
 
-// Semi-raw evaluation shared by convenience methods below.
-bool OOJSFunction::evaluateWithContext(ooscript::Context context,
-									   id jsThis,
-									   const std::vector<oo::ObjCRef<id>> &arguments,
-									   ooscript::Value *result)
-{
-	NSUInteger i, argc = arguments.size();
-	assert(argc < UINT32_MAX);
-	std::vector<ooscript::Value> argv(argc);
-
-	for (i = 0; i < argc; i++)
-	{
-		argv[i] = arguments[i].get() != nil ? OOJSValueFromNativeObject(context, arguments[i].get()) : ooscript::Value{0};	// (a message to nil gave the zero value)
-		OOJSAddGCValueRoot(context, &argv[i], "OOJSFunction argv");
-	}
-
-	ooscript::Object scopeObj = NULL;
-	bool OK = true;
-	if (jsThis != nil)  OK = ooscript::valueToObject(context, OOJSValueFromNativeObject(context, jsThis), &scopeObj);
-	if (OK)  OK = evaluateWithContext(context,
-									  scopeObj,
-									  (uint32_t)argc,
-									  argv.data(),
-									  result);
-
-	for (i = 0; i < argc; i++)
-	{
-		ooscript::removeValueRoot(context, &argv[i]);
-	}
-
-	return OK;
-}
-
-
-bool OOJSFunction::evaluatePredicateWithContext(ooscript::Context context,
-												id jsThis,
-												const std::vector<oo::ObjCRef<id>> &arguments)
-{
-	ooscript::Value result;
-	bool OK = evaluateWithContext(context,
-								  jsThis,
-								  arguments,
-								  &result);
-	bool retval = false;
-	if (OK)  OK = ooscript::valueToBoolean(context, result, &retval);
-	return OK && retval;
-}
+// (The object-wrapper evaluations, evaluateWithContext(id jsThis, arguments) and
+// evaluatePredicateWithContext(), went with OOJSValueFromNativeObject(), bead oo-4aq6a.6.2.)
 

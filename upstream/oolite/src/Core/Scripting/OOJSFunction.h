@@ -74,22 +74,15 @@ public:
 							 ooscript::Value *argv,
 							 ooscript::Value *result);
 
-	// Object-wrapper evaluation, converting the result to a boolean.
-	bool evaluatePredicateWithContext(ooscript::Context context,
-									  id jsThis,
-									  const std::vector<oo::ObjCRef<id>> &arguments);
+	// (The object-wrapper evaluations, which converted Objective-C arguments and scope -
+	// evaluatePredicateWithContext() and its evaluateWithContext() - had no game caller and went
+	// with OOJSValueFromNativeObject(), bead oo-4aq6a.6.2.)
 
 private:
 	// The part of -initWithFunction:context: that cannot fail.
 	OOJSFunction(ooscript::Function function, ooscript::Context context);
 
 	void deleteJSValue();
-
-	// Semi-raw evaluation shared by convenience methods below.
-	bool evaluateWithContext(ooscript::Context context,
-							 id jsThis,
-							 const std::vector<oo::ObjCRef<id>> &arguments,
-							 ooscript::Value *result);
 
 	ooscript::Function _function = {};
 	std::optional<std::string>	_name;	// nullopt for an anonymous function (was nil)

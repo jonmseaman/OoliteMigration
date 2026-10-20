@@ -661,7 +661,6 @@ ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &p
 		::TestEntityObject *object = TestObjectOf(entity);
 		return object != nullptr ? object->oo_jsValueInContext(context) : ooscript::nullValue();
 	}
-	if (id object = oo::ObjectIn(plist))  return OOJSValueFromNativeObject(context, object);
 	if (const oo::PList::Array *array = plist.getIf<oo::PList::Array>())
 	{
 		std::vector<ooscript::Value> values;

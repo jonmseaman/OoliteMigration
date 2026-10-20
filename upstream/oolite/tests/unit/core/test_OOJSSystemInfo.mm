@@ -399,7 +399,6 @@ ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &p
 	{
 		if (OOJSPrivateObject *glue = dynamic_cast<OOJSPrivateObject *>(node->get()))  return OOJSValueFromCxxObject(context, glue);
 	}
-	if (id object = oo::ObjectIn(plist))  return OOJSValueFromNativeObject(context, object);
 	if (const oo::PList::Array *array = plist.getIf<oo::PList::Array>())
 	{
 		std::vector<ooscript::Value> values;

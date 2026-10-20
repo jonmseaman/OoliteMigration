@@ -82,11 +82,10 @@ oo::PList PropertyListRepresentation(const oo::PList *objects, const float *weig
 
 
 // -isEqual: of the objects the elements were: == of two values (a string is equal to the same
-// string); an Object node is equal to one holding the same or an -isEqual: object.
+// string); an Object node is equal to the same node. (A node holding an Objective-C object, equal to
+// one holding the same or an -isEqual: object, went with bead oo-4aq6a.5: no game object is one.)
 bool SameElement(const oo::PList &element, const oo::PList &object)
 {
-	id elementObject = oo::ObjectIn(element), objectObject = oo::ObjectIn(object);
-	if (elementObject != nil || objectObject != nil)  return elementObject == objectObject || [elementObject isEqual:objectObject];
 	return element == object;
 }
 

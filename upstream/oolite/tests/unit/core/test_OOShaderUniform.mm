@@ -18,6 +18,15 @@
 	is the factory of its arguments, nil is null, retain/release a held Ref, the description is
 	description(), which prints the uniform's own address); the facade's own case (facade) was
 	retired with it (ADR-0049, standing approval oo-9n5p9).
+
+	Bead oo-4aq6a.7 deleted the Objective-C binding target (the factory bound to an object by
+	selector, setBindingTarget(id), the super-target walk over -superShaderBindingTarget): no game
+	code bound an Objective-C object. Its convert options (clamp, normalise, quaternion to matrix,
+	colour, an object that is not a colour) were re-pinned first through the C++ target factory,
+	with the same values (cxxTargetConvertOptions, ADR-0062 item 3), and so was bindingsRefused's
+	constant check (constantIgnoresABindingTarget); then bindings, bindingsRefused,
+	superTargetsAndLifetime and the Objective-C target's checks of initialisersThatFail,
+	description and cxxAPI retired with that path (ADR-0062 item 2; std-2026-10-19 item 2).
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -29,7 +38,6 @@
 
 #include "oo_gl_test_context.hpp"
 #include "oo_test.hpp"
-#include "oofnd/objc/OORuntime.h"
 #include "oofnd/String.hpp"
 
 #include <cmath>
@@ -79,43 +87,6 @@ oo::Ref<OOShaderProgram> OOShaderProgram::shaderProgramWithVertexShaderName(cons
 	made->_program = gStandInProgram;
 	return made;
 }
-
-
-// A binding target: one property per supported return type, and some that are not.
-@interface TestTarget: OOObject
-{
-@public
-	id		_super;
-	int		_int;
-	float	_float;
-}
-@end
-
-@implementation TestTarget
-- (id) superShaderBindingTarget	{ return _super; }
-- (int) intValue						{ return _int; }
-- (unsigned char) byteValue				{ return 7; }
-- (float) floatValue					{ return _float; }
-- (double) doubleValue					{ return 2.5; }
-- (Vector) vectorValue					{ return make_vector(3, 0, 4); }
-- (HPVector) hpVectorValue				{ return make_HPvector(0, 6, 8); }
-- (Quaternion) quaternionValue			{ Quaternion q = { 0.5f, 0.5f, 0.5f, 0.5f }; return q; }
-- (OOMatrix) matrixValue				{ return OOMatrixForScale(2, 3, 4); }
-- (NSPoint) pointValue					{ return NSMakePoint(1.5, -2.5); }
-- (OOColor *) colorValue				{ static oo::Ref<OOColor> color = OOColor::colorWithRed(0.25f, 0.5f, 0.75f, 1.0f); return color.get(); }	// a colour binding answers the C++ colour (bead oo-9ht.1)
-- (id) notAColor						{ return self; }
-- (float) withArgument:(int)argument	{ return (float)argument; }
-- (void) nothing						{}
-- (long long) longLongValue				{ return 1; }
-@end
-
-
-// A target that forwards its bindings to another (as a subentity to its parent).
-@interface TestSubTarget: TestTarget
-@end
-
-@implementation TestSubTarget
-@end
 
 
 namespace {
@@ -210,12 +181,6 @@ void Reset()
 }
 
 
-oo::Ref<OOShaderUniform> Bound(const char *uniform, id target, const char *selector, OOUniformConvertOptions options = 0)
-{
-	return OOShaderUniform::initWithName(uniform, gShaderProgram, target, selector, options);
-}
-
-
 // The uniform's description, as the facade's -description printed it (nil: "(null)").
 std::string Description(const oo::Ref<OOShaderUniform> &uniform)
 {
@@ -233,10 +198,6 @@ OO_TEST(initialisersThatFail)
 		OO_CHECK(OOShaderUniform::initWithName("uFloat", nil, GLfloat(1)) == nullptr);
 		OO_CHECK(OOShaderUniform::initWithName("uMissing", gShaderProgram, GLfloat(1)) == nullptr);
 		OO_CHECK(OOShaderUniform::initWithName("uVector", gShaderProgram, static_cast<OOColor *>(nullptr)) == nullptr);
-		TestTarget *target = [[[TestTarget alloc] init] autorelease];
-		OO_CHECK(OOShaderUniform::initWithName("uFloat", gShaderProgram, target, NULL, 0) == nullptr);
-		OO_CHECK(OOShaderUniform::initWithName("uFloat", nil, target, "floatValue", 0) == nullptr);
-		OO_CHECK(Bound("uMissing", target, "floatValue") == nullptr);
 	}
 }
 
@@ -275,138 +236,19 @@ OO_TEST(constants)
 }
 
 
-OO_TEST(bindings)
+// A constant ignores a binding target (bindingsRefused's check, re-pinned through the entity
+// target's setter when bead oo-4aq6a.7 deleted setBindingTarget(id); ADR-0062 item 3).
+OO_TEST(constantIgnoresABindingTarget)
 {
 	if (!SetUpProgram())  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
-		TestTarget *target = [[[TestTarget alloc] init] autorelease];
-		target->_int = 5;
-		target->_float = 1.75f;
+		oo::AutoreleaseScope pool;
 		Reset();
-
-		// Each supported return type, applied on every -apply from the target's current value.
-		const oo::Ref<OOShaderUniform> u = Bound("uInt", target, "intValue");
-		u->apply();
-		OO_CHECK(Int("uInt") == 5);
-		target->_int = 6;
-		u->apply();
-		OO_CHECK(Int("uInt") == 6);
-		Bound("uInt", target, "intValue", kOOUniformConvertClamp)->apply();	// clamped: non-zero is 1
-		OO_CHECK(Int("uInt") == 1);
-		Bound("uInt", target, "byteValue")->apply();
-		OO_CHECK(Int("uInt") == 7);
-
-		Bound("uFloat", target, "floatValue")->apply();
-		OO_CHECK(Near(Floats("uFloat", 1), { 1.75f }));
-		Bound("uFloat", target, "floatValue", kOOUniformConvertClamp)->apply();
-		OO_CHECK(Near(Floats("uFloat", 1), { 1.0f }));
-		Bound("uFloat", target, "doubleValue")->apply();
-		OO_CHECK(Near(Floats("uFloat", 1), { 2.5f }));
-
-		Bound("uVector", target, "vectorValue")->apply();
-		OO_CHECK(Near(Floats("uVector", 4), { 3, 0, 4, 1 }));
-		Bound("uVector", target, "vectorValue", kOOUniformConvertNormalize)->apply();
-		OO_CHECK(Near(Floats("uVector", 4), { 0.6f, 0, 0.8f, 1 }));
-		Bound("uVector", target, "hpVectorValue", kOOUniformConvertNormalize)->apply();
-		OO_CHECK(Near(Floats("uVector", 4), { 0, 0.6f, 0.8f, 1 }));
-		Bound("uVector", target, "quaternionValue")->apply();	// not to matrix: x, y, z, w
-		OO_CHECK(Near(Floats("uVector", 4), { 0.5f, 0.5f, 0.5f, 0.5f }));
-		Bound("uVector", target, "colorValue")->apply();
-		OO_CHECK(Near(Floats("uVector", 4), { 0.25f, 0.5f, 0.75f, 1 }));
-		Bound("uVector", target, "vectorValue")->apply();
-		Bound("uVector", target, "notAColor")->apply();	// an object that is not a colour: nothing set
-		OO_CHECK(Near(Floats("uVector", 4), { 3, 0, 4, 1 }));
-
-		Bound("uMatrix", target, "matrixValue")->apply();
-		OO_CHECK(Near(Floats("uMatrix", 16), { 2, 0, 0, 0,  0, 3, 0, 0,  0, 0, 4, 0,  0, 0, 0, 1 }));
-		Bound("uMatrix", target, "quaternionValue", kOOUniformConvertToMatrix)->apply();
-		const Quaternion q = { 0.5f, 0.5f, 0.5f, 0.5f };
-		const OOMatrix rotation = OOMatrixForQuaternionRotation(q);
-		OO_CHECK(std::fabs(Floats("uMatrix", 16)[1] - OOMatrixValuesForOpenGL(rotation)[1]) < 1e-5f);
-
-		Bound("uPoint", target, "pointValue")->apply();
-		OO_CHECK(Near(Floats("uPoint", 2), { 1.5f, -2.5f }));
-		OO_CHECK(glGetError() == GL_NO_ERROR);
-	}
-}
-
-
-OO_TEST(bindingsRefused)
-{
-	if (!SetUpProgram())  { OO_CHECK(false); return; }
-	@autoreleasepool
-	{
-		TestTarget *target = [[[TestTarget alloc] init] autorelease];
-		target->_float = 0.5f;
-		Reset();
-		glUniform1fARB(glGetUniformLocationARB(gProgram, "uFloat"), 9.0f);
-
-		// Made, but inactive: -apply sets nothing.
-		for (const char *selector : { "withArgument:", "nothing", "longLongValue", "noSuchMethod" })
-		{
-			const oo::Ref<OOShaderUniform> u = Bound("uFloat", target, selector);
-			OO_CHECK(u != nullptr);
-			u->apply();
-			OO_CHECK(Near(Floats("uFloat", 1), { 9.0f }));
-		}
-
-		// No target yet: inactive until it is given one; nil makes it inactive again.
-		const oo::Ref<OOShaderUniform> u = Bound("uFloat", nil, "floatValue");
-		u->apply();
-		OO_CHECK(Near(Floats("uFloat", 1), { 9.0f }));
-		u->setBindingTarget(target);
-		u->apply();
-		OO_CHECK(Near(Floats("uFloat", 1), { 0.5f }));
-		glUniform1fARB(glGetUniformLocationARB(gProgram, "uFloat"), 9.0f);
-		u->setBindingTarget(nil);
-		u->apply();
-		OO_CHECK(Near(Floats("uFloat", 1), { 9.0f }));
-
-		// A constant ignores a binding target.
 		const oo::Ref<OOShaderUniform> constant = OOShaderUniform::initWithName("uFloat", gShaderProgram, 0.25f);
-		constant->setBindingTarget(target);
+		constant->setEntityBindingTarget(nullptr);
 		constant->apply();
 		OO_CHECK(Near(Floats("uFloat", 1), { 0.25f }));
 	}
-}
-
-
-OO_TEST(superTargetsAndLifetime)
-{
-	if (!SetUpProgram())  { OO_CHECK(false); return; }
-	@autoreleasepool
-	{
-		TestTarget *parent = [[[TestTarget alloc] init] autorelease];
-		parent->_float = 0.125f;
-		TestSubTarget *child = [[[TestSubTarget alloc] init] autorelease];
-		child->_float = 0.875f;
-		child->_super = parent;
-		parent->_super = parent;	// a target that is its own super ends the chain
-		Reset();
-
-		Bound("uFloat", child, "floatValue", kOOUniformBindToSuperTarget)->apply();
-		OO_CHECK(Near(Floats("uFloat", 1), { 0.125f }));
-		Bound("uFloat", child, "floatValue")->apply();
-		OO_CHECK(Near(Floats("uFloat", 1), { 0.875f }));
-	}
-
-	// The uniform holds its target weakly: once it has gone, -apply sets nothing.
-	oo::Ref<OOShaderUniform> u;
-	@autoreleasepool
-	{
-		TestTarget *target = [[[TestTarget alloc] init] autorelease];
-		target->_float = 0.5f;
-		u = Bound("uFloat", target, "floatValue");
-	}
-	@autoreleasepool
-	{
-		glUniform1fARB(glGetUniformLocationARB(gProgram, "uFloat"), 9.0f);
-		u->apply();
-		OO_CHECK(Near(Floats("uFloat", 1), { 9.0f }));
-		OO_CHECK(Description(u).ends_with(": float uFloat = 0;}"));
-	}
-	u = nullptr;
 }
 
 
@@ -422,11 +264,6 @@ OO_TEST(description)
 		GLfloat v[4] = { 1, 2, 3, 4 };
 		OO_CHECK(Description(OOShaderUniform::initWithName("uVector", gShaderProgram, v)).ends_with(": vec4 uVector = (1, 2, 3);}"));
 		OO_CHECK(Description(OOShaderUniform::initWithName("uMatrix", gShaderProgram, kIdentityMatrix)).ends_with(": matrix uMatrix = " + OOMatrixDescription(kIdentityMatrix) + ";}"));
-
-		TestTarget *target = [[[TestTarget alloc] init] autorelease];
-		const std::string bound = Description(Bound("uFloat", target, "floatValue"));
-		OO_CHECK(bound.find(": float uFloat = [<TestTarget 0x") != std::string::npos && bound.ends_with("> floatValue];}"));
-		OO_CHECK(Description(Bound("uFloat", target, "nothing")).ends_with(": (null) uFloat = INVALID;}"));
 	}
 }
 
@@ -491,6 +328,98 @@ OO_TEST(cxxTargetBindings)
 }
 
 
+// The convert options and value kinds the deleted Objective-C target's case (bindings) pinned, through
+// the C++ target factory with the same values (bead oo-4aq6a.7, ADR-0062 item 3): the type is the one
+// the bound method's return type gave, the getter answers what the method answered.
+namespace {
+
+class ConvertTarget : public oo::RefCounted
+{
+public:
+	int		_int = 0;
+	float	_float = 0;
+};
+
+ConvertTarget *Target(oo::RefCounted *target)  { return static_cast<ConvertTarget *>(target); }
+
+void IntValue(oo::RefCounted *t, OOShaderBindingValue &v)			{ v.i = Target(t)->_int; }
+void ByteValue(oo::RefCounted *, OOShaderBindingValue &v)			{ v.i = 7; }
+void FloatValue(oo::RefCounted *t, OOShaderBindingValue &v)			{ v.f = Target(t)->_float; }
+void DoubleValue(oo::RefCounted *, OOShaderBindingValue &v)			{ v.f = 2.5; }
+void VectorValue(oo::RefCounted *, OOShaderBindingValue &v)			{ v.v = make_vector(3, 0, 4); }
+void HPVectorValue(oo::RefCounted *, OOShaderBindingValue &v)		{ v.hpv = make_HPvector(0, 6, 8); }
+void QuaternionValue(oo::RefCounted *, OOShaderBindingValue &v)		{ Quaternion q = { 0.5f, 0.5f, 0.5f, 0.5f }; v.q = q; }
+void MatrixValue(oo::RefCounted *, OOShaderBindingValue &v)			{ v.m = OOMatrixForScale(2, 3, 4); }
+void PointValue(oo::RefCounted *, OOShaderBindingValue &v)			{ v.p = NSMakePoint(1.5, -2.5); }
+void ColorValue(oo::RefCounted *, OOShaderBindingValue &v)			{ static oo::Ref<OOColor> color = OOColor::colorWithRed(0.25f, 0.5f, 0.75f, 1.0f); v.color = color.get(); }
+void NotAColor(oo::RefCounted *, OOShaderBindingValue &)			{}
+
+oo::Ref<OOShaderUniform> BoundCxx(const char *uniform, ConvertTarget *target, OOShaderUniformType type, OOShaderCxxBindingGetter get, OOUniformConvertOptions options = 0)
+{
+	return OOShaderUniform::initWithName(uniform, gShaderProgram, target, "property", type, get, options);
+}
+
+}	// namespace
+
+
+OO_TEST(cxxTargetConvertOptions)
+{
+	if (!SetUpProgram())  { OO_CHECK(false); return; }
+	{
+		oo::AutoreleaseScope pool;
+		oo::Ref<ConvertTarget> held = oo::makeRef<ConvertTarget>();
+		ConvertTarget *target = held.get();
+		target->_int = 5;
+		target->_float = 1.75f;
+		Reset();
+
+		// Each supported value kind, applied on every apply from the target's current value.
+		const oo::Ref<OOShaderUniform> u = BoundCxx("uInt", target, kOOShaderUniformTypeInt, IntValue);
+		u->apply();
+		OO_CHECK(Int("uInt") == 5);
+		target->_int = 6;
+		u->apply();
+		OO_CHECK(Int("uInt") == 6);
+		BoundCxx("uInt", target, kOOShaderUniformTypeInt, IntValue, kOOUniformConvertClamp)->apply();	// clamped: non-zero is 1
+		OO_CHECK(Int("uInt") == 1);
+		BoundCxx("uInt", target, kOOShaderUniformTypeUnsignedChar, ByteValue)->apply();
+		OO_CHECK(Int("uInt") == 7);
+
+		BoundCxx("uFloat", target, kOOShaderUniformTypeFloat, FloatValue)->apply();
+		OO_CHECK(Near(Floats("uFloat", 1), { 1.75f }));
+		BoundCxx("uFloat", target, kOOShaderUniformTypeFloat, FloatValue, kOOUniformConvertClamp)->apply();
+		OO_CHECK(Near(Floats("uFloat", 1), { 1.0f }));
+		BoundCxx("uFloat", target, kOOShaderUniformTypeDouble, DoubleValue)->apply();
+		OO_CHECK(Near(Floats("uFloat", 1), { 2.5f }));
+
+		BoundCxx("uVector", target, kOOShaderUniformTypeVector, VectorValue)->apply();
+		OO_CHECK(Near(Floats("uVector", 4), { 3, 0, 4, 1 }));
+		BoundCxx("uVector", target, kOOShaderUniformTypeVector, VectorValue, kOOUniformConvertNormalize)->apply();
+		OO_CHECK(Near(Floats("uVector", 4), { 0.6f, 0, 0.8f, 1 }));
+		BoundCxx("uVector", target, kOOShaderUniformTypeHPVector, HPVectorValue, kOOUniformConvertNormalize)->apply();
+		OO_CHECK(Near(Floats("uVector", 4), { 0, 0.6f, 0.8f, 1 }));
+		BoundCxx("uVector", target, kOOShaderUniformTypeQuaternion, QuaternionValue)->apply();	// not to matrix: x, y, z, w
+		OO_CHECK(Near(Floats("uVector", 4), { 0.5f, 0.5f, 0.5f, 0.5f }));
+		BoundCxx("uVector", target, kOOShaderUniformTypeColor, ColorValue)->apply();
+		OO_CHECK(Near(Floats("uVector", 4), { 0.25f, 0.5f, 0.75f, 1 }));
+		BoundCxx("uVector", target, kOOShaderUniformTypeVector, VectorValue)->apply();
+		BoundCxx("uVector", target, kOOShaderUniformTypeObject, NotAColor)->apply();	// an object that is not a colour: nothing set
+		OO_CHECK(Near(Floats("uVector", 4), { 3, 0, 4, 1 }));
+
+		BoundCxx("uMatrix", target, kOOShaderUniformTypeMatrix, MatrixValue)->apply();
+		OO_CHECK(Near(Floats("uMatrix", 16), { 2, 0, 0, 0,  0, 3, 0, 0,  0, 0, 4, 0,  0, 0, 0, 1 }));
+		BoundCxx("uMatrix", target, kOOShaderUniformTypeQuaternion, QuaternionValue, kOOUniformConvertToMatrix)->apply();
+		const Quaternion q = { 0.5f, 0.5f, 0.5f, 0.5f };
+		const OOMatrix rotation = OOMatrixForQuaternionRotation(q);
+		OO_CHECK(std::fabs(Floats("uMatrix", 16)[1] - OOMatrixValuesForOpenGL(rotation)[1]) < 1e-5f);
+
+		BoundCxx("uPoint", target, kOOShaderUniformTypePoint, PointValue)->apply();
+		OO_CHECK(Near(Floats("uPoint", 2), { 1.5f, -2.5f }));
+		OO_CHECK(glGetError() == GL_NO_ERROR);
+	}
+}
+
+
 // --- The C++ class and the facade (after the conversion) -----------------------------------------
 
 OO_TEST(cxxAPI)
@@ -513,15 +442,6 @@ OO_TEST(cxxAPI)
 		OO_CHECK(Near(Floats("uVector", 4), { 0.5f, 0.5f, 0.5f, 0.5f }));
 		OOShaderUniform::initWithName("uMatrix", gShaderProgram, OOMatrixForScale(2, 3, 4))->apply();
 		OO_CHECK(Near(Floats("uMatrix", 16), { 2, 0, 0, 0,  0, 3, 0, 0,  0, 0, 4, 0,  0, 0, 0, 1 }));
-
-		TestTarget *target = [[[TestTarget alloc] init] autorelease];
-		target->_float = 0.375f;
-		const oo::Ref<OOShaderUniform> bound = OOShaderUniform::initWithName("uFloat", gShaderProgram, target, "floatValue", 0);
-		OO_CHECK(bound != nullptr);
-		bound->apply();
-		OO_CHECK(Near(Floats("uFloat", 1), { 0.375f }));
-		OO_CHECK(OOShaderUniform::initWithName("uFloat", gShaderProgram, target, nullptr, 0) == nullptr);
-		OO_CHECK(bound->description()->find(": float uFloat = [<TestTarget 0x") != std::string::npos);
 	}
 }
 

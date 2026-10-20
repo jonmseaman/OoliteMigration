@@ -243,7 +243,9 @@ oo::PList OODebugMonitor::configurationValueForKey(const std::string &key)
 {
 	// The override, else (when it is missing or null) the OXPs' value; an OONull in either reads as
 	// null (an OONull override hides the OXPs' value).
-	const auto isNil = [](const oo::PList *v) { return v == nullptr || v->isNull() || (v->type() == oo::PList::Type::Object && oo::ObjectIn(*v) == nil && !OOIsNullObjectNode(*v)); };
+	// (An Object node held no Objective-C object, which none is since bead oo-4aq6a.5, so any Object
+	// node but the null's read as nil, as it did.)
+	const auto isNil = [](const oo::PList *v) { return v == nullptr || v->isNull() || (v->type() == oo::PList::Type::Object && !OOIsNullObjectNode(*v)); };
 	const oo::PList *result = _configOverrides.find(key);
 	if (isNil(result))  result = _configFromOXPs.find(key);
 	if (isNil(result) || OOIsNullObjectNode(*result))  return oo::PList();

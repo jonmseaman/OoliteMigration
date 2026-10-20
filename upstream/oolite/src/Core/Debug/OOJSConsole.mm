@@ -301,8 +301,9 @@ OODebugMonitor *MonitorFromJSObject(ooscript::Context context, ooscript::Object 
 void ReportNotTheMonitor(ooscript::Context context, ooscript::Object object, const char *function)
 {
 	const oo::PList node = (object != NULL) ? cxx_OOJSPListFromJSObject(context, object) : oo::PList();
-	// An entity's node: the class of its object, the root facade's (bead oo-dpyk8).
-	const std::string className = (oo::EntityIn(node) != nullptr) ? std::string("Entity") : oo::DescriptionOf([oo::ObjectIn(node) class]);
+	// An entity's node: the class of its object, the root facade's (bead oo-dpyk8). Any other node holds
+	// no Objective-C object (bead oo-4aq6a.5 deleted that node): nil's class, described "(null)".
+	const std::string className = (oo::EntityIn(node) != nullptr) ? std::string("Entity") : std::string("(null)");
 	cxx_OOJSReportError(context, "Expected OODebugMonitor, got %s in %s. %s", className.c_str(), function, "This is an internal error, please report it.");
 }
 
@@ -958,7 +959,6 @@ static bool ConsoleCallObjCMethod(ooscript::Context context, ooscript::CallArgs 
 {
 	OOJS_NATIVE_ENTER(context)
 	
-	id						object = nil;
 	ooscript::Value					result;
 	bool					OK;
 	
@@ -975,10 +975,11 @@ static bool ConsoleCallObjCMethod(ooscript::Context context, ooscript::CallArgs 
 	
 	// An entity's `this` converts to its entity node, whose C++ entity this takes (bead
 	// oo-9ht.39.5.3) and calls by its name table (bead oo-9ht.44).
+	// Any other `this` held no Objective-C object since none is made (bead oo-4aq6a.5 deleted the
+	// object path and its node): the error below, as for a plain JS object.
 	const oo::PList thisNode = cxx_OOJSPListFromJSObject(context, OOJS_THIS);
 	Entity *entity = oo::EntityIn(thisNode);
-	object = (entity != nullptr) ? nil : oo::ObjectIn(thisNode);	// an entity is called by its C++ part alone (bead oo-w9pi2)
-	if (entity == nullptr && object == nil)
+	if (entity == nullptr)
 	{
 		cxx_OOJSReportError(context, "Attempt to call __callObjCMethod() for non-Objective-C object %s.", cxx_OOStringFromJSValueEvenIfNull(context, ooscript::objectValue(OOJS_THIS)).value_or("(null)").c_str());
 		return false;
@@ -987,12 +988,9 @@ static bool ConsoleCallObjCMethod(ooscript::Context context, ooscript::CallArgs 
 	OOJSPauseTimeLimiter();
 	result = ooscript::undefinedValue();
 	// The class name of the error texts: an entity's is its C++ part's (bead oo-9ht.39.5.1), the
-	// answer its object's -cxx_oo_jsClassName forwarded to; any other object's is its own.
-	std::optional<std::string> className;
-	if (entity != nullptr)  className = OOJSEntityJSClassName(entity);
-	else if (OOJSObjectAnswersGlue(object, @selector(cxx_oo_jsClassName)))  className = [object cxx_oo_jsClassName];	// else OOObject's default, none (bead oo-t7o84)
-	if (entity != nullptr)  OK = OOJSCallEntityMethod(context, entity, className.value_or(std::string()), oojsArgs.count(), OOJS_ARGV, &result);
-	else  OK = OOJSCallObjCObjectMethod(context, object, className.value_or(std::string()), oojsArgs.count(), OOJS_ARGV, &result);
+	// answer its object's -cxx_oo_jsClassName forwarded to.
+	std::optional<std::string> className = OOJSEntityJSClassName(entity);
+	OK = OOJSCallEntityMethod(context, entity, className.value_or(std::string()), oojsArgs.count(), OOJS_ARGV, &result);
 	OOJSResumeTimeLimiter();
 	
 	OOJS_SET_RVAL(result);

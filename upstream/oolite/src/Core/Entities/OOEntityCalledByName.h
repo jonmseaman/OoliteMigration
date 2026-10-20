@@ -63,14 +63,14 @@ enum class OOEntityByNameArgument: std::uint8_t
 
 // A typed call's result (bead oo-9ht.39.7.2), kept by its type: an integer, enum or BOOL result
 // as a long long (as OOCallIntegerMethod() converted it), a float or double as a double, a vector,
-// a quaternion, an object, a property list. callObjC() reads the member its row's type names.
+// a quaternion, an entity, a colour, a property list. callObjC() reads the member its row's type
+// names. (An Objective-C object result, which no row answers, went with bead oo-4aq6a.5.)
 struct OOEntityByNameValue
 {
 	long long	integer = 0;
 	double		real = 0;
 	Vector		vector{};
 	Quaternion	quaternion{};
-	id			object = nil;
 	Entity	*entity = nullptr;	// an entity result, borrowed: the C++ entity (bead oo-9ht.39.24; its object, in object, before)
 	OOColor		*color = nullptr;	// a colour result, borrowed (fogUniform; bead oo-9ht.39.8.25)
 	oo::PList	plist;

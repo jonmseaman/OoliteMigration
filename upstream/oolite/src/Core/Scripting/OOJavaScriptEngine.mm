@@ -906,8 +906,11 @@ ooscript::Object scope = ooscript::frameScopeChain(context, frame);
 		{
 			// Was @catch (OOException *): an OOException is logged, anything else goes on up as before
 			// (amendment oo-10qz).
-			std::string name, reason;
-			if (!OOJavaScriptEngineCaughtOOException(name, reason))  throw;
+			// (Asked of oo::CurrentOOException() where it was asked through the root's JS bridge, which
+			// went with bead oo-4aq6a.6.2.)
+			const auto exception = oo::CurrentOOException();	// nullopt: not what @catch (OOException *) caught
+			if (!exception)  throw;
+			const std::string name = exception->name(), reason = exception->reason();
 			OO_LOG(cxx_kOOLogException, "Exception during JavaScript stack trace: {}:{}", name, reason);
 		}
 	}
@@ -1233,61 +1236,12 @@ BOOL OOJSArgumentListGetNumberNoError(ooscript::Context context, unsigned argc, 
 }
 
 
-// The root-class JS glue for classes rooted on OOObject (ADR-0029). Foundation objects have none:
-// OOJSValueFromNativeObject() converts them through their property-list form (proposed ADR-0051).
-// They are OOObject's defaults, which OOObject+OOJavaScript.mm's bridges call for an object whose
-// class has no method of its own (the category that forwarded to them, amendment oo-ppc item 3, is
-// deleted: bead oo-t7o84); the sends to the object go through its bridges (amendment oo-9ht.139).
-ooscript::Value OOObjectJSValueInContext(ooscript::Context /*context*/)
-{
-	return ooscript::undefinedValue();
-}
-
-
-std::optional<std::string> OOObjectJSClassName()
-{
-	return std::nullopt;
-}
-
-
-std::optional<std::string> OOObjectJSDescription(id object)
-{
-	return OOJavaScriptEngineJSDescriptionWithClassName(object, OOJavaScriptEngineJSClassName(object));
-}
-
-
-std::optional<std::string> OOObjectJSDescriptionWithClassName(id object, const std::optional<std::string> &className)
-{
-	OOJS_PROFILE_ENTER
-
-	const std::optional<std::string> components = OOJavaScriptEngineDescriptionComponents(object);
-	std::optional<std::string> name = className;
-	if (!name.has_value())  name = oo::DescriptionOf(OOJavaScriptEngineClass(object));	// the class's name
-
-	if (components.has_value())
-	{
-		return oo::str::format("[%s %s]", name->c_str(), components->c_str());
-	}
-	else
-	{
-		return oo::str::format("[object %s]", name->c_str());
-	}
-
-	OOJS_PROFILE_EXIT_VAL(std::nullopt)
-}
+// (The root-class JS glue for classes rooted on OOObject - OOObjectJSValueInContext(),
+// OOObjectJSClassName(), OOObjectJSDescription(), OOObjectJSDescriptionWithClassName() - went with
+// the root's JS bridges, bead oo-4aq6a.6.2: no game object is an Objective-C object.)
 
 
 namespace {
-// YES if object's root class is OOObject: it answers -oo_jsValueInContext: itself. Anything else
-// is a Foundation object, whose JS glue is the conversion below (proposed ADR-0051).
-static bool IsOOObjectRooted(id object)
-{
-	Class cls = object_getClass(object);
-	for (Class superclass = class_getSuperclass(cls); superclass != Nil; superclass = class_getSuperclass(cls))  cls = superclass;
-	return cls == OOJavaScriptEngineOOObjectClass();
-}
-
-
 // The Foundation array's glue (JSArrayFromNSArray + JSNewNSArrayValue) over ObjectFromPList's array: null elements dropped.
 static ooscript::Value JSArrayValueFromPList(ooscript::Context context, const oo::PList::Array &array)
 {
@@ -1379,16 +1333,8 @@ static ooscript::Value JSNumberValue(ooscript::Context context, double number)
 } // namespace
 
 
-ooscript::Value OOJSValueFromNativeObject(ooscript::Context context, id object)
-{
-	if (object == nil)  return ooscript::nullValue();
-	if (EXPECT(IsOOObjectRooted(object)))  return OOJavaScriptEngineJSValueInContext(object, context);
-
-	// An object on another root has no JS glue: undefined, as the root class's gave. oo-qps.72 deleted
-	// the Foundation branch (its property-list form, proposed ADR-0051): plist data is
-	// OOJSValueFromPList's.
-	return ooscript::undefinedValue();
-}
+// (OOJSValueFromNativeObject(), the JS value of an Objective-C object - null for nil, the root's JS
+// glue - went with bead oo-4aq6a.6.2: no game object is an Objective-C object.)
 
 
 ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &plist)
@@ -1463,9 +1409,9 @@ ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &p
 				if (OONull *null = dynamic_cast<OONull *>(node->get()))  return null->jsValueInContext(context);
 				if (OOJSValue *held = dynamic_cast<OOJSValue *>(node->get()))  return held->jsValueInContext(context);
 			}
-			id object = oo::ObjectIn(plist);
-			if (object == nil)  return ooscript::undefinedValue();	// a node that holds no Objective-C object (a C++ one): no JS glue
-			return OOJSValueFromNativeObject(context, object);
+			// A node that holds no Objective-C object (a C++ one): no JS glue. (The Objective-C object's
+			// node went with bead oo-4aq6a.5: no game object is one.)
+			return ooscript::undefinedValue();
 		}
 	}
 	return ooscript::undefinedValue();
@@ -1474,13 +1420,7 @@ ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &p
 }
 
 
-ooscript::Object OOJSObjectFromNativeObject(ooscript::Context context, id object)
-{
-	ooscript::Value value = OOJSValueFromNativeObject(context, object);
-	ooscript::Object result = nullptr;
-	if (ooscript::valueToObject((context), (value), &result))  return (result);
-	return NULL;
-}
+// (OOJSObjectFromNativeObject() went with OOJSValueFromNativeObject(), bead oo-4aq6a.6.2.)
 
 
 

@@ -7,7 +7,7 @@
 #define OO_HARNESS_FOUNDATION_BRIDGE_H
 
 #import "OOCocoa.h"
-#import "OOObjCPList.h"
+#import "OOHarnessObjCPList.h"	// the Object node of an Objective-C object (src deleted it, bead oo-4aq6a.5)
 
 #include "oofnd/String.hpp"
 #include "oofnd/StdLib.hpp"
