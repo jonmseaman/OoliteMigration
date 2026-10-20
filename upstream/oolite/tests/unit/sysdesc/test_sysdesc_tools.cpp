@@ -1,4 +1,4 @@
-/*	test_sysdesc_tools.mm
+/*	test_sysdesc_tools.cpp
 	Regression test for the localisation tools in src/Core/OOConvertSystemDescriptions.mm (bead
 	oo-vjwp): --export-sysdesc, --compile-sysdesc and the line converter they share.
 
@@ -26,15 +26,21 @@
 	out (UTF-16 units, a missing "]", digits only).
 
 	Run with --print to see the recorded lines and the digests.
+
+	C++ since bead oo-6e1.2 (std-2026-10-19 item 1): it was Objective-C++ on gnustep-base for two
+	Foundation log stubs the tools stopped calling when they moved to oo::log, an autorelease pool and
+	blocks; every scenario, input and digest is unchanged.
 */
 
-#import "Universe.h"
-#import "ResourceManager.h"
-#import "OOConvertSystemDescriptions.h"
-#import "OOFoundationBridge.h"
+#include "Universe.h"
+#include "ResourceManager.h"
+#include "OOConvertSystemDescriptions.h"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/PListParsing.hpp"
+#include "oofnd/Ref.hpp"
 #include "oofnd/String.hpp"
+#include <functional>
+#include <map>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -78,19 +84,8 @@ oo::PList KeyTable()
 
 // --- stubs -------------------------------------------------------------------------------------
 
-BOOL OOLogWillDisplayMessagesInClass(NSString *cls) { return YES; }
-void OOLogWithFunctionFileAndLineAndArguments(NSString *cls, const char *fn, const char *file, unsigned long line, NSString *fmt, va_list args)
-{
-	NSString *msg = [[[NSString alloc] initWithFormat:fmt arguments:args] autorelease];
-	sLines.push_back(oo::str::format("log [%s] %s", oo::StdString(cls).c_str(), oo::StdString(msg).c_str()));
-}
-void OOLogWithFunctionFileAndLine(NSString *cls, const char *fn, const char *file, unsigned long line, NSString *fmt, ...)
-{
-	va_list args;
-	va_start(args, fmt);
-	OOLogWithFunctionFileAndLineAndArguments(cls, fn, file, line, fmt, args);
-	va_end(args);
-}
+// The tools log through oo::log (OO_LOG) since their port; the Foundation log stubs that stood
+// here (OOLogWithFunctionFileAndLine...) were no longer called and went with gnustep-base (oo-6e1.2).
 
 
 // ResourceManager is C++ since bead oo-9ht.150 deleted its Objective-C facade.
@@ -175,6 +170,7 @@ void CheckLine(const char *line, const oo::PList &keys, BOOL useFallback, const 
 int main(int argc, const char *argv[])
 {
 	{
+		oo::AutoreleaseScope pool;	// was @autoreleasepool (bead oo-6e1.2)
 		if (argc < 2)
 		{
 			fprintf(stderr, "usage: %s descriptions.plist [--print]\n", argv[0]);
@@ -197,7 +193,7 @@ int main(int argc, const char *argv[])
 		sUniverse = new Universe();
 
 		std::vector<std::vector<std::string>> recorded;
-		auto run = [&](void (^body)(void))
+		auto run = [&](const std::function<void()> &body)
 		{
 			sLines.clear();
 			body();
@@ -205,19 +201,19 @@ int main(int argc, const char *argv[])
 		};
 
 		sKeyTable = oo::PList();
-		run(^{ ExportSystemDescriptions(NO); });
+		run([] { ExportSystemDescriptions(NO); });
 		const oo::Data exportedPlain = sWritten["sysdesc.plist"];
-		run(^{ ExportSystemDescriptions(YES); });
+		run([] { ExportSystemDescriptions(YES); });
 		sKeyTable = KeyTable();
-		run(^{ ExportSystemDescriptions(NO); });
+		run([] { ExportSystemDescriptions(NO); });
 		const oo::Data exportedKeyed = sWritten["sysdesc.plist"];
 
 		sKeyTable = oo::PList();
 		sSysdesc = Parse(exportedPlain);
-		run(^{ CompileSystemDescriptions(NO); });
+		run([] { CompileSystemDescriptions(NO); });
 		sKeyTable = KeyTable();
 		sSysdesc = Parse(exportedKeyed);
-		run(^{ CompileSystemDescriptions(YES); });
+		run([] { CompileSystemDescriptions(YES); });
 
 		for (size_t i = 0; i < recorded.size(); i++)
 		{

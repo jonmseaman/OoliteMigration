@@ -9896,3 +9896,43 @@ nearest enclosing scope (or are counted as leaked), changing what the tests obse
 block was.
 
 **Tests.** Spelling only (std-2026-10-19 item 1; approval lines "oo-dbz.1"): every case, input and expected value unchanged.
+## Amendment (bead oo-6e1.2): the string-expander and sysdesc harnesses make no Objective-C object; OOCallByName.mm is deleted
+
+**Context.** Batch BG. After oo-4aq6a.8 the only Objective-C objects left were test infrastructure: the string-expander
+harness (`tests/unit/expander`, `tools/check-string-expander.sh`) linked gnustep-base as its oracle, with an Objective-C
+`PlayerEntity` stub answering by selector, `NSObject`/`NSArray`/`NSDictionary` categories, the expander's Foundation test
+surface (`OO_EXPANDER_TEST_SURFACE`, `OOStringExpanderTestSurface.h`) and a copy of the deleted plist node
+(`OOHarnessObjCPList.h`); it called `OOCallByName.mm`, which had no other caller but test_objc_call_by_name. The sysdesc
+harness (`tests/unit/sysdesc`, `tools/check-sysdesc-tools.sh`) linked gnustep-base for two Foundation log stubs the tools
+no longer called. Rule 8 forbids gnustep-base once libobjc2 goes (oo-dbz).
+
+**Decision (behaviour-identical; every digest unchanged).**
+
+1. The expander harness is C++ (`test_string_expander.cpp`): it drives `cxx_OOExpandDescriptionString` and
+   `cxx_OOGenerateSystemDescription` with the inputs the Foundation surface converted (overrides: `num` a double, the
+   rest strings and a one-string array; locals: `local_x` a signed integer, `local_s` a string), its player is a C++ stub
+   with the Objective-C stub's answers (the nine declared special keys answer their text, any other argument-less name
+   is a logged `query <name>` answering `q(<name>)`, `systemID` 7, `kb:`/`mv:` prefixes, `_nil` mission variables nil),
+   and every recorded line is built from the same UTF-16 units. Two gnustep-base behaviours the recorded digests pin are
+   reproduced where the harness (not the expander) depended on them, each measured on main a357f5933 with the
+   Objective-C harness: `-dictionaryWithContentsOfFile:` read the BOM-less old-style plists as ISO-8859-1 (descriptions'
+   UTF-8 becomes one unit per byte; the game reads UTF-8 and is not what the digests pin), and
+   `-stringByAppendingString:`/`-stringByReplacingCharactersInRange:` took a leading U+FEFF as a byte-order mark
+   (dropped) and a leading U+FFFE as a swapped one (dropped, every other unit byte-swapped), which shaped the corpus's
+   BOM-prefixed keys. `--print` output is identical line for line to the Objective-C harness's (420,615 lines); digests
+   `0x6349f869900cf779` / `0xef7448c0016ba2ed` unchanged. The `catch (NSException *)` arms go: nothing raises one.
+2. The Foundation surface leaves `OOStringExpander.mm`/`.h` (the fenced `OOExpandDescriptionString(NSString *...)` and
+   `OOGenerateSystemDescription(NSString *...)`), and the harness's Foundation headers go (`OOFoundationBridge.h`,
+   `OOHarnessFoundation.h`, `OOHarnessObjCPList.h`, `OOStringExpanderTestSurface.h`, `OOCollectionExtractors.h`), with
+   their guardrails scan exemptions.
+3. `OOCallByName.mm` (`OOCallByName(id, name...)`) is deleted with its declarations; `OOCallByName.h` keeps the entity call.
+4. The sysdesc harness is C++ (`test_sysdesc_tools.cpp`): the two dead Foundation log stubs go, `@autoreleasepool`
+   becomes `oo::AutoreleaseScope`, the blocks become lambdas; its five digests are unchanged. Its stubs gain
+   `#pragma once`: since oo-ua886 turned the tools' `#import`s into `#include`s, `Universe.h` was included twice and
+   `tools/check-sysdesc-tools.sh` failed to compile on main.
+5. Both harnesses still compile as Objective-C++ against the game's headers and link libobjc2 alone (`-lobjc`); oo-dbz
+   makes them plain C++ with the rest.
+
+**Tests.** test_objc_call_by_name retires with `OOCallByName.mm` (std-2026-10-19 item 2); test_string_expander and
+test_sysdesc_tools are re-based (item 1: `.mm` to `.cpp`, Foundation stand-ins to C++ giving the same answers, every
+input and digest unchanged). Approval lines "oo-6e1.2". No golden changes.

@@ -76,16 +76,9 @@ extern "C++" {
 #include "oofnd/PList.hpp"
 
 
-// The method is named by its selector's name ("takeString:"), not a SEL, since bead oo-xu228.3.
-oo::PList OOCallByName(id target, const std::string &name);
-oo::PList OOCallByName(id target, const std::string &name, const std::string &argument);
-oo::PList OOCallByName(id target, const std::string &name, const oo::PList &argument);
-
-// A literal argument is a string (without this, "text" converts to std::string and oo::PList alike).
-inline oo::PList OOCallByName(id target, const std::string &name, const char *argument)
-{
-	return OOCallByName(target, name, std::string(argument));
-}
+// OOCallByName(id target, name...), the call on an Objective-C object, was deleted with
+// OOCallByName.mm by bead oo-6e1.2: since oo-4aq6a.5 its only callers were the string-expander
+// harness and its own floor test. The signatures above are the entity call's (below).
 
 
 /*	An entity's method called by name (bead oo-9ht.39.7.1, ADR-0056 amendment oo-9ht.39.7.1): the
