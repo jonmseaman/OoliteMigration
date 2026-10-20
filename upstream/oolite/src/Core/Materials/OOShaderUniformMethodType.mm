@@ -98,10 +98,10 @@ void OOSetShaderMemberBindingLookup(OOShaderMemberBindingLookup lookup) noexcept
 }
 
 
-bool OOShaderMemberBindingFor(id target, SEL selector, OOShaderMemberBinding *outBinding)
+bool OOShaderMemberBindingFor(id target, const char *property, OOShaderMemberBinding *outBinding)
 {
 	if (sMemberBindingLookup == NULL || target == nil || outBinding == NULL)  return false;
-	return sMemberBindingLookup(target, selector, outBinding);
+	return sMemberBindingLookup(target, property, outBinding);
 }
 
 

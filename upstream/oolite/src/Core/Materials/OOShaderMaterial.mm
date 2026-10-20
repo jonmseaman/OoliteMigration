@@ -317,12 +317,12 @@ OOShaderMaterial::~OOShaderMaterial()
 
 bool OOShaderMaterial::bindUniform(const std::string &uniformName,
 								   Entity *source,
-								   SEL selector,
+								   const char *property,
 								   OOUniformConvertOptions options)
 {
 	oo::Ref<OOShaderUniform>	uniform;
 
-	uniform = OOShaderUniform::initWithEntityTarget(uniformName, shaderProgram.get(), source, selector, options);
+	uniform = OOShaderUniform::initWithEntityTarget(uniformName, shaderProgram.get(), source, property, options);
 	if (uniform != nullptr)
 	{
 		OO_LOG("shader.uniform.set", "Set up uniform {}", uniform->description().value_or("(null)"));
@@ -343,15 +343,14 @@ bool OOShaderMaterial::bindSafeUniform(const std::string &uniformName,
 									   const std::optional<std::string> &property,
 									   OOUniformConvertOptions options)
 {
-	SEL					selector = NULL;
+	// The property's name, where it was its selector (bead oo-xu228.3.2): NULL exactly where there is none.
+	const char			*propertyName = property.has_value() ? property->c_str() : nullptr;
 
-	selector = OOSelectorFromName(property.has_value() ? property->c_str() : nullptr);
-
-	if (selector != NULL && OOUniformBindingPermitted(*property, target))
+	if (propertyName != NULL && OOUniformBindingPermitted(*property, target))
 	{
 		return bindUniform(uniformName,
 						   target,
-						   selector,
+						   propertyName,
 						   options);
 	}
 	else

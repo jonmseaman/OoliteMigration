@@ -159,11 +159,13 @@ oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &unifor
 oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &uniformName,
 													   OOShaderProgram *shaderProgram,
 													   id target,
-													   SEL selector,
+													   const char *property,
 													   OOUniformConvertOptions options)
 {
 	BOOL					OK = YES;
 	oo::Ref<OOShaderUniform>	result;
+	// The property's selector, looked up once (bead oo-xu228.3.2: the caller passed it); NULL for no name.
+	const SEL				selector = OOSelectorFromName(property);
 
 	if (EXPECT_NOT(shaderProgram == NULL || selector == NULL)) OK = NO;
 
@@ -246,9 +248,11 @@ oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &unifor
 oo::Ref<OOShaderUniform> OOShaderUniform::initWithEntityTarget(const std::string &uniformName,
 															   OOShaderProgram *shaderProgram,
 															   Entity *target,
-															   SEL selector,
+															   const char *property,
 															   OOUniformConvertOptions options)
 {
+	const SEL selector = OOSelectorFromName(property);	// looked up once, as the initialiser above (bead oo-xu228.3.2)
+
 	// The selector initialiser above, its target the entity (bead oo-9ht.39.6): the same checks and
 	// log line, which names the class of the entity's object as -[{} {}] did.
 	if (EXPECT_NOT(shaderProgram == NULL || selector == NULL))  return nullptr;
@@ -451,7 +455,7 @@ void OOShaderUniform::setBindingTarget(id target)
 	value.binding.cxxGet = NULL;
 	value.binding.method = NULL;
 	cxxTarget = nullptr;
-	if (OOShaderMemberBindingFor((id)target, value.binding.selector, &memberBinding))
+	if (OOShaderMemberBindingFor((id)target, OOSelectorName(value.binding.selector), &memberBinding))
 	{
 		value.binding.cxxGet = memberBinding.get;
 		cxxTarget = memberBinding.target;
