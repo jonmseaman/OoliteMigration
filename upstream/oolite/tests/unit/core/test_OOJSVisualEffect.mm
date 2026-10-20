@@ -26,7 +26,6 @@
 */
 
 #import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
 #include <objc/runtime.h>
 #import "OOColor.h"
 #include "OOMaths.h"
@@ -46,10 +45,10 @@
 
 class Universe;
 class PlayerEntity;
-@class TestEntityObject;	// the test's stand-in root object, below (OOEntityHold.h declared the game's until bead oo-dpyk8 deleted it)
+class TestEntityObject;	// the test's stand-in root object, below (OOEntityHold.h declared the game's until bead oo-dpyk8 deleted it)
 
 // The C++ root, as far as the binding and the root's JS category reach it (the members the
-// binding calls, declared as Entity.h declares them), and the C++ part's object (oo::ToObjC).
+// binding calls, declared as Entity.h declares them), and the C++ part's object (TestObjectOf).
 class Entity : public oo::RefCounted
 {
 public:
@@ -61,8 +60,8 @@ public:
 	Entity *owner();	// the C++ entity since bead oo-dpyk8
 
 	BOOL _isSubEntity = NO;
-	id _owner = nil;
-	::TestEntityObject *_object = nil;	// the object holding this part (not retained)
+	::TestEntityObject *_owner = nullptr;
+	::TestEntityObject *_object = nullptr;	// the object holding this part (not retained)
 };
 
 // An entity's object: the root's facade, which holds its C++ part (oo::ToCxx reads it).
@@ -70,13 +69,18 @@ public:
 #include "OOJSEntityHolder.h"
 
 
-__attribute__((objc_runtime_name("Entity")))
-@interface TestEntityObject: OOObject
+// C++ since bead oo-4aq6a.12 (it was rooted on the Objective-C root class OOObject, which Phase 4
+// deletes); its category's selectors are members of the same names.
+class TestEntityObject final : public oo::RefCounted
 {
-@public
+public:
+	const char *className() const  { return "Entity"; }	// its Objective-C class's runtime name
+	void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
+	std::optional<std::string> cxx_oo_jsClassName();
+	bool isVisibleToScripts();
+
 	oo::Ref<Entity> _cxxEntity;
-}
-@end
+};
 
 // A mesh: its materials and shaders, and the arguments the last one was made with. C++ since bead
 // oo-9ht.132: the members of OOMesh (OOMesh.h) the binding calls, with their signatures.
@@ -106,9 +110,8 @@ public:
 	members the binding calls (declared as OOVisualEffectEntity.h declares them; the test imports
 	none that defines the classes), answering as the stand-in's methods answered.
 */
-@protocol OOSubEntity, OOBeaconEntity;
-typedef TestEntityObject<OOSubEntity> OOVisualEffectSubEntity;
-typedef TestEntityObject<OOBeaconEntity> OOVisualEffectBeaconEntity;
+typedef TestEntityObject OOVisualEffectSubEntity;	// the object conforming to OOSubEntity until bead oo-4aq6a.12
+typedef TestEntityObject OOVisualEffectBeaconEntity;	// the object conforming to OOBeaconEntity until bead oo-4aq6a.12
 
 class OOVisualEffectEntity : public Entity
 {
@@ -179,7 +182,7 @@ public:
 	oo::PList _scriptInfo;
 	oo::PList _effectInfo;
 	oo::Ref<OOMesh> _mesh;
-	id _removedSub = nil;
+	::TestEntityObject *_removedSub = nullptr;
 	int _removed = 0;
 	std::optional<std::string> _beaconCode;
 	std::optional<std::string> _beaconLabel;
@@ -201,7 +204,7 @@ public:
 class FakeGame : public Universe
 {
 public:
-	id _nextBeacon = nil;
+	::TestEntityObject *_nextBeacon = nullptr;
 	int _cleared = 0;
 	int _added = 0;
 	int _compassMode = 0;
@@ -231,11 +234,6 @@ public:
 	FakeGame *_game = nil;
 };
 
-@interface TestEntityObject (OOJavaScriptExtensions)
-- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
-- (std::optional<std::string>) cxx_oo_jsClassName;
-- (BOOL) isVisibleToScripts;
-@end
 
 extern "C" void InitOOJSVisualEffect(ooscript::Context context, ooscript::Object global);
 // The category's bodies, which the stand-in's overrides call as the C++ class's do (declared in OOJSVisualEffect.h).
@@ -272,20 +270,11 @@ void OOScript::clearJSSelf(ooscript::Object)					{}
 #include <vector>
 
 
-@implementation TestEntityObject
-
-@end
-
-
 // The root's JS category, as the game's asks the C++ part (EntityOOJavaScriptExtensions+ObjCBridge.mm):
-// the engine sends these selectors to the wrapped object.
-@implementation TestEntityObject (OOJavaScriptExtensions)
-
-- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype  { _cxxEntity->getJSClass(outClass, outPrototype); }
-- (std::optional<std::string>) cxx_oo_jsClassName  { return _cxxEntity->jsClassName(); }
-- (BOOL) isVisibleToScripts  { return _cxxEntity->isVisibleToScripts(); }
-
-@end
+// the engine sent these selectors to the wrapped object.
+void TestEntityObject::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)  { _cxxEntity->getJSClass(outClass, outPrototype); }
+std::optional<std::string> TestEntityObject::cxx_oo_jsClassName()  { return _cxxEntity->jsClassName(); }
+bool TestEntityObject::isVisibleToScripts()  { return _cxxEntity->isVisibleToScripts(); }
 
 
 Entity::~Entity()  {}
@@ -293,12 +282,13 @@ void Entity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outProt
 std::optional<std::string> Entity::jsClassName()  { return std::nullopt; }
 bool Entity::isVisibleToScripts()  { return false; }
 bool Entity::getIsSubEntity()  { return _isSubEntity; }
-Entity *Entity::owner()  { return _owner != nil ? ((::TestEntityObject *)_owner)->_cxxEntity.get() : nullptr; }	// its object's C++ part (bead oo-dpyk8)
+Entity *Entity::owner()  { return _owner != nullptr ? _owner->_cxxEntity.get() : nullptr; }	// its object's C++ part (bead oo-dpyk8)
 
-// The object of a C++ part: the one that holds it (the game's never makes one here either).
-namespace oo { ::TestEntityObject *ToObjC(Entity *entity); }
-::TestEntityObject *oo::ToObjC(Entity *entity)  { return entity != nullptr ? entity->_object : nil; }
-#import "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
+// The object of a C++ part: the one that holds it (the game's never makes one here either; the
+// test's oo::ToObjC until bead oo-4aq6a.12).
+::TestEntityObject *TestObjectOf(Entity *entity)  { return entity != nullptr ? entity->_object : nullptr; }
+#define OO_ENTITY_HELPERS_STAND_IN_CXX
+#include "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
 
 
 namespace {
@@ -306,7 +296,7 @@ namespace {
 // An effect's object and its C++ part, as oo::NewVisualEffectObject() makes them (autoreleased).
 TestEntityObject *NewEffectObject()
 {
-	TestEntityObject *object = [[[TestEntityObject alloc] init] autorelease];
+	TestEntityObject *object = oo::autorelease(oo::makeRef<TestEntityObject>());
 	object->_cxxEntity = oo::makeRef<OOVisualEffectEntity>();
 	object->_cxxEntity->_object = object;
 	return object;
@@ -322,7 +312,7 @@ oo::PList sMeshMaterials;
 oo::PList sMeshShaders;
 oo::PList sMeshMacros;
 BOOL sMeshSmooth = NO;
-id sMeshTarget = nil;
+::TestEntityObject *sMeshTarget = nullptr;
 int sMeshesMade = 0;
 }
 
@@ -340,7 +330,7 @@ oo::Ref<OOMesh> OOMesh::meshWithName(const std::string &name,
 	sMeshShaders = shadersDict;
 	sMeshSmooth = smooth;
 	sMeshMacros = macros;
-	sMeshTarget = oo::ToObjC(object);	// its object, as the target was until bead oo-9ht.39.6
+	sMeshTarget = TestObjectOf(object);	// its object, as the target was until bead oo-9ht.39.6
 	sMeshesMade++;
 	if (name == "nomesh.dat")  return nullptr;
 	oo::Ref<OOMesh> mesh = oo::makeRef<OOMesh>();
@@ -402,7 +392,7 @@ oo::PList OOVisualEffectEntity::effectInfoDictionary()  { return _effectInfo; }
 ::OOMesh *OOVisualEffectEntity::mesh()  { return _mesh.get(); }
 void OOVisualEffectEntity::setMesh(::OOMesh *mesh)  { _mesh = oo::Ref<OOMesh>(mesh); }
 void OOVisualEffectEntity::removeSubEntity(OOVisualEffectSubEntity *sub)  { _removedSub = sub; }
-void OOVisualEffectEntity::removeSubEntity(Entity *sub)  { _removedSub = oo::ToObjC(sub); }	// its object, as the binding passed it until bead oo-9ht.39.8.13
+void OOVisualEffectEntity::removeSubEntity(Entity *sub)  { _removedSub = TestObjectOf(sub); }	// its object, as the binding passed it until bead oo-9ht.39.8.13
 void OOVisualEffectEntity::remove()  { _removed++; }
 std::optional<std::string> OOVisualEffectEntity::beaconCode()  { return _beaconCode; }
 void OOVisualEffectEntity::setBeaconCode(const std::optional<std::string> &bcode)  { _beaconCode = bcode; }
@@ -513,15 +503,20 @@ ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &p
 	}
 	if (plist.isNumber())  return ooscript::numberValue(plist.doubleValue());
 	Entity *nodeEntity = oo::EntityIn(plist);	// an entity's node: its object (bead oo-dpyk8)
-	if (id object = (nodeEntity != nullptr) ? (id)oo::ToObjC(nodeEntity) : oo::ObjectIn(plist))
+	if (::TestEntityObject *object = (nodeEntity != nullptr) ? TestObjectOf(nodeEntity) : nullptr)
 	{
-		std::string name = std::string("[") + class_getName(object_getClass(object)) + "]";
+		std::string name = std::string("[") + object->className() + "]";
 		// An entity's object is named by its C++ part's class, as oo::EntityClassName() names it
 		// (an effect's object is the root's facade since bead oo-9ht.165).
-		if ([object isKindOfClass:[TestEntityObject class]] && ((TestEntityObject *)object)->_cxxEntity != nullptr)
+		if (object->_cxxEntity != nullptr)
 		{
-			if (dynamic_cast<OOVisualEffectEntity *>(((TestEntityObject *)object)->_cxxEntity.get()) != nullptr)  name = "[OOVisualEffectEntity]";
+			if (dynamic_cast<OOVisualEffectEntity *>(object->_cxxEntity.get()) != nullptr)  name = "[OOVisualEffectEntity]";
 		}
+		return ooscript::stringValue(ooscript::newStringCopyN(context, name.data(), name.size()));
+	}
+	if (id object = (nodeEntity == nullptr) ? oo::ObjectIn(plist) : nil)	// another Objective-C object (none is made here)
+	{
+		std::string name = std::string("[") + class_getName(object_getClass(object)) + "]";
 		return ooscript::stringValue(ooscript::newStringCopyN(context, name.data(), name.size()));
 	}
 	// A C++ object node (a script since bead oo-9ht.133), named by its className().
@@ -746,7 +741,7 @@ ooscript::Value JSValueForEntity(TestEntityObject *entity)
 {
 	ooscript::ClassDef *jsClass = nullptr;
 	ooscript::Object prototype = nullptr;
-	[entity getJSClass:&jsClass andPrototype:&prototype];
+	entity->getJSClass(&jsClass, &prototype);
 	return JSValueForObject(jsClass, prototype, entity);
 }
 
@@ -772,7 +767,8 @@ void SetUpContext()
 	gSharedUniverse = sGame;
 	gOOPlayer = new PlayerEntity;	// never deleted
 	gOOPlayer->_game = sGame;
-	sEffect = [NewEffectObject() retain];
+	sEffect = NewEffectObject();
+	sEffect->retain();
 	sEffectPart = static_cast<OOVisualEffectEntity *>(sEffect->_cxxEntity.get());
 	sEffectPart->_beaconLabel = "Label";
 	sEffectPart->_effectKey = "test-effect";
@@ -791,13 +787,14 @@ void SetUpContext()
 	effectInfo["model"] = oo::PList(std::string("effect.dat"));
 	effectInfo["smooth"] = oo::PList(true);
 	sEffectPart->_effectInfo = oo::PList(std::move(effectInfo));
-	sSub = [NewEffectObject() retain];
+	sSub = NewEffectObject();
+	sSub->retain();
 	sSubPart = static_cast<OOVisualEffectEntity *>(sSub->_cxxEntity.get());
 	sSubPart->_isSubEntity = YES;
 	sSubPart->_owner = sEffect;
 	Define("effect", JSValueForEntity(sEffect));
 	Define("sub", JSValueForEntity(sSub));
-	Define("plainEntity", JSValueForObject(&sFakeEntityClass, gOOEntityJSPrototype, [[TestEntityObject alloc] init]));
+	Define("plainEntity", JSValueForObject(&sFakeEntityClass, gOOEntityJSPrototype, oo::makeRef<TestEntityObject>().leakRef()));
 }
 
 
@@ -835,13 +832,13 @@ OO_TEST(registration)
 	SetUpContext();
 	ooscript::ClassDef *effectClass = nullptr;
 	ooscript::Object prototype = nullptr;
-	[sEffect getJSClass:&effectClass andPrototype:&prototype];
+	sEffect->getJSClass(&effectClass, &prototype);
 	OO_CHECK(effectClass != nullptr && std::strcmp(effectClass->name, "VisualEffect") == 0);
 	OO_CHECK(prototype != nullptr);
 	OO_CHECK(OOJSIsSubclass(effectClass, &sFakeEntityClass));
 	OO_CHECK_EQ(sConverters[effectClass], 1);
-	OO_CHECK([sEffect cxx_oo_jsClassName] == std::optional<std::string>("VisualEffect"));
-	OO_CHECK([sEffect isVisibleToScripts]);
+	OO_CHECK(sEffect->cxx_oo_jsClassName() == std::optional<std::string>("VisualEffect"));
+	OO_CHECK(sEffect->isVisibleToScripts());
 	OO_CHECK_EVAL("typeof VisualEffect", "function");
 	OO_CHECK_EVAL("new VisualEffect()", "threw: unconstructable");
 	OO_CHECK_EVAL("Object.getPrototypeOf(VisualEffect.prototype) === Entity.prototype", "true");
@@ -937,7 +934,7 @@ OO_TEST(beacons)
 	OO_CHECK_EVAL("(function () { effect.beaconCode = null; return effect.beaconCode; })()", "null");
 	OO_CHECK_EQ(sGame->_cleared, 1);
 	OO_CHECK_EQ(sGame->_compassMode, -1);
-	sGame->_nextBeacon = nil;
+	sGame->_nextBeacon = nullptr;
 }
 
 

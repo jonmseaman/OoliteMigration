@@ -13,13 +13,16 @@
 	::TestEntityObject *TestObjectOf(Entity *) in place of oo::ToObjC(); ::TestEntityObject is an
 	oo::RefCounted whose className() answers its Objective-C class's name. The helpers answer the
 	same: the hold retains and releases the object, and both descriptions are what the Objective-C
-	object (whose class had no description of its own) printed: <ClassName 0x...>.
+	object printed: <ClassName 0x...>, then {components} where its class answered
+	-cxx_descriptionComponents (the full one) or -cxx_shortDescriptionComponents (the short one),
+	members of those names here (bead oo-4aq6a.12).
 */
 #ifndef ENTITY_HELPERS_STAND_IN_H
 #define ENTITY_HELPERS_STAND_IN_H
 
 #import "OODescription.h"
 
+#include <optional>
 #include <string>
 
 class Entity;
@@ -45,12 +48,19 @@ void oo::detail::EntityRetain(Entity *entity) noexcept				{ if (::TestEntityObje
 void oo::detail::EntityRelease(Entity *entity) noexcept			{ if (::TestEntityObject *object = (entity != nullptr) ? TestObjectOf(entity) : nullptr)  object->release(); }
 Entity *oo::WithObject(Entity *entity)						{ return (entity != nullptr && TestObjectOf(entity) != nullptr) ? entity : nullptr; }
 #ifndef OO_ENTITY_HELPERS_STAND_IN_NO_DESCRIPTIONS
-// "%@" of the object, "(null)" for none: an object whose class has no description of its own.
-inline std::string TestEntityObjectDescription(::TestEntityObject *object)
+// "%@" of the object (full: the description, else the short one), "(null)" for none.
+template <class Object>
+std::string TestEntityObjectDescription(Object *object, bool full = false)
 {
-	return (object != nullptr) ? oo::str::format("<%s %s>", object->className(), oo::str::pointerDescription(object).c_str()) : std::string("(null)");
+	if (object == nullptr)  return "(null)";
+	std::optional<std::string> components;
+	if constexpr (requires { object->cxx_descriptionComponents(); })  { if (full)  components = object->cxx_descriptionComponents(); }
+	if constexpr (requires { object->cxx_shortDescriptionComponents(); })  { if (!full)  components = object->cxx_shortDescriptionComponents(); }
+	std::string result = oo::str::format("<%s %s>", object->className(), oo::str::pointerDescription(object).c_str());
+	if (components.has_value())  result += "{" + *components + "}";
+	return result;
 }
-std::string oo::EntityDescription(Entity *entity)					{ return TestEntityObjectDescription((entity != nullptr) ? TestObjectOf(entity) : nullptr); }
+std::string oo::EntityDescription(Entity *entity)					{ return TestEntityObjectDescription((entity != nullptr) ? TestObjectOf(entity) : nullptr, true); }
 std::string oo::EntityShortDescription(Entity *entity)				{ return TestEntityObjectDescription((entity != nullptr) ? TestObjectOf(entity) : nullptr); }
 #endif
 
