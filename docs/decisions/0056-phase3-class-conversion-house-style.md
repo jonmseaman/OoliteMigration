@@ -9480,3 +9480,24 @@ kept in the file until the next one, so they stay valid exactly as long as they 
 catchers spell `catch (const oo::Exception &)` (where a test kept `[e name]`'s pointer past the handler, a copy of
 the exception is kept in a `std::optional`, standing in for the pool that kept it alive); test_Universe builds an
 `oo::Exception`; test_OOAsyncWorkManager's failing task throws an `oo::Exception` (it threw a plain OOObject).
+## Amendment (bead oo-6e1.1): NSObjectOOExtensions is deleted
+
+**Context.** Batch AX. `NSObjectOOExtensions` (the root category `OOObject (OOExtensions)`: debug-only
+`-oo_objectSize`/`+oo_instanceSize`) had no sender left but `OOWeakReference`'s forwarding override and
+`OOEntityObjectNamesTable.h`'s frozen `oo_objectSize` row (the entity memory counts use `oo::EntityObjectSize()`
+since oo-dpyk8).
+
+**Decision (behaviour-identical but item 2).**
+
+1. `NSObjectOOExtensions.h/.mm` are deleted with their `src/Core/meson.build` line; `OOWeakReference`'s
+   `-oo_objectSize` forwarding (C++ member, facade method) and the two imports go. Nothing sends `-oo_objectSize`.
+2. **Debug-console change (the default recorded on oo-6e1.1, flagged):** the `oo_objectSize` row of
+   `OOEntityObjectNamesTable.h` is removed, so `callObjC("oo_objectSize")` on an entity is "does not respond"
+   where it was answered, logged and never called. No test reads it.
+3. Not done in batch AX: `OOObject (OODescription)` (oo-8sql7) - `tests/unit/core/test_OOWeakReference.mm`
+   sends the category's `-cxx_shortDescription` straight to a plain `OOWeakRefObject`, so the category can go only
+   with that test, i.e. with `OOWeakReference+ObjCBridge` (oo-9ht.22), whose deletion needs test changes no
+   approval line covers yet (listed on oo-9ht.22). Prepared on branch `bead/oo-8sql7` (b2c45e809): the
+   `@optional` protocol `OODescription` plus `oo::ObjectDescription` & co. as the root's defaults in C++.
+
+**Tests.** No test file, case or expected value changes.
