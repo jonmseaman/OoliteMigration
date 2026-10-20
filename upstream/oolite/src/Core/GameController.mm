@@ -49,6 +49,7 @@ MA 02110-1301, USA.
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Thread.hpp"
 #include "oofnd/objc/OOException.h"
+#include "oofnd/objc/OORuntime.h"	// OOSelectorFromName (bead oo-xu228.3)
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/String.hpp"
 #include "oofnd/Log.hpp"
@@ -159,8 +160,9 @@ std::vector<OODeferredCall>					sDeferredCalls;	// in scheduling order
 }
 
 
-void OOScheduleDeferredCall(id target, SEL selector, id argument, NSTimeInterval delay)
+void OOScheduleDeferredCall(id target, const char *selectorName, id argument, NSTimeInterval delay)
 {
+	const SEL selector = selectorName != nullptr ? OOSelectorFromName(selectorName) : NULL;	// by name since bead oo-xu228.3
 	if (!oo::thread::isMainThread())  return;
 	
 	if (delay <= 0.0)  delay = 0.0001;	// as the Foundation timer did
@@ -443,7 +445,7 @@ bool GameController::finishedLaunching()
 */
 bool GameController::suppressClangStuff()
 {
-	return pauseSelector &&
+	return !pauseSelector.empty() &&
 	pauseTarget;
 }
 #endif

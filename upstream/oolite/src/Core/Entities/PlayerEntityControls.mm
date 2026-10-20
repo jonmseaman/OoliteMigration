@@ -902,7 +902,7 @@ void PlayerEntity::pollApplicationControls()
 			if ((gameView != nullptr ? gameView->isCommandQDown() : false))
 			{
 				// The target was the controller's object; the controller is C++ (bead oo-9ht.164), and on SDL the pair is kept, never performed: nil.
-				if (gameController != nullptr)  gameController->pauseFullScreenModeToPerform(@selector(exitAppCommandQ), nil);
+				if (gameController != nullptr)  gameController->pauseFullScreenModeToPerform("exitAppCommandQ", nil);
 			}
 		}
 	#endif
@@ -2571,7 +2571,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 						{
 							OO_LOG(cxx_kOOLogException, "{}", "\n\n***** Trying a normal save instead *****\n\n");
 							if ((controller != nullptr ? controller->inFullScreenMode() : false))
-							{ if (controller != nullptr)  controller->pauseFullScreenModeToPerform(@selector(savePlayer), nil); }	// no target: the SDL build never performs it, and the entity's object no longer answers -savePlayer (bead oo-w9pi2)
+							{ if (controller != nullptr)  controller->pauseFullScreenModeToPerform("savePlayer", nil); }	// no target: the SDL build never performs it, and the entity's object no longer answers -savePlayer (bead oo-w9pi2)
 							else
 								savePlayer();
 						}

@@ -434,12 +434,12 @@ OO_TEST(fullScreenMembers)
 
 		TestTarget *target = [[TestTarget alloc] init];
 		GameControllerTestAccess::stayInFullScreenMode(controller) = true;
-		controller->pauseFullScreenModeToPerform(@selector(record:), target);
-		OO_CHECK(GameControllerTestAccess::pauseSelector(controller) == @selector(record:));
+		controller->pauseFullScreenModeToPerform("record:", target);
+		OO_CHECK(GameControllerTestAccess::pauseSelector(controller) == "record:");
 		OO_CHECK(GameControllerTestAccess::pauseTarget(controller) == target);
 		OO_CHECK(!GameControllerTestAccess::stayInFullScreenMode(controller));
-		controller->pauseFullScreenModeToPerform(@selector(raise:), nil);
-		OO_CHECK(GameControllerTestAccess::pauseSelector(controller) == @selector(raise:));
+		controller->pauseFullScreenModeToPerform("raise:", nil);
+		OO_CHECK(GameControllerTestAccess::pauseSelector(controller) == "raise:");
 		OO_CHECK(GameControllerTestAccess::pauseTarget(controller) == nil);
 		[target release];
 	}
@@ -480,8 +480,8 @@ OO_TEST(deferredCalls)
 		TestTarget *target = [[TestTarget alloc] init];
 		OOObject *argument = [[OOObject alloc] init];
 
-		OOScheduleDeferredCall(target, @selector(record:), argument, 0.0);
-		OOScheduleDeferredCall(target, @selector(record:), nil, -1.0);
+		OOScheduleDeferredCall(target, "record:", argument, 0.0);
+		OOScheduleDeferredCall(target, "record:", nil, -1.0);
 		OO_CHECK([target retainCount] == 3);
 		OO_CHECK([argument retainCount] == 2);
 		OO_CHECK(target->_calls.empty());
@@ -499,12 +499,12 @@ OO_TEST(deferredCalls)
 		OO_CHECK(target->_calls.size() == 2);
 
 		// A call not yet due stays.
-		OOScheduleDeferredCall(target, @selector(record:), nil, 60.0);
+		OOScheduleDeferredCall(target, "record:", nil, 60.0);
 		controller->fireDueTimers();
 		OO_CHECK(target->_calls.size() == 2);
 
 		// An OOException from the call is swallowed; the target is not released.
-		OOScheduleDeferredCall(target, @selector(raise:), nil, 0.0);
+		OOScheduleDeferredCall(target, "raise:", nil, 0.0);
 		std::this_thread::sleep_for(std::chrono::milliseconds(5));
 		controller->fireDueTimers();
 		OO_CHECK(target->_calls.size() == 3 && target->_calls.back() == "raise");
@@ -519,7 +519,7 @@ OO_TEST(deferredCalls)
 		std::shared_ptr<int> kept = std::make_shared<int>(1);
 
 		OOScheduleDeferredCall([&order, kept]() { order.push_back("cxx"); }, 0.0);
-		OOScheduleDeferredCall(cxxTarget, @selector(record:), nil, -1.0);
+		OOScheduleDeferredCall(cxxTarget, "record:", nil, -1.0);
 		OOScheduleDeferredCall(std::function<void()>(), 0.0);	// an empty call: nothing scheduled
 		OO_CHECK(kept.use_count() == 2);
 

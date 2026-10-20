@@ -113,10 +113,11 @@ OOINLINE OOComparisonResult PQCompare(id a, id b, SEL comparator)
 } // namespace
 
 
-oo::Ref<OOPriorityQueue> OOPriorityQueue::queueWithComparator(SEL comparator)
+oo::Ref<OOPriorityQueue> OOPriorityQueue::queueWithComparator(const char *comparatorName)
 {
 	oo::Ref<OOPriorityQueue> result = oo::makeRef<OOPriorityQueue>();
-	if (!result->initWithComparator(comparator))  return nullptr;
+	// By name since bead oo-xu228.3: the selector is looked up here, as @selector() named it.
+	if (!result->initWithComparator(comparatorName != nullptr ? OOSelectorFromName(comparatorName) : NULL))  return nullptr;
 	return result;
 }
 

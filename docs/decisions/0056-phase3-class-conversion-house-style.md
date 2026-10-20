@@ -9480,6 +9480,23 @@ kept in the file until the next one, so they stay valid exactly as long as they 
 catchers spell `catch (const oo::Exception &)` (where a test kept `[e name]`'s pointer past the handler, a copy of
 the exception is kept in a `std::optional`, standing in for the pool that kept it alive); test_Universe builds an
 `oo::Exception`; test_OOAsyncWorkManager's failing task throws an `oo::Exception` (it threw a plain OOObject).
+
+## Amendment (beads oo-xu228.3, oo-xu228.3.1): the first selector interfaces the tests call take names
+
+**Context.** Amendment oo-xu228 item 2 left the src interfaces that take a SEL a test builds with `@selector`.
+Jon approved the tests' spelling re-bases in chat on 2026-10-19 (approval lines "oo-xu228.3: ..."). The bead
+recommends one slice per interface, priority queue and pause first.
+
+**Decision (slice oo-xu228.3.1, behaviour-identical).** `OOPriorityQueue::queueWithComparator`,
+`GameController::pauseFullScreenModeToPerform` and the Objective-C-target `OOScheduleDeferredCall` take the
+selector's name (`const char *`; NULL still means none) instead of a SEL. The queue and the deferred call look the
+selector up once, where it is stored; the pause keeps the name (`pauseSelector` is a `std::string`, never performed
+on SDL). The callers (PlayerEntityControls' two pauses) pass names. Left in oo-xu228.3: `OOCallByName(id, SEL, ...)`,
+the shader uniforms bound by selector (after OOWeakReference+ObjCBridge goes, oo-9ht.22) and
+test_OOJSCallEntityMethods.
+
+**Tests.** test_OOPriorityQueue and test_GameController spell `"compare:"` where they spelled
+`@selector(compare:)`; every expected value is kept.
 ## Amendment (bead oo-6e1.1): NSObjectOOExtensions is deleted
 
 **Context.** Batch AX. `NSObjectOOExtensions` (the root category `OOObject (OOExtensions)`: debug-only
