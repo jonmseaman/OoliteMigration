@@ -1188,3 +1188,12 @@ tests/golden/motion/test_speed_seam.py	oo-pw3q1: ONLY setter_body() splits on Sh
 upstream/oolite/tests/unit/oofnd/test_objc_call_by_name.mm	oo-xu228.3: OOCallByName takes the method name - ONLY OOCallByName(target, OOSelectorFromName("x"), ...) is spelled OOCallByName(target, "x", ...); no case or expected value changes (Jon approved 2026-10-19)
 upstream/oolite/tests/unit/expander/PlayerEntity.h	oo-xu228.3: OOCallByName takes the method name - ONLY its OOCallByName call passes the name instead of OOSelectorFromName(name); no behaviour change (Jon approved 2026-10-19)
 upstream/oolite/tests/unit/core/test_OOJSCallEntityMethods.mm	oo-xu228.3: ONLY the selectors it names are spelled as names; no case or expected value changes (Jon approved 2026-10-19)
+
+# Standing approval std-2026-10-19 (Jon, chat 2026-10-19: "Please help me approve whatever is needed";
+# record docs/decisions/delegated-2026-10-19.md). Scope: Phase 3/4 beads may (1) re-base a test's
+# spelling (includes, link lists, Objective-C stand-ins to C++ with the same answers, pools to
+# oo::AutoreleaseScope, exceptions to oo::Exception, selectors to names, .mm to .cpp, comments) with
+# every case, input and expected value kept, and (2) retire a test file/case whose ONLY subject is
+# code the same change deletes. Never: an expected value, a golden, a check whose subject survives,
+# a quarantine. This block approves no path by itself: each use gets its own path line here, reason
+# starting "std-2026-10-19:", landed by a change before the change it approves.
