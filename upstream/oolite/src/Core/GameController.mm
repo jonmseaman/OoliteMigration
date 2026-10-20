@@ -49,7 +49,6 @@ MA 02110-1301, USA.
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Thread.hpp"
 #include "oofnd/objc/OOException.h"
-#include "oofnd/objc/OORuntime.h"	// OOSelectorFromName (bead oo-xu228.3)
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/String.hpp"
 #include "oofnd/Log.hpp"
@@ -146,13 +145,10 @@ namespace {
 struct OODeferredCall
 {
 	std::chrono::steady_clock::time_point	deadline;
-	id										target;
-	SEL										selector;
-	id										argument;
-	std::function<void()>					*call;	// a C++ call (bead oo-pvhrh): target, selector and argument unused
+	std::function<void()>					*call;	// a C++ call (bead oo-pvhrh; the only kind since bead oo-4aq6a.4)
 };
 
-// call() with the perform's try/catch (GameControllerPerformSelectorWithObject below).
+// call() with the perform's try/catch (below).
 bool DeferredCallRunCatching(const std::function<void()> &call, const char **outName, const char **outReason);
 
 std::vector<OODeferredCall>					sDeferredCalls;	// in scheduling order
@@ -160,24 +156,10 @@ std::vector<OODeferredCall>					sDeferredCalls;	// in scheduling order
 }
 
 
-void OOScheduleDeferredCall(id target, const char *selectorName, id argument, NSTimeInterval delay)
-{
-	const SEL selector = selectorName != nullptr ? OOSelectorFromName(selectorName) : NULL;	// by name since bead oo-xu228.3
-	if (!oo::thread::isMainThread())  return;
-	
-	if (delay <= 0.0)  delay = 0.0001;	// as the Foundation timer did
-	OODeferredCall call =
-	{
-		std::chrono::steady_clock::now() + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(delay)),
-		objc_retain(target),
-		selector,
-		objc_retain(argument),
-		nullptr
-	};
-	sDeferredCalls.push_back(call);
-}
-
-
+/*	The Objective-C form, OOScheduleDeferredCall(target, selector name, argument, delay), which retained
+	target and argument and performed the selector, had no caller in the game left; it was deleted by
+	bead oo-4aq6a.4 with the Objective-C root class (its test's target is a C++ call now).
+*/
 void OOScheduleDeferredCall(std::function<void()> call, NSTimeInterval delay)
 {
 	if (!oo::thread::isMainThread() || !call)  return;
@@ -186,9 +168,6 @@ void OOScheduleDeferredCall(std::function<void()> call, NSTimeInterval delay)
 	OODeferredCall entry =
 	{
 		std::chrono::steady_clock::now() + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(delay)),
-		nil,
-		nullptr,
-		nil,
 		new std::function<void()>(std::move(call))
 	};
 	sDeferredCalls.push_back(entry);
@@ -216,26 +195,14 @@ void FireOneDueDeferredCall(void)
 			OODeferredCall call = *it;
 			sDeferredCalls.erase(it);
 			
-			// The perform and its handler, in the bridge (ADR-0056 amendment oo-9ht.139 item 3).
+			// The call and its handler (ADR-0056 amendment oo-9ht.139 item 3).
 			const char *exceptionName = NULL, *exceptionReason = NULL;
-			if (call.call != nullptr)
+			if (!DeferredCallRunCatching(*call.call, &exceptionName, &exceptionReason))
 			{
-				if (!DeferredCallRunCatching(*call.call, &exceptionName, &exceptionReason))
-				{
-					LogDeferredCallException(exceptionName, exceptionReason, call.call);
-					return;	// the call stays, as the performer leaked its target
-				}
-				delete call.call;
-				return;
+				LogDeferredCallException(exceptionName, exceptionReason, call.call);
+				return;	// the call stays, as the performer leaked its target
 			}
-			if (!GameControllerPerformSelectorWithObject(call.target, call.selector, call.argument, &exceptionName, &exceptionReason))
-			{
-				LogDeferredCallException(exceptionName, exceptionReason, call.target);
-				return;	// target and argument stay retained, as the performer leaked them
-			}
-			
-			objc_release(call.target);
-			objc_release(call.argument);
+			delete call.call;
 			return;
 		}
 	}
@@ -1342,20 +1309,3 @@ bool DeferredCallRunCatching(const std::function<void()> &call, const char **out
 }
 
 
-bool GameControllerPerformSelectorWithObject(id target, SEL selector, id argument, const char **outName, const char **outReason)
-{
-	try
-	{
-		[target performSelector:selector withObject:argument];
-	}
-	catch (...)
-	{
-		const auto exception = oo::CurrentOOException();
-		if (!exception)  throw;	// not an OOException: it goes on up, as before
-		sLastDeferredCallException = *exception->object();
-		*outName = sLastDeferredCallException->name();
-		*outReason = sLastDeferredCallException->reason();
-		return false;
-	}
-	return true;
-}
