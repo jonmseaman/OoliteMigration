@@ -84,9 +84,8 @@ uint32_t gDebugFlags = 0;
  */
 int main(int argc, char *argv[])
 {
-	// The Objective-C floor (ADR-0029): OOConstantString's short-literal tag and the forwarding
-	// hooks, before the first message to a literal.
-	OOObjCInstallFloor();
+	// (The Objective-C floor's start-up, OOObjCInstallFloor(), went with OOObject and OOConstantString,
+	// bead oo-4aq6a.8: no literal or Objective-C object is made.)
 
 	// Foundation's process-info -arguments, now captured here: argv as SDL_main built it (UTF-8 on Windows).
 	oo::process::setArguments(argc, argv);

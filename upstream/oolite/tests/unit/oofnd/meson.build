@@ -92,7 +92,7 @@ endforeach
 # table. -fuse-ld=lld comes from the native file (clang.ini): GNU ld cannot link the gnustep-2 ABI.
 # test_objc_exception retired with the Objective-C OOException class (bead oo-4aq6a.1, Jon approved 2026-10-19).
 oofnd_objc_tests = [
-    'test_objc_floor',
+    # test_objc_floor retired with its only subject, the OOObject root class, OOConstantString and OOObjCInstallFloor() (bead oo-4aq6a.8, std-2026-10-19)
     'test_objc_runtime',
     'test_objc_assert',
     'test_objc_ref',

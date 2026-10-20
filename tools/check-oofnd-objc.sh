@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # tools/check-oofnd-objc.sh — the standalone acceptance for oofnd's Foundation-free Objective-C
-# floor (bead oo-3rb.1, proposed ADR-0029): the OOObject root class and the OOConstantString class
-# behind @"..." literals, on libobjc2 ALONE. tools/check-oofnd.sh runs it; it also runs by itself:
+# floor (bead oo-3rb.1, proposed ADR-0029) on libobjc2 ALONE. (Its OOObject root class and the
+# OOConstantString class behind @"..." literals went with bead oo-4aq6a.8; the tests that remain stand
+# their objects on their own copy of the root, tests/unit/oofnd/OOFloorTestRoot.h.) tools/check-oofnd.sh runs it; it also runs by itself:
 #
 #     bash tools/check-oofnd-objc.sh
 #
@@ -11,8 +12,7 @@
 #                 one that tests/unit/oofnd/meson.build does not register;
 #   2. canary     each src/oofnd/objc/*.h compiles alone as Objective-C++ at -Wall -Wextra -Werror;
 #   3. tests      each test_*.mm is built with the game's runtime flags (-fobjc-runtime=gnustep-2.2,
-#                 -fobjc-exceptions) plus the floor's (-fno-constant-cfstrings
-#                 -fconstant-string-class=OOConstantString), linked with -lobjc and NOTHING else
+#                 -fobjc-exceptions) plus the floor's (-fno-constant-cfstrings), linked with -lobjc and NOTHING else
 #                 from GNUstep, with -Wl,--fatal-warnings (as meson's werror links), and run;
 #   4. no-gnustep the linked executable's PE import table (objdump -p) must name libobjc and must
 #                 not name any gnustep-base DLL: the proof that the floor needs no Foundation;
@@ -44,7 +44,7 @@ command -v "$CXX" >/dev/null 2>&1 || fail "no $CXX on PATH (MSYSTEM=${MSYSTEM:-u
 
 flags=(-x objective-c++ -std=c++20 -Wall -Wextra -Werror
 	-fobjc-runtime=gnustep-2.2 -fexceptions -fobjc-exceptions -fblocks
-	-fno-constant-cfstrings -fconstant-string-class=OOConstantString)
+	-fno-constant-cfstrings)	# -fconstant-string-class=OOConstantString went with the class (bead oo-4aq6a.8)
 incs=(-I"$oo/src" -I"$test_dir")
 link=(-fuse-ld=lld -Wl,--fatal-warnings -lobjc)
 

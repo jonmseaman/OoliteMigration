@@ -120,10 +120,6 @@ public:
 	bool getMarketMonitored();
 };
 
-@interface OOObject (OOJSTestGlue)
-- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context;
-- (std::optional<std::string>) cxx_oo_jsClassName;
-@end
 
 
 #import "OOJSSystemInfo.h"
@@ -382,7 +378,6 @@ std::optional<std::string> cxx_OOStringFromJSValue(ooscript::Context context, oo
 }
 
 
-extern "C" ooscript::Value OOJSValueFromNativeObject(ooscript::Context context, id object);
 
 
 // A property list as JavaScript, as far as the binding hands one over: null, a string, a number,
@@ -457,24 +452,6 @@ void OOJSRegisterObjectConverter(ooscript::ClassDef *theClass, oo::PList (*)(oos
 }
 
 
-// The engine's object getter: the JS class must be the required one, and the private object
-// must be of the required Objective-C class.
-BOOL OOJSObjectGetterImplPRIVATE(ooscript::Context context, ooscript::Object object, ooscript::ClassDef *requiredJSClass, Class requiredObjCClass, const char *, id *outObject)
-{
-	if (ooscript::getObjectClass(context, object) != requiredJSClass)
-	{
-		cxx_OOJSReportError(context, "Native method expected %s, got %s.", requiredJSClass->name, cxx_OOStringFromJSValue(context, ooscript::objectValue(object)).value_or("(null)").c_str());
-		return NO;
-	}
-	*outObject = (id)ooscript::getPrivate(context, object);
-	if (*outObject != nil && ![*outObject isKindOfClass:requiredObjCClass])
-	{
-		cxx_OOJSReportError(context, "Native method expected %s from %s.", class_getName(requiredObjCClass), requiredJSClass->name);
-		*outObject = nil;
-		return NO;
-	}
-	return YES;
-}
 
 
 // The JS class check of the engine's C++ getter (OOJSPrivateObject.cpp, linked since bead
@@ -485,20 +462,8 @@ extern "C" BOOL OOJSIsSubclass(ooscript::ClassDef *putativeSubclass, ooscript::C
 }
 
 
-// The engine's conversion asks the object for its JS value; nil is null.
-ooscript::Value OOJSValueFromNativeObject(ooscript::Context context, id object)
-{
-	if (object == nil)  return ooscript::nullValue();
-	return [object oo_jsValueInContext:context];
-}
 
 
-// The private object of a JS object, if it is of the class.
-id OOJSNativeObjectOfClassFromJSObject(ooscript::Context context, ooscript::Object object, Class requiredClass)
-{
-	id native = (id)ooscript::getPrivate(context, object);
-	return [native isKindOfClass:requiredClass] ? native : nil;
-}
 
 
 bool OOJSObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &oojsArgs)

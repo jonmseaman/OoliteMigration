@@ -19,13 +19,13 @@ oofnd_override_options = ['cpp_std=c++20', 'warning_level=2', 'werror=true']
 oofnd_icu_dep = dependency('icu-i18n', required: true)
 oofnd_dep = declare_dependency(include_directories: oofnd_inc, dependencies: oofnd_icu_dep)
 
-# The Foundation-free Objective-C floor (bead oo-3rb.1, proposed ADR-0029): the OOObject root
-# class and the OOConstantString class behind @"..." literals, on libobjc2 alone. Linked into the game
-# since oo-3rb.2 (src/meson.build), which compiles with oofnd_objc_args since the constant-string
-# flip (oo-3rb.4). Test consumers (tests/unit/oofnd/test_objc_*.mm) compile with them too.
-oofnd_objc_args = ['-fno-constant-cfstrings', '-fconstant-string-class=OOConstantString']
+# The Objective-C floor (bead oo-3rb.1, proposed ADR-0029) on libobjc2 alone. Its OOObject root class
+# and OOConstantString (the class behind @"..." literals) went with bead oo-4aq6a.8: no game class or
+# test is rooted on OOObject and no literal is compiled, so -fconstant-string-class goes too (a stray
+# @"..." would now fail to link). Test consumers (tests/unit/oofnd/test_objc_*.mm) compile with these.
+oofnd_objc_args = ['-fno-constant-cfstrings']
 oofnd_objc_dep = declare_dependency(
     include_directories: oofnd_inc,
-    sources: files('Exception.cpp', 'objc/OOObject.mm', 'objc/OOConstantString.mm', 'objc/OOAssert.mm'),
+    sources: files('Exception.cpp', 'objc/OOAssert.mm'),
     dependencies: cc.find_library('objc', required: true),
 )

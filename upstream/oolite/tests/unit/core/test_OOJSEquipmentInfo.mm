@@ -31,11 +31,6 @@
 #import "OOObjCPList.h"
 
 
-// What the engine sends an Objective-C object by selector for its JS value (the equipment type's
-// façade answered it until bead oo-9ht.28; the engine stand-in below still sends it).
-@interface OOObject (OOJSTestGlue)
-- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context;
-@end
 
 
 
@@ -330,7 +325,6 @@ oo::PList cxx_OOJSPListFromJSValue(ooscript::Context context, ooscript::Value va
 }
 
 
-extern "C" ooscript::Value OOJSValueFromNativeObject(ooscript::Context context, id object);
 
 // A property list as JavaScript, as far as the binding hands one over: null, a string, a number,
 // a boolean, an object (its JS object), or an array or dictionary of those.
@@ -399,33 +393,8 @@ void OOJSRegisterObjectConverter(ooscript::ClassDef *theClass, oo::PList (*)(oos
 }
 
 
-// The engine's object getter: the JS class must be the required one (EquipmentInfo has no
-// subclasses), and the underlying object must be of the required Objective-C class.
-BOOL OOJSObjectGetterImplPRIVATE(ooscript::Context context, ooscript::Object object, ooscript::ClassDef *requiredJSClass, Class requiredObjCClass, const char *, id *outObject)
-{
-	ooscript::ClassDef *actualClass = const_cast<ooscript::ClassDef *>(ooscript::getObjectClass(context, object));
-	if (actualClass != requiredJSClass)
-	{
-		cxx_OOJSReportError(context, "Native method expected %s, got %s.", requiredJSClass->name, cxx_OOStringFromJSValue(context, ooscript::objectValue(object)).value_or("(null)").c_str());
-		return NO;
-	}
-	*outObject = (id)ooscript::getPrivate(context, object);	// the slot's object itself, as the engine reads it (bead oo-9ht.22)
-	if (*outObject != nil && ![*outObject isKindOfClass:requiredObjCClass])
-	{
-		cxx_OOJSReportError(context, "Native method expected %s from %s.", class_getName(requiredObjCClass), requiredJSClass->name);
-		*outObject = nil;
-		return NO;
-	}
-	return YES;
-}
 
 
-// The engine's native-object conversion: the object's own JS value, null for nil.
-ooscript::Value OOJSValueFromNativeObject(ooscript::Context context, id object)
-{
-	if (object == nil)  return ooscript::nullValue();
-	return [object oo_jsValueInContext:context];
-}
 
 
 // The JS class check of the engine's C++ getter (OOJSPrivateObject.cpp, linked since bead

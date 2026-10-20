@@ -39,6 +39,16 @@ MA 02110-1301, USA.
 #include <cstring>
 
 
+/*	The two root methods the call sends a target, declared here since bead oo-4aq6a.8 deleted the
+	root class OOObject that declared them (its callers - the string-expander harness and
+	test_objc_call_by_name - stand their targets on roots of their own that implement them).
+*/
+@protocol OOCallByNameTarget
+- (BOOL) respondsToSelector:(SEL)selector;
+- (id) forwardingTargetForSelector:(SEL)selector;
+@end
+
+
 
 /*	The type encodings a called method's must have for each accepted C++ signature: the compiler's
 	@encode of the types, which is the encoding it gives a method's result or parameter of that type
@@ -130,8 +140,8 @@ Method MethodFor(id &target, SEL selector)
 	{
 		Method method = class_getInstanceMethod(object_getClass(target), selector);
 		if (method != nullptr)  return method;
-		if (![target respondsToSelector:@selector(forwardingTargetForSelector:)])  return nullptr;
-		id next = [target forwardingTargetForSelector:selector];
+		if (![(id<OOCallByNameTarget>)target respondsToSelector:@selector(forwardingTargetForSelector:)])  return nullptr;
+		id next = [(id<OOCallByNameTarget>)target forwardingTargetForSelector:selector];
 		if (next == target)  return nullptr;
 		target = next;
 	}
@@ -177,7 +187,7 @@ oo::PList Call(id target, SEL selector, const Argument &argument)
 	Method method = MethodFor(receiver, selector);
 	// A facade's category may hold a method that only some objects answer (the player's selectors
 	// on the root's facade, ADR-0056 amendments oo-9ht.177, oo-9ht.144): it asks -respondsToSelector:.
-	if (method == nullptr || ![receiver respondsToSelector:selector])
+	if (method == nullptr || ![(id<OOCallByNameTarget>)receiver respondsToSelector:selector])
 	{
 		LogUnknown(target, selector);
 		return oo::PList();

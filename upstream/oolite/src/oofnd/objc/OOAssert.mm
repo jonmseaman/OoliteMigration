@@ -48,7 +48,9 @@ void OOAssertFailedInMethod(id object, SEL selector, const char *file, long line
 	const std::string message = FormatV(format, args);
 	va_end(args);
 
-	Class cls = [object class];
+	// What [object class] answered: a class for itself, an instance's class, Nil for nil (read from the
+	// runtime since bead oo-4aq6a.8 deleted the root that declared -class).
+	Class cls = (object == nil) ? Nil : (class_isMetaClass(object_getClass(object)) ? (Class)object : object_getClass(object));
 	std::string reason = std::string(file != nullptr ? file : "") + ":" + std::to_string(line)
 		+ "  Assertion failed in " + (cls != Nil ? class_getName(cls) : "(null)")
 		+ "(" + (cls != Nil && class_isMetaClass(cls) ? "class" : "instance") + "), method "

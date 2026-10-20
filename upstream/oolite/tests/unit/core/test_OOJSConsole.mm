@@ -238,12 +238,6 @@ ooscript::Value OODebugMonitor::jsValueInContext(ooscript::Context)
 }
 
 
-id OOJSNativeObjectFromJSObject(ooscript::Context, ooscript::Object)
-{
-	// The console objects hold the C++ monitor (bead oo-9ht.74), which the console takes from
-	// their slot; no other object in the test wraps an Objective-C object.
-	return nil;
-}
 
 
 // The node of a JS object, which the console reads to name what it was given (bead oo-dpyk8: an
@@ -254,12 +248,6 @@ oo::PList cxx_OOJSPListFromJSObject(ooscript::Context, ooscript::Object)
 }
 
 
-id OOJSNativeObjectOfClassFromJSObject(ooscript::Context context, ooscript::Object object, Class requiredClass)
-{
-	id result = OOJSNativeObjectFromJSObject(context, object);
-	if (![result isKindOfClass:requiredClass])  result = nil;
-	return result;
-}
 
 
 void OOJSRegisterObjectConverter(ooscript::ClassDef *, OOJSClassConverterCallback)  {}

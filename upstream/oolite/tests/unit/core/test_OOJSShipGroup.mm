@@ -92,10 +92,6 @@ public:
 	std::string description() const override;
 };
 
-@interface OOObject (OOJSTestGlue)
-- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context;
-- (void) oo_clearJSSelf:(ooscript::Object)selfVal;
-@end
 
 
 #import "OOJSShipGroup.h"
@@ -219,7 +215,6 @@ std::optional<std::string> cxx_OOStringFromJSValueEvenIfNull(ooscript::Context c
 }
 
 
-extern "C" ooscript::Value OOJSValueFromNativeObject(ooscript::Context context, id object);
 
 
 // A property list as JavaScript, as far as the binding hands one over: null, a string, a number,
@@ -279,32 +274,8 @@ void OOJSRegisterObjectConverter(ooscript::ClassDef *theClass, oo::PList (*)(oos
 }
 
 
-// The engine's object getter: the JS class must be the required one, and the private object
-// must be of the required Objective-C class.
-BOOL OOJSObjectGetterImplPRIVATE(ooscript::Context context, ooscript::Object object, ooscript::ClassDef *requiredJSClass, Class requiredObjCClass, const char *, id *outObject)
-{
-	if (ooscript::getObjectClass(context, object) != requiredJSClass)
-	{
-		cxx_OOJSReportError(context, "Native method expected %s, got %s.", requiredJSClass->name, cxx_OOStringFromJSValue(context, ooscript::objectValue(object)).value_or("(null)").c_str());
-		return NO;
-	}
-	*outObject = (id)ooscript::getPrivate(context, object);
-	if (*outObject != nil && ![*outObject isKindOfClass:requiredObjCClass])
-	{
-		cxx_OOJSReportError(context, "Native method expected %s from %s.", class_getName(requiredObjCClass), requiredJSClass->name);
-		*outObject = nil;
-		return NO;
-	}
-	return YES;
-}
 
 
-// The engine's conversion asks the object for its JS value; nil is null (OONull is a C++ node's, above).
-ooscript::Value OOJSValueFromNativeObject(ooscript::Context context, id object)
-{
-	if (object == nil)  return ooscript::nullValue();
-	return [object oo_jsValueInContext:context];
-}
 
 
 // The JS class check of the engine's C++ getter (OOJSPrivateObject.cpp, linked since bead
@@ -325,14 +296,15 @@ bool OOJSObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &oo
 }
 
 
-// The engine's wrapper finalizer: the object forgets its JS self, and the wrapper's retain goes.
+// The engine's wrapper finalizer: the slot's C++ object (src's OOJSObjectWrapperFinalize since bead
+// oo-4aq6a.6.1) is released and the slot emptied. (Unreached: a group's finalizer is the C++ one.)
 void OOJSObjectWrapperFinalize(ooscript::Context context, ooscript::Object object)
 {
-	id native = (id)ooscript::getPrivate(context, object);
-	if (native != nil)
+	oo::RefCounted *native = static_cast<oo::RefCounted *>(ooscript::getPrivate(context, object));
+	if (native != nullptr)
 	{
-		[native oo_clearJSSelf:object];
-		[native release];
+		ooscript::setPrivate(context, object, nullptr);
+		native->release();
 		sFinalized++;
 	}
 }
