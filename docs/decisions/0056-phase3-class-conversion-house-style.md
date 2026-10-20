@@ -9806,3 +9806,31 @@ the orphaned `OOJSValueFromNativeObject`/`OOJSObjectGetterImplPRIVATE` stand-ins
 interfaces in narrow tests; test_OOJavaScriptEngine's `aValueLeftInTheThreadPoolAtExit` (it pins libobjc2's pool
 drain at thread exit: it goes with libobjc2, oo-dbz, or is re-based onto `oo::AutoreleaseScope`); OODescription.mm's
 Objective-C family; OOObject, OOConstantString and the floor tests.
+## Amendment (bead oo-31u.9): the two scope-less oo::autorelease calls drain at the caller's scope, as upstream
+
+**Context.** Amendment oo-31u's inventory found two C++ `oo::autorelease` calls with no `oo::AutoreleaseScope`
+open anywhere in the game, so both were counted by `AutoreleaseScope::leakedWithoutScope()` and leaked:
+`OOTexture::clearCache()` (the old recent-texture cache) and `ResourceManager::retrieveFileNamed()`'s uncached
+path (the sound). Upstream's Objective-C sent `-autorelease` into the enclosing pool, freed at its drain. Taken by
+the orchestrator under Jon's delegation of 2026-10-20 ("I approve you working through human decisions whenever it
+makes sense to unblock you"; recorded in `docs/decisions/delegated-2026-10-19.md`).
+
+**Decision (restore upstream's semantics; no new ownership).**
+
+1. Each object is released at the drain of the nearest enclosing `oo::AutoreleaseScope`, exactly as upstream's
+   pool released it; neither gets an owner, and neither is released earlier.
+2. On main after oo-31u.8 that already holds: every pool became an `oo::AutoreleaseScope` at the same place, so the
+   main thread is inside a scope from `main()` (src/SDL/main.mm) through `applicationDidFinishLaunching()` to each
+   pass of `GameController::runFrameLoop()` (and `performGameTick()`'s own). `clearCache()`'s one caller,
+   `Universe::reinitAndShowDemo()`, is reached from the game tick, the player's controls, the OXZ manager's
+   restart, add-on resets and loading a game: all inside those scopes, the scopes upstream's pools were. No call
+   site lacks a scope, so no scope is added and no source behaviour changes.
+3. `retrieveFileNamed()`'s one caller, `ooSoundNamed()`, always passes the sound cache: a found sound is cached and
+   answered borrowed, a missing one is nil, so the uncached `oo::autorelease` only ever receives nil, as upstream's
+   did. It stays (no redesign); a comment says so.
+
+**Tests.** Added cases only; no existing case, input or expected value changes. test_OOTexture
+`clearCacheReleasesAtTheNearestScopesDrain`: the old cache waits in the nearest scope (not an outer one), its
+texture lives until that drain and dies at it, a second clear hands nothing over, and nothing is counted as leaked.
+test_ResourceManager `soundLookupHandsNothingToTheScope`: a sound lookup, with and without a scope open, leaves
+nothing pending and counts nothing as leaked. Verified with `tier-c --only asan` on the same tree.

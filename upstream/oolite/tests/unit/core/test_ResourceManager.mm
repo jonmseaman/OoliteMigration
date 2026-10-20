@@ -513,4 +513,23 @@ OO_TEST(cxxSlice4API)
 }
 
 
+/*	Bead oo-31u.9: ooSoundNamed() goes through the sound cache. A sound found is kept by the cache
+	and answered borrowed; a missing one is nil. Neither reaches retrieveFileNamed()'s uncached
+	oo::autorelease with an object, so nothing waits for a scope's drain, and nothing is counted as
+	autoreleased without a scope, whether or not a scope is open.
+*/
+OO_TEST(soundLookupHandsNothingToTheScope)
+{
+	const std::size_t leaked = oo::AutoreleaseScope::leakedWithoutScope();
+	{
+		oo::AutoreleaseScope scope;
+		OO_CHECK(ResourceManager::ooSoundNamed("oo-test-missing.ogg", std::string("Sounds")) == nil);
+		OO_CHECK(scope.pendingCount() == 0);
+	}
+	OO_CHECK(oo::AutoreleaseScope::current() == nullptr);
+	OO_CHECK(ResourceManager::ooSoundNamed("oo-test-missing.ogg", std::string("Sounds")) == nil);
+	OO_CHECK(oo::AutoreleaseScope::leakedWithoutScope() == leaked);
+}
+
+
 OO_TEST_MAIN()
