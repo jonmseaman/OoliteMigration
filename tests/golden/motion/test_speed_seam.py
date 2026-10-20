@@ -72,7 +72,9 @@ def setter_body(source, strip_comments=True):
        mutant M3 (remove the [entity setSpeed:] call, keep the comment) survived exactly that way.
        A guard that a comment can satisfy is a guard on documentation, not on behaviour.
     """
-    after = source.rsplit("static bool ShipSetProperty", 1)
+    # Split on the DEFINITION (a parameter list then "{"), not the forward declaration: the
+    # definition lost its "static" when the file became C++ (bead oo-pw3q1).
+    after = re.split(r"^(?:static )?bool ShipSetProperty(?=\([^;{]*\)\s*\{)", source, flags=re.M)
     assert len(after) == 2, "ShipSetProperty not found"
     assert "{" in after[1][:200], (
         "split landed on the forward declaration at the top of the file rather than the "
@@ -112,7 +114,8 @@ def test_the_setter_case_exists(source):
 def test_the_setter_actually_writes_flight_speed(source):
     """Pin the CALL, not the case label and not the comment that explains it."""
     body = setter_body(source)
-    assert "[entity setSpeed:fValue];" in body, (
+    # The call's Objective-C or C++ spelling (OOJSShip's setter is C++ since bead oo-chjz4; oo-pw3q1).
+    assert "[entity setSpeed:fValue];" in body or "ship->setSpeed(fValue);" in body, (
         "the kShip_speed setter case does not call -setSpeed: (ShipEntity.m:8575) in CODE, so it "
         "does not touch flightSpeed and the seam is decorative. (Searched with comments stripped: "
         "the block's own comment names -setSpeed: while explaining the design, and a raw text "
@@ -127,13 +130,14 @@ def test_the_comment_alone_does_not_satisfy_the_call_check(source):
     """
     raw = setter_body(source, strip_comments=False)
     stripped = setter_body(source)
-    assert "setSpeed:" in raw and "setSpeed:" in stripped, "sanity: both see the real call"
-    mutated = raw.replace("[entity setSpeed:fValue];", "/* write removed */")
+    # "setSpeed" matches the call's Objective-C or C++ spelling (bead oo-pw3q1).
+    assert "setSpeed" in raw and "setSpeed" in stripped, "sanity: both see the real call"
+    mutated = raw.replace("[entity setSpeed:fValue];", "/* write removed */").replace("ship->setSpeed(fValue);", "/* write removed */")
     assert "setSpeed:" in mutated, (
         "sanity: the comment in this block must still mention setSpeed: after the call is "
         "removed, otherwise this test is not exercising the hazard it describes")
     mutated_stripped = re.sub(r"//[^\n]*", " ", re.sub(r"/\*.*?\*/", " ", mutated, flags=re.S))
-    assert "setSpeed:" not in mutated_stripped, (
+    assert "setSpeed" not in mutated_stripped, (
         "comment stripping does not remove the prose mention of setSpeed:, so the call check can "
         "still be satisfied by documentation")
 

@@ -90,10 +90,10 @@ endforeach
 # Objective-C++ tests of the Foundation-free floor (oofnd/objc, proposed ADR-0029). They link
 # libobjc2 and nothing from gnustep-base; tools/check-oofnd-objc.sh proves that on the import
 # table. -fuse-ld=lld comes from the native file (clang.ini): GNU ld cannot link the gnustep-2 ABI.
+# test_objc_exception retired with the Objective-C OOException class (bead oo-4aq6a.1, Jon approved 2026-10-19).
 oofnd_objc_tests = [
     'test_objc_floor',
     'test_objc_runtime',
-    'test_objc_exception',
     'test_objc_assert',
     'test_objc_ref',
     'test_objc_call_by_name',

@@ -24,6 +24,7 @@
 #import "OOVector.h"
 #import "OOObjCPList.h"
 #include "oofnd/objc/OOException.h"
+#include "oofnd/objc/OOConstantString.h"	// an arbitrary non-wrapper class (was OOException, deleted by bead oo-4aq6a.1)
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/Log.hpp"
 #include "oofnd/Notification.hpp"
@@ -680,9 +681,9 @@ OO_TEST(objectWrapper)
 		OO_CHECK(OOJSNativeObjectFromJSObject(context, wrapper) == native);
 		OO_CHECK(OOJSNativeObjectOfClassFromJSObject(context, wrapper, [TestNative class]) == native);
 		OO_CHECK(OOJSNativeObjectOfClassFromJSObject(context, wrapper, [OOObject class]) == native);
-		OO_CHECK(OOJSNativeObjectOfClassFromJSObject(context, wrapper, [OOException class]) == nil);
+		OO_CHECK(OOJSNativeObjectOfClassFromJSObject(context, wrapper, [OOConstantString class]) == nil);	// was [OOException class] (bead oo-4aq6a.1)
 		OO_CHECK(OOJSNativeObjectOfClassFromJSValue(context, ooscript::objectValue(wrapper), [TestNative class]) == native);
-		OO_CHECK(OOJSNativeObjectOfClassFromJSValue(context, ooscript::objectValue(wrapper), [OOException class]) == nil);
+		OO_CHECK(OOJSNativeObjectOfClassFromJSValue(context, ooscript::objectValue(wrapper), [OOConstantString class]) == nil);	// was [OOException class] (bead oo-4aq6a.1)
 		OO_CHECK(OOJSNativeObjectOfClassFromJSValue(context, ooscript::int32Value(1), [TestNative class]) == nil);
 
 		// Finalising clears the native object's JS self, releases it and empties the slot.

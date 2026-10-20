@@ -271,9 +271,9 @@ bool oo::EntityRespondsToName(Entity *entity, const std::string &name)
 	::TestEntityObject *object = oo::ToObjC(entity);
 	return object != nil && [object respondsToSelector:OOSelectorFromName(name.c_str())];
 }
-oo::PList oo::CallEntityByName(Entity *entity, const std::string &name)  { return entity != nullptr ? OOCallByName(oo::ToObjC(entity), OOSelectorFromName(name.c_str())) : oo::PList(); }
-oo::PList oo::CallEntityByName(Entity *entity, const std::string &name, const std::string &argument)  { return entity != nullptr ? OOCallByName(oo::ToObjC(entity), OOSelectorFromName(name.c_str()), argument) : oo::PList(); }
-oo::PList oo::CallEntityByName(Entity *entity, const std::string &name, const oo::PList &argument)  { return entity != nullptr ? OOCallByName(oo::ToObjC(entity), OOSelectorFromName(name.c_str()), argument) : oo::PList(); }
+oo::PList oo::CallEntityByName(Entity *entity, const std::string &name)  { return entity != nullptr ? OOCallByName(oo::ToObjC(entity), name) : oo::PList(); }
+oo::PList oo::CallEntityByName(Entity *entity, const std::string &name, const std::string &argument)  { return entity != nullptr ? OOCallByName(oo::ToObjC(entity), name, argument) : oo::PList(); }
+oo::PList oo::CallEntityByName(Entity *entity, const std::string &name, const oo::PList &argument)  { return entity != nullptr ? OOCallByName(oo::ToObjC(entity), name, argument) : oo::PList(); }
 
 
 namespace {

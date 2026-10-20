@@ -259,19 +259,20 @@ oo::PList Call(id target, SEL selector, const Argument &argument)
 }	// namespace
 
 
-oo::PList OOCallByName(id target, SEL selector)
+// By name since bead oo-xu228.3: the selector is looked up here, as the callers did before.
+oo::PList OOCallByName(id target, const std::string &name)
 {
-	return Call(target, selector, Argument{});
+	return Call(target, OOSelectorFromName(name.c_str()), Argument{});
 }
 
 
-oo::PList OOCallByName(id target, SEL selector, const std::string &argument)
+oo::PList OOCallByName(id target, const std::string &name, const std::string &argument)
 {
-	return Call(target, selector, Argument{Kind::String, &argument, nullptr});
+	return Call(target, OOSelectorFromName(name.c_str()), Argument{Kind::String, &argument, nullptr});
 }
 
 
-oo::PList OOCallByName(id target, SEL selector, const oo::PList &argument)
+oo::PList OOCallByName(id target, const std::string &name, const oo::PList &argument)
 {
-	return Call(target, selector, Argument{Kind::PList, nullptr, &argument});
+	return Call(target, OOSelectorFromName(name.c_str()), Argument{Kind::PList, nullptr, &argument});
 }

@@ -9518,3 +9518,29 @@ since oo-dpyk8).
    `@optional` protocol `OODescription` plus `oo::ObjectDescription` & co. as the root's defaults in C++.
 
 **Tests.** No test file, case or expected value changes.
+
+## Amendment (beads oo-4aq6a.1, oo-xu228.3, oo-pw3q1): the Objective-C OOException class goes; OOCallByName takes names
+
+**Context.** Jon approved in chat on 2026-10-19 (approval lines in `tools/retire-test-approvals.txt`) retiring
+test_objc_exception with the class it tests, the remaining oo-xu228.3 spelling re-bases, and oo-pw3q1's
+test_speed_seam fix.
+
+**Decision (behaviour-identical).**
+
+1. **oo-4aq6a.1.** `oofnd/objc/OOException.mm` is deleted with its only remaining subject, the Objective-C
+   `OOException` class (nothing has thrown it since oo-rskgl.1), and its own test test_objc_exception.
+   `OORaiseException()`, the five exception names, `oo::CaughtOOException`/`oo::CurrentOOException()` and
+   `oo::Finally` move unchanged to `oofnd/Exception.hpp` with their definitions in `oofnd/Exception.cpp`
+   (compiled where OOException.mm was: `oofnd_objc_dep`, check-oofnd-objc.sh, check-string-expander.sh).
+   `oofnd/objc/OOException.h` stays as a forwarding header so its 87 includers need no change.
+   test_OOJavaScriptEngine names `[OOConstantString class]` where it named `[OOException class]` as an
+   arbitrary non-wrapper class.
+2. **oo-xu228.3.** `OOCallByName(id, SEL, ...)` takes the method's name (`const std::string &`) and looks the
+   selector up itself; OOJSCall passes the name it already had. The tests' stand-ins and
+   test_objc_call_by_name pass names where they passed `OOSelectorFromName(name)`. The shader uniforms bound by
+   selector are split to oo-xu228.3.2 (after oo-9ht.22); test_OOJSCallEntityMethods needed no change.
+3. **oo-pw3q1.** test_speed_seam's `setter_body()` splits on `ShipSetProperty`'s definition, not its forward
+   declaration, and its two setter-call checks accept the C++ spelling `ship->setSpeed(fValue)` beside
+   `[entity setSpeed:fValue]` (std-2026-10-19); every assertion, message and mutant check is kept.
+
+**Tests.** As above; no expected value changes.

@@ -76,14 +76,15 @@ extern "C++" {
 #include "oofnd/PList.hpp"
 
 
-oo::PList OOCallByName(id target, SEL selector);
-oo::PList OOCallByName(id target, SEL selector, const std::string &argument);
-oo::PList OOCallByName(id target, SEL selector, const oo::PList &argument);
+// The method is named by its selector's name ("takeString:"), not a SEL, since bead oo-xu228.3.
+oo::PList OOCallByName(id target, const std::string &name);
+oo::PList OOCallByName(id target, const std::string &name, const std::string &argument);
+oo::PList OOCallByName(id target, const std::string &name, const oo::PList &argument);
 
 // A literal argument is a string (without this, "text" converts to std::string and oo::PList alike).
-inline oo::PList OOCallByName(id target, SEL selector, const char *argument)
+inline oo::PList OOCallByName(id target, const std::string &name, const char *argument)
 {
-	return OOCallByName(target, selector, std::string(argument));
+	return OOCallByName(target, name, std::string(argument));
 }
 
 

@@ -52,7 +52,7 @@ link=(-fuse-ld=lld -Wl,--fatal-warnings -lobjc)
 step "1/5 inventory"
 shopt -s nullglob
 headers=("$src_dir"/*.h)
-sources=("$src_dir"/*.mm)
+sources=("$src_dir"/*.mm "$oo/src/oofnd/Exception.cpp")	# OORaiseException & co. moved there from objc/OOException.mm (bead oo-4aq6a.1)
 tests=("$test_dir"/test_*.mm)
 shopt -u nullglob
 [ "${#headers[@]}" -gt 0 ] || fail "no headers under $src_dir"
