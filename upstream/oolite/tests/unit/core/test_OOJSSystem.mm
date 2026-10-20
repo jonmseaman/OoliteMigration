@@ -139,7 +139,6 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
@@ -315,7 +314,6 @@ Entity *MakeEntity(double x, BOOL visible)
 {
 	oo::Ref<TestEntity> part = oo::makeRef<TestEntity>();
 	Entity *entity = nil;
-	@autoreleasepool
 	{
 		entity = oo::RetainEntity(oo::MadeEntity(part));	// kept for the life of the test
 	}
@@ -331,7 +329,6 @@ Entity *MakeEntity(double x, BOOL visible)
 ::ShipEntity *MakeShip(double x)
 {
 	oo::Ref<::ShipEntity> ship = oo::makeRef<::ShipEntity>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(ship));
 	}
@@ -359,8 +356,7 @@ void SetUp()
 	stdfs::current_path(sRoot);
 	const std::string info = "{ CFBundleVersion = \"9.9.9-test\"; }";
 	OO_CHECK(oo::fs::writeFile(sRoot / "Resources" / "Info-gnustep.plist", oo::Data(info.data(), info.size()), oo::fs::WriteMode::direct).has_value());
-	@autoreleasepool	// the engine autoreleases facades as it starts (as Eval(), bead oo-9ht.172)
-	{
+	{	// was an Objective-C pool (bead oo-dbz.1: no Objective-C object since oo-4aq6a.8): the engine autoreleases facades as it starts (as Eval(), bead oo-9ht.172)
 		(void)OOJavaScriptEngine::sharedEngine();
 	}
 
@@ -428,7 +424,6 @@ std::string Eval(const std::string &src)
 {
 	SetUp();
 	std::string text;
-	@autoreleasepool
 	{
 		ooscript::Context context = OOJSAcquireContext();
 		ooscript::Object global = OOJavaScriptEngine::sharedEngine()->globalObject();
@@ -758,8 +753,7 @@ OO_TEST(populators)
 	OO_CHECK(definition != nullptr);
 	if (definition != nullptr)
 	{
-		@autoreleasepool	// as Eval() (bead oo-9ht.172)
-		{
+		{	// was an Objective-C pool (bead oo-dbz.1: no Objective-C object since oo-4aq6a.8): as Eval() (bead oo-9ht.172)
 			ooscript::Context context = OOJSAcquireContext();
 			OO_CHECK(OOJSValueIsFunction(context, definition->callback()));
 			OOJSRelinquishContext(context);

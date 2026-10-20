@@ -191,7 +191,6 @@ oo::Ref<OOJoystickManager> MakeTestStickManager()
 OO_TEST(defaultMapping)
 {
 	ClearStickDefaults();
-	@autoreleasepool
 	{
 		oo::Ref<OOJoystickManager> manager = NewManager();
 		OO_CHECK(manager != nullptr);
@@ -228,7 +227,6 @@ OO_TEST(defaultMapping)
 OO_TEST(decodesAxes)
 {
 	ClearStickDefaults();
-	@autoreleasepool
 	{
 		oo::Ref<OOJoystickManager> manager = NewManager();
 
@@ -295,7 +293,6 @@ OO_TEST(decodesAxes)
 OO_TEST(decodesButtonsAndHats)
 {
 	ClearStickDefaults();
-	@autoreleasepool
 	{
 		oo::Ref<OOJoystickManager> manager = NewManager();
 
@@ -364,7 +361,6 @@ OO_TEST(decodesButtonsAndHats)
 OO_TEST(callsBackForTheNextStickControl)
 {
 	ClearStickDefaults();
-	@autoreleasepool
 	{
 		oo::Ref<OOJoystickManager> manager = NewManager();
 		StickCallbackTarget target;
@@ -413,7 +409,6 @@ OO_TEST(savesAndLoadsSettings)
 {
 	ClearStickDefaults();
 	oo::Defaults &defaults = Defaults();
-	@autoreleasepool
 	{
 		oo::Ref<OOJoystickManager> manager = NewManager();
 		manager->setFunction(AXIS_YAW, StickFn(true, 1, 6));
@@ -481,7 +476,6 @@ OO_TEST(subclassOverrides)
 {
 	ClearStickDefaults();
 	Defaults().setObject(AXIS_SETTINGS, Functions({ { AXIS_THRUST, StickFn(true, 0, 1) } }));
-	@autoreleasepool
 	{
 		// -init reads the saved functions through the subclass's axis reader.
 		oo::Ref<TestStickManager> manager = NewTestStickManager();
@@ -509,7 +503,6 @@ OO_TEST(subclassOverrides)
 OO_TEST(sharedHandlerOfTheRegisteredClass)
 {
 	ClearStickDefaults();
-	@autoreleasepool
 	{
 		OO_CHECK(OOJoystickManager::setStickHandlerFactory(MakeTestStickManager));
 		OOJoystickManager *shared = OOJoystickManager::sharedStickHandler();

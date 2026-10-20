@@ -99,7 +99,6 @@ oo::Ref<OOMeshToOctreeConverter> OneTriangle()
 
 OO_TEST(emptyGivesAnEmptyOctree)
 {
-	@autoreleasepool
 	{
 		oo::Ref<OOMeshToOctreeConverter> empty = OOMeshToOctreeConverter::converterWithCapacity(0);
 		oo::Ref<Octree> octree = At(empty, 3);
@@ -113,7 +112,6 @@ OO_TEST(emptyGivesAnEmptyOctree)
 
 OO_TEST(oneTriangle)
 {
-	@autoreleasepool
 	{
 		oo::Ref<OOMeshToOctreeConverter> one = OneTriangle();
 		OO_CHECK(Description(one) == std::optional<std::string>("1 triangles"));
@@ -135,7 +133,6 @@ OO_TEST(oneTriangle)
 
 OO_TEST(cubeGrowsPastInlineStorage)
 {
-	@autoreleasepool
 	{
 		oo::Ref<OOMeshToOctreeConverter> cube = oo::makeRef<OOMeshToOctreeConverter>(12);
 		AddCube(*cube, 10);

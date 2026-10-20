@@ -214,7 +214,6 @@ OO_TEST(pauseAndResume)
 #if OOJS_PROFILE
 OO_TEST(profiling)
 {
-	@autoreleasepool
 	{
 		OO_CHECK(!OOJSIsProfiling());
 		OOJSBeginProfiling(false);

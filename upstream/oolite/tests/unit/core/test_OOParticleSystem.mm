@@ -61,7 +61,6 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
@@ -185,7 +184,6 @@ bool GrowsAndExpires(Entity *cloud, double speed, double duration)
 
 OO_TEST(smallFragmentBurst)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *burst = SmallBurst(Source(make_vector(4, 5, 6)));
@@ -200,7 +198,6 @@ OO_TEST(smallFragmentBurst)
 
 OO_TEST(bigFragmentBurst)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *burst = BigBurst(Source(make_vector(100, 0, 0)));
@@ -215,7 +212,6 @@ OO_TEST(bigFragmentBurst)
 
 OO_TEST(collisions)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *burst = SmallBurst(Source(kZeroVector));
@@ -231,7 +227,6 @@ OO_TEST(collisions)
 
 OO_TEST(explosionCloudDefaults)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *cloud = Cloud(Source(make_vector(0, 3000, 4000)), oo::PList());
@@ -251,7 +246,6 @@ OO_TEST(explosionCloudDefaults)
 
 OO_TEST(explosionCloudSettings)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		oo::PList::Dict settings;
@@ -275,7 +269,6 @@ OO_TEST(explosionCloudSettings)
 
 OO_TEST(explosionCloudNeedsItsTexture)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		sTextureFound = false;

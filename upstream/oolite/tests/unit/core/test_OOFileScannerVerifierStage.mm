@@ -163,7 +163,6 @@ OOFileScannerVerifierStage *ScannerOf(OOOXPVerifier *verifier)
 
 OO_TEST(fileHandlingStageNamesAndRegistersItsNeighbours)
 {
-	@autoreleasepool
 	{
 		OOOXPVerifier *verifier = MakeVerifier("");
 		const oo::Ref<TestFileStage> stage = oo::makeRef<TestFileStage>();
@@ -190,7 +189,6 @@ OO_TEST(fileHandlingStageNamesAndRegistersItsNeighbours)
 
 OO_TEST(superDependentsReachTheIntermediateClass)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<TestSuperCallingFileStage> stage = oo::makeRef<TestSuperCallingFileStage>();
 		stage->setVerifier(MakeVerifier(""));
@@ -202,7 +200,6 @@ OO_TEST(superDependentsReachTheIntermediateClass)
 
 OO_TEST(scannerFindsFiles)
 {
-	@autoreleasepool
 	{
 		const std::string base = MakeOXP();
 		OOOXPVerifier *verifier = MakeVerifier(base);
@@ -257,7 +254,6 @@ OO_TEST(scannerFindsFiles)
 
 OO_TEST(cxxFileStageBehindTheFacade)
 {
-	@autoreleasepool
 	{
 		OOOXPVerifier *verifier = MakeVerifier("");
 		const oo::Ref<TestCxxFileStage> stage = oo::makeRef<TestCxxFileStage>();
@@ -279,7 +275,6 @@ OO_TEST(cxxFileStageBehindTheFacade)
 
 OO_TEST(scannerFacade)
 {
-	@autoreleasepool
 	{
 		const std::string base = MakeOXP();
 		OOOXPVerifier *verifier = MakeVerifier(base);

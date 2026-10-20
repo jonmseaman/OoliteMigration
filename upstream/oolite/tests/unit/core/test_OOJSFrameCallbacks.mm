@@ -189,7 +189,6 @@ std::string Eval(const char *src)
 	std::string wrapped = std::string("(function () { try { return String((0, eval)(\"") + quoted + "\")); } catch (e) { return 'threw: ' + (e && e.message !== undefined ? e.message : e); } })()";
 	ooscript::Value result = ooscript::undefinedValue();
 	bool OK = false;
-	@autoreleasepool
 	{
 		OK = ooscript::evaluateScript(gOOJSMainThreadContext, sGlobal, wrapped.c_str(), static_cast<unsigned>(wrapped.size()), "test.js", 1, &result);
 	}
@@ -204,7 +203,6 @@ std::string Eval(const char *src)
 
 void Frame(double delta)
 {
-	@autoreleasepool
 	{
 		OOJSFrameCallbacksInvoke(delta);
 	}

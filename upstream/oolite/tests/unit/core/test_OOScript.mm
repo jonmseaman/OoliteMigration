@@ -128,7 +128,6 @@ std::vector<std::string> Names(const std::vector<oo::Ref<OOScript>> &scripts)
 OO_TEST(abstractRoot)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		// The root's own answers: none, and an error logged for each subclass responsibility.
 		const oo::Ref<OOScript> root = oo::makeRef<OOScript>();
@@ -147,7 +146,6 @@ OO_TEST(abstractRoot)
 OO_TEST(objCSubclass)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		const oo::Ref<TestObjCScript> script = oo::makeRef<TestObjCScript>();
 		OO_CHECK_EQ(script->name().value_or("<none>"), "objc");
@@ -175,7 +173,6 @@ OO_TEST(objCSubclass)
 OO_TEST(scriptsFromFileAtPath)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		const std::string folder = Folder("files");
 
@@ -202,7 +199,6 @@ OO_TEST(scriptsFromFileAtPath)
 OO_TEST(scriptsByName)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		// A name the resource manager does not find: none, and a list of such names loads nothing.
 		OO_CHECK(!OOScript::scriptsFromFileNamed("oo-test-missing.js").has_value());
@@ -231,7 +227,6 @@ OO_TEST(scriptsByName)
 OO_TEST(worldScriptsAtPath)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		// A folder with no scripts: none.
 		OO_CHECK(!OOScript::worldScriptsAtPath(Folder("empty")).has_value());
@@ -286,7 +281,6 @@ public:
 OO_TEST(crossingCxxSubclass)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		// A C++ subclass's overrides answer (they answered through its facade).
 		const oo::Ref<TestCxxScript> script = oo::makeRef<TestCxxScript>();

@@ -112,7 +112,6 @@ bool ColorIs(OOColor *color, float r, float g, float b, float a)
 
 OO_TEST(made)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		const unsigned setUpsBefore = sStarSetUps;
@@ -129,7 +128,6 @@ OO_TEST(made)
 
 OO_TEST(parts)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		const oo::Ref<OODrawable> sky = Sky(OOColor::whiteColor().get(), OOColor::yellowColor().get(), 0, 0);
@@ -148,7 +146,6 @@ OO_TEST(parts)
 OO_TEST(resetDeletesTheDisplayList)
 {
 	OO_CHECK(OOTestGLContext());
-	@autoreleasepool
 	{
 		SetUp();
 		const oo::Ref<OODrawable> sky = Sky(OOColor::redColor().get(), OOColor::blueColor().get(), 0, 0);

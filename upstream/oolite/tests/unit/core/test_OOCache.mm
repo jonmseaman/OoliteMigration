@@ -58,7 +58,6 @@ oo::PList Entry(const std::string &key, const oo::PList &value)
 
 OO_TEST(emptyCache)
 {
-	@autoreleasepool
 	{
 		oo::Ref<OOCache> cache = OOCache::cacheWithPList(oo::PList());
 		OO_CHECK(cache != nullptr);
@@ -82,7 +81,6 @@ OO_TEST(emptyCache)
 
 OO_TEST(storeReplaceRemove)
 {
-	@autoreleasepool
 	{
 		oo::Ref<OOCache> cache = OOCache::cacheWithPList(oo::PList());
 		cache->setPList(oo::PList(), "null");	// a null value is not stored
@@ -109,7 +107,6 @@ OO_TEST(storeReplaceRemove)
 
 OO_TEST(leastRecentlyUsedOrder)
 {
-	@autoreleasepool
 	{
 		oo::Ref<OOCache> cache = OOCache::cacheWithPList(oo::PList());
 		for (const char *key : { "d", "b", "a", "c" })  cache->setPList(Str(std::string("value ") + key), key);
@@ -130,7 +127,6 @@ OO_TEST(leastRecentlyUsedOrder)
 
 OO_TEST(pruning)
 {
-	@autoreleasepool
 	{
 		oo::Ref<OOCache> cache = OOCache::cacheWithPList(oo::PList());
 		cache->setPruneThreshold(3);
@@ -171,7 +167,6 @@ OO_TEST(pruning)
 
 OO_TEST(propertyListRoundTrip)
 {
-	@autoreleasepool
 	{
 		oo::PList::Array entries;
 		for (int i = 0; i < 250; i++)  entries.push_back(Entry("k" + std::to_string(i), oo::PList(std::int64_t(i))));

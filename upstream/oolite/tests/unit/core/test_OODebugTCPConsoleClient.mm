@@ -257,7 +257,6 @@ struct Session
 // and the console's approval is read.
 OO_TEST(connectsAndRequestsTheConnection)
 {
-	@autoreleasepool
 	{
 		Session session;
 		OO_CHECK(session.client != nullptr);
@@ -279,7 +278,6 @@ OO_TEST(connectsAndRequestsTheConnection)
 // What the monitor sends becomes the console's packets.
 OO_TEST(sendsTheMonitorsOutput)
 {
-	@autoreleasepool
 	{
 		Session session;
 		OO_CHECK(session.client->connectDebugMonitor(Monitor(), NULL));
@@ -330,7 +328,6 @@ OO_TEST(sendsTheMonitorsOutput)
 // configuration request is answered from the monitor, and an unknown packet is ignored.
 OO_TEST(handlesTheConsolesPackets)
 {
-	@autoreleasepool
 	{
 		Session session;
 		OO_CHECK(session.client->connectDebugMonitor(Monitor(), NULL));
@@ -393,7 +390,6 @@ OO_TEST(handlesTheConsolesPackets)
 // cannot be connected again.
 OO_TEST(disconnectsFromTheConsole)
 {
-	@autoreleasepool
 	{
 		Session session;
 		OO_CHECK(session.client->connectDebugMonitor(Monitor(), NULL));
@@ -420,7 +416,6 @@ OO_TEST(disconnectsFromTheConsole)
 // No message: the close packet has no message key.
 OO_TEST(disconnectsWithoutAMessage)
 {
-	@autoreleasepool
 	{
 		Session session;
 		session.client->disconnectDebugMonitor(Monitor(), std::nullopt);
@@ -433,7 +428,6 @@ OO_TEST(disconnectsWithoutAMessage)
 // The console refuses the connection: the monitor cannot connect.
 OO_TEST(theConsoleRefuses)
 {
-	@autoreleasepool
 	{
 		Session session;
 		SendPacket(session.console, "Reject Connection", { { "message", oo::PList(std::string("no thanks")) } });
@@ -451,7 +445,6 @@ OO_TEST(theConsoleRefuses)
 // The console closes the connection: the client closes its socket and cannot be connected again.
 OO_TEST(theConsoleCloses)
 {
-	@autoreleasepool
 	{
 		Session session;
 		OO_CHECK(session.client->connectDebugMonitor(Monitor(), NULL));
@@ -473,7 +466,6 @@ OO_TEST(theConsoleCloses)
 // The console hangs up: the client's input is at its end and it waits for nothing more.
 OO_TEST(theConsoleHangsUp)
 {
-	@autoreleasepool
 	{
 		Session session;
 		OO_CHECK(OODebugTCPConsoleIsWaitingForInput());
@@ -488,7 +480,6 @@ OO_TEST(theConsoleHangsUp)
 // Nobody answers: the connection fails and the initialiser answers nil.
 OO_TEST(nobodyAnswers)
 {
-	@autoreleasepool
 	{
 		uint16_t port = 0;
 		SOCKET listener = Listen(&port);
@@ -504,7 +495,6 @@ OO_TEST(nobodyAnswers)
 // The C++ client (its facade, and the facade-contract checks, were retired with bead oo-9ht.81).
 OO_TEST(cxxClientAndItsFacade)
 {
-	@autoreleasepool
 	{
 		Session session;
 		OODebugTCPConsoleClient *client = session.client.get();
@@ -515,7 +505,6 @@ OO_TEST(cxxClientAndItsFacade)
 		OO_CHECK(TypeOf(ReadPacket(session.console)) == "Show Console");
 	}
 
-	@autoreleasepool
 	{
 		uint16_t port = 0;
 		SOCKET listener = Listen(&port);

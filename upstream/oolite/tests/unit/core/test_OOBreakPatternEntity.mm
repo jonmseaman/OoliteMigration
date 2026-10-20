@@ -47,7 +47,6 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
@@ -112,7 +111,6 @@ bool ColorIs(const oo::Ref<OOBreakPatternEntity> &e, NSUInteger i, GLfloat r, GL
 
 OO_TEST(polygon)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		oo::Ref<OOBreakPatternEntity> ring = OOBreakPatternEntity::breakPatternWithPolygonSides(4, 0.0f, 2.0f);
@@ -137,7 +135,6 @@ OO_TEST(polygon)
 
 OO_TEST(flagsAndColors)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		oo::Ref<OOBreakPatternEntity> ring = OOBreakPatternEntity::breakPatternWithPolygonSides(3, 45.0f, 1.0f);
@@ -163,7 +160,6 @@ OO_TEST(flagsAndColors)
 
 OO_TEST(lifetime)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		oo::Ref<OOBreakPatternEntity> ring = OOBreakPatternEntity::breakPatternWithPolygonSides(4, 0.0f, 1.0f);

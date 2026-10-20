@@ -52,7 +52,6 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
@@ -126,7 +125,6 @@ void SetUp()
 
 OO_TEST(setDrawable)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *entity = nil;
@@ -160,7 +158,6 @@ OO_TEST(setDrawable)
 
 OO_TEST(drawImmediate)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *entity = nil;
@@ -198,7 +195,6 @@ OO_TEST(drawImmediate)
 
 OO_TEST(description)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *entity = nil;
@@ -213,7 +209,6 @@ OO_TEST(description)
 
 OO_TEST(cxxSubclassFacade)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		const oo::Ref<TestCxxEntityWithDrawable> entity = oo::makeRef<TestCxxEntityWithDrawable>();

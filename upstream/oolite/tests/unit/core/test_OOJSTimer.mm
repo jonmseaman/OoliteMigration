@@ -307,8 +307,7 @@ std::string Eval(const char *src)
 	std::string wrapped = std::string("(function () { try { return String((0, eval)(\"") + quoted + "\")); } catch (e) { return 'threw: ' + (e && e.message !== undefined ? e.message : e); } })()";
 	ooscript::Value result = ooscript::undefinedValue();
 	bool OK = false;
-	@autoreleasepool	// as the game's frame loop drains: nothing is left to the thread's pool at exit
-	{
+	{	// was an Objective-C pool (bead oo-dbz.1: no Objective-C object since oo-4aq6a.8): as the game's frame loop drains: nothing is left to the thread's pool at exit
 		OK = ooscript::evaluateScript(gOOJSMainThreadContext, sGlobal, wrapped.c_str(), static_cast<unsigned>(wrapped.size()), "test.js", 1, &result);
 	}
 	if (!OK)
@@ -323,7 +322,6 @@ std::string Eval(const char *src)
 void Update(double now)
 {
 	sNow = now;
-	@autoreleasepool
 	{
 		OOScriptTimer::updateTimers();
 	}

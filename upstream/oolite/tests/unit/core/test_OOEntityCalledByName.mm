@@ -80,7 +80,6 @@ const std::vector<Sample> &Samples()
 {
 	static const std::vector<Sample> samples = [] {
 		std::vector<Sample> result;
-		@autoreleasepool
 		{
 			result.push_back(Make<ShipEntity>("ship"));
 			result.push_back(Make<StationEntity>("station"));
@@ -121,7 +120,6 @@ OO_TEST(rowsAreTheFacadesMethodsWithTheirTypes)
 // oo::EntityRespondsToName still answers each row exactly as the row applies.
 OO_TEST(appliesToIsTheFacadesAnswer)
 {
-	@autoreleasepool
 	{
 		std::string different;
 		for (const OOEntityByNameRow &row : oo::EntityByNameRows())
@@ -179,7 +177,6 @@ int LogLinesContaining(std::string_view text)
 // not respond. The texts are OOCallByName's, for the class of a C++ entity's object (Entity).
 OO_TEST(objectNamesAnsweredWithoutTheObject)
 {
-	@autoreleasepool
 	{
 		oo::log::logger().setInitialized(true);
 		oo::log::logger().setSink(&Capture);
@@ -236,7 +233,6 @@ OO_TEST(objectNamesAnsweredWithoutTheObject)
 // comparison with OOCallByName on the facade retires under oo-9n5p9).
 OO_TEST(callAnswersAsTheSelectorPath)
 {
-	@autoreleasepool
 	{
 		const Sample &player = Samples()[3];
 		const Sample &ship = Samples()[0];
@@ -260,7 +256,6 @@ OO_TEST(callAnswersAsTheSelectorPath)
 // facade method's, read by type as callObjC() read it: an integer, a float, a vector, an object.
 OO_TEST(typedCallAnswersAsTheMethod)
 {
-	@autoreleasepool
 	{
 		for (const OOEntityByNameRow &row : oo::EntityByNameRows())
 		{

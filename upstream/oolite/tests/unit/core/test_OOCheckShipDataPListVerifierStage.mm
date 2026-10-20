@@ -269,7 +269,6 @@ std::vector<std::string> LinesForShip(const std::string &ship)
 
 OO_TEST(nameAndNeighbours)
 {
-	@autoreleasepool
 	{
 		OOOXPVerifier *verifier = MakeVerifier({});
 		const oo::Ref<OOCheckShipDataPListVerifierStage> stage = oo::makeRef<OOCheckShipDataPListVerifierStage>();
@@ -295,7 +294,6 @@ OO_TEST(nameAndNeighbours)
 
 OO_TEST(checksEachShip)
 {
-	@autoreleasepool
 	{
 		OOOXPVerifier *verifier = MakeVerifier({
 			{ "Models/ship.dat", "model" },
@@ -356,7 +354,6 @@ OO_TEST(checksEachShip)
 // OOOXPVerifierStage facade until bead oo-9ht.4), and it describes itself with its class's name.
 OO_TEST(facade)
 {
-	@autoreleasepool
 	{
 		OOOXPVerifier *verifier = MakeVerifier({});
 		const oo::Ref<OOCheckShipDataPListVerifierStage> stage = oo::makeRef<OOCheckShipDataPListVerifierStage>();

@@ -174,7 +174,6 @@ void CheckLine(const char *line, const oo::PList &keys, BOOL useFallback, const 
 
 int main(int argc, const char *argv[])
 {
-	@autoreleasepool
 	{
 		if (argc < 2)
 		{

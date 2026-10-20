@@ -120,7 +120,6 @@ OO_TEST(opensAndNamesTheSticks)
 	VirtualStick &vs = Stick();
 	OO_CHECK(vs.id != 0 && vs.handle != nullptr);
 
-	@autoreleasepool
 	{
 		oo::Ref<OOSDLJoystickManager> manager = NewManager();
 		OO_CHECK(manager != nullptr);
@@ -141,7 +140,6 @@ OO_TEST(opensAndNamesTheSticks)
 OO_TEST(makesEvents)
 {
 	VirtualStick &vs = Stick();
-	@autoreleasepool
 	{
 		oo::Ref<OOSDLJoystickManager> manager = NewManager();
 
@@ -167,7 +165,6 @@ OO_TEST(makesEvents)
 OO_TEST(readsAxesFromSDL)
 {
 	VirtualStick &vs = Stick();
-	@autoreleasepool
 	{
 		oo::Ref<OOSDLJoystickManager> manager = NewManager();
 		SDL_SetJoystickVirtualAxis(vs.handle, 0, 5000);
@@ -182,7 +179,6 @@ OO_TEST(readsAxesFromSDL)
 OO_TEST(handlesEventsThroughTheSuperclass)
 {
 	VirtualStick &vs = Stick();
-	@autoreleasepool
 	{
 		// As the game makes it: the SDL class registered with the superclass, which creates it.
 		OO_CHECK(OOJoystickManager::setStickHandlerFactory(MakeSDLManager));
@@ -226,7 +222,6 @@ OO_TEST(refusesEventsOfAStickItDidNotOpen)
 {
 	VirtualStick &vs = Stick();
 	const SDL_JoystickID stray = vs.id + 100;
-	@autoreleasepool
 	{
 		oo::Ref<OOSDLJoystickManager> manager = NewManager();
 		OO_CHECK(manager->getJoystickIndexFromId(stray) == -1);

@@ -100,7 +100,6 @@ std::map<std::string, OracleRow> OracleSafeSet()
 
 OO_TEST(tableIsTheMatchersSafeSet)
 {
-	@autoreleasepool
 	{
 		const std::map<std::string, OracleRow> oracle = OracleSafeSet();
 		std::map<std::string, const OOJSCallEntityMethodRow *> table;
@@ -153,7 +152,6 @@ OO_TEST(tableLeavesOutUnsafeNames)
 // method's body exactly when callObjC() can read the method's result.
 OO_TEST(everyNameIsAnsweredByTheCxxEntity)
 {
-	@autoreleasepool
 	{
 		std::set<std::string> names;
 		for (const OOJSCallEntityMethodRow &row : kOOJSCallEntityMethods)  names.insert(row.name);

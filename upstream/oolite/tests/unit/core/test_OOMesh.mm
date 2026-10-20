@@ -178,7 +178,6 @@ bool SameVector(Vector a, Vector b)
 OO_TEST(loadsModel)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		const oo::Ref<OOMesh> mesh = Mesh("tetra.dat");
 		OO_CHECK(mesh != nullptr);
@@ -219,7 +218,6 @@ OO_TEST(loadsModel)
 OO_TEST(dictionariesAndSmoothing)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		oo::PList::Dict materials;
 		materials["other.png"] = oo::PList(oo::PList::Dict{});
@@ -238,7 +236,6 @@ OO_TEST(dictionariesAndSmoothing)
 OO_TEST(scaleAndMissingModel)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		const oo::Ref<OOMesh> mesh = Mesh("tetra3.dat", 2.0f, NO);
 		OO_CHECK(mesh != nullptr);
@@ -258,7 +255,6 @@ OO_TEST(scaleAndMissingModel)
 OO_TEST(caches)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		const oo::Ref<OOMesh> mesh = Mesh("tetra.dat");
 		OO_CHECK(mesh != nullptr);
@@ -295,7 +291,6 @@ OO_TEST(caches)
 OO_TEST(placeholderMaterial)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		const oo::Ref<OOMaterial> placeholder = OOMesh::placeholderMaterial();
 		OO_CHECK(placeholder != nullptr);
@@ -303,7 +298,6 @@ OO_TEST(placeholderMaterial)
 		OO_CHECK_EQ(placeholder->name().value_or("<none>"), "/placeholder/");
 		OO_CHECK(OOMesh::placeholderMaterial() == placeholder);
 	}
-	@autoreleasepool
 	{
 		const oo::Ref<OOMaterial> again = OOMesh::placeholderMaterial();
 		OO_CHECK(again != nullptr);
@@ -315,7 +309,6 @@ OO_TEST(placeholderMaterial)
 OO_TEST(copies)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		const oo::Ref<OOMesh> mesh = Mesh("tetra.dat");
 		OO_CHECK(mesh != nullptr);
@@ -360,7 +353,6 @@ OO_TEST(copies)
 OO_TEST(graphicsResetAfterRelease)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		const oo::Ref<OOMesh> mesh = Mesh("tetra.dat");
 		OO_CHECK(mesh != nullptr);
@@ -381,7 +373,6 @@ OO_TEST(graphicsResetAfterRelease)
 OO_TEST(laterSlices)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		// Loading (slice 2): a smooth mesh caches its normals and tangents with normal mode 1.
 		const oo::Ref<OOMesh> smooth = Mesh("tetra2.dat", 1.0f, YES, YES);
@@ -429,7 +420,6 @@ OO_TEST(laterSlices)
 OO_TEST(facadeContract)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		const oo::Ref<OOMesh> mesh = Mesh("tetra.dat");
 		OOMesh *cxxMesh = mesh.get();
@@ -468,7 +458,6 @@ OO_TEST(facadeContract)
 OO_TEST(geometryMembers)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		const oo::Ref<OOMesh> mesh = Mesh("tetra.dat");
 		OOMesh *cxxMesh = mesh.get();
@@ -503,7 +492,6 @@ OO_TEST(geometryMembers)
 OO_TEST(rendering)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		const oo::Ref<OOMesh> mesh = Mesh("tetra.dat");
 		const oo::Ref<OOMesh> smooth = Mesh("tetra2.dat", 1.0f, YES, YES);
@@ -535,7 +523,6 @@ OO_TEST(rendering)
 OO_TEST(renderingMembers)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		const oo::Ref<OOMesh> mesh = Mesh("tetra.dat");
 		OOMesh *cxxMesh = mesh.get();
@@ -575,7 +562,6 @@ OO_TEST(renderingMembers)
 OO_TEST(loadingMembers)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		const oo::Ref<OOMesh> mesh = OOMesh::meshWithName("tetra.dat", std::nullopt, oo::PList(), oo::PList(), false, oo::PList(), nil);
 		OO_CHECK(mesh.get() != nullptr);

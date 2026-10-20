@@ -152,7 +152,6 @@ oo::PList Str(const char *string)
 OO_TEST(sharedInstanceStartsEmpty)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OO_CHECK(!stdfs::exists(CacheFile()));
 		OOCacheManager *cache = OOCacheManager::sharedCache();
@@ -172,7 +171,6 @@ OO_TEST(sharedInstanceStartsEmpty)
 OO_TEST(entriesAndCaches)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OOCacheManager *cache = OOCacheManager::sharedCache();
 		cache->setPList(Str("one"), "a", "first");
@@ -211,7 +209,6 @@ OO_TEST(entriesAndCaches)
 OO_TEST(flushWritesAndReloadReads)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OOCacheManager *cache = OOCacheManager::sharedCache();
 		cache->setPList(Str("kept"), "k", "flushed");
@@ -260,7 +257,6 @@ OO_TEST(flushWritesAndReloadReads)
 OO_TEST(writesDisallowed)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OOCacheManager *cache = OOCacheManager::sharedCache();
 		cache->setAllowCacheWrites(false);
@@ -282,7 +278,6 @@ OO_TEST(writesDisallowed)
 OO_TEST(staleOrBadCacheDiscarded)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OOCacheManager *cache = OOCacheManager::sharedCache();
 		OO_CHECK(cache->pListForKey("k", "flushed") == Str("kept"));
@@ -310,7 +305,6 @@ OO_TEST(staleOrBadCacheDiscarded)
 OO_TEST(cxxApi)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OOCacheManager *cache = OOCacheManager::sharedCache();
 		OO_CHECK(cache != nullptr);
@@ -338,7 +332,6 @@ OO_TEST(cxxApi)
 OO_TEST(clearAllCaches)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OOCacheManager *cache = OOCacheManager::sharedCache();
 		cache->setPList(Str("v"), "k", "c1");

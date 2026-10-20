@@ -31,7 +31,6 @@ bool Same(Vector a, Vector b)
 
 OO_TEST(boxHoldsItsVector)
 {
-	@autoreleasepool
 	{
 		Vector v = make_vector(1.5f, -2.0f, 3.25f);
 		oo::Ref<OONativeVector> box = oo::makeRef<OONativeVector>(v);
@@ -48,7 +47,6 @@ OO_TEST(boxHoldsItsVector)
 
 OO_TEST(boxSurvivesAnObjectNode)
 {
-	@autoreleasepool
 	{
 		Vector v = make_vector(4.0f, 5.0f, 6.0f);
 		oo::Ref<OONativeVector> box = oo::makeRef<OONativeVector>(v);

@@ -137,7 +137,6 @@ bool Holds(const std::vector<oo::Ref<OOOXPVerifierStage>> &stages, std::initiali
 
 OO_TEST(baseDefaults)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<OOOXPVerifierStage> stage = oo::makeRef<OOOXPVerifierStage>();
 		const int before = gSubclassResponsibilities;
@@ -160,7 +159,6 @@ OO_TEST(baseDefaults)
 
 OO_TEST(verifierIsNotRetained)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<OOOXPVerifier> object = OOOXPVerifierTestAccess::Make();
 		OOOXPVerifier *verifier = object.get();
@@ -168,7 +166,6 @@ OO_TEST(verifierIsNotRetained)
 		const unsigned before = object->retainCount();
 		stage->setVerifier(verifier);
 		OO_CHECK(object->retainCount() == before);
-		@autoreleasepool
 		{
 			OO_CHECK(stage->verifier() == verifier);
 		}
@@ -179,7 +176,6 @@ OO_TEST(verifierIsNotRetained)
 
 OO_TEST(dependencyGraph)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<TestObjCStage> a = MakeStage("A"), b = MakeStage("B"), c = MakeStage("C"), d = MakeStage("D");
 		b->registerDependency(a.get());
@@ -211,7 +207,6 @@ OO_TEST(dependencyGraph)
 
 OO_TEST(exceptionInRunIsCaught)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<TestObjCStage> raising = MakeStage("Raising"), after = MakeStage("After");
 		raising->_raise = true;
@@ -228,7 +223,6 @@ OO_TEST(exceptionInRunIsCaught)
 
 OO_TEST(superCallsReachTheBase)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<TestSuperCallingStage> stage = oo::makeRef<TestSuperCallingStage>();
 		const std::optional<std::vector<std::string>> dependents = stage->dependents();
@@ -239,7 +233,6 @@ OO_TEST(superCallsReachTheBase)
 
 OO_TEST(description)
 {
-	@autoreleasepool
 	{
 		const std::string text = MakeStage("Checking things")->description();
 		OO_CHECK(text.starts_with("<TestObjCStage 0x"));
@@ -251,7 +244,6 @@ OO_TEST(description)
 
 OO_TEST(cxxStageBehindTheFacade)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<TestCxxStage> stage = oo::makeRef<TestCxxStage>("Cxx");
 
@@ -275,7 +267,6 @@ OO_TEST(cxxStageBehindTheFacade)
 
 OO_TEST(objCStageBehindACxxPointer)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<TestObjCStage> objCStage = MakeStage("ObjC");
 		OOOXPVerifierStage *part = objCStage.get();
@@ -297,7 +288,6 @@ OO_TEST(objCStageBehindACxxPointer)
 
 OO_TEST(mixedDependencyGraph)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<TestCxxStage> cxxStage = oo::makeRef<TestCxxStage>("Cxx");
 		cxxStage->_shouldRun = true;

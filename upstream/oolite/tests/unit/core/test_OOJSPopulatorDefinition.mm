@@ -166,7 +166,6 @@ std::string String(ooscript::Value value)
 
 OO_TEST(initialState)
 {
-	@autoreleasepool
 	{
 		Context();
 		const oo::Ref<OOJSPopulatorDefinition> definition = oo::makeRef<OOJSPopulatorDefinition>();
@@ -179,7 +178,6 @@ OO_TEST(initialState)
 
 OO_TEST(runCallback)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<OOJSScript> owner = oo::makeRef<OOJSScript>();
 		sRunningScript = owner.get();
@@ -219,7 +217,6 @@ OO_TEST(runCallback)
 
 OO_TEST(engineReset)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<OOJSPopulatorDefinition> definition = oo::makeRef<OOJSPopulatorDefinition>();
 		definition->setCallback(Evaluate("(function () {})"));

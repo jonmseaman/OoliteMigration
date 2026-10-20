@@ -186,7 +186,6 @@ OO_TEST(initialState)
 
 OO_TEST(runCallback)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<OOJSScript> owner = oo::makeRef<OOJSScript>();
 		sRunningScript = owner.get();

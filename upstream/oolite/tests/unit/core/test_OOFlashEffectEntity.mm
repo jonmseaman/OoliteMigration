@@ -57,7 +57,6 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
@@ -146,7 +145,6 @@ Entity *Exploding()
 
 OO_TEST(explosionFlash)
 {
-	@autoreleasepool
 	{
 		SetUp(5.0);
 		Entity *flash = FlashObject(OOFlashEffectEntity::explosionFlashFromEntity(Exploding()));
@@ -182,7 +180,6 @@ OO_TEST(explosionFlash)
 
 OO_TEST(bigExplosionGrowsFaster)
 {
-	@autoreleasepool
 	{
 		SetUp(0.0);
 		Entity *big = Exploding();
@@ -198,7 +195,6 @@ OO_TEST(bigExplosionGrowsFaster)
 
 OO_TEST(laserFlash)
 {
-	@autoreleasepool
 	{
 		SetUp(1.0);
 		Entity *flash = FlashObject(OOFlashEffectEntity::laserFlashWithPosition(make_HPvector(-1, -2, -3),
@@ -232,7 +228,6 @@ OO_TEST(laserFlash)
 
 OO_TEST(nilColourKeepsWhite)
 {
-	@autoreleasepool
 	{
 		SetUp(0.0);
 		Entity *flash = FlashObject(OOFlashEffectEntity::laserFlashWithPosition(kZeroHPVector, kZeroVector, nil));
@@ -244,7 +239,6 @@ OO_TEST(nilColourKeepsWhite)
 
 OO_TEST(texture)
 {
-	@autoreleasepool
 	{
 		SetUp(0.0);
 		Entity *flash = FlashObject(OOFlashEffectEntity::explosionFlashFromEntity(Exploding()));
@@ -261,7 +255,6 @@ OO_TEST(texture)
 
 OO_TEST(facade)
 {
-	@autoreleasepool
 	{
 		SetUp(0.0);
 		Entity *flash = FlashObject(OOFlashEffectEntity::explosionFlashFromEntity(Exploding()));

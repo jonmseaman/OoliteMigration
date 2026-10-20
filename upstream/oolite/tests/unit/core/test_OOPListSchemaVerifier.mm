@@ -153,7 +153,6 @@ OO_TEST(nullSchemaGivesNil)
 
 OO_TEST(keepsItsDelegate)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<OOPListSchemaVerifier> verifier = OOPListSchemaVerifier::verifierWithSchema(Parse(kShipSchema));
 		OO_CHECK(verifier->delegate() == nullptr);
@@ -169,7 +168,6 @@ OO_TEST(keepsItsDelegate)
 
 OO_TEST(acceptsAValidPropertyList)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<OOPListSchemaVerifier> verifier = OOPListSchemaVerifier::verifierWithSchema(Parse(kShipSchema));
 		const oo::Ref<TestSchemaDelegate> delegate = oo::makeRef<TestSchemaDelegate>();
@@ -183,7 +181,6 @@ OO_TEST(acceptsAValidPropertyList)
 
 OO_TEST(reportsEachFailureToTheDelegate)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<OOPListSchemaVerifier> verifier = OOPListSchemaVerifier::verifierWithSchema(Parse(kShipSchema));
 		const oo::Ref<TestSchemaDelegate> delegate = oo::makeRef<TestSchemaDelegate>();
@@ -213,7 +210,6 @@ OO_TEST(reportsEachFailureToTheDelegate)
 
 OO_TEST(stopsWhenTheDelegateSaysSo)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<OOPListSchemaVerifier> verifier = OOPListSchemaVerifier::verifierWithSchema(Parse(kShipSchema));
 		const oo::Ref<TestSchemaDelegate> delegate = oo::makeRef<TestSchemaDelegate>();
@@ -232,7 +228,6 @@ OO_TEST(stopsWhenTheDelegateSaysSo)
 
 OO_TEST(reportsABadSchema)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<TestSchemaDelegate> delegate = oo::makeRef<TestSchemaDelegate>();
 		delegate->continueAfterFailure = true;
@@ -261,7 +256,6 @@ OO_TEST(reportsABadSchema)
 
 OO_TEST(asksTheDelegateAboutDelegatedTypes)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<OOPListSchemaVerifier> verifier = OOPListSchemaVerifier::verifierWithSchema(Parse("{ type = array; valueType = { type = delegatedType; baseType = string; key = shipKey; }; }"));
 		const oo::Ref<TestSchemaDelegate> delegate = oo::makeRef<TestSchemaDelegate>();
@@ -310,7 +304,6 @@ OO_TEST(asksTheDelegateAboutDelegatedTypes)
 
 OO_TEST(aDelegateThatHandlesNothing)
 {
-	@autoreleasepool
 	{
 		// Delegated types pass; a failure stops verification. (A delegate that answered neither
 		// selector until bead oo-9ht.119; no delegate takes the same path.)
@@ -342,7 +335,6 @@ OO_TEST(describesKeyPaths)
 // bead oo-9ht.119, which retired facadeContract; these are that case's C++ API checks).
 OO_TEST(delegateIsHandedTheVerifier)
 {
-	@autoreleasepool
 	{
 		OO_CHECK(OOPListSchemaVerifier::verifierWithSchema(oo::PList()).get() == nullptr);
 

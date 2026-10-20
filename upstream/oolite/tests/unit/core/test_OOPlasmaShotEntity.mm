@@ -54,7 +54,6 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
@@ -178,7 +177,6 @@ Entity *Ship()
 
 OO_TEST(shotIsMade)
 {
-	@autoreleasepool
 	{
 		SetUp(10.0);
 		Entity *shot = RedShot();
@@ -198,7 +196,6 @@ OO_TEST(shotIsMade)
 
 OO_TEST(activationDelay)
 {
-	@autoreleasepool
 	{
 		SetUp(10.0);
 		Entity *shot = RedShot();
@@ -213,7 +210,6 @@ OO_TEST(activationDelay)
 
 OO_TEST(collisions)
 {
-	@autoreleasepool
 	{
 		SetUp(0.0);
 		Entity *shot = RedShot();
@@ -236,7 +232,6 @@ OO_TEST(collisions)
 
 OO_TEST(hitDamagesAndBursts)
 {
-	@autoreleasepool
 	{
 		SetUp(0.0);
 		Entity *shot = RedShot();
@@ -264,7 +259,6 @@ OO_TEST(hitDamagesAndBursts)
 
 OO_TEST(expires)
 {
-	@autoreleasepool
 	{
 		SetUp(0.0);
 		Entity *shot = RedShot();

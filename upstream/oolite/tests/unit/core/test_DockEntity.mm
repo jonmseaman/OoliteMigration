@@ -52,7 +52,6 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
@@ -140,7 +139,6 @@ BoundingBox Box(float width, float height)
 // for docking and launching, with empty queues.
 OO_TEST(initAndSetUp)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		DockEntity *dock = MakeDock("dock");
@@ -157,7 +155,6 @@ OO_TEST(initAndSetUp)
 // The flags: closing to docking or launching aborts what is queued (nothing here).
 OO_TEST(flags)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		DockEntity *dock = MakeDock("flags");
@@ -180,7 +177,6 @@ OO_TEST(flags)
 // Off centre: away from the station's axis, or not facing along it.
 OO_TEST(isOffCentre)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		DockEntity *dock = MakeDock("centre");
@@ -202,7 +198,6 @@ OO_TEST(isOffCentre)
 // vector turns with a ship whose box is the other way round.
 OO_TEST(dimensionsAndPortUpVector)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestDockStation *station = nullptr;
@@ -226,7 +221,6 @@ OO_TEST(dimensionsAndPortUpVector)
 // A virtual dock takes no damage.
 OO_TEST(virtualDockTakesNoDamage)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		DockEntity *dock = MakeDock("virtual");
@@ -262,7 +256,6 @@ ShipEntity *MakeQueuedShip(OOUniversalID shipID)
 // (the later tests of an open dock call the script engine, which this test does not start).
 OO_TEST(canAcceptShipForDocking)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		DockEntity *dock = MakeDock("accept");
@@ -277,7 +270,6 @@ OO_TEST(canAcceptShipForDocking)
 // The approach queue: a ship is in it by its ID, and aborting its docking takes it out again.
 OO_TEST(approachQueue)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		DockEntity *dock = MakeDock("queue");
@@ -296,7 +288,6 @@ OO_TEST(approachQueue)
 // Docking instructions for no ship are none.
 OO_TEST(dockingInstructionsForNoShip)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		DockEntity *dock = MakeDock("instructions");
@@ -308,7 +299,6 @@ OO_TEST(dockingInstructionsForNoShip)
 // Nothing in the queue: nothing to pull in, and the queue stays empty. The C++ part does the same.
 OO_TEST(autoDockEmptyQueue)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		DockEntity *dock = MakeDock("autodock");
@@ -329,7 +319,6 @@ OO_TEST(autoDockEmptyQueue)
 // Not a ship: not in the corridor, not allowed to launch.
 OO_TEST(corridorAndLaunchRefuseNoShip)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		DockEntity *dock = MakeDock("refuse");
@@ -345,7 +334,6 @@ OO_TEST(corridorAndLaunchRefuseNoShip)
 // ship; aborting the launches empties it.
 OO_TEST(launchQueue)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		DockEntity *dock = MakeDock("launchqueue");
@@ -373,7 +361,6 @@ OO_TEST(launchQueue)
 // the dock's.
 OO_TEST(objCDockPartIsADock)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		DockEntity *dock = MakeDock("crossing");

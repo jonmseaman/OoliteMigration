@@ -93,7 +93,6 @@ std::string UserName()
 
 OO_TEST(stateBeforeAnyScan)
 {
-	@autoreleasepool
 	{
 		OO_CHECK(ResourceManager::useAddOns() == std::nullopt);
 		OO_CHECK(ResourceManager::errors() == std::nullopt);
@@ -106,7 +105,6 @@ OO_TEST(stateBeforeAnyScan)
 
 OO_TEST(rootPathsAreTheResourcePaths)
 {
-	@autoreleasepool
 	{
 		const oo::ResourcePaths paths = oo::ResourcePaths::current();
 		const std::string builtIn = oo::fs::utf8String(paths.builtInResourcesDirectory());
@@ -128,7 +126,6 @@ OO_TEST(rootPathsAreTheResourcePaths)
 
 OO_TEST(maskUserName)
 {
-	@autoreleasepool
 	{
 		OO_CHECK(ResourceManager::maskUserName("jon", "C:/Users/jon/AddOns") == std::optional<std::string>("C:/Users/*/AddOns"));
 		OO_CHECK(ResourceManager::maskUserName("jon", "/home/jon/jon.oxp") == std::optional<std::string>("/home/*/*.oxp"));
@@ -149,7 +146,6 @@ OO_TEST(maskUserName)
 
 OO_TEST(externalPathsAreTheSearchPathsWithoutAScan)
 {
-	@autoreleasepool
 	{
 		ResourceManager::addExternalPath("ext/one.oxp");
 		ResourceManager::addExternalPath("ext/two.oxp");
@@ -172,7 +168,6 @@ OO_TEST(externalPathsAreTheSearchPathsWithoutAScan)
 
 OO_TEST(cxxAPIAnswersTheSame)
 {
-	@autoreleasepool
 	{
 		// The static members (the facade that forwarded to them went with bead oo-9ht.150).
 		OO_CHECK(ResourceManager::builtInPath() == ResourceManager::builtInPath());
@@ -225,7 +220,6 @@ bool EndsWith(const std::string &s, const std::string &suffix)
 
 OO_TEST(versionsAndCompatibility)
 {
-	@autoreleasepool
 	{
 		const oo::PList range = Manifest("{ version = \"1.0\"; maximum_version = \"2.0\"; }");
 		OO_CHECK(ResourceManager::matchVersions(range, "1.5"));
@@ -248,7 +242,6 @@ OO_TEST(versionsAndCompatibility)
 
 OO_TEST(scanKeepsTheAddOnsWhoseManifestsAllowThem)
 {
-	@autoreleasepool
 	{
 		const std::filesystem::path addOns = std::filesystem::current_path() / "AddOns";
 		WriteText(addOns / "a.oxp" / "manifest.plist", "{ identifier = \"org.test.a\"; version = \"1.0\"; required_oolite_version = \"1.0\"; title = A; tags = (alpha); }");
@@ -304,7 +297,6 @@ OO_TEST(scanKeepsTheAddOnsWhoseManifestsAllowThem)
 
 OO_TEST(cxxSlice2API)
 {
-	@autoreleasepool
 	{
 		const oo::PList range = Manifest("{ version = \"1.0\"; maximum_version = \"2.0\"; }");
 		OO_CHECK(ResourceManager::matchVersions(range, "1.5"));
@@ -326,7 +318,6 @@ OO_TEST(cxxSlice2API)
 
 OO_TEST(mergedPlistsFromTheSearchPaths)
 {
-	@autoreleasepool
 	{
 		namespace stdfs = std::filesystem;
 		const stdfs::path work = stdfs::current_path();
@@ -384,7 +375,6 @@ OO_TEST(mergedPlistsFromTheSearchPaths)
 
 OO_TEST(equipmentAndStarListMerging)
 {
-	@autoreleasepool
 	{
 		// Equipment lists: an entry of an earlier file whose key (index 3) a later file also has is
 		// replaced by the later one.
@@ -418,7 +408,6 @@ OO_TEST(equipmentAndStarListMerging)
 
 OO_TEST(cxxSlice3API)
 {
-	@autoreleasepool
 	{
 		OO_CHECK(ResourceManager::dictionaryFromFilesNamed("oo-test-dict.plist", std::string("Config"), MERGE_BASIC, false).find("fromA") != nullptr);
 		OO_CHECK(ResourceManager::dictionaryFromFilesNamed("oo-test-none.plist", std::string("Config"), true).isNull());
@@ -436,7 +425,6 @@ OO_TEST(cxxSlice3API)
 
 OO_TEST(singleFileLookups)
 {
-	@autoreleasepool
 	{
 		namespace stdfs = std::filesystem;
 		const stdfs::path work = stdfs::current_path();
@@ -471,7 +459,6 @@ OO_TEST(singleFileLookups)
 
 OO_TEST(scriptsAndSystemsAndDiagnostics)
 {
-	@autoreleasepool
 	{
 		// No add-on has world scripts.
 		OO_CHECK(ResourceManager::loadScripts().empty());
@@ -497,7 +484,6 @@ OO_TEST(scriptsAndSystemsAndDiagnostics)
 
 OO_TEST(cxxSlice4API)
 {
-	@autoreleasepool
 	{
 		OO_CHECK(ResourceManager::stringFromFilesNamed("oo-test-text.txt", std::string("Config")) == std::optional<std::string>("hello, a.oxp"));
 		OO_CHECK(ResourceManager::pathForFileNamed("oo-test-missing.txt", std::string("Config"), false) == std::nullopt);

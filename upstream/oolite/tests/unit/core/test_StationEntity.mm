@@ -55,7 +55,6 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
@@ -152,7 +151,6 @@ bool Near(HPVector a, HPVector b)	{ return std::fabs(a.x - b.x) < 1e-3 && std::f
 // virtual dock it makes because it has none.
 OO_TEST(initAndSetUpFromDictionary)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestStation *station = MakeStation("coriolis", {
@@ -216,7 +214,6 @@ OO_TEST(initAndSetUpFromDictionary)
 // The defaults of every key the station reads.
 OO_TEST(setUpDefaults)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestStation *station = MakeStation("plain");
@@ -246,7 +243,6 @@ OO_TEST(setUpDefaults)
 // ignores, so the station is still made.
 OO_TEST(virtualDockThatFails)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		sFailVirtualDock = true;
@@ -262,7 +258,6 @@ OO_TEST(virtualDockThatFails)
 // Stations of any scan class are piloted unless explicitly unpiloted or a hulk.
 OO_TEST(isUnpiloted)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestStation *station = MakeStation("rock", { { "scan_class", oo::PList(std::string("CLASS_CARGO")) } });
@@ -279,7 +274,6 @@ OO_TEST(isUnpiloted)
 
 OO_TEST(flagsAndCounts)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestStation *station = MakeStation("flags");
@@ -314,7 +308,6 @@ OO_TEST(flagsAndCounts)
 // The shipyard is held as given and edited in place; the interfaces are a live map.
 OO_TEST(shipyardAndInterfaces)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestStation *station = MakeStation("yard");
@@ -341,7 +334,6 @@ OO_TEST(shipyardAndInterfaces)
 // shipyard.
 OO_TEST(shipInfoQueries)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		OO_CHECK(IsRotatingStation(MakeStation("r1", { { "rotating", oo::PList(true) }, { "roles", oo::PList(std::string("carrier")) } })));
@@ -363,7 +355,6 @@ OO_TEST(shipInfoQueries)
 
 OO_TEST(positionPlanetAndDescription)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestStation *station = MakeStation("where", { { "name", oo::PList(std::string("Coriolis")) } });
@@ -391,7 +382,6 @@ OO_TEST(positionPlanetAndDescription)
 // reach the station's.
 OO_TEST(objCStationPartIsAStation)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestStation *station = MakeStation("crossing", { { "name", oo::PList(std::string("Dodo")) } });
@@ -444,7 +434,6 @@ unsigned DockedTraders2(StationEntity *s)				{ return s->docked_traders; }
 
 OO_TEST(slice2NoDocks)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestStation *station = MakeStation("dockless2");
@@ -473,7 +462,6 @@ OO_TEST(slice2NoDocks)
 // The ships on hold: told to hold position (as docking instructions), cleared, aborted.
 OO_TEST(slice2HoldPosition)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestStation *station = MakeStation("holder");
@@ -504,7 +492,6 @@ OO_TEST(slice2HoldPosition)
 // the role categories, which the test's universe has not loaded: they count as neither.)
 OO_TEST(slice2StationCount)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestStation *station = MakeStation("counter", { { "has_npc_traffic", oo::PList(false) } });
@@ -530,7 +517,6 @@ OO_TEST(slice2StationCount)
 // From C++ (after the conversion): the members.
 OO_TEST(slice2MembersFromCxx)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestStation *station = MakeStation("member2");
@@ -564,7 +550,6 @@ void SetPrimaryTarget3(ShipEntity *s, Entity *target)
 
 OO_TEST(slice3AllegianceAndAlertLevel)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestStation *station = MakeStation("alert");
@@ -601,7 +586,6 @@ OO_TEST(slice3AllegianceAndAlertLevel)
 
 OO_TEST(slice3DamageAndMovement)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestStation *station = MakeStation("target");
@@ -623,7 +607,6 @@ OO_TEST(slice3DamageAndMovement)
 
 OO_TEST(slice3PatrolsAndQueues)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestStation *station = MakeStation("base");
@@ -638,7 +621,6 @@ OO_TEST(slice3PatrolsAndQueues)
 // From C++ (after the conversion): the members, and the ship's virtual members reaching the station's.
 OO_TEST(slice3MembersFromCxx)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestStation *station = MakeStation("member3");
@@ -676,7 +658,6 @@ unsigned DockedShuttles4(StationEntity *s)		{ return s->docked_shuttles; }
 
 OO_TEST(slice4LaunchersWithoutLaunchDock)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestStation *station = MakeStation("launcher", { { "max_police", oo::PList(4) }, { "max_defense_ships", oo::PList(4) } });
@@ -708,7 +689,6 @@ OO_TEST(slice4LaunchersWithoutLaunchDock)
 // by-name table answers them since bead oo-9ht.39.7.3 (the facade's -respondsToSelector: until then).
 OO_TEST(slice4LaunchersAnswerTheirSelectors)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestStation *station = MakeStation("selectors");
@@ -724,7 +704,6 @@ OO_TEST(slice4LaunchersAnswerTheirSelectors)
 // From C++ (after the conversion): the members, which the facade's selectors forward to.
 OO_TEST(slice4MembersFromCxx)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestStation *station = MakeStation("member4");
@@ -749,7 +728,6 @@ OO_TEST(slice4MembersFromCxx)
 // (the facade then reached the answer through ShipEntity's category and the C++ virtual).
 OO_TEST(stationAnswersTheStationJSClass)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestStation *station = MakeStation("jsclass");

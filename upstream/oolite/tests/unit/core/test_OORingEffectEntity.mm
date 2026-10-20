@@ -47,7 +47,6 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
@@ -111,7 +110,6 @@ Entity *Source()
 
 OO_TEST(noSourceNoRing)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		OO_CHECK(Ring(nil) == nil);
@@ -122,7 +120,6 @@ OO_TEST(noSourceNoRing)
 
 OO_TEST(ringTakesTheSource)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *source = Source();
@@ -147,7 +144,6 @@ OO_TEST(ringTakesTheSource)
 
 OO_TEST(updateCountsAndExpires)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *ring = Ring(Source());

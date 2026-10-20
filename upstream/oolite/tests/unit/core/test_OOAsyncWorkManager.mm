@@ -90,7 +90,6 @@ bool WaitFor(const std::atomic<bool> &flag)
 
 OO_TEST(oneSharedManager)
 {
-	@autoreleasepool
 	{
 		OOAsyncWorkManager *manager = OOAsyncWorkManager::sharedAsyncWorkManager();
 		OO_CHECK(manager != nullptr);
@@ -101,7 +100,6 @@ OO_TEST(oneSharedManager)
 
 OO_TEST(nilIsRefused)
 {
-	@autoreleasepool
 	{
 		OOAsyncWorkManager *manager = OOAsyncWorkManager::sharedAsyncWorkManager();
 		OO_CHECK(!manager->addTask(nullptr, kOOAsyncPriorityMedium));
@@ -112,7 +110,6 @@ OO_TEST(nilIsRefused)
 
 OO_TEST(waitPerformsThenCompletesOnTheWaitingThread)
 {
-	@autoreleasepool
 	{
 		OOAsyncWorkManager *manager = OOAsyncWorkManager::sharedAsyncWorkManager();
 		const oo::Ref<TestTask> task = oo::makeRef<TestTask>();
@@ -131,7 +128,6 @@ OO_TEST(waitPerformsThenCompletesOnTheWaitingThread)
 
 OO_TEST(completePendingTasksCollectsReadyTasks)
 {
-	@autoreleasepool
 	{
 		OOAsyncWorkManager *manager = OOAsyncWorkManager::sharedAsyncWorkManager();
 		const oo::Ref<TestTask> task = oo::makeRef<TestTask>();
@@ -154,7 +150,6 @@ OO_TEST(completePendingTasksCollectsReadyTasks)
 
 OO_TEST(waitForATaskNeverAddedReturns)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<TestTask> task = oo::makeRef<TestTask>();
 		OOAsyncWorkManager::sharedAsyncWorkManager()->waitForTaskToComplete(task.get());
@@ -166,7 +161,6 @@ OO_TEST(waitForATaskNeverAddedReturns)
 
 OO_TEST(taskWithoutCompletionIsPerformed)
 {
-	@autoreleasepool
 	{
 		OOAsyncWorkManager *manager = OOAsyncWorkManager::sharedAsyncWorkManager();
 		const oo::Ref<TestFireAndForgetTask> task = oo::makeRef<TestFireAndForgetTask>();
@@ -179,7 +173,6 @@ OO_TEST(taskWithoutCompletionIsPerformed)
 
 OO_TEST(exceptionInPerformIsSwallowed)
 {
-	@autoreleasepool
 	{
 		OOAsyncWorkManager *manager = OOAsyncWorkManager::sharedAsyncWorkManager();
 		const oo::Ref<TestTask> task = oo::makeRef<TestTask>();
@@ -194,7 +187,6 @@ OO_TEST(exceptionInPerformIsSwallowed)
 
 OO_TEST(everyPriorityIsPerformed)
 {
-	@autoreleasepool
 	{
 		OOAsyncWorkManager *manager = OOAsyncWorkManager::sharedAsyncWorkManager();
 		const oo::Ref<TestTask> low = oo::makeRef<TestTask>();

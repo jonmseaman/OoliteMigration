@@ -69,7 +69,6 @@ double MiddleOfRow(int row)
 
 OO_TEST(everyRowUnderItsOwnMiddle)
 {
-	@autoreleasepool
 	{
 		oo::Ref<GuiDisplayGen> gui = oo::makeRef<GuiDisplayGen>();
 		OO_CHECK(gui->rowHeight() == MAIN_GUI_ROW_HEIGHT && gui->rowStart() == MAIN_GUI_PIXEL_ROW_START);
@@ -88,7 +87,6 @@ OO_TEST(everyRowUnderItsOwnMiddle)
 
 OO_TEST(rowBorders)
 {
-	@autoreleasepool
 	{
 		oo::Ref<GuiDisplayGen> gui = oo::makeRef<GuiDisplayGen>();
 		// Row 26 spans cursor_y in (-216, -200]; half a pixel inside and outside each border.
@@ -102,7 +100,6 @@ OO_TEST(rowBorders)
 
 OO_TEST(pointerOffTheScreenIsClampedToItsEdge)
 {
-	@autoreleasepool
 	{
 		oo::Ref<GuiDisplayGen> gui = oo::makeRef<GuiDisplayGen>();
 		// cursor_y is clamped to +-240 (half the GUI's height), as the render clamps the pointer.
@@ -116,7 +113,6 @@ OO_TEST(pointerOffTheScreenIsClampedToItsEdge)
 
 OO_TEST(answersForThePointerNowWithoutARender)
 {
-	@autoreleasepool
 	{
 		// The G5 failure: the pointer tweened from row 20 through 22 to 26 and the click came before
 		// any render. Nothing is drawn here; the row follows the pointer alone.
@@ -181,7 +177,6 @@ oo::Ref<GuiDisplayGen> SmallGUI(const std::optional<std::string> &title)
 
 OO_TEST(initDefaults)
 {
-	@autoreleasepool
 	{
 		oo::Ref<GuiDisplayGen> gui = oo::makeRef<GuiDisplayGen>();
 		OO_CHECK(gui->size().width == 480 && gui->size().height == 480);
@@ -213,7 +208,6 @@ OO_TEST(initDefaults)
 
 OO_TEST(initWithPixelSize)
 {
-	@autoreleasepool
 	{
 		oo::Ref<GuiDisplayGen> gui = SmallGUI("T");
 		OO_CHECK(gui->size().width == 200 && gui->size().height == 100);
@@ -239,7 +233,6 @@ OO_TEST(initWithPixelSize)
 
 OO_TEST(titleAndDrawPosition)
 {
-	@autoreleasepool
 	{
 		oo::Ref<GuiDisplayGen> gui = SmallGUI("T");
 		gui->setTitle("Hello");
@@ -258,7 +251,6 @@ OO_TEST(titleAndDrawPosition)
 
 OO_TEST(rowTextsAndKeys)
 {
-	@autoreleasepool
 	{
 		oo::Ref<GuiDisplayGen> gui = SmallGUI("T");
 		gui->setText("one", 1);
@@ -296,7 +288,6 @@ OO_TEST(rowTextsAndKeys)
 
 OO_TEST(selectionSkipsSkipRows)
 {
-	@autoreleasepool
 	{
 		StartJavaScript();
 		oo::Ref<GuiDisplayGen> gui = oo::makeRef<GuiDisplayGen>();
@@ -358,7 +349,6 @@ OO_TEST(selectionSkipsSkipRows)
 
 OO_TEST(currentRowIsWhereALineIsPrinted)
 {
-	@autoreleasepool
 	{
 		oo::Ref<GuiDisplayGen> gui = SmallGUI("T");
 		gui->setCurrentRow(3);
@@ -376,7 +366,6 @@ OO_TEST(currentRowIsWhereALineIsPrinted)
 
 OO_TEST(alphaAndFades)
 {
-	@autoreleasepool
 	{
 		oo::Ref<GuiDisplayGen> gui = SmallGUI("T");
 		gui->setAlpha(0.5f);
@@ -397,7 +386,6 @@ OO_TEST(alphaAndFades)
 
 OO_TEST(coloursAndColourSettings)
 {
-	@autoreleasepool
 	{
 		oo::Ref<GuiDisplayGen> gui = SmallGUI("T");
 		oo::Ref<OOColor>	red = OOColor::redColor();
@@ -437,7 +425,6 @@ OO_TEST(coloursAndColourSettings)
 
 OO_TEST(tabStops)
 {
-	@autoreleasepool
 	{
 		oo::Ref<GuiDisplayGen> gui = SmallGUI("T");
 		OOGUITabSettings stops = { 0, 10, 20 };
@@ -455,7 +442,6 @@ OO_TEST(tabStops)
 
 OO_TEST(clearAndResize)
 {
-	@autoreleasepool
 	{
 		oo::Ref<GuiDisplayGen> gui = SmallGUI("T");
 		gui->setText("x", 2);
@@ -503,7 +489,6 @@ OO_TEST(clearAndResize)
 
 OO_TEST(cxxAPIAnswersTheSame)
 {
-	@autoreleasepool
 	{
 		oo::Ref<GuiDisplayGen> gui = oo::makeRef<GuiDisplayGen>(NSMakeSize(200, 100), 4, 5, 12, 8, std::optional<std::string>("T"));
 		OO_CHECK_EQ(gui->columns(), 4u);
@@ -543,7 +528,6 @@ OO_TEST(cxxAPIAnswersTheSame)
 
 OO_TEST(longTextAndReflow)
 {
-	@autoreleasepool
 	{
 		oo::Ref<GuiDisplayGen> gui = SmallGUI("T");
 		OO_CHECK_EQ(gui->addLongText(std::nullopt, 1, GUI_ALIGN_LEFT), 1);
@@ -562,7 +546,6 @@ OO_TEST(longTextAndReflow)
 
 OO_TEST(printingScrollsAndKeepsTheLines)
 {
-	@autoreleasepool
 	{
 		oo::Ref<GuiDisplayGen> gui = SmallGUI("T");	// 5 rows
 		gui->setCurrentRow(3);
@@ -608,7 +591,6 @@ OO_TEST(printingScrollsAndKeepsTheLines)
 
 OO_TEST(arraysAndInsertedItems)
 {
-	@autoreleasepool
 	{
 		oo::Ref<GuiDisplayGen> gui = SmallGUI("T");
 		gui->setArray({ "a", "b", "c" }, 0);
@@ -657,7 +639,6 @@ OO_TEST(arraysAndInsertedItems)
 
 OO_TEST(statusPage)
 {
-	@autoreleasepool
 	{
 		oo::Ref<GuiDisplayGen> gui = SmallGUI("T");
 		gui->setStatusPage(0);
@@ -676,7 +657,6 @@ OO_TEST(statusPage)
 
 OO_TEST(noTexturesWithoutAUniverse)
 {
-	@autoreleasepool
 	{
 		StartJavaScript();
 		oo::Ref<GuiDisplayGen> gui = SmallGUI("T");
@@ -701,7 +681,6 @@ OO_TEST(noTexturesWithoutAUniverse)
 
 OO_TEST(cxxSlice2API)
 {
-	@autoreleasepool
 	{
 		StartJavaScript();
 		oo::Ref<GuiDisplayGen> gui = oo::makeRef<GuiDisplayGen>(NSMakeSize(200, 100), 4, 5, 12, 8, std::optional<std::string>("T"));
@@ -733,7 +712,6 @@ OO_TEST(cxxSlice2API)
 
 OO_TEST(drawingWithoutAUniverse)
 {
-	@autoreleasepool
 	{
 		StartJavaScript();
 		oo::Ref<GuiDisplayGen> gui = SmallGUI("T");
@@ -752,7 +730,6 @@ OO_TEST(drawingWithoutAUniverse)
 
 OO_TEST(starChartTitleWithoutAUniverse)
 {
-	@autoreleasepool
 	{
 		StartJavaScript();
 		oo::Ref<GuiDisplayGen> gui = SmallGUI("T");
@@ -766,7 +743,6 @@ OO_TEST(starChartTitleWithoutAUniverse)
 
 OO_TEST(cxxSlice3API)
 {
-	@autoreleasepool
 	{
 		StartJavaScript();
 		oo::Ref<GuiDisplayGen> gui = oo::makeRef<GuiDisplayGen>(NSMakeSize(200, 100), 4, 5, 12, 8, std::optional<std::string>("T"));

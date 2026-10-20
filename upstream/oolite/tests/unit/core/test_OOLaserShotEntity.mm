@@ -52,7 +52,6 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
@@ -147,7 +146,6 @@ bool ColorIs(OOLaserShotEntity *e, GLfloat r, GLfloat g, GLfloat b, GLfloat a)
 
 OO_TEST(laserFromShip)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *ship = MakeShip();
@@ -178,7 +176,6 @@ OO_TEST(laserFromShip)
 
 OO_TEST(color)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		oo::Ref<OOLaserShotEntity> shot = Shot(MakeShip(), WEAPON_FACING_FORWARD, kZeroVector);
@@ -199,7 +196,6 @@ OO_TEST(color)
 
 OO_TEST(update)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *ship = MakeShip();

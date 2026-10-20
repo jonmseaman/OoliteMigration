@@ -73,7 +73,6 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
@@ -199,7 +198,6 @@ oo::PList Mode(int width, int height, int refresh)
 OO_TEST(sharedControllerIsOneObject)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		GameController *controller = ::GameController::sharedController();
 		OO_CHECK(controller != nil);
@@ -218,7 +216,6 @@ OO_TEST(sharedControllerIsOneObject)
 OO_TEST(secondControllerRaises)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		GameController *shared = ::GameController::sharedController();
 		bool raised = false;
@@ -239,7 +236,6 @@ OO_TEST(secondControllerRaises)
 OO_TEST(gameViewIsKeptAndToldOfTheController)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		GameController *controller = ::GameController::sharedController();
 		TestView *first = new TestView();
@@ -266,7 +262,6 @@ OO_TEST(gameViewIsKeptAndToldOfTheController)
 OO_TEST(mouseInteractionModes)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		GameController *controller = ::GameController::sharedController();
 		TestView *view = static_cast<TestView *>(controller->gameView());
@@ -304,7 +299,6 @@ OO_TEST(mouseInteractionModes)
 OO_TEST(pauseAndResume)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		GameController *controller = ::GameController::sharedController();
 		controller->setMouseInteractionMode(MOUSE_MODE_FLIGHT_WITH_MOUSE_CONTROL);
@@ -353,7 +347,6 @@ OO_TEST(pauseAndResume)
 OO_TEST(fullScreenDisplayModes)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		GameController *controller = ::GameController::sharedController();
 		TestView *view = static_cast<TestView *>(controller->gameView());
@@ -392,7 +385,6 @@ OO_TEST(fullScreenDisplayModes)
 OO_TEST(fullScreenMembers)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		GameController *controller = GameController::sharedController();
 		TestView *view = static_cast<TestView *>(controller->gameView());
@@ -457,7 +449,6 @@ OO_TEST(fullScreenMembers)
 OO_TEST(playerFilePaths)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		GameController *controller = ::GameController::sharedController();
 		controller->setPlayerFileToLoad("saves/Jameson.oolite-save");
@@ -481,7 +472,6 @@ OO_TEST(playerFilePaths)
 OO_TEST(deferredCalls)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		GameController *controller = ::GameController::sharedController();
 		TestTarget *target = oo::makeRef<TestTarget>().leakRef();
@@ -560,7 +550,6 @@ OO_TEST(deferredCalls)
 OO_TEST(splashAndWindow)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		GameController *controller = ::GameController::sharedController();
 		TestView *view = static_cast<TestView *>(controller->gameView());
@@ -587,7 +576,6 @@ OO_TEST(splashAndWindow)
 OO_TEST(saveDirectoryLookup)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		GameController *controller = ::GameController::sharedController();
 		const stdfs::path saves = stdfs::temp_directory_path() / ("oo-test-gamecontroller-saves-" + std::to_string(static_cast<unsigned long>(::_getpid())));
@@ -617,7 +605,6 @@ OO_TEST(saveDirectoryLookup)
 OO_TEST(cxxAPI)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		GameController *controller = GameController::sharedController();
 		OO_CHECK(controller != nullptr);
@@ -654,7 +641,6 @@ OO_TEST(cxxAPI)
 OO_TEST(playerFileToLoadFromItsOwnValue)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		GameController *controller = ::GameController::sharedController();
 		controller->setPlayerFileToLoad("saves/a-much-longer-name-than-fits-inline.oolite-save");

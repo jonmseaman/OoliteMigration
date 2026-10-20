@@ -149,7 +149,6 @@ OOOXPVerifier *MakeVerifier(std::initializer_list<std::pair<const char *, const 
 
 OO_TEST(nameRegistersTheStage)
 {
-	@autoreleasepool
 	{
 		OOOXPVerifier *verifier = MakeVerifier({});
 		OO_CHECK(verifier->stageWithName("Testing models") == nullptr);
@@ -171,7 +170,6 @@ OO_TEST(nameRegistersTheStage)
 
 OO_TEST(stagesNameModels)
 {
-	@autoreleasepool
 	{
 		OOOXPVerifier *verifier = MakeVerifier({ { "Models/ship.dat", "model" } });
 		const oo::Ref<OOModelVerifierStage> stage = oo::makeRef<OOModelVerifierStage>();
@@ -215,7 +213,6 @@ OO_TEST(stagesNameModels)
 // facade until bead oo-9ht.4), and finds it by name for the ship data stage.
 OO_TEST(facade)
 {
-	@autoreleasepool
 	{
 		OOOXPVerifier *verifier = MakeVerifier({ { "Models/ship.dat", "model" } });
 		OOModelVerifierStage::nameForReverseDependencyForVerifier(verifier);

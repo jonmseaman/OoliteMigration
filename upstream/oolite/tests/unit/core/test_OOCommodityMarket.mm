@@ -66,7 +66,6 @@ using Goods = std::vector<std::string>;
 
 OO_TEST(goodsAndDefinitions)
 {
-	@autoreleasepool
 	{
 		oo::Ref<OOCommodityMarket> m = Market();
 		OO_CHECK(m->count() == 5);
@@ -109,7 +108,6 @@ OO_TEST(goodsAndDefinitions)
 
 OO_TEST(pricesAndQuantities)
 {
-	@autoreleasepool
 	{
 		oo::Ref<OOCommodityMarket> m = Market();
 		OO_CHECK(m->setPrice(99, "food") && m->priceForGood("food") == 99);
@@ -139,7 +137,6 @@ OO_TEST(pricesAndQuantities)
 
 OO_TEST(savedAmounts)
 {
-	@autoreleasepool
 	{
 		oo::Ref<OOCommodityMarket> m = Market();
 		OO_CHECK(m->savePlayerAmounts() == oo::PList(oo::PList::Array{
@@ -187,7 +184,6 @@ OO_TEST(cxxClass)
 
 OO_TEST(facadeIdentity)
 {
-	@autoreleasepool
 	{
 		// A C++ market sees its goods.
 		oo::Ref<OOCommodityMarket> cxxMarket = oo::makeRef<OOCommodityMarket>();

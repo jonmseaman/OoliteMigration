@@ -175,7 +175,6 @@ void Reset(oo::PList::Dict configuration, bool beacon)
 // No debug OXP and no always-load: nothing is set up.
 OO_TEST(nothingWithoutTheDebugOXP)
 {
-	@autoreleasepool
 	{
 		Reset({}, false);
 		OOInitDebugSupport();
@@ -190,7 +189,6 @@ OO_TEST(nothingWithoutTheDebugOXP)
 // always-load-debug-console without the OXP: the console with no debugger.
 OO_TEST(alwaysLoadWithoutTheDebugOXP)
 {
-	@autoreleasepool
 	{
 		Reset({ { "always-load-debug-console", oo::PList(kTrue) } }, false);
 		OOInitDebugSupport();
@@ -204,7 +202,6 @@ OO_TEST(alwaysLoadWithoutTheDebugOXP)
 // The debug OXP: a TCP client for the configured host and port becomes the monitor's debugger.
 OO_TEST(theTCPConsoleClient)
 {
-	@autoreleasepool
 	{
 		Reset({ { "console-host", oo::PList(std::string("console.example")) }, { "console-port", oo::PList(8564) } }, true);
 		OOInitDebugSupport();
@@ -226,7 +223,6 @@ OO_TEST(theTCPConsoleClient)
 // anything else is no host.
 OO_TEST(theHostSetting)
 {
-	@autoreleasepool
 	{
 		Reset({}, true);
 		OOInitDebugSupport();
@@ -246,7 +242,6 @@ OO_TEST(theHostSetting)
 // The client cannot connect: no console, unless always-load is set, and then no debugger.
 OO_TEST(theClientFails)
 {
-	@autoreleasepool
 	{
 		Reset({ { "console-host", oo::PList(std::string("127.0.0.1")) } }, true);
 		sRecord.clientFails = true;

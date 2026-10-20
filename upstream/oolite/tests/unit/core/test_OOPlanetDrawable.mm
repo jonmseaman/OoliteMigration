@@ -132,7 +132,6 @@ void SetTextureName(const Planet &d, const std::string &name)	{ d->setTextureNam
 
 OO_TEST(planetDefaults)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Planet planet = NewPlanet();
@@ -149,7 +148,6 @@ OO_TEST(planetDefaults)
 
 OO_TEST(atmosphere)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Planet atmosphere = NewAtmosphere();
@@ -166,7 +164,6 @@ OO_TEST(atmosphere)
 
 OO_TEST(radiusAndBounds)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Planet planet = NewPlanet();
@@ -182,7 +179,6 @@ OO_TEST(radiusAndBounds)
 
 OO_TEST(levelOfDetail)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Planet planet = NewPlanet();
@@ -200,7 +196,6 @@ OO_TEST(levelOfDetail)
 
 OO_TEST(levelOfDetailForViewDistance)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Planet planet = NewPlanet();
@@ -240,7 +235,6 @@ OO_TEST(levelOfDetailForViewDistance)
 
 OO_TEST(material)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Planet planet = NewPlanet();
@@ -262,7 +256,6 @@ OO_TEST(material)
 
 OO_TEST(copy)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Planet atmosphere = AtmosphereWithRadius(321.0f);

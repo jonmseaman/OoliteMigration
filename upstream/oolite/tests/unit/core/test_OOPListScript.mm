@@ -105,7 +105,6 @@ std::vector<std::string> Names(const std::vector<oo::Ref<OOScript>> &scripts)
 OO_TEST(cachedScripts)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		const oo::PList metadata = Dict({ { "description", Str("A test script") }, { "version", Str("1.2") } });
 		const oo::PList actions = oo::PList(oo::PList::Array{ Str("set: mission_x 1") });
@@ -144,7 +143,6 @@ OO_TEST(cachedScripts)
 OO_TEST(metadataTypes)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		// A description or version that is not a string reads as none.
 		const oo::PList metadata = Dict({ { "description", oo::PList(3) }, { "version", oo::PList(oo::PList::Array{}) } });
@@ -169,7 +167,6 @@ OO_TEST(metadataTypes)
 OO_TEST(files)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		// No file (and nothing cached): none.
 		OO_CHECK(!OOPListScript::scriptsInPListFile((sRoot / "missing.plist").string()).has_value());
@@ -198,7 +195,6 @@ OO_TEST(files)
 OO_TEST(plistScriptIsItsOwnObject)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OOCacheManager::sharedCache()->setPList(Dict({ { "one", Dict({ { "script", oo::PList(oo::PList::Array{}) }, { "!metadata!", Dict({ { "version", Str("3") } }) } }) } }), "facade.plist", kCacheName);
 		const auto scripts = OOPListScript::scriptsInPListFile("facade.plist");

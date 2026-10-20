@@ -184,7 +184,6 @@ OOOXPVerifier *MakeVerifier(std::initializer_list<const char *> files)
 
 OO_TEST(nameAndNeighbours)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<OOCheckJSSyntaxVerifierStage> stage = oo::makeRef<OOCheckJSSyntaxVerifierStage>();
 		stage->setVerifier(MakeVerifier({}));
@@ -197,7 +196,6 @@ OO_TEST(nameAndNeighbours)
 
 OO_TEST(runsWhenThereAreScripts)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<OOCheckJSSyntaxVerifierStage> stage = oo::makeRef<OOCheckJSSyntaxVerifierStage>();
 		stage->setVerifier(MakeVerifier({ "Config/shipdata.plist" }));
@@ -220,7 +218,6 @@ OO_TEST(runsWhenThereAreScripts)
 
 OO_TEST(compilesEachScript)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<OOCheckJSSyntaxVerifierStage> stage = oo::makeRef<OOCheckJSSyntaxVerifierStage>();
 		stage->setVerifier(MakeVerifier({ "Scripts/b.js", "Scripts/A.JS", "Scripts/c.es", "Scripts/notes.txt", "Scripts/noext", "Config/script.js" }));
@@ -245,7 +242,6 @@ OO_TEST(compilesEachScript)
 // OOOXPVerifierStage facade until bead oo-9ht.4), and it describes itself with its class's name.
 OO_TEST(facade)
 {
-	@autoreleasepool
 	{
 		OOOXPVerifier *verifier = MakeVerifier({ "Config/script.js" });
 		const oo::Ref<OOCheckJSSyntaxVerifierStage> stage = oo::makeRef<OOCheckJSSyntaxVerifierStage>();

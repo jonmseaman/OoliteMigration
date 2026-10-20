@@ -165,7 +165,6 @@ const std::vector<std::string> kUnusedName = { "Checking for unused files" };
 
 OO_TEST(nameAndNeighbours)
 {
-	@autoreleasepool
 	{
 		OOOXPVerifier *verifier = MakeVerifier("");
 		OO_CHECK(OOAIStateMachineVerifierStage::nameForReverseDependencyForVerifier(verifier) == "Validating AIs");
@@ -182,7 +181,6 @@ OO_TEST(nameAndNeighbours)
 
 OO_TEST(shipsNameAIs)
 {
-	@autoreleasepool
 	{
 		const std::string base = MakeOXP();
 		OOOXPVerifier *verifier = MakeVerifier(base);
@@ -212,7 +210,6 @@ OO_TEST(shipsNameAIs)
 
 OO_TEST(runChecksEachAIAgainstTheWhitelist)
 {
-	@autoreleasepool
 	{
 		const std::string base = MakeOXP();
 		OOOXPVerifier *verifier = MakeVerifier(base);
@@ -275,7 +272,6 @@ OO_TEST(runChecksEachAIAgainstTheWhitelist)
 // finds it by name (it held its OOOXPVerifierStage facade until bead oo-9ht.4).
 OO_TEST(facade)
 {
-	@autoreleasepool
 	{
 		const std::string base = MakeOXP();
 		OOOXPVerifier *verifier = MakeVerifier(base);

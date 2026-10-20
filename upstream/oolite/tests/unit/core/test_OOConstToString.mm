@@ -207,7 +207,6 @@ std::string IdentifierOf(OOWeaponType weapon)
 
 OO_TEST(weaponTypeIdentifiers)
 {
-	@autoreleasepool
 	{
 		LoadEquipment();
 		OOWeaponType pulse = OOEquipmentType::equipmentTypeWithIdentifier("EQ_WEAPON_PULSE_LASER").get();
@@ -225,7 +224,6 @@ OO_TEST(weaponTypeIdentifiers)
 
 OO_TEST(sloppyLookUp)
 {
-	@autoreleasepool
 	{
 		LoadEquipment();
 		OOWeaponType pulse = OOEquipmentType::equipmentTypeWithIdentifier("EQ_WEAPON_PULSE_LASER").get();
@@ -259,7 +257,6 @@ OO_TEST(sloppyLookUp)
 
 OO_TEST(massUnitOfACommodity)
 {
-	@autoreleasepool
 	{
 		LoadEquipment();
 

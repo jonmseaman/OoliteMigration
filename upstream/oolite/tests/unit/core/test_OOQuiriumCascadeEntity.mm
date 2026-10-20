@@ -48,7 +48,6 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
@@ -122,7 +121,6 @@ void SetUp()
 
 OO_TEST(fromShip)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		OO_CHECK(MakeCascade(nil) == nil);
@@ -151,7 +149,6 @@ OO_TEST(fromShip)
 
 OO_TEST(update)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *ship = oo::MadeEntity(oo::makeRef<::ShipEntity>());	// a C++ ship under its object (bead oo-9ht.144), never set up

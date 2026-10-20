@@ -96,7 +96,6 @@ public:
 
 OO_TEST(baseDefaults)
 {
-	@autoreleasepool
 	{
 		MyOpenGLView *view = new MyOpenGLView();
 		const NSUInteger viewRetains = view->retainCount();
@@ -136,7 +135,6 @@ OO_TEST(baseDefaults)
 
 OO_TEST(nilGameView)
 {
-	@autoreleasepool
 	{
 		oo::Ref<OOFullScreenController> controller = oo::makeRef<OOFullScreenController>(nil);
 		OO_CHECK(controller != nullptr);
@@ -147,7 +145,6 @@ OO_TEST(nilGameView)
 
 OO_TEST(currentDisplayMode)
 {
-	@autoreleasepool
 	{
 		oo::Ref<TestFullScreenController> controller = oo::makeRef<TestFullScreenController>(nil);
 		gSubclassResponsibilities = 0;

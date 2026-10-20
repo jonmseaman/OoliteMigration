@@ -192,7 +192,6 @@ bool CheckPicks(const char *what, const std::string &picks, const char *expected
 
 OO_TEST(entriesKeptAndHowTheyAreLoaded)
 {
-	@autoreleasepool
 	{
 		Reset(Config());
 		oo::Ref<OOProbabilisticTextureManager> manager = Manager(MakeRanrotSeed(1));
@@ -218,7 +217,6 @@ OO_TEST(entriesKeptAndHowTheyAreLoaded)
 
 OO_TEST(nothingLoadedIsNil)
 {
-	@autoreleasepool
 	{
 		Reset(oo::PList(oo::PList::Array{}));
 		OO_CHECK(Manager(MakeRanrotSeed(1)) == nullptr);
@@ -233,7 +231,6 @@ OO_TEST(nothingLoadedIsNil)
 
 OO_TEST(seed)
 {
-	@autoreleasepool
 	{
 		Reset(Config());
 		RANROTSeed global = MakeRanrotSeed(77);
@@ -256,7 +253,6 @@ OO_TEST(seed)
 
 OO_TEST(picks)
 {
-	@autoreleasepool
 	{
 		Reset(Config());
 		OO_CHECK(CheckPicks("galaxy 0, seed A", Picks(Manager(MakeRanrotSeed(0x1234567)), 40), "bhabhbabbhbhbbhahbahbbbaabbhbbbbbbabbabb"));
@@ -290,7 +286,6 @@ OO_TEST(texturesAreLoadedAndKept)
 {
 	std::vector<TestTexture *> textures;
 	oo::Ref<OOProbabilisticTextureManager> manager;
-	@autoreleasepool
 	{
 		Reset(Config());
 		manager = Manager(MakeRanrotSeed(0x1234567));

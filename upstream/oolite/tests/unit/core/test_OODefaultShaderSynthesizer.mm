@@ -1424,7 +1424,6 @@ OO_TEST(specularExponentMapExtractionMismatch)
 OO_TEST(cxxSynthesizerAnswersAsTheEntryPoint)
 {
 	Synthesized expected = Synthesize({ { "specular", Color(1, 1, 1) }, { "shininess", oo::PList(20) } }, std::string("hull.png"));
-	@autoreleasepool
 	{
 		oo::Ref<OODefaultShaderSynthesizer> synthesizer = oo::makeRef<OODefaultShaderSynthesizer>(oo::PList(oo::PList::Dict{ { "specular", Color(1, 1, 1) }, { "shininess", oo::PList(20) } }), std::string("hull.png"), std::string("test entity"));
 		OO_CHECK(synthesizer->run());

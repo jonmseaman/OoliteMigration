@@ -86,7 +86,6 @@ std::vector<char> ReadBytes(const std::string &path)
 // (and then answers nil, reading nothing).
 void SetUpLoaders()
 {
-	@autoreleasepool
 	{
 		(void)OOTextureLoader::loaderWithPath(std::string("unknown.type"), 0);
 	}
@@ -129,7 +128,6 @@ OO_TEST(theFactoryMakesOneForAPNG)
 {
 	OO_CHECK(OOTestGLContext());
 	SetUpLoaders();
-	@autoreleasepool
 	{
 		const std::string path = WritePNG("made.png", 8, 8, PNG_FORMAT_RGBA);
 		OO_CHECK(!path.empty());
@@ -157,7 +155,6 @@ OO_TEST(readsRGBA)
 {
 	OO_CHECK(OOTestGLContext());
 	SetUpLoaders();
-	@autoreleasepool
 	{
 		Result result = GetResult(Load(WritePNG("rgba.png", 8, 8, PNG_FORMAT_RGBA)));
 		OO_CHECK(result.ok && result.format == kOOPixMapRGBA);
@@ -174,7 +171,6 @@ OO_TEST(readsRGBWithAnOpaqueAlpha)
 {
 	OO_CHECK(OOTestGLContext());
 	SetUpLoaders();
-	@autoreleasepool
 	{
 		Result result = GetResult(Load(WritePNG("rgb.png", 8, 8, PNG_FORMAT_RGB)));
 		OO_CHECK(result.ok && result.format == kOOPixMapRGBA);
@@ -191,7 +187,6 @@ OO_TEST(readsGrayscale)
 {
 	OO_CHECK(OOTestGLContext());
 	SetUpLoaders();
-	@autoreleasepool
 	{
 		Result gray = GetResult(Load(WritePNG("gray.png", 8, 8, PNG_FORMAT_GRAY)));
 		OO_CHECK(gray.ok && gray.format == kOOPixMapGrayscale);
@@ -212,7 +207,6 @@ OO_TEST(sixteenBitsAreStrippedToEight)
 {
 	OO_CHECK(OOTestGLContext());
 	SetUpLoaders();
-	@autoreleasepool
 	{
 		Result result = GetResult(Load(WritePNG("deep.png", 8, 8, PNG_FORMAT_LINEAR_Y)));
 		OO_CHECK(result.ok && result.format == kOOPixMapGrayscale);
@@ -226,7 +220,6 @@ OO_TEST(failures)
 {
 	OO_CHECK(OOTestGLContext());
 	SetUpLoaders();
-	@autoreleasepool
 	{
 		// No file.
 		OOTextureLoader *missing = Load((ScratchDirectory() / "missing.png").generic_string());
@@ -260,7 +253,6 @@ OO_TEST(cxxApi)
 {
 	OO_CHECK(OOTestGLContext());
 	SetUpLoaders();
-	@autoreleasepool
 	{
 		const std::string path = WritePNG("cxx.png", 8, 8, PNG_FORMAT_RGBA);
 		const oo::Ref<OOPNGTextureLoader> loader = oo::makeRef<OOPNGTextureLoader>();

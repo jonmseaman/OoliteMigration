@@ -51,7 +51,6 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
@@ -143,7 +142,6 @@ T *NewParticle(float diameter, Entity **outObject = nullptr)
 
 OO_TEST(initWithDiameter)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *object = nil;
@@ -170,7 +168,6 @@ OO_TEST(initWithDiameter)
 
 OO_TEST(colorAndDiameter)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		OOLightParticleEntity *particle = NewParticle<OOLightParticleEntity>(1.0f);
@@ -193,7 +190,6 @@ OO_TEST(colorAndDiameter)
 
 OO_TEST(drawSubEntity)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *object = nil;
@@ -229,7 +225,6 @@ OO_TEST(drawSubEntity)
 #ifndef NDEBUG
 OO_TEST(texturesListTheSubclassTexture)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *object = nil;
@@ -246,7 +241,6 @@ OO_TEST(texturesListTheSubclassTexture)
 
 OO_TEST(description)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *object = nil;
@@ -267,7 +261,6 @@ class TestCxxParticle : public OOLightParticleEntity
 
 OO_TEST(cxxSubclassFacade)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		const oo::Ref<TestCxxParticle> particle = oo::makeRef<TestCxxParticle>();

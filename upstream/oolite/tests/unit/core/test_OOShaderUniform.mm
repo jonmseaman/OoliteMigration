@@ -193,7 +193,6 @@ std::string Description(const oo::Ref<OOShaderUniform> &uniform)
 OO_TEST(initialisersThatFail)
 {
 	if (!SetUpProgram())  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
 		OO_CHECK(OOShaderUniform::initWithName("uFloat", nil, GLfloat(1)) == nullptr);
 		OO_CHECK(OOShaderUniform::initWithName("uMissing", gShaderProgram, GLfloat(1)) == nullptr);
@@ -205,7 +204,6 @@ OO_TEST(initialisersThatFail)
 OO_TEST(constants)
 {
 	if (!SetUpProgram())  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
 		Reset();
 		OOShaderUniform::initWithName("uInt", gShaderProgram, GLint(3))->apply();
@@ -255,7 +253,6 @@ OO_TEST(constantIgnoresABindingTarget)
 OO_TEST(description)
 {
 	if (!SetUpProgram())  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
 		const std::string location = std::to_string(glGetUniformLocationARB(gProgram, "uInt"));
 		const std::string text = Description(OOShaderUniform::initWithName("uInt", gShaderProgram, GLint(1)));
@@ -292,7 +289,6 @@ void CxxTargetVector(oo::RefCounted *target, OOShaderBindingValue &outValue)
 OO_TEST(cxxTargetBindings)
 {
 	if (!SetUpProgram())  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
 		OO_CHECK(OOShaderUniform::initWithName("uVector", nil, nullptr, "vector", kOOShaderUniformTypeVector, CxxTargetVector, 0) == nullptr);
 		OO_CHECK(OOShaderUniform::initWithName("uMissing", gShaderProgram, nullptr, "vector", kOOShaderUniformTypeVector, CxxTargetVector, 0) == nullptr);
@@ -425,7 +421,6 @@ OO_TEST(cxxTargetConvertOptions)
 OO_TEST(cxxAPI)
 {
 	if (!SetUpProgram())  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
 		OO_CHECK(OOShaderUniform::initWithName("uFloat", nil, 1.0f) == nullptr);
 		OO_CHECK(OOShaderUniform::initWithName("uMissing", gShaderProgram, 1.0f) == nullptr);

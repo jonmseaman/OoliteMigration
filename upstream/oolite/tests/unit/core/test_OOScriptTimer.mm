@@ -119,7 +119,6 @@ std::string Fired()
 
 OO_TEST(initialisers)
 {
-	@autoreleasepool
 	{
 		SetUp(100.0);
 		oo::Ref<OOScriptTimer> timer = OOScriptTimer::timerWithNextTime(110.0, 5.0);
@@ -150,7 +149,6 @@ OO_TEST(initialisers)
 
 OO_TEST(accessors)
 {
-	@autoreleasepool
 	{
 		SetUp(100.0);
 		oo::Ref<OOScriptTimer> timer = OOScriptTimer::timerWithNextTime(110.0, 5.0);
@@ -176,7 +174,6 @@ OO_TEST(accessors)
 
 OO_TEST(description)
 {
-	@autoreleasepool
 	{
 		SetUp(100.0);
 		oo::Ref<OOScriptTimer> timer = OOScriptTimer::timerWithNextTime(110.0, 5.0);
@@ -193,7 +190,6 @@ OO_TEST(description)
 
 OO_TEST(ordering)
 {
-	@autoreleasepool
 	{
 		SetUp(100.0);
 		oo::Ref<OOScriptTimer> early = OOScriptTimer::timerWithNextTime(110.0, 5.0);
@@ -208,7 +204,6 @@ OO_TEST(ordering)
 
 OO_TEST(firing)
 {
-	@autoreleasepool
 	{
 		SetUp(100.0);
 		oo::Ref<TestTimer> b = MakeTimer("b", 120.0, -1.0);
@@ -246,7 +241,6 @@ OO_TEST(firing)
 
 OO_TEST(scheduleMovesPastTimeForward)
 {
-	@autoreleasepool
 	{
 		SetUp(100.0);
 		oo::Ref<TestTimer> r = MakeTimer("r", 101.0, 4.0);
@@ -263,7 +257,6 @@ OO_TEST(scheduleMovesPastTimeForward)
 
 OO_TEST(stopsItselfAndDefers)
 {
-	@autoreleasepool
 	{
 		SetUp(100.0);
 		oo::Ref<TestTimer> stopper = MakeTimer("stopper", 101.0, 5.0);
@@ -289,7 +282,6 @@ OO_TEST(stopsItselfAndDefers)
 
 OO_TEST(gameReset)
 {
-	@autoreleasepool
 	{
 		SetUp(100.0);
 		oo::Ref<TestTimer> a = MakeTimer("a", 110.0, 5.0);
@@ -311,7 +303,6 @@ OO_TEST(gameReset)
 
 OO_TEST(baseTimerFired)
 {
-	@autoreleasepool
 	{
 		SetUp(100.0);
 		oo::Ref<OOScriptTimer> timer = OOScriptTimer::timerWithNextTime(101.0, -1.0);
@@ -329,12 +320,10 @@ OO_TEST(scheduledTimerIsKept)
 {
 	// The timer subsystem retains a scheduled timer: one the caller has let go of still fires.
 	SetUp(100.0);
-	@autoreleasepool
 	{
 		OO_CHECK(MakeTimer("kept", 101.0, -1.0)->scheduleTimer());
 	}
 	gNow = 102.0;
-	@autoreleasepool
 	{
 		OOScriptTimer::updateTimers();
 	}

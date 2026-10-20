@@ -137,7 +137,6 @@ void SetUpTestPlayer()
 	if (player == nullptr)
 	{
 		oo::Ref<TestPlayer> made = oo::makeRef<TestPlayer>();
-		@autoreleasepool
 		{
 			oo::RetainEntity(oo::MadeEntity(made));	// +1, as PlayerEntity::sharedPlayer() makes the game's
 		}
@@ -222,7 +221,6 @@ std::string Filtered(const std::string &filter)
 OO_TEST(sharedManagerLoadsTheCachedListSorted)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OOOXZManager *manager = OOOXZManager::sharedManager();
 		OO_CHECK(manager != nullptr);
@@ -241,7 +239,6 @@ OO_TEST(sharedManagerLoadsTheCachedListSorted)
 OO_TEST(paths)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OOOXZManager *manager = OOOXZManager::sharedManager();
 		OO_CHECK_EQ(manager->installPath().value_or("(none)"), Generic(sRoot / "Managed"));
@@ -285,7 +282,6 @@ OO_TEST(paths)
 OO_TEST(humanSizeAndFilterValidation)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		// The missing-field description; with no Universe the description lookup answers its key.
 		OO_CHECK_EQ(HumanSize(0).value_or("(none)"), "oolite-oxzmanager-missing-field");
@@ -307,7 +303,6 @@ OO_TEST(humanSizeAndFilterValidation)
 OO_TEST(filters)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OO_CHECK_TEXT(Filtered("*"), "Mission 0.1, Alpha 2.0, Alpha 1.5, Zeta 1.0");
 		OO_CHECK_TEXT(Filtered("K:cobra"), "Alpha 2.0, Alpha 1.5");
@@ -331,7 +326,6 @@ OO_TEST(filters)
 OO_TEST(managedOXZs)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		// Two managed OXZs (synthetic manifests), and a stray file with none.
 		WriteText(sRoot / "Managed" / "alpha.oxp" / "manifest.plist", "{ identifier = \"oolite.oxp.test.alpha\"; title = Alpha; version = \"1.0\"; category = Ships; }");
@@ -369,7 +363,6 @@ OO_TEST(managedOXZs)
 OO_TEST(manifestDownload)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OOOXZManager *manager = OOOXZManager::sharedManager();
 
@@ -514,7 +507,6 @@ std::string Element(const oo::PList &list, NSUInteger index)
 OO_TEST(installableStates)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		// The list holds Alpha 3.0 and Beta 1.0; Alpha 1.0 is managed.
 		const oo::PList list = Manager()->manifests();
@@ -534,7 +526,6 @@ OO_TEST(installableStates)
 OO_TEST(installExtractAndRemove)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		// A synthetic OXZ, offered in the list with a file: URL.
 		WriteZip(sRoot / "gamma.oxz", { { "manifest.plist", kGammaManifest }, { "Config/notes.txt", "gamma notes" } });
@@ -589,7 +580,6 @@ OO_TEST(installExtractAndRemove)
 OO_TEST(restartAndUpdateAll)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		Manager()->_interfaceState = OXZ_STATE_RESTARTING;
 		OO_CHECK(IsRestarting());
@@ -760,7 +750,6 @@ void CheckPage(const char *name, const std::string &page, const std::string &exp
 OO_TEST(guiPages)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		StandInUniverse standIn;
 		OOOXZManager *m = Manager();
@@ -1175,7 +1164,6 @@ OO_TEST(guiInput)
 	// build can (the debug build asserts PLAYER is set; bead oo-vdw34).
 	gOOPlayer = nullptr;
 #if !OO_DEBUG
-	@autoreleasepool
 	{
 		StandInUniverse standIn;
 		OOOXZManager *m = Manager();
@@ -1545,7 +1533,6 @@ OO_TEST(optionPages)
 	// (PLAYER's setGuiToIntroFirstGo()): they run with none, as before, which only a release-style
 	// build can (the debug build asserts PLAYER is set; bead oo-vdw34).
 	gOOPlayer = nullptr;
-	@autoreleasepool
 	{
 		StandInUniverse standIn;
 		OOOXZManager *m = Manager();

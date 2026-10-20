@@ -62,7 +62,6 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
@@ -215,7 +214,6 @@ oo::PList Definition()
 
 OO_TEST(initWithKeyAndDefinition)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>("test-ship", Definition());
@@ -239,7 +237,6 @@ OO_TEST(initWithKeyAndDefinition)
 
 OO_TEST(initIsAnEmptyKey)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>(std::string{}, oo::PList());
@@ -252,7 +249,6 @@ OO_TEST(initIsAnEmptyKey)
 
 OO_TEST(initFailsWhenSetUpFails)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		sFailSetUp = true;
@@ -264,7 +260,6 @@ OO_TEST(initFailsWhenSetUpFails)
 
 OO_TEST(initClampsAnInfiniteTopSpeed)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		sInfiniteSpeed = true;
@@ -278,7 +273,6 @@ OO_TEST(deallocLeavesItsGroups)
 {
 	oo::Ref<OOShipGroup> group;	// C++ since bead oo-9ht.19: held where the facades were retained
 	oo::Ref<OOShipGroup> escorts;
-	@autoreleasepool
 	{
 		SetUp();
 		group = OOShipGroup::groupWithName(std::nullopt);	// -init
@@ -296,7 +290,6 @@ OO_TEST(deallocLeavesItsGroups)
 
 OO_TEST(subEntityRelationship)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *plain = oo::MadeEntity(oo::makeRef<Entity>());
@@ -343,7 +336,6 @@ const ShipEntity *Part(ShipEntity *s)	{ return s; }
 // and every setting takes its default.
 OO_TEST(setUpFromDictionaryDefaults)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>("defaults", Definition());
@@ -382,7 +374,6 @@ OO_TEST(setUpFromDictionaryDefaults)
 // class name from the name, no hyperspace motor).
 OO_TEST(setUpFromDictionaryValues)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>("values", Definition());
@@ -462,7 +453,6 @@ ShipEntity *MutablePart(ShipEntity *s)	{ return s; }
 // roles without "player", the escort clamp, beacons, an unpiloted ship.
 OO_TEST(setUpShipFromDictionaryNPC)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		const oo::PList definition(oo::PList::Dict{
@@ -507,7 +497,6 @@ OO_TEST(setUpShipFromDictionaryNPC)
 
 OO_TEST(subIdxAndSerialisation)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>("mother", Definition());
@@ -532,7 +521,6 @@ OO_TEST(subIdxAndSerialisation)
 // and the frustum radius is the profile radius (no exhaust is longer).
 OO_TEST(setUpSubEntitiesAndFrustumRadius)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>("bare", Definition());
@@ -551,7 +539,6 @@ OO_TEST(setUpSubEntitiesAndFrustumRadius)
 
 OO_TEST(cargoTypeAndTemplatePod)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>("pod", Definition());
@@ -568,7 +555,6 @@ OO_TEST(cargoTypeAndTemplatePod)
 
 OO_TEST(simpleAccessors)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>("acc", Definition());
@@ -607,7 +593,6 @@ OO_TEST(simpleAccessors)
 
 OO_TEST(descriptions)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>("desc", Definition());
@@ -622,7 +607,6 @@ OO_TEST(descriptions)
 // The subentity lists, the ship / flasher / exhaust filters, and the subentity taking damage.
 OO_TEST(subEntityLists)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>("mother", Definition());
@@ -650,7 +634,6 @@ OO_TEST(subEntityLists)
 
 OO_TEST(octreeAndTractorWithoutAModel)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>("nomodel", Definition());
@@ -667,7 +650,6 @@ OO_TEST(octreeAndTractorWithoutAModel)
 
 OO_TEST(beacons)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>("beacon", Definition());
@@ -695,7 +677,6 @@ OO_TEST(beacons)
 
 OO_TEST(visibilityBouldersAndKills)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>("rock", Definition());
@@ -725,7 +706,6 @@ OO_TEST(visibilityBouldersAndKills)
 
 OO_TEST(shipDataKeyAndInfo)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>("keyed", Definition());
@@ -753,7 +733,6 @@ OO_TEST(shipDataKeyAndInfo)
 
 OO_TEST(scanClassAndCollisionFlags)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>("flags", Definition());
@@ -784,7 +763,6 @@ OO_TEST(scanClassAndCollisionFlags)
 // its frame.
 OO_TEST(closeCollisionAndFrame)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>("hull", Definition());
@@ -822,7 +800,6 @@ public:
 // infinite top speed clamped first.
 OO_TEST(updateDemoShip)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>("demo", Definition());
@@ -843,7 +820,6 @@ OO_TEST(updateDemoShip)
 // From C++, update() reaches an Objective-C subclass's override (the root's adapter line).
 OO_TEST(updateReachesTheSubclass)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		CountingShip *ship = MakeShip<CountingShip>("counted", Definition());
@@ -860,7 +836,6 @@ OO_TEST(updateReachesTheSubclass)
 // known: a key provides only itself).
 OO_TEST(equipmentQueries)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>("kit", Definition());
@@ -890,7 +865,6 @@ OO_TEST(equipmentQueries)
 
 OO_TEST(hyperspaceMotor)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>("motor", Definition());
@@ -906,7 +880,6 @@ OO_TEST(hyperspaceMotor)
 
 OO_TEST(weaponMountsAndLists)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>("mounts", Definition());
@@ -926,7 +899,6 @@ OO_TEST(weaponMountsAndLists)
 
 OO_TEST(equipmentKeysAndUnknownEquipment)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>("keys", Definition());
@@ -946,7 +918,6 @@ OO_TEST(equipmentKeysAndUnknownEquipment)
 
 OO_TEST(capacitiesAndPredicates)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>("preds", Definition());
@@ -982,7 +953,6 @@ OO_TEST(capacitiesAndPredicates)
 
 OO_TEST(removeMissiles)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>("launcher", Definition());
@@ -995,7 +965,6 @@ OO_TEST(removeMissiles)
 
 OO_TEST(thrustAndAfterburner)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>("burner", Definition());
@@ -1012,7 +981,6 @@ OO_TEST(thrustAndAfterburner)
 // sticks move the flight controls at their rate (-applySticks:).
 OO_TEST(behaviourStopStillAndIdle)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>("still", Definition());
@@ -1045,7 +1013,6 @@ OO_TEST(behaviourStopStillAndIdle)
 // Behaviours that need a target, with none: the ship notes the lost target and goes idle.
 OO_TEST(behavioursWithoutATarget)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>("hunter", Definition());
@@ -1064,7 +1031,6 @@ OO_TEST(behavioursWithoutATarget)
 // With no target the attack behaviours note the lost target and go idle.
 OO_TEST(attackBehavioursWithoutATarget)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>("attacker", Definition());
@@ -1092,7 +1058,6 @@ OO_TEST(attackBehavioursWithoutATarget)
 // broadside on either side, with no target, notes the lost target and goes idle.
 OO_TEST(attackTargetChoiceAndBroadsideSides)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeShip<TestShip>("unarmed", Definition());
@@ -1143,7 +1108,6 @@ TestShip *TargetAt(TestShip *ship, double z)
 // Slices 13 and 14: an attack behaviour with no target to track notes the lost target and goes idle.
 OO_TEST(attackBehavioursWithoutATargetGoIdle)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		const struct { OOBehaviour behaviour; void (*run)(TestShip *); } cases[] =
@@ -1177,7 +1141,6 @@ OO_TEST(attackBehavioursWithoutATargetGoIdle)
 // out of weapon range.
 OO_TEST(sniper)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = FlyingShip("sniper");
@@ -1200,7 +1163,6 @@ OO_TEST(sniper)
 // attacker inside its weapon range starts its attack run.
 OO_TEST(attackApproaches)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *six = FlyingShip("six");
@@ -1228,7 +1190,6 @@ OO_TEST(attackApproaches)
 // Slice 14: the destination behaviours that only decide.
 OO_TEST(destinationDecisions)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		// Inside the range it should keep: fly away from the destination, at least at top speed.
@@ -1273,7 +1234,6 @@ OO_TEST(destinationDecisions)
 // Slice 15: arriving, leaving, resuming after a proximity alert, and the navpoints.
 OO_TEST(destinationArrivals)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = FlyingShip("arriving");
@@ -1330,7 +1290,6 @@ OO_TEST(destinationArrivals)
 // position it leads by.
 OO_TEST(scriptedAIAndReactionTime)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = FlyingShip("scripted");
@@ -1354,7 +1313,6 @@ OO_TEST(scriptedAIAndReactionTime)
 // with or without a reaction time.
 OO_TEST(trackingCurve)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = FlyingShip("tracker");
@@ -1377,7 +1335,6 @@ OO_TEST(trackingCurve)
 // Slice 16: the scanner colours, scripted and by scan class.
 OO_TEST(scannerColours)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = FlyingShip("coloured");
@@ -1414,7 +1371,6 @@ OO_TEST(scannerColours)
 // Slice 16: cloaking flags, owner, thrust and orientation.
 OO_TEST(cloakOwnerThrustAndOrientation)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = FlyingShip("flier");
@@ -1448,7 +1404,6 @@ OO_TEST(cloakOwnerThrustAndOrientation)
 // vectors; with no turn and no rotation so far, nothing happens.
 OO_TEST(attitude)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = FlyingShip("acrobat");
@@ -1482,7 +1437,6 @@ OO_TEST(attitude)
 // the two ships; resuming restores it.
 OO_TEST(avoidCollisionAndResume)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = FlyingShip("careful");
@@ -1525,7 +1479,6 @@ OO_TEST(avoidCollisionAndResume)
 // Slice 17: message time, groups and escorts.
 OO_TEST(groupsAndEscorts)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = FlyingShip("leader");
@@ -1565,7 +1518,6 @@ OO_TEST(groupsAndEscorts)
 // Slice 17: the names, and what the ship is called on screen.
 OO_TEST(names)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = FlyingShip("named");
@@ -1594,7 +1546,6 @@ OO_TEST(names)
 // role set; adding is a no-op for a role it has.
 OO_TEST(roles)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = FlyingShip("cobra3-trader");
@@ -1624,7 +1575,6 @@ OO_TEST(roles)
 // Slice 18: the ship-type predicates that do not ask the universe, and hostility.
 OO_TEST(typesAndHostility)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = FlyingShip("viper");
@@ -1663,7 +1613,6 @@ OO_TEST(typesAndHostility)
 // Slice 18: the weapon and scanner values, and leaving the aegis.
 OO_TEST(weaponAndScannerValues)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = FlyingShip("gunship");
@@ -1696,7 +1645,6 @@ OO_TEST(weaponAndScannerValues)
 // Slice 19: the aegis bookkeeping, the systems, the status and the launch delay.
 OO_TEST(aegisSystemsAndStatus)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = FlyingShip("navigator");
@@ -1730,7 +1678,6 @@ OO_TEST(aegisSystemsAndStatus)
 // Slice 19: the crew, the AI and the flags read from the definition.
 OO_TEST(crewAndAI)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = FlyingShip("crewed");
@@ -1758,7 +1705,6 @@ OO_TEST(crewAndAI)
 // Slice 19: fuel is clamped to the capacity.
 OO_TEST(fuel)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = FlyingShip("tanker");
@@ -1774,7 +1720,6 @@ OO_TEST(fuel)
 // Slice 20: the sticks move the flight rates towards them by a limited step; the rate setters.
 OO_TEST(sticksAndRates)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = FlyingShip("pilot");
@@ -1807,7 +1752,6 @@ OO_TEST(sticksAndRates)
 // Slice 20: bounty and legal status.
 OO_TEST(bountyAndLegalStatus)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = FlyingShip("offender");
@@ -1837,7 +1781,6 @@ OO_TEST(bountyAndLegalStatus)
 // Slice 20: commodities and cargo.
 OO_TEST(commoditiesAndCargo)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *pod = FlyingShip("pod");
@@ -1872,7 +1815,6 @@ OO_TEST(commoditiesAndCargo)
 // Slice 21: the flight controls, clamped to the ship's limits.
 OO_TEST(flightControls)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = FlyingShip("controls");
@@ -1913,7 +1855,6 @@ OO_TEST(flightControls)
 // Slice 21: temperature, insulation, damage and hulks.
 OO_TEST(temperatureDamageAndHulks)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = FlyingShip("hot");
@@ -1947,7 +1888,6 @@ OO_TEST(temperatureDamageAndHulks)
 // subentities' positions; wreckage and the damage flag; a ship with no cargo throws nothing out.
 OO_TEST(rescaleWreckageAndDebris)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = FlyingShip("big");
@@ -1979,7 +1919,6 @@ OO_TEST(rescaleWreckageAndDebris)
 // and beacon codes compared without case.
 OO_TEST(heatPersonalityAlignmentAndBeacons)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = FlyingShip("warm");
@@ -2065,7 +2004,6 @@ void SetCollisionRadius24(Entity *e, GLfloat r)	{ e->collision_radius = r; }
 
 OO_TEST(slice24RememberedShips)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("rememberer");
@@ -2098,7 +2036,6 @@ OO_TEST(slice24RememberedShips)
 
 OO_TEST(slice24IsValidTarget)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("judge");
@@ -2121,7 +2058,6 @@ OO_TEST(slice24IsValidTarget)
 
 OO_TEST(slice24PrimaryTarget)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("hunter");
@@ -2166,7 +2102,6 @@ OO_TEST(slice24PrimaryTarget)
 
 OO_TEST(slice24NoteLostTarget)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("forgetful");
@@ -2189,7 +2124,6 @@ OO_TEST(slice24NoteLostTarget)
 
 OO_TEST(slice24IsFriendlyTo)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("friend");
@@ -2222,7 +2156,6 @@ OO_TEST(slice24IsFriendlyTo)
 
 OO_TEST(slice24BehaviourAndDestination)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("navigator");
@@ -2242,7 +2175,6 @@ OO_TEST(slice24BehaviourAndDestination)
 
 OO_TEST(slice24Distances)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("formation");
@@ -2257,7 +2189,6 @@ OO_TEST(slice24Distances)
 
 OO_TEST(slice24TrackOntoTarget)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("tracker");
@@ -2288,7 +2219,6 @@ OO_TEST(slice24TrackOntoTarget)
 
 OO_TEST(slice24BallTrackLeadingTarget)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("turret");
@@ -2316,7 +2246,6 @@ GLfloat Frustration25(ShipEntity *s)			{ return s->frustration; }
 
 OO_TEST(slice25SetEvasiveJink)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("jinker");
@@ -2343,7 +2272,6 @@ OO_TEST(slice25SetEvasiveJink)
 // With no target, each of them gives up: the ship goes idle and the tracking answers 0.
 OO_TEST(slice25NoTargetGoesIdle)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("aimless");
@@ -2367,7 +2295,6 @@ OO_TEST(slice25NoTargetGoesIdle)
 // A target the ship can no longer track (out of scanner range) is lost the same way.
 OO_TEST(slice25TargetOutOfRangeGoesIdle)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("short-sighted");
@@ -2402,7 +2329,6 @@ void SetCollisionRadius26(Entity *e, GLfloat r)				{ e->collision_radius = r; }
 
 OO_TEST(slice26RollToMatchUp)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("roller");
@@ -2423,7 +2349,6 @@ OO_TEST(slice26RollToMatchUp)
 
 OO_TEST(slice26Ranges)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("ranger");
@@ -2457,7 +2382,6 @@ OO_TEST(slice26Ranges)
 
 OO_TEST(slice26CollisionExceptions)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("excepting");
@@ -2481,7 +2405,6 @@ OO_TEST(slice26CollisionExceptions)
 
 OO_TEST(slice26DefenseTargets)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("defender");
@@ -2547,7 +2470,6 @@ void SetRechargeRate27(ShipEntity *s, float r)	{ s->weapon_recharge_rate = r; }
 
 OO_TEST(slice27CurrentAimTolerance)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("gunner");
@@ -2576,7 +2498,6 @@ OO_TEST(slice27CurrentAimTolerance)
 
 OO_TEST(slice27ShotTimeAndTurret)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("turret-gun");
@@ -2599,7 +2520,6 @@ OO_TEST(slice27ShotTimeAndTurret)
 
 OO_TEST(slice27Colours)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("painted");
@@ -2630,7 +2550,6 @@ void SetMissiles28(ShipEntity *s, unsigned n)		{ s->missiles = n; }
 
 OO_TEST(slice28MissedShots)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("misser");
@@ -2653,7 +2572,6 @@ OO_TEST(slice28MissedShots)
 
 OO_TEST(slice28MissileLaunchPosition)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("launcher");
@@ -2673,7 +2591,6 @@ OO_TEST(slice28MissileLaunchPosition)
 
 OO_TEST(slice28ConsiderFiringMissileWithoutMissiles)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("unarmed");
@@ -2696,7 +2613,6 @@ bool CloakActive29(ShipEntity *s)	{ return s->cloaking_device_active; }
 
 OO_TEST(slice29MissileFlagAndLoadTime)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("missile-ish");
@@ -2717,7 +2633,6 @@ OO_TEST(slice29MissileFlagAndLoadTime)
 // Without the equipment, ECM and the cloak do nothing.
 OO_TEST(slice29NoEquipment)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("plain-hull");
@@ -2733,7 +2648,6 @@ OO_TEST(slice29NoEquipment)
 // With an empty hold, there is nothing to dump.
 OO_TEST(slice29DumpEmptyHold)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("empty-hold");
@@ -2760,7 +2674,6 @@ bool Near30(Vector a, Vector b)					{ return distance2(a, b) < 1e-8; }
 
 OO_TEST(slice30Velocity)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("mover");
@@ -2795,7 +2708,6 @@ OO_TEST(slice30Velocity)
 
 OO_TEST(slice30ScoopingAndCollisions)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("scooper");
@@ -2824,7 +2736,6 @@ bool ThrowSparks31(Entity *e)									{ return e->throw_sparks; }
 
 OO_TEST(slice31DamageThatDoesNothing)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("tough");
@@ -2858,7 +2769,6 @@ OO_TEST(slice31DamageThatDoesNothing)
 // shipTakingDamage event with JavaScript values, which the test's empty context cannot make.)
 OO_TEST(slice31HeatDamageToAFixedSubentity)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("fixed-mount");
@@ -2875,7 +2785,6 @@ OO_TEST(slice31HeatDamageToAFixedSubentity)
 
 OO_TEST(slice31NoCascadeWithEnergyToSpare)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("stable");
@@ -2903,7 +2812,6 @@ void SetEscortPositionsValid32(ShipEntity *s, bool v)	{ ShipEntityTestAccess::Es
 
 OO_TEST(slice32Lights)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("lit");
@@ -2920,7 +2828,6 @@ OO_TEST(slice32Lights)
 
 OO_TEST(slice32Destinations)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("goer");
@@ -2935,7 +2842,6 @@ OO_TEST(slice32Destinations)
 
 OO_TEST(slice32EscortFormation)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("mother");
@@ -2959,7 +2865,6 @@ OO_TEST(slice32EscortFormation)
 
 OO_TEST(slice32PoliceAreNotOffenders)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("copper");
@@ -2985,7 +2890,6 @@ void SetBounty33(ShipEntity *s, OOCreditsQuantity b)	{ s->bounty = b; }
 
 OO_TEST(slice33Fines)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("clean");
@@ -3002,7 +2906,6 @@ OO_TEST(slice33Fines)
 
 OO_TEST(slice33SmallAccessors)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("contact");
@@ -3028,7 +2931,6 @@ OO_TEST(slice33SmallAccessors)
 
 OO_TEST(slice33FindBoundingBoxRelativeTo)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("boxed");
@@ -3063,7 +2965,6 @@ OOScalar DemoRate34(ShipEntity *s)					{ return ShipEntityTestAccess::DemoRate(s
 
 OO_TEST(slice34ScriptInfo)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("scripted");
@@ -3087,7 +2988,6 @@ OO_TEST(slice34ScriptInfo)
 
 OO_TEST(slice34DemoShip)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("demo");
@@ -3105,7 +3005,6 @@ OO_TEST(slice34DemoShip)
 
 OO_TEST(slice34AlertConditionAndEvents)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("alert");
@@ -3137,7 +3036,6 @@ OO_TEST(slice34AlertConditionAndEvents)
 
 OO_TEST(slice34WeaponHelpers)
 {
-	@autoreleasepool
 	{
 		OO_CHECK(isWeaponNone(nil));
 	}
@@ -3150,7 +3048,6 @@ OO_TEST(slice34WeaponHelpers)
 
 OO_TEST(scriptMethodsEjectAndSpawnNothing)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestShip *ship = MakeLateSliceShip("ejector");
@@ -3171,7 +3068,6 @@ OO_TEST(scriptMethodsEjectAndSpawnNothing)
 
 OO_TEST(loadRestoreFromNothing)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		// Null restores no ship, with or without fallback and a context, as nil did.

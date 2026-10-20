@@ -275,7 +275,6 @@ GLint TexEnvMode(GLenum unit)
 OO_TEST(combinersRequired)
 {
 	if (!OOTestGLContext())  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
 		// On a GL without texture combiners the initialiser answers nil; this context has them.
 		OO_CHECK(CombinersSupported());
@@ -287,7 +286,6 @@ OO_TEST(combinersRequired)
 OO_TEST(mapsFromTheConfiguration)
 {
 	if (!CombinersSupported())  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
 		// Only a name: the diffuse map is named after it, and there is no emission map to bake.
 		oo::Ref<OOMultiTextureMaterial> m = Make("hull.png", {});
@@ -338,12 +336,10 @@ OO_TEST(texturesKeptAndAsked)
 	if (!CombinersSupported())  { OO_CHECK(false); return; }
 	const int deallocated = gTexturesDeallocated;
 	oo::Ref<OOMultiTextureMaterial> m;
-	@autoreleasepool
 	{
 		m = Make("Hull", { { "diffuse_map", oo::PList("d.png") }, { "emission_map", oo::PList("e.png") } });
 	}
 	OO_CHECK(gTexturesDeallocated == deallocated);
-	@autoreleasepool
 	{
 		m->ensureFinishedLoading();
 #ifndef NDEBUG
@@ -358,7 +354,6 @@ OO_TEST(texturesKeptAndAsked)
 	m = nullptr;
 	OO_CHECK(gTexturesDeallocated == deallocated + 2);
 
-	@autoreleasepool
 	{
 		// No diffuse map (no name): only the emission map.
 		gTextureConfigurations.clear();
@@ -375,7 +370,6 @@ OO_TEST(texturesKeptAndAsked)
 OO_TEST(applyAndUnapply)
 {
 	if (!CombinersSupported())  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
 		const oo::Ref<OOMultiTextureMaterial> two = Make("Two", { { "diffuse_map", oo::PList("d.png") }, { "emission_map", oo::PList("e.png") } });
 		const oo::Ref<OOMultiTextureMaterial> one = Make("one.png", {});
@@ -417,7 +411,6 @@ OO_TEST(applyAndUnapply)
 OO_TEST(cxxAPI)
 {
 	if (!CombinersSupported())  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
 		gTextureConfigurations.clear();
 		const oo::Ref<OOMultiTextureMaterial> m = OOMultiTextureMaterial::materialWithName(std::string("Cxx"), oo::PList(oo::PList::Dict{
@@ -450,7 +443,6 @@ OO_TEST(cxxAPI)
 OO_TEST(descriptionNamesTheClass)
 {
 	if (!CombinersSupported())  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
 		const oo::Ref<OOMultiTextureMaterial> m = OOMultiTextureMaterial::materialWithName(std::string("Cxx"), oo::PList());
 		OO_CHECK(m->description().starts_with("<OOMultiTextureMaterial 0x"));

@@ -146,7 +146,6 @@ oo::Ref<OOSystemDescriptionManager> NewManager()
 OO_TEST(emptyManager)
 {
 	Fake();
-	@autoreleasepool
 	{
 		oo::Ref<OOSystemDescriptionManager> manager = NewManager();
 		OO_CHECK(manager != nil);
@@ -168,7 +167,6 @@ OO_TEST(emptyManager)
 OO_TEST(invalidSystems)
 {
 	Fake();
-	@autoreleasepool
 	{
 		oo::Ref<OOSystemDescriptionManager> manager = NewManager();
 		manager->setUniversalProperties(Dict({ { "economy", oo::PList(3) } }));
@@ -206,7 +204,6 @@ OO_TEST(invalidSystems)
 OO_TEST(layersAndUniversal)
 {
 	Fake();
-	@autoreleasepool
 	{
 		oo::Ref<OOSystemDescriptionManager> manager = NewManager();
 		manager->setUniversalProperties(Dict({ { "economy", oo::PList(3) }, { "sky", Str("blue") } }));
@@ -255,7 +252,6 @@ OO_TEST(layersAndUniversal)
 OO_TEST(validation)
 {
 	Fake();
-	@autoreleasepool
 	{
 		oo::Ref<OOSystemDescriptionManager> manager = NewManager();
 		manager->setProperties(Dict({ { "coordinates", Str("20 173") }, { "radius", oo::PList(5000) }, { "government", oo::PList(2.5) }, { "name", Str("Lave") }, { "inhabitants", Str("Humans") }, }), "0 7");
@@ -282,7 +278,6 @@ OO_TEST(validation)
 OO_TEST(interstellar)
 {
 	Fake();
-	@autoreleasepool
 	{
 		oo::Ref<OOSystemDescriptionManager> manager = NewManager();
 		manager->setUniversalProperties(Dict({ { "economy", oo::PList(3) } }));
@@ -307,7 +302,6 @@ OO_TEST(interstellar)
 OO_TEST(scriptedChanges)
 {
 	Fake();
-	@autoreleasepool
 	{
 		oo::Ref<OOSystemDescriptionManager> manager = NewManager();
 		// Saved under manifest~|~key~|~property~|~layer; not saved without a manifest.
@@ -350,7 +344,6 @@ OO_TEST(scriptedChanges)
 OO_TEST(legacyScriptedChanges)
 {
 	Fake();
-	@autoreleasepool
 	{
 		oo::Ref<OOSystemDescriptionManager> manager = NewManager();
 		manager->importLegacyScriptedChanges(Dict({
@@ -377,7 +370,6 @@ OO_TEST(legacyScriptedChanges)
 OO_TEST(routeCacheAndSeeds)
 {
 	Fake();
-	@autoreleasepool
 	{
 		oo::Ref<OOSystemDescriptionManager> manager = NewManager();
 		// Distances are 0.4 * the truncated distance with dy halved: 4 (10 apart) and 8 (20 apart).
@@ -413,7 +405,6 @@ OO_TEST(routeCacheAndSeeds)
 OO_TEST(cxxApi)
 {
 	Fake();
-	@autoreleasepool
 	{
 		oo::Ref<OOSystemDescriptionManager> manager = oo::makeRef<OOSystemDescriptionManager>();
 		manager->setUniversalProperties(Dict({ { "economy", oo::PList(3) } }));

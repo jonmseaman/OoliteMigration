@@ -70,7 +70,6 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
@@ -211,7 +210,6 @@ oo::PList Saved(double expiry = 1500.0)
 
 OO_TEST(madeByShip)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		WormholeEntity *wh = ToNine(Ship(1000.0f));
@@ -238,7 +236,6 @@ OO_TEST(madeByShip)
 
 OO_TEST(misjump)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		WormholeEntity *wh = ToNine(Ship(1000.0f));
@@ -268,7 +265,6 @@ OO_TEST(misjump)
 
 OO_TEST(saved)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		WormholeEntity *wh = FromDict(Saved());
@@ -294,7 +290,6 @@ OO_TEST(saved)
 
 OO_TEST(scanning)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		WormholeEntity *wh = ToNine(Ship(1000.0f));
@@ -312,7 +307,6 @@ OO_TEST(scanning)
 
 OO_TEST(collisions)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		WormholeEntity *wh = ToNine(Ship(1000.0f));
@@ -332,7 +326,6 @@ OO_TEST(collisions)
 
 OO_TEST(update)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		WormholeEntity *saved = FromDict(Saved());
@@ -354,7 +347,6 @@ OO_TEST(update)
 
 OO_TEST(suckInRefused)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		WormholeEntity *wh = ToNine(Ship(1000.0f));
@@ -374,7 +366,6 @@ OO_TEST(suckInRefused)
 
 OO_TEST(disgorgeWithPlayer)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		WormholeEntity *wh = ToNine(Ship(1000.0f));
@@ -393,7 +384,6 @@ OO_TEST(disgorgeWithPlayer)
 
 OO_TEST(description)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		WormholeEntity *wh = ToNine(Ship(1000.0f));
@@ -407,7 +397,6 @@ OO_TEST(description)
 
 OO_TEST(facade)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		WormholeEntity *wh = ToNine(Ship(1000.0f));
@@ -424,7 +413,6 @@ OO_TEST(facade)
 // WormholeEntity for by selector is what OOJSWormhole.mm answers.
 OO_TEST(jsExtensions)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		WormholeEntity *wh = ToNine(Ship(1000.0f));

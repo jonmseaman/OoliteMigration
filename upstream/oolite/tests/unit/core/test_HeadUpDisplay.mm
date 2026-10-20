@@ -108,7 +108,6 @@ bool SameRGBA(OOColor *color, float r, float g, float b, float a)
 OO_TEST(madeFromAnEmptyDictionary)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		oo::Ref<HeadUpDisplay> hud = NewHUD(oo::PList(oo::PList::Dict{}));
 		OO_CHECK(hud != nil);
@@ -149,7 +148,6 @@ OO_TEST(madeFromAnEmptyDictionary)
 OO_TEST(readsItsConfiguration)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		const oo::PList mfd(oo::PList::Dict{ { "x", oo::PList(10) }, { "y", oo::PList(20) } });
 		const oo::PList info(oo::PList::Dict{
@@ -178,7 +176,6 @@ OO_TEST(readsItsConfiguration)
 OO_TEST(reticleColoursFromTheTargetReticleDial)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		oo::PList reticle(oo::PList::Dict{ { "selector", oo::PList("drawTargetReticle:") },
 										   { "target_rgba", oo::PList("blueColor") },
@@ -203,7 +200,6 @@ OO_TEST(reticleColoursFromTheTargetReticleDial)
 OO_TEST(setReticleColour)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		oo::Ref<HeadUpDisplay> hud = NewHUD(oo::PList(oo::PList::Dict{}));
 		oo::Ref<OOColor>	magenta = OOColor::magentaColor();
@@ -219,7 +215,6 @@ OO_TEST(setReticleColour)
 OO_TEST(crosshairFile)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		oo::Ref<HeadUpDisplay> hud = NewHUD(oo::PList(oo::PList::Dict{ { "crosshair_file", oo::PList("testcross.plist") } }));
 		OO_CHECK(hud->getCrosshairDefinition() == std::optional<std::string>("testcross.plist"));
@@ -234,7 +229,6 @@ OO_TEST(crosshairFile)
 OO_TEST(accessorsAndSetters)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		oo::Ref<HeadUpDisplay> hud = NewHUD(oo::PList(oo::PList::Dict{}));
 
@@ -293,7 +287,6 @@ OO_TEST(accessorsAndSetters)
 OO_TEST(hiddenSelectors)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		oo::Ref<HeadUpDisplay> hud = NewHUD(oo::PList(oo::PList::Dict{}));
 		OO_CHECK(!hud->hasHidden(std::string("drawCompass:")));
@@ -325,7 +318,6 @@ OO_TEST(nonlinearScannerScale)
 OO_TEST(setCrosshairDefinition)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		// Slice 2 (bead oo-8fiz9): the scripts' crosshair setter. (The frame's dials by name were the
 		// facade's selectors until bead oo-mwd58; they are the dial table's now.)
@@ -341,7 +333,6 @@ OO_TEST(setCrosshairDefinition)
 OO_TEST(beaconCodeIcon)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		// Slice 4 (bead oo-2p1ug): the entities hold the code icon by the C++ OOHUDBeaconIcon interface
 		// (the protocol and the icon's facade until bead oo-7ae4p; the facade's identity check went
@@ -358,7 +349,6 @@ OO_TEST(beaconCodeIcon)
 OO_TEST(cxxAPI)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		oo::Ref<HeadUpDisplay> hud = oo::makeRef<HeadUpDisplay>();
 		hud->initWithDictionary(oo::PList(oo::PList::Dict{

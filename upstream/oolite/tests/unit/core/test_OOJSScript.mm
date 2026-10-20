@@ -111,7 +111,6 @@ const char *const kNamedScript =
 OO_TEST(load)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		const oo::Ref<OOJSScript> script = OOJSScript::scriptWithPath(Script("named/named.js", kNamedScript), oo::PList());
 		OO_CHECK(script != nullptr);
@@ -138,7 +137,6 @@ OO_TEST(load)
 OO_TEST(defaultNames)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		// A script that names itself nothing is named after its file, or its OXP for script.js.
 		const oo::Ref<OOJSScript> byFile = OOJSScript::scriptWithPath(Script("loose/unnamed.js", "\"use strict\";\n"), oo::PList());
@@ -159,7 +157,6 @@ OO_TEST(defaultNames)
 OO_TEST(manifestAndProperties)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		WriteText(sRoot / "Baz.oxp" / "manifest.plist",
 				  "{ identifier = \"org.test.baz\"; version = \"2.5\"; author = \"Tester\"; license = \"CC0\"; }");
@@ -196,7 +193,6 @@ OO_TEST(manifestAndProperties)
 OO_TEST(callMethod)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		const oo::Ref<OOJSScript> script = OOJSScript::scriptWithPath(Script("call/call.js", kNamedScript), oo::PList());
 		OO_CHECK(script != nullptr);
@@ -227,7 +223,6 @@ OO_TEST(callMethod)
 OO_TEST(runningStack)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		const oo::Ref<OOJSScript> first = OOJSScript::scriptWithPath(Script("stack/first.js", "\"use strict\";\nthis.name = \"first\";\n"), oo::PList());
 		const oo::Ref<OOJSScript> second = OOJSScript::scriptWithPath(Script("stack/second.js", "\"use strict\";\nthis.name = \"second\";\n"), oo::PList());
@@ -259,7 +254,6 @@ OO_TEST(runningStack)
 OO_TEST(crossing)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		oo::Ref<OOJSScript> script = OOJSScript::scriptWithPath(Script("crossing/crossing.js", kNamedScript), oo::PList());
 		OO_CHECK(script != nullptr);
@@ -316,7 +310,6 @@ OO_TEST(crossing)
 OO_TEST(engineReset)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		const oo::Ref<OOJSScript> script = OOJSScript::scriptWithPath(Script("reset/reset.js", kNamedScript), oo::PList());
 		OO_CHECK(script != nullptr);
@@ -342,13 +335,11 @@ OO_TEST(engineReset)
 OO_TEST(broken)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OO_CHECK(OOJSScript::scriptWithPath(Script("broken/broken.js", "\"use strict\";\nthis.name = ;\n"), oo::PList()) == nullptr);
 		OO_CHECK(OOJSScript::currentlyRunningScript() == nullptr);
 		OO_CHECK(OOJSScript::scriptStack().empty());
 	}
-	@autoreleasepool
 	{
 		const oo::Ref<OOJSScript> after = OOJSScript::scriptWithPath(Script("broken/after.js", kNamedScript), oo::PList());
 		OO_CHECK(after != nullptr);

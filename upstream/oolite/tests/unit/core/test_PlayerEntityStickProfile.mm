@@ -65,7 +65,6 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
@@ -158,7 +157,6 @@ Started Start()
 
 OO_TEST(startShowsTheRollAxisStandardProfile)
 {
-	@autoreleasepool
 	{
 		Started s = Start();
 		oo::Ref<GuiDisplayGen>	gui = s.gui;
@@ -184,7 +182,6 @@ OO_TEST(startShowsTheRollAxisStandardProfile)
 
 OO_TEST(theAxisStepsBetweenRollPitchAndYaw)
 {
-	@autoreleasepool
 	{
 		Started s = Start();
 
@@ -208,7 +205,6 @@ OO_TEST(theAxisStepsBetweenRollPitchAndYaw)
 
 OO_TEST(theDeadZoneStepsByATwentiethOfItsMaximumOnTheCurrentAxis)
 {
-	@autoreleasepool
 	{
 		Started s = Start();
 		oo::Ref<OOJoystickAxisProfile> roll(Handler()->getProfileForAxis(AXIS_ROLL));
@@ -235,7 +231,6 @@ OO_TEST(theDeadZoneStepsByATwentiethOfItsMaximumOnTheCurrentAxis)
 
 OO_TEST(powerAndParameterStepTheStandardProfile)
 {
-	@autoreleasepool
 	{
 		Started s = Start();
 		oo::Ref<OOJoystickStandardAxisProfile> roll(static_cast<OOJoystickStandardAxisProfile *>(Handler()->getProfileForAxis(AXIS_ROLL)));
@@ -260,7 +255,6 @@ OO_TEST(powerAndParameterStepTheStandardProfile)
 
 OO_TEST(theProfileTypeSwitchesAndKeepsTheOtherForTheSwitchBack)
 {
-	@autoreleasepool
 	{
 		Started s = Start();
 		oo::Ref<OOJoystickAxisProfile> standard(Handler()->getProfileForAxis(AXIS_ROLL));
@@ -309,7 +303,6 @@ OO_TEST(theProfileTypeSwitchesAndKeepsTheOtherForTheSwitchBack)
 
 OO_TEST(theMouseAddsMovesAndDeletesSplinePoints)
 {
-	@autoreleasepool
 	{
 		Started s = Start();
 
@@ -355,7 +348,6 @@ OO_TEST(theMouseAddsMovesAndDeletesSplinePoints)
 
 OO_TEST(changesAreSavedToTheDefaults)
 {
-	@autoreleasepool
 	{
 		Started s = Start();
 		oo::Defaults::standard().removeObject(std::string(STICK_ROLL_AXIS_PROFILE_SETTING));
