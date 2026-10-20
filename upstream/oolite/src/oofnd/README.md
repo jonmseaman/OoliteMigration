@@ -537,8 +537,14 @@ hand residue) and deletes the legacy root in `OOCocoa.h/.mm`: the root's `cxx_` 
 legacy `- (id) descriptionComponents` (& co.) override while a class has one, and `oo::DescriptionOf`
 of an object not rooted on `OOObject` asks its `-description` (oo-qps.72 deletes both). Do not flip
 one class's override by hand before oo-qps.43: a converted superclass hides an unconverted
-subclass's override (the exemplar has no subclass). `tests/unit/oofnd/test_objc_description.mm` pins the text and the forwarding,
-linked against libobjc2 alone.
+subclass's override (the exemplar has no subclass).
+
+Since oo-8sql7 the root has no description category: the four methods are the `@optional` protocol
+`OODescription`, and an object whose class has no method of its own gets the root's default from the
+C++ functions `oo::ObjectDescription`, `oo::ObjectShortDescription`, `oo::ObjectDescriptionComponents`
+and `oo::ObjectShortDescriptionComponents` (what the deleted category answered; nullopt for nil).
+Send none of the four to an object directly; ask those functions. `tests/unit/oofnd/test_objc_plist.mm`
+links `OODescription.mm` against libobjc2 alone.
 
 ### Describing a property list: `oo::DescriptionOf(const oo::PList &)` (item 1, oo-qps.32)
 

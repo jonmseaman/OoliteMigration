@@ -82,7 +82,7 @@ oo::Ref<OOShaderProgram> OOShaderProgram::shaderProgramWithVertexShaderName(cons
 
 
 // A binding target: one property per supported return type, and some that are not.
-@interface TestTarget: OOWeakRefObject
+@interface TestTarget: OOObject
 {
 @public
 	id		_super;
@@ -92,7 +92,7 @@ oo::Ref<OOShaderProgram> OOShaderProgram::shaderProgramWithVertexShaderName(cons
 @end
 
 @implementation TestTarget
-- (id<OOWeakReferenceSupport>) superShaderBindingTarget	{ return _super; }
+- (id) superShaderBindingTarget	{ return _super; }
 - (int) intValue						{ return _int; }
 - (unsigned char) byteValue				{ return 7; }
 - (float) floatValue					{ return _float; }

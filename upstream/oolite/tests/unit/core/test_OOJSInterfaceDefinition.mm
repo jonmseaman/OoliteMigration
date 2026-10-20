@@ -1,19 +1,19 @@
 /*	test_OOJSInterfaceDefinition.mm
 	Unit tests for OOJSInterfaceDefinition (src/Core/Scripting/OOJSInterfaceDefinition.h/.mm):
 	bead oo-8fpc, a Phase 3 conversion in the house style of the OOColor exemplar (proposed
-	ADR-0056; amendment oo-o89, as its superclass OOWeakRefObject is still Objective-C).
+	ADR-0056; amendment oo-o89, as its superclass, the weak-reference root, was still Objective-C).
 
 	An interface definition is a station's F4 interface entry made by a script: a title, category
 	and summary, and a JS callback and its `this` that it keeps alive (GC roots) and runs with the
 	entry's key, pushing the script that made it. The test runs it in a real context on the game's
 	own façade backend (ooscript/JSEngine_quickjs.cpp) and links the game's own objects for the
-	class and the script's weak reference (OOWeakReference.mm and its bridge). What the rest of the engine would
+	class (the script's weak reference was the weak-reference class until bead oo-9ht.22). What the rest of the engine would
 	provide is defined below as the smallest stand-in that does the same thing: the engine object
 	(which calls the function), the script stack (OOJSScript) and the property-list converter. The
 	engine's and OOJSScript's headers are not imported, because the test defines those classes
 	(amendment oo-z1s4 item 4); the class's header names OOScript with @class for that (amendment
 	oo-fg7i item 5). The expectations were written against the Objective-C class and run on it
-	first; since bead oo-9ht.61 deleted the façade (an OOWeakRefObject) they ask the C++ class. They
+	first; since bead oo-9ht.61 deleted the façade (a weak-reference root subclass) they ask the C++ class. They
 	pin the initial state and the text properties, the callback and its `this` (kept alive across a
 	garbage collection), the run, the sort order (interfaceCompare(), with its null cases) and an
 	engine reset.
@@ -21,7 +21,6 @@
 */
 
 #import "OOJSInterfaceDefinition.h"
-#import "OOWeakReference.h"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/Notification.hpp"
 #include "oofnd/String.hpp"

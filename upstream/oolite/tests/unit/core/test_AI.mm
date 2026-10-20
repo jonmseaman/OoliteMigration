@@ -1,6 +1,6 @@
 /*	test_AI.mm
 	Unit tests for AI (src/Core/AI.h): bead oo-puw9, a Phase 3 conversion in the house style of
-	the OOColor exemplar (proposed ADR-0056). AI's superclass, OOWeakRefObject, is still
+	the OOColor exemplar (proposed ADR-0056). AI's superclass, the weak-reference root, was then
 	Objective-C, so the AI facade keeps it and owns its C++ object (amendment oo-o89 item 2).
 
 	The AI is a state machine: it loads a state machine (a property list of states, each a

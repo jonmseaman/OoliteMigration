@@ -76,12 +76,10 @@ __attribute__((objc_runtime_name("Entity")))
 @public
 	oo::Ref<Entity> _cxxEntity;
 }
-- (id) weakRefUnderlyingObject;
 @end
 
 // A mesh: its materials and shaders, and the arguments the last one was made with. C++ since bead
 // oo-9ht.132: the members of OOMesh (OOMesh.h) the binding calls, with their signatures.
-@protocol OOWeakReferenceSupport;
 
 class OOMesh : public oo::RefCounted
 {
@@ -275,8 +273,6 @@ void OOScript::clearJSSelf(ooscript::Object)					{}
 
 
 @implementation TestEntityObject
-
-- (id) weakRefUnderlyingObject  { return self; }
 
 @end
 

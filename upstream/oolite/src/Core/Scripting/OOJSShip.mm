@@ -882,8 +882,8 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			targets.reserve(ship->defenseTargetCount());
 			for (const auto &candidate : ship->defenseTargets())
 			{
-				// The set's snapshot holds the ships themselves, whose -weakRefUnderlyingObject (OOObject's)
-				// was self.
+				// The set's snapshot holds the ships themselves, whose underlying object (OOObject's
+				// weak-reference answer) was self.
 				if (!candidate)  break;	// the old loop stopped at the first zeroed reference
 				targets.push_back(candidate);
 			}

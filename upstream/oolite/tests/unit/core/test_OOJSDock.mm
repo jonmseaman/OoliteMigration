@@ -51,7 +51,6 @@ __attribute__((objc_runtime_name("Entity")))
 @public
 	oo::Ref<Entity> _cxxEntity;
 }
-- (id) weakRefUnderlyingObject;
 @end
 
 /*	A dock: C++ since bead oo-9ht.180 deleted the Objective-C dock this stood in for (its object is the
@@ -106,11 +105,6 @@ std::optional<std::string> Entity::jsClassName()  { return std::nullopt; }
 
 
 @implementation TestEntityObject
-
-- (id) weakRefUnderlyingObject
-{
-	return self;
-}
 
 // As the game's Entity (OOJavaScriptExtensions) answers for an entity made in C++: its C++ part's.
 - (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype  { _cxxEntity->getJSClass(outClass, outPrototype); }

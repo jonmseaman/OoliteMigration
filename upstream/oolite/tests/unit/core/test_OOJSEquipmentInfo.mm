@@ -23,7 +23,6 @@
 
 #import "OOEquipmentType.h"
 #import "OOColor.h"
-#import "OOWeakReference.h"
 #include <objc/runtime.h>
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/objc/OOException.h"
@@ -411,7 +410,7 @@ BOOL OOJSObjectGetterImplPRIVATE(ooscript::Context context, ooscript::Object obj
 		cxx_OOJSReportError(context, "Native method expected %s, got %s.", requiredJSClass->name, cxx_OOStringFromJSValue(context, ooscript::objectValue(object)).value_or("(null)").c_str());
 		return NO;
 	}
-	*outObject = [(id)ooscript::getPrivate(context, object) weakRefUnderlyingObject];
+	*outObject = (id)ooscript::getPrivate(context, object);	// the slot's object itself, as the engine reads it (bead oo-9ht.22)
 	if (*outObject != nil && ![*outObject isKindOfClass:requiredObjCClass])
 	{
 		cxx_OOJSReportError(context, "Native method expected %s from %s.", class_getName(requiredObjCClass), requiredJSClass->name);

@@ -85,7 +85,6 @@ __attribute__((objc_runtime_name("Entity")))
 	std::optional<std::string> _beaconLabel;
 	Quaternion _orientation;
 }
-- (id) weakRefUnderlyingObject;
 @end
 
 // The universe's beacon list and the player's compass: what the binding tells them.
@@ -156,8 +155,6 @@ public:
 
 
 @implementation TestEntityObject
-
-- (id) weakRefUnderlyingObject  { return self; }
 
 @end
 

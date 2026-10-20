@@ -9544,3 +9544,42 @@ test_speed_seam fix.
    `[entity setSpeed:fValue]` (std-2026-10-19); every assertion, message and mutant check is kept.
 
 **Tests.** As above; no expected value changes.
+## Amendment (beads oo-9ht.22 and oo-8sql7): the weak-reference classes and the root's description category are deleted
+
+**Context.** Batch AX, the last `@implementation` blocks inside the ADR-0061 gate. Jon approved (2026-10-19) retiring
+test_OOWeakReference, test_OOWeakSet and test_objc_description with their only subjects, and the re-bases of
+the tests that subclassed or imported the weak-reference classes (lines in `tools/retire-test-approvals.txt`).
+
+**Decision (behaviour-identical but item 4).**
+
+1. `OOWeakReference.h/.mm`, `OOWeakReference+ObjCBridge.h/.mm` (OOWeakReference, `OOObject (OOWeakReference)`,
+   OOWeakRefObject, OOWeakReferenceNilTarget, the OOWeakReferenceSupport protocol) and `OOWeakSet.h/.mm` (no
+   caller since oo-9ht.22.3) are deleted with their meson lines. No object in the game was referred to by one.
+2. The JS engine's private slot holds the object itself: the getter, the finalizer and the basic converter read
+   it directly, which is what `-weakRefUnderlyingObject` answered for every object but a weak reference
+   (OOObject's category answered self); `OOJavaScriptEngineWeakRefUnderlyingObject` goes.
+3. OOShaderUniform's Objective-C binding target (`setBindingTarget(id)`, the `id` factory; reached by the tests,
+   and by the entity path only to clear it) is held by libobjc2's zeroing weak reference (`objc_storeWeak`,
+   `objc_loadWeakRetained` for one description or apply, `objc_destroyWeak`; OOObject's count is the runtime's,
+   so `__weak` zeroes, `test_objc_floor` weakReferencesZero) instead of an OOWeakReference: it reads nil exactly
+   when the proxy's object did. `id<OOWeakReferenceSupport>` is `id` (the same `@` encoding in
+   OOJSCallEntityMethods.h and its generator).
+4. **Log text (flagged):** a bound uniform's description prints its target's address where it printed its
+   OOWeakReference proxy's (`[<Class 0x...> selector]`); the class and selector are unchanged.
+5. oo-8sql7: `@implementation OOObject (OODescription)` is deleted. The four methods are the `@optional` protocol
+   `OODescription` (declared on OOObject by a category interface with no implementation, so a send to an
+   `OOObject *` type-checks), and `oo::ObjectDescription`, `ObjectShortDescription`, `ObjectDescriptionComponents`
+   and `ObjectShortDescriptionComponents` answer the class's own method (`class_respondsToSelector` on the real
+   class, as `OOJSObjectAnswersGlue`) else the category's body in C++, nullopt for nil. `oo::DescriptionOf`,
+   `ShortDescriptionOf` and the JS engine's `OOJavaScriptEngineDescriptionComponents` ask them.
+6. Kept, as Jon directed: the frozen by-name rows of `OOEntityObjectNamesTable.h` (`weakRetain`,
+   `weakRefUnderlyingObject`, `weakRefDied:`, `weakSelf`) and test_OOEntityCalledByName's check of them, and the
+   weak entity node's texts (`OOWeakReference` as its class name, `<Dead OOWeakReference 0x...>`): oo-9ht.22's
+   acceptance grep is narrowed to not count them (the original is kept in the bead's notes).
+
+**Tests.** Retired (ADR-0049, Jon 2026-10-19): `tests/unit/core/test_OOWeakReference.mm`, `test_OOWeakSet.mm`,
+`tests/unit/oofnd/test_objc_description.mm`; their meson entries become comment lines. Re-based (approval lines
+oo-9ht.22): the stand-ins of test_OOJSShipGroup, test_OOJSStation and test_OOShaderUniform are rooted on OOObject;
+the `OOWeakReference.h` imports go from seven tests; the `-weakRefUnderlyingObject` stand-ins go from eleven
+test_OOJS* files (two stand-in engine functions read the slot directly); comments in six tests; the
+weak-reference sources leave twelve link lists in `tests/unit/core/meson.build`. No case or expected value changes.

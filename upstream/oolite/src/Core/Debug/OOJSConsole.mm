@@ -826,7 +826,7 @@ namespace {
 	facade's return type, so its result (or the "cannot be called" error) is the one the selector
 	path read from the same encoding, and a row whose signature matched nothing (NotCallable)
 	answers that error. Every other name answers "does not respond": the root classes' selectors
-	(OOWeakRefObject, OOObject: lifetime, weak reference, description), the scalar selectors with
+	(the weak-reference root and OOObject: lifetime, weak reference, description), the scalar selectors with
 	arguments, which callObjC() called with the arguments missing, and the facade's other
 	selectors with arguments, whose signatures matched nothing ("cannot be called" until then).
 */

@@ -75,7 +75,6 @@ __attribute__((objc_runtime_name("Entity")))
 	oo::Ref<Entity> _cxxEntity;	// the plume's C++ part (oo::ToCxx reads it)
 	id _owner;
 }
-- (id) weakRefUnderlyingObject;
 @end
 
 // A ship: C++ since bead oo-9ht.144 deleted the Objective-C ship this stood in for, the C++ part of
@@ -111,8 +110,6 @@ bool OOJSExhaustPlumeIsVisibleToScripts(void);
 
 
 @implementation TestEntityObject
-
-- (id) weakRefUnderlyingObject  { return self; }
 
 @end
 

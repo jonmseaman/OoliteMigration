@@ -23,7 +23,6 @@
 
 #import "OOCocoa.h"
 #import "oofnd/objc/OOObject.h"
-#import "OOWeakReference.h"
 #import "OOCommodities.h"
 #import "OOCommodityMarket.h"
 #import "OOJSInterfaceDefinition.h"
@@ -95,14 +94,13 @@ public:
 
 // The object: the root's, which holds the C++ part (oo::ToCxx reads it) and asks it the JS questions.
 __attribute__((objc_runtime_name("Entity")))
-@interface TestEntityObject: OOWeakRefObject
+@interface TestEntityObject: OOObject
 {
 @public
 	oo::Ref<Entity> _cxxEntity;
 	std::string _name;
 	ooscript::Object _jsSelf;
 }
-- (id) weakRefUnderlyingObject;
 @end
 
 /*	A station: C++ since bead oo-9ht.175 deleted the Objective-C station this stood in for (its object
@@ -316,7 +314,6 @@ ooscript::Object gOOEntityJSPrototype = nullptr;
 
 @implementation TestEntityObject
 
-- (id) weakRefUnderlyingObject  { return self; }
 - (std::optional<std::string>) cxx_descriptionComponents  { return _name; }
 
 // As the game's Entity (OOJavaScriptExtensions) answers for an entity made in C++: its C++ part's.

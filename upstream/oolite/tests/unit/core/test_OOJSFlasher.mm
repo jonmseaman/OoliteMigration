@@ -101,7 +101,6 @@ __attribute__((objc_runtime_name("Entity")))
 	id _removed;
 	BOOL _isShip;
 }
-- (id) weakRefUnderlyingObject;
 - (BOOL) isShip;
 @end
 
@@ -157,7 +156,6 @@ bool OOJSFlasherIsVisibleToScripts(void);
 
 @implementation TestEntityObject
 
-- (id) weakRefUnderlyingObject  { return self; }
 - (BOOL) isShip  { return _isShip; }
 
 @end

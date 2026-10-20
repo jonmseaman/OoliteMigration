@@ -6,7 +6,7 @@
 	The entity reads Universe, so the test links the whole game but main (['*']) and uses a Universe
 	that was never initialised, subclassed to record -removeEntity: and the range searches the
 	pulses make (it finds no ship, so no script event is sent). The firing ship was a plain entity
-	(the blast messaged it only as one: -position, -status, -weakRetain); since bead oo-9ht.144 the
+	(the blast messaged it only as one: -position, -status, its weak reference); since bead oo-9ht.144 the
 	blast calls the C++ ship's members, so it is a C++ ship under its object, never set up. The expectations were
 	written against the Objective-C API and run on the unconverted class first (but for "no blast
 	from nil", which crashed there in the Entity facade's -dealloc of an entity whose -init never
