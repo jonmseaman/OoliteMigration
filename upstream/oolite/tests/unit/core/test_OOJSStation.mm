@@ -22,7 +22,6 @@
 */
 
 #import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
 #import "OOCommodities.h"
 #import "OOCommodityMarket.h"
 #import "OOJSInterfaceDefinition.h"
@@ -93,15 +92,23 @@ public:
 #include "OOJSEntityHolder.h"
 
 // The object: the root's, which holds the C++ part (oo::ToCxx reads it) and asks it the JS questions.
-__attribute__((objc_runtime_name("Entity")))
-@interface TestEntityObject: OOObject
+// C++ since bead oo-4aq6a.12 (it was rooted on the Objective-C root class OOObject, which Phase 4
+// deletes); its selectors are members of the same names, and what its -respondsToSelector: answered
+// for the category's two is answersJSClass().
+class TestEntityObject final : public oo::RefCounted
 {
-@public
+public:
+	const char *className() const  { return "Entity"; }	// its Objective-C class's runtime name
+	std::optional<std::string> cxx_descriptionComponents();
+	bool answersJSClass();
+	void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
+	std::optional<std::string> cxx_oo_jsClassName();
+	ooscript::Value oo_jsValueInContext(ooscript::Context context);
+
 	oo::Ref<Entity> _cxxEntity;
 	std::string _name;
-	ooscript::Object _jsSelf;
-}
-@end
+	ooscript::Object _jsSelf = nullptr;
+};
 
 /*	A station: C++ since bead oo-9ht.175 deleted the Objective-C station this stood in for (its object
 	is the ship's facade); the members the binding calls, declared as StationEntity.h declares them
@@ -280,12 +287,6 @@ public:
 };
 
 
-@interface TestEntityObject (OOJavaScriptExtensions)
-- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
-- (std::optional<std::string>) cxx_oo_jsClassName;
-@end
-
-
 #import "OOJSStation.h"
 
 #include "oo_test.hpp"
@@ -306,46 +307,39 @@ ooscript::ClassDef sFakeShipClass = { "Ship", ooscript::ClassFlag::HasPrivate };
 ooscript::Object sShipPrototype = nullptr;
 std::map<ooscript::ClassDef *, ooscript::ClassDef *> sSuperclasses;
 std::map<ooscript::ClassDef *, int> sConverters;
-std::map<Entity *, ::TestEntityObject *> sObjects;	// what oo::ToObjC answers: each ship's object
+std::map<Entity *, ::TestEntityObject *> sObjects;	// what TestObjectOf answers (oo::ToObjC until bead oo-4aq6a.12): each ship's object
 }
 
 ooscript::Object gOOEntityJSPrototype = nullptr;
 
 
-@implementation TestEntityObject
-
-- (std::optional<std::string>) cxx_descriptionComponents  { return _name; }
+std::optional<std::string> TestEntityObject::cxx_descriptionComponents()  { return _name; }
 
 // As the game's Entity (OOJavaScriptExtensions) answers for an entity made in C++: its C++ part's.
-- (BOOL) respondsToSelector:(SEL)selector
-{
-	if (selector == @selector(getJSClass:andPrototype:) || selector == @selector(cxx_oo_jsClassName))  return _cxxEntity != nullptr;
-	return [super respondsToSelector:selector];
-}
-- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype  { _cxxEntity->getJSClass(outClass, outPrototype); }
-- (std::optional<std::string>) cxx_oo_jsClassName  { return _cxxEntity->jsClassName(); }
+bool TestEntityObject::answersJSClass()  { return _cxxEntity != nullptr; }
+void TestEntityObject::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)  { _cxxEntity->getJSClass(outClass, outPrototype); }
+std::optional<std::string> TestEntityObject::cxx_oo_jsClassName()  { return _cxxEntity->jsClassName(); }
 
-// As -[TestEntityObject oo_jsValueInContext:] makes one: the class and prototype the entity's category names.
-- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
+// As -[TestEntityObject oo_jsValueInContext:] made one: the class and prototype the entity's category names.
+ooscript::Value TestEntityObject::oo_jsValueInContext(ooscript::Context context)
 {
 	if (_jsSelf == nullptr)
 	{
 		ooscript::ClassDef *jsClass = &sFakeShipClass;
 		ooscript::Object prototype = sShipPrototype;
-		if ([self respondsToSelector:@selector(getJSClass:andPrototype:)])  [self getJSClass:&jsClass andPrototype:&prototype];
+		if (answersJSClass())  getJSClass(&jsClass, &prototype);
 		_jsSelf = ooscript::newObject(context, jsClass, prototype, nullptr);
 		if (_cxxEntity == nullptr)  _cxxEntity = oo::makeRef<Entity>();	// a plain entity's C++ part
-		sObjects[_cxxEntity.get()] = self;
+		sObjects[_cxxEntity.get()] = this;
 		OOJSSetCxxPrivate(context, _jsSelf, oo::makeRef<OOJSEntityHolder>(_cxxEntity.get()).get());	// the slot holds the C++ entity (bead oo-9ht.39.3)
 	}
 	return ooscript::objectValue(_jsSelf);
 }
 
-@end
 
-
-namespace oo { ::TestEntityObject *ToObjC(Entity *entity); }	// Entity+ObjCBridge.mm's, defined below
-#import "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
+::TestEntityObject *TestObjectOf(Entity *entity);	// Entity+ObjCBridge.mm's oo::ToObjC until bead oo-4aq6a.12, defined below
+#define OO_ENTITY_HELPERS_STAND_IN_CXX
+#include "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
 
 namespace {
 
@@ -353,7 +347,7 @@ namespace {
 // ship this made), kept for the life of the test.
 ::TestEntityObject *NewShipObject(const char *name, oo::Ref<Entity> ship)
 {
-	::TestEntityObject *object = [[::TestEntityObject alloc] init];
+	::TestEntityObject *object = oo::makeRef<::TestEntityObject>().leakRef();
 	object->_cxxEntity = ship;
 	object->_name = name;
 	sObjects[ship.get()] = object;
@@ -370,8 +364,8 @@ std::optional<std::string> Entity::jsClassName()  { return std::nullopt; }
 // oo-9ht.39.8.2: its -oo_jsValueInContext:, null for none.
 ooscript::Value Entity::jsValueInContext(ooscript::Context context)
 {
-	::TestEntityObject *object = oo::ToObjC(this);
-	return object != nil ? [object oo_jsValueInContext:context] : ooscript::nullValue();
+	::TestEntityObject *object = TestObjectOf(this);
+	return object != nullptr ? object->oo_jsValueInContext(context) : ooscript::nullValue();
 }
 void Entity::clearJSSelf(ooscript::Object)  {}
 GLfloat ShipEntity::getFlightRoll()  { return static_cast<StationEntity *>(this)->_roll; }	// the cases ask stations only
@@ -472,10 +466,10 @@ oo::PList StationEntity::getMarketDefinition()  { std::abort(); }
 std::optional<std::string> StationEntity::getMarketScriptName()  { std::abort(); }
 OOCargoQuantity StationEntity::getMarketCapacity()  { std::abort(); }
 bool StationEntity::getMarketMonitored()  { std::abort(); }
-::TestEntityObject *oo::ToObjC(Entity *entity)
+::TestEntityObject *TestObjectOf(Entity *entity)
 {
 	auto found = sObjects.find(entity);
-	return found != sObjects.end() ? found->second : nil;
+	return found != sObjects.end() ? found->second : nullptr;
 }
 
 
@@ -662,7 +656,11 @@ ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &p
 		return js != nullptr ? ooscript::stringValue(js) : ooscript::nullValue();
 	}
 	if (plist.isNumber())  return ooscript::numberValue(plist.doubleValue());
-	if (Entity *entity = oo::EntityIn(plist))  return OOJSValueFromNativeObject(context, oo::ToObjC(entity));	// an entity's node: its object's value (bead oo-dpyk8)
+	if (Entity *entity = oo::EntityIn(plist))	// an entity's node: its object's value (bead oo-dpyk8), as OOJSValueFromNativeObject() gave it
+	{
+		::TestEntityObject *object = TestObjectOf(entity);
+		return object != nullptr ? object->oo_jsValueInContext(context) : ooscript::nullValue();
+	}
 	if (id object = oo::ObjectIn(plist))  return OOJSValueFromNativeObject(context, object);
 	if (const oo::PList::Array *array = plist.getIf<oo::PList::Array>())
 	{
@@ -778,11 +776,14 @@ bool OOJSObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &ar
 }
 
 
-// The engine's conversion asks the object for its JS value; nil is null.
+// The engine's conversion asks the object for its JS value; nil is null. (An entity's object, the
+// only object the test made, is C++ since bead oo-4aq6a.12 and asked directly, so only nil, which
+// the binding passes, reaches this; anything else would be undefined, as the engine's default.)
 ooscript::Value OOJSValueFromNativeObject(ooscript::Context context, id object)
 {
+	(void)context;
 	if (object == nil)  return ooscript::nullValue();
-	return [object oo_jsValueInContext:context];
+	return ooscript::undefinedValue();
 }
 
 
@@ -841,9 +842,9 @@ ooscript::Runtime sRuntime;
 ooscript::Object sGlobal;
 StationEntity *sStation = nullptr;	// the C++ station (its object: sStationObject)
 StationEntity *sOther = nullptr;
-::TestEntityObject *sStationObject = nil;
-::TestEntityObject *sOtherObject = nil;
-::TestEntityObject *sShip = nil;	// a ship's object and its C++ part
+::TestEntityObject *sStationObject = nullptr;
+::TestEntityObject *sOtherObject = nullptr;
+::TestEntityObject *sShip = nullptr;	// a ship's object and its C++ part
 ::ShipEntity *sShipPart = nullptr;
 Universe *sUniverse = nil;
 
@@ -896,9 +897,9 @@ void SetUpContext()
 	sOther->_name = "Rock Hermit";
 	sShip = NewShipObject("Cobra", oo::makeRef<::ShipEntity>());
 	sShipPart = static_cast<::ShipEntity *>(sShip->_cxxEntity.get());
-	Define("station", [sStationObject oo_jsValueInContext:sContext]);
-	Define("other", [sOtherObject oo_jsValueInContext:sContext]);
-	Define("ship", [sShip oo_jsValueInContext:sContext]);
+	Define("station", sStationObject->oo_jsValueInContext(sContext));
+	Define("other", sOtherObject->oo_jsValueInContext(sContext));
+	Define("ship", sShip->oo_jsValueInContext(sContext));
 }
 
 
@@ -936,12 +937,12 @@ OO_TEST(registration)
 	SetUpContext();
 	ooscript::ClassDef *stationClass = nullptr;
 	ooscript::Object prototype = nullptr;
-	[sStationObject getJSClass:&stationClass andPrototype:&prototype];
+	sStationObject->getJSClass(&stationClass, &prototype);
 	OO_CHECK(stationClass != nullptr && std::strcmp(stationClass->name, "Station") == 0);
 	OO_CHECK(prototype != nullptr);
 	OO_CHECK(OOJSIsSubclass(stationClass, &sFakeShipClass));
 	OO_CHECK_EQ(sConverters[stationClass], 1);
-	OO_CHECK([sStationObject cxx_oo_jsClassName] == std::optional<std::string>("Station"));
+	OO_CHECK(sStationObject->cxx_oo_jsClassName() == std::optional<std::string>("Station"));
 	OO_CHECK_EVAL("typeof Station", "function");
 	OO_CHECK_EVAL("new Station()", "threw: unconstructable");
 	OO_CHECK_EVAL("Object.getPrototypeOf(Station.prototype) === Ship.prototype", "true");

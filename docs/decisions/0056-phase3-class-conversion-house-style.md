@@ -9664,6 +9664,23 @@ targets, plist/by-name objects, the JS engine's slot objects, shader binding tar
 `oo::autorelease` (OOAIAutorelease, `OOTexture::clearCache`) now drain at the test's scopes where the Objective-C
 pools left them to leak; every case, input and expected value is unchanged.
 
+## Amendment (bead oo-4aq6a.12): four more JS tests' Objective-C entity stand-ins become C++
+
+**Context.** Batch BA, after oo-4aq6a.11. test_OOJSStation, test_OOJSVisualEffect, test_OOJSEntity and test_OOJSPlayer
+stand in for the engine's id-taking functions themselves (`OOJSValueFromNativeObject`, `OOJSValueFromPList`, the
+slot glue), so their OOObject-rooted `TestEntityObject` reaches only the test's own code.
+
+**Decision (tests only; std-2026-10-19 item 1, approval lines "oo-4aq6a.12").** As in amendment oo-4aq6a.11: the
+stand-in is a C++ `oo::RefCounted` whose selectors are members of the same names and whose ivars are zeroed members;
+the test's `oo::ToObjC()` is `TestObjectOf()`; a send to a possibly-nil object keeps nil's zero answer (test_OOJSEntity's
+`Send()` helper); test_OOJSStation's `-respondsToSelector:` override for the category's selectors is
+`answersJSClass()`; test_OOJSPlayer's player object, a subclass the test registered at run time under the name
+`PlayerEntity`, is a C++ subclass whose `className()` answers that name, and an entity node's object with none is
+described "nil" as `class_getName(Nil)` answered. `tests/unit/core/EntityHelpersStandIn.h`'s C++ mode describes the
+object with its `-cxx_descriptionComponents` (full) or `-cxx_shortDescriptionComponents` (short) member where it has
+one, as the Objective-C description family did. test_OOJSShipGroup (the engine's Objective-C wrapper glue:
+`OOJSObjectGetterImplPRIVATE`, the finalizer's release of the slot's object) stays for oo-4aq6a.6. Every case,
+input and expected value is unchanged.
 ## Amendment (bead oo-4aq6a.11): the JS tests' Objective-C entity stand-ins that never reach src become C++
 
 **Context.** Batch BA, the JS-test follow-on of oo-4aq6a.2. In ten test_OOJS* files the OOObject-rooted stand-in

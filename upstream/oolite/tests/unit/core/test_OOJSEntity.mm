@@ -25,7 +25,6 @@
 */
 
 #import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
 #include <objc/runtime.h>
 #include "OOMaths.h"
 #include "OOTypes.h"
@@ -91,56 +90,58 @@ public:
 	bool getIsVisualEffect() override;
 };
 
-__attribute__((objc_runtime_name("Entity")))
-@interface TestEntityObject: OOObject
+// C++ since bead oo-4aq6a.12 (it was rooted on the Objective-C root class OOObject, which Phase 4
+// deletes): its selectors are members of the same names, its ivars zeroed members.
+class TestEntityObject final : public oo::RefCounted
 {
-@public
+public:
+	const char *className() const  { return "Entity"; }	// its Objective-C class's runtime name
+	float collisionRadius();
+	HPVector position();
+	void setPosition(HPVector posn);
+	Quaternion normalOrientation();
+	void setNormalOrientation(Quaternion quat);
+	OOEntityStatus status();
+	OOScanClass scanClass();
+	void setScanClass(OOScanClass sClass);
+	float mass();
+	::TestEntityObject *owner();
+	float energy();
+	void setEnergy(float amount);
+	float maxEnergy();
+	void setMaxEnergy(float amount);
+	float distanceTravelled();
+	float spawnTime();
+	bool isShip();
+	bool isStation();
+	bool isDock();
+	bool isSubEntity();
+	bool isPlayer();
+	bool isPlanet();
+	bool isSun();
+	bool isSunlit();
+	bool isVisible();
+	bool isVisualEffect();
+	bool isWormhole();
+	bool isInSpace();
+
 	oo::Ref<Entity> _cxxEntity;	// the C++ part (oo::ToCxx reads it): a ship's
-	float _collisionRadius;
-	HPVector _position;
-	Quaternion _orientation;
-	OOEntityStatus _status;
-	OOScanClass _scanClass;
-	float _mass;
-	id _owner;
-	float _energy;
-	float _maxEnergy;
-	float _distanceTravelled;
-	float _spawnTime;
-	BOOL _isShip, _isStation, _isDock, _isSubEntity, _isPlayer, _isPlanet, _isSun, _isSunlit;
-	BOOL _isVisible, _isVisualEffect, _isWormhole, _isInSpace;
-	int _dumps;
-	int _positionSets;
-}
-- (float) collisionRadius;
-- (HPVector) position;
-- (void) setPosition:(HPVector)posn;
-- (Quaternion) normalOrientation;
-- (void) setNormalOrientation:(Quaternion)quat;
-- (OOEntityStatus) status;
-- (OOScanClass) scanClass;
-- (void) setScanClass:(OOScanClass)sClass;
-- (float) mass;
-- (id) owner;
-- (float) energy;
-- (void) setEnergy:(float)amount;
-- (float) maxEnergy;
-- (void) setMaxEnergy:(float)amount;
-- (float) distanceTravelled;
-- (float) spawnTime;
-- (BOOL) isShip;
-- (BOOL) isStation;
-- (BOOL) isDock;
-- (BOOL) isSubEntity;
-- (BOOL) isPlayer;
-- (BOOL) isPlanet;
-- (BOOL) isSun;
-- (BOOL) isSunlit;
-- (BOOL) isVisible;
-- (BOOL) isVisualEffect;
-- (BOOL) isWormhole;
-- (BOOL) isInSpace;
-@end
+	float _collisionRadius = {};
+	HPVector _position = {};
+	Quaternion _orientation = {};
+	OOEntityStatus _status = {};
+	OOScanClass _scanClass = {};
+	float _mass = {};
+	::TestEntityObject *_owner = nullptr;
+	float _energy = {};
+	float _maxEnergy = {};
+	float _distanceTravelled = {};
+	float _spawnTime = {};
+	bool _isShip = false, _isStation = false, _isDock = false, _isSubEntity = false, _isPlayer = false, _isPlanet = false, _isSun = false, _isSunlit = false;
+	bool _isVisible = false, _isVisualEffect = false, _isWormhole = false, _isInSpace = false;
+	int _dumps = {};
+	int _positionSets = {};
+};
 
 // A ship: C++ since bead oo-9ht.144 deleted the Objective-C ship this stood in for, the C++ part of
 // an entity's object, declared as ShipEntity.h declares it (the test imports no game header that
@@ -167,6 +168,7 @@ public:
 #include <map>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 
@@ -181,45 +183,41 @@ extern ooscript::Object gOOEntityJSPrototype;
 bool EntityFromArgumentList(ooscript::Context context, const std::optional<std::string> &scriptClass, const std::optional<std::string> &function, unsigned argc, ooscript::Value *argv, Entity **outEntity, unsigned *outConsumed);
 
 
-@implementation TestEntityObject
+float TestEntityObject::collisionRadius()  { return _collisionRadius; }
+HPVector TestEntityObject::position()  { return _position; }
+void TestEntityObject::setPosition(HPVector posn)  { _position = posn; _positionSets++; }
+Quaternion TestEntityObject::normalOrientation()  { return _orientation; }
+void TestEntityObject::setNormalOrientation(Quaternion quat)  { _orientation = quat; }
+OOEntityStatus TestEntityObject::status()  { return _status; }
+OOScanClass TestEntityObject::scanClass()  { return _scanClass; }
+void TestEntityObject::setScanClass(OOScanClass sClass)  { _scanClass = sClass; }
 
-- (float) collisionRadius  { return _collisionRadius; }
-- (HPVector) position  { return _position; }
-- (void) setPosition:(HPVector)posn  { _position = posn; _positionSets++; }
-- (Quaternion) normalOrientation  { return _orientation; }
-- (void) setNormalOrientation:(Quaternion)quat  { _orientation = quat; }
-- (OOEntityStatus) status  { return _status; }
-- (OOScanClass) scanClass  { return _scanClass; }
-- (void) setScanClass:(OOScanClass)sClass  { _scanClass = sClass; }
-
-- (float) mass
+float TestEntityObject::mass()
 {
 	if (_mass == 99)  OORaiseException(OOInvalidArgumentException, "mass %s", "boom");
 	if (_mass == 98)  throw std::runtime_error("cxx boom");
 	return _mass;
 }
 
-- (id) owner  { return _owner; }
-- (float) energy  { return _energy; }
-- (void) setEnergy:(float)amount  { _energy = amount; }
-- (float) maxEnergy  { return _maxEnergy; }
-- (void) setMaxEnergy:(float)amount  { _maxEnergy = amount; }
-- (float) distanceTravelled  { return _distanceTravelled; }
-- (float) spawnTime  { return _spawnTime; }
-- (BOOL) isShip  { return _isShip; }
-- (BOOL) isStation  { return _isStation; }
-- (BOOL) isDock  { return _isDock; }
-- (BOOL) isSubEntity  { return _isSubEntity; }
-- (BOOL) isPlayer  { return _isPlayer; }
-- (BOOL) isPlanet  { return _isPlanet; }
-- (BOOL) isSun  { return _isSun; }
-- (BOOL) isSunlit  { return _isSunlit; }
-- (BOOL) isVisible  { return _isVisible; }
-- (BOOL) isVisualEffect  { return _isVisualEffect; }
-- (BOOL) isWormhole  { return _isWormhole; }
-- (BOOL) isInSpace  { return _isInSpace; }
-
-@end
+::TestEntityObject *TestEntityObject::owner()  { return _owner; }
+float TestEntityObject::energy()  { return _energy; }
+void TestEntityObject::setEnergy(float amount)  { _energy = amount; }
+float TestEntityObject::maxEnergy()  { return _maxEnergy; }
+void TestEntityObject::setMaxEnergy(float amount)  { _maxEnergy = amount; }
+float TestEntityObject::distanceTravelled()  { return _distanceTravelled; }
+float TestEntityObject::spawnTime()  { return _spawnTime; }
+bool TestEntityObject::isShip()  { return _isShip; }
+bool TestEntityObject::isStation()  { return _isStation; }
+bool TestEntityObject::isDock()  { return _isDock; }
+bool TestEntityObject::isSubEntity()  { return _isSubEntity; }
+bool TestEntityObject::isPlayer()  { return _isPlayer; }
+bool TestEntityObject::isPlanet()  { return _isPlanet; }
+bool TestEntityObject::isSun()  { return _isSun; }
+bool TestEntityObject::isSunlit()  { return _isSunlit; }
+bool TestEntityObject::isVisible()  { return _isVisible; }
+bool TestEntityObject::isVisualEffect()  { return _isVisualEffect; }
+bool TestEntityObject::isWormhole()  { return _isWormhole; }
+bool TestEntityObject::isInSpace()  { return _isInSpace; }
 
 
 Entity::~Entity() = default;
@@ -289,7 +287,7 @@ namespace {
 std::map<ooscript::ClassDef *, ooscript::ClassDef *> sSuperclasses;
 std::map<ooscript::ClassDef *, int> sConverters;
 std::map<TestEntityObject *, ooscript::Object> sEntityObjects;
-std::map<Entity *, TestEntityObject *> sObjects;	// what oo::ToObjC answers: each wrapped entity's object
+std::map<Entity *, TestEntityObject *> sObjects;	// what TestObjectOf answers (oo::ToObjC until bead oo-4aq6a.12): each wrapped entity's object
 ooscript::Context sContext;
 
 
@@ -339,59 +337,76 @@ ooscript::Value JSValueForEntity(TestEntityObject *entity)
 Entity *gOOJSPlayerIfStale = nullptr;	// the player's C++ entity (bead oo-9ht.39.25)
 
 
-// oo::ToObjC (Entity+ObjCBridge.mm): the object of a C++ part the test wrapped, nil for any other.
-namespace oo { ::TestEntityObject *ToObjC(Entity *entity); }
-#import "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
-::TestEntityObject *oo::ToObjC(Entity *entity)
-{
-	auto found = sObjects.find(entity);
-	return found != sObjects.end() ? found->second : nil;
-}
 
 // What the object's -dumpState counted until bead oo-9ht.39.8.2.
-void Entity::dumpState()  { oo::ToObjC(this)->_dumps++; }
+// oo::ToObjC (Entity+ObjCBridge.mm) until bead oo-4aq6a.12: the object of a C++ part the test
+// wrapped, null for any other.
+::TestEntityObject *TestObjectOf(Entity *entity);
+#define OO_ENTITY_HELPERS_STAND_IN_CXX
+#include "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
+::TestEntityObject *TestObjectOf(Entity *entity)
+{
+	auto found = sObjects.find(entity);
+	return found != sObjects.end() ? found->second : nullptr;
+}
+
+
+// [object message] where object may be nil (bead oo-4aq6a.12): nil answered zero and did nothing.
+template <class Result, class... Parameters, class... Arguments>
+Result Send(::TestEntityObject *object, Result (::TestEntityObject::*method)(Parameters...), Arguments... arguments)
+{
+	if (object == nullptr)
+	{
+		if constexpr (std::is_void_v<Result>)  return;
+		else  return Result{};
+	}
+	return (object->*method)(arguments...);
+}
+
+
+void Entity::dumpState()  { TestObjectOf(this)->_dumps++; }
 // What the object's -position/-orientation answered for the vector and quaternion conversions, which
 // read the C++ entity since bead oo-9ht.39.8.12 (link stand-ins: no case here converts an entity).
-HPVector Entity::getPosition()  { return oo::ToObjC(this)->_position; }
-Quaternion Entity::getOrientation()  { return oo::ToObjC(this)->_orientation; }
+HPVector Entity::getPosition()  { return TestObjectOf(this)->_position; }
+Quaternion Entity::getOrientation()  { return TestObjectOf(this)->_orientation; }
 
 // What the object's selectors answered, which the property blocks call the C++ members for since bead
 // oo-9ht.39.8.21: each asks the object, so the stand-in's state, its counters and -mass's raise and
 // throw are what they were.
-OOEntityStatus Entity::status()  { return [oo::ToObjC(this) status]; }
-GLfloat Entity::getMass()  { return [oo::ToObjC(this) mass]; }
-GLfloat Entity::getEnergy()  { return [oo::ToObjC(this) energy]; }
-void Entity::setEnergy(GLfloat amount)  { [oo::ToObjC(this) setEnergy:amount]; }
-GLfloat Entity::getMaxEnergy()  { return [oo::ToObjC(this) maxEnergy]; }
-void Entity::setMaxEnergy(GLfloat amount)  { [oo::ToObjC(this) setMaxEnergy:amount]; }
-void Entity::setScanClass(OOScanClass sClass)  { [oo::ToObjC(this) setScanClass:sClass]; }
-GLfloat Entity::getDistanceTravelled()  { return [oo::ToObjC(this) distanceTravelled]; }
-GLfloat Entity::getSpawnTime()  { return [oo::ToObjC(this) spawnTime]; }
-bool Entity::getIsShip()  { return [oo::ToObjC(this) isShip]; }
-bool Entity::getIsStation()  { return [oo::ToObjC(this) isStation]; }
-bool Entity::getIsSubEntity()  { return [oo::ToObjC(this) isSubEntity]; }
-bool Entity::getIsPlayer()  { return [oo::ToObjC(this) isPlayer]; }
-bool Entity::getIsSunlit()  { return [oo::ToObjC(this) isSunlit]; }
-bool Entity::getIsWormhole()  { return [oo::ToObjC(this) isWormhole]; }
-bool Entity::isInSpace()  { return [oo::ToObjC(this) isInSpace]; }
+OOEntityStatus Entity::status()  { return Send(TestObjectOf(this), &TestEntityObject::status); }
+GLfloat Entity::getMass()  { return Send(TestObjectOf(this), &TestEntityObject::mass); }
+GLfloat Entity::getEnergy()  { return Send(TestObjectOf(this), &TestEntityObject::energy); }
+void Entity::setEnergy(GLfloat amount)  { Send(TestObjectOf(this), &TestEntityObject::setEnergy, amount); }
+GLfloat Entity::getMaxEnergy()  { return Send(TestObjectOf(this), &TestEntityObject::maxEnergy); }
+void Entity::setMaxEnergy(GLfloat amount)  { Send(TestObjectOf(this), &TestEntityObject::setMaxEnergy, amount); }
+void Entity::setScanClass(OOScanClass sClass)  { Send(TestObjectOf(this), &TestEntityObject::setScanClass, sClass); }
+GLfloat Entity::getDistanceTravelled()  { return Send(TestObjectOf(this), &TestEntityObject::distanceTravelled); }
+GLfloat Entity::getSpawnTime()  { return Send(TestObjectOf(this), &TestEntityObject::spawnTime); }
+bool Entity::getIsShip()  { return Send(TestObjectOf(this), &TestEntityObject::isShip); }
+bool Entity::getIsStation()  { return Send(TestObjectOf(this), &TestEntityObject::isStation); }
+bool Entity::getIsSubEntity()  { return Send(TestObjectOf(this), &TestEntityObject::isSubEntity); }
+bool Entity::getIsPlayer()  { return Send(TestObjectOf(this), &TestEntityObject::isPlayer); }
+bool Entity::getIsSunlit()  { return Send(TestObjectOf(this), &TestEntityObject::isSunlit); }
+bool Entity::getIsWormhole()  { return Send(TestObjectOf(this), &TestEntityObject::isWormhole); }
+bool Entity::isInSpace()  { return Send(TestObjectOf(this), &TestEntityObject::isInSpace); }
 
 // The owner's C++ part, as -owner answered its object (nil: none).
 Entity *Entity::ownerEntity()
 {
-	::TestEntityObject *owner = [oo::ToObjC(this) owner];
-	return owner != nil ? owner->_cxxEntity.get() : nullptr;
+	::TestEntityObject *owner = Send(TestObjectOf(this), &TestEntityObject::owner);
+	return owner != nullptr ? owner->_cxxEntity.get() : nullptr;
 }
 
-GLfloat TestEntityPart::collisionRadius()  { return [oo::ToObjC(this) collisionRadius]; }
-void TestEntityPart::setPosition(HPVector posn)  { [oo::ToObjC(this) setPosition:posn]; }
-Quaternion TestEntityPart::normalOrientation()  { return [oo::ToObjC(this) normalOrientation]; }
-void TestEntityPart::setNormalOrientation(Quaternion quat)  { [oo::ToObjC(this) setNormalOrientation:quat]; }
-OOScanClass TestEntityPart::getScanClass()  { return [oo::ToObjC(this) scanClass]; }
-bool TestEntityPart::isDock()  { return [oo::ToObjC(this) isDock]; }
-bool TestEntityPart::isPlanet()  { return [oo::ToObjC(this) isPlanet]; }
-bool TestEntityPart::isSun()  { return [oo::ToObjC(this) isSun]; }
-bool TestEntityPart::isVisible()  { return [oo::ToObjC(this) isVisible]; }
-bool TestEntityPart::getIsVisualEffect()  { return [oo::ToObjC(this) isVisualEffect]; }
+GLfloat TestEntityPart::collisionRadius()  { return Send(TestObjectOf(this), &TestEntityObject::collisionRadius); }
+void TestEntityPart::setPosition(HPVector posn)  { Send(TestObjectOf(this), &TestEntityObject::setPosition, posn); }
+Quaternion TestEntityPart::normalOrientation()  { return Send(TestObjectOf(this), &TestEntityObject::normalOrientation); }
+void TestEntityPart::setNormalOrientation(Quaternion quat)  { Send(TestObjectOf(this), &TestEntityObject::setNormalOrientation, quat); }
+OOScanClass TestEntityPart::getScanClass()  { return Send(TestObjectOf(this), &TestEntityObject::scanClass); }
+bool TestEntityPart::isDock()  { return Send(TestObjectOf(this), &TestEntityObject::isDock); }
+bool TestEntityPart::isPlanet()  { return Send(TestObjectOf(this), &TestEntityObject::isPlanet); }
+bool TestEntityPart::isSun()  { return Send(TestObjectOf(this), &TestEntityObject::isSun); }
+bool TestEntityPart::isVisible()  { return Send(TestObjectOf(this), &TestEntityObject::isVisible); }
+bool TestEntityPart::getIsVisualEffect()  { return Send(TestObjectOf(this), &TestEntityObject::isVisualEffect); }
 
 
 extern "C" {
@@ -467,8 +482,7 @@ void OOJSRegisterObjectConverter(ooscript::ClassDef *theClass, oo::PList (*)(oos
 ooscript::Value OOJSValueFromNativeObject(ooscript::Context, id object)
 {
 	if (object == nil)  return ooscript::nullValue();
-	if ([object isKindOfClass:[TestEntityObject class]])  return JSValueForEntity(object);
-	return ooscript::undefinedValue();
+	return ooscript::undefinedValue();	// (an entity's object was its own JS object; it is C++ since bead oo-4aq6a.12, never an id here)
 }
 
 
@@ -546,7 +560,7 @@ ooscript::Value OOJSValueFromCxxObject(ooscript::Context, OOJSPrivateObject *obj
 	if (object == nullptr)  return ooscript::nullValue();
 	if (auto *entity = dynamic_cast<Entity *>(object))
 	{
-		if (::TestEntityObject *entityObject = oo::ToObjC(entity))  return JSValueForEntity(entityObject);
+		if (::TestEntityObject *entityObject = TestObjectOf(entity))  return JSValueForEntity(entityObject);
 	}
 	return ooscript::undefinedValue();
 }
@@ -558,10 +572,10 @@ namespace {
 
 ooscript::Runtime sRuntime;
 ooscript::Object sGlobal;
-TestEntityObject *sShip = nil;	// a ship's object and its C++ part (the Objective-C ship until bead oo-9ht.144)
+TestEntityObject *sShip = nullptr;	// a ship's object and its C++ part (the Objective-C ship until bead oo-9ht.144)
 ShipEntity *sShipPart = nullptr;
-TestEntityObject *sRock = nil;
-TestEntityObject *sMother = nil;
+TestEntityObject *sRock = nullptr;
+TestEntityObject *sMother = nullptr;
 
 
 void Define(const char *name, ooscript::Value value)
@@ -582,14 +596,14 @@ void SetUpContext()
 	InitOOJSEntity(sContext, sGlobal);
 
 	// Kept for the life of the test.
-	sMother = [[TestEntityObject alloc] init];
+	sMother = oo::makeRef<TestEntityObject>().leakRef();
 	sMother->_cxxEntity = oo::makeRef<ShipEntity>();
 	sMother->_isShip = YES;
 	sMother->_isStation = YES;
 	sMother->_status = STATUS_ACTIVE;
 	sMother->_scanClass = CLASS_STATION;
 
-	sShip = [[TestEntityObject alloc] init];
+	sShip = oo::makeRef<TestEntityObject>().leakRef();
 	sShip->_cxxEntity = oo::makeRef<ShipEntity>();
 	sShipPart = static_cast<ShipEntity *>(sShip->_cxxEntity.get());
 	sShip->_collisionRadius = 40.5f;
@@ -608,7 +622,7 @@ void SetUpContext()
 	sShip->_isVisible = YES;
 	sShip->_isInSpace = YES;
 
-	sRock = [[TestEntityObject alloc] init];
+	sRock = oo::makeRef<TestEntityObject>().leakRef();
 	sRock->_status = STATUS_ACTIVE;
 	sRock->_scanClass = CLASS_ROCK;
 	sRock->_maxEnergy = 10;
@@ -771,14 +785,14 @@ OO_TEST(cFunctions)
 	SetUpContext();
 	Entity *entity = nullptr;
 	ooscript::Value shipValue = JSValueForEntity(sShip);
-	OO_CHECK(JSValueToEntity(sContext, shipValue, &entity) && oo::ToObjC(entity) == sShip);
+	OO_CHECK(JSValueToEntity(sContext, shipValue, &entity) && TestObjectOf(entity) == sShip);
 	OO_CHECK(!JSValueToEntity(sContext, ooscript::numberValue(3), &entity));
 
 	ooscript::Value argv[2] = { shipValue, ooscript::numberValue(1) };
 	unsigned consumed = 9;
 	entity = nullptr;
 	OO_CHECK(EntityFromArgumentList(sContext, "Ship", "test", 2, argv, &entity, &consumed));
-	OO_CHECK(oo::ToObjC(entity) == sShip && consumed == 1);
+	OO_CHECK(TestObjectOf(entity) == sShip && consumed == 1);
 
 	// Not an entity: a warning when given a class and function, and false either way.
 	ooscript::Value bad[1] = { ooscript::numberValue(3) };
