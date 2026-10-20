@@ -731,6 +731,8 @@
 # oo-9ht.22: OOWeakReference(+ObjCBridge) and OOWeakSet are deleted; an Objective-C shader binding target is held by the runtime's zeroing weak reference (ADR-0056 amendment oo-9ht.22).
 [oo-9ht.22] export PATH="/ucrt64/bin:$PATH"; ! test -e 'upstream/oolite/src/Core/OOWeakReference+ObjCBridge.mm' && ! test -e upstream/oolite/src/Core/OOWeakSet.mm && tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/tier-c.sh --only goldens && bash tools/tier-c.sh --only asan
 [oo-xu228.3.2] export PATH="/ucrt64/bin:$PATH"; ! grep -qE 'SEL selector' upstream/oolite/src/Core/Materials/OOShaderUniform.h upstream/oolite/src/Core/Materials/OOShaderMaterial.h && tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOShaderUniform && bash tools/check-core-tests.sh test_OOShaderMaterial && bash tools/check-core-tests.sh test_EntityShaderBindings && bash tools/check-core-tests.sh test_OOShaderUniformMethodType
+# oo-4aq6a.9: oo::ObjCPeers (oofnd/objc/OOObjCPeer.h) is deleted with test_objc_peer (ADR-0056 amendment oo-4aq6a.9).
+[oo-4aq6a.9] export PATH="/ucrt64/bin:$PATH"; ! test -e upstream/oolite/src/oofnd/objc/OOObjCPeer.h && tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOEntityCalledByName && bash tools/check-oofnd.sh
 # oo-4aq6a.4: the deferred call and the full-screen pause take no Objective-C object (ADR-0056 amendment oo-4aq6a.4).
 [oo-4aq6a.4] export PATH="/ucrt64/bin:$PATH"; ! grep -qE 'GameControllerPerformSelectorWithObject|OOScheduleDeferredCall\(id' upstream/oolite/src/Core/GameController.h && tools/build-windows.sh test && bash tools/check-core-tests.sh test_GameController test_AI
 # oo-4aq6a.2: the tests' Objective-C stand-ins that never reach src are C++ (ADR-0056 amendment oo-4aq6a.2).

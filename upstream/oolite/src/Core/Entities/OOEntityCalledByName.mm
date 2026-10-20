@@ -54,7 +54,6 @@ MA 02110-1301, USA.
 #include "AI.h"
 #include "Universe.h"
 #include "OODescription.h"
-#include "oofnd/objc/OOObjCPeer.h"
 #include "oofnd/objc/OORuntime.h"
 #include "oofnd/Log.hpp"
 #include <objc/runtime.h>
