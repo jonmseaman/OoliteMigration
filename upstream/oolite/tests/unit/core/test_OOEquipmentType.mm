@@ -329,7 +329,6 @@ OO_TEST(loading)
 		"EQ_SHIELD_BOOSTER \"Shield booster\"",
 	};
 
-	@autoreleasepool
 	{
 		Reset();
 		OOEquipmentType::loadEquipment();
@@ -359,13 +358,11 @@ OO_TEST(registries)
 	};
 
 	OOEquipmentType *fuel = nil;
-	@autoreleasepool
 	{
 		Reset();
 		OOEquipmentType::loadEquipment();
 		fuel = OOEquipmentType::equipmentTypeWithIdentifier("EQ_FUEL").get();	// not retained, as ShipEntity keeps weapon types
 	}
-	@autoreleasepool
 	{
 		// The registry keeps its types: the same object, pool after pool, and from every list.
 		OO_CHECK(fuel != nil && OOEquipmentType::equipmentTypeWithIdentifier("EQ_FUEL").get() == fuel);
@@ -394,7 +391,6 @@ OO_TEST(registries)
 		laser->setDisplayColor(nullptr);
 		OO_CHECK(expect(Colour(laser->displayColor().get())));
 	}
-	@autoreleasepool
 	{
 		// Strict standards: legacy conditions are dropped and TL99 stays 99.
 		Reset();
@@ -411,7 +407,6 @@ OO_TEST(registries)
 
 OO_TEST(cxxClass)
 {
-	@autoreleasepool
 	{
 		Reset();
 		OOEquipmentType::loadEquipment();
@@ -445,7 +440,6 @@ OO_TEST(objectNode)
 {
 	// A type is its own PList Object node payload (bead oo-9ht.28), as its facade was the node's
 	// object: the node gives the same type back, and describes it as "%@" printed the facade.
-	@autoreleasepool
 	{
 		Reset();
 		OOEquipmentType::loadEquipment();
@@ -466,7 +460,6 @@ OO_TEST(facadeIdentity)
 {
 	OOEquipmentType *fuel = nil;
 	oo::Ref<OOColor> blue;	// the C++ colour since bead oo-9ht.1
-	@autoreleasepool
 	{
 		Reset();
 		OOEquipmentType::loadEquipment();
@@ -477,7 +470,6 @@ OO_TEST(facadeIdentity)
 		fuel->setDisplayColor(blue.get());
 		OO_CHECK(fuel->displayColor().get() == blue);
 	}
-	@autoreleasepool
 	{
 		// A registered type outlives the pool (ships keep them unretained), and a type registered
 		// later is the same object each time it is looked up.

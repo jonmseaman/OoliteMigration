@@ -45,7 +45,6 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
@@ -109,7 +108,6 @@ bool ComponentsAre(Entity *e, GLfloat r, GLfloat g, GLfloat b, GLfloat a)
 
 OO_TEST(initWithPosition)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		oo::Ref<OOColor>	color = OOColor::colorWithRed(0.2f, 0.4f, 0.6f, 0.8f);
@@ -128,7 +126,6 @@ OO_TEST(initWithPosition)
 
 OO_TEST(fadesTowardsRedAndIsRemoved)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		oo::Ref<OOColor>	color = OOColor::colorWithRed(0.2f, 0.4f, 0.6f, 0.8f);

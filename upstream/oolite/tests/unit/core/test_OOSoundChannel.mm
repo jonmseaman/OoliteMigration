@@ -207,7 +207,6 @@ bool UpdateUntilFinished(OOSoundChannel *channel)
 OO_TEST(aNewChannelHasARelativeSource)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		const oo::Ref<OOSoundChannel> channel = NewChannel();
 		OO_CHECK(channel != nullptr);
@@ -225,7 +224,6 @@ OO_TEST(aNewChannelHasARelativeSource)
 OO_TEST(positionGainAndTheFreeList)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		const oo::Ref<OOSoundChannel> channel = NewChannel();
 		const oo::Ref<OOSoundChannel> other = NewChannel();
@@ -254,7 +252,6 @@ OO_TEST(playsASoundToTheEnd)
 {
 	SetUp();
 	TestDelegate delegate;
-	@autoreleasepool
 	{
 		const oo::Ref<OOSoundChannel> channel = NewChannel();
 		channel->setDelegate(&delegate);
@@ -285,7 +282,6 @@ OO_TEST(stopAndReplace)
 {
 	SetUp();
 	TestDelegate delegate;
-	@autoreleasepool
 	{
 		const oo::Ref<OOSoundChannel> channel = NewChannel();
 		channel->setDelegate(&delegate);
@@ -315,7 +311,6 @@ OO_TEST(streamsAnIncompleteSound)
 {
 	SetUp();
 	TestDelegate delegate;
-	@autoreleasepool
 	{
 		const oo::Ref<OOSoundChannel> channel = NewChannel();
 		channel->setDelegate(&delegate);
@@ -336,7 +331,6 @@ OO_TEST(streamsAnIncompleteSound)
 OO_TEST(loopsASound)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		const oo::Ref<OOSoundChannel> channel = NewChannel();
 		const oo::Ref<TestSound> sound = oo::makeRef<TestSound>();
@@ -360,7 +354,6 @@ OO_TEST(cxxApi)
 {
 	SetUp();
 	TestDelegate delegate;
-	@autoreleasepool
 	{
 		const oo::Ref<OOSoundChannel> channel = oo::makeRef<OOSoundChannel>();
 		OO_CHECK(channel->init());
@@ -394,7 +387,6 @@ OO_TEST(releasedWhilePlayingTellsTheDelegate)
 	TestDelegate delegate;
 	OOSoundChannel *released = nullptr;
 	TestSound *sound = nullptr;
-	@autoreleasepool
 	{
 		const oo::Ref<TestSound> made = oo::makeRef<TestSound>();	// was autoreleased in this pool
 		oo::Ref<OOSoundChannel> channel = NewChannel();

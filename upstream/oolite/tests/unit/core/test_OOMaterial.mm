@@ -137,7 +137,6 @@ bool Unapplied(std::initializer_list<std::pair<OOMaterial *, OOMaterial *>> expe
 
 OO_TEST(rootDefaults)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<OOMaterial> material = oo::makeRef<OOMaterial>();
 		const int parameterErrors = gParameterErrors, responsibilities = gSubclassResponsibilities;
@@ -167,7 +166,6 @@ OO_TEST(rootDefaults)
 
 OO_TEST(applyMakesCurrent)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<TestObjCMaterial> a = MakeMaterial("A"), b = MakeMaterial("B");
 		gUnapplied.clear();
@@ -197,7 +195,6 @@ OO_TEST(applyMakesCurrent)
 
 OO_TEST(failedApplyLeavesNone)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<TestObjCMaterial> a = MakeMaterial("A"), failing = MakeMaterial("Failing", false);
 		a->apply();
@@ -215,7 +212,6 @@ OO_TEST(currentIsRetained)
 {
 	const int deallocs = gDeallocs;
 	TestObjCMaterial *material = nullptr;
-	@autoreleasepool
 	{
 		const oo::Ref<TestObjCMaterial> made = MakeMaterial("Kept");
 		material = made.get();
@@ -223,7 +219,6 @@ OO_TEST(currentIsRetained)
 	}
 	// The maker's reference is gone; being current keeps it.
 	OO_CHECK(gDeallocs == deallocs);
-	@autoreleasepool
 	{
 		OO_CHECK(OOMaterial::current() == material);
 		OO_CHECK(OOMaterial::current()->description().ends_with(">{\"Kept\"}"));
@@ -237,7 +232,6 @@ OO_TEST(currentIsRetained)
 
 OO_TEST(willDeallocWhileCurrent)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<TestObjCMaterial> material = MakeMaterial("Imbalanced");
 		material->apply();
@@ -260,7 +254,6 @@ OO_TEST(willDeallocWhileCurrent)
 
 OO_TEST(superCallsReachTheRoot)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<TestSuperCallingMaterial> material = oo::makeRef<TestSuperCallingMaterial>();
 		material->_applies = false;
@@ -274,7 +267,6 @@ OO_TEST(superCallsReachTheRoot)
 
 OO_TEST(description)
 {
-	@autoreleasepool
 	{
 		const std::string text = MakeMaterial("Hull")->description();
 		OO_CHECK(text.starts_with("<TestObjCMaterial 0x"));
@@ -288,7 +280,6 @@ OO_TEST(description)
 // cxxMaterialBehindTheFacade, whose facade half went with the facade).
 OO_TEST(cxxMaterial)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<TestCxxMaterial> material = oo::makeRef<TestCxxMaterial>("Cxx");
 		OO_CHECK(material->name() == std::optional<std::string>("Cxx"));
@@ -316,12 +307,10 @@ OO_TEST(cxxMaterial)
 OO_TEST(currentRetainsACxxMaterial)
 {
 	const int destroyed = gCxxDestroyed;
-	@autoreleasepool
 	{
 		oo::makeRef<TestCxxMaterial>("Cxx")->apply();
 	}
 	OO_CHECK(gCxxDestroyed == destroyed);
-	@autoreleasepool
 	{
 		OO_CHECK(OOMaterial::current()->name() == std::optional<std::string>("Cxx"));
 		OOMaterial::applyNone();

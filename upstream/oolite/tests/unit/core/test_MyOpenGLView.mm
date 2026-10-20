@@ -85,7 +85,6 @@ bool Near(double a, double b)
 
 OO_TEST(initWithoutAWindow)
 {
-	@autoreleasepool
 	{
 		MyOpenGLView *view = View();
 		OO_CHECK(view != nil);
@@ -110,7 +109,6 @@ OO_TEST(initWithoutAWindow)
 
 OO_TEST(windowCaption)
 {
-	@autoreleasepool
 	{
 		MyOpenGLView *view = View();
 		const std::optional<std::string> caption = view->getWindowCaption();
@@ -124,7 +122,6 @@ OO_TEST(windowCaption)
 
 OO_TEST(displayAndNativeSize)
 {
-	@autoreleasepool
 	{
 		MyOpenGLView *view = View();
 		// No window yet: the first display.
@@ -144,7 +141,6 @@ OO_TEST(displayAndNativeSize)
 
 OO_TEST(updateGLSizeSetsTheProjection)
 {
-	@autoreleasepool
 	{
 		MyOpenGLView *view = View();
 		OO_CHECK(OOTestGLContext());
@@ -182,7 +178,6 @@ OO_TEST(updateGLSizeSetsTheProjection)
 
 OO_TEST(slice2AccessorsAndViewSettings)
 {
-	@autoreleasepool
 	{
 		MyOpenGLView *view = View();
 
@@ -270,7 +265,6 @@ OO_TEST(slice2AccessorsAndViewSettings)
 
 OO_TEST(slice2DisplayModesAndSavedSettings)
 {
-	@autoreleasepool
 	{
 		MyOpenGLView *view = View();
 		const std::vector<oo::PList> modes = view->getScreenSizeArray();
@@ -341,7 +335,6 @@ std::filesystem::path DumpPath(const std::string &name)
 
 OO_TEST(slice3DebugImageDumps)
 {
-	@autoreleasepool
 	{
 		namespace stdfs = std::filesystem;
 		MyOpenGLView *view = View();
@@ -385,7 +378,6 @@ OO_TEST(slice3DebugImageDumps)
 // writes neither them nor past their end.
 OO_TEST(dumpGrayAlphaLeavesTheCallersBytes)
 {
-	@autoreleasepool
 	{
 		namespace stdfs = std::filesystem;
 		MyOpenGLView *view = View();
@@ -417,7 +409,6 @@ struct MyOpenGLViewTestAccess
 // After the conversion: the C++ view the game made (its facade's crossings went with bead oo-9ht.153).
 OO_TEST(cxxAPI)
 {
-	@autoreleasepool
 	{
 		MyOpenGLView *view = View();
 		MyOpenGLView *cxxView = view;
@@ -436,7 +427,6 @@ OO_TEST(cxxAPI)
 // After slice 2's conversion: its members answer as the facade's methods do.
 OO_TEST(cxxSlice2API)
 {
-	@autoreleasepool
 	{
 		MyOpenGLView *view = View();
 		MyOpenGLView *cxxView = view;
@@ -475,7 +465,6 @@ OO_TEST(cxxSlice2API)
 // After slice 3's conversion: the dumps as members.
 OO_TEST(cxxSlice3API)
 {
-	@autoreleasepool
 	{
 #ifndef NDEBUG
 		namespace stdfs = std::filesystem;
@@ -498,7 +487,6 @@ OO_TEST(cxxSlice3API)
 // Last: -dealloc quits SDL.
 OO_TEST(zzDeallocReleasesTheView)
 {
-	@autoreleasepool
 	{
 		MyOpenGLView *view = View();
 		if (view != nullptr)  view->release();

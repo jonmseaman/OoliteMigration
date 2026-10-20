@@ -50,7 +50,6 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
@@ -151,7 +150,6 @@ BOOL AlwaysYes(Entity *, void *)	{ return YES; }	// the C++ entity since bead oo
 // The perform* behaviours: each sets its behaviour and resets the frustration.
 OO_TEST(slice1Behaviours)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestAIShip *ship = MakeShip("pilot");
@@ -200,7 +198,6 @@ OO_TEST(slice1Behaviours)
 
 OO_TEST(slice1AttackFleeMiningLanding)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestAIShip *ship = MakeShip("fighter");
@@ -238,7 +235,6 @@ OO_TEST(slice1AttackFleeMiningLanding)
 // range and rotation matching.
 OO_TEST(slice1RecallDockingInstructions)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestAIShip *ship = MakeShip("docker");
@@ -262,7 +258,6 @@ OO_TEST(slice1RecallDockingInstructions)
 // Scans in an empty universe find nothing, and forget what was found before.
 OO_TEST(slice1ScansFindNothing)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestAIShip *ship = MakeShip("scanner");
@@ -297,7 +292,6 @@ OO_TEST(slice1ScansFindNothing)
 // What the AI category does when there is nothing to act on.
 OO_TEST(slice1NothingToActOn)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestAIShip *ship = MakeShip("loner");
@@ -338,7 +332,6 @@ OO_TEST(slice1NothingToActOn)
 // main station ignores it.
 OO_TEST(slice1AcceptDistressMessage)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestAIShip *ship = MakeShip("helper");
@@ -359,7 +352,6 @@ OO_TEST(slice1AcceptDistressMessage)
 // The station AI methods on a ship that is not a station only log.
 OO_TEST(slice1StationStubs)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestAIShip *ship = MakeShip("notastation");
@@ -378,7 +370,6 @@ OO_TEST(slice1StationStubs)
 // From C++ (after the conversion): the members, and the station's override of the virtual one.
 OO_TEST(slice1MembersFromCxx)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestAIShip *ship = MakeShip("member");
@@ -421,7 +412,6 @@ void SetCollisionRadius2(Entity *e, GLfloat r)	{ e->collision_radius = r; }
 
 OO_TEST(slice2SpeedAndRange)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestAIShip *ship = MakeShip("speedy");
@@ -454,7 +444,6 @@ OO_TEST(slice2SpeedAndRange)
 
 OO_TEST(slice2Destinations)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestAIShip *ship = MakeShip("navigator");
@@ -496,7 +485,6 @@ OO_TEST(slice2Destinations)
 
 OO_TEST(slice2TargetsAndScans)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestAIShip *ship = MakeShip("hunter");
@@ -536,7 +524,6 @@ OO_TEST(slice2TargetsAndScans)
 // The methods that only tell the AI (the test's ships have none) or log run without effect.
 OO_TEST(slice2MessagesOnly)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestAIShip *ship = MakeShip("quiet");
@@ -561,7 +548,6 @@ OO_TEST(slice2MessagesOnly)
 // From C++ (after the conversion): the members.
 OO_TEST(slice2MembersFromCxx)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestAIShip *ship = MakeShip("member2");
@@ -594,7 +580,6 @@ void SetDestination3(ShipEntity *s, HPVector d)	{ s->_destination = d; }
 
 OO_TEST(slice3ChecksAndScans)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestAIShip *ship = MakeShip("checker");
@@ -639,7 +624,6 @@ OO_TEST(slice3ChecksAndScans)
 
 OO_TEST(slice3NothingToActOn)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestAIShip *ship = MakeShip("idle");
@@ -688,7 +672,6 @@ OO_TEST(slice3NothingToActOn)
 
 OO_TEST(slice3TargetsAndFighting)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestAIShip *ship = MakeShip("fighter");
@@ -719,7 +702,6 @@ OO_TEST(slice3TargetsAndFighting)
 // From C++ (after the conversion): the members.
 OO_TEST(slice3MembersFromCxx)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestAIShip *ship = MakeShip("member3");
@@ -756,7 +738,6 @@ void SetCollisionRadius4(Entity *e, GLfloat r)	{ e->collision_radius = r; }
 
 OO_TEST(slice4StoredTargetsAndScans)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestAIShip *ship = MakeShip("seeker");
@@ -803,7 +784,6 @@ OO_TEST(slice4StoredTargetsAndScans)
 
 OO_TEST(slice4StationsAndCoordinates)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestAIShip *ship = MakeShip("docker");
@@ -833,7 +813,6 @@ OO_TEST(slice4StationsAndCoordinates)
 
 OO_TEST(slice4ActionsAndRacepoints)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestAIShip *ship = MakeShip("racer");
@@ -879,7 +858,6 @@ OO_TEST(slice4ActionsAndRacepoints)
 // From C++ (after the conversion): the members.
 OO_TEST(slice4MembersFromCxx)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		TestAIShip *ship = MakeShip("member4");

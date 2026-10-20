@@ -171,7 +171,6 @@ const std::string kFeline = "R1 R2|<character-generic-description species=furry 
 
 OO_TEST(generatedCharacters)
 {
-	@autoreleasepool
 	{
 		// Human: "%R" and "nom"; a legal status and insurance from the planet-description RNG.
 		Fake();
@@ -226,7 +225,6 @@ OO_TEST(roles)
 		{ "miner-x", NO, "|0|250|4|human colonials" },			// miner is exact
 		{ "nobody", NO, "|0|250|4|human colonials" },
 	};
-	@autoreleasepool
 	{
 		for (const auto &c : cases)
 		{
@@ -247,7 +245,6 @@ OO_TEST(roles)
 
 OO_TEST(dictionaries)
 {
-	@autoreleasepool
 	{
 		// The origin: a number, a numerical string, "0", a system name, an unknown name or none
 		// (a random system), an object that answers -intValue, or one that does not (random).
@@ -289,7 +286,6 @@ OO_TEST(dictionaries)
 
 OO_TEST(scriptingInfoAndSetters)
 {
-	@autoreleasepool
 	{
 		Fake();
 		oo::Ref<OOCharacter> c = FromDictionary({ { "origin", oo::PList(4) }, { "random_seed", kSeed } });

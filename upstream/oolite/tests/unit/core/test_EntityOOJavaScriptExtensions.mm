@@ -94,7 +94,6 @@ void SetUpContext()
 TestShip *Ship(const char *name)
 {
 	oo::Ref<TestShip> ship = oo::makeRef<TestShip>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(ship));
 	}
@@ -124,7 +123,6 @@ std::string Told(TestShip *ship)
 
 OO_TEST(entityIsNotVisible)
 {
-	@autoreleasepool
 	{
 		Entity *entity = oo::MadeEntity(oo::makeRef<Entity>());
 		OO_CHECK(!OOJSEntityIsVisibleToScripts(entity));
@@ -151,7 +149,6 @@ OO_TEST(entityIsNotVisible)
 
 OO_TEST(existingJSObject)
 {
-	@autoreleasepool
 	{
 		SetUpContext();
 		ooscript::Object object = ooscript::newObject(sContext, nullptr, nullptr, nullptr);
@@ -179,7 +176,6 @@ OO_TEST(existingJSObject)
 
 OO_TEST(visibleEntityKeepsEntityClass)
 {
-	@autoreleasepool
 	{
 		TestVisibleEntity *visible = NewVisibleEntity();
 		OO_CHECK(OOJSEntityIsVisibleToScripts(visible));
@@ -194,7 +190,6 @@ OO_TEST(visibleEntityKeepsEntityClass)
 
 OO_TEST(shipIsVisible)
 {
-	@autoreleasepool
 	{
 		TestShip *ship = Ship("ship");
 		OO_CHECK(OOJSEntityIsVisibleToScripts(ship));
@@ -211,7 +206,6 @@ OO_TEST(shipIsVisible)
 
 OO_TEST(subEntitiesForScript)
 {
-	@autoreleasepool
 	{
 		TestShip *ship = Ship("ship");
 		OO_CHECK(ShipEntityJSSubEntitiesForScript(ship).empty());	// -subEntitiesForScript until bead oo-9ht.144
@@ -229,7 +223,6 @@ OO_TEST(subEntitiesForScript)
 
 OO_TEST(setTarget)
 {
-	@autoreleasepool
 	{
 		TestShip *ship = Ship("ship");
 		TestShip *other = Ship("other");
@@ -241,7 +234,6 @@ OO_TEST(setTarget)
 
 OO_TEST(setTargetNilRemovesPrimaryTarget)
 {
-	@autoreleasepool
 	{
 		TestShip *ship = Ship("ship");
 		TestShip *current = Ship("current");
@@ -259,7 +251,6 @@ OO_TEST(setTargetNilRemovesPrimaryTarget)
 
 OO_TEST(setTargetClimbsToRootShips)
 {
-	@autoreleasepool
 	{
 		// A subentity's target is set on its root ship, and a subentity target is replaced by its
 		// root ship, however deep.
@@ -282,7 +273,6 @@ OO_TEST(setTargetClimbsToRootShips)
 
 OO_TEST(setTargetStopsAtSelfOwnedOrOwnerless)
 {
-	@autoreleasepool
 	{
 		// A subentity that owns itself, or has no owner, is where the climb stops.
 		TestShip *loop = Ship("loop");
@@ -297,7 +287,6 @@ OO_TEST(setTargetStopsAtSelfOwnedOrOwnerless)
 
 OO_TEST(setTargetOnANonShipRootDoesNothing)
 {
-	@autoreleasepool
 	{
 		// A subentity whose owner is not a ship: nothing is told.
 		Entity *notAShip = oo::MadeEntity(oo::makeRef<Entity>());
@@ -334,7 +323,6 @@ public:
 
 OO_TEST(cxxEntityAnswersThroughItsJSMembers)
 {
-	@autoreleasepool
 	{
 		ooscript::ClassDef *jsClass = nullptr;
 		ooscript::Object prototype = reinterpret_cast<ooscript::Object>(1);
@@ -362,7 +350,6 @@ OO_TEST(cxxEntityAnswersThroughItsJSMembers)
 // the same entity are retired with the facade (bead oo-dpyk8, under oo-9n5p9).
 OO_TEST(entityObjectNodeHoldsTheEntity)
 {
-	@autoreleasepool
 	{
 		SetUpContext();
 		ooscript::Object object = ooscript::newObject(sContext, nullptr, nullptr, nullptr);

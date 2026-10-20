@@ -57,7 +57,6 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
@@ -140,7 +139,6 @@ oo::PList WhiteBlack(float frequency, float fraction)
 
 OO_TEST(defaults)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		OOFlasherEntity *flasher = Flasher(Dict({}));
@@ -160,7 +158,6 @@ OO_TEST(defaults)
 
 OO_TEST(dictionary)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		OOFlasherEntity *flasher = Flasher(Dict({
@@ -186,7 +183,6 @@ OO_TEST(dictionary)
 
 OO_TEST(saturationFactor)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		OOFlasherEntity *flasher = Flasher(Dict({
@@ -200,7 +196,6 @@ OO_TEST(saturationFactor)
 
 OO_TEST(accessors)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		OOFlasherEntity *flasher = Flasher(WhiteBlack(1, 0.5));
@@ -224,7 +219,6 @@ OO_TEST(accessors)
 
 OO_TEST(updateCyclesColours)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		// frequency 1 (stored 2): wave = sin(2 pi t), fraction 0.5: threshold cos(pi / 2) = 0.
@@ -257,7 +251,6 @@ OO_TEST(updateCyclesColours)
 
 OO_TEST(frequencyZeroIsOpaque)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		OOFlasherEntity *flasher = Flasher(WhiteBlack(0, 0.5));
@@ -271,7 +264,6 @@ OO_TEST(frequencyZeroIsOpaque)
 
 OO_TEST(drawsOnlyWhileActive)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *owner = oo::MadeEntity(oo::makeRef<Entity>());
@@ -293,7 +285,6 @@ OO_TEST(drawsOnlyWhileActive)
 
 OO_TEST(rescale)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		OOFlasherEntity *flasher = Flasher(WhiteBlack(1, 0.5));
@@ -307,7 +298,6 @@ OO_TEST(rescale)
 
 OO_TEST(isFlasher)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		// The category -isFlasher went with the facade (bead oo-9ht.107): callers ask the C++ part.
@@ -325,7 +315,6 @@ OO_TEST(isFlasher)
 
 OO_TEST(facade)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		// The object is the nearest façade left (amendment oo-9ht.12 item 6; the root's since bead
@@ -343,7 +332,6 @@ OO_TEST(facade)
 // selector is what OOJSFlasher.mm answers.
 OO_TEST(jsExtensions)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *flasher = Flasher(WhiteBlack(1, 0.5));

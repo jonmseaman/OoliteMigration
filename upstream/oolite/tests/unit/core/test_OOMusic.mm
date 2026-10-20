@@ -217,7 +217,6 @@ std::vector<std::string> TakeChannelLog()
 OO_TEST(noSourceBeforeTheFirstPlay)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		oo::Ref<OOMusic> music = OOMusic::initWithContentsOfFile(std::string("theme.ogg"));
 		OO_CHECK(music != nil);
@@ -235,7 +234,6 @@ OO_TEST(noSourceBeforeTheFirstPlay)
 OO_TEST(wrapsTheClustersSound)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		oo::Ref<OOMusic> music = OOMusic::initWithContentsOfFile(std::string("theme.ogg"));
 		OO_CHECK(music.get() != nullptr);
@@ -255,7 +253,6 @@ OO_TEST(playsThroughTheSharedSource)
 {
 	SetUp();
 	TakeChannelLog();
-	@autoreleasepool
 	{
 		oo::Ref<OOMusic> theme = OOMusic::initWithContentsOfFile(std::string("theme.ogg"));
 		theme->playLooped(true);
@@ -301,7 +298,6 @@ OO_TEST(releasedWhilePlaying)
 	SetUp();
 	TakeChannelLog();
 	OOSoundSource *source = nullptr;
-	@autoreleasepool
 	{
 		oo::Ref<OOMusic> music = OOMusic::initWithContentsOfFile(std::string("theme.ogg"));
 		music->playLooped(true);
@@ -320,7 +316,6 @@ OO_TEST(cxxApi)
 {
 	SetUp();
 	TakeChannelLog();
-	@autoreleasepool
 	{
 		OO_CHECK(!OOMusic::initWithContentsOfFile(std::string("missing.ogg")));
 		const oo::Ref<OOMusic> music = OOMusic::initWithContentsOfFile(std::string("theme.ogg"));

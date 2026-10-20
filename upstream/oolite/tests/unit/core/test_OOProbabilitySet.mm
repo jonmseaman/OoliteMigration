@@ -56,7 +56,6 @@ const float kWeights[] = { 1.0f, 0.0f, 2.0f };
 
 OO_TEST(emptySet)
 {
-	@autoreleasepool
 	{
 		oo::Ref<OOProbabilitySet> empty = OOProbabilitySet::probabilitySet();
 		OO_CHECK(empty != nullptr && empty == OOProbabilitySet::probabilitySet());	// one shared object
@@ -76,7 +75,6 @@ OO_TEST(emptySet)
 
 OO_TEST(oneObjectSet)
 {
-	@autoreleasepool
 	{
 		const oo::PList object = Str("cobra");
 		const float weight = -2.0f;
@@ -100,7 +98,6 @@ OO_TEST(oneObjectSet)
 
 OO_TEST(generalSet)
 {
-	@autoreleasepool
 	{
 		oo::Ref<OOProbabilitySet> set = OOProbabilitySet::probabilitySetWithObjects(kABC, kWeights, 3);
 		OO_CHECK(set->count() == 3);
@@ -134,7 +131,6 @@ OO_TEST(generalSet)
 
 OO_TEST(propertyListRoundTrip)
 {
-	@autoreleasepool
 	{
 		oo::Ref<OOProbabilitySet> set = OOProbabilitySet::probabilitySetWithObjects(kABC, kWeights, 3);
 		oo::Ref<OOProbabilitySet> again = OOProbabilitySet::probabilitySetWithPropertyListRepresentation(set->propertyListRepresentation());
@@ -189,7 +185,6 @@ OO_TEST(objectElements)
 
 OO_TEST(mutableSet)
 {
-	@autoreleasepool
 	{
 		oo::Ref<OOMutableProbabilitySet> set = OOMutableProbabilitySet::probabilitySet();
 		OO_CHECK(set != nullptr && set.get() != OOProbabilitySet::probabilitySet().get() && set->count() == 0);
@@ -228,7 +223,6 @@ OO_TEST(mutableSet)
 
 OO_TEST(copies)
 {
-	@autoreleasepool
 	{
 		// Mutable to immutable: the empty set, a one-object set, a general set.
 		oo::Ref<OOMutableProbabilitySet> mutableSet = OOMutableProbabilitySet::probabilitySet();
@@ -261,7 +255,6 @@ OO_TEST(copies)
 
 OO_TEST(nonZeroCountWithoutArraysRaises)
 {
-	@autoreleasepool
 	{
 		const char *name = nullptr;
 		std::optional<oo::Exception> kept;	// what the autorelease pool kept alive (bead oo-rskgl.1)

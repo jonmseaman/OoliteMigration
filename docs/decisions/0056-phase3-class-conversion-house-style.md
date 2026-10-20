@@ -9881,6 +9881,21 @@ Objective-C needs a C++ driver for its recorded digests (follow-up bead oo-6e1.2
 harness and test_objc_call_by_name call it), `OOObjCRef.h`/`OORuntime.h` (OOOXPVerifier's stage lookup by class name,
 Universe's `AddIfAbsent`), `@encode` in the member tables, the Mac-only Objective-C files, and `.mm` itself.
 
+## Amendment (bead oo-dbz.1): the tests' @autoreleasepool blocks become plain blocks
+
+**Context.** Batch BG, slice 1 of oo-dbz (drop libobjc2, `.mm` to `.cpp`). A probe that compiled every test translation
+unit as plain C++ (`-x c++`, no `-fobjc-*`) found 840 errors in 125 files; 732 were `@autoreleasepool`, the Objective-C
+pool statement. Since oo-4aq6a.8 no test makes an Objective-C object (the floor tests test_objc_ref/runtime/assert
+excepted, on their own root until libobjc2 goes), and since oo-31u.8 the C++ pool `oo::AutoreleaseScope` is separate
+from libobjc2's: an `@autoreleasepool` block pushed and popped a pool nothing entered.
+
+**Decision (behaviour-identical).** Each of the 815 `@autoreleasepool` blocks in 107 test files (tests/unit/core, tests/unit/oofnd
+outside the three floor tests) becomes a plain block: the `@autoreleasepool` line goes, the block and its scope stay. It
+does not become an `oo::AutoreleaseScope`: that would drain C++ autoreleases at the block's end where they now reach the
+nearest enclosing scope (or are counted as leaked), changing what the tests observe. Five pool comments say what the
+block was.
+
+**Tests.** Spelling only (std-2026-10-19 item 1; approval lines "oo-dbz.1"): every case, input and expected value unchanged.
 ## Amendment (bead oo-6e1.2): the string-expander and sysdesc harnesses make no Objective-C object; OOCallByName.mm is deleted
 
 **Context.** Batch BG. After oo-4aq6a.8 the only Objective-C objects left were test infrastructure: the string-expander

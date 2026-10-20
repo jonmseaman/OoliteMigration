@@ -173,7 +173,6 @@ oo::Ref<OOJSFunction> Compile(const char *name, const char *code, std::vector<co
 
 OO_TEST(initWithFunction)
 {
-	@autoreleasepool
 	{
 		OO_CHECK(OOJSFunction::initWithFunction(NULL, Context()) == nullptr);
 
@@ -195,7 +194,6 @@ OO_TEST(initWithFunction)
 
 OO_TEST(initWithName)
 {
-	@autoreleasepool
 	{
 		oo::Ref<OOJSFunction> function = Compile("add", "return a + b;", { "a", "b" });
 		OO_CHECK(function != nullptr);
@@ -228,7 +226,6 @@ OO_TEST(initWithName)
 
 OO_TEST(evaluation)
 {
-	@autoreleasepool
 	{
 		oo::Ref<OOJSFunction> function = Compile("thisName", "return this.name + ':' + arguments.length;", {});
 		Evaluate("globalThis.named = { name: 'n' }; globalThis.name = 'global';");
@@ -256,7 +253,6 @@ OO_TEST(evaluation)
 
 OO_TEST(engineReset)
 {
-	@autoreleasepool
 	{
 		oo::Ref<OOJSFunction> function = Compile("resettable", "return 1;", {});
 		OO_CHECK(function->function() != NULL);
@@ -270,7 +266,6 @@ OO_TEST(engineReset)
 
 OO_TEST(cxxAndFacade)
 {
-	@autoreleasepool
 	{
 		oo::Ref<OOJSFunction> function = OOJSFunction::initWithName(std::string("triple"), NULL, std::string("return 3 * x;"), 1, (const char *[]){ "x" }, std::nullopt, 0, Context());
 		OO_CHECK(function != nullptr);

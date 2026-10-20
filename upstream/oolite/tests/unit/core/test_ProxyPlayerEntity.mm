@@ -55,7 +55,6 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
@@ -134,7 +133,6 @@ TestDialPlayer *MakeDialPlayer()
 // and no advanced compass in an empty definition).
 OO_TEST(initDefaults)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		ProxyPlayerEntity *proxy = MakeProxy();
@@ -153,7 +151,6 @@ OO_TEST(initDefaults)
 // Each dial's setter and getter; the fuel leak rate is never negative, and the flags are YES or NO.
 OO_TEST(accessors)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		ProxyPlayerEntity *proxy = MakeProxy();
@@ -191,7 +188,6 @@ OO_TEST(accessors)
 // -copyValuesFromPlayer: takes every dial from the player; nil changes nothing.
 OO_TEST(copyValuesFromPlayer)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		ProxyPlayerEntity *proxy = MakeProxy();
@@ -217,7 +213,6 @@ OO_TEST(copyValuesFromPlayer)
 // bead oo-9ht.183).
 OO_TEST(isPlayerLikeShip)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		OO_CHECK(MakeProxy()->isPlayerLikeShip());
@@ -231,7 +226,6 @@ OO_TEST(isPlayerLikeShip)
 // itself since bead oo-9ht.144; the ship's virtual alertCondition() answers the proxy's.
 OO_TEST(objCProxyPartIsAProxy)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *object = nil;
@@ -255,7 +249,6 @@ OO_TEST(objCProxyPartIsAProxy)
 // C++ proxy, as the facade's methods answered them).
 OO_TEST(dialsAnsweredByNameForAProxy)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *object = nil;
@@ -279,7 +272,6 @@ OO_TEST(dialsAnsweredByNameForAProxy)
 // plain ship (C++ since bead oo-9ht.144).
 OO_TEST(playerAndProxyAreVisibleToScripts)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *object = nil;

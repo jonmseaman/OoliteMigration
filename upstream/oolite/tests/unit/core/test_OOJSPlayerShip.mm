@@ -299,7 +299,6 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
@@ -347,7 +346,6 @@ void SetUp()
 	sPlayer = NewTestPlayer<FakePlayer>();
 	sPlayer->_hud = oo::makeRef<HeadUpDisplay>();
 	sPlayer->_hud->initWithDictionary(oo::PList(oo::PList::Dict{}), std::string("test-hud.plist"));
-	@autoreleasepool
 	{
 		sPlayer->_dockedStation = oo::RetainEntity(oo::MadeEntity(oo::makeRef<TestEntity>()));	// +1, as +alloc's was
 		sPlayer->_other = oo::RetainEntity(oo::MadeEntity(oo::makeRef<TestEntity>()));

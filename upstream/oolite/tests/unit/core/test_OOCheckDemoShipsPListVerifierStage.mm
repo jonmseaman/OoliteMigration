@@ -132,7 +132,6 @@ OOOXPVerifier *MakeVerifier(std::initializer_list<std::pair<const char *, const 
 
 OO_TEST(nameAndNeighbours)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<OOCheckDemoShipsPListVerifierStage> stage = oo::makeRef<OOCheckDemoShipsPListVerifierStage>();
 		stage->setVerifier(MakeVerifier({}));
@@ -154,7 +153,6 @@ OO_TEST(nameAndNeighbours)
 
 OO_TEST(wrongTypes)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<OOCheckDemoShipsPListVerifierStage> stage = oo::makeRef<OOCheckDemoShipsPListVerifierStage>();
 		stage->setVerifier(MakeVerifier({ { "demoships.plist", "{ a = b; }" }, { "shipdata.plist", "{ a = {}; }" } }));
@@ -176,7 +174,6 @@ OO_TEST(wrongTypes)
 
 OO_TEST(entriesNameShips)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<OOCheckDemoShipsPListVerifierStage> stage = oo::makeRef<OOCheckDemoShipsPListVerifierStage>();
 		stage->setVerifier(MakeVerifier({
@@ -198,7 +195,6 @@ OO_TEST(entriesNameShips)
 // OOOXPVerifierStage facade until bead oo-9ht.4), and it describes itself with its class's name.
 OO_TEST(facade)
 {
-	@autoreleasepool
 	{
 		OOOXPVerifier *verifier = MakeVerifier({});
 		const oo::Ref<OOCheckDemoShipsPListVerifierStage> stage = oo::makeRef<OOCheckDemoShipsPListVerifierStage>();

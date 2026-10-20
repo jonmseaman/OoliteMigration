@@ -61,7 +61,6 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
@@ -158,7 +157,6 @@ OOSunEntity *RedSun()
 
 OO_TEST(made)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		OOSunEntity *sun = RedSun();
@@ -175,7 +173,6 @@ OO_TEST(made)
 
 OO_TEST(lightColours)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		OOSunEntity *sun = RedSun();
@@ -199,7 +196,6 @@ OO_TEST(lightColours)
 
 OO_TEST(changeSunProperty)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		OOSunEntity *sun = RedSun();
@@ -227,7 +223,6 @@ OO_TEST(changeSunProperty)
 
 OO_TEST(radiusAndPosition)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		OOSunEntity *sun = RedSun();
@@ -242,7 +237,6 @@ OO_TEST(radiusAndPosition)
 
 OO_TEST(goingNova)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		OOSunEntity *sun = RedSun();
@@ -279,7 +273,6 @@ OO_TEST(goingNova)
 
 OO_TEST(description)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		OOSunEntity *sun = RedSun();
@@ -293,7 +286,6 @@ OO_TEST(description)
 
 OO_TEST(cameraRelativePosition)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		OOSunEntity *sun = RedSun();
@@ -314,7 +306,6 @@ OO_TEST(cameraRelativePosition)
 
 OO_TEST(facade)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		OOSunEntity *sun = RedSun();
@@ -331,7 +322,6 @@ OO_TEST(facade)
 // OOSunEntity for by selector is what OOJSSun.mm answers.
 OO_TEST(jsExtensions)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		OOSunEntity *sun = RedSun();

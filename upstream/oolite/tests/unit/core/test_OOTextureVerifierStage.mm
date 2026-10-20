@@ -233,7 +233,6 @@ OOOXPVerifier *MakeVerifier(std::initializer_list<std::pair<const char *, const 
 
 OO_TEST(nameAndNeighbours)
 {
-	@autoreleasepool
 	{
 		OOOXPVerifier *verifier = MakeVerifier({});
 		OO_CHECK(OOTextureVerifierStage::nameForReverseDependencyForVerifier(verifier) == "Testing textures and images");
@@ -256,7 +255,6 @@ OO_TEST(nameAndNeighbours)
 
 OO_TEST(stagesNameTextures)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<OOTextureVerifierStage> stage = oo::makeRef<OOTextureVerifierStage>();
 		stage->setVerifier(MakeVerifier({ { "Textures/hull.png", "8x8" } }));
@@ -279,7 +277,6 @@ OO_TEST(stagesNameTextures)
 
 OO_TEST(runLoadsTexturesAndImages)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<OOTextureVerifierStage> stage = oo::makeRef<OOTextureVerifierStage>();
 		stage->setVerifier(MakeVerifier({
@@ -325,7 +322,6 @@ OO_TEST(runLoadsTexturesAndImages)
 
 OO_TEST(textureHandlingStage)
 {
-	@autoreleasepool
 	{
 		OOOXPVerifier *verifier = MakeVerifier({});
 		const oo::Ref<TestTextureUser> user = oo::makeRef<TestTextureUser>();
@@ -357,7 +353,6 @@ public:
 
 OO_TEST(cxxTextureUserBehindTheFacade)
 {
-	@autoreleasepool
 	{
 		OOOXPVerifier *verifier = MakeVerifier({});
 		const oo::Ref<TestCxxTextureUser> user = oo::makeRef<TestCxxTextureUser>();
@@ -376,7 +371,6 @@ OO_TEST(cxxTextureUserBehindTheFacade)
 // bead oo-9ht.4).
 OO_TEST(textureStageFacade)
 {
-	@autoreleasepool
 	{
 		OOOXPVerifier *verifier = MakeVerifier({ { "Images/a.png", "8x8" } });
 		const oo::Ref<OOTextureVerifierStage> stage = oo::makeRef<OOTextureVerifierStage>();

@@ -83,7 +83,6 @@ namespace {
 // (and then answers nil, reading nothing).
 void SetUpLoaders()
 {
-	@autoreleasepool
 	{
 		(void)OOTextureLoader::loaderWithPath(std::string("unknown.type"), 0);
 	}
@@ -138,7 +137,6 @@ Result GetResult(OOTextureLoader *loader)
 OO_TEST(factoryRefusals)
 {
 	OO_CHECK(OOTestGLContext());
-	@autoreleasepool
 	{
 		OO_CHECK(OOTextureLoader::loaderWithPath(std::nullopt, 0) == nullptr);
 		OO_CHECK(OOTextureLoader::loaderWithPath(std::string("textures/unknown.type"), 0) == nullptr);
@@ -153,7 +151,6 @@ OO_TEST(optionsDecoded)
 {
 	OO_CHECK(OOTestGLContext());
 	SetUpLoaders();
-	@autoreleasepool
 	{
 		TestLoader *plain = Loader("dir/plain.png", kOOTextureMinFilterLinear, 4, 4, kOOPixMapRGBA);
 		OO_CHECK(plain->testOptions() == kOOTextureMinFilterLinear);
@@ -184,7 +181,6 @@ OO_TEST(descriptions)
 {
 	OO_CHECK(OOTestGLContext());
 	SetUpLoaders();
-	@autoreleasepool
 	{
 		TestLoader *loader = Loader("dir/desc.png", kOOTextureMinFilterLinear, 4, 4, kOOPixMapRGBA);
 		OO_CHECK(loader->description().starts_with("<TestLoader 0x"));
@@ -203,7 +199,6 @@ OO_TEST(loadsScalesAndHandsOver)
 {
 	OO_CHECK(OOTestGLContext());
 	SetUpLoaders();
-	@autoreleasepool
 	{
 		const int loads = gLoads;
 		TestLoader *loader = Loader("square.png", kOOTextureMinFilterLinear, 8, 8, kOOPixMapRGBA);
@@ -243,7 +238,6 @@ OO_TEST(extractsAChannel)
 {
 	OO_CHECK(OOTestGLContext());
 	SetUpLoaders();
-	@autoreleasepool
 	{
 		TestLoader *loader = Loader("green.png", kOOTextureMinFilterLinear | kOOTextureExtractChannelG, 8, 8, kOOPixMapRGBA);
 		OO_CHECK(Queue(loader));
@@ -260,7 +254,6 @@ OO_TEST(mipMaps)
 {
 	OO_CHECK(OOTestGLContext());
 	SetUpLoaders();
-	@autoreleasepool
 	{
 		TestLoader *loader = Loader("mip.png", kOOTextureMinFilterMipMap, 8, 8, kOOPixMapRGBA);
 		OO_CHECK(Queue(loader));
@@ -276,7 +269,6 @@ OO_TEST(failures)
 {
 	OO_CHECK(OOTestGLContext());
 	SetUpLoaders();
-	@autoreleasepool
 	{
 		TestLoader *empty = Loader("empty.png", kOOTextureMinFilterLinear, 4, 4, kOOPixMapRGBA);
 		empty->_testEmpty = YES;
@@ -321,7 +313,6 @@ OO_TEST(cxxApi)
 {
 	OO_CHECK(OOTestGLContext());
 	SetUpLoaders();
-	@autoreleasepool
 	{
 		OO_CHECK(!OOTextureLoader::loaderWithPath(std::nullopt, 0));
 		OO_CHECK(!OOTextureLoader::loaderWithPath(std::string("unknown.type"), 0));

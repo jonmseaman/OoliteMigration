@@ -115,7 +115,6 @@ OOTestResetClient *Client(int tag)
 OO_TEST(resetTellsEachClientOnce)
 {
 	OO_CHECK(OOTestGLContext());
-	@autoreleasepool
 	{
 		OOGraphicsResetManager *manager = OOGraphicsResetManager::sharedManager();
 		OO_CHECK(manager != nullptr);
@@ -153,7 +152,6 @@ OO_TEST(resetTellsEachClientOnce)
 OO_TEST(clientsMayUnregisterAndRaise)
 {
 	OO_CHECK(OOTestGLContext());
-	@autoreleasepool
 	{
 		OOGraphicsResetManager *manager = OOGraphicsResetManager::sharedManager();
 
@@ -186,7 +184,6 @@ OO_TEST(clientsMayUnregisterAndRaise)
 OO_TEST(clientsAreNotRetained)
 {
 	OO_CHECK(OOTestGLContext());
-	@autoreleasepool
 	{
 		OOGraphicsResetManager *manager = OOGraphicsResetManager::sharedManager();
 		oo::Ref<OOTestResetClient> client = oo::makeRef<OOTestResetClient>();
@@ -214,7 +211,6 @@ struct TestCxxClient : OOGraphicsResetClient
 OO_TEST(cxxClients)
 {
 	OO_CHECK(OOTestGLContext());
-	@autoreleasepool
 	{
 		OOGraphicsResetManager *manager = OOGraphicsResetManager::sharedManager();
 		TestCxxClient c1, c2;

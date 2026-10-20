@@ -57,7 +57,6 @@ GLint BoundTexture()
 
 OO_TEST(oneSharedInstance)
 {
-	@autoreleasepool
 	{
 		OOTexture *shared = OOTexture::nullTexture().get();
 		OO_CHECK(shared != nullptr && shared == OOTexture::nullTexture().get());
@@ -65,7 +64,6 @@ OO_TEST(oneSharedInstance)
 		OO_CHECK(dynamic_cast<OONullTexture *>(shared) != nullptr);
 	}
 	// It outlives the pools it was handed out in.
-	@autoreleasepool
 	{
 		OO_CHECK(OOTexture::nullTexture().get() == OONullTexture::sharedNullTexture());
 	}
@@ -74,7 +72,6 @@ OO_TEST(oneSharedInstance)
 
 OO_TEST(answersAsAnEmptyTexture)
 {
-	@autoreleasepool
 	{
 		OOTexture *none = OOTexture::nullTexture().get();
 		OO_CHECK(SameSize(none->dimensions(), 0, 0) && SameSize(none->originalDimensions(), 0, 0));
@@ -97,7 +94,6 @@ OO_TEST(answersAsAnEmptyTexture)
 OO_TEST(applyingBindsNoTexture)
 {
 	OO_CHECK(OOTestGLContext());
-	@autoreleasepool
 	{
 		GLuint name = 0;
 		glGenTextures(1, &name);
@@ -113,7 +109,6 @@ OO_TEST(applyingBindsNoTexture)
 OO_TEST(graphicsResetLeavesItAlone)
 {
 	OO_CHECK(OOTestGLContext());
-	@autoreleasepool
 	{
 		OOTexture *shared = OOTexture::nullTexture().get();
 		OOTexture::rebindAllTextures();

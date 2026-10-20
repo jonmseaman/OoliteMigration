@@ -149,7 +149,6 @@ GLuint Shader(GLenum type, const char *source)
 
 OO_TEST(stack)
 {
-	@autoreleasepool
 	{
 		oo::Ref<OOOpenGLMatrixStack> stack = oo::makeRef<OOOpenGLMatrixStack>();
 		OO_CHECK(stack->stackCount() == 0);
@@ -167,7 +166,6 @@ OO_TEST(stack)
 
 OO_TEST(modelView)
 {
-	@autoreleasepool
 	{
 		oo::Ref<OOOpenGLMatrixManager> m = oo::makeRef<OOOpenGLMatrixManager>();
 		OO_CHECK(Same(m->getModelView(), kIdentityMatrix));
@@ -211,7 +209,6 @@ OO_TEST(modelView)
 
 OO_TEST(projection)
 {
-	@autoreleasepool
 	{
 		oo::Ref<OOOpenGLMatrixManager> m = oo::makeRef<OOOpenGLMatrixManager>();
 
@@ -267,7 +264,6 @@ OO_TEST(projection)
 
 OO_TEST(derivedMatrices)
 {
-	@autoreleasepool
 	{
 		oo::Ref<OOOpenGLMatrixManager> m = oo::makeRef<OOOpenGLMatrixManager>();
 		for (int i = 0; i < OOLITE_GL_MATRIX_END; i++)  OO_CHECK(Same(m->getMatrix(i), kIdentityMatrix));
@@ -321,7 +317,6 @@ OO_TEST(derivedMatrices)
 OO_TEST(syncLoadsOpenGL)
 {
 	OO_CHECK(OOTestGLContext());
-	@autoreleasepool
 	{
 		oo::Ref<OOOpenGLMatrixManager> m = oo::makeRef<OOOpenGLMatrixManager>();
 		m->loadModelView(kSample);
@@ -348,7 +343,6 @@ OO_TEST(standardUniformLocations)
 {
 	OO_CHECK(OOTestGLContext());
 	OO_CHECK(OOOpenGLExtensionManager::sharedManager()->shadersSupported());	// loads the ARB entry points
-	@autoreleasepool
 	{
 		oo::Ref<OOOpenGLMatrixManager> m = oo::makeRef<OOOpenGLMatrixManager>();
 
@@ -409,7 +403,6 @@ struct MyOpenGLViewTestAccess
 OO_TEST(openGLFunctionsUseTheGameViewsManager)
 {
 	OO_CHECK(OOTestGLContext());
-	@autoreleasepool
 	{
 		oo::Ref<OOOpenGLMatrixManager> manager = oo::makeRef<OOOpenGLMatrixManager>();
 		OOOpenGLMatrixManager *m = manager.get();

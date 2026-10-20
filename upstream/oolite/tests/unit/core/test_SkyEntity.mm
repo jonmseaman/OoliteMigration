@@ -101,7 +101,6 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
@@ -172,7 +171,6 @@ SkyEntity *SkyPart(Entity *object)	{ return dynamic_cast<SkyEntity *>(object); }
 
 OO_TEST(made)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *sky = Sky(Dict({ { "sky_n_stars", oo::PList(7) } }));
@@ -191,7 +189,6 @@ OO_TEST(made)
 
 OO_TEST(sunColour)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *sky = Sky(Dict({ { "sun_color", oo::PList("greenColor") }, { "sky_n_stars", oo::PList(0) } }));
@@ -202,7 +199,6 @@ OO_TEST(sunColour)
 
 OO_TEST(rgbColours)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Sky(Dict({ { "sky_rgb_colors", oo::PList("0.25 0.5 2 0 -1 0.75") }, { "sky_n_stars", oo::PList(0) } }));
@@ -218,7 +214,6 @@ OO_TEST(rgbColours)
 
 OO_TEST(namedColours)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		// Premultiplied by alpha.
@@ -235,7 +230,6 @@ OO_TEST(namedColours)
 
 OO_TEST(update)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *sky = Sky(Dict({ { "sky_n_stars", oo::PList(0) } }));
@@ -260,7 +254,6 @@ OO_TEST(update)
 
 OO_TEST(changeProperty)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *sky = Sky(Dict({ { "sky_n_stars", oo::PList(0) } }));
@@ -280,7 +273,6 @@ OO_TEST(changeProperty)
 
 OO_TEST(facade)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *sky = Sky(Dict({ { "sky_n_stars", oo::PList(0) } }));

@@ -162,7 +162,6 @@ void RunWith(const char *requiresPList, const char *ooliteVersion)
 
 OO_TEST(nameAndNeighbours)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<OOCheckRequiresPListVerifierStage> stage = oo::makeRef<OOCheckRequiresPListVerifierStage>();
 		stage->setVerifier(MakeVerifier({}));
@@ -184,7 +183,6 @@ OO_TEST(nameAndNeighbours)
 
 OO_TEST(shapeAndKeys)
 {
-	@autoreleasepool
 	{
 		RunWith("( version )", "1.90");
 		OO_CHECK(gLog.size() == 1 && LogLinesContaining("***** ERROR: requires.plist is not a dictionary.") == 1);
@@ -203,7 +201,6 @@ OO_TEST(shapeAndKeys)
 
 OO_TEST(versions)
 {
-	@autoreleasepool
 	{
 		// In range: nothing.
 		RunWith("{ version = \"1.80\"; max_version = \"2.0\"; }", "1.90");
@@ -243,7 +240,6 @@ OO_TEST(versions)
 // OOOXPVerifierStage facade until bead oo-9ht.4), and it describes itself with its class's name.
 OO_TEST(facade)
 {
-	@autoreleasepool
 	{
 		OOOXPVerifier *verifier = MakeVerifier({});
 		const oo::Ref<OOCheckRequiresPListVerifierStage> stage = oo::makeRef<OOCheckRequiresPListVerifierStage>();

@@ -79,7 +79,6 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
@@ -144,7 +143,6 @@ double BoundFloat(Entity *entity, const char *name)
 
 OO_TEST(clockTime)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *entity = AnEntity();
@@ -159,7 +157,6 @@ OO_TEST(clockTime)
 
 OO_TEST(flavourNumbers)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *entity = AnEntity();
@@ -173,7 +170,6 @@ OO_TEST(flavourNumbers)
 
 OO_TEST(systemAttributes)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *entity = AnEntity();
@@ -193,7 +189,6 @@ OO_TEST(systemAttributes)
 
 OO_TEST(attributeNotANumberIsZero)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *entity = AnEntity();
@@ -211,7 +206,6 @@ OO_TEST(attributeNotANumberIsZero)
 
 OO_TEST(uniformTypes)
 {
-	@autoreleasepool
 	{
 		// The uniform's type is the method's return type: a float for the clock ('f'), unsigned
 		// ints ('I') for the rest.
@@ -230,7 +224,6 @@ OO_TEST(uniformTypes)
 
 OO_TEST(subclassesAnswerToo)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		// A subclass of Entity (here the test's player) answers the category's selectors.
@@ -248,7 +241,6 @@ OO_TEST(subclassesAnswerToo)
 // facade (bead oo-dpyk8, under oo-9n5p9): the rows and the bindings they make are still checked.
 OO_TEST(everyPermittedNameBindsAsBySelector)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		static const char *const kNames[] =

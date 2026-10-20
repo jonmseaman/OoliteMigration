@@ -271,7 +271,6 @@ OO_TEST(goods)
 		"food textiles radioactives slaves liquor_wines luxuries narcotics computers machinery alloys firearms furs minerals gold platinum gem_stones alien_items food food ",
 	};
 
-	@autoreleasepool
 	{
 		Reset();
 		oo::Ref<OOCommodities> c = Commodities();
@@ -308,7 +307,6 @@ OO_TEST(markets)
 		"script x.js; script x.js; script x.js; ",
 	};
 
-	@autoreleasepool
 	{
 		Reset();
 		oo::Ref<OOCommodities> c = Commodities();
@@ -347,7 +345,6 @@ OO_TEST(stationMarkets)
 		"script (none); ",
 	};
 
-	@autoreleasepool
 	{
 		Reset();
 		oo::Ref<OOCommodities> c = Commodities();
@@ -379,7 +376,6 @@ OO_TEST(stationMarkets)
 
 OO_TEST(cxxClass)
 {
-	@autoreleasepool
 	{
 		Reset();
 		oo::Ref<OOCommodities> c = oo::makeRef<OOCommodities>();
@@ -411,7 +407,6 @@ OO_TEST(cxxClass)
 
 OO_TEST(facadeIdentity)
 {
-	@autoreleasepool
 	{
 		Reset();
 		oo::Ref<OOCommodities> c = Commodities();

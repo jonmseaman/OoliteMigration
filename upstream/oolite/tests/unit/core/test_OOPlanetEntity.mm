@@ -69,7 +69,6 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
@@ -187,7 +186,6 @@ OOPlanetEntity *Miniature(OOPlanetEntity *planet)
 
 OO_TEST(moon)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		OOPlanetEntity *moon = Planet(NO);
@@ -221,7 +219,6 @@ OO_TEST(moon)
 
 OO_TEST(planetWithAtmosphere)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		OOPlanetEntity *planet = Planet(YES);
@@ -244,7 +241,6 @@ OO_TEST(planetWithAtmosphere)
 
 OO_TEST(clockTurnsThePlanet)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		sPlayer->_clock = 86400.0 * 3 + 100.0;	// 100 s into the day
@@ -258,7 +254,6 @@ OO_TEST(clockTurnsThePlanet)
 
 OO_TEST(shaderValues)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		OOPlanetEntity *planet = Planet(NO);
@@ -303,7 +298,6 @@ OO_TEST(shaderValues)
 
 OO_TEST(miniature)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		OOPlanetEntity *planet = Planet(YES);
@@ -326,7 +320,6 @@ OO_TEST(miniature)
 
 OO_TEST(updateTurnsThePlanet)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		OOPlanetEntity *moon = Planet(NO);
@@ -355,7 +348,6 @@ OO_TEST(updateTurnsThePlanet)
 
 OO_TEST(orientationSetsTheAxis)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		OOPlanetEntity *moon = Planet(NO);
@@ -372,7 +364,6 @@ OO_TEST(orientationSetsTheAxis)
 
 OO_TEST(closeCollision)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		OOPlanetEntity *moon = Planet(NO);
@@ -385,7 +376,6 @@ OO_TEST(closeCollision)
 
 OO_TEST(description)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		OOPlanetEntity *moon = Planet(NO, 3000);
@@ -401,7 +391,6 @@ OO_TEST(description)
 // binding selectors (Entity (OOPlanetShaderBindings)) for a planet only.
 OO_TEST(facade)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		OOPlanetEntity *moon = Planet(NO);
@@ -429,7 +418,6 @@ OO_TEST(facade)
 // OOJSPlanet.mm answers.
 OO_TEST(jsExtensions)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		OOPlanetEntity *moon = Planet(NO);

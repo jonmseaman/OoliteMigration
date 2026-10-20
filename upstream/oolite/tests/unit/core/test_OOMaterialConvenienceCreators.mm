@@ -314,7 +314,6 @@ bool IsExactly(const oo::Ref<OOMaterial> &material)
 OO_TEST(withoutShaders)
 {
 	if (!SetUp(NO))  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
 		// A diffuse map (named, or the material's own name): one texture.
 		OO_CHECK(IsExactly<OOSingleTextureMaterial>(Make("hull.png", {})));
@@ -339,7 +338,6 @@ OO_TEST(withoutShaders)
 OO_TEST(namedShaders)
 {
 	if (!SetUp(YES))  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
 		oo::Ref<OOMaterial> m = Make("hull.png", { { "vertex_shader", oo::PList("named") }, { "fragment_shader", oo::PList("named") } });
 		OO_CHECK(IsExactly<OOShaderMaterial>(m));
@@ -355,7 +353,6 @@ OO_TEST(namedShaders)
 OO_TEST(synthesizedShaders)
 {
 	if (!SetUp(YES, DETAIL_LEVEL_SHADERS))  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
 		// Full shader detail: the configuration is synthesized into a shader material, and the
 		// synthesized configuration is cached under the cache key, the name and the configuration.
@@ -394,7 +391,6 @@ OO_TEST(synthesizedShaders)
 OO_TEST(synthesisTriggersAndLoops)
 {
 	if (!SetUp(YES, DETAIL_LEVEL_MINIMUM))  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
 		// Low detail: fixed function, unless smoothed or a map needs the shader.
 		OO_CHECK(IsExactly<OOSingleTextureMaterial>(Make("hull.png", {})));
@@ -421,7 +417,6 @@ OO_TEST(synthesisTriggersAndLoops)
 OO_TEST(fromDictionaries)
 {
 	if (!SetUp(YES))  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
 		const oo::PList materials = oo::PList(oo::PList::Dict{ { "hull.png", oo::PList(oo::PList::Dict{ { "diffuse_map", oo::PList("m.png") } }) } });
 		const oo::PList shaders = oo::PList(oo::PList::Dict{ { "hull.png", oo::PList(oo::PList::Dict{ { "vertex_shader", oo::PList("named") }, { "fragment_shader", oo::PList("named") } }) } });
@@ -450,7 +445,6 @@ OO_TEST(fromDictionaries)
 OO_TEST(cxxStaticMembers)
 {
 	if (!SetUp(NO))  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
 		OO_CHECK(IsExactly<OOSingleTextureMaterial>(Make("hull.png", {})));
 		OO_CHECK(IsExactly<OOBasicMaterial>(Make(nullptr, {})));
@@ -459,7 +453,6 @@ OO_TEST(cxxStaticMembers)
 	}
 
 	if (!SetUp(YES, DETAIL_LEVEL_SHADERS))  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
 		OO_CHECK(IsExactly<OOShaderMaterial>(Make("hull.png", { { "emission_map", oo::PList("e.png") } }, false, std::string("ship"))));
 		OO_CHECK(gCacheWrites.size() == 1);

@@ -51,7 +51,6 @@ bool IsExactly(OOJoystickAxisProfile *profile)
 
 OO_TEST(axisProfileDeadzone)
 {
-	@autoreleasepool
 	{
 		oo::Ref<OOJoystickAxisProfile> profile = oo::makeRef<OOJoystickAxisProfile>();
 		OO_CHECK(Near(profile->deadzone(), STICK_DEADZONE));
@@ -79,7 +78,6 @@ OO_TEST(axisProfileDeadzone)
 
 OO_TEST(standardProfile)
 {
-	@autoreleasepool
 	{
 		oo::Ref<OOJoystickStandardAxisProfile> profile = oo::makeRef<OOJoystickStandardAxisProfile>();
 		OO_CHECK(dynamic_cast<OOJoystickAxisProfile *>(profile.get()) != nullptr);
@@ -117,7 +115,6 @@ OO_TEST(standardProfile)
 
 OO_TEST(splineProfileEditing)
 {
-	@autoreleasepool
 	{
 		oo::Ref<OOJoystickSplineAxisProfile> profile = oo::makeRef<OOJoystickSplineAxisProfile>();
 		OO_CHECK(dynamic_cast<OOJoystickAxisProfile *>(profile.get()) != nullptr);
@@ -159,7 +156,6 @@ OO_TEST(splineProfileEditing)
 
 OO_TEST(splineProfileCurve)
 {
-	@autoreleasepool
 	{
 		oo::Ref<OOJoystickSplineAxisProfile> profile = oo::makeRef<OOJoystickSplineAxisProfile>();
 		profile->addControl(NSMakePoint(0.5, 0.25));

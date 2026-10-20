@@ -57,7 +57,6 @@ oo::Ref<OOPolygonSprite> Sprite(const oo::PList &data, const char *name)
 
 OO_TEST(dataArraysThatMakeASprite)
 {
-	@autoreleasepool
 	{
 		const oo::PList square = Numbers({ 0, 0, 1, 0, 1, 1, 0, 1 });
 		OO_CHECK(Sprite(square, "flat") != nullptr);											// one contour as flat pairs
@@ -75,7 +74,6 @@ OO_TEST(dataArraysThatMakeASprite)
 
 OO_TEST(emptyDataAnswersNil)
 {
-	@autoreleasepool
 	{
 		OO_CHECK(Sprite(oo::PList(oo::PList::Array()), "empty") == nullptr);
 		OO_CHECK(OOPolygonSprite::initWithDataArray(oo::PList(), 1.0f, "null") == nullptr);
@@ -85,7 +83,6 @@ OO_TEST(emptyDataAnswersNil)
 
 OO_TEST(descriptionAndProtocols)
 {
-	@autoreleasepool
 	{
 		oo::Ref<OOPolygonSprite> sprite = Sprite(Numbers({ 0, 0, 1, 0, 1, 1 }), "triangle");
 		std::string text = sprite->description();

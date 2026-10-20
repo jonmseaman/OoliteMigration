@@ -236,7 +236,6 @@ ooscript::ClassDef sTestWrapperClass =
 OO_TEST(sharedEngine)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OOJavaScriptEngine *engine = OOJavaScriptEngine::sharedEngine();
 		OO_CHECK(engine != nullptr);
@@ -259,7 +258,6 @@ OO_TEST(sharedEngine)
 OO_TEST(standardClasses)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OOJavaScriptEngine *engine = OOJavaScriptEngine::sharedEngine();
 		OO_CHECK(engine->objectClass() != NULL);
@@ -285,7 +283,6 @@ OO_TEST(standardClasses)
 OO_TEST(flags)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OOJavaScriptEngine *engine = OOJavaScriptEngine::sharedEngine();
 		const BOOL show = engine->showErrorLocations();
@@ -316,7 +313,6 @@ OO_TEST(flags)
 OO_TEST(callJSFunction)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OOJavaScriptEngine *engine = OOJavaScriptEngine::sharedEngine();
 		ooscript::Context context = OOJSAcquireContext();
@@ -346,7 +342,6 @@ OO_TEST(callJSFunction)
 OO_TEST(gcRoots)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OOJavaScriptEngine *engine = OOJavaScriptEngine::sharedEngine();
 		ooscript::Context context = OOJSAcquireContext();
@@ -376,7 +371,6 @@ OO_TEST(gcRoots)
 OO_TEST(errorReporting)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OOJavaScriptEngine *engine = OOJavaScriptEngine::sharedEngine();
 		const BOOL show = engine->showErrorLocations();
@@ -477,7 +471,6 @@ bool DumpStackNative(ooscript::Context context, ooscript::CallArgs &args)
 OO_TEST(stackDump)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OOJavaScriptEngine *engine = OOJavaScriptEngine::sharedEngine();
 		ooscript::Context context = OOJSAcquireContext();
@@ -528,7 +521,6 @@ OO_TEST(stackDump)
 OO_TEST(describeValue)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		ooscript::Context context = OOJSAcquireContext();
 		OO_CHECK_EQ(Describe(context, "'a\"b\\n'", NO), "\"a\\\"b\\n\"");
@@ -555,7 +547,6 @@ OO_TEST(describeValue)
 OO_TEST(idAndStringCaches)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		ooscript::PropertyId identifier = OOJSID("testIdentifier");
 		OO_CHECK_EQ(cxx_OOStringFromJSID(identifier).value_or("<none>"), "testIdentifier");
@@ -573,7 +564,6 @@ OO_TEST(idAndStringCaches)
 OO_TEST(nativeObjectValues)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		ooscript::Context context = OOJSAcquireContext();
 
@@ -606,7 +596,6 @@ OO_TEST(nativeObjectValues)
 OO_TEST(jsValueHolder)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		ooscript::Context context = OOJSAcquireContext();
 		ooscript::Value object = Eval(context, "({ held: 'yes' })");
@@ -693,7 +682,6 @@ OO_TEST(cxxObjectWrapper)
 OO_TEST(entityPredicates)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OO_CHECK(!JSEntityIsJavaScriptVisiblePredicate(nullptr, NULL));
 		OO_CHECK(!JSEntityIsJavaScriptSearchablePredicate(nullptr, NULL));
@@ -745,7 +733,6 @@ OO_TEST(entityPredicates)
 OO_TEST(propertyListsFromJS)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		ooscript::Context context = OOJSAcquireContext();
 		oo::PList array = cxx_OOJSPListFromJSValue(context, Eval(context, "[1, null, 'a', [true]]"));
@@ -780,7 +767,6 @@ OO_TEST(propertyListsFromJS)
 OO_TEST(reset)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OOJavaScriptEngine *engine = OOJavaScriptEngine::sharedEngine();
 		ooscript::Context context = OOJSAcquireContext();

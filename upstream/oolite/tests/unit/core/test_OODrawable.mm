@@ -63,7 +63,6 @@ bool IsZero(const BoundingBox &box)
 
 OO_TEST(rootDefaults)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<OODrawable> drawable = oo::makeRef<OODrawable>();
 		drawable->renderOpaqueParts();
@@ -84,7 +83,6 @@ OO_TEST(rootDefaults)
 
 OO_TEST(objCSubclass)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<TestSubDrawable> drawable = oo::makeRef<TestSubDrawable>();
 		drawable->radius = 12.5f;
@@ -107,7 +105,6 @@ OO_TEST(objCSubclass)
 
 OO_TEST(cxxDrawableBehindTheFacade)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<TestCxxDrawable> drawable = oo::makeRef<TestCxxDrawable>();
 		OODrawable *part = drawable.get();
@@ -132,7 +129,6 @@ OO_TEST(autoreleaseKeepsTheDrawable)
 	// drawable lives until the pool drains.
 	oo::Ref<TestCxxDrawable> drawable = oo::makeRef<TestCxxDrawable>();
 	TestCxxDrawable *raw = drawable.get();
-	@autoreleasepool
 	{
 		OODrawableAutorelease(oo::Ref<OODrawable>(std::move(drawable)));
 		raw->renderTranslucentParts();	// still alive

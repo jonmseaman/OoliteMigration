@@ -188,7 +188,6 @@ OO_TEST(modeChangesAreKept)
 {
 	SetUp();
 	OOMusicController *controller = OOMusicController::sharedController();
-	@autoreleasepool
 	{
 		controller->setMode(kOOMusicOn);
 		OO_CHECK(controller->mode() == kOOMusicOn && ModeDefault() == std::optional<std::string>("on"));
@@ -209,7 +208,6 @@ OO_TEST(playsMusicByName)
 {
 	SetUp();
 	OOMusicController *controller = OOMusicController::sharedController();
-	@autoreleasepool
 	{
 		controller->playMusicNamed("a.ogg", YES, 2.0f);
 		OO_CHECK((TakeLog() == std::vector<std::string>{ "play a.ogg looped" }));
@@ -240,7 +238,6 @@ OO_TEST(specialMusic)
 {
 	SetUp();
 	OOMusicController *controller = OOMusicController::sharedController();
-	@autoreleasepool
 	{
 		controller->playThemeMusic();
 		OO_CHECK((TakeLog() == std::vector<std::string>{ "play OoliteTheme.ogg looped" }));
@@ -300,7 +297,6 @@ OO_TEST(cxxApi)
 	SetUp();
 	OOMusicController *controller = OOMusicController::sharedController();
 	OO_CHECK(controller != nullptr && controller == OOMusicController::sharedController());
-	@autoreleasepool
 	{
 		OO_CHECK(controller->mode() == kOOMusicOn);
 		controller->setMissionMusic(std::string("c.ogg"));

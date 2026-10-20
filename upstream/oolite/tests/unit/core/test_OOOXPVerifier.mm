@@ -278,7 +278,6 @@ oo::Ref<OOOXPVerifierStage> MakeTestStage(const std::string &name)
 OO_TEST(noRequest)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OO_CHECK(!RunWithArguments({}));
 		OO_CHECK(!RunWithArguments({ "-load", "Test.oxp" }));
@@ -291,7 +290,6 @@ OO_TEST(noRequest)
 OO_TEST(requestWithoutAnOXP)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OO_CHECK(RunWithArguments({ "-verify-oxp" }));
 		OO_CHECK(RunWithArguments({ "--verify-oxp", "NoSuch.oxp" }));
@@ -304,7 +302,6 @@ OO_TEST(requestWithoutAnOXP)
 OO_TEST(verification)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		const std::string path = (sRoot / "Test.oxp").generic_string();
 		OO_CHECK(RunWithArguments({ "-verify-oxp", path }));

@@ -152,7 +152,6 @@ OO_TEST(readsTheDriver)
 	OO_CHECK(OOTestGLContext());
 	SetArguments({ "test_OOOpenGLExtensionManager" });
 
-	@autoreleasepool
 	{
 		OOOpenGLExtensionManager *manager = OOOpenGLExtensionManager::sharedManager();
 		OO_CHECK(manager != nullptr);
@@ -211,7 +210,6 @@ OO_TEST(readsTheDriver)
 OO_TEST(gpuSettingsMatchInPrecedenceOrder)
 {
 	OO_CHECK(OOTestGLContext());
-	@autoreleasepool
 	{
 		OOOpenGLExtensionManager *manager = OOOpenGLExtensionManager::sharedManager();
 		const BOOL shaders = GLHasShaderExtensions() ? YES : NO;
@@ -281,7 +279,6 @@ OO_TEST(gpuSettingsPassTakesOneMatcher)
 	// tester); the C++ pass holds the one it takes (ADR-0056 amendment oo-ct7c item 3, bead
 	// oo-9ht.12). A pass with no regexp takes none, as no message was sent.
 	OO_CHECK(OOTestGLContext());
-	@autoreleasepool
 	{
 		OOOpenGLExtensionManager *manager = OOOpenGLExtensionManager::sharedManager();
 
@@ -309,7 +306,6 @@ OO_TEST(gpuSettingsPassTakesOneMatcher)
 OO_TEST(noShadersArgument)
 {
 	OO_CHECK(OOTestGLContext());
-	@autoreleasepool
 	{
 		OOOpenGLExtensionManager *manager = OOOpenGLExtensionManager::sharedManager();
 		SetArguments({ "test_OOOpenGLExtensionManager", "--noshaders" });

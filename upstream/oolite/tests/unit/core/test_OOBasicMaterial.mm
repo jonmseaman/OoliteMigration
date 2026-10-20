@@ -168,7 +168,6 @@ oo::Ref<TestSubMaterial> NamedSub(const std::optional<std::string> &name, const 
 
 OO_TEST(defaults)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<OOBasicMaterial> m = Named("Hull");
 		OO_CHECK(m->name() == std::optional<std::string>("Hull"));
@@ -189,7 +188,6 @@ OO_TEST(defaults)
 
 OO_TEST(emptyConfiguration)
 {
-	@autoreleasepool
 	{
 		// A null configuration is an empty one: the specifier's defaults apply (exponent 10, 0.2 white).
 		const oo::Ref<OOBasicMaterial> m = OOBasicMaterial::materialWithName(std::string("Plain"), oo::PList());
@@ -205,7 +203,6 @@ OO_TEST(emptyConfiguration)
 
 OO_TEST(configuration)
 {
-	@autoreleasepool
 	{
 		oo::Ref<OOBasicMaterial> m = OOBasicMaterial::materialWithName(std::string("Painted"), Config({
 			{ "diffuse_color", oo::PList("redColor") },
@@ -238,7 +235,6 @@ OO_TEST(configuration)
 
 OO_TEST(permitSpecular)
 {
-	@autoreleasepool
 	{
 		const oo::PList config = Config({ { "specular_exponent", oo::PList(std::int64_t(20)) } });
 
@@ -264,7 +260,6 @@ OO_TEST(permitSpecular)
 
 OO_TEST(accessors)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<OOBasicMaterial> mRef = Named("Accessors");
 		OOBasicMaterial *m = mRef.get();
@@ -322,7 +317,6 @@ OO_TEST(accessors)
 OO_TEST(doApplySetsTheGLMaterial)
 {
 	if (!OOTestGLContext())  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
 		const oo::Ref<OOBasicMaterial> m = Named("Applied");
 		m->setDiffuseRed(0.1f, 0.2f, 0.3f, 0.4f);
@@ -354,7 +348,6 @@ OO_TEST(doApplySetsTheGLMaterial)
 OO_TEST(unapplyFallsBackToTheDefaultMaterial)
 {
 	if (!OOTestGLContext())  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
 		const oo::Ref<OOBasicMaterial> m = Named("Current");
 		m->setDiffuseRed(0.1f, 0.2f, 0.3f, 0.4f);
@@ -388,7 +381,6 @@ OO_TEST(unapplyFallsBackToTheDefaultMaterial)
 OO_TEST(applyAndCurrent)
 {
 	if (!OOTestGLContext())  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
 		const oo::Ref<OOBasicMaterial> a = Named("A");
 		const oo::Ref<TestSubMaterial> b = NamedSub(std::string("B"));
@@ -404,7 +396,6 @@ OO_TEST(applyAndCurrent)
 
 OO_TEST(description)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<OOBasicMaterial> m = Named("Hull");
 		const std::string text = m->description();
@@ -419,7 +410,6 @@ OO_TEST(description)
 
 OO_TEST(cxxAPI)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<OOBasicMaterial> m = OOBasicMaterial::materialWithName(std::string("Cxx"));
 		OO_CHECK(m->name() == std::optional<std::string>("Cxx") && m->shininess() == 0);
@@ -456,7 +446,6 @@ OO_TEST(cxxAPI)
 // The name, as the facade answered it (bead oo-9ht.33, oo-9ht.8).
 OO_TEST(nameOfACxxMaterial)
 {
-	@autoreleasepool
 	{
 		const oo::Ref<OOBasicMaterial> m = OOBasicMaterial::materialWithName(std::string("Cxx"));
 		OO_CHECK(m->name() == std::optional<std::string>("Cxx"));

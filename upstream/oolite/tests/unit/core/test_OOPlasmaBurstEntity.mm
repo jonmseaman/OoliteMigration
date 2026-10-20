@@ -46,7 +46,6 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
@@ -112,7 +111,6 @@ bool ComponentsAre(Entity *e, GLfloat r, GLfloat g, GLfloat b, GLfloat a)
 
 OO_TEST(initWithPosition)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *burst = MakeBurst(make_HPvector(4, 5, 6));
@@ -128,7 +126,6 @@ OO_TEST(initWithPosition)
 
 OO_TEST(growsFadesAndIsRemoved)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		Entity *burst = MakeBurst(make_HPvector(4, 5, 6));

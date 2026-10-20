@@ -56,7 +56,6 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
@@ -106,7 +105,6 @@ bool ColorIs(OOColor *color, float r, float g, float b, float a)
 
 OO_TEST(init)
 {
-	@autoreleasepool
 	{
 		SetUp();
 		DustEntity *dust = nullptr;
@@ -131,7 +129,6 @@ OO_TEST(init)
 
 OO_TEST(cameraRelativePosition)
 {
-	@autoreleasepool
 	{
 		TestPlayer *player = SetUp();
 		DustEntity *dust = nullptr;
@@ -150,7 +147,6 @@ OO_TEST(cameraRelativePosition)
 
 OO_TEST(shaderBindings)
 {
-	@autoreleasepool
 	{
 		TestPlayer *player = SetUp();
 		DustEntity *dust = nullptr;

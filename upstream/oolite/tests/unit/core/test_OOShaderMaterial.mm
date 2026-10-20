@@ -364,7 +364,6 @@ OO_TEST(specifiesShaderMaterial)
 OO_TEST(programFromSources)
 {
 	if (!OOTestGLContext())  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
 		const std::string units = std::to_string(TextureUnits());
 		oo::Ref<OOShaderMaterial> m = Make(kSources, Config({ { "A", oo::PList(std::int64_t(1)) }, { "B", oo::PList("two") } }));
@@ -388,7 +387,6 @@ OO_TEST(programFromSources)
 OO_TEST(programFromFiles)
 {
 	if (!OOTestGLContext())  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
 		gShaderFiles = { { "hull.vertex", "VSRC" }, { "hull.fs.frag", "FSRC" }, { "plain.fragment", "PLAIN" } };
 
@@ -416,7 +414,6 @@ OO_TEST(programFromFiles)
 OO_TEST(failures)
 {
 	if (!OOTestGLContext())  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
 		OO_CHECK(Make(oo::PList()) == nullptr);	// no configuration
 		OO_CHECK(Make(Config({ { "gloss", oo::PList(0.5) } })) == nullptr && gProgramRequests.empty());	// no shader
@@ -432,7 +429,6 @@ OO_TEST(failures)
 OO_TEST(uniformsFromTheConfiguration)
 {
 	if (!OOTestGLContext())  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
 		TestTarget targetEntity;
 		TestTarget *target = &targetEntity;
@@ -488,7 +484,6 @@ OO_TEST(uniformsFromTheConfiguration)
 OO_TEST(settingUniforms)
 {
 	if (!OOTestGLContext())  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
 		TestTarget targetEntity;
 		TestTarget *target = &targetEntity;
@@ -531,7 +526,6 @@ OO_TEST(settingUniforms)
 OO_TEST(texturesApplyAndUnapply)
 {
 	if (!OOTestGLContext())  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
 		const oo::Ref<OOShaderMaterial> m = Make(With(kSources, { { "textures", oo::PList(oo::PList::Array{ oo::PList("a.png"), oo::PList("missing"), oo::PList("c.png") }) } }));
 #ifndef NDEBUG
@@ -591,12 +585,10 @@ OO_TEST(lifetimeAndDescription)
 	if (!OOTestGLContext())  { OO_CHECK(false); return; }
 	const int programs = gProgramsDeallocated, textures = gTexturesDeallocated;
 	oo::Ref<OOShaderMaterial> m;
-	@autoreleasepool
 	{
 		m = Make(With(kSources, { { "textures", oo::PList(oo::PList::Array{ oo::PList("a.png") }) } }));
 	}
 	OO_CHECK(gProgramsDeallocated == programs && gTexturesDeallocated == textures);
-	@autoreleasepool
 	{
 		const std::string text = m->description();
 		OO_CHECK(text.starts_with("<OOShaderMaterial 0x") && text.ends_with(">{\"Shader\"}"));
@@ -608,7 +600,6 @@ OO_TEST(lifetimeAndDescription)
 	m = nullptr;
 	OO_CHECK(gProgramsDeallocated == programs + 1 && gTexturesDeallocated == textures + 1);
 
-	@autoreleasepool
 	{
 		// Specular is always permitted: the exponent applies.
 		const oo::Ref<OOShaderMaterial> shiny = Make(With(kSources, { { "specular_exponent", oo::PList(std::int64_t(20)) } }));
@@ -622,7 +613,6 @@ OO_TEST(lifetimeAndDescription)
 OO_TEST(cxxAPI)
 {
 	if (!OOTestGLContext())  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
 		OO_CHECK(OOShaderMaterial::configurationDictionarySpecifiesShaderMaterial(kSources));
 		OO_CHECK(!OOShaderMaterial::configurationDictionarySpecifiesShaderMaterial(oo::PList()));
@@ -657,7 +647,6 @@ OO_TEST(cxxAPI)
 OO_TEST(descriptionNamesTheClass)
 {
 	if (!OOTestGLContext())  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
 		const oo::Ref<OOShaderMaterial> m = OOShaderMaterial::shaderMaterialWithName(std::string("Cxx"), kSources, oo::PList(), nil);
 		OO_CHECK(m->description().starts_with("<OOShaderMaterial 0x"));

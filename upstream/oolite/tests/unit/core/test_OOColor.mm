@@ -169,7 +169,6 @@ OO_TEST(text)
 
 OO_TEST(facadeForwards)
 {
-	@autoreleasepool
 	{
 		// What the facade's selectors answered, asked of the C++ colour since bead oo-9ht.1 deleted
 		// the facade (its -isKindOfClass: check went with it).
@@ -190,7 +189,6 @@ OO_TEST(facadeForwards)
 
 OO_TEST(facadeIdentity)
 {
-	@autoreleasepool
 	{
 		oo::Ref<OOColor> opaque = OOColor::colorWithRed(0.5f, 0.5f, 0.5f, 1.0f);
 		OO_CHECK(opaque->premultipliedColor() == opaque);	// returned itself before the conversion

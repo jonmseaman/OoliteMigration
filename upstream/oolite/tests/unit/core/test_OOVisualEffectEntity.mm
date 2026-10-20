@@ -64,7 +64,6 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
@@ -100,8 +99,7 @@ void SetUp()
 		OO_CHECK(::_putenv_s("HOMEPATH", root.string().c_str()) == 0);
 		stdfs::current_path(root);
 		OO_CHECK(oo::fs::writeFile(root / "Resources" / "Info-gnustep.plist", oo::Data("{ CFBundleVersion = \"9.9.9-test\"; }", 35), oo::fs::WriteMode::direct).has_value());
-		@autoreleasepool	// the engine autoreleases facades as it starts (as test_OOJSSystem, bead oo-9ht.172; here oo-9ht.174)
-		{
+		{	// was an Objective-C pool (bead oo-dbz.1: no Objective-C object since oo-4aq6a.8): the engine autoreleases facades as it starts (as test_OOJSSystem, bead oo-9ht.172; here oo-9ht.174)
 			(void)OOJavaScriptEngine::sharedEngine();
 		}
 	}
@@ -114,8 +112,7 @@ void SetUp()
 	static TestPlayer *player = nullptr;
 	if (player == nil)
 	{
-		@autoreleasepool	// what the stand-in player's -init autoreleases is freed while the engine is alive (bead oo-9ht.174)
-		{
+		{	// was an Objective-C pool (bead oo-dbz.1: no Objective-C object since oo-4aq6a.8): what the stand-in player's -init autoreleases is freed while the engine is alive (bead oo-9ht.174)
 			player = NewTestPlayer<TestPlayer>();
 		}
 	}
@@ -165,7 +162,6 @@ GLfloat NoDrawDistance(Entity *e)	{ return e->no_draw_distance; }
 OO_TEST(defaults)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OOVisualEffectEntity *effect = Effect("test-effect", Dict({}));
 		OO_CHECK(effect != nil);
@@ -204,7 +200,6 @@ OO_TEST(defaults)
 OO_TEST(breakPatternFlag)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OOVisualEffectEntity *effect = Effect("bp", Dict({ { "is_break_pattern", oo::PList(true) } }));
 		OO_CHECK(effect->isBreakPattern());
@@ -219,7 +214,6 @@ OO_TEST(breakPatternFlag)
 OO_TEST(flasherSubentities)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OOVisualEffectEntity *effect = Effect("lights", Dict({ { "subentities", oo::PList(oo::PList::Array{ Flasher(10), oo::PList(std::string("not a dictionary")) }) } }));
 		OO_CHECK_EQ(effect->subEntityCount(), 1u);	// the string made no subentity
@@ -265,7 +259,6 @@ OO_TEST(flasherSubentities)
 OO_TEST(standardSubentities)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		oo::PList::Array subs;
 		subs.push_back(Dict({ { "subentity_key", oo::PList(std::string("child")) }, { "position", Numbers(0, 5, 0) } }));
@@ -277,7 +270,6 @@ OO_TEST(standardSubentities)
 		OOVisualEffectEntity *effect = nullptr;
 		std::vector<oo::EntityHold> effects;	// the subentities (bead oo-9ht.165; held C++ entities since bead oo-xn1j1)
 		Entity *effectObject = nil;
-		@autoreleasepool
 		{
 			effectObject = oo::NewVisualEffect("parent", Dict({ { "subentities", oo::PList(std::move(subs)) } }));
 			effect = oo::ToEffect(effectObject);
@@ -324,7 +316,6 @@ OO_TEST(standardSubentities)
 OO_TEST(orientationVectors)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OOVisualEffectEntity *effect = Effect("turned", Dict({}));
 		Quaternion q = kIdentityQuaternion;
@@ -345,7 +336,6 @@ OO_TEST(orientationVectors)
 OO_TEST(scannerColours)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OOVisualEffectEntity *plain = Effect("plain", Dict({}));
 		OO_CHECK(plain->scannerDisplayColor1() == nil);
@@ -381,7 +371,6 @@ OO_TEST(scannerColours)
 OO_TEST(scriptAndScriptInfo)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		// No scripts in the scratch folder: neither the named script nor the default one is found.
 		OOVisualEffectEntity *effect = Effect("scripted", Dict({ { "script", oo::PList(std::string("no-such-script.js")) }, { "script_info", Dict({ { "k", oo::PList(std::string("v")) } }) } }));
@@ -396,7 +385,6 @@ OO_TEST(scriptAndScriptInfo)
 OO_TEST(beacons)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OOVisualEffectEntity *effect = Effect("unlit", Dict({}));
 		OO_CHECK(!effect->isBeacon());
@@ -424,7 +412,6 @@ OO_TEST(beacons)
 OO_TEST(shaderUniforms)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OOVisualEffectEntity *effect = Effect("shaded", Dict({}));
 		OO_CHECK(Near(effect->hullHeatLevel(), 60.0 / 256.0));
@@ -453,7 +440,6 @@ OO_TEST(shaderUniforms)
 OO_TEST(facadeContract)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OOVisualEffectEntity *effect = Effect("facade", Dict({ { "subentities", oo::PList(oo::PList::Array{ Flasher(1) }) } }));
 		OOVisualEffectEntity *cxxEffect = effect;	// the C++ class since bead oo-9ht.165
@@ -486,7 +472,6 @@ OO_TEST(facadeContract)
 OO_TEST(slice2Members)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OOVisualEffectEntity *effect = Effect("members", Dict({ { "scanner_display_color1", oo::PList(std::string("redColor")) } }));
 		OOVisualEffectEntity *cxxEffect = effect;	// the C++ class since bead oo-9ht.165
@@ -510,7 +495,6 @@ OO_TEST(slice2Members)
 OO_TEST(jsExtensions)
 {
 	SetUp();
-	@autoreleasepool
 	{
 		OOVisualEffectEntity *effect = Effect("js-effect", Dict({}));
 		ooscript::ClassDef *jsClass = nullptr, *expectedClass = nullptr;

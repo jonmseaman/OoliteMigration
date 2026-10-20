@@ -61,7 +61,6 @@ template <class T>
 T *NewTestPlayer()
 {
 	oo::Ref<T> player = oo::makeRef<T>();
-	@autoreleasepool
 	{
 		oo::RetainEntity(oo::MadeEntity(player));
 	}
@@ -185,7 +184,6 @@ OOExhaustPlumeEntity *Plume(Entity *ship, std::vector<std::string> tokens, float
 
 OO_TEST(made)
 {
-	@autoreleasepool
 	{
 		SetUp(0.0);
 		Entity *ship = Ship();
@@ -205,7 +203,6 @@ OO_TEST(made)
 
 OO_TEST(scaleZ)
 {
-	@autoreleasepool
 	{
 		SetUp(0.0);
 		Entity *ship = Ship();
@@ -223,7 +220,6 @@ OO_TEST(scaleZ)
 
 OO_TEST(rescale)
 {
-	@autoreleasepool
 	{
 		SetUp(0.0);
 		OOExhaustPlumeEntity *plume = Plume(Ship(), { "0", "0", "0", "1", "2", "1.5" }, 1.0f);
@@ -237,7 +233,6 @@ OO_TEST(rescale)
 
 OO_TEST(updateWithoutVisibleShip)
 {
-	@autoreleasepool
 	{
 		SetUp(1.0);
 		Entity *ship = Ship();
@@ -256,7 +251,6 @@ OO_TEST(updateWithoutVisibleShip)
 
 OO_TEST(updateBelowMinimalSpeed)
 {
-	@autoreleasepool
 	{
 		SetUp(1.0);
 		Entity *ship = Ship();
@@ -271,7 +265,6 @@ OO_TEST(updateBelowMinimalSpeed)
 
 OO_TEST(updateMeasures)
 {
-	@autoreleasepool
 	{
 		SetUp(1.0);
 		Entity *ship = Ship();
@@ -286,7 +279,6 @@ OO_TEST(updateMeasures)
 
 OO_TEST(texture)
 {
-	@autoreleasepool
 	{
 		SetUp(0.0);
 		OOExhaustPlumeEntity *plume = Plume(Ship(), { "0", "0", "0", "1", "1", "1" }, 1.0f);
@@ -302,7 +294,6 @@ OO_TEST(texture)
 
 OO_TEST(facade)
 {
-	@autoreleasepool
 	{
 		SetUp(0.0);
 		// The object is the root's facade, the nearest left (amendment oo-9ht.12 item 6), whose C++
@@ -320,7 +311,6 @@ OO_TEST(facade)
 // selector is what OOJSExhaustPlume.mm answers.
 OO_TEST(jsExtensions)
 {
-	@autoreleasepool
 	{
 		SetUp(0.0);
 		Entity *plume = Plume(Ship(), { "0", "0", "0", "1", "1", "1" }, 1.0f);

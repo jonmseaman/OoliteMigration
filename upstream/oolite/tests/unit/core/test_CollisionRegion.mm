@@ -51,7 +51,6 @@ void SetUpTestPlayer()
 	if (player == nullptr)
 	{
 		oo::Ref<TestPlayer> made = oo::makeRef<TestPlayer>();
-		@autoreleasepool
 		{
 			oo::RetainEntity(oo::MadeEntity(made));	// +1, as PlayerEntity::sharedPlayer() makes the game's
 		}
@@ -107,7 +106,6 @@ oo::Ref<CollisionRegion> MakeTree()
 
 OO_TEST(universeAlone)
 {
-	@autoreleasepool
 	{
 		oo::Ref<CollisionRegion> universe = MakeUniverse();
 		OO_CHECK(universe != nullptr);
@@ -120,7 +118,6 @@ OO_TEST(universeAlone)
 
 OO_TEST(subregionTree)
 {
-	@autoreleasepool
 	{
 		oo::Ref<CollisionRegion> universe = MakeTree();
 		OO_CHECK(universe->debugOut() == std::optional<std::string>("0:0:0:0:"));
@@ -135,7 +132,6 @@ OO_TEST(subregionTree)
 
 OO_TEST(entitiesAreFiled)
 {
-	@autoreleasepool
 	{
 		oo::Ref<CollisionRegion> universe = MakeTree();
 		Entity *inner = MakeEntity(make_HPvector(1000, 0, 0), 5);
@@ -173,7 +169,6 @@ OO_TEST(entitiesAreFiled)
 
 OO_TEST(entityListGrows)
 {
-	@autoreleasepool
 	{
 		oo::Ref<CollisionRegion> universe = MakeUniverse();
 		for (unsigned i = 0; i < COLLISION_MAX_ENTITIES * 3; i++)
@@ -187,7 +182,6 @@ OO_TEST(entityListGrows)
 
 OO_TEST(shadowGeometry)
 {
-	@autoreleasepool
 	{
 		// The function reads only Entity members of the sun, which is C++ since bead oo-9ht.111 (a
 		// cast entity before): a C++ sun with the same position and radius.
@@ -216,7 +210,6 @@ OO_TEST(shadowGeometry)
 
 OO_TEST(cxxRegion)
 {
-	@autoreleasepool
 	{
 		oo::Ref<CollisionRegion> universe = MakeUniverse();
 		universe->addSubregionAtPosition(make_HPvector(1000, 0, 0), 100);
