@@ -19,7 +19,7 @@ oolite_sources += files(
     'OOCPUInfo.mm',
     'OOCache.mm',
     'OOCacheManager.mm',
-    # OOCallByName.mm: no game caller since bead oo-4aq6a.5; the string-expander harness and test_objc_call_by_name compile it themselves (bead oo-4aq6a.8)
+    # OOCallByName.mm: no game caller since bead oo-4aq6a.5; deleted with its last callers, the string-expander harness's Objective-C player and test_objc_call_by_name (bead oo-6e1.2)
       'OOCharacter.mm',
     'OOCocoa.mm',
     'OOColor.mm',

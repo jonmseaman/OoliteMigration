@@ -4,14 +4,14 @@
 # oo-vjwp): compile the tree's upstream/oolite/src/Core/OOConvertSystemDescriptions.mm against the
 # stubs in upstream/oolite/tests/unit/sysdesc (ResourceManager, Universe), run it over the shipped
 # descriptions.plist, and compare FNV-1a digests captured from the ported tool (oo-xh1g). See the
-# banner of tests/unit/sysdesc/test_sysdesc_tools.mm for what is pinned and why.
+# banner of tests/unit/sysdesc/test_sysdesc_tools.cpp for what is pinned and why.
 #
 #     bash tools/check-sysdesc-tools.sh               # the tree's OOConvertSystemDescriptions.mm
 #     OO_SYSDESC_PRINT=1 bash tools/check-sysdesc-tools.sh   # print every recorded line
 #
 # The .mm is copied next to the stubs so that its quote-includes find them before the real
-# headers. It still links gnustep-base (the Foundation boundary the tools keep: the log calls and
-# the descriptions dictionary); it moves when those leave Foundation (oo-qps).
+# headers. Since bead oo-6e1.2 the test is C++ and links no gnustep-base (CLAUDE.md rule 8): the
+# tools log through oo::log and read oo::PList, so the Foundation boundary it kept is gone.
 
 set -euo pipefail
 
@@ -31,9 +31,8 @@ TOOLS="${1:-$SRC/Core/OOConvertSystemDescriptions.mm}"
 die() { printf 'check-sysdesc-tools: %s\n' "$*" >&2; exit 1; }
 
 command -v clang++ >/dev/null 2>&1 || die "clang++ is not on PATH; run tools/setup-windows.sh"
-command -v gnustep-config >/dev/null 2>&1 || die "gnustep-config is not on PATH; run tools/setup-windows.sh"
 [ -f "$TOOLS" ] || die "missing $TOOLS"
-[ -f "$TEST_DIR/test_sysdesc_tools.mm" ] || die "missing $TEST_DIR/test_sysdesc_tools.mm"
+[ -f "$TEST_DIR/test_sysdesc_tools.cpp" ] || die "missing $TEST_DIR/test_sysdesc_tools.cpp"
 
 # Native paths for every argument clang sees (docs/fleet/LEARNINGS.md), and a temp directory
 # clang can see.
@@ -45,7 +44,7 @@ fi
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
-cp "$TEST_DIR"/*.h "$TEST_DIR/test_sysdesc_tools.mm" "$WORK/"
+cp "$TEST_DIR"/*.h "$TEST_DIR/test_sysdesc_tools.cpp" "$WORK/"
 cp "$TOOLS" "$WORK/OOConvertSystemDescriptions.mm"
 
 inc=()
@@ -58,12 +57,11 @@ flags=(-x objective-c++ -std=gnu++20 -O2 -Wall -DOOLITE_DEBUG=1 -D_FILE_OFFSET_B
        -D_NONFRAGILE_ABI=1 -fobjc-runtime=gnustep-2.2 -fblocks -ffp-contract=off -pthread)
 
 w="$(native "$WORK")"
-# Foundation's C types from Foundation, not from the game's Foundation-free floor header
-# (tests/unit/sysdesc/OOHarnessFoundation.h, bead oo-3rb.335).
-harness=(-include "$w/OOHarnessFoundation.h")
-clang++ "${flags[@]}" "${harness[@]}" "${inc[@]}" -c "$w/OOConvertSystemDescriptions.mm" -o "$w/tools.o" || die "OOConvertSystemDescriptions.mm does not compile against the stubs"
-clang++ "${flags[@]}" "${harness[@]}" "${inc[@]}" -c "$w/test_sysdesc_tools.mm" -o "$w/test.o" || die "the test does not compile"
-read -r -a libs <<< "$(gnustep-config --base-libs)"
+# The game's own Foundation-free headers for both units (no Foundation prefix since bead oo-6e1.2).
+clang++ "${flags[@]}" "${inc[@]}" -c "$w/OOConvertSystemDescriptions.mm" -o "$w/tools.o" || die "OOConvertSystemDescriptions.mm does not compile against the stubs"
+clang++ "${flags[@]}" "${inc[@]}" -c "$w/test_sysdesc_tools.cpp" -o "$w/test.o" || die "the test does not compile"
+# libobjc2 alone (the game's runtime, as tests/unit/oofnd links it): no gnustep-base (rule 8).
+libs=(-lobjc)
 clang++ -fuse-ld=lld -o "$w/test_sysdesc_tools.exe" "$w/tools.o" "$w/test.o" "${libs[@]}"   || die "link failed"
 
 config="$(native "$OOLITE/Resources/Config")"
