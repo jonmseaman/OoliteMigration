@@ -98,18 +98,6 @@ std::string OOTexture::shortDescription() const	{ return description(); }
 std::string OOTexture::className() const	{ return "OOTexture"; }
 void OOTexture::forceRebind()	{}
 
-// What an autoreleased Objective-C texture was: the texture, kept until the current autorelease
-// pool drains (bead oo-9ht.99 made the stand-in C++).
-@interface TestTextureKeeper: OOObject
-{
-@public
-	oo::Ref<OOTexture>	_texture;
-}
-@end
-
-@implementation TestTextureKeeper
-@end
-
 
 
 // --- Helpers ------------------------------------------------------------------------------------
@@ -118,10 +106,11 @@ namespace {
 
 TestTexture *Texture(float width, float height)
 {
-	TestTextureKeeper *keeper = [[[TestTextureKeeper alloc] init] autorelease];
+	// What an autoreleased Objective-C texture was: the texture, kept until the current autorelease
+	// scope drains (bead oo-9ht.99 made the texture C++, bead oo-4aq6a.2 its keeper).
 	oo::Ref<TestTexture> texture = oo::makeRef<TestTexture>();
 	texture->_dimensions = NSMakeSize(width, height);
-	keeper->_texture = texture;
+	oo::autorelease(oo::Ref<TestTexture>(texture));
 	return texture.get();
 }
 
@@ -246,8 +235,8 @@ bool GLReady()
 
 OO_TEST(noTextureNoSprite)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		OO_CHECK(OOTextureSprite::initWithTexture(nil).get() == nullptr);
 		OO_CHECK(OOTextureSprite::initWithTexture(nil, NSMakeSize(4, 4)).get() == nullptr);
 	}
@@ -256,8 +245,8 @@ OO_TEST(noTextureNoSprite)
 
 OO_TEST(sizeIsTheTexturesOrGiven)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		oo::Ref<OOTextureSprite> sprite = OOTextureSprite::initWithTexture(Texture(64, 32));
 		OO_CHECK(sprite != nullptr);
 		OO_CHECK(sprite->getSize().width == 64 && sprite->getSize().height == 32);
@@ -272,8 +261,8 @@ OO_TEST(spriteKeepsItsTexture)
 {
 	oo::Ref<OOTextureSprite> sprite;
 	TestTexture *texture = nullptr;
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		texture = Texture(8, 8);
 		sprite = OOTextureSprite::initWithTexture(texture);
 		oo::retain(texture);
@@ -288,8 +277,8 @@ OO_TEST(spriteKeepsItsTexture)
 OO_TEST(blitDrawsTheTexturedQuad)
 {
 	OO_CHECK(GLReady());
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		TestTexture *texture = Texture(64, 32);
 		oo::Ref<OOTextureSprite> sprite = OOTextureSprite::initWithTexture(texture, NSMakeSize(100, 50));
 
@@ -311,8 +300,8 @@ OO_TEST(blitDrawsTheTexturedQuad)
 OO_TEST(centredBlits)
 {
 	OO_CHECK(GLReady());
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		TestTexture *texture = Texture(64, 32);
 		oo::Ref<OOTextureSprite> sprite = OOTextureSprite::initWithTexture(texture, NSMakeSize(1.5, 0.75));
 
@@ -333,8 +322,8 @@ OO_TEST(centredBlits)
 OO_TEST(cxxSprite)
 {
 	OO_CHECK(GLReady());
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		OO_CHECK(OOTextureSprite::initWithTexture(nil).get() == nullptr);
 		OO_CHECK(OOTextureSprite::initWithTexture(nil, NSMakeSize(4, 4)).get() == nullptr);
 
