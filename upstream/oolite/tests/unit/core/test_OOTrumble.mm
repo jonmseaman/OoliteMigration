@@ -125,23 +125,21 @@ void OOSoundSource::playOOSound(OOSound *s)		{ gSourceSound = s; gLog.push_back(
 // The cargo pods: C++ ships since bead oo-9ht.144 deleted the Objective-C ship this stood in for,
 // held as their objects, the root's (which holds the C++ part, oo::ToCxx reads it, and which
 // oo::ToObjC answers for it), declared as Entity.h and ShipEntity.h declare them (the test imports
-// neither) with the stand-in's answers.
+// neither) with the stand-in's answers. The object is C++ since bead oo-4aq6a.2 (it was rooted on
+// the Objective-C root class OOObject, which Phase 4 deletes).
 class Entity : public oo::RefCounted
 {
 public:
 	virtual ~Entity();
 };
 
-__attribute__((objc_runtime_name("Entity")))
-@interface TestEntityObject: OOObject
+class TestEntityObject final : public oo::RefCounted
 {
-@public
-	oo::Ref<Entity> _cxxEntity;
-}
-@end
+public:
+	const char *className() const  { return "Entity"; }	// its Objective-C class's runtime name
 
-@implementation TestEntityObject
-@end
+	oo::Ref<Entity> _cxxEntity;
+};
 
 Entity::~Entity() = default;
 
@@ -294,13 +292,13 @@ namespace {
 
 // A cargo pod: a C++ ship under its object (autoreleased, as [[[ShipEntity alloc] init] autorelease]
 // was), carrying the good.
-std::map<Entity *, ::TestEntityObject *> sObjects;	// what oo::ToObjC answers
+std::map<Entity *, ::TestEntityObject *> sObjects;	// what TestObjectOf answers (oo::ToObjC until bead oo-4aq6a.2)
 
 ::TestEntityObject *NewPod(const char *good)
 {
 	oo::Ref<ShipEntity> ship = oo::makeRef<ShipEntity>();
 	ship->commodity = good;
-	::TestEntityObject *pod = [[[::TestEntityObject alloc] init] autorelease];
+	::TestEntityObject *pod = oo::autorelease(oo::makeRef<::TestEntityObject>());
 	pod->_cxxEntity = ship;
 	sObjects[ship.get()] = pod;
 	return pod;
@@ -418,8 +416,8 @@ OO_TEST(setUp)
 		"digram 0 0 size 0/0 growth 0 hunger 0 discomfort 0 rot 0 vel 0 pos (0 0) mov (0 0) anim 0 next 0 time 0 dur 0 eyes 0 mouth 0 eye 0 mouth 0 spawn 0 colours (1 1 1 1)(1 1 1 1)(0 0 0 0)(0 0 0 0)",
 	};
 
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		Reset();
 		oo::Ref<OOTrumble> t = oo::makeRef<OOTrumble>(Player());
 		OO_CHECK(expect(State(t)));
@@ -443,8 +441,8 @@ OO_TEST(spawningAndActions)
 		"next 1 time 0 dur 3.6965 eyes 1 mouth 4 eye -0.012613 mouth 0.0072381 spawn 0 colours (1 0 0 1)(1 0 0 1)(1 0.2 0.2 1)(1 0 0 1) / next 2 time 0 dur 0.57935 eyes 1 mouth 4 eye -0.012613 mouth 0.0072381 spawn 0 colours (1 0 0 1)(1 0 0 1)(1 0.2 0.2 1)(1 0 0 1) / next 3 time 0 dur 4.1346 eyes 1 mouth 4 eye -0.012613 mouth 0.0072381 spawn 0 colours (1 0 0 1)(1 0 0 1)(1 0.2 0.2 1)(1 0 0 1) / next 4 time 0 dur 1.727 eyes 1 mouth 4 eye -0.012613 mouth 0.0072381 spawn 0 colours (1 0 0 1)(1 0 0 1)(1 0.2 0.2 1)(1 0 0 1) / next 5 time 0 dur 3.4901 eyes 1 mouth 4 eye -0.012613 mouth 0.0072381 spawn 0 colours (1 0 0 1)(1 0 0 1)(1 0.2 0.2 1)(1 0 0 1) / next 6 time 0 dur 4.0042 eyes 1 mouth 4 eye -0.012613 mouth 0.0072381 spawn 0 colours (1 0 0 1)(1 0 0 1)(1 0.2 0.2 1)(1 0 0 1) / next 9 time 0 dur 1.7563 eyes 1 mouth 4 eye -0.012613 mouth 0.0072381 spawn 0 colours (1 0 0 1)(1 0 0 1)(1 0.2 0.2 1)(1 0 0 1) / next 8 time 0 dur 19.656 eyes 1 mouth 4 eye -0.012613 mouth 0.0072381 spawn 0 colours (1 0 0 1)(1 0 0 1)(1 0.2 0.2 1)(1 0 0 1) / next 7 time 0 dur 10.359 eyes 1 mouth 4 eye -0.012613 mouth 0.0072381 spawn 0 colours (1 0 0 1)(1 0 0 1)(1 0.2 0.2 1)(1 0 0 1) / digram 97 49 size 0.71506/1.2016 growth 0.0040491 hunger 0 discomfort 0 rot -7.0848 vel 3.868 pos (-182 -98) mov (4.2165 4.8422) anim 1 next 7 time 0 dur 10.359 eyes 1 mouth 4 eye -0.012613 mouth 0.0072381 spawn 0 colours (1 0 0 1)(1 0 0 1)(1 0.2 0.2 1)(1 0 0 1)",
 	};
 
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		Reset();
 		oo::Ref<OOTrumble> parent = Trumble("Zq");
 		oo::Ref<OOTrumble> child = Trumble("a1");
@@ -490,8 +488,8 @@ OO_TEST(living)
 		"texture trumblekit.png in Textures options 20 anisotropy 0.000000 lodBias -0.250000; ",
 	};
 
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		for (OOViewID view : { VIEW_FORWARD, VIEW_AFT, VIEW_STARBOARD, VIEW_PORT })
 		{
 			Reset();
@@ -517,8 +515,8 @@ OO_TEST(savegame)
 		"digram=Zq discomfort=0.00108162 growth_rate=0.00188507 hunger=0.0357329 movement=6.011658 16.860657 position=32.034973 -75.418030 rotation=-13.9796 rotational_velocity=-2.2403 size=0.923557 ",
 	};
 
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		Reset();
 		oo::Ref<OOTrumble> t = Trumble("Zq");
 		Run(t, 30);
@@ -542,8 +540,8 @@ OO_TEST(feedingPopAndSpawn)
 		"texture trumblekit.png in Textures options 20 anisotropy 0.000000 lodBias -0.250000; texture trumblekit.png in Textures options 20 anisotropy 0.000000 lodBias -0.250000; play [trumble-squeal]; ",
 	};
 
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		// Hungry, full grown and content: eats the tastiest pod; past 10 the cargo is gone, and it
 		// is ready to spawn.
 		Reset();
@@ -612,14 +610,16 @@ OO_TEST(cxxClass)
 }
 
 
-// The pods' objects (Entity+ObjCBridge.mm's, which the test does not link).
-namespace oo { ::TestEntityObject *ToObjC(Entity *entity); }
+// The pods' objects (Entity+ObjCBridge.mm's oo::ToObjC, which the test does not link, until bead
+// oo-4aq6a.2 made the object C++).
+::TestEntityObject *TestObjectOf(Entity *entity);
 #define OO_ENTITY_HELPERS_STAND_IN_NO_DESCRIPTIONS 1	// the test links no OODescription.mm
-#import "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
-::TestEntityObject *oo::ToObjC(Entity *entity)
+#define OO_ENTITY_HELPERS_STAND_IN_CXX
+#include "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
+::TestEntityObject *TestObjectOf(Entity *entity)
 {
 	auto found = sObjects.find(entity);
-	return found != sObjects.end() ? found->second : nil;
+	return found != sObjects.end() ? found->second : nullptr;
 }
 
 

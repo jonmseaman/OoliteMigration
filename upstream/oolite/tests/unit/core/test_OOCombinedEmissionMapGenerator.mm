@@ -49,22 +49,12 @@ uint32_t gDebugFlags = 0;
 
 
 // What an autoreleased Objective-C texture was (bead oo-9ht.99 deleted the facade): the C++
-// texture, kept until the current autorelease pool drains.
-@interface TestTextureKeeper: OOObject
-{
-@public
-	oo::Ref<OOTexture>	_texture;
-}
-@end
-
-@implementation TestTextureKeeper
-@end
-
+// texture, kept until the current autorelease scope drains (oo::autorelease; an Objective-C
+// keeper object until bead oo-4aq6a.2).
 static OOTexture *Autoreleased(const oo::Ref<OOTexture> &texture)
 {
 	if (texture == nullptr)  return nullptr;
-	TestTextureKeeper *keeper = [[[TestTextureKeeper alloc] init] autorelease];
-	keeper->_texture = texture;
+	oo::autorelease(oo::Ref<OOTexture>(texture));
 	return texture.get();
 }
 
@@ -112,8 +102,8 @@ void SetUp()
 		OO_CHECK(WritePNG("c.png", 8, PNG_FORMAT_RGBA, 200));
 		ResourceManager::setUseAddOns(std::string(SCENARIO_OXP_DEFINITION_NONE));	// strict: the built-in Resources alone
 	}
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		(void)OOTextureLoader::loaderWithPath(std::string("unknown.type"), 0);
 	}
 }
@@ -195,7 +185,6 @@ OOTexture *DiffuseMap()
 
 void ClearCache()
 {
-	@autoreleasepool
 	{
 		oo::AutoreleaseScope scope;
 		OOTexture::clearCache();
@@ -208,8 +197,8 @@ void ClearCache()
 OO_TEST(nothingToBake)
 {
 	SetUp();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		OO_CHECK(NewGenerator(oo::PList(), nil, nil, nil, oo::PList(), OOColor::redColor().get(), oo::PList("e.png")) == nil);
 		OO_CHECK(NewCombinedGenerator(oo::PList(), nil, nil, nil, nil) == nil);
 	}
@@ -219,8 +208,8 @@ OO_TEST(nothingToBake)
 OO_TEST(settingsFromTheOptionsSpecifier)
 {
 	SetUp();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		const oo::PList options(oo::PList::Dict{ { "name", oo::PList("e.png") }, { "min_filter", oo::PList("nearest") },
 												 { "anisotropy", oo::PList(0.5) }, { "texture_LOD_bias", oo::PList(-0.25) } });
 		uint32_t expected = 0;
@@ -238,8 +227,8 @@ OO_TEST(settingsFromTheOptionsSpecifier)
 OO_TEST(cacheKeys)
 {
 	SetUp();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		oo::Ref<OOColor>	red = OOColor::redColor();
 		const std::string redRGBA = red->rgbaDescription().value_or("");
 
@@ -267,8 +256,8 @@ OO_TEST(cacheKeys)
 OO_TEST(bakesTheEmissionMap)
 {
 	SetUp();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		// Emission alone, tinted (0.5, 1, 0.25).
 		Baked baked;
 		Bake(NewGenerator(oo::PList("e.png"), OOColor::colorWithRed(0.5f, 1.0f, 0.25f, 1.0f).get(), nil, nil, oo::PList(), nil, oo::PList("e.png")), baked);
@@ -282,8 +271,8 @@ OO_TEST(bakesTheEmissionMap)
 OO_TEST(bakesTheIlluminationMap)
 {
 	SetUp();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		// Illumination alone: grey 100 x the diffuse map's 128 (x a white colour, which is none).
 		Baked illumination;
 		Bake(NewGenerator(oo::PList(), nil, DiffuseMap(), nil, oo::PList("i.png"), nil, oo::PList("i.png")), illumination);
@@ -310,8 +299,8 @@ OO_TEST(bakesTheIlluminationMap)
 OO_TEST(aMissingMap)
 {
 	SetUp();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		// Made (the spec names a map), but there is nothing to bake.
 		OOTextureGenerator *generator = NewGenerator(oo::PList("missing.png"), nil, nil, nil, oo::PList(), nil, oo::PList("missing.png"));
 		OO_CHECK(generator != nil);
@@ -325,8 +314,8 @@ OO_TEST(aMissingMap)
 OO_TEST(aTextureOfTheGenerator)
 {
 	SetUp();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		OOTexture *texture = Autoreleased(OOTexture::textureWithGenerator(NewGenerator(oo::PList("e.png"), OOColor::redColor().get(), nil, nil, oo::PList(), nil, oo::PList("e.png"))));
 		OO_CHECK((dynamic_cast<OOConcreteTexture *>(texture) != nullptr));
 		texture->ensureFinishedLoading();
@@ -346,8 +335,8 @@ OO_TEST(aTextureOfTheGenerator)
 OO_TEST(description)
 {
 	SetUp();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		const std::string description = NewGenerator(oo::PList("e.png"), OOColor::redColor().get(), nil, nil, oo::PList(), nil, oo::PList("e.png"))->description();
 		OO_CHECK(description.starts_with("<OOCombinedEmissionMapGenerator 0x"));
 		OO_CHECK(description.find("{emission map: ") != std::string::npos);
@@ -362,8 +351,8 @@ OO_TEST(description)
 OO_TEST(cxxApi)
 {
 	SetUp();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		OO_CHECK(!OOCombinedEmissionMapGenerator::generatorWithEmissionMapSpec(oo::PList(), nullptr, nil, nullptr, oo::PList(), nullptr, oo::PList()));
 		OO_CHECK(!OOCombinedEmissionMapGenerator::generatorWithEmissionAndIlluminationMapSpec(oo::PList(), nil, nullptr, nullptr, nullptr, oo::PList()));
 

@@ -96,7 +96,8 @@ Universe *gSharedUniverse = nil;
 // The ship is C++ since bead oo-9ht.144 deleted the Objective-C ship: what the monitor's entity dump
 // links against (a ship's object, the root's, holds its C++ part, which oo::ToCxx reads), declared
 // as Entity.h and ShipEntity.h declare them (the test imports neither). The test dumps no entity,
-// so none is reached.
+// so none is reached. The object is C++ since bead oo-4aq6a.2 (it was rooted on the Objective-C
+// root class OOObject, which Phase 4 deletes).
 class Entity : public oo::RefCounted
 {
 public:
@@ -106,16 +107,13 @@ public:
 	bool getIsWormhole();
 };
 
-__attribute__((objc_runtime_name("Entity")))
-@interface TestEntityObject: OOObject
+class TestEntityObject final : public oo::RefCounted
 {
-@public
-	oo::Ref<Entity> _cxxEntity;
-}
-@end
+public:
+	const char *className() const  { return "Entity"; }	// its Objective-C class's runtime name
 
-@implementation TestEntityObject
-@end
+	oo::Ref<Entity> _cxxEntity;
+};
 
 class ShipEntity : public Entity
 {
@@ -128,9 +126,9 @@ bool Entity::getIsShip()  { std::abort(); }
 bool Entity::getIsPlayer()  { std::abort(); }
 bool Entity::getIsWormhole()  { std::abort(); }
 std::vector<oo::EntityHold> ShipEntity::subEntityEnumerator()  { std::abort(); }
-namespace oo { ::TestEntityObject *ToObjC(Entity *entity); }
-::TestEntityObject *oo::ToObjC(Entity *)  { std::abort(); }
-#import "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8): never reached either
+::TestEntityObject *TestObjectOf(Entity *)  { std::abort(); }	// oo::ToObjC until bead oo-4aq6a.2
+#define OO_ENTITY_HELPERS_STAND_IN_CXX
+#include "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8): never reached either
 
 // PLAYER: C++ since bead oo-9ht.177 deleted the Objective-C player; the members the monitor calls
 // on it (declared as PlayerEntity.h declares them; the test imports no game header that defines
@@ -549,8 +547,8 @@ TestDebugger *NewDebugger()
 OO_TEST(sharedMonitorIsSetUpOnce)
 {
 	SetUp();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		OODebugMonitor *monitor = OODebugMonitor::sharedDebugMonitor();
 		OO_CHECK(monitor != nullptr);
 		OO_CHECK(OODebugMonitor::sharedDebugMonitor() == monitor);
@@ -607,8 +605,8 @@ OO_TEST(debuggerConnectsAndReceivesTheConsole)
 {
 	SetUp();
 	StartLog();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		OODebugMonitor *monitor = OODebugMonitor::sharedDebugMonitor();
 		TestDebugger *debugger = NewDebugger();
 		OO_CHECK(monitor->setDebugger(debugger));
@@ -659,8 +657,8 @@ OO_TEST(debuggersThatRefuseOrRaise)
 {
 	SetUp();
 	StartLog();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		OODebugMonitor *monitor = OODebugMonitor::sharedDebugMonitor();
 		TestDebugger *first = NewDebugger();
 		OO_CHECK(monitor->setDebugger(first));
@@ -723,8 +721,8 @@ OO_TEST(sourceLinesAreServedAndCached)
 OO_TEST(engineErrorsAndLogLinesReachTheConsole)
 {
 	SetUp();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		OODebugMonitor *monitor = OODebugMonitor::sharedDebugMonitor();
 		OOJavaScriptEngineMonitor *engineMonitor = monitor;	// the C++ monitor interface (bead oo-9ht.74.1)
 		const std::string path = WriteSource("script.js", "line one\n  line two\n");
@@ -791,8 +789,8 @@ OO_TEST(memoryStatistics)
 {
 	SetUp();
 	StartLog();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		OODebugMonitor *monitor = OODebugMonitor::sharedDebugMonitor();
 		TestDebugger *debugger = NewDebugger();
 		OO_CHECK(monitor->setDebugger(debugger));
@@ -828,8 +826,8 @@ OO_TEST(memoryStatistics)
 OO_TEST(javaScriptValueAndEngineReset)
 {
 	SetUp();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		OODebugMonitor *monitor = OODebugMonitor::sharedDebugMonitor();
 		const ooscript::Value first = monitor->jsValueInContext(gOOJSMainThreadContext);
 		OO_CHECK(ooscript::isObject(first));
@@ -881,8 +879,8 @@ OO_TEST(cxxMonitorAndItsFacade)
 OO_TEST(applicationWillTerminate)
 {
 	SetUp();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		OODebugMonitor *monitor = OODebugMonitor::sharedDebugMonitor();
 		TestDebugger *debugger = NewDebugger();
 		OO_CHECK(monitor->setDebugger(debugger));

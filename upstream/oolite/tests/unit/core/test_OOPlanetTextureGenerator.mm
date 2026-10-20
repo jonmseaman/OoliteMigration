@@ -41,22 +41,12 @@ uint32_t gDebugFlags = 0;
 
 
 // What an autoreleased Objective-C texture was (bead oo-9ht.99 deleted the facade): the C++
-// texture, kept until the current autorelease pool drains.
-@interface TestTextureKeeper: OOObject
-{
-@public
-	oo::Ref<OOTexture>	_texture;
-}
-@end
-
-@implementation TestTextureKeeper
-@end
-
+// texture, kept until the current autorelease scope drains (oo::autorelease; an Objective-C
+// keeper object until bead oo-4aq6a.2).
 static OOTexture *Autoreleased(const oo::Ref<OOTexture> &texture)
 {
 	if (texture == nullptr)  return nullptr;
-	TestTextureKeeper *keeper = [[[TestTextureKeeper alloc] init] autorelease];
-	keeper->_texture = texture;
+	oo::autorelease(oo::Ref<OOTexture>(texture));
 	return texture.get();
 }
 
@@ -68,8 +58,8 @@ namespace {
 void SetUp()
 {
 	OO_CHECK(OOTestGLContext());
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		(void)OOTextureLoader::loaderWithPath(std::string("unknown.type"), 0);
 	}
 }
@@ -198,7 +188,6 @@ bool Loaded(OOTexture *texture, const std::string &keyPrefix, unsigned width, un
 
 void ClearCache()
 {
-	@autoreleasepool
 	{
 		oo::AutoreleaseScope scope;
 		OOTexture::clearCache();
@@ -211,8 +200,8 @@ void ClearCache()
 OO_TEST(settings)
 {
 	SetUp();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		OOTextureGenerator *generator = NewGenerator(PlanetInfo(false), (RANROTSeed){ 12345, 67890 });
 		OO_CHECK(generator != nil && (dynamic_cast<OOTextureGenerator *>(generator) != nullptr));
 		OO_CHECK(generator->textureOptions() == (kOOTextureMinFilterLinear | kOOTextureMagFilterLinear | kOOTextureRepeatS | kOOTextureNoShrink));
@@ -230,8 +219,8 @@ OO_TEST(settings)
 OO_TEST(generatesTheSurface)
 {
 	SetUp();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		Generated a, b;
 		Generate(NewGenerator(PlanetInfo(false), (RANROTSeed){ 1, 1 }), a);
 		OO_CHECK(a.ok && a.format == kOOPixMapRGBA && a.pixMap.width == 512 && a.pixMap.height == 512 && a.pixMap.rowBytes == 2048);
@@ -251,8 +240,8 @@ OO_TEST(generatesTheSurface)
 OO_TEST(planetTexture)
 {
 	SetUp();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		OO_CHECK(Loaded(PlanetTexture(PlanetInfo(false), (RANROTSeed){ 2, 2 }), "OOPlanetTextureGenerator-diffuse-baked@2\n", 512, 512));
 	}
 	ClearCache();
@@ -262,8 +251,8 @@ OO_TEST(planetTexture)
 OO_TEST(withSecondaryTexture)
 {
 	SetUp();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		// The normal map is filled when the surface is generated, so the surface is loaded first
 		// (unlike the atmosphere's, the normal map's generator does not wait for the surface's).
 		Textures t = GenerateWithSecondary(PlanetInfo(false), (RANROTSeed){ 3, 3 }, true);
@@ -282,8 +271,8 @@ OO_TEST(withSecondaryTexture)
 OO_TEST(withAtmosphere)
 {
 	SetUp();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		Textures t = GenerateWithAtmosphere(PlanetInfo(false), (RANROTSeed){ 5, 5 });
 		OO_CHECK(t.ok && t.secondary == nil);
 		OO_CHECK(Loaded(t.texture, "OOPlanetTextureGenerator-diffuse-baked-atmo@2\n", 512, 512));
@@ -309,8 +298,8 @@ OO_TEST(withAtmosphere)
 OO_TEST(cxxApi)
 {
 	SetUp();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		const oo::Ref<OOPlanetTextureGenerator> generator = OOPlanetTextureGenerator::generatorWithPlanetInfo(PlanetInfo(false), (RANROTSeed){ 12345, 67890 });
 		OO_CHECK(generator && generator->textureOptions() == (kOOTextureMinFilterLinear | kOOTextureMagFilterLinear | kOOTextureRepeatS | kOOTextureNoShrink));
 		OO_CHECK(generator->descriptionComponents() == std::optional<std::string>("seed: 12345,67890 land: 0.25"));
