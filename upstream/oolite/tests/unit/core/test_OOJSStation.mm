@@ -425,7 +425,7 @@ void StationEntity::setAlertLevel(OOStationAlertLevel level, bool signallingScri
 
 OOTechLevelID StationEntity::getEquivalentTechLevel()
 {
-	if (_techLevel == 99)  [OOException raise:OOInvalidArgumentException format:"techlevel %s", "boom"];
+	if (_techLevel == 99)  OORaiseException(OOInvalidArgumentException, "techlevel %s", "boom");
 	if (_techLevel == 98)  throw std::runtime_error("cxx boom");
 	return _techLevel;
 }

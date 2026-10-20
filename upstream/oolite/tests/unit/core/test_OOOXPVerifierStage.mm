@@ -67,7 +67,7 @@ public:
 	void run() override
 	{
 		_runs++;
-		if (_raise)  [OOException raise:"TestException" format:"%s", "raised by the test"];
+		if (_raise)  OORaiseException("TestException", "%s", "raised by the test");
 	}
 
 	std::string									_testName;

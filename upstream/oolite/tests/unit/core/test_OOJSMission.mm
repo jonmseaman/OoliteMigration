@@ -285,7 +285,7 @@ OOEntityStatus Entity::status()  { return static_cast<PlayerEntity *>(this)->_st
 oo::PList PlayerEntity::getMissionDestinations()  { return oo::PList(_destinations); }
 std::optional<std::string> PlayerEntity::missionScreenID()
 {
-	if (_raise)  [OOException raise:OOInvalidArgumentException format:"screen %s", "boom"];
+	if (_raise)  OORaiseException(OOInvalidArgumentException, "screen %s", "boom");
 	if (_throwCxx)  throw std::runtime_error("cxx boom");
 	return _screenID;
 }
@@ -485,7 +485,7 @@ OOJavaScriptEngine *OOJavaScriptEngine::sharedEngine()  { return sEngine; }
 bool OOJavaScriptEngine::callJSFunction(ooscript::Value function, ooscript::Object jsThis, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult)
 {
 	_calls++;
-	if (_raise)  [OOException raise:OOInvalidArgumentException format:"callback %s", "boom"];
+	if (_raise)  OORaiseException(OOInvalidArgumentException, "callback %s", "boom");
 	return ooscript::callFunctionValue(sContext, jsThis, function, argc, argv, outResult);
 }
 

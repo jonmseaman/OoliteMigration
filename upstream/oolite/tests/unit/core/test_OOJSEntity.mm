@@ -196,7 +196,7 @@ bool EntityFromArgumentList(ooscript::Context context, const std::optional<std::
 
 - (float) mass
 {
-	if (_mass == 99)  [OOException raise:OOInvalidArgumentException format:"mass %s", "boom"];
+	if (_mass == 99)  OORaiseException(OOInvalidArgumentException, "mass %s", "boom");
 	if (_mass == 98)  throw std::runtime_error("cxx boom");
 	return _mass;
 }

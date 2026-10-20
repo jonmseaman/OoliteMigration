@@ -171,7 +171,7 @@ void Universe::pauseGame()	{ _paused++; }
 void Universe::quitGame()	{ _quit++; }
 oo::PList Universe::getMissiontext()
 {
-	if (_raise)  [OOException raise:OOInvalidArgumentException format:"missiontext %s", "boom"];
+	if (_raise)  OORaiseException(OOInvalidArgumentException, "missiontext %s", "boom");
 	if (_throwCxx)  throw std::runtime_error("cxx boom");
 	oo::PList::Dict text;
 	text["greeting"] = oo::PList(std::string("Hello [name]"));

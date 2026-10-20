@@ -10396,9 +10396,9 @@ bool Universe::useShaders()
 }
 
 
-void Universe::handleOoliteException(::OOException *exception)
+void Universe::handleOoliteException(const oo::Exception *exception)
 {
-	if (exception != nil)
+	if (exception != nullptr)
 	{
 		const oo::CaughtOOException caught(exception);
 		if (strcmp(caught.name(), OOLITE_EXCEPTION_FATAL) == 0)

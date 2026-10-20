@@ -38,6 +38,7 @@
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/String.hpp"
 
+#include "oofnd/objc/OOException.h"	// oo::Exception (bead oo-rskgl.1)
 #include "oo_test.hpp"
 
 #include <cstdio>
@@ -641,11 +642,11 @@ OO_TEST(arraysAndInsertedItems)
 
 		// Keys of another length raise.
 		bool raised = false;
-		@try
+		try
 		{
 			gui->insertItemsFromArray(items, oo::PList(oo::PList::Array{ oo::PList("one") }), 0, nil);
 		}
-		@catch (id exception)
+		catch (const oo::Exception &)	// was @catch (id exception): what src throws (bead oo-rskgl.1)
 		{
 			raised = true;
 		}

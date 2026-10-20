@@ -24,7 +24,7 @@ MA 02110-1301, USA.
 
 #include "Entity.h"
 #include "oofnd/objc/OORuntime.h"
-#include "oofnd/objc/OOException.h"	// oo::CurrentExceptionIsObjCObject (bead oo-rskgl)
+#include "oofnd/objc/OOException.h"	// oo::CurrentOOException (beads oo-rskgl, oo-rskgl.1)
 #include "EntityOOJavaScriptExtensions.h"
 #include "PlayerEntity.h"
 #include "StationEntity.h"	// willDispose(): the station's and the dock's parts (bead oo-dpyk8)
@@ -1053,7 +1053,7 @@ void Entity::dumpState()
 		{
 			dumpSelfState();
 		}
-		catch (...) { if (!oo::CurrentExceptionIsObjCObject())  throw; }	// was @catch (id exception) {}: Objective-C objects only
+		catch (...) { if (!oo::CurrentOOException())  throw; }	// was @catch (id exception) {}: the game's exceptions only (oo::Exception since oo-rskgl.1)
 		oo::log::popIndent();
 	}
 }

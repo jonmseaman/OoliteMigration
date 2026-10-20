@@ -123,7 +123,7 @@ bool Entity::isVisibleToScripts()  { return false; }
 
 double WormholeEntity::arrivalTime()
 {
-	if (_arrivalTime == -1)  [OOException raise:OOInvalidArgumentException format:"arrival %s", "boom"];
+	if (_arrivalTime == -1)  OORaiseException(OOInvalidArgumentException, "arrival %s", "boom");
 	if (_arrivalTime == -2)  throw std::runtime_error("cxx boom");
 	return _arrivalTime;
 }

@@ -393,7 +393,7 @@ public:
 	{
 		(void)debugMonitor;
 		_connects++;
-		if (_raise)  [OOException raise:"TestException" format:"%s", "no thanks"];
+		if (_raise)  OORaiseException("TestException", "%s", "no thanks");
 		if (_refuse)
 		{
 			*message = "refused";

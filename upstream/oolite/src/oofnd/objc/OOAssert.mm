@@ -34,7 +34,7 @@ std::string FormatV(const char *format, va_list args)
 {
 	// gnustep-base NSLogv()ed the same text first; its NSLog hook logged it in class "gnustep".
 	if (oo::log::willDisplay("gnustep"))  oo::log::message("gnustep", nullptr, nullptr, 0, "{}", reason);
-	[OOException raise:OOInternalInconsistencyException format:"%s", reason.c_str()];
+	OORaiseException(OOInternalInconsistencyException, "%s", reason.c_str());	// oo::Exception since bead oo-rskgl.1
 	__builtin_unreachable();
 }
 

@@ -9444,6 +9444,42 @@ libobjc2's lazily-made thread pool, which is never drained: its memory, not its 
 `{ oo::AutoreleaseScope scope; ... }` at the same places (the precedent of test_OOSoundSource). Every other test
 passes unchanged. tests/golden/motion/test_speed_seam.py's getter regex also accepts `ship->getFlightSpeed()`
 (oo-huei2, same branch).
+## Amendment (bead oo-rskgl.1): the game's exception is the C++ oo::Exception
+
+**Context.** Follow-on of amendment oo-rskgl, which moved every handler to C++ and left the thrown object an
+Objective-C OOException. Jon approved the test re-bases in chat on 2026-10-19 (approval lines in
+`tools/retire-test-approvals.txt`, reason "oo-rskgl.1: ...").
+
+**Decision.**
+
+1. `oo::Exception` (new header `src/oofnd/Exception.hpp`, header-only C++) carries the name and reason
+   (`const char *`, copied, null becomes ""), as `-initWithName:reason:` did. It is deliberately not a
+   `std::exception`: no handler for `std::exception` ever caught an OOException.
+2. `OORaiseException()` throws `oo::Exception` with the same name text and formatted reason. `OOAssert.mm`'s
+   failure raises through it. `oo::CurrentOOException()` catches `const oo::Exception &`; `CaughtOOException` wraps
+   a `const oo::Exception *` (`object()`).
+3. The former `@catch (id)` sites catch what src now throws: `catch (...) { if (!oo::CurrentOOException())
+   throw; }` (Entity and ShipEntity dumps, the screen update, the async work managers, the autosave), and
+   GameController's tick handler is `catch (const oo::Exception &)` (its branch for a non-OOException
+   Objective-C object is gone: src throws none). `oo::CurrentExceptionIsObjCObject()` is deleted.
+4. `Universe::handleOoliteException` takes `const oo::Exception *` (null still ignored). `OOJSReportWrappedException`
+   is deleted: `OOJSReportCurrentException` reports `oo::Exception` as "Native exception: <reason>", exactly as the
+   `-isKindOfClass:[OOException class]` branch did; anything else is unchanged.
+5. **Not done here:** `OOException.mm`'s Objective-C class stays. Its only remaining users are its own test
+   (`test_objc_exception`, item (5) of the bead, which the bead defers to oo-dbz and whose retirement has no
+   approval line) and `test_objc_floor`/`test_OOJavaScriptEngine`, which name the class only as a class. It is
+   deleted with oo-4aq6a/oo-dbz once `test_objc_exception` is retired.
+
+**Behaviour deltas.** None on any path the game takes: no Objective-C object is thrown by src any more. A name or
+reason pointer read from a caught exception now lives as long as the handler (the C++ exception object), not until
+the autorelease pool drained. The one src place that kept them past the handler, the deferred-call runners'
+out-pointers (GameController.mm, amendment oo-rskgl item 6), now point into a copy of the last caught exception
+kept in the file until the next one, so they stay valid exactly as long as they are read.
+
+**Tests.** Re-bases only, every expected value kept: the stand-in raisers spell `OORaiseException()`; the
+catchers spell `catch (const oo::Exception &)` (where a test kept `[e name]`'s pointer past the handler, a copy of
+the exception is kept in a `std::optional`, standing in for the pool that kept it alive); test_Universe builds an
+`oo::Exception`; test_OOAsyncWorkManager's failing task throws an `oo::Exception` (it threw a plain OOObject).
 ## Amendment (bead oo-6e1.1): NSObjectOOExtensions is deleted
 
 **Context.** Batch AX. `NSObjectOOExtensions` (the root category `OOObject (OOExtensions)`: debug-only

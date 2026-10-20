@@ -90,7 +90,7 @@ struct OOTestResetClient : oo::RefCounted, OOGraphicsResetClient
 		resets++;
 		sOrder.push_back(tag);
 		if (victim != nullptr)  OOGraphicsResetManager::sharedManager()->unregisterCxxClient(victim);
-		if (raises)  [OOException raise:"OOTestException" format:"client %d raised", tag];
+		if (raises)  OORaiseException("OOTestException", "client %d raised", tag);
 	}
 };
 

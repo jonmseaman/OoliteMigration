@@ -1235,7 +1235,8 @@ OO_TEST(slice24DetailAndLogs)
 		OO_CHECK(!u->blockJSPlayerShipProps());
 
 		// A non-fatal exception is only logged; nil is ignored.
-		u->handleOoliteException([OOException exceptionWithName:"OoliteSlice24Exception" reason:"test"]);
+		const oo::Exception exception("OoliteSlice24Exception", "test");	// was +[OOException exceptionWithName:reason:] (bead oo-rskgl.1)
+		u->handleOoliteException(&exception);
 		u->handleOoliteException(nullptr);
 	}
 }

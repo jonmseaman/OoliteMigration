@@ -427,7 +427,7 @@ void OOManualDispatchAsyncWorkManager::queueTask(unsigned threadNumber)
 				{
 					task->performAsyncTask();
 				}
-				catch (...) { if (!oo::CurrentExceptionIsObjCObject())  throw; }	// was @catch (id exception) {}: Objective-C objects only
+				catch (...) { if (!oo::CurrentOOException())  throw; }	// was @catch (id exception) {}: the game's exceptions only (oo::Exception since oo-rskgl.1)
 				queueResult(task.get());
 			}
 		}
@@ -512,7 +512,7 @@ void OOOperationQueueAsyncWorkManager::dispatchTask(OOAsyncWorkTask *task)
 	{
 		task->performAsyncTask();
 	}
-	catch (...) { if (!oo::CurrentExceptionIsObjCObject())  throw; }	// was @catch (id exception) {}: Objective-C objects only
+	catch (...) { if (!oo::CurrentOOException())  throw; }	// was @catch (id exception) {}: the game's exceptions only (oo::Exception since oo-rskgl.1)
 	queueResult(task);
 }
 

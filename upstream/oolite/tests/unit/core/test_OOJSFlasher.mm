@@ -203,7 +203,7 @@ void OOFlasherEntity::setPhase(float phase)  { _phase = phase; }
 
 float OOFlasherEntity::frequency()
 {
-	if (_frequency == 99)  [OOException raise:OOInvalidArgumentException format:"frequency %s", "boom"];
+	if (_frequency == 99)  OORaiseException(OOInvalidArgumentException, "frequency %s", "boom");
 	if (_frequency == 98)  throw std::runtime_error("cxx boom");
 	return _frequency;
 }

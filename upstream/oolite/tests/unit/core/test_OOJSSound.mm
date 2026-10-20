@@ -63,7 +63,7 @@ class TestSound final : public OOSound
 public:
 	std::optional<std::string> name() override
 	{
-		if (_name == "raise")  [OOException raise:OOInvalidArgumentException format:"name %s", "boom"];
+		if (_name == "raise")  OORaiseException(OOInvalidArgumentException, "name %s", "boom");
 		if (_name == "throw")  throw std::runtime_error("cxx boom");
 		return _name;
 	}

@@ -28,6 +28,7 @@
 #include "oofnd/objc/OORuntime.h"
 
 #include "oofnd/Log.hpp"
+#include "oofnd/objc/OOException.h"	// oo::Exception (bead oo-rskgl.1)
 #include "oo_test.hpp"
 
 #include <cmath>
@@ -556,11 +557,11 @@ OO_TEST(stackOfStateMachines)
 		gLog.clear();
 		for (int i = 0; i < 32; i++)  ai->preserveCurrentStateMachine();
 		bool raised = false;
-		@try
+		try
 		{
 			ai->preserveCurrentStateMachine();
 		}
-		@catch (id exception)
+		catch (const oo::Exception &)	// was @catch (id exception): what src throws (bead oo-rskgl.1)
 		{
 			raised = true;
 		}

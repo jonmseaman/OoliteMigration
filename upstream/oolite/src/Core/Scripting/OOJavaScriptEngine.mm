@@ -1091,7 +1091,7 @@ void cxx_OOJSReportErrorWithArguments(ooscript::Context context, const char *for
 }
 
 
-// OOJSReportWrappedException() and OOJSReportCurrentException() are in OOJSEngineNativeWrappers.mm.
+// OOJSReportCurrentException() is in OOJSEngineNativeWrappers.mm (OOJSReportWrappedException() went with bead oo-rskgl.1).
 
 
 #ifndef NDEBUG

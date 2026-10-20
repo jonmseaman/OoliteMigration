@@ -197,7 +197,7 @@ void OOJSUnreachable(const char *function, const char *, unsigned)
 */
 HPVector Universe::legacyPositionFrom(HPVector pos, const std::string &system)
 {
-	if (system == "throw-objc")  [OOException raise:OOInvalidArgumentException format:"legacy %s", "boom"];
+	if (system == "throw-objc")  OORaiseException(OOInvalidArgumentException, "legacy %s", "boom");
 	if (system == "throw-cxx")  throw std::runtime_error("cxx boom");
 	return make_HPvector(pos.x + 1, pos.y + 2, pos.z + 3);
 }
@@ -205,7 +205,7 @@ HPVector Universe::legacyPositionFrom(HPVector pos, const std::string &system)
 
 HPVector Universe::coordinatesFromCoordinateSystemString(const std::string &text)
 {
-	if (text.rfind("throw-objc", 0) == 0)  [OOException raise:OOInvalidArgumentException format:"coords %s", "boom"];
+	if (text.rfind("throw-objc", 0) == 0)  OORaiseException(OOInvalidArgumentException, "coords %s", "boom");
 	return make_HPvector(static_cast<OOHPScalar>(text.size()), 0, 0);
 }
 

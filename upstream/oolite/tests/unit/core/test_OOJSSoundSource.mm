@@ -108,7 +108,7 @@ void OOSoundSource::setGain(float gain)  { sRecords[this]._gain = gain; }
 float OOSoundSource::gain()
 {
 	const float gain = sRecords[this]._gain;
-	if (gain == 0.99f)  [OOException raise:OOInvalidArgumentException format:"gain %s", "boom"];
+	if (gain == 0.99f)  OORaiseException(OOInvalidArgumentException, "gain %s", "boom");
 	if (gain == 0.98f)  throw std::runtime_error("cxx boom");
 	return gain;
 }

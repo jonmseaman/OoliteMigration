@@ -47,7 +47,7 @@ void OORaiseException(const char *name, const char *format, ...)
 		reason = FormatReason(format, args);
 		va_end(args);
 	}
-	@throw [OOException exceptionWithName:name reason:reason.c_str()];
+	throw oo::Exception(name, reason.c_str());	// the C++ exception since bead oo-rskgl.1
 }
 
 
@@ -105,49 +105,19 @@ void OORaiseException(const char *name, const char *format, ...)
 
 namespace oo {
 
-const char *CaughtOOException::name() const
-{
-	return [_exception name];
-}
-
-
-const char *CaughtOOException::reason() const
-{
-	return [_exception reason];
-}
-
-
 std::optional<CaughtOOException> CurrentOOException()
 {
 	try
 	{
 		throw;
 	}
-	catch (id exception)
+	catch (const Exception &exception)
 	{
-		if (![exception isKindOfClass:[OOException class]])  return std::nullopt;
-		return CaughtOOException(static_cast<OOException *>(exception));
+		return CaughtOOException(&exception);
 	}
 	catch (...)
 	{
-		return std::nullopt;	// not an Objective-C exception: not what @catch (OOException *) caught
-	}
-}
-
-
-bool CurrentExceptionIsObjCObject()
-{
-	try
-	{
-		throw;
-	}
-	catch (id)
-	{
-		return true;
-	}
-	catch (...)
-	{
-		return false;
+		return std::nullopt;	// not the game's exception: not what @catch (OOException *) caught
 	}
 }
 

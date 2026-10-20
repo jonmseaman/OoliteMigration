@@ -185,7 +185,7 @@ std::vector<std::string> Universe::systemDataKeysForGalaxy(OOGalaxyID gnum, OOSy
 }
 NSPoint Universe::coordinatesForSystem(OOSystemID s)
 {
-	if (s == 99)  [OOException raise:OOInvalidArgumentException format:"coordinates %s", "boom"];
+	if (s == 99)  OORaiseException(OOInvalidArgumentException, "coordinates %s", "boom");
 	if (s == 98)  throw std::runtime_error("cxx boom");
 	return NSMakePoint(s * 4, s * 2);
 }

@@ -47,7 +47,7 @@ public:
 	void loadTexture() override
 	{
 		gLoads++;
-		if (_testRaise)  [OOException raise:"TestLoaderException" format:"test loader raised"];
+		if (_testRaise)  OORaiseException("TestLoaderException", "test loader raised");
 		if (_testEmpty)  return;
 		const size_t size = (size_t)_testWidth * _testHeight * OOTextureComponentsForFormat(_testFormat);
 		uint8_t *bytes = (uint8_t *)malloc(size);

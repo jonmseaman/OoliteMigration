@@ -17,6 +17,7 @@
 
 #import "OOAsyncWorkManager.h"
 
+#include "oofnd/objc/OOException.h"	// oo::Exception (bead oo-rskgl.1)
 #include "oo_test.hpp"
 
 #include <atomic>
@@ -33,7 +34,7 @@ public:
 	{
 		performedOnCallingThread = (std::this_thread::get_id() == callingThread);
 		performed = true;
-		if (shouldThrow)  @throw [[[OOObject alloc] init] autorelease];
+		if (shouldThrow)  throw oo::Exception(OOGenericException, "");	// was @throw of an OOObject: the managers swallow the game's exception (bead oo-rskgl.1)
 	}
 
 	bool hasCompleteAsyncTask() const override  { return true; }

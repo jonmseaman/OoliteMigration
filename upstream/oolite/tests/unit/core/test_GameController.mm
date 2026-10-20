@@ -215,13 +215,13 @@ OO_TEST(secondControllerRaises)
 	{
 		GameController *shared = ::GameController::sharedController();
 		bool raised = false;
-		@try
+		try
 		{
 			new GameController();
 		}
-		@catch (OOException *exception)
+		catch (const oo::Exception &exception)	// was @catch (OOException *exception) (bead oo-rskgl.1)
 		{
-			raised = (std::string([exception name]) == OOInternalInconsistencyException);
+			raised = (std::string(exception.name()) == OOInternalInconsistencyException);
 		}
 		OO_CHECK(raised);
 		OO_CHECK(::GameController::sharedController() == shared);

@@ -486,25 +486,18 @@ void GameController::doPerformGameTick()
 			OOJSFrameCallbacksInvoke(delta_t);
 		}
 	}
-	catch (id exception) 
+	catch (const oo::Exception &exception)	// was @catch (id): the game throws only oo::Exception (bead oo-rskgl.1)
 	{
-		if (const auto ooException = oo::CurrentOOException())
-		{
-			// -callStackSymbols is Foundation's; an OOException does not answer it (sending it raised
-			// out of this handler), so name the exception instead (proposed ADR-0037).
-			OO_LOG("exception.backtrace","{} : {}",ooException->name(),ooException->reason());
-		}
-		else
-		{
-			OO_LOG("exception.backtrace","{}",oo::DescriptionOf(exception));	// no Foundation exception has -callStackSymbols any more (oo-qps.17)
-		}
+		// -callStackSymbols is Foundation's; an OOException did not answer it (sending it raised
+		// out of this handler), so name the exception instead (proposed ADR-0037).
+		OO_LOG("exception.backtrace","{} : {}",exception.name(),exception.reason());
 	}
 	
 	try
 	{
 		if (_gameView != nullptr)  _gameView->updateScreen();
 	}
-	catch (...) { if (!oo::CurrentExceptionIsObjCObject())  throw; }	// was @catch (id exception) {}: Objective-C objects only
+	catch (...) { if (!oo::CurrentOOException())  throw; }	// was @catch (id exception) {}: the game's exceptions only (oo::Exception since oo-rskgl.1)
 }
 
 
@@ -1320,6 +1313,12 @@ static void SetUpSparkle(void)
 
 namespace {
 
+/*	The out-pointers below point into the exception's name and reason. The Objective-C OOException
+	was autoreleased, so they stayed valid after the handler; the C++ oo::Exception (bead oo-rskgl.1)
+	dies with its handler, so a copy is kept here until the next one (main thread only).
+*/
+std::optional<oo::Exception> sLastDeferredCallException;
+
 bool DeferredCallRunCatching(const std::function<void()> &call, const char **outName, const char **outReason)
 {
 	try
@@ -1330,8 +1329,9 @@ bool DeferredCallRunCatching(const std::function<void()> &call, const char **out
 	{
 		const auto exception = oo::CurrentOOException();
 		if (!exception)  throw;	// not an OOException: it goes on up, as before
-		*outName = exception->name();
-		*outReason = exception->reason();
+		sLastDeferredCallException = *exception->object();
+		*outName = sLastDeferredCallException->name();
+		*outReason = sLastDeferredCallException->reason();
 		return false;
 	}
 	return true;
@@ -1350,8 +1350,9 @@ bool GameControllerPerformSelectorWithObject(id target, SEL selector, id argumen
 	{
 		const auto exception = oo::CurrentOOException();
 		if (!exception)  throw;	// not an OOException: it goes on up, as before
-		*outName = exception->name();
-		*outReason = exception->reason();
+		sLastDeferredCallException = *exception->object();
+		*outName = sLastDeferredCallException->name();
+		*outReason = sLastDeferredCallException->reason();
 		return false;
 	}
 	return true;

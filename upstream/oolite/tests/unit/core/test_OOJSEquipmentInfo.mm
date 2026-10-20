@@ -210,7 +210,7 @@ GLfloat PlayerEntity::fuelChargeRate()  { return _fuelChargeRate; }
 double PlayerEntity::renovationCosts()  { return _renovationCosts; }
 OOCreditsQuantity PlayerEntity::adjustPriceByScriptForEqKey(const std::string &eqKey, OOCreditsQuantity price)
 {
-	if (eqKey == "EQ_SCOOPER")  [OOException raise:OOInvalidArgumentException format:"price %s", "boom"];
+	if (eqKey == "EQ_SCOOPER")  OORaiseException(OOInvalidArgumentException, "price %s", "boom");
 	if (eqKey == "EQ_MISSILE" && _throwCxx)  throw std::runtime_error("cxx boom");
 	return price * 2;
 }
