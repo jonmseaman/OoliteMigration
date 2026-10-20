@@ -20,7 +20,8 @@
 	oo-9n5p9). Two subclasses stand for the concrete textures, C++ now with the names and answers
 	of the Objective-C ones: TestTexture overrides what OOConcreteTexture does and caches itself
 	under a key, BareTexture overrides nothing, so it answers the root's defaults. An autoreleased
-	texture is kept until its pool drains (TestTextureKeeper). After them comes the C++ API.
+	texture is kept until its scope drains (oo::autorelease; an Objective-C keeper object until
+	bead oo-4aq6a.2). After them comes the C++ API.
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -83,22 +84,12 @@ class BareTexture final : public OOTexture
 
 
 // What an autoreleased Objective-C texture was (bead oo-9ht.99 deleted the facade): the C++
-// texture, kept until the current autorelease pool drains.
-@interface TestTextureKeeper: OOObject
-{
-@public
-	oo::Ref<OOTexture>	_texture;
-}
-@end
-
-@implementation TestTextureKeeper
-@end
-
+// texture, kept until the current autorelease scope drains (oo::autorelease; an Objective-C
+// keeper object until bead oo-4aq6a.2).
 static OOTexture *Autoreleased(const oo::Ref<OOTexture> &texture)
 {
 	if (texture == nullptr)  return nullptr;
-	TestTextureKeeper *keeper = [[[TestTextureKeeper alloc] init] autorelease];
-	keeper->_texture = texture;
+	oo::autorelease(oo::Ref<OOTexture>(texture));
 	return texture.get();
 }
 
@@ -145,7 +136,6 @@ TestGenerator *MakeGenerator(const std::optional<std::string> &key, BOOL accept)
 // -clearCache autoreleases the recent textures (a C++ cache), which needs a scope to be released.
 void ClearCache()
 {
-	@autoreleasepool
 	{
 		oo::AutoreleaseScope scope;
 		OOTexture::clearCache();
@@ -171,8 +161,8 @@ bool Contains(const std::vector<oo::Ref<OOTexture>> &textures, OOTexture *textur
 
 OO_TEST(rootDefaults)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		OOTexture *bare = Autoreleased(oo::makeRef<BareTexture>());
 		OO_CHECK(bare->isFinishedLoading());
 		OO_CHECK(!bare->cacheKey().has_value());
@@ -198,8 +188,8 @@ OO_TEST(rootDefaults)
 
 OO_TEST(subclassOverrides)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		TestTexture *texture = MakeTexture(std::nullopt);
 		OO_CHECK(SameSize(texture->originalDimensions(), 8, 4));	// the root's, from -dimensions
 		OO_CHECK(SameSize(texture->texCoordsScale(), 1, 1));
@@ -224,8 +214,8 @@ OO_TEST(cachesKeepAndForget)
 	const int deallocs = gTestDeallocs;
 	TestTexture *texture = nil;
 	OOTexture *bare = nil;
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		texture = MakeTexture(std::string("test:cache"));
 		bare = oo::makeRef<BareTexture>().leakRef();
 		OO_CHECK(OOTexture::existingTextureForKey(std::string("test:cache")) == texture);
@@ -237,8 +227,8 @@ OO_TEST(cachesKeepAndForget)
 	OO_CHECK(gTestDeallocs == deallocs);
 	OO_CHECK(OOTexture::existingTextureForKey(std::string("test:cache")) == texture);
 #ifndef NDEBUG
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		OO_CHECK(Contains(OOTexture::cachedTexturesByAge(), texture));
 		OO_CHECK(!Contains(OOTexture::cachedTexturesByAge(), bare));	// no key: not cached
 		const std::vector<oo::Ref<OOTexture>> all = OOTexture::allTextures();
@@ -247,7 +237,6 @@ OO_TEST(cachesKeepAndForget)
 #endif
 
 	// Clearing forgets both caches, and releases what only they kept.
-	@autoreleasepool
 	{
 		oo::AutoreleaseScope scope;
 		OOTexture::clearCache();
@@ -255,8 +244,8 @@ OO_TEST(cachesKeepAndForget)
 	}
 	OO_CHECK(gTestDeallocs == deallocs + 1);
 #ifndef NDEBUG
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		OO_CHECK(OOTexture::cachedTexturesByAge().empty());
 		const std::vector<oo::Ref<OOTexture>> all = OOTexture::allTextures();
 		OO_CHECK(Contains(all, bare));
@@ -270,8 +259,8 @@ OO_TEST(cachesKeepAndForget)
 OO_TEST(rebindAllTextures)
 {
 	const int deallocs = gTestDeallocs;
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		TestTexture *cached = MakeTexture(std::string("test:rebind"));
 		TestTexture *plain = MakeTexture(std::nullopt);
 		OOTexture::rebindAllTextures();
@@ -291,8 +280,8 @@ OO_TEST(rebindAllTextures)
 OO_TEST(namedTextureFromTheCache)
 {
 	OO_CHECK(OOTestGLContext());
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		OO_CHECK(OOTexture::textureWithName(std::nullopt, std::string("Textures")).get() == nil);
 
 		// Linear filtering: no anisotropy and no LOD bias in the key, whatever the extensions.
@@ -315,8 +304,8 @@ OO_TEST(namedTextureFromTheCache)
 
 OO_TEST(texturesFromGenerators)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		ClearCache();
 		OO_CHECK(OOTexture::textureWithGenerator(nil).get() == nil);
 		TestGenerator *refusing = MakeGenerator(std::string("test:refused"), NO);
@@ -352,8 +341,8 @@ OO_TEST(texturesFromGenerators)
 OO_TEST(nullTexture)
 {
 	OO_CHECK(OOTestGLContext());
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		OOTexture *none = OOTexture::nullTexture().get();
 		OO_CHECK(dynamic_cast<OONullTexture *>(none) != nullptr && none == OOTexture::nullTexture());	// was -isKindOfClass: of the facade bead oo-9ht.100 deleted
 		OO_CHECK(SameSize(none->dimensions(), 0, 0) && !none->isMipMapped());
@@ -420,8 +409,8 @@ private:
 OO_TEST(cxxApi)
 {
 	ClearCache();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		// The factories answer the C++ texture, retained.
 		OO_CHECK(!OOTexture::textureWithName(std::nullopt, std::string("Textures")));
 		const oo::Ref<OOTexture> none = OOTexture::nullTexture();
@@ -455,8 +444,8 @@ OO_TEST(cxxApi)
 OO_TEST(cxxTextureBehindTheFacade)
 {
 	const int deallocs = gTestDeallocs;
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		const oo::Ref<TestCxxTexture> texture = oo::makeRef<TestCxxTexture>(std::string("test:cxx"));
 		OOTexture *facade = texture.get();	// what the callers hold since bead oo-9ht.99 (was its facade)
 
@@ -477,8 +466,8 @@ OO_TEST(cxxTextureBehindTheFacade)
 		OOTexture::rebindAllTextures();
 		OO_CHECK(texture->rebinds == 1);
 #ifndef NDEBUG
-		@autoreleasepool
 		{
+			oo::AutoreleaseScope pool;
 			OO_CHECK(Contains(OOTexture::allTextures(), facade));
 		}
 #endif

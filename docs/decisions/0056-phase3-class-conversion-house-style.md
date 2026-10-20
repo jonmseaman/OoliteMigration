@@ -9603,3 +9603,30 @@ Kept as they are: the selector path's runtime helpers (`OOShaderUniformBindMetho
 `OOSelectorFromName(...)`, and the material test's stand-in factory takes and prints the name where it printed
 `sel_getName(selector)`; test_EntityShaderBindings and test_OOShaderUniformMethodType need no change. No case or
 expected value changes.
+
+## Amendment (bead oo-4aq6a.2): the tests' Objective-C stand-ins that never reach src become C++
+
+**Context.** Batch BA, the first slice of oo-4aq6a (retire OOObject and OOConstantString so `src/oofnd` has no
+`@implementation`; prerequisite of oo-dbz). After oo-xu228.3.2 no game class is rooted on OOObject; 43 unit tests
+still define stand-ins on it. This slice takes those whose Objective-C object is the test's own business: no src
+function receives it. The rest are filed as siblings oo-4aq6a.3 to oo-4aq6a.8 (priority queue, GameController's
+targets, plist/by-name objects, the JS engine's slot objects, shader binding targets, the root's deletion).
+
+**Decision (tests only; std-2026-10-19 item 1, approval lines "oo-4aq6a.2" in `tools/retire-test-approvals.txt`).**
+
+1. The nine texture tests' `TestTextureKeeper` (an autoreleased Objective-C object holding a C++ texture) is
+   `oo::autorelease` of the texture's `oo::Ref`, and their `@autoreleasepool` blocks are `oo::AutoreleaseScope` at
+   the same places (amendment oo-31u item 3); a pool whose first statement already opened a scope held nothing and
+   keeps that scope alone. Same drain points, LIFO as the runtime's (ADR-0045).
+2. test_AI, test_OOShipGroup, test_OOTrumble and test_OODebugMonitor's `TestEntityObject` (the object holding the
+   test's C++ ship, found by the test's own `oo::ToObjC()`) is a C++ `oo::RefCounted` found by `TestObjectOf()`.
+   `tests/unit/core/EntityHelpersStandIn.h` gains a C++ mode (`OO_ENTITY_HELPERS_STAND_IN_CXX`) answering exactly
+   as its Objective-C mode: the hold retains and releases the object, and both descriptions are what the
+   Objective-C object printed, `<ClassName 0x...>` (`className()` answers the runtime name, `Entity`, or
+   `TestShip`). test_AI's ship actions, which its `oo::CallEntityByName` stand-in called through `OOCallByName` on
+   the object, are C++ members of the same names in a by-name table, logging `callByName.unknownSelector` and
+   `callByName.badSignature` as that path did.
+
+**Behaviour.** No src change. Within the tests, the AIs, textures and ships the code under test hands to
+`oo::autorelease` (OOAIAutorelease, `OOTexture::clearCache`) now drain at the test's scopes where the Objective-C
+pools left them to leak; every case, input and expected value is unchanged.
