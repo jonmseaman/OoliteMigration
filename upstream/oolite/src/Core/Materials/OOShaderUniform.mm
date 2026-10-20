@@ -28,10 +28,6 @@ SOFTWARE.
 
 #include "OOShaderUniform.h"
 #include "Entity.h"	// the shader binding targets' informal protocols (-superShaderBindingTarget)
-#include "oofnd/objc/OORuntime.h"
-
-#include "oofnd/objc/OOObjCRef.h"
-#include <objc/objc-arc.h>	// objc_storeWeak & co.: the binding target's weak reference (bead oo-9ht.22)
 
 #if OO_SHADERS
 
@@ -42,16 +38,6 @@ SOFTWARE.
 #include "OOOpenGLExtensionManager.h"
 #include "OOShaderUniformMethodType.h"
 
-
-/*	The informal protocol for an Objective-C binding target to "forward" its bindings up a hierarchy
-	(bead oo-dpyk8 moved it here from the deleted entity facade's header, which declared it for the
-	entities' objects; the entities answer through OOShaderEntityHooks).
-*/
-@interface OOObject (ShaderBindingHierarchy)
-
-- (id) superShaderBindingTarget;
-
-@end
 
 #include "oofnd/String.hpp"
 
@@ -158,57 +144,6 @@ oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &unifor
 
 oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &uniformName,
 													   OOShaderProgram *shaderProgram,
-													   id target,
-													   const char *property,
-													   OOUniformConvertOptions options)
-{
-	BOOL					OK = YES;
-	oo::Ref<OOShaderUniform>	result;
-	// The property's selector, looked up once (bead oo-xu228.3.2: the caller passed it); NULL for no name.
-	const SEL				selector = OOSelectorFromName(property);
-
-	if (EXPECT_NOT(shaderProgram == NULL || selector == NULL)) OK = NO;
-
-	if (OK)
-	{
-		result = oo::adopt(new OOShaderUniform());
-	}
-
-	if (OK)
-	{
-		result->location = glGetUniformLocationARB(shaderProgram->program(), uniformName.c_str());
-		if (result->location == -1)
-		{
-			OK = NO;
-			OO_LOG("shader.uniform.bind.failed", "Could not bind uniform \"{}\" to -[{} {}] (no uniform of that name could be found).", uniformName, oo::DescriptionOf([target class]), OOSelectorName(selector));
-		}
-	}
-
-	// If we're still OK, it's a bindable method.
-	if (OK)
-	{
-		result->name = uniformName;
-		result->isBinding = YES;
-		result->value.binding.selector = selector;
-
-		result->convertClamp = (options & kOOUniformConvertClamp) != 0;
-		result->convertNormalize = (options & kOOUniformConvertNormalize) != 0;
-		result->convertToMatrix = (options & kOOUniformConvertToMatrix) != 0;
-		result->bindToSuper = (options & kOOUniformBindToSuperTarget) != 0;
-
-		if (target != nil)  result->setBindingTarget(target);
-	}
-
-	if (!OK)
-	{
-		return nullptr;	// [self release]; self = nil
-	}
-	return result;
-}
-
-
-oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &uniformName,
-													   OOShaderProgram *shaderProgram,
 													   oo::RefCounted *target,
 													   const std::string &property,
 													   uint8_t boundType,
@@ -217,7 +152,8 @@ oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &unifor
 {
 	/*	The selector initialiser's checks and log line, for a C++ target's member (bead oo-t0e2m):
 		the member's getter replaces the method found by selector, and the type is the method's
-		return type it replaced. A target that is itself a C++ object has no super target.
+		return type it replaced. A target that is itself a C++ object has no super target. (The
+		selector initialiser, for an Objective-C target, went with bead oo-4aq6a.7.)
 	*/
 	if (EXPECT_NOT(shaderProgram == NULL || get == NULL))  return nullptr;
 	if (EXPECT_NOT(boundType == kOOShaderUniformTypeInvalid || boundType >= kOOShaderUniformTypeCount))  return nullptr;
@@ -251,11 +187,11 @@ oo::Ref<OOShaderUniform> OOShaderUniform::initWithEntityTarget(const std::string
 															   const char *property,
 															   OOUniformConvertOptions options)
 {
-	const SEL selector = OOSelectorFromName(property);	// looked up once, as the initialiser above (bead oo-xu228.3.2)
-
-	// The selector initialiser above, its target the entity (bead oo-9ht.39.6): the same checks and
-	// log line, which names the class of the entity's object as -[{} {}] did.
-	if (EXPECT_NOT(shaderProgram == NULL || selector == NULL))  return nullptr;
+	// The deleted selector initialiser's, its target the entity (bead oo-9ht.39.6): the same checks
+	// and log line, which names the class of the entity's object as -[{} {}] did. The property is
+	// kept by name, where its selector was looked up (a NULL name gave a NULL selector; bead
+	// oo-4aq6a.7).
+	if (EXPECT_NOT(shaderProgram == NULL || property == NULL))  return nullptr;
 
 	oo::Ref<OOShaderUniform> result = oo::adopt(new OOShaderUniform());
 	result->location = glGetUniformLocationARB(shaderProgram->program(), uniformName.c_str());
@@ -263,13 +199,13 @@ oo::Ref<OOShaderUniform> OOShaderUniform::initWithEntityTarget(const std::string
 	{
 		const OOShaderEntityHooks *hooks = OOShaderEntityHooksIfSet();
 		const std::string className = (target != nullptr && hooks != nullptr) ? hooks->className(target) : std::string("(null)");	// its object's class (bead oo-dpyk8)
-		OO_LOG("shader.uniform.bind.failed", "Could not bind uniform \"{}\" to -[{} {}] (no uniform of that name could be found).", uniformName, className, OOSelectorName(selector));
+		OO_LOG("shader.uniform.bind.failed", "Could not bind uniform \"{}\" to -[{} {}] (no uniform of that name could be found).", uniformName, className, property);
 		return nullptr;
 	}
 
 	result->name = uniformName;
 	result->isBinding = YES;
-	result->value.binding.selector = selector;
+	result->cxxProperty = property;
 	result->convertClamp = (options & kOOUniformConvertClamp) != 0;
 	result->convertNormalize = (options & kOOUniformConvertNormalize) != 0;
 	result->convertToMatrix = (options & kOOUniformConvertToMatrix) != 0;
@@ -282,7 +218,7 @@ oo::Ref<OOShaderUniform> OOShaderUniform::initWithEntityTarget(const std::string
 
 OOShaderUniform::~OOShaderUniform()
 {
-	if (isBinding)  objc_destroyWeak(&value.binding.object);	// was the release of its weak-reference proxy (bead oo-9ht.22)
+	// (It destroyed the Objective-C target's weak reference, which went with bead oo-4aq6a.7.)
 }
 
 
@@ -290,14 +226,13 @@ std::optional<std::string> OOShaderUniform::description()
 {
 	std::optional<std::string>	valueDesc;
 	const char					*valueType = nullptr;
-	id							object;
 
 	if (isBinding && entityMember)
 	{
 		// An entity's member (bead oo-9ht.39.6): the class the selector path printed (rows bind only
 		// for the root facade's own class), the entity's address and the property.
 		oo::RefCounted *cxxObject = cxxTarget.get();
-		if (cxxObject != nullptr)  valueDesc = oo::str::format("[<%s %s> %s]", "Entity", oo::str::pointerDescription(cxxObject).c_str(), OOSelectorName(value.binding.selector));
+		if (cxxObject != nullptr)  valueDesc = oo::str::format("[<%s %s> %s]", "Entity", oo::str::pointerDescription(cxxObject).c_str(), cxxProperty.c_str());
 		else  valueDesc = "0";
 	}
 	else if (isBinding && cxxTargetOnly)
@@ -309,18 +244,9 @@ std::optional<std::string> OOShaderUniform::description()
 	}
 	else if (isBinding)
 	{
-		// The target, read from its weak reference (bead oo-9ht.22); the address printed is the
-		// target's, where it was its weak-reference proxy's.
-		object = objc_loadWeakRetained(&value.binding.object);
-		if (object != nil)
-		{
-			valueDesc = oo::str::format("[<%s %s> %s]", oo::DescriptionOf([object class]).c_str(), oo::str::pointerDescription(object).c_str(), OOSelectorName(value.binding.selector));
-			objc_release(object);
-		}
-		else
-		{
-			valueDesc = "0";
-		}
+		// Nothing bound (an entity binding no row answered): what the Objective-C target's branch
+		// printed for no target (that branch went with bead oo-4aq6a.7).
+		valueDesc = "0";
 	}
 	else
 	{
@@ -412,66 +338,6 @@ void OOShaderUniform::apply()
 }
 
 
-void OOShaderUniform::setBindingTarget(id target)
-{
-	BOOL					OK = YES;
-	std::string				methodProblem;
-	id						superCandidate = nil;
-	OOShaderMemberBinding	memberBinding = {};
-	OOShaderUniformType		boundType = kOOShaderUniformTypeInvalid;
-
-	if (!isBinding)  return;
-	if (cxxTargetOnly)  return;	// a C++ target's member is bound once, by its factory (bead oo-t0e2m)
-	entityMember = NO;	// an Objective-C target (bead oo-9ht.39.6)
-
-	// Resolve "supertarget" if applicable
-	if (bindToSuper)
-	{
-		for (;;)
-		{
-			if (![target respondsToSelector:OOSelectorFromName("superShaderBindingTarget")])  break;
-
-			superCandidate = [(id)target superShaderBindingTarget];
-			if (superCandidate == nil || superCandidate == target)  break;
-			target = superCandidate;
-		}
-	}
-
-	objc_storeWeak(&value.binding.object, target);	// was the target's weak-reference proxy (bead oo-9ht.22)
-
-	if (target == nil)
-	{
-		value.binding.cxxGet = NULL;
-		cxxTarget = nullptr;
-		isActiveBinding = NO;
-		return;
-	}
-
-	/*	A member of the target's C++ class, found in its class's member table by the property name
-		(bead oo-9ht.158), read from the target's C++ part (bead oo-9ht.39.6.1), held weakly as the
-		target is; else the method found by selector, as before (OOShaderUniformBindMethod, which
-		held this function's checks until then).
-	*/
-	value.binding.cxxGet = NULL;
-	value.binding.method = NULL;
-	cxxTarget = nullptr;
-	if (OOShaderMemberBindingFor((id)target, OOSelectorName(value.binding.selector), &memberBinding))
-	{
-		value.binding.cxxGet = memberBinding.get;
-		cxxTarget = memberBinding.target;
-		boundType = memberBinding.type;
-	}
-	else
-	{
-		OK = OOShaderUniformBindMethod((id)target, value.binding.selector, &value.binding.method, &boundType, &methodProblem);
-	}
-	if (OK)  type = boundType;
-
-	isActiveBinding = OK;
-	if (!OK)  OO_LOG("shader.uniform.bind.failed", "Shader could not bind uniform \"{}\" to -[{} {}] ({}).", name, oo::DescriptionOf([target class]), OOSelectorName(value.binding.selector), methodProblem);
-}
-
-
 void OOShaderUniform::setEntityBindingTarget(Entity *target)
 {
 	const OOShaderEntityHooks *hooks = OOShaderEntityHooksIfSet();
@@ -479,11 +345,9 @@ void OOShaderUniform::setEntityBindingTarget(Entity *target)
 	if (!isBinding)  return;
 	if (cxxTargetOnly)  return;	// a C++ target's member is bound once, by its factory (bead oo-t0e2m)
 
-	/*	setBindingTarget()'s steps for the entity (bead oo-9ht.39.6): the super target followed up the
-		entities (-superShaderBindingTarget), then the member table's row for the name, read from the
-		entity. Where no row binds the name, or the entity's object is an Objective-C subclass's (its
-		methods may be overridden), the object is bound by selector exactly as before, from where the
-		walk has reached: setBindingTarget() continues it and logs any failure.
+	/*	The Objective-C target's steps for the entity (bead oo-9ht.39.6): the super target followed up
+		the entities (-superShaderBindingTarget), then the member table's row for the name, read from
+		the entity. (The Objective-C target's path, setBindingTarget(id), went with bead oo-4aq6a.7.)
 	*/
 	entityMember = NO;
 	if (target != nullptr && hooks != nullptr && bindToSuper)
@@ -497,10 +361,8 @@ void OOShaderUniform::setEntityBindingTarget(Entity *target)
 	}
 
 	OOShaderMemberBinding memberBinding = {};
-	if (target != nullptr && hooks != nullptr && hooks->memberBinding(target, OOSelectorName(value.binding.selector), &memberBinding))
+	if (target != nullptr && hooks != nullptr && hooks->memberBinding(target, cxxProperty.c_str(), &memberBinding))
 	{
-		objc_storeWeak(&value.binding.object, nil);
-		value.binding.method = NULL;
 		value.binding.cxxGet = memberBinding.get;
 		cxxTarget = memberBinding.target;
 		type = memberBinding.type;
@@ -512,12 +374,15 @@ void OOShaderUniform::setEntityBindingTarget(Entity *target)
 	/*	No row binds the name for this entity: the entity's object was bound by selector, which it did not
 		answer (the member table holds every name the object answered, bead oo-9ht.39.6.1), so the
 		binding failed and was logged; with no object (or no hooks) nothing was bound or logged. The
-		object went with bead oo-dpyk8: the same state and the same line.
+		object went with bead oo-dpyk8: the same state and the same line. (Nothing bound: what
+		setBindingTarget(nil) left, bead oo-4aq6a.7.)
 	*/
-	setBindingTarget(nil);
+	value.binding.cxxGet = NULL;
+	cxxTarget = nullptr;
+	isActiveBinding = NO;
 	if (target != nullptr && hooks != nullptr && hooks->className(target) != "(null)")
 	{
-		OO_LOG("shader.uniform.bind.failed", "Shader could not bind uniform \"{}\" to -[{} {}] ({}).", name, hooks->className(target), OOSelectorName(value.binding.selector), "target does not respond to selector");
+		OO_LOG("shader.uniform.bind.failed", "Shader could not bind uniform \"{}\" to -[{} {}] ({}).", name, hooks->className(target), cxxProperty, "target does not respond to selector");
 	}
 }
 
@@ -571,7 +436,6 @@ void OOShaderUniform::applySimple()
 void OOShaderUniform::applyBinding()
 {
 
-	id							object = nil;
 	GLint						iVal;
 	GLfloat						fVal;
 	Vector						vVal;
@@ -591,20 +455,13 @@ void OOShaderUniform::applyBinding()
 		shouldn't occur in normal usage is silly.
 	*/
 	// A member binding (bead oo-9ht.158), or a C++ target's (bead oo-t0e2m), reads its value once,
-	// into the field its type uses.
+	// into the field its type uses. Nothing else is bound since bead oo-4aq6a.7 deleted the
+	// Objective-C target, whose method this called (it set nothing once that target had gone).
 	OOShaderBindingValue		member = {};
-	const bool					isMember = value.binding.cxxGet != NULL;
-	// The Objective-C target, held for this apply (its weak reference read retained; bead oo-9ht.22).
-	oo::ObjCRef<id> heldTarget;
-	if (!cxxTargetOnly && !entityMember)
+	if (!cxxTargetOnly && !entityMember)  return;
+	if (value.binding.cxxGet == NULL)  return;
 	{
-		heldTarget = oo::adoptObjC(objc_loadWeakRetained(&value.binding.object));
-		object = heldTarget.get();
-		if (object == nil)  return;
-	}
-	if (isMember)
-	{
-		// The C++ target, or the Objective-C target's part (bead oo-9ht.39.6.1), which goes with it.
+		// The C++ target (the entity, or the C++ object), held weakly: once it has gone, nothing is set.
 		oo::RefCounted *cxxObject = cxxTarget.get();
 		if (cxxObject == nullptr)  return;
 		value.binding.cxxGet(cxxObject, member);
@@ -620,18 +477,18 @@ void OOShaderUniform::applyBinding()
 		case kOOShaderUniformTypeUnsignedInt:
 		case kOOShaderUniformTypeLong:
 		case kOOShaderUniformTypeUnsignedLong:
-			iVal = (GLint)(isMember ? member.i : OOCallIntegerMethod(object, value.binding.selector, value.binding.method, (OOShaderUniformType)type));
+			iVal = (GLint)member.i;
 			isInt = YES;
 			break;
 
 		case kOOShaderUniformTypeFloat:
 		case kOOShaderUniformTypeDouble:
-			fVal = isMember ? member.f : OOCallFloatMethod(object, value.binding.selector, value.binding.method, (OOShaderUniformType)type);
+			fVal = member.f;
 			isFloat = YES;
 			break;
 
 		case kOOShaderUniformTypeVector:
-			vVal = isMember ? member.v : ((VectorReturnMsgSend)(void (*)(void))value.binding.method)(object, value.binding.selector);
+			vVal = member.v;
 			if (convertNormalize)  vVal = vector_normal(vVal);
 			expVVal[0] = vVal.x;
 			expVVal[1] = vVal.y;
@@ -641,7 +498,7 @@ void OOShaderUniform::applyBinding()
 			break;
 
 		case kOOShaderUniformTypeHPVector:
-			hpvVal = isMember ? member.hpv : ((HPVectorReturnMsgSend)(void (*)(void))value.binding.method)(object, value.binding.selector);
+			hpvVal = member.hpv;
 			if (convertNormalize)  hpvVal = HPvector_normal(hpvVal);
 			expVVal[0] = (GLfloat)hpvVal.x;
 			expVVal[1] = (GLfloat)hpvVal.y;
@@ -651,7 +508,7 @@ void OOShaderUniform::applyBinding()
 			break;
 
 		case kOOShaderUniformTypeQuaternion:
-			qVal = isMember ? member.q : ((QuaternionReturnMsgSend)(void (*)(void))value.binding.method)(object, value.binding.selector);
+			qVal = member.q;
 			if (convertToMatrix)
 			{
 				mVal = OOMatrixForQuaternionRotation(qVal);
@@ -668,24 +525,24 @@ void OOShaderUniform::applyBinding()
 			break;
 
 		case kOOShaderUniformTypeMatrix:
-			mVal = isMember ? member.m : ((MatrixReturnMsgSend)(void (*)(void))value.binding.method)(object, value.binding.selector);
+			mVal = member.m;
 			isMatrix = YES;
 			break;
 
 		case kOOShaderUniformTypePoint:
-			pVal = isMember ? member.p : ((PointReturnMsgSend)(void (*)(void))value.binding.method)(object, value.binding.selector);
+			pVal = member.p;
 			isPoint = YES;
 			break;
 
 		case kOOShaderUniformTypeObject:
 			// An object that is not a colour: nothing set. (The number-object case went with
 			// Foundation: no bindable method returns one; the whitelisted object-valued bindings,
-			// laserColor and fogUniform, answer the C++ colour since bead oo-9ht.1: the case below.)
-			if (!isMember)  (void)((ObjectReturnMsgSend)value.binding.method)(object, value.binding.selector);
+			// laserColor and fogUniform, answer the C++ colour since bead oo-9ht.1: the case below.
+			// The Objective-C target's method, called for nothing, went with bead oo-4aq6a.7.)
 			break;
 
 		case kOOShaderUniformTypeColor:
-			if (::OOColor *color = isMember ? member.color : ((ColorReturnMsgSend)(void (*)(void))value.binding.method)(object, value.binding.selector))
+			if (::OOColor *color = member.color)
 			{
 				expVVal[0] = color->redComponent();
 				expVVal[1] = color->greenComponent();

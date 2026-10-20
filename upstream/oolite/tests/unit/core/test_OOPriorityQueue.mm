@@ -1,258 +1,22 @@
 /*	test_OOPriorityQueue.mm
-	Unit tests for OOPriorityQueue (src/Core/OOPriorityQueue.h): bead oo-3lj8, a Phase 3
-	conversion in the house style of the OOColor exemplar (proposed ADR-0056).
+	Unit tests for OOPriorityQueueOf (src/Core/OOPriorityQueue.h): bead oo-9ht.35, the binary heap
+	over C++ elements that the timer queue (OOScriptTimer) holds.
 
-	It pins what the queue computed before the conversion: extraction in comparator order, peek
-	and remove, removal by comparator and by identity, the buffer's growth and shrinkage (seen
-	through the description), copies, equality and hash, the objects' retain counts, and the two
-	exceptions addObject() raises. The elements are Objective-C objects compared by a selector, as
-	OOScriptTimer's are. The expectations were written against the Objective-C API and run on the
-	unconverted class first (commit 5ce883621); the queue's one caller was adapted in the bead, so
-	there is no facade and the calls here are the C++ class's. Bead oo-9ht.35 added
-	OOPriorityQueueOf, the same heap over C++ elements for the timer queue; the cases at the end
-	check that it gives the elements in OOPriorityQueue's order, equal keys included, holds them
-	and removes by identity. Run: bash tools/check-core-tests.sh
+	Bead oo-3lj8 converted the Objective-C OOPriorityQueue (elements ordered by a comparator
+	selector) and pinned it here; bead oo-9ht.35 added OOPriorityQueueOf, the same heap step for
+	step, and checked it against the Objective-C queue as an oracle, equal keys included. Bead
+	oo-4aq6a.3 deleted the Objective-C queue (no game caller since oo-9ht.35): its six cases retired
+	with it (std-2026-10-19 item 2), and the two OOPriorityQueueOf cases compare with the Objective-C
+	queue's output measured on the tree before the deletion, written as literals (ADR-0062 item 1).
+	Run: bash tools/check-core-tests.sh
 */
 
-#import "OOPriorityQueue.h"
-#import "OODescription.h"
-#include "oofnd/objc/OOException.h"
+#include "OOPriorityQueue.h"
 
 #include "oo_test.hpp"
 
-#include <cstring>
 #include <string>
 #include <vector>
-
-
-// An element: an integer key, ordered by -compare: and by -compareDescending:.
-@interface TestItem: OOObject
-{
-@public
-	int			_key;
-}
-+ (instancetype) itemWithKey:(int)key;
-- (OOComparisonResult) compare:(TestItem *)other;
-- (OOComparisonResult) compareDescending:(TestItem *)other;
-@end
-
-
-@implementation TestItem
-
-+ (instancetype) itemWithKey:(int)key
-{
-	TestItem *item = [[[self alloc] init] autorelease];
-	item->_key = key;
-	return item;
-}
-
-- (OOComparisonResult) compare:(TestItem *)other
-{
-	if (_key < other->_key)  return OOOrderedAscending;
-	if (_key > other->_key)  return OOOrderedDescending;
-	return OOOrderedSame;
-}
-
-- (OOComparisonResult) compareDescending:(TestItem *)other
-{
-	return [other compare:self];
-}
-
-@end
-
-
-namespace {
-
-std::vector<int> Keys(const std::vector<oo::ObjCRef<id>> &objects)
-{
-	std::vector<int> result;
-	for (const auto &object : objects)  result.push_back(((TestItem *)object.get())->_key);
-	return result;
-}
-
-
-int KeyOf(id object)
-{
-	return object != nil ? ((TestItem *)object)->_key : -1;
-}
-
-
-const int kKeys[] = { 5, 3, 9, 1, 7, 3, 8, 2, 6, 4, 0 };
-
-}	// namespace
-
-
-OO_TEST(extractsInComparatorOrder)
-{
-	@autoreleasepool
-	{
-		oo::Ref<OOPriorityQueue> queue = OOPriorityQueue::queueWithComparator("compare:");
-		OO_CHECK(queue != nullptr && queue->count() == 0);
-		OO_CHECK(queue->nextObject() == nil && queue->peekAtNextObject() == nil);
-		for (int key : kKeys)  queue->addObject([TestItem itemWithKey:key]);
-		OO_CHECK(queue->count() == 11);
-		OO_CHECK(KeyOf(queue->peekAtNextObject()) == 0 && queue->count() == 11);
-		OO_CHECK(KeyOf(queue->nextObject()) == 0 && queue->count() == 10);
-		queue->removeNextObject();
-		OO_CHECK(KeyOf(queue->peekAtNextObject()) == 2);
-		OO_CHECK(Keys(queue->sortedObjects()) == std::vector<int>({ 2, 3, 3, 4, 5, 6, 7, 8, 9 }));
-		OO_CHECK(queue->count() == 0);	// sortedObjects empties the queue
-		queue->removeNextObject();	// on an empty queue: nothing
-		OO_CHECK(queue->count() == 0);
-
-		oo::Ref<OOPriorityQueue> descending = OOPriorityQueue::queueWithComparator("compareDescending:");
-		for (int key : kKeys)  descending->addObject([TestItem itemWithKey:key]);
-		OO_CHECK(Keys(descending->objectEnumerator()) == std::vector<int>({ 9, 8, 7, 6, 5, 4, 3, 3, 2, 1, 0 }));
-
-		OO_CHECK(OOPriorityQueue::queueWithComparator(NULL) == nullptr);
-	}
-}
-
-
-OO_TEST(removeByComparatorAndByIdentity)
-{
-	@autoreleasepool
-	{
-		oo::Ref<OOPriorityQueue> queue = OOPriorityQueue::queueWithComparator("compare:");
-		TestItem *three = [TestItem itemWithKey:3];
-		for (int key : kKeys)  queue->addObject(key == 3 ? three : [TestItem itemWithKey:key]);
-		OO_CHECK(queue->count() == 11);
-
-		queue->removeExactObject([TestItem itemWithKey:5]);	// equal, not identical: stays
-		OO_CHECK(queue->count() == 11);
-		queue->removeExactObject(three);	// the same object twice: both go
-		OO_CHECK(queue->count() == 9);
-		queue->removeObject([TestItem itemWithKey:5]);	// compares equal: goes
-		OO_CHECK(queue->count() == 8);
-		queue->removeObject([TestItem itemWithKey:42]);
-		queue->removeObject(nil);
-		queue->removeExactObject(nil);
-		OO_CHECK(Keys(queue->sortedObjects()) == std::vector<int>({ 0, 1, 2, 4, 6, 7, 8, 9 }));
-	}
-}
-
-
-OO_TEST(bufferGrowsAndShrinks)
-{
-	@autoreleasepool
-	{
-		oo::Ref<OOPriorityQueue> queue = OOPriorityQueue::queueWithComparator("compare:");
-		std::string text = queue->description().value_or("");
-		OO_CHECK(text.starts_with("<OOPriorityQueue 0x") && text.ends_with(">{count=0, capacity=0}"));
-
-		queue->addObject([TestItem itemWithKey:1]);
-		OO_CHECK(queue->description().value_or("").ends_with(">{count=1, capacity=16}"));
-		for (int i = 2; i <= 17; i++)  queue->addObject([TestItem itemWithKey:i]);
-		OO_CHECK(queue->description().value_or("").ends_with(">{count=17, capacity=24}"));
-		for (int i = 18; i <= 40; i++)  queue->addObject([TestItem itemWithKey:i]);
-		OO_CHECK(queue->description().value_or("").ends_with(">{count=40, capacity=54}"));
-
-		// Removing down to half the capacity drops two thirds of the free space.
-		while (queue->count() > 27)  queue->removeNextObject();
-		OO_CHECK(queue->description().value_or("").ends_with(">{count=27, capacity=36}"));
-		while (queue->count() > 1)  queue->removeNextObject();
-		OO_CHECK(queue->description().value_or("").ends_with(">{count=1, capacity=16}"));
-		OO_CHECK(KeyOf(queue->nextObject()) == 40);
-	}
-}
-
-
-OO_TEST(copiesEqualityAndHash)
-{
-	@autoreleasepool
-	{
-		oo::Ref<OOPriorityQueue> queue = OOPriorityQueue::queueWithComparator("compare:");
-		OO_CHECK(queue->hash() == NSNotFound);
-		for (int key : kKeys)  queue->addObject([TestItem itemWithKey:key]);
-
-		oo::Ref<OOPriorityQueue> copy = queue->copy();
-		OO_CHECK(copy != queue && copy->count() == 11);
-		OO_CHECK(copy->description().value_or("").ends_with(">{count=11, capacity=11}"));	// capacity is the count
-		OO_CHECK(queue->isEqual(copy.get()) && copy->isEqual(queue.get()) && queue->isEqual(queue.get()));	// the same objects
-		OO_CHECK(queue->hash() == (11 ^ [queue->peekAtNextObject() hash]) && queue->hash() == copy->hash());
-		OO_CHECK(!queue->isEqual(nullptr));
-
-		// Equal keys are not equal objects (TestItem's -isEqual: is identity).
-		oo::Ref<OOPriorityQueue> other = OOPriorityQueue::queueWithComparator("compare:");
-		for (int key : kKeys)  other->addObject([TestItem itemWithKey:key]);
-		OO_CHECK(!queue->isEqual(other.get()));
-		OO_CHECK(OOPriorityQueue::queueWithComparator("compare:")->isEqual(OOPriorityQueue::queueWithComparator("compareDescending:").get()));	// both empty
-
-		// A copy is independent.
-		copy->removeNextObject();
-		OO_CHECK(copy->count() == 10 && queue->count() == 11 && !queue->isEqual(copy.get()));
-		copy->addObject([TestItem itemWithKey:-1]);
-		OO_CHECK(KeyOf(copy->peekAtNextObject()) == -1 && KeyOf(queue->peekAtNextObject()) == 0);
-
-		// Copying an empty queue.
-		oo::Ref<OOPriorityQueue> empty = OOPriorityQueue::queueWithComparator("compare:")->copy();
-		OO_CHECK(empty != nullptr && empty->count() == 0);
-		empty->addObject([TestItem itemWithKey:1]);
-		OO_CHECK(KeyOf(empty->nextObject()) == 1);
-	}
-}
-
-
-OO_TEST(retainsItsObjects)
-{
-	TestItem *item = [[TestItem alloc] init];
-	oo::Ref<OOPriorityQueue> queue = OOPriorityQueue::queueWithComparator("compare:");
-	@autoreleasepool
-	{
-		queue->addObject(item);
-		OO_CHECK([item retainCount] == 2);
-		oo::Ref<OOPriorityQueue> copy = queue->copy();
-		OO_CHECK([item retainCount] == 3);
-		copy = nullptr;
-		OO_CHECK([item retainCount] == 2);
-		OO_CHECK(queue->nextObject() == item);	// removal autoreleases
-		OO_CHECK([item retainCount] == 2);
-	}
-	OO_CHECK([item retainCount] == 1);
-	@autoreleasepool
-	{
-		queue->addObject(item);
-	}
-	queue = nullptr;	// releases what it holds
-	OO_CHECK([item retainCount] == 1);
-	[item release];
-}
-
-
-OO_TEST(addObjectRaises)
-{
-	@autoreleasepool
-	{
-		oo::Ref<OOPriorityQueue> queue = OOPriorityQueue::queueWithComparator("compare:");
-		const char *nilName = nullptr;
-		std::optional<oo::Exception> kept;	// what the autorelease pool kept alive (bead oo-rskgl.1)
-		try
-		{
-			queue->addObject(nil);
-		}
-		catch (const oo::Exception &e)	// was @catch (OOException *e)
-		{
-			kept = e;
-			nilName = kept->name();
-		}
-		OO_CHECK(nilName != nullptr && std::strcmp(nilName, OOInvalidArgumentException) == 0);
-
-		const char *reason = nullptr;
-		std::optional<oo::Exception> keptReason;	// what the autorelease pool kept alive (bead oo-rskgl.1)
-		try
-		{
-			queue->addObject([[[OOObject alloc] init] autorelease]);
-		}
-		catch (const oo::Exception &e)	// was @catch (OOException *e)
-		{
-			keptReason = e;
-			reason = keptReason->reason();
-		}
-		OO_CHECK(reason != nullptr && std::string(reason).starts_with("Attempt to insert object (<OOObject: "));
-		OO_CHECK(reason != nullptr && std::string(reason).ends_with(") which does not support comparator compare: into OOPriorityQueue."));
-		OO_CHECK(queue->count() == 0);
-	}
-}
 
 
 // MARK: OOPriorityQueueOf (bead oo-9ht.35) ------------------------------------------------------
@@ -287,18 +51,6 @@ OOComparisonResult CompareCxx(CxxItem *a, CxxItem *b)
 }	// namespace
 
 
-// The same keys and tags as Objective-C elements, for the order OOPriorityQueue gives.
-@interface TaggedItem: TestItem
-{
-@public
-	int			_tag;
-}
-@end
-
-@implementation TaggedItem
-@end
-
-
 namespace {
 
 std::string Tags(const std::vector<oo::Ref<CxxItem>> &items)
@@ -309,22 +61,14 @@ std::string Tags(const std::vector<oo::Ref<CxxItem>> &items)
 }
 
 
-std::string Tags(const std::vector<oo::ObjCRef<id>> &objects)
-{
-	std::string result;
-	for (const auto &object : objects)  result += std::to_string(((TaggedItem *)object.get())->_key) + "." + std::to_string(((TaggedItem *)object.get())->_tag) + " ";
-	return result;
-}
-
 }	// namespace
 
 
 OO_TEST(cxxQueueGivesTheSameOrder)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		OOPriorityQueueOf<CxxItem> cxxQueue(CompareCxx);
-		oo::Ref<OOPriorityQueue> objcQueue = OOPriorityQueue::queueWithComparator("compare:");
 		OO_CHECK(cxxQueue.count() == 0 && cxxQueue.peekAtNextObject() == nullptr);
 		OO_CHECK(cxxQueue.removeNextObject() == nullptr);
 
@@ -334,27 +78,22 @@ OO_TEST(cxxQueueGivesTheSameOrder)
 		for (int key : keys)
 		{
 			cxxQueue.addObject(CxxItem::make(key, tag).get());
-			TaggedItem *item = [[[TaggedItem alloc] init] autorelease];
-			item->_key = key;
-			item->_tag = tag;
-			objcQueue->addObject(item);
 			tag++;
 		}
 		OO_CHECK(cxxQueue.count() == 20);
 		OO_CHECK(cxxQueue.peekAtNextObject() != nullptr && cxxQueue.peekAtNextObject()->key == 0);
 
-		// Take a few, put one back, then empty both.
+		// Take a few, put one back, then empty the queue. The expected orders are the deleted
+		// Objective-C OOPriorityQueue's, measured on the same keys and steps before bead oo-4aq6a.3
+		// (ADR-0062 item 1).
 		std::vector<oo::Ref<CxxItem>> cxxFirst;
-		std::vector<oo::ObjCRef<id>> objcFirst;
 		for (int i = 0; i < 4; i++)
 		{
 			cxxFirst.push_back(cxxQueue.removeNextObject());
-			objcFirst.emplace_back(objcQueue->nextObject());
 		}
-		OO_CHECK_EQ(Tags(cxxFirst), Tags(objcFirst));
+		OO_CHECK_EQ(Tags(cxxFirst), "0.10 0.15 1.6 1.13 ");
 		cxxQueue.addObject(cxxFirst[1].get());
-		objcQueue->addObject(objcFirst[1].get());
-		OO_CHECK_EQ(Tags(cxxQueue.sortedObjects()), Tags(objcQueue->sortedObjects()));
+		OO_CHECK_EQ(Tags(cxxQueue.sortedObjects()), "0.15 1.9 1.3 1.18 3.2 3.17 3.11 3.14 3.5 3.1 3.8 5.12 5.19 5.0 5.16 5.4 5.7 ");
 		OO_CHECK(cxxQueue.count() == 0);
 	}
 }
@@ -363,38 +102,27 @@ OO_TEST(cxxQueueGivesTheSameOrder)
 OO_TEST(cxxQueueHoldsAndRemovesByIdentity)
 {
 	CxxItem::sLive = 0;
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		OOPriorityQueueOf<CxxItem> queue(CompareCxx);
-		oo::Ref<OOPriorityQueue> objcQueue = OOPriorityQueue::queueWithComparator("compare:");
 		oo::Ref<CxxItem> three = CxxItem::make(3, 0);
-		TaggedItem *objcThree = [[[TaggedItem alloc] init] autorelease];
-		objcThree->_key = 3;
 		queue.addObject(three.get());
 		queue.addObject(three.get());
 		queue.addObject(CxxItem::make(3, 1).get());	// held by the queue alone
 		queue.addObject(CxxItem::make(1, 2).get());
 		queue.addObject(nullptr);	// ignored
-		const int otherKeys[] = { 3, 1 };
-		objcQueue->addObject(objcThree);
-		objcQueue->addObject(objcThree);
-		for (int key : otherKeys)
-		{
-			TaggedItem *item = [[[TaggedItem alloc] init] autorelease];
-			item->_key = key;
-			objcQueue->addObject(item);
-		}
 		OO_CHECK(queue.count() == 4);
 		OO_CHECK_EQ(CxxItem::sLive, 3);
 
 		// The search goes on past a match, so the element moved into the removed one's place is
-		// not looked at again: the same as OOPriorityQueue, whatever that leaves.
+		// not looked at again: the same as the Objective-C OOPriorityQueue, whatever that leaves.
+		// The count is that queue's, measured on the same steps before bead oo-4aq6a.3 deleted it
+		// (ADR-0062 item 1).
 		queue.removeExactObject(three.get());
-		objcQueue->removeExactObject(objcThree);
 		OO_CHECK(queue.count() < 4);
-		OO_CHECK(queue.count() == objcQueue->count());
+		OO_CHECK(queue.count() == 3);
 		queue.removeExactObject(nullptr);
-		OO_CHECK(queue.count() == objcQueue->count());
+		OO_CHECK(queue.count() == 3);
 		{
 			oo::Ref<CxxItem> next = queue.removeNextObject();	// the caller now holds it
 			OO_CHECK(next != nullptr && next->key == 1);

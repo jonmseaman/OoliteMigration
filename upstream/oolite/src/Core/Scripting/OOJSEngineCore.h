@@ -139,16 +139,10 @@ OOINLINE ooscript::Value OOJSValueFromBOOL(int b)
 }
 
 
-/*	OOJSValueFromNativeObject()
-	Return a JavaScript value representation of an object, or null if passed
-	nil. An object whose root class is not OOObject gives undefined, as the
-	Foundation root-class glue did; oo-qps.72 deleted the Foundation branch that converted
-	one through its property-list form (proposed ADR-0051). Plist data is
-	OOJSValueFromPList()'s.
-	
-	Requires a request on context.
+/*	(OOJSValueFromNativeObject(), the JS value of an Objective-C object, and OOJSObjectFromNativeObject()
+	went with bead oo-4aq6a.6.2: no game object is an Objective-C object. Plist data is
+	OOJSValueFromPList()'s.)
 */
-OOJS_EXTERN_C ooscript::Value OOJSValueFromNativeObject(ooscript::Context context, id object);
 
 
 /*	OOJSValueFromPList()
@@ -159,20 +153,14 @@ OOJS_EXTERN_C ooscript::Value OOJSValueFromNativeObject(ooscript::Context contex
 	single-precision one as the double of its float); a string as a string;
 	data and dates undefined; an array as an Array and a dictionary as an
 	Object (null elements and values dropped, empty keys skipped, key order);
-	a PList::Object node as OOJSValueFromNativeObject() of its object.
+	a PList::Object node as its C++ object's JS glue (OOJSValueFromNativeObject() of its
+	object until bead oo-4aq6a.6.2).
 	
 	Requires a request on context.
 */
 ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &plist);
 
 
-/*	OOJSObjectFromNativeObject()
-	Return a JavaScript object representation of an object, or null if passed
-	nil. The value is boxed if necessary.
-	
-	Requires a request on context.
-*/
-OOJS_EXTERN_C ooscript::Object OOJSObjectFromNativeObject(ooscript::Context context, id object);
 
 
 /**** String utilities ****/
@@ -536,7 +524,6 @@ OOJS_EXTERN_C bool OOJSObjectWrapperToString(ooscript::Context context, ooscript
 #define OOJS_RETURN_NULL				OOJS_RETURN(ooscript::nullValue())
 #define OOJS_RETURN_BOOL(v)				OOJS_RETURN(OOJSValueFromBOOL(v))
 #define OOJS_RETURN_INT(v)				OOJS_RETURN(ooscript::int32Value(v))
-#define OOJS_RETURN_OBJECT(o)			OOJS_RETURN(OOJSValueFromNativeObject(context, o))
 
 /*	PList return slots (proposed ADR-0055 item 4). A native returns C++ values as
 	oo::PList, converted by OOJSValueFromPList() (the same JS value
@@ -546,14 +533,13 @@ OOJS_EXTERN_C bool OOJSObjectWrapperToString(ooscript::Context context, ooscript
 	OOJS_RETURN_STRING_OR_NULL(opt)     a std::optional<std::string>: the string,
 	                                    or null for nullopt (what nil gave)
 	
-	The recipe the chunks follow:
-	
+	The recipe the chunks followed (OOJS_RETURN_OBJECT, OOJSValueFromNativeObject(), oo::PListFromObjects()
+	and the Foundation bridges are deleted; bead oo-4aq6a.6.2):
+
 	OOJS_RETURN_OBJECT(oo::NSStringFrom(s))           OOJS_RETURN_PLIST(oo::PList(s))
 	OOJS_RETURN_OBJECT(oo::NSStringOrNil(o))          OOJS_RETURN_STRING_OR_NULL(o)
 	OOJS_RETURN_OBJECT(oo::ObjectFromPList(p))        OOJS_RETURN_PLIST(p)
-	OOJS_RETURN_OBJECT(oo::NSArrayFromObjects(v))     OOJS_RETURN_PLIST(oo::PListFromObjects(v))  (OOObjCPList.h)
-	OOJSValueFromNativeObject(context, oo::ObjectFromPList(p))    OOJSValueFromPList(context, p)
-	
+		
 	Exemplar: OOJSObjectWrapperToString() in OOJavaScriptEngine.mm.
 */
 #define OOJS_RETURN_PLIST(plist)		OOJS_RETURN(OOJSValueFromPList(context, (plist)))

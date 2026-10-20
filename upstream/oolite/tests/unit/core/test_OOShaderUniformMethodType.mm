@@ -1,17 +1,22 @@
 /*	test_OOShaderUniformMethodType.mm
 	Unit tests for src/Core/Materials/OOShaderUniformMethodType.h: bead oo-41vj.
 
-	OOShaderUniformTypeFromMethod() tells a shader uniform binding the return type of the method it
+	OOShaderUniformTypeFromMethod() told a shader uniform binding the return type of the method it
 	is bound to, by comparing the runtime's return-type encoding with a table of known ones. Its
-	file held an Objective-C template class whose only use was to give that table. This pins,
+	file held an Objective-C template class whose only use was to give that table. This pinned,
 	against a class of the test's own with one method per return type, the type each method is
 	given (the ones the table has, and those it has not), NULL, and the two call helpers.
+
+	Bead oo-4aq6a.7 deleted the Objective-C binding target and with it OOShaderUniformTypeFromMethod()
+	and the call helpers (OOCallIntegerMethod, OOCallFloatMethod): typesFromMethods,
+	typesTheTableHasNot and callHelpers retired with them (ADR-0062 item 2; std-2026-10-19 item 2),
+	after the same types were re-pinned through OOShaderUniformTypeFromEncoding(), which the member
+	tables use (ADR-0062 item 3): typesFromEncodings, encodingsTheTableHasNot.
 	Run: bash tools/check-core-tests.sh
 */
 
 #import "OOShaderUniformMethodType.h"
 #import "OORegExpMatcher.h"
-#import "oofnd/objc/OOObject.h"
 #import "OOOpenGLExtensionManager.h"
 #include "oofnd/PList.hpp"
 
@@ -51,130 +56,58 @@ OOShaderSetting cxx_OOShaderSettingFromString(const std::string &string)
 }
 
 
-@interface TestReturns: OOObject
-- (float)f;
-- (double)d;
-- (signed char)sc;
-- (unsigned char)uc;
-- (BOOL)b;
-- (signed short)ss;
-- (unsigned short)us;
-- (signed int)si;
-- (unsigned int)ui;
-- (signed long)sl;
-- (unsigned long)ul;
-- (long long)sll;
-- (unsigned long long)ull;
-- (Vector)v;
-- (HPVector)hpv;
-- (Quaternion)q;
-- (OOMatrix)m;
-- (NSPoint)p;
-- (id)o;
-- (void)nothing;
-- (NSRect)rect;
-- (float)withArgument:(int)argument;
-@end
-
-@implementation TestReturns
-- (float)f						{ return 1.5f; }
-- (double)d						{ return 2.25; }
-- (signed char)sc				{ return -3; }
-- (unsigned char)uc				{ return 250; }
-- (BOOL)b						{ return YES; }
-- (signed short)ss				{ return -300; }
-- (unsigned short)us			{ return 60000; }
-- (signed int)si				{ return -70000; }
-- (unsigned int)ui				{ return 4000000000U; }
-- (signed long)sl				{ return -5; }
-- (unsigned long)ul				{ return 6; }
-- (long long)sll				{ return -8000000000LL; }
-- (unsigned long long)ull		{ return 9000000000ULL; }
-- (Vector)v						{ return make_vector(1, 2, 3); }
-- (HPVector)hpv					{ return make_HPvector(1, 2, 3); }
-- (Quaternion)q					{ return kIdentityQuaternion; }
-- (OOMatrix)m					{ return kIdentityMatrix; }
-- (NSPoint)p					{ return NSMakePoint(1, 2); }
-- (id)o							{ return self; }
-- (void)nothing					{}
-- (NSRect)rect					{ NSRect r = {}; return r; }
-- (float)withArgument:(int)argument	{ return (float)argument; }
-@end
-
-
 namespace {
 
-OOShaderUniformType TypeOf(const char *selector)
+// The type of a return type, by its encoding: the encodings TestReturns's methods had (bead
+// oo-4aq6a.7 deleted the method path; the member tables' rows give @encode() of their types).
+template <typename T>
+OOShaderUniformType TypeOf()
 {
-	return OOShaderUniformTypeFromMethod(class_getInstanceMethod([TestReturns class], sel_registerName(selector)));
-}
-
-
-IMP ImpOf(const char *selector)
-{
-	return class_getMethodImplementation([TestReturns class], sel_registerName(selector));
+	return OOShaderUniformTypeFromEncoding(@encode(T));
 }
 
 }	// namespace
 
 
-OO_TEST(typesFromMethods)
+/*	Re-pinned through the encoding (ADR-0062 item 3): the types the methods of the deleted case
+	typesFromMethods were given, one return type each, are the types their encodings are given.
+	(Its withArgument: check - arguments are not considered - was the method path's alone.)
+*/
+OO_TEST(typesFromEncodings)
 {
-	OO_CHECK(TypeOf("f") == kOOShaderUniformTypeFloat);
-	OO_CHECK(TypeOf("d") == kOOShaderUniformTypeDouble);
-	OO_CHECK(TypeOf("sc") == kOOShaderUniformTypeChar);
-	OO_CHECK(TypeOf("uc") == kOOShaderUniformTypeUnsignedChar);
-	OO_CHECK(TypeOf("ss") == kOOShaderUniformTypeShort);
-	OO_CHECK(TypeOf("us") == kOOShaderUniformTypeUnsignedShort);
-	OO_CHECK(TypeOf("si") == kOOShaderUniformTypeInt);
-	OO_CHECK(TypeOf("ui") == kOOShaderUniformTypeUnsignedInt);
-	OO_CHECK(TypeOf("sl") == kOOShaderUniformTypeLong);
-	OO_CHECK(TypeOf("ul") == kOOShaderUniformTypeUnsignedLong);
-	OO_CHECK(TypeOf("v") == kOOShaderUniformTypeVector);
-	OO_CHECK(TypeOf("hpv") == kOOShaderUniformTypeHPVector);
-	OO_CHECK(TypeOf("q") == kOOShaderUniformTypeQuaternion);
-	OO_CHECK(TypeOf("m") == kOOShaderUniformTypeMatrix);
-	OO_CHECK(TypeOf("p") == kOOShaderUniformTypePoint);
-	OO_CHECK(TypeOf("o") == kOOShaderUniformTypeObject);
-	OO_CHECK(TypeOf("withArgument:") == kOOShaderUniformTypeFloat);	// arguments are not considered
+	OO_CHECK(TypeOf<float>() == kOOShaderUniformTypeFloat);
+	OO_CHECK(TypeOf<double>() == kOOShaderUniformTypeDouble);
+	OO_CHECK(TypeOf<signed char>() == kOOShaderUniformTypeChar);
+	OO_CHECK(TypeOf<unsigned char>() == kOOShaderUniformTypeUnsignedChar);
+	OO_CHECK(TypeOf<signed short>() == kOOShaderUniformTypeShort);
+	OO_CHECK(TypeOf<unsigned short>() == kOOShaderUniformTypeUnsignedShort);
+	OO_CHECK(TypeOf<signed int>() == kOOShaderUniformTypeInt);
+	OO_CHECK(TypeOf<unsigned int>() == kOOShaderUniformTypeUnsignedInt);
+	OO_CHECK(TypeOf<signed long>() == kOOShaderUniformTypeLong);
+	OO_CHECK(TypeOf<unsigned long>() == kOOShaderUniformTypeUnsignedLong);
+	OO_CHECK(TypeOf<Vector>() == kOOShaderUniformTypeVector);
+	OO_CHECK(TypeOf<HPVector>() == kOOShaderUniformTypeHPVector);
+	OO_CHECK(TypeOf<Quaternion>() == kOOShaderUniformTypeQuaternion);
+	OO_CHECK(TypeOf<OOMatrix>() == kOOShaderUniformTypeMatrix);
+	OO_CHECK(TypeOf<NSPoint>() == kOOShaderUniformTypePoint);
+	OO_CHECK(TypeOf<id>() == kOOShaderUniformTypeObject);
 }
 
 
-OO_TEST(typesTheTableHasNot)
+/*	The same for typesTheTableHasNot (ADR-0062 item 3); its method-only checks (a selector with no
+	method, a NULL Method) retire with the method path (item 2), and NULL is the encoding's.
+*/
+OO_TEST(encodingsTheTableHasNot)
 {
 	// BOOL is encoded as a signed char here.
-	OO_CHECK(TypeOf("b") == kOOShaderUniformTypeChar);
+	OO_CHECK(TypeOf<BOOL>() == kOOShaderUniformTypeChar);
 	// The table has no long long entries: on this platform (LLP64) a long is 32 bits, so a long
 	// long matches nothing.
-	OO_CHECK(TypeOf("sll") == kOOShaderUniformTypeInvalid);
-	OO_CHECK(TypeOf("ull") == kOOShaderUniformTypeInvalid);
-	OO_CHECK(TypeOf("nothing") == kOOShaderUniformTypeInvalid);
-	OO_CHECK(TypeOf("rect") == kOOShaderUniformTypeInvalid);
-	OO_CHECK(OOShaderUniformTypeFromMethod(NULL) == kOOShaderUniformTypeInvalid);
-	OO_CHECK(TypeOf("noSuchMethod") == kOOShaderUniformTypeInvalid);
-}
-
-
-OO_TEST(callHelpers)
-{
-	@autoreleasepool
-	{
-		TestReturns *object = [[[TestReturns alloc] init] autorelease];
-		OO_CHECK(OOCallIntegerMethod(object, sel_registerName("sc"), ImpOf("sc"), kOOShaderUniformTypeChar) == -3);
-		OO_CHECK(OOCallIntegerMethod(object, sel_registerName("uc"), ImpOf("uc"), kOOShaderUniformTypeUnsignedChar) == 250);
-		OO_CHECK(OOCallIntegerMethod(object, sel_registerName("ss"), ImpOf("ss"), kOOShaderUniformTypeShort) == -300);
-		OO_CHECK(OOCallIntegerMethod(object, sel_registerName("us"), ImpOf("us"), kOOShaderUniformTypeUnsignedShort) == 60000);
-		OO_CHECK(OOCallIntegerMethod(object, sel_registerName("si"), ImpOf("si"), kOOShaderUniformTypeInt) == -70000);
-		OO_CHECK(OOCallIntegerMethod(object, sel_registerName("ui"), ImpOf("ui"), kOOShaderUniformTypeUnsignedInt) == 4000000000LL);
-		OO_CHECK(OOCallIntegerMethod(object, sel_registerName("sl"), ImpOf("sl"), kOOShaderUniformTypeLong) == -5);
-		OO_CHECK(OOCallIntegerMethod(object, sel_registerName("ul"), ImpOf("ul"), kOOShaderUniformTypeUnsignedLong) == 6);
-		OO_CHECK(OOCallIntegerMethod(object, sel_registerName("sll"), ImpOf("sll"), kOOShaderUniformTypeLongLong) == -8000000000LL);
-		OO_CHECK(OOCallIntegerMethod(object, sel_registerName("ull"), ImpOf("ull"), kOOShaderUniformTypeUnsignedLongLong) == 9000000000LL);
-		OO_CHECK(OOCallIntegerMethod(object, sel_registerName("f"), ImpOf("f"), kOOShaderUniformTypeFloat) == 0);	// not an integer type
-		OO_CHECK(OOCallFloatMethod(object, sel_registerName("f"), ImpOf("f"), kOOShaderUniformTypeFloat) == 1.5);
-		OO_CHECK(OOCallFloatMethod(object, sel_registerName("d"), ImpOf("d"), kOOShaderUniformTypeDouble) == 2.25);
-		OO_CHECK(OOCallFloatMethod(object, sel_registerName("si"), ImpOf("si"), kOOShaderUniformTypeInt) == 0);	// not a float type
-	}
+	OO_CHECK(TypeOf<long long>() == kOOShaderUniformTypeInvalid);
+	OO_CHECK(TypeOf<unsigned long long>() == kOOShaderUniformTypeInvalid);
+	OO_CHECK(TypeOf<void>() == kOOShaderUniformTypeInvalid);
+	OO_CHECK(TypeOf<NSRect>() == kOOShaderUniformTypeInvalid);
+	OO_CHECK(OOShaderUniformTypeFromEncoding(NULL) == kOOShaderUniformTypeInvalid);
 }
 
 OO_TEST_MAIN()

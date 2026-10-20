@@ -17,7 +17,10 @@
 	predicate's truthiness, and what an engine reset does (commit 34d0592d1). They ran through the
 	Objective-C facade until bead oo-9ht.41 deleted it; they now ask the C++ class with the same
 	expectations. The facade's own contract (its description, identity and nil crossings) went
-	with it (ADR-0049, standing approval oo-9n5p9).
+	with it (ADR-0049, standing approval oo-9n5p9). Bead oo-4aq6a.6.2 deleted the object-wrapper
+	evaluation (evaluatePredicateWithContext() of Objective-C arguments and scope; no game caller):
+	the case predicate and cxxAndFacade's predicate check retired with it (std-2026-10-19 item 2,
+	ADR-0062 item 2), with the TestNumber object and the OOJSValueFromNativeObject() stand-in.
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -59,27 +62,6 @@ std::optional<std::string> cxx_OOStringFromJSString(ooscript::Context context, o
 	std::string result;
 	for (std::size_t i = 0; i < length; i++)  result += static_cast<char>(chars[i]);	// the test's strings are ASCII
 	return result;
-}
-
-
-// An object that converts to a JS number (its value), as a wrapped native object converts to its
-// JS object.
-@interface TestNumber: OOObject
-{
-@public
-	double value;
-}
-@end
-
-@implementation TestNumber
-@end
-
-
-extern "C" ooscript::Value OOJSValueFromNativeObject(ooscript::Context context, id object)
-{
-	(void)context;
-	if (object == nil)  return ooscript::nullValue();
-	return ooscript::numberValue(static_cast<TestNumber *>(object)->value);
 }
 
 
@@ -169,14 +151,6 @@ std::string String(ooscript::Value value)
 {
 	if (ooscript::isNullOrUndefined(value))  return ooscript::isNull(value) ? "null" : "undefined";
 	return cxx_OOStringFromJSString(Context(), ooscript::valueToString(Context(), value)).value_or("<none>");
-}
-
-
-TestNumber *Number(double value)
-{
-	TestNumber *number = [[[TestNumber alloc] init] autorelease];
-	number->value = value;
-	return number;
 }
 
 
@@ -280,38 +254,6 @@ OO_TEST(evaluation)
 }
 
 
-OO_TEST(predicate)
-{
-	@autoreleasepool
-	{
-		oo::Ref<OOJSFunction> greater = Compile("greater", "return a > b;", { "a", "b" });
-		const std::vector<oo::ObjCRef<id>> threeTwo = { oo::ObjCRef<id>(Number(3)), oo::ObjCRef<id>(Number(2)) };
-		const std::vector<oo::ObjCRef<id>> twoThree = { oo::ObjCRef<id>(Number(2)), oo::ObjCRef<id>(Number(3)) };
-		OO_CHECK(greater->evaluatePredicateWithContext(Context(), nil, threeTwo));
-		OO_CHECK(!greater->evaluatePredicateWithContext(Context(), nil, twoThree));
-
-		// The scope object is converted too: a number is boxed.
-		oo::Ref<OOJSFunction> usesThis = Compile("usesThis", "return this.valueOf() === 4 && arguments.length === 0;", {});
-		OO_CHECK(usesThis->evaluatePredicateWithContext(Context(), Number(4), {}));
-		OO_CHECK(!usesThis->evaluatePredicateWithContext(Context(), Number(5), {}));
-
-		// A nil argument is the zero value (a message to nil); truthiness is JS's.
-		oo::Ref<OOJSFunction> first = Compile("first", "return a;", { "a" });
-		const std::vector<oo::ObjCRef<id>> nilArgument = { oo::ObjCRef<id>() };
-		OO_CHECK(!first->evaluatePredicateWithContext(Context(), nil, nilArgument));
-		OO_CHECK(first->evaluatePredicateWithContext(Context(), nil, { oo::ObjCRef<id>(Number(0.5)) }));
-		OO_CHECK(!first->evaluatePredicateWithContext(Context(), nil, { oo::ObjCRef<id>(Number(0)) }));
-
-		// A throwing predicate is false.
-		oo::Ref<OOJSFunction> thrower = Compile("thrower", "throw 1;", {});
-		OO_CHECK(!thrower->evaluatePredicateWithContext(Context(), nil, {}));
-		ooscript::clearPendingException(Context());
-		OO_CHECK_EQ(sScriptDepth, 0);
-		OO_CHECK_EQ(sLimiterDepth, 0);
-	}
-}
-
-
 OO_TEST(engineReset)
 {
 	@autoreleasepool
@@ -339,7 +281,6 @@ OO_TEST(cxxAndFacade)
 		ooscript::Value result = ooscript::undefinedValue();
 		OO_CHECK(function->evaluateWithContext(Context(), NULL, 1, argv, &result));
 		OO_CHECK_EQ(String(result), "12");
-		OO_CHECK(function->evaluatePredicateWithContext(Context(), nil, { oo::ObjCRef<id>(Number(1)) }));
 		OO_CHECK_EQ(function->descriptionComponents().value_or("<none>"), "triple()");
 		OO_CHECK_EQ(function->name().value_or("<none>"), "triple");	// was asked of its facade
 	}

@@ -133,7 +133,7 @@ void OOEntityByNameTyped(Entity *entity, OOEntityByNameValue &value)
 	else if constexpr (std::is_same_v<Result, Quaternion>)  value.quaternion = Function(entity);
 	else if constexpr (std::is_same_v<Result, OOColor *>)  value.color = Function(entity);	// borrowed (bead oo-9ht.39.8.25)
 	else if constexpr (std::is_convertible_v<Result, Entity *>)  value.entity = Function(entity);	// the C++ entity (bead oo-9ht.39.24)
-	else if constexpr (std::is_convertible_v<Result, id>)  value.object = Function(entity);
+	else if constexpr (std::is_convertible_v<Result, id>)  static_assert(sizeof(Result) == 0, "an Objective-C object result: none is made since bead oo-4aq6a.5");
 	else  (void)Function(entity);	// a result callObjC() cannot read (it does not call such a method)
 }
 

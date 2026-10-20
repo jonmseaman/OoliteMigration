@@ -514,11 +514,6 @@ ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &p
 		}
 		return ooscript::stringValue(ooscript::newStringCopyN(context, name.data(), name.size()));
 	}
-	if (id object = (nodeEntity == nullptr) ? oo::ObjectIn(plist) : nil)	// another Objective-C object (none is made here)
-	{
-		std::string name = std::string("[") + class_getName(object_getClass(object)) + "]";
-		return ooscript::stringValue(ooscript::newStringCopyN(context, name.data(), name.size()));
-	}
 	// A C++ object node (a script since bead oo-9ht.133), named by its className().
 	if (const oo::PList::Object *node = plist.getIf<oo::PList::Object>())
 	{

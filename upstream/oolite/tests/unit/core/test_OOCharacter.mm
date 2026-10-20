@@ -118,14 +118,6 @@ oo::Ref<OOScript> OOScript::jsScriptFromFileNamed(const std::string &, const oo:
 @end
 
 
-// An Object node's value that answers -intValue (a JS crew definition may hold any object), and
-// one that does not.
-@interface IntValued: OOObject
-- (int) intValue;
-@end
-@implementation IntValued
-- (int) intValue  { return 42; }
-@end
 
 
 namespace {
@@ -275,12 +267,8 @@ OO_TEST(dictionaries)
 		OO_CHECK(Same(Describe(FromDictionary({ { "origin", oo::PList("Nowhere") }, { "random_seed", kSeed } })), kFeline + "241>|0|250|241|furry felines"));
 		Fake();
 		OO_CHECK(Same(Describe(FromDictionary({ { "random_seed", kSeed } })), kFeline + "241>|0|250|241|furry felines"));
-		Fake();
-		IntValued *number = [[[IntValued alloc] init] autorelease];
-		OO_CHECK(Same(Describe(FromDictionary({ { "origin", oo::PListObject(number) }, { "random_seed", kSeed } })), "R1 <nom>|<character-generic-description species=human colonials planet=System 42>|0|250|42|human colonials"));
-		Fake();
-		OOObject *object = [[[OOObject alloc] init] autorelease];
-		OO_CHECK(Same(Describe(FromDictionary({ { "origin", oo::PListObject(object) }, { "random_seed", kSeed } })), kFeline + "241>|0|250|241|furry felines"));
+		// (An Objective-C origin object answering -intValue, or not, retired with the Object node of an
+		// Objective-C object, bead oo-4aq6a.5: ADR-0062 item 2.)
 
 		// The seed: random when absent, kNilRandomSeed's zeroes when it does not parse.
 		Fake();

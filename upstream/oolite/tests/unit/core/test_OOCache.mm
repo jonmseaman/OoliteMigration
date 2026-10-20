@@ -197,20 +197,35 @@ OO_TEST(propertyListRoundTrip)
 }
 
 
+// A live object in an Object node: a C++ one (bead oo-4aq6a.5 deleted the node of an Objective-C
+// object, which this case held; the same checks through the C++ node, ADR-0062 item 3).
+namespace {
+
+class TestForeign final : public oo::PListForeign
+{
+public:
+	std::string className() const override  { return "TestForeign"; }
+	std::string description() const override  { return "<TestForeign>"; }
+};
+
+}	// namespace
+
+
 OO_TEST(holdsALiveObject)
 {
-	OOObject *object = [[OOObject alloc] init];
+	oo::Ref<TestForeign> object = oo::makeRef<TestForeign>();
 	oo::Ref<OOCache> cache = OOCache::cacheWithPList(oo::PList());
-	@autoreleasepool
 	{
-		cache->setPList(oo::PListObject(object), "texture");
-		OO_CHECK(oo::ObjectIn(cache->pListForKey("texture")) == object);
-		OO_CHECK([object retainCount] == 2);	// the cache retains it
+		oo::AutoreleaseScope pool;
+		cache->setPList(oo::PList(oo::PList::Object(object)), "texture");
+		OO_CHECK(object->retainCount() == 2);	// the cache retains it
+		const oo::PList held = cache->pListForKey("texture");
+		const oo::PList::Object *node = held.getIf<oo::PList::Object>();
+		OO_CHECK(node != nullptr && node->get() == object.get());
 	}
 	cache->removePListForKey("texture");
-	OO_CHECK([object retainCount] == 1);
+	OO_CHECK(object->retainCount() == 1);
 	cache = nullptr;
-	[object release];
 }
 
 

@@ -98,7 +98,6 @@ class ShipEntity : public Entity
 {
 public:
 	void doScriptEvent(ooscript::PropertyId message, const std::vector<oo::PList> &arguments);
-	void doScriptEvent(ooscript::PropertyId message, id argument);
 	void setEntityPersonalityInt(uint16_t value);
 };
 
@@ -242,7 +241,6 @@ std::string Describe(const oo::PList &plist)
 		::TestEntityObject *object = TestObjectOfPart(entity);
 		return object != nullptr ? object->className() : "nil";
 	}
-	if (id object = oo::ObjectIn(plist))  return class_getName(object_getClass(object));
 	return "?";
 }
 
@@ -333,10 +331,6 @@ void ShipEntity::doScriptEvent(ooscript::PropertyId message, const std::vector<o
 	std::string event = EventName(message) + "(";
 	for (std::size_t i = 0; i < arguments.size(); i++)  event += (i != 0 ? ", " : "") + Describe(arguments[i]);
 	static_cast<PlayerEntity *>(this)->_events.push_back(event + ")");
-}
-void ShipEntity::doScriptEvent(ooscript::PropertyId message, id argument)
-{
-	static_cast<PlayerEntity *>(this)->_events.push_back(EventName(message) + "(" + Describe(oo::PListObject(argument)) + ")");
 }
 bool PlayerEntity::endScenario(const std::string &key)
 {

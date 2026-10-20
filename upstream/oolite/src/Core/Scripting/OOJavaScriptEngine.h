@@ -144,15 +144,10 @@ private:
 
 
 
-/*	The root-class JS glue for classes rooted on OOObject: the defaults of the selectors
-	OOObject+OOJavaScript.h declares, which its bridges call for an object whose class has no
-	method of its own (the category OOObject (OOJavaScriptConversion) forwarded to them, amendment
-	oo-ppc item 3, until bead oo-t7o84 deleted it).
+/*	(The root-class JS glue for classes rooted on OOObject, the defaults OOObject+OOJavaScript.h's
+	bridges called, went with those bridges in bead oo-4aq6a.6.2: no game object is an Objective-C
+	object.)
 */
-ooscript::Value OOObjectJSValueInContext(ooscript::Context context);
-std::optional<std::string> OOObjectJSClassName();
-std::optional<std::string> OOObjectJSDescription(id object);
-std::optional<std::string> OOObjectJSDescriptionWithClassName(id object, const std::optional<std::string> &className);
 
 // A vector box's JS value (OOJSValueFromPList, for an Object node that holds one).
 class OONativeVector;
@@ -231,8 +226,9 @@ OOJS_EXTERN_C BOOL JSEntityIsDemoShipPredicate(Entity *entity, void *parameter);
 
 
 
-// The root class's JS glue and the engine's one-line sends to Objective-C objects (bead oo-wdqw1:
-// they were in the engine's facade file; they go with the root class, Phase 4).
-#include "OOObject+OOJavaScript.h"
+// (The root class's JS glue and the engine's one-line sends to Objective-C objects,
+// OOObject+OOJavaScript.h, went with bead oo-4aq6a.6.2.)
+#include "OOCocoa.h"
+#include <objc/runtime.h>	// what OOObject+OOJavaScript.h gave its includers
 
 

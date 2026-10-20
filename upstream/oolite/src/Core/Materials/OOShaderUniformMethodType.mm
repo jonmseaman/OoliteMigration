@@ -28,9 +28,11 @@ SOFTWARE.
 
 /*
 	For shader uniform binding to work, it is necessary to be able to tell the
-	return type of a method. This is done by comparing the runtime's return
-	type encoding of the method (method_copyReturnType()) to those of methods
-	in a template class, one method for each supported return type.
+	return type of a method. This is done by comparing the return type encoding
+	of the method to those of methods in a template class, one method for each
+	supported return type. (Since bead oo-4aq6a.7 the encodings compared are the
+	member tables' rows', @encode() of the member's type: the method read from the
+	runtime went with the Objective-C binding target.)
 
 	The encoding is platform-defined, so to stay implementation-agnostic the
 	template encodings are the compiler's own, @encode() of each type: what the
@@ -56,22 +58,6 @@ static const char		*sTemplates[kOOShaderUniformTypeCount];
 static void InitTemplates(void);
 
 
-OOShaderUniformType OOShaderUniformTypeFromMethod(Method method)
-{
-	char					*typeCode = NULL;
-	OOShaderUniformType		result = kOOShaderUniformTypeInvalid;
-
-	if (EXPECT_NOT(method == NULL))  return kOOShaderUniformTypeInvalid;
-	typeCode = method_copyReturnType(method);
-	if (EXPECT_NOT(typeCode == NULL))  return kOOShaderUniformTypeInvalid;
-
-	result = OOShaderUniformTypeFromEncoding(typeCode);
-
-	free(typeCode);
-	return result;
-}
-
-
 OOShaderUniformType OOShaderUniformTypeFromEncoding(const char *typeCode)
 {
 	unsigned				i;
@@ -84,24 +70,6 @@ OOShaderUniformType OOShaderUniformTypeFromEncoding(const char *typeCode)
 		if (sTemplates[i] != NULL && strcmp(sTemplates[i], typeCode) == 0)  return (OOShaderUniformType)i;
 	}
 	return kOOShaderUniformTypeInvalid;
-}
-
-
-// The member tables' lookup (bead oo-9ht.158): none until a class registers its tables.
-namespace {
-OOShaderMemberBindingLookup sMemberBindingLookup = NULL;
-}
-
-void OOSetShaderMemberBindingLookup(OOShaderMemberBindingLookup lookup) noexcept
-{
-	sMemberBindingLookup = lookup;
-}
-
-
-bool OOShaderMemberBindingFor(id target, const char *property, OOShaderMemberBinding *outBinding)
-{
-	if (sMemberBindingLookup == NULL || target == nil || outBinding == NULL)  return false;
-	return sMemberBindingLookup(target, property, outBinding);
 }
 
 
@@ -121,74 +89,6 @@ void OOSetShaderEntityHooks(const OOShaderEntityHooks &hooks) noexcept
 const OOShaderEntityHooks *OOShaderEntityHooksIfSet() noexcept
 {
 	return sEntityHooksSet ? &sEntityHooks : nullptr;
-}
-
-
-// The selector path: OOShaderUniform's -setBindingTarget: body until bead oo-9ht.158, unchanged.
-bool OOShaderUniformBindMethod(id target, SEL selector, IMP *outMethod, OOShaderUniformType *outType, std::string *outProblem)
-{
-	BOOL					OK = YES;
-	Method					method = NULL;
-	NSUInteger				argCount;
-	std::string				methodProblem;
-	OOShaderUniformType		type = kOOShaderUniformTypeInvalid;
-	IMP						imp = NULL;
-
-	if (OK)
-	{
-		if (![target respondsToSelector:selector])
-		{
-			methodProblem = "target does not respond to selector";
-			OK = NO;
-		}
-	}
-
-	if (OK)
-	{
-		imp = [target methodForSelector:selector];
-		if (imp == NULL)
-		{
-			methodProblem = "could not retrieve method implementation";
-			OK = NO;
-		}
-	}
-
-	if (OK)
-	{
-		method = class_getInstanceMethod(object_getClass(target), selector);
-		if (method == NULL)
-		{
-			methodProblem = "could not retrieve method signature";
-			OK = NO;
-		}
-	}
-
-	if (OK)
-	{
-		argCount = method_getNumberOfArguments(method);
-		if (argCount != 2)	// "no-arguments" methods actually take two arguments, self and _msg.
-		{
-			methodProblem = "only methods which do not require arguments may be bound to";
-			OK = NO;
-		}
-	}
-
-	if (OK)
-	{
-		type = OOShaderUniformTypeFromMethod(method);
-		if (type == kOOShaderUniformTypeInvalid)
-		{
-			OK = NO;
-			char *returnType = method_copyReturnType(method);
-			methodProblem = oo::str::format("unsupported type \"%s\"", returnType);
-			free(returnType);
-		}
-	}
-
-	if (outMethod != NULL)  *outMethod = imp;
-	if (outType != NULL)  *outType = type;
-	if (outProblem != NULL)  *outProblem = methodProblem;
-	return OK;
 }
 
 
@@ -222,60 +122,5 @@ static void InitTemplates(void)
 	sInited = YES;
 }
 
-
-long long OOCallIntegerMethod(id object, SEL selector, IMP method, OOShaderUniformType type)
-{
-	switch (type)
-	{
-		case kOOShaderUniformTypeChar:
-			return ((CharReturnMsgSend)(void (*)(void))method)(object, selector);
-			
-		case kOOShaderUniformTypeUnsignedChar:
-			return ((UnsignedCharReturnMsgSend)(void (*)(void))method)(object, selector);
-			
-		case kOOShaderUniformTypeShort:
-			return ((ShortReturnMsgSend)(void (*)(void))method)(object, selector);
-			
-		case kOOShaderUniformTypeUnsignedShort:
-			return ((UnsignedShortReturnMsgSend)(void (*)(void))method)(object, selector);
-			
-		case kOOShaderUniformTypeInt:
-			return ((IntReturnMsgSend)(void (*)(void))method)(object, selector);
-			
-		case kOOShaderUniformTypeUnsignedInt:
-			return ((UnsignedIntReturnMsgSend)(void (*)(void))method)(object, selector);
-			
-		case kOOShaderUniformTypeLong:
-			return ((LongReturnMsgSend)(void (*)(void))method)(object, selector);
-			
-		case kOOShaderUniformTypeUnsignedLong:
-			return ((UnsignedLongReturnMsgSend)(void (*)(void))method)(object, selector);
-			
-		case kOOShaderUniformTypeLongLong:
-			return ((LongLongReturnMsgSend)(void (*)(void))method)(object, selector);
-			
-		case kOOShaderUniformTypeUnsignedLongLong:
-			return ((UnsignedLongLongReturnMsgSend)(void (*)(void))method)(object, selector);
-			
-		default:
-			return 0;
-	}
-}
-
-
-double OOCallFloatMethod(id object, SEL selector, IMP method, OOShaderUniformType type)
-{
-	switch (type)
-	{
-		case kOOShaderUniformTypeFloat:
-			return ((FloatReturnMsgSend)(void (*)(void))method)(object, selector);
-			
-		case kOOShaderUniformTypeDouble:
-			return ((DoubleReturnMsgSend)(void (*)(void))method)(object, selector);
-			
-		default:
-			return 0;
-	}
-}
 
 #endif	// OO_SHADERS

@@ -1,36 +1,35 @@
 /*	test_OOJSCall.mm
-	Unit tests for OOJSCallObjCObjectMethod() (src/Core/Scripting/OOJSCall.h/.mm): bead oo-81hy,
+	Unit tests for OOJSCallEntityMethod() (src/Core/Scripting/OOJSCall.h/.mm): bead oo-81hy,
 	a Phase 3 scripting file (proposed ADR-0056 amendment oo-ppc).
 
-	OOJSCallObjCObjectMethod() implements the debug-build callObjC(): it calls an Objective-C
-	method by name on an object, choosing how by the method's signature, which it matches against
-	the type encodings of a template class's methods. The test runs it in a real context on the
-	game's own façade backend (ooscript/JSEngine_quickjs.cpp) and links the game's own objects for
-	the file, the by-name dispatcher (OOCallByName.mm) and the signature reader
-	(OOShaderUniformMethodType.mm). What the rest of the engine would provide is defined below as
-	the smallest stand-in that does the same thing (amendment oo-ppc item 6): the error reporter,
-	the string and property-list converters, Vector3D and Quaternion (plain arrays here), and the
-	ship and player classes (the call makes a ship the player's script target). The game's
-	headers for those are not imported, because the test defines those classes (amendment oo-z1s4
-	item 4). The expectations were written against the Objective-C file and run on it first; they
-	pin every signature it calls (void, string parameter, property-list result, integers, floats,
-	vector, quaternion, object, "_bool" objects), the joined parameter string, and each error.
+	OOJSCallObjCObjectMethod() implemented the debug-build callObjC(): it called an Objective-C
+	method by name on an object, choosing how by the method's signature. The test runs the call in
+	a real context on the game's own façade backend (ooscript/JSEngine_quickjs.cpp) and links the
+	game's own objects for the file and the signature reader (OOShaderUniformMethodType.mm). What
+	the rest of the engine would provide is defined below as the smallest stand-in that does the
+	same thing (amendment oo-ppc item 6): the error reporter, the string and property-list
+	converters, Vector3D and Quaternion (plain arrays here), and the ship and player classes (the
+	call makes a ship the player's script target). The game's headers for those are not imported,
+	because the test defines those classes (amendment oo-z1s4 item 4).
+
+	Bead oo-4aq6a.5 deleted the Objective-C object path (OOJSCallObjCObjectMethod; the console's
+	callObjC() is given only entities and monitors): its cases voidAndStringMethods, scalarMethods,
+	objectMethods, errors and shipBecomesScriptTarget, and the object calls of entityMethodsByTable
+	and playerStatisticsByName, retired with it (ADR-0062 item 2; std-2026-10-19 item 2), after the
+	surviving entity call's signatures, results and errors were pinned (entityResultsByTable,
+	ADR-0062 item 3). The test's entity objects are C++ (std-2026-10-19 item 1): its by-name
+	stand-ins answer the names the entity's object answered from a table of the test's own.
 	Run: bash tools/check-core-tests.sh
 */
 
 #import "OOJSCall.h"
 #import "OOEntityCalledByName.h"	// oo::CallEntityByNameTyped, stood in below (bead oo-9ht.39.7.2)
 #import "OOCallByName.h"
-#import "OOShaderUniformMethodType.h"	// OOCallIntegerMethod (the typed call's stand-in)
-#include <objc/runtime.h>
-#include "oofnd/objc/OORuntime.h"
-#import "oofnd/objc/OOObject.h"
 #import "OOMaths.h"
 #include "ooscript/JSEngine.hpp"
 #import "OOJSEngineNativeWrappers.h"
 #include "oofnd/PList.hpp"
 #include "oofnd/String.hpp"
-#import "OOObjCPList.h"
 #include "EntityPListForeign.h"	// an entity's node (bead oo-dpyk8)
 #import "OODescription.h"
 #include <cstring>
@@ -83,31 +82,13 @@ std::optional<std::string> cxx_OOStringFromJSValueEvenIfNull(ooscript::Context c
 }
 
 
-@class TestEntityObject;
-namespace oo { ::TestEntityObject *ToObjC(Entity *entity); }	// below
+class TestEntityObject;
+::TestEntityObject *TestObjectOf(Entity *entity);	// below (oo::ToObjC until bead oo-4aq6a.5)
 
 // A property list as JS: strings, numbers and booleans as themselves; an object node as the
-// string "<object CLASS>", which is enough to see which object came back.
-ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &plist)
-{
-	std::string text;
-	switch (plist.type())
-	{
-		case oo::PList::Type::Bool:  return ooscript::booleanValue(plist.boolValue());
-		case oo::PList::Type::Integer:
-		case oo::PList::Type::Real:  return ooscript::numberValue(plist.doubleValue());
-		case oo::PList::Type::String:  text = *plist.getIf<std::string>();  break;
-		case oo::PList::Type::Object:
-		{
-			Entity *entity = oo::EntityIn(plist);	// an entity's node: its object (bead oo-dpyk8)
-			id object = entity != nullptr ? (id)oo::ToObjC(entity) : oo::ObjectIn(plist);
-			text = "<object " + oo::DescriptionOf([object class]) + ">";
-			break;
-		}
-		default:  return ooscript::nullValue();
-	}
-	return ooscript::stringValue(ooscript::newStringCopyN(context, text.data(), text.size()));
-}
+// string "<object CLASS>", which is enough to see which object came back (an entity's node: its
+// object's class; any other node held no Objective-C object, nil's class "(null)").
+ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &plist);
 
 
 namespace {
@@ -151,25 +132,23 @@ extern "C" void OOJSUnreachable(const char *function, const char *, unsigned)
 
 
 // The ship and player classes, as far as the call sees them: a ship becomes the player's script
-// target. The ship is C++ since bead oo-9ht.144 deleted the Objective-C ship: a ship's object is the
-// root's, which holds the C++ part (oo::ToCxx reads it); declared as Entity.h and ShipEntity.h
-// declare them (the test imports neither).
+// target. Declared as Entity.h and ShipEntity.h declare them (the test imports neither).
 class Entity : public oo::RefCounted
 {
 public:
 	virtual ~Entity();
 };
 
-__attribute__((objc_runtime_name("Entity")))
-@interface TestEntityObject: OOObject
+// An entity's object, C++ since bead oo-4aq6a.5 (it was rooted on the Objective-C root class
+// OOObject, which Phase 4 deletes): its class's runtime name, and the names it answered by selector,
+// which the by-name stand-ins below answer from the test's own table.
+class TestEntityObject : public oo::RefCounted
 {
-@public
-	oo::Ref<Entity> _cxxEntity;
-}
-@end
+public:
+	virtual const char *className() const  { return "Entity"; }
 
-@implementation TestEntityObject
-@end
+	oo::Ref<Entity> _cxxEntity;
+};
 
 class ShipEntity : public Entity
 {
@@ -179,14 +158,12 @@ Entity::~Entity() = default;
 
 // The player is C++ since bead oo-9ht.177 deleted its Objective-C class: the C++ player as far as
 // the call sees it (declared as PlayerEntity.h declares it; the test imports no game header that
-// defines the class) and its Objective-C object, a ship (the ship's facade in the game), which
-// oo::ToObjC answers.
-@interface TestPlayerObject: TestEntityObject
-@end
-
-@implementation TestPlayerObject
-- (BOOL) isPlayer  { return YES; }	// a name of callObjC()'s entity table (bead oo-9ht.44)
-@end
+// defines the class) and its object, a ship (the ship's facade in the game).
+class TestPlayerObject final : public TestEntityObject
+{
+public:
+	const char *className() const override  { return "TestPlayerObject"; }
+};
 
 class PlayerEntity : public ShipEntity
 {
@@ -207,36 +184,88 @@ public:
 void PlayerEntity::setScriptTarget(::ShipEntity *target)  { scriptTarget = target; }
 
 PlayerEntity *gOOPlayer = nullptr;
-TestPlayerObject *sPlayerObject = nil;	// the player's Objective-C object
+TestPlayerObject *sPlayerObject = nullptr;	// the player's object
 
-@class TestEntityObject;
-class Entity;
-namespace oo {
-::TestEntityObject *ToObjC(Entity *entity)  { return entity != nullptr ? (::TestEntityObject *)sPlayerObject : nil; }	// only the player crosses
-}
+::TestEntityObject *TestObjectOf(Entity *entity)  { return entity != nullptr ? (::TestEntityObject *)sPlayerObject : nullptr; }	// only the player crosses
+#define OO_ENTITY_HELPERS_STAND_IN_CXX 1
 #import "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
 
-// OOEntityCalledByName.mm's (bead oo-9ht.39.7.2), which the test does not link: the test's entities
-// have no C++ table, so every name goes to the object by selector, the path callObjC() takes for a
-// name that table does not hold.
+
+ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &plist)
+{
+	std::string text;
+	switch (plist.type())
+	{
+		case oo::PList::Type::Bool:  return ooscript::booleanValue(plist.boolValue());
+		case oo::PList::Type::Integer:
+		case oo::PList::Type::Real:  return ooscript::numberValue(plist.doubleValue());
+		case oo::PList::Type::String:  text = *plist.getIf<std::string>();  break;
+		case oo::PList::Type::Object:
+		{
+			Entity *entity = oo::EntityIn(plist);	// an entity's node: its object (bead oo-dpyk8)
+			::TestEntityObject *object = (entity != nullptr) ? TestObjectOf(entity) : nullptr;
+			text = std::string("<object ") + (object != nullptr ? object->className() : "(null)") + ">";
+			break;
+		}
+		default:  return ooscript::nullValue();
+	}
+	return ooscript::stringValue(ooscript::newStringCopyN(context, text.data(), text.size()));
+}
+
+
+/*	OOEntityCalledByName.mm's (bead oo-9ht.39.7.2), which the test does not link: the test's entities
+	have no C++ table of the game's, so the names the player's object answered are answered from the
+	test's own (what its Objective-C object's methods returned): the typed results, a void method and
+	a string-argument method that record their calls, and a property-list method.
+*/
+namespace {
+
+std::vector<std::string> sEntityCalls;
+oo::PList sShipInfo;	// what cxx_shipInfoDictionary answers (null: a null result)
+Entity *sOwner = nullptr;	// what owner answers
+
+}	// namespace
+
 bool oo::EntityRespondsToName(Entity *entity, const std::string &name)
 {
-	::TestEntityObject *object = oo::ToObjC(entity);
-	return object != nil && [object respondsToSelector:OOSelectorFromName(name.c_str())];
+	if (TestObjectOf(entity) == nullptr)  return false;
+	static const char *const kNames[] = { "isPlayer", "speed", "thrust", "velocity", "orientation", "rotationMatrix", "owner", "removeScript", "addRole:", "cxx_shipInfoDictionary", "retain", "hash" };
+	for (const char *known : kNames)
+	{
+		if (name == known)  return true;
+	}
+	return false;
 }
-oo::PList oo::CallEntityByName(Entity *entity, const std::string &name)  { return entity != nullptr ? OOCallByName(oo::ToObjC(entity), name) : oo::PList(); }
-oo::PList oo::CallEntityByName(Entity *entity, const std::string &name, const std::string &argument)  { return entity != nullptr ? OOCallByName(oo::ToObjC(entity), name, argument) : oo::PList(); }
-// The typed call on the C++ table (bead oo-9ht.39.7.2), which callObjC() takes for every name of an
-// entity's table since bead oo-9ht.39.8.25 (the call no longer has the entity's object): the test's
-// entities have no C++ table, so it answers what the object's method answers, as the selector path
-// read it (an integer result: the only kind the test's entity names have).
+
+
+oo::PList oo::CallEntityByName(Entity *entity, const std::string &name)
+{
+	if (entity == nullptr)  return oo::PList();
+	sEntityCalls.push_back(name);
+	if (name == "cxx_shipInfoDictionary")  return sShipInfo;
+	return oo::PList();
+}
+
+
+oo::PList oo::CallEntityByName(Entity *entity, const std::string &name, const std::string &argument)
+{
+	if (entity == nullptr)  return oo::PList();
+	sEntityCalls.push_back(name + argument);
+	return oo::PList();
+}
+
+
+// The typed call on the C++ table (bead oo-9ht.39.7.2), which callObjC() takes for every typed name
+// of an entity's table since bead oo-9ht.39.8.25: the values the object's methods answered.
 bool oo::CallEntityByNameTyped(Entity *entity, const std::string &name, OOEntityByNameValue &value)
 {
-	::TestEntityObject *object = oo::ToObjC(entity);
-	SEL selector = OOSelectorFromName(name.c_str());
-	if (object == nil || ![object respondsToSelector:selector])  return false;
-	const OOShaderUniformType type = OOShaderUniformTypeFromMethod(class_getInstanceMethod(object_getClass(object), selector));
-	value.integer = OOCallIntegerMethod(object, selector, [object methodForSelector:selector], type);
+	if (!oo::EntityRespondsToName(entity, name))  return false;
+	if (name == "isPlayer")  value.integer = 1;
+	else if (name == "speed")  value.real = 1.0 / 4.0;
+	else if (name == "thrust")  value.real = 0.5f;
+	else if (name == "velocity")  value.vector = make_vector(1, 2, 3);
+	else if (name == "orientation")  value.quaternion = make_quaternion(1, 0, 0, 0);
+	else if (name == "owner")  value.entity = sOwner;
 	return true;
 }
 
@@ -254,82 +283,6 @@ void PlayerEntity::clearJSQuaternionStatistics()		{ sStatisticsCalls.push_back("
 #endif
 
 
-// MARK: The object called -------------------------------------------------------------------------
-
-@interface TestBoolean: OOObject
-{
-@public
-	BOOL value;
-}
-- (BOOL) boolValue;
-@end
-
-@implementation TestBoolean
-- (BOOL) boolValue  { return value; }
-@end
-
-@interface TestInteger: OOObject
-{
-@public
-	int value;
-}
-- (int) intValue;
-@end
-
-@implementation TestInteger
-- (int) intValue  { return value; }
-@end
-
-
-@interface TestTarget: OOObject
-{
-@public
-	std::vector<std::string> calls;
-}
-@end
-
-@implementation TestTarget
-
-- (void) poke  { calls.push_back("poke"); }
-- (void) say:(const std::string &)text  { calls.push_back("say:" + text); }
-- (oo::PList) echo:(const std::string &)text  { return oo::PList("echo " + text); }
-- (oo::PList) plist  { return oo::PList(12.5); }
-- (oo::PList) plist_bool  { return oo::PList(std::string("yes")); }
-- (oo::PList) nothing  { return oo::PList(); }
-- (int) answer  { return 42; }
-- (int) negative  { return -7; }
-- (unsigned long) big  { return 4000000000UL; }
-- (float) half  { return 0.5f; }
-- (double) third  { return 1.0 / 4.0; }
-- (Vector) vector  { return make_vector(1, 2, 3); }
-- (Quaternion) quaternion  { return make_quaternion(1, 0, 0, 0); }
-- (id) selfObject  { return self; }
-- (id) nilObject  { return nil; }
-- (id) true_bool  { TestBoolean *b = [[[TestBoolean alloc] init] autorelease]; b->value = YES; return b; }
-- (id) false_bool  { TestBoolean *b = [[[TestBoolean alloc] init] autorelease]; b->value = NO; return b; }
-- (id) seven_bool  { TestInteger *i = [[[TestInteger alloc] init] autorelease]; i->value = 7; return i; }
-- (id) plain_bool  { return [[[OOObject alloc] init] autorelease]; }
-- (NSPoint) point  { return NSMakePoint(1, 2); }
-- (void) takesInt:(int)value  { calls.push_back(oo::str::format("int %d", value)); }
-
-@end
-
-
-@interface TestShip: TestEntityObject
-- (int) answer;
-@end
-
-@implementation TestShip
-// Every test ship has its C++ part (the ship).
-- (id) init
-{
-	if ((self = [super init]))  _cxxEntity = oo::makeRef<ShipEntity>();
-	return self;
-}
-- (int) answer  { return 1; }
-@end
-
-
 // MARK: Calling -----------------------------------------------------------------------------------
 
 namespace {
@@ -344,7 +297,7 @@ ooscript::Context Context()
 		ooscript::initStandardClasses(sContext, ooscript::getGlobalObject(sContext));
 		oo::Ref<PlayerEntity> player = oo::makeRef<PlayerEntity>();
 		gOOPlayer = player.get();	// never deleted: its object holds it
-		sPlayerObject = [[TestPlayerObject alloc] init];
+		sPlayerObject = new TestPlayerObject();	// never released, as the Objective-C object was not
 		sPlayerObject->_cxxEntity = player;
 	}
 	return sContext;
@@ -357,29 +310,12 @@ ooscript::Value StringValue(const char *text)
 }
 
 
-// Calls selector (and arguments) on object; gives the result as a string ("<unchanged>" when the
-// call left it alone), or "error: <message>".
-std::string Call(id object, std::vector<ooscript::Value> argv)
-{
-	sLastError.clear();
-	ooscript::Value result = StringValue("<unchanged>");	// a marker no call writes
-	bool OK = OOJSCallObjCObjectMethod(Context(), object, "Test", static_cast<unsigned>(argv.size()), argv.data(), &result);
-	if (!OK)  return "error: " + sLastError;
-	return cxx_OOStringFromJSValueEvenIfNull(Context(), result).value_or("<none>");
-}
-
-
-std::string Call(id object, const char *selector)
-{
-	return Call(object, std::vector<ooscript::Value>{ StringValue(selector) });
-}
-
-
-// The same for an entity, by callObjC()'s entity name table (bead oo-9ht.44).
+// Calls the name (and arguments) on an entity by callObjC()'s entity name table (bead oo-9ht.44);
+// gives the result as a string ("<unchanged>" when the call left it alone), or "error: <message>".
 std::string CallEntity(Entity *entity, std::vector<ooscript::Value> argv)
 {
 	sLastError.clear();
-	ooscript::Value result = StringValue("<unchanged>");
+	ooscript::Value result = StringValue("<unchanged>");	// a marker no call writes
 	bool OK = OOJSCallEntityMethod(Context(), entity, "Test", static_cast<unsigned>(argv.size()), argv.data(), &result);
 	if (!OK)  return "error: " + sLastError;
 	return cxx_OOStringFromJSValueEvenIfNull(Context(), result).value_or("<none>");
@@ -396,109 +332,67 @@ std::string CallEntity(Entity *entity, const char *selector)
 
 // MARK: Tests -------------------------------------------------------------------------------------
 
-OO_TEST(voidAndStringMethods)
-{
-	@autoreleasepool
-	{
-		TestTarget *target = [[[TestTarget alloc] init] autorelease];
-		OO_CHECK_EQ(Call(target, "poke"), "<unchanged>");
-		OO_CHECK_EQ(Call(target, { StringValue("say:"), StringValue("hello"), ooscript::int32Value(3), ooscript::nullValue() }), "<unchanged>");
-		OO_CHECK_EQ(target->calls.size(), 2u);
-		if (target->calls.size() == 2)
-		{
-			OO_CHECK_EQ(target->calls[0], "poke");
-			OO_CHECK_EQ(target->calls[1], "say:hello 3 null");	// the parameters joined with spaces
-		}
-		OO_CHECK_EQ(Call(target, { StringValue("echo:"), StringValue("a"), StringValue("b") }), "echo a b");
-		OO_CHECK_EQ(Call(target, "plist"), "12.5");
-		OO_CHECK_EQ(Call(target, "plist_bool"), "true");	// a string read as a boolean
-		OO_CHECK_EQ(Call(target, "nothing"), "<unchanged>");	// a null result leaves it
-	}
-}
-
-
-OO_TEST(scalarMethods)
-{
-	@autoreleasepool
-	{
-		TestTarget *target = [[[TestTarget alloc] init] autorelease];
-		OO_CHECK_EQ(Call(target, "answer"), "42");
-		OO_CHECK_EQ(Call(target, "negative"), "-7");
-		OO_CHECK_EQ(Call(target, "big"), "4000000000");
-		OO_CHECK_EQ(Call(target, "half"), "0.5");
-		OO_CHECK_EQ(Call(target, "third"), "0.25");
-		OO_CHECK_EQ(Call(target, "vector"), "1,2,3");
-		OO_CHECK_EQ(Call(target, "quaternion"), "1,0,0,0");
-	}
-}
-
-
-OO_TEST(objectMethods)
-{
-	@autoreleasepool
-	{
-		TestTarget *target = [[[TestTarget alloc] init] autorelease];
-		OO_CHECK_EQ(Call(target, "selfObject"), "<object TestTarget>");
-		OO_CHECK_EQ(Call(target, "nilObject"), "<unchanged>");
-		OO_CHECK_EQ(Call(target, "true_bool"), "true");
-		OO_CHECK_EQ(Call(target, "false_bool"), "false");
-		OO_CHECK_EQ(Call(target, "seven_bool"), "true");
-		OO_CHECK_EQ(Call(target, "plain_bool"), "false");
-	}
-}
-
-
-OO_TEST(errors)
-{
-	@autoreleasepool
-	{
-		TestTarget *target = [[[TestTarget alloc] init] autorelease];
-		OO_CHECK_EQ(Call(target, std::vector<ooscript::Value>{}), "error: Test.callObjC(): no selector specified.");
-		OO_CHECK_EQ(Call(target, "say:"), "error: Test.callObjC(): method say: requires a parameter.");
-		OO_CHECK_EQ(Call(target, "point"), "error: Test.callObjC(): method point cannot be called from JavaScript.");
-		OO_CHECK_EQ(Call(target, { StringValue("takesInt:"), ooscript::int32Value(1) }), "error: Test.callObjC(): method takesInt: cannot be called from JavaScript.");
-		OO_CHECK(Call(target, "noSuchMethod").rfind("error: Test.callObjC(): <TestTarget ", 0) == 0);
-		OO_CHECK(Call(target, "noSuchMethod").find("> does not respond to method noSuchMethod.") != std::string::npos);
-		// Parameters after a selector with no colon are ignored.
-		OO_CHECK_EQ(Call(target, { StringValue("answer"), StringValue("x") }), "42");
-		OO_CHECK(target->calls.empty());
-	}
-}
-
-
-OO_TEST(shipBecomesScriptTarget)
-{
-	@autoreleasepool
-	{
-		Context();
-		TestShip *ship = [[[TestShip alloc] init] autorelease];
-		gOOPlayer->scriptTarget = nullptr;
-		OO_CHECK_EQ(Call(ship, "answer"), "1");
-		TestTarget *target = [[[TestTarget alloc] init] autorelease];
-		OO_CHECK_EQ(Call(target, "answer"), "42");
-		// (That a ship's Objective-C object, called by the object path, made its C++ ship the script
-		// target, and a non-ship left it: retired with the root facade, which was every entity's
-		// object, bead oo-dpyk8, under oo-9n5p9. The entity path's script target is checked below.)
-	}
-}
-
-
 // callObjC() on an entity by its name table (bead oo-9ht.44): a name of the table that the entity's
 // object answers is called with the table's signature; any other name does not respond, even one
 // the object answers (a root-class or lifetime selector, or one the facade does not define).
 OO_TEST(entityMethodsByTable)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		Context();
 		gOOPlayer->scriptTarget = nullptr;
 		OO_CHECK_EQ(CallEntity(gOOPlayer, "isPlayer"), "1");
-		OO_CHECK_EQ(Call(sPlayerObject, "isPlayer"), "1");	// what the object's signature gave
 		OO_CHECK(gOOPlayer->scriptTarget == gOOPlayer);	// the player is a ship: its own script target
 		OO_CHECK(CallEntity(gOOPlayer, "retain").find("> does not respond to method retain.") != std::string::npos);
 		OO_CHECK(CallEntity(gOOPlayer, "hash").find("> does not respond to method hash.") != std::string::npos);
 		OO_CHECK(CallEntity(gOOPlayer, "noSuchMethod").find("> does not respond to method noSuchMethod.") != std::string::npos);
 		OO_CHECK_EQ(CallEntity(gOOPlayer, std::vector<ooscript::Value>{}), "error: Test.callObjC(): no selector specified.");
+	}
+}
+
+
+/*	The entity call's signatures, results and errors (bead oo-4aq6a.5, ADR-0062 item 3): what the
+	deleted object path's cases (voidAndStringMethods, scalarMethods, objectMethods, errors) pinned
+	for the forms the entity table uses, through the table: a void method, a string parameter (the
+	parameters joined with spaces), a property-list result (a null one leaves the result), a
+	boolean, a float and a double, a vector and a quaternion, an entity result and a null one, a
+	matrix that cannot be called, a parameter missing, and parameters after a name with no colon.
+*/
+OO_TEST(entityResultsByTable)
+{
+	{
+		oo::AutoreleaseScope pool;
+		Context();
+		sEntityCalls.clear();
+		OO_CHECK_EQ(CallEntity(gOOPlayer, "removeScript"), "<unchanged>");
+		OO_CHECK_EQ(CallEntity(gOOPlayer, { StringValue("addRole:"), StringValue("hello"), ooscript::int32Value(3), ooscript::nullValue() }), "<unchanged>");
+		OO_CHECK_EQ(sEntityCalls.size(), 2u);
+		if (sEntityCalls.size() == 2)
+		{
+			OO_CHECK_EQ(sEntityCalls[0], "removeScript");
+			OO_CHECK_EQ(sEntityCalls[1], "addRole:hello 3 null");	// the parameters joined with spaces
+		}
+		sShipInfo = oo::PList(12.5);
+		OO_CHECK_EQ(CallEntity(gOOPlayer, "cxx_shipInfoDictionary"), "12.5");
+		sShipInfo = oo::PList();
+		OO_CHECK_EQ(CallEntity(gOOPlayer, "cxx_shipInfoDictionary"), "<unchanged>");	// a null result leaves it
+
+		OO_CHECK_EQ(CallEntity(gOOPlayer, "isPlayer"), "1");
+		OO_CHECK_EQ(CallEntity(gOOPlayer, "thrust"), "0.5");
+		OO_CHECK_EQ(CallEntity(gOOPlayer, "speed"), "0.25");
+		OO_CHECK_EQ(CallEntity(gOOPlayer, "velocity"), "1,2,3");
+		OO_CHECK_EQ(CallEntity(gOOPlayer, "orientation"), "1,0,0,0");
+
+		sOwner = gOOPlayer;
+		OO_CHECK_EQ(CallEntity(gOOPlayer, "owner"), "<object TestPlayerObject>");
+		sOwner = nullptr;
+		OO_CHECK_EQ(CallEntity(gOOPlayer, "owner"), "<unchanged>");
+
+		OO_CHECK_EQ(CallEntity(gOOPlayer, "addRole:"), "error: Test.callObjC(): method addRole: requires a parameter.");
+		OO_CHECK_EQ(CallEntity(gOOPlayer, "rotationMatrix"), "error: Test.callObjC(): method rotationMatrix cannot be called from JavaScript.");
+		// Parameters after a name with no colon are ignored.
+		OO_CHECK_EQ(CallEntity(gOOPlayer, { StringValue("isPlayer"), StringValue("x") }), "1");
+		OO_CHECK_EQ(sEntityCalls.size(), 4u);
 	}
 }
 
@@ -510,8 +404,8 @@ OO_TEST(entityMethodsByTable)
 // entity it is (its object, which the case called, went with the root facade, bead oo-dpyk8).
 OO_TEST(playerStatisticsByName)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		Context();
 		sStatisticsCalls.clear();
 		OO_CHECK_EQ(CallEntity(gOOPlayer, "reportJSVectorStatistics"), "vector statistics");
@@ -527,11 +421,6 @@ OO_TEST(playerStatisticsByName)
 			OO_CHECK_EQ(sStatisticsCalls[3], "clearJSQuaternionStatistics");
 		}
 		OO_CHECK(gOOPlayer->scriptTarget == gOOPlayer);	// the player is a ship: its own script target
-
-		TestShip *ship = [[[TestShip alloc] init] autorelease];
-		OO_CHECK(Call(ship, "reportJSVectorStatistics").find("> does not respond to method reportJSVectorStatistics.") != std::string::npos);
-		TestTarget *target = [[[TestTarget alloc] init] autorelease];
-		OO_CHECK(Call(target, "clearJSQuaternionStatistics").find("> does not respond to method clearJSQuaternionStatistics.") != std::string::npos);
 		OO_CHECK_EQ(sStatisticsCalls.size(), 4u);
 	}
 }

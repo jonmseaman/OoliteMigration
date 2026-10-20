@@ -330,7 +330,6 @@ class Entity;
 std::optional<std::string> cxx_OOStringFromJSValueEvenIfNull(ooscript::Context, ooscript::Value)  { std::abort(); }
 std::optional<std::string> OOJSEntityJSClassName(Entity *)  { std::abort(); }
 bool OOJSCallEntityMethod(ooscript::Context, Entity *, const std::string &, unsigned, ooscript::Value *, ooscript::Value *)  { std::abort(); }
-bool OOJSCallObjCObjectMethod(ooscript::Context, id, const std::string &, unsigned, ooscript::Value *, ooscript::Value *)  { std::abort(); }
 OOShaderUniformType OOShaderUniformTypeFromEncoding(const char *)  { std::abort(); }
 // oo::EntityIn() (Entity+ObjCBridge.h) reads ::TestEntityObject's _cxxEntity ivar; its offset variable is
 // emitted by the @implementation in Entity+ObjCBridge.mm, which this test does not link. The name

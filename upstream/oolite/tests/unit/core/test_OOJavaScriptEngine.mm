@@ -47,20 +47,8 @@ uint32_t gDebugFlags = 0;
 #endif
 
 
-// A plain OOObject: its JS value and description through the root's JS glue. (Its -oo_clearJSSelf:
-// and -dealloc counted the Objective-C wrapper's finalisation for objectWrapper, which retired with
-// the slot's Objective-C objects, bead oo-4aq6a.6; cxxObjectWrapper counts TestCxxNative's.)
-@interface TestNative: OOObject
-@end
-
-@implementation TestNative
-
-- (std::optional<std::string>) cxx_descriptionComponents
-{
-	return std::string("x=1");
-}
-
-@end
+// (TestNative, a plain OOObject whose JS value and description the root's JS glue gave, went with
+// that glue, bead oo-4aq6a.6.2; cxxObjectWrapper counts TestCxxNative's finalisation.)
 
 
 // A C++ native object, as a JS object's private slot holds since bead oo-4aq6a.6: counts its JS
@@ -589,8 +577,10 @@ OO_TEST(nativeObjectValues)
 	{
 		ooscript::Context context = OOJSAcquireContext();
 
-		// nil and OONull are JS null; OONull is one object that copies as itself.
-		OO_CHECK(ooscript::isNull(OOJSValueFromNativeObject(context, nil)));
+		// nil and OONull are JS null; OONull is one object that copies as itself. (nil is the null
+		// PList: re-pinned through OOJSValueFromPList when bead oo-4aq6a.6.2 deleted
+		// OOJSValueFromNativeObject; ADR-0062 item 3.)
+		OO_CHECK(ooscript::isNull(OOJSValueFromPList(context, oo::PList())));
 		OONull *null = OONull::null();
 		OO_CHECK(null != nullptr && OONull::null() == null);
 		OO_CHECK(OOIsNullObjectNode(OONullObjectNode()) && OONullObjectNode() == OONullObjectNode());	// the one null, shared (the facade's -copy answered itself)
@@ -598,16 +588,8 @@ OO_TEST(nativeObjectValues)
 		OO_CHECK(ooscript::isNull(OOJSValueFromPList(context, OONullObjectNode())));
 		OO_CHECK(ooscript::isNull(null->jsValueInContext(context)));
 
-		// A plain OOObject has no JS value, and describes itself by its class name and components.
-		TestNative *native = [[[TestNative alloc] init] autorelease];
-		OO_CHECK(ooscript::isUndefined(OOJSValueFromNativeObject(context, native)));
-		OO_CHECK(OOJSObjectFromNativeObject(context, native) == NULL);
-		// (Asked through the engine's C++ bridges since bead oo-t7o84 deleted the category OOObject
-		// (OOJavaScriptConversion) that answered these selectors.)
-		OO_CHECK(!OOJavaScriptEngineJSClassName(native).has_value());
-		OO_CHECK_EQ(OOJavaScriptEngineJSDescription(native).value_or("<none>"), "[TestNative x=1]");
-		OO_CHECK_EQ(OOJavaScriptEngineJSDescriptionWithClassName(native, std::string("Named")).value_or("<none>"), "[Named x=1]");
-		OO_CHECK_EQ(OOJavaScriptEngineJSDescription([[[OOObject alloc] init] autorelease]).value_or("<none>"), "[object OOObject]");
+		// (A plain OOObject's JS value and description, through the root's JS glue, retired with that
+		// glue, bead oo-4aq6a.6.2: ADR-0062 item 2.)
 
 		// A native vector is a Vector3D.
 		oo::Ref<OONativeVector> vector = oo::makeRef<OONativeVector>(make_vector(1.0f, 2.0f, 3.0f));
@@ -777,7 +759,6 @@ OO_TEST(propertyListsFromJS)
 			OO_CHECK((*elements)[2] == oo::PList(std::string("a")));
 			OO_CHECK((*elements)[3].isArray());
 		}
-		OO_CHECK(oo::ObjectIn(cxx_OOJSPListFromJSValue(context, Eval(context, "[]"))) == nil);
 		OO_CHECK(cxx_OOJSPListFromJSValue(context, Eval(context, "[]")).isArray());
 
 		oo::PList dict = cxx_OOJSPListFromJSValue(context, Eval(context, "({ s: new String('x'), n: new Number(2.5), b: new Boolean(false) })"));

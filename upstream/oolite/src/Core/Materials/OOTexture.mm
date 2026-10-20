@@ -758,8 +758,9 @@ BOOL cxx_OOInterpretTextureSpecifier(const oo::PList &specifier, std::string *ou
 	{
 		// Bad type
 		// "got" names an object's class, or the property-list type (it was the class of the Foundation
-		// object built for the value, such as GSInlineArray).
-		if (!specifier.isNull())  OO_LOG(cxx_kOOLogParameterError, "{}: expected string or dictionary, got {}.", __PRETTY_FUNCTION__, (specifier.type() == oo::PList::Type::Object) ? oo::DescriptionOf([oo::ObjectIn(specifier) class]) : std::string(oo::typeName(specifier.type())));
+		// object built for the value, such as GSInlineArray). An Object node held no Objective-C object
+		// (none is made since bead oo-4aq6a.5): nil's class, "(null)", as before.
+		if (!specifier.isNull())  OO_LOG(cxx_kOOLogParameterError, "{}: expected string or dictionary, got {}.", __PRETTY_FUNCTION__, (specifier.type() == oo::PList::Type::Object) ? std::string("(null)") : std::string(oo::typeName(specifier.type())));
 		return NO;
 	}
 	
