@@ -38,17 +38,17 @@
 	ship named "boom" raises from acceptAsEscort(), so the test sees what an exception under a
 	native becomes. C++ since bead oo-9ht.144 deleted the Objective-C ship this stood in for: a
 	ship's object is the root's (a weakly referenced object with a JS object of its own), which
-	holds the C++ part (oo::ToCxx reads it) and which oo::ToObjC answers for it; declared as
+	holds the C++ part (oo::ToCxx reads it) and which TestObjectOf answers for it; declared as
 	Entity.h and ShipEntity.h declare them (the test imports neither).
 */
-@class TestEntityObject;
+class TestEntityObject;
 
 class Entity : public oo::RefCounted
 {
 public:
 	virtual ~Entity();
 
-	::TestEntityObject *_object = nil;	// its object (not retained)
+	::TestEntityObject *_object = nullptr;	// its object (not retained)
 };
 
 class ShipEntity : public Entity
@@ -67,15 +67,20 @@ public:
 	int _accepted = 0;
 };
 
-__attribute__((objc_runtime_name("Entity")))
-@interface TestEntityObject: OOObject
+// The ship's object. C++ since bead oo-4aq6a.13 (it was rooted on the Objective-C root class OOObject,
+// which Phase 4 deletes): its selectors are members of the same names; the JS slot holds it (not
+// retained, as it held the Objective-C object).
+class TestEntityObject final : public oo::RefCounted
 {
-@public
+public:
+	const char *className() const  { return "Entity"; }	// its Objective-C class's runtime name
+	std::optional<std::string> cxx_descriptionComponents();
+	ooscript::Value oo_jsValueInContext(ooscript::Context context);
+
 	oo::Ref<Entity> _cxxEntity;
 	std::string _name;
-	ooscript::Object _jsSelf;
-}
-@end
+	ooscript::Object _jsSelf = nullptr;
+};
 
 // The one null (OOJavaScriptEngine.h; a C++ class since bead oo-wdqw1 deleted its facade), declared
 // with the header's names and signatures but not its class: its own property-list node's object.
@@ -127,26 +132,23 @@ bool ShipEntity::acceptAsEscort(::ShipEntity *other_ship)
 	return YES;
 }
 
-namespace oo { ::TestEntityObject *ToObjC(Entity *entity); }	// Entity+ObjCBridge.mm's, which the test does not link
-::TestEntityObject *oo::ToObjC(Entity *entity)  { return entity != nullptr ? entity->_object : nil; }
-#import "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
+// Entity+ObjCBridge.mm's oo::ToObjC (which the test does not link) until bead oo-4aq6a.13.
+::TestEntityObject *TestObjectOf(Entity *entity)  { return entity != nullptr ? entity->_object : nullptr; }
+#define OO_ENTITY_HELPERS_STAND_IN_CXX
+#include "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
 
 
-@implementation TestEntityObject
+std::optional<std::string> TestEntityObject::cxx_descriptionComponents()  { return _name; }
 
-- (std::optional<std::string>) cxx_descriptionComponents  { return _name; }
-
-- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
+ooscript::Value TestEntityObject::oo_jsValueInContext(ooscript::Context context)
 {
 	if (_jsSelf == nullptr)
 	{
 		_jsSelf = ooscript::newObject(context, &sFakeShipClass, sFakeShipPrototype, nullptr);
-		ooscript::setPrivate(context, _jsSelf, self);
+		ooscript::setPrivate(context, _jsSelf, static_cast<oo::RefCounted *>(this));
 	}
 	return ooscript::objectValue(_jsSelf);
 }
-
-@end
 
 
 OONull *OONull::null()
@@ -235,7 +237,11 @@ ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &p
 		if (OOJSPrivateObject *glue = dynamic_cast<OOJSPrivateObject *>(node->get()))  return OOJSValueFromCxxObject(context, glue);
 		if (dynamic_cast<OONull *>(node->get()) != nullptr)  return ooscript::nullValue();	// OONull is null
 	}
-	if (Entity *entity = oo::EntityIn(plist))  return OOJSValueFromNativeObject(context, oo::ToObjC(entity));	// an entity's node: its object's value (bead oo-dpyk8)
+	if (Entity *entity = oo::EntityIn(plist))	// an entity's node: its object's value (bead oo-dpyk8), as OOJSValueFromNativeObject() gave it
+	{
+		::TestEntityObject *object = TestObjectOf(entity);
+		return object != nullptr ? object->oo_jsValueInContext(context) : ooscript::nullValue();
+	}
 	if (id object = oo::ObjectIn(plist))  return OOJSValueFromNativeObject(context, object);
 	if (const oo::PList::Array *array = plist.getIf<oo::PList::Array>())
 	{
@@ -361,9 +367,10 @@ void OOJSUnreachable(const char *function, const char *, unsigned)
 Entity *OOJSEntityFromJSValue(ooscript::Context context, ooscript::Value value)
 {
 	if (!ooscript::isObject(value) || ooscript::isNull(value))  return nullptr;
-	id object = (id)ooscript::getPrivate(context, ooscript::toObject(value));
-	TestEntityObject *entity = [object isKindOfClass:[TestEntityObject class]] ? object : nil;
-	return entity != nil ? entity->_cxxEntity.get() : nullptr;
+	// The slot holds an oo::RefCounted: a ship's object, or a group (bead oo-4aq6a.13: the class
+	// check, -isKindOfClass: until then, is the C++ one).
+	TestEntityObject *entity = dynamic_cast<TestEntityObject *>(static_cast<oo::RefCounted *>(ooscript::getPrivate(context, ooscript::toObject(value))));
+	return entity != nullptr ? entity->_cxxEntity.get() : nullptr;
 }
 
 
@@ -390,13 +397,13 @@ void Define(const char *name, ooscript::Value value)
 // A ship and its object (kept for the life of the test), defined by name.
 ShipEntity *NewShip(const char *name)
 {
-	::TestEntityObject *object = [[::TestEntityObject alloc] init];
+	::TestEntityObject *object = oo::makeRef<::TestEntityObject>().leakRef();
 	oo::Ref<ShipEntity> ship = oo::makeRef<ShipEntity>();
 	ship->_object = object;
 	ship->_name = name;
 	object->_cxxEntity = ship;
 	object->_name = name;
-	Define(name, [object oo_jsValueInContext:sContext]);
+	Define(name, object->oo_jsValueInContext(sContext));
 	return ship.get();
 }
 
@@ -551,8 +558,8 @@ OO_TEST(escorts)
 	taken->_group = otherEscorts;
 	sLastWarning.clear();
 	OO_CHECK_EVAL("escorts.addShip(taken)", "false");
-	OO_CHECK_EQ(sLastWarning, "ShipGroup.addShip: Ship " + oo::DescriptionOf(oo::ToObjC(taken)) + " cannot be assigned to two escort groups, ignoring.");
-	OO_CHECK(oo::DescriptionOf(oo::ToObjC(taken)).find("{taken}") != std::string::npos);
+	OO_CHECK_EQ(sLastWarning, "ShipGroup.addShip: Ship " + TestEntityObjectDescription(TestObjectOf(taken), true) + " cannot be assigned to two escort groups, ignoring.");
+	OO_CHECK(TestEntityObjectDescription(TestObjectOf(taken), true).find("{taken}") != std::string::npos);
 	// A lone leader whose escort group is its own group gets a new group, and the ship joins that.
 	ShipEntity *lone = NewShip("lone");
 	oo::Ref<OOShipGroup> loneGroup = OOShipGroup::groupWithName(std::string("alone"), lone);

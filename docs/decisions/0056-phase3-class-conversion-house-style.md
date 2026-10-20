@@ -9698,3 +9698,19 @@ are zero-initialised members (an `id` one typed as the stand-in); the test's `oo
 asked only for a non-null object and nil's zero answer is kept. test_OOJSFlasher includes EntityHelpersStandIn.h
 in its C++ mode. Every case, input and expected value is unchanged. The remaining test_OOJS* stand-ins reach src
 (the engine's `OOJSValueFromNativeObject`, the slot's object, the root's JS glue) and stay for oo-4aq6a.6.
+
+## Amendment (bead oo-4aq6a.13): test_OOJSShipGroup's Objective-C ship object becomes C++
+
+**Context.** Batch BA, after oo-4aq6a.12. test_OOJSShipGroup keeps its ships' OOObject-rooted `TestEntityObject` in
+the JS slot and stands in for the engine's id-taking functions itself; the binding reaches the object only through
+those stand-ins (`OOJSEntityFromJSValue`, `OOJSValueFromPList`).
+
+**Decision (test only; std-2026-10-19 item 1, approval line "oo-4aq6a.13").** The ship's object is a C++
+`oo::RefCounted` (its `-cxx_descriptionComponents` and `-oo_jsValueInContext:` members of the same names), held in
+the slot unretained as before; `OOJSEntityFromJSValue`'s `-isKindOfClass:` check is a `dynamic_cast` from the slot's
+`oo::RefCounted`; `OOJSValueFromPList` asks an entity node's object for its JS value directly, null for none; the
+test's `oo::ToObjC()` is `TestObjectOf()` and EntityHelpersStandIn.h is in its C++ mode; the expected warning text
+is built from the C++ object's full description, `<Entity 0x...>{taken}`, as it was from the Objective-C one.
+The test's stand-ins of the engine's Objective-C wrapper glue (`OOJSObjectGetterImplPRIVATE`,
+`OOJSObjectWrapperFinalize`/`ToString`, and the `OOObject (OOJSTestGlue)` interface they send through) are not
+reached by any case and go with that glue (oo-4aq6a.6). Every case, input and expected value is unchanged.
