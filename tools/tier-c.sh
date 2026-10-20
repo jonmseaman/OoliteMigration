@@ -748,7 +748,7 @@ stage_goldens() {
   # stage stages them, and --nosound (the asan stage's launch flag: the prebuilt OpenAL DLL trips
   # ASan, oo-dg6vf). Any AddressSanitizer report in a scenario's game stderr fails the stage.
   local sanitized=() asan_reports=() sandll dll
-  if objdump -p "$APP_DIR/oolite.exe" 2>/dev/null | grep -qi 'libclang_rt\.asan_dynamic'; then
+  if grep -qi 'libclang_rt\.asan_dynamic' <<<"$(objdump -p "$APP_DIR/oolite.exe" 2>/dev/null)"; then
     sandll="$(bash "$HERE/asan-resource-dir.sh" --dll-dir)" \
       || fail goldens "the app is sanitized but the ASan runtime DLL directory could not be located"
     for dll in opengl32.dll libgallium_wgl.dll; do
